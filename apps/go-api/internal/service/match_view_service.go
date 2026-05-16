@@ -766,6 +766,7 @@ func buildMatchHeader(
 		}
 	}
 	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
+	h.IsRanked = meta.IsRanked
 	if meta.MapAssetID != nil {
 		h.WaypointURL = fmt.Sprintf("https://www.halowaypoint.com/halo-infinite/matches/%s", matchID)
 	}

@@ -477,6 +477,29 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 		return 0, nil
 	}
 
+	// Filtrer les matchs marqués `is_excluded` côté playerDB : ils ne doivent ni
+	// peser dans la fenêtre glissante ni recevoir de score.
+	excluded, err := loadExcludedMatchIDs(playerDB)
+	if err != nil {
+		return 0, fmt.Errorf("batchComputePerformanceScores: %w", err)
+	}
+	if len(excluded) > 0 {
+		before := len(allMatches)
+		filtered := allMatches[:0]
+		for _, m := range allMatches {
+			if excluded[m.MatchID] {
+				continue
+			}
+			filtered = append(filtered, m)
+		}
+		allMatches = filtered
+		slog.Debug("batchComputePerformanceScores: matchs exclus filtrés",
+			"xuid", xuid, "filtered", before-len(allMatches), "remaining", len(allMatches))
+		if len(allMatches) == 0 {
+			return 0, nil
+		}
+	}
+
 	// Enrichir avec les scores médailles
 	for i := range allMatches {
 		if score, ok := medalExploitByMatch[allMatches[i].MatchID]; ok {

@@ -3,6 +3,8 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -42,6 +44,49 @@ func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, e
 		return fmt.Errorf("MatchExclusionRepo.SetExclusion exec: %w", err)
 	}
 	return nil
+}
+
+// GetMatchRegistryInfo lit shared.match_registry pour un match donné.
+// Renvoie domain.ErrMatchNotFound si le match n'existe pas.
+func (r *MatchExclusionRepo) GetMatchRegistryInfo(ctx context.Context, matchID string) (domain.MatchRegistryInfo, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var (
+		info        domain.MatchRegistryInfo
+		startTime   time.Time
+		isRanked    sql.NullBool
+		isFirefight sql.NullBool
+		pairName    sql.NullString
+	)
+	err := r.pdb.ReadDB().QueryRow(ctx, `
+		SELECT
+			match_id,
+			start_time,
+			COALESCE(is_ranked, FALSE)    AS is_ranked,
+			COALESCE(is_firefight, FALSE) AS is_firefight,
+			COALESCE(pair_name, '')       AS pair_name
+		FROM shared.match_registry
+		WHERE match_id = ?
+		LIMIT 1
+	`, matchID).Scan(&info.MatchID, &startTime, &isRanked, &isFirefight, &pairName)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.MatchRegistryInfo{}, domain.ErrMatchNotFound
+		}
+		return domain.MatchRegistryInfo{}, fmt.Errorf("MatchExclusionRepo.GetMatchRegistryInfo: %w", err)
+	}
+	info.StartTime = startTime
+	if isRanked.Valid {
+		info.IsRanked = isRanked.Bool
+	}
+	if isFirefight.Valid {
+		info.IsFirefight = isFirefight.Bool
+	}
+	if pairName.Valid {
+		info.PairName = pairName.String
+	}
+	return info, nil
 }
 
 // ListExcluded retourne les matchs marqués is_excluded = TRUE avec métadonnées.

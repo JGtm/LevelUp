@@ -30,6 +30,7 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
+	sync_pkg "levelup/go-api/internal/sync"
 )
 
 // haloProvider est l'instance globale du provider Halo (partagée).
@@ -906,13 +907,30 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
-// MatchExclusion retourne un MatchExclusionService pour le joueur.
+// MatchExclusion retourne un MatchExclusionService pour le joueur, câblé sur
+// un MatchRecomputer (recompute global perf_score + LUSR après chaque
+// (dé)exclusion). metadataDBPath peut être vide → le recompute fonctionne
+// sans bonus médailles.
 func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port.MatchExclusionService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewMatchExclusionService(duckdb.NewMatchExclusionRepo(pdb)), nil
+	metadataPath := ""
+	if pdb.Metadata != nil {
+		metadataPath = pdb.Metadata.Path()
+	}
+	recomputer := sync_pkg.NewMatchRecomputer(
+		pdb.Player.Path(),
+		pdb.Shared.Path(),
+		metadataPath,
+		pdb.XUID,
+		pdb.Gamertag,
+	)
+	return service.NewMatchExclusionService(
+		duckdb.NewMatchExclusionRepo(pdb),
+		recomputer,
+	), nil
 }
 
 // TeammatesCtx retourne un TeammatesService + identifiants joueur.

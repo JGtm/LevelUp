@@ -56,8 +56,13 @@ vi.mock('@/lib/match-nav/navContext', () => ({
   clearNavContext: (...args: unknown[]) => clearNavContextMock(...args),
 }))
 
+const setExclusionMutateMock = vi.fn()
 vi.mock('@/features/match-history/queries', () => ({
-  useSetMatchExclusion: () => ({ mutate: vi.fn(), isPending: false }),
+  useSetMatchExclusion: () => ({ mutate: setExclusionMutateMock, isPending: false }),
+}))
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() },
 }))
 
 const baseHeader: MatchViewHeader = {
@@ -79,6 +84,7 @@ const baseHeader: MatchViewHeader = {
   performance_color: null,
   performance_color_token: 'perf-tier-2',
   is_excluded: false,
+  is_ranked: false,
   is_favorite: false,
   map_image_url: '/static/maps/halo_infinite/Aquarius.png',
 }
@@ -193,6 +199,89 @@ describe('MatchHeaderCard', () => {
       />,
     )
     expect(screen.queryByText('Rang')).toBeNull()
+  })
+
+  it('clic sur "Exclure" ouvre le dialogue de confirmation et ne déclenche pas la mutation immédiatement', () => {
+    setExclusionMutateMock.mockClear()
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    // Avant clic : un seul bouton "Exclure" (celui du header).
+    fireEvent.click(screen.getByRole('button', { name: 'Exclure' }))
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(screen.getByText('Exclure ce match ?')).toBeInTheDocument()
+    expect(setExclusionMutateMock).not.toHaveBeenCalled()
+  })
+
+  it('confirmation dans le dialogue déclenche la mutation avec excluded=true', () => {
+    setExclusionMutateMock.mockClear()
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Exclure' }))
+    // Après ouverture du dialog : deux boutons "Exclure" — header + footer.
+    // Le footer (dans le dialog) a `variant=destructive` mais aria-name reste "Exclure".
+    const dialog = screen.getByRole('alertdialog')
+    const confirmBtn = Array.from(dialog.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'Exclure',
+    )
+    expect(confirmBtn).toBeDefined()
+    fireEvent.click(confirmBtn!)
+    expect(setExclusionMutateMock).toHaveBeenCalledWith(
+      { matchId: 'm1', excluded: true },
+      expect.any(Object),
+    )
+  })
+
+  it('match classé (is_ranked=true) : bouton "Exclure" désactivé avec tooltip explicite', () => {
+    setExclusionMutateMock.mockClear()
+    const ranked: MatchViewHeader = { ...baseHeader, is_ranked: true, is_excluded: false }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={ranked}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    const btn = screen.getByRole('button', { name: 'Exclure' })
+    expect(btn).toBeDisabled()
+    expect(btn).toHaveAttribute('title', expect.stringMatching(/classés/i))
+    fireEvent.click(btn)
+    expect(setExclusionMutateMock).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('match classé déjà exclu : bouton "Réactiver" autorisé', () => {
+    const rankedExcluded: MatchViewHeader = { ...baseHeader, is_ranked: true, is_excluded: true }
+    renderWithQueryClient(
+      <MatchHeaderCard
+        header={rankedExcluded}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale="fr"
+      />,
+    )
+    const btn = screen.getByRole('button', { name: 'Réactiver' })
+    expect(btn).not.toBeDisabled()
   })
 
   it('is_favorite=true : aria-label "Retirer des favoris"', () => {

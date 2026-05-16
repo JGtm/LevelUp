@@ -21,6 +21,16 @@ export interface MatchViewText {
   excludeShort: string
   excludeTooltip: string
   reactivateTooltip: string
+  // Confirmation dialog d'exclusion / réactivation
+  excludeConfirmTitle: string
+  excludeConfirmBody: string
+  reactivateConfirmTitle: string
+  reactivateConfirmBody: string
+  confirmAction: string
+  cancelAction: string
+  excludeRankedDenied: string
+  excludeErrorRanked: string
+  excludeErrorGeneric: string
   performance: string
   rank: string
   addFavorite: string
@@ -161,6 +171,17 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     excludeShort: 'Exclure',
     excludeTooltip: 'Exclure ce match des statistiques et analyses',
     reactivateTooltip: 'Réintégrer ce match dans les statistiques',
+    excludeConfirmTitle: 'Exclure ce match ?',
+    excludeConfirmBody:
+      'Ce match sera marqué non pertinent et retiré des statistiques. Le score de performance et le LUSR des matchs ultérieurs seront recalculés (quelques secondes).',
+    reactivateConfirmTitle: 'Réintégrer ce match ?',
+    reactivateConfirmBody:
+      'Ce match sera ré-intégré aux statistiques. Le score de performance et le LUSR des matchs ultérieurs seront recalculés (quelques secondes).',
+    confirmAction: 'Confirmer',
+    cancelAction: 'Annuler',
+    excludeRankedDenied: 'Les matchs classés ne peuvent pas être exclus (CSR officiel)',
+    excludeErrorRanked: 'Les matchs classés ne peuvent pas être exclus.',
+    excludeErrorGeneric: "Impossible de mettre à jour l'exclusion. Réessaie plus tard.",
     performance: 'Performance',
     rank: 'Rang',
     addFavorite: 'Ajouter aux favoris',
@@ -288,6 +309,17 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     excludeShort: 'Exclude',
     excludeTooltip: 'Exclude this match from stats and analyses',
     reactivateTooltip: 'Re-include this match in stats and analyses',
+    excludeConfirmTitle: 'Exclude this match?',
+    excludeConfirmBody:
+      'This match will be marked irrelevant and removed from stats. The performance score and LUSR of subsequent matches will be recomputed (a few seconds).',
+    reactivateConfirmTitle: 'Reactivate this match?',
+    reactivateConfirmBody:
+      'This match will be re-included in stats. The performance score and LUSR of subsequent matches will be recomputed (a few seconds).',
+    confirmAction: 'Confirm',
+    cancelAction: 'Cancel',
+    excludeRankedDenied: 'Ranked matches cannot be excluded (official CSR)',
+    excludeErrorRanked: 'Ranked matches cannot be excluded.',
+    excludeErrorGeneric: 'Could not update exclusion. Try again later.',
     performance: 'Performance',
     rank: 'Rank',
     addFavorite: 'Add to favorites',

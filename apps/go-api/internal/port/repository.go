@@ -653,6 +653,12 @@ type MatchExclusionRepository interface {
 
 	// ListExcluded retourne les matchs marqués is_excluded = TRUE.
 	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
+
+	// GetMatchRegistryInfo retourne les métadonnées du match depuis
+	// shared.match_registry. Utilisé pour la garde "match classé" et la
+	// détermination de la chaîne perf / playlist_group LUSR. Retourne
+	// domain.ErrMatchNotFound si le match_id n'existe pas.
+	GetMatchRegistryInfo(ctx context.Context, matchID string) (domain.MatchRegistryInfo, error)
 }
 
 // MediaRepository fournit les données pour la galerie médias.

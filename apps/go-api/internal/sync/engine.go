@@ -414,10 +414,17 @@ func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, erro
 // loadMedalExploitMapBestEffort charge les scores d'exploit médailles depuis la metadata DB.
 // Retourne nil en cas d'erreur (le LUSR/Perf fonctionne sans données médailles).
 func (e *SyncEngine) loadMedalExploitMapBestEffort(ctx context.Context, sharedDB *sql.DB) map[string]float64 {
-	if e.metadataDBPath == "" {
+	return loadMedalExploitMap(ctx, e.metadataDBPath, sharedDB, e.xuid)
+}
+
+// loadMedalExploitMap : variante package-level réutilisable hors SyncEngine
+// (ex: MatchRecomputer). Best-effort : retourne nil si la metadata DB est
+// indisponible ou si le calcul échoue — perf/LUSR fonctionnent sans.
+func loadMedalExploitMap(ctx context.Context, metadataDBPath string, sharedDB *sql.DB, xuid string) map[string]float64 {
+	if metadataDBPath == "" {
 		return nil
 	}
-	metaDB, err := sql.Open("duckdb", e.metadataDBPath)
+	metaDB, err := sql.Open("duckdb", metadataDBPath)
 	if err != nil {
 		slog.DebugContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée", "err", err)
 		return nil
@@ -430,7 +437,7 @@ func (e *SyncEngine) loadMedalExploitMapBestEffort(ctx context.Context, sharedDB
 		slog.DebugContext(ctx, "loadMedalExploitMap: difficulty map vide", "err", err)
 		return nil
 	}
-	result, err := ComputeMedalExploitByMatch(sharedDB, diffMap, e.xuid)
+	result, err := ComputeMedalExploitByMatch(sharedDB, diffMap, xuid)
 	if err != nil {
 		slog.DebugContext(ctx, "loadMedalExploitMap: compute échoué", "err", err)
 		return nil
