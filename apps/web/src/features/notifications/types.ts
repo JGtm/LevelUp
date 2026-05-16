@@ -17,13 +17,18 @@ export type NotificationCategory =
   | 'objective_completed'
   | 'challenge_added'
   | 'challenge_completed'
-  | 'season_pass_level'
+  | 'season_pass_level'      // déprécié 2026-05-16 — remplacé par career_rank + battlepass_completed
   | 'sync_error'
   | 'personal_record'
   | 'threshold_crossed'
   | 'friend_added'           // §6 Squad/Sessions overhaul
   | 'friend_sync_completed'  // §6 Squad/Sessions overhaul
   | 'data_health_warning'    // émis par le scheduler data_health (audit DB périodique)
+  | 'career_rank'            // 2026-05-16 — rang Halo lifetime
+  | 'skill_tier'             // 2026-05-16 — CSR/LUSR unifié
+  | 'battlepass_completed'   // 2026-05-16 — track BP atteint son rang max
+  | 'citation_tier'          // 2026-05-16 — palier franchi sur une commendation
+  | 'citation_mastery'       // 2026-05-16 — commendation à 100 %
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -41,6 +46,11 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'friend_added',
   'friend_sync_completed',
   'data_health_warning',
+  'career_rank',
+  'skill_tier',
+  'battlepass_completed',
+  'citation_tier',
+  'citation_mastery',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

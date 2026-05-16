@@ -21,15 +21,25 @@ const (
 	CategoryObjectiveCompleted Category = "objective_completed"
 	CategoryChallengeAdded     Category = "challenge_added"
 	CategoryChallengeCompleted Category = "challenge_completed"
-	CategorySeasonPassLevel    Category = "season_pass_level"
-	CategorySyncError          Category = "sync_error"
-	CategoryPersonalRecord     Category = "personal_record"
-	CategoryThresholdCrossed   Category = "threshold_crossed"
+	// CategorySeasonPassLevel : conservée pour rétro-compat des notifs déjà en DB
+	// — n'est plus émise depuis 2026-05-16 (remplacée par CategoryCareerRank pour
+	// le rang carrière Halo et CategoryBattlepassCompleted pour les tracks BP).
+	CategorySeasonPassLevel  Category = "season_pass_level"
+	CategorySyncError        Category = "sync_error"
+	CategoryPersonalRecord   Category = "personal_record"
+	CategoryThresholdCrossed Category = "threshold_crossed"
 	// §6 Squad/Sessions overhaul : flow ami.
 	CategoryFriendAdded         Category = "friend_added"
 	CategoryFriendSyncCompleted Category = "friend_sync_completed"
 	// 2026-05-08 : audit santé DB périodique (warnings remontés à l'admin).
 	CategoryDataHealthWarning Category = "data_health_warning"
+	// 2026-05-16 : extension notifications — rang Halo, skill CSR/LUSR, BP,
+	// citations/commendations à paliers.
+	CategoryCareerRank          Category = "career_rank"
+	CategorySkillTier           Category = "skill_tier"
+	CategoryBattlepassCompleted Category = "battlepass_completed"
+	CategoryCitationTier        Category = "citation_tier"
+	CategoryCitationMastery     Category = "citation_mastery"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
@@ -42,6 +52,9 @@ func AllCategories() []Category {
 		CategorySeasonPassLevel, CategorySyncError,
 		CategoryPersonalRecord, CategoryThresholdCrossed,
 		CategoryFriendAdded, CategoryFriendSyncCompleted,
+		CategoryCareerRank, CategorySkillTier,
+		CategoryBattlepassCompleted,
+		CategoryCitationTier, CategoryCitationMastery,
 	}
 }
 

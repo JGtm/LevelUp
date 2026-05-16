@@ -38,7 +38,9 @@ var notificationDefaultCategories = []struct {
 	{"objective_completed", true, "both"},
 	{"challenge_added", true, "inapp"},
 	{"challenge_completed", true, "both"},
-	{"season_pass_level", true, "both"},
+	// season_pass_level : déprécié 2026-05-16 — gardé pour rétro-compat seulement,
+	// off par défaut puisque plus jamais émis.
+	{"season_pass_level", false, "off"},
 	{"sync_error", true, "both"},
 	{"personal_record", true, "both"},
 	{"threshold_crossed", true, "both"},
@@ -47,6 +49,12 @@ var notificationDefaultCategories = []struct {
 	{"friend_sync_completed", true, "inapp"}, // récap silencieux post-recompute
 	// 2026-05-08 : audit santé DB périodique → warnings admin.
 	{"data_health_warning", true, "inapp"},
+	// 2026-05-16 : extension notifications — rang Halo, skill, BP, citations.
+	{"career_rank", true, "both"},           // rare, marquant → toast + inapp
+	{"skill_tier", true, "both"},            // CSR/LUSR unifié, peu fréquent
+	{"battlepass_completed", true, "both"},  // milestone
+	{"citation_tier", true, "inapp"},        // potentiellement fréquent → silent
+	{"citation_mastery", true, "both"},      // rare → toast
 }
 
 func init() {
