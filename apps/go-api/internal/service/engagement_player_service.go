@@ -10,17 +10,27 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
 )
 
 // HistoryWindow est le nombre maximal de matchs utilises pour la baseline
 // percentile (cf doc reflexion §6.2 et plan engagement §4.4).
 const HistoryWindow = 200
+
+// engagementWorkCap borne le nombre de matchs sur lesquels on lance le compute
+// par-match (LoadMatchEngagementContext + LoadEventsForMatch + LoadTeamXUIDs +
+// ComputeEngagementScore -> ~10-30ms par match). Au-dela, on garde les N plus
+// recents et on positionne `TruncatedToRecent` dans la reponse. La cascade de
+// binning (session/week/month) tourne ensuite sur ce sous-ensemble.
+const engagementWorkCap = 200
 
 // PlayerEngagementService est un wrapper avec xuid baked-in destine aux
 // handlers HTTP. Charge metadata + events + history + coefs via le repo, puis
@@ -29,11 +39,29 @@ type PlayerEngagementService struct {
 	repo     port.EngagementScoreRepository
 	xuid     string
 	gamertag string
+
+	// playerMatchesRepo (optionnel) permet a GetTimeseries de resoudre la
+	// liste de matchs via le pipeline canonical + filterStatsMatchRows, donc
+	// d'honorer le FilterContextInput de la page Timeseries (period, cascade,
+	// sessions, match_context). Si nil, GetTimeseries retombe sur le fast
+	// path SQL via le repo (ListRecentPvPMatchIDs) sans filtres metier.
+	playerMatchesRepo port.PlayerMatchesRepository
+	titleSlug         string
 }
 
 // NewPlayerEngagementService cree un service per-player.
 func NewPlayerEngagementService(repo port.EngagementScoreRepository, xuid, gamertag string) *PlayerEngagementService {
 	return &PlayerEngagementService{repo: repo, xuid: xuid, gamertag: gamertag}
+}
+
+// WithPlayerMatchesRepo cable le loader canonical pour permettre a
+// GetTimeseries de filtrer la liste de matchs via FilterContextInput.
+func (s *PlayerEngagementService) WithPlayerMatchesRepo(
+	repo port.PlayerMatchesRepository, titleSlug string,
+) *PlayerEngagementService {
+	s.playerMatchesRepo = repo
+	s.titleSlug = titleSlug
+	return s
 }
 
 // GetMatchEngagement charge le contexte du match, recompute la courbe et le
@@ -87,14 +115,28 @@ func (s *PlayerEngagementService) GetEngagementProfile(
 	return coefs, nil
 }
 
-// GetTimeseries retourne les N derniers matchs PvP du joueur avec leurs
-// paces calcules a la volee (Mock 11 sur Timeseries intensity tab).
+// GetTimeseries retourne la serie temporelle d'engagement du joueur (Mock 11)
+// avec granularite adaptative selon la densite filtree :
+//
+//   - len(filtered) <= limit                 -> granularity = "match"   (1 point = 1 match)
+//   - sinon, len(by_session) <= limit        -> granularity = "session"
+//   - sinon, len(by_week) <= limit           -> granularity = "week"
+//   - sinon                                  -> granularity = "month"
+//
+// Le compute par-match (3 queries DB + ComputeEngagementScore) est borne a
+// engagementWorkCap matchs les plus recents ; TruncatedToRecent est positionne
+// dans la reponse si l'ensemble filtre depasse ce plafond.
+//
+// Si playerMatchesRepo n'est pas cable (mocks de test), retombe sur
+// ListRecentPvPMatchIDs et force granularity = "match" (pas de binning sans
+// row data complete).
 //
 // Reference plan : §6.6.3.
 func (s *PlayerEngagementService) GetTimeseries(
 	ctx context.Context,
+	filters domain.FilterContextInput,
 	limit int,
-) ([]domain.EngagementMatchSummary, error) {
+) (*domain.EngagementTimeseriesResponse, error) {
 	if s.xuid == "" {
 		return nil, errors.New("PlayerEngagementService.GetTimeseries: xuid required")
 	}
@@ -102,26 +144,103 @@ func (s *PlayerEngagementService) GetTimeseries(
 		limit = 50
 	}
 
-	matchIDs, err := s.loadRecentPvPMatchIDs(ctx, limit)
+	rows, fallbackIDs, err := s.resolveFilteredRowsDesc(ctx, filters)
 	if err != nil {
 		if errors.Is(err, port.ErrEngagementUnavailable) {
-			return []domain.EngagementMatchSummary{}, nil
+			return emptyEngagementTimeseries(), nil
 		}
 		return nil, err
 	}
-	slog.DebugContext(ctx, "PlayerEngagementService.GetTimeseries: computing",
-		"xuid", s.xuid, "limit", limit, "n_matches", len(matchIDs))
 
-	out := make([]domain.EngagementMatchSummary, 0, len(matchIDs))
-	for i, mid := range matchIDs {
-		summary, ok := s.computeMatchSummary(ctx, mid, i)
-		if ok {
-			out = append(out, summary)
+	total := len(rows)
+	if rows == nil {
+		total = len(fallbackIDs)
+	}
+
+	var truncatedTo *int
+	if rows != nil && len(rows) > engagementWorkCap {
+		n := engagementWorkCap
+		truncatedTo = &n
+		rows = rows[:engagementWorkCap]
+	}
+	if fallbackIDs != nil && len(fallbackIDs) > engagementWorkCap {
+		n := engagementWorkCap
+		truncatedTo = &n
+		fallbackIDs = fallbackIDs[:engagementWorkCap]
+	}
+
+	slog.DebugContext(ctx, "PlayerEngagementService.GetTimeseries: computing",
+		"xuid", s.xuid, "limit", limit, "total_matches", total, "compute_n",
+		len(rows)+len(fallbackIDs))
+
+	summaries := s.computeSummariesChronoAsc(ctx, rows, fallbackIDs)
+
+	// Cascade de granularite. Le binning n'a de sens qu'avec les `rows`
+	// (besoin de session_label + StartTime). En fallback on reste sur "match".
+	granularity := domain.EngagementGranularityMatch
+	points := summaries
+	if rows != nil && len(summaries) > limit {
+		if sessionPts := aggregateEngagementBySession(summaries, rows); len(sessionPts) <= limit {
+			granularity = domain.EngagementGranularitySession
+			points = sessionPts
+		} else if weekPts := rollupEngagementByPeriod(summaries, "week"); len(weekPts) <= limit {
+			granularity = domain.EngagementGranularityWeek
+			points = weekPts
+		} else {
+			granularity = domain.EngagementGranularityMonth
+			points = rollupEngagementByPeriod(summaries, "month")
 		}
 	}
+
 	slog.InfoContext(ctx, "PlayerEngagementService.GetTimeseries: done",
-		"xuid", s.xuid, "n_returned", len(out))
-	return out, nil
+		"xuid", s.xuid, "granularity", granularity, "n_points", len(points),
+		"total_matches", total)
+	return &domain.EngagementTimeseriesResponse{
+		Granularity:       granularity,
+		Points:            points,
+		TotalMatches:      total,
+		TruncatedToRecent: truncatedTo,
+	}, nil
+}
+
+// computeSummariesChronoAsc lance computeMatchSummary sur chaque match (rows
+// ou fallback) en ordre chronologique croissant pour stabiliser les labels
+// "M1, M2, ...". Les paces et MatchCount=1 sont prets pour le binning aval.
+func (s *PlayerEngagementService) computeSummariesChronoAsc(
+	ctx context.Context,
+	rows []legacymatch.StatsMatchRow,
+	fallbackIDs []string,
+) []domain.EngagementMatchSummary {
+	n := len(rows)
+	if rows == nil {
+		n = len(fallbackIDs)
+	}
+	out := make([]domain.EngagementMatchSummary, 0, n)
+	// Iteration DESC -> chronologique ASC pour les labels.
+	for i := n - 1; i >= 0; i-- {
+		var matchID string
+		if rows != nil {
+			matchID = rows[i].MatchID
+		} else {
+			matchID = fallbackIDs[i]
+		}
+		summary, ok := s.computeMatchSummary(ctx, matchID, n-1-i)
+		if !ok {
+			continue
+		}
+		summary.MatchCount = 1
+		out = append(out, summary)
+	}
+	return out
+}
+
+// emptyEngagementTimeseries renvoie une reponse vide bien typee — utilisee
+// quand la migration engagement n'est pas appliquee (ErrEngagementUnavailable).
+func emptyEngagementTimeseries() *domain.EngagementTimeseriesResponse {
+	return &domain.EngagementTimeseriesResponse{
+		Granularity: domain.EngagementGranularityMatch,
+		Points:      []domain.EngagementMatchSummary{},
+	}
 }
 
 // (GetSquadSession + matchBundle + computeTeammateMeanPace : voir
@@ -214,6 +333,53 @@ func (s *PlayerEngagementService) loadRecentPvPMatchIDs(
 		return l.ListRecentPvPMatchIDs(ctx, s.xuid, limit)
 	}
 	return []string{}, nil
+}
+
+// resolveFilteredRowsDesc retourne les matchs PvP du scope filtre, ordre
+// chronologique decroissant (latest first). Le binning aval a besoin du
+// StatsMatchRow complet (session_label, start_time).
+//
+//   - playerMatchesRepo cable + titleSlug/gamertag fournis : pipeline canonical
+//     + filterStatsMatchRows (honore FilterContextInput).
+//   - sinon : fast path SQL via ListRecentPvPMatchIDs ; rows == nil, fallbackIDs
+//     porte uniquement les match_ids. Binning desactive en aval (granularity
+//     reste "match").
+func (s *PlayerEngagementService) resolveFilteredRowsDesc(
+	ctx context.Context,
+	filters domain.FilterContextInput,
+) (rows []legacymatch.StatsMatchRow, fallbackIDs []string, err error) {
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
+		ids, err := s.loadRecentPvPMatchIDs(ctx, 1000)
+		if err != nil {
+			return nil, nil, err
+		}
+		// ListRecentPvPMatchIDs renvoie en ordre chronologique croissant ; on
+		// inverse pour latest-first (cohérent avec rows desc).
+		out := make([]string, len(ids))
+		for i, id := range ids {
+			out[len(ids)-1-i] = id
+		}
+		return nil, out, nil
+	}
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("PlayerEngagementService.resolveFilteredRowsDesc: %w", err)
+	}
+	allRows := analysis.StatsMatchRowsFromCanonical(canonicalRows)
+	filtered := filterStatsMatchRows(allRows, filters)
+	pvp := make([]legacymatch.StatsMatchRow, 0, len(filtered))
+	for _, m := range filtered {
+		if m.IsFirefight {
+			continue
+		}
+		pvp = append(pvp, m)
+	}
+	sort.SliceStable(pvp, func(i, j int) bool {
+		return pvp[i].StartTime.After(pvp[j].StartTime)
+	})
+	return pvp, nil, nil
 }
 
 // computeMatchSummary recompute les means d'engagement pour un match donne.

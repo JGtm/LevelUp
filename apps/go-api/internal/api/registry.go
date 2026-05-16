@@ -490,14 +490,19 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 }
 
 // Engagement retourne un PlayerEngagementService pour le joueur.
-// (Phase 4 plan engagement — endpoint /matches/{id}/engagement et /engagement_profile)
+// (Phase 4 plan engagement — endpoint /matches/{id}/engagement et /engagement_profile).
+//
+// Le PlayerMatchesRepo est injecte pour que GetTimeseries (POST
+// /engagement/timeseries) puisse honorer le FilterContextInput de la page
+// Timeseries Mock 11, comme POST /pages/timeseries.
 func (r *ServiceRegistry) Engagement(ctx context.Context, slug string) (*service.PlayerEngagementService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
 	repo := duckdb.NewEngagementScoreRepo(pdb)
-	return service.NewPlayerEngagementService(repo, pdb.XUID, pdb.Gamertag), nil
+	return service.NewPlayerEngagementService(repo, pdb.XUID, pdb.Gamertag).
+		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug), nil
 }
 
 // mediaWriterAcquirerFor construit l'acquéreur shared_social pour un PlayerDB.

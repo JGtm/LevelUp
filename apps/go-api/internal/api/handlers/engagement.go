@@ -10,9 +10,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -83,9 +83,20 @@ func (h *EngagementHandler) GetMatchEngagement(w http.ResponseWriter, r *http.Re
 	writeJSON(w, http.StatusOK, result)
 }
 
-// GetEngagementTimeseries : GET /engagement/timeseries?limit=50
+// GetEngagementTimeseries : POST /engagement/timeseries
 //
-// Retourne les N derniers matchs PvP avec leurs paces (Mock 11 Timeseries).
+// Body JSON (optionnel) :
+//
+//	{
+//	  "filters": { ...FilterContextInput... },
+//	  "limit": 30
+//	}
+//
+// Retourne les N derniers matchs PvP du scope avec leurs paces (Mock 11 Timeseries).
+// Le scope est defini par `filters` (period, cascade, sessions, match_context)
+// — aligne sur le contrat POST /pages/timeseries. `limit` est optionnel
+// (defaut 50, max 500). Un body vide est tolere et equivaut a `{}` (compat
+// integration tests / smoke).
 func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
@@ -94,14 +105,27 @@ func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *ht
 		return
 	}
 
-	limit := 50
-	if q := r.URL.Query().Get("limit"); q != "" {
-		if n, err := strconv.Atoi(q); err == nil && n > 0 && n <= 500 {
-			limit = n
+	var req domain.EngagementTimeseriesRequest
+	// Body optionnel : si vide ou absent, on garde la valeur zero (filters vide, limit 0 → 50).
+	if r.Body != nil && r.ContentLength != 0 {
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
+			return
 		}
 	}
+	if err := req.Filters.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_filters", err.Error())
+		return
+	}
+	limit := req.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 500 {
+		limit = 500
+	}
 
-	out, err := svc.GetTimeseries(r.Context(), limit)
+	out, err := svc.GetTimeseries(r.Context(), req.Filters, limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
 		return
@@ -129,14 +153,19 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 	teammateGamertags := splitCSV(gamertgsParam)
 
 	// Si aucun match_id fourni, utilise les matchs recents du joueur (limite a 15).
+	// On reste sur la granularite "match" : avec limit=15 et workCap=200 le
+	// service renvoie 1 point par match avec MatchID non vide.
 	if len(matchIDs) == 0 {
-		recent, err := svc.GetTimeseries(r.Context(), 15)
+		recent, err := svc.GetTimeseries(r.Context(), domain.FilterContextInput{}, 15)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
 			return
 		}
-		matchIDs = make([]string, 0, len(recent))
-		for _, m := range recent {
+		matchIDs = make([]string, 0, len(recent.Points))
+		for _, m := range recent.Points {
+			if m.MatchID == "" {
+				continue
+			}
 			matchIDs = append(matchIDs, m.MatchID)
 		}
 	}
