@@ -89,6 +89,54 @@ func TestLoadHistoryForPerf_WithData(t *testing.T) {
 	}
 }
 
+// TestLoadHistoryForPerf_PopulatesChain garantit que loadHistoryForPerf
+// dérive bien `Chain` depuis pair_name + is_ranked + is_firefight, en
+// déléguant à GetPerformanceChain. Couvre tous les cas de figure :
+// PvP non classé (chaînes LUSR), Ranked, Firefight, pair_name NULL (fallback).
+func TestLoadHistoryForPerf_PopulatesChain(t *testing.T) {
+	db := openPerfDB(t)
+
+	// 4 matchs avec des configurations différentes.
+	insert := func(mid, ts, pair string, ranked, ff bool, useNullPair bool) {
+		if useNullPair {
+			db.Exec(
+				"INSERT INTO match_registry (match_id, start_time, is_ranked, is_firefight) VALUES (?, ?::TIMESTAMPTZ, ?, ?)",
+				mid, ts, ranked, ff)
+		} else {
+			db.Exec(
+				"INSERT INTO match_registry (match_id, start_time, pair_name, is_ranked, is_firefight) VALUES (?, ?::TIMESTAMPTZ, ?, ?, ?)",
+				mid, ts, pair, ranked, ff)
+		}
+		db.Exec(
+			"INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, time_played_seconds) VALUES (?, 'xuid1', 2, 5, 5, 600)",
+			mid)
+	}
+	insert("c1", "2025-01-01T01:00:00Z", "BTB:Slayer", false, false, false)     // → btb
+	insert("c2", "2025-01-01T02:00:00Z", "", true, false, false)                // → ranked (flag wins)
+	insert("c3", "2025-01-01T03:00:00Z", "Firefight:KOTH", false, true, false)  // → firefight (flag wins)
+	insert("c4", "2025-01-01T04:00:00Z", "", false, false, true)                // → fallback arena_slayer (pair NULL)
+
+	rows, err := loadHistoryForPerf(db, "xuid1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 4 {
+		t.Fatalf("expected 4 rows, got %d", len(rows))
+	}
+
+	want := map[string]string{
+		"c1": LUSRChainBTB,
+		"c2": PerfChainRanked,
+		"c3": PerfChainFirefight,
+		"c4": LUSRChainArenaSlayer, // fallback (pair_name NULL, no flag)
+	}
+	for _, r := range rows {
+		if r.Chain != want[r.MatchID] {
+			t.Errorf("match %s : Chain=%q, want %q", r.MatchID, r.Chain, want[r.MatchID])
+		}
+	}
+}
+
 func TestBatchComputePerformanceScores_Empty(t *testing.T) {
 	db := openPerfDB(t)
 	n, err := batchComputePerformanceScores(db, db, "xuid_none", nil, false)
