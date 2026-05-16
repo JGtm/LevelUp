@@ -1,3 +1,38 @@
+## [2026-05-16] feat(match-exclusion) — confirmation, recalcul cascade & garde "match classé"
+
+**Statut** : Complété (sur la branche courante `fix/csr-protect-from-lusr-overwrite`, additif).
+
+**Contexte** : L'exclusion manuelle de match existait déjà ([match_exclusion_repo.go](apps/go-api/internal/platform/duckdb/match_exclusion_repo.go), [MatchHeader.tsx](apps/web/src/features/match-view/MatchHeader.tsx)) mais (1) sans confirmation utilisateur, (2) les batches `batchComputePerformanceScores` et `batchComputeLUSR` ne filtraient pas `is_excluded` — donc un match exclu continuait à peser dans la fenêtre glissante perf et la cascade TrueSkill, (3) aucune garde n'empêchait l'exclusion d'un match classé (CSR officiel, données API non falsifiables), (4) aucune cascade automatique sur les matchs ultérieurs.
+
+**Décisions** :
+
+1. **Filtre `is_excluded` côté loaders** — nouveau helper [loadExcludedMatchIDs](apps/go-api/internal/sync/exclusion_filter.go) lu en mémoire côté `playerDB` puis filtre Go in-memory dans `batchComputePerformanceScores` et `batchComputeLUSR`. Approche map+filter retenue plutôt qu'ATTACH cross-DB pour éviter de modifier 5+ call-sites et préserver les signatures publiques.
+
+2. **Recompute synchrone, périmètre "ciblé" = global force=true** — Le plan initial évoquait un recompute restreint à la chaîne perf et au playlist_group LUSR du match. Choix de simplification : relancer les batches globaux en `force=true` via une nouvelle struct [`sync.MatchRecomputer`](apps/go-api/internal/sync/match_recomputer.go). Justification : (a) la cascade TrueSkill LUSR doit de toute façon repartir du premier match du groupe pour reconstituer mu/sigma, (b) sous `force=true` les chaînes/groupes non impactés produisent des scores identiques (idempotence par construction), (c) implémentation drastiquement plus simple sans dupliquer la logique batch. Volumétrie typique ~5-15s sur un gros joueur — acceptable pour une action utilisateur rare.
+
+3. **Garde ranked défense-en-profondeur** — Sentinel `domain.ErrRankedMatchNotExcludable` checkée dans `MatchExclusionService.SetExclusion` (lookup préalable via nouveau `GetMatchRegistryInfo` du repo) → mappée HTTP 422 par le handler. Frontend désactive le bouton + tooltip explicatif via nouveau champ `MatchViewHeader.is_ranked` exposé depuis `MatchMetaRaw.IsRanked` (déjà présent côté Go). La réactivation (`excluded=false`) d'un match ranked reste autorisée (cas hypothétique de match exclu par version antérieure).
+
+4. **AlertDialog "maison" sans Radix** — Le projet n'utilise aucune dépendance Radix UI (vérifié `apps/web/package.json`) ; pattern existant pour les modals = composants ARIA roulés à la main (cf. [BattlePassRewardLightbox](apps/web/src/features/palmares/BattlePassRewardLightbox.tsx)). Nouveau composant [`alert-dialog.tsx`](apps/web/src/components/ui/alert-dialog.tsx) suit le même pattern : `role="alertdialog"`, fermeture Escape, focus initial sur le bouton de confirmation, backdrop cliquable, variante `destructive` selon contexte.
+
+5. **Wiring DI** — `ServiceRegistry.MatchExclusion()` construit désormais aussi un `MatchRecomputer` (paths player/shared/metadata + xuid + gamertag depuis le `PlayerDB` résolu). Mock `mockRecomputer` ajouté aux tests pour valider que (a) l'exclusion d'un ranked refuse sans recompute, (b) un match social déclenche bien le recompute, (c) un recomputer nil ne casse pas le SetExclusion (compat tests bas niveau).
+
+6. **Invalidation TanStack Query centralisée dans la mutation** — `useSetMatchExclusion.onSuccess` invalide `match-history` + `matchView(matchId)` côté hook au lieu de le déléguer au composant. Évite la duplication et garantit que tous les consommateurs de la mutation bénéficient du refresh.
+
+**Résultats observés** :
+
+- `go build ./...` clean. Suite Go complète verte (148 packages testés, dont les 5 nouveaux tests `MatchExclusionService` couvrant ranked-refused / ranked-reactivation-allowed / match-not-found / recomputer-nil / set-and-list, et 2 nouveaux tests handler 422 + 404).
+- Vitest : **1386 tests verts** sur 1400 (14 skipped pré-existants). Tests `MatchHeader.test.tsx` étendus : ouverture dialog, confirmation déclenche mutation, bouton désactivé si `is_ranked && !is_excluded`, bouton réactivé autorisé sur ranked déjà exclu.
+- Lint : zéro warning sur les fichiers que j'ai touchés (vérifié via `npx eslint <fichiers>`). Les ~280 warnings du repo sont des `no-hardcoded-strings` pré-existants hors scope.
+- Typecheck global : une seule erreur `TS2741` dans [notifications/icons.tsx](apps/web/src/features/notifications/icons.tsx) (catégorie `data_health_warning` manquante, régression pré-existante du repo, sans rapport).
+
+**Conclusion / prochaine étape** :
+
+- Aucun backfill nécessaire — la colonne `is_excluded` existait déjà ; le filtre Go la lit telle quelle.
+- Idée d'optim si la latence du recompute synchrone devient gênante : ré-introduire un mode ciblé via paramètre dans `MatchRecomputer` (chaîne C / groupe G + fromTime). À ne faire que si retour utilisateur sur perf.
+- Si retour UX "j'aimerais voir quels matchs j'ai exclus", ressusciter `GET /match-exclusions` (supprimé en revue 2026-04-29 P0.2 Q6 car orphelin). Tout le repo `ListExcluded` est encore là.
+
+---
+
 ## [2026-05-16] feat(perf-score) — découplage du performance_score par chaîne de playlist (miroir LUSR)
 
 **Statut** : Complété (5 commits backend sur la branche `fix/csr-protect-from-lusr-overwrite`).

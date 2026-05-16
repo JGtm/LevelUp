@@ -4,7 +4,10 @@ package duckdb
 
 import (
 	"context"
+	"errors"
 	"testing"
+
+	"levelup/go-api/internal/domain"
 )
 
 // ── FanoutRepo ───────────────────────────────────────────────────────────────
@@ -258,7 +261,9 @@ func seedSharedForExclusion(t *testing.T, db *DB) {
 			start_time TIMESTAMP,
 			start_time_utc TIMESTAMPTZ,
 			map_name VARCHAR DEFAULT '',
-			pair_name VARCHAR DEFAULT ''
+			pair_name VARCHAR DEFAULT '',
+			is_ranked BOOLEAN DEFAULT FALSE,
+			is_firefight BOOLEAN DEFAULT FALSE
 		)`,
 	}
 	for _, q := range ddl {
@@ -267,8 +272,10 @@ func seedSharedForExclusion(t *testing.T, db *DB) {
 		}
 	}
 	_, err := db.Exec(ctx, `INSERT INTO shared.match_registry VALUES
-		('m1', TIMESTAMP '2025-01-10 14:00:00', TIMESTAMPTZ '2025-01-10 14:00:00+00', 'Recharge', 'Slayer'),
-		('m2', TIMESTAMP '2025-01-11 18:00:00', TIMESTAMPTZ '2025-01-11 18:00:00+00', 'Streets', 'CTF')`)
+		('m1', TIMESTAMP '2025-01-10 14:00:00', TIMESTAMPTZ '2025-01-10 14:00:00+00', 'Recharge', 'Slayer', FALSE, FALSE),
+		('m2', TIMESTAMP '2025-01-11 18:00:00', TIMESTAMPTZ '2025-01-11 18:00:00+00', 'Streets', 'CTF', FALSE, FALSE),
+		('m_ranked', TIMESTAMP '2025-01-12 20:00:00', TIMESTAMPTZ '2025-01-12 20:00:00+00', 'Live Fire', 'Ranked Slayer', TRUE, FALSE),
+		('m_ff', TIMESTAMP '2025-01-13 22:00:00', TIMESTAMPTZ '2025-01-13 22:00:00+00', 'Outpost Tremonios', 'Firefight', FALSE, TRUE)`)
 	if err != nil {
 		t.Fatalf("seedSharedForExclusion INSERT: %v", err)
 	}
@@ -314,5 +321,88 @@ func TestMatchExclusionRepo_ListExcluded_WithData(t *testing.T) {
 	}
 	if results[0].MatchID != "m1" {
 		t.Fatalf("expected m1, got %s", results[0].MatchID)
+	}
+}
+
+func TestMatchExclusionRepo_GetMatchRegistryInfo_Social(t *testing.T) {
+	db := openMemDB(t)
+	seedSharedForExclusion(t, db)
+	seedPlayerEnrichment(t, db)
+
+	pdb := &PlayerDB{Player: db, Shared: db}
+	repo := NewMatchExclusionRepo(pdb)
+
+	info, err := repo.GetMatchRegistryInfo(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if info.MatchID != "m1" {
+		t.Fatalf("expected match_id m1, got %s", info.MatchID)
+	}
+	if info.IsRanked {
+		t.Error("m1 should not be ranked")
+	}
+	if info.IsFirefight {
+		t.Error("m1 should not be firefight")
+	}
+	if info.PairName != "Slayer" {
+		t.Errorf("expected pair_name 'Slayer', got %q", info.PairName)
+	}
+	if info.StartTime.IsZero() {
+		t.Error("start_time should not be zero")
+	}
+}
+
+func TestMatchExclusionRepo_GetMatchRegistryInfo_Ranked(t *testing.T) {
+	db := openMemDB(t)
+	seedSharedForExclusion(t, db)
+	seedPlayerEnrichment(t, db)
+
+	pdb := &PlayerDB{Player: db, Shared: db}
+	repo := NewMatchExclusionRepo(pdb)
+
+	info, err := repo.GetMatchRegistryInfo(context.Background(), "m_ranked")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !info.IsRanked {
+		t.Error("m_ranked should be flagged is_ranked=true")
+	}
+	if info.PairName != "Ranked Slayer" {
+		t.Errorf("expected pair_name 'Ranked Slayer', got %q", info.PairName)
+	}
+}
+
+func TestMatchExclusionRepo_GetMatchRegistryInfo_Firefight(t *testing.T) {
+	db := openMemDB(t)
+	seedSharedForExclusion(t, db)
+	seedPlayerEnrichment(t, db)
+
+	pdb := &PlayerDB{Player: db, Shared: db}
+	repo := NewMatchExclusionRepo(pdb)
+
+	info, err := repo.GetMatchRegistryInfo(context.Background(), "m_ff")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if info.IsRanked {
+		t.Error("m_ff should not be ranked")
+	}
+	if !info.IsFirefight {
+		t.Error("m_ff should be flagged is_firefight=true")
+	}
+}
+
+func TestMatchExclusionRepo_GetMatchRegistryInfo_NotFound(t *testing.T) {
+	db := openMemDB(t)
+	seedSharedForExclusion(t, db)
+	seedPlayerEnrichment(t, db)
+
+	pdb := &PlayerDB{Player: db, Shared: db}
+	repo := NewMatchExclusionRepo(pdb)
+
+	_, err := repo.GetMatchRegistryInfo(context.Background(), "ghost-id")
+	if !errors.Is(err, domain.ErrMatchNotFound) {
+		t.Fatalf("expected domain.ErrMatchNotFound, got %v", err)
 	}
 }

@@ -2261,6 +2261,8 @@ export interface MatchViewHeader {
   /** Token sémantique perf-tier-1..5 (Phase 1 MV3). */
   performance_color_token?: string
   is_excluded: boolean
+  /** True si la playlist du match est classée (CSR officiel). Désactive le bouton "Exclure". */
+  is_ranked: boolean
   /** V7 : durée jouable réelle en secondes */
   playable_duration_seconds?: number | null
   /** V7 : lien Waypoint vers la replay */

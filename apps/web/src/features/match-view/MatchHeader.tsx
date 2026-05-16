@@ -13,9 +13,10 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useRouter } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { AlertDialog } from '@/components/ui/alert-dialog'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility'
 import { skillDeltaScale } from '@/lib/accessibility/scales'
@@ -24,7 +25,6 @@ import { useMatchNeighborsResolved } from '@/lib/match-nav/useMatchNeighborsReso
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { clearNavContext } from '@/lib/match-nav/navContext'
 import { useSetMatchExclusion } from '@/features/match-history/queries'
-import { queryKeys } from '@/lib/query/keys'
 import {
   MATCH_VIEW_TEXT,
   buildContextLabel,
@@ -285,10 +285,15 @@ export function MatchHeaderCard({
   locale,
 }: MatchHeaderCardProps) {
   const t = MATCH_VIEW_TEXT[locale]
-  const queryClient = useQueryClient()
   const excludeMutation = useSetMatchExclusion(playerSlug)
   const favoriteMutation = useToggleMatchFavorite(playerSlug, matchId)
   const [copied, setCopied] = useState(false)
+  const [exclusionDialogOpen, setExclusionDialogOpen] = useState(false)
+
+  // Un match classé (CSR officiel) ne peut pas être exclu — defense-in-depth :
+  // le backend renvoie 422 si l'appel passe quand même, on intercepte côté UI
+  // pour griser le bouton et expliquer la raison via tooltip.
+  const excludeBlockedByRanked = header.is_ranked && !header.is_excluded
 
   const outcomeColor = header.outcome_color_token
     ? tokenCssVar(header.outcome_color_token as SemanticToken)
@@ -338,14 +343,33 @@ export function MatchHeaderCard({
     })
   }
 
-  function handleToggleExclusion() {
+  function errorCode(err: unknown): string | null {
+    if (err && typeof err === 'object' && 'code' in err) {
+      const c = (err as { code?: unknown }).code
+      if (typeof c === 'string') return c
+    }
+    return null
+  }
+
+  function openExclusionDialog() {
+    if (excludeBlockedByRanked) return
+    setExclusionDialogOpen(true)
+  }
+
+  function handleConfirmExclusion() {
     excludeMutation.mutate(
       { matchId, excluded: !header.is_excluded },
       {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({
-            queryKey: queryKeys.matchView(playerSlug, matchId),
-          })
+        // Invalidations gérées au niveau de la mutation (matchHistory + matchView).
+        onSuccess: () => setExclusionDialogOpen(false),
+        onError: (err: unknown) => {
+          setExclusionDialogOpen(false)
+          const code = errorCode(err)
+          if (code === 'ranked_not_excludable') {
+            toast.error(t.excludeErrorRanked)
+          } else {
+            toast.error(t.excludeErrorGeneric)
+          }
         },
       },
     )
@@ -453,9 +477,15 @@ export function MatchHeaderCard({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleToggleExclusion}
-                disabled={excludeMutation.isPending}
-                title={header.is_excluded ? t.reactivateTooltip : t.excludeTooltip}
+                onClick={openExclusionDialog}
+                disabled={excludeMutation.isPending || excludeBlockedByRanked}
+                title={
+                  excludeBlockedByRanked
+                    ? t.excludeRankedDenied
+                    : header.is_excluded
+                      ? t.reactivateTooltip
+                      : t.excludeTooltip
+                }
                 className={
                   header.is_excluded
                     ? 'h-8 gap-1.5 text-xs'
@@ -603,6 +633,17 @@ export function MatchHeaderCard({
         </div>
         </div>
       </div>
+      <AlertDialog
+        open={exclusionDialogOpen}
+        onOpenChange={setExclusionDialogOpen}
+        title={header.is_excluded ? t.reactivateConfirmTitle : t.excludeConfirmTitle}
+        description={header.is_excluded ? t.reactivateConfirmBody : t.excludeConfirmBody}
+        confirmLabel={header.is_excluded ? t.reactivate : t.excludeShort}
+        cancelLabel={t.cancelAction}
+        destructive={!header.is_excluded}
+        busy={excludeMutation.isPending}
+        onConfirm={handleConfirmExclusion}
+      />
     </div>
   )
 }

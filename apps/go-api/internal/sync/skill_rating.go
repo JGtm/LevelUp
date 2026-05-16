@@ -8,6 +8,7 @@ package sync
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -280,6 +281,29 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 	}
 	if len(matches) == 0 {
 		return 0, nil
+	}
+
+	// Filtrer les matchs marqués `is_excluded` côté playerDB : ils ne doivent ni
+	// alimenter la cascade TrueSkill ni recevoir de rating LUSR.
+	excluded, err := loadExcludedMatchIDs(playerDB)
+	if err != nil {
+		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
+	}
+	if len(excluded) > 0 {
+		before := len(matches)
+		filtered := matches[:0]
+		for _, m := range matches {
+			if excluded[m.MatchID] {
+				continue
+			}
+			filtered = append(filtered, m)
+		}
+		matches = filtered
+		slog.Debug("batchComputeLUSR: matchs exclus filtrés",
+			"xuid", xuid, "filtered", before-len(matches), "remaining", len(matches))
+		if len(matches) == 0 {
+			return 0, nil
+		}
 	}
 
 	// 2. Charger les participants pour calcul de force adverse.

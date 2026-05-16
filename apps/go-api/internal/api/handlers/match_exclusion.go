@@ -11,6 +11,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -51,6 +52,16 @@ func (h *MatchExclusionHandler) SetExclusion(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := svc.SetExclusion(r.Context(), matchID, req.Excluded); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrMatchNotFound):
+			writeError(w, http.StatusNotFound, "match_not_found",
+				"Match introuvable dans le registre")
+			return
+		case errors.Is(err, domain.ErrRankedMatchNotExcludable):
+			writeError(w, http.StatusUnprocessableEntity, "ranked_not_excludable",
+				"Les matchs classés ne peuvent pas être exclus")
+			return
+		}
 		slog.WarnContext(r.Context(), "match exclusion: db error",
 			"match_id", matchID,
 			"err", err,

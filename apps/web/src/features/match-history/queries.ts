@@ -9,6 +9,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 
+interface SetExclusionVars {
+  matchId: string
+  excluded: boolean
+}
+
 interface MatchFavoriteResponse {
   player_slug: string
   match_id: string
@@ -17,18 +22,32 @@ interface MatchFavoriteResponse {
 
 /**
  * useSetMatchExclusion — marque/démarque un match comme non pertinent.
- * Invalide matchHistory (préfixe joueur) pour retirer le match des listes.
+ *
+ * Côté backend : l'endpoint déclenche un recompute synchrone perf_score + LUSR
+ * (cf. sync.MatchRecomputer) → la réponse 204 arrive après plusieurs secondes
+ * sur un gros joueur. L'appelant doit s'appuyer sur `isPending` pour bloquer
+ * l'UI le temps du recompute.
+ *
+ * Erreurs typées remontées au caller via `onError` :
+ *   - 422 `ranked_not_excludable` → match classé non excluable
+ *   - 404 `match_not_found`        → match absent du registre
+ *
+ * Invalide matchHistory (préfixe joueur) + matchView (match courant) pour
+ * refléter immédiatement les nouveaux scores et l'état du flag.
  */
 export function useSetMatchExclusion(playerSlug: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ matchId, excluded }: { matchId: string; excluded: boolean }) =>
+    mutationFn: ({ matchId, excluded }: SetExclusionVars) =>
       api.patch<void>(
         `/players/${playerSlug}/matches/${matchId}/exclusion`,
         { excluded },
       ),
-    onSuccess: () => {
+    onSuccess: (_, { matchId }) => {
       void queryClient.invalidateQueries({ queryKey: ['match-history', playerSlug] })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.matchView(playerSlug, matchId),
+      })
     },
   })
 }

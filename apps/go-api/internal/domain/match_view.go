@@ -69,7 +69,11 @@ type MatchViewHeader struct {
 	// PerfColorToken : token sémantique perf-tier-1..5 (1=meilleur, 5=pire).
 	// Empty si performance score absent.
 	PerfColorToken          string `json:"performance_color_token,omitempty"`
-	IsExcluded              bool   `json:"is_excluded"`
+	IsExcluded bool `json:"is_excluded"`
+	// IsRanked : true si la playlist est classée (CSR officiel). Utilisé côté
+	// front pour désactiver le bouton "Exclure" (un match classé ne peut pas
+	// être exclu). Source : shared.match_registry.is_ranked.
+	IsRanked                bool   `json:"is_ranked"`
 	PlayableDurationSeconds *int64 `json:"playable_duration_seconds,omitempty"`
 	WaypointURL             string `json:"waypoint_url,omitempty"`
 	// MapImageURL : URL de l'image de la map (résolue via TitleAssetURLAdapter

@@ -100,5 +100,53 @@ func TestMatchExclusionHandler_Set_PlayerNotFound(t *testing.T) {
 	}
 }
 
+func TestMatchExclusionHandler_Set_RankedNotExcludable(t *testing.T) {
+	mock := &mockMatchExclusionService{setErr: domain.ErrRankedMatchNotExcludable}
+	factory := func(_ context.Context, slug string) (port.MatchExclusionService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return mock, nil
+	}
+	r := newMatchExclusionRouter(factory)
+
+	body, _ := json.Marshal(domain.SetMatchExclusionRequest{Excluded: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/matches/match-ranked/exclusion", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d: %s", w.Code, w.Body.String())
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("ranked_not_excludable")) {
+		t.Fatalf("body should carry error code 'ranked_not_excludable', got %s", w.Body.String())
+	}
+}
+
+func TestMatchExclusionHandler_Set_MatchNotFound(t *testing.T) {
+	mock := &mockMatchExclusionService{setErr: domain.ErrMatchNotFound}
+	factory := func(_ context.Context, slug string) (port.MatchExclusionService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return mock, nil
+	}
+	r := newMatchExclusionRouter(factory)
+
+	body, _ := json.Marshal(domain.SetMatchExclusionRequest{Excluded: true})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/matches/ghost/exclusion", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+	if !bytes.Contains(w.Body.Bytes(), []byte("match_not_found")) {
+		t.Fatalf("body should carry error code 'match_not_found', got %s", w.Body.String())
+	}
+}
+
 // TestMatchExclusionHandler_List_* supprimés en revue 2026-04-29 P0.2 Q6
 // (endpoint GET /match-exclusions retiré, voir match_exclusion.go).

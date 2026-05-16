@@ -92,10 +92,21 @@ type MatchViewService interface {
 // MatchExclusionService gère le marquage et la liste des matchs non pertinents.
 type MatchExclusionService interface {
 	// SetExclusion marque ou démarque un match comme non pertinent.
+	// Retourne ErrRankedMatchNotExcludable si excluded=true sur un match classé.
+	// Retourne ErrMatchNotFound si le match_id n'existe pas dans shared.match_registry.
 	SetExclusion(ctx context.Context, matchID string, excluded bool) error
 
 	// ListExcluded retourne les matchs exclus du joueur.
 	ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error)
+}
+
+// MatchRecomputer relance les batches perf_score + LUSR pour propager l'effet
+// d'une (dé)exclusion manuelle. Implémenté par sync.MatchRecomputer.
+type MatchRecomputer interface {
+	// RecomputeAfterExclusion recalcule en force=true le perf_score et le LUSR
+	// du joueur. matchID est conservé pour les logs uniquement (le filtrage se
+	// fait via le flag is_excluded déjà persisté en DB).
+	RecomputeAfterExclusion(ctx context.Context, matchID string) error
 }
 
 // MediaService construit la page de la galerie médias et gère l'upload.
