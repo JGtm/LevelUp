@@ -26,7 +26,7 @@ import type {
 import { formatDurationMMSS } from '@/lib/formatters'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { MatchViewText } from './i18n'
-import { parseTeamSideID, resolveTeamName } from './teamNames'
+import { parseTeamSideID, resolveTeamName } from '@/lib/halo/teamNames'
 import {
   cellState,
   cellStyle,

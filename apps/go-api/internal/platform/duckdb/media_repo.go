@@ -17,14 +17,37 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// MediaRepo implÃ©mente port.MediaRepository.
+// MediaRepo implémente port.MediaRepository.
+//
+// Comme HomeRepo / MatchViewService, un `TitleAssetURLAdapter` optionnel peut
+// être injecté via `WithAssetURL` pour résoudre l'URL d'image map quand le
+// `map_images_registry` (DB cache) n'a pas d'entrée pour un map_id donné.
+// Dans ce cas, l'adapter scanne `static/maps/...` au boot et résout l'URL
+// à partir du nom EN (asset_translations en-US). Évite la dépendance à la CLI
+// `migrate-static-maps` à chaque nouveau fichier static.
 type MediaRepo struct {
-	pdb *PlayerDB
+	pdb      *PlayerDB
+	assetURL mediaAssetURLAdapter
 }
 
-// NewMediaRepo crÃ©e un MediaRepo pour un joueur.
+// mediaAssetURLAdapter est l'interface duck-typed que le caller (registry.go)
+// satisfait via halo_infinite.AssetURLAdapter. Mêmes raisons que homeRepo :
+// évite l'import de games depuis platform/duckdb et garde le repo minimal.
+type mediaAssetURLAdapter interface {
+	MapImageURL(mapName string) string
+}
+
+// NewMediaRepo crée un MediaRepo pour un joueur.
 func NewMediaRepo(pdb *PlayerDB) *MediaRepo {
 	return &MediaRepo{pdb: pdb}
+}
+
+// WithAssetURL injecte l'AssetURLAdapter pour le fallback name-based d'image
+// map dans le picker de réassociation (cf. doc MediaRepo). Optionnel : sans
+// adapter câblé, la résolution reste exclusivement via map_images_registry.
+func (r *MediaRepo) WithAssetURL(a mediaAssetURLAdapter) *MediaRepo {
+	r.assetURL = a
+	return r
 }
 
 // socialDB retourne SharedSocial si disponible, sinon Player (fallback de transition).
@@ -255,6 +278,9 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			COALESCE(r.playlist_name_fr, r.playlist_name) AS playlist_name,
 			COALESCE(r.playlist_id, '') AS playlist_id,
 			mp.outcome,
+			mp.team_id,
+			r.team_0_score,
+			r.team_1_score,
 			ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) AS delta_s
 		FROM shared.match_registry r
 		JOIN shared.match_participants mp
@@ -282,9 +308,21 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		var outcome sql.NullInt64
 		var deltaS sql.NullInt64
 		var startT, endT sql.NullTime
+		var teamID, team0Score, team1Score sql.NullInt64
 		if err := rows.Scan(&c.MatchID, &startT, &endT, &mapName, &mapID, &pairName, &playlistName,
-			&playlistID, &outcome, &deltaS); err != nil {
+			&playlistID, &outcome, &teamID, &team0Score, &team1Score, &deltaS); err != nil {
 			continue
+		}
+		// Scores POV joueur (team_id 0 → own=team_0_score, sinon swap).
+		// Nil si l'un des deux team_X_score est NULL côté DB (FFA, modes objectif sans score).
+		if teamID.Valid && team0Score.Valid && team1Score.Valid {
+			own := int(team0Score.Int64)
+			enemy := int(team1Score.Int64)
+			if teamID.Int64 != 0 {
+				own, enemy = enemy, own
+			}
+			c.OwnScore = &own
+			c.EnemyScore = &enemy
 		}
 		if mapID.Valid && mapID.String != "" {
 			mapIDByMatch[c.MatchID] = mapID.String
@@ -358,14 +396,20 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 	}
 
-	// Résolution MapImageURL via map_images_registry (pattern asset kinds —
-	// lookup par map_id, pas par name pour éviter les écueils FR/EN/UUID brut).
+	// Résolution MapImageURL : cascade alignée sur HomeRepo (cf. doc MediaRepo).
+	//   1. map_images_registry (lookup par map_id stable, peuplé par
+	//      cmd/migrate-static-maps).
+	//   2. AssetURLAdapter + nom EN depuis asset_translations (uniquement si
+	//      l'adapter est câblé via WithAssetURL côté registry.go). Évite la
+	//      dépendance manuelle à la CLI quand un fichier static existe pour un
+	//      map_id absent du registry.
 	if len(mapIDSet) > 0 {
 		ids := make([]string, 0, len(mapIDSet))
 		for id := range mapIDSet {
 			ids = append(ids, id)
 		}
 		urls := r.loadMapImageURLsByID(ctx, ids)
+		missingIDs := make([]string, 0)
 		for i := range resp.Candidates {
 			mid := mapIDByMatch[resp.Candidates[i].MatchID]
 			if mid == "" {
@@ -374,6 +418,30 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			if u, ok := urls[mid]; ok && u != "" {
 				localCopy := u
 				resp.Candidates[i].MapImageURL = &localCopy
+				continue
+			}
+			missingIDs = append(missingIDs, mid)
+		}
+		if len(missingIDs) > 0 && r.assetURL != nil && r.pdb != nil && r.pdb.Metadata != nil {
+			enNames, _ := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
+				ctx, "map", missingIDs, PreferredLangsForLocale("en"),
+			)
+			for i := range resp.Candidates {
+				if resp.Candidates[i].MapImageURL != nil {
+					continue
+				}
+				mid := mapIDByMatch[resp.Candidates[i].MatchID]
+				if mid == "" {
+					continue
+				}
+				enName := strings.TrimSpace(enNames[mid])
+				if enName == "" {
+					continue
+				}
+				if u := r.assetURL.MapImageURL(enName); u != "" {
+					localCopy := u
+					resp.Candidates[i].MapImageURL = &localCopy
+				}
 			}
 		}
 	}
@@ -423,11 +491,13 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 	// Résolveur canonique : v_gamertag_lookup gère bots + cascade
 	// xuid_aliases / match_participants. shared.xuid_aliases couvre les
 	// participants jamais croisés directement par le joueur courant.
+	// is_bot : aligné sur Q12 (queries_match.go) — pour badge "Bot" dans le picker.
 	q := `
 		SELECT mp.match_id,
 			COALESCE(vg.gamertag, va.gamertag, mp.xuid) AS gamertag,
 			mp.team_id,
-			(mp.xuid = ?) AS is_self
+			(mp.xuid = ?) AS is_self,
+			(mp.xuid LIKE 'bid(%') AS is_bot
 		FROM shared.match_participants mp
 		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
 		LEFT JOIN shared.xuid_aliases va ON va.xuid = mp.xuid
@@ -445,8 +515,8 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 		var matchID string
 		var gamertag sql.NullString
 		var teamID sql.NullInt64
-		var isSelf bool
-		if err := rows.Scan(&matchID, &gamertag, &teamID, &isSelf); err != nil {
+		var isSelf, isBot bool
+		if err := rows.Scan(&matchID, &gamertag, &teamID, &isSelf, &isBot); err != nil {
 			continue
 		}
 		if len(out[matchID]) >= 12 {
@@ -459,7 +529,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 				name = "?"
 			}
 		}
-		entry := domain.MediaMatchLobbyEntry{Gamertag: name, IsSelf: isSelf}
+		entry := domain.MediaMatchLobbyEntry{Gamertag: name, IsSelf: isSelf, IsBot: isBot}
 		if teamID.Valid {
 			t := int(teamID.Int64)
 			entry.TeamID = &t

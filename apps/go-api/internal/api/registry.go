@@ -512,13 +512,19 @@ func mediaWriterAcquirerFor(pdb *duckdb.PlayerDB) func() (*dblease.LeasedWriter,
 // Media retourne un MediaService pour le joueur.
 //
 // Configure WithMediaWriterAcquirer pour activer le chemin atomique de
-// SetMediaLike (transaction unique sur shared_social.duckdb).
+// SetMediaLike (transaction unique sur shared_social.duckdb), et WithAssetURL
+// pour le fallback name-based d'image map dans le picker de réassociation
+// (aligné sur HomeRepo / MatchViewService).
 func (r *ServiceRegistry) Media(ctx context.Context, slug string) (port.MediaService, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
 		return nil, err
 	}
-	return service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone,
+	repo := duckdb.NewMediaRepo(pdb)
+	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
+		repo = repo.WithAssetURL(a)
+	}
+	return service.NewMediaService(repo, r.timezone,
 		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb))), nil
 }
 
@@ -531,7 +537,11 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if err != nil {
 		return nil, "", "", "", "", "", err
 	}
-	svc := service.NewMediaService(duckdb.NewMediaRepo(pdb), r.timezone,
+	repo := duckdb.NewMediaRepo(pdb)
+	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
+		repo = repo.WithAssetURL(a)
+	}
+	svc := service.NewMediaService(repo, r.timezone,
 		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb)))
 	sharedSocialPath := ""
 	if pdb.SharedSocial != nil {

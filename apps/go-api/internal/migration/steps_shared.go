@@ -642,6 +642,20 @@ func init() {
 		ApplySchema: applyResolutionViews,
 	})
 
+	// 2026-05-16 : force le re-déploiement de v_gamertag_lookup pour les DBs qui
+	// ont appliqué la migration précédente AVANT le commit 4440449d (qui a ajouté
+	// BotSQLCase à applyResolutionViews ~6h après les premiers runs). Sans cette
+	// migration, le marqueur schema_migrations est "done" mais la vue en DB reste
+	// la version pré-BotSQLCase et les bots s'affichent en xuid brut "bid(N.0)".
+	// CREATE OR REPLACE rend l'opération idempotente : sur une DB déjà à jour
+	// elle écrase la vue avec une définition identique, no-op effectif.
+	Register(Migration{
+		Name:        "repair_v_gamertag_lookup_bots_2026_05_16",
+		TargetDB:    TargetShared,
+		Description: "v_gamertag_lookup : re-deploy pour DBs migrées avant l'ajout de BotSQLCase",
+		ApplySchema: applyResolutionViews,
+	})
+
 }
 
 // dropColumnIfExists supprime une colonne d'une table si elle existe.

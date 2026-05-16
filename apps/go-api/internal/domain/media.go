@@ -244,6 +244,10 @@ type MediaMatchCandidate struct {
 	IsCurrent    bool       `json:"is_current"`              // true si ce match est l'association actuelle
 	DeltaSeconds *int       `json:"delta_seconds,omitempty"` // écart capture vs start_time
 	Outcome      *int       `json:"outcome,omitempty"`       // 2=victoire 3=défaite 1=égalité 4=DNF
+	// Scores d'équipe, du POV du joueur courant (basés sur mp.team_id).
+	// Nil si l'un des champs match_registry.team_X_score est NULL (FFA, certains modes objectifs).
+	OwnScore   *int `json:"own_score,omitempty"`
+	EnemyScore *int `json:"enemy_score,omitempty"`
 	// Lobby : autres joueurs du match (max 8, équipes incluses)
 	Lobby []MediaMatchLobbyEntry `json:"lobby,omitempty"`
 }
@@ -253,6 +257,7 @@ type MediaMatchLobbyEntry struct {
 	Gamertag string `json:"gamertag"`
 	TeamID   *int   `json:"team_id,omitempty"`
 	IsSelf   bool   `json:"is_self"` // true si gamertag == player courant
+	IsBot    bool   `json:"is_bot"`  // détecté par xuid LIKE 'bid(%' — pour badge UI
 }
 
 // MediaMatchCandidatesResponse regroupe les matchs candidats pour un média.

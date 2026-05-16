@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
-import { parseTeamSideID, resolveTeamName } from './teamNames'
+import { parseTeamSideID, resolveTeamName, resolveTeamNameFromID } from './teamNames'
 
 describe('parseTeamSideID', () => {
   it('extrait l\'entier depuis "t{N}" pour 0..9', () => {
@@ -52,5 +52,20 @@ describe('resolveTeamName', () => {
     expect(resolveTeamName(undefined)).toBeNull()
     expect(resolveTeamName('')).toBeNull()
     expect(resolveTeamName('invalid')).toBeNull()
+  })
+})
+
+describe('resolveTeamNameFromID', () => {
+  it('mappe les 9 team_ids vers leurs noms officiels', () => {
+    expect(resolveTeamNameFromID(0)).toBe('Eagle')
+    expect(resolveTeamNameFromID(1)).toBe('Cobra')
+    expect(resolveTeamNameFromID(8)).toBe('Observer')
+  })
+
+  it('retourne null pour un team_id absent de la map ou nullish', () => {
+    expect(resolveTeamNameFromID(9)).toBeNull()
+    expect(resolveTeamNameFromID(100)).toBeNull()
+    expect(resolveTeamNameFromID(null)).toBeNull()
+    expect(resolveTeamNameFromID(undefined)).toBeNull()
   })
 })

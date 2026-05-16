@@ -1,3 +1,71 @@
+## [2026-05-16] feat(media/picker) — Lobby aligné MatchScoreboard : noms officiels d'équipe + couleurs sémantiques + badge Bot
+
+**Statut** : Complété.
+
+**Contexte** : Suite UX continue sur `MediaMatchPicker`. L'utilisateur signale (1) le lobby affiche `Équipe 1` / `Équipe 2` au lieu des noms officiels Halo (Eagle / Cobra / …), (2) certains joueurs apparaissent encore avec leur xuid brut `bid(X.0)` au lieu du nom de bot 343, (3) absence de signal visuel pour distinguer son équipe.
+
+**Diagnostic** :
+1. `LobbyTeams` ([MediaMatchPicker.tsx:92](apps/web/src/features/media/MediaMatchPicker.tsx#L92)) faisait `\`Équipe ${team_id + 1}\`` brut. `MatchScoreboard` ([TeamScoreboard:344-358](apps/web/src/features/match-view/MatchScoreboard.tsx#L344)) résout déjà via `resolveTeamName(team_side)` + map Halo des 9 équipes — pattern réutilisable.
+2. La query `loadMatchLobbies` joignait déjà `v_gamertag_lookup` (qui mappe `bid(N.0) → "343 Foo"`), mais ne ramenait pas le flag `is_bot` au domain — donc aucun badge "Bot" possible côté UI. Pour les bots avec un xuid hors map (`bid(60.0)` futurs), v_gamertag_lookup renvoie le xuid brut → un badge "Bot" reste informatif.
+3. Aucune couleur d'équipe dans le picker. `MatchScoreboard:355` utilise `tokenCssVar('team-ally'/'team-enemy')` — tokens sémantiques d'accessibilité, overridable par les réglages utilisateur.
+
+**Décision technique** :
+- Promouvoir `features/match-view/teamNames.ts` → `lib/halo/teamNames.ts`. Le module est pure data Halo + helpers sans dépendance React, donc un emplacement partagé évite un import cross-feature `media → match-view` (un seul callsite cross-feature existait — career — et n'est pas du même type de partage). Update `MatchScoreboard.tsx` import vers `@/lib/halo/teamNames`. Ajout `resolveTeamNameFromID(teamID: number)` pour les surfaces qui exposent l'entier directement (pas le format "t{N}" du scoreboard).
+- Backend : étendre `MediaMatchLobbyEntry` avec `IsBot bool` (depuis `mp.xuid LIKE 'bid(%'`, même expression que Q12). Pas d'enrichissement métier supplémentaire — v_gamertag_lookup couvre déjà la résolution des noms.
+- Frontend : `LobbyTeams` détecte `mineTeamID` via `is_self`, applique `team-ally` à l'équipe du joueur, `team-enemy` aux autres, neutre aux spectateurs. Badge "Bot" identique au scoreboard (style muted, uppercase, font-bold).
+
+**Actions** :
+1. [lib/halo/teamNames.ts](apps/web/src/lib/halo/teamNames.ts) — nouveau module + helper `resolveTeamNameFromID`. Module précédemment dans `features/match-view/`.
+2. [features/match-view/teamNames.ts] — supprimé. `MatchScoreboard.tsx:29` met à jour son import vers `@/lib/halo/teamNames`.
+3. [lib/halo/teamNames.test.ts](apps/web/src/lib/halo/teamNames.test.ts) — tests déplacés + 2 nouveaux cas pour `resolveTeamNameFromID`.
+4. [domain/media.go::MediaMatchLobbyEntry](apps/go-api/internal/domain/media.go#L252-L257) — ajout `IsBot bool`.
+5. [platform/duckdb/media_repo.go::loadMatchLobbies](apps/go-api/internal/platform/duckdb/media_repo.go#L495-L502) — SELECT enrichi `(mp.xuid LIKE 'bid(%') AS is_bot` + scan.
+6. [lib/api/types.ts::MediaMatchLobbyEntry](apps/web/src/lib/api/types.ts#L2127) — ajout `is_bot?: boolean`.
+7. [features/media/MediaMatchPicker.tsx::LobbyTeams] — refacto useMemo pour groupement + détection `mineTeamID`, helper `teamHeaderLabel` (fallback `Équipe N` si team_id hors map), couleurs via `tokenCssVar`, badge Bot inline aligné MatchScoreboard.
+
+**Résultats observés** :
+- `go build ./...` : OK.
+- `go test internal/service ./internal/platform/duckdb ./internal/api/handlers` : 3 paquets verts.
+- `tsc --noEmit` : OK (la seule erreur restante — `notifications/icons.tsx data_health_warning` — est préexistante).
+- `vitest run lib/halo features/media features/match-view` : 186/186 (dont 7 teamNames, 72 media, 63 match-view + auxiliaires).
+
+**Conclusion / prochaine étape** : 3 axes UX du picker (score X-Y, miniature fallback, lobby team names + bot badge + couleurs) tous livrés en cascade dans la même branche `fix/csr-protect-from-lusr-overwrite` qui dévie de son scope initial. À regrouper dans un commit `feat(media/picker): score + thumbnail fallback + lobby alignment` lors de la livraison.
+
+---
+
+## [2026-05-16] feat(media/picker) — Score X-Y dans le picker de réassociation + fallback URL miniature
+
+**Statut** : Complété.
+
+**Contexte** : Sur la modal de réassociation manuelle (`MediaMatchPicker`), l'utilisateur signale (1) un titre `? · ?` au lieu d'un score d'équipe et (2) certaines miniatures absentes (capture du 23 avr 22:58).
+
+**Diagnostic** :
+1. `MediaMatchCandidate` n'embarquait jamais de score d'équipe. Le titre rendu était `MapModeLabel = "? · ?"` quand `map_name` ET `mode_name` étaient null en `match_registry` (assez courant : tests, modes Forge, custom games).
+2. La résolution `map_image_url` du picker dépendait **uniquement** de `map_images_registry` ([media_repo.go:loadMapImageURLsByID](apps/go-api/internal/platform/duckdb/media_repo.go#L971)). Contrairement à `HomeRepo` ([home_repo.go:998-1003](apps/go-api/internal/platform/duckdb/home_repo.go#L998)) et `MatchViewService`, aucune cascade fallback name-based vers `AssetURLAdapter` — donc tout map_id absent du registry → carré gris.
+
+**Décision technique** :
+- Ajouter `own_score`/`enemy_score` au domain `MediaMatchCandidate` (POV joueur, basé sur `mp.team_id` + `match_registry.team_X_score`). Nil si l'un des `team_X_score` est NULL (FFA, certains modes objectifs).
+- UI : titre du candidat = `"{own_score} - {enemy_score}"` quand dispo, sinon fallback `MapModeLabel`. Le map · mode est repoussé en sous-titre pour conserver l'info de contexte quand le score est affiché.
+- Aligner `MediaRepo` sur `HomeRepo` : `WithAssetURL(adapter)` injecté depuis `registry.go` via `assetURLFor(titleSlug)`. Cascade dans `LoadMatchCandidatesForMedia` : registry → si absent, nom EN via `MetadataRepo.ResolveAssetNamesBulk("map", ids, en)` + `adapter.MapImageURL(enName)`.
+
+**Actions** :
+1. [domain/media.go:236-258](apps/go-api/internal/domain/media.go#L236-L258) — ajout `OwnScore`/`EnemyScore *int` à `MediaMatchCandidate`.
+2. [platform/duckdb/media_repo.go::LoadMatchCandidatesForMedia](apps/go-api/internal/platform/duckdb/media_repo.go#L223) — ajout `mp.team_id`, `r.team_0_score`, `r.team_1_score` dans le SELECT + swap POV joueur.
+3. [platform/duckdb/media_repo.go::MediaRepo](apps/go-api/internal/platform/duckdb/media_repo.go#L20) — nouvelle interface `mediaAssetURLAdapter` + champ `assetURL` + `WithAssetURL(a)`.
+4. [platform/duckdb/media_repo.go::LoadMatchCandidatesForMedia](apps/go-api/internal/platform/duckdb/media_repo.go#L376) — cascade fallback EN-name après lookup registry vide.
+5. [api/registry.go::Media + MediaUpload](apps/go-api/internal/api/registry.go#L516) — câblage `repo.WithAssetURL(r.assetURLFor(pdb.TitleSlug))` aligné sur les autres services.
+6. [web/src/lib/api/types.ts:2130](apps/web/src/lib/api/types.ts#L2130) — ajout `own_score`/`enemy_score?: number | null` au type TS.
+7. [web/src/features/media/MediaMatchPicker.tsx](apps/web/src/features/media/MediaMatchPicker.tsx) — heading = score X-Y prioritaire, map · mode en sous-titre.
+
+**Résultats observés** :
+- `go build ./...` : OK (exit 0).
+- `go vet ./internal/platform/duckdb/ ./internal/api/ ./internal/domain/` : OK.
+- `npx tsc --noEmit` : OK (exit 0).
+
+**Conclusion / prochaine étape** : Pour confirmer la résolution du cas 23 avr 22:58, l'utilisateur doit retester après build/redémarrage de l'API. Si la miniature reste absente, c'est que le fichier static n'existe pas non plus côté FS (pas seulement `map_images_registry`) — auquel cas le bon réflexe est `levelup populate-assets` (ou `migrate-static-maps`) sur le titre concerné.
+
+---
+
 ## [2026-05-16] fix(sync/skill) — Audit garde-fous CSR end-to-end + correctif payload tronqué
 
 **Statut** : Complété. Tous les vecteurs d'écriture sur `match_skill_rank` audités, 1 vulnérabilité identifiée et corrigée.

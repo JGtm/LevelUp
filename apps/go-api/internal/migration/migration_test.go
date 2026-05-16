@@ -262,6 +262,56 @@ func TestRunForDB_Shared_V6ViewsExist(t *testing.T) {
 	t.Logf("✅ 4 vues v6 (v_gamertag_lookup, v_match_full, v_killer_victim_full, v_weapon_kills) présentes")
 }
 
+// TestRunForDB_Shared_VGamertagLookup_ResolvesBotNames vérifie que la vue
+// v_gamertag_lookup mappe bien les xuid bots 'bid(N.0)' vers leur nom 343 Halo.
+//
+// Régression : la migration `upgrade_v_gamertag_lookup_bots_and_raw_fallback`
+// a été appliquée sur certaines DBs ~6h AVANT que le code de
+// applyResolutionViews ne contienne BotSQLCase (commit 4440449d). Résultat :
+// schema_migrations marquait done mais la vue restait l'ancienne définition,
+// les bots s'affichaient en xuid brut. La migration `repair_v_gamertag_lookup_bots_2026_05_16`
+// force le re-déploiement ; ce test prévient toute future divergence définition/code.
+func TestRunForDB_Shared_VGamertagLookup_ResolvesBotNames(t *testing.T) {
+	db := openMemDB(t)
+
+	if err := RunForDB(db, TargetShared); err != nil {
+		t.Fatalf("RunForDB(Shared): %v", err)
+	}
+
+	// Insère un bot avec gamertag NULL en match_participants (cas réel du sync :
+	// l'API SPNKr renvoie xuid mais pas de gamertag pour les bots).
+	// match_id seed minimal pour respecter le NOT NULL.
+	if _, err := db.Exec(`
+		INSERT INTO match_registry (match_id, start_time) VALUES ('test_match_bot', '2026-05-16');
+		INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome)
+		VALUES
+			('test_match_bot', 'bid(3.0)',  NULL, 0, 2),
+			('test_match_bot', 'bid(15.0)', NULL, 1, 3),
+			('test_match_bot', 'bid(999.0)', NULL, 0, 2);
+	`); err != nil {
+		t.Fatalf("seed match_participants: %v", err)
+	}
+
+	cases := []struct {
+		xuid     string
+		expected string
+	}{
+		{"bid(3.0)", "343 Ellis"},     // bot connu
+		{"bid(15.0)", "343 Mak"},      // bot connu
+		{"bid(999.0)", "bid(999.0)"},  // bot inconnu → fallback xuid brut (acceptable)
+	}
+	for _, c := range cases {
+		var got string
+		if err := db.QueryRow(`SELECT gamertag FROM v_gamertag_lookup WHERE xuid = ?`, c.xuid).Scan(&got); err != nil {
+			t.Errorf("query v_gamertag_lookup pour %s: %v", c.xuid, err)
+			continue
+		}
+		if got != c.expected {
+			t.Errorf("xuid %s : got %q, want %q", c.xuid, got, c.expected)
+		}
+	}
+}
+
 // TestRunForDB_Shared_IdempotentOnExistingDB vérifie l'idempotence de TargetShared.
 // Sprint 47 T18 — 3 passes, pas de doublons, schema_done = TRUE.
 func TestRunForDB_Shared_IdempotentOnExistingDB(t *testing.T) {
