@@ -1,3 +1,30 @@
+## [2026-05-16] fix(settings) — onglet Lab aligné sur les autres tabs + toast "Enregistré" non-shiftant
+
+**Statut** : Complété (sur la branche courante `fix/csr-protect-from-lusr-overwrite`, additif UI).
+
+**Contexte** : Deux frictions UX dans `SettingsPage` :
+1. L'onglet Lab affichait un label "Instance" en uppercase + un layout flat (`<Card bg-card><CardContent>` sans CardHeader) qui le rendait visuellement incohérent avec les autres onglets (General/Sync/Analyse utilisent tous `<Card><CardHeader><CardTitle>`). Le titre paraissait "collé au bord haut" de la card.
+2. Le statut "Enregistré" / "Erreur" était rendu en flux (`flex justify-end px-6 pt-4`) en tête de la page : à chaque modification de paramètre, le bloc apparaissait pendant 2s puis disparaissait, décalant verticalement tous les onglets + contenu.
+
+**Décisions** :
+
+1. **LabTab restructuré** ([SettingsPage.tsx](apps/web/src/features/settings/SettingsPage.tsx#L66-L79)) — adoption du pattern `<Card><CardHeader><CardTitle>{instanceTitle}</CardTitle></CardHeader><CardContent>` identique à GeneralTab/SyncTab/AnalyseTab. Suppression du `<p>` "Instance" uppercase et du `mt-2` orphelin. Description et bouton restent en `flex md:flex-row` pour le layout responsive.
+2. **Nettoyage `instanceLabel`** — clé devenue morte (plus aucun consommateur) → retirée de l'interface `SettingsText`, des objets `FR_TEXT`/`EN_TEXT` ([i18n.ts](apps/web/src/features/settings/i18n.ts)) et du mock dans [WatcherCard.test.tsx](apps/web/src/features/settings/WatcherCard.test.tsx). Respecte la règle CLAUDE.md "Avoid backwards-compatibility hacks ... if you are certain that something is unused, you can delete it completely".
+3. **Toast saveStatus en absolute** ([SettingsPage.tsx](apps/web/src/features/settings/SettingsPage.tsx#L144-L158)) — wrapper parent passé en `relative`, le badge passe en `absolute right-6 top-4 z-10 pointer-events-none`. Ajout d'un fond léger (`bg-success/10` ou `bg-destructive/10`) + `shadow-sm` pour rester lisible par-dessus le contenu de l'onglet. Plus aucun reflow.
+
+**Résultats observés** :
+
+- Cohérence visuelle : LabTab a maintenant le même rythme vertical (header avec titre + content) que les 3 autres onglets de configuration.
+- Le toast n'occupe plus d'espace dans le flux ; les onglets et le contenu restent stables même quand on modifie un paramètre.
+- Pas d'impact fonctionnel : `useUpdateSettings` et les timers `saveTimerRef` sont inchangés.
+
+**Conclusion / prochaine étape** :
+
+- Si UsersTab (toujours sur l'ancien layout flat) gêne à son tour, appliquer le même réalignement. Pour l'instant, l'utilisateur n'a remonté que le Lab.
+- Pas de migration ni de backfill, changements UI purs.
+
+---
+
 ## [2026-05-16] feat(match-exclusion) — confirmation, recalcul cascade & garde "match classé"
 
 **Statut** : Complété (sur la branche courante `fix/csr-protect-from-lusr-overwrite`, additif).

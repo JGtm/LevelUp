@@ -49,7 +49,6 @@ const t = {
   manualSyncButton: 'Synchroniser',
   manualSyncRunning: 'En cours…',
   manualSyncDescription: '',
-  instanceLabel: 'Instance',
   instanceTitle: 'Lab',
   instanceDescription: '',
   openLabButton: 'Ouvrir',
