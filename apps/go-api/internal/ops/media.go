@@ -335,6 +335,69 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 	return generated, errs
 }
 
+// computeMediaEnd dérive (capture_end_utc, duration_seconds) à partir du kind
+// et du capture_start_utc connu, sans IO :
+//   - kind "image" : capture instantanée → end = start, duration = 0.
+//   - kind "video" + durationKnown : end = start + duration, duration_seconds
+//     = duration. Si durationKnown=false (ffprobe absent/échec), on laisse
+//     end et duration_seconds à NULL — le tri retombe sur capture_start_utc.
+//   - kind inconnu : tout à NULL.
+//
+// Isolé pour les tests unitaires : la logique de mappage end/duration est
+// testable sans dépendre de ffprobe ni du filesystem.
+func computeMediaEnd(kind string, captureAt *time.Time, duration float64, durationKnown bool) (captureEnd *time.Time, durationSec *float64) {
+	switch kind {
+	case "image":
+		if captureAt != nil {
+			end := *captureAt
+			captureEnd = &end
+		}
+		zero := 0.0
+		durationSec = &zero
+	case "video":
+		if durationKnown {
+			d := duration
+			durationSec = &d
+			if captureAt != nil {
+				end := captureAt.Add(time.Duration(d * float64(time.Second)))
+				captureEnd = &end
+			}
+		}
+	}
+	return captureEnd, durationSec
+}
+
+// probeVideoDuration retourne la durée d'un fichier vidéo en secondes via
+// ffprobe (livré avec ffmpeg, déjà requis pour les miniatures). Retourne 0 et
+// une erreur si ffprobe est absent du PATH ou si le fichier est illisible. Le
+// caller doit traiter ça comme "durée inconnue" — la durée n'est pas critique
+// (juste utilisée pour capture_end_utc = capture_start_utc + duration), donc
+// échec silencieux côté insert.
+func probeVideoDuration(videoPath string) (float64, error) {
+	cmd := exec.Command("ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		videoPath,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe: %w", err)
+	}
+	raw := strings.TrimSpace(string(out))
+	if raw == "" || raw == "N/A" {
+		return 0, fmt.Errorf("ffprobe: durée vide pour %s", videoPath)
+	}
+	d, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, fmt.Errorf("ffprobe: parse durée %q: %w", raw, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("ffprobe: durée non positive (%g) pour %s", d, videoPath)
+	}
+	return d, nil
+}
+
 // generateAnimatedThumbnail génère un WebP animé (3 s à partir de t=5s, 10 fps,
 // 480px) via ffmpeg/libwebp en single-pass. Beaucoup plus compact qu'un GIF
 // (~25-35 % de taille) et 24-bit (vs palette 8-bit du GIF) pour des couleurs
@@ -596,10 +659,31 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 	// match (média associé au match en cours pendant l'upload). Mieux vaut laisser
 	// capture_start_utc NULL → le média est inséré mais non-associé tant qu'une
 	// source fiable (regex nom de fichier ou ré-upload) n'est pas disponible.
+	// La colonne `media_files.mtime` n'est pas non plus alimentée ici : sur un
+	// fichier uploadé l'os.Stat retournerait l'heure d'écriture serveur, pas
+	// l'heure de capture — un faux signal qui empirerait le tri. Le COALESCE
+	// du timeOrderExpr s'appuie sur capture_start_utc (déjà fiable) en tête,
+	// donc mtime resterait simplement inutilisé.
 	if captureAt == nil {
 		slog.Warn("insertMediaFile: capture_start_utc indéterminé, média non-associable",
 			"file", baseName, "player", playerSlug)
 	}
+
+	// Durée + capture_end_utc : pour les vidéos on probe ffprobe ; pour les
+	// images c'est un instantané. Logique pure isolée dans computeMediaEnd pour
+	// les tests unitaires (sans ffprobe).
+	var duration float64
+	var durationKnown bool
+	if kind == "video" {
+		if d, err := probeVideoDuration(path); err == nil {
+			duration = d
+			durationKnown = true
+		} else {
+			slog.Debug("insertMediaFile: ffprobe durée indisponible",
+				"file", baseName, "err", err)
+		}
+	}
+	captureEnd, durationSec := computeMediaEnd(kind, captureAt, duration, durationKnown)
 
 	// Dédup extension-agnostique : cherche une entrée existante avec le même stem.
 	// Si trouvée et ancien fichier encore sur disque → SKIP (les deux coexistent).
@@ -622,11 +706,16 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 		}
 
 		// Ancien fichier parti → UPDATE l'entrée existante (conversion complétée).
+		// On met à jour aussi duration / capture_end_utc puisque le fichier
+		// physique a changé (re-encodage) — sauf si la nouvelle valeur est NULL
+		// (on garde l'ancienne dans ce cas via COALESCE).
 		_, err := db.Exec(`
 			UPDATE media_files
-			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?
+			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?,
+				duration_seconds = COALESCE(?, duration_seconds),
+				capture_end_utc = COALESCE(?, capture_end_utc)
 			WHERE id = ?
-		`, path, baseName, ext, hash, kind, existingID)
+		`, path, baseName, ext, hash, kind, durationSec, captureEnd, existingID)
 		if err != nil {
 			slog.Error("insertMediaFile: UPDATE failed for format conversion",
 				"err", err, "player", playerSlug, "stem", stem, "id", existingID)
@@ -637,12 +726,17 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 		return nil
 	}
 
-	// Nouvelle entrée : INSERT avec file_stem + file_ext.
+	// Nouvelle entrée : INSERT avec file_stem + file_ext + timestamps complets
+	// (capture_start_utc / capture_end_utc / duration_seconds). mtime n'est
+	// volontairement pas écrit (cf. commentaire plus haut).
 	// INSERT OR IGNORE évite les doublons par file_path UNIQUE (même contenus uploadé 2×).
 	_, err = db.Exec(`
-		INSERT OR IGNORE INTO media_files (player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind, capture_start_utc)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`, playerSlug, path, baseName, stem, ext, hash, kind, captureAt)
+		INSERT OR IGNORE INTO media_files (
+			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
+			capture_start_utc, capture_end_utc, duration_seconds
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, playerSlug, path, baseName, stem, ext, hash, kind, captureAt, captureEnd, durationSec)
 	return err
 }
 

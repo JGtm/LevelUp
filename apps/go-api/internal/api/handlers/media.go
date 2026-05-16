@@ -537,25 +537,36 @@ func countMediaInDir(dir string) int {
 	return n
 }
 
-// resolveCapturesDir construit le chemin captures pour un joueur.
+// resolveCapturesDir construit le chemin captures pour un joueur en s'appuyant
+// sur l'helper canonique PathResolver.ResolveCapturesDir.
 // Si media_captures_base_dir est défini dans les settings, utilise {baseDir}/{gamertag}.
 // Sinon, fallback sur le chemin interne data/titles/.../players/{gamertag}/captures/.
 func (h *MediaHandler) resolveCapturesDir(titleSlug, gamertag string) string {
+	baseDir := ""
 	if h.settingsStore != nil {
-		if cfg, err := h.settingsStore.Load(); err == nil && cfg.MediaCapturesBaseDir != "" {
-			return filepath.Join(cfg.MediaCapturesBaseDir, gamertag)
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			baseDir = cfg.MediaCapturesBaseDir
 		}
 	}
-	return resolveCapturesDir(h.repoRoot, titleSlug, gamertag)
+	return resolveCapturesDirWith(h.repoRoot, titleSlug, gamertag, baseDir)
 }
 
-// resolveCapturesDir construit le chemin captures title-aware via PathResolver.
+// resolveCapturesDir construit le chemin captures title-aware via PathResolver
+// sans accès aux settings (toujours fallback interne). Conservée pour les
+// call-sites qui ne disposent pas d'un settingsStore (tests, code legacy).
 // repoRoot peut être vide : dans ce cas le chemin retourné est relatif (à éviter en production).
 func resolveCapturesDir(repoRoot, titleSlug, gamertag string) string {
+	return resolveCapturesDirWith(repoRoot, titleSlug, gamertag, "")
+}
+
+// resolveCapturesDirWith est l'adapter mince autour de PathResolver.ResolveCapturesDir
+// qui normalise le titleSlug vide vers DefaultSlug — toutes les autres logiques
+// (fallback interne, jonction baseDir+gamertag) vivent dans le PathResolver.
+func resolveCapturesDirWith(repoRoot, titleSlug, gamertag, baseDir string) string {
 	if titleSlug == "" {
 		titleSlug = titlePkg.DefaultSlug
 	}
-	return titlePkg.NewPathResolver(repoRoot).PlayerCapturesDir(titleSlug, gamertag)
+	return titlePkg.NewPathResolver(repoRoot).ResolveCapturesDir(titleSlug, gamertag, baseDir)
 }
 
 // ---------------------------------------------------------------------------

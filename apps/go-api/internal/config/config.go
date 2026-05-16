@@ -46,6 +46,12 @@ type AppConfig struct {
 	// Lit LEVELUP_CSR_SEASON_ID ou le champ csr_season_id dans app_settings.json.
 	// Vide → le sync CSR est skippé silencieusement.
 	CurrentCSRSeasonID string
+	// MediaCapturesBaseDir : dossier externe configuré par l'utilisateur où sont
+	// stockées les captures (snapshot du champ media_captures_base_dir de
+	// app_settings.json au démarrage). Vide → fallback sur le chemin interne
+	// PlayerCapturesDir. Utilisé par la CLI ; les handlers HTTP relisent le
+	// settings store directement pour rester réactifs aux PATCH /settings.
+	MediaCapturesBaseDir string
 }
 
 // loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
@@ -104,7 +110,26 @@ func Load() (*AppConfig, error) {
 	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
+	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	return cfg, nil
+}
+
+// loadMediaCapturesBaseDir lit media_captures_base_dir depuis app_settings.json.
+// Retourne "" si le fichier est absent ou le champ manquant — dans ce cas le
+// fallback PlayerCapturesDir s'applique (cf. PathResolver.ResolveCapturesDir).
+func loadMediaCapturesBaseDir(settingsPath string) string {
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return ""
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return ""
+	}
+	if s, ok := m["media_captures_base_dir"].(string); ok {
+		return s
+	}
+	return ""
 }
 
 // loadCSRSeasonID lit l'identifiant de saison CSR depuis LEVELUP_CSR_SEASON_ID

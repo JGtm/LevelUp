@@ -258,6 +258,23 @@ func (p *PathResolver) PlayerCapturesDir(titleSlug, gamertag string) string {
 	return filepath.Join(p.PlayerDir(titleSlug, gamertag), "captures")
 }
 
+// ResolveCapturesDir centralise la résolution du dossier captures d'un joueur.
+//
+// Tous les call-sites manipulant un dossier de médias (upload, scan, reindex,
+// URL serving, CLI) DOIVENT passer par cette fonction pour garantir un
+// comportement uniforme et éviter qu'un fallback hardcodé crée un dossier
+// fantôme jamais relu.
+//
+// Règle :
+//   - baseDir non vide (settings.MediaCapturesBaseDir) → {baseDir}/{gamertag}
+//   - baseDir vide → fallback interne PlayerCapturesDir = .../{gamertag}/captures
+func (p *PathResolver) ResolveCapturesDir(titleSlug, gamertag, baseDir string) string {
+	if baseDir != "" {
+		return filepath.Join(baseDir, gamertag)
+	}
+	return p.PlayerCapturesDir(titleSlug, gamertag)
+}
+
 // BackupDir retourne le répertoire de backup d'un joueur pour un titre.
 // Ex: data/titles/halo_infinite/backups/Chocoboflor/
 func (p *PathResolver) BackupDir(titleSlug, gamertag string) string {

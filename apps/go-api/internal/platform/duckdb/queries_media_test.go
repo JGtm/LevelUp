@@ -21,8 +21,13 @@ func TestBuildQ37MediaQuery_NoFilters(t *testing.T) {
 	if !strings.Contains(q, "mf.status = 'active'") {
 		t.Error("expected status = active filter")
 	}
-	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_end_utc, mf.mtime) DESC") {
-		t.Errorf("expected default ORDER BY capture_end_utc/mtime DESC, got: %s", q)
+	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime) DESC") {
+		t.Errorf("expected default ORDER BY capture_start_utc/capture_end_utc/mtime DESC, got: %s", q)
+	}
+	// Tiebreaker stable file_path ASC → ordre déterministe entre exécutions
+	// (cf. bug "page Media reshuffle au refresh" — sort total order required).
+	if !strings.Contains(q, ", mf.file_path ASC\nLIMIT ?") {
+		t.Errorf("expected stable tiebreaker mf.file_path ASC just before LIMIT, got: %s", q)
 	}
 	if !strings.Contains(q, "LIMIT ? OFFSET ?") {
 		t.Error("expected LIMIT ? OFFSET ?")
@@ -142,8 +147,11 @@ func TestBuildQ37MediaQuery_AllFilters_ArgOrder(t *testing.T) {
 
 func TestBuildQ37MediaQuery_Sort_DateAsc(t *testing.T) {
 	q, _ := BuildQ37MediaQuery(domain.MediaFilters{Sort: "date_asc"}, 24, 0)
-	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_end_utc, mf.mtime) ASC") {
-		t.Errorf("expected capture_end_utc/mtime ASC order, got: %s", q)
+	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime) ASC") {
+		t.Errorf("expected capture_start_utc/capture_end_utc/mtime ASC order, got: %s", q)
+	}
+	if !strings.Contains(q, ", mf.file_path ASC\nLIMIT ?") {
+		t.Errorf("expected stable tiebreaker mf.file_path ASC, got: %s", q)
 	}
 }
 
@@ -163,8 +171,8 @@ func TestBuildQ37MediaQuery_Sort_ModeAsc(t *testing.T) {
 
 func TestBuildQ37MediaQuery_Sort_Unknown_FallsBackToDefault(t *testing.T) {
 	q, _ := BuildQ37MediaQuery(domain.MediaFilters{Sort: "random_invalid"}, 24, 0)
-	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_end_utc, mf.mtime) DESC") {
-		t.Errorf("expected fallback to capture_end_utc/mtime DESC, got: %s", q)
+	if !strings.Contains(q, "ORDER BY COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime) DESC") {
+		t.Errorf("expected fallback to capture_start_utc/capture_end_utc/mtime DESC, got: %s", q)
 	}
 }
 
@@ -314,6 +322,11 @@ func TestBuildQ37MediaQuery_SharedSocialSchemaUsesPlayerScopedJoin(t *testing.T)
 
 	if !strings.Contains(q, "mf.id = mma.media_file_id") {
 		t.Errorf("expected shared_social join on media_file_id, got: %s", q)
+	}
+	// Variante shared_social inclut indexed_at en dernier fallback (legacy
+	// schema legacy s'arrête à mtime puisqu'indexed_at n'existait pas).
+	if !strings.Contains(q, "COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime, mf.indexed_at)") {
+		t.Errorf("expected shared_social timeOrderExpr with indexed_at fallback, got: %s", q)
 	}
 	if !strings.Contains(q, "mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS match_start_time") {
 		t.Errorf("expected match_start_time via COALESCE(start_time_utc, start_time AT TIME ZONE UTC), got: %s", q)

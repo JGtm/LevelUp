@@ -112,12 +112,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 		}
 
 		if reindexAfter {
-			var capturesDir string
-			if capturesBaseDir != "" {
-				capturesDir = filepath.Join(capturesBaseDir, gamertag)
-			} else {
-				capturesDir = filepath.Join(pr.PlayerDir(titleSlug, gamertag), "media")
-			}
+			capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 			if _, err := os.Stat(capturesDir); err == nil {
 				reindexPct := 50 + (i*50)/total
 				reindexStep := fmt.Sprintf("Réindexation : %s (%d/%d)", gamertag, i+1, total)
@@ -190,12 +185,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 		gamertag := entry.Name()
 		dbPath := pr.PlayerDBPath(titleSlug, gamertag)
 
-		var capturesDir string
-		if capturesBaseDir != "" {
-			capturesDir = filepath.Join(capturesBaseDir, gamertag)
-		} else {
-			capturesDir = filepath.Join(pr.PlayerDir(titleSlug, gamertag), "media")
-		}
+		capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
 
 		if _, err := os.Stat(capturesDir); err != nil {
 			continue // dossier absent, on passe

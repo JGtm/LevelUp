@@ -593,11 +593,27 @@ func (cfg mediaQueryConfig) matchStartExpr() string {
 	return "mma.match_start_time"
 }
 
+// timeOrderExpr ordonne par date de capture réelle :
+//  1. capture_start_utc : extrait du nom de fichier (OBS/Xbox) ou file.lastModified
+//     client à l'upload — la donnée canonique alimentée pour TOUS les médias.
+//  2. capture_end_utc : capture_start_utc + duration_seconds pour les vidéos,
+//     = capture_start_utc pour les images (depuis ce fix). NULL pour les médias
+//     legacy indexés avant ce fix.
+//  3. mtime : présent dans le schéma mais volontairement non alimenté à l'INSERT
+//     côté Go — sur un upload `os.WriteFile` retourne l'heure d'écriture serveur,
+//     pas l'heure de capture, donc un faux signal pour le tri. Conservé dans le
+//     COALESCE en cas d'alimentation externe (script Python legacy ou
+//     `os.Chtimes` futur côté upload).
+//  4. indexed_at : NOW() à l'INSERT — fallback ultime, jamais atteint en pratique.
+//
+// Avant ce fix, le COALESCE était `(capture_end_utc, mtime, indexed_at)` —
+// aucune des trois n'étant alimentée par le code Go, il retombait toujours sur
+// indexed_at au lot → reorder non-déterministe au refresh.
 func (cfg mediaQueryConfig) timeOrderExpr() string {
 	if cfg.useSharedSocialSchema() {
-		return "COALESCE(mf.capture_end_utc, mf.mtime, mf.indexed_at)"
+		return "COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime, mf.indexed_at)"
 	}
-	return "COALESCE(mf.capture_end_utc, mf.mtime)"
+	return "COALESCE(mf.capture_start_utc, mf.capture_end_utc, mf.mtime)"
 }
 
 // groupOrderExpr retourne l'expression de tri primaire pour grouper les mÃ©dias.
@@ -751,6 +767,12 @@ func buildQ37MediaQuery(
 		orderBy = groupExpr + " " + groupDir + ", " + orderBy
 	}
 
+	// Tiebreaker stable : sans clé d'ordre totale, DuckDB peut retourner les
+	// lignes à timeOrderExpr égal dans un ordre arbitraire entre deux exécutions
+	// (cas réel : médias indexés en lot avec indexed_at quasi-identiques).
+	// file_path est UNIQUE sur media_files → tri totalement déterministe.
+	orderBy += ", mf.file_path ASC"
+
 	playerSlugExpr := "NULL"
 	if queryCfg.useSharedSocialSchema() {
 		playerSlugExpr = "mf.player_slug"
@@ -783,7 +805,7 @@ QUALIFY ROW_NUMBER() OVER (
     PARTITION BY mf.file_path
     ORDER BY
         CASE WHEN mr.start_time IS NULL THEN 1 ELSE 0 END,
-        ABS(EXTRACT(EPOCH FROM (COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') - mf.capture_end_utc))) ASC NULLS LAST,
+        ABS(EXTRACT(EPOCH FROM (COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') - COALESCE(mf.capture_end_utc, mf.capture_start_utc)))) ASC NULLS LAST,
         COALESCE(mma.match_id, '')
 ) = 1
 ORDER BY ` + orderBy + `
