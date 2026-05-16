@@ -35,6 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_categ
 CREATE TABLE IF NOT EXISTS player_match_enrichment (
     match_id               VARCHAR   PRIMARY KEY,
     performance_score      FLOAT,
+    performance_chain      VARCHAR,
     session_id             VARCHAR,
     session_label          VARCHAR,
     is_with_friends        BOOLEAN   DEFAULT FALSE,
