@@ -643,6 +643,9 @@ export interface BackfillStartRequest {
   aliases?: boolean
   weapons?: boolean
   lusr?: boolean
+  /** Re-fetch CSR par-match via GetMatchSkill (RankRecap). Idempotent
+   *  par défaut ; force_rescan=true → re-fetche tous les matchs ranked. */
+  csr?: boolean
   engagement_scores?: boolean
   engagement_coefficients?: boolean
   all_data?: boolean

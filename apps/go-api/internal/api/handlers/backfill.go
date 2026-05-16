@@ -253,6 +253,40 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 			lusrUpdated = n
 		}
 
+		// ── Phase 3.5 : CSR (re-fetch RankRecap depuis l'API skill) ──────
+		// Idempotent par défaut (skip les matchs ranked qui ont déjà une row
+		// CSR), force-csr re-fetche tous les matchs ranked.
+		csrInserted := 0
+		csrSkipped := 0
+		if scope.CSR {
+			if tokens == nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						"WARN: CSR ignoré — tokens Halo absents (re-login requis)")
+				})
+			} else {
+				csrStep := "Backfill CSR (re-fetch RankRecap)"
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.CurrentStep = &csrStep
+				})
+				csrRes, csrErr := engine.RunBackfillCSR(context.Background(), scope.ForceCSR)
+				if csrErr != nil {
+					h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+						j.Warnings = append(j.Warnings,
+							fmt.Sprintf("WARN csr: %v", csrErr))
+					})
+				}
+				csrInserted = csrRes.Inserted
+				csrSkipped = csrRes.SkippedNoRankRecap + csrRes.SkillErrors
+				if csrRes.SkillErrors > 0 {
+					h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+						j.Warnings = append(j.Warnings,
+							fmt.Sprintf("csr: %d appel(s) skill API en erreur (continuing)", csrRes.SkillErrors))
+					})
+				}
+			}
+		}
+
 		// ── Phase 4 : Performance score relatif v5 ───────────────────────
 		perfUpdated := 0
 		if scope.PerformanceScores {
@@ -304,8 +338,8 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		h.warnUnimplemented(job.JobID, scope)
 
 		done := fmt.Sprintf(
-			"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, perf: %d",
-			total, weaponsInserted, psaMatchesUpdated, psaRowsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, perfUpdated,
+			"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d",
+			total, weaponsInserted, psaMatchesUpdated, psaRowsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, csrInserted, csrSkipped, perfUpdated,
 		)
 		pct100 := 100
 		matchesDone := total
@@ -329,7 +363,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 
 	if req.AllData || (!req.Medals && !req.Events && !req.Skill &&
 		!req.PersonalScores && !req.PerformanceScores &&
-		!req.Aliases && !req.Weapons && !req.LUSR && !req.EngagementScores &&
+		!req.Aliases && !req.Weapons && !req.LUSR && !req.CSR && !req.EngagementScores &&
 		!req.EngagementCoefficients) {
 		// Aucun scope explicite → activer tout
 		scope.AllData = true
@@ -341,6 +375,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.Aliases = true
 		scope.Weapons = true
 		scope.LUSR = true
+		scope.CSR = true
 		scope.EngagementScores = true
 		// EngagementCoefficients implicite : les coefs sont recomputes en
 		// queue de RunBackfillEngagementScores, pas besoin d'activer le flag.
@@ -353,6 +388,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.Aliases = req.Aliases
 		scope.Weapons = req.Weapons
 		scope.LUSR = req.LUSR
+		scope.CSR = req.CSR
 		scope.EngagementScores = req.EngagementScores
 		scope.EngagementCoefficients = req.EngagementCoefficients
 	}
@@ -366,6 +402,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.ForcePerformanceScores = req.PerformanceScores || req.AllData
 		scope.ForceAliases = req.Aliases || req.AllData
 		scope.ForceLUSR = req.LUSR || req.AllData
+		scope.ForceCSR = req.CSR || req.AllData
 		scope.ForceEngagementScores = req.EngagementScores || req.AllData
 		scope.ForceEngagementCoefficients = req.EngagementCoefficients
 	}

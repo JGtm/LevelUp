@@ -8,14 +8,18 @@ type BackfillStartRequest struct {
 
 	// Scope : données à inclure dans le backfill.
 	// Si tous les champs sont false (défaut), AllData est implicitement true.
-	Medals                 bool `json:"medals"`
-	Events                 bool `json:"events"`
-	Skill                  bool `json:"skill"`
-	PersonalScores         bool `json:"personal_scores"`
-	PerformanceScores      bool `json:"performance_scores"`
-	Aliases                bool `json:"aliases"`
-	Weapons                bool `json:"weapons"`
-	LUSR                   bool `json:"lusr"`
+	Medals            bool `json:"medals"`
+	Events            bool `json:"events"`
+	Skill             bool `json:"skill"`
+	PersonalScores    bool `json:"personal_scores"`
+	PerformanceScores bool `json:"performance_scores"`
+	Aliases           bool `json:"aliases"`
+	Weapons           bool `json:"weapons"`
+	LUSR              bool `json:"lusr"`
+	// CSR : re-fetch les CSR par-match via GetMatchSkill (RankRecap) pour
+	// les matchs ranked déjà en DB sans row CSR. Idempotent : skip ceux qui
+	// ont déjà un CSR (sauf si ForceRescan=true → tous re-fetchés).
+	CSR                    bool `json:"csr"`
 	EngagementScores       bool `json:"engagement_scores"`       // Phase 6 plan engagement
 	EngagementCoefficients bool `json:"engagement_coefficients"` // Phase recompute coefs (coef-only, rapide)
 	AllData                bool `json:"all_data"`

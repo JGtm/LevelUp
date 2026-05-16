@@ -519,6 +519,15 @@ func init() {
 			return nil
 		},
 	})
+
+	Register(Migration{
+		Name:        "add_msr_measurement_matches_remaining",
+		TargetDB:    TargetPlayer,
+		Description: "Colonne measurement_matches_remaining sur match_skill_rank — porte l'info de placement CSR (n matchs avant le rang final), peuplée par le sync via RankRecap.PostMatchCsr.MeasurementMatchesRemaining",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "match_skill_rank", "measurement_matches_remaining", "INTEGER DEFAULT 0")
+		},
+	})
 }
 
 // applyFixMvSessionStats recrée mv_session_stats avec session_id VARCHAR.
