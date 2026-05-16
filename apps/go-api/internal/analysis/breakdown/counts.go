@@ -18,6 +18,11 @@ type Row struct {
 	ModeCategory     string
 	PlaylistName     string
 	PerformanceScore *float64
+	// PerformanceChain est la cle de la chaine de score de performance
+	// (arena_slayer / arena_objectif / btb / chaos / ranked / firefight).
+	// Vide quand inconnu : la row ne contribue alors a aucun bucket de
+	// PerfByChain dans les agregats cross-chaine.
+	PerformanceChain string
 }
 
 // Counts agrege les compteurs W/L/T/DNF + ratios sur un sous-ensemble de rows.
@@ -79,4 +84,42 @@ func avgPerformanceScore(rows []Row) *float64 {
 	}
 	avg := sum / float64(n)
 	return &avg
+}
+
+// avgPerformanceScoreByChain groupe les rows par PerformanceChain et calcule la
+// moyenne des PerformanceScore non nil dans chaque chaine. Retourne nil quand
+// aucune row n'a a la fois un PerformanceScore et une PerformanceChain non
+// vides. Les rows sans chaine sont ignorees (preserve la semantique "relatif
+// a une chaine connue") — elles restent comptees dans avgPerformanceScore.
+//
+// Cas d'usage : decoupler la moyenne perf par carte (ou par categorie de mode)
+// en ses composantes par chaine, pour eviter de melanger des scores BTB et
+// arena_slayer (qui ne sont pas sur la meme echelle de reference).
+func avgPerformanceScoreByChain(rows []Row) map[string]*float64 {
+	type acc struct {
+		sum float64
+		n   int
+	}
+	buckets := make(map[string]*acc)
+	for _, r := range rows {
+		if r.PerformanceScore == nil || r.PerformanceChain == "" {
+			continue
+		}
+		b, ok := buckets[r.PerformanceChain]
+		if !ok {
+			b = &acc{}
+			buckets[r.PerformanceChain] = b
+		}
+		b.sum += *r.PerformanceScore
+		b.n++
+	}
+	if len(buckets) == 0 {
+		return nil
+	}
+	out := make(map[string]*float64, len(buckets))
+	for chain, b := range buckets {
+		avg := b.sum / float64(b.n)
+		out[chain] = &avg
+	}
+	return out
 }

@@ -3,11 +3,22 @@ package breakdown
 import "sort"
 
 // MapAggregate est l'agregation par carte.
+//
+// `AvgPerformanceScore` est la moyenne globale toutes chaines confondues
+// (preservee pour compat ascendante). Sa semantique devient floue depuis que
+// le score de performance est relatif a la chaine de chaque match (ex. score
+// BTB et score Arena Slayer ne sont pas sur la meme echelle de reference).
+//
+// `PerfByChain` decoupe la moyenne par chaine (`arena_slayer`, `btb`, ...) :
+// c'est la lecture la plus precise pour comparer les performances sur une
+// meme carte entre differents contextes de jeu. Vide si aucune row n'a a la
+// fois un PerformanceScore et un PerformanceChain non vides.
 type MapAggregate struct {
 	MapID    string
 	MapLabel string
 	Counts
 	AvgPerformanceScore *float64
+	PerfByChain         map[string]*float64
 }
 
 // ByMap groupe les rows par MapID et calcule les compteurs.
@@ -43,6 +54,7 @@ func ByMap(rows []Row) []MapAggregate {
 			MapLabel:            labels[id],
 			Counts:              computeCounts(items),
 			AvgPerformanceScore: avgPerformanceScore(items),
+			PerfByChain:         avgPerformanceScoreByChain(items),
 		})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
