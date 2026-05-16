@@ -17,10 +17,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service"
 )
 
 // buildPostSyncDeltaHook construit la closure consommée par sync_handler :
@@ -34,7 +37,7 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			return nil
 		}
 		xuid := pdb.XUID // capturé pour l'invalidation — indépendant du resolve post-sync
-		before, err := SnapshotPlayerState(ctx, pdb)
+		before, err := SnapshotPlayerState(ctx, pdb, newCitationsServiceForPDB(pdb))
 		if err != nil {
 			slog.WarnContext(ctx, "post_sync: snapshot before", "slug", slug, "err", err)
 		}
@@ -48,7 +51,7 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 				slog.WarnContext(ctx, "post_sync: resolve after", "slug", slug, "err", err)
 				return
 			}
-			after, err := SnapshotPlayerState(ctx, pdb2)
+			after, err := SnapshotPlayerState(ctx, pdb2, newCitationsServiceForPDB(pdb2))
 			if err != nil {
 				slog.WarnContext(ctx, "post_sync: snapshot after", "slug", slug, "err", err)
 				return
@@ -65,24 +68,54 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 
 // PlayerSnapshot capture l'état pertinent d'un joueur pour la détection delta.
 type PlayerSnapshot struct {
-	CurrentRank         int
-	CurrentRankName     string
-	PersonalAwardCount  int
-	CitationsCount      int
-	ChallengePathsCount int     // nb challenge_path distinct connus (challenge_snapshots)
-	KDRatio             float64 // KD agrégé sur tous les matchs ingérés
-	Winrate             float64 // 0..1 — fraction de matchs gagnés (outcome=2)
-	BestKDA             float64 // record matériel (kills+assists)/max(deaths,1) sur 1 match
-	BestKDAMatchID      string  // match associé au record
+	// Rang carrière Halo lifetime (career_progression).
+	CurrentRank     int
+	CurrentRankName string
+
+	// Awards / objectifs personnels.
+	PersonalAwardCount int
+
+	// Total brut de citations (legacy — utilisé pour la rétro-compat des tests
+	// existants, plus émis comme challenge_completed depuis 2026-05-16).
+	CitationsCount int
+
+	// Défis daily/weekly (challenge_snapshots).
+	ChallengePathsCount     int // nb challenge_path distinct connus
+	ChallengeCompletedCount int // nb challenge_path dont le dernier status = 'Completed'
+
+	// CSR / LUSR : dernière entrée par playlist_group dans match_skill_rank.
+	// clé = playlist_group, valeur = "rating_type|tier|sub_tier".
+	SkillTierByPlaylist map[string]string
+
+	// Battle pass : tracks ayant atteint leur rang max (has_reached_max_rank=TRUE
+	// dans le dernier snapshot par track).
+	BattlepassCompletedTracks int
+
+	// Citations / commendations agrégées via CitationsService.
+	CitationTotalEarnedTiers int // somme des EarnedTiers sur toutes les citations
+	CitationMasteryCount     int // nb de citations avec MasteryPct >= 100
+
+	// Métriques agrégées.
+	KDRatio        float64 // KD agrégé sur tous les matchs ingérés
+	Winrate        float64 // 0..1 — fraction de matchs gagnés (outcome=2)
+	BestKDA        float64 // record matériel (kills+assists)/max(deaths,1) sur 1 match
+	BestKDAMatchID string  // match associé au record
 }
 
 // SnapshotPlayerState lit l'état courant nécessaire à la détection delta.
 // Robuste aux tables vides ou colonnes manquantes (renvoie zero-values).
-func SnapshotPlayerState(ctx context.Context, pdb *duckdb.PlayerDB) (*PlayerSnapshot, error) {
+//
+// `citationsSvc` peut être nil — dans ce cas les compteurs citation_tier /
+// citation_mastery restent à 0 (pas d'émission).
+func SnapshotPlayerState(
+	ctx context.Context,
+	pdb *duckdb.PlayerDB,
+	citationsSvc port.CitationsService,
+) (*PlayerSnapshot, error) {
 	if pdb == nil || pdb.Player == nil {
 		return &PlayerSnapshot{}, nil
 	}
-	s := &PlayerSnapshot{}
+	s := &PlayerSnapshot{SkillTierByPlaylist: map[string]string{}}
 
 	// Career rank : dernière entrée career_progression
 	var rank sql.NullInt64
@@ -133,6 +166,92 @@ func SnapshotPlayerState(ctx context.Context, pdb *duckdb.PlayerDB) (*PlayerSnap
 	}
 	if pathsCount.Valid {
 		s.ChallengePathsCount = int(pathsCount.Int64)
+	}
+
+	// Challenge completed : nb challenge_path dont le DERNIER snapshot a
+	// status='Completed' (vrai détecteur de défi termin, vs. compteur citations
+	// utilisé auparavant). Insensible à la casse pour matcher 'Completed'/'COMPLETED'.
+	var completedCount sql.NullInt64
+	if err := pdb.ReadDB().QueryRow(ctx, `
+		SELECT COUNT(*) FROM (
+			SELECT challenge_path, LAST(status ORDER BY snapshot_at) AS last_status
+			FROM challenge_snapshots
+			GROUP BY challenge_path
+		) WHERE UPPER(last_status) = 'COMPLETED'
+	`).Scan(&completedCount); err != nil {
+		slog.DebugContext(ctx, "snapshot: challenge completed", "err", err)
+	}
+	if completedCount.Valid {
+		s.ChallengeCompletedCount = int(completedCount.Int64)
+	}
+
+	// Skill tier (CSR / LUSR) : dernière entrée par playlist_group dans
+	// match_skill_rank. La map est (playlist_group → "rating_type|tier|sub_tier")
+	// — toute transition de cette valeur déclenche un emit skill_tier.
+	rows, err := pdb.ReadDB().Query(ctx, `
+		SELECT playlist_group, rating_type, tier, sub_tier
+		FROM (
+			SELECT
+				playlist_group,
+				rating_type,
+				tier,
+				sub_tier,
+				ROW_NUMBER() OVER (PARTITION BY playlist_group ORDER BY start_time DESC) AS rn
+			FROM match_skill_rank
+			WHERE playlist_group IS NOT NULL AND tier IS NOT NULL
+		) WHERE rn = 1
+	`)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		slog.DebugContext(ctx, "snapshot: skill_tier query", "err", err)
+	}
+	if rows != nil {
+		for rows.Next() {
+			var playlist, ratingType, tier sql.NullString
+			var subTier sql.NullInt64
+			if err := rows.Scan(&playlist, &ratingType, &tier, &subTier); err != nil {
+				continue
+			}
+			if !playlist.Valid || !tier.Valid {
+				continue
+			}
+			key := playlist.String
+			val := fmt.Sprintf("%s|%s|%d", ratingType.String, tier.String, subTier.Int64)
+			s.SkillTierByPlaylist[key] = val
+		}
+		_ = rows.Close()
+	}
+
+	// Battle pass : nb de tracks dont le DERNIER snapshot a has_reached_max_rank=TRUE.
+	var bpCompleted sql.NullInt64
+	if err := pdb.ReadDB().QueryRow(ctx, `
+		SELECT COUNT(*) FROM (
+			SELECT reward_track_path,
+			       LAST(has_reached_max_rank ORDER BY snapshot_at) AS last_max
+			FROM battlepass_snapshots
+			GROUP BY reward_track_path
+		) WHERE last_max = TRUE
+	`).Scan(&bpCompleted); err != nil {
+		slog.DebugContext(ctx, "snapshot: battlepass completed", "err", err)
+	}
+	if bpCompleted.Valid {
+		s.BattlepassCompletedTracks = int(bpCompleted.Int64)
+	}
+
+	// Citations / commendations agrégées via le service (réutilise la chaîne
+	// Q34 + Q35 + MergeCitationTotals → garantit que la sémantique tiers/mastery
+	// est identique à celle de la page Citations). citationsSvc peut être nil.
+	if citationsSvc != nil {
+		page, err := citationsSvc.GetCitationsPage(ctx)
+		if err != nil {
+			slog.DebugContext(ctx, "snapshot: citations page", "err", err)
+		} else if page != nil {
+			for _, item := range page.Citations {
+				s.CitationTotalEarnedTiers += item.EarnedTiers
+				if item.MasteryPct >= 100.0 {
+					s.CitationMasteryCount++
+				}
+			}
+		}
 	}
 
 	// KD agrégé + winrate via shared.match_participants (nécessite ATTACH actif)
@@ -213,21 +332,24 @@ func EmitPostSyncDeltas(
 		return
 	}
 
-	// season_pass_level : nouveau rang franchi
+	// career_rank : nouveau rang Halo lifetime franchi (career_progression).
+	// Remplace l'ancien câblage CategorySeasonPassLevel qui pointait à tort sur
+	// career_progression — déprécié depuis 2026-05-16.
 	if after.CurrentRank > before.CurrentRank && after.CurrentRank > 0 {
 		if err := emitter.Emit(ctx, notifications.EmitInput{
-			Category: notifications.CategorySeasonPassLevel,
+			Category: notifications.CategoryCareerRank,
 			Severity: notifications.SeveritySuccess,
-			TitleKey: "notif.season_pass_level.title",
-			BodyKey:  "notif.season_pass_level.body",
+			TitleKey: "notif.career_rank.title",
+			BodyKey:  "notif.career_rank.body",
 			Params: map[string]any{
-				"level":     after.CurrentRank,
+				"rank":      after.CurrentRank,
 				"rank_name": after.CurrentRankName,
+				"previous":  before.CurrentRank,
 			},
-			TargetRoute: fmt.Sprintf("/players/%s/palmares/season-pass", slug),
+			TargetRoute: fmt.Sprintf("/players/%s/career", slug),
 			Source:      "post_sync",
 		}); err != nil {
-			slog.WarnContext(ctx, "post_sync: season_pass_level", "err", err)
+			slog.WarnContext(ctx, "post_sync: career_rank", "err", err)
 		}
 	}
 
@@ -248,10 +370,12 @@ func EmitPostSyncDeltas(
 		}
 	}
 
-	// challenge_completed (via citations diff) — émis seulement si delta>0.
-	// Le frontend résout le libellé via templates i18n.
-	if after.CitationsCount > before.CitationsCount {
-		delta := after.CitationsCount - before.CitationsCount
+	// challenge_completed (vrais défis daily/weekly) : nb challenge_path dont le
+	// dernier status est 'Completed'. Recâblé depuis match_citations vers
+	// challenge_snapshots le 2026-05-16 — la sémantique citations est désormais
+	// traitée par citation_tier / citation_mastery.
+	if after.ChallengeCompletedCount > before.ChallengeCompletedCount {
+		delta := after.ChallengeCompletedCount - before.ChallengeCompletedCount
 		if err := emitter.Emit(ctx, notifications.EmitInput{
 			Category:     notifications.CategoryChallengeCompleted,
 			Severity:     notifications.SeveritySuccess,
@@ -263,6 +387,88 @@ func EmitPostSyncDeltas(
 			Source:       "post_sync",
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: challenge_completed", "err", err)
+		}
+	}
+
+	// skill_tier (CSR / LUSR unifié) : une notif par playlist_group dont le
+	// tier|sub_tier|rating_type a changé entre les 2 snapshots. Les apparitions
+	// inédites (playlist absente avant, présente après) sont aussi émises.
+	for _, playlist := range sortedPlaylistKeys(after.SkillTierByPlaylist) {
+		newVal := after.SkillTierByPlaylist[playlist]
+		oldVal := before.SkillTierByPlaylist[playlist]
+		if newVal == oldVal {
+			continue
+		}
+		ratingType, tier, subTier := splitSkillTier(newVal)
+		oldRT, oldTier, oldSub := splitSkillTier(oldVal)
+		if err := emitter.Emit(ctx, notifications.EmitInput{
+			Category: notifications.CategorySkillTier,
+			Severity: notifications.SeveritySuccess,
+			TitleKey: "notif.skill_tier.title",
+			BodyKey:  "notif.skill_tier.body",
+			Params: map[string]any{
+				"playlist_group":    playlist,
+				"rating_type":       ratingType,
+				"tier":              tier,
+				"sub_tier":          subTier,
+				"previous_type":     oldRT,
+				"previous_tier":     oldTier,
+				"previous_sub_tier": oldSub,
+			},
+			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
+			Source:      "post_sync",
+		}); err != nil {
+			slog.WarnContext(ctx, "post_sync: skill_tier", "playlist", playlist, "err", err)
+		}
+	}
+
+	// battlepass_completed : un track de plus a atteint son rang max.
+	if after.BattlepassCompletedTracks > before.BattlepassCompletedTracks {
+		delta := after.BattlepassCompletedTracks - before.BattlepassCompletedTracks
+		if err := emitter.Emit(ctx, notifications.EmitInput{
+			Category:    notifications.CategoryBattlepassCompleted,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.battlepass_completed.title",
+			BodyKey:     "notif.battlepass_completed.body",
+			Params:      map[string]any{"count": delta},
+			TargetRoute: fmt.Sprintf("/players/%s/career/season-pass", slug),
+			Source:      "post_sync",
+		}); err != nil {
+			slog.WarnContext(ctx, "post_sync: battlepass_completed", "err", err)
+		}
+	}
+
+	// citation_tier : au moins un nouveau palier franchi sur une commendation.
+	// Agrégé : count = somme des paliers franchis depuis la sync précédente.
+	if after.CitationTotalEarnedTiers > before.CitationTotalEarnedTiers {
+		delta := after.CitationTotalEarnedTiers - before.CitationTotalEarnedTiers
+		if err := emitter.Emit(ctx, notifications.EmitInput{
+			Category:    notifications.CategoryCitationTier,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.citation_tier.title",
+			BodyKey:     "notif.citation_tier.body",
+			Params:      map[string]any{"count": delta},
+			TargetRoute: fmt.Sprintf("/players/%s/citations", slug),
+			Source:      "post_sync",
+		}); err != nil {
+			slog.WarnContext(ctx, "post_sync: citation_tier", "err", err)
+		}
+	}
+
+	// citation_mastery : une (ou plusieurs) commendation(s) viennent d'atteindre
+	// 100 % de masterisation.
+	if after.CitationMasteryCount > before.CitationMasteryCount {
+		delta := after.CitationMasteryCount - before.CitationMasteryCount
+		if err := emitter.Emit(ctx, notifications.EmitInput{
+			Category:    notifications.CategoryCitationMastery,
+			Severity:    notifications.SeveritySuccess,
+			TitleKey:    "notif.citation_mastery.title",
+			BodyKey:     "notif.citation_mastery.body",
+			Params:      map[string]any{"count": delta},
+			TargetRoute: fmt.Sprintf("/players/%s/citations", slug),
+			Source:      "post_sync",
+		}); err != nil {
+			slog.WarnContext(ctx, "post_sync: citation_mastery", "err", err)
 		}
 	}
 
@@ -419,4 +625,50 @@ func nullableMatchID(id string) any {
 		return nil
 	}
 	return id
+}
+
+// newCitationsServiceForPDB construit un CitationsService scopé sur le joueur.
+// Retourne nil si pdb est invalide — SnapshotPlayerState saute alors la lecture
+// citations.
+func newCitationsServiceForPDB(pdb *duckdb.PlayerDB) port.CitationsService {
+	if pdb == nil || pdb.Player == nil {
+		return nil
+	}
+	return service.NewCitationsService(duckdb.NewCitationsRepo(pdb))
+}
+
+// sortedPlaylistKeys retourne les clés de m triées — garantit un ordre d'émission
+// stable (utile pour les tests + journaux deterministes).
+func sortedPlaylistKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// splitSkillTier décompose une signature "rating_type|tier|sub_tier" en
+// composants. Renvoie ("", "", 0) sur entrée vide ou mal formée — ce qui
+// laisse les params previous_* à zéro pour une 1re apparition de playlist.
+func splitSkillTier(sig string) (ratingType, tier string, subTier int) {
+	if sig == "" {
+		return "", "", 0
+	}
+	var sub int
+	parts := [3]string{}
+	idx := 0
+	start := 0
+	for i := 0; i < len(sig) && idx < 3; i++ {
+		if sig[i] == '|' {
+			parts[idx] = sig[start:i]
+			idx++
+			start = i + 1
+		}
+	}
+	if idx < 3 {
+		parts[idx] = sig[start:]
+	}
+	_, _ = fmt.Sscanf(parts[2], "%d", &sub)
+	return parts[0], parts[1], sub
 }

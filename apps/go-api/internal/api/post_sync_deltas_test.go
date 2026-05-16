@@ -97,13 +97,17 @@ func TestEmitPostSyncDeltas_NoChange_NoEmit(t *testing.T) {
 	}
 }
 
-func TestEmitPostSyncDeltas_SeasonPassLevel(t *testing.T) {
+func TestEmitPostSyncDeltas_CareerRank(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{CurrentRank: 5, CurrentRankName: "Hero"}
 	after := &PlayerSnapshot{CurrentRank: 6, CurrentRankName: "Onyx"}
 	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
-	if !hasCategory(em.emitted, notifications.CategorySeasonPassLevel) {
-		t.Error("expected season_pass_level emit when rank up")
+	if !hasCategory(em.emitted, notifications.CategoryCareerRank) {
+		t.Error("expected career_rank emit when rank up")
+	}
+	// season_pass_level est déprécié depuis 2026-05-16 : ne doit plus être émis.
+	if hasCategory(em.emitted, notifications.CategorySeasonPassLevel) {
+		t.Error("season_pass_level must not be emitted anymore (deprecated 2026-05-16)")
 	}
 }
 
@@ -123,14 +127,98 @@ func TestEmitPostSyncDeltas_ObjectiveCompleted_AggregatedDelta(t *testing.T) {
 
 func TestEmitPostSyncDeltas_ChallengeCompleted_AndAdded(t *testing.T) {
 	em := &recordingEmitter{}
-	before := &PlayerSnapshot{CitationsCount: 1, ChallengePathsCount: 5}
-	after := &PlayerSnapshot{CitationsCount: 4, ChallengePathsCount: 7}
+	before := &PlayerSnapshot{ChallengeCompletedCount: 1, ChallengePathsCount: 5}
+	after := &PlayerSnapshot{ChallengeCompletedCount: 4, ChallengePathsCount: 7}
 	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
 	if !hasCategory(em.emitted, notifications.CategoryChallengeCompleted) {
-		t.Error("expected challenge_completed")
+		t.Error("expected challenge_completed (now wired on ChallengeCompletedCount)")
 	}
 	if !hasCategory(em.emitted, notifications.CategoryChallengeAdded) {
 		t.Error("expected challenge_added")
+	}
+}
+
+// challenge_completed n'est plus émis quand CitationsCount augmente seul
+// (recâblage 2026-05-16 : challenge_completed = challenge_snapshots.status).
+func TestEmitPostSyncDeltas_CitationsCountAloneDoesNotEmitChallenge(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{CitationsCount: 1}
+	after := &PlayerSnapshot{CitationsCount: 8}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if hasCategory(em.emitted, notifications.CategoryChallengeCompleted) {
+		t.Error("CitationsCount diff must no longer emit challenge_completed")
+	}
+}
+
+// citation_tier / citation_mastery sur deltas CitationTotalEarnedTiers et
+// CitationMasteryCount.
+func TestEmitPostSyncDeltas_CitationTierAndMastery(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{CitationTotalEarnedTiers: 10, CitationMasteryCount: 2}
+	after := &PlayerSnapshot{CitationTotalEarnedTiers: 13, CitationMasteryCount: 4}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if !hasCategory(em.emitted, notifications.CategoryCitationTier) {
+		t.Error("expected citation_tier")
+	}
+	if !hasCategory(em.emitted, notifications.CategoryCitationMastery) {
+		t.Error("expected citation_mastery")
+	}
+}
+
+// battlepass_completed sur delta BattlepassCompletedTracks.
+func TestEmitPostSyncDeltas_BattlepassCompleted(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{BattlepassCompletedTracks: 1}
+	after := &PlayerSnapshot{BattlepassCompletedTracks: 2}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	if !hasCategory(em.emitted, notifications.CategoryBattlepassCompleted) {
+		t.Error("expected battlepass_completed")
+	}
+}
+
+// skill_tier : 1 emit par playlist dont la signature change ; aucun emit si
+// la signature est identique.
+func TestEmitPostSyncDeltas_SkillTier(t *testing.T) {
+	em := &recordingEmitter{}
+	before := &PlayerSnapshot{
+		SkillTierByPlaylist: map[string]string{
+			"ranked-arena":   "csr|Onyx|0",
+			"ranked-doubles": "csr|Diamond|3",
+		},
+	}
+	after := &PlayerSnapshot{
+		SkillTierByPlaylist: map[string]string{
+			"ranked-arena":   "csr|Onyx|0",       // identique → pas d'emit
+			"ranked-doubles": "csr|Onyx|1",       // changé → emit
+			"social-slayer":  "lusr|Onyx Pro|0",  // nouveau → emit
+		},
+	}
+	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
+	count := countCategory(em.emitted, notifications.CategorySkillTier)
+	if count != 2 {
+		t.Errorf("expected 2 skill_tier emits (1 promoted + 1 new playlist), got %d", count)
+	}
+}
+
+// splitSkillTier doit décomposer correctement la signature et tolérer les
+// valeurs malformées.
+func TestSplitSkillTier(t *testing.T) {
+	cases := []struct {
+		in              string
+		wantType, wantT string
+		wantSub         int
+	}{
+		{"csr|Onyx|0", "csr", "Onyx", 0},
+		{"lusr|Diamond|3", "lusr", "Diamond", 3},
+		{"", "", "", 0},
+		{"malformed", "malformed", "", 0},
+	}
+	for _, c := range cases {
+		gotType, gotT, gotSub := splitSkillTier(c.in)
+		if gotType != c.wantType || gotT != c.wantT || gotSub != c.wantSub {
+			t.Errorf("splitSkillTier(%q) = (%q,%q,%d), want (%q,%q,%d)",
+				c.in, gotType, gotT, gotSub, c.wantType, c.wantT, c.wantSub)
+		}
 	}
 }
 
@@ -199,6 +287,8 @@ var validPlayerSubpaths = []string{
 	"/palmares/relations",
 	"/palmares/compare",
 	"/career",
+	"/career/season-pass", // route actuelle (vs. /palmares/season-pass legacy)
+	"/citations",          // 2026-05-16 — pages citations/commendations
 	"/match",
 	"/matches",
 	"/media",
@@ -254,22 +344,32 @@ func targetRouteIsValid(route string) bool {
 func TestEmitPostSyncDeltas_AllTargetRoutesValid(t *testing.T) {
 	em := &recordingEmitter{}
 	before := &PlayerSnapshot{
-		CurrentRank:         5,
-		PersonalAwardCount:  10,
-		CitationsCount:      3,
-		ChallengePathsCount: 2,
-		KDRatio:             1.0,
-		Winrate:             0.50,
-		BestKDA:             3.0,
+		CurrentRank:               5,
+		PersonalAwardCount:        10,
+		CitationsCount:            3,
+		ChallengePathsCount:       2,
+		ChallengeCompletedCount:   1,
+		BattlepassCompletedTracks: 0,
+		CitationTotalEarnedTiers:  3,
+		CitationMasteryCount:      0,
+		SkillTierByPlaylist:       map[string]string{"ranked-arena": "csr|Diamond|3"},
+		KDRatio:                   1.0,
+		Winrate:                   0.50,
+		BestKDA:                   3.0,
 	}
 	after := &PlayerSnapshot{
-		CurrentRank:         6,    // → season_pass_level
-		PersonalAwardCount:  15,   // → objective_completed/assigned
-		CitationsCount:      5,    // → challenge_completed
-		ChallengePathsCount: 4,    // → challenge_added
-		KDRatio:             1.20, // → threshold_crossed (KD)
-		Winrate:             0.60, // → threshold_crossed (winrate)
-		BestKDA:             5.5,  // → personal_record (best_kda)
+		CurrentRank:               6,                                           // → career_rank
+		PersonalAwardCount:        15,                                          // → objective_completed/assigned
+		CitationsCount:            5,                                           // (legacy — n'émet plus challenge_completed)
+		ChallengePathsCount:       4,                                           // → challenge_added
+		ChallengeCompletedCount:   3,                                           // → challenge_completed
+		BattlepassCompletedTracks: 1,                                           // → battlepass_completed
+		CitationTotalEarnedTiers:  5,                                           // → citation_tier
+		CitationMasteryCount:      1,                                           // → citation_mastery
+		SkillTierByPlaylist:       map[string]string{"ranked-arena": "csr|Onyx|0"}, // → skill_tier
+		KDRatio:                   1.20,                                        // → threshold_crossed (KD)
+		Winrate:                   0.60,                                        // → threshold_crossed (winrate)
+		BestKDA:                   5.5,                                         // → personal_record (best_kda)
 	}
 	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil)
 

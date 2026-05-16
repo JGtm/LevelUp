@@ -1,3 +1,38 @@
+## [2026-05-16] feat(notifications) — extension cat. : career_rank, skill_tier, battlepass_completed, citation_tier, citation_mastery
+
+**Statut** : Complété (branche `feat/notif-extension` créée depuis `fix/csr-protect-from-lusr-overwrite`).
+
+**Contexte** : 3 demandes utilisateur (notif quand un défi daily/weekly est complété, quand un rang de carrière change, quand un tier CSR/LUSR change). En auditant `post_sync_deltas.go`, on identifie 2 bugs sémantiques historiques : `CategorySeasonPassLevel` est émis sur `career_progression` (qui contient le rang Halo lifetime — pas le BP), et `CategoryChallengeCompleted` est émis sur un delta `match_citations` brut (compteur de citations, pas de défis). Décisions utilisateur : (a) corriger les câblages maintenant, (b) CSR/LUSR unifiés sous une seule catégorie `skill_tier`, (c) défis/citations agrégés (compteur, pas par item), (d) battle pass = notif uniquement quand un track est terminé (pas par level-up).
+
+**Décisions** :
+
+1. **5 nouvelles catégories** ([types.go](apps/go-api/internal/notifications/types.go#L33-L40)) : `career_rank`, `skill_tier`, `battlepass_completed`, `citation_tier`, `citation_mastery`. `season_pass_level` conservée pour rétro-compat des notifs en DB mais marquée dépréciée + retirée des émissions + désactivée par défaut dans les nouveaux seeds.
+2. **Snapshot étendu** ([post_sync_deltas.go:67-95](apps/go-api/internal/api/post_sync_deltas.go#L67-L95)) : `PlayerSnapshot` gagne `ChallengeCompletedCount`, `SkillTierByPlaylist map[string]string` (clé = playlist_group, valeur = `rating_type|tier|sub_tier`), `BattlepassCompletedTracks`, `CitationTotalEarnedTiers`, `CitationMasteryCount`. Les 4 premiers sont calculés par requêtes SQL DuckDB (`LAST(...) OVER` + `ROW_NUMBER() PARTITION BY playlist_group`). Citations passent par `CitationsService.GetCitationsPage` injecté pour réutiliser la chaîne canonique Q34+Q35+MergeCitationTotals (garantit la même sémantique tier/mastery que la page Citations).
+3. **Recâblages** ([post_sync_deltas.go:217-388](apps/go-api/internal/api/post_sync_deltas.go#L217-L388)) :
+   - `season_pass_level` → plus émis, remplacé par `career_rank` (sur `CurrentRank` diff, route `/players/{slug}/career`)
+   - `challenge_completed` → branché sur `ChallengeCompletedCount` (status='Completed' dans le dernier snapshot par challenge_path) au lieu de `CitationsCount`
+   - 4 nouveaux émetteurs : `skill_tier` (1 emit par playlist changée, params: playlist + nouveau + ancien tier), `battlepass_completed` (compteur tracks à max), `citation_tier` (delta EarnedTiers agrégé), `citation_mastery` (delta MasteryCount agrégé)
+4. **Seeds prefs par défaut** ([steps_player_notifications.go:42-58](apps/go-api/internal/migration/steps_player_notifications.go#L42-L58)) : `season_pass_level={false, off}` (dépréciée), `citation_tier=inapp` (potentiellement fréquent → silent), les 4 autres `both` par défaut.
+5. **Frontend** : `NotificationCategory` enum + `ALL_CATEGORIES` étendus ([types.ts](apps/web/src/features/notifications/types.ts#L20-L52)), labels + descriptions + templates FR/EN dans [i18n.ts](apps/web/src/features/notifications/i18n.ts).
+6. **Tests** : `TestEmitPostSyncDeltas_SeasonPassLevel` renommé en `_CareerRank` + assertion que season_pass_level n'est PLUS émis ; nouveau test `_CitationsCountAloneDoesNotEmitChallenge` (non-régression du recâblage challenge) ; 4 nouveaux tests dédiés (`_CitationTierAndMastery`, `_BattlepassCompleted`, `_SkillTier`, `TestSplitSkillTier`) ; `validPlayerSubpaths` étend avec `/career/season-pass` et `/citations`.
+
+**Résultats observés** :
+
+- `go test ./internal/api/...` (run = TestEmitPostSync|TestSplit|TestThreshold) : OK
+- `go test ./internal/notifications/...` : OK
+- `go build ./...` : OK
+- `tsc --noEmit` côté web : OK
+- `vitest run src/features/notifications/` : 6/6 OK
+
+**Conclusion / prochaine étape** :
+
+- Branche `feat/notif-extension` prête, à commiter.
+- Migration DB requise : `season_pass_level` reste dans la table prefs (rétro-compat). Pas de migration de données — les notifs déjà émises avec cette catégorie restent affichables.
+- Décision non implémentée : émission *par défi nommé* (rejeté : trop de friction inter-sync sur la déduplication, agrégé suffit pour MVP).
+- Suivi possible : monitoring des compteurs émis par `skill_tier` après quelques syncs réelles pour ajuster la granularité (1 emit par playlist vs. agrégé) si trop verbeux.
+
+---
+
 ## [2026-05-16] fix(settings) — onglet Lab aligné sur les autres tabs + toast "Enregistré" non-shiftant
 
 **Statut** : Complété (sur la branche courante `fix/csr-protect-from-lusr-overwrite`, additif UI).
