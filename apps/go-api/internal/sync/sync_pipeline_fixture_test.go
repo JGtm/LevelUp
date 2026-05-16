@@ -191,6 +191,7 @@ func buildPlayerDDL() string {
 CREATE TABLE player_match_enrichment (
     match_id                    VARCHAR PRIMARY KEY,
     performance_score           DOUBLE,
+    performance_chain           VARCHAR,
     session_id                  VARCHAR,
     session_label               VARCHAR,
     is_with_friends             BOOLEAN DEFAULT FALSE,

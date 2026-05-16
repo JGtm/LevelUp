@@ -73,6 +73,13 @@ const (
 
 const MinMatchesForRelative = 10
 
+// MinMatchesPerChainForRelative est le seuil minimum de matchs **dans une
+// chaîne** avant de calculer un score relatif pour cette chaîne. Symétrique au
+// LUSR (MinMatchesForRating). Pas de fallback global : sans 10 matchs dans la
+// chaîne du match courant, on ne calcule pas de score pour préserver la
+// sémantique "relatif à ta chaîne".
+const MinMatchesPerChainForRelative = 10
+
 // RelativeWeights pondère les métriques du score relatif (0-100).
 // Portage de relativeWeights v5 (analysis/performance_score.go).
 // Somme = 1.01 → renormalisé automatiquement si des métriques sont absentes.

@@ -48,6 +48,9 @@ type historyRow struct {
 	OffensiveConversion float64
 	DefensiveResistance float64
 	MedalExploitScore   float64
+	// Chain est la chaîne de score de performance dérivée via GetPerformanceChain
+	// (pair_name + flags is_ranked/is_firefight). Toujours non vide.
+	Chain string
 }
 
 // matchMetrics contient les métriques per-minute d'un match unique.
@@ -386,6 +389,7 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 
 // loadHistoryForPerf charge tous les matchs du joueur depuis shared DB pour le batch.
 // Le champ damage_taken est utilisé pour defensive_resistance (combat yield v5).
+// Chaque row est classée dans une chaîne via GetPerformanceChain (jamais vide).
 func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 	rows, err := sharedDB.Query(`
 		SELECT
@@ -398,7 +402,8 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 			COALESCE(mp.damage_taken, 0),
 			COALESCE(mp.rank, 0),
 			COALESCE(mp.team_mmr, 0), COALESCE(mp.enemy_mmr, 0),
-			COALESCE(mp.kills_expected, 0), COALESCE(mp.deaths_expected, 0)
+			COALESCE(mp.kills_expected, 0), COALESCE(mp.deaths_expected, 0),
+			mr.pair_name, COALESCE(mr.is_ranked, FALSE), COALESCE(mr.is_firefight, FALSE)
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
@@ -414,6 +419,8 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 	for rows.Next() {
 		var h historyRow
 		var startTime time.Time
+		var pairName sql.NullString
+		var isRanked, isFirefight bool
 		if err := rows.Scan(
 			&h.MatchID, &startTime,
 			&h.Kills, &h.Deaths, &h.Assists, &h.KDA,
@@ -421,6 +428,7 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 			&h.PersonalScore, &h.DamageDealt, &h.DamageTaken,
 			&h.Rank, &h.TeamMMR, &h.EnemyMMR,
 			&h.KillsExpected, &h.DeathsExpected,
+			&pairName, &isRanked, &isFirefight,
 		); err != nil {
 			continue
 		}
@@ -429,6 +437,12 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 			Kills: h.Kills, Deaths: h.Deaths, Assists: h.Assists,
 			DamageDealt: h.DamageDealt, DamageTaken: h.DamageTaken,
 		})
+		// Classification en chaîne — toujours non vide grâce au fallback arena_slayer.
+		pn := ""
+		if pairName.Valid {
+			pn = pairName.String
+		}
+		h.Chain = GetPerformanceChain(pn, isRanked, isFirefight)
 		history = append(history, h)
 	}
 	return history, rows.Err()
@@ -436,8 +450,14 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 
 // batchComputePerformanceScores calcule les performance_score manquants ou tous si force=true.
 // medalExploitByMatch : match_id → score médailles (nil = pas de données médailles).
-// force : recalcule même si performance_score est déjà présent.
+// force : recalcule même si performance_score est déjà présent dans la même chaîne.
 // Retourne le nombre de matchs mis à jour.
+//
+// Sémantique : chaque match est rattaché à une chaîne via GetPerformanceChain
+// (6 chaînes possibles). Le percentile pondéré est calculé sur les 50 derniers
+// matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
+// du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
+// global, préservation de la sémantique "relatif à ta chaîne").
 func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	allMatches, err := loadHistoryForPerf(sharedDB, xuid)
 	if err != nil {
@@ -454,57 +474,78 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 		}
 	}
 
-	// Charger les matchs qui ont déjà un score (ignoré en mode force).
-	existing := make(map[string]bool)
+	// Charger les matchs qui ont déjà un score ET la chaîne stockée (ignoré en mode force).
+	// On skippe uniquement si la chaîne déjà stockée correspond à la chaîne actuelle calculée.
+	// Si la classification a changé rétroactivement (cas rare), on recompute.
+	existingChain := make(map[string]string)
 	if !force {
 		existRows, err := playerDB.Query(
-			"SELECT match_id FROM player_match_enrichment WHERE performance_score IS NOT NULL")
+			`SELECT match_id, performance_chain
+			   FROM player_match_enrichment
+			  WHERE performance_score IS NOT NULL`)
 		if err == nil {
 			defer existRows.Close()
 			for existRows.Next() {
 				var mid string
-				if existRows.Scan(&mid) == nil {
-					existing[mid] = true
+				var chain sql.NullString
+				if existRows.Scan(&mid, &chain) == nil {
+					if chain.Valid {
+						existingChain[mid] = chain.String
+					} else {
+						// Score legacy sans chaîne stockée → recompute pour peupler.
+						existingChain[mid] = ""
+					}
 				}
 			}
 		}
 	}
 
 	updated := 0
-	windowSize := 50
+	const windowSize = 50
 	now := time.Now().UTC()
 
-	for i, match := range allMatches {
-		if !force && existing[match.MatchID] {
-			continue
-		}
-		if i < MinMatchesForRelative {
-			continue
+	// Historique cumulé par chaîne (chronologique ASC). Pour chaque match, le
+	// percentile est calculé sur la fenêtre des 50 derniers entrées de sa chaîne.
+	chainHistory := make(map[string][]historyRow)
+
+	for _, match := range allMatches {
+		chain := match.Chain
+		history := chainHistory[chain]
+
+		// Skip si déjà calculé pour la MÊME chaîne (mode !force).
+		shouldSkip := false
+		if !force {
+			if stored, ok := existingChain[match.MatchID]; ok && stored == chain {
+				shouldSkip = true
+			}
 		}
 
-		// Fenêtre glissante des 50 derniers matchs avant celui-ci.
-		start := i - windowSize
-		if start < 0 {
-			start = 0
-		}
-		window := allMatches[start:i]
+		// On ne calcule un score qu'après MinMatchesPerChainForRelative matchs dans la chaîne.
+		if !shouldSkip && len(history) >= MinMatchesPerChainForRelative {
+			start := len(history) - windowSize
+			if start < 0 {
+				start = 0
+			}
+			window := history[start:]
 
-		score := computeRelativePerformanceScore(&match, window)
-		if score == nil {
-			continue
+			score := computeRelativePerformanceScore(&match, window)
+			if score != nil {
+				_, err := playerDB.Exec(`
+					INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
+					VALUES (?, ?, ?, ?)
+					ON CONFLICT (match_id) DO UPDATE SET
+						performance_score = EXCLUDED.performance_score,
+						performance_chain = EXCLUDED.performance_chain,
+						updated_at        = EXCLUDED.updated_at`,
+					match.MatchID, *score, chain, now)
+				if err == nil {
+					updated++
+				}
+			}
 		}
 
-		_, err := playerDB.Exec(`
-			INSERT INTO player_match_enrichment (match_id, performance_score, updated_at)
-			VALUES (?, ?, ?)
-			ON CONFLICT (match_id) DO UPDATE SET
-				performance_score = EXCLUDED.performance_score,
-				updated_at = EXCLUDED.updated_at`,
-			match.MatchID, *score, now)
-		if err != nil {
-			continue
-		}
-		updated++
+		// Pousser le match courant dans l'historique de sa chaîne (toujours, même skip).
+		chainHistory[chain] = append(history, match)
 	}
 	return updated, nil
 }
