@@ -1,3 +1,47 @@
+## [2026-05-16] feat(perf-score) — découplage du performance_score par chaîne de playlist (miroir LUSR)
+
+**Statut** : Complété (5 commits backend sur la branche `fix/csr-protect-from-lusr-overwrite`).
+
+**Contexte** : Le `performance_score` (relatif 0-100, percentile pondéré sur 13 métriques) était calculé sur une fenêtre glissante de 50 matchs **tous modes confondus** ([performance.go:441](apps/go-api/internal/sync/performance.go#L441)). Conséquence : un match BTB était comparé à des matchs Slayer, Firefight, Fiesta… ce qui diluait la pertinence du score pour les joueurs avec un profil hétérogène. Le LUSR avait déjà résolu ce problème via 4 chaînes TrueSkill 2 indépendantes (`arena_slayer`, `arena_objectif`, `btb`, `chaos`, mappées via `GetLUSRChain(pair_name)`). User demande d'appliquer le même découplage au score de performance.
+
+**Décisions** :
+
+1. **Périmètre 6 chaînes (extension LUSR)** — Le score de performance couvre tous les matchs joués, donc on étend les 4 chaînes LUSR avec `ranked` + `firefight` pour éviter toute régression sur ces matchs (LUSR les exclut car CSR/PvE-séparé, le perf_score n'a pas cette contrainte). Nouvelle fonction dédiée `GetPerformanceChain(pair_name, isRanked, isFirefight)` qui délègue à `GetLUSRChain` puis fallback `ranked` / `firefight` / `arena_slayer`. `GetLUSRChain` reste intacte (le moteur TrueSkill 2 exclut Ranked/Firefight par design).
+
+2. **Aucun poids par mode à modifier** — Le `performance_score` n'a jamais eu de poids par mode (seulement par métrique via `RelativeWeights`). Le `PlaylistGroupConfig.WeightFactor` du LUSR a déjà été supprimé (commit `757c972a`, cf. commentaire dans skill_config.go : *"chaque chaîne est homogène par construction, tous les matchs pèsent 1.0"*). Le découplage par chaîne suffit à donner la sémantique "comparer à des matchs de même type".
+
+3. **Stockage** — Ajout d'une colonne `performance_chain VARCHAR` à `player_match_enrichment` via migration idempotente `player_match_enrichment_performance_chain_v1` (ALTER TABLE ADD COLUMN IF NOT EXISTS). PK reste `match_id` (1 score par match dans sa chaîne, comme LUSR).
+
+4. **Fenêtre par chaîne** — `batchComputePerformanceScores` réécrit avec `chainHistory map[string][]historyRow` : parcours chronologique unique, fenêtre des 50 derniers matchs **de la même chaîne** uniquement. Seuil `MinMatchesPerChainForRelative=10` (symétrie LUSR `MinMatchesForRating=10`). **Pas de fallback global** : pas de score pour les 10 premiers matchs d'une chaîne, conformément à la sémantique "relatif à ta chaîne". Conséquence visible : un joueur qui a 5 matchs Ranked et 50 matchs Arena Slayer voit ses 5 matchs Ranked sans score (avant : score relatif à l'ensemble global).
+
+5. **Skip-existing affiné** — En mode `!force`, on ne skip un match déjà scoré que si la chaîne stockée correspond à la chaîne calculée. Si la classification a changé rétroactivement (ex. amélioration du `lusrChainForOther`), recompute automatique.
+
+6. **Agrégations cross-chaîne — `ByMap` et `ByModeCategory`** — Une carte (ou une catégorie de mode) peut être jouée dans plusieurs chaînes (ex. Behemoth en BTB + Ranked Arena). La moyenne globale `AvgPerformanceScore` mélange alors des scores relatifs à des chaînes distinctes (sémantique floue mais pas incorrecte mathématiquement). Solution : conserver `AvgPerformanceScore` (compat ascendante 100%) et ajouter `PerfByChain map[string]*float64` qui décompose la moyenne par chaîne. Backend-only : aucun call-site ne remplit encore `Row.PerformanceChain` côté lecture, donc `PerfByChain` reste nil en prod tant qu'un sprint UX ne le câble pas. `ByMode` (sous-mode) et `ByPlaylist` inchangés : 1 sous-mode / 1 playlist → 1 chaîne en pratique, granularité déjà correcte.
+
+**Résultats observés** :
+
+- `go build ./...` clean. `go vet` clean.
+- Tests : suite complète verte
+  - `./internal/sync/...` (122s, integration tag) — 27 sous-tests `GetPerformanceChain` + `TestBatchComputePerformanceScores_PartitionsByChain` (3 chaînes, vérifie qu'un match BTB/Ranked sous le seuil reste NULL) + `TestBatchComputePerformanceScores_SkipExistingPreservesChain` (force=true recompute, !force skip).
+  - `./internal/analysis/breakdown/...` — 7 nouveaux tests `PerfByChain` (helper pur + ByMap + ByModeCategory + non-régression ByMode).
+  - `./internal/migration/...` — 2 nouveaux tests (`TestRunForDB_Player_PerformanceChainColumn` + scénario legacy DB).
+  - `./internal/ops/...`, `./internal/validation/...`, `./internal/api/handlers/...`, `./internal/service/...`, `./internal/platform/duckdb/...` — toutes vertes (les 16 autres fixtures DDL qui mentionnent `player_match_enrichment` ne déclenchent pas le UPSERT modifié, pas besoin de les étendre préventivement).
+- 5 commits atomiques sur `fix/csr-protect-from-lusr-overwrite` (cohérent : le sujet est dans le voisinage du fix CSR/LUSR de la branche).
+
+**Conséquences sémantiques visibles côté UX (post-backfill `--force-performance-scores`)** :
+
+- Le score 78/100 d'un match BTB est désormais relatif aux 50 derniers matchs BTB du joueur, plus à tous ses modes confondus → score plus discriminant pour les joueurs aux profils hétérogènes.
+- Les premiers matchs d'une chaîne peu jouée (< 10 matchs) n'auront pas de score (vs avant : score relatif au pool global, parfois trompeur).
+- `AvgPerformanceScore` par carte (et par catégorie de mode) reste affiché comme avant, mais sa sémantique est floue quand la carte est jouée dans plusieurs chaînes. Le champ `PerfByChain` est dispo côté API mais non consommé par le front initial.
+
+**Conclusion / prochaine étape** :
+
+- Backfill nécessaire post-merge : `levelup backfill --player <gamertag> --force-performance-scores` (flag CLI existant, aucun nouveau code ops).
+- Sprint UX dédié possible si retour utilisateur : (a) badge "Relatif à : BTB" sous le score, (b) exposition de `PerfByChain` dans les DTO API (passe par extension des SELECTs Q18/Q23 côté Go + côté front), (c) tooltip "Moyenne mixée toutes chaînes" sur les agrégats `AvgPerformanceScore` cross-chaîne.
+- Rollback simple : revert des 5 commits ; la colonne `performance_chain` étant nullable et ignorée par l'ancien code, aucune action DB nécessaire.
+
+---
+
 ## [2026-05-16] fix(media) — résolution uniforme du dossier captures (3 call-sites alignés)
 
 **Statut** : Complété.
