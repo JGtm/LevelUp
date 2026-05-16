@@ -10,6 +10,7 @@ package sync
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"time"
@@ -415,7 +416,10 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 	}
 	defer rows.Close()
 
-	var history []historyRow
+	var (
+		history    []historyRow
+		scanErrors int
+	)
 	for rows.Next() {
 		var h historyRow
 		var startTime time.Time
@@ -430,6 +434,7 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 			&h.KillsExpected, &h.DeathsExpected,
 			&pairName, &isRanked, &isFirefight,
 		); err != nil {
+			scanErrors++
 			continue
 		}
 		// Calcul offline des métriques combat yield (pas de DB supplémentaire requise)
@@ -444,6 +449,11 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 		}
 		h.Chain = GetPerformanceChain(pn, isRanked, isFirefight)
 		history = append(history, h)
+	}
+	if scanErrors > 0 {
+		// Cas anormal (schéma divergent ?). On a quand même chargé ce qu'on a pu.
+		slog.Warn("loadHistoryForPerf: scan errors on history rows",
+			"xuid", xuid, "scan_errors", scanErrors, "loaded_rows", len(history))
 	}
 	return history, rows.Err()
 }
@@ -479,28 +489,42 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 	// Si la classification a changé rétroactivement (cas rare), on recompute.
 	existingChain := make(map[string]string)
 	if !force {
-		existRows, err := playerDB.Query(
+		existRows, queryErr := playerDB.Query(
 			`SELECT match_id, performance_chain
 			   FROM player_match_enrichment
 			  WHERE performance_score IS NOT NULL`)
-		if err == nil {
+		if queryErr != nil {
+			// Non bloquant : on continue en recompute-tout, mais on signale.
+			slog.Warn("batchComputePerformanceScores: query existing scores failed — fallback recompute-all",
+				"xuid", xuid, "err", queryErr)
+		} else {
 			defer existRows.Close()
+			scanErrors := 0
 			for existRows.Next() {
 				var mid string
 				var chain sql.NullString
-				if existRows.Scan(&mid, &chain) == nil {
-					if chain.Valid {
-						existingChain[mid] = chain.String
-					} else {
-						// Score legacy sans chaîne stockée → recompute pour peupler.
-						existingChain[mid] = ""
-					}
+				if err := existRows.Scan(&mid, &chain); err != nil {
+					scanErrors++
+					continue
 				}
+				if chain.Valid {
+					existingChain[mid] = chain.String
+				} else {
+					// Score legacy sans chaîne stockée → recompute pour peupler.
+					existingChain[mid] = ""
+				}
+			}
+			if err := existRows.Err(); err != nil {
+				slog.Warn("batchComputePerformanceScores: existing rows iteration error",
+					"xuid", xuid, "err", err)
+			}
+			if scanErrors > 0 {
+				slog.Warn("batchComputePerformanceScores: scan errors on existing scores",
+					"xuid", xuid, "scan_errors", scanErrors)
 			}
 		}
 	}
 
-	updated := 0
 	const windowSize = 50
 	now := time.Now().UTC()
 
@@ -508,8 +532,20 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 	// percentile est calculé sur la fenêtre des 50 derniers entrées de sa chaîne.
 	chainHistory := make(map[string][]historyRow)
 
+	// Stats par chaîne pour observabilité (utile pour diagnostiquer "pourquoi si peu
+	// de matchs scorés ?" — distribution réelle des chaînes pour le joueur).
+	var (
+		updated       int
+		execErrors    int
+		skippedBelow  int // matchs ignorés car len(history) < MinMatchesPerChainForRelative
+		skippedExist  int // matchs déjà scorés avec la bonne chaîne (mode !force)
+		updatedByChain = make(map[string]int)
+		totalByChain   = make(map[string]int)
+	)
+
 	for _, match := range allMatches {
 		chain := match.Chain
+		totalByChain[chain]++
 		history := chainHistory[chain]
 
 		// Skip si déjà calculé pour la MÊME chaîne (mode !force).
@@ -517,11 +553,17 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 		if !force {
 			if stored, ok := existingChain[match.MatchID]; ok && stored == chain {
 				shouldSkip = true
+				skippedExist++
 			}
 		}
 
-		// On ne calcule un score qu'après MinMatchesPerChainForRelative matchs dans la chaîne.
-		if !shouldSkip && len(history) >= MinMatchesPerChainForRelative {
+		switch {
+		case shouldSkip:
+			// nothing to do
+		case len(history) < MinMatchesPerChainForRelative:
+			skippedBelow++
+		default:
+			// On ne calcule un score qu'après MinMatchesPerChainForRelative matchs dans la chaîne.
 			start := len(history) - windowSize
 			if start < 0 {
 				start = 0
@@ -538,14 +580,34 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 						performance_chain = EXCLUDED.performance_chain,
 						updated_at        = EXCLUDED.updated_at`,
 					match.MatchID, *score, chain, now)
-				if err == nil {
+				if err != nil {
+					execErrors++
+					slog.Warn("batchComputePerformanceScores: UPSERT failed",
+						"match_id", match.MatchID, "chain", chain, "xuid", xuid, "err", err)
+				} else {
 					updated++
+					updatedByChain[chain]++
 				}
 			}
 		}
 
 		// Pousser le match courant dans l'historique de sa chaîne (toujours, même skip).
 		chainHistory[chain] = append(history, match)
+	}
+
+	// Résumé final : observabilité de la distribution réelle.
+	if updated > 0 || execErrors > 0 || len(totalByChain) > 0 {
+		slog.Info("batchComputePerformanceScores: batch terminé",
+			"xuid", xuid,
+			"force", force,
+			"total_matches", len(allMatches),
+			"updated", updated,
+			"updated_by_chain", updatedByChain,
+			"total_by_chain", totalByChain,
+			"skipped_below_threshold", skippedBelow,
+			"skipped_existing", skippedExist,
+			"exec_errors", execErrors,
+			"min_per_chain_threshold", MinMatchesPerChainForRelative)
 	}
 	return updated, nil
 }
