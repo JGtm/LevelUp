@@ -168,7 +168,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`,
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,
-			thumbnail_path VARCHAR, capture_end_utc TIMESTAMPTZ,
+			thumbnail_path VARCHAR,
+			capture_start_utc TIMESTAMPTZ,
+			capture_end_utc TIMESTAMPTZ,
+			duration_seconds DOUBLE,
 			mtime TIMESTAMPTZ, status VARCHAR,
 			liked BOOLEAN DEFAULT FALSE, liked_at TIMESTAMPTZ)`,
 		`CREATE TABLE media_match_associations (
@@ -240,7 +243,9 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			file_ext VARCHAR,
 			kind VARCHAR NOT NULL,
 			thumbnail_path VARCHAR,
+			capture_start_utc TIMESTAMPTZ,
 			capture_end_utc TIMESTAMPTZ,
+			duration_seconds DOUBLE,
 			mtime TIMESTAMPTZ,
 			indexed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			status VARCHAR,

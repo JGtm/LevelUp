@@ -144,6 +144,85 @@ func TestInsertMediaFile_UTCTimestamp(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// computeMediaEnd — fix bug "page Media réorganisée au refresh" (alimentation
+// systématique de capture_end_utc + duration_seconds à l'insertion).
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestComputeMediaEnd_ImageInstantaneous(t *testing.T) {
+	start := time.Date(2025, 1, 10, 14, 30, 0, 0, time.UTC)
+	end, dur := computeMediaEnd("image", &start, 0, false)
+
+	if end == nil {
+		t.Fatal("end nil, want = start (capture instantané)")
+	}
+	if !end.Equal(start) {
+		t.Errorf("end = %v, want = start %v (image = pas de durée)", end, start)
+	}
+	if dur == nil || *dur != 0.0 {
+		t.Errorf("duration = %v, want 0 pour une image", dur)
+	}
+}
+
+func TestComputeMediaEnd_VideoWithDuration(t *testing.T) {
+	start := time.Date(2025, 1, 10, 14, 30, 0, 0, time.UTC)
+	end, dur := computeMediaEnd("video", &start, 42.5, true)
+
+	if end == nil {
+		t.Fatal("end nil, want = start + 42.5s")
+	}
+	wantEnd := start.Add(42*time.Second + 500*time.Millisecond)
+	if !end.Equal(wantEnd) {
+		t.Errorf("end = %v, want %v", end, wantEnd)
+	}
+	if dur == nil || *dur != 42.5 {
+		t.Errorf("duration = %v, want 42.5", dur)
+	}
+}
+
+func TestComputeMediaEnd_VideoNoDuration_LeavesNull(t *testing.T) {
+	// ffprobe absent/échec → on laisse end et duration_seconds à NULL plutôt
+	// que d'inventer une valeur. Le tri retombera sur capture_start_utc.
+	start := time.Date(2025, 1, 10, 14, 30, 0, 0, time.UTC)
+	end, dur := computeMediaEnd("video", &start, 0, false)
+
+	if end != nil {
+		t.Errorf("end = %v, want nil (durée inconnue)", end)
+	}
+	if dur != nil {
+		t.Errorf("duration = %v, want nil (ffprobe indisponible)", dur)
+	}
+}
+
+func TestComputeMediaEnd_NilCaptureAt_LeavesEndNull(t *testing.T) {
+	// Si capture_start_utc est NULL (cas média scanné sans datetime parsable),
+	// on ne peut pas calculer end même pour une image — mais duration reste
+	// renseignée pour une image (= 0) ou une vidéo connue.
+	imgEnd, imgDur := computeMediaEnd("image", nil, 0, false)
+	if imgEnd != nil {
+		t.Errorf("image end = %v, want nil (capture_start_utc inconnu)", imgEnd)
+	}
+	if imgDur == nil || *imgDur != 0.0 {
+		t.Errorf("image duration = %v, want 0", imgDur)
+	}
+
+	vidEnd, vidDur := computeMediaEnd("video", nil, 10, true)
+	if vidEnd != nil {
+		t.Errorf("video end = %v, want nil (capture_start_utc inconnu)", vidEnd)
+	}
+	if vidDur == nil || *vidDur != 10 {
+		t.Errorf("video duration = %v, want 10 (durée connue même sans start)", vidDur)
+	}
+}
+
+func TestComputeMediaEnd_UnknownKind_AllNull(t *testing.T) {
+	start := time.Date(2025, 1, 10, 14, 30, 0, 0, time.UTC)
+	end, dur := computeMediaEnd("???", &start, 5, true)
+	if end != nil || dur != nil {
+		t.Errorf("kind inconnu : end=%v, dur=%v ; want nil/nil", end, dur)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SanitizeMediaTimezone
 // ─────────────────────────────────────────────────────────────────────────────
 

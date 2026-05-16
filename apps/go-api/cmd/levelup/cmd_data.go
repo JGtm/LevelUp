@@ -147,7 +147,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	titleSlug := fs.String("title", title.DefaultSlug, "Slug du titre (ex: halo_infinite)")
 	force := fs.Bool("force-rescan", false, "Réindexer tous les fichiers")
 	bufMin := fs.Int("buffer-min", 2, "Buffer autour de la fenêtre match pour l'association (minutes)")
-	capturesDir := fs.String("captures-dir", "", "Dossier contenant les captures du joueur (optionnel, remplace le chemin interne)")
+	capturesDir := fs.String("captures-dir", "", "Dossier contenant les captures du joueur (optionnel, surcharge app_settings.json:media_captures_base_dir)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -155,9 +155,16 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("--gamertag est obligatoire")
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
-	resolvedCapturesDir := pr.PlayerCapturesDir(*titleSlug, *gamertag)
-	if *capturesDir != "" {
+	// Priorité : flag CLI > app_settings.json:media_captures_base_dir > fallback
+	// interne PlayerCapturesDir. La centralisation par ResolveCapturesDir
+	// garantit qu'on partage le même comportement que les handlers HTTP et
+	// que le scanner d'index.
+	var resolvedCapturesDir string
+	switch {
+	case *capturesDir != "":
 		resolvedCapturesDir = *capturesDir
+	default:
+		resolvedCapturesDir = pr.ResolveCapturesDir(*titleSlug, *gamertag, cfg.MediaCapturesBaseDir)
 	}
 	result, err := ops.IndexMedia(ops.MediaIndexOptions{
 		Gamertag:            *gamertag,

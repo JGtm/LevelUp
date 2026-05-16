@@ -1060,3 +1060,169 @@ func TestMediaFilters_Sql_SelectsNullPlayerSlugInLegacy(t *testing.T) {
 		t.Errorf("expected NULL AS player_slug for legacy schema, got: %s", q)
 	}
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Regression : déterminisme du tri (bug "page Media réorganisée au refresh")
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Sans tiebreaker stable, DuckDB est libre de retourner les lignes à
+// capture_*/mtime/indexed_at égaux dans un ordre arbitraire entre deux
+// exécutions de la query — symptôme observé : la galerie se réordonnait au
+// rafraîchissement sans qu'aucun filtre ne change. Le fix ajoute
+// `mf.file_path ASC` comme tiebreaker final dans buildQ37MediaQuery.
+
+func newTestPlayerDBForStabilityScenario(t *testing.T) *PlayerDB {
+	t.Helper()
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	for _, q := range []string{
+		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_files`,
+		`DELETE FROM shared.match_registry`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// 5 médias avec EXACTEMENT le même capture_end_utc et aucun match associé.
+	// Sans tiebreaker, l'ordre retourné dépend du plan d'exécution DuckDB et
+	// peut varier entre deux invocations. Avec le tiebreaker file_path ASC,
+	// l'ordre attendu est /m1.mp4 < /m2.mp4 < /m3.mp4 < /m4.mp4 < /m5.mp4 quel
+	// que soit l'ordre d'insertion.
+	mediaIDs := []string{"sb1", "sb2", "sb3", "sb4", "sb5"}
+	paths := []string{"/m3.mp4", "/m1.mp4", "/m5.mp4", "/m2.mp4", "/m4.mp4"} // insertion désordonnée volontaire
+	for i, id := range mediaIDs {
+		if _, err := social.Exec(ctx,
+			`INSERT INTO media_files (id, player_slug, file_path, file_name, kind, capture_end_utc, liked)
+			VALUES (?, ?, ?, ?, 'video', '2025-01-10 14:30:00+00', FALSE)`,
+			id, mediaTestPlayerSlug, paths[i], paths[i],
+		); err != nil {
+			t.Fatalf("insert media %s: %v", id, err)
+		}
+	}
+
+	return &PlayerDB{
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		XUID: mediaTestPlayerXUID, Gamertag: mediaTestPlayerSlug, TitleSlug: titlepkg.DefaultSlug,
+	}
+}
+
+// TestMediaFilters_Stable_TieBreakerFilePath vérifie que des médias à
+// timestamps identiques sont retournés dans un ordre stable et alphabétique
+// par file_path (tiebreaker final du ORDER BY).
+func TestMediaFilters_Stable_TieBreakerFilePath(t *testing.T) {
+	pdb := newTestPlayerDBForStabilityScenario(t)
+	repo := NewMediaRepo(pdb)
+
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	// 5 médias à capture_end_utc identique → tri 100 % défini par file_path ASC.
+	assertOrder(t, rows,
+		[]string{"/m1.mp4", "/m2.mp4", "/m3.mp4", "/m4.mp4", "/m5.mp4"},
+		"tiebreaker file_path ASC")
+}
+
+// TestMediaFilters_Sort_PrefersCaptureStartUtc vérifie que le tri utilise
+// `capture_start_utc` en priorité 1 du COALESCE — la donnée canonique
+// alimentée par insertMediaFile. Sans ce fix, le tri retombait sur
+// indexed_at (= NOW() au scan) pour tous les médias dont capture_end_utc et
+// mtime étaient NULL, donnant un "ordre d'indexation" arbitraire.
+//
+// Setup : 2 médias avec capture_start et capture_end inversés sémantiquement.
+//   - M1 : start=2025-01-10 14:00, end=2025-01-10 17:00 (longue vidéo)
+//   - M2 : start=2025-01-10 15:00, end=2025-01-10 15:30 (courte vidéo)
+// Tri DESC par capture_start_utc → M2 (15:00) avant M1 (14:00).
+// Si le tri utilisait capture_end_utc en priorité, M1 (17:00) serait avant M2 (15:30).
+func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
+	player := openMemDB(t)
+	shared := openMemDB(t)
+	social := openMemDB(t)
+	meta := openMemDB(t)
+
+	seedSharedDBSchema(t, shared)
+	seedSharedDBSchema(t, social)
+	seedSharedSocialSchema(t, social)
+	seedMetaDBSchema(t, meta)
+
+	ctx := context.Background()
+	for _, q := range []string{
+		`DELETE FROM media_match_associations`,
+		`DELETE FROM media_files`,
+		`DELETE FROM shared.match_registry`,
+	} {
+		if _, err := social.Exec(ctx, q); err != nil {
+			t.Fatalf("wipe: %v", err)
+		}
+	}
+
+	// M1 : start tôt, end tard (longue vidéo)
+	if _, err := social.Exec(ctx,
+		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind,
+			capture_start_utc, capture_end_utc, duration_seconds, liked)
+		VALUES ('m1', ?, '/m1.mp4', 'm1.mp4', 'video',
+			'2025-01-10 14:00:00+00', '2025-01-10 17:00:00+00', 10800.0, FALSE)`,
+		mediaTestPlayerSlug,
+	); err != nil {
+		t.Fatalf("insert M1: %v", err)
+	}
+	// M2 : start après M1, mais end plus tôt que M1 (courte vidéo)
+	if _, err := social.Exec(ctx,
+		`INSERT INTO media_files (id, player_slug, file_path, file_name, kind,
+			capture_start_utc, capture_end_utc, duration_seconds, liked)
+		VALUES ('m2', ?, '/m2.mp4', 'm2.mp4', 'video',
+			'2025-01-10 15:00:00+00', '2025-01-10 15:30:00+00', 1800.0, FALSE)`,
+		mediaTestPlayerSlug,
+	); err != nil {
+		t.Fatalf("insert M2: %v", err)
+	}
+
+	pdb := &PlayerDB{
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		XUID: mediaTestPlayerXUID, Gamertag: mediaTestPlayerSlug, TitleSlug: titlepkg.DefaultSlug,
+	}
+	repo := NewMediaRepo(pdb)
+	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 100, 0)
+	if err != nil {
+		t.Fatalf("LoadMediaFiles: %v", err)
+	}
+	// Tri DESC par capture_start_utc :
+	//   M2.start 15:00 > M1.start 14:00 → M2 en premier.
+	// Si capture_end_utc dominait, M1.end 17:00 > M2.end 15:30 → M1 en premier.
+	assertOrder(t, rows, []string{"/m2.mp4", "/m1.mp4"},
+		"sort=date_desc must use capture_start_utc as primary key")
+}
+
+// TestMediaFilters_Stable_ReproducibleAcrossCalls vérifie que la query
+// retourne le même ordre sur N exécutions consécutives — preuve directe de la
+// régression "réorganisation au refresh".
+func TestMediaFilters_Stable_ReproducibleAcrossCalls(t *testing.T) {
+	pdb := newTestPlayerDBForStabilityScenario(t)
+	repo := NewMediaRepo(pdb)
+
+	first, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 100, 0)
+	if err != nil {
+		t.Fatalf("first call: %v", err)
+	}
+	for i := 0; i < 10; i++ {
+		next, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 100, 0)
+		if err != nil {
+			t.Fatalf("call %d: %v", i+2, err)
+		}
+		if !sameOrder(first, next) {
+			t.Errorf("call %d: order divergent — first=%v vs got=%v",
+				i+2, pathsOf(first), pathsOf(next))
+		}
+	}
+}

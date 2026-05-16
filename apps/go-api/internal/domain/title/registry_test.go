@@ -254,6 +254,31 @@ func TestPathResolver_PlayerCapturesDir(t *testing.T) {
 	}
 }
 
+func TestPathResolver_ResolveCapturesDir(t *testing.T) {
+	pr := NewPathResolver("/repo", NewRegistry())
+
+	// baseDir vide → fallback PlayerCapturesDir (chemin interne au repo).
+	gotFallback := pr.ResolveCapturesDir("halo_infinite", "TestGT", "")
+	wantFallback := filepath.Join("/repo", "data", "titles", "halo_infinite", "players", "TestGT", "captures")
+	if gotFallback != wantFallback {
+		t.Errorf("fallback: got %q, want %q", gotFallback, wantFallback)
+	}
+
+	// baseDir rempli → {baseDir}/{gamertag}, indépendant du repoRoot et du titleSlug.
+	gotConfigured := pr.ResolveCapturesDir("halo_infinite", "TestGT", "C:\\Videos\\Captures")
+	wantConfigured := filepath.Join("C:\\Videos\\Captures", "TestGT")
+	if gotConfigured != wantConfigured {
+		t.Errorf("configured: got %q, want %q", gotConfigured, wantConfigured)
+	}
+
+	// Garde-fou : ResolveCapturesDir(_, _, "") doit retourner exactement
+	// PlayerCapturesDir, jamais un autre nom de sous-dossier (ex. "media").
+	// Empêche la régression observée sur data/titles/.../{gamertag}/media/.
+	if pr.ResolveCapturesDir("halo_infinite", "Gt", "") != pr.PlayerCapturesDir("halo_infinite", "Gt") {
+		t.Error("fallback doit être strictement égal à PlayerCapturesDir")
+	}
+}
+
 func TestPathResolver_DBProfilesPath(t *testing.T) {
 	r := NewRegistry()
 	pr := NewPathResolver("/repo", r)
