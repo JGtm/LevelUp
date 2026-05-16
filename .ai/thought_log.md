@@ -1,3 +1,120 @@
+## [2026-05-16] fix(media) — résolution uniforme du dossier captures (3 call-sites alignés)
+
+**Statut** : Complété.
+
+**Contexte** : User a remarqué un dossier `data/titles/halo_infinite/players/JGtm/media/` qui n'aurait pas dû exister (sa config `media_captures_base_dir = C:\Users\Guillaume\Videos\Captures` externalise les médias hors du repo). Audit révèle **3 chemins de code divergents** pour résoudre le dossier captures d'un joueur :
+
+| Call-site | `media_captures_base_dir` rempli | Fallback (settings vide) |
+|---|---|---|
+| Upload + URL serving (`handlers/media.go`) | `{baseDir}/{gamertag}/` | `PlayerCapturesDir` → `.../{gamertag}/`**`captures`**`/` |
+| Scan/Reset index (`service/media_index_service.go`) | `{baseDir}/{gamertag}/` | `filepath.Join(playerDir, `**`"media"`**`)` ← hardcodé, divergent |
+| CLI `levelup index-media` (`cmd_data.go`) | n/a — **ne lisait jamais le settings** | `PlayerCapturesDir` → `.../captures/` |
+
+Cause directe du dossier `JGtm/media/` : un `ScanAllMedia`/`ResetAndReindex` déclenché à un moment où `cfg.MediaCapturesBaseDir` était vide (settings non chargés, race au boot, test) a fait `filepath.Join(playerDir, "media")` et créé un dossier fantôme jamais relu par le serveur HTTP (qui lui cherche `captures/`).
+
+**Décision technique principale** :
+
+- **Helper canonique** : ajout de `PathResolver.ResolveCapturesDir(titleSlug, gamertag, baseDir)` dans `domain/title/registry.go`. Règle unique : baseDir non vide → `{baseDir}/{gamertag}`, sinon fallback `PlayerCapturesDir`. Tous les call-sites passent par ce helper — interdit de re-hardcoder un nom de sous-dossier (la garde-fou est dans `TestPathResolver_ResolveCapturesDir` : `ResolveCapturesDir(_, _, "")` doit être strictement égal à `PlayerCapturesDir`, jamais `"media"`).
+- **`service/media_index_service.go`** : les 2 blocs `if capturesBaseDir != "" { ... } else { filepath.Join(playerDir, "media") }` remplacés par un seul `pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)`. C'est ce changement qui empêche la régression du dossier fantôme.
+- **`handlers/media.go`** : refactor de la paire `(h *MediaHandler).resolveCapturesDir` + package-level `resolveCapturesDir` pour déléguer à un nouvel adapter `resolveCapturesDirWith(repoRoot, titleSlug, gamertag, baseDir)` qui appelle le helper. Les tests existants `TestResolveCapturesDir_WithTitle/WithoutTitle` passent inchangés (mêmes assertions de chemin).
+- **CLI `levelup index-media`** : ajout du champ `AppConfig.MediaCapturesBaseDir` (snapshot au boot) + helper `loadMediaCapturesBaseDir(settingsPath)` dans `internal/config/config.go` (suit le pattern de `loadUserTimezone`/`loadCSRSeasonID`). `runIndexMedia` priorise : flag CLI `--captures-dir` > `cfg.MediaCapturesBaseDir` > fallback interne via `ResolveCapturesDir`. Avant, la CLI écrivait toujours sous `data/titles/...` même quand l'utilisateur avait configuré son dossier `Videos`.
+- **Pas de hardcode** : la chaîne `"media"` est éliminée de tous les call-sites de production ; seule `"captures"` subsiste dans `PlayerCapturesDir` comme convention interne single-source.
+
+**Résultats observés** :
+
+- `go build ./...` : OK.
+- `go test ./internal/domain/title/... ./internal/config/... ./internal/api/handlers/... ./internal/service/...` : tous verts.
+- Nouveau test `TestPathResolver_ResolveCapturesDir` couvre les 2 branches (configuré, fallback) + garde-fou anti-régression.
+
+**Conclusion / prochaine étape** : tous les chemins d'écriture (upload, scan, reindex, CLI) résolvent maintenant le même chemin pour un même `(titleSlug, gamertag)` — un dossier fantôme comme `JGtm/media/` ne peut plus apparaître. Pas commité sur la branche courante `fix/csr-protect-from-lusr-overwrite` (du WIP non-lié est en cours). Si on veut un nettoyage rétroactif des dossiers `media/` orphelins, un script séparé sera à ajouter (hors scope ici — l'utilisateur a déjà supprimé le sien manuellement).
+
+---
+
+## [2026-05-16] fix(media) — déterminisme du tri + alimentation timestamps complets
+
+**Statut** : Complété.
+
+**Contexte** : User report sur la page Médias — la galerie se "réorganisait" au rafraîchissement sans qu'aucun filtre ne change. User a challenged l'hypothèse "timestamps identiques" en disant que chaque média a un timestamp unique. Investigation plus profonde a révélé deux bugs combinés :
+
+1. **`insertMediaFile` (ops/media.go) n'écrivait QUE `capture_start_utc`** lors de l'INSERT — jamais `capture_end_utc`, jamais `mtime`. Seules les tests d'intégration alimentaient ces colonnes via des INSERT explicites.
+
+2. **Le `ORDER BY` de la query médias (`timeOrderExpr` dans `queries_home_citations.go:596`)** était `COALESCE(mf.capture_end_utc, mf.mtime, mf.indexed_at) DESC` — sans `capture_start_utc`, qui était pourtant la seule colonne réellement alimentée. Le COALESCE retombait systématiquement sur `mf.indexed_at` (= `NOW()` à l'INSERT). Sur un scan de lot, des dizaines de médias avaient des `indexed_at` quasi-identiques → DuckDB libre de retourner ces lignes dans n'importe quel ordre. Aucun tiebreaker stable (file_path) non plus.
+
+**Décision technique principale** :
+
+- **`timeOrderExpr`** : préfixé par `mf.capture_start_utc` (la seule colonne réellement alimentée jusqu'ici). Désormais : `COALESCE(capture_start_utc, capture_end_utc, mtime, indexed_at)`.
+- **Tiebreaker stable** : `, mf.file_path ASC` ajouté en fin de `ORDER BY` dans `buildQ37MediaQuery` (couvre toutes les variantes : date_desc/asc, map_asc, mode_asc + tous les groupBy). `file_path` est UNIQUE sur `media_files` → tri totalement déterministe.
+- **QUALIFY ROW_NUMBER()** : `ABS(... - mf.capture_end_utc)` remplacé par `ABS(... - COALESCE(mf.capture_end_utc, mf.capture_start_utc))` pour que la sélection d'association (quand un média a plusieurs matchs) ait une distance valide même si `capture_end_utc` est NULL (legacy data avant ce fix).
+- **`insertMediaFile`** alimente maintenant à l'INSERT :
+  - `duration_seconds` ← `0` pour image, `ffprobe -show_entries format=duration` pour vidéo.
+  - `capture_end_utc` ← `capture_start_utc` pour image (instantané), `capture_start_utc + duration` pour vidéo.
+  - Logique end/duration extraite dans `computeMediaEnd(kind, captureAt, duration, durationKnown)` — pure, testable sans ffprobe ni filesystem.
+  - Le UPDATE (path stem conflict, conversion de format) met aussi à jour `duration_seconds` et `capture_end_utc` via `COALESCE(?, ...)`.
+  - **`media_files.mtime` non alimenté** (décision après échange avec user) : sur un fichier uploadé via `os.WriteFile`, le mtime FS résultant = heure d'upload, pas l'heure de capture (le mtime PC original est perdu sans `os.Chtimes` explicite après WriteFile). L'écrire en DB serait un faux signal. `capture_start_utc` (regex filename / `file.lastModified` client) est la donnée canonique pour ce besoin et reste en tête du `timeOrderExpr`. Si on veut un jour un mtime fiable, il faudra ajouter `os.Chtimes(dest, lastModified, lastModified)` après `os.WriteFile` dans `UploadMedia`.
+- **Helper `probeVideoDuration`** : appelle `ffprobe` (déjà requis pour les miniatures), best-effort — échec silencieux → on laisse durée/end NULL, le tri retombera sur capture_start_utc.
+- **Schéma de test** : ajout de `capture_start_utc TIMESTAMPTZ` + `duration_seconds DOUBLE` dans `seedSharedSocialSchema` (sinon les query buildaient des colonnes inexistantes en test).
+
+**Résultats observés** :
+
+- `go test ./internal/ops/... ./internal/platform/duckdb/...` : OK.
+- `go test -tags=integration ./internal/platform/duckdb/ -run TestMediaFilters` : OK (incl. 2 nouveaux tests `TestMediaFilters_Stable_TieBreakerFilePath` et `TestMediaFilters_Stable_ReproducibleAcrossCalls`).
+- 5 nouveaux tests unitaires pour `computeMediaEnd` (image, vidéo avec/sans durée, capture_at nil, kind inconnu).
+- Tests existants `queries_media_test.go` mis à jour avec assertion sur le tiebreaker `, mf.file_path ASC\nLIMIT ?` — verrou contractuel anti-régression.
+
+**Conclusion / prochaine étape** : La galerie ne devrait plus se réorganiser au refresh ; les médias indexés en lot conservent un ordre stable défini par file_path (en plus de l'ordre temporel). Pour les médias **déjà indexés** avant ce fix (avec `mtime`/`capture_end_utc` à NULL), le tri retombera correctement sur `capture_start_utc` (qui était bien alimenté) → comportement immédiatement correct sans backfill. Si on veut peupler les colonnes manquantes sur le legacy, un `backfill_media_timestamps` séparé serait à créer (non couvert par ce fix — pas nécessaire pour résoudre le bug user). Pas commité sur la branche courante `fix/csr-protect-from-lusr-overwrite` (du WIP non-lié est en cours).
+
+---
+
+## [2026-05-16] feat(timeseries/engagement) — binning serveur adaptatif (session/week/month) pour Mock 11
+
+**Statut** : Complété.
+
+**Contexte** : Suite immédiate du câblage filtres (entrée suivante). Question user : "ça permet une bonne lisibilité mais si on a des centaines de matchs, il y aura un groupement de fait ou on ignore certains matchs ?" Diagnostic : avec l'implémentation initiale `limit=30`, on faisait `sortDesc + truncate[:30]` — les matchs plus anciens du scope filtré étaient **silencieusement ignorés**, aucune agrégation. Comportement honnête pour "les N derniers" mais trompeur quand un filtre période large est actif.
+
+**Décision technique principale** : Aligner sur le pattern `buildSoloSessionPerf` de `TimeseriesService.GetPage` — granularité adaptative côté serveur :
+- `len(filtered) ≤ limit` → granularity="match" (1 point = 1 match, comportement initial)
+- sinon → tentative session_label (`aggregateEngagementBySession`), week ISO (`rollupEngagementByPeriod("week")`), puis month, en cascade jusqu'à `≤ limit` points
+- Borne perf : `engagementWorkCap=200` matchs maximum pour le compute par-match (chaque match = 3 queries DB + ComputeEngagementScore, ~10-30ms). Si scope > 200, on garde les 200 plus récents et `TruncatedToRecent` est exposé dans la réponse pour transparence UI
+
+**Implémentation** :
+- Réponse migrée d'un array `[]EngagementMatchSummary` vers un wrapper `EngagementTimeseriesResponse { granularity, points, total_matches, truncated_to_recent? }`. Champ `match_count` ajouté à `EngagementMatchSummary` (1 pour match, >1 pour agrégat). Pour les agrégats, `match_id` est vide et `label` porte le session_label / "2026-S18" / "2026-05".
+- Helpers `aggregateEngagementBySession` et `rollupEngagementByPeriod` extraits dans un fichier dédié [engagement_timeseries_binning.go](apps/go-api/internal/service/engagement_timeseries_binning.go) (pure logic, testable sans DB). Moyenne arithmétique simple sur les paces ; engagement_score = moyenne des scores non-nuls (nil si aucun). Matchs sans session_label → bucket singleton (préfixe `_match:`) pour ne pas les perdre — la cascade week/month régularise.
+- Service `GetTimeseries` réécrit en deux temps : `resolveFilteredRowsDesc` (rend les `StatsMatchRow` PvP filtrés desc, ou fallback `[]string` quand `playerMatchesRepo` nil) → `computeSummariesChronoAsc` → cascade binning. Fallback mock-only force granularity="match" car pas de session_label dispo.
+- Frontend : `EngagementTimeseriesSection` lit `data.points`, dérive un sous-titre dynamique ("Par match — 28 matchs", "Groupé par semaine — basé sur les 200 matchs les plus récents sur 412", etc.). Labels X switchent entre `#N\\nMap` (granularité match) et `m.label` brut (agrégats).
+
+**Résultats observés** :
+- `go build` + `go vet` clean.
+- 3 nouveaux tests unitaires (`engagement_timeseries_binning_test.go`) : agrégation session avec moyenne pondérée + singleton fallback ; rollup hebdo/mensuel avec scores ; cohérence ISO week (lundi = bucket start). Tous passent.
+- `go test ./internal/service/... ./internal/api/handlers/...` : OK (32 tests service au total).
+- `tsc --noEmit` apps/web clean. `vitest run` engagement+timeseries : 32/32.
+
+**Conclusion / prochaine étape** : Le chart "Engagement" s'auto-adapte désormais — sur "Toutes périodes" avec 500+ matchs, on verra ~12 points mensuels au lieu d'une fenêtre arbitraire de 30 récents. Le `match_count` est dispo côté API mais pas encore exploité côté UI (tooltip "n=N", opacité variable des markers) — extension naturelle si on veut renforcer le signal de densité. Cap `workCap=200` peut être révisé selon les retours perf en prod ; pour l'instant un sample des 200 plus récents reste représentatif de la forme actuelle même en cas de saturation.
+
+---
+
+## [2026-05-16] fix(timeseries/engagement) — câblage chart Engagement aux filtres de la page
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Séries temporelles (onglet Progression), le chart "Engagement" (`EngagementCurve` via `EngagementTimeseriesSection`) restait figé sur les 30 derniers matchs PvP du joueur quel que soit le filtre actif. Diagnostic : la chaîne ignorait les filtres sur 3 niveaux — composant (pas de `filters`/`filterHash` reçus), hook (`useEngagementTimeseries(slug, limit)` sans scope), backend (`GET /engagement/timeseries?limit=N` sans body).
+
+**Décision technique principale** : Aligner le contrat sur `POST /pages/timeseries` :
+- Route bascule de `GET` à `POST /players/{slug}/engagement/timeseries` avec body `{filters: FilterContextInput, limit?: int}` (`EngagementTimeseriesRequest` côté Go et TS, body vide toléré pour compat smoke).
+- `PlayerEngagementService.GetTimeseries(ctx, filters, limit)` : si `playerMatchesRepo` câblé → load canonical via `LoadPlayerMatches` + `StatsMatchRowsFromCanonical` + `filterStatsMatchRows` (même pipeline que `TimeseriesService.GetPage`), trie par `start_time` desc, tronque à N puis ré-inverse en chronologique croissant ; sinon fallback `ListRecentPvPMatchIDs` (préserve mocks de test sans canonical loader).
+- `ServiceRegistry.Engagement` injecte `playerMatchesAdapterFor(pdb)` + `pdb.TitleSlug` via nouveau setter `WithPlayerMatchesRepo`.
+- Frontend : `useEngagementTimeseries(slug, filters, filterHash, limit?)` POST avec `filterHash` dans le `queryKey` (invalidation correcte au moindre changement de filtre). `EngagementTimeseriesSection` reçoit `filters` + `filterHash` en props ; `TimeseriesPage` passe `soloFilterContext` + `filterContextHash` au callsite unique.
+
+**Résultats observés** :
+- `go build ./...` + `go vet ./...` clean.
+- `go test ./internal/service/... ./internal/api/handlers/...` : OK (tests existants couvrent `engagement_test.go` qui ne testait pas `GetEngagementTimeseries` — pas de régression).
+- `tsc --noEmit` apps/web clean.
+- `vitest run` engagement + timeseries : 32/32 tests passent.
+- OpenAPI yaml mis à jour (operationId `postEngagementTimeseries`, body schema).
+
+**Conclusion / prochaine étape** : Le chart Engagement réagit désormais aux mêmes filtres que les autres charts de l'onglet Progression. Fallback `ListRecentPvPMatchIDs` conservé volontairement pour ne pas casser les mocks de test ; à supprimer quand on aura assuré que tous les chemins ont un `PlayerMatchesRepo` câblé. Côté UX, attention : `limit=30` peut rendre moins de 30 points si le filtre est strict (le pipeline filtre avant troncature).
+
+---
+
 ## [2026-05-16] planning — 3 sprints futurs autour de l'auth Xbox / multi-user
 
 **Statut** : Planification uniquement (aucun code modifié). Plans persistés dans `.ai/` pour exécution future, indépendants de la branche courante `fix/csr-protect-from-lusr-overwrite`.
