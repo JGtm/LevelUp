@@ -212,3 +212,90 @@ Pour garder ce sprint focused, sont **explicitement hors scope** :
 - Use cases qui pousseraient à l'implémenter (proxies d'entreprise, tenant Azure pro restreint, import depuis un autre outil) sont **anecdotiques pour un usage Halo perso**.
 - Coût/bénéfice défavorable : surface d'attaque (token volé pasté dans la mauvaise tab), UX confuse, code à maintenir, zéro user pratiqué.
 - **Décision** : on attendra qu'un utilisateur réel le demande pour rouvrir le sujet. Si ça arrive, ajouter un mode admin "Import tokens" caché derrière un flag, jamais en flow d'inscription standard.
+
+---
+
+## 12. Subscription RTA auto-provisionnée après login
+
+**Objectif** : dès qu'un user finit son login SSO Xbox, son XUID est automatiquement souscrit à RTA Xbox Live → quand il termine un match Halo, l'app reçoit un push WebSocket → auto-sync immédiat. Plus besoin de cliquer "Sync".
+
+### Ce qui existe déjà
+
+| Composant | Localisation | Statut |
+|---|---|---|
+| `RTAClient` WebSocket | [apps/go-api/internal/presence/rta_client.go](apps/go-api/internal/presence/rta_client.go) | OK, supporte multi-XUID sur une seule connexion |
+| `AcquireXSTSForRTA(accessToken)` | référencé [cmd/server/main.go:729](apps/go-api/cmd/server/main.go#L729) | OK, échange access_token MS → XSTS Xbox Live audience |
+| Persistance XSTS + UserHash | `watcher_tokens.json` via `store.UpdateXSTS()` | OK mais **mono-user** aujourd'hui |
+| `RefreshLoop` proactif | `auth.NewRefreshLoop()` | OK, XSTS rafraîchi avant expiration (55min) |
+| Trigger auto-sync sur event RTA | watcher daemon | OK |
+
+### Le trou actuel
+
+`provider.Exchange(accessToken)` retourne uniquement `SpartanToken + ClearanceToken` (audience Halo, `prod.xsts.halowaypoint.com`). Le **XSTS Xbox Live** (audience `http://xboxlive.com`, nécessaire pour RTA) est jeté en chemin alors qu'on a le `accessToken` Microsoft sous la main. 1 appel HTTP de plus = tout est en place.
+
+### PR 2.5 — Câbler RTA dans le flow SSO
+
+À insérer entre PR 2 (handler login) et PR 3 (frontend) du plan SSO.
+
+**Changements dans `pollDeviceFlow`** (auth_xbox.go) :
+```go
+// Après provider.Exchange() qui retourne tokens Halo + identité :
+xstsRTA, err := auth.AcquireXSTSForRTA(ctx, accessToken)
+if err != nil {
+    slog.Warn("rta provisioning failed, user logged in without auto-sync", ...)
+    // NON BLOQUANT — l'user peut quand même utiliser l'app
+} else {
+    watcherStore.UpsertUserXSTS(xuid, gamertag, xstsRTA, rotatedRefreshToken)
+    watcher.SubscribeXUID(xuid)  // démarre la souscription RTA immédiate
+}
+```
+
+**Changements dans le watcher store** :
+- Étendre `watcher_tokens.json` mono-user → format multi-user (`map[xuid]TokenSet`)
+- Étendre `RefreshLoop` → 1 loop par user (ou 1 loop unique qui itère sur tous les users)
+
+### Stratégie multi-user RTA : décision à trancher
+
+C'est le vrai sujet sensible. Trois stratégies possibles :
+
+| Stratégie | Mécanisme | Avantages | Inconvénients |
+|---|---|---|---|
+| **A — 1 RTA par user** (simple) | Chaque user authentifie sa propre WebSocket et ne subscribe que son XUID | Toujours fonctionne, indépendant du graphe social Xbox, pas de coordination | N WebSockets + N refresh loops (négligeable pour un groupe d'amis ~10-20 users) |
+| **B — 1 RTA "tracker" pour le groupe** | Un user désigné authentifie la WS et subscribe les XUID de tous les amis | 1 seule connexion | Nécessite que le tracker ait les autres dans ses *Xbox friends* (sinon la subscription est rejetée). Si le tracker se déconnecte/supprime son compte, tout le monde perd l'auto-sync. Réélection complexe. |
+| **C — Hybride avec auto-élection** | Le premier user à se logger devient tracker, les suivants piggyback s'ils ont une relation Xbox avec le tracker, sinon ouvrent leur propre RTA | Optimise sans tout casser | Complexité élevée, dépendance au social graph Xbox |
+
+### Ton point clé : on ne sait pas qui rejoint qui
+
+Tu as raison — le modèle "1 RTA par groupe" suppose qu'on sait identifier les groupes à l'avance, ce qui n'est pas le cas. On découvre les relations au fur et à mesure que les users s'inscrivent et s'ajoutent en amis (sprint `SPRINT_MULTIUSER_ACL.md`).
+
+**Reco** : **démarrer en stratégie A (1 RTA par user)**. Raisons :
+- Pour un groupe d'amis de taille raisonnable (10-30 users max), le coût de N WebSockets est négligeable côté Xbox Live (qui supporte des millions de connexions concurrentes) et côté ton serveur (Go gère 10k+ WS sans broncher).
+- Aucune dépendance au graphe social Xbox → moins de cas qui plantent silencieusement.
+- **Pas d'effort de coordination** = pas de bugs de coordination.
+- Permet de livrer la feature dès le SSO sans dépendre du sprint ACL.
+
+**Optimisation possible plus tard** (stratégie C) : si tu observes un coût RTA réel, ajouter une logique d'auto-élection :
+- Quand un user s'ajoute en ami avec un autre via `SPRINT_MULTIUSER_ACL` *et* que les deux sont aussi amis sur Xbox Live, élire le plus ancien comme tracker pour les deux, fermer la WS du plus récent.
+- Si le tracker se déconnecte, le piggyback réouvre sa propre WS automatiquement.
+
+Mais à mon avis tu n'iras jamais jusque-là — la stratégie A est suffisante pour ton cas d'usage.
+
+### Pièges à éviter
+
+1. **XSTS expire vite (~1h)** : le `RefreshLoop` doit tourner par user. Ne pas faire un single loop global qui rate certains users.
+2. **Échec RTA non bloquant** : si `AcquireXSTSForRTA` échoue (Xbox Live indispo, scope manquant), l'user doit quand même pouvoir se connecter. Logger un warning, pas une erreur.
+3. **Scope OAuth** : vérifier que `Xboxlive.signin` suffit pour les deux audiences (Halo + Xbox Live RTA). Sinon ajouter `Xboxlive.offline_access` (déjà présent dans [oauth_refresh.go:30](apps/go-api/internal/platform/auth/oauth_refresh.go#L30)).
+4. **Démarrage server** : au boot, recharger toutes les sessions XSTS persistées depuis `watcher_tokens.json` et resubscribe chaque XUID. Sinon les users tracked silencieusement perdus.
+5. **Suppression d'utilisateur** : `userStore.Delete(username)` doit cascade → `watcherStore.RemoveUserXSTS(xuid)` + `watcher.UnsubscribeXUID(xuid)`.
+6. **Logout** : décider du comportement. Reco = **conserver l'abonnement RTA actif même après logout** (la sync continue en arrière-plan). Pour stopper la collecte, l'user doit explicitement "supprimer son compte".
+
+### Estimation effort
+
+| Tâche | Effort |
+|---|---|
+| Refactor `watcher_tokens.json` mono→multi-user | 0.5j |
+| Câblage `AcquireXSTSForRTA` dans flow SSO | 0.5j |
+| Reload abonnements RTA au boot | 0.3j |
+| Tests d'intégration (login → subscription RTA effective) | 0.5j |
+
+**Total** : ~2j pour PR 2.5. Ajoute peu au sprint global (~1.5j → ~3.5j MVP).
