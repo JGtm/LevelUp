@@ -65,13 +65,12 @@ function UsersTab({ merged, handleChange, t }: TabProps) {
 
 function LabTab({ t }: { t: ReturnType<typeof getSettingsText> }) {
   return (
-    <Card className="border-border bg-card">
-      <CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{t.instanceLabel}</p>
-          <p className="mt-2 text-lg font-semibold text-foreground">{t.instanceTitle}</p>
-          <p className="mt-1 text-sm text-muted-foreground">{t.instanceDescription}</p>
-        </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{t.instanceTitle}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-muted-foreground">{t.instanceDescription}</p>
         <Link to="/lab">
           <Button>{t.openLabButton}</Button>
         </Link>
@@ -142,15 +141,15 @@ export function SettingsPage() {
   if (isLoading) return null
 
   return (
-    <div className="flex flex-col">
+    <div className="relative flex flex-col">
       {saveStatus && (
-        <div className="flex justify-end px-6 pt-4">
+        <div className="pointer-events-none absolute right-6 top-4 z-10">
           {saveStatus === 'saved' ? (
-            <span className="text-sm text-success" role="status" aria-live="polite">
+            <span className="rounded-md bg-success/10 px-2 py-1 text-sm text-success shadow-sm" role="status" aria-live="polite">
               {t.savedStatus}
             </span>
           ) : (
-            <span className="text-sm text-destructive" role="alert">
+            <span className="rounded-md bg-destructive/10 px-2 py-1 text-sm text-destructive shadow-sm" role="alert">
               {t.errorStatus}
             </span>
           )}

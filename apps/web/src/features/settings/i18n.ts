@@ -28,7 +28,6 @@ export interface SettingsText {
   manualSyncDescription: string
 
   // Instance
-  instanceLabel: string
   instanceTitle: string
   instanceDescription: string
   openLabButton: string
@@ -238,7 +237,6 @@ const FR_TEXT: SettingsText = {
   manualSyncRunning: 'Synchronisation en cours…',
   manualSyncDescription: 'Lance une synchronisation delta immédiate pour tous les joueurs configurés.',
 
-  instanceLabel: 'Instance',
   instanceTitle: 'Lab interne',
   instanceDescription:
     "Ouvrir l'explorateur interne des métadonnées Waypoint, du diff OpenAPI et des diagnostics locaux.",
@@ -475,7 +473,6 @@ const EN_TEXT: SettingsText = {
   manualSyncRunning: 'Synchronisation running…',
   manualSyncDescription: 'Trigger an immediate delta sync for all configured players.',
 
-  instanceLabel: 'Instance',
   instanceTitle: 'Internal lab',
   instanceDescription:
     'Open the internal explorer for Waypoint metadata, OpenAPI diffs and local diagnostics.',
