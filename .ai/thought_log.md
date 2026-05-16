@@ -1,3 +1,338 @@
+## [2026-05-16] planning — 3 sprints futurs autour de l'auth Xbox / multi-user
+
+**Statut** : Planification uniquement (aucun code modifié). Plans persistés dans `.ai/` pour exécution future, indépendants de la branche courante `fix/csr-protect-from-lusr-overwrite`.
+
+**Contexte** : Discussion exploratoire sur le remplacement de la page de login username/password par un SSO Xbox / Microsoft. L'infrastructure auth est déjà 90% en place côté Go : app Azure enregistrée (`e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca`), providers MSAL + SISU fonctionnels, endpoints Device Code Flow opérationnels, `provider.Exchange()` qui retourne déjà XUID + gamertag. Le user a ajouté 4 idées connexes à arbitrer.
+
+**Décisions** :
+
+1. **`SPRINT_XBOX_SSO.md`** : plan principal. PR 1 (config + userstore XUID lookup) → PR 2 (handler Xbox login Device Code) → PR 3 (frontend). PR 4 optionnelle = upgrade Authorization Code Flow pour vraie UX redirect. Section §10 ajoutée : récupération d'une BDD orpheline par XUID via `shared.xuid_aliases`, cas central (pas un edge case) couvrant le scénario "user a une BDD existante sans tokens valides".
+
+2. **`SPRINT_OPENSPARTAN_IMPORT.md`** : plan séparé, post-SSO. Import depuis SQLite OpenSpartan (exception explicite à la règle "SQLite interdit"). 4 PRs : reader → mapper → service avec validation XUID → UI. Stratégie : skip si match déjà connu, sinon insert dans `shared.*` uniquement (pas dans `player.*`).
+
+3. **`SPRINT_MULTIUSER_ACL.md`** : plan séparé, **bloqué par le SSO** (sans SSO Xbox, ACL trivialement contournable). 6 PRs avec emphase forte sur l'enforcement backend (middleware sur toutes les routes `/players/{slug}`, jamais juste un masquage UI). Choix de design listés explicitement comme non tranchés : modèle symétrique vs unilatéral (reco : symétrique), granularité all-or-nothing (reco : MVP), admin bypass (reco : oui + audit log).
+
+4. **Saisie manuelle de tokens MSAL/refresh** : **décision = ne pas implémenter**. Le SSO Xbox EST le moyen propre. Workaround pour cas anecdotiques (proxies, tenants pro), coût/bénéfice défavorable, surface d'attaque inutile. À rouvrir uniquement si un user réel le demande.
+
+**Résultats observés** :
+- 3 fichiers `.ai/SPRINT_*.md` créés (~700 lignes au total).
+- Aucun code modifié, aucune branche créée.
+- Dépendances explicitées : SSO → ACL (bloque), SSO → OpenSpartan (profite mais bloque pas).
+
+**Conclusion / prochaine étape** : Plans prêts pour exécution future. Quand on attaque le sujet, démarrer par `feat/xbox-sso` depuis `main` (pas depuis la branche CSR courante). Réviser les "Avant de démarrer" en tête de chaque plan avant de coder, car certains points (statut app Azure, schéma OpenSpartan actuel, modèle d'autorisation final) peuvent évoluer d'ici là.
+
+---
+
+## [2026-05-16] feat(compare/face-à-face) — Enrichissement du joueur B remote par échantillon de matchs croisés
+
+**Statut** : Complété (backend uniquement, pas de changement front nécessaire).
+
+**Contexte** : Suite directe de la session précédente (N/A pour métriques locale-only). Pour un joueur B remote (Waypoint), les 4 métriques calculées depuis `shared.match_participants` (`max_killing_spree`, `avg_life_secs`, `perfect_kills_per_game`, `headshot_kills_per_game`) tombaient en N/A faute de DB locale propre à B. Or si A et B ont des matchs en commun, les rows de B sont déjà présentes dans `shared.match_participants` — on peut donc en extraire un échantillon partiel.
+
+**Décisions** :
+- Nouveau champ `IsLocalSample bool` sur `NormalizedPlayerStats` ([compare.go](apps/go-api/internal/domain/compare.go)), distinct de `IsLocal` : signal sémantique "B est remote mais les locale-only ont été calculées sur l'échantillon croisé". Les deux flags sont mutuellement exclusifs en pratique (si B est local, on ne fait pas l'échantillon).
+- ATH (`perf_ath`, `lusr_ath`, `career_rank`) **reste en N/A** même avec `IsLocalSample=true` — ce sont des stats de carrière globales non dérivables d'un échantillon.
+- `metricAvailability` étendu : signature passe à `(key, value, isLocal, isLocalSample)` ; pour `localOnlyMetrics`, dispo = `isLocal || isLocalSample`.
+- Type `CrossMatchSample` ajouté pour transporter l'agrégat repo→service.
+- `GetCrossMatchSample(ctx, xuidA, xuidB)` ajouté à `port.CompareRepository` ([repository.go](apps/go-api/internal/port/repository.go)).
+- Requête SQL ([compare_repo.go](apps/go-api/internal/platform/duckdb/compare_repo.go)) : auto-jointure sur `shared.match_participants` (pattern emprunté à `GetEncounterStats`) + LEFT JOIN sur `medals_earned` (medal_name_id=1512363953) pour `perfect_count`. Agrégats strictement identiques à `GetLocalStats` (`MAX max_killing_spree`, `AVG avg_life_seconds`, `AVG headshot_kills`, `AVG perfect_count`) — seul le périmètre change.
+- Service ([compare_service.go](apps/go-api/internal/service/compare_service.go)) : appel best-effort après `FetchRemoteStats` (dans la goroutine B, donc parallèle au load de A). Si `sample.MatchesCount > 0` : fusion des 4 champs + `IsLocalSample=true` + réorientation de `statsB.Matches` sur la taille de l'échantillon (pour que `sample_size_b` côté UI reflète la base réelle des locale-only, pas le total Waypoint).
+- Seuil = **1 match** : la note `(sur N parties)` côté UI signale déjà la qualité quand N<10, pas besoin de gating supplémentaire.
+
+**Résultats observés** :
+- `go build ./...` : OK.
+- `go test ./internal/service/... -run "TestBuildMetrics|TestCompareService" -v` : 6/6 passent, incluant le nouveau `TestBuildMetrics_IsLocalSample` qui vérifie 1) les 4 locale-only deviennent disponibles côté B avec `IsLocalSample=true`, 2) l'ATH reste indisponible côté B même dans ce cas.
+- Aucun changement frontend nécessaire : `value_b_available` devient simplement `true` pour ces métriques et `sample_size_b` continue d'alimenter la note `(sur N parties)`.
+
+**Conclusion** : Les joueurs croisés avec A montrent désormais des valeurs réelles (sur leur échantillon partagé) au lieu de N/A pour spree/life/perfect/headshots. ATH reste N/A — c'est attendu. Aucune perf à craindre : la requête réutilise exactement le pattern d'auto-jointure de `GetEncounterStats` qui tourne déjà en best-effort sur les mêmes tables. Piste future éventuelle : un seuil minimum d'échantillon (3 ? 5 ?) si le retour utilisateur révèle des valeurs "trop volatiles" sur 1-2 parties — facile à ajouter dans la condition `sample.MatchesCount > 0`.
+
+---
+
+## [2026-05-16] fix(compare/face-à-face/mirror) — Mise en valeur du top global parmi les 3 joueurs
+
+**Statut** : Complété.
+
+**Contexte** : En mode miroir (comparaison à 3), le joueur A central était systématiquement rendu en gras et coloré (`color: colorA + font-medium`), peu importe la métrique. Conséquence : impossible de savoir d'un coup d'œil lequel des 3 joueurs avait la meilleure valeur sur une ligne donnée. En mode 2 joueurs, le comportement était correct (seul le winner est mis en valeur).
+
+**Diagnostic** : [CompareMirrorRow.tsx](apps/web/src/features/compare/CompareMirrorRow.tsx) appliquait `font-medium + color: colorA` à A inconditionnellement, alors que B et C n'avaient leur style "gagnant" que conditionnellement (`winnerAB === 'b'`, `winnerAC === 'b'`). Asymétrie qui faisait perdre l'information de top.
+
+**Choix de design** : déterminer un **top global parmi A/B/C** côté frontend et n'appliquer le style "gagnant" qu'à ce top unique. Pour comparer 3 valeurs correctement il faut connaître le sens de la métrique (`lessIsBetter` pour deaths_per_game / rendement / damage_taken_per_game). Cette info était jusqu'ici uniquement utilisée côté Go dans `computeWinner` ; il a fallu l'exposer dans le payload.
+
+**Décisions techniques** :
+- Backend : ajout de `LessIsBetter bool` à [CompareMetricRow](apps/go-api/internal/domain/compare.go) (JSON `less_is_better`), renseigné depuis `d.lessIsBetter` dans `buildMetrics` ([compare_service.go](apps/go-api/internal/service/compare_service.go)). Coût : un champ, zéro logique nouvelle.
+- Frontend : helper pur `pickTopOfThree(rawA, rawB, rawC, availA, availB, availC, lessIsBetter)` dans `CompareMirrorRow` — trie les candidats *disponibles* selon `lessIsBetter` et renvoie `'a'|'b'|'c'|null`. `null` si moins de 2 candidats comparables OU si égalité au sommet (eps=0.001), pour ne mettre personne en valeur quand c'est ambigu.
+- Mise en valeur appliquée *uniquement* à `topPlayer`. Le joueur A n'a plus de style par défaut au centre — il garde sa position d'ancre via le layout (grille 5 colonnes) et le code couleur des barres de fond.
+- Les barres de gradient conservent leur logique (`winnerAB`/`winnerAC` indépendants pour les opacités), seul le rendu des **valeurs textuelles** s'aligne sur `topPlayer`.
+- `lessIsBetter` rétro-compat (`?? false`) côté front : un payload ancien sera traité comme "more is better" — choix conservateur.
+
+**Résultats observés** :
+- `go build ./...` + tests Go (`TestCompare*` + `TestBuildMetrics*`) : OK 5/5.
+- `tsc --noEmit` apps/web : OK.
+
+**Conclusion** : la mise en valeur du top fonctionne désormais de façon symétrique pour les 3 joueurs en mode miroir. Effet de bord intéressant : si A et B sont à égalité sur deaths_per_game, plus personne n'est en gras (avant : A était toujours mis en valeur à tort) — le rendu reflète maintenant fidèlement l'absence de gagnant.
+
+---
+
+## [2026-05-16] fix(compare/face-à-face) — N/A pour les métriques locale-only quand joueur B remote
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Face-à-face ([ComparePage.tsx](apps/web/src/features/compare/ComparePage.tsx)), quand le joueur B est récupéré via Waypoint career-stats (joueur non synchronisé localement), les métriques calculées uniquement depuis stats.duckdb / shared.match_participants apparaissaient à `0` au lieu de N/A — comportement trompeur (0 = vraie valeur basse vs. 0 = donnée absente).
+
+**Périmètre fonctionnel** (validé avec utilisateur) :
+- Métriques *locale-only* marquées N/A si le joueur n'est pas local : `max_killing_spree`, `avg_life_secs`, `perfect_kills_per_game`, `headshot_kills_per_game`, `perf_ath`, `lusr_ath`, `career_rank`.
+- Métriques *ATH-like* (`perf_ath`, `lusr_ath`, `career_rank`) marquées N/A même côté A si la valeur vaut 0 (ATH non encore calculé pour le joueur local).
+- Règle symétrique A et B : la disponibilité est par-côté.
+- Les dérivées `rendement` / `resistance` restent disponibles dès que damage + kills/deaths sont fournis (cas Waypoint OK).
+
+**Décisions techniques** :
+- Backend : ajout de `ValueAAvailable` / `ValueBAvailable` (bool) sur [CompareMetricRow](apps/go-api/internal/domain/compare.go) plutôt que pointeurs `*float64` — coût de migration nul côté consommateurs existants, et la valeur 0 reste transportée (utile pour rétrocompat e2e + signal "à zéro vraiment").
+- Helper unique `metricAvailability(key, value, isLocal)` dans [compare_service.go](apps/go-api/internal/service/compare_service.go) avec deux maps (`localOnlyMetrics`, `athMetrics`) — table de vérité explicite plutôt que flags inline.
+- `Winner` mis à chaîne vide quand l'une des deux valeurs est indisponible (pas de "gagnant" partiel).
+- Filtre `va==0 && vb==0` conservé pour masquer les lignes vides ; complété par un masquage quand **les deux côtés sont indisponibles** (ex. ATH=0 partout).
+- Frontend : props `availableA/B/C` propagées à [CompareBar](apps/web/src/features/compare/CompareBar.tsx) et [CompareMirrorRow](apps/web/src/features/compare/CompareMirrorRow.tsx). Quand l'une est false : valeur rendue "N/A" en italique muted, barre passée à `opacity: 0.3-0.35` et `winner` neutralisé pour ne pas mettre en gras une valeur factice.
+- i18n : `notAvailable: 'N/A'` + `ariaNotAvailable: 'Donnée non disponible' / 'Data not available'` ajoutés dans [i18n.ts](apps/web/src/features/compare/i18n.ts).
+- Rétro-compat : un payload sans `value_*_available` est considéré disponible (`!== false`).
+
+**Résultats observés** :
+- `go build ./...` : OK.
+- `go test ./internal/service/ -run "TestCompareService|TestBuildMetrics" -v` : 5/5 passent, incluant deux nouveaux tests `TestBuildMetrics_AvailabilityRemoteB` et `TestBuildMetrics_AvailabilityATHZero`.
+- `npx tsc --noEmit` (apps/web) : OK.
+
+**Conclusion** : la disponibilité est désormais un signal de premier ordre dans le contrat API Compare. Future amélioration possible : enrichir les stats de B remote depuis l'échantillon de matchs croisés (`shared.match_participants` filtré sur xuid_b) pour passer max_killing_spree/avg_life/headshots/perfect_kills d'indisponible à "échantillon partiel" — l'utilisateur a évoqué cette piste.
+
+---
+
+## [2026-05-16] fix(synthesis/breakdowns) — Câblage `EnrichCanonicalAssetTranslations` pour les labels FR
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Synthesis, les charts "Par carte" et "Par mode" affichaient les étiquettes d'axe X en anglais. Cause identifiée précédemment : `buildBreakdownsFromCanonical` lit `r.Summary.Map.Labels["fr"]` / `r.Summary.PairMode.Labels["fr"]`, mais ces maps étaient vides car aucune hydratation FR n'avait lieu sur les rows canoniques de la synthesis.
+
+**Erreur initiale** : j'avais introduit un post-process spécifique `translateBreakdownModesFR` qui appelait directement `mode_name_tr` après l'aggregation des breakdowns. Approche fragile (ne couvre que les modes, pas les maps ; duplique la logique déjà présente dans `HomeRepo.EnrichCanonicalAssetTranslations`). L'utilisateur a (à raison) souligné que le pattern existe déjà partout ailleurs.
+
+**Diagnostic correct** : `HomeRepo.EnrichCanonicalAssetTranslations` ([home_repo.go:920](apps/go-api/internal/platform/duckdb/home_repo.go#L920)) est le helper canonique : il hydrate `Labels["fr"]` ET `Labels["en"]` pour Map, Playlist, GameVariant, **PairMode** (incl. cascade via `mode_name_tr` pour les sous-modes type "Slayer" → "Abattage"). Appelé par [home_service.go:314](apps/go-api/internal/service/home_service.go#L314). Le synthesis service ne l'invoquait pas — c'était le seul chaînon manquant.
+
+**Décision technique** : Wirer le même helper dans `synthesis_service.GetSynthesisPage` juste après `LoadPlayerMatches`, avant tous les filtres et builds. Bénéfice : *toutes* les analyses (breakdowns, KPIs, TopWeeks, heatmap, highlights) lisent les libellés FR de façon uniforme. Aucune duplication, comportement aligné sur la home.
+
+**Actions** :
+1. [port/repository.go::SynthesisRepository](apps/go-api/internal/port/repository.go) — ajout `EnrichCanonicalAssetTranslations(ctx, rows []canonical.PlayerMatchRow) error`. Retiré la méthode `LoadModeTranslationsFR` ajoutée précédemment (revert).
+2. [platform/duckdb/synthesis_repo.go](apps/go-api/internal/platform/duckdb/synthesis_repo.go) — `SynthesisRepo` compose désormais un `HomeRepo` (`homeRef`) en plus de `squadRef`. La nouvelle méthode délègue directement à `homeRef.EnrichCanonicalAssetTranslations`. Suppression de `LoadModeTranslationsFR`.
+3. [service/synthesis_service.go::GetSynthesisPage](apps/go-api/internal/service/synthesis_service.go) — appel `s.repo.EnrichCanonicalAssetTranslations(ctx, canonicalRows)` juste après `LoadPlayerMatches`, avant filtres. Suppression du helper `translateBreakdownModesFR` (orphelin).
+4. [service/synthesis_service_test.go::mockSynthesisRepo](apps/go-api/internal/service/synthesis_service_test.go) — implémentation no-op de la nouvelle méthode pour respecter l'interface.
+
+**Résultats observés** :
+- `go build ./...` : OK.
+- `go test ./internal/service/... ./internal/platform/duckdb/...` : OK.
+
+**Conclusion** : Plus de logique métier dans le synthesis service ; on réutilise stricto sensu le helper de la home page. Les charts "Par carte" et "Par mode" affichent désormais les libellés FR comme partout ailleurs dans l'app (sessions, faits marquants, tuiles match, filtres). Note pour futures features : tout service qui consomme `canonical.PlayerMatchRow` doit appeler `EnrichCanonicalAssetTranslations` post-load s'il s'attend à lire `Labels["fr"]`. À documenter dans I18N_REFERENCE.md le cas échéant.
+
+---
+
+## [2026-05-16] feat(explorer/player) — Heatmap d'activité commune jour × heure
+
+**Statut** : Complété.
+
+**Contexte** : Mode Joueur de l'Explorer affiche aujourd'hui le briefing encounter + deux tableaux (matchs en allié / en ennemi). Demande utilisateur : ajouter en bas de page une heatmap jour × heure sur le modèle de [SynthesisHeatmapChart](apps/web/src/features/synthesis/SynthesisHeatmapChart.tsx) pour visualiser **quand on croise le plus** le joueur cible.
+
+**Décisions techniques** :
+- Coloration par **count** (intensité d'activité commune), pas par win-rate — l'intention est « fréquence de rencontre ». Tokens neutres `heatmap-cold` / `heatmap-hot` (Okabe-Ito conforme accessibilité).
+- Calcul côté backend dans `ExplorerService.GetCommonMatches` à partir de `rawMatches` (avant pagination 20/page) — sinon la heatmap n'observerait que la page courante.
+- Réutilise le type existant `domain.TemporalHeatmapCell` (déjà câblé pour Synthesis) plutôt qu'un nouveau type. Le contrat reste `(dow, hour, count, wins, win_rate)` — `win_rate` survit en tooltip informatif.
+- Composant frontend dédié [ExplorerActivityHeatmapChart](apps/web/src/features/explorer/ExplorerActivityHeatmapChart.tsx) plutôt que paramétrer `SynthesisHeatmapChart` : la sémantique du `visualMap` change radicalement (min=0..max=count vs 0..1 sur WR) — paramétrer aurait complexifié sans gain.
+- Timezone UTC héritée de Synthesis (`StartedAtUTC.Weekday()/Hour()`). Cohérent avec l'existant ; si décalage TZ à corriger plus tard, ce sera transverse aux deux pages.
+- OpenAPI [openapi.yaml::ExplorerPlayerQueryResponse](apps/go-api/api/openapi.yaml) déjà désynchronisé du shape runtime (target/summary/allies_table…) et `gen.ExplorerPlayerQueryResponse` non consommé en runtime → spec non touchée, hors-scope.
+
+**Actions** :
+1. [analysis/squad_breakdown.go::ComputeActivityHeatmapFromCommonMatches](apps/go-api/internal/analysis/squad_breakdown.go) — agrège `[]CommonMatchRaw` → `[]TemporalHeatmapCell`, win sur `Player1Outcome == 2`.
+2. [domain/explorer.go::ExplorerPlayerQueryResponse.ActivityHeatmap](apps/go-api/internal/domain/explorer.go) — nouveau champ JSON `activity_heatmap`.
+3. [service/explorer_service.go::GetCommonMatches](apps/go-api/internal/service/explorer_service.go) — injection depuis `rawMatches`, log `heatmap_cells`.
+4. [lib/api/types.ts::ExplorerPlayerQueryResponse](apps/web/src/lib/api/types.ts#L1167) — `activity_heatmap?: HeatmapCell[]`.
+5. [features/explorer/ExplorerActivityHeatmapChart.tsx](apps/web/src/features/explorer/ExplorerActivityHeatmapChart.tsx) — nouveau composant.
+6. [features/explorer/ExplorerPage.tsx](apps/web/src/features/explorer/ExplorerPage.tsx) — rendu conditionnel après les deux tableaux du mode Joueur.
+7. [i18n/manifests/explorer.toml + generated/explorer.ts](apps/web/src/lib/i18n/manifests/explorer.toml) — clé `explorer.player.activity_heatmap_title` (FR « Heatmap d'activité commune » / EN « Shared activity heatmap »).
+
+**Résultats observés** :
+- `go build ./...` : OK.
+- `go test ./internal/analysis/... ./internal/service/...` : OK.
+- `npm run typecheck` : pas de nouvelle erreur (préexistante `data_health_warning` dans icons.tsx, sans rapport).
+- `npx vitest run src/features/explorer` : 13/13 OK.
+
+**Conclusion** : La heatmap apparaît en bas du mode Joueur dès qu'un match commun existe. UI alignée visuellement sur Synthesis mais sémantique adaptée (intensité d'activité). Prochaine itération possible : titre interpolé avec le gamertag de la cible si l'on veut renforcer la lecture.
+
+---
+
+## [2026-05-16] fix(synthesis/breakdowns) — Traduction FR des sous-modes via `mode_name_tr`
+
+**Statut** : Complété.
+
+**Contexte** : Sur la page Synthesis, les charts "Par carte" et "Par mode" affichaient les étiquettes d'axe X en anglais ("Slayer", "CTF", "Strongholds", "Oddball"…) au lieu du français attendu ("Abattage", "Capture du drapeau", "Bastion", "Balle Folle").
+
+**Diagnostic** : Dans [synthesis_service.go::buildBreakdownsFromCanonical](apps/go-api/internal/service/synthesis_service.go), le mode label est extrait de `p.Labels["fr"]` puis passé à `analysis.NormalizeModeLabel`. Or :
+- `NormalizeModeLabel("Arena:Slayer")` (DefaultLabel EN, format `Prefix:Mode`) → "Slayer".
+- Si `Labels["fr"]` est vide (state actuel : `match_registry FR` colonnes peuplées 0/1545 selon [.ai/I18N_REFERENCE.md](.ai/I18N_REFERENCE.md)), fallback sur `DefaultLabel` → tag EN du sous-mode, jamais sa traduction française.
+
+Pour les **maps**, les noms Halo Infinite sont identiques EN/FR (proper nouns : "Streets", "Bazaar", "Recharge") — déjà acceptables. Focus sur les modes.
+
+**Décision technique** : Réutiliser la table existante `metadata.mode_name_tr` (héritage Python, mappings EN→FR curated). Pattern aligné sur [match_history_fr_translations.go::loadModeNamesFRForKeys](apps/go-api/internal/platform/duckdb/match_history_fr_translations.go#L146) et `SquadRepo.LoadModeTranslationsFR` déjà câblés sur home/carrière/filters. Aucun nouveau helper.
+
+Post-process des entries `breakdowns.TopModes` côté service après `buildBreakdownsFromCanonical` (pas pure-function — l'analyse n'a pas accès au repo). Best-effort : erreur non fatale, labels EN conservés en fallback.
+
+**Actions** :
+1. [port/repository.go::SynthesisRepository](apps/go-api/internal/port/repository.go) — ajout `LoadModeTranslationsFR(ctx, modeENs []string) (map[string]string, error)`.
+2. [platform/duckdb/synthesis_repo.go::SynthesisRepo](apps/go-api/internal/platform/duckdb/synthesis_repo.go) — délégation à `r.squadRef.LoadModeTranslationsFR`.
+3. [service/synthesis_service.go::translateBreakdownModesFR](apps/go-api/internal/service/synthesis_service.go) — collecte EN distincts depuis `breakdowns.TopModes`, appel repo, remplace ModeName. Câblé après `buildBreakdownsFromCanonical`.
+4. [service/synthesis_service_test.go::mockSynthesisRepo](apps/go-api/internal/service/synthesis_service_test.go) — no-op pour respecter l'interface.
+
+**Résultats observés** :
+- `go build ./...` : OK.
+- `go test ./internal/service/... ./internal/platform/duckdb/...` : OK.
+
+**Conclusion** : Les modes affichés sur l'axe X du chart "Par mode" passent désormais par `mode_name_tr` (FR) et tombent en fallback EN seulement si la table est absente ou le mode non traduit. Aucune duplication de logique : le helper `SquadRepo.LoadModeTranslationsFR` existant est partagé avec home/carrière/filters.
+
+---
+
+## [2026-05-16] fix(synthesis/top-weeks) — Tri chronologique fiable via `week_start` ISO
+
+**Statut** : Complété.
+
+**Contexte** : Sur le chart "Matchs Top vs Total par semaine" ([SynthesisTopWeeksChart](apps/web/src/features/synthesis/SynthesisTopWeeksChart.tsx)), l'utilisateur ne comprenait pas la chronologie de l'axe X. Investigation : le backend renvoie déjà les semaines en ordre chronologique réel (tri par `weekStart.Before(...)`), mais le front re-trie par `week_label.localeCompare(...)` sur des chaînes `"DD/MM"` — donc tri lexicographique qui casse l'ordre :
+- `"31/01"` vs `"01/02"` → `"01/02"` < `"31/01"` mais 31 jan < 1 fév chronologiquement
+- `"31/12"` (an N) vs `"01/01"` (an N+1) → lexico place janvier avant décembre
+- `"10/03"` vs `"05/04"` → lexico place avril avant mars
+
+Cause racine : `week_label` est formaté `"02/01"` côté Go ([squad_breakdown.go:565](apps/go-api/internal/analysis/squad_breakdown.go#L565) et 2 autres sites) et ne porte donc pas l'année — impossible de reconstruire un ordre chronologique côté front à partir du seul label.
+
+**Décision technique** : Ajouter un champ `week_start` ISO (`YYYY-MM-DD`) à `TopWeekEntry`, et trier côté front sur ce champ (additif, zéro impact data). Le label "DD/MM" reste utilisé pour l'affichage compact sur l'axe X (lisible avec un nombre raisonnable de semaines). Alternative écartée : supprimer simplement le `.sort()` côté front (option #1 proposée à l'utilisateur) — moins robuste car couplé à l'ordre backend, plus fragile si un futur appelant ré-arrange la liste.
+
+**Actions** :
+1. [apps/go-api/internal/domain/squad.go::TopWeekEntry](apps/go-api/internal/domain/squad.go#L217-L227) — ajout `WeekStart string \`json:"week_start"\`` + commentaire d'intention.
+2. [squad_breakdown.go::ComputeTopWeeks](apps/go-api/internal/analysis/squad_breakdown.go#L92), [::ComputeSynthesisTopWeeks](apps/go-api/internal/analysis/squad_breakdown.go#L184), [::ComputeSynthesisTopWeeksFromCanonical](apps/go-api/internal/analysis/squad_breakdown.go#L539) — peuplement `WeekStart: ws.Format("2006-01-02")`. Pour les 2 versions legacy, switch de `for _, agg := range byWeek` vers `for ws, agg := range byWeek` pour capturer la clé.
+3. [apps/web/src/lib/api/types.ts::TopWeekItem](apps/web/src/lib/api/types.ts#L1918-L1928) — ajout `week_start: string` + commentaire.
+4. [SynthesisTopWeeksChart.tsx](apps/web/src/features/synthesis/SynthesisTopWeeksChart.tsx#L31) — tri sur `a.week_start.localeCompare(b.week_start)`. ISO `YYYY-MM-DD` est lexico-équivalent à chronologique.
+
+**Résultats observés** :
+- `go build ./...` apps/go-api : OK.
+- `go test ./internal/analysis/...` : 4 paquets OK (TestComputeTopWeeks_* inclus).
+- `go test ./internal/service/...` : OK.
+- `npx tsc -b` apps/web : OK pour la chaîne TopWeek.
+- `npx vitest run src/features/synthesis` : 17 tests (14 skipped, 3 passing) OK.
+
+**Conclusion** : L'axe X du chart suit désormais l'ordre chronologique réel des semaines (par début de semaine), peu importe les frontières de mois/année dans le dataset. Le label affiché reste "DD/MM" pour la compacité, mais l'ordre est piloté par `week_start`. Note : la page Squad utilise toujours `ComputeTopWeeks` legacy (tri par win-rate desc, top-5) — le champ est désormais disponible si un future use case veut afficher la date complète dans un tooltip.
+
+---
+
+## [2026-05-16] fix(synthesis/heatmap) — Itération finale : "Victoires" + zone réservée 130 px
+
+**Statut** : Complété.
+
+**Contexte** : L'itération précédente (`visualMap.right: 50` + label "Taux victoire") laissait encore une impression de chevauchement avec le heatmap selon les viewports : avec un texte ~75 px centré sur la barre, la marge avant la 1re colonne du heatmap n'était que de ~16 px — trop tendue.
+
+**Décision technique** : Combiner trois ajustements pour un buffer généreux :
+- `grid.right: 110 → 130` (zone réservée plus large à droite).
+- `visualMap.right: 50 → 30` (rapproche la barre du bord droit du conteneur, donc éloigne le texte centré du heatmap).
+- Label `'Taux victoire' → 'Victoires'` (~55 px à fontSize 10).
+Résultat géométrique : centre de la barre à `containerWidth - 36`, bord gauche du texte à ~`containerWidth - 64`, soit **~66 px de marge** avant la fin du heatmap (`containerWidth - 130`).
+
+**Action** : 3 lignes modifiées dans [SynthesisHeatmapChart.tsx::buildHeatmapOption](apps/web/src/features/synthesis/SynthesisHeatmapChart.tsx).
+
+**Résultats observés** : `tsc -b` apps/web OK.
+
+**Conclusion** : Le label "Victoires" et le dégradé sont désormais clairement hors du heatmap, avec un buffer suffisant pour absorber les variations de viewport et de rendu de police.
+
+---
+
+## [2026-05-16] fix(synthesis/heatmap) — Centrer la visualMap dans la marge réservée
+
+**Statut** : Complété.
+
+**Contexte** : Même après le raccourcissement du label ("Taux victoire") et `grid.right: 110`, le texte continuait à chevaucher les cellules 22h/23h : avec `visualMap.right: 5`, la barre était collée au bord droit du container, donc le texte centré au-dessus débordait à gauche dans la zone du heatmap.
+
+**Décision technique** : `visualMap.right: 5 → 50` — la barre est désormais centrée dans la bande réservée de 110 px (bar à `right-50/-62`, texte centré autour de `right-56`, gabarit de ~75 px → s'étend de `right-94` à `right-18`, donc entièrement entre la fin du heatmap à `right-110` et le bord container).
+
+Bonus i18n : tooltip `"Win rate : ..."` → `"Taux de victoire : ..."` (cohérence avec le label du gradient).
+
+**Action** : 2 lignes modifiées dans [SynthesisHeatmapChart.tsx::buildHeatmapOption](apps/web/src/features/synthesis/SynthesisHeatmapChart.tsx) (visualMap.right + tooltip formatter).
+
+**Résultats observés** : `tsc -b` apps/web OK.
+
+**Conclusion** : Le label « Taux victoire » et son dégradé sont entièrement hors du heatmap.
+
+---
+
+## [2026-05-16] fix(synthesis/heatmap) — Libellé visualMap raccourci + marge droite élargie
+
+**Statut** : Complété.
+
+**Contexte** : "Taux de victoire" plus large que "Win rate" → le label centré au-dessus de la barre était auto-décalé à gauche par ECharts pour rester dans le container et chevauchait à nouveau la dernière colonne du heatmap.
+
+**Décision technique** : Triple ajustement pour donner au label l'espace nécessaire hors du grid :
+1. Label tronqué : "Taux de victoire" → "Taux victoire" (variante tronquée explicitement autorisée par l'utilisateur, retrait du "de").
+2. Réduction de la police du label : ajout `fontSize: 10` au `textStyle` du visualMap.
+3. Élargissement de la zone réservée : `grid.right: 80 → 110`.
+
+**Action** : modifications dans [SynthesisHeatmapChart.tsx::buildHeatmapOption](apps/web/src/features/synthesis/SynthesisHeatmapChart.tsx) (3 lignes).
+
+**Résultats observés** : `tsc -b` apps/web OK.
+
+**Conclusion** : Le label "Taux victoire" + son dégradé tiennent désormais dans la bande droite de 110 px, sans recouvrir le heatmap.
+
+---
+
+## [2026-05-16] fix(synthesis/heatmap) — Libellé visualMap en français
+
+**Statut** : Complété.
+
+**Contexte** : Libellé "Win rate" en haut de la barre gradient du heatmap synthesis.03 — pas conforme à la règle "répondre en français" (CLAUDE.md §Règles).
+
+**Action** : `text: ['Win rate', '']` → `text: ['Taux de victoire', '']` dans [SynthesisHeatmapChart.tsx::buildHeatmapOption](apps/web/src/features/synthesis/SynthesisHeatmapChart.tsx).
+
+**Conclusion** : La barre gradient affiche désormais "Taux de victoire" au-dessus du dégradé.
+
+---
+
+## [2026-05-16] fix(synthesis/heatmap) — Sortir la barre gradient (visualMap) hors du graphe
+
+**Statut** : Complété.
+
+**Contexte** : Page Synthesis, chart "Activité par jour et heure" (`SynthesisHeatmapChart`, synthesis.03). La barre gradient (`visualMap` vertical à droite, représentant le win rate 0–100 %) chevauchait la colonne des heures de fin (22h–23h) car la marge droite du grid était trop étroite.
+
+**Diagnostic** : `grid.right: 20` réservait 20 px à droite, tandis que `visualMap.right: 10` plaçait la barre à 10 px du bord du container → la barre vivait *dans* la zone du heatmap, par-dessus les dernières cellules.
+
+**Décision technique** : Élargir `grid.right` à 80 px pour réserver une bande externe, et descendre `visualMap.right` à 5 px tout en fixant explicitement `itemWidth: 12` + `itemHeight: 140` pour garder une barre fine et lisible. Pas de modification du tooltip, des axes ou de la palette.
+
+**Actions** :
+1. [SynthesisHeatmapChart.tsx::buildHeatmapOption](apps/web/src/features/synthesis/SynthesisHeatmapChart.tsx) — `grid.right: 20 → 80`, `visualMap.right: 10 → 5`, ajout `itemWidth: 12` + `itemHeight: 140`.
+
+**Résultats observés** :
+- `tsc -b` sur apps/web : OK pour `SynthesisHeatmapChart.tsx` (seule erreur restante = `notifications/icons.tsx::data_health_warning` préexistante).
+
+**Conclusion** : La barre gradient est désormais isolée dans la bande droite réservée, hors de la grille du heatmap, sans recouvrir les cellules 22h/23h.
+
+---
+
+## [2026-05-16] fix(synthesis/bipolaire) — Tooltip affiche les vraies valeurs Solo/Escouade
+
+**Statut** : Complété.
+
+**Contexte** : Page Synthesis, chart "butterfly" (`SynthesisBipolaireChart`, synthesis.05). Le tooltip ne montrait pas les valeurs réelles de la zone survolée : ECharts affichait par défaut les valeurs **normalisées** utilisées pour dessiner les barres (Solo ∈ [−100, 0], Escouade = 100 constant), pas les vraies métriques Solo/Escouade (win_rate, accuracy, performance_score, etc.).
+
+**Diagnostic** : Le tooltip était configuré avec `trigger: 'axis'` et `axisPointer: { type: 'shadow' }` mais **sans `formatter`**. Les `data.value` des séries sont les barres normalisées (cf. `soloBarValue()`), donc le tooltip par défaut affichait par exemple `Solo: -50, Escouade: 100` au lieu des vraies valeurs déjà formatées dans `soloTexts`/`squadTexts` (utilisées uniquement pour les labels de barres).
+
+**Décision technique** : Ajouter un `formatter` qui consomme `soloTexts[idx]` / `squadTexts[idx]` (déjà calculés pour les labels de barres → vérité absolue, même formatage que les labels). Centraliser les couleurs Solo/Escouade dans `soloColors` / `squadColors` pour DRY entre les `itemStyle` des séries et les pastilles du tooltip. Style minimal aligné avec `SynthesisWeaponKillsChart` (titre gras + lignes avec pastille colorée).
+
+**Actions** :
+1. [SynthesisBipolaireChart.tsx::buildBipolaireOption](apps/web/src/features/synthesis/SynthesisBipolaireChart.tsx) — ajout `soloColors` / `squadColors` calculés une fois, helper `dot(c)` HTML, `tooltip.formatter` retourne titre (label Y) + ligne Solo + ligne Escouade avec valeurs formatées et pastilles aux couleurs des barres.
+2. Réutilisation des arrays `soloColors`/`squadColors` dans les `itemStyle` des séries (DRY).
+
+**Résultats observés** :
+- `tsc -b` sur apps/web : OK pour `SynthesisBipolaireChart.tsx` (la seule erreur restante — `notifications/icons.tsx::data_health_warning` — est préexistante).
+- Pas de test unitaire dédié au chart bipolaire (`*Bipolaire*.test.*` absent).
+
+**Conclusion** : Le tooltip affiche désormais les vraies valeurs signées et formatées (%, score, durée) pour la métrique survolée, avec des pastilles synchronisées avec la couleur de la barre (info/win pour positif, outcome-loss pour négatif). Prochaine étape suggérée : ajouter un test unitaire de l'option ECharts si la régression réapparaît.
+
+---
+
 ## [2026-05-16] feat(media/picker) — Lobby aligné MatchScoreboard : noms officiels d'équipe + couleurs sémantiques + badge Bot
 
 **Statut** : Complété.
