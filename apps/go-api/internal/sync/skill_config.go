@@ -110,6 +110,15 @@ const (
 	LUSRChainChaos         = "chaos"
 )
 
+// Clés canoniques additionnelles pour le score de performance (superset LUSR).
+// Le LUSR exclut Ranked (→ CSR) et Firefight (→ PvE non classé) ; le score de
+// performance, lui, doit couvrir tous les matchs joués → ces deux chaînes
+// supplémentaires garantissent qu'aucun match n'est orphelin de score.
+const (
+	PerfChainRanked    = "ranked"
+	PerfChainFirefight = "firefight"
+)
+
 // LUSRChains mappe clé interne → labels UI FR/EN.
 var LUSRChains = map[string]LUSRChainConfig{
 	LUSRChainArenaSlayer:   {LabelFR: "Social · Slayer", LabelEN: "Social · Slayer"},
@@ -157,6 +166,30 @@ func lusrChainForOther(pairName string) string {
 		containsI(pairName, "rocket hog") || containsI(pairName, "action sack") ||
 		containsI(pairName, "event") {
 		return LUSRChainChaos
+	}
+	return LUSRChainArenaSlayer
+}
+
+// GetPerformanceChain détermine la chaîne du score de performance d'un match.
+// Contrairement à GetLUSRChain (qui exclut Ranked/Firefight pour CSR/PvE), cette
+// fonction garantit qu'aucun match n'est orphelin : tout match est rattaché à
+// l'une des 6 chaînes possibles. La sémantique du score 0-100 devient ainsi
+// "relatif aux 50 derniers matchs de la même chaîne".
+//
+// Priorité :
+//  1. isRanked       → "ranked"
+//  2. isFirefight    → "firefight"
+//  3. GetLUSRChain() → arena_slayer / arena_objectif / btb / chaos
+//  4. fallback       → arena_slayer (cohérent avec lusrChainForAssassin)
+func GetPerformanceChain(pairName string, isRanked, isFirefight bool) string {
+	if isRanked {
+		return PerfChainRanked
+	}
+	if isFirefight {
+		return PerfChainFirefight
+	}
+	if c := GetLUSRChain(pairName); c != "" {
+		return c
 	}
 	return LUSRChainArenaSlayer
 }
