@@ -597,6 +597,22 @@ export interface EngagementScoreResultAPI {
   player_activity?: number
 }
 
+/** EngagementTimeseriesRequest — body de POST /engagement/timeseries.
+ *  Aligné sur TimeseriesQueryRequest : `filters` honore period / cascade /
+ *  sessions / match_context. `limit` borne le nombre de points retournés
+ *  (défaut 50, max 500 côté Go). Quand le scope filtré dépasse `limit`, le
+ *  backend bascule en granularité agrégée (session → week → month). */
+export interface EngagementTimeseriesRequest {
+  filters: FilterContextInput
+  limit?: number
+}
+
+/** Granularité d'un point engagement timeseries. */
+export type EngagementGranularity = 'match' | 'session' | 'week' | 'month'
+
+/** EngagementMatchSummaryAPI — 1 point soit pour 1 match (granularité "match"),
+ *  soit pour l'agrégat de N matchs (session/week/month). Pour les agrégats,
+ *  `match_id` est vide et `match_count > 1`. */
 export interface EngagementMatchSummaryAPI {
   match_id: string
   label: string
@@ -607,6 +623,22 @@ export interface EngagementMatchSummaryAPI {
   pace_attendu: number
   pace_lobby: number
   engagement_score: number | null
+  /** Nombre de matchs représentés par ce point (1 pour granularité "match",
+   *  >1 pour les agrégats). */
+  match_count: number
+}
+
+/** EngagementTimeseriesResponse — réponse de POST /engagement/timeseries.
+ *  - `granularity` : choisie automatiquement selon la densité filtrée.
+ *  - `total_matches` : compte total filtré AVANT cap workCap.
+ *  - `truncated_to_recent` : si non-null, signale que le compute a été borné
+ *    aux N matchs les plus récents (perfs ; au-delà le binning agrège tout
+ *    de même mais sur un sous-ensemble). */
+export interface EngagementTimeseriesResponse {
+  granularity: EngagementGranularity
+  points: EngagementMatchSummaryAPI[]
+  total_matches: number
+  truncated_to_recent?: number | null
 }
 
 export interface SquadPlayerEngagementAPI {

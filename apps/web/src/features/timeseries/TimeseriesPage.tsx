@@ -655,7 +655,12 @@ export function TimeseriesPage() {
             {/* Engagement — pleine largeur. EngagementTimeseriesSection
                 rend déjà sa propre ChartCard avec titre interne, donc pas de
                 wrapper supplémentaire (sinon double titre). */}
-            <EngagementTimeseriesSection playerSlug={playerSlug} limit={30} />
+            <EngagementTimeseriesSection
+              playerSlug={playerSlug}
+              filters={soloFilterContext}
+              filterHash={filterContextHash}
+              limit={30}
+            />
 
             {/* Intensité — frags par phase de match (pleine largeur). */}
             {(data.intensity_rows ?? []).length > 0 && (

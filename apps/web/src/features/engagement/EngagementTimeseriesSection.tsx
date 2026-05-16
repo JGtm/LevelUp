@@ -1,53 +1,84 @@
 /**
  * EngagementTimeseriesSection — Mock 11 dans Timeseries intensity tab.
  *
- * 1 point = 1 match. 3 traces (joueur, attendu, équipe).
- * Charge via /players/{slug}/engagement/timeseries.
+ * 1 point = 1 match OU 1 agrégat (session/week/month) selon la densité du
+ * scope filtré (binning adaptatif côté backend). 3 traces : joueur (saturé),
+ * attendu (pointillé), équipe (gris fin).
  */
 import { useMemo } from 'react'
 
 import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
 import { useEngagementTimeseries } from '@/features/engagement/queries'
 import { truncateMap } from '@/lib/charts/matchLabels'
+import type { EngagementGranularity, FilterContextInput } from '@/lib/api/types'
 
 export interface EngagementTimeseriesSectionProps {
   playerSlug: string
+  /** Scope filtré (page Timeseries injecte le soloFilterContext). */
+  filters: FilterContextInput
+  /** Hash dérivé du filterStore — invalide la query au moindre changement. */
+  filterHash: string
   limit?: number
   title?: string
+  /** Surcharge optionnelle — par défaut, sous-titre dérivé de la granularité. */
   subtitle?: string
 }
 
+const GRANULARITY_LABELS: Record<EngagementGranularity, string> = {
+  match: 'Par match',
+  session: 'Groupé par session',
+  week: 'Groupé par semaine',
+  month: 'Groupé par mois',
+}
+
 export function EngagementTimeseriesSection(props: EngagementTimeseriesSectionProps) {
-  const { playerSlug, limit = 30, title, subtitle } = props
-  const query = useEngagementTimeseries(playerSlug, limit)
+  const { playerSlug, filters, filterHash, limit = 30, title, subtitle } = props
+  const query = useEngagementTimeseries(playerSlug, filters, filterHash, limit)
+
+  const data = query.data
+  const pointsAPI = data?.points ?? []
 
   const points: EngagementPoint[] = useMemo(() => {
-    if (!query.data) return []
-    return query.data.map((m, i) => ({
+    return pointsAPI.map((m, i) => ({
       x: i,
       paceTeam: m.pace_team,
       paceAttendu: m.pace_attendu,
       paceJoueur: m.pace_joueur,
       paceLobby: m.pace_lobby,
     }))
-  }, [query.data])
+  }, [pointsAPI])
 
   if (query.isError) return null
-  if (query.data && query.data.length === 0) return null
+  if (data && pointsAPI.length === 0) return null
 
-  // Étiquettes X au format `#N\nMap` (aligné sur les autres charts timeseries
-  // — cf. matchLabels.ts). Fallback `#N` si pas de map_name.
-  const xLabels =
-    query.data?.map((m, i) => {
-      const map = m.map_name
-      return map ? `#${i + 1}\n${truncateMap(map)}` : `#${i + 1}`
-    }) ?? []
+  // Étiquettes X : pour "match" on garde `#N\nMap`. Pour les agrégats on
+  // affiche le label brut (session_label / "2026-S18" / "2026-05").
+  const granularity: EngagementGranularity = data?.granularity ?? 'match'
+  const xLabels = pointsAPI.map((m, i) => {
+    if (granularity === 'match') {
+      return m.map_name ? `#${i + 1}\n${truncateMap(m.map_name)}` : `#${i + 1}`
+    }
+    return m.label
+  })
   const xFormatter = (i: number) => xLabels[i] ?? `#${i + 1}`
+
+  const total = data?.total_matches ?? 0
+  const computedSubtitle = (() => {
+    if (subtitle !== undefined) return subtitle
+    if (!data) return undefined
+    const granLabel = GRANULARITY_LABELS[granularity]
+    const truncNote = data.truncated_to_recent
+      ? ` — basé sur les ${data.truncated_to_recent} matchs les plus récents sur ${total}`
+      : total > 0
+        ? ` — ${total} match${total > 1 ? 's' : ''}`
+        : ''
+    return `${granLabel}${truncNote}`
+  })()
 
   return (
     <EngagementCurve
       title={title ?? 'Engagement'}
-      subtitle={subtitle ?? "Joueur vs équipe vs attendu sur les derniers matchs"}
+      subtitle={computedSubtitle}
       points={points}
       granularity="session"
       state={query.isLoading ? 'loading' : query.isError ? 'error' : 'ready'}

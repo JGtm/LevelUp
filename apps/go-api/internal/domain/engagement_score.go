@@ -112,12 +112,26 @@ type HistoricalEngagementBrut struct {
 //
 // Mediane glissante sur les 200 derniers matchs. Recalcule periodiquement
 // (idealement incremental, cf. plan d'implementation §4.4).
-// EngagementMatchSummary est un point agrege pour Timeseries Mock 11
-// (1 point = 1 match). Pour chaque match du joueur sur la periode, on a
-// les means de la courbe (joueur, team, attendu, lobby).
+// EngagementTimeseriesRequest est le corps de POST /engagement/timeseries.
+// Aligne sur TimeseriesQueryRequest (meme `filters`) pour que le scope (period,
+// cascade, sessions, match_context) suive celui de la page Timeseries Mock 11.
+// `limit` borne le nombre de matchs PvP retournes (defaut 50, max 500).
+type EngagementTimeseriesRequest struct {
+	Filters FilterContextInput `json:"filters"`
+	Limit   int                `json:"limit,omitempty"`
+}
+
+// EngagementMatchSummary est un point Mock 11 — soit 1 match (granularite
+// "match"), soit l'agregat de N matchs sur une session/semaine/mois.
+//
+// Pour les granularites agregees :
+//   - MatchID est vide (les paces sont une moyenne ponderee de plusieurs matchs)
+//   - Label sert d'identifiant lisible (ex session_label, "2026-S18", "2026-05")
+//   - MatchCount > 1 ; les paces sont les moyennes du bucket
+//   - EngagementScore est la moyenne des scores non-nuls du bucket (nil si aucun)
 type EngagementMatchSummary struct {
 	MatchID         string    `json:"match_id"`
-	Label           string    `json:"label"` // "M1", "M2" ou date courte
+	Label           string    `json:"label"`
 	MapName         *string   `json:"map_name,omitempty"`
 	StartedAt       time.Time `json:"started_at"`
 	PaceJoueur      float64   `json:"pace_joueur"`
@@ -125,6 +139,36 @@ type EngagementMatchSummary struct {
 	PaceAttendu     float64   `json:"pace_attendu"`
 	PaceLobby       float64   `json:"pace_lobby"`
 	EngagementScore *float64  `json:"engagement_score"`
+	// MatchCount : nombre de matchs representes par ce point (1 pour granularite
+	// "match", >1 pour session/week/month). Permet au front d'afficher "n=N"
+	// dans le tooltip et de moduler l'opacite des markers.
+	MatchCount int `json:"match_count"`
+}
+
+// EngagementGranularity enumere les granularites d'un EngagementTimeseriesResponse.
+const (
+	EngagementGranularityMatch   = "match"
+	EngagementGranularitySession = "session"
+	EngagementGranularityWeek    = "week"
+	EngagementGranularityMonth   = "month"
+)
+
+// EngagementTimeseriesResponse est la reponse de POST /engagement/timeseries.
+//
+// Mock 11 — granularite adaptative selon la densite :
+//   - <= limit matchs filtres → "match" (1 point = 1 match)
+//   - sinon, agregation par session_label → "session" si <= limit
+//   - sinon, agregation par semaine ISO → "week" si <= limit
+//   - sinon, agregation par mois → "month"
+//
+// TruncatedToRecent (optionnel) signale qu'on a borne le compute aux N matchs
+// les plus recents avant binning (perfs : ComputeEngagementScore est O(events)
+// + 3 queries DB par match). TotalMatches reflete le total filtre AVANT cap.
+type EngagementTimeseriesResponse struct {
+	Granularity       string                   `json:"granularity"`
+	Points            []EngagementMatchSummary `json:"points"`
+	TotalMatches      int                      `json:"total_matches"`
+	TruncatedToRecent *int                     `json:"truncated_to_recent,omitempty"`
 }
 
 // SquadEngagementSession est le payload pour la Squad Page Mock 15 v2.

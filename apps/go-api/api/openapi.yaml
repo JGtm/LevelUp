@@ -1642,12 +1642,45 @@ paths:
   /players/{player_slug}/engagement/timeseries:
     parameters:
       - $ref: "#/components/parameters/PlayerSlug"
-    get:
+    post:
       tags: [career]
-      operationId: getEngagementTimeseries
-      summary: "Série temporelle de l'engagement (P3.2)"
+      operationId: postEngagementTimeseries
+      summary: "Série temporelle de l'engagement filtrée (Mock 11)"
+      description: >
+        Retourne les N derniers matchs PvP du scope avec leurs paces.
+        Body aligné sur POST /pages/timeseries : `filters` honore period /
+        cascade / sessions / match_context. `limit` optionnel (défaut 50,
+        max 500). Un body vide équivaut à `{}` (compat smoke).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filters: { type: object }
+                limit: { type: integer, minimum: 1, maximum: 500 }
       responses:
-        "200": { description: "Timeseries engagement" }
+        "200":
+          description: |
+            EngagementTimeseriesResponse — granularity adaptative selon densité
+            filtrée : match (≤ limit) → session → week → month. Au-delà de
+            workCap=200 matchs filtrés, le binning ne couvre que les N plus
+            récents et `truncated_to_recent` est positionné.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [granularity, points, total_matches]
+                properties:
+                  granularity: { type: string, enum: [match, session, week, month] }
+                  points:
+                    type: array
+                    items: { type: object }
+                  total_matches: { type: integer }
+                  truncated_to_recent: { type: integer, nullable: true }
+        "400": { description: "invalid_json ou invalid_filters" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /players/{player_slug}/engagement/recompute_coefficients:
     parameters:

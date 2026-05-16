@@ -559,7 +559,7 @@ func NewRouter(
 				r.Use(middleware.RequireCapability(titleRegistry, titlePkg.CapEngagement))
 				r.Get("/matches/{match_id}/engagement", eng.GetMatchEngagement)
 				r.Get("/engagement_profile", eng.GetEngagementProfile)
-				r.Get("/engagement/timeseries", eng.GetEngagementTimeseries)
+				r.Post("/engagement/timeseries", eng.GetEngagementTimeseries)
 				r.Get("/pages/squad/v2/engagement", eng.GetSquadEngagementSession)
 				r.Post("/engagement/recompute_coefficients", eng.PostRecomputeCoefficients)
 			})

@@ -10,8 +10,10 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api/client'
 import type {
   EngagementCoefficientAPI,
-  EngagementMatchSummaryAPI,
   EngagementScoreResultAPI,
+  EngagementTimeseriesRequest,
+  EngagementTimeseriesResponse,
+  FilterContextInput,
   SquadEngagementSessionAPI,
 } from '@/lib/api/types'
 import { queryKeys } from '@/lib/query/keys'
@@ -42,12 +44,30 @@ export function useEngagementProfile(playerSlug: string) {
   })
 }
 
-export function useEngagementTimeseries(playerSlug: string, limit: number = 50) {
+/**
+ * useEngagementTimeseries — POST /players/{slug}/engagement/timeseries.
+ *
+ * Le scope (period / cascade / sessions / match_context) est passé via
+ * `filters` pour aligner les paces avec les autres charts de la page
+ * Timeseries. `filterHash` participe au queryKey pour invalider le cache
+ * dès qu'un filtre bouge (cf. pattern useTimeseriesPage).
+ *
+ * La réponse est wrappée avec `granularity` adaptative — `points` peut
+ * représenter des matchs individuels OU des agrégats session/week/month
+ * selon la densité du scope filtré (cf. EngagementTimeseriesResponse).
+ */
+export function useEngagementTimeseries(
+  playerSlug: string,
+  filters: FilterContextInput,
+  filterHash: string,
+  limit: number = 50,
+) {
   return useQuery({
-    queryKey: queryKeys.engagementTimeseries(playerSlug, limit),
+    queryKey: queryKeys.engagementTimeseries(playerSlug, filterHash, limit),
     queryFn: () =>
-      api.get<EngagementMatchSummaryAPI[]>(
-        `/players/${playerSlug}/engagement/timeseries?limit=${limit}`,
+      api.post<EngagementTimeseriesResponse>(
+        `/players/${playerSlug}/engagement/timeseries`,
+        { filters, limit } satisfies EngagementTimeseriesRequest,
       ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
