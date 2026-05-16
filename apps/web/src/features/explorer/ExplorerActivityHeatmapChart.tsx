@@ -1,10 +1,13 @@
 /**
- * SynthesisHeatmapChart — synthesis.03.
- * Heatmap 2D heure × jour (X=heure, Y=jour) colorée par win_rate.
- * Toutes les 168 cellules sont émises — null pour les cases vides.
- * yAxis.inverse: true (Lun en haut, Dim en bas).
+ * ExplorerActivityHeatmapChart — heatmap 2D heure × jour de l'activité commune
+ * avec un joueur cible (Explorer mode Joueur).
+ *
+ * Variante intensité de SynthesisHeatmapChart : la couleur reflète le `count`
+ * (nombre de matchs croisés) via la rampe sémantique heatmap-cold → heatmap-hot,
+ * pas le win-rate — l'intention produit est « quand se croise-t-on le plus ? ».
+ * Le tooltip rappelle le win-rate à titre informatif.
  */
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
@@ -24,30 +27,31 @@ interface Props {
 function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
   const tc = getEChartsThemeColors()
 
-  // Indexer les données reçues par (dow, hour)
-  const lookup = new Map<string, { win_rate: number; count: number }>()
+  const lookup = new Map<string, { count: number; win_rate: number }>()
+  let maxCount = 0
   for (const c of cells) {
     if (c.count > 0) {
       lookup.set(`${c.dow}-${c.hour}`, {
-        win_rate: c.win_rate ?? 0,
         count: c.count,
+        win_rate: c.win_rate ?? 0,
       })
+      if (c.count > maxCount) maxCount = c.count
     }
   }
 
-  // Générer les 168 cellules — null pour win_rate si aucun match
-  const data: { value: [number, number, number | null]; count: number }[] = []
+  // 168 cellules — null pour count si aucun match (cellule vide non colorée).
+  const data: { value: [number, number, number | null]; win_rate: number }[] = []
   for (let h = 0; h < 24; h++) {
     for (let d = 0; d < 7; d++) {
       const cell = lookup.get(`${d}-${h}`)
       data.push({
-        value: [h, d, cell ? cell.win_rate : null],
-        count: cell ? cell.count : 0,
+        value: [h, d, cell ? cell.count : null],
+        win_rate: cell ? cell.win_rate : 0,
       })
     }
   }
 
-  const hasData = cells.length > 0
+  const hasData = maxCount > 0
 
   return {
     backgroundColor: CHART_BG,
@@ -57,10 +61,13 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
       backgroundColor: tc.tooltipBg,
       borderColor: tc.tooltipBorder,
       textStyle: { color: tc.text },
-      formatter: (params: { data: { value: [number, number, number | null]; count: number } }) => {
-        const [h, d, wr] = params.data.value
-        const wrStr = wr == null ? 'n/a' : `${(wr * 100).toFixed(1)}%`
-        return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>Taux de victoire : ${wrStr}<br>Matchs : ${params.data.count}`
+      formatter: (params: { data: { value: [number, number, number | null]; win_rate: number } }) => {
+        const [h, d, count] = params.data.value
+        if (count == null || count === 0) {
+          return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>Aucun match commun`
+        }
+        const wrStr = `${(params.data.win_rate * 100).toFixed(1)}%`
+        return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>Matchs communs : ${count}<br>Taux de victoire : ${wrStr}`
       },
     },
     legend: false as unknown as undefined,
@@ -81,7 +88,7 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
     },
     visualMap: hasData ? {
       min: 0,
-      max: 1,
+      max: maxCount,
       calculable: false,
       show: true,
       orient: 'vertical',
@@ -91,13 +98,12 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
       itemHeight: 140,
       inRange: {
         color: [
-          resolveToken('outcome-loss'),
-          resolveToken('outcome-draw'),
-          resolveToken('outcome-win'),
+          resolveToken('heatmap-cold'),
+          resolveToken('heatmap-hot'),
         ],
       },
-      formatter: (val: number) => `${(val * 100).toFixed(0)}%`,
-      text: ['Victoires', ''],
+      formatter: (val: number) => `${Math.round(val)}`,
+      text: ['Matchs', ''],
       textStyle: { color: tc.axisLabel, fontSize: 10 },
     } : undefined,
     series: [
@@ -108,8 +114,10 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
           show: true,
           fontSize: 10,
           color: tc.text,
-          formatter: (params: { data: { count: number } }) =>
-            params.data.count > 0 ? String(params.data.count) : '',
+          formatter: (params: { data: { value: [number, number, number | null] } }) => {
+            const count = params.data.value[2]
+            return count != null && count > 0 ? String(count) : ''
+          },
         },
         emphasis: { itemStyle: { shadowBlur: 8 } },
       },
@@ -119,13 +127,14 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
 
 type Pt = { dow: number; hour: number }
 
-export function SynthesisHeatmapChart({ cells, title, height }: Props) {
+export function ExplorerActivityHeatmapChart({ cells, title, height }: Props) {
   const series: ChartSeries<Pt>[] = cells.length > 0
     ? [{ key: 'heatmap', datapoints: cells.map((c) => ({ dow: c.dow, hour: c.hour })) }]
     : []
 
+  const cellsKey = useMemo(() => JSON.stringify(cells), [cells])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const buildOption = useCallback(() => buildHeatmapOption(cells), [JSON.stringify(cells)])
+  const buildOption = useCallback(() => buildHeatmapOption(cells), [cellsKey])
 
   return (
     <ChartCard

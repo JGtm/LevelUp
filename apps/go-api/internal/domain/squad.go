@@ -214,8 +214,11 @@ type HeatmapCell struct {
 }
 
 // TopWeekEntry est une semaine performante dans l'historique du joueur.
+// WeekStart est l'ISO date (YYYY-MM-DD) du lundi 00:00 UTC de la semaine,
+// utilisable pour un tri chronologique côté front (week_label "DD/MM" perd l'année).
 type TopWeekEntry struct {
 	WeekLabel  string  `json:"week_label"`
+	WeekStart  string  `json:"week_start"`
 	WinRate    float64 `json:"win_rate"`
 	Wins       int     `json:"wins"`
 	AvgKills   float64 `json:"avg_kills"`

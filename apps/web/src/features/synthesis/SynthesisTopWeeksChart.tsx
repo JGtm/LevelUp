@@ -27,8 +27,9 @@ function buildTopWeeksOption(weeks: TopWeekItem[]): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
 
-  // Trier chronologiquement (format "DD/MM")
-  const sorted = [...weeks].sort((a, b) => a.week_label.localeCompare(b.week_label))
+  // Trier chronologiquement par week_start (ISO YYYY-MM-DD).
+  // week_label "DD/MM" perd l'année et casse l'ordre lexico aux frontières mois/an.
+  const sorted = [...weeks].sort((a, b) => a.week_start.localeCompare(b.week_start))
   const labels = sorted.map((w) => w.week_label)
   const wins = sorted.map((w) => ({ value: w.wins ?? 0 }))
   const others = sorted.map((w) => ({ value: Math.max(0, w.match_count - (w.wins ?? 0)) }))

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -110,23 +111,26 @@ func (s *ExplorerService) GetCommonMatches(
 	badges := narrative.ComputeEncounterBadges(stats, totalCount)
 	wins, losses := countWinsLosses(rawMatches)
 	encounterStats := convertEncounterStatsToExplorer(stats, totalCount)
+	activityHeatmap := analysis.ComputeActivityHeatmapFromCommonMatches(rawMatches)
 
 	slog.DebugContext(ctx, "explorer_common_matches",
 		"xuid", s.xuid, "other_xuid", otherXUID,
-		"total", totalCount, "page", page, "badges", len(badges))
+		"total", totalCount, "page", page, "badges", len(badges),
+		"heatmap_cells", len(activityHeatmap))
 
 	return domain.ExplorerPlayerQueryResponse{
-		TargetGamertag: otherGamertag,
-		TargetXUID:     otherXUID,
-		CommonMatches:  rows,
-		Badges:         convertEncounterBadges(badges),
-		EncounterStats: encounterStats,
-		Total:          len(rows),
-		TotalCount:     totalCount,
-		WinsTogether:   wins,
-		LossesTogether: losses,
-		Page:           page,
-		PageSize:       pageSize,
+		TargetGamertag:  otherGamertag,
+		TargetXUID:      otherXUID,
+		CommonMatches:   rows,
+		Badges:          convertEncounterBadges(badges),
+		EncounterStats:  encounterStats,
+		Total:           len(rows),
+		TotalCount:      totalCount,
+		WinsTogether:    wins,
+		LossesTogether:  losses,
+		Page:            page,
+		PageSize:        pageSize,
+		ActivityHeatmap: activityHeatmap,
 	}, nil
 }
 

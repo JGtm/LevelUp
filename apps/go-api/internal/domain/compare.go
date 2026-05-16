@@ -8,10 +8,15 @@ import "fmt"
 // NormalizedPlayerStats est une projection normalisée des stats d'un joueur,
 // utilisée pour la comparaison multi-titre.
 type NormalizedPlayerStats struct {
-	TitleSlug      string  `json:"title_slug"`
-	XUID           string  `json:"xuid"`
-	Gamertag       string  `json:"gamertag"`
-	IsLocal        bool    `json:"is_local"`
+	TitleSlug string `json:"title_slug"`
+	XUID      string `json:"xuid"`
+	Gamertag  string `json:"gamertag"`
+	// IsLocal : le joueur a sa propre stats.duckdb (toutes les métriques sont fiables).
+	IsLocal bool `json:"is_local"`
+	// IsLocalSample : le joueur est *remote* (pas de stats.duckdb), mais les
+	// métriques locale-only (spree, life, perfect, headshots) ont été calculées
+	// sur l'échantillon des matchs croisés avec le joueur A.
+	IsLocalSample  bool    `json:"is_local_sample,omitempty"`
 	Matches        int     `json:"matches"`
 	WinRate        float64 `json:"win_rate"`
 	KDA            float64 `json:"kda"`
@@ -70,14 +75,33 @@ func (r CompareRequest) Validate() error {
 }
 
 // CompareMetricRow est une ligne de la table de comparaison.
+//
+// ValueAAvailable / ValueBAvailable indiquent si la donnée est exploitable :
+// false signifie « pas de source locale pour cette métrique » (joueur remote
+// pour les métriques calculées depuis stats.duckdb / shared.match_participants,
+// ou ATH non encore calculé). Le frontend rend « N/A » dans ce cas.
 type CompareMetricRow struct {
-	Metric      string  `json:"metric"`
-	LabelFR     string  `json:"label_fr"`
-	ValueA      float64 `json:"value_a"`
-	ValueB      float64 `json:"value_b"`
-	Delta       float64 `json:"delta"`                   // value_b - value_a
-	Winner      string  `json:"winner"`                  // "a" | "b" | "tie"
-	SampleSizeB int     `json:"sample_size_b,omitempty"` // nb matchs B si joueur local croisé
+	Metric          string  `json:"metric"`
+	LabelFR         string  `json:"label_fr"`
+	ValueA          float64 `json:"value_a"`
+	ValueB          float64 `json:"value_b"`
+	ValueAAvailable bool    `json:"value_a_available"`
+	ValueBAvailable bool    `json:"value_b_available"`
+	Delta           float64 `json:"delta"`            // value_b - value_a
+	Winner          string  `json:"winner"`           // "a" | "b" | "tie"
+	LessIsBetter    bool    `json:"less_is_better"`   // true = valeur basse meilleure (deaths_per_game, rendement, damage_taken_per_game)
+	SampleSizeB     int     `json:"sample_size_b,omitempty"` // nb matchs B si joueur local croisé
+}
+
+// CrossMatchSample regroupe les métriques locale-only calculées pour un joueur
+// remote (B) sur les matchs croisés avec A (présents dans shared.match_participants
+// pour les deux xuids). MatchesCount = 0 signifie aucun croisement exploitable.
+type CrossMatchSample struct {
+	MatchesCount         int
+	MaxKillingSpree      int
+	AvgLifeSecs          float64
+	PerfectKillsPerGame  float64
+	HeadshotKillsPerGame float64
 }
 
 // CompareEncounterStats : stats de rencontres historiques entre joueur A et joueur B.

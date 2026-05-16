@@ -17,6 +17,7 @@ import { GamertagSearchInput } from './GamertagSearchInput'
 import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
+import { ExplorerActivityHeatmapChart } from './ExplorerActivityHeatmapChart'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
 import { DEFAULT_FILTER_CONTEXT } from '@/stores/createFilterStore'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
@@ -491,6 +492,16 @@ export function ExplorerPage() {
                       gamertag: playerQuery.data.target_gamertag || targetGamertag,
                     }}
                     alwaysShowPagination
+                  />
+                )}
+
+                {/* Heatmap d'activité commune — agrégat jour × heure de tous
+                    les matchs communs (alliés + ennemis). Coloration par
+                    intensité d'activité (count), pas par win-rate. */}
+                {(playerQuery.data.activity_heatmap?.length ?? 0) > 0 && (
+                  <ExplorerActivityHeatmapChart
+                    title={t('explorer.player.activity_heatmap_title')}
+                    cells={playerQuery.data.activity_heatmap ?? []}
                   />
                 )}
               </>

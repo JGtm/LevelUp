@@ -86,6 +86,7 @@ export const explorerManifest = {
   "explorer.matches.squad_solo": { fr: "Solo", en: "Solo" },
   "explorer.mode.matches": { fr: "Matchs", en: "Matches" },
   "explorer.mode.player": { fr: "Joueur", en: "Player" },
+  "explorer.player.activity_heatmap_title": { fr: "Heatmap d'activité commune", en: "Shared activity heatmap" },
   "explorer.player.col_kd": { fr: "K/D", en: "K/D" },
   "explorer.player.col_role": { fr: "Rôle", en: "Role" },
   "explorer.player.empty_description": { fr: "La recherche n'a renvoyé aucune charge utile exploitable pour ce gamertag.", en: "Search returned no exploitable payload for this gamertag." },

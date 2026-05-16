@@ -102,4 +102,30 @@ describe('CompareBar', () => {
     render(<CompareBar label="KDA" valueA="0,93" valueB="1,82" rawA={0.93} rawB={1.82} winner="b" />)
     expect(screen.queryByText(/sur \d+ parties/)).not.toBeInTheDocument()
   })
+
+  it('affiche N/A et neutralise la barre quand availableB=false', () => {
+    const { container } = render(
+      <CompareBar
+        label="Perf. record" valueA="98" valueB="N/A" rawA={98} rawB={0} winner="a"
+        availableA availableB={false}
+      />,
+    )
+    expect(screen.getByText('N/A')).toBeInTheDocument()
+    const bar = container.querySelector('[data-testid="compare-bar-track"]') as HTMLElement
+    const style = bar.getAttribute('style') ?? ''
+    // Ratio neutre 50% + opacité réduite quand une valeur est N/A.
+    expect(style).toContain('50.0%')
+    expect(style).toMatch(/opacity:\s*0\.35/)
+  })
+
+  it('met le côté N/A en italique muted, ignore le winner pointant dessus', () => {
+    render(
+      <CompareBar
+        label="Perf. record" valueA="98" valueB="N/A" rawA={98} rawB={0} winner="a"
+        availableA availableB={false}
+      />,
+    )
+    const naSpan = screen.getByText('N/A')
+    expect(naSpan.className).toContain('italic')
+  })
 })

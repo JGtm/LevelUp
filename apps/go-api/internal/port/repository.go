@@ -608,6 +608,12 @@ type SynthesisRepository interface {
 	LoadEncounters(ctx context.Context, xuid string) ([]domain.EncounterRawRow, error)
 	// LoadSynthesisHeatmap charge la heatmap carte×mode (Q33).
 	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
+	// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les AssetReference
+	// (Map, Playlist, GameVariant, PairMode) des rows canoniques depuis
+	// metadata.asset_translations + mode_name_tr quand match_registry.{...}_name_fr
+	// est NULL en DB. Même helper que HomeRepo — réutilisé pour cohérence cross-page.
+	// Best-effort : erreurs loggées, rows mutées en place.
+	EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error
 }
 
 // CitationsRepository fournit les données pour les pages Citations et Commendations.
@@ -876,6 +882,12 @@ type CompareRepository interface {
 	// GetEncounterStats retourne les stats de rencontres historiques entre xuidA et xuidB.
 	// Retourne nil si aucun match commun ou en cas d'erreur (best-effort).
 	GetEncounterStats(ctx context.Context, xuidA, xuidB string) (*domain.CompareEncounterStats, error)
+
+	// GetCrossMatchSample agrège les 4 métriques locale-only (max_killing_spree,
+	// avg_life_secs, perfect_kills_per_game, headshot_kills_per_game) du joueur
+	// xuidB calculées sur les matchs où xuidA et xuidB sont tous deux participants.
+	// Retourne (nil, nil) si aucun match croisé exploitable — best-effort.
+	GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error)
 }
 
 // LeaderboardRepository fournit les données pour le classement CSR local.
@@ -942,6 +954,9 @@ func (n *noopCompareRepo) GetFavoriteWeapon(_ context.Context, _ string) (*domai
 	return nil, nil
 }
 func (n *noopCompareRepo) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
+	return nil, nil
+}
+func (n *noopCompareRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
 	return nil, nil
 }
 

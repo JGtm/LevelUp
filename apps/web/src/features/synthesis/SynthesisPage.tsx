@@ -553,7 +553,7 @@ export function SynthesisPage() {
 
       {/* synthesis.01 + synthesis.02 — Répartition carte / mode D7 */}
       {data.breakdowns && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4">
           {data.breakdowns.top_maps.length > 0 && (
             <SynthesisOutcomesByGroupChart
               title="Par carte"

@@ -131,6 +131,27 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 	slog.DebugContext(ctx, "synthesis: loaded canonical",
 		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	// Enrichit Labels["fr"] sur Map/Playlist/GameVariant/PairMode des rows
+	// canoniques (asset_translations + mode_name_tr). Même helper que la home,
+	// pour que toutes les analyses (breakdowns "Par carte"/"Par mode", KPIs, etc.)
+	// lisent les libellés FR. Best-effort : erreur non fatale.
+	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, canonicalRows); err != nil {
+		slog.WarnContext(ctx, "synthesis: EnrichCanonicalAssetTranslations failed", "err", err)
+	} else {
+		// Diagnostic : compte les rows dont Map et PairMode ont une trad FR
+		// après enrichissement. Aide à confirmer côté logs que la cascade tourne.
+		mapFR, pairFR := 0, 0
+		for _, r := range canonicalRows {
+			if r.Summary.Map != nil && r.Summary.Map.Labels["fr"] != "" {
+				mapFR++
+			}
+			if r.Summary.PairMode != nil && r.Summary.PairMode.Labels["fr"] != "" {
+				pairFR++
+			}
+		}
+		slog.InfoContext(ctx, "synthesis: canonical FR enrichment",
+			"rows", len(canonicalRows), "map_fr_count", mapFR, "pair_fr_count", pairFR)
+	}
 	filteredCanon, filtersApplied, filtersIgnored := filterSynthesisByPeriodCanonical(canonicalRows, period, req.StartDate, req.EndDate)
 	c := req.Filters.Cascade
 	filteredCanon = filterRowsByCascade(filteredCanon, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
@@ -148,7 +169,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	encounters, _ := s.repo.LoadEncounters(ctx, playerXUID) // erreur non fatale
 	rivalries := buildRivalriesPreview(encounters)
 
-	// D7 : breakdowns map/mode depuis les rows canoniques filtrés (period-aware)
+	// D7 : breakdowns map/mode depuis les rows canoniques filtrés (period-aware).
+	// Les Labels["fr"] des AssetReference ont été hydratés par
+	// EnrichCanonicalAssetTranslations en amont, donc buildBreakdownsFromCanonical
+	// lit directement les noms FR.
 	breakdowns := buildBreakdownsFromCanonical(filteredCanon)
 
 	// P9 : stats détaillées (combat, tir, dégâts, fun)
@@ -613,12 +637,6 @@ func buildBreakdownsFromCanonical(rows []canonical.PlayerMatchRow) domain.Synthe
 	}
 	sortMapEntries(mapEntries)
 	sortModeEntries(modeEntries)
-	if len(mapEntries) > 12 {
-		mapEntries = mapEntries[:12]
-	}
-	if len(modeEntries) > 12 {
-		modeEntries = modeEntries[:12]
-	}
 	if mapEntries == nil {
 		mapEntries = []domain.SynthesisMapEntry{}
 	}

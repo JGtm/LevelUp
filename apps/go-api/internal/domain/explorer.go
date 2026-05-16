@@ -72,6 +72,10 @@ type ExplorerPlayerQueryResponse struct {
 	LossesTogether int                     `json:"losses_together"`
 	Page           int                     `json:"page"`
 	PageSize       int                     `json:"page_size"`
+	// ActivityHeatmap : agrégat jour × heure des matchs communs (Explorer mode
+	// Joueur). Calculé sur l'ensemble des matchs communs (avant pagination).
+	// Coloration front pilotée par `count` (intensité d'activité).
+	ActivityHeatmap []TemporalHeatmapCell `json:"activity_heatmap,omitempty"`
 }
 
 // KillerVictimAggregate : kills croisés agrégés entre deux joueurs.
