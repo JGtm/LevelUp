@@ -138,7 +138,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 		wr    float64
 	}
 	var candidates []weekScore //nolint:prealloc
-	for _, agg := range byWeek {
+	for ws, agg := range byWeek {
 		if agg.count < 3 {
 			continue
 		}
@@ -158,6 +158,7 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 			wr: wr,
 			entry: domain.TopWeekEntry{
 				WeekLabel:  agg.label,
+				WeekStart:  ws.Format("2006-01-02"),
 				WinRate:    wr,
 				AvgKills:   avgKills,
 				AvgDeaths:  avgDeaths,
@@ -229,7 +230,7 @@ func ComputeSynthesisTopWeeks(rows []legacymatch.SynthesisMatchRow) []domain.Top
 		wr    float64
 	}
 	var candidates []weekScore //nolint:prealloc
-	for _, agg := range byWeek {
+	for ws, agg := range byWeek {
 		if agg.count < 3 {
 			continue
 		}
@@ -248,6 +249,7 @@ func ComputeSynthesisTopWeeks(rows []legacymatch.SynthesisMatchRow) []domain.Top
 			wr: wr,
 			entry: domain.TopWeekEntry{
 				WeekLabel:  agg.label,
+				WeekStart:  ws.Format("2006-01-02"),
 				WinRate:    wr,
 				AvgKills:   avgKills,
 				AvgDeaths:  avgDeaths,
@@ -609,6 +611,7 @@ func ComputeSynthesisTopWeeksFromCanonical(rows []canonical.PlayerMatchRow) []do
 			weekStart: ws,
 			entry: domain.TopWeekEntry{
 				WeekLabel:  agg.label,
+				WeekStart:  ws.Format("2006-01-02"),
 				WinRate:    wr,
 				Wins:       agg.wins,
 				AvgKills:   avgKills,
@@ -778,6 +781,50 @@ func ComputeTemporalHeatmap(rows []legacymatch.SynthesisMatchRow) []domain.Tempo
 		agg := cells[dow][hour]
 		agg.count++
 		if r.Outcome == 2 { // legacy domain: outcome=2 is WIN
+			agg.wins++
+		}
+		cells[dow][hour] = agg
+	}
+	result := []domain.TemporalHeatmapCell{}
+	for d := 0; d < 7; d++ {
+		for h := 0; h < 24; h++ {
+			agg := cells[d][h]
+			if agg.count > 0 {
+				wr := float64(agg.wins) / float64(agg.count)
+				result = append(result, domain.TemporalHeatmapCell{
+					DOW:     d,
+					Hour:    h,
+					Count:   agg.count,
+					Wins:    agg.wins,
+					WinRate: wr,
+				})
+			}
+		}
+	}
+	return result
+}
+
+// ComputeActivityHeatmapFromCommonMatches construit la heatmap jour × heure
+// depuis la liste brute des matchs communs entre deux joueurs (Explorer mode
+// Joueur). Même logique d'agrégation que ComputeTemporalHeatmap : conversion
+// Go Weekday → dow 0=lundi…6=dimanche, heure UTC, comptage win sur outcome=2.
+//
+// Renseigne count + wins + win_rate pour réutiliser le type TemporalHeatmapCell.
+// Côté frontend, c'est `count` qui pilote la coloration (intensité d'activité
+// commune) ; `win_rate` reste exposé pour le tooltip.
+func ComputeActivityHeatmapFromCommonMatches(rows []domain.CommonMatchRaw) []domain.TemporalHeatmapCell {
+	type heatmapAgg struct {
+		count int
+		wins  int
+	}
+	cells := [7][24]heatmapAgg{}
+	for _, r := range rows {
+		goDow := int(r.StartTime.Weekday())
+		dow := (goDow + 6) % 7 // Sunday=0…Saturday=6 → lundi=0…dimanche=6
+		hour := r.StartTime.Hour()
+		agg := cells[dow][hour]
+		agg.count++
+		if r.Player1Outcome == 2 { // OutcomeWin (legacy code)
 			agg.wins++
 		}
 		cells[dow][hour] = agg

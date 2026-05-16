@@ -1,8 +1,9 @@
-// Package duckdb â€” synthesis_repo.go : implÃ©mentation DuckDB du SynthesisRepository.
+// Package duckdb — synthesis_repo.go : implémentation DuckDB du SynthesisRepository.
 //
 // Sprint 55 D1 : extrait de SquadRepo + CareerRepo pour port.SynthesisRepository.
-// Combine les donnÃ©es de synthÃ¨se (matchs, heatmap) depuis SquadRepo
-// et les encounters depuis CareerRepo.
+// Combine les données de synthèse (matchs, heatmap) depuis SquadRepo,
+// les encounters depuis CareerRepo, et l'enrichissement i18n canonical
+// depuis HomeRepo (cohérence cross-page).
 package duckdb
 
 import (
@@ -11,34 +12,47 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 )
 
-// SynthesisRepo implÃ©mente port.SynthesisRepository.
-// Wraps SquadRepo (LoadSynthesisMatches, LoadSynthesisHeatmap) +
-// la requÃªte encounters directement.
+// SynthesisRepo implémente port.SynthesisRepository.
+// Wraps SquadRepo (LoadSynthesisMatches, LoadSynthesisHeatmap) + HomeRepo
+// (EnrichCanonicalAssetTranslations) + la requête encounters directement.
 type SynthesisRepo struct {
 	pdb      *PlayerDB
 	squadRef *SquadRepo
+	homeRef  *HomeRepo
 }
 
-// NewSynthesisRepo crÃ©e un SynthesisRepo depuis un PlayerDB.
+// NewSynthesisRepo crée un SynthesisRepo depuis un PlayerDB.
 func NewSynthesisRepo(pdb *PlayerDB) *SynthesisRepo {
-	return &SynthesisRepo{pdb: pdb, squadRef: NewSquadRepo(pdb)}
+	return &SynthesisRepo{
+		pdb:      pdb,
+		squadRef: NewSquadRepo(pdb),
+		homeRef:  NewHomeRepo(pdb),
+	}
 }
 
-// LoadSynthesisMatches dÃ©lÃ¨gue Ã  SquadRepo.
+// LoadSynthesisMatches délègue à SquadRepo.
 func (r *SynthesisRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]legacymatch.SynthesisMatchRow, error) {
 	return r.squadRef.LoadSynthesisMatches(ctx, xuid)
 }
 
-// LoadSynthesisHeatmap dÃ©lÃ¨gue Ã  SquadRepo.
+// LoadSynthesisHeatmap délègue à SquadRepo.
 func (r *SynthesisRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
 	return r.squadRef.LoadSynthesisHeatmap(ctx, xuid)
 }
 
+// EnrichCanonicalAssetTranslations délègue à HomeRepo qui possède déjà
+// l'enrichissement complet Map/Playlist/GameVariant/PairMode via
+// asset_translations + mode_name_tr. Même appel = même cohérence FR que la home.
+func (r *SynthesisRepo) EnrichCanonicalAssetTranslations(ctx context.Context, rows []canonical.PlayerMatchRow) error {
+	return r.homeRef.EnrichCanonicalAssetTranslations(ctx, rows)
+}
+
 // LoadEncounters charge les encounters du joueur (Q_encounters).
-// RÃ©utilise la requÃªte Q10Encounters de CareerRepo avec le xuid fourni.
+// Réutilise la requête Q10Encounters de CareerRepo avec le xuid fourni.
 func (r *SynthesisRepo) LoadEncounters(ctx context.Context, xuid string) ([]domain.EncounterRawRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()

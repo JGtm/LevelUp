@@ -94,6 +94,26 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 			return fmt.Errorf("CompareService.GetPage: stats joueur B introuvables: %w", err)
 		}
 		statsB = remote
+		// Enrichissement best-effort : si xuidB est résolu localement (matchs
+		// partagés présents dans shared.match_participants), on calcule les 4
+		// métriques locale-only sur l'échantillon croisé.
+		if xuidB != "" {
+			if sample, sErr := s.repo.GetCrossMatchSample(gctx, s.xuidA, xuidB); sErr != nil {
+				slog.DebugContext(gctx, "CompareService: cross-match sample non disponible (best-effort)", "err", sErr)
+			} else if sample != nil && sample.MatchesCount > 0 {
+				statsB.IsLocalSample = true
+				statsB.MaxKillingSpree = sample.MaxKillingSpree
+				statsB.AvgLifeSecs = sample.AvgLifeSecs
+				statsB.PerfectKillsPerGame = sample.PerfectKillsPerGame
+				statsB.HeadshotKillsPerGame = sample.HeadshotKillsPerGame
+				// Réoriente Matches sur la taille de l'échantillon : c'est ce qui
+				// alimente sample_size_b côté UI, et la note "(sur N parties)" doit
+				// refléter la base de calcul des locale-only — pas le total Waypoint.
+				statsB.Matches = sample.MatchesCount
+				slog.DebugContext(gctx, "CompareService: stats B enrichies par échantillon croisé",
+					"gamertag_b", req.TargetGamertag, "matches", sample.MatchesCount)
+			}
+		}
 		return nil
 	})
 
@@ -155,6 +175,43 @@ func convertNarrativeBadgesCompare(badges []narrative.EncounterBadge) []domain.M
 	return result
 }
 
+// Métriques calculées uniquement à partir de la DB locale d'un joueur (stats.duckdb
+// + agrégats shared.match_participants par xuid). Quand le joueur n'est pas local,
+// l'API Waypoint career-stats ne les fournit pas → valeur 0 = donnée absente.
+var localOnlyMetrics = map[string]bool{
+	"max_killing_spree":       true,
+	"avg_life_secs":           true,
+	"perfect_kills_per_game":  true,
+	"headshot_kills_per_game": true,
+}
+
+// Métriques issues de stats.duckdb (ATH + rang carrière). Indisponibles si le
+// joueur n'est pas local, ET considérées non renseignées si la valeur est 0
+// (cas d'un joueur local dont l'ATH n'a pas encore été calculé).
+var athMetrics = map[string]bool{
+	"perf_ath":    true,
+	"lusr_ath":    true,
+	"career_rank": true,
+}
+
+// metricAvailability détermine si la valeur d'une métrique est exploitable pour un joueur.
+//
+// - athMetrics (perf_ath/lusr_ath/career_rank) : exigent IsLocal=true ET valeur>0.
+//   L'échantillon croisé ne donne pas l'ATH (stats de carrière globales).
+// - localOnlyMetrics (spree/life/perfect/headshots) : IsLocal OU IsLocalSample
+//   (le service alimente IsLocalSample pour un joueur B remote ayant un échantillon
+//   de matchs croisés avec A — métriques alors calculées sur cet échantillon).
+// - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
+func metricAvailability(key string, value float64, isLocal, isLocalSample bool) bool {
+	if athMetrics[key] {
+		return isLocal && value > 0
+	}
+	if localOnlyMetrics[key] {
+		return isLocal || isLocalSample
+	}
+	return true
+}
+
 // buildMetrics construit les CompareMetricRows à partir des deux stats normalisées.
 func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 	// Rendement = dégâts / frag / 225 — moins = plus efficace.
@@ -200,19 +257,35 @@ func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 
 	rows := make([]domain.CompareMetricRow, 0, len(defs))
 	for _, d := range defs {
-		if d.va == 0 && d.vb == 0 {
-			continue // pas de données pour les deux joueurs — masquer plutôt qu'afficher "0 vs 0"
+		aAvail := metricAvailability(d.key, d.va, a.IsLocal, a.IsLocalSample)
+		bAvail := metricAvailability(d.key, d.vb, b.IsLocal, b.IsLocalSample)
+		// Si la métrique est indisponible des deux côtés, on masque la ligne :
+		// pas de valeur comparable et rien d'informatif à afficher.
+		if !aAvail && !bAvail {
+			continue
 		}
-		delta := d.vb - d.va
-		winner := computeWinner(d.va, d.vb, d.lessIsBetter)
+		// Si la métrique est disponible des deux côtés mais vaut 0 partout,
+		// on masque aussi (pas d'info utile à afficher).
+		if aAvail && bAvail && d.va == 0 && d.vb == 0 {
+			continue
+		}
+		var winner string
+		var delta float64
+		if aAvail && bAvail {
+			winner = computeWinner(d.va, d.vb, d.lessIsBetter)
+			delta = d.vb - d.va
+		}
 		rows = append(rows, domain.CompareMetricRow{
-			Metric:      d.key,
-			LabelFR:     d.label,
-			ValueA:      d.va,
-			ValueB:      d.vb,
-			Delta:       delta,
-			Winner:      winner,
-			SampleSizeB: sampleSizeB,
+			Metric:          d.key,
+			LabelFR:         d.label,
+			ValueA:          d.va,
+			ValueB:          d.vb,
+			ValueAAvailable: aAvail,
+			ValueBAvailable: bAvail,
+			Delta:           delta,
+			Winner:          winner,
+			LessIsBetter:    d.lessIsBetter,
+			SampleSizeB:     sampleSizeB,
 		})
 	}
 	return rows

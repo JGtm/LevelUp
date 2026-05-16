@@ -289,6 +289,56 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	return enc, nil
 }
 
+// GetCrossMatchSample agrège les métriques locale-only du joueur xuidB calculées
+// uniquement sur les matchs où xuidA et xuidB ont joué ensemble.
+//
+// Réutilise le pattern d'auto-jointure de GetEncounterStats et les agrégats de
+// GetLocalStats : la jointure restreint l'échantillon, mais les formules
+// (MAX max_killing_spree, AVG avg_life_seconds, AVG headshot_kills, AVG perfect_count)
+// sont strictement identiques à celles utilisées pour un joueur local.
+//
+// Best-effort : retourne (nil, nil) si aucun match croisé n'existe.
+func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	const q = `
+		SELECT
+			COUNT(*)                                        AS matches_count,
+			COALESCE(MAX(b.max_killing_spree), 0)           AS max_killing_spree,
+			COALESCE(AVG(b.avg_life_seconds), 0.0)          AS avg_life_secs,
+			COALESCE(AVG(b.headshot_kills), 0.0)            AS headshot_kills_per_game,
+			COALESCE(AVG(COALESCE(me.perfect_count, 0)), 0.0) AS perfect_kills_per_game
+		FROM shared.match_participants a
+		JOIN shared.match_participants b ON b.match_id = a.match_id AND b.xuid = ?
+		LEFT JOIN (
+			SELECT match_id, xuid, SUM(count) AS perfect_count
+			FROM shared.medals_earned
+			WHERE medal_name_id = 1512363953
+			GROUP BY match_id, xuid
+		) me ON me.match_id = b.match_id AND me.xuid = b.xuid
+		WHERE a.xuid = ?`
+
+	var sample domain.CrossMatchSample
+	err := r.pdb.Player.QueryRow(ctx, q, xuidB, xuidA).Scan(
+		&sample.MatchesCount,
+		&sample.MaxKillingSpree,
+		&sample.AvgLifeSecs,
+		&sample.HeadshotKillsPerGame,
+		&sample.PerfectKillsPerGame,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetCrossMatchSample: %w", err)
+	}
+	if sample.MatchesCount == 0 {
+		return nil, nil
+	}
+	return &sample, nil
+}
+
 // ResolveXUID retourne le XUID correspondant à un gamertag dans le registre partagé.
 func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

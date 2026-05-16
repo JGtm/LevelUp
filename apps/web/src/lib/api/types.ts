@@ -1176,6 +1176,9 @@ export interface ExplorerPlayerQueryResponse {
   losses_together: number
   page: number
   page_size: number
+  /** Agrégat jour × heure des matchs communs (toutes pages confondues).
+   *  Coloration UI pilotée par count (intensité d'activité commune). */
+  activity_heatmap?: HeatmapCell[]
 }
 
 export interface ExplorerMatchesQueryResponse {
@@ -1917,6 +1920,8 @@ export interface HeatmapCell {
 
 export interface TopWeekItem {
   week_label: string
+  /** ISO date (YYYY-MM-DD) du lundi 00:00 UTC de la semaine. Pour tri chronologique. */
+  week_start: string
   match_count: number
   wins: number
   win_rate: number
@@ -2966,8 +2971,14 @@ export interface CompareMetricRow {
   label_fr: string
   value_a: number
   value_b: number
+  /** false = donnée non disponible côté joueur A (ex. ATH non calculé). À afficher en N/A. */
+  value_a_available?: boolean
+  /** false = donnée non disponible côté joueur B (ex. joueur remote sur une métrique locale-only). À afficher en N/A. */
+  value_b_available?: boolean
   delta: number | null
   winner: 'a' | 'b' | 'tie' | null
+  /** true = valeur basse meilleure (deaths_per_game, rendement, damage_taken_per_game). Sert au calcul du top des 3 en mode miroir. */
+  less_is_better?: boolean
   sample_size_b?: number
 }
 

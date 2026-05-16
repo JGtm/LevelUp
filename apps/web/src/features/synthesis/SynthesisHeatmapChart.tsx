@@ -51,7 +51,7 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 60, right: 20, top: 30, bottom: 40, containLabel: false },
+    grid: { left: 60, right: 130, top: 30, bottom: 40, containLabel: false },
     tooltip: {
       trigger: 'item',
       backgroundColor: tc.tooltipBg,
@@ -60,7 +60,7 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
       formatter: (params: { data: { value: [number, number, number | null]; count: number } }) => {
         const [h, d, wr] = params.data.value
         const wrStr = wr == null ? 'n/a' : `${(wr * 100).toFixed(1)}%`
-        return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>Win rate : ${wrStr}<br>Matchs : ${params.data.count}`
+        return `${DOW_LABELS[d]} ${HOUR_LABELS[h]}<br>Taux de victoire : ${wrStr}<br>Matchs : ${params.data.count}`
       },
     },
     legend: false as unknown as undefined,
@@ -85,8 +85,10 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
       calculable: false,
       show: true,
       orient: 'vertical',
-      right: 10,
+      right: 30,
       top: 'center',
+      itemWidth: 12,
+      itemHeight: 140,
       inRange: {
         color: [
           resolveToken('outcome-loss'),
@@ -95,8 +97,8 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
         ],
       },
       formatter: (val: number) => `${(val * 100).toFixed(0)}%`,
-      text: ['Win rate', ''],
-      textStyle: { color: tc.axisLabel },
+      text: ['Victoires', ''],
+      textStyle: { color: tc.axisLabel, fontSize: 10 },
     } : undefined,
     series: [
       {

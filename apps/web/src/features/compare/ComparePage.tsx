@@ -26,7 +26,13 @@ const CATEGORY_KEYS = {
   bilan: ['matches', 'career_rank', 'perf_ath', 'lusr_ath'],
 } as const
 
-function formatMetricValue(metric: string, value: number | string, text: CompareText) {
+function formatMetricValue(
+  metric: string,
+  value: number | string,
+  text: CompareText,
+  available: boolean = true,
+) {
+  if (!available) return text.notAvailable
   if (typeof value !== 'number') return String(value)
   if (metric === 'win_rate' || metric === 'accuracy' || metric === 'rendement' || metric === 'resistance') {
     return `${(value * 100).toLocaleString(text.intlLocale, { maximumFractionDigits: 1 })} %`
@@ -70,10 +76,14 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
       <div className="p-3 space-y-3">
         {rows.map((row) => {
           const label = text.metrics[row.metric] ?? row.label_fr
-          const valA = formatMetricValue(row.metric, row.value_a, text)
-          const valB = formatMetricValue(row.metric, row.value_b, text)
-          const ariaLabel =
-            row.winner === 'tie' || row.winner == null
+          const availableA = row.value_a_available !== false
+          const availableB = row.value_b_available !== false
+          const bothAvailable = availableA && availableB
+          const valA = formatMetricValue(row.metric, row.value_a, text, availableA)
+          const valB = formatMetricValue(row.metric, row.value_b, text, availableB)
+          const ariaLabel = !bothAvailable
+            ? text.ariaNotAvailable
+            : row.winner === 'tie' || row.winner == null
               ? text.ariaEqual
               : row.winner === 'a'
                 ? text.ariaWinner(gamertagA)
@@ -93,6 +103,8 @@ function CategoryColumn({ title, rows, text, gamertagA, gamertagB }: CategoryCol
               winner={row.winner}
               ariaLabel={ariaLabel}
               sampleNote={sampleNote}
+              availableA={availableA}
+              availableB={availableB}
             />
           )
         })}
@@ -131,9 +143,14 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
       <div className="p-3 space-y-3">
         {rows.map(({ left, right }) => {
           const label = text.metrics[left.metric] ?? left.label_fr
-          const valA = formatMetricValue(left.metric, left.value_a, text)
-          const valB = formatMetricValue(left.metric, left.value_b, text)
-          const valC = formatMetricValue(right.metric, right.value_b, text)
+          // Player A est partagé entre left/right ; on prend le OR pour considérer
+          // la donnée comme disponible dès que l'une des deux comparaisons l'expose.
+          const availableA = left.value_a_available !== false || right.value_a_available !== false
+          const availableB = left.value_b_available !== false
+          const availableC = right.value_b_available !== false
+          const valA = formatMetricValue(left.metric, left.value_a, text, availableA)
+          const valB = formatMetricValue(left.metric, left.value_b, text, availableB)
+          const valC = formatMetricValue(right.metric, right.value_b, text, availableC)
           const sampleNoteB =
             typeof left.sample_size_b === 'number' && left.sample_size_b > 0 && left.sample_size_b < 10
               ? text.sampleSize(left.sample_size_b)
@@ -156,6 +173,10 @@ function CategoryMirrorSection({ title, keys, metricsLeft, metricsRight, text }:
               winnerAC={right.winner}
               sampleNoteB={sampleNoteB}
               sampleNoteC={sampleNoteC}
+              availableA={availableA}
+              availableB={availableB}
+              availableC={availableC}
+              lessIsBetter={left.less_is_better ?? right.less_is_better ?? false}
             />
           )
         })}

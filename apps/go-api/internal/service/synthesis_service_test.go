@@ -40,6 +40,10 @@ func (m *mockSynthesisRepo) LoadEncounters(_ context.Context, _ string) ([]domai
 	return m.encounterRows, m.encounterErr
 }
 
+func (m *mockSynthesisRepo) EnrichCanonicalAssetTranslations(_ context.Context, _ []canonical.PlayerMatchRow) error {
+	return nil
+}
+
 // --- mock PlayerMatchesRepository pour tests P4.3 finale ---
 //
 // Convertit []SynthesisMatchRow en []canonical.PlayerMatchRow pour exercer

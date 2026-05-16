@@ -96,6 +96,165 @@ func TestCompareService_PlayerBNotFound(t *testing.T) {
 	}
 }
 
+// TestBuildMetrics_AvailabilityRemoteB vérifie que les métriques locale-only
+// (ATH, max_killing_spree, etc.) sont marquées indisponibles côté B quand B
+// est remote, et que les métriques fournies par Waypoint restent disponibles.
+func TestBuildMetrics_AvailabilityRemoteB(t *testing.T) {
+	a := domain.NormalizedPlayerStats{
+		IsLocal:              true,
+		Matches:              100,
+		WinRate:              0.6,
+		KDA:                  1.4,
+		KDR:                  1.25,
+		KillsPerGame:         10,
+		DeathsPerGame:        8,
+		Accuracy:             0.45,
+		DamagePerGame:        2500,
+		MaxKillingSpree:      12,
+		AvgLifeSecs:          30,
+		PerfectKillsPerGame:  0.2,
+		HeadshotKillsPerGame: 3.0,
+		PerfATH:              98,
+		LusrATH:              1600,
+		CareerRank:           150,
+	}
+	b := domain.NormalizedPlayerStats{
+		IsLocal:       false,
+		Matches:       50,
+		WinRate:       0.5,
+		KDA:           1.0,
+		KDR:           1.0,
+		KillsPerGame:  9,
+		DeathsPerGame: 9,
+		Accuracy:      0.4,
+		DamagePerGame: 2200,
+	}
+
+	rows := buildMetrics(a, b)
+	byKey := make(map[string]domain.CompareMetricRow, len(rows))
+	for _, r := range rows {
+		byKey[r.Metric] = r
+	}
+
+	cases := []struct {
+		metric    string
+		wantAvail bool
+	}{
+		{"win_rate", true},
+		{"kda", true},
+		{"accuracy", true},
+		{"damage_per_game", true},
+		{"matches", true},
+		{"max_killing_spree", false},
+		{"avg_life_secs", false},
+		{"perfect_kills_per_game", false},
+		{"headshot_kills_per_game", false},
+		{"perf_ath", false},
+		{"lusr_ath", false},
+		{"career_rank", false},
+	}
+	for _, c := range cases {
+		row, ok := byKey[c.metric]
+		if !ok {
+			t.Errorf("metric %q absente du résultat", c.metric)
+			continue
+		}
+		if row.ValueBAvailable != c.wantAvail {
+			t.Errorf("metric %q : ValueBAvailable=%v, want %v", c.metric, row.ValueBAvailable, c.wantAvail)
+		}
+		if !row.ValueAAvailable {
+			t.Errorf("metric %q : ValueAAvailable=false alors que A est local et renseigné", c.metric)
+		}
+	}
+}
+
+// TestBuildMetrics_AvailabilityATHZero vérifie que pour les métriques ATH,
+// une valeur 0 sur un joueur local est considérée non disponible (ATH non calculé).
+func TestBuildMetrics_AvailabilityATHZero(t *testing.T) {
+	a := domain.NormalizedPlayerStats{
+		IsLocal: true, Matches: 100, WinRate: 0.6, KillsPerGame: 10, DeathsPerGame: 8,
+		PerfATH: 0, LusrATH: 0, CareerRank: 0,
+	}
+	b := domain.NormalizedPlayerStats{
+		IsLocal: true, Matches: 80, WinRate: 0.5, KillsPerGame: 9, DeathsPerGame: 9,
+		PerfATH: 50, LusrATH: 1200, CareerRank: 100,
+	}
+
+	rows := buildMetrics(a, b)
+	byKey := make(map[string]domain.CompareMetricRow, len(rows))
+	for _, r := range rows {
+		byKey[r.Metric] = r
+	}
+
+	for _, metric := range []string{"perf_ath", "lusr_ath", "career_rank"} {
+		row, ok := byKey[metric]
+		if !ok {
+			t.Errorf("metric %q manquante (devrait rester car B a une valeur)", metric)
+			continue
+		}
+		if row.ValueAAvailable {
+			t.Errorf("metric %q : ValueAAvailable=true alors que A a 0 (ATH non calculé)", metric)
+		}
+		if !row.ValueBAvailable {
+			t.Errorf("metric %q : ValueBAvailable=false alors que B a une valeur >0", metric)
+		}
+		if row.Winner != "" {
+			t.Errorf("metric %q : Winner=%q, attendu chaîne vide (donnée partielle)", metric, row.Winner)
+		}
+	}
+}
+
+// TestBuildMetrics_IsLocalSample vérifie que les métriques locale-only
+// deviennent disponibles côté B quand B est remote mais enrichi par un
+// échantillon de matchs croisés (IsLocalSample=true).
+func TestBuildMetrics_IsLocalSample(t *testing.T) {
+	a := domain.NormalizedPlayerStats{
+		IsLocal: true, Matches: 100, WinRate: 0.6, KDA: 1.4, KDR: 1.25,
+		KillsPerGame: 10, DeathsPerGame: 8, Accuracy: 0.45, DamagePerGame: 2500,
+		MaxKillingSpree: 12, AvgLifeSecs: 30, PerfectKillsPerGame: 0.2, HeadshotKillsPerGame: 3.0,
+		PerfATH: 98, LusrATH: 1600, CareerRank: 150,
+	}
+	// B remote (IsLocal=false) mais enrichi par échantillon croisé.
+	b := domain.NormalizedPlayerStats{
+		IsLocal: false, IsLocalSample: true,
+		Matches: 5, WinRate: 0.5, KDA: 1.0, KDR: 1.0,
+		KillsPerGame: 9, DeathsPerGame: 9, Accuracy: 0.4, DamagePerGame: 2200,
+		MaxKillingSpree: 8, AvgLifeSecs: 25, PerfectKillsPerGame: 0.1, HeadshotKillsPerGame: 2.5,
+	}
+
+	rows := buildMetrics(a, b)
+	byKey := make(map[string]domain.CompareMetricRow, len(rows))
+	for _, r := range rows {
+		byKey[r.Metric] = r
+	}
+
+	// Les 4 métriques locale-only doivent être marquées disponibles côté B.
+	for _, metric := range []string{"max_killing_spree", "avg_life_secs", "perfect_kills_per_game", "headshot_kills_per_game"} {
+		row, ok := byKey[metric]
+		if !ok {
+			t.Errorf("metric %q absente", metric)
+			continue
+		}
+		if !row.ValueBAvailable {
+			t.Errorf("metric %q : ValueBAvailable=false, attendu true (IsLocalSample)", metric)
+		}
+		if row.Winner == "" {
+			t.Errorf("metric %q : Winner vide, attendu calculé (les deux côtés dispo)", metric)
+		}
+	}
+
+	// L'ATH reste indisponible côté B même avec IsLocalSample.
+	for _, metric := range []string{"perf_ath", "lusr_ath", "career_rank"} {
+		row, ok := byKey[metric]
+		if !ok {
+			continue
+		}
+		if row.ValueBAvailable {
+			t.Errorf("metric %q : ValueBAvailable=true, attendu false (ATH non dérivable d'un échantillon)", metric)
+		}
+	}
+}
+
 // mockCompareRepoAB — retourne stats différentes selon le xuid demandé.
 type mockCompareRepoAB struct {
 	a       *domain.NormalizedPlayerStats
@@ -143,6 +302,10 @@ func (m *mockCompareRepoAB) GetFavoriteWeapon(_ context.Context, _ string) (*dom
 }
 
 func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
+	return nil, nil
+}
+
+func (m *mockCompareRepoAB) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
 	return nil, nil
 }
 

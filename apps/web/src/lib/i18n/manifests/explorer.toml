@@ -50,6 +50,10 @@ en = "Search returned no exploitable payload for this gamertag."
 fr = "Face-à-face"
 en = "Head-to-head"
 
+[explorer.player.activity_heatmap_title]
+fr = "Heatmap d'activité commune"
+en = "Shared activity heatmap"
+
 [explorer.player.matches_together]
 fr = "Matchs ensemble"
 en = "Matches together"

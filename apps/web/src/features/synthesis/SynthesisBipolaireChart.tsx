@@ -98,10 +98,35 @@ function buildBipolaireOption(
   const soloTexts = dps.map((m) => formatMetricValue(m.label, m.solo_value))
   const squadTexts = dps.map((m) => formatMetricValue(m.label, m.squad_value))
 
+  const soloColors = dps.map((m) =>
+    m.solo_value < 0 ? resolveToken('outcome-loss') : resolveToken('info'),
+  )
+  const squadColors = dps.map((m) =>
+    m.squad_value < 0 ? resolveToken('outcome-loss') : resolveToken('outcome-win'),
+  )
+  const dot = (c: string) =>
+    `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;vertical-align:middle"></span>`
+
   return {
     backgroundColor: CHART_BG,
     grid: { left: 24, right: 24, top: 16, bottom: 40, containLabel: true },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis', axisPointer: { type: 'shadow' } },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: unknown) => {
+        const arr = Array.isArray(params) ? (params as { dataIndex?: number; name?: string }[]) : []
+        const idx = arr[0]?.dataIndex ?? 0
+        const title = arr[0]?.name ?? labels[idx] ?? ''
+        const solo = soloTexts[idx] ?? ''
+        const squad = squadTexts[idx] ?? ''
+        return [
+          `<div style="font-weight:600;margin-bottom:4px">${title}</div>`,
+          `<div>${dot(soloColors[idx])}Solo : <b>${solo}</b></div>`,
+          `<div>${dot(squadColors[idx])}Escouade : <b>${squad}</b></div>`,
+        ].join('')
+      },
+    },
     legend: { ...getLegendBase(tc), orient: 'horizontal', bottom: 5, left: 'center', top: undefined },
     xAxis: {
       ...axis,
@@ -125,7 +150,7 @@ function buildBipolaireOption(
         type: 'bar',
         data: soloVals.map((v, i) => ({
           value: v,
-          itemStyle: { color: dps[i].solo_value < 0 ? resolveToken('outcome-loss') : resolveToken('info') },
+          itemStyle: { color: soloColors[i] },
         })),
         clip: false,
         barWidth: '50%',
@@ -149,7 +174,7 @@ function buildBipolaireOption(
         type: 'bar',
         data: squadVals.map((v, i) => ({
           value: v,
-          itemStyle: { color: dps[i].squad_value < 0 ? resolveToken('outcome-loss') : resolveToken('outcome-win') },
+          itemStyle: { color: squadColors[i] },
         })),
         clip: false,
         barWidth: '50%',
