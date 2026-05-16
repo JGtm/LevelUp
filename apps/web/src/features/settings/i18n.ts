@@ -119,6 +119,7 @@ export interface SettingsText {
   backfillPersonalScores: string
   backfillPerfScores: string
   backfillLUSR: string
+  backfillCSR: string
   backfillEvents: string
   backfillWeapons: string
   backfillEngagementScores: string
@@ -323,6 +324,7 @@ const FR_TEXT: SettingsText = {
   backfillPersonalScores: 'Scores personnels',
   backfillPerfScores: 'Scores performance',
   backfillLUSR: 'LUSR',
+  backfillCSR: 'CSR par match (re-fetch API)',
   backfillEvents: 'Événements',
   backfillWeapons: 'Armes',
   backfillEngagementScores: "Score d'engagement",
@@ -560,6 +562,7 @@ const EN_TEXT: SettingsText = {
   backfillPersonalScores: 'Personal scores',
   backfillPerfScores: 'Performance scores',
   backfillLUSR: 'LUSR',
+  backfillCSR: 'Per-match CSR (API re-fetch)',
   backfillEvents: 'Events',
   backfillWeapons: 'Weapons',
   backfillEngagementScores: 'Engagement score',

@@ -55,6 +55,11 @@ type MatchSkillData struct {
 	KillsStdDev    *float64
 	DeathsExpected *float64
 	DeathsStdDev   *float64
+	// PreMatchCSR / PostMatchCSR : snapshot CSR avant/après le match, présent
+	// uniquement pour les matchs classés (champ RankRecap du payload skill).
+	// nil pour matchs sociaux / firefight / custom.
+	PreMatchCSR  *CSRRankSnapshot
+	PostMatchCSR *CSRRankSnapshot
 }
 
 // flexFloat accepte un float64 OU une string JSON contenant un nombre.
@@ -110,6 +115,10 @@ type matchSkillResponse struct {
 					StdDev   flexFloat `json:"StdDev"`
 				} `json:"Deaths"`
 			} `json:"StatPerformances"`
+			RankRecap *struct {
+				PreMatchCsr  *csrRankRaw `json:"PreMatchCsr"`
+				PostMatchCsr *csrRankRaw `json:"PostMatchCsr"`
+			} `json:"RankRecap"`
 		} `json:"Result"`
 	} `json:"Value"`
 }
@@ -152,7 +161,13 @@ func (c *HaloAPIClient) GetMatchSkill(
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("GetMatchSkill decode(%s): %w", matchID, err)
 	}
+	return transformMatchSkillResponse(resp), nil
+}
 
+// transformMatchSkillResponse convertit le payload skill Halo décodé en map
+// xuid → MatchSkillData. Extrait en helper pur (sans IO) pour faciliter les
+// tests unitaires du parser, notamment du champ RankRecap (CSR pré/post-match).
+func transformMatchSkillResponse(resp matchSkillResponse) map[string]*MatchSkillData {
 	out := make(map[string]*MatchSkillData, len(resp.Value))
 	for _, v := range resp.Value {
 		if v.ResultCode != 0 {
@@ -186,9 +201,19 @@ func (c *HaloAPIClient) GetMatchSkill(
 				data.DeathsStdDev = &sd
 			}
 		}
+		if rr := v.Result.RankRecap; rr != nil {
+			if rr.PreMatchCsr != nil {
+				snap := rawToCSRSnapshot(*rr.PreMatchCsr)
+				data.PreMatchCSR = &snap
+			}
+			if rr.PostMatchCsr != nil {
+				snap := rawToCSRSnapshot(*rr.PostMatchCsr)
+				data.PostMatchCSR = &snap
+			}
+		}
 		out[xuid] = data
 	}
-	return out, nil
+	return out
 }
 
 // computeEnemyMMR moyenne le MMR des équipes autres que selfTeamID.

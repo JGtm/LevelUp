@@ -1,3 +1,219 @@
+## [2026-05-16] fix(sync/skill) — Audit garde-fous CSR end-to-end + correctif payload tronqué
+
+**Statut** : Complété. Tous les vecteurs d'écriture sur `match_skill_rank` audités, 1 vulnérabilité identifiée et corrigée.
+
+**Contexte** : Question utilisateur post-Phase C : « Mes CSR seront-ils protégés lors des sync et backfill (forcés ou non) ? Tu as vérifié tout le pipeline ? ». Vu le contexte (perte historique de CSR à cause d'un bug LUSR), audit défensif requis.
+
+**Inventaire des 5 vecteurs d'écriture sur `match_skill_rank`** (uniquement code prod, hors tests) :
+
+| Vecteur | Fichier | Comportement |
+|---|---|---|
+| 1. UPSERT LUSR (sync nominal + `--lusr`) | [skill_rating_loaders.go:259](apps/go-api/internal/sync/skill_rating_loaders.go#L259) | **Triple garde-fou** : filtre Go `existingCSR` ([skill_rating.go:329](apps/go-api/internal/sync/skill_rating.go#L329)), `loadLUSRMatchData WHERE is_ranked=FALSE` (jamais de LUSR sur ranked), clause SQL `WHERE rating_type <> 'CSR'`. Le mode `--force-lusr` charge toujours `existingCSR` → la protection tient même en force. |
+| 2. UPSERT CSR (sync nominal + `--csr`) | [csr_writes.go:159](apps/go-api/internal/sync/csr_writes.go#L159) | **Autoritaire par design** (Microsoft = source de vérité). ON CONFLICT DO UPDATE SET rating_type='CSR' remplace toute row LUSR sur un match ranked. |
+| 3. DELETE LUSR + INSERT CSR (`restore-csr` mode overwrite) | [cmd_restore_csr.go:101](apps/go-api/cmd/levelup/cmd_restore_csr.go#L101) | DELETE filtré par `rating_type='LUSR' AND match_id IN (backup CSR ids)` puis `INSERT ... ON CONFLICT DO NOTHING` → préserve les rows CSR existantes. |
+| 4. Hook inline CSR dans sync nominal (`processMatch` + `insertFetchedMatch`) | [engine.go:942](apps/go-api/internal/sync/engine.go#L942) + [engine.go:1240](apps/go-api/internal/sync/engine.go#L1240) | Le sync nominal **skip les match_ids déjà connus** ([engine.go:710](apps/go-api/internal/sync/engine.go#L710)) → aucun re-traitement → aucun écrasement en sync nominal. Les nouveaux matchs sont écrits une seule fois. |
+| 5. Loop `BackfillCSRFromAPI` (`--csr` et `--csr --force`) | [csr_backfill.go:52](apps/go-api/internal/sync/csr_backfill.go#L52) | Sans force : skip via `existingCSR` map. Avec force : re-fetche tous les ranked + ré-upsert. **C'est le seul vecteur capable de remplacer une CSR existante par une autre valeur.** |
+
+**Vulnérabilité identifiée** :
+- Vecteur 5 + payload API drift : si Microsoft renvoie temporairement `PostMatchCsr={Tier:"", MeasurementMatchesRemaining:0, Value:0}` sur un match ranked (drift API ponctuel, payload tronqué, race condition côté serveur Halo), l'ancien `ExtractCSRRowIfRanked` traitait ça comme un placement (path `Tier == ""`) et créait une row "Placement (0 restant)" qui **écrasait la CSR valide existante** via UpsertCSRRow.
+- Cas concrets où ça aurait posé problème :
+  - `levelup backfill --csr --force` (action déclenchable par le user, exactement le scénario qu'il veut faire pour rattraper son historique perdu).
+  - Re-sync d'un match déjà connu via un futur `--force-rescan` (n'existe pas actuellement mais pourrait être ajouté).
+
+**Décision technique** :
+Ajout d'une **garde-fou stricte au début de `ExtractCSRRowIfRanked`** : si `PostMatchCsr.Tier == ""` ET `MeasurementMatchesRemaining == 0`, on rejette la row (retourne nil). Justification :
+- Un PostMatchCsr légitime porte SOIT un Tier non vide (rang stable Bronze..Onyx), SOIT un MeasurementMatchesRemaining > 0 (placement en cours).
+- Si les deux sont nuls, c'est forcément un payload corrompu — préserver la donnée existante est moins coûteux que de l'écraser par un placeholder bidon.
+- En backfill, l'incrément `SkippedNoRankRecap` couvre déjà ce cas en telemetry (compteur visible dans le job summary).
+
+**Actions** :
+1. [csr_writes.go::ExtractCSRRowIfRanked](apps/go-api/internal/sync/csr_writes.go#L113-L122) — ajout de la garde-fou stricte (5L de code productive + commentaire détaillé expliquant le pourquoi pour les futurs mainteneurs).
+2. [csr_writes_test.go](apps/go-api/internal/sync/csr_writes_test.go) — 2 nouveaux tests :
+   - `TestExtractCSRRowIfRanked_TruncatedPayloadIsRejected` : Tier="" + Measurement=0 → nil.
+   - `TestExtractCSRRowIfRanked_LegitimatePlacementStillAccepted` : sanity check que Tier="" + Measurement>0 (placement légitime) continue de produire une row.
+
+**Résultats observés** :
+- 28 tests CSR verts (les 26 précédents + 2 nouveaux).
+- `go test -tags integration ./internal/sync/` : **PASS en 116s**.
+- **Coverage maintenue** : `ExtractCSRRowIfRanked` reste à 100% (la nouvelle branche est testée explicitement).
+- `go build ./...` : OK.
+
+**Matrice finale de protection des CSR** :
+
+| Action utilisateur | Risque d'écrasement CSR ? |
+|---|---|
+| `levelup sync` (sync nominal incrémental) | **0** — skip des matchs connus en amont |
+| `levelup sync` sur un nouveau match ranked | **0** — premier write, pas d'écrasement |
+| `levelup sync` sur un nouveau match avec payload API tronqué | **0** — `ExtractCSRRowIfRanked` retourne nil |
+| `levelup backfill --lusr` (incrémental ou `--force`) | **0** — triple garde-fou (filtre Go + SQL WHERE + scope query) |
+| `levelup backfill --csr` (incrémental) | **0** — skip via `existingCSR` map |
+| `levelup backfill --csr --force` avec payload API normal | Écrasement par valeur Microsoft fraîche (désiré, source de vérité) |
+| `levelup backfill --csr --force` avec payload API tronqué | **0** — garde-fou anti-tronqué (NOUVEAU) préserve la CSR existante |
+| `levelup restore-csr --backup ...` (overwrite ou preserve) | **0** — `ON CONFLICT DO NOTHING` préserve toujours les CSR existantes |
+
+**Conclusion / prochaine étape** :
+- Le pipeline CSR est désormais **défensif end-to-end**. Le user peut lancer `--csr --force` en confiance : seul un payload API valide écrasera une CSR existante, et toute donnée bizarre sera rejetée silencieusement (visible dans le compteur `SkippedNoRankRecap` du job summary).
+- Le garde-fou est minimaliste (5L) et orthogonal au reste du code — pas de risque de régression sur les paths "rang stable" ou "placement légitime", tous deux couverts par les tests existants.
+- Aucune action user requise : le fix est invisible en usage normal. Il ne se déclenche que sur des payloads API anormaux que Microsoft renvoie très occasionnellement.
+
+## [2026-05-16] feat(sync/skill) — Vérification finale Phase C : enrichissement logging + flag CLI `--csr` complété + audit coverage
+
+**Statut** : Complété. Phase C est désormais shippable.
+
+**Contexte** : Audit final après que les 3 phases (parser RankRecap, écriture inline sync nominal, backfill récurrent) aient été marquées « terminées ». Le but : valider la couverture de logging, mesurer la couverture de tests, et s'assurer qu'aucune surface d'utilisation ne manque (CLI ↔ UI ↔ API doivent être cohérents).
+
+**Trouvailles principales** :
+1. **Le flag CLI `--csr` manquait dans la sous-commande `levelup backfill`** ([cmd_backfill.go](apps/go-api/cmd/levelup/cmd_backfill.go)) — j'avais wiré le scope, le handler API et l'UI Settings, mais oublié le flagset CLI. Le user qui lance `levelup backfill --csr --gamertag X` aurait eu `aucun backfill selectionne` avant ce fix.
+2. **Logging insuffisant** dans `BackfillCSRFromAPI` et `RunBackfillCSR` : aucun log Info au démarrage/fin pour suivre un long backfill (~500 matchs × 200ms). Idem pour les hooks inline succès dans `processMatch`/`insertFetchedMatch`.
+3. **Couverture de tests** : globalement très bonne pour le nouveau code (cf. mesures), mais 2 helpers `csr_writes.go` à 66.7-85.7% (paths edge inutilisés par les tests existants).
+
+**Actions** :
+1. **CLI [cmd_backfill.go](apps/go-api/cmd/levelup/cmd_backfill.go)** :
+   - Ajout du flag `csr := fs.Bool("csr", false, ...)` à côté de `lusr`.
+   - Inclusion dans la validation `aucun backfill selectionne`.
+   - Bloc `if *csr` dans le routing (mode `--all` ou single `--gamertag`).
+   - Nouvelles fonctions `runBackfillAllCSR` et `runBackfillCSRForPlayer` (pattern aligné sur `runBackfillAllLUSR` mais avec chargement tokens Halo via OAuth refresh, identique à `--weapons`).
+   - Helper factorisé `refreshHaloTokensForPlayer(ctx, gamertag) → (*HaloTokens, error)` qui encapsule le flow MSAL TryOAuthRefresh → Exchange.
+2. **Logging enrichi** :
+   - [csr_backfill.go](apps/go-api/internal/sync/csr_backfill.go) : `slog.InfoContext` au démarrage (xuid, ranked_total, already_csr, force) + log de progression tous les 50 matchs (fetched/inserted/skipped/errors) + log de fin avec résumé complet. `slog.WarnContext` à l'annulation ctx + sur les erreurs par-match (déjà existant, maintenu).
+   - [engine.go::RunBackfillCSR](apps/go-api/internal/sync/engine.go#L323) : `slog.InfoContext` au démarrage et à la fin + `slog.DebugContext` pour identifier le type de client (pool ou standard 5 RPS) + `slog.ErrorContext` si la fonction échoue.
+   - Hooks inline `processMatch` et `insertFetchedMatch` : `slog.DebugContext` "CSR row écrite" avec match_id, tier, tier_label en cas de succès (le warn pour erreur existait déjà).
+3. **Tests supplémentaires** ([csr_writes_test.go](apps/go-api/internal/sync/csr_writes_test.go)) :
+   - `TestTranslateTierFR_UnknownTier` : couvre 7 cas (6 mappings standard + 1 tier inconnu "Champion" qui doit être passthrough + 1 chaîne vide). Forward-compat si Microsoft ajoute un tier.
+   - `TestFormatCSRTierLabel_DiamondWithSubTier` : cas standard avec SubTier > 0.
+   - `TestFormatCSRTierLabel_SubTierZeroNotOnyx` : edge case rare (tier valide mais SubTier=0 sur non-Onyx).
+4. **Vérification ide_diagnostics** : 2 erreurs corrigées au vol (variable `csr` déclarée et non utilisée, puis fonctions `runBackfillAllCSR`/`runBackfillCSRForPlayer` non définies). Build vert au final.
+
+**Résultats observés** :
+- **Coverage CSR finale** :
+  - `csr_writes.go::ExtractCSRRowIfRanked` : 100.0%
+  - `csr_writes.go::translateTierFR` : 100.0% (← 66.7% avant)
+  - `csr_writes.go::formatCSRTierLabel` : 100.0% (← 85.7% avant)
+  - `csr_writes.go::pluralS` : 100.0%
+  - `csr_writes.go::UpsertCSRRow` : 85.7% (les 14.3% manquants = path d'erreur SQL, difficile à provoquer sans mock interne)
+  - `csr_backfill.go::BackfillCSRFromAPI` : 85.7%
+  - `csr_backfill.go::loadRankedMatchesForCSRBackfill` : 83.3%
+  - `halo_skill.go::transformMatchSkillResponse` : 93.9%
+- **Tests Go intégration** (5 packages) : 145s sync, 11.8s handlers, 80s duckdb, 2.8s domain, 27s migration — **TOUS VERTS**.
+- **Tests front Vitest complets** : **148 fichiers, 1378 tests verts, 0 fail, 14 skip** en 56.6s — aucune régression.
+- **`tsc --noEmit`** : OK.
+- **Build prod `go build ./cmd/levelup/`** : `levelup.exe` 83.4 MB. CLI `backfill --help` affiche bien `-csr` avec la description correcte.
+- **Test pré-existant flaky** `TestHaloClient_GetMatchHistory_ParamsValides` (fixé en Phase B) : passe en 0.1s grâce au `context.WithTimeout(100ms)`.
+
+**Décompte total — 3 phases CSR + audit final** :
+- 16 fichiers touchés (11 modifiés + 5 nouveaux).
+- 26 nouveaux tests ajoutés (3 unitaires Phase A + 8 unit + 5 intégration Phase B + 8 intégration + 3 edge cases couverture Phase C).
+- ~750 lignes de Go productive + ~500 lignes de tests.
+- 4 entrées thought_log (A, B, C, vérification finale).
+
+**Conclusion / prochaine étape pour le user** :
+- **Action immédiate** : ouvrir Settings → onglet Sync → BackfillCard → cocher « CSR par match (re-fetch API) » + « Forcer le recalcul complet… » → sélectionner gamertag → lancer.
+- **Alternative CLI équivalente** : `levelup backfill --gamertag X --csr --force` (nécessite le refresh_token OAuth configuré, comme pour `--weapons`).
+- **Mode incrémental** (sans `--force`) : sûr à relancer périodiquement, skip silencieux des matchs déjà CSR. Recommandé en complément du sync nominal pour rattraper les payloads skill tronqués éventuels.
+- **Telemetry** : surveiller `BackfillCSRFromAPI: terminé` dans les logs serveur — si `skill_errors` est élevé, signe d'instabilité API Halo. Si `skipped_no_recap` est non-nul, signe que la classification `is_ranked` côté registry diverge de la réalité Microsoft (à investiguer côté `isRankedPlaylist`).
+
+## [2026-05-15] feat(sync/skill) — Phase C : backfill `--csr` récurrent + handler `/backfill/start` + toggle Settings
+
+**Statut** : Complété (Phase C/3, dernière phase du plan CSR par-match).
+
+**Contexte** : Phase B a câblé l'écriture des CSR inline au sync nominal — tous les *nouveaux* matchs ranked auront leur ligne CSR. Mais il restait à **rattraper l'historique** (matchs ranked déjà sync sans CSR) et à **exposer cette opération dans l'UI** pour que le user puisse la lancer à la demande (pas besoin de CLI). Le flag `--csr` du backfill_cli ([backfill_cli.go:172](apps/go-api/internal/sync/backfill_cli.go#L172)) existait depuis longtemps comme placeholder mais n'était consommé nulle part — il devient maintenant l'entrée canonique du backfill CSR.
+
+**Décision technique** :
+1. **Loader réutilisable** [`BackfillCSRFromAPI(ctx, client, playerDB, sharedDB, xuid, force)`](apps/go-api/internal/sync/csr_backfill.go) dans un nouveau fichier `csr_backfill.go`. Retourne un struct `CSRBackfillResult` (RankedMatches, AlreadyHadCSR, Fetched, Inserted, SkippedNoRankRecap, SkillErrors) — telemetry riche pour le job status.
+2. **Idempotence par défaut** : SELECT match_id FROM match_skill_rank WHERE rating_type='CSR' utilisé comme filtre d'exclusion (réutilise `loadExistingRatingIDs` déjà fail-hard depuis le fix garde-fou de mai). `force=true` court-circuite ce filtre.
+3. **Source de vérité** : la liste des matchs ranked vient de `match_registry.is_ranked = TRUE` (shared DB), pas de re-fetch `GetMatchHistory` — on connaît déjà la liste exhaustive localement.
+4. **Respect du ctx** : annulation propre entre 2 fetches (le user peut cancel le job depuis l'UI).
+5. **Non-bloquant par match** : un échec `GetMatchSkill` (réseau, 401, 404) sur 1 match n'arrête pas le batch — incrémente `SkillErrors` et continue. Telemetry remontée au job en warning.
+6. **Méthode `engine.RunBackfillCSR(ctx, force)`** ([engine.go:323](apps/go-api/internal/sync/engine.go#L323)) : suit le pattern existant `RunBackfillLUSR`/`RunBackfillPerf` (lease writer player, OpenPlayerDB, OpenSharedDB, instancie le client Halo à 5 RPS conservateur).
+7. **Handler `/backfill/start` — Phase 3.5** ([backfill.go:256](apps/go-api/internal/api/handlers/backfill.go#L256)) : insérée entre LUSR (3) et Perf (4). Skip silencieux si tokens absents (re-login required) — même pattern que PSA. `csrInserted` et `csrSkipped` remontent dans le message `done` final.
+8. **`buildSyncScope` mis à jour** : ajout de `req.CSR → scope.CSR`, inclusion dans la liste « tous les flags vides → AllData », et `req.ForceRescan && req.CSR → scope.ForceCSR`.
+9. **Front pérennisé** (point validé explicitement par le user) : toggle `csr` ajouté à [BackfillCard.tsx](apps/web/src/features/settings/BackfillCard.tsx) à côté du LUSR. Labels FR « CSR par match (re-fetch API) » / EN « Per-match CSR (API re-fetch) » dans [i18n.ts](apps/web/src/features/settings/i18n.ts). Type [`BackfillStartRequest.csr?: boolean`](apps/web/src/lib/api/types.ts) ajouté manuellement (l'endpoint n'a pas de schema OpenAPI explicite — payload "ad hoc" côté handler Go).
+
+**Actions** :
+1. [internal/sync/csr_backfill.go](apps/go-api/internal/sync/csr_backfill.go) **(nouveau)** — `BackfillCSRFromAPI` + `CSRBackfillResult` + `loadRankedMatchesForCSRBackfill` (140L).
+2. [internal/sync/engine.go](apps/go-api/internal/sync/engine.go) — méthode `RunBackfillCSR(ctx, force)` (~45L) placée entre `RunBackfillLUSR` et `RunBackfillPerf`.
+3. [internal/domain/backfill.go](apps/go-api/internal/domain/backfill.go) — champ `CSR bool` ajouté à `BackfillStartRequest`.
+4. [internal/api/handlers/backfill.go](apps/go-api/internal/api/handlers/backfill.go) — Phase 3.5 dans la goroutine job + `scope.CSR` / `scope.ForceCSR` dans `buildSyncScope` + mention `csr: N (skipped: M)` dans le message done.
+5. [internal/sync/csr_backfill_integration_test.go](apps/go-api/internal/sync/csr_backfill_integration_test.go) **(nouveau, build tag `integration`)** — 8 tests : insertion ranked, skip existing CSR, force re-fetch, skip no RankRecap, placement avec NULL, continue on skill error, empty registry, context cancellation.
+6. [apps/web/src/lib/api/types.ts](apps/web/src/lib/api/types.ts) — champ `csr?: boolean` ajouté à `BackfillStartRequest`.
+7. [apps/web/src/features/settings/BackfillCard.tsx](apps/web/src/features/settings/BackfillCard.tsx) — `csr: false` dans le state initial + entrée `['csr', t.backfillCSR]` dans la grid des toggles.
+8. [apps/web/src/features/settings/i18n.ts](apps/web/src/features/settings/i18n.ts) — interface SettingsText `backfillCSR: string` + FR / EN.
+
+**Résultats observés** :
+- `go test -tags integration ./internal/sync ./internal/api/handlers ./internal/platform/duckdb` : **PASS** (sync 120s, handlers 4.6s, duckdb 33s).
+- 8 nouveaux tests intégration `BackfillCSRFromAPI` : **tous verts**.
+- `npx tsc --noEmit` côté front : OK, aucune erreur de typage.
+- `npx vitest run src/features/settings` : **46/46 verts**.
+- `go build ./...` : OK.
+
+**Conclusion / prochaine étape** :
+- **Le pipeline CSR par-match est désormais complet** : Phase A (parse RankRecap), Phase B (écriture inline sync nominal — coût API zéro), Phase C (backfill récurrent pour l'historique). Toutes les options sont actionnables depuis la page Settings / onglet Sync.
+- **Action user immédiate** : ouvrir Settings → Sync → cocher « CSR par match (re-fetch API) » + cocher « Forcer le recalcul complet… » → lancer. Le job va re-fetcher `GetMatchSkill` pour chaque match ranked en DB (estimation : ~500 matchs × 200ms = ~100s à 5 RPS). À la fin, toutes les rows CSR dans `match_skill_rank` côté player DB seront cohérentes avec les valeurs Microsoft officielles. Le LUSR pré-existant sur les matchs ranked sera automatiquement remplacé par le CSR (cohérence garantie par `UpsertCSRRow.ON CONFLICT DO UPDATE rating_type='CSR'`).
+- **Mode incrémental** : sans `--force`, le backfill skip les matchs déjà CSR — donc relancer tous les jours est sans coût. Idéal pour rattraper les éventuels matchs où l'API skill aurait renvoyé un payload tronqué.
+
+## [2026-05-15] feat(sync/skill) — Phase B : écriture inline des CSR par-match dans le sync nominal + fix test flaky
+
+**Statut** : Complété (Phase B/3, suit Phase A déjà mergée plus bas dans ce log).
+
+**Contexte** : Phase A a étendu le parser pour exposer `MatchSkillData.{PreMatchCSR, PostMatchCSR}`. Reste à consommer ces champs côté sync nominal : pour chaque match classé fetché, écrire une ligne dans `match_skill_rank` côté player DB avec `rating_type='CSR'`. Le payload skill étant déjà fetché par les 2 paths existants ([processMatch:886](apps/go-api/internal/sync/engine.go#L886) direct + [fetchMatchData:1045](apps/go-api/internal/sync/engine.go#L1045) différé), **coût API additionnel = 0**.
+
+**Décision technique** :
+1. **Migration idempotente** `add_msr_measurement_matches_remaining` : ajout d'une colonne `INTEGER DEFAULT 0` sur `match_skill_rank` via `addColumnIfMissing`. Stocke le `MeasurementMatchesRemaining` du `PostMatchCsr` pour les matchs de placement. Pourquoi colonne dédiée vs squat de `tier_label` : le front utilise déjà la sémantique structurée côté domain `HomePlaylistRank.MeasurementMatchesRemaining` ([home.go:116](apps/go-api/internal/domain/home.go#L116)) — on aligne le stockage par-match.
+2. **Variante C.2 (validée par l'utilisateur)** : pour cohérence entre les 2 paths de sync, on ne fait pas l'écriture directement dans le path direct uniquement. Au lieu de ça, on extrait la row CSR au moment du fetch (ajout `fetchedMatch.CSRRow *MatchCSRRow`) et on l'écrit pendant `insertFetchedMatch` côté player DB. Le path direct (`processMatch`) appelle aussi `ExtractCSRRowIfRanked` + `UpsertCSRRow` inline puisque tout est synchrone.
+3. **Gestion explicite du placement** (point 3 confirmé par l'utilisateur) : `MeasurementMatchesRemaining > 0` ou `Tier == ""` → row CSR avec `rating_value = NULL`, `tier = "Placement"`, `tier_fr = "Placement"`, `tier_label = "Placement (N restant(s))"` (pluriel correct géré). `rating_delta` reste NULL car non significatif en placement.
+4. **Mapping FR centralisé** dans `tierENtoFR` : Bronze→Bronze, Silver→Argent, Gold→Or, Platinum→Platine, Diamond→Diamant, Onyx→Onyx. Forward-compat : tier inconnu → retourné inchangé.
+5. **Format `tier_label`** : Onyx (`SubTier=0`) → "Onyx 1850" (avec value), autres tiers → "Or 4", placement → "Placement (N restant(s))".
+6. **Remplacement LUSR→CSR transparent** : l'UPSERT `ON CONFLICT (match_id) DO UPDATE SET rating_type='CSR'` remplace silencieusement une row LUSR pré-existante. C'est désiré : un match classé ne devrait jamais porter de LUSR (loadLUSRMatchData filtre déjà `is_ranked=FALSE`), donc si on tombe sur LUSR sur un ranked, c'est forcément une donnée invalide qu'on doit corriger. Le garde-fou inverse (LUSR ne peut pas écraser CSR) reste actif dans upsertLUSRRatings ([skill_rating_loaders.go:269](apps/go-api/internal/sync/skill_rating_loaders.go#L269)).
+7. **Bonus** : fix d'un test pré-existant flaky `TestHaloClient_GetMatchHistory_ParamsValides` ([engine_mock_test.go:49](apps/go-api/internal/sync/engine_mock_test.go#L49)) qui faisait un vrai appel HTTP et hanged ~80s sur une machine avec internet (retry x4 × HTTP timeout 20s). Ajout d'un `context.WithTimeout(100ms)` qui force l'erreur réseau rapidement sans changer l'intent du test (les params sont valides côté validation locale).
+
+**Actions** :
+1. [internal/migration/steps_player.go](apps/go-api/internal/migration/steps_player.go) — nouvelle migration `add_msr_measurement_matches_remaining` à la fin du 2e `init()`.
+2. [internal/sync/csr_writes.go](apps/go-api/internal/sync/csr_writes.go) **(nouveau)** — `MatchCSRRow` struct, `ExtractCSRRowIfRanked(reg, skill) *MatchCSRRow` (pure, sans IO), `UpsertCSRRow(db, row)` (UPSERT idempotent), `tierENtoFR` map + `translateTierFR` + `formatCSRTierLabel` + `pluralS`.
+3. [internal/sync/engine.go](apps/go-api/internal/sync/engine.go) — 3 modifications :
+   - Hook inline dans `processMatch` après `MergeSkillIntoParticipants` ([engine.go:893+](apps/go-api/internal/sync/engine.go#L893)).
+   - Champ `CSRRow *MatchCSRRow` ajouté à `fetchedMatch`.
+   - Remplissage dans `fetchMatchData` après `MergeSkillIntoParticipants`.
+   - Écriture dans `insertFetchedMatch` après PSA (non-bloquant : warning si échec).
+4. [internal/sync/csr_writes_test.go](apps/go-api/internal/sync/csr_writes_test.go) **(nouveau)** — 8 tests unitaires de `ExtractCSRRowIfRanked` : ranked stable, placement singulier, placement pluriel, Onyx sans sous-tier, non-ranked → nil, no-PostMatchCSR → nil, nil skill → nil, delta nil quand PreMatchCSR absent.
+5. [internal/sync/csr_writes_integration_test.go](apps/go-api/internal/sync/csr_writes_integration_test.go) **(nouveau, build tag `integration`)** — 5 tests `UpsertCSRRow` contre DuckDB en mémoire : insert simple, replace LUSR existant, placement avec rating_value NULL, idempotence (double upsert = 1 row), nil row no-op.
+6. [internal/sync/engine_mock_test.go](apps/go-api/internal/sync/engine_mock_test.go) — `TestHaloClient_GetMatchHistory_ParamsValides` : ajout `context.WithTimeout(100ms)`.
+
+**Résultats observés** :
+- `go test -tags integration ./internal/sync/` : **PASS en 122s** — aucune régression sur l'existant.
+- `go test ./internal/platform/duckdb/` : **PASS en 19.6s** — la migration `add_msr_measurement_matches_remaining` s'applique proprement à toutes les player DBs créées en setup de tests.
+- `go build ./...` : OK.
+- 13 nouveaux tests CSR : 8 unitaires + 5 intégration, tous verts.
+- Test flaky `TestHaloClient_GetMatchHistory_ParamsValides` : passe désormais en 0.10s (vs 80s+ avant).
+
+**Conclusion / prochaine étape** :
+- **À partir de maintenant, tous les nouveaux matchs ranked synchronisés** auront automatiquement leur ligne CSR persistée dans `match_skill_rank` (cas placement géré). Zéro intervention manuelle, zéro coût API additionnel — on consomme un champ du payload qu'on jetait jusqu'ici.
+- **Phase C (prochaine)** : câbler le flag `--csr` du backfill ([backfill_cli.go:172](apps/go-api/internal/sync/backfill_cli.go#L172) actuellement fantôme) en outil de rattrapage récurrent pour les matchs ranked **déjà synchronisés sans CSR** (l'historique pré-Phase B + futurs cas edge où l'API skill a renvoyé un payload partiel). Loader `BackfillCSRFromAPI(ctx, client, playerDB, sharedDB, xuid, force)` qui re-fetche `GetMatchSkill` pour la liste cible. Câbler aussi côté handler `/backfill/start` + UI Settings (toggle `csr` dans BackfillCard.tsx).
+- **Note utilisateur** : la rétro-synchro CSR pour les matchs perdus se fera via Phase C (`POST /backfill/start { csr: true }` ou CLI `levelup backfill --csr --force-csr`) — le sync nominal incrémental ne re-fetchera pas les vieux matchs déjà connus.
+
+## [2026-05-15] feat(sync/skill) — Phase A : parser `RankRecap` (CSR pré/post-match) du payload skill
+
+**Statut** : Complété (Phase A d'un plan en 3 phases : A=parser foundation, B=writes inline sync nominal, C=flag `--csr` backfill récurrent + UI Settings).
+
+**Contexte** : L'endpoint Halo [`/hi/matches/{id}/skill?players=xuid(X)`](apps/go-api/internal/sync/halo_skill.go#L46) renvoie pour chaque joueur classé un sous-objet `Result.RankRecap.{PreMatchCsr, PostMatchCsr}` qui contient le CSR avant et après le match (`Value`, `Tier`, `SubTier`, `MeasurementMatchesRemaining`). Audit du wrapper Grunt (https://github.com/dend/grunt) confirme la présence — modèles [`RankRecap.cs`](https://github.com/dend/grunt/blob/master/src/dotnet/Den.Dev.Grunt/Den.Dev.Grunt/Models/HaloInfinite/RankRecap.cs) et [`Csr.cs`](https://github.com/dend/grunt/blob/master/src/dotnet/Den.Dev.Grunt/Den.Dev.Grunt/Models/HaloInfinite/Csr.cs). Notre parser Go [`matchSkillResponse`](apps/go-api/internal/sync/halo_skill.go#L93) extrait `TeamMmr/TeamMmrs/StatPerformances` mais **ignorait complètement `RankRecap`** depuis le portage SPNKr initial. Conséquence : le sync nominal fetch déjà le payload pour 100 % des matchs (via `processMatch` et le path `fetchedMatch`, [engine.go:886](apps/go-api/internal/sync/engine.go#L886) et [engine.go:1035](apps/go-api/internal/sync/engine.go#L1035)) mais jette les CSR à la décompression — d'où le « gros gap » remonté par l'utilisateur (joueurs compétitifs sans visibilité CSR par-match).
+
+**Décision technique** :
+1. Étendre le parser **sans** appel API supplémentaire : tous les matchs ranked déjà synchronisés ont leur `RankRecap` exploitable lors d'un re-fetch (Phase B/C ultérieures) ; tous les futurs matchs l'auront immédiatement après B.
+2. Réutiliser les types existants (`csrRankRaw`, `CSRRankSnapshot`) plutôt que créer un type parallèle — `rawToCSRSnapshot` est déjà l'helper canonique de conversion ([halo_skill.go:347](apps/go-api/internal/sync/halo_skill.go#L347)).
+3. **Extraire la transformation en helper pur `transformMatchSkillResponse`** plutôt que de tester via mock HTTP — testabilité supérieure, IO isolée à `GetMatchSkill` seul.
+
+**Actions** :
+1. [halo_skill.go](apps/go-api/internal/sync/halo_skill.go) — ajout du champ `RankRecap *struct{ PreMatchCsr, PostMatchCsr *csrRankRaw }` à `matchSkillResponse`, et des pointeurs `PreMatchCSR/PostMatchCSR *CSRRankSnapshot` à `MatchSkillData` (nil pour matchs sociaux/firefight). Extraction de la boucle interne de `GetMatchSkill` en `transformMatchSkillResponse(resp)` pure.
+2. [halo_skill_test.go](apps/go-api/internal/sync/halo_skill_test.go) — 3 tests RankRecap : ranked stable (Gold IV → V), placement (Tier=`""`, `MeasurementMatchesRemaining` décrémenté de 5 à 4), absence (RankRecap=null, pointeurs nil sans casser le parsing MMR).
+
+**Résultats observés** :
+- `go test ./internal/sync -run 'TestTransformMatchSkillResponse|TestComputeEnemyMMR|TestFilterHumanXUIDs|TestUnwrapXUID|TestMergeSkillIntoParticipants|TestParticipantXUIDs_FiltersBots'` : **6/6 verts** en 3.5s.
+- `go build ./...` : OK, aucune régression de compilation côté go-api.
+- Test pré-existant flaky `TestHaloClient_GetMatchHistory_ParamsValides` ([engine_mock_test.go:49](apps/go-api/internal/sync/engine_mock_test.go#L49)) hang sur retry réseau quand internet est dispo — **non lié à Phase A**, déjà connu (commentaire `// Le client fera un appel réseau et échouera (no server)` qui devient faux dès que les retries trouvent un serveur Halo qui répond 401).
+
+**Conclusion / prochaine étape** :
+- **Phase A débloque B et C** sans coût API runtime : les futurs hooks d'écriture (Phase B inline dans `processMatch`/`fetchedMatch`) consommeront `data.PostMatchCSR` qui est désormais peuplé.
+- Reste à : ajouter une colonne `measurement_matches_remaining` sur `match_skill_rank` (migration idempotente) + writes inline (Phase B) + flag `--csr` backfill + toggle Settings (Phase C). Coût API additionnel total estimé = **uniquement le rattrapage historique** via le backfill `--csr` sur les matchs ranked existants sans CSR (≈ 5 RPS × N matchs).
+
 ## [2026-05-15] fix(sync/skill-rank) — Garde-fou SQL CSR contre l'écrasement par LUSR + CLI `restore-csr`
 
 **Statut** : Complété.

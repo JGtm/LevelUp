@@ -320,6 +320,66 @@ func (e *SyncEngine) RunBackfillLUSR(ctx context.Context, force bool) (int, erro
 	return batchComputeLUSR(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, medalMap, force)
 }
 
+// RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour
+// tous les matchs classés du joueur qui n'ont pas encore de row CSR (ou tous
+// si force=true). Cible : les matchs synchronisés AVANT la Phase B (sync
+// nominal qui écrit déjà les CSR inline) et les cas où GetMatchSkill n'a pas
+// retourné de RankRecap au moment du sync initial.
+//
+// Retourne le résumé d'exécution (matchs traités, restaurés, skippés, etc.).
+func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfillResult, error) {
+	var empty CSRBackfillResult
+	if e.tokens == nil || e.tokens.SpartanToken == "" {
+		return empty, fmt.Errorf("RunBackfillCSR: tokens Halo absents (re-login requis)")
+	}
+
+	slog.InfoContext(ctx, "RunBackfillCSR: démarrage",
+		"gamertag", e.gamertag, "xuid", e.xuid, "force", force)
+
+	writerPlayer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
+	if err != nil {
+		return empty, fmt.Errorf("RunBackfillCSR lease player: %w", err)
+	}
+	defer writerPlayer.Release()
+
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return empty, fmt.Errorf("RunBackfillCSR OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	// shared DB en read-only suffit : on ne fait que SELECT match_registry.
+	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return empty, fmt.Errorf("RunBackfillCSR OpenSharedDB: %w", err)
+	}
+	defer sharedHandle.Close()
+
+	var client HaloClient
+	if e.customClient != nil {
+		client = e.customClient
+		slog.DebugContext(ctx, "RunBackfillCSR: utilisation client personnalisé (pool)")
+	} else {
+		client = NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, 5)
+		slog.DebugContext(ctx, "RunBackfillCSR: client Halo standard, 5 RPS")
+	}
+
+	res, err := BackfillCSRFromAPI(ctx, client, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+	if err != nil {
+		slog.ErrorContext(ctx, "RunBackfillCSR: échec",
+			"gamertag", e.gamertag, "err", err)
+		return res, err
+	}
+	slog.InfoContext(ctx, "RunBackfillCSR: terminé",
+		"gamertag", e.gamertag,
+		"inserted", res.Inserted,
+		"already_csr", res.AlreadyHadCSR,
+		"skipped_no_recap", res.SkippedNoRankRecap,
+		"skill_errors", res.SkillErrors,
+	)
+	return res, nil
+}
+
 // RunBackfillPerf recalcule le performance score relatif pour tous les matchs du joueur.
 // force=true : recalcule même si les matchs ont déjà un score (utile après changement de formule).
 func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, error) {
@@ -894,6 +954,20 @@ func (e *SyncEngine) processMatch(
 				slog.DebugContext(ctx, "processMatch: skill merged",
 					"match_id", matchID, "players_with_skill", len(skillData),
 				)
+				// CSR par-match : pour les matchs classés, le payload skill
+				// contient RankRecap.PostMatchCsr. On persiste côté player DB.
+				// Non-bloquant : tout échec laisse le sync continuer.
+				if row := ExtractCSRRowIfRanked(reg, skillData[e.xuid]); row != nil {
+					if csrErr := UpsertCSRRow(playerDB, row); csrErr != nil {
+						slog.WarnContext(ctx, "processMatch: UpsertCSRRow échoué",
+							"gamertag", e.gamertag, "match_id", matchID, "err", csrErr,
+						)
+					} else {
+						slog.DebugContext(ctx, "processMatch: CSR row écrite",
+							"match_id", matchID, "tier", row.Tier, "tier_label", row.TierLabel,
+						)
+					}
+				}
 			}
 		}
 
@@ -989,6 +1063,10 @@ type fetchedMatch struct {
 	HasHighlights  bool
 	HighlightError error // Non-bloquant si présent
 	SkillError     error // Non-bloquant si présent
+	// CSRRow : ligne CSR à insérer côté player DB. Renseignée uniquement
+	// pour les matchs classés dont le payload skill contient RankRecap.
+	// Inséré dans insertFetchedMatch.
+	CSRRow *MatchCSRRow
 }
 
 // fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
@@ -1037,6 +1115,9 @@ func (e *SyncEngine) fetchMatchData(
 				fm.SkillError = fmt.Errorf("GetMatchSkill: %w", skillErr)
 			} else if len(skillData) > 0 {
 				fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
+				// CSR par-match : extraction depuis RankRecap si match classé.
+				// L'écriture en player DB est différée à insertFetchedMatch.
+				fm.CSRRow = ExtractCSRRowIfRanked(fm.Registry, skillData[e.xuid])
 			}
 		}
 	}
@@ -1164,6 +1245,21 @@ func (e *SyncEngine) insertFetchedMatch(
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 			)
 			result.Warnings = append(result.Warnings, fmt.Sprintf("psa %s: %v", fm.MatchID, err))
+		}
+	}
+
+	// CSR par-match (player DB). Renseigné par fetchMatchData uniquement pour
+	// les matchs classés dont RankRecap était présent. Non-bloquant.
+	if fm.CSRRow != nil {
+		if err := UpsertCSRRow(playerDB, fm.CSRRow); err != nil {
+			slog.WarnContext(ctx, "sync: UpsertCSRRow échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
+			)
+			result.Warnings = append(result.Warnings, fmt.Sprintf("csr %s: %v", fm.MatchID, err))
+		} else {
+			slog.DebugContext(ctx, "sync: CSR row écrite",
+				"match_id", fm.MatchID, "tier", fm.CSRRow.Tier, "tier_label", fm.CSRRow.TierLabel,
+			)
 		}
 	}
 

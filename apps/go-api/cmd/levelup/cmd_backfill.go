@@ -40,6 +40,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	engagementScores := fs.Bool("engagement-scores", false, "Backfill du score d'engagement (Phase 6 plan engagement)")
 	citations := fs.Bool("citations", false, "Backfill des citations (match_citations) depuis citation_mappings + medals + stats + awards")
 	lusr := fs.Bool("lusr", false, "Backfill LUSR TrueSkill 2 avec poids medailles v5")
+	csr := fs.Bool("csr", false, "Backfill CSR par-match via GetMatchSkill (RankRecap). Idempotent ; --force re-fetche tous les matchs ranked")
 	perf := fs.Bool("perf", false, "Backfill performance score relatif v5 (off_conv + def_res + medal_exploit)")
 	assistsModel := fs.Bool("assists-model", false, "Calcule le modèle OLS expected_assists par mode (player_assists_model dans stats.duckdb)")
 	weapons := fs.Bool("weapons", false, "Backfill weapon_kills depuis film CDN (tous les participants par match)")
@@ -55,8 +56,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*lusr && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --perf, --assists-model, --weapons ou --composite-only)")
+	if !*engagementScores && !*citations && !*lusr && !*csr && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --csr, --perf, --assists-model, --weapons ou --composite-only)")
 	}
 
 	ctx := context.Background()
@@ -101,6 +102,21 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 				return err
 			}
 			if err := runBackfillLUSRForPlayer(ctx, cfg, player, *force); err != nil {
+				return err
+			}
+		}
+	}
+	if *csr {
+		if *allPlayers {
+			if err := runBackfillAllCSR(ctx, cfg, *force); err != nil {
+				return err
+			}
+		} else {
+			player, err := loadPlayerSummary(cfg, *gamertag)
+			if err != nil {
+				return err
+			}
+			if err := runBackfillCSRForPlayer(ctx, cfg, player, *force); err != nil {
 				return err
 			}
 		}
@@ -354,6 +370,98 @@ func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player
 	}
 	fmt.Printf("backfill lusr OK: gamertag=%s updated=%d force=%t\n", player.Gamertag, updated, force)
 	return nil
+}
+
+// ── CSR backfill ───────────────────────────────────────────────────────────────
+//
+// Re-fetche GetMatchSkill pour chaque match classé en DB et persiste la ligne
+// CSR dans match_skill_rank. Nécessite des tokens Halo valides (OAuth refresh
+// via MSAL) — pattern identique à --weapons.
+
+func runBackfillAllCSR(ctx context.Context, cfg *config.AppConfig, force bool) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total, processed, skipped, failed, totalInserted := len(players), 0, 0, 0, 0
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			skipped++
+			fmt.Printf("backfill csr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		if err := applyMigrationsOnDB(dbPath, migration.TargetPlayer); err != nil {
+			failed++
+			fmt.Printf("backfill csr FAIL: gamertag=%s err=migrations: %v\n", player.Gamertag, err)
+			continue
+		}
+
+		tokens, tokErr := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+		if tokErr != nil {
+			skipped++
+			fmt.Printf("backfill csr SKIP: gamertag=%s reason=%v\n", player.Gamertag, tokErr)
+			continue
+		}
+
+		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+		res, runErr := engine.RunBackfillCSR(ctx, force)
+		if runErr != nil {
+			failed++
+			fmt.Printf("backfill csr FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
+			continue
+		}
+		processed++
+		totalInserted += res.Inserted
+		fmt.Printf("backfill csr OK: gamertag=%s inserted=%d already=%d no_recap=%d errors=%d\n",
+			player.Gamertag, res.Inserted, res.AlreadyHadCSR, res.SkippedNoRankRecap, res.SkillErrors)
+	}
+	fmt.Printf("backfill csr batch: total=%d processed=%d skipped=%d failed=%d total_inserted=%d\n",
+		total, processed, skipped, failed, totalInserted)
+	if failed > 0 {
+		return fmt.Errorf("backfill csr: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func runBackfillCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force bool) error {
+	tokens, err := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+	if err != nil {
+		return fmt.Errorf("backfill csr: tokens Halo indisponibles pour %s: %w", player.Gamertag, err)
+	}
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+	res, err := engine.RunBackfillCSR(ctx, force)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("backfill csr OK: gamertag=%s inserted=%d already=%d no_recap=%d errors=%d force=%t\n",
+		player.Gamertag, res.Inserted, res.AlreadyHadCSR, res.SkippedNoRankRecap, res.SkillErrors, force)
+	return nil
+}
+
+// refreshHaloTokensForPlayer charge le refresh token OAuth du joueur et le
+// rafraîchit via MSAL pour obtenir des tokens Halo (Spartan + Clearance)
+// utilisables par les backfills qui appellent l'API. Retourne une erreur
+// descriptive si le refresh_token est absent ou si l'échange MSAL/Halo échoue.
+func refreshHaloTokensForPlayer(ctx context.Context, gamertag string) (*domain.HaloTokens, error) {
+	refreshToken := oauthRefreshTokenForPlayer(gamertag)
+	if refreshToken == "" {
+		return nil, fmt.Errorf("no_refresh_token (%s)", oauthRefreshEnvKey(gamertag))
+	}
+	provider := auth.NewMSALProvider()
+	accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
+	if err != nil || accessToken == "" {
+		return nil, fmt.Errorf("oauth_refresh_failed: %w", err)
+	}
+	result, err := provider.Exchange(ctx, accessToken)
+	if err != nil {
+		return nil, fmt.Errorf("halo_exchange_failed: %w", err)
+	}
+	return result.Tokens, nil
 }
 
 // ── Performance score backfill ─────────────────────────────────────────────────

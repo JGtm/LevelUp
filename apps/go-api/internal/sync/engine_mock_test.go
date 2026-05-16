@@ -8,6 +8,7 @@ package sync
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 // ── Tests validation GetMatchHistory ─────────────────────────────────────────
@@ -47,17 +48,23 @@ func TestHaloClient_GetMatchHistory_StartNegatif(t *testing.T) {
 }
 
 func TestHaloClient_GetMatchHistory_ParamsValides(t *testing.T) {
-	// Le client fera un appel réseau et échouera (no server) — on vérifie juste que
-	// la validation passe et que l'erreur est réseau, pas validation.
+	// Tous les paramètres sont valides côté validation locale ; l'appel réseau
+	// qui suit doit échouer mais SURTOUT pas avec un message de validation.
+	//
+	// Note : un contexte avec deadline court évite que le test hang via les
+	// retries internes du client (HTTP timeout 20s × 4 retries + backoff) quand
+	// la machine de test a connectivité internet et joint le vrai endpoint Halo.
 	client := NewHaloAPIClient("spartan-tok", "clearance-tok", 10)
-	_, err := client.GetMatchHistory(context.Background(), "TestPlayer", "matchmaking", 0, 5)
-	// L'erreur attendue est réseau ou DNS, pas "paramètre invalide".
-	if err != nil {
-		errStr := err.Error()
-		for _, badMsg := range []string{"gamertag vide", "matchType invalide", "count doit", "start doit"} {
-			if contains(errStr, badMsg) {
-				t.Errorf("erreur de validation inattendue (les params sont valides) : %v", err)
-			}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err := client.GetMatchHistory(ctx, "TestPlayer", "matchmaking", 0, 5)
+	if err == nil {
+		t.Fatal("attendu une erreur réseau (deadline ou DNS), got nil")
+	}
+	errStr := err.Error()
+	for _, badMsg := range []string{"gamertag vide", "matchType invalide", "count doit", "start doit"} {
+		if contains(errStr, badMsg) {
+			t.Errorf("erreur de validation inattendue (les params sont valides) : %v", err)
 		}
 	}
 }
