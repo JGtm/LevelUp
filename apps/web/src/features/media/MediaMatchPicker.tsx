@@ -13,10 +13,12 @@
  *   1er click  → met le candidat en surbrillance + bouton "Confirmer" en bas
  *   confirmer  → POST /associate, invalide le cache, ferme la modal
  */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useMediaMatchCandidates, useAssociateMediaToMatch } from './queries'
 import type { MediaMatchCandidate } from '@/lib/api/types'
 import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
+import { tokenCssVar } from '@/lib/accessibility'
 import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
 
 const WINDOW_OPTIONS = [15, 60, 180] as const
@@ -73,46 +75,89 @@ const outcomeClassByCode: Record<number, string> = {
   4: 'bg-muted text-muted-foreground border-border',
 }
 
-// Localise map_name et mode_name via useAssetLabel ('map'/'mode' kinds dans assets.toml).
-// Fallback sur la valeur brute si l'asset n'est pas défini côté backend.
-function MapModeLabel({ mapName, modeName }: { mapName: string | null | undefined; modeName: string | null | undefined }) {
-  const localizedMap = useAssetLabel('map', mapName ?? '')
-  const localizedMode = useAssetLabel('mode', modeName ?? '')
-  const mapStr = mapName ? localizedMap : '?'
-  const modeStr = modeName ? localizedMode : '?'
-  return <>{mapStr} · {modeStr}</>
+// Heading d'un candidat : score X-Y (POV joueur) en tête quand dispo, puis
+// map · mode localisés via useAssetLabel ('map'/'mode' kinds dans assets.toml).
+// Skippe silencieusement les segments manquants au lieu d'afficher "?".
+// Fallback "Match" si tout est null (match_registry mal renseigné).
+function CandidateHeading({ candidate }: { candidate: MediaMatchCandidate }) {
+  const localizedMap = useAssetLabel('map', candidate.map_name ?? '')
+  const localizedMode = useAssetLabel('mode', candidate.mode_name ?? '')
+  const parts: string[] = []
+  if (candidate.own_score != null && candidate.enemy_score != null) {
+    parts.push(`${candidate.own_score} - ${candidate.enemy_score}`)
+  }
+  if (candidate.map_name) parts.push(localizedMap)
+  if (candidate.mode_name) parts.push(localizedMode)
+  return <>{parts.length > 0 ? parts.join(' · ') : 'Match'}</>
+}
+
+// Libellé d'équipe : nom officiel Halo (Eagle/Cobra/…) si team_id ∈ [0..8],
+// sinon fallback "Équipe N" ; null → "Spectateurs". Aligné sur MatchScoreboard.
+function teamHeaderLabel(teamID: number | null): string {
+  if (teamID == null) return 'Spectateurs'
+  const official = resolveTeamNameFromID(teamID)
+  return official ? `Équipe ${official}` : `Équipe ${teamID + 1}`
 }
 
 function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
+  // Groupement + détection de l'équipe du joueur — recompute uniquement si
+  // l'array lobby change (référence stable côté react-query entre rerenders).
+  const grouped = useMemo(() => {
+    const teams = new Map<string, { teamID: number | null; players: NonNullable<typeof lobby> }>()
+    let mineTeamID: number | null | undefined
+    for (const p of lobby ?? []) {
+      const key = p.team_id == null ? 'null' : String(p.team_id)
+      const existing = teams.get(key)
+      if (existing) existing.players.push(p)
+      else teams.set(key, { teamID: p.team_id ?? null, players: [p] })
+      if (p.is_self) mineTeamID = p.team_id ?? null
+    }
+    return { teams: Array.from(teams.values()), mineTeamID }
+  }, [lobby])
+
   if (!lobby || lobby.length === 0) {
     return <p className="text-[11px] italic text-muted-foreground">Lobby indisponible</p>
   }
-  const teams = new Map<string, { teamID: number | null; players: typeof lobby }>()
-  for (const p of lobby) {
-    const key = p.team_id == null ? 'null' : String(p.team_id)
-    const existing = teams.get(key)
-    if (existing) existing.players.push(p)
-    else teams.set(key, { teamID: p.team_id ?? null, players: [p] })
-  }
+
   return (
     <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-      {Array.from(teams.values()).map((team, idx) => (
-        <div key={idx} className="flex flex-col">
-          <span className="font-semibold text-muted-foreground">
-            {team.teamID == null ? 'Spectateurs' : `Équipe ${team.teamID + 1}`}
-          </span>
-          <ul>
-            {team.players.map((p) => (
-              <li
-                key={p.gamertag}
-                className={p.is_self ? 'font-semibold text-primary' : 'text-foreground/85'}
-              >
-                {p.gamertag}{p.is_self && ' (toi)'}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {grouped.teams.map((team, idx) => {
+        // Couleurs sémantiques alignées sur MatchScoreboard : team-ally pour
+        // l'équipe du joueur, team-enemy pour les autres équipes, foreground
+        // neutre pour les spectateurs (team_id null).
+        const isMine = team.teamID != null && team.teamID === grouped.mineTeamID
+        const isSpectator = team.teamID == null
+        const headerColor = isSpectator
+          ? undefined
+          : isMine
+            ? tokenCssVar('team-ally')
+            : tokenCssVar('team-enemy')
+        return (
+          <div key={idx} className="flex flex-col">
+            <span
+              className="font-semibold"
+              style={headerColor ? { color: headerColor } : undefined}
+            >
+              {teamHeaderLabel(team.teamID)}
+            </span>
+            <ul>
+              {team.players.map((p) => (
+                <li
+                  key={p.gamertag}
+                  className={p.is_self ? 'font-semibold text-primary' : 'text-foreground/85'}
+                >
+                  {p.gamertag}
+                  {p.is_bot && (
+                    <span className="ml-1 rounded bg-muted px-1 py-0 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                      Bot
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -237,7 +282,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                     <div className="flex min-w-0 flex-1 flex-col gap-1">
                       <div className="flex items-center justify-between gap-2 text-sm">
                         <span className="truncate font-medium">
-                          <MapModeLabel mapName={c.map_name} modeName={c.mode_name} />
+                          <CandidateHeading candidate={c} />
                         </span>
                         <div className="flex shrink-0 items-center gap-2">
                           <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${out.cls}`}>
@@ -269,7 +314,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
             <div>
               <p className="font-medium">{hasCurrentMatch ? 'Confirmer la réassociation ?' : "Confirmer l'association ?"}</p>
               <p className="text-xs text-muted-foreground">
-                <MapModeLabel mapName={pending.map_name} modeName={pending.mode_name} /> · {formatLocalTime(pending.start_time)}
+                <CandidateHeading candidate={pending} /> · {formatLocalTime(pending.start_time)}
               </p>
             </div>
             <div className="flex gap-2">

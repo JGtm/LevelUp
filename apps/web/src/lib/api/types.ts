@@ -2125,6 +2125,7 @@ export interface MediaMatchLobbyEntry {
   gamertag: string
   team_id?: number | null
   is_self: boolean
+  is_bot?: boolean
 }
 
 export interface MediaMatchCandidate {
@@ -2138,6 +2139,8 @@ export interface MediaMatchCandidate {
   is_current: boolean
   delta_seconds?: number | null
   outcome?: number | null
+  own_score?: number | null
+  enemy_score?: number | null
   lobby?: MediaMatchLobbyEntry[]
 }
 
