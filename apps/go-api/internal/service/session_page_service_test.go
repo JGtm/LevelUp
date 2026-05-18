@@ -298,3 +298,143 @@ func assertSessionMetricPresent(t *testing.T, metrics []domain.SessionCompareMet
 func sessionFloat64Ptr(value float64) *float64 {
 	return &value
 }
+
+// Tests P3 — drawer compare side-by-side : nouveaux champs CompareMatches,
+// PreviousSessionLabel, NextSessionLabel sur SessionPageResponse.
+
+func TestSessionPageService_GetPage_ExposesPreviousAndNextLabels(t *testing.T) {
+	// Dataset 3 sessions : labels[0]=14h (oldest), labels[1]=18h, labels[2]=19h30 (newest).
+	// Session courante = 18h (milieu) → prev=14h, next=19h30.
+	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
+	current := "2026-04-21 18h"
+
+	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &current})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.PreviousSessionLabel == nil || *resp.PreviousSessionLabel != "2026-04-21 14h" {
+		t.Fatalf("expected previous=14h, got %v", resp.PreviousSessionLabel)
+	}
+	if resp.NextSessionLabel == nil || *resp.NextSessionLabel != "2026-04-21 19h30" {
+		t.Fatalf("expected next=19h30, got %v", resp.NextSessionLabel)
+	}
+}
+
+func TestSessionPageService_GetPage_PreviousNextNilAtBoundaries(t *testing.T) {
+	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
+
+	// Plus ancienne session : prev=nil, next=18h.
+	oldest := "2026-04-21 14h"
+	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &oldest})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.PreviousSessionLabel != nil {
+		t.Fatalf("expected previous=nil at oldest session, got %v", resp.PreviousSessionLabel)
+	}
+	if resp.NextSessionLabel == nil || *resp.NextSessionLabel != "2026-04-21 18h" {
+		t.Fatalf("expected next=18h at oldest session, got %v", resp.NextSessionLabel)
+	}
+
+	// Plus récente session : prev=18h, next=nil.
+	newest := "2026-04-21 19h30"
+	resp, err = svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &newest})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.PreviousSessionLabel == nil || *resp.PreviousSessionLabel != "2026-04-21 18h" {
+		t.Fatalf("expected previous=18h at newest session, got %v", resp.PreviousSessionLabel)
+	}
+	if resp.NextSessionLabel != nil {
+		t.Fatalf("expected next=nil at newest session, got %v", resp.NextSessionLabel)
+	}
+}
+
+func TestSessionPageService_GetPage_CompareMatchesPopulatedWhenEnabled(t *testing.T) {
+	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
+	manual := "2026-04-21 14h" // 2 matchs dans le dataset
+
+	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{
+		EnableCompare:       true,
+		CompareSessionLabel: &manual,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.CompareEnabled {
+		t.Fatal("expected compare enabled")
+	}
+	if len(resp.CompareMatches) != 2 {
+		t.Fatalf("expected 2 compare matches (session 14h), got %d", len(resp.CompareMatches))
+	}
+	// Vérifie que les rows portent bien le label de la session comparée.
+	for _, row := range resp.CompareMatches {
+		if row.SessionLabel == nil || *row.SessionLabel != manual {
+			t.Fatalf("compare match has unexpected session label: %#v", row.SessionLabel)
+		}
+	}
+}
+
+func TestSessionPageService_GetPage_CompareMatchesEmptyWhenDisabled(t *testing.T) {
+	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
+
+	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{}) // EnableCompare=false
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resp.CompareMatches) != 0 {
+		t.Fatalf("expected empty compare matches when compare disabled, got %d", len(resp.CompareMatches))
+	}
+}
+
+func TestNeighboringSessionLabels(t *testing.T) {
+	labels := []string{"A", "B", "C", "D"}
+
+	t.Run("middle session", func(t *testing.T) {
+		prev, next := neighboringSessionLabels(labels, "B")
+		if prev == nil || *prev != "A" {
+			t.Fatalf("expected prev=A, got %v", prev)
+		}
+		if next == nil || *next != "C" {
+			t.Fatalf("expected next=C, got %v", next)
+		}
+	})
+
+	t.Run("first session", func(t *testing.T) {
+		prev, next := neighboringSessionLabels(labels, "A")
+		if prev != nil {
+			t.Fatalf("expected prev=nil, got %v", prev)
+		}
+		if next == nil || *next != "B" {
+			t.Fatalf("expected next=B, got %v", next)
+		}
+	})
+
+	t.Run("last session", func(t *testing.T) {
+		prev, next := neighboringSessionLabels(labels, "D")
+		if prev == nil || *prev != "C" {
+			t.Fatalf("expected prev=C, got %v", prev)
+		}
+		if next != nil {
+			t.Fatalf("expected next=nil, got %v", next)
+		}
+	})
+
+	t.Run("single session", func(t *testing.T) {
+		prev, next := neighboringSessionLabels([]string{"only"}, "only")
+		if prev != nil || next != nil {
+			t.Fatalf("expected (nil,nil), got (%v,%v)", prev, next)
+		}
+	})
+
+	t.Run("unknown session", func(t *testing.T) {
+		prev, next := neighboringSessionLabels(labels, "Z")
+		if prev != nil || next != nil {
+			t.Fatalf("expected (nil,nil) for unknown, got (%v,%v)", prev, next)
+		}
+	})
+}

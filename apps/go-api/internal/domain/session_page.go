@@ -57,12 +57,20 @@ type SessionCompareSuggestion struct {
 }
 
 // SessionPageResponse est la réponse de POST .../pages/sessions/detail.
+//
+// CompareMatches : rows détaillées de la session comparée (alimente les charts
+// du drawer compare côté front). Vide si compare_enabled = false.
+// PreviousSessionLabel / NextSessionLabel : navigation chronologique dans
+// available_sessions (older/newer) pour les boutons ←/→ du drawer.
 type SessionPageResponse struct {
-	CurrentSession    *SessionCompareEntry      `json:"current_session"`
-	AvailableSessions []string                  `json:"available_sessions"`
-	Matches           []SessionDetailMatchRow   `json:"matches"`
-	SuggestedCompare  *SessionCompareSuggestion `json:"suggested_compare,omitempty"`
-	CompareEnabled    bool                      `json:"compare_enabled"`
-	CompareSession    *SessionCompareEntry      `json:"compare_session,omitempty"`
-	CompareMetrics    []SessionCompareMetricRow `json:"compare_metrics"`
+	CurrentSession       *SessionCompareEntry      `json:"current_session"`
+	AvailableSessions    []string                  `json:"available_sessions"`
+	Matches              []SessionDetailMatchRow   `json:"matches"`
+	SuggestedCompare     *SessionCompareSuggestion `json:"suggested_compare,omitempty"`
+	CompareEnabled       bool                      `json:"compare_enabled"`
+	CompareSession       *SessionCompareEntry      `json:"compare_session,omitempty"`
+	CompareMatches       []SessionDetailMatchRow   `json:"compare_matches"`
+	CompareMetrics       []SessionCompareMetricRow `json:"compare_metrics"`
+	PreviousSessionLabel *string                   `json:"previous_session_label,omitempty"`
+	NextSessionLabel     *string                   `json:"next_session_label,omitempty"`
 }
