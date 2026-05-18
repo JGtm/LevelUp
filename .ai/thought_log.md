@@ -1,3 +1,79 @@
+## [2026-05-18] feat(player-profile-v1)(commit-7) — CampaignTracker sticky + StartCampaignModal
+
+**Statut** : Complété. Sprint V1 à 7/10.
+
+**Contexte** : §4.5.5 du plan — boucle UI complète sur les campagnes. Le
+`PlayerProfileCard` (commit 6) avait des CTAs "Démarrer une campagne" en
+attente de modale ; ce commit câble :
+
+1. **`CampaignTracker.tsx`** (280L) en sticky au-dessus du profil quand
+   une campagne est active (status === 'active'). Affiche snapshot +
+   actuel (lissé) + delta + R4 progression confirmée + R5 auto-closure
+   notice (plateau_60d / axis_no_longer_priority). Actions
+   Pause/Resume/Clore/Abandonner, les 2 dernières confirmées via
+   `AlertDialog`.
+2. **`StartCampaignModal.tsx`** (195L) mini-modale pattern aligné sur
+   AlertDialog (pas de Radix, role=dialog, Escape, clic backdrop). Choix
+   du `playlist_group` (6 options + "all" par défaut), récap pédagogique
+   R2, **option "Skip — créer juste un défi libre"** propagée via
+   callback parent (la sortie vers `CreateChallengeForm` sans démarrer
+   de campagne est appelée par le caller).
+
+**Décisions techniques principales** :
+
+1. **Helper `CampaignAndProfileSection`** dans `ObjectifsPage.tsx` qui
+   orchestre tracker + profile + modale. Gère l'état modale (open + axis +
+   axisKind) et propage `onStartCampaign` au profile **uniquement quand
+   pas de campagne active** (1 max active à la fois, plan §4.5.1).
+   Sticky du tracker pour qu'il reste visible au scroll.
+
+2. **`AxisKind` lusr_component par défaut** dans le state initial de la
+   modale. Le caller change explicitement à 'radar' si nécessaire. V1
+   pragmatique : les leviers identifiés en `ProgressionLeverage.component`
+   sont tous des composantes LUSR (cf. profile.identifyLeverages —
+   commit 4).
+
+3. **Mutations câblées avec `onSuccess: closeModal/Dialog`** pour fermer
+   automatiquement après succès. `useCampaignMutations` invalide
+   `useActiveCampaign` → refresh automatique du tracker.
+
+4. **`formatDelta` avec signe Unicode** `+` / `−` (et non `-` ASCII)
+   pour cohérence typographique. 2 décimales max (garde-fou G2 du plan —
+   pas de fausse précision).
+
+5. **Status badge tri-état** : Pause/Completed/Abandoned (gris) — Active+
+   confirmed (vert outcome-win) — Active+pending (gris "En cours"). Pas
+   de classe Tailwind color brute ; tout via `tokenCssVar`.
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅ 1.53s (bundle objectifs ~+10 kB attendu)
+- `vitest run` ✅ 1412 tests pass, 14 skipped
+- `eslint` : 26 warnings i18n hardcoded strings (0 erreur) — résolus
+  commit 9 (manifests campagne FR/EN).
+
+**Trade-offs assumés** :
+
+- Le label "Skip — créer juste un défi libre" propage via callback mais
+  n'est pas câblé à un `setActiveTab('challenges')` dans cette PR — le
+  caller le fera quand il sera prêt. Pour l'instant le callback n'est
+  pas passé, donc le bouton n'apparaît pas.
+- Pas de `prefilledTemplateId` câblé entre `SuggestedChallenge → CreateChallengeForm`.
+  Le bouton "Lancer" (`onLaunchTemplate`) du profile est laissé sans
+  consumer pour V1 — V2 follow-up. Le défi se crée toujours via le flow
+  libre depuis l'onglet `challenges`.
+- Auto-closure notice (`auto_closure_suggested`) est purement informatif :
+  le joueur doit cliquer manuellement sur "Clore" — c'est le principe
+  R5 ("jamais d'auto-fermeture silencieuse").
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 7/10. La boucle
+UI complète "profil → CTA → modale start → tracker sticky → pause/clore"
+est fonctionnelle. Prochaine étape : commit 8 (rename "Objectifs" →
+"Ascension" dans NavL1).
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-6) — PlayerProfileCard frontend (5 sous-composants)
 
 **Statut** : Complété. Sprint V1 à 6/10.

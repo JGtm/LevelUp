@@ -15,9 +15,13 @@ import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { ChallengeCard } from './components/ChallengeCard'
 import { CreateChallengeForm } from './components/CreateChallengeForm'
 import { ArcSummary } from './components/ArcSummary'
+import { CampaignTracker } from './components/CampaignTracker'
 import { MomentCard } from './components/MomentCard'
 import { PlayerProfileCard } from './components/PlayerProfileCard'
+import { StartCampaignModal } from './components/StartCampaignModal'
 import { StatsGlobales } from './components/StatsGlobales'
+import type { AxisKind } from '@/lib/playerProfile'
+import { useActiveCampaign } from './hooks/usePlayerProfile'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from './fallback.i18n'
 import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
 
@@ -288,10 +292,7 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
 
   return (
     <div className="space-y-6">
-      {/* V1 PlayerProfile Ascension §5.2 — en tête de l'onglet parcours,
-          avant StatsGlobales et PrestigeBadge. CampaignTracker (commit 7)
-          se placera au-dessus quand une campagne sera active. */}
-      <PlayerProfileCard playerSlug={userId} />
+      <CampaignAndProfileSection userId={userId} />
 
       <PrestigeBadge prestige={prestige} />
 
@@ -386,6 +387,47 @@ function PrestigeBadge({ prestige }: PrestigeBadgeProps) {
           <p className="text-2xl font-bold">{totalPP.toLocaleString('fr-FR')} PP</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V1 PlayerProfile Ascension §5.2 — section orchestrant tracker + profile +
+// modale de démarrage de campagne. Insérée en tête de l'onglet `parcours`.
+// ────────────────────────────────────────────────────────────────────────────
+
+interface CampaignAndProfileSectionProps {
+  userId: string
+}
+
+function CampaignAndProfileSection({ userId }: CampaignAndProfileSectionProps) {
+  const { data: activeCampaign } = useActiveCampaign(userId)
+  const [modalState, setModalState] = useState<{
+    open: boolean
+    axis: string
+    axisKind: AxisKind
+  }>({ open: false, axis: '', axisKind: 'lusr_component' })
+
+  const handleStartCampaign = (axis: string, axisKind: AxisKind) => {
+    setModalState({ open: true, axis, axisKind })
+  }
+
+  const hasActive = activeCampaign && activeCampaign.status === 'active'
+
+  return (
+    <div className="space-y-4">
+      {hasActive && <CampaignTracker playerSlug={userId} campaign={activeCampaign} />}
+      <PlayerProfileCard
+        playerSlug={userId}
+        onStartCampaign={hasActive ? undefined : handleStartCampaign}
+      />
+      <StartCampaignModal
+        open={modalState.open}
+        playerSlug={userId}
+        axis={modalState.axis}
+        axisKind={modalState.axisKind}
+        onOpenChange={(open) => setModalState((s) => ({ ...s, open }))}
+      />
     </div>
   )
 }
