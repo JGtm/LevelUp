@@ -526,6 +526,28 @@ func NewRouter(
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
 		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
+		// OpenSpartan import (Sprint OpenSpartan PR 3.B) — multipart upload du
+		// .db SQLite OpenSpartan, validation XUID via session SSO, exécution
+		// asynchrone via jobStore. Skipped en mode démo. La connexion shared en
+		// RW est ouverte une fois au boot et partagée via le ref-count
+		// platform_duckdb (cf. catalogMetaDB plus haut).
+		if !cfg.DemoMode {
+			if sharedRW, err := platform_duckdb.OpenReadWriteShared(config.SharedDBPath(cfg, "")); err != nil {
+				slog.Warn("openspartan_import_disabled_shared_db_unavailable", "err", err)
+			} else {
+				osImportSvc := service.NewOpenSpartanImportService(sharedRW.SQLDb())
+				osPostImportSvc := service.NewOpenSpartanPostImportService(cfg, sharedRW.SQLDb())
+				osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
+					ImportService:     osImportSvc,
+					PostImportService: osPostImportSvc,
+					JobStore:          jobStore,
+					StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
+					DemoMode:          cfg.DemoMode,
+				})
+				r.Post("/import/openspartan", osImportH.StartImport)
+			}
+		}
+
 		// Galerie médias — version de flux pour polling léger
 		r.Get("/media/feed-version", handlers.GetMediaFeedVersion)
 

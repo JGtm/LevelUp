@@ -26,8 +26,9 @@ const (
 	JobTypeBackfill       JobType = "backfill"
 	JobTypeReindexMedia   JobType = "reindex_media"
 	JobTypeScanMedia      JobType = "scan_media"
-	JobTypeSessionsRecalc JobType = "sessions_recalculate"
-	JobTypeOther          JobType = "other"
+	JobTypeSessionsRecalc     JobType = "sessions_recalculate"
+	JobTypeOpenSpartanImport  JobType = "openspartan_import"
+	JobTypeOther              JobType = "other"
 )
 
 // JobErrorDetail encapsule les détails d'erreur d'un job.

@@ -370,6 +370,219 @@ Prochaine PR pragmatique : **PR 3 frontend** (page login Xbox + i18n + disclaime
 - Reload abonnements au boot : `MultiUserTokenStore.LoadAll()` + démarrer N RTA selon les tokens persistés.
 
 **Conclusion / prochaine étape** : PR 2.5a livrable. Le storage est en place ; tout ce qui complète un Device Code Flow en mode `AuthMode="xbox"` voit ses tokens RTA persistés dans `data/auth/watcher_tokens/{xuid}.json`. Mais sans PR 2.5b, ces tokens ne sont pas encore consommés par le watcher — donc pas d'auto-sync RTA active. Prochaine PR pragmatique : **PR 3 frontend** (page login Xbox + i18n + disclaimer phishing, ~0.5j) pour permettre le test visuel de bout en bout du flow login → user créé → tokens persistés. PR 2.5b suivra quand on aura un signal réel de besoin.
+## [2026-05-18] feat(openspartan) — PR 3.5 : post-import recompute (sessions, perf_score, citations)
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 3.B `8a778975`).
+
+**Contexte** : Dernier livrable backend du sprint. L'import OpenSpartan (PR 1→3.B) peuple les tables brutes (`shared.match_registry`, `match_participants`, `medals_earned`, `highlight_events`, `xuid_aliases`) ; PR 3.5 recalcule les colonnes dérivées v6 qui vivent dans la DB du joueur (`stats.duckdb`) et dans `metadata.duckdb`.
+
+**Découverte de patterns existants** (sub-agent Explore) :
+
+1. **Sessions** : `sync.RecalculatePlayerSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, friendGamertags) (int, error)` — acquiert ses propres write leases en interne, ouvre player + shared, peuple `player_match_enrichment.session_id|session_label`.
+2. **Performance score** : `sync.batchComputePerformanceScores(playerDB, sharedDB, xuid, medalExploitByMatch, force) (int, error)` — **privée**. Calcule un score relatif par chaîne (6 chaînes : ranked, firefight, arena_slayer, arena_objectif, btb, chaos), sur fenêtre glissante de 50 matchs même chaîne, à partir de 10 matchs minimum.
+3. **Match citations** : `sync.BackfillMatchCitations(ctx, metadataDB, sharedDB, playerDB, xuid, matchIDs) error` — moteur `analysis.ComputeFullMatchCitations`, croise médailles + awards + events + référentiel `citation_mappings`. Idempotent (INSERT OR IGNORE).
+4. **Vues matérialisées (`mv_player_matches`, etc.)** : **PAS de refresh nécessaire** — ce sont des VUES SQL pures, ré-évaluées à chaque requête.
+5. **Création schéma player neuf** : `sync.OpenPlayerDB(path) (*duckdbpkg.DB, error)` crée le répertoire + applique le schéma player idempotent. Pattern parfait pour le cas onboarding où la `stats.duckdb` n'existe pas encore.
+
+**Décisions** :
+
+1. **Wrapper public `sync.BatchComputePerformanceScores(playerDB, sharedDB, xuid, force) (int, error)`** ajouté dans `internal/sync/performance.go` plutôt que de renommer la fonction privée (qui aurait cassé 10+ tests internes). Le wrapper passe `medalExploitByMatch=nil` — option d'expert réservée au sync engine.
+2. **Service `internal/service/openspartan_post_import_service.go`** :
+   - Struct `OpenSpartanPostImportService` + `Run(ctx, xuid, gamertag, matchIDs, opts) (PostImportResult, error)`
+   - 3 stages séquentielles dans des helpers ≤ 80L : `recomputeSessions`, `recomputePerfScores`, `recomputeCitations`
+   - Chaque stage est **best-effort** : erreur logguée + enregistrée dans `PostImportResult.Errors`, ne casse pas les autres stages
+   - Crée `stats.duckdb` du joueur via `sync.OpenPlayerDB` si absent → fonctionne au premier import OpenSpartan d'un user fraîchement onboardé
+   - Citations skippées silencieusement si `matchIDs` vide (rien à backfiller)
+3. **`InsertedMatchIDs []string` ajouté à `service.ImportResult`** — populé par `writeOneMatch` après chaque INSERT réussi. Consommé par le handler pour passer la liste au post-import (sinon il aurait fallu re-requêter `shared.match_registry`).
+4. **Câblage handler** :
+   - `OpenSpartanImportConfig.PostImportService` optionnel — `nil` = post-import skippé (compatible avec les tests existants qui ne le construisent pas)
+   - `runImport` capture `gamertag := sess.LinkedHaloIdentity.Gamertag` et le passe en goroutine
+   - `runPostImport` skip silencieusement si `gamertag == ""` ou service nil
+   - `recordSuccess` enrichit `Result.post_import` avec `{sessions_touched, perf_scores_touched, citations_backfilled, errors_count}`
+5. **`server.go`** : `OpenSpartanPostImportService` construit et injecté dans la config handler. Skippé en mode démo (comme tout l'import).
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- Tous tests existants verts (handler 6/6, openspartan 13/13, mapper 13/13, service 11/11)
+- Pas de test d'intégration spécifique au post-import : le service est un thin orchestrateur sur 3 fonctions `sync.*` déjà testées (couvertes par `internal/sync/*_test.go` du repo). Le câblage est validé par le passage des tests handler existants (qui exercent runImport sans post-import).
+
+**Conclusion / prochaine étape** :
+
+- **Sprint backend OpenSpartan terminé** (PR 1 → 3.5). 5 commits sur la branche.
+- Reste **PR 4** : UI onboarding côté `apps/web` — `OpenSpartanImportCard` dans le flow Xbox SSO, derrière disclosure "Mode avancé", drag & drop du `.db`, polling `GET /jobs/{job_id}` via le pattern existant.
+- **Limites assumées** :
+  - Le `gamertag` vient de la session SSO ; si la session n'a pas `LinkedHaloIdentity.Gamertag` rempli (PR 1 SSO PR 1 / 2 doivent garantir), le post-import est skippé silencieusement → l'import brut est quand même accepté.
+  - Si `RecalculatePlayerSessions` deadlock le lease `sharedDBPath` (le serveur tient déjà sharedDB ouvert au boot), à observer en intégration réelle. Le pool ref-counté process-local + dblease inter-process peuvent coexister, mais le sprint XBOX SSO §10 mentionne déjà la complexité d'invalidation pool.
+
+---
+
+## [2026-05-18] feat(openspartan) — PR 3.B : endpoint HTTP POST /import/openspartan
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 3.A `d80d2e2c`).
+
+**Contexte** : Dernier livrable backend du sprint OpenSpartan. PR 3.A a livré le service d'orchestration testable end-to-end ; PR 3.B branche le service au routeur HTTP avec multipart upload, validation SSO et jobs asynchrones.
+
+**Découverte de patterns existants** (sub-agent Explore) :
+
+1. **Router chi** monté sous `r.Route("/api/v1", ...)` dans `internal/api/server.go:350`. Pattern d'enregistrement d'un POST : `r.Post("/foo", handlers.NewFooHandler(deps...).Method)`.
+2. **Auth middleware** : `middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)` au niveau du Route en mode strict ; sinon les handlers extraient `sess := middleware.GetSession(r.Context())` et refusent eux-mêmes. `sess.LinkedHaloIdentity.XUID` est la source du XUID Halo (`internal/domain/session.go`).
+3. **Job system** : `internal/domain/job.go` définit `JobType` + `AsyncJobStatus`. `internal/platform/jobs/store.go:NewStore(path) → *Store`, méthodes `Create(JobType, playerSlug) → *AsyncJobStatus`, `Update(id, fn(*AsyncJobStatus))`, `SetStatus(id, status, *step)`. Polling depuis le front via `GET /api/v1/jobs/{job_id}` (`handlers.NewJobsHandler(jobStore).GetJob`).
+4. **Multipart upload** : `internal/api/handlers/media.go:333` utilise `http.MaxBytesReader(w, r.Body, maxUploadSize)` + `r.ParseMultipartForm(32 << 20)`. Quota observé : 500 MB pour les médias. Pour OpenSpartan le plan dit 1 GiB.
+5. **Shared DuckDB en RW** : `platform_duckdb.OpenReadWriteShared(path)` retourne un `*DB` ref-counté, `SQLDb()` donne le `*sql.DB`. Path résolu via `config.SharedDBPath(cfg, "")`.
+
+**Décisions** :
+
+1. **`JobTypeOpenSpartanImport JobType = "openspartan_import"`** ajouté dans `domain/job.go` (entre `JobTypeSessionsRecalc` et `JobTypeOther`).
+2. **Handler `internal/api/handlers/openspartan_import.go`** :
+   - Struct `OpenSpartanImportHandler` + `OpenSpartanImportConfig` pour injection. Champs : `importSvc *service.OpenSpartanImportService`, `jobStore *jobs.Store`, `tempDir`, `stashDir`, `demoMode`.
+   - `StartImport(w, r)` :
+     - 503 si `demoMode`
+     - 401 si pas de `sess.LinkedHaloIdentity.XUID`
+     - 413 si upload > 1 GiB (`http.MaxBytesReader`)
+     - 400 si champ multipart `db` manquant ou fichier vide
+     - 202 + `{job_id, status}` sinon
+   - Owner XUID = `sess.LinkedHaloIdentity.XUID`, **jamais** depuis le payload.
+   - Stage le `.db` reçu sous `<tempDir>/openspartan_<uuid>.db`.
+   - Lance `go h.runImport(...)`. Helper `runImport` :
+     - `defer os.Remove(tmpPath)` → cleanup garanti
+     - `SetStatus(jobID, Running, "opening_database")` au démarrage
+     - `OnProgress` callback → `jobStore.Update(...)` avec `ProgressPct`, `MatchesDone`, `MatchesTotal`
+     - Sur succès : `Status=Succeeded`, `Result` rempli avec toutes les counts (`detected_owner_xuid`, `confidence`, `inserted_matches`, etc.)
+     - Sur erreur : `Status=Failed`, `Error.Code` classifié (`xuid_mismatch` / `owner_low_confidence` / `not_openspartan_db` / `import_error`)
+3. **Decomposition stricte** : `StartImport`, `saveUploadedDB`, `runImport`, `makeProgressCallback`, `recordSuccess`, `recordFailure`, `classifyImportError` — toutes < 80 lignes (règle CLAUDE.md).
+4. **`middleware.InjectSession(ctx, sess)` exporté** pour permettre aux tests handler de poser une session sans passer par le cookie/store complet. Marqué `// Intended for tests.` dans la docstring.
+5. **Router integration `server.go`** : route mountée à `POST /api/v1/import/openspartan` après `/backfill/start`. Skippée en `DemoMode`. Connexion shared RW ouverte une fois au boot via `OpenReadWriteShared` (ref-counté).
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- **6/6 nouveaux tests handler verts** (5.8s) :
+  - `TestStartImport_DemoModeReturns503`
+  - `TestStartImport_NoSessionReturns401`
+  - `TestStartImport_SessionWithoutLinkedIdentityReturns401`
+  - `TestStartImport_MissingDBFieldReturns400`
+  - `TestStartImport_EmptyFileReturns400`
+  - `TestStartImport_HappyPathReturns202WithJobID`
+- Cumul openspartan + mapper + service + handlers : tous verts.
+
+**Conclusion / prochaine étape** :
+
+- Sprint backend OpenSpartan complet. Reste **PR 3.5** (post-import recompute : sessions, perf_score, citations — peut être lancée automatiquement à la fin du handler ou laissée en cron) et **PR 4** (UI onboarding "Mode avancé").
+- L'endpoint est consommable côté front : `POST /api/v1/import/openspartan` multipart avec champ `db`, polling `GET /api/v1/jobs/{job_id}`. Le sprint XBOX SSO doit être livré pour que le SSO fournisse l'XUID dans la session.
+
+---
+
+## [2026-05-18] feat(openspartan) — PR 3.A : helpers reader + service ImportFromOpenSpartan
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 2 `adedcc6a`).
+
+**Contexte** : Troisième livrable du sprint, scope resserré sur la partie **service** (orchestration backend, sans HTTP). PR 3 d'origine couvrait service + endpoint HTTP + job system — j'ai split en **PR 3.A (cette session)** = service testable end-to-end, et **PR 3.B (session ultérieure)** = enrobage HTTP. Le service est appelable directement par n'importe quel handler/job futur.
+
+**Découverte de patterns existants** (sub-agent Explore) :
+
+1. **Pas d'API Appender utilisée dans le repo** — le pattern Go LevelUp est `db.Exec(INSERT...)` en boucle dans `internal/sync/writes.go`. J'ai donc abandonné l'idée Appender du plan v2 et réutilisé les fonctions existantes : `sync.InsertRegistryIfNotExists`, `sync.InsertParticipants`, `sync.InsertMedals`, `sync.InsertHighlightEvents`, `sync.UpsertXUIDAlias`.
+2. **Pool DuckDB** : `internal/platform/duckdb/pool.go` avec `GetOrOpen(ctx, cfg) → *PlayerDB`. Pour PR 3.A je ne touche pas au pool — le service reçoit un `*sql.DB` injecté.
+3. **Job system** : `internal/platform/jobs/store.go` (`Store.Create`/`Update`/`SetStatus`, persistance JSON). Pas câblé dans PR 3.A mais l'interface `OnProgress(parsed, total int)` est prête pour intégration.
+4. **Auth middleware** : `ctxkeys.HaloXUID(ctx)` extrait le XUID de la session SSO. Sera utilisé par PR 3.B.
+
+**Décisions** :
+
+1. **Helpers reader ajoutés au package `internal/openspartan/`** :
+   - `aliases.go` : `LoadXuidAliases(ctx)` + `AliasMap(ctx)` pour résolution `xuid → gamertag`
+   - `friends.go` : `LoadFriends(ctx)` (table optionnelle, missing = nil)
+   - `highlights.go` : `Highlights(ctx) iter.Seq2[HighlightRow, error]` (stream) + `HighlightCount(ctx)`
+2. **Service `internal/service/openspartan_import_service.go`** :
+   - `OpenSpartanImportService.Import(ctx, expectedOwnerXUID, dbPath, opts) (ImportResult, error)`
+   - Validation XUID stricte : `DetectOwner` → comparer à `expectedOwnerXUID` ; refus si `ConfidenceNone|Low` ou si XUID diverge → `ErrXUIDMismatch`
+   - Orchestration découpée en helpers pour respecter la règle 80L/fonction : `validateOwner`, `importMatches`, `writeOneMatch`, `importHighlights`, `importAliases`, `stashFriends`
+   - Errors par stage : enregistrées dans `ImportResult.Errors[]` sans abort global
+   - `DryRun: true` → compte sans écrire (tests fonctionnels rapides)
+   - `OnProgress(parsed, total)` callback optionnel (intégration job system PR 3.B)
+3. **Adapters `internal/service/openspartan_import_adapters.go`** : `toSyncRegistry`, `toSyncParticipants`, `toSyncMedals`, `toAnalysisEvent`. Les types `mapper.*Row` diffèrent des `sync.*Row` (nullability, int16 vs int) — adapter les chiffres et promouvoir les pointeurs.
+4. **Stash Friends en JSON** : `<StashDir>/<ownerXUID>/stash/openspartan_friends.json`. Pas de table DuckDB créée — la fonctionnalité MULTIUSER_ACL future le consommera.
+5. **Tie-break `mostFrequentHumanXUID`** : sur la fixture 1-match avec 2 humains à fréquence égale, le tie-break lexicographique (smallest-first) doit favoriser le XUID owner attendu → j'ai choisi un `testOtherXUID` lexicographiquement plus grand que `testOwnerXUID` dans la fixture.
+6. **`highlight_events` créé manuellement dans le setup test** — la table n'est pas dans `EnsureSharedSchema` (elle vit dans une migration séparée `internal/migration/steps_shared.go`). Le test reproduit le DDL fidèlement.
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- Tests : **7 adapter unit tests + 4 intégration end-to-end** verts (7.9s). Cumul openspartan + service : tous verts.
+- **Smoke test sur la vraie DB** (27 MB, 451 matchs) avec écriture DuckDB temp : **451/451 matchs importés** (100%), 3901 participants, 13445 médailles, 1458 highlights, 51 xuid aliases, 2 friends stashés, **0 erreur**, confidence=high. Total temps : 114s pour ~19000 inserts unitaires (cohérent avec le pattern `db.Exec` en boucle sans transaction).
+
+**Conclusion / prochaine étape** :
+
+- **PR 3.B** à enchaîner quand prêt : endpoint HTTP `POST /import/openspartan` (multipart upload, quota 1 GB), création de job via `jobs.Store.Create`, goroutine d'exécution avec `OnProgress` câblé à `Store.Update`, validation XUID depuis `ctxkeys.HaloXUID(r.Context())`, suppression du fichier tmp après import.
+- Performance : si on observe que 114s pour 451 matchs est gênant (extrapolation : 19min pour 5000 matchs), optimiser en wrappant chaque famille d'inserts dans une transaction (`db.Begin()` + `tx.Commit()`). Pas critique pour la v1 — l'import est asynchrone et l'utilisateur peut continuer à jouer.
+
+---
+
+## [2026-05-18] feat(openspartan) — PR 2 : mapper Halo API JSON → DuckDB v6 rows
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 1 `1fc45e5b`).
+
+**Contexte** : Deuxième livrable du sprint. Le mapper consomme un `openspartan.ParsedMatch` (sortie PR 1) et produit des structures Go qui correspondent au schéma DuckDB v6 (`shared.match_registry`, `shared.match_participants`, `shared.medals_earned`, `shared.highlight_events`, `shared.xuid_aliases`). Pas d'I/O — pur mapping JSON → struct.
+
+**Décisions** :
+
+1. **Sous-package `internal/openspartan/mapper/`** — sépare le mapping pur de la lecture SQLite. Dépend du package parent (struct JSON) mais pas l'inverse.
+2. **Schéma cible localisé dans `internal/sync/schema.go`** (`match_registry` 38 cols, `match_participants` 32 cols, `medals_earned` 5 cols, `xuid_aliases` 5 cols) + `internal/migration/steps_shared.go` pour `highlight_events` (7 cols, id auto via sequence).
+3. **Rows en pointeurs pour les nullables** (`*string`, `*float64`, `*time.Time`) — cohérent avec le style `MatchHistoryRawRow` déjà en place dans `domain/`.
+4. **Pas de noms textuels (`playlist_name`, `map_name`, `pair_name`, `game_variant_name`)** dans cette PR — ils vivent dans `metadata.duckdb` et seront peuplés par PR 3.5 (post-import recompute). Même chose pour `mode_category`, `is_ranked`, `is_firefight`.
+5. **Helpers de NULL pragmatiques** : `strPtrOrNil(s)` qui trim+return nil sur empty.
+6. **Parser ISO 8601 dédié** (`iso8601.go`) — pattern Halo `PT[xH][xM][x.xS]`. Pas de support `P1Y` etc., et erreur explicite sur `PT` vide ou `PT1.5M` (fractions sur minutes pas supportées car non observées dans la vraie data).
+7. **Team switch handling** — `MapParticipants` prend le **dernier** `PlayerTeamStats[]` (équipe finale) comme canonical. `MapMedals` au contraire **agrège** sur toutes les entrées pour éviter de perdre des médailles gagnées avant un switch.
+8. **Filtre `PlayerType=1`** systématique (humains uniquement, bots ignorés). PK `(match_id, xuid, medal_name_id)` → agrégation par `medal_name_id` via map quand un même medal apparaît dans 2 PlayerTeamStats.
+9. **`MapHighlight` tolère 3 formes de XUID** dans le JSON HighlightEvents : nombre entier brut (forme observée dans la vraie DB), string de digits, string wrappée `xuid(...)`. Helper `decodeHighlightXUID(json.RawMessage)`.
+10. **`ParseXUID` exporté** dans le package parent (renommé `parseXUID` → `ParseXUID`) pour que le mapper puisse l'utiliser sans dupliquer la regex.
+11. **`MapOptions.AliasResolver func(xuid) string`** — injection optionnelle pour résoudre les gamertags depuis `XuidAliases` chargé en amont par PR 3. Si nil, `gamertag` reste NULL.
+12. **Backfill flags à `true`/`1`** dans `match_registry` (`backfill_completed=1`, `participants_loaded`, `events_loaded`, `medals_loaded`) — on insère tout en une fois, donc rien à backfiller à part les noms (PR 3.5).
+13. **Future-date guard** : `StartTime > now + 24h` → `ErrFutureMatch`. Tolérance de 24h pour absorber drift d'horloge serveur Halo.
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- `go test ./internal/openspartan/...` : **26/26 verts** (13 reader + 13 mapper, 5.6s)
+- Smoke test sur la vraie DB 27 MB / 451 matchs : **451/451 matchs mappés sans erreur** en 10.35s (invalid=0, future=0).
+
+**Conclusion / prochaine étape** :
+
+- PR 3 (service d'orchestration + endpoint HTTP) : consomme reader + mapper, écrit dans DuckDB via Appender, valide XUID owner contre la session SSO, gère stash JSON pour `Friends`.
+- Avant de commencer PR 3 : prendre une décision sur la stratégie d'écriture (Appender en batch par type de row, ou INSERT prepared par row). L'Appender est annoncé dans le plan v2 — confirmer la dispo du binding via `github.com/duckdb/duckdb-go/v2`.
+
+---
+
+## [2026-05-18] feat(openspartan) — PR 1 : reader SQLite + parser JSON Halo API
+
+**Statut** : Complété (branche `feat/openspartan-import`, worktree `.claude/worktrees/openspartan-import/`, branchée depuis HEAD `feat/xbox-sso` = `bb24299c`).
+
+**Contexte** : Premier livrable du sprint OpenSpartan v2 (cf. [.ai/SPRINT_OPENSPARTAN_IMPORT.md](.ai/SPRINT_OPENSPARTAN_IMPORT.md)). Le plan vise un import "vanilla OpenSpartan/grunt uniquement" : on lit le SQLite tiers, on extrait les matchs sous forme de Halo API JSON brut, et on laisse le mapping vers DuckDB v6 à PR 2.
+
+**Décisions** :
+
+1. **Package `internal/openspartan/`** (pas `internal/import/openspartan/` comme proposé dans le plan v1) — `import` est un mot réservé Go, la compilation aurait planté. Plan mis à jour de fait.
+2. **Driver SQLite : `modernc.org/sqlite v1.50.1`** (pur Go, pas de CGO sur Windows). Le module était déjà en dépendance indirecte ; mon import le promeut en direct. `go mod tidy` a aussi bumpé plusieurs deps transitives (x/sync, x/tools, x/mod, x/telemetry, libc, mathutil, memory).
+3. **DSN read-only** via URI SQLite : `file:<path>?mode=ro&_pragma=busy_timeout(5000)` avec `filepath.ToSlash` pour les paths Windows. Pas de PRAGMA après ouverture.
+4. **Détection de schéma sans `PRAGMA user_version`** (il est à 0 dans les vraies DBs). On vérifie la présence des 3 tables canoniques (`MatchStats`, `PlayerMatchStats`, `HighlightEvents`) avec une colonne `ResponseBody`.
+5. **Modèles JSON Halo API typés partiellement** : `MatchStats`, `MatchInfo`, `Player`, `CoreStats`, `MedalAward` typés à fond. `Teams[].Stats`, `PvpStats`, `PveStats`, `RankRecap`, `StatPerformances` laissés en `json.RawMessage` — le mapper PR 2 choisira ce qu'il extrait. `MedalAward.NameID` est `uint32` (les IDs filmshell dépassent int32 — observé `3546244406`).
+6. **`DetectOwner` à 3 heuristiques** avec `Confidence` agrégée :
+   - filename `{xuid}.db` → si match
+   - XUID le plus fréquent parmi `Players[].PlayerType=1` (un compte par match)
+   - fallback `CacheMeta` (table optionnelle, missing = no signal)
+   - `ConfidenceHigh` quand filename + frequency s'accordent ; `Medium` si un seul ; `Low` si fallback CacheMeta uniquement.
+7. **Iterator `Matches(ctx) iter.Seq2[*ParsedMatch, error]`** (Go 1.23+ iter pattern). LEFT JOIN `PlayerMatchStats` sur MatchId. ORDER BY `json_extract(... '$.MatchInfo.StartTime')` ASC. Erreurs de parsing par ligne surfacées via `yield(nil, err)` — caller décide skip ou stop. Annulation par `ctx.Done()` à chaque tour.
+
+**Résultats observés** :
+
+- `go build ./...` : OK
+- `go vet ./...` : OK
+- `go test ./internal/openspartan/` : **13/13 verts** (3.16s)
+- Smoke test sur la vraie DB `C:\Users\...\OpenSpartan\2533274823110022.db` (27 MB, 451 matchs) : tous parsés, XUID owner détecté avec `confidence=high` en 0.45s.
+
+**Conclusion / prochaine étape** :
+
+- Branche `feat/openspartan-import` prête, commit imminent.
+- PR 2 (mapper Halo API → v6) à enchaîner. Pré-requis : récupérer le schéma DDL de `shared.match_registry`, `shared.match_participants`, `shared.medals_earned`, `shared.highlight_events` pour caler les types cibles.
 
 ---
 

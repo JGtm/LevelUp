@@ -468,6 +468,17 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 // matchs de la **même chaîne** uniquement. Un score n'est calculé qu'à partir
 // du MinMatchesPerChainForRelative-ième match de la chaîne (pas de fallback
 // global, préservation de la sémantique "relatif à ta chaîne").
+// BatchComputePerformanceScores is the public entry point that recomputes
+// the relative performance score for every match of a player. Exposed so
+// that external callers (e.g. the OpenSpartan post-import service) can run
+// the same recompute pass as the sync engine after a bulk import.
+//
+// medalExploit override is set to nil — callers that need the exploit-aware
+// variant (sync engine) still use the unexported helper.
+func BatchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, force bool) (int, error) {
+	return batchComputePerformanceScores(playerDB, sharedDB, xuid, nil, force)
+}
+
 func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	allMatches, err := loadHistoryForPerf(sharedDB, xuid)
 	if err != nil {
