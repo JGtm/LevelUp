@@ -1,3 +1,77 @@
+## [2026-05-18] feat(progression)(commit-6) — hook post-sync orchestrateur + profile service
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Sixième commit du plan V2 — le plus complexe. Orchestre les 4 détecteurs (streaks/records/milestones/coach) à chaque sync via la closure `buildPostSyncDeltaHook` existante. Ajout d'un mini-service `profile` pour exposer LUSR μ + sub-tier + tendance LOWESS sur μ.
+
+**Décisions utilisateur (avant code)** :
+
+1. **Scope full** : tout branché, y compris le mini-service PlayerProfile (LUSR + tier + LOWESS). Le plan référençait une « V1 PlayerProfile livrée » qui n'existait pas dans le repo — j'ai donc construit le minimum nécessaire pour le coach.
+2. **`accuracy_threshold_days`** : 1 match du jour avec accuracy >= 0.50 suffit (permissif). Constante `AccuracyThresholdForDays = 0.50`.
+3. **Fenêtre matchs récents** : 120 jours (`ProgressionMatchHistoryDays`).
+4. **Code location** : nouveau fichier `internal/api/post_sync_progression.go` (+ `_queries.go` pour les SQL + `_test.go`).
+
+**Architecture livrée** :
+
+```
+internal/progression/profile/   (mini-service LUSR + LOWESS, ~250L)
+├── types.go      : PlayerProfile, LUSRState, TierState, LOWESSTrend
+├── tier.go       : TierFromMu / NextTierFromMu (utilise sync.SkillTiers)
+├── lowess.go     : ComputeMuTrend via temporal.LowessSmooth + slope diff first/last
+└── service.go    : Service.Load(userID, titleSlug, lowessWindowDays, now)
+
+internal/api/post_sync_progression.go (orchestrateur, ~250L)
+├── ProgressionDeps (struct DI : 7 dépendances injectables)
+├── EvaluateProgressionAfterSync : pipeline 7 étapes
+└── BuildPlayerProgressionDeps : factory depuis PlayerDB + emitter
+
+internal/api/post_sync_progression_queries.go (SQL, ~190L)
+├── loadProgressionMatches : JOIN shared.match_participants + pme
+├── loadPlayerStats : agrégats matches_played/wins/kills/headshots/assists
+│                     + accuracy_threshold_days (COUNT DISTINCT day)
+└── loadComebackContext : 2 derniers matchs pour pause + freshness
+
+internal/api/post_sync_deltas.go (wiring, +9 lignes)
+└── appel EvaluateProgressionAfterSync après EmitPostSyncDeltas
+
+internal/api/post_sync_progression_test.go (intégration, ~280L)
+└── 3 tests : EmptyDB no crash, WithMatches full pipeline, DetectorIdempotency
+```
+
+**Pipeline 7 étapes** :
+
+1. `loadProgressionMatches(120j)` → []streaks.MatchActivity + []records.MatchInput (avec 5 métriques pré-extraites : performance_score, kda, kpm, accuracy, pspm).
+2. `loadPlayerStats()` → milestones.PlayerStats (6 métriques cumulatives).
+3. `loadComebackContext()` → LastMatchAt (2nd-to-last) + HasNewActivity (last < 6h).
+4. `streaks.Evaluate` → résultats par type (daily_play, weekly_play). Note : types perf-based (daily_perf, weekly_kda_threshold) skippés en V1 car nécessitent des seuils personnels (médianes) non encore exposés.
+5. `records.Detect` → résultats par (métrique × période) avec Upsert player_records + Append record_history.
+6. `milestones.Detect` → résultats par entrée catalogue avec Append milestone_earned.
+7. `coach.Generate` + `FilterRecent(24h)` + `Emitter.Emit` → notifications persistées dans player_notifications.
+
+**Profile service — méthodes** :
+
+- `TierFromMu(mu)` : (Diamond III, Lower=1900, Upper=1933.33). Délègue à `sync.SkillTiers` + `sync.GetTierForRating` pour éviter la duplication.
+- `NextTierFromMu(mu)` : sub-tier suivant (Diamond III → Diamond IV → si dernier sub-tier, tier suivant Onyx, sinon empty).
+- `ComputeMuTrend([]mu)` : LOWESS smooth puis slope = lastValid - firstValid. Window = len(série).
+
+**3 bugs résolus pendant l'implémentation** :
+
+1. **Schéma `shared` non attaché en test** : DuckDB auto-attache shared_matches_v2.duckdb sous son nom de fichier, blocant le 2e ATTACH `AS shared`. Solution : ouvrir+migrer shared standalone, FERMER, puis ATTACH RW depuis le player DB. Test uses inserts via `shared.match_*` prefix.
+2. **NULL → int64 conversion** : `SUM(CASE...)` sur table vide retourne NULL. Wrapped in `COALESCE(..., 0)`.
+3. **Test d'idempotence trop strict** : recordingEmitter ne persiste pas → NotificationsRepo.List retourne empty → FilterRecent n'a rien à filtrer. Renommé en `TestEvaluateProgression_DetectorIdempotency` qui teste l'idempotence des **détecteurs** (records non-NewPB sur 2e passe, milestones AlreadyHad). La dédup notifs DB-backed reste couverte par les tests unit `FilterRecent` du commit 5.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/... ./internal/notifications/...` : OK 28s cumulé (42 tests progression + 2 notifications)
+- `go test -tags=integration ./internal/api/...` : OK 20.4s (3 nouveaux TestEvaluateProgression_*)
+- `go test -tags=integration ./internal/migration/...` : OK 19.6s (non-régression)
+- `go test -tags=integration ./internal/platform/duckdb/...` : OK 45.9s (suite complète, non-régression)
+
+**Conclusion / prochaine étape** : Backend V2 complet et opérationnel. Le hook post-sync émet des notifs aux 6 nouvelles catégories à chaque sync réussi. La dédup 24h fonctionne via player_notifications (DB-backed) en prod. Commit 7 = endpoints HTTP (`GET /api/v1/streaks`, `/records`, `/milestones`) pour exposer les données à l'UI (commit 8/9).
+
+---
+
 ## [2026-05-18] feat(progression)(commit-5) — coach generator + 6 nouvelles catégories notif
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).

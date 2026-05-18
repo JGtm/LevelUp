@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"time"
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/notifications"
@@ -62,8 +63,23 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 				return
 			}
 			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2)
+
+			// Couche progression V2 (Ascension) — pipeline streaks/records/
+			// milestones/coach. Non bloquant : toute erreur reste en slog.Warn.
+			progDeps := BuildPlayerProgressionDeps(pdb2, emitter)
+			if _, err := EvaluateProgressionAfterSync(ctx, pdb2, defaultProgressionTitleSlug(), progDeps, time.Now().UTC()); err != nil {
+				slog.WarnContext(ctx, "post_sync: progression evaluate", "slug", slug, "err", err)
+			}
 		}
 	}
+}
+
+// defaultProgressionTitleSlug retourne le slug de titre utilisé par le
+// pipeline progression. Aligné sur l'unique titre supporté (halo_infinite).
+// Quand le projet supportera plusieurs titres, lire depuis le contexte
+// (ctxkeys.TitleSlug) sera la voie à privilégier.
+func defaultProgressionTitleSlug() string {
+	return "halo_infinite"
 }
 
 // PlayerSnapshot capture l'état pertinent d'un joueur pour la détection delta.
