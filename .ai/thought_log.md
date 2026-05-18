@@ -1,3 +1,78 @@
+## [2026-05-18] feat(player-profile-v1)(commit-6) — PlayerProfileCard frontend (5 sous-composants)
+
+**Statut** : Complété. Sprint V1 à 6/10.
+
+**Contexte** : §5.2 du plan — UI React qui consomme `GET /profile` (commit 4)
+et expose les Sections A1/A2/B/C du PlayerProfile dans l'onglet `parcours`
+de la page Objectifs. Première brique frontend du sprint — les CTAs
+"Démarrer une campagne" et "Lancer ce défi" sont propagés via callbacks
+parent, mais leur câblage UI (mini-modale, CampaignTracker sticky) arrive
+au commit 7.
+
+**Décisions techniques principales** :
+
+1. **Types TypeScript dans `lib/playerProfile.ts`** (204L) miroirs des
+   structs Go (`progression/profile/types.go`). Le naming aligne sur les
+   JSON tags backend (snake_case côté JSON, mappé tel quel côté TS).
+
+2. **Hook `usePlayerProfile`** + `useActiveCampaign` + `useCampaignMutations`
+   regroupés dans un seul fichier `hooks/usePlayerProfile.ts` (81L). Tous
+   re-exportés depuis `hooks.ts`. StaleTime 5min (profil) vs 1min
+   (campagne — réactif aux mutations). Invalidation centralisée par
+   `useCampaignMutations`.
+
+3. **5 sous-composants dans `components/profile/`** :
+   - `IdentitySection` (142L) : header rôle dominant/secondaire + radar
+     6 axes via `RadarChart` ECharts + Strengths/Improvements (top/bottom 3).
+   - `StyleDisciplineSection` (125L) : 2 cartes — StyleSignature (FK/FD
+     ratio + StyleKey traduit) + EngagementSnapshot (tier + bar 0-100
+     + matchs/jour + plus long écart).
+   - `PerformanceSection` (159L) : tier label + progress bar sub-tier
+     + 8 composantes (current vs target, marqueur top20% perso) + badge
+     tendance LOWESS coloré via `tokenCssVar('outcome-win')`.
+   - `ProgressionSection` (149L) : leviers prioritaires + défis suggérés,
+     CTAs "Démarrer une campagne" (composant) et "Lancer" (template_id)
+     propagés via props callbacks parent.
+   - `InsufficientDataPlaceholder` (34L) : état < 30 matchs.
+
+4. **Garde R2 phrasing strict** : "On t'aide à voir ta trajectoire — pas
+   à la garantir." dans `ProgressionSection`. Pas de causalité revendiquée.
+   Pas de "grâce au défi". Aligné sur §4.5.3 R2 du plan.
+
+5. **Couleurs via tokens sémantiques** : `tokenCssVar('outcome-win')`
+   pour trend positif, `outcome-loss` pour trend négatif. Pas de classes
+   Tailwind `bg-emerald-*` / `text-amber-*` (CLAUDE.md règle 20).
+
+6. **Intégration ObjectifsPage** : `PlayerProfileCard` inséré en tête de
+   `ParcoursTab`, avant `PrestigeBadge` et `StatsGlobales`. Avec un
+   commentaire pointant vers le commit 7 (CampaignTracker au-dessus).
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅ 1.42s, bundle objectifs +36 kB gzipped 9.36 kB (acceptable)
+- `vitest run` ✅ 1412 tests pass, 14 skipped, aucune régression
+- `eslint` : 24 warnings i18n hardcoded strings (0 erreur) — **attendu, sera
+  résolu commit 9** (manifests profil + campagne FR/EN). Les `_LABELS_FR`
+  duplication entre `PerformanceSection`/`ProgressionSection` migrera
+  vers manifest.
+
+**Trade-offs assumés** :
+
+- Suggestions affichent `template_id` brut (pas le label FR) tant que
+  l'i18n profile manifest n'existe pas (commit 9).
+- Pas de loading skeleton sophistiqué — placeholder simple "Chargement
+  du profil…" (commit 9 ajoute un skeleton si bandwidth).
+- Le bouton "Démarrer une campagne" est rendu **uniquement** si
+  `onStartCampaign` prop est passée. Pour le moment, `PlayerProfileCard`
+  ne la passe pas — le câblage avec la mini-modale arrive au commit 7.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 6/10. Frontend
+PlayerProfile rendu en read-only. Prochaine étape : commit 7
+(CampaignTracker sticky + mini-modale Start/Pause/Close/Abandon).
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-5) — ImprovementCampaign full stack
 
 **Statut** : Complété. Sprint V1 à 5/10.
