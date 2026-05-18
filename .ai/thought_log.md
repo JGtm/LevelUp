@@ -1,3 +1,50 @@
+## [2026-05-18] feat(progression)(commit-4) — milestones catalog TOML + detector + DuckDB repos
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Quatrième commit du plan V2. Boucle la couche 2 (Records + Milestones) avec le système de paliers cumulatifs débloquables.
+
+**Décisions / changements** :
+
+1. **Package `milestones` structuré en 5 fichiers** :
+   - `types.go` (déjà commit 1) : `CatalogEntry`, `Earned`, `NearMissRatio=0.10`.
+   - `repository.go` : 2 interfaces — `CatalogRepo` (metadata.duckdb, cross-titres) et `EarnedRepo` (stats.duckdb, par joueur). Séparation aligned sur la séparation physique des DB.
+   - `catalog_loader.go` : `LoadCatalogFromFile` (lit + valide TOML), `parseCatalogBytes` (pour tests inline), `SyncCatalog` (loader → CatalogRepo.Upsert, graceful degradation si TOML invalide → slog.Warn et catalogue inchangé en DB).
+   - `detector.go` : `PlayerStats { Metrics map[string]float64 }` en input, itère le catalogue par titre, skip si déjà earned, persiste si threshold atteint, signale near-miss si >= 90% du seuil. Toujours retourne 1 result par entrée du catalogue (observabilité progression complète).
+   - Pas de logique de notification — DetectionResult consommé par l'orchestrateur (commit 6).
+
+2. **Impl DuckDB** :
+   - `MilestoneCatalogRepo` (metadata.duckdb) : INSERT...ON CONFLICT (id) DO UPDATE. ListByTitle trie par (metric ASC, threshold ASC) pour faciliter l'ordre de progression côté UI.
+   - `MilestoneEarnedRepo` (stats.duckdb) : INSERT...ON CONFLICT (user_id, title_slug, milestone_id) DO NOTHING (idempotence sur le premier earned_at). IsEarned par scan léger, ListByUser triée DESC.
+
+3. **Catalogue Halo Infinite seed** : `config/titles/halo_infinite/milestones/catalog.toml` avec 13 milestones répartis sur 6 axes :
+   - Volume (matches.100, .500, .1000)
+   - Victoires (wins.50, .250, .1000)
+   - Kills (kills.1000, .10000)
+   - Tête (headshots.500, .5000)
+   - Support (assists.500, .2500)
+   - Régularité (accuracy_threshold_days 30j, 90j) — métrique calculée par l'orchestrateur (nombre de jours distincts avec accuracy >= 0.50), c'est l'angle « Duolingo » du plan V2.
+
+4. **Pas de test seed TOML** dans commit 4 : la validation du fichier `catalog.toml` shippé sera implicite au boot (SyncCatalog est appelé au démarrage server). Si le seed est cassé, le boot émet un slog.Warn — pas de crash mais visible. Couverture défensive via les 9 tests parsing + detector unit en mémoire.
+
+5. **Tests** : 5 unit detector (Unlock threshold, AlreadyEarned no-duplicate, NearMiss within 10%, FarFromThreshold no signal, MultipleEntries one pass) + 4 unit loader (Valid, MissingTitleSlug, MissingFields 4 sub-cas, InvalidTOML) + 5 integration (Catalog Upsert/List + Overwrite, Earned IsEarned/Append idempotent + filtres ListByUser).
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/...` : 23/23 unit PASS (~2s cumulé : milestones 2.0s, records 1.9s, streaks 2.0s)
+- `go test -tags=integration ./internal/platform/duckdb/...` : 185s OK (suite complète, 5 nouveaux tests milestones)
+- `go test -tags=integration ./internal/migration/...` : 26s OK (non-régression)
+- `go test ./internal/notifications/...` : 16s OK
+
+**Conclusion / prochaine étape** : Couche 2 (Records + Milestones) techniquement complète backend. Reste 2 questions ouvertes à trancher au commit 6 (hook) :
+- L'orchestrateur doit calculer la métrique `accuracy_threshold_days` (count distinct days with accuracy >= 0.50). Requête DuckDB simple sur match_participants.
+- Les notifications `milestone_unlocked` vs `personal_record` (cf. plan §6.3 mapping) : préférence pour ajouter une catégorie `milestone_unlocked` dédiée pour les keys i18n et la déduplication.
+
+Commit 5 = coach generator (5-6 alertes positives) + ajout des nouvelles catégories notifications. ~2j.
+
+---
+
 ## [2026-05-18] feat(progression)(commit-3) — records detector + DuckDB repos
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).
