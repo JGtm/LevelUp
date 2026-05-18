@@ -42,17 +42,22 @@ const (
 
 // OpenSpartanImportHandler wires the import service to the HTTP layer.
 type OpenSpartanImportHandler struct {
-	importSvc *service.OpenSpartanImportService
-	jobStore  *jobs.Store
-	tempDir   string
-	stashDir  string
-	demoMode  bool
+	importSvc     *service.OpenSpartanImportService
+	postImportSvc *service.OpenSpartanPostImportService
+	jobStore      *jobs.Store
+	tempDir       string
+	stashDir      string
+	demoMode      bool
 }
 
 // OpenSpartanImportConfig collects the dependencies needed by the handler.
 type OpenSpartanImportConfig struct {
 	ImportService *service.OpenSpartanImportService
-	JobStore      *jobs.Store
+	// PostImportService recomputes sessions/perf_score/citations after the
+	// raw import. Optional — when nil, the recompute stage is skipped and
+	// callers can run it out-of-band (e.g. via the sync engine).
+	PostImportService *service.OpenSpartanPostImportService
+	JobStore          *jobs.Store
 	// TempDir is where the uploaded `.db` is staged before opening.
 	// Defaults to os.TempDir() when empty.
 	TempDir string
@@ -74,11 +79,12 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 		stashDir = "./data/players"
 	}
 	return &OpenSpartanImportHandler{
-		importSvc: cfg.ImportService,
-		jobStore:  cfg.JobStore,
-		tempDir:   tempDir,
-		stashDir:  stashDir,
-		demoMode:  cfg.DemoMode,
+		importSvc:     cfg.ImportService,
+		postImportSvc: cfg.PostImportService,
+		jobStore:      cfg.JobStore,
+		tempDir:       tempDir,
+		stashDir:      stashDir,
+		demoMode:      cfg.DemoMode,
 	}
 }
 
@@ -114,6 +120,7 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 		return
 	}
 	expectedXUID := sess.LinkedHaloIdentity.XUID
+	gamertag := sess.LinkedHaloIdentity.Gamertag
 
 	r.Body = http.MaxBytesReader(w, r.Body, openSpartanMaxUpload)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
@@ -129,7 +136,7 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 	}
 
 	jobStatus := h.jobStore.Create(domain.JobTypeOpenSpartanImport, expectedXUID)
-	go h.runImport(jobStatus.JobID, expectedXUID, tmpPath)
+	go h.runImport(jobStatus.JobID, expectedXUID, gamertag, tmpPath)
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"job_id": jobStatus.JobID,
@@ -167,7 +174,10 @@ func (h *OpenSpartanImportHandler) saveUploadedDB(r *http.Request) (string, erro
 
 // runImport executes the import in a background goroutine and updates the
 // job entry as it makes progress. The temp file is always deleted on exit.
-func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, tmpPath string) {
+// On success, the post-import recompute (sessions / perf_score / citations)
+// is run inline before marking the job succeeded — its counts are merged
+// into the final job result.
+func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, gamertag, tmpPath string) {
 	defer func() { _ = os.Remove(tmpPath) }()
 
 	ctx := context.Background()
@@ -183,7 +193,28 @@ func (h *OpenSpartanImportHandler) runImport(jobID, expectedXUID, tmpPath string
 		h.recordFailure(jobID, err)
 		return
 	}
-	h.recordSuccess(jobID, result)
+
+	post := h.runPostImport(ctx, jobID, expectedXUID, gamertag, result.InsertedMatchIDs)
+	h.recordSuccess(jobID, result, post)
+}
+
+// runPostImport runs the recompute stages (sessions, perf_score, citations)
+// for the player whose matches were just imported. Returns a non-nil
+// PostImportResult even when the post-import service is not configured —
+// the zero value signals "skipped" to the caller. Errors are logged but
+// never bubble up: the import itself succeeded.
+func (h *OpenSpartanImportHandler) runPostImport(
+	ctx context.Context, jobID, xuid, gamertag string, matchIDs []string,
+) service.PostImportResult {
+	if h.postImportSvc == nil || gamertag == "" {
+		return service.PostImportResult{}
+	}
+	h.jobStore.SetStatus(jobID, domain.JobStatusRunning, strPtr("recomputing_sessions_and_scores"))
+	res, err := h.postImportSvc.Run(ctx, xuid, gamertag, matchIDs, service.PostImportOptions{})
+	if err != nil {
+		slog.Warn("openspartan_post_import_fatal", "job_id", jobID, "err", err)
+	}
+	return res
 }
 
 func (h *OpenSpartanImportHandler) makeProgressCallback(jobID string) func(parsed, total int) {
@@ -200,11 +231,17 @@ func (h *OpenSpartanImportHandler) makeProgressCallback(jobID string) func(parse
 	}
 }
 
-func (h *OpenSpartanImportHandler) recordSuccess(jobID string, result service.ImportResult) {
+func (h *OpenSpartanImportHandler) recordSuccess(
+	jobID string, result service.ImportResult, post service.PostImportResult,
+) {
 	slog.Info("openspartan_import_succeeded",
 		"job_id", jobID,
 		"inserted_matches", result.InsertedMatches,
-		"errors", len(result.Errors),
+		"sessions_touched", post.SessionsTouched,
+		"perf_scores_touched", post.PerfScoresTouched,
+		"citations_backfilled", post.CitationsBackfilled,
+		"import_errors", len(result.Errors),
+		"post_import_errors", len(post.Errors),
 	)
 	now := time.Now().UTC()
 	h.jobStore.Update(jobID, func(s *domain.AsyncJobStatus) {
@@ -221,6 +258,12 @@ func (h *OpenSpartanImportHandler) recordSuccess(jobID string, result service.Im
 			"inserted_aliases":      result.InsertedAliases,
 			"stashed_friends":       result.StashedFriends,
 			"errors_count":          len(result.Errors),
+			"post_import": map[string]any{
+				"sessions_touched":     post.SessionsTouched,
+				"perf_scores_touched":  post.PerfScoresTouched,
+				"citations_backfilled": post.CitationsBackfilled,
+				"errors_count":         len(post.Errors),
+			},
 		}
 	})
 }

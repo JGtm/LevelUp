@@ -63,6 +63,7 @@ type ImportResult struct {
 	Confidence           openspartan.Confidence
 	TotalMatches         int
 	InsertedMatches      int
+	InsertedMatchIDs     []string // populated as registry inserts succeed; consumed by post-import recompute
 	InsertedParticipants int
 	InsertedMedals       int
 	InsertedHighlights   int
@@ -223,6 +224,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		return
 	}
 	result.InsertedMatches++
+	result.InsertedMatchIDs = append(result.InsertedMatchIDs, pm.MatchID)
 	if err := sync.InsertParticipants(s.sharedDB, toSyncParticipants(mm.Participants)); err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_participants", Err: err.Error()})
 	} else {

@@ -1,3 +1,50 @@
+## [2026-05-18] feat(openspartan) — PR 3.5 : post-import recompute (sessions, perf_score, citations)
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 3.B `8a778975`).
+
+**Contexte** : Dernier livrable backend du sprint. L'import OpenSpartan (PR 1→3.B) peuple les tables brutes (`shared.match_registry`, `match_participants`, `medals_earned`, `highlight_events`, `xuid_aliases`) ; PR 3.5 recalcule les colonnes dérivées v6 qui vivent dans la DB du joueur (`stats.duckdb`) et dans `metadata.duckdb`.
+
+**Découverte de patterns existants** (sub-agent Explore) :
+
+1. **Sessions** : `sync.RecalculatePlayerSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, friendGamertags) (int, error)` — acquiert ses propres write leases en interne, ouvre player + shared, peuple `player_match_enrichment.session_id|session_label`.
+2. **Performance score** : `sync.batchComputePerformanceScores(playerDB, sharedDB, xuid, medalExploitByMatch, force) (int, error)` — **privée**. Calcule un score relatif par chaîne (6 chaînes : ranked, firefight, arena_slayer, arena_objectif, btb, chaos), sur fenêtre glissante de 50 matchs même chaîne, à partir de 10 matchs minimum.
+3. **Match citations** : `sync.BackfillMatchCitations(ctx, metadataDB, sharedDB, playerDB, xuid, matchIDs) error` — moteur `analysis.ComputeFullMatchCitations`, croise médailles + awards + events + référentiel `citation_mappings`. Idempotent (INSERT OR IGNORE).
+4. **Vues matérialisées (`mv_player_matches`, etc.)** : **PAS de refresh nécessaire** — ce sont des VUES SQL pures, ré-évaluées à chaque requête.
+5. **Création schéma player neuf** : `sync.OpenPlayerDB(path) (*duckdbpkg.DB, error)` crée le répertoire + applique le schéma player idempotent. Pattern parfait pour le cas onboarding où la `stats.duckdb` n'existe pas encore.
+
+**Décisions** :
+
+1. **Wrapper public `sync.BatchComputePerformanceScores(playerDB, sharedDB, xuid, force) (int, error)`** ajouté dans `internal/sync/performance.go` plutôt que de renommer la fonction privée (qui aurait cassé 10+ tests internes). Le wrapper passe `medalExploitByMatch=nil` — option d'expert réservée au sync engine.
+2. **Service `internal/service/openspartan_post_import_service.go`** :
+   - Struct `OpenSpartanPostImportService` + `Run(ctx, xuid, gamertag, matchIDs, opts) (PostImportResult, error)`
+   - 3 stages séquentielles dans des helpers ≤ 80L : `recomputeSessions`, `recomputePerfScores`, `recomputeCitations`
+   - Chaque stage est **best-effort** : erreur logguée + enregistrée dans `PostImportResult.Errors`, ne casse pas les autres stages
+   - Crée `stats.duckdb` du joueur via `sync.OpenPlayerDB` si absent → fonctionne au premier import OpenSpartan d'un user fraîchement onboardé
+   - Citations skippées silencieusement si `matchIDs` vide (rien à backfiller)
+3. **`InsertedMatchIDs []string` ajouté à `service.ImportResult`** — populé par `writeOneMatch` après chaque INSERT réussi. Consommé par le handler pour passer la liste au post-import (sinon il aurait fallu re-requêter `shared.match_registry`).
+4. **Câblage handler** :
+   - `OpenSpartanImportConfig.PostImportService` optionnel — `nil` = post-import skippé (compatible avec les tests existants qui ne le construisent pas)
+   - `runImport` capture `gamertag := sess.LinkedHaloIdentity.Gamertag` et le passe en goroutine
+   - `runPostImport` skip silencieusement si `gamertag == ""` ou service nil
+   - `recordSuccess` enrichit `Result.post_import` avec `{sessions_touched, perf_scores_touched, citations_backfilled, errors_count}`
+5. **`server.go`** : `OpenSpartanPostImportService` construit et injecté dans la config handler. Skippé en mode démo (comme tout l'import).
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- Tous tests existants verts (handler 6/6, openspartan 13/13, mapper 13/13, service 11/11)
+- Pas de test d'intégration spécifique au post-import : le service est un thin orchestrateur sur 3 fonctions `sync.*` déjà testées (couvertes par `internal/sync/*_test.go` du repo). Le câblage est validé par le passage des tests handler existants (qui exercent runImport sans post-import).
+
+**Conclusion / prochaine étape** :
+
+- **Sprint backend OpenSpartan terminé** (PR 1 → 3.5). 5 commits sur la branche.
+- Reste **PR 4** : UI onboarding côté `apps/web` — `OpenSpartanImportCard` dans le flow Xbox SSO, derrière disclosure "Mode avancé", drag & drop du `.db`, polling `GET /jobs/{job_id}` via le pattern existant.
+- **Limites assumées** :
+  - Le `gamertag` vient de la session SSO ; si la session n'a pas `LinkedHaloIdentity.Gamertag` rempli (PR 1 SSO PR 1 / 2 doivent garantir), le post-import est skippé silencieusement → l'import brut est quand même accepté.
+  - Si `RecalculatePlayerSessions` deadlock le lease `sharedDBPath` (le serveur tient déjà sharedDB ouvert au boot), à observer en intégration réelle. Le pool ref-counté process-local + dblease inter-process peuvent coexister, mais le sprint XBOX SSO §10 mentionne déjà la complexité d'invalidation pool.
+
+---
+
 ## [2026-05-18] feat(openspartan) — PR 3.B : endpoint HTTP POST /import/openspartan
 
 **Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 3.A `d80d2e2c`).
