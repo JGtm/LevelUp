@@ -1,3 +1,62 @@
+## [2026-05-18] feat(xbox-sso) — PR 2.5b minimaliste : AddPlayer dynamique + boot reload depuis MultiUserTokenStore
+
+**Statut** : Complété (branche `feat/xbox-sso`).
+
+**Contexte** : PR 2.5a a livré le storage multi-user et la capture des tokens RTA. PR 2.5b devait à l'origine refactorer le watcher daemon pour N connexions RTA (stratégie A du plan, ~1-2j). Audit du code [daemon.go](apps/go-api/internal/watcher/daemon.go) a révélé un design mono-tracker très profondément ancré (1 `rtaClient`, 1 header XBL3.0, N XUID via subscriptions). Refactor complet trop risqué pour cette session.
+
+**Décision** : version minimaliste qui réutilise le daemon mono-tracker existant et exploite le fait que **subscribe le XUID d'un user dépendra du fait qu'il soit ami Xbox du tracker** (status=3 si non). Couvre le cas du group d'amis Halo où tout le monde est connecté entre eux sur Xbox Live.
+
+**Décisions / changements** :
+
+1. **`Daemon.AddPlayer(ctx, p)`** ([daemon.go](apps/go-api/internal/watcher/daemon.go)) :
+   - Ajout dynamique au map `d.players` (no-op si déjà présent).
+   - Si RTA connecté → subscribe immédiat pour tous les titres trackés ; sinon attente du prochain cycle `connectAndSubscribe` qui re-souscrit tout.
+   - Erreurs de subscribe loggées mais non retournées (l'ajout du PlayerWatcher est considéré comme succès).
+   - Refus des players démo ou XUID vide.
+   - Ajouté à l'interface `DaemonController` (mock dans `watcher_handler_test.go` étendu en conséquence).
+
+2. **Interface `service.WatcherDaemon`** ([xbox_auth_service.go](apps/go-api/internal/service/xbox_auth_service.go)) :
+   - Méthodes minimales `AddPlayer` + `IsRunning`.
+   - Définie en `service/` pour éviter une dépendance cyclique `service → watcher`.
+
+3. **`WatcherDaemonGetter` (lazy)** + **`XboxSSOLinkStrategy.WithDaemonGetter(getter)`** :
+   - Résolution lazy du daemon à chaque login. Permet la closure dans `server.go` qui capture le `daemon` reçu par `NewRouter` (timing : daemon créé dans main.go BEFORE NewRouter, mais la closure défère pour plus de robustesse à l'ordre).
+   - Hook dans `OnAuthSuccess` : si `daemonGetter()` retourne un daemon `IsRunning` → `AddPlayer(player)` (best-effort, échec loggué non bloquant).
+
+4. **Boot reload** dans `startWatcherDaemon` ([main.go](apps/go-api/cmd/server/main.go)) :
+   - Après `store.Load()` legacy : si `tokens.XSTSToken == ""` → scan `MultiUserTokenStore.LoadAll()`.
+   - Prend le 1er user avec XSTS valide comme tracker initial (premier `range` sur le map — ordre non déterministe mais OK pour ce besoin).
+   - Convertit `UserTokens` → `StoredTokens`, persiste dans le legacy `watcher_tokens.json` pour réutilisation au prochain boot.
+   - Si aucun user multi-user valide → daemon ne démarre pas (comportement actuel inchangé).
+
+5. **Injection au boot** ([server.go](apps/go-api/internal/api/server.go)) :
+   - `daemonGetter := func() service.WatcherDaemon { ... return daemon }` capture le daemon reçu en paramètre.
+   - Injection via `WithDaemonGetter` dans XboxSSOLinkStrategy (chaîné après `WithTokenStore`).
+
+**Limitations connues (assumées)** :
+
+- **Subscribe RTA dépend du social graph Xbox** : si tracker n'est pas ami Xbox du user qui logs in, status=3. Géré comme erreur loggée non-bloquante.
+- **Pas de refresh XSTS multi-user actif** : le `RefreshLoop` existant rafraîchit uniquement le tracker. Les autres XSTS persistés expirent après ~55min sans renewal automatique. À adresser dans une vraie PR 2.5c si besoin d'auto-sync multi-user durable.
+- **Premier user après onboarding** : si pas de `watcher_tokens.json` legacy au boot, le watcher daemon ne démarre pas. Le premier login Xbox SSO crée les tokens multi-user mais le daemon n'est pas (re)démarré automatiquement — l'admin doit redémarrer le serveur. Documenté comme acceptable pour la portée actuelle.
+
+**Tests ajoutés** :
+
+- [xbox_auth_service_test.go](apps/go-api/internal/service/xbox_auth_service_test.go) +4 tests : `WithDaemonGetter_CallsAddPlayer` (succès), `_SkipIfNotRunning` (daemon créé mais pas tournant), `_NilGetterIsNoop` (getter retourne nil), `_AddPlayerFailIsNonBlocking` (échec AddPlayer → login OK quand même).
+- Mock `mockDaemon` ajouté dans `watcher_handler_test.go` étendu avec `AddPlayer` (no-op).
+
+**Résultats observés** :
+
+- `go test ./internal/api/... ./internal/platform/auth/... ./internal/service/... ./internal/watcher/... ./internal/domain/title/...` : tous OK.
+- `go build ./...` : pas de régression compile.
+
+**Conclusion / prochaine étape** : PR 2.5b minimaliste livrée. L'auto-sync RTA est maintenant possible **dans le cas "tous amis Xbox"** : (a) un user Xbox SSO logs in → ses tokens persistés (PR 2.5a) → AddPlayer immédiat sur le daemon (PR 2.5b). (b) Au redémarrage suivant : si pas de legacy, le 1er user multi-user devient tracker.
+
+Pour la **stratégie A complète** (N RTAClient, MultiUserRefreshLoop, indépendance social graph), un futur "PR 2.5c" sera nécessaire — mais à reporter à un signal user concret. La pile minimale est suffisante pour un cas "perso + amis Halo".
+
+Prochaine PR pragmatique : **PR 3 frontend** (page login Xbox + i18n + disclaimer phishing, ~0.5j) pour permettre le test visuel du flow complet PR 1 → PR 2 → PR 2.5a/b.
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2.5a : MultiUserTokenStore + capture RTA tokens après login SSO
 
 **Statut** : Complété (branche `feat/xbox-sso`).

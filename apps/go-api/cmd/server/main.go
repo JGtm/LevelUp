@@ -614,6 +614,42 @@ func startWatcherDaemon(
 		return nil
 	}
 
+	// PR 2.5b — Fallback : si pas de tokens legacy mono-user, scanner le store
+	// multi-user (data/auth/watcher_tokens/{xuid}.json) pour trouver un user avec
+	// un XSTS valide à utiliser comme tracker initial. Le 1er user trouvé devient
+	// le tracker ; les autres seront subscribés via Daemon.AddPlayer (post-login
+	// pour les nouveaux, ou au prochain boot pour les existants).
+	if tokens.XSTSToken == "" {
+		multiDir := title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+		multi := auth.NewMultiUserTokenStore(multiDir)
+		all, scanErr := multi.LoadAll()
+		if scanErr != nil {
+			slog.Warn("watcher: scan multi-user token store échoué", "err", scanErr)
+		}
+		for xuid, ut := range all {
+			if !ut.IsXSTSValid(0) {
+				continue
+			}
+			slog.Info("watcher: fallback sur tokens multi-user pour le tracker initial",
+				"xuid", xuid, "gamertag", ut.Gamertag, "xsts_expires_at", ut.XSTSExpiresAt)
+			tokens = &auth.StoredTokens{
+				XSTSToken:      ut.XSTSToken,
+				XSTSUserHash:   ut.XSTSUserHash,
+				XSTSGamertag:   ut.Gamertag,
+				XSTSXUID:       ut.XUID,
+				XSTSExpiresAt:  ut.XSTSExpiresAt,
+				AccessToken:    ut.AccessToken,
+				OAuthExpiresAt: ut.OAuthExpiresAt,
+			}
+			// Persister dans le legacy : permet aux prochains boots de retrouver
+			// directement le tracker via le chemin habituel.
+			if saveErr := store.Save(tokens); saveErr != nil {
+				slog.Warn("watcher: persistance fallback tokens dans legacy échouée", "err", saveErr)
+			}
+			break
+		}
+	}
+
 	// 1) S'assurer qu'on a un access_token Microsoft frais.
 	//    EnsureWatcherAccessToken réutilise l'access_token courant s'il est
 	//    valide, sinon tente un OAuth v2 refresh depuis (a) tokens.RefreshToken

@@ -415,12 +415,23 @@ func NewRouter(
 		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider)
 		if cfg.AuthMode == "xbox" {
 			// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
-			// après login (data/auth/watcher_tokens/{xuid}.json). Backward compat : le
-			// watcher daemon legacy continue d'utiliser le fichier mono-user (PR 2.5b).
+			// après login (data/auth/watcher_tokens/{xuid}.json).
 			watcherTokensDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
 			multiUserTokens := auth_platform.NewMultiUserTokenStore(watcherTokensDir)
+
+			// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).
+			// Nil si le watcher n'est pas démarré (watcher_presence_enabled=false ou
+			// pas de tokens initiaux). XboxSSOLinkStrategy résout lazy à chaque login.
+			daemonGetter := func() service.WatcherDaemon {
+				if daemon == nil {
+					return nil
+				}
+				return daemon
+			}
 			authHandler.WithLinkStrategy(
-				service.NewXboxSSOLinkStrategy(users).WithTokenStore(multiUserTokens),
+				service.NewXboxSSOLinkStrategy(users).
+					WithTokenStore(multiUserTokens).
+					WithDaemonGetter(daemonGetter),
 			)
 		} else {
 			authHandler.WithUserStore(users)
