@@ -1,0 +1,250 @@
+# config/titles/halo_infinite/mappings/awards.toml
+#
+# Source de vérité du mapping `personal_score_awards.award_name → ParticipationAxis`
+# pour Halo Infinite. Consommée par profile.computeRadarAxes (V2 §2)
+# pour produire un axe Objective fiable et un axe Impact enrichi.
+#
+# Lue à la demande par internal/games/mappings/loader_awards.go.
+#
+# Convention : sections [awards.{award_name}] ; chaque award peut contribuer
+# à 1+ axes. `weight` est un multiplicateur appliqué au award_count avant
+# l'agrégation par axe (ex: flag_captured weight=3 ⇒ 1 capture = 3 unités
+# d'Objective ; flag_taken weight=1 ⇒ 1 prise = 1 unité).
+#
+# Axes admis : combat, survival, support, score, objective, impact.
+# Les awards absents de ce fichier ne contribuent à aucun axe (V1 fallback).
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+# ─── Combat (kills directs) ─────────────────────────────────────────────────
+
+[awards.killed_player]
+axes   = ["combat"]
+weight = 1.0
+
+[awards.eliminated_player]
+axes   = ["combat"]
+weight = 1.5  # élimination > kill simple
+
+[awards.carrier_killed]
+axes   = ["combat", "objective"]
+weight = 1.5  # cible objective = double contribution
+
+[awards.runner_stopped]
+axes   = ["combat", "objective"]
+weight = 1.5
+
+[awards.carrier_stopped]
+axes   = ["combat", "objective"]
+weight = 1.5
+
+# ─── Support (assists + revive) ─────────────────────────────────────────────
+
+[awards.kill_assist]
+axes   = ["support"]
+weight = 1.0
+
+[awards.mark_assist]
+axes   = ["support"]
+weight = 0.5
+
+[awards.sensor_assist]
+axes   = ["support"]
+weight = 0.5
+
+[awards.emp_assist]
+axes   = ["support"]
+weight = 1.0
+
+[awards.driver_assist]
+axes   = ["support"]
+weight = 1.0
+
+[awards.flag_capture_assist]
+axes   = ["support", "objective"]
+weight = 2.0
+
+[awards.revived_player]
+axes   = ["support"]
+weight = 2.0  # revive est rare et précieux
+
+# ─── Objective (le gap V1) ───────────────────────────────────────────────────
+
+[awards.flag_captured]
+axes   = ["objective"]
+weight = 5.0
+
+[awards.flag_stolen]
+axes   = ["objective"]
+weight = 2.0
+
+[awards.flag_returned]
+axes   = ["objective"]
+weight = 1.5
+
+[awards.flag_taken]
+axes   = ["objective"]
+weight = 1.0
+
+[awards.ball_control]
+axes   = ["objective"]
+weight = 0.5  # accumulation continue, value basse par tick
+
+[awards.ball_taken]
+axes   = ["objective"]
+weight = 1.5
+
+[awards.hill_control]
+axes   = ["objective"]
+weight = 0.5
+
+[awards.hill_scored]
+axes   = ["objective"]
+weight = 2.0
+
+[awards.zone_captured]
+axes   = ["objective"]
+weight = 3.0
+
+[awards.zone_secured]
+axes   = ["objective"]
+weight = 2.0
+
+[awards.power_seed_secured]
+axes   = ["objective"]
+weight = 3.0
+
+[awards.power_seed_stolen]
+axes   = ["objective"]
+weight = 2.0
+
+[awards.stockpile_scored]
+axes   = ["objective"]
+weight = 2.0
+
+[awards.extraction_initiated]
+axes   = ["objective"]
+weight = 1.5
+
+[awards.extraction_converted]
+axes   = ["objective"]
+weight = 3.0
+
+[awards.extraction_completed]
+axes   = ["objective"]
+weight = 3.0
+
+[awards.extraction_denied]
+axes   = ["objective"]
+weight = 2.0
+
+[awards.hacked_terminal]
+axes   = ["objective"]
+weight = 1.5
+
+# ─── Impact (vehicles destruction / hijacking / bonus) ───────────────────────
+
+[awards.destroyed_banshee]
+axes   = ["impact"]
+weight = 2.0
+
+[awards.destroyed_chopper]
+axes   = ["impact"]
+weight = 1.5
+
+[awards.destroyed_falcon]
+axes   = ["impact"]
+weight = 2.0
+
+[awards.destroyed_ghost]
+axes   = ["impact"]
+weight = 1.0
+
+[awards.destroyed_gungoose]
+axes   = ["impact"]
+weight = 0.5
+
+[awards.destroyed_mongoose]
+axes   = ["impact"]
+weight = 0.5
+
+[awards.destroyed_phantom]
+axes   = ["impact"]
+weight = 3.0  # phantom = boss-tier en Firefight
+
+[awards.destroyed_razorback]
+axes   = ["impact"]
+weight = 1.0
+
+[awards.destroyed_rocket_warthog]
+axes   = ["impact"]
+weight = 2.0
+
+[awards.destroyed_scorpion]
+axes   = ["impact"]
+weight = 3.0  # gros char = haut impact
+
+[awards.destroyed_warthog]
+axes   = ["impact"]
+weight = 1.5
+
+[awards.destroyed_wasp]
+axes   = ["impact"]
+weight = 1.5
+
+[awards.destroyed_wraith]
+axes   = ["impact"]
+weight = 3.0
+
+[awards.hijacked_banshee]
+axes   = ["impact", "support"]
+weight = 2.0
+
+[awards.hijacked_chopper]
+axes   = ["impact", "support"]
+weight = 1.5
+
+[awards.hijacked_falcon]
+axes   = ["impact", "support"]
+weight = 2.0
+
+[awards.hijacked_ghost]
+axes   = ["impact", "support"]
+weight = 1.0
+
+[awards.hijacked_gungoose]
+axes   = ["impact", "support"]
+weight = 0.5
+
+[awards.hijacked_mongoose]
+axes   = ["impact", "support"]
+weight = 0.5
+
+[awards.hijacked_razorback]
+axes   = ["impact", "support"]
+weight = 1.5
+
+[awards.hijacked_rocket_warthog]
+axes   = ["impact", "support"]
+weight = 2.0
+
+[awards.hijacked_warthog]
+axes   = ["impact", "support"]
+weight = 1.5
+
+[awards.hijacked_wasp]
+axes   = ["impact", "support"]
+weight = 1.5
+
+# ─── Score (bonus XP / penalties non-mappés à un axe) ───────────────────────
+
+[awards.collected_bonus_xp]
+axes   = ["score"]
+weight = 1.0
+
+# Les pénalités (betrayed_player, self_destruction, revive_denied,
+# conversion_denied) sont volontairement absentes — un acte négatif ne
+# devrait pas booster un axe positif. Le score Halo brut (mp.personal_score)
+# les comptabilise déjà en interne.

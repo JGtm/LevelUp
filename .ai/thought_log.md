@@ -1,3 +1,100 @@
+## [2026-05-18] feat(player-profile-v2)(commit-2) — awards.toml mapping + radar Objective fiable
+
+**Statut** : Complété. V2 2/4.
+
+**Contexte** : V1 commit-4 avait livré un radar 6 axes basé sur les agrégats
+bruts de `match_participants` (kills/assists/score/spree). L'axe **Objective**
+restait à 0 car les contributions objective (captures de drapeau, zones,
+extractions…) sont dans `personal_score_awards`, pas dans
+`match_participants`. V2 commit-2 fixe ce gap via un mapping TOML
+title-specific.
+
+**Décisions techniques principales** :
+
+1. **TOML manifest title-specific** `config/titles/halo_infinite/mappings/
+   awards.toml` (suivant la recommandation utilisateur) avec ~55 awards
+   mappés vers 1-2 axes + weight multiplicateur. Structure :
+   ```toml
+   [awards.flag_captured]
+   axes   = ["objective"]
+   weight = 5.0
+
+   [awards.flag_capture_assist]
+   axes   = ["support", "objective"]
+   weight = 2.0
+   ```
+   Weight différencié reflète la difficulté : `flag_captured` weight=5
+   contribue 5× plus à Objective que `flag_taken` weight=1.
+
+2. **Pas de pénalités dans les axes** : `betrayed_player`,
+   `self_destruction`, `revive_denied` volontairement absents — un acte
+   négatif ne devrait pas booster un axe positif. Le score Halo brut
+   (mp.personal_score) les comptabilise déjà.
+
+3. **Loader `internal/games/mappings/loader_awards.go`** (~145L) suivant le
+   pattern de `loader_outcomes.go` : valide title_slug + schema_version,
+   rejette axes inconnus (admis: 6 canoniques), rejette weight ≤ 0,
+   rejette axes vide. Erreur agrégée si multiples problèmes.
+
+4. **Service refactor non-cassant** : `Service.WithAwardMapping(set)`
+   chainable, optionnel. Sans mapping injecté → fallback V1 (axe Objective
+   à 0). Le caller V2 `post_sync_progression.go:Load` n'est pas impacté
+   (Load n'appelle pas computeRadarAxes).
+
+5. **`computeRadarAxes` scindée en 2** : `computeRadarAxesBase` (V1
+   heuristique sur match_participants) + `applyAwardsRadarAxes`
+   (enrichissement via personal_score_awards si mapping fourni). La base
+   reste indispensable car les awards n'apportent rien sur Combat/Survival/
+   Support direct (kill_assist seul ne suffit pas).
+
+6. **Normalisation par match** : `contribution = SUM(award_count) × weight
+   / matchCount`. Une moyenne par match cohérente avec les autres axes
+   (kills moyens, etc.). Le radar.ComputeParticipationProfile applique
+   ensuite la normalisation 0-100 vs les seuils ParticipationThresholds.
+
+7. **Loading at boot** : `server.go` charge `awards.toml` au moment du
+   wiring du handler. Absence du fichier ou erreur de parse : log.Warn +
+   fallback silencieux (l'endpoint /profile continue de répondre, juste
+   sans enrichissement Objective). Coût négligeable au boot (~ms pour
+   parser 55 entrées).
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- 6 tests unitaires Windows mappings : happy / reject invalid axis /
+  reject zero weight / reject empty axes / reject missing meta / real-
+  config validation (vérifie que `awards.toml` de prod a les awards
+  critiques avec les bons axes)
+- 1 test intégration CI Linux `TestBuildProfile_AwardsMappingEnriches
+  Objective` : seed 7 awards (5 flag_captured + 2 zone_secured), vérifie
+  que sans mapping Objective=0 et avec mapping Objective>0.
+- Aucune régression sur les tests existants.
+
+**Trade-offs assumés** :
+
+- **Pas de Registry global** : awards.toml est rechargé à chaque démarrage
+  du serveur (vs. un singleton via `mappings.Registry`). Acceptable car le
+  fichier est petit (~70 entrées) et le parsing est instantané. Si l'on
+  ajoute d'autres titres, on basculera vers la Registry.
+- **Pas de coverage check global** : on ne vérifie pas qu'**tous** les
+  award_names connus de `refdata_personal_scores.psaTechnicalIDs` sont
+  mappés. Le test `RealConfig` ne vérifie que les awards critiques. Une
+  garde-fou complet viendrait avec un golden file ou une assertion au
+  boot — décalé V3.
+- **Pas de mapping par mode** : un même award contribue avec le même
+  weight quel que soit le mode (Slayer / CTF / BTB…). La distinction
+  par famille de mode est portée par `narrative.DefaultThresholds` côté
+  consommateur (seuils différents par famille). Acceptable.
+
+**Conclusion / prochaine étape** : V2 2/4. La Section A1 radar du profil
+expose enfin un axe Objective fiable + un Impact enrichi (destroyed_/
+hijacked_ vehicles). Prochaine étape : V2 commit-3 (enrichir
+`SuggestedChallenge` DTO avec `label_fr`/`label_en` pour que la
+ProgressionSection n'affiche plus `halo_infinite.daily.kda_session` brut).
+
+---
+
 ## [2026-05-18] feat(player-profile-v2)(commit-1) — lusr_component_history + live write + backfill
 
 **Statut** : Complété. Sprint V2 démarré, 1/4.
