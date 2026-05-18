@@ -275,39 +275,52 @@ type componentRow struct {
 //   - current_avg : moyenne brute sur les matchs du joueur (toutes les valeurs
 //     sont déjà normalisées 0..1 par le scoring engine).
 //   - top20 : seuil du quintile haut (top 20% personnel = QUANTILE_CONT(0.8)).
-//   - trend : amélioration récente (différence entre les 10 derniers et les 10
-//     plus anciens du dataset post-snapshot).
+//   - trend : amélioration récente (différence entre la moyenne des 10 derniers
+//     matchs et la moyenne des 10 plus anciens dans la fenêtre — ≥ 20 matchs
+//     requis pour significativité).
 //
 // Source : table `lusr_component_history` (V2 §1) alimentée live par
 // sync.upsertLUSRRatings et au backfill via re-run de ComputeSkillRatingsBatch
 // en mode force.
 //
-// Si la table est vide (joueur non-backfillé ou trop peu de matchs ratés),
-// retourne map vide → UI dégrade gracieusement (current=0/top20=0/target).
+// Une seule query CTE batchée groupe AVG / QUANTILE / trend pour les 8
+// composantes (V2 §1 polish — évite les 8 round-trips initiaux). Si la table
+// est vide ou la query échoue, retourne map vide silencieusement (UI dégrade
+// gracieusement avec current=0/top20=0/target).
 func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context, _userID string) (map[string]componentRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 
 	out := make(map[string]componentRow, 8)
 	rows, err := s.db.Query(ctx, `
+		WITH ranked AS (
+			SELECT
+				component_name,
+				value,
+				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at DESC) AS rk_desc,
+				ROW_NUMBER() OVER (PARTITION BY component_name ORDER BY computed_at ASC)  AS rk_asc,
+				COUNT(*)    OVER (PARTITION BY component_name)                            AS n
+			FROM lusr_component_history
+		)
 		SELECT
 			component_name,
-			AVG(value)                            AS current_avg,
-			QUANTILE_CONT(value, 0.8)             AS top20,
-			COUNT(*)                              AS n
-		FROM lusr_component_history
+			AVG(value)                                         AS current_avg,
+			QUANTILE_CONT(value, 0.8)                          AS top20,
+			AVG(CASE WHEN n >= 20 AND rk_desc <= 10 THEN value END) AS last_avg,
+			AVG(CASE WHEN n >= 20 AND rk_asc  <= 10 THEN value END) AS first_avg,
+			MAX(n)                                             AS n
+		FROM ranked
 		GROUP BY component_name
 	`)
 	if err != nil {
-		// Table absente (migration non encore appliquée par exemple) → vide.
 		return out, nil
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var name string
-		var avg, top20 sql.NullFloat64
+		var avg, top20, lastAvg, firstAvg sql.NullFloat64
 		var n int
-		if err := rows.Scan(&name, &avg, &top20, &n); err != nil {
+		if err := rows.Scan(&name, &avg, &top20, &lastAvg, &firstAvg, &n); err != nil {
 			return out, err
 		}
 		if n == 0 {
@@ -320,37 +333,12 @@ func (s *Service) loadLUSRComponentsBreakdown(ctx context.Context, _userID strin
 		if top20.Valid {
 			row.top20 = top20.Float64
 		}
-		// Trend : différence entre la moyenne des 10 derniers matchs et la
-		// moyenne des 10 plus anciens (par chronologie computed_at). Positif
-		// = amélioration. Sur < 20 matchs le trend reste 0 (significativité).
-		row.trend = s.computeComponentTrend(ctx, name)
+		if lastAvg.Valid && firstAvg.Valid {
+			row.trend = lastAvg.Float64 - firstAvg.Float64
+		}
 		out[name] = row
 	}
 	return out, rows.Err()
-}
-
-// computeComponentTrend retourne la pente simple last10 - first10 sur la
-// chronologie d'une composante. 0 si < 20 matchs (significativité minimale).
-func (s *Service) computeComponentTrend(ctx context.Context, componentName string) float64 {
-	var lastAvg, firstAvg sql.NullFloat64
-	err := s.db.QueryRow(ctx, `
-		WITH ordered AS (
-			SELECT value, ROW_NUMBER() OVER (ORDER BY computed_at DESC) AS rk_desc,
-			              ROW_NUMBER() OVER (ORDER BY computed_at ASC)  AS rk_asc,
-			              COUNT(*) OVER ()                                AS n
-			FROM lusr_component_history
-			WHERE component_name = ?
-		)
-		SELECT
-			AVG(CASE WHEN rk_desc <= 10 THEN value END) AS last_avg,
-			AVG(CASE WHEN rk_asc  <= 10 THEN value END) AS first_avg
-		FROM ordered
-		WHERE n >= 20
-	`, componentName).Scan(&lastAvg, &firstAvg)
-	if err != nil || !lastAvg.Valid || !firstAvg.Valid {
-		return 0
-	}
-	return lastAvg.Float64 - firstAvg.Float64
 }
 
 // listTemplatesByLUSRComponents retourne les templates dont les

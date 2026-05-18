@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -153,6 +154,11 @@ func (s *Service) StartCampaign(ctx context.Context, p StartParams, now time.Tim
 	if err := s.repo.Insert(ctx, c); err != nil {
 		return ImprovementCampaign{}, fmt.Errorf("insert: %w", err)
 	}
+	slog.InfoContext(ctx, "campaign: started",
+		"campaign_id", c.ID, "user_id", c.UserID, "title_slug", c.TitleSlug,
+		"axis", c.Axis, "axis_kind", c.AxisKind, "playlist_group", c.PlaylistGroup,
+		"snapshot_value", snapshot, "snapshot_sample", sample,
+	)
 	return c, nil
 }
 
@@ -263,6 +269,12 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 		_, p := MannWhitneyU(pre, post)
 		eval.MannWhitneyP = sql.NullFloat64{Float64: p, Valid: true}
 		eval.ProgressionConfirmed = p < MannWhitneyThreshold
+		if eval.ProgressionConfirmed {
+			slog.InfoContext(ctx, "campaign: progression confirmed",
+				"campaign_id", c.ID, "axis", c.Axis, "p_value", p,
+				"matches_post", len(post), "matches_pre", len(pre),
+			)
+		}
 	}
 	// R5 : suggérer clôture si plateau (60j sans variation > 0.02 sur LOWESS).
 	if !eval.ProgressionConfirmed &&
@@ -281,10 +293,18 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 	// Priorité plus haute que plateau (overwrite si applicable).
 	if !eval.ProgressionConfirmed && s.leverages != nil {
 		current, err := s.leverages.CurrentLeverageComponents(ctx, c.UserID, c.TitleSlug)
-		if err == nil && !containsString(current, c.Axis) && len(current) > 0 {
+		if err != nil {
+			slog.WarnContext(ctx, "campaign: leverage provider failed (R5 cond 2 skipped)",
+				"campaign_id", c.ID, "err", err)
+		} else if !containsString(current, c.Axis) && len(current) > 0 {
 			eval.AutoClosureSuggested = true
 			eval.AutoClosureReason = "axis_no_longer_priority"
 		}
+	}
+	if eval.AutoClosureSuggested {
+		slog.InfoContext(ctx, "campaign: auto-closure suggested",
+			"campaign_id", c.ID, "axis", c.Axis, "reason", eval.AutoClosureReason,
+		)
 	}
 	return s.repo.UpdateEvaluation(ctx, c.ID, eval)
 }

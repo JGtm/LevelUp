@@ -74,6 +74,24 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 		t.Fatalf("attach shared: %v", err)
 	}
 
+	// personal_score_awards n'est pas dans le registry de migrations (legacy
+	// schema géré par sync.EnsurePlayerSchema). On le crée à la main pour les
+	// tests qui consomment ce qui sera la source des axes radar enrichis
+	// par awards.toml (V2 §2).
+	if _, err := player.Exec(ctx, `
+		CREATE TABLE IF NOT EXISTS personal_score_awards (
+			id             INTEGER,
+			match_id       VARCHAR NOT NULL,
+			xuid           VARCHAR NOT NULL,
+			award_name     VARCHAR NOT NULL,
+			award_category VARCHAR,
+			award_count    INTEGER DEFAULT 1,
+			award_score    INTEGER DEFAULT 0
+		)
+	`); err != nil {
+		t.Fatalf("create personal_score_awards: %v", err)
+	}
+
 	pdb := &duckdb.PlayerDB{
 		Player: player, Metadata: meta,
 		XUID: testXUID, Gamertag: testGT, TitleSlug: testTitle,
