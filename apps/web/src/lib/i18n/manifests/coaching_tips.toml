@@ -1,0 +1,172 @@
+# Coaching tips i18n manifest — conseils concrets par axe d'amélioration.
+#
+# Format ICU MessageFormat (aligné sur les autres manifests). Regénérer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+#
+# Structure : 6 axes du radar narrative (cf. internal/analysis/narrative/participation.go)
+#   - title         : libellé axe
+#   - metric_refs   : métriques perf_score corrélées (cf. analysis/performance_score.go)
+#   - ingame.N      : conseils gameplay (positionnement, choix d'arme, map awareness)
+#   - settings.N    : conseils paramètres (sensi, FOV, audio, deadzones)
+#   - routine.N     : conseils méta (warm-up, review, session structure)
+#
+# Cible : intégration future dans le coach proactif V2
+#   (cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §6).
+
+# ─── Combat ────────────────────────────────────────────────────────────────
+# Métriques perf : kpm, accuracy, kills_vs_expected, medal_exploit
+
+[coaching_tips.combat.title]
+fr = "Combat"
+en = "Combat"
+
+[coaching_tips.combat.metric_refs]
+fr = "KPM · Accuracy · Kills vs Expected · Medal Exploit"
+en = "KPM · Accuracy · Kills vs Expected · Medal Exploit"
+
+[coaching_tips.combat.ingame.1]
+fr = "Présélectionne ton arme à mi-range (BR/Commando) avant l'engagement, pas après le contact visuel — chaque demi-seconde de switch coûte un duel."
+en = "Pre-select your mid-range weapon (BR/Commando) before the engagement, not after spotting — every half-second of swap costs a duel."
+
+[coaching_tips.combat.ingame.2]
+fr = "Vise le buste en cadence régulière : 4 tirs précis > 8 imprécis sur un Spartan full shield. Privilégie le rythme à la rafale paniquée."
+en = "Aim center-mass at a steady rhythm: 4 accurate shots beat 8 sloppy ones on a full-shield Spartan. Cadence > panic spray."
+
+[coaching_tips.combat.settings.1]
+fr = "Sensibilité Look 3-4, accélération 0, deadzones inner ≤ 5 : la manette dérive moins et le micro-ajustement devient possible."
+en = "Look sensitivity 3-4, acceleration 0, inner deadzones ≤ 5: less stick drift, real micro-aim becomes possible."
+
+[coaching_tips.combat.settings.2]
+fr = "FOV 100-105 (manette) / 110-120 (clavier) : meilleure conscience périphérique sans trop rétrécir les cibles à distance."
+en = "FOV 100-105 (controller) / 110-120 (keyboard): better peripheral awareness without shrinking distant targets too much."
+
+[coaching_tips.combat.routine.1]
+fr = "10 min de Bot Match « Plus difficile » avec arme imposée avant chaque session : la mire se cale, le KPM monte de 10-15% sur la 1re game."
+en = "10 min of « Spartan » bot match with one fixed weapon before each session: aim calibrates, first-game KPM rises 10-15%."
+
+# ─── Survie ────────────────────────────────────────────────────────────────
+# Métriques perf : dpm_deaths, deaths_vs_expected, defensive_resistance
+
+[coaching_tips.survival.title]
+fr = "Survie"
+en = "Survival"
+
+[coaching_tips.survival.metric_refs]
+fr = "DPM Deaths · Deaths vs Expected · Defensive Resistance"
+en = "DPM Deaths · Deaths vs Expected · Defensive Resistance"
+
+[coaching_tips.survival.ingame.1]
+fr = "Bouclier brisé = break LoS 2-3 sec (mouvement latéral + saut). Ne recharge jamais en visibilité, jamais."
+en = "Shield broken = break LoS for 2-3 sec (lateral move + jump). Never reload in line of sight, ever."
+
+[coaching_tips.survival.ingame.2]
+fr = "Si 2 alliés meurent dans le même corner sur 20 sec, ne suis pas le 3e — flank par l'autre côté ou recule au spawn power weapon."
+en = "If 2 teammates die in the same corner within 20 sec, don't be the 3rd — flank the other side or fall back to the power-weapon spawn."
+
+[coaching_tips.survival.settings.1]
+fr = "Audio « Casque » + volume effets > musique : entendre les pas et les reloads vaut littéralement +10% de survie."
+en = "Audio « Headphones » + effects volume > music: hearing footsteps and reloads is literally worth +10% survival."
+
+[coaching_tips.survival.routine.1]
+fr = "Après une mort, ne rage-push pas. 5 sec posé : regarde la mini-map, choisis un autre vecteur de combat, respire."
+en = "After a death, don't rage-push. 5 sec pause: check minimap, pick a new combat vector, breathe."
+
+# ─── Support ───────────────────────────────────────────────────────────────
+# Métriques perf : apm, offensive_conversion
+
+[coaching_tips.support.title]
+fr = "Support"
+en = "Support"
+
+[coaching_tips.support.metric_refs]
+fr = "APM · Offensive Conversion"
+en = "APM · Offensive Conversion"
+
+[coaching_tips.support.ingame.1]
+fr = "Frappe la dernière barre de bouclier avant que ton allié finisse : l'assist compte dès 40% de dégâts cumulés, c'est rentable."
+en = "Crack the last shield bar before your teammate finishes: assists count from 40% cumulative damage — high ROI."
+
+[coaching_tips.support.ingame.2]
+fr = "Marque les ennemis (ping RB / clic droit) systématiquement, même les évidents : Halo récompense l'info partagée plus que le solo carry."
+en = "Mark enemies (RB ping / right-click) systematically, even the obvious ones: Halo rewards shared info more than solo carry."
+
+[coaching_tips.support.settings.1]
+fr = "Bind « Mark / Ping » sur un bouton facile d'accès (pas le stick-clic) pour pouvoir le spammer sans effort kinesthésique."
+en = "Bind « Mark / Ping » to an easy button (not stick-click) so you can spam it without kinesthetic effort."
+
+[coaching_tips.support.routine.1]
+fr = "Joue 1 session sur 3 en escouade vocale : l'oreille s'éduque aux callouts, les patterns alliés s'ancrent en jeu solo."
+en = "Play 1 in 3 sessions in voice party: ear trains on callouts, teammate patterns carry over to solo play."
+
+# ─── Score ─────────────────────────────────────────────────────────────────
+# Métriques perf : pspm, dpm_damage, medal_exploit
+
+[coaching_tips.score.title]
+fr = "Score"
+en = "Score"
+
+[coaching_tips.score.metric_refs]
+fr = "PSPM · DPM Damage · Medal Exploit"
+en = "PSPM · DPM Damage · Medal Exploit"
+
+[coaching_tips.score.ingame.1]
+fr = "Va chercher les médailles « objectif » (Flag carry, Zone capture, Oddball hold) : elles donnent +50% de PSPM sur le match."
+en = "Hunt « objective » medals (Flag carry, Zone capture, Oddball hold): they bump PSPM by +50% over the match."
+
+[coaching_tips.score.ingame.2]
+fr = "Engage 2 power weapons par match (rocket, sniper, énergie sword) : le score médaille explose sur les kills heroic+."
+en = "Secure 2 power weapons per match (rocket, sniper, energy sword): medal score explodes on heroic+ kills."
+
+[coaching_tips.score.routine.1]
+fr = "Check ton PSPM moyen sur la page Synthesis après chaque session. Si > médiane perso → la session vaut. Si < → revoir le mode joué."
+en = "Check your average PSPM on the Synthesis page after each session. > personal median → session paid off. < → review mode mix."
+
+# ─── Objectif ──────────────────────────────────────────────────────────────
+# Métriques perf : personal_score (objectif), pspm composante objectif
+
+[coaching_tips.objective.title]
+fr = "Objectif"
+en = "Objective"
+
+[coaching_tips.objective.metric_refs]
+fr = "Personal Score (objectif) · PSPM (objective fraction)"
+en = "Personal Score (objective) · PSPM (objective fraction)"
+
+[coaching_tips.objective.ingame.1]
+fr = "Strongholds : occupe la zone neutre dès le spawn (10 sec de hold = 50 PS garantis). CTF : escorte le porteur, ne carry pas seul."
+en = "Strongholds: claim the neutral zone from spawn (10 sec hold = guaranteed 50 PS). CTF: escort the carrier, don't solo-carry."
+
+[coaching_tips.objective.ingame.2]
+fr = "Oddball : hold 5 sec puis pass — meilleure survie collective qu'un solo carry à 30 sec qui meurt et casse la chain."
+en = "Oddball: hold 5 sec then pass — better team survival than a 30-sec solo carry that dies and breaks the chain."
+
+[coaching_tips.objective.routine.1]
+fr = "Sur 1 match objectif sur 2, vise le top 3 « Objectif Score » de l'équipe. Sinon ton mix de jeu est trop solo-axé."
+en = "On 1 in 2 objective matches, aim for team top 3 « Objective Score ». Otherwise your playstyle is too solo-leaning."
+
+# ─── Impact ────────────────────────────────────────────────────────────────
+# Métriques perf : kda, kills_vs_expected, rank_perf
+
+[coaching_tips.impact.title]
+fr = "Impact"
+en = "Impact"
+
+[coaching_tips.impact.metric_refs]
+fr = "KDA · Kills vs Expected · Rank Perf"
+en = "KDA · Kills vs Expected · Rank Perf"
+
+[coaching_tips.impact.ingame.1]
+fr = "Identifie le 1v1 / 1v2 « clutch » possible (fin de round, dernière vie alliée) : passe en mode patient, pas agressif. La patience clutch."
+en = "Spot the « clutch » 1v1 / 1v2 (end of round, last teammate life): switch to patient mode, not aggressive. Patience clutches."
+
+[coaching_tips.impact.ingame.2]
+fr = "Récupère systématiquement les power weapons / overshield / camo des kills proches avant de re-push : le 2e kill double l'impact."
+en = "Always pick up power weapons / overshield / camo from nearby kills before re-pushing: the 2nd kill doubles impact."
+
+[coaching_tips.impact.settings.1]
+fr = "Vibration manette = OFF : moins de bruit kinesthésique, micro-précision préservée sur les tirs décisifs."
+en = "Controller vibration = OFF: less kinesthetic noise, micro-precision preserved on decisive shots."
+
+[coaching_tips.impact.routine.1]
+fr = "Revoir 1 highlight « Clutch » par semaine via la page Match View : identifier le pattern qui marche pour TOI (positionnement, arme, timing)."
+en = "Review 1 « Clutch » highlight per week via the Match View page: identify the pattern that works for YOU (position, weapon, timing)."

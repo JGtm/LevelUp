@@ -1,3 +1,25 @@
+## [2026-05-18] feat(coaching) — manifest TOML tips & tricks par axe d'amélioration
+
+**Statut** : Complété.
+
+**Contexte** : Demande utilisateur de générer des tips & tricks concrets (in-game + settings + routine) par axe d'amélioration. Objectif : préparer le contenu pédagogique pour le coach proactif V2 (cf. [.ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md](.ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md) §6) sans coupler l'implémentation backend.
+
+**Décisions tranchées** :
+
+1. **Grille = radar narrative 6 axes** (Combat / Survie / Support / Score / Objectif / Impact), pas les 13 métriques perf_score. Raison : c'est la grille déjà visible côté joueur (radar UI sur Match View / Squad). Les métriques perf sont référencées via `metric_refs` dans chaque axe → pont vers le moteur de scoring sans dupliquer la grille.
+2. **3 registres par axe** : `ingame.N` (gameplay), `settings.N` (sensi/FOV/audio), `routine.N` (warm-up, review, méta). Le registre `settings` est omis sur les axes où il n'apporte rien (Score, Objectif) — pas de remplissage artificiel.
+3. **Format manifest i18n existant** (`[namespace.axis.registry.N] fr/en`), aligné sur `apps/web/src/lib/i18n/manifests/*.toml` (synthesis, home, etc.). Permet l'intégration directe quand le coach V2 sera implémenté, sans nouveau format à parser.
+4. **Localisation FR/EN dès l'écriture** : évite la dette de traduction post-fait. La règle "1 commit modifie docs/ → docs/FR/ aussi" se transpose au manifest.
+5. **Contenu court** (1-2 phrases par tip, max 5 tips par axe) sur demande explicite utilisateur. Densité info > exhaustivité.
+
+**Changements apportés** :
+
+- Création de [apps/web/src/lib/i18n/manifests/coaching_tips.toml](apps/web/src/lib/i18n/manifests/coaching_tips.toml) — 6 axes × (2 ingame + 0-2 settings + 1 routine) = 26 tips FR/EN.
+
+**Conclusion / prochaine étape** : contenu prêt à brancher dans le coach proactif V2 (couche 3 du PLAN_PROGRESSION_TRACKING). Aucune logique métier ajoutée — c'est du contenu i18n pur. Quand la V2 sera implémentée, brancher `coaching_tips.{axis}.ingame.{N}` sur les insights du moteur LUSR (axe faible identifié → tip correspondant pioché).
+
+---
+
 ## [2026-05-18] plan(multiuser-acl) — ajout PR 3.5 page profil + recherche + invite Xbox
 
 **Statut** : Complété (mise à jour de [.ai/SPRINT_MULTIUSER_ACL.md](.ai/SPRINT_MULTIUSER_ACL.md)).
