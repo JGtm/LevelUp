@@ -31,9 +31,61 @@ export interface AscensionText {
   streakTypeName: Record<StreakType, string>
   streakAtMaxMultiplier: string
 
+  // Records
+  recordsSectionTitle: string
+  recordsTimelineTitle: string
+  recordsPersonalBestsTitle: string
+  recordsEmpty: string
+  recordsHistoryEmpty: string
+  recordsValueLabel: string
+  recordsAchievedAt: string
+  recordsPreviousValue: string
+
+  // Milestones
+  milestonesSectionTitle: string
+  milestonesEmpty: string
+  milestonesEarnedAt: string
+  milestonesLocked: string
+  milestonesEarned: string
+  milestonesEarnedCount: string // "{n}/{total}"
+  milestonesThreshold: string // "Seuil : {n}"
+
+  // Métriques (labels)
+  metric: Record<string, string>
+  // Périodes
+  period: Record<'30d' | '90d' | 'all_time', string>
+
   // Loading / errors
   loading: string
   errorLoading: string
+}
+
+const METRIC_LABEL_FR: Record<string, string> = {
+  performance_score: 'Score de performance',
+  kda: 'KDA',
+  kpm: 'Tueries / minute',
+  accuracy: 'Précision',
+  pspm: 'Score perso / minute',
+  matches_played: 'Matchs joués',
+  wins: 'Victoires',
+  kills: 'Éliminations',
+  headshots: 'Tirs à la tête',
+  assists: 'Assistances',
+  accuracy_threshold_days: 'Jours réguliers',
+}
+
+const METRIC_LABEL_EN: Record<string, string> = {
+  performance_score: 'Performance score',
+  kda: 'KDA',
+  kpm: 'Kills per minute',
+  accuracy: 'Accuracy',
+  pspm: 'Personal score per minute',
+  matches_played: 'Matches played',
+  wins: 'Wins',
+  kills: 'Kills',
+  headshots: 'Headshots',
+  assists: 'Assists',
+  accuracy_threshold_days: 'Consistent days',
 }
 
 const FR: AscensionText = {
@@ -61,6 +113,27 @@ const FR: AscensionText = {
     daily_perf: 'Performance par jour',
     weekly_play: '5 matchs par semaine',
     weekly_kda_threshold: 'KDA hebdomadaire',
+  },
+  recordsSectionTitle: 'Mes records',
+  recordsTimelineTitle: 'Historique des records battus',
+  recordsPersonalBestsTitle: 'Records personnels',
+  recordsEmpty: 'Pas encore de record. Joue quelques matchs pour faire émerger tes meilleurs scores.',
+  recordsHistoryEmpty: 'Aucun record battu pour le moment.',
+  recordsValueLabel: 'Valeur',
+  recordsAchievedAt: 'Atteint le {date}',
+  recordsPreviousValue: 'Précédent : {value}',
+  milestonesSectionTitle: 'Mes milestones',
+  milestonesEmpty: 'Aucun milestone configuré pour ce titre.',
+  milestonesEarnedAt: 'Débloqué le {date}',
+  milestonesLocked: 'À débloquer',
+  milestonesEarned: 'Débloqué',
+  milestonesEarnedCount: '{n}/{total} débloqué{plural}',
+  milestonesThreshold: 'Seuil : {n}',
+  metric: METRIC_LABEL_FR,
+  period: {
+    '30d': '30 jours',
+    '90d': '90 jours',
+    all_time: 'Carrière',
   },
   loading: 'Chargement…',
   errorLoading: 'Erreur lors du chargement',
@@ -90,6 +163,27 @@ const EN: AscensionText = {
     daily_perf: 'Daily performance',
     weekly_play: '5 matches per week',
     weekly_kda_threshold: 'Weekly KDA',
+  },
+  recordsSectionTitle: 'My records',
+  recordsTimelineTitle: 'Records broken timeline',
+  recordsPersonalBestsTitle: 'Personal bests',
+  recordsEmpty: 'No record yet. Play a few matches to start tracking your best scores.',
+  recordsHistoryEmpty: 'No record broken yet.',
+  recordsValueLabel: 'Value',
+  recordsAchievedAt: 'Achieved on {date}',
+  recordsPreviousValue: 'Previous: {value}',
+  milestonesSectionTitle: 'My milestones',
+  milestonesEmpty: 'No milestones configured for this title.',
+  milestonesEarnedAt: 'Earned on {date}',
+  milestonesLocked: 'Locked',
+  milestonesEarned: 'Earned',
+  milestonesEarnedCount: '{n}/{total} earned',
+  milestonesThreshold: 'Threshold: {n}',
+  metric: METRIC_LABEL_EN,
+  period: {
+    '30d': '30 days',
+    '90d': '90 days',
+    all_time: 'All-time',
   },
   loading: 'Loading…',
   errorLoading: 'Loading error',

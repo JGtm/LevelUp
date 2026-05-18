@@ -63,3 +63,39 @@ export function nextPPTier(length: number): { length: number; multiplier: number
 export function formatMultiplier(value: number): string {
   return `×${value.toFixed(2).replace(/\.00$/, '').replace(/0$/, '')}`
 }
+
+/**
+ * Formate une valeur numérique selon la sémantique de la métrique :
+ * - accuracy / ratio 0..1 → pourcentage (55.0 %)
+ * - KDA / KPM / PSPM → 2 décimales, trailing zeros strippés (1.45 / 0.8 / 87.5)
+ * - compteurs entiers (matches_played, wins, kills, etc.) → arrondi entier
+ *   avec séparateur de milliers en-US (virgule) — déterministe inter-env
+ * - défaut → 2 décimales avec trailing strip
+ */
+export function formatMetricValue(metric: string, value: number): string {
+  const intMetrics = new Set([
+    'matches_played',
+    'wins',
+    'kills',
+    'headshots',
+    'assists',
+    'accuracy_threshold_days',
+  ])
+  if (intMetrics.has(metric)) {
+    // Locale fixée à en-US pour produire un séparateur déterministe.
+    return Math.round(value).toLocaleString('en-US')
+  }
+  if (metric === 'accuracy') {
+    return `${(value * 100).toFixed(1)} %`
+  }
+  // Score, KDA, KPM, PSPM → 2 décimales puis strip trailing zeros.
+  return stripTrailingZeros(value.toFixed(2))
+}
+
+// stripTrailingZeros enlève les zéros de fin et le point final éventuel.
+// "87.50" → "87.5" ; "1.00" → "1" ; "0.80" → "0.8" ; "1.45" → "1.45"
+function stripTrailingZeros(s: string): string {
+  if (!s.includes('.')) return s
+  return s.replace(/0+$/, '').replace(/\.$/, '')
+}
+

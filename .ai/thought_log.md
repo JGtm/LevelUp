@@ -1,3 +1,62 @@
+## [2026-05-18] feat(progression)(commit-9) — UI Records timeline + Milestones grid
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Second commit côté frontend. Apporte les 2 sections manquantes sur la page Ascension : Records (PB courants + timeline historique) et Milestones (grille earned/locked). Complète la page V2 telle que spécifiée au plan §8.3.
+
+**Décisions / changements** :
+
+1. **Skip volontaire du panneau "records proches"** (plan §5.3) : un panneau UI statique ferait doublon avec les notifications `record_near_miss` que le coach émet déjà (commit 5+6). Ces notifs apparaissent dans le centre de notifs existant (cloche NavL1) avec un toast pour les fraîches — feedback proactif plutôt que statique. Documenté dans le commentaire d'en-tête de RecordsTimeline.tsx. Si l'UX product change d'avis, le panneau peut être ajouté en follow-up.
+
+2. **`RecordsTimeline.tsx`** : 2 sous-sections dans 1 composant cohérent.
+   - "Records personnels" : grille de cards groupées par métrique, chaque card affiche les 3 périodes (30d / 90d / all_time) avec previous_value + achieved_at.
+   - "Historique des records battus" : liste chronologique DESC depuis `record_history`.
+   - Gestion empty states distinctes (PB list vide vs history vide).
+
+3. **`MilestonesGrid.tsx`** : grille responsive (2 cols mobile → 5 cols xl). Tri : earned récents en tête (DESC sur earned_at), puis locked groupés par (metric, threshold) ASC. Affiche : titre localisé (title_fr / title_en), label métrique, seuil, condition libre (si fourni), date earned_at.
+   - Tone "earned" : `border-amber-500/40 bg-amber-500/10` + texte amber (gold visuel).
+   - Tone "locked" : opacity 70% + muted text.
+   - Compteur en header : `{n}/{total} débloqué{plural}`.
+
+4. **Extension `format.ts`** :
+   - `formatMetricValue(metric, value)` : sémantique-aware (accuracy → %, KDA/score → 2 décimales strippées, compteurs entiers → séparateur de milliers en-US).
+   - `stripTrailingZeros(s)` : helper interne — corrige le bug de l'ancienne regex qui ne strippait que `.00` (loupait `.50`, `.80`).
+   - Locale en-US fixée pour les compteurs entiers : déterministe pour tests + bénin pour l'UX (l'i18n FR/EN porte sur les labels, pas sur les nombres au mille près).
+
+5. **Extension `i18n.ts`** :
+   - Nouveau bloc `recordsSectionTitle` + `recordsTimelineTitle` + `recordsPersonalBestsTitle` + empty states + `recordsAchievedAt` + `recordsPreviousValue`.
+   - Nouveau bloc `milestonesSectionTitle` + `milestonesEarned` + `milestonesLocked` + `milestonesEarnedCount` + `milestonesEarnedAt` + `milestonesThreshold` + `milestonesEmpty`.
+   - Mapping `metric: Record<string, string>` : 11 labels (performance_score, kda, kpm, accuracy, pspm, matches_played, wins, kills, headshots, assists, accuracy_threshold_days).
+   - Mapping `period: Record<RecordPeriod, string>` : 30 jours / 90 jours / Carrière (FR), 30 days / 90 days / All-time (EN).
+
+6. **`AscensionPage.tsx`** : assemble Streak + Records + Milestones dans un `<main>` avec `space-y-8` pour séparer les 3 sections visuellement.
+
+**Tests** :
+
+- 4 nouveaux tests `formatMetricValue` (compteurs entiers, accuracy %, floats trailing zeros, métrique inconnue défaut). Total feature : 19/19 PASS 1.2s.
+
+**2 bugs corrigés en cours** :
+
+1. **`toLocaleString()` sans arg** : locale dépendante de l'environnement, le test attendait "1,234" (en-US) mais l'env de test pouvait renvoyer "1 234" (fr-FR avec espace insécable). Fix : forcer `'en-US'` pour les compteurs entiers.
+2. **`replace(/\.00$/, '')` insuffisant** : ne strippait pas les zéros simples (".50" restait, ".80" aussi). Fix : helper `stripTrailingZeros` avec regex sur les zéros de fin + suppression du point final si la décimale est vide.
+
+**Validations** :
+
+- `tsc -b` : 1 erreur, identique à commit 8 (pré-existante `notifications/icons.tsx`, fixée au commit 10).
+- `eslint` sur `src/features/ascension/` : 0 erreur / 0 warning.
+- `vite build` : OK 1.01s.
+
+**Conclusion / prochaine étape** : Page Ascension complète côté UI. Le joueur peut désormais :
+- voir son compteur de streak dans la NavL1 (commit 8)
+- consulter ses streaks détaillées dans `/players/{slug}/ascension`
+- consulter ses PB courants par fenêtre + l'historique des records battus
+- voir la grille de milestones earned/locked
+- recevoir les alertes near-miss / breaks via le centre de notifs existant
+
+Commit 10 = i18n manifests pour les title_key/body_key des 6 nouvelles catégories notif progression (alimentés par le coach) + fix `notifications/icons.tsx` + ADR-0013 documentant l'architecture V2 finalisée.
+
+---
+
 ## [2026-05-18] feat(progression)(commit-8) — UI Streaks (StreakBadge nav + StreakDashboard)
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).
