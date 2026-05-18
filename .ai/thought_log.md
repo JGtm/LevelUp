@@ -1,3 +1,15 @@
+## [2026-05-18] chore(.ai) — déplacer les SPRINT_*.md vers .ai/V7/
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Décision** : regrouper les sprints du cycle V7 (`SPRINT_MULTIUSER_ACL.md`, `SPRINT_OPENSPARTAN_IMPORT.md`, `SPRINT_XBOX_SSO.md`) dans `.ai/V7/` pour séparer la roadmap active des sprints historiques (cohérent avec `.ai/archive/v5.0/`).
+
+**Résultat** : 3 fichiers déplacés, contenu identique. Pas d'impact code.
+
+**Prochaine étape** : commit 1 du sprint SharedDBProvider (tests rouges T1-T11).
+
+---
+
 ## [2026-05-18] feat(openspartan) — PR 4 : UI onboarding (OpenSpartanImportCard + route /onboarding/openspartan)
 
 **Statut** : Complété (branche `feat/openspartan-import-ui`, basée sur `feat/xbox-sso` après merge du backend OpenSpartan `1a3daa21`).
