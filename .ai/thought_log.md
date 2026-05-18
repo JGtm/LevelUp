@@ -1,3 +1,44 @@
+## [2026-05-18] feat(progression)(commit-3) — records detector + DuckDB repos
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Troisième commit du plan V2. Apporte la logique de détection de Personal Bests (PB) sur 3 fenêtres temporelles + persistance + tests. Pas de wiring post-sync — réservé au commit 6 (hook).
+
+**Décisions / changements** :
+
+1. **Package `records` structuré en 4 fichiers** :
+   - `types.go` (déjà commit 1) : PersonalRecord, RecordHistory, RecordPeriod, NearMissRatio=0.05, MinMatchesForRecord=10.
+   - `extractors.go` : 5 métriques trackées par défaut (PerformanceScore, KDA, KPM, Accuracy, PSPM). Override possible via `DetectInput.Metrics`. Les valeurs sont pré-extraites par l'orchestrateur → le détecteur reste un consommateur pur.
+   - `repository.go` : 2 interfaces distinctes — `PBRepo` (player_records dans shared_social) et `HistoryRepo` (record_history dans stats.duckdb). Séparation car DB physiques différentes.
+   - `detector.go` : pour chaque (métrique × fenêtre), calcule la meilleure valeur dans la fenêtre, compare au PB courant, gère 3 transitions (NewPB, NearMiss, None). En cas de NewPB : Upsert PB + Append history. La notification `personal_record` est laissée à l'orchestrateur via `DetectionResult` (le détecteur ne touche pas notifications/ pour rester pur testable).
+
+2. **`computeBestInWindow`** : itère les matchs, filtre par cutoff (now - 30d / 90d / time.Time{} pour all_time), retourne (best value, matchID, playedAt, count). Si count < MinMatchesForRecord → skip détection (pas de faux positif sur petit échantillon, cf. plan §10.1 risque).
+
+3. **`IsNearMiss(current, target)`** : utilitaire exporté (utile au coach commit 5) qui retourne true si `target × 0.95 <= current <= target`. Évite la duplication de la logique near-miss côté coach.
+
+4. **Impl DuckDB** :
+   - `PersonalRecordsRepo` (records_repo.go) : opère sur `shared_social.duckdb` via `pdb.SharedSocial`. INSERT...ON CONFLICT (xuid, metric, period) DO UPDATE pour idempotence. Reads via la connexion shared_social attached du PlayerDB, writes via `OpenReadWrite` dédié (pattern aligné NotificationsRepo).
+   - `RecordHistoryRepo` (record_history_repo.go) : opère sur `stats.duckdb` via `db *DB`. Append-only (INSERT simple). `defaultHistoryLimit = 100` quand `limit <= 0`.
+
+5. **Tests** : 6 unit (detector_test.go) + 7 integration (records_repo_test.go + record_history_repo_test.go).
+   - Detector : skip si insufficient matches, first PB sur 3 périodes, NewPB qui bat l'ancien (PreviousValue propagé), near-miss qui n'incrémente pas, fenêtre 30d ignore les matchs anciens (J-60 visible en 90d/all_time uniquement), IsNearMiss edge cases (95%, 100%, target=0, etc.).
+   - Repo PB : roundtrip avec achieved_match_id, overwrite avec previous_value, ListByXUID isole les joueurs, 3 PB sur 3 périodes pour la même métrique (validation PK composite après migration `period`).
+   - Repo History : Append + ListRecent DESC, limit honored, filtres user_id + title_slug.
+
+6. **Bug subtil corrigé** : test `TestDetect_NearMiss` initialement échouait car je n'avais seedé le PB que sur all_time. Les 2 autres périodes (30d/90d) étaient traitées en first-PB → history non vide. Fix : seeder les 3 périodes pour réellement tester le near-miss isolé.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/{streaks,records}/...` : 18/18 unit PASS (~2s cumulé)
+- `go test -tags=integration ./internal/platform/duckdb/...` : 72s OK (suite complète, dont 7 nouveaux TestPersonalRecordsRepo_* + TestRecordHistoryRepo_*)
+- `go test -tags=integration ./internal/migration/...` : 30s OK (non-régression)
+- `go test ./internal/notifications/...` : 1.6s OK
+
+**Conclusion / prochaine étape** : Couche 2 partielle (Records OK, Milestones reste). Commit 4 = milestones (catalog TOML + detector + emission notif via réutilisation de `personal_record` ou nouvelle catégorie `milestone_unlocked` — à trancher pendant l'impl). Pas de wiring post-sync encore — c'est groupé au commit 6 pour brancher streaks + records + milestones + coach en une passe.
+
+---
+
 ## [2026-05-18] feat(progression)(commit-2) — streaks evaluator + shields + DuckDB repo
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).
