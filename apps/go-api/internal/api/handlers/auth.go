@@ -9,6 +9,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -29,14 +30,14 @@ type AuthHandler struct {
 	sessionStore *session.Store
 	attempts     *auth_platform.AttemptStore
 	demoMode     bool
-	userStore    UserLinker                  // optionnel — lie gamertag→user après Device Code Flow
+	linkStrategy auth_platform.LinkStrategy  // logique post-flow (password ou xbox SSO)
 	provider     auth_platform.TokenProvider // abstrait le mécanisme d'acquisition de tokens
 }
 
-// UserLinker est une interface pour lier l'identité Halo à un user local.
-type UserLinker interface {
-	LinkIdentity(username, gamertag, xuid string) error
-}
+// UserLinker est l'interface dont a besoin PasswordLinkStrategy.
+// Conservée comme alias type pour limiter le diff sur les call sites — la définition
+// canonique vit dans platform/auth (cf. link_strategy.go).
+type UserLinker = auth_platform.UserLinker
 
 // NewAuthHandler crée un AuthHandler.
 func NewAuthHandler(
@@ -53,9 +54,18 @@ func NewAuthHandler(
 	}
 }
 
-// WithUserStore injecte le user store pour le LinkIdentity post Device Code Flow.
+// WithUserStore est conservé pour la backward compat des call sites existants.
+// Auto-wrap le UserLinker dans une PasswordLinkStrategy (comportement historique).
+// Pour le mode SSO Xbox, préférer WithLinkStrategy() avec un XboxSSOLinkStrategy.
 func (h *AuthHandler) WithUserStore(us UserLinker) *AuthHandler {
-	h.userStore = us
+	h.linkStrategy = auth_platform.NewPasswordLinkStrategy(us)
+	return h
+}
+
+// WithLinkStrategy injecte explicitement la LinkStrategy à appliquer après le flow.
+// Override tout WithUserStore antérieur.
+func (h *AuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *AuthHandler {
+	h.linkStrategy = s
 	return h
 }
 
@@ -139,11 +149,12 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 				ClearanceToken: snapshot.ClearanceToken,
 			}
 		}
-		// Auth locale : lier l'identité Halo au user connecté + auto-select player.
-		if h.userStore != nil && sess.Username != nil && snapshot.Gamertag != "" {
-			_ = h.userStore.LinkIdentity(*sess.Username, snapshot.Gamertag, snapshot.XUID)
-			slug := snapshot.Gamertag
-			sess.CurrentPlayerSlug = &slug
+		// LinkStrategy gère le post-flow (password : LinkIdentity ; xbox SSO : login direct).
+		if h.linkStrategy != nil && snapshot.Gamertag != "" {
+			if err := h.linkStrategy.OnAuthSuccess(r.Context(), snapshot, sess); err != nil {
+				slog.ErrorContext(r.Context(), "auth: LinkStrategy.OnAuthSuccess échec",
+					"attempt_id", attemptID, "err", err)
+			}
 		}
 		_ = h.sessionStore.Save(sess)
 	}
