@@ -35,9 +35,12 @@ func extractXUIDFromFilename(hint string) string {
 	return m[1]
 }
 
-// parseXUID accepts either the API wrapper form `xuid(<digits>)` or a bare
+// ParseXUID accepts either the API wrapper form `xuid(<digits>)` or a bare
 // 16–17 digit decimal string, and returns the digits on success or "" otherwise.
-func parseXUID(s string) string {
+//
+// Exported so sibling packages (e.g. mapper) can extract a bare XUID from
+// any of the wrapped forms the Halo API uses.
+func ParseXUID(s string) string {
 	s = strings.TrimSpace(s)
 	if m := playerIDXuidRegex.FindStringSubmatch(s); len(m) >= 2 {
 		return m[1]
@@ -134,7 +137,7 @@ func (r *Reader) mostFrequentHumanXUID(ctx context.Context) (string, error) {
 			if p.PlayerType != 1 {
 				continue
 			}
-			xuid := parseXUID(p.PlayerID)
+			xuid := ParseXUID(p.PlayerID)
 			if xuid == "" {
 				continue
 			}
@@ -197,7 +200,7 @@ func (r *Reader) xuidFromCacheMeta(ctx context.Context) (string, error) {
 		if !strings.Contains(strings.ToLower(key.String), "xuid") {
 			continue
 		}
-		if x := parseXUID(value.String); x != "" {
+		if x := ParseXUID(value.String); x != "" {
 			return x, nil
 		}
 	}

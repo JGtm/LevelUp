@@ -1,3 +1,38 @@
+## [2026-05-18] feat(openspartan) — PR 2 : mapper Halo API JSON → DuckDB v6 rows
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 1 `1fc45e5b`).
+
+**Contexte** : Deuxième livrable du sprint. Le mapper consomme un `openspartan.ParsedMatch` (sortie PR 1) et produit des structures Go qui correspondent au schéma DuckDB v6 (`shared.match_registry`, `shared.match_participants`, `shared.medals_earned`, `shared.highlight_events`, `shared.xuid_aliases`). Pas d'I/O — pur mapping JSON → struct.
+
+**Décisions** :
+
+1. **Sous-package `internal/openspartan/mapper/`** — sépare le mapping pur de la lecture SQLite. Dépend du package parent (struct JSON) mais pas l'inverse.
+2. **Schéma cible localisé dans `internal/sync/schema.go`** (`match_registry` 38 cols, `match_participants` 32 cols, `medals_earned` 5 cols, `xuid_aliases` 5 cols) + `internal/migration/steps_shared.go` pour `highlight_events` (7 cols, id auto via sequence).
+3. **Rows en pointeurs pour les nullables** (`*string`, `*float64`, `*time.Time`) — cohérent avec le style `MatchHistoryRawRow` déjà en place dans `domain/`.
+4. **Pas de noms textuels (`playlist_name`, `map_name`, `pair_name`, `game_variant_name`)** dans cette PR — ils vivent dans `metadata.duckdb` et seront peuplés par PR 3.5 (post-import recompute). Même chose pour `mode_category`, `is_ranked`, `is_firefight`.
+5. **Helpers de NULL pragmatiques** : `strPtrOrNil(s)` qui trim+return nil sur empty.
+6. **Parser ISO 8601 dédié** (`iso8601.go`) — pattern Halo `PT[xH][xM][x.xS]`. Pas de support `P1Y` etc., et erreur explicite sur `PT` vide ou `PT1.5M` (fractions sur minutes pas supportées car non observées dans la vraie data).
+7. **Team switch handling** — `MapParticipants` prend le **dernier** `PlayerTeamStats[]` (équipe finale) comme canonical. `MapMedals` au contraire **agrège** sur toutes les entrées pour éviter de perdre des médailles gagnées avant un switch.
+8. **Filtre `PlayerType=1`** systématique (humains uniquement, bots ignorés). PK `(match_id, xuid, medal_name_id)` → agrégation par `medal_name_id` via map quand un même medal apparaît dans 2 PlayerTeamStats.
+9. **`MapHighlight` tolère 3 formes de XUID** dans le JSON HighlightEvents : nombre entier brut (forme observée dans la vraie DB), string de digits, string wrappée `xuid(...)`. Helper `decodeHighlightXUID(json.RawMessage)`.
+10. **`ParseXUID` exporté** dans le package parent (renommé `parseXUID` → `ParseXUID`) pour que le mapper puisse l'utiliser sans dupliquer la regex.
+11. **`MapOptions.AliasResolver func(xuid) string`** — injection optionnelle pour résoudre les gamertags depuis `XuidAliases` chargé en amont par PR 3. Si nil, `gamertag` reste NULL.
+12. **Backfill flags à `true`/`1`** dans `match_registry` (`backfill_completed=1`, `participants_loaded`, `events_loaded`, `medals_loaded`) — on insère tout en une fois, donc rien à backfiller à part les noms (PR 3.5).
+13. **Future-date guard** : `StartTime > now + 24h` → `ErrFutureMatch`. Tolérance de 24h pour absorber drift d'horloge serveur Halo.
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- `go test ./internal/openspartan/...` : **26/26 verts** (13 reader + 13 mapper, 5.6s)
+- Smoke test sur la vraie DB 27 MB / 451 matchs : **451/451 matchs mappés sans erreur** en 10.35s (invalid=0, future=0).
+
+**Conclusion / prochaine étape** :
+
+- PR 3 (service d'orchestration + endpoint HTTP) : consomme reader + mapper, écrit dans DuckDB via Appender, valide XUID owner contre la session SSO, gère stash JSON pour `Friends`.
+- Avant de commencer PR 3 : prendre une décision sur la stratégie d'écriture (Appender en batch par type de row, ou INSERT prepared par row). L'Appender est annoncé dans le plan v2 — confirmer la dispo du binding via `github.com/duckdb/duckdb-go/v2`.
+
+---
+
 ## [2026-05-18] feat(openspartan) — PR 1 : reader SQLite + parser JSON Halo API
 
 **Statut** : Complété (branche `feat/openspartan-import`, worktree `.claude/worktrees/openspartan-import/`, branchée depuis HEAD `feat/xbox-sso` = `bb24299c`).
