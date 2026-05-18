@@ -1,3 +1,109 @@
+## [2026-05-18] plan(multiuser-acl) — ajout PR 3.5 page profil + recherche + invite Xbox
+
+**Statut** : Complété (mise à jour de [.ai/SPRINT_MULTIUSER_ACL.md](.ai/SPRINT_MULTIUSER_ACL.md)).
+
+**Contexte** : Retour sur la question "faut-il une page profil par joueur ?" écartée plus tôt dans la session. L'utilisateur a reframé en présentant un use case concret : "on ferait une recherche d'ami, on regarde le profil et on ajoute" — c'est-à-dire que la page profil est un outil de **désambiguïsation + invitation** dans le flow d'ajout d'ami, pas un dashboard analytique. Ce framing change l'analyse : Halowaypoint ne fait pas ça (vérifier qu'on ajoute la bonne personne dans le contexte LevelUp), donc la feature est justifiée.
+
+**Décisions tranchées** :
+
+1. **3 vues distinctes** :
+   - Preview publique `/players/{slug}/preview` (tout user authentifié, données `shared.*` uniquement)
+   - Profil ami `/players/{slug}/synthesis` (déjà câblé, gated par ACL)
+   - Self `/me` (déjà câblé)
+2. **Scope preview = minimal** : avatar + gamertag + XUID + rang Halo lifetime + total matches. Suffisant pour identifier. Pas de mini-dashboard, pas de charts (on duplique Halowaypoint sinon).
+3. **Recherche basée uniquement sur `shared.xuid_aliases`** (pas de fallback API Halo). Raison utilisateur : "si on a pas de données pour ce joueur de toute façon ça ne servira à rien". Cohérent — la preview serait vide sans données dans `shared.*`. Implication : la "graine sociale" de l'instance est le réseau de matchs déjà sync, pas l'inscription LevelUp.
+4. **User sans compte LevelUp** : preview affichée quand même (car il est dans `shared.xuid_aliases`) + bouton "Inviter sur LevelUp" qui génère un invite link via `invite_store.go` étendu d'un champ `linked_xuid` — à l'inscription via cet invite, une amitié `accepted` est créée automatiquement entre inviteur et nouvel inscrit.
+5. **Admin** : preview standard + bouton supplémentaire "Accéder au profil complet" qui bypass l'ACL et loggue audit (cohérent D9). Permet de garder la vue "comme un user normal" pour comprendre ce que les autres voient.
+6. **Routage conditionnel `/players/{slug}`** (sans sous-path) : si user ami/self/admin → redirect vers `synthesis`, sinon → redirect vers `preview`. Évite le 403 brut dans tout le reste de l'app.
+7. **Documenter dans `SPRINT_MULTIUSER_ACL.md` en PR 3.5** (pas de fichier séparé) — la feature ne livre rien sans l'ACL (`FriendshipStore`, résolution amitié, périmètre player-scoped).
+
+**Changements apportés au plan ACL** :
+
+- Nouvelle section §4bis "PR 3.5 — Page Preview + recherche + invite" insérée entre PR 3 (endpoints friends) et PR 4 (UI). Détail : 3 nouveaux endpoints backend (`/api/players/search`, `/api/players/{slug}/preview`, `POST /api/invites/xbox` avec `linked_xuid`), composants frontend `PlayerPreviewCard` + `FriendshipActionButton`, routage conditionnel sur `/players/{slug}`.
+- §10 estimation revue : ~4j → **~5.5j** (PR 3.5 ajoutée pour 1.5j).
+- Pas de modification des autres PR (1, 2, 3, 4, 5, 6) — la PR 3.5 réutilise tout l'existant.
+
+**Conclusion / prochaine étape** : sprint ACL maintenant complet avec le use case "find → preview → add". Le sprint SSO Xbox reste à coder en premier (PR 0 UI premier lancement débloque toute la suite), puis ACL en seconde phase quand SSO est stable.
+
+---
+
+## [2026-05-18] plan(xbox-sso + multiuser-acl) — revue, décisions tranchées, audit du TokenProvider
+
+**Statut** : Complété (mise à jour de [.ai/SPRINT_XBOX_SSO.md](.ai/SPRINT_XBOX_SSO.md) et [.ai/SPRINT_MULTIUSER_ACL.md](.ai/SPRINT_MULTIUSER_ACL.md), pas de code).
+
+**Contexte** : Demande de revue des deux plans SSO Xbox + ACL multi-user. Application du skill `plan-review` après vérification des ancrages code (`msal_client.go:29`, `config.go:42`, `auth.go:64`, `store.go:226`, `xsts.go:43`). La revue a remonté ~10 points ouverts (cohabitation password ↔ xbox, store canonique refresh_token, multi-titre paths, clé friendship, périmètre ACL, etc.). Questionnaire interactif `AskUserQuestion` en 2 batches pour trancher.
+
+**Décisions utilisateur tranchées** :
+
+1. **Admin initial via UI 'premier lancement'** (D1) — si `users.json` vide au boot, form bloquant `/setup/admin` avant tout autre flow. Nouvelle PR 0 ajoutée au plan SSO.
+2. **Promotion admin via UI Settings + CLI fallback** (D2).
+3. **Cohabitation password ↔ xbox** (D3) — `AuthMode="xbox"` active SSO comme flow principal ; password reste autorisé **uniquement pour Role=admin**. Check à ajouter dans `POST /auth/login`.
+4. **Refresh token : 1 fichier par XUID** (D4) — `data/auth/watcher_tokens/{xuid}.json`, write-to-temp + rename atomique, perms 0600/0700. **Source unique** (pas de duplication dans `sync_meta`). User a soulevé l'argument "parallélisation sync multi-joueurs" → confirmé : N fichiers = zéro contention sur les writes.
+5. **Friendship indexée par XUID** (D6 / §1.5 ACL) — pas par slug, pour résister aux renames de gamertag (~1×/an).
+6. **Périmètre ACL strict** (D5) — uniquement routes player-scoped (`/api/players/{slug}/*`, sync, backfill, media) + filtrage `available_players` du bootstrap. Match-level et `shared/*` restent publics-authentifiés ("philosophie Halowaypoint"). Conséquence : pas de masquage MatchScoreboard ni SquadAnalysis → sections §pièges 3/4/6 du plan ACL marquées caduques.
+7. **Modèle amitié symétrique avec accept** (D7), **admin bypass avec audit log** (D9), **hard delete amitiés + soft delete user** (D8).
+8. **Découverte amis** : auto-suggest (top-N coéquipiers via `shared.match_participants`) + saisie manuelle gamertag.
+
+**Audit du `TokenProvider`** (demande explicite "tu t'assures du bon fonctionnement du provider") :
+
+- `MSALProvider` ([provider.go:99](apps/go-api/internal/platform/auth/provider.go#L99)) **utilisé en prod par défaut** ([main.go:62-73](apps/go-api/cmd/server/main.go#L62)) : stateless, thread-safe, réutilisable tel quel pour le SSO Xbox. Aucune modification de l'interface nécessaire — le pattern `LinkStrategy` proposé pour PR 2 est injecté **au-dessus** du provider (separation of concerns).
+- `SISUProvider` (mode alternatif via `AuthProvider="sisu"` dans app_settings) : ⚠️ bug de concurrence multi-user identifié — `current *sisuFlowContext` partagé entre flows, écrasé à chaque `InitDeviceFlow`. Non bloquant tant que SISU reste mono-user, mais à fix si SISU passe en multi-user (porter le contexte dans le `sisuDeviceFlow` retourné). Noté en §0bis audit + §8 piège 8 du plan SSO.
+
+**Pattern d'archi confirmé** : `TokenProvider` reste l'unique point d'entrée pour acquérir des tokens. Toutes les features SSO/RTA/sync passent par cette abstraction — exception unique : `AcquireXSTSForRTA(accessToken)` appelée juste après `provider.Exchange()` dans le handler PR 2.5, parce qu'elle prend l'accessToken intermédiaire qui n'est pas exposé par le provider.
+
+**Changements de fond apportés aux plans** :
+
+- Ajout §0bis dans SSO : tableau des 9 décisions (D1-D9) + audit provider + récap ACL.
+- Renumérotation : ancien §2 → §3 (PR 1), nouvelle PR 0 en §2 (UI premier lancement), §3-12 décalés en §4-13.
+- §4 PR 2 (handler Xbox) refactor : pattern `LinkStrategy` (interface) + `XboxSSOLinkStrategy` dans `internal/service/` (orchestration en service, pas dans handler) + `PasswordLinkStrategy` pour le flow existant.
+- §11 (BDD orpheline) : paths reformatés multi-titre `data/games/{title}/players/{gt}/` (ADR 0008), pool DuckDB `Invalidate(title, slug)` à ajouter, refresh_token persistance corrigée vers `watcher_tokens/{xuid}.json`.
+- §13 (RTA) : `TokenStore` refactor pour layout par-XUID + `LoadAll` au boot + single `RefreshLoop` itérant.
+- ACL §1 refactorisé : "Décisions de design à prendre" → "Décisions tranchées" (6 sous-sections avec choix marqués ✅).
+- ACL §3 PR 2 refactor : middleware ↔ service `ACLService` séparés (handler reste thin wrapper). Ajout d'un test de couverture automatique (§3.4) qui parse les routes chi et vérifie que toute route player-scoped est wrappée — garantie anti-régression.
+- ACL §6 PR 5 : pattern `BootstrapService.WithFriendshipStore(fs)` explicite (cohérent avec `WithPrivacyProvider`).
+- ACL §8 pièges : 3, 4, 6 marqués caducs ; ajout pièges 8 (XUID inconnu à la saisie manuelle) et 9 (demande à un user sans compte LevelUp).
+
+**Conclusion / prochaine étape** : les deux plans sont prêts à coder. Reste à trancher (cf. checklists §10 SSO et §11 ACL) : (a) vérifier que `pool.Invalidate(title, slug)` existe ou l'ajouter, (b) auditer la suppression du check `firstLaunch=admin` historique dans `CreateFromXbox`, (c) plan de migration data pour les installations existantes en activant l'ACL. La PR 0 (UI premier lancement admin) est le premier livrable et débloque toute la suite.
+
+---
+
+## [2026-05-18] plan(openspartan-import) — révision v2 après inspection d'une vraie DB
+
+**Statut** : Complété (révision de [.ai/SPRINT_OPENSPARTAN_IMPORT.md](.ai/SPRINT_OPENSPARTAN_IMPORT.md), pas de code).
+
+**Contexte** : L'utilisateur a demandé une revue du plan d'import OpenSpartan, en indiquant disposer de DBs réelles dans `C:\Users\GuillaumeSITBON\Downloads\Perso\OpenSpartan`. Inspection du fichier `{xuid}.db` (27 MB, 451 matchs) via `sqlite3` CLI a révélé 3 incohérences majeures entre les hypothèses du plan v1 et le format réel :
+
+1. **Extension `.osdb` inventée** — le fichier est un SQLite standard `.db`, nommé par XUID.
+2. **`PRAGMA user_version` = 0** — la stratégie "détecter la version via user_version" du plan ne marche pas. Détection à faire par signature de tables.
+3. **Format des tables clés est JSON brut** — `MatchStats.ResponseBody`, `PlayerMatchStats.ResponseBody`, `HighlightEvents.ResponseBody` stockent les réponses Halo API entières en JSON, avec colonnes virtuelles `json_extract`. Le plan v1 supposait des tables structurées type `OSMatch / OSParticipant` à mapper — c'était faux.
+
+Conséquence : tout le mapping doit passer par parsing JSON Halo API officielle, pas par mapping table-à-table. La DB inspectée s'est aussi révélée être un schéma **hybride** (vanilla OpenSpartan + extensions LevelUp legacy `MatchCache`, `MedalsAggregate`, `PerformanceScores`, `Friends`), ce qui ouvrait la question du périmètre.
+
+**Décisions utilisateur (AskUserQuestion interactive)** :
+
+1. **Profil cible : vanilla OpenSpartan uniquement** — les schémas hybrides legacy LevelUp sont hors scope (traités ad-hoc par script interne si nécessaire). Le service détecte les tables canoniques vanilla et ignore toute extension propriétaire.
+2. **Friends : stash JSON** dans `data/players/{gamertag}/stash/openspartan_friends.json`, pas de table SQL créée. Réservé au futur sprint MULTIUSER_ACL.
+3. **UI : onboarding uniquement, derrière "Mode avancé"** — pas d'onglet Settings en v1. Card par défaut = sync API standard ; option d'import accessible via disclosure discret.
+4. **Backup pré-import : non pertinent** — à l'onboarding la DB joueur n'existe pas encore (ou est vide), donc rien à backuper. Si l'import est plus tard ouvert à des users déjà onboardés, réintroduire un backup auto à ce moment-là.
+
+**Changements de fond v1 → v2** :
+
+- Mapping = parsing JSON Halo API (struct Go modélisant `match-stats` officielle), pas table-à-table.
+- Médailles : `$.Players[i].PlayerTeamStats[j].Stats.CoreStats.Medals[]` (pas table `MedalsAggregate`). Clé v6 : `(match_id, xuid, medal_id)`.
+- Participants : `$.Players[]` filtré sur `PlayerType='human'`. Le owner se détecte par 3 heuristiques (nom de fichier `{xuid}.db` → comptage xuid dans Players → fallback CacheMeta).
+- Killer/victim : skip v1 (pas de table dédiée vanilla, l'API repeuplera).
+- `xuid_aliases` : passé en P0 explicite (critique pour résolution identité cross-DB).
+- Driver SQLite Go : **`modernc.org/sqlite`** (pur Go, pas de CGO sur Windows).
+- Insertion DuckDB : API **Appender** (10-100× plus rapide que INSERT prepared).
+- Nouvelle PR 3.5 : post-import recompute des dérivés v6 (sessions, perf_score, citations, mv_*).
+- Estimation révisée : **6j** (vs 4j v1), pour intégrer parsing JSON + post-recompute.
+
+**Annexe diff v1 vs v2** ajoutée en fin de plan pour traçabilité.
+
+**Conclusion / prochaine étape** : plan v2 prêt. Avant de démarrer l'implémentation, vérifier les 6 prérequis listés en §10 (notamment : récupérer 2-3 `.db` réels, confirmer driver SQLite Go disponible, trancher option A vs B pour le post-recompute synchrone/async).
+
+---
+
 ## [2026-05-16] feat(notifications) — extension cat. : career_rank, skill_tier, battlepass_completed, citation_tier, citation_mastery
 
 **Statut** : Complété (branche `feat/notif-extension` créée depuis `fix/csr-protect-from-lusr-overwrite`).
