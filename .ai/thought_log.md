@@ -1,3 +1,36 @@
+## [2026-05-18] chore(plan-ascension) — audit pré-implémentation + alignement V2 avec l'existant
+
+**Statut** : Complété (worktree `feat/progression-tracking-ascension` créé depuis HEAD de `feat/xbox-sso`).
+
+**Contexte** : Démarrage de l'implémentation du PLAN_PROGRESSION_TRACKING_ASCENSION V2 (3 couches : Streaks + Records & Milestones + Coach proactif). Avant de coder, audit du repo pour identifier ce qui est déjà construit. Trouvaille majeure : le plan supposait une base vierge mais une grande partie de l'infrastructure notifications est **déjà en place**.
+
+**Audit — découvertes** :
+1. Table `player_notifications` existe dans `shared_social.duckdb` avec 18 catégories i18n-keyed, incluant `personal_record` et `threshold_crossed` directement pertinents pour V2. Centre de notifs UI déjà construit (cloche nav, badge count, préférences).
+2. Hook post-sync `buildPostSyncDeltaHook` déjà câblé dans `internal/api/post_sync_deltas.go`, avec TODOs explicites pour `personal_record`, `threshold_crossed`, `challenge_completed`, `objective_assigned`.
+3. Table `player_records` existe déjà dans `shared_social.duckdb` (schéma `(xuid, metric, value, achieved_at)`, **sans fenêtre temporelle**).
+4. `PlayerProfile` service (V1) confirmé en place.
+5. Tables `streak`, `milestone_earned`, `milestone_catalog` : 100% absentes.
+6. Détecteurs metier (records detection, LOWESS+ 14j, approche tier LUSR, approche record, approche milestone) : tous absents.
+
+**Décisions tranchées (avec l'utilisateur)** :
+1. **`player_records`** : étendre la table existante via migration (ajout `window` + `previous_value` + `previous_achieved_at`, PK migre vers `(xuid, metric, window)`). Respecte le plan V2 original 30j/90j/all_time. Les lignes existantes sont taggées `window='all_time'` (rétro-compatible).
+2. **`coach_alert`** : **pas de table dédiée**, réutilise `player_notifications`. Ajout de nouvelles catégories : `streak_milestone`, `lusr_tier_approach`, `record_near_miss`, `milestone_near_miss`, `comeback_welcome`. Économie : pas de duplication centre de notifs + UI cloche + préférences.
+3. **Mettre à jour le plan AVANT de coder** : commit `chore(plan)` dédié, traçabilité propre des décisions d'alignement.
+
+**Changements apportés au plan** :
+- Nouvelle section §2bis « Alignement avec l'existant » documentant les 3 décisions ci-dessus
+- §6.3 réécrite : table de mapping type d'alerte → catégorie de notif existante
+- §7.1 ne contient plus que les 3 tables nouvelles (`streak`, `record_history`, `milestone_earned`)
+- §7.2 nouvelle : migration d'extension de `player_records` (ALTER TABLE)
+- §8.1 architecture Go : `coach/` n'a plus de `repository.go` (délègue à `notifications/`), pas de `coach.go` handler
+- §8.2 hook post-sync : extension de l'existant, pas réécriture
+- §8.3 frontend : suppression de `CoachAlertsCenter.tsx` et `useCoachAlerts.ts` (centre existant suffit)
+- §9 découpe en commits révisée : 11 commits (était 11), suppression du commit UI Coach center, économie ~1.5j
+
+**Conclusion / prochaine étape** : plan aligné, prêt pour le commit 1 (types Go + migrations DuckDB : `streak` + `record_history` + `milestone_earned` dans `stats.duckdb` ; `milestone_catalog` dans `metadata.duckdb` ; ALTER TABLE de `player_records` dans `shared_social.duckdb` ; **pas** de table `coach_alert`). Le commit `chore(plan)` actuel capture les décisions d'alignement avant de toucher au code.
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2 : LinkStrategy pattern + XboxSSOLinkStrategy (login direct via XUID)
 
 **Statut** : Complété (branche `feat/xbox-sso`).
