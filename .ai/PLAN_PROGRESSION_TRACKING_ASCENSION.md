@@ -60,10 +60,12 @@ Raisons :
 
 La table `player_records` existe déjà dans `shared_social.duckdb` (clé `(xuid, metric)`, pas de fenêtre temporelle). Le plan V2 demande 3 fenêtres (30j / 90j / all_time). **Décision** : étendre la table via migration :
 
-- Ajouter colonne `window VARCHAR NOT NULL DEFAULT 'all_time'`
+- Ajouter colonne `period VARCHAR NOT NULL DEFAULT 'all_time'`
 - Ajouter colonnes `previous_value DOUBLE` et `previous_achieved_at TIMESTAMP`
-- PK migrée vers `(xuid, metric, window)`
-- Les enregistrements existants sont taggés `window='all_time'` (rétro-compatible)
+- PK migrée vers `(xuid, metric, period)`
+- Les enregistrements existants sont taggés `period='all_time'` (rétro-compatible)
+
+**Note sur le nommage `period` vs `window`** : le plan d'origine utilisait `window`, mais ce mot est réservé en DuckDB (utilisé pour les window functions `OVER (...)`). Le commit 1 (types + migrations) a donc renommé la colonne et le champ Go correspondant en `period` / `Period` / `RecordPeriod`. Le domaine reste « fenêtre temporelle 30d/90d/all_time ».
 
 ### Tables 100% nouvelles
 
