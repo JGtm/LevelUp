@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -90,17 +91,22 @@ func (r *Reader) DetectOwner(ctx context.Context, filenameHint string) (xuid str
 
 	switch {
 	case fromFilename != "" && fromFilename == fromFrequency:
+		slog.Info("openspartan: owner detected", "xuid", fromFilename, "confidence", "high")
 		return fromFilename, ConfidenceHigh, nil
 	case fromFrequency != "":
+		slog.Info("openspartan: owner detected", "xuid", fromFrequency, "confidence", "medium", "via", "frequency")
 		return fromFrequency, ConfidenceMedium, nil
 	case fromFilename != "":
+		slog.Info("openspartan: owner detected", "xuid", fromFilename, "confidence", "medium", "via", "filename")
 		return fromFilename, ConfidenceMedium, nil
 	}
 
 	fromCache, _ := r.xuidFromCacheMeta(ctx)
 	if fromCache != "" {
+		slog.Info("openspartan: owner detected", "xuid", fromCache, "confidence", "low", "via", "cache_meta")
 		return fromCache, ConfidenceLow, nil
 	}
+	slog.Warn("openspartan: owner detection exhausted all heuristics", "path", r.path)
 	return "", ConfidenceNone, ErrOwnerUndetected
 }
 

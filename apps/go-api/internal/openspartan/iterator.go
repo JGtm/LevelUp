@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"log/slog"
 )
 
 // Matches returns an iterator that yields one *ParsedMatch per row in
@@ -53,17 +54,22 @@ func (r *Reader) Matches(ctx context.Context) iter.Seq2[*ParsedMatch, error] {
 			}
 			var matchStatsBody, playerStatsBody []byte
 			if err := rows.Scan(&matchStatsBody, &playerStatsBody); err != nil {
+				slog.Warn("openspartan: scan match row failed", "err", err)
 				if !yield(nil, fmt.Errorf("openspartan: scan match row: %w", err)) {
 					return
 				}
 				continue
 			}
 			pm, err := parseMatch(matchStatsBody, playerStatsBody)
+			if err != nil {
+				slog.Warn("openspartan: parse match failed", "err", err)
+			}
 			if !yield(pm, err) {
 				return
 			}
 		}
 		if err := rows.Err(); err != nil {
+			slog.Error("openspartan: iterate matches failed", "err", err)
 			yield(nil, fmt.Errorf("openspartan: iterate matches: %w", err))
 		}
 	}

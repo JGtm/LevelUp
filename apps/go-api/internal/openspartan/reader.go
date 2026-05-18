@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"sync"
 
@@ -49,8 +50,10 @@ func Open(path string) (*Reader, error) {
 	r := &Reader{db: db, path: absPath}
 	if err := detectSchema(context.Background(), db); err != nil {
 		_ = db.Close()
+		slog.Warn("openspartan: schema detection failed", "path", absPath, "err", err)
 		return nil, err
 	}
+	slog.Info("openspartan: reader opened", "path", absPath)
 	return r, nil
 }
 

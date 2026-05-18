@@ -52,7 +52,7 @@ func (r *Reader) LoadXuidAliases(ctx context.Context) ([]XuidAliasRow, error) {
 		if err := rows.Scan(&xuid, &gamertag, &lastSeenStr, &source); err != nil {
 			return nil, fmt.Errorf("openspartan: scan XuidAliases: %w", err)
 		}
-		if !xuid.Valid || !gamertag.Valid {
+		if !xuid.Valid || !gamertag.Valid || xuid.String == "" || gamertag.String == "" {
 			continue
 		}
 		row := XuidAliasRow{

@@ -114,13 +114,19 @@ func (s *OpenSpartanImportService) Import(
 	opts = withDefaults(opts)
 	var result ImportResult
 
+	s.log.Info("openspartan_import_started",
+		"expected_xuid", expectedOwnerXUID, "db_path", dbPath, "dry_run", opts.DryRun)
+
 	r, err := openspartan.Open(dbPath)
 	if err != nil {
+		s.log.Error("openspartan_import_open_failed", "db_path", dbPath, "err", err)
 		return result, fmt.Errorf("open openspartan db: %w", err)
 	}
 	defer r.Close()
 
 	if err := s.validateOwner(ctx, r, dbPath, expectedOwnerXUID, &result); err != nil {
+		s.log.Warn("openspartan_import_owner_validation_failed",
+			"detected_xuid", result.DetectedOwnerXUID, "confidence", result.Confidence.String(), "err", err)
 		return result, err
 	}
 
@@ -129,6 +135,7 @@ func (s *OpenSpartanImportService) Import(
 		return result, fmt.Errorf("match count: %w", err)
 	}
 	result.TotalMatches = total
+	s.log.Info("openspartan_import_matches_to_process", "total", total)
 
 	aliases, err := r.AliasMap(ctx)
 	if err != nil {
@@ -145,6 +152,14 @@ func (s *OpenSpartanImportService) Import(
 	s.importAliases(ctx, r, opts, &result)
 	s.stashFriends(ctx, r, expectedOwnerXUID, opts, &result)
 
+	s.log.Info("openspartan_import_completed",
+		"inserted_matches", result.InsertedMatches,
+		"inserted_participants", result.InsertedParticipants,
+		"inserted_medals", result.InsertedMedals,
+		"inserted_highlights", result.InsertedHighlights,
+		"inserted_aliases", result.InsertedAliases,
+		"stashed_friends", result.StashedFriends,
+		"errors", len(result.Errors))
 	return result, nil
 }
 
