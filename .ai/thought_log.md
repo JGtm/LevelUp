@@ -1,3 +1,47 @@
+## [2026-05-18] feat(progression)(commit-2) — streaks evaluator + shields + DuckDB repo
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Deuxième commit du plan V2. Apporte la logique métier des streaks (daily_play, daily_perf, weekly_play, weekly_kda_threshold) + persistance DuckDB + tests.
+
+**Décisions / changements** :
+
+1. **Découpage du package `streaks` en 5 fichiers** (cohérent avec convention prestige) :
+   - `bucket.go` : primitives date/semaine en UTC (DayStart, WeekStart ISO, BucketStart/End selon type, BucketsBetween, SameMonth).
+   - `satisfaction.go` : prédicats par type (IsBucketSatisfied avec switch StreakType + `WeeklyPlayMinMatches = 5`).
+   - `shields.go` : régénération mensuelle (`RegenerateIfNewMonth` réinitialise `ShieldsUsed` si le dernier increment est dans un mois passé), consommation (`TryConsume`).
+   - `evaluator.go` : orchestration + 5 transitions (None, Started, Incremented, Shielded, Broken). `walkBuckets` parcourt les buckets de (ref+1) à (now) et compte increments + missed.
+   - `repository.go` : interface `Repo { GetActive, Upsert, List }`.
+
+2. **Sémantique « shield ressoude la chaîne »** (correction d'un bug de logique en cours d'implémentation) : un bucket missed shielded n'incrémente pas le compteur (length préservée), mais les buckets satisfaits AVANT et APRÈS le miss comptent tous comme increments. Initialement, `walkBuckets` utilisait un `chainBroken` qui empêchait les increments post-miss — semantique incorrecte vs plan §4.2 « 5 jours d'affilée préservés ». Fix : compter satisfait/missed indépendamment, laisser la logique shield/break en aval décider du status.
+
+3. **Impl DuckDB `StreaksRepo`** dans `internal/platform/duckdb/streaks_repo.go` :
+   - `INSERT ... ON CONFLICT (id) DO UPDATE` pour Upsert idempotent.
+   - `GetActive` filtre `status != 'broken'` + `ORDER BY started_at DESC LIMIT 1` (cas pathologique 2 actives).
+   - Helpers `nullableTime` / `nullableFloat` ajoutés (le `nullableStr` existant sert pour les strings).
+   - Suppression du `rowScanner` dupliqué (déjà défini dans `prestige_player_helpers.go`).
+
+4. **12 tests unitaires evaluator + 5 tests integration repo** :
+   - Started/None sur premier match ; incrément J→J+1 ; idempotence intra-jour.
+   - Shield-saves (1 jour manqué, length+1 sur recovery, status Active).
+   - Break (2 jours manqués sans shield suffisant, status Broken, length figée).
+   - Shields regenerate across months (consommé en mai, re-consommé en juin).
+   - Multi-bucket walk (4 jours consécutifs joués d'un coup → 4 increments).
+   - Weekly play seuil 5 matchs (5 satisfait, 4 non).
+   - Daily_perf seuil KDA (1.8 > 1.5 satisfait, 1.2 < 1.5 non).
+   - PP multiplier table complète (1.00 / 1.10 / 1.25 / 1.50 / 1.75 par palier).
+   - Integration repo : roundtrip Upsert/Get, exclusion broken, overwrite, List multi-status, nullable Threshold.
+
+**Tests passés** :
+
+- `go build ./...` : OK (full repo)
+- `go test ./internal/progression/streaks/...` : 12/12 PASS en 0.7s
+- `go test -tags=integration ./internal/platform/duckdb/...` : OK 32s (suite complète, dont 5 nouveaux TestStreaksRepo_*)
+
+**Conclusion / prochaine étape** : Couche 1 (Streaks) techniquement complète côté backend logique. Manque : le câblage post-sync (commit 6) pour appeler `Evaluate` à chaque ingestion de match, et le PP multiplier appliqué aux défis Prestige (commit 6 aussi ou via service progression). Commit 3 = records detector — branche le TODO `personal_record` du `post_sync_deltas.go` existant.
+
+---
+
 ## [2026-05-18] feat(progression)(commit-1) — types Go + migrations DuckDB (V2 Ascension)
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).
