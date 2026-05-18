@@ -137,3 +137,88 @@ func TestSessionPageHandler_InvalidRequest(t *testing.T) {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
+
+// TestSessionPageHandler_SerializesDrawerFields vérifie que les nouveaux champs
+// du drawer compare (P3) sortent bien dans le JSON : compare_matches,
+// previous_session_label, next_session_label. Sans ça le drawer côté front
+// n'a aucun moyen d'alimenter ses charts ni de naviguer entre sessions.
+func TestSessionPageHandler_SerializesDrawerFields(t *testing.T) {
+	prev := "S-prev"
+	next := "S-next"
+	mock := &mockSessionPageService{resp: domain.SessionPageResponse{
+		CurrentSession:       &domain.SessionCompareEntry{SessionLabel: "S-current"},
+		AvailableSessions:    []string{"S-prev", "S-current", "S-next"},
+		Matches:              []domain.SessionDetailMatchRow{{MatchID: "m1"}},
+		CompareEnabled:       true,
+		CompareSession:       &domain.SessionCompareEntry{SessionLabel: "S-prev"},
+		CompareMatches:       []domain.SessionDetailMatchRow{{MatchID: "m2"}, {MatchID: "m3"}},
+		CompareMetrics:       []domain.SessionCompareMetricRow{},
+		PreviousSessionLabel: &prev,
+		NextSessionLabel:     &next,
+	}}
+	factory := func(_ context.Context, _ string) (port.SessionPageService, error) {
+		return mock, nil
+	}
+	r := newSessionPageRouter(factory)
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/sessions/detail",
+		bytes.NewReader([]byte(`{"enable_compare":true}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var body struct {
+		CompareMatches       []domain.SessionDetailMatchRow `json:"compare_matches"`
+		PreviousSessionLabel *string                        `json:"previous_session_label,omitempty"`
+		NextSessionLabel     *string                        `json:"next_session_label,omitempty"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+	if len(body.CompareMatches) != 2 {
+		t.Fatalf("expected 2 compare_matches in JSON, got %d", len(body.CompareMatches))
+	}
+	if body.PreviousSessionLabel == nil || *body.PreviousSessionLabel != "S-prev" {
+		t.Fatalf("expected previous_session_label=S-prev, got %v", body.PreviousSessionLabel)
+	}
+	if body.NextSessionLabel == nil || *body.NextSessionLabel != "S-next" {
+		t.Fatalf("expected next_session_label=S-next, got %v", body.NextSessionLabel)
+	}
+}
+
+// TestSessionPageHandler_OmitsNeighborsAtBoundaries vérifie que `omitempty`
+// joue son rôle quand prev/next sont nil (bornes de la liste de sessions).
+func TestSessionPageHandler_OmitsNeighborsAtBoundaries(t *testing.T) {
+	mock := &mockSessionPageService{resp: domain.SessionPageResponse{
+		CurrentSession:    &domain.SessionCompareEntry{SessionLabel: "only"},
+		AvailableSessions: []string{"only"},
+		Matches:           []domain.SessionDetailMatchRow{},
+		CompareMatches:    []domain.SessionDetailMatchRow{},
+		CompareMetrics:    []domain.SessionCompareMetricRow{},
+		// Pas de PreviousSessionLabel ni NextSessionLabel : pointeurs nil.
+	}}
+	factory := func(_ context.Context, _ string) (port.SessionPageService, error) {
+		return mock, nil
+	}
+	r := newSessionPageRouter(factory)
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/sessions/detail",
+		bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	// Inspection brute du JSON : les clés omitempty ne doivent PAS apparaître.
+	raw := w.Body.String()
+	if bytes.Contains([]byte(raw), []byte("previous_session_label")) {
+		t.Fatalf("expected previous_session_label to be omitted, got: %s", raw)
+	}
+	if bytes.Contains([]byte(raw), []byte("next_session_label")) {
+		t.Fatalf("expected next_session_label to be omitted, got: %s", raw)
+	}
+}

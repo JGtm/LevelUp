@@ -1,3 +1,44 @@
+## [2026-05-18] feat(session-detail) — charts client-side + drawer compare side-by-side (v2)
+
+**Statut** : Complété (branche `feat/session-page-charts`, basée sur `bb24299c`, mergée dans `feat/xbox-sso`).
+
+**Contexte** : la page Session Detail livrée le 2026-04-21 ([SessionDetailPage.tsx](apps/web/src/features/session-detail/SessionDetailPage.tsx)) était fonctionnelle mais purement tabulaire (summary cards + 2 tables : matchs et delta A/B). Les enrichissements explicitement reportés dans la tranche v1 — *« les prochaines tranches pourront enrichir les charts, le split view avancé et la logique de similarité solo »* — sont ici livrés en bloc, en s'inspirant du shape Synthesis / timeseries / Squad.
+
+**Décisions techniques** :
+
+1. **Découpage par responsabilité unique** (pattern Synthesis : `Synthesis{XxxChart}.tsx`) : `SessionDetailPage.tsx` (470L) éclaté en 8 fichiers — 1 helpers `_shared.ts`, 4 charts, 3 sections existantes extraites (SummaryCard, MatchesTable, CompareMetrics). Page principale = orchestration ; ≤ 240 lignes après refactor.
+2. **4 charts client-side, sans nouveau endpoint** : les données nécessaires (`SessionDetailMatchRow[]`) sont déjà retournées par `POST /pages/sessions/detail`. Les agrégats triviaux (totaux KDA, moyenne perf, séquence outcomes) sont calculés via `useMemo`.
+   - `SessionKDATimeline` : `TimeseriesLineChart` 3 séries (kills/deaths/assists), couleurs résolues via tokens (`outcome-win/-loss/-draw`), pas de marker outcome (3 traces déjà colorées par stat).
+   - `SessionOutcomeTape` : wrapper de `OutcomeSequenceTape`, libellés via `useFieldMappings.outcomes` (TOML) avec fallback clé canonique — **0 string FR/EN hardcodé**.
+   - `SessionKillsDonut` : `DonutChart` totaux K/D/A, slices colorées via `sliceColors` (tokens outcome-\*).
+   - `SessionPerfTrend` : `TimeseriesLineChart` 2 séries (perf + ligne moyenne), marker outcome activé pour la série perf.
+3. **Drawer compare side-by-side** (`SessionCompareDrawer.tsx`) : pas de drawer existant pour compare A/B avant ce PR — `AssetDrawer` et `FeedbackDrawer` sont des minis-panneaux fixes (~290px), incompatibles. Nouveau drawer dédié, large (50vw ≥ xl, full mobile avec backdrop), slide-in via `translateX`, fermeture Escape + bouton ×. Le contenu réutilise les 4 charts Phase 2 + `SessionSummaryCard` (tone='compare') + `SessionCompareMetrics`. Navigation : boutons ← précédente / suivante → (chronologique via `previous/next_session_label` du backend) + bouton "Suggestion similaire" qui ré-applique `suggested_compare`. **Page principale shrink** : `xl:pr-[calc(50vw+1.5rem)]` quand drawer ouvert → vraie vue 2 colonnes côte à côte sur desktop (mobile = drawer plein écran avec backdrop).
+4. **Backend** ([session_page_service.go](apps/go-api/internal/service/session_page_service.go), [session_page.go](apps/go-api/internal/domain/session_page.go)) : ajout de `CompareMatches []SessionDetailMatchRow` (rows détaillées de la session comparée — alimente les charts du drawer), `PreviousSessionLabel` / `NextSessionLabel` (`*string` avec `omitempty`) via nouvelle helper `neighboringSessionLabels()` 17-lignes. Aucun changement de signature service ; les nouveaux champs sont remplis dans le flow GetPage existant.
+5. **i18n** : 14 nouvelles clés dans `session.toml` (chart titles, drawer labels, prev/next, suggestion réutilisée). Manifest régénéré via `node apps/web/scripts/build_i18n_manifests.mjs` (session.toml : 91 → 102 clés). Le drawer × button utilise un aria-label dédié (`drawer_close_aria`) pour ne pas collisionner avec le bouton toggle "Fermer la comparaison" lors des tests RTL.
+6. **Anti-hardcode strict** : aucun hex couleur direct, aucune string FR/EN inline dans les composants. Tous libellés via `useSessionT()` (TOML session) ou `useFieldMappings()` (TOML field mappings + outcomes). Couleurs via `tokenCssVar` / `resolveToken` (SemanticToken).
+7. **Audit logging (commit 2)** : enrichissement des `slog.InfoContext` final côté service et handler avec les nouveaux champs exposés (`compare_match_count`, `previous_session_label`, `next_session_label`, `match_count`, `compare_session`). Ops Grafana voit désormais la totalité du JSON renvoyé au client.
+8. **Fix hooks (commit 2)** : `labelOf` n'était pas mémoïsé dans `SessionKDATimeline` et `SessionKillsDonut`, invalidait `useMemo` à chaque render. Remplacé par `fields = fieldMappings?.fields` + lookups inline → ESLint react-hooks clean.
+
+**Résultats** :
+
+- **Frontend** : 1 fichier helpers (`_shared.ts`), 4 chart wrappers (`SessionKDATimeline`, `SessionOutcomeTape`, `SessionKillsDonut`, `SessionPerfTrend`), 3 sections extraites (`SessionSummaryCard`, `SessionMatchesTable`, `SessionCompareMetrics`), 1 drawer (`SessionCompareDrawer`), 1 page refactorée. Total ~1100 lignes ajoutées, 0 ligne ECharts brute (tout via wrappers `ChartCard`).
+- **Backend** : 3 nouveaux champs dans `SessionPageResponse`, 1 helper `neighboringSessionLabels()` (testé en isolation + via 4 test cases service).
+- **Tests** :
+  - Vitest session-detail/ : 24/24 passent (3 fichiers : SessionDetailPage 5, _shared 10, SessionCompareDrawer 9). Couverture 91.25% statements, 92.5% lines.
+  - Go `internal/service` : 17/17 passent (+ 4 scénarios + 5 sub-tests `TestNeighboringSessionLabels`). Coverage `GetPage` 91.2%, `neighboringSessionLabels` 100%.
+  - Go `internal/api/handlers` : 8/8 passent (+ 2 scénarios sérialisation JSON `SerializesDrawerFields` / `OmitsNeighborsAtBoundaries`). Coverage handler 100%.
+  - `go vet` + `tsc -p tsconfig.json` + `eslint src/features/session-detail/` : clean.
+
+**Hors scope (dette explicite, non touchée)** :
+- `formatPercent` local conserve son TODO P4 ADR 0006 (valeur en 0..100 vs 0..1 API target).
+- Pas de migration `TopProgressBar` (le `Spinner` local reste).
+- Pas de cleanup `features/session-compare/` (module mort hors trajectoire de cette tranche).
+- Pas de retrait du converter Go `StatsMatchRowsFromCanonical` (TODO P4.3 séparé).
+
+**Conclusion** : la route Sessions a maintenant une UX visuelle (charts) et une vraie comparaison side-by-side avec nav prev/next. Tout reste sur l'endpoint unique `POST /pages/sessions/detail` (un seul round-trip pour active + comparée). Le pattern (4 charts + drawer compare) est extractible en abstraction réutilisable pour d'autres pages futures (palmarès, citations) qui voudraient une vue comparée — mais pas extrait dans ce PR (1 occurrence ≠ abstraction). Mergée dans `feat/xbox-sso` via merge commit no-ff ; aucun conflit fonctionnel (uniquement section-en-tête sur ce thought_log).
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 4 : Authorization Code Flow SSO (redirect UX)
 
 **Statut** : Complété (branche `feat/xbox-sso`).
