@@ -250,8 +250,8 @@ func TestParseXUID(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range cases {
-		if got := parseXUID(tc.in); got != tc.want {
-			t.Errorf("parseXUID(%q): want %q, got %q", tc.in, tc.want, got)
+		if got := ParseXUID(tc.in); got != tc.want {
+			t.Errorf("ParseXUID(%q): want %q, got %q", tc.in, tc.want, got)
 		}
 	}
 }
