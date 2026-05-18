@@ -98,13 +98,22 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 	// ("Failed to delete all rows from index"). Les rows retirées du TOML restent en DB
 	// (acceptable : les templates ne sont jamais supprimés, seulement ajoutés/modifiés).
 	for _, t := range templates {
+		lusrJSON, err := encodeStringList(t.LUSRComponents)
+		if err != nil {
+			return fmt.Errorf("encode lusr_components for %s: %w", t.ID, err)
+		}
+		radarJSON, err := encodeStringList(t.RadarAxes)
+		if err != nil {
+			return fmt.Errorf("encode radar_axes for %s: %w", t.ID, err)
+		}
 		if _, err := r.db.Exec(ctx, `
 			INSERT INTO challenge_template (
 				id, title_slug, metric, window_type, window_value, cadence, eval_type,
 				mode_filter, label_en, label_fr, description_en, description_fr,
 				normal_target, heroic_target, legendary_target, mythic_target,
+				lusr_components, radar_axes, is_long_term,
 				schema_version, updated_at
-			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 			ON CONFLICT (id) DO UPDATE SET
 				title_slug       = excluded.title_slug,
 				metric           = excluded.metric,
@@ -121,12 +130,16 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 				heroic_target    = excluded.heroic_target,
 				legendary_target = excluded.legendary_target,
 				mythic_target    = excluded.mythic_target,
+				lusr_components  = excluded.lusr_components,
+				radar_axes       = excluded.radar_axes,
+				is_long_term     = excluded.is_long_term,
 				schema_version   = excluded.schema_version,
 				updated_at       = excluded.updated_at`,
 			t.ID, t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue,
 			string(t.Cadence), string(t.EvalType), t.ModeFilter,
 			t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR,
 			t.NormalTarget, t.HeroicTarget, t.LegendaryTarget, t.MythicTarget,
+			lusrJSON, radarJSON, t.IsLongTerm,
 			t.SchemaVersion, t.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("upsert %s: %w", t.ID, err)
@@ -140,17 +153,20 @@ const templateSelectColumns = `
 	       cadence, eval_type, COALESCE(mode_filter, 'universal'),
 	       label_en, label_fr, COALESCE(description_en, ''), COALESCE(description_fr, ''),
 	       normal_target, heroic_target, legendary_target, mythic_target,
+	       COALESCE(lusr_components, ''), COALESCE(radar_axes, ''), COALESCE(is_long_term, FALSE),
 	       schema_version, updated_at
 	FROM challenge_template`
 
 func scanTemplate(row rowScanner) (prestige.Template, error) {
 	var t prestige.Template
 	var windowType, cadence, evalType string
+	var lusrJSON, radarJSON string
 	err := row.Scan(
 		&t.ID, &t.TitleSlug, &t.Metric, &windowType, &t.WindowValue,
 		&cadence, &evalType, &t.ModeFilter,
 		&t.LabelEN, &t.LabelFR, &t.DescriptionEN, &t.DescriptionFR,
 		&t.NormalTarget, &t.HeroicTarget, &t.LegendaryTarget, &t.MythicTarget,
+		&lusrJSON, &radarJSON, &t.IsLongTerm,
 		&t.SchemaVersion, &t.UpdatedAt,
 	)
 	if err != nil {
@@ -159,7 +175,33 @@ func scanTemplate(row rowScanner) (prestige.Template, error) {
 	t.WindowType = prestige.WindowType(windowType)
 	t.Cadence = prestige.Cadence(cadence)
 	t.EvalType = prestige.EvalType(evalType)
+	t.LUSRComponents = decodeStringList(lusrJSON)
+	t.RadarAxes = decodeStringList(radarJSON)
 	return t, nil
+}
+
+// encodeStringList sérialise une liste pour stockage VARCHAR (CSV simple).
+// Liste vide → string vide (utilise NULL côté DB grâce au COALESCE en lecture).
+func encodeStringList(items []string) (string, error) {
+	if len(items) == 0 {
+		return "", nil
+	}
+	// CSV simple — pas de virgules dans les composantes LUSR ni axes (validé
+	// au load TOML, sinon le splitt côté lecture serait corrompu).
+	for _, s := range items {
+		if strings.Contains(s, ",") {
+			return "", fmt.Errorf("string %q contains comma (not allowed in lusr_components/radar_axes)", s)
+		}
+	}
+	return strings.Join(items, ","), nil
+}
+
+// decodeStringList parse le CSV stocké en DB. String vide → nil.
+func decodeStringList(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
 }
 
 // ─────────── PresetArcRepo ───────────

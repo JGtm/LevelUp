@@ -1,3 +1,39 @@
+## [2026-05-18] feat(player-profile-v1)(commit-1) — tagger templates avec lusr_components + is_long_term
+
+**Statut** : Complété (branche `feat/player-profile-ascension` depuis HEAD de V2).
+
+**Contexte** : Premier commit du sprint V1 PlayerProfile. Ouvre le tagging du catalogue de templates Prestige existant pour permettre le matching profil → suggestions de défis (Section C du futur profil). Prérequis structurel pour commits 4 (service PlayerProfile) et 5 (Campagne).
+
+**Décisions / changements** :
+
+1. **3 nouveaux champs sur `prestige.Template`** :
+   - `LUSRComponents []string` : composantes LUSR ciblées (ex: ["kills_vs_expected", "deaths_vs_expected"])
+   - `RadarAxes []string` : axes narrative ciblés (combat/survival/support/score/objective/impact) — optionnel
+   - `IsLongTerm bool` : true si rolling_days OR last_n_matches threshold
+
+2. **Migration metadata.duckdb** (`steps_metadata_template_tagging.go`) : 3 nouvelles colonnes via `addColumnIfMissing`. CSV simple en VARCHAR pour les listes (validation au load qu'aucun item ne contient de virgule). Default `is_long_term=FALSE`.
+
+3. **Loader TOML étendu** (`prestige/catalog_loader.go`) : `templateEntryTOML` accepte les 3 nouveaux champs en types natifs TOML (`[]string` pour les listes inline, `bool` pour le flag).
+
+4. **Repo metadata étendu** (`platform/duckdb/prestige_metadata_repo.go`) : INSERT...ON CONFLICT mis à jour avec les 3 colonnes. Helpers `encodeStringList`/`decodeStringList` pour la sérialisation CSV (refus si une string contient `,`).
+
+5. **27 templates Halo Infinite taggés** dans `config/titles/halo_infinite/challenges/templates.toml` via sous-agent général (parsing TOML + mapping mécanique metric → tags). Couverture :
+   - 23/27 templates avec tags non-vides
+   - 4/27 marqués `# TODO: tag (no match)` : `maps_played_distinct`, `modes_played_distinct`, `FieldWavesCompleted`, `matches_played` (métriques identitaires/volume sans LUSR component direct)
+   - is_long_term=true pour les 9 templates monthly (window_type=rolling_days), false pour les 18 daily/weekly (window_type=session)
+
+6. **Test unitaire `TestLoadTemplatesFromTOML_TaggingFields`** : vérifie le parsing des 3 nouveaux champs depuis TOML inline (template avec tags + template sans tags → valeurs zero).
+
+**Validations** :
+
+- `go build ./...` : OK
+- `go test ./internal/prestige/...` : TestLoadTemplatesFromTOML_TaggingFields PASS + tous les autres tests passent
+- `go test -tags=integration ./internal/migration/... ./internal/platform/duckdb/...` : OK (migration appliquée, round-trip CSV → struct OK)
+
+**Conclusion / prochaine étape** : Le catalogue est tagué et le service PlayerProfile (commit 4) pourra requêter `WHERE lusr_components @> ?` (ou équivalent CSV split) pour suggérer des templates ciblant les composantes faibles du joueur. Commit 2 = ajout des 5 nouveaux templates + 2 nouveaux arcs preset (§6.1-6.2 du plan) pour fermer les gaps de couverture (Deaths vs Expected à 0%, Defensive Resistance à 0%).
+
+---
+
 ## [2026-05-18] feat(progression)(commit-10) — i18n manifests + ADR 0014 + fix icons (commit final V2)
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`). **Sprint V2 fini.**
