@@ -41,8 +41,9 @@ type PostImportResult struct {
 
 // PostImportError records a single non-fatal failure during the recompute.
 type PostImportError struct {
-	Stage string
-	Err   string
+	Stage   string
+	MatchID string // optional — set when the error scopes to a single match
+	Err     string
 }
 
 // PostImportOptions tunes recompute behaviour.
@@ -88,10 +89,41 @@ func (s *OpenSpartanPostImportService) Run(
 	playerDB := playerHandle.SQLDb()
 
 	var result PostImportResult
+	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
 	s.recomputePerfScores(playerDB, xuid, opts.ForcePerfScores, &result)
 	s.recomputeCitations(ctx, metadataDBPath, playerDB, xuid, matchIDs, &result)
 	return result, nil
+}
+
+// ensureEnrichmentRows primes player_match_enrichment with one placeholder
+// row per imported match_id. Required because the recompute stages (sessions,
+// performance_score) update those rows in place — without a prior INSERT
+// they would silently no-op.
+//
+// Idempotent via ON CONFLICT DO NOTHING — a no-op for matches already
+// enriched by a previous sync.
+func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
+	ctx context.Context, playerDB *sql.DB, matchIDs []string, result *PostImportResult,
+) {
+	if len(matchIDs) == 0 {
+		return
+	}
+	stmt, err := playerDB.PrepareContext(ctx,
+		`INSERT INTO player_match_enrichment (match_id) VALUES (?) ON CONFLICT (match_id) DO NOTHING`)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", Err: err.Error()})
+		s.log.Warn("post_import_prime_enrichment_prepare_failed", "err", err)
+		return
+	}
+	defer stmt.Close()
+	for _, id := range matchIDs {
+		if _, err := stmt.ExecContext(ctx, id); err != nil {
+			result.Errors = append(result.Errors, PostImportError{Stage: "prime_enrichment", MatchID: id, Err: err.Error()})
+			s.log.Warn("post_import_prime_enrichment_exec_failed", "match_id", id, "err", err)
+			return
+		}
+	}
 }
 
 // recomputeSessions runs sync.RecalculatePlayerSessions. The helper acquires
