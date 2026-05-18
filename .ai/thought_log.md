@@ -1,3 +1,45 @@
+## [2026-05-18] feat(progression)(commit-7) — endpoints HTTP /streaks /records /milestones
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Septième commit du plan V2. Expose les données de progression à l'UI via 3 endpoints HTTP read-only. Plan §8.1 prévoyait 3 fichiers handlers séparés, j'ai consolidé en un seul `ProgressionHandler` puisque la logique est homogène (chacun = repo Get + JSON).
+
+**Décisions / changements** :
+
+1. **1 handler unique `ProgressionHandler`** avec 3 méthodes (`ListStreaks`, `ListRecords`, `ListMilestones`) au lieu de 3 handlers séparés. Justification : tous ont la même shape (resolve player → repo call → JSON), un seul handler évite la duplication boilerplate + simplifie le mount.
+
+2. **3 endpoints** montés sous `/api/v1/players/{player_slug}/` (alignement convention notifications) :
+   - `GET /streaks` → `{ items: [streakDTO] }` avec `pp_multiplier` calculé côté serveur (économise du code front).
+   - `GET /records?history_limit=N` → `{ personal_bests: [pbDTO], history: [historyDTO] }`. Limit clamp 1-200, défaut 50.
+   - `GET /milestones` → `{ items: [milestoneDTO] }` — catalogue **joint** server-side avec earned (`earned: bool` + `earned_at?`). Le frontend n'a qu'à itérer pour afficher la grille.
+
+3. **Convention DTOs** : structs JSON dédiées (`streakDTO`, `personalBestDTO`, etc.) plutôt que sérialiser les structs métier directement. Avantage : champs UI-spécifiques (`pp_multiplier`), pas de fuite de détails internes (XUID dans Streak, etc.), JSON contract stable même si le métier évolue.
+
+4. **Mount dans server.go** : 4 lignes ajoutées juste après NotificationsHandler.Mount(r), réutilise la subroute `/players/{player_slug}` existante. `progressionResolve` wrappé en closure pour convertir `PlayerResolver` → `ProgressionResolver` (types nommés distincts en Go).
+
+5. **OpenAPI documentation** : ajout des 3 routes dans `api/openapi.yaml` (avec `history_limit` query param documenté). Le test `TestContractRoutesDocumented` enforce un plafond de 0 routes non documentées → obligatoire pour passer la CI.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- 5 nouveaux tests intégration handler (`TestListStreaks_*`, `TestListRecords_WithPBAndHistory`, `TestListMilestones_CatalogPlusEarned`, `TestProgressionHandler_PlayerNotFound_Returns404`) → 5/5 PASS (~4.5s cumulé)
+- Setup test minimal : 3 DBs (Player, SharedSocial, Metadata) — `Shared` omis car les handlers ne l'utilisent pas (contrairement au hook post-sync qui agrège via SQL JOIN sur shared.match_*).
+- Full integration suite OK : api (14.6s), api/handlers (11.7s), platform/duckdb (36.9s), migration (13.1s), notifications (4.3s).
+
+**Bug subtil corrigé** :
+
+- `TestContractRoutesDocumented` fail au build → 3 routes chi non documentées dans openapi.yaml. Fix : ajout du block `# Couche progression V2` après le block notifications. Le test enforce le plafond P8.8 (=0) en CI.
+
+**Conclusion / prochaine étape** : Backend V2 complet et exposé. Le frontend peut désormais :
+- Afficher le compteur de streak dans la nav (`GET /streaks`)
+- Afficher la grille de milestones (`GET /milestones`) avec earned/locked
+- Afficher la timeline records (`GET /records`)
+- Recevoir les alertes coach via le centre de notifs existant (déjà câblé en commit 6)
+
+Commit 8 = UI Streaks dashboard + StreakBadge dans la navbar. Commit 9 = Records timeline + Near-miss + Milestones grid. Commit 10 = i18n manifests pour les notif keys + ADR 0013.
+
+---
+
 ## [2026-05-18] feat(progression)(commit-6) — hook post-sync orchestrateur + profile service
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).
