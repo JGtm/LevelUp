@@ -16,6 +16,7 @@ import { ChallengeCard } from './components/ChallengeCard'
 import { CreateChallengeForm } from './components/CreateChallengeForm'
 import { ArcSummary } from './components/ArcSummary'
 import { MomentCard } from './components/MomentCard'
+import { PlayerProfileCard } from './components/PlayerProfileCard'
 import { StatsGlobales } from './components/StatsGlobales'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from './fallback.i18n'
 import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
@@ -287,6 +288,11 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
 
   return (
     <div className="space-y-6">
+      {/* V1 PlayerProfile Ascension §5.2 — en tête de l'onglet parcours,
+          avant StatsGlobales et PrestigeBadge. CampaignTracker (commit 7)
+          se placera au-dessus quand une campagne sera active. */}
+      <PlayerProfileCard playerSlug={userId} />
+
       <PrestigeBadge prestige={prestige} />
 
       {/* P6.5 : composant StatsGlobales branché. */}
