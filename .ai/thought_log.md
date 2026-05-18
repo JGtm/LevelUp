@@ -1,3 +1,39 @@
+## [2026-05-18] feat(xbox-sso) — PR 1 : userstore Xbox + cohabitation D3 (password=admin only en mode xbox)
+
+**Statut** : Complété (branche `feat/xbox-sso` créée depuis `feat/notif-extension`).
+
+**Contexte** : Démarrage de l'implémentation du sprint SSO Xbox. Audit préalable a révélé que **PR 0 (UI premier lancement admin) est déjà implémentée** sous l'URL `/register` + `POST /auth/register` (le handler vérifie `IsEmpty()` et promeut automatiquement le premier user en admin, [user_auth.go:107-111](apps/go-api/internal/api/handlers/user_auth.go#L107)). Le frontend [`__root.tsx:54`](apps/web/src/routes/__root.tsx#L54) redirige déjà vers `/register` quand `data.first_launch=true`. Décision : skip PR 0, marquer caduque dans le plan, attaquer directement PR 1 en étendant la logique D3.
+
+**Décisions / changements** :
+
+1. **3 nouvelles méthodes dans `userstore.Store`** :
+   - `GetByXUID(xuid)` : scan linéaire (O(n) acceptable pour < 100 users). Retourne `ErrUserNotFound` si pas trouvé.
+   - `CreateFromXbox(gamertag, xuid)` : crée un user sans password, slug dérivé via nouvelle `slugifyGamertag()` (lowercase + retire tout sauf `[a-z0-9_-]`, tolère espaces/accents/symboles dans les gamertags Xbox). En cas de collision avec un user existant, tente le suffixe `_xbox`. `Username` = slug normalisé, `Gamertag` = original (pour affichage). `Role=user` par défaut — la promotion admin passe par `/auth/register` first_launch ou la future PR Settings.
+   - `AuthenticateByXUID(xuid)` : get + touch `LastLoginAt`. Utilisé par le futur handler SSO Xbox (PR 2) après validation du flow.
+
+2. **Cohabitation D3** dans [user_auth.go](apps/go-api/internal/api/handlers/user_auth.go) :
+   - `UserAuthHandler` reçoit un champ `authMode` via `WithAuthMode(cfg.AuthMode)` (pattern fluent, cohérent avec `WithUserStore` etc.).
+   - `Login` : si `authMode == "xbox"` && `user.Role != admin` → 403 `password_login_admin_only`. Les admins peuvent toujours se logger par password (fallback SSO down).
+   - `Register` : si `authMode == "xbox"` && `!users.IsEmpty()` → 403 `register_xbox_mode`. Le bootstrap admin initial reste possible (premier user = admin auto).
+   - Injection au boot : [server.go:418-419](apps/go-api/internal/api/server.go#L418) appelle `.WithAuthMode(cfg.AuthMode)`.
+
+3. **`slugifyGamertag` séparée de `slugify`** : choix de ne PAS modifier le `slugify` existant pour rester chirurgical et éviter toute régression sur les tests/comportements actuels. `slugifyGamertag` est exclusive à `CreateFromXbox`.
+
+**Tests ajoutés** :
+
+- `store_test.go` (9 nouveaux) : `TestGetByXUID_FoundAndMissing`, `TestCreateFromXbox_Basic`, `_SlugifyGamertag` (gamertag avec espace → slug compact), `_CollisionFallback` (fallback `_xbox`), `_DoubleCollisionFails` (slot et fallback occupés → `ErrUserAlreadyExists`), `_RequiresXUID`, `_InvalidGamertag` (gamertag entièrement non-alphanum), `TestAuthenticateByXUID_TouchesLastLogin`, `_UnknownXUID`.
+- `user_auth_test.go` (nouveau fichier, 6 tests) : `TestUserAuth_XboxMode_LoginAdminAllowed`, `_LoginNonAdminBlocked` (403 + code `password_login_admin_only`), `_PasswordMode_LoginUserAllowed` (non-régression), `_XboxMode_RegisterBootstrapAllowed` (premier user en mode xbox → 201 admin), `_RegisterNonBootstrapBlocked` (users.json non vide → 403 `register_xbox_mode`), `_PasswordMode_RegisterFlow` (non-régression sur le flow open).
+
+**Résultats observés** :
+
+- `go test ./internal/platform/userstore/...` : 9/9 nouveaux tests PASS, suite totale OK.
+- `go test ./internal/api/handlers/...` : 6/6 nouveaux tests PASS, suite totale OK.
+- `go build ./...` : OK, pas de régression compile.
+
+**Conclusion / prochaine étape** : PR 1 livrable. SPRINT_XBOX_SSO.md mis à jour pour refléter PR 0 caduque. Prochaine PR : **PR 2 — handler login Xbox + LinkStrategy pattern** (créer `XboxSSOLinkStrategy` dans `internal/service/xbox_auth_service.go`, refactor `pollDeviceFlow` pour injecter le strategy au lieu de hardcoder `LinkIdentity`). Pré-flight avant PR 2 : vérifier `pool.Invalidate(slug)` existe ([§8 piège 10](.ai/SPRINT_XBOX_SSO.md)).
+
+---
+
 ## [2026-05-18] feat(coaching) — manifest TOML tips & tricks par axe d'amélioration
 
 **Statut** : Complété.

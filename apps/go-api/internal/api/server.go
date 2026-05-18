@@ -415,7 +415,9 @@ func NewRouter(
 		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
 
 		// Auth locale : login/register/logout (mode password).
-		userAuthHandler := handlers.NewUserAuthHandler(users, invites, sessionStore, cfg.RegistrationMode)
+		// D3 cohabitation : en mode "xbox", login réservé aux admins, register au bootstrap.
+		userAuthHandler := handlers.NewUserAuthHandler(users, invites, sessionStore, cfg.RegistrationMode).
+			WithAuthMode(cfg.AuthMode)
 		r.Post("/auth/login", userAuthHandler.Login)
 		r.Post("/auth/register", userAuthHandler.Register)
 		r.Post("/auth/logout", userAuthHandler.Logout)

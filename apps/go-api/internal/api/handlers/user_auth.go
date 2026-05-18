@@ -23,6 +23,7 @@ type UserAuthHandler struct {
 	invites      *userstore.InviteStore
 	sessionStore *session.Store
 	regMode      string // "invite" | "open" | "closed"
+	authMode     string // "none" | "password" | "xbox" — D3 cohabitation
 }
 
 // NewUserAuthHandler crée un UserAuthHandler.
@@ -38,6 +39,14 @@ func NewUserAuthHandler(
 		sessionStore: sessionStore,
 		regMode:      regMode,
 	}
+}
+
+// WithAuthMode injecte le mode d'authentification (D3 cohabitation password ↔ xbox).
+// En mode "xbox" : Login password réservé aux admins ; Register password réservé
+// au bootstrap du premier admin (users.json vide).
+func (h *UserAuthHandler) WithAuthMode(authMode string) *UserAuthHandler {
+	h.authMode = authMode
+	return h
 }
 
 // Login authentifie un utilisateur par username/password.
@@ -58,6 +67,16 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		}
 		slog.Error("auth: erreur authenticate", "username", req.Username, "err", err)
 		writeError(w, http.StatusInternalServerError, "auth_error", "erreur d'authentification")
+		return
+	}
+
+	// D3 cohabitation : en mode "xbox", le login password est réservé aux admins
+	// (fallback si SSO down). Les users normaux passent obligatoirement par le SSO Xbox.
+	if h.authMode == "xbox" && user.Role != domain.RoleAdmin {
+		slog.Warn("auth: login password non-admin bloqué en mode xbox",
+			"username", user.Username, "role", user.Role)
+		writeError(w, http.StatusForbidden, "password_login_admin_only",
+			"mode SSO Xbox actif : login password réservé aux admins")
 		return
 	}
 
@@ -110,6 +129,14 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		role = domain.RoleAdmin
 		slog.Info("auth: premier utilisateur, rôle admin automatique", "username", req.Username)
 	} else {
+		// D3 cohabitation : en mode "xbox", register password réservé au bootstrap admin
+		// initial (users.json vide). Hors bootstrap, les comptes sont créés via le flow SSO.
+		if h.authMode == "xbox" {
+			slog.Warn("auth: register password bloqué en mode xbox", "username", req.Username)
+			writeError(w, http.StatusForbidden, "register_xbox_mode",
+				"mode SSO Xbox actif : les nouveaux comptes sont créés via la connexion Xbox")
+			return
+		}
 		// Vérifier le mode d'inscription.
 		if h.regMode == "closed" {
 			writeError(w, http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")

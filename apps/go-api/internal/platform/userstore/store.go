@@ -339,6 +339,99 @@ func (s *Store) Delete(username string) error {
 	return s.save(f)
 }
 
+// GetByXUID retourne l'utilisateur dont le XUID matche.
+// Retourne ErrUserNotFound si aucun utilisateur n'a ce XUID.
+// Scan linéaire — acceptable pour un user store en JSON (typiquement < 100 users).
+func (s *Store) GetByXUID(xuid string) (*domain.User, error) {
+	if xuid == "" {
+		return nil, ErrUserNotFound
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	f, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	for _, u := range f.Users {
+		if u.XUID == xuid {
+			return &u, nil
+		}
+	}
+	return nil, ErrUserNotFound
+}
+
+// CreateFromXbox crée un utilisateur sans mot de passe, à partir d'une identité Xbox validée par SSO.
+// Le slug stocké est dérivé du gamertag via slugifyGamertag (tolère espaces/symboles).
+// En cas de collision avec un user existant, essaie le suffixe "_xbox" ; échec si encore collision.
+// L'user.Username stocké = slug normalisé ; user.Gamertag = gamertag original (pour affichage).
+func (s *Store) CreateFromXbox(gamertag, xuid string) (*domain.User, error) {
+	slug := slugifyGamertag(gamertag)
+	if len(slug) < minUsernameLen || len(slug) > maxUsernameLen {
+		return nil, ErrInvalidUsername
+	}
+	if xuid == "" {
+		return nil, fmt.Errorf("xuid requis pour CreateFromXbox")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	f, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+
+	candidate := slug
+	if _, exists := f.Users[candidate]; exists {
+		candidate = slug + "_xbox"
+		if _, exists := f.Users[candidate]; exists {
+			return nil, ErrUserAlreadyExists
+		}
+	}
+
+	user := domain.User{
+		Username:  candidate,
+		Role:      domain.RoleUser,
+		Gamertag:  gamertag,
+		XUID:      xuid,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	f.Users[candidate] = user
+
+	if err := s.save(f); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// AuthenticateByXUID retourne l'utilisateur dont le XUID matche et touche son LastLoginAt.
+// Utilisé par le flow SSO Xbox après validation de l'identité par le provider.
+// Retourne ErrUserNotFound si aucun user n'a ce XUID.
+func (s *Store) AuthenticateByXUID(xuid string) (*domain.User, error) {
+	if xuid == "" {
+		return nil, ErrUserNotFound
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	f, err := s.load()
+	if err != nil {
+		return nil, err
+	}
+	for slug, u := range f.Users {
+		if u.XUID == xuid {
+			u.LastLoginAt = time.Now().UTC().Format(time.RFC3339)
+			f.Users[slug] = u
+			if err := s.save(f); err != nil {
+				return nil, err
+			}
+			return &u, nil
+		}
+	}
+	return nil, ErrUserNotFound
+}
+
 // validateUsername vérifie les contraintes sur le nom d'utilisateur.
 func validateUsername(username string) error {
 	username = strings.TrimSpace(username)
@@ -349,6 +442,19 @@ func validateUsername(username string) error {
 		return ErrInvalidUsername
 	}
 	return nil
+}
+
+// slugifyGamertag normalise un gamertag Xbox en slug stockable.
+// Lowercase, conserve [a-z0-9_-], supprime tout le reste (espaces, accents, symboles).
+// Plus tolérant que slugify() pour accommoder les gamertags Xbox.
+func slugifyGamertag(gamertag string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(strings.TrimSpace(gamertag)) {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // randomHex génère n octets aléatoires encodés en hexadécimal.
