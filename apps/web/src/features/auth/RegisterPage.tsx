@@ -14,6 +14,7 @@ import type { ApiError } from '@/lib/api/client'
 export function RegisterPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const authMode = useAppShellStore((s) => s.authMode)
   const registrationMode = useAppShellStore((s) => s.registrationMode)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
 
@@ -24,6 +25,14 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null)
 
   const register = useRegister()
+
+  // D3 cohabitation : en mode xbox, register password est réservé au bootstrap
+  // admin initial (firstLaunch=true). Hors bootstrap, on redirige vers /login
+  // pour que l'user utilise le flow SSO Xbox.
+  if (authMode === 'xbox' && !firstLaunch) {
+    navigate({ to: '/login' })
+    return null
+  }
 
   const needsInvite = !firstLaunch && registrationMode === 'invite'
 

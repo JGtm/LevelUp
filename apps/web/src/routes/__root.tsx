@@ -48,8 +48,10 @@ function RootLayout() {
     if (!data) return
     hydrateFromBootstrap(data)
 
-    // Auth locale : rediriger si pas connecté
-    if (data.auth_mode === 'password') {
+    // Auth locale : rediriger si pas connecté (modes password ET xbox).
+    // En mode xbox, /register reste accessible UNIQUEMENT pour le bootstrap admin
+    // initial (firstLaunch=true) — RegisterPage redirige vers /login sinon.
+    if (data.auth_mode === 'password' || data.auth_mode === 'xbox') {
       const path = window.location.pathname
       if (data.first_launch && path !== '/register') {
         navigate({ to: '/register' })
@@ -102,13 +104,13 @@ function RootLayout() {
     return <Outlet />
   }
 
-  // Auth locale non connectée → pages login/register sans shell
-  if (authMode === 'password' && !currentUsername) {
+  // Auth locale non connectée → pages login/register sans shell (password ET xbox)
+  if ((authMode === 'password' || authMode === 'xbox') && !currentUsername) {
     return <Outlet />
   }
 
   // Premier lancement → page register sans shell
-  if (authMode === 'password' && firstLaunch) {
+  if ((authMode === 'password' || authMode === 'xbox') && firstLaunch) {
     return <Outlet />
   }
 

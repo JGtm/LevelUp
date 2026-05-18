@@ -2,7 +2,8 @@
  * LoginPage — authentification par username/password.
  *
  * En mode auth_mode=password : formulaire classique.
- * En mode auth_mode=none : redirige vers / (pas de login requis).
+ * En mode auth_mode=xbox    : délègue à XboxLoginPage (Device Code Flow + toggle admin).
+ * En mode auth_mode=none    : redirige vers / (pas de login requis).
  */
 import { useState, type FormEvent } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
@@ -11,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useLogin } from '@/features/auth/queries'
+import { XboxLoginPage } from '@/features/auth/XboxLoginPage'
 import { queryKeys } from '@/lib/query/keys'
 import type { ApiError } from '@/lib/api/client'
 
@@ -31,6 +33,11 @@ export function LoginPage() {
   if (authMode === 'none') {
     navigate({ to: '/' })
     return null
+  }
+
+  // En mode xbox, déléguer au composant SSO (toggle admin password intégré).
+  if (authMode === 'xbox') {
+    return <XboxLoginPage />
   }
 
   function handleSubmit(e: FormEvent) {
