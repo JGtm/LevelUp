@@ -625,6 +625,87 @@ mythic_target = 2.0
 	}
 }
 
+// TestLoadTemplatesFromTOML_TaggingFields (V1 PlayerProfile §5.1) : vérifie
+// que les nouveaux champs lusr_components, radar_axes, is_long_term sont
+// correctement parsés depuis le TOML et propagés dans le Template.
+func TestLoadTemplatesFromTOML_TaggingFields(t *testing.T) {
+	body := `
+[meta]
+schema_version = 1
+title_slug = "halo_infinite"
+
+[[templates]]
+id = "t_kda_rolling"
+metric = "FieldKDA"
+window_type = "rolling_days"
+window_value = "7"
+cadence = "weekly"
+eval_type = "threshold"
+mode_filter = "pvp"
+label_en = "KDA consistency"
+label_fr = "Régularité KDA"
+description_en = "Maintain a strong KDA over 7 days"
+description_fr = "Maintiens un bon KDA sur 7 jours"
+normal_target = 1.1
+heroic_target = 1.4
+legendary_target = 1.7
+mythic_target = 2.2
+lusr_components = ["kills_vs_expected", "deaths_vs_expected"]
+radar_axes = ["combat", "survival"]
+is_long_term = true
+
+[[templates]]
+id = "t_session_no_tags"
+metric = "FieldKills"
+window_type = "session"
+window_value = "1"
+cadence = "daily"
+eval_type = "threshold"
+mode_filter = "universal"
+label_en = "Quick kills"
+label_fr = "Tueries rapides"
+description_en = "Get kills in a single session"
+description_fr = "Élimine en une session"
+normal_target = 5.0
+heroic_target = 10.0
+legendary_target = 15.0
+mythic_target = 20.0
+`
+	path := writeTempTOML(t, "templates.toml", body)
+	repo := &captureTemplateRepo{}
+	count, err := LoadTemplatesFromTOML(context.Background(), repo, path)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected 2 templates, got %d", count)
+	}
+
+	// 1er template : tags présents.
+	tag := repo.templates[0]
+	if len(tag.LUSRComponents) != 2 || tag.LUSRComponents[0] != "kills_vs_expected" || tag.LUSRComponents[1] != "deaths_vs_expected" {
+		t.Errorf("LUSRComponents = %v, want [kills_vs_expected deaths_vs_expected]", tag.LUSRComponents)
+	}
+	if len(tag.RadarAxes) != 2 || tag.RadarAxes[0] != "combat" || tag.RadarAxes[1] != "survival" {
+		t.Errorf("RadarAxes = %v, want [combat survival]", tag.RadarAxes)
+	}
+	if !tag.IsLongTerm {
+		t.Errorf("IsLongTerm = false, want true")
+	}
+
+	// 2e template : pas de tags → valeurs zero.
+	noTag := repo.templates[1]
+	if len(noTag.LUSRComponents) != 0 {
+		t.Errorf("LUSRComponents = %v, want empty", noTag.LUSRComponents)
+	}
+	if len(noTag.RadarAxes) != 0 {
+		t.Errorf("RadarAxes = %v, want empty", noTag.RadarAxes)
+	}
+	if noTag.IsLongTerm {
+		t.Errorf("IsLongTerm = true, want false (default)")
+	}
+}
+
 func TestLoadTemplatesFromTOML_ModeFilterDefaultsUniversal(t *testing.T) {
 	body := `
 [meta]

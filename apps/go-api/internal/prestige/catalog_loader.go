@@ -32,21 +32,25 @@ type catalogMeta struct {
 }
 
 type templateEntryTOML struct {
-	ID              string  `toml:"id"`
-	Metric          string  `toml:"metric"`
-	WindowType      string  `toml:"window_type"`
-	WindowValue     string  `toml:"window_value"`
-	Cadence         string  `toml:"cadence"`
-	EvalType        string  `toml:"eval_type"`
-	ModeFilter      string  `toml:"mode_filter"`
-	LabelEN         string  `toml:"label_en"`
-	LabelFR         string  `toml:"label_fr"`
-	DescriptionEN   string  `toml:"description_en"`
-	DescriptionFR   string  `toml:"description_fr"`
-	NormalTarget    float64 `toml:"normal_target"`
-	HeroicTarget    float64 `toml:"heroic_target"`
-	LegendaryTarget float64 `toml:"legendary_target"`
-	MythicTarget    float64 `toml:"mythic_target"`
+	ID              string   `toml:"id"`
+	Metric          string   `toml:"metric"`
+	WindowType      string   `toml:"window_type"`
+	WindowValue     string   `toml:"window_value"`
+	Cadence         string   `toml:"cadence"`
+	EvalType        string   `toml:"eval_type"`
+	ModeFilter      string   `toml:"mode_filter"`
+	LabelEN         string   `toml:"label_en"`
+	LabelFR         string   `toml:"label_fr"`
+	DescriptionEN   string   `toml:"description_en"`
+	DescriptionFR   string   `toml:"description_fr"`
+	NormalTarget    float64  `toml:"normal_target"`
+	HeroicTarget    float64  `toml:"heroic_target"`
+	LegendaryTarget float64  `toml:"legendary_target"`
+	MythicTarget    float64  `toml:"mythic_target"`
+	// Tagging V1 PlayerProfile (cf. plan §5.1).
+	LUSRComponents  []string `toml:"lusr_components"`
+	RadarAxes       []string `toml:"radar_axes"`
+	IsLongTerm      bool     `toml:"is_long_term"`
 }
 
 // presetsTOML est la projection brute de presets.toml.
@@ -110,6 +114,9 @@ func LoadTemplatesFromTOML(ctx context.Context, repo TemplateRepo, path string) 
 			HeroicTarget:    t.HeroicTarget,
 			LegendaryTarget: t.LegendaryTarget,
 			MythicTarget:    t.MythicTarget,
+			LUSRComponents:  t.LUSRComponents,
+			RadarAxes:       t.RadarAxes,
+			IsLongTerm:      t.IsLongTerm,
 			SchemaVersion:   doc.Meta.SchemaVersion,
 			UpdatedAt:       now,
 		})
