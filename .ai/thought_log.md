@@ -1,3 +1,40 @@
+## [2026-05-18] feat(progression)(commit-1) — types Go + migrations DuckDB (V2 Ascension)
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Premier commit d'implémentation du plan PROGRESSION_TRACKING V2 après alignement (cf. entrée précédente). Périmètre : 4 packages de types Go + 3 migrations DuckDB.
+
+**Décisions / changements** :
+
+1. **4 packages Go créés** sous `apps/go-api/internal/progression/` :
+   - `streaks/types.go` : `Streak`, `StreakType` (4 valeurs), `StreakStatus`, `PPMultiplier(length) → float64` (table 1.00/1.10/1.25/1.50/1.75 par palier).
+   - `records/types.go` : `PersonalRecord`, `RecordHistory`, `RecordPeriod` (30d/90d/all_time), constantes `MinMatchesForRecord=10`, `NearMissRatio=0.05`.
+   - `milestones/types.go` : `CatalogEntry` (référentiel), `Earned` (par joueur), `NearMissRatio=0.10`.
+   - `coach/types.go` : `AlertType` (10 valeurs), constantes `DedupWindow=24h`, `MaxConcurrentUnread=3`, `AutoDismissAfter=7j`, `ComebackPauseThreshold=5j`, `LUSRTierApproachDelta=10pts`, `LOWESSObservationWindow=14j`. **Pas de struct CoachAlert** — la persistance passe par le package `notifications` (cf. §2bis du plan).
+
+2. **3 migrations DuckDB enregistrées** :
+   - `create_progression_player_schema` (TargetPlayer) : `streak`, `record_history`, `milestone_earned` dans stats.duckdb, avec index secondaires sur user/title/type/status/metric.
+   - `extend_player_records_with_window` (TargetSharedSocial) : étend `player_records` avec `period` + `previous_value` + `previous_achieved_at`, PK migrée vers `(xuid, metric, period)`. Implémentation en 4 temps (create v2 / INSERT all_time / DROP / RENAME) car DuckDB ne supporte pas ALTER PK in-place. Idempotent via `columnExists("player_records", "period")`.
+   - `create_milestone_catalog_metadata` (TargetMetadata) : table `milestone_catalog` cross-titres, index sur title_slug et metric.
+
+3. **Renommage `window` → `period`** (relevé pendant les tests) :
+   - DuckDB refuse `window` comme nom de colonne (mot réservé pour les window functions `OVER (...)`).
+   - Renommage cohérent : colonne SQL `period`, type Go `RecordPeriod`, constantes `RecordPeriod30d`/`RecordPeriod90d`/`RecordPeriodAllTime`, fichier migration shared_social conserve « window » dans son nom (référence sémantique) mais commentaire explicite sur le rename.
+   - Plan §2bis mis à jour pour documenter le rename.
+
+4. **Bug subtil détecté pendant l'implémentation** : backticks `` ` `` dans un commentaire SQL à l'intérieur d'une raw string Go ferment prématurément la string. Le test build a failed avec « syntax error: unexpected name period in argument list » alors que le code SQL était correct. Fix : utiliser des guillemets simples `'` dans les commentaires SQL embarqués.
+
+**Tests passés** :
+
+- `go build ./...` : OK (full repo)
+- `go test -tags=integration ./internal/migration/...` : OK 4.6s (suite focalisée), puis OK 69s en suite complète
+- `go test -tags=integration ./internal/platform/duckdb/...` : OK 158s (vérifie qu'on n'a pas régressé `player_records` côté repo)
+- `go test ./internal/notifications/...` : OK 3.2s
+
+**Conclusion / prochaine étape** : fondations posées (types + tables). Commit 2 = streaks evaluator + shields + multiplicateur PP — premier morceau de logique métier (incrémentation daily/weekly, shield consumption, break/active transitions). Devra brancher sur `PlayerProfile` (V1) pour les seuils personnels (médiane 100 derniers matchs).
+
+---
+
 ## [2026-05-18] chore(plan-ascension) — audit pré-implémentation + alignement V2 avec l'existant
 
 **Statut** : Complété (worktree `feat/progression-tracking-ascension` créé depuis HEAD de `feat/xbox-sso`).
