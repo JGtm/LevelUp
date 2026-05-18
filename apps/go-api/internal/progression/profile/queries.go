@@ -40,15 +40,38 @@ func (s *Service) countMatchesInWindow(ctx context.Context, userID string, since
 }
 
 // computeRadarAxes calcule les 6 axes radar narrative en agrégeant les stats
-// du joueur sur la fenêtre. Mapping heuristique V1 (sans personal_score_awards) :
+// du joueur sur la fenêtre.
 //
-//   - combat   = kills moyens par match
-//   - survival = max(0, kills - deaths) moyen par match
-//   - support  = assists moyens
-//   - score    = personal_score moyen / 100 (échelle ~point)
-//   - objective= 0 en V1 (nécessite mapping award→axis title-specific)
-//   - impact   = max_killing_spree moyen
+// Deux sources de signal :
+//   - match_participants : agrégats Halo (kills/deaths/assists/score/spree)
+//     → fournit les axes combat / survival / support / score / impact.
+//   - personal_score_awards : awards spécifiques (flag_captured, zone_secured,
+//     destroyed_*, etc.) → fournit l'axe objective + enrichit support/impact
+//     via le mapping awards.toml (V2 §2).
+//
+// Sans AwardMappingSet injecté, l'axe Objective reste à 0 (fallback V1).
+// Avec mapping, l'axe Objective devient un signal réel et les axes
+// support/impact gagnent en granularité.
 func (s *Service) computeRadarAxes(ctx context.Context, userID string, since, until time.Time) (map[narrative.ParticipationAxis]float64, error) {
+	out, matchCount, err := s.computeRadarAxesBase(ctx, userID, since, until)
+	if err != nil {
+		return nil, err
+	}
+	if matchCount == 0 {
+		return nil, nil
+	}
+	// Enrichissement awards : objective + boosts ciblés sur support/impact.
+	if s.awards != nil {
+		s.applyAwardsRadarAxes(ctx, userID, since, until, matchCount, out)
+	}
+	return out, nil
+}
+
+// computeRadarAxesBase calcule les axes via match_participants (heuristique
+// V1 conservée). Retourne aussi le matchCount pour normaliser les awards.
+func (s *Service) computeRadarAxesBase(
+	ctx context.Context, userID string, since, until time.Time,
+) (map[narrative.ParticipationAxis]float64, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
 	var (
@@ -73,12 +96,12 @@ func (s *Service) computeRadarAxes(ctx context.Context, userID string, since, un
 		  AND mr.start_time >= ? AND mr.start_time <= ?
 	`, userID, since, until).Scan(&avgKills, &avgDeaths, &avgAssists, &avgScore, &avgKillingSpree, &matchCount)
 	if err != nil {
-		return nil, fmt.Errorf("computeRadarAxes: %w", err)
-	}
-	if matchCount == 0 {
-		return nil, nil
+		return nil, 0, fmt.Errorf("computeRadarAxesBase: %w", err)
 	}
 	out := map[narrative.ParticipationAxis]float64{}
+	if matchCount == 0 {
+		return out, 0, nil
+	}
 	if avgKills.Valid {
 		out[narrative.AxisCombat] = avgKills.Float64
 	}
@@ -93,15 +116,54 @@ func (s *Service) computeRadarAxes(ctx context.Context, userID string, since, un
 		out[narrative.AxisSupport] = avgAssists.Float64
 	}
 	if avgScore.Valid {
-		// Score brut est ~quelques centaines : on l'échelonne à l'unité du
-		// seuil "score" custom (150).
 		out[narrative.AxisScore] = avgScore.Float64
 	}
 	if avgKillingSpree.Valid {
-		out[narrative.AxisImpact] = avgKillingSpree.Float64 * 10 // amplification pour rester comparable
+		out[narrative.AxisImpact] = avgKillingSpree.Float64 * 10
 	}
-	// objective laissé absent en V1 : nécessite mapping award→axis.
-	return out, nil
+	return out, matchCount, nil
+}
+
+// applyAwardsRadarAxes lit personal_score_awards dans la fenêtre, somme par
+// award_name, applique le mapping (axes + weight) et accumule par axe en
+// moyenne par match. Mutates out in place.
+func (s *Service) applyAwardsRadarAxes(
+	ctx context.Context, userID string, since, until time.Time,
+	matchCount int, out map[narrative.ParticipationAxis]float64,
+) {
+	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
+	defer cancel()
+	rows, err := s.db.Query(ctx, `
+		SELECT psa.award_name, SUM(psa.award_count)
+		FROM personal_score_awards psa
+		JOIN shared.match_registry mr ON mr.match_id = psa.match_id
+		WHERE psa.xuid = ?
+		  AND mr.start_time >= ? AND mr.start_time <= ?
+		GROUP BY psa.award_name
+	`, userID, since, until)
+	if err != nil {
+		// Table absente / shared non attaché → on garde la base V1 sans erreur.
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		var total sql.NullInt64
+		if err := rows.Scan(&name, &total); err != nil {
+			return
+		}
+		if !total.Valid || total.Int64 <= 0 {
+			continue
+		}
+		mapping, ok := s.awards.Get(name)
+		if !ok {
+			continue
+		}
+		contribution := float64(total.Int64) * mapping.Weight / float64(matchCount)
+		for _, axis := range mapping.Axes {
+			out[narrative.ParticipationAxis(axis)] += contribution
+		}
+	}
 }
 
 // computeFKFD compte les First Kill / First Death du joueur sur la fenêtre.

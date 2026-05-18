@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/prestige"
 	syncpkg "levelup/go-api/internal/sync"
@@ -32,6 +33,7 @@ type Service struct {
 	db        *duckdb.DB
 	pdb       *duckdb.PlayerDB
 	templates *prestige.TemplateRepo // optionnel — initialisé via Metadata
+	awards    *mappings.AwardMappingSet // optionnel — Section A1 radar fidèle (V2 §2)
 }
 
 // NewService construit un Service minimal pour V2 (Load uniquement).
@@ -47,6 +49,14 @@ func NewServiceFromPlayerDB(pdb *duckdb.PlayerDB) *Service {
 		return &Service{}
 	}
 	s := &Service{db: pdb.Player, pdb: pdb}
+	return s
+}
+
+// WithAwardMapping injecte un AwardMappingSet pour la Section A1 radar (V2 §2).
+// Sans mapping, computeRadarAxes retombe sur l'heuristique V1
+// (match_participants agrégats — Objective renvoie 0).
+func (s *Service) WithAwardMapping(set *mappings.AwardMappingSet) *Service {
+	s.awards = set
 	return s
 }
 

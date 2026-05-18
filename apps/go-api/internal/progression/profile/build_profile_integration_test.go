@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -220,6 +221,75 @@ func TestBuildProfile_LUSRComponentsPopulated(t *testing.T) {
 	if !hasData {
 		t.Errorf("aucun current_avg/top20 > 0 dans LUSRComponents")
 	}
+}
+
+// TestBuildProfile_AwardsMappingEnrichesObjective vérifie que l'injection
+// d'un AwardMappingSet (V2 §2) remplit l'axe Objective via les
+// personal_score_awards alors que sans mapping il reste à 0.
+func TestBuildProfile_AwardsMappingEnrichesObjective(t *testing.T) {
+	pdb := setupProfileEnv(t)
+	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
+	seedMatchesForProfile(t, pdb, now, MinMatchesForProfile+5)
+
+	// Seed personal_score_awards : 3 flag_captured + 2 zone_secured.
+	ctx := context.Background()
+	for i := 0; i < 5; i++ {
+		matchID := zeropadProfile(i, 4)
+		_, err := pdb.Player.Exec(ctx, `
+			INSERT INTO personal_score_awards (match_id, xuid, award_name, award_category, award_count, award_score)
+			VALUES (?, ?, 'flag_captured', 'objective', 1, 200)
+		`, matchID, testXUID)
+		if err != nil {
+			t.Fatalf("insert award: %v", err)
+		}
+	}
+	for i := 5; i < 7; i++ {
+		matchID := zeropadProfile(i, 4)
+		_, err := pdb.Player.Exec(ctx, `
+			INSERT INTO personal_score_awards (match_id, xuid, award_name, award_category, award_count, award_score)
+			VALUES (?, ?, 'zone_secured', 'objective', 1, 100)
+		`, matchID, testXUID)
+		if err != nil {
+			t.Fatalf("insert award: %v", err)
+		}
+	}
+
+	// Construire un mapping minimal in-memory.
+	awardSet := mappings.NewAwardMappingSet("halo_infinite", 1, map[string]mappings.AwardMapping{
+		"flag_captured": {AwardName: "flag_captured", Axes: []string{"objective"}, Weight: 5.0},
+		"zone_secured":  {AwardName: "zone_secured", Axes: []string{"objective"}, Weight: 2.0},
+	})
+
+	// Sans mapping : Objective = 0.
+	svcNoMap := NewServiceFromPlayerDB(pdb)
+	prof, err := svcNoMap.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	if err != nil {
+		t.Fatalf("BuildProfile no mapping: %v", err)
+	}
+	objNoMap := axisValue(prof, "objective")
+	if objNoMap != 0 {
+		t.Errorf("sans mapping: objective=%.2f, want 0", objNoMap)
+	}
+
+	// Avec mapping : Objective > 0.
+	svcWithMap := NewServiceFromPlayerDB(pdb).WithAwardMapping(awardSet)
+	prof, err = svcWithMap.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	if err != nil {
+		t.Fatalf("BuildProfile with mapping: %v", err)
+	}
+	objWithMap := axisValue(prof, "objective")
+	if objWithMap <= 0 {
+		t.Errorf("avec mapping: objective=%.2f, want > 0", objWithMap)
+	}
+}
+
+func axisValue(prof *PlayerProfile, axis string) float64 {
+	for _, a := range prof.RadarAxes {
+		if a.Axis == axis {
+			return a.Value
+		}
+	}
+	return 0
 }
 
 // TestLoad_V2Compat vérifie que Load() reste compatible avec le caller V2

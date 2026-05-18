@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/profile"
 )
@@ -27,6 +28,9 @@ const ProfileWindowDays = 30
 type PlayerProfileHandler struct {
 	resolve   ProgressionResolver
 	titleSlug string
+	// V2 §2 : mapping awards → axes (optionnel, enrichit la Section A1 radar).
+	// Sans mapping, Objective reste à 0 (fallback V1).
+	awards *mappings.AwardMappingSet
 }
 
 // NewPlayerProfileHandler construit le handler.
@@ -35,6 +39,12 @@ func NewPlayerProfileHandler(resolve ProgressionResolver, titleSlug string) *Pla
 		titleSlug = "halo_infinite"
 	}
 	return &PlayerProfileHandler{resolve: resolve, titleSlug: titleSlug}
+}
+
+// WithAwardMapping injecte le mapping awards → axes (V2 §2). Chainable.
+func (h *PlayerProfileHandler) WithAwardMapping(set *mappings.AwardMappingSet) *PlayerProfileHandler {
+	h.awards = set
+	return h
 }
 
 // Mount enregistre /profile sur un router chi sous-monté.
@@ -63,6 +73,9 @@ func (h *PlayerProfileHandler) GetProfile(w http.ResponseWriter, r *http.Request
 	}
 
 	svc := profile.NewServiceFromPlayerDB(pdb)
+	if h.awards != nil {
+		svc = svc.WithAwardMapping(h.awards)
+	}
 	prof, err := svc.BuildProfile(r.Context(), pdb.XUID, h.titleSlug, window, time.Now().UTC())
 	if err != nil {
 		slog.WarnContext(r.Context(), "profile: build", "err", err)
