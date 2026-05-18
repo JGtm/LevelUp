@@ -1,3 +1,51 @@
+## [2026-05-18] docs(player-profile-v1) — ADR 0015 + pause sprint partiel
+
+**Statut** : Sprint V1 partiellement livré (3/10 commits + ADR). Branche
+`feat/player-profile-ascension` prête à reprendre.
+
+**Contexte** : Le sprint V1 PlayerProfile (10 commits prévus, ~6-8j de dev cumulé) a été démarré pour combler la dette identifiée pendant le sprint V2 (« PlayerProfile V1 livrée » mentionné dans le plan V2 mais en réalité jamais implémenté). Après livraison de 3 commits de fondations (catalogue tagué + enrichi + math LUSR), j'ai proposé une pause stratégique vu la complexité croissante des commits 4-5 (service PlayerProfile + ImprovementCampaign full system). L'utilisateur a choisi de figer l'état actuel via un ADR documentant clairement la dette.
+
+**Décisions / changements** :
+
+1. **ADR 0015 créé** (`docs/adr/0015-player-profile-ascension-v1.md`, ~150 lignes) :
+   - Status : `Partially implemented` (3/10 commits livrés, 7 reportés).
+   - Documente précisément ce qui est livré (commits 1-3 : tagging, enrichment catalogue, inversion math).
+   - Documente ce qui est en dette (commits 4-9 avec scope précis pour reprise).
+   - Capture les décisions architecturales validées : self-benchmark (pas inter-joueurs), Campagne vs Saisons, 5 raffinements algorithmiques (LOWESS lissé, no-causalité, filtre playlist, Mann-Whitney U, auto-suggestion).
+   - Note de cohérence avec ADR 0014 (V2) : les 2 alertes coach `AlertTypeCampaignProgress` et `AlertTypeCampaignCloseAuto` définies en V2 commit 5 restent dormantes faute du service Campaign de ce V1 — dette croisée documentée.
+   - Note la nécessité de refactoriser le mini-service `internal/progression/profile/` (V2 commit 6) en remplacement par le PlayerProfile complet quand le commit 4 sera repris.
+
+2. **CLAUDE.md** : ajout du lien ADR 0015 dans la liste des ADRs (sous 0014).
+
+3. **Pas de code de production touché** ce commit : pure documentation.
+
+**Pourquoi cette pause maintenant** :
+- Commits 1-3 livrent des **fondations cohérentes en elles-mêmes** (le catalogue enrichi est utilisable directement, l'inversion math LUSR aussi).
+- Commits 4-5 sont **complexes et nécessitent des décisions produit** sur les edge cases (Mann-Whitney sur petit échantillon, comportement campagne quand le joueur change de playlist, formats UI exacts) — vaut mieux les trancher avec un PO qu'en mode autonome.
+- Commits 6-7 (UI) **dépendent de l'API du 4** : pas de sens de les écrire avant que 4 soit livré.
+- Estimation honnête du restant : 6-8 jours de dev cumulé en mode prudent.
+
+**Validation** :
+- `git status` : clean (rien de production touché).
+- ADR 0015 lisible et précis (10 sections, sources référencées, dette quantifiée).
+
+**Conclusion / prochaine étape (pour reprise future)** :
+
+Ordre recommandé pour terminer le sprint V1 dans une session ultérieure :
+1. Commit 4 (PlayerProfile service ~2h) — débloque tout le reste.
+2. Commit 5 (Campaign ~2-3h) — autonome, peut être fait juste après.
+3. Commits 6-7 (UI Frontend ~3h) — utilisent l'API du 4 + données du 5.
+4. Commits 8-9 (rename + i18n ~1.5h) — pure surface texte.
+5. Mettre à jour ADR 0015 statut → `Accepted` quand 10/10.
+
+**État final des deux sprints croisés** :
+- **V2 (Progression Tracking)** : 10/10 commits livrés, branche
+  `feat/progression-tracking-ascension` prête pour PR.
+- **V1 (Player Profile)** : 3/10 commits livrés + ADR. Branche
+  `feat/player-profile-ascension` prête à reprendre.
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-3) — RequiredCompositeForTier (inversion math LUSR)
 
 **Statut** : Complété (branche `feat/player-profile-ascension`).
