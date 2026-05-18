@@ -413,6 +413,7 @@ func NewRouter(
 		// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
 		// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
 		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider)
+		var xboxLinkStrategy auth_platform.LinkStrategy
 		if cfg.AuthMode == "xbox" {
 			// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
 			// après login (data/auth/watcher_tokens/{xuid}.json).
@@ -428,16 +429,26 @@ func NewRouter(
 				}
 				return daemon
 			}
-			authHandler.WithLinkStrategy(
-				service.NewXboxSSOLinkStrategy(users).
-					WithTokenStore(multiUserTokens).
-					WithDaemonGetter(daemonGetter),
-			)
+			xboxLinkStrategy = service.NewXboxSSOLinkStrategy(users).
+				WithTokenStore(multiUserTokens).
+				WithDaemonGetter(daemonGetter)
+			authHandler.WithLinkStrategy(xboxLinkStrategy)
 		} else {
 			authHandler.WithUserStore(users)
 		}
 		r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
 		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
+
+		// PR 4 — Authorization Code Flow SSO Xbox (UX redirect, plus aboutie que
+		// le Device Code). Enregistré uniquement en mode "xbox" + redirect URI
+		// configuré. Sans la config Azure (plateforme "Web" + redirect URI dans
+		// le portail), /authorize retourne AADSTS50011.
+		if cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != "" {
+			xboxOAuthHandler := handlers.NewXboxOAuthHandler(sessionStore, tokenProvider, cfg.DemoMode, cfg.OAuthRedirectURI).
+				WithLinkStrategy(xboxLinkStrategy)
+			r.Get("/auth/xbox/login", xboxOAuthHandler.LoginRedirect)
+			r.Get("/auth/xbox/callback", xboxOAuthHandler.Callback)
+		}
 
 		// Auth locale : login/register/logout (mode password).
 		// D3 cohabitation : en mode "xbox", login réservé aux admins, register au bootstrap.

@@ -45,6 +45,8 @@ interface AppShellState {
   isAdmin: boolean
   currentUsername: string | null
   firstLaunch: boolean
+  /** PR 4 — Auth Code Flow OAuth dispo (true si cfg.OAuthRedirectURI configuré). */
+  oauthCodeFlowEnabled: boolean
 
   // Actions
   hydrateFromBootstrap: (data: BootstrapResponse) => void
@@ -93,6 +95,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
   isAdmin: false,
   currentUsername: null,
   firstLaunch: false,
+  oauthCodeFlowEnabled: false,
 
   hydrateFromBootstrap: (data: BootstrapResponse) => {
     const titleSlug = data.current_title_slug ?? 'halo_infinite'
@@ -119,6 +122,7 @@ export const useAppShellStore = create<AppShellState>((set, get) => ({
       isAdmin: data.is_admin ?? false,
       currentUsername: data.current_username ?? null,
       firstLaunch: data.first_launch ?? false,
+      oauthCodeFlowEnabled: data.oauth_code_flow_enabled ?? false,
     })
   },
 

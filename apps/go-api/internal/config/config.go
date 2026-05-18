@@ -38,8 +38,12 @@ type AppConfig struct {
 	UserTimezone string
 	// Auth locale : répertoire contenant users.json et invites.json.
 	AuthDir string
-	// AuthMode : "none" (défaut) ou "password".
+	// AuthMode : "none" (défaut), "password" ou "xbox" (SSO).
 	AuthMode string
+	// OAuthRedirectURI : URI publique du callback OAuth Authorization Code Flow (PR 4).
+	// Doit être strictement identique à celui configuré côté Azure portail.
+	// Lit LEVELUP_OAUTH_REDIRECT_URI. Si vide, /auth/xbox/login retourne 500.
+	OAuthRedirectURI string
 	// RegistrationMode : "invite" (défaut), "open" ou "closed".
 	RegistrationMode string
 	// CurrentCSRSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
@@ -104,6 +108,7 @@ func Load() (*AppConfig, error) {
 		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
 		AuthDir:           getEnvOrDefault("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth")),
 		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
+		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))

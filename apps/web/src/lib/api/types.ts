@@ -93,6 +93,8 @@ export interface BootstrapResponse {
   current_username?: string | null
   /** True si aucun user n'est enregistré (premier lancement). */
   first_launch: boolean
+  /** PR 4 — True si l'Authorization Code Flow OAuth est dispo (vraie UX redirect). */
+  oauth_code_flow_enabled?: boolean
 }
 
 export interface PlayersListResponse {
