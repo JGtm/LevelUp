@@ -2960,7 +2960,11 @@ export interface SessionPageResponse {
   suggested_compare: SessionCompareSuggestion | null
   compare_enabled: boolean
   compare_session: SessionCompareEntry | null
+  // Champs P3 (drawer compare) : peuvent être absents en cas de payload legacy.
+  compare_matches?: SessionDetailMatchRow[]
   compare_metrics: SessionCompareMetricRow[]
+  previous_session_label?: string | null
+  next_session_label?: string | null
 }
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────

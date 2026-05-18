@@ -194,10 +194,12 @@ describe("SessionDetailPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Lecture comparative")).toBeInTheDocument();
+      // Drawer ouvert : bouton bascule sur "Fermer la comparaison" + summary
+      // compare visible dans le drawer (libellés `session.detail.drawer_*`).
       expect(
-        screen.getByRole("button", { name: /Masquer comparaison/i }),
+        screen.getByRole("button", { name: /Fermer la comparaison/i }),
       ).toBeInTheDocument();
+      expect(screen.getAllByText(/Session comparée/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText("Score perf.").length).toBeGreaterThan(0);
     });
   });
