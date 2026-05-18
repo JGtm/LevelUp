@@ -84,7 +84,7 @@ export interface BootstrapResponse {
   /** ID du job de sync initial actif pour cette session (null si aucun). */
   active_sync_job_id?: string | null
   /** Auth locale : mode d'authentification ("none" | "password"). */
-  auth_mode: 'none' | 'password'
+  auth_mode: 'none' | 'password' | 'xbox'
   /** Mode d'inscription ("invite" | "open" | "closed"). */
   registration_mode: 'invite' | 'open' | 'closed'
   /** True si l'utilisateur courant est admin. */

@@ -1,3 +1,65 @@
+## [2026-05-18] feat(xbox-sso) — PR 3 frontend : XboxLoginPage + toggle admin password + redirects
+
+**Statut** : Complété (branche `feat/xbox-sso`).
+
+**Contexte** : Backend complet (PR 1 + 2 + 2.5a/b/c). PR 3 livre la page de login Xbox côté frontend pour rendre le flow utilisable bout en bout. Le pattern Device Code Flow + polling existait déjà (`StepDeviceCode` dans le setup wizard) — je n'ai pas dupliqué la logique store-based, juste extrait avec un state local pour le contexte login.
+
+**Décisions / changements** :
+
+1. **Types étendus** :
+   - [types.ts:87](apps/web/src/lib/api/types.ts#L87) : `auth_mode: 'none' | 'password' | 'xbox'`.
+   - [appShellStore.ts:43](apps/web/src/stores/appShellStore.ts#L43) : `authMode: 'none' | 'password' | 'xbox'`.
+
+2. **`XboxLoginPage`** nouveau composant ([XboxLoginPage.tsx](apps/web/src/features/auth/XboxLoginPage.tsx), 290L) :
+   - **`XboxFlowPanel`** (panel par défaut) : appelle `useStartDeviceFlow` au montage, gère le polling via `useDeviceFlowStatus`, affiche le user_code en gros caractères mono + countdown + lien microsoft.com.
+   - Disclaimer anti-phishing intégré (§8 piège 9 du plan SSO) : avertissement visible sous le code expliquant de ne pas saisir le code sur sollicitation externe.
+   - États couverts : pending (loading), pending+user_code visible, expired (avec retry), failed (avec retry), authorized (redirect vers `/`), demo_mode (message dédié).
+   - **`AdminPasswordPanel`** (D3 cohabitation) : toggle "Connexion admin (mot de passe)" qui swap vers le form password classique. Avertissement "Connexion admin uniquement" affiché. Gère le code d'erreur `password_login_admin_only` du backend avec un message clair. Bouton "← Retour à la connexion Xbox" pour revenir.
+   - State local (`useState`) au lieu de `useSetupFlowStore` — la page login a un cycle de vie différent du wizard setup.
+
+3. **`LoginPage` route conditionnellement** ([LoginPage.tsx:31-34](apps/web/src/features/auth/LoginPage.tsx#L31)) :
+   - Si `authMode === 'xbox'` → retourne `<XboxLoginPage />` (early return).
+   - Sinon : comportement password classique préservé. Pas de régression sur le mode password existant.
+
+4. **`RegisterPage` bloque en mode xbox hors bootstrap** ([RegisterPage.tsx](apps/web/src/features/auth/RegisterPage.tsx)) :
+   - Si `authMode === 'xbox' && !firstLaunch` → `navigate('/login')` (renvoie vers le flow SSO).
+   - Cas `firstLaunch` reste autorisé pour créer l'admin initial (D1 / PR 0 caduque).
+
+5. **`__root.tsx` redirige aussi en mode xbox** ([__root.tsx](apps/web/src/routes/__root.tsx)) :
+   - Les conditions `auth_mode === 'password'` étendues à `=== 'password' || === 'xbox'` pour :
+     - Redirect vers `/register` si `first_launch`.
+     - Redirect vers `/login` si pas connecté.
+     - Render Outlet sans shell pendant le flow login/register.
+
+**i18n — choix pragmatique** : pas de manifeste TOML ajouté. Pattern existant des pages auth (`LoginPage`, `RegisterPage`) = strings FR codés en dur. ADR 0003 vise les pages métier (synthesis, citations, etc.), pas spécifiquement les pages auth qui sont mono-langue dans la base actuelle. Migration i18n complète des pages auth = PR séparée.
+
+**Tests** :
+
+- [XboxLoginPage.test.tsx](apps/web/src/features/auth/XboxLoginPage.test.tsx) (6 tests) :
+  - Monte sans erreur.
+  - Affiche le `user_code` retourné par MSW (`ABCD-1234` du mock existant).
+  - Affiche le lien `microsoft.com/link`.
+  - Affiche le disclaimer anti-phishing.
+  - Toggle "Connexion admin" affiche le form password avec avertissement.
+  - Toggle "← Retour à la connexion Xbox" revient au panel Xbox + user_code de nouveau visible.
+- Pas de régression : tests existants dans `src/features/auth/`, `src/stores/`, `src/features/setup/` toujours OK.
+
+**Résultats observés** :
+
+- `npx vitest run src/features/auth/` : 6/6 PASS.
+- `npx vitest run src/stores/ src/features/setup/` : OK.
+- `npm run typecheck` : erreur **pré-existante** dans `src/features/notifications/icons.tsx` (catégories `data_health_warning`, `career_rank`, `skill_tier`, `battlepass_completed` + 2 autres manquantes — dette de la branche notif-extension, sans rapport avec PR 3 SSO). Vérifié via `git stash` + typecheck → l'erreur est là sans mes changements.
+
+**Limitation/dette identifiée** : l'erreur typecheck de `notifications/icons.tsx` devrait être fixée dans une PR de cleanup notif-extension (ajouter les icônes manquantes pour les 5 nouvelles catégories). Pas bloquant pour PR 3 mais à ne pas oublier avant un merge vers main.
+
+**Conclusion / prochaine étape** : sprint SSO Xbox **fonctionnellement complet** (backend + frontend testable visuellement). Un utilisateur en mode `AuthMode="xbox"` peut maintenant : (a) voir la page XboxLoginPage, (b) cliquer "Se connecter avec Xbox" → user_code affiché, (c) compléter le flow Microsoft → session créée, user persisté, tokens RTA persistés, RTAClient dédié démarré. L'admin a son fallback password via le toggle.
+
+**Reste optionnel** :
+- **PR 4** (Authorization Code Flow) : UX SSO redirect au lieu de Device Code. Plus aboutie côté desktop mais ne change rien aux features. Effort ~1.5j.
+- **Fix typecheck notif-extension** : compléter `icons.tsx` avec les 5 catégories manquantes. ~5min.
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2.5c : stratégie A (N RTAClient par user) + RefreshUserXSTS via cache MSAL
 
 **Statut** : Complété (branche `feat/xbox-sso`).

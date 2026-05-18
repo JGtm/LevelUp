@@ -40,7 +40,7 @@ interface AppShellState {
   activeSyncJobId: string | null
 
   // Auth locale
-  authMode: 'none' | 'password'
+  authMode: 'none' | 'password' | 'xbox'
   registrationMode: 'invite' | 'open' | 'closed'
   isAdmin: boolean
   currentUsername: string | null
