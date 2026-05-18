@@ -1,3 +1,39 @@
+## [2026-05-18] feat(sharedprovider) — Commit 2 : Provider RO steady state + Manager
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 2/9 de la roadmap SharedDBProvider).
+
+**Contexte** : suite du commit 1 (test rouge baseline). Livre le squelette du package `sharedprovider` avec uniquement le mode RO en steady state — aucun swap, aucune écriture. Permet à `main.go` (commit 6) et au pool joueur (commit 7) de consommer une API stable avant que le mécanisme de swap arrive (commit 3-4).
+
+**API publique introduite** :
+- `Provider` interface : `Get(ctx) (*sql.DB, error)`, `State()`, `Path()`, `Close()`
+- `New(path, timezone...) (Provider, error)` : eager open en RO
+- `Manager.For(path, timezone...)` : déduplication par chemin (utile commit 5+ multi-titre)
+- `State` enum (RO/Draining/RW/Reopening/Error/Closed) — les 4 du milieu sont déclarés mais inatteignables au commit 2
+- 3 sentinel errors : `ErrProviderClosed`, `ErrSwapTimeout` (commit 3), `ErrSwapFailed` (commit 3)
+
+**Décisions techniques** :
+
+1. **Eager open au constructeur** : `New()` ouvre la conn DuckDB immédiatement. Si le fichier est inaccessible, l'erreur remonte au boot serveur — plus de mode dégradé silencieux. Le Manager garde aussi cette sémantique (eager via `New`).
+
+2. **`atomic.Int32` pour `state`** : permet `State()` lock-free pour les métriques et le debug runtime. Le mutex `mu` est réservé aux transitions (Close, swap futur).
+
+3. **Pattern metrics aligné `dblease/metrics.go`** : `init()` publie les clés dès l'import, cardinalité bornée par State (6 valeurs) + direction de swap (2 valeurs) + reason d'échec (3 valeurs). Aucune cardinalité par path → safe en multi-titre (cf. ADR-0009). Tous les compteurs sont publiés ; seul `stateGauge` est mis à jour activement au commit 2 (les autres deviennent vivants au commit 3).
+
+4. **Sentinels du commit 3 déclarées dès maintenant** : `ErrSwapTimeout` et `ErrSwapFailed` sont exportées dans `errors.go` du commit 2 pour stabiliser le contrat d'erreurs vis-à-vis des consommateurs HTTP, même si elles ne sont pas encore retournées par le code.
+
+5. **Pas de varargs Provider pour options** : `New(path, timezone...)` garde l'API simple alignée sur `duckdb.OpenReadOnly`. Si besoin d'options (`readyTimeout`, `subscribe`...), on convertira en struct `Options` au commit 3.
+
+**Tests (5/5 verts, ~3.8s)** :
+- `TestBaselineRedConflictExists_integration` (T1, du commit 1) — reste vert
+- `TestProvider_GetInRO_ReturnsSameUnderlyingHandle` — invariant steady state RO
+- `TestProvider_GetAfterClose_ReturnsProviderClosed` — contrat d'erreur Close
+- `TestProvider_CloseIsIdempotent` — double Close safe
+- `TestManager_ForSamePath_ReturnsSameProvider` — déduplication path
+
+**Prochaine étape** : commit 3 — `AcquireWriter` + `WriterHandle` + transitions Draining/RW/Reopening + intégration `dblease.AcquireWriterCtx`. Tests T2/T6/T8/T11 du plan landent ici.
+
+---
+
 ## [2026-05-18] test(sharedprovider) — Commit 1 : test rouge baseline DuckDB RO/RW
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 1/9 de la roadmap SharedDBProvider).
