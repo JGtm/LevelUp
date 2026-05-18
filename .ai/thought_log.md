@@ -1,3 +1,40 @@
+## [2026-05-18] feat(player-profile-v1)(commit-2) — enrichir catalogue (5 templates + 2 arcs preset)
+
+**Statut** : Complété (branche `feat/player-profile-ascension`).
+
+**Contexte** : Deuxième commit du sprint V1 PlayerProfile. Ferme les gaps de couverture LUSR identifiés en §3.2 du plan (Deaths vs Expected = 24% du composite avec 0 templates directs, Defensive Resistance = 6% avec 0 templates, Accuracy = 10% sans habitude long-terme).
+
+**Décisions / changements** :
+
+1. **5 nouveaux templates** dans `config/titles/halo_infinite/challenges/templates.toml` :
+   - `halo_infinite.monthly.deaths_vs_expected` : rolling_days=30, threshold, metric `deaths_vs_expected`, cibles 1.05/1.15/1.25/1.40 (ratio expected/actual). Composante LUSR Deaths vs Expected (24%), axe Survival.
+   - `halo_infinite.weekly.deaths_vs_expected` : session=3, threshold. Court terme pour coaching hebdo.
+   - `halo_infinite.monthly.dmg_taken_per_death` : metric `defensive_resistance`, rolling_days=30. Composante Defensive Resistance (6%, gap total).
+   - `halo_infinite.monthly.accuracy_30d` : `FieldAccuracy` sur rolling_days=30. Habitude longue vs ponctuel.
+   - `halo_infinite.monthly.kve_30d` : `kills_vs_expected` sur rolling_days=30. Habitude longue.
+
+2. **2 nouveaux arcs preset** dans `presets.toml` :
+   - `halo_infinite.marksman` (Le Tireur d'Élite) : accuracy_session (N) → accuracy_3sessions (H) → accuracy_30d (L).
+   - `halo_infinite.survivor` (Le Survivant) : kdr_session (N) → deaths_vs_expected weekly (H) → deaths_vs_expected monthly (L).
+
+3. **Couverture LUSR après commit 2** :
+   - Deaths vs Expected (24%) : 2 templates directs (gap critique fermé).
+   - Defensive Resistance (6%) : 1 template (gap total fermé).
+   - Accuracy Delta (10%) : 3 templates au total (habitude longue ajoutée).
+   - Survival : arc preset dédié (gap §3.4 fermé).
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/prestige/...` : OK (validation TOML targets monotones).
+- Total templates : 27 → 32. Total arcs : 4 → 6.
+
+**Bug rencontré** : tentative initiale d'ajout via `cat >> file <<EOF` en bash a échoué silencieusement (probable problème quoting PowerShell↔bash). Workaround via Edit tool avec ancre sur le dernier template.
+
+**Conclusion / prochaine étape** : Catalogue prêt pour le service PlayerProfile (commit 4). Commit 3 = inversion math LUSR (`RequiredCompositeForTier`) qui donnera la cible numérique par composante pour atteindre le sub-tier suivant.
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-1) — tagger templates avec lusr_components + is_long_term
 
 **Statut** : Complété (branche `feat/player-profile-ascension` depuis HEAD de V2).
