@@ -668,6 +668,11 @@ func NewRouter(
 			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug())
 			progressionH.Mount(r)
 
+			// PlayerProfile V1 (Ascension) — endpoint /profile complet.
+			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
+			profileH := handlers.NewPlayerProfileHandler(progressionResolve, defaultProgressionTitleSlug())
+			profileH.Mount(r)
+
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)
 			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)

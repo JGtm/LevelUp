@@ -1,3 +1,90 @@
+## [2026-05-18] feat(player-profile-v1)(commit-4) — service PlayerProfile complet + endpoint HTTP
+
+**Statut** : Complété. Sprint V1 maintenant à 4/10 commits + ADR.
+
+**Contexte** : Le sprint V1 a repris après la pause stratégique commit-3+ADR.
+Le mini-service `internal/progression/profile/` (livré en V2 commit 6) ne
+remplissait qu'un sous-ensemble du `PlayerProfile` (LUSR + tier + LOWESS sur
+μ pour le coach post-sync). Le plan §4-§5 exige les Sections A1 (radar 6
+axes + rôles), A2 (style FK/FD + engagement), B (LUSR + 8 composantes +
+SkillRatingSnapshot + tendance) et C (leviers + suggestions de défis).
+
+**Décision technique principale** :
+
+1. **Approche "augmenter sans casser"** : conserver `NewService(db)` + `Load()`
+   pour ne pas casser le caller V2 `post_sync_progression.go:274`
+   (`profile.NewService(pdb.Player)` + `Load(ctx, userID, slug, lowessWindow, now)`).
+   Ajouter `NewServiceFromPlayerDB(pdb)` + `BuildProfile(...)` pour la voie V1
+   complète. La closure post-sync continue à lire `prof.LUSR.Mu`,
+   `prof.NextTier.Label`, `prof.MuTrend.IsPositive(...)` sans modification.
+
+2. **Types V1 enrichis dans `types.go`** : `PlayerProfile` étendu avec
+   `HasEnoughData`, `MatchesAnalyzed`, `DominantRole`, `SecondaryRole`,
+   `RadarAxes`, `Strengths`, `ImprovementAreas`, `StyleSignature`,
+   `EngagementSnap`, `SkillRating`, `LUSRComponents`, `Leverages`,
+   `SuggestedChallenges`. Les anciens `Tier` / `NextTier` passent en
+   `json:"-"` (compat V2 internes mais hors JSON UI — la UI lit `SkillRating`).
+
+3. **`BuildProfile` orchestrateur** délègue à 6 sous-méthodes (`fillSectionB`,
+   `aggregateNarrative`, `computeStyleSignature`, `computeEngagement`,
+   `computeLUSRComponents`, `selectSuggestedChallenges`) toutes idempotentes
+   et tolérantes à l'absence de données (slog.Warn + section vide plutôt
+   qu'erreur).
+
+4. **Section A1 radar — heuristique pragmatique** : V1 calcule les 6 raw axes
+   directement depuis `match_participants` (kills→combat,
+   max(0,kills-deaths)→survival, assists→support, personal_score→score,
+   max_killing_spree×10→impact, objective=0). Le mapping fin via
+   `personal_score_awards` (title-specific) reste deferré. Suffisant pour
+   afficher un radar pertinent dès la V1.
+
+5. **Section B LUSR composantes — placeholder honnête** :
+   `loadLUSRComponentsBreakdown` retourne map vide tant qu'on n'a pas la
+   table `lusr_component_history(match_id, component_name, value)`
+   alimentée par le scoring engine. UI affiche current=0/top20=0/target avec
+   tooltip "données indisponibles". TODO V2 explicite dans le code.
+
+6. **Section C suggestions** : filtre `challenge_template` par
+   `lusr_components ∩ leverages` (CSV-encoded), tri `IsLongTerm` desc puis
+   ID. Lecture directe via `duckdbRepo{db: pdb.Metadata}` pour éviter la
+   dépendance circulaire `profile ↔ platform/duckdb.NewPrestigeTemplateRepo`.
+
+7. **Endpoint HTTP** : `GET /api/v1/players/{slug}/profile` via
+   `handlers.PlayerProfileHandler`. Pattern aligné sur `ProgressionHandler`
+   (resolver + chi). Query param `window_days` (clampé 7..120, défaut 30).
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- `go test ./internal/progression/profile/...` ✅ 8 tests unitaires
+  (classifyStyle, engagementTier, identifyLeverages top-2 + empty,
+  buildSkillRatingSnapshot, narrativeAxesForComponent, orderedComponentNames,
+  roleFromAxis) — exit 0 sur Windows.
+- `go test ./internal/progression/...` et
+  `go test ./internal/api/handlers/...` ✅ tous verts.
+- 3 tests d'intégration (`//go:build integration`, CI Linux) :
+  `BuildProfile_EmptyDB_HasEnoughDataFalse`,
+  `BuildProfile_WithMatches_FillsSections`, `Load_V2Compat`.
+- V2 caller (`post_sync_progression.go`) inchangé — API `Load()` préservée.
+
+**Trade-offs assumés** :
+
+- LUSR components breakdown affichera des zéros tant que la table d'historique
+  des composantes n'existe pas (commit follow-up V2). Acceptable : UI a un
+  tooltip explicatif, et l'orchestrateur fournit déjà la cible de tier
+  (`RequiredCompositeForTier` du commit-3).
+- Mapping `personal_score_awards.award_name → narrative.ParticipationAxis`
+  reporté : V1 utilise les agrégats `match_participants` directement. Le
+  radar reflète donc l'orientation gameplay (kills/score) plus que la
+  contribution objectif. Affinement title-specific en V2.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 4/10. Reste 6 commits
+(ImprovementCampaign + UI + i18n + ADR final). Prochaine étape : commit 5
+(ImprovementCampaign : table + service + hook + endpoints).
+
+---
+
 ## [2026-05-18] docs(player-profile-v1) — ADR 0015 + pause sprint partiel
 
 **Statut** : Sprint V1 partiellement livré (3/10 commits + ADR). Branche
