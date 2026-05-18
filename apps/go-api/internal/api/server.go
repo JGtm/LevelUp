@@ -507,11 +507,13 @@ func NewRouter(
 				slog.Warn("openspartan_import_disabled_shared_db_unavailable", "err", err)
 			} else {
 				osImportSvc := service.NewOpenSpartanImportService(sharedRW.SQLDb())
+				osPostImportSvc := service.NewOpenSpartanPostImportService(cfg, sharedRW.SQLDb())
 				osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
-					ImportService: osImportSvc,
-					JobStore:      jobStore,
-					StashDir:      filepath.Join(cfg.RepoRoot, "data", "players"),
-					DemoMode:      cfg.DemoMode,
+					ImportService:     osImportSvc,
+					PostImportService: osPostImportSvc,
+					JobStore:          jobStore,
+					StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
+					DemoMode:          cfg.DemoMode,
 				})
 				r.Post("/import/openspartan", osImportH.StartImport)
 			}
