@@ -65,7 +65,12 @@ func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 		"session_label", derefReqString(req.SessionLabel),
 		"resolved_session", derefSessionLabel(page.CurrentSession),
 		"available_sessions", len(page.AvailableSessions),
+		"match_count", len(page.Matches),
 		"compare_enabled", page.CompareEnabled,
+		"compare_session", derefSessionLabel(page.CompareSession),
+		"compare_match_count", len(page.CompareMatches),
+		"previous_session_label", derefReqString(page.PreviousSessionLabel),
+		"next_session_label", derefReqString(page.NextSessionLabel),
 	)
 	writeJSON(w, http.StatusOK, page)
 }

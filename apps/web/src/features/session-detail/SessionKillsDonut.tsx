@@ -20,7 +20,16 @@ interface Props {
 
 export function SessionKillsDonut({ title, matches, height = 260 }: Props) {
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
+  const fields = fieldMappings?.fields
+
+  const labels = useMemo(
+    () => ({
+      kills: fields?.kills?.label ?? 'kills',
+      deaths: fields?.deaths?.label ?? 'deaths',
+      assists: fields?.assists?.label ?? 'assists',
+    }),
+    [fields],
+  )
 
   const { series, total } = useMemo(() => {
     let kills = 0
@@ -35,20 +44,20 @@ export function SessionKillsDonut({ title, matches, height = 260 }: Props) {
       {
         key: 'kda-breakdown',
         datapoints: [
-          { name: labelOf('kills'), value: kills },
-          { name: labelOf('deaths'), value: deaths },
-          { name: labelOf('assists'), value: assists },
+          { name: labels.kills, value: kills },
+          { name: labels.deaths, value: deaths },
+          { name: labels.assists, value: assists },
         ].filter((d) => d.value > 0),
       },
     ]
     return { series: s, total: kills + deaths + assists }
-  }, [matches, labelOf])
+  }, [matches, labels])
 
   // Couleurs sémantiques mappées par nom de slice (résolu via tokens).
   const sliceColors: Record<string, SemanticToken> = {
-    [labelOf('kills')]: 'outcome-win',
-    [labelOf('deaths')]: 'outcome-loss',
-    [labelOf('assists')]: 'outcome-draw',
+    [labels.kills]: 'outcome-win',
+    [labels.deaths]: 'outcome-loss',
+    [labels.assists]: 'outcome-draw',
   }
 
   if (total === 0) return null
