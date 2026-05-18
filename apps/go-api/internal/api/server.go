@@ -673,6 +673,11 @@ func NewRouter(
 			profileH := handlers.NewPlayerProfileHandler(progressionResolve, defaultProgressionTitleSlug())
 			profileH.Mount(r)
 
+			// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
+			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
+			campaignH := handlers.NewCampaignHandler(progressionResolve, defaultProgressionTitleSlug())
+			campaignH.Mount(r)
+
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)
 			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)

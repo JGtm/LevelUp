@@ -1,3 +1,83 @@
+## [2026-05-18] feat(player-profile-v1)(commit-5) — ImprovementCampaign full stack
+
+**Statut** : Complété. Sprint V1 à 5/10.
+
+**Contexte** : §4.5 du plan — boucle finale "profil → objectif → suivi". La
+campagne d'amélioration est un mini-objectif personnel volontaire sur 1 axe,
+sans deadline ni pénalité. Pause/abandon libres. Inspirée de Duolingo
+("j'apprends le japonais") — pas de note de fin, juste une trajectoire.
+
+**Décisions techniques principales** :
+
+1. **Domain package neuf** `internal/campaign/` (300L service + 101L stats +
+   96L types) plutôt qu'extension de `progression/profile/`. Séparation propre
+   parce que c'est un domaine à part avec son propre cycle de vie d'entité
+   (Active/Paused/Completed/Abandoned).
+
+2. **Mann-Whitney U fait maison** (`stats.go`, 101L). Pas de dépendance
+   externe (gonum). Approximation normale (CLT) appliquée pour n1+n2 ≥ 20 ;
+   sous ce seuil, on retourne p=1 (conservateur). Gère les ex-aequo par
+   méthode des rangs moyens. Test : 6 cas couvrant identical / clearly
+   different / small sample / below-CLT / ties / normalCDF boundaries.
+
+3. **Interface Repo** (`Repo`, `SampleProvider`) pour mocker en test sans
+   DuckDB. Le fake repo `service_test.go` couvre Start/Pause/Resume/Close/
+   Abandon/Link/Evaluate sans toucher la DB → 10 tests verts < 1.5s sur
+   Windows.
+
+4. **Snapshot 100 matchs avant StartedAt** (capé via slice). Fenêtre élargie
+   (180j) mais on garde max 100 dernières valeurs. Cohérent avec le plan.
+
+5. **R5 auto-closure heuristique simple** : plateau 60j (`StartedAt + 60d`)
+   ET `|currentLOWESS - snapshot| < 0.02` ET progression non confirmée →
+   suggéré (`auto_closure_suggested=true`, `reason="plateau_60d"`). La 2e
+   condition R5 (axe sort du bottom 3 du radar) sera ajoutée quand le
+   PlayerProfile sera consulté dans le hook (V2 follow-up).
+
+6. **Hook post-sync** : `CampaignService.EvaluateActive(userID, slug, now)`
+   appelé dans `EvaluateProgressionAfterSync` après le load profile. No-op si
+   pas de campagne active. Idempotent — peut être appelé à chaque match
+   ingéré sans effet de bord.
+
+7. **7 endpoints HTTP** sur `PlayerProfileHandler` resolver :
+   `POST /campaigns`, `GET /campaigns/active`, `GET /campaigns/{id}`,
+   `POST /campaigns/{id}/pause|resume|close|abandon`. Erreurs typées
+   (409 already_active / 400 invalid_axis / 404 not_found /
+   409 invalid_status_transition).
+
+8. **SampleProvider V1 pragmatique** : `axisValueExpression` mappe
+   (axis, axisKind) → expression SQL sur `match_participants`. V1 radar
+   utilise les agrégats bruts (kills, deaths, etc.). V1 lusr_component
+   retourne 0 (alignement avec `profile.loadLUSRComponentsBreakdown`,
+   même note "table history pas créée"). Acceptable : la campagne
+   reste fonctionnelle pour les 5/6 axes radar dès la V1.
+
+9. **Migration** : `ALTER TABLE challenge ADD COLUMN IF NOT EXISTS campaign_id
+   VARCHAR` + index. DuckDB supporte `IF NOT EXISTS` sur ALTER depuis 0.10.
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- `go test ./internal/campaign/...` ✅ 16 tests (6 MWU + 10 service)
+- `go test ./internal/progression/... ./internal/api/handlers/...` ✅ all green
+- Hook post-sync câblé (`EvaluateActive` no-op silencieux si pas de campagne)
+- `AssertProgressionDeps` mis à jour pour exiger `CampaignService` au boot
+
+**Trade-offs assumés** :
+
+- `lusr_component.*` axes retournent 0 (placeholder). UI affichera un toast
+  "données indisponibles pour cet axe" et limitera le sélecteur aux axes
+  radar en V1.
+- R5 plateau-only en V1 (pas encore "sortie bottom 3 du radar"). Le
+  PlayerProfile n'est pas appelé par le hook campagne ; ajout en V2.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 5/10. Backend
+PlayerProfile + Campaign complets. Prochaine étape : commits frontend 6
+(PlayerProfileCard) + 7 (CampaignTracker UI).
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-4) — service PlayerProfile complet + endpoint HTTP
 
 **Statut** : Complété. Sprint V1 maintenant à 4/10 commits + ADR.
