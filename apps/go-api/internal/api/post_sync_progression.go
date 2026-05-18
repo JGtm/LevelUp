@@ -28,6 +28,8 @@ import (
 	"log/slog"
 	"time"
 
+	"sort"
+
 	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
@@ -146,18 +148,21 @@ func EvaluateProgressionAfterSync(
 
 	// ── 2. streaks ─────────────────────────────────────────────────────────
 	if deps.StreaksEvaluator != nil {
+		// V2 §4 : médiane personnelle KDA sur la fenêtre 120j servant de
+		// seuil pour les streaks perf-based (daily_perf, weekly_kda_threshold).
+		// Si moins de 10 matchs : pas assez de signal → on garde 0 (les types
+		// perf-based ne se déclenchent pas, c'est cohérent).
+		kdaMedian := medianKDA(activities)
 		results, err := deps.StreaksEvaluator.Evaluate(ctx, streaks.EvaluateInput{
 			UserID:    userID,
 			TitleSlug: titleSlug,
 			Now:       now,
 			Matches:   activities,
-			// Pour V1 du hook, on évalue les types universels (daily_play,
-			// weekly_play) — pas de seuils personnels requis. Les types
-			// perf-based seront activés quand PlayerProfile exposera les
-			// médianes personnelles (commit follow-up).
 			Thresholds: map[streaks.StreakType]float64{
-				streaks.StreakTypeDailyPlay:  0,
-				streaks.StreakTypeWeeklyPlay: 0,
+				streaks.StreakTypeDailyPlay:          0,
+				streaks.StreakTypeWeeklyPlay:         0,
+				streaks.StreakTypeDailyPerf:          kdaMedian,
+				streaks.StreakTypeWeeklyKDAThreshold: kdaMedian,
 			},
 		})
 		if err != nil {
@@ -282,10 +287,13 @@ func BuildPlayerProgressionDeps(pdb *duckdb.PlayerDB, emitter notifications.Emit
 	if pdb.Player != nil {
 		deps.StreaksEvaluator = streaks.NewEvaluator(duckdb.NewStreaksRepo(pdb.Player))
 		deps.ProfileService = profile.NewService(pdb.Player)
+		// V2 §4 : LeverageProvider câblé depuis le ProfileService pour
+		// permettre à campaign.Evaluate de checker R5 condition 2
+		// ("axe sort des leviers prioritaires").
 		deps.CampaignService = campaign.NewService(
 			duckdb.NewCampaignRepo(pdb.Player),
 			duckdb.NewCampaignSampleProvider(pdb.Player),
-		)
+		).WithLeverageProvider(newProfileLeverageProvider(pdb))
 		// History repo (stats.duckdb) + PB repo (shared_social via pdb).
 		history := duckdb.NewRecordHistoryRepo(pdb.Player)
 		if pdb.SharedSocial != nil {
@@ -339,4 +347,60 @@ func AssertProgressionDeps(d ProgressionDeps) error {
 		return nil
 	}
 	return fmt.Errorf("ProgressionDeps incomplete: missing %v", missing)
+}
+
+// profileLeverageProvider adapte profile.Service.BuildProfile en un
+// campaign.LeverageProvider. V2 §4 — R5 condition 2.
+//
+// Optimisation : on construit un profil minimaliste (fenêtre 30j default)
+// puis on extrait les composantes des leviers identifiés. Le coût est ~1
+// query agrégée + 8 round-trips trend (cf. profile.computeComponentTrend).
+// Accepté dans le hook post-sync : le hook tourne après ingestion d'un
+// match, latence ajoutée ~50-200ms négligeable face au sync HTTP.
+type profileLeverageProvider struct {
+	pdb *duckdb.PlayerDB
+}
+
+func newProfileLeverageProvider(pdb *duckdb.PlayerDB) *profileLeverageProvider {
+	return &profileLeverageProvider{pdb: pdb}
+}
+
+func (p *profileLeverageProvider) CurrentLeverageComponents(
+	ctx context.Context, userID, titleSlug string,
+) ([]string, error) {
+	svc := profile.NewServiceFromPlayerDB(p.pdb)
+	prof, err := svc.BuildProfile(ctx, userID, titleSlug, 30, time.Now().UTC())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(prof.Leverages))
+	for _, lv := range prof.Leverages {
+		out = append(out, lv.Component)
+	}
+	return out, nil
+}
+
+// medianKDA retourne la médiane des valeurs `kda` extraites des
+// MatchActivity.Stats sur la fenêtre fournie. Retourne 0 si < 10 matchs
+// (significativité insuffisante pour servir de seuil personnel).
+//
+// V2 §4 : sert de threshold pour les streaks perf-based daily_perf et
+// weekly_kda_threshold. La médiane est robuste aux outliers (matchs à
+// KDA aberrant) — préférée à la moyenne pour ce cas d'usage.
+func medianKDA(activities []streaks.MatchActivity) float64 {
+	values := make([]float64, 0, len(activities))
+	for _, a := range activities {
+		if v, ok := a.Stats["kda"]; ok && v > 0 {
+			values = append(values, v)
+		}
+	}
+	if len(values) < 10 {
+		return 0
+	}
+	sort.Float64s(values)
+	n := len(values)
+	if n%2 == 1 {
+		return values[n/2]
+	}
+	return (values[n/2-1] + values[n/2]) / 2
 }

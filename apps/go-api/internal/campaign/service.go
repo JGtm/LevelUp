@@ -60,6 +60,16 @@ type SampleProvider interface {
 	) ([]float64, error)
 }
 
+// LeverageProvider retourne les leviers actuels du profil joueur (V2 §4 — R5
+// "axe sort du bottom-3 du radar"). Optionnel : si non câblé, R5 ne déclenche
+// que sur la condition plateau_60d.
+type LeverageProvider interface {
+	// CurrentLeverageComponents retourne les composantes / axes identifiés
+	// comme leviers d'amélioration actuels du joueur. Si l'axe de la
+	// campagne n'est plus dans cette liste, on peut suggérer la clôture.
+	CurrentLeverageComponents(ctx context.Context, userID, titleSlug string) ([]string, error)
+}
+
 // Evaluation porte le résultat pur du calcul (sans I/O).
 type Evaluation struct {
 	CurrentRaw           sql.NullFloat64
@@ -74,13 +84,21 @@ type Evaluation struct {
 
 // Service orchestre les opérations sur les campagnes.
 type Service struct {
-	repo    Repo
-	samples SampleProvider
+	repo      Repo
+	samples   SampleProvider
+	leverages LeverageProvider // optionnel — active R5 "axe sort bottom-3"
 }
 
 // NewService construit le service.
 func NewService(repo Repo, samples SampleProvider) *Service {
 	return &Service{repo: repo, samples: samples}
+}
+
+// WithLeverageProvider injecte la source des leviers courants pour R5
+// (V2 §4). Chainable. Si non câblé, R5 ne déclenche que sur plateau_60d.
+func (s *Service) WithLeverageProvider(p LeverageProvider) *Service {
+	s.leverages = p
+	return s
 }
 
 // StartParams sont les paramètres de StartCampaign.
@@ -257,7 +275,27 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 			}
 		}
 	}
+	// R5 condition 2 (V2 §4) : l'axe est-il toujours dans les leviers
+	// prioritaires actuels du joueur ? S'il en est sorti, on suggère la
+	// clôture pour libérer la place vers un axe plus pertinent.
+	// Priorité plus haute que plateau (overwrite si applicable).
+	if !eval.ProgressionConfirmed && s.leverages != nil {
+		current, err := s.leverages.CurrentLeverageComponents(ctx, c.UserID, c.TitleSlug)
+		if err == nil && !containsString(current, c.Axis) && len(current) > 0 {
+			eval.AutoClosureSuggested = true
+			eval.AutoClosureReason = "axis_no_longer_priority"
+		}
+	}
 	return s.repo.UpdateEvaluation(ctx, c.ID, eval)
+}
+
+func containsString(slice []string, target string) bool {
+	for _, s := range slice {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }
 
 // transition applique un changement de status si le current matche `from`.
