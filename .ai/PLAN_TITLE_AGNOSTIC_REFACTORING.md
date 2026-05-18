@@ -1,16 +1,16 @@
-# Plan — Refactoring vers une architecture title-agnostic complète (v2)
+# Plan — Refactoring vers une architecture title-agnostic complète (v2.5)
 
 **Objectif** : retirer/ajouter un champ d'un titre = **1 ligne dans `fields.toml` (mapping) + 1 modif dans le `TitleDataAdapter` correspondant**, sans toucher aux services, repos cross-titre, OpenAPI, ni frontend.
 
 **Critère de succès opérationnel** : une CI step « build + tests pour `synthetic_test_title` » s'exécute avec un dossier `internal/games/synthetic_test_title/` minimal + un set de TOML mappings réduit. Toutes les routes répondent (200 ou 404 capability) et tous les tests existants passent. Aucun changement requis dans `internal/service/`, `internal/api/`, `apps/web/` au-delà d'une route capability-gated.
 
-**Branche cible** : `refactor/title-agnostic-services` (créée depuis `main` après merge de `feat/token-pool-parallel-sync`).
+**Branche cible** : `refactor/title-agnostic-services` (créée depuis `main`).
 
-**Statut** : v2.4 (2026-05-07) — Phase 1.8 ajoutée : outillage diagnostic Lab read-only + CLI + bouton export TOML draft via presse-papier. Décisions D9+D10 actées. Décisions D1-D8 + Phase 1.7 Feature Matrix + Exit Gate strict + couverture/logging bloquants + validation finale `synthetic_test_title` E2E inchangés. Effort total : 50-67 j.
+**Statut** : v2.5 (2026-05-18) — Revue après ~10 jours de développement intensif (OpenSpartan, Xbox SSO, perf/LUSR chains, career-live, etc.). Décisions D11 (OpenSpartan = bootstrap one-shot), D12 (migration CapabilityMap code → TOML), D13 (gel nouveaux handlers en Huma dès Phase 3b start) ajoutées. Phase 1.7 découpée en **1.7a (capabilities binaires TOML, light)** + **1.7b (3 états + cascade, lourd)**. Phase 1.5 ré-estimée (~doubling) à cause de l'accumulation `internal/migration/steps_*.go` Halo-only ajoutés depuis. Phase 3b ré-estimée (~80 → ~113 handlers). Phase 2 enrichie d'un test de continuité OpenSpartan-primed → Waypoint-fed. Effort total : 62-82 j (vs 50-67 j en v2.4).
 
 ---
 
-## 0. Doctrine — alignement avec l'ADR 0011
+## 0. Doctrine — alignement avec l'ADR 0011 + acquis ADR 0012
 
 L'ADR 0011 a tranché : **`canonical.*` reste minimal**, et trois adapters distincts collaborent côté service :
 
@@ -20,12 +20,20 @@ L'ADR 0011 a tranché : **`canonical.*` reste minimal**, et trois adapters disti
 | `TitleSemanticAdapter` | Labels FR/EN, RankCatalog, Outcomes | Pas de data brute |
 | `TitleAssetURLAdapter` | URLs map / medal / CSR rank | Pas de DB |
 
-Ce plan **respecte cette frontière** : il ne pousse PAS `canonical.PlayerMatchRow` directement dans le DTO HTTP. Le DTO HTTP reste un **view-model service** qui combine les 3 sources. Ce que le plan vise, c'est :
+Ce plan **respecte cette frontière** : il ne pousse PAS `canonical.PlayerMatchRow` directement dans le DTO HTTP. Le DTO HTTP reste un **view-model service** qui combine les 3 sources.
+
+**Acquis ADR 0012 (2026-04-29)** : la logique Halo-only de `internal/analysis/` (préfixes mode_category, citations custom) a déjà été extraite vers `internal/games/halo_infinite/`. Le hook `analysis.RegisterCustomDispatcher` est en place. Ce plan **construit dessus** — il ne reprend pas ce travail.
+
+**Acquis stub multi-titre** : [synthetic_title_b/adapter.go](apps/go-api/internal/games/synthetic_title_b/adapter.go) implémente déjà les 3 adapters + un `CapabilityMap` (binaire) + un test d'isolation. Ce stub servira de **base au futur `synthetic_test_title`** introduit par la validation finale §8.11.
+
+Ce que le plan vise restent :
 
 1. Que les **column names DB** ne fuitent plus dans les services (Phase 2).
-2. Que les **types Halo-specific** dans `domain/match_view.go` (`MatchExpectedStats`, `ExpectedStatsRaw`, etc.) soient remplacés par des types canonical reasonably nullable (Phase 3).
-3. Que les **flags sync** ne soient plus enumérés en dur par champ Halo (Phase 4).
-4. Que le **schéma DB** soit isolé par titre, pas en silo dans `migration/steps_shared.go` partagé (Phase 1.5).
+2. Que les **types Halo-specific** dans `domain/match_view.go` (`MatchExpectedStats`, `ExpectedStatsRaw`, etc.) soient remplacés par des types canonical reasonably nullable (Phase 3a).
+3. Que les **flags sync** ne soient plus énumérés en dur par champ Halo (Phase 4).
+4. Que le **schéma DB** soit isolé par titre, pas en silo dans `internal/migration/steps_*.go` partagé (Phase 1.5).
+5. Que le **handler layer** ne maintienne plus de YAML OpenAPI manuel (Phase 3b, Huma).
+6. Que les **capabilities** soient déclarées en TOML (déjà partiellement en code, à migrer — Phase 1.7a/b).
 
 Différence clé avec v1 : le plan v2 **conserve les types domain de view-model** (header, summary tab, scoreboard row…) — ils sont la composition canonique × semantic × assetURL. Ce qu'on retire de `domain/`, c'est uniquement les types `*Raw` et les champs Halo-only sans pendant canonical.
 
@@ -33,31 +41,24 @@ Différence clé avec v1 : le plan v2 **conserve les types domain de view-model*
 
 ## 1. Diagnostic — fuites actuelles de l'abstraction
 
-Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne renvoie pas ces champs), j'ai dû toucher 14 fichiers dans 8 couches.
+Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne renvoie pas ces champs), j'ai dû toucher 14 fichiers dans 8 couches. Diagnostic toujours valable en mai 2026.
 
 | Couche | Fichier | Type de fuite |
 |---|---|---|
-| **DDL shared** | `migration/steps_shared.go` | `CREATE/ALTER COLUMN` Halo-specific dans la DB partagée multi-titres |
+| **DDL shared** | `internal/migration/steps_*.go` (20+ fichiers, dont `steps_player_lusr_chain_rework.go`, `steps_player_perf_chain.go`, `steps_player_prestige.go`, `steps_player_notifications.go`, `steps_metadata_prestige_seed.go` ajoutés depuis la v2.4) | `CREATE/ALTER COLUMN` Halo-specific dans la DB partagée multi-titres. La dette s'aggrave à chaque feature Halo-specific livrée. |
 | **SQL inline** | `platform/duckdb/queries_match.go` (Q12, Q26, Q26MatchExpectedStats) | `SELECT mp.assists_expected, ...` codé en dur |
 | **Magic constants Halo** | `queries_match.go` Q12 (`medal_name_id = 1512363953` pour Perfect Kills) | Constante Halo-only inline dans une query cross-titre |
 | **Scan** | `platform/duckdb/match_view_repo.go` | `row.Scan(&s.AssistsExpected)` couplé à l'ordre du SELECT |
 | **Domain (view-model)** | `domain/match_view.go` (`MatchExpectedStats`, `MatchScoreboardRow.ExpectedKills`) | Champs Halo-specific exposés au DTO HTTP |
-| **Domain (raw)** | `domain/match_view.go` (`ExpectedStatsRaw`, `ScoreboardRaw`, `MatchHistAvgRow`…) | Types frontière repo↔service mais hébergés dans `domain/` |
-| **OpenAPI** | `api/openapi.yaml` | Schema `MatchExpectedStats.expected_assists` édité manuellement (~80 routes maintenues à la main) |
+| **Domain (raw)** | `domain/match_view.go` (9 types `*Raw` : `MatchMetaRaw`, `PlayerMatchStatsRaw`, `ScoreboardRaw`, `BulkMedalRaw`, `BulkWeaponKillRaw`, `MatchEnrichmentRaw`, `MedalRaw`, `EventRaw`, `WeaponKillRaw`, +`MatchHistAvgRow`) | Types frontière repo↔service mais hébergés dans `domain/`. Fichier toujours à 799 lignes. |
+| **OpenAPI** | `api/openapi.yaml` | Schema `MatchExpectedStats.expected_assists` édité manuellement (~113 routes maintenues à la main — +33 depuis la v2.4 à cause de OpenSpartan, Xbox SSO, achievements, CSR per-match, etc.) |
 | **Generated** | `internal/api/gen/types.gen.go` | Auto-généré depuis OpenAPI manuel — divergence inévitable |
-| **Handlers chi** | `internal/api/handlers/*.go` (~80 fichiers) | Style `func(w, r)` avec validation manuelle (regex, parse query) — pas d'inférence OpenAPI |
-| **Service** | `service/match_view_service.go` | `out.ExpectedAssists = e.AssistsExpected` |
+| **Handlers chi** | `internal/api/handlers/*.go` (**113 fichiers** vs 80 en v2.4) | Style `func(w, r)` avec validation manuelle (regex, parse query) — pas d'inférence OpenAPI |
+| **Service** | `service/match_view_service.go`, 77 occurrences de `"halo_infinite"` dans `internal/service/` | `out.ExpectedAssists = e.AssistsExpected` ; comparaisons slug hardcodées |
 | **Sync flags** | `sync/scope.go`, `sync/backfill_flags.go`, `sync/backfill_cli.go` | `PBitAssistsExp`, `--assists-expected`, `scope.AssistsExpected` |
-| **Tests** | 4 fichiers | refs à `PBitAssistsExp` / `scope.AssistsExpected` / `assists_expected` |
+| **Tests** | 4+ fichiers | refs à `PBitAssistsExp` / `scope.AssistsExpected` / `assists_expected` |
 
-**Causes racines** :
-
-1. `domain/match_view.go` contient à la fois **les view-models DTO** (légitimes) et **des types `*Raw` repo-frontière** (devraient être en `platform/duckdb/`).
-2. **SQL inline dans `queries_match.go`** au lieu de passer par un repo abstrait paramétré par `[]canonical.FieldKey`. Le service dépend implicitement de l'ordre des colonnes.
-3. **Sync flags Halo-Infinite-specific** (`PBitAssistsExp`, `--assists-expected`) — bitmask et CLI codés en dur sur un set fixe de champs Halo.
-4. **Schéma DB partagé** (`shared_matches_v2.duckdb`, table `match_participants` à 31 colonnes) bake in la liste des champs Halo. Un titre avec d'autres champs casse les DDL ou doit accepter des colonnes nil.
-5. **OpenAPI YAML manuel** au lieu d'auto-généré depuis les types Go. Le contrat front fuit la sémantique title-specific.
-6. **Constantes magiques Halo** (medal IDs, mode prefixes) inline dans queries cross-titre.
+**Causes racines** : identiques à la v2.4 ; aucune n'a été résolue côté code applicatif. Le compteur de fichiers/lignes touchés pour ajouter un field a même empiré (steps_*.go a doublé en taille).
 
 ---
 
@@ -75,8 +76,9 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
                                   │ JSON DTO (view-model)
                                   ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ internal/api/handlers/                                           │
-│  - reçoit Request, appelle Service via port.*Service             │
+│ internal/api/handlers/ (Huma)                                    │
+│  - reçoit Input typé via path:/query:/body: tags                 │
+│  - appelle Service via port.*Service                             │
 │  - sérialise le DTO retourné                                     │
 │  - 0 logique métier, 0 SQL                                       │
 └─────────────────────────────────┬────────────────────────────────┘
@@ -98,15 +100,15 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 │  0 IO        │        │  *Service      │         │  adapter_data.go   │
 │  prend       │        │  interfaces    │         │  adapter_semantic  │
 │  canonical   │        └────────┬───────┘         │  adapter_asset_url │
-└──────────────┘                 │ impl            └────────────────────┘
-                                 ▼
-                ┌────────────────────────────────────┐
-                │ internal/platform/duckdb/          │
-                │  - implémente port.*Repository     │
-                │  - construit SQL via FieldKey TOML │
-                │  - DDL par titre (steps_*_<slug>)  │
-                │  - 0 SQL exposé en dehors          │
-                └────────────────────────────────────┘
+└──────────────┘                 │ impl            │  ddl/*.sql          │
+                                 ▼                 │  capabilities.toml │
+                ┌────────────────────────────────┐ └────────────────────┘
+                │ internal/platform/duckdb/      │
+                │  - implémente port.*Repository │
+                │  - construit SQL via FieldKey  │
+                │  - DDL chargée via TitleDataAdapter.MigrationSteps()
+                │  - 0 SQL exposé en dehors      │
+                └────────────────────────────────┘
 ```
 
 ### 2.2 Règle d'or
@@ -125,32 +127,35 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 ## 3. Phase 0 — Décisions techniques + alignement ADR (BLOQUANTES)
 
 **Effort** : 2-3 jours
-**Livrable** : 6 décisions tranchées + ADR mise à jour + branche créée + plan v2 figé.
+**Livrable** : 9 décisions tranchées + ADRs mises à jour + branche créée + plan v2.5 figé.
 
-### Décisions tranchées (session 2026-05-06)
+### Décisions tranchées
 
 | ID | Sujet | Décision | Justification |
 |---|---|---|---|
 | **D1** | `canonical.Value` (Phase 2) | Wrapper typé `Value{Kind, Int, Float, Str, Bool, Time}` | Compromis lisibilité/perf, pattern-match côté service via switch sur Kind, évite le runtime cast |
 | **D2** | Field absent vs NULL | `map[FieldKey]*Value` : présent dans le map = field supporté ; `*Value = nil` = NULL en DB ; absent du map = capability non supportée | Sémantique explicite, testable, permet de vérifier la dégradation gracieuse |
 | **D3** | Schéma DB multi-titre (Phase 1.5) | DB physique par titre (`data/titles/{slug}/warehouse/...`) | Cohérent ADR 0008 (isolation par chemin FS). Le `PathResolver` retourne déjà la bonne DB. DDL dans `internal/games/{slug}/ddl/` |
-| **D4** | OpenAPI gen (Phase 3) | **Huma intégré au plan** : migrer ~80 handlers chi vers Huma. OpenAPI 3.1 auto-généré par construction, validation des inputs auto, plus jamais de YAML manuel | Décision ambitieuse : élargit le scope du plan mais évite un refactor handlers ultérieur. Coût total révisé à 50-65 j |
-| **D5** | Codegen TS canonical (Phase 7) | Script `tools/codegen/canonical-ts/` : lit `canonical/fields.go` (go/ast) → écrit `apps/web/src/lib/canonical/fields.ts`. Single source Go, CI lint vérifie l'idempotence | Évite la dérive entre Go et TS. Compatible avec l'output OpenAPI Huma (qui génère son propre client TS pour les DTO) |
+| **D4** | OpenAPI gen (Phase 3) | **Huma intégré au plan** : migrer ~113 handlers chi vers Huma (vs 80 en v2.4). OpenAPI 3.1 auto-généré par construction, validation des inputs auto, plus jamais de YAML manuel | Décision ambitieuse mais bénéfice scale linéairement avec #handlers — donc +33 handlers depuis v2.4 renforce le ROI, pas l'inverse. Coût total révisé à 62-82 j. |
+| **D5** | Codegen TS canonical (Phase 7) | Script `tools/codegen/canonical-ts/` : lit `canonical/fields.go` (go/ast) → écrit `apps/web/src/lib/canonical/fields.ts`. Single source Go, CI lint vérifie l'idempotence | Évite la dérive entre Go et TS. Compatible avec l'output OpenAPI Huma. |
 | **D6** | Stratégie de migration progressive (Phase 2) | Service par service en PR atomique : ancien path supprimé dans la même PR que la migration | Pas de feature flag (évite la dette « deux paths à maintenir »). Critère de mergeabilité par phase = service migré + tests passent |
-| **D7** | Granularité du status feature (Phase 1.7) | 3 états : `available` / `degraded` / `unavailable` + reason humaine. Une feature `degraded` rend des données partielles avec badge UI explicite | Permet de modéliser le cas réel : feature qui tourne avec subset (ex. `synthesis.weapon_breakdown` sans medals = OK mais moins riche). Plus nuancé qu'un binaire on/off |
+| **D7** | Granularité du status feature (Phase 1.7b) | 3 états : `available` / `degraded` / `unavailable` + reason humaine. Une feature `degraded` rend des données partielles avec badge UI explicite | Permet de modéliser le cas réel : feature qui tourne avec subset (ex. `synthesis.weapon_breakdown` sans medals = OK mais moins riche). Plus nuancé qu'un binaire on/off |
 | **D8** | Source de la disponibilité data (Phase 1.7) | TOML déclaratif uniquement : l'opérateur du titre déclare `[data] match_events = true` dans `capabilities.toml`. Test CI de cohérence : pour chaque `data=true`, la table existe + a ≥ 1 row sur fixture `halo_full` | Simple, rapide, pas de query DB au boot. Le risque de dérive (TOML dit true mais table vide) est mitigé par le test de cohérence |
-| **D9** | Phasage de l'outillage diagnostic | Phase 1.8 dédiée (3-4 j) après Phase 1.7. 1.7 = modèle Feature Matrix + service d'application ; 1.8 = outillage diagnostic (port.TableInspector, page Lab, CLI). Permet de geler 1.7 indépendamment et de différer 1.8 si pas urgent | Sépare clairement le runtime (utilisé par les services produit) du tooling opérateur (utilisé une fois par titre ajouté). Exit Gate plus simple par phase |
+| **D9** | Phasage de l'outillage diagnostic | Phase 1.8 dédiée (3-4 j) après Phase 1.7b. Outillage opérateur, différable | Sépare clairement le runtime (utilisé par les services produit) du tooling opérateur (utilisé une fois par titre ajouté). |
 | **D10** | Mode d'export TOML draft depuis Lab | Copie presse-papier uniquement. Le bouton génère le bloc `[data]` formaté, l'opérateur colle manuellement dans `capabilities.toml` et fait `git commit` | Préserve le versioning Git (D8). Pas d'écriture serveur, pas de risque de conflits, audit trail = git log standard. L'opérateur reste le seul auteur du TOML |
+| **D11** | OpenSpartan = bootstrap one-shot (NOUVELLE v2.5) | OpenSpartan import est une **source d'ingestion bootstrap unique** (Day-0, premier lancement), pas un pipeline continu. Le `TitleDataAdapter` est l'autorité du schéma DB ; OpenSpartan **écrit** vers la même DDL que Waypoint. Le `port.MatchFieldRepository` lit indifféremment Day-0 (OpenSpartan-primed) et Day-1+ (Waypoint-fed) | Évite de modéliser un 2ᵉ pipeline parallèle dans `SyncScope` ou Phase 4. Le seul test de parité requis (Phase 2) est : « une DB primée OpenSpartan + sync'd Waypoint sur les mêmes match_id retourne les mêmes valeurs canonical » |
+| **D12** | Migration `CapabilityMap` code → TOML (NOUVELLE v2.5) | Le `CapabilityMap` actuel ([games/adapter.go:36-54](apps/go-api/internal/games/adapter.go#L36)) est **binaire** et déclaré en Go. Phase 1.7a le **réécrit en TOML** sans casser l'API existante (les `games.Cap*` constants restent les keys, valeurs lues depuis `capabilities.toml` au boot). Phase 1.7b **étend** vers 3 états + cascade. | Évite un double système (code + TOML) en parallèle. Migration en 2 PR : (a) move CapabilityMap → TOML, (b) extend to 3-state. Compat préservée pour les consumers actuels. |
+| **D13** | Gel des nouveaux handlers en Huma (NOUVELLE v2.5) | Dès que **Phase 3b est démarrée**, tout nouveau handler créé (feature non listée dans le plan) doit être **directement écrit en Huma** — pas en chi. Lint CI bloquant : `tests/lint/no_new_chi_handler_test.go` qui git-diff vs branche `phase-3b-start-tag` et rejette tout nouveau `func(w, r)`. | Sans D13, la dette se creuse pendant la migration (rythme actuel : ~30 handlers en 2 semaines). Avec D13, le solde restant est plafonné. |
 
 ### Tâches Phase 0
 
-- [ ] **Réviser ADR 0011** : ajouter section « v2 — confirmation post-plan title-agnostic » qui acte que canonical reste minimal et que le plan title-agnostic ne le contredit pas. Alternative : nouvel **ADR 0014 — title-agnostic services + Huma migration + DDL isolation** qui complète 0011.
-- [ ] **ADR 0015 (à créer)** : « Adoption de Huma pour OpenAPI 3.1 auto-généré ». Documente le choix vs swag/kin-openapi/Fuego, le coût (~80 handlers), les bénéfices long terme (validation auto, plus de YAML manuel).
-- [ ] **ADR 0016 (à créer)** : « Feature Matrix — capability cascading multi-titre ». Documente le modèle data capabilities + feature capabilities + arbre de dépendances + 3 états (available / degraded / unavailable). Décisions D7 et D8 justifiées.
+- [ ] **ADR 0014 (à créer)** : « Title-agnostic services + DDL isolation ». Acte D2, D3, D6, D11 (OpenSpartan bootstrap). Complète ADR 0011 sans la contredire.
+- [ ] **ADR 0015 (à créer)** : « Adoption de Huma pour OpenAPI 3.1 auto-généré ». Documente D4 + D13 (gel des nouveaux handlers). Bénéfices long terme (validation auto, plus de YAML manuel) vs coût (~113 handlers). Alternatives écartées : swag, kin-openapi, Fuego.
+- [ ] **ADR 0016 (à créer)** : « Feature Matrix — capability cascading multi-titre ». Documente le modèle data capabilities + feature capabilities + arbre de dépendances + 3 états (available / degraded / unavailable). Décisions D7, D8, D12. Mention migration depuis CapabilityMap code.
 - [ ] **ADR 0017 (à créer)** : « Title Diagnostic — outillage Lab read-only ». Documente la séparation diagnostic (D9) + le choix copie presse-papier vs écriture serveur (D10). Pattern : TOML reste source de vérité Git, le Lab n'écrit jamais.
 - [ ] Créer la branche `refactor/title-agnostic-services` depuis `main`.
 - [ ] Ajouter ce plan en référence dans `CLAUDE.md` § Décisions architecturales.
-- [ ] Entrée `thought_log.md` documentant les 6 décisions et leur justification.
+- [ ] Entrée `thought_log.md` documentant les 13 décisions et leur justification.
 
 ---
 
@@ -162,13 +167,15 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 **Risque** : faible (additif uniquement)
 **Livrable** : tous les FieldKeys que les services lisent existent dans `canonical/fields.go`, mappés vers les colonnes DB Halo Infinite via TOML, pour **toutes les tables shared**, pas seulement `match_participants`.
 
+**État actuel** : [canonical/fields.go](apps/go-api/internal/games/canonical/fields.go) ne fait que 158 lignes — additions raisonnables. Aucun TOML mapping `fields.toml` n'existe encore côté `internal/games/halo_infinite/`.
+
 - [ ] Inventaire exhaustif :
   ```bash
   rg "p\.\w+|mp\.\w+|mr\.\w+|me\.\w+|w\.\w+|kvp\.\w+" \
      apps/go-api/internal/platform/duckdb/queries_*.go > /tmp/cols.txt
   ```
 - [ ] Pour chaque colonne référencée, vérifier que le `canonical.FieldKey` existe ; sinon, ajouter dans `canonical/fields.go`.
-- [ ] Étendre `config/titles/halo_infinite/mappings/fields.toml` avec le mapping `field_key → db_column → table` pour les 5 tables :
+- [ ] Créer `config/titles/halo_infinite/mappings/fields.toml` (n'existe pas) avec le mapping `field_key → db_column → table` pour les 5 tables :
   - `match_participants` (~31 colonnes)
   - `medals_earned` (medal_id, count)
   - `highlight_events` (event_type, time_ms, actor_xuid)
@@ -179,35 +186,77 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 
 **Critère de complétion** : `grep -rE "p\.\w+|mp\.\w+|mr\.\w+" internal/platform/duckdb/queries_*.go` produit une liste 100% couverte par `fields.toml`. Aucun magic number Halo dans `queries_*.go`.
 
-### Phase 1.5 — DDL et schéma multi-titre (moyen, NOUVELLE)
+### Phase 1.5 — DDL et schéma multi-titre (lourd, effort doublé)
 
-**Effort** : 4-5 jours
-**Risque** : moyen (touche les migrations existantes)
+**Effort** : **8-10 jours** (vs 4-5 j en v2.4)
+**Risque** : élevé (touche **20+ fichiers** de migration accumulés)
 **Livrable** : chaque titre possède ses propres DDL ; le `MigrationRunner` est paramétré par `titleSlug`.
 
-- [ ] Déplacer `migration/steps_shared.go` → `internal/games/halo_infinite/ddl/steps_shared.sql` + `steps_player.sql` + `steps_pve.sql`.
-- [ ] `MigrationRunner` lit les steps depuis le `TitleDataAdapter` (méthode `MigrationSteps()`). Plus de DDL hardcoded dans `platform/duckdb/migration/`.
-- [ ] Schema versioning par titre : `meta.schema_version` dans chaque DB, par titre.
-- [ ] Test : ajouter un titre fixture `synthetic_test_title` avec un schéma minimal (3 colonnes : kills, deaths, match_id) et vérifier que le `MigrationRunner` crée la DB sans toucher au code partagé.
+**Pourquoi l'effort a doublé** : depuis la v2.4, le répertoire [internal/migration/](apps/go-api/internal/migration/) a accumulé des steps Halo-specific qui n'existaient pas. Liste exhaustive à migrer :
 
-**Critère de complétion** : `internal/platform/duckdb/migration/` ne contient plus aucune DDL Halo-specific. Ajouter un titre = créer son dossier `ddl/` + l'enregistrer.
+| Catégorie | Fichiers à migrer vers `internal/games/halo_infinite/ddl/` |
+|---|---|
+| **Métadata** | `steps_metadata.go`, `steps_metadata_assists_model.go`, `steps_metadata_catalog.go`, `steps_metadata_citation_fix.go`, `steps_metadata_playlist_fr.go`, `steps_metadata_prestige.go`, `steps_metadata_prestige_seed.go` |
+| **Player DB (Halo-only)** | `steps_player.go`, `steps_player_assists_model.go`, `steps_player_lusr_chain_rework.go`, `steps_player_notifications.go`, `steps_player_perf_chain.go`, `steps_player_prestige.go` |
+| **Engagement** | `steps_engagement.go` |
+| **Shared (historique)** | Tout DDL Halo-only restant dans `migration/` |
 
-### Phase 1.7 — Feature Matrix (capability cascading) (moyen, NOUVELLE)
+- [ ] Déplacer ces fichiers vers `internal/games/halo_infinite/ddl/{steps_shared.sql, steps_player.sql, steps_metadata.sql, steps_pve.sql, steps_engagement.sql, steps_perf_chain.sql, steps_lusr_chain.sql, steps_prestige.sql, steps_notifications.sql, ...}`.
+- [ ] `MigrationRunner` lit les steps depuis le `TitleDataAdapter` (méthode `MigrationSteps() []MigrationStep`). Plus de DDL hardcoded dans `internal/migration/`.
+- [ ] Schema versioning par titre : `meta.schema_version` dans chaque DB, par titre. Conserver compat avec `schema_version` existant (migration step `0000_rename_schema_version_to_titled.sql`).
+- [ ] **OpenSpartan bootstrap** (D11) : vérifier que [internal/service/openspartan_post_import_service.go](apps/go-api/internal/service/openspartan_post_import_service.go) et le mapper [openspartan_mapper.go](apps/go-api/internal/openspartan/) écrivent vers les **mêmes tables/colonnes** que les steps déplacés. Sinon, divergence Day-0 vs Day-1+.
+- [ ] Test : ajouter un titre fixture `synthetic_test_title` (peut être un alias du `synthetic_title_b` existant étendu) avec un schéma minimal (3 colonnes : kills, deaths, match_id) et vérifier que le `MigrationRunner` crée la DB sans toucher au code partagé.
+- [ ] Audit `internal/ops/` (backup, restore, diagnose) : ces outils doivent itérer sur tous les titres enregistrés. Effort spécifique 1-2 j inclus dans le total.
+
+**Critère de complétion** : `internal/migration/` ne contient plus aucune DDL Halo-specific. Ajouter un titre = créer son dossier `ddl/` + l'enregistrer. Le test `OpenSpartanImport_E2E_test.go` continue de passer (rows OpenSpartan respectent la DDL HI).
+
+### Phase 1.7a — TOML capabilities binaires (light, NOUVELLE v2.5)
+
+**Effort** : 2 jours
+**Risque** : faible (additif, compat avec `CapabilityMap` existant)
+**Livrable** : le `CapabilityMap` actuel ([games/adapter.go:51](apps/go-api/internal/games/adapter.go#L51)) est lu depuis `capabilities.toml` au boot. Les `games.Cap*` constants restent les keys (pas de breaking). Endpoint `GET /api/v1/title/capabilities` retourne le map du titre actif.
+
+- [ ] Créer `config/titles/halo_infinite/capabilities.toml` minimal (section `[capabilities]` binaire uniquement) :
+  ```toml
+  [capabilities]
+  match_history       = true
+  match_detail_core   = true
+  match_skill_snapshot = true
+  career_progression  = true
+  pve_firefight       = true
+  timeseries          = true
+  engagement          = true
+  ```
+- [ ] Créer `config/titles/synthetic_title_b/capabilities.toml` (subset, prouve la dégradation).
+- [ ] Loader : `internal/games/{slug}/capabilities.go::LoadCapabilities() games.CapabilityMap`. Les adapters `halo_infinite/adapter_data.go` et `synthetic_title_b/adapter.go` consomment ce loader au lieu de hardcoder la map.
+- [ ] Handler `GET /api/v1/title/capabilities` (existe déjà ? Sinon créer). Format JSON `{ "capability_key": "supported" | "not_exposed" }`.
+- [ ] **Aucune extension** (3 états, cascade, data vs feature) — c'est Phase 1.7b.
+- [ ] Test : suppression d'une ligne du TOML synthetic → endpoint reflète l'absence + service dégrade.
+
+**Critère de complétion** : 0 `games.CapabilityMap{...}` hardcodé dans `internal/games/*/adapter*.go`. Toutes les maps proviennent du TOML.
+
+### Phase 1.7b — Feature Matrix 3 états + cascade (moyen, ex-Phase 1.7)
 
 **Effort** : 4-5 jours
 **Risque** : moyen (touche services + frontend, mais isolé via interface)
 **Livrable** : système 2 niveaux qui modélise « data capability » (donnée brute peuplée) + « feature capability » (feature produit) avec arbre de dépendances déclaratif. Status à 3 états (`available` / `degraded` / `unavailable`). Exposé au frontend via `/api/v1/title/feature_matrix`.
 
-#### 1.7.1 Modèle de données (TOML déclaratif)
+**Pré-requis** : Phase 1.7a mergée (TOML capabilities binaires en place).
 
-`config/titles/{slug}/capabilities.toml` :
+#### 1.7b.1 Modèle de données (extension du TOML 1.7a)
+
+`config/titles/{slug}/capabilities.toml` étendu :
 
 ```toml
-# Section [data] : disponibilité brute des sources DB par titre.
-# Chaque clé = nom canonique d'une source de données (table ou groupe de tables).
+# Section [capabilities] : binaire, conservée pour compat (Phase 1.7a).
+[capabilities]
+match_history       = true
+...
+
+# Section [data] : disponibilité brute des sources DB par titre (NOUVELLE 1.7b).
 [data]
 match_events     = true   # highlight_events table peuplée
-match_skill      = true   # kills_expected/deaths_expected dans match_participants
+match_skill      = true
 weapon_kills     = true
 medals           = true
 killer_victim    = true
@@ -248,7 +297,7 @@ requires = ["csr"]
 requires = ["lusr"]
 ```
 
-#### 1.7.2 Algorithme de calcul
+#### 1.7b.2 Algorithme de calcul
 
 Au boot du serveur, pour chaque titre enregistré :
 
@@ -270,7 +319,7 @@ pour chaque feature F :
 
 Le résultat est un `map[FeatureKey]FeatureStatus` figé au boot, exposé via injection (DI) sous `port.FeatureChecker`.
 
-#### 1.7.3 Couches Go
+#### 1.7b.3 Couches Go
 
 - [ ] `internal/domain/feature/` : types `FeatureKey`, `FeatureStatus` (`available` / `degraded` / `unavailable`), `FeatureMatrix`.
 - [ ] `internal/games/{slug}/feature_matrix.go` : loader TOML.
@@ -282,9 +331,9 @@ Le résultat est un `map[FeatureKey]FeatureStatus` figé au boot, exposé via in
   }
   ```
 - [ ] `internal/service/feature_matrix_service.go` : implémente `port.FeatureMatrixService`, expose la matrice complète (consommée par handler `/api/v1/title/feature_matrix`).
-- [ ] `internal/api/handlers/feature_matrix.go` : handler Huma `GET /api/v1/title/feature_matrix`.
+- [ ] `internal/api/handlers/feature_matrix.go` : handler **Huma** `GET /api/v1/title/feature_matrix` (si Phase 3b démarrée ; sinon chi).
 
-#### 1.7.4 Pattern d'usage côté service
+#### 1.7b.4 Pattern d'usage côté service
 
 Tout service avec une feature gated :
 
@@ -297,20 +346,17 @@ func (s *MatchViewService) buildCadence(ctx context.Context, ...) (*ChartSeries,
         slog.WarnContext(ctx, "feature degraded",
             "feature", "match_view.cadence",
             "reason", s.features.Status(ctx, "match_view.cadence").Reason)
-        // continue avec calcul partiel
     }
     // calcul normal
 }
 ```
 
-#### 1.7.5 Pattern d'usage côté frontend (anticipé Phase 5)
+#### 1.7b.5 Pattern d'usage côté frontend (anticipé Phase 5)
 
 ```tsx
-// Hook
 const status = useFeatureStatus("match_view.cadence");
 // → { status: "degraded" | "available" | "unavailable", reason: string }
 
-// Composant gate
 <FeatureGate feature="match_view.cadence">
   <Cadence data={...} />
 </FeatureGate>
@@ -321,7 +367,7 @@ const status = useFeatureStatus("match_view.cadence");
 //   unavailable → render <FeatureUnavailable reason={reason} /> ou null selon prop hidden
 ```
 
-#### 1.7.6 Tests obligatoires
+#### 1.7b.6 Tests obligatoires
 
 - [ ] `feature_matrix_test.go` : algorithme de calcul, 4 cas (tous available, 1 degraded, 1 unavailable, cascade).
 - [ ] **Test de cohérence TOML ↔ DB** : pour chaque `data=true` dans `capabilities.toml`, vérifier sur fixture `halo_full` que la table existe + a ≥ 1 row. CI fail si dérive.
@@ -335,11 +381,13 @@ const status = useFeatureStatus("match_view.cadence");
 - Route `GET /api/v1/title/feature_matrix` opérationnelle, snapshot stable.
 - Aucun service n'utilise `if titleSlug == "halo_infinite"` pour gater une feature (lint custom).
 
-### Phase 1.8 — Outillage diagnostic Lab (moyen, NOUVELLE)
+### Phase 1.8 — Outillage diagnostic Lab (moyen, différable)
 
 **Effort** : 3-4 jours
 **Risque** : faible (read-only, pas de mutation)
 **Livrable** : page Lab avec section « Title Capabilities Diagnostic » qui montre la réalité DB (rows count par table), la compare au TOML déclaré, expose les drifts. Bouton « Export TOML draft » qui copie un bloc `[data]` prêt à coller dans le presse-papier. CLI `levelup-titles diagnose` headless équivalent.
+
+**Note v2.5** : Phase 1.8 reste différable sans bloquer Phase 2+. Si l'urgence est de migrer les services, faire 0 → 1.7b → 2 directement et revenir à 1.8 plus tard.
 
 #### 1.8.1 Workflow opérateur (ajout d'un titre)
 
@@ -371,9 +419,9 @@ const status = useFeatureStatus("match_view.cadence");
   }
   ```
 - [ ] `internal/platform/duckdb/table_inspector.go` : impl. Utilise `PathResolver` pour atteindre la bonne DB par titre. Read-only.
-- [ ] `internal/service/title_diagnostic_service.go` : compose `TableInspector` + `FeatureChecker` (de Phase 1.7) + le mapping `fields.toml`. Calcule le drift et génère le TOML draft.
-- [ ] `internal/api/handlers/lab_diagnostic.go` : handler Huma `GET /api/v1/lab/title/{slug}/diagnostic` + `GET /api/v1/lab/title/{slug}/toml-draft`. Auth admin requise (réutilise middleware existant).
-- [ ] **Aucune écriture côté serveur** (cf. D10). Le bloc TOML est sérialisé en string et renvoyé tel quel.
+- [ ] `internal/service/title_diagnostic_service.go` : compose `TableInspector` + `FeatureChecker` (de Phase 1.7b) + le mapping `fields.toml`.
+- [ ] `internal/api/handlers/lab_diagnostic.go` : handler Huma `GET /api/v1/lab/title/{slug}/diagnostic` + `GET /api/v1/lab/title/{slug}/toml-draft`. Auth admin requise.
+- [ ] **Aucune écriture côté serveur** (D10). Le bloc TOML est sérialisé en string et renvoyé tel quel.
 
 #### 1.8.3 CLI complémentaire
 
@@ -424,9 +472,9 @@ levelup-titles diagnose --slug halo_mcc
 - Aucun endpoint ne mute le TOML côté serveur (lint : pas de `os.WriteFile` dans handlers Lab).
 - Les 3 layers (port + service + impl + handler + frontend) testés indépendamment.
 
-### Phase 2 — Repository abstrait par FieldKey (moyen)
+### Phase 2 — Repository abstrait par FieldKey (moyen, +1 j OpenSpartan)
 
-**Effort** : 5-7 jours (révisé depuis v1)
+**Effort** : 6-8 jours (vs 5-7 j en v2.4 ; +1 j test OpenSpartan continuity D11)
 **Risque** : moyen (refactor des repos existants, mais migration progressive service-par-service)
 **Livrable** : nouvelle interface `port.MatchFieldRepository` qui prend des `[]FieldKey`, retourne `map[FieldKey]*canonical.Value`. Implémentation DuckDB qui résout le SELECT via TOML mapping.
 
@@ -447,6 +495,11 @@ levelup-titles diagnose --slug halo_mcc
 - [ ] Tests integration `match_field_repo_integration_test.go` :
   - Halo Infinite : tous les FieldKeys retournent valeurs ou NULL cohérents.
   - `synthetic_test_title` : seules les FieldKeys déclarées dans son TOML sont résolues, les autres absentes du map.
+- [ ] **NOUVEAU — Test OpenSpartan continuity (D11)** : `openspartan_waypoint_continuity_test.go` :
+  - Fixture A : DB primée par `ImportFromOpenSpartan` sur 20 matchs.
+  - Fixture B : Même DB + sync Waypoint sur 5 matchs additionnels (Day-1+).
+  - Pour chaque match dans A∪B, `MatchFieldRepository.LoadMatchFields(...)` retourne le même set de FieldKeys avec valeurs valides (ou NULL cohérents).
+  - Critère : aucun FieldKey présent dans les rows Waypoint qui soit absent dans les rows OpenSpartan (ou si différence : doc explicite dans le mapper OpenSpartan).
 - [ ] Migration progressive (D6) : chaque service migré en PR séparée :
   1. `match_view_service.go` (pilote, plus complexe)
   2. `synthesis_service.go`
@@ -456,26 +509,29 @@ levelup-titles diagnose --slug halo_mcc
   6. `career_service.go`
   7. `timeseries_service.go`
 
-**Critère de complétion** : aucun service n'importe `internal/platform/duckdb` directement. Tous dépendent de `port.MatchFieldRepository` ou des autres ports existants.
+**Critère de complétion** : aucun service n'importe `internal/platform/duckdb` directement. Tous dépendent de `port.MatchFieldRepository` ou des autres ports existants. Test OpenSpartan continuity PASS.
 
-### Phase 3 — Nettoyage DTO + migration vers Huma (lourd, fusion ex-Phases 3+4)
+### Phase 3 — Nettoyage DTO + migration vers Huma (lourd, +33 handlers)
 
-**Effort** : 18-25 jours
-**Risque** : élevé (impact contrat front + rewrite ~80 handlers)
+**Effort** : 22-32 jours (vs 18-25 j v2.4 ; +5-7 j à cause de +33 handlers)
+**Risque** : élevé (impact contrat front + rewrite ~113 handlers)
 **Livrable** : `domain/match_view.go` ne contient plus que les view-model DTO propres ; tous les handlers chi sont migrés vers Huma ; `api/openapi.yaml` est auto-généré et le client TS front aussi.
 
-> **Pourquoi fusionner Phase 3 (OpenAPI) et ex-Phase 4 (DTO clean)** : Huma génère l'OpenAPI depuis les types Input/Output. Si on migre les handlers vers Huma AVANT de nettoyer les DTOs, on définit les Output structs sur les types `domain` actuels (Halo-specific) puis on les rewrite en Phase 4 — soit deux passes sur 80 handlers. Fusionner = un seul passage par handler.
+> **Pourquoi fusionner Phase 3 (OpenAPI) et ex-Phase 4 (DTO clean)** : Huma génère l'OpenAPI depuis les types Input/Output. Si on migre les handlers vers Huma AVANT de nettoyer les DTOs, on définit les Output structs sur les types `domain` actuels (Halo-specific) puis on les rewrite — soit deux passes sur 113 handlers. Fusionner = un seul passage par handler.
 
 #### Phase 3a — Cleanup DTO (5-7 j)
 
-- [ ] Déplacer les types `*Raw` (`MatchMetaRaw`, `ScoreboardRaw`, `ExpectedStatsRaw`, `MatchHistAvgRow`, `BulkMedalRaw`, `BulkWeaponKillRaw`, etc.) de `domain/match_view.go` vers `platform/duckdb/raw_types.go`. Ils ne traversent plus la frontière service.
+- [ ] Déplacer les 9 types `*Raw` ([domain/match_view.go:505-662](apps/go-api/internal/domain/match_view.go#L505) : `MatchMetaRaw`, `PlayerMatchStatsRaw`, `ScoreboardRaw`, `BulkMedalRaw`, `BulkWeaponKillRaw`, `MatchEnrichmentRaw`, `MedalRaw`, `EventRaw`, `WeaponKillRaw`, +`MatchHistAvgRow`) de `domain/match_view.go` vers `platform/duckdb/raw_types.go`. Ils ne traversent plus la frontière service.
 - [ ] Réécrire `MatchExpectedStats` : tous les champs `*float64 omitempty`. Pas de `HasExpectedData bool` (le front teste `expected_kills !== null`).
 - [ ] Idem `MatchScoreboardRow` : les 30+ champs deviennent `*T omitempty`.
 - [ ] Le service `match_view_service.go` consulte le `TitleDataAdapter` (via `port.MatchFieldRepository`) puis compose le DTO ; les champs absents → nil → JSON omit.
 
-#### Phase 3b — Migration Huma (13-18 j)
+#### Phase 3b — Migration Huma (17-25 j, +33 handlers depuis v2.4)
 
-- [ ] **Setup Huma sur chi existant** : créer `huma.NewAPI(chi)` adapter, sans toucher aux routes existantes. Phase 3b démarre avec 0 handler migré, OpenAPI vide.
+**Inventaire actuel** : `find apps/go-api/internal/api/handlers -name "*.go" | wc -l` = **113 fichiers** (incl. tests). Le scope a cru de ~30 handlers depuis la v2.4 (achievements, OpenSpartan import, Xbox SSO oauth, CSR par-match, citations, LUSR chain, career-live, perf-chain, admin-auto-sync).
+
+- [ ] **Setup Huma sur chi existant** : créer `huma.NewAPI(chi)` adapter, sans toucher aux routes existantes. Phase 3b démarre avec 0 handler migré, OpenAPI vide. **Poser le tag git `phase-3b-start` sur ce commit** — c'est le référent pour le lint D13.
+- [ ] **Activer le lint D13** : `tests/lint/no_new_chi_handler_test.go` qui git-diff vs `phase-3b-start` et rejette tout nouveau handler chi non listé dans `tests/lint/handlers_migration_progress.json`. Mise à jour de ce JSON au fur et à mesure de la migration.
 - [ ] **Pattern de migration handler** : pour chaque handler, créer un struct `Input` (path/query/body params via tags `path:`, `query:`, `body:`, `header:`) et un struct `Output` (réponse). Le corps du handler devient `func(ctx, *Input) (*Output, error)`.
   ```go
   type MatchViewInput struct {
@@ -492,29 +548,32 @@ levelup-titles diagnose --slug halo_mcc
       return &MatchViewOutput{Body: *resp}, nil
   }
   ```
-- [ ] **Migration progressive par groupe de handlers** (ordre de risque croissant) :
-  1. Handlers simples GET sans body (~30 handlers : health, bootstrap, settings, gamertag, prestige, achievements, etc.) — ~3 j
-  2. Handlers GET avec query params filtrés (~25 handlers : match_history, sessions, explorer, timeseries, etc.) — ~5 j
-  3. Handlers POST/PUT avec body (~15 handlers : sync, watcher, match_favorite, match_exclusion, etc.) — ~3 j
-  4. Handlers complexes (~10 handlers : match_view, synthesis, season_pass, squad_v2 — gros DTO, params imbriqués) — ~4 j
+- [ ] **Migration progressive par groupe de handlers** (ordre de risque croissant) — **inventaire à jour mai 2026** :
+  1. Handlers simples GET sans body (~45 handlers : health, bootstrap, settings, gamertag, prestige, achievements, citations, lab, admin, etc.) — ~4-5 j
+  2. Handlers GET avec query params filtrés (~35 handlers : match_history, sessions, explorer, timeseries, career, compare, synthesis, season_pass, etc.) — ~6-7 j
+  3. Handlers POST/PUT avec body (~20 handlers : sync, watcher, match_favorite, match_exclusion, openspartan import, xbox-sso oauth, notifications mark-read, etc.) — ~4-5 j
+  4. Handlers complexes (~13 handlers : match_view, synthesis détaillé, squad_v2, season_pass full, career_live, admin auto-sync diag, etc.) — ~4-5 j
 - [ ] **Validation des inputs** : les tags `minLength:`, `maxLength:`, `pattern:`, `enum:` dans Input sont vérifiés par Huma avant d'appeler le handler. Supprimer les regex manuels (`playlistOrSessionPattern` etc.) au profit de tags Huma.
 - [ ] **Mapping erreurs** : créer `mapErrorToHuma(err) error` qui convertit `port.ErrCapabilityNotSupported` → `huma.Error404NotFound`, `port.ErrInvalidInput` → `huma.Error400BadRequest`, etc.
 - [ ] **Suppression `api/openapi.yaml` manuel** : le YAML est désormais généré par `huma.NewAPI(...)` au boot, exposé sur `/openapi.yaml` et committé via `go generate ./tools/openapi-export`. CI fail si diff.
 - [ ] **Régénération client TS frontend** : `apps/web/src/lib/api/types.gen.ts` régénéré depuis le nouveau YAML via `openapi-typescript`. Régénération automatique en CI.
 - [ ] **Tests de contrat snapshot** : pour chaque route, JSON de réponse comparé à un golden file (fixtures Halo + synthetic_test_title).
-- [ ] **Smoke test E2E** : 7 routes critiques (home, match-view, match-history, sessions, palmares, season-pass, synthesis) renvoient toujours du JSON valide vs le schema généré.
+- [ ] **Smoke test E2E** : 9 routes critiques (home, match-view, match-history, sessions, palmares, season-pass, synthesis, career, openspartan-import) renvoient toujours du JSON valide vs le schema généré.
 
 **Critère de complétion** :
 - `domain/match_view.go` ne contient plus aucun type `*Raw` ni aucun champ marqué « Halo Infinite : pas d'expected_assists ».
 - `api/openapi.yaml` est généré + git-tracked ; aucune édition manuelle ; CI fail si diff vs `huma.NewAPI` au boot.
 - 100% des handlers utilisent le pattern `func(ctx, *Input) (*Output, error)` Huma.
 - Aucun handler n'utilise plus directement `chi.URLParam`, `r.URL.Query()`, ou `json.NewEncoder(w).Encode(...)`.
+- Lint D13 actif : un PR introduisant un handler chi rouge.
 
 ### Phase 4 — Sync flags génériques (moyen)
 
-**Effort** : 5-6 jours (révisé)
+**Effort** : 5-6 jours (inchangé)
 **Risque** : moyen (touche le CLI utilisateur)
 **Livrable** : `SyncScope` est partiellement FieldKey-based (pour les champs stats) et garde des flags top-level pour les concerns non-FieldKey (sessions, citations, engagement, dry-run, etc.).
+
+**Note D11** : OpenSpartan import est hors-scope de `SyncScope` — c'est un import bootstrap one-shot via `POST /import/openspartan`, pas un mode de sync. Phase 4 ne le touche pas.
 
 - [ ] **Découpler** :
   - **Champs FieldKey-based** : `TeamMMR`, `KillsExpected`, `DeathsExpected`, `Damage`, `AvgLife`, `GrenadeKills`, `MeleeKills`, `PowerWeaponKills`, `HeadshotKills`, `MaxSpree`, `KDARecalc`, `TimePlayed` → remplacés par `Fields []canonical.FieldKey`.
@@ -529,14 +588,15 @@ levelup-titles diagnose --slug halo_mcc
 
 ### Phase 5 — Frontend canonical-aware + FeatureGate (moyen)
 
-**Effort** : 7-9 jours (révisé v2.3)
+**Effort** : 7-9 jours (inchangé)
 **Risque** : moyen (ajout d'abstractions front, mais OpenAPI gen capture les changes)
 **Livrable** : composants UI utilisent `useFieldLabel(FieldKey)` / `useCapability(cap)` / `useFeatureStatus(featureKey)` au lieu d'accéder directement aux propriétés JSON par hardcoded path. `<FeatureGate>` masque/dégrade automatiquement les sections selon le `feature_matrix` du titre actif.
 
 - [ ] **Codegen TS depuis canonical Go** (D5) : script `tools/codegen/canonical-ts/` qui lit `canonical/fields.go` et écrit `apps/web/src/lib/canonical/fields.ts`. CI lint vérifie que le fichier généré est à jour.
 - [ ] **Client API TS auto-généré** depuis l'OpenAPI Huma (Phase 3b) via `openapi-typescript`. Remplace le client manuel actuel.
 - [ ] Hook `useFieldLabel(field, locale)` lit le manifest i18n exposé via API `/api/v1/title/manifest` (déjà existant côté back via TitleSemanticAdapter).
-- [ ] Hook `useFeatureStatus(featureKey)` consulte `/api/v1/title/feature_matrix` (cached au boot via TanStack Query infinite stale time). Retourne `{ status, reason }`.
+- [ ] Hook `useCapability(cap)` consulte `/api/v1/title/capabilities` (Phase 1.7a).
+- [ ] Hook `useFeatureStatus(featureKey)` consulte `/api/v1/title/feature_matrix` (Phase 1.7b, cached au boot via TanStack Query infinite stale time). Retourne `{ status, reason }`.
 - [ ] Composant `<FeatureGate feature="..." [hidden]>` à 3 modes :
   - `available` → render children sans modification
   - `degraded` → render children + `<PartialDataBadge tooltip={reason} />`
@@ -583,6 +643,7 @@ Pour CHAQUE PR migrant un service :
 | **Snapshot SQL avant/après** | Logger les queries DuckDB exécutées (via `slog` Debug) avant/après. | Plan d'exécution comparable (pas de `Sequential Scan` introduit là où il n'y en avait pas) |
 | **Bench latence** | `go test -bench` sur le handler complet pour 100 matchs. | p95 latency post-migration ≤ p95 pre-migration × 1.10 (slowdown max 10%) |
 | **Test de parité multi-titre** | Sur `synthetic_test_title` (subset fields), même handler répond 200 + JSON valide. | Pas de panic, pas de 500, FieldKeys absents → omitempty respecté |
+| **Test OpenSpartan continuity (NOUVEAU v2.5, D11)** | DB primée OpenSpartan + 5 matchs Waypoint additionnels. Handler répond pour les 2 sous-ensembles. | Pas de FieldKey present-on-Waypoint / absent-on-OpenSpartan non documenté |
 
 #### Phase 3a — cleanup DTO
 
@@ -599,10 +660,11 @@ Pour CHAQUE groupe de handlers migré :
 | Test | Modalité | Critère pass |
 |---|---|---|
 | **Snapshot JSON full** | Toutes les routes du groupe testées via `httptest` (via Huma) ET via `chi` (route legacy si encore présente) sur les mêmes fixtures. | Bytes identiques OU diff documenté |
-| **Test des middlewares** | Pour chaque middleware existant (auth, CSRF, slog HTTP, rate-limit, title extractor), test `httptest` confirme l'invocation sur une route Huma. | 5/5 middlewares passent |
+| **Test des middlewares** | Pour chaque middleware existant (auth, CSRF, slog HTTP, rate-limit, title extractor, LoopbackOnly pour admin), test `httptest` confirme l'invocation sur une route Huma. | 6/6 middlewares passent |
 | **Test des erreurs** | Chaque erreur mappée (`ErrCapabilityNotSupported` → 404, `ErrInvalidInput` → 400, etc.) testée. | Status code + body conformes au schema OpenAPI Huma |
 | **Test client TS regen** | `openapi-typescript` régénère le client TS sans erreur, `apps/web/` compile encore. | Build front passe, snapshot des types front committé |
 | **Test validation Huma** | Pour chaque route, 3 inputs invalides (manque param, format faux, valeur hors enum). | Réponse 400 + body lisible, pas de panic, pas de 500 |
+| **Lint D13 actif (NOUVEAU v2.5)** | Tentative d'ajouter un handler chi sans le déclarer dans `handlers_migration_progress.json` → CI rouge. | Lint custom passe sur tous les commits intermédiaires |
 
 #### Phase 4 — sync flags
 
@@ -638,13 +700,15 @@ Pour chaque phase, les cas suivants sont obligatoirement couverts par un test (p
 - Title sans capability `firefight` → routes PVE absentes du routeur front, 404 côté back.
 - Repo retourne `ErrCapabilityNotSupported` → handler dégrade au lieu de paniquer.
 - Adapter retourne `nil` → service compose un DTO partiel sans crash.
+- **DB OpenSpartan-only (Day-0)** → toutes les routes critiques (home, match-view, match-history) répondent 200, dégradation OK pour features dépendantes de Waypoint-only data (ex. live career rank).
 
 ### 5.5 Datasets de tests OBLIGATOIRES
 
-Pour les tests d'intégration et de non-régression, **deux datasets obligatoires** (cf. mémoire « tests d'intégration avec datasets réalistes ») :
+Pour les tests d'intégration et de non-régression, **trois datasets obligatoires** :
 
 - **Halo réaliste** (`testdata/integration/halo_full/`) : 50 matchs hétérogènes (PVP + PVE, ranked + social, plusieurs maps/playlists, plusieurs joueurs, ≥1 match avec données partielles/NULL).
 - **Synthetic minimal** (`testdata/integration/synthetic/`) : 10 matchs avec subset de FieldKeys (kills, deaths, match_id, durations uniquement).
+- **OpenSpartan-primed** (`testdata/integration/openspartan_primed/`, NOUVEAU v2.5) : DB issue d'un `ImportFromOpenSpartan` sur fixture SQLite snapshot, 20 matchs Day-0 + 5 matchs Waypoint Day-1+. Sert au test de continuité Phase 2.
 
 CI échoue si un test d'intégration tourne sur fixtures < ces datasets.
 
@@ -664,6 +728,7 @@ CI échoue si un test d'intégration tourne sur fixtures < ces datasets.
 | `revive` règle `unused-parameter` sur les handlers Huma | `internal/api/handlers/` | CI fail |
 | Lint custom `slog-context-required` | toute fonction qui prend `ctx context.Context` doit utiliser `slog.*Context` (pas `slog.*` sans contexte) | CI fail |
 | Lint custom `error-must-be-logged-or-returned` | tout `err != nil` doit soit `return err` (avec wrap), soit `slog.ErrorContext` | CI fail |
+| **Lint custom `no-new-chi-handler` (NOUVEAU D13)** | tout nouveau handler `func(w, r)` ajouté après `phase-3b-start` doit être déclaré dans `handlers_migration_progress.json` | CI fail |
 
 ### 6.2 Standards de logging par opération
 
@@ -725,6 +790,7 @@ Toute nouvelle clé hors whitelist nécessite mise à jour de cette section + en
 | `route` | string | Path HTTP (Huma) |
 | `status` | int | HTTP status code |
 | `consumer` | string | Service qui consomme (pour traces inter-couches) |
+| `source` (NOUVEAU v2.5) | string | `"openspartan"` ou `"waypoint"` pour distinguer l'origine d'une row |
 
 ### 6.4 Métriques expvar obligatoires (par phase)
 
@@ -739,6 +805,8 @@ L'observabilité ne se résume pas aux logs. Pour chaque nouvelle couche introdu
 | `huma.validation_failures_count` | Phase 3b | Counter par route |
 | `migration_runner.steps_applied` | Phase 1.5 | Counter par titre |
 | `sync.field_backfill_count` | Phase 4 | Counter par FieldKey |
+| `feature_checker.status_count_by_status` | Phase 1.7b | Gauge `(title, status)` |
+| `openspartan_import.rows_written` (NOUVEAU v2.5) | Phase 1.5 (compat) | Counter par titre |
 
 **Test obligatoire** : un test `expvar_smoke_test.go` par phase qui vérifie que les métriques sont exposées et incrémentent correctement après une opération.
 
@@ -774,7 +842,7 @@ Ces 4 vérifications sont en CI à partir de Phase 0 et BLOQUANTES.
 - [ ] Chaque FieldKey est listée dans `config/titles/{slug}/mappings/fields.toml` (ou héritée d'un default si extension future).
 - [ ] Si une route HTTP nécessite une capability et le titre actif ne la supporte pas → handler renvoie `404 ErrCapabilityNotSupported` (pas de panic, pas de 500).
 - [ ] Le frontend appelle `GET /api/v1/title/capabilities` au boot pour connaître les features dispos.
-- [ ] **Aucune** comparaison `if titleSlug == "halo_infinite"` dans le code applicatif. Tout via `HasCapability(cap)`. Lint custom Phase 0 : `tests/lint/no_slug_comparison_test.go`.
+- [ ] **Aucune** comparaison `if titleSlug == "halo_infinite"` dans le code applicatif (77 occurrences actuelles dans `internal/service/` à éliminer). Tout via `HasCapability(cap)` ou `FeatureChecker.Status()`. Lint custom Phase 0 : `tests/lint/no_slug_comparison_test.go`.
 
 ---
 
@@ -813,7 +881,7 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | 4. Couverture par couche ≥ seuil §5.1 (mesurée) | NOT DONE | | | |
 | 5. Job CI `synthetic_test_title-parity` passe | NOT DONE | | | |
 | 6. Tests de non-régression de la phase passent (cf. §5.2) | NOT DONE | | | |
-| 7. Datasets `halo_full` et `synthetic` à jour (cf. §5.5) | NOT DONE | | | |
+| 7. Datasets `halo_full`, `synthetic`, `openspartan_primed` à jour (cf. §5.5) | NOT DONE | | | |
 | 8. Aucun fichier nouveau > 500 lignes | NOT DONE | | | |
 | 9. Aucune fonction nouvelle > 80 lignes | NOT DONE | | | |
 | 10. Métriques expvar §6.4 exposées + test smoke OK | NOT DONE | | | |
@@ -824,13 +892,15 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 
 | Item | Statut | Date | Evidence | Validateur |
 |------|:-:|------|----------|:-:|
-| ADR 0011 mis à jour (section v2) OU ADR 0014 créé | NOT DONE | | | |
-| ADR 0015 « Adoption Huma » créé | NOT DONE | | | |
+| ADR 0014 (title-agnostic + DDL isolation) créé | NOT DONE | | | |
+| ADR 0015 (Huma + D13 gel handlers) créé | NOT DONE | | | |
+| ADR 0016 (Feature Matrix + D12 migration code→TOML) créé | NOT DONE | | | |
+| ADR 0017 (Title Diagnostic + D10 presse-papier) créé | NOT DONE | | | |
 | Branche `refactor/title-agnostic-services` créée | NOT DONE | | | |
 | Plan référencé dans `CLAUDE.md` § Décisions architecturales | NOT DONE | | | |
-| 6 lints CI §6.1 activés et BLOQUANTS | NOT DONE | | | |
+| 7 lints CI §6.1 activés et BLOQUANTS (dont D13 placeholder désactivé jusqu'au tag `phase-3b-start`) | NOT DONE | | | |
 | Job CI `synthetic_test_title-parity` créé (vide est OK pour Phase 0) | NOT DONE | | | |
-| Datasets `testdata/integration/halo_full/` + `synthetic/` créés | NOT DONE | | | |
+| Datasets `testdata/integration/halo_full/` + `synthetic/` + `openspartan_primed/` créés | NOT DONE | | | |
 | 12 items de §8.2 (Exit Gate transverse) | NOT DONE | | | |
 
 ### 8.4 Exit Gate Phase 1 — FieldKey exhaustifs (5 tables)
@@ -847,40 +917,54 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | Property-based test sur ratios (KDA, accuracy) | NOT DONE | | | |
 | 12 items de §8.2 | NOT DONE | | | |
 
-### 8.5 Exit Gate Phase 1.5 — DDL par titre
+### 8.5 Exit Gate Phase 1.5 — DDL par titre (effort doublé v2.5)
 
 | Item | Statut | Date | Evidence | Validateur |
 |------|:-:|------|----------|:-:|
-| `internal/games/halo_infinite/ddl/steps_*.sql` créés | NOT DONE | | | |
-| `migration/steps_shared.go` ne contient plus de DDL Halo-specific | NOT DONE | | | |
-| `MigrationRunner` accepte un `TitleDataAdapter` paramètre | NOT DONE | | | |
-| `synthetic_test_title/ddl/` créé (schema minimal) | NOT DONE | | | |
+| `internal/games/halo_infinite/ddl/steps_*.sql` créés (toutes les catégories §Phase 1.5) | NOT DONE | | | |
+| `internal/migration/` ne contient plus de DDL Halo-specific (20+ fichiers déplacés) | NOT DONE | | | |
+| `MigrationRunner` accepte un `TitleDataAdapter.MigrationSteps()` paramètre | NOT DONE | | | |
+| `synthetic_test_title/ddl/` créé (schema minimal, base = synthetic_title_b) | NOT DONE | | | |
 | Test : `MigrationRunner` crée la DB synthetic from scratch sans toucher au code partagé | NOT DONE | | | |
 | Test golden : schema produit = `pragma_table_info` snapshot | NOT DONE | | | |
-| `internal/ops/` (backup, restore, diagnose) auditeé et adaptée multi-titre | NOT DONE | | | |
+| **Test OpenSpartan continuity** : import D11 + sync Waypoint sur même DB → schema cohérent | NOT DONE | | | |
+| `internal/ops/` (backup, restore, diagnose) auditée et adaptée multi-titre | NOT DONE | | | |
 | Couverture `internal/games/{slug}/ddl/` 100% des steps | NOT DONE | | | |
 | 12 items de §8.2 | NOT DONE | | | |
 
-### 8.55 Exit Gate Phase 1.7 — Feature Matrix
+### 8.55 Exit Gate Phase 1.7a — TOML capabilities binaires (NOUVELLE v2.5)
+
+| Item | Statut | Date | Evidence | Validateur |
+|------|:-:|------|----------|:-:|
+| `config/titles/halo_infinite/capabilities.toml` créé (section [capabilities] binaire) | NOT DONE | | | |
+| `config/titles/synthetic_title_b/capabilities.toml` créé (subset) | NOT DONE | | | |
+| Loader `internal/games/{slug}/capabilities.go::LoadCapabilities()` créé | NOT DONE | | | |
+| Adapters `halo_infinite/adapter_data.go` + `synthetic_title_b/adapter.go` consomment le loader (plus de hardcode) | NOT DONE | | | |
+| Endpoint `GET /api/v1/title/capabilities` retourne le map du titre actif | NOT DONE | | | |
+| Test : suppression ligne TOML synthetic → endpoint reflète + service dégrade | NOT DONE | | | |
+| Aucun `games.CapabilityMap{...}` hardcodé dans `internal/games/*/adapter*.go` (lint custom) | NOT DONE | | | |
+| 12 items de §8.2 | NOT DONE | | | |
+
+### 8.56 Exit Gate Phase 1.7b — Feature Matrix 3 états + cascade
 
 | Item | Statut | Date | Evidence | Validateur |
 |------|:-:|------|----------|:-:|
 | `internal/domain/feature/` créé (FeatureKey, FeatureStatus à 3 états, FeatureMatrix) | NOT DONE | | | |
 | `port.FeatureChecker` interface créée | NOT DONE | | | |
-| Loader TOML `internal/games/halo_infinite/feature_matrix.go` créé | NOT DONE | | | |
-| `capabilities.toml` Halo Infinite exhaustif (toutes data + toutes features) | NOT DONE | | | |
-| `capabilities.toml` synthetic_test_title (subset minimal) | NOT DONE | | | |
+| Loader TOML `internal/games/halo_infinite/feature_matrix.go` créé (section [data] + [feature.*]) | NOT DONE | | | |
+| `capabilities.toml` Halo Infinite étendu (section [data] + section [feature.*] exhaustives) | NOT DONE | | | |
+| `capabilities.toml` synthetic_test_title étendu (subset minimal) | NOT DONE | | | |
 | Algo de calcul implémenté + 4 cas testés (all-available, degraded, unavailable, cascade) | NOT DONE | | | |
 | Test cohérence TOML ↔ DB : pour chaque `data=true`, table existe + ≥ 1 row sur fixture halo_full | NOT DONE | | | |
 | Test snapshot feature_matrix Halo + synthetic (golden files) | NOT DONE | | | |
-| Handler Huma `GET /api/v1/title/feature_matrix` opérationnel | NOT DONE | | | |
+| Handler `GET /api/v1/title/feature_matrix` opérationnel (Huma si Phase 3b démarrée, chi sinon) | NOT DONE | | | |
 | `FeatureChecker` injecté dans les services qui en ont besoin | NOT DONE | | | |
 | Aucun service n'utilise `if titleSlug == ...` pour gater une feature (lint custom) | NOT DONE | | | |
 | Couverture `internal/domain/feature/` ≥ 95%, services impactés ≥ 80% | NOT DONE | | | |
 | Métriques expvar `feature_checker.status_count_by_status` exposées | NOT DONE | | | |
 | 12 items de §8.2 | NOT DONE | | | |
 
-### 8.56 Exit Gate Phase 1.8 — Outillage diagnostic Lab
+### 8.57 Exit Gate Phase 1.8 — Outillage diagnostic Lab
 
 | Item | Statut | Date | Evidence | Validateur |
 |------|:-:|------|----------|:-:|
@@ -908,6 +992,7 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | `platform/duckdb/match_field_repo.go` impl créée | NOT DONE | | | |
 | Bench préliminaire : `LoadMatchFields` p95 ≤ Q12 actuel × 1.15 | NOT DONE | | | |
 | Test integration `:memory:` couvre : présent+valeur, présent+NULL, absent du TOML (3 scénarios par FieldKey) | NOT DONE | | | |
+| **Test OpenSpartan continuity (NOUVEAU v2.5)** : import + Waypoint sync → mêmes FieldKeys ou diff documenté | NOT DONE | | | |
 | Service 1 migré : `match_view_service.go` (PR atomique avec snapshots avant/après) | NOT DONE | | | |
 | Service 2 migré : `synthesis_service.go` | NOT DONE | | | |
 | Service 3 migré : `home_service.go` | NOT DONE | | | |
@@ -926,25 +1011,28 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 
 | Item | Statut | Date | Evidence | Validateur |
 |------|:-:|------|----------|:-:|
-| Types `*Raw` (12 types) déplacés vers `platform/duckdb/raw_types.go` | NOT DONE | | | |
+| 9 types `*Raw` déplacés vers `platform/duckdb/raw_types.go` | NOT DONE | | | |
 | `domain/match_view.go` ne contient plus de type `*Raw` | NOT DONE | | | |
 | `MatchExpectedStats` 100% nullable (`*float64 omitempty`) | NOT DONE | | | |
 | `MatchScoreboardRow` 100% nullable (30+ champs) | NOT DONE | | | |
 | `domain/match_view.go` ne contient plus de commentaire « Halo Infinite : pas de... » | NOT DONE | | | |
+| `domain/match_view.go` ≤ 500 lignes (vs 799 actuelles) | NOT DONE | | | |
 | Snapshot JSON 100% routes : diff documenté champ par champ | NOT DONE | | | |
 | `tsc --noEmit` sur `apps/web/` passe | NOT DONE | | | |
 | 12 items de §8.2 | NOT DONE | | | |
 
-### 8.8 Exit Gate Phase 3b — migration Huma
+### 8.8 Exit Gate Phase 3b — migration Huma (113 handlers)
 
 | Item | Statut | Date | Evidence | Validateur |
 |------|:-:|------|----------|:-:|
 | `huma.NewAPI(chi)` adapter en place | NOT DONE | | | |
-| Groupe 1 (handlers GET simples) migré : 30 handlers | NOT DONE | | | |
-| Groupe 2 (handlers GET + query params) migré : 25 handlers | NOT DONE | | | |
-| Groupe 3 (handlers POST/PUT) migré : 15 handlers | NOT DONE | | | |
-| Groupe 4 (handlers complexes) migré : 10 handlers | NOT DONE | | | |
-| **100% handlers migrés** (~80) — aucun `func(w http.ResponseWriter, r *http.Request)` métier hors middlewares | NOT DONE | | | |
+| Tag git `phase-3b-start` posé | NOT DONE | | | |
+| Lint D13 (`no-new-chi-handler`) activé et BLOQUANT | NOT DONE | | | |
+| Groupe 1 (handlers GET simples) migré : ~45 handlers | NOT DONE | | | |
+| Groupe 2 (handlers GET + query params) migré : ~35 handlers | NOT DONE | | | |
+| Groupe 3 (handlers POST/PUT) migré : ~20 handlers | NOT DONE | | | |
+| Groupe 4 (handlers complexes) migré : ~13 handlers | NOT DONE | | | |
+| **100% handlers migrés** (~113) — aucun `func(w http.ResponseWriter, r *http.Request)` métier hors middlewares | NOT DONE | | | |
 | Aucun `chi.URLParam` hors middlewares | NOT DONE | | | |
 | Aucun `r.URL.Query()` hors middlewares | NOT DONE | | | |
 | Aucun `json.NewEncoder(w).Encode` hors middlewares | NOT DONE | | | |
@@ -953,7 +1041,7 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 | CI fail si `openapi.yaml` diff entre boot et commit | NOT DONE | | | |
 | Client TS frontend regen via `openapi-typescript`, build front passe | NOT DONE | | | |
 | Snapshot JSON full : 100% routes, bytes identiques OU diff documenté | NOT DONE | | | |
-| Test des 5 middlewares chi (auth, CSRF, slog, rate-limit, title) avec route Huma : 5/5 OK | NOT DONE | | | |
+| Test des 6 middlewares chi (auth, CSRF, slog, rate-limit, title, LoopbackOnly) avec route Huma : 6/6 OK | NOT DONE | | | |
 | Test validation Huma : 3 inputs invalides par route, 0 panic, 0 status 500 | NOT DONE | | | |
 | Couverture `internal/api/handlers/` ≥ 85% | NOT DONE | | | |
 | Métriques `huma.request_*` exposées | NOT DONE | | | |
@@ -998,7 +1086,7 @@ Ces 12 items sont obligatoires en fin de chaque phase, en plus des items spécif
 
 À la clôture de la Phase 5, ajouter une PR « validate: synthetic_test_title E2E » qui :
 
-1. Crée un dossier `internal/games/synthetic_test_title/` complet (data + semantic + asset_url + ddl).
+1. Crée un dossier `internal/games/synthetic_test_title/` complet (data + semantic + asset_url + ddl) — peut être un alias / extension de `synthetic_title_b` existant.
 2. Définit un `fields.toml` avec un subset de FieldKeys (kills, deaths, match_id, durations).
 3. Lance la suite COMPLÈTE des tests existants (Go + TS) avec `LEVELUP_TITLE=synthetic_test_title`.
 
@@ -1022,16 +1110,19 @@ Si une de ces zones doit être modifiée pour faire passer la PR, c'est que le p
 
 | Risque | Probabilité | Mitigation |
 |---|:-:|---|
-| Migration Huma sur 80 handlers casse une route en prod | Élevée | Migration par groupes (4 groupes de 25-30 handlers), tests de contrat snapshot par route avant/après, smoke test E2E systématique. Possibilité de revert handler-par-handler si régression. |
+| Migration Huma sur 113 handlers casse une route en prod | Élevée | Migration par groupes (4 groupes), tests de contrat snapshot par route avant/après, smoke test E2E systématique. Possibilité de revert handler-par-handler si régression. |
 | Validation Huma plus stricte qu'avant rejette des inputs auparavant tolérés | Moyenne | Audit des regex/whitelist actuels (ex: `playlistOrSessionPattern`), porter en tags Huma à l'identique. Tests des cas limites avec inputs de prod. |
 | Client TS regen change la forme des types (camelCase, optionals) → cascade front | Élevée | Phase 3b ne casse pas le contrat JSON (omitempty conservé). Test snapshot des fixtures front avant/après regen. Coordonner avec Phase 5. |
 | Bench Phase 2 montre slowdown > 15% sur SELECT dynamique | Moyenne | Garder `Q12` spécialisé pour les hot paths (match_view), n'utiliser FieldKey-based que pour les routes secondaires. Documenter la décision. |
 | Migration des sync flags casse les scripts utilisateur (`--mmr`, `--skill`) | Moyenne | Aliases historiques préservés via map, deprecation warning, retrait à v6.5 |
-| ADR 0011 conflictuel avec le plan | Faible (résolu Phase 0) | Phase 0 met à jour ADR 0011 ou crée 0014 |
-| Coût total dépassé (50 j vs estimé 65 j) | Élevée | Phasage strict, chaque phase mergeable indépendamment, possibilité de geler après Phase 3a (cible « DTO propres + Huma reporté ») |
+| ADR 0011 conflictuel avec le plan | Faible (résolu Phase 0) | Phase 0 crée ADR 0014 |
+| Coût total dépassé (62 j vs estimé 82 j) | Élevée | Phasage strict, chaque phase mergeable indépendamment, possibilité de geler après Phase 3a (cible « DTO propres + Huma reporté ») |
 | DDL par titre rompt les outils ops existants (backup, restore, diagnose) | Moyenne | Audit `internal/ops/` en Phase 1.5, adapter `BackupRunner` pour itérer sur tous les titres enregistrés |
 | Codegen TS canonical (D5) divergence avec Go | Faible | CI lint compare le fichier généré au commit, fail si diff |
 | Huma compatibility avec middlewares chi existants (auth, CSRF, slog HTTP) | Moyenne | Huma utilise `huma.NewAPI(chi)` adapter — les middlewares chi continuent de tourner. Tester explicitement chaque middleware en début de Phase 3b. |
+| **Nouveaux handlers ajoutés pendant Phase 3b creusent la dette (NOUVEAU v2.5)** | Élevée | D13 + lint custom `no-new-chi-handler` bloque tout nouveau handler chi après tag `phase-3b-start`. Tous les nouveaux handlers (feature non listée) doivent être écrits directement en Huma. |
+| **Double système Capability code + TOML pendant migration 1.7a (NOUVEAU v2.5)** | Faible | D12 : migration en 2 PR atomiques (move puis extend). Pas de phase intermédiaire où les deux coexistent en runtime. |
+| **OpenSpartan import écrit une DDL divergente de Waypoint (NOUVEAU v2.5)** | Moyenne | Phase 1.5 audite explicitement le mapper OpenSpartan. Phase 2 ajoute un test de continuité (D11) qui détecte tout drift FieldKey-level. |
 
 ---
 
@@ -1043,31 +1134,37 @@ Si une de ces zones doit être modifiée pour faire passer la PR, c'est que le p
 - **Schema EAV** — perd les bénéfices colonnar de DuckDB. Préférer une DB par titre (Phase 1.5).
 - **Cas particuliers `if title == "halo_infinite"`** — toujours via capability. Lint custom CI.
 - **Forcer la canonicalisation des features encore en chantier** (ex. nouvelles features Halo Infinite-only). Phase finale uniquement quand le périmètre est stable.
-- **Mélanger flags FieldKey-based et flags non-FieldKey dans `SyncScope` sans découplage explicite** (Phase 5).
+- **Mélanger flags FieldKey-based et flags non-FieldKey dans `SyncScope` sans découplage explicite** (Phase 4).
 - **Régénérer OpenAPI manuellement après Phase 3** — la gen doit être en CI, pas dans la mémoire des devs.
+- **Ajouter un nouveau handler chi après tag `phase-3b-start` (NOUVEAU v2.5)** — D13 + lint bloquant. Tous les nouveaux handlers doivent être écrits directement en Huma.
+- **Modéliser OpenSpartan comme un pipeline continu (NOUVEAU v2.5)** — c'est un bootstrap one-shot (D11). Ne pas l'ajouter à `SyncScope` ni en faire un mode de sync.
 
 ---
 
-## 11. Effort total estimé (révisé v2.4 — Diagnostic Lab ajouté)
+## 11. Effort total estimé (révisé v2.5)
 
 - Phase 0 : 2-3 j
 - Phase 1 : 2-3 j
-- Phase 1.5 : 4-5 j
-- Phase 1.7 : 4-5 j (Feature Matrix : data + feature capabilities + 3 états)
-- Phase 1.8 : 3-4 j (Outillage diagnostic Lab + CLI + bouton export TOML)
-- Phase 2 : 5-7 j (incl. 1 j bench)
+- Phase 1.5 : **8-10 j** (vs 4-5 j v2.4 — doubling dû à l'accumulation `internal/migration/steps_*.go`)
+- Phase 1.7a : **2 j** (NOUVELLE v2.5 — TOML capabilities binaires light)
+- Phase 1.7b : 4-5 j (ex-Phase 1.7 — Feature Matrix 3 états + cascade)
+- Phase 1.8 : 3-4 j (différable)
+- Phase 2 : **6-8 j** (vs 5-7 j — +1 j test OpenSpartan continuity)
 - Phase 3a : 5-7 j (cleanup DTO)
-- Phase 3b : 13-18 j (migration Huma sur ~80 handlers, 4 groupes)
+- Phase 3b : **17-25 j** (vs 13-18 j v2.4 — +33 handlers depuis v2.4, scope ~113 au total)
 - Phase 4 : 5-6 j
 - Phase 5 : 7-9 j
 
-**Total** : ~50-67 jours-personne, étalable sur 3-4 mois sans blocage du reste du dev.
+**Total** : **62-82 jours-personne**, étalable sur 4-5 mois sans blocage du reste du dev.
 
-**Fenêtre minimale viable** : Phases 0 → 3a = ~25-34 j → état « services title-agnostic + DTO propres + feature matrix opérationnelle + diagnostic Lab pour onboarding nouveau titre, mais OpenAPI manuel ». Phase 3b (Huma) peut être différée d'un trimestre si le ROI n'est pas clair, MAIS dans ce cas le client TS front reste désynchronisé du back.
+**Fenêtre minimale viable** : Phases 0 → 3a = **31-43 j** (vs 25-34 j v2.4) → état « services title-agnostic + DTO propres + feature matrix opérationnelle + diagnostic Lab pour onboarding nouveau titre, mais OpenAPI manuel ». Phase 3b (Huma) peut être différée d'un trimestre si le ROI n'est pas clair, MAIS dans ce cas :
+- Le client TS front reste désynchronisé du back.
+- D13 (gel des nouveaux handlers en Huma) reste inactif → la dette continue de croître au rythme observé (~15 handlers/mois).
+- Plus on attend pour démarrer 3b, plus son coût grossit. **Recommandation v2.5 : ne pas différer 3b de plus de 2 trimestres** sous peine de scope creep ingérable.
 
-**Phase 1.8 peut être différée** sans bloquer Phase 2+ : c'est de l'outillage opérateur, pas une dépendance des services. Si l'urgence est de migrer les services, faire 0 → 1.7 → 2 directement et revenir à 1.8 plus tard.
+**Phase 1.8 peut être différée** sans bloquer Phase 2+ : c'est de l'outillage opérateur, pas une dépendance des services. Si l'urgence est de migrer les services, faire 0 → 1.7a → 1.7b → 2 directement et revenir à 1.8 plus tard.
 
-**ROI Huma seul** : validation auto, gen permanente, élimination de la dette OpenAPI manuel (qui se cumule à chaque feature). Décisif si le rythme d'ajout de routes reste soutenu (>10 routes/an).
+**ROI Huma seul** : validation auto, gen permanente, élimination de la dette OpenAPI manuel (qui se cumule à chaque feature — +33 routes en 2 semaines fin avril/début mai 2026, signe que le rythme est soutenu). Décisif.
 
 **ROI title-agnostic** : marginal tant qu'il n'y a qu'1 titre. Décisif dès le 2e titre — chaque titre ajouté coûte ~1-2 jours (capabilities.toml + DataAdapter + ddl/) au lieu de plusieurs semaines.
 
@@ -1075,11 +1172,11 @@ Si une de ces zones doit être modifiée pour faire passer la PR, c'est que le p
 
 ## 12. Pré-requis avant démarrage
 
-- [ ] Sync atomique (heals + LocalFilmCache) mergé sur `main` (= état actuel de `feat/token-pool-parallel-sync`).
 - [ ] Pas d'autre big refactor en parallèle (notamment côté frontend canonical pipeline).
 - [ ] Cap définie sur les fields à inclure dans canonical (pas de scope creep en cours de Phase 1).
-- [ ] Validation par toi (Guillaume) du phasage et des 6 décisions Phase 0 — quels risques tu acceptes, lesquels tu repousses.
-- [ ] Décision sur la fenêtre minimale viable (Phases 0-4) vs full sweep (0-7).
+- [ ] Validation par toi (Guillaume) du phasage et des 13 décisions Phase 0 — quels risques tu acceptes, lesquels tu repousses.
+- [ ] Décision sur la fenêtre minimale viable (Phases 0-3a, 31-43 j) vs full sweep (0-5, 62-82 j).
+- [ ] Gel sur les features Halo-Infinite-only majeures pendant Phase 1.5 (pour éviter d'accumuler encore des `steps_player_*.go`).
 
 ---
 
@@ -1090,11 +1187,13 @@ git checkout main
 git pull
 git checkout -b refactor/title-agnostic-services
 
-# Phase 0 — ADRs et setup (décisions D1-D6 déjà actées)
-# 1. Mettre à jour ADR 0011 ou créer ADR 0014 (title-agnostic + DDL isolation)
-# 2. Créer ADR 0015 (adoption Huma)
-# 3. Entrée thought_log.md actant les 6 décisions
-# Commit : "docs(adr): record decisions for title-agnostic refactor + Huma adoption"
+# Phase 0 — ADRs et setup (décisions D1-D13 actées)
+# 1. Créer ADR 0014 (title-agnostic + DDL isolation + OpenSpartan bootstrap)
+# 2. Créer ADR 0015 (adoption Huma + D13 gel nouveaux handlers)
+# 3. Créer ADR 0016 (Feature Matrix + D12 migration code→TOML)
+# 4. Créer ADR 0017 (Title Diagnostic + D10 presse-papier)
+# 5. Entrée thought_log.md actant les 13 décisions
+# Commit : "docs(adr): record decisions for title-agnostic refactor v2.5 (D1-D13)"
 
 # Phase 1 — inventaire FieldKey (5 tables shared)
 # rg "p\.\w+|mp\.\w+|mr\.\w+|me\.\w+|w\.\w+|kvp\.\w+" \
@@ -1108,6 +1207,22 @@ git checkout -b refactor/title-agnostic-services
 
 ## 14. Changelog
 
+- **v2.5 (2026-05-18)** :
+  - Revue après ~10 j de développement intensif (OpenSpartan import, Xbox SSO multi-user, achievements, citations enrichies, LUSR chain rework, perf-chain, career-live SwR, CSR per-match).
+  - **3 nouvelles décisions** :
+    - **D11** : OpenSpartan import = bootstrap one-shot (Day-0), pas un pipeline continu. TitleDataAdapter reste l'autorité du schéma. Hors-scope `SyncScope`.
+    - **D12** : Migration `CapabilityMap` code → TOML en 2 PR atomiques (move puis extend 3 états). Évite double système.
+    - **D13** : Gel des nouveaux handlers en Huma dès `phase-3b-start` tag. Lint custom bloquant `no-new-chi-handler`. Stoppe la croissance de la dette pendant la migration (rythme actuel ~15 handlers/mois).
+  - **Phase 1.7 découpée en 1.7a (2 j, TOML capabilities binaires light) + 1.7b (4-5 j, ex-Phase 1.7 3 états + cascade)**.
+  - **Phase 1.5 ré-estimée 4-5 j → 8-10 j** : doubling dû à l'accumulation `internal/migration/steps_*.go` (steps_player_lusr_chain_rework, steps_player_perf_chain, steps_player_prestige, steps_player_notifications, steps_metadata_prestige_seed ajoutés depuis v2.4). Liste exhaustive incluse.
+  - **Phase 3b ré-estimée 13-18 j → 17-25 j** : 80 handlers → 113 handlers (+33 depuis v2.4). Migration groupes recalibrés (45 / 35 / 20 / 13).
+  - **Phase 2 enrichie** : +1 j pour test de continuité OpenSpartan-primed → Waypoint-fed (D11). Nouveau dataset `testdata/integration/openspartan_primed/`.
+  - **§9 risques** : 3 nouveaux risques (scope creep handlers, double système Capability code+TOML, OpenSpartan DDL divergente).
+  - **§5.5 datasets** : 3 datasets obligatoires (vs 2 en v2.4) avec ajout `openspartan_primed`.
+  - **Acquis ADR 0012** documenté en §0 : la sortie de `analysis/` Halo-only est déjà faite ; le plan construit dessus.
+  - **synthetic_title_b existant** identifié comme base du futur `synthetic_test_title` §8.11.
+  - **Effort total révisé** : 62-82 j (vs 50-67 j v2.4). Fenêtre minimale viable : 31-43 j (vs 25-34 j v2.4).
+  - **Recommandation forte** : ne pas différer Phase 3b de plus de 2 trimestres sous peine de scope creep ingérable.
 - **v2.4 (2026-05-07)** :
   - Décisions D9 + D10 actées (Phase 1.8 dédiée + export presse-papier).
   - Phase 1.8 NOUVELLE : outillage diagnostic Lab read-only. Couches Go (domain/diagnostic, port.TableInspector, port.TitleDiagnosticService, impl DuckDB, handler Huma admin) + CLI `levelup-titles diagnose` + frontend `TitleDiagnosticSection` avec bouton « Export TOML draft » (copie presse-papier uniquement). Effort 3-4 j.
@@ -1160,4 +1275,5 @@ git checkout -b refactor/title-agnostic-services
 
 **Auteur** : Claude (session 2026-05-06).
 **Revue v2** : après audit plan v1 (cf. session du 2026-05-06).
+**Revue v2.5** : après audit codebase 10 j plus tard (cf. session du 2026-05-18) — scope grossi, OpenSpartan/Xbox SSO/perf-chain/lusr-chain/career-live ajoutés, 113 handlers, 20+ steps_*.go accumulés.
 **À traiter par** : Guillaume, plus tard.

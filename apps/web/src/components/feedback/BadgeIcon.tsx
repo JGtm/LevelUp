@@ -19,6 +19,7 @@ import silentHero from '@/assets/badges/fluent-flat/silent_hero.svg'
 import falseBrother from '@/assets/badges/fluent-flat/false_brother.svg'
 import topKiller from '@/assets/badges/fluent-flat/top_killer.svg'
 import topGun from '@/assets/badges/fluent-flat/top_gun.svg'
+import kamikaze from '@/assets/badges/fluent-flat/kamikaze.svg'
 import champion from '@/assets/badges/fluent-flat/champion.svg'
 import maillonFaible from '@/assets/badges/fluent-flat/maillon_faible.svg'
 import passagerClandestin from '@/assets/badges/fluent-flat/passager_clandestin.svg'
@@ -33,6 +34,7 @@ const BADGE_SVG: Record<string, string> = {
   false_brother: falseBrother,
   top_killer: topKiller,
   top_gun: topGun,
+  kamikaze,
   champion,
   maillon_faible: maillonFaible,
   passager_clandestin: passagerClandestin,

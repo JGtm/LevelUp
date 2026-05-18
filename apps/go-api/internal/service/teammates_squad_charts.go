@@ -346,7 +346,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 // impactBadgeOrd est l'ordre canonique des colonnes agrégat du scoreboard.
 var impactBadgeOrd = []string{
 	"first_blood", "clutch_finisher", "last_casualty", "last_group_kill",
-	"first_group_death", "silent_hero", "false_brother", "top_killer",
+	"first_group_death", "silent_hero", "false_brother", "kamikaze", "top_killer",
 }
 
 // impactScoreWeights mappe chaque badge à son poids dans le score global du
@@ -359,6 +359,7 @@ var impactScoreWeights = map[string]float64{
 	"false_brother":     -1.5,
 	"last_group_kill":   -1.0,
 	"first_group_death": -1.0,
+	"kamikaze":          -1.0,
 	"top_killer":        1.0,
 }
 

@@ -49,7 +49,11 @@ type MatchImpactInput struct {
 // topGunKillThreshold est le nombre de kills pour décrocher le badge top_gun.
 const topGunKillThreshold = 10
 
-// ComputeMatchImpactFull calcule les 9 badges d'impact pour un match.
+// kamikazeWindowMS est la fenêtre (ms) entre un kill et la mort de son auteur
+// pour qu'une séquence compte comme "kamikaze". 1500 ms.
+const kamikazeWindowMS int64 = 1500
+
+// ComputeMatchImpactFull calcule les 10 badges d'impact pour un match.
 //
 // Convention de périmètre (parité Python compute_single_match_impact) : le
 // caller doit passer dans input.Participants UNIQUEMENT les joueurs de
@@ -68,6 +72,7 @@ const topGunKillThreshold = 10
 //   - silent_hero           : max assists + min deaths en victoire hors top-killer
 //   - false_brother         : max deaths + min assists en défaite hors top-killer
 //   - top_gun               : premier allié à atteindre topGunKillThreshold kills
+//   - kamikaze              : allié tué dans kamikazeWindowMS après un de ses frags
 func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	var badges []ImpactBadge
 
@@ -195,7 +200,121 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 		})
 	}
 
+	// --- 10. kamikaze : allié dont une death survient dans kamikazeWindowMS
+	//         après un de ses propres frags. 1 badge max par match : joueur avec
+	//         le plus de séquences (tie-break : T_death tardif, puis XUID asc).
+	if xuid, t := kamikaze(kills, deaths, squadXUIDs); xuid != "" {
+		badges = append(badges, ImpactBadge{
+			BadgeKey:   "kamikaze",
+			BadgeFR:    "Kamikaze",
+			PlayerXUID: xuid,
+			TimeMS:     t,
+		})
+	}
+
 	return badges
+}
+
+// kamikaze attribue le badge à l'allié qui meurt le plus souvent dans la
+// fenêtre kamikazeWindowMS après un de ses propres frags. Le caller doit avoir
+// déjà séparé kills et deaths depuis input.Events.
+//
+// Critère de séquence : kill par X à T_k, suivi d'une death de X à T_d, avec
+// T_k < T_d ≤ T_k + kamikazeWindowMS. Chaque kill peut être apparié au plus à
+// une death (le death le plus proche). Inversement, une death ne peut compter
+// que pour une seule séquence (la dernière qui la précède dans la fenêtre).
+//
+// Retourne "" si aucun candidat. Tie-break sur (count desc, T_d desc, XUID asc).
+func kamikaze(kills, deaths []ImpactEvent, squadXUIDs map[string]bool) (string, int64) {
+	if len(kills) == 0 || len(deaths) == 0 {
+		return "", 0
+	}
+	// Grouper kills et deaths par acteur, triés par TimeMS asc.
+	killsByXUID := make(map[string][]int64)
+	for _, ev := range kills {
+		if len(squadXUIDs) > 0 && !squadXUIDs[ev.ActorXUID] {
+			continue
+		}
+		killsByXUID[ev.ActorXUID] = append(killsByXUID[ev.ActorXUID], ev.TimeMS)
+	}
+	deathsByXUID := make(map[string][]int64)
+	for _, ev := range deaths {
+		if len(squadXUIDs) > 0 && !squadXUIDs[ev.ActorXUID] {
+			continue
+		}
+		deathsByXUID[ev.ActorXUID] = append(deathsByXUID[ev.ActorXUID], ev.TimeMS)
+	}
+	for _, ts := range killsByXUID {
+		sortInt64Asc(ts)
+	}
+	for _, ts := range deathsByXUID {
+		sortInt64Asc(ts)
+	}
+
+	type acc struct {
+		count   int
+		lastDie int64
+	}
+	per := make(map[string]*acc)
+	for xuid, ks := range killsByXUID {
+		ds := deathsByXUID[xuid]
+		if len(ds) == 0 {
+			continue
+		}
+		// Two-pointer : pour chaque kill, on cherche le 1er death > kill et ≤ kill+window.
+		// Chaque death est consommé au plus une fois pour éviter qu'une mort unique
+		// soit comptée par 2 kills successifs trop rapprochés.
+		dIdx := 0
+		for _, kT := range ks {
+			for dIdx < len(ds) && ds[dIdx] <= kT {
+				dIdx++
+			}
+			if dIdx >= len(ds) {
+				break
+			}
+			dT := ds[dIdx]
+			if dT-kT > kamikazeWindowMS {
+				continue
+			}
+			a, ok := per[xuid]
+			if !ok {
+				a = &acc{}
+				per[xuid] = a
+			}
+			a.count++
+			if dT > a.lastDie {
+				a.lastDie = dT
+			}
+			dIdx++
+		}
+	}
+	if len(per) == 0 {
+		return "", 0
+	}
+	var bestXUID string
+	var bestCount int
+	var bestT int64
+	for xuid, a := range per {
+		better := a.count > bestCount ||
+			(a.count == bestCount && a.lastDie > bestT) ||
+			(a.count == bestCount && a.lastDie == bestT && (bestXUID == "" || xuid < bestXUID))
+		if better {
+			bestXUID = xuid
+			bestCount = a.count
+			bestT = a.lastDie
+		}
+	}
+	return bestXUID, bestT
+}
+
+// sortInt64Asc trie un slice d'int64 ascendant (insertion sort, suffisant pour
+// les tailles attendues — quelques dizaines d'events par joueur).
+func sortInt64Asc(a []int64) {
+	for i := 1; i < len(a); i++ {
+		for j := i; j > 0 && a[j] < a[j-1]; j-- {
+			a[j], a[j-1] = a[j-1], a[j]
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------

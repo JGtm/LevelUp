@@ -376,6 +376,7 @@ func TestImpactScoreWeights_Coverage(t *testing.T) {
 		"false_brother":     -1.5,
 		"last_group_kill":   -1.0,
 		"first_group_death": -1.0,
+		"kamikaze":          -1.0,
 		"top_killer":        1.0,
 	}
 	for k, v := range expected {
