@@ -1,3 +1,67 @@
+## [2026-05-18] feat(progression)(commit-5) — coach generator + 6 nouvelles catégories notif
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Cinquième commit du plan V2. Apporte la couche 3 (coach proactif) : générateur d'alertes positives à partir des sorties des autres détecteurs + signaux propres (LUSR tier approach, LOWESS, comeback).
+
+**Décisions / changements** :
+
+1. **6 nouvelles catégories notifications** ajoutées dans `internal/notifications/types.go` (+ seed `notificationDefaultCategories` dans la migration steps) :
+   - `record_near_miss` (inapp silent — potentiellement fréquent)
+   - `milestone_unlocked` (both = toast + inapp, marquant)
+   - `milestone_near_miss` (inapp silent)
+   - `lusr_tier_approach` (both, actionable)
+   - `streak_milestone` (both, palier 4/8/15/30j)
+   - `comeback_welcome` (both, rare)
+   - Décision tranchée du commit 4 : `milestone_unlocked` est sa propre catégorie (pas réutilisation de `personal_record`) → keys i18n propres + préférences distinctes.
+
+2. **Coach généralement pur** : pas d'I/O, prend les sorties des détecteurs amont en input et produit `[]Alert`. L'orchestrateur (commit 6) émet via `notifications.Emitter`.
+
+3. **8 alert builders** (1 par AlertType, dans `generator.go`) :
+   - `buildStreakAlerts` : déclenche StreakMilestone aux paliers 4/8/15/30j (alignés sur les paliers PP multiplier du commit 2). Pas d'alerte sur transition Broken (feedback positif uniquement, plan §6.1).
+   - `buildRecordAlerts` : RecordBroken si NewPB=true (catégorie `personal_record` existante), RecordNearMiss si NearMiss=true. Consomme directement les `records.DetectionResult` du commit 3.
+   - `buildMilestoneAlerts` : MilestoneUnlocked si Earned=true, MilestoneNearMiss si NearMiss=true (proche 90% du seuil).
+   - `buildLUSRTierApproachAlert` : gap < LUSRTierApproachDelta (10pts) et NextTierName non vide. Skip au tier max.
+   - `buildLOWESSAlerts` : 1 alerte par composante avec slope > 0 ET window >= LOWESSObservationWindow (14j). Catégorie `threshold_crossed` (existante).
+   - `buildComebackAlert` : LastMatchAt < now - 5j ET HasNewActivity=true. 1 seule alerte par retour.
+
+4. **Dédup sans table dédiée** : `FilterRecent(alerts, recentNotifs, now, window)` filtre les alertes déjà émises dans la fenêtre. Clé d'unicité = `(category, dedup_key)` où `dedup_key` est extrait des params JSON de la notif. `AnnotateDedupKey(*Alert)` injecte le champ dans params avant émission (l'orchestrateur l'appelle juste avant `Emitter.Emit`).
+
+5. **Mapping AlertType → notifications.Category** centralisé dans `emitter.go` :
+   - 3 réutilisations de catégories existantes (RecordBroken → personal_record, LOWESSPositive et Campaign* → threshold_crossed)
+   - 6 nouvelles catégories pour les 6 nouveaux types
+   - Convention clés i18n : `notif.<category>.title` + `notif.<category>.body` (manifest livré en commit 11).
+
+6. **`Alert.ToEmitInput()`** : conversion prête à brancher sur `Emitter.Emit`. Source constante `progression.coach` pour faciliter le filtrage UI.
+
+**Tests passés** (19 unit) :
+
+- StreakMilestone : palier atteint / non-palier / transition broken sans alerte
+- RecordBroken + RecordNearMiss avec params (value, previous_value, target)
+- MilestoneUnlocked + MilestoneNearMiss avec progress
+- LUSRTierApproach : gap=5 fire, gap=20 skip, max tier skip
+- LOWESSPositive : slope+ window>=14 fire ; slope- skip ; window<14 skip
+- ComebackWelcome : pause 7j fire, no activity skip, pause 3j skip
+- FilterRecent : same dedup_key dans fenêtre filtré, hors fenêtre passe, différent dedup_key passe
+- AnnotateDedupKey : injection dans params
+- Mapping AlertType → Category : tous les types sont mappés (assertion exhaustivité)
+
+**Validation** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/...` : 42/42 unit OK (~7.3s cumulé : coach 1.6s, milestones 1.9s, records 1.8s, streaks 1.9s + notifications 2s)
+- `go test -tags=integration ./internal/migration/...` : 14s OK
+- `go test -tags=integration ./internal/platform/duckdb/...` : 43s OK
+- `go test -tags=integration ./internal/notifications/...` : 1.8s OK
+
+**Conclusion / prochaine étape** : Couches 1, 2, 3 complètes côté backend. Le coach connaît les 10 types d'alertes, les map sur les catégories de notifs et déduplique. Commit 6 = hook post-sync qui orchestre l'exécution complète : streaks.Evaluate → records.Detect → milestones.Detect → coach.Generate → FilterRecent → Emitter.Emit. C'est le commit le plus tricky car il nécessite de :
+- Calculer `accuracy_threshold_days` via SQL DuckDB pour milestones (cf. décision §11 commit 4)
+- Fournir la `LUSRSnapshot` depuis PlayerProfile V1
+- Calculer les LOWESS trends depuis `analysis/temporal`
+- Bâtir le `LastMatchAt` + détecter `HasNewActivity` depuis la closure existante
+
+---
+
 ## [2026-05-18] feat(progression)(commit-4) — milestones catalog TOML + detector + DuckDB repos
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).

@@ -40,6 +40,15 @@ const (
 	CategoryBattlepassCompleted Category = "battlepass_completed"
 	CategoryCitationTier        Category = "citation_tier"
 	CategoryCitationMastery     Category = "citation_mastery"
+	// 2026-05-18 : couche 3 du plan PROGRESSION_TRACKING (Ascension V2) —
+	// alertes du coach proactif. Les catégories `personal_record` et
+	// `threshold_crossed` existaient déjà ; ces 6 sont nouvelles.
+	CategoryRecordNearMiss    Category = "record_near_miss"
+	CategoryMilestoneUnlocked Category = "milestone_unlocked"
+	CategoryMilestoneNearMiss Category = "milestone_near_miss"
+	CategoryLUSRTierApproach  Category = "lusr_tier_approach"
+	CategoryStreakMilestone   Category = "streak_milestone"
+	CategoryComebackWelcome   Category = "comeback_welcome"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
@@ -55,6 +64,10 @@ func AllCategories() []Category {
 		CategoryCareerRank, CategorySkillTier,
 		CategoryBattlepassCompleted,
 		CategoryCitationTier, CategoryCitationMastery,
+		// Progression V2 — coach proactif.
+		CategoryRecordNearMiss, CategoryMilestoneUnlocked,
+		CategoryMilestoneNearMiss, CategoryLUSRTierApproach,
+		CategoryStreakMilestone, CategoryComebackWelcome,
 	}
 }
 

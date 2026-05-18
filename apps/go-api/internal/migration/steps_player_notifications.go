@@ -55,6 +55,13 @@ var notificationDefaultCategories = []struct {
 	{"battlepass_completed", true, "both"},  // milestone
 	{"citation_tier", true, "inapp"},        // potentiellement fréquent → silent
 	{"citation_mastery", true, "both"},      // rare → toast
+	// 2026-05-18 : couche 3 du plan PROGRESSION_TRACKING (Ascension V2) — coach proactif.
+	{"record_near_miss", true, "inapp"},     // potentiellement fréquent → silent (pas de toast)
+	{"milestone_unlocked", true, "both"},    // marquant → toast + inapp
+	{"milestone_near_miss", true, "inapp"},  // silent
+	{"lusr_tier_approach", true, "both"},    // peu fréquent + actionable → toast + inapp
+	{"streak_milestone", true, "both"},      // palier de streak (7/14/30j) marquant
+	{"comeback_welcome", true, "both"},      // bienveillant, rare → toast + inapp
 }
 
 func init() {
