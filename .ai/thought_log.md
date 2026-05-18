@@ -1,3 +1,73 @@
+## [2026-05-18] docs(player-profile-v1)(commit-10) — ADR 0015 statut Accepted (10/10 livrés)
+
+**Statut** : Complété. Sprint V1 **10/10 livré**. 🎉
+
+**Contexte** : Clôture du sprint V1 PlayerProfile Ascension. L'ADR 0015 avait
+été créé après commit-3 avec un statut "Partially implemented (3/10)" qui
+documentait la dette en termes précis (commits 4-9 reportés). Ce commit-10
+réécrit l'ADR pour refléter 10/10 livrés et le fait passer en **Accepted**.
+
+**Décision technique principale** :
+
+1. **Réécriture intégrale plutôt que patch incrémental** : l'ADR initial
+   structurait commits 4-9 comme "Decisions reportées" + section "Reprise du
+   sprint". Après livraison, le bon framing est "Decisions livrées (1-10)"
+   en chronologie + section "Consequences" couvrant trade-offs et V2
+   follow-ups. Réécriture propre, pas de tags `~~strikethrough~~` ni de
+   pseudo-changelog.
+
+2. **Trade-offs préservés intacts** : tous les compromis V1 documentés dans
+   les thought_logs commit par commit (lusr_component_history, mapping
+   award→axis, R5 plateau-only, template_id brut, route /objectifs) sont
+   centralisés dans la section "Trade-offs et follow-ups V2" de l'ADR.
+   Pas de masquage, pas de promesse implicite — la dette est explicite
+   et traçable.
+
+3. **References élargies** : ajout du pointeur vers les 10 entries
+   thought_log `[2026-05-18] feat(player-profile-v1)(commit-{1..10})` pour
+   permettre la traçabilité granulaire post-merge.
+
+**Résultats observés** :
+
+- ADR 0015 status passé de "Partially implemented (3/10)" → "Accepted (10/10)"
+- Date double affichée : créé 2026-05-18 / clôturé 2026-05-18 (même jour —
+  un seul sprint marathon)
+- Branche `feat/player-profile-ascension` désormais prête à merger
+  (CLAUDE.md règles respectées : 80L/function, 500L/module, pas de pandas,
+  pas de SQLite, couleurs via tokenCssVar)
+- 10 commits sur la branche, 0 conflict avec main attendu
+
+**Conclusion / prochaine étape** :
+
+Sprint V1 PlayerProfile Ascension **complet**. La page Ascension expose
+maintenant :
+1. Le profil joueur enrichi (Sections A1/A2/B/C — rôles, radar 6 axes,
+   style FK/FD, engagement, tier LUSR + 8 composantes, leviers, suggestions)
+2. La boucle Campagne d'amélioration (start opt-in → tracker sticky →
+   pause/clore/abandonner, R1-R5 algorithmiques)
+3. i18n FR/EN intégrale (125 clés, plurals ICU)
+
+La V2 (Progression Tracking — Streaks/Records/Milestones/Coach) consomme
+naturellement les nouveautés V1 via `EvaluateProgressionAfterSync` qui
+appelle maintenant `CampaignService.EvaluateActive` après le `Load()`
+profile. Les 2 alertes coach campagne (`AlertTypeCampaignProgress`,
+`AlertTypeCampaignCloseAuto`) sont câblables — leur déclenchement effectif
+arrivera quand une campagne active passera le seuil MWU ou se mettra en
+plateau 60j en production.
+
+**Follow-ups V2 explicites** (documentés dans l'ADR consequences) :
+- Table `lusr_component_history` pour breakdown 8 composantes complet
+- Mapping `personal_score_awards.award_name → narrative.ParticipationAxis`
+  pour Objective + Impact title-specific
+- R5 sortie radar bottom-3 (PlayerProfile dans hook campagne)
+- Rename route `/objectifs` → `/ascension` (commit isolé, hors V1)
+- i18n labels templates (`SuggestedChallenge.label_fr`/`label_en` ou
+  ajout manifest)
+
+Branche prête à `gh pr create` quand l'utilisateur valide.
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-9) — i18n manifest profil + campagne FR/EN
 
 **Statut** : Complété. Sprint V1 à 9/10.
