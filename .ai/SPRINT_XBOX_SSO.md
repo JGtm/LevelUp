@@ -67,20 +67,19 @@
 
 ---
 
-## 2. PR 0 — UI premier lancement (admin setup) — D1
+## 2. PR 0 — UI premier lancement — ✅ Déjà implémenté (révision 2026-05-18)
 
-**Périmètre** : permettre la création du compte admin initial via UI avant que tout autre flow auth soit disponible.
+**Statut** : **Caduque, équivalent en place**. Audit de session révèle que la plomberie existe déjà sous une URL différente :
 
-- [apps/go-api/internal/domain/bootstrap.go](apps/go-api/internal/domain/bootstrap.go) : ajouter `BootstrapResponse.SetupRequired string` (vide | `"admin"` | autres futurs setup steps).
-- [apps/go-api/internal/service/bootstrap_service.go](apps/go-api/internal/service/bootstrap_service.go) `resolveSetupState` : si `cfg.AuthMode != "none"` ET `userStoreEmpty()` retourne `true` → `SetupRequired = "admin"`.
-- Nouveau handler `apps/go-api/internal/api/handlers/setup.go` :
-  - `POST /setup/admin {"username": "...", "password": "..."}` → crée un user `Role=admin` via `userStore.CreateAdmin(...)`. **409 Conflict** si `users.json` non vide.
-  - Idempotent : seul un appel réussit, les suivants 409.
-- Frontend `apps/web/src/features/setup/AdminSetupPage.tsx` : route `/setup/admin`, form contrôlé (username 3-30 chars + password ≥ 8 chars + confirm), POST puis invalidate bootstrap puis redirect `/login`.
-- Router root : si `bootstrap.setup_required === "admin"` → redirect forcé vers `/setup/admin` quelle que soit la route demandée.
-- Tests : handler (201/409), composant React (validation + erreur 409 affichée).
+| Composant initialement prévu (D1) | État réel |
+|---|---|
+| `userstore.IsEmpty()` | ✅ Existe ([store.go:109](apps/go-api/internal/platform/userstore/store.go#L109)) |
+| Premier user = admin auto | ✅ Câblé dans [user_auth.go:107-111](apps/go-api/internal/api/handlers/user_auth.go#L107) (handler `POST /auth/register` : si `IsEmpty` → `role = RoleAdmin`) |
+| `BootstrapResponse.FirstLaunch` | ✅ Exposé ([bootstrap.go:85](apps/go-api/internal/domain/bootstrap.go#L85)), rempli par `bootstrap_service.isFirstLaunch()` |
+| Redirect "premier lancement → form" | ✅ Câblé dans [__root.tsx:54](apps/web/src/routes/__root.tsx#L54) (`if data.first_launch → navigate('/register')`) |
+| Page form premier admin | ✅ Route `/register` existe |
 
-**Done quand** : `users.json` supprimé → boot serveur + frontend → `/setup/admin` s'affiche → form rempli → user admin créé → login password fonctionne sur cet admin.
+**Décision (2026-05-18)** : on **skip PR 0**. L'endpoint `/auth/register` actuel suffit comme bootstrap admin initial. PR 1 étend la cohabitation D3 pour interdire le register hors-bootstrap en mode `AuthMode="xbox"` (cf. §3.bis).
 
 ---
 

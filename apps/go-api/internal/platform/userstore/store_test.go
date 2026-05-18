@@ -269,6 +269,179 @@ func TestPersistence(t *testing.T) {
 	}
 }
 
+func TestGetByXUID_FoundAndMissing(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
+	_ = s.LinkIdentity(testUser, "AliceGT", "xuid-alice-123")
+
+	user, err := s.GetByXUID("xuid-alice-123")
+	if err != nil {
+		t.Fatalf("GetByXUID existing: %v", err)
+	}
+	if user.Username != testUser {
+		t.Errorf("username = %q, want %q", user.Username, testUser)
+	}
+
+	_, err = s.GetByXUID("xuid-absent")
+	if err != ErrUserNotFound {
+		t.Errorf("GetByXUID absent: err = %v, want ErrUserNotFound", err)
+	}
+
+	_, err = s.GetByXUID("")
+	if err != ErrUserNotFound {
+		t.Errorf("GetByXUID empty: err = %v, want ErrUserNotFound", err)
+	}
+}
+
+func TestCreateFromXbox_Basic(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	user, err := s.CreateFromXbox("XboxUser42", "xuid-xbox-42")
+	if err != nil {
+		t.Fatalf("CreateFromXbox: %v", err)
+	}
+	if user.Role != domain.RoleUser {
+		t.Errorf("role = %q, want user (admin promotion doit passer par /auth/register en first_launch)", user.Role)
+	}
+	if user.Gamertag != "XboxUser42" {
+		t.Errorf("gamertag = %q, want XboxUser42 (original conservé)", user.Gamertag)
+	}
+	if user.XUID != "xuid-xbox-42" {
+		t.Errorf("xuid = %q, want xuid-xbox-42", user.XUID)
+	}
+	if user.Username != "xboxuser42" {
+		t.Errorf("username = %q, want xboxuser42 (slug normalisé)", user.Username)
+	}
+	if user.PasswordHash != "" {
+		t.Errorf("password_hash devrait être vide pour un user Xbox SSO")
+	}
+
+	// Doit être retrouvable par XUID.
+	found, err := s.GetByXUID("xuid-xbox-42")
+	if err != nil {
+		t.Fatalf("GetByXUID après CreateFromXbox: %v", err)
+	}
+	if found.Username != "xboxuser42" {
+		t.Errorf("found username = %q, want xboxuser42", found.Username)
+	}
+}
+
+func TestCreateFromXbox_SlugifyGamertag(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	// Gamertag avec espace et casse → slug compact lowercase.
+	user, err := s.CreateFromXbox("Mr Banana", "xuid-banana")
+	if err != nil {
+		t.Fatalf("CreateFromXbox espace: %v", err)
+	}
+	if user.Username != "mrbanana" {
+		t.Errorf("username = %q, want mrbanana", user.Username)
+	}
+	if user.Gamertag != "Mr Banana" {
+		t.Errorf("gamertag = %q, want 'Mr Banana' (original)", user.Gamertag)
+	}
+}
+
+func TestCreateFromXbox_CollisionFallback(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	// Pré-créer un user password avec username Alice (slug "alice").
+	_, err := s.Create(testUser, testPass, domain.RoleUser)
+	if err != nil {
+		t.Fatalf("setup Create: %v", err)
+	}
+
+	// CreateFromXbox avec gamertag "Alice" (slug "alice") → collision → fallback "alice_xbox".
+	user, err := s.CreateFromXbox("Alice", "xuid-alice-xbox")
+	if err != nil {
+		t.Fatalf("CreateFromXbox collision: %v", err)
+	}
+	if user.Username != "alice_xbox" {
+		t.Errorf("username = %q, want alice_xbox (suffixe collision)", user.Username)
+	}
+
+	// Le user password original existe toujours.
+	original, err := s.Get(testUser)
+	if err != nil {
+		t.Fatalf("Get original: %v", err)
+	}
+	if original.PasswordHash == "" {
+		t.Error("le user password original devrait avoir conservé son hash")
+	}
+}
+
+func TestCreateFromXbox_DoubleCollisionFails(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	// Pré-créer "alice" (password) ET "alice_xbox" (xbox).
+	_, _ = s.Create(testUser, testPass, domain.RoleUser)
+	_, _ = s.CreateFromXbox("Alice", "xuid-1")
+
+	// Une 3ème tentative collisionne sur les deux slots.
+	_, err := s.CreateFromXbox("Alice", "xuid-2")
+	if err != ErrUserAlreadyExists {
+		t.Errorf("double collision: err = %v, want ErrUserAlreadyExists", err)
+	}
+}
+
+func TestCreateFromXbox_RequiresXUID(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	_, err := s.CreateFromXbox("ValidGamertag", "")
+	if err == nil {
+		t.Error("CreateFromXbox sans xuid devrait échouer")
+	}
+}
+
+func TestCreateFromXbox_InvalidGamertag(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	// Gamertag entièrement non-alphanum → slug vide → erreur.
+	_, err := s.CreateFromXbox("!!!", "xuid-1")
+	if err != ErrInvalidUsername {
+		t.Errorf("gamertag invalide: err = %v, want ErrInvalidUsername", err)
+	}
+}
+
+func TestAuthenticateByXUID_TouchesLastLogin(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+	created, _ := s.CreateFromXbox("XboxAlice", "xuid-alice")
+	if created.LastLoginAt != "" {
+		t.Fatal("LastLoginAt devrait être vide juste après création")
+	}
+
+	user, err := s.AuthenticateByXUID("xuid-alice")
+	if err != nil {
+		t.Fatalf("AuthenticateByXUID: %v", err)
+	}
+	if user.LastLoginAt == "" {
+		t.Error("AuthenticateByXUID devrait toucher LastLoginAt")
+	}
+
+	// Persistance : nouveau Store doit voir LastLoginAt.
+	persisted, err := s.GetByXUID("xuid-alice")
+	if err != nil {
+		t.Fatalf("GetByXUID après auth: %v", err)
+	}
+	if persisted.LastLoginAt == "" {
+		t.Error("LastLoginAt non persisté")
+	}
+}
+
+func TestAuthenticateByXUID_UnknownXUID(t *testing.T) {
+	s := NewStore(tempStorePath(t))
+
+	_, err := s.AuthenticateByXUID("xuid-inexistant")
+	if err != ErrUserNotFound {
+		t.Errorf("xuid inconnu: err = %v, want ErrUserNotFound", err)
+	}
+
+	_, err = s.AuthenticateByXUID("")
+	if err != ErrUserNotFound {
+		t.Errorf("xuid vide: err = %v, want ErrUserNotFound", err)
+	}
+}
+
 func TestFilePermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permissions POSIX non applicables sur Windows")
