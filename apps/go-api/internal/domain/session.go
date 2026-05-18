@@ -31,6 +31,10 @@ type SessionData struct {
 	// Auth locale : username et rôle de l'utilisateur connecté (mode password).
 	Username *string `json:"username,omitempty"`
 	Role     *string `json:"role,omitempty"` // "admin" | "user"
+	// PR 4 — Authorization Code Flow SSO Xbox : state CSRF généré par LoginRedirect
+	// et vérifié par Callback. Stocké en session pour résister à un attaquant qui
+	// forcerait un callback avec un code volé sur une victime.
+	OAuthState string `json:"oauth_state,omitempty"`
 }
 
 // SessionContextRequest est le body de POST /session/context.

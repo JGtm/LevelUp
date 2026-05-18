@@ -16,17 +16,24 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useStartDeviceFlow, useDeviceFlowStatus } from '@/features/setup/queries'
 import { useLogin } from '@/features/auth/queries'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
-import type { ApiError } from '@/lib/api/client'
+import { API_BASE_URL, type ApiError } from '@/lib/api/client'
 
 export function XboxLoginPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [forceDeviceCode, setForceDeviceCode] = useState(false)
 
   if (showAdminLogin) {
     return <AdminPasswordPanel onBack={() => setShowAdminLogin(false)} />
   }
+
+  // PR 4 — préférer Authorization Code Flow (redirect SSO) si configuré
+  // côté backend. Le user peut basculer sur Device Code via le toggle.
+  const useRedirectFlow = oauthCodeFlowEnabled && !forceDeviceCode
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -37,12 +44,16 @@ export function XboxLoginPage() {
 
         <Card>
           <CardContent className="pt-6">
-            <XboxFlowPanel
-              onAuthorized={async () => {
-                await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
-                navigate({ to: '/' })
-              }}
-            />
+            {useRedirectFlow ? (
+              <RedirectFlowPanel onUseDeviceCode={() => setForceDeviceCode(true)} />
+            ) : (
+              <XboxFlowPanel
+                onAuthorized={async () => {
+                  await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
+                  navigate({ to: '/' })
+                }}
+              />
+            )}
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
               <button
@@ -56,6 +67,44 @@ export function XboxLoginPage() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Authorization Code Flow panel (PR 4 — redirect SSO)
+// ---------------------------------------------------------------------------
+
+interface RedirectFlowPanelProps {
+  onUseDeviceCode: () => void
+}
+
+function RedirectFlowPanel({ onUseDeviceCode }: RedirectFlowPanelProps) {
+  function handleClick() {
+    // Redirect plein-page vers le backend qui génère le state CSRF + redirect
+    // vers Microsoft /authorize. Microsoft renvoie l'user vers /auth/xbox/callback
+    // qui finalise la session puis redirect vers "/".
+    window.location.assign(`${API_BASE_URL}/auth/xbox/login`)
+  }
+
+  return (
+    <div className="space-y-5 text-center">
+      <h2 className="text-lg font-semibold">Connexion Xbox</h2>
+      <p className="text-sm text-muted-foreground">
+        Connectez-vous avec votre compte Microsoft pour accéder à vos statistiques Halo.
+      </p>
+      <Button onClick={handleClick} className="w-full">
+        Se connecter avec Xbox
+      </Button>
+      <p className="text-xs text-muted-foreground">
+        <button
+          type="button"
+          onClick={onUseDeviceCode}
+          className="underline underline-offset-2 hover:text-foreground transition-colors"
+        >
+          Utiliser un code à 9 caractères (sur un autre appareil)
+        </button>
+      </p>
     </div>
   )
 }

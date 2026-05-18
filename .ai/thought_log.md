@@ -1,3 +1,67 @@
+## [2026-05-18] feat(xbox-sso) — PR 4 : Authorization Code Flow SSO (redirect UX)
+
+**Statut** : Complété (branche `feat/xbox-sso`).
+
+**Contexte** : Sprint SSO Xbox backend + frontend Device Code Flow complets (PR 1-3 + 2.5a/b/c). PR 4 ajoute l'**Authorization Code Flow** OAuth v2 (RFC 6749 §4.1) — la "vraie" UX SSO desktop : un clic sur "Se connecter avec Xbox" → redirect plein-page vers Microsoft → user s'authentifie → redirect retour avec code → session créée automatiquement. Plus aboutie que le Device Code (qui demande de copier un code 9 caractères).
+
+**Pré-requis Azure (non livré dans cette PR)** : la plateforme "Web" doit être ajoutée à l'app Azure `e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca` dans le portail avec le redirect URI configuré (typiquement `http://localhost:8000/api/v1/auth/xbox/callback` en dev, prod URL plus tard). Sans cette config, Microsoft retourne `AADSTS50011` dès `/authorize`. Action manuelle utilisateur, hors code.
+
+**Décisions / changements** :
+
+1. **Helper `auth.ExchangeAuthorizationCode`** ([auth_code.go](apps/go-api/internal/platform/auth/auth_code.go)) :
+   - `ExchangeAuthorizationCode(ctx, code, redirectURI)` → `(*AuthCodeResult, error)` via `POST /oauth2/v2.0/token` avec `grant_type=authorization_code`.
+   - Réutilise les constantes existantes (`msalTokenURL`, `xboxScopes`, `LevelUpClientID`).
+   - Support app confidentielle via `SPNKR_AZURE_CLIENT_SECRET`.
+   - `AuthCodeResult { AccessToken, RefreshToken, ExpiresIn }` — note : contrairement au Device Code via MSAL, l'Auth Code donne le refresh_token brut directement, mais pas de cache MSAL JSON (donc le refresh ultérieur via `AcquireTokenSilent` ne marche pas — le user devra re-login à expiration).
+   - `BuildAuthorizeURL(redirectURI, state)` : construit l'URL `/authorize` avec scopes + state CSRF.
+
+2. **`OAuthState` ajouté à `SessionData`** ([session.go](apps/go-api/internal/domain/session.go)) : champ pour stocker le state CSRF entre `LoginRedirect` et `Callback`.
+
+3. **`XboxOAuthHandler`** ([auth_xbox_oauth.go](apps/go-api/internal/api/handlers/auth_xbox_oauth.go)) :
+   - `LoginRedirect` (GET `/auth/xbox/login`) : génère 32 bytes aléatoires (256 bits) → state hex, stocke en session, redirect 302 vers `/authorize?...&state=...`.
+   - `Callback` (GET `/auth/xbox/callback`) : vérifie state vs session (CSRF, one-shot — effacé après usage), exchange code → tokens Microsoft → `provider.Exchange` (Halo tokens + identity) → `AcquireXSTSForRTA` best-effort → construit un `Attempt` éphémère et appelle `linkStrategy.OnAuthSuccess` (réutilise toute la logique PR 2). Redirect 302 vers `postLoginURL` (défaut `/`).
+   - Gère `?error=...` (user a refusé chez Microsoft), state mismatch (403), code/state manquants (400), demo mode (422).
+
+4. **Config + wiring** :
+   - [config.go](apps/go-api/internal/config/config.go) : `OAuthRedirectURI` lu depuis `LEVELUP_OAUTH_REDIRECT_URI`. Vide → endpoint retourne 500.
+   - [server.go](apps/go-api/internal/api/server.go) : enregistre `/auth/xbox/login` + `/auth/xbox/callback` UNIQUEMENT si `cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != ""`. La `XboxSSOLinkStrategy` (déjà créée pour le Device Code Flow) est injectée — même logique post-login.
+
+5. **`BootstrapResponse.OAuthCodeFlowEnabled`** ([bootstrap.go](apps/go-api/internal/domain/bootstrap.go)) : `true` si `AuthMode=="xbox" && OAuthRedirectURI != ""`. Permet au frontend de proposer le redirect en priorité.
+
+6. **Frontend `XboxLoginPage`** ([XboxLoginPage.tsx](apps/web/src/features/auth/XboxLoginPage.tsx)) :
+   - Nouveau `RedirectFlowPanel` : gros bouton "Se connecter avec Xbox" → `window.location.assign(\`${API_BASE_URL}/auth/xbox/login\`)`. Toggle "Utiliser un code à 9 caractères" pour fallback Device Code Flow.
+   - Routage : `useRedirectFlow = oauthCodeFlowEnabled && !forceDeviceCode` (préfère redirect si dispo, user peut basculer).
+   - `API_BASE_URL` exporté depuis `client.ts` pour permettre la navigation plein-page (le client API standard est inutilisable car on perd la session sur redirect cross-origin sinon).
+   - Store `appShellStore.oauthCodeFlowEnabled` hydraté depuis `bootstrap.oauth_code_flow_enabled`.
+
+**Limitation connue — refresh ultérieur** : l'Auth Code Flow donne le `refresh_token` brut, mais `XboxSSOLinkStrategy.persistRTATokens` (PR 2.5a) attend un `MSALCacheJSON` (pour `AcquireTokenSilent` ultérieur). Conséquence : les users qui se loggent via Auth Code n'ont pas de cache MSAL persisté → à expiration du XSTS RTA (~55min), `RefreshUserXSTS` (PR 2.5c) ne pourra pas rafraîchir et le user devra re-cliquer "Se connecter avec Xbox". Acceptable pour PR 4 (UX redirect = quelques clics, pas plus mal que le Device Code). Mitigation future : construire un MSALCacheJSON synthétique depuis le RT brut, ou stocker le RT séparément + fallback `ExchangeRefreshTokenWithRotation`.
+
+**Tests** :
+
+- [auth_code_test.go](apps/go-api/internal/platform/auth/auth_code_test.go) (4 tests) : ExchangeAuthorizationCode rejette code/redirect vides, BuildAuthorizeURL produit l'URL `/authorize` avec tous les params requis. Test d'exchange réel skipped (msalTokenURL non paramétrable — couvert par test d'intégration manuel).
+- [auth_xbox_oauth_test.go](apps/go-api/internal/api/handlers/auth_xbox_oauth_test.go) (8 tests) : demo_mode, redirect_uri non configuré, LoginRedirect success (302 vers Microsoft avec state), Callback : code/state manquants (400), state mismatch (403), error param Microsoft (400), state matche → exchange tenté (500 attendu car le mock code échoue côté Microsoft, mais CSRF a passé).
+- Tests frontend [XboxLoginPage.test.tsx](apps/web/src/features/auth/XboxLoginPage.test.tsx) : 6 tests préservés (le mode Device Code reste affiché par défaut en test car `oauthCodeFlowEnabled` non set = false).
+
+**Résultats observés** :
+
+- `go test ./internal/api/... ./internal/platform/auth/... ./internal/service/... ./internal/watcher/... ./internal/domain/...` : tous OK.
+- `npx vitest run src/features/auth/` : 6/6 PASS (pas de régression).
+- `go build ./...` : OK.
+
+**Conclusion / prochaine étape** : Sprint SSO Xbox **fonctionnellement complet** (backend + 2 flows frontend). Un utilisateur final peut maintenant :
+- **Mode SSO redirect** (PR 4) : 1 clic → Microsoft → retour → loggué. UX desktop optimale.
+- **Mode Device Code** (PR 3) : pour cas multi-device (TV, mobile) où on tape le code depuis un autre appareil.
+- **Fallback admin password** (PR 1/3) : pour debugger ou en cas de SSO down.
+
+**Action utilisateur requise pour activer PR 4 en prod** :
+1. portail Azure → app `e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca` → Authentification → Ajouter plateforme "Web" → redirect URIs : `http://localhost:8000/api/v1/auth/xbox/callback` (dev) + URL prod.
+2. Définir `LEVELUP_OAUTH_REDIRECT_URI=http://localhost:8000/api/v1/auth/xbox/callback` (ou URL prod).
+3. `bootstrap.oauth_code_flow_enabled` deviendra `true` automatiquement.
+
+Reste optionnel : fix typecheck pré-existant `notifications/icons.tsx` (catégories manquantes hérité de notif-extension, ~5min).
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 3 frontend : XboxLoginPage + toggle admin password + redirects
 
 **Statut** : Complété (branche `feat/xbox-sso`).

@@ -40,6 +40,9 @@ export function apiErrorMessage(err: unknown): string | undefined {
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
+/** Base URL pour navigation plein-page (OAuth redirects). Exposée pour XboxLoginPage. */
+export const API_BASE_URL = BASE_URL
+
 /**
  * Sprint 44 : titre courant pour les requêtes API.
  * Mis à jour par le store appShell lors du bootstrap et des switchs de titre.

@@ -144,11 +144,12 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		Capabilities:        capabilities,
 		SettingsExcerpt:     settingsExcerpt,
 		Privacy:             privacy,
-		AuthMode:            s.cfg.AuthMode,
-		RegistrationMode:    s.cfg.RegistrationMode,
-		IsAdmin:             sess != nil && sess.Role != nil && *sess.Role == "admin",
-		CurrentUsername:     resolveUsername(sess),
-		FirstLaunch:         s.isFirstLaunch(),
+		AuthMode:             s.cfg.AuthMode,
+		RegistrationMode:     s.cfg.RegistrationMode,
+		IsAdmin:              sess != nil && sess.Role != nil && *sess.Role == "admin",
+		CurrentUsername:      resolveUsername(sess),
+		FirstLaunch:          s.isFirstLaunch(),
+		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
 	}, nil
 }
 

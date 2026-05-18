@@ -83,6 +83,9 @@ type BootstrapResponse struct {
 	IsAdmin          bool    `json:"is_admin"`
 	CurrentUsername  *string `json:"current_username"`
 	FirstLaunch      bool    `json:"first_launch"`
+	// PR 4 — Authorization Code Flow disponible (true si cfg.OAuthRedirectURI configuré).
+	// Le frontend affiche un bouton "SSO redirect" en plus du Device Code si true.
+	OAuthCodeFlowEnabled bool `json:"oauth_code_flow_enabled"`
 }
 
 // PlayersListResponse est la réponse de GET /api/v1/players.
