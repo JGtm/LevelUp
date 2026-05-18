@@ -13,34 +13,12 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/lib/api/client'
+import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import type { AxisKind } from '@/lib/playerProfile'
 import { useCampaignMutations } from '../hooks/usePlayerProfile'
+import { useProfileI18n } from '../hooks/useProfileI18n'
 
-const AXIS_LABELS_FR: Record<string, string> = {
-  combat: 'Combat',
-  survival: 'Survie',
-  support: 'Support',
-  score: 'Score',
-  objective: 'Objectif',
-  impact: 'Impact',
-  kills_vs_expected: 'Kills vs attendus',
-  deaths_vs_expected: 'Morts vs attendues',
-  win_factor: 'Facteur de victoire',
-  damage_efficiency: 'Efficacité dégâts',
-  accuracy_delta: 'Précision (delta)',
-  medal_exploit: 'Exploits / médailles',
-  offensive_conversion: 'Conversion offensive',
-  defensive_resistance: 'Résistance défensive',
-}
-
-const PLAYLIST_OPTIONS = [
-  { value: 'all', label: 'Toutes playlists' },
-  { value: 'arena_slayer', label: 'Arena Slayer' },
-  { value: 'ranked', label: 'Ranked' },
-  { value: 'btb', label: 'Big Team Battle' },
-  { value: 'social', label: 'Social' },
-  { value: 'fun', label: 'Fun' },
-] as const
+const PLAYLIST_VALUES = ['all', 'arena_slayer', 'ranked', 'btb', 'social', 'fun'] as const
 
 interface StartCampaignModalProps {
   open: boolean
@@ -60,6 +38,7 @@ export function StartCampaignModal({
   onOpenChange,
   onSkipToFreeChallenge,
 }: StartCampaignModalProps) {
+  const { t } = useProfileI18n()
   const [playlistGroup, setPlaylistGroup] = useState<string>('all')
   const muts = useCampaignMutations(playerSlug)
   const startError = apiErrorMessage(muts.start.error)
@@ -86,7 +65,10 @@ export function StartCampaignModal({
 
   if (!open) return null
 
-  const axisLabel = AXIS_LABELS_FR[axis] ?? axis
+  const axisLabelKey = (axisKind === 'radar'
+    ? `profile.axis.${axis}`
+    : `profile.lusr.${axis}`) as ProfileManifestKey
+  const axisLabel = t(axisLabelKey)
 
   return (
     <div
@@ -109,19 +91,16 @@ export function StartCampaignModal({
             id="start-campaign-title"
             className="text-lg font-semibold tracking-tight"
           >
-            Démarrer une campagne sur {axisLabel}
+            {t('campaign.modal.title', { axis: axisLabel })}
           </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            On t&apos;aide à voir ta trajectoire — pas à la garantir. La progression
-            vient de toi.
-          </p>
+          <p className="mt-2 text-sm text-muted-foreground">{t('campaign.modal.subtitle')}</p>
 
           <div className="mt-4 space-y-2">
             <label
               htmlFor="campaign-playlist-group"
               className="block text-xs font-semibold uppercase text-muted-foreground"
             >
-              Playlist cible
+              {t('campaign.modal.playlist_label')}
             </label>
             <select
               id="campaign-playlist-group"
@@ -130,16 +109,16 @@ export function StartCampaignModal({
               disabled={muts.start.isPending}
               className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             >
-              {PLAYLIST_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+              {PLAYLIST_VALUES.map((value) => {
+                const key = `campaign.playlist.${value}` as ProfileManifestKey
+                return (
+                  <option key={value} value={value}>
+                    {t(key)}
+                  </option>
+                )
+              })}
             </select>
-            <p className="text-xs text-muted-foreground">
-              Pour mesurer la campagne uniquement sur ces matchs. Tu peux laisser
-              «&nbsp;toutes playlists&nbsp;» si tu joues varié.
-            </p>
+            <p className="text-xs text-muted-foreground">{t('campaign.modal.playlist_help')}</p>
           </div>
 
           {startError && (
@@ -161,7 +140,7 @@ export function StartCampaignModal({
               }}
               disabled={muts.start.isPending}
             >
-              Skip — créer juste un défi libre
+              {t('campaign.modal.skip')}
             </Button>
           )}
           <Button
@@ -171,7 +150,7 @@ export function StartCampaignModal({
             onClick={() => onOpenChange(false)}
             disabled={muts.start.isPending}
           >
-            Annuler
+            {t('campaign.modal.cancel')}
           </Button>
           <Button
             type="button"
@@ -186,7 +165,7 @@ export function StartCampaignModal({
               )
             }
           >
-            Démarrer
+            {t('campaign.modal.submit')}
           </Button>
         </div>
       </div>
