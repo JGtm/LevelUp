@@ -1,3 +1,80 @@
+## [2026-05-18] chore(player-profile-v2) — vérif finale : 5 bugs trouvés et corrigés
+
+**Statut** : Complété. Audit complet V1+V2 → 5 problèmes critiques détectés
+en post-sprint et fixés sur place.
+
+**Contexte** : L'utilisateur a demandé une vérification finale du travail
+V1+V2 (build + tests + logging + couverture + hygiène). Bonne nouvelle :
+0 bug majeur dans la logique. Mauvaise nouvelle : 5 gaps d'intégration
+qu'un sprint axé sur le code applicatif a manqué.
+
+**Bugs trouvés et corrigés** :
+
+1. **Contract test `TestContractRoutesDocumented` cassé**. Les 8 routes
+   `/profile` + `/campaigns/*` ajoutées aux V1 commits 4+5 n'étaient pas
+   documentées dans `apps/go-api/api/openapi.yaml`. Le test exige
+   plafond=0. Fix : ajouté 8 entrées YAML avec operationId, paramètres
+   PlayerSlug, et responses 200/201/204/400/404/409.
+
+2. **Ordre d'init() des migrations cassait 7 tests duckdb**. La migration
+   `create_improvement_campaign_schema` (V1 commit-5) faisait
+   `ALTER TABLE challenge ADD COLUMN campaign_id`, mais la table
+   `challenge` est créée par `create_prestige_player_schema`. Go init()
+   ordering = alphabétique des fichiers source dans le package, et
+   `steps_player_campaign.go` (`c`) < `steps_player_prestige.go` (`p`)
+   → ALTER échouait. Fix : renommé `steps_player_campaign.go` →
+   `steps_player_prestige_campaign.go` (ASCII `.` < `_` → "prestige.go"
+   sort avant "prestige_campaign.go"). Commentaire explicatif ajouté en
+   tête du fichier.
+
+3. **Test d'intégration `TestBuildProfile_AwardsMappingEnrichesObjective`
+   échouait** car la table `personal_score_awards` n'est pas dans le
+   registry de migrations (legacy schema géré par
+   `sync.EnsurePlayerSchema`). Le test `setupProfileEnv` ne créait que
+   les tables migrées. Fix : ajout d'un `CREATE TABLE IF NOT EXISTS
+   personal_score_awards` explicite dans le scaffolding.
+
+4. **Warning `context deadline exceeded` sur `loadLUSRComponentsBreakdown`**
+   (V2 commit-1 trade-off documenté). La timeout 10s était partagée
+   entre 1 query agrégat + 8 `computeComponentTrend` (un par
+   composante). Fix : batché tout en 1 seule query CTE avec
+   `ROW_NUMBER() OVER (PARTITION BY component_name)` qui retourne
+   simultanément current_avg, top20, last10, first10 par composante.
+   Performance : 8 round-trips → 1, l'intégration test profile passe
+   de 32s → 6s.
+
+5. **`campaign/service.go` n'avait aucun slog** malgré être la couche de
+   décision pour campagnes. Fix : ajouté 3 slog.InfoContext aux moments
+   structurants — campaign started (avec snapshot), progression
+   confirmed (p<0.05), auto-closure suggested (avec reason). +
+   slog.WarnContext si le LeverageProvider échoue.
+
+**Résultats validés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` + `-tags=integration` exit 0
+- **Go full suite serialized (`-p 1`)** : 52/52 packages OK, 0 FAIL
+- **Frontend** : tsc 0 erreur, vite build 1.01s, vitest 1412/1412 tests
+  pass, eslint 0 warning sur les 12 fichiers V1+V2 créés/modifiés
+- **Coverage** (avec `-tags=integration`) :
+  - `internal/campaign/` : **79.9%**
+  - `internal/progression/profile/` : **77.2%** (vs 13.5% Windows-only)
+  - `internal/games/mappings/` : **92.5%**
+
+**Hygiène** :
+- 2 fichiers Go au-dessus de 500L (skill_rating.go 564L,
+  progression/profile/service.go 605L) — hérités, splits propres
+  reportés (risque conflicts si touchés maintenant)
+- Migrations idempotentes (CREATE TABLE IF NOT EXISTS / ALTER TABLE IF
+  NOT EXISTS partout)
+- `eslint` : 0 warning sur les 12 fichiers TS/TSX V1+V2 (33 warnings
+  pré-existants sur MomentCard/StatsGlobales — hors scope)
+
+**Suite naturelle** : merger V1 d'abord (10 commits clean), puis V2 + ce
+chore de vérif (5 commits) après tests CI Linux verts.
+
+---
+
 ## [2026-05-18] feat(player-profile-v2)(commit-4) — Streaks perf-based + R5 axe-sort-bottom-3
 
 **Statut** : Complété. **V2 4/4 livré**. 🎉

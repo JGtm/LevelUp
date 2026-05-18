@@ -1,12 +1,20 @@
 package migration
 
-// steps_player_campaign.go — migration ImprovementCampaign (V1 PlayerProfile §4.5).
+// steps_player_prestige_campaign.go — migration ImprovementCampaign
+// (V1 PlayerProfile §4.5).
 //
 // Tables ajoutées (par joueur) :
 //   - improvement_campaign : campagne d'amélioration volontaire sur 1 axe
 //
 // Colonnes ajoutées (par joueur) :
 //   - challenge.campaign_id : lien optionnel vers une campagne active
+//
+// IMPORTANT — ordre d'init : ce fichier est nommé `_prestige_campaign.go`
+// (et non `_campaign.go`) volontairement pour que son init() soit exécuté
+// APRÈS celui de `steps_player_prestige.go` qui crée la table `challenge`.
+// Go init() ordering au sein d'un package = ordre alphabétique des fichiers
+// source. "prestige.go" < "prestige_campaign.go" → migration s'enregistre
+// après prestige dans le registry, donc applyMigrations l'applique après.
 //
 // Idempotent via CREATE TABLE IF NOT EXISTS / ALTER TABLE IF NOT EXISTS.
 //
