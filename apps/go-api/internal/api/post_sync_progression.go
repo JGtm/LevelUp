@@ -28,6 +28,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/campaign"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/coach"
@@ -63,6 +64,7 @@ type ProgressionDeps struct {
 	RecordsDetector     *records.Detector
 	MilestonesDetector  *milestones.Detector
 	ProfileService      *profile.Service
+	CampaignService     *campaign.Service
 	CoachGenerator      *coach.Generator
 	Emitter             notifications.Emitter
 	NotificationsRepo   notifications.Repository
@@ -131,6 +133,14 @@ func EvaluateProgressionAfterSync(
 			slog.WarnContext(ctx, "progression: load profile", "err", err)
 		} else {
 			prof = p
+		}
+	}
+
+	// Évaluation de la campagne active du joueur (si présente).
+	// Re-compute LOWESS + Mann-Whitney U + R5 auto-closure check. Idempotent.
+	if deps.CampaignService != nil {
+		if err := deps.CampaignService.EvaluateActive(ctx, userID, titleSlug, now); err != nil {
+			slog.WarnContext(ctx, "progression: evaluate campaign", "err", err)
 		}
 	}
 
@@ -272,6 +282,10 @@ func BuildPlayerProgressionDeps(pdb *duckdb.PlayerDB, emitter notifications.Emit
 	if pdb.Player != nil {
 		deps.StreaksEvaluator = streaks.NewEvaluator(duckdb.NewStreaksRepo(pdb.Player))
 		deps.ProfileService = profile.NewService(pdb.Player)
+		deps.CampaignService = campaign.NewService(
+			duckdb.NewCampaignRepo(pdb.Player),
+			duckdb.NewCampaignSampleProvider(pdb.Player),
+		)
 		// History repo (stats.duckdb) + PB repo (shared_social via pdb).
 		history := duckdb.NewRecordHistoryRepo(pdb.Player)
 		if pdb.SharedSocial != nil {
@@ -308,6 +322,9 @@ func AssertProgressionDeps(d ProgressionDeps) error {
 	}
 	if d.ProfileService == nil {
 		missing = append(missing, "ProfileService")
+	}
+	if d.CampaignService == nil {
+		missing = append(missing, "CampaignService")
 	}
 	if d.CoachGenerator == nil {
 		missing = append(missing, "CoachGenerator")
