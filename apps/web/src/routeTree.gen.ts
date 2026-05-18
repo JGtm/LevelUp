@@ -19,6 +19,7 @@ import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayersPlayerSlugRouteImport } from './routes/players/$playerSlug'
+import { Route as OnboardingOpenspartanRouteImport } from './routes/onboarding.openspartan'
 import { Route as LabChartsRouteImport } from './routes/lab/charts'
 import { Route as PlayersPlayerSlugSynthesisRouteImport } from './routes/players/$playerSlug/synthesis'
 import { Route as PlayersPlayerSlugSquadRouteImport } from './routes/players/$playerSlug/squad'
@@ -91,6 +92,11 @@ const IndexRoute = IndexRouteImport.update({
 const PlayersPlayerSlugRoute = PlayersPlayerSlugRouteImport.update({
   id: '/players/$playerSlug',
   path: '/players/$playerSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingOpenspartanRoute = OnboardingOpenspartanRouteImport.update({
+  id: '/onboarding/openspartan',
+  path: '/onboarding/openspartan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LabChartsRoute = LabChartsRouteImport.update({
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/lab/charts': typeof LabChartsRoute
+  '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/lab/charts': typeof LabChartsRoute
+  '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/setup': typeof SetupRoute
   '/lab/charts': typeof LabChartsRoute
+  '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
   '/players/$playerSlug/career_': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/lab/charts'
+    | '/onboarding/openspartan'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/lab/charts'
+    | '/onboarding/openspartan'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
@@ -414,6 +425,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup'
     | '/lab/charts'
+    | '/onboarding/openspartan'
     | '/players/$playerSlug'
     | '/players/$playerSlug/career_'
     | '/players/$playerSlug/citations'
@@ -449,6 +461,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   SettingsRoute: typeof SettingsRoute
   SetupRoute: typeof SetupRoute
+  OnboardingOpenspartanRoute: typeof OnboardingOpenspartanRoute
   PlayersPlayerSlugRoute: typeof PlayersPlayerSlugRouteWithChildren
 }
 
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       path: '/players/$playerSlug'
       fullPath: '/players/$playerSlug'
       preLoaderRoute: typeof PlayersPlayerSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding/openspartan': {
+      id: '/onboarding/openspartan'
+      path: '/onboarding/openspartan'
+      fullPath: '/onboarding/openspartan'
+      preLoaderRoute: typeof OnboardingOpenspartanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lab/charts': {
@@ -791,6 +811,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   SettingsRoute: SettingsRoute,
   SetupRoute: SetupRoute,
+  OnboardingOpenspartanRoute: OnboardingOpenspartanRoute,
   PlayersPlayerSlugRoute: PlayersPlayerSlugRouteWithChildren,
 }
 export const routeTree = rootRouteImport

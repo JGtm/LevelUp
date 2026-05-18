@@ -50,7 +50,11 @@ export function XboxLoginPage() {
               <XboxFlowPanel
                 onAuthorized={async () => {
                   await queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })
-                  navigate({ to: '/' })
+                  // PR 4 OpenSpartan: route users through the onboarding
+                  // landing so they can opt into the OpenSpartan import
+                  // before reaching the dashboard. Returning users just
+                  // click "Continuer →".
+                  navigate({ to: '/onboarding/openspartan' })
                 }}
               />
             )}

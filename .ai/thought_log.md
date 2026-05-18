@@ -1,3 +1,55 @@
+## [2026-05-18] feat(openspartan) — PR 4 : UI onboarding (OpenSpartanImportCard + route /onboarding/openspartan)
+
+**Statut** : Complété (branche `feat/openspartan-import-ui`, basée sur `feat/xbox-sso` après merge du backend OpenSpartan `1a3daa21`).
+
+**Contexte** : Dernier livrable du sprint OpenSpartan. Le backend (PR 1→3.5) est mergé et l'endpoint `POST /api/v1/import/openspartan` est prêt à recevoir un upload multipart. PR 4 livre l'UI minimaliste pour consommer cet endpoint.
+
+**Architecture** :
+
+1. **`apps/web/src/features/onboarding/queries.ts`** — `useStartOpenSpartanImport()` mutation, typing `ImportStartResponse` et `OpenSpartanImportResult` (miroir du `Result` map backend). Le polling du job réutilise `useJobStatus` du package setup (déjà testé en prod).
+2. **`apps/web/src/features/onboarding/OpenSpartanImportCard.tsx`** — composant principal, 4 stages séquentiels :
+   - **Idle** : dropzone HTML5 (`<label>` + `<input type="file">` caché) + validation ext `.db` côté front + button "Importer" désactivé tant qu'aucun fichier valide
+   - **Uploading** : `startMutation.isPending` → bouton spinner
+   - **Polling** : `useJobStatus(jobId, true)` refetch 3s jusqu'à terminal, affiche progress_pct + matches_done/total + current_step
+   - **Success** : `<dl>` avec inserted_matches/participants/medals/highlights/aliases + post_import (sessions/perf_scores) + reset CTA
+   - **Failure** : `failureMessageFromCode(error)` mappe les Error.Code typés du backend (xuid_mismatch, owner_low_confidence, not_openspartan_db, upload_too_large, demo_mode, halo_auth_required) vers des messages FR explicites, fallback raw message sinon
+3. **`apps/web/src/features/onboarding/OnboardingOpenSpartanPage.tsx`** — page landing post-SSO. CTA principal "Continuer →" navigue vers `/`. Le composant `OpenSpartanImportCard` est tucked behind un `<details>` HTML5 "Options avancées" — disclosure natif accessible sans dep.
+4. **`apps/web/src/routes/onboarding.openspartan.tsx`** — route TanStack file-based, `routeTree.gen.ts` régénéré automatiquement par le build.
+5. **`XboxLoginPage.tsx`** — modification minimale : `navigate({ to: '/' })` post-Device Code → `navigate({ to: '/onboarding/openspartan' })`. Le redirect flow (Authorization Code, backend `/auth/xbox/callback`) reste sur `/` — couverture future si besoin.
+
+**Décisions techniques** :
+
+1. **Pas de dep drag&drop tierce** : `<label htmlFor>` + `<input type="file">` natif + `onDrop`/`onDragOver` sur le label. Accessible, simple, fonctionne au clavier (Enter/Space focus du label).
+2. **Reset via re-mount de l'input** : `fileInputKey` state incrémenté à chaque reset → React remonte l'input vide. Évite l'anti-pattern `ref.current.value = ''` qui déclenche la règle `react-hooks/refs` (interdit l'accès aux refs pendant le render).
+3. **Color tokens** : `tokenCssVar('destructive'|'success'|'warning'|'primary')` pour tous les états sémantiques. Pas de couleur hardcodée.
+4. **i18n** : strings FR hardcodées en v1 (cohérent avec XboxLoginPage). Migration vers TOML manifest peut suivre en v2 si EN devient nécessaire.
+
+**Tests (8/8 verts, vitest)** :
+
+- `idle state` : dropzone visible, submit désactivé
+- `rejects non-.db files` : error message inline
+- `enables submit after valid .db` : button activé, filename affiché
+- `uploads / polls / renders success counts` : mock 202 + mock GET /jobs/{id} avec result complet → vérifie matches, medals, post_import block
+- `XUID mismatch failure + retry` : mock error.code='xuid_mismatch' → message dédié + bouton réessayer ramène en idle
+- 3 tests unitaires sur `failureMessageFromCode` (mapping complet des codes connus + fallbacks)
+
+**Limites assumées (test)** :
+
+- Le mock MSW de `POST /import/openspartan` n'inspecte pas le body multipart parce qu'undici en jsdom ne parse pas fiable les Files construits via `new File([ArrayBuffer], …)`. Le test couvre que le composant déclenche bien la mutation et rend correctement le résultat selon la réponse.
+
+**Résultats observés** :
+
+- `npm run build` : OK (bundle vendoré, warning bundle size pré-existant non lié à mon code)
+- `npm run lint` : 0 erreur sur mes fichiers (les 43 erreurs restantes sont pré-existantes). 4 warnings i18n attendus (strings FR hardcodées dans Card titles/descriptions — pattern accepté pour les pages d'auth, cf. XboxLoginPage)
+- `npm run test:run -- src/features/onboarding/` : **8/8 verts** (1.5s)
+
+**Conclusion / prochaine étape** :
+
+- Sprint OpenSpartan **fini bout-en-bout** : backend (8 commits sur `feat/xbox-sso`) + UI (cette PR sur `feat/openspartan-import-ui` à merger).
+- Le user peut maintenant : (a) merger `feat/openspartan-import-ui` → `feat/xbox-sso`, (b) tester le flow complet (signup Xbox → onboarding → import) en lançant le dev server.
+
+---
+
 ## [2026-05-18] feat(session-detail) — charts client-side + drawer compare side-by-side (v2)
 
 **Statut** : Complété (branche `feat/session-page-charts`, basée sur `bb24299c`, mergée dans `feat/xbox-sso`).
