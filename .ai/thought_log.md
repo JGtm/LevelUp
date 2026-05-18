@@ -1,3 +1,58 @@
+## [2026-05-18] feat(progression)(commit-8) — UI Streaks (StreakBadge nav + StreakDashboard)
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Premier commit côté frontend du plan V2. Apporte la visibilité streaks dans la NavL1 (badge cliquable avec longueur courante) + page `/players/{slug}/ascension` avec dashboard détaillé. Records + Milestones reportés au commit 9.
+
+**Décisions / changements** :
+
+1. **Feature folder `features/ascension/`** structuré comme `features/notifications/` :
+   - `types.ts` : TS types miroir des DTOs Go (snake_case JSON contract).
+   - `queries.ts` : 3 hooks TanStack Query (`useStreaks`, `useRecords`, `useMilestones`). Polling 60s, refetchOnWindowFocus actif, staleTime 30s.
+   - `i18n.ts` : dictionnaire FR/EN (pattern aligné notifications/settings).
+   - `format.ts` : interpolate, nextPPTier, formatMultiplier, formatDate. Constante `STREAK_PP_TIERS` dupliquée serveur (cohérence visuelle des paliers).
+   - `StreakBadge.tsx` : badge cliquable dans NavL1 (icône feu inline SVG + badge count). Sélectionne la streak `daily_play` active (plus visible côté UX). Tooltip = multiplicateur PP courant.
+   - `StreakDashboard.tsx` : grille de cards par streak (active → paused → broken). Affiche current_length, best_length, multiplicateur PP, prochain palier, shields disponibles, dates start/broken.
+   - `AscensionPage.tsx` : page wrapper qui rend `StreakDashboard` pour le joueur courant.
+
+2. **Wiring** :
+   - Route `/players/$playerSlug/ascension` créée (file route TanStack Router).
+   - `routeTree.gen.ts` régénéré automatiquement via `vite build` (TanStackRouterVite plugin).
+   - `NavL1.tsx` : `StreakBadge` monté juste avant `NotificationsBell` (per-player, conditionnel sur `currentPlayer`).
+   - `queryKeys` étendu avec `progressionStreaks/Records/Milestones`.
+
+3. **Color tokens et i18n** :
+   - Tailwind tokens sémantiques uniquement (`bg-primary`, `text-emerald-700`, `text-muted-foreground`). Pas de hex hardcodé (respect règle CLAUDE.md §20).
+   - Statut tones : active = emerald (success), paused = amber (warning), broken = muted. Cohérent avec le sémantique design system.
+
+4. **Pattern conservé du domain notifications** :
+   - Sélecteur Zustand `useAppShellStore((s) => s.locale)` pour la locale.
+   - Hooks de query séparés des composants.
+   - Aria-label paramétrés via interpolate.
+
+**Tests** :
+
+- 15 tests unit `format.test.ts` couvrant interpolate (placeholders, plural), nextPPTier (5 paliers + null au max), formatMultiplier (4 cas), STREAK_PP_TIERS (cohérence avec backend).
+- Vitest : 15/15 PASS 1.1s.
+
+**Validations** :
+
+- `tsc -b` : aucune nouvelle erreur sur mes fichiers. Worktree a 1 erreur pré-existante dans `notifications/icons.tsx` (catégories déclarées dans types.ts sans icon mapping — bug 2026-05-16 datant de l'ajout des notif career_rank etc., à fixer en commit 10 quand on ajoute aussi les 6 nouvelles catégories progression). Le main repo a 3 erreurs pré-existantes du même genre (différentes).
+- `eslint` sur mes fichiers : 0 erreur, 0 warning. (NavL1.tsx a 6 warnings sur des strings hardcodées pré-existantes — non liées.)
+- `vite build` : OK 1.04s, bundle gen normal.
+
+**Bug subtil corrigé** :
+
+- Le `routeTree.gen.ts` est auto-généré par TanStackRouterVite, pas un fichier source classique. Initialement `tsc` se plaignait que `/players/$playerSlug/ascension` n'existait pas dans la map de routes. Fix : exécuter `vite build` (codegen du plugin) → fichier `routeTree.gen.ts` mis à jour avec le nouvel import + entrées. Commité tel quel (le fichier est tracké en git).
+
+**Workaround setup test web** :
+
+- `node_modules` absent dans le worktree (npm install pas refait). Workaround : junction Windows depuis `LevelUp-go-migration/apps/web/node_modules` (junction ne nécessite pas privilège admin contrairement à symlink). Permet vitest + tsc + vite sans réinstaller 800Mo de deps.
+
+**Conclusion / prochaine étape** : Streaks visibles côté UI. Le joueur voit son compteur de streak dans la navbar et accède à sa page Ascension via clic. Commit 9 = Records timeline + Milestones grid sur la même page (RecordsTimeline + RecordsNearMiss + MilestonesGrid components). Commit 10 = i18n manifests pour les title_key/body_key des 6 nouvelles catégories notif progression (+ fix icons.tsx).
+
+---
+
 ## [2026-05-18] feat(progression)(commit-7) — endpoints HTTP /streaks /records /milestones
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).

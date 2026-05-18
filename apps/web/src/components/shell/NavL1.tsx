@@ -16,6 +16,7 @@ import { HelpSplitButton } from './HelpSplitButton'
 import { useJobStatus } from '@/features/setup/queries'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
+import { StreakBadge } from '@/features/ascension/StreakBadge'
 // ─── SyncStatusIndicator ───────────────────────────────────────────────────
 
 /**
@@ -507,6 +508,9 @@ export function NavL1() {
           </span>
         )
       )}
+
+      {/* ── Streak badge (per-player, V2 progression) ────────────────────── */}
+      {currentPlayer && <StreakBadge playerSlug={currentPlayer.player_slug} />}
 
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
       {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}
