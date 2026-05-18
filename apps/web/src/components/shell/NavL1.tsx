@@ -128,7 +128,9 @@ interface L1Section {
 // - Synthèse devient un onglet de Stats (transverse : sa famille naturelle)
 // - Pass saisonnier devient un onglet de Carrière (progression temporelle)
 // - Palmarès renommé en "Communauté" + ajout onglet Leaderboard PP
-// - Nouvelle entrée L1 "Objectifs" (page Prestige : Défis + Mon parcours)
+// - Nouvelle entrée L1 "Ascension" (page Prestige : Défis + Parcours)
+//   Renommé depuis "Objectifs" (V1 PlayerProfile Ascension commit-8).
+//   Le route path /objectifs est conservé pour compat — seul le label change.
 const L1_SECTIONS: L1Section[] = [
   {
     key: 'home',
@@ -170,12 +172,12 @@ const L1_SECTIONS: L1Section[] = [
   },
   {
     key: 'objectifs',
-    label: 'Objectifs',
+    label: 'Ascension',
     defaultPath: '/players/$playerSlug/objectifs',
     matchPathname: (p) => /\/players\/[^/]+\/objectifs/.test(p),
     tabs: [
       { key: 'challenges', label: 'Défis', path: '/players/$playerSlug/objectifs' },
-      { key: 'parcours', label: 'Mon parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
+      { key: 'parcours', label: 'Parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
     ],
   },
   {

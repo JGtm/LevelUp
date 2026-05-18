@@ -1,3 +1,63 @@
+## [2026-05-18] feat(player-profile-v1)(commit-8) — rename Objectifs → Ascension + Mon parcours → Parcours
+
+**Statut** : Complété. Sprint V1 à 8/10.
+
+**Contexte** : §5.2 du plan + ajustement utilisateur en cours de sprint
+(« faire simple : "Mon Parcours" va devenir "Parcours" »). Le plan demandait
+le rename "Objectifs → Ascension" au niveau de la nav L1 ; on en profite
+pour aussi raccourcir le sous-onglet "Mon parcours" → "Parcours".
+
+**Décision technique principale** :
+
+1. **Rename label uniquement, route path conservé** : `/players/$slug/objectifs`
+   reste valide. Aucun changement de routing (pas de redirection, pas de
+   migration `routeTree.gen.ts`). Plus simple, zero risque de casser des
+   bookmarks ou des liens externes (incl. la nav drawer Help, les notifs).
+
+2. **Localisation des changements** : le plan mentionnait
+   `shellNavigation.ts` mais le label réel est dans `NavL1.tsx` (le
+   section L1 `key: 'objectifs'` avec `label: 'Objectifs'`). Les sources
+   touchées :
+   - `components/shell/NavL1.tsx` : section label + tab label "Mon parcours" → "Parcours"
+   - `features/prestige/ObjectifsPage.tsx` : H1 + TabButton + description sous-titre
+   - `lib/pageTitle.ts` : titre dans la breadcrumb / document.title
+   - `components/shell/NavL1.test.tsx` : labels des tests (replace_all + 2 titres `it()`)
+   - `features/help/i18n.ts` : 1 occurrence "barre de navigation → Objectifs"
+     (le terme glossaire "Objectifs" décrit toujours le concept "défis",
+     laissé intact).
+
+3. **Description sous-titre ObjectifsPage rafraîchie** : ancienne ("Défis
+   personnels, arcs narratifs et parcours Prestige") → nouvelle ("Profil,
+   défis et campagnes d'amélioration personnelle"). Reflète mieux la V1
+   (PlayerProfile + Campaign sont la nouveauté).
+
+4. **Le route path `/objectifs` reste hérité du nommage initial** :
+   un commit séparé hors V1 pourra renommer ce path à `/ascension` si
+   l'équipe le souhaite (avec redirection). Hors scope sprint.
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vitest run NavL1.test.tsx` ✅ 6/6 tests pass (3 réécrits sur "Ascension")
+- `vitest run` ✅ 1412 tests pass, 14 skipped (aucune régression)
+- Aucun warning eslint nouveau (les labels précédemment hardcodés le sont
+  toujours — c'est par commit 9 que ça change).
+
+**Trade-offs assumés** :
+
+- Le glossaire `help/i18n.ts` garde "Objectifs" comme terme de définition
+  car c'est le **concept** (défis avec PP) et pas le **label nav**. La
+  glose y décrit "objectifs/défis" — pas la section UI elle-même.
+- Le file `apps/web/src/features/prestige/ObjectifsPage.tsx` garde son
+  nom de fichier `ObjectifsPage.tsx` pour ne pas casser la route file et
+  les imports. Rename de fichier à isoler dans un commit dédié.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 8/10. Reste 2
+commits : i18n manifests FR/EN (commit 9 — résout les 50 warnings i18n des
+commits 6+7) puis ADR 0015 statut → Accepted (commit 10).
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-7) — CampaignTracker sticky + StartCampaignModal
 
 **Statut** : Complété. Sprint V1 à 7/10.
