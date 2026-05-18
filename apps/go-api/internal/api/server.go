@@ -409,8 +409,15 @@ func NewRouter(
 		r.Post("/session/context", sessionHandler.PostContext)
 
 		// Sprint 15 : Device Code Flow + authentification Halo
-		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider).
-			WithUserStore(users)
+		// D3 cohabitation (cf. SPRINT_XBOX_SSO §0bis) : en mode "xbox", la LinkStrategy
+		// est XboxSSOLinkStrategy (login direct via XUID + création user si nouveau).
+		// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
+		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider)
+		if cfg.AuthMode == "xbox" {
+			authHandler.WithLinkStrategy(service.NewXboxSSOLinkStrategy(users))
+		} else {
+			authHandler.WithUserStore(users)
+		}
 		r.Post("/auth/device-flow/start", authHandler.StartDeviceFlow)
 		r.Get("/auth/device-flow/{attempt_id}", authHandler.GetDeviceFlowStatus)
 

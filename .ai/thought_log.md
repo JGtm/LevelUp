@@ -1,3 +1,62 @@
+## [2026-05-18] feat(xbox-sso) — PR 2 : LinkStrategy pattern + XboxSSOLinkStrategy (login direct via XUID)
+
+**Statut** : Complété (branche `feat/xbox-sso`).
+
+**Contexte** : PR 1 a posé les briques userstore (GetByXUID, CreateFromXbox, AuthenticateByXUID) + cohabitation D3. PR 2 introduit le pattern `LinkStrategy` qui factorise la logique "que faire après un Device Code Flow réussi" en 2 stratégies interchangeables, sélectionnées par `AuthMode` au boot.
+
+**Pré-flight** :
+
+- `pool.Invalidate(slug)` n'existe pas — confirmé non bloquant pour PR 2 (utilisé seulement par la récupération BDD orpheline §11, différée).
+- `LinkIdentity` actuel appelé dans `AuthHandler.GetDeviceFlowStatus` (lignes 142-148 avant refactor), pas dans `pollDeviceFlow`. C'est là que la `LinkStrategy` s'injecte.
+- Pas de nouveaux endpoints `/auth/xbox/*` ajoutés — décision pragmatique : les URLs `/auth/device-flow/*` existantes pointent vers les mêmes handlers, dont le comportement varie selon le strategy injecté au boot. Évite la duplication HTTP et simplifie le frontend (1 seul ensemble d'URLs). Des alias `/auth/xbox/*` pourront être ajoutés plus tard si besoin de clarté.
+
+**Décisions / changements** :
+
+1. **Interface `LinkStrategy`** dans nouveau fichier [link_strategy.go](apps/go-api/internal/platform/auth/link_strategy.go) :
+   ```go
+   type LinkStrategy interface {
+       OnAuthSuccess(ctx context.Context, attempt *Attempt, sess *domain.SessionData) error
+   }
+   ```
+   Permet aux 2 modes de cohabiter avec un point d'extension unique. Interface `UserLinker` déplacée de `handlers/auth.go` vers `platform/auth` (sa place naturelle) ; type alias maintenu dans handlers pour la rétro-compat.
+
+2. **PasswordLinkStrategy** ([link_strategy.go](apps/go-api/internal/platform/auth/link_strategy.go)) : extraction de la logique historique (LinkIdentity sur user déjà connecté + auto-select player). Comportement identique à avant la PR, juste encapsulé. Retourne `ErrSessionNotAuthenticated` si la session n'a pas d'username.
+
+3. **XboxSSOLinkStrategy** dans nouveau service [xbox_auth_service.go](apps/go-api/internal/service/xbox_auth_service.go) :
+   - Algo §4 PR 2 du plan : `GetByXUID` → si `ErrUserNotFound` → `CreateFromXbox`, sinon `AuthenticateByXUID` (touch LastLoginAt).
+   - Wire la session : `Username` = slug user, `Role`, `CurrentPlayerSlug` = gamertag original (= clé d'isolation FS), `LinkedHaloIdentity`.
+   - Récupération de BDD orpheline (§11 du plan) **différée** : nécessite `pool.Invalidate` + scan FS multi-titre, hors scope PR 2.
+
+4. **Refactor `AuthHandler`** ([auth.go](apps/go-api/internal/api/handlers/auth.go)) :
+   - Champ `userStore UserLinker` → `linkStrategy auth_platform.LinkStrategy`.
+   - `WithUserStore(us)` conservé pour la rétro-compat : auto-wrap dans `PasswordLinkStrategy`.
+   - Nouveau `WithLinkStrategy(s)` pour injecter explicitement (override).
+   - Bloc `LinkIdentity` direct dans `GetDeviceFlowStatus` → appel `linkStrategy.OnAuthSuccess(ctx, attempt, sess)`. Erreur loggée (non-bloquante pour le user).
+
+5. **Injection au boot** ([server.go:412-419](apps/go-api/internal/api/server.go#L412)) :
+   ```go
+   if cfg.AuthMode == "xbox" {
+       authHandler.WithLinkStrategy(service.NewXboxSSOLinkStrategy(users))
+   } else {
+       authHandler.WithUserStore(users) // PasswordLinkStrategy auto-wrap
+   }
+   ```
+
+**Tests ajoutés** :
+
+- [link_strategy_test.go](apps/go-api/internal/platform/auth/link_strategy_test.go) (4 tests) : succès, gamertag vide → no-op, session sans username → `ErrSessionNotAuthenticated`, échec `LinkIdentity` propagé.
+- [xbox_auth_service_test.go](apps/go-api/internal/service/xbox_auth_service_test.go) (5 tests) : premier login → CreateFromXbox + session wirée, user existant → `AuthenticateByXUID` (LastLoginAt touché), XUID vide → erreur, gamertag vide → erreur, collision avec user password existant → fallback `_xbox` (réutilise PR 1).
+
+**Résultats observés** :
+
+- `go test ./internal/api/... ./internal/platform/auth/... ./internal/platform/userstore/... ./internal/service/...` : tous OK (exit 0).
+- `go build ./...` : pas de régression compile.
+- Tests handlers existants (`auth_test.go`) toujours OK — pas de régression sur le flow Device Code Flow legacy.
+
+**Conclusion / prochaine étape** : PR 2 livrable. `TokenProvider` reste intouché (couche d'abstraction tokens) ; `LinkStrategy` est la nouvelle couche d'abstraction "post-flow" injectée par-dessus. Prochaines PRs : **PR 2.5 RTA auto-provision** (AcquireXSTSForRTA + token store par-XUID, ~2j) et **PR 3 frontend** (page login Xbox + i18n + disclaimer phishing, ~0.5j, parallélisable avec PR 2.5).
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 1 : userstore Xbox + cohabitation D3 (password=admin only en mode xbox)
 
 **Statut** : Complété (branche `feat/xbox-sso` créée depuis `feat/notif-extension`).
@@ -34,7 +93,71 @@
 
 ---
 
-## [2026-05-18] feat(coaching) — manifest TOML tips & tricks par axe d'amélioration
+## [2026-05-18] feat(coaching) — manifest TOML tips & tricks Halo Infinite par axe (v2 après revue)
+
+**Statut** : Complété (v2 après revue utilisateur).
+
+**Itération v1 → v2** : v1 contenait plusieurs erreurs relevées par l'utilisateur :
+- Valeurs chiffrées inventées (sensi `3-4`, accélération `0`, deadzone `≤ 5`, FOV `100-105`, `+50% PSPM`, `+10% survie`, `40% damage assist`, `50 PS` garantis) — aucune source en code ou doc, juste mes hypothèses.
+- Nom de difficulté bot `« Plus difficile »` — en Halo Infinite c'est Recruit/Marine/ODST/Spartan.
+- ~~**Erreur la plus grave** : supposition d'un bouton ping/mark à la Apex/Valorant — Halo Infinite n'en a pas~~ → **correction v2.1 : c'était faux dans l'autre sens**. Halo Infinite est précisément le premier titre de la série à proposer un système de marquage natif. Les tips ping ont été restaurés en v2.1 (Support ingame.3 + settings.1 sur le binding accessible), sans hardcoder de touche spécifique.
+- Mapping métriques perf ↔ axes radar présenté comme factuel — c'était mon inférence, pas documenté en code.
+
+**Décisions v2** :
+
+1. **Grille inchangée** : 6 axes radar narrative (Combat / Survie / Support / Score / Objectif / Impact).
+2. **`metric_refs` → `related_signals`** : champ renommé, contenu adouci en indicateurs qualitatifs (« tirs propres, précision, finition de duels ») au lieu d'un mapping faussement précis vers `performance_score.go`. Aide à l'interprétation, pas référence technique.
+3. **Pas de valeurs chiffrées inventées** : sensibilité, FOV, deadzones décrits en direction du curseur (« réduis jusqu'à ce que ça réponde sans drift », « augmente tant que les cibles restent lisibles ») plutôt qu'en absolu.
+4. **Vocabulaire Halo Infinite vérifié** : armes officielles (Fusil de combat, Commando, Bandit, Sidekick, Bulldog, Aiguilleur, Lance-roquettes, Fusil de précision, Embrochoir, Épée à énergie, Marteau gravitationnel, Cindershot, Pistolet à plasma), équipement (Répulseur, Mur déployable, Grappin, Capteur de menace), bonus (Sur-bouclier, Camouflage actif), difficulté bot Spartan.
+5. **Termes anglais évités** : « casser la ligne de vue » (pas « break LoS »), « tir à la tête » (pas « headshot »), « tir croisé » (pas « crossfire »), etc.
+6. **Tips spécifiques ajoutés** : ne pas foncer après un fuyard, jouer/dénier les armes spéciales et bonus, apprendre la carte (callouts communauté, raccourcis), apprendre le nombre de tirs propres par arme pour kill.
+
+**Changements** : réécriture complète de [apps/web/src/lib/i18n/manifests/coaching_tips.toml](apps/web/src/lib/i18n/manifests/coaching_tips.toml).
+
+**Itération v2.2 — séparation tactique / stratégique** (suite revue) :
+- L'utilisateur a relevé que la v2 mélangeait tactique (décisions à l'engagement) et stratégie (décisions macro match/carte) sous un seul registre `ingame.N`. Symptôme : certains conseils étaient mal placés dans la hiérarchie de décision du joueur.
+- Décision : 5 registres au lieu de 3 — `ingame.N` (mécanique pure, scoring, comportement jeu), `tactical.N` (échelle seconde / duel / situation immédiate), `strategic.N` (échelle match / carte / mode / équipe), `settings.N`, `routine.N`.
+- Reclassement des tips existants dans la bonne case + ajout des manques macro :
+  - **Combat strategic** : identification du top fragger adverse + adapter rythme par mode (BTB ≠ Arène ≠ Classé)
+  - **Survie strategic** : si tu portes une arme spéciale, survivre devient prioritaire sur le kill
+  - **Survie strategic** : reading death pattern (3e croix au même endroit = signal stratégique)
+  - **Support strategic** : répartition des rôles en escouade (qui snipe, qui hold, qui floats)
+  - **Impact tactical** : trade-kill quand allié meurt à côté
+  - **Objectif strategic** : snowball management (mener → passif + control bonus ; mené → force-stack)
+
+Total final v2.2 : 6 axes × (1 ingame + 1-3 tactical + 1-5 strategic + 0-2 settings + 1 routine) = **37 tips** FR/EN bilingues, ~330 lignes.
+
+**Itération v2.3 — enrichissement sur sources externes** :
+- L'utilisateur a fourni 8 URLs Reddit (r/CompetitiveHalo, r/halo, r/haloinfinite, r/XboxSeriesX) + chaîne YouTube `@B1OChemist`, et signalé que **la playlist Bot Bootcamp Academy n'existe plus**.
+- Tentatives WebFetch :
+  - Reddit (`www.reddit.com` et `old.reddit.com`) : **bloqué** par la stack WebFetch — aucun thread n'a pu être récupéré directement.
+  - YouTube `@B1OChemist` : redirige vers page de consentement (`consent.youtube.com`) — non fetchable en l'état.
+  - Sources de secours fetchées avec succès : thegamer.com (guide multijoueur), sirusgaming.com (20 tips), gamerant.com (12 settings + BTB tips), retbit.com (guide complet beginner), confirmation B1OChemist existe via WebSearch.
+- **Tips ajoutés / corrigés** :
+  - **Combat ingame.2** (nouveau) : types de dégâts Cinétique / Plasma / Hard light — mécanique fondamentale Halo Infinite. Combo Pistolet à plasma surchargé + Sidekick tête mentionné.
+  - **Combat ingame.3** (nouveau) : avant rupture du bouclier, headshot = bodyshot (même dégâts). Mécanique vérifiée plusieurs sources, change la discipline de visée.
+  - **Combat tactical.3** (nouveau) : grenades actives qu'après le premier rebond — lance avant/après duel, jamais pendant.
+  - **Combat settings.3** (nouveau) : motion blur OFF, screen shake OFF, speed lines OFF, contour réticule au max (visibilité).
+  - **Combat routine.1** (fix) : Bot Bootcamp playlist supprimée mentionnée explicitement, remplacée par drills Académie ou Custom Game vs bots Spartan.
+  - **Survie ingame.1** (nouveau) : le radar est la ressource info principale, regarde-le plusieurs fois par seconde.
+  - **Survie tactical.2** (nouveau) : sprinter te met sur le radar adverse — marche en pré-aim pour les approches de duel.
+  - **Survie tactical.3** (nouveau) : menaces one-shot (Embrochoir, Sniper tête, Disrupteur à choc tête, Marteau, Épée, Bobines de fusion) — reconnaissance + casse LoS.
+  - **Survie tactical.4** (enrichi) : Mur déployable peut être détruit en tirant sur la base — info concrète.
+  - **Survie settings.2** (nouveau) : audio mode « Compressé » remonte les sons faibles, env effects bas pour distinguer joueurs/décor.
+  - **Support tactical.3** (clarifié) : ping (marquer) vs scan IA (révéler armes/équip/alliés) sont **deux commandes distinctes**, pas une. Halo Infinite premier titre Halo à proposer les deux.
+  - **Support tactical.4** (nouveau) : jauge bleue au-dessus des supports d'arme spéciale = timer respawn. Communique le timer en callout.
+  - **Support settings.1** (élargi) : binding marquage **et** scan accessibles.
+  - **Objectif strategic.4** (nouveau) : Oddball — sauter de la map pour reset le crâne si encerclé. Astuce vérifiée sirusgaming.
+  - **Impact strategic.5** (nouveau) : BTB-only — Grappin peut éjecter le pilote d'un véhicule adverse (Mongoose, Warthog, Wasp).
+  - **Score strategic.1** (enrichi) : Ravager mentionné comme outil de déni de zone.
+
+Total final v2.3 : **~45 tips** FR/EN, ~400 lignes. Sources de référence documentées en en-tête du fichier (transparence).
+
+**Conclusion / prochaine étape** : contenu prêt à brancher dans le coach proactif V2 (couche 3 du PLAN_PROGRESSION_TRACKING). La séparation tactique/stratégique permettra au coach de proposer des tips de granularité adaptée selon le contexte (post-match → strategic ; in-match si live coaching un jour → tactical). Pour un futur titre (Halo 3, etc.), il faudra un `coaching_tips_<title>.toml` séparé. Aucune logique métier ajoutée — contenu i18n pur.
+
+---
+
+## [2026-05-18] feat(coaching) — manifest TOML tips & tricks par axe d'amélioration (v1, remplacée par v2)
 
 **Statut** : Complété.
 
