@@ -30,6 +30,13 @@ const ICONS: Record<NotificationCategory, React.ComponentType<{ className?: stri
   threshold_crossed: IconTrending,
   friend_added: IconUser,           // §6 Squad/Sessions overhaul
   friend_sync_completed: IconCheck, // §6 — récap silencieux
+  // 2026-05-16 — nouvelles catégories ajoutées par feat(notifications) :
+  data_health_warning: IconAlert,
+  career_rank: IconTrophy,
+  skill_tier: IconTrending,
+  battlepass_completed: IconStar,
+  citation_tier: IconStar,
+  citation_mastery: IconTrophy,
 }
 
 function svg(props: { className?: string; children: React.ReactNode }) {
