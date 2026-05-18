@@ -47,9 +47,9 @@ export function ObjectifsPage() {
   return (
     <div className="space-y-4 p-4">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Objectifs</h1>
+        <h1 className="text-2xl font-bold">Ascension</h1>
         <p className="text-sm text-muted-foreground">
-          Défis personnels, arcs narratifs et parcours Prestige.
+          Profil, défis et campagnes d&apos;amélioration personnelle.
         </p>
       </header>
 
@@ -60,7 +60,7 @@ export function ObjectifsPage() {
           onClick={() => navigate({ search: {} as never })}
         />
         <TabButton
-          label="Mon parcours"
+          label="Parcours"
           active={tab === 'parcours'}
           onClick={() => navigate({ search: { tab: 'parcours' } as never })}
         />
