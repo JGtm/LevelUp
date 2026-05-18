@@ -39,6 +39,7 @@ const BADGE_INVERTED: Record<string, true> = {
   last_group_kill: true,
   first_group_death: true,
   false_brother: true,
+  kamikaze: true,
 }
 
 function outcomeBg(outcome: number): string {

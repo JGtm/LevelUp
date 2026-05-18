@@ -36879,3 +36879,62 @@ Trouvé dans `buildRivalriesPreview()` : `teammates` et `enemies` déclarées av
 ✅ Toutes réponses JSON = `[]` et `{}` au lieu de `null`
 
 **À faire** : Redémarrer le serveur. L'erreur devrait être complètement résolue.
+
+
+---
+
+## [2026-05-18] Plan title-agnostic v2.5 — actualisation 10 j post-v2.4
+
+**Statut** : Complété (revue + rewrite du plan).
+
+**Contexte** : Le plan `.ai/PLAN_TITLE_AGNOSTIC_REFACTORING.md` (v2.4, 2026-05-07) date dil y a ~10 j. Audit du codebase : ~30 handlers ajoutés (113 vs 80), plusieurs nouvelles surfaces Halo-only livrées (OpenSpartan import, Xbox SSO multi-user, perf-chain, LUSR chain rework, career-live SwR, CSR par-match, achievements Xbox, citations enrichies), 20+ `internal/migration/steps_*.go` accumulés. ADR 0012 (extraction Halo-only de `analysis/`) déjà acquis avant le plan. `synthetic_title_b` existe comme stub multi-titres avec `CapabilityMap` binaire. 0 import Huma, 0 `port.MatchFieldRepository`, 0 `capabilities.toml`, 77 occurrences de `"halo_infinite"` dans `internal/service/`.
+
+**3 nouvelles décisions actées dans la v2.5** :
+- **D11** — OpenSpartan import = bootstrap one-shot Day-0 (pas pipeline continu). TitleDataAdapter reste autorité du schéma DB. Hors-scope `SyncScope`. Test de continuité Phase 2 : DB primée OpenSpartan + Waypoint sync → même set de FieldKeys.
+- **D12** — Migration `CapabilityMap` (Go) → TOML en 2 PR atomiques : 1.7a (move binaire, compat préservée) puis 1.7b (extend 3 états + cascade). Évite double système runtime.
+- **D13** — Gel des nouveaux handlers en Huma dès `phase-3b-start` tag. Lint custom `no-new-chi-handler` bloquant. Stoppe la dette au rythme observé (~15 handlers/mois).
+
+**Changements structurels** :
+- Phase 1.7 découpée en 1.7a (2 j, light) + 1.7b (4-5 j, lourd).
+- Phase 1.5 ré-estimée 4-5 j → 8-10 j (liste exhaustive des 20+ steps_*.go à migrer).
+- Phase 3b ré-estimée 13-18 j → 17-25 j (80 → 113 handlers, groupes 45/35/20/13).
+- Phase 2 +1 j (test OpenSpartan continuity D11).
+- 3 nouveaux risques §9 (scope creep handlers, double Capability code+TOML, OpenSpartan DDL divergente).
+- Nouveau dataset obligatoire `testdata/integration/openspartan_primed/` §5.5.
+- Huma confirmé KEPT (ROI scale avec #handlers ; +33 routes en 2 semaines renforce largument).
+- Effort total : 50-67 j → **62-82 j**. Fenêtre minimale viable 0→3a : 25-34 j → **31-43 j**.
+
+**Décision méthodologique** :
+Écraser la v2.4 (changelog §14 garde lhistorique, git log permet le retour si besoin). Pas de doc parallèle.
+
+**Prochaine étape** :
+Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs : 0014/0015/0016/0017) + branche `refactor/title-agnostic-services` + lints CI §6.1 (7 lints, D13 placeholder désactivé jusquau tag `phase-3b-start`).
+
+
+---
+
+## [2026-05-18] Badge Kamikaze (matrice d'impact Teammates V7)
+
+**Statut** : Complété (backend + frontend + tests).
+
+**Contexte** : Ajout d'un 9ᵉ badge dans la matrice d'impact `SquadImpactScoreboard` (page Teammates V7). Détection sur `highlight_events` : un joueur de l'équipe alliée meurt ≤ 1500 ms après l'un de ses propres frags. Apparenté aux badges négatifs existants (last_casualty, false_brother, …) — count élevé = pire.
+
+**Décisions techniques** :
+- **Seuil temporel** : `kamikazeWindowMS = 1500` ms. Fenêtre stricte pour éviter les morts différées indépendantes du frag (sniper en retour, grenade flottante).
+- **Périmètre** : team-wide alliée uniquement (`squadXUIDs` issu de `input.Participants` dans `ComputeMatchImpactFull`). Les adversaires hors squad ne reçoivent jamais le badge.
+- **Sélection 1/match** : joueur avec le plus de séquences (compteur per-XUID). Tie-break : `T_death` le plus tardif puis XUID alphabétique. Conforme au pattern "1 badge max par badge-type" des 8 badges existants.
+- **Algorithme** : two-pointer kills / deaths triés ASC par XUID. Chaque death consommée au plus 1 fois pour éviter qu'un seul incident gonfle artificiellement plusieurs kills consécutifs.
+- **Score** : `-1.0` dans `impactScoreWeights` (cohérent avec `last_group_kill` / `first_group_death` — pénalité modérée).
+- **Scope volontairement réduit** : pas d'ajout dans `narrative/impact_roles.go` (qui alimente MatchView + Squad V2). Justification : `narrative/` n'a pas de scoring numérique, l'ajouter là demanderait i18n manifests + tokens couleur sans valeur ajoutée immédiate. À envisager si Phase 1 narrative recycle ce badge.
+
+**Picto** : SVG `bomb` Fluent Emoji Flat (vendoré depuis Iconify, viewBox 32×32, format aligné sur les 12 SVG existants du dossier).
+
+**Files touchés** :
+- Backend : `analysis/match_impact.go` (+helper `kamikaze`, constante `kamikazeWindowMS`), `service/teammates_squad_charts.go` (impactBadgeOrd + impactScoreWeights).
+- Tests Go : 7 nouveaux cas dans `match_impact_test.go` (window OK, hors fenêtre, death avant kill, tie-break, multi-occurrences, non-squad, death consommée 1×). `TestImpactScoreWeights_Coverage` mis à jour.
+- Frontend : `BadgeIcon.tsx` (+import SVG), `SquadImpactScoreboard.tsx` (BADGE_INVERTED), `i18n.ts` (nom + description FR/EN), test fixture + assert.
+- Asset : `apps/web/src/assets/badges/fluent-flat/kamikaze.svg`.
+
+**Résultats observés** : Tests Go (7/7 Kamikaze + score weights coverage) + frontend (5/5 SquadImpactScoreboard) verts. Typecheck propre sur les fichiers touchés (les 3 erreurs TS résiduelles concernent `OpenSpartanImportCard.tsx` et `SessionOutcomeTape.tsx`, hors scope).
+
+**Prochaine étape** : commit + PR. Pas de migration DB, pas de SyncScope, pas de répercussion sur la page Match (narrative non touché).

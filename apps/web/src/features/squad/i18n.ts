@@ -371,6 +371,7 @@ const FR_TEXT: SquadText = {
       false_brother: 'Faux-frère',
       top_killer: 'Bourreau (top frags)',
       top_gun: 'Top Gun',
+      kamikaze: 'Kamikaze',
     },
     badgeDescriptions: {
       first_blood: 'Premier frag du match, toutes équipes confondues',
@@ -382,6 +383,7 @@ const FR_TEXT: SquadText = {
       false_brother: 'Joueur (hors top-fragger) avec le plus de morts et le moins d\'assists',
       top_killer: 'Joueur avec le plus grand nombre de frags du match',
       top_gun: 'Premier membre du squad à atteindre 10 frags',
+      kamikaze: 'Joueur tué dans les 1,5 s qui suivent un de ses frags (le plus fréquent du match)',
     },
   },
   perMinute: {
@@ -626,6 +628,7 @@ const EN_TEXT: SquadText = {
       false_brother: 'False brother',
       top_killer: 'Top killer',
       top_gun: 'Top Gun',
+      kamikaze: 'Kamikaze',
     },
     badgeDescriptions: {
       first_blood: 'First kill of the match, across all teams',
@@ -637,6 +640,7 @@ const EN_TEXT: SquadText = {
       false_brother: 'Loser (excl. top killer) with most deaths and fewest assists',
       top_killer: 'Player with the highest kill count in the match',
       top_gun: 'First squad member to reach 10 kills',
+      kamikaze: 'Player killed within 1.5 s after one of their own frags (most frequent in the match)',
     },
   },
   perMinute: {
