@@ -15,33 +15,12 @@ import { useState } from 'react'
 import { AlertDialog } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { tokenCssVar } from '@/lib/accessibility'
+import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import type { ImprovementCampaign } from '@/lib/playerProfile'
 import { useCampaignMutations } from '../hooks/usePlayerProfile'
+import { useProfileI18n } from '../hooks/useProfileI18n'
 
 const MIN_MATCHES_FOR_TREND = 20
-
-const AXIS_LABELS_FR: Record<string, string> = {
-  combat: 'Combat',
-  survival: 'Survie',
-  support: 'Support',
-  score: 'Score',
-  objective: 'Objectif',
-  impact: 'Impact',
-  kills_vs_expected: 'Kills vs attendus',
-  deaths_vs_expected: 'Morts vs attendues',
-  win_factor: 'Facteur de victoire',
-  damage_efficiency: 'Efficacité dégâts',
-  accuracy_delta: 'Précision (delta)',
-  medal_exploit: 'Exploits / médailles',
-  offensive_conversion: 'Conversion offensive',
-  defensive_resistance: 'Résistance défensive',
-}
-
-const CLOSURE_REASONS_FR: Record<string, string> = {
-  plateau_60d: 'Plateau détecté : pas de variation significative depuis 60 jours.',
-  axis_no_longer_priority:
-    'Cet axe n’est plus dans tes axes prioritaires actuels.',
-}
 
 interface CampaignTrackerProps {
   playerSlug: string
@@ -49,20 +28,23 @@ interface CampaignTrackerProps {
 }
 
 export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) {
+  const { t, locale } = useProfileI18n()
   const muts = useCampaignMutations(playerSlug)
   const [confirmClose, setConfirmClose] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
 
-  const axisLabel = AXIS_LABELS_FR[campaign.axis] ?? campaign.axis
-  const startedAt = new Date(campaign.started_at).toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: 'long',
-  })
+  const axisKey = `profile.axis.${campaign.axis}` as ProfileManifestKey
+  const lusrKey = `profile.lusr.${campaign.axis}` as ProfileManifestKey
+  const axisLabel = t(campaign.axis_kind === 'radar' ? axisKey : lusrKey)
+  const startedAt = new Date(campaign.started_at).toLocaleDateString(
+    locale === 'fr' ? 'fr-FR' : 'en-US',
+    { day: '2-digit', month: 'long' },
+  )
   const enoughData = campaign.matches_since_start >= MIN_MATCHES_FOR_TREND
   const missing = Math.max(0, MIN_MATCHES_FOR_TREND - campaign.matches_since_start)
   const playlistLabel =
     campaign.playlist_group === 'all'
-      ? 'toutes playlists'
+      ? t('campaign.tracker.playlist_all')
       : campaign.playlist_group
   const delta =
     campaign.current_value_lowess !== undefined
@@ -71,19 +53,19 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
   const linkedCount = campaign.linked_challenge_ids?.length ?? 0
 
   return (
-    <section
-      className="sticky top-2 z-10 space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm"
-      aria-label="campaign.tracker"
-    >
+    <section className="sticky top-2 z-10 space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold uppercase text-muted-foreground">
-            Campagne en cours
+            {t('campaign.tracker.title')}
           </h2>
           <p className="text-lg font-bold">{axisLabel}</p>
           <p className="text-xs text-muted-foreground">
-            Démarrée le {startedAt} · {campaign.matches_since_start} match
-            {campaign.matches_since_start > 1 ? 's' : ''} sur {playlistLabel}
+            {t('campaign.tracker.subtitle', {
+              date: startedAt,
+              n: campaign.matches_since_start,
+              playlist: playlistLabel,
+            })}
           </p>
         </div>
         <StatusBadge status={campaign.status} confirmed={campaign.progression_confirmed} />
@@ -95,8 +77,7 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
 
       {!enoughData ? (
         <p className="rounded border border-dashed border-border bg-background p-3 text-sm text-muted-foreground">
-          Joue encore <span className="font-semibold">{missing}</span> match
-          {missing > 1 ? 's' : ''} sur ta playlist cible pour voir ta tendance.
+          {t('campaign.tracker.insufficient', { missing })}
         </p>
       ) : (
         <TrendBlock campaign={campaign} delta={delta} />
@@ -104,8 +85,8 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
 
       <p className="text-xs text-muted-foreground">
         {linkedCount > 0
-          ? `${linkedCount} défi${linkedCount > 1 ? 's' : ''} lié${linkedCount > 1 ? 's' : ''} à cette campagne.`
-          : 'Aucun défi lié pour l’instant — lance-en un depuis la section progression.'}
+          ? t('campaign.tracker.linked_count', { n: linkedCount })
+          : t('campaign.tracker.linked_none')}
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -116,7 +97,7 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
             onClick={() => muts.pause.mutate(campaign.id)}
             disabled={muts.pause.isPending}
           >
-            Pause
+            {t('campaign.action.pause')}
           </Button>
         ) : campaign.status === 'paused' ? (
           <Button
@@ -125,48 +106,40 @@ export function CampaignTracker({ playerSlug, campaign }: CampaignTrackerProps) 
             onClick={() => muts.resume.mutate(campaign.id)}
             disabled={muts.resume.isPending}
           >
-            Reprendre
+            {t('campaign.action.resume')}
           </Button>
         ) : null}
         <Button size="sm" variant="outline" onClick={() => setConfirmClose(true)}>
-          Clore
+          {t('campaign.action.close')}
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setConfirmAbandon(true)}
-        >
-          Abandonner
+        <Button size="sm" variant="ghost" onClick={() => setConfirmAbandon(true)}>
+          {t('campaign.action.abandon')}
         </Button>
       </div>
 
       <AlertDialog
         open={confirmClose}
         onOpenChange={setConfirmClose}
-        title="Clore cette campagne ?"
-        description="La campagne sera marquée comme complétée. Tu pourras en démarrer une nouvelle sur un autre axe."
-        confirmLabel="Clore"
-        cancelLabel="Annuler"
+        title={t('campaign.confirm.close.title')}
+        description={t('campaign.confirm.close.description')}
+        confirmLabel={t('campaign.action.close')}
+        cancelLabel={t('campaign.confirm.cancel')}
         busy={muts.close.isPending}
         onConfirm={() =>
-          muts.close.mutate(campaign.id, {
-            onSuccess: () => setConfirmClose(false),
-          })
+          muts.close.mutate(campaign.id, { onSuccess: () => setConfirmClose(false) })
         }
       />
       <AlertDialog
         open={confirmAbandon}
         onOpenChange={setConfirmAbandon}
-        title="Abandonner cette campagne ?"
-        description="Pas de pénalité — la campagne sera simplement marquée comme abandonnée."
-        confirmLabel="Abandonner"
-        cancelLabel="Annuler"
+        title={t('campaign.confirm.abandon.title')}
+        description={t('campaign.confirm.abandon.description')}
+        confirmLabel={t('campaign.action.abandon')}
+        cancelLabel={t('campaign.confirm.cancel')}
         destructive
         busy={muts.abandon.isPending}
         onConfirm={() =>
-          muts.abandon.mutate(campaign.id, {
-            onSuccess: () => setConfirmAbandon(false),
-          })
+          muts.abandon.mutate(campaign.id, { onSuccess: () => setConfirmAbandon(false) })
         }
       />
     </section>
@@ -179,11 +152,12 @@ interface StatusBadgeProps {
 }
 
 function StatusBadge({ status, confirmed }: StatusBadgeProps) {
+  const { t } = useProfileI18n()
   if (status !== 'active') {
-    const label = status === 'paused' ? 'En pause' : status === 'completed' ? 'Clôturée' : 'Abandonnée'
+    const key = `campaign.status.${status}` as ProfileManifestKey
     return (
       <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-        {label}
+        {t(key)}
       </span>
     )
   }
@@ -195,22 +169,23 @@ function StatusBadge({ status, confirmed }: StatusBadgeProps) {
           backgroundColor: `color-mix(in srgb, ${tokenCssVar('outcome-win')} 20%, transparent)`,
           color: tokenCssVar('outcome-win'),
         }}
-        title="p < 0.05 (Mann-Whitney U)"
+        title={t('campaign.status.active_confirmed_tooltip')}
       >
-        ✓ Progression confirmée
+        {t('campaign.status.active_confirmed')}
       </span>
     )
   }
   return (
     <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-      En cours
+      {t('campaign.status.active')}
     </span>
   )
 }
 
 function AutoClosureNotice({ reason }: { reason?: string }) {
-  const text = reason && CLOSURE_REASONS_FR[reason] ? CLOSURE_REASONS_FR[reason] : null
-  if (!text) return null
+  const { t } = useProfileI18n()
+  if (!reason) return null
+  const key = `campaign.auto_closure.${reason}` as ProfileManifestKey
   return (
     <p
       className="rounded border border-dashed border-border p-2 text-xs"
@@ -218,7 +193,8 @@ function AutoClosureNotice({ reason }: { reason?: string }) {
         backgroundColor: `color-mix(in srgb, ${tokenCssVar('outcome-loss')} 10%, transparent)`,
       }}
     >
-      {text} <span className="text-muted-foreground">Tu peux clore et démarrer un nouvel axe.</span>
+      {t(key)}{' '}
+      <span className="text-muted-foreground">{t('campaign.auto_closure.cta')}</span>
     </p>
   )
 }
@@ -229,11 +205,15 @@ interface TrendBlockProps {
 }
 
 function TrendBlock({ campaign, delta }: TrendBlockProps) {
+  const { t } = useProfileI18n()
   return (
     <dl className="grid grid-cols-3 gap-3 text-sm">
-      <Pair label="Snapshot" value={campaign.snapshot_value.toFixed(2)} />
       <Pair
-        label="Actuel (lissé)"
+        label={t('campaign.tracker.kpi_snapshot')}
+        value={campaign.snapshot_value.toFixed(2)}
+      />
+      <Pair
+        label={t('campaign.tracker.kpi_current')}
         value={
           campaign.current_value_lowess !== undefined
             ? campaign.current_value_lowess.toFixed(2)
@@ -241,7 +221,7 @@ function TrendBlock({ campaign, delta }: TrendBlockProps) {
         }
       />
       <Pair
-        label="Delta"
+        label={t('campaign.tracker.kpi_delta')}
         value={delta !== undefined ? formatDelta(delta) : '—'}
         accent={delta !== undefined ? (delta > 0 ? 'win' : delta < 0 ? 'loss' : undefined) : undefined}
       />

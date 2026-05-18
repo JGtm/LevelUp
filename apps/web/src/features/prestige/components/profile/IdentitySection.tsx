@@ -3,37 +3,19 @@
  *
  * Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.1.
  */
+import { useMemo } from 'react'
 import { RadarChart, type RadarSeriesPayload } from '@/components/charts/RadarChart'
 import type { PlayerProfile, RadarAxisInsight } from '@/lib/playerProfile'
-
-const AXIS_LABELS_FR: Record<string, string> = {
-  combat: 'Combat',
-  survival: 'Survie',
-  support: 'Support',
-  score: 'Score',
-  objective: 'Objectif',
-  impact: 'Impact',
-}
-
-const ROLE_LABELS_FR: Record<string, string> = {
-  top_killer: 'Tueur en tête',
-  survivor: 'Survivant',
-  silent_hero: 'Héros silencieux',
-  scorer: 'Marqueur',
-  objective_runner: 'Coureur d’objectif',
-  first_blood: 'Premier sang',
-  clutch_finisher: 'Clutch finisher',
-  last_casualty: 'Dernier tombé',
-  last_group_kill: 'Dernier kill du groupe',
-  first_group_death: 'Première mort du groupe',
-  false_brother: 'Faux frère',
-}
+import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
+import { useProfileI18n } from '../../hooks/useProfileI18n'
 
 interface IdentitySectionProps {
   profile: PlayerProfile
 }
 
 export function IdentitySection({ profile }: IdentitySectionProps) {
+  const { t } = useProfileI18n()
+
   const series: RadarSeriesPayload[] = [
     {
       key: profile.user_id,
@@ -46,11 +28,24 @@ export function IdentitySection({ profile }: IdentitySectionProps) {
     },
   ]
 
+  const axisLabels = useMemo<Record<string, string>>(
+    () => ({
+      combat: t('profile.axis.combat'),
+      survival: t('profile.axis.survival'),
+      support: t('profile.axis.support'),
+      score: t('profile.axis.score'),
+      objective: t('profile.axis.objective'),
+      impact: t('profile.axis.impact'),
+    }),
+    [t],
+  )
+  const youLabel = t('profile.you')
+
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <header className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold uppercase text-muted-foreground">
-          Identité de jeu
+          {t('profile.section.identity.title')}
         </h2>
         <RoleBadge dominant={profile.dominant_role} secondary={profile.secondary_role} />
       </header>
@@ -58,15 +53,13 @@ export function IdentitySection({ profile }: IdentitySectionProps) {
       {series[0].axes.length > 0 ? (
         <RadarChart
           series={series}
-          axisLabels={AXIS_LABELS_FR}
+          axisLabels={axisLabels}
           height={300}
-          emptyMessage="Pas de données radar pour cette fenêtre."
-          seriesNameResolver={() => 'Toi'}
+          emptyMessage={t('profile.section.identity.empty')}
+          seriesNameResolver={() => youLabel}
         />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Le radar 6 axes n&apos;est pas encore calculable sur cette fenêtre.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('profile.section.identity.empty')}</p>
       )}
 
       <InsightsRow strengths={profile.strengths} improvements={profile.improvement_areas} />
@@ -80,16 +73,19 @@ interface RoleBadgeProps {
 }
 
 function RoleBadge({ dominant, secondary }: RoleBadgeProps) {
+  const { t } = useProfileI18n()
   if (!dominant) return null
+  const dominantKey = `profile.role.${dominant}` as ProfileManifestKey
+  const secondaryKey = secondary ? (`profile.role.${secondary}` as ProfileManifestKey) : null
   return (
     <div className="text-right text-xs">
       <div>
-        <span className="text-muted-foreground">Rôle dominant :</span>{' '}
-        <span className="font-semibold">{ROLE_LABELS_FR[dominant] ?? dominant}</span>
+        <span className="text-muted-foreground">{t('profile.role.dominant_label')}</span>{' '}
+        <span className="font-semibold">{t(dominantKey)}</span>
       </div>
-      {secondary && (
+      {secondaryKey && (
         <div className="text-muted-foreground">
-          Secondaire : {ROLE_LABELS_FR[secondary] ?? secondary}
+          {t('profile.role.secondary_label')} {t(secondaryKey)}
         </div>
       )}
     </div>
@@ -102,11 +98,16 @@ interface InsightsRowProps {
 }
 
 function InsightsRow({ strengths, improvements }: InsightsRowProps) {
+  const { t } = useProfileI18n()
   if (!strengths?.length && !improvements?.length) return null
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <InsightColumn title="Forces" items={strengths} tone="positive" />
-      <InsightColumn title="À renforcer" items={improvements} tone="negative" />
+      <InsightColumn title={t('profile.insights.strengths')} items={strengths} tone="positive" />
+      <InsightColumn
+        title={t('profile.insights.improvements')}
+        items={improvements}
+        tone="negative"
+      />
     </div>
   )
 }
@@ -118,24 +119,26 @@ interface InsightColumnProps {
 }
 
 function InsightColumn({ title, items, tone }: InsightColumnProps) {
+  const { t } = useProfileI18n()
   if (!items?.length) return null
   return (
     <div>
-      <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
-        {title}
-      </h3>
+      <h3 className="mb-1 text-xs font-semibold uppercase text-muted-foreground">{title}</h3>
       <ul className="space-y-1">
-        {items.map((insight) => (
-          <li
-            key={insight.axis}
-            className={`flex items-center justify-between text-sm ${
-              tone === 'positive' ? 'text-foreground' : 'text-muted-foreground'
-            }`}
-          >
-            <span>{AXIS_LABELS_FR[insight.axis] ?? insight.axis}</span>
-            <span className="font-mono text-xs">{insight.value.toFixed(0)}</span>
-          </li>
-        ))}
+        {items.map((insight) => {
+          const axisKey = `profile.axis.${insight.axis}` as ProfileManifestKey
+          return (
+            <li
+              key={insight.axis}
+              className={`flex items-center justify-between text-sm ${
+                tone === 'positive' ? 'text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              <span>{t(axisKey)}</span>
+              <span className="font-mono text-xs">{insight.value.toFixed(0)}</span>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

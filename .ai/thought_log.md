@@ -1,3 +1,78 @@
+## [2026-05-18] feat(player-profile-v1)(commit-9) — i18n manifest profil + campagne FR/EN
+
+**Statut** : Complété. Sprint V1 à 9/10.
+
+**Contexte** : §5.2 du plan — chaque module front doit avoir son manifest
+TOML i18n FR/EN. Les commits 6 et 7 avaient livré ~50 warnings eslint
+`@levelup/no-hardcoded-strings` que ce commit résout, et démarre la fonda-
+tion i18n pour les composants Ascension.
+
+**Décisions techniques principales** :
+
+1. **Un seul manifest `profile.toml` regroupant profil + campagne** (125
+   clés au total), aligné sur le pattern engagement.toml (1 manifest par
+   feature module). Évite de fragmenter en 2 manifests "profile" et
+   "campaign" puisqu'ils sont co-localisés dans le même feature dir
+   `features/prestige/` et utilisés en cascade par les mêmes composants
+   (CampaignTracker lit aussi `profile.axis.*` et `profile.lusr.*`).
+
+2. **Hook `useProfileI18n`** (15L) en sucre syntaxique :
+   ```ts
+   const { t, locale } = useProfileI18n()
+   t('profile.section.identity.title')           // simple lookup
+   t('profile.insufficient.cta', { missing: 5 }) // ICU placeholder
+   ```
+   Encapsule `useAppShellStore((s) => s.locale)` + `formatMessage(profile-
+   Manifest, key, locale, vars)`. Toutes les sous-sections du profil et
+   la campagne consomment ce hook.
+
+3. **Plurals ICU pour les compteurs** : `{n, plural, =0 {...} =1 {1 match}
+   other {# matchs}}`. Utilisé pour matches_analyzed, matches_since_start,
+   missing, linked_count. Évite les concaténations + détection de pluriel
+   manuelle FR/EN.
+
+4. **Suggestions ICU select** pour le sous-titre des suggestions :
+   `{arc, select, true { · étape d'arc} other {}}`. Passé comme string
+   'true'/'false' depuis le composant — plus simple que conditional
+   rendering.
+
+5. **Clés axées sur le rôle/levier en dotted-path dynamique** :
+   `profile.role.${dominant}`, `profile.lusr.${component}`,
+   `profile.axis.${axis}`, `profile.tier.${target_tier}`. Cast type
+   `ProfileManifestKey` côté caller. Permet de dériver le label depuis
+   la donnée backend sans switch/case côté composant.
+
+6. **Petit fix collatéral** : `coaching_tips.ts` (généré) était présent
+   sur disque mais jamais commité. Ce commit le rattrape pour cohérence
+   du repo (la commande `node scripts/build_i18n_manifests.mjs` doit
+   pouvoir être ré-exécutée à tout moment sans qu'il manque des fichiers
+   tracked).
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅ 1.12s (gain de ~0.3s vs commit 7 — pattern dotted-key
+  manifest plus efficace que les `LABELS_FR` constantes inline)
+- `vitest run` ✅ 1412 tests pass, 14 skipped
+- `eslint` sur les 8 fichiers profil/campagne : **0 warning** (les ~50
+  warnings hardcoded strings disparus) 🎉
+
+**Trade-offs assumés** :
+
+- Le `template_id` brut dans `ProgressionSection` (ex:
+  "halo_infinite.daily.kda_session") reste affiché tel quel — il faudrait
+  une i18n des labels templates (ou exposer `label_fr`/`label_en` via
+  `SuggestedChallenge`). V2 follow-up, hors V1.
+- `Toi` est utilisé partout comme tu (pas vous). Cohérent avec les
+  autres manifests (engagement.toml utilise aussi le tu) — décision UX
+  globale du projet, pas spécifique à V1.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 9/10. Reste 1
+commit (10) : update ADR 0015 statut → Accepted maintenant que les
+10/10 sont livrés (ou 10/10 quand le commit 10 lui-même atterrit).
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-8) — rename Objectifs → Ascension + Mon parcours → Parcours
 
 **Statut** : Complété. Sprint V1 à 8/10.

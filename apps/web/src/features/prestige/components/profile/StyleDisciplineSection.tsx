@@ -4,32 +4,8 @@
  * Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.2.
  */
 import type { EngagementSnapshot, StyleSignature } from '@/lib/playerProfile'
-
-const STYLE_LABELS_FR: Record<string, { title: string; subtitle: string }> = {
-  opportunistic_finisher: {
-    title: 'Finisseur opportuniste',
-    subtitle: 'Tu cherches le dernier kill au bon moment.',
-  },
-  overextended: {
-    title: 'Trop avancé',
-    subtitle: 'Tu meurs souvent avant les autres — recule un peu.',
-  },
-  hyper_engaged: {
-    title: 'Hyper engagé',
-    subtitle: 'Premier au combat, premier dans la mêlée.',
-  },
-  passive: {
-    title: 'Plus prudent',
-    subtitle: 'Style mesuré — peu de premiers contacts.',
-  },
-}
-
-const ENGAGEMENT_LABELS_FR: Record<string, string> = {
-  low: 'Calme',
-  regular: 'Régulier',
-  high: 'Soutenu',
-  intense: 'Intense',
-}
+import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
+import { useProfileI18n } from '../../hooks/useProfileI18n'
 
 interface StyleDisciplineSectionProps {
   style: StyleSignature
@@ -40,36 +16,36 @@ export function StyleDisciplineSection({
   style,
   engagement,
 }: StyleDisciplineSectionProps) {
-  const styleMeta = style.style_key ? STYLE_LABELS_FR[style.style_key] : undefined
-
   return (
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <StyleCard style={style} meta={styleMeta} />
+      <StyleCard style={style} />
       <EngagementCard engagement={engagement} />
     </section>
   )
 }
 
-interface StyleCardProps {
-  style: StyleSignature
-  meta?: { title: string; subtitle: string }
-}
-
-function StyleCard({ style, meta }: StyleCardProps) {
+function StyleCard({ style }: { style: StyleSignature }) {
+  const { t } = useProfileI18n()
+  const titleKey = style.style_key
+    ? (`profile.style.${style.style_key}.title` as ProfileManifestKey)
+    : null
+  const subtitleKey = style.style_key
+    ? (`profile.style.${style.style_key}.subtitle` as ProfileManifestKey)
+    : null
   return (
     <article className="rounded-lg border border-border bg-card p-4">
       <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-        Style de jeu
+        {t('profile.style.title')}
       </h3>
       <p className="mt-1 text-lg font-semibold">
-        {meta?.title ?? 'Encore peu marqué'}
+        {titleKey ? t(titleKey) : t('profile.style.empty')}
       </p>
-      {meta && <p className="text-sm text-muted-foreground">{meta.subtitle}</p>}
+      {subtitleKey && <p className="text-sm text-muted-foreground">{t(subtitleKey)}</p>}
       <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-        <Pair label="Premiers kills" value={style.first_kill_count} />
-        <Pair label="Premiers morts" value={style.first_death_count} />
+        <Pair label={t('profile.style.first_kills')} value={style.first_kill_count} />
+        <Pair label={t('profile.style.first_deaths')} value={style.first_death_count} />
         <Pair
-          label="Ratio FK/FD"
+          label={t('profile.style.fkfd_ratio')}
           value={style.fkfd_ratio > 0 ? style.fkfd_ratio.toFixed(2) : '—'}
           full
         />
@@ -78,32 +54,31 @@ function StyleCard({ style, meta }: StyleCardProps) {
   )
 }
 
-interface EngagementCardProps {
-  engagement: EngagementSnapshot
-}
-
-function EngagementCard({ engagement }: EngagementCardProps) {
+function EngagementCard({ engagement }: { engagement: EngagementSnapshot }) {
+  const { t } = useProfileI18n()
+  const tierKey = `profile.engagement.tier.${engagement.tier}` as ProfileManifestKey
   return (
     <article className="rounded-lg border border-border bg-card p-4">
       <h3 className="text-xs font-semibold uppercase text-muted-foreground">
-        Engagement
+        {t('profile.engagement.title')}
       </h3>
-      <p className="mt-1 text-lg font-semibold">
-        {ENGAGEMENT_LABELS_FR[engagement.tier] ?? engagement.tier}
-      </p>
+      <p className="mt-1 text-lg font-semibold">{t(tierKey)}</p>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
         <div
           className="h-2 rounded-full bg-primary"
           style={{ width: `${Math.min(100, engagement.score)}%` }}
-          aria-label={`Score d'engagement ${engagement.score.toFixed(0)} sur 100`}
+          aria-label={t('profile.engagement.score_aria', { score: engagement.score.toFixed(0) })}
         />
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <Pair
-          label="Matchs / jour"
+          label={t('profile.engagement.matches_per_day')}
           value={engagement.matches_per_day_avg.toFixed(1)}
         />
-        <Pair label="Plus long écart" value={`${engagement.max_gap_days} j`} />
+        <Pair
+          label={t('profile.engagement.max_gap')}
+          value={t('profile.engagement.gap_days', { days: engagement.max_gap_days })}
+        />
       </dl>
     </article>
   )

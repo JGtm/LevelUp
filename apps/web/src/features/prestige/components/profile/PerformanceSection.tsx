@@ -9,17 +9,8 @@ import type {
   LUSRComponentBreakdown,
   SkillRatingSnapshot,
 } from '@/lib/playerProfile'
-
-const COMPONENT_LABELS_FR: Record<string, string> = {
-  kills_vs_expected: 'Kills vs attendus',
-  deaths_vs_expected: 'Morts vs attendues',
-  win_factor: 'Facteur de victoire',
-  damage_efficiency: 'Efficacité dégâts',
-  accuracy_delta: 'Précision (delta)',
-  medal_exploit: 'Exploits / médailles',
-  offensive_conversion: 'Conversion offensive',
-  defensive_resistance: 'Résistance défensive',
-}
+import { useProfileI18n } from '../../hooks/useProfileI18n'
+import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 
 interface PerformanceSectionProps {
   skillRating: SkillRatingSnapshot
@@ -32,11 +23,12 @@ export function PerformanceSection({
   components,
   muTrend,
 }: PerformanceSectionProps) {
+  const { t } = useProfileI18n()
   return (
     <section className="space-y-3 rounded-lg border border-border bg-card p-4">
       <header className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold uppercase text-muted-foreground">
-          Performance
+          {t('profile.section.performance.title')}
         </h2>
         <TrendBadge trend={muTrend} />
       </header>
@@ -49,12 +41,9 @@ export function PerformanceSection({
 }
 
 function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
+  const { t } = useProfileI18n()
   if (!rating.label) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Pas encore assez de matchs ratés pour estimer ton tier.
-      </p>
-    )
+    return <p className="text-sm text-muted-foreground">{t('profile.performance.empty')}</p>
   }
   const progressPct = Math.round((rating.progress_ratio ?? 0) * 100)
   return (
@@ -62,21 +51,31 @@ function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
       <div className="flex items-baseline justify-between">
         <span className="text-2xl font-bold">{rating.tier_name_fr || rating.label}</span>
         <span className="font-mono text-xs text-muted-foreground">
-          μ {rating.mu.toFixed(0)} · σ {rating.sigma.toFixed(0)}
+          {t('profile.performance.mu_sigma', {
+            mu: rating.mu.toFixed(0),
+            sigma: rating.sigma.toFixed(0),
+          })}
         </span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
         <div
           className="h-2 rounded-full bg-primary"
           style={{ width: `${progressPct}%` }}
-          aria-label={`${progressPct}% du sous-palier ${rating.label}`}
+          aria-label={t('profile.performance.progress_aria', {
+            pct: progressPct,
+            label: rating.label,
+          })}
         />
       </div>
       {rating.next_tier_label && (
         <p className="mt-1 text-xs text-muted-foreground">
-          Prochain palier : <span className="font-semibold">{rating.next_tier_label}</span>
+          {t('profile.performance.next_tier')}{' '}
+          <span className="font-semibold">{rating.next_tier_label}</span>
           {rating.gap_to_next !== undefined && (
-            <> · +{rating.gap_to_next.toFixed(0)} pts à gagner</>
+            <>
+              {' · '}
+              {t('profile.performance.gap_to_next', { gap: rating.gap_to_next.toFixed(0) })}
+            </>
           )}
         </p>
       )}
@@ -85,9 +84,9 @@ function TierBlock({ rating }: { rating: SkillRatingSnapshot }) {
 }
 
 function TrendBadge({ trend }: { trend?: LOWESSTrend }) {
+  const { t } = useProfileI18n()
   if (!trend || !trend.Slope || !trend.Window) return null
   const positive = (trend.Slope ?? 0) > 0
-  const label = positive ? 'En progression' : 'En recul'
   const colorToken = positive ? 'outcome-win' : 'outcome-loss'
   return (
     <span
@@ -96,14 +95,22 @@ function TrendBadge({ trend }: { trend?: LOWESSTrend }) {
         backgroundColor: `color-mix(in srgb, ${tokenCssVar(colorToken)} 20%, transparent)`,
         color: tokenCssVar(colorToken),
       }}
-      title={`Pente LOWESS ${trend.Slope?.toFixed(2)} sur ${trend.Window ?? 0} pts`}
+      title={t('profile.performance.trend_tooltip', {
+        slope: trend.Slope?.toFixed(2),
+        window: trend.Window ?? 0,
+      })}
     >
-      {label}
+      {t(
+        positive
+          ? 'profile.performance.trend_positive'
+          : 'profile.performance.trend_negative',
+      )}
     </span>
   )
 }
 
 function ComponentsBreakdown({ components }: { components?: LUSRComponentBreakdown[] }) {
+  const { t } = useProfileI18n()
   if (!components?.length) return null
   const hasData = components.some(
     (c) => c.current_avg > 0 || c.personal_top_20 > 0 || c.target_for_tier > 0,
@@ -111,7 +118,7 @@ function ComponentsBreakdown({ components }: { components?: LUSRComponentBreakdo
   if (!hasData) {
     return (
       <p className="text-xs text-muted-foreground">
-        Détail des 8 composantes : données non disponibles pour cette fenêtre.
+        {t('profile.performance.components_unavailable')}
       </p>
     )
   }
@@ -125,17 +132,20 @@ function ComponentsBreakdown({ components }: { components?: LUSRComponentBreakdo
 }
 
 function ComponentRow({ component }: { component: LUSRComponentBreakdown }) {
+  const { t } = useProfileI18n()
   const currentPct = Math.round(component.current_avg * 100)
   const targetPct = Math.round(component.target_for_tier * 100)
   const top20Pct = Math.round(component.personal_top_20 * 100)
+  const labelKey = `profile.lusr.${component.name}` as ProfileManifestKey
   return (
     <li className="text-xs">
       <div className="flex justify-between">
-        <span className="font-medium">
-          {COMPONENT_LABELS_FR[component.name] ?? component.name}
-        </span>
+        <span className="font-medium">{t(labelKey)}</span>
         <span className="font-mono text-muted-foreground">
-          {currentPct}% / cible {targetPct}%
+          {t('profile.performance.component_current_target', {
+            current: currentPct,
+            target: targetPct,
+          })}
         </span>
       </div>
       <div className="relative mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -146,12 +156,12 @@ function ComponentRow({ component }: { component: LUSRComponentBreakdown }) {
         <div
           className="absolute inset-y-0 w-px bg-foreground/50"
           style={{ left: `${targetPct}%` }}
-          aria-label="Cible pour le prochain palier"
+          aria-label={t('profile.performance.aria_target')}
         />
         <div
           className="absolute inset-y-0 w-px bg-foreground/30"
           style={{ left: `${top20Pct}%` }}
-          aria-label="Top 20% personnel"
+          aria-label={t('profile.performance.aria_top20')}
         />
       </div>
     </li>

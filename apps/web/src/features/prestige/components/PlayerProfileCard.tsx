@@ -5,6 +5,7 @@
  * Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4 + §5.2.
  */
 import { usePlayerProfile } from '../hooks/usePlayerProfile'
+import { useProfileI18n } from '../hooks/useProfileI18n'
 import { IdentitySection } from './profile/IdentitySection'
 import { InsufficientDataPlaceholder } from './profile/InsufficientDataPlaceholder'
 import { PerformanceSection } from './profile/PerformanceSection'
@@ -27,20 +28,19 @@ export function PlayerProfileCard({
   onLaunchTemplate,
 }: PlayerProfileCardProps) {
   const { data: profile, isLoading, isError } = usePlayerProfile(playerSlug, windowDays)
+  const { t } = useProfileI18n()
 
   if (isLoading) {
     return (
       <section className="rounded-lg border border-border bg-card p-6">
-        <p className="text-sm text-muted-foreground">Chargement du profil…</p>
+        <p className="text-sm text-muted-foreground">{t('profile.loading')}</p>
       </section>
     )
   }
   if (isError || !profile) {
     return (
       <section className="rounded-lg border border-dashed border-border bg-card p-6">
-        <p className="text-sm text-muted-foreground">
-          Le profil n&apos;a pas pu être chargé. Réessaie plus tard.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('profile.load_error')}</p>
       </section>
     )
   }
