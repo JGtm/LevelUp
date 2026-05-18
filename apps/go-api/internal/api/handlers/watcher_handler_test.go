@@ -58,6 +58,7 @@ func (m *mockDaemon) UpdateSubscriptions(gamertags []string) {
 	m.subscriptions = gamertags
 	m.mu.Unlock()
 }
+func (m *mockDaemon) AddPlayer(_ context.Context, _ domain.PlayerSummary) error { return nil }
 func (m *mockDaemon) GetStatus() watcher.WatcherStatus {
 	m.mu.Lock()
 	defer m.mu.Unlock()

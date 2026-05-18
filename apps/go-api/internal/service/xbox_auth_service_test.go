@@ -3,6 +3,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -205,6 +206,101 @@ func TestXboxSSOLinkStrategy_WithoutTokenStore_StillWorks(t *testing.T) {
 	}
 
 	// User créé, pas de panic sur persistance.
+	if _, err := users.GetByXUID("2535471234567890"); err != nil {
+		t.Errorf("user devrait être créé : %v", err)
+	}
+}
+
+// mockDaemon capture les appels AddPlayer pour test.
+type mockDaemon struct {
+	running   bool
+	addCalls  []domain.PlayerSummary
+	failError error
+}
+
+func (m *mockDaemon) IsRunning() bool { return m.running }
+
+func (m *mockDaemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
+	m.addCalls = append(m.addCalls, p)
+	return m.failError
+}
+
+func TestXboxSSOLinkStrategy_WithDaemonGetter_CallsAddPlayer(t *testing.T) {
+	users := newXboxStore(t)
+	daemon := &mockDaemon{running: true}
+	getter := func() service.WatcherDaemon { return daemon }
+
+	s := service.NewXboxSSOLinkStrategy(users).WithDaemonGetter(getter)
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{
+		Gamertag: "Spartan42",
+		XUID:     "2535471234567890",
+	}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+
+	if len(daemon.addCalls) != 1 {
+		t.Fatalf("AddPlayer calls = %d, want 1", len(daemon.addCalls))
+	}
+	got := daemon.addCalls[0]
+	if got.XUID != "2535471234567890" {
+		t.Errorf("AddPlayer XUID = %q, want 2535471234567890", got.XUID)
+	}
+	if got.Gamertag != "Spartan42" {
+		t.Errorf("AddPlayer Gamertag = %q, want Spartan42", got.Gamertag)
+	}
+}
+
+func TestXboxSSOLinkStrategy_WithDaemonGetter_SkipIfNotRunning(t *testing.T) {
+	users := newXboxStore(t)
+	daemon := &mockDaemon{running: false} // daemon créé mais pas démarré
+	getter := func() service.WatcherDaemon { return daemon }
+
+	s := service.NewXboxSSOLinkStrategy(users).WithDaemonGetter(getter)
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{Gamertag: "Spartan42", XUID: "2535471234567890"}
+
+	_ = s.OnAuthSuccess(context.Background(), attempt, sess)
+
+	if len(daemon.addCalls) != 0 {
+		t.Errorf("AddPlayer ne devrait pas être appelé si daemon pas running, got %d calls", len(daemon.addCalls))
+	}
+}
+
+func TestXboxSSOLinkStrategy_WithDaemonGetter_NilGetterIsNoop(t *testing.T) {
+	users := newXboxStore(t)
+	getter := func() service.WatcherDaemon { return nil } // getter retourne nil
+
+	s := service.NewXboxSSOLinkStrategy(users).WithDaemonGetter(getter)
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{Gamertag: "Spartan42", XUID: "2535471234567890"}
+
+	// Pas de panic, login OK.
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+}
+
+func TestXboxSSOLinkStrategy_WithDaemonGetter_AddPlayerFailIsNonBlocking(t *testing.T) {
+	users := newXboxStore(t)
+	daemon := &mockDaemon{running: true, failError: errors.New("RTA disconnected")}
+	getter := func() service.WatcherDaemon { return daemon }
+
+	s := service.NewXboxSSOLinkStrategy(users).WithDaemonGetter(getter)
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{Gamertag: "Spartan42", XUID: "2535471234567890"}
+
+	// Login doit réussir même si AddPlayer échoue.
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Errorf("login devrait réussir même si AddPlayer échoue, got err: %v", err)
+	}
+	// User créé.
 	if _, err := users.GetByXUID("2535471234567890"); err != nil {
 		t.Errorf("user devrait être créé : %v", err)
 	}

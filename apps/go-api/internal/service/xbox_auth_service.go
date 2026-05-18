@@ -22,18 +22,35 @@ import (
 	"levelup/go-api/internal/platform/userstore"
 )
 
+// WatcherDaemon est l'interface minimale dont XboxSSOLinkStrategy a besoin pour
+// notifier le watcher d'un nouveau joueur après login Xbox SSO. Implémentée par
+// *watcher.Daemon. Définie ici pour éviter une dépendance service → watcher.
+type WatcherDaemon interface {
+	AddPlayer(ctx context.Context, p domain.PlayerSummary) error
+	IsRunning() bool
+}
+
+// WatcherDaemonGetter résout le daemon au moment du login (lazy).
+// Nécessaire car le daemon est démarré APRÈS la création de XboxSSOLinkStrategy
+// dans main.go (ordre : router setup → strategy → daemon start). Retourne nil
+// si le daemon n'est pas (encore) prêt.
+type WatcherDaemonGetter func() WatcherDaemon
+
 // XboxSSOLinkStrategy implémente auth.LinkStrategy pour le mode SSO Xbox.
 // L'user est créé (ou retrouvé) à partir du XUID validé par le flow MSAL.
 //
-// PR 2.5a : si `tokenStore` est non-nil, persiste les tokens RTA (XSTS + cache
-// MSAL + access_token) dans data/auth/watcher_tokens/{xuid}.json pour usage
-// ultérieur par le watcher daemon multi-user (PR 2.5b).
+// PR 2.5a : si `tokenStore` est non-nil, persiste les tokens RTA dans
+// data/auth/watcher_tokens/{xuid}.json.
+// PR 2.5b : si `daemonGetter` retourne un daemon non-nil et tournant, ajoute
+// le joueur au watcher pour subscribe RTA immédiat (sous réserve que le tracker
+// actuel soit ami Xbox de ce joueur — sinon status=3 silencieux).
 type XboxSSOLinkStrategy struct {
-	users      *userstore.Store
-	tokenStore *auth.MultiUserTokenStore // optionnel — nil = pas de persistance RTA
+	users         *userstore.Store
+	tokenStore    *auth.MultiUserTokenStore // optionnel
+	daemonGetter  WatcherDaemonGetter       // optionnel — lazy resolve
 }
 
-// NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy sans persistance RTA.
+// NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy minimale (sans store ni daemon).
 func NewXboxSSOLinkStrategy(users *userstore.Store) *XboxSSOLinkStrategy {
 	return &XboxSSOLinkStrategy{users: users}
 }
@@ -42,6 +59,14 @@ func NewXboxSSOLinkStrategy(users *userstore.Store) *XboxSSOLinkStrategy {
 // après chaque login SSO réussi. Pattern fluent (cohérent avec les autres builders).
 func (s *XboxSSOLinkStrategy) WithTokenStore(ts *auth.MultiUserTokenStore) *XboxSSOLinkStrategy {
 	s.tokenStore = ts
+	return s
+}
+
+// WithDaemonGetter injecte un getter qui résout le watcher daemon au moment de
+// l'utilisation (PR 2.5b). Permet de capturer un *watcher.Daemon créé APRÈS
+// la construction de la strategy via une closure.
+func (s *XboxSSOLinkStrategy) WithDaemonGetter(getter WatcherDaemonGetter) *XboxSSOLinkStrategy {
+	s.daemonGetter = getter
 	return s
 }
 
@@ -101,7 +126,38 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 	if s.tokenStore != nil {
 		s.persistRTATokens(ctx, attempt)
 	}
+
+	// PR 2.5b — Notifier le watcher daemon pour subscribe RTA immédiat.
+	// Le getter résout le daemon lazy (créé après cette strategy dans main.go).
+	// No-op si daemon nil ou pas démarré. Best-effort : erreur loggée, login OK.
+	if s.daemonGetter != nil {
+		if d := s.daemonGetter(); d != nil && d.IsRunning() {
+			s.notifyWatcher(ctx, attempt, user, d)
+		}
+	}
 	return nil
+}
+
+// notifyWatcher ajoute le joueur au tracking du watcher daemon après un login
+// Xbox SSO. Best-effort : si AddPlayer échoue (status=3 RTA, daemon en cours
+// de reconnexion, etc.) on loggue mais le login reste OK.
+func (s *XboxSSOLinkStrategy) notifyWatcher(ctx context.Context, attempt *auth.Attempt, user *domain.User, daemon WatcherDaemon) {
+	player := domain.PlayerSummary{
+		PlayerSlug: attempt.Gamertag,
+		Gamertag:   attempt.Gamertag,
+		XUID:       attempt.XUID,
+	}
+	if user != nil {
+		player.PlayerSlug = user.Gamertag
+		player.Gamertag = user.Gamertag
+	}
+	if err := daemon.AddPlayer(ctx, player); err != nil {
+		slog.WarnContext(ctx, "xbox_sso: AddPlayer au watcher daemon échoué (non bloquant)",
+			"xuid", attempt.XUID, "gamertag", attempt.Gamertag, "err", err)
+		return
+	}
+	slog.InfoContext(ctx, "xbox_sso: joueur ajouté au watcher daemon",
+		"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
 }
 
 // persistRTATokens écrit les UserTokens dans le MultiUserTokenStore.

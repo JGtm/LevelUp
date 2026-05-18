@@ -12,6 +12,7 @@ package watcher
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -38,6 +39,10 @@ type DaemonController interface {
 	UpdateSubscriptions(gamertags []string)
 	IsRunning() bool
 	GetStatus() WatcherStatus
+	// PR 2.5b — ajout dynamique d'un joueur après le démarrage (typiquement après
+	// login Xbox SSO). Si le RTA est connecté, subscribe immédiat avec l'auth
+	// header courant ; sinon le subscribe sera fait à la prochaine (re)connexion.
+	AddPlayer(ctx context.Context, p domain.PlayerSummary) error
 }
 
 // DaemonConfig configure le watcher daemon.
@@ -206,6 +211,67 @@ func (d *Daemon) UpdateSubscriptions(gamertags []string) {
 		"subscribed", gamertags,
 		"active_players", len(d.players),
 	)
+}
+
+// AddPlayer ajoute un joueur au tracking dynamiquement (PR 2.5b — hook SSO Xbox).
+// Si le RTA est connecté, subscribe immédiatement avec l'auth header courant.
+// Sinon le subscribe sera fait à la prochaine connexion (connectAndSubscribe re-subscribe
+// tous les players à chaque reconnexion).
+//
+// Erreur si XUID vide ou player démo. No-op si le joueur est déjà présent.
+// Les erreurs de subscribe RTA ne sont PAS retournées (loggées seulement) — l'ajout
+// du joueur est considéré comme réussi tant que le PlayerWatcher est créé.
+func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
+	if p.IsDemo {
+		return fmt.Errorf("watcher_daemon: AddPlayer ignore player démo")
+	}
+	if p.XUID == "" {
+		return fmt.Errorf("watcher_daemon: AddPlayer requires non-empty XUID (gamertag=%q)", p.Gamertag)
+	}
+
+	d.playersMu.Lock()
+	if _, exists := d.players[p.Gamertag]; exists {
+		d.playersMu.Unlock()
+		slog.DebugContext(ctx, "watcher_daemon: AddPlayer no-op, déjà présent",
+			"gamertag", p.Gamertag, "xuid", p.XUID)
+		return nil
+	}
+	pw := NewPlayerWatcher(p.Gamertag, p.XUID, nil, &queueSyncTrigger{
+		queue:    d.queue,
+		gamertag: p.Gamertag,
+		xuid:     p.XUID,
+	})
+	if d.cfg.LiveRefreshFactory != nil {
+		pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID))
+	}
+	d.players[p.Gamertag] = pw
+	d.playersMu.Unlock()
+
+	slog.InfoContext(ctx, "watcher_daemon: joueur ajouté dynamiquement",
+		"gamertag", p.Gamertag, "xuid", p.XUID)
+
+	// Subscribe immédiat si RTA déjà connecté ; sinon attente du prochain
+	// cycle connectAndSubscribe (qui re-souscrit tous les players du map).
+	if d.rtaClient == nil || !d.rtaClient.IsConnected() {
+		slog.DebugContext(ctx, "watcher_daemon: RTA non connecté, subscribe différé",
+			"gamertag", p.Gamertag)
+		return nil
+	}
+
+	handler := d.makePresenceHandler(ctx, pw)
+	var lastErr error
+	for _, td := range d.titleReg.All() {
+		if td.XboxTitleID == "" {
+			continue
+		}
+		if err := d.rtaClient.Subscribe(ctx, p.XUID, td.XboxTitleID, handler); err != nil {
+			slog.WarnContext(ctx, "watcher_daemon: échec subscribe dynamique",
+				"gamertag", p.Gamertag, "title", td.Name, "err", err)
+			lastErr = err
+		}
+	}
+	pw.SetSubscribeError(lastErr)
+	return nil
 }
 
 // initPlayers crée un PlayerWatcher par joueur.
