@@ -1,3 +1,82 @@
+## [2026-05-18] feat(player-profile-v2)(commit-1) — lusr_component_history + live write + backfill
+
+**Statut** : Complété. Sprint V2 démarré, 1/4.
+
+**Contexte** : V1 commit-4 avait laissé `loadLUSRComponentsBreakdown` retourner
+map vide en attendant cette table. La Section B du profil affichait
+current=0/top20=0/target par composante avec un tooltip "données indisponibles".
+V2 commit-1 alimente la table en live (par sync.upsertLUSRRatings) et expose
+les vraies valeurs au profile + à la campagne.
+
+**Décisions techniques principales** :
+
+1. **Refactor `computeCompositeScore` rétro-compatible** : nouvelle fonction
+   `computeCompositeScoreWithBreakdown` qui retourne `(composite, map[string]
+   float64)`. L'ancienne `computeCompositeScore` devient un wrapper qui
+   ignore le breakdown — **aucun test existant cassé**. Les 5
+   `TestCompositeScore_*` existants passent inchangés. Le call site dans
+   `computeSkillRatingsBatch` (ligne 470) bascule sur la nouvelle fonction
+   pour capturer le breakdown.
+
+2. **Live write idempotent** : `writeLUSRComponentHistory` après chaque
+   `upsertLUSRRatings` succès. UPSERT par (match_id, component_name), donc
+   re-run en mode `--force` recalcule et écrase proprement. Best-effort —
+   un échec sur l'history ne propage pas au flow principal de
+   `upsertLUSRRatings` (logué via slog.Warn).
+
+3. **Backfill = re-run avec `force=true`** : pas de script séparé. Le mode
+   `force` existant de `ComputeSkillRatingsBatch` repasse tous les matchs et
+   écrit le history en cours de route. Idéal pour le déploiement V2 :
+   `python scripts/sync.py --force-skill-rating --all` une seule fois.
+
+4. **Schema `lusr_component_history`** : `(match_id, component_name, value,
+   weight, computed_at)` avec PK composite. Le `weight` est dénormalisé
+   pour permettre l'agrégation pondérée sans relire `CompositeWeights`
+   depuis la mémoire process. 2 index : `(component_name)` pour les
+   AVG/QUANTILE groupés et `(match_id)` pour les lookups par match.
+
+5. **`loadLUSRComponentsBreakdown` actif** : passe de map vide à 3 queries :
+   - AVG + QUANTILE_CONT(0.8) par composante en agrégat unique
+   - `computeComponentTrend` par composante : last10 vs first10 (≥ 20
+     matchs requis pour significativité)
+   - Si table absente ou query échoue → map vide silencieusement
+     (UI dégrade gracieusement comme V1).
+
+6. **Campaign `LoadAxisSamples` enrichi** : nouvelle branche
+   `axisKind == AxisKindLUSRComponent` qui lit directement
+   `lusr_component_history` joint à `shared.match_registry` (filtre playlist
+   + chronologie). Les axes `lusr_component.*` deviennent **réellement
+   trackés** pour les campagnes (avant : placeholder 0). Les axes radar
+   continuent de passer par `axisValueExpression` (mapping awards arrive
+   au commit V2-2).
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- `go test ./internal/sync/` ✅ 100s (suite complète, incluant 4 nouveaux
+  tests breakdown)
+- `go test ./internal/campaign/ ./internal/progression/profile/` ✅ verts
+- `TestBuildProfile_LUSRComponentsPopulated` (intégration) ajouté pour
+  vérifier que `loadLUSRComponentsBreakdown` lit effectivement la table.
+
+**Trade-offs assumés** :
+
+- Le fichier `skill_rating.go` passe à 564L (au-delà du seuil 500 CLAUDE.md
+  Python ; Go codebase plus tolérante). Le découpage propre
+  `composite_score.go` séparé pourra arriver dans un commit hygiène ultérieur
+  (risque conflits merge sinon).
+- `computeComponentTrend` exécute 1 query par composante (8 round-trips).
+  Acceptable pour < 200ms total sur stats.duckdb local. À batcher en 1
+  query CTE si profilé en hot path.
+
+**Conclusion / prochaine étape** : V2 1/4. Section B du profil **enfin
+fonctionnelle** dès que (a) le scoring engine a tourné sur des nouveaux matchs
+ou (b) le backfill `--force-skill-rating` a été lancé en production. Prochaine
+étape : commit V2-2 (awards.toml mapping pour Section A1 radar fidèle).
+
+---
+
 ## [2026-05-18] docs(player-profile-v1)(commit-10) — ADR 0015 statut Accepted (10/10 livrés)
 
 **Statut** : Complété. Sprint V1 **10/10 livré**. 🎉

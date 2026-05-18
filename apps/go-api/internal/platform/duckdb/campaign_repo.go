@@ -212,6 +212,10 @@ func NewCampaignSampleProvider(db *DB) *CampaignSampleProvider {
 
 // LoadAxisSamples charge les valeurs de l'axe pour les matchs du joueur dans
 // la fenêtre, filtré par playlist_group si != "all".
+//
+// Pour les axes `lusr_component.*` (V2 §1) : lit `lusr_component_history` au
+// lieu de `match_participants`. Permet le suivi fiable des 8 composantes
+// LUSR (déjà normalisées [0,1] par le scoring engine).
 func (p *CampaignSampleProvider) LoadAxisSamples(
 	ctx context.Context,
 	userID, _titleSlug, axis string, axisKind campaign.AxisKind,
@@ -220,9 +224,13 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 ) ([]float64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
+	if axisKind == campaign.AxisKindLUSRComponent {
+		return p.loadLUSRComponentSamples(ctx, axis, playlistGroup, since, until)
+	}
+
 	expr, supported := axisValueExpression(axis, axisKind)
 	if !supported {
-		// V1 : axe non supporté → samples vides (ne crash pas la campagne).
 		return nil, nil
 	}
 	q := "SELECT " + expr + ` AS val
@@ -254,9 +262,52 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 	return out, rows.Err()
 }
 
-// axisValueExpression mappe (axis, kind) → expression SQL sur
-// match_participants. V1 = heuristique pragmatique. V2 = lecture depuis
-// personal_score_awards / lusr_component_history.
+// loadLUSRComponentSamples lit la chronologie d'une composante LUSR depuis
+// `lusr_component_history` (table joueur), joint à `shared.match_registry`
+// pour le filtre playlist et la chronologie. Retourne les valeurs ordonnées
+// chronologiquement (asc).
+func (p *CampaignSampleProvider) loadLUSRComponentSamples(
+	ctx context.Context,
+	component, playlistGroup string,
+	since, until time.Time,
+) ([]float64, error) {
+	q := `
+		SELECT lch.value
+		FROM lusr_component_history lch
+		JOIN shared.match_registry mr ON mr.match_id = lch.match_id
+		WHERE lch.component_name = ?
+		  AND mr.start_time >= ? AND mr.start_time <= ?
+	`
+	args := []any{component, since, until}
+	if playlistGroup != "" && playlistGroup != "all" {
+		q += ` AND mr.playlist_id = ?`
+		args = append(args, playlistGroup)
+	}
+	q += ` ORDER BY mr.start_time ASC`
+	rows, err := p.db.Query(ctx, q, args...)
+	if err != nil {
+		return nil, nil
+	}
+	defer rows.Close()
+	var out []float64
+	for rows.Next() {
+		var v sql.NullFloat64
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		if v.Valid {
+			out = append(out, v.Float64)
+		}
+	}
+	return out, rows.Err()
+}
+
+// axisValueExpression mappe (axis, kind=radar) → expression SQL sur
+// match_participants. V1 = heuristique pragmatique pour les axes radar.
+// Le mapping fin via awards.toml arrive au V2 commit-2.
+//
+// Note : kind=lusr_component est traité séparément par loadLUSRComponentSamples
+// qui lit `lusr_component_history` directement (V2 commit-1).
 func axisValueExpression(axis string, kind campaign.AxisKind) (string, bool) {
 	if kind == campaign.AxisKindRadar {
 		switch axis {
@@ -271,12 +322,8 @@ func axisValueExpression(axis string, kind campaign.AxisKind) (string, bool) {
 		case "impact":
 			return "CAST(mp.max_killing_spree AS DOUBLE) * 10", true
 		case "objective":
-			return "0.0", true // placeholder V1 — mapping awards→axis reporté
+			return "0.0", true // placeholder V1 — mapping awards→axis arrive V2 commit-2
 		}
-	}
-	// lusr_component : placeholder V1 (table history pas créée).
-	if kind == campaign.AxisKindLUSRComponent {
-		return "0.0", true
 	}
 	return "", false
 }
