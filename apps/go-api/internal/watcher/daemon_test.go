@@ -7,6 +7,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/presence"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -203,5 +204,109 @@ func TestStateProvider_SubscribeError_EmptyWhenNil(t *testing.T) {
 	}
 	if status.Players[0].SubscribeError != "" {
 		t.Errorf("SubscribeError devrait être vide, got %q", status.Players[0].SubscribeError)
+	}
+}
+
+// --- PR 2.5b / 2.5c : tests AddPlayer + AddUserClient ---------------------
+
+func TestDaemon_AddPlayer_RejectsDemoAndEmptyXUID(t *testing.T) {
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+
+	// Démo refusé.
+	err := d.AddPlayer(context.Background(), domain.PlayerSummary{Gamertag: "Demo", XUID: "X", IsDemo: true})
+	if err == nil {
+		t.Error("AddPlayer demo devrait échouer")
+	}
+
+	// XUID vide refusé.
+	err = d.AddPlayer(context.Background(), domain.PlayerSummary{Gamertag: "GT", XUID: ""})
+	if err == nil {
+		t.Error("AddPlayer xuid vide devrait échouer")
+	}
+
+	// Aucun PlayerWatcher créé.
+	d.playersMu.RLock()
+	defer d.playersMu.RUnlock()
+	if len(d.players) != 0 {
+		t.Errorf("aucun PlayerWatcher attendu, got %d", len(d.players))
+	}
+}
+
+func TestDaemon_AddPlayer_AddsToMap(t *testing.T) {
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+
+	err := d.AddPlayer(context.Background(), domain.PlayerSummary{Gamertag: "Alice", XUID: "1111"})
+	if err != nil {
+		t.Fatalf("AddPlayer: %v", err)
+	}
+
+	d.playersMu.RLock()
+	defer d.playersMu.RUnlock()
+	if _, ok := d.players["Alice"]; !ok {
+		t.Error("Alice devrait être dans le map players")
+	}
+}
+
+func TestDaemon_AddPlayer_NoOpIfAlreadyPresent(t *testing.T) {
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+
+	_ = d.AddPlayer(context.Background(), domain.PlayerSummary{Gamertag: "Alice", XUID: "1111"})
+	// 2e appel : no-op (pas d'erreur, pas de duplication).
+	err := d.AddPlayer(context.Background(), domain.PlayerSummary{Gamertag: "Alice", XUID: "1111"})
+	if err != nil {
+		t.Errorf("AddPlayer 2e appel devrait être no-op, got err=%v", err)
+	}
+
+	d.playersMu.RLock()
+	defer d.playersMu.RUnlock()
+	if len(d.players) != 1 {
+		t.Errorf("doublon : %d players", len(d.players))
+	}
+}
+
+// --- AddUserClient (PR 2.5c) -----------------------------------------------
+
+func TestDaemon_AddUserClient_RejectsBeforeStart(t *testing.T) {
+	// Sans Start, rootCtx est nil → AddUserClient refuse.
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+
+	err := d.AddUserClient(context.Background(), &auth_platform.UserTokens{
+		XUID:         "1111",
+		Gamertag:     "Alice",
+		XSTSToken:    "tok",
+		XSTSUserHash: "hash",
+	})
+	if err == nil {
+		t.Error("AddUserClient avant Start devrait échouer")
+	}
+}
+
+func TestDaemon_AddUserClient_RejectsEmptyOrMissingAuth(t *testing.T) {
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	d.Start(ctx, "", nil)
+	defer d.Stop()
+
+	// XUID vide.
+	err := d.AddUserClient(ctx, &auth_platform.UserTokens{
+		XUID:         "",
+		Gamertag:     "Alice",
+		XSTSToken:    "t",
+		XSTSUserHash: "h",
+	})
+	if err == nil {
+		t.Error("AddUserClient XUID vide devrait échouer")
+	}
+
+	// XSTS vide → AuthHeader vide → refusé.
+	err = d.AddUserClient(ctx, &auth_platform.UserTokens{
+		XUID:         "1111",
+		Gamertag:     "Alice",
+		XSTSToken:    "",
+		XSTSUserHash: "",
+	})
+	if err == nil {
+		t.Error("AddUserClient sans XSTS devrait échouer (AuthHeader vide)")
 	}
 }
