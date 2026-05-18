@@ -1,3 +1,63 @@
+## [2026-05-18] feat(xbox-sso) — PR 2.5a : MultiUserTokenStore + capture RTA tokens après login SSO
+
+**Statut** : Complété (branche `feat/xbox-sso`).
+
+**Contexte** : PR 2 a livré le pattern LinkStrategy + XboxSSOLinkStrategy. PR 2.5 du plan demandait "RTA auto-subscription après login" — refactor multi-user du TokenStore + watcher daemon multi-WS + RefreshLoop multi-user (~2j). Trop pour une session ; découpé en 2 sous-PRs : **PR 2.5a** (cette session) pose le storage layer + capture des tokens. **PR 2.5b** (future) branchera le watcher daemon multi-user.
+
+**Décisions / changements** :
+
+1. **Nouveau `MultiUserTokenStore`** ([multi_user_token_store.go](apps/go-api/internal/platform/auth/multi_user_token_store.go)) avec layout `data/auth/watcher_tokens/{xuid}.json` (D4) :
+   - Type `UserTokens` regroupant XSTS RTA + access_token Microsoft + MSAL cache JSON + gamertag + timestamps.
+   - API : `Upsert`, `Load`, `LoadAll`, `Remove`.
+   - Write-to-temp + `os.Rename` atomique, perms 0600 fichiers / 0700 répertoire (vérifié par test, skipped sur Windows car perms POSIX non applicables).
+   - Validation anti path-traversal sur les XUID (`xuidIsSafe` : accepte uniquement `[0-9_-]`).
+   - `CreatedAt` préservé sur updates, `UpdatedAt` touché à chaque Upsert.
+   - LEGACY `TokenStore` mono-user (`watcher_tokens.json`) **conservé intact** — le watcher daemon historique continue de l'utiliser. PR 2.5b migrera le watcher.
+
+2. **PathResolver.WatcherTokensDir()** ([title/registry.go:319-326](apps/go-api/internal/domain/title/registry.go#L319)) — chemin du nouveau dossier multi-user.
+
+3. **Cache MSAL exposable** ([msal_client.go](apps/go-api/internal/platform/auth/msal_client.go)) :
+   - `msalDeviceFlow.cache *InMemoryCacheAccessor` conservé après `InitDeviceFlow`.
+   - Nouvelle méthode `MSALCacheJSON() string` qui appelle `cache.Serialize()`.
+   - Le SDK MSAL Go n'expose pas le refresh_token brut — on persiste le cache complet, permettant un `AcquireTokenSilent` ultérieur.
+
+4. **`Attempt` étendu** ([attempt_store.go](apps/go-api/internal/platform/auth/attempt_store.go)) avec 5 nouveaux champs transport (jamais exposés via HTTP — uniquement transmis à `OnAuthSuccess`) :
+   - `MicrosoftAccessToken`, `MSALCacheJSON`, `XSTSRTAToken`, `XSTSRTAUserHash`, `XSTSRTAExpiresAt`.
+
+5. **`pollDeviceFlow` enrichi** ([auth.go](apps/go-api/internal/api/handlers/auth.go)) :
+   - Type-assertion `flow.(interface{ MSALCacheJSON() string })` pour récupérer le cache (n'affecte pas l'interface `DeviceFlow`, marche transparent sur stub/SISU).
+   - Appel `auth_platform.AcquireXSTSForRTA(ctx, accessToken)` après `provider.Exchange()` — best-effort, échec loggué mais non bloquant pour le user.
+   - Stockage des 5 champs dans l'attempt.
+
+6. **`XboxSSOLinkStrategy.WithTokenStore(ts)`** ([xbox_auth_service.go](apps/go-api/internal/service/xbox_auth_service.go)) :
+   - Pattern fluent (cohérent avec les autres `With*`).
+   - Si tokenStore nil → pas de persistance (testable sans store).
+   - `persistRTATokens()` skip si `XSTSRTAToken` vide (AcquireXSTSForRTA a échoué) — pas d'écriture inutile.
+   - Persistance best-effort : échec loggué (warn), login pas interrompu.
+
+7. **Injection au boot** ([server.go:412-425](apps/go-api/internal/api/server.go#L412)) : en mode `AuthMode="xbox"`, on instancie `MultiUserTokenStore(WatcherTokensDir())` et on l'injecte via `WithTokenStore`. Hors mode xbox, le `PasswordLinkStrategy` reste inchangé.
+
+**Tests ajoutés** :
+
+- [multi_user_token_store_test.go](apps/go-api/internal/platform/auth/multi_user_token_store_test.go) (10 tests) : Upsert/Load basic, not found, CreatedAt préservé sur update, LoadAll, LoadAll dir vide, LoadAll ignore fichiers invalides (path-traversal + JSON corrompu), Remove + Remove inexistant (no-op), rejette xuids unsafe (path-traversal, espaces, etc.), AuthHeader format, file permissions 0600/0700 (skip Windows).
+- [xbox_auth_service_test.go](apps/go-api/internal/service/xbox_auth_service_test.go) +3 tests : `WithTokenStore_PersistsRTATokens` (full flow → fichier `{xuid}.json` créé avec XSTS + AccessToken + MSALCacheJSON), `WithTokenStore_SkipPersistanceIfNoXSTSRTA` (RTA capture failed → user créé mais pas de fichier persisté), `WithoutTokenStore_StillWorks` (rétro-compat).
+
+**Résultats observés** :
+
+- `go test ./internal/api/... ./internal/platform/auth/... ./internal/platform/userstore/... ./internal/service/... ./internal/domain/title/...` : tous OK.
+- `go build ./...` : pas de régression compile.
+
+**Différé à PR 2.5b** (future session) :
+
+- Refactor watcher daemon : passer du mono-tracker (1 connexion RTA + 1 header XBL3.0) à N connexions (1 par user) ou single-WS multi-header.
+- `RefreshLoop` multi-user : itérer sur `tokenStore.LoadAll()` à chaque tick pour rafraîchir tous les XSTS (~55min) via `AcquireTokenSilent` depuis le cache MSAL.
+- Subscribe RTA immédiate après login : `watcher.SubscribeXUID(xuid)` dans `XboxSSOLinkStrategy.OnAuthSuccess`.
+- Reload abonnements au boot : `MultiUserTokenStore.LoadAll()` + démarrer N RTA selon les tokens persistés.
+
+**Conclusion / prochaine étape** : PR 2.5a livrable. Le storage est en place ; tout ce qui complète un Device Code Flow en mode `AuthMode="xbox"` voit ses tokens RTA persistés dans `data/auth/watcher_tokens/{xuid}.json`. Mais sans PR 2.5b, ces tokens ne sont pas encore consommés par le watcher — donc pas d'auto-sync RTA active. Prochaine PR pragmatique : **PR 3 frontend** (page login Xbox + i18n + disclaimer phishing, ~0.5j) pour permettre le test visuel de bout en bout du flow login → user créé → tokens persistés. PR 2.5b suivra quand on aura un signal réel de besoin.
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2 : LinkStrategy pattern + XboxSSOLinkStrategy (login direct via XUID)
 
 **Statut** : Complété (branche `feat/xbox-sso`).
@@ -151,9 +211,33 @@ Total final v2.2 : 6 axes × (1 ingame + 1-3 tactical + 1-5 strategic + 0-2 sett
   - **Impact strategic.5** (nouveau) : BTB-only — Grappin peut éjecter le pilote d'un véhicule adverse (Mongoose, Warthog, Wasp).
   - **Score strategic.1** (enrichi) : Ravager mentionné comme outil de déni de zone.
 
-Total final v2.3 : **~45 tips** FR/EN, ~400 lignes. Sources de référence documentées en en-tête du fichier (transparence).
+Total v2.3 : **~45 tips** FR/EN, ~400 lignes. Sources de référence documentées en en-tête du fichier (transparence).
 
-**Conclusion / prochaine étape** : contenu prêt à brancher dans le coach proactif V2 (couche 3 du PLAN_PROGRESSION_TRACKING). La séparation tactique/stratégique permettra au coach de proposer des tips de granularité adaptée selon le contexte (post-match → strategic ; in-match si live coaching un jour → tactical). Pour un futur titre (Halo 3, etc.), il faudra un `coaching_tips_<title>.toml` séparé. Aucune logique métier ajoutée — contenu i18n pur.
+**Itération v2.4 — pépites Onyx / Pro depuis Reddit (sources locales)** :
+- L'utilisateur a sauvegardé les 7 threads Reddit en local (`C:\Users\GuillaumeSITBON\Downloads\Perso\*.html`) après avoir constaté que Reddit était bloqué par WebFetch. Un sous-agent `general-purpose` a parsé les HTML via PowerShell (regex sur `post-rtjson-content` + strip tags + decode entités) et synthétisé ~78 000 caractères de texte utile.
+- Tips issus du consensus pluri-threads + pépites Onyx (Marathon RB CSR 1658, THEFuentes, autres D5-D6) :
+  - **Combat ingame.4** : Halo Infinite est un jeu de visée au stick gauche (guide réticule via mouvement Spartan, stick droit pour micro-ajustements). Inverse de l'instinct CoD.
+  - **Combat tactical.3** : Ne saute pas en duel — consensus le plus fort (5 mentions). Sauter coupe l'aim assist, trajectoire prévisible.
+  - **Combat tactical.4** : N'ADS pas par défaut. Le zoom ne change pas bloom/magnétisme, baisse juste la sensi.
+  - **Combat tactical.6** : Exploite la hauteur — aim assist vertical fonctionne mieux vers le bas, tir à 45° plus dur qu'à la verticale.
+  - **Combat tactical.8** : Nuance Pro sur le strafe — strafe wide pour forcer le stick droit adverse, mais stand still sur le shot final (Formal style). Résout la contradiction strafe-constant vs stand-still relevée entre threads.
+  - **Combat routine.2** : Octagon Custom Game (20 min ≈ 2h Arena), jamais Sniper en primaire vs bots Spartan, variante HCS 2042 recommandée.
+  - **Survie tactical.3** : Right-hand peek — Spartan tient l'arme à droite, peek du côté droit = tu vois avant d'être vu. Détail pro rarement dans les guides grand public.
+  - **Survie tactical.5** : N'engage pas sans ≥2 avantages (Sur-bouclier + ally, Répulseur + Sniper, etc.). Si 1v1 strictement à égalité, erreur de positionnement amont.
+  - **Survie tactical.7** : Spam toutes les grenades quand tu sais que tu vas mourir (taux revenge kill étonnamment élevé).
+  - **Survie strategic.2** : « Knowing numbers » — discipline numérique sépare Diamant du Onyx. Compte X feed + markers + radar avant de push.
+  - **Score routine.2** : Fiesta (loadouts random tout l'arsenal) ou Husky Raid (toutes armes y passent) pour apprendre le sandbox sans pression KD.
+  - **Objectif strategic.2** : Strongholds A+B best hold, fallback A+C si stuck (gain momentum puis push B). Pépite Onyx du thread « Getting Good ».
+  - **Objectif strategic.3** (enrichi) : CTF — ne pull pas le drapeau quand l'autre équipe est all-up.
+  - **Impact tactical.3** : Pop Sur-bouclier immédiatement. Exception Camouflage actif qu'on peut étirer en activant à la sortie de zone.
+  - **Impact strategic.1** : Map control > kills — à chaque respawn, demande « où je dois être » pas « où je tue ». Le killboard = conséquence, pas l'objectif.
+  - **Impact strategic.4** : Présence vs contrôle (pépite Onyx « Fundamentals ») — rat-tunneler pour KD ≠ créer de la présence.
+  - **Impact strategic.5** (enrichi) : Curb slide ajouté (sprint depuis rebord + crouch atterrissage = boost vitesse).
+  - **Impact routine.1** (enrichi) : revue depuis POV coéquipier en plus du sien (pépite Marathon RB).
+
+Total final v2.4 : **~60 tips** FR/EN, ~500 lignes.
+
+**Conclusion / prochaine étape** : contenu prêt à brancher dans le coach proactif V2 (couche 3 du PLAN_PROGRESSION_TRACKING). La séparation tactique/stratégique permettra au coach de proposer des tips de granularité adaptée selon le contexte (post-match → strategic ; in-match si live coaching un jour → tactical). Pour un futur titre (Halo 3, etc.), il faudra un `coaching_tips_<title>.toml` séparé. La chaîne YouTube `@B1OChemist` reste inaccessible via WebFetch (consent redirect) — si consultée plus tard, une v2.5 pourrait ajouter du contenu vidéo-spécifique. Aucune logique métier ajoutée — contenu i18n pur.
 
 ---
 

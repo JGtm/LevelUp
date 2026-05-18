@@ -313,8 +313,19 @@ func (p *PathResolver) AppSettingsPath() string {
 
 // WatcherTokensPath retourne le chemin du fichier de tokens watcher.
 // Ex: data/auth/watcher_tokens.json
+//
+// LEGACY (mono-user) : conservé pour le watcher daemon historique.
+// Pour le SSO Xbox multi-user, utiliser WatcherTokensDir() + 1 fichier par XUID.
 func (p *PathResolver) WatcherTokensPath() string {
 	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens.json")
+}
+
+// WatcherTokensDir retourne le répertoire des tokens watcher multi-user (SSO Xbox).
+// Layout : data/auth/watcher_tokens/{xuid}.json (1 fichier par utilisateur).
+// Décision D4 (cf. SPRINT_XBOX_SSO §0bis) : source unique, write-to-temp + rename atomique,
+// perms 0600 sur fichiers / 0700 sur répertoire.
+func (p *PathResolver) WatcherTokensDir() string {
+	return filepath.Join(p.repoRoot, "data", "auth", "watcher_tokens")
 }
 
 // --- Validation ---
