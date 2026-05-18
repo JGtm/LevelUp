@@ -70,14 +70,24 @@ func buildMinimalOpenSpartanFile(t *testing.T, dir, ownerXUID string) string {
 		`CREATE TABLE MatchStats (ResponseBody TEXT, MatchId TEXT GENERATED ALWAYS AS (json_extract(ResponseBody, '$.MatchId')) VIRTUAL)`,
 		`CREATE TABLE PlayerMatchStats (ResponseBody TEXT, MatchId TEXT)`,
 		`CREATE TABLE HighlightEvents (MatchId TEXT NOT NULL, ResponseBody TEXT NOT NULL)`,
+		`CREATE TABLE XuidAliases (Xuid TEXT PRIMARY KEY, Gamertag TEXT NOT NULL, LastSeen TEXT, Source TEXT, UpdatedAt TEXT)`,
+		`CREATE TABLE Friends (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_xuid TEXT NOT NULL, friend_xuid TEXT NOT NULL, friend_gamertag TEXT, nickname TEXT, added_at TEXT)`,
 	} {
 		if _, err := db.Exec(ddl); err != nil {
 			t.Fatalf("ddl: %v", err)
 		}
 	}
-	body := `{"MatchId":"11111111-aaaa-bbbb-cccc-000000000001","MatchInfo":{"StartTime":"2026-01-02T20:18:01Z","EndTime":"2026-01-02T20:30:00Z","Duration":"PT12M","PlayableDuration":"PT12M","LifecycleMode":3,"GameVariantCategory":6,"LevelId":"L","MapVariant":{"AssetKind":2,"AssetId":"map-1","VersionId":"v"},"UgcGameVariant":{"AssetKind":6,"AssetId":"var-1","VersionId":"v"},"TeamsEnabled":true,"TeamScoringEnabled":true},"Teams":[],"Players":[{"PlayerId":"xuid(` + ownerXUID + `)","PlayerType":1,"LastTeamId":0,"Outcome":2,"Rank":1,"ParticipationInfo":{"TimePlayed":"PT12M"},"PlayerTeamStats":[{"TeamId":0,"Stats":{"CoreStats":{"Kills":10,"Deaths":5,"Assists":2,"KDA":7}}}]}]}`
+	body := `{"MatchId":"11111111-aaaa-bbbb-cccc-000000000001","MatchInfo":{"StartTime":"2026-01-02T20:18:01Z","EndTime":"2026-01-02T20:30:00Z","Duration":"PT12M","PlayableDuration":"PT12M","LifecycleMode":3,"GameVariantCategory":6,"LevelId":"L","MapVariant":{"AssetKind":2,"AssetId":"map-1","VersionId":"v"},"UgcGameVariant":{"AssetKind":6,"AssetId":"var-1","VersionId":"v"},"TeamsEnabled":true,"TeamScoringEnabled":true},"Teams":[],"Players":[{"PlayerId":"xuid(` + ownerXUID + `)","PlayerType":1,"LastTeamId":0,"Outcome":2,"Rank":1,"ParticipationInfo":{"TimePlayed":"PT12M"},"PlayerTeamStats":[{"TeamId":0,"Stats":{"CoreStats":{"Kills":10,"Deaths":5,"Assists":2,"KDA":7,"Medals":[{"NameId":622331684,"Count":1}]}}}]}]}`
 	if _, err := db.Exec(`INSERT INTO MatchStats(ResponseBody) VALUES (?)`, body); err != nil {
 		t.Fatalf("insert MatchStats: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO XuidAliases(Xuid, Gamertag, Source) VALUES (?, ?, 'api')`,
+		ownerXUID, "TestOwner"); err != nil {
+		t.Fatalf("insert XuidAliases: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO Friends(owner_xuid, friend_xuid, friend_gamertag) VALUES (?, ?, ?)`,
+		ownerXUID, "2533274801010001", "FriendOne"); err != nil {
+		t.Fatalf("insert Friends: %v", err)
 	}
 	abs, _ := filepath.Abs(path)
 	return abs
