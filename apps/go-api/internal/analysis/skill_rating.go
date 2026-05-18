@@ -174,6 +174,75 @@ func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float
 	return newMu, newSigma
 }
 
+// RequiredCompositeForTier retourne le composite_score moyen [0, 1] qui,
+// appliqué via un match contre un adversaire de même μ/σ, produirait un μ
+// post-match approximativement égal à targetMu.
+//
+// Méthode : binary search sur composite ∈ [0, 1] jusqu'à convergence à
+// 0.01 sur μ_post. Max 20 itérations (= précision 1/2^20 ≈ 1e-6, largement
+// au-delà de la cible).
+//
+// Bornes intrinsèques : deltaMu = kElo × (composite - 0.5) × wf. Avec
+// wf ≈ 1 (adversaire au même niveau), composite=0 donne deltaMu = -kElo/2
+// (= -16 pts) et composite=1 donne deltaMu = +kElo/2 (= +16 pts).
+//
+//   - Si |targetMu - currentMu| > kElo/2 : la valeur retournée est clampée
+//     à 0 ou 1, indiquant que l'écart est inatteignable en un seul match.
+//   - Si targetMu ≈ currentMu : retourne 0.5 (composite stable).
+//
+// Usage typique (cf. plan §4.3 Section B) : le profil joueur affiche la
+// "cible de composite à atteindre par match" pour stabiliser au sub-tier
+// suivant. Plus une indication de cap qu'une cible réaliste — un joueur
+// qui sustain 0.6 monte progressivement, mais le binary search modélise
+// 1 match isolé.
+func RequiredCompositeForTier(currentMu, targetMu, sigma float64) float64 {
+	if math.Abs(targetMu-currentMu) < 0.5 {
+		return 0.5
+	}
+
+	// Guards aux bornes : si targetMu est hors de l'intervalle atteignable en
+	// un match (composite ∈ [0, 1]), retourner directement la borne. Sans ces
+	// guards, le binary search converge asymptotiquement vers 0.999... ou
+	// 0.000... mais jamais exactement à la borne.
+	muAtZero, _ := trueskillUpdate(currentMu, sigma, currentMu, sigma, 0.0, 1.0)
+	if targetMu <= muAtZero {
+		return 0.0
+	}
+	muAtOne, _ := trueskillUpdate(currentMu, sigma, currentMu, sigma, 1.0, 1.0)
+	if targetMu >= muAtOne {
+		return 1.0
+	}
+
+	low, high := 0.0, 1.0
+	const tolerance = 0.01
+	const maxIter = 20
+	for i := 0; i < maxIter; i++ {
+		mid := (low + high) / 2
+		// Adversaire fictif à même μ/σ → wf=1 (cas symétrique pour stabilité).
+		muAfter, _ := trueskillUpdate(currentMu, sigma, currentMu, sigma, mid, 1.0)
+		if math.Abs(muAfter-targetMu) < tolerance {
+			return clamp01(mid)
+		}
+		if muAfter < targetMu {
+			low = mid
+		} else {
+			high = mid
+		}
+	}
+	return clamp01((low + high) / 2)
+}
+
+// clamp01 borne v dans [0, 1].
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}
+
 // applyInactivityDecay augmente sigma si le joueur est inactif.
 func applyInactivityDecay(sigma, days float64) float64 {
 	if days <= inactivityThresholdDays {
