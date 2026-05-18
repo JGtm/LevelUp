@@ -1,3 +1,19 @@
+## [2026-05-18] test(sharedprovider) — Commit 1 : test rouge baseline DuckDB RO/RW
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 1/9 de la roadmap SharedDBProvider).
+
+**Contexte** : démarrage du sprint SharedDBProvider (B-swap). Le bug en prod est l'erreur DuckDB *"Can't open a connection to same database file with a different configuration than existing connections"* qui plante `auto_sync RunDelta` quand main.go tient une conn RO sur `shared_matches_v2.duckdb` et que le sync engine ouvre le même fichier en RW. Plan complet : `~/.claude/plans/alors-je-suis-d-accord-parsed-walrus.md`.
+
+**Décision** : test-first. Le commit 1 ne livre AUCUNE implémentation, juste un test rouge qui ancre la signature exacte du bug côté driver DuckDB-Go v2. Test « rouge attendu » : il passe (vert) tant que la limite native existe ; il échouera (rouge) le jour où le driver est patché — signal explicite qu'on peut archiver le provider.
+
+**Choix d'archi** : T2-T11 (suite test du plan) **reportés aux commits 2-7**, un test par commit qui valide l'incrément d'impl. Évite un commit "tests skippés en masse" qui n'apporte pas de signal CI exploitable.
+
+**Résultat** : T1 livré dans `apps/go-api/internal/platform/duckdb/sharedprovider/baseline_red_integration_test.go` (build tag `integration`). Le fichier ne dépend pas du futur package `sharedprovider` — il utilise uniquement `duckdb.OpenReadOnly`/`OpenReadWrite` + `sync.EnsureSharedSchema` pour bootstrap, donc compile et passe immédiatement.
+
+**Prochaine étape** : commit 2 — squelette `Provider` (Get/State/Close), `Manager`, sentinel errors, metrics squelette. Pas encore de swap RW.
+
+---
+
 ## [2026-05-18] chore(.ai) — déplacer les SPRINT_*.md vers .ai/V7/
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
