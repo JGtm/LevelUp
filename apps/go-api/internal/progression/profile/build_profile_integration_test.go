@@ -87,6 +87,10 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 func seedMatchesForProfile(t *testing.T, pdb *duckdb.PlayerDB, now time.Time, count int) {
 	t.Helper()
 	ctx := context.Background()
+	componentNames := []string{
+		"kills_vs_expected", "deaths_vs_expected", "win_factor", "damage_efficiency",
+		"accuracy_delta", "medal_exploit", "offensive_conversion", "defensive_resistance",
+	}
 	for i := 0; i < count; i++ {
 		matchID := zeropadProfile(i, 4)
 		startTime := now.AddDate(0, 0, -i)
@@ -111,6 +115,19 @@ func seedMatchesForProfile(t *testing.T, pdb *duckdb.PlayerDB, now time.Time, co
 			VALUES (?, 'LUSR', ?, 120, ?)
 		`, matchID, mu, startTime); err != nil {
 			t.Fatalf("match_skill_rank %s: %v", matchID, err)
+		}
+		// V2 §1 : peupler lusr_component_history (simule la live write de
+		// sync.upsertLUSRRatings). Valeurs déterministes pour permettre
+		// l'assertion sur current_avg / top20 / trend.
+		for j, comp := range componentNames {
+			value := 0.4 + float64((i+j)%6)*0.08 // valeurs [0.4..0.84]
+			weight := 0.1 + float64(j)*0.02
+			if _, err := pdb.Player.Exec(ctx, `
+				INSERT INTO lusr_component_history (match_id, component_name, value, weight, computed_at)
+				VALUES (?, ?, ?, ?, ?)
+			`, matchID, comp, value, weight, startTime); err != nil {
+				t.Fatalf("lusr_component_history %s/%s: %v", matchID, comp, err)
+			}
 		}
 	}
 }
@@ -171,6 +188,37 @@ func TestBuildProfile_WithMatches_FillsSections(t *testing.T) {
 	}
 	if prof.EngagementSnap.Tier == "" {
 		t.Error("EngagementSnap.Tier: empty")
+	}
+}
+
+// TestBuildProfile_LUSRComponentsPopulated vérifie que loadLUSRComponentsBreakdown
+// lit effectivement lusr_component_history (V2 §1) et remplit les 8 composantes.
+func TestBuildProfile_LUSRComponentsPopulated(t *testing.T) {
+	pdb := setupProfileEnv(t)
+	now := time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC)
+	seedMatchesForProfile(t, pdb, now, MinMatchesForProfile+5)
+
+	svc := NewServiceFromPlayerDB(pdb)
+	prof, err := svc.BuildProfile(context.Background(), testXUID, testTitle, 60, now)
+	if err != nil {
+		t.Fatalf("BuildProfile: %v", err)
+	}
+	if !prof.HasEnoughData {
+		t.Fatalf("HasEnoughData: want true (matches=%d)", prof.MatchesAnalyzed)
+	}
+	if len(prof.LUSRComponents) != 8 {
+		t.Fatalf("LUSRComponents: got %d, want 8", len(prof.LUSRComponents))
+	}
+	// Au moins une composante doit avoir current_avg > 0 (les valeurs seed
+	// sont déterministes dans [0.4..0.84]).
+	hasData := false
+	for _, c := range prof.LUSRComponents {
+		if c.CurrentAvg > 0 || c.PersonalTop20 > 0 {
+			hasData = true
+		}
+	}
+	if !hasData {
+		t.Errorf("aucun current_avg/top20 > 0 dans LUSRComponents")
 	}
 }
 
