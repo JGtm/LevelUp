@@ -1,3 +1,47 @@
+## [2026-05-18] feat(openspartan) — PR 3.A : helpers reader + service ImportFromOpenSpartan
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 2 `adedcc6a`).
+
+**Contexte** : Troisième livrable du sprint, scope resserré sur la partie **service** (orchestration backend, sans HTTP). PR 3 d'origine couvrait service + endpoint HTTP + job system — j'ai split en **PR 3.A (cette session)** = service testable end-to-end, et **PR 3.B (session ultérieure)** = enrobage HTTP. Le service est appelable directement par n'importe quel handler/job futur.
+
+**Découverte de patterns existants** (sub-agent Explore) :
+
+1. **Pas d'API Appender utilisée dans le repo** — le pattern Go LevelUp est `db.Exec(INSERT...)` en boucle dans `internal/sync/writes.go`. J'ai donc abandonné l'idée Appender du plan v2 et réutilisé les fonctions existantes : `sync.InsertRegistryIfNotExists`, `sync.InsertParticipants`, `sync.InsertMedals`, `sync.InsertHighlightEvents`, `sync.UpsertXUIDAlias`.
+2. **Pool DuckDB** : `internal/platform/duckdb/pool.go` avec `GetOrOpen(ctx, cfg) → *PlayerDB`. Pour PR 3.A je ne touche pas au pool — le service reçoit un `*sql.DB` injecté.
+3. **Job system** : `internal/platform/jobs/store.go` (`Store.Create`/`Update`/`SetStatus`, persistance JSON). Pas câblé dans PR 3.A mais l'interface `OnProgress(parsed, total int)` est prête pour intégration.
+4. **Auth middleware** : `ctxkeys.HaloXUID(ctx)` extrait le XUID de la session SSO. Sera utilisé par PR 3.B.
+
+**Décisions** :
+
+1. **Helpers reader ajoutés au package `internal/openspartan/`** :
+   - `aliases.go` : `LoadXuidAliases(ctx)` + `AliasMap(ctx)` pour résolution `xuid → gamertag`
+   - `friends.go` : `LoadFriends(ctx)` (table optionnelle, missing = nil)
+   - `highlights.go` : `Highlights(ctx) iter.Seq2[HighlightRow, error]` (stream) + `HighlightCount(ctx)`
+2. **Service `internal/service/openspartan_import_service.go`** :
+   - `OpenSpartanImportService.Import(ctx, expectedOwnerXUID, dbPath, opts) (ImportResult, error)`
+   - Validation XUID stricte : `DetectOwner` → comparer à `expectedOwnerXUID` ; refus si `ConfidenceNone|Low` ou si XUID diverge → `ErrXUIDMismatch`
+   - Orchestration découpée en helpers pour respecter la règle 80L/fonction : `validateOwner`, `importMatches`, `writeOneMatch`, `importHighlights`, `importAliases`, `stashFriends`
+   - Errors par stage : enregistrées dans `ImportResult.Errors[]` sans abort global
+   - `DryRun: true` → compte sans écrire (tests fonctionnels rapides)
+   - `OnProgress(parsed, total)` callback optionnel (intégration job system PR 3.B)
+3. **Adapters `internal/service/openspartan_import_adapters.go`** : `toSyncRegistry`, `toSyncParticipants`, `toSyncMedals`, `toAnalysisEvent`. Les types `mapper.*Row` diffèrent des `sync.*Row` (nullability, int16 vs int) — adapter les chiffres et promouvoir les pointeurs.
+4. **Stash Friends en JSON** : `<StashDir>/<ownerXUID>/stash/openspartan_friends.json`. Pas de table DuckDB créée — la fonctionnalité MULTIUSER_ACL future le consommera.
+5. **Tie-break `mostFrequentHumanXUID`** : sur la fixture 1-match avec 2 humains à fréquence égale, le tie-break lexicographique (smallest-first) doit favoriser le XUID owner attendu → j'ai choisi un `testOtherXUID` lexicographiquement plus grand que `testOwnerXUID` dans la fixture.
+6. **`highlight_events` créé manuellement dans le setup test** — la table n'est pas dans `EnsureSharedSchema` (elle vit dans une migration séparée `internal/migration/steps_shared.go`). Le test reproduit le DDL fidèlement.
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- Tests : **7 adapter unit tests + 4 intégration end-to-end** verts (7.9s). Cumul openspartan + service : tous verts.
+- **Smoke test sur la vraie DB** (27 MB, 451 matchs) avec écriture DuckDB temp : **451/451 matchs importés** (100%), 3901 participants, 13445 médailles, 1458 highlights, 51 xuid aliases, 2 friends stashés, **0 erreur**, confidence=high. Total temps : 114s pour ~19000 inserts unitaires (cohérent avec le pattern `db.Exec` en boucle sans transaction).
+
+**Conclusion / prochaine étape** :
+
+- **PR 3.B** à enchaîner quand prêt : endpoint HTTP `POST /import/openspartan` (multipart upload, quota 1 GB), création de job via `jobs.Store.Create`, goroutine d'exécution avec `OnProgress` câblé à `Store.Update`, validation XUID depuis `ctxkeys.HaloXUID(r.Context())`, suppression du fichier tmp après import.
+- Performance : si on observe que 114s pour 451 matchs est gênant (extrapolation : 19min pour 5000 matchs), optimiser en wrappant chaque famille d'inserts dans une transaction (`db.Begin()` + `tx.Commit()`). Pas critique pour la v1 — l'import est asynchrone et l'utilisateur peut continuer à jouer.
+
+---
+
 ## [2026-05-18] feat(openspartan) — PR 2 : mapper Halo API JSON → DuckDB v6 rows
 
 **Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 1 `1fc45e5b`).
