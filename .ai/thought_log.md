@@ -1,3 +1,37 @@
+## [2026-05-18] feat(openspartan) — PR 1 : reader SQLite + parser JSON Halo API
+
+**Statut** : Complété (branche `feat/openspartan-import`, worktree `.claude/worktrees/openspartan-import/`, branchée depuis HEAD `feat/xbox-sso` = `bb24299c`).
+
+**Contexte** : Premier livrable du sprint OpenSpartan v2 (cf. [.ai/SPRINT_OPENSPARTAN_IMPORT.md](.ai/SPRINT_OPENSPARTAN_IMPORT.md)). Le plan vise un import "vanilla OpenSpartan/grunt uniquement" : on lit le SQLite tiers, on extrait les matchs sous forme de Halo API JSON brut, et on laisse le mapping vers DuckDB v6 à PR 2.
+
+**Décisions** :
+
+1. **Package `internal/openspartan/`** (pas `internal/import/openspartan/` comme proposé dans le plan v1) — `import` est un mot réservé Go, la compilation aurait planté. Plan mis à jour de fait.
+2. **Driver SQLite : `modernc.org/sqlite v1.50.1`** (pur Go, pas de CGO sur Windows). Le module était déjà en dépendance indirecte ; mon import le promeut en direct. `go mod tidy` a aussi bumpé plusieurs deps transitives (x/sync, x/tools, x/mod, x/telemetry, libc, mathutil, memory).
+3. **DSN read-only** via URI SQLite : `file:<path>?mode=ro&_pragma=busy_timeout(5000)` avec `filepath.ToSlash` pour les paths Windows. Pas de PRAGMA après ouverture.
+4. **Détection de schéma sans `PRAGMA user_version`** (il est à 0 dans les vraies DBs). On vérifie la présence des 3 tables canoniques (`MatchStats`, `PlayerMatchStats`, `HighlightEvents`) avec une colonne `ResponseBody`.
+5. **Modèles JSON Halo API typés partiellement** : `MatchStats`, `MatchInfo`, `Player`, `CoreStats`, `MedalAward` typés à fond. `Teams[].Stats`, `PvpStats`, `PveStats`, `RankRecap`, `StatPerformances` laissés en `json.RawMessage` — le mapper PR 2 choisira ce qu'il extrait. `MedalAward.NameID` est `uint32` (les IDs filmshell dépassent int32 — observé `3546244406`).
+6. **`DetectOwner` à 3 heuristiques** avec `Confidence` agrégée :
+   - filename `{xuid}.db` → si match
+   - XUID le plus fréquent parmi `Players[].PlayerType=1` (un compte par match)
+   - fallback `CacheMeta` (table optionnelle, missing = no signal)
+   - `ConfidenceHigh` quand filename + frequency s'accordent ; `Medium` si un seul ; `Low` si fallback CacheMeta uniquement.
+7. **Iterator `Matches(ctx) iter.Seq2[*ParsedMatch, error]`** (Go 1.23+ iter pattern). LEFT JOIN `PlayerMatchStats` sur MatchId. ORDER BY `json_extract(... '$.MatchInfo.StartTime')` ASC. Erreurs de parsing par ligne surfacées via `yield(nil, err)` — caller décide skip ou stop. Annulation par `ctx.Done()` à chaque tour.
+
+**Résultats observés** :
+
+- `go build ./...` : OK
+- `go vet ./...` : OK
+- `go test ./internal/openspartan/` : **13/13 verts** (3.16s)
+- Smoke test sur la vraie DB `C:\Users\...\OpenSpartan\2533274823110022.db` (27 MB, 451 matchs) : tous parsés, XUID owner détecté avec `confidence=high` en 0.45s.
+
+**Conclusion / prochaine étape** :
+
+- Branche `feat/openspartan-import` prête, commit imminent.
+- PR 2 (mapper Halo API → v6) à enchaîner. Pré-requis : récupérer le schéma DDL de `shared.match_registry`, `shared.match_participants`, `shared.medals_earned`, `shared.highlight_events` pour caler les types cibles.
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2 : LinkStrategy pattern + XboxSSOLinkStrategy (login direct via XUID)
 
 **Statut** : Complété (branche `feat/xbox-sso`).
