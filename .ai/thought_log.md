@@ -1,3 +1,95 @@
+## [2026-05-18] feat(player-profile-v2)(commit-4) — Streaks perf-based + R5 axe-sort-bottom-3
+
+**Statut** : Complété. **V2 4/4 livré**. 🎉
+
+**Contexte** : V1 commits 5+ avaient laissé deux dettes liées :
+1. `Thresholds` map dans `post_sync_progression.go` ne couvrait que les
+   types universels (daily_play, weekly_play). Les types perf-based
+   (daily_perf, weekly_kda_threshold) attendaient un seuil personnel
+   — commentaire explicite "seront activés quand PlayerProfile exposera
+   les médianes personnelles".
+2. R5 du plan campagne (§4.5.3) prévoyait deux conditions : plateau 60j
+   (livrée V1) **et** "axe sort du bottom-3 du radar" (reportée). V2
+   commit-4 ferme les deux.
+
+**Décisions techniques principales** :
+
+1. **Médiane personnelle KDA** plutôt que moyenne. La médiane est robuste
+   aux outliers (1 match à KDA=50 ne déplace pas le seuil). Calculée
+   inline depuis `activities` déjà chargées par
+   `loadProgressionMatches` (zero round-trip supplémentaire). Seuil
+   minimum : < 10 matchs → médiane=0 (les streaks perf ne se
+   déclenchent pas, cohérent).
+
+2. **R5 condition 2 via `LeverageProvider` interface** (campaign.go) :
+   - Optionnel — sans provider injecté, R5 reste plateau-only (V1
+     comportement)
+   - Avec provider, `Evaluate` query les leviers courants via
+     `CurrentLeverageComponents(userID, titleSlug)` et compare l'axe de
+     la campagne
+   - Si l'axe n'est plus dans la liste ET il y a au moins 1 levier
+     courant (sinon profil pas mature) → `auto_closure_suggested=true`,
+     reason="axis_no_longer_priority"
+
+3. **Adapter `profileLeverageProvider` dans post_sync_progression.go** :
+   - Construit un PlayerProfile minimaliste via `profile.NewServiceFromPlayerDB`
+   - Extrait `prof.Leverages` (top 2 leviers identifiés par
+     `identifyLeverages` du V1 commit-4)
+   - Coût accepté : ~50-200ms supplémentaires dans le hook post-sync
+     (latency reasonable face au sync HTTP)
+
+4. **Priorité R5** : "axis_no_longer_priority" overwrite "plateau_60d" si
+   les deux applicables. Logique : si on a un signal plus précis (axe
+   sort prioritaires), il est plus pertinent à afficher à l'utilisateur
+   qu'un plateau temporel pur.
+
+5. **Tolérance erreur leverages** : si le provider échoue (err non nil),
+   on swallow silencieusement — R5 condition 2 désactivée pour ce
+   tour, condition 1 (plateau) reste évaluée. Le test
+   `TestEvaluate_R5_LeverageProviderError_Tolerated` valide ce contrat.
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` + `-tags=integration` exit 0
+- 6 unitaires Windows `TestMedianKDA_*` ✅ (empty / <10 / odd / even /
+  robust to outliers / skip zero+missing)
+- 4 unitaires Windows `TestEvaluate_R5_*` ✅ (axis no longer / still /
+  provider error / no provider)
+- 1 unitaire `TestContainsString` ✅
+- Aucune régression sur les tests existants
+
+**Trade-offs assumés** :
+
+- **Coût adapter profileLeverageProvider** : ~50-200ms par appel à
+  `EvaluateActive` car BuildProfile re-calcule tous les leviers depuis
+  zéro. Optimisable via cache local (BuildProfile result mémo dans la
+  closure post-sync) si profilé en hot path.
+- **Pas de threshold différent daily vs weekly** : la même médiane
+  personnelle KDA sert pour `StreakTypeDailyPerf` (1 match au-dessus)
+  et `StreakTypeWeeklyKDAThreshold` (moyenne hebdo au-dessus). Cohérent
+  mais simpliste — V3 pourrait différencier (ex: weekly = median+10%).
+- **Pas d'enrichissement narrative.ImpactRoles** dans les leviers : on
+  remonte les composantes LUSR par `prof.Leverages[].Component`. Si
+  une campagne porte sur un axe radar (ex: "objective"), l'égalité
+  string match échouera. Acceptable car les campagnes ouvrent
+  majoritairement sur des composantes LUSR (cf. UI commit V1-7 qui
+  pré-sélectionne `AxisKindLUSRComponent`).
+
+**Conclusion** : **V2 sprint complet 4/4**. La V1 PlayerProfile Ascension
++ ses 4 follow-ups V2 sont livrés. Le code en prod après merge expose :
+- Section B fonctionnelle avec breakdown des 8 composantes LUSR
+- Section A1 radar avec axe Objective fiable + Impact enrichi
+- ProgressionSection avec labels FR/EN de templates
+- Streaks perf-based activés avec médiane personnelle
+- R5 campagne complet (plateau ET axe sort prioritaires)
+- Aucune dette critique restante sur le périmètre PlayerProfile.
+
+Suite naturelle hors PlayerProfile : ouvrir les PR V1+V2 et observer en
+prod.
+
+---
+
 ## [2026-05-18] feat(player-profile-v2)(commit-3) — SuggestedChallenge label_fr/label_en hydraté backend
 
 **Statut** : Complété. V2 3/4.
