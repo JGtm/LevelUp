@@ -73,6 +73,9 @@ export interface NotificationsText {
   // Sert à éviter tout hardcode "KD"/"Winrate" dans les templates.
   metricLabel: Record<string, string>
 
+  // Mapping fenêtre temporelle records V2 → libellé localisé (30d/90d/all_time).
+  periodLabel: Record<string, string>
+
   // Templates de notif (rendus à partir de title_key/body_key + params)
   // Convention : "notif.<category>.title" / ".body"
   // Gardé sous forme de Record<string,string> pour permettre extension future
@@ -161,6 +164,12 @@ const FR: NotificationsText = {
     battlepass_completed: 'Battle pass terminé',
     citation_tier: 'Palier de commendation',
     citation_mastery: 'Commendation masterisée',
+    record_near_miss: 'Approche d\'un record',
+    milestone_unlocked: 'Milestone débloqué',
+    milestone_near_miss: 'Approche d\'un milestone',
+    lusr_tier_approach: 'Approche d\'un tier LUSR',
+    streak_milestone: 'Palier de streak',
+    comeback_welcome: 'Bienvenue de retour',
   },
   categoryDescription: {
     app_release: 'Une nouvelle version de LevelUp est disponible.',
@@ -183,15 +192,34 @@ const FR: NotificationsText = {
     battlepass_completed: 'Tu as terminé un battle pass (rang max atteint).',
     citation_tier: 'Tu as franchi un nouveau palier sur une commendation.',
     citation_mastery: 'Tu as masterisé une commendation à 100 %.',
+    record_near_miss: 'Ton score courant approche d\'un de tes records personnels.',
+    milestone_unlocked: 'Tu viens de débloquer un milestone (palier cumulatif).',
+    milestone_near_miss: 'Tu es proche de débloquer un milestone.',
+    lusr_tier_approach: 'Ton rating LUSR approche du prochain sub-tier.',
+    streak_milestone: 'Ta streak atteint un palier (multiplicateur PP).',
+    comeback_welcome: 'Tu reviens après une pause — bienvenue !',
   },
 
   // metricLabel : mapping des clés métriques (envoyées par le backend dans
-  // params.metric_key) vers leur libellé localisé. Évite tout hardcode "KD",
-  // "Winrate" dans les templates ou le code Go.
+  // params.metric_key OU params.metric) vers leur libellé localisé. Évite
+  // tout hardcode "KD", "Winrate" dans les templates ou le code Go.
   metricLabel: {
     kd_ratio: 'ratio K/D',
     winrate: 'taux de victoire',
     kda: 'KDA',
+    // Progression V2 (envoyés par le coach generator avec la clé `metric`).
+    performance_score: 'score de performance',
+    kpm: 'tueries / minute',
+    accuracy: 'précision',
+    pspm: 'score perso / minute',
+  },
+
+  // periodLabel : mapping des fenêtres temporelles de records V2 vers leur
+  // libellé localisé. Le backend envoie `params.period` = "30d"/"90d"/"all_time".
+  periodLabel: {
+    '30d': '30 jours',
+    '90d': '90 jours',
+    all_time: 'carrière',
   },
 
   templates: {
@@ -237,6 +265,19 @@ const FR: NotificationsText = {
     'notif.citation_tier.body': '{count} palier(s) franchi(s) depuis la dernière sync.',
     'notif.citation_mastery.title': 'Commendation masterisée',
     'notif.citation_mastery.body': '{count} commendation(s) à 100 % — bravo !',
+    // ─── Progression V2 (Ascension) — coach proactif ─────────────────────
+    'notif.record_near_miss.title': 'Tu approches d\'un record',
+    'notif.record_near_miss.body': 'Ton {metric_label} sur {period_label} approche de ton PB ({value} vs {target}).',
+    'notif.milestone_unlocked.title': 'Milestone débloqué : {title_fr}',
+    'notif.milestone_unlocked.body': 'Tu viens de débloquer « {title_fr} » — bravo !',
+    'notif.milestone_near_miss.title': 'À deux doigts d\'un milestone',
+    'notif.milestone_near_miss.body': 'Plus que quelques pas pour débloquer « {title_fr} ».',
+    'notif.lusr_tier_approach.title': 'À {gap} pts de {next_tier_name}',
+    'notif.lusr_tier_approach.body': 'Ton μ LUSR ({current_mu}) approche du prochain sub-tier {next_tier_name} ({next_tier_mu}).',
+    'notif.streak_milestone.title': 'Streak de {length} jours !',
+    'notif.streak_milestone.body': 'Tu atteins le palier {length} j — multiplicateur PP ×{multiplier}.',
+    'notif.comeback_welcome.title': 'Bon retour parmi nous !',
+    'notif.comeback_welcome.body': 'Tu as repris après {days_away} jours d\'absence — ta streak shield est prête.',
   },
 
   relJustNow: 'à l’instant',
@@ -320,6 +361,12 @@ const EN: NotificationsText = {
     battlepass_completed: 'Battle pass completed',
     citation_tier: 'Commendation tier',
     citation_mastery: 'Commendation mastered',
+    record_near_miss: 'Record near miss',
+    milestone_unlocked: 'Milestone unlocked',
+    milestone_near_miss: 'Milestone near miss',
+    lusr_tier_approach: 'LUSR tier approach',
+    streak_milestone: 'Streak milestone',
+    comeback_welcome: 'Welcome back',
   },
   categoryDescription: {
     app_release: 'A new LevelUp version is available.',
@@ -342,12 +389,29 @@ const EN: NotificationsText = {
     battlepass_completed: 'You completed a battle pass (max rank reached).',
     citation_tier: 'You crossed a new tier on a commendation.',
     citation_mastery: 'You mastered a commendation to 100%.',
+    record_near_miss: 'Your current score is approaching one of your personal bests.',
+    milestone_unlocked: 'You just unlocked a milestone (cumulative threshold).',
+    milestone_near_miss: 'You are close to unlocking a milestone.',
+    lusr_tier_approach: 'Your LUSR rating is approaching the next sub-tier.',
+    streak_milestone: 'Your streak hit a milestone (PP multiplier).',
+    comeback_welcome: 'You are back after a pause — welcome!',
   },
 
   metricLabel: {
     kd_ratio: 'K/D ratio',
     winrate: 'winrate',
     kda: 'KDA',
+    // Progression V2 (sent by the coach generator under `metric` key).
+    performance_score: 'performance score',
+    kpm: 'kills per minute',
+    accuracy: 'accuracy',
+    pspm: 'personal score per minute',
+  },
+
+  periodLabel: {
+    '30d': '30 days',
+    '90d': '90 days',
+    all_time: 'all-time',
   },
 
   templates: {
@@ -393,6 +457,19 @@ const EN: NotificationsText = {
     'notif.citation_tier.body': '{count} tier(s) crossed since last sync.',
     'notif.citation_mastery.title': 'Commendation mastered',
     'notif.citation_mastery.body': '{count} commendation(s) at 100% — nice!',
+    // ─── Progression V2 (Ascension) — proactive coach ────────────────────
+    'notif.record_near_miss.title': 'Approaching a record',
+    'notif.record_near_miss.body': 'Your {metric_label} over {period_label} is approaching your PB ({value} vs {target}).',
+    'notif.milestone_unlocked.title': 'Milestone unlocked: {title_en}',
+    'notif.milestone_unlocked.body': 'You just unlocked « {title_en} » — congrats!',
+    'notif.milestone_near_miss.title': 'Almost there on a milestone',
+    'notif.milestone_near_miss.body': 'Just a few more steps to unlock « {title_en} ».',
+    'notif.lusr_tier_approach.title': '{gap} pts from {next_tier_name}',
+    'notif.lusr_tier_approach.body': 'Your LUSR μ ({current_mu}) is within reach of the next sub-tier {next_tier_name} ({next_tier_mu}).',
+    'notif.streak_milestone.title': '{length}-day streak!',
+    'notif.streak_milestone.body': 'You reached the {length}-day milestone — PP multiplier ×{multiplier}.',
+    'notif.comeback_welcome.title': 'Welcome back!',
+    'notif.comeback_welcome.body': 'You returned after {days_away} days away — your streak shield is ready.',
   },
 
   relJustNow: 'just now',
