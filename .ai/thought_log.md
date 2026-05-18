@@ -1,3 +1,80 @@
+## [2026-05-18] feat(progression)(commit-10) — i18n manifests + ADR 0014 + fix icons (commit final V2)
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`). **Sprint V2 fini.**
+
+**Contexte** : Dixième et dernier commit. Câble les notifs coach (titles/bodies FR/EN), corrige le bug pré-existant d'icons.tsx, et documente l'architecture finale via ADR 0014.
+
+**Décisions / changements** :
+
+1. **Types frontend** (`features/notifications/types.ts`) : ajout des 6 nouvelles catégories à `NotificationCategory` + `ALL_CATEGORIES`. Aligné avec le backend Go (commit 5).
+
+2. **i18n FR/EN complets** (`features/notifications/i18n.ts`) :
+   - `categoryLabel` + `categoryDescription` × 6 nouvelles entrées × 2 locales = 24 strings.
+   - `templates` : 12 keys (6 catégories × {title, body}) × 2 locales = 24 templates avec interpolation des params (`{metric_label}`, `{period_label}`, `{title_fr}`, `{gap}`, `{length}`, `{multiplier}`, `{days_away}`, etc.).
+   - `metricLabel` étendu avec les 4 métriques V2 (performance_score, kpm, accuracy, pspm) en plus des 3 existantes.
+   - `periodLabel` nouveau mapping (30d / 90d / all_time) → libellé localisé.
+   - Type `NotificationsText` étendu avec champ `periodLabel: Record<string, string>`.
+
+3. **Enrichment côté frontend** (`features/notifications/format.ts`) :
+   - Fallback `metric` (params coach V2) en plus de `metric_key` (convention historique) pour résoudre `metric_label`. Décision pragmatique pour éviter de toucher aux 5 tests unit Go du coach commit 5 — debt acceptée et documentée.
+   - Nouveau enrichissement `period` → `period_label` pour les templates `record_near_miss` et autres.
+
+4. **Fix `notifications/icons.tsx`** (bug pré-existant relevé en commit 8-9 typecheck) : ajout des 12 icons manquantes :
+   - 6 catégories Halo (2026-05-16) jamais mappées : `data_health_warning`, `career_rank`, `skill_tier`, `battlepass_completed`, `citation_tier`, `citation_mastery` — réutilisation des icons existantes (IconAlert, IconStar, IconTrending, IconTrophy).
+   - 6 catégories V2 (this sprint) : `record_near_miss`, `milestone_unlocked`, `milestone_near_miss`, `lusr_tier_approach`, `streak_milestone`, `comeback_welcome`. Ajout `IconFlame` cohérent avec StreakBadge.tsx.
+   - `tsc -b` passe maintenant à 0 erreur (vs 1 erreur pré-existante dans les commits précédents).
+
+5. **ADR 0014** (`docs/adr/0014-progression-tracking-v2-ascension.md`, ~200 lignes) : documente l'architecture finale V2 :
+   - Contexte : 3 options évaluées (Saisons rejetées × 2, PROGRESSION_TRACKING retenu)
+   - Decision : 10 commits backend (1-7) + frontend (8-9) + glue (10)
+   - Key choices : pas de table coach_alert dédiée, pas de PlayerProfile service centralisé, dédup sans table, renommage window→period, détecteurs purs, couleurs sémantiques.
+   - Consequences : positives (zéro duplication, idempotence, extension facile) + négatives/dette (streaks perf-based non câblés, panneau records-near-miss skipped, metric vs metric_key inconsistency).
+
+6. **CLAUDE.md** : ajout du lien ADR 0014 dans la liste des ADRs (NB : ADR 0012 et 0013 existent mais ne sont pas listés là — bug pré-existant non corrigé pour rester chirurgical).
+
+**Validations finales** :
+
+- `tsc -b` : **0 erreur** (vs 1 erreur pré-existante avant ce commit). Fix par le mapping icons complet.
+- `eslint src/features/{notifications,ascension}` : 0 erreur, 3 warnings dans NotificationsPage.tsx pré-existants (strings hardcodées sur les bulk actions — non liés).
+- `vitest run src/features` : **783/783 PASS** + 14 skipped (full suite frontend). Aucune régression.
+- Tests progression backend de bout en bout (commits 1-9) restent verts.
+
+**Récapitulatif du sprint V2 complet** :
+
+| # | Commit | Lignes | Tests | Fichiers |
+|---|---|---|---|---|
+| 0 | chore(plan) align | ~80 | — | 2 |
+| 1 | types + migrations | 527 | 9 mig | 9 |
+| 2 | streaks evaluator | 1320 | 17 (12+5) | 9 |
+| 3 | records detector | 1250 | 13 (6+7) | 9 |
+| 4 | milestones | 10 fichiers | 14 (9+5) | 10 |
+| 5 | coach generator | 937 | 19 | 8 |
+| 6 | hook post-sync | 1373 | 45 (42+3) | 9 |
+| 7 | endpoints HTTP | 680 | 5 | 5 |
+| 8 | UI Streaks | 739 | 15 | 13 |
+| 9 | UI Records + Milestones | 555 | 4 (total ascension 19) | 7 |
+| 10 | i18n + ADR + icons | ~400 | 0 nouv, 783 régression | 6 |
+| **TOTAL** | **11 commits** | **~7900** | **140+ tests** | **~85 fichiers** |
+
+**Conclusion finale** : **Plan PROGRESSION_TRACKING V2 (Ascension) livré intégralement.**
+
+Le système est end-to-end opérationnel :
+- À chaque sync, le hook post-sync évalue streaks/records/milestones, exécute le coach generator, déduplique sur 24h, et émet des notifs aux 6 nouvelles catégories.
+- L'utilisateur voit son compteur de streak dans la NavL1.
+- La page Ascension expose la grille streaks + records timeline + milestones grid.
+- Les alertes coach apparaissent dans le centre de notifs avec toasts pour les fraîches.
+- Le seed Halo Infinite inclut 13 milestones sur 6 axes.
+
+**Dette acceptée** (documentée dans ADR 0014 §Consequences/Négatives) :
+- Streaks perf-based (daily_perf, weekly_kda_threshold) non câblés faute de seuils personnels exposés.
+- `accuracy_threshold_days` en interprétation permissive (1 match/jour ≥ 0.50) — changement de sémantique = 1 ligne SQL.
+- Panneau UI records-near-miss skippé (notif proactive plus efficace).
+- `metric` vs `metric_key` dans params coach — workaround côté frontend, à harmoniser plus tard.
+
+Branch prête pour ouverture PR vers `main`.
+
+---
+
 ## [2026-05-18] feat(progression)(commit-9) — UI Records timeline + Milestones grid
 
 **Statut** : Complété (branche `feat/progression-tracking-ascension`).

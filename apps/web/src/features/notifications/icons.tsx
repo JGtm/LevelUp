@@ -30,6 +30,21 @@ const ICONS: Record<NotificationCategory, React.ComponentType<{ className?: stri
   threshold_crossed: IconTrending,
   friend_added: IconUser,           // §6 Squad/Sessions overhaul
   friend_sync_completed: IconCheck, // §6 — récap silencieux
+  // 2026-05-16 — extension catégories Halo (commit antérieur, icons manquantes
+  // alignées maintenant).
+  data_health_warning: IconAlert,
+  career_rank: IconStar,
+  skill_tier: IconTrending,
+  battlepass_completed: IconTrophy,
+  citation_tier: IconStar,
+  citation_mastery: IconTrophy,
+  // 2026-05-18 — Progression V2 (Ascension), coach proactif.
+  record_near_miss: IconTrending,
+  milestone_unlocked: IconTrophy,
+  milestone_near_miss: IconTarget,
+  lusr_tier_approach: IconTrending,
+  streak_milestone: IconFlame,
+  comeback_welcome: IconSparkles,
 }
 
 function svg(props: { className?: string; children: React.ReactNode }) {
@@ -155,6 +170,15 @@ function IconUser({ className }: { className?: string }) {
         d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
         clipRule="evenodd"
       />
+    ),
+  })
+}
+function IconFlame({ className }: { className?: string }) {
+  // Cohérent avec features/ascension/StreakBadge.tsx (même path).
+  return svg({
+    className,
+    children: (
+      <path d="M10 1.5c-.4 1.5-1.5 2.6-3 3.5-1.5.9-2.5 2.4-2.5 4 0 3 2.5 5.5 5.5 5.5s5.5-2.5 5.5-5.5c0-1.6-.8-3-2-4-1.4 1.3-3.5 0-3.5-3.5z" />
     ),
   })
 }

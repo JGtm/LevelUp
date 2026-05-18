@@ -44,6 +44,7 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0009-expvar-monitoring-multi-user.md` — pourquoi expvar stdlib (pas Prometheus) en multi-user
 - `docs/adr/0010-timeseries-binning-server-side.md` — pourquoi binning Go (pas front)
 - `docs/adr/0011-canonical-vs-semantic-adapter-separation.md` — frontière canonical (data brute) vs TitleSemanticAdapter (i18n) vs TitleAssetURLAdapter (URLs)
+- `docs/adr/0014-progression-tracking-v2-ascension.md` — couches Streaks + Records & Milestones + Coach proactif (V2 Ascension)
 
 **Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
 
