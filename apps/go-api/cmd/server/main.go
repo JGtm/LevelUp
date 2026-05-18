@@ -795,8 +795,36 @@ func startWatcherDaemon(
 	})
 	go refreshLoop.Run(ctx)
 
+	// PR 2.5c — boot reload des userClients depuis MultiUserTokenStore.
+	// Chaque user SSO Xbox déjà inscrit (a son XSTS persisté dans
+	// data/auth/watcher_tokens/{xuid}.json) gagne sa propre connexion RTA dédiée
+	// dès le démarrage du serveur. Indépendant du social graph Xbox.
+	multiDir := title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	multiStore := auth.NewMultiUserTokenStore(multiDir)
+	// Brancher le refresh on-demand par user (status=3 → MSAL cache → AcquireXSTSForRTA).
+	daemon.WithPerUserAuthRefresh(func(refreshCtx context.Context, xuid string) (string, error) {
+		return auth.RefreshUserXSTS(refreshCtx, multiStore, xuid)
+	})
+	allUsers, scanErr := multiStore.LoadAll()
+	if scanErr != nil {
+		slog.Warn("watcher: scan multi-user token store échoué", "err", scanErr)
+	}
+	for xuid, ut := range allUsers {
+		if !ut.IsXSTSValid(0) {
+			slog.Info("watcher: skip userClient avec XSTS expiré au boot",
+				"xuid", xuid, "gamertag", ut.Gamertag, "xsts_expires_at", ut.XSTSExpiresAt)
+			continue
+		}
+		if err := daemon.AddUserClient(ctx, ut); err != nil {
+			slog.Warn("watcher: AddUserClient échoué au boot",
+				"xuid", xuid, "gamertag", ut.Gamertag, "err", err)
+			continue
+		}
+	}
+
 	slog.Info("watcher: daemon démarré",
 		"players", len(playerSummaries),
+		"user_clients", len(allUsers),
 		"rta_auth", "ok",
 	)
 	return daemon

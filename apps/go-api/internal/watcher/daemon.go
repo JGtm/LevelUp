@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/presence"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -43,6 +44,10 @@ type DaemonController interface {
 	// login Xbox SSO). Si le RTA est connecté, subscribe immédiat avec l'auth
 	// header courant ; sinon le subscribe sera fait à la prochaine (re)connexion.
 	AddPlayer(ctx context.Context, p domain.PlayerSummary) error
+	// PR 2.5c — ajout d'un user avec sa propre connexion RTA dédiée. Plus robuste
+	// qu'AddPlayer car indépendant du social graph Xbox (le user subscribe son
+	// propre XUID avec son propre auth header).
+	AddUserClient(ctx context.Context, userTokens *auth_platform.UserTokens) error
 }
 
 // DaemonConfig configure le watcher daemon.
@@ -62,10 +67,27 @@ type DaemonConfig struct {
 	RefreshRTAAuth func(ctx context.Context) error
 }
 
+// userClient encapsule un RTAClient dédié à un utilisateur SSO Xbox (PR 2.5c).
+// Chaque user qui se logge via SSO obtient sa propre connexion RTA + reconnect
+// manager, indépendamment du graphe social Xbox (pas besoin d'être ami du tracker).
+type userClient struct {
+	xuid         string
+	gamertag     string
+	rtaClient    *presence.RTAClient
+	reconnectMgr *presence.ReconnectManager
+	cancel       context.CancelFunc // annule le RunWithReconnect dédié
+}
+
+// PerUserAuthRefresher est appelé quand le ReconnectManager d'un user reçoit
+// status=3 (XSTS expiré). Doit retourner un nouvel auth header XBL3.0 ou une
+// erreur si refresh impossible (user doit re-login Xbox SSO). Typiquement
+// implémenté par auth.RefreshUserXSTS.
+type PerUserAuthRefresher func(ctx context.Context, xuid string) (string, error)
+
 // Daemon est le démon de surveillance de présence.
 type Daemon struct {
 	cfg         DaemonConfig
-	rtaClient   *presence.RTAClient
+	rtaClient   *presence.RTAClient // LEGACY tracker mono-user (alimenté par Start)
 	titleReg    *title.Registry
 	coordinator *syncpkg.Coordinator
 	queue       *MatchQueue
@@ -73,8 +95,15 @@ type Daemon struct {
 	playersMu sync.RWMutex
 	players   map[string]*PlayerWatcher // gamertag → watcher
 
+	// PR 2.5c — clients RTA multi-user (1 par user SSO Xbox).
+	// Coexiste avec rtaClient (tracker historique). Alimenté par AddUserClient.
+	userClientsMu      sync.RWMutex
+	userClients        map[string]*userClient // xuid → userClient
+	perUserAuthRefresh PerUserAuthRefresher   // optionnel — refresh XSTS par user
+
 	running bool
 	cancel  context.CancelFunc
+	rootCtx context.Context // capturé dans Start, utilisé par AddUserClient pour lancer ses goroutines avec un parent annulable
 
 	// wg track les goroutines internes lancées dans Start() pour que Stop()
 	// puisse les attendre. Sans ce tracking, les goroutines connectAndSubscribe
@@ -96,12 +125,22 @@ func NewDaemon(cfg DaemonConfig, titleReg *title.Registry, syncRunner syncpkg.Sy
 		coordinator: syncpkg.NewCoordinator(syncRunner, maxParallel),
 		queue:       NewMatchQueue(100),
 		players:     make(map[string]*PlayerWatcher),
+		userClients: make(map[string]*userClient),
 	}
+}
+
+// WithPerUserAuthRefresh injecte un callback de refresh XSTS pour les userClients
+// (PR 2.5c). Si fourni, chaque userClient.reconnectMgr l'appelle avec son XUID
+// quand un subscribe est refusé avec status=3.
+func (d *Daemon) WithPerUserAuthRefresh(refresher PerUserAuthRefresher) *Daemon {
+	d.perUserAuthRefresh = refresher
+	return d
 }
 
 // Start démarre le daemon. Non bloquant — lance des goroutines internes.
 func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary) {
 	ctx, d.cancel = context.WithCancel(ctx)
+	d.rootCtx = ctx // capturé pour qu'AddUserClient puisse lancer des sous-goroutines liées à la même durée de vie
 	d.running = true
 
 	slog.InfoContext(ctx, "watcher_daemon: démarrage",
@@ -142,6 +181,18 @@ func (d *Daemon) Stop() {
 	if d.rtaClient != nil {
 		_ = d.rtaClient.Close()
 	}
+
+	// PR 2.5c — fermer tous les userClients (chacun a son propre RTAClient).
+	d.userClientsMu.RLock()
+	for _, uc := range d.userClients {
+		if uc.cancel != nil {
+			uc.cancel()
+		}
+		if uc.rtaClient != nil {
+			_ = uc.rtaClient.Close()
+		}
+	}
+	d.userClientsMu.RUnlock()
 
 	// Attendre les goroutines internes avec un timeout dur.
 	done := make(chan struct{})
@@ -272,6 +323,119 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	}
 	pw.SetSubscribeError(lastErr)
 	return nil
+}
+
+// AddUserClient ajoute un user SSO Xbox avec sa propre connexion RTA dédiée (PR 2.5c).
+// Le user subscribe son propre XUID avec son propre auth header XBL3.0 — pas
+// besoin que le tracker historique soit ami Xbox de cet user. Résiste au social
+// graph Xbox.
+//
+// No-op si le user (XUID) est déjà présent dans le map. Erreur si auth header vide
+// ou XUID/Gamertag vides. Lance une goroutine RunWithReconnect dédiée pour la durée
+// de vie du daemon (rootCtx capturé dans Start).
+//
+// Note : le daemon doit avoir été démarré (Start appelé) avant AddUserClient,
+// sinon rootCtx est nil. En pratique, main.go appelle Start puis AddUserClient
+// pour chaque user du MultiUserTokenStore.
+func (d *Daemon) AddUserClient(ctx context.Context, userTokens *auth_platform.UserTokens) error {
+	if userTokens == nil || userTokens.XUID == "" || userTokens.Gamertag == "" {
+		return fmt.Errorf("watcher_daemon: AddUserClient requiert xuid+gamertag non vides")
+	}
+	authHeader := userTokens.AuthHeader()
+	if authHeader == "" {
+		return fmt.Errorf("watcher_daemon: AddUserClient requiert XSTS+UserHash non vides (xuid=%s)", userTokens.XUID)
+	}
+	if d.rootCtx == nil {
+		return fmt.Errorf("watcher_daemon: AddUserClient appelé avant Start (xuid=%s)", userTokens.XUID)
+	}
+
+	d.userClientsMu.Lock()
+	if _, exists := d.userClients[userTokens.XUID]; exists {
+		d.userClientsMu.Unlock()
+		slog.DebugContext(ctx, "watcher_daemon: AddUserClient no-op, déjà présent",
+			"xuid", userTokens.XUID, "gamertag", userTokens.Gamertag)
+		return nil
+	}
+
+	// Créer le PlayerWatcher si pas déjà présent (sinon réutiliser).
+	d.playersMu.Lock()
+	pw, ok := d.players[userTokens.Gamertag]
+	if !ok {
+		pw = NewPlayerWatcher(userTokens.Gamertag, userTokens.XUID, nil, &queueSyncTrigger{
+			queue:    d.queue,
+			gamertag: userTokens.Gamertag,
+			xuid:     userTokens.XUID,
+		})
+		if d.cfg.LiveRefreshFactory != nil {
+			pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(userTokens.Gamertag, userTokens.XUID))
+		}
+		d.players[userTokens.Gamertag] = pw
+	}
+	d.playersMu.Unlock()
+
+	// Créer le RTAClient + ReconnectManager dédiés.
+	rtaClient := presence.NewRTAClient(authHeader)
+	connectFunc := d.makeUserConnectFunc(rtaClient, pw, userTokens.XUID, userTokens.Gamertag)
+	reconnectMgr := presence.NewReconnectManager(rtaClient, presence.DefaultReconnectPolicy(), connectFunc)
+
+	// Refresh on-demand si callback fourni.
+	if d.perUserAuthRefresh != nil {
+		xuid := userTokens.XUID // capture
+		reconnectMgr.OnAuthExpired = func(refreshCtx context.Context) error {
+			newHeader, err := d.perUserAuthRefresh(refreshCtx, xuid)
+			if err != nil {
+				return err
+			}
+			rtaClient.UpdateAuth(newHeader)
+			return nil
+		}
+	}
+
+	// Contexte dédié pour pouvoir arrêter ce userClient indépendamment.
+	clientCtx, cancel := context.WithCancel(d.rootCtx)
+	uc := &userClient{
+		xuid:         userTokens.XUID,
+		gamertag:     userTokens.Gamertag,
+		rtaClient:    rtaClient,
+		reconnectMgr: reconnectMgr,
+		cancel:       cancel,
+	}
+	d.userClients[userTokens.XUID] = uc
+	d.userClientsMu.Unlock()
+
+	slog.InfoContext(ctx, "watcher_daemon: userClient ajouté (RTA dédié)",
+		"xuid", userTokens.XUID, "gamertag", userTokens.Gamertag)
+
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		reconnectMgr.RunWithReconnect(clientCtx)
+	}()
+	return nil
+}
+
+// makeUserConnectFunc construit la closure connect+subscribe pour un userClient.
+// Subscribe uniquement le XUID de cet user (pas tous les players du daemon).
+func (d *Daemon) makeUserConnectFunc(rtaClient *presence.RTAClient, pw *PlayerWatcher, xuid, gamertag string) func(context.Context) error {
+	return func(connectCtx context.Context) error {
+		if err := rtaClient.Connect(connectCtx); err != nil {
+			return err
+		}
+		handler := d.makePresenceHandler(connectCtx, pw)
+		var lastErr error
+		for _, td := range d.titleReg.All() {
+			if td.XboxTitleID == "" {
+				continue
+			}
+			if err := rtaClient.Subscribe(connectCtx, xuid, td.XboxTitleID, handler); err != nil {
+				slog.WarnContext(connectCtx, "watcher_daemon: échec subscribe userClient",
+					"xuid", xuid, "gamertag", gamertag, "title", td.Name, "err", err)
+				lastErr = err
+			}
+		}
+		pw.SetSubscribeError(lastErr)
+		return nil
+	}
 }
 
 // initPlayers crée un PlayerWatcher par joueur.

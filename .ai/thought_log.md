@@ -1,3 +1,92 @@
+## [2026-05-18] feat(xbox-sso) — PR 2.5c : stratégie A (N RTAClient par user) + RefreshUserXSTS via cache MSAL
+
+**Statut** : Complété (branche `feat/xbox-sso`).
+
+**Contexte** : PR 2.5b a livré l'`AddPlayer` dynamique mais limité au cas "tous amis Xbox du tracker". PR 2.5c implémente la stratégie A du plan §13 : chaque user authentifié obtient sa propre connexion RTA dédiée avec son propre auth header — indépendance complète du social graph Xbox.
+
+**Décisions / changements** :
+
+1. **`userClient` struct + map dans Daemon** ([daemon.go](apps/go-api/internal/watcher/daemon.go)) :
+   - Nouveau champ `userClients map[string]*userClient` (xuid → userClient).
+   - **Coexiste** avec le tracker historique `rtaClient` : `Start()` initialise le tracker, `AddUserClient()` peuple le map. Évite tout refactor cassant du flow legacy.
+   - Champ `rootCtx` capturé dans `Start()` pour permettre à `AddUserClient` de lancer ses goroutines avec un parent annulable.
+
+2. **`Daemon.AddUserClient(ctx, userTokens)`** :
+   - Crée un `RTAClient` dédié avec l'auth header de l'user (XBL3.0 + son propre XSTS).
+   - Crée un `ReconnectManager` dédié + connectFunc qui subscribe uniquement le XUID de cet user pour tous les titres trackés.
+   - Si `perUserAuthRefresh` callback configuré, branche-le sur `reconnectMgr.OnAuthExpired` pour refresh on-demand quand status=3 est reçu.
+   - Lance `RunWithReconnect` dans une goroutine trackée par `d.wg` (pour que `Stop()` attende proprement).
+   - Refus si XUID/Gamertag vides ou auth header vide. No-op si déjà présent.
+
+3. **`PerUserAuthRefresher` + `Daemon.WithPerUserAuthRefresh`** :
+   - Callback `func(ctx, xuid) (authHeader string, err error)`.
+   - Branché à chaque `userClient.reconnectMgr.OnAuthExpired` à la création.
+   - Permet à chaque user de rafraîchir son propre XSTS indépendamment.
+
+4. **`auth.RefreshUserXSTS`** ([refresh_user_xsts.go](apps/go-api/internal/platform/auth/refresh_user_xsts.go)) :
+   - Implémentation concrète du `PerUserAuthRefresher`.
+   - Charge `UserTokens` depuis `MultiUserTokenStore`.
+   - Si `MSALCacheJSON` présent : reconstruit `InMemoryCacheAccessor` + `AcquireTokenSilent` → nouvel access_token (le MSAL SDK mutate son cache en interne, on re-sérialise après).
+   - Sinon fallback : utilise `AccessToken` stocké s'il est encore valide.
+   - `AcquireXSTSForRTA(accessToken)` → nouveau XSTS RTA.
+   - Persiste les nouveaux tokens (best-effort).
+   - Retourne l'auth header XBL3.0 frais.
+
+5. **Boot reload** dans `startWatcherDaemon` ([main.go](apps/go-api/cmd/server/main.go)) :
+   - Après `daemon.Start(...)`, scan `MultiUserTokenStore.LoadAll()`.
+   - Pour chaque user avec XSTS valide : `daemon.AddUserClient(ctx, ut)`.
+   - Skip silencieusement les XSTS expirés (le user devra re-login ou attendre l'`OnAuthExpired` qui retentera via le refresh callback).
+   - Daemon `WithPerUserAuthRefresh(...)` branché en amont avec `auth.RefreshUserXSTS(multiStore, xuid)`.
+
+6. **Hook OnAuthSuccess préfère AddUserClient** ([xbox_auth_service.go](apps/go-api/internal/service/xbox_auth_service.go)) :
+   - Si `tokenStore` configuré ET `attempt.XSTSRTAToken` non vide → tente `daemon.AddUserClient(loadedUserTokens)` (RTA dédié).
+   - Si succès : pas de fallback. Si échec : fallback `AddPlayer` (tracker partagé).
+   - Si pas de tokenStore ou pas de XSTS RTA capturé : direct `AddPlayer` (legacy).
+
+7. **Interfaces étendues** :
+   - `watcher.DaemonController` ajoute `AddUserClient(ctx, *auth_platform.UserTokens) error`.
+   - `service.WatcherDaemon` ajoute `AddUserClient(ctx, *auth.UserTokens) error`.
+   - Mocks `mockDaemon` étendus dans les 2 fichiers de tests.
+
+**Architecture finale du Daemon** :
+
+```
+Daemon
+├── rtaClient (LEGACY tracker mono-user, alimenté par Start)
+├── userClients map[xuid]*userClient (PR 2.5c)
+│   └── userClient { xuid, gamertag, rtaClient, reconnectMgr, cancel }
+├── players map[gamertag]*PlayerWatcher (partagé entre tracker et userClients)
+├── coordinator + queue (partagés)
+└── perUserAuthRefresh callback (refresh XSTS individuel)
+```
+
+**Limitations restantes** :
+
+- Toutes les RTAClient (tracker + N userClients) sont **séparées** : N+1 connexions WebSocket vers `wss://rta.xboxlive.com`. Pour un cas perso (~10 users max), c'est négligeable côté Xbox Live et côté serveur Go. Si scale-up un jour, on pourrait factoriser via une seule WS qui multiplexe les auth headers — mais Xbox Live ne le permet pas (1 connexion = 1 identité).
+- Pas de monitoring proactif de l'expiration des XSTS multi-user. Le refresh est réactif (déclenché par status=3 reçu sur subscribe). Acceptable car le ReconnectManager re-test périodiquement et le refresh est rapide.
+
+**Tests ajoutés** :
+
+- [xbox_auth_service_test.go](apps/go-api/internal/service/xbox_auth_service_test.go) +3 tests : `WithTokenStore_PrefersAddUserClient` (RTA dédié choisi quand tokens dispo), `FallbackAddPlayerIfNoTokens` (pas de tokenStore → AddPlayer), `FallbackAddPlayerIfAddUserClientFails` (échec AddUserClient → fallback AddPlayer).
+- Mock `mockDaemon` étendu avec `addUserCalls` + flag `failOnAddUser`.
+- `watcher_handler_test.go` : `AddUserClient` ajoutée au mock (no-op).
+
+**Résultats observés** :
+
+- `go test ./internal/api/... ./internal/platform/auth/... ./internal/service/... ./internal/watcher/... ./internal/domain/title/...` : tous OK.
+- `go build ./...` : OK.
+
+**Conclusion / prochaine étape** : sprint SSO Xbox **backend complet livré** :
+- PR 1 : userstore + cohabitation D3
+- PR 2 : LinkStrategy + XboxSSOLinkStrategy
+- PR 2.5a : MultiUserTokenStore + capture RTA
+- PR 2.5b : AddPlayer dynamique + boot reload mono-tracker
+- PR 2.5c : N RTAClient par user + RefreshUserXSTS (stratégie A)
+
+Le mode `AuthMode="xbox"` est fonctionnellement complet côté backend. Il manque **PR 3 frontend** (page login Xbox + i18n + disclaimer phishing, ~0.5j) pour permettre le test visuel + livraison à un user final. La PR 4 (Authorization Code Flow) reste optionnelle (UX SSO redirect plus aboutie).
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2.5b minimaliste : AddPlayer dynamique + boot reload depuis MultiUserTokenStore
 
 **Statut** : Complété (branche `feat/xbox-sso`).
