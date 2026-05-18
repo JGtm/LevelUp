@@ -127,6 +127,9 @@ func (s *SessionPageService) GetPage(
 		"suggestion_candidates", candidateCount,
 		"compare_enabled", resp.CompareEnabled,
 		"compare_session", compareLabel,
+		"compare_match_count", len(resp.CompareMatches),
+		"previous_session_label", derefString(prevLabel),
+		"next_session_label", derefString(nextLabel),
 	)
 
 	return resp, nil

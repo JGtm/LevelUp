@@ -21,32 +21,33 @@ interface Props {
 
 export function SessionKDATimeline({ title, matches, height = 280 }: Props) {
   const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
+  const fields = fieldMappings?.fields
 
   const series: ChartSeries<ChartPoint2D>[] = useMemo(() => {
     if (matches.length === 0) return []
     const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
+    const labelFor = (key: string): string => fields?.[key]?.label ?? key
     return [
       {
         key: 'kills',
-        labelKey: labelOf('kills'),
+        labelKey: labelFor('kills'),
         colorToken: 'outcome-win',
         datapoints: sorted.map((m) => ({ x: m.start_time, y: m.kills })),
       },
       {
         key: 'deaths',
-        labelKey: labelOf('deaths'),
+        labelKey: labelFor('deaths'),
         colorToken: 'outcome-loss',
         datapoints: sorted.map((m) => ({ x: m.start_time, y: m.deaths })),
       },
       {
         key: 'assists',
-        labelKey: labelOf('assists'),
+        labelKey: labelFor('assists'),
         colorToken: 'outcome-draw',
         datapoints: sorted.map((m) => ({ x: m.start_time, y: m.assists })),
       },
     ]
-  }, [matches, labelOf])
+  }, [matches, fields])
 
   // Override couleurs pour garantir la résolution des tokens (cf. TimeseriesLineChart prop
   // seriesColorResolver : prioritaire sur colorToken et fallback cycle).
