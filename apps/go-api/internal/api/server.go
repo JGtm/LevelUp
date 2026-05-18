@@ -660,6 +660,14 @@ func NewRouter(
 			notifH := handlers.NewNotificationsHandler(reg.Notifications)
 			notifH.Mount(r)
 
+			// Couche progression V2 (Ascension) — streaks / records / milestones.
+			// Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+			progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
+				return reg.resolve(ctx, slug)
+			}
+			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug())
+			progressionH.Mount(r)
+
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)
 			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)

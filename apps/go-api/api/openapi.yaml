@@ -1931,6 +1931,43 @@ paths:
       responses:
         "200": { description: "Notification émise" }
 
+  # Couche progression V2 (Ascension) — streaks / records / milestones.
+  # Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+  /players/{player_slug}/streaks:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [progression]
+      operationId: listProgressionStreaks
+      summary: "Liste des streaks du joueur (active + historique)"
+      responses:
+        "200": { description: "Streaks" }
+
+  /players/{player_slug}/records:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: history_limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        description: "Limite l'historique des PB battus (défaut 50, max 200)"
+    get:
+      tags: [progression]
+      operationId: listProgressionRecords
+      summary: "PB courants + timeline des records battus"
+      responses:
+        "200": { description: "Records" }
+
+  /players/{player_slug}/milestones:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [progression]
+      operationId: listProgressionMilestones
+      summary: "Catalogue de milestones + statut Earned par milestone"
+      responses:
+        "200": { description: "Milestones" }
+
   # Watcher (présence Xbox/Steam)
   /watcher/auth/{provider}:
     parameters:
