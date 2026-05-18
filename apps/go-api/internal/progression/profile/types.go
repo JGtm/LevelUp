@@ -139,12 +139,24 @@ type ProgressionLeverage struct {
 }
 
 // SuggestedChallenge est un template recommandé par le coach.
+//
+// LabelFR / LabelEN / DescriptionFR / DescriptionEN sont hydratés depuis
+// prestige.Template à la sélection (V2 §3). Permettent à l'UI d'afficher
+// un libellé humain sans avoir à charger le catalogue séparément.
 type SuggestedChallenge struct {
 	TemplateID       string `json:"template_id"`
 	TargetTier       string `json:"target_tier"`        // "normal" | "heroic" | "legendary"
 	HistoricalStreak int    `json:"historical_streak"`  // nb complétions sur 90j (placeholder 0 en V1)
 	IsArcStep        bool   `json:"is_arc_step"`
 	ArcID            string `json:"arc_id,omitempty"`
+
+	// Hydratés depuis le template prestige (V2 §3). Vides si template
+	// introuvable (ne devrait pas arriver — selectSuggestedChallenges les
+	// récupère depuis le même catalogue).
+	LabelFR       string `json:"label_fr,omitempty"`
+	LabelEN       string `json:"label_en,omitempty"`
+	DescriptionFR string `json:"description_fr,omitempty"`
+	DescriptionEN string `json:"description_en,omitempty"`
 }
 
 // MinMatchesForProfile est le seuil sous lequel on considère que le profil

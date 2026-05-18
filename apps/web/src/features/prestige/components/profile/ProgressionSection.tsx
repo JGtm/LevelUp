@@ -109,7 +109,7 @@ interface SuggestionsListProps {
 }
 
 function SuggestionsList({ suggestions, onLaunchTemplate }: SuggestionsListProps) {
-  const { t } = useProfileI18n()
+  const { t, locale } = useProfileI18n()
   return (
     <div>
       <h3 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
@@ -118,13 +118,21 @@ function SuggestionsList({ suggestions, onLaunchTemplate }: SuggestionsListProps
       <ul className="space-y-1">
         {suggestions.map((s) => {
           const tierKey = `profile.tier.${s.target_tier}` as ProfileManifestKey
+          // V2 §3 : label hydraté backend (label_fr/label_en). Fallback sur
+          // template_id si le backend n'a pas pu enrichir (devrait pas arriver).
+          const label =
+            (locale === 'fr' ? s.label_fr : s.label_en) ?? s.label_fr ?? s.label_en ?? s.template_id
+          const description = locale === 'fr' ? s.description_fr : s.description_en
           return (
             <li
               key={s.template_id}
               className="flex items-center justify-between rounded border border-border bg-background p-2 text-xs"
             >
               <div>
-                <p className="font-medium">{s.template_id}</p>
+                <p className="font-medium">{label}</p>
+                {description && (
+                  <p className="text-muted-foreground italic mt-0.5">{description}</p>
+                )}
                 <p className="text-muted-foreground">
                   {t('profile.suggestions.row_subtitle', {
                     tier: t(tierKey),

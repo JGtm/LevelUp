@@ -1,3 +1,61 @@
+## [2026-05-18] feat(player-profile-v2)(commit-3) — SuggestedChallenge label_fr/label_en hydraté backend
+
+**Statut** : Complété. V2 3/4.
+
+**Contexte** : V1 commit-6 `ProgressionSection` affichait `template_id` brut
+(ex: "halo_infinite.daily.kda_session") en haut de chaque suggestion. Le
+backend avait déjà `Template.LabelFR`/`LabelEN`/`DescriptionFR`/`DescriptionEN`
+dans le catalogue prestige (cf. types.go V1 commit-1) mais le DTO
+`SuggestedChallenge` ne les exposait pas. V2 commit-3 ferme ce gap en
+hydratant le DTO depuis le catalogue et en adaptant l'UI.
+
+**Décisions techniques principales** :
+
+1. **Hydratation au moment de la sélection** : `selectSuggestedChallenges`
+   a déjà chargé le template complet via `listTemplatesByLUSRComponents`
+   (V1 commit-4). Aucun round-trip supplémentaire — on copie juste les 4
+   champs label/description dans le DTO. Coût zéro.
+
+2. **Backwards-compatible** : les nouveaux champs sont `omitempty` côté
+   Go et `?` (optional) côté TS. Si un caller ne les fournit pas (ex: un
+   mock test), l'UI fallback proprement sur `template_id`.
+
+3. **Fallback UI cascadé** : `label = (locale === 'fr' ? label_fr :
+   label_en) ?? label_fr ?? label_en ?? template_id`. Si la locale active
+   n'a pas son label, on tente l'autre, puis on retombe sur l'ID brut. La
+   chaîne ne crash jamais.
+
+4. **Description en italique sous le label** quand présente. La plupart
+   des templates ont une description claire ("Atteindre 1.5 KDA sur 3
+   sessions"), mais elle est optionnelle.
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0
+- `go test ./internal/progression/profile/` ✅ tous verts
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅
+- `eslint` sur ProgressionSection.tsx + playerProfile.ts : 0 warning
+
+**Trade-offs assumés** :
+
+- **Pas de re-fetch automatique sur changement de locale** : la React
+  Query cache du profil est globale (clé `[playerProfile, slug,
+  windowDays]`), ne discrimine pas par locale. Le `useProfileI18n` lit
+  `locale` du store et bascule en mémoire. Acceptable car les `label_*`
+  sont déjà co-localisés dans la réponse — pas besoin de re-fetch.
+- **Pas de marketing manifest pour la description** : on affiche
+  `description_fr`/`description_en` brut depuis le TOML
+  `challenges/templates.toml`. Si on veut un overlay i18n (variantes
+  marketing), un manifest dédié sera nécessaire (V3 si demande).
+
+**Conclusion / prochaine étape** : V2 3/4. Dernière étape — V2 commit-4
+(câblage Streaks perf-based + R5 condition "axe sort bottom-3 du radar"
+pour les campagnes).
+
+---
+
 ## [2026-05-18] feat(player-profile-v2)(commit-2) — awards.toml mapping + radar Objective fiable
 
 **Statut** : Complété. V2 2/4.
