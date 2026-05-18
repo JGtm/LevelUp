@@ -1,35 +1,160 @@
-// Package profile — service minimal exposant le LUSR + tendance LOWESS d'un joueur
-// pour la couche coach (V2 Ascension).
+// Package profile — service PlayerProfile (V1 Ascension).
 //
-// Le plan original V2 référence un « PlayerProfile V1 » qui n'a jamais été
-// matérialisé comme service unique : les briques existaient en pièces détachées
-// (match_skill_rank, skill_config tiers, temporal.LowessSmooth). Ce package
-// agrège ce qu'il faut pour les alertes coach (LUSRTierApproach +
-// LOWESSPositive) sans dépendre d'une infra absente.
+// Depuis 2026-05-18 (V1 PlayerProfile commit 4) ce package porte le service
+// complet décrit dans `PLAN_PLAYER_PROFILE_ASCENSION.md` §4-§5 :
+//   - Section A1 : radar narrative 6 axes + rôles
+//   - Section A2 : style FK/FD + engagement
+//   - Section B : LUSR tier + 8 composantes + tendance LOWESS
+//   - Section C : leviers + suggestions de défis
 //
-// Réutilisable par UI future (page profil progression).
+// Historique : précédente version V2-commit-6 ne portait que LUSRState +
+// TierState + MuTrend (mini-service workaround). V1 commit 4 enrichit
+// le `PlayerProfile` avec les nouveaux champs sans casser les callers V2
+// (la closure post-sync continue à lire `p.LUSR.Mu`, `p.NextTier.Label`
+// et `p.MuTrend`).
 package profile
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/analysis/narrative"
+)
 
 // PlayerProfile rassemble l'état de progression d'un joueur sur un titre.
+//
+// Conformément au plan §4 :
+//   - Section A1 : DominantRole + SecondaryRole + RadarAxes + Strengths + ImprovementAreas
+//   - Section A2 : StyleSignature + EngagementSnap
+//   - Section B  : SkillRating + LUSR + LUSRComponents + MuTrend
+//   - Section C  : Leverages + SuggestedChallenges
 type PlayerProfile struct {
-	UserID    string
-	TitleSlug string
-	UpdatedAt time.Time
+	UserID    string    `json:"user_id"`
+	TitleSlug string    `json:"title_slug"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// HasEnoughData : true si MatchesAnalyzed >= MinMatchesForProfile (30).
+	// Si false, les sections suivantes peuvent être vides ou partielles —
+	// le frontend doit afficher un état "données insuffisantes".
+	HasEnoughData   bool `json:"has_enough_data"`
+	MatchesAnalyzed int  `json:"matches_analyzed"`
+
+	// ── Section A1 : narrative ────────────────────────────────────────────
+
+	DominantRole     string             `json:"dominant_role,omitempty"`   // narrative.ImpactRole
+	SecondaryRole    string             `json:"secondary_role,omitempty"`
+	RadarAxes        []ParticipationAxisValue `json:"radar_axes,omitempty"` // 6 axes, valeurs 0..100
+	Strengths        []RadarAxisInsight `json:"strengths,omitempty"`        // top 3
+	ImprovementAreas []RadarAxisInsight `json:"improvement_areas,omitempty"` // bottom 3
+
+	// ── Section A2 : style & discipline ───────────────────────────────────
+
+	StyleSignature StyleSignature     `json:"style_signature"`
+	EngagementSnap EngagementSnapshot `json:"engagement_snap"`
+
+	// ── Section B : LUSR ──────────────────────────────────────────────────
 
 	// LUSR : état courant. Empty si pas assez de matchs (MinMatchesForRating).
-	LUSR LUSRState
+	LUSR LUSRState `json:"lusr"`
 
-	// Tier courant + prochain sub-tier (vide si tier max).
-	Tier     TierState
-	NextTier TierState
+	// SkillRating : tier + sub-tier formatés pour affichage UI.
+	SkillRating SkillRatingSnapshot `json:"skill_rating"`
 
-	// Tendance LOWESS sur μ (l'agrégat LUSR composite). Window indique la
-	// taille effective de l'observation. Slope > 0 = amélioration sur la
-	// fenêtre.
-	MuTrend LOWESSTrend
+	// Tier + NextTier conservés pour compat V2 callers (post-sync coach).
+	Tier     TierState `json:"-"`
+	NextTier TierState `json:"-"`
+
+	// LUSRComponents : 8 composantes avec courant/top20%/cible.
+	LUSRComponents []LUSRComponentBreakdown `json:"lusr_components,omitempty"`
+
+	// MuTrend : tendance LOWESS sur μ (composite). Compat V2 (coach LOWESSPositive).
+	MuTrend LOWESSTrend `json:"mu_trend"`
+
+	// ── Section C : coaching ──────────────────────────────────────────────
+
+	Leverages           []ProgressionLeverage `json:"leverages,omitempty"`
+	SuggestedChallenges []SuggestedChallenge  `json:"suggested_challenges,omitempty"`
 }
+
+// ParticipationAxisValue est une valeur scorée sur un axe radar narrative.
+type ParticipationAxisValue struct {
+	Axis  string  `json:"axis"`  // "combat" | "survival" | ...
+	Value float64 `json:"value"` // 0..100
+	Raw   float64 `json:"raw,omitempty"`
+}
+
+// RadarAxisInsight est un axe radar avec un message d'interprétation court.
+type RadarAxisInsight struct {
+	Axis    string  `json:"axis"`
+	Value   float64 `json:"value"`
+	Message string  `json:"message,omitempty"` // i18n key ou direct
+}
+
+// StyleSignature décrit le style offensif via First Kill / First Death.
+type StyleSignature struct {
+	FirstKillCount  int     `json:"first_kill_count"`
+	FirstDeathCount int     `json:"first_death_count"`
+	FKFDRatio       float64 `json:"fkfd_ratio"`            // FK / max(FD, 1)
+	StyleKey        string  `json:"style_key,omitempty"`   // "opportunistic_finisher" | "overextended" | "hyper_engaged" | "passive"
+}
+
+// EngagementSnapshot capture le score d'engagement + régularité.
+type EngagementSnapshot struct {
+	Score            float64 `json:"score"`               // 0-100
+	Tier             string  `json:"tier"`                // "low" | "regular" | "high" | "intense"
+	MatchesPerDayAvg float64 `json:"matches_per_day_avg"`
+	MaxGapDays       int     `json:"max_gap_days"`
+	RegularityCoach  string  `json:"regularity_coach,omitempty"` // i18n key
+}
+
+// SkillRatingSnapshot capture le tier LUSR + progression vers le suivant.
+type SkillRatingSnapshot struct {
+	TierName       string  `json:"tier_name"`        // "Diamond"
+	TierNameFR     string  `json:"tier_name_fr"`     // "Diamant"
+	SubTier        int     `json:"sub_tier"`         // 1..6
+	Label          string  `json:"label"`            // "Diamond III"
+	Mu             float64 `json:"mu"`
+	Sigma          float64 `json:"sigma"`
+	NextTierLabel  string  `json:"next_tier_label,omitempty"`
+	NextTierMu     float64 `json:"next_tier_mu,omitempty"`
+	GapToNext      float64 `json:"gap_to_next,omitempty"`     // NextTierMu - Mu
+	ProgressRatio  float64 `json:"progress_ratio,omitempty"`  // 0..1 dans le sub-tier courant
+}
+
+// LUSRComponentBreakdown décrit une des 8 composantes LUSR.
+type LUSRComponentBreakdown struct {
+	Name          string  `json:"name"`            // "kills_vs_expected"
+	Weight        float64 `json:"weight"`          // 0.27
+	CurrentAvg    float64 `json:"current_avg"`     // 0.52
+	PersonalTop20 float64 `json:"personal_top_20"` // 0.78
+	TargetForTier float64 `json:"target_for_tier"` // via RequiredCompositeForTier
+	Trend         float64 `json:"trend"`           // slope LOWESS sur 30j (positif = amélioration)
+}
+
+// ProgressionLeverage identifie un axe d'amélioration prioritaire.
+type ProgressionLeverage struct {
+	Component       string   `json:"component"`        // "deaths_vs_expected"
+	LeverageValue   float64  `json:"leverage_value"`   // (1 - current) × weight
+	NarrativeAxes   []string `json:"narrative_axes"`   // ["survival"]
+	CoachingMessage string   `json:"coaching_message"` // i18n key
+}
+
+// SuggestedChallenge est un template recommandé par le coach.
+type SuggestedChallenge struct {
+	TemplateID       string `json:"template_id"`
+	TargetTier       string `json:"target_tier"`        // "normal" | "heroic" | "legendary"
+	HistoricalStreak int    `json:"historical_streak"`  // nb complétions sur 90j (placeholder 0 en V1)
+	IsArcStep        bool   `json:"is_arc_step"`
+	ArcID            string `json:"arc_id,omitempty"`
+}
+
+// MinMatchesForProfile est le seuil sous lequel on considère que le profil
+// n'a pas assez de données pour les insights (Section A2 + B + C). Section A1
+// dégrade gracieusement (radar avec seulement les axes calculables).
+const MinMatchesForProfile = 30
+
+// reExportParticipationAxes liste les 6 axes du radar narrative (re-export
+// pour éviter au caller d'importer narrative directement).
+var reExportParticipationAxes = narrative.AllParticipationAxes
 
 // LUSRState capture l'état LUSR courant.
 type LUSRState struct {
