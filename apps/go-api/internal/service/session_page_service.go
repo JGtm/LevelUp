@@ -90,13 +90,18 @@ func (s *SessionPageService) GetPage(
 	compareLabel := resolveRequestedCompareLabel(req, suggestion)
 	compareEnabled := req.EnableCompare && compareLabel != "" && compareLabel != currentLabel
 
+	prevLabel, nextLabel := neighboringSessionLabels(labels, currentLabel)
+
 	resp := domain.SessionPageResponse{
-		CurrentSession:    currentEntry,
-		AvailableSessions: labels,
-		Matches:           buildSessionDetailRows(currentMatches, currentEntry.DominantCategory),
-		SuggestedCompare:  suggestion,
-		CompareEnabled:    compareEnabled,
-		CompareMetrics:    []domain.SessionCompareMetricRow{},
+		CurrentSession:       currentEntry,
+		AvailableSessions:    labels,
+		Matches:              buildSessionDetailRows(currentMatches, currentEntry.DominantCategory),
+		SuggestedCompare:     suggestion,
+		CompareEnabled:       compareEnabled,
+		CompareMatches:       []domain.SessionDetailMatchRow{},
+		CompareMetrics:       []domain.SessionCompareMetricRow{},
+		PreviousSessionLabel: prevLabel,
+		NextSessionLabel:     nextLabel,
 	}
 
 	if compareEnabled {
@@ -104,6 +109,7 @@ func (s *SessionPageService) GetPage(
 		resp.CompareSession = buildCompareEntry(compareMatches, compareLabel)
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
+			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory)
 		} else {
 			resp.CompareEnabled = false
 			slog.WarnContext(ctx, "session page: compare session missing after filtering",
@@ -121,6 +127,9 @@ func (s *SessionPageService) GetPage(
 		"suggestion_candidates", candidateCount,
 		"compare_enabled", resp.CompareEnabled,
 		"compare_session", compareLabel,
+		"compare_match_count", len(resp.CompareMatches),
+		"previous_session_label", derefString(prevLabel),
+		"next_session_label", derefString(nextLabel),
 	)
 
 	return resp, nil
@@ -315,4 +324,25 @@ func absInt(value int) int {
 		return -value
 	}
 	return value
+}
+
+// neighboringSessionLabels retourne les labels chronologiquement adjacents à
+// `currentLabel` dans `labels`. labels[i-1] = session précédente (plus ancienne),
+// labels[i+1] = session suivante (plus récente). Retourne (nil, nil) si la
+// session courante est aux bornes ou absente.
+func neighboringSessionLabels(labels []string, currentLabel string) (*string, *string) {
+	idx := indexOfSessionLabel(labels, currentLabel)
+	if idx == -1 {
+		return nil, nil
+	}
+	var prev, next *string
+	if idx-1 >= 0 {
+		v := labels[idx-1]
+		prev = &v
+	}
+	if idx+1 < len(labels) {
+		v := labels[idx+1]
+		next = &v
+	}
+	return prev, next
 }

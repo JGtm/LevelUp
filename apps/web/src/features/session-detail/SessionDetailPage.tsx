@@ -1,203 +1,37 @@
+/**
+ * SessionDetailPage — page détail d'une session avec drawer compare side-by-side.
+ *
+ * Structure orchestrale ; les blocs métier vivent dans des sous-fichiers :
+ *  - SessionSummaryCard (résumé KPI session active)
+ *  - SessionOutcomeTape / KDATimeline / KillsDonut / PerfTrend (4 charts)
+ *  - SessionMatchesTable (liste des matchs)
+ *  - SessionCompareDrawer (panneau latéral side-by-side, contient le même
+ *    layout pour la session comparée + SessionCompareMetrics)
+ * Helpers partagés (i18n hook, formatters, outcome tone) dans `_shared.ts`.
+ *
+ * Layout : quand le drawer est ouvert, le contenu de la page reste pleine
+ * largeur mais reçoit `xl:pr-[50vw]` pour libérer la moitié droite du viewport,
+ * créant la vue 2 colonnes côte-à-côte sur desktop ≥ xl.
+ */
 import { useState } from 'react'
-import type React from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DeltaCard } from '@/components/ui/delta-card'
-import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
+import { EmptyStateCard } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
-import type { SessionCompareEntry, SessionCompareMetricRow, SessionDetailMatchRow } from '@/lib/api/types'
 import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
 
-import { outcomeScale } from '@/lib/accessibility/scales'
-import { tokenCssVar } from '@/lib/accessibility'
-import { formatNumberFixed } from '@/lib/formatters'
-import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import { useSessionDetailPage } from './queries'
-import { formatMessage } from '@/lib/i18n/format'
-import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
-import { useAppShellStore } from '@/stores/appShellStore'
-
-function useSessionT() {
-  const locale = useAppShellStore((s) => s.locale)
-  return (key: SessionManifestKey, values?: Record<string, string | number>) =>
-    formatMessage(sessionManifest, key, locale, values)
-}
-
-function SessionSummaryCard({
-  title,
-  entry,
-  tone,
-}: {
-  title: string
-  entry: SessionCompareEntry | null
-  tone: 'primary' | 'compare'
-}) {
-  const toneClass = tone === 'primary' ? 'border-primary/20 bg-primary/5' : 'border-compare-b bg-compare-b/10'
-  const { data: fieldMappings } = useFieldMappings()
-  const labelOf = (key: string): string =>
-    fieldMappings?.fields[key]?.label ?? key
-  const t = useSessionT()
-
-  if (!entry) {
-    return (
-      <Card className={toneClass}>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">{title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <EmptyStateNotice
-            title={t('session.detail.summary_unavailable_title')}
-            description={t('session.detail.summary_unavailable_description')}
-          />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card className={toneClass}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="text-base">{title}</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">{entry.session_label}</p>
-          </div>
-          {entry.dominant_category && <Badge variant="secondary">{entry.dominant_category}</Badge>}
-        </div>
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <SessionStat label={t('session.detail.stat_matches')} value={entry.total_matches.toString()} />
-        <SessionStat label={t('session.detail.stat_wins_losses')} value={`${entry.wins} / ${entry.losses}`} />
-        <SessionStat label={labelOf('kda')} value={formatNumber(entry.kda, 2)} />
-        <SessionStat label={t('session.detail.stat_perf_score')} value={formatNumber(entry.performance_score, 1)} />
-      </CardContent>
-    </Card>
-  )
-}
-
-function SessionStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
-    </div>
-  )
-}
-
-function SessionMatchesTable({ matches }: { matches: SessionDetailMatchRow[] }) {
-  // Phase 4 plan finition multi-titres : libellés outcome via outcomes.toml.
-  // Si MULTI_TITLE_API_ENABLED=false, le hook retourne undefined et on tombe
-  // sur la clé canonique brute (UX dégradée mais lisible).
-  const { data: fieldMappings } = useFieldMappings()
-  const t = useSessionT()
-  const outcomeLabel = (outcome: number | null) => {
-    const key =
-      outcome === 2 ? 'win' : outcome === 3 ? 'loss' : outcome === 1 ? 'tie' : outcome === 4 ? 'dnf' : null
-    if (!key) return '—'
-    return fieldMappings?.outcomes?.[key]?.label ?? key
-  }
-
-  if (matches.length === 0) {
-    return (
-      <EmptyStateNotice
-        title={t('session.detail.matches_empty_title')}
-        description={t('session.detail.matches_empty_description')}
-      />
-    )
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-sm">
-        <thead>
-          <tr className="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
-            <th className="px-3 py-3 font-medium">{t('session.detail.col_time')}</th>
-            <th className="px-3 py-3 font-medium">{t('session.detail.col_mode')}</th>
-            <th className="px-3 py-3 font-medium">{t('session.detail.col_playlist')}</th>
-            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_kda')}</th>
-            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_accuracy')}</th>
-            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_perf_score')}</th>
-            <th className="px-3 py-3 text-right font-medium">{t('session.detail.col_outcome')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {matches.map((match) => (
-            <tr key={match.match_id} className="border-b border-border/60 text-foreground last:border-0">
-              <td className="px-3 py-3 text-muted-foreground">{formatShortDateTime(match.start_time)}</td>
-              <td className="px-3 py-3 font-medium">{match.pair_name || '—'}</td>
-              <td className="px-3 py-3 text-muted-foreground">{match.playlist_name || '—'}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{`${match.kills}/${match.deaths}/${match.assists}`}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatPercent(match.accuracy)}</td>
-              <td className="px-3 py-3 text-right tabular-nums">{formatNumber(match.performance_score, 1)}</td>
-              <td className="px-3 py-3 text-right">
-                {(() => { const tone = matchOutcomeTone(match.outcome); return <span className={tone.className} style={tone.style}>{outcomeLabel(match.outcome)}</span> })()}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function SessionCompareMetrics({ metrics }: { metrics: SessionCompareMetricRow[] }) {
-  const t = useSessionT()
-  const summaryKeys = ['kd_ratio', 'win_rate', 'kills_per_match', 'score']
-  const summaryRows = summaryKeys
-    .map((key) => metrics.find((row) => row.key === key))
-    .filter((row): row is SessionCompareMetricRow => Boolean(row))
-
-  return (
-    <div className="space-y-4">
-      {summaryRows.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {summaryRows.map((row) => (
-            <DeltaCard
-              key={row.key}
-              label={row.label}
-              value={row.value_a}
-              delta={parseDelta(row.delta)}
-              lowerIsBetter={false}
-            />
-          ))}
-        </div>
-      ) : null}
-
-      {metrics.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                <th className="px-3 py-3 font-medium">{t('session.detail.compare_col_metric')}</th>
-                <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_session_active')}</th>
-                <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_session_compared')}</th>
-                <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_delta')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metrics.map((row) => (
-                <tr key={row.key} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-3 text-muted-foreground">{row.label}</td>
-                  <td className="px-3 py-3 text-right font-medium text-foreground">{row.value_a}</td>
-                  <td className="px-3 py-3 text-right font-medium text-compare-b">{row.value_b}</td>
-                  <td className="px-3 py-3 text-right text-xs text-muted-foreground">{row.delta ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <EmptyStateNotice
-          title={t('session.detail.compare_metrics_empty_title')}
-          description={t('session.detail.compare_metrics_empty_description')}
-        />
-      )}
-    </div>
-  )
-}
+import { useSessionT } from './_shared'
+import { SessionSummaryCard } from './SessionSummaryCard'
+import { SessionMatchesTable } from './SessionMatchesTable'
+import { SessionKDATimeline } from './SessionKDATimeline'
+import { SessionOutcomeTape } from './SessionOutcomeTape'
+import { SessionKillsDonut } from './SessionKillsDonut'
+import { SessionPerfTrend } from './SessionPerfTrend'
+import { SessionCompareDrawer } from './SessionCompareDrawer'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -208,8 +42,6 @@ export function SessionDetailPage() {
   const [compareSessionLabel, setCompareSessionLabel] = useState('')
   const [enableCompare, setEnableCompare] = useState(false)
 
-  // Barre filtres locale — scope strict à la page Session-Detail. Pas de
-  // dépendance au store global.
   const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
     playerSlug,
     labels: {
@@ -287,11 +119,12 @@ export function SessionDetailPage() {
     compareSessionLabel || data.compare_session?.session_label || data.suggested_compare?.session_label || ''
   const hasSessions = data.available_sessions.length > 0
   const suggestionAvailable = Boolean(data.suggested_compare)
+  const drawerOpen = enableCompare && hasSessions
 
   return (
     <div className="flex flex-col">
       {bar}
-      <div className="space-y-6 p-6">
+      <div className={`space-y-6 p-6 transition-[padding] duration-200 ${drawerOpen ? 'xl:pr-[calc(50vw+1.5rem)]' : ''}`}>
         {suggestionAvailable && !enableCompare && (
           <div className="flex justify-end">
             <Button
@@ -350,7 +183,7 @@ export function SessionDetailPage() {
                     variant={enableCompare ? 'secondary' : 'default'}
                     onClick={() => setEnableCompare((value) => !value)}
                   >
-                    {enableCompare ? t('session.detail.compare_hide') : t('session.detail.compare_show')}
+                    {enableCompare ? t('session.detail.drawer_close') : t('session.detail.drawer_open')}
                   </Button>
                 </div>
               </CardContent>
@@ -371,30 +204,27 @@ export function SessionDetailPage() {
               </Card>
             ) : null}
 
-            <div className={enableCompare && data.compare_session ? 'grid gap-6 xl:grid-cols-2' : 'grid gap-6'}>
-              <SessionSummaryCard title={t('session.detail.session_active')} entry={data.current_session} tone="primary" />
-              {enableCompare && data.compare_session ? (
-                <SessionSummaryCard title={t('session.detail.session_compared')} entry={data.compare_session} tone="compare" />
-              ) : null}
+            <SessionSummaryCard
+              title={t('session.detail.session_active')}
+              entry={data.current_session}
+              tone="primary"
+            />
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">{t('session.detail.chart_outcomes_title')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SessionOutcomeTape matches={data.matches} />
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+              <SessionKDATimeline title={t('session.detail.chart_kda_title')} matches={data.matches} />
+              <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={data.matches} />
             </div>
 
-            {enableCompare ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{t('session.detail.compare_view_title')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {data.compare_session ? (
-                    <SessionCompareMetrics metrics={data.compare_metrics} />
-                  ) : (
-                    <EmptyStateNotice
-                      title={t('session.detail.no_compare_title')}
-                      description={t('session.detail.no_compare_description')}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            ) : null}
+            <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={data.matches} />
 
             <Card>
               <CardHeader>
@@ -412,58 +242,18 @@ export function SessionDetailPage() {
           />
         )}
       </div>
+
+      <SessionCompareDrawer
+        open={drawerOpen}
+        onClose={() => setEnableCompare(false)}
+        compareSession={data.compare_session}
+        compareMatches={data.compare_matches ?? []}
+        compareMetrics={data.compare_metrics}
+        suggestedCompare={data.suggested_compare}
+        previousLabel={data.previous_session_label ?? null}
+        nextLabel={data.next_session_label ?? null}
+        onSelectLabel={(label) => setCompareSessionLabel(label)}
+      />
     </div>
   )
-}
-
-// formatNumber : remplacé par lib/formatters/number.formatNumberFixed
-// (revue 2026-04-29 P2.6bis). Wrapper local conservé pour les call-sites
-// existants — bascule directe vers formatNumberFixed à terme.
-const formatNumber = formatNumberFixed
-
-// formatPercent : helper LOCAL (la value reçue est déjà en 0..100).
-// TODO P4 ADR 0006 : quand l'API passera en 0..1, basculer vers
-// `formatPercent` canonique de @/lib/formatters (qui fait *100 + " %").
-function formatPercent(value: number | null) {
-  if (value == null) {
-    return '—'
-  }
-  return `${value.toFixed(1)}%`
-}
-
-function parseDelta(delta: string | null) {
-  if (!delta) {
-    return null
-  }
-  const parsed = Number.parseFloat(delta)
-  return Number.isNaN(parsed) ? null : parsed
-}
-
-function formatShortDateTime(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-}
-
-// La résolution du libellé d'outcome est faite directement dans le composant
-// SessionMatchesTable via useFieldMappings + outcomes.toml. Le fallback
-// minimal en cas d'API absente est défini inline avec la clé canonique pour
-// rester scannable par le lint anti-hardcode (les libellés FR concrets
-// viennent du TOML).
-
-const OUTCOME_INT_KEY: Record<number, string> = { 2: 'win', 1: 'draw', 3: 'loss', 4: 'dnf' }
-
-function matchOutcomeTone(outcome: number | null): { className: string; style?: React.CSSProperties } {
-  if (outcome == null) return { className: 'text-muted-foreground' }
-  const key = OUTCOME_INT_KEY[outcome]
-  const token = key ? outcomeScale(key) : null
-  if (!token) return { className: 'text-muted-foreground' }
-  return { className: 'font-medium', style: { color: tokenCssVar(token) } }
 }
