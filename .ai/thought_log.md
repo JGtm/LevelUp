@@ -1,3 +1,34 @@
+## [2026-05-18] feat(player-profile-v1)(commit-3) — RequiredCompositeForTier (inversion math LUSR)
+
+**Statut** : Complété (branche `feat/player-profile-ascension`).
+
+**Contexte** : 3e commit V1. Implémente l'inversion math du composite_score LUSR : étant donné (μ courant, μ cible, σ), retourne le composite [0, 1] qui produirait un μ post-match approximativement égal à la cible. Nécessaire pour Section B du profil joueur (commit 4) et Section C (suggestions de défis ciblés sur composantes faibles).
+
+**Décisions / changements** :
+
+1. **`RequiredCompositeForTier(currentMu, targetMu, sigma) float64`** dans `internal/analysis/skill_rating.go` :
+   - Court-circuit si `|target - current| < 0.5` → 0.5.
+   - **Guards aux bornes** : calcul de `muAtZero` et `muAtOne` via `trueskillUpdate`. Si target hors [muAtZero, muAtOne] → retour direct 0.0/1.0 (évite convergence asymptotique du binary search).
+   - Binary search dans [0, 1], tolérance 0.01, max 20 itérations.
+   - Hypothèse : adversaire fictif à même μ/σ → wf=1 (cas symétrique pour stabilité).
+
+2. **Helper `clamp01`** pour bornage final.
+
+3. **Bug subtil corrigé** : test `NextSubTier` initialement `got = 0.99996` au lieu de 1.0. Cause : binary search converge asymptotiquement sans atteindre la borne exacte. Fix : guards early-return.
+
+4. **7 tests unitaires** : StableAtCurrent / NextSubTier (clamp 1) / ReachableSmallDelta (round-trip) / TargetBelow / FarBelow (clamp 0) / AllTiersEntry (6 sub-tests) / Clamp01_Bounds.
+
+**Note duplication** : 2 packages avec `trueskillUpdate` (sync + analysis). Plan §5.1 demande analysis → suivi du plan. Dedup éventuelle reportée post-V1.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/analysis/...` : OK (7 nouveaux + tous tests existants)
+
+**Conclusion / prochaine étape** : brique math posée. Le service PlayerProfile (commit 4) pourra exposer pour chaque composante LUSR la cible numérique à atteindre.
+
+---
+
 ## [2026-05-18] feat(player-profile-v1)(commit-2) — enrichir catalogue (5 templates + 2 arcs preset)
 
 **Statut** : Complété (branche `feat/player-profile-ascension`).
