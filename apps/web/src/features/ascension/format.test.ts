@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { interpolate, nextPPTier, formatMultiplier, STREAK_PP_TIERS } from './format'
+import {
+  interpolate,
+  nextPPTier,
+  formatMultiplier,
+  formatMetricValue,
+  STREAK_PP_TIERS,
+} from './format'
 
 describe('interpolate', () => {
   it('remplace les placeholders simples', () => {
@@ -68,5 +74,28 @@ describe('STREAK_PP_TIERS', () => {
   it('contient les 4 paliers du backend (4, 8, 15, 30)', () => {
     expect(STREAK_PP_TIERS.map((t) => t.length)).toEqual([4, 8, 15, 30])
     expect(STREAK_PP_TIERS.map((t) => t.multiplier)).toEqual([1.1, 1.25, 1.5, 1.75])
+  })
+})
+
+describe('formatMetricValue', () => {
+  it('arrondit les compteurs entiers (matches_played)', () => {
+    expect(formatMetricValue('matches_played', 124)).toBe('124')
+    expect(formatMetricValue('wins', 87.6)).toBe('88')
+    expect(formatMetricValue('kills', 1234)).toBe('1,234')
+  })
+
+  it('accuracy converti en pourcentage', () => {
+    expect(formatMetricValue('accuracy', 0.552)).toBe('55.2 %')
+    expect(formatMetricValue('accuracy', 0.5)).toBe('50.0 %')
+  })
+
+  it('KDA / KPM / score → 2 décimales', () => {
+    expect(formatMetricValue('kda', 1.45)).toBe('1.45')
+    expect(formatMetricValue('performance_score', 87.5)).toBe('87.5')
+    expect(formatMetricValue('kpm', 0.8)).toBe('0.8')
+  })
+
+  it('métrique inconnue → 2 décimales par défaut', () => {
+    expect(formatMetricValue('custom_metric', 3.14159)).toBe('3.14')
   })
 })
