@@ -1,3 +1,59 @@
+## [2026-05-18] feat(openspartan) — PR 3.B : endpoint HTTP POST /import/openspartan
+
+**Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 3.A `d80d2e2c`).
+
+**Contexte** : Dernier livrable backend du sprint OpenSpartan. PR 3.A a livré le service d'orchestration testable end-to-end ; PR 3.B branche le service au routeur HTTP avec multipart upload, validation SSO et jobs asynchrones.
+
+**Découverte de patterns existants** (sub-agent Explore) :
+
+1. **Router chi** monté sous `r.Route("/api/v1", ...)` dans `internal/api/server.go:350`. Pattern d'enregistrement d'un POST : `r.Post("/foo", handlers.NewFooHandler(deps...).Method)`.
+2. **Auth middleware** : `middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode)` au niveau du Route en mode strict ; sinon les handlers extraient `sess := middleware.GetSession(r.Context())` et refusent eux-mêmes. `sess.LinkedHaloIdentity.XUID` est la source du XUID Halo (`internal/domain/session.go`).
+3. **Job system** : `internal/domain/job.go` définit `JobType` + `AsyncJobStatus`. `internal/platform/jobs/store.go:NewStore(path) → *Store`, méthodes `Create(JobType, playerSlug) → *AsyncJobStatus`, `Update(id, fn(*AsyncJobStatus))`, `SetStatus(id, status, *step)`. Polling depuis le front via `GET /api/v1/jobs/{job_id}` (`handlers.NewJobsHandler(jobStore).GetJob`).
+4. **Multipart upload** : `internal/api/handlers/media.go:333` utilise `http.MaxBytesReader(w, r.Body, maxUploadSize)` + `r.ParseMultipartForm(32 << 20)`. Quota observé : 500 MB pour les médias. Pour OpenSpartan le plan dit 1 GiB.
+5. **Shared DuckDB en RW** : `platform_duckdb.OpenReadWriteShared(path)` retourne un `*DB` ref-counté, `SQLDb()` donne le `*sql.DB`. Path résolu via `config.SharedDBPath(cfg, "")`.
+
+**Décisions** :
+
+1. **`JobTypeOpenSpartanImport JobType = "openspartan_import"`** ajouté dans `domain/job.go` (entre `JobTypeSessionsRecalc` et `JobTypeOther`).
+2. **Handler `internal/api/handlers/openspartan_import.go`** :
+   - Struct `OpenSpartanImportHandler` + `OpenSpartanImportConfig` pour injection. Champs : `importSvc *service.OpenSpartanImportService`, `jobStore *jobs.Store`, `tempDir`, `stashDir`, `demoMode`.
+   - `StartImport(w, r)` :
+     - 503 si `demoMode`
+     - 401 si pas de `sess.LinkedHaloIdentity.XUID`
+     - 413 si upload > 1 GiB (`http.MaxBytesReader`)
+     - 400 si champ multipart `db` manquant ou fichier vide
+     - 202 + `{job_id, status}` sinon
+   - Owner XUID = `sess.LinkedHaloIdentity.XUID`, **jamais** depuis le payload.
+   - Stage le `.db` reçu sous `<tempDir>/openspartan_<uuid>.db`.
+   - Lance `go h.runImport(...)`. Helper `runImport` :
+     - `defer os.Remove(tmpPath)` → cleanup garanti
+     - `SetStatus(jobID, Running, "opening_database")` au démarrage
+     - `OnProgress` callback → `jobStore.Update(...)` avec `ProgressPct`, `MatchesDone`, `MatchesTotal`
+     - Sur succès : `Status=Succeeded`, `Result` rempli avec toutes les counts (`detected_owner_xuid`, `confidence`, `inserted_matches`, etc.)
+     - Sur erreur : `Status=Failed`, `Error.Code` classifié (`xuid_mismatch` / `owner_low_confidence` / `not_openspartan_db` / `import_error`)
+3. **Decomposition stricte** : `StartImport`, `saveUploadedDB`, `runImport`, `makeProgressCallback`, `recordSuccess`, `recordFailure`, `classifyImportError` — toutes < 80 lignes (règle CLAUDE.md).
+4. **`middleware.InjectSession(ctx, sess)` exporté** pour permettre aux tests handler de poser une session sans passer par le cookie/store complet. Marqué `// Intended for tests.` dans la docstring.
+5. **Router integration `server.go`** : route mountée à `POST /api/v1/import/openspartan` après `/backfill/start`. Skippée en `DemoMode`. Connexion shared RW ouverte une fois au boot via `OpenReadWriteShared` (ref-counté).
+
+**Résultats observés** :
+
+- `go build ./...` : OK · `go vet ./...` : OK
+- **6/6 nouveaux tests handler verts** (5.8s) :
+  - `TestStartImport_DemoModeReturns503`
+  - `TestStartImport_NoSessionReturns401`
+  - `TestStartImport_SessionWithoutLinkedIdentityReturns401`
+  - `TestStartImport_MissingDBFieldReturns400`
+  - `TestStartImport_EmptyFileReturns400`
+  - `TestStartImport_HappyPathReturns202WithJobID`
+- Cumul openspartan + mapper + service + handlers : tous verts.
+
+**Conclusion / prochaine étape** :
+
+- Sprint backend OpenSpartan complet. Reste **PR 3.5** (post-import recompute : sessions, perf_score, citations — peut être lancée automatiquement à la fin du handler ou laissée en cron) et **PR 4** (UI onboarding "Mode avancé").
+- L'endpoint est consommable côté front : `POST /api/v1/import/openspartan` multipart avec champ `db`, polling `GET /api/v1/jobs/{job_id}`. Le sprint XBOX SSO doit être livré pour que le SSO fournisse l'XUID dans la session.
+
+---
+
 ## [2026-05-18] feat(openspartan) — PR 3.A : helpers reader + service ImportFromOpenSpartan
 
 **Statut** : Complété (branche `feat/openspartan-import`, suite directe de PR 2 `adedcc6a`).
