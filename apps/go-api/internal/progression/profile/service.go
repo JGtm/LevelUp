@@ -369,11 +369,18 @@ func (s *Service) selectSuggestedChallenges(ctx context.Context, profile *Player
 	}
 	out := make([]SuggestedChallenge, 0, maxN)
 	for i := 0; i < maxN; i++ {
+		t := templates[i]
 		out = append(out, SuggestedChallenge{
-			TemplateID:       templates[i].ID,
-			TargetTier:       defaultTargetTierForTemplate(templates[i]),
+			TemplateID:       t.ID,
+			TargetTier:       defaultTargetTierForTemplate(t),
 			HistoricalStreak: 0, // V1 placeholder ; V2 lira l'historique de complétions
 			IsArcStep:        false,
+			// V2 §3 : hydrate les labels depuis le template pour que l'UI
+			// affiche un libellé humain sans round-trip au catalogue.
+			LabelFR:       t.LabelFR,
+			LabelEN:       t.LabelEN,
+			DescriptionFR: t.DescriptionFR,
+			DescriptionEN: t.DescriptionEN,
 		})
 	}
 	profile.SuggestedChallenges = out
