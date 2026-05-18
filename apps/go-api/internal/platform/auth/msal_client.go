@@ -43,6 +43,22 @@ type msalDeviceFlow struct {
 	verificationURL string
 	expiresIn       int
 	dc              public.DeviceCode
+	cache           *InMemoryCacheAccessor // conservé pour MSALCacheJSON() après AcquireToken
+}
+
+// MSALCacheJSON retourne le cache MSAL sérialisé (contient le refresh_token).
+// Vide si AcquireToken n'a pas encore été appelé ou si le cache n'est pas
+// disponible. Utilisé par PR 2.5a (SSO Xbox) pour persister un état suffisant
+// pour des refresh ultérieurs via AcquireTokenSilent.
+func (f *msalDeviceFlow) MSALCacheJSON() string {
+	if f.cache == nil {
+		return ""
+	}
+	data, err := f.cache.Serialize()
+	if err != nil {
+		return ""
+	}
+	return data
 }
 
 func (f *msalDeviceFlow) GetMessage() string         { return f.message }
@@ -66,6 +82,10 @@ func (f *msalDeviceFlow) AcquireToken(ctx context.Context) (string, error) {
 
 // InitDeviceFlow initie un Device Code Flow Microsoft.
 // cacheAccessor peut être nil pour utiliser un cache en mémoire.
+//
+// Si cacheAccessor est un *InMemoryCacheAccessor, il est conservé sur le flow
+// retourné pour que MSALCacheJSON() puisse le sérialiser après AcquireToken
+// (utilisé par le SSO Xbox pour persister le refresh_token, cf. PR 2.5a).
 func InitDeviceFlow(ctx context.Context, cacheAccessor cache.ExportReplace) (*msalDeviceFlow, error) {
 	opts := []public.Option{
 		public.WithAuthority(MSALAuthority),
@@ -89,13 +109,19 @@ func InitDeviceFlow(ctx context.Context, cacheAccessor cache.ExportReplace) (*ms
 		expiresIn = 0
 	}
 
-	return &msalDeviceFlow{
+	flow := &msalDeviceFlow{
 		message:         dc.Result.Message,
 		userCode:        dc.Result.UserCode,
 		verificationURL: dc.Result.VerificationURL,
 		expiresIn:       expiresIn,
 		dc:              dc,
-	}, nil
+	}
+	// Conserver l'accessor si c'est un InMemoryCacheAccessor — permet à
+	// MSALCacheJSON() de le sérialiser après AcquireToken pour persistance.
+	if mem, ok := cacheAccessor.(*InMemoryCacheAccessor); ok {
+		flow.cache = mem
+	}
+	return flow, nil
 }
 
 // AcquireTokenSilent tente d'obtenir un access_token depuis le cache MSAL.

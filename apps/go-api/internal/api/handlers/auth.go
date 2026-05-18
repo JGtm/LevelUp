@@ -193,6 +193,26 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		return
 	}
 
+	// PR 2.5a : capture des éléments nécessaires pour persistance RTA via SSO Xbox.
+	// Best-effort : tout échec ici est non bloquant (l'user peut quand même se connecter).
+	var (
+		msalCacheJSON string
+		xstsRTA       *auth_platform.XSTSResult
+	)
+	// Cache MSAL (contient le refresh_token Microsoft pour rafraîchir l'access_token plus tard).
+	if msalFlow, ok := flow.(interface{ MSALCacheJSON() string }); ok {
+		msalCacheJSON = msalFlow.MSALCacheJSON()
+	}
+	// XSTS audience xboxlive.com (RTA) — distinct du XSTS Halo retourné par provider.Exchange.
+	// L'access_token Microsoft est encore valide ici (~1h), on l'utilise pour l'acquisition.
+	xstsRTAResult, xstsErr := auth_platform.AcquireXSTSForRTA(ctx, accessToken)
+	if xstsErr != nil {
+		slog.WarnContext(ctx, "auth: AcquireXSTSForRTA échec (non bloquant)",
+			"attempt_id", attemptID, "err", xstsErr)
+	} else {
+		xstsRTA = xstsRTAResult
+	}
+
 	// Marquer comme autorisé et stocker tokens + identité dans l'attempt store.
 	// GetDeviceFlowStatus les transférera dans la session lors du prochain poll.
 	h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
@@ -201,6 +221,15 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 		a.ClearanceToken = result.Tokens.ClearanceToken
 		a.Gamertag = result.Gamertag
 		a.XUID = result.XUID
+
+		// PR 2.5a : transport vers OnAuthSuccess (jamais exposé via HTTP).
+		a.MicrosoftAccessToken = accessToken
+		a.MSALCacheJSON = msalCacheJSON
+		if xstsRTA != nil {
+			a.XSTSRTAToken = xstsRTA.Token
+			a.XSTSRTAUserHash = xstsRTA.UserHash
+			a.XSTSRTAExpiresAt = xstsRTA.NotAfter
+		}
 	})
 }
 

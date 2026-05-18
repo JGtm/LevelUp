@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
@@ -23,13 +24,25 @@ import (
 
 // XboxSSOLinkStrategy implémente auth.LinkStrategy pour le mode SSO Xbox.
 // L'user est créé (ou retrouvé) à partir du XUID validé par le flow MSAL.
+//
+// PR 2.5a : si `tokenStore` est non-nil, persiste les tokens RTA (XSTS + cache
+// MSAL + access_token) dans data/auth/watcher_tokens/{xuid}.json pour usage
+// ultérieur par le watcher daemon multi-user (PR 2.5b).
 type XboxSSOLinkStrategy struct {
-	users *userstore.Store
+	users      *userstore.Store
+	tokenStore *auth.MultiUserTokenStore // optionnel — nil = pas de persistance RTA
 }
 
-// NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy.
+// NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy sans persistance RTA.
 func NewXboxSSOLinkStrategy(users *userstore.Store) *XboxSSOLinkStrategy {
 	return &XboxSSOLinkStrategy{users: users}
+}
+
+// WithTokenStore injecte le MultiUserTokenStore pour persister les tokens RTA
+// après chaque login SSO réussi. Pattern fluent (cohérent avec les autres builders).
+func (s *XboxSSOLinkStrategy) WithTokenStore(ts *auth.MultiUserTokenStore) *XboxSSOLinkStrategy {
+	s.tokenStore = ts
+	return s
 }
 
 // Vérification compile-time.
@@ -82,5 +95,40 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 		Gamertag: attempt.Gamertag,
 		XUID:     attempt.XUID,
 	}
+
+	// PR 2.5a — Persistance tokens RTA (best-effort, non bloquant).
+	// Si tokenStore est nil (test ou config minimale), on saute simplement.
+	if s.tokenStore != nil {
+		s.persistRTATokens(ctx, attempt)
+	}
 	return nil
+}
+
+// persistRTATokens écrit les UserTokens dans le MultiUserTokenStore.
+// Best-effort : un échec est loggé mais n'interrompt pas le login.
+// Le watcher daemon utilisera ces tokens (PR 2.5b) pour subscribe RTA.
+func (s *XboxSSOLinkStrategy) persistRTATokens(ctx context.Context, attempt *auth.Attempt) {
+	if attempt.XSTSRTAToken == "" {
+		slog.DebugContext(ctx, "xbox_sso: pas de XSTS RTA capturé (AcquireXSTSForRTA a échoué), skip persistance")
+		return
+	}
+
+	tokens := &auth.UserTokens{
+		XUID:           attempt.XUID,
+		Gamertag:       attempt.Gamertag,
+		XSTSToken:      attempt.XSTSRTAToken,
+		XSTSUserHash:   attempt.XSTSRTAUserHash,
+		XSTSExpiresAt:  attempt.XSTSRTAExpiresAt,
+		AccessToken:    attempt.MicrosoftAccessToken,
+		OAuthExpiresAt: time.Now().Add(50 * time.Minute), // conservateur (Microsoft expires_in ~1h)
+		MSALCacheJSON:  attempt.MSALCacheJSON,
+	}
+	if err := s.tokenStore.Upsert(tokens); err != nil {
+		slog.WarnContext(ctx, "xbox_sso: persistance tokens RTA échouée (non bloquant)",
+			"xuid", attempt.XUID, "err", err)
+		return
+	}
+	slog.InfoContext(ctx, "xbox_sso: tokens RTA persistés",
+		"xuid", attempt.XUID, "gamertag", attempt.Gamertag,
+		"xsts_expires_at", attempt.XSTSRTAExpiresAt)
 }

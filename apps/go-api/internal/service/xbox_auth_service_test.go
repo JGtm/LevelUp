@@ -5,6 +5,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth"
@@ -112,6 +113,100 @@ func TestXboxSSOLinkStrategy_MissingGamertag_ReturnsError(t *testing.T) {
 	err := s.OnAuthSuccess(context.Background(), attempt, sess)
 	if err == nil {
 		t.Fatal("attendu erreur pour gamertag vide, got nil")
+	}
+}
+
+func TestXboxSSOLinkStrategy_WithTokenStore_PersistsRTATokens(t *testing.T) {
+	users := newXboxStore(t)
+	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
+
+	s := service.NewXboxSSOLinkStrategy(users).WithTokenStore(tokenStore)
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{
+		Gamertag:             "Spartan42",
+		XUID:                 "2535471234567890",
+		MicrosoftAccessToken: "ms-access-token",
+		MSALCacheJSON:        `{"AccessToken":{"...":"..."}}`,
+		XSTSRTAToken:         "xsts-rta-token",
+		XSTSRTAUserHash:      "rta-user-hash",
+		XSTSRTAExpiresAt:     time.Now().Add(55 * time.Minute),
+	}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+
+	// Tokens persistés dans MultiUserTokenStore.
+	stored, err := tokenStore.Load("2535471234567890")
+	if err != nil {
+		t.Fatalf("tokens pas persistés : %v", err)
+	}
+	if stored.Gamertag != "Spartan42" {
+		t.Errorf("Gamertag persisté = %q", stored.Gamertag)
+	}
+	if stored.XSTSToken != "xsts-rta-token" {
+		t.Errorf("XSTSToken = %q, want xsts-rta-token", stored.XSTSToken)
+	}
+	if stored.XSTSUserHash != "rta-user-hash" {
+		t.Errorf("XSTSUserHash = %q", stored.XSTSUserHash)
+	}
+	if stored.AccessToken != "ms-access-token" {
+		t.Errorf("AccessToken = %q", stored.AccessToken)
+	}
+	if stored.MSALCacheJSON == "" {
+		t.Error("MSALCacheJSON devrait être persisté")
+	}
+}
+
+func TestXboxSSOLinkStrategy_WithTokenStore_SkipPersistanceIfNoXSTSRTA(t *testing.T) {
+	users := newXboxStore(t)
+	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
+
+	s := service.NewXboxSSOLinkStrategy(users).WithTokenStore(tokenStore)
+
+	sess := &domain.SessionData{}
+	// XSTSRTAToken vide (AcquireXSTSForRTA a échoué dans pollDeviceFlow).
+	attempt := &auth.Attempt{
+		Gamertag: "Spartan42",
+		XUID:     "2535471234567890",
+		// XSTSRTAToken absent → persistance skip
+	}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess (no RTA): %v", err)
+	}
+
+	// Aucun fichier persisté.
+	if _, err := tokenStore.Load("2535471234567890"); err == nil {
+		t.Error("aucun token ne devrait être persisté si XSTSRTAToken vide")
+	}
+
+	// User créé quand même.
+	if _, err := users.GetByXUID("2535471234567890"); err != nil {
+		t.Errorf("user devrait être créé même sans XSTS RTA : %v", err)
+	}
+}
+
+func TestXboxSSOLinkStrategy_WithoutTokenStore_StillWorks(t *testing.T) {
+	users := newXboxStore(t)
+	// Pas de tokenStore injecté.
+	s := service.NewXboxSSOLinkStrategy(users)
+
+	sess := &domain.SessionData{}
+	attempt := &auth.Attempt{
+		Gamertag:     "Spartan42",
+		XUID:         "2535471234567890",
+		XSTSRTAToken: "xsts-rta-token", // présent mais ignoré (pas de tokenStore)
+	}
+
+	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
+		t.Fatalf("OnAuthSuccess: %v", err)
+	}
+
+	// User créé, pas de panic sur persistance.
+	if _, err := users.GetByXUID("2535471234567890"); err != nil {
+		t.Errorf("user devrait être créé : %v", err)
 	}
 }
 

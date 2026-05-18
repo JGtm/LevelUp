@@ -414,7 +414,14 @@ func NewRouter(
 		// Hors mode xbox, c'est PasswordLinkStrategy (LinkIdentity sur user déjà connecté).
 		authHandler := handlers.NewAuthHandler(sessionStore, attemptStore, cfg.DemoMode, tokenProvider)
 		if cfg.AuthMode == "xbox" {
-			authHandler.WithLinkStrategy(service.NewXboxSSOLinkStrategy(users))
+			// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
+			// après login (data/auth/watcher_tokens/{xuid}.json). Backward compat : le
+			// watcher daemon legacy continue d'utiliser le fichier mono-user (PR 2.5b).
+			watcherTokensDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+			multiUserTokens := auth_platform.NewMultiUserTokenStore(watcherTokensDir)
+			authHandler.WithLinkStrategy(
+				service.NewXboxSSOLinkStrategy(users).WithTokenStore(multiUserTokens),
+			)
 		} else {
 			authHandler.WithUserStore(users)
 		}
