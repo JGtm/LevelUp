@@ -48,6 +48,14 @@ func GetSession(ctx context.Context) *domain.SessionData {
 	return v.(*domain.SessionData)
 }
 
+// InjectSession returns a context with the given SessionData attached under
+// the same private key WithSession uses. Intended for tests of handlers that
+// want to bypass the cookie-based middleware and assert behaviour against a
+// pre-built session.
+func InjectSession(ctx context.Context, sess *domain.SessionData) context.Context {
+	return context.WithValue(ctx, sessionKey{}, sess)
+}
+
 // loadOrCreate charge la session depuis le cookie ou en crée une nouvelle.
 func loadOrCreate(r *http.Request, store *session.Store) *domain.SessionData {
 	c, err := r.Cookie(session.CookieName)
