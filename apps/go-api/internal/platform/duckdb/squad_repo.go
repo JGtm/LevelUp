@@ -116,17 +116,25 @@ func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// shared.xuid_aliases : (xuid PK, gamertag, last_seen, source, updated_at)
+	// xuid_aliases : (xuid PK, gamertag, last_seen, source, updated_at)
 	// Source canonique pour ce titre — peuplée par le sync engine. La DB globale
 	// est obsolète (migration one-shot souvent vide).
+	//
+	// Sprint B1 commit 9c.2 : shared-only via SharedReader, naming root-level.
 	const q = `
 SELECT xuid
-FROM shared.xuid_aliases
+FROM xuid_aliases
 WHERE gamertag ILIKE ?
 ORDER BY last_seen DESC NULLS LAST
 LIMIT 1`
 
-	rows, err := r.pdb.ReadDB().Query(ctx, q, gamertag)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return "", false, fmt.Errorf("LookupXUIDByGamertag(%q): shared reader: %w", gamertag, err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, gamertag)
 	if err != nil {
 		return "", false, fmt.Errorf("LookupXUIDByGamertag(%q): %w", gamertag, err)
 	}
@@ -143,16 +151,68 @@ LIMIT 1`
 
 // LoadSquadMatches charge les matchs communs joueur+coÃ©quipier (Q30).
 //
-// TODO follow-up post-sprint B1 : split+merge cross-DB (Q30SquadMatches : shared.match_participants
-// + v_match_full + medals_earned subquery + LEFT JOIN player_match_enrichment).
-// Reste sur pdb.ReadDB() tant que attachShared est en place.
+// Sprint B1 commit 9c.2 : split cross-DB en 3 étapes.
+//
+//	Étape 1 (SharedReader) : Q30SquadMatchesSharedQuery — match_participants
+//	  ⨝ v_match_full ⨝ match_participants (teammate filter) + subquery
+//	  medals_earned. 25 cols shared.
+//	Étape 2 (pdb.Player) : player_match_enrichment WHERE match_id IN (...).
+//	Étape 3 (Go) : merge LEFT JOIN — hydrate session_id, session_label,
+//	  performance_score, is_with_friends.
 func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q30SquadMatches, teammateXUID, playerXUID)
+	// Étape 1 : shared rows.
+	results, err := r.loadSquadMatchesShared(ctx, playerXUID, teammateXUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSquadMatches: %w", err)
+	}
+	if len(results) == 0 {
+		return nil, nil
+	}
+
+	// Étape 2 + 3 : merge enrichments.
+	matchIDs := make([]string, 0, len(results))
+	for _, m := range results {
+		matchIDs = append(matchIDs, m.MatchID)
+	}
+	enrichments, err := r.loadSquadEnrichments(ctx, matchIDs)
+	if err != nil {
+		return nil, fmt.Errorf("LoadSquadMatches: %w", err)
+	}
+	for i := range results {
+		if e, ok := enrichments[results[i].MatchID]; ok {
+			if e.sessionID.Valid {
+				v := int(e.sessionID.Int64)
+				results[i].SessionID = &v
+			}
+			if e.sessionLabel.Valid {
+				v := e.sessionLabel.String
+				results[i].SessionLabel = &v
+			}
+			if e.performanceScore.Valid {
+				v := e.performanceScore.Float64
+				results[i].PerformanceScore = &v
+			}
+			results[i].IsWithFriends = e.isWithFriends
+		}
+	}
+	return results, nil
+}
+
+// loadSquadMatchesShared exécute l'étape 1 du split LoadSquadMatches.
+// Retourne les SquadMatchRow sans les cols PME (zero values).
+func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error) {
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q30SquadMatchesSharedQuery, teammateXUID, playerXUID)
+	if err != nil {
+		return nil, fmt.Errorf("shared query: %w", err)
 	}
 	defer rows.Close()
 
@@ -177,10 +237,6 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 			&row.TimePlayedSecs,
 			&row.DurationSeconds,
 			&row.TeamMMR,
-			&row.SessionID,
-			&row.SessionLabel,
-			&row.PerformanceScore,
-			&row.IsWithFriends,
 			&row.HeadshotKills,
 			&row.PerfectKills,
 			&row.EnemyMMR,
@@ -189,11 +245,48 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 			&row.MapID,
 			&row.PlaylistID,
 		); err != nil {
-			return nil, fmt.Errorf("LoadSquadMatches scan: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, row)
 	}
 	return result, rows.Err()
+}
+
+// squadEnrichment porte les colonnes player_match_enrichment hydratées en
+// étape 2 du split LoadSquadMatches.
+type squadEnrichment struct {
+	sessionID        sql.NullInt64
+	sessionLabel     sql.NullString
+	performanceScore sql.NullFloat64
+	isWithFriends    bool
+}
+
+// loadSquadEnrichments exécute l'étape 2 du split LoadSquadMatches.
+func (r *SquadRepo) loadSquadEnrichments(ctx context.Context, matchIDs []string) (map[string]squadEnrichment, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	query := fmt.Sprintf(`
+		SELECT match_id, session_id, session_label, performance_score,
+		       COALESCE(is_with_friends, FALSE)
+		FROM player_match_enrichment
+		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
+	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return nil, fmt.Errorf("enrichment query: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string]squadEnrichment, len(matchIDs))
+	for rows.Next() {
+		var mid string
+		var e squadEnrichment
+		if err := rows.Scan(&mid, &e.sessionID, &e.sessionLabel, &e.performanceScore, &e.isWithFriends); err != nil {
+			return nil, fmt.Errorf("enrichment scan: %w", err)
+		}
+		out[mid] = e
+	}
+	return out, rows.Err()
 }
 
 // LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
