@@ -647,13 +647,22 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 	defer writerPlayer.Release()
 
-	slog.DebugContext(ctx, "sync: acquisition lease shared DB", "gamertag", e.gamertag, "db", e.sharedDBPath)
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err)
-		return result, fmt.Errorf("run: %w", err)
+	// Sprint B1 commit 9k : si sharedProvider est attaché, c'est lui qui
+	// acquiert le lease shared via Provider.AcquireWriter (cf. acquireSharedWriter
+	// + provider.go:231). Prendre le lease ici en plus causerait un deadlock
+	// (sync.Mutex non-réentrant : le Provider attendrait le lease que CETTE
+	// goroutine tient déjà, jusqu'à expiration du ctx). En mode legacy
+	// (sharedProvider nil), on garde le lease ici car acquireSharedWriter fait
+	// alors OpenSharedDB direct sans dblease.
+	if e.sharedProvider == nil {
+		slog.DebugContext(ctx, "sync: acquisition lease shared DB", "gamertag", e.gamertag, "db", e.sharedDBPath)
+		writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+		if err != nil {
+			slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err)
+			return result, fmt.Errorf("run: %w", err)
+		}
+		defer writerShared.Release()
 	}
-	defer writerShared.Release()
 
 	// ─── Ouverture des DBs ─────────────────────────────────────────────────────
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)

@@ -1,3 +1,48 @@
+## [2026-05-19] fix(sync) + test(e2e) — Commit 10a : double dblease deadlock + E2E sync↔readers
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 10a — premier E2E vrai engine + Provider, et fix d'un **bug latent critique** révélé par ce test).
+
+**Bug découvert** : `engine.run()` (chemin RunDelta/RunFull en prod) prenait le
+dblease `shared_matches` à la ligne 651, puis appelait `acquireSharedWriter` →
+`Provider.AcquireWriter` qui **reprend le même dblease** (provider.go:231). Le
+`sync.Mutex` Go étant non-réentrant, la même goroutine attendait son propre lock
+jusqu'à expiration du contexte. Tout `RunDelta` en mode B-swap (commit 8i, le
+fix officiel du bug Madina97294) deadlockait en silence.
+
+**Pourquoi non détecté avant** : aucun test existant n'exerçait
+`engine.RunDelta(ctx)` + `WithSharedProvider(provider)` simultanément.
+`engine_e2e_test.go` utilise `processMatch` direct sans dblease. `T5 burst` du
+sprint B1 utilise `Provider.AcquireWriter` direct sans engine. Le scheduler
+auto_sync n'a pas de test E2E. Le commit 8i.1 disait "tests verts" mais
+n'avait jamais activé le path code en intégration.
+
+**Livré** :
+
+1. **`engine.go`** : skip `writerShared` lease quand `e.sharedProvider != nil`.
+   Le Provider acquiert le lease lui-même en interne (provider.go:231) — pas
+   besoin de double-lock. Mode legacy (sharedProvider nil) inchangé.
+
+2. **`engine_provider_e2e_test.go`** (nouveau, build tag integration) :
+   `TestE2E_SyncEngine_HTTPReaders_Concurrency_integration`.
+   - Setup : tempdir + real DuckDB files + Provider via Manager.For + Pool via
+     GetOrOpen avec SharedReader injecté + Engine via WithSharedProvider +
+     mockHaloClient avec fixtures match.
+   - Action : 5 RunDelta successifs (4 matchs chacun = 20 total) sous trafic
+     concurrent de 10 goroutines readers polling `COUNT(*) FROM match_registry`
+     via `pool.SharedReadDB().Get()` (chemin HTTP-like).
+   - Assertions : 0 "different configuration", 0 "Catalog Error", 5/5 syncs OK,
+     ≥ 1400 reads OK (1443 observés), 20 matchs finaux, Provider StateRO post-cycle,
+     pas de fuite goroutines.
+
+**Résultats** : 3 runs consécutifs verts. Suite sync complète (116s) verte. Suite
+duckdb (39s) + sharedprovider (8s) + scheduler (5s) vertes. Zéro régression.
+
+**Impact prod** : avec ce fix, `auto_sync.RunDelta` peut effectivement s'exécuter
+en mode B-swap sans deadlock. Sans ce fix, le sprint B1 traitait à moitié le bug
+Madina97294 — le path code "B-swap activé" était bloqué silencieusement.
+
+---
+
 ## [2026-05-19] test(duckdb) — Commit 9j : Phase 4 audit + helpers purs (mapMetricToColumn, axisValueExpression)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9j — Phase 4 du plan dette restante).
