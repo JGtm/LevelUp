@@ -297,6 +297,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		// start_time_utc TIMESTAMPTZ (UTC garanti après migration). end_time
 		// suit la même structure. Les queries de prod lisent toujours
 		// COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC').
+		// Sprint B1 commit 8k.9 : aligné sur seedPlayerSchema pour duration_seconds /
+		// last_updated_at / playable_duration_seconds — colonnes lues par
+		// playerMatchesSharedBaseSelect via SharedReader.
 		`CREATE TABLE shared.match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMP, end_time TIMESTAMP,
@@ -305,12 +308,15 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			map_id VARCHAR,
 			pair_id VARCHAR,
 			game_variant_id VARCHAR,
+			last_updated_at TIMESTAMPTZ,
 			map_name VARCHAR, map_name_fr VARCHAR,
 			game_variant_name VARCHAR,
 			pair_name VARCHAR, pair_name_fr VARCHAR,
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
-			team_0_score INTEGER, team_1_score INTEGER)`,
+			team_0_score INTEGER, team_1_score INTEGER,
+			duration_seconds INTEGER,
+			playable_duration_seconds INTEGER)`,
 		// Sprint B1 commit 8k.3 : colonnes alignées sur seedPlayerSchema pour
 		// permettre aux repos (weapon_kills, etc.) qui lisent grenade_kills /
 		// melee_kills / shots_* via SharedReadDB() de trouver le schéma attendu.
@@ -374,6 +380,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
