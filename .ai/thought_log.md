@@ -1,3 +1,50 @@
+## [2026-05-19] refactor(main) — Commit 8g : câblage Subscribe + injection Provider dans le pool
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8g du sprint B3).
+
+**Contexte** : intégration du mécanisme B3 dans le code de production. Le commit 8f a livré la mécanique testable manuellement ; 8g la branche réellement au lifecycle serveur.
+
+**3 modifications** :
+
+1. **`AppConfig.SharedReader duckdb.SharedReader`** (`internal/config/config.go`) — champ runtime injecté au boot par main.go en mode B-swap. nil en mode legacy. Documentation explicite.
+
+2. **`PlayerPoolConfig.SharedReader` propagé** (`internal/config/player_resolver.go`) — les 2 sites qui créent un `PlayerPoolConfig` (resolveDemoPlayer + buildPlayerPoolConfig) passent maintenant `cfg.SharedReader` au pool. En mode B-swap, ça active `bSwapEnabled=true` sur le PlayerDB.
+
+3. **main.go branche Subscribe** — en mode flag-on, après création du Provider :
+   ```go
+   provider.Subscribe(func(evt sharedprovider.SwapEvent) {
+       switch evt.Direction {
+       case DirectionPreSwapToRW:
+           duckdb.OnSharedSwap(ctx, duckdb.SwapDirPreSwapToRW)
+       case DirectionRWToRO:
+           duckdb.OnSharedSwap(ctx, duckdb.SwapDirRWToRO)
+       case DirectionErrorToRO:
+           duckdb.OnSharedSwap(ctx, duckdb.SwapDirErrorToRO)
+       }
+   })
+   ```
+   L'adapter traduit `sharedprovider.SwapEvent` (sous-package) → `duckdb.SwapDirection` (parent), évitant tout cycle d'import. Unsubscribe stocké dans `closeShared` pour cleanup au shutdown.
+
+**Décisions techniques** :
+
+1. **`cfg.SharedReader` comme champ runtime** (pas chargé depuis JSON) : c'est un handle vivant, jamais sérialisé. Le nom `cfg` est un peu trompeur (config = settings d'habitude) mais c'est le moyen le plus propre de propager le Provider à `resolveDemoPlayer` et `buildPlayerPoolConfig` sans changer leurs signatures (qui sont consommées par auto-sync pool, scheduler, etc.).
+
+2. **Adapter inline dans main.go** : pas de fonction helper exportée. Le `switch evt.Direction → duckdb.SwapDir*` est 8 lignes, pas de raison d'extraire. Si on en ajoute d'autres translations (multi-titre, sync engine), on extraira un `internal/api/swap_adapter.go`.
+
+3. **swapCtx = context.Background()** : pas de scope court — les Subscribe callbacks doivent fonctionner pendant tout le lifecycle serveur. Si besoin d'annulation (au shutdown), on passera schedulerCtx ou srvCtx. Pour l'instant simple.
+
+**Tests verts** :
+- duckdb : 78.7s
+- sharedprovider : 14.5s
+- config : 7.6s
+- go build ./cmd/server : OK
+
+Aucune régression. Le mode flag-off reste exactement comme avant (cfg.SharedReader nil → fallback LegacySharedReader, pas de Subscribe).
+
+**Prochaine étape (8h)** : activer T9 cible (`TestPool_AttachShared_SurvivesSwapCycle`) — le test rouge SKIP du commit 7 — qui valide bout en bout que main.go + pool + Subscribe + Prepare/Restore fonctionnent comme un tout. Probablement aussi mettre `LEVELUP_USE_SHARED_PROVIDER=1` par défaut (inverser le default).
+
+---
+
 ## [2026-05-19] feat(B3) — Commit 8f COMPLETÉ : DETACH explicite débloque B3 (POC diagnostique)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`). B3 fonctionne. Test E2E `TestPool_PrepareAndRestoreSharedSwap_integration` VERT.
