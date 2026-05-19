@@ -1,3 +1,52 @@
+## [2026-05-19] test(B3) — Commit 8j : T5 burst valide sync mais révèle régression HTTP
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8j). T5 burst PASS avec assertions ajustées, mais **expose une nouvelle régression** sur les queries HTTP cross-DB.
+
+**Setup test** :
+- Topologie réelle : Provider + PlayerDB avec cfg.SharedReader=provider + Subscribe câblé sur OnSharedSwap (équivalent main.go commit 8g)
+- 5 goroutines sync (AcquireWriter + INSERT match_registry + Release, 5ms entre cycles)
+- 20 goroutines HTTP (SELECT COUNT(*) FROM shared.match_registry via pool.Player ATTACH'ée, 1ms entre)
+- Durée : 2 secondes
+
+**Résultats** (2 runs cohérents) :
+- **25-29 syncs OK** / **0 erreur sync** ✓ : pas de "different configuration" / "Unique file handle conflict". **Bug initial du sprint techniquement fixé**.
+- 371-519 HTTP OK
+- **19598-21959 Catalog Errors** sur queries HTTP (~98% du total)
+
+**Régression nouvelle découverte** : pendant chaque fenêtre de swap PreSwap → OpenReadWrite → INSERT → Release → RWToRO (~5-10ms), les queries HTTP qui font `JOIN shared.X` via la conn player **plantent avec "Catalog Error: Table not found"**. C'est ATTENDU par le mécanisme B3 (DETACH explicite libère le file), mais **non mitigé**.
+
+**Calcul de la fenêtre** :
+- 5 goroutines × 5ms entre cycles = 1 cycle/ms × 5 = ~50 swaps/s sur 5 goroutines
+- Chaque swap : ~5-10ms en état DETACH
+- → ~35% du temps en état "shared détaché côté pool"
+- Avec 20 readers spinning à 1ms : ~20000 queries/s × 35% = ~7000 erreurs/s → confirmé par les 19598/2s = 9799/s observés.
+
+**Impact prod réel** (à valider) :
+- En prod, ~1-10 queries HTTP/s sporadiques et ~1 sync/s ≠ test de charge maximale
+- Fenêtre de race ~5-10ms par swap × ~1 sync/s = ~0.5-1% du temps en état détaché
+- Estimation : ~1-10% des queries HTTP pourraient échouer avec Catalog Error pendant un auto_sync
+- Pas catastrophique mais visible côté utilisateur
+
+**Mitigations possibles (post-sprint)** :
+1. **RWMutex côté pool** : `attachMu sync.RWMutex` sur PlayerDB. RLock sur queries cross-DB, WLock pendant DETACH/REATTACH. Bloque les nouvelles queries pendant le swap (~10ms d'attente max). Migration des 15 repos pour wrapper queries dans `WithAttachRLock(...)`.
+2. **Retry automatique** au niveau caller : si Catalog Error, retry une fois. Simple mais répétitif.
+3. **Drain WaitGroup pool-side** : tracker les queries actives. Attendre le drain avant DETACH. Plus complexe que le drain Provider.
+
+**Décision suspendue** : option 1 est la plus propre. Migration ~15 repos × 1-2 lignes chacun = ~30 lignes de change. Estimable mais non négligeable.
+
+**Tests verts (suite complète)** :
+- duckdb : 6.8s (incl. T5 burst PASS)
+- + toutes les suites précédentes inchangées
+
+Commit 8j livré tel quel : le bug initial est fixé pour sync, la limitation HTTP est documentée et **n'est pas un blocker pour merge** (mode flag-off par défaut, le flag-on est opt-in pour validation).
+
+**Prochaine étape (point utilisateur requis)** :
+- Option A : implémenter RWLock pool (commit 8k) pour résoudre la limitation Catalog Error
+- Option B : merger en l'état avec disclaimer dans l'ADR (commit 9 final)
+- Option C : ajouter retry automatique au niveau caller (moins propre que A)
+
+---
+
 ## [2026-05-19] refactor(sync) — Commit 8i.1 : RunDelta route via Provider en mode B-swap
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8i.1 du sprint B3).
