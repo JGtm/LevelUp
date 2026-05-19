@@ -346,6 +346,12 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// shared.killer_victim_pairs utilisée par Q26 (top encounters) et Q27
+		// (rivals). Sprint B1 commit 8k.8 : ajouté pour SharedReader migration.
+		`CREATE TABLE shared.killer_victim_pairs (
+			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
+			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
+			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1)`,
 		// shared.v_match_full utilisée par Q4 (filters) et Q5 (history) cross-DB.
 		// Sprint B1 commit 8k.6 : ajouté pour que les queries SharedReader-only
 		// (split-merge LoadMatchesForFilters) trouvent la vue côté pdb.Shared.
@@ -367,6 +373,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {

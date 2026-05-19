@@ -385,10 +385,16 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	}
 	sqlText := fmt.Sprintf(Q26CareerTopEncountersTpl, excludeClause)
 
-	// Exécuté sur la connexion Player (qui a `shared` ATTACHé). La connexion
-	// Shared directe ne connaît pas l'alias `shared` (cf. attachShared dans
-	// pool.go).
-	rows, err := r.pdb.ReadDB().Query(ctx, sqlText, args...)
+	// Sprint B1 commit 8k.8 : migré vers SharedReader. La query est shared-only
+	// (match_participants, match_registry, killer_victim_pairs, v_gamertag_lookup)
+	// — tables/vues au niveau root du catalogue shared_matches_v2.duckdb.
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("CareerRepo.GetTopEncountersGlobal: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, sqlText, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("CareerRepo.GetTopEncountersGlobal: %w", err)
 	}
@@ -482,10 +488,15 @@ func (r *CareerRepo) queryRivals(ctx context.Context, orderCol string) ([]domain
 		return nil, fmt.Errorf("CareerRepo.queryRivals: invalid order column %q", orderCol)
 	}
 	sqlText := fmt.Sprintf(Q27CareerRivalsTpl, orderCol)
-	// On exécute sur la connexion Player (qui a `shared` ATTACHé) — elle
-	// résout les `shared.*` du SQL. La connexion Shared directe ne connaît
-	// pas l'alias `shared`.
-	rows, err := r.pdb.ReadDB().Query(
+	// Sprint B1 commit 8k.8 : migré vers SharedReader. Q27 est shared-only
+	// (killer_victim_pairs + v_gamertag_lookup, tous root-level).
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.queryRivals(%s): shared reader: %w", orderCol, err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(
 		ctx, sqlText,
 		r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID,
 	)
