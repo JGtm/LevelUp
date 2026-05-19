@@ -1,3 +1,34 @@
+## [2026-05-19] docs(adr) — Commit 8l : ADR 0016 + cleanup commentaire trade-off main.go
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8l du sprint B1).
+
+**Livré** :
+
+1. **`docs/adr/0016-shared-db-provider-b-swap.md`** : ADR complet documentant l'architecture SharedDBProvider :
+   - Context : bug "different configuration" auto_sync RunDelta sur Madina97294 (log 2026-05).
+   - Decision : Provider + state machine RO/Draining/RW/Reopening/Error + Subscribe API + métriques expvar.
+   - DuckDB-Go quirks documentés (DETACH vs Reopen via POC S5).
+   - Migration scope : 14 repos migrés (commits 8c-8k.13), 5 squad_repo cross-DB queries reportés.
+   - Consequences + mitigations + rollback strategy (flag `LEVELUP_USE_SHARED_PROVIDER`).
+
+2. **`cmd/server/main.go:197-220`** : commentaire trade-off historique nettoyé. Remplacé par référence ADR 0016 et explicitation du flag de transition. Préserve le default "0" (legacy) jusqu'au commit 9.
+
+3. **`CLAUDE.md`** : ajout ADR 0016 dans la liste des décisions architecturales.
+
+**Stratégie révisée du sprint** : `attachShared` (pool.go) reste en place pour les 5 squad_repo cross-DB queries. Le retrait complet d'attachShared est déféré post-commit 9 dans un commit follow-up dédié au split+merge de ces 5 méthodes (estimation : ~300 LOC).
+
+**Renumeration commits restants** :
+- 8l (ce commit) : ADR + cleanup comment trade-off (sans retrait attachShared)
+- 8m : Validation B-swap sous charge (T5 burst), pas de code change si déjà vert
+- 9 : Activation par défaut du flag `LEVELUP_USE_SHARED_PROVIDER=1` + retrait flag
+- 9b : Revue qualité production-level (delivery-checklist)
+
+**Tests verts** : duckdb (hors TOML pré-existant), sharedprovider 8s.
+
+**Prochaine étape (8m)** : validation T5 burst (déjà vert depuis commit 8j) — documentation que la suite reste verte sous l'activation Provider. Possiblement no-op si tout est déjà en place.
+
+---
+
 ## [2026-05-19] refactor(squad_repo) — Commit 8k.13 : 3 méthodes shared-only migrées + TODOs cross-DB
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.13 du sprint B1).
