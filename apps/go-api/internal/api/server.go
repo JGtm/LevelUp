@@ -540,7 +540,7 @@ func NewRouter(
 			if sharedRW, err := platform_duckdb.OpenReadWriteShared(config.SharedDBPath(cfg, "")); err != nil {
 				slog.Warn("openspartan_import_disabled_shared_db_unavailable", "err", err)
 			} else {
-				osImportSvc := service.NewOpenSpartanImportService(sharedRW.SQLDb())
+				osImportSvc := service.NewOpenSpartanImportService(sharedRW.SQLDb(), config.SharedDBPath(cfg, ""))
 				osPostImportSvc := service.NewOpenSpartanPostImportService(cfg, sharedRW.SQLDb())
 				osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
 					ImportService:     osImportSvc,
