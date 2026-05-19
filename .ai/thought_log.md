@@ -1,3 +1,29 @@
+## [2026-05-19] refactor(compare_repo) — Commit 8k.10 : 5 méthodes migrées (shared-only)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.10 du sprint B1).
+
+**Livré** : 5 méthodes shared-only de `compare_repo.go` migrées vers `pdb.SharedReadDB().Get()` avec naming root-level (pas de `shared.` prefix) :
+
+1. **`GetLocalStats`** : `match_participants ⨝ v_gamertag_lookup ⨝ xuid_aliases ⨝ subquery medals_earned`
+2. **`GetFavoriteWeapon`** : `v_weapon_kills` (best-effort silencieux)
+3. **`GetEncounterStats`** : 2 queries (`match_participants` auto-join + `killer_victim_pairs` 2× subquery)
+4. **`GetCrossMatchSample`** : `match_participants` auto-join + subquery `medals_earned`
+5. **`ResolveXUID`** : `xuid_aliases` lookup gamertag
+
+**Reporté (player-only, pas besoin migration)** :
+- `GetPlayerATH`, `GetPlayerATHFor` : queries player_only (career_progression, player_match_enrichment, match_skill_rank)
+- `lookupWeaponLabelCompare` : metadata DB
+
+**Tests updates (repos_extra_test.go)** :
+- `TestCompareRepo_GetLocalStats` ddls : ajout des vues root-level (match_participants, medals_earned, xuid_aliases, killer_victim_pairs, v_gamertag_lookup). INSERT explicite des colonnes (ajout `team_id` au schéma).
+- `TestCompareRepo_GetFavoriteWeapon` ddls : ajout vue root-level `v_weapon_kills`.
+
+**Tests verts** : duckdb (hors TOML pré-existant), sharedprovider, api/handlers, sync 116s.
+
+**Prochaine étape (8k.11)** : campaign_repo.
+
+---
+
 ## [2026-05-19] refactor(player_matches_repo) — Commit 8k.9 : Load split+merge (BIG one)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.9 du sprint B1).

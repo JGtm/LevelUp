@@ -30,6 +30,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
+	// Sprint B1 commit 8k.10 : shared-only via SharedReader (root-level naming).
 	const q = `
 		SELECT
 			mp.xuid,
@@ -50,23 +51,29 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			AVG(COALESCE(mp.avg_life_seconds, 0.0))              AS avg_life_secs,
 			AVG(COALESCE(mp.headshot_kills, 0))                  AS headshot_kills_per_game,
 			AVG(COALESCE(me.perfect_count, 0.0))                 AS perfect_kills_per_game
-		FROM shared.match_participants mp
-		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
-		LEFT JOIN shared.xuid_aliases xa ON xa.xuid = mp.xuid
+		FROM match_participants mp
+		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
+		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
 		LEFT JOIN (
 			SELECT match_id, xuid, SUM(count) AS perfect_count
-			FROM shared.medals_earned
+			FROM medals_earned
 			WHERE medal_name_id = 1512363953
 			GROUP BY match_id, xuid
 		) me ON me.match_id = mp.match_id AND me.xuid = mp.xuid
 		WHERE mp.xuid = ?
 		GROUP BY mp.xuid, COALESCE(vg.gamertag, xa.gamertag, '')`
 
-	row := r.pdb.Player.QueryRow(ctx, q, xuid)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetLocalStats: shared reader: %w", err)
+	}
+	defer release()
+
+	row := db.QueryRowContext(ctx, q, xuid)
 
 	var s domain.NormalizedPlayerStats
 	var kda, kdr sql.NullFloat64
-	err := row.Scan(
+	err = row.Scan(
 		&s.XUID, &s.Gamertag, &s.Matches,
 		&s.WinRate,
 		&kda, &kdr,
@@ -176,18 +183,26 @@ func (r *CompareRepo) GetFavoriteWeapon(ctx context.Context, xuid string) (*doma
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// Sprint B1 commit 8k.10 : shared-only via SharedReader.
 	const q = `
 		SELECT wk.effective_weapon_id AS weapon_id, COUNT(*) AS kills
-		FROM shared.v_weapon_kills wk
+		FROM v_weapon_kills wk
 		WHERE wk.xuid = ?
 		  AND wk.effective_weapon_id NOT IN (0, 1, 2)
 		GROUP BY wk.effective_weapon_id
 		ORDER BY kills DESC
 		LIMIT 1`
 
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.DebugContext(ctx, "CompareRepo.GetFavoriteWeapon: shared reader indisponible (best-effort)", "xuid", xuid, "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
 	var wid UBigint
 	var kills int
-	err := r.pdb.Player.QueryRow(ctx, q, xuid).Scan(&wid, &kills)
+	err = db.QueryRowContext(ctx, q, xuid).Scan(&wid, &kills)
 	if err != nil {
 		// Inclut ErrNoRows et erreur de table manquante — best-effort.
 		if err != sql.ErrNoRows {
@@ -241,6 +256,7 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// Sprint B1 commit 8k.10 : 2 queries shared-only via SharedReader.
 	const qMatches = `
 		SELECT
 			COUNT(*) AS total,
@@ -250,13 +266,19 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id = b.team_id THEN 1 END), 0) AS winrate_as_ally,
 			SUM(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id AND a.outcome = 2 THEN 1.0 ELSE 0.0 END) /
 				NULLIF(COUNT(CASE WHEN a.team_id IS NOT NULL AND b.team_id IS NOT NULL AND a.team_id != b.team_id THEN 1 END), 0) AS winrate_vs_enemy
-		FROM shared.match_participants a
-		JOIN shared.match_participants b ON b.match_id = a.match_id AND b.xuid = ?
+		FROM match_participants a
+		JOIN match_participants b ON b.match_id = a.match_id AND b.xuid = ?
 		WHERE a.xuid = ?`
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetEncounterStats: shared reader: %w", err)
+	}
+	defer release()
 
 	var total, allyCount, enemyCount int
 	var winrateAsAlly, winrateVsEnemy sql.NullFloat64
-	if err := r.pdb.Player.QueryRow(ctx, qMatches, xuidB, xuidA).Scan(&total, &allyCount, &enemyCount, &winrateAsAlly, &winrateVsEnemy); err != nil {
+	if err := db.QueryRowContext(ctx, qMatches, xuidB, xuidA).Scan(&total, &allyCount, &enemyCount, &winrateAsAlly, &winrateVsEnemy); err != nil {
 		return nil, fmt.Errorf("CompareRepo.GetEncounterStats matches: %w", err)
 	}
 	if total == 0 {
@@ -265,11 +287,11 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 
 	const qKV = `
 		SELECT
-			COALESCE((SELECT SUM(kill_count) FROM shared.killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0),
-			COALESCE((SELECT SUM(kill_count) FROM shared.killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0)`
+			COALESCE((SELECT SUM(kill_count) FROM killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0),
+			COALESCE((SELECT SUM(kill_count) FROM killer_victim_pairs WHERE killer_xuid = ? AND victim_xuid = ?), 0)`
 
 	var killsDealt, deathsSuffered int
-	if err := r.pdb.Player.QueryRow(ctx, qKV, xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
+	if err := db.QueryRowContext(ctx, qKV, xuidA, xuidB, xuidB, xuidA).Scan(&killsDealt, &deathsSuffered); err != nil {
 		slog.DebugContext(ctx, "CompareRepo.GetEncounterStats: killer_victim non disponible (best-effort)", "err", err)
 	}
 
@@ -302,6 +324,7 @@ func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB stri
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	// Sprint B1 commit 8k.10 : shared-only via SharedReader.
 	const q = `
 		SELECT
 			COUNT(*)                                        AS matches_count,
@@ -309,18 +332,24 @@ func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB stri
 			COALESCE(AVG(b.avg_life_seconds), 0.0)          AS avg_life_secs,
 			COALESCE(AVG(b.headshot_kills), 0.0)            AS headshot_kills_per_game,
 			COALESCE(AVG(COALESCE(me.perfect_count, 0)), 0.0) AS perfect_kills_per_game
-		FROM shared.match_participants a
-		JOIN shared.match_participants b ON b.match_id = a.match_id AND b.xuid = ?
+		FROM match_participants a
+		JOIN match_participants b ON b.match_id = a.match_id AND b.xuid = ?
 		LEFT JOIN (
 			SELECT match_id, xuid, SUM(count) AS perfect_count
-			FROM shared.medals_earned
+			FROM medals_earned
 			WHERE medal_name_id = 1512363953
 			GROUP BY match_id, xuid
 		) me ON me.match_id = b.match_id AND me.xuid = b.xuid
 		WHERE a.xuid = ?`
 
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetCrossMatchSample: shared reader: %w", err)
+	}
+	defer release()
+
 	var sample domain.CrossMatchSample
-	err := r.pdb.Player.QueryRow(ctx, q, xuidB, xuidA).Scan(
+	err = db.QueryRowContext(ctx, q, xuidB, xuidA).Scan(
 		&sample.MatchesCount,
 		&sample.MaxKillingSpree,
 		&sample.AvgLifeSecs,
@@ -344,13 +373,20 @@ func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string,
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Sprint B1 commit 8k.10 : shared-only via SharedReader.
 	const q = `
-		SELECT xuid FROM shared.xuid_aliases
+		SELECT xuid FROM xuid_aliases
 		WHERE lower(gamertag) = lower(?)
 		LIMIT 1`
 
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("CompareRepo.ResolveXUID: shared reader: %w", err)
+	}
+	defer release()
+
 	var xuid string
-	err := r.pdb.Player.QueryRow(ctx, q, gamertag).Scan(&xuid)
+	err = db.QueryRowContext(ctx, q, gamertag).Scan(&xuid)
 	if err == sql.ErrNoRows {
 		return "", nil // non trouvé localement — pas une erreur fatale
 	}

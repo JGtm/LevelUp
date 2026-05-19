@@ -61,6 +61,8 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 	db := openMemDB(t)
 	ctx := context.Background()
 
+	// Sprint B1 commit 8k.10 : ajout des vues root-level pour aligner sur le
+	// contrat SharedReader (queries sans préfixe `shared.`).
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE TABLE IF NOT EXISTS shared.match_participants (
@@ -68,13 +70,23 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 			kills INTEGER, deaths INTEGER, assists INTEGER,
 			outcome INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
 			damage_taken DOUBLE DEFAULT 0, max_killing_spree SMALLINT DEFAULT 0,
-			avg_life_seconds DOUBLE DEFAULT 0, headshot_kills SMALLINT DEFAULT 0
+			avg_life_seconds DOUBLE DEFAULT 0, headshot_kills SMALLINT DEFAULT 0,
+			team_id INTEGER DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.medals_earned (
 			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		`CREATE TABLE IF NOT EXISTS shared.killer_victim_pairs (
+			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER DEFAULT 1
+		)`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
+		// Vues root-level pour les queries via SharedReader.
+		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
+		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
+		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,
 	}
 	for _, q := range ddls {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -83,9 +95,10 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 	}
 
 	inserts := []string{
-		// match_id, xuid, gamertag, kills, deaths, assists, outcome, accuracy, damage_dealt,
-		// damage_taken, max_killing_spree, avg_life_seconds, headshot_kills
-		`INSERT INTO shared.match_participants VALUES
+		`INSERT INTO shared.match_participants
+			(match_id, xuid, gamertag, kills, deaths, assists, outcome, accuracy,
+			 damage_dealt, damage_taken, max_killing_spree, avg_life_seconds, headshot_kills)
+			VALUES
 			('m1', 'x1', 'Player1', 20, 5, 10, 2, 55.0, 3000.0, 1500.0, 10, 60.0, 5),
 			('m2', 'x1', 'Player1', 10, 10, 5, 3, 45.0, 2000.0, 1000.0, 5, 45.0, 3)`,
 		// Médaille "Tir parfait" (medal_name_id=1512363953) : 2 en m1, 0 en m2.
@@ -148,6 +161,8 @@ func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
 	db := openMemDB(t)
 	ctx := context.Background()
 
+	// Sprint B1 commit 8k.10 : ajout des vues root-level pour aligner sur le
+	// contrat SharedReader (queries sans préfixe `shared.`).
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE TABLE IF NOT EXISTS shared.match_participants (
@@ -155,13 +170,23 @@ func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
 			kills INTEGER, deaths INTEGER, assists INTEGER,
 			outcome INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
 			damage_taken DOUBLE DEFAULT 0, max_killing_spree SMALLINT DEFAULT 0,
-			avg_life_seconds DOUBLE DEFAULT 0, headshot_kills SMALLINT DEFAULT 0
+			avg_life_seconds DOUBLE DEFAULT 0, headshot_kills SMALLINT DEFAULT 0,
+			team_id INTEGER DEFAULT 0
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.medals_earned (
 			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER
 		)`,
 		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		`CREATE TABLE IF NOT EXISTS shared.killer_victim_pairs (
+			match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR, kill_count INTEGER DEFAULT 1
+		)`,
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
+		// Vues root-level pour les queries via SharedReader.
+		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
+		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
+		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,
 	}
 	for _, q := range ddls {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -250,6 +275,8 @@ func TestCompareRepo_GetFavoriteWeapon(t *testing.T) {
 		`CREATE VIEW shared.v_weapon_kills AS
 			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// Sprint B1 commit 8k.10 : vue root-level pour SharedReader.
+		`CREATE VIEW v_weapon_kills AS SELECT * FROM shared.v_weapon_kills`,
 		// weapon_labels dans le même DB (Metadata = db dans le test).
 		`CREATE TABLE weapon_labels (
 			weapon_id UBIGINT PRIMARY KEY, name_fr VARCHAR, name_en VARCHAR)`,
