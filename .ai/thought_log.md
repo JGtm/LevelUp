@@ -1,3 +1,28 @@
+## [2026-05-19] refactor(campaign_repo) — Commit 8k.11 : CampaignSampleProvider migré
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.11 du sprint B1).
+
+**Livré** :
+
+`CampaignSampleProvider` change d'API : `db *DB` → `pdb *PlayerDB` pour accéder à SharedReader + pdb.Player.
+
+1. **`LoadAxisSamples`** (shared-only : match_participants ⨝ match_registry) → migré vers `pdb.SharedReadDB().Get()`, naming root-level.
+
+2. **`loadLUSRComponentSamples`** (cross-DB : lusr_component_history ⨝ shared.match_registry) → split+merge en 3 étapes :
+   - Étape 1 (SharedReader) : `match_registry` filtré par window + playlist_id, ordonné par start_time ASC → liste (match_id, start_time).
+   - Étape 2 (pdb.Player) : `lusr_component_history` WHERE component_name AND match_id IN (...).
+   - Étape 3 (Go) : merge en suivant l'ordre chronologique de l'étape 1.
+
+**Callers mis à jour** :
+- `internal/api/handlers/campaign.go:181` : `NewCampaignSampleProvider(pdb.Player)` → `NewCampaignSampleProvider(pdb)`
+- `internal/api/post_sync_progression.go:295` : idem
+
+**Tests verts** : duckdb (hors TOML pré-existant), sharedprovider, api/handlers, sync 116s.
+
+**Prochaine étape (8k.12)** : catalog_repo.
+
+---
+
 ## [2026-05-19] refactor(compare_repo) — Commit 8k.10 : 5 méthodes migrées (shared-only)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.10 du sprint B1).
