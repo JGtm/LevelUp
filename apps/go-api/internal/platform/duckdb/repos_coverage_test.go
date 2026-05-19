@@ -68,15 +68,37 @@ func TestFanoutRepo_InsertStubEnrichments_Idempotent(t *testing.T) {
 	repo := NewFanoutRepo(pdb)
 	ctx := context.Background()
 
-	_, _ = repo.InsertStubEnrichments(ctx, "xuid001", []string{"m1", "m2"})
-	inserted, err := repo.InsertStubEnrichments(ctx, "xuid001", []string{"m1", "m2", "m3"})
+	// 1er appel : m1, m2 → 2 rows insérées.
+	first, err := repo.InsertStubEnrichments(ctx, "xuid001", []string{"m1", "m2"})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("1er insert: %v", err)
 	}
-	// m1 and m2 already exist → only m3 should count, but INSERT OR IGNORE
-	// still "succeeds" without error, so inserted=3 (loop counts all, not affected rows).
-	// Just verify no error.
-	_ = inserted
+	if first != 2 {
+		t.Errorf("1er insert count = %d, want 2", first)
+	}
+
+	// 2e appel : m1, m2 (déjà présents), m3 → INSERT OR IGNORE n'erreure pas
+	// sur les duplicates, donc le compteur retourne 3 (toutes les iterations
+	// du loop "réussissent" côté SQL).
+	second, err := repo.InsertStubEnrichments(ctx, "xuid001", []string{"m1", "m2", "m3"})
+	if err != nil {
+		t.Fatalf("2e insert: %v", err)
+	}
+	if second != 3 {
+		t.Errorf("2e insert count = %d, want 3 (loop count, pas affected rows)", second)
+	}
+
+	// Vraie vérification de l'idempotence : 3 rows distinctes au total
+	// dans la DB (m1, m2, m3), pas 5 (qui prouverait que INSERT OR IGNORE
+	// crée des doublons). C'est l'invariance critique du nom du test.
+	var count int
+	if err := db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM player_match_enrichment WHERE match_id IN ('m1','m2','m3')`).Scan(&count); err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+	if count != 3 {
+		t.Errorf("rows distinctes = %d, want 3 (idempotence cassée)", count)
+	}
 }
 
 func TestFanoutRepo_LoadExistingEnrichments_Subset(t *testing.T) {
@@ -148,104 +170,15 @@ func TestFanoutRepo_CountCommonMatchesForXUID_Empty(t *testing.T) {
 }
 
 // ── LeaderboardRepo ──────────────────────────────────────────────────────────
-
-func seedSharedWithCSR(t *testing.T, db *DB) {
-	t.Helper()
-	ctx := context.Background()
-
-	ddl := []string{
-		`CREATE SCHEMA IF NOT EXISTS shared`,
-		`CREATE TABLE IF NOT EXISTS shared.match_participants (
-			match_id VARCHAR,
-			xuid VARCHAR,
-			gamertag VARCHAR,
-			csr_after INTEGER DEFAULT 0
-		)`,
-		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (
-			xuid VARCHAR,
-			gamertag VARCHAR
-		)`,
-	}
-	for _, q := range ddl {
-		if _, err := db.Exec(ctx, q); err != nil {
-			t.Fatalf("seedSharedWithCSR DDL: %v\nSQL: %s", err, q)
-		}
-	}
-
-	inserts := []string{
-		`INSERT INTO shared.match_participants VALUES
-			('m1', 'xuid001', 'AlphaPlayer', 1500),
-			('m2', 'xuid001', 'AlphaPlayer', 1550),
-			('m1', 'xuid002', 'BravoGamer', 1400),
-			('m1', 'xuid003', 'CharlieX', 0)`,
-		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES
-			('xuid001', 'AlphaPlayer'),
-			('xuid002', 'BravoGamer'),
-			('xuid003', 'CharlieX')`,
-	}
-	for _, q := range inserts {
-		if _, err := db.Exec(ctx, q); err != nil {
-			t.Fatalf("seedSharedWithCSR INSERT: %v\nSQL: %s", err, q)
-		}
-	}
-}
-
-func TestLeaderboardRepo_GetLocalLeaderboard(t *testing.T) {
-	t.Skip("pre-existing SQL bug: ambiguous gamertag reference in GROUP BY")
-	db := openMemDB(t)
-	seedSharedWithCSR(t, db)
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewLeaderboardRepo(pdb)
-
-	entries, err := repo.GetLocalLeaderboard(context.Background(), "hi", "s1", "ranked")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 2 { // xuid003 has csr=0, excluded
-		t.Fatalf("expected 2 entries, got %d", len(entries))
-	}
-	if entries[0].CSR < entries[1].CSR {
-		t.Fatal("expected descending CSR order")
-	}
-	if entries[0].Rank != 1 || entries[1].Rank != 2 {
-		t.Fatal("expected sequential ranks")
-	}
-	if entries[0].TitleSlug != "hi" {
-		t.Fatalf("expected title slug 'hi', got %q", entries[0].TitleSlug)
-	}
-}
-
-func TestLeaderboardRepo_GetLocalLeaderboard_Empty(t *testing.T) {
-	t.Skip("pre-existing SQL bug: ambiguous gamertag reference in GROUP BY")
-	db := openMemDB(t)
-	ctx := context.Background()
-
-	ddl := []string{
-		`CREATE SCHEMA IF NOT EXISTS shared`,
-		`CREATE TABLE IF NOT EXISTS shared.match_participants (
-			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR, csr_after INTEGER DEFAULT 0
-		)`,
-		`CREATE TABLE IF NOT EXISTS shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-	}
-	for _, q := range ddl {
-		if _, err := db.Exec(ctx, q); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	pdb := &PlayerDB{Player: db, Shared: db}
-	repo := NewLeaderboardRepo(pdb)
-
-	entries, err := repo.GetLocalLeaderboard(context.Background(), "", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 0 {
-		t.Fatalf("expected 0, got %d", len(entries))
-	}
-}
-
+//
+// 2 tests retirés au commit 12c : ils étaient `t.Skip`d depuis longtemps avec
+// commentaire "pre-existing SQL bug: ambiguous gamertag reference in GROUP BY",
+// mais la query actuelle de GetLocalLeaderboard (leaderboard_repo.go:34) n'a
+// ni GROUP BY ni colonne gamertag — elle lit `match_skill_rank` (player DB) +
+// `shared.match_registry`, pas `shared.match_participants` comme seedait le
+// test. Le code a évolué, le test était mort. Couverture future via un test
+// fresh aligné sur la query réelle.
+//
 // ── MatchExclusionRepo ───────────────────────────────────────────────────────
 
 func seedSharedForExclusion(t *testing.T, db *DB) {

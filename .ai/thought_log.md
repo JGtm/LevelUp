@@ -1,3 +1,70 @@
+## [2026-05-19] refactor + cleanup — Commits 12a/12b/12c : concerns de la revue
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commits 12a-12c — concerns C1-C6 de la revue de code senior post-10c traités).
+
+**Livré** :
+
+1. **12a — refactor AcquireWriter + split notifyAfterSwap** (C1+C2+C6) :
+   - Extraction de `gateToDraining` (12L) et `swapToRW` (53L) en helpers privés.
+     `AcquireWriter` passe de 117L à 58L (sous la limite CLAUDE.md 80L).
+   - Split de `notifyAfterSwap` en 2 fonctions avec contracts explicites :
+     - `notifyAfterSwap` : transitions RWToRO/ErrorToRO, SANS p.mu
+     - `notifyAfterSwapLocked` : PreSwapToRW exclusivement, SOUS p.mu
+     - `notifySubscribers` : fan-out interne partagé (factorise le snapshot subs)
+     - Garde-fou runtime log Error si `notifyAfterSwapLocked` appelé avec
+       une Direction != PreSwapToRW.
+   - Doc explicite de la race RW→RO entre unlock et notify : DuckDB tolère N
+     ouvertures RO simultanées, donc le Subscriber peut reopen son handle
+     RO en parallèle d'un Get() concurrent sans conflit. Documenté avec ref
+     à `TestProvider_HTTPReadersWaitDuringSync_integration`.
+
+2. **12b — split `provider.go` en 3 fichiers** (C1) :
+   - `provider.go` (268L) : interface Provider, providerImpl struct, constants,
+     New, Get (lecture RO), State, Path, Close. Cycle de vie public + reader.
+   - `provider_writer.go` (293L) : AcquireWriter + helpers privés
+     (gateToDraining, swapToRW, waitForDrain, rollbackFromDraining,
+     releaseWriter, tryReopenROLocked, retryReopenLoop). Mécanique d'écriture.
+   - `provider_subscribe.go` (85L) : Subscribe + notifyAfterSwap +
+     notifyAfterSwapLocked + notifySubscribers. Système de notification.
+   - Aucun changement de comportement — déplacement physique uniquement.
+
+3. **12c — cleanup tests + doc legacy** (C4+C5) :
+   - **`TestFanoutRepo_InsertStubEnrichments_Idempotent`** : assertion
+     renforcée. Avant : `_ = inserted` (le test passait même si InsertStubEnrichments
+     créait des doublons). Maintenant : vérifie que le compteur retourne
+     2 puis 3 (loop count), ET que la DB contient exactement 3 rows
+     distinctes (vraie idempotence prouvée).
+   - **Suppression de 2 tests morts** (`TestLeaderboardRepo_GetLocalLeaderboard*`) :
+     `t.Skip("pre-existing SQL bug: ambiguous gamertag reference in GROUP BY")`
+     depuis longtemps, mais la query actuelle (leaderboard_repo.go:34) n'a
+     ni GROUP BY ni colonne gamertag. Code évolué, test fossile. Helper
+     `seedSharedWithCSR` retiré (unused).
+   - **`LegacySharedReader` doc** : remplace «Sera retiré au commit 9» (obsolète,
+     on est commit 12) par un statut clair "kill-switch d'urgence + tests"
+     avec plan de retrait conditionné (≥ 2026-Q3, 0 failures observées en
+     prod) + ADR à rédiger avant suppression.
+
+**Vérifications globales** :
+- `go build ./...` OK
+- sharedprovider tests (8s) verts
+- sync tests (124s) verts (6 tests E2E inclus)
+- duckdb tests (37s) verts
+
+**Concerns C7 (PR > 800 LOC) et C3 (`time.Sleep` resilience test)** :
+- C7 : non-fixable (la branche fait 42 commits), à noter pour le prochain
+  sprint structurant — règle de taille max PR à ajouter à CLAUDE.md.
+- C3 : `time.Sleep(50ms)` dans `engine_provider_resilience_test.go:103`
+  reste fragile mais le test passe en 3 runs consécutifs. Refactor en
+  barrière sync (ProgressHook) reportable à un follow-up si flakiness
+  observée en CI.
+
+**Statut final branche** : tous les blockers + concerns adressables de la
+revue sont traités. La branche est livrable en prod avec niveau de qualité
+senior — code structurellement safe, conventions CLAUDE.md respectées,
+docs cohérentes.
+
+---
+
 ## [2026-05-19] fix(prod-blockers) — Commit 11 : blockers de la revue de code senior
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 11 — fix des 3 blockers identifiés par la revue de code).
