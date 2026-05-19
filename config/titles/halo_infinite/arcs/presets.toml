@@ -105,3 +105,57 @@ description_fr  = "Maîtrise toutes les maps et tous les modes."
   position    = 3
   template_id = "halo_infinite.monthly.killtaculars"
   target_tier = "heroic"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# V1 PlayerProfile §6.2 — nouveaux arcs preset pour fermer les gaps de
+# couverture LUSR. Ferme Accuracy (10%) et Survival (Deaths vs Expected
+# 24% + Defensive Resistance 6%).
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ═════════════════════ Le Tireur d'Élite ═════════════════════════════════════
+
+[[arcs]]
+id              = "halo_infinite.marksman"
+title_en        = "The Marksman"
+title_fr        = "Le Tireur d'Élite"
+description_en  = "Tighten your aim, session by session, then make it last."
+description_fr  = "Affine ta visée session après session, puis tiens-la dans le temps."
+
+  [[arcs.steps]]
+  position    = 1
+  template_id = "halo_infinite.daily.accuracy_session"
+  target_tier = "normal"
+
+  [[arcs.steps]]
+  position    = 2
+  template_id = "halo_infinite.weekly.accuracy_3sessions"
+  target_tier = "heroic"
+
+  [[arcs.steps]]
+  position    = 3
+  template_id = "halo_infinite.monthly.accuracy_30d"
+  target_tier = "legendary"
+
+# ═════════════════════ Le Survivant ═════════════════════════════════════════
+
+[[arcs]]
+id              = "halo_infinite.survivor"
+title_en        = "The Survivor"
+title_fr        = "Le Survivant"
+description_en  = "Stay alive when others fall. KDR first, then defy expectations."
+description_fr  = "Reste en vie quand les autres tombent. Le KDR d'abord, puis défier les attentes."
+
+  [[arcs.steps]]
+  position    = 1
+  template_id = "halo_infinite.daily.kdr_session"
+  target_tier = "normal"
+
+  [[arcs.steps]]
+  position    = 2
+  template_id = "halo_infinite.weekly.deaths_vs_expected"
+  target_tier = "heroic"
+
+  [[arcs.steps]]
+  position    = 3
+  template_id = "halo_infinite.monthly.deaths_vs_expected"
+  target_tier = "legendary"

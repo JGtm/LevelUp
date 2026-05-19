@@ -29,6 +29,13 @@ export type NotificationCategory =
   | 'battlepass_completed'   // 2026-05-16 — track BP atteint son rang max
   | 'citation_tier'          // 2026-05-16 — palier franchi sur une commendation
   | 'citation_mastery'       // 2026-05-16 — commendation à 100 %
+  // 2026-05-18 — couche 3 du plan PROGRESSION_TRACKING (V2 Ascension), coach proactif.
+  | 'record_near_miss'       // PB courant à moins de 5 % du record
+  | 'milestone_unlocked'     // milestone débloqué
+  | 'milestone_near_miss'    // valeur à moins de 10 % du seuil milestone
+  | 'lusr_tier_approach'     // μ LUSR à moins de 10 pts du prochain sub-tier
+  | 'streak_milestone'       // palier de streak atteint (4/8/15/30 j)
+  | 'comeback_welcome'       // reprise après pause > 5 j
 
 export const ALL_CATEGORIES: NotificationCategory[] = [
   'app_release',
@@ -51,6 +58,13 @@ export const ALL_CATEGORIES: NotificationCategory[] = [
   'battlepass_completed',
   'citation_tier',
   'citation_mastery',
+  // Progression V2 — coach proactif.
+  'record_near_miss',
+  'milestone_unlocked',
+  'milestone_near_miss',
+  'lusr_tier_approach',
+  'streak_milestone',
+  'comeback_welcome',
 ]
 
 export type NotificationSeverity = 'info' | 'success' | 'warn' | 'error'

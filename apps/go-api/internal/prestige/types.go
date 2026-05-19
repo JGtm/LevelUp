@@ -141,6 +141,25 @@ type Template struct {
 	LegendaryTarget float64 `json:"legendary_target"`
 	MythicTarget    float64 `json:"mythic_target"`
 
+	// Tagging V1 PlayerProfile (cf. PLAN_PLAYER_PROFILE_ASCENSION.md §5.1).
+	// Permet le matching profil → suggestions de défis (Section C).
+
+	// LUSRComponents : composantes LUSR ciblées par le template
+	// (ex: ["kills_vs_expected"], ["accuracy_delta", "kills_vs_expected"]).
+	// Référentiel : sync.CompositeWeights (skill_config.go).
+	LUSRComponents []string `json:"lusr_components,omitempty"`
+
+	// RadarAxes : axes narrative 6 ciblés (optionnel, redondant avec
+	// LUSRComponents pour certains templates). Valeurs : combat / survival /
+	// support / score / objective / impact.
+	RadarAxes []string `json:"radar_axes,omitempty"`
+
+	// IsLongTerm : true si le template encourage la progression durable
+	// (window_type=rolling_days OU last_n_matches threshold). Utilisé par
+	// PlayerProfile pour favoriser ces templates dans les suggestions de
+	// campagne.
+	IsLongTerm bool `json:"is_long_term"`
+
 	SchemaVersion int       `json:"schema_version"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

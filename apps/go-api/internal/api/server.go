@@ -711,6 +711,35 @@ func NewRouter(
 			notifH := handlers.NewNotificationsHandler(reg.Notifications)
 			notifH.Mount(r)
 
+			// Couche progression V2 (Ascension) — streaks / records / milestones.
+			// Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+			progressionResolve := func(ctx context.Context, slug string) (*platform_duckdb.PlayerDB, error) {
+				return reg.resolve(ctx, slug)
+			}
+			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug())
+			progressionH.Mount(r)
+
+			// PlayerProfile V1 (Ascension) — endpoint /profile complet.
+			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
+			profileH := handlers.NewPlayerProfileHandler(progressionResolve, defaultProgressionTitleSlug())
+			// V2 §2 : injection optionnelle du mapping awards→axes (Section A1 radar).
+			// Chargement lazy depuis config/titles/{slug}/mappings/awards.toml.
+			// Absence du fichier ou erreur de parse : log + fallback V1 silencieux.
+			awardsPath := filepath.Join(cfg.RepoRoot, "config", "titles", defaultProgressionTitleSlug(), "mappings", "awards.toml")
+			if awardSet, err := mappings.LoadAwardsFromFile(awardsPath); err != nil {
+				slog.Warn("player_profile_awards_load_failed", "path", awardsPath, "err", err.Error())
+			} else {
+				slog.Info("player_profile_awards_loaded",
+					"path", awardsPath, "awards_count", len(awardSet.All()))
+				profileH = profileH.WithAwardMapping(awardSet)
+			}
+			profileH.Mount(r)
+
+			// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
+			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
+			campaignH := handlers.NewCampaignHandler(progressionResolve, defaultProgressionTitleSlug())
+			campaignH.Mount(r)
+
 			// Match favoris (shared_social.duckdb)
 			fav := handlers.NewMatchFavoriteHandler(reg.Social)
 			r.Patch("/matches/{match_id}/favorite", fav.PatchMatchFavorite)

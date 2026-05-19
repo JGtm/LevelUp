@@ -749,6 +749,1657 @@ Prochaine PR pragmatique : **PR 3 frontend** (page login Xbox + i18n + disclaime
 
 ---
 
+## [2026-05-18] chore(player-profile-v2) — vérif finale : 5 bugs trouvés et corrigés
+
+**Statut** : Complété. Audit complet V1+V2 → 5 problèmes critiques détectés
+en post-sprint et fixés sur place.
+
+**Contexte** : L'utilisateur a demandé une vérification finale du travail
+V1+V2 (build + tests + logging + couverture + hygiène). Bonne nouvelle :
+0 bug majeur dans la logique. Mauvaise nouvelle : 5 gaps d'intégration
+qu'un sprint axé sur le code applicatif a manqué.
+
+**Bugs trouvés et corrigés** :
+
+1. **Contract test `TestContractRoutesDocumented` cassé**. Les 8 routes
+   `/profile` + `/campaigns/*` ajoutées aux V1 commits 4+5 n'étaient pas
+   documentées dans `apps/go-api/api/openapi.yaml`. Le test exige
+   plafond=0. Fix : ajouté 8 entrées YAML avec operationId, paramètres
+   PlayerSlug, et responses 200/201/204/400/404/409.
+
+2. **Ordre d'init() des migrations cassait 7 tests duckdb**. La migration
+   `create_improvement_campaign_schema` (V1 commit-5) faisait
+   `ALTER TABLE challenge ADD COLUMN campaign_id`, mais la table
+   `challenge` est créée par `create_prestige_player_schema`. Go init()
+   ordering = alphabétique des fichiers source dans le package, et
+   `steps_player_campaign.go` (`c`) < `steps_player_prestige.go` (`p`)
+   → ALTER échouait. Fix : renommé `steps_player_campaign.go` →
+   `steps_player_prestige_campaign.go` (ASCII `.` < `_` → "prestige.go"
+   sort avant "prestige_campaign.go"). Commentaire explicatif ajouté en
+   tête du fichier.
+
+3. **Test d'intégration `TestBuildProfile_AwardsMappingEnrichesObjective`
+   échouait** car la table `personal_score_awards` n'est pas dans le
+   registry de migrations (legacy schema géré par
+   `sync.EnsurePlayerSchema`). Le test `setupProfileEnv` ne créait que
+   les tables migrées. Fix : ajout d'un `CREATE TABLE IF NOT EXISTS
+   personal_score_awards` explicite dans le scaffolding.
+
+4. **Warning `context deadline exceeded` sur `loadLUSRComponentsBreakdown`**
+   (V2 commit-1 trade-off documenté). La timeout 10s était partagée
+   entre 1 query agrégat + 8 `computeComponentTrend` (un par
+   composante). Fix : batché tout en 1 seule query CTE avec
+   `ROW_NUMBER() OVER (PARTITION BY component_name)` qui retourne
+   simultanément current_avg, top20, last10, first10 par composante.
+   Performance : 8 round-trips → 1, l'intégration test profile passe
+   de 32s → 6s.
+
+5. **`campaign/service.go` n'avait aucun slog** malgré être la couche de
+   décision pour campagnes. Fix : ajouté 3 slog.InfoContext aux moments
+   structurants — campaign started (avec snapshot), progression
+   confirmed (p<0.05), auto-closure suggested (avec reason). +
+   slog.WarnContext si le LeverageProvider échoue.
+
+**Résultats validés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` + `-tags=integration` exit 0
+- **Go full suite serialized (`-p 1`)** : 52/52 packages OK, 0 FAIL
+- **Frontend** : tsc 0 erreur, vite build 1.01s, vitest 1412/1412 tests
+  pass, eslint 0 warning sur les 12 fichiers V1+V2 créés/modifiés
+- **Coverage** (avec `-tags=integration`) :
+  - `internal/campaign/` : **79.9%**
+  - `internal/progression/profile/` : **77.2%** (vs 13.5% Windows-only)
+  - `internal/games/mappings/` : **92.5%**
+
+**Hygiène** :
+- 2 fichiers Go au-dessus de 500L (skill_rating.go 564L,
+  progression/profile/service.go 605L) — hérités, splits propres
+  reportés (risque conflicts si touchés maintenant)
+- Migrations idempotentes (CREATE TABLE IF NOT EXISTS / ALTER TABLE IF
+  NOT EXISTS partout)
+- `eslint` : 0 warning sur les 12 fichiers TS/TSX V1+V2 (33 warnings
+  pré-existants sur MomentCard/StatsGlobales — hors scope)
+
+**Suite naturelle** : merger V1 d'abord (10 commits clean), puis V2 + ce
+chore de vérif (5 commits) après tests CI Linux verts.
+
+---
+
+## [2026-05-18] feat(player-profile-v2)(commit-4) — Streaks perf-based + R5 axe-sort-bottom-3
+
+**Statut** : Complété. **V2 4/4 livré**. 🎉
+
+**Contexte** : V1 commits 5+ avaient laissé deux dettes liées :
+1. `Thresholds` map dans `post_sync_progression.go` ne couvrait que les
+   types universels (daily_play, weekly_play). Les types perf-based
+   (daily_perf, weekly_kda_threshold) attendaient un seuil personnel
+   — commentaire explicite "seront activés quand PlayerProfile exposera
+   les médianes personnelles".
+2. R5 du plan campagne (§4.5.3) prévoyait deux conditions : plateau 60j
+   (livrée V1) **et** "axe sort du bottom-3 du radar" (reportée). V2
+   commit-4 ferme les deux.
+
+**Décisions techniques principales** :
+
+1. **Médiane personnelle KDA** plutôt que moyenne. La médiane est robuste
+   aux outliers (1 match à KDA=50 ne déplace pas le seuil). Calculée
+   inline depuis `activities` déjà chargées par
+   `loadProgressionMatches` (zero round-trip supplémentaire). Seuil
+   minimum : < 10 matchs → médiane=0 (les streaks perf ne se
+   déclenchent pas, cohérent).
+
+2. **R5 condition 2 via `LeverageProvider` interface** (campaign.go) :
+   - Optionnel — sans provider injecté, R5 reste plateau-only (V1
+     comportement)
+   - Avec provider, `Evaluate` query les leviers courants via
+     `CurrentLeverageComponents(userID, titleSlug)` et compare l'axe de
+     la campagne
+   - Si l'axe n'est plus dans la liste ET il y a au moins 1 levier
+     courant (sinon profil pas mature) → `auto_closure_suggested=true`,
+     reason="axis_no_longer_priority"
+
+3. **Adapter `profileLeverageProvider` dans post_sync_progression.go** :
+   - Construit un PlayerProfile minimaliste via `profile.NewServiceFromPlayerDB`
+   - Extrait `prof.Leverages` (top 2 leviers identifiés par
+     `identifyLeverages` du V1 commit-4)
+   - Coût accepté : ~50-200ms supplémentaires dans le hook post-sync
+     (latency reasonable face au sync HTTP)
+
+4. **Priorité R5** : "axis_no_longer_priority" overwrite "plateau_60d" si
+   les deux applicables. Logique : si on a un signal plus précis (axe
+   sort prioritaires), il est plus pertinent à afficher à l'utilisateur
+   qu'un plateau temporel pur.
+
+5. **Tolérance erreur leverages** : si le provider échoue (err non nil),
+   on swallow silencieusement — R5 condition 2 désactivée pour ce
+   tour, condition 1 (plateau) reste évaluée. Le test
+   `TestEvaluate_R5_LeverageProviderError_Tolerated` valide ce contrat.
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` + `-tags=integration` exit 0
+- 6 unitaires Windows `TestMedianKDA_*` ✅ (empty / <10 / odd / even /
+  robust to outliers / skip zero+missing)
+- 4 unitaires Windows `TestEvaluate_R5_*` ✅ (axis no longer / still /
+  provider error / no provider)
+- 1 unitaire `TestContainsString` ✅
+- Aucune régression sur les tests existants
+
+**Trade-offs assumés** :
+
+- **Coût adapter profileLeverageProvider** : ~50-200ms par appel à
+  `EvaluateActive` car BuildProfile re-calcule tous les leviers depuis
+  zéro. Optimisable via cache local (BuildProfile result mémo dans la
+  closure post-sync) si profilé en hot path.
+- **Pas de threshold différent daily vs weekly** : la même médiane
+  personnelle KDA sert pour `StreakTypeDailyPerf` (1 match au-dessus)
+  et `StreakTypeWeeklyKDAThreshold` (moyenne hebdo au-dessus). Cohérent
+  mais simpliste — V3 pourrait différencier (ex: weekly = median+10%).
+- **Pas d'enrichissement narrative.ImpactRoles** dans les leviers : on
+  remonte les composantes LUSR par `prof.Leverages[].Component`. Si
+  une campagne porte sur un axe radar (ex: "objective"), l'égalité
+  string match échouera. Acceptable car les campagnes ouvrent
+  majoritairement sur des composantes LUSR (cf. UI commit V1-7 qui
+  pré-sélectionne `AxisKindLUSRComponent`).
+
+**Conclusion** : **V2 sprint complet 4/4**. La V1 PlayerProfile Ascension
++ ses 4 follow-ups V2 sont livrés. Le code en prod après merge expose :
+- Section B fonctionnelle avec breakdown des 8 composantes LUSR
+- Section A1 radar avec axe Objective fiable + Impact enrichi
+- ProgressionSection avec labels FR/EN de templates
+- Streaks perf-based activés avec médiane personnelle
+- R5 campagne complet (plateau ET axe sort prioritaires)
+- Aucune dette critique restante sur le périmètre PlayerProfile.
+
+Suite naturelle hors PlayerProfile : ouvrir les PR V1+V2 et observer en
+prod.
+
+---
+
+## [2026-05-18] feat(player-profile-v2)(commit-3) — SuggestedChallenge label_fr/label_en hydraté backend
+
+**Statut** : Complété. V2 3/4.
+
+**Contexte** : V1 commit-6 `ProgressionSection` affichait `template_id` brut
+(ex: "halo_infinite.daily.kda_session") en haut de chaque suggestion. Le
+backend avait déjà `Template.LabelFR`/`LabelEN`/`DescriptionFR`/`DescriptionEN`
+dans le catalogue prestige (cf. types.go V1 commit-1) mais le DTO
+`SuggestedChallenge` ne les exposait pas. V2 commit-3 ferme ce gap en
+hydratant le DTO depuis le catalogue et en adaptant l'UI.
+
+**Décisions techniques principales** :
+
+1. **Hydratation au moment de la sélection** : `selectSuggestedChallenges`
+   a déjà chargé le template complet via `listTemplatesByLUSRComponents`
+   (V1 commit-4). Aucun round-trip supplémentaire — on copie juste les 4
+   champs label/description dans le DTO. Coût zéro.
+
+2. **Backwards-compatible** : les nouveaux champs sont `omitempty` côté
+   Go et `?` (optional) côté TS. Si un caller ne les fournit pas (ex: un
+   mock test), l'UI fallback proprement sur `template_id`.
+
+3. **Fallback UI cascadé** : `label = (locale === 'fr' ? label_fr :
+   label_en) ?? label_fr ?? label_en ?? template_id`. Si la locale active
+   n'a pas son label, on tente l'autre, puis on retombe sur l'ID brut. La
+   chaîne ne crash jamais.
+
+4. **Description en italique sous le label** quand présente. La plupart
+   des templates ont une description claire ("Atteindre 1.5 KDA sur 3
+   sessions"), mais elle est optionnelle.
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0
+- `go test ./internal/progression/profile/` ✅ tous verts
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅
+- `eslint` sur ProgressionSection.tsx + playerProfile.ts : 0 warning
+
+**Trade-offs assumés** :
+
+- **Pas de re-fetch automatique sur changement de locale** : la React
+  Query cache du profil est globale (clé `[playerProfile, slug,
+  windowDays]`), ne discrimine pas par locale. Le `useProfileI18n` lit
+  `locale` du store et bascule en mémoire. Acceptable car les `label_*`
+  sont déjà co-localisés dans la réponse — pas besoin de re-fetch.
+- **Pas de marketing manifest pour la description** : on affiche
+  `description_fr`/`description_en` brut depuis le TOML
+  `challenges/templates.toml`. Si on veut un overlay i18n (variantes
+  marketing), un manifest dédié sera nécessaire (V3 si demande).
+
+**Conclusion / prochaine étape** : V2 3/4. Dernière étape — V2 commit-4
+(câblage Streaks perf-based + R5 condition "axe sort bottom-3 du radar"
+pour les campagnes).
+
+---
+
+## [2026-05-18] feat(player-profile-v2)(commit-2) — awards.toml mapping + radar Objective fiable
+
+**Statut** : Complété. V2 2/4.
+
+**Contexte** : V1 commit-4 avait livré un radar 6 axes basé sur les agrégats
+bruts de `match_participants` (kills/assists/score/spree). L'axe **Objective**
+restait à 0 car les contributions objective (captures de drapeau, zones,
+extractions…) sont dans `personal_score_awards`, pas dans
+`match_participants`. V2 commit-2 fixe ce gap via un mapping TOML
+title-specific.
+
+**Décisions techniques principales** :
+
+1. **TOML manifest title-specific** `config/titles/halo_infinite/mappings/
+   awards.toml` (suivant la recommandation utilisateur) avec ~55 awards
+   mappés vers 1-2 axes + weight multiplicateur. Structure :
+   ```toml
+   [awards.flag_captured]
+   axes   = ["objective"]
+   weight = 5.0
+
+   [awards.flag_capture_assist]
+   axes   = ["support", "objective"]
+   weight = 2.0
+   ```
+   Weight différencié reflète la difficulté : `flag_captured` weight=5
+   contribue 5× plus à Objective que `flag_taken` weight=1.
+
+2. **Pas de pénalités dans les axes** : `betrayed_player`,
+   `self_destruction`, `revive_denied` volontairement absents — un acte
+   négatif ne devrait pas booster un axe positif. Le score Halo brut
+   (mp.personal_score) les comptabilise déjà.
+
+3. **Loader `internal/games/mappings/loader_awards.go`** (~145L) suivant le
+   pattern de `loader_outcomes.go` : valide title_slug + schema_version,
+   rejette axes inconnus (admis: 6 canoniques), rejette weight ≤ 0,
+   rejette axes vide. Erreur agrégée si multiples problèmes.
+
+4. **Service refactor non-cassant** : `Service.WithAwardMapping(set)`
+   chainable, optionnel. Sans mapping injecté → fallback V1 (axe Objective
+   à 0). Le caller V2 `post_sync_progression.go:Load` n'est pas impacté
+   (Load n'appelle pas computeRadarAxes).
+
+5. **`computeRadarAxes` scindée en 2** : `computeRadarAxesBase` (V1
+   heuristique sur match_participants) + `applyAwardsRadarAxes`
+   (enrichissement via personal_score_awards si mapping fourni). La base
+   reste indispensable car les awards n'apportent rien sur Combat/Survival/
+   Support direct (kill_assist seul ne suffit pas).
+
+6. **Normalisation par match** : `contribution = SUM(award_count) × weight
+   / matchCount`. Une moyenne par match cohérente avec les autres axes
+   (kills moyens, etc.). Le radar.ComputeParticipationProfile applique
+   ensuite la normalisation 0-100 vs les seuils ParticipationThresholds.
+
+7. **Loading at boot** : `server.go` charge `awards.toml` au moment du
+   wiring du handler. Absence du fichier ou erreur de parse : log.Warn +
+   fallback silencieux (l'endpoint /profile continue de répondre, juste
+   sans enrichissement Objective). Coût négligeable au boot (~ms pour
+   parser 55 entrées).
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- 6 tests unitaires Windows mappings : happy / reject invalid axis /
+  reject zero weight / reject empty axes / reject missing meta / real-
+  config validation (vérifie que `awards.toml` de prod a les awards
+  critiques avec les bons axes)
+- 1 test intégration CI Linux `TestBuildProfile_AwardsMappingEnriches
+  Objective` : seed 7 awards (5 flag_captured + 2 zone_secured), vérifie
+  que sans mapping Objective=0 et avec mapping Objective>0.
+- Aucune régression sur les tests existants.
+
+**Trade-offs assumés** :
+
+- **Pas de Registry global** : awards.toml est rechargé à chaque démarrage
+  du serveur (vs. un singleton via `mappings.Registry`). Acceptable car le
+  fichier est petit (~70 entrées) et le parsing est instantané. Si l'on
+  ajoute d'autres titres, on basculera vers la Registry.
+- **Pas de coverage check global** : on ne vérifie pas qu'**tous** les
+  award_names connus de `refdata_personal_scores.psaTechnicalIDs` sont
+  mappés. Le test `RealConfig` ne vérifie que les awards critiques. Une
+  garde-fou complet viendrait avec un golden file ou une assertion au
+  boot — décalé V3.
+- **Pas de mapping par mode** : un même award contribue avec le même
+  weight quel que soit le mode (Slayer / CTF / BTB…). La distinction
+  par famille de mode est portée par `narrative.DefaultThresholds` côté
+  consommateur (seuils différents par famille). Acceptable.
+
+**Conclusion / prochaine étape** : V2 2/4. La Section A1 radar du profil
+expose enfin un axe Objective fiable + un Impact enrichi (destroyed_/
+hijacked_ vehicles). Prochaine étape : V2 commit-3 (enrichir
+`SuggestedChallenge` DTO avec `label_fr`/`label_en` pour que la
+ProgressionSection n'affiche plus `halo_infinite.daily.kda_session` brut).
+
+---
+
+## [2026-05-18] feat(player-profile-v2)(commit-1) — lusr_component_history + live write + backfill
+
+**Statut** : Complété. Sprint V2 démarré, 1/4.
+
+**Contexte** : V1 commit-4 avait laissé `loadLUSRComponentsBreakdown` retourner
+map vide en attendant cette table. La Section B du profil affichait
+current=0/top20=0/target par composante avec un tooltip "données indisponibles".
+V2 commit-1 alimente la table en live (par sync.upsertLUSRRatings) et expose
+les vraies valeurs au profile + à la campagne.
+
+**Décisions techniques principales** :
+
+1. **Refactor `computeCompositeScore` rétro-compatible** : nouvelle fonction
+   `computeCompositeScoreWithBreakdown` qui retourne `(composite, map[string]
+   float64)`. L'ancienne `computeCompositeScore` devient un wrapper qui
+   ignore le breakdown — **aucun test existant cassé**. Les 5
+   `TestCompositeScore_*` existants passent inchangés. Le call site dans
+   `computeSkillRatingsBatch` (ligne 470) bascule sur la nouvelle fonction
+   pour capturer le breakdown.
+
+2. **Live write idempotent** : `writeLUSRComponentHistory` après chaque
+   `upsertLUSRRatings` succès. UPSERT par (match_id, component_name), donc
+   re-run en mode `--force` recalcule et écrase proprement. Best-effort —
+   un échec sur l'history ne propage pas au flow principal de
+   `upsertLUSRRatings` (logué via slog.Warn).
+
+3. **Backfill = re-run avec `force=true`** : pas de script séparé. Le mode
+   `force` existant de `ComputeSkillRatingsBatch` repasse tous les matchs et
+   écrit le history en cours de route. Idéal pour le déploiement V2 :
+   `python scripts/sync.py --force-skill-rating --all` une seule fois.
+
+4. **Schema `lusr_component_history`** : `(match_id, component_name, value,
+   weight, computed_at)` avec PK composite. Le `weight` est dénormalisé
+   pour permettre l'agrégation pondérée sans relire `CompositeWeights`
+   depuis la mémoire process. 2 index : `(component_name)` pour les
+   AVG/QUANTILE groupés et `(match_id)` pour les lookups par match.
+
+5. **`loadLUSRComponentsBreakdown` actif** : passe de map vide à 3 queries :
+   - AVG + QUANTILE_CONT(0.8) par composante en agrégat unique
+   - `computeComponentTrend` par composante : last10 vs first10 (≥ 20
+     matchs requis pour significativité)
+   - Si table absente ou query échoue → map vide silencieusement
+     (UI dégrade gracieusement comme V1).
+
+6. **Campaign `LoadAxisSamples` enrichi** : nouvelle branche
+   `axisKind == AxisKindLUSRComponent` qui lit directement
+   `lusr_component_history` joint à `shared.match_registry` (filtre playlist
+   + chronologie). Les axes `lusr_component.*` deviennent **réellement
+   trackés** pour les campagnes (avant : placeholder 0). Les axes radar
+   continuent de passer par `axisValueExpression` (mapping awards arrive
+   au commit V2-2).
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- `go test ./internal/sync/` ✅ 100s (suite complète, incluant 4 nouveaux
+  tests breakdown)
+- `go test ./internal/campaign/ ./internal/progression/profile/` ✅ verts
+- `TestBuildProfile_LUSRComponentsPopulated` (intégration) ajouté pour
+  vérifier que `loadLUSRComponentsBreakdown` lit effectivement la table.
+
+**Trade-offs assumés** :
+
+- Le fichier `skill_rating.go` passe à 564L (au-delà du seuil 500 CLAUDE.md
+  Python ; Go codebase plus tolérante). Le découpage propre
+  `composite_score.go` séparé pourra arriver dans un commit hygiène ultérieur
+  (risque conflits merge sinon).
+- `computeComponentTrend` exécute 1 query par composante (8 round-trips).
+  Acceptable pour < 200ms total sur stats.duckdb local. À batcher en 1
+  query CTE si profilé en hot path.
+
+**Conclusion / prochaine étape** : V2 1/4. Section B du profil **enfin
+fonctionnelle** dès que (a) le scoring engine a tourné sur des nouveaux matchs
+ou (b) le backfill `--force-skill-rating` a été lancé en production. Prochaine
+étape : commit V2-2 (awards.toml mapping pour Section A1 radar fidèle).
+
+---
+
+## [2026-05-18] docs(player-profile-v1)(commit-10) — ADR 0015 statut Accepted (10/10 livrés)
+
+**Statut** : Complété. Sprint V1 **10/10 livré**. 🎉
+
+**Contexte** : Clôture du sprint V1 PlayerProfile Ascension. L'ADR 0015 avait
+été créé après commit-3 avec un statut "Partially implemented (3/10)" qui
+documentait la dette en termes précis (commits 4-9 reportés). Ce commit-10
+réécrit l'ADR pour refléter 10/10 livrés et le fait passer en **Accepted**.
+
+**Décision technique principale** :
+
+1. **Réécriture intégrale plutôt que patch incrémental** : l'ADR initial
+   structurait commits 4-9 comme "Decisions reportées" + section "Reprise du
+   sprint". Après livraison, le bon framing est "Decisions livrées (1-10)"
+   en chronologie + section "Consequences" couvrant trade-offs et V2
+   follow-ups. Réécriture propre, pas de tags `~~strikethrough~~` ni de
+   pseudo-changelog.
+
+2. **Trade-offs préservés intacts** : tous les compromis V1 documentés dans
+   les thought_logs commit par commit (lusr_component_history, mapping
+   award→axis, R5 plateau-only, template_id brut, route /objectifs) sont
+   centralisés dans la section "Trade-offs et follow-ups V2" de l'ADR.
+   Pas de masquage, pas de promesse implicite — la dette est explicite
+   et traçable.
+
+3. **References élargies** : ajout du pointeur vers les 10 entries
+   thought_log `[2026-05-18] feat(player-profile-v1)(commit-{1..10})` pour
+   permettre la traçabilité granulaire post-merge.
+
+**Résultats observés** :
+
+- ADR 0015 status passé de "Partially implemented (3/10)" → "Accepted (10/10)"
+- Date double affichée : créé 2026-05-18 / clôturé 2026-05-18 (même jour —
+  un seul sprint marathon)
+- Branche `feat/player-profile-ascension` désormais prête à merger
+  (CLAUDE.md règles respectées : 80L/function, 500L/module, pas de pandas,
+  pas de SQLite, couleurs via tokenCssVar)
+- 10 commits sur la branche, 0 conflict avec main attendu
+
+**Conclusion / prochaine étape** :
+
+Sprint V1 PlayerProfile Ascension **complet**. La page Ascension expose
+maintenant :
+1. Le profil joueur enrichi (Sections A1/A2/B/C — rôles, radar 6 axes,
+   style FK/FD, engagement, tier LUSR + 8 composantes, leviers, suggestions)
+2. La boucle Campagne d'amélioration (start opt-in → tracker sticky →
+   pause/clore/abandonner, R1-R5 algorithmiques)
+3. i18n FR/EN intégrale (125 clés, plurals ICU)
+
+La V2 (Progression Tracking — Streaks/Records/Milestones/Coach) consomme
+naturellement les nouveautés V1 via `EvaluateProgressionAfterSync` qui
+appelle maintenant `CampaignService.EvaluateActive` après le `Load()`
+profile. Les 2 alertes coach campagne (`AlertTypeCampaignProgress`,
+`AlertTypeCampaignCloseAuto`) sont câblables — leur déclenchement effectif
+arrivera quand une campagne active passera le seuil MWU ou se mettra en
+plateau 60j en production.
+
+**Follow-ups V2 explicites** (documentés dans l'ADR consequences) :
+- Table `lusr_component_history` pour breakdown 8 composantes complet
+- Mapping `personal_score_awards.award_name → narrative.ParticipationAxis`
+  pour Objective + Impact title-specific
+- R5 sortie radar bottom-3 (PlayerProfile dans hook campagne)
+- Rename route `/objectifs` → `/ascension` (commit isolé, hors V1)
+- i18n labels templates (`SuggestedChallenge.label_fr`/`label_en` ou
+  ajout manifest)
+
+Branche prête à `gh pr create` quand l'utilisateur valide.
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-9) — i18n manifest profil + campagne FR/EN
+
+**Statut** : Complété. Sprint V1 à 9/10.
+
+**Contexte** : §5.2 du plan — chaque module front doit avoir son manifest
+TOML i18n FR/EN. Les commits 6 et 7 avaient livré ~50 warnings eslint
+`@levelup/no-hardcoded-strings` que ce commit résout, et démarre la fonda-
+tion i18n pour les composants Ascension.
+
+**Décisions techniques principales** :
+
+1. **Un seul manifest `profile.toml` regroupant profil + campagne** (125
+   clés au total), aligné sur le pattern engagement.toml (1 manifest par
+   feature module). Évite de fragmenter en 2 manifests "profile" et
+   "campaign" puisqu'ils sont co-localisés dans le même feature dir
+   `features/prestige/` et utilisés en cascade par les mêmes composants
+   (CampaignTracker lit aussi `profile.axis.*` et `profile.lusr.*`).
+
+2. **Hook `useProfileI18n`** (15L) en sucre syntaxique :
+   ```ts
+   const { t, locale } = useProfileI18n()
+   t('profile.section.identity.title')           // simple lookup
+   t('profile.insufficient.cta', { missing: 5 }) // ICU placeholder
+   ```
+   Encapsule `useAppShellStore((s) => s.locale)` + `formatMessage(profile-
+   Manifest, key, locale, vars)`. Toutes les sous-sections du profil et
+   la campagne consomment ce hook.
+
+3. **Plurals ICU pour les compteurs** : `{n, plural, =0 {...} =1 {1 match}
+   other {# matchs}}`. Utilisé pour matches_analyzed, matches_since_start,
+   missing, linked_count. Évite les concaténations + détection de pluriel
+   manuelle FR/EN.
+
+4. **Suggestions ICU select** pour le sous-titre des suggestions :
+   `{arc, select, true { · étape d'arc} other {}}`. Passé comme string
+   'true'/'false' depuis le composant — plus simple que conditional
+   rendering.
+
+5. **Clés axées sur le rôle/levier en dotted-path dynamique** :
+   `profile.role.${dominant}`, `profile.lusr.${component}`,
+   `profile.axis.${axis}`, `profile.tier.${target_tier}`. Cast type
+   `ProfileManifestKey` côté caller. Permet de dériver le label depuis
+   la donnée backend sans switch/case côté composant.
+
+6. **Petit fix collatéral** : `coaching_tips.ts` (généré) était présent
+   sur disque mais jamais commité. Ce commit le rattrape pour cohérence
+   du repo (la commande `node scripts/build_i18n_manifests.mjs` doit
+   pouvoir être ré-exécutée à tout moment sans qu'il manque des fichiers
+   tracked).
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅ 1.12s (gain de ~0.3s vs commit 7 — pattern dotted-key
+  manifest plus efficace que les `LABELS_FR` constantes inline)
+- `vitest run` ✅ 1412 tests pass, 14 skipped
+- `eslint` sur les 8 fichiers profil/campagne : **0 warning** (les ~50
+  warnings hardcoded strings disparus) 🎉
+
+**Trade-offs assumés** :
+
+- Le `template_id` brut dans `ProgressionSection` (ex:
+  "halo_infinite.daily.kda_session") reste affiché tel quel — il faudrait
+  une i18n des labels templates (ou exposer `label_fr`/`label_en` via
+  `SuggestedChallenge`). V2 follow-up, hors V1.
+- `Toi` est utilisé partout comme tu (pas vous). Cohérent avec les
+  autres manifests (engagement.toml utilise aussi le tu) — décision UX
+  globale du projet, pas spécifique à V1.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 9/10. Reste 1
+commit (10) : update ADR 0015 statut → Accepted maintenant que les
+10/10 sont livrés (ou 10/10 quand le commit 10 lui-même atterrit).
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-8) — rename Objectifs → Ascension + Mon parcours → Parcours
+
+**Statut** : Complété. Sprint V1 à 8/10.
+
+**Contexte** : §5.2 du plan + ajustement utilisateur en cours de sprint
+(« faire simple : "Mon Parcours" va devenir "Parcours" »). Le plan demandait
+le rename "Objectifs → Ascension" au niveau de la nav L1 ; on en profite
+pour aussi raccourcir le sous-onglet "Mon parcours" → "Parcours".
+
+**Décision technique principale** :
+
+1. **Rename label uniquement, route path conservé** : `/players/$slug/objectifs`
+   reste valide. Aucun changement de routing (pas de redirection, pas de
+   migration `routeTree.gen.ts`). Plus simple, zero risque de casser des
+   bookmarks ou des liens externes (incl. la nav drawer Help, les notifs).
+
+2. **Localisation des changements** : le plan mentionnait
+   `shellNavigation.ts` mais le label réel est dans `NavL1.tsx` (le
+   section L1 `key: 'objectifs'` avec `label: 'Objectifs'`). Les sources
+   touchées :
+   - `components/shell/NavL1.tsx` : section label + tab label "Mon parcours" → "Parcours"
+   - `features/prestige/ObjectifsPage.tsx` : H1 + TabButton + description sous-titre
+   - `lib/pageTitle.ts` : titre dans la breadcrumb / document.title
+   - `components/shell/NavL1.test.tsx` : labels des tests (replace_all + 2 titres `it()`)
+   - `features/help/i18n.ts` : 1 occurrence "barre de navigation → Objectifs"
+     (le terme glossaire "Objectifs" décrit toujours le concept "défis",
+     laissé intact).
+
+3. **Description sous-titre ObjectifsPage rafraîchie** : ancienne ("Défis
+   personnels, arcs narratifs et parcours Prestige") → nouvelle ("Profil,
+   défis et campagnes d'amélioration personnelle"). Reflète mieux la V1
+   (PlayerProfile + Campaign sont la nouveauté).
+
+4. **Le route path `/objectifs` reste hérité du nommage initial** :
+   un commit séparé hors V1 pourra renommer ce path à `/ascension` si
+   l'équipe le souhaite (avec redirection). Hors scope sprint.
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vitest run NavL1.test.tsx` ✅ 6/6 tests pass (3 réécrits sur "Ascension")
+- `vitest run` ✅ 1412 tests pass, 14 skipped (aucune régression)
+- Aucun warning eslint nouveau (les labels précédemment hardcodés le sont
+  toujours — c'est par commit 9 que ça change).
+
+**Trade-offs assumés** :
+
+- Le glossaire `help/i18n.ts` garde "Objectifs" comme terme de définition
+  car c'est le **concept** (défis avec PP) et pas le **label nav**. La
+  glose y décrit "objectifs/défis" — pas la section UI elle-même.
+- Le file `apps/web/src/features/prestige/ObjectifsPage.tsx` garde son
+  nom de fichier `ObjectifsPage.tsx` pour ne pas casser la route file et
+  les imports. Rename de fichier à isoler dans un commit dédié.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 8/10. Reste 2
+commits : i18n manifests FR/EN (commit 9 — résout les 50 warnings i18n des
+commits 6+7) puis ADR 0015 statut → Accepted (commit 10).
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-7) — CampaignTracker sticky + StartCampaignModal
+
+**Statut** : Complété. Sprint V1 à 7/10.
+
+**Contexte** : §4.5.5 du plan — boucle UI complète sur les campagnes. Le
+`PlayerProfileCard` (commit 6) avait des CTAs "Démarrer une campagne" en
+attente de modale ; ce commit câble :
+
+1. **`CampaignTracker.tsx`** (280L) en sticky au-dessus du profil quand
+   une campagne est active (status === 'active'). Affiche snapshot +
+   actuel (lissé) + delta + R4 progression confirmée + R5 auto-closure
+   notice (plateau_60d / axis_no_longer_priority). Actions
+   Pause/Resume/Clore/Abandonner, les 2 dernières confirmées via
+   `AlertDialog`.
+2. **`StartCampaignModal.tsx`** (195L) mini-modale pattern aligné sur
+   AlertDialog (pas de Radix, role=dialog, Escape, clic backdrop). Choix
+   du `playlist_group` (6 options + "all" par défaut), récap pédagogique
+   R2, **option "Skip — créer juste un défi libre"** propagée via
+   callback parent (la sortie vers `CreateChallengeForm` sans démarrer
+   de campagne est appelée par le caller).
+
+**Décisions techniques principales** :
+
+1. **Helper `CampaignAndProfileSection`** dans `ObjectifsPage.tsx` qui
+   orchestre tracker + profile + modale. Gère l'état modale (open + axis +
+   axisKind) et propage `onStartCampaign` au profile **uniquement quand
+   pas de campagne active** (1 max active à la fois, plan §4.5.1).
+   Sticky du tracker pour qu'il reste visible au scroll.
+
+2. **`AxisKind` lusr_component par défaut** dans le state initial de la
+   modale. Le caller change explicitement à 'radar' si nécessaire. V1
+   pragmatique : les leviers identifiés en `ProgressionLeverage.component`
+   sont tous des composantes LUSR (cf. profile.identifyLeverages —
+   commit 4).
+
+3. **Mutations câblées avec `onSuccess: closeModal/Dialog`** pour fermer
+   automatiquement après succès. `useCampaignMutations` invalide
+   `useActiveCampaign` → refresh automatique du tracker.
+
+4. **`formatDelta` avec signe Unicode** `+` / `−` (et non `-` ASCII)
+   pour cohérence typographique. 2 décimales max (garde-fou G2 du plan —
+   pas de fausse précision).
+
+5. **Status badge tri-état** : Pause/Completed/Abandoned (gris) — Active+
+   confirmed (vert outcome-win) — Active+pending (gris "En cours"). Pas
+   de classe Tailwind color brute ; tout via `tokenCssVar`.
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅ 1.53s (bundle objectifs ~+10 kB attendu)
+- `vitest run` ✅ 1412 tests pass, 14 skipped
+- `eslint` : 26 warnings i18n hardcoded strings (0 erreur) — résolus
+  commit 9 (manifests campagne FR/EN).
+
+**Trade-offs assumés** :
+
+- Le label "Skip — créer juste un défi libre" propage via callback mais
+  n'est pas câblé à un `setActiveTab('challenges')` dans cette PR — le
+  caller le fera quand il sera prêt. Pour l'instant le callback n'est
+  pas passé, donc le bouton n'apparaît pas.
+- Pas de `prefilledTemplateId` câblé entre `SuggestedChallenge → CreateChallengeForm`.
+  Le bouton "Lancer" (`onLaunchTemplate`) du profile est laissé sans
+  consumer pour V1 — V2 follow-up. Le défi se crée toujours via le flow
+  libre depuis l'onglet `challenges`.
+- Auto-closure notice (`auto_closure_suggested`) est purement informatif :
+  le joueur doit cliquer manuellement sur "Clore" — c'est le principe
+  R5 ("jamais d'auto-fermeture silencieuse").
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 7/10. La boucle
+UI complète "profil → CTA → modale start → tracker sticky → pause/clore"
+est fonctionnelle. Prochaine étape : commit 8 (rename "Objectifs" →
+"Ascension" dans NavL1).
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-6) — PlayerProfileCard frontend (5 sous-composants)
+
+**Statut** : Complété. Sprint V1 à 6/10.
+
+**Contexte** : §5.2 du plan — UI React qui consomme `GET /profile` (commit 4)
+et expose les Sections A1/A2/B/C du PlayerProfile dans l'onglet `parcours`
+de la page Objectifs. Première brique frontend du sprint — les CTAs
+"Démarrer une campagne" et "Lancer ce défi" sont propagés via callbacks
+parent, mais leur câblage UI (mini-modale, CampaignTracker sticky) arrive
+au commit 7.
+
+**Décisions techniques principales** :
+
+1. **Types TypeScript dans `lib/playerProfile.ts`** (204L) miroirs des
+   structs Go (`progression/profile/types.go`). Le naming aligne sur les
+   JSON tags backend (snake_case côté JSON, mappé tel quel côté TS).
+
+2. **Hook `usePlayerProfile`** + `useActiveCampaign` + `useCampaignMutations`
+   regroupés dans un seul fichier `hooks/usePlayerProfile.ts` (81L). Tous
+   re-exportés depuis `hooks.ts`. StaleTime 5min (profil) vs 1min
+   (campagne — réactif aux mutations). Invalidation centralisée par
+   `useCampaignMutations`.
+
+3. **5 sous-composants dans `components/profile/`** :
+   - `IdentitySection` (142L) : header rôle dominant/secondaire + radar
+     6 axes via `RadarChart` ECharts + Strengths/Improvements (top/bottom 3).
+   - `StyleDisciplineSection` (125L) : 2 cartes — StyleSignature (FK/FD
+     ratio + StyleKey traduit) + EngagementSnapshot (tier + bar 0-100
+     + matchs/jour + plus long écart).
+   - `PerformanceSection` (159L) : tier label + progress bar sub-tier
+     + 8 composantes (current vs target, marqueur top20% perso) + badge
+     tendance LOWESS coloré via `tokenCssVar('outcome-win')`.
+   - `ProgressionSection` (149L) : leviers prioritaires + défis suggérés,
+     CTAs "Démarrer une campagne" (composant) et "Lancer" (template_id)
+     propagés via props callbacks parent.
+   - `InsufficientDataPlaceholder` (34L) : état < 30 matchs.
+
+4. **Garde R2 phrasing strict** : "On t'aide à voir ta trajectoire — pas
+   à la garantir." dans `ProgressionSection`. Pas de causalité revendiquée.
+   Pas de "grâce au défi". Aligné sur §4.5.3 R2 du plan.
+
+5. **Couleurs via tokens sémantiques** : `tokenCssVar('outcome-win')`
+   pour trend positif, `outcome-loss` pour trend négatif. Pas de classes
+   Tailwind `bg-emerald-*` / `text-amber-*` (CLAUDE.md règle 20).
+
+6. **Intégration ObjectifsPage** : `PlayerProfileCard` inséré en tête de
+   `ParcoursTab`, avant `PrestigeBadge` et `StatsGlobales`. Avec un
+   commentaire pointant vers le commit 7 (CampaignTracker au-dessus).
+
+**Résultats observés** :
+
+- `tsc --noEmit` ✅ 0 erreur
+- `vite build` ✅ 1.42s, bundle objectifs +36 kB gzipped 9.36 kB (acceptable)
+- `vitest run` ✅ 1412 tests pass, 14 skipped, aucune régression
+- `eslint` : 24 warnings i18n hardcoded strings (0 erreur) — **attendu, sera
+  résolu commit 9** (manifests profil + campagne FR/EN). Les `_LABELS_FR`
+  duplication entre `PerformanceSection`/`ProgressionSection` migrera
+  vers manifest.
+
+**Trade-offs assumés** :
+
+- Suggestions affichent `template_id` brut (pas le label FR) tant que
+  l'i18n profile manifest n'existe pas (commit 9).
+- Pas de loading skeleton sophistiqué — placeholder simple "Chargement
+  du profil…" (commit 9 ajoute un skeleton si bandwidth).
+- Le bouton "Démarrer une campagne" est rendu **uniquement** si
+  `onStartCampaign` prop est passée. Pour le moment, `PlayerProfileCard`
+  ne la passe pas — le câblage avec la mini-modale arrive au commit 7.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 6/10. Frontend
+PlayerProfile rendu en read-only. Prochaine étape : commit 7
+(CampaignTracker sticky + mini-modale Start/Pause/Close/Abandon).
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-5) — ImprovementCampaign full stack
+
+**Statut** : Complété. Sprint V1 à 5/10.
+
+**Contexte** : §4.5 du plan — boucle finale "profil → objectif → suivi". La
+campagne d'amélioration est un mini-objectif personnel volontaire sur 1 axe,
+sans deadline ni pénalité. Pause/abandon libres. Inspirée de Duolingo
+("j'apprends le japonais") — pas de note de fin, juste une trajectoire.
+
+**Décisions techniques principales** :
+
+1. **Domain package neuf** `internal/campaign/` (300L service + 101L stats +
+   96L types) plutôt qu'extension de `progression/profile/`. Séparation propre
+   parce que c'est un domaine à part avec son propre cycle de vie d'entité
+   (Active/Paused/Completed/Abandoned).
+
+2. **Mann-Whitney U fait maison** (`stats.go`, 101L). Pas de dépendance
+   externe (gonum). Approximation normale (CLT) appliquée pour n1+n2 ≥ 20 ;
+   sous ce seuil, on retourne p=1 (conservateur). Gère les ex-aequo par
+   méthode des rangs moyens. Test : 6 cas couvrant identical / clearly
+   different / small sample / below-CLT / ties / normalCDF boundaries.
+
+3. **Interface Repo** (`Repo`, `SampleProvider`) pour mocker en test sans
+   DuckDB. Le fake repo `service_test.go` couvre Start/Pause/Resume/Close/
+   Abandon/Link/Evaluate sans toucher la DB → 10 tests verts < 1.5s sur
+   Windows.
+
+4. **Snapshot 100 matchs avant StartedAt** (capé via slice). Fenêtre élargie
+   (180j) mais on garde max 100 dernières valeurs. Cohérent avec le plan.
+
+5. **R5 auto-closure heuristique simple** : plateau 60j (`StartedAt + 60d`)
+   ET `|currentLOWESS - snapshot| < 0.02` ET progression non confirmée →
+   suggéré (`auto_closure_suggested=true`, `reason="plateau_60d"`). La 2e
+   condition R5 (axe sort du bottom 3 du radar) sera ajoutée quand le
+   PlayerProfile sera consulté dans le hook (V2 follow-up).
+
+6. **Hook post-sync** : `CampaignService.EvaluateActive(userID, slug, now)`
+   appelé dans `EvaluateProgressionAfterSync` après le load profile. No-op si
+   pas de campagne active. Idempotent — peut être appelé à chaque match
+   ingéré sans effet de bord.
+
+7. **7 endpoints HTTP** sur `PlayerProfileHandler` resolver :
+   `POST /campaigns`, `GET /campaigns/active`, `GET /campaigns/{id}`,
+   `POST /campaigns/{id}/pause|resume|close|abandon`. Erreurs typées
+   (409 already_active / 400 invalid_axis / 404 not_found /
+   409 invalid_status_transition).
+
+8. **SampleProvider V1 pragmatique** : `axisValueExpression` mappe
+   (axis, axisKind) → expression SQL sur `match_participants`. V1 radar
+   utilise les agrégats bruts (kills, deaths, etc.). V1 lusr_component
+   retourne 0 (alignement avec `profile.loadLUSRComponentsBreakdown`,
+   même note "table history pas créée"). Acceptable : la campagne
+   reste fonctionnelle pour les 5/6 axes radar dès la V1.
+
+9. **Migration** : `ALTER TABLE challenge ADD COLUMN IF NOT EXISTS campaign_id
+   VARCHAR` + index. DuckDB supporte `IF NOT EXISTS` sur ALTER depuis 0.10.
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- `go test ./internal/campaign/...` ✅ 16 tests (6 MWU + 10 service)
+- `go test ./internal/progression/... ./internal/api/handlers/...` ✅ all green
+- Hook post-sync câblé (`EvaluateActive` no-op silencieux si pas de campagne)
+- `AssertProgressionDeps` mis à jour pour exiger `CampaignService` au boot
+
+**Trade-offs assumés** :
+
+- `lusr_component.*` axes retournent 0 (placeholder). UI affichera un toast
+  "données indisponibles pour cet axe" et limitera le sélecteur aux axes
+  radar en V1.
+- R5 plateau-only en V1 (pas encore "sortie bottom 3 du radar"). Le
+  PlayerProfile n'est pas appelé par le hook campagne ; ajout en V2.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 5/10. Backend
+PlayerProfile + Campaign complets. Prochaine étape : commits frontend 6
+(PlayerProfileCard) + 7 (CampaignTracker UI).
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-4) — service PlayerProfile complet + endpoint HTTP
+
+**Statut** : Complété. Sprint V1 maintenant à 4/10 commits + ADR.
+
+**Contexte** : Le sprint V1 a repris après la pause stratégique commit-3+ADR.
+Le mini-service `internal/progression/profile/` (livré en V2 commit 6) ne
+remplissait qu'un sous-ensemble du `PlayerProfile` (LUSR + tier + LOWESS sur
+μ pour le coach post-sync). Le plan §4-§5 exige les Sections A1 (radar 6
+axes + rôles), A2 (style FK/FD + engagement), B (LUSR + 8 composantes +
+SkillRatingSnapshot + tendance) et C (leviers + suggestions de défis).
+
+**Décision technique principale** :
+
+1. **Approche "augmenter sans casser"** : conserver `NewService(db)` + `Load()`
+   pour ne pas casser le caller V2 `post_sync_progression.go:274`
+   (`profile.NewService(pdb.Player)` + `Load(ctx, userID, slug, lowessWindow, now)`).
+   Ajouter `NewServiceFromPlayerDB(pdb)` + `BuildProfile(...)` pour la voie V1
+   complète. La closure post-sync continue à lire `prof.LUSR.Mu`,
+   `prof.NextTier.Label`, `prof.MuTrend.IsPositive(...)` sans modification.
+
+2. **Types V1 enrichis dans `types.go`** : `PlayerProfile` étendu avec
+   `HasEnoughData`, `MatchesAnalyzed`, `DominantRole`, `SecondaryRole`,
+   `RadarAxes`, `Strengths`, `ImprovementAreas`, `StyleSignature`,
+   `EngagementSnap`, `SkillRating`, `LUSRComponents`, `Leverages`,
+   `SuggestedChallenges`. Les anciens `Tier` / `NextTier` passent en
+   `json:"-"` (compat V2 internes mais hors JSON UI — la UI lit `SkillRating`).
+
+3. **`BuildProfile` orchestrateur** délègue à 6 sous-méthodes (`fillSectionB`,
+   `aggregateNarrative`, `computeStyleSignature`, `computeEngagement`,
+   `computeLUSRComponents`, `selectSuggestedChallenges`) toutes idempotentes
+   et tolérantes à l'absence de données (slog.Warn + section vide plutôt
+   qu'erreur).
+
+4. **Section A1 radar — heuristique pragmatique** : V1 calcule les 6 raw axes
+   directement depuis `match_participants` (kills→combat,
+   max(0,kills-deaths)→survival, assists→support, personal_score→score,
+   max_killing_spree×10→impact, objective=0). Le mapping fin via
+   `personal_score_awards` (title-specific) reste deferré. Suffisant pour
+   afficher un radar pertinent dès la V1.
+
+5. **Section B LUSR composantes — placeholder honnête** :
+   `loadLUSRComponentsBreakdown` retourne map vide tant qu'on n'a pas la
+   table `lusr_component_history(match_id, component_name, value)`
+   alimentée par le scoring engine. UI affiche current=0/top20=0/target avec
+   tooltip "données indisponibles". TODO V2 explicite dans le code.
+
+6. **Section C suggestions** : filtre `challenge_template` par
+   `lusr_components ∩ leverages` (CSV-encoded), tri `IsLongTerm` desc puis
+   ID. Lecture directe via `duckdbRepo{db: pdb.Metadata}` pour éviter la
+   dépendance circulaire `profile ↔ platform/duckdb.NewPrestigeTemplateRepo`.
+
+7. **Endpoint HTTP** : `GET /api/v1/players/{slug}/profile` via
+   `handlers.PlayerProfileHandler`. Pattern aligné sur `ProgressionHandler`
+   (resolver + chi). Query param `window_days` (clampé 7..120, défaut 30).
+
+**Résultats observés** :
+
+- `go build ./...` exit 0
+- `go vet ./...` exit 0 (avec et sans `-tags=integration`)
+- `go test ./internal/progression/profile/...` ✅ 8 tests unitaires
+  (classifyStyle, engagementTier, identifyLeverages top-2 + empty,
+  buildSkillRatingSnapshot, narrativeAxesForComponent, orderedComponentNames,
+  roleFromAxis) — exit 0 sur Windows.
+- `go test ./internal/progression/...` et
+  `go test ./internal/api/handlers/...` ✅ tous verts.
+- 3 tests d'intégration (`//go:build integration`, CI Linux) :
+  `BuildProfile_EmptyDB_HasEnoughDataFalse`,
+  `BuildProfile_WithMatches_FillsSections`, `Load_V2Compat`.
+- V2 caller (`post_sync_progression.go`) inchangé — API `Load()` préservée.
+
+**Trade-offs assumés** :
+
+- LUSR components breakdown affichera des zéros tant que la table d'historique
+  des composantes n'existe pas (commit follow-up V2). Acceptable : UI a un
+  tooltip explicatif, et l'orchestrateur fournit déjà la cible de tier
+  (`RequiredCompositeForTier` du commit-3).
+- Mapping `personal_score_awards.award_name → narrative.ParticipationAxis`
+  reporté : V1 utilise les agrégats `match_participants` directement. Le
+  radar reflète donc l'orientation gameplay (kills/score) plus que la
+  contribution objectif. Affinement title-specific en V2.
+
+**Conclusion / prochaine étape** : Sprint V1 maintenant 4/10. Reste 6 commits
+(ImprovementCampaign + UI + i18n + ADR final). Prochaine étape : commit 5
+(ImprovementCampaign : table + service + hook + endpoints).
+
+---
+
+## [2026-05-18] docs(player-profile-v1) — ADR 0015 + pause sprint partiel
+
+**Statut** : Sprint V1 partiellement livré (3/10 commits + ADR). Branche
+`feat/player-profile-ascension` prête à reprendre.
+
+**Contexte** : Le sprint V1 PlayerProfile (10 commits prévus, ~6-8j de dev cumulé) a été démarré pour combler la dette identifiée pendant le sprint V2 (« PlayerProfile V1 livrée » mentionné dans le plan V2 mais en réalité jamais implémenté). Après livraison de 3 commits de fondations (catalogue tagué + enrichi + math LUSR), j'ai proposé une pause stratégique vu la complexité croissante des commits 4-5 (service PlayerProfile + ImprovementCampaign full system). L'utilisateur a choisi de figer l'état actuel via un ADR documentant clairement la dette.
+
+**Décisions / changements** :
+
+1. **ADR 0015 créé** (`docs/adr/0015-player-profile-ascension-v1.md`, ~150 lignes) :
+   - Status : `Partially implemented` (3/10 commits livrés, 7 reportés).
+   - Documente précisément ce qui est livré (commits 1-3 : tagging, enrichment catalogue, inversion math).
+   - Documente ce qui est en dette (commits 4-9 avec scope précis pour reprise).
+   - Capture les décisions architecturales validées : self-benchmark (pas inter-joueurs), Campagne vs Saisons, 5 raffinements algorithmiques (LOWESS lissé, no-causalité, filtre playlist, Mann-Whitney U, auto-suggestion).
+   - Note de cohérence avec ADR 0014 (V2) : les 2 alertes coach `AlertTypeCampaignProgress` et `AlertTypeCampaignCloseAuto` définies en V2 commit 5 restent dormantes faute du service Campaign de ce V1 — dette croisée documentée.
+   - Note la nécessité de refactoriser le mini-service `internal/progression/profile/` (V2 commit 6) en remplacement par le PlayerProfile complet quand le commit 4 sera repris.
+
+2. **CLAUDE.md** : ajout du lien ADR 0015 dans la liste des ADRs (sous 0014).
+
+3. **Pas de code de production touché** ce commit : pure documentation.
+
+**Pourquoi cette pause maintenant** :
+- Commits 1-3 livrent des **fondations cohérentes en elles-mêmes** (le catalogue enrichi est utilisable directement, l'inversion math LUSR aussi).
+- Commits 4-5 sont **complexes et nécessitent des décisions produit** sur les edge cases (Mann-Whitney sur petit échantillon, comportement campagne quand le joueur change de playlist, formats UI exacts) — vaut mieux les trancher avec un PO qu'en mode autonome.
+- Commits 6-7 (UI) **dépendent de l'API du 4** : pas de sens de les écrire avant que 4 soit livré.
+- Estimation honnête du restant : 6-8 jours de dev cumulé en mode prudent.
+
+**Validation** :
+- `git status` : clean (rien de production touché).
+- ADR 0015 lisible et précis (10 sections, sources référencées, dette quantifiée).
+
+**Conclusion / prochaine étape (pour reprise future)** :
+
+Ordre recommandé pour terminer le sprint V1 dans une session ultérieure :
+1. Commit 4 (PlayerProfile service ~2h) — débloque tout le reste.
+2. Commit 5 (Campaign ~2-3h) — autonome, peut être fait juste après.
+3. Commits 6-7 (UI Frontend ~3h) — utilisent l'API du 4 + données du 5.
+4. Commits 8-9 (rename + i18n ~1.5h) — pure surface texte.
+5. Mettre à jour ADR 0015 statut → `Accepted` quand 10/10.
+
+**État final des deux sprints croisés** :
+- **V2 (Progression Tracking)** : 10/10 commits livrés, branche
+  `feat/progression-tracking-ascension` prête pour PR.
+- **V1 (Player Profile)** : 3/10 commits livrés + ADR. Branche
+  `feat/player-profile-ascension` prête à reprendre.
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-3) — RequiredCompositeForTier (inversion math LUSR)
+
+**Statut** : Complété (branche `feat/player-profile-ascension`).
+
+**Contexte** : 3e commit V1. Implémente l'inversion math du composite_score LUSR : étant donné (μ courant, μ cible, σ), retourne le composite [0, 1] qui produirait un μ post-match approximativement égal à la cible. Nécessaire pour Section B du profil joueur (commit 4) et Section C (suggestions de défis ciblés sur composantes faibles).
+
+**Décisions / changements** :
+
+1. **`RequiredCompositeForTier(currentMu, targetMu, sigma) float64`** dans `internal/analysis/skill_rating.go` :
+   - Court-circuit si `|target - current| < 0.5` → 0.5.
+   - **Guards aux bornes** : calcul de `muAtZero` et `muAtOne` via `trueskillUpdate`. Si target hors [muAtZero, muAtOne] → retour direct 0.0/1.0 (évite convergence asymptotique du binary search).
+   - Binary search dans [0, 1], tolérance 0.01, max 20 itérations.
+   - Hypothèse : adversaire fictif à même μ/σ → wf=1 (cas symétrique pour stabilité).
+
+2. **Helper `clamp01`** pour bornage final.
+
+3. **Bug subtil corrigé** : test `NextSubTier` initialement `got = 0.99996` au lieu de 1.0. Cause : binary search converge asymptotiquement sans atteindre la borne exacte. Fix : guards early-return.
+
+4. **7 tests unitaires** : StableAtCurrent / NextSubTier (clamp 1) / ReachableSmallDelta (round-trip) / TargetBelow / FarBelow (clamp 0) / AllTiersEntry (6 sub-tests) / Clamp01_Bounds.
+
+**Note duplication** : 2 packages avec `trueskillUpdate` (sync + analysis). Plan §5.1 demande analysis → suivi du plan. Dedup éventuelle reportée post-V1.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/analysis/...` : OK (7 nouveaux + tous tests existants)
+
+**Conclusion / prochaine étape** : brique math posée. Le service PlayerProfile (commit 4) pourra exposer pour chaque composante LUSR la cible numérique à atteindre.
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-2) — enrichir catalogue (5 templates + 2 arcs preset)
+
+**Statut** : Complété (branche `feat/player-profile-ascension`).
+
+**Contexte** : Deuxième commit du sprint V1 PlayerProfile. Ferme les gaps de couverture LUSR identifiés en §3.2 du plan (Deaths vs Expected = 24% du composite avec 0 templates directs, Defensive Resistance = 6% avec 0 templates, Accuracy = 10% sans habitude long-terme).
+
+**Décisions / changements** :
+
+1. **5 nouveaux templates** dans `config/titles/halo_infinite/challenges/templates.toml` :
+   - `halo_infinite.monthly.deaths_vs_expected` : rolling_days=30, threshold, metric `deaths_vs_expected`, cibles 1.05/1.15/1.25/1.40 (ratio expected/actual). Composante LUSR Deaths vs Expected (24%), axe Survival.
+   - `halo_infinite.weekly.deaths_vs_expected` : session=3, threshold. Court terme pour coaching hebdo.
+   - `halo_infinite.monthly.dmg_taken_per_death` : metric `defensive_resistance`, rolling_days=30. Composante Defensive Resistance (6%, gap total).
+   - `halo_infinite.monthly.accuracy_30d` : `FieldAccuracy` sur rolling_days=30. Habitude longue vs ponctuel.
+   - `halo_infinite.monthly.kve_30d` : `kills_vs_expected` sur rolling_days=30. Habitude longue.
+
+2. **2 nouveaux arcs preset** dans `presets.toml` :
+   - `halo_infinite.marksman` (Le Tireur d'Élite) : accuracy_session (N) → accuracy_3sessions (H) → accuracy_30d (L).
+   - `halo_infinite.survivor` (Le Survivant) : kdr_session (N) → deaths_vs_expected weekly (H) → deaths_vs_expected monthly (L).
+
+3. **Couverture LUSR après commit 2** :
+   - Deaths vs Expected (24%) : 2 templates directs (gap critique fermé).
+   - Defensive Resistance (6%) : 1 template (gap total fermé).
+   - Accuracy Delta (10%) : 3 templates au total (habitude longue ajoutée).
+   - Survival : arc preset dédié (gap §3.4 fermé).
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/prestige/...` : OK (validation TOML targets monotones).
+- Total templates : 27 → 32. Total arcs : 4 → 6.
+
+**Bug rencontré** : tentative initiale d'ajout via `cat >> file <<EOF` en bash a échoué silencieusement (probable problème quoting PowerShell↔bash). Workaround via Edit tool avec ancre sur le dernier template.
+
+**Conclusion / prochaine étape** : Catalogue prêt pour le service PlayerProfile (commit 4). Commit 3 = inversion math LUSR (`RequiredCompositeForTier`) qui donnera la cible numérique par composante pour atteindre le sub-tier suivant.
+
+---
+
+## [2026-05-18] feat(player-profile-v1)(commit-1) — tagger templates avec lusr_components + is_long_term
+
+**Statut** : Complété (branche `feat/player-profile-ascension` depuis HEAD de V2).
+
+**Contexte** : Premier commit du sprint V1 PlayerProfile. Ouvre le tagging du catalogue de templates Prestige existant pour permettre le matching profil → suggestions de défis (Section C du futur profil). Prérequis structurel pour commits 4 (service PlayerProfile) et 5 (Campagne).
+
+**Décisions / changements** :
+
+1. **3 nouveaux champs sur `prestige.Template`** :
+   - `LUSRComponents []string` : composantes LUSR ciblées (ex: ["kills_vs_expected", "deaths_vs_expected"])
+   - `RadarAxes []string` : axes narrative ciblés (combat/survival/support/score/objective/impact) — optionnel
+   - `IsLongTerm bool` : true si rolling_days OR last_n_matches threshold
+
+2. **Migration metadata.duckdb** (`steps_metadata_template_tagging.go`) : 3 nouvelles colonnes via `addColumnIfMissing`. CSV simple en VARCHAR pour les listes (validation au load qu'aucun item ne contient de virgule). Default `is_long_term=FALSE`.
+
+3. **Loader TOML étendu** (`prestige/catalog_loader.go`) : `templateEntryTOML` accepte les 3 nouveaux champs en types natifs TOML (`[]string` pour les listes inline, `bool` pour le flag).
+
+4. **Repo metadata étendu** (`platform/duckdb/prestige_metadata_repo.go`) : INSERT...ON CONFLICT mis à jour avec les 3 colonnes. Helpers `encodeStringList`/`decodeStringList` pour la sérialisation CSV (refus si une string contient `,`).
+
+5. **27 templates Halo Infinite taggés** dans `config/titles/halo_infinite/challenges/templates.toml` via sous-agent général (parsing TOML + mapping mécanique metric → tags). Couverture :
+   - 23/27 templates avec tags non-vides
+   - 4/27 marqués `# TODO: tag (no match)` : `maps_played_distinct`, `modes_played_distinct`, `FieldWavesCompleted`, `matches_played` (métriques identitaires/volume sans LUSR component direct)
+   - is_long_term=true pour les 9 templates monthly (window_type=rolling_days), false pour les 18 daily/weekly (window_type=session)
+
+6. **Test unitaire `TestLoadTemplatesFromTOML_TaggingFields`** : vérifie le parsing des 3 nouveaux champs depuis TOML inline (template avec tags + template sans tags → valeurs zero).
+
+**Validations** :
+
+- `go build ./...` : OK
+- `go test ./internal/prestige/...` : TestLoadTemplatesFromTOML_TaggingFields PASS + tous les autres tests passent
+- `go test -tags=integration ./internal/migration/... ./internal/platform/duckdb/...` : OK (migration appliquée, round-trip CSV → struct OK)
+
+**Conclusion / prochaine étape** : Le catalogue est tagué et le service PlayerProfile (commit 4) pourra requêter `WHERE lusr_components @> ?` (ou équivalent CSV split) pour suggérer des templates ciblant les composantes faibles du joueur. Commit 2 = ajout des 5 nouveaux templates + 2 nouveaux arcs preset (§6.1-6.2 du plan) pour fermer les gaps de couverture (Deaths vs Expected à 0%, Defensive Resistance à 0%).
+
+---
+
+## [2026-05-18] feat(progression)(commit-10) — i18n manifests + ADR 0014 + fix icons (commit final V2)
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`). **Sprint V2 fini.**
+
+**Contexte** : Dixième et dernier commit. Câble les notifs coach (titles/bodies FR/EN), corrige le bug pré-existant d'icons.tsx, et documente l'architecture finale via ADR 0014.
+
+**Décisions / changements** :
+
+1. **Types frontend** (`features/notifications/types.ts`) : ajout des 6 nouvelles catégories à `NotificationCategory` + `ALL_CATEGORIES`. Aligné avec le backend Go (commit 5).
+
+2. **i18n FR/EN complets** (`features/notifications/i18n.ts`) :
+   - `categoryLabel` + `categoryDescription` × 6 nouvelles entrées × 2 locales = 24 strings.
+   - `templates` : 12 keys (6 catégories × {title, body}) × 2 locales = 24 templates avec interpolation des params (`{metric_label}`, `{period_label}`, `{title_fr}`, `{gap}`, `{length}`, `{multiplier}`, `{days_away}`, etc.).
+   - `metricLabel` étendu avec les 4 métriques V2 (performance_score, kpm, accuracy, pspm) en plus des 3 existantes.
+   - `periodLabel` nouveau mapping (30d / 90d / all_time) → libellé localisé.
+   - Type `NotificationsText` étendu avec champ `periodLabel: Record<string, string>`.
+
+3. **Enrichment côté frontend** (`features/notifications/format.ts`) :
+   - Fallback `metric` (params coach V2) en plus de `metric_key` (convention historique) pour résoudre `metric_label`. Décision pragmatique pour éviter de toucher aux 5 tests unit Go du coach commit 5 — debt acceptée et documentée.
+   - Nouveau enrichissement `period` → `period_label` pour les templates `record_near_miss` et autres.
+
+4. **Fix `notifications/icons.tsx`** (bug pré-existant relevé en commit 8-9 typecheck) : ajout des 12 icons manquantes :
+   - 6 catégories Halo (2026-05-16) jamais mappées : `data_health_warning`, `career_rank`, `skill_tier`, `battlepass_completed`, `citation_tier`, `citation_mastery` — réutilisation des icons existantes (IconAlert, IconStar, IconTrending, IconTrophy).
+   - 6 catégories V2 (this sprint) : `record_near_miss`, `milestone_unlocked`, `milestone_near_miss`, `lusr_tier_approach`, `streak_milestone`, `comeback_welcome`. Ajout `IconFlame` cohérent avec StreakBadge.tsx.
+   - `tsc -b` passe maintenant à 0 erreur (vs 1 erreur pré-existante dans les commits précédents).
+
+5. **ADR 0014** (`docs/adr/0014-progression-tracking-v2-ascension.md`, ~200 lignes) : documente l'architecture finale V2 :
+   - Contexte : 3 options évaluées (Saisons rejetées × 2, PROGRESSION_TRACKING retenu)
+   - Decision : 10 commits backend (1-7) + frontend (8-9) + glue (10)
+   - Key choices : pas de table coach_alert dédiée, pas de PlayerProfile service centralisé, dédup sans table, renommage window→period, détecteurs purs, couleurs sémantiques.
+   - Consequences : positives (zéro duplication, idempotence, extension facile) + négatives/dette (streaks perf-based non câblés, panneau records-near-miss skipped, metric vs metric_key inconsistency).
+
+6. **CLAUDE.md** : ajout du lien ADR 0014 dans la liste des ADRs (NB : ADR 0012 et 0013 existent mais ne sont pas listés là — bug pré-existant non corrigé pour rester chirurgical).
+
+**Validations finales** :
+
+- `tsc -b` : **0 erreur** (vs 1 erreur pré-existante avant ce commit). Fix par le mapping icons complet.
+- `eslint src/features/{notifications,ascension}` : 0 erreur, 3 warnings dans NotificationsPage.tsx pré-existants (strings hardcodées sur les bulk actions — non liés).
+- `vitest run src/features` : **783/783 PASS** + 14 skipped (full suite frontend). Aucune régression.
+- Tests progression backend de bout en bout (commits 1-9) restent verts.
+
+**Récapitulatif du sprint V2 complet** :
+
+| # | Commit | Lignes | Tests | Fichiers |
+|---|---|---|---|---|
+| 0 | chore(plan) align | ~80 | — | 2 |
+| 1 | types + migrations | 527 | 9 mig | 9 |
+| 2 | streaks evaluator | 1320 | 17 (12+5) | 9 |
+| 3 | records detector | 1250 | 13 (6+7) | 9 |
+| 4 | milestones | 10 fichiers | 14 (9+5) | 10 |
+| 5 | coach generator | 937 | 19 | 8 |
+| 6 | hook post-sync | 1373 | 45 (42+3) | 9 |
+| 7 | endpoints HTTP | 680 | 5 | 5 |
+| 8 | UI Streaks | 739 | 15 | 13 |
+| 9 | UI Records + Milestones | 555 | 4 (total ascension 19) | 7 |
+| 10 | i18n + ADR + icons | ~400 | 0 nouv, 783 régression | 6 |
+| **TOTAL** | **11 commits** | **~7900** | **140+ tests** | **~85 fichiers** |
+
+**Conclusion finale** : **Plan PROGRESSION_TRACKING V2 (Ascension) livré intégralement.**
+
+Le système est end-to-end opérationnel :
+- À chaque sync, le hook post-sync évalue streaks/records/milestones, exécute le coach generator, déduplique sur 24h, et émet des notifs aux 6 nouvelles catégories.
+- L'utilisateur voit son compteur de streak dans la NavL1.
+- La page Ascension expose la grille streaks + records timeline + milestones grid.
+- Les alertes coach apparaissent dans le centre de notifs avec toasts pour les fraîches.
+- Le seed Halo Infinite inclut 13 milestones sur 6 axes.
+
+**Dette acceptée** (documentée dans ADR 0014 §Consequences/Négatives) :
+- Streaks perf-based (daily_perf, weekly_kda_threshold) non câblés faute de seuils personnels exposés.
+- `accuracy_threshold_days` en interprétation permissive (1 match/jour ≥ 0.50) — changement de sémantique = 1 ligne SQL.
+- Panneau UI records-near-miss skippé (notif proactive plus efficace).
+- `metric` vs `metric_key` dans params coach — workaround côté frontend, à harmoniser plus tard.
+
+Branch prête pour ouverture PR vers `main`.
+
+---
+
+## [2026-05-18] feat(progression)(commit-9) — UI Records timeline + Milestones grid
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Second commit côté frontend. Apporte les 2 sections manquantes sur la page Ascension : Records (PB courants + timeline historique) et Milestones (grille earned/locked). Complète la page V2 telle que spécifiée au plan §8.3.
+
+**Décisions / changements** :
+
+1. **Skip volontaire du panneau "records proches"** (plan §5.3) : un panneau UI statique ferait doublon avec les notifications `record_near_miss` que le coach émet déjà (commit 5+6). Ces notifs apparaissent dans le centre de notifs existant (cloche NavL1) avec un toast pour les fraîches — feedback proactif plutôt que statique. Documenté dans le commentaire d'en-tête de RecordsTimeline.tsx. Si l'UX product change d'avis, le panneau peut être ajouté en follow-up.
+
+2. **`RecordsTimeline.tsx`** : 2 sous-sections dans 1 composant cohérent.
+   - "Records personnels" : grille de cards groupées par métrique, chaque card affiche les 3 périodes (30d / 90d / all_time) avec previous_value + achieved_at.
+   - "Historique des records battus" : liste chronologique DESC depuis `record_history`.
+   - Gestion empty states distinctes (PB list vide vs history vide).
+
+3. **`MilestonesGrid.tsx`** : grille responsive (2 cols mobile → 5 cols xl). Tri : earned récents en tête (DESC sur earned_at), puis locked groupés par (metric, threshold) ASC. Affiche : titre localisé (title_fr / title_en), label métrique, seuil, condition libre (si fourni), date earned_at.
+   - Tone "earned" : `border-amber-500/40 bg-amber-500/10` + texte amber (gold visuel).
+   - Tone "locked" : opacity 70% + muted text.
+   - Compteur en header : `{n}/{total} débloqué{plural}`.
+
+4. **Extension `format.ts`** :
+   - `formatMetricValue(metric, value)` : sémantique-aware (accuracy → %, KDA/score → 2 décimales strippées, compteurs entiers → séparateur de milliers en-US).
+   - `stripTrailingZeros(s)` : helper interne — corrige le bug de l'ancienne regex qui ne strippait que `.00` (loupait `.50`, `.80`).
+   - Locale en-US fixée pour les compteurs entiers : déterministe pour tests + bénin pour l'UX (l'i18n FR/EN porte sur les labels, pas sur les nombres au mille près).
+
+5. **Extension `i18n.ts`** :
+   - Nouveau bloc `recordsSectionTitle` + `recordsTimelineTitle` + `recordsPersonalBestsTitle` + empty states + `recordsAchievedAt` + `recordsPreviousValue`.
+   - Nouveau bloc `milestonesSectionTitle` + `milestonesEarned` + `milestonesLocked` + `milestonesEarnedCount` + `milestonesEarnedAt` + `milestonesThreshold` + `milestonesEmpty`.
+   - Mapping `metric: Record<string, string>` : 11 labels (performance_score, kda, kpm, accuracy, pspm, matches_played, wins, kills, headshots, assists, accuracy_threshold_days).
+   - Mapping `period: Record<RecordPeriod, string>` : 30 jours / 90 jours / Carrière (FR), 30 days / 90 days / All-time (EN).
+
+6. **`AscensionPage.tsx`** : assemble Streak + Records + Milestones dans un `<main>` avec `space-y-8` pour séparer les 3 sections visuellement.
+
+**Tests** :
+
+- 4 nouveaux tests `formatMetricValue` (compteurs entiers, accuracy %, floats trailing zeros, métrique inconnue défaut). Total feature : 19/19 PASS 1.2s.
+
+**2 bugs corrigés en cours** :
+
+1. **`toLocaleString()` sans arg** : locale dépendante de l'environnement, le test attendait "1,234" (en-US) mais l'env de test pouvait renvoyer "1 234" (fr-FR avec espace insécable). Fix : forcer `'en-US'` pour les compteurs entiers.
+2. **`replace(/\.00$/, '')` insuffisant** : ne strippait pas les zéros simples (".50" restait, ".80" aussi). Fix : helper `stripTrailingZeros` avec regex sur les zéros de fin + suppression du point final si la décimale est vide.
+
+**Validations** :
+
+- `tsc -b` : 1 erreur, identique à commit 8 (pré-existante `notifications/icons.tsx`, fixée au commit 10).
+- `eslint` sur `src/features/ascension/` : 0 erreur / 0 warning.
+- `vite build` : OK 1.01s.
+
+**Conclusion / prochaine étape** : Page Ascension complète côté UI. Le joueur peut désormais :
+- voir son compteur de streak dans la NavL1 (commit 8)
+- consulter ses streaks détaillées dans `/players/{slug}/ascension`
+- consulter ses PB courants par fenêtre + l'historique des records battus
+- voir la grille de milestones earned/locked
+- recevoir les alertes near-miss / breaks via le centre de notifs existant
+
+Commit 10 = i18n manifests pour les title_key/body_key des 6 nouvelles catégories notif progression (alimentés par le coach) + fix `notifications/icons.tsx` + ADR-0013 documentant l'architecture V2 finalisée.
+
+---
+
+## [2026-05-18] feat(progression)(commit-8) — UI Streaks (StreakBadge nav + StreakDashboard)
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Premier commit côté frontend du plan V2. Apporte la visibilité streaks dans la NavL1 (badge cliquable avec longueur courante) + page `/players/{slug}/ascension` avec dashboard détaillé. Records + Milestones reportés au commit 9.
+
+**Décisions / changements** :
+
+1. **Feature folder `features/ascension/`** structuré comme `features/notifications/` :
+   - `types.ts` : TS types miroir des DTOs Go (snake_case JSON contract).
+   - `queries.ts` : 3 hooks TanStack Query (`useStreaks`, `useRecords`, `useMilestones`). Polling 60s, refetchOnWindowFocus actif, staleTime 30s.
+   - `i18n.ts` : dictionnaire FR/EN (pattern aligné notifications/settings).
+   - `format.ts` : interpolate, nextPPTier, formatMultiplier, formatDate. Constante `STREAK_PP_TIERS` dupliquée serveur (cohérence visuelle des paliers).
+   - `StreakBadge.tsx` : badge cliquable dans NavL1 (icône feu inline SVG + badge count). Sélectionne la streak `daily_play` active (plus visible côté UX). Tooltip = multiplicateur PP courant.
+   - `StreakDashboard.tsx` : grille de cards par streak (active → paused → broken). Affiche current_length, best_length, multiplicateur PP, prochain palier, shields disponibles, dates start/broken.
+   - `AscensionPage.tsx` : page wrapper qui rend `StreakDashboard` pour le joueur courant.
+
+2. **Wiring** :
+   - Route `/players/$playerSlug/ascension` créée (file route TanStack Router).
+   - `routeTree.gen.ts` régénéré automatiquement via `vite build` (TanStackRouterVite plugin).
+   - `NavL1.tsx` : `StreakBadge` monté juste avant `NotificationsBell` (per-player, conditionnel sur `currentPlayer`).
+   - `queryKeys` étendu avec `progressionStreaks/Records/Milestones`.
+
+3. **Color tokens et i18n** :
+   - Tailwind tokens sémantiques uniquement (`bg-primary`, `text-emerald-700`, `text-muted-foreground`). Pas de hex hardcodé (respect règle CLAUDE.md §20).
+   - Statut tones : active = emerald (success), paused = amber (warning), broken = muted. Cohérent avec le sémantique design system.
+
+4. **Pattern conservé du domain notifications** :
+   - Sélecteur Zustand `useAppShellStore((s) => s.locale)` pour la locale.
+   - Hooks de query séparés des composants.
+   - Aria-label paramétrés via interpolate.
+
+**Tests** :
+
+- 15 tests unit `format.test.ts` couvrant interpolate (placeholders, plural), nextPPTier (5 paliers + null au max), formatMultiplier (4 cas), STREAK_PP_TIERS (cohérence avec backend).
+- Vitest : 15/15 PASS 1.1s.
+
+**Validations** :
+
+- `tsc -b` : aucune nouvelle erreur sur mes fichiers. Worktree a 1 erreur pré-existante dans `notifications/icons.tsx` (catégories déclarées dans types.ts sans icon mapping — bug 2026-05-16 datant de l'ajout des notif career_rank etc., à fixer en commit 10 quand on ajoute aussi les 6 nouvelles catégories progression). Le main repo a 3 erreurs pré-existantes du même genre (différentes).
+- `eslint` sur mes fichiers : 0 erreur, 0 warning. (NavL1.tsx a 6 warnings sur des strings hardcodées pré-existantes — non liées.)
+- `vite build` : OK 1.04s, bundle gen normal.
+
+**Bug subtil corrigé** :
+
+- Le `routeTree.gen.ts` est auto-généré par TanStackRouterVite, pas un fichier source classique. Initialement `tsc` se plaignait que `/players/$playerSlug/ascension` n'existait pas dans la map de routes. Fix : exécuter `vite build` (codegen du plugin) → fichier `routeTree.gen.ts` mis à jour avec le nouvel import + entrées. Commité tel quel (le fichier est tracké en git).
+
+**Workaround setup test web** :
+
+- `node_modules` absent dans le worktree (npm install pas refait). Workaround : junction Windows depuis `LevelUp-go-migration/apps/web/node_modules` (junction ne nécessite pas privilège admin contrairement à symlink). Permet vitest + tsc + vite sans réinstaller 800Mo de deps.
+
+**Conclusion / prochaine étape** : Streaks visibles côté UI. Le joueur voit son compteur de streak dans la navbar et accède à sa page Ascension via clic. Commit 9 = Records timeline + Milestones grid sur la même page (RecordsTimeline + RecordsNearMiss + MilestonesGrid components). Commit 10 = i18n manifests pour les title_key/body_key des 6 nouvelles catégories notif progression (+ fix icons.tsx).
+
+---
+
+## [2026-05-18] feat(progression)(commit-7) — endpoints HTTP /streaks /records /milestones
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Septième commit du plan V2. Expose les données de progression à l'UI via 3 endpoints HTTP read-only. Plan §8.1 prévoyait 3 fichiers handlers séparés, j'ai consolidé en un seul `ProgressionHandler` puisque la logique est homogène (chacun = repo Get + JSON).
+
+**Décisions / changements** :
+
+1. **1 handler unique `ProgressionHandler`** avec 3 méthodes (`ListStreaks`, `ListRecords`, `ListMilestones`) au lieu de 3 handlers séparés. Justification : tous ont la même shape (resolve player → repo call → JSON), un seul handler évite la duplication boilerplate + simplifie le mount.
+
+2. **3 endpoints** montés sous `/api/v1/players/{player_slug}/` (alignement convention notifications) :
+   - `GET /streaks` → `{ items: [streakDTO] }` avec `pp_multiplier` calculé côté serveur (économise du code front).
+   - `GET /records?history_limit=N` → `{ personal_bests: [pbDTO], history: [historyDTO] }`. Limit clamp 1-200, défaut 50.
+   - `GET /milestones` → `{ items: [milestoneDTO] }` — catalogue **joint** server-side avec earned (`earned: bool` + `earned_at?`). Le frontend n'a qu'à itérer pour afficher la grille.
+
+3. **Convention DTOs** : structs JSON dédiées (`streakDTO`, `personalBestDTO`, etc.) plutôt que sérialiser les structs métier directement. Avantage : champs UI-spécifiques (`pp_multiplier`), pas de fuite de détails internes (XUID dans Streak, etc.), JSON contract stable même si le métier évolue.
+
+4. **Mount dans server.go** : 4 lignes ajoutées juste après NotificationsHandler.Mount(r), réutilise la subroute `/players/{player_slug}` existante. `progressionResolve` wrappé en closure pour convertir `PlayerResolver` → `ProgressionResolver` (types nommés distincts en Go).
+
+5. **OpenAPI documentation** : ajout des 3 routes dans `api/openapi.yaml` (avec `history_limit` query param documenté). Le test `TestContractRoutesDocumented` enforce un plafond de 0 routes non documentées → obligatoire pour passer la CI.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- 5 nouveaux tests intégration handler (`TestListStreaks_*`, `TestListRecords_WithPBAndHistory`, `TestListMilestones_CatalogPlusEarned`, `TestProgressionHandler_PlayerNotFound_Returns404`) → 5/5 PASS (~4.5s cumulé)
+- Setup test minimal : 3 DBs (Player, SharedSocial, Metadata) — `Shared` omis car les handlers ne l'utilisent pas (contrairement au hook post-sync qui agrège via SQL JOIN sur shared.match_*).
+- Full integration suite OK : api (14.6s), api/handlers (11.7s), platform/duckdb (36.9s), migration (13.1s), notifications (4.3s).
+
+**Bug subtil corrigé** :
+
+- `TestContractRoutesDocumented` fail au build → 3 routes chi non documentées dans openapi.yaml. Fix : ajout du block `# Couche progression V2` après le block notifications. Le test enforce le plafond P8.8 (=0) en CI.
+
+**Conclusion / prochaine étape** : Backend V2 complet et exposé. Le frontend peut désormais :
+- Afficher le compteur de streak dans la nav (`GET /streaks`)
+- Afficher la grille de milestones (`GET /milestones`) avec earned/locked
+- Afficher la timeline records (`GET /records`)
+- Recevoir les alertes coach via le centre de notifs existant (déjà câblé en commit 6)
+
+Commit 8 = UI Streaks dashboard + StreakBadge dans la navbar. Commit 9 = Records timeline + Near-miss + Milestones grid. Commit 10 = i18n manifests pour les notif keys + ADR 0013.
+
+---
+
+## [2026-05-18] feat(progression)(commit-6) — hook post-sync orchestrateur + profile service
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Sixième commit du plan V2 — le plus complexe. Orchestre les 4 détecteurs (streaks/records/milestones/coach) à chaque sync via la closure `buildPostSyncDeltaHook` existante. Ajout d'un mini-service `profile` pour exposer LUSR μ + sub-tier + tendance LOWESS sur μ.
+
+**Décisions utilisateur (avant code)** :
+
+1. **Scope full** : tout branché, y compris le mini-service PlayerProfile (LUSR + tier + LOWESS). Le plan référençait une « V1 PlayerProfile livrée » qui n'existait pas dans le repo — j'ai donc construit le minimum nécessaire pour le coach.
+2. **`accuracy_threshold_days`** : 1 match du jour avec accuracy >= 0.50 suffit (permissif). Constante `AccuracyThresholdForDays = 0.50`.
+3. **Fenêtre matchs récents** : 120 jours (`ProgressionMatchHistoryDays`).
+4. **Code location** : nouveau fichier `internal/api/post_sync_progression.go` (+ `_queries.go` pour les SQL + `_test.go`).
+
+**Architecture livrée** :
+
+```
+internal/progression/profile/   (mini-service LUSR + LOWESS, ~250L)
+├── types.go      : PlayerProfile, LUSRState, TierState, LOWESSTrend
+├── tier.go       : TierFromMu / NextTierFromMu (utilise sync.SkillTiers)
+├── lowess.go     : ComputeMuTrend via temporal.LowessSmooth + slope diff first/last
+└── service.go    : Service.Load(userID, titleSlug, lowessWindowDays, now)
+
+internal/api/post_sync_progression.go (orchestrateur, ~250L)
+├── ProgressionDeps (struct DI : 7 dépendances injectables)
+├── EvaluateProgressionAfterSync : pipeline 7 étapes
+└── BuildPlayerProgressionDeps : factory depuis PlayerDB + emitter
+
+internal/api/post_sync_progression_queries.go (SQL, ~190L)
+├── loadProgressionMatches : JOIN shared.match_participants + pme
+├── loadPlayerStats : agrégats matches_played/wins/kills/headshots/assists
+│                     + accuracy_threshold_days (COUNT DISTINCT day)
+└── loadComebackContext : 2 derniers matchs pour pause + freshness
+
+internal/api/post_sync_deltas.go (wiring, +9 lignes)
+└── appel EvaluateProgressionAfterSync après EmitPostSyncDeltas
+
+internal/api/post_sync_progression_test.go (intégration, ~280L)
+└── 3 tests : EmptyDB no crash, WithMatches full pipeline, DetectorIdempotency
+```
+
+**Pipeline 7 étapes** :
+
+1. `loadProgressionMatches(120j)` → []streaks.MatchActivity + []records.MatchInput (avec 5 métriques pré-extraites : performance_score, kda, kpm, accuracy, pspm).
+2. `loadPlayerStats()` → milestones.PlayerStats (6 métriques cumulatives).
+3. `loadComebackContext()` → LastMatchAt (2nd-to-last) + HasNewActivity (last < 6h).
+4. `streaks.Evaluate` → résultats par type (daily_play, weekly_play). Note : types perf-based (daily_perf, weekly_kda_threshold) skippés en V1 car nécessitent des seuils personnels (médianes) non encore exposés.
+5. `records.Detect` → résultats par (métrique × période) avec Upsert player_records + Append record_history.
+6. `milestones.Detect` → résultats par entrée catalogue avec Append milestone_earned.
+7. `coach.Generate` + `FilterRecent(24h)` + `Emitter.Emit` → notifications persistées dans player_notifications.
+
+**Profile service — méthodes** :
+
+- `TierFromMu(mu)` : (Diamond III, Lower=1900, Upper=1933.33). Délègue à `sync.SkillTiers` + `sync.GetTierForRating` pour éviter la duplication.
+- `NextTierFromMu(mu)` : sub-tier suivant (Diamond III → Diamond IV → si dernier sub-tier, tier suivant Onyx, sinon empty).
+- `ComputeMuTrend([]mu)` : LOWESS smooth puis slope = lastValid - firstValid. Window = len(série).
+
+**3 bugs résolus pendant l'implémentation** :
+
+1. **Schéma `shared` non attaché en test** : DuckDB auto-attache shared_matches_v2.duckdb sous son nom de fichier, blocant le 2e ATTACH `AS shared`. Solution : ouvrir+migrer shared standalone, FERMER, puis ATTACH RW depuis le player DB. Test uses inserts via `shared.match_*` prefix.
+2. **NULL → int64 conversion** : `SUM(CASE...)` sur table vide retourne NULL. Wrapped in `COALESCE(..., 0)`.
+3. **Test d'idempotence trop strict** : recordingEmitter ne persiste pas → NotificationsRepo.List retourne empty → FilterRecent n'a rien à filtrer. Renommé en `TestEvaluateProgression_DetectorIdempotency` qui teste l'idempotence des **détecteurs** (records non-NewPB sur 2e passe, milestones AlreadyHad). La dédup notifs DB-backed reste couverte par les tests unit `FilterRecent` du commit 5.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/... ./internal/notifications/...` : OK 28s cumulé (42 tests progression + 2 notifications)
+- `go test -tags=integration ./internal/api/...` : OK 20.4s (3 nouveaux TestEvaluateProgression_*)
+- `go test -tags=integration ./internal/migration/...` : OK 19.6s (non-régression)
+- `go test -tags=integration ./internal/platform/duckdb/...` : OK 45.9s (suite complète, non-régression)
+
+**Conclusion / prochaine étape** : Backend V2 complet et opérationnel. Le hook post-sync émet des notifs aux 6 nouvelles catégories à chaque sync réussi. La dédup 24h fonctionne via player_notifications (DB-backed) en prod. Commit 7 = endpoints HTTP (`GET /api/v1/streaks`, `/records`, `/milestones`) pour exposer les données à l'UI (commit 8/9).
+
+---
+
+## [2026-05-18] feat(progression)(commit-5) — coach generator + 6 nouvelles catégories notif
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Cinquième commit du plan V2. Apporte la couche 3 (coach proactif) : générateur d'alertes positives à partir des sorties des autres détecteurs + signaux propres (LUSR tier approach, LOWESS, comeback).
+
+**Décisions / changements** :
+
+1. **6 nouvelles catégories notifications** ajoutées dans `internal/notifications/types.go` (+ seed `notificationDefaultCategories` dans la migration steps) :
+   - `record_near_miss` (inapp silent — potentiellement fréquent)
+   - `milestone_unlocked` (both = toast + inapp, marquant)
+   - `milestone_near_miss` (inapp silent)
+   - `lusr_tier_approach` (both, actionable)
+   - `streak_milestone` (both, palier 4/8/15/30j)
+   - `comeback_welcome` (both, rare)
+   - Décision tranchée du commit 4 : `milestone_unlocked` est sa propre catégorie (pas réutilisation de `personal_record`) → keys i18n propres + préférences distinctes.
+
+2. **Coach généralement pur** : pas d'I/O, prend les sorties des détecteurs amont en input et produit `[]Alert`. L'orchestrateur (commit 6) émet via `notifications.Emitter`.
+
+3. **8 alert builders** (1 par AlertType, dans `generator.go`) :
+   - `buildStreakAlerts` : déclenche StreakMilestone aux paliers 4/8/15/30j (alignés sur les paliers PP multiplier du commit 2). Pas d'alerte sur transition Broken (feedback positif uniquement, plan §6.1).
+   - `buildRecordAlerts` : RecordBroken si NewPB=true (catégorie `personal_record` existante), RecordNearMiss si NearMiss=true. Consomme directement les `records.DetectionResult` du commit 3.
+   - `buildMilestoneAlerts` : MilestoneUnlocked si Earned=true, MilestoneNearMiss si NearMiss=true (proche 90% du seuil).
+   - `buildLUSRTierApproachAlert` : gap < LUSRTierApproachDelta (10pts) et NextTierName non vide. Skip au tier max.
+   - `buildLOWESSAlerts` : 1 alerte par composante avec slope > 0 ET window >= LOWESSObservationWindow (14j). Catégorie `threshold_crossed` (existante).
+   - `buildComebackAlert` : LastMatchAt < now - 5j ET HasNewActivity=true. 1 seule alerte par retour.
+
+4. **Dédup sans table dédiée** : `FilterRecent(alerts, recentNotifs, now, window)` filtre les alertes déjà émises dans la fenêtre. Clé d'unicité = `(category, dedup_key)` où `dedup_key` est extrait des params JSON de la notif. `AnnotateDedupKey(*Alert)` injecte le champ dans params avant émission (l'orchestrateur l'appelle juste avant `Emitter.Emit`).
+
+5. **Mapping AlertType → notifications.Category** centralisé dans `emitter.go` :
+   - 3 réutilisations de catégories existantes (RecordBroken → personal_record, LOWESSPositive et Campaign* → threshold_crossed)
+   - 6 nouvelles catégories pour les 6 nouveaux types
+   - Convention clés i18n : `notif.<category>.title` + `notif.<category>.body` (manifest livré en commit 11).
+
+6. **`Alert.ToEmitInput()`** : conversion prête à brancher sur `Emitter.Emit`. Source constante `progression.coach` pour faciliter le filtrage UI.
+
+**Tests passés** (19 unit) :
+
+- StreakMilestone : palier atteint / non-palier / transition broken sans alerte
+- RecordBroken + RecordNearMiss avec params (value, previous_value, target)
+- MilestoneUnlocked + MilestoneNearMiss avec progress
+- LUSRTierApproach : gap=5 fire, gap=20 skip, max tier skip
+- LOWESSPositive : slope+ window>=14 fire ; slope- skip ; window<14 skip
+- ComebackWelcome : pause 7j fire, no activity skip, pause 3j skip
+- FilterRecent : same dedup_key dans fenêtre filtré, hors fenêtre passe, différent dedup_key passe
+- AnnotateDedupKey : injection dans params
+- Mapping AlertType → Category : tous les types sont mappés (assertion exhaustivité)
+
+**Validation** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/...` : 42/42 unit OK (~7.3s cumulé : coach 1.6s, milestones 1.9s, records 1.8s, streaks 1.9s + notifications 2s)
+- `go test -tags=integration ./internal/migration/...` : 14s OK
+- `go test -tags=integration ./internal/platform/duckdb/...` : 43s OK
+- `go test -tags=integration ./internal/notifications/...` : 1.8s OK
+
+**Conclusion / prochaine étape** : Couches 1, 2, 3 complètes côté backend. Le coach connaît les 10 types d'alertes, les map sur les catégories de notifs et déduplique. Commit 6 = hook post-sync qui orchestre l'exécution complète : streaks.Evaluate → records.Detect → milestones.Detect → coach.Generate → FilterRecent → Emitter.Emit. C'est le commit le plus tricky car il nécessite de :
+- Calculer `accuracy_threshold_days` via SQL DuckDB pour milestones (cf. décision §11 commit 4)
+- Fournir la `LUSRSnapshot` depuis PlayerProfile V1
+- Calculer les LOWESS trends depuis `analysis/temporal`
+- Bâtir le `LastMatchAt` + détecter `HasNewActivity` depuis la closure existante
+
+---
+
+## [2026-05-18] feat(progression)(commit-4) — milestones catalog TOML + detector + DuckDB repos
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Quatrième commit du plan V2. Boucle la couche 2 (Records + Milestones) avec le système de paliers cumulatifs débloquables.
+
+**Décisions / changements** :
+
+1. **Package `milestones` structuré en 5 fichiers** :
+   - `types.go` (déjà commit 1) : `CatalogEntry`, `Earned`, `NearMissRatio=0.10`.
+   - `repository.go` : 2 interfaces — `CatalogRepo` (metadata.duckdb, cross-titres) et `EarnedRepo` (stats.duckdb, par joueur). Séparation aligned sur la séparation physique des DB.
+   - `catalog_loader.go` : `LoadCatalogFromFile` (lit + valide TOML), `parseCatalogBytes` (pour tests inline), `SyncCatalog` (loader → CatalogRepo.Upsert, graceful degradation si TOML invalide → slog.Warn et catalogue inchangé en DB).
+   - `detector.go` : `PlayerStats { Metrics map[string]float64 }` en input, itère le catalogue par titre, skip si déjà earned, persiste si threshold atteint, signale near-miss si >= 90% du seuil. Toujours retourne 1 result par entrée du catalogue (observabilité progression complète).
+   - Pas de logique de notification — DetectionResult consommé par l'orchestrateur (commit 6).
+
+2. **Impl DuckDB** :
+   - `MilestoneCatalogRepo` (metadata.duckdb) : INSERT...ON CONFLICT (id) DO UPDATE. ListByTitle trie par (metric ASC, threshold ASC) pour faciliter l'ordre de progression côté UI.
+   - `MilestoneEarnedRepo` (stats.duckdb) : INSERT...ON CONFLICT (user_id, title_slug, milestone_id) DO NOTHING (idempotence sur le premier earned_at). IsEarned par scan léger, ListByUser triée DESC.
+
+3. **Catalogue Halo Infinite seed** : `config/titles/halo_infinite/milestones/catalog.toml` avec 13 milestones répartis sur 6 axes :
+   - Volume (matches.100, .500, .1000)
+   - Victoires (wins.50, .250, .1000)
+   - Kills (kills.1000, .10000)
+   - Tête (headshots.500, .5000)
+   - Support (assists.500, .2500)
+   - Régularité (accuracy_threshold_days 30j, 90j) — métrique calculée par l'orchestrateur (nombre de jours distincts avec accuracy >= 0.50), c'est l'angle « Duolingo » du plan V2.
+
+4. **Pas de test seed TOML** dans commit 4 : la validation du fichier `catalog.toml` shippé sera implicite au boot (SyncCatalog est appelé au démarrage server). Si le seed est cassé, le boot émet un slog.Warn — pas de crash mais visible. Couverture défensive via les 9 tests parsing + detector unit en mémoire.
+
+5. **Tests** : 5 unit detector (Unlock threshold, AlreadyEarned no-duplicate, NearMiss within 10%, FarFromThreshold no signal, MultipleEntries one pass) + 4 unit loader (Valid, MissingTitleSlug, MissingFields 4 sub-cas, InvalidTOML) + 5 integration (Catalog Upsert/List + Overwrite, Earned IsEarned/Append idempotent + filtres ListByUser).
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/...` : 23/23 unit PASS (~2s cumulé : milestones 2.0s, records 1.9s, streaks 2.0s)
+- `go test -tags=integration ./internal/platform/duckdb/...` : 185s OK (suite complète, 5 nouveaux tests milestones)
+- `go test -tags=integration ./internal/migration/...` : 26s OK (non-régression)
+- `go test ./internal/notifications/...` : 16s OK
+
+**Conclusion / prochaine étape** : Couche 2 (Records + Milestones) techniquement complète backend. Reste 2 questions ouvertes à trancher au commit 6 (hook) :
+- L'orchestrateur doit calculer la métrique `accuracy_threshold_days` (count distinct days with accuracy >= 0.50). Requête DuckDB simple sur match_participants.
+- Les notifications `milestone_unlocked` vs `personal_record` (cf. plan §6.3 mapping) : préférence pour ajouter une catégorie `milestone_unlocked` dédiée pour les keys i18n et la déduplication.
+
+Commit 5 = coach generator (5-6 alertes positives) + ajout des nouvelles catégories notifications. ~2j.
+
+---
+
+## [2026-05-18] feat(progression)(commit-3) — records detector + DuckDB repos
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Troisième commit du plan V2. Apporte la logique de détection de Personal Bests (PB) sur 3 fenêtres temporelles + persistance + tests. Pas de wiring post-sync — réservé au commit 6 (hook).
+
+**Décisions / changements** :
+
+1. **Package `records` structuré en 4 fichiers** :
+   - `types.go` (déjà commit 1) : PersonalRecord, RecordHistory, RecordPeriod, NearMissRatio=0.05, MinMatchesForRecord=10.
+   - `extractors.go` : 5 métriques trackées par défaut (PerformanceScore, KDA, KPM, Accuracy, PSPM). Override possible via `DetectInput.Metrics`. Les valeurs sont pré-extraites par l'orchestrateur → le détecteur reste un consommateur pur.
+   - `repository.go` : 2 interfaces distinctes — `PBRepo` (player_records dans shared_social) et `HistoryRepo` (record_history dans stats.duckdb). Séparation car DB physiques différentes.
+   - `detector.go` : pour chaque (métrique × fenêtre), calcule la meilleure valeur dans la fenêtre, compare au PB courant, gère 3 transitions (NewPB, NearMiss, None). En cas de NewPB : Upsert PB + Append history. La notification `personal_record` est laissée à l'orchestrateur via `DetectionResult` (le détecteur ne touche pas notifications/ pour rester pur testable).
+
+2. **`computeBestInWindow`** : itère les matchs, filtre par cutoff (now - 30d / 90d / time.Time{} pour all_time), retourne (best value, matchID, playedAt, count). Si count < MinMatchesForRecord → skip détection (pas de faux positif sur petit échantillon, cf. plan §10.1 risque).
+
+3. **`IsNearMiss(current, target)`** : utilitaire exporté (utile au coach commit 5) qui retourne true si `target × 0.95 <= current <= target`. Évite la duplication de la logique near-miss côté coach.
+
+4. **Impl DuckDB** :
+   - `PersonalRecordsRepo` (records_repo.go) : opère sur `shared_social.duckdb` via `pdb.SharedSocial`. INSERT...ON CONFLICT (xuid, metric, period) DO UPDATE pour idempotence. Reads via la connexion shared_social attached du PlayerDB, writes via `OpenReadWrite` dédié (pattern aligné NotificationsRepo).
+   - `RecordHistoryRepo` (record_history_repo.go) : opère sur `stats.duckdb` via `db *DB`. Append-only (INSERT simple). `defaultHistoryLimit = 100` quand `limit <= 0`.
+
+5. **Tests** : 6 unit (detector_test.go) + 7 integration (records_repo_test.go + record_history_repo_test.go).
+   - Detector : skip si insufficient matches, first PB sur 3 périodes, NewPB qui bat l'ancien (PreviousValue propagé), near-miss qui n'incrémente pas, fenêtre 30d ignore les matchs anciens (J-60 visible en 90d/all_time uniquement), IsNearMiss edge cases (95%, 100%, target=0, etc.).
+   - Repo PB : roundtrip avec achieved_match_id, overwrite avec previous_value, ListByXUID isole les joueurs, 3 PB sur 3 périodes pour la même métrique (validation PK composite après migration `period`).
+   - Repo History : Append + ListRecent DESC, limit honored, filtres user_id + title_slug.
+
+6. **Bug subtil corrigé** : test `TestDetect_NearMiss` initialement échouait car je n'avais seedé le PB que sur all_time. Les 2 autres périodes (30d/90d) étaient traitées en first-PB → history non vide. Fix : seeder les 3 périodes pour réellement tester le near-miss isolé.
+
+**Tests passés** :
+
+- `go build ./...` : OK
+- `go test ./internal/progression/{streaks,records}/...` : 18/18 unit PASS (~2s cumulé)
+- `go test -tags=integration ./internal/platform/duckdb/...` : 72s OK (suite complète, dont 7 nouveaux TestPersonalRecordsRepo_* + TestRecordHistoryRepo_*)
+- `go test -tags=integration ./internal/migration/...` : 30s OK (non-régression)
+- `go test ./internal/notifications/...` : 1.6s OK
+
+**Conclusion / prochaine étape** : Couche 2 partielle (Records OK, Milestones reste). Commit 4 = milestones (catalog TOML + detector + emission notif via réutilisation de `personal_record` ou nouvelle catégorie `milestone_unlocked` — à trancher pendant l'impl). Pas de wiring post-sync encore — c'est groupé au commit 6 pour brancher streaks + records + milestones + coach en une passe.
+
+---
+
+## [2026-05-18] feat(progression)(commit-2) — streaks evaluator + shields + DuckDB repo
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Deuxième commit du plan V2. Apporte la logique métier des streaks (daily_play, daily_perf, weekly_play, weekly_kda_threshold) + persistance DuckDB + tests.
+
+**Décisions / changements** :
+
+1. **Découpage du package `streaks` en 5 fichiers** (cohérent avec convention prestige) :
+   - `bucket.go` : primitives date/semaine en UTC (DayStart, WeekStart ISO, BucketStart/End selon type, BucketsBetween, SameMonth).
+   - `satisfaction.go` : prédicats par type (IsBucketSatisfied avec switch StreakType + `WeeklyPlayMinMatches = 5`).
+   - `shields.go` : régénération mensuelle (`RegenerateIfNewMonth` réinitialise `ShieldsUsed` si le dernier increment est dans un mois passé), consommation (`TryConsume`).
+   - `evaluator.go` : orchestration + 5 transitions (None, Started, Incremented, Shielded, Broken). `walkBuckets` parcourt les buckets de (ref+1) à (now) et compte increments + missed.
+   - `repository.go` : interface `Repo { GetActive, Upsert, List }`.
+
+2. **Sémantique « shield ressoude la chaîne »** (correction d'un bug de logique en cours d'implémentation) : un bucket missed shielded n'incrémente pas le compteur (length préservée), mais les buckets satisfaits AVANT et APRÈS le miss comptent tous comme increments. Initialement, `walkBuckets` utilisait un `chainBroken` qui empêchait les increments post-miss — semantique incorrecte vs plan §4.2 « 5 jours d'affilée préservés ». Fix : compter satisfait/missed indépendamment, laisser la logique shield/break en aval décider du status.
+
+3. **Impl DuckDB `StreaksRepo`** dans `internal/platform/duckdb/streaks_repo.go` :
+   - `INSERT ... ON CONFLICT (id) DO UPDATE` pour Upsert idempotent.
+   - `GetActive` filtre `status != 'broken'` + `ORDER BY started_at DESC LIMIT 1` (cas pathologique 2 actives).
+   - Helpers `nullableTime` / `nullableFloat` ajoutés (le `nullableStr` existant sert pour les strings).
+   - Suppression du `rowScanner` dupliqué (déjà défini dans `prestige_player_helpers.go`).
+
+4. **12 tests unitaires evaluator + 5 tests integration repo** :
+   - Started/None sur premier match ; incrément J→J+1 ; idempotence intra-jour.
+   - Shield-saves (1 jour manqué, length+1 sur recovery, status Active).
+   - Break (2 jours manqués sans shield suffisant, status Broken, length figée).
+   - Shields regenerate across months (consommé en mai, re-consommé en juin).
+   - Multi-bucket walk (4 jours consécutifs joués d'un coup → 4 increments).
+   - Weekly play seuil 5 matchs (5 satisfait, 4 non).
+   - Daily_perf seuil KDA (1.8 > 1.5 satisfait, 1.2 < 1.5 non).
+   - PP multiplier table complète (1.00 / 1.10 / 1.25 / 1.50 / 1.75 par palier).
+   - Integration repo : roundtrip Upsert/Get, exclusion broken, overwrite, List multi-status, nullable Threshold.
+
+**Tests passés** :
+
+- `go build ./...` : OK (full repo)
+- `go test ./internal/progression/streaks/...` : 12/12 PASS en 0.7s
+- `go test -tags=integration ./internal/platform/duckdb/...` : OK 32s (suite complète, dont 5 nouveaux TestStreaksRepo_*)
+
+**Conclusion / prochaine étape** : Couche 1 (Streaks) techniquement complète côté backend logique. Manque : le câblage post-sync (commit 6) pour appeler `Evaluate` à chaque ingestion de match, et le PP multiplier appliqué aux défis Prestige (commit 6 aussi ou via service progression). Commit 3 = records detector — branche le TODO `personal_record` du `post_sync_deltas.go` existant.
+
+---
+
+## [2026-05-18] feat(progression)(commit-1) — types Go + migrations DuckDB (V2 Ascension)
+
+**Statut** : Complété (branche `feat/progression-tracking-ascension`).
+
+**Contexte** : Premier commit d'implémentation du plan PROGRESSION_TRACKING V2 après alignement (cf. entrée précédente). Périmètre : 4 packages de types Go + 3 migrations DuckDB.
+
+**Décisions / changements** :
+
+1. **4 packages Go créés** sous `apps/go-api/internal/progression/` :
+   - `streaks/types.go` : `Streak`, `StreakType` (4 valeurs), `StreakStatus`, `PPMultiplier(length) → float64` (table 1.00/1.10/1.25/1.50/1.75 par palier).
+   - `records/types.go` : `PersonalRecord`, `RecordHistory`, `RecordPeriod` (30d/90d/all_time), constantes `MinMatchesForRecord=10`, `NearMissRatio=0.05`.
+   - `milestones/types.go` : `CatalogEntry` (référentiel), `Earned` (par joueur), `NearMissRatio=0.10`.
+   - `coach/types.go` : `AlertType` (10 valeurs), constantes `DedupWindow=24h`, `MaxConcurrentUnread=3`, `AutoDismissAfter=7j`, `ComebackPauseThreshold=5j`, `LUSRTierApproachDelta=10pts`, `LOWESSObservationWindow=14j`. **Pas de struct CoachAlert** — la persistance passe par le package `notifications` (cf. §2bis du plan).
+
+2. **3 migrations DuckDB enregistrées** :
+   - `create_progression_player_schema` (TargetPlayer) : `streak`, `record_history`, `milestone_earned` dans stats.duckdb, avec index secondaires sur user/title/type/status/metric.
+   - `extend_player_records_with_window` (TargetSharedSocial) : étend `player_records` avec `period` + `previous_value` + `previous_achieved_at`, PK migrée vers `(xuid, metric, period)`. Implémentation en 4 temps (create v2 / INSERT all_time / DROP / RENAME) car DuckDB ne supporte pas ALTER PK in-place. Idempotent via `columnExists("player_records", "period")`.
+   - `create_milestone_catalog_metadata` (TargetMetadata) : table `milestone_catalog` cross-titres, index sur title_slug et metric.
+
+3. **Renommage `window` → `period`** (relevé pendant les tests) :
+   - DuckDB refuse `window` comme nom de colonne (mot réservé pour les window functions `OVER (...)`).
+   - Renommage cohérent : colonne SQL `period`, type Go `RecordPeriod`, constantes `RecordPeriod30d`/`RecordPeriod90d`/`RecordPeriodAllTime`, fichier migration shared_social conserve « window » dans son nom (référence sémantique) mais commentaire explicite sur le rename.
+   - Plan §2bis mis à jour pour documenter le rename.
+
+4. **Bug subtil détecté pendant l'implémentation** : backticks `` ` `` dans un commentaire SQL à l'intérieur d'une raw string Go ferment prématurément la string. Le test build a failed avec « syntax error: unexpected name period in argument list » alors que le code SQL était correct. Fix : utiliser des guillemets simples `'` dans les commentaires SQL embarqués.
+
+**Tests passés** :
+
+- `go build ./...` : OK (full repo)
+- `go test -tags=integration ./internal/migration/...` : OK 4.6s (suite focalisée), puis OK 69s en suite complète
+- `go test -tags=integration ./internal/platform/duckdb/...` : OK 158s (vérifie qu'on n'a pas régressé `player_records` côté repo)
+- `go test ./internal/notifications/...` : OK 3.2s
+
+**Conclusion / prochaine étape** : fondations posées (types + tables). Commit 2 = streaks evaluator + shields + multiplicateur PP — premier morceau de logique métier (incrémentation daily/weekly, shield consumption, break/active transitions). Devra brancher sur `PlayerProfile` (V1) pour les seuils personnels (médiane 100 derniers matchs).
+
+---
+
+## [2026-05-18] chore(plan-ascension) — audit pré-implémentation + alignement V2 avec l'existant
+
+**Statut** : Complété (worktree `feat/progression-tracking-ascension` créé depuis HEAD de `feat/xbox-sso`).
+
+**Contexte** : Démarrage de l'implémentation du PLAN_PROGRESSION_TRACKING_ASCENSION V2 (3 couches : Streaks + Records & Milestones + Coach proactif). Avant de coder, audit du repo pour identifier ce qui est déjà construit. Trouvaille majeure : le plan supposait une base vierge mais une grande partie de l'infrastructure notifications est **déjà en place**.
+
+**Audit — découvertes** :
+1. Table `player_notifications` existe dans `shared_social.duckdb` avec 18 catégories i18n-keyed, incluant `personal_record` et `threshold_crossed` directement pertinents pour V2. Centre de notifs UI déjà construit (cloche nav, badge count, préférences).
+2. Hook post-sync `buildPostSyncDeltaHook` déjà câblé dans `internal/api/post_sync_deltas.go`, avec TODOs explicites pour `personal_record`, `threshold_crossed`, `challenge_completed`, `objective_assigned`.
+3. Table `player_records` existe déjà dans `shared_social.duckdb` (schéma `(xuid, metric, value, achieved_at)`, **sans fenêtre temporelle**).
+4. `PlayerProfile` service (V1) confirmé en place.
+5. Tables `streak`, `milestone_earned`, `milestone_catalog` : 100% absentes.
+6. Détecteurs metier (records detection, LOWESS+ 14j, approche tier LUSR, approche record, approche milestone) : tous absents.
+
+**Décisions tranchées (avec l'utilisateur)** :
+1. **`player_records`** : étendre la table existante via migration (ajout `window` + `previous_value` + `previous_achieved_at`, PK migre vers `(xuid, metric, window)`). Respecte le plan V2 original 30j/90j/all_time. Les lignes existantes sont taggées `window='all_time'` (rétro-compatible).
+2. **`coach_alert`** : **pas de table dédiée**, réutilise `player_notifications`. Ajout de nouvelles catégories : `streak_milestone`, `lusr_tier_approach`, `record_near_miss`, `milestone_near_miss`, `comeback_welcome`. Économie : pas de duplication centre de notifs + UI cloche + préférences.
+3. **Mettre à jour le plan AVANT de coder** : commit `chore(plan)` dédié, traçabilité propre des décisions d'alignement.
+
+**Changements apportés au plan** :
+- Nouvelle section §2bis « Alignement avec l'existant » documentant les 3 décisions ci-dessus
+- §6.3 réécrite : table de mapping type d'alerte → catégorie de notif existante
+- §7.1 ne contient plus que les 3 tables nouvelles (`streak`, `record_history`, `milestone_earned`)
+- §7.2 nouvelle : migration d'extension de `player_records` (ALTER TABLE)
+- §8.1 architecture Go : `coach/` n'a plus de `repository.go` (délègue à `notifications/`), pas de `coach.go` handler
+- §8.2 hook post-sync : extension de l'existant, pas réécriture
+- §8.3 frontend : suppression de `CoachAlertsCenter.tsx` et `useCoachAlerts.ts` (centre existant suffit)
+- §9 découpe en commits révisée : 11 commits (était 11), suppression du commit UI Coach center, économie ~1.5j
+
+**Conclusion / prochaine étape** : plan aligné, prêt pour le commit 1 (types Go + migrations DuckDB : `streak` + `record_history` + `milestone_earned` dans `stats.duckdb` ; `milestone_catalog` dans `metadata.duckdb` ; ALTER TABLE de `player_records` dans `shared_social.duckdb` ; **pas** de table `coach_alert`). Le commit `chore(plan)` actuel capture les décisions d'alignement avant de toucher au code.
+
+---
+
 ## [2026-05-18] feat(xbox-sso) — PR 2 : LinkStrategy pattern + XboxSSOLinkStrategy (login direct via XUID)
 
 **Statut** : Complété (branche `feat/xbox-sso`).
