@@ -20,19 +20,86 @@ func NewMatchHistoryRepo(pdb *PlayerDB) *MatchHistoryRepo {
 }
 
 // LoadAll charge tous les matchs du joueur avec les stats de participation.
+//
+// Sprint B1 commit 8k.7 : split+merge cross-DB. La query historique unique
+// (shared.v_match_full ⨝ shared.match_participants ⨝ player_match_enrichment
+// ⨝ match_skill_rank) est découpée en 3 round-trips :
+//  1. SharedReader.Get : v_match_full ⨝ match_participants → 25 cols + team_id
+//  2. pdb.Player : player_match_enrichment WHERE match_id IN (...)
+//  3. pdb.Player : match_skill_rank WHERE match_id IN (...)
+//  4. Merge Go : assemble MatchHistoryRawRow + calcule my/enemy_team_score.
 func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRawRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q5MatchHistory, r.pdb.XUID, r.pdb.XUID)
+	results, teamIDs, teamScores, err := r.loadSharedHistory(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("MatchHistoryRepo.LoadAll: %w", err)
 	}
+	if len(results) == 0 {
+		return results, nil
+	}
+
+	matchIDs := make([]string, 0, len(results))
+	for _, m := range results {
+		matchIDs = append(matchIDs, m.MatchID)
+	}
+
+	if err := r.mergeHistoryEnrichments(ctx, results, matchIDs); err != nil {
+		return nil, fmt.Errorf("MatchHistoryRepo.LoadAll: %w", err)
+	}
+	if err := r.mergeHistorySkillRanks(ctx, results, matchIDs); err != nil {
+		return nil, fmt.Errorf("MatchHistoryRepo.LoadAll: %w", err)
+	}
+
+	// Calcul my/enemy_team_score à partir de team_id et team_0/1_score.
+	for i := range results {
+		applyTeamScore(&results[i], teamIDs[i], teamScores[i])
+	}
+
+	// Enrichissement FR best-effort (mode/map/playlist) — même mécanisme que
+	// FiltersRepo (filters_repo.go applyXxxFRTranslations), nécessaire car
+	// match_registry.{map,pair,playlist}_name_fr peut être NULL.
+	applyMatchHistoryFRTranslations(ctx, r.pdb, results)
+
+	return results, nil
+}
+
+// teamScorePair retient les scores bruts par équipe d'un match pour le calcul
+// my/enemy en Go.
+type teamScorePair struct {
+	team0 *int
+	team1 *int
+}
+
+// loadSharedHistory exécute l'étape 1 du split LoadAll (SharedReader).
+// Retourne aussi un parallel array de team_id et team_0/1_score (indexé sur
+// results) pour permettre le calcul my/enemy en Go.
+func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.MatchHistoryRawRow, []*int, []teamScorePair, error) {
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q5SharedHistory, r.pdb.XUID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("shared query: %w", err)
+	}
 	defer rows.Close()
 
-	var results []domain.MatchHistoryRawRow
+	var (
+		results    []domain.MatchHistoryRawRow
+		teamIDs    []*int
+		teamScores []teamScorePair
+	)
 	for rows.Next() {
-		var m domain.MatchHistoryRawRow
+		var (
+			m       domain.MatchHistoryRawRow
+			teamID  *int
+			team0   *int
+			team1   *int
+		)
 		if err := rows.Scan(
 			&m.MatchID,
 			&m.StartTime,
@@ -47,10 +114,6 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 			&m.PlaylistID,
 			&m.IsFirefight,
 			&m.IsRanked,
-			&m.SessionID,
-			&m.SessionLabel,
-			&m.IsWithFriends,
-			&m.IsExcluded,
 			&m.Outcome,
 			&m.TeamMMR,
 			&m.EnemyMMR,
@@ -62,29 +125,129 @@ func (r *MatchHistoryRepo) LoadAll(ctx context.Context) ([]domain.MatchHistoryRa
 			&m.PersonalScore,
 			&m.AverageLifeSeconds,
 			&m.TimePlayedSeconds,
-			&m.PerformanceScore,
-			&m.SkillTier,
-			&m.SkillTierFR,
-			&m.SkillRatingType,
-			&m.SkillTierLabel,
-			&m.MyTeamScore,
-			&m.EnemyTeamScore,
-			&m.DominanceFlag,
+			&teamID,
+			&team0,
+			&team1,
 		); err != nil {
-			return nil, fmt.Errorf("MatchHistoryRepo.LoadAll scan: %w", err)
+			return nil, nil, nil, fmt.Errorf("scan: %w", err)
 		}
 		results = append(results, m)
+		teamIDs = append(teamIDs, teamID)
+		teamScores = append(teamScores, teamScorePair{team0: team0, team1: team1})
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	return results, teamIDs, teamScores, rows.Err()
+}
+
+// mergeHistoryEnrichments hydrate les champs player_match_enrichment dans rows.
+func (r *MatchHistoryRepo) mergeHistoryEnrichments(ctx context.Context, rows []domain.MatchHistoryRawRow, matchIDs []string) error {
+	query := fmt.Sprintf(Q5PlayerEnrichmentHistoryTpl, Placeholders(len(matchIDs)))
+	ctx2, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	dbRows, err := r.pdb.Player.Query(ctx2, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return fmt.Errorf("enrichment query: %w", err)
+	}
+	defer dbRows.Close()
+
+	type enrichment struct {
+		sessionID        *string
+		sessionLabel     *string
+		isWithFriends    bool
+		isExcluded       bool
+		performanceScore *float64
+		dominanceFlag    int
+	}
+	enrichments := make(map[string]enrichment, len(matchIDs))
+	for dbRows.Next() {
+		var mid string
+		var e enrichment
+		if err := dbRows.Scan(
+			&mid, &e.sessionID, &e.sessionLabel, &e.isWithFriends,
+			&e.isExcluded, &e.performanceScore, &e.dominanceFlag,
+		); err != nil {
+			return fmt.Errorf("enrichment scan: %w", err)
+		}
+		enrichments[mid] = e
+	}
+	if err := dbRows.Err(); err != nil {
+		return fmt.Errorf("enrichment rows: %w", err)
 	}
 
-	// Enrichissement FR best-effort (mode/map/playlist) — même mécanisme que
-	// FiltersRepo (filters_repo.go applyXxxFRTranslations), nécessaire car
-	// match_registry.{map,pair,playlist}_name_fr peut être NULL.
-	applyMatchHistoryFRTranslations(ctx, r.pdb, results)
+	for i := range rows {
+		e, ok := enrichments[rows[i].MatchID]
+		if !ok {
+			continue
+		}
+		rows[i].SessionID = e.sessionID
+		rows[i].SessionLabel = e.sessionLabel
+		rows[i].IsWithFriends = e.isWithFriends
+		rows[i].IsExcluded = e.isExcluded
+		rows[i].PerformanceScore = e.performanceScore
+		rows[i].DominanceFlag = e.dominanceFlag
+	}
+	return nil
+}
 
-	return results, nil
+// mergeHistorySkillRanks hydrate les champs match_skill_rank dans rows.
+func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []domain.MatchHistoryRawRow, matchIDs []string) error {
+	query := fmt.Sprintf(Q5PlayerSkillRankHistoryTpl, Placeholders(len(matchIDs)))
+	ctx2, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	dbRows, err := r.pdb.Player.Query(ctx2, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return fmt.Errorf("skill_rank query: %w", err)
+	}
+	defer dbRows.Close()
+
+	type skill struct {
+		tier      *string
+		tierFR    *string
+		rating    *string
+		tierLabel *string
+	}
+	ranks := make(map[string]skill, len(matchIDs))
+	for dbRows.Next() {
+		var mid string
+		var s skill
+		if err := dbRows.Scan(&mid, &s.tier, &s.tierFR, &s.rating, &s.tierLabel); err != nil {
+			return fmt.Errorf("skill_rank scan: %w", err)
+		}
+		ranks[mid] = s
+	}
+	if err := dbRows.Err(); err != nil {
+		return fmt.Errorf("skill_rank rows: %w", err)
+	}
+
+	for i := range rows {
+		s, ok := ranks[rows[i].MatchID]
+		if !ok {
+			continue
+		}
+		rows[i].SkillTier = s.tier
+		rows[i].SkillTierFR = s.tierFR
+		rows[i].SkillRatingType = s.rating
+		rows[i].SkillTierLabel = s.tierLabel
+	}
+	return nil
+}
+
+// applyTeamScore calcule MyTeamScore/EnemyTeamScore depuis team_id et les
+// scores team_0/team_1. Reproduit la sémantique CASE WHEN p.team_id = 0 du SQL.
+func applyTeamScore(row *domain.MatchHistoryRawRow, teamID *int, scores teamScorePair) {
+	if teamID == nil {
+		row.MyTeamScore = scores.team0
+		row.EnemyTeamScore = scores.team1
+		return
+	}
+	if *teamID == 0 {
+		row.MyTeamScore = scores.team0
+		row.EnemyTeamScore = scores.team1
+	} else {
+		row.MyTeamScore = scores.team1
+		row.EnemyTeamScore = scores.team0
+	}
 }
 
 // LoadMapWinRates calcule le win_rate historique par carte (sur tous les matchs).

@@ -1,3 +1,48 @@
+## [2026-05-19] refactor(match_history) — Commit 8k.7 : LoadAll split+merge (3 round-trips)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.7 du sprint B1).
+
+**Contexte** : `MatchHistoryRepo.LoadAll` faisait un JOIN cross-DB historique sur 4 tables :
+```
+FROM shared.v_match_full r
+JOIN shared.match_participants p ON r.match_id = p.match_id
+LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
+LEFT JOIN match_skill_rank msr ON ms.match_id = msr.match_id
+```
+
+**Découverte importante** (révélée par `TestGetOrOpen_RunsPlayerMigrationsForLegacySchema`) :
+
+Les queries SharedReader-only doivent passer par les **tables/vues au niveau root** du catalogue shared_matches_v2.duckdb (pas de préfixe `shared.`). En prod, la conn SharedReader cible directement le catalogue de shared.duckdb dont le schéma par défaut est `main` — il n'y a PAS de schéma `shared` sur cette conn.
+
+Ce qui a survécu jusqu'ici grâce à l'auto-attach DuckDB-Go propagé par `pool.attachShared` (commit 8c/8d/8k.x). Au commit 8l, attachShared sera retiré, donc TOUTES les queries SharedReader doivent migrer vers le naming root.
+
+**Livré pour 8k.7** :
+
+1. **3 nouvelles queries** (queries_career.go) :
+   - `Q5SharedHistory` : étape 1 (v_match_full ⨝ match_participants, 27 cols incluant team_id + team_0/1_score pour calcul Go)
+   - `Q5PlayerEnrichmentHistoryTpl` : étape 2a (player_match_enrichment WHERE match_id IN (...))
+   - `Q5PlayerSkillRankHistoryTpl` : étape 2b (match_skill_rank WHERE match_id IN (...))
+
+2. **`LoadAll` refactored** en 4 helpers :
+   - `loadSharedHistory(ctx)` : étape 1 + retour parallel arrays teamIDs/teamScores
+   - `mergeHistoryEnrichments(ctx, rows, ids)` : étape 2a
+   - `mergeHistorySkillRanks(ctx, rows, ids)` : étape 2b
+   - `applyTeamScore(row, teamID, scores)` : calcul my/enemy_team_score en Go (replace `CASE WHEN p.team_id = 0` SQL)
+
+3. **Toutes les nouvelles queries de 8k.6 + 8k.7 ré-écrites SANS préfixe `shared.`** (Q4SharedMatchesForFilters, Q4MVSharedMatchesForFilters, Q5SharedHistory). Aligné sur le contrat SharedReader.
+
+4. **`seedSharedDBSchema`** : ajout des vues root-level `v_match_full`, `v_gamertag_lookup`, `v_weapon_kills` pour que les tests in-memory passent comme les tests pool_migration_test (qui utilisaient déjà la convention root).
+
+5. **`TestMatchHistoryRepo_LoadAll_Empty`** : delete dans player ET shared.
+
+**Bénéfice** : LoadAll (un autre hot path de l'historique de matchs) est maintenant Provider-coordinated. Le coût (1 query → 3 round-trips) reste négligeable sur les sets typiques (~1k matchs : 3 queries indexées + 2 maps Go).
+
+**Tests verts** : duckdb complète (sauf TOML pré-existant), sharedprovider, api/handlers/middleware, sync 120s.
+
+**Prochaine étape (8k.8)** : career_repo finir la migration (Q6CareerLatestRank + autres).
+
+---
+
 ## [2026-05-19] refactor(filters) — Commit 8k.6 : LoadMatchesForFilters split+merge cross-DB
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.6 du sprint B1).

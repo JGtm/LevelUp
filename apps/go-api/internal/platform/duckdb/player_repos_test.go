@@ -353,10 +353,20 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		// shared.v_gamertag_lookup utilisée par Q10Encounters
 		// (LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid).
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
-		// Vues root-level → Q10Encounters et Q1MatchCount sans préfixe
+		// Vues root-level — Sprint B1 commit 8k.7 : les queries SharedReader
+		// utilisent les tables/vues à la racine du catalogue (pas de préfixe
+		// `shared.`) car la conn cible directement le catalogue shared_matches_v2.
+		// La présence d'un schema `shared` est conservée pour compat tests
+		// legacy qui écrivent via pdb.Player (ATTACH).
 		`CREATE VIEW match_registry AS SELECT * FROM shared.match_registry`,
 		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
 		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
+		`CREATE VIEW v_match_full AS SELECT * FROM shared.match_registry`,
+		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
+		`CREATE VIEW v_weapon_kills AS
+			SELECT match_id, xuid, weapon_id, kills,
+			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
+			FROM shared.weapon_kills`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
