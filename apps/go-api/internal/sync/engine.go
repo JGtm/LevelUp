@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -630,6 +631,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		mode = "delta"
 	}
 
+	// Sprint B1 commit 16 : crée un event_id qui sera ajouté à TOUS les logs
+	// émis depuis ce ctx (cf. ContextHandler) — permet de grep cross-module
+	// dans logs/{sync,provider,pool,...}.log pour reconstituer le timeline
+	// d'un sync donné.
+	ctx, eventID := logging.WithEvent(ctx, "sync.Run"+strings.Title(mode))
 	slog.InfoContext(ctx, "sync: démarrage",
 		"gamertag", e.gamertag,
 		"xuid", e.xuid,
@@ -639,6 +645,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		"with_participants", opts.WithParticipants,
 		"with_medals", opts.WithMedals,
 		"rps", opts.RequestsPerSecond,
+		"event", eventID,
 	)
 
 	// B8 : validation fail-fast des options avant tout accès réseau ou DB.

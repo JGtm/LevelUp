@@ -33,12 +33,20 @@ func (h *ContextHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.inner.Enabled(ctx, level)
 }
 
-// Handle ajoute request_id (depuis le ctx) au record avant de déléguer à
-// l'inner handler. Si request_id est vide (background jobs, tests), aucun
-// attribut n'est ajouté — le handler reste transparent.
+// Handle ajoute request_id et event_id (depuis le ctx) au record avant de
+// déléguer à l'inner handler. Si l'un ou l'autre est vide (background jobs,
+// tests, logs hors d'une opération taguée), l'attribut correspondant n'est
+// pas ajouté — le handler reste transparent.
+//
+// Sprint B1 commit 16 : event_id propagé pour tracer les opérations
+// background multi-module (sync, swap RW, backfill) à travers les
+// fichiers logs/{module}.log.
 func (h *ContextHandler) Handle(ctx context.Context, record slog.Record) error {
 	if id := ctxkeys.RequestID(ctx); id != "" {
 		record.AddAttrs(slog.String("request_id", id))
+	}
+	if id := ctxkeys.EventID(ctx); id != "" {
+		record.AddAttrs(slog.String("event_id", id))
 	}
 	return h.inner.Handle(ctx, record)
 }
