@@ -78,15 +78,17 @@ func (r *CitationsRepo) LoadCitationTotals(ctx context.Context) ([]domain.Citati
 }
 
 // LoadMedalTotals charge les totaux de médailles depuis shared.medals_earned (Q36a).
-//
-// TODO commit 8k.3 : migrer vers pdb.SharedReadDB().Get() + sync seed tests
-// pour inclure shared.medals_earned dans seedSharedDBSchema. En attendant,
-// utilise pdb.ReadDB() (player conn avec ATTACH shared) — pattern legacy.
 func (r *CitationsRepo) LoadMedalTotals(ctx context.Context, xuid string) ([]domain.MedalEarnedRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q36aMedalTotals, xuid)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMedalTotals: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q36aMedalTotals, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMedalTotals: %w", err)
 	}

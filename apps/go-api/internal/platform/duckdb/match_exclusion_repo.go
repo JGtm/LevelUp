@@ -59,7 +59,13 @@ func (r *MatchExclusionRepo) GetMatchRegistryInfo(ctx context.Context, matchID s
 		isFirefight sql.NullBool
 		pairName    sql.NullString
 	)
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return domain.MatchRegistryInfo{}, fmt.Errorf("MatchExclusionRepo.GetMatchRegistryInfo: %w", err)
+	}
+	defer release()
+
+	err = db.QueryRowContext(ctx, `
 		SELECT
 			match_id,
 			start_time,

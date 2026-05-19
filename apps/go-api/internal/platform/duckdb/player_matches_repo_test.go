@@ -15,16 +15,23 @@ import (
 // resetPlayerMatchesTables nettoie les tables avant d'inserer nos fixtures.
 // Necessaire car newTestPlayerDB() insere une row "m1" via seedPlayerSchema()
 // que nos tests ne controlent pas.
+//
+// Sprint B1 commit 8k.3 : reset shared.* dans player ET shared (les repos
+// migrés lisent depuis pdb.Shared).
 func resetPlayerMatchesTables(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
 	ctx := context.Background()
-	for _, q := range []string{
-		"DELETE FROM player_match_enrichment",
-		"DELETE FROM shared.match_participants",
-		"DELETE FROM shared.match_registry",
-	} {
-		if _, err := pdb.Player.Exec(ctx, q); err != nil {
-			t.Fatalf("reset (%s): %v", q, err)
+	if _, err := pdb.Player.Exec(ctx, "DELETE FROM player_match_enrichment"); err != nil {
+		t.Fatalf("reset (player_match_enrichment): %v", err)
+	}
+	for _, db := range []*DB{pdb.Player, pdb.Shared} {
+		for _, q := range []string{
+			"DELETE FROM shared.match_participants",
+			"DELETE FROM shared.match_registry",
+		} {
+			if _, err := db.Exec(ctx, q); err != nil {
+				t.Fatalf("reset (%s): %v", q, err)
+			}
 		}
 	}
 }

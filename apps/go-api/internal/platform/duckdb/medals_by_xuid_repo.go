@@ -61,7 +61,13 @@ func (r *MedalsByXUIDRepo) LoadMedalsForMatchesByXUID(
 	}
 
 	q, args := buildMedalsByXUIDQuery(filters)
-	dbRows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MedalsByXUIDRepo.LoadMedalsForMatchesByXUID: shared reader: %w", err)
+	}
+	defer release()
+
+	dbRows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		slog.ErrorContext(ctx, "MedalsByXUIDRepo: query failed",
 			"slug", slug,
@@ -134,11 +140,17 @@ LIMIT ?`)
 //
 // La query teste les 2 colonnes pour éviter les faux négatifs cross-config.
 func (r *MedalsByXUIDRepo) medalsEarnedTableExists(ctx context.Context) bool {
-	if r.pdb == nil || r.pdb.ReadDB() == nil {
+	if r.pdb == nil {
 		return false
 	}
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return false
+	}
+	defer release()
+
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	err = db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM information_schema.tables
 		WHERE table_name = 'medals_earned'

@@ -1,3 +1,40 @@
+## [2026-05-19] refactor(repos) — Commit 8k.3 : sync seeds + 5 repos migrés (medals_by_xuid, weapon_kills, highlight_events, match_exclusion.GetMatchRegistryInfo, citations.LoadMedalTotals)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.3 du sprint B1).
+
+**Foundation : sync seedSharedDBSchema sur seedPlayerSchema**
+
+Le bloc DDL de `seedSharedDBSchema` (player_repos_test.go) ne créait pas les tables shared.* additionnelles (medals_earned, highlight_events, weapon_kills, v_weapon_kills) ni les colonnes étendues de match_participants (grenade_kills, melee_kills, shots_*, etc.). Tous les repos migrant vers `pdb.SharedReadDB().Get()` heurtaient des "Catalog Error" ou "Binder Error" parce que les données existaient dans pdb.Player (via simulation ATTACH) mais pas dans pdb.Shared.
+
+Aligné seedSharedDBSchema sur seedPlayerSchema pour les tables shared.* — pdb.Shared expose maintenant la même surface SQL que pdb.Player.shared.
+
+**Migrations**
+
+1. **medals_by_xuid_repo** — `LoadMedalsForMatchesByXUID` + `medalsEarnedTableExists` → `pdb.SharedReadDB().Get`. SQL conservé (capability check supporte les 2 modes table_catalog/table_schema).
+2. **weapon_kills_repo** — `queryWeaponKills` + `weaponKillsTableExists` → idem.
+3. **highlight_events_repo** — `Load` → idem.
+4. **match_exclusion_repo::GetMatchRegistryInfo** → idem (ListExcluded reste sur pdb.ReadDB car cross-DB JOIN `player_match_enrichment ⨝ shared.match_registry` — split+merge ultérieur).
+5. **citations_repo::LoadMedalTotals** — migration différée du commit 8k.2 maintenant possible (TODO retiré).
+
+**Fixtures tests : double-write player+shared**
+
+Pattern systématique pour les seeds des repos migrés (`seedMedals`, `seedWeaponKills`, `seedHighlightEventsFixtures`, `resetPlayerMatchesTables`, `resetHighlightEventsTable`) : boucler sur `[]*DB{pdb.Player, pdb.Shared}` quand on insère/supprime dans shared.* tables. Garde la compat avec les tests legacy qui lisent via pdb.Player tout en alimentant SharedReadDB() qui lit via pdb.Shared.
+
+**Reporté** (cross-DB JOINs, traités ultérieurement) :
+- `leaderboard_repo::GetLocalLeaderboard` : `match_skill_rank` (player) `LEFT JOIN shared.match_registry`
+- `match_exclusion_repo::ListExcluded` : `player_match_enrichment` (player) `LEFT JOIN shared.match_registry`
+- `media_repo` : pas de queries shared (Player/SharedSocial/Metadata seulement) — hors scope migration.
+
+**Tests verts** :
+- duckdb suite complète (sauf TestLoadTemplatesFromTOML_HaloInfinite pré-existant)
+- sharedprovider 16s
+- api/handlers 31s
+- sync 140s (incl. burst T5, sync engine e2e, etc.)
+
+**Prochaine étape (8k.4)** : prestige_baseline_provider.
+
+---
+
 ## [2026-05-19] refactor(repos) — Commit 8k.2 : explorer + fanout + engagement (3 sites) + citations (revert + TODO)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.2 du sprint B1).

@@ -66,7 +66,13 @@ func (r *HighlightEventsRepo) Load(
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("HighlightEventsRepo.Load: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("HighlightEventsRepo.Load: query: %w", err)
 	}
