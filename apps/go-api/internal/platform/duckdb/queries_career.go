@@ -67,13 +67,14 @@ LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
 ORDER BY ms.start_time DESC`
 
 // Q4Shared : Sprint B1 commit 8k.6 — partie shared du split LoadMatchesForFilters.
-// Cross-DB JOIN historique (shared.v_match_full ⨝ shared.match_participants ⨝
+// Cross-DB JOIN historique (v_match_full ⨝ match_participants ⨝
 // player_match_enrichment) découpé pour passer par SharedReader sans toucher
 // le pool ATTACH.
 //
 // Cette query est lancée via pdb.SharedReadDB().Get(ctx) — toutes les tables
-// référencées sont dans shared_matches_v2.duckdb. Le merge avec
-// player_match_enrichment se fait en Go (Q4PlayerEnrichmentForMatches).
+// référencées sont dans shared_matches_v2.duckdb au niveau root (pas de
+// préfixe `shared.` car la conn cible directement le catalogue de la DB).
+// Le merge avec player_match_enrichment se fait en Go (Q4PlayerEnrichmentForMatches).
 //
 // Paramètre : ? = xuid.
 const Q4SharedMatchesForFilters = `
@@ -89,8 +90,8 @@ SELECT
     COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     r.playlist_name                                    AS playlist_name_en
-FROM shared.v_match_full r
-JOIN shared.match_participants p ON r.match_id = p.match_id
+FROM v_match_full r
+JOIN match_participants p ON r.match_id = p.match_id
 WHERE p.xuid = ?
 ORDER BY start_time DESC`
 
@@ -109,7 +110,7 @@ SELECT
     COALESCE(is_firefight, FALSE)                  AS is_firefight,
     COALESCE(is_ranked, FALSE)                     AS is_ranked,
     playlist_name                                  AS playlist_name_en
-FROM shared.mv_player_matches
+FROM mv_player_matches
 WHERE xuid = ?
 ORDER BY start_time DESC`
 
@@ -121,7 +122,76 @@ SELECT match_id, session_id, session_label, COALESCE(is_with_friends, FALSE)
 FROM player_match_enrichment
 WHERE match_id IN (%s)`
 
+// Q5SharedHistory : Sprint B1 commit 8k.7 — partie shared du split LoadAll
+// (match_history_repo). Cross-DB JOIN Q5MatchHistory découpé : la partie
+// shared retourne 25 colonnes (match metadata + participant stats + team_id
+// pour le calcul my/enemy_team_score côté Go).
+//
+// Tables référencées au niveau root (pas de préfixe `shared.`) — la conn
+// SharedReader cible directement le catalogue de shared_matches_v2.duckdb.
+//
+// Paramètre : ? = xuid (utilisé pour le filtre p.xuid).
+const Q5SharedHistory = `
+SELECT
+    r.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    r.map_name,
+    COALESCE(r.map_name_fr, r.map_name)                AS map_name_fr,
+    r.pair_name,
+    COALESCE(r.pair_name_fr, r.pair_name)              AS pair_name_fr,
+    r.playlist_name                                    AS playlist_name_en,
+    COALESCE(r.playlist_name_fr, r.playlist_name)      AS playlist_name,
+    r.map_id,
+    r.pair_id,
+    r.playlist_id,
+    COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
+    COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
+    COALESCE(p.outcome, 0)                             AS outcome,
+    p.team_mmr,
+    p.enemy_mmr,
+    COALESCE(p.kills, 0)                               AS kills,
+    COALESCE(p.deaths, 0)                              AS deaths,
+    COALESCE(p.assists, 0)                             AS assists,
+    p.kda,
+    p.accuracy,
+    p.personal_score,
+    p.avg_life_seconds                                 AS average_life_seconds,
+    p.time_played_seconds,
+    p.team_id,
+    r.team_0_score,
+    r.team_1_score
+FROM v_match_full r
+JOIN match_participants p ON r.match_id = p.match_id
+WHERE p.xuid = ?
+ORDER BY start_time DESC`
+
+// Q5PlayerEnrichmentHistoryTpl : étape 2a — player_match_enrichment pour les
+// match_ids retournés en étape 1. IN-list dynamique : %s → Placeholders(n).
+const Q5PlayerEnrichmentHistoryTpl = `
+SELECT
+    match_id,
+    session_id,
+    session_label,
+    COALESCE(is_with_friends, FALSE)  AS is_with_friends,
+    COALESCE(is_excluded, FALSE)      AS is_excluded,
+    performance_score,
+    COALESCE(dominance_flag, 0)       AS dominance_flag
+FROM player_match_enrichment
+WHERE match_id IN (%s)`
+
+// Q5PlayerSkillRankHistoryTpl : étape 2b — match_skill_rank pour les match_ids.
+const Q5PlayerSkillRankHistoryTpl = `
+SELECT
+    match_id,
+    NULLIF(TRIM(COALESCE(tier, '')), '')             AS skill_tier,
+    NULLIF(TRIM(COALESCE(tier_fr, '')), '')          AS skill_tier_fr,
+    NULLIF(TRIM(COALESCE(rating_type, '')), '')      AS skill_rating_type,
+    NULLIF(TRIM(COALESCE(tier_label, '')), '')       AS skill_tier_label
+FROM match_skill_rank
+WHERE match_id IN (%s)`
+
 // Q5 : Historique — chargement complet avec stats du joueur.
+// LEGACY (avant 8k.7) : utilisé encore par d'autres callers ? Sinon obsolète.
 // Paramètres : ? = xuid (match_participants), ? = xuid (enrichment).
 const Q5MatchHistory = `
 SELECT
