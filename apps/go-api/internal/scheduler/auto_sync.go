@@ -154,6 +154,12 @@ func New(
 // (syncPlayer) check ces préconditions avant.
 func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xuid string) DeltaRunner {
 	engine := sync.NewSyncEngine(s.cfg.RepoRoot, gamertag, xuid, &domain.HaloTokens{}, s.provider)
+	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
+	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
+	// direct. Coordonne avec le pool joueur via Subscribe (DETACH/REATTACH).
+	if s.cfg.SharedProvider != nil {
+		engine.WithSharedProvider(s.cfg.SharedProvider)
+	}
 	if s.settings != nil {
 		engine.WithFriendsLoader(func() ([]string, error) {
 			cfg, lerr := s.settings.Load()

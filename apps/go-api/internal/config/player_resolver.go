@@ -61,7 +61,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, titleSlug string) (*
 		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
-		SharedReader:            cfg.SharedReader, // mode B-swap si non-nil
+		SharedReader:            cfg.SharedProvider, // Provider satisfait SharedReader ; mode B-swap si non-nil
 	}
 	return duckdb.GetOrOpen(ctx, pcfg)
 }
@@ -102,7 +102,7 @@ func buildPoolConfig(cfg *AppConfig, p *domain.PlayerSummary, titleSlug string) 
 		SharedSocialDBPath:      pr.SharedSocialDBPath(titleSlug),
 		GlobalXuidAliasesDBPath: pr.GlobalXuidAliasesDBPath(),
 		UserTimezone:            cfg.UserTimezone,
-		SharedReader:            cfg.SharedReader, // mode B-swap si non-nil
+		SharedReader:            cfg.SharedProvider, // Provider satisfait SharedReader ; mode B-swap si non-nil
 	}
 }
 

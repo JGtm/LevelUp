@@ -252,7 +252,8 @@ func main() {
 		// Injecter le Provider dans le AppConfig pour que les
 		// PlayerPoolConfig créés ensuite (resolveDemoPlayer, buildPlayerPool
 		// Config) reçoivent SharedReader → mode B-swap actif au niveau pool.
-		cfg.SharedReader = provider
+		// + le SyncEngine via WithSharedProvider (auto_sync.go, sync_handler.go).
+		cfg.SharedProvider = provider
 
 		closeShared = func() error {
 			if unsubscribeSwap != nil {
