@@ -46,6 +46,7 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0011-canonical-vs-semantic-adapter-separation.md` — frontière canonical (data brute) vs TitleSemanticAdapter (i18n) vs TitleAssetURLAdapter (URLs)
 - `docs/adr/0014-progression-tracking-v2-ascension.md` — couches Streaks + Records & Milestones + Coach proactif (V2 Ascension)
 - `docs/adr/0015-player-profile-ascension-v1.md` — V1 PlayerProfile partiel (3/10 commits livrés, 7 reportés)
+- `docs/adr/0016-shared-db-provider-b-swap.md` — SharedDBProvider RO↔RW swap (élimine conflit auto_sync "different configuration")
 
 **Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
 

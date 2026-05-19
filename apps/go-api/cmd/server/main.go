@@ -195,24 +195,26 @@ func main() {
 		slog.Debug("migrations appliquées")
 	}
 
-	// IMPORTANT — DuckDB single-process file lock :
-	//   - OpenReadOnly autorise plusieurs handles RO simultanés du même fichier
-	//     dans le process (ATTACH RO sur les player DBs du pool fonctionne).
-	//   - OpenReadWriteShared prend un lock exclusif → tout ATTACH ultérieur
-	//     (même RO) sur ce fichier depuis une autre connexion DuckDB est refusé
-	//     avec "Unique file handle conflict".
+	// Architecture B-swap (sprint sharedprovider, ADR 0014) :
 	//
-	// On garde donc shared_matches_v2 en RO au boot. Le sync engine ouvre
-	// shared en RW via OpenSharedDB lors de RunDelta, ce qui peut entrer en
-	// conflit "different configuration" pendant qu'une lecture HTTP utilise
-	// l'instance RO de ce sharedDB. C'est un trade-off : on accepte un échec
-	// transitoire du sync engine plutôt que tous les handlers HTTP bloqués.
+	// shared_matches_v2.duckdb est géré par un SharedDBProvider qui swap
+	// dynamiquement RO ↔ RW autour des leases writer (sync engine). Les
+	// handlers HTTP attendent la fenêtre de sync (timeout borné, mappé en
+	// 503 Retry-After) — comparable à un read replica qui réplique.
 	//
-	// LEVELUP_USE_SHARED_PROVIDER (sprint sharedprovider B-swap, 2026-05) :
-	//   - "0" (default) : mode legacy ci-dessus. Le sync peut planter avec
-	//     "different configuration", le pool joueur ouvre sa propre RO.
-	//   - "1" : route shared via sharedprovider.Provider qui swap RO↔RW autour
-	//     des leases writer (élimine le conflit). Activé par défaut au commit 9.
+	// Élimine le bug historique "different configuration" qui plantait
+	// auto_sync RunDelta quand le sync ouvrait shared en RW pendant qu'une
+	// instance RO globale était ouverte ailleurs.
+	//
+	// LEVELUP_USE_SHARED_PROVIDER (flag de transition) :
+	//   - "0" (default actuel) : mode legacy LegacySharedReader(pdb.Shared).
+	//   - "1" : Provider actif (recommandé prod, activé par défaut au commit 9).
+	//
+	// Note : `attachShared` (pool.go) reste en place pour résoudre les
+	// queries cross-DB encore non-migrées (squad_repo : LoadTopTeammates,
+	// LoadSquadMatches, LoadTeammateMatches, LoadSynthesisMatches,
+	// LoadMapStatsForSquad). Le split+merge complet de ces 5 méthodes est
+	// prévu pour un commit follow-up post-9.
 	useSharedProvider := os.Getenv("LEVELUP_USE_SHARED_PROVIDER") == "1"
 
 	var (
