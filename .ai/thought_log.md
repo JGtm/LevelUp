@@ -1,3 +1,46 @@
+## [2026-05-19] feat(sharedprovider) — Commit 8e (B3) : DirectionPreSwapToRW synchrone
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8e du sprint révisé B3).
+
+**Contexte** : pivot vers B3 (DETACH/REATTACH coordonné via Subscribe) après réalisation que B1 (split+merge Go) demande ~2000 lignes / ~75 méthodes / -3 à -10× perf JOIN. B3 livre la même fix en ~80 lignes via un mécanisme central testable.
+
+**Pierre angulaire de B3** : émettre une notification SYNCHRONE AVANT le swap RW. Le Provider attend que tous les Subscribers retournent avant de procéder. Les Subscribers (pool joueur au commit 8f) ont alors le temps de libérer leurs ATTACH RO sur shared.
+
+**API ajoutée** : `DirectionPreSwapToRW` (sharedprovider/subscriber.go) :
+
+```go
+const DirectionPreSwapToRW Direction = "pre_swap_to_rw"
+// Émis SYNCHRONIQUEMENT par AcquireWriter AVANT la phase de drain et le
+// swap effectif (state encore RO). Provider attend que TOUS les Subscribers
+// retournent avant de poursuivre. Subscribers DOIVENT être rapides.
+```
+
+**Émission** : insérée comme PHASE 0 d'`AcquireWriter`, juste après l'acquisition du lease dblease et avant la transition vers Draining. État au moment de la notif = RO ; les Subscribers peuvent encore Get() (succès immédiat) — utile pour finir une lecture en cours.
+
+**Tests** :
+
+1. `TestProvider_Subscribe_ReceivesPreSwapToRWEvent` (nouveau) : vérifie que la notif arrive AVANT que AcquireWriter retourne, que From=StateRO, et que l'ordre PreSwap → RWToRO est respecté.
+
+2. **2 tests existants corrigés** : `TestProvider_Subscribe_ReceivesRWToROEvent` et `TestProvider_Subscribe_MultipleListeners` comptaient les events totaux et reçoivent maintenant 2 events par cycle (PreSwap + RWToRO). Filtré sur `Direction == DirectionRWToRO` pour préserver l'intention initiale du test.
+
+3. `TestFromInMemoryDB_SubscribeNoEvents` reste vert : l'adaptateur in-memory n'émet AUCUN event (son AcquireWriter ne fait pas de notifyAfterSwap).
+
+**Décisions techniques** :
+
+1. **Émission SYNCHRONE** : c'est le contrat clé. La notif `notifyAfterSwap` (mal nommée historiquement — sert aussi pour PreSwap) boucle sur les Subscribers et appelle chaque callback dans la goroutine appelante. Le Provider ne procède PAS tant que tous les callbacks n'ont pas retourné. Si un Subscriber est lent → tout le swap RW est ralenti.
+
+2. **PreSwap juste après lease, avant Draining** : on tient le lease dblease (pas de writer concurrent possible) mais state encore RO (Get fonctionnent normalement). Permet aux Subscribers d'utiliser le Provider pendant la notif si besoin.
+
+3. **PreSwap N'A PAS de From/To meaningful** : le state ne change pas pendant l'émission. From=To=StateRO. Documenté.
+
+**Aucun changement comportemental sans Subscribers** : si personne n'écoute, la notif est un no-op (boucle vide sur subs).
+
+**Suite complète** : duckdb 34.7s vert, sharedprovider 5.5s vert (incl. 5 tests Subscribe). go build OK.
+
+**Prochaine étape** : commit 8f — implémenter `pool.OnSharedSwap(direction)` helper qui itère le globalPool et fait Reopen+attachShared. Pas encore branché à un Provider — juste la mécanique pool-side testable isolément.
+
+---
+
 ## [2026-05-19] refactor(repos) — Commit 8d : career/match_history/synthesis (3 sites)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8d du mega-sprint B).

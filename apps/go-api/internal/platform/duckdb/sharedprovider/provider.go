@@ -234,6 +234,19 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		return nil, err
 	}
 
+	// PHASE 0 (commit 8e) : notifier les Subscribers AVANT le swap, pour
+	// qu'ils libèrent leur ATTACH RO sur shared (cas critique : pool joueur
+	// faisant Reopen de ses conns player/social qui ATTACH shared).
+	//
+	// Notification SYNCHRONE — on attend que tous les Subscribers retournent
+	// avant de passer en Draining. C'est ce qui permet au OpenReadWrite de
+	// phase 3 de réussir sans "Unique file handle conflict".
+	//
+	// Le state est encore RO ici ; les Subscribers peuvent appeler Get() qui
+	// réussira immédiatement (utile s'ils ont besoin de finir une lecture
+	// avant de relâcher).
+	p.notifyAfterSwap(DirectionPreSwapToRW, StateRO, StateRO)
+
 	swapStart := time.Now()
 
 	// PHASE 1 : transition vers Draining (gate nouveaux Get).
