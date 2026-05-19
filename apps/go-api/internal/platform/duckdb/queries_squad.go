@@ -119,8 +119,8 @@ SELECT
     COALESCE(vg.gamertag, he.xuid)   AS gamertag,
     he.event_type,
     COALESCE(he.time_ms, 0)           AS time_ms
-FROM shared.highlight_events he
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
+FROM highlight_events he
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id IN (%s)
 ORDER BY he.match_id, he.time_ms`
 
@@ -141,12 +141,12 @@ SELECT
     COALESCE(p.deaths, 0)                AS deaths,
     COALESCE(p.assists, 0)               AS assists,
     COALESCE(p.outcome, 0)               AS outcome
-FROM shared.match_participants p
-JOIN shared.match_participants main
+FROM match_participants p
+JOIN match_participants main
     ON main.match_id = p.match_id
     AND main.xuid    = ?
     AND p.team_id    = main.team_id
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 WHERE p.match_id IN (%s)`
 
 // Q33 : Synthèse — heatmap win rate par combinaison carte × mode.
@@ -157,8 +157,8 @@ SELECT
     COALESCE(r.pair_name_fr, r.pair_name, 'Unknown')  AS mode_name,
     COUNT(DISTINCT p.match_id)                         AS match_count,
     SUM(CASE WHEN p.outcome = 2 THEN 1 ELSE 0 END)    AS wins
-FROM shared.match_participants p
-JOIN shared.v_match_full r ON r.match_id = p.match_id
+FROM match_participants p
+JOIN v_match_full r ON r.match_id = p.match_id
 WHERE p.xuid = ?
 GROUP BY 1, 2
 ORDER BY match_count DESC`

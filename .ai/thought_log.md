@@ -1,3 +1,30 @@
+## [2026-05-19] refactor(squad_repo) — Commit 8k.13 : 3 méthodes shared-only migrées + TODOs cross-DB
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.13 du sprint B1).
+
+**Livré** : migration des 3 méthodes shared-only de squad_repo + drop `shared.` prefix dans les queries correspondantes.
+
+1. **`LoadImpactEvents` (Q32SquadImpactEventsTemplate)** : highlight_events + v_gamertag_lookup → SharedReader.Get.
+2. **`LoadMainTeamParticipants` (Q32bMainTeamParticipantsTemplate)** : match_participants auto-join + v_gamertag_lookup → SharedReader.Get.
+3. **`LoadSynthesisHeatmap` (Q33SynthesisHeatmap)** : match_participants + v_match_full → SharedReader.Get.
+
+**TODOs cross-DB (différés au commit 8l)** :
+- `LoadTopTeammates` (Q29) : player_match_enrichment ⨝ shared.match_participants x2
+- `LoadSquadMatches` (Q30) : shared + subquery medals_earned + LEFT JOIN player_match_enrichment
+- `LoadTeammateMatches` (Q31) : shared.match_participants x2 + shared.v_match_full
+- `LoadSynthesisMatches` (Q33b) : shared + LEFT JOIN player_match_enrichment
+- `LoadMapStatsForSquad` (Q42) : shared.match_participants x2 + shared.match_registry + LEFT JOIN player_match_enrichment
+
+**Test seed** : ajout vue root-level `highlight_events` à seedSharedDBSchema.
+
+**Stratégie 8l révisée** : `attachShared` reste en place comme fallback explicite (documenté) pour les 5 méthodes squad_repo encore en cross-DB. Le retrait final d'attachShared se fera lors d'un commit follow-up (8m+) qui réalisera le split+merge complet pour ces 5 méthodes.
+
+**Tests verts** : duckdb (TOML pré-existant), sharedprovider, api/handlers, sync 117s.
+
+**Prochaine étape (8l)** : ADR + documentation + métriques expvar pour le Provider. PAS de retrait d'attachShared maintenant (déféré).
+
+---
+
 ## [2026-05-19] refactor(catalog_repo) — Commit 8k.12 : playlistsPlayedByXUID split
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.12 du sprint B1).

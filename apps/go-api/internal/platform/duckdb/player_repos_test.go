@@ -381,6 +381,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			FROM shared.weapon_kills`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {

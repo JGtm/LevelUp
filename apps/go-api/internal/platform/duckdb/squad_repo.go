@@ -23,6 +23,11 @@ func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 }
 
 // LoadTopTeammates charge les meilleurs coÃ©quipiers du joueur (Q29, top 50).
+//
+// TODO commit 8l (ou suivant) : split+merge cross-DB. Q29TopTeammates joint
+// player_match_enrichment ⨝ shared.match_participants (x2) ⨝ v_gamertag_lookup.
+// Tant que attachShared reste en place dans le pool, la query reste sur
+// pdb.ReadDB() (player conn avec ATTACH).
 func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain.TopTeammateRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -93,6 +98,10 @@ LIMIT 1`
 }
 
 // LoadSquadMatches charge les matchs communs joueur+coÃ©quipier (Q30).
+//
+// TODO commit 8l : split+merge cross-DB (Q30SquadMatches : shared.match_participants
+// + v_match_full + medals_earned subquery + LEFT JOIN player_match_enrichment).
+// Reste sur pdb.ReadDB() tant que attachShared est en place.
 func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -144,6 +153,11 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 }
 
 // LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
+//
+// TODO commit 8l : split+merge cross-DB (Q31TeammateMatches : shared.match_participants
+// x2 + v_match_full). Strictement shared mais le filtre p_main JOIN crée une
+// dépendance multi-row par match — peut être migré directement vers SharedReader
+// au prochain commit. Reste sur pdb.ReadDB() pour stabilité court terme.
 func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.TeammateMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
@@ -198,7 +212,14 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	}
 	query := fmt.Sprintf(Q32SquadImpactEventsTemplate, strings.Join(placeholders, ","))
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	// Sprint B1 commit 8k.13 : shared-only via SharedReader.
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadImpactEvents: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
 	}
@@ -241,7 +262,14 @@ func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID strin
 	}
 	query := fmt.Sprintf(Q32bMainTeamParticipantsTemplate, strings.Join(placeholders, ","))
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	// Sprint B1 commit 8k.13 : shared-only via SharedReader.
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMainTeamParticipants: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMainTeamParticipants: %w", err)
 	}
@@ -271,7 +299,14 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q33SynthesisHeatmap, xuid)
+	// Sprint B1 commit 8k.13 : shared-only via SharedReader.
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadSynthesisHeatmap: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q33SynthesisHeatmap, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisHeatmap: %w", err)
 	}
@@ -294,6 +329,10 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 }
 
 // LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
+//
+// TODO commit 8l : split+merge cross-DB (Q33bSynthesisMatches :
+// shared.match_participants + shared.match_registry + LEFT JOIN
+// player_match_enrichment). Reste sur pdb.ReadDB().
 func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]legacymatch.SynthesisMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -334,6 +373,10 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 // moyenne du joueur principal sur les matchs où TOUS les xuids du squad sont
 // participants. Aucun filtre temporel — c'est l'historique complet "avec cette
 // escouade exacte".
+//
+// TODO commit 8l : split+merge cross-DB (Q42MapStatsForSquadTemplate :
+// shared.match_participants x2 + shared.match_registry + LEFT JOIN
+// player_match_enrichment pour perf_avg). Reste sur pdb.ReadDB().
 //
 // Comportement :
 //   - squadXUIDs vide : retourne nil, nil (pas de squad sélectionné).
