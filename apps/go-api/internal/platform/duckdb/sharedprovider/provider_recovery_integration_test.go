@@ -10,13 +10,8 @@ import (
 )
 
 // TestProvider_RecoversFromSyncPanic_integration (T6 du plan) vérifie que
-// le pattern `defer w.Release()` côté caller suffit à ramener le provider
-// en StateRO même si la goroutine sync panique au milieu d'une écriture.
-//
-// Sécurise les chemins d'écriture du sync engine où une migration SQL
-// malformée, un INSERT contraint ou un bug DuckDB pourrait panic — sans ce
-// contrat, le provider resterait coincé en StateRW et tous les Get HTTP
-// se mettraient à timeout en chaîne.
+// `defer w.Release()` ramène le provider en StateRO même si la goroutine
+// sync panique.
 func TestProvider_RecoversFromSyncPanic_integration(t *testing.T) {
 	path := setupSharedDB(t)
 
@@ -28,7 +23,6 @@ func TestProvider_RecoversFromSyncPanic_integration(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Simule un sync qui panic après avoir acquis le writer.
 	func() {
 		defer func() {
 			if r := recover(); r == nil {
@@ -39,10 +33,8 @@ func TestProvider_RecoversFromSyncPanic_integration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("AcquireWriter: %v", err)
 		}
-		defer w.Release() // <-- contrat critique : doit s'exécuter sur panic
+		defer w.Release()
 
-		// Travail partiel — création de table OK, puis panic avant l'INSERT
-		// (situation typique : data corruption détectée mid-batch).
 		if _, err := w.DB().ExecContext(ctx,
 			"CREATE TABLE IF NOT EXISTS recovery_test (val INTEGER)"); err != nil {
 			t.Fatalf("CREATE TABLE: %v", err)
@@ -50,23 +42,21 @@ func TestProvider_RecoversFromSyncPanic_integration(t *testing.T) {
 		panic("simulated sync panic mid-batch")
 	}()
 
-	// Le defer Release a tourné → state doit être revenu en RO.
 	if got := p.State(); got != sharedprovider.StateRO {
 		t.Errorf("state après panic recovery = %v, attendu RO", got)
 	}
 
-	// Get doit fonctionner immédiatement.
-	db, err := p.Get(ctx)
+	db, release, err := p.Get(ctx)
 	if err != nil {
 		t.Fatalf("Get post-panic: %v", err)
 	}
+	defer release()
+
 	var v string
 	if err := db.QueryRowContext(ctx, "SELECT version()").Scan(&v); err != nil {
 		t.Errorf("ping post-panic: %v", err)
 	}
 
-	// La table créée avant la panic doit être visible (commit DDL implicite
-	// dans DuckDB) — preuve que le release a bien fermé proprement le RW.
 	var count int
 	if err := db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'recovery_test'").Scan(&count); err != nil {

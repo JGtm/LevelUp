@@ -14,8 +14,6 @@ import (
 )
 
 // defaultReadyTimeout est le délai max d'attente d'un Get pendant un swap RW.
-// Au-delà, Get retourne ErrSwapTimeout et le handler HTTP doit mapper en 503
-// Retry-After (cf. ADR-0014 à venir).
 const defaultReadyTimeout = 30 * time.Second
 
 // defaultRetryBaseBackoff est le délai initial du retry exponentiel quand la
@@ -26,6 +24,18 @@ const defaultRetryBaseBackoff = time.Second
 // retryMaxAttempts borne le retry loop avant abandon définitif.
 const retryMaxAttempts = 5
 
+// defaultDrainTimeout est le délai max d'attente du drain des readers en vol
+// avant un swap RW. Dépassé → rollback (le sync engine retentera).
+//
+// En pratique les Get sont brefs (queries DuckDB <100ms), drain quasi-immédiat.
+// Le timeout sert de garde-fou si un consumer fait un Get + transaction longue.
+const defaultDrainTimeout = 5 * time.Second
+
+// defaultCloseDrainTimeout est le délai max d'attente du drain à Close.
+// Plus court que defaultDrainTimeout — au shutdown on accepte de forcer la
+// fermeture du handle plutôt que de bloquer indéfiniment.
+const defaultCloseDrainTimeout = 3 * time.Second
+
 // Provider est le contrat exposé aux consommateurs. Une implémentation owne
 // le handle DuckDB pour un chemin donné et arbitre l'accès lecture/écriture.
 //
@@ -33,29 +43,33 @@ const retryMaxAttempts = 5
 // appelé depuis N goroutines en parallèle. AcquireWriter est sérialisé via
 // dblease.AcquireWriterCtx.
 type Provider interface {
-	// Get retourne un *sql.DB en mode RO, prêt à lire. En steady state
-	// (StateRO), retour immédiat. Pendant un swap RW, bloque jusqu'au
-	// retour en RO, jusqu'à expiration du contexte, ou jusqu'à readyTimeout.
+	// Get retourne un *sql.DB en mode RO + une fonction release qui DOIT
+	// être appelée (typiquement via defer) une fois les lectures terminées.
+	// Tant que release n'est pas appelé, le provider considère qu'un reader
+	// est en vol — un AcquireWriter concurrent attendra (drain) avant de
+	// fermer le handle RO.
 	//
-	// Erreurs possibles :
-	//   - ErrProviderClosed : le provider est fermé (shutdown)
-	//   - ErrSwapFailed     : reopen RO post-sync a échoué (StateError)
-	//   - ErrSwapTimeout    : l'attente du retour en RO a dépassé readyTimeout
-	//   - ctx.Err()         : contexte annulé/expiré
-	//
-	// Le *sql.DB retourné a la durée de vie du Provider — ne pas le fermer.
-	Get(ctx context.Context) (*sql.DB, error)
-
-	// AcquireWriter prend un lease writer exclusif (via dblease) et bascule
-	// le handle global en mode RW. Le sync engine appelle cette méthode au
-	// début d'un RunDelta/RunBackfill, puis Release() à la fin.
+	// Si err != nil, release est nil — pas besoin de le defer.
 	//
 	// Erreurs possibles :
 	//   - ErrProviderClosed : le provider est fermé
-	//   - dblease.ErrDBLocked : un autre writer tient déjà le lease (ou ctx
-	//     annulé avant acquisition)
-	//   - erreur d'ouverture RW (catastrophique — le provider passe en
-	//     StateError, un retry loop tente la récupération)
+	//   - ErrSwapFailed     : reopen RO post-sync a échoué (StateError)
+	//   - ErrSwapTimeout    : attente swap > readyTimeout
+	//   - ctx.Err()         : contexte annulé/expiré
+	//
+	// Usage idiomatique :
+	//
+	//	db, release, err := provider.Get(ctx)
+	//	if err != nil {
+	//	    return err
+	//	}
+	//	defer release()
+	//	var n int
+	//	return db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ...").Scan(&n)
+	Get(ctx context.Context) (*sql.DB, func(), error)
+
+	// AcquireWriter prend un lease writer exclusif (via dblease), drain les
+	// readers en vol, puis bascule le handle global en mode RW.
 	//
 	// Le WriterHandle retourné DOIT être Released (typiquement via defer).
 	AcquireWriter(ctx context.Context) (*WriterHandle, error)
@@ -67,8 +81,8 @@ type Provider interface {
 	Path() string
 
 	// Close ferme le handle DuckDB sous-jacent et marque le provider comme
-	// fermé. Les Get/AcquireWriter ultérieurs retournent ErrProviderClosed.
-	// Idempotent.
+	// fermé. Best-effort drain des readers en vol (timeout court 3s) avant
+	// fermeture forcée. Idempotent.
 	Close() error
 }
 
@@ -77,38 +91,26 @@ type providerImpl struct {
 	path     string
 	timezone string
 
-	// state encode l'état courant en int32 pour load/store atomiques.
 	state atomic.Int32
 
 	// mu protège handle, ready, et les transitions d'état.
 	mu     sync.Mutex
 	handle *duckdbpkg.DB
-	// ready est :
-	//   - fermé quand state ∈ {RO, Error, Closed} : les Get passent immédiatement
-	//   - non-fermé quand state ∈ {Draining, RW, Reopening} : les Get bloquent
-	// Remplacé par un nouveau canal à chaque entrée en swap (AcquireWriter).
-	ready chan struct{}
+	ready  chan struct{}
 
-	// readyTimeout configure le délai max d'attente d'un Get pendant un swap.
-	readyTimeout time.Duration
-	// retryBaseBackoff configure le délai initial du retry loop reopen RO.
+	// readersWG track les Get en vol. Add(1) sous p.mu quand state=RO,
+	// Done() dans le release retourné. AcquireWriter Wait() avant le close
+	// du handle pour éviter "database is closed" côté caller.
+	readersWG sync.WaitGroup
+
+	readyTimeout     time.Duration
 	retryBaseBackoff time.Duration
+	drainTimeout     time.Duration
 
-	// failNextReopen — hook test-only : si true, le prochain appel à
-	// tryReopenROLocked retourne false sans tenter l'OpenReadOnly. Le flag
-	// est consommé (CompareAndSwap) au premier essai pour simuler une
-	// défaillance ponctuelle suivie d'une récupération via retry loop.
 	failNextReopen atomic.Bool
 }
 
 // New ouvre une nouvelle instance Provider sur path en mode read-only.
-//
-// timezone (optionnel) : nom IANA passé à duckdb.OpenReadOnly.
-//
-// Eager open : retourne une erreur si le fichier est inaccessible.
-// L'appelant DOIT appeler Close() (typiquement via defer en main.go).
-//
-// Préférer Manager.For() en prod pour bénéficier du caching par chemin.
 func New(path string, timezone ...string) (Provider, error) {
 	tz := ""
 	if len(timezone) > 0 {
@@ -127,15 +129,13 @@ func New(path string, timezone ...string) (Provider, error) {
 		ready:            newClosedChan(),
 		readyTimeout:     defaultReadyTimeout,
 		retryBaseBackoff: defaultRetryBaseBackoff,
+		drainTimeout:     defaultDrainTimeout,
 	}
 	p.state.Store(int32(StateRO))
 	recordStateTransition(StateRO, StateRO)
 	return p, nil
 }
 
-// newClosedChan crée un canal déjà fermé. Utilisé comme valeur initiale de
-// `ready` quand le provider est en steady state RO : les Get y lisent sans
-// blocage.
 func newClosedChan() chan struct{} {
 	ch := make(chan struct{})
 	close(ch)
@@ -143,61 +143,68 @@ func newClosedChan() chan struct{} {
 }
 
 // Get implémente Provider.Get.
-func (p *providerImpl) Get(ctx context.Context) (*sql.DB, error) {
+func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 	deadline := time.Now().Add(p.readyTimeout)
 	for {
 		p.mu.Lock()
 		s := State(p.state.Load())
-		ready := p.ready
-		handle := p.handle
-		p.mu.Unlock()
-
 		switch s {
 		case StateClosed:
-			return nil, ErrProviderClosed
+			p.mu.Unlock()
+			return nil, nil, ErrProviderClosed
 		case StateError:
-			return nil, ErrSwapFailed
+			p.mu.Unlock()
+			return nil, nil, ErrSwapFailed
 		case StateRO:
+			handle := p.handle
 			if handle == nil {
-				// Edge case improbable : state RO mais handle nil. Traiter
-				// comme une erreur swap.
-				return nil, ErrSwapFailed
+				p.mu.Unlock()
+				return nil, nil, ErrSwapFailed
 			}
-			return handle.SQLDb(), nil
+			// Track le reader AVANT de relâcher mu — sinon race possible
+			// avec un swap qui drain trop tôt (sans nous attendre).
+			p.readersWG.Add(1)
+			readersInUse.Add(1)
+			p.mu.Unlock()
+
+			db := handle.SQLDb()
+			release := sync.OnceFunc(func() {
+				p.readersWG.Done()
+				readersInUse.Add(-1)
+			})
+			return db, release, nil
 		}
 
 		// state ∈ {Draining, RW, Reopening} → attendre.
+		ready := p.ready
+		p.mu.Unlock()
+
 		remaining := time.Until(deadline)
 		if remaining <= 0 {
 			getTimeoutTotal.Add(1)
-			return nil, ErrSwapTimeout
+			return nil, nil, ErrSwapTimeout
 		}
 		timer := time.NewTimer(remaining)
 		select {
 		case <-ready:
 			timer.Stop()
-			// loop : recheck state (peut être RO, Error, ou Closed maintenant)
 		case <-ctx.Done():
 			timer.Stop()
-			return nil, ctx.Err()
+			return nil, nil, ctx.Err()
 		case <-timer.C:
 			getTimeoutTotal.Add(1)
-			return nil, ErrSwapTimeout
+			return nil, nil, ErrSwapTimeout
 		}
 	}
 }
 
-// AcquireWriter implémente Provider.AcquireWriter.
+// AcquireWriter implémente Provider.AcquireWriter avec drain en 3 phases :
+//   - Phase 1 : transition RO → Draining sous mu (gate les nouveaux Get)
+//   - Phase 2 : drain des readers en vol (hors mu, attente bornée par drainTimeout)
+//   - Phase 3 : swap RO → RW sous mu (close handle RO, open RW, set StateRW)
 //
-// Séquence :
-//  1. Acquérir le mutex dblease (bloque si un autre writer tient le lease).
-//  2. Transition RO → Draining → RW :
-//     - state := Draining
-//     - replace ready par un nouveau canal non-fermé (gate les nouveaux Get)
-//     - close conn RO (libère le file lock DuckDB)
-//     - open conn RW
-//     - state := RW
-//  3. Retourner un WriterHandle. Release() inverse l'opération.
+// Si phase 2 expire : rollback vers RO, lease release, erreur. Le sync
+// engine peut retenter au cycle suivant.
 func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error) {
 	if State(p.state.Load()) == StateClosed {
 		return nil, ErrProviderClosed
@@ -210,21 +217,43 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	}
 
 	swapStart := time.Now()
-	p.mu.Lock()
 
+	// PHASE 1 : transition vers Draining (gate nouveaux Get).
+	p.mu.Lock()
 	prev := State(p.state.Load())
 	if prev == StateClosed {
 		p.mu.Unlock()
 		lease.Release()
 		return nil, ErrProviderClosed
 	}
-
-	// Transition vers Draining (les nouveaux Get vont bloquer).
 	p.state.Store(int32(StateDraining))
 	recordStateTransition(prev, StateDraining)
 	p.ready = make(chan struct{})
+	p.mu.Unlock()
 
-	// Fermer le handle RO pour libérer le file lock DuckDB côté driver.
+	// PHASE 2 : drain inflight readers (sans tenir mu pour ne pas deadlock
+	// les release() qui n'ont pas besoin de mu mais bloqueraient si pris).
+	drainStart := time.Now()
+	if err := p.waitForDrain(ctx); err != nil {
+		// Drain expiré : rollback vers RO. Les readers en vol terminent OK
+		// (handle pas fermé), les nouveaux Get reprennent. Le sync engine
+		// retentera au prochain cycle.
+		p.rollbackFromDraining()
+		lease.Release()
+		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
+		return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w", err)
+	}
+	getWaitMsTotal.Add(time.Since(drainStart).Milliseconds())
+
+	// PHASE 3 : swap RO → RW sous mu (drain confirmé, plus de readers actifs).
+	p.mu.Lock()
+	if State(p.state.Load()) == StateClosed {
+		// Race rare avec un Close concurrent. Bail.
+		p.mu.Unlock()
+		lease.Release()
+		return nil, ErrProviderClosed
+	}
+
 	if p.handle != nil {
 		if err := p.handle.Close(); err != nil {
 			slog.WarnContext(ctx, "sharedprovider: close RO failed (continuing)",
@@ -233,17 +262,13 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		p.handle = nil
 	}
 
-	// Ouvrir en RW. C'est ici que peut survenir l'erreur DuckDB classique
-	// si un autre composant tient encore une conn RO sur le même fichier
-	// — exactement ce que le commit 6/7 va éliminer en faisant passer
-	// main.go et le pool joueur par ce provider.
 	rwHandle, err := duckdbpkg.OpenReadWrite(p.path, p.timezone)
 	if err != nil {
 		// Catastrophique : RO fermé, RW refuse. State → Error.
 		p.state.Store(int32(StateError))
 		recordStateTransition(StateDraining, StateError)
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
-		close(p.ready) // débloquer les Get (ils verront StateError)
+		close(p.ready)
 		p.mu.Unlock()
 		lease.Release()
 		go p.retryReopenLoop()
@@ -263,8 +288,46 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	}, nil
 }
 
-// releaseWriter est appelé par WriterHandle.Release. Inverse AcquireWriter :
-// ferme RW, rouvre RO, débloque les Get en attente.
+// waitForDrain attend que tous les readers en vol fassent leur release().
+// Borné par p.drainTimeout ou ctx.Done(), la première échéance gagne.
+func (p *providerImpl) waitForDrain(parentCtx context.Context) error {
+	ctx, cancel := context.WithTimeout(parentCtx, p.drainTimeout)
+	defer cancel()
+
+	done := make(chan struct{})
+	go func() {
+		p.readersWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// rollbackFromDraining ré-établit StateRO après un drain expiré. Le handle
+// RO est resté ouvert (on n'a fermé que dans la phase 3), les readers en
+// vol continuent leurs queries. Les Get bloqués sur ready sont débloqués.
+func (p *providerImpl) rollbackFromDraining() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if State(p.state.Load()) != StateDraining {
+		// Quelqu'un d'autre a déjà transitionné (Close ?). Bail.
+		return
+	}
+	p.state.Store(int32(StateRO))
+	recordStateTransition(StateDraining, StateRO)
+	select {
+	case <-p.ready:
+	default:
+		close(p.ready)
+	}
+}
+
+// releaseWriter est appelé par WriterHandle.Release.
 func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 	swapStart := time.Now()
 	p.mu.Lock()
@@ -298,20 +361,16 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 		return
 	}
 
-	// Reopen RO échoué → StateError + retry loop async.
 	p.state.Store(int32(StateError))
 	recordStateTransition(StateReopening, StateError)
 	swapFailuresTotal.Add(failReasonReopenRO, 1)
-	close(p.ready) // débloquer les waiters (ils verront StateError)
+	close(p.ready)
 	p.mu.Unlock()
 	go p.retryReopenLoop()
 }
 
-// tryReopenROLocked tente d'ouvrir une nouvelle conn RO et met à jour p.handle.
-// Doit être appelée avec p.mu tenu.
-//
-// Si le hook test failNextReopen est armé, retourne false sans tenter l'open
-// (le flag est consommé via CompareAndSwap pour ne fail qu'une fois).
+// tryReopenROLocked tente d'ouvrir une nouvelle conn RO. Doit être appelée
+// avec p.mu tenu. Hook test failNextReopen consommé via CompareAndSwap.
 func (p *providerImpl) tryReopenROLocked() bool {
 	if p.failNextReopen.CompareAndSwap(true, false) {
 		slog.Warn("sharedprovider: tryReopenRO failed by test hook", "path", p.path)
@@ -326,10 +385,7 @@ func (p *providerImpl) tryReopenROLocked() bool {
 	return true
 }
 
-// retryReopenLoop tente de récupérer après un échec de reopen RO. Backoff
-// exponentiel borné (max retryMaxAttempts tentatives). En cas de succès,
-// state passe Error → RO et les futurs Get fonctionnent. En cas d'échec
-// définitif, state reste Error — recovery manuelle requise (restart serveur).
+// retryReopenLoop tente de récupérer après un échec de reopen RO.
 func (p *providerImpl) retryReopenLoop() {
 	backoff := p.retryBaseBackoff
 	for attempt := 0; attempt < retryMaxAttempts; attempt++ {
@@ -342,18 +398,15 @@ func (p *providerImpl) retryReopenLoop() {
 
 		p.mu.Lock()
 		if State(p.state.Load()) != StateError {
-			// Provider a été réinitialisé ou fermé entre temps.
 			p.mu.Unlock()
 			return
 		}
 		if p.tryReopenROLocked() {
 			p.state.Store(int32(StateRO))
 			recordStateTransition(StateError, StateRO)
-			// Note : `ready` est déjà fermé (fermé lors du passage en
-			// StateError). Les futurs Get verront StateRO directement.
-			// Pas besoin de close à nouveau ni de recréer le canal.
 			p.mu.Unlock()
-			slog.Info("sharedprovider: recovered from StateError", "path", p.path, "attempt", attempt+1)
+			slog.Info("sharedprovider: recovered from StateError",
+				"path", p.path, "attempt", attempt+1)
 			return
 		}
 		p.mu.Unlock()
@@ -372,38 +425,45 @@ func (p *providerImpl) Path() string {
 	return p.path
 }
 
-// Close implémente Provider.Close. Idempotent.
-//
-// Si un swap est en cours (state ∈ {Draining, RW, Reopening}), Close attend
-// pour prendre le mutex et ferme proprement. Les Get en attente verront
-// StateClosed via le ready close + relecture.
+// Close implémente Provider.Close. Best-effort drain (3s timeout) puis force
+// la fermeture du handle. Idempotent.
 func (p *providerImpl) Close() error {
 	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	prev := State(p.state.Load())
 	if prev == StateClosed {
+		p.mu.Unlock()
 		return nil
 	}
-
 	p.state.Store(int32(StateClosed))
 	recordStateTransition(prev, StateClosed)
-
-	// Débloquer les Get en attente : si ready n'est pas déjà fermé, le fermer.
-	// Pattern non-bloquant pour close idempotent.
 	select {
 	case <-p.ready:
-		// déjà fermé
 	default:
 		close(p.ready)
 	}
+	p.mu.Unlock()
 
+	// Best-effort drain — ne pas bloquer le shutdown sur des readers stuck.
+	drainDone := make(chan struct{})
+	go func() {
+		p.readersWG.Wait()
+		close(drainDone)
+	}()
+	select {
+	case <-drainDone:
+	case <-time.After(defaultCloseDrainTimeout):
+		slog.Warn("sharedprovider: Close drain timeout, forcing handle close",
+			"path", p.path)
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	if p.handle != nil {
-		if err := p.handle.Close(); err != nil {
-			p.handle = nil
+		err := p.handle.Close()
+		p.handle = nil
+		if err != nil {
 			return fmt.Errorf("sharedprovider: close %s: %w", p.path, err)
 		}
-		p.handle = nil
 	}
 	return nil
 }

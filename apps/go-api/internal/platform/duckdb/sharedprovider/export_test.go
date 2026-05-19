@@ -28,3 +28,10 @@ func SetRetryBaseBackoffForTest(p Provider, d time.Duration) {
 func SetFailNextReopenForTest(p Provider, fail bool) {
 	p.(*providerImpl).failNextReopen.Store(fail)
 }
+
+// SetDrainTimeoutForTest configure le délai max d'attente du drain des
+// readers en vol pendant la phase 2 d'AcquireWriter. Par défaut 5s — réduit
+// à ~200ms en tests pour valider rapidement le rollback sur drain expiré.
+func SetDrainTimeoutForTest(p Provider, d time.Duration) {
+	p.(*providerImpl).drainTimeout = d
+}

@@ -1,3 +1,49 @@
+## [2026-05-19] feat(sharedprovider) — Commit 4 : drain inflight readers + perf
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 4/9 de la roadmap SharedDBProvider).
+
+**Contexte** : commit subtil qui élimine la race "handle closed while reading" du commit 3. Sans drain, un Get retourne `*sql.DB`, puis un swap concurrent peut fermer le handle entre le retour de Get et l'utilisation du db par le caller → erreur DuckDB "database is closed". Le drain via `sync.WaitGroup` garantit que `AcquireWriter` attend que tous les readers en vol aient release avant de toucher au handle.
+
+**Breaking change interne API** : signature `Get` passe de `(*sql.DB, error)` à `(*sql.DB, func(), error)`. Caller fait `defer release()`. Si `err != nil`, `release == nil`. Pattern idiomatique Go (cf. `*sql.Rows.Close`).
+
+**Mécanique AcquireWriter en 3 phases** :
+
+1. **Phase 1 — Transition vers Draining** (sous `p.mu`) : state := Draining, remplace `ready` par un canal non-fermé (gate les nouveaux Get), libère le lock. Les Get qui ont déjà fait `readersWG.Add(1)` continuent leurs queries.
+
+2. **Phase 2 — Drain** (hors lock) : `waitForDrain(ctx)` avec `drainTimeout` (5s default). Si drain expire → `rollbackFromDraining()` (handle pas encore fermé, OK), release lease, retourne erreur. Sync engine retente.
+
+3. **Phase 3 — Swap RO → RW** (sous `p.mu`, drain confirmé) : close handle RO (libère file lock DuckDB), open handle RW, state := RW.
+
+**Get** : sous `p.mu`, si state RO → `readersWG.Add(1)` SOUS LOCK (atomique vs swap qui prend mu en phase 1), capture handle, libère mu. Release closure = `sync.OnceFunc` qui décrémente WG + gauge expvar.
+
+**Close** : best-effort drain (3s timeout dédié) puis force close. Au shutdown, invalider les readers stuck plutôt que bloquer.
+
+**Décisions techniques** :
+
+1. **`readersWG.Add(1)` SOUS `p.mu`** : garantie de cohérence centrale. Sans ça : Get lit state=RO, libère mu ; Swap prend mu set Draining, libère mu ; Swap WG=0 immédiat ; Swap close handle ; Get Add(1) trop tard et utilise un handle fermé. Avec Add sous mu : Swap voit forcément Add car phase 1 et drain sont sérialisés via mu+WG.
+
+2. **`sync.OnceFunc`** : idempotent built-in (Go 1.21+, repo 1.26.1). Coût minimal (3 allocs/op confirmées).
+
+3. **Drain hors lock** : tenir `p.mu` pendant `Wait()` = deadlock futur garanti. Le pattern Lock → set Draining → Unlock → Wait → Lock → close+open → Unlock est central.
+
+4. **Rollback sur drain timeout préserve le handle RO** : pas de close en phase 1 → rollback = retour à RO sans perte de service. Sync engine retentera.
+
+**Tests (12/12 verts, 6.88s)** :
+- T3 — `TestProvider_HTTPReadersWaitDuringSync_integration` : 10 readers + 1 sync 200ms RW. **7449 HTTP OK / 0 erreur, max wait 219ms** (preuve gating). 0 Get qui réussit n'a vu StateRW (preuve drain).
+- T5 — `TestProvider_SyncBurstNoRegression_integration` : 5 syncs + 20 readers pendant 2s. **27 syncs + 28 HTTP OK, 0 erreur** (régression prod inversée).
+- T10 — `TestProvider_HealthLatency_p99_integration` : 1000 itérations Get+Query+Release. **p50 < 1µs, p99 = 569µs** (loin du seuil 50ms).
+- + T1, T2, T6, T8, T11 et 4 tests RO (signature Get mise à jour).
+
+**Benchmarks** :
+- `BenchmarkProviderGet` : **128 ns/op, 80 B/op, 3 allocs/op** solo.
+- `BenchmarkProviderGetParallel` : **205 ns/op** sous 8 goroutines (~60% overhead mutex acceptable).
+
+**Limite restante** : la race entre Add(1) et le swap est résolue UNIQUEMENT pour les Get qui passent par le provider. Si un autre composant (main.go au commit 2, pool au commit 7) ouvre RO directement via `duckdb.OpenReadOnly`, le drain ne le voit pas et le swap RW peut échouer. Les commits 6 et 7 font passer ces composants par le provider, éliminant le problème.
+
+**Prochaine étape** : commit 5 — `Manager` per-path pour multi-titre (T7). Très court — `sync.Map` déjà en place au commit 2, juste validation par test.
+
+---
+
 ## [2026-05-18] feat(sharedprovider) — Commit 3 : AcquireWriter + WriterHandle + swap RO↔RW
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 3/9 de la roadmap SharedDBProvider).
