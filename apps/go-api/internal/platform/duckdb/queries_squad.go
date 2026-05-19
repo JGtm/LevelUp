@@ -262,6 +262,30 @@ WHERE p.xuid = ?
 GROUP BY 1, 2
 ORDER BY match_count DESC`
 
+// Q33bSynthesisSharedQuery : Sprint B1 commit 9c.3 — partie shared du split
+// LoadSynthesisMatches. 11 cols shared depuis match_participants + match_registry.
+// Les 3 cols player (is_with_friends, performance_score, session_label) sont
+// hydratées en étape 2.
+//
+// Paramètre : ?1 = xuid du joueur.
+const Q33bSynthesisSharedQuery = `
+SELECT
+    r.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    p.outcome,
+    p.kills,
+    p.deaths,
+    p.kda,
+    p.accuracy,
+    p.time_played_seconds,
+    COALESCE(r.is_ranked, FALSE)          AS is_ranked,
+    COALESCE(r.is_firefight, FALSE)       AS is_firefight,
+    COALESCE(r.playlist_name, '')         AS playlist_name
+FROM match_participants p
+JOIN match_registry r ON r.match_id = p.match_id
+WHERE p.xuid = ?
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+
 // Q33b : Synthèse — matchs du joueur pour le calcul top_weeks, KPIs et bipolaire.
 // Sprint 43 : enrichi avec accuracy, time_played_seconds, performance_score.
 // Sprint N  : ajout session_label pour les filtres de session teammates.
@@ -288,6 +312,37 @@ JOIN shared.match_registry r ON r.match_id = p.match_id
 LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
 WHERE p.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+
+// Q42MapStatsForSquadSharedTpl : Sprint B1 commit 9c.4 — partie shared du
+// split LoadMapStatsForSquad. Au lieu d'agréger par map_id côté SQL
+// (incluant AVG(perf_avg) qui dépend de pme — table player), on retourne
+// les rows per-match (match_id, map_id, outcome). L'aggregation finale est
+// faite en Go après merge avec les perf_scores du player DB.
+//
+// Format string : 2 placeholders
+//   - %s : Placeholders(len(squadXUIDs)) pour le IN-list du CTE squad_matches
+//   - %d : len(unique squadXUIDs) pour le HAVING COUNT(DISTINCT) = N
+//
+// Paramètres positionnels :
+//   - squadXUIDs... (CTE IN-list)
+//   - mainXUID (filtre mp.xuid = ?)
+const Q42MapStatsForSquadSharedTpl = `
+WITH squad_matches AS (
+    SELECT match_id
+    FROM match_participants
+    WHERE xuid IN (%s)
+    GROUP BY match_id
+    HAVING COUNT(DISTINCT xuid) = %d
+)
+SELECT
+    mp.match_id,
+    COALESCE(r.map_id, '') AS map_id,
+    mp.outcome
+FROM match_participants mp
+JOIN match_registry r       ON r.match_id = mp.match_id
+JOIN squad_matches sm       ON sm.match_id = mp.match_id
+WHERE mp.xuid = ?
+  AND COALESCE(r.map_id, '') <> ''`
 
 // Q42MapStatsForSquadTemplate : taux de victoire et performance moyenne par carte
 // du joueur principal, restreint aux matchs où TOUS les xuids de l'escouade
