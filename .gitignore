@@ -116,6 +116,13 @@ data/rag/
 data/demo/
 data/logs/
 data/players/
+
+# Sprint B1 — fichiers logs par module générés au runtime du serveur Go
+# (cf. internal/observability/logging/). LEVELUP_LOGS_DIR override possible.
+logs/
+apps/go-api/logs/
+apps/go-api/server-*.exe
+apps/go-api/server-*.log
 # Sessions runtime (API FastAPI + tests)
 data/sessions/
 tests/api/_sessions_test/

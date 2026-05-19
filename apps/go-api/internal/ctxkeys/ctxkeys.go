@@ -14,6 +14,7 @@ const (
 	haloTokensKey contextKey = "halo_tokens"
 	haloXUIDKey   contextKey = "halo_xuid"
 	requestIDKey  contextKey = "request_id"
+	eventIDKey    contextKey = "event_id"
 )
 
 // WithTitleSlug place le slug du titre dans le contexte.
@@ -60,5 +61,26 @@ func WithRequestID(ctx context.Context, id string) context.Context {
 // Retourne "" si absent (cas non-HTTP : background jobs, sync tasks, tests).
 func RequestID(ctx context.Context) string {
 	v, _ := ctx.Value(requestIDKey).(string)
+	return v
+}
+
+// WithEventID place un identifiant d'événement multi-module dans le contexte.
+// Sprint B1 commit 16 : permet de corréler un événement business (sync,
+// swap RW, backfill, recompute) à travers les fichiers logs/{module}.log.
+//
+// Contrairement à request_id (par requête HTTP), event_id couvre des
+// opérations background longues qui n'ont pas de request HTTP associée.
+// Les deux peuvent coexister : une requête HTTP qui déclenche un sync
+// aura request_id (court) + event_id (sync.RunDelta:abc123).
+//
+// Préférer logging.WithEvent(ctx, prefix) qui génère l'id automatiquement.
+func WithEventID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, eventIDKey, id)
+}
+
+// EventID extrait l'identifiant d'événement depuis le contexte.
+// Retourne "" si absent (logs hors d'une opération taguée WithEvent).
+func EventID(ctx context.Context) string {
+	v, _ := ctx.Value(eventIDKey).(string)
 	return v
 }

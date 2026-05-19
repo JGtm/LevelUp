@@ -36,7 +36,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
-"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -124,10 +125,35 @@ func main() {
 		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
 	}
 	// P6.4 : envelopper avec ContextHandler pour attacher automatiquement
-	// request_id (depuis ctxkeys) à chaque slog.*Context(...) émis par les
-	// services. Sans ça, debug prod cassé en multi-user.
+	// request_id + event_id (depuis ctxkeys) à chaque slog.*Context(...) émis
+	// par les services. Sans ça, debug prod cassé en multi-user.
 	logHandler = observability.NewContextHandler(logHandler)
+
+	// Sprint B1 commit 16 : MultiModuleHandler tri-stream — console (comportement
+	// pré-sprint) + fichiers `logs/{module}.log` (un par module sync/provider/
+	// pool/handlers/...). Activé par défaut, désactivable via
+	// LEVELUP_LOGS_ENABLED=false. Dossier configurable via LEVELUP_LOGS_DIR.
+	// Référençabilité cross-module : event_id propagé via ctx + ContextHandler.
+	var multiHandler *logging.MultiModuleHandler
+	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
+	logsCfg := logging.LoadConfig(preliminaryRepoRoot)
+	if logsCfg.Enabled && logsCfg.LogsDir != "" {
+		mh, err := logging.NewMultiModuleHandler(logHandler, logsCfg.LogsDir, logsCfg.FileLevel)
+		if err != nil {
+			slog.New(logHandler).Warn("logging: multi-module handler indisponible (console only)",
+				"err", err, "logs_dir", logsCfg.LogsDir)
+		} else {
+			multiHandler = mh
+			logHandler = mh
+		}
+	}
 	slog.SetDefault(slog.New(logHandler))
+	if multiHandler != nil {
+		slog.Info("logging: multi-module actif",
+			"logs_dir", logsCfg.LogsDir,
+			"file_level", logsCfg.FileLevel.String(),
+		)
+	}
 
 	// --- 2. Configuration ---
 	cfg, err := config.Load()
@@ -508,6 +534,13 @@ func main() {
 	}
 	if err := metaDB.Close(); err != nil {
 		slog.Warn("fermeture metadata DB", "err", err)
+	}
+	// Sprint B1 commit 16 : fermer proprement les fichiers logs/{module}.log
+	// (flush + close des handles). Idempotent.
+	if multiHandler != nil {
+		if err := multiHandler.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "fermeture logging multi-module: %v\n", err)
+		}
 	}
 	fmt.Fprintln(os.Stderr, " terminé.")
 }

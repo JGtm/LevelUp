@@ -1,3 +1,84 @@
+## [2026-05-20] feat(observability) — Commit 16 : système logs multi-module + event_id
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 16 — observabilité production-grade).
+
+**Contexte** : pour préparer les tests live sync/auto/etc., l'utilisateur
+demande un système de logs (a) écrits dans un dossier dédié et pas
+seulement en console, (b) triés par module pour navigation facile, (c)
+référençables entre modules pour suivre un événement cross-component.
+
+**Livré** :
+
+1. **Nouveau package `internal/observability/logging/`** :
+   - `module.go` : constantes `ModuleSync`, `ModuleProvider`, `ModulePool`,
+     `ModuleScheduler`, `ModuleHTTP`, `ModuleHandlers`, `ModuleService`,
+     `ModuleDuckDB`, `ModuleAuth`, `ModuleAssets`, `ModulePrestige`,
+     `ModuleMedia`, `ModuleNotif`, `ModuleMigration`, `ModuleHealth`,
+     `ModuleGeneral`. Détection auto via `runtime.FuncForPC` + cache
+     `pcToModule sync.Map`. Mapping nom-de-package → module canonique
+     (16 cases dans `mapPackageToModule`).
+   - `event.go` : helpers `WithEvent(ctx, prefix) (ctx, id)` et
+     `CurrentEvent(ctx)`. ID hex 16 chars via `crypto/rand`. Fallback
+     sain si entropie indisponible.
+   - `multi_module_handler.go` (slog.Handler) : dispatche chaque record
+     vers la console (texte ou JSON pré-sprint) ET vers
+     `logs/{module}.log` (JSON append-only, `AddSource: true`).
+     Lazy creation des handles fichier, cache `map[string]*fileHandler`
+     protégé par mutex. `Close()` idempotent pour shutdown propre.
+   - `config.go` : 3 variables env (`LEVELUP_LOGS_ENABLED`,
+     `LEVELUP_LOGS_DIR`, `LEVELUP_LOGS_FILE_LEVEL`). Défauts sains :
+     enabled=true, dir=`<repoRoot>/logs`, level=INFO.
+
+2. **`internal/ctxkeys/ctxkeys.go`** : ajout clé `eventIDKey` +
+   `WithEventID` / `EventID` helpers. Symétrique au pattern `RequestID`
+   pré-existant.
+
+3. **`internal/observability/context_handler.go`** : extension pour
+   propager `event_id` (en plus de `request_id`) sur chaque record via
+   le ctx. Aucun caller à modifier — les services existants qui font
+   `slog.InfoContext(ctx, ...)` voient automatiquement `event_id`
+   ajouté quand présent.
+
+4. **`internal/sync/engine.go::run`** : génère un `event_id` au début
+   de RunDelta/RunFull via `logging.WithEvent(ctx, "sync.Run<Mode>")`.
+   Tous les logs descendants (acquireSharedWriter, processMatch,
+   post-sync, etc.) hériteront automatiquement via le ContextHandler.
+
+5. **`cmd/server/main.go`** : wiring du MultiModuleHandler entre la
+   création du ContextHandler et `slog.SetDefault`. `multiHandler.Close()`
+   au shutdown pour flush + close des fichiers. Log d'info au boot
+   confirme l'activation et les paramètres.
+
+6. **`.gitignore`** : ignore `logs/` + `apps/go-api/logs/` +
+   `apps/go-api/server-*.exe` + `server-*.log`.
+
+7. **Tests** (`multi_module_handler_test.go`) : 11 tests couvrant
+   dispatch console+fichier, routing par attribut module, propagation
+   event_id, fallback general, level filtering (fichier indépendant de
+   console), Close idempotent, SanitizeModuleName, WithEvent unicité,
+   LoadConfig defaults + disabled. Verts avec `-race`.
+
+8. **Doc** `internal/observability/logging/README.md` : architecture,
+   config, modules, helpers, limitations, recettes ajout nouveau module.
+
+**Dry run validé** : serveur démarre en mode B-swap, crée `logs/general.log`
+et `logs/pool.log` automatiquement. Format JSON propre avec
+`source.function`, `source.file`, `source.line` (navigation directe).
+
+**Cas d'usage immédiat** : `grep 'event_id="sync.RunDelta:abc"' logs/*.log`
+récupère tous les logs d'un sync donné cross-module (sync engine + provider
+swap + pool subscriber + handlers HTTP éventuels).
+
+**Limitations connues** (doc README) :
+- Pas de rotation automatique (logrotate côté ops).
+- Détection auto fragile si un package est renommé (override possible
+  via `slog.With("module", ...)`).
+- Pas de compression / upload distant.
+
+**Branche désormais à 51 commits ahead d'origin.**
+
+---
+
 ## [2026-05-19] fix(prod) — Commit 15 : OpenSpartan import acquire-on-demand (dry run fix)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 15 — boot warning éliminé).
