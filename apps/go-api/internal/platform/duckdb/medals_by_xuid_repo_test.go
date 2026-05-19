@@ -27,15 +27,10 @@ func seedMedals(t *testing.T, pdb *PlayerDB) {
 	ctx := context.Background()
 
 	// Ajouter m2 dans match_registry pour coherence des tests multi-matchs
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.match_registry (match_id, start_time)
-			 VALUES (?, ?)`,
-			"m2", "2025-01-11 14:00:00+00",
-		); err != nil {
-			t.Fatalf("seed match_registry m2: %v", err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_registry (match_id, start_time)
+		 VALUES (?, ?)`,
+		"m2", "2025-01-11 14:00:00+00")
 
 	medals := []struct {
 		matchID string
@@ -48,17 +43,12 @@ func seedMedals(t *testing.T, pdb *PlayerDB) {
 		{"m2", pTestXUID, 1001, 3},       // Killing Spree (autre match)
 		{"m1", mxTestXUIDOther, 1003, 1}, // Triple Kill
 	}
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		for _, m := range medals {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.medals_earned
-				 (medal_id, medal_name_id, xuid, match_id, count)
-				 VALUES (?, ?, ?, ?, ?)`,
-				m.medalID, m.medalID, m.xuid, m.matchID, m.count,
-			); err != nil {
-				t.Fatalf("seed medals_earned: %v", err)
-			}
-		}
+	for _, m := range medals {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.medals_earned
+			 (medal_id, medal_name_id, xuid, match_id, count)
+			 VALUES (?, ?, ?, ?, ?)`,
+			m.medalID, m.medalID, m.xuid, m.matchID, m.count)
 	}
 }
 
@@ -116,14 +106,7 @@ func TestMedalsByXUIDRepo_Load_RejectsNegativeLimit(t *testing.T) {
 func TestMedalsByXUIDRepo_Load_CapabilityNotSupported_NoTable(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	// Drop dans les deux DBs : le repo lit via SharedReadDB() (pdb.Shared)
-	// depuis le commit 8k.3, mais pdb.Player conserve aussi la table pour
-	// les tests legacy.
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		if _, err := db.Exec(ctx, "DROP TABLE shared.medals_earned"); err != nil {
-			t.Fatalf("DROP TABLE: %v", err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx, "DROP TABLE shared.medals_earned")
 
 	repo := NewMedalsByXUIDRepo(pdb)
 	_, err := repo.LoadMedalsForMatchesByXUID(ctx, "halo_infinite",

@@ -27,79 +27,37 @@ func seedWeaponKills(t *testing.T, pdb *PlayerDB) {
 
 	// Joueur 1 : 4 kills BR (42), 2 kills AR (100) sur m1 ; 1 kill BR sur m2.
 	// Joueur 2 : 3 kills BR sur m1.
-	// Le seed écrit dans player ET shared pour rester compatible avec les tests
-	// legacy (queries via pdb.Player) tout en alimentant SharedReadDB() (pdb.Shared).
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		// Joueur 1 m1 — 4 BR (42), 2 AR (100)
-		for i := 0; i < 4; i++ {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`,
-				"m1", pTestXUID, uint64(42),
-			); err != nil {
-				t.Fatalf("seed wk m1 BR: %v", err)
-			}
-		}
-		for i := 0; i < 2; i++ {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`,
-				"m1", pTestXUID, uint64(100),
-			); err != nil {
-				t.Fatalf("seed wk m1 AR: %v", err)
-			}
-		}
-
-		// Ajouter m2 dans match_registry pour pouvoir y inserer des participants/kills
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.match_registry (match_id, start_time)
-			 VALUES (?, ?)`,
-			"m2", "2025-01-11 14:00:00+00",
-		); err != nil {
-			t.Fatalf("seed match_registry m2: %v", err)
-		}
-
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`,
-			"m2", pTestXUID, uint64(42),
-		); err != nil {
-			t.Fatalf("seed wk m2: %v", err)
-		}
-
-		// Joueur 2 sur m1 : 3 kills BR uniquement
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.match_participants
-			 (match_id,xuid,gamertag,outcome,kills,deaths,team_id,grenade_kills,melee_kills)
-			 VALUES (?,?,?,?,?,?,?,?,?)`,
-			"m1", wkTestXUIDOther, "OtherPlayer", 3, 5, 5, 2, 1, 2,
-		); err != nil {
-			t.Fatalf("seed participant other: %v", err)
-		}
-		for i := 0; i < 3; i++ {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`,
-				"m1", wkTestXUIDOther, uint64(42),
-			); err != nil {
-				t.Fatalf("seed wk other: %v", err)
-			}
-		}
-
-		// Mettre a jour les colonnes grenade/melee du joueur principal sur m1
-		if _, err := db.Exec(ctx,
-			`UPDATE shared.match_participants
-			 SET grenade_kills = ?, melee_kills = ?
-			 WHERE match_id = ? AND xuid = ?`,
-			3, 4, "m1", pTestXUID,
-		); err != nil {
-			t.Fatalf("update grenade/melee: %v", err)
-		}
-
-		// Alias xuid pour le joueur 2 (necessaire pour Gamertag-based filter)
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?, ?)`,
-			wkTestXUIDOther, "OtherPlayer",
-		); err != nil {
-			t.Fatalf("seed alias: %v", err)
-		}
+	wkInsert := `INSERT INTO shared.weapon_kills (match_id, xuid, weapon_id) VALUES (?,?,?)`
+	for i := 0; i < 4; i++ {
+		execOnSharedDBs(t, pdb, ctx, wkInsert, "m1", pTestXUID, uint64(42))
 	}
+	for i := 0; i < 2; i++ {
+		execOnSharedDBs(t, pdb, ctx, wkInsert, "m1", pTestXUID, uint64(100))
+	}
+
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_registry (match_id, start_time) VALUES (?, ?)`,
+		"m2", "2025-01-11 14:00:00+00")
+	execOnSharedDBs(t, pdb, ctx, wkInsert, "m2", pTestXUID, uint64(42))
+
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_participants
+		 (match_id,xuid,gamertag,outcome,kills,deaths,team_id,grenade_kills,melee_kills)
+		 VALUES (?,?,?,?,?,?,?,?,?)`,
+		"m1", wkTestXUIDOther, "OtherPlayer", 3, 5, 5, 2, 1, 2)
+	for i := 0; i < 3; i++ {
+		execOnSharedDBs(t, pdb, ctx, wkInsert, "m1", wkTestXUIDOther, uint64(42))
+	}
+
+	execOnSharedDBs(t, pdb, ctx,
+		`UPDATE shared.match_participants
+		 SET grenade_kills = ?, melee_kills = ?
+		 WHERE match_id = ? AND xuid = ?`,
+		3, 4, "m1", pTestXUID)
+
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?, ?)`,
+		wkTestXUIDOther, "OtherPlayer")
 
 	// Inserer le label FR pour weapon_id 100 dans metadata (1 seule fois — séparé)
 	if _, err := pdb.Metadata.Exec(ctx,
@@ -164,16 +122,8 @@ func TestWeaponKillsRepo_Load_RejectsNegativeMinKills(t *testing.T) {
 func TestWeaponKillsRepo_Load_CapabilityNotSupported_NoTable(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	// Drop dans player ET shared : le repo lit via SharedReadDB() (pdb.Shared)
-	// depuis le commit 8k.3.
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		if _, err := db.Exec(ctx, "DROP VIEW shared.v_weapon_kills"); err != nil {
-			t.Fatalf("DROP VIEW: %v", err)
-		}
-		if _, err := db.Exec(ctx, "DROP TABLE shared.weapon_kills"); err != nil {
-			t.Fatalf("DROP TABLE: %v", err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx, "DROP VIEW shared.v_weapon_kills")
+	execOnSharedDBs(t, pdb, ctx, "DROP TABLE shared.weapon_kills")
 
 	repo := NewWeaponKillsRepo(pdb)
 	_, err := repo.LoadWeaponKillsAggregated(ctx, "halo_infinite",

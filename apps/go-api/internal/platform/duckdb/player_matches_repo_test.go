@@ -15,25 +15,14 @@ import (
 // resetPlayerMatchesTables nettoie les tables avant d'inserer nos fixtures.
 // Necessaire car newTestPlayerDB() insere une row "m1" via seedPlayerSchema()
 // que nos tests ne controlent pas.
-//
-// Sprint B1 commit 8k.3 : reset shared.* dans player ET shared (les repos
-// migrés lisent depuis pdb.Shared).
 func resetPlayerMatchesTables(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
 	ctx := context.Background()
 	if _, err := pdb.Player.Exec(ctx, "DELETE FROM player_match_enrichment"); err != nil {
 		t.Fatalf("reset (player_match_enrichment): %v", err)
 	}
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		for _, q := range []string{
-			"DELETE FROM shared.match_participants",
-			"DELETE FROM shared.match_registry",
-		} {
-			if _, err := db.Exec(ctx, q); err != nil {
-				t.Fatalf("reset (%s): %v", q, err)
-			}
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx, "DELETE FROM shared.match_participants")
+	execOnSharedDBs(t, pdb, ctx, "DELETE FROM shared.match_registry")
 }
 
 // seedPlayerMatchesFixtures insere un jeu de fixtures couvrant tous les cas
@@ -104,35 +93,22 @@ func seedPlayerMatchesFixtures(t *testing.T, pdb *PlayerDB) {
 	}
 
 	for _, f := range fixtures {
-		// Sprint B1 commit 8k.9 : double-write player+shared pour les tables shared.*
-		// Le repo PlayerMatchesRepo lit la partie shared via SharedReader (pdb.Shared).
-		for _, db := range []*DB{pdb.Player, pdb.Shared} {
-			_, err := db.Exec(ctx, `INSERT INTO shared.match_registry
-				(match_id, start_time, map_id, map_name, map_name_fr, pair_name,
-				 playlist_name, is_firefight, is_ranked, duration_seconds)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				f.matchID, f.startTime, f.mapID, f.mapName, f.mapNameFR, f.pairName,
-				f.playlistName, f.isFirefight, f.isRanked, f.duration)
-			if err != nil {
-				t.Fatalf("insert match_registry %s: %v", f.matchID, err)
-			}
-			_, err = db.Exec(ctx, `INSERT INTO shared.match_participants
-				(match_id, xuid, gamertag, outcome, kills, deaths, assists, kda,
-				 time_played_seconds, headshot_kills, team_id)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				f.matchID, pTestXUID, pTestGamertag, f.outcome, f.kills, f.deaths,
-				f.assists, f.kda, f.timePlayed, f.headshot, 0)
-			if err != nil {
-				t.Fatalf("insert match_participants %s: %v", f.matchID, err)
-			}
-			if f.friendXUID != "" {
-				_, err = db.Exec(ctx, `INSERT INTO shared.match_participants
-					(match_id, xuid, gamertag, team_id) VALUES (?, ?, ?, ?)`,
-					f.matchID, f.friendXUID, "FriendOne", 0)
-				if err != nil {
-					t.Fatalf("insert friend %s in %s: %v", f.friendXUID, f.matchID, err)
-				}
-			}
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry
+			(match_id, start_time, map_id, map_name, map_name_fr, pair_name,
+			 playlist_name, is_firefight, is_ranked, duration_seconds)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			f.matchID, f.startTime, f.mapID, f.mapName, f.mapNameFR, f.pairName,
+			f.playlistName, f.isFirefight, f.isRanked, f.duration)
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants
+			(match_id, xuid, gamertag, outcome, kills, deaths, assists, kda,
+			 time_played_seconds, headshot_kills, team_id)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			f.matchID, pTestXUID, pTestGamertag, f.outcome, f.kills, f.deaths,
+			f.assists, f.kda, f.timePlayed, f.headshot, 0)
+		if f.friendXUID != "" {
+			execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants
+				(match_id, xuid, gamertag, team_id) VALUES (?, ?, ?, ?)`,
+				f.matchID, f.friendXUID, "FriendOne", 0)
 		}
 		// player_match_enrichment reste sur pdb.Player uniquement (table player).
 		_, err := pdb.Player.Exec(ctx, `INSERT INTO player_match_enrichment
@@ -460,26 +436,16 @@ func TestPlayerMatchesRepo_Load_PairModeHydrated(t *testing.T) {
 	resetPlayerMatchesTables(t, pdb)
 	ctx := context.Background()
 
-	// Sprint B1 commit 8k.9 : double-write player+shared (le repo lit shared
-	// via SharedReader.Get → pdb.Shared).
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		_, err := db.Exec(ctx, `INSERT INTO shared.match_registry
-			(match_id, start_time, map_id, map_name, pair_name, pair_name_fr,
-			 playlist_name, duration_seconds)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			"pm_test", "2026-01-01T00:00:00Z", "bazaar", "Bazaar",
-			"Slayer", "Assassin", "Quick Play", 600)
-		if err != nil {
-			t.Fatalf("insert match_registry: %v", err)
-		}
-		_, err = db.Exec(ctx, `INSERT INTO shared.match_participants
-			(match_id, xuid, gamertag, outcome, team_id)
-			VALUES (?, ?, ?, ?, ?)`,
-			"pm_test", pTestXUID, pTestGamertag, 2, 0)
-		if err != nil {
-			t.Fatalf("insert match_participants: %v", err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry
+		(match_id, start_time, map_id, map_name, pair_name, pair_name_fr,
+		 playlist_name, duration_seconds)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"pm_test", "2026-01-01T00:00:00Z", "bazaar", "Bazaar",
+		"Slayer", "Assassin", "Quick Play", 600)
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants
+		(match_id, xuid, gamertag, outcome, team_id)
+		VALUES (?, ?, ?, ?, ?)`,
+		"pm_test", pTestXUID, pTestGamertag, 2, 0)
 	_, err := pdb.Player.Exec(ctx, `INSERT INTO player_match_enrichment
 		(match_id) VALUES (?)`, "pm_test")
 	if err != nil {

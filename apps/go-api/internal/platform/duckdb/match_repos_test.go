@@ -33,13 +33,7 @@ func TestFiltersRepo_LoadMatchesForFilters_WithData(t *testing.T) {
 func TestFiltersRepo_LoadMatchesForFilters_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	// Sprint B1 commit 8k.6 : LoadMatchesForFilters lit la partie shared via
-	// SharedReader (pdb.Shared) — supprimer aussi côté shared pour vider.
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		if _, err := db.Exec(ctx, "DELETE FROM shared.match_participants"); err != nil {
-			t.Fatal(err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx, "DELETE FROM shared.match_participants")
 	repo := NewFiltersRepo(pdb)
 	rows, err := repo.LoadMatchesForFilters(ctx)
 	if err != nil {
@@ -105,13 +99,7 @@ func TestFiltersRepo_GetAvailableMaps(t *testing.T) {
 func TestMatchHistoryRepo_LoadAll_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	// Sprint B1 commit 8k.7 : LoadAll lit la partie shared via SharedReader
-	// (pdb.Shared) — supprimer aussi côté shared pour vider.
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		if _, err := db.Exec(ctx, "DELETE FROM shared.match_participants"); err != nil {
-			t.Fatal(err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx, "DELETE FROM shared.match_participants")
 	repo := NewMatchHistoryRepo(pdb)
 	rows, err := repo.LoadAll(ctx)
 	if err != nil {
@@ -447,18 +435,11 @@ func TestSquadRepo_LoadSquadMatches_Empty(t *testing.T) {
 func TestSquadRepo_LoadSquadMatches_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	// Sprint B1 commit 9c.2 : double-write player+shared (le repo lit shared
-	// via SharedReader depuis 9c.2).
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		_, err := db.Exec(ctx,
-			`INSERT INTO shared.match_participants
-			 (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda,accuracy,time_played_seconds,team_mmr)
-			 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-			"m1", "xuid_mate_002", "TeamMate", 2, 8, 4, 1, 1.2, 0.55, 600, 1200.0)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_participants
+		 (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda,accuracy,time_played_seconds,team_mmr)
+		 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+		"m1", "xuid_mate_002", "TeamMate", 2, 8, 4, 1, 1.2, 0.55, 600, 1200.0)
 	repo := NewSquadRepo(pdb)
 	rows, err := repo.LoadSquadMatches(ctx, pTestXUID, "xuid_mate_002")
 	if err != nil {
