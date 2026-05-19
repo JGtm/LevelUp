@@ -232,13 +232,12 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		}
 	}
 
-	// ATTACH shared sur la connexion player RW pour les requêtes join (sync engine et handlers HTTP)
-	if err := attachShared(ctx, playerDB, cfg.SharedDBPath); err != nil {
-		_ = playerDB.Close()
-		_ = sharedDB.Close()
-		_ = metaDB.Close()
-		return nil, fmt.Errorf("pool: attach shared on player db: %w", err)
-	}
+	// Sprint B1 commit 9c.4 : attachShared sur la conn player a été retiré.
+	// Toutes les queries shared passent désormais par SharedReader (Provider en
+	// prod, LegacySharedReader pour les tests sans Provider injecté). Voir
+	// ADR 0016. La fonction attachShared est conservée temporairement pour
+	// la conn SharedSocial (ligne suivante) — sera retirée quand media_repo
+	// aura été migré aussi.
 
 	// P5.3 : ATTACH global xbox_aliases (mapping xuid→gamertag global Microsoft).
 	// Non-bloquant : si la DB globale n'existe pas encore (avant migration), les

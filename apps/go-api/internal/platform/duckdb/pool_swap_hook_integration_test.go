@@ -89,6 +89,11 @@ func setupPoolFixturesForSwap(t *testing.T) (sharedPath string, provider sharedp
 // Si ce test passe : la mécanique B3 est fonctionnelle. Reste à câbler
 // via Subscribe au commit 8g.
 func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
+	// Sprint B1 commit 9c.4 : isole le globalPool des autres tests pour éviter
+	// de récupérer un PlayerDB cached avec un Provider fermé.
+	duckdb.CloseAll()
+	t.Cleanup(duckdb.CloseAll)
+
 	_, provider, pdb := setupPoolFixturesForSwap(t)
 	defer func() { _ = provider.Close() }()
 
@@ -111,12 +116,22 @@ func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
 	})
 	defer unsubscribe()
 
-	// Étape 1 : query player via ATTACH RO — count initial 0.
-	var count int
-	if err := pdb.Player.QueryRow(ctx,
-		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
-		t.Fatalf("query initial via ATTACH RO: %v", err)
+	// Sprint B1 commit 9c.4 : attachShared retiré de pdb.Player. Le test
+	// utilise désormais SharedReader.Get pour valider que le cycle Prepare/
+	// Restore ne perturbe pas les lectures via Provider.
+
+	// Étape 1 : query via SharedReader — count initial 0.
+	rdb, release, err := pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		t.Fatalf("SharedReadDB().Get initial: %v", err)
 	}
+	var count int
+	if err := rdb.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
+		release()
+		t.Fatalf("query initial via SharedReader: %v", err)
+	}
+	release()
 	if count != 0 {
 		t.Errorf("count initial = %d, attendu 0", count)
 	}
@@ -139,13 +154,19 @@ func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
 	// swap RW → RO complet.
 	w.Release()
 
-	// Étape 5 : la conn player doit voir l'INSERT via ATTACH (restauré).
-	if err := pdb.Player.QueryRow(ctx,
-		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
-		t.Fatalf("query post-cycle via ATTACH RO: %v (re-attachShared a échoué?)", err)
+	// Étape 5 : la conn Provider doit voir l'INSERT après cycle.
+	rdb, release, err = pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		t.Fatalf("SharedReadDB().Get post-cycle: %v", err)
 	}
+	if err := rdb.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
+		release()
+		t.Fatalf("query post-cycle via SharedReader: %v", err)
+	}
+	release()
 	if count != 1 {
-		t.Errorf("count post-cycle = %d, attendu 1 (INSERT pas visible — ATTACH stale?)", count)
+		t.Errorf("count post-cycle = %d, attendu 1 (INSERT pas visible — swap stale?)", count)
 	}
 
 	// Bonus : 2e cycle pour valider la stabilité.
@@ -160,10 +181,16 @@ func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
 	}
 	w2.Release()
 
-	if err := pdb.Player.QueryRow(ctx,
-		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
-		t.Fatalf("query final: %v", err)
+	rdb, release, err = pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		t.Fatalf("SharedReadDB().Get final: %v", err)
 	}
+	if err := rdb.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
+		release()
+		t.Fatalf("query final via SharedReader: %v", err)
+	}
+	release()
 	if count != 2 {
 		t.Errorf("count final = %d, attendu 2 (cycle 2 visible?)", count)
 	}
