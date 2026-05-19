@@ -1,3 +1,46 @@
+## [2026-05-19] test(duckdb) — Commit 9g.3 : tests pour 3 méthodes 0% (campaign + catalog + squad)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9g.3 — Phase 1 du plan dette restante).
+
+**Contexte** : 3 méthodes shared-only ou split+merge cross-DB étaient à 0% coverage après le sprint B1. Cette
+phase achève la Phase 1 (tests pour 0% coverage migrated methods) initiée en 9g.1 (compare_repo) et 9g.2
+(career_repo).
+
+**Livré** :
+
+1. **`campaign_repo_test.go`** (nouveau, build tag integration) — 3 tests :
+   - `TestCampaignSampleProvider_LoadAxisSamples_RadarCombat` : axis "combat" (kills), 3 matchs
+     chronologiques via `match_registry` + `match_participants`.
+   - `TestCampaignSampleProvider_LoadAxisSamples_UnsupportedAxis` : axis non mappé → nil safe.
+   - `TestCampaignSampleProvider_loadLUSRComponentSamples` : split cross-DB,
+     `lusr_component_history` (player) + `match_registry` (shared), merge chronologique.
+
+2. **`catalog_repo_test.go`** — ajout `TestCatalogRepo_playlistsPlayedByXUID` : split+merge
+   `metadata.playlists_catalog` + `shared.match_registry/participants`, vérifie hydratation
+   `MatchCount` + exclusion playlist non jouée. CREATE TABLE local (pas dans `seedMetaDBSchema`)
+   pour limiter la portée.
+
+3. **`squad_repo_main_team_test.go`** (nouveau, build tag integration) — 2 tests :
+   - `TestSquadRepo_LoadMainTeamParticipants_EmptyInputs` : court-circuits nil/empty.
+   - `TestSquadRepo_LoadMainTeamParticipants_TeamFilter` : Q32b self-join, vérifie filtre par
+     `team_id` (allies retenus, enemies exclus) sur 2 matchs.
+
+4. **`player_repos_test.go`** : ajout de `CREATE TABLE lusr_component_history` à `seedPlayerSchema`
+   (match_id, component_name, value, weight, computed_at) — table requise par Campaign tests.
+
+**Coverage** : 58.4% → **60.4%** (+2.0pp) sur `./internal/platform/duckdb`.
+- `LoadAxisSamples` : 0% → **82.8%**
+- `loadLUSRComponentSamples` : 0% → **75.5%**
+- `playlistsPlayedByXUID` : 0% → **76.9%**
+- `LoadMainTeamParticipants` : 0% → **88.5%**
+
+**Tests verts** : suite duckdb intégration complète (36s) sans régression.
+
+**Prochaine étape** : commit 9h Phase 2 — retrait code mort identifié pendant les audits
+(candidat principal : `nullInt64ToStringPtr` dans `player_matches_repo.go`, dead depuis 9d.4).
+
+---
+
 ## [2026-05-19] refactor(pool) — Commit 9c.5 : media_repo migré + retrait final attachShared/createSharedAliasViews
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9c.5 — DERNIÈRE migration de la dette résiduelle du sprint B1).

@@ -208,6 +208,15 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE TABLE media_match_associations (
 			media_path VARCHAR, match_id VARCHAR, match_start_time TIMESTAMPTZ)`,
 		`CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`,
+		// lusr_component_history : utilisée par CampaignSampleProvider
+		// (loadLUSRComponentSamples, axis kills_vs_expected/etc.).
+		`CREATE TABLE lusr_component_history (
+			match_id VARCHAR NOT NULL,
+			component_name VARCHAR NOT NULL,
+			value DOUBLE NOT NULL,
+			weight DOUBLE NOT NULL DEFAULT 1.0,
+			computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (match_id, component_name))`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
