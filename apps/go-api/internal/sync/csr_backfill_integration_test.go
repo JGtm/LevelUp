@@ -128,8 +128,8 @@ func TestBackfillCSRFromAPI_InsertsCSRForRankedMatches(t *testing.T) {
 		t.Errorf("expected no skips/errors, got skipped=%d errors=%d", res.SkippedNoRankRecap, res.SkillErrors)
 	}
 	// Vérifier que m_social n'a PAS été traité.
-	if mock.callsGetSkill != 2 {
-		t.Errorf("GetMatchSkill calls: want 2 (only ranked), got %d", mock.callsGetSkill)
+	if mock.callsGetSkill.Load() != 2 {
+		t.Errorf("GetMatchSkill calls: want 2 (only ranked), got %d", mock.callsGetSkill.Load())
 	}
 
 	var count int
@@ -179,8 +179,8 @@ func TestBackfillCSRFromAPI_SkipsMatchesWithExistingCSR(t *testing.T) {
 	if res.Inserted != 1 {
 		t.Errorf("Inserted: want 1, got %d", res.Inserted)
 	}
-	if mock.callsGetSkill != 1 {
-		t.Errorf("GetMatchSkill calls: want 1 (only m_new), got %d", mock.callsGetSkill)
+	if mock.callsGetSkill.Load() != 1 {
+		t.Errorf("GetMatchSkill calls: want 1 (only m_new), got %d", mock.callsGetSkill.Load())
 	}
 }
 
@@ -357,8 +357,8 @@ func TestBackfillCSRFromAPI_EmptyRegistry(t *testing.T) {
 	if res.RankedMatches != 0 || res.Inserted != 0 {
 		t.Errorf("empty registry: want all zeros, got %+v", res)
 	}
-	if mock.callsGetSkill != 0 {
-		t.Errorf("no API calls expected on empty registry, got %d", mock.callsGetSkill)
+	if mock.callsGetSkill.Load() != 0 {
+		t.Errorf("no API calls expected on empty registry, got %d", mock.callsGetSkill.Load())
 	}
 }
 

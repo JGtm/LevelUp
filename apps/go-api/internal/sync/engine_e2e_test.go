@@ -674,8 +674,8 @@ func TestProcessMatch_APICallCounting(t *testing.T) {
 	}
 
 	// Each processMatch calls GetMatchStats once
-	if mock.callsGetStats != 3 {
-		t.Errorf("callsGetStats: attendu 3, obtenu %d", mock.callsGetStats)
+	if mock.callsGetStats.Load() != 3 {
+		t.Errorf("callsGetStats: attendu 3, obtenu %d", mock.callsGetStats.Load())
 	}
 }
 

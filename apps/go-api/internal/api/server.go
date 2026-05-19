@@ -531,26 +531,26 @@ func NewRouter(
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
 		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
-		// OpenSpartan import (Sprint OpenSpartan PR 3.B) — multipart upload du
-		// .db SQLite OpenSpartan, validation XUID via session SSO, exécution
-		// asynchrone via jobStore. Skipped en mode démo. La connexion shared en
-		// RW est ouverte une fois au boot et partagée via le ref-count
-		// platform_duckdb (cf. catalogMetaDB plus haut).
+		// OpenSpartan import (Sprint OpenSpartan PR 3.B + commit 15 sprint B1) :
+		// multipart upload du .db SQLite OpenSpartan, validation XUID via session
+		// SSO, exécution asynchrone via jobStore. Skipped en mode démo.
+		//
+		// Acquisition shared à la demande via cfg.SharedProvider — plus de handle
+		// RW persistant au boot. Empêche le conflit "different configuration"
+		// (Provider tient shared en RO steady state, OpenReadWriteShared au boot
+		// échouait). OpenSpartan import = flow d'onboarding rare (un user qui
+		// importe ses données), pas de raison d'ouvrir RW au boot.
 		if !cfg.DemoMode {
-			if sharedRW, err := platform_duckdb.OpenReadWriteShared(config.SharedDBPath(cfg, "")); err != nil {
-				slog.Warn("openspartan_import_disabled_shared_db_unavailable", "err", err)
-			} else {
-				osImportSvc := service.NewOpenSpartanImportService(sharedRW.SQLDb(), config.SharedDBPath(cfg, ""))
-				osPostImportSvc := service.NewOpenSpartanPostImportService(cfg, sharedRW.SQLDb())
-				osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
-					ImportService:     osImportSvc,
-					PostImportService: osPostImportSvc,
-					JobStore:          jobStore,
-					StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
-					DemoMode:          cfg.DemoMode,
-				})
-				r.Post("/import/openspartan", osImportH.StartImport)
-			}
+			osImportSvc := service.NewOpenSpartanImportService(cfg.SharedProvider, config.SharedDBPath(cfg, ""))
+			osPostImportSvc := service.NewOpenSpartanPostImportService(cfg)
+			osImportH := handlers.NewOpenSpartanImportHandler(handlers.OpenSpartanImportConfig{
+				ImportService:     osImportSvc,
+				PostImportService: osPostImportSvc,
+				JobStore:          jobStore,
+				StashDir:          filepath.Join(cfg.RepoRoot, "data", "players"),
+				DemoMode:          cfg.DemoMode,
+			})
+			r.Post("/import/openspartan", osImportH.StartImport)
 		}
 
 		// Galerie médias — version de flux pour polling léger
