@@ -1,3 +1,40 @@
+## [2026-05-19] test(duckdb) — Commit 9j : Phase 4 audit + helpers purs (mapMetricToColumn, axisValueExpression)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9j — Phase 4 du plan dette restante).
+
+**Contexte** : Phase 4 du plan visait 3 axes : (1) logging hygiene cross-cutting,
+(2) helper unit tests pour les méthodes pures, (3) thought_log cleanup.
+
+**Audit logging hygiene** : revue des fichiers modifiés pendant le sprint B1 (squad_repo,
+compare_repo, career_repo, media_repo, match_history_repo, medals_by_xuid_repo). Conclusion :
+- Tous les `return nil, nil` sont des court-circuits défensifs sur inputs vides ou tables
+  inexistantes (`isTableNotFoundErr` documenté) — comportement intentionnel.
+- Toutes les erreurs SharedReader sont remontées avec `fmt.Errorf("...: %w", err)` propre.
+- Les seuls fallbacks silencieux (catalog_repo:79/93) sont déjà loggés `slog.WarnContext`
+  (corrigé en 9e). Plus rien à faire côté logging dans le périmètre sprint B1.
+
+**Livré (helper unit tests)** :
+
+1. **`axis_metric_helpers_test.go`** (nouveau, pas de build tag = unit pur) — 2 tests :
+   - `TestMapMetricToColumn` : 22 cas (FieldKey canonical + alias lowercase + whitespace
+     toléré + inconnu/empty/non mappé).
+   - `TestAxisValueExpression` : 9 cas (5 axes radar mappés + objective placeholder V1 +
+     axes inconnus + kind non-radar → empty/false).
+
+**Thought_log cleanup** : audit montre 9 entrées historiques "En cours" qui pourraient être
+des tâches cadrées puis abandonnées. Sans contexte autorial, risque élevé de mal interpréter
+— skip délibéré. Si nettoyage souhaité ultérieurement, faire entrée par entrée avec validation
+auteur.
+
+**Coverage** : 61.4% → **61.6%** (+0.2pp).
+- `mapMetricToColumn` : 0% → **100%**
+- `axisValueExpression` : 44.4% → **100%**
+
+**Phase 4 status** : terminée sur le périmètre actionnable. Pas de Phase 5 prévue
+(observability prod) — nécessite accès Grafana/prod, hors scope dev.
+
+---
+
 ## [2026-05-19] test(duckdb) — Commit 9i : tests CareerLiveRepo (7 méthodes 0% → ≥78%)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9i — Phase 3 du plan dette restante).
