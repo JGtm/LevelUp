@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 // poolImpl implémente Pool avec round-robin PolicyAnyPublic et pinned PolicyPinnedPlayer.
@@ -307,6 +309,12 @@ func (p *poolImpl) Close() {
 
 // refresherLoop en arrière-plan, rafraîchit les tokens malsains ou proches de l'expiration.
 func (p *poolImpl) refresherLoop(baseCtx context.Context) {
+	// Sprint B1 commit 17 : event_id sur la loop globale. Les opérations
+	// individuelles (Refresh par slot) génèrent leur propre sous-event_id
+	// via Resolver.Refresh.
+	baseCtx, loopID := logging.WithEvent(baseCtx, "auth.refresher_loop")
+	slog.InfoContext(baseCtx, "pool: refresher loop démarré", "event", loopID)
+
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 

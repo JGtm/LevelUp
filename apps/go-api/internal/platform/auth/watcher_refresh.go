@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+
+	"levelup/go-api/internal/observability/logging"
 	"strings"
 	"time"
 )
@@ -97,6 +99,14 @@ func EnsureWatcherAccessToken(
 	if provider == nil {
 		return "", fmt.Errorf("EnsureWatcherAccessToken: provider nil")
 	}
+
+	// Sprint B1 commit 17 : event_id pour tracer l'opération refresh
+	// watcher token (rare, déclenché par expiration access_token Microsoft
+	// après 1h). Les sous-logs OAuth refresh + TokenStore.UpdateOAuth
+	// hériteront automatiquement.
+	ctx, evID := logging.WithEvent(ctx, "auth.watcher_refresh:"+gamertag)
+	slog.DebugContext(ctx, "watcher_refresh: appel ensure_access_token",
+		"gamertag", gamertag, "event", evID)
 
 	tokens, err := store.Load()
 	if err != nil {

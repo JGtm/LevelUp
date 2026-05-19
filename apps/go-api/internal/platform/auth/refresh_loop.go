@@ -11,6 +11,8 @@ import (
 	"context"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 const (
@@ -58,10 +60,15 @@ func NewRefreshLoop(store *TokenStore, onXSTSRefreshed RefreshCallback) *Refresh
 // Run démarre la boucle de refresh. Bloquant — à lancer dans une goroutine.
 // S'arrête quand ctx est annulé.
 func (r *RefreshLoop) Run(ctx context.Context) {
+	// Sprint B1 commit 17 : event_id sur la loop globale (un id pour toute
+	// la vie du process). Chaque check() crée son propre sous-event_id pour
+	// granularité par tick.
+	ctx, loopID := logging.WithEvent(ctx, "auth.token_refresh_loop")
 	slog.InfoContext(ctx, "refresh_loop: démarré",
 		"check_interval", r.interval,
 		"oauth_margin", oauthRefreshMargin,
 		"xsts_margin", xstsRefreshMargin,
+		"event", loopID,
 	)
 
 	// Vérification initiale immédiate

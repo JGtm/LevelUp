@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 )
 
@@ -70,9 +71,14 @@ func (r *resolverImpl) Resolve(ctx context.Context, src CredentialSource) (*Reso
 		return cached.resolved, nil
 	}
 
-	// Cache miss ou expiré → échanger.
-	slog.DebugContext(ctx, "pool/resolver: échange token",
-		"gamertag", src.Gamertag, "source", src.Source)
+	// Cache miss : event_id pour tracer l'échange OAuth/XSTS/Spartan/Clearance
+	// à travers les sous-modules (provider MSAL → halo_exchange → ...).
+	// Si le ctx contient déjà un event_id (scheduler.sync ou autre), un nouvel
+	// id est créé pour identifier précisément cette opération token —
+	// l'event_id parent reste filtre-able par grep sur les logs concurrents.
+	ctx, evID := logging.WithEvent(ctx, "auth.resolve:"+src.Gamertag)
+	slog.InfoContext(ctx, "pool/resolver: échange token démarré",
+		"gamertag", src.Gamertag, "source", src.Source, "event", evID)
 
 	// Pipeline : TrySilentRefresh → TryOAuthRefresh → Exchange.
 	var accessToken string
@@ -186,8 +192,11 @@ func (r *resolverImpl) Refresh(ctx context.Context, gamertag string) (*ResolvedT
 		return nil, fmt.Errorf("pool/resolver: aucune source de credentials pour %s (jamais resolveé)", gamertag)
 	}
 
+	// Sprint B1 commit 17 : event_id pour tracer un refresh forcé (souvent
+	// déclenché par 401/403 — utile pour corréler la cause amont).
+	ctx, evID := logging.WithEvent(ctx, "auth.refresh:"+gamertag)
 	slog.InfoContext(ctx, "pool/resolver: force refresh du token",
-		"gamertag", gamertag, "source", src.Source)
+		"gamertag", gamertag, "source", src.Source, "event", evID)
 
 	// Invalider le cache.
 	r.mu.Lock()

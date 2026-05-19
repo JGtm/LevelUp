@@ -12,11 +12,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/jobs"
 	go_sync "levelup/go-api/internal/sync"
 )
@@ -75,6 +77,12 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 			"Un backfill est déjà en cours pour ce joueur.")
 		return
 	}
+
+	// Sprint B1 commit 17 : event_id pour tracer le backfill HTTP-triggered.
+	// Log immédiat sans muter *r (data race avec chi middleware).
+	_, evID := logging.WithEvent(r.Context(), "http.backfill:"+req.PlayerSlug)
+	slog.InfoContext(r.Context(), "backfill_handler: StartBackfill démarré",
+		"player_slug", req.PlayerSlug, "gamertag", gamertag, "event", evID)
 
 	// Les weapons backfill nécessitent les tokens Halo.
 	sess := middleware.GetSession(r.Context())

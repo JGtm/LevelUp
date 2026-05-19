@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/notifications"
+	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -189,6 +190,15 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 		return
 	}
+
+	// Sprint B1 commit 17 : event_id pour tracer le sync initial. Log
+	// immédiat avec ctx local — ne PAS muter *r (data race avec middleware
+	// chi qui garde un pointeur vers le request). Le event_id reste un
+	// breadcrumb pour grep des logs HTTP, propagation aux goroutines async
+	// reportée à un follow-up (impose de passer ctx en arg aux helpers).
+	_, evID := logging.WithEvent(r.Context(), "http.sync.initial:"+req.PlayerSlug)
+	slog.InfoContext(r.Context(), "sync_handler: StartInitialSync démarré",
+		"player_slug", req.PlayerSlug, "max_matches", req.MaxMatches, "event", evID)
 	if req.MaxMatches == 0 {
 		req.MaxMatches = 200
 	}
@@ -280,6 +290,12 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sprint B1 commit 17 : event_id pour tracer le sync delta HTTP-triggered.
+	// Log immédiat sans muter *r (data race).
+	_, evID := logging.WithEvent(r.Context(), "http.sync.delta:"+playerSlug)
+	slog.InfoContext(r.Context(), "sync_handler: StartDeltaSync démarré",
+		"player_slug", playerSlug, "event", evID)
+
 	sess := middleware.GetSession(r.Context())
 	if sess == nil || sess.HaloTokens == nil {
 		writeError(w, http.StatusUnauthorized, "auth_required",
@@ -359,6 +375,12 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no_players", "Aucun joueur configuré dans db_profiles.json.")
 		return
 	}
+
+	// Sprint B1 commit 17 : event_id pour tracer le sync de tous les joueurs.
+	// Log immédiat sans muter *r (data race).
+	_, evID := logging.WithEvent(r.Context(), "http.sync.all")
+	slog.InfoContext(r.Context(), "sync_handler: StartSyncAll démarré",
+		"player_count", len(players), "event", evID)
 
 	job := h.jobStore.Create(domain.JobTypeDeltaSyncAll, "all")
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
