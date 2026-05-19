@@ -178,7 +178,7 @@ func (h *CampaignHandler) resolveOr404Campaign(w http.ResponseWriter, r *http.Re
 
 func (h *CampaignHandler) serviceFromPDB(pdb *duckdb.PlayerDB) *campaign.Service {
 	repo := duckdb.NewCampaignRepo(pdb.Player)
-	samples := duckdb.NewCampaignSampleProvider(pdb.Player)
+	samples := duckdb.NewCampaignSampleProvider(pdb)
 	return campaign.NewService(repo, samples)
 }
 

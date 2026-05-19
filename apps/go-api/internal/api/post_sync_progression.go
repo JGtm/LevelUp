@@ -292,7 +292,7 @@ func BuildPlayerProgressionDeps(pdb *duckdb.PlayerDB, emitter notifications.Emit
 		// ("axe sort des leviers prioritaires").
 		deps.CampaignService = campaign.NewService(
 			duckdb.NewCampaignRepo(pdb.Player),
-			duckdb.NewCampaignSampleProvider(pdb.Player),
+			duckdb.NewCampaignSampleProvider(pdb),
 		).WithLeverageProvider(newProfileLeverageProvider(pdb))
 		// History repo (stats.duckdb) + PB repo (shared_social via pdb).
 		history := duckdb.NewRecordHistoryRepo(pdb.Player)

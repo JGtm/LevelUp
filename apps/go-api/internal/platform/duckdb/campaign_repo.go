@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -193,6 +194,10 @@ func scanCampaign(row rowScanner) (campaign.ImprovementCampaign, error) {
 // CampaignSampleProvider implémente campaign.SampleProvider en lisant
 // match_participants (shared) joint à match_registry.
 //
+// Sprint B1 commit 8k.11 : reçoit un *PlayerDB pour accéder à SharedReader
+// (queries shared coordonnées avec le SharedDBProvider) et à pdb.Player
+// (lusr_component_history).
+//
 // Mapping V1 axis → expression SQL :
 //
 //   - radar.combat          : kills
@@ -201,13 +206,12 @@ func scanCampaign(row rowScanner) (campaign.ImprovementCampaign, error) {
 //   - radar.score           : personal_score
 //   - radar.objective       : 0 (V1 — mapping award→axis title-specific reporté)
 //   - radar.impact          : max_killing_spree * 10
-//   - lusr_component.*      : 0 (V1 — table lusr_component_history pas créée,
-//     même note que profile.loadLUSRComponentsBreakdown)
-type CampaignSampleProvider struct{ db *DB }
+//   - lusr_component.*      : lusr_component_history (PLAYER) ⨝ match_registry (SHARED)
+type CampaignSampleProvider struct{ pdb *PlayerDB }
 
-// NewCampaignSampleProvider construit le provider sur stats.duckdb.
-func NewCampaignSampleProvider(db *DB) *CampaignSampleProvider {
-	return &CampaignSampleProvider{db: db}
+// NewCampaignSampleProvider construit le provider depuis un *PlayerDB.
+func NewCampaignSampleProvider(pdb *PlayerDB) *CampaignSampleProvider {
+	return &CampaignSampleProvider{pdb: pdb}
 }
 
 // LoadAxisSamples charge les valeurs de l'axe pour les matchs du joueur dans
@@ -234,8 +238,8 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 		return nil, nil
 	}
 	q := "SELECT " + expr + ` AS val
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time >= ? AND mr.start_time <= ?`
 	args := []any{userID, since, until}
@@ -244,7 +248,14 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 		args = append(args, playlistGroup)
 	}
 	q += ` ORDER BY mr.start_time ASC`
-	rows, err := p.db.Query(ctx, q, args...)
+
+	db, release, err := p.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -263,40 +274,100 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 }
 
 // loadLUSRComponentSamples lit la chronologie d'une composante LUSR depuis
-// `lusr_component_history` (table joueur), joint à `shared.match_registry`
-// pour le filtre playlist et la chronologie. Retourne les valeurs ordonnées
-// chronologiquement (asc).
+// `lusr_component_history` (table joueur), joint à `match_registry` (shared)
+// pour le filtre playlist et la chronologie.
+//
+// Sprint B1 commit 8k.11 : split cross-DB.
+//
+//	Étape 1 (SharedReader) : SELECT match_id, start_time FROM match_registry
+//	  WHERE start_time IN window [AND playlist_id = ?]
+//	Étape 2 (pdb.Player) : SELECT match_id, value FROM lusr_component_history
+//	  WHERE component_name = ? AND match_id IN (...)
+//	Étape 3 (Go) : merge en respectant l'ordre chronologique de l'étape 1.
 func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 	ctx context.Context,
 	component, playlistGroup string,
 	since, until time.Time,
 ) ([]float64, error) {
-	q := `
-		SELECT lch.value
-		FROM lusr_component_history lch
-		JOIN shared.match_registry mr ON mr.match_id = lch.match_id
-		WHERE lch.component_name = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?
-	`
-	args := []any{component, since, until}
-	if playlistGroup != "" && playlistGroup != "all" {
-		q += ` AND mr.playlist_id = ?`
-		args = append(args, playlistGroup)
+	// Étape 1 : match_ids ordonnés chronologiquement depuis shared.
+	type matchTS struct {
+		matchID string
+		ts      time.Time
 	}
-	q += ` ORDER BY mr.start_time ASC`
-	rows, err := p.db.Query(ctx, q, args...)
+	sharedQ := `
+		SELECT match_id, start_time
+		FROM match_registry
+		WHERE start_time >= ? AND start_time <= ?
+	`
+	sharedArgs := []any{since, until}
+	if playlistGroup != "" && playlistGroup != "all" {
+		sharedQ += ` AND playlist_id = ?`
+		sharedArgs = append(sharedArgs, playlistGroup)
+	}
+	sharedQ += ` ORDER BY start_time ASC`
+
+	sharedDB, release, err := p.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	sharedRows, err := sharedDB.QueryContext(ctx, sharedQ, sharedArgs...)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	var matches []matchTS
+	for sharedRows.Next() {
+		var m matchTS
+		if err := sharedRows.Scan(&m.matchID, &m.ts); err != nil {
+			sharedRows.Close()
+			return nil, err
+		}
+		matches = append(matches, m)
+	}
+	sharedRows.Close()
+	if len(matches) == 0 {
 		return nil, nil
 	}
+
+	// Étape 2 : valeurs lusr par match_id depuis player.
+	matchIDs := make([]string, 0, len(matches))
+	for _, m := range matches {
+		matchIDs = append(matchIDs, m.matchID)
+	}
+	playerQ := fmt.Sprintf(`
+		SELECT match_id, value
+		FROM lusr_component_history
+		WHERE component_name = ? AND match_id IN (%s)`, Placeholders(len(matchIDs)))
+	args := make([]any, 0, 1+len(matchIDs))
+	args = append(args, component)
+	args = append(args, ToAnySlice(matchIDs)...)
+	rows, err := p.pdb.Player.Query(ctx, playerQ, args...)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
 	defer rows.Close()
-	var out []float64
+
+	// Étape 3 : merge — collecte les valeurs dans une map puis ressort selon
+	// l'ordre chronologique de l'étape 1.
+	values := make(map[string]float64, len(matchIDs))
 	for rows.Next() {
+		var mid string
 		var v sql.NullFloat64
-		if err := rows.Scan(&v); err != nil {
+		if err := rows.Scan(&mid, &v); err != nil {
 			return nil, err
 		}
 		if v.Valid {
-			out = append(out, v.Float64)
+			values[mid] = v.Float64
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []float64
+	for _, m := range matches {
+		if v, ok := values[m.matchID]; ok {
+			out = append(out, v)
 		}
 	}
 	return out, rows.Err()
