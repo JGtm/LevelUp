@@ -44,39 +44,25 @@ func TestSquadRepo_LoadMapStatsForSquad_StrictIntersection(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
 
-	// Sprint B1 commit 9c.4 : double-write player+shared (le repo lit shared
-	// via SharedReader depuis 9c.4).
-	sharedDBs := []*DB{pdb.Player, pdb.Shared}
-
 	// m1 (existant) a déjà : main=win, map_id=aquarius, perf=85.5.
 	// On ajoute mate1 ET mate2 sur m1 → squad complet présent.
 	mate1, mate2 := "xuid_mate_001", "xuid_mate_002"
-	for _, db := range sharedDBs {
-		for _, p := range []struct{ x, gt string }{{mate1, "Mate1"}, {mate2, "Mate2"}} {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.match_participants
-				 (match_id,xuid,gamertag,outcome,team_id) VALUES (?,?,?,?,?)`,
-				"m1", p.x, p.gt, 2, 1); err != nil {
-				t.Fatal(err)
-			}
-		}
+	for _, p := range []struct{ x, gt string }{{mate1, "Mate1"}, {mate2, "Mate2"}} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_participants
+			 (match_id,xuid,gamertag,outcome,team_id) VALUES (?,?,?,?,?)`,
+			"m1", p.x, p.gt, 2, 1)
 	}
 
 	// m2 : new match, map_id=aquarius, main+mate1+mate2 win
-	for _, db := range sharedDBs {
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.match_registry (match_id, map_id) VALUES ('m2', 'aquarius')`); err != nil {
-			t.Fatal(err)
-		}
-		for _, p := range []struct{ x, gt string }{
-			{pTestXUID, pTestGamertag}, {mate1, "Mate1"}, {mate2, "Mate2"},
-		} {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.match_participants (match_id,xuid,gamertag,outcome,team_id) VALUES (?,?,?,?,?)`,
-				"m2", p.x, p.gt, 2, 1); err != nil {
-				t.Fatal(err)
-			}
-		}
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_registry (match_id, map_id) VALUES ('m2', 'aquarius')`)
+	for _, p := range []struct{ x, gt string }{
+		{pTestXUID, pTestGamertag}, {mate1, "Mate1"}, {mate2, "Mate2"},
+	} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_participants (match_id,xuid,gamertag,outcome,team_id) VALUES (?,?,?,?,?)`,
+			"m2", p.x, p.gt, 2, 1)
 	}
 	// PME = player-only.
 	if _, err := pdb.Player.Exec(ctx,
@@ -85,23 +71,17 @@ func TestSquadRepo_LoadMapStatsForSquad_StrictIntersection(t *testing.T) {
 	}
 
 	// m3 : main+mate1 seuls (pas mate2) — squad PARTIEL → exclu si filtre OK
-	for _, db := range sharedDBs {
-		if _, err := db.Exec(ctx,
-			`INSERT INTO shared.match_registry (match_id, map_id) VALUES ('m3', 'aquarius')`); err != nil {
-			t.Fatal(err)
-		}
-		for _, p := range []struct {
-			x       string
-			outcome int
-		}{
-			{pTestXUID, 3}, {mate1, 3}, // loss tous les deux, mate2 absent
-		} {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.match_participants (match_id,xuid,outcome,team_id) VALUES (?,?,?,?)`,
-				"m3", p.x, p.outcome, 1); err != nil {
-				t.Fatal(err)
-			}
-		}
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_registry (match_id, map_id) VALUES ('m3', 'aquarius')`)
+	for _, p := range []struct {
+		x       string
+		outcome int
+	}{
+		{pTestXUID, 3}, {mate1, 3}, // loss tous les deux, mate2 absent
+	} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_participants (match_id,xuid,outcome,team_id) VALUES (?,?,?,?)`,
+			"m3", p.x, p.outcome, 1)
 	}
 
 	repo := NewSquadRepo(pdb)

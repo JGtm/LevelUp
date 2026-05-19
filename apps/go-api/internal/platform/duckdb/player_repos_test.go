@@ -22,6 +22,29 @@ const (
 // Helpers PlayerDB in-memory
 // ---------------------------------------------------------------------------
 
+// execOnSharedDBs exécute un statement SQL sur pdb.Player ET pdb.Shared.
+//
+// Les tables shared.* sont seedées dans les deux DBs (player garde les VIEWs
+// historiques, shared est consulté via SharedReader.Get). Sans ce helper, les
+// tests qui inséraient via `pdb.Player.Exec` ne voyaient leurs données que sur
+// la conn legacy, brisant les tests post-migration commits 8c+ (cf. ADR 0016).
+//
+// Pattern d'usage :
+//
+//	execOnSharedDBs(t, pdb, ctx,
+//	    `INSERT INTO shared.match_participants VALUES (?, ?)`,
+//	    "m1", "xuid_player_001",
+//	)
+func execOnSharedDBs(t *testing.T, pdb *PlayerDB, ctx context.Context, query string, args ...any) {
+	t.Helper()
+	for _, db := range []*DB{pdb.Player, pdb.Shared} {
+		if _, err := db.Exec(ctx, query, args...); err != nil {
+			t.Fatalf("execOnSharedDBs: %v\nSQL: %s", err, query)
+		}
+	}
+}
+
+
 // newTestPlayerDB crée un PlayerDB entièrement in-memory.
 // Player DB : simule stats.duckdb avec shared attaché.
 // Shared DB : simule shared_matches_v2.duckdb (tables root + vue shared.*).

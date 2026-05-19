@@ -11,23 +11,14 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// resetHighlightEventsTable nettoie la table avant fixtures.
-// Sprint B1 commit 8k.3 : reset des deux DBs (player + shared) car le repo
-// HighlightEventsRepo lit via SharedReadDB() (pdb.Shared) depuis 8k.3.
+// resetHighlightEventsTable nettoie shared.highlight_events sur player+shared.
 func resetHighlightEventsTable(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		if _, err := db.Exec(context.Background(),
-			"DELETE FROM shared.highlight_events"); err != nil {
-			t.Fatalf("reset highlight_events: %v", err)
-		}
-	}
+	execOnSharedDBs(t, pdb, context.Background(), "DELETE FROM shared.highlight_events")
 }
 
 // seedHighlightEventsFixtures insere un jeu d'events couvrant les types
 // principaux + 2 matchs distincts pour tester les filtres.
-//
-// Sprint B1 commit 8k.3 : double-write player+shared.
 func seedHighlightEventsFixtures(t *testing.T, pdb *PlayerDB) {
 	t.Helper()
 	resetHighlightEventsTable(t, pdb)
@@ -35,29 +26,21 @@ func seedHighlightEventsFixtures(t *testing.T, pdb *PlayerDB) {
 	ctx := context.Background()
 
 	// 2 matchs avec start_time differents pour le filtre Since.
-	type matchFix struct {
-		matchID, startTime string
-	}
-	matches := []matchFix{
+	matches := []struct{ matchID, startTime string }{
 		{"m_recent", "2026-04-26T10:00:00Z"},
 		{"m_old", "2026-01-01T10:00:00Z"},
 	}
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		for _, m := range matches {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.match_registry (match_id, start_time) VALUES (?, ?)`,
-				m.matchID, m.startTime); err != nil {
-				t.Fatalf("insert match_registry %s: %v", m.matchID, err)
-			}
-		}
+	for _, m := range matches {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time) VALUES (?, ?)`,
+			m.matchID, m.startTime)
 	}
 
 	// Events fixtures : kill, death, assist, medal, first_kill, first_death.
-	type ev struct {
+	events := []struct {
 		matchID, eventType, xuid string
 		timeMS                   int64
-	}
-	events := []ev{
+	}{
 		// m_recent : sequence kills/deaths du joueur cible
 		{"m_recent", "first_kill", "p1", 1500},
 		{"m_recent", "kill", "p1", 5000},
@@ -70,14 +53,10 @@ func seedHighlightEventsFixtures(t *testing.T, pdb *PlayerDB) {
 		// m_old : 1 seul kill
 		{"m_old", "kill", "p1", 2000},
 	}
-	for _, db := range []*DB{pdb.Player, pdb.Shared} {
-		for _, e := range events {
-			if _, err := db.Exec(ctx,
-				`INSERT INTO shared.highlight_events (match_id, event_type, xuid, time_ms) VALUES (?, ?, ?, ?)`,
-				e.matchID, e.eventType, e.xuid, e.timeMS); err != nil {
-				t.Fatalf("insert event %s/%s: %v", e.matchID, e.eventType, err)
-			}
-		}
+	for _, e := range events {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.highlight_events (match_id, event_type, xuid, time_ms) VALUES (?, ?, ?, ?)`,
+			e.matchID, e.eventType, e.xuid, e.timeMS)
 	}
 }
 
