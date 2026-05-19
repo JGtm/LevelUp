@@ -1,3 +1,29 @@
+## [2026-05-19] feat(sharedprovider) — Commit 5 : tests multi-titre Manager
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 5/9 de la roadmap SharedDBProvider).
+
+**Contexte** : commit le plus court. Le `Manager` (`sync.Map` + `For` + `Close`) est déjà en place depuis le commit 2. Le commit 5 ajoute uniquement les tests qui verrouillent le contrat multi-titre avant que main.go (commit 6) ne commence à itérer sur les titres.
+
+**Décision** : pas de modification de `manager.go` — sa surface API est déjà juste. Le commit livre uniquement `provider_multi_title_integration_test.go` avec 3 tests :
+
+1. **T7 — `TestProvider_MultiTitle_Isolated_integration`** : 2 providers sur 2 paths distincts. `pA.AcquireWriter` met A en RW, mais `pB.Get` retourne immédiatement (B reste RO). Preuve : l'isolation est native via `dblease.leaseMutex(path)` clés par path.
+
+2. **`TestManager_ConcurrentForSamePath_NoDuplicate`** : 50 goroutines appellent `mgr.For(path)` simultanément, toutes obtiennent le **même** Provider. Valide la safety du `LoadOrStore` pattern de `manager.go`. Cas typique : boot serveur multi-titre avec init parallèle.
+
+3. **`TestManager_CloseAllProviders`** : `Manager.Close` ferme tous les Providers gérés en cascade. Idempotent. Utile au shutdown.
+
+**Décisions techniques** :
+
+1. **Pas de modification de manager.go** : le commit 2 avait déjà fait `sync.Map + For(path, tz...) + Close`. Le plan disait "Modifie : manager.go (sync.Map, lazy creation)" mais c'est déjà fait. On évite le code redondant.
+
+2. **Tolérance `< 50ms` pour Get cross-titre en T7** : large pour absorber jitter Windows + warmup DuckDB. Le vrai signal est l'absence de gating multi-centaines-de-ms qui prouverait une fuite cross-titre.
+
+**Tests (15/15 verts, 5.03s — suite complète)** : 3 nouveaux + 12 anciens (T1-T6, T8, T10-T11 + 4 RO + benchmarks).
+
+**Prochaine étape** : commit 6 — migration de `main.go` vers le Provider. Premier commit qui touche le code de production hors du package sharedprovider. Doit garder un flag `LEVELUP_USE_SHARED_PROVIDER` pour rollback rapide en cas de surprise.
+
+---
+
 ## [2026-05-19] feat(sharedprovider) — Commit 4 : drain inflight readers + perf
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 4/9 de la roadmap SharedDBProvider).
