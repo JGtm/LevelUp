@@ -178,7 +178,7 @@ func seedSharedWithCSR(t *testing.T, db *DB) {
 			('m2', 'xuid001', 'AlphaPlayer', 1550),
 			('m1', 'xuid002', 'BravoGamer', 1400),
 			('m1', 'xuid003', 'CharlieX', 0)`,
-		`INSERT INTO shared.xuid_aliases VALUES
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES
 			('xuid001', 'AlphaPlayer'),
 			('xuid002', 'BravoGamer'),
 			('xuid003', 'CharlieX')`,

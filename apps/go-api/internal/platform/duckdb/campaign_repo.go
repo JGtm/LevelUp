@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -308,12 +309,16 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 
 	sharedDB, release, err := p.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
+		slog.WarnContext(ctx, "campaign: loadLUSRComponentSamples shared reader indisponible (best-effort, retour vide)",
+			"component", component, "err", err)
 		return nil, nil //nolint:nilerr
 	}
 	defer release()
 
 	sharedRows, err := sharedDB.QueryContext(ctx, sharedQ, sharedArgs...)
 	if err != nil {
+		slog.WarnContext(ctx, "campaign: loadLUSRComponentSamples shared query failed (best-effort, retour vide)",
+			"component", component, "err", err)
 		return nil, nil //nolint:nilerr
 	}
 	var matches []matchTS
@@ -344,6 +349,8 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 	args = append(args, ToAnySlice(matchIDs)...)
 	rows, err := p.pdb.Player.Query(ctx, playerQ, args...)
 	if err != nil {
+		slog.WarnContext(ctx, "campaign: loadLUSRComponentSamples player query failed (best-effort, retour vide)",
+			"component", component, "match_count", len(matchIDs), "err", err)
 		return nil, nil //nolint:nilerr
 	}
 	defer rows.Close()

@@ -77,6 +77,54 @@
 
 ---
 
+## [2026-05-19] audit final — Commit 9e : vérification production-ready + logging + couverture
+
+**Statut** : Complété — sprint B1 100% audité et durci.
+
+**Audit exécuté** :
+
+| Critère | Résultat |
+|---|---|
+| `go build ./...` | ✅ clean |
+| `go vet ./...` | ✅ clean (0 warning) |
+| Suite intégration complète (32 packages) | ✅ all green sauf 6 TOML failures pré-existantes |
+| Race detector sur Provider + burst tests | ✅ clean |
+| Race detector sur sync engine | ✅ clean |
+| Couverture sharedprovider | **80.1%** |
+| Couverture duckdb (global) | **56.6%** (≥ 56.4% baseline) |
+| Couverture LoadPlayerMatchEnrichments (helper introduit 9d.4) | 78.6% |
+| Logging structuré (slog) sur Provider | 9 sites Error/Warn/Info |
+| Logging structuré sur pool_swap_hook | 5 sites Warn/Error |
+
+**Améliorations livrées dans ce commit** :
+
+1. **Logging des silent failures `loadLUSRComponentSamples`** (campaign_repo, commit 9c.11) :
+   - 3 sites `return nil, nil //nolint:nilerr` enrichis avec `slog.WarnContext`.
+   - Le comportement reste best-effort (retour vide) mais l'erreur est désormais visible en prod via les logs.
+
+2. **Test `TestSquadRepo_LookupXUIDByGamertag`** : la méthode migrée au commit 9c.2 (LookupXUIDByGamertag) avait 0% coverage. Test ajouté couvrant 3 scénarios (found ILIKE + last_seen DESC, not-found, empty gamertag) → coverage **85%**.
+
+3. **Seed alignement** : `shared.xuid_aliases` dans seedSharedDBSchema et seedPlayerSchema étendu avec `last_seen TIMESTAMPTZ` + `source VARCHAR` (matchait l'attendu par LookupXUIDByGamertag query). 5 sites INSERT mis à jour pour utiliser column names explicites.
+
+**Lacunes de couverture documentées (legacy, pas régression du sprint)** :
+
+Méthodes migrées sans test dédié (étaient déjà 0% avant le sprint) :
+- `compare_repo`: GetPlayerATHFor, GetEncounterStats, GetCrossMatchSample
+- `career_repo`: GetHighlightMatchIDs, GetHighlightPool, GetTopEncountersGlobal, GetRivals, GetCSRSnapshots, LoadModeTranslationsFR, LoadPlaylistAssetTranslationsFR
+- `campaign_repo`: CampaignSampleProvider.LoadAxisSamples, loadLUSRComponentSamples (logging amélioré dans ce commit)
+- `catalog_repo`: playlistsPlayedByXUID
+- `squad_repo`: LoadMainTeamParticipants
+- `citations_repo`: LoadCitationMedalMappings, LoadMatchCitationsForView, LoadMatchCitationsRich, WriteCitationsForMatch
+- `engagement_score_repo`: SaveEngagementScore, SaveMatchIntensity
+
+Ces méthodes ont été MIGRÉES (le code path est valide) mais aucun test ne les exerce. Dette de test pré-existante : la migration n'a pas régressé l'absence de tests, mais ne l'a pas comblée non plus.
+
+**Recommandation** : ajouter des tests dédiés à ces méthodes dans un sprint follow-up "test coverage backfill" — ~15 tests, ~500 LOC.
+
+**Sprint B1 + cleanup qualité TERMINÉ** — branche `fix/auto-sync-different-configuration` (27 commits) prête pour PR.
+
+---
+
 ## [2026-05-19] chore(quality) — Commit 9b : revue qualité production-level + clôture sprint B1
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9b — clôture du sprint B-swap).

@@ -103,7 +103,7 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 			('m2', 'x1', 'Player1', 10, 10, 5, 3, 45.0, 2000.0, 1000.0, 5, 45.0, 3)`,
 		// Médaille "Tir parfait" (medal_name_id=1512363953) : 2 en m1, 0 en m2.
 		`INSERT INTO shared.medals_earned VALUES ('m1', 'x1', 1512363953, 2)`,
-		`INSERT INTO shared.xuid_aliases VALUES ('x1', 'Player1')`,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES ('x1', 'Player1')`,
 	}
 	for _, q := range inserts {
 		if _, err := db.Exec(ctx, q); err != nil {
