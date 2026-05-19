@@ -46,6 +46,12 @@ import (
 //
 // Pour ce commit, on valide UNIQUEMENT le contrat sync (le critique en prod).
 func TestPool_T5BurstRealTopology_integration(t *testing.T) {
+	// Le globalPool est process-wide et persiste entre tests. Pour isoler
+	// ce burst test des autres (qui peuvent avoir laissé des PlayerDB
+	// inscrits), on purge avant et après.
+	duckdb.CloseAll()
+	t.Cleanup(duckdb.CloseAll)
+
 	_, provider, pdb := setupPoolFixturesForSwap(t)
 	defer func() { _ = provider.Close() }()
 
