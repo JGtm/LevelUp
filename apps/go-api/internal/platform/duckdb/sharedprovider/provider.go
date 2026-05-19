@@ -236,21 +236,11 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 
 	swapStart := time.Now()
 
-	// PHASE 1 : transition vers Draining (gate nouveaux Get).
-	p.mu.Lock()
-	prev := State(p.state.Load())
-	if prev == StateClosed {
-		p.mu.Unlock()
+	if err := p.gateToDraining(); err != nil {
 		lease.Release()
-		return nil, ErrProviderClosed
+		return nil, err
 	}
-	p.state.Store(int32(StateDraining))
-	recordStateTransition(prev, StateDraining)
-	p.ready = make(chan struct{})
-	p.mu.Unlock()
 
-	// PHASE 2 : drain inflight readers (sans tenir mu pour ne pas deadlock
-	// les release() qui n'ont pas besoin de mu mais bloqueraient si pris).
 	drainStart := time.Now()
 	if err := p.waitForDrain(ctx); err != nil {
 		// Drain expiré : rollback vers RO. Les readers en vol terminent OK
@@ -263,12 +253,61 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	}
 	getWaitMsTotal.Add(time.Since(drainStart).Milliseconds())
 
-	// PHASE 3 : swap RO → RW sous mu (drain confirmé, plus de readers actifs).
+	rwHandle, err := p.swapToRW(ctx, swapStart)
+	if err != nil {
+		lease.Release()
+		return nil, err
+	}
+
+	// WriterHandle construit via closure (refacto commit 8b) — la struct
+	// ne référence plus *providerImpl directement, ce qui permet à
+	// inMemoryProvider de construire ses propres WriterHandle avec une
+	// stratégie de release no-op.
+	return &WriterHandle{
+		db: rwHandle.SQLDb(),
+		releaseFn: func() {
+			defer func() {
+				if r := recover(); r != nil {
+					swapFailuresTotal.Add(failReasonPanic, 1)
+					slog.Error("sharedprovider: panic during Release",
+						"panic", r, "path", p.path)
+				}
+				// Toujours libérer le mutex dblease, même sur panic, sinon
+				// plus aucun writer ne pourra acquérir.
+				lease.Release()
+			}()
+
+			p.releaseWriter(rwHandle)
+		},
+	}, nil
+}
+
+// gateToDraining transitionne l'état RO → Draining sous p.mu pour gater
+// les nouveaux Get(). Retourne ErrProviderClosed si une race avec Close()
+// a été détectée. Phase 1 de AcquireWriter.
+func (p *providerImpl) gateToDraining() error {
 	p.mu.Lock()
+	defer p.mu.Unlock()
+	prev := State(p.state.Load())
+	if prev == StateClosed {
+		return ErrProviderClosed
+	}
+	p.state.Store(int32(StateDraining))
+	recordStateTransition(prev, StateDraining)
+	p.ready = make(chan struct{})
+	return nil
+}
+
+// swapToRW exécute la transition Draining → RW sous p.mu : close handle RO,
+// notifie les Subscribers (sous mu — voir notifyAfterSwapLocked), ouvre le
+// handle RW. Sur échec de l'OpenReadWrite : transition vers StateError +
+// retryReopenLoop async. Phase 3 de AcquireWriter.
+func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duckdbpkg.DB, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	if State(p.state.Load()) == StateClosed {
 		// Race rare avec un Close concurrent. Bail.
-		p.mu.Unlock()
-		lease.Release()
 		return nil, ErrProviderClosed
 	}
 
@@ -294,10 +333,10 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	//     Subscribers peuvent fermer leurs propres handles RO et Reopen leurs
 	//     conns player sans auto-attach.
 	//
-	// Notification SYNCHRONE sous p.mu — les Subscribers NE DOIVENT PAS
-	// appeler Get/AcquireWriter pendant ce callback (deadlock garanti).
-	// Le doc de DirectionPreSwapToRW le précise.
-	p.notifyAfterSwap(DirectionPreSwapToRW, StateDraining, StateDraining)
+	// Notification SYNCHRONE sous p.mu — d'où l'appel à notifyAfterSwapLocked
+	// (variante explicite qui documente ce contract). Les Subscribers NE
+	// DOIVENT PAS appeler Get/AcquireWriter pendant ce callback (deadlock garanti).
+	p.notifyAfterSwapLocked(DirectionPreSwapToRW, StateDraining, StateDraining)
 
 	rwHandle, err := duckdbpkg.OpenReadWrite(p.path, p.timezone)
 	if err != nil {
@@ -306,8 +345,6 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		recordStateTransition(StateDraining, StateError)
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
 		close(p.ready)
-		p.mu.Unlock()
-		lease.Release()
 		go p.retryReopenLoop()
 		return nil, fmt.Errorf("sharedprovider: open RW after RO close: %w", err)
 	}
@@ -316,29 +353,7 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	recordStateTransition(StateDraining, StateRW)
 	swapTotal.Add(swapDirRoToRw, 1)
 	swapDurationMsTotal.Add(swapDirRoToRw, time.Since(swapStart).Milliseconds())
-	p.mu.Unlock()
-
-	// WriterHandle construit via closure (refacto commit 8b) — la struct
-	// ne référence plus *providerImpl directement, ce qui permet à
-	// inMemoryProvider de construire ses propres WriterHandle avec une
-	// stratégie de release no-op.
-	return &WriterHandle{
-		db: rwHandle.SQLDb(),
-		releaseFn: func() {
-			defer func() {
-				if r := recover(); r != nil {
-					swapFailuresTotal.Add(failReasonPanic, 1)
-					slog.Error("sharedprovider: panic during Release",
-						"panic", r, "path", p.path)
-				}
-				// Toujours libérer le mutex dblease, même sur panic, sinon
-				// plus aucun writer ne pourra acquérir.
-				lease.Release()
-			}()
-
-			p.releaseWriter(rwHandle)
-		},
-	}, nil
+	return rwHandle, nil
 }
 
 // waitForDrain attend que tous les readers en vol fassent leur release().
@@ -413,6 +428,17 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 		p.mu.Unlock()
 		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
 		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
+		//
+		// Race documentée (constatée commit 12a) : entre l'unlock ci-dessus
+		// et l'exécution du callback Subscriber, un Get() concurrent peut
+		// succeed (state == StateRO). Le Subscriber est alors en train de
+		// reopen son propre handle RO en parallèle. Aucun conflit : DuckDB-Go
+		// tolère N ouvertures RO simultanées sur le même fichier (mode RO
+		// uniforme, pas de file lock exclusif). Cette tolérance est testée
+		// par TestProvider_HTTPReadersWaitDuringSync_integration.
+		// Si une future version de DuckDB durcissait ce contrat, il faudrait
+		// notifier sous mu (cf. notifyAfterSwapLocked) — moyennant un
+		// refactor du callback pool (pool_swap_hook.go).
 		p.notifyAfterSwap(DirectionRWToRO, StateRW, StateRO)
 		return
 	}
@@ -496,12 +522,41 @@ func (p *providerImpl) Subscribe(fn Subscriber) func() {
 }
 
 // notifyAfterSwap émet un SwapEvent à tous les Subscribers actifs.
+// À utiliser pour les transitions RWToRO / ErrorToRO où le state est
+// désormais "stable" (RO) et où les Subscribers peuvent légitimement
+// appeler Get/AcquireWriter dans leur callback.
 //
-// IMPORTANT : doit être appelé SANS tenir p.mu, sinon un Subscriber qui
-// appelle Get/AcquireWriter (qui prennent p.mu) deadlocke.
-// On capture le snapshot de subs sous subsMu pour éviter une race avec
-// un Unsubscribe concurrent.
+// IMPORTANT : NE PAS appeler avec p.mu tenu — un Subscriber qui prend
+// p.mu (Get/AcquireWriter) deadlockerait. Pour la variante "sous p.mu"
+// (PreSwapToRW exclusivement), utiliser notifyAfterSwapLocked.
 func (p *providerImpl) notifyAfterSwap(direction Direction, from, to State) {
+	p.notifySubscribers(direction, from, to)
+}
+
+// notifyAfterSwapLocked émet un SwapEvent en supposant que le caller tient
+// déjà p.mu. UNIQUEMENT pour DirectionPreSwapToRW : la fenêtre entre
+// Close(handle RO Provider) et OpenReadWrite doit rester serialisée pour
+// éviter qu'un Subscriber re-ATTACH shared et bloque l'open RW (cf. notes
+// dans swapToRW).
+//
+// Contract : les Subscribers de PreSwapToRW NE DOIVENT PAS appeler
+// Get/AcquireWriter dans leur callback (deadlock garanti via p.mu).
+// La doc de DirectionPreSwapToRW dans subscriber.go le précise.
+func (p *providerImpl) notifyAfterSwapLocked(direction Direction, from, to State) {
+	if direction != DirectionPreSwapToRW {
+		// Garde-fou : utilisation accidentelle hors PreSwapToRW. Log mais
+		// continue — pas la peine de bloquer en runtime, le linter / tests
+		// devraient flagger l'usage incorrect.
+		slog.Error("sharedprovider: notifyAfterSwapLocked called with non-PreSwap direction",
+			"direction", direction, "path", p.path)
+	}
+	p.notifySubscribers(direction, from, to)
+}
+
+// notifySubscribers est le fan-out interne partagé par notifyAfterSwap et
+// notifyAfterSwapLocked. Snapshot des subs sous subsMu pour éviter race
+// avec Unsubscribe concurrent ; appel des callbacks hors subsMu.
+func (p *providerImpl) notifySubscribers(direction Direction, from, to State) {
 	p.subsMu.Lock()
 	if len(p.subs) == 0 {
 		p.subsMu.Unlock()
