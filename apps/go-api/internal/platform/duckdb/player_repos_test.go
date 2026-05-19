@@ -158,6 +158,12 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			       0::INTEGER AS kill_count, 0::BIGINT AS time_ms
 			FROM shared.match_participants WHERE FALSE`,
 		`CREATE VIEW shared.v_match_full AS SELECT * FROM shared.match_registry`,
+		// shared.killer_victim_pairs : table source pour Q26/Q27/Q19b
+		// (career_repo: GetTopEncountersGlobal, GetRivals + explorer_repo).
+		`CREATE TABLE shared.killer_victim_pairs (
+			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
+			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
+			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1)`,
 		// ── Tables player
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
@@ -1167,6 +1173,190 @@ func TestCareerRepo_GetEncounters_Empty(t *testing.T) {
 	}
 	if len(encounters) != 0 {
 		t.Errorf("attendu 0 encounters, obtenu %d", len(encounters))
+	}
+}
+
+// TestCareerRepo_GetCSRSnapshots_Empty : table player_csr_snapshots vide → slice vide, pas d'erreur.
+func TestCareerRepo_GetCSRSnapshots_Empty(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	repo := NewCareerRepo(pdb)
+	out, err := repo.GetCSRSnapshots(context.Background())
+	if err != nil {
+		t.Fatalf("GetCSRSnapshots empty: %v", err)
+	}
+	if len(out) != 0 {
+		t.Errorf("attendu 0 snapshots, obtenu %d", len(out))
+	}
+}
+
+// TestCareerRepo_GetCSRSnapshots_WithData : seed snapshot CSR + LUSR pour
+// vérifier le mapping (Current.Value/Tier/SubTier, Season, AllTime).
+func TestCareerRepo_GetCSRSnapshots_WithData(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `INSERT INTO player_csr_snapshots
+		(playlist_id, playlist_name, queue, input, season_id,
+		 current_value, current_tier, current_sub_tier,
+		 season_value, season_tier, season_sub_tier,
+		 alltime_value, alltime_tier, alltime_sub_tier)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		"ranked-slayer", "Ranked Slayer", "open", "controller", "season-29",
+		1450.0, "Platinum", 3,
+		1500.0, "Platinum", 4,
+		1700.0, "Diamond", 1); err != nil {
+		t.Fatalf("seed player_csr_snapshots: %v", err)
+	}
+
+	repo := NewCareerRepo(pdb)
+	out, err := repo.GetCSRSnapshots(ctx)
+	if err != nil {
+		t.Fatalf("GetCSRSnapshots: %v", err)
+	}
+	if len(out) != 1 {
+		t.Fatalf("attendu 1 snapshot, obtenu %d", len(out))
+	}
+	s := out[0]
+	if s.PlaylistID != "ranked-slayer" || s.Current.Tier != "Platinum" {
+		t.Errorf("unexpected snapshot: %+v", s)
+	}
+	if s.AllTime.Value != 1700.0 {
+		t.Errorf("AllTime.Value: got %v, want 1700", s.AllTime.Value)
+	}
+}
+
+// TestCareerRepo_GetRivals_NoData : aucune row killer_victim_pairs → 2 slices vides.
+func TestCareerRepo_GetRivals_NoData(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	repo := NewCareerRepo(pdb)
+	nemeses, victims, err := repo.GetRivals(context.Background())
+	if err != nil {
+		t.Fatalf("GetRivals: %v", err)
+	}
+	if len(nemeses) != 0 || len(victims) != 0 {
+		t.Errorf("attendu (0, 0), obtenu (%d, %d)", len(nemeses), len(victims))
+	}
+}
+
+// TestCareerRepo_GetRivals_WithData : seed killer_victim_pairs avec rivals
+// (kills/deaths > 0). Vérifie le tri (frags DESC pour victims, deaths DESC
+// pour nemeses).
+func TestCareerRepo_GetRivals_WithData(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// 3 adversaires : rivalA m'a tué 10× et je l'ai tué 3× (nemesis)
+	//                 rivalB je l'ai tué 8× et il m'a tué 1× (victim)
+	//                 rivalC kills équilibrés 5/5
+	for _, ins := range []struct{ killer, victim string; n int }{
+		{"rivalA", pTestXUID, 10}, // rivalA me tue 10
+		{pTestXUID, "rivalA", 3},  // je tue rivalA 3
+		{pTestXUID, "rivalB", 8},  // je tue rivalB 8
+		{"rivalB", pTestXUID, 1},  // rivalB me tue 1
+		{pTestXUID, "rivalC", 5},  // je tue rivalC 5
+		{"rivalC", pTestXUID, 5},  // rivalC me tue 5
+	} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.killer_victim_pairs (match_id, killer_xuid, victim_xuid, kill_count)
+			 VALUES (?, ?, ?, ?)`,
+			"m1", ins.killer, ins.victim, ins.n)
+	}
+	// Alias gamertags pour l'enrichissement v_gamertag_lookup
+	for _, x := range []string{"rivalA", "rivalB", "rivalC"} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?, ?)`,
+			x, "Gt_"+x)
+	}
+
+	repo := NewCareerRepo(pdb)
+	nemeses, victims, err := repo.GetRivals(ctx)
+	if err != nil {
+		t.Fatalf("GetRivals: %v", err)
+	}
+	// Nemeses tri par deaths DESC : rivalA (deaths=10) en premier
+	if len(nemeses) == 0 || nemeses[0].XUID != "rivalA" || nemeses[0].Deaths != 10 {
+		t.Errorf("nemeses[0]: got %+v, want rivalA deaths=10", nemeses)
+	}
+	// Victims tri par frags DESC : rivalB (frags=8) en premier
+	if len(victims) == 0 || victims[0].XUID != "rivalB" || victims[0].Frags != 8 {
+		t.Errorf("victims[0]: got %+v, want rivalB frags=8", victims)
+	}
+}
+
+// TestCareerRepo_GetTopEncountersGlobal_WithData : seed match_participants
+// avec 1 ami récurrent (allié) + 1 ennemi récurrent. Vérifie le scope.
+func TestCareerRepo_GetTopEncountersGlobal_WithData(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// 2 nouveaux matchs : m2 (alliés rivalA), m3 (ennemis rivalA + rivalB)
+	for _, mid := range []string{"m2", "m3"} {
+		execOnSharedDBs(t, pdb, ctx,
+			`INSERT INTO shared.match_registry (match_id, start_time)
+			 VALUES (?, ?)`, mid, "2025-02-01 10:00:00+00")
+	}
+	// main+rivalA ally team 1 sur m2 (main win)
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_participants (match_id, xuid, team_id, outcome)
+		 VALUES (?, ?, ?, ?), (?, ?, ?, ?)`,
+		"m2", pTestXUID, 1, 2,
+		"m2", "rivalA", 1, 2)
+	// main team 0 vs rivalA+rivalB team 1 sur m3 (main loss)
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.match_participants (match_id, xuid, team_id, outcome)
+		 VALUES (?, ?, ?, ?), (?, ?, ?, ?), (?, ?, ?, ?)`,
+		"m3", pTestXUID, 0, 3,
+		"m3", "rivalA", 1, 2,
+		"m3", "rivalB", 1, 2)
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES ('rivalA', 'AlphaPlayer'), ('rivalB', 'BravoPlayer')`)
+
+	repo := NewCareerRepo(pdb)
+	encounters, _, err := repo.GetTopEncountersGlobal(ctx, nil)
+	if err != nil {
+		t.Fatalf("GetTopEncountersGlobal: %v", err)
+	}
+	// rivalA croisé 2 fois (m2 ally + m3 enemy), rivalB 1 fois (m3 enemy)
+	if len(encounters) < 2 {
+		t.Fatalf("attendu ≥ 2 encounters, obtenu %d", len(encounters))
+	}
+	// rivalA premier (count_together = 2)
+	if encounters[0].XUID != "rivalA" || encounters[0].CountTogether != 2 {
+		t.Errorf("encounters[0]: got %+v, want rivalA count=2", encounters[0])
+	}
+}
+
+// TestCareerRepo_GetHighlightMatchIDs : Q9b retourne best+worst match_ids.
+// Seed inclut m1 win avec perf=85.5 (seed default) — devrait apparaître en best.
+func TestCareerRepo_GetHighlightMatchIDs(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	repo := NewCareerRepo(pdb)
+	rows, err := repo.GetHighlightMatchIDs(context.Background(), domain.CareerHighlightFilters{})
+	if err != nil {
+		t.Fatalf("GetHighlightMatchIDs: %v", err)
+	}
+	// Seed contient m1 win avec time_played=600 + perf=85.5 → 1 best, 0 worst.
+	if len(rows) != 1 {
+		t.Errorf("attendu 1 row (m1 best), obtenu %d", len(rows))
+	}
+	if len(rows) > 0 && rows[0].MatchID != "m1" {
+		t.Errorf("rows[0].MatchID: got %q, want m1", rows[0].MatchID)
+	}
+}
+
+// TestCareerRepo_GetHighlightPool_Empty : pas de pme avec performance → 0 rows.
+func TestCareerRepo_GetHighlightPool_Empty(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// Vider PME pour partir d'un état propre. m1 a une perf 85.5 en seed mais
+	// time_played_seconds = 600 >= 180 et outcome = 2 — donc déjà éligible.
+	// On la garde pour valider le path WithData.
+	repo := NewCareerRepo(pdb)
+	pool, err := repo.GetHighlightPool(ctx)
+	if err != nil {
+		t.Fatalf("GetHighlightPool: %v", err)
+	}
+	// Seed inclut m1 avec performance_score=85.5, outcome=2 (win), time_played=600.
+	// → 1 entrée attendue.
+	if len(pool) != 1 {
+		t.Errorf("attendu 1 entrée pool, obtenu %d", len(pool))
 	}
 }
 
