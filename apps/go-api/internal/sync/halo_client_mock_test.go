@@ -13,6 +13,7 @@ package sync
 import (
 	"context"
 	"errors"
+	"sync/atomic"
 )
 
 // mockHaloClient est une implémentation de HaloClient qui retourne des fixtures
@@ -35,11 +36,14 @@ type mockHaloClient struct {
 	// getCareerErr simule une erreur de GetCareerRank si non nil.
 	getCareerErr error
 	// callsGetHistory compte le nombre d'appels à GetMatchHistory.
-	callsGetHistory int
+	// atomic.Int64 : le sync engine appelle ces méthodes depuis plusieurs
+	// goroutines errgroup en parallèle (engine.go:798), donc l'incrémentation
+	// scalaire serait une data race détectée par -race.
+	callsGetHistory atomic.Int64
 	// callsGetStats compte le nombre d'appels à GetMatchStats.
-	callsGetStats int
+	callsGetStats atomic.Int64
 	// callsGetSkill compte le nombre d'appels à GetMatchSkill.
-	callsGetSkill int
+	callsGetSkill atomic.Int64
 	// highlightChunkData est le chunk highlight events retourné par
 	// GetHighlightEventsChunk (nil = chunk absent).
 	highlightChunkData []byte
@@ -71,7 +75,7 @@ func (m *mockHaloClient) GetMatchHistory(
 	_, _ string,
 	_, _ int,
 ) ([]MatchHistoryEntry, error) {
-	m.callsGetHistory++
+	m.callsGetHistory.Add(1)
 	if m.getHistoryErr != nil {
 		return nil, m.getHistoryErr
 	}
@@ -80,7 +84,7 @@ func (m *mockHaloClient) GetMatchHistory(
 
 // GetMatchStats retourne le corps JSON configuré pour le match donné.
 func (m *mockHaloClient) GetMatchStats(_ context.Context, matchID string) (map[string]any, error) {
-	m.callsGetStats++
+	m.callsGetStats.Add(1)
 	if m.getStatsErr != nil {
 		return nil, m.getStatsErr
 	}
@@ -102,7 +106,7 @@ func (m *mockHaloClient) GetMatchStats(_ context.Context, matchID string) (map[s
 
 // GetMatchSkill retourne la skill data configurée pour le match donné.
 func (m *mockHaloClient) GetMatchSkill(_ context.Context, matchID string, _ []string) (map[string]*MatchSkillData, error) {
-	m.callsGetSkill++
+	m.callsGetSkill.Add(1)
 	if m.getSkillErr != nil {
 		return nil, m.getSkillErr
 	}

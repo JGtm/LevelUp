@@ -169,7 +169,7 @@ func TestMockHaloClient_CallCount(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		_, _ = mock.GetMatchHistory(context.Background(), "Player1", "all", 0, 25)
 	}
-	if mock.callsGetHistory != 3 {
-		t.Errorf("callsGetHistory = %d, attendu 3", mock.callsGetHistory)
+	if mock.callsGetHistory.Load() != 3 {
+		t.Errorf("callsGetHistory = %d, attendu 3", mock.callsGetHistory.Load())
 	}
 }

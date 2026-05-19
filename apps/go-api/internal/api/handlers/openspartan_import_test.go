@@ -128,7 +128,7 @@ func sessionWithXUID(xuid string) *domain.SessionData {
 func newHandlerForTest(t *testing.T, demoMode bool) *OpenSpartanImportHandler {
 	t.Helper()
 	sharedDB := newSharedDuckDBForTest(t)
-	svc := service.NewOpenSpartanImportService(sharedDB, "")
+	svc := service.NewOpenSpartanImportServiceForTest(sharedDB)
 	return NewOpenSpartanImportHandler(OpenSpartanImportConfig{
 		ImportService: svc,
 		JobStore:      newJobStoreForTest(t),

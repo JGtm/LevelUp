@@ -25,10 +25,13 @@ import (
 
 // OpenSpartanPostImportService runs the three recompute stages for a player
 // after their OpenSpartan import succeeded.
+//
+// Sprint B1 commit 15 : plus de handle sharedDB persistant. Le Provider
+// (cfg.SharedProvider) est utilisé à chaque appel via AcquireSharedWriterStandalone.
+// Évite le conflit "different configuration" au boot du serveur.
 type OpenSpartanPostImportService struct {
-	cfg      *config.AppConfig
-	sharedDB *sql.DB
-	log      *slog.Logger
+	cfg *config.AppConfig
+	log *slog.Logger
 }
 
 // PostImportResult summarises one post-import recompute run.
@@ -53,13 +56,13 @@ type PostImportOptions struct {
 	SessionGapMinutes int    // gap that breaks a session, defaults to 15
 }
 
-// NewOpenSpartanPostImportService constructs a service bound to a shared
-// DuckDB connection opened in read-write mode.
-func NewOpenSpartanPostImportService(cfg *config.AppConfig, sharedDB *sql.DB) *OpenSpartanPostImportService {
+// NewOpenSpartanPostImportService construit le service. Le handle shared est
+// acquis à la demande via cfg.SharedProvider (commit 15) — pas de handle
+// persistant au boot pour éviter le conflit "different configuration".
+func NewOpenSpartanPostImportService(cfg *config.AppConfig) *OpenSpartanPostImportService {
 	return &OpenSpartanPostImportService{
-		cfg:      cfg,
-		sharedDB: sharedDB,
-		log:      slog.Default(),
+		cfg: cfg,
+		log: slog.Default(),
 	}
 }
 
@@ -91,8 +94,8 @@ func (s *OpenSpartanPostImportService) Run(
 	var result PostImportResult
 	s.ensureEnrichmentRows(ctx, playerDB, matchIDs, &result)
 	s.recomputeSessions(ctx, playerDBPath, sharedDBPath, xuid, opts, &result)
-	s.recomputePerfScores(playerDB, xuid, opts.ForcePerfScores, &result)
-	s.recomputeCitations(ctx, metadataDBPath, playerDB, xuid, matchIDs, &result)
+	s.recomputePerfScores(ctx, playerDB, sharedDBPath, xuid, opts.ForcePerfScores, &result)
+	s.recomputeCitations(ctx, sharedDBPath, metadataDBPath, playerDB, xuid, matchIDs, &result)
 	return result, nil
 }
 
@@ -151,10 +154,19 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 // recomputePerfScores runs sync.BatchComputePerformanceScores on the player.
 // Skipped silently when the player has fewer than MinMatchesPerChainForRelative
 // matches per chain — that's encoded in the helper itself.
+//
+// Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider.
 func (s *OpenSpartanPostImportService) recomputePerfScores(
-	playerDB *sql.DB, xuid string, force bool, result *PostImportResult,
+	ctx context.Context, playerDB *sql.DB, sharedDBPath, xuid string, force bool, result *PostImportResult,
 ) {
-	n, err := sync.BatchComputePerformanceScores(playerDB, s.sharedDB, xuid, force)
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "perf_scores_acquire", Err: err.Error()})
+		s.log.Warn("post_import_perf_scores_acquire_failed", "xuid", xuid, "err", err)
+		return
+	}
+	defer releaseShared()
+	n, err := sync.BatchComputePerformanceScores(playerDB, sharedDB, xuid, force)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "perf_scores", Err: err.Error()})
 		s.log.Warn("post_import_perf_scores_failed", "xuid", xuid, "err", err)
@@ -165,8 +177,11 @@ func (s *OpenSpartanPostImportService) recomputePerfScores(
 
 // recomputeCitations runs sync.BackfillMatchCitations for the given match
 // IDs. Skipped if matchIDs is empty (nothing to do).
+//
+// Sprint B1 commit 15 : acquisition du shared writer à la demande via Provider.
 func (s *OpenSpartanPostImportService) recomputeCitations(
 	ctx context.Context,
+	sharedDBPath string,
 	metadataDBPath string,
 	playerDB *sql.DB,
 	xuid string,
@@ -183,7 +198,14 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 		return
 	}
 	defer metaHandle.Close()
-	if err := sync.BackfillMatchCitations(ctx, metaHandle.SQLDb(), s.sharedDB, playerDB, xuid, matchIDs); err != nil {
+	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
+	if err != nil {
+		result.Errors = append(result.Errors, PostImportError{Stage: "citations_acquire", Err: err.Error()})
+		s.log.Warn("post_import_citations_acquire_failed", "xuid", xuid, "err", err)
+		return
+	}
+	defer releaseShared()
+	if err := sync.BackfillMatchCitations(ctx, metaHandle.SQLDb(), sharedDB, playerDB, xuid, matchIDs); err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations", Err: err.Error()})
 		s.log.Warn("post_import_citations_failed", "xuid", xuid, "err", err)
 		return

@@ -105,8 +105,8 @@ func setupE2E(t *testing.T) *e2eEnv {
 	}
 	_ = metaDB.Close() // services will re-open RW via OpenReadWriteShared.
 
-	importSvc := service.NewOpenSpartanImportService(sharedDB, "")
-	postImportSvc := service.NewOpenSpartanPostImportService(cfg, sharedDB)
+	importSvc := service.NewOpenSpartanImportServiceForTest(sharedDB)
+	postImportSvc := service.NewOpenSpartanPostImportService(cfg)
 	jobStore := jobs.NewStore(filepath.Join(tempDir, "jobs.json"))
 
 	handler := NewOpenSpartanImportHandler(OpenSpartanImportConfig{

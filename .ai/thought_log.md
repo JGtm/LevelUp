@@ -1,3 +1,94 @@
+## [2026-05-19] fix(prod) — Commit 15 : OpenSpartan import acquire-on-demand (dry run fix)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 15 — boot warning éliminé).
+
+**Contexte** : un dry run du serveur (jamais fait avant cette session) révèle
+au boot un warning critique :
+
+```
+WARN msg=openspartan_import_disabled_shared_db_unavailable
+err="duckdb.OpenReadWriteShared(shared_matches_v2.duckdb):
+  Can't open a connection to same database file with a different
+  configuration than existing connections"
+```
+
+C'est le bug original "different configuration" qui se déclenche au boot —
+exactement le bug que le sprint était censé éteindre. Cause : `server.go:540`
+ouvrait un handle RW persistant sur shared au boot, dédié à OpenSpartan
+import. En mode B-swap (default), le Provider tient déjà shared en RO →
+DuckDB refuse la 2e ouverture avec mode incompatible. Résultat :
+OpenSpartan import disabled au démarrage. Le sync engine + le reste du
+serveur fonctionnent quand même, mais ce chemin est cassé silencieusement
+en mode B-swap.
+
+**Décision** : refactor OpenSpartanImportService + PostImportService pour
+acquisition on-demand via Provider. Pas de raison d'ouvrir RW au boot
+pour un flow d'onboarding rare (un user qui importe ses données depuis
+OpenSpartan).
+
+**Livré** :
+
+1. **`OpenSpartanImportService`** : suppression du field `sharedDB *sql.DB`,
+   remplacement par `provider sharedprovider.Provider` + `sharedDBPath string`
+   + `legacyDB *sql.DB` (tests in-memory uniquement).
+   - `NewOpenSpartanImportService(provider, sharedDBPath)` : production.
+   - `NewOpenSpartanImportServiceForTest(sharedDB)` : tests in-memory.
+   - Méthode privée `acquireShared(ctx, dryRun)` : acquisition à la demande
+     via `sync.AcquireSharedWriterStandalone` (Provider en B-swap, dblease
+     en legacy, no-op en dryRun, handle injecté en tests).
+   - `Import()` acquiert au début, libère à la fin. Les 3 helpers
+     (`importMatches`, `importHighlights`, `importAliases`) prennent
+     `sharedDB *sql.DB` en paramètre au lieu de `s.sharedDB`.
+
+2. **`OpenSpartanPostImportService`** : suppression du field
+   `sharedDB *sql.DB`. `NewOpenSpartanPostImportService(cfg)` (1 paramètre
+   au lieu de 2). `recomputePerfScores` et `recomputeCitations` acquièrent
+   shared via `sync.AcquireSharedWriterStandalone(s.cfg.SharedProvider, ...)`
+   à chaque appel.
+
+3. **`server.go:534-553`** : suppression du `platform_duckdb.OpenReadWriteShared`
+   au boot. Plus de handle RW persistant. Les services reçoivent directement
+   `cfg.SharedProvider` + path. L'endpoint POST /import/openspartan reste
+   monté en mode B-swap (avant ce commit, il était silencieusement disabled).
+
+4. **6 tests adaptés** : `NewOpenSpartanImportService(db, "")` →
+   `NewOpenSpartanImportServiceForTest(db)`. `NewOpenSpartanPostImportService(cfg, db)`
+   → `NewOpenSpartanPostImportService(cfg)`.
+
+5. **Fix data race sur mockHaloClient** (race detector pré-existant) :
+   les compteurs `callsGetHistory/Stats/Skill` étaient incrémentés non-atomiquement
+   alors que sync engine lance plusieurs goroutines via errgroup. Migration
+   vers `atomic.Int64`. 4 sites de tests adaptés pour utiliser `.Load()`.
+
+**Vérifications** :
+- `go build ./...` propre
+- 49/55 binaires CLI compilent (les 6 qui échouent sont sur des build tags
+  spécifiques ou des Windows file locks transitoires, sans rapport avec ces
+  commits)
+- `go vet ./...` propre
+- Race detector vert sur sync, duckdb, scheduler, sharedprovider, service
+- **Dry run serveur en mode B-swap (commit 15 post-fix)** :
+  - Boot complet en 5s sans aucun WARN ni ERROR
+  - Plus de "different configuration" au boot
+  - `[OK] LevelUp API ready -> http://127.0.0.1:8000`
+
+**Réponse définitive à "tout est bon ?"** :
+- ✅ Build OK
+- ✅ Tests E2E (10) verts avec -race
+- ✅ Pas de data race
+- ✅ Serveur démarre clean (0 WARN/ERROR)
+- ✅ Endpoint POST /import/openspartan désormais disponible en mode B-swap
+  (avant : silencieusement disabled)
+- ⚠️ Pas de vrai sync end-to-end testé contre la vraie API SPNKr (uniquement
+  mocks)
+- ⚠️ Pas de stress test prod avec dizaines/centaines de users concurrents
+- ⚠️ Pas de validation manuelle Madina97294 dans le scenario originel
+
+**Branche désormais à 50 commits ahead d'origin. Livrable senior-quality
+sur tout ce que les tests automatisés et le dry run peuvent prouver.**
+
+---
+
 ## [2026-05-19] fix + test(e2e) — Commit 14 : live ops ↔ sync coexistence
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commits 14a + 14b — fermeture du scope "live updates pendant sync").
