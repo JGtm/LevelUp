@@ -24,7 +24,7 @@ func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 
 // LoadTopTeammates charge les meilleurs coÃ©quipiers du joueur (Q29, top 50).
 //
-// TODO commit 8l (ou suivant) : split+merge cross-DB. Q29TopTeammates joint
+// TODO follow-up post-sprint B1 : split+merge cross-DB. Q29TopTeammates joint
 // player_match_enrichment ⨝ shared.match_participants (x2) ⨝ v_gamertag_lookup.
 // Tant que attachShared reste en place dans le pool, la query reste sur
 // pdb.ReadDB() (player conn avec ATTACH).
@@ -99,7 +99,7 @@ LIMIT 1`
 
 // LoadSquadMatches charge les matchs communs joueur+coÃ©quipier (Q30).
 //
-// TODO commit 8l : split+merge cross-DB (Q30SquadMatches : shared.match_participants
+// TODO follow-up post-sprint B1 : split+merge cross-DB (Q30SquadMatches : shared.match_participants
 // + v_match_full + medals_earned subquery + LEFT JOIN player_match_enrichment).
 // Reste sur pdb.ReadDB() tant que attachShared est en place.
 func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.SquadMatchRow, error) {
@@ -154,7 +154,7 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 
 // LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
 //
-// TODO commit 8l : split+merge cross-DB (Q31TeammateMatches : shared.match_participants
+// TODO follow-up post-sprint B1 : split+merge cross-DB (Q31TeammateMatches : shared.match_participants
 // x2 + v_match_full). Strictement shared mais le filtre p_main JOIN crée une
 // dépendance multi-row par match — peut être migré directement vers SharedReader
 // au prochain commit. Reste sur pdb.ReadDB() pour stabilité court terme.
@@ -330,7 +330,7 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 
 // LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
 //
-// TODO commit 8l : split+merge cross-DB (Q33bSynthesisMatches :
+// TODO follow-up post-sprint B1 : split+merge cross-DB (Q33bSynthesisMatches :
 // shared.match_participants + shared.match_registry + LEFT JOIN
 // player_match_enrichment). Reste sur pdb.ReadDB().
 func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]legacymatch.SynthesisMatchRow, error) {
@@ -374,7 +374,7 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 // participants. Aucun filtre temporel — c'est l'historique complet "avec cette
 // escouade exacte".
 //
-// TODO commit 8l : split+merge cross-DB (Q42MapStatsForSquadTemplate :
+// TODO follow-up post-sprint B1 : split+merge cross-DB (Q42MapStatsForSquadTemplate :
 // shared.match_participants x2 + shared.match_registry + LEFT JOIN
 // player_match_enrichment pour perf_avg). Reste sur pdb.ReadDB().
 //
