@@ -1,3 +1,36 @@
+## [2026-05-19] test(B-swap) — Commit 8m : T5 burst SharedReader validate 0 Catalog Errors
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8m du sprint B1).
+
+**Livré** :
+
+Nouveau test `TestPool_T5BurstSharedReader_integration` validant que les readers HTTP qui passent par SharedReader (Provider path migré aux commits 8k.*) sont **immunisés** aux fenêtres de swap RW.
+
+**Setup** :
+- 5 sync goroutines : `provider.AcquireWriter` + INSERT + Release
+- 20 HTTP goroutines : `provider.Get` + SELECT COUNT(*) FROM match_registry
+- Durée : 2 secondes
+
+**Résultats sur 5 runs consécutifs** :
+| Run | Sync OK | Sync err | HTTP OK | HTTP err | Catalog err |
+|---|---|---|---|---|---|
+| 1 | 52 | 0 | 950  | 0 | **0** |
+| 2 | 54 | 0 | 1110 | 0 | **0** |
+| 3 | 51 | 0 | 1141 | 0 | **0** |
+| 4 | 60 | 0 | 1434 | 0 | **0** |
+| 5 | 60 | 0 | 1136 | 0 | **0** |
+
+**Bénéfice matérialisé** : à comparer avec `TestPool_T5BurstRealTopology_integration` (legacy ATTACH path) qui révèle 96-97% de Catalog Errors HTTP sur le même setup. La migration vers SharedReader pour les 14 repos a éliminé cette régression pour les queries shared-only.
+
+Assertions :
+- syncErr == 0 (regression sur le bug initial "different configuration")
+- syncOK ≥ 5 (au moins une boucle par goroutine sync)
+- catalogErrors == 0 (HARD assertion — la conn Provider n'a pas d'ATTACH à dropper)
+
+**Prochaine étape (9)** : activer LEVELUP_USE_SHARED_PROVIDER=1 par défaut + retrait du flag.
+
+---
+
 ## [2026-05-19] docs(adr) — Commit 8l : ADR 0016 + cleanup commentaire trade-off main.go
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8l du sprint B1).
