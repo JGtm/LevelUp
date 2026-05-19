@@ -1,3 +1,25 @@
+## [2026-05-19] refactor(catalog_repo) — Commit 8k.12 : playlistsPlayedByXUID split
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.12 du sprint B1).
+
+**Livré** :
+
+`CatalogRepo` change d'API : `sharedDB *sql.DB` → `sharedReader SharedReader` pour coordination avec SharedDBProvider.
+
+`playlistsPlayedByXUID` (anciennement cross-DB JOIN entre metadata.playlists_catalog ⨝ shared.match_registry ⨝ shared.match_participants) **split en 3 étapes** :
+
+1. **SharedReader** : SELECT playlist_id + COUNT(DISTINCT match_id) FROM match_registry mr JOIN match_participants mp ON match_id WHERE xuid = ? GROUP BY playlist_id → map[playlist_id]match_count.
+2. **metadataDB** : SELECT FROM playlists_catalog WHERE title_slug AND playlist_asset_id IN (...).
+3. **Go merge** : hydrate `MatchCount` depuis la map de l'étape 1, ordre name_canonical conservé via ORDER BY SQL.
+
+**Caller mis à jour** : `internal/api/server.go:379` passe toujours `nil` pour le SharedReader (le `onlyPlayed=true` n'est pas encore utilisé en prod). API préserve la nullability.
+
+**Tests verts** : duckdb (hors TOML pré-existant), sharedprovider, api/handlers/middleware.
+
+**Prochaine étape (8k.13)** : squad_repo + queries_squad.
+
+---
+
 ## [2026-05-19] refactor(campaign_repo) — Commit 8k.11 : CampaignSampleProvider migré
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.11 du sprint B1).
