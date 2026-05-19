@@ -763,12 +763,3 @@ func nullInt64ToIntPtr(n sql.NullInt64) *int {
 	return &v
 }
 
-// nullInt64ToStringPtr convertit sql.NullInt64 en *string (les session_id sont
-// representes comme string dans le canonical pour l'instant).
-func nullInt64ToStringPtr(n sql.NullInt64) *string {
-	if !n.Valid {
-		return nil
-	}
-	s := fmt.Sprintf("%d", n.Int64)
-	return &s
-}
