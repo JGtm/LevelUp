@@ -46,6 +46,13 @@ import (
 //
 // Pour ce commit, on valide UNIQUEMENT le contrat sync (le critique en prod).
 func TestPool_T5BurstRealTopology_integration(t *testing.T) {
+	// Sprint B1 commit 9c.4 : attachShared retiré de pdb.Player. La topologie
+	// "legacy ATTACH RO sur pdb.Player" testée ici n'existe plus. Le test est
+	// désormais SKIPPÉ — TestPool_T5BurstSharedReader_integration le remplace
+	// et valide la nouvelle architecture (0 Catalog Error via Provider).
+	t.Skip("Obsolete after commit 9c.4 retrait attachShared on player conn. " +
+		"See TestPool_T5BurstSharedReader_integration for current burst validation.")
+
 	// Le globalPool est process-wide et persiste entre tests. Pour isoler
 	// ce burst test des autres (qui peuvent avoir laissé des PlayerDB
 	// inscrits), on purge avant et après.

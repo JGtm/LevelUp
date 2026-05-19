@@ -1,3 +1,29 @@
+## [2026-05-19] refactor(pool) — Commit 9c.4 : retrait attachShared sur pdb.Player
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9c.4 du sprint B1).
+
+**Livré** :
+
+1. **`pool.go::openPlayerDB`** : suppression de l'appel `attachShared(ctx, playerDB, ...)` (ligne 236). La conn player n'a plus de schéma `shared` ATTACH'é. Toutes les queries shared passent désormais via `pdb.SharedReadDB().Get()`.
+
+2. **`pool_swap_hook.go::PrepareForSharedSwap`** : suppression du `detachShared(ctx, pdb.Player, ...)` (n'a plus de sens, pas d'ATTACH à dropper). Conserve le DETACH sur SharedSocial.
+
+3. **`pool_swap_hook.go::RestoreSharedAfterSwap`** : suppression du `attachShared(ctx, pdb.Player, ...)` post-swap. Conserve uniquement pour SharedSocial.
+
+4. **Tests obsolètes** :
+   - `TestPool_T5BurstRealTopology_integration` : `t.Skip()` ajouté avec message clair (la topologie testée n'existe plus, `TestPool_T5BurstSharedReader_integration` la remplace).
+   - `TestPool_AttachShared_SurvivesSwapCycle_integration` : refactored pour utiliser `pdb.SharedReadDB().Get()` au lieu de `pdb.Player.QueryRow("shared.X")`.
+   - `TestPool_PrepareAndRestoreSharedSwap_integration` : idem.
+   - Ajout `duckdb.CloseAll()` + `t.Cleanup(duckdb.CloseAll)` sur les 2 tests pour isoler le globalPool.
+
+**Conservé temporairement (déféré 9c.5)** : `attachShared` + `createSharedAliasViews` + `sharedAliasTables` restent en place pour la conn `pdb.SharedSocial` (media_repo a encore des queries `shared.X` via pdb.Player ou pdb.SharedSocial). À retirer définitivement quand media_repo sera migré (commit 9c.5).
+
+**Tests verts** : duckdb (TOML pré-existant), sharedprovider, api/handlers, sync 117s.
+
+**Prochaine étape (9c.5)** : migrer media_repo vers SharedReader + retrait définitif de attachShared.
+
+---
+
 ## [2026-05-19] chore(quality) — Commit 9b : revue qualité production-level + clôture sprint B1
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9b — clôture du sprint B-swap).

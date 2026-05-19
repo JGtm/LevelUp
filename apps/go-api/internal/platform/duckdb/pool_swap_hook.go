@@ -63,16 +63,17 @@ func (pdb *PlayerDB) PrepareForSharedSwap(ctx context.Context) error {
 	// sont re-appliqués sur la nouvelle conn). Par contre, un `DETACH shared`
 	// explicite libère immédiatement le file handle.
 	//
+	// Sprint B1 commit 9c.4 : attachShared retiré de pdb.Player. Seule
+	// pdb.SharedSocial garde encore l'ATTACH (media_repo). Quand media_repo
+	// sera migré, on pourra supprimer toute cette mécanique.
+	//
 	// Séquence sur PreSwap :
-	//   1. DETACH 'shared' (et 'shared_matches_v2' au cas où auto-attach)
-	//      sur chaque conn ATTACH'ée (player, social).
+	//   1. DETACH 'shared' sur pdb.SharedSocial (et 'shared_matches_v2' au cas
+	//      où auto-attach).
 	//   2. Close pdb.Shared (libère la conn RO du pool).
 	//   3. Le Provider close son handle RO en Phase 3.5 (déjà fait avant
 	//      cette notif).
 	// → file totalement libéré, OpenReadWrite réussit.
-	if pdb.Player != nil {
-		detachShared(ctx, pdb.Player, pdb.Gamertag, "player")
-	}
 	if pdb.SharedSocial != nil {
 		detachShared(ctx, pdb.SharedSocial, pdb.Gamertag, "social")
 	}
@@ -128,12 +129,10 @@ func (pdb *PlayerDB) RestoreSharedAfterSwap(ctx context.Context) error {
 	}
 	pdb.Shared = newShared
 
-	if pdb.Player != nil {
-		if err := attachShared(ctx, pdb.Player, pdb.sharedDBPath); err != nil {
-			slog.ErrorContext(ctx, "RestoreSharedAfterSwap: attachShared on player failed",
-				"gamertag", pdb.Gamertag, "err", err)
-		}
-	}
+	// Sprint B1 commit 9c.4 : re-ATTACH uniquement sur SharedSocial (media_repo
+	// continue à dépendre de la conn social avec ATTACH shared, en attendant
+	// sa migration follow-up). Plus de re-ATTACH sur pdb.Player — toutes les
+	// queries shared passent par SharedReader.
 	if pdb.SharedSocial != nil {
 		if err := attachShared(ctx, pdb.SharedSocial, pdb.sharedDBPath); err != nil {
 			slog.WarnContext(ctx, "RestoreSharedAfterSwap: attachShared on social failed (continuing)",

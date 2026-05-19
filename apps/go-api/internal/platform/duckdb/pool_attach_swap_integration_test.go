@@ -112,6 +112,10 @@ func TestPool_AttachSharedConflictsWithSwap_integration(t *testing.T) {
 // OnSharedSwap (qui itère le globalPool) au lieu d'appeler Prepare/Restore
 // directement. Couverture supplémentaire du code de prod.
 func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
+	// Sprint B1 commit 9c.4 : isole le globalPool des autres tests.
+	duckdb.CloseAll()
+	t.Cleanup(duckdb.CloseAll)
+
 	sharedPath, provider, pdb := setupPoolFixturesForSwap(t)
 	defer func() { _ = provider.Close() }()
 
@@ -131,12 +135,24 @@ func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
 	})
 	defer unsubscribe()
 
-	// Sanity : la conn player avec ATTACH initial fonctionne.
-	var count int
-	if err := pdb.Player.QueryRow(ctx,
-		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
-		t.Fatalf("query initial via ATTACH RO: %v", err)
+	// Sprint B1 commit 9c.4 : attachShared retiré de pdb.Player. Le test
+	// utilise désormais SharedReader.Get (path Provider) à la place de
+	// pdb.Player.QueryRow("shared.X"). Le cycle DETACH/REATTACH testé reste
+	// pertinent pour pdb.SharedSocial (media_repo) et pour valider qu'aucune
+	// régression ne se glisse côté Provider.
+
+	// Sanity : query initiale via Provider — count initial 0.
+	rdb, release, err := pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		t.Fatalf("SharedReadDB().Get initial: %v", err)
 	}
+	var count int
+	if err := rdb.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
+		release()
+		t.Fatalf("query initial via SharedReader: %v", err)
+	}
+	release()
 	if count != 0 {
 		t.Errorf("count initial = %d, attendu 0", count)
 	}
@@ -154,17 +170,20 @@ func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
 	}
 	w.Release()
 
-	// ASSERTION CRITIQUE : la conn player doit voir l'INSERT via ATTACH
-	// restauré. Si ce SELECT plante avec "Catalog Error" ou retourne 0,
-	// le mécanisme DETACH/REATTACH a échoué quelque part dans la chaîne.
-	if err := pdb.Player.QueryRow(ctx,
-		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
-		t.Fatalf("query post-cycle via ATTACH RO: %v (chaîne B3 cassée?)", err)
+	// ASSERTION CRITIQUE : la conn Provider doit voir l'INSERT après le cycle.
+	rdb, release, err = pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		t.Fatalf("SharedReadDB().Get post-cycle: %v", err)
 	}
+	if err := rdb.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM match_registry").Scan(&count); err != nil {
+		release()
+		t.Fatalf("query post-cycle via SharedReader: %v (chaîne B-swap cassée?)", err)
+	}
+	release()
 	if count != 1 {
-		t.Errorf("count post-cycle = %d, attendu 1 (INSERT pas visible — ATTACH stale?)", count)
+		t.Errorf("count post-cycle = %d, attendu 1 (INSERT pas visible — swap stale?)", count)
 	}
 
-	// Path conservé pour confirmation visuelle du chemin réel utilisé.
-	t.Logf("T9 cible OK : cycle B3 complet sur shared = %s", sharedPath)
+	t.Logf("T9 cible OK : cycle B-swap complet sur shared = %s", sharedPath)
 }
