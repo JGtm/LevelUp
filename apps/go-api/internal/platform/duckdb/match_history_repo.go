@@ -140,38 +140,12 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 
 // mergeHistoryEnrichments hydrate les champs player_match_enrichment dans rows.
 func (r *MatchHistoryRepo) mergeHistoryEnrichments(ctx context.Context, rows []domain.MatchHistoryRawRow, matchIDs []string) error {
-	query := fmt.Sprintf(Q5PlayerEnrichmentHistoryTpl, Placeholders(len(matchIDs)))
 	ctx2, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dbRows, err := r.pdb.Player.Query(ctx2, query, ToAnySlice(matchIDs)...)
+	enrichments, err := LoadPlayerMatchEnrichments(ctx2, r.pdb.Player, matchIDs)
 	if err != nil {
-		return fmt.Errorf("enrichment query: %w", err)
-	}
-	defer dbRows.Close()
-
-	type enrichment struct {
-		sessionID        *string
-		sessionLabel     *string
-		isWithFriends    bool
-		isExcluded       bool
-		performanceScore *float64
-		dominanceFlag    int
-	}
-	enrichments := make(map[string]enrichment, len(matchIDs))
-	for dbRows.Next() {
-		var mid string
-		var e enrichment
-		if err := dbRows.Scan(
-			&mid, &e.sessionID, &e.sessionLabel, &e.isWithFriends,
-			&e.isExcluded, &e.performanceScore, &e.dominanceFlag,
-		); err != nil {
-			return fmt.Errorf("enrichment scan: %w", err)
-		}
-		enrichments[mid] = e
-	}
-	if err := dbRows.Err(); err != nil {
-		return fmt.Errorf("enrichment rows: %w", err)
+		return err
 	}
 
 	for i := range rows {
@@ -179,12 +153,21 @@ func (r *MatchHistoryRepo) mergeHistoryEnrichments(ctx context.Context, rows []d
 		if !ok {
 			continue
 		}
-		rows[i].SessionID = e.sessionID
-		rows[i].SessionLabel = e.sessionLabel
-		rows[i].IsWithFriends = e.isWithFriends
-		rows[i].IsExcluded = e.isExcluded
-		rows[i].PerformanceScore = e.performanceScore
-		rows[i].DominanceFlag = e.dominanceFlag
+		if e.SessionID.Valid {
+			s := e.SessionID.String
+			rows[i].SessionID = &s
+		}
+		if e.SessionLabel.Valid {
+			s := e.SessionLabel.String
+			rows[i].SessionLabel = &s
+		}
+		rows[i].IsWithFriends = e.IsWithFriends
+		rows[i].IsExcluded = e.IsExcluded
+		if e.PerformanceScore.Valid {
+			v := e.PerformanceScore.Float64
+			rows[i].PerformanceScore = &v
+		}
+		rows[i].DominanceFlag = e.DominanceFlag
 	}
 	return nil
 }

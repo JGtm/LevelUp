@@ -318,32 +318,10 @@ func (r *PlayerMatchesRepo) loadSharedRows(ctx context.Context, filters port.Pla
 	return results, rows.Err()
 }
 
-// loadEnrichmentsForMatches récupère player_match_enrichment pour la liste de
-// match_ids (étape 2 du split). Retourne une map indexée par match_id.
-func (r *PlayerMatchesRepo) loadEnrichmentsForMatches(ctx context.Context, matchIDs []string) (map[string]playerMatchEnrichmentRow, error) {
-	if len(matchIDs) == 0 {
-		return nil, nil
-	}
-	query := fmt.Sprintf(playerMatchesEnrichmentTpl, Placeholders(len(matchIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
-	if err != nil {
-		return nil, fmt.Errorf("enrichment query: %w", err)
-	}
-	defer rows.Close()
-
-	out := make(map[string]playerMatchEnrichmentRow, len(matchIDs))
-	for rows.Next() {
-		var (
-			mid  string
-			e    playerMatchEnrichmentRow
-		)
-		if err := rows.Scan(&mid, &e.sessionID, &e.sessionLabel, &e.performanceScore,
-			&e.dominanceFlag, &e.hadBotTeammate, &e.isWithFriends); err != nil {
-			return nil, fmt.Errorf("enrichment scan: %w", err)
-		}
-		out[mid] = e
-	}
-	return out, rows.Err()
+// loadEnrichmentsForMatches récupère player_match_enrichment via le helper
+// partagé LoadPlayerMatchEnrichments (commit 9d.4).
+func (r *PlayerMatchesRepo) loadEnrichmentsForMatches(ctx context.Context, matchIDs []string) (map[string]MatchEnrichment, error) {
+	return LoadPlayerMatchEnrichments(ctx, r.pdb.Player, matchIDs)
 }
 
 // loadSkillRanksForMatches récupère match_skill_rank pour la liste de match_ids
@@ -379,19 +357,19 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 // post-merge, le re-tri éventuel par performance_score, et le LIMIT.
 func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 	shared []playerMatchScanResult,
-	enrichments map[string]playerMatchEnrichmentRow,
+	enrichments map[string]MatchEnrichment,
 	skillRanks map[string]playerMatchSkillRankRow,
 	filters port.PlayerMatchFilters,
 ) []canonical.PlayerMatchRow {
 	// Hydrate les cols player dans chaque playerMatchScanResult.
 	for i := range shared {
 		if e, ok := enrichments[shared[i].matchID]; ok {
-			shared[i].sessionID = e.sessionID
-			shared[i].sessionLabel = e.sessionLabel
-			shared[i].performanceScore = e.performanceScore
-			shared[i].dominanceFlag = int(e.dominanceFlag)
-			shared[i].hadBotTeammate = e.hadBotTeammate
-			shared[i].isWithFriends = e.isWithFriends
+			shared[i].sessionID = e.SessionID
+			shared[i].sessionLabel = e.SessionLabel
+			shared[i].performanceScore = e.PerformanceScore
+			shared[i].dominanceFlag = e.DominanceFlag
+			shared[i].hadBotTeammate = e.HadBotTeammate
+			shared[i].isWithFriends = e.IsWithFriends
 		}
 		if s, ok := skillRanks[shared[i].matchID]; ok {
 			shared[i].skillRatingType = s.ratingType
@@ -465,19 +443,9 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 	return s, nil
 }
 
-// playerMatchEnrichmentRow porte les colonnes player_match_enrichment chargées
-// en étape 2.
-type playerMatchEnrichmentRow struct {
-	sessionID        sql.NullInt64
-	sessionLabel     sql.NullString
-	performanceScore sql.NullFloat64
-	dominanceFlag    int
-	hadBotTeammate   bool
-	isWithFriends    bool
-}
-
 // playerMatchSkillRankRow porte les colonnes match_skill_rank chargées en
-// étape 3.
+// étape 3. (playerMatchEnrichmentRow + playerMatchesEnrichmentTpl retirés au
+// commit 9d.4 — remplacés par MatchEnrichment + LoadPlayerMatchEnrichments).
 type playerMatchSkillRankRow struct {
 	ratingType    sql.NullString
 	ratingValue   sql.NullFloat64
@@ -487,20 +455,6 @@ type playerMatchSkillRankRow struct {
 	delta         sql.NullFloat64
 	playlistGroup sql.NullString
 }
-
-// playerMatchesEnrichmentTpl : SQL pour l'étape 2 du split (player_match_enrichment
-// pour une liste de match_ids).
-const playerMatchesEnrichmentTpl = `
-SELECT
-    match_id,
-    session_id,
-    session_label,
-    performance_score,
-    COALESCE(dominance_flag, 0)        AS dominance_flag,
-    COALESCE(had_bot_teammate, FALSE)  AS had_bot_teammate,
-    COALESCE(is_with_friends, FALSE)   AS is_with_friends
-FROM player_match_enrichment
-WHERE match_id IN (%s)`
 
 // playerMatchesSkillRankTpl : SQL pour l'étape 3 du split (match_skill_rank
 // pour une liste de match_ids).
@@ -558,7 +512,7 @@ type playerMatchScanResult struct {
 	avgLifeSeconds                              sql.NullFloat64
 	damageDealt, damageTaken                    sql.NullFloat64
 	performanceScore                            sql.NullFloat64
-	sessionID                                   sql.NullInt64
+	sessionID                                   sql.NullString // VARCHAR en prod (cf. ADR 0016 / commit 9d.4)
 	sessionLabel                                sql.NullString
 	team0Score, team1Score                      int
 	skillRatingType                             sql.NullString
@@ -674,7 +628,7 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 			PerfectKills:     nullInt64ToIntPtr(s.perfectKills),
 		},
 		Enrichment: canonical.PlayerMatchEnrichment{
-			SessionID:        nullInt64ToStringPtr(s.sessionID),
+			SessionID:        nullStringPtr(s.sessionID),
 			SessionLabel:     nullStringPtr(s.sessionLabel),
 			PerformanceScore: nullFloatPtr(s.performanceScore),
 			DominanceFlag:    canonical.DominanceFlag(s.dominanceFlag),
