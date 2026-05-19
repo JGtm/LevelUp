@@ -19,13 +19,19 @@ import (
 //
 // La complexité réelle (filtres mode/playlist, jointures avec medals) est
 // gardée minimale pour Phase 4. Phase 5/6 affineront selon les besoins UI.
+//
+// Sprint B1 commit 8k.4 : reçoit un SharedReader (pas un *DB) pour coordonner
+// avec le SharedDBProvider (cycle RO↔RW).
 type HaloBaselineProvider struct {
-	shared *DB
+	reader SharedReader
 }
 
-// NewHaloBaselineProvider construit le provider depuis la DB shared_matches.
-func NewHaloBaselineProvider(sharedDB *DB) *HaloBaselineProvider {
-	return &HaloBaselineProvider{shared: sharedDB}
+// NewHaloBaselineProvider construit le provider depuis un SharedReader.
+//
+// Côté caller : passer pdb.SharedReadDB() pour bénéficier du Provider B-swap
+// (fallback transparent vers LegacySharedReader(pdb.Shared) si Provider absent).
+func NewHaloBaselineProvider(reader SharedReader) *HaloBaselineProvider {
+	return &HaloBaselineProvider{reader: reader}
 }
 
 // Compile-time assertion.
@@ -59,7 +65,13 @@ func (p *HaloBaselineProvider) RecentMatches(ctx context.Context, userID, _ stri
 		LIMIT ?
 	`, col)
 
-	rows, err := p.shared.Query(ctx, q, userID, window)
+	db, release, err := p.reader.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("HaloBaselineProvider.RecentMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, userID, window)
 	if err != nil {
 		return nil, fmt.Errorf("HaloBaselineProvider.RecentMatches: %w", err)
 	}
@@ -109,8 +121,15 @@ func (p *HaloBaselineProvider) PopulationPercentile(ctx context.Context, _ strin
 		FROM player_avgs
 	`, col)
 
+	db, release, err := p.reader.Get(ctx)
+	if err != nil {
+		// Erreur non bloquante : retourner valeurs neutres (cap désactivé).
+		return 0.5, 0, nil
+	}
+	defer release()
+
 	var below, total int
-	if err := p.shared.QueryRow(ctx, q, target).Scan(&below, &total); err != nil {
+	if err := db.QueryRowContext(ctx, q, target).Scan(&below, &total); err != nil {
 		// Erreur non bloquante : retourner valeurs neutres (cap désactivé).
 		return 0.5, 0, nil
 	}

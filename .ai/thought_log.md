@@ -1,3 +1,28 @@
+## [2026-05-19] refactor(prestige_baseline) — Commit 8k.4 : HaloBaselineProvider migré vers SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.4 du sprint B1).
+
+**Livré** :
+
+`prestige_baseline_provider.go::HaloBaselineProvider` migré du pattern legacy `*DB` direct vers `SharedReader`. Deux méthodes touchées :
+- `RecentMatches` (JOIN match_participants ⨝ match_registry sur shared)
+- `PopulationPercentile` (idem)
+
+**Changement d'API publique** :
+- `NewHaloBaselineProvider(sharedDB *DB)` → `NewHaloBaselineProvider(reader SharedReader)`
+- Caller unique : `internal/api/prestige_setup.go:150` mis à jour : `pdb.Shared` → `pdb.SharedReadDB()` (fallback automatique LegacySharedReader si Provider absent).
+
+**Bénéfice** : le module Prestige (RecentMatches + PopulationPercentile) coordonne maintenant avec le SharedDBProvider et évite les conflits "different configuration" lors des swaps RW.
+
+**Tests verts** :
+- duckdb (sauf TestLoadTemplatesFromTOML pré-existant)
+- sharedprovider 12s
+- api/api/handlers/middleware 60s
+
+**Prochaine étape (8k.5)** : queries_*.go (4 fichiers) — retirer le préfixe `shared.` des constantes SQL qui passent désormais par SharedReader.
+
+---
+
 ## [2026-05-19] refactor(repos) — Commit 8k.3 : sync seeds + 5 repos migrés (medals_by_xuid, weapon_kills, highlight_events, match_exclusion.GetMatchRegistryInfo, citations.LoadMedalTotals)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.3 du sprint B1).
