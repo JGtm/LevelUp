@@ -26,6 +26,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/sync"
 )
 
@@ -81,17 +82,26 @@ type ImportError struct {
 
 // OpenSpartanImportService orchestrates one import from an OpenSpartan
 // SQLite database into the shared DuckDB.
+//
+// Sprint B1 commit 14a : sharedDBPath (en plus du handle sharedDB) est
+// utilisé pour acquérir le dblease.KindSharedMatches autour des écritures.
+// Sans ce lease, race condition avec auto_sync.RunDelta qui écrit sur les
+// mêmes tables (match_registry, match_participants, etc.).
 type OpenSpartanImportService struct {
-	sharedDB *sql.DB
-	log      *slog.Logger
+	sharedDB     *sql.DB
+	sharedDBPath string
+	log          *slog.Logger
 }
 
 // NewOpenSpartanImportService constructs a service bound to a shared
 // DuckDB connection opened in read-write mode.
-func NewOpenSpartanImportService(sharedDB *sql.DB) *OpenSpartanImportService {
+// sharedDBPath est utilisé pour la sérialisation via dblease (commit 14a) ;
+// vide → mode legacy sans lease (uniquement pour tests in-memory).
+func NewOpenSpartanImportService(sharedDB *sql.DB, sharedDBPath string) *OpenSpartanImportService {
 	return &OpenSpartanImportService{
-		sharedDB: sharedDB,
-		log:      slog.Default(),
+		sharedDB:     sharedDB,
+		sharedDBPath: sharedDBPath,
+		log:          slog.Default(),
 	}
 }
 
@@ -116,6 +126,18 @@ func (s *OpenSpartanImportService) Import(
 
 	s.log.Info("openspartan_import_started",
 		"expected_xuid", expectedOwnerXUID, "db_path", dbPath, "dry_run", opts.DryRun)
+
+	// Sprint B1 commit 14a : sérialiser avec auto_sync.RunDelta sur les
+	// écritures shared (match_registry, match_participants). Sans ce lease,
+	// race condition garantie si auto_sync tourne en parallèle. Si
+	// sharedDBPath est vide (tests in-memory), on skip le lease.
+	if s.sharedDBPath != "" && !opts.DryRun {
+		lease, err := dblease.AcquireWriterCtx(ctx, nil, s.sharedDBPath, dblease.KindSharedMatches)
+		if err != nil {
+			return result, fmt.Errorf("openspartan import lease shared: %w", err)
+		}
+		defer lease.Release()
+	}
 
 	r, err := openspartan.Open(dbPath)
 	if err != nil {

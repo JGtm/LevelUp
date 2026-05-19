@@ -186,7 +186,7 @@ func TestOpenSpartanImport_EndToEnd_WritesAllRowFamilies(t *testing.T) {
 	sharedDB := setupSharedDB(t)
 	stashDir := filepath.Join(dir, "stash")
 
-	svc := NewOpenSpartanImportService(sharedDB)
+	svc := NewOpenSpartanImportService(sharedDB, "")
 	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, ImportOptions{
 		Source: "test", StashDir: stashDir,
 	})
@@ -247,7 +247,7 @@ func TestOpenSpartanImport_RejectsXUIDMismatch(t *testing.T) {
 	fixturePath := buildMinimalFixtureDB(t, dir, testOwnerXUID+".db", testOwnerXUID)
 	sharedDB := setupSharedDB(t)
 
-	svc := NewOpenSpartanImportService(sharedDB)
+	svc := NewOpenSpartanImportService(sharedDB, "")
 	_, err := svc.Import(context.Background(), "9999999999999999", fixturePath, ImportOptions{StashDir: dir})
 	if !errors.Is(err, ErrXUIDMismatch) {
 		t.Fatalf("want ErrXUIDMismatch, got %v", err)
@@ -261,7 +261,7 @@ func TestOpenSpartanImport_DryRunCountsButDoesNotWrite(t *testing.T) {
 	fixturePath := buildMinimalFixtureDB(t, dir, testOwnerXUID+".db", testOwnerXUID)
 	sharedDB := setupSharedDB(t)
 
-	svc := NewOpenSpartanImportService(sharedDB)
+	svc := NewOpenSpartanImportService(sharedDB, "")
 	result, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, ImportOptions{
 		DryRun: true, StashDir: filepath.Join(dir, "stash"),
 	})
@@ -282,7 +282,7 @@ func TestOpenSpartanImport_OnProgressInvokedPerMatch(t *testing.T) {
 	dir := t.TempDir()
 	fixturePath := buildMinimalFixtureDB(t, dir, testOwnerXUID+".db", testOwnerXUID)
 	sharedDB := setupSharedDB(t)
-	svc := NewOpenSpartanImportService(sharedDB)
+	svc := NewOpenSpartanImportService(sharedDB, "")
 	calls := 0
 	_, err := svc.Import(context.Background(), testOwnerXUID, fixturePath, ImportOptions{
 		StashDir: filepath.Join(dir, "stash"),

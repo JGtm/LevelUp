@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/jobs"
 )
 
@@ -102,7 +103,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 			j.ProgressPct = &pct
 		})
 
-		if err := resetPlayerMediaIndex(dbPath); err != nil {
+		if err := resetPlayerMediaIndex(ctx, dbPath); err != nil {
 			// Avertissement non-fatal : continuer avec les autres joueurs.
 			jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 				w := fmt.Sprintf("WARN reset %s: %v", gamertag, err)
@@ -218,10 +219,21 @@ func (d *DirMediaIndexer) ScanAllMedia(
 
 // resetPlayerMediaIndex supprime toutes les entrées media_files et media_match_associations
 // dans la player DB.
-func resetPlayerMediaIndex(dbPath string) error {
+//
+// Sprint B1 commit 14a : acquiert dblease.KindPlayer avant les DELETE pour
+// se sérialiser avec auto_sync.RunDelta qui peut écrire sur ces mêmes tables
+// (post-sync media reindex inline). Sans ce lease, race condition possible
+// entre le DELETE et un INSERT/UPDATE sync — données incohérentes.
+func resetPlayerMediaIndex(ctx context.Context, dbPath string) error {
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		return nil // pas de DB joueur, rien à réinitialiser
 	}
+
+	lease, err := dblease.AcquireWriterCtx(ctx, nil, dbPath, dblease.KindPlayer)
+	if err != nil {
+		return fmt.Errorf("resetPlayerMediaIndex lease %s: %w", dbPath, err)
+	}
+	defer lease.Release()
 
 	db, err := sql.Open("duckdb", dbPath)
 	if err != nil {
@@ -229,10 +241,10 @@ func resetPlayerMediaIndex(dbPath string) error {
 	}
 	defer db.Close()
 
-	if _, err := db.Exec(`DELETE FROM media_match_associations`); err != nil {
+	if _, err := db.ExecContext(ctx, `DELETE FROM media_match_associations`); err != nil {
 		return fmt.Errorf("DELETE media_match_associations: %w", err)
 	}
-	if _, err := db.Exec(`DELETE FROM media_files`); err != nil {
+	if _, err := db.ExecContext(ctx, `DELETE FROM media_files`); err != nil {
 		return fmt.Errorf("DELETE media_files: %w", err)
 	}
 	return nil
