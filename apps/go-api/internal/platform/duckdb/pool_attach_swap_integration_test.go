@@ -112,7 +112,7 @@ func TestPool_AttachSharedConflictsWithSwap_integration(t *testing.T) {
 // OnSharedSwap (qui itère le globalPool) au lieu d'appeler Prepare/Restore
 // directement. Couverture supplémentaire du code de prod.
 func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
-	// Sprint B1 commit 9c.4 : isole le globalPool des autres tests.
+	// isole le globalPool des autres tests.
 	duckdb.CloseAll()
 	t.Cleanup(duckdb.CloseAll)
 
@@ -135,7 +135,7 @@ func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
 	})
 	defer unsubscribe()
 
-	// Sprint B1 commit 9c.4 : attachShared retiré de pdb.Player. Le test
+	// attachShared retiré de pdb.Player. Le test
 	// utilise désormais SharedReader.Get (path Provider) à la place de
 	// pdb.Player.QueryRow("shared.X"). Le cycle DETACH/REATTACH testé reste
 	// pertinent pour pdb.SharedSocial (media_repo) et pour valider qu'aucune

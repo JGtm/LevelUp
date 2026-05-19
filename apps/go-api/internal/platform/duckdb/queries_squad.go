@@ -1,7 +1,7 @@
 // Package duckdb — queries_squad.go : requêtes page Escouade et Synthèse.
 package duckdb
 
-// Q29TopTeammatesSharedTpl : Sprint B1 commit 9c.1 — partie shared du split
+// Q29TopTeammatesSharedTpl : (ADR 0016) — partie shared du split
 // LoadTopTeammates. Découpé en :
 //
 //	Étape 1 (pdb.Player) : SELECT match_id FROM player_match_enrichment
@@ -126,7 +126,7 @@ LEFT JOIN player_match_enrichment pme ON pme.match_id = p1.match_id
 WHERE p1.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
-// Q30SquadMatchesSharedQuery : Sprint B1 commit 9c.2 — partie shared du split
+// Q30SquadMatchesSharedQuery : (ADR 0016) — partie shared du split
 // LoadSquadMatches. Toutes les tables au niveau root (catalogue
 // shared_matches_v2.duckdb directement). 25 colonnes shared incluant
 // perfect_kills (subquery medals_earned) + team_id/team_0/team_1 pour la
@@ -179,7 +179,7 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q31 : Squad — stats d'un coéquipier sur les matchs communs.
 //
-// Sprint B1 commit 9c.1 : query shared-only — naming root-level (pas de
+// query shared-only — naming root-level (pas de
 // préfixe `shared.`). Migrée vers SharedReader.Get dans LoadTeammateMatches.
 //
 // Paramètres : ?1 = xuid joueur principal (p_main), ?2 = xuid coéquipier (p).
@@ -262,7 +262,7 @@ WHERE p.xuid = ?
 GROUP BY 1, 2
 ORDER BY match_count DESC`
 
-// Q33bSynthesisSharedQuery : Sprint B1 commit 9c.3 — partie shared du split
+// Q33bSynthesisSharedQuery : (ADR 0016) — partie shared du split
 // LoadSynthesisMatches. 11 cols shared depuis match_participants + match_registry.
 // Les 3 cols player (is_with_friends, performance_score, session_label) sont
 // hydratées en étape 2.
@@ -313,7 +313,7 @@ LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
 WHERE p.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
-// Q42MapStatsForSquadSharedTpl : Sprint B1 commit 9c.4 — partie shared du
+// Q42MapStatsForSquadSharedTpl : (ADR 0016) — partie shared du
 // split LoadMapStatsForSquad. Au lieu d'agréger par map_id côté SQL
 // (incluant AVG(perf_avg) qui dépend de pme — table player), on retourne
 // les rows per-match (match_id, map_id, outcome). L'aggregation finale est

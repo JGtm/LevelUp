@@ -18,7 +18,7 @@ const mxTestXUIDOther = "xuid_player_002"
 
 // seedMedals insere des medailles pour deux joueurs sur deux matchs.
 //
-// Sprint B1 commit 8k.3 : double-write player+shared. Le repo MedalsByXUIDRepo
+// double-write player+shared. Le repo MedalsByXUIDRepo
 // lit désormais via SharedReadDB() → pdb.Shared (séparé de pdb.Player). Pour
 // rester compatible avec les autres tests qui scannent shared.* via pdb.Player
 // (chaîne héritée des migrations 8c/8d), on insère dans les deux DBs.

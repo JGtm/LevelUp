@@ -16,7 +16,7 @@ import (
 
 // CatalogRepo implémente port.CatalogRepo.
 //
-// Sprint B1 commit 8k.12 : sharedDB *sql.DB remplacé par SharedReader pour
+// sharedDB *sql.DB remplacé par SharedReader pour
 // permettre la coordination avec le SharedDBProvider (cycle RO↔RW).
 type CatalogRepo struct {
 	metadataDB   *sql.DB
@@ -64,7 +64,7 @@ func (r *CatalogRepo) PlaylistsByTitle(ctx context.Context, titleSlug, xuid stri
 
 // playlistsPlayedByXUID retourne uniquement les playlists ayant ≥ 1 match joué par xuid.
 //
-// Sprint B1 commit 8k.12 : split+merge cross-DB.
+// split+merge cross-DB.
 //
 //	Étape 1 (SharedReader) : SELECT DISTINCT playlist_id, COUNT(DISTINCT match_id)
 //	  FROM match_registry mr JOIN match_participants mp ON mp.match_id = mr.match_id

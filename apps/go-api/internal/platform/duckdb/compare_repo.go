@@ -30,7 +30,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// Sprint B1 commit 8k.10 : shared-only via SharedReader (root-level naming).
+	// shared-only via SharedReader (root-level naming).
 	const q = `
 		SELECT
 			mp.xuid,
@@ -183,7 +183,7 @@ func (r *CompareRepo) GetFavoriteWeapon(ctx context.Context, xuid string) (*doma
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// Sprint B1 commit 8k.10 : shared-only via SharedReader.
+	// shared-only via SharedReader.
 	const q = `
 		SELECT wk.effective_weapon_id AS weapon_id, COUNT(*) AS kills
 		FROM v_weapon_kills wk
@@ -256,7 +256,7 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// Sprint B1 commit 8k.10 : 2 queries shared-only via SharedReader.
+	// 2 queries shared-only via SharedReader.
 	const qMatches = `
 		SELECT
 			COUNT(*) AS total,
@@ -324,7 +324,7 @@ func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB stri
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// Sprint B1 commit 8k.10 : shared-only via SharedReader.
+	// shared-only via SharedReader.
 	const q = `
 		SELECT
 			COUNT(*)                                        AS matches_count,
@@ -373,7 +373,7 @@ func (r *CompareRepo) ResolveXUID(ctx context.Context, gamertag string) (string,
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// Sprint B1 commit 8k.10 : shared-only via SharedReader.
+	// shared-only via SharedReader.
 	const q = `
 		SELECT xuid FROM xuid_aliases
 		WHERE lower(gamertag) = lower(?)

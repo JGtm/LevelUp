@@ -320,7 +320,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 		// start_time_utc TIMESTAMPTZ (UTC garanti après migration). end_time
 		// suit la même structure. Les queries de prod lisent toujours
 		// COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC').
-		// Sprint B1 commit 8k.9 : aligné sur seedPlayerSchema pour duration_seconds /
+		// aligné sur seedPlayerSchema pour duration_seconds /
 		// last_updated_at / playable_duration_seconds — colonnes lues par
 		// playerMatchesSharedBaseSelect via SharedReader.
 		`CREATE TABLE shared.match_registry (
@@ -340,7 +340,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			team_0_score INTEGER, team_1_score INTEGER,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER)`,
-		// Sprint B1 commit 8k.3 : colonnes alignées sur seedPlayerSchema pour
+		// colonnes alignées sur seedPlayerSchema pour
 		// permettre aux repos (weapon_kills, etc.) qui lisent grenade_kills /
 		// melee_kills / shots_* via SharedReadDB() de trouver le schéma attendu.
 		`CREATE TABLE shared.match_participants (
@@ -358,7 +358,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			headshot_kills INTEGER, max_killing_spree INTEGER,
 			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER)`,
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		// Sprint B1 commit 8k.3 : tables shared additionnelles pour permettre aux
+		// tables shared additionnelles pour permettre aux
 		// repos migrés vers SharedReadDB().Get() (medals_by_xuid, weapon_kills,
 		// highlight_events, match_exclusion, citations.LoadMedalTotals) de lire
 		// depuis pdb.Shared. Les schémas reflètent ceux de seedPlayerSchema pour
@@ -376,19 +376,19 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
 		// shared.killer_victim_pairs utilisée par Q26 (top encounters) et Q27
-		// (rivals). Sprint B1 commit 8k.8 : ajouté pour SharedReader migration.
+		// (rivals). (ADR 0016) : ajouté pour SharedReader migration.
 		`CREATE TABLE shared.killer_victim_pairs (
 			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
 			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
 			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1)`,
 		// shared.v_match_full utilisée par Q4 (filters) et Q5 (history) cross-DB.
-		// Sprint B1 commit 8k.6 : ajouté pour que les queries SharedReader-only
+		// ajouté pour que les queries SharedReader-only
 		// (split-merge LoadMatchesForFilters) trouvent la vue côté pdb.Shared.
 		`CREATE VIEW shared.v_match_full AS SELECT * FROM shared.match_registry`,
 		// shared.v_gamertag_lookup utilisée par Q10Encounters
 		// (LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid).
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
-		// Vues root-level — Sprint B1 commit 8k.7 : les queries SharedReader
+		// Vues root-level : les queries SharedReader
 		// utilisent les tables/vues à la racine du catalogue (pas de préfixe
 		// `shared.`) car la conn cible directement le catalogue shared_matches_v2.
 		// La présence d'un schema `shared` est conservée pour compat tests

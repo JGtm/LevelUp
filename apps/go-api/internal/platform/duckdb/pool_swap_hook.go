@@ -34,7 +34,7 @@ const (
 // OpenReadWrite sur le même fichier sans "Unique file handle conflict" ni
 // "different configuration".
 //
-// Sprint B1 commit 9c.5 : simplifié. attachShared retiré entièrement du pool
+// simplifié. attachShared retiré entièrement du pool
 // (player + social). Plus aucune conn du pool ne porte d'ATTACH shared, donc
 // pas de DETACH explicite à faire. Seule la conn pdb.Shared (LegacySharedReader
 // fallback) doit être fermée pour libérer le file handle.
@@ -62,7 +62,7 @@ func (pdb *PlayerDB) PrepareForSharedSwap(ctx context.Context) error {
 // RestoreSharedAfterSwap rouvre la conn RO sur shared. Appelée sur
 // SwapDirRWToRO ou SwapDirErrorToRO depuis OnSharedSwap.
 //
-// Sprint B1 commit 9c.5 : simplifié. Plus de re-ATTACH (attachShared retiré
+// simplifié. Plus de re-ATTACH (attachShared retiré
 // entièrement). Le pool re-ouvre uniquement la conn RO pdb.Shared.
 //
 // Si OpenReadOnly échoue : log Error mais ne propage pas (les Query

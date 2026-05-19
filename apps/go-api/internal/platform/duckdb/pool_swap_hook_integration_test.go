@@ -89,7 +89,7 @@ func setupPoolFixturesForSwap(t *testing.T) (sharedPath string, provider sharedp
 // Si ce test passe : la mécanique B3 est fonctionnelle. Reste à câbler
 // via Subscribe au commit 8g.
 func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
-	// Sprint B1 commit 9c.4 : isole le globalPool des autres tests pour éviter
+	// isole le globalPool des autres tests pour éviter
 	// de récupérer un PlayerDB cached avec un Provider fermé.
 	duckdb.CloseAll()
 	t.Cleanup(duckdb.CloseAll)
@@ -116,7 +116,7 @@ func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
 	})
 	defer unsubscribe()
 
-	// Sprint B1 commit 9c.4 : attachShared retiré de pdb.Player. Le test
+	// attachShared retiré de pdb.Player. Le test
 	// utilise désormais SharedReader.Get pour valider que le cycle Prepare/
 	// Restore ne perturbe pas les lectures via Provider.
 

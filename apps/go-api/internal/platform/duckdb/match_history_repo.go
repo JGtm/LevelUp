@@ -21,7 +21,7 @@ func NewMatchHistoryRepo(pdb *PlayerDB) *MatchHistoryRepo {
 
 // LoadAll charge tous les matchs du joueur avec les stats de participation.
 //
-// Sprint B1 commit 8k.7 : split+merge cross-DB. La query historique unique
+// split+merge cross-DB. La query historique unique
 // (shared.v_match_full ⨝ shared.match_participants ⨝ player_match_enrichment
 // ⨝ match_skill_rank) est découpée en 3 round-trips :
 //  1. SharedReader.Get : v_match_full ⨝ match_participants → 25 cols + team_id

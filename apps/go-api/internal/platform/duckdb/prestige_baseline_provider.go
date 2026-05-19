@@ -20,7 +20,7 @@ import (
 // La complexité réelle (filtres mode/playlist, jointures avec medals) est
 // gardée minimale pour Phase 4. Phase 5/6 affineront selon les besoins UI.
 //
-// Sprint B1 commit 8k.4 : reçoit un SharedReader (pas un *DB) pour coordonner
+// reçoit un SharedReader (pas un *DB) pour coordonner
 // avec le SharedDBProvider (cycle RO↔RW).
 type HaloBaselineProvider struct {
 	reader SharedReader

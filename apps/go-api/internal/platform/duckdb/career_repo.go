@@ -385,7 +385,7 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	}
 	sqlText := fmt.Sprintf(Q26CareerTopEncountersTpl, excludeClause)
 
-	// Sprint B1 commit 8k.8 : migré vers SharedReader. La query est shared-only
+	// migré vers SharedReader. La query est shared-only
 	// (match_participants, match_registry, killer_victim_pairs, v_gamertag_lookup)
 	// — tables/vues au niveau root du catalogue shared_matches_v2.duckdb.
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
@@ -488,7 +488,7 @@ func (r *CareerRepo) queryRivals(ctx context.Context, orderCol string) ([]domain
 		return nil, fmt.Errorf("CareerRepo.queryRivals: invalid order column %q", orderCol)
 	}
 	sqlText := fmt.Sprintf(Q27CareerRivalsTpl, orderCol)
-	// Sprint B1 commit 8k.8 : migré vers SharedReader. Q27 est shared-only
+	// migré vers SharedReader. Q27 est shared-only
 	// (killer_victim_pairs + v_gamertag_lookup, tous root-level).
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
