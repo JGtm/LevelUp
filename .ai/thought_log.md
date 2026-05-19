@@ -1,3 +1,50 @@
+## [2026-05-18] feat(sharedprovider) — Commit 3 : AcquireWriter + WriterHandle + swap RO↔RW
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 3/9 de la roadmap SharedDBProvider).
+
+**Contexte** : commit le plus dense de la roadmap — introduit le mécanisme de swap dynamique qui résout le conflit DuckDB "different configuration". Le provider ferme la conn RO, ouvre RW, sert l'écriture au sync, ferme RW et rouvre RO. Une seule configuration DuckDB active à la fois sur le fichier.
+
+**Mécanique** :
+
+1. **`AcquireWriter(ctx)`** :
+   - Acquiert `dblease.AcquireWriterCtx(ctx, nil, path, KindSharedMatches)` — arbitre les writers concurrents au niveau applicatif (mutex Go par path).
+   - Sous `p.mu` : transition `RO → Draining`, remplacement de `ready` par un canal non-fermé (gate les nouveaux Get), `handle.Close()` (libère file lock RO côté driver), `duckdb.OpenReadWrite()`, transition `Draining → RW`.
+   - Retourne un `WriterHandle` qui expose `.DB() *sql.DB` natif (pas de wrapper) — le caller utilise `Exec/Query/BeginTx` directement.
+
+2. **`WriterHandle.Release()`** (idempotent via `sync.Once`) :
+   - `defer recover() + lease.Release()` : garantit la libération du mutex dblease même si le release panic.
+   - Sous `p.mu` : transition `RW → Reopening`, `rwHandle.Close()`, `tryReopenRO`. Si succès : `Reopening → RO` + `close(ready)` débloque les Get en attente. Si échec : `Reopening → Error` + `close(ready)` + goroutine `retryReopenLoop` async.
+
+3. **`retryReopenLoop`** : backoff exponentiel borné (5 tentatives, 1s/2s/4s/8s/16s — aligné main.go:222-236 metadata retry). Recovery transparente : `Error → RO`. Si abandon, log Error — admin doit restart.
+
+4. **`Get(ctx)`** : nouveau path qui gère l'attente sur `ready` avec `readyTimeout` (30s default) + `ctx.Done()`. Capture cohérente `(state, ready, handle)` sous `p.mu` à chaque tour de boucle pour éviter les races avec un swap concurrent.
+
+5. **Hooks test-only** (`export_test.go` en `package sharedprovider`) : `SetReadyTimeoutForTest`, `SetRetryBaseBackoffForTest`, `SetFailNextReopenForTest`. Permettent aux tests black-box de manipuler les internes sans élargir l'API publique.
+
+**Décisions techniques** :
+
+1. **Pas encore de drain readers** : le commit 3 introduit le canal `ready` pour gater les *nouveaux* Get pendant un swap, mais les Get déjà en train de tenir une conn RO ne sont pas synchronisés. Race théorique : un Get retourne `*sql.DB`, un swap ferme le handle, le caller fait une Query → erreur "database is closed". Le drain via `WaitGroup` arrive au commit 4. Risque bas en pratique (les queries DuckDB sont rapides), accepté pour ce commit.
+
+2. **`dblease.AcquireWriterCtx(ctx, nil, ...)`** : on passe `nil` comme `*sql.DB` au LeasedWriter. Le mutex applicatif n'utilise pas ce field (seules `LeasedWriter.ExecContext/QueryContext` l'utiliseraient, mais on ne les expose pas — le caller passe par `WriterHandle.DB()` qui retourne notre RW). `lease.Release()` appelle juste `mu.Unlock()` et `recordRelease(kind)`, safe pour `db=nil`.
+
+3. **Canal `ready` fermé en RO/Error/Closed** : `New()` initialise `ready` à un canal fermé pour que les Get en steady state n'attendent jamais. Le canal est remplacé par un canal non-fermé à chaque entrée en swap (`AcquireWriter`). Fermé à la sortie. Évite la nécessité d'un sentinel/optional dans le `select`.
+
+4. **Recovery panic dans Release** : `defer recover()` interne + `defer lease.Release()` toujours appelé. Le compteur `swap_failures_total{panic}` est incrémenté pour observabilité. Sans ça, une panic dans `releaseWriter` (ex: bug DuckDB Close) bloquerait définitivement le prochain writer.
+
+5. **State `Error` non bloquant pour AcquireWriter** : si state == Error et qu'un sync demande un writer, on tente quand même le swap (peut-être que c'est ce qu'il faut pour récupérer). Si le swap RW réussit, on est passé `Error → Draining → RW` proprement. Si échec, on reste en Error. Pragmatique.
+
+**Tests (9/9 verts, 5.12s)** :
+- T1 baseline (commit 1, inchangé)
+- T2 — `TestProvider_SwapROToRWToRO_integration` : cycle complet + visibilité INSERT post-release
+- T6 — `TestProvider_RecoversFromSyncPanic_integration` : `defer Release` ramène l'état à RO sur panic
+- T8 — `TestProvider_GetTimeoutDuringLongSwap_integration` : timeout en ~100ms (readyTimeout test) sans deadlock, zéro fuite goroutine
+- T11 — `TestProvider_ReopenROFailureDegradesGracefully_integration` : `Error → ErrSwapFailed`, retry async réussit au 1er essai (hook consommé) → recovery `Error → RO`
+- + 4 tests RO du commit 2 (inchangés)
+
+**Prochaine étape** : commit 4 — drain inflight readers via `WaitGroup` + canal `ready` (déjà introduit). Tests T3/T5/T10 du plan landent ici, plus benchmark `BenchmarkProviderGet` pour valider l'overhead du Get sur hot path /health < 1µs/op.
+
+---
+
 ## [2026-05-18] feat(sharedprovider) — Commit 2 : Provider RO steady state + Manager
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 2/9 de la roadmap SharedDBProvider).
