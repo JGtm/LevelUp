@@ -94,7 +94,13 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 	filters port.WeaponKillFilters,
 ) ([]port.WeaponKillRow, error) {
 	q, args := buildWeaponKillsQuery(filters)
-	dbRows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	dbRows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
@@ -323,11 +329,17 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 //   - Prod : shared_matches_v2.duckdb attaché sous catalog 'shared' (ATTACH).
 //   - Tests : tables exposées sous schema 'shared' (CREATE SCHEMA shared).
 func (r *WeaponKillsRepo) weaponKillsTableExists(ctx context.Context) bool {
-	if r.pdb == nil || r.pdb.ReadDB() == nil {
+	if r.pdb == nil {
 		return false
 	}
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return false
+	}
+	defer release()
+
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, `
+	err = db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM information_schema.tables
 		WHERE table_name IN ('weapon_kills', 'v_weapon_kills')

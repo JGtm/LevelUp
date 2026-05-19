@@ -311,6 +311,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER, team_1_score INTEGER)`,
+		// Sprint B1 commit 8k.3 : colonnes alignées sur seedPlayerSchema pour
+		// permettre aux repos (weapon_kills, etc.) qui lisent grenade_kills /
+		// melee_kills / shots_* via SharedReadDB() de trouver le schéma attendu.
 		`CREATE TABLE shared.match_participants (
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
 			outcome INTEGER DEFAULT 0,
@@ -319,9 +322,30 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			damage_dealt DOUBLE, damage_taken DOUBLE,
 			time_played_seconds INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
 			kills_expected DOUBLE, deaths_expected DOUBLE,
+			kills_stddev DOUBLE, deaths_stddev DOUBLE,
 			rank INTEGER, is_ranked BOOLEAN DEFAULT FALSE, team_id INTEGER DEFAULT 0,
-			avg_life_seconds DOUBLE)`,
+			avg_life_seconds DOUBLE,
+			shots_fired INTEGER, shots_hit INTEGER,
+			headshot_kills INTEGER, max_killing_spree INTEGER,
+			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER)`,
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		// Sprint B1 commit 8k.3 : tables shared additionnelles pour permettre aux
+		// repos migrés vers SharedReadDB().Get() (medals_by_xuid, weapon_kills,
+		// highlight_events, match_exclusion, citations.LoadMedalTotals) de lire
+		// depuis pdb.Shared. Les schémas reflètent ceux de seedPlayerSchema pour
+		// garder le comportement cross-DB transparent côté tests.
+		`CREATE TABLE shared.medals_earned (
+			medal_id UBIGINT, medal_name_id UBIGINT, xuid VARCHAR, match_id VARCHAR, count INTEGER)`,
+		`CREATE TABLE shared.highlight_events (
+			match_id VARCHAR, xuid VARCHAR,
+			event_type VARCHAR, tick_count INTEGER, timestamp_utc TIMESTAMPTZ, time_ms BIGINT)`,
+		`CREATE TABLE shared.weapon_kills (
+			match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, kills INTEGER DEFAULT 1,
+			reconciled_as UBIGINT)`,
+		`CREATE VIEW shared.v_weapon_kills AS
+			SELECT match_id, xuid, weapon_id, kills,
+			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
+			FROM shared.weapon_kills`,
 		// shared.v_gamertag_lookup utilisée par Q10Encounters
 		// (LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid).
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
