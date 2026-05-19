@@ -1,9 +1,53 @@
 // Package duckdb — queries_squad.go : requêtes page Escouade et Synthèse.
 package duckdb
 
-// Q29 : Squad — top 10 coéquipiers les plus fréquents en escouade.
+// Q29TopTeammatesSharedTpl : Sprint B1 commit 9c.1 — partie shared du split
+// LoadTopTeammates. Découpé en :
+//
+//	Étape 1 (pdb.Player) : SELECT match_id FROM player_match_enrichment
+//	  WHERE is_with_friends = TRUE → liste de match_ids "avec amis".
+//	Étape 2 (SharedReader, ci-dessous) : aggregation sur match_participants
+//	  restreinte aux match_ids retournés en étape 1.
+//
+// IN-list dynamique : %s remplacé par Placeholders(len(matchIDs)).
+//
+// Paramètres positionnels :
+//
+//	?  = xuid (p2.xuid != ? — exclure le joueur principal de p2)
+//	?+ = matchIDs (IN-list)
+//	?  = xuid (p1.xuid = ? — filtre du joueur principal)
+const Q29TopTeammatesSharedTpl = `
+SELECT
+    p2.xuid,
+    COALESCE(vg.gamertag, p2.xuid)              AS gamertag,
+    COUNT(DISTINCT p1.match_id)                  AS games_together,
+    SUM(CASE WHEN p1.outcome = 2 THEN 1 ELSE 0 END) AS wins_together,
+    ROUND(
+        SUM(CASE WHEN p1.outcome = 2 THEN 1 ELSE 0 END) * 100.0
+        / NULLIF(COUNT(DISTINCT p1.match_id), 0), 1
+    )                                            AS win_rate,
+    COALESCE(AVG(CAST(p2.kills AS DOUBLE)), 0.0)  AS avg_kills,
+    COALESCE(AVG(CAST(p2.deaths AS DOUBLE)), 0.0) AS avg_deaths,
+    COALESCE(AVG(p2.kda), 0.0)                    AS avg_kda
+FROM match_participants p1
+JOIN match_participants p2
+    ON p2.match_id = p1.match_id
+    AND p2.team_id  = p1.team_id
+    AND p2.xuid    != ?
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
+WHERE p1.match_id IN (%s)
+  AND p1.xuid = ?
+  AND p2.xuid NOT LIKE 'bid(%%'
+GROUP BY p2.xuid, vg.gamertag
+ORDER BY games_together DESC
+LIMIT 50`
+
+// Q29 : LEGACY — Squad — top 10 coéquipiers les plus fréquents en escouade.
 // Paramètres : ?1 = xuid (p1 joueur principal), ?2 = xuid (exclure le joueur principal de p2).
 // Lit player_match_enrichment (player DB) JOIN shared.match_participants (x2).
+//
+// Conservé pour référence ; le code actuel utilise le split Q29TopTeammatesSharedTpl
+// (commit 9c.1). À supprimer après confirmation qu'aucun autre caller ne l'utilise.
 const Q29TopTeammates = `
 SELECT
     p2.xuid,
@@ -83,6 +127,10 @@ WHERE p1.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q31 : Squad — stats d'un coéquipier sur les matchs communs.
+//
+// Sprint B1 commit 9c.1 : query shared-only — naming root-level (pas de
+// préfixe `shared.`). Migrée vers SharedReader.Get dans LoadTeammateMatches.
+//
 // Paramètres : ?1 = xuid joueur principal (p_main), ?2 = xuid coéquipier (p).
 const Q31TeammateMatches = `
 SELECT
@@ -100,9 +148,9 @@ SELECT
     p.accuracy,
     CASE WHEN p.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
     CASE WHEN p.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score
-FROM shared.match_participants p
-JOIN shared.v_match_full r ON r.match_id = p.match_id
-JOIN shared.match_participants p_main
+FROM match_participants p
+JOIN v_match_full r ON r.match_id = p.match_id
+JOIN match_participants p_main
     ON p_main.match_id = p.match_id
     AND p_main.team_id  = p.team_id
     AND p_main.xuid     = ?

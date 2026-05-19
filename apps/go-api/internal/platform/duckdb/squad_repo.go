@@ -24,15 +24,36 @@ func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 
 // LoadTopTeammates charge les meilleurs coÃ©quipiers du joueur (Q29, top 50).
 //
-// TODO follow-up post-sprint B1 : split+merge cross-DB. Q29TopTeammates joint
-// player_match_enrichment ⨝ shared.match_participants (x2) ⨝ v_gamertag_lookup.
-// Tant que attachShared reste en place dans le pool, la query reste sur
-// pdb.ReadDB() (player conn avec ATTACH).
+// Sprint B1 commit 9c.1 : split cross-DB en 2 étapes.
+//
+//	Étape 1 (pdb.Player) : match_ids du joueur avec is_with_friends = TRUE.
+//	Étape 2 (SharedReader) : aggregation sur match_participants restreinte
+//	  aux match_ids retournés en étape 1, groupée par teammate xuid.
 func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain.TopTeammateRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q29TopTeammates, xuid, xuid)
+	matchIDs, err := r.loadWithFriendsMatchIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
+	}
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadTopTeammates: shared reader: %w", err)
+	}
+	defer release()
+
+	query := fmt.Sprintf(Q29TopTeammatesSharedTpl, Placeholders(len(matchIDs)))
+	args := make([]any, 0, 2+len(matchIDs))
+	args = append(args, xuid)
+	args = append(args, ToAnySlice(matchIDs)...)
+	args = append(args, xuid)
+
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
 	}
@@ -56,6 +77,29 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 		result = append(result, row)
 	}
 	return result, rows.Err()
+}
+
+// loadWithFriendsMatchIDs retourne les match_ids où player_match_enrichment.is_with_friends
+// est TRUE. Helper pour le split LoadTopTeammates (commit 9c.1).
+func (r *SquadRepo) loadWithFriendsMatchIDs(ctx context.Context) ([]string, error) {
+	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := r.pdb.Player.Query(ctx2,
+		`SELECT match_id FROM player_match_enrichment WHERE is_with_friends = TRUE`)
+	if err != nil {
+		return nil, fmt.Errorf("loadWithFriendsMatchIDs: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("loadWithFriendsMatchIDs scan: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 // LookupXUIDByGamertag rÃ©sout un gamertag (ILIKE, case-insensitive) vers son
@@ -154,15 +198,19 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 
 // LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
 //
-// TODO follow-up post-sprint B1 : split+merge cross-DB (Q31TeammateMatches : shared.match_participants
-// x2 + v_match_full). Strictement shared mais le filtre p_main JOIN crée une
-// dépendance multi-row par match — peut être migré directement vers SharedReader
-// au prochain commit. Reste sur pdb.ReadDB() pour stabilité court terme.
+// Sprint B1 commit 9c.1 : query shared-only (match_participants x2 + v_match_full)
+// migrée vers SharedReader.Get.
 func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.TeammateMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q31TeammateMatches, playerXUID, teammateXUID)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadTeammateMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q31TeammateMatches, playerXUID, teammateXUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTeammateMatches: %w", err)
 	}
