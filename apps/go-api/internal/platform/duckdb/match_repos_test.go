@@ -447,14 +447,17 @@ func TestSquadRepo_LoadSquadMatches_Empty(t *testing.T) {
 func TestSquadRepo_LoadSquadMatches_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	// Ajouter un coéquipier sur m1 (même team_id = 1)
-	_, err := pdb.Player.Exec(ctx,
-		`INSERT INTO shared.match_participants
-		 (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda,accuracy,time_played_seconds,team_mmr)
-		 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-		"m1", "xuid_mate_002", "TeamMate", 2, 8, 4, 1, 1.2, 0.55, 600, 1200.0)
-	if err != nil {
-		t.Fatal(err)
+	// Sprint B1 commit 9c.2 : double-write player+shared (le repo lit shared
+	// via SharedReader depuis 9c.2).
+	for _, db := range []*DB{pdb.Player, pdb.Shared} {
+		_, err := db.Exec(ctx,
+			`INSERT INTO shared.match_participants
+			 (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda,accuracy,time_played_seconds,team_mmr)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+			"m1", "xuid_mate_002", "TeamMate", 2, 8, 4, 1, 1.2, 0.55, 600, 1200.0)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	repo := NewSquadRepo(pdb)
 	rows, err := repo.LoadSquadMatches(ctx, pTestXUID, "xuid_mate_002")

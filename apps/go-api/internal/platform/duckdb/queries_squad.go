@@ -126,6 +126,57 @@ LEFT JOIN player_match_enrichment pme ON pme.match_id = p1.match_id
 WHERE p1.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
+// Q30SquadMatchesSharedQuery : Sprint B1 commit 9c.2 — partie shared du split
+// LoadSquadMatches. Toutes les tables au niveau root (catalogue
+// shared_matches_v2.duckdb directement). 25 colonnes shared incluant
+// perfect_kills (subquery medals_earned) + team_id/team_0/team_1 pour la
+// CASE my/enemy_team_score (déjà résolue en SQL).
+//
+// Les 4 colonnes player (session_id, session_label, performance_score,
+// is_with_friends) sont hydratées en étape 2 via mergePlayerEnrichments.
+//
+// Paramètres : ?1 = xuid coéquipier (p2), ?2 = xuid joueur principal (p1).
+const Q30SquadMatchesSharedQuery = `
+SELECT
+    p1.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    COALESCE(r.map_name, '')                                     AS map_name,
+    COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
+    COALESCE(r.pair_name_fr, r.pair_name, '')                    AS pair_name,
+    COALESCE(r.playlist_name_fr, r.playlist_name, '')            AS playlist_name,
+    COALESCE(r.is_firefight, FALSE)                              AS is_firefight,
+    COALESCE(r.is_ranked, FALSE)                                 AS is_ranked,
+    COALESCE(p1.outcome, 0)                                      AS outcome,
+    COALESCE(p1.kills, 0)                                        AS kills,
+    COALESCE(p1.deaths, 0)                                       AS deaths,
+    COALESCE(p1.assists, 0)                                      AS assists,
+    p1.kda,
+    p1.accuracy,
+    COALESCE(p1.time_played_seconds, 0)                          AS time_played_seconds,
+    COALESCE(r.duration_seconds, 0)                              AS duration_seconds,
+    COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
+    COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
+    COALESCE((
+        SELECT SUM(me.count)
+        FROM medals_earned me
+        WHERE me.match_id = p1.match_id
+          AND me.xuid = p1.xuid
+          AND me.medal_name_id = 1512363953
+    ), 0)::INTEGER                                              AS perfect_kills,
+    p1.enemy_mmr,
+    CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
+    CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+    COALESCE(r.map_id, '')                                               AS map_id,
+    COALESCE(r.playlist_id, '')                                          AS playlist_id
+FROM match_participants p1
+JOIN v_match_full r ON r.match_id = p1.match_id
+JOIN match_participants p2
+    ON p2.match_id = p1.match_id
+    AND p2.team_id  = p1.team_id
+    AND p2.xuid     = ?
+WHERE p1.xuid = ?
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+
 // Q31 : Squad — stats d'un coéquipier sur les matchs communs.
 //
 // Sprint B1 commit 9c.1 : query shared-only — naming root-level (pas de
