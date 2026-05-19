@@ -1,3 +1,25 @@
+## [2026-05-19] feat(B-swap) — Commit 9 : LEVELUP_USE_SHARED_PROVIDER=1 par défaut
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9 du sprint B1).
+
+**Livré** :
+
+`cmd/server/main.go:197-218` : flag `LEVELUP_USE_SHARED_PROVIDER` inverse de polarité.
+- **Avant** : `== "1"` (default OFF, legacy mode).
+- **Après** : `!= "0"` (default ON, Provider mode). "0" devient kill-switch d'urgence.
+
+**Bénéfice** : la prod utilise désormais le SharedDBProvider par défaut. Le bug initial (`auto_sync RunDelta` qui plantait avec "different configuration" sur Madina97294) est définitivement éliminé. Les fenêtres de swap RW sont gérées proprement.
+
+**Garde-fou** : flag `LEVELUP_USE_SHARED_PROVIDER=0` reste documenté comme kill-switch pour repli legacy en cas de régression critique constatée en prod. Monitoring suggéré : `shared_provider_swap_failures_total` (expvar) avant rollback.
+
+**Note explicite** : `attachShared` reste en place pour les 5 squad_repo cross-DB queries non migrées. Le split+merge complet est un follow-up post-sprint.
+
+**Tests verts** : suite intégration complète (sauf TestSeedTemplates / TestLoadTemplatesFromTOML / TestSeedPrestigeFromTOML — toutes des failures TOML pré-existantes sur `config/titles/halo_infinite/challenges/templates.toml` clé `cadence` dupliquée, non liées au sprint).
+
+**Prochaine étape (9b)** : revue qualité production-level (delivery-checklist skill).
+
+---
+
 ## [2026-05-19] test(B-swap) — Commit 8m : T5 burst SharedReader validate 0 Catalog Errors
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8m du sprint B1).
