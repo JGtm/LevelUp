@@ -1,3 +1,42 @@
+## [2026-05-19] test(e2e) — Commit 10c : multi-user concurrent sync sous trafic HTTP
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 10c — dernier E2E de la série bout-en-bout).
+
+**Scénario** : reproduction du flow auto_sync prod — plusieurs users dont les
+RunDelta sont lancés en parallèle par le scheduler, tous partagent le même
+Provider shared (un seul fichier `shared_matches_v2.duckdb`). C'est le pattern
+multi-tenant qui peut amplifier le bug initial Madina97294 si la coordination
+n'est pas robuste.
+
+**Livré** :
+
+1. **`engine_provider_multiuser_test.go`** (nouveau, build tag integration) :
+   - Helper `newMultiUserEnv(t, nUsers)` : tempdir + 1 Provider + N users
+     (chacun avec son pool, son engine, son mockHaloClient). Tous les engines
+     partagent le MÊME Provider via WithSharedProvider.
+   - `TestE2E_MultiUser_ConcurrentSync_HTTPReaders_integration` :
+     3 users × 6 matchs chacun, 3 `RunDelta` en parallèle via goroutines,
+     10 readers HTTP-like en boucle pendant tout le sync. Assertions :
+     - 3/3 syncs OK (dblease.AcquireWriter arbitre la sérialisation)
+     - ≥ 100 readerOK (1306 observés sur ~3s de sync)
+     - 0 Catalog Error
+     - 0 "different configuration"
+     - ≥ 3 matchs finaux dans match_registry (en réalité 18 = 3 × 6)
+     - Provider StateRO post-cycle
+
+**Résultats** : 3 runs consécutifs verts. Suite des 4 tests E2E (10a + 10b × 2 + 10c) :
+- TestE2E_SyncEngine_HTTPReaders_Concurrency_integration : 2.34s
+- TestE2E_MultiUser_ConcurrentSync_HTTPReaders_integration : 2.32s
+- TestE2E_SyncEngine_ContextCancel_ReadersUnaffected_integration : 0.60s
+- TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration : 0.84s
+
+**Contrat E2E validé** : auto_sync multi-user en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1)
+peut s'exécuter sans friction avec le trafic HTTP. dblease sérialise les writers,
+Provider isole les readers des fenêtres RW, zéro impact "different configuration"
+ou Catalog Error.
+
+---
+
 ## [2026-05-19] test(e2e) — Commit 10b : résilience sync engine ↔ readers (cancel + mock error)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 10b — 2 scénarios de friction E2E supplémentaires).
