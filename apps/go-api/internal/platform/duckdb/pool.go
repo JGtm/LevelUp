@@ -236,7 +236,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		}
 	}
 
-	// Sprint B1 commit 9c.4 : attachShared sur la conn player a été retiré.
+	// attachShared sur la conn player a été retiré.
 	// Toutes les queries shared passent désormais par SharedReader (Provider en
 	// prod, LegacySharedReader pour les tests sans Provider injecté). Voir
 	// ADR 0016. La fonction attachShared est conservée temporairement pour
@@ -253,7 +253,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		}
 	}
 
-	// Sprint B1 commit 9c.5 : attachShared sur SharedSocial retiré aussi.
+	// attachShared sur SharedSocial retiré aussi.
 	// media_repo passe désormais entièrement par SharedReader pour les queries
 	// shared.* — plus aucune conn du pool ne porte d'ATTACH shared.
 	// P5.3 : ATTACH global xbox_aliases sur SharedSocial aussi (media_repo fait

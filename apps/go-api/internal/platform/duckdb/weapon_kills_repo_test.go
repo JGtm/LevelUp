@@ -19,7 +19,7 @@ const wkTestXUIDOther = "xuid_player_002"
 // seedWeaponKills insere des kills d'arme pour deux joueurs sur deux matchs.
 // IDs choisis : 42 (>2, valide) et 100 (>2, valide). 0/1/2 sont exclus par Q16.
 //
-// Sprint B1 commit 8k.3 : double-write player+shared (cf. seedMedals). Le repo
+// double-write player+shared (cf. seedMedals). Le repo
 // WeaponKillsRepo lit désormais via SharedReadDB() → pdb.Shared.
 func seedWeaponKills(t *testing.T, pdb *PlayerDB) {
 	t.Helper()

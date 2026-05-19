@@ -25,7 +25,7 @@ func NewSquadRepo(pdb *PlayerDB) *SquadRepo {
 
 // LoadTopTeammates charge les meilleurs coÃ©quipiers du joueur (Q29, top 50).
 //
-// Sprint B1 commit 9c.1 : split cross-DB en 2 étapes.
+// split cross-DB en 2 étapes.
 //
 //	Étape 1 (pdb.Player) : match_ids du joueur avec is_with_friends = TRUE.
 //	Étape 2 (SharedReader) : aggregation sur match_participants restreinte
@@ -121,7 +121,7 @@ func (r *SquadRepo) LookupXUIDByGamertag(ctx context.Context, gamertag string) (
 	// Source canonique pour ce titre — peuplée par le sync engine. La DB globale
 	// est obsolète (migration one-shot souvent vide).
 	//
-	// Sprint B1 commit 9c.2 : shared-only via SharedReader, naming root-level.
+	// shared-only via SharedReader, naming root-level.
 	const q = `
 SELECT xuid
 FROM xuid_aliases
@@ -152,7 +152,7 @@ LIMIT 1`
 
 // LoadSquadMatches charge les matchs communs joueur+coÃ©quipier (Q30).
 //
-// Sprint B1 commit 9c.2 : split cross-DB en 3 étapes.
+// split cross-DB en 3 étapes.
 //
 //	Étape 1 (SharedReader) : Q30SquadMatchesSharedQuery — match_participants
 //	  ⨝ v_match_full ⨝ match_participants (teammate filter) + subquery
@@ -258,7 +258,7 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 
 // LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
 //
-// Sprint B1 commit 9c.1 : query shared-only (match_participants x2 + v_match_full)
+// query shared-only (match_participants x2 + v_match_full)
 // migrée vers SharedReader.Get.
 func (r *SquadRepo) LoadTeammateMatches(ctx context.Context, playerXUID, teammateXUID string) ([]domain.TeammateMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -320,7 +320,7 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	}
 	query := fmt.Sprintf(Q32SquadImpactEventsTemplate, strings.Join(placeholders, ","))
 
-	// Sprint B1 commit 8k.13 : shared-only via SharedReader.
+	// shared-only via SharedReader.
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("LoadImpactEvents: shared reader: %w", err)
@@ -370,7 +370,7 @@ func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID strin
 	}
 	query := fmt.Sprintf(Q32bMainTeamParticipantsTemplate, strings.Join(placeholders, ","))
 
-	// Sprint B1 commit 8k.13 : shared-only via SharedReader.
+	// shared-only via SharedReader.
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMainTeamParticipants: shared reader: %w", err)
@@ -407,7 +407,7 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// Sprint B1 commit 8k.13 : shared-only via SharedReader.
+	// shared-only via SharedReader.
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSynthesisHeatmap: shared reader: %w", err)
@@ -438,7 +438,7 @@ func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]do
 
 // LoadSynthesisMatches charge les matchs du joueur pour le calcul top_weeks (Q33b).
 //
-// Sprint B1 commit 9c.3 : split cross-DB en 3 étapes.
+// split cross-DB en 3 étapes.
 //
 //	Étape 1 (SharedReader) : Q33bSynthesisSharedQuery — match_participants ⨝
 //	  match_registry. 11 cols shared.
@@ -533,7 +533,7 @@ func (r *SquadRepo) mergeSynthesisEnrichments(ctx context.Context, rows []legacy
 // participants. Aucun filtre temporel — c'est l'historique complet "avec cette
 // escouade exacte".
 //
-// Sprint B1 commit 9c.4 : split cross-DB en 3 étapes.
+// split cross-DB en 3 étapes.
 //
 //	Étape 1 (SharedReader) : Q42MapStatsForSquadSharedTpl — retourne per-match
 //	  rows (match_id, map_id, outcome) avec le CTE squad_matches (filtre

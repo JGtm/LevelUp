@@ -45,7 +45,7 @@ func NewPlayerMatchesRepo(pdb *PlayerDB) *PlayerMatchesRepo {
 // L'appelant doit avoir valide les filtres via filters.Validate() en amont.
 // Le repo re-applique aussi sa propre validation defensive (input untrusted).
 //
-// Sprint B1 commit 8k.9 : split+merge cross-DB.
+// split+merge cross-DB.
 //
 //	Étape 1 (SharedReader) : query shared (v_match_full ⨝ match_participants ⨝
 //	subquery medals_earned) avec tous les filtres shared (Period, Outcome,
@@ -213,7 +213,7 @@ func classifyOrderBy(s string) (sharedQueryHints, string, error) {
 	return sharedQueryHints{}, "", fmt.Errorf("%w: %q", ErrUnknownOrderBy, s)
 }
 
-// playerMatchesSharedBaseSelect : Sprint B1 commit 8k.9 — partie shared du split
+// playerMatchesSharedBaseSelect : (ADR 0016) — partie shared du split
 // PlayerMatchesRepo.Load. Toutes les tables/vues référencées sont au niveau root
 // du catalogue shared_matches_v2.duckdb (pas de préfixe `shared.`).
 //

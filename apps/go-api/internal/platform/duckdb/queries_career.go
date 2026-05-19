@@ -66,7 +66,7 @@ FROM (
 LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
 ORDER BY ms.start_time DESC`
 
-// Q4Shared : Sprint B1 commit 8k.6 — partie shared du split LoadMatchesForFilters.
+// Q4Shared : (ADR 0016) — partie shared du split LoadMatchesForFilters.
 // Cross-DB JOIN historique (v_match_full ⨝ match_participants ⨝
 // player_match_enrichment) découpé pour passer par SharedReader sans toucher
 // le pool ATTACH.
@@ -114,7 +114,7 @@ FROM mv_player_matches
 WHERE xuid = ?
 ORDER BY start_time DESC`
 
-// Q5SharedHistory : Sprint B1 commit 8k.7 — partie shared du split LoadAll
+// Q5SharedHistory : (ADR 0016) — partie shared du split LoadAll
 // (match_history_repo). Cross-DB JOIN Q5MatchHistory découpé : la partie
 // shared retourne 25 colonnes (match metadata + participant stats + team_id
 // pour le calcul my/enemy_team_score côté Go).

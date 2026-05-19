@@ -194,7 +194,7 @@ func scanCampaign(row rowScanner) (campaign.ImprovementCampaign, error) {
 // CampaignSampleProvider implémente campaign.SampleProvider en lisant
 // match_participants (shared) joint à match_registry.
 //
-// Sprint B1 commit 8k.11 : reçoit un *PlayerDB pour accéder à SharedReader
+// reçoit un *PlayerDB pour accéder à SharedReader
 // (queries shared coordonnées avec le SharedDBProvider) et à pdb.Player
 // (lusr_component_history).
 //
@@ -277,7 +277,7 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 // `lusr_component_history` (table joueur), joint à `match_registry` (shared)
 // pour le filtre playlist et la chronologie.
 //
-// Sprint B1 commit 8k.11 : split cross-DB.
+// split cross-DB.
 //
 //	Étape 1 (SharedReader) : SELECT match_id, start_time FROM match_registry
 //	  WHERE start_time IN window [AND playlist_id = ?]

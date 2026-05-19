@@ -24,7 +24,7 @@ func NewFiltersRepo(pdb *PlayerDB) *FiltersRepo {
 // LoadMatchesForFilters charge tous les matchs du joueur pour la résolution cascade.
 // Utilise mv_player_matches si disponible, sinon fallback sur match_registry.
 //
-// Sprint B1 commit 8k.6 : split+merge cross-DB. La query historique unique
+// split+merge cross-DB. La query historique unique
 // (shared.v_match_full ⨝ shared.match_participants ⨝ player_match_enrichment)
 // est découpée en 2 :
 //  1. Partie shared (Q4SharedMatchesForFilters ou Q4MVSharedMatchesForFilters)

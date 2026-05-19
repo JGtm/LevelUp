@@ -61,7 +61,7 @@ func TestCompareRepo_GetLocalStats(t *testing.T) {
 	db := openMemDB(t)
 	ctx := context.Background()
 
-	// Sprint B1 commit 8k.10 : ajout des vues root-level pour aligner sur le
+	// ajout des vues root-level pour aligner sur le
 	// contrat SharedReader (queries sans préfixe `shared.`).
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
@@ -161,7 +161,7 @@ func TestCompareRepo_GetLocalStats_NotFound(t *testing.T) {
 	db := openMemDB(t)
 	ctx := context.Background()
 
-	// Sprint B1 commit 8k.10 : ajout des vues root-level pour aligner sur le
+	// ajout des vues root-level pour aligner sur le
 	// contrat SharedReader (queries sans préfixe `shared.`).
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
@@ -275,7 +275,7 @@ func TestCompareRepo_GetFavoriteWeapon(t *testing.T) {
 		`CREATE VIEW shared.v_weapon_kills AS
 			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
-		// Sprint B1 commit 8k.10 : vue root-level pour SharedReader.
+		// vue root-level pour SharedReader.
 		`CREATE VIEW v_weapon_kills AS SELECT * FROM shared.v_weapon_kills`,
 		// weapon_labels dans le même DB (Metadata = db dans le test).
 		`CREATE TABLE weapon_labels (

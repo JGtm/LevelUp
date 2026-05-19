@@ -267,7 +267,7 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	// start_time_utc est TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
 	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro aprÃ¨s le fix DuckDB
 	// (first_sync_at >= 2026-03-01 â†’ start_time dÃ©jÃ  UTC) qui n'auraient pas encore start_time_utc.
-	// Sprint B1 commit 9c.5 : query shared-only via SharedReader (root-level
+	// query shared-only via SharedReader (root-level
 	// naming). start_time_utc est TIMESTAMPTZ UTC garanti.
 	sharedDB, releaseShared, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
@@ -500,7 +500,7 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 	// xuid_aliases / match_participants. shared.xuid_aliases couvre les
 	// participants jamais croisés directement par le joueur courant.
 	// is_bot : aligné sur Q12 (queries_match.go) — pour badge "Bot" dans le picker.
-	// Sprint B1 commit 9c.5 : query shared-only via SharedReader (root-level naming).
+	// query shared-only via SharedReader (root-level naming).
 	q := `
 		SELECT mp.match_id,
 			COALESCE(vg.gamertag, va.gamertag, mp.xuid) AS gamertag,
@@ -601,7 +601,7 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
 	}
 
-	// Sprint B1 commit 9c.5 : récupérer map/mode du nouveau match via SharedReader.
+	// récupérer map/mode du nouveau match via SharedReader.
 	var mapN, pairN sql.NullString
 	if db, release, err := r.pdb.SharedReadDB().Get(ctx); err == nil {
 		_ = db.QueryRowContext(ctx, `
