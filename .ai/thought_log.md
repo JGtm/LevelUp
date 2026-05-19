@@ -1,3 +1,62 @@
+## [2026-05-19] refactor(player_matches_repo) — Commit 8k.9 : Load split+merge (BIG one)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.9 du sprint B1).
+
+**Contexte** : `PlayerMatchesRepo.Load` est le plus gros JOIN cross-DB du codebase :
+```
+FROM shared.match_participants p
+JOIN shared.v_match_full r ON r.match_id = p.match_id
+LEFT JOIN player_match_enrichment pme ON pme.match_id = p.match_id
+LEFT JOIN match_skill_rank msr ON msr.match_id = p.match_id
++ subquery COALESCE(SELECT SUM(count) FROM shared.medals_earned ...) AS perfect_kills
+```
+~50 colonnes scannées, ~10 filtres dynamiques (Period/Outcome/HadBotTeammate/
+IsFirefight/IsRanked/MinTimePlayed/ExcludeFriends/BTBExcluded/PlaylistKind/MapIDs),
+ORDER BY whitelist (start_time/performance_score ASC/DESC), LIMIT.
+
+**Livré (split en 3 round-trips + merge Go)** :
+
+1. **`playerMatchesSharedBaseSelect`** (queries) : partie shared SELECT (39 cols
+   incluant team_id + team_0/1_score + perfect_kills subquery). Tables au niveau
+   root (root naming aligné sur SharedReader, pas de `shared.` prefix).
+
+2. **`playerMatchesEnrichmentTpl` + `playerMatchesSkillRankTpl`** : queries
+   player_match_enrichment + match_skill_rank avec IN-list dynamique.
+
+3. **`PlayerMatchesRepo.Load` refactored en 4 helpers** :
+   - `loadSharedRows(ctx, filters)` : étape 1, applique tous les filtres shared
+     + ORDER BY + LIMIT si pushable.
+   - `loadEnrichmentsForMatches(ctx, matchIDs)` : étape 2 (player DB).
+   - `loadSkillRanksForMatches(ctx, matchIDs)` : étape 3 (player DB).
+   - `mergePlayerMatchRows(...)` : étape 4 — assemble + applique
+     HadBotTeammate (filter player-only) + re-tri performance_score si demandé
+     + LIMIT post-merge si non poussé.
+
+4. **`classifyOrderBy(s)`** : détermine si l'ORDER BY est sur colonne shared
+   (push SQL + LIMIT possible) ou player (sort+limit en Go).
+
+5. **`sortByPerformanceScore` (post-merge stable sort)** : NULLS LAST consistant
+   pour DESC et ASC.
+
+6. **Test seed updates** :
+   - `seedSharedDBSchema.shared.match_registry` : ajout `duration_seconds`,
+     `last_updated_at`, `playable_duration_seconds` (alignement seedPlayerSchema).
+   - `seedSharedDBSchema` : ajout vue root-level `medals_earned`.
+   - `seedPlayerMatchesFixtures` : boucle sur `[]*DB{pdb.Player, pdb.Shared}`
+     pour les inserts shared.* (registry, participants, friend) ; PME reste
+     player-only.
+   - `TestPlayerMatchesRepo_Load_PairModeHydrated` : double-write fixture.
+
+**Code mort retiré** : `scanPlayerMatchRow` (remplacé par `scanSharedPlayerMatchRow`),
+`orderByClause` (remplacé par `classifyOrderBy`).
+
+**Tests verts** : 21/21 TestPlayerMatchesRepo + suite duckdb complète (sauf TOML
+pré-existant), sharedprovider, api/handlers, sync 127s.
+
+**Prochaine étape (8k.10)** : compare_repo (5 méthodes).
+
+---
+
 ## [2026-05-19] refactor(career_repo) — Commit 8k.8 : Q26/Q27 shared-only migrés vers SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.8 du sprint B1).

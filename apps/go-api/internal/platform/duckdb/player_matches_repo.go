@@ -16,6 +16,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,6 +44,17 @@ func NewPlayerMatchesRepo(pdb *PlayerDB) *PlayerMatchesRepo {
 //
 // L'appelant doit avoir valide les filtres via filters.Validate() en amont.
 // Le repo re-applique aussi sa propre validation defensive (input untrusted).
+//
+// Sprint B1 commit 8k.9 : split+merge cross-DB.
+//
+//	Étape 1 (SharedReader) : query shared (v_match_full ⨝ match_participants ⨝
+//	subquery medals_earned) avec tous les filtres shared (Period, Outcome,
+//	IsFirefight, IsRanked, MinTimePlayed, BTBExcluded, PlaylistKind, MapIDs,
+//	ExcludeFriendsXUIDs) + ORDER BY si tri sur colonne shared.
+//	Étape 2 (pdb.Player) : player_match_enrichment WHERE match_id IN (...)
+//	Étape 3 (pdb.Player) : match_skill_rank WHERE match_id IN (...)
+//	Étape 4 (Go) : merge LEFT JOIN, application HadBotTeammate filter post-merge,
+//	re-tri sur performance_score (PME) si nécessaire, LIMIT.
 func (r *PlayerMatchesRepo) Load(
 	ctx context.Context,
 	filters port.PlayerMatchFilters,
@@ -51,41 +63,47 @@ func (r *PlayerMatchesRepo) Load(
 		return nil, fmt.Errorf("PlayerMatchesRepo.Load: %w", err)
 	}
 
-	q, args, err := r.buildQuery(filters)
-	if err != nil {
-		return nil, fmt.Errorf("PlayerMatchesRepo.Load: build query: %w", err)
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	// Étape 1 : query shared.
+	sharedResults, err := r.loadSharedRows(ctx, filters)
 	if err != nil {
-		return nil, fmt.Errorf("PlayerMatchesRepo.Load: query: %w", err)
+		return nil, fmt.Errorf("PlayerMatchesRepo.Load: %w", err)
 	}
-	defer rows.Close()
+	if len(sharedResults) == 0 {
+		return nil, nil
+	}
 
-	var out []canonical.PlayerMatchRow
-	for rows.Next() {
-		row, err := scanPlayerMatchRow(rows, r.pdb.XUID, r.pdb.Gamertag)
-		if err != nil {
-			return nil, fmt.Errorf("PlayerMatchesRepo.Load: scan: %w", err)
-		}
-		out = append(out, row)
+	matchIDs := make([]string, 0, len(sharedResults))
+	for i := range sharedResults {
+		matchIDs = append(matchIDs, sharedResults[i].matchID)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("PlayerMatchesRepo.Load: rows: %w", err)
+
+	// Étape 2 + 3 : enrichments + skill ranks.
+	enrichments, err := r.loadEnrichmentsForMatches(ctx, matchIDs)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerMatchesRepo.Load: %w", err)
 	}
+	skillRanks, err := r.loadSkillRanksForMatches(ctx, matchIDs)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerMatchesRepo.Load: %w", err)
+	}
+
+	// Étape 4 : merge + filtres player + tri PME + LIMIT.
+	out := r.mergePlayerMatchRows(sharedResults, enrichments, skillRanks, filters)
 	return out, nil
 }
 
-// buildQuery compose le SELECT et les WHERE dynamiques selon les filtres.
-// Les valeurs scalaires sont passees via placeholders ?, jamais interpolees.
-// Seuls les fragments structurels (ORDER BY whitelist, IN (..., ?)) sont
-// composes en string.
-func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any, error) {
+// buildSharedQuery compose la partie shared (v_match_full ⨝ match_participants
+// + subquery medals_earned) avec les filtres applicables shared-only.
+// HadBotTeammate (PME) reste filtré côté Go après merge.
+//
+// ORDER BY : si sur colonne shared (start_time), ajouté ici + LIMIT propagé.
+// Si sur colonne player (performance_score), order/limit appliqués post-merge.
+func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string, []any, sharedQueryHints, error) {
 	var sb strings.Builder
-	sb.WriteString(playerMatchesBaseSelect)
+	sb.WriteString(playerMatchesSharedBaseSelect)
 
 	args := []any{r.pdb.XUID}
 
@@ -101,10 +119,6 @@ func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any
 		}
 		sb.WriteString(fmt.Sprintf(" AND COALESCE(p.outcome, 0) IN (%s)",
 			strings.Join(placeholders, ",")))
-	}
-	if f.HadBotTeammate != nil {
-		sb.WriteString(" AND COALESCE(pme.had_bot_teammate, FALSE) = ?")
-		args = append(args, *f.HadBotTeammate)
 	}
 	if f.IsFirefight != nil {
 		sb.WriteString(" AND COALESCE(r.is_firefight, FALSE) = ?")
@@ -129,7 +143,7 @@ func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any
 			args = append(args, x)
 		}
 		sb.WriteString(fmt.Sprintf(
-			" AND p.match_id NOT IN (SELECT match_id FROM shared.match_participants WHERE xuid IN (%s))",
+			" AND p.match_id NOT IN (SELECT match_id FROM match_participants WHERE xuid IN (%s))",
 			strings.Join(placeholders, ",")))
 	}
 	if f.BTBExcluded {
@@ -138,7 +152,7 @@ func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any
 	if f.PlaylistKind != nil {
 		clause, err := playlistKindClause(*f.PlaylistKind)
 		if err != nil {
-			return "", nil, err
+			return "", nil, sharedQueryHints{}, err
 		}
 		if clause != "" {
 			sb.WriteString(" AND ")
@@ -155,29 +169,65 @@ func (r *PlayerMatchesRepo) buildQuery(f port.PlayerMatchFilters) (string, []any
 			strings.Join(placeholders, ",")))
 	}
 
-	orderBy, err := orderByClause(f.OrderBy)
+	hints, orderBy, err := classifyOrderBy(f.OrderBy)
 	if err != nil {
-		return "", nil, err
+		return "", nil, sharedQueryHints{}, err
 	}
 	sb.WriteString(" ORDER BY ")
 	sb.WriteString(orderBy)
 
-	if f.Limit > 0 {
+	// LIMIT côté SQL uniquement si ORDER BY shared ET pas de filtre PME.
+	// Sinon (PME order ou filtre HadBotTeammate), récupère tout et applique en Go.
+	if hints.canPushLimit && f.Limit > 0 && f.HadBotTeammate == nil {
 		sb.WriteString(" LIMIT ?")
 		args = append(args, f.Limit)
 	}
 
-	return sb.String(), args, nil
+	return sb.String(), args, hints, nil
 }
 
-// playerMatchesBaseSelect est la partie fixe du SELECT (colonnes + JOINs +
-// WHERE p.xuid = ?). Les filtres additionnels sont concatenes en AND.
+// sharedQueryHints regroupe les hints sur le découpage ORDER BY + LIMIT entre
+// SQL et Go.
+type sharedQueryHints struct {
+	canPushLimit  bool // ORDER BY est sur colonne shared, LIMIT peut être SQL
+	postMergeSort string
+}
+
+// classifyOrderBy détermine si l'ORDER BY peut s'appliquer côté SQL (shared col)
+// ou doit s'appliquer post-merge en Go (PME col). Retourne aussi la clause SQL
+// à utiliser (vers shared cols seulement).
+func classifyOrderBy(s string) (sharedQueryHints, string, error) {
+	switch strings.TrimSpace(s) {
+	case "", "start_time DESC":
+		return sharedQueryHints{canPushLimit: true}, "r.start_time DESC", nil
+	case "start_time ASC":
+		return sharedQueryHints{canPushLimit: true}, "r.start_time ASC", nil
+	case "performance_score DESC":
+		// Tri post-merge. SQL garde un ordre stable mais non significatif.
+		return sharedQueryHints{canPushLimit: false, postMergeSort: "performance_score DESC"},
+			"r.start_time DESC", nil
+	case "performance_score ASC":
+		return sharedQueryHints{canPushLimit: false, postMergeSort: "performance_score ASC"},
+			"r.start_time DESC", nil
+	}
+	return sharedQueryHints{}, "", fmt.Errorf("%w: %q", ErrUnknownOrderBy, s)
+}
+
+// playerMatchesSharedBaseSelect : Sprint B1 commit 8k.9 — partie shared du split
+// PlayerMatchesRepo.Load. Toutes les tables/vues référencées sont au niveau root
+// du catalogue shared_matches_v2.duckdb (pas de préfixe `shared.`).
+//
+// 39 colonnes : match metadata + participant stats + team_id + team_0/1_score
+// + perfect_kills (subquery sur medals_earned). Les colonnes PME (session,
+// performance, dominance, had_bot, is_with_friends) et match_skill_rank (tier,
+// rating, etc.) sont hydratées en étape 2/3 (cf. mergePlayerMatchRows).
+//
 // Bug #2/#7 : on ne fallback PAS sur l'EN dans la projection FR. Si NULL en
 // DB, on renvoie chaîne vide ; HomeRepo.EnrichCanonicalAssetTranslations
 // remplit ensuite Labels["fr"] depuis metadata.asset_translations.
 //
 // Bug #3 : projeter damage_dealt / damage_taken pour ComputeCombatYield.
-const playerMatchesBaseSelect = `
+const playerMatchesSharedBaseSelect = `
 SELECT
     p.match_id,
     r.start_time,
@@ -214,21 +264,8 @@ SELECT
     p.damage_taken,
     p.team_mmr,
     p.enemy_mmr,
-    pme.session_id,
-    pme.session_label,
-    pme.performance_score,
-    COALESCE(pme.dominance_flag, 0)                   AS dominance_flag,
-    COALESCE(pme.had_bot_teammate, FALSE)             AS had_bot_teammate,
-    COALESCE(pme.is_with_friends, FALSE)              AS is_with_friends,
     COALESCE(r.team_0_score, -1)                      AS team_0_score,
     COALESCE(r.team_1_score, -1)                      AS team_1_score,
-    msr.rating_type                                   AS skill_rating_type,
-    msr.rating_value                                  AS skill_rating_value,
-    msr.tier                                          AS skill_tier,
-    msr.tier_fr                                       AS skill_tier_fr,
-    msr.sub_tier                                      AS skill_sub_tier,
-    msr.rating_delta                                  AS skill_delta,
-    msr.playlist_group                                AS skill_playlist_group,
     p.max_killing_spree,
     p.personal_score,
     p.rank                                               AS rank_in_match,
@@ -239,129 +276,268 @@ SELECT
     p.shots_hit,
     COALESCE((
         SELECT SUM(me.count)
-        FROM shared.medals_earned me
+        FROM medals_earned me
         WHERE me.match_id = p.match_id
           AND me.xuid = p.xuid
           AND me.medal_name_id = 1512363953
     ), 0)::INTEGER                                       AS perfect_kills
-FROM shared.match_participants p
-JOIN shared.v_match_full r ON r.match_id = p.match_id
-LEFT JOIN player_match_enrichment pme ON pme.match_id = p.match_id
-LEFT JOIN match_skill_rank msr ON msr.match_id = p.match_id
+FROM match_participants p
+JOIN v_match_full r ON r.match_id = p.match_id
 WHERE p.xuid = ?`
 
-// scanPlayerMatchRow scanne une row SQL en canonical.PlayerMatchRow. Les
-// colonnes nullable utilisent sql.Null* puis sont converties en *T.
-func scanPlayerMatchRow(rows *sql.Rows, xuid, gamertag string) (canonical.PlayerMatchRow, error) {
-	var (
-		matchID, mapID, mapName, mapNameFR                          string
-		playlistID, playlistName, playlistNameFR                    string
-		variantID, variantName                                      string
-		pairID, pairName, pairNameFR                                string
-		startTime                                                   time.Time
-		durationSeconds, teamID                                     int
-		outcomeCode                                                 sql.NullInt64
-		kills, deaths, assists, headshotKills                       int
-		timePlayedSeconds                                           int
-		dominanceFlag                                               int
-		isRanked, isFirefight                                       bool
-		hadBotTeammate, isWithFriends                               bool
-		kda, accuracy, teamMMR, enemyMMR, performanceScore          sql.NullFloat64
-		avgLifeSeconds                                              sql.NullFloat64
-		damageDealt, damageTaken                                    sql.NullFloat64
-		sessionID                                                   sql.NullInt64
-		sessionLabel                                                sql.NullString
-		team0Score, team1Score                                      int
-		skillRatingType, skillTier, skillTierFR, skillPlaylistGroup sql.NullString
-		skillRatingValue, skillDelta                                sql.NullFloat64
-		skillSubTier                                                sql.NullInt64
-		maxKillingSpree, personalScore, rankInMatch                 sql.NullInt64
-		grenadeKills, meleeKills, powerWeaponKills                  sql.NullInt64
-		shotsFired, shotsHit                                        sql.NullInt64
-		perfectKills                                                sql.NullInt64
-	)
-	if err := rows.Scan(
-		&matchID, &startTime, &durationSeconds,
-		&mapID, &mapName, &mapNameFR,
-		&playlistID, &playlistName, &playlistNameFR,
-		&variantID, &variantName,
-		&pairID, &pairName, &pairNameFR,
-		&isRanked, &isFirefight,
-		&teamID, &outcomeCode,
-		&kills, &deaths, &assists,
-		&kda, &headshotKills, &accuracy,
-		&timePlayedSeconds, &avgLifeSeconds, &damageDealt, &damageTaken,
-		&teamMMR, &enemyMMR,
-		&sessionID, &sessionLabel, &performanceScore,
-		&dominanceFlag, &hadBotTeammate, &isWithFriends,
-		&team0Score, &team1Score,
-		&skillRatingType, &skillRatingValue,
-		&skillTier, &skillTierFR, &skillSubTier, &skillDelta, &skillPlaylistGroup,
-		&maxKillingSpree, &personalScore, &rankInMatch,
-		&grenadeKills, &meleeKills, &powerWeaponKills,
-		&shotsFired, &shotsHit,
-		&perfectKills,
-	); err != nil {
-		return canonical.PlayerMatchRow{}, err
+// loadSharedRows exécute l'étape 1 du split (query shared) et retourne les
+// playerMatchScanResult partiellement remplis (cols shared seulement).
+func (r *PlayerMatchesRepo) loadSharedRows(ctx context.Context, filters port.PlayerMatchFilters) ([]playerMatchScanResult, error) {
+	q, args, _, err := r.buildSharedQuery(filters)
+	if err != nil {
+		return nil, fmt.Errorf("build shared query: %w", err)
 	}
-	return projectPlayerMatchRow(playerMatchScanResult{
-		matchID:            matchID,
-		startTime:          startTime,
-		durationSeconds:    durationSeconds,
-		mapID:              mapID,
-		mapName:            mapName,
-		mapNameFR:          mapNameFR,
-		playlistID:         playlistID,
-		playlistName:       playlistName,
-		playlistNameFR:     playlistNameFR,
-		variantID:          variantID,
-		variantName:        variantName,
-		pairID:             pairID,
-		pairName:           pairName,
-		pairNameFR:         pairNameFR,
-		isRanked:           isRanked,
-		isFirefight:        isFirefight,
-		teamID:             teamID,
-		outcomeCode:        outcomeCode,
-		kills:              kills,
-		deaths:             deaths,
-		assists:            assists,
-		headshotKills:      headshotKills,
-		timePlayedSeconds:  timePlayedSeconds,
-		dominanceFlag:      dominanceFlag,
-		hadBotTeammate:     hadBotTeammate,
-		isWithFriends:      isWithFriends,
-		kda:                kda,
-		accuracy:           accuracy,
-		avgLifeSeconds:     avgLifeSeconds,
-		damageDealt:        damageDealt,
-		damageTaken:        damageTaken,
-		teamMMR:            teamMMR,
-		enemyMMR:           enemyMMR,
-		performanceScore:   performanceScore,
-		sessionID:          sessionID,
-		sessionLabel:       sessionLabel,
-		team0Score:         team0Score,
-		team1Score:         team1Score,
-		skillRatingType:    skillRatingType,
-		skillRatingValue:   skillRatingValue,
-		skillTier:          skillTier,
-		skillTierFR:        skillTierFR,
-		skillSubTier:       skillSubTier,
-		skillDelta:         skillDelta,
-		skillPlaylistGroup: skillPlaylistGroup,
-		maxKillingSpree:    maxKillingSpree,
-		personalScore:      personalScore,
-		rankInMatch:        rankInMatch,
-		grenadeKills:       grenadeKills,
-		meleeKills:         meleeKills,
-		powerWeaponKills:   powerWeaponKills,
-		shotsFired:         shotsFired,
-		shotsHit:           shotsHit,
-		perfectKills:       perfectKills,
-		xuid:               xuid,
-		gamertag:           gamertag,
-	}), nil
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("shared query: %w", err)
+	}
+	defer rows.Close()
+
+	var results []playerMatchScanResult
+	for rows.Next() {
+		s, err := scanSharedPlayerMatchRow(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan shared row: %w", err)
+		}
+		s.xuid = r.pdb.XUID
+		s.gamertag = r.pdb.Gamertag
+		results = append(results, s)
+	}
+	return results, rows.Err()
+}
+
+// loadEnrichmentsForMatches récupère player_match_enrichment pour la liste de
+// match_ids (étape 2 du split). Retourne une map indexée par match_id.
+func (r *PlayerMatchesRepo) loadEnrichmentsForMatches(ctx context.Context, matchIDs []string) (map[string]playerMatchEnrichmentRow, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	query := fmt.Sprintf(playerMatchesEnrichmentTpl, Placeholders(len(matchIDs)))
+	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return nil, fmt.Errorf("enrichment query: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string]playerMatchEnrichmentRow, len(matchIDs))
+	for rows.Next() {
+		var (
+			mid  string
+			e    playerMatchEnrichmentRow
+		)
+		if err := rows.Scan(&mid, &e.sessionID, &e.sessionLabel, &e.performanceScore,
+			&e.dominanceFlag, &e.hadBotTeammate, &e.isWithFriends); err != nil {
+			return nil, fmt.Errorf("enrichment scan: %w", err)
+		}
+		out[mid] = e
+	}
+	return out, rows.Err()
+}
+
+// loadSkillRanksForMatches récupère match_skill_rank pour la liste de match_ids
+// (étape 3 du split). Retourne une map indexée par match_id.
+func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchIDs []string) (map[string]playerMatchSkillRankRow, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	query := fmt.Sprintf(playerMatchesSkillRankTpl, Placeholders(len(matchIDs)))
+	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return nil, fmt.Errorf("skill_rank query: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string]playerMatchSkillRankRow, len(matchIDs))
+	for rows.Next() {
+		var (
+			mid string
+			s   playerMatchSkillRankRow
+		)
+		if err := rows.Scan(&mid, &s.ratingType, &s.ratingValue, &s.tier,
+			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup); err != nil {
+			return nil, fmt.Errorf("skill_rank scan: %w", err)
+		}
+		out[mid] = s
+	}
+	return out, rows.Err()
+}
+
+// mergePlayerMatchRows assemble les rows finaux depuis les 3 sources :
+// shared + enrichments + skill_ranks. Applique le filtre HadBotTeammate (player)
+// post-merge, le re-tri éventuel par performance_score, et le LIMIT.
+func (r *PlayerMatchesRepo) mergePlayerMatchRows(
+	shared []playerMatchScanResult,
+	enrichments map[string]playerMatchEnrichmentRow,
+	skillRanks map[string]playerMatchSkillRankRow,
+	filters port.PlayerMatchFilters,
+) []canonical.PlayerMatchRow {
+	// Hydrate les cols player dans chaque playerMatchScanResult.
+	for i := range shared {
+		if e, ok := enrichments[shared[i].matchID]; ok {
+			shared[i].sessionID = e.sessionID
+			shared[i].sessionLabel = e.sessionLabel
+			shared[i].performanceScore = e.performanceScore
+			shared[i].dominanceFlag = int(e.dominanceFlag)
+			shared[i].hadBotTeammate = e.hadBotTeammate
+			shared[i].isWithFriends = e.isWithFriends
+		}
+		if s, ok := skillRanks[shared[i].matchID]; ok {
+			shared[i].skillRatingType = s.ratingType
+			shared[i].skillRatingValue = s.ratingValue
+			shared[i].skillTier = s.tier
+			shared[i].skillTierFR = s.tierFR
+			shared[i].skillSubTier = s.subTier
+			shared[i].skillDelta = s.delta
+			shared[i].skillPlaylistGroup = s.playlistGroup
+		}
+	}
+
+	// Filtre HadBotTeammate (player-only, post-merge).
+	if filters.HadBotTeammate != nil {
+		want := *filters.HadBotTeammate
+		filtered := shared[:0]
+		for _, s := range shared {
+			if s.hadBotTeammate == want {
+				filtered = append(filtered, s)
+			}
+		}
+		shared = filtered
+	}
+
+	// Re-tri sur performance_score si demandé (l'ordre SQL était sur start_time).
+	hints, _, _ := classifyOrderBy(filters.OrderBy)
+	if hints.postMergeSort == "performance_score DESC" {
+		sortByPerformanceScore(shared, true)
+	} else if hints.postMergeSort == "performance_score ASC" {
+		sortByPerformanceScore(shared, false)
+	}
+
+	// LIMIT post-merge si non poussé en SQL.
+	if filters.Limit > 0 && (!hints.canPushLimit || filters.HadBotTeammate != nil) {
+		if len(shared) > filters.Limit {
+			shared = shared[:filters.Limit]
+		}
+	}
+
+	out := make([]canonical.PlayerMatchRow, 0, len(shared))
+	for _, s := range shared {
+		out = append(out, projectPlayerMatchRow(s))
+	}
+	return out
+}
+
+// scanSharedPlayerMatchRow scanne la partie shared (39 cols) en
+// playerMatchScanResult (cols PME/skill_rank/identité restent zero).
+func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
+	var s playerMatchScanResult
+	if err := rows.Scan(
+		&s.matchID, &s.startTime, &s.durationSeconds,
+		&s.mapID, &s.mapName, &s.mapNameFR,
+		&s.playlistID, &s.playlistName, &s.playlistNameFR,
+		&s.variantID, &s.variantName,
+		&s.pairID, &s.pairName, &s.pairNameFR,
+		&s.isRanked, &s.isFirefight,
+		&s.teamID, &s.outcomeCode,
+		&s.kills, &s.deaths, &s.assists,
+		&s.kda, &s.headshotKills, &s.accuracy,
+		&s.timePlayedSeconds, &s.avgLifeSeconds, &s.damageDealt, &s.damageTaken,
+		&s.teamMMR, &s.enemyMMR,
+		&s.team0Score, &s.team1Score,
+		&s.maxKillingSpree, &s.personalScore, &s.rankInMatch,
+		&s.grenadeKills, &s.meleeKills, &s.powerWeaponKills,
+		&s.shotsFired, &s.shotsHit,
+		&s.perfectKills,
+	); err != nil {
+		return playerMatchScanResult{}, err
+	}
+	return s, nil
+}
+
+// playerMatchEnrichmentRow porte les colonnes player_match_enrichment chargées
+// en étape 2.
+type playerMatchEnrichmentRow struct {
+	sessionID        sql.NullInt64
+	sessionLabel     sql.NullString
+	performanceScore sql.NullFloat64
+	dominanceFlag    int
+	hadBotTeammate   bool
+	isWithFriends    bool
+}
+
+// playerMatchSkillRankRow porte les colonnes match_skill_rank chargées en
+// étape 3.
+type playerMatchSkillRankRow struct {
+	ratingType    sql.NullString
+	ratingValue   sql.NullFloat64
+	tier          sql.NullString
+	tierFR        sql.NullString
+	subTier       sql.NullInt64
+	delta         sql.NullFloat64
+	playlistGroup sql.NullString
+}
+
+// playerMatchesEnrichmentTpl : SQL pour l'étape 2 du split (player_match_enrichment
+// pour une liste de match_ids).
+const playerMatchesEnrichmentTpl = `
+SELECT
+    match_id,
+    session_id,
+    session_label,
+    performance_score,
+    COALESCE(dominance_flag, 0)        AS dominance_flag,
+    COALESCE(had_bot_teammate, FALSE)  AS had_bot_teammate,
+    COALESCE(is_with_friends, FALSE)   AS is_with_friends
+FROM player_match_enrichment
+WHERE match_id IN (%s)`
+
+// playerMatchesSkillRankTpl : SQL pour l'étape 3 du split (match_skill_rank
+// pour une liste de match_ids).
+const playerMatchesSkillRankTpl = `
+SELECT
+    match_id,
+    rating_type,
+    rating_value,
+    tier,
+    tier_fr,
+    sub_tier,
+    rating_delta,
+    playlist_group
+FROM match_skill_rank
+WHERE match_id IN (%s)`
+
+// sortByPerformanceScore trie les rows par performanceScore (sql.NullFloat64).
+// NULLS LAST pour DESC ; NULLS LAST pour ASC aussi (NULL = pas de valeur).
+func sortByPerformanceScore(rows []playerMatchScanResult, desc bool) {
+	less := func(i, j int) bool {
+		a, b := rows[i].performanceScore, rows[j].performanceScore
+		if !a.Valid && !b.Valid {
+			return false
+		}
+		if !a.Valid {
+			return false // a est NULL → j (b) en premier
+		}
+		if !b.Valid {
+			return true
+		}
+		if desc {
+			return a.Float64 > b.Float64
+		}
+		return a.Float64 < b.Float64
+	}
+	// Tri stable pour conserver l'ordre start_time DESC en cas d'égalité.
+	sort.SliceStable(rows, less)
 }
 
 // playerMatchScanResult agrege les valeurs scannees pour faciliter la
@@ -611,23 +787,8 @@ func playlistKindClause(kind string) (string, error) {
 // dans la whitelist des alias supportes.
 var ErrUnknownPlaylistKind = errors.New("PlayerMatchesRepo: unknown PlaylistKind")
 
-// orderByClause traduit le filtre OrderBy en expression SQL safe (whitelist).
-// Vide -> ordre par defaut (start_time DESC).
-func orderByClause(s string) (string, error) {
-	switch strings.TrimSpace(s) {
-	case "", "start_time DESC":
-		return "r.start_time DESC", nil
-	case "start_time ASC":
-		return "r.start_time ASC", nil
-	case "performance_score DESC":
-		return "pme.performance_score DESC NULLS LAST", nil
-	case "performance_score ASC":
-		return "pme.performance_score ASC NULLS LAST", nil
-	}
-	return "", fmt.Errorf("%w: %q", ErrUnknownOrderBy, s)
-}
-
 // ErrUnknownOrderBy est retournee si OrderBy n'est pas dans la whitelist.
+// Utilisée par classifyOrderBy (cf. partie split shared/post-merge).
 var ErrUnknownOrderBy = errors.New("PlayerMatchesRepo: unknown OrderBy")
 
 // nullFloatPtr convertit sql.NullFloat64 en *float64.
