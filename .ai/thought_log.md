@@ -1,3 +1,38 @@
+## [2026-05-19] feat(B3) — Commit 8f COMPLETÉ : DETACH explicite débloque B3 (POC diagnostique)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`). B3 fonctionne. Test E2E `TestPool_PrepareAndRestoreSharedSwap_integration` VERT.
+
+**Méthodologie corrigée** : suite à la frustration utilisateur et la reconnaissance d'une erreur de méthodologie ("je code avant de valider les primitives"), j'ai écrit un POC isolé `poc_swap_diagnostic_test.go` avec 5 scénarios :
+
+| Test | Action | Résultat |
+|---|---|---|
+| S1 | OpenRO → Close → OpenRW | ✅ PASS |
+| S2 | 2× OpenRO + Close 1 → OpenRW refusé ; Close 2 → OpenRW OK | ✅ PASS |
+| **S3** | OpenRO + ATTACH player + **Reopen** player + Close shared → OpenRW | ❌ FAIL — Reopen ne libère pas ATTACH |
+| S4 | Comme S3 + Sleep 500ms | ❌ FAIL — pas de purge temporaire |
+| **S5** | OpenRO + ATTACH player + **DETACH** shared + Close shared → OpenRW | ✅ **PASS** |
+
+**INSIGHT CRITIQUE** : `Reopen()` côté Go ne libère PAS les ATTACHs côté driver DuckDB-Go (les ATTACHs sont propagés ou recréés sur la nouvelle conn). Mais `DETACH shared` explicite libère immédiatement.
+
+**Pivot de PrepareForSharedSwap** : remplacé la stratégie `Reopen` (échouait) par `DETACH IF EXISTS shared / shared_matches_v2 + Close pdb.Shared`. Le pool ne touche plus à Player ni à Metadata — DETACH suffit. Plus simple, plus rapide (qq µs vs qq ms), et **ça marche**.
+
+**Helper `detachShared(ctx, db, gamertag, label)`** : best-effort DETACH sur les 2 aliases possibles (`shared` explicite + `shared_matches_v2` auto-attach), erreurs en debug log.
+
+**Tests verts** :
+- `TestPool_PrepareAndRestoreSharedSwap_integration` (E2E B3) : passe en 0.53s
+- `TestPool_PrepareForSharedSwap_NoopWithoutSharedReader_integration` : mode legacy no-op
+- POC S1/S2/S5 : OK
+- POC S3/S4 : transformés en tests "rouge attendu" qui PASSent en documentant la limitation Reopen
+- Toute la suite duckdb : 73s vert
+- sharedprovider : 9s vert
+- `go build ./cmd/server` : OK
+
+**Méta-leçon** : 20 min de POC isolé ont révélé la vraie cause là où 3 commits de code applicatif ont pataugé. À retenir : pour les sprints touchant les couches basses, **valider chaque primitive driver avant de construire au-dessus**.
+
+**Prochaine étape (8g)** : câbler `provider.Subscribe(adapter)` dans `main.go` pour que le pool soit notifié des swaps en mode flag-on. Adapter traduit `sharedprovider.SwapEvent` vers `duckdb.SwapDirection` (évite le cycle d'import).
+
+---
+
 ## [2026-05-19] WIP(B3) — Commits 8e+8f : Provider PreSwap + pool mécanique + DÉCOUVERTE LIMITATION
 
 **Statut** : Partiellement complété — mécanique pool+Provider en place mais test E2E SKIPPÉ. **Limitation découverte tardivement** : l'auto-attach DuckDB-Go bloque le swap RW même après Reopen des conns Go-level.

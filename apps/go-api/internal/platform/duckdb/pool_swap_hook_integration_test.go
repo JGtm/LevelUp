@@ -89,11 +89,6 @@ func setupPoolFixturesForSwap(t *testing.T) (sharedPath string, provider sharedp
 // Si ce test passe : la mécanique B3 est fonctionnelle. Reste à câbler
 // via Subscribe au commit 8g.
 func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
-	t.Skip("commit 8f WIP — l'auto-attach DuckDB-Go semble persister même " +
-		"après Close des conns Go-level (pdb.Shared, pdb.Metadata, Provider.handle). " +
-		"OpenReadWrite échoue avec 'Cannot attach shared_matches_v2 - already attached'. " +
-		"Réviser la stratégie B3 ou pivoter vers B1 — point d'étape utilisateur requis.")
-
 	_, provider, pdb := setupPoolFixturesForSwap(t)
 	defer func() { _ = provider.Close() }()
 
