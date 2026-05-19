@@ -1,3 +1,56 @@
+## [2026-05-19] refactor(pool) — Commit 9c.5 : media_repo migré + retrait final attachShared/createSharedAliasViews
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9c.5 — DERNIÈRE migration de la dette résiduelle du sprint B1).
+
+**Livré** :
+
+1. **`media_repo.go`** — 3 sites shared-only migrés vers `pdb.SharedReadDB().Get()` + naming root-level :
+   - `LoadMatchCandidatesForMedia` (~line 270) : match_registry ⨝ match_participants
+   - `loadMatchLobbies` (~line 488) : match_participants + v_gamertag_lookup + xuid_aliases
+   - `SetMediaMatchAssociation` (lookup map/mode, ~line 606) : match_registry
+
+2. **`pool.go::openPlayerDB`** : suppression de `attachShared(ctx, socialDB, cfg.SharedDBPath)` (ligne 254). SharedSocial n'a plus de schéma `shared` ATTACH'é.
+
+3. **`pool.go`** : **suppression définitive** de :
+   - `attachShared` (fonction + workaround auto-attach DuckDB-Go)
+   - `createSharedAliasViews` (workaround VIEW alias)
+   - `sharedAliasTables` (liste des tables aliasable)
+   
+   Plus aucune conn du pool ne porte d'ATTACH shared. La conn `pdb.Shared` (LegacySharedReader fallback pour les tests) ouvre directement le fichier sans alias.
+
+4. **`pool_swap_hook.go`** : réécrit en version simplifiée :
+   - `PrepareForSharedSwap` : Close pdb.Shared seulement (plus de DETACH).
+   - `RestoreSharedAfterSwap` : OpenReadOnly + assign pdb.Shared seulement (plus de re-ATTACH).
+   - Fonction `detachShared` supprimée (plus appelée).
+   - `OnSharedSwap` inchangé dans son contrat.
+
+**Résultats finaux** :
+
+- **Architecture finale propre** : un seul chemin d'accès shared = SharedReader (Provider en prod, LegacySharedReader en fallback). Aucun ATTACH dans le pool. Le bug initial "different configuration" est non seulement fixé mais structurellement impossible à reproduire.
+- **Code mort retiré** : 80 LOC de workarounds DuckDB-Go (attachShared + createSharedAliasViews + sharedAliasTables + detachShared) supprimés.
+- **Tests verts** : suite intégration complète (sauf TOML failures pré-existantes hors scope sprint).
+
+**Récap final du sprint B1** :
+
+| Phase | Statut |
+|---|---|
+| Bug initial fixé (auto_sync sur Madina97294) | ✅ |
+| SharedDBProvider + ADR 0016 | ✅ |
+| 14 repos shared-only migrés | ✅ |
+| 5 repos cross-DB split+merge | ✅ |
+| 5 squad_repo cross-DB split+merge (Q29/Q30/Q31/Q33b/Q42) | ✅ |
+| media_repo (3 sites shared-only) | ✅ |
+| LookupXUIDByGamertag | ✅ |
+| Retrait attachShared sur player | ✅ |
+| Retrait attachShared sur SharedSocial | ✅ |
+| Suppression attachShared/createSharedAliasViews/sharedAliasTables/detachShared | ✅ |
+| Tests T5 burst SharedReader (5/5 runs, 0 Catalog Error) | ✅ |
+| ADR 0016 + thought_log + CLAUDE.md | ✅ |
+
+**Sprint B1 100% terminé** — branche prête pour PR vers `main`.
+
+---
+
 ## [2026-05-19] refactor(pool) — Commit 9c.4 : retrait attachShared sur pdb.Player
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9c.4 du sprint B1).

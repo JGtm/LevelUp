@@ -249,13 +249,9 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		}
 	}
 
-	// ATTACH shared_matches_v2 sur SharedSocial pour les JOIN match_registry dans Q37.
-	if socialDB != nil && cfg.SharedDBPath != "" {
-		if err := attachShared(ctx, socialDB, cfg.SharedDBPath); err != nil {
-			// Non bloquant : les colonnes map/mode seront NULL.
-			_ = err
-		}
-	}
+	// Sprint B1 commit 9c.5 : attachShared sur SharedSocial retiré aussi.
+	// media_repo passe désormais entièrement par SharedReader pour les queries
+	// shared.* — plus aucune conn du pool ne porte d'ATTACH shared.
 	// P5.3 : ATTACH global xbox_aliases sur SharedSocial aussi (media_repo fait
 	// `JOIN global.xuid_aliases` sur les likers de médias).
 	if socialDB != nil && cfg.GlobalXuidAliasesDBPath != "" {
@@ -297,84 +293,6 @@ func ensurePlayerDBMigrations(path string) error {
 
 	if err := migration.RunForDB(rwDB.SQLDb(), migration.TargetPlayer); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
-	}
-	return nil
-}
-
-// attachShared attache shared_matches_v2.duckdb sur une connexion player sous
-// l'alias `shared`. Le code SQL applicatif référence partout `shared.X` pour
-// les tables match_registry, match_participants, etc.
-//
-// Cas spécial DuckDB-Go : quand main.go ouvre déjà `sharedDB` séparément via
-// OpenReadWriteShared, le fichier `shared_matches_v2.duckdb` est auto-attaché
-// dans chaque nouvelle connexion DuckDB du process sous l'alias auto-nommé
-// `shared_matches_v2` (filename sans .duckdb). Tenter `ATTACH ... AS shared`
-// échoue alors avec "Unique file handle conflict".
-//
-// Workaround : si on détecte cette situation, créer un schéma `shared` peuplé
-// de VIEWs qui redirigent vers les tables de `shared_matches_v2`. Le code SQL
-// applicatif fonctionne alors transparentement.
-func attachShared(ctx context.Context, db *DB, sharedPath string) error {
-	_, err := db.Exec(ctx,
-		fmt.Sprintf("ATTACH '%s' AS shared (READ_ONLY)", sharedPath),
-	)
-	if err == nil {
-		return nil
-	}
-
-	// L'ATTACH a échoué. Vérifier si shared est déjà accessible (idempotence
-	// classique : autre goroutine a déjà attaché).
-	var count int
-	if pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM shared.match_registry").Scan(&count); pingErr == nil {
-		return nil
-	}
-
-	// Pas accessible via `shared.*`. Si DuckDB-Go a auto-attaché shared_matches_v2
-	// (cas du conflict "Unique file handle"), créer des VIEWs alias.
-	if pingErr := db.QueryRow(ctx, "SELECT COUNT(*) FROM shared_matches_v2.match_registry").Scan(&count); pingErr == nil {
-		if aliasErr := createSharedAliasViews(ctx, db); aliasErr != nil {
-			return fmt.Errorf("attach shared: alias views creation failed: %w (attach err: %v)", aliasErr, err)
-		}
-		return nil
-	}
-
-	// Ni `shared` ni `shared_matches_v2` accessibles → vraie erreur.
-	return fmt.Errorf("attach shared: %w", err)
-}
-
-// sharedAliasTables liste les tables de `shared_matches_v2.duckdb` qui doivent
-// être exposées sous le schéma `shared` quand l'ATTACH direct n'est pas possible
-// (cf. attachShared).
-//
-// Cette liste DOIT rester en sync avec sharedSchemaSQL (sync/schema.go) :
-// toute table ajoutée dans le schéma shared doit être ajoutée ici sinon le
-// code applicatif qui interroge `shared.X` plantera quand le workaround est
-// actif.
-var sharedAliasTables = []string{
-	"match_registry",
-	"match_participants",
-	"highlight_events",
-	"medals_earned",
-	"killer_victim_pairs",
-	"xuid_aliases",
-	"weapon_kills",
-}
-
-// createSharedAliasViews crée le schéma `shared` (s'il n'existe pas) puis
-// expose chaque table de sharedAliasTables comme une VIEW pointant vers
-// `shared_matches_v2.<table>`. Idempotent (CREATE OR REPLACE).
-func createSharedAliasViews(ctx context.Context, db *DB) error {
-	if _, err := db.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS shared"); err != nil {
-		return fmt.Errorf("create schema shared: %w", err)
-	}
-	for _, table := range sharedAliasTables {
-		stmt := fmt.Sprintf(
-			"CREATE OR REPLACE VIEW shared.%s AS SELECT * FROM shared_matches_v2.%s",
-			table, table,
-		)
-		if _, err := db.Exec(ctx, stmt); err != nil {
-			return fmt.Errorf("create view shared.%s: %w", table, err)
-		}
 	}
 	return nil
 }
