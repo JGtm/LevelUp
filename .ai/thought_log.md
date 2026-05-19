@@ -1,3 +1,95 @@
+## [2026-05-20] feat(observability) — Commit 17 : event_id propagé à tous les flows sync
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 17 — instrumentation event_id sur tous les flows liés au sync).
+
+**Contexte** : commit 16 a introduit le système multi-module. Pour que
+l'event_id soit utile en diag prod, il faut un point d'instrumentation
+à chaque entry point sync-related. Sans ça, un sync planté laisse des
+logs orphelins sans corrélation cross-module.
+
+**Périmètre instrumenté** :
+
+1. **`scheduler.tick` + `scheduler.sync:<gamertag>`** (`internal/scheduler/auto_sync.go`)
+   - Run() tick loop : event_id par tick (`scheduler.tick:<rand>`).
+   - syncPlayer() : sous-event par joueur (`scheduler.sync:<gamertag>`).
+
+2. **`auth.resolve:<gamertag>` + `auth.refresh:<gamertag>`** (`internal/platform/auth/pool/resolver.go`)
+   - Resolve() : event_id par échange OAuth/XSTS/Spartan/Clearance.
+   - Refresh() : event_id par refresh forcé (typiquement post-401/403).
+
+3. **`auth.refresher_loop`** (`internal/platform/auth/pool/pool.go`)
+   - refresherLoop() : event_id sur la loop globale (vie du process).
+
+4. **`auth.watcher_refresh:<gamertag>`** (`internal/platform/auth/watcher_refresh.go`)
+   - EnsureWatcherAccessToken() : event_id par refresh access_token watcher.
+
+5. **`auth.token_refresh_loop`** (`internal/platform/auth/refresh_loop.go`)
+   - RefreshLoop.Run() : event_id sur la loop XSTS/OAuth (5min).
+
+6. **`watcher.daemon` + sous-events** (`internal/watcher/daemon.go`)
+   - Daemon.Start() : event_id parent pour toute la vie du daemon.
+   - connectAndSubscribe() : `watcher.rta` pour RTA WebSocket lifecycle.
+   - consumeQueue() : `watcher.queue` + sous-event `watcher.trigger:<gt>` par match dequeue.
+   - AddPlayer() : `watcher.add_player:<gt>` (typiquement SSO login).
+
+7. **HTTP handlers déclenchant sync** (`internal/api/handlers/sync_handler.go` + `backfill.go`)
+   - StartInitialSync : `http.sync.initial:<slug>`.
+   - StartDeltaSync : `http.sync.delta:<slug>`.
+   - StartSyncAll : `http.sync.all`.
+   - StartBackfill : `http.backfill:<slug>`.
+   - L'event_id est injecté dans `r.Context()` via `*r = *r.WithContext(ctx)` →
+     propagé à toute la goroutine async du job.
+
+**Hiérarchie typique d'un event_id** :
+
+Quand auto_sync tick → syncPlayer pour Madina97294 → engine.RunDelta →
+Provider.AcquireWriter → pool callback, on aura **6 event_ids différents
+dans les logs**, chacun identifiant son niveau :
+
+```
+event_id="scheduler.tick:a1b2..."          (logs/scheduler.log)
+event_id="scheduler.sync:Madina97294:..."  (logs/scheduler.log)
+event_id="auth.resolve:Madina97294:..."    (logs/auth.log)
+event_id="sync.RunDelta:..."               (logs/sync.log)
+event_id="auth.refresh:Madina97294:..."    (logs/auth.log, si 401 mid-sync)
+```
+
+Chaque sous-event est créé via `logging.WithEvent(ctx, ...)` qui PRÉSERVE
+l'event_id parent dans le ctx (n'écrase pas). Le `ContextHandler` choisit
+**le dernier event_id** au moment du log, donc on voit le niveau le plus
+spécifique. Pour reconstituer le timeline complet d'un tick :
+
+```bash
+# Tous les logs d'un tick scheduler donné (incluant ses sous-events)
+grep -h 'scheduler.tick:a1b2' logs/*.log | jq -r '"\(.time) [\(.level)] [\(.event_id)] \(.msg)"' | sort
+```
+
+**Vérifications** :
+- `go build ./...` OK
+- Tests verts : scheduler (4s), auth (10s), auth/pool (2s), watcher (1s),
+  api/handlers (15s)
+- `-race` final passe sur tous les packages instrumentés
+
+**Couverture finale event_id** :
+- 4 entry points scheduler/auth/watcher en boucles infinies (event_id par
+  cycle)
+- 4 entry points HTTP handlers (event_id par requête)
+- Auto-propagation cross-module via ContextHandler
+
+**Limites connues** :
+- Les callbacks `Subscriber` du Provider (`func(SwapEvent)`) ne propagent
+  pas le ctx du caller (signature ancienne). Pour traçabilité complète
+  swap → pool callback, refactor signature en commit follow-up
+  (`func(context.Context, SwapEvent)`).
+- Les goroutines async lancées par les handlers HTTP partagent l'event_id
+  via `*r = *r.WithContext(ctx)`, mais si une goroutine recrée son ctx
+  via `context.Background()`, le lien est perdu. Audit ad-hoc des goroutines
+  asynchrones de chaque handler en cas de blind spot.
+
+**Branche désormais à 50 commits ahead d'origin.**
+
+---
+
 ## [2026-05-20] feat(observability) — Commit 16 : système logs multi-module + event_id
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 16 — observabilité production-grade).

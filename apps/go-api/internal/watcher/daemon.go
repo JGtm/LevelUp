@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/presence"
 	syncpkg "levelup/go-api/internal/sync"
@@ -119,12 +120,17 @@ func NewDaemon(cfg DaemonConfig, titleReg *title.Registry, syncRunner syncpkg.Sy
 // Start démarre le daemon. Non bloquant — lance des goroutines internes.
 func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary) {
 	ctx, d.cancel = context.WithCancel(ctx)
+	// Sprint B1 commit 17 : event_id sur le daemon (un id pour toute la vie
+	// du watcher). Sous-events spécifiques (rta, queue, player) créés dans
+	// les fonctions appelées.
+	ctx, daemonID := logging.WithEvent(ctx, "watcher.daemon")
 	d.rootCtx = ctx // capturé pour qu'AddUserClient puisse lancer des sous-goroutines liées à la même durée de vie
 	d.running = true
 
 	slog.InfoContext(ctx, "watcher_daemon: démarrage",
 		"players", len(playerList),
 		"max_parallel_sync", d.cfg.MaxParallelSync,
+		"event", daemonID,
 	)
 
 	// Créer le client RTA
@@ -259,6 +265,12 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 		return fmt.Errorf("watcher_daemon: AddPlayer requires non-empty XUID (gamertag=%q)", p.Gamertag)
 	}
 
+	// Sprint B1 commit 17 : event_id pour tracer l'ajout d'un nouveau player
+	// au watcher (typiquement déclenché par SSO Xbox login).
+	ctx, evID := logging.WithEvent(ctx, "watcher.add_player:"+p.Gamertag)
+	slog.InfoContext(ctx, "watcher_daemon: AddPlayer démarré",
+		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
+
 	d.playersMu.Lock()
 	if _, exists := d.players[p.Gamertag]; exists {
 		d.playersMu.Unlock()
@@ -334,6 +346,12 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 
 // connectAndSubscribe gère la connexion RTA et l'abonnement aux présences.
 func (d *Daemon) connectAndSubscribe(ctx context.Context) {
+	// Sprint B1 commit 17 : event_id pour tracer le cycle de vie RTA
+	// (connexion WebSocket, subscribe par joueur, reconnects). Hérite du
+	// daemon parent si présent — sous-event pour granularité.
+	ctx, rtaID := logging.WithEvent(ctx, "watcher.rta")
+	slog.InfoContext(ctx, "watcher_daemon: RTA connectAndSubscribe démarré", "event", rtaID)
+
 	reconnectMgr := presence.NewReconnectManager(
 		d.rtaClient,
 		presence.DefaultReconnectPolicy(),
@@ -396,12 +414,23 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 
 // consumeQueue consomme la MatchQueue et soumet au Coordinator.
 func (d *Daemon) consumeQueue(ctx context.Context) {
+	// Sprint B1 commit 17 : event_id sur la loop globale. Chaque match
+	// dequeue génère son propre sous-event (par gamertag) pour tracer
+	// le déclenchement du sync.
+	baseCtx, qID := logging.WithEvent(ctx, "watcher.queue")
+	slog.InfoContext(baseCtx, "watcher_daemon: queue consumer démarré", "event", qID)
+
 	for {
 		select {
-		case <-ctx.Done():
+		case <-baseCtx.Done():
 			return
 		case req := <-d.queue.Dequeue():
-			d.coordinator.Submit(ctx, syncpkg.CoordinatorRequest{
+			// Sous-event par dequeue : identifie le déclenchement d'un sync
+			// par le watcher (vs un déclenchement périodique scheduler).
+			reqCtx, reqID := logging.WithEvent(baseCtx, "watcher.trigger:"+req.Gamertag)
+			slog.InfoContext(reqCtx, "watcher_daemon: match dequeued → sync trigger",
+				"gamertag", req.Gamertag, "xuid", req.XUID, "match_count", len(req.MatchIDs), "event", reqID)
+			d.coordinator.Submit(reqCtx, syncpkg.CoordinatorRequest{
 				Gamertag: req.Gamertag,
 				XUID:     req.XUID,
 				MatchIDs: req.MatchIDs,

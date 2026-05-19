@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -238,22 +239,27 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
+			// Sprint B1 commit 17 : event_id sur chaque tick pour tracer le
+			// cycle scheduler complet à travers les modules (scheduler →
+			// auth → sync → provider → pool → handlers post-sync).
+			tickCtx, tickID := logging.WithEvent(ctx, "scheduler.tick")
 			cfg, err := s.settings.Load()
 			if err != nil {
-				slog.WarnContext(ctx, "auto_sync: lecture settings échouée — tick ignoré", "err", err)
+				slog.WarnContext(tickCtx, "auto_sync: lecture settings échouée — tick ignoré", "err", err)
 				continue
 			}
 			if !cfg.SpnkrAutoSyncEnabled {
-				slog.DebugContext(ctx, "auto_sync: désactivé dans les settings, tick ignoré")
+				slog.DebugContext(tickCtx, "auto_sync: désactivé dans les settings, tick ignoré")
 				continue
 			}
 			if newInterval := resolveInterval(cfg.SpnkrAutoSyncIntervalMinutes, cfg.SpnkrAutoSyncIntervalHours); newInterval != interval {
-				slog.InfoContext(ctx, "auto_sync: intervalle mis à jour", "old", interval, "new", newInterval)
+				slog.InfoContext(tickCtx, "auto_sync: intervalle mis à jour", "old", interval, "new", newInterval)
 				interval = newInterval
 				ticker.Reset(interval)
 			}
-			res := s.RunOnce(ctx)
-			slog.InfoContext(ctx, "auto_sync: cycle terminé",
+			slog.InfoContext(tickCtx, "auto_sync: tick démarré", "event", tickID)
+			res := s.RunOnce(tickCtx)
+			slog.InfoContext(tickCtx, "auto_sync: cycle terminé",
 				"total", res.Total,
 				"synced", res.Synced,
 				"skipped", res.Skipped,
@@ -261,12 +267,12 @@ func (s *AutoSyncScheduler) Run(ctx context.Context) {
 				"duration", res.Duration.Round(time.Millisecond),
 			)
 			if res.Failed > 0 {
-				slog.WarnContext(ctx, "auto_sync: des joueurs ont échoué — consulter le snapshot diag",
+				slog.WarnContext(tickCtx, "auto_sync: des joueurs ont échoué — consulter le snapshot diag",
 					"failed_count", res.Failed,
 				)
 			}
 			if res.Total > 0 && res.Skipped == res.Total {
-				slog.WarnContext(ctx, "auto_sync: aucun joueur synchronisé — vérifier le pool",
+				slog.WarnContext(tickCtx, "auto_sync: aucun joueur synchronisé — vérifier le pool",
 					"pool_size", s.poolSizeSafe(),
 					"hint", "voir GET /api/v1/_diag/auto-sync/snapshot pour le détail",
 				)
@@ -338,7 +344,12 @@ const (
 // Enregistre toujours un PlayerOutcomeDetail (via defer) pour exposition via
 // /api/v1/_diag/auto-sync/snapshot.
 func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
-	slog.DebugContext(ctx, "auto_sync: traitement joueur", "gamertag", p.Gamertag, "xuid", p.XUID)
+	// Sprint B1 commit 17 : event_id par joueur (sous-événement du tick).
+	// Permet de filtrer logs/*.log pour reconstituer le timeline d'un user
+	// donné indépendamment des autres en cours de sync.
+	ctx, evID := logging.WithEvent(ctx, "scheduler.sync:"+p.Gamertag)
+	slog.InfoContext(ctx, "auto_sync: traitement joueur démarré",
+		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
 
 	startedAt := time.Now()
 	detail := PlayerOutcomeDetail{
