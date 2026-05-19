@@ -1,3 +1,34 @@
+## [2026-05-19] test(e2e) — Commit 10b : résilience sync engine ↔ readers (cancel + mock error)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 10b — 2 scénarios de friction E2E supplémentaires).
+
+**Livré** :
+
+1. **`engine_provider_resilience_test.go`** (nouveau, build tag integration) :
+   - `TestE2E_SyncEngine_ContextCancel_ReadersUnaffected_integration` :
+     8 goroutines readers en boucle. Sync `RunDelta` lancé, ctx annulé après 50ms.
+     Vérifie : 0 Catalog Error, 0 "different configuration", ≥ 50 readerOK,
+     Provider retombe à StateRO post-cancel.
+   - `TestE2E_SyncEngine_MockClientError_ProviderRecovers_integration` :
+     mock `getHistoryErr` activé, RunDelta retourne warnings≥1 + inserted=0.
+     Subsequent reader Get() OK + 2e RunDelta (mock fonctionnel) processe les
+     matchs normalement. Provider StateRO conservé entre les runs.
+
+**3e scénario non couvert ici (déjà couvert ailleurs)** : Get timeout pendant
+swap nécessite `sharedprovider.SetReadyTimeoutForTest` qui est test-only intra-package.
+Le scénario reste valide via `provider_timeout_integration_test.go` qui le couvre
+en isolation (sans engine).
+
+**Résultats** : 3 runs consécutifs verts (13s pour les 3 tests E2E). Aucune
+régression sur la suite sync.
+
+**Contrat post-commit** :
+- Sync cancel mid-run n'impacte pas les readers (rollback Provider propre).
+- API failure (GetMatchHistory) ne corrompt pas le Provider — readers et
+  subsequent syncs fonctionnent normalement.
+
+---
+
 ## [2026-05-19] fix(sync) + test(e2e) — Commit 10a : double dblease deadlock + E2E sync↔readers
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 10a — premier E2E vrai engine + Provider, et fix d'un **bug latent critique** révélé par ce test).
