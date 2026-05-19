@@ -102,7 +102,13 @@ func (r *MatchHistoryRepo) LoadMapWinRates(ctx context.Context) (map[string][2]i
 	WHERE p.xuid = ? AND r.map_name IS NOT NULL
 	GROUP BY r.map_name`
 
-	rows, err := r.pdb.Shared.Query(ctx, q, r.pdb.XUID)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMapWinRates: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMapWinRates: %w", err)
 	}

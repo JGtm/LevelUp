@@ -1,3 +1,26 @@
+## [2026-05-19] refactor(repos) — Commit 8d : career/match_history/synthesis (3 sites)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8d du mega-sprint B).
+
+3 sites migrés vers `SharedReadDB().Get(ctx)` pattern :
+- `career_repo.go:513` (`GetEncounters`)
+- `match_history_repo.go:105` (`LoadMapWinRates`)
+- `synthesis_repo.go:60` (`LoadEncounters`)
+
+Suite duckdb : 33.8s vert. sharedprovider : 8.7s vert.
+
+**Découverte importante pour la suite du sprint** : tous les sites `pdb.Shared.*` directs sont **maintenant migrés** (commits 8c+8d, 9 sites total). Les ~15 autres repos qui apparaissent dans le grep `JOIN shared.` font leurs JOINs **via la conn player ATTACH'ée** (pas via `pdb.Shared`). Ils utilisent `r.pdb.Player.Query(ctx, "... JOIN shared.X ...")` ou `r.pdb.ReadDB().Query(...)`.
+
+Pour ces 15 repos, migrer signifie soit :
+- **Split + merge Go** : 2 queries séparées (player puis shared) + merge en Go. Très invasif, perte perf JOIN.
+- **ATTACH inversé** : faire les JOINs sur la conn shared (Provider) avec ATTACH player. Complexe.
+
+**Le plan initial 8e-8j sous-estimait la complexité de ces migrations**. À discuter avant d'attaquer.
+
+**Prochaine étape** : point avec utilisateur pour décider stratégie 8e-8j (split-merge vs ATTACH inversé vs autre).
+
+---
+
 ## [2026-05-19] refactor(filters_repo) — Commit 8c : migrer 6 sites pdb.Shared → SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8c du mega-sprint B).
