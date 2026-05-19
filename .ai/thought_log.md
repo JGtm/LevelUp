@@ -1,3 +1,48 @@
+## [2026-05-19] WIP(B3) — Commits 8e+8f : Provider PreSwap + pool mécanique + DÉCOUVERTE LIMITATION
+
+**Statut** : Partiellement complété — mécanique pool+Provider en place mais test E2E SKIPPÉ. **Limitation découverte tardivement** : l'auto-attach DuckDB-Go bloque le swap RW même après Reopen des conns Go-level.
+
+**Ce qui est livré (et fonctionnel)** :
+1. `DirectionPreSwapToRW` ajouté à l'API Subscribe (subscriber.go)
+2. Notif synchrone repositionnée en Phase 3.5 d'AcquireWriter — entre `Close handle Provider` et `OpenReadWrite` (provider.go)
+3. `PlayerDB.{sharedDBPath, userTimezone, bSwapEnabled}` (pool.go)
+4. `pool.{PrepareForSharedSwap, RestoreSharedAfterSwap, OnSharedSwap}` + `SwapDirection` enum (pool_swap_hook.go)
+5. Tests Subscribe PreSwap (vert)
+6. Test Noop mode legacy (vert)
+
+**Ce qui ne fonctionne pas** (test `TestPool_PrepareAndRestoreSharedSwap_integration` SKIPPÉ) :
+
+Le scénario E2E `Subscribe(PreSwap) → pool ferme tous ses handles → Provider OpenReadWrite` **échoue** avec :
+```
+Binder Error: Unique file handle conflict: Cannot attach "shared_matches_v2"
+- the database file "..." is already attached by database "shared_matches_v2"
+```
+
+**Investigation menée** :
+- Filename `shared.duckdb` → alias auto-attach = `shared` (conflit avec ATTACH explicite). Corrigé en utilisant `shared_matches_v2.duckdb` (filename de prod). Erreur change vers `shared_matches_v2`.
+- Ordre dans `PrepareForSharedSwap` : Close shared d'abord puis Reopen player (pour éviter auto-attach). N'a pas résolu.
+- Ajout Reopen metadata (auto-attach peut être sur n'importe quelle conn). N'a pas résolu.
+- Timing notif déplacé en Phase 3.5 (après Close handle Provider, avant OpenReadWrite). N'a pas résolu.
+
+**Hypothèse forte** : DuckDB-Go maintient un cache de fichiers ouverts au niveau driver C (au-delà du cache Go-level `openDBs`). Ce cache n'est purgé qu'au shutdown du process. Tant que ce cache pense que shared est ouvert quelque part, OpenReadWrite tente un auto-attach qui conflicte avec lui-même.
+
+**Conséquence pour le sprint** :
+
+B3 (DETACH/REATTACH coordonné) **ne marche pas comme prévu** à cause de cette limitation driver. Pour avancer :
+
+- **Option B1 (split+merge Go)** : 15 repos à migrer, ~2000 lignes, perte -3 à -10× perf JOIN. Plusieurs jours. C'était l'option écartée pour B3.
+- **Option Stop** : on garde les commits 1-8d + 8e (infra Subscribe API utile) + 8f (mécanique pool, prête mais inopérante). Le bug "different configuration" reste tolerated comme aujourd'hui. **Tous les bénéfices d'infra** sont livrés (Provider, Manager, Drain readers, Subscribe API, métriques expvar), mais le fix du bug initial n'est pas atteint.
+- **Investigation supplémentaire** : creuser le code DuckDB-Go pour confirmer l'hypothèse cache C, voir si une primitive permet de forcer la purge. Risque : ça peut être un dead-end (limitation immuable du driver).
+
+**Recommandation actuelle** : point d'étape utilisateur. Vu que B1 demande plusieurs jours et que l'investigation B3 peut être un dead-end, **l'option Stop est honorable** : on accepte que le sprint a livré une infra complète mais que le bug initial reste. Les options Pour le futur :
+- Option investigation : confirmer la limitation driver et idéalement la patcher upstream
+- Option B1 : sprint distinct, planifié et budgeté
+- Option C : changer de moteur de stockage (DuckDB → autre)
+
+**Tests** : suite complète vert (34s + 5.4s) avec le test E2E B3 skippé. go build OK.
+
+---
+
 ## [2026-05-19] feat(sharedprovider) — Commit 8e (B3) : DirectionPreSwapToRW synchrone
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8e du sprint révisé B3).

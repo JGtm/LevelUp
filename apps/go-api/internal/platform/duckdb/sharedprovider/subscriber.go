@@ -6,17 +6,22 @@ package sharedprovider
 type Direction string
 
 const (
-	// DirectionPreSwapToRW est émis SYNCHRONIQUEMENT par AcquireWriter AVANT
-	// la phase de drain et le swap effectif (state encore RO à ce moment).
-	// Le Provider attend que TOUS les Subscribers retournent avant de
-	// poursuivre.
+	// DirectionPreSwapToRW est émis SYNCHRONIQUEMENT par AcquireWriter en
+	// Phase 3, ENTRE la fermeture du handle Provider RO et OpenReadWrite.
+	// State courant : Draining (la transition vers RW n'a pas encore eu lieu).
 	//
-	// Cas d'usage critique : le pool joueur libère son ATTACH RO sur shared
-	// (via Reopen des conns player+social) pour permettre au Provider de
-	// faire OpenReadWrite sans "Unique file handle conflict".
+	// Le timing précis est critique à cause de l'auto-attach DuckDB-Go : si
+	// shared est ouvert quelque part dans le process, toute nouvelle conn
+	// DuckDB l'auto-attache. Pour que Subscribers (pool) puissent Reopen
+	// leurs conns player sans auto-attach, il faut que le handle Provider
+	// soit DÉJÀ fermé. La notif arrive donc juste après ce close, juste
+	// avant le OpenReadWrite.
 	//
-	// Les Subscribers DOIVENT être rapides et idempotents — un Subscriber
-	// lent retarde tout le swap RW.
+	// Cas d'usage critique : le pool joueur ferme pdb.Shared et Reopen
+	// pdb.Player (sans auto-attach car file totalement libéré côté Provider).
+	//
+	// Les Subscribers DOIVENT être rapides et idempotents — exécutés sous
+	// p.mu, ils NE DOIVENT PAS appeler Get/AcquireWriter (deadlock garanti).
 	DirectionPreSwapToRW Direction = "pre_swap_to_rw"
 
 	// DirectionROToRW est émis quand un AcquireWriter passe RO → Draining → RW.

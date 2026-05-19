@@ -61,6 +61,17 @@ type PlayerDB struct {
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
 	Metadata     *DB // metadata.duckdb (RO)
 
+	// sharedDBPath (commit 8f) — chemin du fichier shared, stocké pour permettre
+	// le re-OpenReadOnly + re-attachShared après un swap RW du Provider.
+	sharedDBPath string
+	// userTimezone stocké aussi pour les ré-ouvertures.
+	userTimezone string
+	// bSwapEnabled (commit 8f) : true si cfg.SharedReader != nil au moment
+	// de openPlayerDB (mode B-swap). False = mode legacy avec
+	// LegacySharedReader(pdb.Shared). Permet à Prepare/Restore d'être
+	// no-op en mode legacy.
+	bSwapEnabled bool
+
 	// SharedReader (commit 8a) sert les lectures shared via un contrat
 	// uniforme : Get(ctx) (*sql.DB, releaseFn, error).
 	//
@@ -256,6 +267,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// Si cfg.SharedReader fourni (mode B-swap), on l'utilise tel quel — le
 	// caller a déjà arbitré le mode.
 	sharedReader := cfg.SharedReader
+	bSwapEnabled := sharedReader != nil
 	if sharedReader == nil {
 		sharedReader = LegacySharedReader(sharedDB)
 	}
@@ -265,6 +277,9 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		Shared:       sharedDB,
 		SharedSocial: socialDB,
 		Metadata:     metaDB,
+		sharedDBPath: cfg.SharedDBPath,
+		userTimezone: cfg.UserTimezone,
+		bSwapEnabled: bSwapEnabled,
 		SharedReader: sharedReader,
 		XUID:         cfg.XUID,
 		Gamertag:     cfg.Gamertag,
