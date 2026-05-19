@@ -23,21 +23,58 @@ func NewFiltersRepo(pdb *PlayerDB) *FiltersRepo {
 
 // LoadMatchesForFilters charge tous les matchs du joueur pour la résolution cascade.
 // Utilise mv_player_matches si disponible, sinon fallback sur match_registry.
+//
+// Sprint B1 commit 8k.6 : split+merge cross-DB. La query historique unique
+// (shared.v_match_full ⨝ shared.match_participants ⨝ player_match_enrichment)
+// est découpée en 2 :
+//  1. Partie shared (Q4SharedMatchesForFilters ou Q4MVSharedMatchesForFilters)
+//     via SharedReader.Get → liste de matchs avec metadata.
+//  2. Partie player (Q4PlayerEnrichmentForMatchesTpl) via pdb.Player → enrichments
+//     pour les match_ids retournés en étape 1.
+//  3. Merge en Go (LEFT JOIN semantics : enrichment manquant → defaults).
 func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.FilterMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	hasMV := r.hasMVPlayerMatches(ctx)
-	var query string
+	var sharedQuery string
 	if hasMV {
-		query = Q4MVMatchesForFilters
+		sharedQuery = Q4MVSharedMatchesForFilters
 	} else {
-		query = Q4MatchesForFilters
+		sharedQuery = Q4SharedMatchesForFilters
 	}
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, r.pdb.XUID)
+	results, err := r.loadSharedFilterRows(ctx, sharedQuery)
 	if err != nil {
 		return nil, fmt.Errorf("FiltersRepo.LoadMatchesForFilters: %w", err)
+	}
+	if len(results) == 0 {
+		return results, nil
+	}
+
+	if err := r.mergePlayerEnrichments(ctx, results); err != nil {
+		return nil, fmt.Errorf("FiltersRepo.LoadMatchesForFilters: %w", err)
+	}
+
+	r.applyModeFRTranslations(ctx, results)
+	r.applyMapFRTranslations(ctx, results)
+	r.applyPlaylistFRTranslations(ctx, results)
+	return results, nil
+}
+
+// loadSharedFilterRows exécute l'étape 1 du split LoadMatchesForFilters via
+// SharedReader. Renvoie les rows sans enrichment (SessionID/Label/IsWithFriends
+// non remplis).
+func (r *FiltersRepo) loadSharedFilterRows(ctx context.Context, query string) ([]domain.FilterMatchRow, error) {
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, query, r.pdb.XUID)
+	if err != nil {
+		return nil, fmt.Errorf("shared query: %w", err)
 	}
 	defer rows.Close()
 
@@ -55,22 +92,64 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 			&m.PlaylistName,
 			&m.IsFirefight,
 			&m.IsRanked,
-			&m.SessionID,
-			&m.SessionLabel,
-			&m.IsWithFriends,
 			&m.PlaylistNameEN,
 		); err != nil {
-			return nil, fmt.Errorf("FiltersRepo.LoadMatchesForFilters scan: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		results = append(results, m)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	return results, rows.Err()
+}
+
+// mergePlayerEnrichments exécute l'étape 2 du split (player_match_enrichment)
+// et applique la sémantique LEFT JOIN en Go : enrichment manquant pour un
+// match_id → SessionID/Label/IsWithFriends restent à leurs valeurs zero.
+func (r *FiltersRepo) mergePlayerEnrichments(ctx context.Context, rows []domain.FilterMatchRow) error {
+	matchIDs := make([]string, 0, len(rows))
+	for _, m := range rows {
+		matchIDs = append(matchIDs, m.MatchID)
 	}
-	r.applyModeFRTranslations(ctx, results)
-	r.applyMapFRTranslations(ctx, results)
-	r.applyPlaylistFRTranslations(ctx, results)
-	return results, nil
+	query := fmt.Sprintf(Q4PlayerEnrichmentForMatchesTpl, Placeholders(len(matchIDs)))
+
+	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	dbRows, err := r.pdb.Player.Query(ctx2, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return fmt.Errorf("player enrichment query: %w", err)
+	}
+	defer dbRows.Close()
+
+	type enrichment struct {
+		sessionID     *string
+		sessionLabel  *string
+		isWithFriends bool
+	}
+	enrichments := make(map[string]enrichment, len(matchIDs))
+	for dbRows.Next() {
+		var (
+			mid string
+			e   enrichment
+		)
+		if err := dbRows.Scan(&mid, &e.sessionID, &e.sessionLabel, &e.isWithFriends); err != nil {
+			return fmt.Errorf("enrichment scan: %w", err)
+		}
+		enrichments[mid] = e
+	}
+	if err := dbRows.Err(); err != nil {
+		return fmt.Errorf("enrichment rows: %w", err)
+	}
+
+	for i := range rows {
+		e, ok := enrichments[rows[i].MatchID]
+		if !ok {
+			continue
+		}
+		rows[i].SessionID = e.sessionID
+		rows[i].SessionLabel = e.sessionLabel
+		rows[i].IsWithFriends = e.isWithFriends
+	}
+	return nil
 }
 
 // GetMatchCount retourne le nombre total de matchs dans shared_matches_v2.
