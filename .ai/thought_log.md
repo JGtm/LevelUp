@@ -1,3 +1,69 @@
+## [2026-05-19] refactor(filters_repo) — Commit 8c : migrer 6 sites pdb.Shared → SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8c du mega-sprint B).
+
+**Contexte** : premier repo migré du mega-sprint. `filters_repo.go` a 6 sites qui interrogent `pdb.Shared` directement (2 `QueryRow`, 4 `Query`). Migration vers le pattern `pdb.SharedReadDB().Get(ctx) + defer release() + db.QueryRowContext/QueryContext`.
+
+**6 sites migrés** :
+- `GetMatchCount` (ligne 81) : `SELECT COUNT(*) FROM match_registry`
+- `GetPlayerMatchCount` (ligne 91) : `SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
+- `applyMapFRTranslations` (ligne 225) : `SELECT DISTINCT map_name, map_id FROM match_registry WHERE map_name IN (...) AND map_id IS NOT NULL`
+- `applyPlaylistFRTranslations` (ligne 318) : similar pour playlist
+- `GetAvailablePlaylists` (ligne 402) : `SELECT DISTINCT FROM shared.match_registry JOIN shared.match_participants WHERE p.xuid = ?`
+- `GetAvailableMaps` (ligne 434) : similar pour map
+
+**Découverte intéressante** : un test a crashé avec nil pointer dereference sur `pdb.SharedReader.Get(ctx)`. Cause : certains tests (`match_repos_test.go`) construisent un `*PlayerDB` **manuellement** (sans passer par `openPlayerDB`), donc `SharedReader` reste à zéro.
+
+**Soluce défensive** : ajout d'une méthode helper `PlayerDB.SharedReadDB()` qui fait le fallback automatique :
+
+```go
+func (pdb *PlayerDB) SharedReadDB() SharedReader {
+    if pdb.SharedReader != nil {
+        return pdb.SharedReader
+    }
+    return LegacySharedReader(pdb.Shared)
+}
+```
+
+Les repos migrés DOIVENT utiliser `pdb.SharedReadDB()` au lieu de `pdb.SharedReader` directement. Cela préserve la compat avec **tous les tests existants** sans modification. Au commit 8k (retrait de `pdb.Shared`), cette méthode deviendra inutile — `pdb.SharedReader` sera toujours non-nil.
+
+**Pattern de migration confirmé** (template pour 8d-8j) :
+
+```go
+// Avant :
+err := r.pdb.Shared.QueryRow(ctx, q, args...).Scan(&result)
+
+// Après :
+db, release, err := r.pdb.SharedReadDB().Get(ctx)
+if err != nil {
+    return ..., fmt.Errorf("Method: %w", err)
+}
+defer release()
+err = db.QueryRowContext(ctx, q, args...).Scan(&result)
+
+// Pour Query (rows) :
+db, release, err := r.pdb.SharedReadDB().Get(ctx)
+if err != nil { return ... }
+defer release()
+
+rows, err := db.QueryContext(ctx, q, args...)
+if err != nil { return ... }
+defer rows.Close()
+// L'ordre defer LIFO garantit rows.Close() AVANT release().
+```
+
+**Tests** :
+- Aucun test ajouté (les tests filters existants couvrent déjà tous les sites).
+- Suite duckdb : 30.7s vert
+- Suite sharedprovider : 5.4s vert
+- `go build ./cmd/server` : OK
+
+**Note** : les queries `GetAvailablePlaylists/Maps` (lignes 402, 434) utilisaient `FROM shared.match_registry JOIN shared.match_participants` via la conn `pdb.Shared`. Ces queries préfixent `shared.` même quand la conn pointe DÉJÀ vers shared — c'est OK car DuckDB-Go auto-crée des alias. Le SQL reste inchangé après migration ; seul le handle change (conn shared → handle Provider).
+
+**Prochaine étape** : commit 8d — migrer `career_repo.go` (1 site), `match_history_repo.go` (1 site), `synthesis_repo.go` (1 site). 3 sites au total, simple pattern.
+
+---
+
 ## [2026-05-19] feat(sharedprovider) — Commit 8b : FromInMemoryDB adaptateur + refacto WriterHandle vers closure
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8b du mega-sprint B).

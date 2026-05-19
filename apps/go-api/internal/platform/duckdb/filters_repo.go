@@ -77,8 +77,15 @@ func (r *FiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.Filte
 func (r *FiltersRepo) GetMatchCount(ctx context.Context) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("FiltersRepo.GetMatchCount: %w", err)
+	}
+	defer release()
+
 	var count int
-	err := r.pdb.Shared.QueryRow(ctx, Q1MatchCount).Scan(&count)
+	err = db.QueryRowContext(ctx, Q1MatchCount).Scan(&count)
 	return count, err
 }
 
@@ -86,9 +93,16 @@ func (r *FiltersRepo) GetMatchCount(ctx context.Context) (int, error) {
 func (r *FiltersRepo) GetPlayerMatchCount(ctx context.Context) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("FiltersRepo.GetPlayerMatchCount: %w", err)
+	}
+	defer release()
+
 	var count int
 	q := `SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
-	err := r.pdb.Shared.QueryRow(ctx, q, r.pdb.XUID).Scan(&count)
+	err = db.QueryRowContext(ctx, q, r.pdb.XUID).Scan(&count)
 	return count, err
 }
 
@@ -222,7 +236,13 @@ func (r *FiltersRepo) applyMapFRTranslations(ctx context.Context, rows []domain.
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	idRows, err := r.pdb.Shared.Query(ctx2, q1, args1...)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx2)
+	if err != nil {
+		return
+	}
+	defer release()
+
+	idRows, err := db.QueryContext(ctx2, q1, args1...)
 	if err != nil {
 		return
 	}
@@ -315,7 +335,13 @@ func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []do
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	idRows, err := r.pdb.Shared.Query(ctx2, q1, args1...)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx2)
+	if err != nil {
+		return
+	}
+	defer release()
+
+	idRows, err := db.QueryContext(ctx2, q1, args1...)
 	if err != nil {
 		return
 	}
@@ -399,7 +425,13 @@ func (r *FiltersRepo) GetAvailablePlaylists(ctx context.Context) ([]domain.Label
 	  AND r.playlist_name != ''
 	ORDER BY label ASC`
 
-	rows, err := r.pdb.Shared.Query(ctx, q, r.pdb.XUID)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetAvailablePlaylists: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("GetAvailablePlaylists: %w", err)
 	}
@@ -431,7 +463,13 @@ func (r *FiltersRepo) GetAvailableMaps(ctx context.Context) ([]domain.LabelValue
 	  AND r.map_name IS NOT NULL
 	ORDER BY label ASC`
 
-	rows, err := r.pdb.Shared.Query(ctx, q, r.pdb.XUID)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("GetAvailableMaps: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("GetAvailableMaps: %w", err)
 	}
