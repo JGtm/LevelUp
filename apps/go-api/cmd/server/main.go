@@ -39,6 +39,7 @@ import (
 "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
@@ -206,10 +207,37 @@ func main() {
 	// conflit "different configuration" pendant qu'une lecture HTTP utilise
 	// l'instance RO de ce sharedDB. C'est un trade-off : on accepte un échec
 	// transitoire du sync engine plutôt que tous les handlers HTTP bloqués.
-	sharedDB, err := duckdb.OpenReadOnly(sharedPath)
-	if err != nil {
-		slog.Error("ouverture shared_matches_v2 échouée", "err", err)
-		os.Exit(1)
+	//
+	// LEVELUP_USE_SHARED_PROVIDER (sprint sharedprovider B-swap, 2026-05) :
+	//   - "0" (default) : mode legacy ci-dessus. Le sync peut planter avec
+	//     "different configuration", le pool joueur ouvre sa propre RO.
+	//   - "1" : route shared via sharedprovider.Provider qui swap RO↔RW autour
+	//     des leases writer (élimine le conflit). Activé par défaut au commit 9.
+	useSharedProvider := os.Getenv("LEVELUP_USE_SHARED_PROVIDER") == "1"
+
+	var (
+		sharedReader duckdb.SharedReader
+		closeShared  func() error
+	)
+	if useSharedProvider {
+		sharedMgr := sharedprovider.NewManager()
+		provider, err := sharedMgr.For(sharedPath)
+		if err != nil {
+			slog.Error("ouverture shared_matches_v2 via provider échouée", "err", err)
+			os.Exit(1)
+		}
+		sharedReader = provider
+		closeShared = sharedMgr.Close
+		slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif)")
+	} else {
+		sharedDB, err := duckdb.OpenReadOnly(sharedPath)
+		if err != nil {
+			slog.Error("ouverture shared_matches_v2 échouée", "err", err)
+			os.Exit(1)
+		}
+		sharedReader = duckdb.LegacySharedReader(sharedDB)
+		closeShared = sharedDB.Close
+		slog.Info("shared_matches_v2: mode legacy (RO direct, trade-off différent-configuration accepté)")
 	}
 	// Retry sur metadata : hot-reload peut créer une fenêtre où l'ancien processus
 	// n'a pas encore libéré le verrou DuckDB (write-ahead lock). Sur Windows, après un
@@ -237,7 +265,7 @@ func main() {
 	slog.Debug("DuckDB ouvert")
 
 	// --- 4. Repositories + services ---
-	bootRepo := duckdb.NewBootstrapRepo(sharedDB, metaDB)
+	bootRepo := duckdb.NewBootstrapRepo(sharedReader, metaDB)
 	bootSvc := service.NewBootstrapService(cfg, bootRepo).
 		WithPrivacyProvider(halo.DefaultHaloProvider)
 
@@ -437,7 +465,7 @@ func main() {
 	}
 
 	duckdb.CloseAll()
-	if err := sharedDB.Close(); err != nil {
+	if err := closeShared(); err != nil {
 		slog.Warn("fermeture shared DB", "err", err)
 	}
 	if err := metaDB.Close(); err != nil {

@@ -3,20 +3,36 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 )
 
+// SharedReader est l'interface minimale dont BootstrapRepo a besoin pour
+// lire `shared_matches_v2.duckdb`. Elle est volontairement structurelle —
+// satisfaite par sharedprovider.Provider (sous-package) sans import croisé
+// et par un wrapper local autour de *DB pour les tests / mode legacy.
+//
+// Contrat : Get retourne un *sql.DB prêt à lire + une fonction release que
+// le caller DOIT appeler (typiquement via defer). Si err != nil, release
+// est nil. Voir docs/adr/0014-shared-db-provider-b-swap.md (à venir).
+type SharedReader interface {
+	Get(ctx context.Context) (*sql.DB, func(), error)
+}
+
 // BootstrapRepo lit les données nécessaires à l'endpoint /bootstrap
 // depuis shared_matches_v2.duckdb et metadata.duckdb.
 type BootstrapRepo struct {
-	shared   *DB
+	shared   SharedReader
 	metadata *DB
 }
 
-// NewBootstrapRepo crée un BootstrapRepo à partir des bases partagées.
-func NewBootstrapRepo(sharedDB, metadataDB *DB) *BootstrapRepo {
-	return &BootstrapRepo{shared: sharedDB, metadata: metadataDB}
+// NewBootstrapRepo crée un BootstrapRepo.
+//
+// shared : SharedReader (sharedprovider.Provider en prod, wrapper *DB en tests).
+// metadataDB : *DB direct (hors scope du sprint sharedprovider).
+func NewBootstrapRepo(shared SharedReader, metadataDB *DB) *BootstrapRepo {
+	return &BootstrapRepo{shared: shared, metadata: metadataDB}
 }
 
 // GetMatchCount retourne le nombre de matchs dans match_registry.
@@ -24,8 +40,14 @@ func (r *BootstrapRepo) GetMatchCount(ctx context.Context) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("GetMatchCount: %w", err)
+	}
+	defer release()
+
 	var count int
-	err := r.shared.QueryRow(ctx, "SELECT COUNT(*) FROM match_registry").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM match_registry").Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("GetMatchCount: %w", err)
 	}
@@ -37,11 +59,17 @@ func (r *BootstrapRepo) GetDBVersion(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return "unknown", nil //nolint:nilerr // dégradation acceptable pour /health
+	}
+	defer release()
+
 	var version string
-	err := r.shared.QueryRow(ctx, "PRAGMA version").Scan(&version)
+	err = db.QueryRowContext(ctx, "PRAGMA version").Scan(&version)
 	if err != nil {
 		// fallback : essayer SELECT version()
-		err2 := r.shared.QueryRow(ctx, "SELECT version()").Scan(&version)
+		err2 := db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
 		if err2 != nil {
 			return "unknown", nil
 		}
@@ -54,8 +82,14 @@ func (r *BootstrapRepo) GetPlayerCount(ctx context.Context) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("GetPlayerCount: %w", err)
+	}
+	defer release()
+
 	var count int
-	err := r.shared.QueryRow(ctx, "SELECT COUNT(DISTINCT xuid) FROM shared.match_participants").Scan(&count)
+	err = db.QueryRowContext(ctx, "SELECT COUNT(DISTINCT xuid) FROM shared.match_participants").Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("GetPlayerCount: %w", err)
 	}
@@ -67,8 +101,14 @@ func (r *BootstrapRepo) GetLastSyncAt(ctx context.Context) (*time.Time, error) {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return nil, nil //nolint:nilerr // dégradation acceptable
+	}
+	defer release()
+
 	var t *time.Time
-	err := r.shared.QueryRow(ctx, "SELECT MAX(last_updated_at) FROM match_registry").Scan(&t)
+	err = db.QueryRowContext(ctx, "SELECT MAX(last_updated_at) FROM match_registry").Scan(&t)
 	if err != nil {
 		return nil, nil //nolint:nilerr // table vide ou absente
 	}
@@ -81,9 +121,15 @@ func (r *BootstrapRepo) ValidateTypes(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	db, release, err := r.shared.Get(ctx)
+	if err != nil {
+		return fmt.Errorf("ValidateTypes: %w", err)
+	}
+	defer release()
+
 	// Test 1 : UBIGINT → uint64 (weapon_id dans weapon_kills)
 	var uval uint64
-	err := r.shared.QueryRow(ctx,
+	err = db.QueryRowContext(ctx,
 		"SELECT CAST(1234567890123456789 AS UBIGINT)").Scan(&uval)
 	if err != nil {
 		return fmt.Errorf("UBIGINT mapping: %w", err)
@@ -94,7 +140,7 @@ func (r *BootstrapRepo) ValidateTypes(ctx context.Context) error {
 
 	// Test 2 : TIMESTAMP WITH TIME ZONE → time.Time
 	var tval time.Time
-	err = r.shared.QueryRow(ctx,
+	err = db.QueryRowContext(ctx,
 		"SELECT TIMESTAMPTZ '2024-01-15 10:30:00+00'").Scan(&tval)
 	if err != nil {
 		return fmt.Errorf("TIMESTAMPTZ mapping: %w", err)
@@ -105,7 +151,7 @@ func (r *BootstrapRepo) ValidateTypes(ctx context.Context) error {
 
 	// Test 3 : BOOLEAN → bool
 	var bval bool
-	err = r.shared.QueryRow(ctx, "SELECT TRUE").Scan(&bval)
+	err = db.QueryRowContext(ctx, "SELECT TRUE").Scan(&bval)
 	if err != nil {
 		return fmt.Errorf("BOOLEAN mapping: %w", err)
 	}
