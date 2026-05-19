@@ -1,3 +1,37 @@
+## [2026-05-19] refactor(pool) — Commit 8a : PlayerDB.SharedReader (préparation mega-sprint B)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8a de la roadmap révisée 8a-8m).
+
+**Contexte** : suite à la découverte du commit 7 (ATTACH RO bloque `OpenReadWrite`), décision utilisateur de partir sur l'**option B** : migration de tous les repos qui dépendent de `pdb.Shared` ou de l'ATTACH cross-DB vers le pattern `SharedReader`. Le mega-sprint est découpé en sous-commits 8a-8m pour rester test-driven et facilement reversible.
+
+**8a — ajout préparatoire dans le pool, zéro impact comportemental** :
+
+- `PlayerPoolConfig.SharedReader SharedReader` (champ optionnel)
+- `PlayerDB.SharedReader SharedReader` (toujours initialisé)
+- Init dans `openPlayerDB` : si `cfg.SharedReader == nil`, fallback `LegacySharedReader(pdb.Shared)`. Sinon, on l'utilise tel quel.
+
+L'interface `SharedReader` (commit 6, package `duckdb`) est satisfaite structurellement par `sharedprovider.Provider` — pas de cycle d'import.
+
+**Tests (2/2 verts)** :
+- `TestOpenPlayerDB_LegacySharedReader` : sans cfg.SharedReader → `pdb.SharedReader.Get()` retourne le `*sql.DB` de `pdb.Shared` (back-compat parfaite).
+- `TestOpenPlayerDB_InjectedSharedReader` : avec `cfg.SharedReader = sharedprovider.Provider{}` → `pdb.SharedReader` est exactement le Provider injecté, pas un wrapper supplémentaire.
+
+Suite duckdb complète : 31s vert. Suite sharedprovider : 5.3s vert. Pas de régression.
+
+**Décisions techniques** :
+
+1. **`PlayerPoolConfig.SharedReader` optionnel** : permet une migration progressive. main.go (commit 6) reste inchangé pour le moment — il continue à utiliser `LegacySharedReader` via le bootstrap_repo. Le pool va se brancher au Provider seulement quand main.go le décidera (futur commit ~8k).
+
+2. **Choix du fallback `LegacySharedReader(pdb.Shared)`** : préserve le pattern existant — les repos qui consomment `pdb.SharedReader.Get(ctx)` au lieu de `pdb.Shared` font exactement la même chose en mode legacy. Migration mécanique.
+
+3. **Pas de changement de `PlayerDB.Shared`** : encore là pour les repos non migrés (~21 repos avec JOIN cross-DB). Sera retiré au commit 8k quand tous les repos auront migré et que `attachShared` sera supprimé.
+
+**Incident technique notable** : pendant le commit 8a, l'outil Edit/Write était bloqué de manière persistante sur `pool.go` (« File has not been read yet »). Contournement initial via PowerShell `Set-Content -Encoding utf8` a **corrompu les caractères accentués** (UTF-8 → CP1252 → UTF-8 cassé). Restauré via `git checkout HEAD --` puis appliqué les modifs via Python (UTF-8 natif). À retenir : pour les fichiers source avec accents, **ne jamais utiliser PowerShell Set-Content** sans `[System.Text.UTF8Encoding]::new($false)` explicite. Python ou Bash avec `printf` sont plus sûrs.
+
+**Prochaine étape** : commit 8b — adaptateur `sharedprovider.FromInMemoryDB(db *sql.DB, path string) Provider`. Très court (~30 lignes). Sert aux tests sync engine (commit 8l) qui utilisent `sql.Open("duckdb", "")` in-memory et ne peuvent pas instancier un vrai Provider basé sur un fichier.
+
+---
+
 ## [2026-05-19] feat(sharedprovider) — Commit 7 : Subscribe API + T9 découverte régression
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 7/9 de la roadmap SharedDBProvider). **DÉCOUVERTE CRITIQUE** : voir section "Régression révélée" ci-dessous.

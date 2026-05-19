@@ -33,6 +33,16 @@ type PlayerPoolConfig struct {
 	SharedSocialDBPath      string // shared_social.duckdb (médias, likes, favoris)
 	GlobalXuidAliasesDBPath string // P5.3 : data/global/xbox_aliases.duckdb (mapping xuid→gamertag global Microsoft)
 	UserTimezone            string // timezone IANA pour la lecture des TIMESTAMP (ex: "Europe/Paris")
+
+	// SharedReader (sprint sharedprovider, commit 8a) : si non-nil, expose ce
+	// SharedReader dans PlayerDB.SharedReader. Sinon (mode legacy par défaut),
+	// un wrapper LegacySharedReader(pdb.Shared) est utilisé.
+	//
+	// Au commit 8k (retrait de attachShared et de PlayerDB.Shared), ce champ
+	// devra être obligatoire pour le mode B-swap. En attendant, le caller
+	// peut injecter un sharedprovider.Provider (qui satisfait l'interface
+	// SharedReader structurellement) sans cycle d'import.
+	SharedReader SharedReader
 }
 
 // PoolKey retourne la clé unique du pool pour ce joueur.
@@ -50,9 +60,24 @@ type PlayerDB struct {
 	Shared       *DB // shared_matches_v2.duckdb
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
 	Metadata     *DB // metadata.duckdb (RO)
-	XUID         string
-	Gamertag     string
-	TitleSlug    string // Sprint 44 : titre associé
+
+	// SharedReader (commit 8a) sert les lectures shared via un contrat
+	// uniforme : Get(ctx) (*sql.DB, releaseFn, error).
+	//
+	// Initialisé dans openPlayerDB :
+	//   - Si cfg.SharedReader != nil : utilise le SharedReader injecté
+	//     (typiquement sharedprovider.Provider en mode B-swap).
+	//   - Sinon : LegacySharedReader(pdb.Shared) — wrapper no-op autour de
+	//     la conn RO classique. Comportement identique à pre-commit-8a.
+	//
+	// Les repos migrés aux commits 8c+ consommeront ce champ au lieu de
+	// PlayerDB.Shared directement. Au commit 8k (retrait de attachShared),
+	// seul ce champ subsistera pour les lectures shared.
+	SharedReader SharedReader
+
+	XUID      string
+	Gamertag  string
+	TitleSlug string // Sprint 44 : titre associé
 }
 
 // ReadDB retourne la connexion de lecture (Player RW — connexion unique par joueur).
@@ -211,11 +236,20 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		_ = attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath)
 	}
 
+	// SharedReader (commit 8a) : par défaut, wrap pdb.Shared en mode legacy.
+	// Si cfg.SharedReader fourni (mode B-swap), on l'utilise tel quel — le
+	// caller a déjà arbitré le mode.
+	sharedReader := cfg.SharedReader
+	if sharedReader == nil {
+		sharedReader = LegacySharedReader(sharedDB)
+	}
+
 	return &PlayerDB{
 		Player:       playerDB,
 		Shared:       sharedDB,
 		SharedSocial: socialDB,
 		Metadata:     metaDB,
+		SharedReader: sharedReader,
 		XUID:         cfg.XUID,
 		Gamertag:     cfg.Gamertag,
 		TitleSlug:    cfg.TitleSlug,
