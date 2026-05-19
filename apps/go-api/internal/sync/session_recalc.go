@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 // sessionMatchesSQL charge les matchs d'un joueur depuis shared DB.
@@ -121,9 +122,13 @@ func recalculateSessionsInline(
 // RecalculatePlayerSessions recalcule les sessions pour un joueur.
 // Acquiert les leases, ouvre les DBs, calcule et écrit dans player_match_enrichment.
 // friendGamertags : gamertags des amis à résoudre en XUIDs (utilisé si TeamChangeMode = "friends").
+// provider (sprint B1 commit 13b) : si non-nil, route les accès shared via
+// Provider.AcquireWriter pour coordonner avec readers HTTP. Si nil, fallback
+// legacy (dblease + OpenSharedDB direct).
 // Retourne le nombre de matchs mis à jour.
 func RecalculatePlayerSessions(
 	ctx context.Context,
+	provider sharedprovider.Provider,
 	playerDBPath, sharedDBPath, xuid string,
 	opts domain.SessionComputeOptions,
 	friendGamertags []string,
@@ -139,30 +144,25 @@ func RecalculatePlayerSessions(
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RecalculatePlayerSessions lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(sharedDBPath)
+	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, legacy sinon).
+	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
 	if err != nil {
-		return 0, fmt.Errorf("RecalculatePlayerSessions OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RecalculatePlayerSessions: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
 	// Résoudre les XUIDs des amis si nécessaire.
 	if len(friendGamertags) > 0 {
-		opts.FriendsXUIDs = LookupFriendXUIDs(sharedHandle.SQLDb(), friendGamertags)
+		opts.FriendsXUIDs = LookupFriendXUIDs(sharedDB, friendGamertags)
 	}
 
-	matchRows, err := loadSessionMatchRowsDirect(ctx, sharedHandle.SQLDb(), xuid)
+	matchRows, err := loadSessionMatchRowsDirect(ctx, sharedDB, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions loadMatches: %w", err)
 	}

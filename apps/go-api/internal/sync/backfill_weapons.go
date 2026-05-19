@@ -20,7 +20,6 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/platform/dblease"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -261,18 +260,13 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 	ctx context.Context,
 	matchIDs []string,
 ) (done, noFilm int, err error) {
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open
+	// (Provider en B-swap pour coordonner avec les readers HTTP en cours).
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches lease shared: %w", err)
+		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches: %w", err)
 	}
-	defer writerShared.Release()
-
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
-	if err != nil {
-		return 0, 0, fmt.Errorf("BackfillWeaponKillsForMatches OpenSharedDB: %w", err)
-	}
-	defer sharedHandle.Close()
-	sharedDB := sharedHandle.SQLDb()
+	defer releaseShared()
 
 	client := NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, 3)
 

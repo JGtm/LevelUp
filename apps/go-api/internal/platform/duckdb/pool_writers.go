@@ -74,6 +74,14 @@ func (pdb *PlayerDB) PlayerDBPath() string {
 	return pdb.Player.Path()
 }
 
+// SharedDBPath retourne le chemin du fichier shared_matches_v2.duckdb, stocké
+// au moment du openPlayerDB. Survit en mode B-swap où pdb.Shared est nil
+// (cf. commit 9d.3). Utilisé par les recomputers / orchestrators qui doivent
+// passer le path à AcquireSharedWriterStandalone.
+func (pdb *PlayerDB) SharedDBPath() string {
+	return pdb.sharedDBPath
+}
+
 // SharedSocialDBPath retourne le chemin de shared_social.duckdb, ou "" si
 // la DB n'est pas disponible.
 func (pdb *PlayerDB) SharedSocialDBPath() string {

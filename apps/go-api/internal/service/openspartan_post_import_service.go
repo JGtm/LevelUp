@@ -134,7 +134,7 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 	opts PostImportOptions,
 	result *PostImportResult,
 ) {
-	n, err := sync.RecalculatePlayerSessions(ctx, playerDBPath, sharedDBPath, xuid,
+	n, err := sync.RecalculatePlayerSessions(ctx, s.cfg.SharedProvider, playerDBPath, sharedDBPath, xuid,
 		domain.SessionComputeOptions{
 			GapMinutes:     opts.SessionGapMinutes,
 			TeamChangeMode: "cluster",

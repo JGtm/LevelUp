@@ -30,7 +30,6 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/dblease"
 )
 
 // ReplayResult agrège les compteurs d'un cycle de replay highlight events.
@@ -243,18 +242,13 @@ func (e *SyncEngine) BackfillEventsForMatches(
 		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches: tokens Halo absents")
 	}
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open
+	// (Provider en B-swap coordonne avec les readers HTTP).
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches lease shared: %w", err)
+		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches: %w", err)
 	}
-	defer writerShared.Release()
-
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
-	if err != nil {
-		return ReplayResult{}, fmt.Errorf("BackfillEventsForMatches OpenSharedDB: %w", err)
-	}
-	defer sharedHandle.Close()
-	sharedDB := sharedHandle.SQLDb()
+	defer releaseShared()
 
 	ids := matchIDs
 	if includeBroken {

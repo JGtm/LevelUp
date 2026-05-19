@@ -34,23 +34,18 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillCitations lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillCitations OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RunBackfillCitations: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
 	metaDB, err := sql.Open("duckdb", e.metadataDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
@@ -79,7 +74,7 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 		"player", e.gamertag, "match_count", len(matchIDs), "force", force)
 
 	if err := BackfillMatchCitations(
-		ctx, metaDB, sharedHandle.SQLDb(), playerHandle.SQLDb(),
+		ctx, metaDB, sharedDB, playerHandle.SQLDb(),
 		e.xuid, matchIDs,
 	); err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations backfill: %w", err)

@@ -317,23 +317,19 @@ func (e *SyncEngine) RunBackfillAssistsModel(ctx context.Context, force bool) (i
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillAssistsModel lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillAssistsModel OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 13a : acquireSharedWriter centralise lease + open
+	// (Provider en B-swap, dblease + OpenSharedDB en legacy).
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillAssistsModel OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RunBackfillAssistsModel: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	return batchComputePlayerAssistsModel(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+	return batchComputePlayerAssistsModel(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, force)
 }

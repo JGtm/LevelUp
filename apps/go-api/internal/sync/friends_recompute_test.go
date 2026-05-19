@@ -96,6 +96,7 @@ func TestSyncEngine_WithFriendsLoader_Nil(t *testing.T) {
 func TestRecomputeIsWithFriends_EmptyFriendsList_SkipsLeases(t *testing.T) {
 	res, err := RecomputeIsWithFriends(
 		context.Background(),
+		nil, // provider — mode legacy pour ce test
 		"/dev/null/does/not/matter/player.duckdb",
 		"/dev/null/does/not/matter/shared.duckdb",
 		"test_xuid",
@@ -132,6 +133,7 @@ func TestRecomputeIsWithFriends_NoXUIDResolved_GracefulNoop(t *testing.T) {
 
 	res, err := RecomputeIsWithFriends(
 		context.Background(),
+		nil, // provider — mode legacy pour ce test
 		playerPath,
 		sharedPath,
 		"test_xuid",
@@ -154,6 +156,7 @@ func TestRecomputeIsWithFriends_NoXUIDResolved_GracefulNoop(t *testing.T) {
 	// les leases sans deadlock (preuve que le 1er appel les a bien libérées).
 	res2, err := RecomputeIsWithFriends(
 		context.Background(),
+		nil, // provider — mode legacy pour ce test
 		playerPath, sharedPath,
 		"test_xuid",
 		[]string{"AnotherFriend"},

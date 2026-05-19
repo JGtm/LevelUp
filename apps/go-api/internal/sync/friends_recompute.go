@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 // FriendsRecomputeResult agrège les résultats du recompute pour une player DB.
@@ -38,11 +39,16 @@ type FriendsRecomputeResult struct {
 // friendGamertags : liste des amis (settings.friend_gamertags). Vide → no-op.
 // Les gamertags non résolus dans xuid_aliases sont logués Warn et ignorés.
 //
+// provider : si non-nil, passe par Provider.AcquireWriter pour coordonner avec
+// le pool joueur et les readers HTTP. Si nil, fallback legacy (dblease +
+// OpenSharedDB direct, risque "different configuration"). Sprint B1 commit 13b.
+//
 // Cette variante acquiert ses propres leases + ouvre les DBs. Pour appel
 // inline depuis le sync engine (qui détient déjà les leases), utiliser
 // RecomputeIsWithFriendsCore.
 func RecomputeIsWithFriends(
 	ctx context.Context,
+	provider sharedprovider.Provider,
 	playerDBPath, sharedDBPath, playerXUID string,
 	friendGamertags []string,
 ) (FriendsRecomputeResult, error) {
@@ -57,25 +63,21 @@ func RecomputeIsWithFriends(
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(playerDBPath)
 	if err != nil {
 		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(sharedDBPath)
+	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, dblease +
+	// OpenSharedDB en legacy).
+	sharedDB, releaseShared, err := AcquireSharedWriterStandalone(ctx, provider, sharedDBPath)
 	if err != nil {
-		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends OpenSharedDB: %w", err)
+		return FriendsRecomputeResult{XUID: playerXUID}, fmt.Errorf("RecomputeIsWithFriends: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	return RecomputeIsWithFriendsCore(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), playerXUID, friendGamertags, true)
+	return RecomputeIsWithFriendsCore(ctx, playerHandle.SQLDb(), sharedDB, playerXUID, friendGamertags, true)
 }
 
 // RecomputeIsWithFriendsCore exécute la logique recompute sur des handles
