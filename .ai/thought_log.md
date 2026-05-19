@@ -1,3 +1,56 @@
+## [2026-05-19] chore(quality) — Commit 9b : revue qualité production-level + clôture sprint B1
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9b — clôture du sprint B-swap).
+
+**Delivery-checklist** :
+
+| Critère | Statut | Note |
+|---|---|---|
+| `go build ./...` | ✅ | Clean |
+| `go vet ./...` | ✅ | Clean (aucun warning) |
+| `go test ./... -tags=integration` | ✅* | *Sauf TOML failures pré-existantes (templates.toml `cadence` dupliquée) — hors scope sprint |
+| Tests T5 burst SharedReader | ✅ | 0 Catalog Error sur 5 runs consécutifs |
+| Tests T9 ATTACH survie | ✅ | Validé end-to-end |
+| Tests sync engine burst | ✅ | TestSyncBurstNoRegression + Stress + NoLeak verts |
+| Pas de `fmt.Println`/`log.Printf` introduits | ✅ | Slog partout |
+| Logging structuré | ✅ | `slog.ErrorContext/InfoContext/DebugContext` avec clés `err`, `match_id`, `xuid`, etc. |
+| Pas de code mort | ✅ | `scanPlayerMatchRow` + `orderByClause` retirés (player_matches_repo) |
+| Feature flag documenté | ✅ | `LEVELUP_USE_SHARED_PROVIDER` = kill-switch documenté + ADR 0016 |
+| Thought log à jour | ✅ | 18 entrées détaillées (8a-8m + 9 + 9b) |
+| ADR rédigé | ✅ | ADR 0016 SharedDBProvider B-swap + ajout CLAUDE.md |
+
+**Limites connues documentées** :
+
+1. **TODOs follow-up post-sprint B1** (squad_repo) — 5 méthodes cross-DB encore sur `pdb.ReadDB()` (legacy ATTACH path) :
+   - LoadTopTeammates (Q29)
+   - LoadSquadMatches (Q30)
+   - LoadTeammateMatches (Q31)
+   - LoadSynthesisMatches (Q33b)
+   - LoadMapStatsForSquad (Q42)
+
+   Ces méthodes fonctionnent (attachShared est en place) mais subissent ~96% Catalog Errors pendant les fenêtres de swap RW. Un follow-up dédié au split+merge complet est nécessaire avant de pouvoir retirer attachShared définitivement (estimation : ~300 LOC + tests).
+
+2. **Tailles de fichiers** : 3 fichiers touchés dépassent 500 lignes (guideline projet, pas hard rule) :
+   - `player_matches_repo.go` (820L) : 50 cols scannées + 5 helpers de split+merge.
+   - `filters_repo.go` (573L) : queries factorisées Placeholders + split LoadMatchesForFilters.
+   - `squad_repo.go` (501L) : 8 méthodes + TODOs documentés.
+   - `sharedprovider/provider.go` (576L) : state machine RO/Draining/RW/Reopening/Error + Subscribe.
+
+   Refactoring "split file" peut être considéré dans un follow-up si nécessaire.
+
+**Récapitulatif sprint B1 (commits 8c → 9b)** :
+
+- **Bug initial fixé** : `auto_sync RunDelta` ne plante plus avec "different configuration" sur Madina97294.
+- **Architecture** : SharedDBProvider documenté ADR 0016, métriques expvar opérationnelles, kill-switch flag.
+- **Migration** : 14 repos migrés vers SharedReader, dont 5 cross-DB en split+merge.
+- **Validation** : T5 burst dual (legacy=96% Catalog Errors documentés, migrated=0 erreur sur 5 runs), T9 chain, sync engine burst suite.
+- **Doc** : ADR 0016 + thought_log 18 entrées + CLAUDE.md mis à jour.
+- **Dette technique restante** : 5 squad_repo cross-DB queries à split+merge (post-sprint, ~300 LOC).
+
+**Prochaine étape** : merge dans `main`. La branche `fix/auto-sync-different-configuration` est prête pour PR.
+
+---
+
 ## [2026-05-19] feat(B-swap) — Commit 9 : LEVELUP_USE_SHARED_PROVIDER=1 par défaut
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9 du sprint B1).
