@@ -133,7 +133,9 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			shots_fired INTEGER, shots_hit INTEGER,
 			headshot_kills INTEGER, max_killing_spree INTEGER,
 			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER)`,
-		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		// last_seen + source : colonnes attendues par certaines queries shared
+		// (squad_repo::LookupXUIDByGamertag fait ORDER BY last_seen DESC).
+		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen TIMESTAMPTZ, source VARCHAR)`,
 		`CREATE TABLE shared.medals_earned (
 			medal_id UBIGINT, medal_name_id UBIGINT, xuid VARCHAR, match_id VARCHAR, count INTEGER)`,
 		`CREATE TABLE shared.highlight_events (
@@ -224,7 +226,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			[]interface{}{"m1", pTestXUID, pTestGamertag, 2, 10, 5, 2,
 				1.5, 0.6, 1500, 3000.0, 1500.0, 600, 1200.0, 1100.0,
 				8.0, 5.0, 1, true, 1, 45.0}},
-		{`INSERT INTO shared.xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
+		{`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
 		{`INSERT INTO player_match_enrichment
 			(match_id,performance_score,session_id,session_label,dominance_flag,is_with_friends,is_excluded)
 			VALUES (?,?,?,?,?,?,?)`,
@@ -357,7 +359,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			shots_fired INTEGER, shots_hit INTEGER,
 			headshot_kills INTEGER, max_killing_spree INTEGER,
 			grenade_kills INTEGER, melee_kills INTEGER, power_weapon_kills INTEGER)`,
-		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
+		// last_seen + source : colonnes attendues par certaines queries shared
+		// (squad_repo::LookupXUIDByGamertag fait ORDER BY last_seen DESC).
+		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen TIMESTAMPTZ, source VARCHAR)`,
 		// tables shared additionnelles pour permettre aux
 		// repos migrés vers SharedReadDB().Get() (medals_by_xuid, weapon_kills,
 		// highlight_events, match_exclusion, citations.LoadMedalTotals) de lire
@@ -420,7 +424,7 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			[]interface{}{"m1", "2025-01-10 14:00:00", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "Aquarius", "Arena:Slayer", "Slayer", "Ranked Slayer", true, 1, 3}},
 		{`INSERT INTO shared.match_participants (match_id,xuid,gamertag,outcome,kills,deaths,team_id,kda) VALUES (?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", pTestXUID, pTestGamertag, 2, 10, 5, 1, 1.5}},
-		{`INSERT INTO shared.xuid_aliases VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
+		{`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?,?)`, []interface{}{pTestXUID, pTestGamertag}},
 	}
 	for _, ins := range inserts {
 		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {

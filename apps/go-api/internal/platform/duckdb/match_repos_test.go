@@ -406,6 +406,46 @@ func TestMatchViewRepo_GetMatchWeaponKills_WithMetadataLabels(t *testing.T) {
 // SquadRepo
 // ---------------------------------------------------------------------------
 
+func TestSquadRepo_LookupXUIDByGamertag(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// Seed xuid_aliases avec un gamertag spécifique sur pdb.Shared (où
+	// SharedReader pointe). Cas testés : found, not-found, casse-insensible
+	// (ILIKE), trim espaces.
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag, last_seen) VALUES (?, ?, ?)`,
+		"xuid_lookup_001", "LookupTarget", "2026-04-01 10:00:00+00")
+	execOnSharedDBs(t, pdb, ctx,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag, last_seen) VALUES (?, ?, ?)`,
+		"xuid_lookup_002", "LookupTarget", "2026-04-15 10:00:00+00") // plus récent
+
+	repo := NewSquadRepo(pdb)
+
+	// Cas 1 : trouvé (case-insensitive via ILIKE + dernier last_seen)
+	xuid, ok, err := repo.LookupXUIDByGamertag(ctx, "lookuptarget")
+	if err != nil {
+		t.Fatalf("LookupXUIDByGamertag found: %v", err)
+	}
+	if !ok || xuid != "xuid_lookup_002" {
+		t.Errorf("expected xuid_lookup_002 (most recent), got %q ok=%v", xuid, ok)
+	}
+
+	// Cas 2 : non trouvé (best-effort, pas d'erreur)
+	xuid, ok, err = repo.LookupXUIDByGamertag(ctx, "DoesNotExist")
+	if err != nil {
+		t.Fatalf("LookupXUIDByGamertag not-found: %v", err)
+	}
+	if ok || xuid != "" {
+		t.Errorf("expected empty/false, got %q ok=%v", xuid, ok)
+	}
+
+	// Cas 3 : gamertag vide → early return (pas d'erreur, pas de query)
+	xuid, ok, err = repo.LookupXUIDByGamertag(ctx, "   ")
+	if err != nil || ok || xuid != "" {
+		t.Errorf("empty gamertag: expected ('', false, nil), got (%q, %v, %v)", xuid, ok, err)
+	}
+}
+
 func TestSquadRepo_LoadTopTeammates_NoFriends(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	// is_with_friends = FALSE → Q29 filtre sur pme.is_with_friends = TRUE → 0 résultats

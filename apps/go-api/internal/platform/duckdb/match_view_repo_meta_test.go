@@ -233,7 +233,7 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 		}
 	}
 	for _, q := range []string{
-		`INSERT INTO shared.xuid_aliases VALUES ('2535472884034919', 'JGtm')`,
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES ('2535472884034919', 'JGtm')`,
 		`INSERT INTO shared.match_participants VALUES ('m1', 'bid(7.0)', NULL)`,
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'first_blood', 43000, '2535472884034919', 'kill')`,
 		`INSERT INTO shared.highlight_events VALUES ('m1', 'killing_spree', 60000, 'bid(7.0)', 'spree')`,

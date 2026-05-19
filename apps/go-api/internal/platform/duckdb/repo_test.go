@@ -99,7 +99,7 @@ func seedShared(t *testing.T, db *DB) {
 			('m2', 'xuid001', 'AlphaPlayer'),
 			('m2', 'xuid003', 'CharlieX'),
 			('m3', 'xuid002', 'BravoGamer')`,
-		`INSERT INTO shared.xuid_aliases VALUES
+		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES
 			('xuid001', 'AlphaPlayer'),
 			('xuid002', 'BravoGamer'),
 			('xuid003', 'CharlieX')`,
@@ -336,7 +336,7 @@ func seedGamertagRanking(t *testing.T, db *DB) {
 	if _, err := db.Exec(ctx, `INSERT INTO xuid_aliases VALUES `+joinRows(rows)); err != nil {
 		t.Fatalf("seedGamertagRanking top-level aliases: %v", err)
 	}
-	if _, err := db.Exec(ctx, `INSERT INTO shared.xuid_aliases VALUES `+joinRows(rows)); err != nil {
+	if _, err := db.Exec(ctx, `INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES `+joinRows(rows)); err != nil {
 		t.Fatalf("seedGamertagRanking aliases: %v", err)
 	}
 	if _, err := db.Exec(ctx, `INSERT INTO global.xuid_aliases VALUES `+joinRows(rows)); err != nil {
