@@ -1,3 +1,45 @@
+## [2026-05-19] refactor(sync) — Commit 8i.1 : RunDelta route via Provider en mode B-swap
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8i.1 du sprint B3).
+
+**Le bug initial du sprint est techniquement fixé** pour l'`auto_sync` qui plantait sur `Madina97294` avec "different configuration".
+
+**Modifications** :
+
+1. **`SyncEngine.sharedProvider sharedprovider.Provider`** (engine.go) : champ optionnel. nil = mode legacy.
+
+2. **`WithSharedProvider(p) *SyncEngine`** : builder qui attache un Provider au SyncEngine. Cohérent avec les autres `WithX`.
+
+3. **`acquireSharedWriter(ctx) (*sql.DB, func(), error)`** : helper qui route via Provider.AcquireWriter en mode B-swap, ou fallback OpenSharedDB direct en mode legacy.
+
+4. **`engine.go::run()` site critique (ex-ligne 667)** : remplacement du pattern `OpenSharedDB → defer Close → SQLDb()` par `acquireSharedWriter → defer release` (3 lignes au lieu de 7). C'est le site qui plantait en prod (RunDelta).
+
+5. **`AppConfig.SharedProvider sharedprovider.Provider`** (renommé de SharedReader pour clarifier le type) : injecté par main.go en mode flag-on. Provider satisfait `duckdb.SharedReader` structurellement → pool reçoit directement.
+
+6. **`auto_sync.go::defaultRunnerFactory`** : câble `.WithSharedProvider(s.cfg.SharedProvider)` sur le SyncEngine quand le Provider est disponible.
+
+**13 autres sites `OpenSharedDB` non encore migrés** (commit 8i.2 différé) :
+- 6 dans engine.go (RunBackfill*, ligne 196 à 467) — backfill manuels rares
+- 1 chacun dans : assists_model.go, backfill_weapons.go, citations_backfill.go, events_replay.go, friends_recompute.go, match_recomputer.go, session_recalc.go
+
+Ces sites peuvent rester en mode legacy court terme. Ils sont appelés par des CLIs (`cmd/levelup/cmd_backfill.go` etc.) qui tournent hors-process serveur, ou par des handlers HTTP rarement utilisés. Si appelés en mode flag-on alors qu'une lecture HTTP est en cours sur shared, ils tomberont sur "different configuration" — mais c'est un cas marginal. La migration peut suivre dans une PR séparée.
+
+**Tests verts (suite ciblée)** :
+- duckdb : 102s
+- sharedprovider : 15s
+- config : 5s
+- scheduler : 15s
+- sync : 146s (tous les tests sync engine passent)
+- go build ./cmd/server : OK
+
+Aucune régression. Mode flag-off identique à avant. Mode flag-on : auto_sync RunDelta utilise B-swap, coordonné avec le pool joueur.
+
+**Reste** :
+- Commit 8j : T5 burst de validation sous charge (5 syncs + 20 HTTP en parallèle)
+- Commit 9 : ADR 0014 + inversion default flag + cleanup
+
+---
+
 ## [2026-05-19] test(B3) — Commit 8h : T9 cible PASS — sprint B3 fonctionnellement réussi
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8h).

@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 const (
@@ -83,6 +84,15 @@ type SyncEngine struct {
 	// csrSeasonID est l'identifiant de saison CSR courant (ex: "CsrSeason8").
 	// Vide → runCSRSnapshotSync est skippé silencieusement.
 	csrSeasonID string
+
+	// sharedProvider (commit 8i) — si non-nil, le sync engine route ses
+	// ouvertures RW de shared via Provider.AcquireWriter (mode B-swap).
+	// Sinon, fallback OpenSharedDB direct (mode legacy, comportement
+	// pre-sprint, conflit "different configuration" possible).
+	//
+	// Injecté via WithSharedProvider depuis main.go / scheduler en mode
+	// flag-on. Cohérent avec PlayerPoolConfig.SharedReader côté pool.
+	sharedProvider sharedprovider.Provider
 }
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -126,6 +136,45 @@ func (e *SyncEngine) WithPrestigeHook(hook func(ctx context.Context, gamertag, t
 func (e *SyncEngine) WithResolver(r assets.Resolver) *SyncEngine {
 	e.resolver = r
 	return e
+}
+
+// WithSharedProvider (commit 8i) attache un sharedprovider.Provider que le
+// sync engine utilise pour ses ouvertures RW de shared (via AcquireWriter).
+// En mode B-swap, c'est le chemin qui coordonne avec le pool joueur via
+// les notifs Subscribe (PreSwapToRW / RWToRO).
+//
+// Si nil (mode legacy), le sync engine fait directement OpenSharedDB —
+// comportement pre-sprint, avec risque de conflit "different configuration".
+func (e *SyncEngine) WithSharedProvider(p sharedprovider.Provider) *SyncEngine {
+	e.sharedProvider = p
+	return e
+}
+
+// acquireSharedWriter retourne un *sql.DB RW sur shared + une fonction
+// release à appeler via defer.
+//
+//   - Mode B-swap (e.sharedProvider != nil) : appelle Provider.AcquireWriter
+//     qui déclenche le mécanisme PreSwap → pool DETACH → OpenReadWrite →
+//     RWToRO → pool re-ATTACH. Le release ferme RW et orchestre le retour
+//     en RO.
+//   - Mode legacy (e.sharedProvider == nil) : fallback OpenSharedDB direct.
+//     Le release ferme le handle. Pas de coordination avec le pool — bug
+//     "different configuration" reste possible.
+func (e *SyncEngine) acquireSharedWriter(ctx context.Context) (*sql.DB, func(), error) {
+	if e.sharedProvider != nil {
+		w, err := e.sharedProvider.AcquireWriter(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("acquireSharedWriter via Provider: %w", err)
+		}
+		return w.DB(), w.Release, nil
+	}
+	// Fallback legacy : OpenSharedDB direct (toujours utile pour les CLI et
+	// les tests qui n'ont pas de Provider).
+	handle, err := OpenSharedDB(e.sharedDBPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("acquireSharedWriter legacy: %w", err)
+	}
+	return handle.SQLDb(), func() { _ = handle.Close() }, nil
 }
 
 // WithFriendsLoader attache un loader settings.FriendGamertags pour le hook
@@ -615,13 +664,14 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	defer playerHandle.Close()
 	playerDB := playerHandle.SQLDb()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Commit 8i : route via Provider en mode B-swap (coordonne avec le pool
+	// joueur via Subscribe). Fallback OpenSharedDB direct si Provider nil.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: ouverture shared DB échouée", "gamertag", e.gamertag, "db", e.sharedDBPath, "err", err)
-		return result, fmt.Errorf("run OpenSharedDB: %w", err)
+		return result, fmt.Errorf("run acquireSharedWriter: %w", err)
 	}
-	defer sharedHandle.Close()
-	sharedDB := sharedHandle.SQLDb()
+	defer releaseShared()
 
 	// P5.3 : DB globale xbox_aliases (mapping xuid→gamertag global Microsoft).
 	globalDB, globalCleanup, err := openGlobalDB(e.globalDBPath)
