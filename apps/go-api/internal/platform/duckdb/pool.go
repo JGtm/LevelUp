@@ -171,7 +171,9 @@ func CloseAll() {
 		pdb := value.(*PlayerDB)
 		_ = pdb.Player.Close()
 
-		_ = pdb.Shared.Close()
+		if pdb.Shared != nil {
+			_ = pdb.Shared.Close()
+		}
 		if pdb.SharedSocial != nil {
 			_ = pdb.SharedSocial.Close()
 		}
@@ -192,19 +194,19 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open player db %s: %w", cfg.Gamertag, err)
 	}
 
-	// OpenReadOnly pour partager l'instance RO avec main.go::sharedDB et permettre
-	// l'ATTACH RO de shared sur les connexions player DB. Le mode RW exclusif
-	// (OpenReadWriteShared) verrouille le fichier au niveau process et bloque
-	// tout ATTACH ultérieur avec "Unique file handle conflict", cassant les
-	// pages HTTP qui font des JOINs `shared.match_registry`.
-	//
-	// Trade-off : le sync engine ouvre shared en RW via OpenSharedDB lors de
-	// RunDelta, ce qui peut entrer en conflit "different configuration" avec
-	// l'instance RO ouverte ici. C'est documenté dans main.go.
-	sharedDB, err := OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
-	if err != nil {
-		_ = playerDB.Close()
-		return nil, fmt.Errorf("pool: open shared db: %w", err)
+	// pdb.Shared : conn RO directe sur shared_matches_v2.duckdb. Utilisée
+	// UNIQUEMENT en mode legacy (cfg.SharedReader nil) où LegacySharedReader
+	// wrap cette conn pour servir l'interface SharedReader. En mode B-swap
+	// (cfg.SharedReader != nil), le Provider possède son propre handle et
+	// pdb.Shared n'est jamais consulté — on évite donc de l'ouvrir (sinon
+	// son file handle bloquerait le swap RW du Provider).
+	var sharedDB *DB
+	if cfg.SharedReader == nil {
+		sharedDB, err = OpenReadOnly(cfg.SharedDBPath, cfg.UserTimezone)
+		if err != nil {
+			_ = playerDB.Close()
+			return nil, fmt.Errorf("pool: open shared db: %w", err)
+		}
 	}
 	// Les migrations shared sont gérées par runMigrations() dans main.go.
 
@@ -214,7 +216,9 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	metaDB, err := OpenReadWriteShared(cfg.MetaDBPath, cfg.UserTimezone)
 	if err != nil {
 		_ = playerDB.Close()
-		_ = sharedDB.Close()
+		if sharedDB != nil {
+			_ = sharedDB.Close()
+		}
 		return nil, fmt.Errorf("pool: open metadata db: %w", err)
 	}
 
