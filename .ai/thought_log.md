@@ -1,3 +1,19 @@
+## [2026-05-19] refactor(filters_repo) — Commit 8k.1 : hasMVPlayerMatches + factorisation Placeholders
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.1 du sprint B1).
+
+**Livré** :
+1. `hasMVPlayerMatches` (filters_repo.go) migré vers `pdb.SharedReadDB().Get(ctx)` + `db.QueryContext`. Le SQL passe de `SELECT 1 FROM shared.mv_player_matches LIMIT 0` à `SELECT 1 FROM mv_player_matches LIMIT 0` (préfixe shared. retiré car la conn shared cible directement le schéma).
+2. 4 sites de duplication `strings.TrimRight(strings.Repeat("?,", n), ",")` factorisés vers le helper `Placeholders(n)` du commit 8k.0. Changement cosmétique : output passe de `"?,?,?"` à `"?, ?, ?"` (SQL accepte les deux).
+
+**Reporté au sprint 2** : `LoadMatchesForFilters` (ligne 38) utilise `r.pdb.ReadDB().Query(ctx, Q4MatchesForFilters/Q4MVMatchesForFilters, ...)`. Ces queries font un **vrai JOIN cross-DB** (`shared.v_match_full ⨝ shared.match_participants ⨝ player_match_enrichment`) — la migration nécessite un split+merge Go. Programmé pour le commit 8k.6 dédié.
+
+**Tests verts** : 9/9 tests filters_repo (incl. LoadMatchesForFilters qui utilise toujours le path legacy en attendant 8k.6).
+
+**Prochaine étape (8k.2)** : repos simples shared-only — explorer_repo, fanout_repo, gamertag_repo, citations_repo, engagement_score_repo. Pattern mécanique style 8c.
+
+---
+
 ## [2026-05-19] feat(duckdb) — Commit 8k.0 : helpers communs + fixes test isolation
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.0 = première étape du sprint B1).
