@@ -1,3 +1,45 @@
+## [2026-05-19] test(B3) — Commit 8h : T9 cible PASS — sprint B3 fonctionnellement réussi
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8h).
+
+**Moment clé du sprint** : `TestPool_AttachShared_SurvivesSwapCycle_integration` — le test SKIP du commit 7 qui documentait la régression critique — passe maintenant en vert en 0.47s.
+
+Il exerce **toute la chaîne** B-swap option B3 :
+1. Provider créé sur shared
+2. PlayerDB ouvert avec `cfg.SharedReader = provider` (mode B-swap, `bSwapEnabled = true`)
+3. Subscribe avec adapter `sharedprovider.SwapEvent → duckdb.SwapDirection`
+4. Sanity : SELECT shared.match_registry via la conn player avec ATTACH RO fonctionne
+5. AcquireWriter :
+   - PreSwapToRW → OnSharedSwap → pool DETACH shared + Close pdb.Shared sur tous les PlayerDB
+   - Provider Phase 3.5 Close handle RO
+   - OpenReadWrite réussit (file totalement libéré)
+6. INSERT via writer
+7. Release :
+   - Close RW + Open RO + state = StateRO
+   - RWToRO → OnSharedSwap → pool Open new pdb.Shared + ATTACH shared sur conns player/social
+8. Assertion finale : SELECT shared.match_registry via la conn player voit l'INSERT — **PROUVE QUE ATTACH SURVIT AU CYCLE COMPLET**
+
+Aussi `TestPool_AttachSharedConflictsWithSwap` (le test "rouge attendu" du commit 7) reste vert — il documente la régression actuelle sans Subscribe. Les deux coexistent : l'un assert que le bug existe sans Subscribe, l'autre que la solution marche AVEC Subscribe.
+
+**Tests verts (suite complète)** :
+- duckdb : 68.8s (incl. T9 cible + T9 conflict + tous les autres)
+- sharedprovider : 8.4s
+- go build ./cmd/server : OK
+- Hors TestLoadTemplatesFromTOML_HaloInfinite (pré-existant, indépendant du sprint)
+
+**État du sprint à ce stade** :
+
+Commits 1-8h livrés (15 commits sur la branche). Le bug initial `auto_sync RunDelta` "different configuration" / "Unique file handle conflict" est **fixé** en mode `LEVELUP_USE_SHARED_PROVIDER=1`, prouvé bout-en-bout par T9 cible.
+
+**Reste à faire** :
+- **Commit 8i** : migrer les 17 sites `sync.OpenSharedDB` vers `Provider.AcquireWriter`. C'est le sync engine qui consomme la mécanique B3.
+- **Commit 8j** : test T5 burst sur topologie réelle (5 syncs concurrents + 20 HTTP) pour valider la stabilité sous charge.
+- **Commit 9** : inverser le default à `LEVELUP_USE_SHARED_PROVIDER=1`, retirer les commentaires trade-off, créer ADR 0014, retirer le flag legacy une fois la prod confirmée stable.
+
+Le flag-on est validé techniquement. Le flag-off (default actuel) reste opérationnel sans régression. La prod peut activer le flag dès qu'on est prêt — pas de big-bang requis.
+
+---
+
 ## [2026-05-19] refactor(main) — Commit 8g : câblage Subscribe + injection Provider dans le pool
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8g du sprint B3).
