@@ -346,6 +346,10 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// shared.v_match_full utilisée par Q4 (filters) et Q5 (history) cross-DB.
+		// Sprint B1 commit 8k.6 : ajouté pour que les queries SharedReader-only
+		// (split-merge LoadMatchesForFilters) trouvent la vue côté pdb.Shared.
+		`CREATE VIEW shared.v_match_full AS SELECT * FROM shared.match_registry`,
 		// shared.v_gamertag_lookup utilisée par Q10Encounters
 		// (LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid).
 		`CREATE VIEW shared.v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,

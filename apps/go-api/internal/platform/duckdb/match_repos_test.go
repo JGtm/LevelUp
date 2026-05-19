@@ -33,8 +33,12 @@ func TestFiltersRepo_LoadMatchesForFilters_WithData(t *testing.T) {
 func TestFiltersRepo_LoadMatchesForFilters_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	if _, err := pdb.Player.Exec(ctx, "DELETE FROM shared.match_participants"); err != nil {
-		t.Fatal(err)
+	// Sprint B1 commit 8k.6 : LoadMatchesForFilters lit la partie shared via
+	// SharedReader (pdb.Shared) — supprimer aussi côté shared pour vider.
+	for _, db := range []*DB{pdb.Player, pdb.Shared} {
+		if _, err := db.Exec(ctx, "DELETE FROM shared.match_participants"); err != nil {
+			t.Fatal(err)
+		}
 	}
 	repo := NewFiltersRepo(pdb)
 	rows, err := repo.LoadMatchesForFilters(ctx)

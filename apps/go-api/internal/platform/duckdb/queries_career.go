@@ -66,6 +66,61 @@ FROM (
 LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
 ORDER BY ms.start_time DESC`
 
+// Q4Shared : Sprint B1 commit 8k.6 — partie shared du split LoadMatchesForFilters.
+// Cross-DB JOIN historique (shared.v_match_full ⨝ shared.match_participants ⨝
+// player_match_enrichment) découpé pour passer par SharedReader sans toucher
+// le pool ATTACH.
+//
+// Cette query est lancée via pdb.SharedReadDB().Get(ctx) — toutes les tables
+// référencées sont dans shared_matches_v2.duckdb. Le merge avec
+// player_match_enrichment se fait en Go (Q4PlayerEnrichmentForMatches).
+//
+// Paramètre : ? = xuid.
+const Q4SharedMatchesForFilters = `
+SELECT
+    r.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    r.map_name,
+    COALESCE(r.map_name_fr, r.map_name)                AS map_name_fr,
+    r.pair_name,
+    COALESCE(r.pair_name_fr, r.pair_name)              AS pair_name_fr,
+    r.pair_id,
+    COALESCE(r.playlist_name_fr, r.playlist_name)      AS playlist_name,
+    COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
+    COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
+    r.playlist_name                                    AS playlist_name_en
+FROM shared.v_match_full r
+JOIN shared.match_participants p ON r.match_id = p.match_id
+WHERE p.xuid = ?
+ORDER BY start_time DESC`
+
+// Q4MVSharedMatchesForFilters : variante du split avec mv_player_matches.
+// Paramètre : ? = xuid.
+const Q4MVSharedMatchesForFilters = `
+SELECT
+    match_id,
+    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time,
+    map_name,
+    COALESCE(map_name_fr, map_name)                AS map_name_fr,
+    pair_name,
+    COALESCE(pair_name_fr, pair_name)              AS pair_name_fr,
+    pair_id,
+    COALESCE(playlist_name_fr, playlist_name)      AS playlist_name,
+    COALESCE(is_firefight, FALSE)                  AS is_firefight,
+    COALESCE(is_ranked, FALSE)                     AS is_ranked,
+    playlist_name                                  AS playlist_name_en
+FROM shared.mv_player_matches
+WHERE xuid = ?
+ORDER BY start_time DESC`
+
+// Q4PlayerEnrichmentForMatches : partie player du split LoadMatchesForFilters.
+// IN-list dynamique : %s remplacé par Placeholders(len(matchIDs)).
+// Paramètres : matchIDs... (toutes des string).
+const Q4PlayerEnrichmentForMatchesTpl = `
+SELECT match_id, session_id, session_label, COALESCE(is_with_friends, FALSE)
+FROM player_match_enrichment
+WHERE match_id IN (%s)`
+
 // Q5 : Historique — chargement complet avec stats du joueur.
 // Paramètres : ? = xuid (match_participants), ? = xuid (enrichment).
 const Q5MatchHistory = `

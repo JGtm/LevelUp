@@ -1,3 +1,44 @@
+## [2026-05-19] refactor(filters) — Commit 8k.6 : LoadMatchesForFilters split+merge cross-DB
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.6 du sprint B1).
+
+**Contexte** : `LoadMatchesForFilters` (filters_repo.go) faisait un JOIN cross-DB unique :
+```
+FROM shared.v_match_full r
+JOIN shared.match_participants p ON r.match_id = p.match_id
+LEFT JOIN player_match_enrichment pme ON ms.match_id = pme.match_id
+```
+
+Impossible de passer par SharedReader sans split — la dépendance cross-DB doit être resolue côté Go.
+
+**Livré** :
+
+1. **3 nouvelles queries** dans `queries_career.go` :
+   - `Q4SharedMatchesForFilters` : étape 1 sur SharedReader (v_match_full ⨝ match_participants)
+   - `Q4MVSharedMatchesForFilters` : variante MV (mv_player_matches)
+   - `Q4PlayerEnrichmentForMatchesTpl` : étape 2 sur pdb.Player (player_match_enrichment, IN-list)
+
+2. **`LoadMatchesForFilters` refactored** en 3 helpers :
+   - `loadSharedFilterRows(ctx, query)` : étape 1 (SharedReader.Get + QueryContext)
+   - `mergePlayerEnrichments(ctx, rows)` : étape 2 (pdb.Player.Query) + merge LEFT JOIN en Go (enrichments manquants → SessionID/Label/IsWithFriends zero values)
+   - Orchestrateur (LoadMatchesForFilters) appelle les 2 et applique les translations FR
+
+3. **`seedSharedDBSchema`** : ajout de `shared.v_match_full` (CREATE VIEW AS SELECT * FROM shared.match_registry) pour que les tests passent sur pdb.Shared.
+
+4. **`TestFiltersRepo_LoadMatchesForFilters_Empty`** : delete dans pdb.Player ET pdb.Shared (le repo lit la partie shared via SharedReader désormais).
+
+**Bénéfice** : un des 2 hot paths "carrière" est maintenant Provider-coordinated. La fenêtre RW du sync ne casse plus le filtre cascade.
+
+**Coût** : 1 query → 2 round-trips + merge Go. Sur un set de ~1k matchs, overhead négligeable (IN-clause indexée + map Go).
+
+**Tests verts** :
+- duckdb suite complète (TestLoadTemplatesFromTOML pré-existant)
+- sharedprovider 11s, api/handlers/middleware 45s, sync 126s
+
+**Prochaine étape (8k.7)** : match_history_repo finir la migration (Q5MatchHistory + autres).
+
+---
+
 ## [2026-05-19] refactor(prestige_baseline) — Commit 8k.4 : HaloBaselineProvider migré vers SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.4 du sprint B1).
