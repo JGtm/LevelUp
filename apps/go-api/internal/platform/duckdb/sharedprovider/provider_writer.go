@@ -22,9 +22,11 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		return nil, ErrProviderClosed
 	}
 
+	slog.InfoContext(ctx, "provider: AcquireWriter démarré", "path", p.path)
 	lease, err := dblease.AcquireWriterCtx(ctx, nil, p.path, dblease.KindSharedMatches)
 	if err != nil {
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
+		slog.WarnContext(ctx, "provider: dblease échoué", "path", p.path, "err", err)
 		return nil, err
 	}
 
@@ -43,15 +45,21 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		p.rollbackFromDraining()
 		lease.Release()
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
+		slog.WarnContext(ctx, "provider: drain timeout, rollback vers RO",
+			"path", p.path, "drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
 		return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w", err)
 	}
-	getWaitMsTotal.Add(time.Since(drainStart).Milliseconds())
+	drainMs := time.Since(drainStart).Milliseconds()
+	getWaitMsTotal.Add(drainMs)
+	slog.InfoContext(ctx, "provider: readers drainés", "path", p.path, "drain_ms", drainMs)
 
 	rwHandle, err := p.swapToRW(ctx, swapStart)
 	if err != nil {
 		lease.Release()
 		return nil, err
 	}
+	slog.InfoContext(ctx, "provider: swap RO→RW terminé",
+		"path", p.path, "total_ms", time.Since(swapStart).Milliseconds())
 
 	// WriterHandle construit via closure (refacto commit 8b) — la struct
 	// ne référence plus *providerImpl directement, ce qui permet à
@@ -220,6 +228,8 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 		swapDurationMsTotal.Add(swapDirRwToRo, time.Since(swapStart).Milliseconds())
 		close(p.ready)
 		p.mu.Unlock()
+		slog.Info("provider: swap RW→RO terminé",
+			"path", p.path, "total_ms", time.Since(swapStart).Milliseconds())
 		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
 		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
 		//
