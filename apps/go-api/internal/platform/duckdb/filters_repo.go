@@ -110,7 +110,14 @@ func (r *FiltersRepo) GetPlayerMatchCount(ctx context.Context) (int, error) {
 func (r *FiltersRepo) hasMVPlayerMatches(ctx context.Context) bool {
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := r.pdb.ReadDB().Query(ctx2, "SELECT 1 FROM shared.mv_player_matches LIMIT 0")
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx2)
+	if err != nil {
+		return false
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx2, "SELECT 1 FROM mv_player_matches LIMIT 0")
 	if err != nil {
 		return false
 	}
@@ -226,7 +233,7 @@ func (r *FiltersRepo) applyMapFRTranslations(ctx context.Context, rows []domain.
 	for n := range uniqueEN {
 		mapNames = append(mapNames, n)
 	}
-	ph := strings.TrimRight(strings.Repeat("?,", len(mapNames)), ",")
+	ph := Placeholders(len(mapNames))
 	q1 := fmt.Sprintf(`SELECT DISTINCT map_name, map_id FROM match_registry WHERE map_name IN (%s) AND map_id IS NOT NULL`, ph)
 	args1 := make([]any, len(mapNames))
 	for i, n := range mapNames {
@@ -264,7 +271,7 @@ func (r *FiltersRepo) applyMapFRTranslations(ctx context.Context, rows []domain.
 	for _, id := range nameToID {
 		mapIDs = append(mapIDs, id)
 	}
-	ph2 := strings.TrimRight(strings.Repeat("?,", len(mapIDs)), ",")
+	ph2 := Placeholders(len(mapIDs))
 	q2 := fmt.Sprintf(`SELECT asset_id, name FROM asset_translations WHERE asset_type = 'map' AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s) ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`, ph2)
 	args2 := make([]any, len(mapIDs))
 	for i, id := range mapIDs {
@@ -325,7 +332,7 @@ func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []do
 	for n := range uniqueEN {
 		names = append(names, n)
 	}
-	ph := strings.TrimRight(strings.Repeat("?,", len(names)), ",")
+	ph := Placeholders(len(names))
 	q1 := fmt.Sprintf(`SELECT DISTINCT playlist_name, playlist_id FROM match_registry WHERE playlist_name IN (%s) AND playlist_id IS NOT NULL`, ph)
 	args1 := make([]any, len(names))
 	for i, n := range names {
@@ -363,7 +370,7 @@ func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []do
 	for _, id := range nameToID {
 		plIDs = append(plIDs, id)
 	}
-	ph2 := strings.TrimRight(strings.Repeat("?,", len(plIDs)), ",")
+	ph2 := Placeholders(len(plIDs))
 	q2 := fmt.Sprintf(`SELECT asset_id, name FROM asset_translations WHERE asset_type = 'playlist' AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s) ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`, ph2)
 	args2 := make([]any, len(plIDs))
 	for i, id := range plIDs {
