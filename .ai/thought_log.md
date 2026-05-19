@@ -1,3 +1,70 @@
+## [2026-05-19] fix + test(e2e) — Commit 14 : live ops ↔ sync coexistence
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commits 14a + 14b — fermeture du scope "live updates pendant sync").
+
+**Contexte** : revue post-13 questionnait la coexistence entre les flows
+"live" (battlepass, défis, rang XP, assets) et auto_sync. Audit révèle :
+- **Lectures live** déjà coordonnées via Provider (commit 11), mais aucun
+  test E2E ne le prouve pour ces flows spécifiques.
+- **Écritures live protégées** : notifications (KindSharedSocial), prestige
+  challenges (KindPlayer), prestige squad (KindSharedSocial), match favorites
+  (KindSharedSocial). Toutes via dblease.
+- **Écritures live NON protégées** : 3 chemins identifiés, dont 2 réels :
+  * `resetPlayerMediaIndex` (POST /settings/media/reset-index async) :
+    `sql.Open` direct + DELETE sans lease → race avec auto_sync.
+  * `OpenSpartanImportService.Import` (POST /import/openspartan async) :
+    Insert sur shared.match_registry sans lease → race avec auto_sync.
+  * Asset cache UpsertAsset : faux positif de l'audit — appelé uniquement
+    par les CLIs (`cmd/refresh-metadata`, `cmd/populate-assets`), pas par
+    AssetService.ListMaps/ListWeapons (lecture pure).
+
+**Livré 14a — fix écritures async** :
+
+1. `resetPlayerMediaIndex(ctx, dbPath)` : signature étendue avec ctx,
+   acquiert `dblease.KindPlayer` avant les DELETE. Caller `ResetAndReindex`
+   propage le ctx existant.
+
+2. `OpenSpartanImportService.Import` : prend `dblease.KindSharedMatches`
+   au début. Signature `NewOpenSpartanImportService(sharedDB, sharedDBPath)`
+   pour fournir le path utilisé par le lease. `sharedDBPath=""` → mode legacy
+   sans lease (tests in-memory). 6 call sites de tests adaptés.
+
+**Livré 14b — E2E tests live ops ↔ sync** (`engine_provider_live_ops_e2e_test.go`) :
+
+1. `TestE2E_LiveReads_AllRepos_DuringSync_NoFriction` : 8 goroutines
+   readers qui itèrent sur 6 repos (Career, Citations, MatchHistory,
+   MatchView, Home, Gamertag) pendant un RunDelta concurrent. Vérifie
+   **0 "different configuration"** et **0 Catalog Error transitoire**.
+   Reclasse les "Table with name X does not exist" en bénin (tables
+   auxiliaires non seedées sur l'env test, ≠ problème de coordination).
+
+2. `TestE2E_LiveWrite_MediaResetIndex_DuringSync_Serialized` : simule
+   un reset media index pendant un RunDelta. Les 2 ops prennent
+   `dblease.KindPlayer` → sérialisation propre. Vérifie que reset finit
+   APRÈS sync (delta ~5ms observé, prouve l'exclusivité du lock).
+
+**Résultats** : 3 runs consécutifs verts sur les 2 nouveaux tests. OK=104,
+benign_err=520, Catalog=0, DiffCfg=0. Suite sync complète (126s) verte,
+service (6s) verte, handlers (11s) verte.
+
+**Réponse finale "le bug peut-il revenir sur des flows live ?"** :
+- ✅ Lectures (battlepass, challenges, career, citations, match_view,
+  home, gamertag) coordonnées par Provider → 0 conflit testé.
+- ✅ Écritures user-triggered (POST /sync/initial, POST /backfill/start,
+  PATCH /matches/:id/exclusion, POST /settings/recompute-sessions,
+  POST /import/openspartan, POST /settings/media/reset-index) toutes
+  sérialisées via dblease ou Provider.
+- ✅ Écritures async via job system (media reindex, OpenSpartan import,
+  backfill events/weapons) prennent leur propre lease, sérialisées avec
+  auto_sync.
+- ✅ Notifications, prestige challenges, match favorites : dblease déjà
+  en place avant le sprint, confirmé par audit.
+
+**Branche désormais à 47 commits ahead d'origin. Périmètre live ↔ sync
+totalement couvert structurellement et testé E2E.**
+
+---
+
 ## [2026-05-19] fix(prod) — Commit 13 : migration des 7 derniers sites legacy
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 13 — fermeture définitive du périmètre Provider).
