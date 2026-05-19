@@ -1,3 +1,30 @@
+## [2026-05-19] refactor(duckdb) — Commit 9h : retrait helper mort nullInt64ToStringPtr
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9h — Phase 2 du plan dette restante).
+
+**Contexte** : Le commit 9d.4 a unifié le type `MatchEnrichment` avec `SessionID sql.NullString`
+(au lieu de `sql.NullInt64` historique, car `session_id` est en réalité un VARCHAR en prod).
+Cette migration a rendu `nullInt64ToStringPtr` orphelin — défini mais sans aucun call site.
+
+**Livré** :
+
+1. **`player_matches_repo.go`** : suppression de `nullInt64ToStringPtr(sql.NullInt64) *string`
+   (lignes 766-774). Le helper était mort depuis 9d.4. Confirmé par `grep -rn nullInt64ToStringPtr`
+   ne retournant que la définition.
+
+**Vérifications** :
+- `go build ./...` OK
+- `go vet -tags=integration ./...` OK
+- Suite duckdb intégration : 100% verte (39s).
+
+**Note** : audit étendu effectué sur les autres helpers privés du package (squad_repo, compare_repo,
+career_repo) — `uniqueXUIDs` confirmé vivant (call site squad_repo.go:634), `loadSquadMatchesShared`,
+`loadMapStatsSquadShared`, `loadMatchPerformanceScores`, `mergeSynthesisEnrichments` tous vivants
+(helpers de split+merge). Aucun autre candidat mort identifié à l'œil — Phase 2 terminée
+sur ce périmètre.
+
+---
+
 ## [2026-05-19] test(duckdb) — Commit 9g.3 : tests pour 3 méthodes 0% (campaign + catalog + squad)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9g.3 — Phase 1 du plan dette restante).
