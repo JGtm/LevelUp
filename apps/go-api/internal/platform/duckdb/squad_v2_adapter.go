@@ -290,7 +290,7 @@ func (a *SquadV2LoaderAdapter) LoadObjectiveScores(
 		return map[string]int{}, nil
 	}
 
-	ph := placeholders(len(matchIDs))
+	ph := Placeholders(len(matchIDs))
 	args := make([]any, 0, 1+len(matchIDs))
 	args = append(args, pdb.XUID)
 	for _, id := range matchIDs {

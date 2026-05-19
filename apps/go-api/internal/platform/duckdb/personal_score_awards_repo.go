@@ -90,11 +90,11 @@ func (r *PersonalScoreAwardsRepo) LoadPersonalScoreAwards(
 func buildAwardsQuery(f port.PersonalScoreAwardsFilters) (string, []any) {
 	args := make([]any, 0, len(f.MatchIDs)+len(f.XUIDs))
 
-	matchPH := placeholders(len(f.MatchIDs))
+	matchPH := Placeholders(len(f.MatchIDs))
 	for _, id := range f.MatchIDs {
 		args = append(args, id)
 	}
-	xuidPH := placeholders(len(f.XUIDs))
+	xuidPH := Placeholders(len(f.XUIDs))
 	for _, x := range f.XUIDs {
 		args = append(args, x)
 	}

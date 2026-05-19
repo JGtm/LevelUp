@@ -149,7 +149,7 @@ func buildWeaponKillsQuery(f port.WeaponKillFilters) (string, []any) {
 	var sb strings.Builder
 	args := make([]any, 0, len(f.MatchIDs)*2+len(f.XUIDs)*2+2)
 
-	matchPlaceholders := placeholders(len(f.MatchIDs))
+	matchPlaceholders := Placeholders(len(f.MatchIDs))
 	for _, id := range f.MatchIDs {
 		args = append(args, id)
 	}
@@ -235,7 +235,7 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
   AND `)
 		sb.WriteString(alias)
 		sb.WriteString(`.xuid IN (`)
-		sb.WriteString(placeholders(len(f.XUIDs)))
+		sb.WriteString(Placeholders(len(f.XUIDs)))
 		sb.WriteString(`)`)
 		for _, x := range f.XUIDs {
 			*args = append(*args, x)
@@ -250,18 +250,6 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
       SELECT xuid FROM shared.xuid_aliases WHERE gamertag = ?
   )`)
 	*args = append(*args, f.Gamertag)
-}
-
-// placeholders construit "?,?,?" pour les IN-list parametrees.
-func placeholders(n int) string {
-	if n <= 0 {
-		return ""
-	}
-	parts := make([]string, n)
-	for i := range parts {
-		parts[i] = "?"
-	}
-	return strings.Join(parts, ",")
 }
 
 // attachWeaponLabels enrichit les rows non-grenade/melee avec leur libelle
