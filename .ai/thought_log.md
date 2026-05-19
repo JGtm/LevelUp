@@ -1,3 +1,52 @@
+## [2026-05-19] test(duckdb) — Commit 9i : tests CareerLiveRepo (7 méthodes 0% → ≥78%)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9i — Phase 3 du plan dette restante).
+
+**Contexte** : `CareerLiveRepo` (flow live carrière, découplé du sync post-match) avait
+7 méthodes à 0% coverage : 3 pures (IsEmpty, CareerRankRowEqualForInsert, buildCareerRankNameDB)
+et 3 DB-driven (LoadLastCareerRank, InsertCareerProgressionIfChanged, EnrichFromMetadata).
+
+**Livré** :
+
+1. **`career_live_repo_test.go`** (nouveau, build tag integration) — 6 tests :
+   - `TestCareerRankRow_IsEmpty` (7 cas) : nil + zero + rank/xp/spartan/banner only +
+     rank_name only-doesn't-save (rank_name dérivé via EnrichFromMetadata, non identité).
+   - `TestCareerRankRowEqualForInsert` (7 cas) : both nil + 1 nil + identique + rank_name diff
+     ignoré + rank/xp/spartan diff comptent.
+   - `TestBuildCareerRankNameDB` (6 cas) : empty title, title only, title+tier, title+tier+grade,
+     grade zero ignored, whitespace trimmed.
+   - `TestCareerLiveRepo_LoadLastCareerRank_EmptyDB` : xuid inconnu → (nil, nil) safe.
+   - `TestCareerLiveRepo_LoadLastCareerRank_PerFieldMerge` : 2 snapshots du même xuid,
+     banner_image_url vide dans le récent → ARG_MAX FILTER remonte la valeur du snapshot
+     antérieur (test critique du contrat per-field merge).
+   - `TestCareerLiveRepo_InsertCareerProgressionIfChanged` : 1er insert OK + duplicate skip
+     + rank diff insère + edges xuid vide / data nil.
+   - `TestCareerLiveRepo_EnrichFromMetadata` : 3 cas (rank=0 no-op, rank=999 introuvable no-op,
+     rank=25 hydratation complète tier+grade+xp_required+xp_total).
+
+2. **`player_repos_test.go`** : ajout de la colonne `xuid VARCHAR` à `career_progression`
+   dans `seedPlayerSchema` (alignement avec `migration.steps_player.go:36`). Le seed
+   précédent divergeait du schéma prod — bug latent corrigé. L'INSERT du seed continue à
+   fonctionner (colonnes nommées, xuid devient NULL pour la row par défaut).
+
+**Coverage** : 60.4% → **61.4%** (+1.0pp) sur `./internal/platform/duckdb`.
+- `IsEmpty` : 0% → **100%**
+- `NewCareerLiveRepo` : 0% → **100%**
+- `CareerRankRowEqualForInsert` : 0% → **100%**
+- `buildCareerRankNameDB` : 0% → **100%**
+- `LoadLastCareerRank` : 0% → **84.0%**
+- `InsertCareerProgressionIfChanged` : 0% → **78.6%**
+- `EnrichFromMetadata` : 0% → **85.7%**
+
+**Tests verts** : suite duckdb intégration complète (38s) sans régression.
+
+**Phase 3 status** : CareerLiveRepo couvert. CampaignRepo (8 méthodes CRUD encore à 0%) et
+PrestigeBaselineProvider (4 méthodes à 0%) restent candidats pour une Phase 3 future si
+nécessaire — ces deux repos sont des CRUD relativement génériques, moindre risque que
+les méthodes shared-only déjà couvertes.
+
+---
+
 ## [2026-05-19] refactor(duckdb) — Commit 9h : retrait helper mort nullInt64ToStringPtr
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 9h — Phase 2 du plan dette restante).

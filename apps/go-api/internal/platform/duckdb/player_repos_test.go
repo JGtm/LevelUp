@@ -173,7 +173,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			is_with_friends BOOLEAN DEFAULT FALSE,
 			is_excluded BOOLEAN DEFAULT FALSE,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP)`,
+		// career_progression : colonne xuid utilisée par CareerLiveRepo
+		// (LoadLastCareerRank WHERE xuid = ?, InsertCareerProgressionIfChanged).
+		// Aligne le seed sur le schéma de migration prod (steps_player.go:36).
 		`CREATE TABLE career_progression (
+			xuid VARCHAR,
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR,
 			xp_for_next_rank INTEGER, xp_total INTEGER, is_max_rank BOOLEAN DEFAULT FALSE,
