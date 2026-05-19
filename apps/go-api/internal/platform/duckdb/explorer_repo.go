@@ -78,9 +78,14 @@ func (r *ExplorerRepo) ResolveXUIDByGamertag(ctx context.Context, gamertag strin
 		WHERE gamertag ILIKE ? AND xuid NOT LIKE 'bid(%'
 		LIMIT 1
 	`
-	row := r.pdb.ReadDB().QueryRow(ctx, q, gamertag)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
+	}
+	defer release()
+
 	var xuid string
-	if err := row.Scan(&xuid); err != nil {
+	if err := db.QueryRowContext(ctx, q, gamertag).Scan(&xuid); err != nil {
 		return "", fmt.Errorf("ExplorerRepo.ResolveXUIDByGamertag(%q): %w", gamertag, err)
 	}
 	return xuid, nil

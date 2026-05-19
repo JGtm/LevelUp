@@ -293,8 +293,14 @@ func (r *EngagementScoreRepo) LoadMatchIntensity(
 		return 0, false, port.ErrEngagementUnavailable
 	}
 
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("EngagementScoreRepo.LoadMatchIntensity: %w", err)
+	}
+	defer release()
+
 	var intensity sql.NullFloat64
-	err := r.pdb.ReadDB().QueryRow(ctx,
+	err = db.QueryRowContext(ctx,
 		`SELECT match_intensity FROM shared.match_registry WHERE match_id = ?`,
 		matchID,
 	).Scan(&intensity)
