@@ -219,6 +219,7 @@ func main() {
 		sharedReader duckdb.SharedReader
 		closeShared  func() error
 	)
+	var unsubscribeSwap func()
 	if useSharedProvider {
 		sharedMgr := sharedprovider.NewManager()
 		provider, err := sharedMgr.For(sharedPath)
@@ -227,8 +228,39 @@ func main() {
 			os.Exit(1)
 		}
 		sharedReader = provider
-		closeShared = sharedMgr.Close
-		slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif)")
+
+		// Commit 8g : brancher le Provider au pool joueur via Subscribe.
+		// Sur PreSwap, le pool DETACH ses ATTACH RO sur shared (cf. POC
+		// diagnostique commit 8f : DETACH explicite libère le file alors
+		// que Reopen ne le fait pas). Sur RWToRO/ErrorToRO, le pool
+		// re-ATTACH.
+		//
+		// L'adapter traduit sharedprovider.SwapEvent → duckdb.SwapDirection
+		// (évite le cycle d'import duckdb ↔ sharedprovider).
+		swapCtx := context.Background()
+		unsubscribeSwap = provider.Subscribe(func(evt sharedprovider.SwapEvent) {
+			switch evt.Direction {
+			case sharedprovider.DirectionPreSwapToRW:
+				duckdb.OnSharedSwap(swapCtx, duckdb.SwapDirPreSwapToRW)
+			case sharedprovider.DirectionRWToRO:
+				duckdb.OnSharedSwap(swapCtx, duckdb.SwapDirRWToRO)
+			case sharedprovider.DirectionErrorToRO:
+				duckdb.OnSharedSwap(swapCtx, duckdb.SwapDirErrorToRO)
+			}
+		})
+
+		// Injecter le Provider dans le AppConfig pour que les
+		// PlayerPoolConfig créés ensuite (resolveDemoPlayer, buildPlayerPool
+		// Config) reçoivent SharedReader → mode B-swap actif au niveau pool.
+		cfg.SharedReader = provider
+
+		closeShared = func() error {
+			if unsubscribeSwap != nil {
+				unsubscribeSwap()
+			}
+			return sharedMgr.Close()
+		}
+		slog.Info("shared_matches_v2: mode sharedprovider (B-swap actif, pool inscrit via Subscribe)")
 	} else {
 		sharedDB, err := duckdb.OpenReadOnly(sharedPath)
 		if err != nil {

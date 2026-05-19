@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // defaultUserTimezone est le timezone IANA utilisé en l'absence de configuration.
@@ -30,6 +31,11 @@ type AppConfig struct {
 	Lang            string
 	AppVersion      string
 	FeatureFlags    FeatureFlags
+	// SharedReader (commit 8g) — injecté au boot par main.go en mode B-swap
+	// (LEVELUP_USE_SHARED_PROVIDER=1). Passé aux PlayerPoolConfig pour que
+	// les conns player soient inscrites au mécanisme Subscribe/PreSwap du
+	// Provider. nil en mode legacy.
+	SharedReader duckdb.SharedReader
 	// Sprint 40 T2 : Discord webhook URL pour alerting 500 + taux d'erreur.
 	// Lit LEVELUP_DISCORD_WEBHOOK_URL ; fallback sur discord_webhook_url dans app_settings.json.
 	DiscordWebhookURL string
