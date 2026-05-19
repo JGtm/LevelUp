@@ -35,11 +35,8 @@ func setupSharedDB(t *testing.T) string {
 
 // TestProvider_GetInRO_ReturnsSameUnderlyingHandle vérifie l'invariant
 // principal du steady state RO : Get() retourne toujours le même *sql.DB
-// sous-jacent (le provider owne UN seul handle DuckDB, qui ne change pas
-// tant qu'aucun swap RW n'a lieu).
-//
-// Ce test deviendra plus subtil au commit 3 où le handle peut changer
-// pendant un swap — mais en steady state RO, l'invariant tient.
+// sous-jacent (le provider owne UN seul handle DuckDB tant qu'aucun swap
+// RW n'a lieu).
 func TestProvider_GetInRO_ReturnsSameUnderlyingHandle(t *testing.T) {
 	path := setupSharedDB(t)
 
@@ -54,19 +51,22 @@ func TestProvider_GetInRO_ReturnsSameUnderlyingHandle(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	db1, err := p.Get(ctx)
+	db1, release1, err := p.Get(ctx)
 	if err != nil {
 		t.Fatalf("Get #1: %v", err)
 	}
-	db2, err := p.Get(ctx)
+	defer release1()
+
+	db2, release2, err := p.Get(ctx)
 	if err != nil {
 		t.Fatalf("Get #2: %v", err)
 	}
+	defer release2()
+
 	if db1 != db2 {
 		t.Errorf("Get retourne 2 handles différents en steady state RO : %p vs %p", db1, db2)
 	}
 
-	// Sanity ping pour confirmer que le handle est utilisable.
 	var v string
 	if err := db1.QueryRowContext(ctx, "SELECT version()").Scan(&v); err != nil {
 		t.Errorf("ping RO: %v", err)
@@ -74,8 +74,7 @@ func TestProvider_GetInRO_ReturnsSameUnderlyingHandle(t *testing.T) {
 }
 
 // TestProvider_GetAfterClose_ReturnsProviderClosed vérifie le contrat
-// d'erreur : un Get sur un Provider fermé retourne ErrProviderClosed
-// (les handlers HTTP doivent mapper cela en 503).
+// d'erreur : un Get sur un Provider fermé retourne ErrProviderClosed.
 func TestProvider_GetAfterClose_ReturnsProviderClosed(t *testing.T) {
 	path := setupSharedDB(t)
 
@@ -91,15 +90,16 @@ func TestProvider_GetAfterClose_ReturnsProviderClosed(t *testing.T) {
 		t.Fatalf("State après Close = %v, attendu StateClosed", got)
 	}
 
-	_, err = p.Get(context.Background())
+	_, release, err := p.Get(context.Background())
 	if !errors.Is(err, sharedprovider.ErrProviderClosed) {
 		t.Errorf("Get après Close = %v, attendu ErrProviderClosed", err)
 	}
+	if release != nil {
+		t.Error("release devrait être nil quand err != nil")
+	}
 }
 
-// TestProvider_CloseIsIdempotent vérifie qu'un double Close ne panique pas
-// et ne retourne pas d'erreur la seconde fois (contrat important pour les
-// defer p.Close() dans les composants qui peuvent partager un Provider).
+// TestProvider_CloseIsIdempotent vérifie qu'un double Close ne panique pas.
 func TestProvider_CloseIsIdempotent(t *testing.T) {
 	path := setupSharedDB(t)
 
@@ -118,10 +118,6 @@ func TestProvider_CloseIsIdempotent(t *testing.T) {
 
 // TestManager_ForSamePath_ReturnsSameProvider vérifie la déduplication par
 // chemin : deux appels For(path) renvoient le même Provider.
-//
-// Important pour le commit 6 où main.go va créer le Manager au boot et le
-// pool joueur va le consommer — il faut que le même fichier shared mappe
-// vers le même Provider.
 func TestManager_ForSamePath_ReturnsSameProvider(t *testing.T) {
 	path := setupSharedDB(t)
 
