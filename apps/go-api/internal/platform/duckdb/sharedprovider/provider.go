@@ -234,19 +234,6 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		return nil, err
 	}
 
-	// PHASE 0 (commit 8e) : notifier les Subscribers AVANT le swap, pour
-	// qu'ils libèrent leur ATTACH RO sur shared (cas critique : pool joueur
-	// faisant Reopen de ses conns player/social qui ATTACH shared).
-	//
-	// Notification SYNCHRONE — on attend que tous les Subscribers retournent
-	// avant de passer en Draining. C'est ce qui permet au OpenReadWrite de
-	// phase 3 de réussir sans "Unique file handle conflict".
-	//
-	// Le state est encore RO ici ; les Subscribers peuvent appeler Get() qui
-	// réussira immédiatement (utile s'ils ont besoin de finir une lecture
-	// avant de relâcher).
-	p.notifyAfterSwap(DirectionPreSwapToRW, StateRO, StateRO)
-
 	swapStart := time.Now()
 
 	// PHASE 1 : transition vers Draining (gate nouveaux Get).
@@ -292,6 +279,25 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		}
 		p.handle = nil
 	}
+
+	// PHASE 3.5 (commit 8e, repositionné commit 8f) : notif PreSwapToRW
+	// SYNCHRONE entre la fermeture du handle Provider et l'OpenReadWrite.
+	//
+	// Pourquoi ce timing précis ?
+	//   - DuckDB-Go fait de l'auto-attach : si shared est ouvert quelque part
+	//     dans le process, toute nouvelle conn DuckDB l'auto-attache. Si
+	//     les Subscribers (pool) faisaient Reopen pendant que Provider.handle
+	//     est encore ouvert, la nouvelle conn player auto-attacherait shared
+	//     et bloquerait l'OpenReadWrite suivant ("Unique file handle conflict").
+	//   - En émettant la notif APRÈS Close handle et AVANT OpenReadWrite,
+	//     le fichier shared est totalement libéré côté Provider. Les
+	//     Subscribers peuvent fermer leurs propres handles RO et Reopen leurs
+	//     conns player sans auto-attach.
+	//
+	// Notification SYNCHRONE sous p.mu — les Subscribers NE DOIVENT PAS
+	// appeler Get/AcquireWriter pendant ce callback (deadlock garanti).
+	// Le doc de DirectionPreSwapToRW le précise.
+	p.notifyAfterSwap(DirectionPreSwapToRW, StateDraining, StateDraining)
 
 	rwHandle, err := duckdbpkg.OpenReadWrite(p.path, p.timezone)
 	if err != nil {

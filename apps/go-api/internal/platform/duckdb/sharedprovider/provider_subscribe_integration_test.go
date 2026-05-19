@@ -191,8 +191,10 @@ func TestProvider_Subscribe_ReceivesPreSwapToRWEvent(t *testing.T) {
 		t.Errorf("event[0].Direction = %q, attendu %q",
 			gotEvents[0].Direction, sharedprovider.DirectionPreSwapToRW)
 	}
-	if gotEvents[0].From != sharedprovider.StateRO {
-		t.Errorf("event[0].From = %v, attendu StateRO (notif AVANT le swap)", gotEvents[0].From)
+	// Note : depuis le repositionnement de la notif en Phase 3 (entre
+	// Close handle et OpenReadWrite), State courant = Draining.
+	if gotEvents[0].From != sharedprovider.StateDraining {
+		t.Errorf("event[0].From = %v, attendu StateDraining (notif en Phase 3)", gotEvents[0].From)
 	}
 
 	w.Release()
