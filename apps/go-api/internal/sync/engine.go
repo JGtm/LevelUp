@@ -151,15 +151,22 @@ func (e *SyncEngine) WithSharedProvider(p sharedprovider.Provider) *SyncEngine {
 }
 
 // acquireSharedWriter retourne un *sql.DB RW sur shared + une fonction
-// release à appeler via defer.
+// release à appeler via defer. Prend en charge le dblease applicatif des
+// deux côtés — le caller n'a JAMAIS à prendre `dblease.KindSharedMatches`
+// lui-même.
 //
 //   - Mode B-swap (e.sharedProvider != nil) : appelle Provider.AcquireWriter
 //     qui déclenche le mécanisme PreSwap → pool DETACH → OpenReadWrite →
-//     RWToRO → pool re-ATTACH. Le release ferme RW et orchestre le retour
-//     en RO.
-//   - Mode legacy (e.sharedProvider == nil) : fallback OpenSharedDB direct.
-//     Le release ferme le handle. Pas de coordination avec le pool — bug
-//     "different configuration" reste possible.
+//     RWToRO → pool re-ATTACH. Le Provider prend le dblease en interne
+//     (provider.go:231). Le release ferme RW et orchestre le retour en RO.
+//   - Mode legacy (e.sharedProvider == nil) : prend explicitement le dblease
+//     puis OpenSharedDB direct. Le release ferme le handle ET libère le
+//     dblease. Pas de coordination avec le pool — bug "different configuration"
+//     reste théoriquement possible (avant le sprint B1).
+//
+// Sprint B1 commit 11b : centralisation de la prise du dblease. Évite que
+// les call sites (run, RunBackfill*) re-prennent le dblease eux-mêmes et
+// causent un deadlock auto en mode Provider (sync.Mutex non-réentrant).
 func (e *SyncEngine) acquireSharedWriter(ctx context.Context) (*sql.DB, func(), error) {
 	if e.sharedProvider != nil {
 		w, err := e.sharedProvider.AcquireWriter(ctx)
@@ -168,13 +175,21 @@ func (e *SyncEngine) acquireSharedWriter(ctx context.Context) (*sql.DB, func(), 
 		}
 		return w.DB(), w.Release, nil
 	}
-	// Fallback legacy : OpenSharedDB direct (toujours utile pour les CLI et
-	// les tests qui n'ont pas de Provider).
+	// Mode legacy : prendre le dblease APPLICATIF pour sérialiser les writers
+	// concurrents (sans Provider, rien d'autre ne le ferait).
+	lease, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	if err != nil {
+		return nil, nil, fmt.Errorf("acquireSharedWriter legacy lease: %w", err)
+	}
 	handle, err := OpenSharedDB(e.sharedDBPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("acquireSharedWriter legacy: %w", err)
+		lease.Release()
+		return nil, nil, fmt.Errorf("acquireSharedWriter legacy open: %w", err)
 	}
-	return handle.SQLDb(), func() { _ = handle.Close() }, nil
+	return handle.SQLDb(), func() {
+		_ = handle.Close()
+		lease.Release()
+	}, nil
 }
 
 // WithFriendsLoader attache un loader settings.FriendGamertags pour le hook
@@ -230,25 +245,21 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return nil, fmt.Errorf("RunBackfill lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunBackfill OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open
+	// (Provider en B-swap, dblease+OpenSharedDB en legacy).
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("RunBackfill OpenSharedDB: %w", err)
+		return nil, fmt.Errorf("RunBackfill: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	return FindMatchesMissingData(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, scope)
+	return FindMatchesMissingData(playerHandle.SQLDb(), sharedDB, e.xuid, scope)
 }
 
 // RunBackfillComebackBadges calcule et persiste le dominance_flag pour les
@@ -278,25 +289,20 @@ func (e *SyncEngine) RunBackfillEngagementScores(ctx context.Context, force bool
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillEngagementScores lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillEngagementScores OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillEngagementScores OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RunBackfillEngagementScores: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	n, err := batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+	n, err := batchComputeEngagementScores(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, force)
 	if err != nil {
 		return n, err
 	}
@@ -347,26 +353,21 @@ func (e *SyncEngine) RunBackfillLUSR(ctx context.Context, force bool) (int, erro
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillLUSR lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillLUSR OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillLUSR OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RunBackfillLUSR: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedHandle.SQLDb())
-	return batchComputeLUSR(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, medalMap, force)
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	return batchComputeLUSR(playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour
@@ -398,11 +399,13 @@ func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfil
 	defer playerHandle.Close()
 
 	// shared DB en read-only suffit : on ne fait que SELECT match_registry.
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 11b : passe par acquireSharedWriter pour cohérence
+	// (Provider en B-swap, dblease+OpenSharedDB en legacy).
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return empty, fmt.Errorf("RunBackfillCSR OpenSharedDB: %w", err)
+		return empty, fmt.Errorf("RunBackfillCSR: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
 	var client HaloClient
 	if e.customClient != nil {
@@ -413,7 +416,7 @@ func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfil
 		slog.DebugContext(ctx, "RunBackfillCSR: client Halo standard, 5 RPS")
 	}
 
-	res, err := BackfillCSRFromAPI(ctx, client, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, force)
+	res, err := BackfillCSRFromAPI(ctx, client, playerHandle.SQLDb(), sharedDB, e.xuid, force)
 	if err != nil {
 		slog.ErrorContext(ctx, "RunBackfillCSR: échec",
 			"gamertag", e.gamertag, "err", err)
@@ -438,26 +441,21 @@ func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, erro
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillPerf lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillPerf OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillPerf OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RunBackfillPerf: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedHandle.SQLDb())
-	return batchComputePerformanceScores(playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, medalMap, force)
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	return batchComputePerformanceScores(playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
 }
 
 // loadMedalExploitMapBestEffort charge les scores d'exploit médailles depuis la metadata DB.
@@ -501,25 +499,20 @@ func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll boo
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return 0, fmt.Errorf("RunBackfillComebackBadges lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillComebackBadges OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(e.sharedDBPath)
+	// Sprint B1 commit 11b : acquireSharedWriter centralise lease + open.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("RunBackfillComebackBadges OpenSharedDB: %w", err)
+		return 0, fmt.Errorf("RunBackfillComebackBadges: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
-	matchIDs, err := selectMatchesForComebackBadges(ctx, playerHandle.SQLDb(), sharedHandle.SQLDb(), e.xuid, forceAll)
+	matchIDs, err := selectMatchesForComebackBadges(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, forceAll)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillComebackBadges select: %w", err)
 	}
@@ -531,7 +524,7 @@ func (e *SyncEngine) RunBackfillComebackBadges(ctx context.Context, forceAll boo
 
 	slog.InfoContext(ctx, "comeback-badges: backfill en cours",
 		"player", e.gamertag, "match_count", len(matchIDs), "force_all", forceAll)
-	if err := BackfillDominanceFlags(ctx, sharedHandle.SQLDb(), playerHandle.SQLDb(), e.xuid, matchIDs); err != nil {
+	if err := BackfillDominanceFlags(ctx, sharedDB, playerHandle.SQLDb(), e.xuid, matchIDs); err != nil {
 		return 0, fmt.Errorf("RunBackfillComebackBadges backfill: %w", err)
 	}
 	return len(matchIDs), nil
@@ -647,22 +640,9 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 	defer writerPlayer.Release()
 
-	// Sprint B1 commit 9k : si sharedProvider est attaché, c'est lui qui
-	// acquiert le lease shared via Provider.AcquireWriter (cf. acquireSharedWriter
-	// + provider.go:231). Prendre le lease ici en plus causerait un deadlock
-	// (sync.Mutex non-réentrant : le Provider attendrait le lease que CETTE
-	// goroutine tient déjà, jusqu'à expiration du ctx). En mode legacy
-	// (sharedProvider nil), on garde le lease ici car acquireSharedWriter fait
-	// alors OpenSharedDB direct sans dblease.
-	if e.sharedProvider == nil {
-		slog.DebugContext(ctx, "sync: acquisition lease shared DB", "gamertag", e.gamertag, "db", e.sharedDBPath)
-		writerShared, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
-		if err != nil {
-			slog.ErrorContext(ctx, "sync: lease shared DB échouée", "gamertag", e.gamertag, "err", err)
-			return result, fmt.Errorf("run: %w", err)
-		}
-		defer writerShared.Release()
-	}
+	// Sprint B1 commit 11b : le dblease shared est désormais pris par
+	// acquireSharedWriter (Provider ou legacy). Ne PAS le prendre ici sinon
+	// auto-deadlock (cf. provider.go:231 + sync.Mutex non-réentrant).
 
 	// ─── Ouverture des DBs ─────────────────────────────────────────────────────
 	playerHandle, err := OpenPlayerDB(e.playerDBPath)

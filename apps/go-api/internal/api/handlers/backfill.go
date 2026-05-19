@@ -95,6 +95,15 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		h.jobStore.SetStatus(job.JobID, domain.JobStatusRunning, &step)
 
 		engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, nil)
+		// Sprint B1 commit 11b : aligner le backfill HTTP-triggered sur auto_sync.
+		// Sans Provider wired, RunBackfill* utiliseraient OpenSharedDB direct
+		// (mode legacy) en parallèle des syncs auto qui passent par Provider →
+		// conflit "different configuration" pour les readers HTTP. Le fix
+		// double-dblease dans acquireSharedWriter (commit 10a + 11b) rend ce
+		// wire sûr — Provider gère le lease en interne.
+		if h.cfg.SharedProvider != nil {
+			engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+		}
 
 		// ── Phase 1 : détection ──────────────────────────────────────────
 		missing, err := engine.RunBackfill(context.Background(), scope)

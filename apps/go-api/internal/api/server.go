@@ -212,13 +212,18 @@ func NewRouter(
 	}
 
 	var gamertagSvc port.GamertagSearchService
-	// OpenReadOnly partagé avec main.go::sharedDB et openPlayerDB::sharedDB —
-	// voir commentaire détaillé dans cmd/server/main.go. Le mode RW exclusif
-	// (OpenReadWriteShared) cassait l'ATTACH dans openPlayerDB.
-	if sharedDB, err := platform_duckdb.OpenReadOnly(config.SharedDBPath(cfg, "")); err != nil {
-		slog.Warn("shared DB unavailable for gamertag search", "err", err)
+	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
+	// au lieu d'un OpenReadOnly direct. Élimine le dernier handle RO non-coordonné
+	// qui pinnait le fichier shared pendant les swaps RW du sync engine (bug
+	// latent : le handle dédié à gamertag search bloquait Provider.AcquireWriter
+	// avec "Unique file handle conflict" et faisait régresser le bug Madina97294).
+	// En mode kill-switch (LEVELUP_USE_SHARED_PROVIDER=0), cfg.SharedProvider
+	// reste un LegacySharedReader wrappant le handle global — comportement
+	// identique au pre-sprint.
+	if cfg.SharedProvider != nil {
+		gamertagSvc = platform_duckdb.NewGamertagRepo(cfg.SharedProvider)
 	} else {
-		gamertagSvc = platform_duckdb.NewGamertagRepo(sharedDB)
+		slog.Warn("shared DB unavailable for gamertag search — cfg.SharedProvider nil")
 	}
 
 	// AssetHandler — couche d'abstraction unifiée (local-first → API-fallback).
