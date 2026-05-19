@@ -57,7 +57,13 @@ func (r *SynthesisRepo) LoadEncounters(ctx context.Context, xuid string) ([]doma
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Shared.Query(ctx, Q10Encounters, xuid)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("SynthesisRepo.LoadEncounters: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q10Encounters, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("SynthesisRepo.LoadEncounters: %w", err)
 	}

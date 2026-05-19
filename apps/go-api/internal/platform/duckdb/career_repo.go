@@ -510,7 +510,13 @@ func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRo
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.Shared.Query(ctx, Q10Encounters, r.pdb.XUID)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetEncounters: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q10Encounters, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetEncounters: %w", err)
 	}
