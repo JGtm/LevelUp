@@ -195,7 +195,8 @@ func main() {
 		slog.Debug("migrations appliquées")
 	}
 
-	// Architecture B-swap (sprint sharedprovider, ADR 0014) :
+	// Architecture B-swap (sprint sharedprovider, ADR 0016) — ACTIVÉ PAR DÉFAUT
+	// au commit 9.
 	//
 	// shared_matches_v2.duckdb est géré par un SharedDBProvider qui swap
 	// dynamiquement RO ↔ RW autour des leases writer (sync engine). Les
@@ -206,16 +207,18 @@ func main() {
 	// auto_sync RunDelta quand le sync ouvrait shared en RW pendant qu'une
 	// instance RO globale était ouverte ailleurs.
 	//
-	// LEVELUP_USE_SHARED_PROVIDER (flag de transition) :
-	//   - "0" (default actuel) : mode legacy LegacySharedReader(pdb.Shared).
-	//   - "1" : Provider actif (recommandé prod, activé par défaut au commit 9).
+	// LEVELUP_USE_SHARED_PROVIDER (kill-switch d'urgence) :
+	//   - "0" : repli mode legacy LegacySharedReader(pdb.Shared) — UNIQUEMENT
+	//     en cas de régression critique constatée en prod. Logger les
+	//     compteurs `shared_provider_swap_failures_total` avant de basculer.
+	//   - "1" / non défini (default) : Provider actif (recommandé).
 	//
 	// Note : `attachShared` (pool.go) reste en place pour résoudre les
 	// queries cross-DB encore non-migrées (squad_repo : LoadTopTeammates,
 	// LoadSquadMatches, LoadTeammateMatches, LoadSynthesisMatches,
 	// LoadMapStatsForSquad). Le split+merge complet de ces 5 méthodes est
 	// prévu pour un commit follow-up post-9.
-	useSharedProvider := os.Getenv("LEVELUP_USE_SHARED_PROVIDER") == "1"
+	useSharedProvider := os.Getenv("LEVELUP_USE_SHARED_PROVIDER") != "0"
 
 	var (
 		sharedReader duckdb.SharedReader
