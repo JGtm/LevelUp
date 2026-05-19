@@ -85,6 +85,22 @@ func (pdb *PlayerDB) ReadDB() *DB {
 	return pdb.Player
 }
 
+// SharedReadDB retourne le SharedReader effectif, avec fallback automatique
+// sur LegacySharedReader(pdb.Shared) si SharedReader n'est pas initialisé
+// (cas des tests qui construisent un PlayerDB manuellement sans passer par
+// openPlayerDB).
+//
+// Les repos migrés (commits 8c+) DOIVENT utiliser cette méthode au lieu
+// d'accéder directement à pdb.SharedReader, pour rester compatibles avec
+// les tests existants. Au commit 8k (retrait de pdb.Shared), cette méthode
+// deviendra inutile — pdb.SharedReader sera toujours non-nil.
+func (pdb *PlayerDB) SharedReadDB() SharedReader {
+	if pdb.SharedReader != nil {
+		return pdb.SharedReader
+	}
+	return LegacySharedReader(pdb.Shared)
+}
+
 // GlobalPool est le registre process-level des PlayerDB par gamertag (slug).
 var globalPool sync.Map // map[string]*PlayerDB
 
