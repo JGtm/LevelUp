@@ -1,3 +1,80 @@
+## [2026-05-19] feat(sharedprovider) — Commit 6 : migration main.go derrière flag
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 6/9 de la roadmap SharedDBProvider).
+
+**Contexte** : premier commit qui touche du code de production hors du package `sharedprovider`. Introduit le flag `LEVELUP_USE_SHARED_PROVIDER` (default=0) pour permettre un rollback rapide en cas de surprise. Le mode legacy par défaut préserve le comportement actuel ; le mode provider est opt-in pour validation.
+
+**API breaking interne** : `NewBootstrapRepo` change de signature :
+- Avant : `NewBootstrapRepo(sharedDB *duckdb.DB, metadataDB *duckdb.DB)`
+- Après : `NewBootstrapRepo(shared duckdb.SharedReader, metadataDB *duckdb.DB)`
+
+`SharedReader` est une interface définie dans `internal/platform/duckdb/bootstrap_repo.go` :
+```go
+type SharedReader interface {
+    Get(ctx context.Context) (*sql.DB, func(), error)
+}
+```
+
+Elle est satisfaite **structurellement** (pas de déclaration explicite) par :
+- `sharedprovider.Provider` (signature de Get exactement identique)
+- `*duckdb.legacySharedReader` (wrapper local créé via `duckdb.LegacySharedReader(db *DB)`)
+
+→ pas d'import cycle entre `duckdb` et `duckdb/sharedprovider`.
+
+**main.go — branche conditionnelle** :
+
+```go
+useSharedProvider := os.Getenv("LEVELUP_USE_SHARED_PROVIDER") == "1"
+var (
+    sharedReader duckdb.SharedReader
+    closeShared  func() error
+)
+if useSharedProvider {
+    sharedMgr := sharedprovider.NewManager()
+    provider, _ := sharedMgr.For(sharedPath)
+    sharedReader = provider           // Provider satisfait SharedReader
+    closeShared = sharedMgr.Close
+} else {
+    sharedDB, _ := duckdb.OpenReadOnly(sharedPath)
+    sharedReader = duckdb.LegacySharedReader(sharedDB)
+    closeShared = sharedDB.Close
+}
+bootRepo := duckdb.NewBootstrapRepo(sharedReader, metaDB)
+defer closeShared()
+```
+
+**bootstrap_repo.go — migration des méthodes** : chaque méthode shared (5 méthodes : `GetMatchCount`, `GetDBVersion`, `GetPlayerCount`, `GetLastSyncAt`, `ValidateTypes`) fait maintenant :
+```go
+db, release, err := r.shared.Get(ctx)
+if err != nil { return ... }
+defer release()
+db.QueryRowContext(ctx, ...)
+```
+
+`GetCareerRanksSample` reste inchangée (utilise `metadata` qui est toujours `*DB`).
+
+**Décisions techniques** :
+
+1. **Flag par défaut OFF** : conformément au plan, le mode legacy reste actif par défaut. Le flag-on activera le Provider — utile pour les tests d'intégration manuels avant d'inverser le défaut au commit 9. Réduit le risque d'incident en prod si on déploie ce commit isolément.
+
+2. **`SharedReader` interface dans le package `duckdb`** (pas dans `port`) : c'est un détail d'implémentation du repository pattern, pas un port d'application. Évite aussi un cycle d'import potentiel.
+
+3. **`LegacySharedReader` exposé** plutôt qu'inline dans main.go : réutilisé par les 7 tests `repo_test.go` qui ouvrent un `*DB` in-memory et veulent un SharedReader minimaliste. Documenté comme « à retirer au commit 9 ».
+
+4. **`closeShared` typé `func() error`** : pattern de fonction-pointeur plutôt qu'interface. Plus simple, le shutdown ne fait qu'un seul appel. Le pattern interface (`io.Closer`) aurait marché aussi mais ajoute une cérémonie inutile.
+
+**Tests** :
+- 7 tests BootstrapRepo (`repo_test.go`) : tous verts après migration vers `LegacySharedReader(shared)` (s/`shared`/`LegacySharedReader(shared)`/ via Edit replace_all).
+- 15 tests sharedprovider : tous verts (inchangés).
+- Suite duckdb complète : **PASS sauf `TestLoadTemplatesFromTOML_HaloInfinite`** (échec pré-existant, fichier TOML `config/titles/halo_infinite/challenges/templates.toml` modifié par le merge `feat/player-profile-v1` — clé `cadence` dupliquée, indépendant du sprint).
+- `go build ./cmd/server` : OK.
+
+**Validation manuelle restante** : démarrer le serveur avec `LEVELUP_USE_SHARED_PROVIDER=1` et vérifier que les endpoints `/health` et `/bootstrap` répondent normalement. À faire avant commit 9 (no-go automatisé).
+
+**Prochaine étape** : commit 7 — migration du pool joueur vers le Provider + callback `Subscribe(SwapEvent)` pour purger les conns idle ATTACHant shared. C'est le commit **critique** car T9 (`TestPool_AttachShared_SurvivesSwapCycle`) doit absolument passer — sinon les JOIN `shared.*` côté HTTP cassent silencieusement après un swap.
+
+---
+
 ## [2026-05-19] feat(sharedprovider) — Commit 5 : tests multi-titre Manager
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 5/9 de la roadmap SharedDBProvider).

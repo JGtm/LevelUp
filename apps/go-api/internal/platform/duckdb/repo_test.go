@@ -143,7 +143,7 @@ func TestBootstrapRepo_GetMatchCount(t *testing.T) {
 	meta := openMemDB(t)
 	seedShared(t, shared)
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	count, err := repo.GetMatchCount(context.Background())
 	if err != nil {
 		t.Fatalf("GetMatchCount: %v", err)
@@ -163,7 +163,7 @@ func TestBootstrapRepo_GetMatchCount_Empty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	count, err := repo.GetMatchCount(ctx)
 	if err != nil {
 		t.Fatalf("GetMatchCount empty: %v", err)
@@ -177,7 +177,7 @@ func TestBootstrapRepo_GetDBVersion(t *testing.T) {
 	shared := openMemDB(t)
 	meta := openMemDB(t)
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	version, err := repo.GetDBVersion(context.Background())
 	if err != nil {
 		t.Fatalf("GetDBVersion: %v", err)
@@ -192,7 +192,7 @@ func TestBootstrapRepo_GetPlayerCount(t *testing.T) {
 	meta := openMemDB(t)
 	seedShared(t, shared)
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	count, err := repo.GetPlayerCount(context.Background())
 	if err != nil {
 		t.Fatalf("GetPlayerCount: %v", err)
@@ -208,7 +208,7 @@ func TestBootstrapRepo_GetLastSyncAt(t *testing.T) {
 	meta := openMemDB(t)
 	seedShared(t, shared)
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	ts, err := repo.GetLastSyncAt(context.Background())
 	if err != nil {
 		t.Fatalf("GetLastSyncAt: %v", err)
@@ -226,7 +226,7 @@ func TestBootstrapRepo_ValidateTypes(t *testing.T) {
 	shared := openMemDB(t)
 	meta := openMemDB(t)
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	if err := repo.ValidateTypes(context.Background()); err != nil {
 		t.Fatalf("ValidateTypes: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestBootstrapRepo_GetCareerRanksSample(t *testing.T) {
 	meta := openMemDB(t)
 	seedMetadata(t, meta)
 
-	repo := NewBootstrapRepo(shared, meta)
+	repo := NewBootstrapRepo(LegacySharedReader(shared), meta)
 	count, err := repo.GetCareerRanksSample(context.Background())
 	if err != nil {
 		t.Fatalf("GetCareerRanksSample: %v", err)
