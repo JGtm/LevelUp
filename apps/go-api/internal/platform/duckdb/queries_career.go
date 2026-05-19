@@ -114,14 +114,6 @@ FROM mv_player_matches
 WHERE xuid = ?
 ORDER BY start_time DESC`
 
-// Q4PlayerEnrichmentForMatches : partie player du split LoadMatchesForFilters.
-// IN-list dynamique : %s remplacé par Placeholders(len(matchIDs)).
-// Paramètres : matchIDs... (toutes des string).
-const Q4PlayerEnrichmentForMatchesTpl = `
-SELECT match_id, session_id, session_label, COALESCE(is_with_friends, FALSE)
-FROM player_match_enrichment
-WHERE match_id IN (%s)`
-
 // Q5SharedHistory : Sprint B1 commit 8k.7 — partie shared du split LoadAll
 // (match_history_repo). Cross-DB JOIN Q5MatchHistory découpé : la partie
 // shared retourne 25 colonnes (match metadata + participant stats + team_id
@@ -164,20 +156,6 @@ FROM v_match_full r
 JOIN match_participants p ON r.match_id = p.match_id
 WHERE p.xuid = ?
 ORDER BY start_time DESC`
-
-// Q5PlayerEnrichmentHistoryTpl : étape 2a — player_match_enrichment pour les
-// match_ids retournés en étape 1. IN-list dynamique : %s → Placeholders(n).
-const Q5PlayerEnrichmentHistoryTpl = `
-SELECT
-    match_id,
-    session_id,
-    session_label,
-    COALESCE(is_with_friends, FALSE)  AS is_with_friends,
-    COALESCE(is_excluded, FALSE)      AS is_excluded,
-    performance_score,
-    COALESCE(dominance_flag, 0)       AS dominance_flag
-FROM player_match_enrichment
-WHERE match_id IN (%s)`
 
 // Q5PlayerSkillRankHistoryTpl : étape 2b — match_skill_rank pour les match_ids.
 const Q5PlayerSkillRankHistoryTpl = `

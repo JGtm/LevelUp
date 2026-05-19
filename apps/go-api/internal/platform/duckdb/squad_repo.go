@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -177,25 +178,28 @@ func (r *SquadRepo) LoadSquadMatches(ctx context.Context, playerXUID, teammateXU
 	for _, m := range results {
 		matchIDs = append(matchIDs, m.MatchID)
 	}
-	enrichments, err := r.loadSquadEnrichments(ctx, matchIDs)
+	enrichments, err := LoadPlayerMatchEnrichments(ctx, r.pdb.Player, matchIDs)
 	if err != nil {
 		return nil, fmt.Errorf("LoadSquadMatches: %w", err)
 	}
 	for i := range results {
 		if e, ok := enrichments[results[i].MatchID]; ok {
-			if e.sessionID.Valid {
-				v := int(e.sessionID.Int64)
-				results[i].SessionID = &v
+			if e.SessionID.Valid {
+				// session_id est VARCHAR en prod ; SquadMatchRow.SessionID est *int
+				// (legacy domain), on parse en best-effort.
+				if v, perr := strconv.Atoi(e.SessionID.String); perr == nil {
+					results[i].SessionID = &v
+				}
 			}
-			if e.sessionLabel.Valid {
-				v := e.sessionLabel.String
+			if e.SessionLabel.Valid {
+				v := e.SessionLabel.String
 				results[i].SessionLabel = &v
 			}
-			if e.performanceScore.Valid {
-				v := e.performanceScore.Float64
+			if e.PerformanceScore.Valid {
+				v := e.PerformanceScore.Float64
 				results[i].PerformanceScore = &v
 			}
-			results[i].IsWithFriends = e.isWithFriends
+			results[i].IsWithFriends = e.IsWithFriends
 		}
 	}
 	return results, nil
@@ -250,43 +254,6 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 		result = append(result, row)
 	}
 	return result, rows.Err()
-}
-
-// squadEnrichment porte les colonnes player_match_enrichment hydratées en
-// étape 2 du split LoadSquadMatches.
-type squadEnrichment struct {
-	sessionID        sql.NullInt64
-	sessionLabel     sql.NullString
-	performanceScore sql.NullFloat64
-	isWithFriends    bool
-}
-
-// loadSquadEnrichments exécute l'étape 2 du split LoadSquadMatches.
-func (r *SquadRepo) loadSquadEnrichments(ctx context.Context, matchIDs []string) (map[string]squadEnrichment, error) {
-	if len(matchIDs) == 0 {
-		return nil, nil
-	}
-	query := fmt.Sprintf(`
-		SELECT match_id, session_id, session_label, performance_score,
-		       COALESCE(is_with_friends, FALSE)
-		FROM player_match_enrichment
-		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
-	if err != nil {
-		return nil, fmt.Errorf("enrichment query: %w", err)
-	}
-	defer rows.Close()
-
-	out := make(map[string]squadEnrichment, len(matchIDs))
-	for rows.Next() {
-		var mid string
-		var e squadEnrichment
-		if err := rows.Scan(&mid, &e.sessionID, &e.sessionLabel, &e.performanceScore, &e.isWithFriends); err != nil {
-			return nil, fmt.Errorf("enrichment scan: %w", err)
-		}
-		out[mid] = e
-	}
-	return out, rows.Err()
 }
 
 // LoadTeammateMatches charge les stats du coÃ©quipier sur les matchs communs (Q31).
@@ -536,35 +503,11 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 // mergeSynthesisEnrichments hydrate is_with_friends + performance_score +
 // session_label depuis player_match_enrichment (étape 2/3 du split).
 func (r *SquadRepo) mergeSynthesisEnrichments(ctx context.Context, rows []legacymatch.SynthesisMatchRow, matchIDs []string) error {
-	query := fmt.Sprintf(`
-		SELECT match_id, COALESCE(is_with_friends, FALSE),
-		       performance_score, session_label
-		FROM player_match_enrichment
-		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
 	ctx2, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dbRows, err := r.pdb.Player.Query(ctx2, query, ToAnySlice(matchIDs)...)
+	enrichments, err := LoadPlayerMatchEnrichments(ctx2, r.pdb.Player, matchIDs)
 	if err != nil {
-		return fmt.Errorf("synthesis enrichment query: %w", err)
-	}
-	defer dbRows.Close()
-
-	type synthEnrich struct {
-		isWithFriends bool
-		performance   sql.NullFloat64
-		sessionLabel  sql.NullString
-	}
-	enrichments := make(map[string]synthEnrich, len(matchIDs))
-	for dbRows.Next() {
-		var mid string
-		var e synthEnrich
-		if err := dbRows.Scan(&mid, &e.isWithFriends, &e.performance, &e.sessionLabel); err != nil {
-			return fmt.Errorf("synthesis enrichment scan: %w", err)
-		}
-		enrichments[mid] = e
-	}
-	if err := dbRows.Err(); err != nil {
 		return err
 	}
 	for i := range rows {
@@ -572,13 +515,13 @@ func (r *SquadRepo) mergeSynthesisEnrichments(ctx context.Context, rows []legacy
 		if !ok {
 			continue
 		}
-		rows[i].IsWithFriends = e.isWithFriends
-		if e.performance.Valid {
-			v := e.performance.Float64
+		rows[i].IsWithFriends = e.IsWithFriends
+		if e.PerformanceScore.Valid {
+			v := e.PerformanceScore.Float64
 			rows[i].PerformanceScore = &v
 		}
-		if e.sessionLabel.Valid {
-			v := e.sessionLabel.String
+		if e.SessionLabel.Valid {
+			v := e.SessionLabel.String
 			rows[i].SessionLabel = &v
 		}
 	}
