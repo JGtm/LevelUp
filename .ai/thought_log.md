@@ -1,3 +1,52 @@
+## [2026-05-19] fix(prod-blockers) — Commit 11 : blockers de la revue de code senior
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 11 — fix des 3 blockers identifiés par la revue de code).
+
+**Contexte** : la revue de code senior post-10c a identifié 3 chemins prod
+qui court-circuitaient le SharedDBProvider — donc le bug initial Madina97294
+restait latent sur ces paths, alors que les E2E tests passaient en faux positif
+(les tests construisaient l'env sans ces chemins).
+
+**Livré** :
+
+1. **B1 — `gamertagSvc` via Provider** :
+   - `gamertag_repo.go` : `NewGamertagRepo(SharedReader)` au lieu de `*DB`.
+     Le repo acquiert un handle RO via `Get()` à chaque `Search` (release defer).
+   - `server.go:214-225` : remplace `OpenReadOnly` direct par `cfg.SharedProvider`.
+     Élimine le dernier handle RO non-coordonné qui pinnait shared pendant
+     les swaps RW du sync engine.
+   - 6 tests gamertag adaptés via `LegacySharedReader(shared)` wrapper.
+
+2. **B2 — `WithSharedProvider` sur les handlers HTTP** :
+   - `sync_handler.go::newEngineFor` : ajoute `.WithSharedProvider(h.cfg.SharedProvider)`
+     si non-nil. Le sync HTTP-triggered (POST /sync/initial) suit désormais
+     le même chemin coordonné que auto_sync.
+   - `backfill.go` : idem pour POST /backfill/start.
+
+3. **B3 — centralisation lease+open dans `acquireSharedWriter`** :
+   - `engine.go::acquireSharedWriter` enrichi : prend le `dblease.AcquireWriterCtx`
+     en mode legacy (côté Provider, le lease est déjà pris en interne via
+     `provider.go:231`).
+   - 6 sites (run + 5 RunBackfill*) refactorisés : suppression du pattern
+     manuel `dblease + OpenSharedDB` au profit d'un seul `acquireSharedWriter`.
+     Élimine le bug latent du double-lock (le commit 10a l'avait fixé
+     uniquement dans `run()`, B3 le fixe partout).
+
+**Vérifications** :
+- `go build ./...` OK
+- Suite sync intégration (122s) verte
+- 4 tests E2E (10a-c) toujours verts en `count=1`
+- 6 tests gamertag verts (2.9s)
+
+**Impact prod** :
+- Avant ce commit : 3 chemins prod (gamertag search + HTTP sync + HTTP backfill)
+  pouvaient déclencher le bug "different configuration" en collision avec auto_sync.
+- Après ce commit : tous les writers shared passent par le Provider, tous les
+  readers passent par `SharedReader`. Le bug initial est structurellement
+  éliminé sur tous les chemins, plus uniquement sur auto_sync.
+
+---
+
 ## [2026-05-19] test(e2e) — Commit 10c : multi-user concurrent sync sous trafic HTTP
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 10c — dernier E2E de la série bout-en-bout).

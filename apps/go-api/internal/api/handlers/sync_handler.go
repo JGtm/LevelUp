@@ -95,9 +95,18 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 		}
 		return s.FriendGamertags, nil
 	}
-	return go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider).
+	engine := go_sync.NewSyncEngine(h.cfg.RepoRoot, gamertag, xuid, tokens, h.provider).
 		WithFriendsLoader(loader).
 		WithCSRSeasonID(h.cfg.CurrentCSRSeasonID)
+	// Sprint B1 commit 11b : aligner le sync HTTP-triggered sur auto_sync — sans
+	// ce câblage, un user qui clique "Sync now" déclenche un sync en mode legacy
+	// (OpenSharedDB direct RW) qui court-circuite la coordination Provider ↔ pool
+	// joueur. Résultat : Catalog Error / "different configuration" pour les
+	// readers HTTP pendant cette fenêtre. Wire identique à scheduler/auto_sync.go.
+	if h.cfg.SharedProvider != nil {
+		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	}
+	return engine
 }
 
 func (h *SyncHandler) WithPrestigeHook(_ PrestigeHook) *SyncHandler {

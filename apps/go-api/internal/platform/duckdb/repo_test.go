@@ -255,7 +255,7 @@ func TestGamertagRepo_Search_Found(t *testing.T) {
 	shared := openMemDB(t)
 	seedShared(t, shared)
 
-	repo := NewGamertagRepo(shared)
+	repo := NewGamertagRepo(LegacySharedReader(shared))
 	results, err := repo.Search(context.Background(), "Alpha")
 	if err != nil {
 		t.Fatalf("Search(Alpha): %v", err)
@@ -275,7 +275,7 @@ func TestGamertagRepo_Search_NoResult(t *testing.T) {
 	shared := openMemDB(t)
 	seedShared(t, shared)
 
-	repo := NewGamertagRepo(shared)
+	repo := NewGamertagRepo(LegacySharedReader(shared))
 	results, err := repo.Search(context.Background(), "NonExistent")
 	if err != nil {
 		t.Fatalf("Search(NonExistent): %v", err)
@@ -289,7 +289,7 @@ func TestGamertagRepo_Search_CaseInsensitive(t *testing.T) {
 	shared := openMemDB(t)
 	seedShared(t, shared)
 
-	repo := NewGamertagRepo(shared)
+	repo := NewGamertagRepo(LegacySharedReader(shared))
 	results, err := repo.Search(context.Background(), "bravo")
 	if err != nil {
 		t.Fatalf("Search(bravo): %v", err)
@@ -307,7 +307,7 @@ func TestGamertagRepo_Search_MultipleResults(t *testing.T) {
 	seedShared(t, shared)
 
 	// "er" matches AlphaPlay*er* and BravoGam*er*
-	repo := NewGamertagRepo(shared)
+	repo := NewGamertagRepo(LegacySharedReader(shared))
 	results, err := repo.Search(context.Background(), "er")
 	if err != nil {
 		t.Fatalf("Search(er): %v", err)
@@ -360,7 +360,7 @@ func TestGamertagRepo_Search_ExactRanksFirst(t *testing.T) {
 	seedShared(t, shared)
 	seedGamertagRanking(t, shared)
 
-	repo := NewGamertagRepo(shared)
+	repo := NewGamertagRepo(LegacySharedReader(shared))
 	results, err := repo.Search(context.Background(), "Master")
 	if err != nil {
 		t.Fatalf("Search(Master): %v", err)
@@ -386,7 +386,7 @@ func TestGamertagRepo_Search_TypoTolerance(t *testing.T) {
 
 	// "Mst3rch1f" matche "Mst3rch1f" exact — testons plutôt une vraie typo.
 	// "Mst3rch1" (sans 'f') ne devrait pas matcher en substring mais via jaro_winkler.
-	repo := NewGamertagRepo(shared)
+	repo := NewGamertagRepo(LegacySharedReader(shared))
 	results, err := repo.Search(context.Background(), "Mst3rch1")
 	if err != nil {
 		t.Fatalf("Search(Mst3rch1): %v", err)
