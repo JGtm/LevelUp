@@ -168,23 +168,39 @@ func (e *SyncEngine) WithSharedProvider(p sharedprovider.Provider) *SyncEngine {
 // les call sites (run, RunBackfill*) re-prennent le dblease eux-mêmes et
 // causent un deadlock auto en mode Provider (sync.Mutex non-réentrant).
 func (e *SyncEngine) acquireSharedWriter(ctx context.Context) (*sql.DB, func(), error) {
-	if e.sharedProvider != nil {
-		w, err := e.sharedProvider.AcquireWriter(ctx)
+	return AcquireSharedWriterStandalone(ctx, e.sharedProvider, e.sharedDBPath)
+}
+
+// AcquireSharedWriterStandalone est la variante package-level utilisable par
+// les fonctions sync qui ne vivent pas sur *SyncEngine (RecomputeIsWithFriends,
+// RecalculatePlayerSessions, MatchRecomputer). Même contrat que la méthode
+// e.acquireSharedWriter — voir sa godoc.
+//
+// provider peut être nil : alors fallback legacy (dblease + OpenSharedDB).
+// Sprint B1 commit 13b : extraction de l'helper pour migrer les fonctions
+// package-level vers le Provider sans dupliquer la logique conditional.
+func AcquireSharedWriterStandalone(
+	ctx context.Context,
+	provider sharedprovider.Provider,
+	sharedDBPath string,
+) (*sql.DB, func(), error) {
+	if provider != nil {
+		w, err := provider.AcquireWriter(ctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("acquireSharedWriter via Provider: %w", err)
+			return nil, nil, fmt.Errorf("AcquireSharedWriterStandalone via Provider: %w", err)
 		}
 		return w.DB(), w.Release, nil
 	}
 	// Mode legacy : prendre le dblease APPLICATIF pour sérialiser les writers
 	// concurrents (sans Provider, rien d'autre ne le ferait).
-	lease, err := dblease.AcquireWriterCtx(ctx, nil, e.sharedDBPath, dblease.KindSharedMatches)
+	lease, err := dblease.AcquireWriterCtx(ctx, nil, sharedDBPath, dblease.KindSharedMatches)
 	if err != nil {
-		return nil, nil, fmt.Errorf("acquireSharedWriter legacy lease: %w", err)
+		return nil, nil, fmt.Errorf("AcquireSharedWriterStandalone legacy lease: %w", err)
 	}
-	handle, err := OpenSharedDB(e.sharedDBPath)
+	handle, err := OpenSharedDB(sharedDBPath)
 	if err != nil {
 		lease.Release()
-		return nil, nil, fmt.Errorf("acquireSharedWriter legacy open: %w", err)
+		return nil, nil, fmt.Errorf("AcquireSharedWriterStandalone legacy open: %w", err)
 	}
 	return handle.SQLDb(), func() {
 		_ = handle.Close()

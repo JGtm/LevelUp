@@ -26,6 +26,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/platform/halo"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
@@ -920,12 +921,19 @@ func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port
 	if pdb.Metadata != nil {
 		metadataPath = pdb.Metadata.Path()
 	}
+	// Sprint B1 commit 13b : pdb.SharedDBPath() survit en mode B-swap où
+	// pdb.Shared peut être nil. Provider passé pour coordonner avec readers.
+	var provider sharedprovider.Provider
+	if r.cfg != nil {
+		provider = r.cfg.SharedProvider
+	}
 	recomputer := sync_pkg.NewMatchRecomputer(
 		pdb.Player.Path(),
-		pdb.Shared.Path(),
+		pdb.SharedDBPath(),
 		metadataPath,
 		pdb.XUID,
 		pdb.Gamertag,
+		provider,
 	)
 	return service.NewMatchExclusionService(
 		duckdb.NewMatchExclusionRepo(pdb),

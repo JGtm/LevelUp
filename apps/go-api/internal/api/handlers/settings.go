@@ -398,7 +398,7 @@ func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http
 			}
 			playerDBPath := config.PlayerDBPath(h.cfg, "", p.Gamertag)
 			n, err := go_sync.RecalculatePlayerSessions(
-				context.Background(), playerDBPath, sharedDBPath, p.XUID,
+				context.Background(), h.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID,
 				opts, friendGamertags,
 			)
 			if err != nil {

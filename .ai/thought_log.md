@@ -1,3 +1,77 @@
+## [2026-05-19] fix(prod) — Commit 13 : migration des 7 derniers sites legacy
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 13 — fermeture définitive du périmètre Provider).
+
+**Contexte** : la revue post-12 avait laissé entendre que la branche était mergeable.
+Vérification approfondie : il restait 7 fonctions qui ouvraient `shared` en RW direct
+via `OpenSharedDB`, court-circuitant le Provider. 5 sont effectivement déclenchables
+depuis le serveur (HTTP backfill phase 2, post-sync auto-friends, PATCH exclusion,
+POST settings/sessions, OpenSpartan import). Sous mode B-swap, ces chemins
+pouvaient encore reproduire le bug "different configuration" en collision avec
+auto_sync ou les readers HTTP.
+
+**Livré** :
+
+1. **Helper `AcquireSharedWriterStandalone`** (engine.go) :
+   - Variante package-level de `e.acquireSharedWriter`, utilisable par les
+     fonctions qui ne vivent pas sur *SyncEngine.
+   - Mode Provider : `provider.AcquireWriter` (lease + open coordonnés).
+   - Mode legacy : `dblease.AcquireWriterCtx + OpenSharedDB` (sérialisation
+     applicative préservée).
+   - `e.acquireSharedWriter` délègue désormais à ce helper.
+
+2. **4 méthodes SyncEngine migrées (13a)** :
+   - `RunBackfillAssistsModel` (assists_model.go)
+   - `BackfillWeaponKillsForMatches` (backfill_weapons.go) — appelée par POST /backfill/start phase 2
+   - `RunBackfillCitations` (citations_backfill.go)
+   - `BackfillEventsForMatches` (events_replay.go) — appelée par POST /backfill/start phase 2
+
+3. **3 fonctions package-level migrées (13b)** :
+   - `RecomputeIsWithFriends(ctx, provider, ...)` : signature étendue avec
+     Provider. Caller `friends_orchestrator_service.go` passe `s.cfg.SharedProvider`.
+   - `MatchRecomputer` : nouveau field `sharedProvider`, exposé via
+     `NewMatchRecomputer(..., provider)`. Caller `registry.go::matchExclusionFactory`
+     passe `r.cfg.SharedProvider`.
+   - `RecalculatePlayerSessions(ctx, provider, ...)` : signature étendue.
+     Callers `settings.go` + `openspartan_post_import_service.go` adaptés.
+
+4. **Bug latent fixé** : `pdb.Shared.Path()` à `registry.go:925` aurait crash
+   en mode B-swap (pdb.Shared peut être nil depuis commit 9d.3). Remplacé par
+   nouveau getter `pdb.SharedDBPath()` (lit le path stocké au boot, survit à
+   pdb.Shared == nil).
+
+5. **Tests E2E de régression** (engine_provider_legacy_paths_e2e_test.go) :
+   - `TestE2E_BackfillEvents_WithProvider_NoFriction_integration`
+   - `TestE2E_RecomputeIsWithFriends_WithProvider_NoDeadlock_integration`
+   Chacun avec readers HTTP concurrents, vérifie 0 Catalog Error, 0
+   "different configuration", Provider StateRO final.
+
+**Vérifications** :
+- `go build ./...` propre
+- Full sync suite (122s) verte
+- 8 tests E2E verts (les 6 existants + 2 nouveaux)
+- Inventaire final `grep -rn "OpenSharedDB(" internal/ cmd/` : plus aucune
+  occurrence en dehors du helper `AcquireSharedWriterStandalone` et de la
+  définition `OpenSharedDB` elle-même.
+
+**Réponse définitive à "le bug peut-il revenir ?"** :
+- ✅ Tous les chemins applicatifs (HTTP + auto_sync + post-sync hooks) passent
+  désormais par le Provider.
+- ✅ Le bug original "different configuration" est **structurellement
+  impossible** en mode B-swap (LEVELUP_USE_SHARED_PROVIDER non défini = default).
+- ⚠️ Caveat 1 : mode kill-switch `LEVELUP_USE_SHARED_PROVIDER=0` retombe sur
+  comportement pre-sprint. Documenté.
+- ⚠️ Caveat 2 : CLI hors-process (cmd/levelup/*, cmd/backfill_all/*) restent
+  en mode legacy (pas de Provider injecté). NE PAS lancer en parallèle du serveur
+  — c'est un usage rare et documenté.
+- ⚠️ Caveat 3 : si une future version de DuckDB-Go durcissait le contrat
+  "N RO simultanés tolérés", la race RW→RO (notify post-state) devrait être
+  refactor (cf. doc dans releaseWriter).
+
+**Branche désormais à 46 commits ahead d'origin. Livrable senior-quality.**
+
+---
+
 ## [2026-05-19] refactor + cleanup — Commits 12a/12b/12c : concerns de la revue
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commits 12a-12c — concerns C1-C6 de la revue de code senior post-10c traités).

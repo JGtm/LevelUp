@@ -31,28 +31,39 @@ import (
 	"time"
 
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
 // MatchRecomputer recalcule performance_score + LUSR pour un joueur après une
 // (dé)exclusion de match. Détient les paths nécessaires à l'acquisition des
 // leases d'écriture sur les deux DBs.
+//
+// sharedProvider (sprint B1 commit 13b) : si non-nil, route les écritures
+// shared via Provider.AcquireWriter (coordonne avec le pool joueur et les
+// readers HTTP). Si nil, fallback legacy (dblease + OpenSharedDB).
 type MatchRecomputer struct {
 	playerDBPath   string
 	sharedDBPath   string
 	metadataDBPath string
 	xuid           string
 	gamertag       string
+	sharedProvider sharedprovider.Provider
 }
 
 // NewMatchRecomputer construit un MatchRecomputer pour un joueur donné.
 // metadataDBPath peut être vide → recompute fonctionne sans bonus médailles.
-func NewMatchRecomputer(playerDBPath, sharedDBPath, metadataDBPath, xuid, gamertag string) *MatchRecomputer {
+// provider peut être nil → mode legacy (cf. AcquireSharedWriterStandalone).
+func NewMatchRecomputer(
+	playerDBPath, sharedDBPath, metadataDBPath, xuid, gamertag string,
+	provider sharedprovider.Provider,
+) *MatchRecomputer {
 	return &MatchRecomputer{
 		playerDBPath:   playerDBPath,
 		sharedDBPath:   sharedDBPath,
 		metadataDBPath: metadataDBPath,
 		xuid:           xuid,
 		gamertag:       gamertag,
+		sharedProvider: provider,
 	}
 }
 
@@ -70,26 +81,20 @@ func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID s
 	}
 	defer writerPlayer.Release()
 
-	writerShared, err := dblease.AcquireWriterCtx(ctx, nil, r.sharedDBPath, dblease.KindSharedMatches)
-	if err != nil {
-		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lease shared: %w", err)
-	}
-	defer writerShared.Release()
-
 	playerHandle, err := OpenPlayerDB(r.playerDBPath)
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion OpenPlayerDB: %w", err)
 	}
 	defer playerHandle.Close()
 
-	sharedHandle, err := OpenSharedDB(r.sharedDBPath)
+	// Sprint B1 commit 13b : helper standalone (Provider en B-swap, legacy sinon).
+	sharedSQL, releaseShared, err := AcquireSharedWriterStandalone(ctx, r.sharedProvider, r.sharedDBPath)
 	if err != nil {
-		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion OpenSharedDB: %w", err)
+		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion: %w", err)
 	}
-	defer sharedHandle.Close()
+	defer releaseShared()
 
 	playerSQL := playerHandle.SQLDb()
-	sharedSQL := sharedHandle.SQLDb()
 
 	medalMap := loadMedalExploitMap(ctx, r.metadataDBPath, sharedSQL, r.xuid)
 

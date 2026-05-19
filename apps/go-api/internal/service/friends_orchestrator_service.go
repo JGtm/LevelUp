@@ -95,7 +95,7 @@ func (s *FriendsOrchestratorService) RecomputeAll(ctx context.Context) (FriendsO
 		playerDBPath := config.PlayerDBPath(s.cfg, p.TitleSlug, p.Gamertag)
 		sharedDBPath := config.SharedDBPath(s.cfg, p.TitleSlug)
 
-		r, err := sync.RecomputeIsWithFriends(ctx, playerDBPath, sharedDBPath, p.XUID, friends)
+		r, err := sync.RecomputeIsWithFriends(ctx, s.cfg.SharedProvider, playerDBPath, sharedDBPath, p.XUID, friends)
 		if err != nil {
 			res.Failed++
 			res.PerPlayerErrors[p.PlayerSlug] = err.Error()
