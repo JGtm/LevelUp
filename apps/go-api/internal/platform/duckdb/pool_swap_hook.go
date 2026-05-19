@@ -56,43 +56,47 @@ func (pdb *PlayerDB) PrepareForSharedSwap(ctx context.Context) error {
 		return nil
 	}
 
-	// ORDRE CRITIQUE (commit 8f) : on doit fermer pdb.Shared AVANT de Reopen
-	// player. Sinon, l'auto-attach DuckDB-Go ré-attache shared sur la nouvelle
-	// conn player (car shared est encore tenu par pdb.Shared).
+	// STRATÉGIE DETACH (commit 8f, après POC diagnostique) :
 	//
-	// Le Provider a déjà fermé son propre handle RO en Phase 3 juste avant
-	// cette notif. Avec pdb.Shared.Close ici, refCount du cache `ro:path`
-	// tombe à 0 → file totalement libéré → Reopen player ne déclenche pas
-	// d'auto-attach.
+	// Le POC `TestPOCSwap_S5_DetachExplicit` a révélé que `Reopen()` ne
+	// libère PAS l'ATTACH côté driver DuckDB-Go (les ATTACHs survivent ou
+	// sont re-appliqués sur la nouvelle conn). Par contre, un `DETACH shared`
+	// explicite libère immédiatement le file handle.
+	//
+	// Séquence sur PreSwap :
+	//   1. DETACH 'shared' (et 'shared_matches_v2' au cas où auto-attach)
+	//      sur chaque conn ATTACH'ée (player, social).
+	//   2. Close pdb.Shared (libère la conn RO du pool).
+	//   3. Le Provider close son handle RO en Phase 3.5 (déjà fait avant
+	//      cette notif).
+	// → file totalement libéré, OpenReadWrite réussit.
+	if pdb.Player != nil {
+		detachShared(ctx, pdb.Player, pdb.Gamertag, "player")
+	}
+	if pdb.SharedSocial != nil {
+		detachShared(ctx, pdb.SharedSocial, pdb.Gamertag, "social")
+	}
 	if pdb.Shared != nil {
 		if err := pdb.Shared.Close(); err != nil {
 			slog.WarnContext(ctx, "PrepareForSharedSwap: Close Shared failed (continuing)",
 				"gamertag", pdb.Gamertag, "err", err)
 		}
 	}
-	if pdb.Player != nil {
-		if err := pdb.Player.Reopen(); err != nil {
-			return fmt.Errorf("PrepareForSharedSwap: Reopen player: %w", err)
-		}
-	}
-	if pdb.SharedSocial != nil {
-		if err := pdb.SharedSocial.Reopen(); err != nil {
-			slog.WarnContext(ctx, "PrepareForSharedSwap: Reopen SharedSocial failed (continuing)",
-				"gamertag", pdb.Gamertag, "err", err)
-		}
-	}
-	// IMPORTANT (commit 8f) : DuckDB-Go auto-attache shared sur TOUTES les
-	// conns DuckDB du process. Donc même pdb.Metadata (qui ne touche pas
-	// directement à shared) doit être Reopen pour libérer son auto-attach,
-	// sinon OpenReadWrite du Provider échouera avec
-	// "Cannot attach shared_matches_v2 - already attached".
-	if pdb.Metadata != nil {
-		if err := pdb.Metadata.Reopen(); err != nil {
-			slog.WarnContext(ctx, "PrepareForSharedSwap: Reopen Metadata failed (continuing)",
-				"gamertag", pdb.Gamertag, "err", err)
-		}
-	}
 	return nil
+}
+
+// detachShared exécute DETACH IF EXISTS sur les aliases possibles utilisés
+// par attachShared et l'auto-attach DuckDB-Go. Best-effort — les erreurs
+// sont loguées en debug.
+func detachShared(ctx context.Context, db *DB, gamertag, label string) {
+	for _, alias := range []string{"shared", "shared_matches_v2"} {
+		stmt := fmt.Sprintf("DETACH %s", alias)
+		if _, err := db.Exec(ctx, stmt); err != nil {
+			// Best-effort : si l'alias n'est pas attaché, on s'en moque.
+			slog.DebugContext(ctx, "PrepareForSharedSwap: DETACH skipped",
+				"gamertag", gamertag, "conn", label, "alias", alias, "err", err)
+		}
+	}
 }
 
 // RestoreSharedAfterSwap rouvre la conn RO sur shared et re-attache shared
