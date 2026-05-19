@@ -1,3 +1,74 @@
+## [2026-05-19] feat(sharedprovider) — Commit 8b : FromInMemoryDB adaptateur + refacto WriterHandle vers closure
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8b du mega-sprint B).
+
+**Contexte** : préparation des tests du sync engine au futur commit 8l. Les tests existants (`engine_e2e_test.go::newInMemoryDBs`) utilisent `sql.Open("duckdb", "")` pour créer des paires (player, shared) in-memory. Au commit 8l, le SyncEngine acceptera un `Provider` au lieu d'un `*sharedDBPath` — il faut un Provider compatible in-memory.
+
+**Refacto WriterHandle (préparatoire)** : la struct utilisait précédemment un `provider *providerImpl` interne pour son release :
+
+```go
+// Avant :
+type WriterHandle struct {
+    provider *providerImpl
+    rwHandle *duckdbpkg.DB
+    lease    *dblease.LeasedWriter
+    ...
+}
+func (w *WriterHandle) Release() {
+    ... w.provider.releaseWriter(w.rwHandle) + w.lease.Release()
+}
+```
+
+Cela couplait `WriterHandle` à l'implémentation concrète `providerImpl`. Refacto vers une closure releaseFn :
+
+```go
+// Après :
+type WriterHandle struct {
+    db          *sql.DB
+    releaseFn   func()
+    releaseOnce sync.Once
+}
+func (w *WriterHandle) Release() { w.releaseOnce.Do(w.releaseFn) }
+```
+
+L'API publique (`DB()`, `Release()`) est strictement inchangée — tous les call-sites existants continuent de fonctionner. La logique du release (recover, close RW, reopen RO, lease.Release) est maintenant capturée dans une closure construite par `AcquireWriter` du provider.
+
+Avantage : différentes implémentations de Provider (providerImpl, inMemoryProvider, futures) peuvent toutes produire des `*WriterHandle` avec leur propre stratégie de release — sans interface intermédiaire ni cycle d'import.
+
+**`FromInMemoryDB(db *sql.DB, path string) Provider`** : adaptateur minimal. Wrap un `*sql.DB` partagé pour satisfaire toute l'interface Provider :
+
+- `Get` : retourne le db + release no-op
+- `AcquireWriter` : retourne `*WriterHandle{db, no-op release}` — pas de swap, pas de lease
+- `State` : toujours `StateRO` (ou `StateClosed` après `Close`)
+- `Path` : retourne le path fourni (utilisé pour les logs)
+- `Close` : marque comme fermé mais NE FERME PAS le db (le caller a la propriété)
+- `Subscribe` : fonctionnel mais aucune notification jamais émise (pas de transitions)
+
+**Limites** documentées : pas de drain WG, pas de dblease writer, 2 AcquireWriter concurrents retourneraient 2 WriterHandle sur le même db. **Strictement réservé aux tests**.
+
+**Tests (4 ajoutés)** :
+- `TestFromInMemoryDB_GetReturnsSameDB` : Get retourne exactement le db fourni
+- `TestFromInMemoryDB_AcquireWriter` : writer fonctionnel, idempotent, ne ferme pas le db
+- `TestFromInMemoryDB_CloseDoesNotCloseUnderlyingDB` : Close marque le provider mais préserve le db
+- `TestFromInMemoryDB_SubscribeNoEvents` : Subscribe ok mais aucun event émis
+
+**Suite complète** : 
+- duckdb : 32s vert (hors `TestLoadTemplatesFromTOML_HaloInfinite` pré-existant)
+- sharedprovider : 5.4s vert (4 nouveaux + tous les anciens)
+- `go build ./cmd/server` : OK
+
+**Décisions techniques** :
+
+1. **Refacto WriterHandle closure** vs interface : closure plus simple. Pas besoin d'interface si seules `DB()` et `Release()` sont publiques. Coût : une indirection de fn pointer par release — négligeable.
+
+2. **FromInMemoryDB ignore AcquireWriter contention** : 2 writers concurrents sur le même db in-memory ne sont pas sérialisés. Les tests qui en dépendent doivent le faire eux-mêmes (typiquement single-thread suffit). Documenté dans le godoc.
+
+3. **FromInMemoryDB.Close ne ferme pas le db** : le caller fournit le db, il garde la propriété. Sémantique cohérente avec `database/sql` où on ferme ce qu'on a ouvert.
+
+**Prochaine étape** : commit 8c — migrer `filters_repo.go` (6 sites `pdb.Shared.QueryRow/Query`) vers `pdb.SharedReader.Get(ctx) + defer release()`. Tests filters_repo existants doivent rester verts.
+
+---
+
 ## [2026-05-19] refactor(pool) — Commit 8a : PlayerDB.SharedReader (préparation mega-sprint B)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8a de la roadmap révisée 8a-8m).

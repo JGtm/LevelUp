@@ -299,10 +299,26 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	swapDurationMsTotal.Add(swapDirRoToRw, time.Since(swapStart).Milliseconds())
 	p.mu.Unlock()
 
+	// WriterHandle construit via closure (refacto commit 8b) — la struct
+	// ne référence plus *providerImpl directement, ce qui permet à
+	// inMemoryProvider de construire ses propres WriterHandle avec une
+	// stratégie de release no-op.
 	return &WriterHandle{
-		provider: p,
-		rwHandle: rwHandle,
-		lease:    lease,
+		db: rwHandle.SQLDb(),
+		releaseFn: func() {
+			defer func() {
+				if r := recover(); r != nil {
+					swapFailuresTotal.Add(failReasonPanic, 1)
+					slog.Error("sharedprovider: panic during Release",
+						"panic", r, "path", p.path)
+				}
+				// Toujours libérer le mutex dblease, même sur panic, sinon
+				// plus aucun writer ne pourra acquérir.
+				lease.Release()
+			}()
+
+			p.releaseWriter(rwHandle)
+		},
 	}, nil
 }
 
