@@ -487,7 +487,7 @@ WHERE pme.performance_score IS NOT NULL
 const Q26CareerTopEncountersTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
-    FROM shared.match_participants
+    FROM match_participants
     WHERE xuid = ?
 ),
 encounters AS (
@@ -499,11 +499,11 @@ encounters AS (
         h.outcome  AS my_outcome,
         COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
     FROM my_history h
-    JOIN shared.match_participants p
+    JOIN match_participants p
         ON p.match_id = h.match_id
        AND p.xuid <> ?
        AND p.xuid NOT LIKE 'bid(%%'
-    LEFT JOIN shared.match_registry r ON r.match_id = p.match_id
+    LEFT JOIN match_registry r ON r.match_id = p.match_id
 ),
 encounter_stats AS (
     SELECT
@@ -529,7 +529,7 @@ kv_stats AS (
             CASE WHEN kv.killer_xuid = ? THEN kv.victim_xuid ELSE kv.killer_xuid END AS opp_xuid,
             CASE WHEN kv.killer_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_me,
             CASE WHEN kv.victim_xuid = ? THEN kv.kill_count   ELSE 0               END AS kills_by_them
-        FROM shared.killer_victim_pairs kv
+        FROM killer_victim_pairs kv
         WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
     ) t
     GROUP BY opp_xuid
@@ -548,7 +548,7 @@ SELECT
     COALESCE(kv.deaths_suffered,0) AS deaths_suffered,
     es.last_seen_at
 FROM encounter_stats es
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = es.xuid
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
 WHERE 1=1 %s
 ORDER BY es.count_together DESC, es.xuid ASC
@@ -577,7 +577,7 @@ WITH pairs AS (
         SUM(CASE WHEN kv.killer_xuid = ? THEN kv.kill_count ELSE 0 END) AS frags,
         SUM(CASE WHEN kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths,
         COUNT(DISTINCT kv.match_id) AS match_count
-    FROM shared.killer_victim_pairs kv
+    FROM killer_victim_pairs kv
     WHERE kv.killer_xuid = ? OR kv.victim_xuid = ?
     GROUP BY opp_xuid
 )
@@ -588,7 +588,7 @@ SELECT
     p.deaths,
     p.match_count
 FROM pairs p
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.opp_xuid
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.opp_xuid
 WHERE p.opp_xuid <> ?
   AND p.opp_xuid NOT LIKE 'bid(%%'
 ORDER BY %s DESC, p.match_count DESC, p.opp_xuid ASC

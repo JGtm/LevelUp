@@ -1,3 +1,24 @@
+## [2026-05-19] refactor(career_repo) — Commit 8k.8 : Q26/Q27 shared-only migrés vers SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.8 du sprint B1).
+
+**Livré** :
+
+1. **`GetTopEncountersGlobal` (Q26CareerTopEncountersTpl)** — query shared-only (match_participants, match_registry, killer_victim_pairs, v_gamertag_lookup) migrée vers `pdb.SharedReadDB().Get()`. Prefixe `shared.` retiré du SQL (root-level naming aligné sur le contrat SharedReader).
+2. **`GetRivals` (Q27CareerRivalsTpl)** — idem, query shared-only (killer_victim_pairs + v_gamertag_lookup).
+
+3. **`seedSharedDBSchema`** : ajout de `shared.killer_victim_pairs` + vue root-level `killer_victim_pairs` (pour que les queries SharedReader avec naming root passent en test).
+
+**Reporté** :
+- `GetLatestRank`, `GetXPHistory`, `GetCSRSnapshots` : **player-only** (career_progression, player_csr_snapshots) — pas de migration nécessaire.
+- `GetLUSRHistory`, `GetTopMatches`, `GetHighlightMatchIDs`, `GetHighlightPool` : **cross-DB JOIN** (player_match_enrichment ⨝ shared.match_registry ⨝ shared.match_participants ou match_skill_rank ⨝ shared.match_registry) — nécessite split+merge similaire à 8k.7. Sera traité dans un commit dédié (8k.8b ou 8k.9 selon la suite).
+
+**Tests verts** : duckdb (TOML pré-existant), sharedprovider, api/handlers, sync 125s.
+
+**Prochaine étape (8k.9)** : player_matches_repo split (et possiblement les cross-DB queries restantes de career_repo).
+
+---
+
 ## [2026-05-19] refactor(match_history) — Commit 8k.7 : LoadAll split+merge (3 round-trips)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.7 du sprint B1).
