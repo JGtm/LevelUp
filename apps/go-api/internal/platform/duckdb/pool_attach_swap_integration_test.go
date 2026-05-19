@@ -97,28 +97,74 @@ func TestPool_AttachSharedConflictsWithSwap_integration(t *testing.T) {
 	}
 }
 
-// TestPool_AttachShared_SurvivesSwapCycle_integration (T9 cible du commit 8)
-// validera que la conn player peut faire SELECT shared.* après un swap RW.
+// TestPool_AttachShared_SurvivesSwapCycle_integration (T9 cible, activé
+// commit 8h) — l'objectif initial du plan : la conn player avec ATTACH RO
+// shared doit pouvoir faire SELECT shared.* après un cycle complet de
+// swap RW du Provider.
 //
-// Actuellement skippé : nécessite que le pool migre vers un mécanisme
-// DETACH-pre-swap / REATTACH-post-swap via Provider.Subscribe. La limitation
-// actuelle est documentée par TestPool_AttachSharedConflictsWithSwap.
+// Implémentation : utilise OnSharedSwap (le helper de prod câblé dans
+// main.go) pour exercer le chemin complet Subscribe → DETACH/Close →
+// OpenReadWrite → re-ATTACH/Open. La preuve que main.go en mode flag-on
+// résout le bug "different configuration" / "Unique file handle conflict"
+// observé sur auto_sync RunDelta.
 //
-// L'implémentation cible au commit 8 sera quelque chose comme :
-//
-//	provider.Subscribe(func(evt SwapEvent) {
-//	    if evt.Direction == DirectionRWToRO {
-//	        _, _ = playerConn.Exec(ctx, "ATTACH '...' AS shared (READ_ONLY)")
-//	    }
-//	})
-//	// + une notification PRE-SWAP (à ajouter au Provider) pour DETACH avant
-//	// que AcquireWriter ne tente OpenReadWrite.
+// Variante de TestPool_PrepareAndRestoreSharedSwap : ce test passe par
+// OnSharedSwap (qui itère le globalPool) au lieu d'appeler Prepare/Restore
+// directement. Couverture supplémentaire du code de prod.
 func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
-	t.Skip(
-		"commit 7 — actuellement bloqué par 'Unique file handle conflict'. " +
-			"Sera implémenté au commit 8 quand le pool migrera vers Provider " +
-			"avec DETACH-pre-swap / REATTACH-post-swap via Subscribe. " +
-			"Voir TestPool_AttachSharedConflictsWithSwap pour la régression actuelle.")
+	sharedPath, provider, pdb := setupPoolFixturesForSwap(t)
+	defer func() { _ = provider.Close() }()
 
-	// Code cible — décommentera au commit 8.
+	ctx := context.Background()
+
+	// Subscribe : utiliser le helper de prod OnSharedSwap (équivalent au
+	// câblage main.go commit 8g).
+	unsubscribe := provider.Subscribe(func(evt sharedprovider.SwapEvent) {
+		switch evt.Direction {
+		case sharedprovider.DirectionPreSwapToRW:
+			duckdb.OnSharedSwap(ctx, duckdb.SwapDirPreSwapToRW)
+		case sharedprovider.DirectionRWToRO:
+			duckdb.OnSharedSwap(ctx, duckdb.SwapDirRWToRO)
+		case sharedprovider.DirectionErrorToRO:
+			duckdb.OnSharedSwap(ctx, duckdb.SwapDirErrorToRO)
+		}
+	})
+	defer unsubscribe()
+
+	// Sanity : la conn player avec ATTACH initial fonctionne.
+	var count int
+	if err := pdb.Player.QueryRow(ctx,
+		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
+		t.Fatalf("query initial via ATTACH RO: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("count initial = %d, attendu 0", count)
+	}
+
+	// Cycle complet : Provider.AcquireWriter → INSERT → Release.
+	// OnSharedSwap est invoqué via Subscribe sur PreSwap puis RWToRO.
+	w, err := provider.AcquireWriter(ctx)
+	if err != nil {
+		t.Fatalf("AcquireWriter (chaîne complète) : %v", err)
+	}
+	if _, err := w.DB().ExecContext(ctx,
+		"INSERT INTO match_registry (match_id, start_time) VALUES ('t9-cible-1', NOW())"); err != nil {
+		w.Release()
+		t.Fatalf("INSERT via writer: %v", err)
+	}
+	w.Release()
+
+	// ASSERTION CRITIQUE : la conn player doit voir l'INSERT via ATTACH
+	// restauré. Si ce SELECT plante avec "Catalog Error" ou retourne 0,
+	// le mécanisme DETACH/REATTACH a échoué quelque part dans la chaîne.
+	if err := pdb.Player.QueryRow(ctx,
+		"SELECT COUNT(*) FROM shared.match_registry").Scan(&count); err != nil {
+		t.Fatalf("query post-cycle via ATTACH RO: %v (chaîne B3 cassée?)", err)
+	}
+	if count != 1 {
+		t.Errorf("count post-cycle = %d, attendu 1 (INSERT pas visible — ATTACH stale?)", count)
+	}
+
+	// Path conservé pour confirmation visuelle du chemin réel utilisé.
+	t.Logf("T9 cible OK : cycle B3 complet sur shared = %s", sharedPath)
 }
