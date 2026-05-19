@@ -97,11 +97,11 @@ func (r *MedalsByXUIDRepo) LoadMedalsForMatchesByXUID(
 func buildMedalsByXUIDQuery(f port.MedalsByXUIDFilters) (string, []any) {
 	args := make([]any, 0, len(f.MatchIDs)+len(f.XUIDs))
 
-	matchPH := placeholders(len(f.MatchIDs))
+	matchPH := Placeholders(len(f.MatchIDs))
 	for _, id := range f.MatchIDs {
 		args = append(args, id)
 	}
-	xuidPH := placeholders(len(f.XUIDs))
+	xuidPH := Placeholders(len(f.XUIDs))
 	for _, x := range f.XUIDs {
 		args = append(args, x)
 	}
