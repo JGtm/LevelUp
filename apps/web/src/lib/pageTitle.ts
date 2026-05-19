@@ -22,8 +22,8 @@ const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/players/$playerSlug/compare', title: 'Face-à-face' },
   { pattern: '/players/$playerSlug/palmares/relations', title: 'Relations' },
   { pattern: '/players/$playerSlug/palmares/prestige', title: 'Leaderboard PP' },
-  // Objectifs
-  { pattern: '/players/$playerSlug/objectifs', title: 'Objectifs' },
+  // Ascension (renommé depuis "Objectifs" — V1 PlayerProfile commit-8)
+  { pattern: '/players/$playerSlug/objectifs', title: 'Ascension' },
   // Escouade
   { pattern: '/players/$playerSlug/squad/contributions', title: 'Contributions' },
   { pattern: '/players/$playerSlug/squad/synergies', title: 'Synergies' },

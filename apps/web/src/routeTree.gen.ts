@@ -29,6 +29,7 @@ import { Route as PlayersPlayerSlugHomeRouteImport } from './routes/players/$pla
 import { Route as PlayersPlayerSlugCompareRouteImport } from './routes/players/$playerSlug/compare'
 import { Route as PlayersPlayerSlugCitationsRouteImport } from './routes/players/$playerSlug/citations'
 import { Route as PlayersPlayerSlugCareerRouteImport } from './routes/players/$playerSlug/career_'
+import { Route as PlayersPlayerSlugAscensionRouteImport } from './routes/players/$playerSlug/ascension'
 import { Route as PlayersPlayerSlugStatsIndexRouteImport } from './routes/players/$playerSlug/stats/index'
 import { Route as PlayersPlayerSlugSquadIndexRouteImport } from './routes/players/$playerSlug/squad/index'
 import { Route as PlayersPlayerSlugPalmaresIndexRouteImport } from './routes/players/$playerSlug/palmares/index'
@@ -148,6 +149,12 @@ const PlayersPlayerSlugCareerRoute = PlayersPlayerSlugCareerRouteImport.update({
   path: '/career',
   getParentRoute: () => PlayersPlayerSlugRoute,
 } as any)
+const PlayersPlayerSlugAscensionRoute =
+  PlayersPlayerSlugAscensionRouteImport.update({
+    id: '/ascension',
+    path: '/ascension',
+    getParentRoute: () => PlayersPlayerSlugRoute,
+  } as any)
 const PlayersPlayerSlugStatsIndexRoute =
   PlayersPlayerSlugStatsIndexRouteImport.update({
     id: '/stats/',
@@ -246,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
+  '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRoute
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
@@ -282,6 +290,7 @@ export interface FileRoutesByTo {
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
+  '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRoute
   '/players/$playerSlug/career': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
@@ -318,6 +327,7 @@ export interface FileRoutesById {
   '/lab/charts': typeof LabChartsRoute
   '/onboarding/openspartan': typeof OnboardingOpenspartanRoute
   '/players/$playerSlug': typeof PlayersPlayerSlugRouteWithChildren
+  '/players/$playerSlug/ascension': typeof PlayersPlayerSlugAscensionRoute
   '/players/$playerSlug/career_': typeof PlayersPlayerSlugCareerRoute
   '/players/$playerSlug/citations': typeof PlayersPlayerSlugCitationsRoute
   '/players/$playerSlug/compare': typeof PlayersPlayerSlugCompareRoute
@@ -356,6 +366,7 @@ export interface FileRouteTypes {
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
+    | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
     | '/players/$playerSlug/compare'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
+    | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career'
     | '/players/$playerSlug/citations'
     | '/players/$playerSlug/compare'
@@ -427,6 +439,7 @@ export interface FileRouteTypes {
     | '/lab/charts'
     | '/onboarding/openspartan'
     | '/players/$playerSlug'
+    | '/players/$playerSlug/ascension'
     | '/players/$playerSlug/career_'
     | '/players/$playerSlug/citations'
     | '/players/$playerSlug/compare'
@@ -607,6 +620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlayersPlayerSlugCareerRouteImport
       parentRoute: typeof PlayersPlayerSlugRoute
     }
+    '/players/$playerSlug/ascension': {
+      id: '/players/$playerSlug/ascension'
+      path: '/ascension'
+      fullPath: '/players/$playerSlug/ascension'
+      preLoaderRoute: typeof PlayersPlayerSlugAscensionRouteImport
+      parentRoute: typeof PlayersPlayerSlugRoute
+    }
     '/players/$playerSlug/stats/': {
       id: '/players/$playerSlug/stats/'
       path: '/stats'
@@ -753,6 +773,7 @@ const PlayersPlayerSlugMatchesMatchIdRouteWithChildren =
   )
 
 interface PlayersPlayerSlugRouteChildren {
+  PlayersPlayerSlugAscensionRoute: typeof PlayersPlayerSlugAscensionRoute
   PlayersPlayerSlugCareerRoute: typeof PlayersPlayerSlugCareerRoute
   PlayersPlayerSlugCitationsRoute: typeof PlayersPlayerSlugCitationsRoute
   PlayersPlayerSlugCompareRoute: typeof PlayersPlayerSlugCompareRoute
@@ -774,6 +795,7 @@ interface PlayersPlayerSlugRouteChildren {
 }
 
 const PlayersPlayerSlugRouteChildren: PlayersPlayerSlugRouteChildren = {
+  PlayersPlayerSlugAscensionRoute: PlayersPlayerSlugAscensionRoute,
   PlayersPlayerSlugCareerRoute: PlayersPlayerSlugCareerRoute,
   PlayersPlayerSlugCitationsRoute: PlayersPlayerSlugCitationsRoute,
   PlayersPlayerSlugCompareRoute: PlayersPlayerSlugCompareRoute,

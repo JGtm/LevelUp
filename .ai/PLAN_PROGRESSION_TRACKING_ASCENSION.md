@@ -1,7 +1,7 @@
 # PLAN — Progression Tracking (V2 d'Ascension)
 
-**Date** : 2026-05-13
-**Statut** : Cadrage initial, à valider avant implémentation
+**Date** : 2026-05-13 · **Révisé** : 2026-05-18 (§2bis ajouté, §5 §6 §7 §8 §9 ajustés)
+**Statut** : Validé pour implémentation (branche `feat/progression-tracking-ascension`)
 **Dépendances** : V1 livrée ([PLAN_PLAYER_PROFILE_ASCENSION.md](PLAN_PLAYER_PROFILE_ASCENSION.md))
 **Alternative considérée et écartée** : [PLAN_SEASONS_ASCENSION.md](PLAN_SEASONS_ASCENSION.md) (DEPRECATED — cf. §2)
 
@@ -32,6 +32,55 @@ Saisons écartées car :
 - **Complexité ROI** : ~15j pour un concept dont l'utilité dépend d'un attachement saisonnier non démontré
 
 Cf. [PLAN_SEASONS_ASCENSION.md](PLAN_SEASONS_ASCENSION.md) pour le détail du cadrage initial (conservé en mémoire).
+
+---
+
+## 2bis. Alignement avec l'existant (audit pré-implémentation, 2026-05-18)
+
+Le plan initial supposait une base vierge. L'audit avant commit a révélé que **plusieurs fondations sont déjà construites** dans le projet et doivent être réutilisées plutôt que dupliquées. Décisions prises lors de l'audit :
+
+### Notifications coach → réutiliser `player_notifications`
+
+Le plan initial proposait une table `coach_alert` dédiée (cf. §6.3 historique). **Décision** : réutiliser le système `player_notifications` existant dans `shared_social.duckdb` (cf. [internal/notifications/types.go](../apps/go-api/internal/notifications/types.go) et [migration/steps_player_notifications.go](../apps/go-api/internal/migration/steps_player_notifications.go)).
+
+Raisons :
+- 18 catégories i18n-keyed déjà déclarées, dont `personal_record` et `threshold_crossed` directement pertinentes
+- Centre de notifs in-app (icône cloche, badge count, préférences par catégorie, TTL) — déjà construit
+- Hook post-sync `buildPostSyncDeltaHook` déjà câblé, avec TODOs explicites pour `personal_record`, `threshold_crossed`
+- Dupliquer cette infra créerait deux centres de notifs UX-équivalents — incohérence client
+
+**Nouvelles catégories à ajouter** (dans `notifications/types.go` + migration de seed prefs) :
+- `streak_milestone` — jalon de streak (7j, 14j, 30j)
+- `lusr_tier_approach` — approche d'un sub-tier LUSR (< 10 pts μ)
+- `record_near_miss` — approche d'un PB (< 5% du record)
+- `milestone_near_miss` — approche d'un milestone (< 10% du seuil)
+- `comeback_welcome` — reprise après pause > 5j (auto-suggestion clôture campagne aussi)
+
+### Records → étendre `player_records`
+
+La table `player_records` existe déjà dans `shared_social.duckdb` (clé `(xuid, metric)`, pas de fenêtre temporelle). Le plan V2 demande 3 fenêtres (30j / 90j / all_time). **Décision** : étendre la table via migration :
+
+- Ajouter colonne `period VARCHAR NOT NULL DEFAULT 'all_time'`
+- Ajouter colonnes `previous_value DOUBLE` et `previous_achieved_at TIMESTAMP`
+- PK migrée vers `(xuid, metric, period)`
+- Les enregistrements existants sont taggés `period='all_time'` (rétro-compatible)
+
+**Note sur le nommage `period` vs `window`** : le plan d'origine utilisait `window`, mais ce mot est réservé en DuckDB (utilisé pour les window functions `OVER (...)`). Le commit 1 (types + migrations) a donc renommé la colonne et le champ Go correspondant en `period` / `Period` / `RecordPeriod`. Le domaine reste « fenêtre temporelle 30d/90d/all_time ».
+
+### Tables 100% nouvelles
+
+| Table | Localisation | Rôle |
+|---|---|---|
+| `streak` | stats.duckdb (par joueur) | Streaks actives et historiques |
+| `record_history` | stats.duckdb (par joueur) | Timeline chronologique des PB battus |
+| `milestone_earned` | stats.duckdb (par joueur) | Milestones débloqués |
+| `milestone_catalog` | metadata.duckdb | Catalogue cross-titres chargé du TOML |
+
+Pas de `coach_alert` (réutilise `player_notifications`).
+
+### Hook post-sync — extension, pas réécriture
+
+`buildPostSyncDeltaHook` est déjà câblé. Couche 1/2/3 doivent **étendre** la closure existante (étendre `PlayerSnapshot` avec records moving windows + streak counters, et émettre les nouveaux types de notifs), pas créer un hook parallèle.
 
 ---
 
@@ -216,24 +265,27 @@ Le coach **n'alerte jamais** sur :
 
 **Priorité des alertes campagne** : si une `ImprovementCampaign` est `active` pour le joueur, les alertes sur son axe ciblé sont **boostées en priorité** dans le centre de notifs (apparaissent en premier). Cohérent avec l'attention volontaire que le joueur porte à cet axe.
 
-### 6.3 Modèle de données
+### 6.3 Modèle de données — réutilise `player_notifications`
 
-```go
-type CoachAlert struct {
-    ID         string
-    UserID     string
-    TitleSlug  string
-    Type       AlertType
-    Title      string  // i18n key
-    Body       string  // i18n key + interpolation
-    PayloadJSON string // data spécifique au type
-    CreatedAt  time.Time
-    ReadAt     *time.Time
-    DismissedAt *time.Time
-}
-```
+**Décision §2bis** : pas de table `coach_alert` dédiée. Les alertes coach sont émises via le package `notifications` existant et stockées dans `player_notifications` (`shared_social.duckdb`).
 
-Stockés en `stats.duckdb` par joueur. TTL 30j pour purger.
+Mapping type d'alerte → catégorie de notification :
+
+| Type d'alerte | Catégorie de notif (notifications/types.go) | Statut |
+|---|---|---|
+| Approche d'un record | `record_near_miss` | À ajouter |
+| Nouveau record battu | `personal_record` | **Existe déjà** (catégorie déclarée) |
+| Approche d'un milestone | `milestone_near_miss` | À ajouter |
+| Milestone débloqué | (réutiliser `personal_record` ou nouvelle catégorie `milestone_unlocked`) | À trancher au commit 4 |
+| Approche sub-tier LUSR | `lusr_tier_approach` | À ajouter |
+| Streak palier (7/14/30j) | `streak_milestone` | À ajouter |
+| Reprise après pause | `comeback_welcome` | À ajouter |
+| Composante LUSR LOWESS+ sur 14j | `threshold_crossed` | **Existe déjà** |
+| Campagne : progression Mann-Whitney | `threshold_crossed` (avec param campaign_id) | **Existe déjà** |
+
+L'i18n des messages passe par les clés `notif.<category>.title` + params (cf. notifications/types.go : `Notification.TitleKey`, `BodyKey`, `Params`).
+
+TTL géré par l'infra notifications (déjà en place).
 
 ### 6.4 Évaluateur
 
@@ -254,10 +306,10 @@ Worker Go déclenché post-sync :
 
 ## 7. Modèle de données global
 
-### 7.1 Tables `stats.duckdb` (par joueur)
+### 7.1 Tables `stats.duckdb` (par joueur) — nouvelles
 
 ```sql
--- Streaks actives et historiques
+-- Streaks actives et historiques (100% nouveau)
 CREATE TABLE streak (
     id              VARCHAR PRIMARY KEY,
     user_id         VARCHAR NOT NULL,
@@ -274,20 +326,7 @@ CREATE TABLE streak (
     broken_at       TIMESTAMP
 );
 
--- Records personnels par composante / fenêtre
-CREATE TABLE personal_record (
-    user_id            VARCHAR NOT NULL,
-    title_slug         VARCHAR NOT NULL,
-    metric             VARCHAR NOT NULL,
-    window             VARCHAR NOT NULL,
-    value              DOUBLE NOT NULL,
-    achieved_at        TIMESTAMP NOT NULL,
-    previous_value     DOUBLE,
-    previous_achieved_at TIMESTAMP,
-    PRIMARY KEY (user_id, title_slug, metric, window)
-);
-
--- Historique des records (pour timeline)
+-- Historique des records (timeline chronologique, 100% nouveau)
 CREATE TABLE record_history (
     id           VARCHAR PRIMARY KEY,
     user_id      VARCHAR NOT NULL,
@@ -298,7 +337,7 @@ CREATE TABLE record_history (
     achieved_at  TIMESTAMP NOT NULL
 );
 
--- Milestones débloqués
+-- Milestones débloqués (100% nouveau)
 CREATE TABLE milestone_earned (
     user_id      VARCHAR NOT NULL,
     title_slug   VARCHAR NOT NULL,
@@ -306,21 +345,28 @@ CREATE TABLE milestone_earned (
     earned_at    TIMESTAMP NOT NULL,
     PRIMARY KEY (user_id, title_slug, milestone_id)
 );
-
--- Alertes coach
-CREATE TABLE coach_alert (
-    id           VARCHAR PRIMARY KEY,
-    user_id      VARCHAR NOT NULL,
-    title_slug   VARCHAR NOT NULL,
-    type         VARCHAR NOT NULL,
-    title_key    VARCHAR NOT NULL,
-    body_key     VARCHAR NOT NULL,
-    payload_json VARCHAR,
-    created_at   TIMESTAMP NOT NULL,
-    read_at      TIMESTAMP,
-    dismissed_at TIMESTAMP
-);
 ```
+
+### 7.2 Tables `shared_social.duckdb` — extensions (décision §2bis)
+
+```sql
+-- player_records EXISTE DÉJÀ ; migration d'extension :
+--   - ajouter colonne `window` (default 'all_time', NOT NULL)
+--   - ajouter colonnes previous_value + previous_achieved_at
+--   - PK migre vers (xuid, metric, window) ; les lignes existantes
+--     restent valides taggées window='all_time'.
+ALTER TABLE player_records ADD COLUMN IF NOT EXISTS window VARCHAR NOT NULL DEFAULT 'all_time';
+ALTER TABLE player_records ADD COLUMN IF NOT EXISTS previous_value DOUBLE;
+ALTER TABLE player_records ADD COLUMN IF NOT EXISTS previous_achieved_at TIMESTAMP;
+-- Note : DuckDB ne permet pas de modifier une PK existante en place ;
+-- la migration recrée la table avec INSERT INTO ... SELECT FROM ancien.
+
+-- player_notifications EXISTE DÉJÀ ; pas de migration de schéma —
+-- seules les NOUVELLES catégories sont ajoutées au seed des
+-- préférences (cf. notifications/types.go).
+```
+
+### 7.3 Tables `metadata.duckdb` — nouvelles
 
 ### 7.2 Tables `metadata.duckdb`
 
@@ -350,38 +396,40 @@ apps/go-api/internal/
 │   ├── streaks/
 │   │   ├── types.go            # Streak, StreakType
 │   │   ├── evaluator.go        # detect daily/weekly satisfaction
-│   │   └── repository.go       # DuckDB persistence
+│   │   └── repository.go       # DuckDB persistence (stats.duckdb)
 │   ├── records/
 │   │   ├── types.go            # PersonalRecord, RecordHistory
 │   │   ├── detector.go         # post-match record detection
-│   │   └── repository.go
+│   │   └── repository.go       # repo player_records (étendu) + record_history
 │   ├── milestones/
 │   │   ├── types.go
-│   │   ├── catalog_loader.go   # TOML loader
+│   │   ├── catalog_loader.go   # TOML loader (metadata.duckdb)
 │   │   ├── detector.go         # post-match milestone unlocks
 │   │   └── repository.go
 │   └── coach/
-│       ├── types.go            # CoachAlert, AlertType
-│       ├── generator.go        # signal detection + alert composition
-│       └── repository.go
+│       ├── types.go            # AlertType, NearMissParams (struct legers)
+│       ├── generator.go        # signal detection + composition payload
+│       └── emitter.go          # délègue à internal/notifications (PAS de repo dédié)
 ├── service/
 │   └── progression_service.go  # orchestration + cache, expose unified view
 └── api/handlers/
     ├── streaks.go              # GET /api/v1/streaks
-    ├── records.go              # GET /api/v1/records
-    ├── milestones.go           # GET /api/v1/milestones
-    └── coach.go                # GET /api/v1/coach/alerts, POST .../{id}/read
+    ├── records.go              # GET /api/v1/records (lit player_records)
+    └── milestones.go           # GET /api/v1/milestones
+    # Pas de coach.go — le centre de notifs existant gère les alertes coach.
 ```
 
-### 8.2 Hook post-sync
+### 8.2 Hook post-sync — extension de l'existant
 
-Dans `apps/go-api/internal/sync/engine.go`, après ingestion d'un match :
-1. `streaks.Evaluate(userID, titleSlug)` — incrémente / shield / break
-2. `records.Detect(userID, titleSlug)` — détecte nouveaux PB
-3. `milestones.Detect(userID, titleSlug)` — débloque milestones
-4. `coach.Generate(userID, titleSlug)` — génère alertes éligibles
+Dans [internal/api/post_sync_deltas.go](../apps/go-api/internal/api/post_sync_deltas.go), la closure `buildPostSyncDeltaHook` reçoit avant/après snapshot et émet des notifs. L'extension V2 enrichit :
+1. `PlayerSnapshot` — ajouter records par window (30j/90j/all_time) + streak counters + tendances LOWESS pré-computées
+2. `EmitPostSyncDeltas` — appeler en séquence :
+   - `streaks.Evaluate(snapshot)` — incrémente / shield / break
+   - `records.Detect(snapshot)` — détecte nouveaux PB → émet notif `personal_record`
+   - `milestones.Detect(snapshot)` — débloque milestones → émet notif
+   - `coach.Generate(snapshot, profile)` — analyse signaux, émet notifs near-miss
 
-Toutes idempotentes, peuvent être replay sans effet de bord.
+Toutes idempotentes, replay sans effet de bord. Le hook existant reste en place — pas de réécriture.
 
 ### 8.3 Frontend React
 
@@ -392,13 +440,14 @@ apps/web/src/features/ascension/   # nouveau dossier (séparé de prestige)
 │   ├── StreakDashboard.tsx       # vue détaillée streaks
 │   ├── RecordsTimeline.tsx       # timeline chronologique
 │   ├── RecordsNearMiss.tsx       # records proches
-│   ├── MilestonesGrid.tsx        # grille badges
-│   └── CoachAlertsCenter.tsx     # centre de notifs
+│   └── MilestonesGrid.tsx        # grille badges
+│   # Pas de CoachAlertsCenter — le centre de notifs existant (cloche nav)
+│   # affiche déjà les alertes coach via les nouvelles catégories.
 ├── hooks/
 │   ├── useStreaks.ts
 │   ├── useRecords.ts
-│   ├── useMilestones.ts
-│   └── useCoachAlerts.ts
+│   └── useMilestones.ts
+│   # Pas de useCoachAlerts — useNotifications existant suffit.
 └── pages/
     └── AscensionDashboard.tsx    # peut être l'onglet par défaut d'Ascension
 ```
@@ -409,27 +458,29 @@ Intégration dans `ObjectifsPage.tsx` (renommé en `AscensionPage.tsx` ?) :
 
 ### 8.4 Notifications
 
-Centre dans la nav principale (icône cloche, badge count alertes non lues).
+Centre dans la nav principale **déjà existant** (icône cloche, badge count, préférences). V2 ne crée pas de centre parallèle — il enrichit le centre existant via de nouvelles catégories.
 
 ---
 
 ## 9. Plan d'implémentation
 
-**Branche** : `feat/progression-tracking-ascension` (depuis main, après V1 mergée).
+**Branche** : `feat/progression-tracking-ascension` (depuis HEAD de `feat/xbox-sso`, qui contient V1).
 
-### Découpe en commits
+### Découpe en commits — révisée 2026-05-18 (post-audit §2bis)
 
-1. `feat(progression): types Go + migrations DuckDB (streak, record, milestone, alert)` (~1j)
-2. `feat(progression): streaks evaluator + shields + multiplicateur PP` (~2j)
-3. `feat(progression): records detector post-match + timeline` (~1.5j)
-4. `feat(progression): milestones catalog TOML + detector` (~1.5j)
-5. `feat(progression): coach generator (4-6 types d'alertes positives)` (~2j)
-6. `feat(progression): hook post-sync + tests integration` (~1j)
-7. `feat(progression): endpoints HTTP + handlers` (~1j)
-8. `feat(progression): UI Streaks dashboard + StreakBadge nav` (~1.5j)
-9. `feat(progression): UI Records timeline + Near-miss + Milestones grid` (~1.5j)
-10. `feat(progression): UI Coach alerts center` (~1j)
+1. `chore(plan): align V2 with existing notifications + player_records infra` (~0j, fait)
+2. `feat(progression): types Go + migrations DuckDB (streak, record_history, milestone_earned, milestone_catalog, player_records extension)` (~1j)
+3. `feat(progression): streaks evaluator + shields + multiplicateur PP` (~2j)
+4. `feat(progression): records detector — complète post_sync_deltas TODO + record_history timeline` (~1.5j)
+5. `feat(progression): milestones catalog TOML + detector + emission notif` (~1.5j)
+6. `feat(progression): coach generator (5-6 types d'alertes near-miss) + nouvelles catégories notif` (~2j)
+7. `feat(progression): hook post-sync extension + tests integration` (~1j)
+8. `feat(progression): endpoints HTTP /api/v1/{streaks,records,milestones}` (~0.5j) [pas de coach.go]
+9. `feat(progression): UI Streaks dashboard + StreakBadge nav` (~1.5j)
+10. `feat(progression): UI Records timeline + Near-miss + Milestones grid` (~1.5j)
 11. `chore(progression): i18n manifests + ADR 0013` (~0.5j)
+
+**Total révisé** : ~13j → arrondi 10-12j. Économie : pas de centre de notifs coach dédié + pas d'endpoint coach (UI existante suffit).
 
 **Total** : ~13.5j → arrondi 10-12j sans i18n et tests exhaustifs.
 

@@ -42,15 +42,27 @@ function resolveTemplate(
 // enrichParams ajoute les paramètres dérivés (ex: metric_label depuis metric_key)
 // résolus via i18n. Permet aux templates d'utiliser {metric_label} sans que le
 // backend ait à connaître la locale.
+//
+// 2026-05-18 — Progression V2 : le coach generator passe `metric` (pas
+// `metric_key`) dans ses params. Fallback sur `metric` + nouvel enrichissement
+// `period` → `period_label` pour les templates near_miss.
 function enrichParams(
   params: Record<string, unknown> | undefined,
   locale: NotificationsLocale,
 ): Record<string, unknown> | undefined {
   if (!params) return params
   const out = { ...params }
-  if (typeof params.metric_key === 'string' && out.metric_label == null) {
-    const t = getNotificationsText(locale)
-    out.metric_label = t.metricLabel[params.metric_key] ?? params.metric_key
+  const t = getNotificationsText(locale)
+  if (out.metric_label == null) {
+    const metricKey =
+      (typeof params.metric_key === 'string' ? params.metric_key : null) ??
+      (typeof params.metric === 'string' ? params.metric : null)
+    if (metricKey) {
+      out.metric_label = t.metricLabel[metricKey] ?? metricKey
+    }
+  }
+  if (out.period_label == null && typeof params.period === 'string') {
+    out.period_label = t.periodLabel[params.period] ?? params.period
   }
   return out
 }

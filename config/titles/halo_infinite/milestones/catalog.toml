@@ -1,0 +1,145 @@
+# Halo Infinite — Catalogue de milestones (couche 2 du plan V2 Ascension).
+#
+# Chargé au boot dans `metadata.duckdb` via milestones.SyncCatalog.
+# Schéma : cf. apps/go-api/internal/progression/milestones/catalog_loader.go.
+#
+# Conventions :
+#  - id : préfixé par `halo_infinite.` + metric + threshold (ex: halo_infinite.matches.100)
+#  - metric : clé snake_case alignée sur les agrégats du PlayerStats
+#    (matches_played, wins, kills, headshots, assists, accuracy_threshold_days)
+#  - threshold : > 0 obligatoire
+#  - title_en + title_fr : obligatoires (intégrés au manifest i18n notif)
+#  - icon : nom logique (résolu côté front via le mapping assets)
+#  - condition : descriptif libre, non évalué (purement UI)
+
+[meta]
+schema_version = 1
+title_slug = "halo_infinite"
+
+# ─── Volume : matchs joués ─────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_infinite.matches.100"
+metric    = "matches_played"
+threshold = 100
+title_fr  = "Centurion"
+title_en  = "Centurion"
+icon      = "milestone_matches_100"
+
+[[milestones]]
+id        = "halo_infinite.matches.500"
+metric    = "matches_played"
+threshold = 500
+title_fr  = "Vétéran"
+title_en  = "Veteran"
+icon      = "milestone_matches_500"
+
+[[milestones]]
+id        = "halo_infinite.matches.1000"
+metric    = "matches_played"
+threshold = 1000
+title_fr  = "Spartan d'élite"
+title_en  = "Elite Spartan"
+icon      = "milestone_matches_1000"
+
+# ─── Victoires ─────────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_infinite.wins.50"
+metric    = "wins"
+threshold = 50
+title_fr  = "Vainqueur"
+title_en  = "Winner"
+icon      = "milestone_wins_50"
+
+[[milestones]]
+id        = "halo_infinite.wins.250"
+metric    = "wins"
+threshold = 250
+title_fr  = "Vétéran de la victoire"
+title_en  = "Victory Veteran"
+icon      = "milestone_wins_250"
+
+[[milestones]]
+id        = "halo_infinite.wins.1000"
+metric    = "wins"
+threshold = 1000
+title_fr  = "Champion"
+title_en  = "Champion"
+icon      = "milestone_wins_1000"
+
+# ─── Kills ─────────────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_infinite.kills.1000"
+metric    = "kills"
+threshold = 1000
+title_fr  = "Combattant aguerri"
+title_en  = "Seasoned Fighter"
+icon      = "milestone_kills_1000"
+
+[[milestones]]
+id        = "halo_infinite.kills.10000"
+metric    = "kills"
+threshold = 10000
+title_fr  = "Tueur en série"
+title_en  = "Serial Killer"
+icon      = "milestone_kills_10000"
+
+# ─── Headshots ─────────────────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_infinite.headshots.500"
+metric    = "headshots"
+threshold = 500
+title_fr  = "Tireur d'élite"
+title_en  = "Marksman"
+icon      = "milestone_headshots_500"
+
+[[milestones]]
+id        = "halo_infinite.headshots.5000"
+metric    = "headshots"
+threshold = 5000
+title_fr  = "Sniper légendaire"
+title_en  = "Legendary Sniper"
+icon      = "milestone_headshots_5000"
+
+# ─── Assists (axe support) ─────────────────────────────────────────────────
+
+[[milestones]]
+id        = "halo_infinite.assists.500"
+metric    = "assists"
+threshold = 500
+title_fr  = "Soutien fidèle"
+title_en  = "Reliable Support"
+icon      = "milestone_assists_500"
+
+[[milestones]]
+id        = "halo_infinite.assists.2500"
+metric    = "assists"
+threshold = 2500
+title_fr  = "Pilier d'équipe"
+title_en  = "Team Pillar"
+icon      = "milestone_assists_2500"
+
+# ─── Régularité (jours distincts avec performance) ────────────────────────
+# Métrique compute par l'orchestrateur post-sync : nombre de jours distincts
+# où le joueur a un match avec accuracy >= 0.50. Approche Duolingo-like.
+
+[[milestones]]
+id        = "halo_infinite.accuracy_consistent.30d"
+metric    = "accuracy_threshold_days"
+threshold = 30
+title_fr  = "Tireur régulier"
+title_en  = "Steady Marksman"
+icon      = "milestone_accuracy_30days"
+condition = "accuracy >= 0.50 sur 30 jours distincts"
+
+[[milestones]]
+id        = "halo_infinite.accuracy_consistent.90d"
+metric    = "accuracy_threshold_days"
+threshold = 90
+title_fr  = "Tireur d'élite quotidien"
+title_en  = "Daily Marksman"
+icon      = "milestone_accuracy_90days"
+condition = "accuracy >= 0.50 sur 90 jours distincts"

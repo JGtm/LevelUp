@@ -1,97 +1,109 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Halo Infinite — catalogue de templates de défis.
-#
-# Chargé en metadata.duckdb (table challenge_template) au boot.
-#
-# Convention :
-#   - id : slug stable, ne jamais réutiliser un id retiré
-#   - metric : référence un FieldKey de internal/games/canonical/fields.go
-#   - cibles monotones : normal < heroic < legendary < mythic
-#   - mode_filter : universal | pvp | ranked | pve
-#
-# Les valeurs sont des points de départ — à recalibrer après alpha via
-# scripts/analyze_prestige_tuning.py.
-# ─────────────────────────────────────────────────────────────────────────────
-
-[meta]
-schema_version = 1
-title_slug     = "halo_infinite"
-
-# ═════════════════════ QUOTIDIENS (cadence=daily) ════════════════════════════
+# ─────────────────────────────────────────────────────────────────────────
+# V1 PlayerProfile §6.1 — nouveaux templates pour fermer les gaps de
+# couverture LUSR (Deaths vs Expected = 24% du composite mais 0 templates
+# directs avant, Defensive Resistance = 6% mais 0 templates).
+# ─────────────────────────────────────────────────────────────────────────
 
 [[templates]]
-id              = "halo_infinite.daily.kda_session"
-metric          = "FieldKDA"
-window_type     = "session"
-window_value    = "1"
-cadence         = "daily"
-eval_type       = "threshold"
-mode_filter     = "universal"
-label_en        = "Stay sharp"
-label_fr        = "Reste affûté"
-description_en  = "Maintain a strong KDA across one full session."
-description_fr  = "Maintiens un bon KDA sur une session complète."
-normal_target   = 1.10
-heroic_target   = 1.35
-legendary_target = 1.65
-mythic_target   = 2.10
-
-[[templates]]
-id              = "halo_infinite.daily.accuracy_session"
-metric          = "FieldAccuracy"
-window_type     = "session"
-window_value    = "1"
-cadence         = "daily"
-eval_type       = "threshold"
-mode_filter     = "universal"
-label_en        = "Steady aim"
-label_fr        = "Visée stable"
-description_en  = "Hit your targets cleanly across one session."
-description_fr  = "Touche tes cibles proprement sur une session."
-normal_target   = 0.42
-heroic_target   = 0.50
-legendary_target = 0.58
-mythic_target   = 0.65
-
-[[templates]]
-id              = "halo_infinite.daily.headshots_session"
-metric          = "FieldHeadshotKills"
-window_type     = "session"
-window_value    = "1"
-cadence         = "daily"
-eval_type       = "threshold"
-mode_filter     = "universal"
-label_en        = "Crown breaker"
-label_fr        = "Briseur de couronnes"
-description_en  = "Land precise headshots throughout the session."
-description_fr  = "Place des headshots précis tout au long de la session."
-normal_target   = 4.0
-heroic_target   = 7.0
-legendary_target = 11.0
-mythic_target   = 16.0
-
-[[templates]]
-id              = "halo_infinite.daily.power_weapon_session"
-metric          = "FieldPowerWeaponKills"
-window_type     = "session"
-window_value    = "1"
-cadence         = "daily"
+id              = "halo_infinite.monthly.deaths_vs_expected"
+metric          = "deaths_vs_expected"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
 eval_type       = "threshold"
 mode_filter     = "pvp"
-label_en        = "Power player"
-label_fr        = "Maître des armes lourdes"
-description_en  = "Convert power weapons into eliminations this session."
-description_fr  = "Convertis les armes lourdes en éliminations cette session."
-normal_target   = 2.0
-heroic_target   = 4.0
-legendary_target = 6.0
-mythic_target   = 9.0
+label_en        = "Death below expectations"
+label_fr        = "Meurs moins que prévu"
+description_en  = "Die less often than your MMR predicts over 30 days."
+description_fr  = "Meurs moins souvent que prévu pour ton MMR sur 30 jours."
+normal_target   = 1.05
+heroic_target   = 1.15
+legendary_target = 1.25
+mythic_target   = 1.40
+lusr_components = ["deaths_vs_expected"]
+radar_axes      = ["survival"]
+is_long_term    = true
 
 [[templates]]
-id              = "halo_infinite.daily.personal_score_session"
-metric          = "FieldPersonalScore"
+id              = "halo_infinite.weekly.deaths_vs_expected"
+metric          = "deaths_vs_expected"
 window_type     = "session"
-window_value    = "1"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Stay alive (3 sessions)"
+label_fr        = "Reste en vie (3 sessions)"
+description_en  = "Die less often than expected across 3 sessions."
+description_fr  = "Meurs moins souvent que prévu sur 3 sessions."
+normal_target   = 1.05
+heroic_target   = 1.15
+legendary_target = 1.25
+mythic_target   = 1.40
+lusr_components = ["deaths_vs_expected"]
+radar_axes      = ["survival"]
+is_long_term    = false
+
+[[templates]]
+id              = "halo_infinite.monthly.dmg_taken_per_death"
+metric          = "defensive_resistance"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Tank it (30 days)"
+label_fr        = "Encaisse les coups (30 jours)"
+description_en  = "Absorb more damage per death than the average."
+description_fr  = "Absorbe plus de dégâts par mort que la moyenne."
+normal_target   = 1.05
+heroic_target   = 1.20
+legendary_target = 1.40
+mythic_target   = 1.70
+lusr_components = ["defensive_resistance"]
+radar_axes      = ["survival"]
+is_long_term    = true
+
+[[templates]]
+id              = "halo_infinite.monthly.accuracy_30d"
+metric          = "FieldAccuracy"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Marksman habit (30 days)"
+label_fr        = "Précision tenue (30 jours)"
+description_en  = "Maintain strong accuracy over 30 days."
+description_fr  = "Maintiens une précision élevée sur 30 jours."
+normal_target   = 0.45
+heroic_target   = 0.52
+legendary_target = 0.59
+mythic_target   = 0.66
+lusr_components = ["accuracy_delta"]
+radar_axes      = ["combat"]
+is_long_term    = true
+
+[[templates]]
+id              = "halo_infinite.monthly.kve_30d"
+metric          = "kills_vs_expected"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Above expectations (30 days)"
+label_fr        = "Au-dessus des attentes (30 jours)"
+description_en  = "Outperform your MMR's predicted kill rate for 30 days."
+description_fr  = "Dépasse le taux de kills attendu sur 30 jours."
+normal_target   = 1.10
+heroic_target   = 1.25
+legendary_target = 1.40
+mythic_target   = 1.65
+lusr_components = ["kills_vs_expected"]
+radar_axes      = ["combat"]
+is_long_term    = true
+_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "universal"
@@ -103,6 +115,9 @@ normal_target   = 800.0
 heroic_target   = 1200.0
 legendary_target = 1600.0
 mythic_target   = 2200.0
+lusr_components = ["offensive_conversion"]
+radar_axes      = ["score"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.daily.kdr_session"
@@ -120,6 +135,9 @@ normal_target   = 1.05
 heroic_target   = 1.30
 legendary_target = 1.55
 mythic_target   = 1.90
+lusr_components = ["kills_vs_expected", "deaths_vs_expected"]
+radar_axes      = ["combat", "survival"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.daily.melee_kills"
@@ -137,6 +155,9 @@ normal_target   = 1.0
 heroic_target   = 3.0
 legendary_target = 5.0
 mythic_target   = 8.0
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.daily.grenade_kills"
@@ -154,6 +175,9 @@ normal_target   = 2.0
 heroic_target   = 4.0
 legendary_target = 6.0
 mythic_target   = 9.0
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.daily.killing_spree"
@@ -171,6 +195,9 @@ normal_target   = 4.0
 heroic_target   = 7.0
 legendary_target = 10.0
 mythic_target   = 15.0
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 # ═════════════════════ HEBDOMADAIRES (cadence=weekly) ════════════════════════
 
@@ -190,6 +217,9 @@ normal_target   = 50.0
 heroic_target   = 60.0
 legendary_target = 70.0
 mythic_target   = 80.0
+lusr_components = ["win_factor"]
+radar_axes      = ["score", "objective"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.kills_vs_expected"
@@ -207,6 +237,9 @@ normal_target   = 1.10
 heroic_target   = 1.25
 legendary_target = 1.40
 mythic_target   = 1.65
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.kda_3sessions"
@@ -224,6 +257,9 @@ normal_target   = 1.20
 heroic_target   = 1.50
 legendary_target = 1.80
 mythic_target   = 2.20
+lusr_components = ["kills_vs_expected", "deaths_vs_expected"]
+radar_axes      = ["combat", "survival"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.damage_per_min"
@@ -241,6 +277,9 @@ normal_target   = 600.0
 heroic_target   = 800.0
 legendary_target = 1000.0
 mythic_target   = 1300.0
+lusr_components = ["damage_efficiency", "offensive_conversion"]
+radar_axes      = ["combat", "support"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.csr_floor"
@@ -258,6 +297,9 @@ normal_target   = 1200.0
 heroic_target   = 1400.0
 legendary_target = 1600.0
 mythic_target   = 1800.0
+lusr_components = ["win_factor"]
+radar_axes      = ["score"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.headshots_3sessions"
@@ -275,6 +317,9 @@ normal_target   = 5.0
 heroic_target   = 9.0
 legendary_target = 14.0
 mythic_target   = 20.0
+lusr_components = ["medal_exploit", "kills_vs_expected"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.accuracy_3sessions"
@@ -292,6 +337,9 @@ normal_target   = 0.45
 heroic_target   = 0.52
 legendary_target = 0.60
 mythic_target   = 0.68
+lusr_components = ["accuracy_delta"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.power_weapons_3sessions"
@@ -309,6 +357,9 @@ normal_target   = 4.0
 heroic_target   = 8.0
 legendary_target = 13.0
 mythic_target   = 20.0
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = false
 
 [[templates]]
 id              = "halo_infinite.weekly.score_per_session"
@@ -326,6 +377,9 @@ normal_target   = 900.0
 heroic_target   = 1200.0
 legendary_target = 1500.0
 mythic_target   = 2000.0
+lusr_components = ["offensive_conversion"]
+radar_axes      = ["score"]
+is_long_term    = false
 
 # ═════════════════════ MENSUELS (cadence=monthly) ════════════════════════════
 
@@ -345,7 +399,11 @@ normal_target   = 3.0
 heroic_target   = 7.0
 legendary_target = 12.0
 mythic_target   = 20.0
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = true
 
+# TODO: tag (no match)
 [[templates]]
 id              = "halo_infinite.monthly.maps_explored"
 metric          = "maps_played_distinct"
@@ -362,7 +420,11 @@ normal_target   = 5.0
 heroic_target   = 8.0
 legendary_target = 12.0
 mythic_target   = 16.0
+lusr_components = []
+radar_axes      = []
+is_long_term    = true
 
+# TODO: tag (no match)
 [[templates]]
 id              = "halo_infinite.monthly.modes_played"
 metric          = "modes_played_distinct"
@@ -379,6 +441,9 @@ normal_target   = 3.0
 heroic_target   = 5.0
 legendary_target = 7.0
 mythic_target   = 9.0
+lusr_components = []
+radar_axes      = []
+is_long_term    = true
 
 [[templates]]
 id              = "halo_infinite.monthly.ranked_wins"
@@ -396,7 +461,11 @@ normal_target   = 8.0
 heroic_target   = 16.0
 legendary_target = 25.0
 mythic_target   = 40.0
+lusr_components = ["win_factor"]
+radar_axes      = ["score", "objective"]
+is_long_term    = true
 
+# TODO: tag (no match)
 [[templates]]
 id              = "halo_infinite.monthly.firefight_waves"
 metric          = "FieldWavesCompleted"
@@ -413,6 +482,9 @@ normal_target   = 30.0
 heroic_target   = 60.0
 legendary_target = 100.0
 mythic_target   = 150.0
+lusr_components = []
+radar_axes      = []
+is_long_term    = true
 
 [[templates]]
 id              = "halo_infinite.monthly.overkills"
@@ -430,6 +502,9 @@ normal_target   = 5.0
 heroic_target   = 12.0
 legendary_target = 22.0
 mythic_target   = 35.0
+lusr_components = ["medal_exploit"]
+radar_axes      = ["impact"]
+is_long_term    = true
 
 [[templates]]
 id              = "halo_infinite.monthly.boss_kills"
@@ -447,7 +522,11 @@ normal_target   = 5.0
 heroic_target   = 12.0
 legendary_target = 22.0
 mythic_target   = 38.0
+lusr_components = ["kills_vs_expected", "medal_exploit"]
+radar_axes      = ["combat"]
+is_long_term    = true
 
+# TODO: tag (no match)
 [[templates]]
 id              = "halo_infinite.monthly.matches_played"
 metric          = "matches_played"
@@ -464,6 +543,9 @@ normal_target   = 20.0
 heroic_target   = 40.0
 legendary_target = 70.0
 mythic_target   = 120.0
+lusr_components = []
+radar_axes      = []
+is_long_term    = true
 
 [[templates]]
 id              = "halo_infinite.monthly.killtrocity"
@@ -481,3 +563,113 @@ normal_target   = 1.0
 heroic_target   = 3.0
 legendary_target = 6.0
 mythic_target   = 10.0
+lusr_components = ["medal_exploit"]
+radar_axes      = ["impact"]
+is_long_term    = true
+
+# ─────────────────────────────────────────────────────────────────────────
+# V1 PlayerProfile §6.1 — nouveaux templates pour fermer les gaps de
+# couverture LUSR (Deaths vs Expected = 24% du composite mais 0 templates
+# directs avant, Defensive Resistance = 6% mais 0 templates).
+# ─────────────────────────────────────────────────────────────────────────
+
+[[templates]]
+id              = "halo_infinite.monthly.deaths_vs_expected"
+metric          = "deaths_vs_expected"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Death below expectations"
+label_fr        = "Meurs moins que prévu"
+description_en  = "Die less often than your MMR predicts over 30 days."
+description_fr  = "Meurs moins souvent que prévu pour ton MMR sur 30 jours."
+normal_target   = 1.05
+heroic_target   = 1.15
+legendary_target = 1.25
+mythic_target   = 1.40
+lusr_components = ["deaths_vs_expected"]
+radar_axes      = ["survival"]
+is_long_term    = true
+
+[[templates]]
+id              = "halo_infinite.weekly.deaths_vs_expected"
+metric          = "deaths_vs_expected"
+window_type     = "session"
+window_value    = "3"
+cadence         = "weekly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Stay alive (3 sessions)"
+label_fr        = "Reste en vie (3 sessions)"
+description_en  = "Die less often than expected across 3 sessions."
+description_fr  = "Meurs moins souvent que prévu sur 3 sessions."
+normal_target   = 1.05
+heroic_target   = 1.15
+legendary_target = 1.25
+mythic_target   = 1.40
+lusr_components = ["deaths_vs_expected"]
+radar_axes      = ["survival"]
+is_long_term    = false
+
+[[templates]]
+id              = "halo_infinite.monthly.dmg_taken_per_death"
+metric          = "defensive_resistance"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Tank it (30 days)"
+label_fr        = "Encaisse les coups (30 jours)"
+description_en  = "Absorb more damage per death than the average."
+description_fr  = "Absorbe plus de dégâts par mort que la moyenne."
+normal_target   = 1.05
+heroic_target   = 1.20
+legendary_target = 1.40
+mythic_target   = 1.70
+lusr_components = ["defensive_resistance"]
+radar_axes      = ["survival"]
+is_long_term    = true
+
+[[templates]]
+id              = "halo_infinite.monthly.accuracy_30d"
+metric          = "FieldAccuracy"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "universal"
+label_en        = "Marksman habit (30 days)"
+label_fr        = "Précision tenue (30 jours)"
+description_en  = "Maintain strong accuracy over 30 days."
+description_fr  = "Maintiens une précision élevée sur 30 jours."
+normal_target   = 0.45
+heroic_target   = 0.52
+legendary_target = 0.59
+mythic_target   = 0.66
+lusr_components = ["accuracy_delta"]
+radar_axes      = ["combat"]
+is_long_term    = true
+
+[[templates]]
+id              = "halo_infinite.monthly.kve_30d"
+metric          = "kills_vs_expected"
+window_type     = "rolling_days"
+window_value    = "30"
+cadence         = "monthly"
+eval_type       = "threshold"
+mode_filter     = "pvp"
+label_en        = "Above expectations (30 days)"
+label_fr        = "Au-dessus des attentes (30 jours)"
+description_en  = "Outperform your MMR's predicted kill rate for 30 days."
+description_fr  = "Dépasse le taux de kills attendu sur 30 jours."
+normal_target   = 1.10
+heroic_target   = 1.25
+legendary_target = 1.40
+mythic_target   = 1.65
+lusr_components = ["kills_vs_expected"]
+radar_axes      = ["combat"]
+is_long_term    = true
+

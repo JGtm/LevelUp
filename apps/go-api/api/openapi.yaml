@@ -1931,6 +1931,163 @@ paths:
       responses:
         "200": { description: "Notification émise" }
 
+  # Couche progression V2 (Ascension) — streaks / records / milestones.
+  # Cf. .ai/PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.1.
+  /players/{player_slug}/streaks:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [progression]
+      operationId: listProgressionStreaks
+      summary: "Liste des streaks du joueur (active + historique)"
+      responses:
+        "200": { description: "Streaks" }
+
+  /players/{player_slug}/records:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: history_limit
+        in: query
+        required: false
+        schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        description: "Limite l'historique des PB battus (défaut 50, max 200)"
+    get:
+      tags: [progression]
+      operationId: listProgressionRecords
+      summary: "PB courants + timeline des records battus"
+      responses:
+        "200": { description: "Records" }
+
+  /players/{player_slug}/milestones:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [progression]
+      operationId: listProgressionMilestones
+      summary: "Catalogue de milestones + statut Earned par milestone"
+      responses:
+        "200": { description: "Milestones" }
+
+  # PlayerProfile V1 (Ascension) — Sections A1/A2/B/C
+  /players/{player_slug}/profile:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: window_days
+        in: query
+        required: false
+        schema: { type: integer, minimum: 7, maximum: 120, default: 30 }
+        description: "Fenêtre d'analyse en jours (clampé 7..120)"
+    get:
+      tags: [progression]
+      operationId: getPlayerProfile
+      summary: "Profil joueur complet (radar 6 axes, style FK/FD, tier LUSR + 8 composantes, leviers, suggestions)"
+      responses:
+        "200": { description: "PlayerProfile" }
+        "404": { description: "Joueur inconnu" }
+
+  # ImprovementCampaign V1 (§4.5) — boucle profil → objectif → suivi
+  /players/{player_slug}/campaigns:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    post:
+      tags: [progression]
+      operationId: startCampaign
+      summary: "Démarrer une campagne d'amélioration sur un axe (snapshot des 100 derniers matchs)"
+      responses:
+        "201": { description: "Campagne créée" }
+        "400": { description: "Axe invalide" }
+        "409": { description: "Une campagne est déjà active" }
+
+  /players/{player_slug}/campaigns/active:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+    get:
+      tags: [progression]
+      operationId: getActiveCampaign
+      summary: "Campagne active du joueur (null si aucune)"
+      responses:
+        "200": { description: "Campagne ou null" }
+
+  /players/{player_slug}/campaigns/{id}:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        description: "ID de la campagne"
+    get:
+      tags: [progression]
+      operationId: getCampaignByID
+      summary: "Détail d'une campagne + défis liés"
+      responses:
+        "200": { description: "Campagne" }
+        "404": { description: "Campagne inconnue" }
+
+  /players/{player_slug}/campaigns/{id}/pause:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [progression]
+      operationId: pauseCampaign
+      summary: "Mettre une campagne active en pause"
+      responses:
+        "204": { description: "Campagne mise en pause" }
+        "404": { description: "Campagne inconnue" }
+        "409": { description: "Transition d'état invalide" }
+
+  /players/{player_slug}/campaigns/{id}/resume:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [progression]
+      operationId: resumeCampaign
+      summary: "Reprendre une campagne en pause"
+      responses:
+        "204": { description: "Campagne reprise" }
+        "404": { description: "Campagne inconnue" }
+        "409": { description: "Transition d'état invalide" }
+
+  /players/{player_slug}/campaigns/{id}/close:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [progression]
+      operationId: closeCampaign
+      summary: "Clôturer une campagne (status=completed)"
+      responses:
+        "204": { description: "Campagne clôturée" }
+        "404": { description: "Campagne inconnue" }
+        "409": { description: "Campagne déjà terminée" }
+
+  /players/{player_slug}/campaigns/{id}/abandon:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [progression]
+      operationId: abandonCampaign
+      summary: "Abandonner une campagne (status=abandoned, sans pénalité)"
+      responses:
+        "204": { description: "Campagne abandonnée" }
+        "404": { description: "Campagne inconnue" }
+        "409": { description: "Campagne déjà terminée" }
+
   # Watcher (présence Xbox/Steam)
   /watcher/auth/{provider}:
     parameters:

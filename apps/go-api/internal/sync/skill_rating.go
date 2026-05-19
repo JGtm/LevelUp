@@ -112,8 +112,12 @@ type compositeMatchRow struct {
 	DefensiveResistance float64 // damage_taken/(225*deaths), 0 si absent
 }
 
-// computeCompositeScore calcule le score composite [0,1] d'un match.
-// Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids renormalisés.
+// computeCompositeScore calcule le score composite [0,1] d'un match. Wrapper
+// rétro-compatible autour de computeCompositeScoreWithBreakdown qui ne retourne
+// que le composite (utilisé par les tests existants).
+//
+// Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids
+// renormalisés.
 func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour future formule de synergie
 	row *compositeMatchRow,
 	avgAccuracy *float64,
@@ -123,6 +127,27 @@ func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour fut
 	avgOffConv *float64,
 	avgDefRes *float64,
 ) float64 {
+	composite, _ := computeCompositeScoreWithBreakdown(row, avgAccuracy, teammateAvgKE, avgDamageEff, avgMedalExploit, avgOffConv, avgDefRes)
+	return composite
+}
+
+// computeCompositeScoreWithBreakdown calcule composite + breakdown détaillé.
+// Le breakdown contient les valeurs des composantes effectivement calculées
+// (clés = noms canoniques de CompositeWeights). Les composantes absentes du
+// match (donnée manquante, poids 0) ne figurent pas dans la map — leur lecture
+// retourne 0 côté Go, ce qui simplifie l'INSERT en batch.
+//
+// Utilisé par computeSkillRatingsBatch (commit V2-1) pour persister
+// `lusr_component_history` en plus de `match_skill_rank`.
+func computeCompositeScoreWithBreakdown(
+	row *compositeMatchRow,
+	avgAccuracy *float64,
+	teammateAvgKE *float64,
+	avgDamageEff *float64,
+	avgMedalExploit *float64,
+	avgOffConv *float64,
+	avgDefRes *float64,
+) (float64, map[string]float64) {
 	w := CompositeWeights
 	type entry struct {
 		key    string
@@ -211,20 +236,22 @@ func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour fut
 	}
 
 	if len(valid) == 0 {
-		return 0.5
+		return 0.5, nil
 	}
 	totalWeight := 0.0
 	for _, e := range valid {
 		totalWeight += e.weight
 	}
 	if totalWeight < 1e-12 {
-		return 0.5
+		return 0.5, nil
 	}
 	sum := 0.0
+	breakdown := make(map[string]float64, len(valid))
 	for _, e := range valid {
 		sum += e.score * e.weight
+		breakdown[e.key] = e.score
 	}
-	return clampF(sum/totalWeight, 0.0, 1.0)
+	return clampF(sum/totalWeight, 0.0, 1.0), breakdown
 }
 
 // ── Estimation μ individuel ─────────────────────────────────────────────────
@@ -467,7 +494,7 @@ func computeSkillRatingsBatch(
 			OffensiveConversion: offConv,
 			DefensiveResistance: defRes,
 		}
-		composite := computeCompositeScore(cRow, avgAcc, teammateAvgKE, avgDmgEff, avgMedalExploit, avgOffConv, avgDefRes)
+		composite, breakdown := computeCompositeScoreWithBreakdown(cRow, avgAcc, teammateAvgKE, avgDmgEff, avgMedalExploit, avgOffConv, avgDefRes)
 
 		// Update TrueSkill
 		newMU, newSigma := trueskillUpdate(state.MU, state.Sigma, muOpp, sigmaOpp, composite, 1.0)
@@ -498,6 +525,7 @@ func computeSkillRatingsBatch(
 			RatingValue:     math.Round(state.MU*10) / 10,
 			RatingDeviation: math.Round(state.Sigma*10) / 10,
 			PlaylistGroup:   chain,
+			Components:      breakdown,
 		})
 	}
 	return results

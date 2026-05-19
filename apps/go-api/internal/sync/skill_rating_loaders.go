@@ -40,11 +40,17 @@ type lusrParticipant struct {
 }
 
 // lusrResult contient le résultat du calcul LUSR pour un match.
+//
+// Components : breakdown des 8 composantes calculées pour ce match (clés =
+// noms canoniques de CompositeWeights). Vide si le match a été seed (pas
+// assez de matchs) ou si toutes les composantes étaient absentes.
+// Persistée par upsertLUSRRatings dans `lusr_component_history` (V2 commit-1).
 type lusrResult struct {
 	MatchID         string
 	RatingValue     float64
 	RatingDeviation float64
 	PlaylistGroup   string
+	Components      map[string]float64
 }
 
 // ── Chargeurs SQL ────────────────────────────────────────────────────────────
@@ -295,6 +301,16 @@ func upsertLUSRRatings(
 			continue
 		}
 		updated++
+
+		// V2 §1 : persister le breakdown des 8 composantes en parallèle du
+		// match_skill_rank. Best-effort — un échec n'empêche pas la mise à
+		// jour du rating principal.
+		if len(r.Components) > 0 {
+			if err := writeLUSRComponentHistory(playerDB, r.MatchID, r.Components, now); err != nil {
+				slog.Warn("upsertLUSRRatings: lusr_component_history write failed",
+					"match_id", r.MatchID, "err", err)
+			}
+		}
 	}
 	if updated > 0 || skippedByCSR > 0 || blockedBySQL > 0 || execErrors > 0 {
 		slog.Info("upsertLUSRRatings: batch terminé",
@@ -305,6 +321,35 @@ func upsertLUSRRatings(
 			"total_candidates", len(results))
 	}
 	return updated, nil
+}
+
+// writeLUSRComponentHistory persiste les 8 composantes d'un match dans
+// lusr_component_history. ON CONFLICT update — idempotent, supporte le mode
+// force (recalcul depuis zéro).
+//
+// Best-effort : un échec sur 1 composante ne stoppe pas les autres.
+func writeLUSRComponentHistory(
+	playerDB *sql.DB,
+	matchID string,
+	components map[string]float64,
+	now time.Time,
+) error {
+	weights := CompositeWeights
+	for name, value := range components {
+		weight := weights[name]
+		_, err := playerDB.Exec(`
+			INSERT INTO lusr_component_history (match_id, component_name, value, weight, computed_at)
+			VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT (match_id, component_name) DO UPDATE SET
+				value       = excluded.value,
+				weight      = excluded.weight,
+				computed_at = excluded.computed_at
+		`, matchID, name, value, weight, now)
+		if err != nil {
+			return fmt.Errorf("insert %s/%s: %w", matchID, name, err)
+		}
+	}
+	return nil
 }
 
 // ── Helpers stats participants ────────────────────────────────────────────────

@@ -1,0 +1,529 @@
+# Profile + Campaign i18n manifest — strings du PlayerProfile V1 (Ascension).
+#
+# Reference : .ai/PLAN_PLAYER_PROFILE_ASCENSION.md §4-§5
+# Format ICU MessageFormat. Regenerer via :
+#   node apps/web/scripts/build_i18n_manifests.mjs
+
+# ─── Etats globaux du profil ─────────────────────────────────────────────────
+
+[profile.loading]
+fr = "Chargement du profil…"
+en = "Loading profile…"
+
+[profile.load_error]
+fr = "Le profil n'a pas pu être chargé. Réessaie plus tard."
+en = "Unable to load the profile. Try again later."
+
+[profile.insufficient.title]
+fr = "Profil en construction"
+en = "Profile in progress"
+
+[profile.insufficient.subtitle]
+fr = "{n, plural, =0 {Aucun match analysé} =1 {1 match analysé} other {# matchs analysés}} sur cette fenêtre."
+en = "{n, plural, =0 {No match analyzed} =1 {1 match analyzed} other {# matches analyzed}} in this window."
+
+[profile.insufficient.cta]
+fr = "Joue encore {missing, plural, =1 {1 match} other {# matchs}} pour débloquer ton profil complet (style, engagement, leviers d'amélioration)."
+en = "Play {missing, plural, =1 {1 more match} other {# more matches}} to unlock your full profile (style, engagement, improvement leverages)."
+
+# ─── Section A1 — identité ───────────────────────────────────────────────────
+
+[profile.section.identity.title]
+fr = "Identité de jeu"
+en = "Play identity"
+
+[profile.section.identity.empty]
+fr = "Le radar 6 axes n'est pas encore calculable sur cette fenêtre."
+en = "The 6-axis radar can't be computed for this window yet."
+
+[profile.role.dominant_label]
+fr = "Rôle dominant :"
+en = "Dominant role:"
+
+[profile.role.secondary_label]
+fr = "Secondaire :"
+en = "Secondary:"
+
+[profile.role.top_killer]
+fr = "Tueur en tête"
+en = "Top killer"
+
+[profile.role.survivor]
+fr = "Survivant"
+en = "Survivor"
+
+[profile.role.silent_hero]
+fr = "Héros silencieux"
+en = "Silent hero"
+
+[profile.role.scorer]
+fr = "Marqueur"
+en = "Scorer"
+
+[profile.role.objective_runner]
+fr = "Coureur d'objectif"
+en = "Objective runner"
+
+[profile.role.first_blood]
+fr = "Premier sang"
+en = "First blood"
+
+[profile.role.clutch_finisher]
+fr = "Clutch finisher"
+en = "Clutch finisher"
+
+[profile.role.last_casualty]
+fr = "Dernier tombé"
+en = "Last casualty"
+
+[profile.role.last_group_kill]
+fr = "Dernier kill du groupe"
+en = "Last group kill"
+
+[profile.role.first_group_death]
+fr = "Première mort du groupe"
+en = "First group death"
+
+[profile.role.false_brother]
+fr = "Faux frère"
+en = "False brother"
+
+# Axes du radar 6 axes (narrative).
+
+[profile.axis.combat]
+fr = "Combat"
+en = "Combat"
+
+[profile.axis.survival]
+fr = "Survie"
+en = "Survival"
+
+[profile.axis.support]
+fr = "Support"
+en = "Support"
+
+[profile.axis.score]
+fr = "Score"
+en = "Score"
+
+[profile.axis.objective]
+fr = "Objectif"
+en = "Objective"
+
+[profile.axis.impact]
+fr = "Impact"
+en = "Impact"
+
+[profile.you]
+fr = "Toi"
+en = "You"
+
+[profile.insights.strengths]
+fr = "Forces"
+en = "Strengths"
+
+[profile.insights.improvements]
+fr = "À renforcer"
+en = "Areas to improve"
+
+# ─── Section A2 — style + engagement ─────────────────────────────────────────
+
+[profile.style.title]
+fr = "Style de jeu"
+en = "Play style"
+
+[profile.style.empty]
+fr = "Encore peu marqué"
+en = "Still emerging"
+
+[profile.style.opportunistic_finisher.title]
+fr = "Finisseur opportuniste"
+en = "Opportunistic finisher"
+
+[profile.style.opportunistic_finisher.subtitle]
+fr = "Tu cherches le dernier kill au bon moment."
+en = "You hunt the final kill at the right moment."
+
+[profile.style.overextended.title]
+fr = "Trop avancé"
+en = "Overextended"
+
+[profile.style.overextended.subtitle]
+fr = "Tu meurs souvent avant les autres — recule un peu."
+en = "You die before your team often — pull back a bit."
+
+[profile.style.hyper_engaged.title]
+fr = "Hyper engagé"
+en = "Hyper engaged"
+
+[profile.style.hyper_engaged.subtitle]
+fr = "Premier au combat, premier dans la mêlée."
+en = "First into combat, first into the fray."
+
+[profile.style.passive.title]
+fr = "Plus prudent"
+en = "More cautious"
+
+[profile.style.passive.subtitle]
+fr = "Style mesuré — peu de premiers contacts."
+en = "Measured play — few first contacts."
+
+[profile.style.first_kills]
+fr = "Premiers kills"
+en = "First kills"
+
+[profile.style.first_deaths]
+fr = "Premiers morts"
+en = "First deaths"
+
+[profile.style.fkfd_ratio]
+fr = "Ratio FK/FD"
+en = "FK/FD ratio"
+
+[profile.engagement.title]
+fr = "Engagement"
+en = "Engagement"
+
+[profile.engagement.tier.low]
+fr = "Calme"
+en = "Low"
+
+[profile.engagement.tier.regular]
+fr = "Régulier"
+en = "Regular"
+
+[profile.engagement.tier.high]
+fr = "Soutenu"
+en = "High"
+
+[profile.engagement.tier.intense]
+fr = "Intense"
+en = "Intense"
+
+[profile.engagement.matches_per_day]
+fr = "Matchs / jour"
+en = "Matches / day"
+
+[profile.engagement.max_gap]
+fr = "Plus long écart"
+en = "Longest gap"
+
+[profile.engagement.score_aria]
+fr = "Score d'engagement {score} sur 100"
+en = "Engagement score {score} out of 100"
+
+[profile.engagement.gap_days]
+fr = "{days} j"
+en = "{days} d"
+
+# ─── Section B — performance + composantes LUSR ──────────────────────────────
+
+[profile.section.performance.title]
+fr = "Performance"
+en = "Performance"
+
+[profile.performance.empty]
+fr = "Pas encore assez de matchs ratés pour estimer ton tier."
+en = "Not enough rated matches yet to estimate your tier."
+
+[profile.performance.mu_sigma]
+fr = "μ {mu} · σ {sigma}"
+en = "μ {mu} · σ {sigma}"
+
+[profile.performance.next_tier]
+fr = "Prochain palier :"
+en = "Next tier:"
+
+[profile.performance.gap_to_next]
+fr = "+{gap} pts à gagner"
+en = "+{gap} pts to gain"
+
+[profile.performance.progress_aria]
+fr = "{pct}% du sous-palier {label}"
+en = "{pct}% of sub-tier {label}"
+
+[profile.performance.trend_positive]
+fr = "En progression"
+en = "Improving"
+
+[profile.performance.trend_negative]
+fr = "En recul"
+en = "Declining"
+
+[profile.performance.trend_tooltip]
+fr = "Pente LOWESS {slope} sur {window} pts"
+en = "LOWESS slope {slope} over {window} pts"
+
+[profile.performance.components_unavailable]
+fr = "Détail des 8 composantes : données non disponibles pour cette fenêtre."
+en = "8-component breakdown: data unavailable for this window."
+
+[profile.performance.component_current_target]
+fr = "{current}% / cible {target}%"
+en = "{current}% / target {target}%"
+
+[profile.performance.aria_target]
+fr = "Cible pour le prochain palier"
+en = "Target for the next tier"
+
+[profile.performance.aria_top20]
+fr = "Top 20% personnel"
+en = "Personal top 20%"
+
+# Composantes LUSR (8).
+
+[profile.lusr.kills_vs_expected]
+fr = "Kills vs attendus"
+en = "Kills vs expected"
+
+[profile.lusr.deaths_vs_expected]
+fr = "Morts vs attendues"
+en = "Deaths vs expected"
+
+[profile.lusr.win_factor]
+fr = "Facteur de victoire"
+en = "Win factor"
+
+[profile.lusr.damage_efficiency]
+fr = "Efficacité dégâts"
+en = "Damage efficiency"
+
+[profile.lusr.accuracy_delta]
+fr = "Précision (delta)"
+en = "Accuracy (delta)"
+
+[profile.lusr.medal_exploit]
+fr = "Exploits / médailles"
+en = "Medals / exploits"
+
+[profile.lusr.offensive_conversion]
+fr = "Conversion offensive"
+en = "Offensive conversion"
+
+[profile.lusr.defensive_resistance]
+fr = "Résistance défensive"
+en = "Defensive resistance"
+
+# ─── Section C — leviers + suggestions ───────────────────────────────────────
+
+[profile.section.progression.title]
+fr = "Pistes de progression"
+en = "Improvement leads"
+
+[profile.leverages.title]
+fr = "Leviers prioritaires"
+en = "Priority leverages"
+
+[profile.leverages.row_subtitle]
+fr = "Levier {value} · axes : {axes}"
+en = "Leverage {value} · axes: {axes}"
+
+[profile.leverages.axes_empty]
+fr = "—"
+en = "—"
+
+[profile.cta.start_campaign]
+fr = "Démarrer une campagne"
+en = "Start a campaign"
+
+[profile.r2_disclaimer]
+fr = "On t'aide à voir ta trajectoire — pas à la garantir."
+en = "We help you see your trajectory — not guarantee it."
+
+[profile.suggestions.title]
+fr = "Défis suggérés"
+en = "Suggested challenges"
+
+[profile.suggestions.row_subtitle]
+fr = "Palier : {tier}{arc, select, true { · étape d'arc} other {}}"
+en = "Tier: {tier}{arc, select, true { · arc step} other {}}"
+
+[profile.cta.launch_template]
+fr = "Lancer"
+en = "Launch"
+
+# Tiers (target_tier).
+
+[profile.tier.normal]
+fr = "Normal"
+en = "Normal"
+
+[profile.tier.heroic]
+fr = "Héroïque"
+en = "Heroic"
+
+[profile.tier.legendary]
+fr = "Légendaire"
+en = "Legendary"
+
+[profile.tier.mythic]
+fr = "Mythique"
+en = "Mythic"
+
+# ════════════════════════════════════════════════════════════════════════════
+# Campagne (§4.5)
+# ════════════════════════════════════════════════════════════════════════════
+
+[campaign.tracker.title]
+fr = "Campagne en cours"
+en = "Active campaign"
+
+[campaign.tracker.subtitle]
+fr = "Démarrée le {date} · {n, plural, =1 {1 match} other {# matchs}} sur {playlist}"
+en = "Started {date} · {n, plural, =1 {1 match} other {# matches}} on {playlist}"
+
+[campaign.tracker.playlist_all]
+fr = "toutes playlists"
+en = "all playlists"
+
+[campaign.tracker.insufficient]
+fr = "Joue encore {missing, plural, =1 {1 match} other {# matchs}} sur ta playlist cible pour voir ta tendance."
+en = "Play {missing, plural, =1 {1 more match} other {# more matches}} on your target playlist to see your trend."
+
+[campaign.tracker.linked_none]
+fr = "Aucun défi lié pour l'instant — lance-en un depuis la section progression."
+en = "No linked challenge yet — start one from the progression section."
+
+[campaign.tracker.linked_count]
+fr = "{n, plural, =1 {1 défi lié à cette campagne.} other {# défis liés à cette campagne.}}"
+en = "{n, plural, =1 {1 challenge linked to this campaign.} other {# challenges linked to this campaign.}}"
+
+[campaign.tracker.kpi_snapshot]
+fr = "Snapshot"
+en = "Snapshot"
+
+[campaign.tracker.kpi_current]
+fr = "Actuel (lissé)"
+en = "Current (smoothed)"
+
+[campaign.tracker.kpi_delta]
+fr = "Delta"
+en = "Delta"
+
+[campaign.status.active]
+fr = "En cours"
+en = "In progress"
+
+[campaign.status.active_confirmed]
+fr = "✓ Progression confirmée"
+en = "✓ Progression confirmed"
+
+[campaign.status.active_confirmed_tooltip]
+fr = "p < 0.05 (Mann-Whitney U)"
+en = "p < 0.05 (Mann-Whitney U)"
+
+[campaign.status.paused]
+fr = "En pause"
+en = "Paused"
+
+[campaign.status.completed]
+fr = "Clôturée"
+en = "Completed"
+
+[campaign.status.abandoned]
+fr = "Abandonnée"
+en = "Abandoned"
+
+[campaign.auto_closure.plateau_60d]
+fr = "Plateau détecté : pas de variation significative depuis 60 jours."
+en = "Plateau detected: no significant change in 60 days."
+
+[campaign.auto_closure.axis_no_longer_priority]
+fr = "Cet axe n'est plus dans tes axes prioritaires actuels."
+en = "This axis is no longer among your current priority leverages."
+
+[campaign.auto_closure.cta]
+fr = "Tu peux clore et démarrer un nouvel axe."
+en = "You can close and start a new axis."
+
+[campaign.action.pause]
+fr = "Pause"
+en = "Pause"
+
+[campaign.action.resume]
+fr = "Reprendre"
+en = "Resume"
+
+[campaign.action.close]
+fr = "Clore"
+en = "Close"
+
+[campaign.action.abandon]
+fr = "Abandonner"
+en = "Abandon"
+
+[campaign.confirm.close.title]
+fr = "Clore cette campagne ?"
+en = "Close this campaign?"
+
+[campaign.confirm.close.description]
+fr = "La campagne sera marquée comme complétée. Tu pourras en démarrer une nouvelle sur un autre axe."
+en = "The campaign will be marked as completed. You can start a new one on another axis."
+
+[campaign.confirm.abandon.title]
+fr = "Abandonner cette campagne ?"
+en = "Abandon this campaign?"
+
+[campaign.confirm.abandon.description]
+fr = "Pas de pénalité — la campagne sera simplement marquée comme abandonnée."
+en = "No penalty — the campaign will simply be marked as abandoned."
+
+[campaign.confirm.cancel]
+fr = "Annuler"
+en = "Cancel"
+
+# Mini-modale Start.
+
+[campaign.modal.title]
+fr = "Démarrer une campagne sur {axis}"
+en = "Start a campaign on {axis}"
+
+[campaign.modal.subtitle]
+fr = "On t'aide à voir ta trajectoire — pas à la garantir. La progression vient de toi."
+en = "We help you see your trajectory — not guarantee it. The progress comes from you."
+
+[campaign.modal.playlist_label]
+fr = "Playlist cible"
+en = "Target playlist"
+
+[campaign.modal.playlist_help]
+fr = "Pour mesurer la campagne uniquement sur ces matchs. Tu peux laisser « toutes playlists » si tu joues varié."
+en = "To measure the campaign only on these matches. Leave \"all playlists\" if you play varied."
+
+[campaign.modal.skip]
+fr = "Skip — créer juste un défi libre"
+en = "Skip — just create a free challenge"
+
+[campaign.modal.cancel]
+fr = "Annuler"
+en = "Cancel"
+
+[campaign.modal.submit]
+fr = "Démarrer"
+en = "Start"
+
+# Playlist options (mini-modale).
+
+[campaign.playlist.all]
+fr = "Toutes playlists"
+en = "All playlists"
+
+[campaign.playlist.arena_slayer]
+fr = "Arena Slayer"
+en = "Arena Slayer"
+
+[campaign.playlist.ranked]
+fr = "Ranked"
+en = "Ranked"
+
+[campaign.playlist.btb]
+fr = "Big Team Battle"
+en = "Big Team Battle"
+
+[campaign.playlist.social]
+fr = "Social"
+en = "Social"
+
+[campaign.playlist.fun]
+fr = "Fun"
+en = "Fun"

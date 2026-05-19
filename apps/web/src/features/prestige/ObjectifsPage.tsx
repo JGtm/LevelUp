@@ -15,8 +15,13 @@ import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { ChallengeCard } from './components/ChallengeCard'
 import { CreateChallengeForm } from './components/CreateChallengeForm'
 import { ArcSummary } from './components/ArcSummary'
+import { CampaignTracker } from './components/CampaignTracker'
 import { MomentCard } from './components/MomentCard'
+import { PlayerProfileCard } from './components/PlayerProfileCard'
+import { StartCampaignModal } from './components/StartCampaignModal'
 import { StatsGlobales } from './components/StatsGlobales'
+import type { AxisKind } from '@/lib/playerProfile'
+import { useActiveCampaign } from './hooks/usePlayerProfile'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from './fallback.i18n'
 import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
 
@@ -42,9 +47,9 @@ export function ObjectifsPage() {
   return (
     <div className="space-y-4 p-4">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Objectifs</h1>
+        <h1 className="text-2xl font-bold">Ascension</h1>
         <p className="text-sm text-muted-foreground">
-          Défis personnels, arcs narratifs et parcours Prestige.
+          Profil, défis et campagnes d&apos;amélioration personnelle.
         </p>
       </header>
 
@@ -55,7 +60,7 @@ export function ObjectifsPage() {
           onClick={() => navigate({ search: {} as never })}
         />
         <TabButton
-          label="Mon parcours"
+          label="Parcours"
           active={tab === 'parcours'}
           onClick={() => navigate({ search: { tab: 'parcours' } as never })}
         />
@@ -287,6 +292,8 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
 
   return (
     <div className="space-y-6">
+      <CampaignAndProfileSection userId={userId} />
+
       <PrestigeBadge prestige={prestige} />
 
       {/* P6.5 : composant StatsGlobales branché. */}
@@ -380,6 +387,47 @@ function PrestigeBadge({ prestige }: PrestigeBadgeProps) {
           <p className="text-2xl font-bold">{totalPP.toLocaleString('fr-FR')} PP</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// V1 PlayerProfile Ascension §5.2 — section orchestrant tracker + profile +
+// modale de démarrage de campagne. Insérée en tête de l'onglet `parcours`.
+// ────────────────────────────────────────────────────────────────────────────
+
+interface CampaignAndProfileSectionProps {
+  userId: string
+}
+
+function CampaignAndProfileSection({ userId }: CampaignAndProfileSectionProps) {
+  const { data: activeCampaign } = useActiveCampaign(userId)
+  const [modalState, setModalState] = useState<{
+    open: boolean
+    axis: string
+    axisKind: AxisKind
+  }>({ open: false, axis: '', axisKind: 'lusr_component' })
+
+  const handleStartCampaign = (axis: string, axisKind: AxisKind) => {
+    setModalState({ open: true, axis, axisKind })
+  }
+
+  const hasActive = activeCampaign && activeCampaign.status === 'active'
+
+  return (
+    <div className="space-y-4">
+      {hasActive && <CampaignTracker playerSlug={userId} campaign={activeCampaign} />}
+      <PlayerProfileCard
+        playerSlug={userId}
+        onStartCampaign={hasActive ? undefined : handleStartCampaign}
+      />
+      <StartCampaignModal
+        open={modalState.open}
+        playerSlug={userId}
+        axis={modalState.axis}
+        axisKind={modalState.axisKind}
+        onOpenChange={(open) => setModalState((s) => ({ ...s, open }))}
+      />
     </div>
   )
 }

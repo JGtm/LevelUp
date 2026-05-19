@@ -45,7 +45,7 @@ describe('NavL1', () => {
   // Refonte nav L1 (Phase 4 Prestige, commit bde179c8) :
   // - Palmares renomme en "Communaute"
   // - Synthese devenue sous-onglet de Stats (pas L1)
-  // - Nouvelle entree L1 "Objectifs"
+  // - Nouvelle entree L1 "Ascension" (renomme depuis "Objectifs" — V1 commit-8)
 
   it('affiche Communauté dans la navigation principale', () => {
     renderWithProviders(<NavL1 />)
@@ -61,10 +61,10 @@ describe('NavL1', () => {
     expect(screen.getByRole('link', { name: 'Communauté' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('place Communauté avant Médias et après Objectifs dans la L1', () => {
+  it('place Communauté avant Médias et après Ascension dans la L1', () => {
     renderWithProviders(<NavL1 />)
 
-    const objectifsLink = screen.getByRole('link', { name: 'Objectifs' })
+    const objectifsLink = screen.getByRole('link', { name: 'Ascension' })
     const communauteLink = screen.getByRole('link', { name: 'Communauté' })
     const mediaLink = screen.getByRole('link', { name: 'Médias' })
 
@@ -90,11 +90,11 @@ describe('NavL1', () => {
     expect(screen.getByRole('link', { name: 'Solo' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('place Objectifs entre Escouade et Communauté', () => {
+  it('place Ascension entre Escouade et Communauté', () => {
     renderWithProviders(<NavL1 />)
 
     const escouadeLink = screen.getByRole('link', { name: 'Escouade' })
-    const objectifsLink = screen.getByRole('link', { name: 'Objectifs' })
+    const objectifsLink = screen.getByRole('link', { name: 'Ascension' })
     const communauteLink = screen.getByRole('link', { name: 'Communauté' })
 
     expect(
