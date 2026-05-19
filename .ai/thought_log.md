@@ -1,3 +1,27 @@
+## [2026-05-19] refactor(repos) — Commit 8k.2 : explorer + fanout + engagement (3 sites) + citations (revert + TODO)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.2 du sprint B1).
+
+**Livré** :
+
+1. **`explorer_repo.go::ResolveXUIDByGamertag`** — migration mécanique : `r.pdb.ReadDB().QueryRow` → `r.pdb.SharedReadDB().Get(ctx)` + `db.QueryRowContext`. SQL `shared.v_gamertag_lookup` préservé (cohérent avec pattern 8c/8d ; `attachShared` du pool propage encore le schéma `shared` via auto-attach DuckDB-Go jusqu'au commit 8l).
+2. **`fanout_repo.go::CountCommonMatchesForXUID`** — migration mécanique : `r.pdb.Player.QueryRow` → `r.pdb.SharedReadDB().Get(ctx)` + `db.QueryRowContext`. SQL `shared.match_participants` préservé.
+3. **`engagement_score_repo.go::LoadMatchIntensity`** — migration mécanique : `r.pdb.ReadDB().QueryRow` → `r.pdb.SharedReadDB().Get(ctx)` + `db.QueryRowContext`. SQL `shared.match_registry` préservé.
+
+**Reverté avec TODO** :
+
+4. **`citations_repo.go::LoadMedalTotals`** — la migration vers `SharedReadDB().Get` cassait `TestCitationsRepo_LoadMedalTotals_Empty` car `seedSharedDBSchema` (player_repos_test.go) ne crée pas `shared.medals_earned` (seul le seed côté player a ATTACH + accès à medals_earned via la conn ATTACHée). Décision : REVERT + TODO commit 8k.3 pour synchroniser les seeds avant migration. Pattern legacy `pdb.ReadDB()` (conn player avec ATTACH) conservé.
+
+**Gamertag_repo** : reporté — la migration changerait l'API publique `NewGamertagRepo(db *DB)` qui est consommée par 6 sites de test + `server.go:221`. À traiter dans un commit dédié avec impacts callers.
+
+**Régression évitée** : un mauvais Edit a un moment ré-ajouté `shared.` devant `mv_player_matches` dans `filters_repo.go::hasMVPlayerMatches` (annulant l'effet de 8k.1). Détecté avant commit, reverté.
+
+**Tests verts** : suite complète duckdb (filters/explorer/fanout/citations/engagement/sharedprovider). Le seul échec `TestLoadTemplatesFromTOML_HaloInfinite` est pré-existant (TOML parse error sur `cadence` dupliqué dans `config/titles/halo_infinite/challenges/templates.toml`), pas lié à la migration.
+
+**Prochaine étape (8k.3)** : medals_by_xuid + weapon_kills + leaderboard + match_exclusion + highlight_events + media. À FAIRE EN PRIORITÉ : synchroniser `seedSharedDBSchema` pour exposer `shared.medals_earned` (et toutes les tables shared utilisées par les tests des repos cible).
+
+---
+
 ## [2026-05-19] refactor(filters_repo) — Commit 8k.1 : hasMVPlayerMatches + factorisation Placeholders
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 8k.1 du sprint B1).

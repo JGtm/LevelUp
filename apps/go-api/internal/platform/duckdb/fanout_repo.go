@@ -32,8 +32,14 @@ func (r *FanoutRepo) CountCommonMatchesForXUID(
 		WHERE xuid = ?
 		AND match_id IN (SELECT UNNEST(?::VARCHAR[]))
 	`
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer release()
+
 	var count int
-	err := r.pdb.Player.QueryRow(ctx, query, targetXUID, matchIDs).Scan(&count)
+	err = db.QueryRowContext(ctx, query, targetXUID, matchIDs).Scan(&count)
 	return count, err
 }
 
