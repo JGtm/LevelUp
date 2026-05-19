@@ -267,7 +267,15 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 	// start_time_utc est TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
 	// Fallback sur start_time AT TIME ZONE 'UTC' pour les matchs synchro aprÃ¨s le fix DuckDB
 	// (first_sync_at >= 2026-03-01 â†’ start_time dÃ©jÃ  UTC) qui n'auraient pas encore start_time_utc.
-	rows, err := r.pdb.Player.Query(ctx, fmt.Sprintf(`
+	// Sprint B1 commit 9c.5 : query shared-only via SharedReader (root-level
+	// naming). start_time_utc est TIMESTAMPTZ UTC garanti.
+	sharedDB, releaseShared, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return resp, fmt.Errorf("LoadMatchCandidatesForMedia: shared reader: %w", err)
+	}
+	defer releaseShared()
+
+	rows, err := sharedDB.QueryContext(ctx, fmt.Sprintf(`
 		SELECT
 			r.match_id,
 			COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_utc,
@@ -282,8 +290,8 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 			r.team_0_score,
 			r.team_1_score,
 			ABS(DATEDIFF('second', ?, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) AS delta_s
-		FROM shared.match_registry r
-		JOIN shared.match_participants mp
+		FROM match_registry r
+		JOIN match_participants mp
 			ON mp.match_id = r.match_id AND mp.xuid = ?
 		WHERE COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
 		        BETWEEN (? - INTERVAL '%d minutes')
@@ -492,19 +500,26 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 	// xuid_aliases / match_participants. shared.xuid_aliases couvre les
 	// participants jamais croisés directement par le joueur courant.
 	// is_bot : aligné sur Q12 (queries_match.go) — pour badge "Bot" dans le picker.
+	// Sprint B1 commit 9c.5 : query shared-only via SharedReader (root-level naming).
 	q := `
 		SELECT mp.match_id,
 			COALESCE(vg.gamertag, va.gamertag, mp.xuid) AS gamertag,
 			mp.team_id,
 			(mp.xuid = ?) AS is_self,
 			(mp.xuid LIKE 'bid(%') AS is_bot
-		FROM shared.match_participants mp
-		LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = mp.xuid
-		LEFT JOIN shared.xuid_aliases va ON va.xuid = mp.xuid
+		FROM match_participants mp
+		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
+		LEFT JOIN xuid_aliases va ON va.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)
 		ORDER BY mp.match_id, mp.team_id, mp.gamertag
 	`
-	rows, err := r.pdb.Player.Query(ctx, q, args...)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return nil
 	}
@@ -586,12 +601,15 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
 	}
 
-	// RÃ©cupÃ©rer map/mode du nouveau match pour le retour
+	// Sprint B1 commit 9c.5 : récupérer map/mode du nouveau match via SharedReader.
 	var mapN, pairN sql.NullString
-	_ = r.pdb.Player.QueryRow(ctx, `
-		SELECT COALESCE(r.map_name_fr, r.map_name), COALESCE(r.pair_name_fr, r.pair_name)
-		FROM shared.match_registry r WHERE r.match_id = ? LIMIT 1
-	`, matchID).Scan(&mapN, &pairN)
+	if db, release, err := r.pdb.SharedReadDB().Get(ctx); err == nil {
+		_ = db.QueryRowContext(ctx, `
+			SELECT COALESCE(r.map_name_fr, r.map_name), COALESCE(r.pair_name_fr, r.pair_name)
+			FROM match_registry r WHERE r.match_id = ? LIMIT 1
+		`, matchID).Scan(&mapN, &pairN)
+		release()
+	}
 	if mapN.Valid {
 		s := strings.TrimSpace(mapN.String)
 		if s != "" {
