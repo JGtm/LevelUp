@@ -84,6 +84,18 @@ type Provider interface {
 	// fermé. Best-effort drain des readers en vol (timeout court 3s) avant
 	// fermeture forcée. Idempotent.
 	Close() error
+
+	// Subscribe enregistre un callback invoqué après chaque transition
+	// d'état observable (cf. Direction). Le callback est exécuté
+	// synchroniquement sans tenir le mutex interne — il est safe d'appeler
+	// Get/AcquireWriter depuis le callback, mais PAS Subscribe/Unsubscribe.
+	//
+	// Retourne une fonction unsubscribe à appeler quand le callback n'est
+	// plus nécessaire (typiquement via defer). Idempotente.
+	//
+	// Cas d'usage principal : le pool joueur réagit à DirectionRWToRO pour
+	// purger ses conns idle qui auraient un ATTACH RO stale sur shared.
+	Subscribe(fn Subscriber) (unsubscribe func())
 }
 
 // providerImpl est l'implémentation par défaut.
@@ -108,6 +120,12 @@ type providerImpl struct {
 	drainTimeout     time.Duration
 
 	failNextReopen atomic.Bool
+
+	// subsMu protège les subscribers Subscribe/Unsubscribe.
+	// Distinct de p.mu pour ne pas bloquer un Subscribe pendant un swap.
+	subsMu    sync.Mutex
+	subs      map[int64]Subscriber
+	nextSubID int64
 }
 
 // New ouvre une nouvelle instance Provider sur path en mode read-only.
@@ -358,6 +376,9 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 		swapDurationMsTotal.Add(swapDirRwToRo, time.Since(swapStart).Milliseconds())
 		close(p.ready)
 		p.mu.Unlock()
+		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
+		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
+		p.notifyAfterSwap(DirectionRWToRO, StateRW, StateRO)
 		return
 	}
 
@@ -405,6 +426,7 @@ func (p *providerImpl) retryReopenLoop() {
 			p.state.Store(int32(StateRO))
 			recordStateTransition(StateError, StateRO)
 			p.mu.Unlock()
+			p.notifyAfterSwap(DirectionErrorToRO, StateError, StateRO)
 			slog.Info("sharedprovider: recovered from StateError",
 				"path", p.path, "attempt", attempt+1)
 			return
@@ -413,6 +435,56 @@ func (p *providerImpl) retryReopenLoop() {
 	}
 	slog.Error("sharedprovider: retry reopen RO definitively failed",
 		"path", p.path, "attempts", retryMaxAttempts)
+}
+
+// Subscribe enregistre un callback notifié après chaque transition vers RO.
+// Retourne une fonction unsubscribe idempotente (sync.OnceFunc).
+//
+// Le callback est invoqué synchroniquement par la goroutine qui termine le
+// swap, après que p.mu soit relâché — il est donc safe d'appeler
+// Get/AcquireWriter depuis le callback (mais PAS Subscribe/Unsubscribe).
+func (p *providerImpl) Subscribe(fn Subscriber) func() {
+	p.subsMu.Lock()
+	defer p.subsMu.Unlock()
+	if p.subs == nil {
+		p.subs = make(map[int64]Subscriber)
+	}
+	id := p.nextSubID
+	p.nextSubID++
+	p.subs[id] = fn
+
+	return sync.OnceFunc(func() {
+		p.subsMu.Lock()
+		defer p.subsMu.Unlock()
+		delete(p.subs, id)
+	})
+}
+
+// notifyAfterSwap émet un SwapEvent à tous les Subscribers actifs.
+//
+// IMPORTANT : doit être appelé SANS tenir p.mu, sinon un Subscriber qui
+// appelle Get/AcquireWriter (qui prennent p.mu) deadlocke.
+// On capture le snapshot de subs sous subsMu pour éviter une race avec
+// un Unsubscribe concurrent.
+func (p *providerImpl) notifyAfterSwap(direction Direction, from, to State) {
+	p.subsMu.Lock()
+	if len(p.subs) == 0 {
+		p.subsMu.Unlock()
+		return
+	}
+	subs := make([]Subscriber, 0, len(p.subs))
+	for _, fn := range p.subs {
+		subs = append(subs, fn)
+	}
+	p.subsMu.Unlock()
+
+	evt := SwapEvent{Direction: direction, From: from, To: to, Path: p.path}
+	for _, fn := range subs {
+		// Pas de recover ici : un Subscriber qui panic indique un bug applicatif
+		// — laisser remonter pour ne pas masquer le problème. Le swap est
+		// déjà terminé côté Provider, le state est cohérent.
+		fn(evt)
+	}
 }
 
 // State implémente Provider.State.
