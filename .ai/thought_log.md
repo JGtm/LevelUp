@@ -1,3 +1,84 @@
+## [2026-05-19] feat(sharedprovider) — Commit 7 : Subscribe API + T9 découverte régression
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 7/9 de la roadmap SharedDBProvider). **DÉCOUVERTE CRITIQUE** : voir section "Régression révélée" ci-dessous.
+
+**Contexte** : commit 7 prévu pour migrer le pool joueur vers le Provider avec callback Subscribe. Par prudence, j'ai d'abord livré uniquement l'API Subscribe + un test T9 indépendant (sans modifier le pool réel) pour valider le contrat de survie ATTACH. T9 a révélé une régression différente de celle anticipée, qui change la stratégie du commit 8.
+
+**API publique ajoutée** :
+
+```go
+type Direction string
+const (
+    DirectionROToRW    Direction = "ro_to_rw"
+    DirectionRWToRO    Direction = "rw_to_ro"
+    DirectionErrorToRO Direction = "error_to_ro"
+)
+
+type SwapEvent struct {
+    Direction Direction
+    From, To  State
+    Path      string
+}
+
+type Subscriber func(SwapEvent)
+
+// Sur l'interface Provider :
+Subscribe(fn Subscriber) (unsubscribe func())
+```
+
+Émission après chaque transition vers RO (hors `p.mu` pour permettre aux Subscribers d'appeler Get/AcquireWriter sans deadlock).
+
+**Régression révélée par T9** :
+
+T9 (`TestPool_AttachShared_SurvivesSwapCycle`) reproduit la topologie du pool : player DB RW + `ATTACH 'shared' AS shared (READ_ONLY)`. Quand le Provider tente un swap RW via `AcquireWriter`, l'erreur n'est PAS celle attendue ("different configuration") mais :
+
+```
+Binder Error: Unique file handle conflict: Cannot attach "shared" -
+the database file "..." is already attached by database "shared"
+```
+
+**Explication** : DuckDB-Go a déjà chargé le fichier shared en interne via l'ATTACH de la conn player. Quand le Provider essaie `OpenReadWrite`, le driver dit "déjà attaché par database 'shared'". L'ATTACH **bloque le swap**, même après que le Provider ait fermé sa propre conn RO.
+
+**Conséquences pour le commit 8** :
+
+Le pool ne peut PAS simplement consommer le Provider sans modifier sa stratégie ATTACH. Il faut soit :
+- **A** : DETACH avant chaque swap (notif PRE-SWAP à ajouter au Provider) + REATTACH après (via DirectionRWToRO existant)
+- **B** : Le pool ne fait plus du tout d'ATTACH — les repos passent par `Provider.Get(ctx)` pour les requêtes `shared.*`. Refacto invasive de tous les repos qui font `JOIN shared.X`.
+- **C** : Le pool consomme `Provider.Get(ctx)` qui retourne `*sql.DB` shared, les repos font les JOINs en Go (load player + load shared + merge en mémoire). Très invasif.
+
+Le commit 8 devra trancher. Mon intuition : option A (DETACH/REATTACH) est la moins invasive si on étend le Provider avec une notif PRE-SWAP synchrone.
+
+**Tests livrés au commit 7** :
+
+`sharedprovider/provider_subscribe_integration_test.go` (4 tests, ~3s) :
+- `TestProvider_Subscribe_ReceivesRWToROEvent` : Subscribe + cycle complet → 1 event capturé avec Direction=rw_to_ro
+- `TestProvider_Subscribe_UnsubscribeStops` : après unsubscribe → 0 event. Unsubscribe idempotent
+- `TestProvider_Subscribe_MultipleListeners` : 2 listeners reçoivent chacun 1 event
+- `TestProvider_Subscribe_ReceivesErrorToROEvent` : recovery via retry loop notifie `error_to_ro` (avec backoff réduit à 50ms en test)
+
+`duckdb/pool_attach_swap_integration_test.go` (T9 redéfini en 2 tests) :
+- `TestPool_AttachSharedConflictsWithSwap_integration` (**PASS**) : documente la régression — AcquireWriter échoue avec "Unique file handle conflict" tant que la conn player ATTACH. Inverse de T1 : on assert la PRÉSENCE du bug pour ancrer la régression dans la suite.
+- `TestPool_AttachShared_SurvivesSwapCycle_integration` (**SKIP**) : test cible du commit 8 quand le pool sera migré avec DETACH/REATTACH.
+
+**Décisions techniques** :
+
+1. **Subscribe sans goroutine async** : notification synchrone dans la goroutine qui termine le swap, après `p.mu.Unlock()`. Évite la complexité d'un canal/queue. Les Subscribers DOIVENT être rapides (purge conns idle, increment metric — pas d'I/O lourd).
+
+2. **`subsMu` distinct de `p.mu`** : Subscribe/Unsubscribe peuvent être appelés pendant un swap sans contention sur le mutex principal. Le coût : une indirection supplémentaire pour la capture du snapshot.
+
+3. **Pas de recover() sur les Subscribers** : un Subscriber qui panic indique un bug applicatif — laisser remonter pour ne pas masquer. Le swap est déjà terminé côté Provider, le state est cohérent.
+
+4. **T9 transformé en 2 tests "rouge attendu"** : pattern analogue à T1 (commit 1). On PASS si la régression est présente (canary), on SKIP la version cible. Documenté clairement pour le futur lecteur.
+
+**Tests verts (suite complète, hors TestLoadTemplatesFromTOML_HaloInfinite pré-existant)** :
+- 19 tests sharedprovider en 5.3s
+- Tous les tests duckdb en 30s (incl. T9 PASS + SKIP cible)
+- `go build ./cmd/server` OK
+
+**Prochaine étape** : commit 8 — décision A/B/C pour le pool + migration des 17 sites `OpenSharedDB` du sync engine. C'est le commit le plus invasif de la roadmap. Avant d'attaquer, **revue avec utilisateur** pour valider le choix d'approche (A recommandée). T9 (SKIP) doit devenir VERT à la fin du commit 8.
+
+---
+
 ## [2026-05-19] feat(sharedprovider) — Commit 6 : migration main.go derrière flag
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 6/9 de la roadmap SharedDBProvider).
