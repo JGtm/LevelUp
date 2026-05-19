@@ -77,6 +77,102 @@
 
 ---
 
+## [2026-05-19] fix(toml) + plan dette — Commit 9f : templates.toml restauré + plan suivi
+
+**Statut** : Complété (commit 9f, terminaison branche).
+
+**Fix templates.toml** :
+
+3 problèmes structurels (introduits par commit 5732afb9 V1 PlayerProfile, pas détectés faute de test boot-time vert) :
+
+1. **Ligne orpheline** : `_value = "1"` flottait sans `[[templates]]` parent. Bloc `personal_score_session` avait perdu son en-tête (4 lignes). Restauré depuis git 7ab8c318.
+2. **Bloc V1 PlayerProfile dupliqué** : 5 templates étaient présents en double (lignes 7-105 ET 575-679). Suppression du bloc en doublon.
+3. **Section `[meta]` manquante** : loader catalog_loader.go ligne 91 exige `doc.Meta.TitleSlug`. Restaurée (`schema_version=1`, `title_slug="halo_infinite"`) — pattern observé dans presets.toml, awards.toml, etc.
+
+**Tests précédemment failing → maintenant verts** : 6/6 (TestLoadTemplatesFromTOML, TestSeedTemplates × 3, TestSeedPrestigeFromTOML × 2).
+
+**Suite intégration complète (32 packages) : ZERO failure restant.**
+
+---
+
+## Plan de la dette restante (post-sprint B1)
+
+Coverage globale `internal/platform/duckdb` : **56.6%** — 202 fonctions à 0% restent.
+
+### Catégorisation
+
+| Catégorie | # méthodes | Origine | Priorité |
+|---|---|---|---|
+| Migrées sprint B1, 0% coverage | ~12 | Sprint B1 | 🔴 HAUTE |
+| Legacy player-only, 0% coverage | ~50 | Pré-sprint | 🟡 MOYENNE |
+| Helpers internes, 0% coverage | ~10 | Pré-sprint | 🟢 BASSE |
+| Code mort identifié | ~3 | Sprint B1 | 🔴 HAUTE |
+
+### Sprint follow-up proposé : "Test Coverage Backfill B1" (~2-3 jours d'effort)
+
+#### Phase 1 — Méthodes migrées 0% coverage (🔴 1 jour, +3-5 pts)
+
+12 tests à écrire pour les méthodes touchées par le sprint mais jamais exercées :
+
+| Repo | Méthode | Migration commit |
+|---|---|---|
+| compare_repo | `GetPlayerATHFor` | (pré-sprint, route via pool) |
+| compare_repo | `GetEncounterStats` | 8k.10 |
+| compare_repo | `GetCrossMatchSample` | 8k.10 |
+| career_repo | `GetHighlightMatchIDs` | 8k.8 (encore cross-DB, à splitter) |
+| career_repo | `GetHighlightPool` | 8k.8 (idem) |
+| career_repo | `GetTopEncountersGlobal` | 8k.8 |
+| career_repo | `GetRivals` | 8k.8 |
+| career_repo | `GetCSRSnapshots` | pré-sprint |
+| campaign_repo | `LoadAxisSamples` | 8k.11 |
+| campaign_repo | `loadLUSRComponentSamples` | 9c.11 |
+| catalog_repo | `playlistsPlayedByXUID` | 8k.12 |
+| squad_repo | `LoadMainTeamParticipants` | 8k.13 |
+
+Estimation : 1 test/heure × 12 méthodes = ~12h. Coverage attendu : 56.6 → **60-62%**.
+
+#### Phase 2 — Code mort (🔴 0.5 jour, hygiène)
+
+- `nullInt64ToStringPtr` (player_matches_repo:768) : devenu mort après le changement sessionID type au commit 9d.4 (NullInt64 → NullString). Supprimer.
+- Audit similaire sur `axisValueExpression`, `buildHighlightFilterClause` (pure functions sans appelants externes).
+- Vérifier : `playerMatchSkillRankRow` (player_matches_repo) — pourrait être inliné comme `MatchEnrichment` l'a été.
+
+#### Phase 3 — Legacy player-only (🟡 1-2 jours, optionnel — pré-sprint)
+
+CRUD methods non-testées qui ne sont pas du tout liées au sprint :
+- `CampaignRepo` : Insert, GetByID, GetActive, UpdateStatus, UpdateEvaluation, LinkedChallengeIDs, LinkChallenge (8 tests)
+- `CareerLiveRepo` : LoadLastCareerRank, InsertCareerProgressionIfChanged, EnrichFromMetadata (3 tests)
+- `PrestigeBaselineStateRepo` : Get, Upsert (2 tests)
+- `WriteCitationsForMatch` (citations), `SetExclusion` (match_exclusion) : write ops
+
+Coverage attendu : +5-8 pts. **Optionnel** car non-bloquant pour le sprint B1.
+
+#### Phase 4 — Audit cross-cutting (🟢 0.5 jour)
+
+- Audit logging hygiene sur les 50 fonctions à 0% (silent failures ?)
+- Vérifier que les nouveaux helpers `MatchEnrichment` / `LoadPlayerMatchEnrichments` ont des tests unitaires dédiés (et pas seulement la couverture indirecte via les repos)
+- Nettoyer les comments restant qui référencent des commits historiques dans thought_log post-merge
+
+#### Phase 5 — Sécurité / observabilité supplémentaire (🟢 1 jour, post-déploiement)
+
+- Métriques expvar pour les paths split+merge (latency mesurée par étape, fail counts)
+- Alert Grafana : `shared_provider_get_timeout_total > 5/h` pour détecter des swaps prolongés
+- Test d'endurance 5 minutes burst en local + log review
+
+### Risques / blockers
+
+1. **Tests d'intégration lents** : ~3 minutes pour la suite duckdb complète. Sprint backfill = +12-30 tests integration → ~30s additional. Acceptable.
+2. **Couplage tests/seeds** : le pattern `execOnSharedDBs` est en place. Les nouveaux tests peuvent l'utiliser directement.
+3. **Aucun risque fonctionnel** : ces tests valident des chemins déjà exécutés en prod (couverts par chemin d'API → handler → service → repo). Ils renforcent la confiance sans changer le comportement.
+
+### Recommandation de timing
+
+- **Phase 1+2** (1.5 jours) : à faire dans le sprint qui suit le merge B1, avant le prochain sprint feature.
+- **Phase 3** : à intercaler quand on touche les modules concernés (Campaign, Career Live).
+- **Phase 4+5** : à programmer en sprint dédié "Production hardening" Q3.
+
+---
+
 ## [2026-05-19] audit final — Commit 9e : vérification production-ready + logging + couverture
 
 **Statut** : Complété — sprint B1 100% audité et durci.
