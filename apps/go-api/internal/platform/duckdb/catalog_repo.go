@@ -15,16 +15,19 @@ import (
 )
 
 // CatalogRepo implémente port.CatalogRepo.
+//
+// Sprint B1 commit 8k.12 : sharedDB *sql.DB remplacé par SharedReader pour
+// permettre la coordination avec le SharedDBProvider (cycle RO↔RW).
 type CatalogRepo struct {
-	metadataDB *sql.DB
-	sharedDB   *sql.DB // pour le JOIN match_participants quand onlyPlayed = true
+	metadataDB   *sql.DB
+	sharedReader SharedReader // pour le JOIN quand onlyPlayed = true ; peut être nil
 }
 
-// NewCatalogRepo construit le repo avec les 2 connexions DuckDB.
-// sharedDB peut être nil si on ne supporte pas onlyPlayed (le catalogue complet
-// reste accessible).
-func NewCatalogRepo(metadataDB, sharedDB *sql.DB) *CatalogRepo {
-	return &CatalogRepo{metadataDB: metadataDB, sharedDB: sharedDB}
+// NewCatalogRepo construit le repo avec metadataDB et un SharedReader optionnel.
+// sharedReader peut être nil si on ne supporte pas onlyPlayed (le catalogue
+// complet reste accessible).
+func NewCatalogRepo(metadataDB *sql.DB, sharedReader SharedReader) *CatalogRepo {
+	return &CatalogRepo{metadataDB: metadataDB, sharedReader: sharedReader}
 }
 
 // PlaylistsByTitle retourne les playlists du catalogue pour un titre donné.
@@ -32,7 +35,7 @@ func (r *CatalogRepo) PlaylistsByTitle(ctx context.Context, titleSlug, xuid stri
 	if r.metadataDB == nil {
 		return nil, fmt.Errorf("CatalogRepo: metadataDB nil")
 	}
-	if onlyPlayed && r.sharedDB != nil && xuid != "" {
+	if onlyPlayed && r.sharedReader != nil && xuid != "" {
 		return r.playlistsPlayedByXUID(ctx, titleSlug, xuid)
 	}
 
@@ -60,38 +63,79 @@ func (r *CatalogRepo) PlaylistsByTitle(ctx context.Context, titleSlug, xuid stri
 }
 
 // playlistsPlayedByXUID retourne uniquement les playlists ayant ≥ 1 match joué par xuid.
-// Cross-DB JOIN entre metadata.playlists_catalog et shared.match_registry / match_participants.
+//
+// Sprint B1 commit 8k.12 : split+merge cross-DB.
+//
+//	Étape 1 (SharedReader) : SELECT DISTINCT playlist_id, COUNT(DISTINCT match_id)
+//	  FROM match_registry mr JOIN match_participants mp ON mp.match_id = mr.match_id
+//	  WHERE mp.xuid = ? GROUP BY playlist_id → liste (playlist_id, match_count).
+//	Étape 2 (metadataDB) : SELECT FROM playlists_catalog WHERE title_slug AND
+//	  playlist_asset_id IN (...).
+//	Étape 3 (Go) : merge — hydrate match_count + ordre name_canonical.
 func (r *CatalogRepo) playlistsPlayedByXUID(ctx context.Context, titleSlug, xuid string) ([]domain.CatalogPlaylist, error) {
-	// La requête suppose que metadataDB et sharedDB sont sur la même
-	// instance DuckDB ATTACHée (métadonnées en main, shared en attached).
-	// En pratique, l'application monte les 2 schémas dans la même connexion.
-	// Pour une isolation propre on pourrait faire 2 requêtes + JOIN en Go,
-	// implémentation plus simple en attendant — TODO Phase I si besoin.
-	rows, err := r.metadataDB.QueryContext(ctx, `
-		SELECT pc.title_slug, pc.playlist_asset_id, COALESCE(pc.current_version_id, ''),
-		       COALESCE(pc.name_canonical, ''), COALESCE(pc.experience, ''), COALESCE(pc.is_ranked, FALSE),
-		       COUNT(DISTINCT mp.match_id) AS match_count
-		FROM playlists_catalog pc
-		JOIN shared.match_registry mr ON mr.playlist_id = pc.playlist_asset_id
-		JOIN shared.match_participants mp ON mp.match_id = mr.match_id
-		WHERE pc.title_slug = ? AND pc.is_active = TRUE AND mp.xuid = ?
-		GROUP BY pc.title_slug, pc.playlist_asset_id, pc.current_version_id, pc.name_canonical, pc.experience, pc.is_ranked
-		HAVING COUNT(DISTINCT mp.match_id) > 0
-		ORDER BY pc.name_canonical
-	`, titleSlug, xuid)
+	// Étape 1 : playlists jouées + count depuis shared.
+	sharedDB, release, err := r.sharedReader.Get(ctx)
 	if err != nil {
-		// Fallback : si l'ATTACH shared n'est pas en place, retomber sur le catalogue complet.
-		slog.WarnContext(ctx, "CatalogRepo.PlaylistsByTitle: cross-DB JOIN failed, falling back to full catalog",
+		slog.WarnContext(ctx, "CatalogRepo.playlistsPlayedByXUID: shared reader indisponible, fallback catalogue complet",
 			"err", err, "title_slug", titleSlug)
 		return r.PlaylistsByTitle(ctx, titleSlug, "", false)
+	}
+	defer release()
+
+	sharedRows, err := sharedDB.QueryContext(ctx, `
+		SELECT mr.playlist_id, COUNT(DISTINCT mr.match_id)
+		FROM match_registry mr
+		JOIN match_participants mp ON mp.match_id = mr.match_id
+		WHERE mp.xuid = ? AND mr.playlist_id IS NOT NULL
+		GROUP BY mr.playlist_id
+	`, xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "CatalogRepo.playlistsPlayedByXUID: shared query failed, fallback catalogue complet",
+			"err", err, "title_slug", titleSlug)
+		return r.PlaylistsByTitle(ctx, titleSlug, "", false)
+	}
+	counts := make(map[string]int)
+	for sharedRows.Next() {
+		var pid string
+		var n int
+		if err := sharedRows.Scan(&pid, &n); err != nil {
+			sharedRows.Close()
+			return nil, fmt.Errorf("scan shared playlist: %w", err)
+		}
+		counts[pid] = n
+	}
+	sharedRows.Close()
+	if len(counts) == 0 {
+		return nil, nil
+	}
+
+	// Étape 2 : metadata playlists_catalog pour les playlist_ids retournés.
+	ids := make([]string, 0, len(counts))
+	for id := range counts {
+		ids = append(ids, id)
+	}
+	q := fmt.Sprintf(`
+		SELECT title_slug, playlist_asset_id, COALESCE(current_version_id, ''),
+		       COALESCE(name_canonical, ''), COALESCE(experience, ''), COALESCE(is_ranked, FALSE)
+		FROM playlists_catalog
+		WHERE title_slug = ? AND is_active = TRUE AND playlist_asset_id IN (%s)
+		ORDER BY name_canonical
+	`, Placeholders(len(ids)))
+	args := make([]any, 0, 1+len(ids))
+	args = append(args, titleSlug)
+	args = append(args, ToAnySlice(ids)...)
+	rows, err := r.metadataDB.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query metadata playlists_catalog: %w", err)
 	}
 	defer rows.Close()
 	var out []domain.CatalogPlaylist
 	for rows.Next() {
 		var p domain.CatalogPlaylist
-		if err := rows.Scan(&p.TitleSlug, &p.PlaylistAssetID, &p.CurrentVersionID, &p.Name, &p.Experience, &p.IsRanked, &p.MatchCount); err != nil {
+		if err := rows.Scan(&p.TitleSlug, &p.PlaylistAssetID, &p.CurrentVersionID, &p.Name, &p.Experience, &p.IsRanked); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}
+		p.MatchCount = counts[p.PlaylistAssetID]
 		out = append(out, p)
 	}
 	return out, rows.Err()
