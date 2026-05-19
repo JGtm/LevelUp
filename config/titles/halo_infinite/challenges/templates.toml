@@ -1,3 +1,19 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Halo Infinite — catalogue de templates de défis.
+#
+# Chargé en metadata.duckdb (table challenge_template) au boot.
+#
+# Convention :
+#   - id : slug stable, ne jamais réutiliser un id retiré
+#   - metric : référence un FieldKey de internal/games/canonical/fields.go
+#   - cibles monotones : normal < heroic < legendary < mythic
+#   - mode_filter : universal | pvp | ranked | pve
+# ─────────────────────────────────────────────────────────────────────────────
+
+[meta]
+schema_version = 1
+title_slug     = "halo_infinite"
+
 # ─────────────────────────────────────────────────────────────────────────
 # V1 PlayerProfile §6.1 — nouveaux templates pour fermer les gaps de
 # couverture LUSR (Deaths vs Expected = 24% du composite mais 0 templates
@@ -103,7 +119,12 @@ mythic_target   = 1.65
 lusr_components = ["kills_vs_expected"]
 radar_axes      = ["combat"]
 is_long_term    = true
-_value    = "1"
+
+[[templates]]
+id              = "halo_infinite.daily.personal_score_session"
+metric          = "FieldPersonalScore"
+window_type     = "session"
+window_value    = "1"
 cadence         = "daily"
 eval_type       = "threshold"
 mode_filter     = "universal"
@@ -565,111 +586,5 @@ legendary_target = 6.0
 mythic_target   = 10.0
 lusr_components = ["medal_exploit"]
 radar_axes      = ["impact"]
-is_long_term    = true
-
-# ─────────────────────────────────────────────────────────────────────────
-# V1 PlayerProfile §6.1 — nouveaux templates pour fermer les gaps de
-# couverture LUSR (Deaths vs Expected = 24% du composite mais 0 templates
-# directs avant, Defensive Resistance = 6% mais 0 templates).
-# ─────────────────────────────────────────────────────────────────────────
-
-[[templates]]
-id              = "halo_infinite.monthly.deaths_vs_expected"
-metric          = "deaths_vs_expected"
-window_type     = "rolling_days"
-window_value    = "30"
-cadence         = "monthly"
-eval_type       = "threshold"
-mode_filter     = "pvp"
-label_en        = "Death below expectations"
-label_fr        = "Meurs moins que prévu"
-description_en  = "Die less often than your MMR predicts over 30 days."
-description_fr  = "Meurs moins souvent que prévu pour ton MMR sur 30 jours."
-normal_target   = 1.05
-heroic_target   = 1.15
-legendary_target = 1.25
-mythic_target   = 1.40
-lusr_components = ["deaths_vs_expected"]
-radar_axes      = ["survival"]
-is_long_term    = true
-
-[[templates]]
-id              = "halo_infinite.weekly.deaths_vs_expected"
-metric          = "deaths_vs_expected"
-window_type     = "session"
-window_value    = "3"
-cadence         = "weekly"
-eval_type       = "threshold"
-mode_filter     = "pvp"
-label_en        = "Stay alive (3 sessions)"
-label_fr        = "Reste en vie (3 sessions)"
-description_en  = "Die less often than expected across 3 sessions."
-description_fr  = "Meurs moins souvent que prévu sur 3 sessions."
-normal_target   = 1.05
-heroic_target   = 1.15
-legendary_target = 1.25
-mythic_target   = 1.40
-lusr_components = ["deaths_vs_expected"]
-radar_axes      = ["survival"]
-is_long_term    = false
-
-[[templates]]
-id              = "halo_infinite.monthly.dmg_taken_per_death"
-metric          = "defensive_resistance"
-window_type     = "rolling_days"
-window_value    = "30"
-cadence         = "monthly"
-eval_type       = "threshold"
-mode_filter     = "pvp"
-label_en        = "Tank it (30 days)"
-label_fr        = "Encaisse les coups (30 jours)"
-description_en  = "Absorb more damage per death than the average."
-description_fr  = "Absorbe plus de dégâts par mort que la moyenne."
-normal_target   = 1.05
-heroic_target   = 1.20
-legendary_target = 1.40
-mythic_target   = 1.70
-lusr_components = ["defensive_resistance"]
-radar_axes      = ["survival"]
-is_long_term    = true
-
-[[templates]]
-id              = "halo_infinite.monthly.accuracy_30d"
-metric          = "FieldAccuracy"
-window_type     = "rolling_days"
-window_value    = "30"
-cadence         = "monthly"
-eval_type       = "threshold"
-mode_filter     = "universal"
-label_en        = "Marksman habit (30 days)"
-label_fr        = "Précision tenue (30 jours)"
-description_en  = "Maintain strong accuracy over 30 days."
-description_fr  = "Maintiens une précision élevée sur 30 jours."
-normal_target   = 0.45
-heroic_target   = 0.52
-legendary_target = 0.59
-mythic_target   = 0.66
-lusr_components = ["accuracy_delta"]
-radar_axes      = ["combat"]
-is_long_term    = true
-
-[[templates]]
-id              = "halo_infinite.monthly.kve_30d"
-metric          = "kills_vs_expected"
-window_type     = "rolling_days"
-window_value    = "30"
-cadence         = "monthly"
-eval_type       = "threshold"
-mode_filter     = "pvp"
-label_en        = "Above expectations (30 days)"
-label_fr        = "Au-dessus des attentes (30 jours)"
-description_en  = "Outperform your MMR's predicted kill rate for 30 days."
-description_fr  = "Dépasse le taux de kills attendu sur 30 jours."
-normal_target   = 1.10
-heroic_target   = 1.25
-legendary_target = 1.40
-mythic_target   = 1.65
-lusr_components = ["kills_vs_expected"]
-radar_axes      = ["combat"]
 is_long_term    = true
 
