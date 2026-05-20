@@ -60,11 +60,18 @@
      - `npm config get legacy-peer-deps` → `true` ✓ (.npmrc lu correctement).
      - `npm install --dry-run --legacy-peer-deps` → "up to date in 345ms" ✓ (résolution OK).
 
-(à enrichir à mesure que les fixes 5-6 sont appliqués)
+5. **Fix OpenAPI Lint (spectral) — création `.spectral.yaml`** (commit #5) : le job CI `OpenAPI Lint` (stoplightio/spectral-action@v0.8.11) échouait avec *"No ruleset has been found. Please provide a ruleset using the spectral_ruleset option, or make sure your ruleset file matches .?spectral.(js|ya?ml|json)"*. Le projet utilise un openapi.yaml sizeable (≥20 paths cf ci.yml job `go-contract-test`) mais aucun ruleset n'avait été configuré.
+   - **Solution** : créer `.spectral.yaml` à la racine repo avec `extends: spectral:oas` (ruleset standard couvrant la validation OAS 3.x). Spectral-action picks it up automatiquement (cwd = repo root après checkout).
+   - **Risque** : `spectral:oas` peut surfacer des warnings/errors réels dans `openapi.yaml`. Les warnings n'échouent pas la CI (default), seules les erreurs critiques échouent. Si erreur réelle remontée, traitement en commit séparé : soit fix de l'OpenAPI, soit downgrade de la règle en `warn` dans `.spectral.yaml`.
+   - **Alternatives écartées** :
+     - Spectral ruleset inline via `spectral_ruleset` input du workflow : moins propre que fichier dédié.
+     - Désactiver le job : perd la validation OAS, contraire à l'objectif production-quality.
+
+(à enrichir à mesure que le fix 6 est appliqué)
 
 **Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
 
-**Prochaine étape** : fix #5 — décider du sort de `OpenAPI Lint` (spectral) qui échoue sur "No ruleset has been found".
+**Prochaine étape** : fix #6 — vérifier que les jobs CI présumés verts (Frontend, go-build, go-coverage, go-baseline-tests, go-contract-test) ne masquent pas de problèmes silencieux.
 
 ---
 
