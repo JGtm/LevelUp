@@ -53,26 +53,13 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 		return db
 	}
 
-	sharedPath := filepath.Join(dir, "shared_matches_v2.duckdb")
-	{
-		raw, err := sql.Open("duckdb", sharedPath)
-		if err != nil {
-			t.Fatalf("open shared: %v", err)
-		}
-		if err := migration.RunForDB(raw, migration.TargetShared); err != nil {
-			raw.Close()
-			t.Fatalf("migrate shared: %v", err)
-		}
-		raw.Close()
-	}
-
+	// Topologie post-ADR 0016 : shared ouvert en conn RW dédiée (pas d'ATTACH
+	// sur player). SharedReader = LegacySharedReader(shared) en test.
+	shared := openAndMigrate("shared_matches_v2", migration.TargetShared)
 	meta := openAndMigrate("metadata", migration.TargetMetadata)
 	player := openAndMigrate("stats", migration.TargetPlayer)
 
 	ctx := context.Background()
-	if _, err := player.Exec(ctx, "ATTACH '"+sharedPath+"' AS shared"); err != nil {
-		t.Fatalf("attach shared: %v", err)
-	}
 
 	// personal_score_awards n'est pas dans le registry de migrations (legacy
 	// schema géré par sync.EnsurePlayerSchema). On le crée à la main pour les
@@ -93,11 +80,13 @@ func setupProfileEnv(t *testing.T) *duckdb.PlayerDB {
 	}
 
 	pdb := &duckdb.PlayerDB{
-		Player: player, Metadata: meta,
-		XUID: testXUID, Gamertag: testGT, TitleSlug: testTitle,
+		Player: player, Shared: shared, Metadata: meta,
+		SharedReader: duckdb.LegacySharedReader(shared),
+		XUID:         testXUID, Gamertag: testGT, TitleSlug: testTitle,
 	}
 	t.Cleanup(func() {
 		player.Close()
+		shared.Close()
 		meta.Close()
 	})
 	return pdb
@@ -113,14 +102,14 @@ func seedMatchesForProfile(t *testing.T, pdb *duckdb.PlayerDB, now time.Time, co
 	for i := 0; i < count; i++ {
 		matchID := zeropadProfile(i, 4)
 		startTime := now.AddDate(0, 0, -i)
-		if _, err := pdb.Player.Exec(ctx, `
-			INSERT INTO shared.match_registry (match_id, start_time)
+		if _, err := pdb.Shared.Exec(ctx, `
+			INSERT INTO match_registry (match_id, start_time)
 			VALUES (?, ?)
 		`, matchID, startTime); err != nil {
 			t.Fatalf("match_registry %s: %v", matchID, err)
 		}
-		if _, err := pdb.Player.Exec(ctx, `
-			INSERT INTO shared.match_participants (
+		if _, err := pdb.Shared.Exec(ctx, `
+			INSERT INTO match_participants (
 				match_id, xuid, gamertag, team_id, outcome,
 				kills, deaths, assists, personal_score, max_killing_spree,
 				time_played_seconds
