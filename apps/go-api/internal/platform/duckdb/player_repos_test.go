@@ -743,8 +743,42 @@ func TestHomeRepo_LoadHomeMatches_FallsBackToMetadataAssetTranslations(t *testin
 	}
 }
 
+// seedMaturedSkillRankGroups insère 9 rows de padding par groupe pour que
+// "ranked" et "social" comptent 10 matchs chacun. Évite que Q26eHomeSkillPeakByType
+// (logique placement mai 2026) classe ces groupes comme en placement. Les
+// padding rows ont des ratings volontairement très bas (≤310) pour préserver
+// m1/m2 comme MAX(rating_value) du groupe.
+//
+// Appelé explicitement par les tests qui asserent tier_label / rating_value
+// (vs ceux qui veulent observer la phase de placement avec 1 match).
+// Ne pas mettre dans seedPlayerSchema : briserait TestStatsRepo_LoadLUSRHistory
+// et TestCareerRepo_GetLUSRHistory qui comptent exactement les rows seed.
+func seedMaturedSkillRankGroups(t *testing.T, pdb *PlayerDB) {
+	t.Helper()
+	ctx := context.Background()
+	for _, q := range []string{
+		`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, rating_deviation, tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group, start_time, created_at, updated_at)
+		 SELECT 'pad_ranked_' || g.i, 'CSR', 300.0 + g.i, 50.0, 'Bronze', 'Bronze', 1, 'Bronze 1', NULL, 'ranked',
+		        TIMESTAMPTZ '2025-01-01 00:00:00+00' + (g.i || ' minutes')::INTERVAL,
+		        TIMESTAMPTZ '2025-01-01 00:00:00+00',
+		        TIMESTAMPTZ '2025-01-01 00:00:00+00'
+		 FROM range(1, 10) AS g(i)`,
+		`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, rating_deviation, tier, tier_fr, sub_tier, tier_label, rating_delta, playlist_group, start_time, created_at, updated_at)
+		 SELECT 'pad_social_' || g.i, 'LUSR', 300.0 + g.i, 50.0, 'Bronze', 'Bronze', 1, 'Bronze 1', NULL, 'social',
+		        TIMESTAMPTZ '2025-01-01 00:00:00+00' + (g.i || ' minutes')::INTERVAL,
+		        TIMESTAMPTZ '2025-01-01 00:00:00+00',
+		        TIMESTAMPTZ '2025-01-01 00:00:00+00'
+		 FROM range(1, 10) AS g(i)`,
+	} {
+		if _, err := pdb.Player.Exec(ctx, q); err != nil {
+			t.Fatalf("seedMaturedSkillRankGroups: %v", err)
+		}
+	}
+}
+
 func TestHomeRepo_LoadSpartanIdentity_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
+	seedMaturedSkillRankGroups(t, pdb)
 	repo := NewHomeRepo(pdb)
 
 	identity, err := repo.LoadSpartanIdentity(context.Background())
@@ -840,6 +874,7 @@ func TestHomeRepo_LoadSpartanIdentity_FallsBackToLatestNonEmptyIdentityAssets(t 
 
 func TestHomeRepo_LoadSpartanIdentity_ClassifiesRankedRowsAsCSR(t *testing.T) {
 	pdb := newTestPlayerDB(t)
+	seedMaturedSkillRankGroups(t, pdb)
 	ctx := context.Background()
 	if _, err := pdb.Player.Exec(ctx, `UPDATE match_skill_rank SET rating_type = 'LUSR' WHERE match_id = ?`, "m1"); err != nil {
 		t.Fatalf("UPDATE match_skill_rank: %v", err)
@@ -1010,6 +1045,122 @@ func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *tes
 	}
 	if ranks[0].TierLabel == nil || *ranks[0].TierLabel != "Gold 3" {
 		t.Fatalf("TierLabel = %v, want Gold 3", ranks[0].TierLabel)
+	}
+}
+
+// TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement vérifie qu'en placement
+// (groupe playlist_group avec < 10 matchs), Q26eHomeSkillPeakByType +
+// loadHomeSkillPeak retournent un peak avec :
+//   - BadgeImageURL = unranked_(10-remaining).png
+//   - MeasurementMatchesRemaining > 0
+//   - TierLabel masqué (peu représentatif tant que les 10 matchs ne sont
+//     pas faits, même si une row isolée a un tier brut)
+//
+// On NE call PAS seedMaturedSkillRankGroups → 1 seul match dans "ranked".
+func TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil || identity.HighestCSR == nil {
+		t.Fatal("expected non-nil HighestCSR even in placement")
+	}
+	peak := identity.HighestCSR
+	if peak.MeasurementMatchesRemaining == nil {
+		t.Fatal("expected MeasurementMatchesRemaining to be non-nil in placement")
+	}
+	if got := *peak.MeasurementMatchesRemaining; got != 9 {
+		t.Errorf("MeasurementMatchesRemaining = %d, want 9 (1 match joué sur 10)", got)
+	}
+	if peak.TierLabel != nil {
+		t.Errorf("TierLabel = %v, want nil (masqué en placement)", peak.TierLabel)
+	}
+	wantBadge := "/static/ranks/halo_infinite/unranked_1.png"
+	if peak.BadgeImageURL == nil || *peak.BadgeImageURL != wantBadge {
+		t.Errorf("BadgeImageURL = %v, want %s", peak.BadgeImageURL, wantBadge)
+	}
+}
+
+// TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement : pendant que CSR a son
+// propre placement (player_csr_snapshots), LUSR le dérive de match_skill_rank
+// par playlist_group. Test parallèle au CSR ci-dessus pour cadenasser la
+// branche LUSR du chemin Q26eHomeSkillPeakByType.
+func TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil || identity.HighestLUSR == nil {
+		t.Fatal("expected non-nil HighestLUSR even in placement")
+	}
+	peak := identity.HighestLUSR
+	if peak.MeasurementMatchesRemaining == nil || *peak.MeasurementMatchesRemaining != 9 {
+		t.Errorf("MeasurementMatchesRemaining = %v, want 9", peak.MeasurementMatchesRemaining)
+	}
+	if peak.TierLabel != nil {
+		t.Errorf("TierLabel = %v, want nil in placement", peak.TierLabel)
+	}
+	wantBadge := "/static/ranks/halo_infinite/unranked_1.png"
+	if peak.BadgeImageURL == nil || *peak.BadgeImageURL != wantBadge {
+		t.Errorf("BadgeImageURL = %v, want %s", peak.BadgeImageURL, wantBadge)
+	}
+}
+
+// TestHomeRepo_LoadHomeSkillPeak_Matured cadenasse qu'avec >= 10 matchs dans
+// le groupe (via seedMaturedSkillRankGroups), MeasurementMatchesRemaining=0
+// et tier_label est rendu.
+func TestHomeRepo_LoadHomeSkillPeak_Matured(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	seedMaturedSkillRankGroups(t, pdb)
+	ctx := context.Background()
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil || identity.HighestCSR == nil || identity.HighestLUSR == nil {
+		t.Fatal("expected both peaks matured (10 matchs par groupe via seed)")
+	}
+	for _, c := range []struct {
+		name string
+		peak *domain.HomeSkillPeakRow
+		want string
+	}{
+		{"CSR", identity.HighestCSR, "Gold 3"},
+		{"LUSR", identity.HighestLUSR, "Platinum V"},
+	} {
+		if c.peak.MeasurementMatchesRemaining == nil || *c.peak.MeasurementMatchesRemaining != 0 {
+			t.Errorf("%s MeasurementMatchesRemaining = %v, want 0 (matured)", c.name, c.peak.MeasurementMatchesRemaining)
+		}
+		if c.peak.TierLabel == nil || *c.peak.TierLabel != c.want {
+			t.Errorf("%s TierLabel = %v, want %q", c.name, c.peak.TierLabel, c.want)
+		}
+	}
+}
+
+// TestHomeRepo_LoadFavoriteWeapon_TableMissing : le drop silencieux est
+// préservé pour les tables absentes (instance fraîche pré-migration). C'est
+// distinct des erreurs réelles (driver, scan) qui doivent logger un warn.
+func TestHomeRepo_LoadFavoriteWeapon_TableMissing(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	if _, err := pdb.Player.Exec(ctx, `DROP VIEW v_weapon_kills`); err != nil {
+		t.Fatalf("DROP VIEW: %v", err)
+	}
+	repo := NewHomeRepo(pdb)
+	name, kills, err := repo.LoadFavoriteWeapon(ctx, "fr")
+	if err != nil {
+		t.Fatalf("LoadFavoriteWeapon: unexpected error %v", err)
+	}
+	if name != "" || kills != 0 {
+		t.Errorf("LoadFavoriteWeapon = (%q, %d), want empty graceful", name, kills)
 	}
 }
 

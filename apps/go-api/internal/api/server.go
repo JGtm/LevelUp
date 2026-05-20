@@ -358,6 +358,12 @@ func NewRouter(
 		r.Get("/bootstrap", handlers.NewBootstrapHandler(bootSvc).ServeHTTP)
 		r.Get("/players", handlers.NewPlayersHandler(bootSvc).ServeHTTP)
 
+		// Smoke endpoint pour la home page : sonde le contenu (banner, peaks
+		// CSR/LUSR, playlists récentes, arme favorite) et renvoie 503 si une
+		// section est vide sans raison. Pensé pour CI post-backfill et alerte
+		// dev. Cf. handlers/health_home.go.
+		r.With(middleware.NoStore).Get("/healthz/home", handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Check)
+
 		// Phase A multi-titres : exposition des field mappings TOML.
 		// Derrière MULTI_TITLE_API_ENABLED.
 		//

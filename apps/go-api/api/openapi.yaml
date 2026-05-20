@@ -1377,6 +1377,34 @@ paths:
         "200": { description: "Prêt à servir le trafic" }
         "503": { description: "Pas prêt (un check externe échoue)" }
 
+  /healthz/home:
+    get:
+      tags: [health]
+      operationId: getHealthzHome
+      summary: "Smoke endpoint contenu home (banner, peaks CSR/LUSR, playlists, arme favorite)"
+      description: |
+        Sonde le contenu de la home page Mission Control pour un joueur donné.
+        Inspecte les 5 sections critiques et liste celles qui sont vides
+        sans raison (= régression silencieuse). Pensé pour CI post-backfill
+        et alerte développeur.
+
+        Paramètre `player` obligatoire — pas d'auto-pick.
+      parameters:
+        - in: query
+          name: player
+          required: true
+          schema: { type: string }
+          description: "player_slug (cf. /bootstrap.player_slug)"
+      responses:
+        "200": { description: "Toutes les sections critiques sont peuplées" }
+        "400": { description: "Param 'player' manquant" }
+        "404": { description: "player_slug inconnu" }
+        "503":
+          description: |
+            Au moins une section est vide sans raison. Body :
+            `{ok: false, player, checks: {section: 'ok'|'missing (raison)'},
+            empty_sections: ['banner', 'highest_csr', ...]}`
+
   # Help (P8.10)
   /help/release-notes:
     get:

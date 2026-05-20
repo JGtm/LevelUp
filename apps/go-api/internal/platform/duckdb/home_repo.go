@@ -284,6 +284,19 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 	}
 }
 
+// loadHomeSkillPeak lit le meilleur rating CSR ou LUSR pour la home, avec
+// gestion de la phase de placement (10 matchs par playlist_group côté LUSR,
+// 10 matchs côté Microsoft pour CSR via player_csr_snapshots).
+//
+// Comportement :
+//   - CSR : priorité à player_csr_snapshots.alltime_value (officiel Waypoint).
+//     Si vide, fallback sur Q26eHomeSkillPeakByType qui calcule via les
+//     match_skill_rank classés CSR (heuristique playlist_name).
+//   - LUSR : Q26eHomeSkillPeakByType uniquement.
+//   - En placement (placement_remaining > 0) : retourne un row avec
+//     BadgeImageURL=unranked_(10-remaining).png et MeasurementMatchesRemaining
+//     non-nil ; le front affichera "En placement" sans inventer.
+//   - Matured (placement_remaining = 0) : retourne rating + tier badge habituel.
 func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *domain.HomeSkillPeakRow {
 	if r == nil || r.pdb == nil || r.pdb.Player == nil {
 		return nil
@@ -301,7 +314,10 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	var tierLabel sql.NullString
 	var tier sql.NullString
 	var subTier sql.NullInt16
-	if err := r.pdb.ReadDB().QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(&ratingValue, &tierLabel, &tier, &subTier); err != nil {
+	var placementRemaining sql.NullInt32
+	if err := r.pdb.ReadDB().QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(
+		&ratingValue, &tierLabel, &tier, &subTier, &placementRemaining,
+	); err != nil {
 		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
 			return nil
 		}
@@ -311,40 +327,77 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 		return nil
 	}
 
-	peak := &domain.HomeSkillPeakRow{RatingValue: ratingValue.Float64}
-	if tierLabel.Valid {
-		peak.TierLabel = stringPtr(tierLabel.String)
+	tierStr := optionalNullStringValue(tier)
+	tierLabelStr := optionalNullStringValue(tierLabel)
+	subTierInt := optionalNullInt16Value(subTier)
+	remainingInt := 0
+	if placementRemaining.Valid {
+		remainingInt = int(placementRemaining.Int32)
 	}
-	// Bug #1 : LUSR utilise les memes assets que CSR - fichiers stockes sous
-	// /static/ranks/halo_infinite/. Sans le slug, l'URL pointait sur 404.
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(
-		optionalNullStringValue(tier),
-		optionalNullStringValue(tierLabel),
-		optionalNullInt16Value(subTier),
-		homeStaticTitleSlug,
-		0,
-	)
+
+	peak := &domain.HomeSkillPeakRow{RatingValue: ratingValue.Float64}
+	// En placement : on force le badge unranked_N.png et on masque le tier
+	// hérité d'un match isolé (peu représentatif tant que les 10 matchs ne
+	// sont pas faits). buildHomeSkillPeakBadgeURL gère déjà cette branche
+	// quand on passe (tier="", remaining>0).
+	if remainingInt > 0 {
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, remainingInt)
+		remCopy := remainingInt
+		peak.MeasurementMatchesRemaining = &remCopy
+	} else {
+		// Bug #1 (mai 2026) : LUSR utilise les mêmes assets que CSR (fichiers
+		// stockés sous /static/ranks/halo_infinite/). Sans le slug, l'URL
+		// pointait sur 404.
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(tierStr, tierLabelStr, subTierInt, homeStaticTitleSlug, 0)
+		if tierLabel.Valid {
+			peak.TierLabel = stringPtr(tierLabelStr)
+		}
+		zero := 0
+		peak.MeasurementMatchesRemaining = &zero
+	}
 	return peak
 }
 
 // loadCSRAlltimePeak lit le meilleur CSR alltime depuis player_csr_snapshots.
+// Si aucun alltime_value > 0 n'existe (joueur en cours de placement sur sa
+// première playlist ranked), on rend un row placement avec
+// BadgeImageURL=unranked_N.png basé sur le MIN(current_measurement_remaining)
+// (la playlist la plus avancée dans son placement) pour que la home affiche
+// "En placement N/10" au lieu de "Aucune partie classée".
 func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeakRow {
 	var value sql.NullFloat64
 	var tier sql.NullString
 	var subTier sql.NullInt16
-	if err := r.pdb.ReadDB().QueryRow(ctx, Q26csrAlltimePeak).Scan(&value, &tier, &subTier); err != nil {
+	if err := r.pdb.ReadDB().QueryRow(ctx, Q26csrAlltimePeak).Scan(&value, &tier, &subTier); err == nil && value.Valid {
+		peak := &domain.HomeSkillPeakRow{RatingValue: value.Float64}
+		tierStr := optionalNullStringValue(tier)
+		subTierInt := optionalNullInt16Value(subTier)
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(tierStr, "", subTierInt, homeStaticTitleSlug, 0)
+		if tierStr != "" {
+			peak.TierLabel = stringPtr(tierStr)
+		}
+		zero := 0
+		peak.MeasurementMatchesRemaining = &zero
+		return peak
+	}
+
+	// Pas d'alltime : tenter de récupérer l'état de placement le plus avancé.
+	// MIN(current_measurement_remaining) = playlist la plus proche de la fin
+	// du placement (10 → 0). Si pas de snapshot du tout : retourner nil pour
+	// laisser Q26e fallback prendre la suite.
+	var minRemaining sql.NullInt32
+	if err := r.pdb.ReadDB().QueryRow(ctx, `
+		SELECT MIN(current_measurement_remaining)
+		FROM player_csr_snapshots
+		WHERE current_measurement_remaining IS NOT NULL
+		  AND current_measurement_remaining > 0
+	`).Scan(&minRemaining); err != nil || !minRemaining.Valid {
 		return nil
 	}
-	if !value.Valid {
-		return nil
-	}
-	peak := &domain.HomeSkillPeakRow{RatingValue: value.Float64}
-	tierStr := optionalNullStringValue(tier)
-	subTierInt := optionalNullInt16Value(subTier)
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(tierStr, "", subTierInt, homeStaticTitleSlug, 0)
-	if tierStr != "" {
-		peak.TierLabel = stringPtr(tierStr)
-	}
+	remaining := int(minRemaining.Int32)
+	peak := &domain.HomeSkillPeakRow{RatingValue: 0}
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, remaining)
+	peak.MeasurementMatchesRemaining = &remaining
 	return peak
 }
 
@@ -1212,15 +1265,24 @@ func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.Hom
 	return result, rows.Err()
 }
 
-// LoadFavoriteWeapon retourne le nom localisÃ© et le nombre de kills de l'arme la plus utilisÃ©e
-// par le joueur sur l'ensemble de ses matchs (Q26k).
-// DÃ©gradation silencieuse : retourne ("", 0, nil) si la table weapon_kills est vide ou absente.
+// LoadFavoriteWeapon retourne le nom localisé et le nombre de kills de l'arme la plus
+// utilisée par le joueur sur l'ensemble de ses matchs (Q26k).
+//
+// Dégradation : on tolère silencieusement sql.ErrNoRows (joueur sans kills) et la
+// vue absente (instance fraîche pré-migration). Pour TOUTE autre erreur SQL (driver,
+// connexion, scan), on log un WARN structuré pour transformer la cécité de l'ancien
+// silent drop en observabilité. Le contrat externe reste ("", 0, nil) — le front
+// affichera "—" comme avant — mais l'opérateur voit le vrai problème dans les logs.
 func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error) {
 	var weaponID uint64
 	var totalKills int
 	err := r.pdb.ReadDB().QueryRow(ctx, Q26kFavoriteWeapon, r.pdb.XUID).Scan(&weaponID, &totalKills)
 	if err != nil {
-		return "", 0, nil //nolint:nilerr // dÃ©gradation silencieuse
+		if err != sql.ErrNoRows && !isTableNotFoundErr(err) {
+			slog.WarnContext(ctx, "LoadFavoriteWeapon: query failed (silent degradation)",
+				"err", err, "xuid", r.pdb.XUID, "locale", locale)
+		}
+		return "", 0, nil //nolint:nilerr // dégradation silencieuse côté contrat externe
 	}
 
 	// RÃ©solution du label depuis metadata.

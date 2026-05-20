@@ -138,9 +138,15 @@ export function HomeHeroKPIGrid({
       </div>
 
       {/* 9 — Arme favorite */}
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
+      <div
+        data-testid="home-favorite-weapon"
+        className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center"
+      >
         <p className="text-xs text-muted-foreground">{kpiText.labels.favoriteWeapon}</p>
-        <p className="w-full truncate text-sm font-bold text-primary leading-tight mt-1">
+        <p
+          data-testid="home-favorite-weapon-name"
+          className="w-full truncate text-sm font-bold text-primary leading-tight mt-1"
+        >
           {kpis.favorite_weapon_name || '—'}
         </p>
         {kpis.favorite_weapon_kills > 0 && (

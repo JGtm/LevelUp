@@ -97,6 +97,97 @@ describe('Home ranking states', () => {
     expect(screen.getByText('Aucun classement disponible')).toBeInTheDocument()
   })
 
+  it('affiche le placement CSR backend-driven via measurement_matches_remaining (mai 2026)', async () => {
+    // Nouveau contrat : le backend renvoie un peak avec
+    // measurement_matches_remaining > 0 et badge_image_url = unranked_N.png.
+    // Le front ne devine plus via has_ranked_history.
+    const response = buildHomeResponse()
+    response.spartan_identity = {
+      ...response.spartan_identity!,
+      highest_csr: {
+        rating_value: 0,
+        tier_label: null,
+        badge_image_url: '/static/ranks/halo_infinite/unranked_3.png',
+        measurement_matches_remaining: 7,
+      },
+    }
+    response.has_ranked_history = true
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(response)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-highest-csr-unranked')).toBeInTheDocument()
+    })
+
+    const badge = screen.getByTestId('home-highest-csr-unranked') as HTMLImageElement
+    expect(badge.src).toContain('/static/ranks/halo_infinite/unranked_3.png')
+    expect(screen.getByTestId('home-highest-csr-detail')).toHaveTextContent('En placement (3/10)')
+    expect(screen.getByTestId('home-highest-csr-value')).toHaveTextContent('—')
+  })
+
+  it('affiche le placement LUSR backend-driven (régression bug "En placement faux")', async () => {
+    // Avant mai 2026, LUSR ne pouvait JAMAIS être en placement (le front
+    // passait mode='unranked' à resolveSkillPeakState → state='neutral').
+    // Maintenant le LUSR peut être en placement (10 matchs par playlist_group).
+    const response = buildHomeResponse()
+    response.spartan_identity = {
+      ...response.spartan_identity!,
+      highest_lusr: {
+        rating_value: 0,
+        tier_label: null,
+        badge_image_url: '/static/ranks/halo_infinite/unranked_6.png',
+        measurement_matches_remaining: 4,
+      },
+    }
+    response.has_unranked_history = true
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(response)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-highest-lusr-unranked')).toBeInTheDocument()
+    })
+
+    const badge = screen.getByTestId('home-highest-lusr-unranked') as HTMLImageElement
+    expect(badge.src).toContain('/static/ranks/halo_infinite/unranked_6.png')
+    expect(screen.getByTestId('home-highest-lusr-detail')).toHaveTextContent('En placement (6/10)')
+  })
+
+  it('affiche le rating + tier quand peak.measurement_matches_remaining=0 (matured)', async () => {
+    const response = buildHomeResponse()
+    response.spartan_identity = {
+      ...response.spartan_identity!,
+      highest_csr: {
+        rating_value: 1450,
+        tier_label: 'Onyx',
+        badge_image_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png',
+        measurement_matches_remaining: 0,
+      },
+    }
+    response.has_ranked_history = true
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(response)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-highest-csr-badge')).toBeInTheDocument()
+    })
+
+    // Format fr-FR : espace insécable entre milliers (1 450, pas 1,450).
+    expect(screen.getByTestId('home-highest-csr-value').textContent?.replace(/\s/g, '')).toBe('1450')
+    expect(screen.getByTestId('home-highest-csr-tier')).toHaveTextContent('Onyx')
+  })
+
   it('affiche un état indisponible si la privacy rend l’historique incomplet', async () => {
     const response = buildHomeResponse()
     response.privacy_warning = {
