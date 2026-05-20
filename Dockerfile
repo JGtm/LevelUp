@@ -6,7 +6,9 @@ FROM node:22-slim AS web-builder
 WORKDIR /build/web
 
 # Cache npm : installer les dépendances séparément du code source
-COPY apps/web/package.json apps/web/package-lock.json ./
+# .npmrc : conserve `legacy-peer-deps=true` (workaround TS6 vs
+# openapi-typescript@7.x peer dep — cf. apps/web/.npmrc).
+COPY apps/web/package.json apps/web/package-lock.json apps/web/.npmrc ./
 RUN npm ci --prefer-offline
 
 # Code source
