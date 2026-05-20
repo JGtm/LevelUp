@@ -1,3 +1,35 @@
+## [2026-05-20] fix(duckdb) — P7-1 : sites shared-only oubliés (explorer + sessions + Q25 + Q20/Q21)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : un collègue a partagé [.ai/V7/AUDIT_SHARED_READER_GAPS.md](.ai/V7/AUDIT_SHARED_READER_GAPS.md) listant 11 sites CRITIQUE oubliés par mon sprint P0→P6. Cause racine : mon audit P0 a grepé `shared.X` dans les `*.go` mais n'a pas tracé le couple (constante SQL avec `shared.X`) × (caller sur ReadDB). Le sentinel `TestOpenPlayerDB_NoSharedSchemaOnPoolConns` aurait dû détecter ces oublis mais ne couvre que la PlayerDB du sentinel, pas les chemins applicatifs concrets utilisés en CI (qui passent par le mock `seedPlayerSchema` avec son faux schéma local).
+
+Ouverture d'un sprint P7 supplémentaire pour combler. **P7-1** s'attaque aux 6 sites **shared-only** (les plus simples, migration directe) :
+
+**Décisions techniques** :
+
+1. **6 sites shared-only migrés vers SharedReader** :
+   - `Q19CommonMatches` ([explorer_repo.go:28](apps/go-api/internal/platform/duckdb/explorer_repo.go#L28)) — endpoint `/api/explorer`.
+   - `Q19bKillerVictimBetween` ([explorer_repo.go:61](apps/go-api/internal/platform/duckdb/explorer_repo.go#L61)) — idem.
+   - `Q20KVPairs` ([match_view_repo.go:681](apps/go-api/internal/platform/duckdb/match_view_repo.go#L681)) — match view kill/victim pairs.
+   - `Q21MatchEventsWithXUID` ([match_view_repo.go:380](apps/go-api/internal/platform/duckdb/match_view_repo.go#L380)) — match events.
+   - `Q22SessionMatches` ([sessions_repo.go:27](apps/go-api/internal/platform/duckdb/sessions_repo.go#L27)) — endpoint `/api/sessions`.
+   - `Q25MatchParticipants` ([stats_repo.go:113](apps/go-api/internal/platform/duckdb/stats_repo.go#L113)) — page Stats (enemy strength LUSR).
+
+Pour chacun : acquérir `pdb.SharedReadDB().Get(ctx)` + retirer le préfixe `shared.` dans le SQL. Idem pour `ResolveXUIDByGamertag` ([explorer_repo.go:77](apps/go-api/internal/platform/duckdb/explorer_repo.go#L77)) déjà sur SharedReader mais qui gardait le préfixe `shared.v_gamertag_lookup` (à nettoyer).
+
+2. **Helpers de test corrigés** :
+   - [`newTestPlayerDB`](apps/go-api/internal/platform/duckdb/player_repos_test.go#L51) : ajout de `SharedReader: LegacySharedReader(player)` pour que les ~30 tests legacy qui font `pdb.Player.Exec(... INSERT INTO shared.X)` voient leurs inserts via SharedReader sans réécriture complète. La vraie topologie prod reste couverte par les 2 sentinel de P0/P6.
+   - [`seedPlayerSchema`](apps/go-api/internal/platform/duckdb/player_repos_test.go#L93) : ajout des 9 vues root-level (`match_registry`, `match_participants`, `v_gamertag_lookup`, etc.) pour cohérence avec `seedSharedDBSchema` — nécessaires depuis que les queries P5/P7 ciblent les tables/vues root-level (sans préfixe `shared.`).
+   - [`newMetaResolveTestPDB`](apps/go-api/internal/platform/duckdb/match_view_repo_meta_test.go#L24) : assigné `SharedReader: LegacySharedReader(player)`. Le test `TestGetMatchEvents_ResolvesGamertagViaView` ajoute aussi les vues root-level `highlight_events` et `v_gamertag_lookup`.
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -tags=integration ./...` OK.
+
+**Prochaine étape** : P7-2 — `stats_repo.go::LoadStatsMatches` (Q23 cross-DB shared mp+r + player pme).
+
+---
+
 ## [2026-05-20] fix(duckdb) — P6 : test E2E topologie réelle + cleanup commentaires (sprint clôturé)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`). Sprint migration SharedReader **clôturé** (P0→P6).

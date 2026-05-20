@@ -582,7 +582,7 @@ SELECT
     COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     -- Signature des coeequipiers : XUIDs tries concatenes (hors joueur lui-meme)
     (SELECT string_agg(t.xuid, ',' ORDER BY t.xuid)
-     FROM shared.match_participants t
+     FROM match_participants t
      WHERE t.match_id = mp.match_id AND t.team_id = mp.team_id AND t.xuid <> ?
     )                                                   AS teammates_sig,
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
@@ -591,8 +591,8 @@ SELECT
          THEN COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') + INTERVAL (mp.time_played_seconds || ' seconds')
          ELSE NULL
     END                                                 AS end_time
-FROM shared.match_participants mp
-JOIN shared.match_registry r ON r.match_id = mp.match_id
+FROM match_participants mp
+JOIN match_registry r ON r.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 
@@ -662,10 +662,10 @@ SELECT
     mp.team_id,
     mp.kills_expected,
     mp.deaths_expected
-FROM shared.match_participants mp
+FROM match_participants mp
 WHERE mp.match_id IN (
     SELECT DISTINCT mp2.match_id
-    FROM shared.match_participants mp2
+    FROM match_participants mp2
     WHERE mp2.xuid = ?
 )
 ORDER BY mp.match_id, mp.xuid`
