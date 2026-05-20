@@ -12,6 +12,9 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
+
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // CareerRankData contient les données d'un snapshot de rang.
@@ -30,6 +33,28 @@ type CareerRankData struct {
 	BannerImageURL   string
 	EmblemImageURL   string
 	BackdropImageURL string
+}
+
+// syncCareerRank récupère la progression du rang carrière via le client Halo.
+// Si le token joueur est absent, la sync est sautée proprement (nil, nil).
+func syncCareerRank(
+	ctx context.Context,
+	client HaloClient,
+	xuid string,
+) (*CareerRankData, error) {
+	// B4 : validation xuid — non vide, numérique, longueur typique 16 chiffres.
+	if strings.TrimSpace(xuid) == "" {
+		return nil, fmt.Errorf("syncCareerRank: xuid vide")
+	}
+	for _, r := range xuid {
+		if !unicode.IsDigit(r) {
+			return nil, fmt.Errorf("syncCareerRank: xuid doit être numérique (reçu %q)", xuid)
+		}
+	}
+	if len(xuid) < 12 || len(xuid) > 20 {
+		return nil, fmt.Errorf("syncCareerRank: longueur xuid inattendue %d (attendu 12-20 chiffres)", len(xuid))
+	}
+	return client.GetCareerRank(ctx, xuid)
 }
 
 // parseCareerRank extrait les données de rang depuis la réponse API.
@@ -78,6 +103,32 @@ func parseCareerRank(body map[string]interface{}, xuid string) *CareerRankData {
 	}
 
 	return data
+}
+
+// saveCareerRank insère un snapshot de progression dans la player DB.
+func saveCareerRank(db *sql.DB, data *CareerRankData) error {
+	now := time.Now().UTC()
+	_, err := db.Exec(`
+		INSERT INTO career_progression (
+			xuid, rank, rank_name, rank_tier,
+			current_xp, xp_for_next_rank, xp_total,
+			is_max_rank, adornment_path, spartan_id,
+			banner_image_url, emblem_image_url, backdrop_image_url, recorded_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		data.XUID, data.CurrentRank, data.CurrentRankName, data.CurrentRankTier,
+		data.CurrentXP, data.XPForNextRank, data.XPTotal,
+		data.IsMaxRank, data.AdornmentPath, data.SpartanID,
+		data.BannerImageURL, data.EmblemImageURL, data.BackdropImageURL, now,
+	)
+	if err != nil {
+		return fmt.Errorf("saveCareerRank: %w", err)
+	}
+
+	// Mettre à jour sync_meta
+	_ = SetSyncMeta(db, "last_career_sync_at", now.Format(time.RFC3339))
+	_ = SetSyncMeta(db, "current_rank", fmt.Sprintf("%d", data.CurrentRank))
+
+	return nil
 }
 
 func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
@@ -176,6 +227,17 @@ func saveCSRSnapshots(db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (in
 		inserted++
 	}
 	return inserted, nil
+}
+
+func openCareerMetadataDB(path string) (*duckdbpkg.DB, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, fmt.Errorf("openCareerMetadataDB: path vide")
+	}
+	db, err := duckdbpkg.OpenReadOnly(path)
+	if err != nil {
+		return nil, fmt.Errorf("openCareerMetadataDB: %w", err)
+	}
+	return db, nil
 }
 
 func buildCareerRankName(titleEN, tierType string, grade sql.NullInt64) string {

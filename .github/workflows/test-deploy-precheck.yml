@@ -220,15 +220,19 @@ jobs:
 
       - name: "Simulation étape 2 : docker compose run (écriture dans data/demo/)"
         run: |
-          # L'entrypoint fait le chown automatiquement — pas de -u ni chown manuel
+          # L'entrypoint fait le chown automatiquement — pas de -u ni chown manuel.
+          # Le `/bin/sh -c "..."` dans l'image est POSIX sh (dash) : pas de [[ ]]
+          # ni de chainage complexe — on garde minimal et on verifie ensuite en
+          # bash dans le runner.
           docker run --rm \
             -v "$PWD/data:/app/data" \
             levelup-test:ci \
-            /bin/sh -c "
-          mkdir -p /app/data/demo/warehouse /app/data/demo/players/DEMO
-          echo '{\"version\": \"2.1\"}' > /app/data/demo/db_profiles.json
-          echo '{}' > /app/data/demo/app_settings.json
-          echo 'Simulation demo data : OK'
+            /bin/sh -c "mkdir -p /app/data/demo/warehouse /app/data/demo/players/DEMO && \
+                        echo '{\"version\": \"2.1\"}' > /app/data/demo/db_profiles.json && \
+                        echo '{}' > /app/data/demo/app_settings.json && \
+                        echo 'Simulation demo data : OK'"
+
+          # Verifications post-docker en bash (runner GitHub Actions, pas container).
           for f in data/demo/db_profiles.json data/demo/app_settings.json; do
             if [[ -d "$f" ]]; then
               echo "  ❌ $f est un répertoire — compose up levelup-demo va échouer"
