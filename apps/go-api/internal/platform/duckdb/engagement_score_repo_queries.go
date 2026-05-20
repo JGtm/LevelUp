@@ -28,6 +28,12 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadMatchEngagementContext: shared reader: %w", err)
+	}
+	defer release()
+
 	const q = `
 		SELECT
 			mr.match_id,
@@ -40,12 +46,12 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 			COALESCE(mp.kills, 0),
 			COALESCE(mp.assists, 0),
 			COALESCE(mr.map_name_fr, mr.map_name)
-		FROM shared.match_registry mr
-		JOIN shared.match_participants mp ON mr.match_id = mp.match_id
+		FROM match_registry mr
+		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mr.match_id = ? AND mp.xuid = ?
 	`
 	var mctx port.MatchEngagementContext
-	err := r.pdb.ReadDB().QueryRow(ctx, q, matchID, xuid).Scan(
+	err = sharedDB.QueryRowContext(ctx, q, matchID, xuid).Scan(
 		&mctx.MatchID,
 		&mctx.StartTimeMS,
 		&mctx.EndTimeMS,
@@ -69,10 +75,10 @@ func (r *EngagementScoreRepo) LoadMatchEngagementContext(
 		SELECT
 			SUM(CASE WHEN team_id = ? AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
 			SUM(CASE WHEN xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END)
-		FROM shared.match_participants WHERE match_id = ?
+		FROM match_participants WHERE match_id = ?
 	`
 	var nTeam, nLobby sql.NullInt64
-	_ = r.pdb.ReadDB().QueryRow(ctx, sizeQ, mctx.TargetTeamID, matchID).Scan(&nTeam, &nLobby)
+	_ = sharedDB.QueryRowContext(ctx, sizeQ, mctx.TargetTeamID, matchID).Scan(&nTeam, &nLobby)
 	mctx.NTeam = int(nTeam.Int64)
 	mctx.NHumansLobby = int(nLobby.Int64)
 	mctx.IsTeamMode = mctx.NTeam > 1
@@ -92,13 +98,19 @@ func (r *EngagementScoreRepo) LoadEventsForMatch(
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadEventsForMatch: shared reader: %w", err)
+	}
+	defer release()
+
 	const q = `
 		SELECT match_id, event_type, COALESCE(time_ms, 0), COALESCE(xuid, '')
-		FROM shared.highlight_events
+		FROM highlight_events
 		WHERE match_id = ?
 		ORDER BY time_ms ASC
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, matchID)
+	rows, err := sharedDB.QueryContext(ctx, q, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadEventsForMatch: %w", err)
 	}
@@ -125,14 +137,20 @@ func (r *EngagementScoreRepo) LoadTeamXUIDs(
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadTeamXUIDs: shared reader: %w", err)
+	}
+	defer release()
+
 	const q = `
-		SELECT xuid FROM shared.match_participants
+		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		  AND team_id = ?
 		  AND xuid NOT LIKE 'bid(%'
 		  AND xuid <> ?
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, matchID, teamID, targetXUID)
+	rows, err := sharedDB.QueryContext(ctx, q, matchID, teamID, targetXUID)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTeamXUIDs: %w", err)
 	}
@@ -204,17 +222,23 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ListRecentPvPMatchIDs: shared reader: %w", err)
+	}
+	defer release()
+
 	q := `
 		SELECT mr.match_id
-		FROM shared.match_registry mr
-		JOIN shared.match_participants mp ON mr.match_id = mp.match_id
+		FROM match_registry mr
+		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
 		ORDER BY mr.start_time DESC
 		LIMIT ?
 	`
-	rows, err := r.pdb.ReadDB().Query(ctx, q, xuid, limit)
+	rows, err := sharedDB.QueryContext(ctx, q, xuid, limit)
 	if err != nil {
 		return nil, fmt.Errorf("ListRecentPvPMatchIDs: %w", err)
 	}
