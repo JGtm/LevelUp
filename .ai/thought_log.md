@@ -1,3 +1,51 @@
+## [2026-05-20] fix(home) — bannière LIVE via resolve_positive_emblem_cfg + CSR placement NOT NULL
+
+**Statut** : Complété (5/5 sections home OK pour JGtm via /healthz/home).
+
+**Contexte** : suite au commit précédent (8ea87305 migration HomeRepo→SharedReader), 3 sections OK (lusr/playlists/weapon), 2 restantes (banner, csr) qualifiées "hors scope" à tort. L'utilisateur signale que sur main (Python Streamlit en prod VPS) la bannière de JGtm S'AFFICHE et le match d4ddf054 RESSORT EN CLASSÉ. Il avait raison de pousser : ces 2 bugs sont code-side, pas data.
+
+**Diag bannière (cmd diag_banner one-off)** :
+- Live `/customization/appearance` pour JGtm → 200 OK, body 458 bytes, mais **AUCUN champ Banner/Nameplate/PlayerTitlePath** (les 9 key paths du parser cherchent en vain).
+- Emblem présent : `Inventory/Spartan/Emblems/104-001-olympus-campa-2ddbe23b.json` avec `ConfigurationId=-809699482` (signé négatif).
+- Python `_waypoint_nameplate_png_from_emblem` (`src/ui/profile_api_urls.py`) construit l'URL nameplate `/hi/Waypoint/file/images/nameplates/<stem>_<cfg>.png` à partir de l'emblem.
+- Commit Go `22cb84d5` (8 mai 2026) avait supprimé ce pattern car 403 systématique avec cfg signé négatif → catalogué "garbage URLs". **Diag confirmé** : URL avec cfg=-809699482 → 403, URL avec cfg=3485267814 (unsigned) → 404.
+- Pièce manquante côté Go : Python `resolve_positive_emblem_cfg` (`profile_api_urls.py:160`) fetche le JSON emblem CMS, parse `AvailableConfigurations[]`, prend le **premier ConfigurationId > 0** (les négatifs = palettes "Test" sans image CDN). Commentaire Python : *"Les cfgs négatifs sont des palettes Test dont le CDN Waypoint ne sert pas d'images."*
+- Test prod : JSON emblem JGtm contient 7 configs (-809699482, -531379543, -748408373, **651339664** ←, -968910011, -1391772538, 824330229). URL avec 651339664 → **200 OK, Content-Type image/png, 10585 bytes**.
+
+**Diag CSR placement** :
+- Backfill `levelup backfill --csr --force --gamertag JGtm` → 34 matchs ranked détectés (heuristique playlist_name LIKE 'ranked'), 26 SKIP no_recap (matchs custom à playlist ranked-name), 7 erreurs `Constraint Error: NOT NULL constraint failed: match_skill_rank.rating_value`, **1 inserted** (match avec rating final).
+- `ExtractCSRRowIfRanked` retourne row avec `RatingValue=nil` en placement (csr_writes.go:132-139), mais schéma a NOT NULL → 7 placements rejetés.
+- Python (main) stocke la row : soit pas la contrainte, soit valeur 0 fallback.
+
+**Décisions techniques** :
+
+1. **Port `resolve_positive_emblem_cfg` Python → Go** : nouveau fichier `apps/go-api/internal/sync/spartan_nameplate_resolver.go` avec `ResolveNameplateURL(ctx, emblemPath, cfg, spartanToken, clearanceToken) string`. Si `cfg > 0` : URL directe (1 ligne). Si `cfg <= 0` : `resolvePositiveEmblemCfg` fetche `/hi/progression/file/<emblem_path>`, parse JSON `AvailableConfigurations[]`, retourne 1er positif. Construction URL avec `extractEmblemStem` (strip prefix/suffix `.json`). Timeout 8s, log warn sur miss.
+
+2. **Wire dans `GetSpartanCustomization`** (modification minimale, 6 lignes ajoutées dans `halo_client.go`) : après le path `BannerImagePath != ""` standard, si `out.BannerImageURL == "" && appearance.EmblemPath != ""` → call `ResolveNameplateURL` avec `appearance.EmblemConfigurationID` parsé en int64.
+
+3. **CSR placement : stocker 0.0 au lieu de NULL** (csr_writes.go:139-142) : `zero := 0.0; row.RatingValue = &zero`. Respect contrainte NOT NULL du schéma sans migration. Le caller distingue placement vs rating réel via `MeasurementMatchesRemaining > 0`. Le `ORDER BY rating_value DESC LIMIT 1` filtre naturellement (rating réel > 0 > 0.0).
+
+4. **Test mis à jour** `TestExtractCSRRowIfRanked_PlacementSingular` : assert `RatingValue == 0.0` au lieu de `nil`.
+
+5. **Test mis à jour** `TestGetCareerRank_BannerEmptyWhenNoNameplate` → renommé `TestGetCareerRank_BannerDerivedFromEmblemNameplate` : assert URL nameplate dérivée `/hi/Waypoint/file/images/nameplates/<stem>_<cfg>.png` au lieu de "" (le scenario du test a cfg=372285867 > 0 → URL directe).
+
+**Résultats vérifiés** :
+- Backfill `--csr --force --all` : Chocoboflor **8 inserted** (au lieu de 0), JGtm **8 inserted** (au lieu de 1), Madina97294 SKIP (token rotaté, AADSTS70000 invalid_grant), XxDaemonGamerxX SKIP (no token).
+- `/api/v1/healthz/home?player=JGtm` : **{"ok":true,"empty_sections":[]}** — 5/5 sections OK.
+- `/api/v1/players/JGtm/pages/home` : `banner_image_url` = nameplate dérivée 651339664, `highest_csr` = rating 667 + unranked_8.png + placement_remaining=2, `highest_lusr` = "Or VI" rating 1590.1 matured, `favorite_weapon_name` = "MK50 Sidekick" 2233 kills.
+- `go test -tags cgo ./...` ✅, `go vet ./...` ✅.
+
+**Protection CSR vs LUSR préservée** : `skill_rating_loaders.go:282 WHERE match_skill_rank.rating_type <> 'CSR'` (garde-fou Go) + `csr_writes.go:154-157` "LUSR ne peut pas écraser CSR" — non touchés. Le fix placement stocke `rating_value=0.0` côté CSR uniquement.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/sync/spartan_nameplate_resolver.go` (NOUVEAU, 153L).
+- `apps/go-api/internal/sync/halo_client.go` (+11L : wire resolver dans GetSpartanCustomization).
+- `apps/go-api/internal/sync/csr_writes.go` (+6L : rating_value=0.0 en placement).
+- `apps/go-api/internal/sync/csr_writes_test.go` (+1 assertion update).
+- `apps/go-api/internal/sync/halo_client_extra_test.go` (+ assertion URL nameplate dérivée, rename test).
+
+---
+
 ## [2026-05-20] fix(home) — HomeRepo migré vers SharedReader (ADR 0016 oubli sprint P7)
 
 **Statut** : Complété (3/4 régressions home corrigées, 1 hors scope).
