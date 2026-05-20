@@ -3,7 +3,6 @@
 package handlers
 
 import (
-	"path/filepath"
 	"runtime"
 	"testing"
 )
@@ -49,8 +48,10 @@ func TestFilePathToURL_SinglePlayerCapturesBase(t *testing.T) {
 	}
 }
 
-// TestFilePathToURL_MultiPlayerCapturesBaseWithSlug couvre le cas alternatif :
-// capturesBase + sous-folder par slug (cas multi-player).
+// TestFilePathToURL_MultiPlayerCapturesBaseWithSlug couvre le cas legacy
+// multi-player : capturesBase + sous-folder par slug. L'URL inclut le slug
+// en préfixe pour matcher la convention canonique {owner_slug}/{rel} utilisée
+// par les paths relatifs post-migration.
 func TestFilePathToURL_MultiPlayerCapturesBaseWithSlug(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("test Windows-specific paths")
@@ -59,19 +60,36 @@ func TestFilePathToURL_MultiPlayerCapturesBaseWithSlug(t *testing.T) {
 	slug := "JGtm"
 	capturesBase := `C:\Captures`
 	in := `C:\Captures\JGtm\foo.png`
-	want := `/api/v1/players/JGtm/media/files/foo.png`
+	want := `/api/v1/players/JGtm/media/files/JGtm/foo.png`
 	got := h.filePathToURL(slug, in, capturesBase)
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
-// TestFilePathToURL_OutsideAnyBase retourne le chemin original quand aucune
-// transformation n'aboutit (warning loggué).
-func TestFilePathToURL_OutsideAnyBase(t *testing.T) {
+// TestFilePathToURL_RelativePath_PostMigration : un path stocké au format
+// relatif {owner_slug}/{rel} est passé tel quel dans l'URL sans transformation.
+// C'est le format canonique post-migration.
+func TestFilePathToURL_RelativePath_PostMigration(t *testing.T) {
 	h := &MediaHandler{}
-	in := filepath.Join("/some/random/path", "foo.png")
-	got := h.filePathToURL("slug", in, "/captures")
+	in := "Madina97294/thumbs/Halo Infinite 2026-04-19.webp"
+	want := "/api/v1/players/JGtm/media/files/Madina97294/thumbs/Halo Infinite 2026-04-19.webp"
+	got := h.filePathToURL("JGtm", in, `C:\Captures`)
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestFilePathToURL_OutsideAnyBase retourne le chemin original quand aucune
+// transformation n'aboutit (warning loggué). Cas : path absolu legacy mais
+// hors de tout layout connu.
+func TestFilePathToURL_OutsideAnyBase(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("test Windows-specific paths")
+	}
+	h := &MediaHandler{}
+	in := `D:\unrelated\foo.png`
+	got := h.filePathToURL("slug", in, `C:\captures`)
 	if got != in {
 		t.Errorf("expected pass-through for unrelated path, got %q", got)
 	}

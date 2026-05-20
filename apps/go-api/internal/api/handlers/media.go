@@ -598,16 +598,32 @@ func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]int64{"version": v})
 }
 
-// filePathToURL transforme un chemin absolu en URL servable via l'API.
-// Bug #8 : 3 tentatives — capturesBase+slug (multi-player), capturesBase brut
-// (single-player, dossier captures sans sous-folder slug), repoRoot interne.
-func (h *MediaHandler) filePathToURL(slug, absPath, capturesBase string) string {
-	clean := filepath.Clean(absPath)
+// filePathToURL transforme un chemin stocké en DB en URL servable via l'API.
+//
+// Path stocké post-migration : déjà relatif au format {owner_slug}/{rel}.
+// On le réécrit directement en URL sans aucune résolution disk.
+//
+// Path stocké legacy : absolu (ex: "C:\old\layout\JGtm\thumbs\xxx.gif"). On
+// tente 3 préfixes (capturesBase+slug, capturesBase brut, repoRoot interne)
+// pour relativiser et fallback à absPath si rien ne matche. Cette branche
+// disparaîtra une fois le script de migration DB exécuté.
+func (h *MediaHandler) filePathToURL(slug, storedPath, capturesBase string) string {
+	if storedPath == "" {
+		return storedPath
+	}
+
+	// Path déjà relatif (post-migration) : on l'utilise tel quel.
+	if !filepath.IsAbs(storedPath) {
+		return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(storedPath)
+	}
+
+	// --- Mode legacy : path absolu stocké, on tente de relativiser. ---
+	clean := filepath.Clean(storedPath)
 
 	if capturesBase != "" {
 		playerDir := filepath.Join(capturesBase, slug)
 		if rel, ok := relIfWithin(playerDir, clean); ok {
-			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(rel)
+			return "/api/v1/players/" + slug + "/media/files/" + filepath.ToSlash(filepath.Join(slug, rel))
 		}
 		// Single-player : capturesBase pointe directement sur le dossier
 		// captures sans sous-folder slug (cas typique production).
@@ -625,9 +641,9 @@ func (h *MediaHandler) filePathToURL(slug, absPath, capturesBase string) string 
 		}
 	}
 
-	slog.Warn("filePathToURL: aucun mapping trouvé",
-		"slug", slug, "abs_path", absPath, "captures_base", capturesBase)
-	return absPath
+	slog.Warn("filePathToURL: aucun mapping trouvé (path legacy absolu hors layout)",
+		"slug", slug, "abs_path", storedPath, "captures_base", capturesBase)
+	return storedPath
 }
 
 // relIfWithin retourne (rel, true) si target est sous base.
@@ -714,9 +730,17 @@ func (h *MediaHandler) transformMediaURLs(slug string, items []domain.MediaItem)
 	}
 }
 
-// ServeMediaFile sert un fichier depuis le répertoire captures du joueur.
-// Essaie d'abord capturesBase (settings), puis le chemin interne data/ du repo.
+// ServeMediaFile sert un fichier depuis le répertoire captures.
 // GET /api/v1/players/{player_slug}/media/files/*
+//
+// Convention post-migration : rpath = {owner_slug}/{rel_in_owner_dir}. La
+// résolution est déterministe : filepath.Join(capturesBase, rpath). Le
+// {player_slug} de l'URL ne sert qu'à scoper l'autorisation (le owner est
+// implicite via le préfixe rpath).
+//
+// Compat legacy : fallbacks vers capturesBase+slug (rpath sans préfixe owner)
+// et repoRoot interne pour les URLs encore présentes en cache navigateur ou
+// dans des paths absolus non migrés.
 func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	rpath := chi.URLParam(r, "*")
@@ -740,30 +764,32 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Bug #8 : symétrique de filePathToURL — capturesBase+slug ET capturesBase brut.
-	var playerDirs []string
+	// Bases candidates pour résoudre rpath. La première (capturesBase brut)
+	// gère le format canonique {owner_slug}/{rel}. Les suivantes sont des
+	// fallbacks legacy.
+	var bases []string
 	if capturesBase != "" {
-		playerDirs = append(playerDirs, filepath.Join(capturesBase, slug))
-		playerDirs = append(playerDirs, filepath.Clean(capturesBase))
+		bases = append(bases, filepath.Clean(capturesBase))      // canonique : {base}/{owner}/{rel}
+		bases = append(bases, filepath.Join(capturesBase, slug)) // legacy : rpath sans préfixe owner
 	}
 	if h.repoRoot != "" {
 		pr := titlePkg.NewPathResolver(h.repoRoot)
 		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
-		playerDirs = append(playerDirs, filepath.Dir(internalCapturesDir))
+		bases = append(bases, filepath.Dir(internalCapturesDir)) // legacy interne data/
 	}
-	if len(playerDirs) == 0 {
+	if len(bases) == 0 {
 		httpError(r.Context(), w, "file serving not configured", http.StatusServiceUnavailable)
 		return
 	}
 
-	for _, playerDir := range playerDirs {
-		absPath := filepath.Join(playerDir, filepath.FromSlash(cleanURL))
+	for _, base := range bases {
+		absPath := filepath.Join(base, filepath.FromSlash(cleanURL))
 
-		// Anti-traversal : vérifier que le chemin résolu est dans playerDir
-		cleanPlayerDir := filepath.Clean(playerDir)
+		// Anti-traversal : vérifier que le chemin résolu est dans base
+		cleanBase := filepath.Clean(base)
 		cleanAbsPath := filepath.Clean(absPath)
-		if cleanAbsPath != cleanPlayerDir &&
-			!strings.HasPrefix(cleanAbsPath, cleanPlayerDir+string(filepath.Separator)) {
+		if cleanAbsPath != cleanBase &&
+			!strings.HasPrefix(cleanAbsPath, cleanBase+string(filepath.Separator)) {
 			continue
 		}
 
@@ -782,6 +808,8 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 					w.Header().Set("Content-Type", "video/x-matroska")
 				case ".webp":
 					w.Header().Set("Content-Type", "image/webp")
+				case ".gif":
+					w.Header().Set("Content-Type", "image/gif")
 				}
 			}
 			http.ServeFile(w, r, cleanAbsPath)
