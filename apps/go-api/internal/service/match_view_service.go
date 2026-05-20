@@ -1186,23 +1186,7 @@ func buildCombatTabFull(
 	// Tug-of-war
 	tugEvents := buildTugEvents(kvPairs, myXUID)
 	tugBins := analysis.ComputeTugOfWar(tugEvents, durationMS, 0)
-	tugDomain := make([]domain.MatchTugOfWarBin, 0, len(tugBins))
-	for _, b := range tugBins {
-		allyKills := 0
-		enemyKills := 0
-		if b.Delta > 0 {
-			allyKills = b.Delta
-		} else {
-			enemyKills = -b.Delta
-		}
-		tugDomain = append(tugDomain, domain.MatchTugOfWarBin{
-			BinStart:   int(b.BinStartMS / 1000),
-			BinEnd:     int(b.BinEndMS / 1000),
-			TeamKills:  allyKills,
-			EnemyKills: enemyKills,
-			NetKills:   b.CumDelta,
-		})
-	}
+	tugDomain := convertTugBinsToDomain(tugBins)
 
 	// Impact badges : calculés en périmètre team-wide alliée (parité Python
 	// _match_impact_events::compute_single_match_impact). Le filtre par
@@ -1211,31 +1195,12 @@ func buildCombatTabFull(
 	// full (first_blood reste global toutes équipes).
 	impactInput := buildImpactInput(events, scoreboard, myXUID)
 	allBadges := analysis.ComputeMatchImpactFull(impactInput)
-	badgesDomain := make([]domain.MatchImpactBadge, 0, len(allBadges))
-	for _, b := range allBadges {
-		badge := domain.MatchImpactBadge{
-			Key:        b.BadgeKey,
-			Label:      b.BadgeFR,
-			PlayerXUID: b.PlayerXUID,
-		}
-		if b.TimeMS > 0 {
-			t := b.TimeMS
-			badge.TimeMS = &t
-		}
-		badgesDomain = append(badgesDomain, badge)
-	}
+	badgesDomain := convertImpactBadgesToDomain(allBadges)
 
 	// KD timeline
 	kdEvents := buildKDEvents(kvPairs, myXUID)
 	kdPoints := analysis.ComputeKDTimeline(kdEvents, myXUID)
-	kdDomain := make([]domain.MatchKDTimelinePoint, 0, len(kdPoints))
-	for _, p := range kdPoints {
-		kdDomain = append(kdDomain, domain.MatchKDTimelinePoint{
-			TimeSeconds: int(p.TimeMS / 1000),
-			Kills:       p.CumKills,
-			Deaths:      p.CumDeaths,
-		})
-	}
+	kdDomain := convertKDPointsToDomain(kdPoints)
 
 	// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné fondations narrative.
 	// Cadence intra-match + 8 rôles narratifs en parallèle des badges legacy.
@@ -1560,6 +1525,63 @@ func buildTeamTabFull(
 		Nemesis:    nemesisList,
 		Encounters: convertEncounters(encounters, encounterStats),
 	}
+}
+
+// convertTugBinsToDomain convertit les bins analysis -> domain pour le chart
+// tug-of-war (allies vs ennemis), avec split delta positif (allies) / negatif
+// (ennemis).
+func convertTugBinsToDomain(bins []analysis.TugOfWarBin) []domain.MatchTugOfWarBin {
+	out := make([]domain.MatchTugOfWarBin, 0, len(bins))
+	for _, b := range bins {
+		allyKills := 0
+		enemyKills := 0
+		if b.Delta > 0 {
+			allyKills = b.Delta
+		} else {
+			enemyKills = -b.Delta
+		}
+		out = append(out, domain.MatchTugOfWarBin{
+			BinStart:   int(b.BinStartMS / 1000),
+			BinEnd:     int(b.BinEndMS / 1000),
+			TeamKills:  allyKills,
+			EnemyKills: enemyKills,
+			NetKills:   b.CumDelta,
+		})
+	}
+	return out
+}
+
+// convertImpactBadgesToDomain convertit les badges analysis -> domain avec
+// pointer optionnel sur TimeMS (nil si event horodaté absent).
+func convertImpactBadgesToDomain(badges []analysis.ImpactBadge) []domain.MatchImpactBadge {
+	out := make([]domain.MatchImpactBadge, 0, len(badges))
+	for _, b := range badges {
+		badge := domain.MatchImpactBadge{
+			Key:        b.BadgeKey,
+			Label:      b.BadgeFR,
+			PlayerXUID: b.PlayerXUID,
+		}
+		if b.TimeMS > 0 {
+			t := b.TimeMS
+			badge.TimeMS = &t
+		}
+		out = append(out, badge)
+	}
+	return out
+}
+
+// convertKDPointsToDomain convertit les points KD timeline analysis -> domain
+// (cum kills / cum deaths, secondes plutot que ms).
+func convertKDPointsToDomain(points []analysis.KDTimelinePoint) []domain.MatchKDTimelinePoint {
+	out := make([]domain.MatchKDTimelinePoint, 0, len(points))
+	for _, p := range points {
+		out = append(out, domain.MatchKDTimelinePoint{
+			TimeSeconds: int(p.TimeMS / 1000),
+			Kills:       p.CumKills,
+			Deaths:      p.CumDeaths,
+		})
+	}
+	return out
 }
 
 // computeScoreboardRowCombatYield calcule les 4 pointeurs combat yield du
