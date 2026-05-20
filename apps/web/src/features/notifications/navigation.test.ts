@@ -129,4 +129,15 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     const target = resolveTarget(notif, PLAYER_SLUG)
     expect(target!.to).toBe('/some/custom/route')
   })
+
+  it('target_route /admin/data-health (route fantome legacy) est ignore et fallback', () => {
+    // Avant 2026-05-20, data_health_check.go emettait des notifs avec
+    // target_route = '/admin/data-health' (route jamais creee). Les notifs
+    // persistees doivent retomber sur le fallback /players/{slug}/notifications.
+    const notif = makeNotif('data_health_warning')
+    notif.target_route = '/admin/data-health'
+    const target = resolveTarget(notif, PLAYER_SLUG)
+    expect(target).not.toBeNull()
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/notifications`)
+  })
 })
