@@ -1,3 +1,88 @@
+## [2026-05-20] feat(observability) — Commit 19 : event_id presence + coordinator + migrations + Subscriber
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 19 — comble les derniers maillons d'instrumentation event_id).
+
+**Contexte** : audit post-commit 18 a identifié 4 zones encore non instrumentées :
+presence handler RTA (maillon manquant rta→trigger), Coordinator (dédup
+silencieux), migrations DB au boot (diag startup), Subscriber callback
+Provider (sans ctx donc pas de propagation event_id vers pool).
+
+**Livré** :
+
+1. **Presence handler** (`internal/watcher/daemon.go::makePresenceHandler`) :
+   - event_id `watcher.presence:<gamertag>` par event RTA reçu. Trace le
+     maillon manquant entre `watcher.rta` et `watcher.trigger`. Log Info
+     si titre tracké (OnPresenceActive), Debug sinon (offline).
+
+2. **Coordinator** (`internal/sync/coordinator.go::Submit` + `run`) :
+   - event_id `coordinator.submit:<gamertag>` à la réception d'une request.
+   - Log InfoContext "requête acceptée" ou "ignorée (dedup)" avec
+     match_count. Permet de répondre "pourquoi cette request a-t-elle été
+     dédupée ?".
+   - slog.Info → slog.InfoContext pour propager event_id parent.
+
+3. **Migrations DB au boot** (`internal/migration/registry.go::RunForDB`) :
+   - event_id `migration.run:<target>` par cycle de migrations sur une DB.
+   - Log InfoContext "cycle démarré/terminé" avec applied/total/duration_ms.
+   - Log par migration (Info schema apply, Debug OK, Error fail).
+   - Trace les N migrations qui tournent au boot, identifie celle qui plante.
+
+4. **Subscriber callback refactor** :
+   - Signature `Subscriber func(SwapEvent)` → `Subscriber func(ctx context.Context, evt SwapEvent)`.
+   - Provider capture l'event_id du caller AcquireWriter via `capturedEventID`
+     (closure variable). Lors du `Release()`, reconstruit un ctx via
+     `ctxkeys.WithEventID(context.Background(), capturedEventID)` et le
+     passe au callback.
+   - `retryReopenLoop` reçoit aussi `capturedEventID string` pour propager
+     l'event_id du swap initial dans la goroutine async de recovery.
+   - `notifyAfterSwap`, `notifyAfterSwapLocked`, `notifySubscribers` reçoivent
+     ctx en paramètre.
+   - 4 fichiers de test adaptés (signature callback).
+   - 1 callback prod adapté (`cmd/server/main.go` : pool subscriber).
+
+**Bénéfice diag immédiat** :
+
+Maintenant, un swap RW déclenché par sync.RunDelta peut être tracé end-to-end :
+
+```bash
+# Trouver l'event_id du sync
+grep "sync.RunDelta:" logs/sync.log | head -1
+# → event_id="sync.RunDelta:a1b2c3d4..."
+
+# Reconstituer le swap complet à travers tous les modules
+grep 'sync.RunDelta:a1b2c3d4' logs/*.log | jq -r '"\(.time) [\(.level)] \(.msg)"' | sort
+# → sync.log : RunDelta démarré
+# → sync.log : acquireSharedWriter
+# → provider.log : AcquireWriter démarré
+# → provider.log : readers drainés
+# → duckdb.log : OnSharedSwap PreSwapToRW (pool DETACH)
+# → provider.log : swap RO→RW terminé
+# → ... (sync écrit dans shared)
+# → provider.log : swap RW→RO terminé (Release)
+# → duckdb.log : OnSharedSwap RWToRO (pool re-attach) ← AVANT : pas d'event_id ici
+# → sync.log : postSync pipeline démarré
+```
+
+**Vérifications** :
+- `go build ./...` OK
+- Tests verts : sync (131s), scheduler (8s), watcher (5s), migration (14s),
+  auth (12s), auth/pool (6s), notifications (3s), api/middleware (3s),
+  sharedprovider (5s), duckdb (38s)
+- Aucune régression sur les 4 refactor cibles
+
+**Couverture event_id finale (commits 16+17+18+19)** :
+
+22 entry points instrumentés couvrent tout le cycle de vie sync :
+- Sync engine, Provider, Pool, Scheduler, Auth (pool + token refresh + XSTS +
+  OAuth + watcher refresh), Watcher (daemon, RTA, queue, trigger, add_player,
+  **presence**), HTTP (middleware + 4 handlers), Halo API outbound (doGet,
+  downloadBlob), Notifications.Emit, **Coordinator**, **Migrations**,
+  **Subscriber callbacks** (Provider → pool).
+
+**Branche désormais à 52 commits ahead d'origin.**
+
+---
+
 ## [2026-05-20] feat(observability) — Commit 18 : event_id post-sync + API in/out + écritures
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 18 — extension event_id à toutes les zones liées au sync).

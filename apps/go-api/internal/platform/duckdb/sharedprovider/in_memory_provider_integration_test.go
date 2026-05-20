@@ -150,7 +150,7 @@ func TestFromInMemoryDB_SubscribeNoEvents(t *testing.T) {
 	defer func() { _ = p.Close() }()
 
 	called := false
-	unsubscribe := p.Subscribe(func(_ sharedprovider.SwapEvent) {
+	unsubscribe := p.Subscribe(func(_ context.Context, _ sharedprovider.SwapEvent) {
 		called = true
 	})
 

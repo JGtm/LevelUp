@@ -1,6 +1,7 @@
 package sharedprovider
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 )
@@ -36,8 +37,13 @@ func (p *providerImpl) Subscribe(fn Subscriber) func() {
 // IMPORTANT : NE PAS appeler avec p.mu tenu — un Subscriber qui prend
 // p.mu (Get/AcquireWriter) deadlockerait. Pour la variante "sous p.mu"
 // (PreSwapToRW exclusivement), utiliser notifyAfterSwapLocked.
-func (p *providerImpl) notifyAfterSwap(direction Direction, from, to State) {
-	p.notifySubscribers(direction, from, to)
+//
+// Sprint B1 commit 19 : ctx est passé aux Subscribers pour propager
+// l'event_id du caller (sync.RunDelta typiquement) au callback pool.
+// Pour les transitions sans ctx du caller (releaseWriter), le ctx est
+// reconstruit avec l'event_id capturé via providerImpl.capturedEventID.
+func (p *providerImpl) notifyAfterSwap(ctx context.Context, direction Direction, from, to State) {
+	p.notifySubscribers(ctx, direction, from, to)
 }
 
 // notifyAfterSwapLocked émet un SwapEvent en supposant que le caller tient
@@ -49,21 +55,21 @@ func (p *providerImpl) notifyAfterSwap(direction Direction, from, to State) {
 // Contract : les Subscribers de PreSwapToRW NE DOIVENT PAS appeler
 // Get/AcquireWriter dans leur callback (deadlock garanti via p.mu).
 // La doc de DirectionPreSwapToRW dans subscriber.go le précise.
-func (p *providerImpl) notifyAfterSwapLocked(direction Direction, from, to State) {
+func (p *providerImpl) notifyAfterSwapLocked(ctx context.Context, direction Direction, from, to State) {
 	if direction != DirectionPreSwapToRW {
 		// Garde-fou : utilisation accidentelle hors PreSwapToRW. Log mais
 		// continue — pas la peine de bloquer en runtime, le linter / tests
 		// devraient flagger l'usage incorrect.
-		slog.Error("sharedprovider: notifyAfterSwapLocked called with non-PreSwap direction",
+		slog.ErrorContext(ctx, "sharedprovider: notifyAfterSwapLocked called with non-PreSwap direction",
 			"direction", direction, "path", p.path)
 	}
-	p.notifySubscribers(direction, from, to)
+	p.notifySubscribers(ctx, direction, from, to)
 }
 
 // notifySubscribers est le fan-out interne partagé par notifyAfterSwap et
 // notifyAfterSwapLocked. Snapshot des subs sous subsMu pour éviter race
 // avec Unsubscribe concurrent ; appel des callbacks hors subsMu.
-func (p *providerImpl) notifySubscribers(direction Direction, from, to State) {
+func (p *providerImpl) notifySubscribers(ctx context.Context, direction Direction, from, to State) {
 	p.subsMu.Lock()
 	if len(p.subs) == 0 {
 		p.subsMu.Unlock()
@@ -80,6 +86,6 @@ func (p *providerImpl) notifySubscribers(direction Direction, from, to State) {
 		// Pas de recover ici : un Subscriber qui panic indique un bug applicatif
 		// — laisser remonter pour ne pas masquer le problème. Le swap est
 		// déjà terminé côté Provider, le state est cohérent.
-		fn(evt)
+		fn(ctx, evt)
 	}
 }

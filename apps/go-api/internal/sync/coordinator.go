@@ -11,6 +11,8 @@ import (
 	"context"
 	"log/slog"
 	"sync"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 // SyncRunner exécute le sync pour un joueur avec les match_ids donnés.
@@ -57,17 +59,30 @@ func (c *Coordinator) SetOnComplete(fn func(gamertag string, err error)) {
 // Retourne immédiatement — le sync est exécuté en goroutine.
 // Retourne false si le joueur a déjà un sync en cours.
 func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
+	// Sprint B1 commit 19 : event_id sur l'arrivée au coordinator. Trace
+	// le maillon entre `watcher.trigger:<gt>` (dequeue) et la sync effective
+	// (sync.RunDelta dans c.runner.RunSync). Permet de répondre "pourquoi
+	// cette requête a-t-elle été dédupée ?".
+	ctx, evID := logging.WithEvent(ctx, "coordinator.submit:"+req.Gamertag)
+
 	c.inFlightMu.Lock()
 	if c.inFlight[req.Gamertag] {
 		c.inFlightMu.Unlock()
-		slog.Info("coordinator: sync déjà en cours, requête ignorée",
+		slog.InfoContext(ctx, "coordinator: sync déjà en cours, requête ignorée (dedup)",
 			"gamertag", req.Gamertag,
+			"match_count", len(req.MatchIDs),
+			"event", evID,
 		)
 		return false
 	}
 	c.inFlight[req.Gamertag] = true
 	c.inFlightMu.Unlock()
 
+	slog.InfoContext(ctx, "coordinator: requête acceptée",
+		"gamertag", req.Gamertag,
+		"match_count", len(req.MatchIDs),
+		"event", evID,
+	)
 	go c.run(ctx, req)
 	return true
 }
@@ -87,7 +102,7 @@ func (c *Coordinator) run(ctx context.Context, req CoordinatorRequest) {
 		c.releaseInFlight(req.Gamertag)
 	}()
 
-	slog.Info("coordinator: démarrage sync",
+	slog.InfoContext(ctx, "coordinator: démarrage sync",
 		"gamertag", req.Gamertag,
 		"match_count", len(req.MatchIDs),
 		"parallel_slots", c.maxParallel,
@@ -95,12 +110,12 @@ func (c *Coordinator) run(ctx context.Context, req CoordinatorRequest) {
 
 	err := c.runner.RunSync(ctx, req.Gamertag, req.XUID, req.MatchIDs)
 	if err != nil {
-		slog.Error("coordinator: sync échoué",
+		slog.ErrorContext(ctx, "coordinator: sync échoué",
 			"gamertag", req.Gamertag,
 			"err", err,
 		)
 	} else {
-		slog.Info("coordinator: sync terminé",
+		slog.InfoContext(ctx, "coordinator: sync terminé",
 			"gamertag", req.Gamertag,
 		)
 	}

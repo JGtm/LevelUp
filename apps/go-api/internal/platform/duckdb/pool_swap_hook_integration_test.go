@@ -102,7 +102,7 @@ func TestPool_PrepareAndRestoreSharedSwap_integration(t *testing.T) {
 	// Subscribe — câble la mécanique B3 sur les events du Provider.
 	// Le timing exact (PreSwap en Phase 3, après Close du handle Provider)
 	// ne peut être respecté QUE via Subscribe — pas en mode manuel.
-	unsubscribe := provider.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsubscribe := provider.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		switch evt.Direction {
 		case sharedprovider.DirectionPreSwapToRW:
 			if err := pdb.PrepareForSharedSwap(ctx); err != nil {

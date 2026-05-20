@@ -29,7 +29,7 @@ func TestProvider_Subscribe_ReceivesRWToROEvent(t *testing.T) {
 	var eventCount atomic.Int64
 	var captured atomic.Value
 
-	unsubscribe := p.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsubscribe := p.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		// Filtrer : ce test cible uniquement RWToRO (PreSwapToRW est testé
 		// dans TestProvider_Subscribe_ReceivesPreSwapToRWEvent).
 		if evt.Direction != sharedprovider.DirectionRWToRO {
@@ -79,7 +79,7 @@ func TestProvider_Subscribe_UnsubscribeStops(t *testing.T) {
 	defer func() { _ = p.Close() }()
 
 	var eventCount atomic.Int64
-	unsubscribe := p.Subscribe(func(_ sharedprovider.SwapEvent) {
+	unsubscribe := p.Subscribe(func(_ context.Context, _ sharedprovider.SwapEvent) {
 		eventCount.Add(1)
 	})
 
@@ -115,13 +115,13 @@ func TestProvider_Subscribe_MultipleListeners(t *testing.T) {
 		return evt.Direction == sharedprovider.DirectionRWToRO
 	}
 	var count1, count2 atomic.Int64
-	unsub1 := p.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsub1 := p.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		if rwToRoFilter(evt) {
 			count1.Add(1)
 		}
 	})
 	defer unsub1()
-	unsub2 := p.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsub2 := p.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		if rwToRoFilter(evt) {
 			count2.Add(1)
 		}
@@ -165,7 +165,7 @@ func TestProvider_Subscribe_ReceivesPreSwapToRWEvent(t *testing.T) {
 		mu     sync.Mutex
 		events []sharedprovider.SwapEvent
 	)
-	unsubscribe := p.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsubscribe := p.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		mu.Lock()
 		defer mu.Unlock()
 		events = append(events, evt)
@@ -228,7 +228,7 @@ func TestProvider_Subscribe_ReceivesErrorToROEvent(t *testing.T) {
 	sharedprovider.SetFailNextReopenForTest(p, true)
 
 	var capturedDir atomic.Value
-	unsubscribe := p.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsubscribe := p.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		// On capture la PREMIÈRE direction error_to_ro
 		if evt.Direction == sharedprovider.DirectionErrorToRO {
 			capturedDir.Store(string(evt.Direction))

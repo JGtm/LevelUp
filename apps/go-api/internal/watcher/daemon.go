@@ -391,23 +391,32 @@ func (d *Daemon) connectAndSubscribe(ctx context.Context) {
 // makePresenceHandler crée le callback de présence pour un joueur.
 func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) presence.EventHandler {
 	return func(event presence.PresenceEvent) {
+		// Sprint B1 commit 19 : event_id par event de présence. Trace le
+		// maillon manquant entre `watcher.rta` (RTA WebSocket event reçu)
+		// et `watcher.trigger` (sync déclenché par dequeue). Permet de
+		// répondre "pourquoi ce user a/n'a pas déclenché un sync ?"
+		evCtx, evID := logging.WithEvent(ctx, "watcher.presence:"+pw.gamertag)
+
 		// Vérifier si le titre correspond à un jeu tracké
 		if event.PresenceDetail != nil {
 			td := d.titleReg.MatchPresence(event.PresenceDetail.TitleID)
 			if td != nil {
-				slog.InfoContext(ctx, "watcher_daemon: présence détectée — titre tracké",
+				slog.InfoContext(evCtx, "watcher_daemon: présence détectée — titre tracké",
 					"gamertag", pw.gamertag,
 					"title", td.Name,
 					"state", event.PresenceState,
+					"event", evID,
 				)
-				pw.OnPresenceActive(ctx)
+				pw.OnPresenceActive(evCtx)
 				return
 			}
 		}
 
 		// Offline ou titre non tracké
 		if event.PresenceState == "Offline" || event.PresenceDetail == nil {
-			pw.OnPresenceInactive(ctx)
+			slog.DebugContext(evCtx, "watcher_daemon: présence offline ou titre non-tracké",
+				"gamertag", pw.gamertag, "state", event.PresenceState, "event", evID)
+			pw.OnPresenceInactive(evCtx)
 		}
 	}
 }
