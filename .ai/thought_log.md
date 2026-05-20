@@ -1,3 +1,31 @@
+## [2026-05-20] chore(ci) — Stabilisation baseline CI pré-cleanup (branche chore/ci-stabilization)
+
+**Statut** : En cours (branche `chore/ci-stabilization` partie de `fix/auto-sync-different-configuration` à HEAD `7cd4b8f2`).
+
+**Contexte** : avant de lancer un sprint de cleanup/refacto sur la branche `fix/auto-sync-different-configuration`, on stabilise la CI pour pouvoir détecter d'éventuelles régressions introduites par le refacto. Audit initial (gh run list + log inspection sur 5 derniers runs) : 6 jobs CI échouent en chaîne sur les commits récents, mais la majorité sont des problèmes d'infrastructure CI (config obsolète, YAML cassé) plutôt que du code applicatif.
+
+**Échecs identifiés (audit 2026-05-20 sur runs récents `fix/auto-sync-different-configuration`)** :
+1. `bump-version.yml` (workflow lui-même) : YAML cassé ligne 34, indent manquante → workflow refuse de se charger (failure 0s à chaque push).
+2. `Deploy Pre-Check / Syntaxe (YAML / Bash / Python)` : détecte le YAML cassé de #1 et exit 1 → bloque les jobs Docker/permissions en aval.
+3. `CI / Go Lint (golangci-lint)` : `golangci-lint v1.62` (compilé Go 1.23) refuse la config qui cible `go 1.26.1` — message : *"the Go language version (go1.23) used to build golangci-lint is lower than the targeted Go version (1.26.1)"*.
+4. `CI / OpenAPI Lint (spectral)` : *"No ruleset has been found. Please provide a ruleset using the spectral_ruleset option…"* — manque `.spectral.yaml` ou option.
+5. `CI / Go Lease Enforcement (ADR 0013)` : `scripts/check_lease_enforcement.sh` exit 1. À investiguer (faux positif ou vrai write direct introduit).
+6. `CI / E2E React (Playwright) / Install dependencies` : `npm ci` exit 1. À investiguer (lockfile vs package.json ?).
+
+**Jobs présumés verts (à confirmer après stabilisation)** : `Frontend` (TS+Vite+Vitest), `go-build` (matrix ubuntu+windows), `go-baseline-tests`, `go-coverage` (CGO=1, ./… avec ratchet), `go-contract-test`.
+
+**Décisions techniques (sous-commits)** :
+
+1. **Fix YAML `bump-version.yml` ligne 34** (commit #1) : ajout des 6 espaces d'indentation manquants devant `- name: Compute new version` (le step n'était pas indenté comme un enfant de `steps:`). Erreur d'indentation pure, sans impact sémantique. Débloque l'échec #1 et la cascade #2 (le pre-check `validate-syntax` parcourt tous les workflows et exit 1 dès qu'un YAML est invalide).
+
+(à enrichir à mesure que les fixes 2-6 sont appliqués)
+
+**Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
+
+**Prochaine étape** : fix #3 — bumper la version de `golangci-lint-action` à une version compatible Go 1.26.
+
+---
+
 ## [2026-05-20] fix(duckdb) — P7-5 : cleanup mort + thought_log final (sprint P7 clôturé)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`). Sprint P7 **clôturé**.
