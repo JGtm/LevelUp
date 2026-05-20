@@ -59,18 +59,18 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, gamertag, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	teammates, err := parseSquadV2Teammates(r.URL.Query().Get("teammates"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_teammates", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_teammates", err.Error())
 		return
 	}
 	period, err := parseSquadV2Period(r.URL.Query().Get("period"))
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_period", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_period", err.Error())
 		return
 	}
 
@@ -97,12 +97,12 @@ func (h *SquadV2Handler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, games.ErrCapabilityNotSupported) {
 			slog.WarnContext(r.Context(), "squad_v2: capability match.history absente",
 				"player", gamertag, "title_slug", titleSlug, "err", err)
-			writeError(w, http.StatusServiceUnavailable, "capability_not_supported", err.Error())
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "capability_not_supported", err.Error())
 			return
 		}
 		slog.ErrorContext(r.Context(), "squad_v2: erreur service",
 			"player", gamertag, "title_slug", titleSlug, "err", err)
-		writeError(w, http.StatusInternalServerError, "squad_v2_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "squad_v2_error", err.Error())
 		return
 	}
 

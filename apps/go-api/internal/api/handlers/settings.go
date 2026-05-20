@@ -82,7 +82,7 @@ func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 		return
 	}
 	writeJSON(w, http.StatusOK, settings_platform.ToResponse(cfg))
@@ -92,20 +92,20 @@ func (h *SettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 // PATCH /settings — 422 en mode démo.
 func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) {
 	if h.cfg.DemoMode {
-		writeError(w, http.StatusUnprocessableEntity, "demo_mode_unsupported",
+		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode_unsupported",
 			"La modification des settings n'est pas disponible en mode démo.")
 		return
 	}
 
 	var req domain.UpdateSettingsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 		return
 	}
 
 	// Validation des champs analyse.
 	if req.SessionGapMinutes != nil && *req.SessionGapMinutes < 0 {
-		writeError(w, http.StatusBadRequest, "invalid_session_gap",
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_session_gap",
 			"session_gap_minutes doit être ≥ 0.")
 		return
 	}
@@ -114,7 +114,7 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		case "ignore", "group", "friends":
 			// valide
 		default:
-			writeError(w, http.StatusBadRequest, "invalid_team_change_mode",
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_team_change_mode",
 				"session_team_change_mode doit être \"ignore\", \"group\" ou \"friends\".")
 			return
 		}
@@ -124,7 +124,7 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 		case "relaxed", "standard", "strict":
 			// valide
 		default:
-			writeError(w, http.StatusBadRequest, "invalid_badge_sensitivity",
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_badge_sensitivity",
 				"outcome_badge_sensitivity doit être \"relaxed\", \"standard\" ou \"strict\".")
 			return
 		}
@@ -132,7 +132,7 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 		return
 	}
 
@@ -142,7 +142,7 @@ func (h *SettingsHandler) PatchSettings(w http.ResponseWriter, r *http.Request) 
 	settings_platform.Apply(cfg, &req)
 
 	if err := h.settingsStore.Save(cfg); err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_save_error", "Impossible de sauvegarder la configuration.")
 		return
 	}
 
@@ -245,12 +245,12 @@ func normalizeGamertag(gt string) string {
 func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Request) {
 	var req domain.MediaResetRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 		return
 	}
 
 	if !req.ConfirmDestructive {
-		writeError(w, http.StatusBadRequest, "confirmation_required",
+		writeError(r.Context(), w, http.StatusBadRequest, "confirmation_required",
 			"confirm_destructive doit être true pour autoriser la réinitialisation de l'index.")
 		return
 	}
@@ -365,7 +365,7 @@ func (h *SettingsHandler) PostRecalculateSessions(w http.ResponseWriter, r *http
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "players_load_error",
+		writeError(r.Context(), w, http.StatusInternalServerError, "players_load_error",
 			"Impossible de charger les joueurs configurés.")
 		return
 	}

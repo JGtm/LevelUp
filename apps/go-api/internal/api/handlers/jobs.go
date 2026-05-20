@@ -26,13 +26,13 @@ func NewJobsHandler(store *jobs.Store) *JobsHandler {
 func (h *JobsHandler) GetJob(w http.ResponseWriter, r *http.Request) {
 	jobID := chi.URLParam(r, "job_id")
 	if jobID == "" {
-		writeError(w, http.StatusBadRequest, "missing_job_id", "Identifiant de job manquant.")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_job_id", "Identifiant de job manquant.")
 		return
 	}
 
 	job := h.store.Get(jobID)
 	if job == nil {
-		writeError(w, http.StatusNotFound, "job_not_found",
+		writeError(r.Context(), w, http.StatusNotFound, "job_not_found",
 			"Job introuvable ou expiré : "+jobID)
 		return
 	}

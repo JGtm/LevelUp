@@ -25,13 +25,13 @@ func writeNotifWriteErr(w http.ResponseWriter, ctx context.Context, op string, e
 	switch {
 	case errors.Is(err, dblease.ErrDBLocked):
 		w.Header().Set("Retry-After", "5")
-		writeError(w, http.StatusServiceUnavailable, "db_busy",
+		writeError(ctx, w, http.StatusServiceUnavailable, "db_busy",
 			"database is currently busy, please retry")
 	case errors.Is(err, notifications.ErrNotFound):
-		writeError(w, http.StatusNotFound, "not_found", "notification introuvable")
+		writeError(ctx, w, http.StatusNotFound, "not_found", "notification introuvable")
 	default:
 		slog.WarnContext(ctx, "notifications: "+op, "err", err)
-		writeError(w, http.StatusInternalServerError, op+"_error", err.Error())
+		writeError(ctx, w, http.StatusInternalServerError, op+"_error", err.Error())
 	}
 }
 
@@ -79,7 +79,7 @@ func (h *NotificationsHandler) List(w http.ResponseWriter, r *http.Request) {
 	res, err := svc.List(r.Context(), f)
 	if err != nil {
 		slog.WarnContext(r.Context(), "notifications: list", "err", err)
-		writeError(w, http.StatusInternalServerError, "list_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_error", err.Error())
 		return
 	}
 	if res.Items == nil {
@@ -97,7 +97,7 @@ func (h *NotificationsHandler) UnreadCount(w http.ResponseWriter, r *http.Reques
 	c, err := svc.UnreadCount(r.Context())
 	if err != nil {
 		slog.WarnContext(r.Context(), "notifications: unread-count", "err", err)
-		writeError(w, http.StatusInternalServerError, "unread_count_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "unread_count_error", err.Error())
 		return
 	}
 	if c.ByCategory == nil {
@@ -116,7 +116,7 @@ func (h *NotificationsHandler) MarkRead(w http.ResponseWriter, r *http.Request) 
 		IDs []int64 `json:"ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	res, err := svc.MarkRead(r.Context(), req.IDs)
@@ -139,7 +139,7 @@ func (h *NotificationsHandler) MarkAllRead(w http.ResponseWriter, r *http.Reques
 	// Body optionnel
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 	}
@@ -159,7 +159,7 @@ func (h *NotificationsHandler) MarkUnread(w http.ResponseWriter, r *http.Request
 	}
 	id, err := parseIDParam(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_id", err.Error())
 		return
 	}
 	if err := svc.MarkUnread(r.Context(), id); err != nil {
@@ -177,7 +177,7 @@ func (h *NotificationsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := parseIDParam(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_id", err.Error())
 		return
 	}
 	if err := svc.Delete(r.Context(), id); err != nil {
@@ -196,7 +196,7 @@ func (h *NotificationsHandler) GetPreferences(w http.ResponseWriter, r *http.Req
 	prefs, err := svc.GetPreferences(r.Context())
 	if err != nil {
 		slog.WarnContext(r.Context(), "notifications: get-preferences", "err", err)
-		writeError(w, http.StatusInternalServerError, "prefs_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "prefs_error", err.Error())
 		return
 	}
 	if prefs == nil {
@@ -215,7 +215,7 @@ func (h *NotificationsHandler) UpdatePreferences(w http.ResponseWriter, r *http.
 		Items []notifications.Preference `json:"items"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	updated, err := svc.UpdatePreferences(r.Context(), req.Items)
@@ -250,7 +250,7 @@ func (h *NotificationsHandler) PostTest(w http.ResponseWriter, r *http.Request) 
 	})
 	if err != nil {
 		slog.WarnContext(r.Context(), "notifications: test-emit", "slug", slug, "err", err)
-		writeError(w, http.StatusInternalServerError, "test_emit_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "test_emit_error", err.Error())
 		return
 	}
 	slog.InfoContext(r.Context(), "notifications: test sent", "slug", slug)
@@ -262,7 +262,7 @@ func (h *NotificationsHandler) resolve(w http.ResponseWriter, r *http.Request) (
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return nil, false
 	}
 	return svc, true

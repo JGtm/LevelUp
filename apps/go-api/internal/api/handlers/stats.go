@@ -28,13 +28,13 @@ func (h *StatsHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
+		writeError(r.Context(), w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
 		return
 	}
 
 	var req domain.StatsQueryRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
 		return
 	}
 	if req.Tab == "" {
@@ -43,7 +43,7 @@ func (h *StatsHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 
 	resp, svcErr := svc.GetPage(r.Context(), req)
 	if svcErr != nil {
-		writeError(w, http.StatusInternalServerError, "stats_error", "erreur chargement stats")
+		writeError(r.Context(), w, http.StatusInternalServerError, "stats_error", "erreur chargement stats")
 		return
 	}
 

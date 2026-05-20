@@ -14,6 +14,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -70,7 +71,7 @@ type updateChallengeBody struct {
 func (h *PrestigeHandler) CreateChallenge(w http.ResponseWriter, r *http.Request) {
 	var body createChallengeBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	req := prestige.CreateChallengeRequest{
@@ -92,7 +93,7 @@ func (h *PrestigeHandler) CreateChallenge(w http.ResponseWriter, r *http.Request
 	}
 	c, err := h.svc.CreateChallenge(r.Context(), req)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, c)
@@ -103,12 +104,12 @@ func (h *PrestigeHandler) CreateChallenge(w http.ResponseWriter, r *http.Request
 func (h *PrestigeHandler) GetChallenge(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
 		return
 	}
 	c, err := h.svc.GetChallenge(r.Context(), id)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
@@ -120,12 +121,12 @@ func (h *PrestigeHandler) ListActiveChallenges(w http.ResponseWriter, r *http.Re
 	userID := r.URL.Query().Get("user_id")
 	titleSlug := r.URL.Query().Get("title_slug")
 	if userID == "" || titleSlug == "" {
-		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 		return
 	}
 	list, err := h.svc.ListActiveChallenges(r.Context(), userID, titleSlug)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"challenges": list, "count": len(list)})
@@ -136,12 +137,12 @@ func (h *PrestigeHandler) ListActiveChallenges(w http.ResponseWriter, r *http.Re
 func (h *PrestigeHandler) UpdateChallenge(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
 		return
 	}
 	var body updateChallengeBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	c, err := h.svc.UpdateChallenge(r.Context(), id, prestige.UpdateChallengePatch{
@@ -149,7 +150,7 @@ func (h *PrestigeHandler) UpdateChallenge(w http.ResponseWriter, r *http.Request
 		Label:  body.Label,
 	})
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
@@ -160,11 +161,11 @@ func (h *PrestigeHandler) UpdateChallenge(w http.ResponseWriter, r *http.Request
 func (h *PrestigeHandler) AbandonChallenge(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
 		return
 	}
 	if err := h.svc.AbandonChallenge(r.Context(), id); err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -175,12 +176,12 @@ func (h *PrestigeHandler) AbandonChallenge(w http.ResponseWriter, r *http.Reques
 func (h *PrestigeHandler) SuggestNext(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
 		return
 	}
 	templates, err := h.svc.SuggestNext(r.Context(), id)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"suggestions": templates})
@@ -195,13 +196,13 @@ func (h *PrestigeHandler) SuggestNext(w http.ResponseWriter, r *http.Request) {
 func (h *PrestigeHandler) GetMyPrestige(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
-		writeError(w, http.StatusBadRequest, "missing_user_id", "user_id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_user_id", "user_id requis")
 		return
 	}
 	titleSlug := r.URL.Query().Get("title_slug")
 	up, err := h.svc.GetUserPrestige(r.Context(), userID, titleSlug)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, up)
@@ -213,7 +214,7 @@ func (h *PrestigeHandler) SuggestTemplates(w http.ResponseWriter, r *http.Reques
 	userID := r.URL.Query().Get("user_id")
 	titleSlug := r.URL.Query().Get("title_slug")
 	if userID == "" || titleSlug == "" {
-		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 		return
 	}
 	count := 3
@@ -224,7 +225,7 @@ func (h *PrestigeHandler) SuggestTemplates(w http.ResponseWriter, r *http.Reques
 	}
 	templates, err := h.svc.SuggestTemplates(r.Context(), userID, titleSlug, count)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"templates": templates})
@@ -243,7 +244,7 @@ type createArcBody struct {
 func (h *PrestigeHandler) CreateArc(w http.ResponseWriter, r *http.Request) {
 	var body createArcBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	a, err := h.svc.CreateArc(r.Context(), prestige.CreateArcRequest{
@@ -253,7 +254,7 @@ func (h *PrestigeHandler) CreateArc(w http.ResponseWriter, r *http.Request) {
 		Description: body.Description,
 	})
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, a)
@@ -263,12 +264,12 @@ func (h *PrestigeHandler) CreateArc(w http.ResponseWriter, r *http.Request) {
 func (h *PrestigeHandler) GetArc(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
 		return
 	}
 	a, err := h.svc.GetArc(r.Context(), id)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, a)
@@ -279,12 +280,12 @@ func (h *PrestigeHandler) ListArcs(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	titleSlug := r.URL.Query().Get("title_slug")
 	if userID == "" || titleSlug == "" {
-		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 		return
 	}
 	arcs, err := h.svc.ListArcs(r.Context(), userID, titleSlug)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"arcs": arcs, "count": len(arcs)})
@@ -308,12 +309,12 @@ type createSquadChallengeBody struct {
 func (h *PrestigeHandler) CreateSquadChallenge(w http.ResponseWriter, r *http.Request) {
 	squadID := chi.URLParam(r, "squad_id")
 	if squadID == "" {
-		writeError(w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 		return
 	}
 	var body createSquadChallengeBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	body.SquadID = squadID
@@ -329,7 +330,7 @@ func (h *PrestigeHandler) CreateSquadChallenge(w http.ResponseWriter, r *http.Re
 		CreatedBy:       body.CreatedBy,
 	})
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, sc)
@@ -339,12 +340,12 @@ func (h *PrestigeHandler) CreateSquadChallenge(w http.ResponseWriter, r *http.Re
 func (h *PrestigeHandler) ListSquadChallenges(w http.ResponseWriter, r *http.Request) {
 	squadID := chi.URLParam(r, "squad_id")
 	if squadID == "" {
-		writeError(w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 		return
 	}
 	list, err := h.svc.ListSquadChallenges(r.Context(), squadID)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"squad_challenges": list, "count": len(list)})
@@ -360,16 +361,16 @@ type joinSquadChallengeBody struct {
 func (h *PrestigeHandler) JoinSquadChallenge(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
-		writeError(w, http.StatusBadRequest, "missing_id", "id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_id", "id requis")
 		return
 	}
 	var body joinSquadChallengeBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	if err := h.svc.JoinSquadChallenge(r.Context(), id, body.UserID, prestige.Tier(body.ChosenTier), body.IsPrivate); err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -390,16 +391,16 @@ type pilotModeBody struct {
 func (h *PrestigeHandler) EnablePilotMode(w http.ResponseWriter, r *http.Request) {
 	var body pilotModeBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
-		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 		return
 	}
 	out, err := h.svc.EnablePilotMode(r.Context(), body.UserID, body.TitleSlug)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -412,15 +413,15 @@ func (h *PrestigeHandler) EnablePilotMode(w http.ResponseWriter, r *http.Request
 func (h *PrestigeHandler) DisablePilotMode(w http.ResponseWriter, r *http.Request) {
 	var body pilotModeBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	if body.UserID == "" || body.TitleSlug == "" {
-		writeError(w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "user_id et title_slug requis")
 		return
 	}
 	if err := h.svc.DisablePilotMode(r.Context(), body.UserID, body.TitleSlug); err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -441,21 +442,21 @@ type refreshSquadPoolBody struct {
 func (h *PrestigeHandler) RefreshSquadPool(w http.ResponseWriter, r *http.Request) {
 	squadID := chi.URLParam(r, "squad_id")
 	if squadID == "" {
-		writeError(w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_squad_id", "squad_id requis")
 		return
 	}
 	var body refreshSquadPoolBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	if body.TitleSlug == "" {
-		writeError(w, http.StatusBadRequest, "missing_title_slug", "title_slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_title_slug", "title_slug requis")
 		return
 	}
 	pool, err := h.svc.RefreshSquadPool(r.Context(), squadID, body.TitleSlug, body.RequestedBy)
 	if err != nil {
-		writeServiceError(w, err)
+		writeServiceError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"pool": pool, "count": len(pool)})
@@ -466,35 +467,35 @@ func (h *PrestigeHandler) RefreshSquadPool(w http.ResponseWriter, r *http.Reques
 // writeServiceError mappe les erreurs du service vers des codes HTTP.
 //
 // Centralise la traduction pour éviter la duplication dans chaque handler.
-func writeServiceError(w http.ResponseWriter, err error) {
+func writeServiceError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, dblease.ErrDBLocked):
 		// Le sync engine ou un autre handler tient le lease — on demande au
 		// client de retry sous 5 s. Cf. plan db-concurrency commit 2.
 		w.Header().Set("Retry-After", "5")
-		writeError(w, http.StatusServiceUnavailable, "db_busy",
+		writeError(ctx, w, http.StatusServiceUnavailable, "db_busy",
 			"database is currently busy, please retry")
 	case errors.Is(err, prestige.ErrChallengeNotFound),
 		errors.Is(err, prestige.ErrArcNotFound),
 		errors.Is(err, prestige.ErrUserNotFound):
-		writeError(w, http.StatusNotFound, "not_found", err.Error())
+		writeError(ctx, w, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, prestige.ErrInvalidInput):
-		writeError(w, http.StatusBadRequest, "invalid_input", err.Error())
+		writeError(ctx, w, http.StatusBadRequest, "invalid_input", err.Error())
 	case errors.Is(err, prestige.ErrNotEditable):
-		writeError(w, http.StatusForbidden, "not_editable", err.Error())
+		writeError(ctx, w, http.StatusForbidden, "not_editable", err.Error())
 	case errors.Is(err, prestige.ErrAlreadyTerminal):
-		writeError(w, http.StatusConflict, "already_terminal", err.Error())
+		writeError(ctx, w, http.StatusConflict, "already_terminal", err.Error())
 	case errors.Is(err, prestige.ErrCooldownActive):
-		writeError(w, http.StatusTooManyRequests, "cooldown_active", err.Error())
+		writeError(ctx, w, http.StatusTooManyRequests, "cooldown_active", err.Error())
 	default:
 		// Erreur masquée à l'extérieur — ne pas exposer les internals
 		// si la cause n'est pas explicitement une de nos sentinelles.
 		msg := err.Error()
 		if strings.Contains(msg, "stretch") {
 			// Cas particulier RejectTooEasy formaté avec stretch dans le message
-			writeError(w, http.StatusBadRequest, "challenge_too_easy", msg)
+			writeError(ctx, w, http.StatusBadRequest, "challenge_too_easy", msg)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "internal_error", msg)
+		writeError(ctx, w, http.StatusInternalServerError, "internal_error", msg)
 	}
 }

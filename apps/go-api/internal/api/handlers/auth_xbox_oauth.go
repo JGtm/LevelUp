@@ -1,8 +1,9 @@
 // Package handlers — auth_xbox_oauth.go : Authorization Code Flow SSO Xbox (PR 4).
 //
 // Endpoints :
-//   GET /auth/xbox/login    → redirect 302 vers Microsoft /authorize avec state CSRF
-//   GET /auth/xbox/callback → reçoit code + state, exchange → tokens → login
+//
+//	GET /auth/xbox/login    → redirect 302 vers Microsoft /authorize avec state CSRF
+//	GET /auth/xbox/callback → reçoit code + state, exchange → tokens → login
 //
 // Pré-requis Azure : la plateforme "Web" doit être ajoutée à l'app dans le
 // portail Azure avec le redirect URI configuré (typiquement le path callback
@@ -28,9 +29,9 @@ type XboxOAuthHandler struct {
 	sessionStore *session.Store
 	provider     auth_platform.TokenProvider
 	demoMode     bool
-	redirectURI  string                      // URI publique de callback (config)
-	linkStrategy auth_platform.LinkStrategy  // post-flow : login user
-	postLoginURL string                      // où rediriger après succès (typiquement "/")
+	redirectURI  string                     // URI publique de callback (config)
+	linkStrategy auth_platform.LinkStrategy // post-flow : login user
+	postLoginURL string                     // où rediriger après succès (typiquement "/")
 }
 
 // NewXboxOAuthHandler crée un XboxOAuthHandler.
@@ -68,32 +69,32 @@ func (h *XboxOAuthHandler) WithPostLoginURL(url string) *XboxOAuthHandler {
 // GET /auth/xbox/login
 func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request) {
 	if h.demoMode {
-		writeError(w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
+		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
 		return
 	}
 	if h.redirectURI == "" {
-		writeError(w, http.StatusInternalServerError, "redirect_uri_not_configured",
+		writeError(r.Context(), w, http.StatusInternalServerError, "redirect_uri_not_configured",
 			"LEVELUP_OAUTH_REDIRECT_URI non configuré")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
 		return
 	}
 
 	// Génère un state aléatoire 32 bytes (256 bits) et stocke en session.
 	stateBytes := make([]byte, 32)
 	if _, err := rand.Read(stateBytes); err != nil {
-		writeError(w, http.StatusInternalServerError, "state_gen_failed", "génération state échouée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "state_gen_failed", "génération state échouée")
 		return
 	}
 	state := hex.EncodeToString(stateBytes)
 	sess.OAuthState = state
 	if err := h.sessionStore.Save(sess); err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session échec", "err", err)
-		writeError(w, http.StatusInternalServerError, "session_save_failed", "sauvegarde session échouée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "session_save_failed", "sauvegarde session échouée")
 		return
 	}
 
@@ -107,13 +108,13 @@ func (h *XboxOAuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request)
 // GET /auth/xbox/callback?code=...&state=...
 func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	if h.demoMode {
-		writeError(w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
+		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
 		return
 	}
 
@@ -124,14 +125,14 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		// Effacer le state pour empêcher la rejouabilité.
 		sess.OAuthState = ""
 		_ = h.sessionStore.Save(sess)
-		writeError(w, http.StatusBadRequest, "oauth_denied", errDesc)
+		writeError(r.Context(), w, http.StatusBadRequest, "oauth_denied", errDesc)
 		return
 	}
 
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
-		writeError(w, http.StatusBadRequest, "missing_params", "code ou state absent")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "code ou state absent")
 		return
 	}
 
@@ -142,7 +143,7 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	if expected == "" || state != expected {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: state mismatch — possible CSRF",
 			"expected_set", expected != "", "received_set", state != "")
-		writeError(w, http.StatusForbidden, "state_mismatch", "state CSRF invalide")
+		writeError(r.Context(), w, http.StatusForbidden, "state_mismatch", "state CSRF invalide")
 		return
 	}
 
@@ -150,7 +151,7 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: échange code échec", "err", err)
-		writeError(w, http.StatusInternalServerError, "code_exchange_failed", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "code_exchange_failed", err.Error())
 		return
 	}
 
@@ -158,7 +159,7 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	exchangeResult, err := h.provider.Exchange(r.Context(), tokenResult.AccessToken)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: provider.Exchange échec", "err", err)
-		writeError(w, http.StatusInternalServerError, "halo_exchange_failed", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "halo_exchange_failed", err.Error())
 		return
 	}
 
@@ -204,7 +205,7 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 				slog.WarnContext(r.Context(), "auth_xbox_oauth: LinkStrategy renvoie ErrSessionNotAuthenticated")
 			} else {
 				slog.ErrorContext(r.Context(), "auth_xbox_oauth: LinkStrategy.OnAuthSuccess échec", "err", err)
-				writeError(w, http.StatusInternalServerError, "link_failed", err.Error())
+				writeError(r.Context(), w, http.StatusInternalServerError, "link_failed", err.Error())
 				return
 			}
 		}

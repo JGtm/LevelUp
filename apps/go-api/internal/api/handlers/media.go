@@ -169,14 +169,14 @@ func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	req := domain.MediaPageRequest{Page: 1}
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 	}
@@ -186,7 +186,7 @@ func (h *MediaHandler) GetMediaLibrary(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := svc.GetMediaPage(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "media_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "media_page_error", err.Error())
 		return
 	}
 
@@ -202,13 +202,13 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.MediaLikeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 
@@ -234,7 +234,7 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, dblease.ErrDBLocked) {
 			w.Header().Set("Retry-After", "5")
-			writeError(w, http.StatusServiceUnavailable, "db_busy",
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
 				"database is currently busy, please retry")
 			return
 		}
@@ -242,14 +242,14 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 		if errors.As(err, &apiErr) {
 			switch apiErr.Code {
 			case "bad_request":
-				writeError(w, http.StatusBadRequest, apiErr.Code, apiErr.Message)
+				writeError(r.Context(), w, http.StatusBadRequest, apiErr.Code, apiErr.Message)
 				return
 			case "not_found":
-				writeError(w, http.StatusNotFound, apiErr.Code, apiErr.Message)
+				writeError(r.Context(), w, http.StatusNotFound, apiErr.Code, apiErr.Message)
 				return
 			}
 		}
-		writeError(w, http.StatusInternalServerError, "media_like_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "media_like_error", err.Error())
 		return
 	}
 
@@ -319,31 +319,31 @@ func ownerSlugFromFilePath(filePath string) string {
 // POST /api/v1/players/{player_slug}/media/upload
 func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	if h.newUpload == nil {
-		writeError(w, http.StatusNotImplemented, "upload_not_configured", "upload factory non configurée")
+		writeError(r.Context(), w, http.StatusNotImplemented, "upload_not_configured", "upload factory non configurée")
 		return
 	}
 
 	slug := chi.URLParam(r, "player_slug")
 	svc, gamertag, titleSlug, dbPath, sharedSocialDBPath, sharedMatchesDBPath, err := h.newUpload(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeError(w, http.StatusRequestEntityTooLarge, "upload_too_large",
+		writeError(r.Context(), w, http.StatusRequestEntityTooLarge, "upload_too_large",
 			"fichiers trop volumineux (max 500 Mo)")
 		return
 	}
 
 	files, err := parseUploadedFiles(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "upload_parse_error", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "upload_parse_error", err.Error())
 		return
 	}
 	if len(files) == 0 {
-		writeError(w, http.StatusBadRequest, "no_valid_files",
+		writeError(r.Context(), w, http.StatusBadRequest, "no_valid_files",
 			"aucun fichier valide (extensions acceptées : mp4 mov avi mkv webm png jpg jpeg bmp gif)")
 		return
 	}
@@ -365,7 +365,7 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	result, err := svc.UploadMedia(r.Context(), req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "upload: erreur service", "err", err)
-		writeError(w, http.StatusInternalServerError, "upload_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "upload_error", err.Error())
 		return
 	}
 
@@ -432,12 +432,12 @@ func (h *MediaHandler) GetMediaMatchCandidates(w http.ResponseWriter, r *http.Re
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	filePath := r.URL.Query().Get("file_path")
 	if filePath == "" {
-		writeError(w, http.StatusBadRequest, "missing_file_path", "file_path query param requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_file_path", "file_path query param requis")
 		return
 	}
 	window := 15
@@ -448,7 +448,7 @@ func (h *MediaHandler) GetMediaMatchCandidates(w http.ResponseWriter, r *http.Re
 	}
 	resp, err := svc.GetMatchCandidates(r.Context(), filePath, window)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "candidates_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "candidates_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -460,17 +460,17 @@ func (h *MediaHandler) PostMediaAssociate(w http.ResponseWriter, r *http.Request
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	var req domain.MediaAssociateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	resp, err := svc.AssociateMediaToMatch(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "associate_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "associate_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -482,20 +482,20 @@ func (h *MediaHandler) PostMediaAssociate(w http.ResponseWriter, r *http.Request
 // GET /api/v1/players/{player_slug}/media/authors
 func (h *MediaHandler) GetMediaAuthors(w http.ResponseWriter, r *http.Request) {
 	if h.newPlayerCtx == nil || h.loadProfiles == nil {
-		writeError(w, http.StatusNotImplemented, "authors_not_configured", "authors context non configuré")
+		writeError(r.Context(), w, http.StatusNotImplemented, "authors_not_configured", "authors context non configuré")
 		return
 	}
 
 	slug := chi.URLParam(r, "player_slug")
 	titleSlug, currentGamertag, err := h.newPlayerCtx(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	profiles, err := h.loadProfiles(r.Context(), titleSlug)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "profiles_load_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", err.Error())
 		return
 	}
 
@@ -716,12 +716,12 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 	// Nettoyer le chemin URL (gère les "..")
 	cleanURL := path.Clean("/" + rpath)
 	if strings.Contains(cleanURL, "..") {
-		http.Error(w, "invalid path", http.StatusBadRequest)
+		httpError(r.Context(), w, "invalid path", http.StatusBadRequest)
 		return
 	}
 	cleanURL = strings.TrimPrefix(cleanURL, "/")
 	if cleanURL == "" || cleanURL == "." {
-		http.Error(w, "not found", http.StatusNotFound)
+		httpError(r.Context(), w, "not found", http.StatusNotFound)
 		return
 	}
 
@@ -744,7 +744,7 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		playerDirs = append(playerDirs, filepath.Dir(internalCapturesDir))
 	}
 	if len(playerDirs) == 0 {
-		http.Error(w, "file serving not configured", http.StatusServiceUnavailable)
+		httpError(r.Context(), w, "file serving not configured", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -781,5 +781,5 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Error(w, "not found", http.StatusNotFound)
+	httpError(r.Context(), w, "not found", http.StatusNotFound)
 }

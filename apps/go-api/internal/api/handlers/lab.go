@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -28,7 +29,7 @@ func (h *LabHandler) GetResources(w http.ResponseWriter, r *http.Request) {
 	}
 	data, err := h.svc.GetResources(r.Context(), query)
 	if err != nil {
-		writeLabError(w, err)
+		writeLabError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
@@ -38,7 +39,7 @@ func (h *LabHandler) GetResources(w http.ResponseWriter, r *http.Request) {
 func (h *LabHandler) GetContracts(w http.ResponseWriter, r *http.Request) {
 	data, err := h.svc.GetContracts(r.Context())
 	if err != nil {
-		writeLabError(w, err)
+		writeLabError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
@@ -48,7 +49,7 @@ func (h *LabHandler) GetContracts(w http.ResponseWriter, r *http.Request) {
 func (h *LabHandler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 	data, err := h.svc.GetDiagnostics(r.Context())
 	if err != nil {
-		writeLabError(w, err)
+		writeLabError(r.Context(), w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, data)
@@ -65,7 +66,7 @@ func parseLabResourcesQuery(w http.ResponseWriter, r *http.Request) (domain.LabR
 	if raw := q.Get("limit"); raw != "" {
 		limit, err := strconv.Atoi(raw)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_limit", "Le paramètre limit doit être un entier.")
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_limit", "Le paramètre limit doit être un entier.")
 			return domain.LabResourcesQuery{}, false
 		}
 		query.Limit = limit
@@ -73,7 +74,7 @@ func parseLabResourcesQuery(w http.ResponseWriter, r *http.Request) (domain.LabR
 	if raw := q.Get("medal_id"); raw != "" {
 		medalID, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_medal_id", "Le paramètre medal_id doit être un entier.")
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_medal_id", "Le paramètre medal_id doit être un entier.")
 			return domain.LabResourcesQuery{}, false
 		}
 		query.MedalID = medalID
@@ -81,10 +82,10 @@ func parseLabResourcesQuery(w http.ResponseWriter, r *http.Request) (domain.LabR
 	return query, true
 }
 
-func writeLabError(w http.ResponseWriter, err error) {
+func writeLabError(ctx context.Context, w http.ResponseWriter, err error) {
 	if errors.Is(err, service.ErrLabForbidden) {
-		writeError(w, http.StatusForbidden, "instance_management_disabled", "Le Lab interne n'est pas autorisé sur cette instance.")
+		writeError(ctx, w, http.StatusForbidden, "instance_management_disabled", "Le Lab interne n'est pas autorisé sur cette instance.")
 		return
 	}
-	writeError(w, http.StatusInternalServerError, "lab_error", err.Error())
+	writeError(ctx, w, http.StatusInternalServerError, "lab_error", err.Error())
 }

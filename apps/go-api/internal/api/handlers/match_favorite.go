@@ -35,19 +35,19 @@ func (h *MatchFavoriteHandler) PatchMatchFavorite(w http.ResponseWriter, r *http
 	matchID := chi.URLParam(r, "match_id")
 
 	if matchID == "" {
-		writeError(w, http.StatusBadRequest, "missing_match_id", "match_id requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_match_id", "match_id requis")
 		return
 	}
 
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.MatchFavoriteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 		return
 	}
 	req.PlayerSlug = slug
@@ -56,13 +56,13 @@ func (h *MatchFavoriteHandler) PatchMatchFavorite(w http.ResponseWriter, r *http
 	if err := svc.ToggleMatchFavorite(r.Context(), req); err != nil {
 		if errors.Is(err, dblease.ErrDBLocked) {
 			w.Header().Set("Retry-After", "5")
-			writeError(w, http.StatusServiceUnavailable, "db_busy",
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
 				"database is currently busy, please retry")
 			return
 		}
 		slog.ErrorContext(r.Context(), "match_favorite: erreur bascule",
 			"err", err, "match_id", matchID, "player", slug)
-		writeError(w, http.StatusInternalServerError, "favorite_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "favorite_error", err.Error())
 		return
 	}
 

@@ -171,23 +171,23 @@ func truncate(s string, max int) string {
 func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 	appCfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 		return
 	}
 	if !appCfg.CanStartInitialSync {
-		writeError(w, http.StatusForbidden, "initial_sync_disabled",
+		writeError(r.Context(), w, http.StatusForbidden, "initial_sync_disabled",
 			"Le lancement d'une sync initiale est désactivé sur cette instance.")
 		return
 	}
 
 	var req domain.InitialSyncStartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Corps de requete JSON invalide.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requete JSON invalide.")
 		return
 	}
 
 	if req.PlayerSlug == "" || len(req.PlayerSlug) > 50 {
-		writeError(w, http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 		return
 	}
 
@@ -203,19 +203,19 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		req.MaxMatches = 200
 	}
 	if req.MaxMatches < 1 || req.MaxMatches > 2000 {
-		writeError(w, http.StatusBadRequest, "invalid_max_matches", "max_matches doit etre entre 1 et 2000.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_max_matches", "max_matches doit etre entre 1 et 2000.")
 		return
 	}
 
 	if active := h.jobStore.FindActiveInitialSync(req.PlayerSlug); active != nil {
-		writeError(w, http.StatusConflict, "sync_already_active",
+		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
 			"Une sync initiale est deja en cours pour ce joueur.")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil || sess.HaloTokens == nil {
-		writeError(w, http.StatusUnauthorized, "auth_required",
+		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required",
 			"Tokens Halo absents.")
 		return
 	}
@@ -223,7 +223,7 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 		return
 	}
 	var gamertag, xuid string
@@ -235,7 +235,7 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if gamertag == "" {
-		writeError(w, http.StatusNotFound, "player_not_found",
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found",
 			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", req.PlayerSlug))
 		return
 	}
@@ -280,12 +280,12 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 	playerSlug := r.PathValue("player_slug")
 	if playerSlug == "" {
-		writeError(w, http.StatusBadRequest, "invalid_player_slug", "player_slug manquant.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_player_slug", "player_slug manquant.")
 		return
 	}
 
 	if active := h.jobStore.FindActiveInitialSync(playerSlug); active != nil {
-		writeError(w, http.StatusConflict, "sync_already_active",
+		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
 			"Une synchronisation est déjà en cours pour ce joueur.")
 		return
 	}
@@ -298,7 +298,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil || sess.HaloTokens == nil {
-		writeError(w, http.StatusUnauthorized, "auth_required",
+		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required",
 			"Tokens Halo absents.")
 		return
 	}
@@ -306,7 +306,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 		return
 	}
 	var gamertag, xuid string
@@ -318,7 +318,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if gamertag == "" {
-		writeError(w, http.StatusNotFound, "player_not_found",
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found",
 			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", playerSlug))
 		return
 	}
@@ -361,18 +361,18 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 	sess := middleware.GetSession(r.Context())
 	if sess == nil || sess.HaloTokens == nil {
-		writeError(w, http.StatusUnauthorized, "auth_required", "Tokens Halo absents.")
+		writeError(r.Context(), w, http.StatusUnauthorized, "auth_required", "Tokens Halo absents.")
 		return
 	}
 	tokens := sess.HaloTokens
 
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error", "Impossible de charger db_profiles.json.")
 		return
 	}
 	if len(players) == 0 {
-		writeError(w, http.StatusNotFound, "no_players", "Aucun joueur configuré dans db_profiles.json.")
+		writeError(r.Context(), w, http.StatusNotFound, "no_players", "Aucun joueur configuré dans db_profiles.json.")
 		return
 	}
 

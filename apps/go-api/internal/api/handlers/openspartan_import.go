@@ -103,19 +103,19 @@ func NewOpenSpartanImportHandler(cfg OpenSpartanImportConfig) *OpenSpartanImport
 //   - 503 in demo mode
 func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Request) {
 	if h.demoMode {
-		writeError(w, http.StatusServiceUnavailable, "demo_mode",
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "demo_mode",
 			"import OpenSpartan désactivé en mode démo")
 		return
 	}
 	if h.importSvc == nil || h.jobStore == nil {
-		writeError(w, http.StatusServiceUnavailable, "import_not_configured",
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "import_not_configured",
 			"service d'import non configuré côté serveur")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil || sess.LinkedHaloIdentity == nil || sess.LinkedHaloIdentity.XUID == "" {
-		writeError(w, http.StatusUnauthorized, "halo_auth_required",
+		writeError(r.Context(), w, http.StatusUnauthorized, "halo_auth_required",
 			"connexion Xbox/Halo requise pour l'import OpenSpartan")
 		return
 	}
@@ -124,14 +124,14 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 
 	r.Body = http.MaxBytesReader(w, r.Body, openSpartanMaxUpload)
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeError(w, http.StatusRequestEntityTooLarge, "upload_too_large",
+		writeError(r.Context(), w, http.StatusRequestEntityTooLarge, "upload_too_large",
 			fmt.Sprintf("fichier trop volumineux (max %d Mo)", openSpartanMaxUpload>>20))
 		return
 	}
 
 	tmpPath, err := h.saveUploadedDB(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "upload_failed", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "upload_failed", err.Error())
 		return
 	}
 

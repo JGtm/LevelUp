@@ -14,6 +14,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 )
@@ -29,6 +30,8 @@ func LoopbackOnly(next http.Handler) http.Handler {
 		}
 		ip := net.ParseIP(host)
 		if ip == nil || !ip.IsLoopback() {
+			slog.WarnContext(r.Context(), "middleware.loopback: refus accès non-loopback",
+				"remote_addr", r.RemoteAddr, "path", r.URL.Path)
 			http.Error(w, "forbidden: loopback only", http.StatusForbidden)
 			return
 		}

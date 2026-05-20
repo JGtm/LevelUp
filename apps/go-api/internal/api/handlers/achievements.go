@@ -27,7 +27,7 @@ func (h *AchievementsHandler) GetAchievementsPage(w http.ResponseWriter, r *http
 
 	svc, err := h.newSvc(ctx, slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *AchievementsHandler) GetAchievementsPage(w http.ResponseWriter, r *http
 	if err != nil {
 		slog.ErrorContext(ctx, "achievements handler failed",
 			"err", err, "player", slug, "endpoint", "GET /pages/achievements")
-		writeError(w, http.StatusInternalServerError, "achievements_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "achievements_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)

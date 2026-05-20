@@ -136,7 +136,7 @@ type fieldMappingsResponse struct {
 func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
-		writeError(w, http.StatusBadRequest, "missing_slug", "title slug requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_slug", "title slug requis")
 		return
 	}
 
@@ -150,7 +150,7 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	set, ok := h.registry.Get(slug)
 	if !ok {
-		writeError(w, http.StatusNotFound, "title_not_found",
+		writeError(r.Context(), w, http.StatusNotFound, "title_not_found",
 			fmt.Sprintf("title %q n'a pas de field mappings chargés", slug))
 		return
 	}
@@ -166,7 +166,7 @@ func (h *FieldMappingsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	body, err := json.Marshal(resp)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "marshal_failed", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "marshal_failed", err.Error())
 		return
 	}
 

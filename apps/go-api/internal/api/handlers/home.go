@@ -68,14 +68,14 @@ func (h *HomeHandler) GetHomePage(w http.ResponseWriter, r *http.Request) {
 	svc, ctx, _, gamertag, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "home: newSvc error", "slug", slug, "err", err)
-		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
 	page, err := svc.GetHomePage(ctx, gamertag, h.resolveLocale(r))
 	if err != nil {
 		slog.ErrorContext(ctx, "home: GetHomePage error", "err", err, "gamertag", gamertag)
-		writeError(w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
+		writeError(r.Context(), w, http.StatusInternalServerError, "home_page_error", "erreur chargement page d'accueil")
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *HomeHandler) GetBattlePass(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, ctx, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *HomeHandler) GetChallenges(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, ctx, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 

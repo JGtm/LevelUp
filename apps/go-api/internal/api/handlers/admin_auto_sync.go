@@ -85,10 +85,10 @@ type TokenProbeResult struct {
 	RefreshTokenTail   string `json:"refresh_token_tail,omitempty"`
 
 	// Résultat du Resolve (pipeline complet : MSAL/OAuth → Exchange Halo).
-	ResolveOK             bool   `json:"resolve_ok"`
-	ResolveError          string `json:"resolve_error,omitempty"`
-	SpartanTokenLen       int    `json:"spartan_token_len,omitempty"`
-	RefreshTokenWasRotated bool  `json:"refresh_token_was_rotated"`
+	ResolveOK              bool   `json:"resolve_ok"`
+	ResolveError           string `json:"resolve_error,omitempty"`
+	SpartanTokenLen        int    `json:"spartan_token_len,omitempty"`
+	RefreshTokenWasRotated bool   `json:"refresh_token_was_rotated"`
 }
 
 // fingerprintToken retourne sha256 + head/tail tronqués pour identifier un
@@ -118,7 +118,7 @@ func fingerprintToken(s string) (sha string, head string, tail string) {
 func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Request) {
 	gamertag := r.URL.Query().Get("gamertag")
 	if gamertag == "" {
-		writeError(w, http.StatusBadRequest, "missing_gamertag", "query param gamertag requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_gamertag", "query param gamertag requis")
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Reques
 	discovery := pool.NewDiscovery(h.cfg, pr, titlePkg.DefaultSlug)
 	sources, err := discovery.Scan(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "discovery_scan_failed", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "discovery_scan_failed", err.Error())
 		return
 	}
 

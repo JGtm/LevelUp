@@ -54,7 +54,7 @@ func (h *UserAuthHandler) WithAuthMode(authMode string) *UserAuthHandler {
 func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req domain.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 		return
 	}
 
@@ -62,11 +62,11 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, userstore.ErrInvalidCredentials) {
 			slog.Warn("auth: login échoué", "username", req.Username, "ip", r.RemoteAddr)
-			writeError(w, http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
+			writeError(r.Context(), w, http.StatusUnauthorized, "invalid_credentials", "identifiants incorrects")
 			return
 		}
 		slog.Error("auth: erreur authenticate", "username", req.Username, "err", err)
-		writeError(w, http.StatusInternalServerError, "auth_error", "erreur d'authentification")
+		writeError(r.Context(), w, http.StatusInternalServerError, "auth_error", "erreur d'authentification")
 		return
 	}
 
@@ -75,7 +75,7 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if h.authMode == "xbox" && user.Role != domain.RoleAdmin {
 		slog.Warn("auth: login password non-admin bloqué en mode xbox",
 			"username", user.Username, "role", user.Role)
-		writeError(w, http.StatusForbidden, "password_login_admin_only",
+		writeError(r.Context(), w, http.StatusForbidden, "password_login_admin_only",
 			"mode SSO Xbox actif : login password réservé aux admins")
 		return
 	}
@@ -87,7 +87,7 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Stocker les infos dans la session.
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
 		return
 	}
 	sess.Username = &user.Username
@@ -112,14 +112,14 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req domain.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 		return
 	}
 
 	// Vérifier si c'est le premier utilisateur (auto-admin).
 	empty, err := h.users.IsEmpty()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "store_error", "erreur interne")
+		writeError(r.Context(), w, http.StatusInternalServerError, "store_error", "erreur interne")
 		return
 	}
 
@@ -133,22 +133,22 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		// initial (users.json vide). Hors bootstrap, les comptes sont créés via le flow SSO.
 		if h.authMode == "xbox" {
 			slog.Warn("auth: register password bloqué en mode xbox", "username", req.Username)
-			writeError(w, http.StatusForbidden, "register_xbox_mode",
+			writeError(r.Context(), w, http.StatusForbidden, "register_xbox_mode",
 				"mode SSO Xbox actif : les nouveaux comptes sont créés via la connexion Xbox")
 			return
 		}
 		// Vérifier le mode d'inscription.
 		if h.regMode == "closed" {
-			writeError(w, http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")
+			writeError(r.Context(), w, http.StatusForbidden, "registration_closed", "les inscriptions sont fermées")
 			return
 		}
 		if h.regMode == "invite" {
 			if req.InviteCode == "" {
-				writeError(w, http.StatusBadRequest, "invite_required", "code d'invitation requis")
+				writeError(r.Context(), w, http.StatusBadRequest, "invite_required", "code d'invitation requis")
 				return
 			}
 			if err := h.invites.Validate(req.InviteCode); err != nil {
-				writeError(w, http.StatusForbidden, "invalid_invite", "code d'invitation invalide ou expiré")
+				writeError(r.Context(), w, http.StatusForbidden, "invalid_invite", "code d'invitation invalide ou expiré")
 				return
 			}
 		}
@@ -158,14 +158,14 @@ func (h *UserAuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, userstore.ErrUserAlreadyExists) {
 			slog.Warn("auth: register username déjà pris", "username", req.Username)
-			writeError(w, http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
+			writeError(r.Context(), w, http.StatusConflict, "user_exists", "nom d'utilisateur déjà pris")
 			return
 		}
 		if errors.Is(err, userstore.ErrInvalidUsername) || errors.Is(err, userstore.ErrPasswordTooShort) {
-			writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "create_error", "erreur de création")
+		writeError(r.Context(), w, http.StatusInternalServerError, "create_error", "erreur de création")
 		return
 	}
 

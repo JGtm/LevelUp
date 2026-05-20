@@ -5,6 +5,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -32,6 +33,8 @@ func CSRF(allowedOrigins []string) func(http.Handler) http.Handler {
 			}
 
 			if origin == "" || !isAllowedOrigin(origin, allowed) {
+				slog.WarnContext(r.Context(), "middleware.csrf: origin non autorisée",
+					"origin", origin, "path", r.URL.Path, "method", r.Method)
 				http.Error(w, `{"code":"csrf_rejected","message":"origin non autorisée"}`, http.StatusForbidden)
 				return
 			}

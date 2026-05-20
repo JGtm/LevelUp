@@ -128,7 +128,7 @@ func (h *ProgressionHandler) ListStreaks(w http.ResponseWriter, r *http.Request)
 	list, err := repo.List(r.Context(), pdb.XUID, h.titleSlug)
 	if err != nil {
 		slog.WarnContext(r.Context(), "progression: list streaks", "err", err)
-		writeError(w, http.StatusInternalServerError, "list_streaks_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_streaks_error", err.Error())
 		return
 	}
 	items := make([]streakDTO, 0, len(list))
@@ -159,7 +159,7 @@ func (h *ProgressionHandler) ListRecords(w http.ResponseWriter, r *http.Request)
 	pbList, err := pbRepo.ListByXUID(r.Context(), pdb.XUID)
 	if err != nil {
 		slog.WarnContext(r.Context(), "progression: list PBs", "err", err)
-		writeError(w, http.StatusInternalServerError, "list_pbs_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_pbs_error", err.Error())
 		return
 	}
 
@@ -167,7 +167,7 @@ func (h *ProgressionHandler) ListRecords(w http.ResponseWriter, r *http.Request)
 	histList, err := historyRepo.ListRecent(r.Context(), pdb.XUID, h.titleSlug, limit)
 	if err != nil {
 		slog.WarnContext(r.Context(), "progression: list record history", "err", err)
-		writeError(w, http.StatusInternalServerError, "list_history_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_history_error", err.Error())
 		return
 	}
 
@@ -195,7 +195,7 @@ func (h *ProgressionHandler) ListMilestones(w http.ResponseWriter, r *http.Reque
 	catalog, err := catalogRepo.ListByTitle(r.Context(), h.titleSlug)
 	if err != nil {
 		slog.WarnContext(r.Context(), "progression: list catalog", "err", err)
-		writeError(w, http.StatusInternalServerError, "list_catalog_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_catalog_error", err.Error())
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *ProgressionHandler) ListMilestones(w http.ResponseWriter, r *http.Reque
 	earnedList, err := earnedRepo.ListByUser(r.Context(), pdb.XUID, h.titleSlug)
 	if err != nil {
 		slog.WarnContext(r.Context(), "progression: list earned", "err", err)
-		writeError(w, http.StatusInternalServerError, "list_earned_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_earned_error", err.Error())
 		return
 	}
 	earnedByID := make(map[string]time.Time, len(earnedList))
@@ -232,7 +232,7 @@ func (h *ProgressionHandler) resolveOr404(w http.ResponseWriter, r *http.Request
 	slug := chi.URLParam(r, "player_slug")
 	pdb, err := h.resolve(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return nil, false
 	}
 	return pdb, true

@@ -33,13 +33,13 @@ func (h *SeasonPassHandler) GetSeasonPass(w http.ResponseWriter, r *http.Request
 	slug := chi.URLParam(r, "player_slug")
 	svc, ctx, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", "joueur introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", "joueur introuvable")
 		return
 	}
 
 	page, err := svc.GetSeasonPassPage(ctx)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "season_pass_error", "erreur chargement page Season Pass")
+		writeError(r.Context(), w, http.StatusInternalServerError, "season_pass_error", "erreur chargement page Season Pass")
 		return
 	}
 

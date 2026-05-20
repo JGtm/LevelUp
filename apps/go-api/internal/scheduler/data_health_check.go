@@ -12,8 +12,13 @@
 // Anomalies suivies :
 //   - match_registry.map_name / pair_name UUID brut (régression sync)
 //   - bits MENTEURS MBitEvents/MBitWeaponKills sans data
-//   - xuids orphelins (sans alias en DB)
 //   - banner garbage URLs (`/Waypoint/file/images/`) résiduelles
+//
+// Les xuids orphelins sont collectés à titre informatif (logs) mais
+// **exclus** de WarningsTotal car par nature non-résolvables sans
+// implémentation Microsoft Xbox profile API (cf. thought_log 2026-05-08
+// "84 → 12 — limite Xbox API"). Émettre une notif pour eux ne fait que
+// du bruit récurrent.
 //
 // Aucune action de repair automatique : émet juste la notif. L'admin
 // déclenche manuellement `cmd/repair_data_consistency` si besoin.
@@ -213,19 +218,31 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		}
 	}
 
-	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.OrphanXUIDs + res.GarbageBannerURLs
+	// OrphanXUIDs volontairement exclu du total : par nature non-résolvable
+	// sans Xbox profile API (12 résiduels stables depuis 2026-05-08). Le
+	// compteur reste rempli pour les logs / diag manuel.
+	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
 	res.Duration = time.Since(start)
 
-	slog.InfoContext(ctx, "data_health: cycle terminé",
-		"warnings_total", res.WarningsTotal,
-		"baseline", s.baselineWarnings,
-		"uuids_raw", res.UUIDsRawCount,
-		"lying_bits_events", res.LyingBitsEvents,
-		"lying_bits_weapons", res.LyingBitsWeaponKills,
-		"orphan_xuids", res.OrphanXUIDs,
-		"garbage_banner_urls", res.GarbageBannerURLs,
-		"duration", res.Duration.Round(time.Millisecond),
-	)
+	// Cas nominal (warnings_total=0) : ligne courte pour rester scannable. Sinon
+	// dump complet des compteurs pour permettre le diag immédiat.
+	if res.WarningsTotal == 0 {
+		slog.InfoContext(ctx, "data_health: cycle terminé",
+			"warnings_total", 0,
+			"duration", res.Duration.Round(time.Millisecond),
+		)
+	} else {
+		slog.InfoContext(ctx, "data_health: cycle terminé",
+			"warnings_total", res.WarningsTotal,
+			"baseline", s.baselineWarnings,
+			"uuids_raw", res.UUIDsRawCount,
+			"lying_bits_events", res.LyingBitsEvents,
+			"lying_bits_weapons", res.LyingBitsWeaponKills,
+			"orphan_xuids", res.OrphanXUIDs,
+			"garbage_banner_urls", res.GarbageBannerURLs,
+			"duration", res.Duration.Round(time.Millisecond),
+		)
+	}
 
 	if res.WarningsTotal > s.baselineWarnings && s.notif != nil {
 		s.emitWarningNotification(ctx, res)
@@ -246,12 +263,12 @@ func (s *HealthScheduler) emitWarningNotification(ctx context.Context, res *Data
 			"uuids_raw":           res.UUIDsRawCount,
 			"lying_bits_events":   res.LyingBitsEvents,
 			"lying_bits_weapons":  res.LyingBitsWeaponKills,
-			"orphan_xuids":        res.OrphanXUIDs,
 			"garbage_banner_urls": res.GarbageBannerURLs,
 			"hint":                "Relancer cmd/repair_data_consistency pour résoudre",
 		},
-		TargetRoute: "/admin/data-health",
-		Source:      "data_health_scheduler",
+		// TargetRoute volontairement vide : le frontend fallback navigation.ts
+		// route vers /players/{slug}/notifications (cf. resolveTarget).
+		Source: "data_health_scheduler",
 	}
 	if err := s.notif.Emit(ctx, in); err != nil {
 		slog.WarnContext(ctx, "data_health: échec émission notif", "err", err)

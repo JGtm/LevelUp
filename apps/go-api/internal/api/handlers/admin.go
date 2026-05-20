@@ -38,7 +38,7 @@ func NewAdminHandler(users *userstore.Store, invites *userstore.InviteStore) *Ad
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.users.List()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "list_error", "erreur de récupération")
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_error", "erreur de récupération")
 		return
 	}
 	writeJSON(w, http.StatusOK, users)
@@ -50,11 +50,11 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 	if err := h.users.Delete(username); err != nil {
 		if errors.Is(err, userstore.ErrUserNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "utilisateur introuvable")
+			writeError(r.Context(), w, http.StatusNotFound, "not_found", "utilisateur introuvable")
 			return
 		}
 		slog.Error("admin: erreur delete user", "target", username, "err", err)
-		writeError(w, http.StatusInternalServerError, "delete_error", "erreur de suppression")
+		writeError(r.Context(), w, http.StatusInternalServerError, "delete_error", "erreur de suppression")
 		return
 	}
 	slog.Info("admin: utilisateur supprimé", "target", username, "by", adminUsername(r))
@@ -69,20 +69,20 @@ func (h *AdminHandler) ChangeRole(w http.ResponseWriter, r *http.Request) {
 		Role domain.UserRole `json:"role"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 		return
 	}
 	if body.Role != domain.RoleAdmin && body.Role != domain.RoleUser {
-		writeError(w, http.StatusBadRequest, "invalid_role", "rôle invalide (admin ou user)")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_role", "rôle invalide (admin ou user)")
 		return
 	}
 	if err := h.users.SetRole(username, body.Role); err != nil {
 		if errors.Is(err, userstore.ErrUserNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "utilisateur introuvable")
+			writeError(r.Context(), w, http.StatusNotFound, "not_found", "utilisateur introuvable")
 			return
 		}
 		slog.Error("admin: erreur change role", "target", username, "role", body.Role, "err", err)
-		writeError(w, http.StatusInternalServerError, "role_error", "erreur de modification")
+		writeError(r.Context(), w, http.StatusInternalServerError, "role_error", "erreur de modification")
 		return
 	}
 	slog.Info("admin: rôle modifié", "target", username, "role", body.Role, "by", adminUsername(r))
@@ -97,20 +97,20 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		NewPassword string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps de requête invalide")
 		return
 	}
 	if err := h.users.ResetPassword(username, body.NewPassword); err != nil {
 		if errors.Is(err, userstore.ErrUserNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "utilisateur introuvable")
+			writeError(r.Context(), w, http.StatusNotFound, "not_found", "utilisateur introuvable")
 			return
 		}
 		if errors.Is(err, userstore.ErrPasswordTooShort) {
-			writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
 			return
 		}
 		slog.Error("admin: erreur reset password", "target", username, "err", err)
-		writeError(w, http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
+		writeError(r.Context(), w, http.StatusInternalServerError, "reset_error", "erreur de réinitialisation")
 		return
 	}
 	slog.Info("admin: mot de passe réinitialisé", "target", username, "by", adminUsername(r))
@@ -122,7 +122,7 @@ func (h *AdminHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
 	invites, err := h.invites.List()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "list_error", "erreur de récupération")
+		writeError(r.Context(), w, http.StatusInternalServerError, "list_error", "erreur de récupération")
 		return
 	}
 	writeJSON(w, http.StatusOK, invites)
@@ -152,7 +152,7 @@ func (h *AdminHandler) GenerateInvite(w http.ResponseWriter, r *http.Request) {
 	invite, err := h.invites.Generate(createdBy, body.ExpiresInDays)
 	if err != nil {
 		slog.Error("admin: erreur generate invite", "by", createdBy, "err", err)
-		writeError(w, http.StatusInternalServerError, "generate_error", "erreur de génération")
+		writeError(r.Context(), w, http.StatusInternalServerError, "generate_error", "erreur de génération")
 		return
 	}
 	slog.Info("admin: invitation générée", "code", invite.Code, "by", createdBy, "expires_in_days", body.ExpiresInDays)
@@ -165,11 +165,11 @@ func (h *AdminHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 	if err := h.invites.Revoke(code); err != nil {
 		if errors.Is(err, userstore.ErrInviteNotFound) {
-			writeError(w, http.StatusNotFound, "not_found", "invitation introuvable")
+			writeError(r.Context(), w, http.StatusNotFound, "not_found", "invitation introuvable")
 			return
 		}
 		slog.Error("admin: erreur revoke invite", "code", code, "err", err)
-		writeError(w, http.StatusInternalServerError, "revoke_error", "erreur de révocation")
+		writeError(r.Context(), w, http.StatusInternalServerError, "revoke_error", "erreur de révocation")
 		return
 	}
 	slog.Info("admin: invitation révoquée", "code", code, "by", adminUsername(r))

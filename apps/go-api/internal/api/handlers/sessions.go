@@ -27,7 +27,7 @@ func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
+		writeError(r.Context(), w, http.StatusBadRequest, "player_not_found", "joueur introuvable")
 		return
 	}
 
@@ -48,7 +48,7 @@ func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 
 	resp, svcErr := svc.GetSessions(r.Context(), opts)
 	if svcErr != nil {
-		writeError(w, http.StatusInternalServerError, "sessions_error", "erreur calcul sessions")
+		writeError(r.Context(), w, http.StatusInternalServerError, "sessions_error", "erreur calcul sessions")
 		return
 	}
 

@@ -41,19 +41,19 @@ func NewBackfillHandler(cfg *config.AppConfig, jobStore *jobs.Store) *BackfillHa
 func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) {
 	var req domain.BackfillStartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 		return
 	}
 
 	if req.PlayerSlug == "" || len(req.PlayerSlug) > 50 {
-		writeError(w, http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_player_slug", "player_slug vide ou trop long.")
 		return
 	}
 
 	// Chercher le joueur dans db_profiles.json.
 	players, err := h.cfg.LoadPlayers()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "profiles_load_error",
+		writeError(r.Context(), w, http.StatusInternalServerError, "profiles_load_error",
 			"Impossible de charger db_profiles.json.")
 		return
 	}
@@ -66,14 +66,14 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if gamertag == "" {
-		writeError(w, http.StatusNotFound, "player_not_found",
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found",
 			fmt.Sprintf("Joueur %q introuvable dans db_profiles.json.", req.PlayerSlug))
 		return
 	}
 
 	// 409 si un job backfill est déjà actif pour ce joueur.
 	if active := h.jobStore.FindActiveJob(domain.JobTypeBackfill, req.PlayerSlug); active != nil {
-		writeError(w, http.StatusConflict, "backfill_already_active",
+		writeError(r.Context(), w, http.StatusConflict, "backfill_already_active",
 			"Un backfill est déjà en cours pour ce joueur.")
 		return
 	}
