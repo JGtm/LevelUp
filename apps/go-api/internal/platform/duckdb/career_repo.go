@@ -367,7 +367,7 @@ func (r *CareerRepo) LoadPlaylistAssetTranslationsFR(ctx context.Context, playli
 
 // GetTopEncountersGlobal retourne les 10 joueurs les plus croisés au niveau
 // carrière, hors XUIDs présents dans excludeXUIDs (typiquement les amis
-// configurés). Lit shared.match_participants + shared.killer_victim_pairs.
+// configurés). Lit match_participants + killer_victim_pairs via SharedReader.
 func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []string) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, careerEncountersTimeout)
 	defer cancel()
@@ -404,12 +404,12 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	var stats []domain.EncounterStatsRaw
 	for rows.Next() {
 		var (
-			xuid                                                          string
-			gamertag                                                      string
-			countTogether, allyCount, enemyCount                          int
-			winsAsAlly, lossesAsAlly, winsVsEnemy, lossesVsEnemy          int
-			killsDealt, deathsSuffered                                    int
-			lastSeenAt                                                    sql.NullTime
+			xuid                                                 string
+			gamertag                                             string
+			countTogether, allyCount, enemyCount                 int
+			winsAsAlly, lossesAsAlly, winsVsEnemy, lossesVsEnemy int
+			killsDealt, deathsSuffered                           int
+			lastSeenAt                                           sql.NullTime
 		)
 		if err := rows.Scan(
 			&xuid, &gamertag, &countTogether,
@@ -465,7 +465,7 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 }
 
 // GetRivals retourne les top némésis (par deaths DESC) et top souffre-douleur
-// (par frags DESC), 10 chacun, depuis shared.killer_victim_pairs.
+// (par frags DESC), 10 chacun, depuis killer_victim_pairs via SharedReader.
 // Pas de seuil min — le ratio est calculé côté service.
 func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.CareerRivalRawRow, err error) {
 	ctx, cancel := context.WithTimeout(ctx, careerRivalsTimeout)

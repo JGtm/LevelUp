@@ -2,7 +2,8 @@
 //
 // Chaque constante correspond à une requête de la cartographie Go-migration.
 // Les paramètres positionnels DuckDB utilisent '?' (database/sql style).
-// Toutes les requêtes supposent que shared est ATTACH-é sous l'alias "shared".
+// Les requêtes shared.* sont exécutées via SharedReader (ADR 0016, plus
+// aucun ATTACH `shared` sur les conns du pool depuis le commit 9c.5).
 //
 // Requêtes par domaine :
 //   - queries_career.go         : Q4/Q4MV/Q5, Q6-Q9, Q22-Q25 (filtres, historique, carrière, stats)
