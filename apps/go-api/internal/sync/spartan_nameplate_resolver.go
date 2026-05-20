@@ -24,14 +24,124 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
 	nameplateHost            = "https://gamecms-hacs.svc.halowaypoint.com"
 	nameplateResolverTimeout = 8 * time.Second
+	// emblemMappingURL : endpoint officiel Microsoft (cf. Grunt
+	// GameCms_GetEmblemMapping). Mappe (emblem_id, configuration_id) vers
+	// le nameplateCmsPath exact + textColor. Sans ce mapping, on prenait
+	// la 1ère cfg positive comme fallback → palette potentiellement
+	// inversée par rapport à celle équipée par le joueur.
+	emblemMappingPath = "/hi/Waypoint/file/images/emblems/mapping.json"
+	// emblemMappingTTL : la table change peu (nouveaux emblems quand Halo
+	// release un set). 6h est cohérent avec le TTL customization.
+	emblemMappingTTL = 6 * time.Hour
 )
+
+// emblemMappingEntry projection minimale du JSON Microsoft.
+type emblemMappingEntry struct {
+	NameplateCmsPath string `json:"nameplateCmsPath"`
+	EmblemCmsPath    string `json:"emblemCmsPath"`
+	TextColor        string `json:"textColor"`
+}
+
+// emblemMappingCache : process-level, thread-safe, refresh on TTL miss.
+// Structure : emblemID → ConfigurationId(string) → entry
+var (
+	emblemMappingMu      sync.RWMutex
+	emblemMappingData    map[string]map[string]emblemMappingEntry
+	emblemMappingFetched time.Time
+)
+
+// getEmblemMappingEntry consulte le cache process-level et retourne l'entry
+// exacte pour (emblemID, cfg). Refresh le cache si TTL expiré (best-effort
+// fetch, retombe sur dernière valeur connue en cas d'échec).
+func getEmblemMappingEntry(ctx context.Context, emblemID string, cfg int64, spartanToken, clearanceToken string) (emblemMappingEntry, bool) {
+	emblemMappingMu.RLock()
+	stale := emblemMappingData == nil || time.Since(emblemMappingFetched) > emblemMappingTTL
+	emblemMappingMu.RUnlock()
+
+	if stale {
+		refreshEmblemMapping(ctx, spartanToken, clearanceToken)
+	}
+
+	emblemMappingMu.RLock()
+	defer emblemMappingMu.RUnlock()
+	if emblemMappingData == nil {
+		return emblemMappingEntry{}, false
+	}
+	cfgs, ok := emblemMappingData[emblemID]
+	if !ok {
+		return emblemMappingEntry{}, false
+	}
+	entry, ok := cfgs[strconv.FormatInt(cfg, 10)]
+	return entry, ok
+}
+
+// resetEmblemMappingCacheForTest réinitialise le cache process-level entre
+// tests pour éviter les interférences. Sealed via build tag-free pour
+// que les tests puissent l'appeler.
+func resetEmblemMappingCacheForTest() {
+	emblemMappingMu.Lock()
+	emblemMappingData = nil
+	emblemMappingFetched = time.Time{}
+	emblemMappingMu.Unlock()
+}
+
+// seedEmblemMappingCacheForTest seed le cache avec un mapping arbitraire
+// (test-only). Permet de tester la branche "mapping hit" sans réseau.
+func seedEmblemMappingCacheForTest(data map[string]map[string]emblemMappingEntry) {
+	emblemMappingMu.Lock()
+	emblemMappingData = data
+	emblemMappingFetched = time.Now()
+	emblemMappingMu.Unlock()
+}
+
+// refreshEmblemMapping : fetch + parse + cache. Best-effort, log warn sur
+// échec sans paniquer (le caller fallback sur l'ancien comportement).
+func refreshEmblemMapping(ctx context.Context, spartanToken, clearanceToken string) {
+	reqCtx, cancel := context.WithTimeout(ctx, nameplateResolverTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, "GET", nameplateHost+emblemMappingPath, nil)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("x-343-authorization-spartan", spartanToken)
+	if clearanceToken != "" {
+		req.Header.Set("343-clearance", clearanceToken)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		slog.DebugContext(ctx, "nameplate_resolver: mapping fetch HTTP error", "err", err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		slog.DebugContext(ctx, "nameplate_resolver: mapping non-200", "status", resp.StatusCode)
+		return
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	var parsed map[string]map[string]emblemMappingEntry
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		slog.WarnContext(ctx, "nameplate_resolver: mapping parse failed", "err", err, "size", len(body))
+		return
+	}
+	emblemMappingMu.Lock()
+	emblemMappingData = parsed
+	emblemMappingFetched = time.Now()
+	emblemMappingMu.Unlock()
+	slog.InfoContext(ctx, "nameplate_resolver: mapping refreshed", "entries", len(parsed))
+}
 
 // ResolveNameplateURL retourne l'URL nameplate (image PNG) dérivée d'un
 // emblem path + configuration_id.
@@ -59,16 +169,30 @@ func ResolveNameplateURL(
 		return ""
 	}
 
+	// Pattern OFFICIEL Microsoft (cf. Grunt GameCms_GetEmblemMapping) :
+	// le mapping.json donne nameplateCmsPath EXACT pour la cfg équipée,
+	// même quand cfg est négative (palettes que le CDN sert via format
+	// `_n<abs(cfg)>.png` au lieu de `_<cfg>.png`). Sans ce lookup, on
+	// servait une palette de couleurs incorrecte pour la majorité des
+	// joueurs (bug observé 2026-05-20 : "couleurs inversées" pour JGtm
+	// et autres).
+	if entry, ok := getEmblemMappingEntry(ctx, stem, cfg, spartanToken, clearanceToken); ok && entry.NameplateCmsPath != "" {
+		return fmt.Sprintf("%s/hi/Waypoint/file/%s",
+			nameplateHost, strings.TrimPrefix(entry.NameplateCmsPath, "/"))
+	}
+
+	// Fallback (mapping.json indisponible ou stem absent) : ancien comportement
+	// resolve_positive_emblem_cfg (palette positive arbitraire — couleurs
+	// potentiellement incorrectes mais image servable).
 	resolvedCfg := cfg
 	if resolvedCfg <= 0 {
 		resolvedCfg = resolvePositiveEmblemCfg(ctx, trimmed, spartanToken, clearanceToken)
 		if resolvedCfg <= 0 {
-			slog.WarnContext(ctx, "nameplate_resolver: aucun cfg positif trouvé",
-				"emblem_path", trimmed, "original_cfg", cfg)
+			slog.WarnContext(ctx, "nameplate_resolver: aucun cfg positif trouvé (mapping miss)",
+				"emblem_path", trimmed, "stem", stem, "original_cfg", cfg)
 			return ""
 		}
 	}
-
 	return fmt.Sprintf("%s/hi/Waypoint/file/images/nameplates/%s_%d.png",
 		nameplateHost, stem, resolvedCfg)
 }

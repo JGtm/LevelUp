@@ -18,30 +18,53 @@ package sync
 import (
 	"context"
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
 func TestResolveNameplateURL_PositiveCfgDirect(t *testing.T) {
-	// cfg > 0 : pas d'appel CMS, URL construite directement.
-	// Catch régression : si on appelait CMS même quand cfg > 0,
-	// hammering inutile + latence accrue.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Errorf("CMS appelé alors que cfg > 0 (path=%s)", r.URL.Path)
-		http.NotFound(w, r)
-	}))
-	defer srv.Close()
+	// cfg > 0 : fallback path quand mapping.json est miss. URL construite
+	// directement via stem + cfg.
+	// Note : le mapping.json process-cache peut être vide en test (jamais
+	// chargé) → on tombe sur le fallback `<stem>_<cfg>.png`.
+	resetEmblemMappingCacheForTest()
 
-	// Note : le resolver hardcode gamecms-hacs host. Donc même si on
-	// passe par srv, le call ne devrait pas y aller (cfg > 0 → URL directe).
 	got := ResolveNameplateURL(context.Background(),
 		"Inventory/Spartan/Emblems/104-001-test-emblem-abcdef.json",
 		372285867, "spartan_token", "clearance_token")
 	want := "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/nameplates/104-001-test-emblem-abcdef_372285867.png"
 	if got != want {
-		t.Errorf("URL = %q, want %q", got, want)
+		t.Errorf("URL fallback = %q, want %q", got, want)
+	}
+}
+
+// TestResolveNameplateURL_MappingPreferred cadenasse que quand le mapping.json
+// est chargé en cache, c'est SA valeur qui est retournée (pas le fallback
+// stem+cfg). Catch régression : le bug "couleurs inversées" (2026-05-20)
+// venait du fallback positif qui servait une palette différente de celle
+// équipée. Microsoft publie le nameplateCmsPath exact dans le mapping.
+func TestResolveNameplateURL_MappingPreferred(t *testing.T) {
+	// Seed le cache mapping avec un entry test : pour cette emblem +
+	// cfg, Microsoft expose un nameplateCmsPath différent du fallback.
+	seedEmblemMappingCacheForTest(map[string]map[string]emblemMappingEntry{
+		"104-001-olympus-campa-2ddbe23b": {
+			"-809699482": {
+				NameplateCmsPath: "images/nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png",
+				EmblemCmsPath:    "images/emblems/104-001-olympus-campa-2ddbe23b_n809699482.png",
+				TextColor:        "#FFFFFF",
+			},
+		},
+	})
+	defer resetEmblemMappingCacheForTest()
+
+	// cfg=-809699482 (palette équipée par JGtm). Sans le mapping, on aurait
+	// retombé sur la 1ère cfg positive trouvée → palette différente.
+	got := ResolveNameplateURL(context.Background(),
+		"Inventory/Spartan/Emblems/104-001-olympus-campa-2ddbe23b.json",
+		-809699482, "spartan", "clearance")
+	want := "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png"
+	if got != want {
+		t.Errorf("URL = %q, want %q (mapping should override fallback)", got, want)
 	}
 }
 

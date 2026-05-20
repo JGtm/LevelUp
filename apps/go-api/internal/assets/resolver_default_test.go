@@ -251,6 +251,46 @@ func TestDefaultResolver_Get_IndexUnavailable_FallsBackToFetch(t *testing.T) {
 	}
 }
 
+// TestDefaultResolver_Get_IndexOrphan_FallsBackToFetch cadenasse l'anti-régression
+// du bug "302 vers directory" : si l'index contient une entry pointant vers un
+// LocalPath dont le fichier a été supprimé du FS (cache flush manuel ou rename
+// d'asset upstream) ET sans URL, entryToPayload retournait un URLPayload vide
+// → http.Redirect avec Location="" → résolution relative qui strippe le filename
+// (ex: /api/v1/.../nameplates/file.png → /api/v1/.../nameplates/). Observé en
+// prod 2026-05-20 sur Chocoboflor après nettoyage du cache spartan-banner.
+//
+// Fix : détecter URLPayload vide en sortie d'entryToPayload et retomber sur fetch.
+func TestDefaultResolver_Get_IndexOrphan_FallsBackToFetch(t *testing.T) {
+	store := &stubBinaryStore{hit: nil} // LookupBinary(step 1) miss
+	idx := &stubIndex{
+		available: true,
+		entry: &IndexEntry{
+			Ref:       Ref{Kind: KindMedalImage, TitleID: "hi", ID: "orphan-42"},
+			LocalPath: "/cache/orphan-42.png", // fichier inexistant
+			URL:       "",                     // pas d'URL fallback
+			FetchedAt: time.Now(),
+		},
+	}
+	pngBytes := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
+	fetcher := &stubFetcher{
+		supported: true,
+		payload:   BinaryPayload{ContentType: "image/png", Bytes: pngBytes},
+	}
+	r := NewDefaultResolver(store, idx, fetcher, nil, nil)
+	ref := Ref{Kind: KindMedalImage, TitleID: "hi", ID: "orphan-42"}
+
+	res, err := r.Get(context.Background(), ref)
+	if err != nil {
+		t.Fatalf("erreur inattendue: %v", err)
+	}
+	if res.Source != SourceRemote {
+		t.Errorf("source: got %v, want SourceRemote (orphan index → refetch attendu)", res.Source)
+	}
+	if fetcher.calls != 1 {
+		t.Errorf("fetcher calls: got %d, want 1 (l'orphan index doit déclencher un fetch frais)", fetcher.calls)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Tests Refresh()
 // ---------------------------------------------------------------------------
