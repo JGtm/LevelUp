@@ -1,3 +1,56 @@
+## [2026-05-20] feat(observability) — Commit 20 : ConsoleHandler compact + tronquage + skip attrs verbeux
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 20 — finalisation logging, console lisible sans surcharger le terminal).
+
+**Contexte** : la chaîne `slog.NewTextHandler` natif produit `time=2026-05-19T14:30:08.123+02:00 level=INFO msg="sync.postSync: pipeline démarré" event_id=sync.RunDelta:abc123 source.function=… source.file=… source.line=… gamertag=Madina97294 matches_inserted=3` — illisible en flux temps réel. L'utilisateur a explicitement demandé : "j'aime bien ce que tu as fait ici `14:30:08 [INFO] sync.postSync: pipeline démarré matches_inserted=3`, c'est court et clair".
+
+**Livré** :
+
+1. **`logging.ConsoleHandler`** (nouveau `console_handler.go`) — slog.Handler custom :
+   - Format : `HH:MM:SS [LEVEL] msg key=val key=val…`
+   - Time `HH:MM:SS` uniquement (date complète préservée dans logs JSON).
+   - Level `[ERROR]`/`[WARN] `/`[INFO] `/`[DEBUG]` padded à 7 chars (alignement vertical du message).
+   - Skip attrs : `event_id`, `request_id`, `source.*` masqués sur console (volume cardinal en concurrence) mais préservés dans logs/{module}.log JSON pour grep cross-module.
+   - Quoting auto des valeurs avec espace/`=`/quote.
+   - Tronquage UTF-8 rune-aware avec suffixe `…` (Unicode horizontal ellipsis).
+   - Couleurs ANSI opt-in (off par défaut pour Windows cmd.exe).
+   - Thread-safe via `sync.Mutex` sur Write.
+
+2. **Config étendue** (`config.go`) — 3 nouvelles env vars :
+   - `LEVELUP_LOG_FORMAT` : `compact` (défaut, ConsoleHandler) / `text` (slog natif) / `json` (prod).
+   - `LEVELUP_LOG_MAX_LINE` : tronquage console, défaut 200, `0` désactive.
+   - `LEVELUP_LOG_COLOR` : ANSI on/off, défaut off.
+   - Rétro-compat : `LEVELUP_LOG_JSON=true` → `format=json` si `LEVELUP_LOG_FORMAT` non défini.
+
+3. **`cmd/server/main.go`** wiring : `switch logsCfg.ConsoleFormat` → choisit le handler approprié, ConsoleHandler reste wrappé dans `ContextHandler` + `MultiModuleHandler` (chaîne inchangée).
+
+4. **Tests** (`console_handler_test.go` — 20 tests) : format, padding level, level filtering, skip attrs default+custom, tronquage UTF-8 (incl. caractères multi-byte `é`), quoting, types numériques (int/float/bool/duration), `WithAttrs`, ANSI on/off, écriture concurrente, `parseConsoleFormat` (matrice format × legacy JSON), `parseIntEnv`.
+
+5. **`preview_visual_test.go`** : test opt-in `LEVELUP_LOG_PREVIEW=1` pour rendre 5 échantillons sur stderr (validation visuelle humaine sans dépendre du build serveur complet — utile car build serveur en CGO link error sur ce poste Windows pré-existant).
+
+**Validation visuelle (preview)** :
+
+```
+10:04:11 [INFO]  sync.postSync: pipeline démarré gamertag=Madina97294 matches_inserted=3
+10:04:11 [WARN]  halo_api: GET HTTP error status=429 url=https://halo.api/spnkr retry_after=30s
+10:04:11 [ERROR] provider.swap: reopen RO failed attempts=3 path=C:\Users\… err="file locked by other process"
+10:04:11 [DEBUG] scheduler.tick: tour terminé players_evaluated=5 skipped=2 duration_ms=125
+10:04:11 [INFO]  watcher.rta: presence event xuid=2535401234567890 url=https://halo.api/spnkr/very/long/path/that/exceeds/200/chars/…
+```
+
+`event_id`/`request_id`/`source.*` invisibles → terminal scanné en 1 coup d'œil. Les mêmes records JSON dans `logs/sync.log` etc. conservent TOUT (event_id incl.) pour grep diag post-mortem.
+
+**Décision** :
+- **Padding à 7 chars** plutôt que respecter exactement l'exemple utilisateur `[INFO]` (6 chars). Raison : alignement vertical de la colonne msg → scanning 10x plus facile en flux temps réel. Coût : 1 espace de plus pour INFO/WARN (`[INFO]  msg` au lieu de `[INFO] msg`). Net positif pour l'expérience.
+- **Off par défaut sur Color** : Windows cmd.exe affiche les codes ANSI bruts sans interprétation → user obtient `\x1b[31m[ERROR]\x1b[0m` au lieu de "[ERROR]" en rouge. Activable explicitement pour PowerShell modernes / WSL.
+- **Skip event_id sur console** : décision contre-intuitive mais logique : `event_id=sync.RunDelta:a1b2c3d4` ajoute ~50 chars à chaque ligne, et l'utilité du grep cross-module est essentiellement sur les fichiers (où l'event_id est conservé en JSON).
+
+**Tests** : `internal/observability/...` tous verts (33 tests). Build module entier (`go build ./...`) OK. Build serveur runtime KO sur ce poste pour cause MSYS2 link CGO (pré-existant, indépendant du commit).
+
+**Conclusion / prochaine étape** : commit 20 finalise la suite logging de la branche. Le terminal est désormais lisible pendant les runs sync/watcher/auto_sync. Si user veut ajuster (color on, max_line plus long, format text pour debug), les env vars couvrent tout. Prochaine étape côté user : runtime test du sync sur Madina97294 pour valider que les nouvelles instrumentations 16-19 produisent bien les logs cross-module attendus dans `logs/*.log`.
+
+---
+
 ## [2026-05-20] feat(observability) — Commit 19 : event_id presence + coordinator + migrations + Subscriber
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 19 — comble les derniers maillons d'instrumentation event_id).

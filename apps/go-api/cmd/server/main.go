@@ -106,9 +106,14 @@ func main() {
 	}
 
 	// --- 1. Logging structuré ---
-	// En production (LEVELUP_LOG_JSON=true) : JSON. En dev : texte lisible.
-	// Niveau par défaut : INFO. Passer LEVELUP_LOG_LEVEL=debug pour activer les logs HTTP 2xx.
-	logJSON := strings.ToLower(os.Getenv("LEVELUP_LOG_JSON")) == "true"
+	// Trois formats console (LEVELUP_LOG_FORMAT) :
+	//   - compact (défaut) : ConsoleHandler — `HH:MM:SS [INFO] sync.postSync: msg k=v`
+	//     tronqué à LEVELUP_LOG_MAX_LINE (défaut 200), skip event_id/source.* pour
+	//     limiter le bruit console (préservés dans logs/{module}.log JSON).
+	//   - text             : slog.NewTextHandler natif (verbose, pre-sprint).
+	//   - json             : slog.NewJSONHandler (prod).
+	// Rétro-compat : LEVELUP_LOG_JSON=true → format=json.
+	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
 	logLevelStr := strings.ToLower(os.Getenv("LEVELUP_LOG_LEVEL"))
 	logLevel := slog.LevelInfo
 	if logLevelStr == "debug" {
@@ -118,12 +123,24 @@ func main() {
 	} else if logLevelStr == "error" {
 		logLevel = slog.LevelError
 	}
+
+	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
+	logsCfg := logging.LoadConfig(preliminaryRepoRoot)
+
 	var logHandler slog.Handler
-	if logJSON {
+	switch logsCfg.ConsoleFormat {
+	case "json":
 		logHandler = slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
-	} else {
+	case "text":
 		logHandler = slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel})
+	default: // "compact"
+		logHandler = logging.NewConsoleHandler(os.Stderr, logging.ConsoleHandlerOptions{
+			Level:    logLevel,
+			MaxWidth: logsCfg.MaxLineWidth,
+			Color:    logsCfg.ConsoleColor,
+		})
 	}
+
 	// P6.4 : envelopper avec ContextHandler pour attacher automatiquement
 	// request_id + event_id (depuis ctxkeys) à chaque slog.*Context(...) émis
 	// par les services. Sans ça, debug prod cassé en multi-user.
@@ -135,8 +152,6 @@ func main() {
 	// LEVELUP_LOGS_ENABLED=false. Dossier configurable via LEVELUP_LOGS_DIR.
 	// Référençabilité cross-module : event_id propagé via ctx + ContextHandler.
 	var multiHandler *logging.MultiModuleHandler
-	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
-	logsCfg := logging.LoadConfig(preliminaryRepoRoot)
 	if logsCfg.Enabled && logsCfg.LogsDir != "" {
 		mh, err := logging.NewMultiModuleHandler(logHandler, logsCfg.LogsDir, logsCfg.FileLevel)
 		if err != nil {
@@ -152,6 +167,8 @@ func main() {
 		slog.Info("logging: multi-module actif",
 			"logs_dir", logsCfg.LogsDir,
 			"file_level", logsCfg.FileLevel.String(),
+			"console_format", logsCfg.ConsoleFormat,
+			"max_line", logsCfg.MaxLineWidth,
 		)
 	}
 
