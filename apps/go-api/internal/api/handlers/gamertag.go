@@ -23,7 +23,7 @@ func NewGamertagHandler(svc port.GamertagSearchService) *GamertagHandler {
 func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
 	// Sprint 49 : route inconditionnelle — 503 si shared DB absente.
 	if h.svc == nil {
-		writeError(w, http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "shared_db_unavailable", "gamertag search requires shared database")
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *GamertagHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	items, err := h.svc.Search(r.Context(), q)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "gamertag_search_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "gamertag_search_error", err.Error())
 		return
 	}
 	if items == nil {

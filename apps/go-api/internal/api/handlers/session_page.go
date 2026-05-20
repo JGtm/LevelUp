@@ -28,7 +28,7 @@ func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		slog.WarnContext(r.Context(), "session page: joueur introuvable", "player_slug", slug, "err", err)
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -36,13 +36,13 @@ func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
 			slog.WarnContext(r.Context(), "session page: corps invalide", "player_slug", slug, "err", err)
-			writeError(w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
 			return
 		}
 	}
 	if err := req.Validate(); err != nil {
 		slog.WarnContext(r.Context(), "session page: requête invalide", "player_slug", slug, "err", err)
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	page, err := svc.GetPage(r.Context(), req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "session page: erreur service", "player_slug", slug, "err", err)
-		writeError(w, http.StatusInternalServerError, "session_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "session_page_error", err.Error())
 		return
 	}
 

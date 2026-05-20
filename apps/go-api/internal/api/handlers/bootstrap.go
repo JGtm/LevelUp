@@ -23,7 +23,7 @@ func (h *BootstrapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	sess := middleware.GetSession(r.Context())
 	resp, err := h.svc.Build(r.Context(), sess)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "bootstrap_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "bootstrap_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -43,7 +43,7 @@ func NewPlayersHandler(svc *service.BootstrapService) *PlayersHandler {
 func (h *PlayersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.svc.BuildPlayersList(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "players_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "players_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)

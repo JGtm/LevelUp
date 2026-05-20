@@ -37,7 +37,7 @@ func (h *SynthesisHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Reque
 	svc, xuid, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
 		slog.WarnContext(r.Context(), "synthesis: joueur introuvable", "player_slug", slug, "err", err)
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -45,7 +45,7 @@ func (h *SynthesisHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Reque
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			slog.WarnContext(r.Context(), "synthesis: corps de requête invalide", "player_slug", slug, "err", err)
-			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 	}
@@ -55,7 +55,7 @@ func (h *SynthesisHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Reque
 	page, err := svc.GetSynthesisPage(r.Context(), xuid, req)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "synthesis: erreur service", "player_slug", slug, "err", err)
-		writeError(w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
 		return
 	}
 

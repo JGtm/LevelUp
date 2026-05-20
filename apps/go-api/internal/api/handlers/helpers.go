@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -108,7 +109,7 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 	sanitizeFloatsForJSON(v)
 	body, err := json.Marshal(v)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "encode_error", "erreur de sérialisation")
+		writeError(r.Context(), w, http.StatusInternalServerError, "encode_error", "erreur de sérialisation")
 		return
 	}
 	sum := sha256.Sum256(body)
@@ -123,11 +124,63 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 	_, _ = w.Write(body)
 }
 
-// writeError écrit une réponse d'erreur JSON standardisée.
-func writeError(w http.ResponseWriter, status int, code, message string) {
+// writeError écrit une réponse d'erreur JSON standardisée et **logge l'erreur
+// côté serveur** selon le statut HTTP :
+//   - 5xx → slog.ErrorContext (erreur serveur, anormal — toujours visible)
+//   - 401/403/422 → slog.WarnContext (auth/validation refusée — tracé pour audit)
+//   - autres 4xx → slog.DebugContext (404 / bad request — volume, log à la demande)
+//
+// L'objectif est qu'aucune erreur renvoyée au client n'échappe à un trace serveur.
+// Le ctx fait remonter event_id / request_id auto-injectés par ContextHandler.
+func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
+	logErrorResponse(ctx, status, code, message, nil)
 	writeJSON(w, status, map[string]interface{}{
 		"code":      code,
 		"message":   message,
 		"retryable": status >= 500,
 	})
+}
+
+// writeServerError est un raccourci pour les erreurs serveur où une `err` Go est
+// en scope : log Error avec err.Error() + chaîne complète sous "err", et
+// renvoie status 500 + code + message générique au client.
+//
+// L'`err` Go est loggée mais **pas** renvoyée brute au client (évite de leaker
+// des paths internes / SQL / etc.). Le `message` doit être un texte safe.
+func writeServerError(ctx context.Context, w http.ResponseWriter, code, message string, err error) {
+	logErrorResponse(ctx, http.StatusInternalServerError, code, message, err)
+	writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+		"code":      code,
+		"message":   message,
+		"retryable": true,
+	})
+}
+
+// httpError est un wrapper de net/http.Error qui logge l'erreur côté serveur
+// (mêmes règles de niveau que writeError) avant de répondre en text/plain.
+//
+// À utiliser pour les endpoints qui servent du contenu non-JSON (assets, fichiers
+// statiques, redirects) — sinon préférer writeError qui renvoie un body JSON
+// standardisé.
+func httpError(ctx context.Context, w http.ResponseWriter, message string, status int) {
+	logErrorResponse(ctx, status, "", message, nil)
+	http.Error(w, message, status)
+}
+
+// logErrorResponse centralise la décision de niveau de log selon le statut HTTP.
+// Séparé de writeError pour permettre la réutilisation (writeServerError, et
+// futurs helpers d'erreur).
+func logErrorResponse(ctx context.Context, status int, code, message string, err error) {
+	attrs := []any{"status", status, "code", code, "message", message}
+	if err != nil {
+		attrs = append(attrs, "err", err)
+	}
+	switch {
+	case status >= 500:
+		slog.ErrorContext(ctx, "http: erreur réponse", attrs...)
+	case status == http.StatusUnauthorized, status == http.StatusForbidden, status == http.StatusUnprocessableEntity:
+		slog.WarnContext(ctx, "http: refus", attrs...)
+	case status >= 400:
+		slog.DebugContext(ctx, "http: client error", attrs...)
+	}
 }

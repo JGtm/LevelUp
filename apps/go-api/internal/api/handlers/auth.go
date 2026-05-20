@@ -73,13 +73,13 @@ func (h *AuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *AuthHandle
 // POST /auth/device-flow/start
 func (h *AuthHandler) StartDeviceFlow(w http.ResponseWriter, r *http.Request) {
 	if h.demoMode {
-		writeError(w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
+		writeError(r.Context(), w, http.StatusUnprocessableEntity, "demo_mode", "authentification indisponible en mode démo")
 		return
 	}
 
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
 		return
 	}
 
@@ -98,7 +98,7 @@ func (h *AuthHandler) StartDeviceFlow(w http.ResponseWriter, r *http.Request) {
 			a.ErrorCode = "msal_init_error"
 			a.ErrorDetail = err.Error()
 		})
-		writeError(w, http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
+		writeError(r.Context(), w, http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
 		return
 	}
 
@@ -123,13 +123,13 @@ func (h *AuthHandler) GetDeviceFlowStatus(w http.ResponseWriter, r *http.Request
 	attemptID := chi.URLParam(r, "attempt_id")
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
 		return
 	}
 
 	snapshot := h.attempts.Snapshot(attemptID)
 	if snapshot == nil || snapshot.SessionID != sess.SessionID {
-		writeError(w, http.StatusNotFound, "attempt_not_found", "tentative introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 		return
 	}
 

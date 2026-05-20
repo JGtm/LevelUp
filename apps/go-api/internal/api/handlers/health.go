@@ -34,7 +34,7 @@ func NewHealthHandlerWithVersion(repo port.BootstrapRepository, version string) 
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	count, err := h.repo.GetMatchCount(r.Context())
 	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "db_unavailable",
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "db_unavailable",
 			"Impossible de lire shared_matches_v2: "+err.Error())
 		return
 	}

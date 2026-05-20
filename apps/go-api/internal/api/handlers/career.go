@@ -46,12 +46,12 @@ func (h *CareerHandler) GetCareer(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	resp, err := svc.GetCareerPage(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "career_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "career_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -62,12 +62,12 @@ func (h *CareerHandler) GetTopMatches(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	resp, err := svc.GetTopMatches(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "top_matches_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "top_matches_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -78,12 +78,12 @@ func (h *CareerHandler) GetEncounters(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	resp, err := svc.GetEncounters(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "encounters_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "encounters_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -102,26 +102,26 @@ func (h *CareerHandler) GetHighlightMatches(w http.ResponseWriter, r *http.Reque
 	slug := chi.URLParam(r, "player_slug")
 
 	if h.newMHSvc == nil {
-		writeError(w, http.StatusServiceUnavailable, "match_history_unavailable",
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "match_history_unavailable",
 			"highlight-matches requires MatchHistoryService factory")
 		return
 	}
 
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	mhSvc, _, _, err := h.newMHSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	input := parseHighlightFilterInput(r.URL.Query())
 	data, err := svc.GetHighlightMatchIDs(r.Context(), input)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "highlight_matches_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_matches_error", err.Error())
 		return
 	}
 
@@ -137,12 +137,12 @@ func (h *CareerHandler) GetHighlightMatches(w http.ResponseWriter, r *http.Reque
 
 	bestMatches, err := enrichHighlightMatches(r.Context(), mhSvc, bestIDs)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
 		return
 	}
 	worstMatches, err := enrichHighlightMatches(r.Context(), mhSvc, worstIDs)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
 		return
 	}
 
@@ -192,12 +192,12 @@ func (h *CareerHandler) GetTopEncountersRich(w http.ResponseWriter, r *http.Requ
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	resp, err := svc.GetTopEncounters(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "top_encounters_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "top_encounters_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -211,12 +211,12 @@ func (h *CareerHandler) GetRivals(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	resp, err := svc.GetRivals(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "rivals_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "rivals_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -228,12 +228,12 @@ func (h *CareerHandler) GetCareerCSRs(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 	resp, err := svc.GetCareerCSRs(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "csrs_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "csrs_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, resp)

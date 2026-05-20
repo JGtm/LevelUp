@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -32,7 +33,7 @@ func TestWriteJSON_SetsContentTypeAndStatus(t *testing.T) {
 
 func TestWriteError_SetsErrorBody(t *testing.T) {
 	w := httptest.NewRecorder()
-	writeError(w, http.StatusBadRequest, "invalid_input", "Le champ X est requis.")
+	writeError(context.Background(), w, http.StatusBadRequest, "invalid_input", "Le champ X est requis.")
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", w.Code)

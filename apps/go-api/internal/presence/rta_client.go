@@ -484,16 +484,19 @@ func (c *RTAClient) dispatchPayload(ctx context.Context, subID int, raw json.Raw
 		return
 	}
 
-	// Si le parser n'a extrait aucun PresenceDetail (event "vide"), inclure le
-	// payload brut dans le log pour permettre le diagnostic : Xbox envoie
-	// parfois des notifications sans presenceDetails actionnables (keep-alive,
-	// user pas dans le titre, format inattendu sur /titles/<TID>). Sans le raw
-	// on ne peut pas distinguer ces cas et la FSM tombe en Offline par défaut.
+	// Si le parser n'a extrait aucun PresenceDetail (event "vide"), Xbox envoie
+	// une notif sans presenceDetails actionnables (keep-alive, user pas dans le
+	// titre, format inattendu sur /titles/<TID>) — log INFO court pour rester
+	// scannable, puis DEBUG avec raw pour diagnostic ciblé (activable via
+	// LEVELUP_LOGS_FILE_LEVEL=debug).
 	if event.PresenceDetail == nil {
 		slog.InfoContext(ctx, "rta: event de présence (payload sans titre actif)",
 			"xuid", event.XUID,
 			"state", event.PresenceState,
 			"title", titleFromEvent(event),
+		)
+		slog.DebugContext(ctx, "rta: payload brut (no PresenceDetail)",
+			"xuid", event.XUID,
 			"raw", string(raw),
 		)
 	} else {

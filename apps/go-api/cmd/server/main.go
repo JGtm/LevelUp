@@ -437,9 +437,11 @@ func main() {
 	}()
 
 	// 2026-05-08 — Data health scheduler : audit périodique multi-DB
-	// (UUIDs résiduels, bits menteurs, orphelins, garbage URLs). Émet une
-	// notification admin via `data_health_warning` quand des warnings sont
-	// détectés. L'emitter est wiré après NewRouter (cf. plus bas) car le
+	// (UUIDs résiduels, bits menteurs, garbage URLs). Émet une notification
+	// admin via `data_health_warning` quand des warnings sont détectés. Les
+	// XUIDs orphelins sont collectés à titre informatif (logs) mais exclus
+	// du total — par nature non-résolvables sans Xbox profile API.
+	// L'emitter est wiré après NewRouter (cf. plus bas) car le
 	// notifications.Service est par-joueur et créé via le ServiceRegistry.
 	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot, nil)
 	if appSettings, err := settingsStore.Load(); err == nil && appSettings.DataHealthBaselineWarnings > 0 {
@@ -725,7 +727,7 @@ func startWatcherDaemon(
 	}
 
 	tokenStorePath := title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()
-	slog.Info("watcher: tokens path", "path", tokenStorePath)
+	slog.Debug("watcher: tokens path", "path", tokenStorePath)
 	store := auth.NewTokenStore(tokenStorePath)
 	tokens, err := store.Load()
 	if err != nil {

@@ -31,13 +31,13 @@ func NewSessionHandler(store *session.Store) *SessionHandler {
 func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
 	sess := middleware.GetSession(r.Context())
 	if sess == nil {
-		writeError(w, http.StatusInternalServerError, "no_session", "session non initialisée")
+		writeError(r.Context(), w, http.StatusInternalServerError, "no_session", "session non initialisée")
 		return
 	}
 
 	var req domain.SessionContextRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *SessionHandler) PostContext(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.store.Save(sess); err != nil {
-		writeError(w, http.StatusInternalServerError, "session_save_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "session_save_error", err.Error())
 		return
 	}
 

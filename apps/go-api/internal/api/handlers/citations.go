@@ -33,7 +33,7 @@ func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) 
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -41,14 +41,14 @@ func (h *CitationsHandler) GetCitations(w http.ResponseWriter, r *http.Request) 
 	// Body optionnel : décoder uniquement si présent.
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 	}
 
 	page, err := svc.GetCitationsPage(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "citations_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "citations_page_error", err.Error())
 		return
 	}
 
@@ -67,21 +67,21 @@ func (h *CitationsHandler) GetCommendations(w http.ResponseWriter, r *http.Reque
 	slug := chi.URLParam(r, "player_slug")
 	svc, xuid, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.CommendationsPageRequest
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 	}
 
 	page, err := svc.GetCommendationsPage(r.Context(), xuid)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "commendations_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "commendations_page_error", err.Error())
 		return
 	}
 

@@ -33,7 +33,7 @@ func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, xuid, gamertag, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -41,7 +41,7 @@ func (h *SquadHandler) GetSquadPage(w http.ResponseWriter, r *http.Request) {
 
 	page, err := svc.GetSquadPage(r.Context(), xuid, gamertag, teammateXUID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "squad_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "squad_page_error", err.Error())
 		return
 	}
 
@@ -55,7 +55,7 @@ func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) 
 	slug := chi.URLParam(r, "player_slug")
 	svc, xuid, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) 
 	var req domain.SynthesisPageRequest
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
 	}
@@ -71,7 +71,7 @@ func (h *SquadHandler) GetSynthesisPage(w http.ResponseWriter, r *http.Request) 
 
 	page, err := svc.GetSynthesisPage(r.Context(), xuid)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "synthesis_page_error", err.Error())
 		return
 	}
 

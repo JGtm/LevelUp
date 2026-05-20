@@ -59,24 +59,24 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	// Guard : can_self_provision
 	appCfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_load_error", "Impossible de charger la configuration.")
 		return
 	}
 	if !appCfg.CanSelfProvision {
-		writeError(w, http.StatusForbidden, "provisioning_disabled",
+		writeError(r.Context(), w, http.StatusForbidden, "provisioning_disabled",
 			"L'auto-provisioning est désactivé sur cette instance.")
 		return
 	}
 
 	var req domain.CreatePlayerProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "Corps de requête JSON invalide.")
 		return
 	}
 
 	req.Gamertag = strings.TrimSpace(req.Gamertag)
 	if req.Gamertag == "" || len(req.Gamertag) > 50 {
-		writeError(w, http.StatusBadRequest, "invalid_gamertag", "Le gamertag est vide ou trop long.")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_gamertag", "Le gamertag est vide ou trop long.")
 		return
 	}
 	if req.ProfileMode == "" {
@@ -97,17 +97,17 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 			linkedGT := strings.ToLower(sess.LinkedHaloIdentity.Gamertag)
 			reqGT := strings.ToLower(req.Gamertag)
 			if reqGT != linkedGT {
-				writeError(w, http.StatusConflict, "identity_mismatch",
+				writeError(r.Context(), w, http.StatusConflict, "identity_mismatch",
 					"Le gamertag ne correspond pas à votre compte Xbox connecté.")
 				return
 			}
 			if req.XUID != "" && sess.LinkedHaloIdentity.XUID != "" && req.XUID != sess.LinkedHaloIdentity.XUID {
-				writeError(w, http.StatusConflict, "identity_mismatch",
+				writeError(r.Context(), w, http.StatusConflict, "identity_mismatch",
 					"Le XUID ne correspond pas à votre compte Xbox connecté.")
 				return
 			}
 		} else if sess == nil || sess.LinkedHaloIdentity == nil {
-			writeError(w, http.StatusConflict, "no_halo_identity",
+			writeError(r.Context(), w, http.StatusConflict, "no_halo_identity",
 				"Vous devez d'abord vous connecter à Xbox via le Device Code Flow.")
 			return
 		}
@@ -117,7 +117,7 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 	playerKey, warnings, err := h.profileSvc.CreatePlayer(req)
 	if err != nil {
 		slog.Error("setup.CreatePlayer: failed", "gamertag", req.Gamertag, "err", err)
-		writeError(w, http.StatusInternalServerError, "profile_create_error",
+		writeError(r.Context(), w, http.StatusInternalServerError, "profile_create_error",
 			"Impossible de créer le profil joueur.")
 		return
 	}

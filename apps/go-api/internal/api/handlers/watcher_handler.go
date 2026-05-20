@@ -45,7 +45,6 @@ func NewWatcherHandler(
 	attempts *auth_platform.WatcherAttemptStore,
 ) *WatcherHandler {
 	tokenStorePath := title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()
-	slog.Info("watcher: tokens path", "path", tokenStorePath)
 	return &WatcherHandler{
 		cfg:           cfg,
 		settingsStore: settingsStore,
@@ -94,7 +93,7 @@ func (h *WatcherHandler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("watcher_handler: GetStatus appelé")
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
 		return
 	}
 
@@ -151,7 +150,7 @@ func (h *WatcherHandler) StartAuth(w http.ResponseWriter, r *http.Request) {
 			a.ErrorCode = "msal_init_error"
 			a.ErrorDetail = err.Error()
 		})
-		writeError(w, http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
+		writeError(r.Context(), w, http.StatusInternalServerError, "msal_init_error", "impossible de démarrer le Device Code Flow")
 		return
 	}
 
@@ -181,7 +180,7 @@ func (h *WatcherHandler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("watcher_handler: GetAuthStatus", "attempt_id", attemptID)
 	snap := h.attempts.Snapshot(attemptID)
 	if snap == nil {
-		writeError(w, http.StatusNotFound, "attempt_not_found", "tentative introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "attempt_not_found", "tentative introuvable")
 		return
 	}
 
@@ -198,13 +197,13 @@ func (h *WatcherHandler) GetAuthStatus(w http.ResponseWriter, r *http.Request) {
 func (h *WatcherHandler) PatchSubscriptions(w http.ResponseWriter, r *http.Request) {
 	var req watcherSubscriptionsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", "corps JSON invalide")
 		return
 	}
 
 	cfg, err := h.settingsStore.Load()
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_error", "impossible de lire les settings")
 		return
 	}
 
@@ -215,7 +214,7 @@ func (h *WatcherHandler) PatchSubscriptions(w http.ResponseWriter, r *http.Reque
 	cfg.WatcherSubscribedPlayers = players
 
 	if err := h.settingsStore.Save(cfg); err != nil {
-		writeError(w, http.StatusInternalServerError, "settings_save_error", "impossible de sauvegarder les settings")
+		writeError(r.Context(), w, http.StatusInternalServerError, "settings_save_error", "impossible de sauvegarder les settings")
 		return
 	}
 

@@ -141,6 +141,8 @@ func openCachedDB(
 
 	sqlDB, err := openSQLDBFor(dsn, timezone, op, path)
 	if err != nil {
+		slog.Error("duckdb: ouverture DB échouée",
+			"path", path, "op", op, "dsn", dsn, "err", err)
 		return nil, err
 	}
 	if timezone != "" {
@@ -336,18 +338,28 @@ func (db *DB) Close() error {
 }
 
 // QueryRow exécute une requête qui retourne exactement une ligne.
+// L'erreur réelle de la requête est différée jusqu'à Scan ; on ne peut donc pas
+// la logger ici. Les call sites critiques doivent capturer err sur Scan eux-mêmes.
 func (db *DB) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
 	return db.sqlDB.QueryRowContext(ctx, query, args...)
 }
 
 // Query exécute une requête qui retourne plusieurs lignes.
 func (db *DB) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	return db.sqlDB.QueryContext(ctx, query, args...)
+	rows, err := db.sqlDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		logDBError(ctx, "duckdb: query failed", db, query, err)
+	}
+	return rows, err
 }
 
 // Exec exécute une instruction sans valeur de retour.
 func (db *DB) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	return db.sqlDB.ExecContext(ctx, query, args...)
+	res, err := db.sqlDB.ExecContext(ctx, query, args...)
+	if err != nil {
+		logDBError(ctx, "duckdb: exec failed", db, query, err)
+	}
+	return res, err
 }
 
 // ExecRecovered exécute un Exec sous WithReopenOnInvalidated : si la connexion
@@ -363,6 +375,9 @@ func (db *DB) ExecRecovered(ctx context.Context, query string, args ...interface
 		res, execErr = db.sqlDB.ExecContext(ctx, query, args...)
 		return execErr
 	})
+	if err != nil {
+		logDBError(ctx, "duckdb: exec failed (after recovery)", db, query, err)
+	}
 	return res, err
 }
 
@@ -379,7 +394,47 @@ func (db *DB) QueryRecovered(ctx context.Context, query string, args ...interfac
 		rows, qerr = db.sqlDB.QueryContext(ctx, query, args...)
 		return qerr
 	})
+	if err != nil {
+		logDBError(ctx, "duckdb: query failed (after recovery)", db, query, err)
+	}
 	return rows, err
+}
+
+// logDBError centralise le log d'erreur DuckDB avec contexte standard
+// (path, op, query excerpt, err). Niveau Error — toute erreur DB est anormale
+// par défaut ; les call sites qui tolèrent une erreur (ex. : fichier absent
+// pour Stat) doivent éviter de passer par db.Query/Exec, ou wrapper l'err.
+func logDBError(ctx context.Context, msg string, db *DB, query string, err error) {
+	slog.ErrorContext(ctx, msg,
+		"path", db.path,
+		"op", db.op,
+		"query_excerpt", queryExcerpt(query),
+		"err", err,
+	)
+}
+
+// queryExcerpt retourne les ~80 premiers caractères de la query, sur une seule
+// ligne (newlines → espaces, espaces consécutifs collapsés). Évite de polluer
+// la console avec des SQL multi-lignes tout en gardant assez d'info pour
+// identifier la requête fautive.
+func queryExcerpt(q string) string {
+	const maxLen = 80
+	// Collapse whitespace (newlines, tabs, multiples spaces) en un seul espace.
+	collapsed := strings.Join(strings.Fields(q), " ")
+	if len(collapsed) <= maxLen {
+		return collapsed
+	}
+	// Tronquage avec ellipsis. Comptage byte = ok pour ASCII SQL ; runes pour
+	// les cas avec accents dans les noms de tables/colonnes (rare).
+	if cnt := 0; true {
+		for i := range collapsed {
+			if cnt == maxLen {
+				return collapsed[:i] + "…"
+			}
+			cnt++
+		}
+	}
+	return collapsed
 }
 
 // SQLDb retourne le *sql.DB sous-jacent (pour interop avec d'autres packages).

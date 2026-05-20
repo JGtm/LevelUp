@@ -55,13 +55,13 @@ func (h *EngagementHandler) GetMatchEngagement(w http.ResponseWriter, r *http.Re
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	matchID := chi.URLParam(r, "match_id")
 	if matchID == "" {
-		writeError(w, http.StatusBadRequest, "invalid_request", "match_id est requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_request", "match_id est requis")
 		return
 	}
 
@@ -69,13 +69,13 @@ func (h *EngagementHandler) GetMatchEngagement(w http.ResponseWriter, r *http.Re
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrEngagementMatchNotFound):
-			writeError(w, http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+matchID)
+			writeError(r.Context(), w, http.StatusNotFound, "match_not_found", "match introuvable pour ce joueur : "+matchID)
 		case errors.Is(err, service.ErrEngagementPvENotSupported):
-			writeError(w, http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
+			writeError(r.Context(), w, http.StatusUnprocessableEntity, "pve_not_supported", "engagement non couvert pour les matchs PvE en v1")
 		case errors.Is(err, port.ErrEngagementUnavailable):
-			writeError(w, http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "engagement_unavailable", "migration EngagementScore non appliquee")
 		default:
-			writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 		}
 		return
 	}
@@ -101,7 +101,7 @@ func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *ht
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -109,12 +109,12 @@ func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *ht
 	// Body optionnel : si vide ou absent, on garde la valeur zero (filters vide, limit 0 → 50).
 	if r.Body != nil && r.ContentLength != 0 {
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
 			return
 		}
 	}
 	if err := req.Filters.Validate(); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_filters", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_filters", err.Error())
 		return
 	}
 	limit := req.Limit
@@ -127,7 +127,7 @@ func (h *EngagementHandler) GetEngagementTimeseries(w http.ResponseWriter, r *ht
 
 	out, err := svc.GetTimeseries(r.Context(), req.Filters, limit)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -140,7 +140,7 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -158,7 +158,7 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 	if len(matchIDs) == 0 {
 		recent, err := svc.GetTimeseries(r.Context(), domain.FilterContextInput{}, 15)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 			return
 		}
 		matchIDs = make([]string, 0, len(recent.Points))
@@ -182,7 +182,7 @@ func (h *EngagementHandler) GetSquadEngagementSession(w http.ResponseWriter, r *
 
 	session, err := svc.GetSquadSession(r.Context(), matchIDs, teammates)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, session)
@@ -226,7 +226,7 @@ func (h *EngagementHandler) PostRecomputeCoefficients(w http.ResponseWriter, r *
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -234,10 +234,10 @@ func (h *EngagementHandler) PostRecomputeCoefficients(w http.ResponseWriter, r *
 	if err != nil {
 		switch {
 		case errors.Is(err, port.ErrEngagementUnavailable):
-			writeError(w, http.StatusServiceUnavailable, "engagement_unavailable",
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "engagement_unavailable",
 				"migration EngagementScore non appliquee")
 		default:
-			writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 		}
 		return
 	}
@@ -258,13 +258,13 @@ func (h *EngagementHandler) GetEngagementProfile(w http.ResponseWriter, r *http.
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	coefs, err := svc.GetEngagementProfile(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "engagement_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, coefs)

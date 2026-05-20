@@ -32,7 +32,7 @@ func NewAssetMetadataHandler(
 func (h *AssetMetadataHandler) ListMaps(w http.ResponseWriter, r *http.Request) {
 	titleID := chi.URLParam(r, "title_id")
 	if !h.hasCapability(titleID, titlePkg.CapAssetImages) {
-		http.Error(w, "capability asset.images non supportée pour ce titre", http.StatusNotFound)
+		httpError(r.Context(), w, "capability asset.images non supportée pour ce titre", http.StatusNotFound)
 		return
 	}
 
@@ -40,7 +40,7 @@ func (h *AssetMetadataHandler) ListMaps(w http.ResponseWriter, r *http.Request) 
 	items, err := h.svc.ListMaps(r.Context(), titleID, search)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "ListMaps failed", "err", err, "title", titleID)
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		httpError(r.Context(), w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
 
@@ -56,7 +56,7 @@ func (h *AssetMetadataHandler) ListMaps(w http.ResponseWriter, r *http.Request) 
 func (h *AssetMetadataHandler) ListWeapons(w http.ResponseWriter, r *http.Request) {
 	titleID := chi.URLParam(r, "title_id")
 	if !h.hasCapability(titleID, titlePkg.CapAssetImages) {
-		http.Error(w, "capability asset.images non supportée pour ce titre", http.StatusNotFound)
+		httpError(r.Context(), w, "capability asset.images non supportée pour ce titre", http.StatusNotFound)
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *AssetMetadataHandler) ListWeapons(w http.ResponseWriter, r *http.Reques
 	items, err := h.svc.ListWeapons(r.Context(), titleID, search)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "ListWeapons failed", "err", err, "title", titleID)
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		httpError(r.Context(), w, "erreur interne", http.StatusInternalServerError)
 		return
 	}
 

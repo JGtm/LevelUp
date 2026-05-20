@@ -6,6 +6,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -37,7 +38,7 @@ func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
 
 	medalID, err := strconv.ParseInt(medalIDStr, 10, 64)
 	if err != nil {
-		http.Error(w, "medal_id invalide", http.StatusBadRequest)
+		httpError(r.Context(), w, "medal_id invalide", http.StatusBadRequest)
 		return
 	}
 
@@ -49,7 +50,7 @@ func (h *AssetHandler) GetMedalImage(w http.ResponseWriter, r *http.Request) {
 
 	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		handleResolverError(w, err, "GetMedalImage", ref)
+		handleResolverError(r.Context(), w, err, "GetMedalImage", ref)
 		return
 	}
 	serveResolved(w, r, resolved)
@@ -62,7 +63,7 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 	mapID := chi.URLParam(r, "map_id")
 
 	if mapID == "" {
-		http.Error(w, "map_id requis", http.StatusBadRequest)
+		httpError(r.Context(), w, "map_id requis", http.StatusBadRequest)
 		return
 	}
 
@@ -74,7 +75,7 @@ func (h *AssetHandler) GetMapImage(w http.ResponseWriter, r *http.Request) {
 
 	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		handleResolverError(w, err, "GetMapImage", ref)
+		handleResolverError(r.Context(), w, err, "GetMapImage", ref)
 		return
 	}
 	serveResolved(w, r, resolved)
@@ -87,7 +88,7 @@ func (h *AssetHandler) GetChallengeBadge(w http.ResponseWriter, r *http.Request)
 	badgeID := chi.URLParam(r, "badge_id")
 
 	if badgeID == "" || strings.ContainsAny(badgeID, "/\\") {
-		http.Error(w, "badge_id invalide", http.StatusBadRequest)
+		httpError(r.Context(), w, "badge_id invalide", http.StatusBadRequest)
 		return
 	}
 
@@ -99,7 +100,7 @@ func (h *AssetHandler) GetChallengeBadge(w http.ResponseWriter, r *http.Request)
 
 	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		handleResolverError(w, err, "GetChallengeBadge", ref)
+		handleResolverError(r.Context(), w, err, "GetChallengeBadge", ref)
 		return
 	}
 	serveResolved(w, r, resolved)
@@ -112,16 +113,16 @@ func (h *AssetHandler) GetBattlePassImage(w http.ResponseWriter, r *http.Request
 	gamecmsPath := chi.URLParam(r, "*")
 
 	if subDir == "" || strings.ContainsAny(subDir, "/\\") {
-		http.Error(w, "subdir invalide", http.StatusBadRequest)
+		httpError(r.Context(), w, "subdir invalide", http.StatusBadRequest)
 		return
 	}
 	if gamecmsPath == "" {
-		http.Error(w, "chemin image manquant", http.StatusBadRequest)
+		httpError(r.Context(), w, "chemin image manquant", http.StatusBadRequest)
 		return
 	}
 	cleaned := path.Clean(gamecmsPath)
 	if strings.Contains(cleaned, "..") {
-		http.Error(w, "chemin invalide", http.StatusBadRequest)
+		httpError(r.Context(), w, "chemin invalide", http.StatusBadRequest)
 		return
 	}
 
@@ -139,7 +140,7 @@ func (h *AssetHandler) GetBattlePassImage(w http.ResponseWriter, r *http.Request
 
 	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		handleResolverError(w, err, "GetBattlePassImage", ref)
+		handleResolverError(r.Context(), w, err, "GetBattlePassImage", ref)
 		return
 	}
 	serveResolved(w, r, resolved)
@@ -154,21 +155,21 @@ func (h *AssetHandler) GetSpartanImage(w http.ResponseWriter, r *http.Request) {
 
 	kind, ok := spartanImageKind(imageType)
 	if !ok {
-		http.Error(w, "image_type invalide", http.StatusBadRequest)
+		httpError(r.Context(), w, "image_type invalide", http.StatusBadRequest)
 		return
 	}
 	if titleID == "" {
-		http.Error(w, "title_id requis", http.StatusBadRequest)
+		httpError(r.Context(), w, "title_id requis", http.StatusBadRequest)
 		return
 	}
 	if gamecmsPath == "" {
-		http.Error(w, "chemin image manquant", http.StatusBadRequest)
+		httpError(r.Context(), w, "chemin image manquant", http.StatusBadRequest)
 		return
 	}
 
 	cleaned := path.Clean(gamecmsPath)
 	if strings.Contains(cleaned, "..") {
-		http.Error(w, "chemin invalide", http.StatusBadRequest)
+		httpError(r.Context(), w, "chemin invalide", http.StatusBadRequest)
 		return
 	}
 
@@ -180,7 +181,7 @@ func (h *AssetHandler) GetSpartanImage(w http.ResponseWriter, r *http.Request) {
 
 	resolved, err := h.resolver.Get(r.Context(), ref)
 	if err != nil {
-		handleResolverError(w, err, "GetSpartanImage", ref)
+		handleResolverError(r.Context(), w, err, "GetSpartanImage", ref)
 		return
 	}
 	serveResolved(w, r, resolved)
@@ -216,24 +217,24 @@ func serveResolved(w http.ResponseWriter, r *http.Request, res assets.Resolved) 
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(p.Bytes)
 	default:
-		http.Error(w, "payload inattendu", http.StatusInternalServerError)
+		httpError(r.Context(), w, "payload inattendu", http.StatusInternalServerError)
 	}
 }
 
 // handleResolverError traduit les erreurs du resolver en réponses HTTP.
-func handleResolverError(w http.ResponseWriter, err error, op string, ref assets.Ref) {
+func handleResolverError(ctx context.Context, w http.ResponseWriter, err error, op string, ref assets.Ref) {
 	switch {
 	case errors.Is(err, assets.ErrNotFound):
 		slog.Debug(op+": asset not found", ref.LogAttrs()...)
-		http.Error(w, "asset non trouvé", http.StatusNotFound)
+		httpError(ctx, w, "asset non trouvé", http.StatusNotFound)
 	case errors.Is(err, assets.ErrUpstreamUnavailable):
 		slog.Warn(op+": upstream unavailable", append(ref.LogAttrs(), "err", err)...)
-		http.Error(w, "source distante indisponible", http.StatusBadGateway)
+		httpError(ctx, w, "source distante indisponible", http.StatusBadGateway)
 	case errors.Is(err, assets.ErrUnsupportedKind):
 		slog.Error(op+": unsupported kind", append(ref.LogAttrs(), "err", err)...)
-		http.Error(w, "type d'asset non supporté", http.StatusInternalServerError)
+		httpError(ctx, w, "type d'asset non supporté", http.StatusInternalServerError)
 	default:
 		slog.Error(op+": resolver error", append(ref.LogAttrs(), "err", err)...)
-		http.Error(w, "erreur interne", http.StatusInternalServerError)
+		httpError(ctx, w, "erreur interne", http.StatusInternalServerError)
 	}
 }

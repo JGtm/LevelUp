@@ -226,7 +226,7 @@ func LoadTuning(path string) Tuning {
 			"path", path, "err", err)
 		return DefaultTuning()
 	}
-	slog.Info("prestige: tuning loaded", "path", path, "schema_version", t.SchemaVersion)
+	slog.Debug("prestige: tuning loaded", "path", path, "schema_version", t.SchemaVersion)
 	return t
 }
 

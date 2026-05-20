@@ -38,23 +38,23 @@ func (h *CompareHandler) PostComparePage(w http.ResponseWriter, r *http.Request)
 	slug := chi.URLParam(r, "player_slug")
 	svc, enrichedCtx, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.CompareRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	if err := req.Validate(); err != nil {
-		writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "validation_error", err.Error())
 		return
 	}
 
 	resp, err := svc.GetPage(enrichedCtx, req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "compare_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "compare_error", err.Error())
 		return
 	}
 

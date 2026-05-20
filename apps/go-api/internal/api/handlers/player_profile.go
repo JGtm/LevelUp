@@ -79,7 +79,7 @@ func (h *PlayerProfileHandler) GetProfile(w http.ResponseWriter, r *http.Request
 	prof, err := svc.BuildProfile(r.Context(), pdb.XUID, h.titleSlug, window, time.Now().UTC())
 	if err != nil {
 		slog.WarnContext(r.Context(), "profile: build", "err", err)
-		writeError(w, http.StatusInternalServerError, "build_profile_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "build_profile_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, prof)
@@ -90,7 +90,7 @@ func (h *PlayerProfileHandler) resolveOr404(w http.ResponseWriter, r *http.Reque
 	slug := chi.URLParam(r, "player_slug")
 	pdb, err := h.resolve(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return nil, false
 	}
 	return pdb, true

@@ -70,10 +70,11 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 
 	// Sprint B1 commit 18 : event_id pour tracer l'échange OAuth v2 refresh
 	// → access_token Microsoft. Critique pour diag des refresh tokens révoqués.
-	ctx, evID := logging.WithEvent(ctx, "auth.oauth_exchange")
+	// Le ContextHandler injecte automatiquement event_id sur tous les sous-logs ;
+	// on évite le log "démarré" redondant (la duration + l'event_id sont déjà
+	// portés par le log de clôture "OK"/"échoué").
+	ctx, _ = logging.WithEvent(ctx, "auth.oauth_exchange")
 	start := time.Now()
-	slog.InfoContext(ctx, "oauth_refresh: échange refresh_token → access_token démarré",
-		"event", evID)
 	defer func() {
 		if err != nil {
 			slog.WarnContext(ctx, "oauth_refresh: échange échoué",

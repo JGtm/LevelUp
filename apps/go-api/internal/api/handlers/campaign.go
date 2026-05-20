@@ -3,13 +3,13 @@
 //
 // Routes (sous /api/v1/players/{player_slug}/) :
 //
-//   POST   /campaigns                  → StartCampaign
-//   GET    /campaigns/active           → GetActiveCampaign (1 par titre)
-//   GET    /campaigns/{id}             → GetByID (campagne + défis liés)
-//   POST   /campaigns/{id}/pause       → PauseCampaign
-//   POST   /campaigns/{id}/resume      → ResumeCampaign
-//   POST   /campaigns/{id}/close       → CloseCampaign
-//   POST   /campaigns/{id}/abandon     → AbandonCampaign
+//	POST   /campaigns                  → StartCampaign
+//	GET    /campaigns/active           → GetActiveCampaign (1 par titre)
+//	GET    /campaigns/{id}             → GetByID (campagne + défis liés)
+//	POST   /campaigns/{id}/pause       → PauseCampaign
+//	POST   /campaigns/{id}/resume      → ResumeCampaign
+//	POST   /campaigns/{id}/close       → CloseCampaign
+//	POST   /campaigns/{id}/abandon     → AbandonCampaign
 package handlers
 
 import (
@@ -68,7 +68,7 @@ func (h *CampaignHandler) Start(w http.ResponseWriter, r *http.Request) {
 	}
 	var req startCampaignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 	svc := h.serviceFromPDB(pdb)
@@ -82,12 +82,12 @@ func (h *CampaignHandler) Start(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, campaign.ErrAlreadyActive):
-			writeError(w, http.StatusConflict, "campaign_already_active", err.Error())
+			writeError(r.Context(), w, http.StatusConflict, "campaign_already_active", err.Error())
 		case errors.Is(err, campaign.ErrInvalidAxis):
-			writeError(w, http.StatusBadRequest, "invalid_axis", err.Error())
+			writeError(r.Context(), w, http.StatusBadRequest, "invalid_axis", err.Error())
 		default:
 			slog.WarnContext(r.Context(), "campaign: start", "err", err)
-			writeError(w, http.StatusInternalServerError, "start_campaign_error", err.Error())
+			writeError(r.Context(), w, http.StatusInternalServerError, "start_campaign_error", err.Error())
 		}
 		return
 	}
@@ -108,7 +108,7 @@ func (h *CampaignHandler) GetActive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		slog.WarnContext(r.Context(), "campaign: get active", "err", err)
-		writeError(w, http.StatusInternalServerError, "get_active_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "get_active_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
@@ -124,11 +124,11 @@ func (h *CampaignHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	c, err := svc.GetByID(r.Context(), chi.URLParam(r, "id"))
 	if err != nil {
 		if errors.Is(err, campaign.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "campaign_not_found", err.Error())
+			writeError(r.Context(), w, http.StatusNotFound, "campaign_not_found", err.Error())
 			return
 		}
 		slog.WarnContext(r.Context(), "campaign: get by id", "err", err)
-		writeError(w, http.StatusInternalServerError, "get_campaign_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "get_campaign_error", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, c)
@@ -170,7 +170,7 @@ func (h *CampaignHandler) resolveOr404Campaign(w http.ResponseWriter, r *http.Re
 	slug := chi.URLParam(r, "player_slug")
 	pdb, err := h.resolve(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return nil, false
 	}
 	return pdb, true
@@ -192,12 +192,12 @@ func (h *CampaignHandler) runTransition(w http.ResponseWriter, r *http.Request, 
 	if err := fn(svc, id); err != nil {
 		switch {
 		case errors.Is(err, campaign.ErrNotFound):
-			writeError(w, http.StatusNotFound, "campaign_not_found", err.Error())
+			writeError(r.Context(), w, http.StatusNotFound, "campaign_not_found", err.Error())
 		case errors.Is(err, campaign.ErrInvalidStatus):
-			writeError(w, http.StatusConflict, "invalid_status_transition", err.Error())
+			writeError(r.Context(), w, http.StatusConflict, "invalid_status_transition", err.Error())
 		default:
 			slog.WarnContext(r.Context(), "campaign: transition", "err", err)
-			writeError(w, http.StatusInternalServerError, "campaign_transition_error", err.Error())
+			writeError(r.Context(), w, http.StatusInternalServerError, "campaign_transition_error", err.Error())
 		}
 		return
 	}

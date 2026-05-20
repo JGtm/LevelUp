@@ -31,7 +31,7 @@ func NewChangelogHandler(rootDir string) *ChangelogHandler {
 func (h *ChangelogHandler) GetChangelog(w http.ResponseWriter, r *http.Request) {
 	content, err := h.loadCached()
 	if err != nil {
-		writeError(w, http.StatusNotFound, "CHANGELOG_NOT_FOUND", "Changelog introuvable")
+		writeError(r.Context(), w, http.StatusNotFound, "CHANGELOG_NOT_FOUND", "Changelog introuvable")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"content": content})

@@ -67,7 +67,7 @@ func (h *HelpHandler) GetReleaseNotes(w http.ResponseWriter, r *http.Request) {
 
 	content, err := h.loadCached(lang)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "RELEASE_NOTES_ERROR", "Impossible de charger les notes de version")
+		writeError(r.Context(), w, http.StatusInternalServerError, "RELEASE_NOTES_ERROR", "Impossible de charger les notes de version")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"content": content})

@@ -29,20 +29,20 @@ func (h *TimeseriesHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.TimeseriesQueryRequest
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_json", "corps JSON invalide")
 		return
 	}
 
 	resp, svcErr := svc.GetPage(r.Context(), req)
 	if svcErr != nil {
 		slog.ErrorContext(r.Context(), "timeseries: erreur service", "player", slug, "err", svcErr)
-		writeError(w, http.StatusInternalServerError, "timeseries_error", svcErr.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "timeseries_error", svcErr.Error())
 		return
 	}
 

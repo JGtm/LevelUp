@@ -33,24 +33,24 @@ func (h *MatchHistoryHandler) Query(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.MatchHistoryQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 
 	if err := req.Validate(); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_request", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_request", err.Error())
 		return
 	}
 
 	resp, err := svc.GetPage(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "match_history_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "match_history_error", err.Error())
 		return
 	}
 
@@ -72,25 +72,25 @@ func (h *MatchHistoryHandler) Export(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		writeError(w, http.StatusBadRequest, "missing_token", "paramètre token requis")
+		writeError(r.Context(), w, http.StatusBadRequest, "missing_token", "paramètre token requis")
 		return
 	}
 
 	req, err := decodeExportToken(token)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_token", "token invalide ou expiré")
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_token", "token invalide ou expiré")
 		return
 	}
 
 	rows, err := svc.ExportCSV(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "export_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "export_error", err.Error())
 		return
 	}
 

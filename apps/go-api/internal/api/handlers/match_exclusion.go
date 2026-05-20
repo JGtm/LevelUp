@@ -41,24 +41,24 @@ func (h *MatchExclusionHandler) SetExclusion(w http.ResponseWriter, r *http.Requ
 
 	svc, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	var req domain.SetMatchExclusionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_body", err.Error())
+		writeError(r.Context(), w, http.StatusBadRequest, "invalid_body", err.Error())
 		return
 	}
 
 	if err := svc.SetExclusion(r.Context(), matchID, req.Excluded); err != nil {
 		switch {
 		case errors.Is(err, domain.ErrMatchNotFound):
-			writeError(w, http.StatusNotFound, "match_not_found",
+			writeError(r.Context(), w, http.StatusNotFound, "match_not_found",
 				"Match introuvable dans le registre")
 			return
 		case errors.Is(err, domain.ErrRankedMatchNotExcludable):
-			writeError(w, http.StatusUnprocessableEntity, "ranked_not_excludable",
+			writeError(r.Context(), w, http.StatusUnprocessableEntity, "ranked_not_excludable",
 				"Les matchs classés ne peuvent pas être exclus")
 			return
 		}
@@ -66,7 +66,7 @@ func (h *MatchExclusionHandler) SetExclusion(w http.ResponseWriter, r *http.Requ
 			"match_id", matchID,
 			"err", err,
 		)
-		writeError(w, http.StatusInternalServerError, "exclusion_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "exclusion_error", err.Error())
 		return
 	}
 

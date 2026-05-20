@@ -32,7 +32,7 @@ func (h *LeaderboardHandler) GetLeaderboardPage(w http.ResponseWriter, r *http.R
 	slug := chi.URLParam(r, "player_slug")
 	svc, _, _, err := h.newSvc(r.Context(), slug)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "player_not_found", err.Error())
+		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
@@ -44,7 +44,7 @@ func (h *LeaderboardHandler) GetLeaderboardPage(w http.ResponseWriter, r *http.R
 
 	resp, err := svc.GetPage(r.Context(), req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "leaderboard_error", err.Error())
+		writeError(r.Context(), w, http.StatusInternalServerError, "leaderboard_error", err.Error())
 		return
 	}
 
