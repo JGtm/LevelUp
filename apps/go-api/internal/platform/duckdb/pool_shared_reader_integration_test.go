@@ -10,6 +10,7 @@ package duckdb_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/platform/duckdb"
@@ -148,4 +149,104 @@ func TestOpenPlayerDB_InjectedSharedReader(t *testing.T) {
 	if err := db.QueryRowContext(ctx, "SELECT version()").Scan(&v); err != nil {
 		t.Errorf("ping Provider via SharedReader: %v", err)
 	}
+}
+
+// TestOpenPlayerDB_NoSharedSchemaOnPoolConns garde-fou ADR 0016.
+//
+// Le commit 9c.5 (retrait final attachShared) a supprimé tout ATTACH `shared`
+// du pool joueur. Aucune conn `pdb.Player`, `pdb.SharedSocial`, ou
+// `pdb.Metadata` ne doit avoir accès au schéma `shared` — toutes les requêtes
+// shared passent via `pdb.SharedReadDB().Get(ctx)` qui retourne une conn
+// pointée directement sur la DB shared (sans préfixe `shared.`).
+//
+// Ce test échouera si :
+//   - quelqu'un réintroduit un `ATTACH ... AS shared` sur l'une des conns
+//     pool (régression vers le bug "different configuration" éliminé par
+//     l'ADR 0016) ;
+//   - un nouveau site applicatif exécute `shared.X` sur `pdb.Player` /
+//     `pdb.SharedSocial` / `pdb.Metadata` (le bug latent dans
+//     `LoadMediaFiles` est précisément de cette nature).
+//
+// L'invariant vérifié : `SELECT 1 FROM shared.match_registry` DOIT échouer
+// sur les conns du pool, mais réussir sur la conn obtenue via SharedReader
+// (en root-level, sans préfixe).
+func TestOpenPlayerDB_NoSharedSchemaOnPoolConns(t *testing.T) {
+	sharedPath, metaPath, playerPath := setupPoolFixtures(t)
+
+	cfg := duckdb.PlayerPoolConfig{
+		Gamertag:     "test-sentinel",
+		XUID:         "789",
+		TitleSlug:    "halo_infinite",
+		PlayerDBPath: playerPath,
+		SharedDBPath: sharedPath,
+		MetaDBPath:   metaPath,
+	}
+
+	ctx := context.Background()
+	pdb, err := duckdb.GetOrOpen(ctx, cfg)
+	if err != nil {
+		t.Fatalf("GetOrOpen: %v", err)
+	}
+
+	probe := "SELECT 1 FROM shared.match_registry LIMIT 1"
+
+	poolConns := []struct {
+		name string
+		db   *duckdb.DB
+	}{
+		{"Player", pdb.Player},
+		{"Metadata", pdb.Metadata},
+	}
+	if pdb.SharedSocial != nil {
+		poolConns = append(poolConns, struct {
+			name string
+			db   *duckdb.DB
+		}{"SharedSocial", pdb.SharedSocial})
+	}
+
+	for _, c := range poolConns {
+		if c.db == nil {
+			continue
+		}
+		var n int
+		err := c.db.QueryRow(ctx, probe).Scan(&n)
+		if err == nil {
+			t.Errorf("conn %s: %q a réussi alors qu'aucun ATTACH shared ne doit "+
+				"être posé sur les conns du pool (ADR 0016). Régression probable.",
+				c.name, probe)
+			continue
+		}
+		// L'erreur DuckDB attendue mentionne "schema" et "shared" (libellé
+		// peut varier : "schema 'shared' does not exist", "Catalog Error:
+		// Table with name ... does not exist because schema ... does not
+		// exist", etc.). On accepte tout message qui contient les deux mots.
+		msg := err.Error()
+		if !containsAll(msg, "shared", "schema") && !containsAll(msg, "shared.match_registry", "does not exist") {
+			t.Errorf("conn %s: erreur inattendue %v (attendu : message catalog mentionnant 'shared' et 'schema')",
+				c.name, err)
+		}
+	}
+
+	// Contre-épreuve : la même table accessible SANS préfixe via SharedReader.
+	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		t.Fatalf("SharedReader.Get: %v", err)
+	}
+	defer release()
+
+	var n int
+	if err := sharedDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM match_registry").Scan(&n); err != nil {
+		t.Errorf("SELECT FROM match_registry via SharedReader doit fonctionner : %v", err)
+	}
+}
+
+// containsAll retourne true si s contient toutes les sous-chaînes (case-insensitive).
+func containsAll(s string, subs ...string) bool {
+	low := strings.ToLower(s)
+	for _, sub := range subs {
+		if !strings.Contains(low, strings.ToLower(sub)) {
+			return false
+		}
+	}
+	return true
 }

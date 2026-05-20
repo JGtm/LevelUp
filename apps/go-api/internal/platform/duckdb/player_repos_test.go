@@ -44,7 +44,6 @@ func execOnSharedDBs(t *testing.T, pdb *PlayerDB, ctx context.Context, query str
 	}
 }
 
-
 // newTestPlayerDB crée un PlayerDB entièrement in-memory.
 // Player DB : simule stats.duckdb avec shared attaché.
 // Shared DB : simule shared_matches_v2.duckdb (tables root + vue shared.*).
@@ -332,6 +331,16 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 // seedSharedDBSchema initialise pdb.Shared.
 // Tables dans le schéma shared (évite la récursion vue→vue dans DuckDB).
 // Vues root-level pour les requêtes sans préfixe (Q10 Encounters, Q1 MatchCount).
+//
+// FIXME(ADR 0016, audit P0 2026-05-20) — appelée abusivement sur la conn
+// SharedSocial dans plusieurs helpers de test (`newTestPlayerDBForMediaScenario`,
+// etc.), ce qui falsifie la topologie : en prod, la conn SharedSocial n'a
+// AUCUN ATTACH `shared` depuis le commit 9c.5. Ce mensonge masque les
+// régressions de type "Q37 média exécute `shared.X` sur SharedSocial".
+// Le test sentinel TestOpenPlayerDB_NoSharedSchemaOnPoolConns
+// (pool_shared_reader_integration_test.go) prouve l'invariant prod.
+// À retirer progressivement à mesure que les Q37/queries cross-DB sont
+// migrées via SharedReader (cf. .ai/V7/AUDIT_SHARED_READER_LEAKS.md).
 func seedSharedDBSchema(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
@@ -1259,7 +1268,10 @@ func TestCareerRepo_GetRivals_WithData(t *testing.T) {
 	// 3 adversaires : rivalA m'a tué 10× et je l'ai tué 3× (nemesis)
 	//                 rivalB je l'ai tué 8× et il m'a tué 1× (victim)
 	//                 rivalC kills équilibrés 5/5
-	for _, ins := range []struct{ killer, victim string; n int }{
+	for _, ins := range []struct {
+		killer, victim string
+		n              int
+	}{
 		{"rivalA", pTestXUID, 10}, // rivalA me tue 10
 		{pTestXUID, "rivalA", 3},  // je tue rivalA 3
 		{pTestXUID, "rivalB", 8},  // je tue rivalB 8
