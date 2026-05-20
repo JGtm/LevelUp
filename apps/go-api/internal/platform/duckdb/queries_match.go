@@ -316,6 +316,8 @@ ORDER BY he.time_ms ASC NULLS LAST`
 // Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
 // Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).
 // Ordre : start_time DESC (plus récent = index 0).
+//
+// Executée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q25NeighborMatches = `
 WITH ordered AS (
     SELECT
@@ -325,8 +327,8 @@ WITH ordered AS (
             ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
-    FROM shared.match_registry mr
-    JOIN shared.match_participants mp
+    FROM match_registry mr
+    JOIN match_participants mp
         ON mr.match_id = mp.match_id AND mp.xuid = ?
 ),
 current AS (
@@ -347,6 +349,7 @@ LIMIT 1`
 //
 // Paramètres positionnels : xuid, [filtres...], match_id.
 // L'ordre est important — le repo concatène les args dans cet ordre.
+// Executée sur SharedReader (ADR 0016).
 const Q25NeighborMatchesTemplate = `
 WITH ordered AS (
     SELECT
@@ -356,8 +359,8 @@ WITH ordered AS (
             ORDER BY COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') DESC
         ) - 1 AS idx,
         COUNT(*) OVER () AS total
-    FROM shared.match_registry mr
-    JOIN shared.match_participants mp
+    FROM match_registry mr
+    JOIN match_participants mp
         ON mr.match_id = mp.match_id AND mp.xuid = ?
     WHERE TRUE /*EXTRA_WHERE*/
 ),

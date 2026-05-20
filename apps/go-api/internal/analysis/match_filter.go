@@ -138,9 +138,10 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes Mo
 	// WithPlayerXuid (Phase 2c) : restreint aux matchs où ce XUID est présent
 	// dans match_participants. Q25 join déjà mp avec mp.xuid = ? (joueur
 	// principal) ; pour le coéquipier, on EXISTS sur un alias mp2.
+	// Pas de préfixe `shared.` (Q25 tourne sur SharedReader depuis ADR 0016).
 	if spec.WithPlayerXuid != nil && *spec.WithPlayerXuid != "" {
 		clauses = append(clauses,
-			"EXISTS (SELECT 1 FROM shared.match_participants mp2 "+
+			"EXISTS (SELECT 1 FROM match_participants mp2 "+
 				"WHERE mp2.match_id = mr.match_id AND mp2.xuid = ?)",
 		)
 		args = append(args, *spec.WithPlayerXuid)

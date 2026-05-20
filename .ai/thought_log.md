@@ -1,3 +1,33 @@
+## [2026-05-20] fix(duckdb) — P5 : Q25 neighbors + match_filter + nettoyage préfixes
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite de P4. Sites restants identifiés en P0 :
+- `Q25NeighborMatches` + `Q25NeighborMatchesTemplate` (constantes SQL) — exécutées sur `pdb.ReadDB()` dans `match_view_repo.go::GetMatchNeighbors` et `GetMatchNeighborsFiltered`.
+- `analysis.match_filter.go::BuildNeighborsWhereClause` génère `EXISTS (SELECT 1 FROM shared.match_participants mp2 ...)` injecté dans Q25 (CASSE par transitivité).
+- `bootstrap_repo.go:92` (`GetPlayerCount`) — déjà sur SharedReader mais garde le préfixe `shared.` (À NETTOYER).
+- `match_history_repo.go:246` (`LoadMapWinRates`) — idem.
+- `career_repo.go` — déjà migré (lignes 370 + 468 sont des commentaires obsolètes).
+
+**Décisions techniques** :
+
+1. **Q25 — migration directe** ([queries_match.go:319-373](apps/go-api/internal/platform/duckdb/queries_match.go#L319)) : retrait des préfixes `shared.` dans les 2 constants. `GetMatchNeighbors` + `GetMatchNeighborsFiltered` ([match_view_repo.go:707,738](apps/go-api/internal/platform/duckdb/match_view_repo.go#L707)) acquièrent `pdb.SharedReadDB().Get(ctx)` avant exécution. Si SharedReader indisponible, retourne `MatchNeighbors{TotalMatches: 0}` (cas dégradé, idem ancien fallback "match introuvable").
+
+2. **`BuildNeighborsWhereClause`** ([analysis/match_filter.go:143](apps/go-api/internal/analysis/match_filter.go#L143)) : retrait du préfixe `shared.match_participants` → `match_participants` (le fragment sera injecté dans Q25 qui tourne sur SharedReader).
+
+3. **Cleanup préfixes** : `bootstrap_repo.go:92` et `match_history_repo.go:246` — déjà sur SharedReader, retrait des préfixes `shared.` pour cohérence (la query tournait probablement par auto-attach DuckDB-Go ; retrait élimine la dette).
+
+4. **Setup test corrigé** ([match_view_repo_neighbors_filtered_test.go:55-104](apps/go-api/internal/platform/duckdb/match_view_repo_neighbors_filtered_test.go#L55)) : suppression du faux ATTACH (inserts sur conn `player`). Les inserts dataset (`match_registry`, `match_participants`) + teammate seed passent désormais par `shared.Exec(...)` / `pdb.Shared.Exec(...)`. `pdb.SharedReader = LegacySharedReader(shared)` ajouté.
+
+5. **Test unitaire match_filter** ([match_filter_test.go:193](apps/go-api/internal/analysis/match_filter_test.go#L193)) : assertion mise à jour (`FROM match_participants` au lieu de `FROM shared.match_participants`).
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -count=1 ./...` OK (unit). `go test -tags=integration -count=1 ./...` OK.
+
+**Prochaine étape** : P6 — test E2E topologie réelle (`LoadMediaFiles` via `openPlayerDB` avec 2 fichiers DB distincts) + cleanup commentaires obsolètes (`career_repo.go:370,468`, doc tete `progression/profile/queries.go`, `queries.go:5`) + entrée finale thought_log et note ADR 0016.
+
+---
+
 ## [2026-05-20] fix(duckdb) — P4 : migration progression/profile/queries vers SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).

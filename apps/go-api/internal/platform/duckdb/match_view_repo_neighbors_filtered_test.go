@@ -51,27 +51,28 @@ func newTestPlayerDBForNeighborsScenario(t *testing.T) *PlayerDB {
 	shared := openMemDB(t)
 	meta := openMemDB(t)
 
-	// Le seedPlayerSchema crée le schéma `shared.*` directement dans la player DB
-	// (simule l'ATTACH de shared_matches_v2.duckdb). C'est ce que notre repo lit.
+	// Topologie post-ADR 0016 : shared porte le schéma `shared.*` (lu via
+	// SharedReader), player n'a pas d'ATTACH. Le seedPlayerSchema simulait
+	// l'ancien ATTACH — supprimé.
 	seedPlayerSchema(t, player)
 	seedSharedDBSchema(t, shared)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
 
-	// Wipe les rows par défaut du seed (m1 unique avec pTestXUID)
+	// Wipe les rows par défaut du seed shared (m1 unique avec pTestXUID).
 	for _, q := range []string{
 		`DELETE FROM shared.match_participants`,
 		`DELETE FROM shared.match_registry`,
 	} {
-		if _, err := player.Exec(ctx, q); err != nil {
+		if _, err := shared.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe defaults: %v\nSQL: %s", err, q)
 		}
 	}
 
-	// Insertion du dataset
+	// Insertion du dataset sur la conn shared (= où SharedReader lira).
 	for _, m := range neighborsTestDataset {
-		_, err := player.Exec(ctx,
+		_, err := shared.Exec(ctx,
 			`INSERT INTO shared.match_registry
 				(match_id, start_time, start_time_utc, map_name, pair_name, playlist_name, is_ranked)
 				VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -80,9 +81,7 @@ func newTestPlayerDBForNeighborsScenario(t *testing.T) *PlayerDB {
 		if err != nil {
 			t.Fatalf("insert match %s: %v", m.id, err)
 		}
-		// Le joueur de test (pTestXUID) participe à TOUS les matchs avec
-		// l'outcome correspondant. Pour les filtres outcome.
-		_, err = player.Exec(ctx,
+		_, err = shared.Exec(ctx,
 			`INSERT INTO shared.match_participants
 				(match_id, xuid, gamertag, outcome, team_id)
 				VALUES (?, ?, ?, ?, 0)`,
@@ -94,12 +93,13 @@ func newTestPlayerDBForNeighborsScenario(t *testing.T) *PlayerDB {
 	}
 
 	return &PlayerDB{
-		Player:    player,
-		Shared:    shared,
-		Metadata:  meta,
-		XUID:      pTestXUID,
-		Gamertag:  pTestGamertag,
-		TitleSlug: titlepkg.DefaultSlug,
+		Player:       player,
+		Shared:       shared,
+		Metadata:     meta,
+		SharedReader: LegacySharedReader(shared),
+		XUID:         pTestXUID,
+		Gamertag:     pTestGamertag,
+		TitleSlug:    titlepkg.DefaultSlug,
 	}
 }
 
@@ -308,7 +308,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterWithPlayer(t *testing.T) 
 	const teammateXUID = "99"
 	const teammateGT = "CoolMate"
 	for _, mid := range []string{"n8", "n6", "n3"} {
-		_, err := pdb.Player.Exec(ctx,
+		_, err := pdb.Shared.Exec(ctx,
 			`INSERT INTO shared.match_participants
 				(match_id, xuid, gamertag, outcome, team_id)
 				VALUES (?, ?, ?, 0, 0)`,

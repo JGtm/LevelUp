@@ -190,7 +190,7 @@ func TestBuildNeighborsWhereClause_WithPlayerXuid(t *testing.T) {
 		&domain.MatchFilterSpec{WithPlayerXuid: &xuid},
 		fakeCategoryPrefixes,
 	)
-	if !strings.Contains(got.SQL, "EXISTS (SELECT 1 FROM shared.match_participants mp2") {
+	if !strings.Contains(got.SQL, "EXISTS (SELECT 1 FROM match_participants mp2") {
 		t.Errorf("SQL missing EXISTS clause: %q", got.SQL)
 	}
 	if !strings.Contains(got.SQL, "mp2.match_id = mr.match_id") {

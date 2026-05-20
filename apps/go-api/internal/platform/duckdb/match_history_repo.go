@@ -95,10 +95,10 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 	)
 	for rows.Next() {
 		var (
-			m       domain.MatchHistoryRawRow
-			teamID  *int
-			team0   *int
-			team1   *int
+			m      domain.MatchHistoryRawRow
+			teamID *int
+			team0  *int
+			team1  *int
 		)
 		if err := rows.Scan(
 			&m.MatchID,
@@ -243,8 +243,8 @@ func (r *MatchHistoryRepo) LoadMapWinRates(ctx context.Context) (map[string][2]i
 	SELECT r.map_name,
 	       SUM(CASE WHEN p.outcome = 2 THEN 1 ELSE 0 END) AS wins,
 	       COUNT(*) AS total
-	FROM shared.match_registry r
-	JOIN shared.match_participants p ON r.match_id = p.match_id
+	FROM match_registry r
+	JOIN match_participants p ON r.match_id = p.match_id
 	WHERE p.xuid = ? AND r.map_name IS NOT NULL
 	GROUP BY r.map_name`
 

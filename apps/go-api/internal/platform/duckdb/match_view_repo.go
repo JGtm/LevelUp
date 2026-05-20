@@ -704,11 +704,17 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 }
 
 // GetMatchNeighbors retourne les matchs précédent/suivant pour la navigation (Q25).
+// Exécutée sur SharedReader (ADR 0016).
 func (r *MatchViewRepo) GetMatchNeighbors(ctx context.Context, xuid, matchID string) (*domain.MatchNeighbors, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	row := r.pdb.ReadDB().QueryRow(ctx, Q25NeighborMatches, xuid, matchID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+	}
+	defer release()
+	row := sharedDB.QueryRowContext(ctx, Q25NeighborMatches, xuid, matchID)
 	var nextID, prevID *string
 	var currentIdx, total int
 	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
@@ -754,7 +760,12 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 	args = append(args, clauseRes.Args...)
 	args = append(args, matchID)
 
-	row := r.pdb.ReadDB().QueryRow(ctx, query, args...)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return &domain.MatchNeighbors{TotalMatches: 0}, nil
+	}
+	defer release()
+	row := sharedDB.QueryRowContext(ctx, query, args...)
 	var nextID, prevID *string
 	var currentIdx, total int
 	if err := row.Scan(&nextID, &prevID, &currentIdx, &total); err != nil {
