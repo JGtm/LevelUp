@@ -8,18 +8,21 @@ interface GifHoverThumbnailProps {
 }
 
 /**
- * Miniature GIF figée au repos, animée au survol.
+ * Miniature animée (GIF ou WebP) figée au repos, animée au survol.
  *
- * Au repos : un <canvas> peint avec la première frame du GIF (statique).
- * En actif (survol/focus) : le <img> réel remonté (key) pour relancer l'animation
- * depuis la frame 1 à chaque entrée.
- *
- * Rendu purement frontend, aucune regénération côté serveur requise.
+ * Au repos : un <canvas> peint avec la première frame via fetch+createImageBitmap
+ *   (statique, n'amorce pas le decoder d'animation du browser).
+ * Au survol : un <img> monté avec une URL fragmentée distincte (`#h=N`), ce
+ *   qui force le browser à instancier un decoder séparé et relancer l'animation
+ *   depuis la frame 0. Sans ça, Chrome partage le decoder entre instances
+ *   pointant vers la même URL et l'animation reste figée (notable sur AWebP).
  */
 export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHoverThumbnailProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [posterReady, setPosterReady] = useState(false)
   const [posterFailed, setPosterFailed] = useState(false)
+  const hoverCountRef = useRef(0)
+  const [hoverKey, setHoverKey] = useState(0)
 
   useEffect(() => {
     setPosterReady(false)
@@ -27,39 +30,49 @@ export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHov
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const img = new Image()
-    // Pas de crossOrigin : on ne lit pas les pixels (toDataURL/getImageData),
-    // donc inutile et casse le canvas si le serveur ne sert pas les headers CORS.
     let cancelled = false
+    const controller = new AbortController()
 
-    img.onload = () => {
-      if (cancelled) return
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        setPosterFailed(true)
-        return
-      }
+    void (async () => {
       try {
-        canvas.width = img.naturalWidth || 1
-        canvas.height = img.naturalHeight || 1
-        ctx.drawImage(img, 0, 0)
+        const resp = await fetch(src, { signal: controller.signal })
+        if (!resp.ok) throw new Error(`http ${resp.status}`)
+        const blob = await resp.blob()
+        if (cancelled) return
+        const bitmap = await createImageBitmap(blob)
+        if (cancelled) {
+          bitmap.close()
+          return
+        }
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          bitmap.close()
+          setPosterFailed(true)
+          return
+        }
+        canvas.width = bitmap.width || 1
+        canvas.height = bitmap.height || 1
+        ctx.drawImage(bitmap, 0, 0)
+        bitmap.close()
         setPosterReady(true)
-      } catch {
+      } catch (err) {
+        if (cancelled || (err instanceof Error && err.name === 'AbortError')) return
         setPosterFailed(true)
       }
-    }
-    img.onerror = () => {
-      if (cancelled) return
-      setPosterFailed(true)
-    }
-    img.src = src
+    })()
 
     return () => {
       cancelled = true
-      img.onload = null
-      img.onerror = null
+      controller.abort()
     }
   }, [src])
+
+  useEffect(() => {
+    if (isActive) {
+      hoverCountRef.current += 1
+      setHoverKey(hoverCountRef.current)
+    }
+  }, [isActive])
 
   return (
     <div className={className ?? 'relative h-full w-full'}>
@@ -70,7 +83,6 @@ export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHov
           posterReady && !isActive ? 'opacity-100' : 'opacity-0'
         }`}
       />
-      {/* Fallback img au repos si le canvas a échoué (CORS, image taintée, etc) */}
       {posterFailed && !isActive && (
         <img
           src={src}
@@ -79,11 +91,10 @@ export function GifHoverThumbnail({ src, isActive, alt = '', className }: GifHov
           className="absolute inset-0 h-full w-full object-cover"
         />
       )}
-      {/* Img animée au survol */}
       {isActive && (
         <img
-          key="gif-active"
-          src={src}
+          key={`gif-active-${hoverKey}`}
+          src={`${src}#h=${hoverKey}`}
           alt={alt}
           aria-hidden={alt === '' ? true : undefined}
           className="absolute inset-0 h-full w-full object-cover"
