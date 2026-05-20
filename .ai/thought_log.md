@@ -1,3 +1,23 @@
+## [2026-05-20] fix(duckdb) — P7-2 : stats_repo.LoadStatsMatches (Q23 cross-DB → 2 phases)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite P7-1. Q23 historique joignait `shared.match_participants` + `shared.match_registry` (shared) avec `player_match_enrichment` (player) en une seule query — exécutée sur `pdb.ReadDB()` qui n'a plus l'ATTACH shared (cassait la page Stats en prod).
+
+**Décisions techniques** :
+
+Split cross-DB en 2 phases :
+- **`Q23StatsMatchesShared`** : partie shared-only (mp + r), exécutée sur SharedReader.
+- **`Q23StatsMatchesPlayerEnrichTpl`** : SELECT match_id + performance_score + session_id + session_label depuis player_match_enrichment avec `WHERE match_id IN (?...)`.
+- Helper `StatsRepo.mergeStatsMatchesPME(ctx, rows, matchIDs)` : merger Go qui hydrate les 3 champs pme dans les `legacymatch.StatsMatchRow`.
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -tags=integration ./...` OK.
+
+**Prochaine étape** : P7-3 — `career_repo.go` 4 fonctions cross-DB (GetLUSRHistory Q8, GetTopMatches Q9, GetHighlightMatchIDs Q9bTpl, GetHighlightPool Q9b).
+
+---
+
 ## [2026-05-20] fix(duckdb) — P7-1 : sites shared-only oubliés (explorer + sessions + Q25 + Q20/Q21)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
