@@ -47,11 +47,24 @@
      - `go test ./internal/service -run TestPostImport` : 12/12 PASS.
      - `go test ./internal/api/handlers -run TestProbeTokens` : 3/3 PASS.
 
-(à enrichir à mesure que les fixes 4-6 sont appliqués)
+4. **Fix `npm ci` ERESOLVE — workaround `.npmrc` legacy-peer-deps** (commit #4) : `npm ci` échouait avec `ERESOLVE could not resolve` sur :
+   - **Root project** : `typescript@~6.0.2` (devDep, bumpé volontairement dans commit `f73120d4` "chore(p0.1) hygiene repo + Dockerfile Go 1.26").
+   - **openapi-typescript@7.13.0** (devDep) : peer dep `typescript@"^5.x"` → conflit irréconciliable.
+   - **Vérification npm view openapi-typescript@latest peerDependencies** : `^5.x` (toujours bloqué, pas de release récente compat TS 6).
+   - **Solution choisie** : créer `apps/web/.npmrc` avec `legacy-peer-deps=true`. Cohérent CI + dev locaux (devs ne doivent pas avoir à passer `--legacy-peer-deps` à la main). Commentaire explicite avec TODO de retrait quand openapi-typescript >=8.x sera dispo.
+   - **Alternatives écartées** :
+     - Downgrader TS 6 → 5 : régresse un upgrade volontaire récent.
+     - Flag `--legacy-peer-deps` dans CI uniquement : divergence dev local vs CI.
+     - Remplacer openapi-typescript : trop de scope hors stabilisation.
+   - **Validation locale** :
+     - `npm config get legacy-peer-deps` → `true` ✓ (.npmrc lu correctement).
+     - `npm install --dry-run --legacy-peer-deps` → "up to date in 345ms" ✓ (résolution OK).
+
+(à enrichir à mesure que les fixes 5-6 sont appliqués)
 
 **Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
 
-**Prochaine étape** : fix #4 — `E2E React (Playwright) / Install dependencies` exit 1 sur `npm ci`.
+**Prochaine étape** : fix #5 — décider du sort de `OpenAPI Lint` (spectral) qui échoue sur "No ruleset has been found".
 
 ---
 
