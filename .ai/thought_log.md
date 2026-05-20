@@ -1,3 +1,32 @@
+## [2026-05-20] fix(media) — paths portables {slug}/{rel} + fix WebP figé au hover
+
+**Statut** : Complété (branche `fix/media-paths-portable`, 5 commits, à partir de `chore/ci-stabilization`).
+
+**Contexte** : user signale "les thumbnails sur les cartes vignettes ne s'animent plus". Investigation montre 2 bugs distincts :
+1. **WebP figés au hover** : les nouveaux .webp animés (commit 4c9177e9 du 26 avril) restent statiques au survol — `new Image()` qui pré-charge pour le canvas amorce un decoder browser, partagé avec le `<img>` monté au hover ⇒ animation ne redémarre pas depuis frame 0.
+2. **GIFs legacy invisibles** : `thumbnail_path` en DB pointe vers `.../JGtm/captures/thumbs/...` (ancien layout disk), mais les fichiers sont en réalité dans `.../JGtm/thumbs/...` (sans le `captures/` intermédiaire). Tout get HTTP → 404. Vérifié via curl direct contre le serveur.
+
+**Diagnostic structurel** : user pointe le vrai problème — DB stocke des **chemins absolus** non re-évalués. Casse silencieuse si `MediaCapturesBaseDir` change, ou si backup/restore vers une autre machine, ou si layout disk évolue. Validation utilisateur : "Format relatif au capturesBase" + "Re-générer tous en .webp".
+
+**Décision technique** :
+- Format stable en DB : `{owner_slug}/{rel_in_owner_dir}` (forward slashes).
+- Hub central : `MediaPathStore{CapturesBase}` avec `ToRel(abs, owner)` et `ToAbs(stored)`. Mode legacy si `CapturesBase` vide ou stored déjà absolu.
+- Refactor en 5 phases séquentielles, 1 branche, 1 commit par phase.
+
+**5 commits** :
+1. `2cf6b1fe` fix front WebP : `fetch + createImageBitmap` au lieu de `new Image()` (frame statique sans amorcer decoder), `<img>` actif avec fragment URL `#h=N` incrémenté à chaque hover (force decoder neuf, cache HTTP préservé). Tests vitest 5/5.
+2. `95b4c777` helpers `MediaPathStore` + 9 tests cross-layout (multi-player, single-player, thumbs, hors-base, legacy passthrough).
+3. `83ecb051` write-path : `insertMediaFile` et `BackfillThumbnailPaths` utilisent le store. Propagation `CapturesBase` via `MediaIndexOptions`, `UploadRequest`, `ReassociateRequest`. 6 call-sites adaptés.
+4. `e7b9036a` read-path : `filePathToURL` shortcut sur path déjà relatif, `ServeMediaFile` essaie `capturesBase` brut en premier (matche convention canonique), fallbacks legacy conservés. Content-Type `.gif` explicite ajouté.
+5. `6aa41fc6` cmd `migrate-media-paths` (script one-shot DB → format relatif, propage media_likes, NULL out thumbs cassés) + `e7ceeae0` cmd `regen-thumbnails` (reset complet : delete .gif/.webp → NULL thumbs → regen via libwebp → relinker).
+
+**Tests** : 100% verts. Go tests : `./internal/ops` 6s, `./internal/api/handlers` 4s, `./internal/service` 3s, `./cmd/migrate-media-paths` 7/7, `./cmd/regen-thumbnails` 5/5. Vitest : `gif-hover-thumbnail` 5/5.
+
+**Reste à faire pour livraison** :
+- Stop serveur → run `migrate-media-paths` puis `regen-thumbnails` sur shared_social.duckdb local.
+- Tester UX galerie : (a) clip WebP s'anime au hover, (b) ancien GIF legacy s'affiche (après NULL + regen).
+- Merge dans `main` (branche depuis `chore/ci-stabilization`, attendre fin sprint CI).
+
 ## [2026-05-20] fix(data_health) — Baseline 76 + blacklist target_route fantôme + diag bits menteurs
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, suite immédiate du fix XUIDs orphelins ce matin).
