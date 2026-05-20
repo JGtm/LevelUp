@@ -315,7 +315,7 @@ func identifyLeverages(components []LUSRComponentBreakdown) []ProgressionLeverag
 		Component string
 		Value     float64
 	}
-	var levers []leverage
+	levers := make([]leverage, 0, len(components))
 	for _, c := range components {
 		v := (1.0 - c.CurrentAvg) * c.Weight
 		if v < 0 {

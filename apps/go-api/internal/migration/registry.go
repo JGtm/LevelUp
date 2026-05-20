@@ -122,7 +122,7 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 	}
 
 	migrations := ForTarget(target)
-	applied_count := 0
+	appliedCount := 0
 	for _, m := range migrations {
 		state, exists := applied[m.Name]
 
@@ -147,7 +147,7 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 			slog.DebugContext(ctx, "migration: schema OK",
 				"name", m.Name, "duration_ms", time.Since(mStart).Milliseconds())
 			state = migrationState{SchemaDone: true, BackfillDone: backfillDone}
-			applied_count++
+			appliedCount++
 		}
 
 		// Backfill si schéma fait mais backfill manquant
@@ -173,7 +173,7 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 	}
 	slog.InfoContext(ctx, "migration: cycle terminé",
 		"target", target,
-		"applied", applied_count,
+		"applied", appliedCount,
 		"total", len(migrations),
 		"duration_ms", time.Since(cycleStart).Milliseconds(),
 	)
