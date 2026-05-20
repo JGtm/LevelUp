@@ -595,6 +595,8 @@ func TestMatchExclusionRepo_ListExcluded_Empty(t *testing.T) {
 		// start_time TIMESTAMP + start_time_utc TIMESTAMPTZ : pattern canonique
 		// requis par MatchExclusionRepo.ListExcluded.
 		`CREATE TABLE shared.match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ, map_name VARCHAR, pair_name VARCHAR)`,
+		// Vue root-level pour le pipeline split (P7-4) : match_registry sans préfixe.
+		`CREATE VIEW match_registry AS SELECT * FROM shared.match_registry`,
 		`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, is_excluded BOOLEAN, updated_at TIMESTAMPTZ)`,
 	}
 	for _, q := range ddls {
@@ -621,6 +623,8 @@ func TestMatchExclusionRepo_ListExcluded(t *testing.T) {
 	ddls := []string{
 		`CREATE SCHEMA IF NOT EXISTS shared`,
 		`CREATE TABLE shared.match_registry (match_id VARCHAR PRIMARY KEY, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ, map_name VARCHAR, pair_name VARCHAR)`,
+		// Vue root-level pour le pipeline split (P7-4) : match_registry sans préfixe.
+		`CREATE VIEW match_registry AS SELECT * FROM shared.match_registry`,
 		`CREATE TABLE player_match_enrichment (match_id VARCHAR PRIMARY KEY, is_excluded BOOLEAN, updated_at TIMESTAMPTZ)`,
 	}
 	for _, q := range ddls {

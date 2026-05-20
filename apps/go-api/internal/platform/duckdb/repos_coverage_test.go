@@ -198,6 +198,9 @@ func seedSharedForExclusion(t *testing.T, db *DB) {
 			is_ranked BOOLEAN DEFAULT FALSE,
 			is_firefight BOOLEAN DEFAULT FALSE
 		)`,
+		// Vue root-level pour le pipeline split (P7-4) : match_registry sans
+		// préfixe `shared.` lu via SharedReader.
+		`CREATE VIEW IF NOT EXISTS match_registry AS SELECT * FROM shared.match_registry`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
