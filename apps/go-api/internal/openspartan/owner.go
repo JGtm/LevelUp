@@ -26,8 +26,11 @@ var bareDigitsXUIDRegex = regexp.MustCompile(`^\d{16,17}$`)
 
 // extractXUIDFromFilename returns the digit string captured from a hint that
 // looks like a path or filename of the form `{xuid}.db`, or an empty string
-// when no match is found.
+// when no match is found. Backslashes are normalised to slashes so that paths
+// captured on Windows (`C:\users\me\{xuid}.db`) extract correctly when the
+// process runs on Linux (where filepath.Base treats only `/` as a separator).
 func extractXUIDFromFilename(hint string) string {
+	hint = strings.ReplaceAll(hint, "\\", "/")
 	base := filepath.Base(hint)
 	m := filenameXUIDRegex.FindStringSubmatch(base)
 	if len(m) < 2 {

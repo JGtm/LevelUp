@@ -416,7 +416,7 @@ func expandPlaylistNamesToRaw(pool []domain.HighlightMatchPoolRow, selected []st
 // expandModeUIsToRawSources résout les labels normalisés sélectionnés
 // (ex. "Slayer") en l'ensemble des valeurs brutes COALESCE(pair_name_fr,
 // pair_name) du pool qui se normalisent vers ces labels. Sert au filtre SQL
-// `COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name) IN (...)` côté repo.
+// `COALESCE(NULLIF(r.pair_name_fr, ”), r.pair_name) IN (...)` côté repo.
 // Renvoie nil si selection vide (= pas de filtre Modes).
 func expandModeUIsToRawSources(pool []domain.HighlightMatchPoolRow, selected []string) []string {
 	if len(selected) == 0 {
@@ -1102,7 +1102,11 @@ func computeActiveXPPerDay(history []domain.XPHistoryPoint) float64 {
 func computeFallbackXPPerDay(xpTotal int, firstDate time.Time) float64 {
 	now := time.Now()
 	days := now.Sub(firstDate).Hours() / 24.0
-	if days <= 0 || xpTotal <= 0 {
+	// Seuil minimum 1 jour : si firstDate est dans la meme journee (delta
+	// sub-seconde entre time.Now() du caller et celui de la fonction),
+	// days vaut ~1e-8 et float64(xpTotal)/days produit ~1e14 — un taux
+	// XP/jour aberrant. Renvoie 0 dans ce cas (donnee non significative).
+	if days < 1.0 || xpTotal <= 0 {
 		return 0.0
 	}
 	return float64(xpTotal) / days
