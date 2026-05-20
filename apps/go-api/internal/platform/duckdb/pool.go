@@ -13,6 +13,7 @@ package duckdb
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -229,27 +230,37 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		socialDB, err = OpenReadWrite(cfg.SharedSocialDBPath, cfg.UserTimezone)
 		if err != nil {
 			// Non bloquant : la DB sera créée lors de la prochaine migration.
+			// On log Warn pour garder une trace (l'absence du fichier au boot est
+			// normale, mais une erreur ouverture sur fichier existant indique
+			// verrou / corruption qu'on veut voir).
+			slog.WarnContext(ctx, "pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)",
+				"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", err)
 			socialDB = nil
 		} else {
 			// Appliquer les migrations shared_social (idempotentes).
-			_ = migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial)
+			if mErr := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); mErr != nil {
+				slog.ErrorContext(ctx, "pool: migrations SharedSocial échouées",
+					"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", mErr)
+			}
 		}
 	}
 
-	// attachShared sur la conn player a été retiré.
+	// attachShared sur la conn player a été retiré (ADR 0016, commit 9c.5).
 	// Toutes les queries shared passent désormais par SharedReader (Provider en
-	// prod, LegacySharedReader pour les tests sans Provider injecté). Voir
-	// ADR 0016. La fonction attachShared est conservée temporairement pour
-	// la conn SharedSocial (ligne suivante) — sera retirée quand media_repo
-	// aura été migré aussi.
+	// prod, LegacySharedReader pour les tests sans Provider injecté).
+	// Sprint P0→P7 (2026-05-20) a finalisé la migration de tous les repos
+	// applicatifs (media, post-sync, engagement, profile, career, explorer,
+	// sessions, stats, leaderboard, exclusions, match_view).
 
 	// P5.3 : ATTACH global xbox_aliases (mapping xuid→gamertag global Microsoft).
 	// Non-bloquant : si la DB globale n'existe pas encore (avant migration), les
 	// requêtes qui font `JOIN global.xuid_aliases` retomberont sur NULL.
 	if cfg.GlobalXuidAliasesDBPath != "" {
 		if err := attachGlobalXuidAliases(ctx, playerDB, cfg.GlobalXuidAliasesDBPath); err != nil {
-			// Non bloquant — log déjà émis dans attachGlobalXuidAliases.
-			_ = err
+			// Non bloquant : si l'attach échoue, les queries `JOIN global.xuid_aliases`
+			// retomberont sur NULL (tolérance prévue côté query).
+			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (player conn)",
+				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
 		}
 	}
 
@@ -259,7 +270,10 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// P5.3 : ATTACH global xbox_aliases sur SharedSocial aussi (media_repo fait
 	// `JOIN global.xuid_aliases` sur les likers de médias).
 	if socialDB != nil && cfg.GlobalXuidAliasesDBPath != "" {
-		_ = attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath)
+		if err := attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath); err != nil {
+			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (social conn)",
+				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
+		}
 	}
 
 	// SharedReader (commit 8a) : par défaut, wrap pdb.Shared en mode legacy.

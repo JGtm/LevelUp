@@ -168,72 +168,8 @@ SELECT
 FROM match_skill_rank
 WHERE match_id IN (%s)`
 
-// Q5 : Historique — chargement complet avec stats du joueur.
-// LEGACY (avant 8k.7) : utilisé encore par d'autres callers ? Sinon obsolète.
-// Paramètres : ? = xuid (match_participants), ? = xuid (enrichment).
-const Q5MatchHistory = `
-SELECT
-    ms.match_id,
-    ms.start_time,
-    ms.map_name,
-    COALESCE(ms.map_name_fr, ms.map_name)                AS map_name_fr,
-    ms.pair_name,
-    COALESCE(ms.pair_name_fr, ms.pair_name)              AS pair_name_fr,
-    ms.playlist_name                                     AS playlist_name_en,
-    COALESCE(ms.playlist_name_fr, ms.playlist_name)      AS playlist_name,
-    ms.map_id,
-    ms.pair_id,
-    ms.playlist_id,
-    COALESCE(ms.is_firefight, FALSE)                     AS is_firefight,
-    COALESCE(ms.is_ranked, FALSE)                        AS is_ranked,
-    pme.session_id,
-    pme.session_label,
-    COALESCE(pme.is_with_friends, FALSE)                 AS is_with_friends,
-    COALESCE(pme.is_excluded, FALSE)                     AS is_excluded,
-    COALESCE(p.outcome, 0)                               AS outcome,
-    p.team_mmr,
-    p.enemy_mmr,
-    COALESCE(p.kills, 0)                                 AS kills,
-    COALESCE(p.deaths, 0)                                AS deaths,
-    COALESCE(p.assists, 0)                               AS assists,
-    p.kda,
-    p.accuracy,
-    p.personal_score,
-    p.avg_life_seconds                                   AS average_life_seconds,
-    p.time_played_seconds,
-    pme.performance_score,
-    NULLIF(TRIM(COALESCE(msr.tier, '')), '')             AS skill_tier,
-    NULLIF(TRIM(COALESCE(msr.tier_fr, '')), '')          AS skill_tier_fr,
-    NULLIF(TRIM(COALESCE(msr.rating_type, '')), '')      AS skill_rating_type,
-    NULLIF(TRIM(COALESCE(msr.tier_label, '')), '')       AS skill_tier_label,
-    -- Scores équipe / adverse, dérivés de p.team_id pour orienter "ma" team
-    CASE WHEN p.team_id = 0 THEN ms.team_0_score ELSE ms.team_1_score END AS my_team_score,
-    CASE WHEN p.team_id = 0 THEN ms.team_1_score ELSE ms.team_0_score END AS enemy_team_score,
-    COALESCE(pme.dominance_flag, 0)                      AS dominance_flag
-FROM (
-    SELECT r.match_id,
-           COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
-           r.map_name,
-           r.map_name_fr, r.pair_name, r.pair_name_fr,
-           r.playlist_name, r.playlist_name_fr,
-           COALESCE(r.is_firefight, FALSE) AS is_firefight,
-           COALESCE(r.is_ranked, FALSE)    AS is_ranked,
-           r.team_0_score,
-           r.team_1_score,
-           r.map_id,
-           r.pair_id,
-           r.playlist_id
-    FROM shared.v_match_full r
-    JOIN shared.match_participants p ON r.match_id = p.match_id
-    WHERE p.xuid = ?
-) ms
-LEFT JOIN shared.match_participants p
-    ON ms.match_id = p.match_id AND p.xuid = ?
-LEFT JOIN player_match_enrichment pme
-    ON ms.match_id = pme.match_id
-LEFT JOIN match_skill_rank msr
-    ON ms.match_id = msr.match_id
-ORDER BY ms.start_time DESC`
+// (Q5MatchHistory supprimée en P7-5 — code mort, aucun caller. Le pipeline
+//  history actuel utilise Q5SharedHistory + Q5PlayerSkillRankHistoryTpl.)
 
 // Q6 : Career — progression de rang (dernière entrée).
 // Paramètre : aucun (lit toujours le rang le plus récent).
@@ -353,84 +289,9 @@ WHERE mp.xuid = ?
   AND mp.match_id IN (%s)
   %s`
 
-// Q9bHighlightMatchIDsTpl : variante template de Q9b acceptant des clauses
-// dynamiques pour les filtres Expérience (is_ranked) et Saisons (date range).
-//
-// DEPRECATED : remplacée par le pipeline split de GetHighlightMatchIDs (P7-3).
-// Conservée pour compat tests.
-const Q9bHighlightMatchIDsTpl = `
-SELECT match_id, outcome, _s
-FROM (
-    (
-        SELECT
-            pme.match_id,
-            COALESCE(p.outcome, 0) AS outcome,
-            1                       AS _s
-        FROM player_match_enrichment pme
-        JOIN shared.match_registry r ON pme.match_id = r.match_id
-        LEFT JOIN shared.match_participants p
-            ON pme.match_id = p.match_id AND p.xuid = ?
-        WHERE pme.performance_score IS NOT NULL
-          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
-          AND COALESCE(p.time_played_seconds, 0) >= 180
-          AND COALESCE(r.is_firefight, FALSE) = FALSE
-          AND COALESCE(p.outcome, 0) = 2
-          %s
-        ORDER BY
-            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (5, 3, 1)
-                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
-            pme.performance_score DESC
-        LIMIT 15
-    )
-    UNION ALL
-    (
-        SELECT
-            pme.match_id,
-            COALESCE(p.outcome, 0) AS outcome,
-            2                       AS _s
-        FROM player_match_enrichment pme
-        JOIN shared.match_registry r ON pme.match_id = r.match_id
-        LEFT JOIN shared.match_participants p
-            ON pme.match_id = p.match_id AND p.xuid = ?
-        WHERE pme.performance_score IS NOT NULL
-          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
-          AND COALESCE(p.time_played_seconds, 0) >= 180
-          AND COALESCE(r.is_firefight, FALSE) = FALSE
-          AND COALESCE(p.outcome, 0) = 3
-          %s
-        ORDER BY
-            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (4, 2)
-                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
-            pme.performance_score ASC
-        LIMIT 15
-    )
-)
-ORDER BY _s ASC`
-
-// Q9bHighlightPool : Career — pool complet des matchs éligibles "marquants"
-// (mêmes critères d'éligibilité que Q9b mais sans contrainte d'outcome ni
-// LIMIT). Sert à calculer les cascade counts (available_experience,
-// available_seasons) sans LIMIT pour rester précis quel que soit le filtre
-// actif côté frontend.
-//
-// Paramètre : ?1 = xuid joueur.
-const Q9bHighlightPool = `
-SELECT
-    pme.match_id,
-    COALESCE(r.is_ranked, FALSE)                                       AS is_ranked,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')        AS start_time,
-    COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')              AS pair_name_source,
-    COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '')      AS playlist_name_source,
-    COALESCE(r.playlist_id, '')                                         AS playlist_id
-FROM player_match_enrichment pme
-JOIN shared.match_registry r ON pme.match_id = r.match_id
-LEFT JOIN shared.match_participants p
-    ON pme.match_id = p.match_id AND p.xuid = ?
-WHERE pme.performance_score IS NOT NULL
-  AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
-  AND COALESCE(p.time_played_seconds, 0) >= 180
-  AND COALESCE(r.is_firefight, FALSE) = FALSE
-  AND COALESCE(p.outcome, 0) IN (2, 3)`
+// (Q9bHighlightMatchIDsTpl + Q9bHighlightPool supprimées en P7-5 — remplacées
+//  par le pipeline split via Q9bHighlightSharedTpl + loadHighlightCandidates
+//  côté Go en P7-3.)
 
 // Q26CareerTopEncountersTpl : Career — joueurs les plus croisés au niveau global,
 // hors amis configurés (FriendGamertags).
