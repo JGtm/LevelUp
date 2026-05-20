@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -75,43 +76,147 @@ func (r *CareerRepo) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint,
 }
 
 // GetLUSRHistory retourne les checkpoints LUSR.
+//
+// Split cross-DB en 2 phases (ADR 0016) :
+//   - Phase A : match_skill_rank (player) sur pdb.Player.
+//   - Phase B : match_registry (shared) pour start_time + playlist via
+//     SharedReader avec WHERE match_id IN (...).
+//   - Phase C : tri par start_time ASC + calcul rating_delta côté Go via
+//     LAG manuel par (rating_type, playlist_group).
 func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q8LUSRHistory)
+	type playerRow struct {
+		MatchID       string
+		RatingType    string
+		RatingValue   float64
+		TierLabel     *string
+		PlaylistGroup *string
+		Tier          sql.NullString
+		SubTier       sql.NullInt16
+	}
+	rows, err := r.pdb.Player.Query(ctx, Q8LUSRHistoryPlayer)
 	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: %w", err)
+		return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase A: %w", err)
 	}
 	defer rows.Close()
 
-	var results []domain.LUSRCheckpointDTO
+	var playerRows []playerRow
+	matchIDs := make([]string, 0)
 	for rows.Next() {
-		var cp domain.LUSRCheckpointDTO
-		var tier sql.NullString
-		var subTier sql.NullInt16
-		if err := rows.Scan(
-			&cp.MatchID, &cp.RatingType, &cp.RatingValue, &cp.TierLabel, &cp.PlaylistGroup, &cp.RecordedAt,
-			&cp.RatingDelta, &cp.PlaylistName, &cp.PlaylistID, &tier, &subTier,
-		); err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan: %w", err)
+		var p playerRow
+		if err := rows.Scan(&p.MatchID, &p.RatingType, &p.RatingValue, &p.TierLabel,
+			&p.PlaylistGroup, &p.Tier, &p.SubTier); err != nil {
+			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan A: %w", err)
+		}
+		playerRows = append(playerRows, p)
+		matchIDs = append(matchIDs, p.MatchID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(playerRows) == 0 {
+		return nil, nil
+	}
+
+	// Phase B : enrich match_registry via SharedReader.
+	type registryInfo struct {
+		RecordedAt   *time.Time
+		PlaylistName string
+		PlaylistID   string
+	}
+	registryByMatch := make(map[string]registryInfo, len(matchIDs))
+	{
+		sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: shared reader: %w", err)
+		}
+		query := fmt.Sprintf(Q8LUSRHistoryRegistryTpl, Placeholders(len(matchIDs)))
+		regRows, err := sharedDB.QueryContext(ctx, query, ToAnySlice(matchIDs)...)
+		if err != nil {
+			release()
+			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase B: %w", err)
+		}
+		for regRows.Next() {
+			var mid string
+			var info registryInfo
+			var ts sql.NullTime
+			if err := regRows.Scan(&mid, &ts, &info.PlaylistName, &info.PlaylistID); err != nil {
+				regRows.Close()
+				release()
+				return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan B: %w", err)
+			}
+			if ts.Valid {
+				t := ts.Time
+				info.RecordedAt = &t
+			}
+			registryByMatch[mid] = info
+		}
+		regRows.Close()
+		release()
+	}
+
+	// Phase C : assemble + tri + LAG rating_delta.
+	results := make([]domain.LUSRCheckpointDTO, 0, len(playerRows))
+	for _, p := range playerRows {
+		cp := domain.LUSRCheckpointDTO{
+			MatchID:       p.MatchID,
+			RatingType:    p.RatingType,
+			RatingValue:   p.RatingValue,
+			TierLabel:     p.TierLabel,
+			PlaylistGroup: p.PlaylistGroup,
+		}
+		if info, ok := registryByMatch[p.MatchID]; ok {
+			cp.RecordedAt = info.RecordedAt
+			cp.PlaylistName = info.PlaylistName
+			cp.PlaylistID = info.PlaylistID
 		}
 		tierLabel := ""
 		if cp.TierLabel != nil {
 			tierLabel = *cp.TierLabel
 		}
 		cp.BadgeImageURL = buildHomeSkillPeakBadgeURL(
-			optionalNullStringValue(tier),
+			optionalNullStringValue(p.Tier),
 			tierLabel,
-			optionalNullInt16Value(subTier),
+			optionalNullInt16Value(p.SubTier),
 			homeStaticTitleSlug,
 			0,
 		)
 		results = append(results, cp)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	// Tri ASC par recorded_at (NULLS LAST), reproduit l'ORDER BY de la query.
+	sort.SliceStable(results, func(i, j int) bool {
+		ai, aj := results[i].RecordedAt, results[j].RecordedAt
+		if ai == nil && aj == nil {
+			return false
+		}
+		if ai == nil {
+			return false // i après j (NULLS LAST)
+		}
+		if aj == nil {
+			return true
+		}
+		return ai.Before(*aj)
+	})
+	// rating_delta = current - previous par (rating_type, playlist_group).
+	type lagKey struct {
+		ratingType    string
+		playlistGroup string
 	}
+	prev := make(map[lagKey]float64)
+	for i := range results {
+		key := lagKey{ratingType: results[i].RatingType}
+		if results[i].PlaylistGroup != nil {
+			key.playlistGroup = *results[i].PlaylistGroup
+		}
+		if p, ok := prev[key]; ok {
+			delta := results[i].RatingValue - p
+			results[i].RatingDelta = &delta
+		}
+		prev[key] = results[i].RatingValue
+	}
+
 	r.enrichLUSRPlaylistNames(ctx, results)
 	return results, nil
 }
@@ -155,32 +260,137 @@ func (r *CareerRepo) enrichLUSRPlaylistNames(ctx context.Context, cps []domain.L
 	}
 }
 
-// GetTopMatches retourne les N meilleurs matchs par performance_score.
+// GetTopMatches retourne les 10 meilleurs (WIN) + 10 moins bons (LOSS) matchs
+// par performance_score.
+//
+// Split cross-DB en 2 phases (ADR 0016) :
+//   - Phase A : player_match_enrichment (pme) sur pdb.Player avec filtre
+//     performance_score IS NOT NULL + NOT had_bot_teammate.
+//   - Phase B : match_participants + match_registry (shared) via SharedReader
+//     avec filtres time_played>=180 + NOT is_firefight + IN match_ids.
+//   - Phase C : merge + sections WIN/LOSS + tri par dominance flag (priorité
+//     section) + perf_score + top 10 chaque section.
 func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q9TopMatches, r.pdb.XUID, r.pdb.XUID)
-	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.GetTopMatches: %w", err)
+	type pmeRow struct {
+		matchID       string
+		perfScore     float64
+		dominanceFlag int
 	}
-	defer rows.Close()
+	pmes := make(map[string]pmeRow)
+	pmeRows, err := r.pdb.Player.Query(ctx, Q9TopMatchesPlayer)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetTopMatches: phase A: %w", err)
+	}
+	for pmeRows.Next() {
+		var p pmeRow
+		if err := pmeRows.Scan(&p.matchID, &p.perfScore, &p.dominanceFlag); err != nil {
+			pmeRows.Close()
+			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan A: %w", err)
+		}
+		pmes[p.matchID] = p
+	}
+	pmeRows.Close()
+	if len(pmes) == 0 {
+		return nil, nil
+	}
 
-	var results []domain.TopMatchRawRow
-	for rows.Next() {
+	matchIDs := make([]string, 0, len(pmes))
+	for id := range pmes {
+		matchIDs = append(matchIDs, id)
+	}
+
+	// Phase B : shared via SharedReader.
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetTopMatches: shared reader: %w", err)
+	}
+	defer release()
+	query := fmt.Sprintf(Q9TopMatchesSharedTpl, Placeholders(len(matchIDs)))
+	sharedArgs := make([]any, 0, len(matchIDs)+1)
+	sharedArgs = append(sharedArgs, r.pdb.XUID)
+	sharedArgs = append(sharedArgs, ToAnySlice(matchIDs)...)
+	sharedRows, err := sharedDB.QueryContext(ctx, query, sharedArgs...)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetTopMatches: phase B: %w", err)
+	}
+	defer sharedRows.Close()
+
+	var enriched []domain.TopMatchRawRow
+	for sharedRows.Next() {
 		var m domain.TopMatchRawRow
-		var _section int
-		if err := rows.Scan(
-			&m.MatchID, &m.PerformanceScore, &m.StartTime,
+		if err := sharedRows.Scan(
+			&m.MatchID, &m.StartTime,
 			&m.MapName, &m.PairName, &m.PlaylistName,
 			&m.Outcome, &m.Kills, &m.Deaths, &m.KDA,
-			&m.TeamMMR, &m.EnemyMMR, &m.DominanceFlag, &_section,
+			&m.TeamMMR, &m.EnemyMMR,
 		); err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan: %w", err)
+			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan B: %w", err)
 		}
-		results = append(results, m)
+		if pme, ok := pmes[m.MatchID]; ok {
+			m.PerformanceScore = pme.perfScore
+			m.DominanceFlag = pme.dominanceFlag
+			enriched = append(enriched, m)
+		}
 	}
-	return results, rows.Err()
+	if err := sharedRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Phase C : sections + tri + top 10.
+	var wins, losses []domain.TopMatchRawRow
+	for _, m := range enriched {
+		switch m.Outcome {
+		case 2:
+			wins = append(wins, m)
+		case 3:
+			losses = append(losses, m)
+		}
+	}
+	// WIN : dominance ∈ (5,3,1) prioritaires (= remontada/contre-remontada/domination), tri DESC.
+	// Tiebreak : perf_score DESC.
+	sort.SliceStable(wins, func(i, j int) bool {
+		pi := topMatchDominancePriority(wins[i].DominanceFlag, []int{5, 3, 1})
+		pj := topMatchDominancePriority(wins[j].DominanceFlag, []int{5, 3, 1})
+		if pi != pj {
+			return pi > pj
+		}
+		return wins[i].PerformanceScore > wins[j].PerformanceScore
+	})
+	// LOSS : dominance ∈ (4,2) prioritaires (= débandade/humiliation), tri DESC.
+	// Tiebreak : perf_score ASC (les moins bons en premier).
+	sort.SliceStable(losses, func(i, j int) bool {
+		pi := topMatchDominancePriority(losses[i].DominanceFlag, []int{4, 2})
+		pj := topMatchDominancePriority(losses[j].DominanceFlag, []int{4, 2})
+		if pi != pj {
+			return pi > pj
+		}
+		return losses[i].PerformanceScore < losses[j].PerformanceScore
+	})
+	if len(wins) > 10 {
+		wins = wins[:10]
+	}
+	if len(losses) > 10 {
+		losses = losses[:10]
+	}
+	results := make([]domain.TopMatchRawRow, 0, len(wins)+len(losses))
+	results = append(results, wins...)
+	results = append(results, losses...)
+	return results, nil
+}
+
+// topMatchDominancePriority retourne la valeur du dominance_flag si présent
+// dans le set prioritaire, sinon 0. Reproduit le `CASE WHEN ... THEN flag ELSE 0`
+// du SQL historique Q9.
+func topMatchDominancePriority(flag int, priorities []int) int {
+	for _, p := range priorities {
+		if flag == p {
+			return flag
+		}
+	}
+	return 0
 }
 
 // buildHighlightFilterClause traduit `domain.CareerHighlightFilters` en
@@ -243,76 +453,193 @@ func buildHighlightFilterClause(filters domain.CareerHighlightFilters) (string, 
 	return " AND " + strings.Join(parts, " AND "), args
 }
 
+// highlightSharedRow capture le résultat de Q9bHighlightSharedTpl (Phase B).
+type highlightSharedRow struct {
+	MatchID            string
+	Outcome            int
+	IsRanked           bool
+	StartTime          *time.Time
+	PairNameSource     string
+	PlaylistNameSource string
+	PlaylistID         string
+}
+
+// highlightPMEEntry capture les colonnes pme nécessaires au tri WIN/LOSS.
+type highlightPMEEntry struct {
+	PerfScore     float64
+	DominanceFlag int
+}
+
+// loadHighlightCandidates exécute le pipeline split commun à GetHighlightMatchIDs
+// et GetHighlightPool (ADR 0016) :
+//   - Phase A : pme (player) avec filtre perf_score + NOT had_bot_teammate.
+//   - Phase B : mp + r (shared via SharedReader) avec filtres time_played +
+//     NOT is_firefight + outcome ∈ {2,3} + IN match_ids + clause dynamique.
+//   - Phase C : retourne les rows enrichies + map pme[match_id]→{perf_score, dominance}.
+func (r *CareerRepo) loadHighlightCandidates(
+	ctx context.Context, extraClause string, extraArgs []any,
+) ([]highlightSharedRow, map[string]highlightPMEEntry, error) {
+	pmes := make(map[string]highlightPMEEntry)
+	pmeRows, err := r.pdb.Player.Query(ctx, Q9TopMatchesPlayer)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loadHighlightCandidates: phase A: %w", err)
+	}
+	matchIDs := make([]string, 0)
+	for pmeRows.Next() {
+		var mid string
+		var p highlightPMEEntry
+		if err := pmeRows.Scan(&mid, &p.PerfScore, &p.DominanceFlag); err != nil {
+			pmeRows.Close()
+			return nil, nil, fmt.Errorf("loadHighlightCandidates scan A: %w", err)
+		}
+		pmes[mid] = p
+		matchIDs = append(matchIDs, mid)
+	}
+	pmeRows.Close()
+	if len(matchIDs) == 0 {
+		return nil, pmes, nil
+	}
+
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loadHighlightCandidates: shared reader: %w", err)
+	}
+	defer release()
+	query := fmt.Sprintf(Q9bHighlightSharedTpl, Placeholders(len(matchIDs)), extraClause)
+	args := make([]any, 0, 1+len(matchIDs)+len(extraArgs))
+	args = append(args, r.pdb.XUID)
+	args = append(args, ToAnySlice(matchIDs)...)
+	args = append(args, extraArgs...)
+	rows, err := sharedDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loadHighlightCandidates: phase B: %w", err)
+	}
+	defer rows.Close()
+
+	var out []highlightSharedRow
+	for rows.Next() {
+		var row highlightSharedRow
+		var startTime sql.NullTime
+		if err := rows.Scan(&row.MatchID, &row.Outcome, &row.IsRanked, &startTime,
+			&row.PairNameSource, &row.PlaylistNameSource, &row.PlaylistID); err != nil {
+			return nil, nil, fmt.Errorf("loadHighlightCandidates scan B: %w", err)
+		}
+		if startTime.Valid {
+			t := startTime.Time
+			row.StartTime = &t
+		}
+		out = append(out, row)
+	}
+	return out, pmes, rows.Err()
+}
+
 // GetHighlightMatchIDs retourne 15 best + 15 worst match_ids triés par
 // performance + dominance prio. Les rows sont retournées dans l'ordre
 // _s ASC : best d'abord, worst ensuite.
 //
 // `filters` applique optionnellement Experience (is_ranked) et SeasonRanges
 // (date windows) via une clause SQL additionnelle dérivée en interne.
+//
+// Split cross-DB en 2 phases (ADR 0016, cf. loadHighlightCandidates).
 func (r *CareerRepo) GetHighlightMatchIDs(ctx context.Context, filters domain.CareerHighlightFilters) ([]domain.HighlightMatchIDRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
 	clause, extraArgs := buildHighlightFilterClause(filters)
-	sqlText := fmt.Sprintf(Q9bHighlightMatchIDsTpl, clause, clause)
-	args := make([]any, 0, 2+2*len(extraArgs))
-	args = append(args, r.pdb.XUID)
-	args = append(args, extraArgs...)
-	args = append(args, r.pdb.XUID)
-	args = append(args, extraArgs...)
-
-	rows, err := r.pdb.ReadDB().Query(ctx, sqlText, args...)
+	cands, pmes, err := r.loadHighlightCandidates(ctx, clause, extraArgs)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetHighlightMatchIDs: %w", err)
 	}
-	defer rows.Close()
-
-	var results []domain.HighlightMatchIDRow
-	for rows.Next() {
-		var row domain.HighlightMatchIDRow
-		if err := rows.Scan(&row.MatchID, &row.Outcome, &row.Section); err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetHighlightMatchIDs scan: %w", err)
-		}
-		results = append(results, row)
+	if len(cands) == 0 {
+		return nil, nil
 	}
-	return results, rows.Err()
+
+	type sortableRow struct {
+		MatchID       string
+		Outcome       int
+		PerfScore     float64
+		DominanceFlag int
+	}
+	var wins, losses []sortableRow
+	for _, c := range cands {
+		pme, ok := pmes[c.MatchID]
+		if !ok {
+			continue
+		}
+		row := sortableRow{
+			MatchID:       c.MatchID,
+			Outcome:       c.Outcome,
+			PerfScore:     pme.PerfScore,
+			DominanceFlag: pme.DominanceFlag,
+		}
+		switch c.Outcome {
+		case 2:
+			wins = append(wins, row)
+		case 3:
+			losses = append(losses, row)
+		}
+	}
+	sort.SliceStable(wins, func(i, j int) bool {
+		pi := topMatchDominancePriority(wins[i].DominanceFlag, []int{5, 3, 1})
+		pj := topMatchDominancePriority(wins[j].DominanceFlag, []int{5, 3, 1})
+		if pi != pj {
+			return pi > pj
+		}
+		return wins[i].PerfScore > wins[j].PerfScore
+	})
+	sort.SliceStable(losses, func(i, j int) bool {
+		pi := topMatchDominancePriority(losses[i].DominanceFlag, []int{4, 2})
+		pj := topMatchDominancePriority(losses[j].DominanceFlag, []int{4, 2})
+		if pi != pj {
+			return pi > pj
+		}
+		return losses[i].PerfScore < losses[j].PerfScore
+	})
+	if len(wins) > 15 {
+		wins = wins[:15]
+	}
+	if len(losses) > 15 {
+		losses = losses[:15]
+	}
+	results := make([]domain.HighlightMatchIDRow, 0, len(wins)+len(losses))
+	for _, w := range wins {
+		results = append(results, domain.HighlightMatchIDRow{MatchID: w.MatchID, Outcome: w.Outcome, Section: 1})
+	}
+	for _, l := range losses {
+		results = append(results, domain.HighlightMatchIDRow{MatchID: l.MatchID, Outcome: l.Outcome, Section: 2})
+	}
+	return results, nil
 }
 
 // GetHighlightPool retourne le pool complet des matchs éligibles pour la
 // section "Matchs marquants" (mêmes critères d'éligibilité que Q9b, hors
-// LIMIT et hors filtre best/worst). Utilisé pour calculer les cascade counts
-// (available_experience, available_seasons) en respectant les autres filtres.
+// LIMIT et hors filtre best/worst). Utilisé pour calculer les cascade counts.
+//
+// Split cross-DB en 2 phases (ADR 0016, cf. loadHighlightCandidates).
 func (r *CareerRepo) GetHighlightPool(ctx context.Context) ([]domain.HighlightMatchPoolRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q9bHighlightPool, r.pdb.XUID)
+	cands, _, err := r.loadHighlightCandidates(ctx, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetHighlightPool: %w", err)
 	}
-	defer rows.Close()
 
-	var results []domain.HighlightMatchPoolRow
-	for rows.Next() {
-		var row domain.HighlightMatchPoolRow
-		var startTime sql.NullTime
-		if err := rows.Scan(
-			&row.MatchID, &row.IsRanked, &startTime,
-			&row.ModeUISource, &row.PlaylistNameRaw, &row.PlaylistID,
-		); err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetHighlightPool scan: %w", err)
-		}
-		if startTime.Valid {
-			t := startTime.Time
-			row.StartTime = &t
+	results := make([]domain.HighlightMatchPoolRow, 0, len(cands))
+	for _, c := range cands {
+		row := domain.HighlightMatchPoolRow{
+			MatchID:         c.MatchID,
+			IsRanked:        c.IsRanked,
+			StartTime:       c.StartTime,
+			ModeUISource:    c.PairNameSource,
+			PlaylistNameRaw: c.PlaylistNameSource,
+			PlaylistID:      c.PlaylistID,
 		}
 		row.ModeUI = analysis.NormalizeModeLabel(row.ModeUISource)
-		// PlaylistName initialisé avec la valeur brute COALESCE — sera
-		// override par le service via asset_translations[playlist_id, fr] si dispo.
 		row.PlaylistName = row.PlaylistNameRaw
 		results = append(results, row)
 	}
-	return results, rows.Err()
+	return results, nil
 }
 
 // LoadModeTranslationsFR retourne le mapping EN→FR depuis metadata.mode_name_tr
