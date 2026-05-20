@@ -30,6 +30,7 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/scheduler"
+	"levelup/go-api/internal/sync"
 )
 
 // AdminAutoSyncHandler expose les endpoints diagnostic de l'auto-sync.
@@ -159,11 +160,11 @@ func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Reques
 	var rotated bool
 	onRotated := func(ctx context.Context, gt, newRT string) error {
 		dbPath := pr.PlayerDBPath(titlePkg.DefaultSlug, gt)
-		db, derr := duckdb.OpenReadWriteShared(dbPath)
+		db, release, derr := sync.AcquirePlayerWriterStandalone(ctx, dbPath)
 		if derr != nil {
 			return derr
 		}
-		defer db.Close() //nolint:errcheck // ref-count : best-effort
+		defer release()
 		if werr := duckdb.WriteOAuthRefreshToken(ctx, db, newRT); werr != nil {
 			return werr
 		}

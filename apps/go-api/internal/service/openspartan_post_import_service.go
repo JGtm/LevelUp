@@ -19,7 +19,6 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync"
 )
 
@@ -191,13 +190,13 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 	if len(matchIDs) == 0 {
 		return
 	}
-	metaHandle, err := platform_duckdb.OpenReadWriteShared(metadataDBPath)
+	metaSQL, releaseMeta, err := sync.AcquireMetadataWriterStandalone(ctx, metadataDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "open_metadata", Err: err.Error()})
 		s.log.Warn("post_import_metadata_unavailable", "err", err)
 		return
 	}
-	defer metaHandle.Close()
+	defer releaseMeta()
 	sharedDB, releaseShared, err := sync.AcquireSharedWriterStandalone(ctx, s.cfg.SharedProvider, sharedDBPath)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations_acquire", Err: err.Error()})
@@ -205,7 +204,7 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 		return
 	}
 	defer releaseShared()
-	if err := sync.BackfillMatchCitations(ctx, metaHandle.SQLDb(), sharedDB, playerDB, xuid, matchIDs); err != nil {
+	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, xuid, matchIDs); err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations", Err: err.Error()})
 		s.log.Warn("post_import_citations_failed", "xuid", xuid, "err", err)
 		return
