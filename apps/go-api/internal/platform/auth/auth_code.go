@@ -2,12 +2,12 @@
 // un access_token Microsoft (PR 4 — flow redirect SSO).
 //
 // Architecture du flow Authorization Code (RFC 6749 §4.1) :
-//   1. Frontend redirect 302 vers https://login.microsoftonline.com/.../authorize
-//      avec response_type=code + state CSRF stocké en session.
-//   2. User s'authentifie chez Microsoft + autorise l'app LevelUp.
-//   3. Microsoft redirect 302 vers redirect_uri?code=...&state=...
-//   4. Backend (handler Callback) vérifie state vs session, puis exchange code
-//      → access_token + refresh_token via ce module.
+//  1. Frontend redirect 302 vers https://login.microsoftonline.com/.../authorize
+//     avec response_type=code + state CSRF stocké en session.
+//  2. User s'authentifie chez Microsoft + autorise l'app LevelUp.
+//  3. Microsoft redirect 302 vers redirect_uri?code=...&state=...
+//  4. Backend (handler Callback) vérifie state vs session, puis exchange code
+//     → access_token + refresh_token via ce module.
 //
 // Différent du Device Code Flow (msal_client.go, RFC 8628) qui demande à l'user
 // de copier un code 9 caractères vers login.live.com/devicelogin.

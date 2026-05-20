@@ -79,9 +79,10 @@ func groupSquadBySession(rows []domain.SquadMatchRow) []domain.SquadTimeseriesPo
 		}
 		agg.totalMMR += r.TeamMMR
 		agg.count++
-		if r.Outcome == domain.OutcomeWin {
+		switch r.Outcome {
+		case domain.OutcomeWin:
 			agg.wins++
-		} else if r.Outcome == domain.OutcomeLoss {
+		case domain.OutcomeLoss:
 			agg.losses++
 		}
 	}
@@ -170,9 +171,10 @@ func bucketByTime(rows []domain.SquadMatchRow, period string) []domain.SquadTime
 		}
 		agg.totalMMR += r.TeamMMR
 		agg.count++
-		if r.Outcome == domain.OutcomeWin {
+		switch r.Outcome {
+		case domain.OutcomeWin:
 			agg.wins++
-		} else if r.Outcome == domain.OutcomeLoss {
+		case domain.OutcomeLoss:
 			agg.losses++
 		}
 	}

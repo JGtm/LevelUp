@@ -106,9 +106,9 @@ func buildStreakAlerts(input GenerateInput) []Alert {
 					Type:     AlertTypeStreakMilestone,
 					Severity: notifications.SeveritySuccess,
 					Params: map[string]any{
-						"streak_type":   string(r.Streak.Type),
-						"length":        r.Streak.CurrentLength,
-						"multiplier":    streaks.PPMultiplier(r.Streak.CurrentLength),
+						"streak_type": string(r.Streak.Type),
+						"length":      r.Streak.CurrentLength,
+						"multiplier":  streaks.PPMultiplier(r.Streak.CurrentLength),
 					},
 					DedupKey: string(r.Streak.Type) + "|" + strconv.Itoa(th),
 				})

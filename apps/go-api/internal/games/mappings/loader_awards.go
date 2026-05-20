@@ -19,7 +19,7 @@ import (
 
 // awardsTOML est la projection brute du fichier awards.toml avant validation.
 type awardsTOML struct {
-	Meta   metaSection                `toml:"meta"`
+	Meta   metaSection               `toml:"meta"`
 	Awards map[string]awardEntryTOML `toml:"awards"`
 }
 

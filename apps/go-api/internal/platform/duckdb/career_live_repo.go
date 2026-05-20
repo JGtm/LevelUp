@@ -89,14 +89,14 @@ func (r *CareerLiveRepo) LoadLastCareerRank(ctx context.Context, xuid string) (*
 		return nil, nil
 	}
 	var (
-		row              CareerRankRow
-		rankName         sql.NullString
-		rankTier         sql.NullString
-		spartanID        sql.NullString
-		bannerURL        sql.NullString
-		emblemURL        sql.NullString
-		backdropURL      sql.NullString
-		adornmentPath    sql.NullString
+		row           CareerRankRow
+		rankName      sql.NullString
+		rankTier      sql.NullString
+		spartanID     sql.NullString
+		bannerURL     sql.NullString
+		emblemURL     sql.NullString
+		backdropURL   sql.NullString
+		adornmentPath sql.NullString
 	)
 	err := r.pdb.Player.QueryRow(ctx, qLoadLastCareerRank, xuid).Scan(
 		&row.Rank,

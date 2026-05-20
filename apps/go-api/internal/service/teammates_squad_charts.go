@@ -19,25 +19,8 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
 )
-
-// canonicalOutcomeToInt convertit canonical.Outcome (string) vers le code int
-// historique consomme par analysis.ParticipantSnap (2/3/1/4).
-func canonicalOutcomeToInt(o canonical.Outcome) int {
-	switch o {
-	case canonical.OutcomeWin:
-		return analysis.OutcomeWin
-	case canonical.OutcomeLoss:
-		return analysis.OutcomeLoss
-	case canonical.OutcomeTie:
-		return analysis.OutcomeTie
-	case canonical.OutcomeDNF:
-		return analysis.OutcomeDNF
-	}
-	return 0
-}
 
 // ---------------------------------------------------------------------------
 // teammates.04 — Squad timeline par session

@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/games"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/mappings"
+
 	// Blank import : déclenche l'init() de observability qui publie le namespace
 	// expvar "levelup". Le handler /debug/vars (stdlib) découvre ces compteurs
 	// automatiquement via http.DefaultServeMux (P8.3, ADR 0009).

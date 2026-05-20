@@ -68,8 +68,8 @@ type MatchViewHeader struct {
 	PerfColor *string `json:"performance_color,omitempty"`
 	// PerfColorToken : token sémantique perf-tier-1..5 (1=meilleur, 5=pire).
 	// Empty si performance score absent.
-	PerfColorToken          string `json:"performance_color_token,omitempty"`
-	IsExcluded bool `json:"is_excluded"`
+	PerfColorToken string `json:"performance_color_token,omitempty"`
+	IsExcluded     bool   `json:"is_excluded"`
 	// IsRanked : true si la playlist est classée (CSR officiel). Utilisé côté
 	// front pour désactiver le bouton "Exclure" (un match classé ne peut pas
 	// être exclu). Source : shared.match_registry.is_ranked.

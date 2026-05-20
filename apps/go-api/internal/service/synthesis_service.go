@@ -284,69 +284,6 @@ func filterSynthesisByPeriod(
 	return filtered, applied, ignored
 }
 
-// buildSynthesisOverview calcule les cumuls, moyennes et pics depuis les matchs filtrÃ©s.
-func buildSynthesisOverview(rows []legacymatch.SynthesisMatchRow, soloKPIs domain.SynthesisKPIs) domain.SynthesisOverview {
-	var totalKills, totalDeaths, totalWins, totalLosses int
-	var bestKills int
-	var bestKDA float64
-	var winStreak, maxStreak int
-
-	for _, r := range rows {
-		totalKills += r.Kills
-		totalDeaths += r.Deaths
-		if r.Outcome == 2 { // WIN
-			totalWins++
-			winStreak++
-			if winStreak > maxStreak {
-				maxStreak = winStreak
-			}
-		} else {
-			totalLosses++
-			winStreak = 0
-		}
-		if r.Kills > bestKills {
-			bestKills = r.Kills
-		}
-		if r.KDA != nil && *r.KDA > bestKDA {
-			bestKDA = *r.KDA
-		}
-	}
-
-	n := len(rows)
-	ov := domain.SynthesisOverview{
-		TotalMatches:     n,
-		TotalWins:        totalWins,
-		TotalLosses:      totalLosses,
-		TotalKills:       totalKills,
-		TotalDeaths:      totalDeaths,
-		WinRate:          soloKPIs.WinRate,
-		LongestWinStreak: maxStreak,
-	}
-	if soloKPIs.KDRatio != nil {
-		ov.AvgKDA = soloKPIs.KDRatio
-	}
-	if n > 0 {
-		avgKills := float64(totalKills) / float64(n)
-		avgDeaths := float64(totalDeaths) / float64(n)
-		ov.AvgKills = &avgKills
-		ov.AvgDeaths = &avgDeaths
-		// TotalKDR canonique (P2.5, ADR 0006) â€" debloque suppression du
-		// recompute SynthesisPage.tsx:139-141 (B3, sum/sum mathematiquement faux).
-		totalKDR := analysis.KDR(totalKills, totalDeaths)
-		ov.TotalKDR = &totalKDR
-	}
-	if soloKPIs.PerformanceScore != nil {
-		ov.AvgPerfScore = soloKPIs.PerformanceScore
-	}
-	if bestKills > 0 {
-		ov.BestKillsMatch = &bestKills
-	}
-	if bestKDA > 0 {
-		ov.BestKDAMatch = &bestKDA
-	}
-	return ov
-}
-
 func buildScopeDescription(period string, matchCount int) string {
 	labels := map[string]string{
 		"all": "tous les matchs",
@@ -446,14 +383,7 @@ func buildRivalriesPreview(rows []domain.EncounterRawRow) domain.SynthesisRivalr
 		}
 	}
 	toPreview := func(r domain.EncounterRawRow) domain.SynthesisEncounterPreview {
-		return domain.SynthesisEncounterPreview{
-			XUID:       r.XUID,
-			Gamertag:   r.Gamertag,
-			MatchCount: r.MatchCount,
-			AsTeammate: r.AsTeammate,
-			AsEnemy:    r.AsEnemy,
-			AvgKDA:     r.AvgKDA,
-		}
+		return domain.SynthesisEncounterPreview(r)
 	}
 
 	teammates := []domain.SynthesisEncounterPreview{}

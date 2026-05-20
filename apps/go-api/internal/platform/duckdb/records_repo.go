@@ -1,7 +1,8 @@
 // Package duckdb — records_repo.go : persistance des PB (V2 Ascension).
 //
 // PersonalRecordsRepo  → table `player_records` dans `shared_social.duckdb`.
-//   (xuid en PK avec metric + period — cf. migration extend_player_records_with_window)
+//
+//	(xuid en PK avec metric + period — cf. migration extend_player_records_with_window)
 //
 // Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §7.2.
 package duckdb
@@ -136,12 +137,12 @@ func (r *PersonalRecordsRepo) ListByXUID(ctx context.Context, xuid string) ([]re
 // scanPersonalRecord parse une ligne de player_records en records.PersonalRecord.
 func scanPersonalRecord(row rowScanner) (records.PersonalRecord, error) {
 	var (
-		pr                records.PersonalRecord
-		periodStr         string
-		achievedAt        sql.NullTime
-		achievedMatchID   sql.NullString
-		prevValue         sql.NullFloat64
-		prevAchievedAt    sql.NullTime
+		pr              records.PersonalRecord
+		periodStr       string
+		achievedAt      sql.NullTime
+		achievedMatchID sql.NullString
+		prevValue       sql.NullFloat64
+		prevAchievedAt  sql.NullTime
 	)
 	err := row.Scan(
 		&pr.XUID, &pr.Metric, &periodStr, &pr.Value,

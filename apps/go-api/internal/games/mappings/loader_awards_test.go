@@ -147,8 +147,8 @@ func TestLoadAwardsFromFile_RealConfig(t *testing.T) {
 		return
 	}
 	criticalAwards := []struct {
-		name      string
-		mustHave  string // axis qui DOIT être présent dans la liste
+		name     string
+		mustHave string // axis qui DOIT être présent dans la liste
 	}{
 		{"flag_captured", "objective"},
 		{"zone_captured", "objective"},

@@ -50,13 +50,13 @@ type DetectInput struct {
 // NearMiss=true (et NewPB=false) : la valeur courante est proche du PB sans
 // le battre, à utiliser par le coach pour une alerte « approche ».
 type DetectionResult struct {
-	Metric             TrackedMetric
-	Period             RecordPeriod
-	Value              float64
-	PreviousValue      *float64
-	MatchID            string
-	NewPB              bool
-	NearMiss           bool
+	Metric        TrackedMetric
+	Period        RecordPeriod
+	Value         float64
+	PreviousValue *float64
+	MatchID       string
+	NewPB         bool
+	NearMiss      bool
 }
 
 // Detector orchestre la détection de PB pour un joueur.

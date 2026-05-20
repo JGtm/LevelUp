@@ -196,12 +196,12 @@ var athMetrics = map[string]bool{
 
 // metricAvailability détermine si la valeur d'une métrique est exploitable pour un joueur.
 //
-// - athMetrics (perf_ath/lusr_ath/career_rank) : exigent IsLocal=true ET valeur>0.
-//   L'échantillon croisé ne donne pas l'ATH (stats de carrière globales).
-// - localOnlyMetrics (spree/life/perfect/headshots) : IsLocal OU IsLocalSample
-//   (le service alimente IsLocalSample pour un joueur B remote ayant un échantillon
-//   de matchs croisés avec A — métriques alors calculées sur cet échantillon).
-// - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
+//   - athMetrics (perf_ath/lusr_ath/career_rank) : exigent IsLocal=true ET valeur>0.
+//     L'échantillon croisé ne donne pas l'ATH (stats de carrière globales).
+//   - localOnlyMetrics (spree/life/perfect/headshots) : IsLocal OU IsLocalSample
+//     (le service alimente IsLocalSample pour un joueur B remote ayant un échantillon
+//     de matchs croisés avec A — métriques alors calculées sur cet échantillon).
+//   - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
 func metricAvailability(key string, value float64, isLocal, isLocalSample bool) bool {
 	if athMetrics[key] {
 		return isLocal && value > 0

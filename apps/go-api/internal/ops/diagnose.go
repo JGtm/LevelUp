@@ -189,16 +189,16 @@ func listIndexes(db *sql.DB) ([]IndexInfo, error) {
 // FormatDiagnoseReport retourne une représentation texte du rapport.
 func FormatDiagnoseReport(r DiagnoseReport) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("=== Diagnostic : %s ===\n\n", r.DBPath))
-	sb.WriteString(fmt.Sprintf("Tables (%d) :\n", len(r.Tables)))
+	fmt.Fprintf(&sb, "=== Diagnostic : %s ===\n\n", r.DBPath)
+	fmt.Fprintf(&sb, "Tables (%d) :\n", len(r.Tables))
 	for _, t := range r.Tables {
-		sb.WriteString(fmt.Sprintf("  %-40s  %d cols", t.Name, len(t.Columns)))
+		fmt.Fprintf(&sb, "  %-40s  %d cols", t.Name, len(t.Columns))
 		if t.RowCount >= 0 {
-			sb.WriteString(fmt.Sprintf("  %d lignes", t.RowCount))
+			fmt.Fprintf(&sb, "  %d lignes", t.RowCount)
 		}
 		sb.WriteRune('\n')
 	}
-	sb.WriteString(fmt.Sprintf("\nVues (%d) : %s\n", len(r.Views), strings.Join(r.Views, ", ")))
-	sb.WriteString(fmt.Sprintf("Index (%d)\n", len(r.Indexes)))
+	fmt.Fprintf(&sb, "\nVues (%d) : %s\n", len(r.Views), strings.Join(r.Views, ", "))
+	fmt.Fprintf(&sb, "Index (%d)\n", len(r.Indexes))
 	return sb.String()
 }

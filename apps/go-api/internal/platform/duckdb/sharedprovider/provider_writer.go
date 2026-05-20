@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // AcquireWriter implémente Provider.AcquireWriter avec drain en 3 phases :

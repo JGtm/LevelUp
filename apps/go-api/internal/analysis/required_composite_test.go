@@ -59,9 +59,9 @@ func TestRequiredCompositeForTier_FarBelow(t *testing.T) {
 // clampée à 1.0 car 50 > kElo/2).
 func TestRequiredCompositeForTier_AllTiersEntry(t *testing.T) {
 	tierEntries := []struct {
-		name      string
-		current   float64
-		targetMu  float64
+		name     string
+		current  float64
+		targetMu float64
 	}{
 		{"Bronze entry from 950", 950, 1000},
 		{"Silver entry from 1150", 1150, 1200},

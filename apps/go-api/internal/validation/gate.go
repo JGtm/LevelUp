@@ -43,7 +43,7 @@ type GateReport struct {
 func (r *GateReport) Format() string {
 	var sb strings.Builder
 	sb.WriteString("=== Gate Phase 4 — Checklist passage Phase 5 ===\n")
-	sb.WriteString(fmt.Sprintf("Généré le : %s\n\n", r.GeneratedAt.Format("2006-01-02 15:04:05")))
+	fmt.Fprintf(&sb, "Généré le : %s\n\n", r.GeneratedAt.Format("2006-01-02 15:04:05"))
 
 	passed, failed := 0, 0
 	for _, item := range r.Items {
@@ -54,19 +54,19 @@ func (r *GateReport) Format() string {
 		} else {
 			passed++
 		}
-		sb.WriteString(fmt.Sprintf("  %s [%s] %s\n", icon, item.ID, item.Label))
+		fmt.Fprintf(&sb, "  %s [%s] %s\n", icon, item.ID, item.Label)
 		if item.Message != "" {
-			sb.WriteString(fmt.Sprintf("       %s\n", item.Message))
+			fmt.Fprintf(&sb, "       %s\n", item.Message)
 		}
 	}
 
 	sb.WriteByte('\n')
 	if r.AllPassed {
-		sb.WriteString(fmt.Sprintf("✅ GATE PHASE 4 VALIDÉE (%d/%d critères)\n", passed, len(r.Items)))
+		fmt.Fprintf(&sb, "✅ GATE PHASE 4 VALIDÉE (%d/%d critères)\n", passed, len(r.Items))
 		sb.WriteString("   → Passage en Phase 5 (Sprint 27 - Bascule progressive) autorisé.\n")
 	} else {
-		sb.WriteString(fmt.Sprintf("❌ GATE PHASE 4 NON VALIDÉE (%d/%d critères — %d échec(s))\n",
-			passed, len(r.Items), failed))
+		fmt.Fprintf(&sb, "❌ GATE PHASE 4 NON VALIDÉE (%d/%d critères — %d échec(s))\n",
+			passed, len(r.Items), failed)
 		sb.WriteString("   → Corriger les items ❌ avant de passer en Phase 5.\n")
 	}
 	return sb.String()

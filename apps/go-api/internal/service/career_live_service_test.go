@@ -154,15 +154,15 @@ func TestCareerLive_MergeCareerRow_Matrix(t *testing.T) {
 	}
 
 	cases := []struct {
-		name             string
-		progress         *syncpkg.CareerRankData
-		custom           *syncpkg.SpartanCustomizationData
-		dbRow            *duckdb.CareerRankRow
-		wantMerged       bool
-		wantSpartanID    string
-		wantEmblemURL    string
-		wantRank         int
-		wantCurrentXP    int
+		name          string
+		progress      *syncpkg.CareerRankData
+		custom        *syncpkg.SpartanCustomizationData
+		dbRow         *duckdb.CareerRankRow
+		wantMerged    bool
+		wantSpartanID string
+		wantEmblemURL string
+		wantRank      int
+		wantCurrentXP int
 	}{
 		{
 			name:          "cache hit live OK full",

@@ -47,11 +47,11 @@ type fakePool struct {
 func (m *fakePool) Acquire(_ context.Context, _ pool.AcquirePolicy, _ string) (*pool.Lease, error) {
 	return nil, nil
 }
-func (m *fakePool) Size() int                                    { return m.size }
-func (m *fakePool) HasPlayer(gt string) bool                     { return m.hasPlayerMap[gt] }
-func (m *fakePool) MarkUnhealthy(_ string, _ error)              {}
-func (m *fakePool) OnHTTPError(_ int)                            {}
-func (m *fakePool) Close()                                       {}
+func (m *fakePool) Size() int                       { return m.size }
+func (m *fakePool) HasPlayer(gt string) bool        { return m.hasPlayerMap[gt] }
+func (m *fakePool) MarkUnhealthy(_ string, _ error) {}
+func (m *fakePool) OnHTTPError(_ int)               {}
+func (m *fakePool) Close()                          {}
 
 // fakeActivityChecker implémente PlayerActivityChecker pour les tests.
 type fakeActivityChecker struct {

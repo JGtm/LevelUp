@@ -188,9 +188,9 @@ func TestEmitPostSyncDeltas_SkillTier(t *testing.T) {
 	}
 	after := &PlayerSnapshot{
 		SkillTierByPlaylist: map[string]string{
-			"ranked-arena":   "csr|Onyx|0",       // identique → pas d'emit
-			"ranked-doubles": "csr|Onyx|1",       // changé → emit
-			"social-slayer":  "lusr|Onyx Pro|0",  // nouveau → emit
+			"ranked-arena":   "csr|Onyx|0",      // identique → pas d'emit
+			"ranked-doubles": "csr|Onyx|1",      // changé → emit
+			"social-slayer":  "lusr|Onyx Pro|0", // nouveau → emit
 		},
 	}
 	EmitPostSyncDeltas(context.Background(), em, "p1", before, after, nil)
@@ -267,14 +267,6 @@ func TestEmitPostSyncDeltas_PersonalRecord_SkippedWithoutPDB(t *testing.T) {
 //
 // Si une nouvelle route fantôme réapparaît, ce test échouera avec un message
 // nominatif. Test de non-régression au sens politique transverse.
-
-// validRoutePrefixes : whitelist des préfixes de routes acceptés en TargetRoute.
-// À synchroniser avec apps/web/src/routeTree.gen.ts si la nav front évolue.
-var validRoutePrefixes = []string{
-	"/changelog",
-	"/settings",
-	"/players/", // /players/{slug}/* — vérification fine ci-dessous
-}
 
 // validPlayerSubpaths : sous-chemins acceptés sous /players/{slug}/.
 var validPlayerSubpaths = []string{
@@ -358,18 +350,18 @@ func TestEmitPostSyncDeltas_AllTargetRoutesValid(t *testing.T) {
 		BestKDA:                   3.0,
 	}
 	after := &PlayerSnapshot{
-		CurrentRank:               6,                                           // → career_rank
-		PersonalAwardCount:        15,                                          // → objective_completed/assigned
-		CitationsCount:            5,                                           // (legacy — n'émet plus challenge_completed)
-		ChallengePathsCount:       4,                                           // → challenge_added
-		ChallengeCompletedCount:   3,                                           // → challenge_completed
-		BattlepassCompletedTracks: 1,                                           // → battlepass_completed
-		CitationTotalEarnedTiers:  5,                                           // → citation_tier
-		CitationMasteryCount:      1,                                           // → citation_mastery
+		CurrentRank:               6,                                               // → career_rank
+		PersonalAwardCount:        15,                                              // → objective_completed/assigned
+		CitationsCount:            5,                                               // (legacy — n'émet plus challenge_completed)
+		ChallengePathsCount:       4,                                               // → challenge_added
+		ChallengeCompletedCount:   3,                                               // → challenge_completed
+		BattlepassCompletedTracks: 1,                                               // → battlepass_completed
+		CitationTotalEarnedTiers:  5,                                               // → citation_tier
+		CitationMasteryCount:      1,                                               // → citation_mastery
 		SkillTierByPlaylist:       map[string]string{"ranked-arena": "csr|Onyx|0"}, // → skill_tier
-		KDRatio:                   1.20,                                        // → threshold_crossed (KD)
-		Winrate:                   0.60,                                        // → threshold_crossed (winrate)
-		BestKDA:                   5.5,                                         // → personal_record (best_kda)
+		KDRatio:                   1.20,                                            // → threshold_crossed (KD)
+		Winrate:                   0.60,                                            // → threshold_crossed (winrate)
+		BestKDA:                   5.5,                                             // → personal_record (best_kda)
 	}
 	EmitPostSyncDeltas(context.Background(), em, "test-player", before, after, nil)
 

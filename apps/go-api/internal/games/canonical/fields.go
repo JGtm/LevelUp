@@ -89,14 +89,14 @@ const (
 // --- Derived KPIs (group = "derived") — métriques synthétisées sur une période ---
 
 const (
-	FieldMatchCount         FieldKey = "match_count"
-	FieldHeadshotsPerMatch  FieldKey = "headshots_per_match"
-	FieldDeathsPerMin       FieldKey = "deaths_per_min"
-	FieldAssistsPerMin      FieldKey = "assists_per_min"
-	FieldAvgMaxKillingSpree FieldKey = "avg_max_killing_spree"
-	FieldAvgDamageDealt     FieldKey = "avg_damage_dealt"
-	FieldAvgDamageTaken     FieldKey = "avg_damage_taken"
-	FieldAvgLifeSeconds     FieldKey = "avg_life_seconds"
+	FieldMatchCount           FieldKey = "match_count"
+	FieldHeadshotsPerMatch    FieldKey = "headshots_per_match"
+	FieldDeathsPerMin         FieldKey = "deaths_per_min"
+	FieldAssistsPerMin        FieldKey = "assists_per_min"
+	FieldAvgMaxKillingSpree   FieldKey = "avg_max_killing_spree"
+	FieldAvgDamageDealt       FieldKey = "avg_damage_dealt"
+	FieldAvgDamageTaken       FieldKey = "avg_damage_taken"
+	FieldAvgLifeSeconds       FieldKey = "avg_life_seconds"
 	FieldKDRatio              FieldKey = "kd_ratio"
 	FieldKillsPerMin          FieldKey = "kills_per_min"
 	FieldPerformanceScore     FieldKey = "performance_score"

@@ -51,7 +51,7 @@ func NextTierFromMu(mu float64) TierState {
 	}
 
 	// Trouver le tier dans la slice.
-	var tierIdx int = -1
+	var tierIdx = -1
 	for i := range sync.SkillTiers {
 		if sync.SkillTiers[i].Name == current.Name {
 			tierIdx = i

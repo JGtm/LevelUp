@@ -224,7 +224,7 @@ func TestHelpHandler_VersionOrder(t *testing.T) {
 	if pos70 < 0 || pos65 < 0 || pos60 < 0 {
 		t.Fatalf("missing version blocks: %q", content)
 	}
-	if !(pos70 < pos65 && pos65 < pos60) {
+	if pos70 >= pos65 || pos65 >= pos60 {
 		t.Errorf("expected v7.0 > v6.5 > v6.0, positions: %d %d %d in:\n%s", pos70, pos65, pos60, content)
 	}
 }

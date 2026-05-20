@@ -22,8 +22,6 @@ type poolImpl struct {
 
 	// Round-robin pour PolicyAnyPublic — canal buffered.
 	anyPublicChan chan int // indice slot
-	currentIdx    int      // pour round-robin
-	rrbMu         sync.Mutex
 
 	// Configuration.
 	maxSize         int

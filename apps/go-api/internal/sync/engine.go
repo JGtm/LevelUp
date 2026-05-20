@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
@@ -34,6 +33,8 @@ import (
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -798,9 +799,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		}
 
 		slog.DebugContext(ctx, "sync: requête historique API",
-			"gamertag", e.gamertag, "start", start, "page_size", historyPageSize,
+			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize,
 		)
-		entries, err := client.GetMatchHistory(ctx, e.gamertag, opts.MatchType, start, historyPageSize)
+		// L'endpoint /hi/players/{player}/matches exige strictement le format
+		// xuid(NNN) (voir Grunt StatsModule.GetMatchHistory + SPNKr). Passer le
+		// gamertag directement renvoie une réponse stale figée — symptôme du
+		// "no inserts since 6 mai" diagnostiqué le 2026-05-20.
+		entries, err := client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), opts.MatchType, start, historyPageSize)
 		if err != nil {
 			slog.WarnContext(ctx, "sync: GetMatchHistory échoué",
 				"gamertag", e.gamertag, "start", start, "err", err,
@@ -815,6 +820,18 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		slog.DebugContext(ctx, "sync: page reçue",
 			"gamertag", e.gamertag, "entries", len(entries), "start", start,
 		)
+		// Log INFO du 1er match retourné par l'API (seulement sur start=0).
+		// Sentinelle de fraîcheur : si ce StartTime ne bouge pas entre 2 cycles
+		// alors que le joueur a joué, on sait que l'API renvoie du stale
+		// (cf. incident 2026-05-20, endpoint /hi/players/{gamertag}/matches sans
+		// xuid(...) renvoyait du contenu figé).
+		if start == 0 && len(entries) > 0 {
+			slog.InfoContext(ctx, "sync: 1er match retourné par API",
+				"gamertag", e.gamertag, "xuid", e.xuid,
+				"first_match_id", entries[0].MatchID,
+				"first_match_start_time", entries[0].StartTime,
+			)
+		}
 
 		allKnown := true
 

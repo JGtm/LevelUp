@@ -87,9 +87,9 @@ type CompareMetricRow struct {
 	ValueB          float64 `json:"value_b"`
 	ValueAAvailable bool    `json:"value_a_available"`
 	ValueBAvailable bool    `json:"value_b_available"`
-	Delta           float64 `json:"delta"`            // value_b - value_a
-	Winner          string  `json:"winner"`           // "a" | "b" | "tie"
-	LessIsBetter    bool    `json:"less_is_better"`   // true = valeur basse meilleure (deaths_per_game, rendement, damage_taken_per_game)
+	Delta           float64 `json:"delta"`                   // value_b - value_a
+	Winner          string  `json:"winner"`                  // "a" | "b" | "tie"
+	LessIsBetter    bool    `json:"less_is_better"`          // true = valeur basse meilleure (deaths_per_game, rendement, damage_taken_per_game)
 	SampleSizeB     int     `json:"sample_size_b,omitempty"` // nb matchs B si joueur local croisé
 }
 

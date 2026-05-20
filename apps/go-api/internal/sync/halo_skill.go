@@ -351,13 +351,13 @@ type playerCSRResponse struct {
 		ID         string `json:"Id"`
 		ResultCode int    `json:"ResultCode"`
 		Result     struct {
-			Current    csrRankRaw `json:"Current"`
-			SeasonMax  csrRankRaw `json:"SeasonMax"`
-			AllTimeMax csrRankRaw `json:"AllTimeMax"`
-			PlaylistID   string `json:"PlaylistId"`
-			PlaylistName string `json:"PlaylistName"`
-			Queue        string `json:"Queue"`
-			Input        string `json:"Input"`
+			Current      csrRankRaw `json:"Current"`
+			SeasonMax    csrRankRaw `json:"SeasonMax"`
+			AllTimeMax   csrRankRaw `json:"AllTimeMax"`
+			PlaylistID   string     `json:"PlaylistId"`
+			PlaylistName string     `json:"PlaylistName"`
+			Queue        string     `json:"Queue"`
+			Input        string     `json:"Input"`
 		} `json:"Result"`
 	} `json:"Value"`
 }

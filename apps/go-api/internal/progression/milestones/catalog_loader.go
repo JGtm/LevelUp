@@ -18,7 +18,7 @@ import (
 
 // catalogTOML est la projection brute du fichier TOML.
 type catalogTOML struct {
-	Meta       catalogMetaTOML  `toml:"meta"`
+	Meta       catalogMetaTOML      `toml:"meta"`
 	Milestones []milestoneEntryTOML `toml:"milestones"`
 }
 

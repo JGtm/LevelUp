@@ -858,17 +858,3 @@ func deref(p *float64) float64 {
 func fmtPct(v float64) string {
 	return fmt.Sprintf("%.1f%%", v*100)
 }
-
-func fmtFloat2(p *float64) string {
-	if p == nil {
-		return "-"
-	}
-	return fmt.Sprintf("%.2f", *p)
-}
-
-func fmtFloat0(p *float64) string {
-	if p == nil {
-		return "-"
-	}
-	return fmt.Sprintf("%.0f", *p)
-}

@@ -569,10 +569,10 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 	// Stats par chaîne pour observabilité (utile pour diagnostiquer "pourquoi si peu
 	// de matchs scorés ?" — distribution réelle des chaînes pour le joueur).
 	var (
-		updated       int
-		execErrors    int
-		skippedBelow  int // matchs ignorés car len(history) < MinMatchesPerChainForRelative
-		skippedExist  int // matchs déjà scorés avec la bonne chaîne (mode !force)
+		updated        int
+		execErrors     int
+		skippedBelow   int // matchs ignorés car len(history) < MinMatchesPerChainForRelative
+		skippedExist   int // matchs déjà scorés avec la bonne chaîne (mode !force)
 		updatedByChain = make(map[string]int)
 		totalByChain   = make(map[string]int)
 	)

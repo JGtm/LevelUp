@@ -116,11 +116,12 @@ func main() {
 	// Niveau via LEVELUP_LOG_LEVEL (défaut INFO).
 	logLevelStr := strings.ToLower(os.Getenv("LEVELUP_LOG_LEVEL"))
 	logLevel := slog.LevelInfo
-	if logLevelStr == "debug" {
+	switch logLevelStr {
+	case "debug":
 		logLevel = slog.LevelDebug
-	} else if logLevelStr == "warn" {
+	case "warn":
 		logLevel = slog.LevelWarn
-	} else if logLevelStr == "error" {
+	case "error":
 		logLevel = slog.LevelError
 	}
 
@@ -420,8 +421,7 @@ func main() {
 		}
 		return nil, fmt.Errorf("registry non initialisé")
 	}
-	var watcherDaemon *watcher.Daemon
-	watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher)
+	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
@@ -824,9 +824,7 @@ func startWatcherDaemon(
 
 	// Convertir en domain.PlayerSummary
 	playerSummaries := make([]domain.PlayerSummary, len(players))
-	for i, p := range players {
-		playerSummaries[i] = p
-	}
+	copy(playerSummaries, players)
 
 	// Registre de titres
 	titleReg := title.NewRegistry()

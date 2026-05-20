@@ -77,8 +77,8 @@ func (r *RecordHistoryRepo) ListRecent(ctx context.Context, userID, titleSlug st
 	var out []records.RecordHistory
 	for rows.Next() {
 		var (
-			h         records.RecordHistory
-			periodStr string
+			h          records.RecordHistory
+			periodStr  string
 			achievedAt sql.NullTime
 		)
 		if err := rows.Scan(&h.ID, &h.UserID, &h.TitleSlug, &h.Metric, &periodStr, &h.Value, &achievedAt); err != nil {

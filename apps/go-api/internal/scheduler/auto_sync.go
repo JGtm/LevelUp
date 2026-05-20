@@ -60,10 +60,10 @@ type DeltaRunnerFactory func(ctx context.Context, gamertag, xuid string) DeltaRu
 
 // RunOnceResult agrège les compteurs d'un cycle de sync.
 type RunOnceResult struct {
-	Total    int           `json:"total"`    // joueurs dans db_profiles
-	Synced   int           `json:"synced"`   // sync delta réussie
-	Skipped  int           `json:"skipped"`  // joueur absent du pool, watcher actif, etc.
-	Failed   int           `json:"failed"`   // erreur pendant RunDelta
+	Total    int           `json:"total"`   // joueurs dans db_profiles
+	Synced   int           `json:"synced"`  // sync delta réussie
+	Skipped  int           `json:"skipped"` // joueur absent du pool, watcher actif, etc.
+	Failed   int           `json:"failed"`  // erreur pendant RunDelta
 	Duration time.Duration `json:"duration_ns"`
 }
 
@@ -82,7 +82,20 @@ type PlayerOutcomeDetail struct {
 	SyncStatus      string    `json:"sync_status,omitempty"`
 	ErrorCount      int       `json:"error_count,omitempty"`
 	FirstError      string    `json:"first_error,omitempty"`
+	// ConsecutiveZeroInserts compte les cycles successifs où la sync delta a
+	// réussi sans insérer aucun match. Reset à 0 dès qu'un cycle insère ≥1
+	// match. Non incrémenté sur outcome=skipped/failed (préserve la valeur
+	// précédente). Ajouté suite à l'incident 2026-05-20 : 14 jours de sync à
+	// inserted=0 sans alerte, cf. fix endpoint /matches xuid(NNN).
+	ConsecutiveZeroInserts int `json:"consecutive_zero_inserts,omitempty"`
 }
+
+// ConsecutiveZeroInsertWarnThreshold est le seuil au-delà duquel le scheduler
+// émet un slog.WarnContext "zero-insert prolongé" pour un joueur. 6 cycles à
+// 15min = 1h30 de sync delta sans aucun nouveau match — pour un joueur actif
+// c'est suspect (API stale, gamertag changé, format URL incorrect, etc.).
+// Pour un joueur inactif c'est normal et restera juste informatif.
+const ConsecutiveZeroInsertWarnThreshold = 6
 
 // SchedulerSnapshot est exposé par l'endpoint admin pour diagnostic.
 type SchedulerSnapshot struct {
@@ -213,6 +226,18 @@ func (s *AutoSyncScheduler) recordOutcome(d PlayerOutcomeDetail) {
 		s.playerOutcomes = make(map[string]PlayerOutcomeDetail)
 	}
 	s.playerOutcomes[d.Gamertag] = d
+}
+
+// previousZeroInsertCount retourne le compteur ConsecutiveZeroInserts du
+// précédent cycle pour ce joueur. 0 si aucun cycle précédent enregistré.
+// Thread-safe.
+func (s *AutoSyncScheduler) previousZeroInsertCount(gamertag string) int {
+	s.snapshotMu.RLock()
+	defer s.snapshotMu.RUnlock()
+	if s.playerOutcomes == nil {
+		return 0
+	}
+	return s.playerOutcomes[gamertag].ConsecutiveZeroInserts
 }
 
 // poolSizeSafe retourne s.pool.Size() ou 0 si pool nil — pour les logs.
@@ -352,10 +377,15 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
 
 	startedAt := time.Now()
+	// Lecture du compteur zero-insert précédent AVANT toute exécution. La défer
+	// finale appelle recordOutcome qui écrasera la valeur ; on garde la
+	// précédente pour pouvoir l'incrémenter ou la conserver selon l'outcome.
+	prevZeroInserts := s.previousZeroInsertCount(p.Gamertag)
 	detail := PlayerOutcomeDetail{
-		Gamertag:    p.Gamertag,
-		XUID:        p.XUID,
-		AttemptedAt: startedAt,
+		Gamertag:               p.Gamertag,
+		XUID:                   p.XUID,
+		AttemptedAt:            startedAt,
+		ConsecutiveZeroInserts: prevZeroInserts, // défaut : préserver (cas skipped/failed)
 	}
 	var outcome syncOutcome
 	defer func() {
@@ -446,6 +476,23 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	detail.MedalsInserted = syncResult.MedalsInserted
 	detail.SyncStatus = syncResult.Status()
 	detail.ErrorCount = len(syncResult.Errors)
+
+	// Counter zero-insert : reset si on insère ≥1 match, sinon incrément.
+	// Sentinelle d'API stale / format URL incorrect / gamertag changé.
+	if syncResult.MatchesInserted > 0 {
+		detail.ConsecutiveZeroInserts = 0
+	} else {
+		detail.ConsecutiveZeroInserts = prevZeroInserts + 1
+		if detail.ConsecutiveZeroInserts >= ConsecutiveZeroInsertWarnThreshold {
+			slog.WarnContext(ctx, "auto_sync: zero-insert prolongé — sync delta réussie mais 0 nouveau match sur N cycles consécutifs",
+				"gamertag", p.Gamertag,
+				"xuid", p.XUID,
+				"consecutive_zero_inserts", detail.ConsecutiveZeroInserts,
+				"threshold", ConsecutiveZeroInsertWarnThreshold,
+				"hint", "vérifier endpoint Halo + format URL + token resolved (probe /api/v1/_diag/auto-sync/probe)",
+			)
+		}
+	}
 
 	if len(syncResult.Errors) > 0 {
 		detail.FirstError = syncResult.Errors[0]

@@ -78,16 +78,6 @@ func main() {
 	}
 }
 
-type sessionRow struct {
-	sessionLabel  string
-	matchID       string
-	startTime     string
-	mapID         string
-	mapName       string
-	outcome       int
-	isWithFriends bool
-}
-
 type histRow struct {
 	matchID       string
 	mapID         string
@@ -124,14 +114,6 @@ func diagPlayer(shared *sql.DB, gt, statsPath, mmdd string) {
 	for _, s := range sessions {
 		diagSession(shared, pdb, xuid, hist, s)
 	}
-}
-
-type sessionMeta struct {
-	label    string
-	matches  []string  // match_ids de la session
-	mapsUsed []mapInfo // cartes uniques jouées dans la session
-	squad    []string  // gamertags des coéquipiers du main sur cette session
-	squadX   []string  // xuids correspondants
 }
 
 type mapInfo struct {
@@ -571,6 +553,3 @@ func truncate(s string, n int) string {
 	}
 	return s[:n-1] + "."
 }
-
-// éviter "imported and not used" pour sessionRow si on lance avec un futur étend.
-var _ = sessionRow{}

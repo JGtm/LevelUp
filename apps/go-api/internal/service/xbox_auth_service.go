@@ -2,9 +2,9 @@
 //
 // Implémente auth.LinkStrategy pour le mode SSO Xbox (D3, cf. SPRINT_XBOX_SSO.md §0bis).
 // Quand le Device Code Flow réussit :
-//   1. GetByXUID : retrouver un user existant
-//   2. Sinon CreateFromXbox : créer un user à partir du gamertag/XUID
-//   3. Wire la session (login automatique)
+//  1. GetByXUID : retrouver un user existant
+//  2. Sinon CreateFromXbox : créer un user à partir du gamertag/XUID
+//  3. Wire la session (login automatique)
 //
 // La récupération de BDD orpheline (§11 du plan) est différée à une future PR
 // (nécessite pool.Invalidate + scan filesystem multi-titre).
@@ -50,9 +50,9 @@ type WatcherDaemonGetter func() WatcherDaemon
 // le joueur au watcher pour subscribe RTA immédiat (sous réserve que le tracker
 // actuel soit ami Xbox de ce joueur — sinon status=3 silencieux).
 type XboxSSOLinkStrategy struct {
-	users         *userstore.Store
-	tokenStore    *auth.MultiUserTokenStore // optionnel
-	daemonGetter  WatcherDaemonGetter       // optionnel — lazy resolve
+	users        *userstore.Store
+	tokenStore   *auth.MultiUserTokenStore // optionnel
+	daemonGetter WatcherDaemonGetter       // optionnel — lazy resolve
 }
 
 // NewXboxSSOLinkStrategy crée une XboxSSOLinkStrategy minimale (sans store ni daemon).

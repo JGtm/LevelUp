@@ -195,16 +195,6 @@ func makeAwardMapping(norm, award string) domain.CitationFullMapping {
 	}
 }
 
-func makeCustomMapping(norm, fn string) domain.CitationFullMapping {
-	f := fn
-	return domain.CitationFullMapping{
-		NameNorm:       norm,
-		NameDisplay:    norm,
-		MappingType:    "custom",
-		CustomFunction: &f,
-	}
-}
-
 func TestComputeFullMatchCitations_MedalType(t *testing.T) {
 	mappings := []domain.CitationFullMapping{
 		makeMedalMapping("triple_kill", "medal", 1001),

@@ -85,20 +85,6 @@ func newDetector(pb *fakePBRepo, hist *fakeHistoryRepo) *Detector {
 	})
 }
 
-func mkMatches(metric TrackedMetric, daysAgoToValues map[int]float64, now time.Time) []MatchInput {
-	out := make([]MatchInput, 0, len(daysAgoToValues))
-	i := 0
-	for daysAgo, v := range daysAgoToValues {
-		out = append(out, MatchInput{
-			MatchID:  "m_" + string(metric),
-			PlayedAt: now.AddDate(0, 0, -daysAgo),
-			Metrics:  map[TrackedMetric]float64{metric: v},
-		})
-		i++
-	}
-	return out
-}
-
 func resultsByPeriod(results []DetectionResult, metric TrackedMetric) map[RecordPeriod]DetectionResult {
 	out := map[RecordPeriod]DetectionResult{}
 	for _, r := range results {

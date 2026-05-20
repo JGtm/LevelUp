@@ -84,9 +84,9 @@ func TestGenerate_StreakMilestone_SkippedAtNonThreshold(t *testing.T) {
 		StreakResults: []streaks.EvaluationResult{{
 			Transition: streaks.TransitionIncremented,
 			Streak: streaks.Streak{
-				CurrentLength: 5, // pas un palier (4, 8, 15, 30)
+				CurrentLength:   5, // pas un palier (4, 8, 15, 30)
 				LastIncrementAt: &incAt,
-				Type: streaks.StreakTypeDailyPlay,
+				Type:            streaks.StreakTypeDailyPlay,
 			},
 		}},
 	})
@@ -256,8 +256,8 @@ func TestGenerate_LOWESSPositive(t *testing.T) {
 		UserID: "u1", TitleSlug: "halo_infinite", Now: now,
 		LOWESSTrends: []LOWESSTrend{
 			{Component: "accuracy", Slope: 0.003, Window: 14},
-			{Component: "kills_vs_expected", Slope: -0.001, Window: 14},  // négatif → ignoré
-			{Component: "kda", Slope: 0.01, Window: 7},                   // fenêtre trop courte → ignoré
+			{Component: "kills_vs_expected", Slope: -0.001, Window: 14}, // négatif → ignoré
+			{Component: "kda", Slope: 0.01, Window: 7},                  // fenêtre trop courte → ignoré
 		},
 	})
 	if _, ok := findAlertByDedup(alerts, AlertTypeLOWESSPositive, "accuracy"); !ok {
@@ -327,8 +327,8 @@ func TestFilterRecent_SkipsAlreadyEmitted(t *testing.T) {
 	paramsKDA, _ := json.Marshal(map[string]any{"dedup_key": "kda|30d"})
 	recent := []notifications.Notification{
 		{
-			Category: notifications.CategoryRecordNearMiss,
-			Params:   paramsKDA,
+			Category:  notifications.CategoryRecordNearMiss,
+			Params:    paramsKDA,
 			CreatedAt: now.Add(-2 * time.Hour),
 		},
 	}

@@ -1,7 +1,8 @@
 // Package handlers_test — auth_xbox_e2e_test.go : tests end-to-end du SSO Xbox.
 //
 // Couvre le pipeline complet PR 1 + 2 + 2.5a + 2.5c + 3 + 4 :
-//   AuthHandler → TokenProvider → XboxSSOLinkStrategy → Userstore + TokenStore + Daemon
+//
+//	AuthHandler → TokenProvider → XboxSSOLinkStrategy → Userstore + TokenStore + Daemon
 //
 // Stubs utilisés :
 //   - stubTokenProvider (provider mocké : InitDeviceFlow, Exchange)

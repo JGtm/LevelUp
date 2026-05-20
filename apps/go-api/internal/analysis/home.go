@@ -1334,9 +1334,10 @@ func BuildSessionSummaries(
 			for _, m := range sessionMatches {
 				scores = append(scores, m.PerformanceScore)
 				wr := 0.0
-				if m.Outcome == domain.OutcomeWin {
+				switch m.Outcome {
+				case domain.OutcomeWin:
 					wr = 100.0
-				} else if m.Outcome == domain.OutcomeDraw {
+				case domain.OutcomeDraw:
 					wr = 50.0
 				}
 				winRates = append(winRates, wr)

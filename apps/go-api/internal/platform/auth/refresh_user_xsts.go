@@ -5,13 +5,13 @@
 // Microsoft via AcquireTokenSilent, puis acquérir un nouveau XSTS RTA.
 //
 // Flux :
-//   1. Charger UserTokens depuis MultiUserTokenStore
-//   2. Si MSALCacheJSON présent : reconstruire InMemoryCacheAccessor, AcquireTokenSilent
-//      → nouvel access_token (MSAL peut tourner le RT en interne dans le cache)
-//   3. Sinon mode dégradé : utiliser AccessToken stocké tel quel si encore valide
-//   4. AcquireXSTSForRTA(accessToken) → nouveau XSTS RTA
-//   5. Persister UserTokens à jour (nouvel access_token, MSAL cache, XSTS)
-//   6. Retourner le nouvel auth header
+//  1. Charger UserTokens depuis MultiUserTokenStore
+//  2. Si MSALCacheJSON présent : reconstruire InMemoryCacheAccessor, AcquireTokenSilent
+//     → nouvel access_token (MSAL peut tourner le RT en interne dans le cache)
+//  3. Sinon mode dégradé : utiliser AccessToken stocké tel quel si encore valide
+//  4. AcquireXSTSForRTA(accessToken) → nouveau XSTS RTA
+//  5. Persister UserTokens à jour (nouvel access_token, MSAL cache, XSTS)
+//  6. Retourner le nouvel auth header
 package auth
 
 import (
