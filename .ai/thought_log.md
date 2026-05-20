@@ -1,3 +1,28 @@
+## [2026-05-20] fix(duckdb) — P3 : migration engagement_score_repo_queries vers SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite de P2. 6 queries `shared.X` sur `pdb.ReadDB()` (= pdb.Player) dans `engagement_score_repo_queries.go` — toutes plantaient en prod depuis le retrait d'attachShared (9c.5). Ce repo est consommé par le service Timeseries (Mock 11) et le calcul d'engagement post-sync.
+
+**Décisions techniques** :
+
+Toutes les fonctions sont shared-only (lecture de match_registry, match_participants, highlight_events). Migration directe vers `pdb.SharedReadDB().Get(ctx)` + retrait du préfixe `shared.` :
+
+- `LoadMatchEngagementContext` (2 queries : join + agrégat) — sur sharedDB.
+- `LoadEventsForMatch` (1 query : highlight_events) — sur sharedDB.
+- `LoadTeamXUIDs` (1 query : match_participants filtré team) — sur sharedDB.
+- `ListRecentPvPMatchIDs` (1 query : join match_registry × match_participants) — sur sharedDB.
+
+`LoadAllCoefficients` reste inchangée (table `engagement_coefficients` est dans player DB, pas dans shared).
+
+**Résultats observés** :
+- `go vet ./...` clean.
+- Suite intégration complète OK.
+
+**Prochaine étape** : P4 — `progression/profile/queries.go` (~5 queries, dont 1 cross-DB à scinder).
+
+---
+
 ## [2026-05-20] fix(duckdb) — P2 : migration post_sync_progression_queries + post_sync_deltas vers SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
