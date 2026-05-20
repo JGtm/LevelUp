@@ -43,12 +43,12 @@ export function ArcSummary({
           )}
         </div>
         {isComplete && (
-          <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+          <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-2xs uppercase text-muted-foreground">
             Accompli
           </span>
         )}
         {arc.is_preset && !isComplete && (
-          <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[10px] uppercase text-muted-foreground">
+          <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-2xs uppercase text-muted-foreground">
             Preset
           </span>
         )}

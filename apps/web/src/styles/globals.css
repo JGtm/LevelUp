@@ -269,6 +269,26 @@
   }
 }
 
+/* ─── Utility tokens — micro-typographies & letter-spacing labels ───────────── */
+/* Remplacent les magic Tailwind classes `text-[10px]`, `text-[11px]` et         */
+/* `tracking-[0.NNem]` réparties dans src/components/ et src/features/.          */
+@layer utilities {
+  /* Micro font-size — équivalent strict de `text-[10px]` / `text-[11px]`.       */
+  /* Pas de line-height implicite : laisser au caller (leading-*) ou au parent.  */
+  .text-2xs { font-size: 10px; }
+  .text-3xs { font-size: 11px; }
+
+  /* Letter-spacing labels — uppercase eyebrows et tags */
+  .tracking-label-xs { letter-spacing: 0.12em; }
+  .tracking-label-sm { letter-spacing: 0.14em; }
+  .tracking-label    { letter-spacing: 0.16em; }
+  .tracking-label-md { letter-spacing: 0.18em; }
+  .tracking-label-lg { letter-spacing: 0.22em; }
+  .tracking-label-xl { letter-spacing: 0.24em; }
+  .tracking-label-2xl { letter-spacing: 0.26em; }
+  .tracking-label-3xl { letter-spacing: 0.34em; }
+}
+
 /* Grille KPI home — 7 colonnes proportionnelles (hors @layer pour éviter les purges Tailwind v4) */
 .kpi-stats-grid {
   display: grid;

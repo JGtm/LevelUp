@@ -58,13 +58,13 @@ export function HomeSkillPeakCard({
           decoding="async"
         />
       ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-[10px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-2xs font-semibold uppercase tracking-label-xl text-muted-foreground">
           {label.replace(/[^A-Z]/gi, '').slice(0, 4) || 'MMR'}
         </div>
       )}
 
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">{label}</p>
+        <p className="text-3xs uppercase tracking-label-xl text-muted-foreground">{label}</p>
         <p data-testid={`${testIdPrefix}-value`} className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">
           {showRatingValue ? peak!.rating_value.toLocaleString(numberLocale, { maximumFractionDigits: 0 }) : '—'}
         </p>

@@ -95,7 +95,7 @@ export function FiltresPill({
         {cascadeCount > 0 && (
           <span
             className={[
-              'rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+              'rounded-full px-1.5 py-0.5 text-2xs font-medium',
               incompatibleCount > 0
                 ? 'bg-destructive text-destructive-foreground'
                 : 'bg-primary text-primary-foreground',
@@ -118,7 +118,7 @@ export function FiltresPill({
             aria-hidden
           />
         )}
-        <span className="text-[10px] opacity-60">▾</span>
+        <span className="text-2xs opacity-60">▾</span>
       </button>
 
       {open && (
@@ -128,12 +128,12 @@ export function FiltresPill({
           className="absolute left-0 top-full z-40 mt-1 grid w-[28rem] grid-cols-2 gap-3 rounded-md border border-border bg-background p-3 shadow-lg"
         >
           {isFetching && (
-            <p className="col-span-2 text-[10px] text-muted-foreground animate-pulse">
+            <p className="col-span-2 text-2xs text-muted-foreground animate-pulse">
               Mise à jour des options disponibles…
             </p>
           )}
           {!isFetching && incompatibleCount > 0 && (
-            <p className="col-span-2 rounded border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+            <p className="col-span-2 rounded border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-3xs text-destructive">
               {incompatibleCount} filtre{incompatibleCount > 1 ? 's' : ''} incompatible
               {incompatibleCount > 1 ? 's' : ''} avec la sélection actuelle. Cliquez Analyser pour
               les retirer automatiquement.

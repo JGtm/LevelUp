@@ -56,7 +56,7 @@ export function PeriodePill({
         ].join(' ')}
       >
         <span>{triggerLabel}</span>
-        <span className="text-[10px] opacity-60">▾</span>
+        <span className="text-2xs opacity-60">▾</span>
       </button>
 
       {open && (
@@ -121,14 +121,14 @@ export function PeriodePill({
                 >
                   {p.label}
                   {count !== undefined && (
-                    <span className="ml-1 text-[10px] tabular-nums opacity-70">({count})</span>
+                    <span className="ml-1 text-2xs tabular-nums opacity-70">({count})</span>
                   )}
                 </button>
               )
             })}
           </div>
 
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-2xs text-muted-foreground">
             Sélectionner une période vide automatiquement la session active.
           </p>
         </div>

@@ -116,11 +116,11 @@ function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
   }, [lobby])
 
   if (!lobby || lobby.length === 0) {
-    return <p className="text-[11px] italic text-muted-foreground">Lobby indisponible</p>
+    return <p className="text-3xs italic text-muted-foreground">Lobby indisponible</p>
   }
 
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-3xs">
       {grouped.teams.map((team, idx) => {
         // Couleurs sémantiques alignées sur MatchScoreboard : team-ally pour
         // l'équipe du joueur, team-enemy pour les autres équipes, foreground
@@ -285,17 +285,17 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
                           <CandidateHeading candidate={c} />
                         </span>
                         <div className="flex shrink-0 items-center gap-2">
-                          <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${out.cls}`}>
+                          <span className={`rounded border px-1.5 py-0.5 text-2xs font-semibold ${out.cls}`}>
                             {out.text}
                           </span>
                           {isCurrent && (
-                            <span className="rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                            <span className="rounded bg-primary px-1.5 py-0.5 text-2xs font-semibold text-primary-foreground">
                               actuel
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-3 text-3xs text-muted-foreground">
                         <span>{formatLocalTime(c.start_time)}</span>
                         <span className="opacity-60">{formatDelta(c.delta_seconds)}</span>
                         {c.playlist_name && <span className="ml-auto truncate">{c.playlist_name}</span>}

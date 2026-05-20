@@ -131,7 +131,7 @@ export function JsonViewer({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">{title}</p>
+      <p className="text-xs font-semibold uppercase tracking-label text-muted-foreground">{title}</p>
       <pre className="max-h-[420px] overflow-auto rounded-xl bg-card p-4 text-xs leading-6 text-muted-foreground">
         {content}
       </pre>

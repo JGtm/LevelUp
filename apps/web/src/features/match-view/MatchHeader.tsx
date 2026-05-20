@@ -542,7 +542,7 @@ export function MatchHeaderCard({
           <div className="mt-auto flex flex-wrap items-start gap-y-3 border-t pt-3">
             {header.performance_display && header.performance_display !== '-' && (
               <div className="flex flex-col items-center">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {t.performance}
                 </span>
                 <span
@@ -569,7 +569,7 @@ export function MatchHeaderCard({
                   />
                 )}
                 <div className="flex flex-col gap-0.5 shrink-0">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {t.rank}
                   </span>
                   {rank.tier_label && (
@@ -621,7 +621,7 @@ export function MatchHeaderCard({
                         />
                       )}
                     </div>
-                    <div className="absolute inset-x-0 top-full mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
+                    <div className="absolute inset-x-0 top-full mt-1 flex justify-between text-2xs text-muted-foreground tabular-nums">
                       <span>{rank.tier_label ?? ''}</span>
                       <span>{nextTierLabel(rank.tier_label)}</span>
                     </div>

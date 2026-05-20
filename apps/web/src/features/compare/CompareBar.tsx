@@ -68,7 +68,7 @@ export function CompareBar({
             {valueB}
           </span>
           {sampleNote && (
-            <span className="text-[10px] leading-tight text-muted-foreground">{sampleNote}</span>
+            <span className="text-2xs leading-tight text-muted-foreground">{sampleNote}</span>
           )}
         </div>
 

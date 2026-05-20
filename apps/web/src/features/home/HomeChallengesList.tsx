@@ -114,7 +114,7 @@ function ChallengeThumb({
     return (
       <div
         data-testid="home-challenge-thumb"
-        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md text-3xs font-semibold uppercase tracking-label-sm text-muted-foreground"
       >
         Défi
       </div>
@@ -168,7 +168,7 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
   return (
     <section data-testid={`home-challenge-section-${section.kind}`} className="space-y-3">
       <div className="space-y-2">
-        <p data-testid="home-challenge-section-title" className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+        <p data-testid="home-challenge-section-title" className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">
           {label}
         </p>
             <div className={`h-px w-full rounded-full ${challengeSectionDividerClasses()}`} />
@@ -197,7 +197,7 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
                         {item.is_squad && (
                           <span
                             data-testid="home-challenge-squad-badge"
-                            className="shrink-0 rounded border border-muted-foreground/30 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                            className="shrink-0 rounded border border-muted-foreground/30 px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wide text-muted-foreground"
                           >
                             Escouade
                           </span>
@@ -212,7 +212,7 @@ function ChallengeSection({ section }: { section: ChallengeSection }) {
 
                     <div
                       data-testid="home-challenge-progress-row"
-                      className="mt-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px] text-muted-foreground"
+                      className="mt-auto grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-3xs text-muted-foreground"
                     >
                       <span data-testid="home-challenge-progress-current" className="shrink-0 whitespace-nowrap">
                         {target != null ? `${current} / ${target}` : current}

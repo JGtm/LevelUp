@@ -388,7 +388,7 @@ function SessionRail({ session, index, total, locale, t, filterStore }: SessionR
           </span>
           {isAutoSnapping && (
             <span
-              className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary"
+              className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-2xs font-medium text-primary"
               title={t.autoTitle}
             >
               {t.auto}
@@ -448,7 +448,7 @@ function PeriodRail({ period, durationDays, locale, t, filterStore }: PeriodRail
           <span className="text-sm font-semibold text-foreground">
             {t.periodLabel(startLabel, endLabel)}
           </span>
-          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-2xs font-medium text-muted-foreground">
             {t.periodDuration(durationDays)}
           </span>
         </>
@@ -512,7 +512,7 @@ function SeasonRail({ season, seasons, locale, t, filterStore }: SeasonRailProps
       }
       center={
         <>
-          <span className="shrink-0 rounded bg-muted/50 px-1.5 py-0.5 text-[10px] font-mono tabular-nums text-muted-foreground">
+          <span className="shrink-0 rounded bg-muted/50 px-1.5 py-0.5 text-2xs font-mono tabular-nums text-muted-foreground">
             {season.shortLabel}
           </span>
           <span className="truncate text-sm font-semibold text-foreground" title={season.label}>

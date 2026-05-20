@@ -151,7 +151,7 @@ function CitationCard({ citation }: { citation: CitationItem }) {
         </span>
       )}
       {hasTiers && !isMastered && (
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-3xs text-muted-foreground">
           {citation.total}/{citation.next_tier_target}
         </span>
       )}

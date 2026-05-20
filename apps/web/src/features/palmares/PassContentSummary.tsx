@@ -144,12 +144,12 @@ function TypeTags({ breakdown, locale, title }: { breakdown: Record<string, numb
 
   return (
     <div className="space-y-2">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{title}</p>
+      <p className="text-3xs uppercase tracking-label-md text-muted-foreground">{title}</p>
       <div className="flex flex-wrap gap-1.5">
         {sorted.map(([type, count]) => (
           <span
             key={type}
-            className="inline-flex items-center gap-1.5 rounded border border-border/50 bg-muted/40 px-2 py-0.5 text-[11px]"
+            className="inline-flex items-center gap-1.5 rounded border border-border/50 bg-muted/40 px-2 py-0.5 text-3xs"
           >
             <span className="text-muted-foreground">{itemTypeLabel(type) ?? type}</span>
             <span className="font-medium tabular-nums text-foreground">{count.toLocaleString(locale)}</span>

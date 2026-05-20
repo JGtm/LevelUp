@@ -450,7 +450,7 @@ export function ComparePage() {
           {/* Arme favorite */}
           {(leftData.player_a.favorite_weapon ?? leftData.player_b.favorite_weapon) && (
             <div className="rounded-md border border-border/50 bg-muted/30 px-4 py-3 space-y-2">
-              <p className="text-[11px] text-center text-muted-foreground">{text.favoriteWeapon}</p>
+              <p className="text-3xs text-center text-muted-foreground">{text.favoriteWeapon}</p>
               <div className="flex items-start justify-between gap-4 text-sm">
                 <div className="flex-1 text-left">
                   {leftData.player_a.favorite_weapon ? (

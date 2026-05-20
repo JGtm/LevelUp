@@ -41,7 +41,7 @@ export function AssetDrawer() {
         onClick={toggle}
         aria-label={t(isOpen ? 'asset_drawer.toggle.close' : 'asset_drawer.toggle.open')}
         aria-expanded={isOpen}
-        className={`fixed right-0 top-1/2 z-40 -translate-y-1/2 translate-x-0 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover px-1.5 py-3 text-[10px] font-medium uppercase tracking-widest text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground ${isOpen ? 'hidden' : 'hidden sm:flex'}`}
+        className={`fixed right-0 top-1/2 z-40 -translate-y-1/2 translate-x-0 cursor-pointer select-none items-center justify-center rounded-l border border-r-0 border-border bg-popover px-1.5 py-3 text-2xs font-medium uppercase tracking-widest text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground ${isOpen ? 'hidden' : 'hidden sm:flex'}`}
         style={{ writingMode: 'vertical-rl' }}
       >
         {t('asset_drawer.mini_tab')}

@@ -41,7 +41,7 @@ interface Props {
 
 function GroupTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
       {children}
     </div>
   )
@@ -85,12 +85,12 @@ function WeaponItem({ w }: { w: PlayerWeaponKillRow }) {
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <span className="text-[10px] text-muted-foreground text-center leading-tight truncate w-full">
+          <span className="text-2xs text-muted-foreground text-center leading-tight truncate w-full">
             {fallbackText}
           </span>
         )}
       </div>
-      <span className="font-mono text-[11px] font-semibold" style={{ color: tokenCssVar('perf-tier-2') }}>
+      <span className="font-mono text-3xs font-semibold" style={{ color: tokenCssVar('perf-tier-2') }}>
         ×{w.kills}
       </span>
     </div>
@@ -137,9 +137,9 @@ function MedalsSection({ medals, title }: { medals: PlayerMedalRow[]; title: str
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
                 />
               ) : (
-                <span className="text-[10px] text-muted-foreground">{m.label ?? `#${m.medal_id}`}</span>
+                <span className="text-2xs text-muted-foreground">{m.label ?? `#${m.medal_id}`}</span>
               )}
-              <span className="font-mono text-[10px] text-muted-foreground">×{m.count}</span>
+              <span className="font-mono text-2xs text-muted-foreground">×{m.count}</span>
             </div>
           )
         })}
@@ -166,7 +166,7 @@ function CitationsSection({ citations, t }: { citations: MatchCitationSnippet[];
               isNewlyMastered={c.is_newly_mastered}
               size={44}
             />
-            <span className="font-mono text-[10px] font-semibold" style={{ color: c.is_newly_mastered ? tokenCssVar('perf-tier-3') : tokenCssVar('perf-tier-2') }}>
+            <span className="font-mono text-2xs font-semibold" style={{ color: c.is_newly_mastered ? tokenCssVar('perf-tier-3') : tokenCssVar('perf-tier-2') }}>
               +{c.delta}
             </span>
             {c.is_newly_mastered && (
@@ -303,7 +303,7 @@ function Footer({ isTracked, isMe, isBot, gamertag, playerSlug, t }: { isTracked
   const explorerUrl = showLink ? `/players/${playerSlug}/explorer?mode=player&target=${encodeURIComponent(gamertag)}` : null
   const displayGamertag = gamertag
   return (
-    <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-[11px]">
+    <div className="flex items-center justify-between gap-2 border-t border-border pt-2 text-3xs">
       <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">{badgeText}</span>
       {explorerUrl && <a href={explorerUrl} className="text-info hover:underline">{t.sbDetailExplorePlayerFmt(displayGamertag)}</a>}
     </div>

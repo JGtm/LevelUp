@@ -158,9 +158,9 @@ function AuthorsMultiSelect({ text, authors, selected, onChange }: AuthorsMultiS
                   />
                   <span className="flex-1 truncate">{author.gamertag}</span>
                   {author.is_self && (
-                    <span className="text-[10px] uppercase tracking-wide opacity-60">{text.toolbar.mine}</span>
+                    <span className="text-2xs uppercase tracking-wide opacity-60">{text.toolbar.mine}</span>
                   )}
-                  <span className="text-[10px] tabular-nums opacity-50">{author.media_count}</span>
+                  <span className="text-2xs tabular-nums opacity-50">{author.media_count}</span>
                 </label>
               ))}
             </>

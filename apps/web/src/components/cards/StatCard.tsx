@@ -49,7 +49,7 @@ export function StatCard({
     return (
       <Card>
         <CardContent className="p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-label text-muted-foreground">
             {label}
           </p>
           <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>

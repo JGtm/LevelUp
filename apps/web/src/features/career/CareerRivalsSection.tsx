@@ -150,7 +150,7 @@ interface RivalsButterflyChartProps {
 }
 
 function ButterflyColHeader({ colLabels }: { colLabels: ColLabels }) {
-  const th = 'text-[10px] font-semibold text-muted-foreground uppercase tracking-wide leading-none shrink-0 whitespace-nowrap'
+  const th = 'text-2xs font-semibold text-muted-foreground uppercase tracking-wide leading-none shrink-0 whitespace-nowrap'
   return (
     <div className="flex items-center h-6 border-b border-border">
       <div className="flex-1 flex items-center gap-2 min-w-0">

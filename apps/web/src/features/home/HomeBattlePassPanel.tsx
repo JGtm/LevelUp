@@ -165,7 +165,7 @@ export function HomeBattlePassPanel({
           ) : (
             <div className="flex h-44 w-full items-center justify-center bg-muted px-6 text-center text-foreground sm:h-52 xl:h-60">
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-muted-foreground">Pass actif</p>
+                <p className="text-xs uppercase tracking-label-3xl text-muted-foreground">Pass actif</p>
                 <p className="mt-3 text-2xl font-semibold sm:text-3xl">{featuredPass.name}</p>
               </div>
             </div>
@@ -183,7 +183,7 @@ export function HomeBattlePassPanel({
             <div className="flex justify-center">
               <div
                 data-testid="home-battle-pass-active-tier-progress-row"
-                className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px] text-muted-foreground"
+                className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-3xs text-muted-foreground"
               >
                 <span data-testid="home-battle-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap">
                   {tierProgressLabels.current}

@@ -90,14 +90,14 @@ export function AchievementCard({ achievement, locale, fixedWidth = true }: Prop
               style={{ width: `${Math.min(100, (progress.current / progress.target) * 100)}%`, backgroundColor: (progress.current / progress.target) >= 1 ? tokenCssVar('success') : tokenCssVar('info') }}
             />
           </div>
-          <span className="text-[10px] tabular-nums text-muted-foreground">
+          <span className="text-2xs tabular-nums text-muted-foreground">
             {t.progress(progress.current, progress.target)}
           </span>
         </div>
       )}
 
       {unlockedDate && (
-        <p className="mt-2 text-[10px] text-primary">{t.unlockedAt(unlockedDate)}</p>
+        <p className="mt-2 text-2xs text-primary">{t.unlockedAt(unlockedDate)}</p>
       )}
     </div>
   )

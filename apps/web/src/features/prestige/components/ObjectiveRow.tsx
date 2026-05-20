@@ -42,7 +42,7 @@ function ObjectiveBadge({ cadence, tier, alt }: { cadence: Cadence; tier: Tier; 
   if (failed) {
     return (
       <div
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-[9px] font-semibold uppercase tracking-[0.14em]"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-[9px] font-semibold uppercase tracking-label-sm"
         style={{ color: TIER_COLORS[tier] }}
       >
         {tier.slice(0, 4)}
@@ -120,7 +120,7 @@ export function ObjectiveRow({ challenge, currentValue, onClick }: ObjectiveRowP
           </div>
         </div>
 
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-[10px] text-muted-foreground">
+        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 text-2xs text-muted-foreground">
           <span className="shrink-0 whitespace-nowrap tabular-nums">
             {cv.toFixed(2)}/{target.toFixed(2)}
           </span>

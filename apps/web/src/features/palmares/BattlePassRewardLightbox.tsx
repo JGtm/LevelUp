@@ -144,7 +144,7 @@ export function BattlePassRewardLightbox({
         <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 px-5 py-3">
           <div className="min-w-0 space-y-1">
             {subtitle && (
-              <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+              <p className="text-3xs uppercase tracking-label-xl text-muted-foreground">
                 {subtitle}
               </p>
             )}

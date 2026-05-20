@@ -345,7 +345,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
                 <span className={`font-semibold ${r.is_bot ? 'text-muted-foreground italic' : 'text-foreground'}`}>{displayGamertag}</span>
               )}
               {r.is_bot && (
-                <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-wide">Bot</span>
+                <span className="ml-1 rounded px-1 py-0 text-2xs font-bold bg-muted text-muted-foreground uppercase tracking-wide">Bot</span>
               )}
               {r.badges && r.badges.length > 0 && (
                 <EncounterBadgesInline badges={r.badges} locale={locale} />

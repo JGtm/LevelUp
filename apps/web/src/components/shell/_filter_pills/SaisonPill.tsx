@@ -84,7 +84,7 @@ export function SaisonPill({
         ].join(' ')}
       >
         <span>{triggerLabel}</span>
-        <span className="text-[10px] opacity-60">▾</span>
+        <span className="text-2xs opacity-60">▾</span>
       </button>
 
       {open && (
@@ -129,7 +129,7 @@ export function SaisonPill({
 
           {unavailable.length > 0 && (
             <details className="mt-1">
-              <summary className="cursor-pointer rounded px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted">
+              <summary className="cursor-pointer rounded px-2 py-1 text-3xs text-muted-foreground hover:bg-muted">
                 + {unavailable.length} saison{unavailable.length > 1 ? 's' : ''} sans matchs
               </summary>
               <ul className="mt-0.5 flex flex-col gap-0.5">
@@ -176,13 +176,13 @@ function SeasonRow({ season, count, isActive, disabled, onSelect }: SeasonRowPro
         ].join(' ')}
       >
         <span className="flex items-center gap-1.5">
-          <span className="rounded bg-muted/40 px-1 py-0.5 text-[10px] font-mono tabular-nums">
+          <span className="rounded bg-muted/40 px-1 py-0.5 text-2xs font-mono tabular-nums">
             {season.shortLabel}
           </span>
           <span className="font-medium">{season.label}</span>
         </span>
         {count !== undefined && (
-          <span className="text-[10px] tabular-nums opacity-70">({count})</span>
+          <span className="text-2xs tabular-nums opacity-70">({count})</span>
         )}
       </button>
     </li>

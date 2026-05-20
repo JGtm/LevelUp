@@ -41,7 +41,7 @@ export interface NarrativeBadgeProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<NarrativeBadgeProps['size']>, string> = {
-  sm: 'text-[10px] px-1.5 py-0.5',
+  sm: 'text-2xs px-1.5 py-0.5',
   md: 'text-xs px-2 py-1',
   lg: 'text-xs px-3 h-9',
 }

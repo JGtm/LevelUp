@@ -206,7 +206,7 @@ export function NotificationsSettingsTab() {
           className="w-full accent-primary"
           aria-label={t.settingsRetentionTitle}
         />
-        <div className="flex justify-between text-[10px] text-muted-foreground">
+        <div className="flex justify-between text-2xs text-muted-foreground">
           <span>{RETENTION_MIN}</span>
           <span>{RETENTION_MAX}</span>
         </div>

@@ -111,7 +111,7 @@ export function AppShellHeader() {
 
         <div className="flex flex-col gap-3 rounded-[28px] border border-border bg-card px-4 py-4 text-card-foreground shadow-[0_30px_80px_-42px_rgba(15,23,42,0.9)] xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+            <p className="text-3xs font-semibold uppercase tracking-label-xl text-muted-foreground">
               Scope joueur
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -133,7 +133,7 @@ export function AppShellHeader() {
 
           {availablePlayers.length > 0 && (
             <label className="flex min-w-0 flex-col xl:min-w-[22rem]">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+              <span className="text-3xs font-semibold uppercase tracking-label-xl text-muted-foreground">
                 Joueur actif
               </span>
               <div className="mt-2 flex flex-col gap-2 xl:items-end">

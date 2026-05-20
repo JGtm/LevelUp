@@ -103,7 +103,7 @@ export function SquadVerdict({
       {/* LEFT : team card — squad mode only */}
       {hasTeamCard && teamTier && (
         <div className="min-w-[180px] rounded border border-border bg-card px-3 py-2">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          <p className="text-3xs uppercase tracking-wide text-muted-foreground">
             {texts.verdict.teamScore}
           </p>
           <div className="mt-1 flex items-baseline gap-2">
@@ -117,7 +117,7 @@ export function SquadVerdict({
           </div>
           {deltaText !== null && (
             <p
-              className="mt-0.5 text-[10px]"
+              className="mt-0.5 text-2xs"
               style={{ color: tokenCssVar(deltaToken) }}
             >
               {deltaText}
@@ -151,10 +151,10 @@ export function SquadVerdict({
               ].join(' ')}
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                <p className="text-3xs uppercase tracking-wide text-muted-foreground">
                   {p.gamertag}
                   {isActive && (
-                    <span className="ml-1 text-[10px] opacity-60">(moi)</span>
+                    <span className="ml-1 text-2xs opacity-60">(moi)</span>
                   )}
                 </p>
                 {trendState !== 'none' && (
@@ -193,7 +193,7 @@ export function SquadVerdict({
       <div className="ml-auto flex items-stretch gap-3">
         {hasResults && (
           <div className="flex min-w-[260px] flex-col gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
               {texts.rail.resultsLabel}
             </span>
             <div className="flex h-3.5 overflow-hidden rounded-sm">
@@ -207,7 +207,7 @@ export function SquadVerdict({
                 ) : null,
               )}
             </div>
-            <div className="flex flex-wrap gap-3 text-[11px]">
+            <div className="flex flex-wrap gap-3 text-3xs">
               {segs.map((s) =>
                 s.count > 0 ? (
                   <span key={s.outcomeKey} className="inline-flex items-center gap-1.5">
@@ -230,18 +230,18 @@ export function SquadVerdict({
             bandeau verdict, le bandeau lui-même portant déjà le cadre. */}
         <div className="flex items-center gap-6 px-2">
           <div>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
               {texts.grid.matchesPlayed}
             </p>
             <div className="mt-0.5 flex items-baseline">
               <span className="text-lg font-bold">{kpis.matches_count}</span>
-              <span className="ml-1.5 text-[11px] text-muted-foreground">
+              <span className="ml-1.5 text-3xs text-muted-foreground">
                 {formatMinSec(kpis.avg_match_seconds)}{texts.grid.perMatch}
               </span>
             </div>
           </div>
           <div>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
               {texts.grid.totalDuration}
             </p>
             <div className="mt-0.5">

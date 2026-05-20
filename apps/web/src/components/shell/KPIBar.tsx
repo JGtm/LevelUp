@@ -21,7 +21,7 @@ interface KPIItemProps {
 function KPIItem({ label, value, emphasis = false }: KPIItemProps) {
   return (
     <div className="rounded-2xl border border-border bg-muted/85 px-4 py-3 text-left shadow-sm">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+      <span className="text-3xs font-semibold uppercase tracking-label-lg text-muted-foreground">
         {label}
       </span>
       <span

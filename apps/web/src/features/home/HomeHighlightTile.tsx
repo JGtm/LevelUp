@@ -74,7 +74,7 @@ function SerieTile({ title, slides, locale, className }: SerieTileProps) {
         <p className="text-base font-bold" style={highlightColorStyle(s.value_color)}>
           {s.value}
         </p>
-        <p className="text-[11px] text-muted-foreground/80 leading-tight">{slideLabel}</p>
+        <p className="text-3xs text-muted-foreground/80 leading-tight">{slideLabel}</p>
         {slideDetail ? <p className="text-xs text-muted-foreground">{slideDetail}</p> : null}
       </div>
       {slides.length > 1 ? (

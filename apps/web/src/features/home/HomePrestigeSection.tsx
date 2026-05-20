@@ -168,11 +168,11 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
               </span>
             </div>
             <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-              <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 tabular-nums">
+              <span className="shrink-0 whitespace-nowrap text-3xs font-medium text-foreground/85 tabular-nums">
                 {pp.total_pp.toLocaleString(numberLocale)} PP
               </span>
               <CompositeProgressBar value={progressPct} fillTestId="home-prestige-progress-fill" />
-              <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 tabular-nums">
+              <span className="shrink-0 whitespace-nowrap text-3xs font-medium text-foreground/85 tabular-nums">
                 {isMax ? '—' : `${(lvl?.next_threshold_pp ?? 0).toLocaleString(numberLocale)} PP`}
               </span>
             </div>
@@ -184,10 +184,10 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
           {/* Mes objectifs — fond opaque */}
           <div className="space-y-2 rounded-lg border border-border bg-card p-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+              <h3 className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">
                 {t('home.prestige.objectives_section')}
               </h3>
-              <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-[10px]">
+              <div className="flex items-center rounded-md border border-border bg-background p-0.5 text-2xs">
                 <button
                   type="button"
                   onClick={() => setFilter('active')}
@@ -245,7 +245,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
                     <Link
                       to="/players/$playerSlug/objectifs"
                       params={{ playerSlug }}
-                      className="text-[10px] uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-2xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
                     >
                       {t('home.prestige.objectives_view_all', { n: filteredObjectives.length })}
                     </Link>
@@ -267,7 +267,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
 
           {/* Arc en cours — fond semi-transparent (laisse voir le pattern) */}
           <div className="space-y-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/90">
+            <h3 className="text-3xs font-semibold uppercase tracking-label-md text-foreground/90">
               {t('home.prestige.arc_section')}
             </h3>
             {arcsQ.isLoading ? (

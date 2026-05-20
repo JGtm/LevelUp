@@ -138,7 +138,7 @@ function Row({ entry, rank }: { entry: LeaderboardEntry; rank: number }) {
           <span className="font-medium">{entry.gamertag}</span>
           {entry.last_tier && (
             <span
-              className="rounded-full px-1.5 py-0.5 text-[10px] uppercase"
+              className="rounded-full px-1.5 py-0.5 text-2xs uppercase"
               style={{ backgroundColor: `${tierColor}20`, color: tierColor }}
             >
               {tierLabel}

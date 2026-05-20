@@ -60,7 +60,7 @@ export function SessionPill({
         ].join(' ')}
       >
         <span className="truncate">{triggerLabel}</span>
-        <span className="text-[10px] opacity-60">▾</span>
+        <span className="text-2xs opacity-60">▾</span>
       </button>
 
       {open && (
@@ -89,7 +89,7 @@ export function SessionPill({
               ].join(' ')}
             >
               <span className="font-medium">Toutes les sessions</span>
-              <span className="text-[10px] text-muted-foreground">{visibleSessions.length}</span>
+              <span className="text-2xs text-muted-foreground">{visibleSessions.length}</span>
             </button>
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-muted-foreground">
@@ -111,10 +111,10 @@ export function SessionPill({
                     <span className="truncate">
                       {s.label}
                       {s.is_squad && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">· escouade</span>
+                        <span className="ml-1 text-2xs text-muted-foreground">· escouade</span>
                       )}
                     </span>
-                    <span className="shrink-0 text-[10px] text-muted-foreground">
+                    <span className="shrink-0 text-2xs text-muted-foreground">
                       {s.match_count_filtered} match{s.match_count_filtered > 1 ? 's' : ''}
                     </span>
                   </button>
