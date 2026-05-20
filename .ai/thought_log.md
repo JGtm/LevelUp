@@ -1,3 +1,32 @@
+## [2026-05-20] fix(duckdb) — P4 : migration progression/profile/queries vers SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite de P3. 5 queries `shared.X` dans `progression/profile/queries.go` (BuildProfile V1 — radar narrative + engagement + FK/FD) plantaient en prod. Une query (`applyAwardsRadarAxes`) était cross-DB (player + shared).
+
+**Décisions techniques** :
+
+1. **4 queries shared-only — migration directe** vers `s.pdb.SharedReadDB().Get(ctx)` + retrait `shared.` :
+   - `countMatchesInWindow` (COUNT DISTINCT match_id dans la fenêtre).
+   - `computeRadarAxesBase` (5 AVG agrégats sur match_participants).
+   - `computeFKFD` (highlight_events × match_registry — dégradation gracieuse conservée si table absente).
+   - `computeEngagementSimple` (start_time des matchs ordonnés).
+
+2. **`applyAwardsRadarAxes` — cross-DB split en 2 phases** : la query historique joint `personal_score_awards` (player) avec `shared.match_registry`. Refactor :
+   - Phase A (sharedDB) : `SELECT match_id FROM match_registry WHERE start_time BETWEEN ? AND ?`.
+   - Phase B (s.db = Player) : `SELECT award_name, SUM(award_count) FROM personal_score_awards WHERE xuid = ? AND match_id IN (?...) GROUP BY award_name`.
+   - Phase C (Go) : agrégation existante avec mapping awards.toml (inchangée).
+   - Dégradation gracieuse préservée : si SharedReader ou Phase B échouent, retour silencieux (la base V1 reste).
+
+3. **Setup test corrigé** ([build_profile_integration_test.go:56-101](apps/go-api/internal/progression/profile/build_profile_integration_test.go#L56)) : suppression `ATTACH shared`, `shared` ouvert en conn RW dédiée + `pdb.Shared` + `pdb.SharedReader = LegacySharedReader(shared)`. Inserts test `seedMatchesForProfile` passent par `pdb.Shared.Exec(...) INSERT INTO match_registry/match_participants` (sans préfixe).
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -tags=integration ./...` OK (incl. les ~5 TestBuildProfile_*).
+
+**Prochaine étape** : P5 — Q25NeighborMatches + Q25NeighborMatchesTemplate + match_filter.go BuildNeighborsWhereClause (génère `shared.match_participants` injecté dans Q25). Plus career_repo.go à vérifier.
+
+---
+
 ## [2026-05-20] fix(duckdb) — P3 : migration engagement_score_repo_queries vers SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).

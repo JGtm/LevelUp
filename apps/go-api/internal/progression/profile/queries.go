@@ -14,22 +14,33 @@ import (
 // queries.go — helpers SQL pour BuildProfile() (Sections A1/A2/B/C V1).
 //
 // Toutes les queries acceptent une fenêtre [since, until] cohérente avec la
-// fenêtre LOWESS du caller. Les données proviennent de stats.duckdb du joueur,
-// qui doit avoir shared_matches_v2 attachée (alias `shared`) pour accéder à
-// match_participants.
+// fenêtre LOWESS du caller. Depuis ADR 0016, les accès cross-DB
+// (match_registry, match_participants, highlight_events) passent par
+// SharedReader (s.pdb.SharedReadDB) sans préfixe `shared.`. Les tables player
+// (`lusr_component_history`, `personal_score_awards`) restent lues sur s.db
+// (= pdb.Player).
 
 const queryTimeout = 10 * time.Second
 
 // countMatchesInWindow retourne le nombre de matchs distincts du joueur dans
-// la fenêtre. Source : match_participants côté shared (filtré par xuid).
+// la fenêtre. Source : match_participants côté shared (filtré par xuid),
+// lu via SharedReader (ADR 0016).
 func (s *Service) countMatchesInWindow(ctx context.Context, userID string, since, until time.Time) (int, error) {
+	if s.pdb == nil {
+		return 0, fmt.Errorf("countMatchesInWindow: PlayerDB non initialisée")
+	}
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
+	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("countMatchesInWindow: shared reader: %w", err)
+	}
+	defer release()
 	var count int
-	err := s.db.QueryRow(ctx, `
+	err = sharedDB.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT mp.match_id)
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time >= ? AND mr.start_time <= ?
 	`, userID, since, until).Scan(&count)
@@ -82,7 +93,12 @@ func (s *Service) computeRadarAxesBase(
 		avgKillingSpree sql.NullFloat64
 		matchCount      int
 	)
-	err := s.db.QueryRow(ctx, `
+	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("computeRadarAxesBase: shared reader: %w", err)
+	}
+	defer release()
+	err = sharedDB.QueryRowContext(ctx, `
 		SELECT
 			AVG(mp.kills),
 			AVG(mp.deaths),
@@ -90,8 +106,8 @@ func (s *Service) computeRadarAxesBase(
 			AVG(mp.personal_score),
 			AVG(mp.max_killing_spree),
 			COUNT(*)
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time >= ? AND mr.start_time <= ?
 	`, userID, since, until).Scan(&avgKills, &avgDeaths, &avgAssists, &avgScore, &avgKillingSpree, &matchCount)
@@ -127,22 +143,60 @@ func (s *Service) computeRadarAxesBase(
 // applyAwardsRadarAxes lit personal_score_awards dans la fenêtre, somme par
 // award_name, applique le mapping (axes + weight) et accumule par axe en
 // moyenne par match. Mutates out in place.
+//
+// Split cross-DB (ADR 0016) : Phase A charge les match_ids dans la fenêtre
+// via SharedReader, Phase B agrège personal_score_awards sur Player avec
+// WHERE match_id IN (...).
 func (s *Service) applyAwardsRadarAxes(
 	ctx context.Context, userID string, since, until time.Time,
 	matchCount int, out map[narrative.ParticipationAxis]float64,
 ) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
+
+	// Phase A : match_ids dans la fenêtre via SharedReader.
+	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		// Dégrade gracieusement comme la version legacy (table absente / shared
+		// indispo → on garde la base V1 sans erreur).
+		return
+	}
+	defer release()
+	matchRows, err := sharedDB.QueryContext(ctx, `
+		SELECT match_id FROM match_registry
+		WHERE start_time >= ? AND start_time <= ?
+	`, since, until)
+	if err != nil {
+		return
+	}
+	var matchIDs []string
+	for matchRows.Next() {
+		var id string
+		if err := matchRows.Scan(&id); err == nil && id != "" {
+			matchIDs = append(matchIDs, id)
+		}
+	}
+	matchRows.Close()
+	if len(matchIDs) == 0 {
+		return
+	}
+
+	// Phase B : agrégat sur personal_score_awards (player) avec IN.
+	placeholders := make([]string, len(matchIDs))
+	args := make([]any, 0, len(matchIDs)+1)
+	args = append(args, userID)
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
 	rows, err := s.db.Query(ctx, `
 		SELECT psa.award_name, SUM(psa.award_count)
 		FROM personal_score_awards psa
-		JOIN shared.match_registry mr ON mr.match_id = psa.match_id
 		WHERE psa.xuid = ?
-		  AND mr.start_time >= ? AND mr.start_time <= ?
+		  AND psa.match_id IN (`+strings.Join(placeholders, ",")+`)
 		GROUP BY psa.award_name
-	`, userID, since, until)
+	`, args...)
 	if err != nil {
-		// Table absente / shared non attaché → on garde la base V1 sans erreur.
 		return
 	}
 	defer rows.Close()
@@ -172,13 +226,18 @@ func (s *Service) applyAwardsRadarAxes(
 func (s *Service) computeFKFD(ctx context.Context, userID string, since, until time.Time) (int, int, error) {
 	ctx, cancel := context.WithTimeout(ctx, queryTimeout)
 	defer cancel()
+	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, 0, nil
+	}
+	defer release()
 	var fk, fd int
-	err := s.db.QueryRow(ctx, `
+	err = sharedDB.QueryRowContext(ctx, `
 		SELECT
 			COALESCE(SUM(CASE WHEN he.event_type = 'first_kill'  AND he.killer_xuid = ? THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN he.event_type = 'first_death' AND he.victim_xuid = ? THEN 1 ELSE 0 END), 0)
-		FROM shared.highlight_events he
-		JOIN shared.match_registry mr ON mr.match_id = he.match_id
+		FROM highlight_events he
+		JOIN match_registry mr ON mr.match_id = he.match_id
 		WHERE mr.start_time >= ? AND mr.start_time <= ?
 	`, userID, userID, since, until).Scan(&fk, &fd)
 	if err != nil {
@@ -199,10 +258,15 @@ func (s *Service) computeEngagementSimple(ctx context.Context, userID string, si
 	defer cancel()
 	var snap EngagementSnapshot
 
-	rows, err := s.db.Query(ctx, `
+	sharedDB, release, err := s.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return snap, fmt.Errorf("computeEngagementSimple: shared reader: %w", err)
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT mr.start_time
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mr.match_id = mp.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
 		  AND mr.start_time >= ? AND mr.start_time <= ?
 		ORDER BY mr.start_time ASC
