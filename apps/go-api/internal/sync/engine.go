@@ -836,10 +836,9 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		allKnown := true
 
 		// ─── Phase 1 : Filtrer et préparer les matchs à fetcher ───
-		var toFetch []string // MatchIDs à fetcher
-		var fetchIndex []int // Index dans entries (pour order preservation)
+		var toFetch []string // MatchIDs à fetcher (l'ordre suit `entries`)
 
-		for i, entry := range entries {
+		for _, entry := range entries {
 			if processed >= opts.MaxMatches {
 				break
 			}
@@ -856,7 +855,6 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			}
 			allKnown = false
 			toFetch = append(toFetch, entry.MatchID)
-			fetchIndex = append(fetchIndex, i)
 		}
 
 		if len(toFetch) > 0 {

@@ -139,6 +139,7 @@ linters:
           - ineffassign
           - revive
           - unconvert
+          - staticcheck     # ST1003 (underscore vars), SA4006/SA9003 cosmetique en tests
 
       # cmd/ (CLI tools / scripts ponctuels) : permissifs sur tout
       # Les scripts de diag/migration/seed/repair n'ont pas vocation a etre

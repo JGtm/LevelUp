@@ -125,7 +125,7 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 	}
 	token, ok := resp["Token"].(string)
 	if !ok || token == "" {
-		return "", fmt.Errorf("Token absent dans la réponse XBL")
+		return "", fmt.Errorf("token absent dans la réponse XBL")
 	}
 	return token, nil
 }
@@ -149,7 +149,7 @@ func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyi
 	}
 	token, ok := resp["Token"].(string)
 	if !ok || token == "" {
-		return "", "", "", fmt.Errorf("Token absent dans la réponse XSTS")
+		return "", "", "", fmt.Errorf("token absent dans la réponse XSTS")
 	}
 
 	// Extraire gamertag + xuid depuis DisplayClaims.xui[0]

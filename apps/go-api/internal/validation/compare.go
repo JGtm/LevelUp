@@ -85,17 +85,17 @@ type ComparisonReport struct {
 // Les deux DBs doivent être stats.duckdb produits par le moteur Go et Python
 // pour le même joueur. La comparaison est read-only.
 func ComparePlayerDBs(goDBPath, pythonDBPath string) (*ComparisonReport, error) {
-	goDb, err := sql.Open("duckdb", goDBPath+"?access_mode=READ_ONLY")
+	goDB, err := sql.Open("duckdb", goDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
 		return nil, fmt.Errorf("open go DB: %w", err)
 	}
-	defer goDb.Close()
+	defer goDB.Close()
 
-	pyDb, err := sql.Open("duckdb", pythonDBPath+"?access_mode=READ_ONLY")
+	pyDB, err := sql.Open("duckdb", pythonDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
 		return nil, fmt.Errorf("open python DB: %w", err)
 	}
-	defer pyDb.Close()
+	defer pyDB.Close()
 
 	report := &ComparisonReport{
 		GeneratedAt:  time.Now(),
@@ -104,25 +104,25 @@ func ComparePlayerDBs(goDBPath, pythonDBPath string) (*ComparisonReport, error) 
 	}
 
 	// 1. Comparaison row counts par table
-	goTables, err := listTables(goDb)
+	goTables, err := listTables(goDB)
 	if err != nil {
 		return nil, fmt.Errorf("list go tables: %w", err)
 	}
-	pyTables, err := listTables(pyDb)
+	pyTables, err := listTables(pyDB)
 	if err != nil {
 		return nil, fmt.Errorf("list python tables: %w", err)
 	}
 
-	report.Tables = compareTableCounts(goDb, pyDb, goTables, pyTables)
+	report.Tables = compareTableCounts(goDB, pyDB, goTables, pyTables)
 
 	// 2. Bitmask analysis (player_match_enrichment)
-	bitmasks, err := compareBitmasks(goDb, pyDb)
+	bitmasks, err := compareBitmasks(goDB, pyDB)
 	if err == nil {
 		report.Bitmasks = bitmasks
 	}
 
 	// 3. Match ID overlap (player_match_enrichment)
-	overlap, err := compareMatchIDs(goDb, pyDb)
+	overlap, err := compareMatchIDs(goDB, pyDB)
 	if err == nil {
 		report.MatchOverlap = overlap
 	}
@@ -161,7 +161,7 @@ func countRows(db *sql.DB, table string) (int64, error) {
 	return n, err
 }
 
-func compareTableCounts(goDb, pyDb *sql.DB, goTables, pyTables map[string]bool) []TableComparison {
+func compareTableCounts(goDB, pyDB *sql.DB, goTables, pyTables map[string]bool) []TableComparison {
 	// Union des tables des deux DBs
 	allTables := make(map[string]bool)
 	for t := range goTables {
@@ -192,14 +192,14 @@ func compareTableCounts(goDb, pyDb *sql.DB, goTables, pyTables map[string]bool) 
 		case inGo && !inPy:
 			tc.Status = statusMissPy
 			tc.Notes = append(tc.Notes, "table absente côté Python")
-			tc.RowsGo, _ = countRows(goDb, table)
+			tc.RowsGo, _ = countRows(goDB, table)
 		case !inGo && inPy:
 			tc.Status = statusMissGo
 			tc.Notes = append(tc.Notes, "table absente côté Go")
-			tc.RowsPython, _ = countRows(pyDb, table)
+			tc.RowsPython, _ = countRows(pyDB, table)
 		default:
-			tc.RowsGo, _ = countRows(goDb, table)
-			tc.RowsPython, _ = countRows(pyDb, table)
+			tc.RowsGo, _ = countRows(goDB, table)
+			tc.RowsPython, _ = countRows(pyDB, table)
 			tc.Delta = tc.RowsGo - tc.RowsPython
 			if tc.RowsPython > 0 {
 				tc.DeltaPct = float64(tc.Delta) / float64(tc.RowsPython) * 100
@@ -225,7 +225,7 @@ func classifyDelta(delta, pyRows int64) string {
 	return statusDiverge
 }
 
-func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
+func compareBitmasks(goDB, pyDB *sql.DB) ([]BitmaskStats, error) {
 	type bitmaskQuery struct {
 		table  string
 		column string
@@ -241,10 +241,10 @@ func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
 	stats := make([]BitmaskStats, 0, 1)
 
 	var goNull, pyNull int64
-	errGo := goDb.QueryRow(
+	errGo := goDB.QueryRow(
 		"SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NULL",
 	).Scan(&goNull)
-	errPy := pyDb.QueryRow(
+	errPy := pyDB.QueryRow(
 		"SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NULL",
 	).Scan(&pyNull)
 
@@ -253,8 +253,8 @@ func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
 	}
 
 	var goTotal, pyTotal int64
-	_ = goDb.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&goTotal)
-	_ = pyDb.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&pyTotal)
+	_ = goDB.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&goTotal)
+	_ = pyDB.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&pyTotal)
 
 	var goPct, pyPct float64
 	if goTotal > 0 {
@@ -284,13 +284,13 @@ func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
 	return stats, nil
 }
 
-func compareMatchIDs(goDb, pyDb *sql.DB) (*MatchOverlap, error) {
+func compareMatchIDs(goDB, pyDB *sql.DB) (*MatchOverlap, error) {
 	// Charger les match_ids de player_match_enrichment dans les deux DBs
-	goIDs, err := loadMatchIDs(goDb)
+	goIDs, err := loadMatchIDs(goDB)
 	if err != nil {
 		return nil, fmt.Errorf("load go match_ids: %w", err)
 	}
-	pyIDs, err := loadMatchIDs(pyDb)
+	pyIDs, err := loadMatchIDs(pyDB)
 	if err != nil {
 		return nil, fmt.Errorf("load python match_ids: %w", err)
 	}

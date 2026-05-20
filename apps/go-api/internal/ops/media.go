@@ -164,11 +164,11 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		if !opts.ForceRescan && known[hash] {
 			continue
 		}
-		var clientTs *int64
+		var clientTS *int64
 		if opts.CaptureTimes != nil {
-			clientTs = opts.CaptureTimes[filepath.Base(path)]
+			clientTS = opts.CaptureTimes[filepath.Base(path)]
 		}
-		if err := insertMediaFile(db, path, hash, opts.Gamertag, clientTs, loc, store); err != nil {
+		if err := insertMediaFile(db, path, hash, opts.Gamertag, clientTS, loc, store); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: insert: %v", path, err))
 			continue
 		}
