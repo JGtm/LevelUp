@@ -74,9 +74,9 @@ function StreakCard({ streak: s, locale, t }: StreakCardProps) {
   const statusLabel = s.status === 'active' ? t.streakActive : s.status === 'paused' ? t.streakPaused : t.streakBroken
   const statusToneClass =
     s.status === 'active'
-      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+      ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' // color-allow: emerald status badge active (CLAUDE.md §20 badge UI)
       : s.status === 'paused'
-        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' // color-allow: amber status badge paused (CLAUDE.md §20)
         : 'bg-muted text-muted-foreground'
 
   const nextTier = s.status !== 'broken' ? nextPPTier(s.current_length) : null
@@ -121,7 +121,7 @@ function StreakCard({ streak: s, locale, t }: StreakCardProps) {
           </div>
         )}
         {!nextTier && s.status === 'active' && (
-          <div className="text-emerald-700 dark:text-emerald-300">
+          <div className="text-emerald-700 dark:text-emerald-300"> {/* color-allow: emerald streak active at max multiplier (CLAUDE.md §20) */}
             {t.streakAtMaxMultiplier}
           </div>
         )}

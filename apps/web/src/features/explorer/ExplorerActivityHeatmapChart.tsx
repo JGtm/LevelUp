@@ -12,6 +12,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import type { HeatmapCell } from '@/lib/api/types'
 
 const DOW_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
@@ -24,7 +25,7 @@ interface Props {
   height?: number
 }
 
-function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
+function buildHeatmapOption(cells: HeatmapCell[], matchesLabel: string): EChartsCoreOption {
   const tc = getEChartsThemeColors()
 
   const lookup = new Map<string, { count: number; win_rate: number }>()
@@ -103,7 +104,7 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
         ],
       },
       formatter: (val: number) => `${Math.round(val)}`,
-      text: ['Matchs', ''],
+      text: [matchesLabel, ''],
       textStyle: { color: tc.axisLabel, fontSize: 10 },
     } : undefined,
     series: [
@@ -128,13 +129,15 @@ function buildHeatmapOption(cells: HeatmapCell[]): EChartsCoreOption {
 type Pt = { dow: number; hour: number }
 
 export function ExplorerActivityHeatmapChart({ cells, title, height }: Props) {
+  const matchesLabel = useFieldLabel('matches')
+
   const series: ChartSeries<Pt>[] = cells.length > 0
     ? [{ key: 'heatmap', datapoints: cells.map((c) => ({ dow: c.dow, hour: c.hour })) }]
     : []
 
   const cellsKey = useMemo(() => JSON.stringify(cells), [cells])
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const buildOption = useCallback(() => buildHeatmapOption(cells), [cellsKey])
+  const buildOption = useCallback(() => buildHeatmapOption(cells, matchesLabel), [cellsKey, matchesLabel])
 
   return (
     <ChartCard
