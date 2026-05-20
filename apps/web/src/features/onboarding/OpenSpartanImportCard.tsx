@@ -236,8 +236,8 @@ function PollingStage({ job }: { job: AsyncJobStatus | undefined }) {
       {pct !== null && pct !== undefined && (
         <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
           <div
-            className="h-2 rounded-full transition-all"
-            style={{ width: `${pct}%`, backgroundColor: tokenCssVar('primary') }}
+            className="h-2 rounded-full transition-all bg-primary"
+            style={{ width: `${pct}%` }}
           />
         </div>
       )}

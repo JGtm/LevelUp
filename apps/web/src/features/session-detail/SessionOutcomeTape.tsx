@@ -25,20 +25,21 @@ interface Props {
 export function SessionOutcomeTape({ matches, height = 90 }: Props) {
   const { data: fieldMappings } = useFieldMappings()
 
-  const points: OutcomePoint[] = useMemo(() => {
+  const points = useMemo<OutcomePoint[]>(() => {
     return [...matches]
       .sort((a, b) => a.start_time.localeCompare(b.start_time))
-      .map((m) => {
+      .flatMap<OutcomePoint>((m) => {
         const key = outcomeIntToKey(m.outcome)
-        if (!key) return null
-        return {
-          outcome: key,
-          matchId: m.match_id,
-          map: m.pair_name,
-          mode: m.playlist_name,
-        } satisfies OutcomePoint
+        if (!key) return []
+        return [
+          {
+            outcome: key,
+            matchId: m.match_id,
+            map: m.pair_name,
+            mode: m.playlist_name,
+          },
+        ]
       })
-      .filter((p): p is OutcomePoint => p !== null)
   }, [matches])
 
   // Libellés résolus via fieldMappings.outcomes — pas de string FR/EN hardcodée.
