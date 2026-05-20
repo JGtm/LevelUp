@@ -41,7 +41,7 @@ type RestoreResult struct {
 	Message      string
 	TablesLoaded []string
 	DryRun       bool
-	BackupTs     string
+	BackupTS     string
 }
 
 // RestorePlayer restaure les tables d'une DB joueur depuis les fichiers Parquet.
@@ -72,7 +72,7 @@ func RestorePlayer(opts RestoreOptions) (RestoreResult, error) {
 
 	result := RestoreResult{
 		DryRun:   opts.DryRun,
-		BackupTs: ts,
+		BackupTS: ts,
 	}
 
 	if opts.DryRun {
@@ -112,32 +112,32 @@ func findLatestParquetFiles(backupDir string) (map[string]string, string, error)
 	}
 
 	// Chercher le timestamp le plus récent depuis backup_metadata_*.json
-	latestTs := ""
+	latestTS := ""
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "backup_metadata_") && strings.HasSuffix(e.Name(), ".json") {
 			ts := strings.TrimSuffix(strings.TrimPrefix(e.Name(), "backup_metadata_"), ".json")
-			if ts > latestTs {
-				latestTs = ts
+			if ts > latestTS {
+				latestTS = ts
 			}
 		}
 	}
 
 	// Fallback : prendre le timestamp le plus récent parmi les .parquet
-	if latestTs == "" {
+	if latestTS == "" {
 		for _, e := range entries {
 			if strings.HasSuffix(e.Name(), ".parquet") {
 				parts := strings.Split(strings.TrimSuffix(e.Name(), ".parquet"), "_")
 				if len(parts) >= 2 {
 					ts := parts[len(parts)-2] + "_" + parts[len(parts)-1]
-					if ts > latestTs {
-						latestTs = ts
+					if ts > latestTS {
+						latestTS = ts
 					}
 				}
 			}
 		}
 	}
 
-	if latestTs == "" {
+	if latestTS == "" {
 		return nil, "", nil
 	}
 
@@ -148,13 +148,13 @@ func findLatestParquetFiles(backupDir string) (map[string]string, string, error)
 		if !strings.HasSuffix(name, ".parquet") {
 			continue
 		}
-		if !strings.HasSuffix(strings.TrimSuffix(name, ".parquet"), latestTs) {
+		if !strings.HasSuffix(strings.TrimSuffix(name, ".parquet"), latestTS) {
 			continue
 		}
-		table := strings.TrimSuffix(name, "_"+latestTs+".parquet")
+		table := strings.TrimSuffix(name, "_"+latestTS+".parquet")
 		result[table] = filepath.Join(backupDir, name)
 	}
-	return result, latestTs, nil
+	return result, latestTS, nil
 }
 
 // restoreTable restaure une table depuis un fichier Parquet.

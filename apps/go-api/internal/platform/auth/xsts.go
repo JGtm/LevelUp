@@ -91,7 +91,7 @@ func requestXSTSTokenFull(ctx context.Context, client *http.Client, userToken, r
 	}
 	token, ok := resp["Token"].(string)
 	if !ok || token == "" {
-		return nil, fmt.Errorf("Token absent dans la réponse XSTS")
+		return nil, fmt.Errorf("token absent dans la réponse XSTS")
 	}
 
 	gamertag, xuid := extractDisplayClaims(resp)
