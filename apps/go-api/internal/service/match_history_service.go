@@ -27,11 +27,25 @@ var outcomeLabels = map[int]string{
 	4: "Abandon",
 }
 
+// Labels de scope/contexte partagés entre filters, tri, options Explorer.
+// Externalisés pour goconst (utilisés à plusieurs endroits + côté tests).
+const (
+	scopeKills         = "kills"
+	scopeSessions      = "sessions"
+	scopeRanked        = "ranked"
+	scopeUnranked      = "unranked"
+	scopeSolo          = "solo"
+	scopeSquad         = "squad"
+	expTypePVPRanked   = "PVP classé"
+	expTypePVPUnranked = "PVP non classé"
+	expTypePVE         = "PVE"
+)
+
 // availableSortFields est la liste des champs de tri autorisés.
 var availableSortFields = []string{
 	"start_time", "outcome_code", "performance_score_relative",
 	"team_mmr", "delta_mmr", "win_rate_hist",
-	"kda", "kills",
+	"kda", scopeKills,
 }
 
 // availableColumns expose les colonnes disponibles dans MatchHistoryRow.
@@ -249,7 +263,7 @@ func filterByRankedContext(rows []domain.MatchHistoryRawRow, ctx string) []domai
 	if ctx == "" || ctx == "all" {
 		return rows
 	}
-	want := ctx == "ranked"
+	want := ctx == scopeRanked
 	out := rows[:0:0]
 	for _, r := range rows {
 		if r.IsRanked == want {
@@ -332,12 +346,12 @@ func filterByPerfTiers(rows []domain.MatchHistoryRawRow, tiers []int) []domain.M
 // explorerExperienceType dérive le type d'expérience d'un MatchHistoryRawRow.
 func explorerExperienceType(r domain.MatchHistoryRawRow) string {
 	if r.IsFirefight {
-		return "PVE"
+		return expTypePVE
 	}
 	if r.IsRanked {
-		return "PVP classé"
+		return expTypePVPRanked
 	}
-	return "PVP non classé"
+	return expTypePVPUnranked
 }
 
 // filterByExplorerDateRange garde les rows dont StartTime est dans [start, end].
@@ -432,7 +446,7 @@ func filterByExplorerModeNames(rows []domain.MatchHistoryRawRow, modes []string)
 // "solo" = !IsWithFriends, "squad" = IsWithFriends, sinon noop.
 func filterByExplorerSquadScope(rows []domain.MatchHistoryRawRow, scope string) []domain.MatchHistoryRawRow {
 	switch scope {
-	case "solo":
+	case scopeSolo:
 		out := rows[:0:0]
 		for _, r := range rows {
 			if !r.IsWithFriends {
@@ -440,7 +454,7 @@ func filterByExplorerSquadScope(rows []domain.MatchHistoryRawRow, scope string) 
 			}
 		}
 		return out
-	case "squad":
+	case scopeSquad:
 		out := rows[:0:0]
 		for _, r := range rows {
 			if r.IsWithFriends {
@@ -911,7 +925,7 @@ func buildMatchURL(waypoint, matchID string) string {
 }
 
 func buildPeriodLabel(f domain.FilterContextInput) *string {
-	if f.FilterMode == "sessions" {
+	if f.FilterMode == scopeSessions {
 		return nil
 	}
 	p := f.Period

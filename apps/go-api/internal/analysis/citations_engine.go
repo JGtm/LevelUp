@@ -43,7 +43,7 @@ func ComputeFullMatchCitations(
 ) []domain.CitationMatchDelta {
 	totals := make(map[string]int, len(mappings))
 	for _, m := range mappings {
-		if m.MappingType == "composite" {
+		if m.MappingType == domain.CitationMappingTypeComposite {
 			continue // calculé en post-traitement après le dispatch principal
 		}
 		val := dispatchFull(m, ctx)
@@ -66,19 +66,19 @@ func ComputeFullMatchCitations(
 
 func dispatchFull(m domain.CitationFullMapping, ctx domain.CitationContext) int {
 	switch m.MappingType {
-	case "medal":
+	case domain.CitationMappingTypeMedal:
 		return computeMedalValue(m, ctx.Medals)
-	case "stat", "pve_stat", "weapon_stat":
+	case domain.CitationMappingTypeStat, domain.CitationMappingTypePveStat, domain.CitationMappingTypeWeaponStat:
 		if m.StatName == nil {
 			return 0
 		}
 		return int(ctx.Stats[*m.StatName])
-	case "award":
+	case domain.CitationMappingTypeAward:
 		if m.AwardName == nil {
 			return 0
 		}
 		return ctx.Awards[*m.AwardName]
-	case "custom":
+	case domain.CitationMappingTypeCustom:
 		if m.CustomFunction == nil {
 			return 0
 		}

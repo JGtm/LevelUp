@@ -40,7 +40,7 @@ func ApplyCompositeCitationsPerMatch(totals map[string]int, mappings []domain.Ci
 func applyCompositesPass(totals map[string]int, mappings []domain.CitationFullMapping) bool {
 	changed := false
 	for _, m := range mappings {
-		if m.MappingType != "composite" || m.CompositeChildren == nil || *m.CompositeChildren == "" {
+		if m.MappingType != domain.CitationMappingTypeComposite || m.CompositeChildren == nil || *m.CompositeChildren == "" {
 			continue
 		}
 		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
@@ -73,7 +73,7 @@ func computeCompositeCitations(totals map[string]int, mappings []domain.Citation
 	}
 
 	for _, m := range mappings {
-		if m.MappingType != "composite" || m.CompositeChildren == nil || *m.CompositeChildren == "" {
+		if m.MappingType != domain.CitationMappingTypeComposite || m.CompositeChildren == nil || *m.CompositeChildren == "" {
 			continue
 		}
 		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)

@@ -7,6 +7,17 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
+// Clés canoniques des axes/stats partagés entre les profils radar squad/teammates
+// et les RecordSpec downstream. Externalisées pour la cohérence des map keys.
+const (
+	StatLabelKills       = "kills"
+	StatLabelDeaths      = "deaths"
+	StatLabelAssists     = "assists"
+	StatLabelAccuracy    = "accuracy"
+	StatLabelKDA         = "kda"
+	StatLabelKillsPerMin = "kills_per_min"
+)
+
 // =============================================================================
 // Profil de participation radar
 // =============================================================================
@@ -59,12 +70,12 @@ func ComputeParticipationProfile(rows []domain.SquadMatchRow, name, color string
 		Name:  name,
 		Color: color,
 		Values: map[string]float64{
-			"kills":         avg(sumKills, nKills),
-			"deaths":        avg(sumDeaths, nDeaths),
-			"assists":       avg(sumAssists, nAssists),
-			"accuracy":      avg(sumAccuracy, nAccuracy),
-			"kills_per_min": avg(sumKPM, nKPM),
-			"kda":           avg(sumKDA, nKDA),
+			StatLabelKills:       avg(sumKills, nKills),
+			StatLabelDeaths:      avg(sumDeaths, nDeaths),
+			StatLabelAssists:     avg(sumAssists, nAssists),
+			StatLabelAccuracy:    avg(sumAccuracy, nAccuracy),
+			StatLabelKillsPerMin: avg(sumKPM, nKPM),
+			StatLabelKDA:         avg(sumKDA, nKDA),
 		},
 	}
 }
@@ -112,12 +123,12 @@ func ComputeTeammateProfile(rows []domain.TeammateMatchRow, name, color string) 
 		Name:  name,
 		Color: color,
 		Values: map[string]float64{
-			"kills":         avg(sumKills, nKills),
-			"deaths":        avg(sumDeaths, nDeaths),
-			"assists":       avg(sumAssists, nAssists),
-			"accuracy":      avg(sumAccuracy, nAccuracy),
-			"kills_per_min": avg(sumKPM, nKPM),
-			"kda":           avg(sumKDA, nKDA),
+			StatLabelKills:       avg(sumKills, nKills),
+			StatLabelDeaths:      avg(sumDeaths, nDeaths),
+			StatLabelAssists:     avg(sumAssists, nAssists),
+			StatLabelAccuracy:    avg(sumAccuracy, nAccuracy),
+			StatLabelKillsPerMin: avg(sumKPM, nKPM),
+			StatLabelKDA:         avg(sumKDA, nKDA),
 		},
 	}
 }
@@ -132,11 +143,11 @@ var squadMetrics = []struct {
 	fromRow func(domain.SquadMatchRow) *float64
 	isMin   bool
 }{
-	{"kills", func(r domain.SquadMatchRow) *float64 { v := float64(r.Kills); return &v }, false},
-	{"deaths", func(r domain.SquadMatchRow) *float64 { v := float64(r.Deaths); return &v }, true},
-	{"assists", func(r domain.SquadMatchRow) *float64 { v := float64(r.Assists); return &v }, false},
-	{"kda", func(r domain.SquadMatchRow) *float64 { return r.KDA }, false},
-	{"accuracy", func(r domain.SquadMatchRow) *float64 { return r.Accuracy }, false},
+	{StatLabelKills, func(r domain.SquadMatchRow) *float64 { v := float64(r.Kills); return &v }, false},
+	{StatLabelDeaths, func(r domain.SquadMatchRow) *float64 { v := float64(r.Deaths); return &v }, true},
+	{StatLabelAssists, func(r domain.SquadMatchRow) *float64 { v := float64(r.Assists); return &v }, false},
+	{StatLabelKDA, func(r domain.SquadMatchRow) *float64 { return r.KDA }, false},
+	{StatLabelAccuracy, func(r domain.SquadMatchRow) *float64 { return r.Accuracy }, false},
 }
 
 // ComputeSquadRecords calcule les records individuels pour un joueur
@@ -182,11 +193,11 @@ func ComputeTeammateRecords(rows []domain.TeammateMatchRow) map[string]*float64 
 		isMin   bool
 	}
 	metrics := []metricDef{
-		{"kills", func(r domain.TeammateMatchRow) *float64 { v := float64(r.Kills); return &v }, false},
-		{"deaths", func(r domain.TeammateMatchRow) *float64 { v := float64(r.Deaths); return &v }, true},
-		{"assists", func(r domain.TeammateMatchRow) *float64 { v := float64(r.Assists); return &v }, false},
-		{"kda", func(r domain.TeammateMatchRow) *float64 { return r.Ratio }, false},
-		{"accuracy", func(r domain.TeammateMatchRow) *float64 { return r.Accuracy }, false},
+		{StatLabelKills, func(r domain.TeammateMatchRow) *float64 { v := float64(r.Kills); return &v }, false},
+		{StatLabelDeaths, func(r domain.TeammateMatchRow) *float64 { v := float64(r.Deaths); return &v }, true},
+		{StatLabelAssists, func(r domain.TeammateMatchRow) *float64 { v := float64(r.Assists); return &v }, false},
+		{StatLabelKDA, func(r domain.TeammateMatchRow) *float64 { return r.Ratio }, false},
+		{StatLabelAccuracy, func(r domain.TeammateMatchRow) *float64 { return r.Accuracy }, false},
 	}
 	result := make(map[string]*float64, len(metrics))
 	for _, m := range metrics {

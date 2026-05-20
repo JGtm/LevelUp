@@ -22,6 +22,13 @@ var SentinelIDs = map[uint64]bool{
 	MeleeWeaponID: true, GrenadeWeaponID: true, VehicleWeaponID: true,
 }
 
+// Noms canoniques d'armes Halo Infinite réutilisés comme têtes de famille
+// dans WeaponFamilyMap et WeaponTimings — déclarés ici pour éviter les doublons.
+const (
+	WeaponNameEnergySword   = "Energy Sword"
+	WeaponNameGravityHammer = "Gravity Hammer"
+)
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  Weapon ID Map (hex filmshell → nom anglais)
 // ══════════════════════════════════════════════════════════════════════════════
@@ -67,7 +74,7 @@ func init() {
 		{h("b619d84a42c9679f"), "CQS48 Bulldog"},
 		{h("84bd29ed42c9679f"), "Disruptor"},
 		{h("9d6aaed242c9679f"), "Fuel Rod SPNKr"},
-		{h("841ac5e542c9679f"), "Gravity Hammer"},
+		{h("841ac5e542c9679f"), WeaponNameGravityHammer},
 		{h("2ac9c2ff42c9679f"), "Heatwave"},
 		{h("71ab0a2c42c9679f"), "M41 SPNKr"},
 		{h("2fb21c8742c9679f"), "M392 Bandit"},
@@ -92,7 +99,7 @@ func init() {
 		{h("3e07021742c9679f"), "Vestige Carbine"},
 		{h("fd98554c42c9679f"), "VK78 Commando"},
 		// Energy Sword family
-		{h("4ff3937e42c9679f"), "Energy Sword"},
+		{h("4ff3937e42c9679f"), WeaponNameEnergySword},
 		{h("4ff3937e8978aa7a"), "Duelist Energy Sword"},
 		{h("4ff3937e1ec48c7a"), "Elite Bloodblade"},
 		{h("0c55765f7a9376a0"), "Infected Energy Sword"},
@@ -189,10 +196,10 @@ var WeaponTimingByName = map[string]WeaponTiming{
 	"Cindershot":            {900, 5000},
 	"M41 SPNKr":             {1100, 2000},
 	"Fuel Rod SPNKr":        {1100, 2000},
-	"Gravity Hammer":        {1100, 1400},
+	WeaponNameGravityHammer: {1100, 1400},
 	"Diminisher of Hope":    {1100, 1400},
 	"Rushdown Hammer":       {1100, 1400},
-	"Energy Sword":          {1100, 1400},
+	WeaponNameEnergySword:   {1100, 1400},
 	"Duelist Energy Sword":  {1100, 1400},
 	"Elite Bloodblade":      {1100, 1400},
 	"Infected Energy Sword": {1100, 1400},
@@ -231,11 +238,11 @@ var WeaponFusionMap = map[string]string{
 	"Fuel Rod SPNKr":        "M41 SPNKr",
 	"Shock Rifle (Ranked)":  "Shock Rifle",
 	"Vestige Carbine":       "Pulse Carbine",
-	"Duelist Energy Sword":  "Energy Sword",
-	"Elite Bloodblade":      "Energy Sword",
-	"Infected Energy Sword": "Energy Sword",
-	"Diminisher of Hope":    "Gravity Hammer",
-	"Rushdown Hammer":       "Gravity Hammer",
+	"Duelist Energy Sword":  WeaponNameEnergySword,
+	"Elite Bloodblade":      WeaponNameEnergySword,
+	"Infected Energy Sword": WeaponNameEnergySword,
+	"Diminisher of Hope":    WeaponNameGravityHammer,
+	"Rushdown Hammer":       WeaponNameGravityHammer,
 }
 
 // WeaponFusionMapID — weapon_id variante → weapon_id canonique.

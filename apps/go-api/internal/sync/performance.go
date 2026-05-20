@@ -198,9 +198,9 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 
 	// Métriques standard (plus = mieux)
 	standardMetrics := []string{
-		"kpm", "apm", "kda", "accuracy", "pspm", "dpm_damage",
-		"kills_vs_expected", "deaths_vs_expected",
-		"offensive_conversion", "defensive_resistance", "medal_exploit",
+		MetricKeyKPM, MetricKeyAPM, MetricKeyKDA, MetricKeyAccuracy, MetricKeyPSPM, MetricKeyDPMDamage,
+		MetricKeyKillsVsExpected, MetricKeyDeathsVsExpected,
+		MetricKeyOffensiveConv, MetricKeyDefensiveResist, MetricKeyMedalExploit,
 	}
 	for _, key := range standardMetrics {
 		val, ok := getMetricValue(metrics, key)
@@ -216,17 +216,17 @@ func computeRelativePerformanceScore(current *historyRow, history []historyRow) 
 	}
 
 	// Métrique inversée : dpm_deaths (moins = mieux)
-	if series, ok := histMetrics["dpm_deaths"]; ok && len(series) > 0 {
-		percentiles["dpm_deaths"] = percentileRankInverse(metrics.DPMDeaths, series)
-		weightsUsed["dpm_deaths"] = RelativeWeights["dpm_deaths"]
+	if series, ok := histMetrics[MetricKeyDPMDeaths]; ok && len(series) > 0 {
+		percentiles[MetricKeyDPMDeaths] = percentileRankInverse(metrics.DPMDeaths, series)
+		weightsUsed[MetricKeyDPMDeaths] = RelativeWeights[MetricKeyDPMDeaths]
 	}
 
 	// Rank performance (optionnel)
 	if metrics.Rank != nil && metrics.TeamMMR != nil && metrics.EnemyMMR != nil {
 		rankPerf := computeRankPerformance(*metrics.Rank, *metrics.TeamMMR, *metrics.EnemyMMR, histMetrics)
 		if rankPerf != nil {
-			percentiles["rank_perf"] = *rankPerf
-			weightsUsed["rank_perf"] = RelativeWeights["rank_perf"]
+			percentiles[MetricKeyRankPerf] = *rankPerf
+			weightsUsed[MetricKeyRankPerf] = RelativeWeights[MetricKeyRankPerf]
 		}
 	}
 
@@ -267,50 +267,50 @@ func computeRankPerformance(rank, teamMMR, enemyMMR float64, histMetrics map[str
 // getMetricValue extrait la valeur d'une métrique par clé.
 func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 	switch key {
-	case "kpm":
+	case MetricKeyKPM:
 		return m.KPM, true
-	case "dpm_deaths":
+	case MetricKeyDPMDeaths:
 		return m.DPMDeaths, true
-	case "apm":
+	case MetricKeyAPM:
 		return m.APM, true
-	case "kda":
+	case MetricKeyKDA:
 		return m.KDA, true
-	case "accuracy":
+	case MetricKeyAccuracy:
 		if m.Accuracy != nil {
 			return *m.Accuracy, true
 		}
 		return 0, false
-	case "pspm":
+	case MetricKeyPSPM:
 		if m.PSPM != nil {
 			return *m.PSPM, true
 		}
 		return 0, false
-	case "dpm_damage":
+	case MetricKeyDPMDamage:
 		if m.DPMDamage != nil {
 			return *m.DPMDamage, true
 		}
 		return 0, false
-	case "kills_vs_expected":
+	case MetricKeyKillsVsExpected:
 		if m.KillsVsExpected != nil {
 			return *m.KillsVsExpected, true
 		}
 		return 0, false
-	case "deaths_vs_expected":
+	case MetricKeyDeathsVsExpected:
 		if m.DeathsVsExpected != nil {
 			return *m.DeathsVsExpected, true
 		}
 		return 0, false
-	case "offensive_conversion":
+	case MetricKeyOffensiveConv:
 		if m.OffensiveConversion != nil {
 			return *m.OffensiveConversion, true
 		}
 		return 0, false
-	case "defensive_resistance":
+	case MetricKeyDefensiveResist:
 		if m.DefensiveResistance != nil {
 			return *m.DefensiveResistance, true
 		}
 		return 0, false
-	case "medal_exploit":
+	case MetricKeyMedalExploit:
 		if m.MedalExploit != nil {
 			return *m.MedalExploit, true
 		}
@@ -323,19 +323,19 @@ func getMetricValue(m *matchMetrics, key string) (float64, bool) {
 func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 	n := len(history)
 	result := map[string][]float64{
-		"kpm":                  make([]float64, 0, n),
-		"dpm_deaths":           make([]float64, 0, n),
-		"apm":                  make([]float64, 0, n),
-		"kda":                  make([]float64, 0, n),
-		"accuracy":             make([]float64, 0, n),
-		"pspm":                 make([]float64, 0, n),
-		"dpm_damage":           make([]float64, 0, n),
-		"rank_perf_diff":       make([]float64, 0, n),
-		"kills_vs_expected":    make([]float64, 0, n),
-		"deaths_vs_expected":   make([]float64, 0, n),
-		"offensive_conversion": make([]float64, 0, n),
-		"defensive_resistance": make([]float64, 0, n),
-		"medal_exploit":        make([]float64, 0, n),
+		MetricKeyKPM:              make([]float64, 0, n),
+		MetricKeyDPMDeaths:        make([]float64, 0, n),
+		MetricKeyAPM:              make([]float64, 0, n),
+		MetricKeyKDA:              make([]float64, 0, n),
+		MetricKeyAccuracy:         make([]float64, 0, n),
+		MetricKeyPSPM:             make([]float64, 0, n),
+		MetricKeyDPMDamage:        make([]float64, 0, n),
+		"rank_perf_diff":          make([]float64, 0, n),
+		MetricKeyKillsVsExpected:  make([]float64, 0, n),
+		MetricKeyDeathsVsExpected: make([]float64, 0, n),
+		MetricKeyOffensiveConv:    make([]float64, 0, n),
+		MetricKeyDefensiveResist:  make([]float64, 0, n),
+		MetricKeyMedalExploit:     make([]float64, 0, n),
 	}
 
 	for _, row := range history {
@@ -343,18 +343,18 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 		if m == nil {
 			continue
 		}
-		result["kpm"] = append(result["kpm"], m.KPM)
-		result["dpm_deaths"] = append(result["dpm_deaths"], m.DPMDeaths)
-		result["apm"] = append(result["apm"], m.APM)
-		result["kda"] = append(result["kda"], m.KDA)
+		result[MetricKeyKPM] = append(result[MetricKeyKPM], m.KPM)
+		result[MetricKeyDPMDeaths] = append(result[MetricKeyDPMDeaths], m.DPMDeaths)
+		result[MetricKeyAPM] = append(result[MetricKeyAPM], m.APM)
+		result[MetricKeyKDA] = append(result[MetricKeyKDA], m.KDA)
 		if m.Accuracy != nil {
-			result["accuracy"] = append(result["accuracy"], *m.Accuracy)
+			result[MetricKeyAccuracy] = append(result[MetricKeyAccuracy], *m.Accuracy)
 		}
 		if m.PSPM != nil {
-			result["pspm"] = append(result["pspm"], *m.PSPM)
+			result[MetricKeyPSPM] = append(result[MetricKeyPSPM], *m.PSPM)
 		}
 		if m.DPMDamage != nil {
-			result["dpm_damage"] = append(result["dpm_damage"], *m.DPMDamage)
+			result[MetricKeyDPMDamage] = append(result[MetricKeyDPMDamage], *m.DPMDamage)
 		}
 		if m.Rank != nil && m.TeamMMR != nil && m.EnemyMMR != nil {
 			delta := *m.TeamMMR - *m.EnemyMMR
@@ -362,19 +362,19 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 			result["rank_perf_diff"] = append(result["rank_perf_diff"], expected-*m.Rank)
 		}
 		if m.KillsVsExpected != nil {
-			result["kills_vs_expected"] = append(result["kills_vs_expected"], *m.KillsVsExpected)
+			result[MetricKeyKillsVsExpected] = append(result[MetricKeyKillsVsExpected], *m.KillsVsExpected)
 		}
 		if m.DeathsVsExpected != nil {
-			result["deaths_vs_expected"] = append(result["deaths_vs_expected"], *m.DeathsVsExpected)
+			result[MetricKeyDeathsVsExpected] = append(result[MetricKeyDeathsVsExpected], *m.DeathsVsExpected)
 		}
 		if m.OffensiveConversion != nil {
-			result["offensive_conversion"] = append(result["offensive_conversion"], *m.OffensiveConversion)
+			result[MetricKeyOffensiveConv] = append(result[MetricKeyOffensiveConv], *m.OffensiveConversion)
 		}
 		if m.DefensiveResistance != nil {
-			result["defensive_resistance"] = append(result["defensive_resistance"], *m.DefensiveResistance)
+			result[MetricKeyDefensiveResist] = append(result[MetricKeyDefensiveResist], *m.DefensiveResistance)
 		}
 		if m.MedalExploit != nil {
-			result["medal_exploit"] = append(result["medal_exploit"], *m.MedalExploit)
+			result[MetricKeyMedalExploit] = append(result[MetricKeyMedalExploit], *m.MedalExploit)
 		}
 	}
 

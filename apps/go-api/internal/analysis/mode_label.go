@@ -24,6 +24,15 @@ var (
 	modeLabelRankedRe = regexp.MustCompile(`(?i)\s*-\s*Ranked\b`)
 )
 
+// Labels d'identité de playlists Halo Infinite — partagés avec mode_category.go
+// (côté games/halo_infinite). Re-déclarés ici pour éviter un cycle d'import
+// analysis ← halo_infinite ← analysis.
+const (
+	modeLabelSuperFiesta    = "Super Fiesta"
+	modeLabelHuskyRaid      = "Husky Raid"
+	modeLabelSuperHuskyRaid = "Super Husky Raid"
+)
+
 // playlistIdentityPrefixes : préfixes pair_name qui SONT le label utilisateur,
 // donc à conserver tels quels au lieu d'extraire le sous-mode après ":".
 //
@@ -38,9 +47,9 @@ var (
 // Comparaison case-insensitive — les pair_name peuvent arriver avec une casse
 // inconsistante depuis l'API Halo.
 var playlistIdentityPrefixes = map[string]string{
-	"super fiesta":     "Super Fiesta",
-	"husky raid":       "Husky Raid",
-	"super husky raid": "Super Husky Raid",
+	"super fiesta":     modeLabelSuperFiesta,
+	"husky raid":       modeLabelHuskyRaid,
+	"super husky raid": modeLabelSuperHuskyRaid,
 }
 
 // NormalizeModeLabel normalise un label brut de mode de jeu Halo Infinite.

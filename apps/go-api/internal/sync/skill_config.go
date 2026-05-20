@@ -44,20 +44,45 @@ const (
 	InactivityThresholdDay = 1.0
 )
 
+// ── Clés canoniques des métriques skill/performance ─────────────────────────
+//
+// Utilisées comme clés dans CompositeWeights, RelativeWeights, et le dispatch
+// des contributions individuelles (skill_rating.go). Externalisées pour éviter
+// les doublons goconst et garantir la cohérence des noms entre les map keys
+// et les case du switch.
+const (
+	MetricKeyKillsVsExpected  = "kills_vs_expected"
+	MetricKeyDeathsVsExpected = "deaths_vs_expected"
+	MetricKeyWinFactor        = "win_factor"
+	MetricKeyDamageEfficiency = "damage_efficiency"
+	MetricKeyAccuracyDelta    = "accuracy_delta"
+	MetricKeyMedalExploit     = "medal_exploit"
+	MetricKeyOffensiveConv    = "offensive_conversion"
+	MetricKeyDefensiveResist  = "defensive_resistance"
+	MetricKeyKPM              = "kpm"
+	MetricKeyDPMDeaths        = "dpm_deaths"
+	MetricKeyAPM              = "apm"
+	MetricKeyKDA              = "kda"
+	MetricKeyAccuracy         = "accuracy"
+	MetricKeyPSPM             = "pspm"
+	MetricKeyDPMDamage        = "dpm_damage"
+	MetricKeyRankPerf         = "rank_perf"
+)
+
 // ── Score composite ─────────────────────────────────────────────────────────
 
 // CompositeWeights pondère les composantes du score composite [0,1].
 // Portage de compositeWeights v5 (analysis/skill_rating.go).
 // La somme dépasse 1.0 (1.02) : computeCompositeScore renormalise par totalWeight.
 var CompositeWeights = map[string]float64{
-	"kills_vs_expected":    0.27,
-	"deaths_vs_expected":   0.24,
-	"win_factor":           0.05,
-	"damage_efficiency":    0.10,
-	"accuracy_delta":       0.10,
-	"medal_exploit":        0.04,
-	"offensive_conversion": 0.16,
-	"defensive_resistance": 0.06,
+	MetricKeyKillsVsExpected:  0.27,
+	MetricKeyDeathsVsExpected: 0.24,
+	MetricKeyWinFactor:        0.05,
+	MetricKeyDamageEfficiency: 0.10,
+	MetricKeyAccuracyDelta:    0.10,
+	MetricKeyMedalExploit:     0.04,
+	MetricKeyOffensiveConv:    0.16,
+	MetricKeyDefensiveResist:  0.06,
 }
 
 const (
@@ -84,19 +109,19 @@ const MinMatchesPerChainForRelative = 10
 // Portage de relativeWeights v5 (analysis/performance_score.go).
 // Somme = 1.01 → renormalisé automatiquement si des métriques sont absentes.
 var RelativeWeights = map[string]float64{
-	"kpm":                  0.14,
-	"dpm_deaths":           0.10,
-	"apm":                  0.06,
-	"kda":                  0.11,
-	"accuracy":             0.04,
-	"pspm":                 0.10,
-	"dpm_damage":           0.06,
-	"rank_perf":            0.04,
-	"kills_vs_expected":    0.09,
-	"deaths_vs_expected":   0.07,
-	"medal_exploit":        0.06,
-	"offensive_conversion": 0.09,
-	"defensive_resistance": 0.05,
+	MetricKeyKPM:              0.14,
+	MetricKeyDPMDeaths:        0.10,
+	MetricKeyAPM:              0.06,
+	MetricKeyKDA:              0.11,
+	MetricKeyAccuracy:         0.04,
+	MetricKeyPSPM:             0.10,
+	MetricKeyDPMDamage:        0.06,
+	MetricKeyRankPerf:         0.04,
+	MetricKeyKillsVsExpected:  0.09,
+	MetricKeyDeathsVsExpected: 0.07,
+	MetricKeyMedalExploit:     0.06,
+	MetricKeyOffensiveConv:    0.09,
+	MetricKeyDefensiveResist:  0.05,
 }
 
 // ── Chaînes LUSR ─────────────────────────────────────────────────────────────

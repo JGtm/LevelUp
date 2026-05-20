@@ -52,7 +52,7 @@ func OverrideCompositeTotals(
 	var composites []compositeEntry
 	compositeNorms := make(map[string]struct{})
 	for _, m := range mappings {
-		if m.MappingType != "composite" || m.CompositeChildren == nil || *m.CompositeChildren == "" {
+		if m.MappingType != domain.CitationMappingTypeComposite || m.CompositeChildren == nil || *m.CompositeChildren == "" {
 			continue
 		}
 		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
@@ -154,7 +154,7 @@ func MergeCitationTotals(
 	items := make([]domain.CitationItem, 0, len(totalRows))
 	for _, t := range totalRows {
 		m, ok := byNorm[t.NameNorm]
-		isComposite := ok && m.MappingType == "composite"
+		isComposite := ok && m.MappingType == domain.CitationMappingTypeComposite
 		if t.Total <= 0 && !isComposite {
 			continue // citations normales sans données → masquées ; composites toujours affichés
 		}
@@ -162,7 +162,7 @@ func MergeCitationTotals(
 			items = append(items, domain.CitationItem{
 				NameNorm:    t.NameNorm,
 				NameDisplay: t.NameNorm,
-				Category:    "misc",
+				Category:    domain.CitationCategoryMisc,
 				Total:       t.Total,
 			})
 			continue
@@ -186,7 +186,7 @@ func MergeCitationTotals(
 			Description: m.Description,
 		}
 
-		if m.MappingType == "composite" && m.CompositeChildren != nil && *m.CompositeChildren != "" {
+		if m.MappingType == domain.CitationMappingTypeComposite && m.CompositeChildren != nil && *m.CompositeChildren != "" {
 			// Composite : Total = nb d'enfants masterisés (après OverrideCompositeTotals).
 			// TierCount = nb d'enfants ACTIVÉS (présents dans byNorm) → même dénominateur que Python
 			// (les enfants disabled comme brute_slayer/skimmer_slayer sont exclus du total).
@@ -239,13 +239,13 @@ func MergeCitationTotals(
 	// Méta-composite : composite dont au moins un enfant est lui-même un composite.
 	citationRank := func(norm string) int {
 		m, ok := byNorm[norm]
-		if !ok || m.MappingType != "composite" {
+		if !ok || m.MappingType != domain.CitationMappingTypeComposite {
 			return 2
 		}
 		if m.CompositeChildren != nil && *m.CompositeChildren != "" {
 			if children, err := parseCompositeChildrenJSON(*m.CompositeChildren); err == nil {
 				for _, child := range children {
-					if cm, ok := byNorm[child]; ok && cm.MappingType == "composite" {
+					if cm, ok := byNorm[child]; ok && cm.MappingType == domain.CitationMappingTypeComposite {
 						return 0
 					}
 				}

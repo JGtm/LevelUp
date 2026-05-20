@@ -138,12 +138,12 @@ func computeAnnexionForcee(ctx domain.CitationContext) int {
 		total := 0
 		for _, e := range ctx.Events {
 			switch e.EventType {
-			case "mode":
+			case analysis.EventTypeMode:
 				streak++
 				if streak%3 == 0 {
 					total++
 				}
-			case "death":
+			case analysis.EventTypeDeath:
 				if e.XUID == ctx.PlayerXUID {
 					streak = 0
 				}

@@ -4,6 +4,13 @@ package analysis
 //
 // Port de src/analysis/_kill_attribution.py.
 
+// Valeurs possibles pour KillAttribution.AttributionPath.
+const (
+	AttributionPathFireEvent = "fire_event"
+	AttributionPathFormulaA  = "formula_a"
+	AttributionPathNone      = "none"
+)
+
 // KillAttribution représente le résultat d'attribution d'un kill à une arme.
 type KillAttribution struct {
 	MatchID         string

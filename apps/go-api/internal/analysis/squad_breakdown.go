@@ -745,7 +745,7 @@ func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.Compari
 		Label: "avg_life_seconds", SoloValue: deref(solo.AvgLifeSeconds), SquadValue: deref(squad.AvgLifeSeconds),
 	})
 	items = append(items, domain.ComparisonMetricItem{
-		Label: "accuracy", SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
+		Label: StatLabelAccuracy, SoloValue: deref(solo.Accuracy), SquadValue: deref(squad.Accuracy),
 	})
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "headshots_per_match", SoloValue: deref(solo.HeadshotsPerMatch), SquadValue: deref(squad.HeadshotsPerMatch),

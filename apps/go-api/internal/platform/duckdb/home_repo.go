@@ -318,12 +318,23 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 	if err := r.pdb.ReadDB().QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(
 		&ratingValue, &tierLabel, &tier, &subTier, &placementRemaining,
 	); err != nil {
-		if err == sql.ErrNoRows || isTableNotFoundErr(err) {
+		if err == sql.ErrNoRows {
+			slog.DebugContext(ctx, "loadHomeSkillPeak: Q26e no rows", "rating_type", ratingType, "xuid", r.pdb.XUID)
 			return nil
 		}
+		if isTableNotFoundErr(err) {
+			slog.DebugContext(ctx, "loadHomeSkillPeak: table missing", "rating_type", ratingType, "xuid", r.pdb.XUID, "err", err)
+			return nil
+		}
+		slog.WarnContext(ctx, "loadHomeSkillPeak: Q26e query failed (silent drop)",
+			"rating_type", ratingType, "xuid", r.pdb.XUID, "err", err)
 		return nil
 	}
 	if !ratingValue.Valid {
+		slog.WarnContext(ctx, "loadHomeSkillPeak: Q26e returned invalid rating_value (NULL)",
+			"rating_type", ratingType, "xuid", r.pdb.XUID,
+			"placement_remaining_valid", placementRemaining.Valid,
+			"placement_remaining", placementRemaining.Int32)
 		return nil
 	}
 

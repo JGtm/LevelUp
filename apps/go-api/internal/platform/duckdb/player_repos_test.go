@@ -7,6 +7,7 @@ package duckdb
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -1109,6 +1110,54 @@ func TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement(t *testing.T) {
 	wantBadge := "/static/ranks/halo_infinite/unranked_1.png"
 	if peak.BadgeImageURL == nil || *peak.BadgeImageURL != wantBadge {
 		t.Errorf("BadgeImageURL = %v, want %s", peak.BadgeImageURL, wantBadge)
+	}
+}
+
+// TestHomeRepo_LoadHomeSkillPeak_LUSR_NullPlaylistGroup cadenasse le bug
+// production 2026-05-20 : pour JGtm, 758 rows LUSR existaient dans
+// match_skill_rank mais highest_lusr ressortait null à l'API. Cause :
+// playlist_group=NULL sur ces anciennes rows + JOIN strict dans Q26e
+// (sémantique SQL `NULL = NULL` → NULL → exclu de l'inner JOIN).
+//
+// Le fix Q26e (COALESCE(playlist_group, '_unknown')) doit faire passer ce test.
+// Sans le fix, le peak retourné serait nil.
+func TestHomeRepo_LoadHomeSkillPeak_LUSR_NullPlaylistGroup(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+
+	// Wipe les rows seed et insère 10 rows LUSR avec playlist_group=NULL.
+	if _, err := pdb.Player.Exec(ctx, `DELETE FROM match_skill_rank`); err != nil {
+		t.Fatalf("DELETE match_skill_rank: %v", err)
+	}
+	for i := 1; i <= 10; i++ {
+		if _, err := pdb.Player.Exec(ctx, `
+			INSERT INTO match_skill_rank
+				(match_id, rating_type, rating_value, rating_deviation, tier, tier_fr,
+				 sub_tier, tier_label, rating_delta, playlist_group,
+				 start_time, created_at, updated_at)
+			VALUES (?, 'LUSR', ?, 50.0, NULL, NULL, NULL, NULL, NULL, NULL,
+			        TIMESTAMPTZ '2025-01-01 00:00:00+00' + INTERVAL '1 minute' * ?,
+			        TIMESTAMPTZ '2025-01-01 00:00:00+00',
+			        TIMESTAMPTZ '2025-01-01 00:00:00+00')
+		`, fmt.Sprintf("null_grp_%d", i), 1500.0+float64(i), i); err != nil {
+			t.Fatalf("INSERT null-group row %d: %v", i, err)
+		}
+	}
+
+	repo := NewHomeRepo(pdb)
+	identity, err := repo.LoadSpartanIdentity(ctx)
+	if err != nil {
+		t.Fatalf("LoadSpartanIdentity: %v", err)
+	}
+	if identity == nil || identity.HighestLUSR == nil {
+		t.Fatal("expected HighestLUSR non-nil malgré playlist_group=NULL (bug prod 2026-05-20)")
+	}
+	peak := identity.HighestLUSR
+	if peak.RatingValue != 1510.0 {
+		t.Errorf("RatingValue = %v, want 1510 (max des 10 rows)", peak.RatingValue)
+	}
+	if peak.MeasurementMatchesRemaining == nil || *peak.MeasurementMatchesRemaining != 0 {
+		t.Errorf("MeasurementMatchesRemaining = %v, want 0 (10 matchs = matured)", peak.MeasurementMatchesRemaining)
 	}
 }
 

@@ -80,9 +80,9 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 	var kills, deaths []ImpactEvent
 	for _, ev := range input.Events {
 		switch ev.EventType {
-		case "kill":
+		case EventTypeKill:
 			kills = append(kills, ev)
-		case "death":
+		case EventTypeDeath:
 			deaths = append(deaths, ev)
 		}
 	}

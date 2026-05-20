@@ -54,6 +54,15 @@ const (
 	ModeCategoryOther       = "Other"
 )
 
+// Préfixes de playlist additionnels (clés dans modePrefixToCategory et modeCaseMap).
+// Ces strings sont des labels utilisateur (pas des catégories canoniques), mais
+// elles apparaissent à plusieurs endroits → externalisées pour goconst.
+const (
+	ModePrefixCastleWars     = "Castle Wars"
+	ModePrefixBTBHeavies     = "BTB Heavies"
+	ModePrefixSuperHuskyRaid = "Super Husky Raid"
+)
+
 // modePrefixToCategory mappe le prÃ©fixe (gauche du ":" dans pair_name, casse normalisÃ©e)
 // vers la catÃ©gorie custom. Miroir Go de _PREFIX_RULES Python.
 //
@@ -61,32 +70,32 @@ const (
 // cÃ´tÃ© infÃ©rence en testant les variantes via _CASE_MAP â€” ici on stocke les
 // prÃ©fixes EN canoniques (cf. Python _normalize_case).
 var modePrefixToCategory = map[string]string{
-	"Arena":            ModeCategoryAssassin,
-	"Tactical":         ModeCategoryAssassin,
-	"Assault":          ModeCategoryAssassin,
-	"Community":        ModeCategoryAssassin,
-	"Fiesta":           ModeCategoryFiesta,
-	"Super Fiesta":     ModeCategorySuperFiesta, // promu (cf. divergence Python)
-	"Husky Raid":       ModeCategoryHuskyRaid,   // promu (cf. divergence Python)
-	"Super Husky Raid": ModeCategoryHuskyRaid,
-	"Castle Wars":      ModeCategoryFiesta,
-	"BTB":              ModeCategoryBTB,
-	"BTB Heavies":      ModeCategoryBTB,
-	"Ranked":           ModeCategoryRanked,
-	"Firefight":        ModeCategoryFirefight,
-	"Gruntpocalypse":   ModeCategoryFirefight,
-	"Event":            ModeCategoryOther,
+	"Arena":                  ModeCategoryAssassin,
+	"Tactical":               ModeCategoryAssassin,
+	"Assault":                ModeCategoryAssassin,
+	"Community":              ModeCategoryAssassin,
+	"Fiesta":                 ModeCategoryFiesta,
+	ModeCategorySuperFiesta:  ModeCategorySuperFiesta, // promu (cf. divergence Python)
+	ModeCategoryHuskyRaid:    ModeCategoryHuskyRaid,   // promu (cf. divergence Python)
+	ModePrefixSuperHuskyRaid: ModeCategoryHuskyRaid,
+	ModePrefixCastleWars:     ModeCategoryFiesta,
+	"BTB":                    ModeCategoryBTB,
+	ModePrefixBTBHeavies:     ModeCategoryBTB,
+	"Ranked":                 ModeCategoryRanked,
+	"Firefight":              ModeCategoryFirefight,
+	"Gruntpocalypse":         ModeCategoryFirefight,
+	"Event":                  ModeCategoryOther,
 }
 
 // modeCaseMap â€” prÃ©fixes spÃ©ciaux dont la casse doit Ãªtre conservÃ©e (acronymes
 // ou multi-mots usuels). Miroir Python _CASE_MAP.
 var modeCaseMap = map[string]string{
-	"btb heavies":      "BTB Heavies",
+	"btb heavies":      ModePrefixBTBHeavies,
 	"btb":              "BTB",
-	"super fiesta":     "Super Fiesta",
-	"super husky raid": "Super Husky Raid",
-	"husky raid":       "Husky Raid",
-	"castle wars":      "Castle Wars",
+	"super fiesta":     ModeCategorySuperFiesta,
+	"super husky raid": ModePrefixSuperHuskyRaid,
+	"husky raid":       ModeCategoryHuskyRaid,
+	"castle wars":      ModePrefixCastleWars,
 }
 
 var modeMapSuffixRe = regexp.MustCompile(`(?i)^(.*?)(?:\s*[\-â€“â€”]\s*[0-9A-Za-z]{8,})$`)

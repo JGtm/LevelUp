@@ -28,6 +28,18 @@ import (
 
 // outcomeColors : couleur hex par code d'outcome Halo Infinite.
 //
+// Couleurs hex legacy (rétrocompat front V0). Externalisées en constantes pour
+// centraliser et permettre le lint goconst (toute nouvelle UI doit passer par
+// outcomeColorToken / token CSS sémantique, cf. CLAUDE.md règle 20).
+const (
+	mvHexOutcomeWin     = "#22c55e" // Victoire
+	mvHexOutcomeLoss    = "#ef4444" // Défaite
+	mvHexOutcomeNeutral = "#8b5cf6" // Égalité / DNF
+	mvHexOutcomeUnknown = "#94a3b8" // Fallback gris (outcome inconnu)
+	mvHexPerfMedium     = "#3b82f6" // perfColor 60–80
+	mvHexPerfLow        = "#f59e0b" // perfColor 40–60
+)
+
 // Deprecated: anti-pattern (CLAUDE.md règle 20 — aucun hex côté backend).
 // Conservé pour rétrocompat avec les consommateurs front V0 qui n'ont pas
 // encore migré vers tokenCssVar(). Utiliser outcomeColorToken pour les
@@ -35,10 +47,10 @@ import (
 //
 // (outcomeLabels est défini dans match_history_service.go)
 var outcomeColors = map[int]string{
-	1: "#8b5cf6", // Égalité
-	2: "#22c55e", // Victoire
-	3: "#ef4444", // Défaite
-	4: "#8b5cf6", // Non terminé
+	1: mvHexOutcomeNeutral, // Égalité
+	2: mvHexOutcomeWin,     // Victoire
+	3: mvHexOutcomeLoss,    // Défaite
+	4: mvHexOutcomeNeutral, // Non terminé
 }
 
 // outcomeColorToken retourne le token sémantique pour un code outcome.
@@ -697,7 +709,7 @@ func buildMatchHeader(
 	h := domain.MatchViewHeader{
 		MatchID:      matchID,
 		OutcomeLabel: "-",
-		OutcomeColor: "#94a3b8",
+		OutcomeColor: mvHexOutcomeUnknown,
 		PerfDisplay:  "-",
 		IsFavorite:   isFavorite,
 	}
@@ -911,7 +923,7 @@ func buildSummaryTabFull(
 	}
 	tab := domain.MatchSummaryTab{
 		KPIs:           domain.MatchSummaryKpis{},
-		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: "#94a3b8"},
+		PersonalResult: domain.MatchPersonalResult{OutcomeLabel: "-", OutcomeColor: mvHexOutcomeUnknown},
 		Medals:         convertMedals(medals, titleSlug),
 		Citations:      citations,
 		ExpectedStats:  buildExpectedStats(expected, histRows, meta),
@@ -1324,7 +1336,7 @@ func buildTugEvents(kvPairs []domain.KVPairRaw, myXUID string) []analysis.TugOfW
 		events = append(events, analysis.TugOfWarEvent{
 			TimeMS:    kv.TimeMS,
 			IsAlly:    isAlly,
-			EventType: "kill",
+			EventType: analysis.EventTypeKill,
 		})
 	}
 	return events
@@ -1782,19 +1794,19 @@ func outcomeColor(code int) string {
 	if c, ok := outcomeColors[code]; ok {
 		return c
 	}
-	return "#94a3b8"
+	return mvHexOutcomeUnknown
 }
 
 func perfColor(score float64) string {
 	switch {
 	case score >= 80:
-		return "#22c55e"
+		return mvHexOutcomeWin
 	case score >= 60:
-		return "#3b82f6"
+		return mvHexPerfMedium
 	case score >= 40:
-		return "#f59e0b"
+		return mvHexPerfLow
 	default:
-		return "#ef4444"
+		return mvHexOutcomeLoss
 	}
 }
 

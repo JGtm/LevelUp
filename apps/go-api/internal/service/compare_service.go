@@ -175,23 +175,36 @@ func convertNarrativeBadgesCompare(badges []narrative.EncounterBadge) []domain.M
 	return result
 }
 
+// Clés canoniques des métriques de comparaison (utilisées comme keys de map ET
+// comme key des MetricRows envoyés au front).
+const (
+	compareMetricMaxKillingSpree      = "max_killing_spree"
+	compareMetricAvgLifeSecs          = "avg_life_secs"
+	compareMetricPerfectKillsPerGame  = "perfect_kills_per_game"
+	compareMetricHeadshotKillsPerGame = "headshot_kills_per_game"
+	compareMetricPerfATH              = "perf_ath"
+	compareMetricLusrATH              = "lusr_ath"
+	compareMetricCareerRank           = "career_rank"
+	compareMetricAccuracy             = "accuracy"
+)
+
 // Métriques calculées uniquement à partir de la DB locale d'un joueur (stats.duckdb
 // + agrégats shared.match_participants par xuid). Quand le joueur n'est pas local,
 // l'API Waypoint career-stats ne les fournit pas → valeur 0 = donnée absente.
 var localOnlyMetrics = map[string]bool{
-	"max_killing_spree":       true,
-	"avg_life_secs":           true,
-	"perfect_kills_per_game":  true,
-	"headshot_kills_per_game": true,
+	compareMetricMaxKillingSpree:      true,
+	compareMetricAvgLifeSecs:          true,
+	compareMetricPerfectKillsPerGame:  true,
+	compareMetricHeadshotKillsPerGame: true,
 }
 
 // Métriques issues de stats.duckdb (ATH + rang carrière). Indisponibles si le
 // joueur n'est pas local, ET considérées non renseignées si la valeur est 0
 // (cas d'un joueur local dont l'ATH n'a pas encore été calculé).
 var athMetrics = map[string]bool{
-	"perf_ath":    true,
-	"lusr_ath":    true,
-	"career_rank": true,
+	compareMetricPerfATH:    true,
+	compareMetricLusrATH:    true,
+	compareMetricCareerRank: true,
 }
 
 // metricAvailability détermine si la valeur d'une métrique est exploitable pour un joueur.
@@ -234,19 +247,19 @@ func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 		{"kills_per_game", "Frags / partie", a.KillsPerGame, b.KillsPerGame, false},
 		{"deaths_per_game", "Morts / partie", a.DeathsPerGame, b.DeathsPerGame, true},
 		{"assists_per_game", "Assistances / partie", a.AssistsPerGame, b.AssistsPerGame, false},
-		{"accuracy", "Précision", a.Accuracy, b.Accuracy, false},
+		{compareMetricAccuracy, "Précision", a.Accuracy, b.Accuracy, false},
 		{"damage_per_game", "Dégâts / partie", a.DamagePerGame, b.DamagePerGame, false},
 		{"rendement", "Rendement", rendementA, rendementB, true},
 		{"damage_taken_per_game", "Dégâts subis / partie", a.DamageTakenPerGame, b.DamageTakenPerGame, true},
 		{"resistance", "Résistance", resistanceA, resistanceB, false},
-		{"perfect_kills_per_game", "Tirs parfaits / partie", a.PerfectKillsPerGame, b.PerfectKillsPerGame, false},
-		{"max_killing_spree", "Folie meurtrière max", float64(a.MaxKillingSpree), float64(b.MaxKillingSpree), false},
-		{"avg_life_secs", "Survie moy. / partie", a.AvgLifeSecs, b.AvgLifeSecs, false},
-		{"headshot_kills_per_game", "Headshots / partie", a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false},
+		{compareMetricPerfectKillsPerGame, "Tirs parfaits / partie", a.PerfectKillsPerGame, b.PerfectKillsPerGame, false},
+		{compareMetricMaxKillingSpree, "Folie meurtrière max", float64(a.MaxKillingSpree), float64(b.MaxKillingSpree), false},
+		{compareMetricAvgLifeSecs, "Survie moy. / partie", a.AvgLifeSecs, b.AvgLifeSecs, false},
+		{compareMetricHeadshotKillsPerGame, "Headshots / partie", a.HeadshotKillsPerGame, b.HeadshotKillsPerGame, false},
 		{"matches", "Parties", float64(a.Matches), float64(b.Matches), false},
-		{"career_rank", "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank), false},
-		{"perf_ath", "Perf. record", a.PerfATH, b.PerfATH, false},
-		{"lusr_ath", "LUSR record", a.LusrATH, b.LusrATH, false},
+		{compareMetricCareerRank, "Rang Carrière", float64(a.CareerRank), float64(b.CareerRank), false},
+		{compareMetricPerfATH, "Perf. record", a.PerfATH, b.PerfATH, false},
+		{compareMetricLusrATH, "LUSR record", a.LusrATH, b.LusrATH, false},
 	}
 
 	// SampleSizeB non nul uniquement si B est un joueur local croisé.
