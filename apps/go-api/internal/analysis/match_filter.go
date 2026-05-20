@@ -28,10 +28,10 @@ type ModeCategoryPrefixes func(category string) []string
 // outcomeLabelToCode : whitelist canonique. Toute valeur hors map retourne 0
 // (clause omise). C'est aussi la liste autorisée côté handler.
 var outcomeLabelToCode = map[string]int{
-	"win":  2,
-	"loss": 3,
-	"draw": 1,
-	"dnf":  4,
+	OutcomeToneWin:  2,
+	OutcomeToneLoss: 3,
+	OutcomeToneDraw: 1,
+	OutcomeToneDNF:  4,
 }
 
 // NeighborsWhereResult : retour de BuildNeighborsWhereClause.

@@ -47,12 +47,20 @@ var winFactors = map[int]float64{
 	4: 0.15,
 }
 
+// Groupes de playlist canoniques (clé interne stockée dans match_skill_rank).
+const (
+	playlistGroupRanked    = "ranked"
+	playlistGroupBigTeam   = "big_team_battle"
+	playlistGroupFirefight = "firefight"
+	playlistGroupCustom    = "custom"
+)
+
 var playlistGroupPrefixes = map[string]string{
-	"ranked":           "ranked",
-	"ranked challenge": "ranked",
-	"big team":         "big_team_battle",
-	"firefight":        "firefight",
-	"custom":           "custom",
+	"ranked":           playlistGroupRanked,
+	"ranked challenge": playlistGroupRanked,
+	"big team":         playlistGroupBigTeam,
+	"firefight":        playlistGroupFirefight,
+	"custom":           playlistGroupCustom,
 }
 
 type playerState struct {

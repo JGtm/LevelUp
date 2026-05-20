@@ -165,7 +165,7 @@ func attributionFromEvent(
 		WeaponID:        &widInt,
 		DeltaMS:         &delta,
 		Confidence:      conf,
-		AttributionPath: "fire_event",
+		AttributionPath: AttributionPathFireEvent,
 		SwapDetected:    delta >= t.SwapMS,
 		DelayedDamage:   delta > t.TravelMax,
 		PlayerIndex:     &pi,

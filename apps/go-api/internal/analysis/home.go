@@ -40,6 +40,17 @@ const (
 	homeColorNegative = "negative"
 )
 
+// Tones d'outcome partagÃ©s entre la projection JSON (home) et les filtres
+// (match_filter). DÃ©clarÃ©s ici car le package n'a pas de fichier de constantes
+// partagÃ©es et home.go est dÃ©jÃ  le point d'entrÃ©e des codes outcome.
+const (
+	OutcomeToneWin  = "win"
+	OutcomeToneLoss = "loss"
+	OutcomeToneDraw = "draw"
+	OutcomeToneTie  = "tie"
+	OutcomeToneDNF  = "dnf"
+)
+
 var homeOutcomeLabels = map[int]string{
 	homeOutcomeWin:  "Victoire",
 	homeOutcomeLoss: "DÃ©faite",
@@ -55,10 +66,10 @@ var homeOutcomeLabelsEN = map[int]string{
 }
 
 var homeOutcomeTones = map[int]string{
-	homeOutcomeWin:  "win",
-	homeOutcomeLoss: "loss",
-	homeOutcomeTie:  "tie",
-	homeOutcomeDNF:  "dnf",
+	homeOutcomeWin:  OutcomeToneWin,
+	homeOutcomeLoss: OutcomeToneLoss,
+	homeOutcomeTie:  OutcomeToneTie,
+	homeOutcomeDNF:  OutcomeToneDNF,
 }
 
 var homeUUIDRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -1657,7 +1668,7 @@ func outcomeTone(code int) string {
 	if t, ok := homeOutcomeTones[code]; ok {
 		return t
 	}
-	return "dnf"
+	return OutcomeToneDNF
 }
 
 func latestSessionLabel(sessions []legacymatch.HomeSessionRow) string {

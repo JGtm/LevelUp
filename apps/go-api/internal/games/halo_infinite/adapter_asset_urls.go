@@ -14,6 +14,13 @@ import (
 // TitleSlug est le slug canonique d'Halo Infinite côté adapter.
 const TitleSlug = "halo_infinite"
 
+// Stems de fichiers image partagés par plusieurs entrées de weaponImageFiles.
+// Externalisés pour éviter les doublons signalés par goconst.
+const (
+	weaponImageStemGrenade = "Grenade"
+	weaponImageStemSword   = "Sword"
+)
+
 // uuidRe matche un UUID v4 — utilisé pour rejeter les map names qui sont en
 // fait des UUID bruts (non utilisables comme nom de fichier statique).
 var uuidRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -27,10 +34,10 @@ var mapVariantSuffixes = []string{" Heavies", " Sentry Defense", " Firefight"}
 // weaponImageFiles mappe le name_en d'une arme vers le stem du fichier PNG
 // dans static/weapons-assets/halo_infinite/. Armes sans entrée → ImageURL vide.
 var weaponImageFiles = map[string]string{
-	"Grenade":               "Grenade",
-	"Frag Grenade":          "Grenade",
-	"Plasma Grenade":        "Grenade",
-	"Dynamo Grenade":        "Grenade",
+	"Grenade":               weaponImageStemGrenade,
+	"Frag Grenade":          weaponImageStemGrenade,
+	"Plasma Grenade":        weaponImageStemGrenade,
+	"Dynamo Grenade":        weaponImageStemGrenade,
 	"Melee":                 "Melee",
 	"Bandit Evo":            "Bandit",
 	"M392 Bandit":           "Bandit",
@@ -62,10 +69,10 @@ var weaponImageFiles = map[string]string{
 	"Skewer":                "Skewer",
 	"Stalker Rifle":         "Stalker",
 	"VK78 Commando":         "Commando",
-	"Energy Sword":          "Sword",
-	"Duelist Energy Sword":  "Sword",
-	"Elite Bloodblade":      "Sword",
-	"Infected Energy Sword": "Sword",
+	"Energy Sword":          weaponImageStemSword,
+	"Duelist Energy Sword":  weaponImageStemSword,
+	"Elite Bloodblade":      weaponImageStemSword,
+	"Infected Energy Sword": weaponImageStemSword,
 }
 
 // AssetURLAdapter implémente games.TitleAssetURLAdapter pour Halo Infinite.

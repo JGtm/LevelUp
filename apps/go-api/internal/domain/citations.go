@@ -6,6 +6,21 @@
 //	POST /api/v1/players/{slug}/pages/commendations  → CommendationsPageResponse
 package domain
 
+// Valeurs possibles pour CitationMappingRow.MappingType / CitationFullMapping.MappingType.
+// Utilisées pour dispatcher le calcul d'une citation selon sa source de données.
+const (
+	CitationMappingTypeMedal      = "medal"
+	CitationMappingTypeStat       = "stat"
+	CitationMappingTypePveStat    = "pve_stat"
+	CitationMappingTypeWeaponStat = "weapon_stat"
+	CitationMappingTypeAward      = "award"
+	CitationMappingTypeCustom     = "custom"
+	CitationMappingTypeComposite  = "composite"
+)
+
+// CitationCategoryMisc est la catégorie fallback pour les citations sans metadata.
+const CitationCategoryMisc = "misc"
+
 // ---------------------------------------------------------------------------
 // Lignes brutes DuckDB — Citations
 // ---------------------------------------------------------------------------

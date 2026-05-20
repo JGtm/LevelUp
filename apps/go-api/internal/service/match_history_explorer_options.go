@@ -41,20 +41,30 @@ func perfTierLabel(t int) string {
 	}
 }
 
+// Tiers CSR canoniques (réutilisés dans skillTierLabel + computeAvailableSkillTiers).
+const (
+	csrTierBronze   = "Bronze"
+	csrTierSilver   = "Silver"
+	csrTierGold     = "Gold"
+	csrTierPlatinum = "Platinum"
+	csrTierDiamond  = "Diamond"
+	csrTierOnyx     = "Onyx"
+)
+
 // skillTierLabel retourne le label FR du tier ranked depuis sa clé EN.
 func skillTierLabel(en string) string {
 	switch en {
-	case "Bronze":
+	case csrTierBronze:
 		return "Bronze"
-	case "Silver":
+	case csrTierSilver:
 		return "Argent"
-	case "Gold":
+	case csrTierGold:
 		return "Or"
-	case "Platinum":
+	case csrTierPlatinum:
 		return "Platine"
-	case "Diamond":
+	case csrTierDiamond:
 		return "Diamant"
-	case "Onyx":
+	case csrTierOnyx:
 		return "Onyx"
 	default:
 		return en
@@ -112,7 +122,7 @@ func computeAvailablePerfTiers(base []domain.MatchHistoryRawRow, req domain.Matc
 // Si RankedContext est vide, tous les counts valent 0 (skill_tier nécessite
 // un contexte ranked/unranked pour être appliqué — voir filterBySkillTier).
 func computeAvailableSkillTiers(base []domain.MatchHistoryRawRow, req domain.MatchHistoryQueryRequest) []domain.LabelValue {
-	candidates := []string{"Bronze", "Silver", "Gold", "Platinum", "Diamond", "Onyx"}
+	candidates := []string{csrTierBronze, csrTierSilver, csrTierGold, csrTierPlatinum, csrTierDiamond, csrTierOnyx}
 	selected := stringSliceToSet(req.SkillTiers)
 	out := make([]domain.LabelValue, 0, len(candidates))
 	for _, t := range candidates {
@@ -147,8 +157,8 @@ func computeAvailableRankedContexts(base []domain.MatchHistoryRawRow, req domain
 		Label string
 	}{
 		{"", "Tous"},
-		{"ranked", "Ranked (CSR)"},
-		{"unranked", "Non-ranked (LUSR)"},
+		{scopeRanked, "Ranked (CSR)"},
+		{scopeUnranked, "Non-ranked (LUSR)"},
 	}
 	out := make([]domain.LabelValue, 0, len(contexts))
 	for _, c := range contexts {
@@ -176,8 +186,8 @@ func computeAvailableSquadScopes(base []domain.MatchHistoryRawRow, req domain.Ma
 		Label string
 	}{
 		{"", "Tous"},
-		{"solo", "Solo"},
-		{"squad", "Escouade"},
+		{scopeSolo, "Solo"},
+		{scopeSquad, "Escouade"},
 	}
 	// Construire une req sans squad_scope pour appliquer tous les autres filtres
 	// Explorer puis forcer le scope candidat séparément.

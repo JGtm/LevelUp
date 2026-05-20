@@ -24,21 +24,40 @@ const MinMatchesForRelative = 10
 // DefaultDurationSeconds est la durÃ©e par dÃ©faut si time_played_seconds est absent.
 const DefaultDurationSeconds = 600.0
 
+// ClÃ©s canoniques des mÃ©triques de performance. PartagÃ©es avec sync.MetricKey*
+// (mÃªmes valeurs string). Re-dÃ©clarÃ©es ici car analysis ne peut pas importer
+// sync sans cycle.
+const (
+	PerfMetricKPM              = "kpm"
+	PerfMetricDPMDeaths        = "dpm_deaths"
+	PerfMetricAPM              = "apm"
+	PerfMetricKDA              = "kda"
+	PerfMetricAccuracy         = "accuracy"
+	PerfMetricPSPM             = "pspm"
+	PerfMetricDPMDamage        = "dpm_damage"
+	PerfMetricRankPerf         = "rank_perf"
+	PerfMetricKillsVsExpected  = "kills_vs_expected"
+	PerfMetricDeathsVsExpected = "deaths_vs_expected"
+	PerfMetricMedalExploit     = "medal_exploit"
+	PerfMetricOffensiveConv    = "offensive_conversion"
+	PerfMetricDefensiveResist  = "defensive_resistance"
+)
+
 // relativeWeights sont les poids des mÃ©triques pour le score relatif v5.
 var relativeWeights = map[string]float64{
-	"kpm":                  0.14, // Kills per minute
-	"dpm_deaths":           0.10, // Deaths per minute (inversÃ©)
-	"apm":                  0.06, // Assists per minute
-	"kda":                  0.11, // KDA
-	"accuracy":             0.04, // PrÃ©cision
-	"pspm":                 0.10, // Personal Score Per Minute
-	"dpm_damage":           0.06, // Damage Per Minute
-	"rank_perf":            0.04, // Rank vs Expected (optionnel)
-	"kills_vs_expected":    0.09, // Kills rÃ©els / Kills attendus
-	"deaths_vs_expected":   0.07, // Deaths attendus / Deaths rÃ©els (inversÃ©)
-	"medal_exploit":        0.06, // Exploit mÃ©dailles heroic+ pondÃ©rÃ©es par difficultÃ©
-	"offensive_conversion": 0.09, // 225Ã—(kills+assists/3)/damage_dealt
-	"defensive_resistance": 0.05, // damage_taken/(225Ã—deaths) â€” inversÃ©
+	PerfMetricKPM:              0.14, // Kills per minute
+	PerfMetricDPMDeaths:        0.10, // Deaths per minute (inversÃ©)
+	PerfMetricAPM:              0.06, // Assists per minute
+	PerfMetricKDA:              0.11, // KDA
+	PerfMetricAccuracy:         0.04, // PrÃ©cision
+	PerfMetricPSPM:             0.10, // Personal Score Per Minute
+	PerfMetricDPMDamage:        0.06, // Damage Per Minute
+	PerfMetricRankPerf:         0.04, // Rank vs Expected (optionnel)
+	PerfMetricKillsVsExpected:  0.09, // Kills rÃ©els / Kills attendus
+	PerfMetricDeathsVsExpected: 0.07, // Deaths attendus / Deaths rÃ©els (inversÃ©)
+	PerfMetricMedalExploit:     0.06, // Exploit mÃ©dailles heroic+ pondÃ©rÃ©es par difficultÃ©
+	PerfMetricOffensiveConv:    0.09, // 225Ã—(kills+assists/3)/damage_dealt
+	PerfMetricDefensiveResist:  0.05, // damage_taken/(225Ã—deaths) â€” inversÃ©
 	// Î£ = 1.01 â†’ renormalisÃ© automatiquement (poids manquants ignorÃ©s)
 }
 
@@ -74,21 +93,21 @@ func ComputeRelativePerformanceScore(
 	weights := make(map[string]float64)
 
 	// MÃ©triques requises (toujours disponibles).
-	addRequired("kpm", current.kpm, hist.kpm, false, percentiles, weights)
-	addRequired("dpm_deaths", current.dpmDeaths, hist.dpmDeaths, true, percentiles, weights)
-	addRequired("apm", current.apm, hist.apm, false, percentiles, weights)
-	addRequired("kda", current.kda, hist.kda, false, percentiles, weights)
+	addRequired(PerfMetricKPM, current.kpm, hist.kpm, false, percentiles, weights)
+	addRequired(PerfMetricDPMDeaths, current.dpmDeaths, hist.dpmDeaths, true, percentiles, weights)
+	addRequired(PerfMetricAPM, current.apm, hist.apm, false, percentiles, weights)
+	addRequired(PerfMetricKDA, current.kda, hist.kda, false, percentiles, weights)
 
 	// MÃ©triques optionnelles.
-	addOptional("accuracy", current.accuracy, hist.accuracy, false, percentiles, weights)
-	addOptional("pspm", current.pspm, hist.pspm, false, percentiles, weights)
-	addOptional("dpm_damage", current.dpmDamage, hist.dpmDamage, false, percentiles, weights)
-	addOptional("rank_perf", current.rankPerfDiff, hist.rankPerfDiff, false, percentiles, weights)
-	addOptional("kills_vs_expected", current.killsVsExpected, hist.killsVsExpected, false, percentiles, weights)
-	addOptional("deaths_vs_expected", current.deathsVsExpected, hist.deathsVsExpected, false, percentiles, weights)
-	addOptional("medal_exploit", current.medalExploit, hist.medalExploit, false, percentiles, weights)
-	addOptional("offensive_conversion", current.offensiveConversion, hist.offensiveConversion, false, percentiles, weights)
-	addOptional("defensive_resistance", current.defensiveResistance, hist.defensiveResistance, false, percentiles, weights)
+	addOptional(PerfMetricAccuracy, current.accuracy, hist.accuracy, false, percentiles, weights)
+	addOptional(PerfMetricPSPM, current.pspm, hist.pspm, false, percentiles, weights)
+	addOptional(PerfMetricDPMDamage, current.dpmDamage, hist.dpmDamage, false, percentiles, weights)
+	addOptional(PerfMetricRankPerf, current.rankPerfDiff, hist.rankPerfDiff, false, percentiles, weights)
+	addOptional(PerfMetricKillsVsExpected, current.killsVsExpected, hist.killsVsExpected, false, percentiles, weights)
+	addOptional(PerfMetricDeathsVsExpected, current.deathsVsExpected, hist.deathsVsExpected, false, percentiles, weights)
+	addOptional(PerfMetricMedalExploit, current.medalExploit, hist.medalExploit, false, percentiles, weights)
+	addOptional(PerfMetricOffensiveConv, current.offensiveConversion, hist.offensiveConversion, false, percentiles, weights)
+	addOptional(PerfMetricDefensiveResist, current.defensiveResistance, hist.defensiveResistance, false, percentiles, weights)
 
 	totalWeight := 0.0
 	weightedSum := 0.0

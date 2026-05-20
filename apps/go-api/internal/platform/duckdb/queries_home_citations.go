@@ -194,13 +194,21 @@ LIMIT 1`
 //     sinon on retourne le meilleur rating du groupe le plus jouÃ© en placement,
 //     pour que le badge unranked_(10-remaining).png puisse Ãªtre construit.
 //
+// **NULL handling — fix bug prod 2026-05-20** : `playlist_group` peut être NULL
+// pour les anciennes rows LUSR/CSR (avant introduction de la colonne ou pour
+// les CSR fetchés sans group). Sans COALESCE en sentinel, le `JOIN ... ON
+// gc.playlist_group = bpg.playlist_group` éliminerait TOUTES les rows à
+// playlist_group NULL (sémantique SQL `NULL = NULL` → NULL → exclu de l'inner
+// JOIN). C'est exactement le bug observé pour JGtm : 758 rows LUSR existaient
+// mais highest_lusr ressortait null. On normalise via COALESCE(..., '_unknown').
+//
 // Le CASE de classification CSR/LUSR garde le fallback heuristique sur
 // playlist_name/pair_name (régression historique is_ranked=FALSE non corrigée).
 const Q26eHomeSkillPeakByType = `
 WITH classified AS (
 	SELECT
 		msr.match_id,
-		msr.playlist_group,
+		COALESCE(msr.playlist_group, '_unknown') AS playlist_group,
 		msr.rating_value,
 		msr.tier,
 		msr.sub_tier,

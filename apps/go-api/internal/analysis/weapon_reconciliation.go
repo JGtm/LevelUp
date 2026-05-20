@@ -23,13 +23,13 @@ func ReconcileAPIAggregates(
 
 	for i := range results {
 		a := &results[i]
-		if a.Confidence != "low" && a.Confidence != "none" {
+		if a.Confidence != confidenceLow && a.Confidence != confidenceNone {
 			continue
 		}
 		if a.WeaponID != nil && SentinelIDs[*a.WeaponID] {
 			continue
 		}
-		if a.AttributionPath == "none" {
+		if a.AttributionPath == AttributionPathNone {
 			continue
 		}
 
@@ -71,7 +71,7 @@ func AssignSentinels(
 func countConfidentAttributions(attributions []KillAttribution) map[uint64]int {
 	counts := make(map[uint64]int)
 	for _, a := range attributions {
-		if (a.Confidence == "high" || a.Confidence == "medium") && a.WeaponID != nil {
+		if (a.Confidence == confidenceHigh || a.Confidence == confidenceMedium) && a.WeaponID != nil {
 			counts[*a.WeaponID]++
 		}
 	}
