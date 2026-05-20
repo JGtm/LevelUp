@@ -32,11 +32,26 @@
      - `exclude-use-default: false` → omission de `linters.exclusions.presets` (équivalent en v2)
    - **Risque** : v2 peut surfacer de nouveaux warnings (defaults différents, surtout sur `staticcheck` qui absorbe maintenant `gosimple`). À mesurer après le premier run vert. Si bloquant, on annote en `# noqa`-équivalent (path-based exclusion) plutôt que de fixer immédiatement — l'objectif est de stabiliser la CI, pas de réduire toute la dette en un commit.
 
-(à enrichir à mesure que les fixes 3-6 sont appliqués)
+3. **Fix violations ADR 0013 lease enforcement** (commit #3) : `scripts/check_lease_enforcement.sh` détectait **2 vraies violations** récentes (pas faux positifs) :
+   - `internal/service/openspartan_post_import_service.go:194` (commit `55a059a9`) : `OpenReadWriteShared(metadataDBPath)` direct dans `recomputeCitations` — le service acquérait correctement le shared writer via Provider mais avait oublié de faire pareil pour metadata.
+   - `internal/api/handlers/admin_auto_sync.go:162` (commit `0e317243`) : `OpenReadWriteShared(playerDBPath)` direct dans le callback `onRotated` (route admin `/api/v1/_diag/auto-sync/probe`) — persistance OAuth refresh token sans lease.
+   - **Décision utilisateur** : fix correct des 2 (pas de whitelist) car c'est exactement la dérive que le sprint cleanup veut adresser.
+   - **Implémentation** : ajout de 2 helpers package-level dans `internal/sync/engine.go` (à côté de `AcquireSharedWriterStandalone` qui existait déjà) :
+     - `AcquireMetadataWriterStandalone(ctx, path) (*sql.DB, func(), error)` — pour les services qui n'ont pas accès à un `*PlayerDB` struct.
+     - `AcquirePlayerWriterStandalone(ctx, path) (*duckdbpkg.DB, func(), error)` — variante qui retourne `*duckdbpkg.DB` pour les callers qui consomment l'API ref-comptée (ex. `queries_auth.WriteOAuthRefreshToken`).
+   - Pattern identique à `AcquireSharedWriterStandalone` : `dblease.AcquireWriterCtx(ctx, nil, path, Kind)` + `duckdbpkg.OpenReadWriteShared(path)` + `release` qui ferme handle + libère lease.
+   - **Validations locales** :
+     - `go build ./internal/sync,service,api/handlers/...` : OK silencieux.
+     - `go vet` : OK silencieux.
+     - `scripts/check_lease_enforcement.sh` : ✓ Aucune violation.
+     - `go test ./internal/service -run TestPostImport` : 12/12 PASS.
+     - `go test ./internal/api/handlers -run TestProbeTokens` : 3/3 PASS.
+
+(à enrichir à mesure que les fixes 4-6 sont appliqués)
 
 **Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
 
-**Prochaine étape** : fix #3 — `Go Lease Enforcement` script `check_lease_enforcement.sh` exit 1.
+**Prochaine étape** : fix #4 — `E2E React (Playwright) / Install dependencies` exit 1 sur `npm ci`.
 
 ---
 
