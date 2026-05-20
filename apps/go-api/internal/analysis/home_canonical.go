@@ -1540,8 +1540,16 @@ func InferHomeSkillHistoryFromCanonical(rows []canonical.PlayerMatchRow) (bool, 
 //   - tierCodeEN  : nom du tier en anglais lowercase (ex: "gold") — pour l'URL de badge
 //   - subTier     : 1..6, nil pour Onyx
 //
-// URL : /static/ranks/halo_infinite/120px-HINF-CSR_{TierEN}{SubTier}.png
-// (même format que halo_infinite.AssetURLAdapter.CSRRankImageURL, sans import cyclique).
+// URL templates pour les badges CSR (rank images statiques).
+// Format : /static/ranks/halo_infinite/120px-HINF-CSR_{Tier}{SubTier}.png
+// (même format que halo_infinite.AssetURLAdapter.CSRRankImageURL, sans import
+// cyclique — duplication intentionnelle, alignée par convention).
+const (
+	csrRankImageBasePath = "/static/ranks/halo_infinite/"
+	csrRankImageOnyxURL  = csrRankImageBasePath + "120px-HINF-CSR_Onyx.png"
+	csrRankImageTemplate = csrRankImageBasePath + "120px-HINF-CSR_%s%d.png"
+)
+
 func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*string, *string) {
 	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
 	if tierEN == "" {
@@ -1563,7 +1571,7 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*st
 
 	if strings.EqualFold(tierEN, "onyx") {
 		label = display
-		urlStr = "/static/ranks/halo_infinite/120px-HINF-CSR_Onyx.png"
+		urlStr = csrRankImageOnyxURL
 	} else {
 		st := 0
 		if subTier != nil {
@@ -1573,7 +1581,7 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*st
 			return nil, nil
 		}
 		label = fmt.Sprintf("%s %d", display, st)
-		urlStr = fmt.Sprintf("/static/ranks/halo_infinite/120px-HINF-CSR_%s%d.png", tierENcap, st)
+		urlStr = fmt.Sprintf(csrRankImageTemplate, tierENcap, st)
 	}
 
 	return &label, &urlStr
