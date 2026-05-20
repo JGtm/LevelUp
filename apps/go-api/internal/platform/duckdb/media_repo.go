@@ -58,43 +58,29 @@ func (r *MediaRepo) socialDB() *DB {
 	return r.pdb.Player
 }
 
-// LoadMediaFiles charge une page de fichiers mÃ©dias avec filtres dynamiques (Q37).
+// LoadMediaFiles charge une page de fichiers médias avec filtres dynamiques (Q37).
+//
+// Pipeline en 3 phases (refactor P1 / ADR 0016, plus aucune query cross-DB SQL) :
+//   - Phase A : SELECT media_files + media_match_associations sur SharedSocial
+//     avec filtres LOCAUX (kind, liked, date, player_slug).
+//   - Phase B : SELECT match_registry sur SharedReader pour les match_ids
+//     résultants (sans préfixe `shared.` — la conn pointe sur shared).
+//   - Phase C (Go) : enrich + filtres cross-DB (map/mode/playlist) + dédup
+//     mf.file_path (équivalent QUALIFY ROW_NUMBER) + tri + pagination.
 func (r *MediaRepo) LoadMediaFiles(ctx context.Context, filters domain.MediaFilters, limit, offset int) ([]domain.MediaFileRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	q, args := buildQ37MediaQuery(filters, limit, offset, r.queryConfig())
-	rows, err := r.socialDB().QueryRecovered(ctx, q, args...)
+	enriched, err := r.runMediaPipeline(ctx, filters, mediaWhereConfig{
+		includeMapFilter:      true,
+		includeModeFilter:     true,
+		includePlaylistFilter: true,
+	}, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMediaFiles: %w", err)
 	}
-	defer rows.Close()
 
-	var result []domain.MediaFileRow
-	for rows.Next() {
-		var row domain.MediaFileRow
-		if err := rows.Scan(
-			&row.FilePath,
-			&row.FileName,
-			&row.Kind,
-			&row.ThumbnailPath,
-			&row.CaptureEndUTC,
-			&row.MatchID,
-			&row.MatchStartTime,
-			&row.Liked,
-			&row.MapName,
-			&row.ModeName,
-			&row.PairNameRaw,
-			&row.MapID,
-			&row.PlayerSlug,
-		); err != nil {
-			return nil, fmt.Errorf("LoadMediaFiles scan: %w", err)
-		}
-		result = append(result, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
+	result := toMediaFileRows(enriched)
 	r.enrichMediaMapTranslations(ctx, result)
 	r.enrichMediaModeCategories(result)
 	return result, nil
@@ -117,51 +103,68 @@ func (r *MediaRepo) enrichMediaModeCategories(rows []domain.MediaFileRow) {
 	}
 }
 
-// CountMediaFiles retourne le nombre total de fichiers mÃ©dias actifs selon les filtres.
+// CountMediaFiles retourne le nombre total de fichiers médias actifs selon les filtres.
+//
+// Même pipeline que LoadMediaFiles (sans limit/offset) — retourne juste le
+// nombre de rows distinctes par file_path après filtres + dédup.
 func (r *MediaRepo) CountMediaFiles(ctx context.Context, filters domain.MediaFilters) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	q, args := buildQ37MediaCountQuery(filters, r.queryConfig())
-	var count int
-	err := r.socialDB().QueryRow(ctx, q, args...).Scan(&count)
+	enriched, err := r.runMediaPipeline(ctx, filters, mediaWhereConfig{
+		includeMapFilter:      true,
+		includeModeFilter:     true,
+		includePlaylistFilter: true,
+	}, 0, 0)
 	if err != nil {
 		return 0, fmt.Errorf("CountMediaFiles: %w", err)
 	}
-	return count, nil
+	return len(enriched), nil
 }
 
 // LoadMediaFilterOptions retourne les valeurs distinctes des filtres carte/mode,
-// avec libellÃ©s enrichis en FR (asset_translations + mode_name_tr de metadata.duckdb)
-// et dÃ©duplication par libellÃ© FR. Pour les modes, plusieurs raw EN qui se
-// normalisent vers le mÃªme FR (ex: "Capture the Flag", "CTF - Ranked", "CTF on
-// Bazaar" â†’ "Capture du drapeau") sont fusionnÃ©s en une seule entrÃ©e.
+// avec libellés enrichis en FR (asset_translations + mode_name_tr de metadata.duckdb)
+// et déduplication par libellé FR. Pour les modes, plusieurs raw EN qui se
+// normalisent vers le même FR (ex: "Capture the Flag", "CTF - Ranked", "CTF on
+// Bazaar" → "Capture du drapeau") sont fusionnés en une seule entrée.
+//
+// Pipeline P1 (cf. ADR 0016) : chaque option (maps/modes/playlists) lance le
+// pipeline media avec un whereCfg qui EXCLUT son propre filtre (pour montrer
+// les alternatives disponibles), puis extrait les pairs distinctes (id, label)
+// des rows enrichies, puis enrichit en FR via translate*FilterOptions.
 func (r *MediaRepo) LoadMediaFilterOptions(ctx context.Context, filters domain.MediaFilters) (domain.MediaFilterOptions, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	queryCfg := r.queryConfig()
-
-	mapQuery, mapArgs := buildQ37MediaMapOptionsQuery(filters, queryCfg)
-	mapPairs, err := r.loadMediaIDLabelPairs(ctx, mapQuery, mapArgs)
+	mapEnriched, err := r.runMediaPipeline(ctx, filters, mediaWhereConfig{
+		includeMapFilter:      false,
+		includeModeFilter:     true,
+		includePlaylistFilter: true,
+	}, 0, 0)
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions maps: %w", err)
 	}
-	maps := r.translateMapFilterOptions(ctx, mapPairs)
+	maps := r.translateMapFilterOptions(ctx, extractMapPairs(mapEnriched))
 
-	modeQuery, modeArgs := buildQ37MediaModeOptionsQuery(filters, queryCfg)
-	modePairs, err := r.loadMediaIDLabelPairs(ctx, modeQuery, modeArgs)
+	modeEnriched, err := r.runMediaPipeline(ctx, filters, mediaWhereConfig{
+		includeMapFilter:      true,
+		includeModeFilter:     false,
+		includePlaylistFilter: true,
+	}, 0, 0)
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions modes: %w", err)
 	}
-	modes := r.translateModeFilterOptions(ctx, modePairs)
+	modes := r.translateModeFilterOptions(ctx, extractModePairs(modeEnriched))
 
-	playlistQuery, playlistArgs := buildQ37MediaPlaylistOptionsQuery(filters, queryCfg)
-	playlistPairs, err := r.loadMediaIDLabelPairs(ctx, playlistQuery, playlistArgs)
+	playlistEnriched, err := r.runMediaPipeline(ctx, filters, mediaWhereConfig{
+		includeMapFilter:      true,
+		includeModeFilter:     true,
+		includePlaylistFilter: false,
+	}, 0, 0)
 	if err != nil {
 		return domain.MediaFilterOptions{}, fmt.Errorf("LoadMediaFilterOptions playlists: %w", err)
 	}
-	playlists := r.translatePlaylistFilterOptions(ctx, playlistPairs)
+	playlists := r.translatePlaylistFilterOptions(ctx, extractPlaylistPairs(playlistEnriched))
 
 	return domain.MediaFilterOptions{Playlists: playlists, Maps: maps, Modes: modes}, nil
 }
@@ -864,26 +867,9 @@ type mediaFilterOptionPair struct {
 	label string
 }
 
-func (r *MediaRepo) loadMediaIDLabelPairs(ctx context.Context, query string, args []any) ([]mediaFilterOptionPair, error) {
-	rows, err := r.socialDB().QueryRecovered(ctx, query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	pairs := make([]mediaFilterOptionPair, 0)
-	for rows.Next() {
-		var id, label string
-		if err := rows.Scan(&id, &label); err != nil {
-			return nil, err
-		}
-		if strings.TrimSpace(label) == "" {
-			continue
-		}
-		pairs = append(pairs, mediaFilterOptionPair{id: id, label: label})
-	}
-	return pairs, rows.Err()
-}
+// (loadMediaIDLabelPairs supprimée — extraction des pairs est désormais
+// faite côté Go via extractMapPairs/extractModePairs/extractPlaylistPairs
+// dans media_repo_q37_pipeline.go.)
 
 // translateMapFilterOptions enrichit les libellÃ©s de cartes en FR via
 // asset_translations + dÃ©dup par map_id. Value = map_id (stable, structurel)

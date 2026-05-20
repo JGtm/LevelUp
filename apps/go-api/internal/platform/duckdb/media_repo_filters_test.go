@@ -8,7 +8,6 @@ package duckdb
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -43,25 +42,32 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 	social := openMemDB(t)
 	meta := openMemDB(t)
 
+	// Topologie réelle post-ADR 0016 : la conn `shared` porte le schéma
+	// `shared.*` (où vit match_registry, lu via SharedReader), la conn
+	// `social` porte les tables shared_social (media_files,
+	// media_match_associations, media_likes…). Aucun ATTACH `shared` sur la
+	// conn `social` — le pipeline P1 charge match_registry via SharedReader
+	// (= conn `shared` ici).
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
 
-	// Wipe les rows par défaut pour partir d'une feuille blanche
+	// Wipe les rows par défaut. shared seed pré-popule m1 ; le scope test ré-insère.
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared.match_registry: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe defaults: %v\nSQL: %s", err, q)
 		}
 	}
 
-	// 3 matchs
+	// 3 matchs — insérés sur la conn `shared` (= où SharedReader lira).
 	matchInserts := []struct {
 		id, ts, mapName, pairName string
 	}{
@@ -70,7 +76,7 @@ func newTestPlayerDBForMediaScenario(t *testing.T) *PlayerDB {
 		{"m3", "2025-01-20 10:00:00+00", "Catalyst", "Slayer"},
 	}
 	for _, m := range matchInserts {
-		if _, err := social.Exec(ctx,
+		if _, err := shared.Exec(ctx,
 			`INSERT INTO shared.match_registry
 				(match_id, start_time, map_name, pair_name, playlist_name, is_ranked)
 				VALUES (?, ?, ?, ?, ?, FALSE)`,
@@ -508,15 +514,16 @@ func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
 	meta := openMemDB(t)
 
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe: %v", err)
@@ -532,7 +539,7 @@ func newTestPlayerDBMapModeOverlap(t *testing.T) *PlayerDB {
 		{"m4", "Live Fire", "Slayer Doubles"},
 	}
 	for _, m := range matches {
-		if _, err := social.Exec(ctx,
+		if _, err := shared.Exec(ctx,
 			`INSERT INTO shared.match_registry (match_id, start_time, map_name, pair_name, playlist_name, is_ranked)
 			VALUES (?, '2025-01-10 14:00:00+00', ?, ?, ?, FALSE)`,
 			m.id, m.mapName, m.mode, m.mode,
@@ -626,15 +633,16 @@ func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
 	meta := openMemDB(t)
 
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe: %v", err)
@@ -648,7 +656,7 @@ func newTestPlayerDBVariants(t *testing.T) *PlayerDB {
 		{"m3", "recharge_annex", "Recharge Annex"}, // map différente, map_id différent
 	}
 	for _, m := range matches {
-		if _, err := social.Exec(ctx,
+		if _, err := shared.Exec(ctx,
 			`INSERT INTO shared.match_registry (match_id, start_time, map_id, map_name, pair_name, playlist_name, is_ranked)
 			VALUES (?, '2025-01-10 14:00:00+00', ?, ?, 'Slayer', 'Slayer', FALSE)`,
 			m.id, m.mapID, m.mapName,
@@ -841,15 +849,16 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 	meta := openMemDB(t)
 
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe: %v", err)
@@ -870,7 +879,7 @@ func newTestPlayerDBForUserScenario(t *testing.T) *PlayerDB {
 		if m.mapNameFR != "" {
 			mapNameFRArg = m.mapNameFR
 		}
-		if _, err := social.Exec(ctx,
+		if _, err := shared.Exec(ctx,
 			`INSERT INTO shared.match_registry (match_id, start_time, map_name, map_name_fr, pair_name, playlist_name, is_ranked)
 			VALUES (?, ?, ?, ?, 'Slayer', 'Slayer', FALSE)`,
 			m.id, m.ts, m.mapName, mapNameFRArg,
@@ -930,15 +939,16 @@ func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
 	meta := openMemDB(t)
 
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe: %v", err)
@@ -952,7 +962,7 @@ func newTestPlayerDBMultiAssoc(t *testing.T) *PlayerDB {
 		{"match-cat", "2025-01-10 15:00:00+00", "Catalyst"},
 	}
 	for _, m := range matches {
-		if _, err := social.Exec(ctx,
+		if _, err := shared.Exec(ctx,
 			`INSERT INTO shared.match_registry (match_id, start_time, map_name, pair_name, playlist_name, is_ranked)
 			VALUES (?, ?, ?, 'Slayer', 'Slayer', FALSE)`,
 			m.id, m.ts, m.mapName,
@@ -1043,23 +1053,10 @@ func TestMediaFilters_MultiAssoc_FilterByMap_OneRow(t *testing.T) {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SQL generated (sanity check sur les requêtes assemblées)
-// ─────────────────────────────────────────────────────────────────────────────
-
-func TestMediaFilters_Sql_SelectsPlayerSlug(t *testing.T) {
-	q, _ := buildQ37MediaQuery(domain.MediaFilters{}, 24, 0, mediaQueryConfig{playerSlug: mediaTestPlayerSlug})
-	if !strings.Contains(q, "mf.player_slug AS player_slug") {
-		t.Errorf("expected mf.player_slug in SELECT for shared social schema, got: %s", q)
-	}
-}
-
-func TestMediaFilters_Sql_SelectsNullPlayerSlugInLegacy(t *testing.T) {
-	q, _ := buildQ37MediaQuery(domain.MediaFilters{}, 24, 0, mediaQueryConfig{})
-	if !strings.Contains(q, "NULL AS player_slug") {
-		t.Errorf("expected NULL AS player_slug for legacy schema, got: %s", q)
-	}
-}
+// (anciens tests SQL Sql_SelectsPlayerSlug / SelectsNullPlayerSlugInLegacy
+// supprimés en P1 — les builders SQL Q37 cibles n'existent plus, le pipeline
+// Go équivalent vit dans media_repo_q37_pipeline.go et est couvert par les
+// tests TestMediaFilters_* ci-dessus.)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Regression : déterminisme du tri (bug "page Media réorganisée au refresh")
@@ -1079,15 +1076,16 @@ func newTestPlayerDBForStabilityScenario(t *testing.T) *PlayerDB {
 	meta := openMemDB(t)
 
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe: %v", err)
@@ -1143,6 +1141,7 @@ func TestMediaFilters_Stable_TieBreakerFilePath(t *testing.T) {
 // Setup : 2 médias avec capture_start et capture_end inversés sémantiquement.
 //   - M1 : start=2025-01-10 14:00, end=2025-01-10 17:00 (longue vidéo)
 //   - M2 : start=2025-01-10 15:00, end=2025-01-10 15:30 (courte vidéo)
+//
 // Tri DESC par capture_start_utc → M2 (15:00) avant M1 (14:00).
 // Si le tri utilisait capture_end_utc en priorité, M1 (17:00) serait avant M2 (15:30).
 func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
@@ -1152,15 +1151,16 @@ func TestMediaFilters_Sort_PrefersCaptureStartUtc(t *testing.T) {
 	meta := openMemDB(t)
 
 	seedSharedDBSchema(t, shared)
-	seedSharedDBSchema(t, social)
 	seedSharedSocialSchema(t, social)
 	seedMetaDBSchema(t, meta)
 
 	ctx := context.Background()
+	if _, err := shared.Exec(ctx, `DELETE FROM shared.match_registry`); err != nil {
+		t.Fatalf("wipe shared: %v", err)
+	}
 	for _, q := range []string{
 		`DELETE FROM media_match_associations`,
 		`DELETE FROM media_files`,
-		`DELETE FROM shared.match_registry`,
 	} {
 		if _, err := social.Exec(ctx, q); err != nil {
 			t.Fatalf("wipe: %v", err)
