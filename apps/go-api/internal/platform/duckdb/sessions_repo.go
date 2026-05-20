@@ -20,11 +20,17 @@ func NewSessionsRepo(pdb *PlayerDB) *SessionsRepo {
 }
 
 // LoadSessionMatches charge les matchs d'un joueur pour le calcul des sessions.
+// Exécutée sur SharedReader (ADR 0016, shared-only).
 func (r *SessionsRepo) LoadSessionMatches(ctx context.Context) ([]domain.SessionMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q22SessionMatches, r.pdb.XUID, r.pdb.XUID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("SessionsRepo.LoadSessionMatches: shared reader: %w", err)
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q22SessionMatches, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("SessionsRepo.LoadSessionMatches: %w", err)
 	}

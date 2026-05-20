@@ -261,9 +261,9 @@ SELECT
     COALESCE(p1.kills, 0)             AS player1_kills,
     COALESCE(p1.deaths, 0)            AS player1_deaths,
     COALESCE(p1.kda, 0.0)             AS player1_kda
-FROM shared.match_registry r
-JOIN shared.match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
-JOIN shared.match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
+FROM match_registry r
+JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
+JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q19b : Kills croisés agrégés entre deux joueurs sur l'ensemble de leurs matchs communs.
@@ -272,11 +272,11 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 const Q19bKillerVictimBetween = `
 SELECT
     COALESCE((
-        SELECT SUM(kill_count) FROM shared.killer_victim_pairs
+        SELECT SUM(kill_count) FROM killer_victim_pairs
         WHERE killer_xuid = ? AND victim_xuid = ?
     ), 0) AS kills_dealt,
     COALESCE((
-        SELECT SUM(kill_count) FROM shared.killer_victim_pairs
+        SELECT SUM(kill_count) FROM killer_victim_pairs
         WHERE killer_xuid = ? AND victim_xuid = ?
     ), 0) AS deaths_suffered`
 
@@ -291,7 +291,7 @@ SELECT
     kvf.victim_gamertag,
     kvf.kill_count,
     kvf.time_ms
-FROM shared.v_killer_victim_full kvf
+FROM v_killer_victim_full kvf
 WHERE kvf.match_id = ?
 ORDER BY kvf.time_ms ASC`
 
@@ -308,8 +308,8 @@ SELECT
     he.time_ms,
     he.xuid,
     vg.gamertag AS gamertag
-FROM shared.highlight_events he
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = he.xuid
+FROM highlight_events he
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC NULLS LAST`
 

@@ -373,11 +373,17 @@ func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string
 }
 
 // GetMatchEvents retourne les events highlight du match (Q21).
+// Exécutée sur SharedReader (ADR 0016, shared-only).
 func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]domain.EventRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q21MatchEventsWithXUID, matchID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q21MatchEventsWithXUID, matchID)
 	if err != nil {
 		// La table peut être absente sur certains matchs → retourner vide
 		return nil, nil
@@ -674,11 +680,17 @@ func uniqueInt64s(ids []int64) []int64 {
 }
 
 // GetMatchKVPairs retourne les paires killer→victim du match (Q20).
+// Exécutée sur SharedReader (ADR 0016, shared-only).
 func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]domain.KVPairRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q20KVPairs, matchID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q20KVPairs, matchID)
 	if err != nil {
 		// Vue v_killer_victim_full peut être absente dans certaines DBs → vide
 		return nil, nil

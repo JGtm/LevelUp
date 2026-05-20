@@ -59,13 +59,21 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	seedMetaDBSchema(t, meta)
 	seedGlobalSchema(t, global)
 	attachGlobalSchemaToPlayer(t, player, global)
+	// SharedReader pointe vers `player` (qui contient le faux schéma `shared`
+	// créé par seedPlayerSchema) pour que les tests legacy qui font
+	// `pdb.Player.Exec(... INSERT INTO shared.X)` voient leurs inserts via les
+	// queries refactorées sur SharedReader. La vraie topologie prod (2 conns
+	// distinctes sans faux schéma) est couverte par les tests sentinel
+	// TestOpenPlayerDB_NoSharedSchemaOnPoolConns +
+	// TestLoadMediaFiles_RealTopology_NoCrossDBSQL.
 	return &PlayerDB{
-		Player:    player,
-		Shared:    shared,
-		Metadata:  meta,
-		XUID:      pTestXUID,
-		Gamertag:  pTestGamertag,
-		TitleSlug: titlepkg.DefaultSlug,
+		Player:       player,
+		Shared:       shared,
+		Metadata:     meta,
+		SharedReader: LegacySharedReader(player),
+		XUID:         pTestXUID,
+		Gamertag:     pTestGamertag,
+		TitleSlug:    titlepkg.DefaultSlug,
 	}
 }
 
@@ -163,6 +171,23 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			match_id VARCHAR NOT NULL, killer_xuid VARCHAR NOT NULL,
 			killer_gamertag VARCHAR, victim_xuid VARCHAR NOT NULL,
 			victim_gamertag VARCHAR, kill_count INTEGER DEFAULT 1)`,
+		// Vues root-level : alignement avec seedSharedDBSchema, nécessaires
+		// pour les queries migrées vers SharedReader qui ciblent
+		// `match_registry`/`v_gamertag_lookup` etc. (sans préfixe `shared.`).
+		// Cf. ADR 0016 — tests legacy continuent à fonctionner avec
+		// SharedReader=LegacySharedReader(player).
+		`CREATE VIEW match_registry AS SELECT * FROM shared.match_registry`,
+		`CREATE VIEW match_participants AS SELECT * FROM shared.match_participants`,
+		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
+		`CREATE VIEW v_match_full AS SELECT * FROM shared.match_registry`,
+		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM shared.xuid_aliases`,
+		`CREATE VIEW v_weapon_kills AS
+			SELECT match_id, xuid, weapon_id, kills,
+			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
+			FROM shared.weapon_kills`,
+		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
+		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 		// ── Tables player
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,

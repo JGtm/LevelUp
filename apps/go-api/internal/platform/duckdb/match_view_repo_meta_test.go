@@ -74,12 +74,17 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 		}
 	}
 
+	// SharedReader pointe vers `player` (qui contient le faux schéma `shared`
+	// créé via le seed local). Cohérent avec le pattern du helper
+	// newTestPlayerDB. La vraie topologie prod est couverte par les tests
+	// sentinel.
 	return &PlayerDB{
-		Player:    player,
-		Metadata:  meta,
-		XUID:      "test-xuid",
-		Gamertag:  "test-gt",
-		TitleSlug: titlepkg.DefaultSlug,
+		Player:       player,
+		Metadata:     meta,
+		SharedReader: LegacySharedReader(player),
+		XUID:         "test-xuid",
+		Gamertag:     "test-gt",
+		TitleSlug:    titlepkg.DefaultSlug,
 	}
 }
 
@@ -227,6 +232,10 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR)`,
 		`CREATE TABLE shared.xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
 		viewSQL,
+		// Vues root-level : Q21 (GetMatchEvents) tourne désormais via SharedReader
+		// sans préfixe `shared.` (ADR 0016). Doublons les vues côté racine.
+		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
+		`CREATE VIEW v_gamertag_lookup AS SELECT * FROM shared.v_gamertag_lookup`,
 	} {
 		if _, err := pdb.Player.Exec(ctx, q); err != nil {
 			t.Fatalf("seed shared: %v\nSQL: %s", err, q)

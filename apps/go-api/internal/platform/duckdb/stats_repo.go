@@ -105,12 +105,18 @@ func (r *StatsRepo) LoadLUSRHistory(ctx context.Context) ([]domain.LUSRMatchRati
 }
 
 // LoadMatchParticipants charge tous les participants des matchs du joueur (Q25).
-// UtilisÃ© pour l'estimation enemy strength dans le calcul LUSR.
+// Utilisé pour l'estimation enemy strength dans le calcul LUSR.
+// Exécutée sur SharedReader (ADR 0016, shared-only).
 func (r *StatsRepo) LoadMatchParticipants(ctx context.Context) ([]domain.ParticipantRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q25MatchParticipants, r.pdb.XUID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("StatsRepo.LoadMatchParticipants: shared reader: %w", err)
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q25MatchParticipants, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadMatchParticipants: %w", err)
 	}
