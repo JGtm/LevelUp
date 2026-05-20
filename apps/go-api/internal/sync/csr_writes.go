@@ -46,12 +46,12 @@ type MatchCSRRow struct {
 // tierENtoFR mappe le tier EN renvoyé par l'API Halo vers son équivalent FR.
 // Les valeurs vides ("" → placement) sont gérées en amont par ExtractCSRRowIfRanked.
 var tierENtoFR = map[string]string{
-	TierBronze:   "Bronze",
-	TierSilver:   "Argent",
-	TierGold:     "Or",
+	TierBronze:   TierLabelBronze,
+	TierSilver:   TierLabelArgent,
+	TierGold:     TierLabelOr,
 	TierPlatinum: TierLabelPlatine,
-	TierDiamond:  "Diamant",
-	TierOnyx:     "Onyx",
+	TierDiamond:  TierLabelDiamant,
+	TierOnyx:     TierLabelOnyx,
 }
 
 // translateTierFR retourne la traduction FR du tier EN ; retourne le tier EN
