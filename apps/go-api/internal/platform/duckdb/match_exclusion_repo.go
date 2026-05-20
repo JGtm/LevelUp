@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -96,37 +97,109 @@ func (r *MatchExclusionRepo) GetMatchRegistryInfo(ctx context.Context, matchID s
 }
 
 // ListExcluded retourne les matchs marqués is_excluded = TRUE avec métadonnées.
+//
+// Split cross-DB en 2 phases (ADR 0016) :
+//   - Phase A : player_match_enrichment (player) sur pdb.Player.
+//   - Phase B : match_registry (shared) via SharedReader avec IN match_ids.
+//   - Phase C : merge + start_time fallback + tri DESC côté Go.
 func (r *MatchExclusionRepo) ListExcluded(ctx context.Context) ([]domain.ExcludedMatch, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, `
-		SELECT
-			pme.match_id,
-			COALESCE(
-				r.start_time_utc,
-				r.start_time AT TIME ZONE 'UTC',
-				pme.updated_at AT TIME ZONE 'UTC'
-			)                                        AS start_time,
-			COALESCE(r.map_name,   '')               AS map_name,
-			COALESCE(r.pair_name,  '')               AS mode_name
-		FROM player_match_enrichment pme
-		LEFT JOIN shared.match_registry r ON pme.match_id = r.match_id
-		WHERE pme.is_excluded = TRUE
-		ORDER BY start_time DESC
-	`)
-	if err != nil {
-		return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded: %w", err)
+	// Phase A : pme excluded sur Player.
+	type pmeRow struct {
+		matchID   string
+		updatedAt *time.Time
 	}
-	defer rows.Close()
-
-	var results []domain.ExcludedMatch
+	rows, err := r.pdb.Player.Query(ctx, `
+		SELECT match_id, updated_at
+		FROM player_match_enrichment
+		WHERE is_excluded = TRUE`)
+	if err != nil {
+		return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded: phase A: %w", err)
+	}
+	var pmes []pmeRow
+	matchIDs := make([]string, 0)
 	for rows.Next() {
-		var m domain.ExcludedMatch
-		if err := rows.Scan(&m.MatchID, &m.StartTime, &m.MapName, &m.ModeName); err != nil {
-			return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded scan: %w", err)
+		var p pmeRow
+		var updatedT sql.NullTime
+		if err := rows.Scan(&p.matchID, &updatedT); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded scan A: %w", err)
+		}
+		if updatedT.Valid {
+			t := updatedT.Time
+			p.updatedAt = &t
+		}
+		pmes = append(pmes, p)
+		matchIDs = append(matchIDs, p.matchID)
+	}
+	rows.Close()
+	if len(pmes) == 0 {
+		return nil, nil
+	}
+
+	// Phase B : enrich match_registry via SharedReader.
+	type registryRow struct {
+		startTime *time.Time
+		mapName   string
+		pairName  string
+	}
+	registryByMatch := make(map[string]registryRow, len(matchIDs))
+	{
+		sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded: shared reader: %w", err)
+		}
+		query := fmt.Sprintf(`
+			SELECT match_id,
+			       COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'),
+			       COALESCE(map_name, ''),
+			       COALESCE(pair_name, '')
+			FROM match_registry
+			WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
+		regRows, err := sharedDB.QueryContext(ctx, query, ToAnySlice(matchIDs)...)
+		if err != nil {
+			release()
+			return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded: phase B: %w", err)
+		}
+		for regRows.Next() {
+			var mid string
+			var info registryRow
+			var startT sql.NullTime
+			if err := regRows.Scan(&mid, &startT, &info.mapName, &info.pairName); err != nil {
+				regRows.Close()
+				release()
+				return nil, fmt.Errorf("MatchExclusionRepo.ListExcluded scan B: %w", err)
+			}
+			if startT.Valid {
+				t := startT.Time
+				info.startTime = &t
+			}
+			registryByMatch[mid] = info
+		}
+		regRows.Close()
+		release()
+	}
+
+	// Phase C : merge + start_time fallback + tri DESC.
+	results := make([]domain.ExcludedMatch, 0, len(pmes))
+	for _, p := range pmes {
+		m := domain.ExcludedMatch{MatchID: p.matchID}
+		reg, hasRegistry := registryByMatch[p.matchID]
+		if hasRegistry && reg.startTime != nil {
+			m.StartTime = *reg.startTime
+		} else if p.updatedAt != nil {
+			m.StartTime = *p.updatedAt
+		}
+		if hasRegistry {
+			m.MapName = reg.mapName
+			m.ModeName = reg.pairName
 		}
 		results = append(results, m)
 	}
-	return results, rows.Err()
+	sort.SliceStable(results, func(i, j int) bool {
+		return results[i].StartTime.After(results[j].StartTime)
+	})
+	return results, nil
 }

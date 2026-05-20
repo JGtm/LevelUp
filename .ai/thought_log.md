@@ -1,3 +1,32 @@
+## [2026-05-20] fix(duckdb) — P7-4 : leaderboard_repo + match_exclusion_repo (cross-DB)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite P7-3. 2 derniers sites cross-DB identifiés dans le doc GAPS :
+- `LeaderboardRepo.GetLocalLeaderboard` — endpoint `/players/{slug}/leaderboard`.
+- `MatchExclusionRepo.ListExcluded` — endpoint admin exclusions.
+
+**Décisions techniques** :
+
+1. **`GetLocalLeaderboard`** — CSR card du joueur :
+   - Phase A : `match_skill_rank` (player) sur pdb.Player avec `rating_value > 0`.
+   - Phase B : `match_registry` (shared) via SharedReader (is_ranked + playlist_name + pair_name + start_time_utc).
+   - Phase C : merge + calcul `effective_type` ('CSR' si is_ranked OU playlist_name LIKE %ranked% OU pair_name LIKE %ranked%, sinon 'LUSR') + filtre playlist (substring case-insensitive) + tri sort_time DESC NULLS LAST + csr_value DESC + LIMIT 1.
+
+2. **`ListExcluded`** — matchs marqués is_excluded :
+   - Phase A : `player_match_enrichment` (player) sur pdb.Player avec `is_excluded = TRUE`.
+   - Phase B : `match_registry` (shared) via SharedReader (start_time, map_name, pair_name).
+   - Phase C : merge + fallback start_time (registry > pme.updated_at) + tri DESC côté Go.
+
+3. **Setup tests corrigé** : ajout de vues root-level `match_registry` dans `seedSharedForExclusion` ([repos_coverage_test.go:184](apps/go-api/internal/platform/duckdb/repos_coverage_test.go#L184)) et dans les 2 helpers inline de [repos_extra_test.go:590,618](apps/go-api/internal/platform/duckdb/repos_extra_test.go) — nécessaires pour que SharedReader (fallback `LegacySharedReader(db)`) trouve la table sans préfixe `shared.`.
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -tags=integration ./...` OK.
+
+**Prochaine étape** : P7-5 — cleanup pool.go commentaire mort + suppression Q5MatchHistory + sentinel renforcé + thought_log final.
+
+---
+
 ## [2026-05-20] fix(duckdb) — P7-3 : career_repo 4 fonctions cross-DB vers SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
