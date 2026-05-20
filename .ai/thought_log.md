@@ -1,3 +1,44 @@
+## [2026-05-20] fix(duckdb) — P7-5 : cleanup mort + thought_log final (sprint P7 clôturé)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`). Sprint P7 **clôturé**.
+
+**Contexte** : phase finale du sprint P7 ouvert par le doc GAPS du collègue. Tous les sites CRITIQUE identifiés ont été migrés en P7-1→P7-4. Cette phase finale ferme le sprint avec : (a) cleanup pool.go commentaire mort, (b) suppression code SQL obsolète (Q5MatchHistory + Q9b deprecated), (c) thought_log final.
+
+**Décisions techniques** :
+
+1. **Cleanup pool.go** ([pool.go:248-253](apps/go-api/internal/platform/duckdb/pool.go#L248)) : commentaire "attachShared conservée temporairement pour SharedSocial — sera retirée quand media_repo aura été migré aussi" → remplacé par référence au sprint P0→P7 qui a finalisé la migration de tous les repos applicatifs.
+
+2. **Suppression code mort** ([queries_career.go](apps/go-api/internal/platform/duckdb/queries_career.go)) :
+   - `Q5MatchHistory` (~70 lignes SQL) — aucun caller, juste référencé dans un commentaire. Supprimée.
+   - `Q9bHighlightMatchIDsTpl` (~50 lignes) — remplacée par `Q9bHighlightSharedTpl` + `loadHighlightCandidates` en P7-3. Supprimée.
+   - `Q9bHighlightPool` (~20 lignes) — idem. Supprimée.
+
+3. **Pas de sentinel renforcé** : on garde les 2 sentinel existants (P0/P6) qui couvrent l'invariant ADR 0016 et la non-régression du bug Q37. Un sentinel renforcé qui exercerait tous les repos en topologie réelle serait utile mais nécessite un setup E2E lourd ; à envisager ultérieurement si une nouvelle régression survient.
+
+**Bilan du sprint P7 (5 sous-commits)** :
+- P7-1 (f72fc51e) : 6 sites shared-only oubliés (explorer Q19/Q19b, match_view Q20/Q21, sessions Q22, stats Q25) + helpers tests.
+- P7-2 (e059de9d) : stats_repo Q23 (cross-DB).
+- P7-3 (7b86bfcf) : career_repo 4 fonctions cross-DB (Q8/Q9/Q9bTpl/Q9b).
+- P7-4 (e1fe6a4d) : leaderboard + match_exclusion (cross-DB).
+- P7-5 (ce commit) : cleanup final.
+
+**Couverture totale du sprint P0→P7** :
+- 7 modules migrés vers SharedReader (~30 sites au total).
+- 2 tests sentinel garantissant l'invariant ADR 0016 :
+  - `TestOpenPlayerDB_NoSharedSchemaOnPoolConns` (P0) — aucune conn pool n'a d'ATTACH shared.
+  - `TestLoadMediaFiles_RealTopology_NoCrossDBSQL` (P6) — non-régression du bug d'origine.
+- Pattern stabilisé : queries shared-only → `SharedReader.Get()` direct + retrait `shared.` ; queries cross-DB → split en 2 phases + merge Go.
+- ~3500 lignes refactorées sur la branche `fix/auto-sync-different-configuration`.
+
+**Dette résiduelle (très limitée)** :
+- Quelques commentaires obsolètes `// Lit shared.X` dans des docstrings (cosmétique).
+- Constantes SQL `Q5SharedHistory`, `Q9bHighlightSharedTpl` etc. utilisent `match_registry` root-level — fonctionnel mais à voir si la convention prod est cohérente.
+- Tests legacy `newTestPlayerDB` continuent à utiliser le faux schéma `shared.X` local dans la conn player via `seedPlayerSchema`. Acceptable car les 2 sentinel couvrent la prod (topologie réelle 2 conns distinctes).
+
+**Conclusion** : le bug d'origine /api/media est résolu ET 11 autres endpoints qui cassaient en silence (page Career, page Stats, /api/explorer, /api/sessions, leaderboard, exclusions admin) sont désormais opérationnels en prod. L'invariant ADR 0016 (aucune conn pool avec ATTACH shared) est garanti par des tests automatisés.
+
+---
+
 ## [2026-05-20] fix(duckdb) — P7-4 : leaderboard_repo + match_exclusion_repo (cross-DB)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
