@@ -131,32 +131,58 @@ func NewCareerLiveService(
 }
 
 // GetSpartanIdentity retourne le bloc Spartan ID complet pour la home.
-// Garantie de non-vidage : si la player DB porte une row historique, on la
-// retourne en fallback même si tous les appels live échouent. Retourne nil
-// uniquement quand DB et live sont tous deux vides (joueur jamais sync'd).
+//
+// **Contrat UI-first** : si la player DB porte une row historique avec une
+// bannière (ou emblem/backdrop/spartan_id), on la retourne TOUJOURS. La
+// fraîcheur du live ne doit JAMAIS dégrader la visibilité (cf. revue
+// 2026-05-20 « les bannières vont et viennent »). Retourne nil uniquement
+// quand DB ET live sont tous deux vides (joueur jamais sync'd).
+//
+// Stratégie défense en profondeur :
+//
+//  1. Lecture DB last-known-good **systématique** au début (synchronous,
+//     <50 ms). Cette row sert de filet de sécurité pour le reste du flow.
+//  2. Si xuid absent ou repo DB indisponible → on retourne directement la
+//     row DB telle quelle (peut être nil si la DB est vide).
+//  3. fetch+merge live (cache + dbLast per-field merge interne). Si la
+//     merge layer rate un fallback (erreur transitoire LoadLastCareerRank
+//     pendant un lock B-swap), notre snapshot étape 1 reste.
+//  4. Overlay final : tout champ d'identité (banner/emblem/backdrop/
+//     spartan_id) absent du résultat live est patché depuis la row étape 1.
+//     C'est ce qui transforme « le live a rendu null cette fois » en
+//     « on continue de servir la dernière valeur connue ».
 func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error) {
 	xuid := ctxkeys.HaloXUID(ctx)
+
+	// Étape 1-2 : filet DB systématique. serveDBFallback est tolérant à
+	// xuid="" / repo nil (retourne nil), donc on peut toujours l'appeler.
+	dbFallback := s.serveDBFallback(ctx, xuid)
 	if xuid == "" {
-		// Pas de xuid en contexte : on tente la lecture DB seule pour ne pas
-		// vider l'écran si un fallback existe (cas: handler sans middleware
-		// session, tests, etc.).
-		return s.serveDBFallback(ctx, ""), nil
+		return dbFallback, nil
 	}
 
+	// Étape 3 : tentative live (peut échouer transitoirement).
 	merged, err := s.fetchAndMerge(ctx, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, careerLiveLogModule+": fetch+merge failed → DB fallback",
 			"xuid", xuid, "err", err)
-		return s.serveDBFallback(ctx, xuid), nil
+		return dbFallback, nil
 	}
 
-	// Persist (INSERT-if-changed) avant de retourner — fire-and-forget mais
-	// dans le même flow (cohérence inter-requêtes garantie).
+	// Persist (INSERT-if-changed) — fire-and-forget. Cohérence inter-requêtes
+	// garantie tant que les champs d'identité restent stables ou progressent
+	// vers du non-vide (jamais vers du vide grâce à mergeCareerRow).
 	if merged != nil {
 		s.persistIfChanged(ctx, xuid, merged)
 	}
 
 	identity := s.builder.BuildSpartanIdentityFromCareerRow(ctx, merged)
+
+	// Étape 4 : overlay final. Si live a produit identity == nil ou identity
+	// avec des champs assets vides, on patche depuis dbFallback. Le résultat
+	// est garanti aussi complet que ce que la DB historique sait offrir.
+	identity = overlayIdentityFromFallback(identity, dbFallback)
+
 	if identity == nil {
 		careerLiveIdentityMissing.Add(1)
 		careerLiveEmptyResult.Add(1)
@@ -164,6 +190,39 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 	}
 	careerLiveIdentityServed.Add(1)
 	return identity, nil
+}
+
+// overlayIdentityFromFallback applique le filet DB last-known-good par-dessus
+// le résultat live. Patché en place — l'objet identity retourné peut être :
+//   - identity (live) avec champs vides remplis depuis fallback
+//   - fallback (si identity était nil)
+//   - nil (si les deux sont nil)
+//
+// Anti-régression « bannière qui va et vient » : un fetch live qui rend
+// BannerImageURL=nil ne doit JAMAIS écraser la valeur DB historique.
+func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityRow) *domain.HomeSpartanIdentityRow {
+	if identity == nil {
+		return fallback
+	}
+	if fallback == nil {
+		return identity
+	}
+	if identity.SpartanID == nil && fallback.SpartanID != nil {
+		identity.SpartanID = fallback.SpartanID
+	}
+	if identity.BannerImageURL == nil && fallback.BannerImageURL != nil {
+		identity.BannerImageURL = fallback.BannerImageURL
+	}
+	if identity.EmblemImageURL == nil && fallback.EmblemImageURL != nil {
+		identity.EmblemImageURL = fallback.EmblemImageURL
+	}
+	if identity.BackdropImageURL == nil && fallback.BackdropImageURL != nil {
+		identity.BackdropImageURL = fallback.BackdropImageURL
+	}
+	if identity.AdornmentImageURL == nil && fallback.AdornmentImageURL != nil {
+		identity.AdornmentImageURL = fallback.AdornmentImageURL
+	}
+	return identity
 }
 
 // fetchAndMerge construit la CareerRankRow servie à la home selon le pattern

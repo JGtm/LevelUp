@@ -127,7 +127,7 @@ func ctxWithTokens(t *testing.T, hasTokens bool) context.Context {
 	return ctx
 }
 
-func newService(t *testing.T, fetcher *mockCareerFetcher, repo *mockCareerLiveRepo, builder *mockIdentityBuilder) *CareerLiveService {
+func newService(t *testing.T, fetcher *mockCareerFetcher, repo *mockCareerLiveRepo, builder CareerIdentityBuilder) *CareerLiveService {
 	t.Helper()
 	factory := func(_ context.Context) CareerFetcher {
 		if fetcher == nil {
@@ -468,4 +468,194 @@ func TestCareerLive_SlowFetcher_DoesNotBlockHome(t *testing.T) {
 	if elapsed > 500*time.Millisecond {
 		t.Errorf("GetSpartanIdentity prit %v, attendu < 500ms (SwR ne doit pas bloquer sur live)", elapsed)
 	}
+}
+
+// --- TestOverlayIdentityFromFallback ---
+//
+// Anti-régression « les bannières vont et viennent » (revue 2026-05-20).
+// Contrat UI-first : un fetch live qui rend BannerImageURL=nil ne doit JAMAIS
+// écraser la valeur DB historique. La fonction overlayIdentityFromFallback
+// est le filet final qui garantit ça.
+
+func sPtr(s string) *string { return &s }
+
+func TestOverlayIdentityFromFallback(t *testing.T) {
+	cases := []struct {
+		name     string
+		identity *domain.HomeSpartanIdentityRow
+		fallback *domain.HomeSpartanIdentityRow
+		wantNil  bool
+		wantBann *string
+		wantEmbl *string
+		wantBack *string
+		wantSp   *string
+	}{
+		{
+			name:     "identity nil + fallback non-nil → fallback",
+			identity: nil,
+			fallback: &domain.HomeSpartanIdentityRow{
+				BannerImageURL:   sPtr("/db/banner.png"),
+				EmblemImageURL:   sPtr("/db/emblem.png"),
+				BackdropImageURL: sPtr("/db/backdrop.png"),
+				SpartanID:        sPtr("OKLM"),
+			},
+			wantBann: sPtr("/db/banner.png"),
+			wantEmbl: sPtr("/db/emblem.png"),
+			wantBack: sPtr("/db/backdrop.png"),
+			wantSp:   sPtr("OKLM"),
+		},
+		{
+			name:     "identity + fallback tous deux nil → nil",
+			identity: nil,
+			fallback: nil,
+			wantNil:  true,
+		},
+		{
+			name: "identity sans banner + fallback avec banner → patche depuis fallback",
+			identity: &domain.HomeSpartanIdentityRow{
+				SpartanID: sPtr("OKLM-live"),
+				// pas de BannerImageURL (live a rendu nil)
+			},
+			fallback: &domain.HomeSpartanIdentityRow{
+				BannerImageURL: sPtr("/db/banner.png"),
+				SpartanID:      sPtr("OKLM-db-old"), // pas écrasé car live l'a
+			},
+			wantBann: sPtr("/db/banner.png"),
+			wantSp:   sPtr("OKLM-live"),
+		},
+		{
+			name: "identity avec banner live + fallback différent → garde live",
+			identity: &domain.HomeSpartanIdentityRow{
+				BannerImageURL: sPtr("/live/banner-new.png"),
+			},
+			fallback: &domain.HomeSpartanIdentityRow{
+				BannerImageURL: sPtr("/db/banner-old.png"),
+			},
+			wantBann: sPtr("/live/banner-new.png"),
+		},
+		{
+			name: "identity complète + fallback nil → garde identity",
+			identity: &domain.HomeSpartanIdentityRow{
+				BannerImageURL: sPtr("/live/b.png"),
+			},
+			fallback: nil,
+			wantBann: sPtr("/live/b.png"),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := overlayIdentityFromFallback(tc.identity, tc.fallback)
+			if tc.wantNil {
+				if got != nil {
+					t.Errorf("got %+v, want nil", got)
+				}
+				return
+			}
+			if got == nil {
+				t.Fatal("got nil, want non-nil")
+			}
+			if !strPtrEq(got.BannerImageURL, tc.wantBann) {
+				t.Errorf("BannerImageURL = %v, want %v", strPtrDeref(got.BannerImageURL), strPtrDeref(tc.wantBann))
+			}
+			if tc.wantEmbl != nil && !strPtrEq(got.EmblemImageURL, tc.wantEmbl) {
+				t.Errorf("EmblemImageURL = %v, want %v", strPtrDeref(got.EmblemImageURL), strPtrDeref(tc.wantEmbl))
+			}
+			if tc.wantBack != nil && !strPtrEq(got.BackdropImageURL, tc.wantBack) {
+				t.Errorf("BackdropImageURL = %v, want %v", strPtrDeref(got.BackdropImageURL), strPtrDeref(tc.wantBack))
+			}
+			if tc.wantSp != nil && !strPtrEq(got.SpartanID, tc.wantSp) {
+				t.Errorf("SpartanID = %v, want %v", strPtrDeref(got.SpartanID), strPtrDeref(tc.wantSp))
+			}
+		})
+	}
+}
+
+func strPtrEq(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func strPtrDeref(p *string) string {
+	if p == nil {
+		return "<nil>"
+	}
+	return *p
+}
+
+// TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne cadenasse le contrat
+// end-to-end : quand la cache live retourne `cachedCustom != nil` mais
+// `BannerImageURL=""` (mapping resolver hits rate-limit / résolution échoue),
+// et la DB a une bannière historique, la home doit servir la bannière DB.
+//
+// Reproduit le scénario de prod : background refresh re-fetch la
+// customization, écrit `cachedCustom.BannerImageURL = ""` dans le cache,
+// la requête suivante voit cachedCustom non-nil → mergeCareerRow ne fallback
+// PAS sur dbLast pour la banner (puisque custom est officiellement non-nil
+// avec une valeur "rien") — bug latent corrigé par overlayIdentityFromFallback.
+func TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne(t *testing.T) {
+	dbRow := &duckdb.CareerRankRow{
+		Rank:             42,
+		CurrentXP:        1500,
+		SpartanID:        "SR-DB-001",
+		BannerImageURL:   "https://db/banner-known-good.png",
+		EmblemImageURL:   "https://db/emblem.png",
+		BackdropImageURL: "https://db/backdrop.png",
+	}
+	fetcher := &mockCareerFetcher{
+		progress: &syncpkg.CareerRankData{CurrentRank: 42, CurrentXP: 1500},
+		// Custom non-nil mais BannerImageURL="" : simulé le cas "mapping.json
+		// resolver retourne '' parce qu'upstream HTTP failed / rate-limit".
+		custom: &syncpkg.SpartanCustomizationData{
+			SpartanID: "SR-LIVE-99",
+			// pas de BannerImageURL → ""
+		},
+	}
+	repo := &mockCareerLiveRepo{last: dbRow}
+	builder := &realBuilderForOverlay{} // un builder qui copie tous les champs
+	svc := newService(t, fetcher, repo, builder)
+
+	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	if err != nil {
+		t.Fatalf("GetSpartanIdentity: %v", err)
+	}
+	if got == nil {
+		t.Fatal("identity attendue non-nil")
+	}
+	if got.BannerImageURL == nil || *got.BannerImageURL != "https://db/banner-known-good.png" {
+		t.Errorf("BannerImageURL = %v, want %q (DB last-known-good)", strPtrDeref(got.BannerImageURL), "https://db/banner-known-good.png")
+	}
+}
+
+// realBuilderForOverlay copie tous les champs de CareerRankRow vers
+// HomeSpartanIdentityRow — comportement réaliste pour tester l'overlay.
+type realBuilderForOverlay struct{}
+
+func (b *realBuilderForOverlay) BuildSpartanIdentityFromCareerRow(_ context.Context, row *duckdb.CareerRankRow) *domain.HomeSpartanIdentityRow {
+	if row == nil {
+		return nil
+	}
+	out := &domain.HomeSpartanIdentityRow{
+		RankNumber: row.Rank,
+		CurrentXP:  row.CurrentXP,
+	}
+	if row.SpartanID != "" {
+		s := row.SpartanID
+		out.SpartanID = &s
+	}
+	if row.BannerImageURL != "" {
+		s := row.BannerImageURL
+		out.BannerImageURL = &s
+	}
+	if row.EmblemImageURL != "" {
+		s := row.EmblemImageURL
+		out.EmblemImageURL = &s
+	}
+	if row.BackdropImageURL != "" {
+		s := row.BackdropImageURL
+		out.BackdropImageURL = &s
+	}
+	return out
 }
