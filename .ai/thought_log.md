@@ -1,3 +1,36 @@
+## [2026-05-20] fix(duckdb) — P1 : refactor Q37 média en pipeline Go via SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite de P0 (audit + sentinel). Les 3 méthodes media oubliées par le commit 9c.5 — `LoadMediaFiles`, `CountMediaFiles`, `LoadMediaFilterOptions` — exécutaient toutes Q37 sur la conn `SharedSocial` avec `LEFT JOIN shared.match_registry`, ce qui cassait en prod ("schema shared does not exist"). Q37 mixait `media_files` (SharedSocial) + `media_match_associations` (SharedSocial) + `shared.match_registry` dans une seule requête avec QUALIFY ROW_NUMBER + filtres + tri + pagination.
+
+**Décisions techniques** :
+
+1. **Pipeline 3 phases côté Go** ([media_repo_q37_pipeline.go](apps/go-api/internal/platform/duckdb/media_repo_q37_pipeline.go)) :
+   - Phase A : `loadMediaCandidates` sur SharedSocial → SELECT `media_files` + `media_match_associations` avec **filtres locaux uniquement** (kind, liked, date, player_slug, AuthorSlugs, UnassignedOnly). Aucun `shared.X`.
+   - Phase B : `loadMediaMatchRegistry` ([media_repo_registry.go](apps/go-api/internal/platform/duckdb/media_repo_registry.go)) sur SharedReader → SELECT `match_registry` (sans préfixe shared., conn pointée sur shared) pour les match_ids résultants.
+   - Phase C (Go) : enrich + filtres cross-DB (map/mode/playlist) + dédup mf.file_path (équivalent QUALIFY ROW_NUMBER reproduit en Go via `betterMediaRow`) + tri (`compareSortOrder` + `compareGroupOrder`) + pagination.
+
+2. **Helpers Go équivalents aux expressions SQL Q37** : `computedMapLabel`, `computedModeLabel`, `computedPlaylistLabel` (reproduisent `q37MediaMapLabelExpr/ModeLabelExpr/PlaylistLabelExpr`). `mediaRowMatchesMap/Mode/Playlist` (reproduisent les WHERE filtres). `dedupCandidatesByFilePath` (reproduit QUALIFY ROW_NUMBER). `sortEnrichedRows` (reproduit ORDER BY + GROUP BY).
+
+3. **Suppression code mort** : ~400 lignes retirées de [queries_home_citations.go](apps/go-api/internal/platform/duckdb/queries_home_citations.go) — toutes les fonctions `Build/buildQ37Media*Query` et constants `q37*LabelExpr`/`q37*FromClause`/`Q37MediaFiles`/`Q37MediaCount`. Conservés : `mediaWhereConfig`, `mediaQueryConfig.{useSharedSocialSchema, baseWhereClause}`, `mediaKindEquivalents`, `normalizeMediaMapName`. Tests `queries_media_test.go` (qui testaient les builders SQL) supprimés.
+
+4. **Correction du mensonge du mock** ([media_repo_filters_test.go](apps/go-api/internal/platform/duckdb/media_repo_filters_test.go)) : 6 helpers `newTestPlayerDBFor*` corrigés :
+   - Retrait de `seedSharedDBSchema(t, social)` (créait un faux schéma `shared` dans la conn social).
+   - `INSERT INTO shared.match_registry` désormais sur `shared.Exec(...)` (vraie conn shared lue par SharedReader), pas `social.Exec(...)`.
+   - Topologie test alignée sur la prod : 2 conns distinctes sans ATTACH entre elles.
+
+5. **Schéma legacy supporté** : `mf.indexed_at` n'existe que dans shared_social → fallback `CAST(NULL AS TIMESTAMPTZ)` en legacy. Pareil pour `mf.player_slug`. Cf. `buildMediaCandidatesQuery`.
+
+**Résultats observés** :
+- `go test -tags=integration -count=1 ./internal/platform/duckdb/...` : OK (32s, dont 30+ TestMediaFilters_* + TestMediaRepo_LoadMediaFiles_WithData + TestMediaRepo_CountMediaFiles + TestMediaRepo_SetMediaLike).
+- `go test -count=1 ./...` : OK toute la suite unit (incl. service, sync, validation, watcher, golden).
+- `go build ./...` clean, `go vet` clean.
+
+**Prochaine étape** : Phase P2 — migration `post_sync_progression_queries.go` (5 queries sur `pdb.Player`) + `post_sync_deltas.go` (2 queries) vers `SharedReader.Get(ctx)` sans préfixe `shared.`.
+
+---
+
 ## [2026-05-20] fix(duckdb) — P0 : audit + sentinel pour résidus `shared.X` post-ADR 0016
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
