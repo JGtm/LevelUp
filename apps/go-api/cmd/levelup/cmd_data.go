@@ -172,6 +172,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 		SharedSocialDBPath:  pr.SharedSocialDBPath(*titleSlug),
 		SharedMatchesDBPath: pr.SharedDBPath(*titleSlug),
 		CapturesDir:         resolvedCapturesDir,
+		CapturesBase:        cfg.MediaCapturesBaseDir,
 		ForceRescan:         *force,
 		BufferMin:           *bufMin,
 		Timezone:            cfg.UserTimezone,

@@ -359,6 +359,8 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		SharedSocialDBPath:  req.SharedSocialDBPath,
 		SharedMatchesDBPath: req.SharedMatchesDBPath,
 		CapturesDir:         req.CapturesDir,
+		CapturesBase:        req.CapturesBase,
+		Gamertag:            req.Gamertag,
 		BufferMin:           tol,
 		Timezone:            s.timezone,
 		CaptureTimes:        captureTimes,
@@ -449,10 +451,11 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 	}
 	result.NewAssoc = newAssoc
 
-	// 4 — Backfill thumbnail_path pour les GIFs existants dans thumbs/.
+	// 4 — Backfill thumbnail_path pour les miniatures existantes dans thumbs/.
 	if req.CapturesDir != "" {
 		thumbsDir := filepath.Join(req.CapturesDir, "thumbs")
-		if n, backfillErr := ops.BackfillThumbnailPaths(db, req.CapturesDir, thumbsDir); backfillErr != nil {
+		store := ops.MediaPathStore{CapturesBase: req.CapturesBase}
+		if n, backfillErr := ops.BackfillThumbnailPaths(db, req.CapturesDir, thumbsDir, req.Gamertag, store); backfillErr != nil {
 			slog.WarnContext(ctx, "ReassociateMedia: backfill thumbnail_path échoué", "err", backfillErr)
 		} else {
 			slog.InfoContext(ctx, "ReassociateMedia: thumbnail_path backfillé", "updated", n)

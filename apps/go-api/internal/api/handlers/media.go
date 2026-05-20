@@ -349,12 +349,20 @@ func (h *MediaHandler) PostUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	capturesDir := h.resolveCapturesDir(titleSlug, gamertag)
+	capturesBase := ""
+	if h.settingsStore != nil {
+		if cfg, err := h.settingsStore.Load(); err == nil {
+			capturesBase = cfg.MediaCapturesBaseDir
+		}
+	}
 	slog.InfoContext(r.Context(), "upload: requête reçue",
 		"player", gamertag, "files", len(files), "captures_dir", capturesDir)
 
 	req := domain.UploadRequest{
 		Files:               files,
 		CapturesDir:         capturesDir,
+		CapturesBase:        capturesBase,
+		Gamertag:            gamertag,
 		DBPath:              dbPath,
 		SharedSocialDBPath:  sharedSocialDBPath,
 		SharedMatchesDBPath: sharedMatchesDBPath,
