@@ -20,20 +20,30 @@ func NewStatsRepo(pdb *PlayerDB) *StatsRepo {
 	return &StatsRepo{pdb: pdb}
 }
 
-// LoadStatsMatches charge tous les matchs avec leurs mÃ©triques analytiques (Q23).
-// ParamÃ¨tre : xuid du joueur.
+// LoadStatsMatches charge tous les matchs avec leurs métriques analytiques (Q23).
+// Paramètre : xuid du joueur.
 // Ordre de retour : start_time ASC.
+//
+// Split cross-DB (ADR 0016) : Phase A shared (Q23StatsMatchesShared) via
+// SharedReader, Phase B player_match_enrichment, merge Go.
 func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMatchRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q23StatsMatches, r.pdb.XUID)
+	// Phase A : shared (mp + r) via SharedReader.
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: shared reader: %w", err)
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q23StatsMatchesShared, r.pdb.XUID)
 	if err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches: %w", err)
 	}
 	defer rows.Close()
 
 	var results []legacymatch.StatsMatchRow
+	matchIDs := make([]string, 0)
 	for rows.Next() {
 		var m legacymatch.StatsMatchRow
 		if err := rows.Scan(
@@ -58,20 +68,62 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 			&m.PlaylistName,
 			&m.PairName,
 			&m.TeamID,
-			&m.PerfScoreComputed,
-			&m.SessionID,
-			&m.SessionLabel,
 			&m.OffensiveConversion,
 			&m.DefensiveResistance,
 		); err != nil {
 			return nil, fmt.Errorf("StatsRepo.LoadStatsMatches scan: %w", err)
 		}
 		results = append(results, m)
+		matchIDs = append(matchIDs, m.MatchID)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("StatsRepo.LoadStatsMatches rows: %w", err)
 	}
+
+	// Phase B : player_match_enrichment via pdb.Player.
+	if len(matchIDs) == 0 {
+		return results, nil
+	}
+	if err := r.mergeStatsMatchesPME(ctx, results, matchIDs); err != nil {
+		return nil, err
+	}
 	return results, nil
+}
+
+// mergeStatsMatchesPME hydrate les champs pme (performance_score, session_id,
+// session_label) dans results pour les match_ids passés.
+func (r *StatsRepo) mergeStatsMatchesPME(ctx context.Context, results []legacymatch.StatsMatchRow, matchIDs []string) error {
+	query := fmt.Sprintf(Q23StatsMatchesPlayerEnrichTpl, Placeholders(len(matchIDs)))
+	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return fmt.Errorf("StatsRepo.LoadStatsMatches pme: %w", err)
+	}
+	defer rows.Close()
+
+	type pmeRow struct {
+		perfScore    *float64
+		sessionID    *string
+		sessionLabel *string
+	}
+	pmeByMatch := make(map[string]pmeRow, len(matchIDs))
+	for rows.Next() {
+		var mid string
+		var pme pmeRow
+		if err := rows.Scan(&mid, &pme.perfScore, &pme.sessionID, &pme.sessionLabel); err != nil {
+			return fmt.Errorf("StatsRepo.LoadStatsMatches pme scan: %w", err)
+		}
+		pmeByMatch[mid] = pme
+	}
+	for i := range results {
+		pme, ok := pmeByMatch[results[i].MatchID]
+		if !ok {
+			continue
+		}
+		results[i].PerfScoreComputed = pme.perfScore
+		results[i].SessionID = pme.sessionID
+		results[i].SessionLabel = pme.sessionLabel
+	}
+	return nil
 }
 
 // LoadLUSRHistory charge l'historique LUSR depuis match_skill_rank (Q24).

@@ -599,7 +599,10 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 // Q23 : Stats series — chargement des matchs avec metriques pour perf score.
 // Parametre : ?1 = xuid du joueur.
 // Retourne toutes les colonnes necessaires a compute_relative_performance_score.
-const Q23StatsMatches = `
+// Q23StatsMatchesShared : partie shared-only de Q23 (exécutée sur SharedReader).
+// La partie player_match_enrichment est chargée séparément via Q23StatsMatchesPlayerEnrich
+// puis mergée côté Go (cf. StatsRepo.LoadStatsMatches, ADR 0016).
+const Q23StatsMatchesShared = `
 SELECT
     mp.match_id,
     COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
@@ -622,9 +625,6 @@ SELECT
     COALESCE(r.playlist_name, '')    AS playlist_name,
     COALESCE(r.pair_name, '')        AS pair_name,
     mp.team_id,
-    pme.performance_score             AS performance_score_computed,
-    pme.session_id,
-    pme.session_label,
     CASE
         WHEN COALESCE(mp.damage_dealt, 0) > 0 THEN
             225.0 * (COALESCE(mp.kills, 0) + COALESCE(mp.assists, 0) / 3.0) / mp.damage_dealt
@@ -635,11 +635,18 @@ SELECT
             mp.damage_taken / (225.0 * mp.deaths)
         ELSE 0.0
     END AS defensive_resistance
-FROM shared.match_participants mp
-JOIN shared.match_registry r ON r.match_id = mp.match_id
-LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
+FROM match_participants mp
+JOIN match_registry r ON r.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
+
+// Q23StatsMatchesPlayerEnrich : Phase B de Q23 — performance_score + session
+// + label depuis player_match_enrichment pour les match_ids résultants de
+// Phase A. Le template %s reçoit les placeholders IN ?... .
+const Q23StatsMatchesPlayerEnrichTpl = `
+SELECT match_id, performance_score, session_id, session_label
+FROM player_match_enrichment
+WHERE match_id IN (%s)`
 
 // Q24 : LUSR — chargement du rating par match depuis match_skill_rank.
 // Parametre : ?1 = xuid du joueur (filtre via player_match_enrichment).
