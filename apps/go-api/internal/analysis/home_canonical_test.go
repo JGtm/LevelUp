@@ -107,6 +107,101 @@ func TestHomeMatchRowFromCanonical_RoundtripFields(t *testing.T) {
 	}
 }
 
+// TestBuildSessionSummariesFromCanonical_NormalizesDominantMode garantit que
+// le mode dominant est normalisé avant agrégation : "Arena:Slayer on Bazaar"
+// et "Arena:Slayer on Live Fire" doivent fusionner sur "Slayer" plutôt que
+// remonter le pair_name brut anglais. Régression historique : les sessions
+// solo n'ont souvent pas de pair_name_fr → fallback EN brut affiché.
+func TestBuildSessionSummariesFromCanonical_NormalizesDominantMode(t *testing.T) {
+	sessionLabel := "session-1"
+	startBase := time.Date(2026, 5, 20, 14, 0, 0, 0, time.UTC)
+	mkRow := func(matchID, mapEN, pairNameEN string, offset time.Duration) canonical.PlayerMatchRow {
+		t := startBase.Add(offset)
+		return canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{
+				MatchID:      matchID,
+				StartedAtUTC: t,
+				Outcome:      canonical.OutcomeWin,
+				Map: &canonical.AssetReference{
+					ID: mapEN, DefaultLabel: mapEN,
+					Labels: map[string]string{"en": mapEN},
+				},
+				PairMode: &canonical.AssetReference{
+					ID: pairNameEN, DefaultLabel: pairNameEN,
+					Labels: map[string]string{"en": pairNameEN},
+				},
+			},
+			Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
+			Enrichment: canonical.PlayerMatchEnrichment{
+				SessionLabel:  &sessionLabel,
+				IsWithFriends: false,
+			},
+		}
+	}
+
+	rows := []canonical.PlayerMatchRow{
+		mkRow("m1", "Bazaar", "Arena:Slayer on Bazaar", 0),
+		mkRow("m2", "Live Fire", "Arena:Slayer on Live Fire", time.Minute),
+		mkRow("m3", "Streets", "Arena:CTF on Streets", 2*time.Minute),
+	}
+
+	got := BuildSessionSummariesFromCanonical(rows, false, 5, "fr")
+	if len(got) != 1 {
+		t.Fatalf("len(sessions) = %d, want 1", len(got))
+	}
+	if got[0].DominantMode == nil {
+		t.Fatalf("DominantMode = nil, want \"Slayer\"")
+	}
+	if *got[0].DominantMode != "Slayer" {
+		t.Errorf("DominantMode = %q, want \"Slayer\" (les 2 maps Slayer doivent fusionner et être normalisées)", *got[0].DominantMode)
+	}
+}
+
+// TestBuildSessionSummariesFromCanonical_PreservesPlaylistIdentity garantit
+// que les playlists promues (Super Fiesta, Husky Raid) ne soient PAS extraites
+// au sous-mode "Slayer"/"Assassin" mais préservent leur identité, même quand
+// le pair_name brut contient suffixe map + " - Forge".
+func TestBuildSessionSummariesFromCanonical_PreservesPlaylistIdentity(t *testing.T) {
+	sessionLabel := "session-fiesta"
+	startBase := time.Date(2026, 3, 31, 14, 20, 0, 0, time.UTC)
+	mkRow := func(matchID, mapEN, pairNameEN string, offset time.Duration) canonical.PlayerMatchRow {
+		t := startBase.Add(offset)
+		return canonical.PlayerMatchRow{
+			Summary: canonical.MatchSummary{
+				MatchID:      matchID,
+				StartedAtUTC: t,
+				Outcome:      canonical.OutcomeWin,
+				Map: &canonical.AssetReference{
+					ID: mapEN, DefaultLabel: mapEN,
+					Labels: map[string]string{"en": mapEN},
+				},
+				PairMode: &canonical.AssetReference{
+					ID: pairNameEN, DefaultLabel: pairNameEN,
+					Labels: map[string]string{"en": pairNameEN},
+				},
+			},
+			Self: canonical.MatchParticipant{Outcome: canonical.OutcomeWin},
+			Enrichment: canonical.PlayerMatchEnrichment{
+				SessionLabel:  &sessionLabel,
+				IsWithFriends: false,
+			},
+		}
+	}
+
+	rows := []canonical.PlayerMatchRow{
+		mkRow("m1", "Behemoth", "Super Fiesta:Slayer on Behemoth - Forge", 0),
+		mkRow("m2", "Streets", "Super Fiesta:CTF on Streets", 10*time.Minute),
+	}
+
+	got := BuildSessionSummariesFromCanonical(rows, false, 5, "fr")
+	if len(got) != 1 || got[0].DominantMode == nil {
+		t.Fatalf("DominantMode missing: got=%+v", got)
+	}
+	if *got[0].DominantMode != "Super Fiesta" {
+		t.Errorf("DominantMode = %q, want \"Super Fiesta\" (identité de playlist promue préservée, pas \"Slayer\")", *got[0].DominantMode)
+	}
+}
+
 // TestInferHomeSkillHistoryFromCanonical_ParityWithLocal vÃ©rifie que la
 // version canonical produit le mÃªme rÃ©sultat que la version locale legacy.
 func TestInferHomeSkillHistoryFromCanonical_ParityWithLocal(t *testing.T) {

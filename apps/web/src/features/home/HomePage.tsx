@@ -268,7 +268,7 @@ export function HomePage() {
             <CardHeader className="space-y-0 pb-3">
               <CardTitle className="text-base">{t('home.sessions.title')}</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-0">
               {soloSessions.length > 0 || squadSessions.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {soloSessions.length > 0 && (

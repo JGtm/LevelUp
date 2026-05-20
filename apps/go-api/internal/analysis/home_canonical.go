@@ -1421,8 +1421,14 @@ func BuildSessionSummariesFromCanonical(rows []canonical.PlayerMatchRow, squadMo
 
 		// Mode dominant : PairMode FR le plus joué (fallback GameVariant).
 		// Bug #7 — PairMode expose pair_name_fr en DB.
+		// Normalisation appliquée (strip " on Bazaar", extraction sous-mode
+		// "Arena:Slayer" → "Slayer") pour aligner sur BuildRecentMatchesWith…
+		// et fusionner les fréquences cross-map. Sans ça les sessions solo
+		// (où pair_name_fr est souvent absent) affichaient l'EN brut.
 		dominantMode := dominantNameFromRows(sessionRows, locale, func(r canonical.PlayerMatchRow) (string, string) {
-			return modeLabels(r)
+			en, fr := modeLabels(r)
+			mapEN, mapFR := assetLabels(r.Summary.Map)
+			return normalizeHomeModeLabel(en, mapEN, mapFR), normalizeHomeModeLabel(fr, mapEN, mapFR)
 		})
 
 		// Playlist dominante (FR si dispo et locale=fr, sinon EN). Bug #2.
