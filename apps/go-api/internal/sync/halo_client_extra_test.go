@@ -674,14 +674,20 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 	}
 }
 
-// TestGetCareerRank_BannerEmptyWhenNoNameplate vérifie le nouveau
-// comportement post-2026-05-08 : quand l'API ne retourne pas de
-// BannerImagePath, BannerImageURL reste **vide** (le front dégrade en
-// placeholder). Avant, on dérivait une URL inventée depuis l'EmblemPath
-// (`fallbackCustomizationBannerFromEmblem`) — qui retournait 403 upstream.
+// TestGetCareerRank_BannerDerivedFromEmblemNameplate vérifie le comportement
+// après le port Python (2026-05-20) : quand l'API ne retourne pas de
+// BannerImagePath direct mais qu'un Emblem + ConfigurationId sont présents,
+// `ResolveNameplateURL` construit une URL nameplate dérivée
+// (`/hi/Waypoint/file/images/nameplates/<emblem_stem>_<cfg>.png`).
+//
+// Avant cette fix (commit 22cb84d5, 8 mai 2026) : BannerImageURL=="" (front
+// affichait placeholder, suite à 403 upstream avec cfg négatif). Maintenant :
+// si cfg>0, URL directe ; si cfg<=0, resolver fetche JSON emblem CMS pour
+// trouver un cfg positif valide (port `resolve_positive_emblem_cfg` Python).
+//
 // L'EmblemImageURL reste résolu via le pattern Grunt strict (descriptor
 // JSON → GameCms_GetProgressionImage).
-func TestGetCareerRank_BannerEmptyWhenNoNameplate(t *testing.T) {
+func TestGetCareerRank_BannerDerivedFromEmblemNameplate(t *testing.T) {
 	var customizationCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -744,8 +750,11 @@ func TestGetCareerRank_BannerEmptyWhenNoNameplate(t *testing.T) {
 	if data == nil {
 		t.Fatal("GetCareerRank returned nil")
 	}
-	if data.BannerImageURL != "" {
-		t.Errorf("BannerImageURL = %q, want \"\" (pas de nameplate dans l'API → pas d'invention)", data.BannerImageURL)
+	// cfg=372285867 > 0 → URL nameplate construite directement (pas d'appel
+	// CMS pour resolve_positive_emblem_cfg). Le test cadenasse le format.
+	wantBanner := "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/nameplates/104-001-343other-prop-79c5fbd5_372285867.png"
+	if data.BannerImageURL != wantBanner {
+		t.Errorf("BannerImageURL = %q, want %q (nameplate dérivé emblem+cfg)", data.BannerImageURL, wantBanner)
 	}
 	if data.EmblemImageURL != srv.URL+"/hi/images/file/progression/Inventory/Emblems/343other_propaganda_emblem.png" {
 		t.Errorf("EmblemImageURL = %q (Grunt strict pattern attendu)", data.EmblemImageURL)

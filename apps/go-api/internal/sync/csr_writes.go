@@ -130,11 +130,17 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 	}
 
 	// Placement : pas de rating final, pas de delta significatif.
+	// Note : rating_value=0.0 stocké (au lieu de NULL) pour respecter la
+	// contrainte NOT NULL du schéma match_skill_rank.rating_value. Le caller
+	// distingue placement vs rating réel via MeasurementMatchesRemaining > 0
+	// (highest_csr/lusr filtrera 0.0 implicitement via ORDER BY rating DESC).
 	if post.MeasurementMatchesRemaining > 0 || post.Tier == "" {
 		row.Tier = TierLabelPlacement
 		row.TierFR = TierLabelPlacement
 		row.SubTier = 0
 		row.TierLabel = formatCSRTierLabel("", "", 0, 0, post.MeasurementMatchesRemaining)
+		zero := 0.0
+		row.RatingValue = &zero
 		return row
 	}
 

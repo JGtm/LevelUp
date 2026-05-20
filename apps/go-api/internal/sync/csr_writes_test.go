@@ -81,8 +81,11 @@ func TestExtractCSRRowIfRanked_PlacementSingular(t *testing.T) {
 	if row == nil {
 		t.Fatal("expected non-nil row for placement match")
 	}
-	if row.RatingValue != nil {
-		t.Errorf("RatingValue: want nil (placement), got %v", *row.RatingValue)
+	// 2026-05-20 : RatingValue=0.0 en placement (au lieu de nil) pour respecter
+	// la contrainte NOT NULL du schéma match_skill_rank.rating_value. Le caller
+	// distingue placement vs rating réel via MeasurementMatchesRemaining > 0.
+	if row.RatingValue == nil || *row.RatingValue != 0.0 {
+		t.Errorf("RatingValue: want 0.0 (placement, NOT NULL constraint), got %v", row.RatingValue)
 	}
 	if row.RatingDelta != nil {
 		t.Errorf("RatingDelta: want nil (placement), got %v", *row.RatingDelta)

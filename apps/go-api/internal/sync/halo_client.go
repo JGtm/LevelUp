@@ -653,6 +653,17 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 				"inventory_path", appearance.BannerImagePath, "err", resolveErr)
 		}
 	}
+	// Fallback nameplate : Halo /customization/appearance ne retourne pas
+	// toujours BannerImagePath. Port du flow Python `resolve_positive_emblem_cfg`
+	// (ResolveNameplateURL dans spartan_nameplate_resolver.go) — fetch JSON
+	// emblem CMS, parse AvailableConfigurations[], prend le 1er cfg > 0,
+	// construit URL `/hi/Waypoint/file/images/nameplates/<stem>_<cfg>.png`.
+	if out.BannerImageURL == "" && appearance.EmblemPath != "" {
+		cfg, _ := strconv.ParseInt(strings.TrimSpace(appearance.EmblemConfigurationID), 10, 64)
+		if url := ResolveNameplateURL(ctx, appearance.EmblemPath, cfg, c.spartanToken, c.clearanceToken); url != "" {
+			out.BannerImageURL = url
+		}
+	}
 	if appearance.EmblemPath != "" {
 		if resolved, resolveErr := c.resolveCustomizationImageURL(ctx, appearance.EmblemPath); resolveErr == nil {
 			out.EmblemImageURL = resolved
