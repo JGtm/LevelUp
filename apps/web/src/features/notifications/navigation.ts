@@ -16,9 +16,18 @@ export interface NotifTarget {
   search?: Record<string, unknown>
 }
 
+// Routes fantômes émises par d'anciennes versions du backend, persistées dans
+// la table notifications. On les ignore pour retomber sur le fallback par
+// catégorie plutôt que d'envoyer l'utilisateur sur une 404. À nettoyer côté DB
+// quand pratique (UPDATE notifications SET target_route = NULL WHERE …).
+const FANTOM_TARGET_ROUTES = new Set<string>([
+  '/admin/data-health', // émis par data_health_check.go avant 2026-05-20
+])
+
 export function resolveTarget(notif: Notification, playerSlug: string): NotifTarget | null {
-  // Priorité au target_route renvoyé par le backend (mapping spécifique au runtime).
-  if (notif.target_route) {
+  // Priorité au target_route renvoyé par le backend (mapping spécifique au runtime),
+  // sauf s'il fait partie de la liste de routes fantômes connues.
+  if (notif.target_route && !FANTOM_TARGET_ROUTES.has(notif.target_route)) {
     return {
       to: notif.target_route,
       search: notif.target_search,

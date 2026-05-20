@@ -1,27 +1,25 @@
 // Package scheduler — data_health_check.go : audit santé DB périodique.
 //
-// DataHealthScheduler exécute périodiquement les invariants de
-// `cmd/diag_db_health` directement en mémoire (pas via os/exec) et émet
-// une notification admin (Category = `data_health_warning`) quand des
-// anomalies sont détectées.
+// HealthScheduler exécute périodiquement les invariants de
+// `cmd/diag_db_health` directement en mémoire (pas via os/exec). Les
+// compteurs sont écrits dans les logs structurés (`logs/scheduler.log`)
+// pour le diagnostic manuel — **aucune notification utilisateur n'est
+// émise**.
 //
-// Pattern : réutilise le ticker du AutoSyncScheduler. Lit
-// `app_settings.json:data_health_check_enabled` (default true) et
-// `data_health_check_interval_hours` (default 24h).
+// Décision 2026-05-20 : la catégorie de notif `data_health_warning`
+// véhiculait du jargon dev ("bits menteurs", "UUIDs bruts") sans valeur
+// pour un end user lambda sur une app de stats. Le scheduler reste
+// utile en interne (audit + log) mais ne pollue plus la cloche notif.
 //
 // Anomalies suivies :
 //   - match_registry.map_name / pair_name UUID brut (régression sync)
 //   - bits MENTEURS MBitEvents/MBitWeaponKills sans data
+//   - xuids orphelins (informatif uniquement)
 //   - banner garbage URLs (`/Waypoint/file/images/`) résiduelles
 //
-// Les xuids orphelins sont collectés à titre informatif (logs) mais
-// **exclus** de WarningsTotal car par nature non-résolvables sans
-// implémentation Microsoft Xbox profile API (cf. thought_log 2026-05-08
-// "84 → 12 — limite Xbox API"). Émettre une notif pour eux ne fait que
-// du bruit récurrent.
-//
-// Aucune action de repair automatique : émet juste la notif. L'admin
-// déclenche manuellement `cmd/repair_data_consistency` si besoin.
+// Aucune action de repair automatique : l'admin déclenche manuellement
+// `cmd/repair_data_consistency` ou `cmd/diag_db_health` si besoin
+// d'investiguer un compteur qui bouge.
 package scheduler
 
 import (
@@ -33,7 +31,6 @@ import (
 	"time"
 
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -48,24 +45,19 @@ type DataHealthCheckResult struct {
 	Duration             time.Duration
 }
 
-// HealthScheduler orchestre l'audit santé DB périodique.
-//
-// Notifier peut être nil → la santé est calculée et loggée mais aucune notif
-// n'est émise (mode test ou setup où le service notif n'est pas câblé).
+// HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
+// notification utilisateur — uniquement des logs structurés pour
+// permettre le diag depuis `logs/scheduler.log`.
 type HealthScheduler struct {
-	repoRoot         string
-	notif            notifications.Emitter
-	intervalHours    int
-	enabled          bool
-	baselineWarnings int
+	repoRoot      string
+	intervalHours int
+	enabled       bool
 }
 
-// NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled,
-// baseline 0).
-func NewDataHealthScheduler(repoRoot string, notif notifications.Emitter) *HealthScheduler {
+// NewDataHealthScheduler crée un scheduler avec les défauts (24h, enabled).
+func NewDataHealthScheduler(repoRoot string) *HealthScheduler {
 	return &HealthScheduler{
 		repoRoot:      repoRoot,
-		notif:         notif,
 		intervalHours: 24,
 		enabled:       true,
 	}
@@ -83,27 +75,6 @@ func (s *HealthScheduler) WithInterval(hours int) *HealthScheduler {
 func (s *HealthScheduler) SetEnabled(enabled bool) *HealthScheduler {
 	s.enabled = enabled
 	return s
-}
-
-// WithBaselineWarnings configure un seuil d'anomalies "acceptées" (socle
-// historique non corrigeable). Le scheduler n'émet de notif que si
-// WarningsTotal dépasse strictement ce seuil. baseline <= 0 désactive le
-// filtre (comportement par défaut : toute anomalie déclenche une notif).
-func (s *HealthScheduler) WithBaselineWarnings(baseline int) *HealthScheduler {
-	if baseline < 0 {
-		baseline = 0
-	}
-	s.baselineWarnings = baseline
-	return s
-}
-
-// SetEmitter permet d'injecter l'emitter notifications après l'initialisation
-// du scheduler — utile car le notifications.Service est créé par
-// ServiceRegistry après le boot du scheduler dans main.go (ordre
-// d'initialisation dépendances). Thread-safe via le fait que les cycles
-// runCycle() lisent s.notif sans lock (pattern lazy : nil = no-op).
-func (s *HealthScheduler) SetEmitter(notif notifications.Emitter) {
-	s.notif = notif
 }
 
 // Run lance la boucle périodique. Doit être appelé en goroutine.
@@ -218,14 +189,11 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		}
 	}
 
-	// OrphanXUIDs volontairement exclu du total : par nature non-résolvable
-	// sans Xbox profile API (12 résiduels stables depuis 2026-05-08). Le
-	// compteur reste rempli pour les logs / diag manuel.
 	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
 	res.Duration = time.Since(start)
 
-	// Cas nominal (warnings_total=0) : ligne courte pour rester scannable. Sinon
-	// dump complet des compteurs pour permettre le diag immédiat.
+	// Log structuré uniquement — pas d'émission de notif (cf. décision
+	// 2026-05-20 dans le commentaire de tête du package).
 	if res.WarningsTotal == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
@@ -234,7 +202,6 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	} else {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", res.WarningsTotal,
-			"baseline", s.baselineWarnings,
 			"uuids_raw", res.UUIDsRawCount,
 			"lying_bits_events", res.LyingBitsEvents,
 			"lying_bits_weapons", res.LyingBitsWeaponKills,
@@ -244,35 +211,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		)
 	}
 
-	if res.WarningsTotal > s.baselineWarnings && s.notif != nil {
-		s.emitWarningNotification(ctx, res)
-	}
 	return res
-}
-
-// emitWarningNotification émet une notif unique agrégeant tous les counters.
-// Catégorie : `data_health_warning`. Severity = warning.
-func (s *HealthScheduler) emitWarningNotification(ctx context.Context, res *DataHealthCheckResult) {
-	in := notifications.EmitInput{
-		Category: notifications.CategoryDataHealthWarning,
-		Severity: notifications.SeverityWarn,
-		TitleKey: "notif.data_health_warning.title",
-		BodyKey:  "notif.data_health_warning.body",
-		Params: map[string]any{
-			"warnings_total":      res.WarningsTotal,
-			"uuids_raw":           res.UUIDsRawCount,
-			"lying_bits_events":   res.LyingBitsEvents,
-			"lying_bits_weapons":  res.LyingBitsWeaponKills,
-			"garbage_banner_urls": res.GarbageBannerURLs,
-			"hint":                "Relancer cmd/repair_data_consistency pour résoudre",
-		},
-		// TargetRoute volontairement vide : le frontend fallback navigation.ts
-		// route vers /players/{slug}/notifications (cf. resolveTarget).
-		Source: "data_health_scheduler",
-	}
-	if err := s.notif.Emit(ctx, in); err != nil {
-		slog.WarnContext(ctx, "data_health: échec émission notif", "err", err)
-	}
 }
 
 // openDBShared ouvre une DuckDB via le cache de connexions partagé du package

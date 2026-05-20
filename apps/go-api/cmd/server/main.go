@@ -437,18 +437,12 @@ func main() {
 	}()
 
 	// 2026-05-08 — Data health scheduler : audit périodique multi-DB
-	// (UUIDs résiduels, bits menteurs, garbage URLs). Émet une notification
-	// admin via `data_health_warning` quand des warnings sont détectés. Les
-	// XUIDs orphelins sont collectés à titre informatif (logs) mais exclus
-	// du total — par nature non-résolvables sans Xbox profile API.
-	// L'emitter est wiré après NewRouter (cf. plus bas) car le
-	// notifications.Service est par-joueur et créé via le ServiceRegistry.
-	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot, nil)
-	if appSettings, err := settingsStore.Load(); err == nil && appSettings.DataHealthBaselineWarnings > 0 {
-		healthScheduler.WithBaselineWarnings(appSettings.DataHealthBaselineWarnings)
-		slog.Info("data_health: baseline appliquée",
-			"baseline_warnings", appSettings.DataHealthBaselineWarnings)
-	}
+	// (UUIDs résiduels, bits menteurs, garbage URLs). Depuis 2026-05-20 les
+	// compteurs sont uniquement loggés dans `logs/scheduler.log` (le diag
+	// admin se fait via `cmd/diag_db_health` ou la lecture des logs) — plus
+	// d'émission de notif `data_health_warning` (jargon dev sans intérêt
+	// pour un end user lambda sur une app de stats).
+	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot)
 	schedulerWG.Add(1)
 	go func() {
 		defer schedulerWG.Done()
@@ -469,29 +463,6 @@ func main() {
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
 	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
-
-	// data_health : wirer l'emitter sur le 1er joueur configuré (cible admin
-	// par défaut en setup mono-utilisateur). Si aucun joueur en
-	// db_profiles.json, le scheduler tourne sans émission de notif (les
-	// warnings sont uniquement dans les logs).
-	if reg != nil {
-		if players, err := cfg.LoadPlayers(title.DefaultSlug); err == nil && len(players) > 0 {
-			adminSlug := cfg.AdminPlayer()
-			target := players[0]
-			for _, p := range players {
-				if p.PlayerSlug == adminSlug {
-					target = p
-					break
-				}
-			}
-			if emitter, err := reg.NotificationsEmitter(ctx, target.PlayerSlug); err == nil {
-				healthScheduler.SetEmitter(emitter)
-				slog.Info("data_health: emitter wiré", "admin_player", target.PlayerSlug)
-			} else {
-				slog.Warn("data_health: emitter non câblé", "err", err)
-			}
-		}
-	}
 
 	srv := &http.Server{
 		Addr:         cfg.ServerAddr(),
