@@ -1,3 +1,138 @@
+## [2026-05-20] fix(banner) — Couleurs nameplate exactes via Microsoft emblem mapping.json + orphan-index resolver
+
+**Statut** : Complété (branche `fix/media-paths-portable`).
+
+**Contexte** : suite à la livraison de `ResolveNameplateURL` (commit `1cd27485`), les bannières Spartan s'affichaient à nouveau (plus de 403) mais avec une palette potentiellement incorrecte. L'utilisateur a observé que "tous les joueurs ont leur bannière impactée, les couleurs sont pas exactes ; des fois c'est très très proche, certaines bannières sont correctes et d'autres pas du tout" (réf OpenSpartan workshop qui documente les couleurs équipées).
+
+**Root cause** : `resolvePositiveEmblemCfg` prenait la 1ère `ConfigurationId > 0` arbitraire dans `AvailableConfigurations[]`. Pour une cfg équipée négative (ex JGtm cfg=-809699482 / palette "Test"), le CDN sert pourtant l'image via le format `_n<abs(cfg)>.png` quand on connaît le path exact, mais notre fallback pickait un cfg positif aléatoire (`_651339664.png`) avec une palette différente.
+
+**Découverte** : `/hi/Waypoint/file/images/emblems/mapping.json` (endpoint Grunt `GameCms_GetEmblemMapping`) expose la table officielle `Dictionary<emblem_id, Dictionary<configuration_id, EmblemMapping>>` avec `nameplateCmsPath` + `textColor` exacts pour chaque cfg équipée — y compris les négatives (format `_n<abs(cfg)>.png`).
+
+**Changements** :
+
+1. **[spartan_nameplate_resolver.go](apps/go-api/internal/sync/spartan_nameplate_resolver.go)** : ajout d'un cache process-level (`sync.RWMutex`, TTL 6 h) du mapping.json + helpers `getEmblemMappingEntry`, `refreshEmblemMapping`, `resetEmblemMappingCacheForTest`, `seedEmblemMappingCacheForTest`. `ResolveNameplateURL` consulte le mapping en priorité (URL exacte) et ne retombe sur `resolvePositiveEmblemCfg` qu'en cas de mapping miss ou stem absent (fail-safe, palette possiblement incorrecte mais image servable).
+
+2. **[spartan_nameplate_resolver_test.go](apps/go-api/internal/sync/spartan_nameplate_resolver_test.go)** : ajout `TestResolveNameplateURL_MappingPreferred` qui seed le cache avec un entry test et vérifie que la valeur du mapping est retournée (pas le fallback stem+cfg). Cadenasse l'anti-régression "couleurs inversées".
+
+3. **[resolver_default.go](apps/go-api/internal/assets/resolver_default.go)** : fix d'un bug pré-existant exposé par le mapping fix — quand l'`asset_index` contient une entry avec `LocalPath` set mais fichier supprimé du FS (cache flush manuel, rename d'asset upstream) ET sans `URL`, `entryToPayload` retournait un `URLPayload{URL:""}` → `http.Redirect("")` → résolution relative qui strippait le filename (302 vers la directory parente, ex `/.../nameplates/`). Détection en `Get()` étape 2 : si la payload résolue depuis l'index est un URLPayload vide, on log `index_orphan_refetching` et on retombe sur l'étape 3 (fetch frais). Anti-régression : `TestDefaultResolver_Get_IndexOrphan_FallsBackToFetch`.
+
+**Validation prod** (serveur fraîchement reconstruit + cache `data/cache/spartan-banner/` purgé pour forcer le fetch via mapping) :
+
+| Joueur | Cfg équipée | URL nameplate générée | HTTP |
+|--------|-------------|-----------------------|------|
+| JGtm | -809699482 | `nameplates/104-001-olympus-campa-2ddbe23b_n809699482.png` | 200 (10359 B) |
+| Chocoboflor | 1114182596 | `nameplates/104-001-olympus-firet-9a5826c3_1114182596.png` | 200 (8775 B) |
+| Madina97294 | -1498857697 | `nameplates/104-001-olympus-stuck-3d208338_n1498857697.png` | 200 (17928 B) |
+
+Smoke endpoint `/api/v1/healthz/home?player=X` retourne `banner=ok` pour les 3.
+
+**Tests** :
+- `go test ./internal/assets/ ./internal/sync/ -race -count=1` : verts (7.8 s + 9.0 s).
+- Tous les autres `./internal/...` : verts.
+
+**Note Grunt** : la référence externe `https://github.com/dend/grunt` (projet C#/Halo Waypoint) a été consultée pour comprendre le contrat de l'endpoint `GameCms_GetEmblemMapping`. Aucun code grunt n'est intégré au projet — c'est uniquement de la documentation de l'API Microsoft.
+
+**Prochaine étape** : commit (mapping + tests + thought log) sur `fix/media-paths-portable`.
+
+---
+
+## [2026-05-20] refactor(data_health) — Suppression complète de l'émission de notif `data_health_warning`
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : malgré le baseline=76 ajouté ce matin, la notif `data_health_warning` revenait quand même avec 81 anomalies (76 bits menteurs + 5 garbage URLs). Le baseline configurable continuait d'être contourné dès qu'un compteur bougeait, et chaque nouvelle anomalie demanderait un re-tuning manuel. Plus important : sur une app de stats grand public, exposer "bit(s) menteur(s) MBitEvents" / "UUID(s) brut(s)" à un end user lambda n'a strictement aucun sens — c'est du jargon dev qui pollue la cloche notif.
+
+**Décision** : supprimer entièrement l'émission de la catégorie `data_health_warning`. Le scheduler `HealthScheduler` reste utile pour le diag interne (compteurs loggés dans `logs/scheduler.log` à chaque cycle 24h), mais ne touche plus à `notifications.Emitter`.
+
+**Changements** :
+
+1. **[data_health_check.go](apps/go-api/internal/scheduler/data_health_check.go)** réécrit :
+   - Field `notif notifications.Emitter` supprimé.
+   - Field `baselineWarnings` supprimé (sans émission, le seuil n'a plus de sens).
+   - Méthodes `SetEmitter()`, `WithBaselineWarnings()`, `emitWarningNotification()` supprimées (code mort).
+   - Constructor `NewDataHealthScheduler(repoRoot string)` — signature à 1 arg.
+   - Import `notifications` retiré.
+   - Le `runCycle` calcule les compteurs et log uniquement (INFO structuré).
+
+2. **[main.go:439-448](apps/go-api/cmd/server/main.go#L439)** : wiring d'emitter retiré (bloc 20 lignes "wirer l'emitter sur le 1er joueur configuré"). Le constructor du scheduler ne prend plus que `cfg.RepoRoot`. Plus de lookup `players[0]` ni d'appel `reg.NotificationsEmitter`.
+
+3. **[settings/store.go](apps/go-api/internal/platform/settings/store.go)** : champ `DataHealthBaselineWarnings int` retiré du struct + commentaire. Le `raw map[string]json.RawMessage` préserve quand même la clé si présente dans le JSON (forward-compat).
+
+4. **[app_settings.json](app_settings.json)** : `data_health_baseline_warnings` supprimé (devenu inopérant).
+
+5. **[data_health_check_e2e_test.go](apps/go-api/internal/scheduler/data_health_check_e2e_test.go)** : récrit. Les 5 anciens tests dépendaient tous de `notifications.Service` injecté. Les 3 tests d'émission supprimés (`_WithAnomaly_EmitsAndStaysHealthy`, `_CategoryDisabled_DropsSilently`, `_BaselineAccepted_NoEmission`). Restent 2 tests focalisés sur le **calcul** des compteurs : `_NoWarnings` (DB vierge → total=0) et `_WithAnomaly_DetectsAndLogs` (UUID brut inséré → UUIDsRawCount≥1, idempotent sur cycle 2).
+
+**Rétention frontend** :
+
+La catégorie `data_health_warning` **reste déclarée** côté front (i18n.ts, navigation.ts, icons.tsx, types.ts) car des notifs déjà persistées existent en DB pour les joueurs. Sans le mapping, elles s'afficheraient en raw. Le fallback navigation (`/players/{slug}/notifications`) + la blacklist `/admin/data-health` ajoutés hier matin garantissent que les cliques restent fonctionnels. À long terme, la retention purgera ces lignes — le code mort frontend pourra être supprimé alors.
+
+**Résultats observés** :
+
+- `go vet -tags=cgo ./...` : clean (hors `diag_emblem_*` qui ont des warnings pré-existants).
+- `go test -tags=cgo ./internal/scheduler/... ./internal/platform/settings/... ./internal/api/... ./internal/notifications/...` : tous verts (0.3s — 7.3s par package).
+- Plus de notif émise au prochain boot. Les logs `scheduler.log` montreront `data_health: cycle terminé warnings_total=81 uuids_raw=0 lying_bits_events=76 …` à chaque audit.
+
+**Prochaine étape** : redémarrer le serveur. Plus aucune notif `data_health_warning` n'apparaîtra. Les anciennes notifs persistées restent visibles dans la cloche (et cliquables via fallback) jusqu'à expiration par la retention.
+
+---
+
+## [2026-05-20] diag(lusr) — MAdina97294 Argent IV en arena_slayer : pas le carry-adj, c'est `kills_vs_expected`
+
+**Statut** : Complété (diag — pas de fix livré).
+
+**Contexte** : utilisateur signale que MAdina97294 (perçu comme le meilleur joueur du squad de 4) sort Argent IV en arena_slayer LUSR. Première hypothèse théorique : le bloc carry-adj (`apps/go-api/internal/sync/skill_rating.go:160-168`) compresse le score `kills_vs_expected` vers 0.5 d'autant plus fort que le joueur est noté fort par Halo (`KE > teammateAvgKE`). Cette pénalité asymétrique pénalise mécaniquement le joueur identifié comme "porteur".
+
+**Validation empirique** : nouveau cmd `cmd/diag_lusr_player/` qui replaye TrueSkill deux fois (avec/sans carry-adj) sur tout l'historique des 3 joueurs (Chocoboflor, Madina97294, JGtm) et tabule les 15 derniers matchs communs.
+
+**Résultats** : l'hypothèse théorique ne tient PAS empiriquement.
+- Madina arena_slayer : 1327.3 (Argent IV) avec carry-adj → 1331.8 (Argent IV) sans. Δ = +4.5, aucun changement de tier.
+- JGtm arena_slayer : 1538.3 (Or V) → 1485.6 (Or III). Δ = −52.7, le carry-adj **aide** JGtm (et non l'inverse).
+- Chocoboflor arena_slayer : 1476.0 (Or III) → 1481.3 (Or III). Δ = +5.3, neutre.
+
+**Pourquoi le carry-adj n'agit jamais contre Madina** : dans les 15 matchs communs, Madina a systématiquement `teammateAvgKE = 0` (les autres joueurs de son team ont `kills_expected = 0` — bots ou MMR absent). Les 3 amis ne sont pas dans la même team dans ces matchs — Madina est en équipe adverse de Chocoboflor+JGtm. La condition `teammateAvgKE > 0` du carry-adj n'est jamais remplie pour lui.
+
+**Cause racine réelle** : la composante `kills_vs_expected` (poids 0.27 du composite, + `deaths_vs_expected` 0.24 → 51 % du composite) est basée sur l'attendu **personnel** fourni par l'API Halo (`StatPerformances.Kills.Expected`), qui est lui-même indexé sur le MMR. Madina, avec un MMR Halo élevé, reçoit des KE de 13-21 dans les matchs Slayer ; même quand il fait 17-19 kills (top du lobby), son `kills/KE ≈ 1.0` → `sigmoidRatio → 0.5` → composite ≈ 0.5 → mu stagne. JGtm avec KE 7-12 sur les mêmes matchs sur-performe plus facilement son attendu → mu monte. Le LUSR mesure la consistance vs son propre MMR, pas la dominance en lobby.
+
+**Conséquence** : un joueur sur-coté par Halo qui joue avec des amis moins bons (situation typique d'un squad fixe) est mécaniquement plafonné, voire descend si quelques matchs sous-performent son attendu très élevé.
+
+**Décision technique** : aucune correction de code dans cette session — le user décidera de la piste. Options identifiées :
+1. Remplacer `kills_vs_expected` par `kills_vs_lobby_avg` (compare au lobby, pas au MMR personnel)
+2. Réduire le poids des composantes basées sur KE/DE (0.27 → 0.10)
+3. Ajouter une composante `kda_absolute` ou `lobby_rank` qui récompense la dominance
+4. Garder la formule actuelle, accepter que LUSR mesure la consistance MMR
+
+**Fichiers ajoutés** :
+- `apps/go-api/cmd/diag_lusr_player/{main.go, replay.go, loaders.go}` — replay TrueSkill 2 modes (old/new) + tableau comparatif
+
+**Suite** : attendre choix d'approche du user avant tout fix dans `sync/skill_rating.go`.
+
+---
+
+## [2026-05-20] fix(home) — normalisation mode dominant dans tuiles sessions récentes
+
+**Statut** : Complété.
+
+**Contexte** : l'utilisateur signale que sur la home, les tuiles de session solo (carrousel "Sessions récentes") affichent du texte anglais brut non normalisé (ex: "Arena:Slayer on Bazaar") alors que les tuiles escouade sont propres ("Husky Raid", "BTB").
+
+**Diag** :
+- Composant front partagé `HomeSessionCarousel` entre solo/squad → ce n'est pas un bug UI.
+- Service Go `BuildSessionSummariesFromCanonical` (`home_canonical.go:1424`) calculait `dominantMode` via `modeLabels(r)` sans appeler `normalizeHomeModeLabel`, contrairement à `BuildRecentMatchesWithFavoritesFromCanonical:934`.
+- Pourquoi squad semblait OK : les playlists BTB / Husky Raid ont un `pair_name_fr` rempli en DB (override actif dans `mode_pair_overrides`), tandis qu'Arena Ranked / Quick Play n'en ont souvent pas → `labelForLocale("fr", "", en)` retombe sur l'EN brut.
+- Effet secondaire : sans normalisation, `dominantNameFromRows` regroupe par EN brut, donc deux matchs Slayer sur maps différentes ne fusionnent pas leur fréquence → fragmentation de l'agrégation.
+
+**Décision technique** :
+- Wrapper la sortie de `modeLabels(r)` par `normalizeHomeModeLabel(label, mapEN, mapFR)` dans l'extractor passé à `dominantNameFromRows`. Strip " on Bazaar", extraction sous-mode après ":", identité des playlists promues préservée via `playlistIdentityPrefixes`.
+
+**Test ajouté** : `TestBuildSessionSummariesFromCanonical_NormalizesDominantMode` — 3 rows Slayer/CTF sur 3 maps différentes, vérifie que `DominantMode == "Slayer"` (les 2 Slayer fusionnent, normalisation appliquée). Test FAIL sans le fix (renvoie `"Arena:CTF on Streets"` au hasard de l'agrégation), PASS avec.
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/analysis/home_canonical.go` (1 bloc dans `BuildSessionSummariesFromCanonical`)
+- `apps/go-api/internal/analysis/home_canonical_test.go` (1 test régression)
+
+**Suite** : commit + push (branche `fix/media-paths-portable`).
+
+---
+
 ## [2026-05-20] fix(home) — bannière LIVE via resolve_positive_emblem_cfg + CSR placement NOT NULL
 
 **Statut** : Complété (5/5 sections home OK pour JGtm via /healthz/home).

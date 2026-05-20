@@ -70,11 +70,19 @@ func (r *DefaultResolver) Get(ctx context.Context, ref Ref) (Resolved, error) {
 			if err != nil {
 				slog.Debug("assets: index lookup error", append(ref.LogAttrs(), "err", err)...)
 			} else if entry != nil && (entry.URL != "" || entry.LocalPath != "" || len(entry.RawJSON) > 0) {
-				r.metrics.IncHit(ref.Kind, SourceLocalDB)
-				r.metrics.ObserveLatency(ref.Kind, SourceLocalDB, time.Since(start))
-				slog.Debug("assets: cache_hit_index", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
+				// Si l'entry pointe vers un binaire local mais le fichier a été
+				// supprimé du FS (cache flush manuel, rename d'asset upstream),
+				// entryToPayload retournerait un URLPayload vide → 302 vers
+				// directory cassé. Détecter ce cas et retomber sur fetch frais.
 				payload := r.entryToPayload(ref, entry)
-				return Resolved{Payload: payload, Source: SourceLocalDB, FetchedAt: entry.FetchedAt, ETag: entry.ContentHash}, nil
+				if urlp, ok := payload.(URLPayload); ok && urlp.URL == "" {
+					slog.Info("assets: index_orphan_refetching", ref.LogAttrs()...)
+				} else {
+					r.metrics.IncHit(ref.Kind, SourceLocalDB)
+					r.metrics.ObserveLatency(ref.Kind, SourceLocalDB, time.Since(start))
+					slog.Debug("assets: cache_hit_index", append(ref.LogAttrs(), "latency_ms", time.Since(start).Milliseconds())...)
+					return Resolved{Payload: payload, Source: SourceLocalDB, FetchedAt: entry.FetchedAt, ETag: entry.ContentHash}, nil
+				}
 			}
 		}
 	}
