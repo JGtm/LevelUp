@@ -155,12 +155,25 @@ func BackfillCSRFromAPI(
 // classés depuis le registre partagé, triés chronologiquement ASC. On
 // renvoie des MatchRegistryRow stub (IsRanked=true) — c'est suffisant pour
 // ExtractCSRRowIfRanked qui n'utilise que MatchID, StartTime et IsRanked.
+//
+// Fallback heuristique : si `is_ranked` n'a pas été correctement peuplé par
+// la sync (régression connue depuis 2026-05-10 : tous les matchs en DB sont
+// is_ranked=FALSE malgré des playlists "Ranked Arena"/"Ranked Slayer"),
+// on classe aussi en ranked tout match dont `playlist_name` ou `pair_name`
+// contient "ranked" (case-insensitive). Cette heuristique est identique à
+// celle utilisée par Q26eHomeSkillPeakByType côté lecture — sans elle, le
+// CSR backfill serait un no-op silencieux pour les joueurs touchés par la
+// régression is_ranked.
 func loadRankedMatchesForCSRBackfill(sharedDB *sql.DB) ([]MatchRegistryRow, error) {
 	rows, err := sharedDB.Query(`
 		SELECT match_id, start_time
 		FROM match_registry
-		WHERE COALESCE(is_ranked, FALSE) = TRUE
-		  AND start_time IS NOT NULL
+		WHERE start_time IS NOT NULL
+		  AND (
+		    COALESCE(is_ranked, FALSE) = TRUE
+		    OR STRPOS(LOWER(COALESCE(playlist_name, '')), 'ranked') > 0
+		    OR STRPOS(LOWER(COALESCE(pair_name, '')), 'ranked') > 0
+		  )
 		ORDER BY start_time ASC`)
 	if err != nil {
 		return nil, err

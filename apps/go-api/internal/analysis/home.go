@@ -343,15 +343,34 @@ func BuildSpartanIdentity(raw *domain.HomeSpartanIdentityRow, locale string, ran
 	return identity
 }
 
+// buildHomeSkillPeak projette le row repo vers le DTO JSON home.
+//
+// Avant mai 2026 : retournait nil dès que RatingValue ≤ 0, ce qui masquait
+// la phase de placement (rating effectif = 0 tant que les 10 matchs ne sont
+// pas faits) ET les joueurs qui n'avaient pas encore de CSR fetché. Le front
+// affichait alors faussement "En placement" via une heuristique côté UI.
+//
+// Désormais : on préserve le summary si on a au moins un signal exploitable
+// (BadgeImageURL = unranked_N.png en placement, ou rating + tier en matured).
+// Le front utilise MeasurementMatchesRemaining pour différencier les états
+// sans deviner.
 func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow) *domain.HomeSkillPeakSummary {
-	if raw == nil || raw.RatingValue <= 0 {
+	if raw == nil {
 		return nil
 	}
-	return &domain.HomeSkillPeakSummary{
+	if raw.RatingValue <= 0 && raw.BadgeImageURL == nil && raw.TierLabel == nil {
+		return nil
+	}
+	summary := &domain.HomeSkillPeakSummary{
 		RatingValue:   raw.RatingValue,
 		TierLabel:     copyOptionalString(raw.TierLabel),
 		BadgeImageURL: copyOptionalString(raw.BadgeImageURL),
 	}
+	if raw.MeasurementMatchesRemaining != nil {
+		rem := *raw.MeasurementMatchesRemaining
+		summary.MeasurementMatchesRemaining = &rem
+	}
+	return summary
 }
 
 func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, ranks *mappings.RankCatalog) *domain.HomeCareerRankSummary {

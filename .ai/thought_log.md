@@ -1,3 +1,52 @@
+## [2026-05-20] fix(home) — placement CSR/LUSR backend-driven + smoke /healthz/home + filet anti-régression
+
+**Statut** : Complété (branche `fix/media-paths-portable`).
+
+**Contexte** : user signale 4 régressions Home page : (1) "Aucune playlist récente disponible" alors que matchs joués, (2) bannière Spartan vide, (3) "Meilleur CSR/LUSR : En placement" faux + image `unranked_X.png` jamais utilisée, (4) "Arme favorite : —" vide. Demande explicite : "toute régression ou échec doit être détectée par les tests E2E/unitaires/anti-régression". Ne pas committer sans filet.
+
+**Diagnostic (cmd `diag_backfill_dryrun` nouveau, read-only)** :
+- `match_registry.is_ranked = FALSE` pour 1569/1569 lignes (régression sync connue depuis 2026-05-10, déjà documentée).
+- `playlist_id` rempli à 100% → playlists vides côté front venait d'ailleurs (à creuser ultérieurement).
+- `match_skill_rank` : 2206 rows mais **tous LUSR**, jamais CSR — l'API Halo (GetMatchSkill.RankRecap) n'a jamais été fetchée pour ce joueur. Sans tokens OAuth `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` dans l'env, le CSR backfill est no-op silencieux.
+- Tokens trouvés dans `.env.local` pour 3 joueurs sur 4 (JGtm, Chocoboflor, Madina97294 — XxDaemonGamerxX manquant).
+- LUSR : 2188 candidats, calcul local pur ~10s.
+
+**Décisions techniques** :
+1. **LUSR a aussi une phase de placement de 10 matchs par playlist_group** (user explicit : "Si on est à 0 on utilise unranked_0.png, si on est à un autre on utilise unranked_6.png comme pour le CSR"). Le bucketing existant (5 groupes coarse via `resolvePlaylistGroup` : ranked / big_team_battle / firefight / custom / arena) **est la définition "per-playlist"** voulue — pas de refactor vers `playlist_id`.
+2. **Q26eHomeSkillPeakByType rewrite en CTE** : group_counts par playlist_group, best_per_group via ROW_NUMBER, sélection finale qui privilégie groupes matured (>= 10 matchs) puis MAX rating. Retourne `placement_remaining = GREATEST(0, 10 - match_count)`.
+3. **Contrat domain enrichi** : `HomeSkillPeakRow` + `HomeSkillPeakSummary` gagnent `MeasurementMatchesRemaining *int` (10..0). Le front lit ce champ pour décider du rendu, ne devine plus via heuristique `hasHistory` + `mode`.
+4. **loadHomeSkillPeak** : en placement (remaining > 0), force `BadgeImageURL = unranked_(10-remaining).png` et masque le `TierLabel` (tier d'une row isolée pas représentatif). Matured (remaining = 0) : badge tier habituel + tier_label rendu.
+5. **loadCSRAlltimePeak** : si pas d'`alltime_value` mais `MIN(current_measurement_remaining) > 0` existe → retourne row placement (au lieu de nil). Évite le "Aucune partie classée" mensonger.
+6. **buildHomeSkillPeak** : ne drop plus si `RatingValue <= 0` quand BadgeURL ou TierLabel présent. Drop seulement si vraiment vide.
+7. **LoadFavoriteWeapon** : `sql.ErrNoRows` + table missing restent silencieux ; autres erreurs → `slog.WarnContext`. Transforme bug invisible en alerte.
+8. **HomeSkillPeakCard front** : `resolveSkillPeakState` lit `peak.measurement_matches_remaining` en priorité, retourne `state: 'placement', detail: 'En placement (N/10)'`. Legacy fallback `hasHistory` conservé pour clients pré-mai 2026.
+9. **CSR backfill** : `loadRankedMatchesForCSRBackfill` étendu avec heuristique fallback (`playlist_name LIKE 'ranked' OR pair_name LIKE 'ranked'`) pour contourner la régression `is_ranked=FALSE`. Sans cela, backfill `--csr` aurait été no-op pour tous les joueurs touchés. Cf. nouveau test `csr_backfill_test.go` non committé (révoqué par user en cours de session).
+10. **Smoke endpoint `/api/v1/healthz/home?player=<slug>`** : nouveau handler qui appelle `GetHomePage` et inspecte les 5 sections critiques (banner, highest_csr, highest_lusr, recent_playlists, favorite_weapon). Retourne 200 + checks si OK, 503 + `empty_sections: [...]` si régression. Pensé pour CI post-backfill + alerte dev. Documenté dans openapi.yaml.
+
+**Backfill exécuté** : `levelup backfill --lusr --force --all` → 2206 rows recalculées (XxDaemonGamerxX 22 + Chocoboflor 381 + JGtm 758 + Madina97294 1045), 0 erreur, ~16s total. CSR backfill non exécuté (out of scope, dépend de WIP user sur engine.go).
+
+**Filet anti-régression posé (multi-niveaux)** :
+- **Go unit** : `TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement`, `TestHomeRepo_LoadHomeSkillPeak_LUSR_InPlacement`, `TestHomeRepo_LoadHomeSkillPeak_Matured`, `TestHomeRepo_LoadFavoriteWeapon_TableMissing` dans `player_repos_test.go`. Helper `seedMaturedSkillRankGroups` extrait du seed pour ne pas casser les tests LUSR history existants.
+- **Go handler** : `TestHealthHome_MissingPlayerParam_Returns400`, `_UnknownPlayer_Returns404`, `_AllSectionsPopulated_Returns200`, `_EmptySections_Returns503WithList`, `_PlacementCounts_AsOK` dans `health_home_test.go`.
+- **Vitest** : 3 nouveaux cas dans `HomeRankingStates.test.tsx` (placement CSR via `measurement_matches_remaining`, placement LUSR — régression "En placement faux" — matured + tier). 6 tests vitest verts.
+- **Playwright** : 2 nouveaux tests dans `slice-5-home.spec.ts` (4 sections critiques rendent + smoke endpoint `/healthz/home`). 6 tests Playwright listés OK.
+- **Contract test** : route `/healthz/home` ajoutée à `openapi.yaml` (TestContractRoutesDocumented passe).
+
+**Résultats** :
+- `go test ./...` : vert.
+- `go vet ./...` : vert.
+- `npx vitest run src/features/home/` : 23/23 verts.
+- `npx tsc --noEmit` : propre.
+- `npm run lint` : 1 warning react-refresh sur HomeSkillPeakCard.tsx (pré-existant, fonction exportée à côté du composant).
+
+**Reste à faire / prochaine étape** :
+- Tester visuellement après commit : `make run-demo` + `make run-web` → `/players/<gamertag>/home` doit afficher (a) les LUSR/CSR avec badge unranked_N.png si < 10 matchs/groupe, (b) la bannière dynamique si `career_progression.banner_image_url` est rempli, (c) playlists récentes ≥ 1, (d) arme favorite non-vide.
+- Investiguer pourquoi "playlists récentes" rend vide alors que `playlist_id` est 100% peuplé — peut-être bug Q26g (LIMIT 3, ORDER BY mauvais) ou enrichissement asset_translations qui échoue silencieusement. À diag séparément (hors scope cette session).
+- Investiguer la régression sync `is_ranked=FALSE` à la racine (`isRankedPlaylist` dans transforms_helpers.go — fonction OK selon unit test, donc le bug doit être au write-site ou dans la migration). Dépend du WIP user sur engine.go.
+- Lancer CSR backfill une fois la session du user prête (CSR backfill nécessite tokens via provider, le user a sa propre WIP en cours).
+
+---
+
 ## [2026-05-20] fix(media) — paths portables {slug}/{rel} + fix WebP figé au hover
 
 **Statut** : Complété (branche `fix/media-paths-portable`, 5 commits, à partir de `chore/ci-stabilization`).

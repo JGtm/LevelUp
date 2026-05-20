@@ -177,35 +177,92 @@ FROM career_ranks
 WHERE rank_id = ?
 LIMIT 1`
 
-// Q26e : Home -- meilleur rating historique par type (CSR ou LUSR).
-// ParamÃ¨tre : ?1 = rating_type.
+// Q26e : Home -- meilleur rating historique par type (CSR ou LUSR), avec
+// statut de placement par playlist_group.
+//
+// ParamÃ¨tre : ?1 = rating_type ('CSR' ou 'LUSR', case-insensitive).
+//
+// Retourne 1 ligne max :
+//
+//	rating_value, tier_label, tier, sub_tier, placement_remaining
+//
+// Logique placement (LUSR principalement, CSR secondaire en fallback) :
+//   - chaque playlist_group a sa propre phase de placement de 10 matchs
+//   - match_count = COUNT(*) des rows par playlist_group pour le type donné
+//   - placement_remaining = GREATEST(0, 10 - match_count)
+//   - on prÃ©fÃ¨re le meilleur rating d'un groupe matured (match_count >= 10) ;
+//     sinon on retourne le meilleur rating du groupe le plus jouÃ© en placement,
+//     pour que le badge unranked_(10-remaining).png puisse Ãªtre construit.
+//
+// Le CASE de classification CSR/LUSR garde le fallback heuristique sur
+// playlist_name/pair_name (régression historique is_ranked=FALSE non corrigée).
 const Q26eHomeSkillPeakByType = `
-SELECT
-	msr.rating_value,
-	NULLIF(TRIM(msr.tier_label), '') AS tier_label,
-	NULLIF(TRIM(msr.tier), '') AS tier,
-	COALESCE(msr.sub_tier, 0) AS sub_tier
-FROM match_skill_rank msr
-LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
-WHERE UPPER(
-	CASE
-		WHEN mr.match_id IS NOT NULL THEN CASE
-			WHEN COALESCE(mr.is_ranked, FALSE)
-				OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
-				OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
-			THEN 'CSR'
+WITH classified AS (
+	SELECT
+		msr.match_id,
+		msr.playlist_group,
+		msr.rating_value,
+		msr.tier,
+		msr.sub_tier,
+		msr.tier_label,
+		msr.created_at,
+		msr.updated_at,
+		msr.start_time,
+		CASE
+			WHEN mr.match_id IS NOT NULL THEN CASE
+				WHEN COALESCE(mr.is_ranked, FALSE)
+					OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
+					OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
+				THEN 'CSR'
+				ELSE 'LUSR'
+			END
+			WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
 			ELSE 'LUSR'
-		END
-		WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
-		ELSE 'LUSR'
-	END
-) = UPPER(?)
-	AND msr.rating_value IS NOT NULL
+		END AS effective_type
+	FROM match_skill_rank msr
+	LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
+	WHERE msr.rating_value IS NOT NULL
+),
+typed AS (
+	SELECT * FROM classified WHERE effective_type = UPPER(?)
+),
+group_counts AS (
+	SELECT playlist_group, COUNT(*) AS match_count
+	FROM typed
+	GROUP BY playlist_group
+),
+best_per_group AS (
+	SELECT
+		t.playlist_group,
+		t.rating_value,
+		t.tier,
+		t.sub_tier,
+		t.tier_label,
+		t.match_id,
+		COALESCE(t.updated_at, t.start_time, t.created_at) AS recency,
+		ROW_NUMBER() OVER (
+			PARTITION BY t.playlist_group
+			ORDER BY
+				t.rating_value DESC,
+				COALESCE(t.updated_at, t.start_time, t.created_at) DESC,
+				COALESCE(t.sub_tier, 0) DESC,
+				t.match_id DESC
+		) AS rn
+	FROM typed t
+)
+SELECT
+	bpg.rating_value,
+	NULLIF(TRIM(bpg.tier_label), '') AS tier_label,
+	NULLIF(TRIM(bpg.tier), '') AS tier,
+	COALESCE(bpg.sub_tier, 0) AS sub_tier,
+	GREATEST(0, 10 - gc.match_count) AS placement_remaining
+FROM best_per_group bpg
+JOIN group_counts gc ON gc.playlist_group = bpg.playlist_group
+WHERE bpg.rn = 1
 ORDER BY
-	msr.rating_value DESC,
-	COALESCE(msr.updated_at, msr.start_time, msr.created_at) DESC,
-	COALESCE(msr.sub_tier, 0) DESC,
-	msr.match_id DESC
+	CASE WHEN gc.match_count >= 10 THEN 1 ELSE 0 END DESC,
+	bpg.rating_value DESC,
+	bpg.recency DESC
 LIMIT 1`
 
 // Q26g : Home â€” 3 derniÃ¨res playlists distinctes jouÃ©es avec leur dernier rang compÃ©titif.

@@ -18,11 +18,22 @@ type HomeMediaRow struct {
 	MatchStartTime *time.Time
 }
 
-// HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
+// HomeSkillPeakRow est la projection brute d'un pic historique CSR ou LUSR
+// lu depuis match_skill_rank / player_csr_snapshots.
+//
+// MeasurementMatchesRemaining (10..0) indique la phase de placement :
+//   - nil : champ non renseigné par le repo (legacy / pas de logique placement)
+//   - 0   : phase de placement terminée → rating_value + tier valides
+//   - >0  : encore N matchs avant la fin du placement → BadgeImageURL doit
+//     pointer sur unranked_(10-N).png et RatingValue peut être 0
+//
+// La même sémantique vaut pour CSR (10 matchs Microsoft, source player_csr_snapshots)
+// et pour LUSR (10 matchs par playlist_group, dérivé de match_skill_rank côté local).
 type HomeSkillPeakRow struct {
-	RatingValue   float64
-	TierLabel     *string
-	BadgeImageURL *string
+	RatingValue                 float64
+	TierLabel                   *string
+	BadgeImageURL               *string
+	MeasurementMatchesRemaining *int
 }
 
 // HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
@@ -96,10 +107,21 @@ type HomeCareerRankSummary struct {
 }
 
 // HomeSkillPeakSummary représente un pic historique CSR ou LUSR affiché sur la home.
+//
+// MeasurementMatchesRemaining (10..0) signale au front la phase de placement :
+//   - omis (nil) : pas de logique placement disponible (legacy clients tolérés)
+//   - 0           : phase terminée → afficher rating_value + tier_label
+//   - >0          : afficher "En placement (10-N)/10" et utiliser badge_image_url
+//     (qui pointe déjà sur unranked_(10-N).png côté backend)
+//
+// Valable aussi bien pour CSR (10 matchs Microsoft) que pour LUSR (10 matchs
+// par playlist_group). Le front lit ce champ pour décider du rendu sans
+// deviner via heuristique.
 type HomeSkillPeakSummary struct {
-	RatingValue   float64 `json:"rating_value"`
-	TierLabel     *string `json:"tier_label,omitempty"`
-	BadgeImageURL *string `json:"badge_image_url,omitempty"`
+	RatingValue                 float64 `json:"rating_value"`
+	TierLabel                   *string `json:"tier_label,omitempty"`
+	BadgeImageURL               *string `json:"badge_image_url,omitempty"`
+	MeasurementMatchesRemaining *int    `json:"measurement_matches_remaining,omitempty"`
 }
 
 // HomePlaylistRank associe une playlist récente à son dernier rang compétitif connu.

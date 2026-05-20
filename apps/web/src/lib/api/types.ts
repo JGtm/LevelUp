@@ -1410,6 +1410,16 @@ export interface HomeSkillPeakSummary {
   rating_value: number
   tier_label?: string | null
   badge_image_url?: string | null
+  /**
+   * Matchs de placement restants (10 → 0). Présent côté backend depuis mai 2026
+   * pour CSR (player_csr_snapshots.current_measurement_remaining) et LUSR
+   * (10 matchs par playlist_group). Sémantique :
+   *   - absent / null : champ non remonté (legacy)
+   *   - 0             : phase de placement terminée → afficher rating + tier
+   *   - >0            : afficher "En placement (10-N)/10", badge_image_url
+   *                     pointe déjà sur unranked_(10-N).png côté backend
+   */
+  measurement_matches_remaining?: number | null
 }
 
 export interface HomePlaylistRank {
