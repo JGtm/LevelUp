@@ -262,20 +262,25 @@ const (
 	TierPlatinum = "Platinum"
 	TierDiamond  = "Diamond"
 	TierOnyx     = "Onyx"
-	// Label FR équivalent uniquement utilisé pour SkillTiers (Argent, Platine…).
+	// Labels FR pour SkillTiers et UI. Bronze/Onyx coïncident avec EN.
+	TierLabelBronze  = "Bronze"
+	TierLabelArgent  = "Argent"
+	TierLabelOr      = "Or"
 	TierLabelPlatine = "Platine"
+	TierLabelDiamant = "Diamant"
+	TierLabelOnyx    = "Onyx"
 	// Label spécifique CSR placement.
 	TierLabelPlacement = "Placement"
 )
 
 // SkillTiers définit l'échelle LUSR (Bronze → Onyx).
 var SkillTiers = []SkillTier{
-	{TierBronze, "Bronze", 1000.0, 1200.0, "#CD7F32", 6},
-	{TierSilver, "Argent", 1200.0, 1400.0, "#C0C0C0", 6},
-	{TierGold, "Or", 1400.0, 1600.0, "#FFD700", 6},
+	{TierBronze, TierLabelBronze, 1000.0, 1200.0, "#CD7F32", 6},
+	{TierSilver, TierLabelArgent, 1200.0, 1400.0, "#C0C0C0", 6},
+	{TierGold, TierLabelOr, 1400.0, 1600.0, "#FFD700", 6},
 	{TierPlatinum, TierLabelPlatine, 1600.0, 1800.0, "#00CED1", 6},
-	{TierDiamond, "Diamant", 1800.0, 2000.0, "#B9F2FF", 6},
-	{TierOnyx, "Onyx", 2000.0, 9999.0, "#1C1C1C", 1},
+	{TierDiamond, TierLabelDiamant, 1800.0, 2000.0, "#B9F2FF", 6},
+	{TierOnyx, TierLabelOnyx, 2000.0, 9999.0, "#1C1C1C", 1},
 }
 
 var romanNumerals = map[int]string{1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
