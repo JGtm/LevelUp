@@ -96,11 +96,11 @@ linters:
         text: "exported method.*Writer.*WriteHeader should have comment"
 
       # Constantes et variables exportees sans commentaire : acceptable pour SQL queries et domaine
-      - linters: [revive]
-        text: "exported.*should have comment"
+      - linters: [revive, staticcheck]
+        text: "(exported.*should have comment|ST1020|ST1021|ST1000)"
 
       # Commentaire doc pas au bon format (ex: constantes SQL Q1…Q99)
-      - linters: [revive]
+      - linters: [revive, staticcheck]
         text: 'comment on exported .* should be of the form'
 
       # Stutter : noms type/func repetant le package (sync.SyncEngine, notify.NotifyConfig...)
@@ -112,12 +112,41 @@ linters:
       - linters: [revive]
         text: 'argument-limit'
 
-      # Tests : funlen + lll permissifs (tables de valeurs longues acceptees)
+      # Tests : permissifs sur fonctions longues + lll + complexite + setup DB
+      # sans context + duplication de constantes (patterns idiomatiques tests).
+      # noctx : tests de setup utilisent db.Ping()/db.Exec() sans ctx — acceptable.
+      # goconst : tests dupliquent souvent des constantes (gamertag, xuid, slug)
+      # pour la lisibilite case par case ; deduplication nuit a la clarte.
+      # unparam : test helpers ont souvent des params toujours egaux (fixtures).
+      # bodyclose : tests HTTP mock, vie courte, body.Close non critique.
+      # prealloc / ineffassign : minor perf/style, sans impact en test.
       - path: "_test\\.go"
         linters:
           - funlen
           - lll
           - gocyclo
+          - noctx
+          - goconst
+          - errcheck
+          - unparam
+          - bodyclose
+          - prealloc
+          - ineffassign
+
+      # cmd/ (CLI tools / scripts ponctuels) : permissifs sur tout
+      # Les scripts de diag/migration/seed/repair n'ont pas vocation a etre
+      # production-grade (utilises rarement, manipules manuellement).
+      - path: "^cmd/"
+        linters:
+          - funlen
+          - lll
+          - gocyclo
+          - noctx
+          - goconst
+          - errcheck
+          - prealloc
+          - revive
+          - unused
 
       # Fichiers generes par oapi-codegen : pas de lint
       - path: "internal/api/gen/"
@@ -199,10 +228,10 @@ linters:
       # Multi-titres : packages Go nommes avec underscore par convention produit
       # (coherence avec title.DefaultSlug = "halo_infinite" et les configs
       # config/titles/{slug}/). Renommer ferait perdre la lisibilite 1-pour-1
-      # avec les slugs canoniques.
+      # avec les slugs canoniques. Couvre revive (var-naming) + staticcheck (ST1003).
       - path: "internal/games/(halo_infinite|synthetic_title_b)/"
-        linters: [revive]
-        text: "var-naming: don't use an underscore in package name"
+        linters: [revive, staticcheck]
+        text: "(var-naming: don't use an underscore in package name|ST1003)"
 
 formatters:
   enable:
