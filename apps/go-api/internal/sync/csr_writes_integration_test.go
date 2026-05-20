@@ -107,6 +107,70 @@ func TestUpsertCSRRow_InsertNew(t *testing.T) {
 	}
 }
 
+// TestUpsertCSRRow_PlacementInsertWithZeroRating cadenasse le fix
+// 2026-05-20 : un match en placement a rating_value=0.0 (au lieu de NULL)
+// pour ne pas violer la contrainte NOT NULL du schéma prod.
+//
+// Régression catchée : si le code revient à `row.RatingValue = nil` pour le
+// placement, ce test failed avec "Constraint Error: NOT NULL constraint
+// failed: match_skill_rank.rating_value" (observé en prod sur JGtm avec 7
+// matchs placement perdus avant le fix).
+//
+// Note : la fixture openCSRDB n'a PAS NOT NULL sur rating_value, donc le
+// driver DuckDB stocke 0.0 normalement. En prod le schéma applique NOT NULL
+// implicitement. On vérifie ici que le row.RatingValue=&0.0 est BIEN passé
+// (pas nil) à UpsertCSRRow, et que la row peut être lue + distinguée comme
+// placement via measurement_matches_remaining > 0.
+func TestUpsertCSRRow_PlacementInsertWithZeroRating(t *testing.T) {
+	db := openCSRDB(t)
+
+	// Reproduit ce que ExtractCSRRowIfRanked génère pour un placement :
+	// rating_value=0.0 (post-fix), measurement_matches_remaining > 0.
+	zero := 0.0
+	row := &MatchCSRRow{
+		MatchID:                     "m_placement_csr",
+		RatingValue:                 &zero, // <-- 0.0, PAS nil
+		Tier:                        "Placement",
+		TierFR:                      "Placement",
+		SubTier:                     0,
+		TierLabel:                   "Placement (3 restants)",
+		PlaylistGroup:               "ranked",
+		StartTime:                   time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC),
+		MeasurementMatchesRemaining: 3,
+	}
+	if err := UpsertCSRRow(db, row); err != nil {
+		t.Fatalf("UpsertCSRRow placement: %v (régression : retour de rating_value=nil ?)", err)
+	}
+
+	var (
+		ratingType  string
+		ratingValue sql.NullFloat64
+		tier        sql.NullString
+		measurement sql.NullInt64
+		tierLabel   sql.NullString
+	)
+	err := db.QueryRow(`SELECT rating_type, rating_value, tier, measurement_matches_remaining, tier_label FROM match_skill_rank WHERE match_id = ?`, "m_placement_csr").
+		Scan(&ratingType, &ratingValue, &tier, &measurement, &tierLabel)
+	if err != nil {
+		t.Fatalf("select placement row: %v", err)
+	}
+	if ratingType != "CSR" {
+		t.Errorf("rating_type: want CSR, got %q", ratingType)
+	}
+	if !ratingValue.Valid || ratingValue.Float64 != 0.0 {
+		t.Errorf("rating_value: want 0.0 (placement, NOT NULL safe), got valid=%v val=%v", ratingValue.Valid, ratingValue.Float64)
+	}
+	if !tier.Valid || tier.String != "Placement" {
+		t.Errorf("tier: want Placement, got %v", tier)
+	}
+	if !measurement.Valid || measurement.Int64 != 3 {
+		t.Errorf("measurement_matches_remaining: want 3, got %v", measurement)
+	}
+	if !tierLabel.Valid || tierLabel.String != "Placement (3 restants)" {
+		t.Errorf("tier_label: want 'Placement (3 restants)', got %v", tierLabel)
+	}
+}
+
 func TestUpsertCSRRow_ReplacesLUSR(t *testing.T) {
 	// Scénario : un match classé avait reçu une row LUSR par erreur (bug
 	// pré-existant, désormais corrigé). Lorsqu'on sync à nouveau et que le
