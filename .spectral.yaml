@@ -1,0 +1,25 @@
+# .spectral.yaml — ruleset Spectral pour validation OpenAPI
+#
+# Sprint chore/ci-stabilization 2026-05-20 : le job CI `OpenAPI Lint`
+# (stoplightio/spectral-action@v0.8.11) echouait avec :
+#   "No ruleset has been found. Please provide a ruleset using the
+#    spectral_ruleset option, or make sure your ruleset file matches
+#    .?spectral.(js|ya?ml|json)"
+#
+# Ce fichier active le ruleset standard `spectral:oas` qui couvre :
+#   - structure OpenAPI 3.x valide
+#   - operations avec operationId unique
+#   - responses documentees
+#   - parametres typees
+#   - examples valides vs schema
+#
+# Reference : https://docs.stoplight.io/docs/spectral/4dec24461f3af-open-api-rules
+#
+# Si certaines regles se revelent trop strictes pour le projet
+# (operation-tags, openapi-tags, info-contact, etc.), les desactiver
+# individuellement ici via :
+#   rules:
+#     operation-tags: off
+#     info-contact: warn  # downgrade en warning au lieu d'erreur
+extends:
+  - spectral:oas
