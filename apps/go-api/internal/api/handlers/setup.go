@@ -80,7 +80,7 @@ func (h *SetupHandler) CreatePlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.ProfileMode == "" {
-		req.ProfileMode = "xbox"
+		req.ProfileMode = authModeXbox
 	}
 
 	// Sprint 44 : injecter le titre courant depuis le contexte.
@@ -184,9 +184,9 @@ func (h *SetupHandler) SmokeTest(w http.ResponseWriter, r *http.Request) {
 			j.CurrentStep = &done
 			j.Warnings = warnings
 			if len(warnings) == 0 {
-				j.Result = map[string]any{"status": "ok"}
+				j.Result = map[string]any{jsonKeyStatus: "ok"}
 			} else {
-				j.Result = map[string]any{"status": "ok_with_warnings"}
+				j.Result = map[string]any{jsonKeyStatus: "ok_with_warnings"}
 			}
 		})
 	}()

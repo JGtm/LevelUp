@@ -23,6 +23,8 @@ import (
 	"database/sql"
 	"log/slog"
 	"strings"
+
+	"levelup/go-api/internal/games"
 )
 
 // EnrichRegistryFromMetadata résout les noms d'assets (playlist, map, pair,
@@ -43,10 +45,10 @@ func EnrichRegistryFromMetadata(ctx context.Context, metadataDB *sql.DB, row *Ma
 		namePtr   **string
 	}
 	fields := []field{
-		{"playlist", row.PlaylistID, &row.PlaylistName},
-		{"map", row.MapID, &row.MapName},
-		{"pair", row.PairID, &row.PairName},
-		{"game_variant", row.GameVariantID, &row.GameVariantName},
+		{games.AssetKindPlaylist, row.PlaylistID, &row.PlaylistName},
+		{games.AssetKindMap, row.MapID, &row.MapName},
+		{games.AssetKindPair, row.PairID, &row.PairName},
+		{games.AssetKindGameVariant, row.GameVariantID, &row.GameVariantName},
 	}
 
 	for _, f := range fields {

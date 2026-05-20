@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
@@ -39,7 +40,7 @@ type ProgressionHandler struct {
 // NewProgressionHandler construit le handler.
 func NewProgressionHandler(resolve ProgressionResolver, titleSlug string) *ProgressionHandler {
 	if titleSlug == "" {
-		titleSlug = "halo_infinite"
+		titleSlug = title.DefaultSlug
 	}
 	return &ProgressionHandler{resolve: resolve, titleSlug: titleSlug}
 }

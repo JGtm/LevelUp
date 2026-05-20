@@ -17,6 +17,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+
+	"levelup/go-api/internal/games"
 )
 
 // BackfillRegistryStats résume les compteurs après un run de backfill.
@@ -59,10 +61,10 @@ func BackfillRegistryNames(ctx context.Context, sharedDB, metadataDB *sql.DB) (B
 		fixed     *int
 	}
 	cols := []column{
-		{"playlist", "playlist_id", "playlist_name", &stats.PlaylistsScanned, &stats.PlaylistsFixed},
-		{"map", "map_id", "map_name", &stats.MapsScanned, &stats.MapsFixed},
-		{"pair", "pair_id", "pair_name", &stats.PairsScanned, &stats.PairsFixed},
-		{"game_variant", "game_variant_id", "game_variant_name", &stats.VariantsScanned, &stats.VariantsFixed},
+		{games.AssetKindPlaylist, "playlist_id", "playlist_name", &stats.PlaylistsScanned, &stats.PlaylistsFixed},
+		{games.AssetKindMap, "map_id", "map_name", &stats.MapsScanned, &stats.MapsFixed},
+		{games.AssetKindPair, "pair_id", "pair_name", &stats.PairsScanned, &stats.PairsFixed},
+		{games.AssetKindGameVariant, "game_variant_id", "game_variant_name", &stats.VariantsScanned, &stats.VariantsFixed},
 	}
 
 	for _, c := range cols {

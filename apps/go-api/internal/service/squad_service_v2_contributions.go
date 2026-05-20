@@ -20,6 +20,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
@@ -107,8 +108,8 @@ func BuildFragsDeathsCombined(rowsByPlayer map[string][]canonical.PlayerMatchRow
 		dps = append(dps, domain.ChartPointStacked{
 			Category: gt,
 			Components: map[string]float64{
-				"kills":  float64(kills),
-				"deaths": float64(deaths),
+				analysis.StatLabelKills:  float64(kills),
+				analysis.StatLabelDeaths: float64(deaths),
 			},
 		})
 	}
@@ -167,7 +168,7 @@ func BuildKillingSpreeMax(rowsByPlayer map[string][]canonical.PlayerMatchRow) []
 			Key:        "squad.contrib.killing_spree." + gt,
 			LabelKey:   "squad.contrib.killing_spree_title",
 			Datapoints: dps,
-			Meta:       map[string]any{"gamertag": gt},
+			Meta:       map[string]any{chartMetaGamertag: gt},
 		})
 	}
 	return out

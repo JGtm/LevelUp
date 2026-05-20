@@ -22,6 +22,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/campaign"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -34,7 +35,7 @@ type CampaignHandler struct {
 // NewCampaignHandler construit le handler.
 func NewCampaignHandler(resolve ProgressionResolver, titleSlug string) *CampaignHandler {
 	if titleSlug == "" {
-		titleSlug = "halo_infinite"
+		titleSlug = title.DefaultSlug
 	}
 	return &CampaignHandler{resolve: resolve, titleSlug: titleSlug}
 }

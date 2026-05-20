@@ -21,14 +21,23 @@ import (
 	"strings"
 )
 
+// Alias canoniques de playlist (clés dans allowedPlaylistKinds + utilisés
+// comme valeurs CLI/URL ranked_context).
+const (
+	PlaylistKindRanked    = "ranked"
+	PlaylistKindSocial    = "social"
+	PlaylistKindBTB       = "btb"
+	PlaylistKindFirefight = "firefight"
+)
+
 // allowedPlaylistKinds est l'ensemble ferme des alias supportes.
 // Toute valeur en dehors est rejetee. Source de verite cote handler ;
 // duckdb.playlistKindClause partage la meme liste.
 var allowedPlaylistKinds = map[string]struct{}{
-	"ranked":    {},
-	"social":    {},
-	"btb":       {},
-	"firefight": {},
+	PlaylistKindRanked:    {},
+	PlaylistKindSocial:    {},
+	PlaylistKindBTB:       {},
+	PlaylistKindFirefight: {},
 }
 
 // IsValidPlaylistKind retourne true si l'alias est dans la whitelist.

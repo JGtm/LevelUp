@@ -26,6 +26,13 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// Clés métriques canoniques utilisées dans MetricXKey/MetricYKey + KpiCards.
+const (
+	tsMetricKeyKills    = "kills"
+	tsMetricKeyAccuracy = "accuracy"
+	tsLabelUnknown      = "Unknown"
+)
+
 // TimeseriesService construit la rÃ©ponse timeseries au format FastAPI.
 type TimeseriesService struct {
 	statsRepo port.StatsRepository
@@ -458,7 +465,7 @@ func aggregateMapStats(rows []legacymatch.StatsMatchRow) map[string]*mapAgg {
 			label = r.MapName
 		}
 		if label == "" {
-			label = "Unknown"
+			label = tsLabelUnknown
 		}
 		// Clé = label affiché (StatsMatchRow n'expose pas de map_id).
 		// Cohérent avec le fallback de computeMapBreakdown côté squad.
@@ -832,7 +839,7 @@ func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.Times
 	if accN > 0 {
 		avgAcc := accSum / float64(accN) * 100
 		cards = append(cards, domain.TimeseriesKpiCard{
-			Key: "accuracy", Label: "PrÃ©cision", Value: fmt.Sprintf("%.1f%%", avgAcc),
+			Key: tsMetricKeyAccuracy, Label: "PrÃ©cision", Value: fmt.Sprintf("%.1f%%", avgAcc),
 		})
 	}
 
@@ -1099,18 +1106,18 @@ func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.Correl
 		// P7.1 (revue 2026-04-29) : Label composite ("kills_vs_kd") séparé en
 		// MetricXKey/MetricYKey ; X/Y → XValue/YValue.
 		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: "kills", MetricYKey: "kd_ratio",
+			MetricXKey: tsMetricKeyKills, MetricYKey: "kd_ratio",
 			XValue: float64(m.Kills), YValue: math.Round(kd*100) / 100, Outcome: m.Outcome,
 		})
 		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: "lifespan", MetricYKey: "kills",
+			MetricXKey: "lifespan", MetricYKey: tsMetricKeyKills,
 			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Kills), Outcome: m.Outcome,
 		})
 		if m.Accuracy != nil && m.KDA != nil {
 			// Accuracy déjà en % 0..100 (sync/transforms.go:315) — round à 1 décimale
 			// sans re-multiplier (bug historique du *100 qui sortait du domaine).
 			points = append(points, domain.CorrelationDataPair{
-				MetricXKey: "accuracy", MetricYKey: "kda",
+				MetricXKey: tsMetricKeyAccuracy, MetricYKey: "kda",
 				XValue: math.Round(*m.Accuracy*10) / 10, YValue: math.Round(*m.KDA*100) / 100, Outcome: m.Outcome,
 			})
 		}
@@ -1119,7 +1126,7 @@ func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.Correl
 			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Deaths), Outcome: m.Outcome,
 		})
 		points = append(points, domain.CorrelationDataPair{
-			MetricXKey: "kills", MetricYKey: "deaths",
+			MetricXKey: tsMetricKeyKills, MetricYKey: "deaths",
 			XValue: float64(m.Kills), YValue: float64(m.Deaths), Outcome: m.Outcome,
 		})
 		if m.TeamMMR != nil && m.EnemyMMR != nil {

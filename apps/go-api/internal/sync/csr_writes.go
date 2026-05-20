@@ -46,12 +46,12 @@ type MatchCSRRow struct {
 // tierENtoFR mappe le tier EN renvoyé par l'API Halo vers son équivalent FR.
 // Les valeurs vides ("" → placement) sont gérées en amont par ExtractCSRRowIfRanked.
 var tierENtoFR = map[string]string{
-	"Bronze":   "Bronze",
-	"Silver":   "Argent",
-	"Gold":     "Or",
-	"Platinum": "Platine",
-	"Diamond":  "Diamant",
-	"Onyx":     "Onyx",
+	TierBronze:   "Bronze",
+	TierSilver:   "Argent",
+	TierGold:     "Or",
+	TierPlatinum: TierLabelPlatine,
+	TierDiamond:  "Diamant",
+	TierOnyx:     "Onyx",
 }
 
 // translateTierFR retourne la traduction FR du tier EN ; retourne le tier EN
@@ -71,7 +71,7 @@ func formatCSRTierLabel(tier, tierFR string, subTier int, value int, measurement
 	if measurementRemaining > 0 || tier == "" {
 		return fmt.Sprintf("Placement (%d restant%s)", measurementRemaining, pluralS(measurementRemaining))
 	}
-	if tier == "Onyx" {
+	if tier == TierOnyx {
 		return fmt.Sprintf("Onyx %d", value)
 	}
 	if subTier > 0 {
@@ -124,15 +124,15 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 		MatchID:                     reg.MatchID,
 		Tier:                        post.Tier,
 		SubTier:                     post.SubTier,
-		PlaylistGroup:               "ranked",
+		PlaylistGroup:               PerfChainRanked,
 		StartTime:                   reg.StartTime,
 		MeasurementMatchesRemaining: post.MeasurementMatchesRemaining,
 	}
 
 	// Placement : pas de rating final, pas de delta significatif.
 	if post.MeasurementMatchesRemaining > 0 || post.Tier == "" {
-		row.Tier = "Placement"
-		row.TierFR = "Placement"
+		row.Tier = TierLabelPlacement
+		row.TierFR = TierLabelPlacement
 		row.SubTier = 0
 		row.TierLabel = formatCSRTierLabel("", "", 0, 0, post.MeasurementMatchesRemaining)
 		return row

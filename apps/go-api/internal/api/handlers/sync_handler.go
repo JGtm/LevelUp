@@ -130,7 +130,7 @@ func (h *SyncHandler) emitMatchSynced(ctx context.Context, slug string, inserted
 		Severity: notifications.SeveritySuccess,
 		TitleKey: "notif.match_synced.title",
 		BodyKey:  "notif.match_synced.body",
-		Params:   map[string]any{"count": inserted},
+		Params:   map[string]any{jsonKeyCount: inserted},
 		Source:   "sync_handler",
 	}); err != nil {
 		slog.WarnContext(ctx, "notifications: match_synced emit", "err", err)

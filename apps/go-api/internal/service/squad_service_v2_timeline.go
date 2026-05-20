@@ -61,7 +61,7 @@ func BuildTimelineMultiPlayer(rowsByPlayer map[string][]canonical.PlayerMatchRow
 			Key:        "squad.synergies.timeline_perf." + gt,
 			LabelKey:   "squad.synergies.timeline_player",
 			Datapoints: dps,
-			Meta:       map[string]any{"gamertag": gt},
+			Meta:       map[string]any{chartMetaGamertag: gt},
 		})
 	}
 	return out

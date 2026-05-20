@@ -358,7 +358,7 @@ func itemDefLocalizedText(v any, preferLang string) string {
 		return strings.TrimSpace(typed)
 	case map[string]any:
 		if trans, ok := typed["translations"].(map[string]any); ok {
-			for _, lang := range []string{preferLang, "fr-FR", "en-US", "en"} {
+			for _, lang := range []string{preferLang, LangCodeFR, LangCodeEN, "en"} {
 				if s, ok := trans[lang].(string); ok && strings.TrimSpace(s) != "" {
 					return strings.TrimSpace(s)
 				}
@@ -462,14 +462,14 @@ func (s *PersistSink) upsertItemTranslations(
 
 	entries := []langEntry{
 		{
-			lang:        "fr-FR",
-			title:       itemDefLocalizedText(cd.Title, "fr-FR"),
-			description: itemDefLocalizedText(cd.Description, "fr-FR"),
+			lang:        LangCodeFR,
+			title:       itemDefLocalizedText(cd.Title, LangCodeFR),
+			description: itemDefLocalizedText(cd.Description, LangCodeFR),
 		},
 		{
-			lang:        "en-US",
-			title:       itemDefLocalizedText(cd.Title, "en-US"),
-			description: itemDefLocalizedText(cd.Description, "en-US"),
+			lang:        LangCodeEN,
+			title:       itemDefLocalizedText(cd.Title, LangCodeEN),
+			description: itemDefLocalizedText(cd.Description, LangCodeEN),
 		},
 	}
 

@@ -181,8 +181,8 @@ func BuildMatchCadenceChartFromCanonical(
 		LabelKey:   "match_view.combat.cadence_title",
 		Datapoints: dps,
 		Meta: map[string]any{
-			"phase_seconds": MatchCadencePhaseSeconds,
-			"bucket_count":  maxBuckets,
+			chartMetaPhaseSeconds: MatchCadencePhaseSeconds,
+			"bucket_count":        maxBuckets,
 		},
 	}
 }

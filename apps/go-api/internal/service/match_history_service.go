@@ -839,7 +839,7 @@ func compareMatchHistoryRows(a, b domain.MatchHistoryRow, field string) bool {
 		return cmpNullInt(a.PerformanceScoreRelative, b.PerformanceScoreRelative)
 	case "kda":
 		return cmpNullFloat(a.KDA, b.KDA)
-	case "kills":
+	case scopeKills:
 		return a.Kills < b.Kills
 	default: // start_time
 		return a.StartTime.Before(b.StartTime)

@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -102,12 +104,12 @@ func isRankedPlaylist(matchInfo map[string]any) bool {
 		return false
 	}
 	name, _ := playlist["PublicName"].(string)
-	if strings.Contains(strings.ToLower(name), "ranked") {
+	if strings.Contains(strings.ToLower(name), PerfChainRanked) {
 		return true
 	}
 	if tags, ok := playlist["Tags"].([]any); ok {
 		for _, t := range tags {
-			if s, ok := t.(string); ok && strings.ToLower(s) == "ranked" {
+			if s, ok := t.(string); ok && strings.ToLower(s) == PerfChainRanked {
 				return true
 			}
 		}
@@ -139,18 +141,18 @@ func isFirefightMatch(matchInfo map[string]any) bool {
 func determineModeCategory(pairName string) string {
 	lower := strings.ToLower(pairName)
 	switch {
-	case strings.Contains(lower, "ranked"):
-		return "Ranked"
-	case strings.Contains(lower, "firefight"):
-		return "Firefight"
+	case strings.Contains(lower, PerfChainRanked):
+		return halo_infinite.ModeCategoryRanked
+	case strings.Contains(lower, PerfChainFirefight):
+		return halo_infinite.ModeCategoryFirefight
 	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team") || strings.Contains(lower, "big-team"):
-		return "BTB"
+		return halo_infinite.ModeCategoryBTB
 	case strings.Contains(lower, "fiesta"):
-		return "Fiesta"
+		return halo_infinite.ModeCategoryFiesta
 	case strings.Contains(lower, "assassin"):
-		return "Assassin"
+		return halo_infinite.ModeCategoryAssassin
 	default:
-		return "Other"
+		return halo_infinite.ModeCategoryOther
 	}
 }
 

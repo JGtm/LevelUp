@@ -65,7 +65,7 @@ func skillTierLabel(en string) string {
 	case csrTierDiamond:
 		return "Diamant"
 	case csrTierOnyx:
-		return "Onyx"
+		return csrTierOnyx
 	default:
 		return en
 	}

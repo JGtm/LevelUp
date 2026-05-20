@@ -37,6 +37,11 @@ type CareerRankData struct {
 
 // syncCareerRank récupère la progression du rang carrière via le client Halo.
 // Si le token joueur est absent, la sync est sautée proprement (nil, nil).
+// Utilisée uniquement par career_integration_test.go (-tags=integration) ;
+// le code prod passe par syncEngine.fetchCareerRank — preserve pour les
+// tests d'intégration sans modification d'API.
+//
+//nolint:unused // utilisée par career_integration_test.go (tags=integration)
 func syncCareerRank(
 	ctx context.Context,
 	client HaloClient,
@@ -106,6 +111,8 @@ func parseCareerRank(body map[string]interface{}, xuid string) *CareerRankData {
 }
 
 // saveCareerRank insère un snapshot de progression dans la player DB.
+//
+//nolint:unused // utilisée par career_test.go + career_integration_test.go
 func saveCareerRank(db *sql.DB, data *CareerRankData) error {
 	now := time.Now().UTC()
 	_, err := db.Exec(`
@@ -229,6 +236,7 @@ func saveCSRSnapshots(db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (in
 	return inserted, nil
 }
 
+//nolint:unused // utilisée par career_integration_test.go (tags=integration)
 func openCareerMetadataDB(path string) (*duckdbpkg.DB, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("openCareerMetadataDB: path vide")

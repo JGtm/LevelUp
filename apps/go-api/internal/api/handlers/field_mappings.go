@@ -94,7 +94,7 @@ func (h *FieldMappingsHandler) WithSeasonsCatalog(resolver SeasonsCatalogResolve
 // est activée. Par défaut false en Phase A.
 func MultiTitleAPIEnabled() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv("MULTI_TITLE_API_ENABLED")))
-	return v == "1" || v == "true" || v == "yes"
+	return v == "1" || v == jsonBoolTrueStr || v == "yes"
 }
 
 type fieldMappingDTO struct {

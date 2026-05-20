@@ -129,7 +129,7 @@ func (h *PrestigeHandler) ListActiveChallenges(w http.ResponseWriter, r *http.Re
 		writeServiceError(r.Context(), w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"challenges": list, "count": len(list)})
+	writeJSON(w, http.StatusOK, map[string]any{"challenges": list, jsonKeyCount: len(list)})
 }
 
 // ─────────── UpdateChallenge ───────────
@@ -288,7 +288,7 @@ func (h *PrestigeHandler) ListArcs(w http.ResponseWriter, r *http.Request) {
 		writeServiceError(r.Context(), w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"arcs": arcs, "count": len(arcs)})
+	writeJSON(w, http.StatusOK, map[string]any{"arcs": arcs, jsonKeyCount: len(arcs)})
 }
 
 // ─────────── Squad challenges ───────────
@@ -348,7 +348,7 @@ func (h *PrestigeHandler) ListSquadChallenges(w http.ResponseWriter, r *http.Req
 		writeServiceError(r.Context(), w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"squad_challenges": list, "count": len(list)})
+	writeJSON(w, http.StatusOK, map[string]any{"squad_challenges": list, jsonKeyCount: len(list)})
 }
 
 type joinSquadChallengeBody struct {
@@ -459,7 +459,7 @@ func (h *PrestigeHandler) RefreshSquadPool(w http.ResponseWriter, r *http.Reques
 		writeServiceError(r.Context(), w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"pool": pool, "count": len(pool)})
+	writeJSON(w, http.StatusOK, map[string]any{"pool": pool, jsonKeyCount: len(pool)})
 }
 
 // ─────────── Helper d'erreurs ───────────

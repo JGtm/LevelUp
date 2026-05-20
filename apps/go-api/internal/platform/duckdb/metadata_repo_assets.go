@@ -7,6 +7,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"levelup/go-api/internal/games"
 )
 
 // GetDistinctAssetIDs retourne les asset_ids distincts depuis match_registry.
@@ -23,10 +25,10 @@ func (r *MetadataRepo) GetDistinctAssetIDs(
 	sharedDB *DB,
 ) ([]string, error) {
 	columnMap := map[string]string{
-		"map":          "map_id",
-		"playlist":     "playlist_id",
-		"pair":         "pair_id",
-		"game_variant": "game_variant_id",
+		"map":                      "map_id",
+		games.AssetKindPlaylist:    "playlist_id",
+		games.AssetKindPair:        "pair_id",
+		games.AssetKindGameVariant: "game_variant_id",
 	}
 
 	column, ok := columnMap[assetType]
@@ -330,13 +332,13 @@ func (r *MetadataRepo) ResolveAssetNamesBulk(
 func PreferredLangsForLocale(locale string) []string {
 	switch strings.ToLower(strings.TrimSpace(locale)) {
 	case "fr", "fr-fr", "fr_fr":
-		return []string{"fr-FR", "fr", "en-US", "en"}
+		return []string{LangCodeFR, "fr", LangCodeEN, "en"}
 	case "en", "en-us", "en_us":
-		return []string{"en-US", "en", "fr-FR", "fr"}
+		return []string{LangCodeEN, "en", LangCodeFR, "fr"}
 	default:
 		// Locale inconnue : préférence par défaut FR (le projet est FR-first),
 		// puis EN, puis n'importe quoi.
-		return []string{"fr-FR", "fr", "en-US", "en"}
+		return []string{LangCodeFR, "fr", LangCodeEN, "en"}
 	}
 }
 

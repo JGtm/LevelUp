@@ -457,10 +457,10 @@ func (s *CareerService) loadSeasonCatalog(ctx context.Context) []SeasonCatalogEn
 // Toute autre valeur (vide, "tous", etc.) → "all" (= pas de filtre).
 func normalizeExperience(v string) string {
 	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "ranked":
-		return "ranked"
-	case "unranked":
-		return "unranked"
+	case scopeRanked:
+		return scopeRanked
+	case scopeUnranked:
+		return scopeUnranked
 	default:
 		return "all"
 	}
@@ -529,8 +529,8 @@ func computeHighlightAvailableExperience(pool []domain.HighlightMatchPoolRow, se
 	}
 	return []domain.HighlightExperienceCount{
 		{Value: "all", Count: counts.all},
-		{Value: "ranked", Count: counts.ranked},
-		{Value: "unranked", Count: counts.unranked},
+		{Value: scopeRanked, Count: counts.ranked},
+		{Value: scopeUnranked, Count: counts.unranked},
 	}
 }
 

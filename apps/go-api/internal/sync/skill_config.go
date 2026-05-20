@@ -254,14 +254,28 @@ type SkillTier struct {
 	SubTiers  int
 }
 
+// Noms canoniques EN des tiers CSR/LUSR (réutilisés par csr_writes).
+const (
+	TierBronze   = "Bronze"
+	TierSilver   = "Silver"
+	TierGold     = "Gold"
+	TierPlatinum = "Platinum"
+	TierDiamond  = "Diamond"
+	TierOnyx     = "Onyx"
+	// Label FR équivalent uniquement utilisé pour SkillTiers (Argent, Platine…).
+	TierLabelPlatine = "Platine"
+	// Label spécifique CSR placement.
+	TierLabelPlacement = "Placement"
+)
+
 // SkillTiers définit l'échelle LUSR (Bronze → Onyx).
 var SkillTiers = []SkillTier{
-	{"Bronze", "Bronze", 1000.0, 1200.0, "#CD7F32", 6},
-	{"Silver", "Argent", 1200.0, 1400.0, "#C0C0C0", 6},
-	{"Gold", "Or", 1400.0, 1600.0, "#FFD700", 6},
-	{"Platinum", "Platine", 1600.0, 1800.0, "#00CED1", 6},
-	{"Diamond", "Diamant", 1800.0, 2000.0, "#B9F2FF", 6},
-	{"Onyx", "Onyx", 2000.0, 9999.0, "#1C1C1C", 1},
+	{TierBronze, "Bronze", 1000.0, 1200.0, "#CD7F32", 6},
+	{TierSilver, "Argent", 1200.0, 1400.0, "#C0C0C0", 6},
+	{TierGold, "Or", 1400.0, 1600.0, "#FFD700", 6},
+	{TierPlatinum, TierLabelPlatine, 1600.0, 1800.0, "#00CED1", 6},
+	{TierDiamond, "Diamant", 1800.0, 2000.0, "#B9F2FF", 6},
+	{TierOnyx, "Onyx", 2000.0, 9999.0, "#1C1C1C", 1},
 }
 
 var romanNumerals = map[int]string{1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}

@@ -242,12 +242,12 @@ func SeasonsFromAssets(assets *mappings.AssetMappingSet) []SeasonWindow {
 // Doit rester cohérent avec synthesisExperienceLabel (teammates_service.go).
 func rowExperienceLabel(r domain.FilterMatchRow) string {
 	if r.IsFirefight {
-		return "PVE"
+		return expTypePVE
 	}
 	if r.IsRanked {
-		return "PVP classé"
+		return expTypePVPRanked
 	}
-	return "PVP non classé"
+	return expTypePVPUnranked
 }
 
 // buildAvailableOptions calcule les options disponibles pour les 4 catégories

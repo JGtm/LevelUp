@@ -1359,7 +1359,7 @@ func buildImpactInput(events []domain.EventRaw, scoreboard []domain.ScoreboardRa
 			continue
 		}
 		et := ev.EventType
-		if et != "kill" && et != "death" {
+		if et != analysis.EventTypeKill && et != analysis.EventTypeDeath {
 			continue
 		}
 		impactEvents = append(impactEvents, analysis.ImpactEvent{

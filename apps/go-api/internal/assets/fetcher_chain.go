@@ -93,6 +93,6 @@ func (f *SpritesheetFallbackFetcher) Fetch(ctx context.Context, ref Ref) (Payloa
 	)
 	return URLPayload{
 		URL:         spritesheetURL,
-		ContentType: "image/png",
+		ContentType: MimeImagePNG,
 	}, nil
 }

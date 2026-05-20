@@ -105,7 +105,7 @@ func NewRegistry() *Registry {
 	r.Register(&TitleDescriptor{
 		Slug:     DefaultSlug,
 		Name:     "Halo Infinite",
-		Provider: "halo_infinite",
+		Provider: DefaultSlug,
 		Status:   StatusActive,
 		Capabilities: []Capability{
 			CapMatchmaking, CapFirefight, CapForge,

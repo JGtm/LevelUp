@@ -22,6 +22,13 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
+// Clés ChartSeries.Key et Meta keys partagées par les helpers Squad V2.
+const (
+	chartKeySquadCadence  = "squad.synergies.cadence"
+	chartMetaPhaseSeconds = "phase_seconds"
+	chartMetaGamertag     = "gamertag"
+)
+
 // DefaultCadencePhaseSeconds est la taille de phase par defaut pour le
 // decoupage cadence. 60 secondes correspond au reglage UX Squad V2 pilote.
 const DefaultCadencePhaseSeconds = 60
@@ -52,10 +59,10 @@ func BuildCadenceChart(
 	}
 	if len(squadXUIDs) == 0 {
 		return domain.ChartSeries[domain.ChartPointStacked]{
-			Key:      "squad.synergies.cadence",
+			Key:      chartKeySquadCadence,
 			LabelKey: "squad.synergies.cadence_title",
 			Meta: map[string]any{
-				"phase_seconds": phaseSeconds,
+				chartMetaPhaseSeconds: phaseSeconds,
 			},
 		}
 	}
@@ -68,10 +75,10 @@ func BuildCadenceChart(
 	profiles := narrative.ComputeCadenceProfiles(events, xuids, phaseSeconds)
 	if len(profiles) == 0 {
 		return domain.ChartSeries[domain.ChartPointStacked]{
-			Key:      "squad.synergies.cadence",
+			Key:      chartKeySquadCadence,
 			LabelKey: "squad.synergies.cadence_title",
 			Meta: map[string]any{
-				"phase_seconds": phaseSeconds,
+				chartMetaPhaseSeconds: phaseSeconds,
 			},
 		}
 	}
@@ -116,12 +123,12 @@ func BuildCadenceChart(
 		})
 	}
 	return domain.ChartSeries[domain.ChartPointStacked]{
-		Key:        "squad.synergies.cadence",
+		Key:        chartKeySquadCadence,
 		LabelKey:   "squad.synergies.cadence_title",
 		Datapoints: dps,
 		Meta: map[string]any{
-			"phase_seconds": phaseSeconds,
-			"bucket_count":  maxBuckets,
+			chartMetaPhaseSeconds: phaseSeconds,
+			"bucket_count":        maxBuckets,
 		},
 	}
 }

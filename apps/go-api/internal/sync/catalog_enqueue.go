@@ -16,6 +16,8 @@ import (
 	"context"
 	"database/sql"
 	"log/slog"
+
+	"levelup/go-api/internal/games"
 )
 
 // EnqueueCatalogAssets vérifie si les asset IDs du match sont absents du
@@ -41,10 +43,10 @@ func EnqueueCatalogAssets(ctx context.Context, metadataDB *sql.DB, titleSlug str
 		versionID *string
 	}
 	candidates := []asset{
-		{"playlist", row.PlaylistID, row.PlaylistVersionID},
-		{"pair", row.PairID, row.PairVersionID},
-		{"map", row.MapID, row.MapVersionID},
-		{"game_variant", row.GameVariantID, row.GameVariantVersionID},
+		{games.AssetKindPlaylist, row.PlaylistID, row.PlaylistVersionID},
+		{games.AssetKindPair, row.PairID, row.PairVersionID},
+		{games.AssetKindMap, row.MapID, row.MapVersionID},
+		{games.AssetKindGameVariant, row.GameVariantID, row.GameVariantVersionID},
 	}
 
 	for _, c := range candidates {
@@ -83,13 +85,13 @@ func EnqueueCatalogAssets(ctx context.Context, metadataDB *sql.DB, titleSlug str
 func catalogAssetExists(ctx context.Context, db *sql.DB, titleSlug, assetType, assetID string) (bool, error) {
 	var query string
 	switch assetType {
-	case "playlist":
+	case games.AssetKindPlaylist:
 		query = `SELECT EXISTS(SELECT 1 FROM playlists_catalog WHERE title_slug = ? AND playlist_asset_id = ?)`
-	case "pair":
+	case games.AssetKindPair:
 		query = `SELECT EXISTS(SELECT 1 FROM map_mode_pair_definitions WHERE title_slug = ? AND pair_asset_id = ?)`
-	case "map":
+	case games.AssetKindMap:
 		query = `SELECT EXISTS(SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ?)`
-	case "game_variant":
+	case games.AssetKindGameVariant:
 		query = `SELECT EXISTS(SELECT 1 FROM game_variants_catalog WHERE title_slug = ? AND game_variant_asset_id = ?)`
 	default:
 		return false, nil

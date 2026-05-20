@@ -143,7 +143,7 @@ func (s *OpenSpartanPostImportService) recomputeSessions(
 		}, nil,
 	)
 	if err != nil {
-		result.Errors = append(result.Errors, PostImportError{Stage: "sessions", Err: err.Error()})
+		result.Errors = append(result.Errors, PostImportError{Stage: scopeSessions, Err: err.Error()})
 		s.log.Warn("post_import_sessions_failed", "xuid", xuid, "err", err)
 		return
 	}

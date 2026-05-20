@@ -42,7 +42,7 @@ func (h *SessionsHandler) GetSessions(w http.ResponseWriter, r *http.Request) {
 	if modeStr := r.URL.Query().Get("mode"); modeStr != "" {
 		opts.Mode = domain.SessionComputeMode(modeStr)
 	}
-	if splitRanked := r.URL.Query().Get("split_ranked"); splitRanked == "true" {
+	if splitRanked := r.URL.Query().Get("split_ranked"); splitRanked == jsonBoolTrueStr {
 		opts.SplitOnRankedChange = true
 	}
 

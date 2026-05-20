@@ -340,7 +340,7 @@ func MergeMedalSummary(
 				MedalID:   me.MedalID,
 				MedalName: "Unknown",
 				Count:     me.TotalCount,
-				Category:  "misc",
+				Category:  domain.CitationCategoryMisc,
 			})
 			continue
 		}

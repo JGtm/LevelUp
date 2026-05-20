@@ -243,7 +243,7 @@ func (h *WatcherHandler) pollWatcherAuth(attemptID string, flow auth_platform.De
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.WatcherAttempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "msal_acquire_error"
+			a.ErrorCode = errCodeMSALAcquire
 			a.ErrorDetail = err.Error()
 		})
 		slog.Warn("watcher_handler: Device Code Flow échoué", "attempt_id", attemptID, "err", err)

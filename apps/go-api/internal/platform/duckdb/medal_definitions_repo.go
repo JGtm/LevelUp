@@ -9,6 +9,14 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// Codes BCP-47 utilisés dans les tables de traductions DuckDB
+// (medal_translations, asset_translations, mode_translations). Externalisés
+// pour goconst (chacun apparaît à >10 endroits dans les repos).
+const (
+	LangCodeFR = "fr-FR"
+	LangCodeEN = "en-US"
+)
+
 // MedalDefinitionsRepo implémente port.MedalDefinitionsRepository.
 // Requête sur pdb.Metadata (medal_definitions + medal_translations).
 type MedalDefinitionsRepo struct {
@@ -25,9 +33,9 @@ func NewMedalDefinitionsRepo(pdb *PlayerDB) *MedalDefinitionsRepo {
 func medalLangCode(locale string) string {
 	switch strings.ToLower(strings.TrimSpace(locale)) {
 	case "fr", "fr-fr", "fr_fr":
-		return "fr-FR"
+		return LangCodeFR
 	default:
-		return "en-US"
+		return LangCodeEN
 	}
 }
 

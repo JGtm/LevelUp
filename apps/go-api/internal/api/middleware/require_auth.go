@@ -13,6 +13,13 @@ import (
 	"net/http"
 )
 
+// Clés JSON de la réponse d'erreur API (partagées par tous les middlewares).
+const (
+	errKeyCode      = "code"
+	errKeyMessage   = "message"
+	errKeyRetryable = "retryable"
+)
+
 // RequireAuth retourne un middleware qui bloque les requêtes non authentifiées.
 // Si demoMode est true ou authMode est "none", le middleware est transparent.
 func RequireAuth(demoMode bool, authMode ...string) func(http.Handler) http.Handler {
@@ -56,8 +63,8 @@ func writeAuthRequired(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
 	_ = json.NewEncoder(w).Encode(map[string]any{
-		"code":      "auth_required",
-		"message":   "Authentification requise.",
-		"retryable": false,
+		errKeyCode:      "auth_required",
+		errKeyMessage:   "Authentification requise.",
+		errKeyRetryable: false,
 	})
 }

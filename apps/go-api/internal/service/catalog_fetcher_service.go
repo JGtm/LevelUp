@@ -102,13 +102,13 @@ func (s *CatalogFetcherService) Drain(ctx context.Context, titleSlug string) (Dr
 		}
 		s.deleteFromQueue(ctx, titleSlug, e.assetType, e.assetID)
 		switch e.assetType {
-		case "playlist":
+		case games.AssetKindPlaylist:
 			res.Playlists++
-		case "pair":
+		case games.AssetKindPair:
 			res.Pairs++
-		case "map":
+		case games.AssetKindMap:
 			res.Maps++
-		case "game_variant":
+		case games.AssetKindGameVariant:
 			res.GameVariants++
 		}
 	}
@@ -120,25 +120,25 @@ func (s *CatalogFetcherService) processEntry(ctx context.Context, adapter games.
 	titleSlug, assetType, assetID, versionID string,
 ) error {
 	switch assetType {
-	case "playlist":
+	case games.AssetKindPlaylist:
 		pl, err := adapter.FetchPlaylist(ctx, assetID, versionID)
 		if err != nil {
 			return err
 		}
 		return s.upsertPlaylist(ctx, titleSlug, pl)
-	case "pair":
+	case games.AssetKindPair:
 		pair, err := adapter.FetchPair(ctx, assetID, versionID)
 		if err != nil {
 			return err
 		}
 		return s.upsertPair(ctx, titleSlug, pair)
-	case "map":
+	case games.AssetKindMap:
 		m, err := adapter.FetchMap(ctx, assetID, versionID)
 		if err != nil {
 			return err
 		}
 		return s.upsertMap(ctx, titleSlug, m)
-	case "game_variant":
+	case games.AssetKindGameVariant:
 		gv, err := adapter.FetchGameVariant(ctx, assetID, versionID)
 		if err != nil {
 			return err
