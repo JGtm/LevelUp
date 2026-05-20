@@ -141,21 +141,6 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 	})
 }
 
-// writeServerError est un raccourci pour les erreurs serveur où une `err` Go est
-// en scope : log Error avec err.Error() + chaîne complète sous "err", et
-// renvoie status 500 + code + message générique au client.
-//
-// L'`err` Go est loggée mais **pas** renvoyée brute au client (évite de leaker
-// des paths internes / SQL / etc.). Le `message` doit être un texte safe.
-func writeServerError(ctx context.Context, w http.ResponseWriter, code, message string, err error) {
-	logErrorResponse(ctx, http.StatusInternalServerError, code, message, err)
-	writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
-		"code":      code,
-		"message":   message,
-		"retryable": true,
-	})
-}
-
 // httpError est un wrapper de net/http.Error qui logge l'erreur côté serveur
 // (mêmes règles de niveau que writeError) avant de répondre en text/plain.
 //

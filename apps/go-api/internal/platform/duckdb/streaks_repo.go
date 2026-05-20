@@ -115,12 +115,12 @@ func (r *StreaksRepo) List(ctx context.Context, userID, titleSlug string) ([]str
 // rowScanner est défini dans prestige_player_helpers.go.
 func scanStreak(row rowScanner) (streaks.Streak, error) {
 	var (
-		s              streaks.Streak
-		streakType     string
-		streakStatus   string
-		lastIncrement  sql.NullTime
-		threshold      sql.NullFloat64
-		brokenAt       sql.NullTime
+		s             streaks.Streak
+		streakType    string
+		streakStatus  string
+		lastIncrement sql.NullTime
+		threshold     sql.NullFloat64
+		brokenAt      sql.NullTime
 	)
 	err := row.Scan(
 		&s.ID, &s.UserID, &s.TitleSlug, &streakType, &s.StartedAt,

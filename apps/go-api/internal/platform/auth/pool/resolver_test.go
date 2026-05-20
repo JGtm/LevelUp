@@ -24,9 +24,9 @@ type mockTokenProvider struct {
 	exchangeResult *auth.ExchangeResult // résultat Exchange
 	exchangeErr    error
 
-	mu              sync.Mutex
-	callLog         []string // log des appels pour vérifier le pipeline (thread-safe)
-	lastOauthRTArg  string   // dernière valeur de refreshToken reçue par TryOAuthRefresh*
+	mu             sync.Mutex
+	callLog        []string // log des appels pour vérifier le pipeline (thread-safe)
+	lastOauthRTArg string   // dernière valeur de refreshToken reçue par TryOAuthRefresh*
 }
 
 func (m *mockTokenProvider) InitDeviceFlow(ctx context.Context) (auth.DeviceFlow, error) {

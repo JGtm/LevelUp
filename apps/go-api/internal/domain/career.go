@@ -218,10 +218,14 @@ type HighlightMatchIDRow struct {
 //
 // ModeUISource     = COALESCE(pair_name_fr, pair_name) brut (sert au filtre SQL).
 // ModeUI           = label normalisé final affiché côté front
-//                    (analysis.NormalizeModeLabel + override mode_name_tr FR).
+//
+//	(analysis.NormalizeModeLabel + override mode_name_tr FR).
+//
 // PlaylistNameRaw  = COALESCE(playlist_name_fr, playlist_name) brut (filtre SQL).
 // PlaylistName     = label final affiché côté front (override asset_translations FR
-//                    si PlaylistNameRaw est encore EN après COALESCE).
+//
+//	si PlaylistNameRaw est encore EN après COALESCE).
+//
 // PlaylistID       = playlist_id (UUID) pour le lookup asset_translations.
 type HighlightMatchPoolRow struct {
 	MatchID         string
@@ -315,12 +319,12 @@ type HighlightPlaylistCount struct {
 // Tous les champs Available* sont cascade-aware : les counts respectent
 // tous les autres filtres actifs — alimentent les dropdowns à gauche du toggle.
 type CareerHighlightMatchesResponse struct {
-	BestMatches         []ExplorerMatchesRow        `json:"best_matches"`
-	WorstMatches        []ExplorerMatchesRow        `json:"worst_matches"`
-	AvailableExperience []HighlightExperienceCount  `json:"available_experience"`
-	AvailableSeasons    []HighlightSeasonCount      `json:"available_seasons"`
-	AvailableModes      []HighlightModeCount        `json:"available_modes"`
-	AvailablePlaylists  []HighlightPlaylistCount    `json:"available_playlists"`
+	BestMatches         []ExplorerMatchesRow       `json:"best_matches"`
+	WorstMatches        []ExplorerMatchesRow       `json:"worst_matches"`
+	AvailableExperience []HighlightExperienceCount `json:"available_experience"`
+	AvailableSeasons    []HighlightSeasonCount     `json:"available_seasons"`
+	AvailableModes      []HighlightModeCount       `json:"available_modes"`
+	AvailablePlaylists  []HighlightPlaylistCount   `json:"available_playlists"`
 }
 
 // CareerTopEncountersResponse est la réponse de

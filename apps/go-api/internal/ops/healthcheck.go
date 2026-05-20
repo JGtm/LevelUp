@@ -126,9 +126,9 @@ func (r HealthReport) Summary() string {
 		if !c.OK {
 			status = "❌"
 		}
-		sb.WriteString(fmt.Sprintf("%s  %-30s %s\n", status, c.Name, c.Message))
+		fmt.Fprintf(&sb, "%s  %-30s %s\n", status, c.Name, c.Message)
 	}
-	sb.WriteString(fmt.Sprintf("\nDurée: %s\n", r.Duration.Round(time.Millisecond)))
+	fmt.Fprintf(&sb, "\nDurée: %s\n", r.Duration.Round(time.Millisecond))
 	if r.OK {
 		sb.WriteString("Résultat: TOUT OK\n")
 	} else {

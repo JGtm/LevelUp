@@ -419,22 +419,6 @@ func TestHomeService_GetHomePage_CountMatchesFallback(t *testing.T) {
 // Tests cache TTL dans GetHomePage
 // ---------------------------------------------------------------------------
 
-// countingHomeRepo compte les appels Ã  LoadHomeMatches et LoadHomeSessions.
-type countingHomeRepo struct {
-	mockHomeRepo
-	matchCalls   int
-	sessionCalls int
-}
-
-func (m *countingHomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatchRow, error) {
-	m.matchCalls++
-	return m.mockHomeRepo.LoadHomeMatches(ctx)
-}
-func (m *countingHomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSessionRow, error) {
-	m.sessionCalls++
-	return m.mockHomeRepo.LoadHomeSessions(ctx)
-}
-
 func TestHomeService_GetHomePage_CacheHitSkipsDBCalls(t *testing.T) {
 	t.Skip("P4.3 finale : HomeMatchesCache bypassÃ© en mode canonical (TODO P4.4 cache canonical-aware)")
 }

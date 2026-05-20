@@ -30,10 +30,9 @@ import (
 
 // Service expose les lectures du profil de progression.
 type Service struct {
-	db        *duckdb.DB
-	pdb       *duckdb.PlayerDB
-	templates *prestige.TemplateRepo // optionnel — initialisé via Metadata
-	awards    *mappings.AwardMappingSet // optionnel — Section A1 radar fidèle (V2 §2)
+	db     *duckdb.DB
+	pdb    *duckdb.PlayerDB
+	awards *mappings.AwardMappingSet // optionnel — Section A1 radar fidèle (V2 §2)
 }
 
 // NewService construit un Service minimal pour V2 (Load uniquement).

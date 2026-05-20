@@ -60,9 +60,10 @@ func ComputeMVPLVP(scoreboard []domain.ScoreboardRaw) ScoreboardExtremes {
 			if c.inverted {
 				best, worst = minV, maxV
 			}
-			if v == best {
+			switch v {
+			case best:
 				bestCount[i]++
-			} else if v == worst {
+			case worst:
 				worstCount[i]++
 			}
 		}

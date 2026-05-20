@@ -62,14 +62,14 @@ const (
 // ProgressionDeps regroupe les dépendances injectées dans l'orchestrateur.
 // Permet de mocker en test sans construire toute la chaîne DI.
 type ProgressionDeps struct {
-	StreaksEvaluator    *streaks.Evaluator
-	RecordsDetector     *records.Detector
-	MilestonesDetector  *milestones.Detector
-	ProfileService      *profile.Service
-	CampaignService     *campaign.Service
-	CoachGenerator      *coach.Generator
-	Emitter             notifications.Emitter
-	NotificationsRepo   notifications.Repository
+	StreaksEvaluator   *streaks.Evaluator
+	RecordsDetector    *records.Detector
+	MilestonesDetector *milestones.Detector
+	ProfileService     *profile.Service
+	CampaignService    *campaign.Service
+	CoachGenerator     *coach.Generator
+	Emitter            notifications.Emitter
+	NotificationsRepo  notifications.Repository
 }
 
 // ProgressionResult capture l'état post-évaluation pour observabilité (tests

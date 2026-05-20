@@ -214,6 +214,7 @@ func (p *providerImpl) Get(ctx context.Context) (*sql.DB, func(), error) {
 		}
 	}
 }
+
 // State implémente Provider.State.
 func (p *providerImpl) State() State {
 	return State(p.state.Load())

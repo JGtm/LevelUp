@@ -16,8 +16,6 @@ package profile
 
 import (
 	"time"
-
-	"levelup/go-api/internal/analysis/narrative"
 )
 
 // PlayerProfile rassemble l'état de progression d'un joueur sur un titre.
@@ -40,11 +38,11 @@ type PlayerProfile struct {
 
 	// ── Section A1 : narrative ────────────────────────────────────────────
 
-	DominantRole     string             `json:"dominant_role,omitempty"`   // narrative.ImpactRole
-	SecondaryRole    string             `json:"secondary_role,omitempty"`
-	RadarAxes        []ParticipationAxisValue `json:"radar_axes,omitempty"` // 6 axes, valeurs 0..100
-	Strengths        []RadarAxisInsight `json:"strengths,omitempty"`        // top 3
-	ImprovementAreas []RadarAxisInsight `json:"improvement_areas,omitempty"` // bottom 3
+	DominantRole     string                   `json:"dominant_role,omitempty"` // narrative.ImpactRole
+	SecondaryRole    string                   `json:"secondary_role,omitempty"`
+	RadarAxes        []ParticipationAxisValue `json:"radar_axes,omitempty"`        // 6 axes, valeurs 0..100
+	Strengths        []RadarAxisInsight       `json:"strengths,omitempty"`         // top 3
+	ImprovementAreas []RadarAxisInsight       `json:"improvement_areas,omitempty"` // bottom 3
 
 	// ── Section A2 : style & discipline ───────────────────────────────────
 
@@ -93,14 +91,14 @@ type RadarAxisInsight struct {
 type StyleSignature struct {
 	FirstKillCount  int     `json:"first_kill_count"`
 	FirstDeathCount int     `json:"first_death_count"`
-	FKFDRatio       float64 `json:"fkfd_ratio"`            // FK / max(FD, 1)
-	StyleKey        string  `json:"style_key,omitempty"`   // "opportunistic_finisher" | "overextended" | "hyper_engaged" | "passive"
+	FKFDRatio       float64 `json:"fkfd_ratio"`          // FK / max(FD, 1)
+	StyleKey        string  `json:"style_key,omitempty"` // "opportunistic_finisher" | "overextended" | "hyper_engaged" | "passive"
 }
 
 // EngagementSnapshot capture le score d'engagement + régularité.
 type EngagementSnapshot struct {
-	Score            float64 `json:"score"`               // 0-100
-	Tier             string  `json:"tier"`                // "low" | "regular" | "high" | "intense"
+	Score            float64 `json:"score"` // 0-100
+	Tier             string  `json:"tier"`  // "low" | "regular" | "high" | "intense"
 	MatchesPerDayAvg float64 `json:"matches_per_day_avg"`
 	MaxGapDays       int     `json:"max_gap_days"`
 	RegularityCoach  string  `json:"regularity_coach,omitempty"` // i18n key
@@ -108,16 +106,16 @@ type EngagementSnapshot struct {
 
 // SkillRatingSnapshot capture le tier LUSR + progression vers le suivant.
 type SkillRatingSnapshot struct {
-	TierName       string  `json:"tier_name"`        // "Diamond"
-	TierNameFR     string  `json:"tier_name_fr"`     // "Diamant"
-	SubTier        int     `json:"sub_tier"`         // 1..6
-	Label          string  `json:"label"`            // "Diamond III"
-	Mu             float64 `json:"mu"`
-	Sigma          float64 `json:"sigma"`
-	NextTierLabel  string  `json:"next_tier_label,omitempty"`
-	NextTierMu     float64 `json:"next_tier_mu,omitempty"`
-	GapToNext      float64 `json:"gap_to_next,omitempty"`     // NextTierMu - Mu
-	ProgressRatio  float64 `json:"progress_ratio,omitempty"`  // 0..1 dans le sub-tier courant
+	TierName      string  `json:"tier_name"`    // "Diamond"
+	TierNameFR    string  `json:"tier_name_fr"` // "Diamant"
+	SubTier       int     `json:"sub_tier"`     // 1..6
+	Label         string  `json:"label"`        // "Diamond III"
+	Mu            float64 `json:"mu"`
+	Sigma         float64 `json:"sigma"`
+	NextTierLabel string  `json:"next_tier_label,omitempty"`
+	NextTierMu    float64 `json:"next_tier_mu,omitempty"`
+	GapToNext     float64 `json:"gap_to_next,omitempty"`    // NextTierMu - Mu
+	ProgressRatio float64 `json:"progress_ratio,omitempty"` // 0..1 dans le sub-tier courant
 }
 
 // LUSRComponentBreakdown décrit une des 8 composantes LUSR.
@@ -145,8 +143,8 @@ type ProgressionLeverage struct {
 // un libellé humain sans avoir à charger le catalogue séparément.
 type SuggestedChallenge struct {
 	TemplateID       string `json:"template_id"`
-	TargetTier       string `json:"target_tier"`        // "normal" | "heroic" | "legendary"
-	HistoricalStreak int    `json:"historical_streak"`  // nb complétions sur 90j (placeholder 0 en V1)
+	TargetTier       string `json:"target_tier"`       // "normal" | "heroic" | "legendary"
+	HistoricalStreak int    `json:"historical_streak"` // nb complétions sur 90j (placeholder 0 en V1)
 	IsArcStep        bool   `json:"is_arc_step"`
 	ArcID            string `json:"arc_id,omitempty"`
 
@@ -163,10 +161,6 @@ type SuggestedChallenge struct {
 // n'a pas assez de données pour les insights (Section A2 + B + C). Section A1
 // dégrade gracieusement (radar avec seulement les axes calculables).
 const MinMatchesForProfile = 30
-
-// reExportParticipationAxes liste les 6 axes du radar narrative (re-export
-// pour éviter au caller d'importer narrative directement).
-var reExportParticipationAxes = narrative.AllParticipationAxes
 
 // LUSRState capture l'état LUSR courant.
 type LUSRState struct {

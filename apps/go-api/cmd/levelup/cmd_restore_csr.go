@@ -221,44 +221,6 @@ func scanLegacyForCSRColumns(db *sql.DB) error {
 	return rows.Err()
 }
 
-// sampleTable affiche les 3 premières lignes brutes d'une table (utilisé en
-// debug par le dry-run pour inspecter le contenu réel).
-func sampleTable(db *sql.DB, table string) error {
-	rows, err := db.Query(fmt.Sprintf(`SELECT * FROM legacy.%s LIMIT 5`, table))
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	cols, err := rows.Columns()
-	if err != nil {
-		return err
-	}
-	fmt.Printf("\nÉchantillon legacy.%s (jusqu'à 5 lignes):\n", table)
-	fmt.Printf("  colonnes: %s\n", strings.Join(cols, ", "))
-	n := 0
-	for rows.Next() {
-		raw := make([]sql.NullString, len(cols))
-		ptrs := make([]any, len(cols))
-		for i := range raw {
-			ptrs[i] = &raw[i]
-		}
-		if err := rows.Scan(ptrs...); err != nil {
-			return err
-		}
-		parts := make([]string, len(cols))
-		for i, v := range raw {
-			if v.Valid {
-				parts[i] = v.String
-			} else {
-				parts[i] = "NULL"
-			}
-		}
-		fmt.Printf("  [%d] %s\n", n, strings.Join(parts, " | "))
-		n++
-	}
-	return rows.Err()
-}
-
 func describeLegacyTable(db *sql.DB, table string) error {
 	rows, err := db.Query(fmt.Sprintf(`DESCRIBE legacy.%s`, table))
 	if err != nil {

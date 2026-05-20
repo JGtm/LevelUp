@@ -11,32 +11,6 @@ import (
 	"testing"
 )
 
-// roundTripFn permet de mocker le HTTP transport sans démarrer un vrai serveur
-// pour ExchangeAuthorizationCode. Mais ExchangeAuthorizationCode utilise
-// http.Client interne (non injectable), donc on monte un httptest server et
-// on override msalTokenURL via une variable de package (déjà existante).
-//
-// Pour rester chirurgical (pas de modif d'API), on teste via httptest +
-// remplacement de msalTokenURL pendant le test (defer restore).
-
-func withMSALTokenURL(t *testing.T, override string, fn func()) {
-	t.Helper()
-	orig := msalTokenURL
-	defer func() {
-		// Note : msalTokenURL est une const dans le code source. On ne peut pas
-		// la réassigner. Solution : tester via le mock du transport global
-		// http.DefaultTransport (intrusif) ou en se contentant de tests
-		// "happy path" via un wrapper. Le simple test ci-dessous valide que :
-		// - code vide → erreur
-		// - redirect_uri vide → erreur
-		// - réponse Microsoft mal formée → erreur
-		// La validation HTTP réelle est exercée par les tests d'intégration.
-		_ = orig
-	}()
-	_ = override
-	fn()
-}
-
 func TestExchangeAuthorizationCode_EmptyCode(t *testing.T) {
 	_, err := ExchangeAuthorizationCode(context.Background(), "", "https://example.com/cb")
 	if err == nil {

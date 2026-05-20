@@ -340,7 +340,7 @@ func (s *PlayerEngagementService) loadRecentPvPMatchIDs(
 // StatsMatchRow complet (session_label, start_time).
 //
 //   - playerMatchesRepo cable + titleSlug/gamertag fournis : pipeline canonical
-//     + filterStatsMatchRows (honore FilterContextInput).
+//   - filterStatsMatchRows (honore FilterContextInput).
 //   - sinon : fast path SQL via ListRecentPvPMatchIDs ; rows == nil, fallbackIDs
 //     porte uniquement les match_ids. Binning desactive en aval (granularity
 //     reste "match").

@@ -128,17 +128,6 @@ func mergeAchievements(en, fr []PlayerAchievementRaw) []PlayerAchievement {
 	return result
 }
 
-// filterBySCID retient uniquement les achievements dont le ServiceConfigID correspond.
-func filterBySCID(achievements []PlayerAchievementRaw, scid string) []PlayerAchievementRaw {
-	out := make([]PlayerAchievementRaw, 0, len(achievements))
-	for _, a := range achievements {
-		if a.ServiceConfigID == scid {
-			out = append(out, a)
-		}
-	}
-	return out
-}
-
 // purgeStaleAchievementDefinitions supprime de metadata les achievements du titre
 // qui ne font plus partie de la liste synchronisée (ex: achievements d'autres jeux
 // Halo qui auraient été insérés avant l'introduction du filtre SCID).

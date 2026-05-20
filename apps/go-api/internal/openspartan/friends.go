@@ -48,9 +48,9 @@ func (r *Reader) LoadFriends(ctx context.Context) ([]FriendRow, error) {
 	var out []FriendRow
 	for rows.Next() {
 		var (
-			owner, friend       sql.NullString
-			gamertag, nickname  sql.NullString
-			addedAtStr          sql.NullString
+			owner, friend      sql.NullString
+			gamertag, nickname sql.NullString
+			addedAtStr         sql.NullString
 		)
 		if err := rows.Scan(&owner, &friend, &gamertag, &nickname, &addedAtStr); err != nil {
 			return nil, fmt.Errorf("openspartan: scan Friends: %w", err)

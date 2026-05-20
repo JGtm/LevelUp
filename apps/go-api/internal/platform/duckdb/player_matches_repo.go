@@ -117,8 +117,8 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 			placeholders = append(placeholders, "?")
 			args = append(args, outcomeToInt(o))
 		}
-		sb.WriteString(fmt.Sprintf(" AND COALESCE(p.outcome, 0) IN (%s)",
-			strings.Join(placeholders, ",")))
+		fmt.Fprintf(&sb, " AND COALESCE(p.outcome, 0) IN (%s)",
+			strings.Join(placeholders, ","))
 	}
 	if f.IsFirefight != nil {
 		sb.WriteString(" AND COALESCE(r.is_firefight, FALSE) = ?")
@@ -142,9 +142,8 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 			placeholders = append(placeholders, "?")
 			args = append(args, x)
 		}
-		sb.WriteString(fmt.Sprintf(
-			" AND p.match_id NOT IN (SELECT match_id FROM match_participants WHERE xuid IN (%s))",
-			strings.Join(placeholders, ",")))
+		fmt.Fprintf(&sb, " AND p.match_id NOT IN (SELECT match_id FROM match_participants WHERE xuid IN (%s))",
+			strings.Join(placeholders, ","))
 	}
 	if f.BTBExcluded {
 		sb.WriteString(" AND (r.pair_name IS NULL OR LOWER(r.pair_name) NOT LIKE '%btb%')")
@@ -165,8 +164,8 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 			placeholders = append(placeholders, "?")
 			args = append(args, id)
 		}
-		sb.WriteString(fmt.Sprintf(" AND COALESCE(r.map_id, '') IN (%s)",
-			strings.Join(placeholders, ",")))
+		fmt.Fprintf(&sb, " AND COALESCE(r.map_id, '') IN (%s)",
+			strings.Join(placeholders, ","))
 	}
 
 	hints, orderBy, err := classifyOrderBy(f.OrderBy)
@@ -396,9 +395,10 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 
 	// Re-tri sur performance_score si demandé (l'ordre SQL était sur start_time).
 	hints, _, _ := classifyOrderBy(filters.OrderBy)
-	if hints.postMergeSort == "performance_score DESC" {
+	switch hints.postMergeSort {
+	case "performance_score DESC":
 		sortByPerformanceScore(shared, true)
-	} else if hints.postMergeSort == "performance_score ASC" {
+	case "performance_score ASC":
 		sortByPerformanceScore(shared, false)
 	}
 
@@ -762,4 +762,3 @@ func nullInt64ToIntPtr(n sql.NullInt64) *int {
 	v := int(n.Int64)
 	return &v
 }
-

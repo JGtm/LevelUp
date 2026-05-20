@@ -7,11 +7,12 @@
 // Principe clé : opt-in, jamais imposé. Pause/abandon/clôture libres.
 //
 // Cf. plan §4.5 — 5 raffinements algorithmiques :
-//   R1 : delta lissé LOWESS (pas brut)
-//   R2 : phrasing strict — pas de causalité revendiquée
-//   R3 : filtre playlist optionnel
-//   R4 : test Mann-Whitney U pour milestone "progression confirmée"
-//   R5 : auto-suggestion de clôture (jamais auto-fermeture)
+//
+//	R1 : delta lissé LOWESS (pas brut)
+//	R2 : phrasing strict — pas de causalité revendiquée
+//	R3 : filtre playlist optionnel
+//	R4 : test Mann-Whitney U pour milestone "progression confirmée"
+//	R5 : auto-suggestion de clôture (jamais auto-fermeture)
 package campaign
 
 import "time"

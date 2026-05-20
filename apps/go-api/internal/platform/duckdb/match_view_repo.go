@@ -578,20 +578,6 @@ func (r *MatchViewRepo) lookupWeaponMeta(ctx context.Context, weaponIDs []int64)
 	return result
 }
 
-// lookupMedalLabels est conservé pour les usages internes (bulk scoreboard).
-func (r *MatchViewRepo) lookupMedalLabels(ctx context.Context, medalIDs []int64) map[int64]string {
-	return lookupLabelsByID(
-		ctx,
-		r.pdb.Metadata,
-		`SELECT medal_id, citation_name_display
-		 FROM citation_mappings
-		 WHERE medal_id IN (%s)
-		   AND citation_name_display IS NOT NULL
-		   AND citation_name_display <> ''`,
-		medalIDs,
-	)
-}
-
 func (r *MatchViewRepo) lookupWeaponLabels(ctx context.Context, weaponIDs []int64) map[int64]string {
 	labels := map[int64]string{}
 	if len(weaponIDs) == 0 || r.pdb.Metadata == nil {

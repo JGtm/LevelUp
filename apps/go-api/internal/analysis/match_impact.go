@@ -94,9 +94,10 @@ func ComputeMatchImpactFull(input MatchImpactInput) []ImpactBadge {
 		if p.XUID != "" {
 			squadXUIDs[p.XUID] = true
 		}
-		if p.Outcome == 2 {
+		switch p.Outcome {
+		case 2:
 			winXUIDs[p.XUID] = true
-		} else if p.Outcome == 3 {
+		case 3:
 			lossXUIDs[p.XUID] = true
 		}
 	}

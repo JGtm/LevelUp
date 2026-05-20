@@ -146,7 +146,7 @@ func main() {
 		expected := strings.TrimPrefix(sn, "weapon_kills:")
 		found := false
 		for _, n := range weaponNames {
-			if strings.ToLower(n) == strings.ToLower(expected) {
+			if strings.EqualFold(n, expected) {
 				found = true
 				break
 			}

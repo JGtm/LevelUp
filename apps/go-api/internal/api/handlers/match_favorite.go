@@ -69,9 +69,5 @@ func (h *MatchFavoriteHandler) PatchMatchFavorite(w http.ResponseWriter, r *http
 	slog.DebugContext(r.Context(), "match_favorite: bascule ok",
 		"match_id", matchID, "player", slug, "favorited", req.Favorited)
 
-	writeJSON(w, http.StatusOK, domain.MatchFavoriteResponse{
-		PlayerSlug: req.PlayerSlug,
-		MatchID:    req.MatchID,
-		Favorited:  req.Favorited,
-	})
+	writeJSON(w, http.StatusOK, domain.MatchFavoriteResponse(req))
 }

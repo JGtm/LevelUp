@@ -172,9 +172,10 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 			maxTime = m.StartTime
 		}
 		if m.Outcome != nil {
-			if *m.Outcome == analysis.OutcomeWin {
+			switch *m.Outcome {
+			case analysis.OutcomeWin:
 				wins++
-			} else if *m.Outcome == analysis.OutcomeLoss {
+			case analysis.OutcomeLoss:
 				losses++
 			}
 		}

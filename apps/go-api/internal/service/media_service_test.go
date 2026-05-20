@@ -721,11 +721,10 @@ func TestReassociateMedia_NoDB_ReturnsError(t *testing.T) {
 // ou de capture pour assertions.
 type mockAtomicMediaRepo struct {
 	mockMediaRepo
-	atomicCalled    bool
-	atomicArgs      atomicCallArgs
-	atomicUpdated   bool
-	atomicErr       error
-	atomicErrOnLike bool // si true, erreur uniquement quand exec.ExecContext est appelée pour insert/delete media_likes (simulation d'échec mid-tx)
+	atomicCalled  bool
+	atomicArgs    atomicCallArgs
+	atomicUpdated bool
+	atomicErr     error
 }
 
 type atomicCallArgs struct {

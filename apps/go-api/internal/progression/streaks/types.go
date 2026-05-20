@@ -71,17 +71,17 @@ func PPMultiplier(length int) float64 {
 // Une seule streak peut être `active` par (UserID, TitleSlug, Type). Les autres
 // statuts (paused, broken) sont conservés pour la timeline et le record.
 type Streak struct {
-	ID                string       `json:"id"`
-	UserID            string       `json:"user_id"`
-	TitleSlug         string       `json:"title_slug"`
-	Type              StreakType   `json:"type"`
-	StartedAt         time.Time    `json:"started_at"`
-	CurrentLength     int          `json:"current_length"`
-	BestLength        int          `json:"best_length"`
-	LastIncrementAt   *time.Time   `json:"last_increment_at,omitempty"`
-	Threshold         *float64     `json:"threshold,omitempty"`
-	ShieldsUsed       int          `json:"shields_used"`
-	ShieldsAvailable  int          `json:"shields_available"`
-	Status            StreakStatus `json:"status"`
-	BrokenAt          *time.Time   `json:"broken_at,omitempty"`
+	ID               string       `json:"id"`
+	UserID           string       `json:"user_id"`
+	TitleSlug        string       `json:"title_slug"`
+	Type             StreakType   `json:"type"`
+	StartedAt        time.Time    `json:"started_at"`
+	CurrentLength    int          `json:"current_length"`
+	BestLength       int          `json:"best_length"`
+	LastIncrementAt  *time.Time   `json:"last_increment_at,omitempty"`
+	Threshold        *float64     `json:"threshold,omitempty"`
+	ShieldsUsed      int          `json:"shields_used"`
+	ShieldsAvailable int          `json:"shields_available"`
+	Status           StreakStatus `json:"status"`
+	BrokenAt         *time.Time   `json:"broken_at,omitempty"`
 }

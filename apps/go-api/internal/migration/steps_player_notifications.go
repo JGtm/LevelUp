@@ -19,50 +19,7 @@ package migration
 
 import (
 	"database/sql"
-	"strings"
 )
-
-// notificationDefaultCategories liste les catégories du MVP avec leur état
-// initial. Toutes activées par défaut. Le seed est lazy : `IsCategoryEnabled`
-// retourne true si pas d'entrée pour la catégorie, donc pas besoin d'insérer
-// au boot. La table reste vide tant qu'aucune préférence n'a été modifiée.
-var notificationDefaultCategories = []struct {
-	Category string
-	Enabled  bool
-	Delivery string
-}{
-	{"app_release", true, "both"},
-	{"match_synced", true, "both"},
-	{"media_added", true, "both"},
-	{"objective_assigned", true, "both"},
-	{"objective_completed", true, "both"},
-	{"challenge_added", true, "inapp"},
-	{"challenge_completed", true, "both"},
-	// season_pass_level : déprécié 2026-05-16 — gardé pour rétro-compat seulement,
-	// off par défaut puisque plus jamais émis.
-	{"season_pass_level", false, "off"},
-	{"sync_error", true, "both"},
-	{"personal_record", true, "both"},
-	{"threshold_crossed", true, "both"},
-	// §6 Squad/Sessions overhaul : flow ami.
-	{"friend_added", true, "inapp"},          // notif sobre, pas de toast
-	{"friend_sync_completed", true, "inapp"}, // récap silencieux post-recompute
-	// 2026-05-08 : audit santé DB périodique → warnings admin.
-	{"data_health_warning", true, "inapp"},
-	// 2026-05-16 : extension notifications — rang Halo, skill, BP, citations.
-	{"career_rank", true, "both"},           // rare, marquant → toast + inapp
-	{"skill_tier", true, "both"},            // CSR/LUSR unifié, peu fréquent
-	{"battlepass_completed", true, "both"},  // milestone
-	{"citation_tier", true, "inapp"},        // potentiellement fréquent → silent
-	{"citation_mastery", true, "both"},      // rare → toast
-	// 2026-05-18 : couche 3 du plan PROGRESSION_TRACKING (Ascension V2) — coach proactif.
-	{"record_near_miss", true, "inapp"},     // potentiellement fréquent → silent (pas de toast)
-	{"milestone_unlocked", true, "both"},    // marquant → toast + inapp
-	{"milestone_near_miss", true, "inapp"},  // silent
-	{"lusr_tier_approach", true, "both"},    // peu fréquent + actionable → toast + inapp
-	{"streak_milestone", true, "both"},      // palier de streak (7/14/30j) marquant
-	{"comeback_welcome", true, "both"},      // bienveillant, rare → toast + inapp
-}
 
 func init() {
 	// ─── TargetSharedSocial : nouvelles tables avec xuid scoping ────────
@@ -154,28 +111,4 @@ func init() {
 			return execScript(db, `DROP INDEX IF EXISTS idx_pn_xuid_unread;`)
 		},
 	})
-}
-
-// seedNotificationPreferencesForXUID insère les catégories par défaut pour un
-// xuid donné, sans écraser une entrée existante. Pas appelé par les migrations
-// (les prefs sont default-on via IsCategoryEnabled), mais exposé pour des seeds
-// programmatique si besoin futur.
-//
-//nolint:unused // utilitaire pour seed manuel ; conservé pour API future.
-func seedNotificationPreferencesForXUID(db *sql.DB, xuid string) error {
-	for _, c := range notificationDefaultCategories {
-		_, err := db.Exec(
-			`INSERT INTO notification_preferences (xuid, category, enabled, delivery)
-			 SELECT ?, ?, ?, ?
-			 WHERE NOT EXISTS (
-				 SELECT 1 FROM notification_preferences
-				 WHERE xuid = ? AND category = ?
-			 )`,
-			xuid, c.Category, c.Enabled, c.Delivery, xuid, c.Category,
-		)
-		if err != nil && !strings.Contains(err.Error(), "already exists") {
-			return err
-		}
-	}
-	return nil
 }

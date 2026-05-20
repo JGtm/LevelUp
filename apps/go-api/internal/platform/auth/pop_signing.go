@@ -61,8 +61,8 @@ func GeneratePoPKeyPair() (*PoPKeyPair, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pop_signing: génération clé P-256: %w", err)
 	}
-	xBytes := priv.PublicKey.X.Bytes()
-	yBytes := priv.PublicKey.Y.Bytes()
+	xBytes := priv.X.Bytes()
+	yBytes := priv.Y.Bytes()
 	// zero-pad à p256KeySize (32 octets)
 	xPadded := make([]byte, p256KeySize)
 	yPadded := make([]byte, p256KeySize)

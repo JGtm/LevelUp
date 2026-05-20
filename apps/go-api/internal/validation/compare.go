@@ -356,10 +356,10 @@ func isReportOK(r *ComparisonReport) bool {
 
 func buildSummary(r *ComparisonReport) string {
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("=== Rapport parité Go vs Python (%s) ===\n\n",
-		r.GeneratedAt.Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("► Go DB    : %s\n", r.GoDBPath))
-	sb.WriteString(fmt.Sprintf("► Python DB: %s\n\n", r.PythonDBPath))
+	fmt.Fprintf(&sb, "=== Rapport parité Go vs Python (%s) ===\n\n",
+		r.GeneratedAt.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(&sb, "► Go DB    : %s\n", r.GoDBPath)
+	fmt.Fprintf(&sb, "► Python DB: %s\n\n", r.PythonDBPath)
 
 	// Tables
 	sb.WriteString("── Tables ──────────────────────────────────────────\n")
@@ -376,33 +376,33 @@ func buildSummary(r *ComparisonReport) string {
 			miss++
 		}
 		icon := statusIcon(tc.Status)
-		sb.WriteString(fmt.Sprintf("  %s %-35s go=%d py=%d delta=%+d",
-			icon, tc.TableName, tc.RowsGo, tc.RowsPython, tc.Delta))
+		fmt.Fprintf(&sb, "  %s %-35s go=%d py=%d delta=%+d",
+			icon, tc.TableName, tc.RowsGo, tc.RowsPython, tc.Delta)
 		if !math.IsNaN(tc.DeltaPct) && tc.RowsPython > 0 {
-			sb.WriteString(fmt.Sprintf(" (%.1f%%)", tc.DeltaPct))
+			fmt.Fprintf(&sb, " (%.1f%%)", tc.DeltaPct)
 		}
 		sb.WriteByte('\n')
 	}
-	sb.WriteString(fmt.Sprintf("\n  ✅ %d OK  ⚠ %d avertissements  ❌ %d divergences  🔍 %d absentes\n\n",
-		ok, warn, diverge, miss))
+	fmt.Fprintf(&sb, "\n  ✅ %d OK  ⚠ %d avertissements  ❌ %d divergences  🔍 %d absentes\n\n",
+		ok, warn, diverge, miss)
 
 	// Match overlap
 	if r.MatchOverlap != nil {
 		o := r.MatchOverlap
 		sb.WriteString("── Match ID Overlap ────────────────────────────────\n")
-		sb.WriteString(fmt.Sprintf("  Communs    : %d\n", o.InBoth))
-		sb.WriteString(fmt.Sprintf("  Go seulement: %d\n", o.OnlyInGo))
-		sb.WriteString(fmt.Sprintf("  Python seul : %d\n", o.OnlyInPython))
-		sb.WriteString(fmt.Sprintf("  Jaccard     : %.3f %s\n\n", o.JaccardScore,
-			jaccardLabel(o.JaccardScore)))
+		fmt.Fprintf(&sb, "  Communs    : %d\n", o.InBoth)
+		fmt.Fprintf(&sb, "  Go seulement: %d\n", o.OnlyInGo)
+		fmt.Fprintf(&sb, "  Python seul : %d\n", o.OnlyInPython)
+		fmt.Fprintf(&sb, "  Jaccard     : %.3f %s\n\n", o.JaccardScore,
+			jaccardLabel(o.JaccardScore))
 	}
 
 	// Bitmasks
 	if len(r.Bitmasks) > 0 {
 		sb.WriteString("── Bitmasks / Enrichissement ───────────────────────\n")
 		for _, b := range r.Bitmasks {
-			sb.WriteString(fmt.Sprintf("  %s %s.%s : go_null=%.1f%%  py_null=%.1f%%\n",
-				statusIcon(b.Status), b.Table, b.Column, b.ZeroCountGoPct, b.ZeroCountPyPct))
+			fmt.Fprintf(&sb, "  %s %s.%s : go_null=%.1f%%  py_null=%.1f%%\n",
+				statusIcon(b.Status), b.Table, b.Column, b.ZeroCountGoPct, b.ZeroCountPyPct)
 		}
 		sb.WriteByte('\n')
 	}

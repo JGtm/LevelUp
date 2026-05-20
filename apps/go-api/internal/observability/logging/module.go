@@ -31,22 +31,22 @@ import (
 // créés lazy à la première écriture. Cette liste est indicative — un module
 // inconnu se voit créer son propre fichier sans configuration préalable.
 const (
-	ModuleSync       = "sync"        // sync engine, RunDelta, RunBackfill
-	ModuleProvider   = "provider"    // SharedDBProvider (swap RO↔RW, drain, retry)
-	ModulePool       = "pool"        // PlayerDB pool (openPlayerDB, swap hooks)
-	ModuleScheduler  = "scheduler"   // auto_sync scheduler
-	ModuleHTTP       = "http"        // chi router, middlewares, handlers
-	ModuleHandlers   = "handlers"    // endpoints HTTP individuels
-	ModuleService    = "service"     // couche service (FriendsOrchestrator, etc.)
-	ModuleDuckDB     = "duckdb"      // primitives DuckDB (OpenReadOnly, dblease)
-	ModuleAuth       = "auth"        // tokens MSAL, refresh, XSTS
-	ModuleAssets     = "assets"      // resolver assets + cache disque
-	ModulePrestige   = "prestige"    // challenges + squad prestige
-	ModuleMedia      = "media"       // indexation médias + galerie
-	ModuleNotif      = "notifications"
-	ModuleMigration  = "migration"   // schémas DB
-	ModuleHealth     = "health"      // data_health scheduler
-	ModuleGeneral    = "general"     // fallback pour logs non catégorisés
+	ModuleSync      = "sync"      // sync engine, RunDelta, RunBackfill
+	ModuleProvider  = "provider"  // SharedDBProvider (swap RO↔RW, drain, retry)
+	ModulePool      = "pool"      // PlayerDB pool (openPlayerDB, swap hooks)
+	ModuleScheduler = "scheduler" // auto_sync scheduler
+	ModuleHTTP      = "http"      // chi router, middlewares, handlers
+	ModuleHandlers  = "handlers"  // endpoints HTTP individuels
+	ModuleService   = "service"   // couche service (FriendsOrchestrator, etc.)
+	ModuleDuckDB    = "duckdb"    // primitives DuckDB (OpenReadOnly, dblease)
+	ModuleAuth      = "auth"      // tokens MSAL, refresh, XSTS
+	ModuleAssets    = "assets"    // resolver assets + cache disque
+	ModulePrestige  = "prestige"  // challenges + squad prestige
+	ModuleMedia     = "media"     // indexation médias + galerie
+	ModuleNotif     = "notifications"
+	ModuleMigration = "migration" // schémas DB
+	ModuleHealth    = "health"    // data_health scheduler
+	ModuleGeneral   = "general"   // fallback pour logs non catégorisés
 )
 
 // moduleAttrKey est la clé d'attribut slog reconnue pour spécifier

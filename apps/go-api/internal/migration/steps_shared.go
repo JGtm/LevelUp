@@ -658,39 +658,6 @@ func init() {
 
 }
 
-// dropColumnIfExists supprime une colonne d'une table si elle existe.
-// No-op si la colonne est déjà absente.
-func dropColumnIfExists(db *sql.DB, table, column string) error {
-	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info('%s')`, table))
-	if err != nil {
-		return fmt.Errorf("dropColumnIfExists pragma %s: %w", table, err)
-	}
-	exists := false
-	for rows.Next() {
-		var cid int
-		var name, typ string
-		// DuckDB renvoie notnull/pk en bool. Driver récent refuse bool→int.
-		var nn bool
-		var dflt *string
-		var pk bool
-		if err := rows.Scan(&cid, &name, &typ, &nn, &dflt, &pk); err != nil {
-			rows.Close()
-			return err
-		}
-		if name == column {
-			exists = true
-		}
-	}
-	rows.Close()
-	if !exists {
-		return nil
-	}
-	if _, err := db.Exec(fmt.Sprintf(`ALTER TABLE %s DROP COLUMN %s`, table, column)); err != nil {
-		return fmt.Errorf("DROP COLUMN %s.%s: %w", table, column, err)
-	}
-	return nil
-}
-
 // dropAssistsExpectedShared supprime les colonnes assists_expected / assists_stddev
 // de match_participants via la stratégie table-rename (évite ALTER TABLE DROP COLUMN
 // qui échoue sur DuckDB 1.0 quand des vues ou contraintes dépendent de la table).
@@ -765,39 +732,6 @@ func dropAssistsExpectedShared(db *sql.DB) error {
 		if _, err := db.Exec(ddl); err != nil {
 			return fmt.Errorf("recreate index: %w", err)
 		}
-	}
-	return nil
-}
-
-// dropColumnCascadeIfExists supprime une colonne avec CASCADE (DuckDB 1.0+).
-// CASCADE supprime automatiquement les vues qui dépendent de la table.
-// No-op si la colonne est déjà absente.
-func dropColumnCascadeIfExists(db *sql.DB, table, column string) error {
-	rows, err := db.Query(fmt.Sprintf(`PRAGMA table_info('%s')`, table))
-	if err != nil {
-		return fmt.Errorf("dropColumnCascadeIfExists pragma %s: %w", table, err)
-	}
-	exists := false
-	for rows.Next() {
-		var cid int
-		var name, typ string
-		var nn bool
-		var dflt *string
-		var pk bool
-		if err := rows.Scan(&cid, &name, &typ, &nn, &dflt, &pk); err != nil {
-			rows.Close()
-			return err
-		}
-		if name == column {
-			exists = true
-		}
-	}
-	rows.Close()
-	if !exists {
-		return nil
-	}
-	if _, err := db.Exec(fmt.Sprintf(`ALTER TABLE %s DROP COLUMN %s CASCADE`, table, column)); err != nil {
-		return fmt.Errorf("DROP COLUMN CASCADE %s.%s: %w", table, column, err)
 	}
 	return nil
 }

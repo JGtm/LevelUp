@@ -33,8 +33,8 @@ func TestAvgPerformanceScoreByChain_IgnoresRowsWithoutScoreOrChain(t *testing.T)
 	t.Parallel()
 	rows := []Row{
 		{PerformanceScore: ptrF(80), PerformanceChain: "btb"},
-		{PerformanceScore: nil, PerformanceChain: "btb"},          // skip — no score
-		{PerformanceScore: ptrF(50), PerformanceChain: ""},        // skip — no chain
+		{PerformanceScore: nil, PerformanceChain: "btb"},   // skip — no score
+		{PerformanceScore: ptrF(50), PerformanceChain: ""}, // skip — no chain
 		{PerformanceScore: ptrF(60), PerformanceChain: "ranked"},
 	}
 	got := avgPerformanceScoreByChain(rows)

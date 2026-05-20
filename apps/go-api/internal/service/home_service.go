@@ -14,7 +14,6 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
-	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/port"
@@ -155,11 +154,9 @@ func (s *HomeService) SetSessionActive(_ bool) {
 // actif (playerMatchesRepo + titleSlug + gamertag). `matches`/`sessions`
 // restent renseignÃ©s pour la rÃ©trocompatibilitÃ© (legacy fallback path).
 type homePageData struct {
-	matches        []legacymatch.HomeMatchRow
 	canonicalRows  []canonical.PlayerMatchRow // nil = legacy path
 	spartanIdent   *domain.HomeSpartanIdentityRow
 	totalMatches   int
-	sessions       []legacymatch.HomeSessionRow
 	media          []domain.HomeMediaRow
 	playlistRanks  []domain.HomePlaylistRank
 	favoriteIDs    map[string]bool
@@ -386,25 +383,6 @@ func buildFavoriteMatchListCanonical(
 	return favorites
 }
 
-func inferHomeSkillHistory(matches []legacymatch.HomeMatchRow) (bool, bool) {
-	hasRankedHistory := false
-	hasUnrankedHistory := false
-	for _, match := range matches {
-		if match.IsFirefight {
-			continue
-		}
-		if match.IsRanked {
-			hasRankedHistory = true
-		} else {
-			hasUnrankedHistory = true
-		}
-		if hasRankedHistory && hasUnrankedHistory {
-			break
-		}
-	}
-	return hasRankedHistory, hasUnrankedHistory
-}
-
 // enrichMatchesWithMedals injecte les TopMedals (max 4, sÃ©lection par raretÃ©/count)
 // dans chaque RecentMatchItem via un appel batch sur le repo.
 func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
@@ -457,27 +435,6 @@ func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, i
 			items[i].TopCitations = analysis.BuildCitationSnippets(rows, maxCitationSnippets)
 		}
 	}
-}
-
-// buildFavoriteMatchList construit la liste des matchs favoris Ã  partir de tous les matchs
-// chargÃ©s (pas limitÃ©s Ã  6), en appliquant le flag IsFavorite.
-func buildFavoriteMatchList(
-	all []legacymatch.HomeMatchRow,
-	favoriteIDs map[string]bool,
-	locale string,
-) []domain.RecentMatchItem {
-	if len(favoriteIDs) == 0 {
-		return nil
-	}
-	// Construire la liste complÃ¨te des matchs favoris (pas limitÃ©s aux 6 rÃ©cents).
-	allItems := analysis.BuildRecentMatchesWithFavoritesForLocale(all, len(all), favoriteIDs, locale)
-	var favorites []domain.RecentMatchItem
-	for _, item := range allItems {
-		if item.IsFavorite {
-			favorites = append(favorites, item)
-		}
-	}
-	return favorites
 }
 
 // GetBattlePass retourne les infos Battle Pass (live d'abord, cache DB en fallback).

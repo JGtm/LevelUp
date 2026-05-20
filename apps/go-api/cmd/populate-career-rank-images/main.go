@@ -228,7 +228,7 @@ func (d *directFetcher) fetch(ctx context.Context, path string, timeout time.Dur
 		return nil, fmt.Errorf("réponse trop courte (%d bytes)", len(out))
 	}
 	// Vérifier signature PNG (89 50 4E 47 0D 0A 1A 0A).
-	if !(out[0] == 0x89 && out[1] == 0x50 && out[2] == 0x4E && out[3] == 0x47) {
+	if out[0] != 0x89 || out[1] != 0x50 || out[2] != 0x4E || out[3] != 0x47 {
 		return nil, fmt.Errorf("réponse pas un PNG (commence par %x)", out[:8])
 	}
 	return out, nil

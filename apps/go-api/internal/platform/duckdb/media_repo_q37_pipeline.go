@@ -757,7 +757,7 @@ func extractMapPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 			continue
 		}
 		seen[k] = struct{}{}
-		out = append(out, mediaFilterOptionPair{id: k.id, label: k.label})
+		out = append(out, mediaFilterOptionPair(k))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].label < out[j].label })
 	return out
@@ -791,7 +791,7 @@ func extractModePairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 			continue
 		}
 		seen[k] = struct{}{}
-		out = append(out, mediaFilterOptionPair{id: k.id, label: k.label})
+		out = append(out, mediaFilterOptionPair(k))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].label < out[j].label })
 	return out
@@ -816,7 +816,7 @@ func extractPlaylistPairs(rows []mediaEnrichedRow) []mediaFilterOptionPair {
 			continue
 		}
 		seen[k] = struct{}{}
-		out = append(out, mediaFilterOptionPair{id: k.id, label: k.label})
+		out = append(out, mediaFilterOptionPair(k))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].label < out[j].label })
 	return out

@@ -149,10 +149,10 @@ func (r *CampaignRepo) LinkChallenge(ctx context.Context, challengeID, campaignI
 func scanCampaign(row rowScanner) (campaign.ImprovementCampaign, error) {
 	var c campaign.ImprovementCampaign
 	var (
-		axisKind, status                       string
-		endedAt, lastEvaluatedAt               sql.NullTime
-		currentRaw, currentLOWESS, mwp         sql.NullFloat64
-		autoReason                             string
+		axisKind, status               string
+		endedAt, lastEvaluatedAt       sql.NullTime
+		currentRaw, currentLOWESS, mwp sql.NullFloat64
+		autoReason                     string
 	)
 	err := row.Scan(
 		&c.ID, &c.UserID, &c.TitleSlug, &c.Axis, &axisKind, &c.StartedAt, &endedAt,

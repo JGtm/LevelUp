@@ -12,7 +12,7 @@
 //  3. Sinon, cherche un refresh_token OAuth v2 dans l'ordre :
 //     a. tokens.RefreshToken (dans watcher_tokens.json)
 //     b. variable d'environnement SPNKR_OAUTH_REFRESH_TOKEN_<XSTS_GAMERTAG>
-//        (meme convention que internal/api/registry.go et auto_sync.go).
+//     (meme convention que internal/api/registry.go et auto_sync.go).
 //  4. Echange ce refresh_token via provider.TryOAuthRefresh pour obtenir un
 //     access_token frais.
 //  5. Persiste l'access_token (et le refresh_token s'il provenait de l'env)

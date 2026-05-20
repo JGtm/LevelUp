@@ -148,7 +148,10 @@ func (c *HaloAPIClient) WithLocalFilmCache(cache *LocalFilmCache) *HaloAPIClient
 // GetMatchHistory récupère une page de l'historique des matchs d'un joueur.
 // Portage de SPNKrAPIClient.get_match_history() (Python api_client.py).
 //
-//   - gamertag  : gamertag ou xuid(1234) du joueur
+//   - gamertag  : DOIT être au format xuid(NNN) — pas un gamertag textuel.
+//     Grunt StatsModule.GetMatchHistory + SPNKr et l'expérience de prod
+//     confirment que /hi/players/{Gamertag}/matches retourne une réponse
+//     stale figée (pas un 404). Toujours passer fmt.Sprintf("xuid(%s)", xuid).
 //   - matchType : "all", "matchmaking", "custom", "local"
 //   - start     : offset (0 = plus récent)
 //   - count     : nombre de matchs (max 25)

@@ -387,7 +387,7 @@ func TestRefreshLoop_Check_RefreshesWhenXSTSNearExpiry(t *testing.T) {
 		t.Errorf("store XSTSToken = %q, want %q", loaded.XSTSToken, "new-xsts")
 	}
 	// L'expiration doit utiliser NotAfter, pas xstsDefaultTTL
-	if loaded.XSTSExpiresAt.Sub(time.Now()) < 55*time.Minute {
+	if time.Until(loaded.XSTSExpiresAt) < 55*time.Minute {
 		t.Error("XSTSExpiresAt devrait refléter le NotAfter (~60min), pas le fallback 55min")
 	}
 }

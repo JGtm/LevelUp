@@ -213,11 +213,11 @@ func TestXboxSSOLinkStrategy_WithoutTokenStore_StillWorks(t *testing.T) {
 
 // mockDaemon capture les appels AddPlayer / AddUserClient pour test.
 type mockDaemon struct {
-	running         bool
-	addCalls        []domain.PlayerSummary
-	addUserCalls    []*auth.UserTokens
-	failError       error
-	failOnAddUser   bool // si true, AddUserClient retourne failError → fallback AddPlayer
+	running       bool
+	addCalls      []domain.PlayerSummary
+	addUserCalls  []*auth.UserTokens
+	failError     error
+	failOnAddUser bool // si true, AddUserClient retourne failError → fallback AddPlayer
 }
 
 func (m *mockDaemon) IsRunning() bool { return m.running }

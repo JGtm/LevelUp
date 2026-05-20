@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
 )
 
 // MultiModuleHandler dispatche chaque slog.Record vers :
@@ -29,12 +28,12 @@ import (
 //
 // Thread-safe : tous les accès aux handlers fichiers sont protégés par mu.
 type MultiModuleHandler struct {
-	console slog.Handler   // sortie console (existant + ContextHandler)
-	logsDir string         // ex: "logs/"
-	level   slog.Leveler   // niveau global, partagé avec console
-	attrs   []slog.Attr    // attrs accumulés via WithAttrs
-	groups  []string       // groups via WithGroup
-	mu      sync.Mutex     // protège fileHandlers
+	console slog.Handler // sortie console (existant + ContextHandler)
+	logsDir string       // ex: "logs/"
+	level   slog.Leveler // niveau global, partagé avec console
+	attrs   []slog.Attr  // attrs accumulés via WithAttrs
+	groups  []string     // groups via WithGroup
+	mu      sync.Mutex   // protège fileHandlers
 	files   map[string]*fileHandler
 }
 
@@ -244,10 +243,3 @@ func (h *MultiModuleHandler) Close() error {
 // Discard est un io.Writer no-op, utilisable pour désactiver le file logging
 // dans les tests sans modifier la structure du handler.
 var Discard io.Writer = io.Discard
-
-// archivedLogPath retourne le chemin d'archive pour rotation manuelle —
-// non utilisé en runtime, mais documenté pour outils ops (cron de rotation).
-// Pattern : `logs/sync.log.2026-05-19` (date du jour de fermeture).
-func archivedLogPath(logsDir, module string, t time.Time) string {
-	return filepath.Join(logsDir, fmt.Sprintf("%s.log.%s", module, t.Format("2006-01-02")))
-}

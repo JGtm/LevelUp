@@ -22,8 +22,8 @@ type MatchStats struct {
 type MatchInfo struct {
 	StartTime           time.Time `json:"StartTime"`
 	EndTime             time.Time `json:"EndTime"`
-	Duration            string    `json:"Duration"`         // ISO 8601, e.g. "PT11M59.2855382S"
-	LifecycleMode       int       `json:"LifecycleMode"`    // 3 = matchmaking (typical)
+	Duration            string    `json:"Duration"`      // ISO 8601, e.g. "PT11M59.2855382S"
+	LifecycleMode       int       `json:"LifecycleMode"` // 3 = matchmaking (typical)
 	GameVariantCategory int       `json:"GameVariantCategory"`
 	LevelID             string    `json:"LevelId"`
 	MapVariant          AssetRef  `json:"MapVariant"`
@@ -53,7 +53,7 @@ type Team struct {
 }
 
 type Player struct {
-	PlayerID          string            `json:"PlayerId"` // "xuid(<digits>)" or "bid(<digits>)" for bots
+	PlayerID          string            `json:"PlayerId"`   // "xuid(<digits>)" or "bid(<digits>)" for bots
 	PlayerType        int               `json:"PlayerType"` // 1 = human, other = bot (verify per match)
 	BotAttributes     json.RawMessage   `json:"BotAttributes,omitempty"`
 	LastTeamID        int               `json:"LastTeamId"`
@@ -83,16 +83,16 @@ type PlayerTeamStat struct {
 // kill/death, accuracy). Mode/PvP-specific stats are left raw and surfaced as
 // json.RawMessage so the mapper can decide what to extract.
 type StatsBundle struct {
-	CoreStats     CoreStats       `json:"CoreStats"`
-	PvpStats      json.RawMessage `json:"PvpStats,omitempty"`
-	PveStats      json.RawMessage `json:"PveStats,omitempty"`
-	CaptureTheFlagStats   json.RawMessage `json:"CaptureTheFlagStats,omitempty"`
-	EliminationStats      json.RawMessage `json:"EliminationStats,omitempty"`
-	ExtractionStats       json.RawMessage `json:"ExtractionStats,omitempty"`
-	InfectionStats        json.RawMessage `json:"InfectionStats,omitempty"`
-	OddballStats          json.RawMessage `json:"OddballStats,omitempty"`
-	ZonesStats            json.RawMessage `json:"ZonesStats,omitempty"`
-	StockpileStats        json.RawMessage `json:"StockpileStats,omitempty"`
+	CoreStats           CoreStats       `json:"CoreStats"`
+	PvpStats            json.RawMessage `json:"PvpStats,omitempty"`
+	PveStats            json.RawMessage `json:"PveStats,omitempty"`
+	CaptureTheFlagStats json.RawMessage `json:"CaptureTheFlagStats,omitempty"`
+	EliminationStats    json.RawMessage `json:"EliminationStats,omitempty"`
+	ExtractionStats     json.RawMessage `json:"ExtractionStats,omitempty"`
+	InfectionStats      json.RawMessage `json:"InfectionStats,omitempty"`
+	OddballStats        json.RawMessage `json:"OddballStats,omitempty"`
+	ZonesStats          json.RawMessage `json:"ZonesStats,omitempty"`
+	StockpileStats      json.RawMessage `json:"StockpileStats,omitempty"`
 }
 
 // CoreStats is the per-player-per-team core stats block.
@@ -165,11 +165,11 @@ type PlayerMatchStatsResult struct {
 // joining on MatchId, plus the raw JSON bytes for downstream tools that need
 // to re-emit fields we did not type.
 type ParsedMatch struct {
-	MatchID            string
-	Stats              MatchStats
-	PlayerStats        []PlayerMatchStatsValue
-	RawMatchStats      json.RawMessage
-	RawPlayerStats     json.RawMessage // null if no PlayerMatchStats row joined
+	MatchID        string
+	Stats          MatchStats
+	PlayerStats    []PlayerMatchStatsValue
+	RawMatchStats  json.RawMessage
+	RawPlayerStats json.RawMessage // null if no PlayerMatchStats row joined
 }
 
 // Confidence describes how certain DetectOwner is about the returned XUID.

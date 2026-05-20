@@ -151,16 +151,6 @@ func TestComposite_NoTierTargets(t *testing.T) {
 // scoreboard_extremes — MVP/LVP multi-colonnes
 // ---------------------------------------------------------------------------
 
-func mkScoreboardRow(xuid string, kills, deaths, assists int, kda *float64) domain.ScoreboardRaw {
-	return domain.ScoreboardRaw{
-		XUID:    xuid,
-		Kills:   kills,
-		Deaths:  deaths,
-		Assists: assists,
-		KDA:     kda,
-	}
-}
-
 func f64(v float64) *float64 { return &v }
 
 func TestMVPLVP_MultiColumn(t *testing.T) {
