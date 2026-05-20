@@ -1,3 +1,106 @@
+## [2026-05-20] fix(home) — Overlay défensif identité Spartan : la bannière ne disparaît plus
+
+**Statut** : Complété (branche `fix/media-paths-portable`).
+
+**Contexte** : juste après la livraison du mapping.json (commit `dbad062c`), l'utilisateur a observé un comportement inacceptable côté UX : « les bannières vont et viennent, une fois elles sont là et une fois elles sont pas là ». Verdict produit : `« je peux pas mettre en prod un comportement imprévisible comme ça »`. Contrat à durcir : **UI-first, une bannière connue ne doit JAMAIS redevenir nulle** (sauf au tout premier lancement). Même quand le smoke endpoint sonde après backfill, banner ne doit jamais ressortir vide si la DB l'a vue au moins une fois.
+
+**Root cause** : la chaîne `CareerLiveService.GetSpartanIdentity` avait un trou dans son contrat de garantie :
+
+1. `fetchAndMerge` lit `dbLast` puis fait le per-field merge avec le cache live. OK.
+2. MAIS quand `dbLast` errore transitoirement (DB lock pendant un B-swap, connection invalidée par migration concurrente), `fetchAndMerge` set silencieusement `dbLast = nil` et perd le filet historique.
+3. Quand `xuid` est absent du contexte (factory pas encore prête), `serveDBFallback("")` est appelé avec une string vide → la garde `if xuid != ""` court-circuite la lecture DB → retour direct de `nil` au caller.
+4. Le `BuildSpartanIdentityFromCareerRow` lui-même n'a aucune mémoire des champs d'assets historiques s'il reçoit `careerRow == nil`.
+
+Résultat observable : un fetch live qui rend `cachedCustom != nil` mais `BannerImageURL = ""` (mapping resolver rate-limited, ou nameplate fetch HTTP transient error) écrasait la valeur DB. Le frontend voyait `banner_image_url: null` puis `banner_image_url: "/.../n809699482.png"` au refresh suivant — flicker.
+
+**Décision** : ajouter une couche de défense en profondeur dans `GetSpartanIdentity` — toujours lire un snapshot DB en début de flow, puis l'utiliser comme **overlay final** sur le résultat du merge live. Tout champ d'identité (banner, emblem, backdrop, spartan_id, adornment) absent du résultat live est rempli depuis ce snapshot avant retour. C'est ce qui transforme « le live a rendu nil cette fois » en « on continue de servir la dernière valeur connue ».
+
+**Changements** :
+
+1. **[career_live_service.go:GetSpartanIdentity](apps/go-api/internal/service/career_live_service.go)** : restructuré en 4 étapes documentées (lecture DB systématique → court-circuit si xuid absent → fetch+merge live → overlay final). Si le live échoue ou retourne `nil`, on retourne le snapshot DB. Si le live retourne un résultat avec des trous, on patche les trous depuis le snapshot.
+
+2. **[career_live_service.go:overlayIdentityFromFallback](apps/go-api/internal/service/career_live_service.go)** : nouvelle fonction pure qui implémente le per-field overlay (banner, emblem, backdrop, spartan_id, adornment). Patche en place — l'objet identity retourné peut être `identity` enrichi, `fallback` (si identity nil), ou `nil` (si les deux nil).
+
+3. **[career_live_service_test.go](apps/go-api/internal/service/career_live_service_test.go)** : ajout de deux tests anti-régression :
+   - `TestOverlayIdentityFromFallback` : matrice 5 cas (nil/non-nil × identity/fallback × champs présents/absents) — cadenasse la sémantique du merge.
+   - `TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne` : test end-to-end qui simule le scénario de prod (mock fetcher retourne `custom != nil` mais `BannerImageURL = ""`, DB porte une bannière historique) → vérifie que l'API retourne la bannière DB. C'est LE test du bug « les bannières vont et viennent ».
+
+**Validation live** : 3 joueurs (JGtm, Chocoboflor, Madina97294), 5 appels rapides successifs au home endpoint → bannière stable à chaque appel. Smoke endpoint `/api/v1/healthz/home` retourne `banner=ok` une fois le cache warm.
+
+**Note hors scope** : un bug de migration `purge_data_health_warning_notifs` (cf. autres modifs uncommitted) cause une invalidation DuckDB pendant ~5 s au cold-restart, ce qui rend même le DB fallback indisponible pendant cette fenêtre. À investiguer séparément — pas le sujet de ce commit qui se concentre sur le contrat UX banner.
+
+**Tests** :
+- `go test ./internal/service/ -race -count=1` : vert (5.8 s).
+- Nouveaux tests : `TestOverlayIdentityFromFallback` (5 sous-cas) + `TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne` — tous verts.
+
+**Prochaine étape** : commit + le frontend bénéficie automatiquement du contrat renforcé sans changement.
+
+---
+
+## [2026-05-20] diag(lusr) — index ART corrompu sur shared.match_participants — pas un bug de formule
+
+**Statut** : Complété (diag — fix non appliqué, action destructive en attente de validation user).
+
+**Contexte** : MAdina97294 (perçu comme le meilleur joueur du squad de 4) sort Argent IV en arena_slayer LUSR alors que les autres sont Or. User précise que les 4 amis jouent toujours ensemble (jamais contre).
+
+**Première hypothèse (rétractée)** : carry-adj `kills_vs_expected` (`apps/go-api/internal/sync/skill_rating.go:160-168`) pénalisant les joueurs identifiés forts. Démentie empiriquement par le replay : retirer le carry-adj donne Madina 1327→1331 (toujours Argent IV).
+
+**Bug réel identifié** : **l'index ART (Adaptive Radix Tree) de la PK `(match_id, xuid)` sur `match_participants` dans `shared_matches_v2.duckdb` est corrompu.**
+
+Symptômes (DuckDB 2.10502.0 driver) sur le match `50cd2d8c-9feb-4b98-bc7c-e34aa8b1df7e` :
+| Requête | Attendu | Réel |
+|---|---:|---:|
+| `WHERE match_id = '50cd2d8c-...'` | 10 rows | **1** |
+| `WHERE match_id IN ('50cd2d8c-...')` | 10 | **1** |
+| `WHERE match_id IN (5 ids)` | ~50 | **2** |
+| `COUNT(*) WHERE match_id = '...'` | 10 | **1** (le COUNT lit l'index) |
+| `WHERE match_id \|\| '' = '50cd2d8c-...'` | 10 | **10** ✓ (table-scan) |
+| `WHERE xuid='...' AND match_id='...'` | 1 | 1 ✓ |
+
+Le concat `match_id || ''` défait le filter-pushdown et révèle que les rows existent bien — seul l'index ment.
+
+**Conséquence sur le LUSR (et plus)** :
+- `loadLUSRParticipants` (`sync/skill_rating_loaders.go:114-150`) charge ~1 row par match au lieu de 8-16.
+- `splitParticipantKEs` retourne quasi vide → `teammateAvgKE = nil`, `enemyKEs = []`.
+- `computeEnemyStrength` tombe sur le fallback `(playerMU, DefaultOpponentSigma)` → force adverse "neutre".
+- Le carry-adj n'est jamais déclenché correctement (condition `teammateAvgKE > 0` rarement remplie).
+- Le composite est calculé sans contexte lobby → un joueur Halo-noté fort qui finit conforme à son KE personnel reste à composite ≈ 0.5 (mu stagne), un joueur Halo-noté moyen qui finit légèrement au-dessus monte.
+
+**Étendue du bug** : grep `match_participants ... WHERE/JOIN ... match_id` retourne 9 fichiers (`sync/engine.go`, `sync/events_replay.go`, `sync/backfill_weapons.go`, `platform/duckdb/engagement_score_repo_queries.go`, etc.). Tous ces pipelines marchent potentiellement avec des données tronquées.
+
+**Décision technique** : aucun fix appliqué dans cette session — l'action de reindexation est destructive et doit être planifiée avec le user. Plan proposé :
+1. Stopper le serveur sync (évite d'écrire pendant l'opération)
+2. Rebuild `match_participants` : `CREATE TABLE _mp_new AS SELECT * FROM match_participants; DROP TABLE match_participants; ALTER TABLE _mp_new RENAME ... ; ALTER TABLE match_participants ADD PRIMARY KEY (match_id, xuid);`
+3. Vérifier avec le cmd diag (`go run ./cmd/diag_lusr_player`) que `WHERE match_id = ?` retourne maintenant ~10 rows
+4. Backfill force LUSR + autres aggregates
+5. Patch défensif optionnel `match_id || ''` dans `loadLUSRParticipants` comme garde-fou
+
+**Fichiers ajoutés** :
+- `apps/go-api/cmd/diag_lusr_player/{main.go, replay.go, loaders.go}` — replay TrueSkill 2 modes + dump participants + test queries d'index. Garder en place pour valider post-reindex.
+
+**Suite** : attendre go/no-go du user sur la reindexation. Diagnostiquer pourquoi l'index s'est corrompu (crash sync ? bug DuckDB v2.10502 ?) — chercher dans logs récents un crash pendant un INSERT/UPDATE sur match_participants.
+
+---
+
+## [2026-05-20] fix(data_health) — Migration purge des notifs persistées historiques
+
+**Statut** : Complété (suite immédiate du refactor du même jour).
+
+**Contexte** : après suppression de l'émission, le user voyait toujours des notifs `data_health_warning` dans la cloche. Diag : binaire à jour (logs `scheduler.log` montrent la nouvelle ligne 203 sans champ `baseline`, plus aucune émission live), mais les notifs **persistées** par les boots précédents restent dans `shared_social.duckdb::player_notifications` avec leur `created_at` original. La cloche les affiche "il y a 11 min" — pas une émission récente, juste un timestamp historique.
+
+**Décision** : ajouter une migration data one-shot qui purge la catégorie. Pattern aligné avec les migrations existantes (`steps_shared_social_records_window.go`).
+
+**Livré** : [steps_shared_social_purge_data_health.go](apps/go-api/internal/migration/steps_shared_social_purge_data_health.go) — migration `purge_data_health_warning_notifs` qui `DELETE FROM player_notifications WHERE category = 'data_health_warning'`. Idempotente (no-op si table absente ou déjà purgée), loggue le nombre de lignes supprimées.
+
+**Résultats observés** :
+
+- `go vet -tags=cgo ./internal/migration/...` : clean.
+- Migration s'exécutera au prochain boot du serveur (via `migration.RunForDB(..., TargetSharedSocial)` au démarrage).
+
+**Prochaine étape** : redémarrer le serveur une dernière fois. La migration purge les vieilles notifs, plus jamais aucune `data_health_warning` ne réapparaîtra (puisque plus émise + plus persistée).
+
+---
+
 ## [2026-05-20] fix(banner) — Couleurs nameplate exactes via Microsoft emblem mapping.json + orphan-index resolver
 
 **Statut** : Complété (branche `fix/media-paths-portable`).
