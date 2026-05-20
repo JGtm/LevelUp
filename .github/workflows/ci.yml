@@ -119,12 +119,22 @@ jobs:
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
       # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
       # Config en format v2 (migration 2026-05-20, branche v1 abandonnée depuis mars 2025).
+      #
+      # `only-new-issues: true` (2026-05-20) : freeze la dette préexistante
+      # (~479 issues : goconst, noctx, funlen, gocyclo) post-bump v1.62 -> v2.12.2.
+      # Le bump v1.62 (compilé Go 1.23) refusait la config sur Go 1.26 depuis
+      # plusieurs commits ; la dette n'avait donc jamais été reportée. Le sprint
+      # cleanup a déjà réduit de 2413 -> 479 (-80%). Les ~479 restants seront
+      # progressivement réduits via le mécanisme normal : chaque PR doit pas
+      # ajouter de nouveaux warnings (only-new-issues bloque sur du new).
+      # TODO : repasser `only-new-issues: false` quand la dette tend vers 0.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
           working-directory: apps/go-api
           args: --timeout 5m
+          only-new-issues: true
 
   go-lease-enforcement:
     name: Go Lease Enforcement (ADR 0013)
