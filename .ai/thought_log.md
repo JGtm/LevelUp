@@ -166,7 +166,24 @@ pré-pivot Go                  : 76 (100%)
 
 **Résultats observés** : à valider après push (la branche `fix/media-paths-portable` re-déclenchera la CI).
 
-**Bilan global du sprint (7 fixes, 7 commits)** :
+9. **Fix `E2E React (Playwright) / Build Go backend` — path `./cmd/api/` inexistant** (commit #8) : après push, le run CI a révélé un 4ème job qui échoue sur un problème **réel** (pas dette préexistante) : `stat /home/runner/work/LevelUp/LevelUp/apps/go-api/cmd/api: directory not found`. Le workflow ci.yml ligne 335 référence `./cmd/api/` qui n'a jamais existé — le binaire serveur est dans `./cmd/server/` (renommage historique non propagé au workflow E2E). Fix 1-ligne : `./cmd/api/` → `./cmd/server/` avec commentaire explicatif.
+
+**Résultats observés après 1er push (run `26171246295` sur HEAD `d62260e6`)** :
+
+| Job | Avant sprint | Après mes 7 commits | Reste |
+|---|---|---|---|
+| Go Build + Test (ubuntu) | ✓ | ✓ | — |
+| Go Build + Test (windows) | ✓ | ✓ | — |
+| Go Contract Test (OpenAPI YAML) | ✓ | ✓ | — |
+| **Go Lease Enforcement (ADR 0013)** | ✗ | **✓** (fix #3) | — |
+| **OpenAPI Lint (spectral)** | ✗ | **✓** (fix #5) | — |
+| Go Lint (golangci-lint) | ✗ config | ✗ 2413 issues | **Sprint dédié** (décision user) |
+| Go Baseline Tests | ✗ msys64 path | ✓ script + ✗ baseline obsolète | **Régénérer baseline** (tests narrative légitimement renommés `AllThreeCombined` → `AllFourCombined`, `AllyPlus` → `AllyPlus_Triggers` etc.) |
+| Go Coverage (CGO=1) | ✗ 2 tests | ✓ tests + ? | À re-vérifier après ce 8e commit |
+| Frontend (TypeScript + Vite build) | ✗ npm ci | ✓ npm ci + ✗ TS errors | **Dette TS** exposée par bump TS 6 dans `OpenSpartanImportCard.tsx` + `SessionOutcomeTape.tsx` (autre session) |
+| E2E React (Playwright) | ✗ npm ci | ✓ npm ci + ✗ build Go path | **Fix #8 ce commit** |
+
+**Bilan global du sprint (8 fixes, 8 commits)** :
 1. `bump-version.yml` YAML indent
 2. `golangci-lint` v1→v2 migration + bump action @v6→@v9
 3. ADR 0013 lease violations (2 sites refactorés)
@@ -174,8 +191,14 @@ pré-pivot Go                  : 76 (100%)
 5. OpenAPI Lint → `.spectral.yaml` avec `extends: spectral:oas`
 6. 2 tests qui FAIL (filepath Windows + ZeroDays edge case)
 7. `check_test_baseline.sh` paths Windows hardcodés sur Linux CI
+8. E2E Playwright `./cmd/api/` → `./cmd/server/`
 
-**Prochaine étape** : push de la branche `fix/media-paths-portable` et observation des résultats CI sur les ~10 jobs. Itérations si nécessaire (par exemple si `spectral:oas` remonte des erreurs réelles dans `openapi.yaml`, ou si `golangci-lint v2` surface des warnings inattendus).
+**Dette laissée pour sprint dédié post-stabilisation** (décision user explicite) :
+- **golangci-lint v2 : 2413 issues** réelles (`noctx: 953`, `goconst: 970`, `staticcheck: 177`, `unused: 44`, etc.) — préexistantes mais jamais reportées depuis le bump Go 1.26 (la config refusait de charger).
+- **TypeScript 6 strict : 3 erreurs** dans `OpenSpartanImportCard.tsx` + `SessionOutcomeTape.tsx` — code de l'autre session, dette exposée par bump TS 5→6.
+- **Baseline tests** : `.ai/baselines/tests_pre_migration.jsonl` à régénérer pour refléter les tests narrative renommés (refactor badges encounter `AllThree` → `AllFour`, etc.). Régénération via `CGO_ENABLED=1 go test -tags=integration -p 1 -json ./... > .ai/baselines/tests_pre_migration.jsonl` (~5min local).
+
+**Prochaine étape** : second push avec le fix #8 + observer si Coverage passe maintenant que les 2 tests sont fixés.
 
 ---
 
