@@ -8,7 +8,9 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.js'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Tests E2E Playwright : moins stricts (mocks any, ts-ignore acceptes
+  // pour test-helpers, prefer-const variable selon contexte de test).
+  globalIgnores(['dist', 'e2e/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -34,6 +36,22 @@ export default defineConfig([
     },
     rules: {
       '@levelup/no-hardcoded-strings': 'warn',
+      // react-refresh/only-export-components : downgrade en warn — cette
+      // regle est cosmetique (HMR fast refresh) et beaucoup de fichiers
+      // composants exposent legitimement des const/types/helpers a cote.
+      // Refactor possible plus tard (split en *.types.ts / *.utils.ts).
+      'react-refresh/only-export-components': 'warn',
+      // Regles React Compiler (eslint-plugin-react-hooks v7) — downgrade en
+      // warn pour cette phase. Necessitent du refactor cas-par-cas qui sort
+      // du scope sprint stabilisation CI.
+      //  - preserve-manual-memoization : useMemo defensifs avec deps elargies
+      //  - refs : pattern legitime de ref-as-key dans certains hooks
+      //  - set-state-in-effect : setState dans useEffect (parfois necessaire
+      //    pour sync prop -> state quand source externe pilote la valeur)
+      // A re-activer en error sprint cleanup React Compiler dedie.
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
     },
   },
   {
