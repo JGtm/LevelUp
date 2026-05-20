@@ -332,7 +332,9 @@ jobs:
 
       - name: Build Go backend
         working-directory: apps/go-api
-        run: CGO_ENABLED=0 go build -o levelup-api ./cmd/api/
+        # Le binaire serveur est dans cmd/server/, pas cmd/api/ (renommage
+        # historique non propagé au workflow E2E).
+        run: CGO_ENABLED=0 go build -o levelup-api ./cmd/server/
         env:
           CGO_ENABLED: "0"
 
