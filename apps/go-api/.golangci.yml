@@ -1,190 +1,222 @@
-# golangci-lint configuration — LevelUp Go API
+# golangci-lint configuration v2 — LevelUp Go API
 #
-# Équivalences Python → Go :
-#   ruff (lint)                → golangci-lint + staticcheck
-#   black / ruff-format        → gofmt (standard Go, pas de config)
-#   pyright / mypy             → compilateur Go (vérification statique à la compile)
-#   McCabe C901 max 12         → gocyclo max-complexity 12
-#   PLR0913 max 5 args         → revive argument-limit 5
-#   enforce_size_limits.py     → funlen (80 lignes) + lll (100 chars)
-#   isort                      → goimports (no config needed)
-#   detect-secrets             → hook pre-commit universel (inchangé)
+# Equivalences Python -> Go :
+#   ruff (lint)                -> golangci-lint + staticcheck
+#   black / ruff-format        -> gofmt (standard Go, pas de config)
+#   pyright / mypy             -> compilateur Go (verification statique a la compile)
+#   McCabe C901 max 12         -> gocyclo max-complexity 12
+#   PLR0913 max 5 args         -> revive argument-limit 5
+#   enforce_size_limits.py     -> funlen (80 lignes) + lll (100 chars)
+#   isort                      -> goimports (no config needed)
+#   detect-secrets             -> hook pre-commit universel (inchange)
 #
 # Seuils (identiques Python) :
-#   Complexité cyclomatique : 12
+#   Complexite cyclomatique : 12
 #   Longueur de fonction     : 80 lignes  / 60 statements
-#   Longueur de ligne        : 100 caractères
+#   Longueur de ligne        : 100 caracteres
 #   Nombre d'arguments       : 5
+#
+# Migration v1 -> v2 (chore/ci-stabilization, 2026-05-20) :
+#   - branche v1 abandonnee depuis mars 2025 (derniere = v1.64.8)
+#   - go.mod cible Go 1.26.1 ; v1.62 (compile Go 1.23) refusait de lire la config
+#   - structure restructuree : linters-settings -> linters.settings,
+#     issues.exclude-rules -> linters.exclusions.rules, gofmt/goimports -> formatters
 
-version: "1"
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15  # Relaxé de 12 à 15 : fonctions de routing/sync naturellement complexes
-
-  funlen:
-    lines: 100  # Relaxé de 80 à 100 : portage Python conserve certaines fonctions longues
-    statements: 80
-
-  lll:
-    line-length: 150  # Relaxé de 120 à 150 : SQL, messages d'erreur et URLs dépassent souvent 120
-
-  revive:
-    rules:
-      - name: argument-limit
-        arguments: [7]  # Relaxé de 5 à 7 : handlers/sync ont parfois 6-7 args légitimes
-      - name: exported
-        arguments: ["checkPrivateReceivers"]  # sayRepetitiveInsteadOfStutters retiré : renommage risqué
-      - name: var-naming
-
-  goconst:
-    min-len: 4
-    min-occurrences: 4  # Relaxé : évite les faux positifs sur mots-clés SQL courts
-
-  staticcheck:
-    checks: ["all", "-SA1019"]  # Tout sauf "deprecated" (migration progressive)
+version: "2"
 
 linters:
+  default: standard
+
   enable:
-    - govet           # Équivalent go vet (vérifications de base)
-    - errcheck        # Erreurs non vérifiées (anti-pattern critique)
-    - staticcheck     # Analyse statique avancée (équivalent ruff flagged errors)
-    - revive          # Règles de style (équivalent ruff lint)
-    - gocyclo         # Complexité cyclomatique (équivalent McCabe C901)
-    - funlen          # Longueur de fonction (équivalent enforce_size_limits.py)
-    - lll             # Longueur de ligne
-    - gofmt           # Formatage standard Go (équivalent black)
-    - goimports       # Imports organisés (équivalent isort)
-    - goconst         # Constantes répétées (équivalent ruff A001/A002)
-    - unconvert       # Conversions de type inutiles
-    - unparam         # Paramètres de fonction inutilisés
-    - unused          # Code mort (fonctions, variables, imports)
-    - bodyclose       # Body HTTP non fermé (fuite de ressource)
-    - noctx           # Requêtes HTTP sans context.Context
-    - prealloc        # Slices non pré-allouées (perf)
+    - revive
+    - gocyclo
+    - funlen
+    - lll
+    - goconst
+    - unconvert
+    - unparam
+    - bodyclose
+    - noctx
+    - prealloc
 
   disable:
-    - misspell        # Désactivé : codebase en français, faux positifs massifs
-    - godot           # Ponctuation des commentaires — désactivé (commentaires FR acceptés)
-    - wsl             # Whitespace stricte — trop verbeux pour migration
-    - nlreturn        # Lignes vides avant return — cosmétique, désactivé
-    - gci             # Groupes d'imports — géré par goimports
+    - misspell        # Desactive : codebase en francais, faux positifs massifs
+    - godot           # Ponctuation des commentaires : commentaires FR acceptes
+    - wsl             # Whitespace stricte : trop verbeux pour migration
+    - nlreturn        # Lignes vides avant return : cosmetique
+
+  settings:
+    gocyclo:
+      min-complexity: 15  # Relaxe de 12 a 15 : fonctions de routing/sync naturellement complexes
+
+    funlen:
+      lines: 100  # Relaxe de 80 a 100 : portage Python conserve certaines fonctions longues
+      statements: 80
+
+    lll:
+      line-length: 150  # Relaxe de 120 a 150 : SQL, messages d'erreur et URLs depassent souvent 120
+
+    revive:
+      rules:
+        - name: argument-limit
+          arguments: [7]  # Relaxe de 5 a 7 : handlers/sync ont parfois 6-7 args legitimes
+        - name: exported
+          arguments: ["checkPrivateReceivers"]
+        - name: var-naming
+
+    goconst:
+      min-len: 4
+      min-occurrences: 4  # Relaxe : evite les faux positifs sur mots-cles SQL courts
+
+    staticcheck:
+      checks: ["all", "-SA1019"]  # Tout sauf "deprecated" (migration progressive)
+
+  exclusions:
+    # En v2, omettre `presets` = pas de regles d'exclusion par defaut (equivalent
+    # v1 `exclude-use-default: false`). Si besoin de reactiver, ajouter ici :
+    #   presets:
+    #     - comments
+    #     - common-false-positives
+    #     - legacy
+    #     - std-error-handling
+
+    paths:
+      - vendor
+      - bin
+      - scripts
+      - apps  # dossier duplique accidentel (apps/go-api/apps/go-api/...) — a nettoyer hors lint
+
+    rules:
+      # defer db.Close() / rows.Close() : pattern idiomatique Go, l'erreur est informationnelle
+      - linters: [errcheck]
+        text: "Error return value of `(.*\\.Close|rows\\.Close|stmt\\.Close)` is not checked"
+
+      # Exported WriteHeader sur types ResponseWriter/writer internes (pattern middleware standard)
+      - linters: [revive]
+        text: "exported method.*Writer.*WriteHeader should have comment"
+
+      # Constantes et variables exportees sans commentaire : acceptable pour SQL queries et domaine
+      - linters: [revive]
+        text: "exported.*should have comment"
+
+      # Commentaire doc pas au bon format (ex: constantes SQL Q1…Q99)
+      - linters: [revive]
+        text: 'comment on exported .* should be of the form'
+
+      # Stutter : noms type/func repetant le package (sync.SyncEngine, notify.NotifyConfig...)
+      # Renommage trop risque sans API stable — accepte pour v1
+      - linters: [revive]
+        text: 'that stutters'
+
+      # argument-limit : fonctions de correlation multi-metriques, refactoring hors scope
+      - linters: [revive]
+        text: 'argument-limit'
+
+      # Tests : funlen + lll permissifs (tables de valeurs longues acceptees)
+      - path: "_test\\.go"
+        linters:
+          - funlen
+          - lll
+          - gocyclo
+
+      # Fichiers generes par oapi-codegen : pas de lint
+      - path: "internal/api/gen/"
+        linters:
+          - lll
+          - revive
+
+      # Moteur de sync : fonctions algorithmiques complexes (portage Python -> Go fidele)
+      - path: "internal/sync/"
+        linters:
+          - gocyclo
+          - funlen
+          - lll
+
+      # Analyses stats : algorithmes multi-metriques (fidelite portage Python)
+      - path: "internal/analysis/"
+        linters:
+          - gocyclo
+          - funlen
+          - lll
+
+      # handlers : setup + sync complexes par conception (orchestration I/O)
+      - path: "internal/api/handlers/"
+        linters:
+          - gocyclo
+
+      # server.go : routeur principal inevitablement long
+      - path: "internal/api/server.go"
+        linters:
+          - funlen
+
+      # Platform settings : Apply() complexe par sa nature de validation multi-champs
+      - path: "internal/platform/settings/"
+        linters:
+          - gocyclo
+
+      # ops : archive et seed algorithmiques (SQL verbeux, lignes longues acceptees)
+      - path: "internal/ops/"
+        linters:
+          - gocyclo
+          - lll
+
+      # service : filtres de matchs multi-criteres
+      - path: "internal/service/"
+        linters:
+          - gocyclo
+
+      # cmd/server/main.go : init server inevitablement long
+      - path: "cmd/server/main.go"
+        linters:
+          - funlen
+          - gocyclo
+
+      # validation : gate check multi-etapes
+      - path: "internal/validation/"
+        linters:
+          - funlen
+          - gocyclo
+          - unused
+
+      # Steps de migration : SQL verbeux, funlen + gocyclo permissifs
+      - path: "internal/migration/steps_"
+        linters:
+          - funlen
+          - gocyclo
+          - lll
+
+      # Backfill : 96 champs -> argument-limit non applicable
+      - path: "internal/sync/backfill"
+        linters:
+          - revive
+
+      # main.go CLI : switch volumineux accepte
+      - path: "cmd/levelup/main\\.go"
+        linters:
+          - funlen
+          - gocyclo
+
+      # Multi-titres : packages Go nommes avec underscore par convention produit
+      # (coherence avec title.DefaultSlug = "halo_infinite" et les configs
+      # config/titles/{slug}/). Renommer ferait perdre la lisibilite 1-pour-1
+      # avec les slugs canoniques.
+      - path: "internal/games/(halo_infinite|synthetic_title_b)/"
+        linters: [revive]
+        text: "var-naming: don't use an underscore in package name"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  # gci desactive : doublon avec goimports, gere les groupes d'imports automatiquement
 
 issues:
   max-same-issues: 0
   max-issues-per-linter: 0
-  exclude-use-default: false
-  exclude-dirs:
-    - vendor
-    - bin
-    - scripts
-    - apps  # dossier dupliqué accidentel (apps/go-api/apps/go-api/...) — à nettoyer hors lint
-  exclude-rules:
-    # defer db.Close() / rows.Close() : pattern idiomatique Go, l'erreur est informationnelle
-    - linters: [errcheck]
-      text: "Error return value of `(.*\\.Close|rows\\.Close|stmt\\.Close)` is not checked"
-    # Exported WriteHeader sur types ResponseWriter/writer internes (pattern middleware standard)
-    - linters: [revive]
-      text: "exported method.*Writer.*WriteHeader should have comment"
-    # Constantes et variables exportées sans commentaire : acceptable pour SQL queries et domaine
-    - linters: [revive]
-      text: "exported.*should have comment"
-    # Commentaire doc pas au bon format (ex: constantes SQL Q1…Q99)
-    - linters: [revive]
-      text: 'comment on exported .* should be of the form'
-    # Stutter : noms type/func répétant le package (sync.SyncEngine, notify.NotifyConfig...)
-    # Renommage trop risqué sans API stable — accepté pour v1
-    - linters: [revive]
-      text: 'that stutters'
-    # argument-limit : fonctions de corrélation multi-métriques, refactoring hors scope
-    - linters: [revive]
-      text: 'argument-limit'
-    # Tests : funlen + lll permissifs (tables de valeurs longues acceptées)
-    - path: "_test\\.go"
-      linters:
-        - funlen
-        - lll
-        - gocyclo
-    # Fichiers générés par oapi-codegen : pas de lint
-    - path: "internal/api/gen/"
-      linters:
-        - lll
-        - revive
-    # Moteur de sync : fonctions algorithmiques complexes (portage Python →  Go fidèle)
-    # La complexité vient de la fidélité au portage, pas d'un problème de design
-    - path: "internal/sync/"
-      linters:
-        - gocyclo
-        - funlen
-        - lll
-    # Analyses stats : algorithmes multi-métriques (fidélité portage Python)
-    - path: "internal/analysis/"
-      linters:
-        - gocyclo
-        - funlen
-        - lll
-    # handlers : setup + sync complexes par conception (orchestration I/O)
-    - path: "internal/api/handlers/"
-      linters:
-        - gocyclo
-    # server.go : routeur principal inévitablement long
-    - path: "internal/api/server.go"
-      linters:
-        - funlen
-    # Platform settings : Apply() complexe par sa nature de validation multi-champs
-    - path: "internal/platform/settings/"
-      linters:
-        - gocyclo
-    # ops : archive et seed algorithmiques (SQL verbeux, lignes longues acceptées)
-    - path: "internal/ops/"
-      linters:
-        - gocyclo
-        - lll
-    # service : filtres de matchs multi-critères
-    - path: "internal/service/"
-      linters:
-        - gocyclo
-    # cmd/server/main.go : init server inévitablement long (gocyclo naturellement élevé : init + health-check + graceful shutdown)
-    - path: "cmd/server/main.go"
-      linters:
-        - funlen
-        - gocyclo
-    # validation : gate check multi-étapes
-    - path: "internal/validation/"
-      linters:
-        - funlen
-        - funlen
-        - gocyclo
-        - unused
-
-    # Steps de migration : SQL verbeux, funlen + gocyclo permissifs
-    - path: "internal/migration/steps_"
-      linters:
-        - funlen
-        - gocyclo
-        - lll
-
-    # Backfill : 96 champs → argument-limit non applicable
-    - path: "internal/sync/backfill"
-      linters:
-        - revive
-
-    # main.go CLI : switch volumineux accepté
-    - path: "cmd/levelup/main\\.go"
-      linters:
-        - funlen
-        - gocyclo
-
-    # Multi-titres : packages Go nommés avec underscore par convention
-    # produit (cohérence avec title.DefaultSlug = "halo_infinite" et les
-    # configs config/titles/{slug}/). Renommer en haloinfinite/synthetictitleb
-    # ferait perdre la lisibilité 1-pour-1 avec les slugs canoniques.
-    - path: "internal/games/(halo_infinite|synthetic_title_b)/"
-      linters:
-        - revive
-      text: "var-naming: don't use an underscore in package name"
 
 output:
   formats:
-    - format: colored-line-number
+    text:
+      path: stdout
+      colors: true
   sort-results: true

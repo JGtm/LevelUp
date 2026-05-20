@@ -18,11 +18,25 @@
 
 1. **Fix YAML `bump-version.yml` ligne 34** (commit #1) : ajout des 6 espaces d'indentation manquants devant `- name: Compute new version` (le step n'était pas indenté comme un enfant de `steps:`). Erreur d'indentation pure, sans impact sémantique. Débloque l'échec #1 et la cascade #2 (le pre-check `validate-syntax` parcourt tous les workflows et exit 1 dès qu'un YAML est invalide).
 
-(à enrichir à mesure que les fixes 2-6 sont appliqués)
+2. **Migration golangci-lint config v1 → v2 + bump action v6 → v9** (commit #2) : décision à un croisement entre quick-fix (`install-mode: goinstall` + dernière v1.x v1.64.8) vs migration propre. Choix utilisateur : **migration propre**, motivée par le fait que la branche v1 est **abandonnée depuis mars 2025** (v1.64.8 = dernière release), donc on aurait dû migrer tôt ou tard.
+   - **Action** bumpée `@v6` → `@v9` (v9.2.0 sortie déc 2025, native v2).
+   - **Version pin** v1.62 → **v2.12.2** (latest stable, 2026-05-06, compilée avec Go 1.26).
+   - **Config** restructurée :
+     - `version: "1"` → `version: "2"`
+     - `linters-settings:` → `linters.settings:`
+     - `issues.exclude-rules:` → `linters.exclusions.rules:`
+     - `issues.exclude-dirs:` → `linters.exclusions.paths:`
+     - `gofmt`, `goimports` déplacés vers `formatters.enable:` (en v2 ce ne sont plus des linters mais des formatters)
+     - `linters.default: standard` (préserve le set par défaut de v1)
+     - `output.formats: [- format: colored-line-number]` → `output.formats.text: { colors: true }`
+     - `exclude-use-default: false` → omission de `linters.exclusions.presets` (équivalent en v2)
+   - **Risque** : v2 peut surfacer de nouveaux warnings (defaults différents, surtout sur `staticcheck` qui absorbe maintenant `gosimple`). À mesurer après le premier run vert. Si bloquant, on annote en `# noqa`-équivalent (path-based exclusion) plutôt que de fixer immédiatement — l'objectif est de stabiliser la CI, pas de réduire toute la dette en un commit.
+
+(à enrichir à mesure que les fixes 3-6 sont appliqués)
 
 **Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
 
-**Prochaine étape** : fix #3 — bumper la version de `golangci-lint-action` à une version compatible Go 1.26.
+**Prochaine étape** : fix #3 — `Go Lease Enforcement` script `check_lease_enforcement.sh` exit 1.
 
 ---
 
