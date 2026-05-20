@@ -23,6 +23,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 const (
@@ -66,7 +68,25 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 		return "", "", nil
 	}
 
-	slog.DebugContext(ctx, "oauth_refresh: échange refresh_token → access_token")
+	// Sprint B1 commit 18 : event_id pour tracer l'échange OAuth v2 refresh
+	// → access_token Microsoft. Critique pour diag des refresh tokens révoqués.
+	ctx, evID := logging.WithEvent(ctx, "auth.oauth_exchange")
+	start := time.Now()
+	slog.InfoContext(ctx, "oauth_refresh: échange refresh_token → access_token démarré",
+		"event", evID)
+	defer func() {
+		if err != nil {
+			slog.WarnContext(ctx, "oauth_refresh: échange échoué",
+				"duration_ms", time.Since(start).Milliseconds(), "err", err)
+		} else if accessToken == "" {
+			slog.WarnContext(ctx, "oauth_refresh: token révoqué (réponse vide)",
+				"duration_ms", time.Since(start).Milliseconds())
+		} else {
+			slog.InfoContext(ctx, "oauth_refresh: échange OK",
+				"duration_ms", time.Since(start).Milliseconds(),
+				"rotated", rotatedRefreshToken != "" && rotatedRefreshToken != refreshToken)
+		}
+	}()
 
 	clientID := os.Getenv("SPNKR_AZURE_CLIENT_ID")
 	if clientID == "" {

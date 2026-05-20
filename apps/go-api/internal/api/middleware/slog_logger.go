@@ -1,6 +1,7 @@
 // Package middleware fournit les middlewares HTTP transverses.
 // Sprint 4 : logging structuré slog avec durée de requête et request_id.
 // Sprint 35 : ajout response_bytes dans chaque log de requête.
+// Sprint B1 commit 18 : injection event_id auto par requête (http.<METHOD>:<id>).
 package middleware
 
 import (
@@ -9,15 +10,28 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/observability/logging"
 )
 
 // SlogLogger est un middleware chi qui log chaque requête via slog.
 // Remplace chimiddleware.Logger pour utiliser slog natif Go 1.21+.
 // Niveaux : 2xx/3xx → DEBUG (silencieux en prod), 4xx → WARN, 5xx → ERROR.
+//
+// Sprint B1 commit 18 : injecte un event_id "http.<METHOD>:<short_id>" dans
+// le ctx AVANT next.ServeHTTP. Tous les logs émis par les handlers et
+// services downstream hériteront automatiquement cet event_id via le
+// ContextHandler — permet de grep une requête HTTP cross-module dans
+// logs/{handlers,sync,duckdb,...}.log.
 func SlogLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		ww := &statusResponseWriter{ResponseWriter: w, status: http.StatusOK}
+
+		// Injecte event_id auto dans le ctx. Prefix = "http.<METHOD>" pour
+		// permettre des greps catégoriels (`grep 'http.POST' logs/`) en plus
+		// du grep par event_id exact.
+		ctx, evID := logging.WithEvent(r.Context(), "http."+r.Method)
+		r = r.WithContext(ctx)
 
 		next.ServeHTTP(ww, r)
 
@@ -30,14 +44,15 @@ func SlogLogger(next http.Handler) http.Handler {
 			"request_id", w.Header().Get(headerRequestID),
 			"remote_addr", r.RemoteAddr,
 			"title_slug", ctxkeys.TitleSlug(r.Context()),
+			"event", evID,
 		}
 		switch {
 		case ww.status >= 500:
-			slog.Error("http", attrs...)
+			slog.ErrorContext(ctx, "http", attrs...)
 		case ww.status >= 400:
-			slog.Warn("http", attrs...)
+			slog.WarnContext(ctx, "http", attrs...)
 		default:
-			slog.Debug("http", attrs...)
+			slog.DebugContext(ctx, "http", attrs...)
 		}
 	})
 }

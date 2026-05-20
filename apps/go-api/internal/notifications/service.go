@@ -166,8 +166,14 @@ func (s *Service) emitInner(ctx context.Context, in EmitInput) error {
 		if errors.Is(err, ErrCategoryDisabled) {
 			return nil
 		}
+		slog.WarnContext(ctx, "notifications: insert échoué",
+			"category", in.Category, "title_key", in.TitleKey, "err", err)
 		return fmt.Errorf("notifications: insert: %w", err)
 	}
+	// Sprint B1 commit 18 : log InfoContext sur émission réussie pour tracer
+	// les notifs post-sync (match_synced, sync_error) cross-module via event_id.
+	slog.InfoContext(ctx, "notifications: émise",
+		"category", in.Category, "title_key", in.TitleKey, "severity", severity)
 	// Cap rétention best-effort : erreur loguée par le repo, jamais propagée.
 	_ = s.repo.CapAndSweep(ctx, DefaultRetentionCap)
 	return nil
