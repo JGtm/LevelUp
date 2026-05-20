@@ -3,6 +3,7 @@ package logging
 import (
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -25,6 +26,27 @@ type Config struct {
 	// instancié et le handler console pré-existant est utilisé tel quel.
 	// Par défaut true. Override via LEVELUP_LOGS_ENABLED=false.
 	Enabled bool
+
+	// ConsoleFormat : format de sortie console. Valeurs reconnues :
+	//   - "compact" (défaut) : `HH:MM:SS [LEVEL] msg key=val ...` (ConsoleHandler)
+	//   - "text"             : slog.NewTextHandler (verbose, pre-sprint)
+	//   - "json"             : slog.NewJSONHandler (prod)
+	// Override via LEVELUP_LOG_FORMAT=compact|text|json. La var legacy
+	// LEVELUP_LOG_JSON=true force "json" si LEVELUP_LOG_FORMAT n'est pas
+	// défini (rétro-compat).
+	ConsoleFormat string
+
+	// MaxLineWidth : tronquage des lignes console au-delà de N caractères.
+	// 0 = pas de tronquage. Défaut 200. Override via LEVELUP_LOG_MAX_LINE.
+	// Appliqué uniquement au format "compact" — les formats "text"/"json"
+	// gardent leur sortie native pour préserver le parsing machine.
+	MaxLineWidth int
+
+	// ConsoleColor : active les codes ANSI couleur sur la console (rouge
+	// pour ERROR, jaune WARN, bleu INFO, gris DEBUG). Off par défaut pour
+	// rester portable Windows cmd.exe (pas d'auto-détection TTY). Override
+	// via LEVELUP_LOG_COLOR=on|off.
+	ConsoleColor bool
 }
 
 // LoadConfig lit la config depuis l'env. Tous les fallbacks sont sains :
@@ -35,8 +57,11 @@ type Config struct {
 // Peut être vide → LogsDir = "logs" (relatif au cwd).
 func LoadConfig(repoRoot string) Config {
 	cfg := Config{
-		Enabled:   parseBoolEnv("LEVELUP_LOGS_ENABLED", true),
-		FileLevel: parseLevelEnv("LEVELUP_LOGS_FILE_LEVEL", slog.LevelInfo),
+		Enabled:       parseBoolEnv("LEVELUP_LOGS_ENABLED", true),
+		FileLevel:     parseLevelEnv("LEVELUP_LOGS_FILE_LEVEL", slog.LevelInfo),
+		ConsoleFormat: parseConsoleFormat(),
+		MaxLineWidth:  parseIntEnv("LEVELUP_LOG_MAX_LINE", 200),
+		ConsoleColor:  parseBoolEnv("LEVELUP_LOG_COLOR", false),
 	}
 	cfg.LogsDir = os.Getenv("LEVELUP_LOGS_DIR")
 	if cfg.LogsDir == "" && cfg.Enabled {
@@ -51,6 +76,42 @@ func LoadConfig(repoRoot string) Config {
 		cfg.LogsDir = ""
 	}
 	return cfg
+}
+
+// parseConsoleFormat résout le format console selon (priorité) :
+//  1. LEVELUP_LOG_FORMAT explicite (compact|text|json)
+//  2. LEVELUP_LOG_JSON=true → json (rétro-compat)
+//  3. Défaut → compact
+func parseConsoleFormat() string {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_LOG_FORMAT"))) {
+	case "compact":
+		return "compact"
+	case "text":
+		return "text"
+	case "json":
+		return "json"
+	}
+	if parseBoolEnv("LEVELUP_LOG_JSON", false) {
+		return "json"
+	}
+	return "compact"
+}
+
+// parseIntEnv retourne l'entier depuis env, sinon le défaut. Valeurs négatives
+// remplacées par 0 (interprétées comme "désactivé" — pas de tronquage).
+func parseIntEnv(key string, def int) int {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return def
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return def
+	}
+	if n < 0 {
+		return 0
+	}
+	return n
 }
 
 // parseBoolEnv retourne la valeur env si "true"/"false", sinon le défaut.

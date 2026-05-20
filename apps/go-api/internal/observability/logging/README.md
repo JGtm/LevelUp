@@ -1,6 +1,9 @@
 # Logging multi-module — `internal/observability/logging/`
 
-Sprint B1 commit 16 — système de logs structurés avec dispatch console + fichiers par module, et traçabilité cross-module via `event_id`.
+Sprint B1 commits 16-20 — système de logs structurés avec :
+- dispatch console + fichiers par module
+- traçabilité cross-module via `event_id`
+- format console compact (commit 20) avec tronquage + skip d'attrs verbeux
 
 ## Pourquoi
 
@@ -13,15 +16,32 @@ Le sync engine, le `SharedDBProvider`, le pool joueur, les handlers HTTP et l'au
 ## Architecture
 
 ```
-                                  ┌── stderr (console, format texte ou JSON)
-                                  │   conserve le comportement pré-sprint
+                                  ┌── stderr (console)
+                                  │   format au choix : compact (défaut), text, json
 slog.Info/Warn/Error  ────────────┤
                                   │
                                   └── logs/{module}.log (JSON append-only)
                                       un fichier par module, créé lazy
 ```
 
-Le `MultiModuleHandler` (`multi_module_handler.go`) wrappe le handler console (`ContextHandler` existant) et duplique chaque record vers `logs/{module}.log`.
+Le `MultiModuleHandler` (`multi_module_handler.go`) wrappe le handler console (`ContextHandler` → `ConsoleHandler` ou JSON/Text) et duplique chaque record vers `logs/{module}.log`.
+
+### Format console "compact" (défaut)
+
+```
+14:30:08 [INFO]  sync.postSync: pipeline démarré matches_inserted=3
+14:30:09 [WARN]  halo_api: GET HTTP error status=429 url=…/spnkr
+14:30:12 [ERROR] provider.swap: reopen RO failed attempts=3 err=…
+```
+
+Conventions :
+- **Time** : `HH:MM:SS` (date complète préservée dans les fichiers JSON).
+- **Level** : `[INFO]`/`[WARN]`/`[ERROR]`/`[DEBUG]` padded à 7 chars pour alignement vertical de la colonne message.
+- **Message** : brut, sans préfixe ni quotes.
+- **Attrs** : `key=value` espace-séparés ; valeurs avec espace, `"` ou `=` automatiquement quotées.
+- **Skip attrs console** : `event_id`, `request_id`, `source.function`, `source.file`, `source.line`, `source` sont **masqués sur console** (préservés dans les fichiers JSON pour grep cross-module).
+- **Tronquage** : ligne > `LEVELUP_LOG_MAX_LINE` (défaut 200) suffixée `…` (1 rune Unicode).
+- **Couleurs ANSI** : opt-in via `LEVELUP_LOG_COLOR=on` (off par défaut pour Windows cmd.exe).
 
 Le module d'un record est résolu dans cet ordre :
 
@@ -31,13 +51,42 @@ Le module d'un record est résolu dans cet ordre :
 
 ## Configuration
 
+### Fichiers (par module)
+
 | Variable | Défaut | Effet |
 |---|---|---|
-| `LEVELUP_LOGS_ENABLED` | `true` | Kill-switch global. `false` → comportement pré-sprint (console only). |
+| `LEVELUP_LOGS_ENABLED` | `true` | Kill-switch global. `false` → console only. |
 | `LEVELUP_LOGS_DIR` | `<repoRoot>/logs` ou `logs/` | Répertoire de destination des fichiers `{module}.log`. |
 | `LEVELUP_LOGS_FILE_LEVEL` | `info` | Niveau minimal écrit dans les fichiers. `debug` capture tout, `warn` minimise le volume. |
 
-Les variables console pré-existantes (`LEVELUP_LOG_JSON`, `LEVELUP_LOG_LEVEL`) restent inchangées.
+### Console
+
+| Variable | Défaut | Effet |
+|---|---|---|
+| `LEVELUP_LOG_LEVEL` | `info` | Niveau minimal console : `debug`/`info`/`warn`/`error`. |
+| `LEVELUP_LOG_FORMAT` | `compact` | `compact` (ConsoleHandler, défaut) / `text` (slog natif, verbeux) / `json` (prod). |
+| `LEVELUP_LOG_MAX_LINE` | `200` | Tronquage console (caractères). `0` désactive. Format `compact` uniquement. |
+| `LEVELUP_LOG_COLOR` | `off` | Codes ANSI couleur (`on`/`off`). `off` par défaut pour Windows cmd.exe. |
+| `LEVELUP_LOG_JSON` | `false` | **Legacy** — équivalent à `LEVELUP_LOG_FORMAT=json` si `LEVELUP_LOG_FORMAT` non défini. |
+
+### Exemples
+
+```bash
+# Dev (défaut) : console compact lisible, fichiers debug-complets
+./server
+
+# Dev verbeux : voir les attrs source.* / event_id / request_id directement en console
+LEVELUP_LOG_FORMAT=text ./server
+
+# Production : JSON stdout pour aggregator (Loki, ELK), pas de fichiers locaux
+LEVELUP_LOG_FORMAT=json LEVELUP_LOGS_ENABLED=false ./server
+
+# Debug terminal large (ultra-wide), 300 chars max
+LEVELUP_LOG_MAX_LINE=300 LEVELUP_LOG_COLOR=on ./server
+
+# Aucun tronquage (debug exhaustif en console)
+LEVELUP_LOG_MAX_LINE=0 ./server
+```
 
 ## Modules
 
@@ -97,7 +146,9 @@ logger.Info("...") // → logs/custom_module.log
 go test -tags=integration -race -count=1 ./internal/observability/logging/
 ```
 
-11 tests couvrent : dispatch console+fichier, routing par attribut module, propagation event_id, fallback general, level filtering, Close idempotent, sanitization de noms, env vars config.
+Suite couvre :
+- `multi_module_handler_test.go` (11 tests) — dispatch console+fichier, routing par attribut module, propagation event_id, fallback general, level filtering, Close idempotent, sanitization, env vars config.
+- `console_handler_test.go` (20+ tests) — format compact, padding levels, level filtering, skip attrs default + custom, tronquage UTF-8, quoting valeurs avec espace/=/quote, types numériques (int/float/bool/duration), WithAttrs, codes ANSI on/off, écriture concurrente, `parseConsoleFormat` (matrice format × legacy JSON), `parseIntEnv`.
 
 ## Limitations connues
 
