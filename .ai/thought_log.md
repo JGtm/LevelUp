@@ -1,3 +1,27 @@
+## [2026-05-20] fix(duckdb) — P2 : migration post_sync_progression_queries + post_sync_deltas vers SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite de P1. 7 queries `shared.X` sur `pdb.Player` / `pdb.ReadDB()` dans le hook post-sync — toutes plantaient en prod ("schema shared does not exist") depuis le retrait d'attachShared (9c.5).
+
+**Décisions techniques** :
+
+1. **`loadProgressionMatches` — split cross-DB en 2 phases** : la query historique mixait `shared.match_participants` + `shared.match_registry` avec `player_match_enrichment`. Refactor :
+   - Phase A : shared via SharedReader (match_participants + match_registry, sans préfixe).
+   - Phase B : performance_score depuis `player_match_enrichment` sur pdb.Player avec `WHERE match_id IN (?...)`.
+   - Phase C : jointure Go. Helper local `joinProgressionPlaceholders` pour la clause IN.
+
+2. **5 autres queries — migration directe** vers `pdb.SharedReadDB().Get(ctx)` : `loadPlayerStats` (2 queries shared-only), `loadComebackContext` (1), `SnapshotPlayerState` (2). Pour ce dernier, le bloc shared est best-effort (log Debug si SharedReader indisponible).
+
+3. **Setup test corrigé** : retrait du `ATTACH shared` sur player. `shared` ouvert en RW comme conn dédiée + `pdb.SharedReader = LegacySharedReader(shared)`. Inserts test passent par `env.pdb.Shared.Exec(...) INSERT INTO match_registry/match_participants` (sans préfixe). Aligné sur la topologie prod.
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -tags=integration ./...` OK (incl. TestEvaluateProgression_EmptyDB_NoCrash qui plantait nil pointer avant fix).
+
+**Prochaine étape** : P3 — engagement_score_repo_queries.go (6 queries).
+
+---
+
 ## [2026-05-20] fix(duckdb) — P1 : refactor Q37 média en pipeline Go via SharedReader
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).

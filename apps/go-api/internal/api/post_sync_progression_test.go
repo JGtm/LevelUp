@@ -23,9 +23,9 @@ import (
 )
 
 const (
-	testXUID    = "xuid-progression-test"
-	testGT      = "ProgressionTester"
-	testTitle   = "halo_infinite"
+	testXUID  = "xuid-progression-test"
+	testGT    = "ProgressionTester"
+	testTitle = "halo_infinite"
 )
 
 // progressionTestEnv regroupe les DBs préparées + la PlayerDB associée.
@@ -59,39 +59,23 @@ func setupProgressionEnv(t *testing.T) *progressionTestEnv {
 		return db
 	}
 
-	// Migrate shared d'abord puis fermer (on l'ATTACHera au player).
-	sharedPath := filepath.Join(dir, "shared_matches_v2.duckdb")
-	{
-		raw, err := sql.Open("duckdb", sharedPath)
-		if err != nil {
-			t.Fatalf("open shared for migration: %v", err)
-		}
-		if err := migration.RunForDB(raw, migration.TargetShared); err != nil {
-			raw.Close()
-			t.Fatalf("migrate shared: %v", err)
-		}
-		raw.Close()
-	}
-
+	// Topologie post-ADR 0016 : shared ouvert en conn RW dédiée, pas
+	// d'ATTACH sur player. Les reads cross-DB passent par SharedReader
+	// (LegacySharedReader(pdb.Shared) suffit en test).
+	shared := openAndMigrate("shared_matches_v2", migration.TargetShared)
 	social := openAndMigrate("shared_social", migration.TargetSharedSocial)
 	meta := openAndMigrate("metadata", migration.TargetMetadata)
 	player := openAndMigrate("stats", migration.TargetPlayer)
 
-	// ATTACH shared (RW pour permettre INSERT via player) sur le player DB.
-	// On le fait après les migrations standalone du shared, sinon DuckDB
-	// auto-attache et bloque le 2e attach.
-	ctx := context.Background()
-	if _, err := player.Exec(ctx, "ATTACH '"+sharedPath+"' AS shared"); err != nil {
-		t.Fatalf("attach shared: %v", err)
-	}
-
 	pdb := &duckdb.PlayerDB{
-		Player: player, SharedSocial: social, Metadata: meta,
-		XUID: testXUID, Gamertag: testGT, TitleSlug: testTitle,
+		Player: player, Shared: shared, SharedSocial: social, Metadata: meta,
+		SharedReader: duckdb.LegacySharedReader(shared),
+		XUID:         testXUID, Gamertag: testGT, TitleSlug: testTitle,
 	}
 
 	cleanup := func() {
 		player.Close()
+		shared.Close()
 		social.Close()
 		meta.Close()
 		_ = os.RemoveAll(dir)
@@ -112,16 +96,16 @@ func seedMatches(t *testing.T, env *progressionTestEnv, now time.Time, count int
 		if i%3 == 0 {
 			outcome = 3 // loss
 		}
-		// match_registry (via shared schema attaché au player DB)
-		if _, err := env.pdb.Player.Exec(ctx, `
-			INSERT INTO shared.match_registry (match_id, start_time)
+		// match_registry sur shared (conn dédiée post-ADR 0016).
+		if _, err := env.pdb.Shared.Exec(ctx, `
+			INSERT INTO match_registry (match_id, start_time)
 			VALUES (?, ?)
 		`, matchID, startTime); err != nil {
 			t.Fatalf("insert match_registry %s: %v", matchID, err)
 		}
-		// match_participants
-		if _, err := env.pdb.Player.Exec(ctx, `
-			INSERT INTO shared.match_participants (
+		// match_participants sur shared.
+		if _, err := env.pdb.Shared.Exec(ctx, `
+			INSERT INTO match_participants (
 				match_id, xuid, gamertag, team_id, outcome, kills, deaths, assists,
 				kda, accuracy, personal_score, time_played_seconds, headshot_kills
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

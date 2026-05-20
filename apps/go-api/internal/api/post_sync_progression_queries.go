@@ -1,9 +1,11 @@
 // Package api — post_sync_progression_queries.go : queries de support pour
 // l'orchestrateur post-sync de la couche progression (V2 Ascension).
 //
-// Toutes les queries sont read-only et opèrent sur le PlayerDB du joueur.
-// La connexion `Player` a `shared` attaché → les queries cross-DB peuvent
-// se faire via le préfixe `shared.`.
+// Toutes les queries sont read-only. Depuis ADR 0016 (retrait final
+// d'attachShared, P2), les queries cross-DB sont scindées en 2 phases :
+// la partie shared (match_participants, match_registry) lue via SharedReader,
+// la partie player (player_match_enrichment) lue sur pdb.Player, jointure
+// faite côté Go.
 package api
 
 import (
@@ -39,23 +41,25 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// player_match_enrichment.performance_score est local au joueur.
-	// shared.match_participants donne KDA/accuracy/time_played/kills/personal_score.
-	// On filtre par xuid sur match_participants pour ne pas tirer les autres
-	// joueurs du même match.
-	rows, err := pdb.Player.Query(ctx, `
+	// P2 (ADR 0016) : split cross-DB en 2 phases.
+	// Phase A : shared via SharedReader (match_participants + match_registry).
+	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("loadProgressionMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
 			mp.match_id,
 			mr.start_time,
-			COALESCE(pme.performance_score, 0) AS performance_score,
 			COALESCE(mp.kda, 0) AS kda,
 			COALESCE(mp.kills, 0) AS kills,
 			COALESCE(mp.accuracy, 0) AS accuracy,
 			COALESCE(mp.personal_score, 0) AS personal_score,
 			COALESCE(mp.time_played_seconds, 0) AS time_played_seconds
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mp.match_id = mr.match_id
-		LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mr.start_time >= ?
 		ORDER BY mr.start_time ASC
 	`, pdb.XUID, since)
@@ -64,44 +68,106 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 	}
 	defer rows.Close()
 
-	var activities []streaks.MatchActivity
-	var inputs []records.MatchInput
+	type matchRow struct {
+		matchID   string
+		startTime time.Time
+		kda       float64
+		kills     float64
+		accuracy  float64
+		personal  float64
+		timeSec   float64
+	}
+	var loaded []matchRow
+	matchIDs := make([]string, 0)
 	for rows.Next() {
 		var (
-			matchID                       string
-			startTime                     sql.NullTime
-			perfScore, kda, accuracy, kills, personalScore, timePlayed float64
+			r         matchRow
+			startTime sql.NullTime
 		)
-		if err := rows.Scan(&matchID, &startTime, &perfScore, &kda, &kills, &accuracy, &personalScore, &timePlayed); err != nil {
+		if err := rows.Scan(&r.matchID, &startTime, &r.kda, &r.kills, &r.accuracy, &r.personal, &r.timeSec); err != nil {
 			return nil, nil, fmt.Errorf("scan progression match: %w", err)
 		}
 		if !startTime.Valid {
 			continue
 		}
+		r.startTime = startTime.Time
+		loaded = append(loaded, r)
+		matchIDs = append(matchIDs, r.matchID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	// Phase B : performance_score depuis player_match_enrichment.
+	perfByMatch := make(map[string]float64, len(matchIDs))
+	if len(matchIDs) > 0 {
+		placeholders := make([]string, len(matchIDs))
+		args := make([]any, len(matchIDs))
+		for i, id := range matchIDs {
+			placeholders[i] = "?"
+			args[i] = id
+		}
+		pmeRows, err := pdb.Player.Query(ctx, `
+			SELECT match_id, COALESCE(performance_score, 0)
+			FROM player_match_enrichment
+			WHERE match_id IN (`+joinProgressionPlaceholders(placeholders)+`)
+		`, args...)
+		if err != nil {
+			return nil, nil, fmt.Errorf("query performance_score: %w", err)
+		}
+		for pmeRows.Next() {
+			var mid string
+			var perf float64
+			if err := pmeRows.Scan(&mid, &perf); err != nil {
+				pmeRows.Close()
+				return nil, nil, fmt.Errorf("scan performance_score: %w", err)
+			}
+			perfByMatch[mid] = perf
+		}
+		pmeRows.Close()
+	}
+
+	// Phase C : assembler activities + inputs.
+	activities := make([]streaks.MatchActivity, 0, len(loaded))
+	inputs := make([]records.MatchInput, 0, len(loaded))
+	for _, r := range loaded {
+		perfScore := perfByMatch[r.matchID]
 		kpm := 0.0
 		pspm := 0.0
-		if timePlayed > 0 {
-			minutes := timePlayed / 60
-			kpm = kills / minutes
-			pspm = personalScore / minutes
+		if r.timeSec > 0 {
+			minutes := r.timeSec / 60
+			kpm = r.kills / minutes
+			pspm = r.personal / minutes
 		}
 		activities = append(activities, streaks.MatchActivity{
-			PlayedAt: startTime.Time,
-			Stats:    map[string]float64{"kda": kda},
+			PlayedAt: r.startTime,
+			Stats:    map[string]float64{"kda": r.kda},
 		})
 		inputs = append(inputs, records.MatchInput{
-			MatchID:  matchID,
-			PlayedAt: startTime.Time,
+			MatchID:  r.matchID,
+			PlayedAt: r.startTime,
 			Metrics: map[records.TrackedMetric]float64{
 				records.MetricPerformanceScore: perfScore,
-				records.MetricKDA:              kda,
+				records.MetricKDA:              r.kda,
 				records.MetricKPM:              kpm,
-				records.MetricAccuracy:         accuracy,
+				records.MetricAccuracy:         r.accuracy,
 				records.MetricPSPM:             pspm,
 			},
 		})
 	}
-	return activities, inputs, rows.Err()
+	return activities, inputs, nil
+}
+
+// joinProgressionPlaceholders compose une chaîne `?,?,...` pour clause IN.
+func joinProgressionPlaceholders(placeholders []string) string {
+	out := ""
+	for i, p := range placeholders {
+		if i > 0 {
+			out += ","
+		}
+		out += p
+	}
+	return out
 }
 
 // loadPlayerStats agrège les compteurs cumulatifs nécessaires aux milestones.
@@ -117,6 +183,12 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return out, fmt.Errorf("loadPlayerStats: shared reader: %w", err)
+	}
+	defer release()
+
 	var (
 		matchesPlayed int64
 		wins          int64
@@ -124,26 +196,25 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 		headshots     int64
 		assists       int64
 	)
-	err := pdb.Player.QueryRow(ctx, `
+	if err := sharedDB.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*),
 			COALESCE(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END), 0),
 			COALESCE(SUM(kills), 0),
 			COALESCE(SUM(headshot_kills), 0),
 			COALESCE(SUM(assists), 0)
-		FROM shared.match_participants
+		FROM match_participants
 		WHERE xuid = ?
-	`, pdb.XUID).Scan(&matchesPlayed, &wins, &kills, &headshots, &assists)
-	if err != nil {
+	`, pdb.XUID).Scan(&matchesPlayed, &wins, &kills, &headshots, &assists); err != nil {
 		return out, fmt.Errorf("aggregate stats: %w", err)
 	}
 
 	// accuracy_threshold_days : COUNT(DISTINCT DATE(start_time)) where any match >= threshold.
 	var accuracyDays int64
-	if err := pdb.Player.QueryRow(ctx, `
+	if err := sharedDB.QueryRowContext(ctx, `
 		SELECT COUNT(DISTINCT CAST(mr.start_time AS DATE))
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mp.match_id = mr.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mp.accuracy >= ?
 	`, pdb.XUID, AccuracyThresholdForDays).Scan(&accuracyDays); err != nil {
 		return out, fmt.Errorf("aggregate accuracy days: %w", err)
@@ -177,10 +248,15 @@ func loadComebackContext(ctx context.Context, pdb *duckdb.PlayerDB, now time.Tim
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	rows, err := pdb.Player.Query(ctx, `
+	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return out, fmt.Errorf("loadComebackContext: shared reader: %w", err)
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT mr.start_time
-		FROM shared.match_participants mp
-		JOIN shared.match_registry mr ON mp.match_id = mr.match_id
+		FROM match_participants mp
+		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mr.start_time IS NOT NULL
 		ORDER BY mr.start_time DESC
 		LIMIT 2
