@@ -258,7 +258,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           const isSquad = ctx.getValue<boolean>()
           return (
             <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none"
+              className="rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none"
               style={
                 isSquad
                   ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' } // color-allow: bleu sky pour pill "Escouade"
@@ -296,7 +296,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
           const color = tokenCssVar(colorToken)
           return (
             <span
-              className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none whitespace-nowrap"
+              className="inline-flex items-center rounded-full border px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none whitespace-nowrap"
               style={{
                 backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
                 borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
@@ -510,7 +510,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
-                    className="px-2 py-1.5 text-left whitespace-nowrap text-[11px] font-medium text-muted-foreground border-r border-border last:border-r-0"
+                    className="px-2 py-1.5 text-left whitespace-nowrap text-3xs font-medium text-muted-foreground border-r border-border last:border-r-0"
                   >
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                   </th>

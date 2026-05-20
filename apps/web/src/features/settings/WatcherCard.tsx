@@ -200,17 +200,17 @@ function RTAStatus({ t }: { t: SettingsText }) {
           {data.players.map((p) => (
             <li key={p.xuid} className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="font-medium text-foreground">{p.gamertag}</span>
-              <span className="rounded bg-muted px-1 py-0.5 text-[10px]">{resolveStateLabel(p.state, t)}</span>
-              {p.in_game && <span className="text-success text-[10px]">{t.watcherInGame}</span>}
+              <span className="rounded bg-muted px-1 py-0.5 text-2xs">{resolveStateLabel(p.state, t)}</span>
+              {p.in_game && <span className="text-success text-2xs">{t.watcherInGame}</span>}
               {p.subscribe_error ? (
                 <span
-                  className="rounded bg-destructive/15 px-1 py-0.5 text-[10px] text-destructive"
+                  className="rounded bg-destructive/15 px-1 py-0.5 text-2xs text-destructive"
                   title={p.subscribe_error}
                 >
                   ⚠ {t.watcherSubscribeError}
                 </span>
               ) : (
-                <span className="text-[10px] text-success">✓</span>
+                <span className="text-2xs text-success">✓</span>
               )}
             </li>
           ))}

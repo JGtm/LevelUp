@@ -62,7 +62,7 @@ export function MomentCard({
       }}
     >
       {/* En-tête : LEVELUP · PRESTIGE */}
-      <div className="absolute left-3 right-3 top-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="absolute left-3 right-3 top-2 flex items-center justify-between text-2xs uppercase tracking-widest text-muted-foreground">
         <span>LevelUp · Prestige</span>
       </div>
 
@@ -80,7 +80,7 @@ export function MomentCard({
 
         <div className={['mt-3 flex items-baseline gap-3', compact ? 'text-sm' : 'text-base'].join(' ')}>
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase text-muted-foreground">Atteint</span>
+            <span className="text-2xs uppercase text-muted-foreground">Atteint</span>
             <span className="font-bold" style={{ color }}>
               {achievedValue.toFixed(2)}
             </span>
@@ -88,11 +88,11 @@ export function MomentCard({
           {baselineValue > 0 && (
             <>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase text-muted-foreground">Baseline</span>
+                <span className="text-2xs uppercase text-muted-foreground">Baseline</span>
                 <span className="text-foreground">{baselineValue.toFixed(2)}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] uppercase text-muted-foreground">Delta</span>
+                <span className="text-2xs uppercase text-muted-foreground">Delta</span>
                 <span className="font-semibold" style={{ color }}>
                   {delta}
                 </span>
@@ -103,7 +103,7 @@ export function MomentCard({
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-[10px] text-muted-foreground">
+      <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-2xs text-muted-foreground">
         {matchCount > 0 ? <span>{matchCount} matchs</span> : <span />}
         <span>{date}</span>
       </div>

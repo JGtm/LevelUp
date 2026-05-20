@@ -106,7 +106,7 @@ export function HomeSpartanIdentityBanner({
                   />
                 ) : (
                   <span
-                    className="text-3xl font-semibold tracking-[0.18em] text-primary-foreground"
+                    className="text-3xl font-semibold tracking-label-md text-primary-foreground"
                   >
                     {identityMonogram}
                   </span>
@@ -123,7 +123,7 @@ export function HomeSpartanIdentityBanner({
                 {spartanIdentity.spartan_id ? (
                   <p
                     data-testid="home-spartan-id-value"
-                    className="mt-2 text-2xl font-medium italic tracking-[0.34em] text-foreground sm:text-3xl"
+                    className="mt-2 text-2xl font-medium italic tracking-label-3xl text-foreground sm:text-3xl"
                   >
                     {spartanIdentity.spartan_id}
                   </p>
@@ -167,7 +167,7 @@ export function HomeSpartanIdentityBanner({
               <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
                 <span
                   data-testid="home-career-rank-progress-current"
-                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                  className="shrink-0 whitespace-nowrap text-3xs font-medium text-foreground/85 sm:text-xs"
                 >
                   {`${careerRank.current_xp.toLocaleString(numberLocale)} XP`}
                 </span>
@@ -179,7 +179,7 @@ export function HomeSpartanIdentityBanner({
                 </div>
                 <span
                   data-testid="home-career-rank-progress-target"
-                  className="shrink-0 whitespace-nowrap text-[11px] font-medium text-foreground/85 sm:text-xs"
+                  className="shrink-0 whitespace-nowrap text-3xs font-medium text-foreground/85 sm:text-xs"
                 >
                   {careerRank.is_max_rank
                     ? labels.maxRank

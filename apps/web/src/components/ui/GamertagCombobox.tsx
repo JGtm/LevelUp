@@ -224,7 +224,7 @@ export function GamertagCombobox({
           {/* Groupe 1 : Joueurs configurés */}
           {configured.length > 0 && (
             <div>
-              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
                 Joueurs configurés
               </div>
               {configured.map((item) => (
@@ -242,7 +242,7 @@ export function GamertagCombobox({
           {/* Groupe 2 : Coéquipiers fréquents */}
           {frequent.length > 0 && (
             <div>
-              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
                 Coéquipiers fréquents
               </div>
               {frequent.map((item) => (
@@ -260,7 +260,7 @@ export function GamertagCombobox({
           {/* Groupe 3 : Autres joueurs (recherche serveur) */}
           {remote.length > 0 && (
             <div>
-              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+              <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
                 Autres joueurs
               </div>
               {remote.map((item) => (

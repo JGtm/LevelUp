@@ -110,7 +110,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="border-dashed">
       <CardContent className="pt-5">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <p className="text-xs uppercase tracking-label-md text-muted-foreground">{label}</p>
         <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
       </CardContent>
     </Card>
@@ -332,7 +332,7 @@ function PassShowcase({
           />
 
           <div className="flex justify-center">
-            <div className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="grid w-2/3 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 text-3xs text-muted-foreground">
               <span data-testid="season-pass-active-tier-progress-current" className="shrink-0 whitespace-nowrap">
                 {progressLabels.current}
               </span>
@@ -439,7 +439,7 @@ export function SeasonPassPage() {
 
       {otherPasses.length > 0 && (
         <div className="space-y-4">
-          <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">{text.seasonPass.otherPassesTitle}</p>
+          <p className="text-xs uppercase tracking-label-2xl text-muted-foreground">{text.seasonPass.otherPassesTitle}</p>
           <div className="grid gap-4 xl:grid-cols-2">
             {otherPasses.map((pass) => (
               <SeasonPassCard

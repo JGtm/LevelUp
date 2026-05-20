@@ -65,7 +65,7 @@ export function SessionSummaryCard({ title, entry, tone }: Props) {
 function SessionStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-background/70 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="text-3xs font-semibold uppercase tracking-label-md text-muted-foreground">{label}</p>
       <p className="mt-2 text-lg font-semibold text-foreground">{value}</p>
     </div>
   )

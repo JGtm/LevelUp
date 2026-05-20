@@ -112,7 +112,7 @@ export function CompareMirrorRow({
             {valueB}
           </span>
           {sampleNoteB && (
-            <span className="text-[10px] leading-tight text-muted-foreground">{sampleNoteB}</span>
+            <span className="text-2xs leading-tight text-muted-foreground">{sampleNoteB}</span>
           )}
         </div>
 
@@ -141,7 +141,7 @@ export function CompareMirrorRow({
             {valueC}
           </span>
           {sampleNoteC && (
-            <span className="text-[10px] leading-tight text-muted-foreground">{sampleNoteC}</span>
+            <span className="text-2xs leading-tight text-muted-foreground">{sampleNoteC}</span>
           )}
         </div>
       </div>

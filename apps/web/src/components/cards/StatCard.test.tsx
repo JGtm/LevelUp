@@ -32,7 +32,7 @@ describe('StatCard', () => {
     render(<StatCard label="Latence p95" value="142ms" variant="metric" />)
     const labelEl = screen.getByText('Latence p95')
     expect(labelEl.className).toContain('uppercase')
-    expect(labelEl.className).toContain('tracking-[0.16em]')
+    expect(labelEl.className).toContain('tracking-label')
     // value en text-2xl (vs text-xl pour les autres variants)
     expect(screen.getByText('142ms').className).toContain('text-2xl')
   })

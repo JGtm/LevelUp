@@ -176,7 +176,7 @@ export function SessionMultiSelect({
 
           {/* Mini filtre date (ne filtre QUE la liste visible) */}
           <div className="p-2 border-b border-border/50">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+            <div className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
               {t.filterList}
             </div>
             <div className="flex items-center gap-2">
@@ -242,7 +242,7 @@ export function SessionMultiSelect({
                     <div className="text-xs text-muted-foreground">{dateLabel}</div>
                   </div>
                   {count !== undefined && (
-                    <span className="shrink-0 self-center text-[10px] tabular-nums text-muted-foreground">
+                    <span className="shrink-0 self-center text-2xs tabular-nums text-muted-foreground">
                       {count}
                     </span>
                   )}

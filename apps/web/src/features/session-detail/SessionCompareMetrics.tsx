@@ -41,7 +41,7 @@ export function SessionCompareMetrics({ metrics }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-label text-muted-foreground">
                 <th className="px-3 py-3 font-medium">{t('session.detail.compare_col_metric')}</th>
                 <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_session_active')}</th>
                 <th className="px-3 py-3 text-right font-medium">{t('session.detail.compare_col_session_compared')}</th>

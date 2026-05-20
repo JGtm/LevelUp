@@ -77,13 +77,13 @@ export function MatchMedalsSection({ medals, t }: MatchMedalsSectionProps) {
               />
             ) : (
               <div className="w-[50px] h-[50px] rounded bg-muted flex items-center justify-center">
-                <span className="text-[10px] text-muted-foreground">{medal.medal_name_id}</span>
+                <span className="text-2xs text-muted-foreground">{medal.medal_name_id}</span>
               </div>
             )}
-            <span className="text-[11px] text-muted-foreground leading-tight text-center w-full truncate">
+            <span className="text-3xs text-muted-foreground leading-tight text-center w-full truncate">
               {medal.name}
             </span>
-            <span className="text-[11px] font-semibold text-foreground/80 leading-none">
+            <span className="text-3xs font-semibold text-foreground/80 leading-none">
               ×{medal.count}
             </span>
           </div>
@@ -135,7 +135,7 @@ export function MatchCitationsSection({ citations, t }: MatchCitationsSectionPro
             )}
             <div className="flex items-baseline justify-center gap-1.5 leading-none">
               {showTier && !isMastered && (
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-3xs text-muted-foreground">
                   {cumulative}/{nextTarget}
                 </span>
               )}
@@ -144,7 +144,7 @@ export function MatchCitationsSection({ citations, t }: MatchCitationsSectionPro
               </span>
             </div>
             {cit.is_newly_mastered && (
-              <span className="text-[11px] font-bold text-warning leading-none">
+              <span className="text-3xs font-bold text-warning leading-none">
                 {t.newlyMastered}
               </span>
             )}

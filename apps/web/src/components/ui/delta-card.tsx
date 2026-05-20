@@ -65,7 +65,7 @@ export function DeltaCard({
         >{deltaText}</p>
       )}
       {warning && (
-        <p className="text-[10px] text-warning mt-1">⚠ {warningText ?? 'Tendance non significative'}</p>
+        <p className="text-2xs text-warning mt-1">⚠ {warningText ?? 'Tendance non significative'}</p>
       )}
     </div>
   )

@@ -43,7 +43,7 @@ export function SessionMatchesTable({ matches }: Props) {
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] text-sm">
         <thead>
-          <tr className="border-b border-border text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
+          <tr className="border-b border-border text-left text-xs uppercase tracking-label text-muted-foreground">
             <th className="px-3 py-3 font-medium">{t('session.detail.col_time')}</th>
             <th className="px-3 py-3 font-medium">{t('session.detail.col_mode')}</th>
             <th className="px-3 py-3 font-medium">{t('session.detail.col_playlist')}</th>

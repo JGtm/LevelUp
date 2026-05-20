@@ -30,7 +30,7 @@ export function AssetCard({ asset, locale, kind }: AssetCardProps) {
           }}
         />
       </div>
-      <p className="truncate px-1.5 py-1 text-[11px] leading-tight text-muted-foreground">
+      <p className="truncate px-1.5 py-1 text-3xs leading-tight text-muted-foreground">
         {label}
       </p>
     </div>

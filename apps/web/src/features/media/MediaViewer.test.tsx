@@ -55,7 +55,7 @@ describe('LikersLine — logique de formatage', () => {
 function LikersLine({ likers, totalLikers }: { likers?: string[]; totalLikers?: number }) {
   if (!totalLikers || totalLikers === 0) return null
   const label = renderLikersLabel(likers ?? [], totalLikers)
-  return <p className="text-[11px] text-rose-400 leading-tight">{label}</p>
+  return <p className="text-3xs text-rose-400 leading-tight">{label}</p>
 }
 
 describe('LikersLine — rendu React', () => {

@@ -274,11 +274,11 @@ function TeamScoreboard({
                 <span className={`font-medium ${r.is_bot ? 'text-muted-foreground italic' : 'text-foreground'}`}>{displayGamertag}</span>
               )}
               {r.is_bot && (
-                <span className="ml-1 rounded px-1 py-0 text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-wide">Bot</span>
+                <span className="ml-1 rounded px-1 py-0 text-2xs font-bold bg-muted text-muted-foreground uppercase tracking-wide">Bot</span>
               )}
               {r._isMvp && (
                 <span
-                  className="ml-1 rounded px-1 py-0 text-[10px] font-bold uppercase tracking-wide"
+                  className="ml-1 rounded px-1 py-0 text-2xs font-bold uppercase tracking-wide"
                   style={{
                     backgroundColor: 'color-mix(in oklab, var(--ac-outcome-win) 80%, transparent)',
                     color: 'var(--foreground)',
@@ -289,7 +289,7 @@ function TeamScoreboard({
               )}
               {r._isLvp && (
                 <span
-                  className="ml-1 rounded px-1 py-0 text-[10px] font-bold uppercase tracking-wide"
+                  className="ml-1 rounded px-1 py-0 text-2xs font-bold uppercase tracking-wide"
                   style={{
                     backgroundColor: 'color-mix(in oklab, var(--ac-outcome-loss) 80%, transparent)',
                     color: 'var(--foreground)',
@@ -365,7 +365,7 @@ function TeamScoreboard({
         plus large (2px sur le périmètre, 1px entre cellules). Le `<th>` du
         bandeau d'équipe garde son borderBottom 2px team-color.
       */}
-      <table className="w-full border-2 border-border border-collapse text-[11px]">
+      <table className="w-full border-2 border-border border-collapse text-3xs">
         <thead>
           <tr>
             <th

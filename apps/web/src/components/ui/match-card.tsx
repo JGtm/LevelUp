@@ -205,7 +205,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               return (
                 <span
                   key={badgeType}
-                  className="rounded px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em]"
+                  className="rounded px-2 py-1 text-2xs font-black uppercase tracking-label-xs"
                   style={{
                     backgroundColor: badgeMeta.color,
                     color: badgeMeta.textColor,
@@ -241,7 +241,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             <>
             {isWithFriends != null && (
               <span
-                className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider leading-none"
+                className="rounded-full px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none"
                 style={isWithFriends
                   ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' } // color-allow: bleu sky pour pill "Escouade"
                   : { backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' } // color-allow: violet pour pill "Solo"
@@ -251,7 +251,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
               </span>
             )}
             {rankInTeam != null && (
-              <span className="text-[10px] font-medium text-muted-foreground leading-none">
+              <span className="text-2xs font-medium text-muted-foreground leading-none">
                 Placement : #{rankInTeam}
               </span>
             )}
@@ -274,7 +274,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     >
                       {perfScore}
                     </span>
-                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Performance</span>
+                    <span className="text-2xs font-medium leading-none text-muted-foreground">Performance</span>
                   </div>
                 )}
                 {/* Séparateur vertical fin */}
@@ -327,15 +327,15 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{kills}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>frags</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>frags</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{assists}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>assist.</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>assist.</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{deaths}</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-loss') }}>morts</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-loss') }}>morts</span>
                   </div>
                 </div>
               </div>
@@ -351,7 +351,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                       {m.headshot_kills != null && m.headshot_kills > 0 ? (
                         <>
                           <span className="text-lg font-black text-foreground leading-none">{m.headshot_kills}</span>
-                          <span className="text-[10px] font-medium leading-none text-muted-foreground">T. tête</span>
+                          <span className="text-2xs font-medium leading-none text-muted-foreground">T. tête</span>
                         </>
                       ) : null}
                     </div>
@@ -363,14 +363,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                       >
                         {m.kda.toFixed(2)}
                       </span>
-                      <span className="text-[10px] font-medium leading-none text-muted-foreground">FDA</span>
+                      <span className="text-2xs font-medium leading-none text-muted-foreground">FDA</span>
                     </div>
                     {/* Colonne droite : Frags parfaits — espace réservé même si absent */}
                     <div className="w-16 flex flex-col items-center gap-0.5">
                       {m.perfect_kills != null && m.perfect_kills > 0 ? (
                         <>
                           <span className="text-lg font-black leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>{m.perfect_kills}</span>
-                          <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>Parfaits</span>
+                          <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('perf-tier-3') }}>Parfaits</span>
                         </>
                       ) : null}
                     </div>
@@ -384,11 +384,11 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 <div className="flex justify-center gap-5 mt-2">
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{(offConv * 100).toFixed(0)}%</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>Rendement</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>Rendement</span>
                   </div>
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{((defRes - 1) * 100).toFixed(0)}%</span>
-                    <span className="text-[10px] font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>Résistance</span>
+                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>Résistance</span>
                   </div>
                 </div>
               </div>
@@ -400,13 +400,13 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 {m.accuracy != null && (
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{m.accuracy.toFixed(0)} %</span>
-                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Précision</span>
+                    <span className="text-2xs font-medium leading-none text-muted-foreground">Précision</span>
                   </div>
                 )}
                 {m.avg_life_secs != null && (
                   <div className="flex flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{m.avg_life_secs.toFixed(1)} s</span>
-                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Vie moy.</span>
+                    <span className="text-2xs font-medium leading-none text-muted-foreground">Vie moy.</span>
                   </div>
                 )}
               </div>
@@ -418,14 +418,14 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                 <div className="flex w-full items-center">
                   <div className="flex flex-1 flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{Math.round(m.team_mmr)}</span>
-                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Équipe</span>
+                    <span className="text-2xs font-medium leading-none text-muted-foreground">Équipe</span>
                   </div>
                   <div className="w-8 flex justify-center">
                     <span className="text-muted-foreground/50 text-[13px] leading-none">⟷</span>
                   </div>
                   <div className="flex flex-1 flex-col items-center gap-0.5">
                     <span className="text-sm font-bold text-foreground leading-none">{Math.round(m.enemy_mmr)}</span>
-                    <span className="text-[10px] font-medium leading-none text-muted-foreground">Adversaires</span>
+                    <span className="text-2xs font-medium leading-none text-muted-foreground">Adversaires</span>
                   </div>
                 </div>
                 {m.delta_mmr != null && (
@@ -528,13 +528,13 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
           className="border-t border-border px-3 py-2 text-center bg-muted/30"
         >
           {m.duration_secs != null && m.duration_secs > 0 && (
-            <p className="text-[11px] text-muted-foreground leading-tight">
+            <p className="text-3xs text-muted-foreground leading-tight">
               <span className="font-semibold text-muted-foreground/90">Durée :</span>{' '}
               {formatMatchDuration(m.duration_secs)}
             </p>
           )}
           {m.started_at && (
-            <p className="text-[11px] text-muted-foreground/70 leading-tight">
+            <p className="text-3xs text-muted-foreground/70 leading-tight">
               <span className="font-semibold text-muted-foreground/90">Date :</span>{' '}
               {formatMatchDateTime(m.started_at, timezone, locale)}
             </p>

@@ -133,14 +133,14 @@ function PBCard({ metric, pbs, locale, t }: PBCardProps) {
                 {formatMetricValue(metric, pb.value)}
               </span>
               {pb.previous_value != null && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-2xs text-muted-foreground">
                   {interpolate(t.recordsPreviousValue, {
                     value: formatMetricValue(metric, pb.previous_value),
                   })}
                 </span>
               )}
               {pb.achieved_at && (
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-2xs text-muted-foreground">
                   {interpolate(t.recordsAchievedAt, {
                     date: formatDate(pb.achieved_at, locale),
                   })}

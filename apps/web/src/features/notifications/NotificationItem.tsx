@@ -76,7 +76,7 @@ export function NotificationItem(props: NotificationItemProps) {
         {body && (
           <p className="line-clamp-2 text-xs text-muted-foreground">{body}</p>
         )}
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{rel}</p>
+        <p className="mt-0.5 text-3xs text-muted-foreground">{rel}</p>
       </div>
 
       <div className="invisible absolute right-2 top-2 flex gap-1 group-hover:visible">

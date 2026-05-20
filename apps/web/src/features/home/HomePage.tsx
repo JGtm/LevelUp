@@ -395,7 +395,7 @@ export function HomePage() {
                 >
                   {t('home.matches.tab_favorites')}
                   {favoriteMatches.length > 0 && (
-                    <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] text-warning">
+                    <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-2xs text-warning">
                       {favoriteMatches.length}
                     </span>
                   )}

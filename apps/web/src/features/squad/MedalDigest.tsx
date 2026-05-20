@@ -76,13 +76,13 @@ function MedalChip({ item }: { item: MedalDigestItem }) {
           className="h-5 w-5 object-contain"
         />
       ) : (
-        <span className="h-5 w-5 flex items-center justify-center rounded-full bg-muted-foreground/20 text-[10px] font-bold uppercase">
+        <span className="h-5 w-5 flex items-center justify-center rounded-full bg-muted-foreground/20 text-2xs font-bold uppercase">
           {(item.label ?? '?').charAt(0)}
         </span>
       )}
       <span className="text-foreground/80 max-w-[7rem] truncate">{item.label || `#${item.medal_id}`}</span>
       <span
-        className="rounded-full px-1 text-[10px] font-bold leading-tight"
+        className="rounded-full px-1 text-2xs font-bold leading-tight"
         style={{
           background: 'var(--muted)', // color-allow: structurel — badge count neutre
           color: 'var(--foreground)',
@@ -119,7 +119,7 @@ function MedalIconTile({ item }: { item: MedalDigestItem }) {
         </span>
       )}
       <span
-        className="rounded-full px-1 text-[10px] font-bold leading-tight"
+        className="rounded-full px-1 text-2xs font-bold leading-tight"
         style={{
           background: 'var(--muted)', // color-allow: structurel — badge count neutre
           color: 'var(--foreground)',
@@ -157,7 +157,7 @@ function MedalExpandedGrid({
     <div className="pt-1 space-y-3">
       {orderedKeys.map((cat) => (
         <div key={cat}>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+          <p className="text-2xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
             {categoryLabels[cat as keyof typeof categoryLabels] ?? cat}
           </p>
           <div className="flex flex-wrap gap-3">

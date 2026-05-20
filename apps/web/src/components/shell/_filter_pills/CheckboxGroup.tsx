@@ -54,7 +54,7 @@ export function CheckboxGroup({
 
   return (
     <div className="flex flex-col">
-      <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <h4 className="mb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
         {selected.length > 0 && (
           <span className="ml-1 text-primary">({selected.length})</span>
@@ -75,7 +75,7 @@ export function CheckboxGroup({
           <button
             type="button"
             onClick={() => setShowUnavailable(true)}
-            className="flex w-full items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="flex w-full items-center justify-center gap-1 px-2 py-1.5 text-2xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             + {unavailable.length} option{unavailable.length > 1 ? 's' : ''} indisponible
             {unavailable.length > 1 ? 's' : ''}
@@ -97,7 +97,7 @@ export function CheckboxGroup({
               <button
                 type="button"
                 onClick={() => setShowUnavailable(false)}
-                className="flex w-full items-center justify-center gap-1 px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex w-full items-center justify-center gap-1 px-2 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 ↑ Masquer
               </button>
@@ -118,7 +118,7 @@ export function CheckboxGroup({
               className="h-3 w-3 cursor-pointer rounded border-destructive/50 opacity-60 focus:ring-1 focus:ring-ring"
             />
             <span className="flex-1 truncate">{value}</span>
-            <span className="shrink-0 text-[10px] font-medium text-destructive">✕</span>
+            <span className="shrink-0 text-2xs font-medium text-destructive">✕</span>
           </label>
         ))}
       </div>
@@ -153,7 +153,7 @@ function OptionRow({ opt, checked, onToggle, disabled }: OptionRowProps) {
         className="h-3 w-3 cursor-pointer rounded border-input text-primary focus:ring-1 focus:ring-ring disabled:cursor-not-allowed"
       />
       <span className="flex-1 truncate">{opt.label}</span>
-      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+      <span className="shrink-0 text-2xs tabular-nums text-muted-foreground">
         {opt.count}
       </span>
     </label>

@@ -20,7 +20,7 @@ function OverviewCard({ label, value }: { label: string; value: string }) {
   return (
     <Card className="border-dashed">
       <CardContent className="pt-5">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+        <p className="text-xs uppercase tracking-label-md text-muted-foreground">{label}</p>
         <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
       </CardContent>
     </Card>

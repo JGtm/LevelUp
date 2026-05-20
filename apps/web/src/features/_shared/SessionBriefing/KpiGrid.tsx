@@ -75,11 +75,11 @@ function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken
 
   return (
     <div className="rounded border border-border bg-card px-3 py-2">
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-3xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <div className="mt-0.5 flex items-baseline">
         <span className="text-lg font-bold" style={valueStyle}>{value}</span>
         {inlineSub && (
-          <span className="ml-1.5 text-[11px] text-muted-foreground">{inlineSub}</span>
+          <span className="ml-1.5 text-3xs text-muted-foreground">{inlineSub}</span>
         )}
         {!valueColorToken && trendToken && (
           <span
@@ -90,7 +90,7 @@ function KpiCell({ label, value, sub, inlineSub, trend = 'none', valueColorToken
           </span>
         )}
       </div>
-      {sub && <p className="mt-0.5 text-[10px] text-muted-foreground">{sub}</p>}
+      {sub && <p className="mt-0.5 text-2xs text-muted-foreground">{sub}</p>}
     </div>
   )
 }
@@ -150,11 +150,11 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
     <div>
       {title && (
         <div className="mb-1.5 flex items-center justify-between px-1">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="text-3xs font-semibold uppercase tracking-wider text-muted-foreground">
             {title}
           </span>
           {teamAvgKpis && hint && (
-            <span className="text-[10px] text-muted-foreground">{hint}</span>
+            <span className="text-2xs text-muted-foreground">{hint}</span>
           )}
         </div>
       )}

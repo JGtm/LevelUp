@@ -52,7 +52,7 @@ export function StreakBadge({ playerSlug }: StreakBadgeProps) {
       <FlameIcon />
       {length > 0 && (
         <span
-          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium leading-none text-primary-foreground"
+          className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-2xs font-medium leading-none text-primary-foreground"
           aria-hidden="true"
         >
           {length > 99 ? '99+' : length}

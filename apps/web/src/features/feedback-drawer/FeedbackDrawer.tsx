@@ -310,7 +310,7 @@ export function FeedbackDrawer() {
               <summary className="cursor-pointer px-2 py-1 text-xs font-medium text-foreground">
                 {t('feedback_drawer.attach.preview_summary')}
               </summary>
-              <pre className="max-h-48 overflow-auto px-2 py-1 text-[10px] leading-tight text-muted-foreground">
+              <pre className="max-h-48 overflow-auto px-2 py-1 text-2xs leading-tight text-muted-foreground">
                 {builtUrl.body}
               </pre>
             </details>
@@ -326,7 +326,7 @@ export function FeedbackDrawer() {
           >
             {t('feedback_drawer.submit')}
           </button>
-          <p className="mt-1 text-[10px] text-muted-foreground">
+          <p className="mt-1 text-2xs text-muted-foreground">
             {remaining === 0
               ? t('feedback_drawer.rate_limit')
               : t('feedback_drawer.submit_note')}

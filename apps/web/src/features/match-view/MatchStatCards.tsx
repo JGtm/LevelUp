@@ -143,7 +143,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
         </span>
       )}
       {hadBotTeammate && (
-        <span className="ml-2 rounded bg-warning/20 px-2 py-0.5 text-[10px] text-warning" title="Coéquipier bot présent dans ce match">
+        <span className="ml-2 rounded bg-warning/20 px-2 py-0.5 text-2xs text-warning" title="Coéquipier bot présent dans ce match">
           🤖 bot
         </span>
       )}
@@ -236,7 +236,7 @@ export function MatchVsStatCard({
         <div>
           <span className="text-2xl font-bold text-foreground leading-none">{fmt(primary)}</span>
           {primaryLabel && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">{primaryLabel}</p>
+            <p className="text-2xs text-muted-foreground mt-0.5">{primaryLabel}</p>
           )}
         </div>
         {secondary != null && (
@@ -245,7 +245,7 @@ export function MatchVsStatCard({
             <div>
               <span className="text-2xl font-bold text-foreground leading-none">{fmt(secondary)}</span>
               {secondaryLabel && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">{secondaryLabel}</p>
+                <p className="text-2xs text-muted-foreground mt-0.5">{secondaryLabel}</p>
               )}
             </div>
           </>

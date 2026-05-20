@@ -118,10 +118,10 @@ function MilestoneCard({ milestone: m, locale, t }: MilestoneCardProps) {
         {interpolate(t.milestonesThreshold, { n: m.threshold })}
       </p>
       {m.condition && (
-        <p className="text-[10px] italic text-muted-foreground">{m.condition}</p>
+        <p className="text-2xs italic text-muted-foreground">{m.condition}</p>
       )}
       {m.earned && m.earned_at && (
-        <p className="mt-auto text-[10px] text-amber-700 dark:text-amber-300"> {/* color-allow: amber distinction milestone earned (CLAUDE.md §20) */}
+        <p className="mt-auto text-2xs text-amber-700 dark:text-amber-300"> {/* color-allow: amber distinction milestone earned (CLAUDE.md §20) */}
           {interpolate(t.milestonesEarnedAt, { date: formatDate(m.earned_at, locale) })}
         </p>
       )}
@@ -141,7 +141,7 @@ function MilestoneStatusBadge({ earned, t }: StatusBadgeProps) {
     : 'bg-muted text-muted-foreground'
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tone}`}
+      className={`rounded-full px-2 py-0.5 text-2xs font-medium ${tone}`}
     >
       {label}
     </span>

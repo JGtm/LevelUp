@@ -43,7 +43,7 @@ export function ChallengeCard({ challenge, currentValue = 0, onClick }: Challeng
           {tierLabel}
         </span>
         {challenge.mode === 'pilote' && (
-          <span className="rounded-full border border-border px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">
+          <span className="rounded-full border border-border px-1.5 py-0.5 text-2xs uppercase text-muted-foreground">
             Pilote
           </span>
         )}

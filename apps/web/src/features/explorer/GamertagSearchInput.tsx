@@ -92,7 +92,7 @@ export function GamertagSearchInput({
         <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-background shadow-lg max-h-72 overflow-y-auto">
           {configured.length > 0 && (
             <div>
-              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
                 Joueurs configurés
               </div>
               {configured.map((item) => (
@@ -108,7 +108,7 @@ export function GamertagSearchInput({
 
           {frequent.length > 0 && (
             <div>
-              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
                 Coéquipiers fréquents
               </div>
               {frequent.map((item) => (
@@ -124,7 +124,7 @@ export function GamertagSearchInput({
 
           {remote.length > 0 && (
             <div>
-              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
+              <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
                 Autres joueurs
               </div>
               {remote.map((item) => (

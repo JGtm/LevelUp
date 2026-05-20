@@ -86,7 +86,7 @@ function StreakCard({ streak: s, locale, t }: StreakCardProps) {
       <header className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-medium">{t.streakTypeName[s.type]}</h3>
         <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${statusToneClass}`}
+          className={`rounded-full px-2 py-0.5 text-2xs font-medium ${statusToneClass}`}
         >
           {statusLabel}
         </span>

@@ -98,7 +98,7 @@ export function NotificationsBell({ playerSlug }: NotificationsBellProps) {
         <BellIcon />
         {unreadCount > 0 && (
           <span
-            className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium leading-none text-destructive-foreground"
+            className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-2xs font-medium leading-none text-destructive-foreground"
             aria-hidden="true"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -249,7 +249,7 @@ function BellBody(props: {
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <div className="px-3 pt-1.5 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="px-3 pt-1.5 pb-0.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
       {label}
     </div>
   )

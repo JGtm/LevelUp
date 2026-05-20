@@ -142,13 +142,13 @@ function TierCount({
       className="rounded-md border bg-card p-3 text-center"
       style={{ borderLeftColor: color, borderLeftWidth: 3 }}
     >
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-2xs uppercase tracking-wider text-muted-foreground">
         {tierLabel}
       </p>
       <p className="mt-1 text-xl font-bold" style={{ color }}>
         {completed}
       </p>
-      <p className="text-[10px] text-muted-foreground">/ {created} créés</p>
+      <p className="text-2xs text-muted-foreground">/ {created} créés</p>
     </div>
   )
 }

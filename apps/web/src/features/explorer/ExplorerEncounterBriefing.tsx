@@ -195,7 +195,7 @@ interface KpiCardProps {
 function KpiCard({ label, value, detail }: KpiCardProps) {
   return (
     <div className="rounded-md border border-border bg-card p-3">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-xl font-bold tabular-nums leading-tight text-foreground">

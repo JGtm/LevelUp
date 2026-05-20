@@ -26,7 +26,7 @@ function LabNotice({
     <Card className="border-info bg-info/10">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-info">
+          <p className="text-3xs font-semibold uppercase tracking-label-md text-info">
             {eyebrow}
           </p>
           {readonly && readOnlyLabel ? <Badge variant="outline">{readOnlyLabel}</Badge> : null}
@@ -76,19 +76,19 @@ function LabToolSectionCard({
       <p className="text-sm font-semibold text-foreground">{section.title}</p>
       <div className="space-y-2 text-sm text-foreground">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-label-xs text-muted-foreground">
             {text.help.sections.whatItDoes}
           </p>
           <p className="mt-1">{section.whatItDoes}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-label-xs text-muted-foreground">
             {text.help.sections.interest}
           </p>
           <p className="mt-1">{section.interest}</p>
         </div>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="text-xs font-semibold uppercase tracking-label-xs text-muted-foreground">
             {text.help.sections.capabilities}
           </p>
           <ul className="mt-1 space-y-1.5 pl-5">
@@ -118,7 +118,7 @@ export function LabSelectedToolNotice({
     <Card className="border-primary/30 bg-primary/10">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+          <p className="text-3xs font-semibold uppercase tracking-label-md text-primary">
             {text.help.selectedToolEyebrow}
           </p>
           <Badge variant="outline">{text.common.readOnly}</Badge>
