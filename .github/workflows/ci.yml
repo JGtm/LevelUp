@@ -118,10 +118,11 @@ jobs:
 
       # golangci-lint : équivalent ruff + ruff-format + enforce_size_limits + McCabe pour Go
       # Règles : gocyclo max 12 / funlen 80L / lll 100c / revive argument-limit 5
+      # Config en format v2 (migration 2026-05-20, branche v1 abandonnée depuis mars 2025).
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.62
+          version: v2.12.2
           working-directory: apps/go-api
           args: --timeout 5m
 
