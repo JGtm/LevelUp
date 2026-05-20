@@ -1,3 +1,49 @@
+## [2026-05-20] fix(duckdb) — P6 : test E2E topologie réelle + cleanup commentaires (sprint clôturé)
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`). Sprint migration SharedReader **clôturé** (P0→P6).
+
+**Contexte** : phase finale du sprint déclenché par le bug prod `/api/media` ("schema shared does not exist"). Objectif P6 : (a) test E2E garde-fou qui reproduit la topologie prod (2 fichiers DB distincts sans ATTACH) et exerce LoadMediaFiles/Count/FilterOptions ; (b) cleanup des commentaires obsolètes mentionnant l'ATTACH disparu ; (c) entrée thought_log finale.
+
+**Décisions techniques** :
+
+1. **Test E2E `TestLoadMediaFiles_RealTopology_NoCrossDBSQL`** ([media_loadfiles_real_topology_test.go](apps/go-api/internal/platform/duckdb/media_loadfiles_real_topology_test.go)) — couvre exactement le scénario du bug d'origine :
+   - 4 fichiers DB ouverts sur disque (player, shared_matches_v2, shared_social, metadata) via migrations standard + `OpenReadWrite`.
+   - **Aucun** `ATTACH shared` sur aucune conn. `pdb.SharedReader = LegacySharedReader(shared)`.
+   - Sanity check explicite : `SELECT 1 FROM shared.match_registry` DOIT échouer sur la conn `social` (garde-fou contre régression).
+   - Vérifie que `LoadMediaFiles` retourne 1 row avec MapName="Aquarius", PairNameRaw="Slayer", MatchID="e2e_m1", MatchStartTime non nil (enrich via SharedReader OK).
+   - Vérifie aussi `CountMediaFiles` et `LoadMediaFilterOptions`.
+   - Alignement schéma : ALTER TABLE pour ajouter `capture_start_utc` + `indexed_at` (manquants dans la migration `TargetSharedSocial` pure, normalement ajoutés au boot par `ops.ensureMediaTables`).
+
+2. **Cleanup commentaires obsolètes** :
+   - [queries.go:5](apps/go-api/internal/platform/duckdb/queries.go#L5) — "Toutes les requêtes supposent que shared est ATTACH-é" → remplacé par "Les requêtes shared.* sont exécutées via SharedReader (ADR 0016)".
+   - [career_repo.go:370,468](apps/go-api/internal/platform/duckdb/career_repo.go#L370) — "Lit shared.match_participants + shared.killer_victim_pairs" → "via SharedReader".
+
+3. **Tests verts confirmés** :
+   - `go test -count=1 ./...` OK (suite unit complète).
+   - `go test -tags=integration -count=1 ./...` OK (suite intégration complète, incl. nouveau test E2E).
+
+**Bilan du sprint migration SharedReader (P0→P6, 7 commits)** :
+- P0 (9f48fc08) : audit + sentinel + annotation mock.
+- P1 (a3322bd5) : refactor Q37 média en pipeline Go (LoadMediaFiles/Count/FilterOptions).
+- P2 (913fb49c) : post_sync_progression_queries + post_sync_deltas.
+- P3 (e8a99a82) : engagement_score_repo_queries.
+- P4 (78d2dfc2) : progression/profile/queries.
+- P5 (f4a727ee) : Q25 neighbors + match_filter + nettoyage préfixes bootstrap_repo/match_history_repo.
+- P6 (ce commit) : test E2E + cleanup commentaires + thought_log final.
+
+**Couverture après sprint** :
+- ~20 sites critiques migrés vers SharedReader. Aucune query prod n'exécute plus `shared.X` sur Player/SharedSocial/Metadata.
+- Test sentinel `TestOpenPlayerDB_NoSharedSchemaOnPoolConns` (P0) garde l'invariant ADR 0016.
+- Test E2E `TestLoadMediaFiles_RealTopology` (P6) garde la non-régression du bug d'origine.
+
+**Dette résiduelle** :
+- Des `shared.X` subsistent dans des fichiers `queries_*.go` (`queries_career.go`, `queries_match.go`, `queries_squad.go`) en tant que constantes SQL exécutées via SharedReader. La conn shared a normalement le schéma `shared` (auto-attach DuckDB-Go) donc ces queries fonctionnent — mais c'est de la dette à nettoyer en passant (préférer le root-level). Ce nettoyage est cosmétique, sans urgence.
+- Beaucoup de commentaires `// Lit shared.X` ou `// match_participants` etc. encore présents dans des docstrings. Pas d'impact prod.
+
+**Prochaine étape** : merger sur `main` après validation user. Le bug `/api/media` est résolu et l'invariant ADR 0016 est désormais garanti par 2 tests sentinels (pool + LoadMediaFiles E2E).
+
+---
+
 ## [2026-05-20] fix(duckdb) — P5 : Q25 neighbors + match_filter + nettoyage préfixes
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).
