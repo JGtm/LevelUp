@@ -123,7 +123,7 @@ func TestPool_AttachShared_SurvivesSwapCycle_integration(t *testing.T) {
 
 	// Subscribe : utiliser le helper de prod OnSharedSwap (équivalent au
 	// câblage main.go commit 8g).
-	unsubscribe := provider.Subscribe(func(evt sharedprovider.SwapEvent) {
+	unsubscribe := provider.Subscribe(func(_ context.Context, evt sharedprovider.SwapEvent) {
 		switch evt.Direction {
 		case sharedprovider.DirectionPreSwapToRW:
 			duckdb.OnSharedSwap(ctx, duckdb.SwapDirPreSwapToRW)

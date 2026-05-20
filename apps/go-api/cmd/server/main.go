@@ -268,15 +268,18 @@ func main() {
 		//
 		// L'adapter traduit sharedprovider.SwapEvent → duckdb.SwapDirection
 		// (évite le cycle d'import duckdb ↔ sharedprovider).
-		swapCtx := context.Background()
-		unsubscribeSwap = provider.Subscribe(func(evt sharedprovider.SwapEvent) {
+		//
+		// Sprint B1 commit 19 : ctx propagé depuis le caller du swap (sync
+		// engine typiquement) — porte l'event_id pour traçabilité du
+		// callback pool dans logs/duckdb.log.
+		unsubscribeSwap = provider.Subscribe(func(ctx context.Context, evt sharedprovider.SwapEvent) {
 			switch evt.Direction {
 			case sharedprovider.DirectionPreSwapToRW:
-				duckdb.OnSharedSwap(swapCtx, duckdb.SwapDirPreSwapToRW)
+				duckdb.OnSharedSwap(ctx, duckdb.SwapDirPreSwapToRW)
 			case sharedprovider.DirectionRWToRO:
-				duckdb.OnSharedSwap(swapCtx, duckdb.SwapDirRWToRO)
+				duckdb.OnSharedSwap(ctx, duckdb.SwapDirRWToRO)
 			case sharedprovider.DirectionErrorToRO:
-				duckdb.OnSharedSwap(swapCtx, duckdb.SwapDirErrorToRO)
+				duckdb.OnSharedSwap(ctx, duckdb.SwapDirErrorToRO)
 			}
 		})
 

@@ -5,10 +5,13 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 // TargetDB identifie la base cible d'une migration.
@@ -101,6 +104,15 @@ func getApplied(db *sql.DB) (map[string]migrationState, error) {
 // Pour target=shared, la DB metadata doit être ATTACHée en amont si des vues
 // y font référence.
 func RunForDB(db *sql.DB, target TargetDB) error {
+	// Sprint B1 commit 19 : event_id par cycle de migrations sur une DB.
+	// Permet de tracer les N migrations qui tournent au boot et identifier
+	// laquelle plante en cas de schema mismatch. Utilise context.Background()
+	// car la signature publique ne prend pas de ctx (callers nombreux, refactor
+	// invasif reporté).
+	ctx, evID := logging.WithEvent(context.Background(), "migration.run:"+string(target))
+	cycleStart := time.Now()
+	slog.InfoContext(ctx, "migration: cycle démarré", "target", target, "event", evID)
+
 	if err := ensureMigrationTable(db); err != nil {
 		return fmt.Errorf("migration: ensure table: %w", err)
 	}
@@ -110,13 +122,18 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 	}
 
 	migrations := ForTarget(target)
+	applied_count := 0
 	for _, m := range migrations {
 		state, exists := applied[m.Name]
 
 		if !exists {
 			// Nouvelle migration → appliquer le schéma
-			slog.Info("migration: applying schema", "name", m.Name, "target", target)
+			mStart := time.Now()
+			slog.InfoContext(ctx, "migration: applying schema", "name", m.Name, "target", target)
 			if err := m.ApplySchema(db); err != nil {
+				slog.ErrorContext(ctx, "migration: schema apply échoué",
+					"name", m.Name, "target", target,
+					"duration_ms", time.Since(mStart).Milliseconds(), "err", err)
 				return fmt.Errorf("migration %s schema: %w", m.Name, err)
 			}
 			backfillDone := m.ApplyBackfill == nil
@@ -127,27 +144,38 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 			); err != nil {
 				return fmt.Errorf("migration %s record: %w", m.Name, err)
 			}
+			slog.DebugContext(ctx, "migration: schema OK",
+				"name", m.Name, "duration_ms", time.Since(mStart).Milliseconds())
 			state = migrationState{SchemaDone: true, BackfillDone: backfillDone}
+			applied_count++
 		}
 
 		// Backfill si schéma fait mais backfill manquant
 		if state.SchemaDone && !state.BackfillDone && m.ApplyBackfill != nil {
 			if m.RequiresAPI {
-				slog.Debug("migration: skipping backfill (requires API)", "name", m.Name)
+				slog.DebugContext(ctx, "migration: skipping backfill (requires API)", "name", m.Name)
 				continue
 			}
-			slog.Info("migration: applying backfill", "name", m.Name, "target", target)
+			bStart := time.Now()
+			slog.InfoContext(ctx, "migration: applying backfill", "name", m.Name, "target", target)
 			if err := m.ApplyBackfill(db); err != nil {
-				slog.Warn("migration: backfill failed", "name", m.Name, "err", err)
+				slog.WarnContext(ctx, "migration: backfill failed",
+					"name", m.Name, "duration_ms", time.Since(bStart).Milliseconds(), "err", err)
 				continue // ne bloque pas les suivantes
 			}
 			if _, err := db.Exec(
 				"UPDATE schema_migrations SET backfill_done = TRUE WHERE name = ?",
 				m.Name,
 			); err != nil {
-				slog.Warn("migration: update backfill_done failed", "name", m.Name, "err", err)
+				slog.WarnContext(ctx, "migration: update backfill_done failed", "name", m.Name, "err", err)
 			}
 		}
 	}
+	slog.InfoContext(ctx, "migration: cycle terminé",
+		"target", target,
+		"applied", applied_count,
+		"total", len(migrations),
+		"duration_ms", time.Since(cycleStart).Milliseconds(),
+	)
 	return nil
 }

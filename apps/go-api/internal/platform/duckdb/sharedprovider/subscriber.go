@@ -1,5 +1,7 @@
 package sharedprovider
 
+import "context"
+
 // Direction décrit le sens d'une transition d'état observable de l'extérieur.
 // Cardinalité bornée — sert d'étiquette aux compteurs expvar et aux clés
 // de filtrage pour les Subscribers.
@@ -59,4 +61,13 @@ type SwapEvent struct {
 //
 // Le Subscriber NE DOIT PAS appeler Subscribe ou Unsubscribe pendant son
 // exécution — risque de deadlock sur subsMu.
-type Subscriber func(SwapEvent)
+//
+// Sprint B1 commit 19 : ctx est passé pour propager l'event_id du caller du
+// swap (typiquement sync.RunDelta) au callback pool. Permet de grep le
+// timeline complet d'un swap : Provider notify → pool DETACH → Provider
+// open RW → pool RW write → Provider notify back → pool re-attach.
+// En pratique, ce ctx peut être context.Background() pour les transitions
+// RWToRO/ErrorToRO (déclenchées par Release() sans ctx caller) ; dans ce
+// cas l'event_id du caller initial AcquireWriter est capturé et propagé
+// via ctxkeys.WithEventID (cf. providerImpl.releaseWriter).
+type Subscriber func(ctx context.Context, evt SwapEvent)

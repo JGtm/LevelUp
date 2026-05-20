@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/dblease"
 )
@@ -65,6 +66,13 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 	// ne référence plus *providerImpl directement, ce qui permet à
 	// inMemoryProvider de construire ses propres WriterHandle avec une
 	// stratégie de release no-op.
+	//
+	// Sprint B1 commit 19 : capture event_id du ctx caller pour propagation
+	// au callback Subscriber lors du Release (RW→RO). Permet de tracer le
+	// timeline complet d'un swap : caller (sync.RunDelta) → Provider AcquireWriter
+	// → notify PreSwap (pool DETACH) → write → Release → notify RWToRO
+	// (pool re-attach) — tout sous le même event_id.
+	capturedEventID := ctxkeys.EventID(ctx)
 	return &WriterHandle{
 		db: rwHandle.SQLDb(),
 		releaseFn: func() {
@@ -79,7 +87,14 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 				lease.Release()
 			}()
 
-			p.releaseWriter(rwHandle)
+			// Reconstruit un ctx avec l'event_id capturé pour propagation aux
+			// Subscribers via notifyAfterSwap. context.Background() comme parent
+			// car le ctx caller peut être annulé au moment du Release.
+			releaseCtx := context.Background()
+			if capturedEventID != "" {
+				releaseCtx = ctxkeys.WithEventID(releaseCtx, capturedEventID)
+			}
+			p.releaseWriter(releaseCtx, rwHandle)
 		},
 	}, nil
 }
@@ -138,7 +153,7 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 	// Notification SYNCHRONE sous p.mu — d'où l'appel à notifyAfterSwapLocked
 	// (variante explicite qui documente ce contract). Les Subscribers NE
 	// DOIVENT PAS appeler Get/AcquireWriter pendant ce callback (deadlock garanti).
-	p.notifyAfterSwapLocked(DirectionPreSwapToRW, StateDraining, StateDraining)
+	p.notifyAfterSwapLocked(ctx, DirectionPreSwapToRW, StateDraining, StateDraining)
 
 	rwHandle, err := duckdbpkg.OpenReadWrite(p.path, p.timezone)
 	if err != nil {
@@ -147,7 +162,9 @@ func (p *providerImpl) swapToRW(ctx context.Context, swapStart time.Time) (*duck
 		recordStateTransition(StateDraining, StateError)
 		swapFailuresTotal.Add(failReasonAcquireWriter, 1)
 		close(p.ready)
-		go p.retryReopenLoop()
+		// Sprint B1 commit 19 : propage event_id du caller dans la goroutine
+		// de retry async pour traçabilité de la recovery.
+		go p.retryReopenLoop(ctxkeys.EventID(ctx))
 		return nil, fmt.Errorf("sharedprovider: open RW after RO close: %w", err)
 	}
 
@@ -198,7 +215,11 @@ func (p *providerImpl) rollbackFromDraining() {
 }
 
 // releaseWriter est appelé par WriterHandle.Release.
-func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
+//
+// Sprint B1 commit 19 : ctx contient l'event_id capturé au moment d'AcquireWriter
+// pour propagation aux Subscribers via notifyAfterSwap. Permet de tracer le
+// cycle de vie complet d'un swap RW dans logs/{sync,provider,duckdb}.log.
+func (p *providerImpl) releaseWriter(ctx context.Context, rwHandle *duckdbpkg.DB) {
 	swapStart := time.Now()
 	p.mu.Lock()
 
@@ -216,7 +237,7 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 
 	if rwHandle != nil {
 		if err := rwHandle.Close(); err != nil {
-			slog.Warn("sharedprovider: close RW failed (continuing)",
+			slog.WarnContext(ctx, "sharedprovider: close RW failed (continuing)",
 				"err", err, "path", p.path)
 		}
 	}
@@ -228,7 +249,7 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 		swapDurationMsTotal.Add(swapDirRwToRo, time.Since(swapStart).Milliseconds())
 		close(p.ready)
 		p.mu.Unlock()
-		slog.Info("provider: swap RW→RO terminé",
+		slog.InfoContext(ctx, "provider: swap RW→RO terminé",
 			"path", p.path, "total_ms", time.Since(swapStart).Milliseconds())
 		// IMPORTANT : notify HORS du lock — les Subscribers peuvent appeler
 		// Get/AcquireWriter (qui prennent p.mu) sans deadlock.
@@ -243,7 +264,7 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 		// Si une future version de DuckDB durcissait ce contrat, il faudrait
 		// notifier sous mu (cf. notifyAfterSwapLocked) — moyennant un
 		// refactor du callback pool (pool_swap_hook.go).
-		p.notifyAfterSwap(DirectionRWToRO, StateRW, StateRO)
+		p.notifyAfterSwap(ctx, DirectionRWToRO, StateRW, StateRO)
 		return
 	}
 
@@ -252,7 +273,10 @@ func (p *providerImpl) releaseWriter(rwHandle *duckdbpkg.DB) {
 	swapFailuresTotal.Add(failReasonReopenRO, 1)
 	close(p.ready)
 	p.mu.Unlock()
-	go p.retryReopenLoop()
+	// Sprint B1 commit 19 : propage l'event_id via ctxkeys.WithEventID dans
+	// la goroutine async — context.Background() pour découpler du ctx caller
+	// (qui peut être annulé), mais préserve l'event_id pour traçabilité.
+	go p.retryReopenLoop(ctxkeys.EventID(ctx))
 }
 
 // tryReopenROLocked tente d'ouvrir une nouvelle conn RO. Doit être appelée
@@ -272,7 +296,16 @@ func (p *providerImpl) tryReopenROLocked() bool {
 }
 
 // retryReopenLoop tente de récupérer après un échec de reopen RO.
-func (p *providerImpl) retryReopenLoop() {
+//
+// Sprint B1 commit 19 : capturedEventID (event_id du caller initial du swap)
+// est restauré dans un ctx pour propagation aux Subscribers via notifyAfterSwap.
+// Permet de tracer la recovery DirectionErrorToRO sous le même event_id que
+// le swap échoué qui l'a déclenchée.
+func (p *providerImpl) retryReopenLoop(capturedEventID string) {
+	ctx := context.Background()
+	if capturedEventID != "" {
+		ctx = ctxkeys.WithEventID(ctx, capturedEventID)
+	}
 	backoff := p.retryBaseBackoff
 	for attempt := 0; attempt < retryMaxAttempts; attempt++ {
 		time.Sleep(backoff)
@@ -291,8 +324,8 @@ func (p *providerImpl) retryReopenLoop() {
 			p.state.Store(int32(StateRO))
 			recordStateTransition(StateError, StateRO)
 			p.mu.Unlock()
-			p.notifyAfterSwap(DirectionErrorToRO, StateError, StateRO)
-			slog.Info("sharedprovider: recovered from StateError",
+			p.notifyAfterSwap(ctx, DirectionErrorToRO, StateError, StateRO)
+			slog.InfoContext(ctx, "sharedprovider: recovered from StateError",
 				"path", p.path, "attempt", attempt+1)
 			return
 		}
