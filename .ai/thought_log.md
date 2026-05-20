@@ -1,3 +1,42 @@
+## [2026-05-20] fix(duckdb) — P7-3 : career_repo 4 fonctions cross-DB vers SharedReader
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : suite P7-2. 4 fonctions cross-DB de `career_repo.go` (Q8/Q9/Q9bTpl/Q9b) cassaient en prod sur les pages Career (LUSR card, Top Matches, Highlights cascade counts). Toutes mixaient `shared.X` avec `player_match_enrichment` ou `match_skill_rank` (player) en une seule query sur `pdb.ReadDB()`.
+
+**Décisions techniques** :
+
+1. **`GetLUSRHistory` (Q8)** — historique LUSR avec LAG rating_delta :
+   - Phase A : `match_skill_rank` sur Player.
+   - Phase B : `match_registry` (start_time + playlist) via SharedReader avec `WHERE match_id IN (...)`.
+   - Phase C : merge + tri ASC par recorded_at (NULLS LAST) + LAG manuel `rating_delta` par (rating_type, playlist_group) côté Go.
+
+2. **`GetTopMatches` (Q9)** — 10 best WIN + 10 worst LOSS :
+   - Phase A : `player_match_enrichment` sur Player (filtre perf_score + NOT had_bot_teammate).
+   - Phase B : `mp + r` shared via SharedReader (filtre xuid + time_played≥180 + NOT is_firefight + IN match_ids).
+   - Phase C : merge + sections WIN/LOSS + tri par dominance flag prioritaire (WIN={5,3,1}, LOSS={4,2}) + perf_score + top 10 chaque.
+   - Helper `topMatchDominancePriority(flag, priorities)` reproduit le `CASE WHEN ... IN (...)` historique.
+
+3. **`GetHighlightMatchIDs` (Q9bTpl) + `GetHighlightPool` (Q9b)** — pipeline commun via helper `loadHighlightCandidates(ctx, extraClause, extraArgs)` :
+   - Phase A : pme (player) — même requête que Q9.
+   - Phase B : nouveau `Q9bHighlightSharedTpl` (shared via SharedReader) avec filtres `time_played≥180`, `NOT is_firefight`, `outcome IN (2,3)`, `IN match_ids`, plus clause dynamique injectée (buildHighlightFilterClause filtre sur r.is_ranked / r.start_time / r.pair_name / r.playlist_name).
+   - Phase C :
+     - `GetHighlightMatchIDs` : sections WIN/LOSS + tri + top 15 chaque.
+     - `GetHighlightPool` : retourne tout, sans LIMIT, sans filtre dynamique.
+
+4. **Nouvelles constantes SQL** :
+   - `Q8LUSRHistoryPlayer` (player msr) + `Q8LUSRHistoryRegistryTpl` (shared registry).
+   - `Q9TopMatchesPlayer` (player pme) + `Q9TopMatchesSharedTpl` (shared mp+r).
+   - `Q9bHighlightSharedTpl` (shared mp+r commun à Q9b et Pool).
+   - Anciennes constantes (`Q8LUSRHistory`, `Q9TopMatches`, `Q9bHighlightMatchIDsTpl`, `Q9bHighlightPool`) gardées **DEPRECATED** pour ne pas casser les tests qui les référencent (à supprimer en P7-5).
+
+**Résultats observés** :
+- `go vet ./...` clean. `go test -tags=integration ./...` OK.
+
+**Prochaine étape** : P7-4 — `leaderboard_repo::GetLocalLeaderboard` + `match_exclusion_repo::ListExcluded` (2 cross-DB restants).
+
+---
+
 ## [2026-05-20] fix(duckdb) — P7-2 : stats_repo.LoadStatsMatches (Q23 cross-DB → 2 phases)
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`).

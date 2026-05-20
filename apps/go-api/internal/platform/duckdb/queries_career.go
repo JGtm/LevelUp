@@ -262,28 +262,31 @@ SELECT
 FROM career_progression cp
 ORDER BY cp.recorded_at ASC`
 
-// Q8 : Career — LUSR checkpoints (match_skill_rank).
-// Paramètre : aucun (filtre global, une DB = un joueur).
-// rating_delta calculé par LAG par playlist_group pour retrouver la progression Python.
-const Q8LUSRHistory = `
+// Q8LUSRHistoryPlayerTpl : Phase A de Q8 — partie player (match_skill_rank)
+// exécutée sur pdb.Player. Le tri start_time + le LAG rating_delta sont
+// calculés côté Go après merge avec match_registry (Phase B).
+const Q8LUSRHistoryPlayer = `
 SELECT
     msr.match_id,
     msr.rating_type,
     msr.rating_value,
     msr.tier_label,
     msr.playlist_group,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS recorded_at,
-    msr.rating_value - LAG(msr.rating_value) OVER (
-        PARTITION BY msr.rating_type, msr.playlist_group
-        ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')
-    ) AS rating_delta,
-    COALESCE(r.playlist_name_fr, r.playlist_name, '')      AS playlist_name,
-    COALESCE(r.playlist_id, '')                            AS playlist_id,
     NULLIF(TRIM(COALESCE(msr.tier, '')), '')               AS tier,
     COALESCE(msr.sub_tier, 0)                              AS sub_tier
-FROM match_skill_rank msr
-LEFT JOIN shared.match_registry r ON msr.match_id = r.match_id
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
+FROM match_skill_rank msr`
+
+// Q8LUSRHistoryRegistryTpl : Phase B de Q8 — start_time + playlist depuis
+// match_registry pour les match_ids résultants de Phase A. Exécutée via
+// SharedReader.
+const Q8LUSRHistoryRegistryTpl = `
+SELECT
+    match_id,
+    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS recorded_at,
+    COALESCE(playlist_name_fr, playlist_name, '')           AS playlist_name,
+    COALESCE(playlist_id, '')                               AS playlist_id
+FROM match_registry
+WHERE match_id IN (%s)`
 
 // Q9 : Career — top matches : 10 meilleurs (WIN) + 10 moins bons (LOSS).
 // Paramètres : ?1 = xuid (section WIN), ?2 = xuid (section LOSS).
@@ -293,86 +296,68 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') ASC`
 //	LOSS → flags 4/2 (DEBANDADE/HUMILIATION) DESC.
 //
 // _s sert uniquement à séparer les sections (1=best, 2=worst) dans l'ORDER BY final.
-const Q9TopMatches = `
-SELECT match_id, performance_score, start_time, map_name, pair_name, playlist_name,
-       outcome, kills, deaths, kda, team_mmr, enemy_mmr, dominance_flag, _s
-FROM (
-    (
-        SELECT
-            pme.match_id,
-            pme.performance_score,
-            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
-            r.map_name,
-            r.pair_name,
-            r.playlist_name,
-            COALESCE(p.outcome, 0)           AS outcome,
-            COALESCE(p.kills, 0)             AS kills,
-            COALESCE(p.deaths, 0)            AS deaths,
-            p.kda,
-            p.team_mmr,
-            p.enemy_mmr,
-            COALESCE(pme.dominance_flag, 0)  AS dominance_flag,
-            1                                AS _s
-        FROM player_match_enrichment pme
-        JOIN shared.match_registry r ON pme.match_id = r.match_id
-        LEFT JOIN shared.match_participants p
-            ON pme.match_id = p.match_id AND p.xuid = ?
-        WHERE pme.performance_score IS NOT NULL
-          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
-          AND COALESCE(p.time_played_seconds, 0) >= 180
-          AND COALESCE(r.is_firefight, FALSE) = FALSE
-          AND COALESCE(p.outcome, 0) = 2
-        ORDER BY
-            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (5, 3, 1)
-                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
-            pme.performance_score DESC
-        LIMIT 10
-    )
-    UNION ALL
-    (
-        SELECT
-            pme.match_id,
-            pme.performance_score,
-            COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
-            r.map_name,
-            r.pair_name,
-            r.playlist_name,
-            COALESCE(p.outcome, 0)           AS outcome,
-            COALESCE(p.kills, 0)             AS kills,
-            COALESCE(p.deaths, 0)            AS deaths,
-            p.kda,
-            p.team_mmr,
-            p.enemy_mmr,
-            COALESCE(pme.dominance_flag, 0)  AS dominance_flag,
-            2                                AS _s
-        FROM player_match_enrichment pme
-        JOIN shared.match_registry r ON pme.match_id = r.match_id
-        LEFT JOIN shared.match_participants p
-            ON pme.match_id = p.match_id AND p.xuid = ?
-        WHERE pme.performance_score IS NOT NULL
-          AND COALESCE(pme.had_bot_teammate, FALSE) = FALSE
-          AND COALESCE(p.time_played_seconds, 0) >= 180
-          AND COALESCE(r.is_firefight, FALSE) = FALSE
-          AND COALESCE(p.outcome, 0) = 3
-        ORDER BY
-            CASE WHEN COALESCE(pme.dominance_flag, 0) IN (4, 2)
-                 THEN COALESCE(pme.dominance_flag, 0) ELSE 0 END DESC,
-            pme.performance_score ASC
-        LIMIT 10
-    )
-)
-ORDER BY _s ASC`
+// Q9TopMatchesPlayer : Phase A de Q9 — partie player (pme) avec filtre
+// performance_score + had_bot_teammate. Le tri (dominance flag + perf score)
+// et la sélection par section (WIN/LOSS) sont faits côté Go après merge avec
+// shared (Phase B).
+const Q9TopMatchesPlayer = `
+SELECT match_id, performance_score, COALESCE(dominance_flag, 0)
+FROM player_match_enrichment
+WHERE performance_score IS NOT NULL
+  AND COALESCE(had_bot_teammate, FALSE) = FALSE`
+
+// Q9TopMatchesShared : Phase B de Q9 — partie shared (mp + r) avec filtres
+// shared-only (time_played >= 180, is_firefight = FALSE). Filtre xuid + IN
+// les match_ids passés par Phase A.
+const Q9TopMatchesSharedTpl = `
+SELECT
+    mp.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    r.map_name,
+    r.pair_name,
+    r.playlist_name,
+    COALESCE(mp.outcome, 0)   AS outcome,
+    COALESCE(mp.kills, 0)     AS kills,
+    COALESCE(mp.deaths, 0)    AS deaths,
+    mp.kda,
+    mp.team_mmr,
+    mp.enemy_mmr
+FROM match_participants mp
+JOIN match_registry r ON mp.match_id = r.match_id
+WHERE mp.xuid = ?
+  AND COALESCE(mp.time_played_seconds, 0) >= 180
+  AND COALESCE(r.is_firefight, FALSE) = FALSE
+  AND mp.match_id IN (%s)`
+
+// Q9bHighlightSharedTpl : Phase B partagée entre GetHighlightMatchIDs et
+// GetHighlightPool — partie shared (mp + r) avec filtres shared-only
+// (time_played >= 180, NOT is_firefight, outcome ∈ {2,3}, mp.match_id IN
+// les match_ids de Phase A). Le 2e %s reçoit la clause dynamique
+// (buildHighlightFilterClause) qui filtre sur r.is_ranked / r.start_time /
+// r.pair_name / r.playlist_name.
+const Q9bHighlightSharedTpl = `
+SELECT
+    mp.match_id,
+    COALESCE(mp.outcome, 0)                                                AS outcome,
+    COALESCE(r.is_ranked, FALSE)                                           AS is_ranked,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')            AS start_time,
+    COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '')                  AS pair_name_source,
+    COALESCE(NULLIF(r.playlist_name_fr, ''), r.playlist_name, '')          AS playlist_name_source,
+    COALESCE(r.playlist_id, '')                                            AS playlist_id
+FROM match_participants mp
+JOIN match_registry r ON mp.match_id = r.match_id
+WHERE mp.xuid = ?
+  AND COALESCE(mp.time_played_seconds, 0) >= 180
+  AND COALESCE(r.is_firefight, FALSE) = FALSE
+  AND COALESCE(mp.outcome, 0) IN (2, 3)
+  AND mp.match_id IN (%s)
+  %s`
 
 // Q9bHighlightMatchIDsTpl : variante template de Q9b acceptant des clauses
 // dynamiques pour les filtres Expérience (is_ranked) et Saisons (date range).
 //
-// Format string : 2 occurrences de %s — clause additionnelle injectée dans la
-// section best (outcome=2) ET dans la section worst (outcome=3). Vide si
-// aucun filtre. Sinon ex. " AND r.is_ranked = TRUE AND ((r.start_time_utc >=
-// ? AND r.start_time_utc < ?) OR ...)".
-//
-// Ordre des args : ?xuid_best, [args dyn best], ?xuid_worst, [args dyn worst].
-// L'appelant duplique les args dyn (mêmes filtres pour les 2 sections).
+// DEPRECATED : remplacée par le pipeline split de GetHighlightMatchIDs (P7-3).
+// Conservée pour compat tests.
 const Q9bHighlightMatchIDsTpl = `
 SELECT match_id, outcome, _s
 FROM (
