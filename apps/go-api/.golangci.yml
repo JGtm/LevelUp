@@ -132,6 +132,8 @@ linters:
           - bodyclose
           - prealloc
           - ineffassign
+          - revive
+          - unconvert
 
       # cmd/ (CLI tools / scripts ponctuels) : permissifs sur tout
       # Les scripts de diag/migration/seed/repair n'ont pas vocation a etre
@@ -147,6 +149,9 @@ linters:
           - prealloc
           - revive
           - unused
+          - unparam
+          - ineffassign
+          - staticcheck
 
       # Fichiers generes par oapi-codegen : pas de lint
       - path: "internal/api/gen/"
@@ -248,4 +253,5 @@ output:
     text:
       path: stdout
       colors: true
-  sort-results: true
+  # sort-results: retire en v2 (n'est plus une propriete `output` valide ;
+  # le tri est gere par `sort-order` dans `linters` mais pas active ici).
