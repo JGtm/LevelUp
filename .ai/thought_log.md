@@ -1,3 +1,45 @@
+## [2026-05-20] fix(data_health) — Baseline 76 + blacklist target_route fantôme + diag bits menteurs
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, suite immédiate du fix XUIDs orphelins ce matin).
+
+**Contexte** : malgré le fix précédent (XUIDs orphelins exclus du total + route notif → /notifications), une nouvelle notif "Audit base : 88 anomalies — 76 bits menteurs MBitEvents" remontait à chaque cycle 24h. En plus, le clic sur les vieilles notifs persistées renvoyait toujours sur "Not Found" → preuve que le `target_route='/admin/data-health'` stocké en DB depuis avant 2026-05-20 contournait le fallback front (resolveTarget honore le backend en priorité).
+
+**Investigation bits menteurs** :
+
+Mini cmd [diag_lying_bits](apps/go-api/cmd/diag_lying_bits/main.go) (pattern aligné `diag_orphan_xuids`) : distribution temporelle des 76 matchs avec `(backfill_completed & 65536) != 0 ET NOT EXISTS highlight_events`.
+
+```
+2023-12 : 37  (49%)
+2024-01 : 28  (37%)
+2024-02 :  2
+2024-03 :  2
+2024-05 :  5
+2024-06 :  2
+post-pivot Go (≥ 2026-04-23) :  0 (0.0%)
+pré-pivot Go                  : 76 (100%)
+```
+
+100% pré-pivot bascule Go, le plus récent juin 2024 — soit ~2 ans avant aujourd'hui. Halo Infinite ne garde les films CDN que quelques mois → un replay sur ces matchs retournerait probablement "no film available" pour la majorité. Même nature que les 12 XUIDs orphelins : **limite irréductible côté Halo CDN**, pas une régression actuelle. Principalement BTB ranked (Oasis, Refuge, Deadlock, Fragmentation…).
+
+**Décisions techniques** :
+
+1. **Baseline activée à 76 dans `app_settings.json`** (mécanisme existant [main.go:445](apps/go-api/cmd/server/main.go#L445)). Plus de spam au boot/24h, mais toute 77ème anomalie (UUID brut, bit menteur récent, garbage URL) re-déclenche normalement. Plus fin qu'exclure complètement `LyingBitsEvents` du total : une régression réelle reste visible.
+
+2. **Blacklist front pour les routes fantômes persistées** ([navigation.ts:18-22](apps/web/src/features/notifications/navigation.ts#L18)) : `FANTOM_TARGET_ROUTES = new Set(['/admin/data-health'])`. Le `resolveTarget` ignore `notif.target_route` s'il fait partie du set et retombe sur le fallback par catégorie (`/players/{slug}/notifications` pour `data_health_warning`). Évite d'avoir à muter la DB pour les notifs déjà persistées. Test régression ajouté.
+
+3. **Diag tool gardé** : `cmd/diag_lying_bits` conservé dans `cmd/` aligné avec les 3 autres outils diag (`diag_db_health`, `diag_orphan_xuids`, `diag_bitmask_coverage`). Utile si le compteur bouge (nouveaux bits menteurs récents → check distribution avant décision).
+
+**Résultats observés** :
+
+- `npx vitest run src/features/notifications/` : 7/7 PASS (incl. nouveau test régression sur la route fantôme).
+- `go vet ./...` : clean.
+- `diag_lying_bits` : 76 confirmés, tous BTB ranked dec 2023 — juin 2024.
+- Au prochain boot, le scheduler logguera `warnings_total=76 baseline=76` mais n'émettra pas de notif (cf. condition `WarningsTotal > s.baselineWarnings`).
+
+**Prochaine étape** : redémarrer le serveur pour que le nouveau baseline soit chargé. Reload du front pour que la blacklist `FANTOM_TARGET_ROUTES` soit en place — au prochain clic, les vieilles notifs persistées renverront vers `/players/{slug}/notifications` au lieu de `/admin/data-health`.
+
+---
+
 ## [2026-05-20] chore(ci) — Stabilisation baseline CI pré-cleanup (branche chore/ci-stabilization)
 
 **Statut** : En cours (branche `chore/ci-stabilization` partie de `fix/auto-sync-different-configuration` à HEAD `7cd4b8f2`).
@@ -67,11 +109,24 @@
      - Spectral ruleset inline via `spectral_ruleset` input du workflow : moins propre que fichier dédié.
      - Désactiver le job : perd la validation OAS, contraire à l'objectif production-quality.
 
-(à enrichir à mesure que le fix 6 est appliqué)
+6. **Audit jobs verts silencieux — découverte 2 issues code** (audit) : `gh run view --json jobs` a révélé que 3 jobs supplémentaires étaient en échec, masqués par mon filtrage initial sur les noms d'erreur :
+   - `Frontend (TypeScript + Vite build) / Install dependencies` : **MÊME cause** que Playwright (npm ci ERESOLVE). Résolu en cascade par le fix #4 (`.npmrc legacy-peer-deps`).
+   - `Go Baseline Tests (non-régression)` : **régression** — `~15 tests dans .ai/baselines/tests_pre_migration.jsonl` ne sont plus présents dans le run courant. Probablement renommés par le commit `0e317243` (feat observability writeError). Liste partielle : `TestErrorFormat_ContainsCodeAndMessage`, `TestValidateErrorShape_*` (4 tests), `TestServiceEmit_PropagatesGenericInsertError`, `TestServiceEmit_ValidationErrors*` (3), `TestInitSISUSession_HTTPError`, `TestPollXboxDeviceCode_FatalError`, etc.
+   - `Go Coverage (CGO_ENABLED=1)` : **2 vrais tests qui FAIL** :
+     - `TestExtractXUIDFromFilename` (internal/openspartan) : Linux runner ne parse pas les paths Windows `C:\...` car `filepath.Base` ne traite pas `\` comme séparateur sur Linux.
+     - `TestComputeFallbackXPPerDay_ZeroDays` (internal/service) : `time.Now()` appelé 2 fois (test + fonction) produit `days ~1e-8` non-zéro, bypass la garde `days <= 0`, `1000 / 1e-8 = 1e14`.
+   - **Décision** : étendre le scope du sprint pour fixer les 2 tests + mettre à jour la baseline.
+
+7. **Fix 2 tests qui FAIL** (commit #6) :
+   - **`extractXUIDFromFilename`** ([owner.go:30](apps/go-api/internal/openspartan/owner.go#L30)) : normalisation `strings.ReplaceAll(hint, "\\", "/")` avant `filepath.Base` pour que les paths Windows soient correctement parsés sur Linux. Cas test couvert ligne 228 du `_test.go` (`"C:\\users\\me\\25332748231100229.db"`).
+   - **`computeFallbackXPPerDay`** ([career_service.go:1102](apps/go-api/internal/service/career_service.go#L1102)) : remplacement de la garde `days <= 0` par `days < 1.0`. Justification : un delta sub-jour entre `firstDate` et `now` n'est pas significatif pour calculer un taux XP/jour. Les 3 tests (`ZeroDays`, `ZeroXP`, `Normal` avec 30 jours) passent.
+   - **Validations locales** : 4/4 tests PASS (1 openspartan + 3 service).
+
+(à enrichir à mesure que le fix 8 baseline est appliqué)
 
 **Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
 
-**Prochaine étape** : fix #6 — vérifier que les jobs CI présumés verts (Frontend, go-build, go-coverage, go-baseline-tests, go-contract-test) ne masquent pas de problèmes silencieux.
+**Prochaine étape** : fix #8 — mettre à jour `.ai/baselines/tests_pre_migration.jsonl` pour refléter les ~15 tests renommés par le commit `0e317243`.
 
 ---
 
