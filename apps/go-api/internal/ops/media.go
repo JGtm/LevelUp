@@ -49,7 +49,8 @@ type MediaIndexOptions struct {
 	PlayerDBPath        string
 	SharedSocialDBPath  string // shared_social.duckdb (cible d'écriture médias)
 	SharedMatchesDBPath string // shared_matches_v2.duckdb (lecture match_registry)
-	CapturesDir         string // répertoire captures du joueur
+	CapturesDir         string // répertoire captures du joueur ({CapturesBase}/{Gamertag})
+	CapturesBase        string // racine multi-player ({CapturesBase}/{slug}/...) — vide en mode legacy
 	ForceRescan         bool   // réindexer tous les fichiers même connus
 	BufferMin           int    // buffer en minutes autour de [start_time, end_time] (défaut 2)
 	Gamertag            string
@@ -150,6 +151,10 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	result.Scanned = len(mediaFiles)
 	slog.Debug("IndexMedia: scan répertoire", "scanned", result.Scanned)
 
+	// Path store : convertit les chemins absolus disk en {owner_slug}/{rel}
+	// stables pour stockage DB. Mode legacy si CapturesBase vide.
+	store := MediaPathStore{CapturesBase: opts.CapturesBase}
+
 	for _, path := range mediaFiles {
 		hash, err := fileHash(path)
 		if err != nil {
@@ -163,7 +168,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		if opts.CaptureTimes != nil {
 			clientTs = opts.CaptureTimes[filepath.Base(path)]
 		}
-		if err := insertMediaFile(db, path, hash, opts.Gamertag, clientTs, loc); err != nil {
+		if err := insertMediaFile(db, path, hash, opts.Gamertag, clientTs, loc, store); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: insert: %v", path, err))
 			continue
 		}
@@ -192,7 +197,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	}
 
 	// Lier les miniatures présentes sur disque aux enregistrements dont thumbnail_path est NULL.
-	if n, backfillErr := BackfillThumbnailPaths(db, opts.CapturesDir, thumbsDir); backfillErr != nil {
+	if n, backfillErr := BackfillThumbnailPaths(db, opts.CapturesDir, thumbsDir, opts.Gamertag, store); backfillErr != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("backfill_thumbnails: %v", backfillErr))
 	} else {
 		result.Thumbnails += n
@@ -425,7 +430,11 @@ func generateAnimatedThumbnail(videoPath, webpPath string) error {
 // BackfillThumbnailPaths met à jour thumbnail_path en DB pour toutes les vidéos
 // dont le fichier miniature existe déjà dans thumbsDir mais dont la colonne est NULL.
 // Appelé après GenerateThumbnails pour lier les miniatures générées aux enregistrements.
-func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir string) (int, error) {
+//
+// ownerSlug est utilisé pour construire le path relatif stable
+// ({owner_slug}/thumbs/{filename}) qui sera stocké en DB. Si store est en mode
+// legacy (CapturesBase vide), on stocke le path absolu — comportement pré-refactor.
+func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir, ownerSlug string, store MediaPathStore) (int, error) {
 	entries, err := os.ReadDir(thumbsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -448,6 +457,12 @@ func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir string) (int, error
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
 		thumbAbs := filepath.Join(thumbsDir, e.Name())
 
+		// Path stable à stocker en DB : relatif via store si possible, sinon abs.
+		thumbStored := store.ToRel(thumbAbs, ownerSlug)
+		if thumbStored == "" {
+			thumbStored = thumbAbs
+		}
+
 		// Stripper le suffixe hash (éventuellement ajouté par le Python indexer)
 		// Ex: "Halo Infinite 2025-12-18 17-40-46_9430c6551833" → "Halo Infinite 2025-12-18 17-40-46"
 		videoBase := thumbHashSuffixRe.ReplaceAllString(base, "")
@@ -460,7 +475,7 @@ func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir string) (int, error
 			WHERE thumbnail_path IS NULL
 			  AND kind = 'video'
 			  AND file_name LIKE ?
-		`, thumbAbs, videoBase+".%")
+		`, thumbStored, videoBase+".%")
 		if err != nil {
 			slog.Warn("BackfillThumbnailPaths: update échoué",
 				"base", base, "err", err)
@@ -631,11 +646,25 @@ func fileHash(path string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil))[:16], nil
 }
 
-func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location) error {
+// insertMediaFile insère ou met à jour une ligne media_files.
+//
+// path est le chemin absolu sur disque (requis pour ffprobe + Stat des
+// fichiers existants en cas de stem conflict). Le path ECRIT en DB est
+// dérivé via store.ToRel : format stable {owner_slug}/{rel_in_owner_dir}.
+// Si le store est en mode legacy (CapturesBase vide ou conversion échoue),
+// le path absolu est stocké tel quel — comportement pré-refactor.
+func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location, store MediaPathStore) error {
 	ext := strings.ToLower(filepath.Ext(path))
 	kind := supportedExtensions[ext]
 	baseName := filepath.Base(path)
 	stem := strings.TrimSuffix(baseName, ext)
+
+	// Path à stocker en DB : relatif si le store peut convertir, sinon
+	// fallback sur le path absolu (mode legacy).
+	storedPath := store.ToRel(path, playerSlug)
+	if storedPath == "" {
+		storedPath = path
+	}
 
 	var captureAt *time.Time
 
@@ -698,10 +727,12 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 
 	if err == nil && existingID != "" {
 		// Entrée trouvée : vérifier si l'ancien fichier existe encore.
-		if _, statErr := os.Stat(existingPath); statErr == nil {
+		// existingPath peut être relatif (post-migration) ou absolu (legacy) —
+		// store.ToAbs gère les deux cas.
+		if _, statErr := os.Stat(store.ToAbs(existingPath)); statErr == nil {
 			// Ancien fichier existe toujours → SKIP (non-déterministe pendant conversion).
 			slog.Debug("insertMediaFile: stem conflict, ancien fichier toujours présent, SKIP nouveau",
-				"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", path)
+				"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", storedPath)
 			return nil
 		}
 
@@ -715,14 +746,14 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 				duration_seconds = COALESCE(?, duration_seconds),
 				capture_end_utc = COALESCE(?, capture_end_utc)
 			WHERE id = ?
-		`, path, baseName, ext, hash, kind, durationSec, captureEnd, existingID)
+		`, storedPath, baseName, ext, hash, kind, durationSec, captureEnd, existingID)
 		if err != nil {
 			slog.Error("insertMediaFile: UPDATE failed for format conversion",
 				"err", err, "player", playerSlug, "stem", stem, "id", existingID)
 			return err
 		}
 		slog.Info("insertMediaFile: mise à jour fichier format conversions",
-			"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", path, "id", existingID)
+			"player", playerSlug, "stem", stem, "old_path", existingPath, "new_path", storedPath, "id", existingID)
 		return nil
 	}
 
@@ -736,7 +767,7 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 			capture_start_utc, capture_end_utc, duration_seconds
 		)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, playerSlug, path, baseName, stem, ext, hash, kind, captureAt, captureEnd, durationSec)
+	`, playerSlug, storedPath, baseName, stem, ext, hash, kind, captureAt, captureEnd, durationSec)
 	return err
 }
 

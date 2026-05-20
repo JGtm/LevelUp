@@ -198,7 +198,9 @@ type UploadedFile struct {
 // UploadRequest regroupe les paramètres d'un upload multi-fichiers.
 type UploadRequest struct {
 	Files               []UploadedFile
-	CapturesDir         string // chemin absolu résolu par le handler
+	CapturesDir         string // chemin absolu résolu par le handler ({CapturesBase}/{Gamertag})
+	CapturesBase        string // racine multi-player ({CapturesBase}/{slug}/...) — vide en mode legacy
+	Gamertag            string // owner gamertag, requis pour construire les paths relatifs en DB
 	DBPath              string // chemin vers stats.duckdb du joueur (fallback)
 	SharedSocialDBPath  string // chemin vers shared_social.duckdb (cible principale)
 	SharedMatchesDBPath string // chemin vers shared_matches_v2.duckdb (lecture match_registry)
@@ -211,6 +213,8 @@ type ReassociateRequest struct {
 	SharedSocialDBPath  string
 	SharedMatchesDBPath string
 	CapturesDir         string // répertoire captures pour le backfill thumbnail_path
+	CapturesBase        string // racine multi-player ({CapturesBase}/{slug}/...) — vide en mode legacy
+	Gamertag            string // owner gamertag, requis pour construire les paths relatifs en DB
 	BufferMin           int    // 0 → défaut 2 min
 }
 

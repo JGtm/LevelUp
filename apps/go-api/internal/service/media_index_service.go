@@ -127,6 +127,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 					SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
 					SharedMatchesDBPath: pr.SharedDBPath(titleSlug),
 					CapturesDir:         capturesDir,
+					CapturesBase:        capturesBaseDir,
 					ForceRescan:         true,
 					Gamertag:            gamertag,
 				}); err != nil {
@@ -204,6 +205,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 			SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
 			SharedMatchesDBPath: pr.SharedDBPath(titleSlug),
 			CapturesDir:         capturesDir,
+			CapturesBase:        capturesBaseDir,
 			ForceRescan:         false,
 			Gamertag:            gamertag,
 		}); err != nil {

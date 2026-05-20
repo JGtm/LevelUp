@@ -408,7 +408,7 @@ func TestInsertMediaFile_Priority1_XboxFilename(t *testing.T) {
 
 	// captureTimeUnix pointe sur 2000-01-01 (doit être ignoré au profit du filename)
 	clientTs := int64(946684800)
-	if err := insertMediaFile(db, path, "hash_p1", "spartan", &clientTs, loc); err != nil {
+	if err := insertMediaFile(db, path, "hash_p1", "spartan", &clientTs, loc, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -435,7 +435,7 @@ func TestInsertMediaFile_Priority2_ClientTimestamp(t *testing.T) {
 
 	// 2024-06-01 12:00:00 UTC
 	clientTs := int64(1717243200)
-	if err := insertMediaFile(db, path, "hash_p2", "spartan", &clientTs, nil); err != nil {
+	if err := insertMediaFile(db, path, "hash_p2", "spartan", &clientTs, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -458,7 +458,7 @@ func TestInsertMediaFile_NoSource_LeavesNull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := insertMediaFile(db, path, "hash_null", "spartan", nil, nil); err != nil {
+	if err := insertMediaFile(db, path, "hash_null", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -491,7 +491,7 @@ func TestInsertMediaFile_Priority1_OBSFilename(t *testing.T) {
 
 	// captureTimeUnix bidon (doit être ignoré au profit du filename)
 	clientTs := int64(946684800)
-	if err := insertMediaFile(db, path, "hash_obs", "spartan", &clientTs, loc); err != nil {
+	if err := insertMediaFile(db, path, "hash_obs", "spartan", &clientTs, loc, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -596,7 +596,7 @@ func TestInsertMediaFile_StemDedup_OldFileGone(t *testing.T) {
 	if err := os.WriteFile(oldPath, []byte("video mp4"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil); err != nil {
+	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (mp4): %v", err)
 	}
 
@@ -627,7 +627,7 @@ func TestInsertMediaFile_StemDedup_OldFileGone(t *testing.T) {
 	}
 
 	// 4. Indexer capture.webm
-	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil); err != nil {
+	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (webm): %v", err)
 	}
 
@@ -672,7 +672,7 @@ func TestInsertMediaFile_StemDedup_BothFilesPresent(t *testing.T) {
 	if err := os.WriteFile(oldPath, []byte("video mp4"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil); err != nil {
+	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (mp4): %v", err)
 	}
 
@@ -690,7 +690,7 @@ func TestInsertMediaFile_StemDedup_BothFilesPresent(t *testing.T) {
 	}
 
 	// 3. Essayer d'indexer capture.webm
-	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil); err != nil {
+	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (webm): %v", err)
 	}
 
