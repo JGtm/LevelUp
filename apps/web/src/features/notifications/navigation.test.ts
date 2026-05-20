@@ -44,6 +44,7 @@ const VALID_PLAYER_SUBPATHS = [
   '/timeseries',
   '/teammates',
   '/compare',
+  '/notifications',
 ] as const
 
 const FANTOM_ROUTES_B1 = [

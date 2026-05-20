@@ -66,6 +66,10 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
         to: `/players/${playerSlug}/synthesis`,
         search: notif.params?.metric ? { metric: String(notif.params.metric) } : undefined,
       }
+    case 'data_health_warning':
+      // Pas de page admin dédiée. On renvoie sur la page notifications du
+      // joueur qui affiche le body complet (compteurs + hint repair).
+      return { to: `/players/${playerSlug}/notifications` }
     default:
       return null
   }
