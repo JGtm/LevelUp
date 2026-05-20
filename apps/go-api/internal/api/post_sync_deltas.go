@@ -270,44 +270,50 @@ func SnapshotPlayerState(
 		}
 	}
 
-	// KD agrégé + winrate via shared.match_participants (nécessite ATTACH actif)
+	// KD agrégé + winrate via match_participants (SharedReader — ADR 0016).
 	if pdb.XUID != "" {
-		var kd, winrate sql.NullFloat64
-		err := pdb.ReadDB().QueryRow(ctx, `
-			SELECT
-				CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)        AS kd_ratio,
-				AVG(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END)            AS winrate
-			FROM shared.match_participants
-			WHERE xuid = ?`, pdb.XUID).Scan(&kd, &winrate)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			slog.DebugContext(ctx, "snapshot: kd/winrate", "err", err)
-		}
-		if kd.Valid {
-			s.KDRatio = kd.Float64
-		}
-		if winrate.Valid {
-			s.Winrate = winrate.Float64
-		}
+		sharedDB, release, sharedErr := pdb.SharedReadDB().Get(ctx)
+		if sharedErr != nil {
+			slog.DebugContext(ctx, "snapshot: shared reader unavailable", "err", sharedErr)
+		} else {
+			var kd, winrate sql.NullFloat64
+			err := sharedDB.QueryRowContext(ctx, `
+				SELECT
+					CAST(SUM(kills) AS DOUBLE) / NULLIF(SUM(deaths), 0)        AS kd_ratio,
+					AVG(CASE WHEN outcome = 2 THEN 1.0 ELSE 0.0 END)            AS winrate
+				FROM match_participants
+				WHERE xuid = ?`, pdb.XUID).Scan(&kd, &winrate)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				slog.DebugContext(ctx, "snapshot: kd/winrate", "err", err)
+			}
+			if kd.Valid {
+				s.KDRatio = kd.Float64
+			}
+			if winrate.Valid {
+				s.Winrate = winrate.Float64
+			}
 
-		// Best KDA matériel (single match)
-		var bestKDA sql.NullFloat64
-		var matchID sql.NullString
-		err = pdb.ReadDB().QueryRow(ctx, `
-			SELECT
-				CAST(kills + assists AS DOUBLE) / GREATEST(deaths, 1) AS kda,
-				match_id
-			FROM shared.match_participants
-			WHERE xuid = ?
-			ORDER BY kda DESC
-			LIMIT 1`, pdb.XUID).Scan(&bestKDA, &matchID)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			slog.DebugContext(ctx, "snapshot: best_kda", "err", err)
-		}
-		if bestKDA.Valid {
-			s.BestKDA = bestKDA.Float64
-		}
-		if matchID.Valid {
-			s.BestKDAMatchID = matchID.String
+			// Best KDA matériel (single match)
+			var bestKDA sql.NullFloat64
+			var matchID sql.NullString
+			err = sharedDB.QueryRowContext(ctx, `
+				SELECT
+					CAST(kills + assists AS DOUBLE) / GREATEST(deaths, 1) AS kda,
+					match_id
+				FROM match_participants
+				WHERE xuid = ?
+				ORDER BY kda DESC
+				LIMIT 1`, pdb.XUID).Scan(&bestKDA, &matchID)
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
+				slog.DebugContext(ctx, "snapshot: best_kda", "err", err)
+			}
+			if bestKDA.Valid {
+				s.BestKDA = bestKDA.Float64
+			}
+			if matchID.Valid {
+				s.BestKDAMatchID = matchID.String
+			}
+			release()
 		}
 	}
 
