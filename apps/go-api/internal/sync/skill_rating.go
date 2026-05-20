@@ -164,13 +164,13 @@ func computeCompositeScoreWithBreakdown(
 			carryAdj := clampF(carryRatio, 0.5, 2.0)
 			score = clampF(score*(1.0/carryAdj)+0.5*(1.0-1.0/carryAdj), 0.0, 1.0)
 		}
-		valid = append(valid, entry{"kills_vs_expected", score, w["kills_vs_expected"]})
+		valid = append(valid, entry{MetricKeyKillsVsExpected, score, w[MetricKeyKillsVsExpected]})
 	}
 
 	// 2. deaths_vs_expected (inversé)
 	if row.DeathsExpected > 0 {
 		score := sigmoidRatio(row.DeathsExpected, math.Max(1.0, row.Deaths))
-		valid = append(valid, entry{"deaths_vs_expected", score, w["deaths_vs_expected"]})
+		valid = append(valid, entry{MetricKeyDeathsVsExpected, score, w[MetricKeyDeathsVsExpected]})
 	}
 
 	// 3. win_factor
@@ -188,7 +188,7 @@ func computeCompositeScoreWithBreakdown(
 		default:
 			winScore = 0.5
 		}
-		valid = append(valid, entry{"win_factor", winScore, w["win_factor"]})
+		valid = append(valid, entry{MetricKeyWinFactor, winScore, w[MetricKeyWinFactor]})
 	}
 
 	// 4. damage_efficiency
@@ -199,13 +199,13 @@ func computeCompositeScoreWithBreakdown(
 		if avgDamageEff != nil && *avgDamageEff > 0 {
 			scoreEff = sigmoidRatio(rawEff, *avgDamageEff)
 		}
-		valid = append(valid, entry{"damage_efficiency", scoreEff, w["damage_efficiency"]})
+		valid = append(valid, entry{MetricKeyDamageEfficiency, scoreEff, w[MetricKeyDamageEfficiency]})
 	}
 
 	// 5. accuracy_delta
 	if row.Accuracy > 0 && avgAccuracy != nil && *avgAccuracy > 0 {
 		score := sigmoidRatio(row.Accuracy, *avgAccuracy)
-		valid = append(valid, entry{"accuracy_delta", score, w["accuracy_delta"]})
+		valid = append(valid, entry{MetricKeyAccuracyDelta, score, w[MetricKeyAccuracyDelta]})
 	}
 
 	// 6. medal_exploit (optional — 0 si médailles absentes)
@@ -214,7 +214,7 @@ func computeCompositeScoreWithBreakdown(
 		if avgMedalExploit != nil && *avgMedalExploit > 1e-9 {
 			ref = *avgMedalExploit
 		}
-		valid = append(valid, entry{"medal_exploit", sigmoidRatio(row.MedalExploitScore, ref), w["medal_exploit"]})
+		valid = append(valid, entry{MetricKeyMedalExploit, sigmoidRatio(row.MedalExploitScore, ref), w[MetricKeyMedalExploit]})
 	}
 
 	// 7. offensive_conversion (optional — 0 si damage_dealt absent)
@@ -223,7 +223,7 @@ func computeCompositeScoreWithBreakdown(
 		if avgOffConv != nil && *avgOffConv > 1e-9 {
 			ref = *avgOffConv
 		}
-		valid = append(valid, entry{"offensive_conversion", sigmoidRatio(row.OffensiveConversion, ref), w["offensive_conversion"]})
+		valid = append(valid, entry{MetricKeyOffensiveConv, sigmoidRatio(row.OffensiveConversion, ref), w[MetricKeyOffensiveConv]})
 	}
 
 	// 8. defensive_resistance (optional — 0 si deaths=0)
@@ -232,7 +232,7 @@ func computeCompositeScoreWithBreakdown(
 		if avgDefRes != nil && *avgDefRes > 1e-9 {
 			ref = *avgDefRes
 		}
-		valid = append(valid, entry{"defensive_resistance", sigmoidRatio(row.DefensiveResistance, ref), w["defensive_resistance"]})
+		valid = append(valid, entry{MetricKeyDefensiveResist, sigmoidRatio(row.DefensiveResistance, ref), w[MetricKeyDefensiveResist]})
 	}
 
 	if len(valid) == 0 {
@@ -444,11 +444,11 @@ func computeSkillRatingsBatch(
 		muOpp, sigmaOpp := computeEnemyStrength(enemyKEs, matchAvgKE, matchStdKE, state.MU)
 
 		// Moyennes historiques (nil = pas assez de données → composante ignorée)
-		avgAcc := rollingAvgPtr(state.AccuracyHistory, MinMatchesForAccuracyDelta)
-		avgDmgEff := rollingAvgPtr(state.DamageEffHistory, MinMatchesForAccuracyDelta)
-		avgMedalExploit := rollingAvgPtr(state.MedalExploitHistory, MinMatchesForAccuracyDelta)
-		avgOffConv := rollingAvgPtr(state.OffConversionHistory, MinMatchesForAccuracyDelta)
-		avgDefRes := rollingAvgPtr(state.DefResistanceHistory, MinMatchesForAccuracyDelta)
+		avgAcc := rollingAvgPtr(state.AccuracyHistory)
+		avgDmgEff := rollingAvgPtr(state.DamageEffHistory)
+		avgMedalExploit := rollingAvgPtr(state.MedalExploitHistory)
+		avgOffConv := rollingAvgPtr(state.OffConversionHistory)
+		avgDefRes := rollingAvgPtr(state.DefResistanceHistory)
 
 		// Teammate avg KE
 		var teammateAvgKE *float64
@@ -505,19 +505,19 @@ func computeSkillRatingsBatch(
 		state.LastMatchTime = &t
 
 		// Mise à jour des historiques glissants
-		appendToHistory(&state.AccuracyHistory, match.Accuracy, AccuracyHistorySize)
+		appendToHistory(&state.AccuracyHistory, match.Accuracy)
 		totalDmg := match.DamageDealt + match.DamageTaken
 		if totalDmg > 0 {
-			appendToHistory(&state.DamageEffHistory, clampF(match.DamageDealt/totalDmg, 0, 1), AccuracyHistorySize)
+			appendToHistory(&state.DamageEffHistory, clampF(match.DamageDealt/totalDmg, 0, 1))
 		}
 		if medalScore > 0 {
-			appendToHistory(&state.MedalExploitHistory, medalScore, AccuracyHistorySize)
+			appendToHistory(&state.MedalExploitHistory, medalScore)
 		}
 		if offConv > 0 {
-			appendToHistory(&state.OffConversionHistory, offConv, AccuracyHistorySize)
+			appendToHistory(&state.OffConversionHistory, offConv)
 		}
 		if defRes > 0 {
-			appendToHistory(&state.DefResistanceHistory, defRes, AccuracyHistorySize)
+			appendToHistory(&state.DefResistanceHistory, defRes)
 		}
 
 		results = append(results, lusrResult{
@@ -531,9 +531,12 @@ func computeSkillRatingsBatch(
 	return results
 }
 
-// rollingAvgPtr retourne la moyenne d'une slice si elle a au moins minLen éléments, nil sinon.
-func rollingAvgPtr(hist []float64, minLen int) *float64 {
-	if len(hist) < minLen {
+// rollingAvgPtr retourne la moyenne d'une slice si elle a au moins
+// MinMatchesForAccuracyDelta éléments, nil sinon. Le seuil est toujours
+// MinMatchesForAccuracyDelta (constant unique) — inline pour eviter le bruit
+// unparam.
+func rollingAvgPtr(hist []float64) *float64 {
+	if len(hist) < MinMatchesForAccuracyDelta {
 		return nil
 	}
 	sum := 0.0
@@ -544,11 +547,13 @@ func rollingAvgPtr(hist []float64, minLen int) *float64 {
 	return &avg
 }
 
-// appendToHistory ajoute v à *hist et tronque à maxLen éléments.
-func appendToHistory(hist *[]float64, v float64, maxLen int) {
+// appendToHistory ajoute v à *hist et tronque a AccuracyHistorySize elements.
+// La taille max est toujours AccuracyHistorySize (constant unique) — inline
+// pour eviter le bruit unparam.
+func appendToHistory(hist *[]float64, v float64) {
 	*hist = append(*hist, v)
-	if len(*hist) > maxLen {
-		*hist = (*hist)[len(*hist)-maxLen:]
+	if len(*hist) > AccuracyHistorySize {
+		*hist = (*hist)[len(*hist)-AccuracyHistorySize:]
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
-	"time"
 )
 
 // service_pilot_pool.go — méthodes Service pour le mode pilote (auto-attribution)
@@ -30,7 +29,6 @@ func (s *service) EnablePilotMode(ctx context.Context, userID, titleSlug string)
 	}
 
 	out := PilotModeAttribution{}
-	now := s.deps.Now()
 
 	// Quotidien : créer si pas déjà 1 actif sur la cadence daily.
 	dailyCount, err := s.deps.Challenges.CountActiveByCadence(ctx, userID, titleSlug, CadenceDaily)
@@ -38,7 +36,7 @@ func (s *service) EnablePilotMode(ctx context.Context, userID, titleSlug string)
 		return out, fmt.Errorf("count daily: %w", err)
 	}
 	if dailyCount == 0 {
-		c, err := s.attributeFromCatalog(ctx, userID, titleSlug, CadenceDaily, now)
+		c, err := s.attributeFromCatalog(ctx, userID, titleSlug, CadenceDaily)
 		if err != nil {
 			slog.WarnContext(ctx, "prestige: daily auto-attribution failed", "err", err)
 		} else {
@@ -52,7 +50,7 @@ func (s *service) EnablePilotMode(ctx context.Context, userID, titleSlug string)
 		return out, fmt.Errorf("count weekly: %w", err)
 	}
 	if weeklyCount == 0 {
-		c, err := s.attributeFromCatalog(ctx, userID, titleSlug, CadenceWeekly, now)
+		c, err := s.attributeFromCatalog(ctx, userID, titleSlug, CadenceWeekly)
 		if err != nil {
 			slog.WarnContext(ctx, "prestige: weekly forced attribution failed", "err", err)
 		} else {
@@ -61,7 +59,7 @@ func (s *service) EnablePilotMode(ctx context.Context, userID, titleSlug string)
 	}
 
 	// 3 propositions hebdomadaires (parmi les templates weekly que le joueur n'a pas).
-	choices, err := s.suggestWeeklyChoices(ctx, userID, titleSlug)
+	choices, err := s.suggestWeeklyChoices(ctx, titleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "prestige: weekly choices unavailable", "err", err)
 	}
@@ -91,7 +89,7 @@ func (s *service) DisablePilotMode(ctx context.Context, userID, titleSlug string
 }
 
 // attributeFromCatalog crée un défi pilote depuis un template aléatoire de la cadence.
-func (s *service) attributeFromCatalog(ctx context.Context, userID, titleSlug string, cadence Cadence, now time.Time) (Challenge, error) {
+func (s *service) attributeFromCatalog(ctx context.Context, userID, titleSlug string, cadence Cadence) (Challenge, error) {
 	templates, err := s.deps.Templates.ListByTitle(ctx, titleSlug)
 	if err != nil {
 		return Challenge{}, fmt.Errorf("list templates: %w", err)
@@ -118,7 +116,7 @@ func (s *service) attributeFromCatalog(ctx context.Context, userID, titleSlug st
 }
 
 // suggestWeeklyChoices retourne 3 templates weekly que le joueur n'a pas encore tentés.
-func (s *service) suggestWeeklyChoices(ctx context.Context, userID, titleSlug string) ([]Template, error) {
+func (s *service) suggestWeeklyChoices(ctx context.Context, titleSlug string) ([]Template, error) {
 	all, err := s.deps.Templates.ListByTitle(ctx, titleSlug)
 	if err != nil {
 		return nil, err

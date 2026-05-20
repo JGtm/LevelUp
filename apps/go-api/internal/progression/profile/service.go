@@ -132,7 +132,7 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 	profile.HasEnoughData = matchesCount >= MinMatchesForProfile
 
 	// ── Section B : LUSR + tier + tendance (toujours calculé, même partiel)
-	if err := s.fillSectionB(ctx, profile, userID, lowessWindowDays, now); err != nil {
+	if err := s.fillSectionB(ctx, profile, lowessWindowDays, now); err != nil {
 		slog.WarnContext(ctx, "profile: section B partial", "err", err)
 	}
 
@@ -166,7 +166,7 @@ func (s *Service) BuildProfile(ctx context.Context, userID, titleSlug string, lo
 }
 
 // fillSectionB charge LUSR + tier + tendance + SkillRatingSnapshot.
-func (s *Service) fillSectionB(ctx context.Context, profile *PlayerProfile, userID string, lowessWindowDays int, now time.Time) error {
+func (s *Service) fillSectionB(ctx context.Context, profile *PlayerProfile, lowessWindowDays int, now time.Time) error {
 	lusr, err := s.loadLUSRSnapshot(ctx)
 	if err != nil {
 		return err
