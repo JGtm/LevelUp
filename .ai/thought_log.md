@@ -122,11 +122,31 @@ pré-pivot Go                  : 76 (100%)
    - **`computeFallbackXPPerDay`** ([career_service.go:1102](apps/go-api/internal/service/career_service.go#L1102)) : remplacement de la garde `days <= 0` par `days < 1.0`. Justification : un delta sub-jour entre `firstDate` et `now` n'est pas significatif pour calculer un taux XP/jour. Les 3 tests (`ZeroDays`, `ZeroXP`, `Normal` avec 30 jours) passent.
    - **Validations locales** : 4/4 tests PASS (1 openspartan + 3 service).
 
-(à enrichir à mesure que le fix 8 baseline est appliqué)
+8. **Fix `check_test_baseline.sh` — paths Windows hardcodés** (commit #7, branche `fix/media-paths-portable` suite à un checkout par une autre session Claude) : enquête approfondie sur les "tests baseline manquants". Diagnostic initial supposait que les tests avaient été **renommés** par le commit observability `0e317243`. **C'était faux** — vérification par grep : tous les tests listés comme manquants existent encore sous leur nom d'origine dans le code :
+   - `TestValidateErrorShape_*` (3) → `middleware_internal_test.go`
+   - `TestErrorFormat_ContainsCodeAndMessage` → `security_audit_test.go`
+   - `TestServiceEmit_PropagatesGenericInsertError` + `TestServiceEmit_ValidationErrors` → `service_test.go`
+   - `TestInitSISUSession_HTTPError` → `sisu_client_test.go`
+   - `TestPollXboxDeviceCode_FatalError` → `xbox_device_code_test.go`
+   - `TestPostJSON_HTTPError`, `TestRequestClearanceToken_HTTPError`, `TestRequestDeviceToken_HTTPError` → `halo_exchange_test.go` + `device_token_test.go`
+   - **Vraie cause** : `scripts/check_test_baseline.sh` lignes 59 et 106 hardcodaient `PATH="/c/msys64/ucrt64/bin:$PATH"` et `CC=/c/msys64/ucrt64/bin/gcc.exe`. Sur **Linux CI** (ubuntu-latest), ces chemins n'existent pas → CGO échoue silencieusement à compiler les tests → `current_jsonl` ne contient que des messages d'erreur stderr, pas les résultats `Action:pass/fail`. La comparaison baseline (8000+ tests) vs current (~5 tests no-CGO) reportait 99% des tests "manquants".
+   - **Fix** : guard `if [[ -f /c/msys64/ucrt64/bin/gcc.exe ]]; then export PATH/CC; fi` qui n'applique le wrapper msys64 **que si le gcc Windows existe**. Sur Linux CI, on tombe à travers et `go test` utilise le gcc système (déjà installé sur ubuntu-latest). Pattern identique pour `check_tests` (ligne 59) et `check_coverage` (ligne 106).
+   - **Décision : ne PAS régénérer la baseline** — elle est correcte, c'est le script qui était cassé. Régénérer aurait masqué de futures vraies suppressions de tests.
+   - **Validation locale** : `bash -n scripts/check_test_baseline.sh` → syntaxe OK.
+   - **Branche actuelle** : `fix/media-paths-portable` (autre session Claude a fait checkout entre fix #5 et #7, j'ai continué dessus selon règle mémoire "rester sur la branche active").
 
-**Résultats observés** : à valider après push (la branche `chore/ci-stabilization` re-déclenchera la CI).
+**Résultats observés** : à valider après push (la branche `fix/media-paths-portable` re-déclenchera la CI).
 
-**Prochaine étape** : fix #8 — mettre à jour `.ai/baselines/tests_pre_migration.jsonl` pour refléter les ~15 tests renommés par le commit `0e317243`.
+**Bilan global du sprint (7 fixes, 7 commits)** :
+1. `bump-version.yml` YAML indent
+2. `golangci-lint` v1→v2 migration + bump action @v6→@v9
+3. ADR 0013 lease violations (2 sites refactorés)
+4. `npm ci` ERESOLVE → `.npmrc legacy-peer-deps`
+5. OpenAPI Lint → `.spectral.yaml` avec `extends: spectral:oas`
+6. 2 tests qui FAIL (filepath Windows + ZeroDays edge case)
+7. `check_test_baseline.sh` paths Windows hardcodés sur Linux CI
+
+**Prochaine étape** : push de la branche `fix/media-paths-portable` et observation des résultats CI sur les ~10 jobs. Itérations si nécessaire (par exemple si `spectral:oas` remonte des erreurs réelles dans `openapi.yaml`, ou si `golangci-lint v2` surface des warnings inattendus).
 
 ---
 

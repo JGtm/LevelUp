@@ -56,7 +56,13 @@ check_tests() {
   echo "  Lancement de la suite courante (peut prendre plusieurs minutes)..."
   (
     cd "$REPO_ROOT/apps/go-api"
-    PATH="/c/msys64/ucrt64/bin:$PATH" CC=/c/msys64/ucrt64/bin/gcc.exe CGO_ENABLED=1 \
+    # Sur Windows local, utiliser le gcc fourni par msys64 (chemin POSIX via
+    # git-bash). Sur Linux CI, utiliser le gcc système (déjà dans le PATH).
+    if [[ -f /c/msys64/ucrt64/bin/gcc.exe ]]; then
+      export PATH="/c/msys64/ucrt64/bin:$PATH"
+      export CC="/c/msys64/ucrt64/bin/gcc.exe"
+    fi
+    CGO_ENABLED=1 \
       go test -tags=integration -count=1 -timeout=300s -p 1 -json ./... > "$current_jsonl" 2>&1
   ) || true
 
@@ -103,7 +109,13 @@ check_coverage() {
 
   (
     cd "$REPO_ROOT/apps/go-api"
-    PATH="/c/msys64/ucrt64/bin:$PATH" CC=/c/msys64/ucrt64/bin/gcc.exe CGO_ENABLED=1 \
+    # Sur Windows local, utiliser le gcc fourni par msys64. Sur Linux CI,
+    # utiliser le gcc système (déjà dans le PATH).
+    if [[ -f /c/msys64/ucrt64/bin/gcc.exe ]]; then
+      export PATH="/c/msys64/ucrt64/bin:$PATH"
+      export CC="/c/msys64/ucrt64/bin/gcc.exe"
+    fi
+    CGO_ENABLED=1 \
       go test -tags=integration -count=1 -timeout=300s -p 1 \
         -coverprofile="$current_raw" -covermode=atomic -coverpkg=./... ./... > /dev/null 2>&1
     go tool cover -func="$current_raw" > "$current_txt"
