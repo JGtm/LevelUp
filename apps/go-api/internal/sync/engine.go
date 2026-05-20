@@ -1550,6 +1550,14 @@ func (e *SyncEngine) runPostSyncPipeline(
 ) domain.PostSyncResult {
 	var r domain.PostSyncResult
 
+	// Sprint B1 commit 18 : event_id pour tracer le pipeline post-sync à
+	// travers ses 14+ étapes (stats heal, skill heal, events heal, weapons,
+	// bot teammate, sessions, perf scores, engagement, LUSR, citations, CSR,
+	// friends, aggregates). Tous les sous-logs hériteront automatiquement.
+	ctx, evID := logging.WithEvent(ctx, "sync.postSync:"+e.gamertag)
+	slog.InfoContext(ctx, "post-sync: pipeline démarré",
+		"gamertag", e.gamertag, "matches_inserted", len(insertedIDs), "event", evID)
+
 	// -1.5 Stats re-extraction heal — comble max_killing_spree, grenade/melee/
 	// power_weapon kills, time_played_seconds, avg_life_seconds, gamertag,
 	// team_X_ps_score pour les matchs synchronisés avec un ancien binaire.

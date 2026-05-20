@@ -1,3 +1,103 @@
+## [2026-05-20] feat(observability) — Commit 18 : event_id post-sync + API in/out + écritures
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 18 — extension event_id à toutes les zones liées au sync).
+
+**Contexte** : commits 16-17 ont posé l'infra logging multi-module + propagation
+event_id sur les entry points sync/auth/watcher/HTTP. L'utilisateur demande
+d'étendre aux 3 zones restantes : post-sync events, écritures BDD, appels API.
+
+**Livré** :
+
+1. **Post-sync pipeline** (`internal/sync/engine.go::runPostSyncPipeline`) :
+   - event_id `sync.postSync:<gamertag>` au début du pipeline (couvre 14+
+     étapes : stats heal, skill heal, events heal, weapons, bot teammate,
+     sessions, perf scores, engagement, LUSR, citations, CSR, friends,
+     aggregates). Tous les sous-logs héritent automatiquement via ContextHandler.
+
+2. **Halo API client outbound** (`internal/sync/halo_client.go`) :
+   - `doGet` : log par GET HTTP. Debug succès (duration_ms, bytes, attempt),
+     Warn échec réseau / HTTP non-200 (avec status), Warn auth refusé (pas
+     de retry), Debug 404/410 (ressource absente), Error échec définitif
+     après maxRetries.
+   - `downloadBlob` : log download (film chunks, highlight events). Debug
+     succès avec bytes_compressed + bytes_inflated. Warn sur HTTP error.
+   - L'event_id hérite du caller (sync.RunDelta, sync.postSync, etc.) —
+     pas d'event_id propre. Diag immédiat d'un timeout/5xx en grep par
+     event_id parent dans `logs/sync.log` + `logs/auth.log`.
+
+3. **XSTS exchange** (`internal/platform/auth/xsts.go::AcquireXSTSForRTA`) :
+   - event_id `auth.xsts.rta` sur l'acquisition (2 appels HTTP : User Token
+     XBL + XSTS Xbox Live). Log InfoContext avec duration_ms total au succès.
+
+4. **OAuth refresh** (`internal/platform/auth/oauth_refresh.go::ExchangeRefreshTokenWithRotation`) :
+   - event_id `auth.oauth_exchange`. Defer-log via closure qui log
+     selon l'outcome :
+     * succès → Info avec duration_ms + rotated bool
+     * erreur → Warn avec duration_ms + err
+     * token révoqué (réponse vide) → Warn
+   - Critique pour diag des refresh tokens révoqués (Microsoft rotate).
+
+5. **HTTP middleware** (`internal/api/middleware/slog_logger.go::SlogLogger`) :
+   - Injecte event_id `http.<METHOD>:<short_id>` (ex: `http.GET:a1b2`,
+     `http.POST:c3d4`) dans le ctx AVANT next.ServeHTTP.
+   - Tous les handlers + services downstream héritent automatiquement.
+   - L'event_id est aussi ajouté au log de fin de requête HTTP.
+   - Switch slog.Error/Warn/Debug → ErrorContext/WarnContext/DebugContext
+     pour que ctxhandler propage request_id + event_id.
+
+6. **Notifications.Emit** (`internal/notifications/service.go`) :
+   - Log Warn sur échec d'insert (avec category + title_key + err).
+   - Log Info sur succès (category + title_key + severity).
+   - Hérite automatiquement de l'event_id du caller (sync engine post-hook,
+     scheduler, etc.) — trace notif vers logs/notifications.log.
+
+**Bénéfice diag concret** :
+
+Quand un user signale "j'ai cliqué sync_now mais rien ne s'est passé", le
+flow complet apparaît dans les logs corrélés par event_id :
+
+```bash
+# 1. Récupérer l'event_id http
+grep "POST /sync/initial" logs/handlers.log → event_id="http.POST:abc"
+
+# 2. Tous les logs descendants
+grep 'event_id="http.POST:abc"' logs/*.log | jq -r '"\(.time) [\(.level)] \(.msg)"' | sort
+# → handlers.log : StartInitialSync démarré
+# → auth.log : oauth_exchange (refresh token failed?)
+# → sync.log : RunDelta starts/fails
+# → sync.log : halo_api GET échec définitif (timeout SPNKr?)
+# → notifications.log : sync_error émise
+```
+
+**Vérifications** :
+- `go build ./...` OK
+- Tests verts : sync (128s), notifications (2s), auth (9s), auth/pool (4s),
+  api/middleware (2s)
+
+**Couverture finale event_id** (commits 16+17+18) :
+
+| Zone | Modules instrumentés |
+|---|---|
+| Sync engine | RunDelta, RunFull (commit 16) + runPostSyncPipeline (18) |
+| Provider | AcquireWriter, releaseWriter (16) |
+| Scheduler | tick, syncPlayer (17) |
+| Auth | Resolve, Refresh, refresherLoop, RefreshLoop.Run, EnsureWatcherAccessToken (17) |
+| Auth exchange | AcquireXSTSForRTA, ExchangeRefreshTokenWithRotation (18) |
+| Watcher | Start, connectAndSubscribe, consumeQueue, AddPlayer, trigger (17) |
+| HTTP | StartInitialSync, StartDeltaSync, StartSyncAll, StartBackfill (17) + SlogLogger middleware (18) |
+| Halo API | doGet, downloadBlob (18) |
+| Notifications | Emit (18) |
+
+**Pas instrumenté volontairement** :
+- Écritures BDD individuelles (InsertRegistry, InsertParticipants, etc.) :
+  trop bruyant, l'event_id parent les couvre déjà via les logs d'erreur.
+- Subscriber callbacks Provider : signature `func(SwapEvent)` sans ctx —
+  refactor reporté à un commit follow-up dédié.
+
+**Branche désormais à 51 commits ahead d'origin.**
+
+---
+
 ## [2026-05-20] feat(observability) — Commit 17 : event_id propagé à tous les flows sync
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 17 — instrumentation event_id sur tous les flows liés au sync).

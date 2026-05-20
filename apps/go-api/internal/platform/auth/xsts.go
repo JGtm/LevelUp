@@ -17,6 +17,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"levelup/go-api/internal/observability/logging"
 )
 
 const (
@@ -41,7 +43,11 @@ func (r *XSTSResult) AuthHeader() string {
 // AcquireXSTSForRTA obtient un token XSTS avec RelyingParty=http://xboxlive.com.
 // Ce token est nécessaire pour la connexion WebSocket RTA.
 func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, error) {
-	slog.DebugContext(ctx, "xsts: début acquisition XSTS pour RTA")
+	// Sprint B1 commit 18 : event_id pour tracer l'acquisition XSTS RTA
+	// (2 appels HTTP : User Token XBL + XSTS Xbox Live).
+	ctx, evID := logging.WithEvent(ctx, "auth.xsts.rta")
+	start := time.Now()
+	slog.InfoContext(ctx, "xsts: début acquisition XSTS pour RTA", "event", evID)
 	client := &http.Client{Timeout: 20 * time.Second}
 
 	// Étape 1 : User Token XBL (identique au flow Halo)
@@ -61,6 +67,7 @@ func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, er
 	slog.InfoContext(ctx, "xsts: XSTS Xbox Live obtenu",
 		"gamertag", xstsResp.Gamertag,
 		"xuid", xstsResp.XUID,
+		"duration_ms", time.Since(start).Milliseconds(),
 	)
 	return xstsResp, nil
 }
