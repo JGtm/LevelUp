@@ -168,10 +168,3 @@ func main() {
 		"not_in_db", notInDB,
 		"total_translations", totalTransl)
 }
-
-func nullStr(s string) any {
-	if strings.TrimSpace(s) == "" {
-		return nil
-	}
-	return s
-}
