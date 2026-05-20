@@ -17,6 +17,12 @@ const (
 	MimeImageJPEG = "image/jpeg"
 )
 
+// Extensions de fichier des assets binaires.
+const (
+	ExtensionPNG  = ".png"
+	ExtensionJSON = ".json"
+)
+
 // LocalFSStore implémente BinaryStore sur le filesystem local.
 // Les binaires sont stockés sous {RootDir}/{kind}/{titleID}/{id}[.{variant}].{ext}
 // L'écriture est atomique via tmp+rename.
@@ -107,9 +113,9 @@ func extensionForKind(k Kind) string {
 		KindSpartanBackdrop,
 		KindCareerRankImage,
 		KindAchievementImage:
-		return ".png"
+		return ExtensionPNG
 	default:
-		return ".json"
+		return ExtensionJSON
 	}
 }
 

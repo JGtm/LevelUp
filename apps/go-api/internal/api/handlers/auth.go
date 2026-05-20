@@ -176,7 +176,7 @@ func (h *AuthHandler) pollDeviceFlow(attemptID string, flow auth_platform.Device
 	if err != nil {
 		h.attempts.Update(attemptID, func(a *auth_platform.Attempt) {
 			a.Status = auth_platform.AttemptStatusFailed
-			a.ErrorCode = "msal_acquire_error"
+			a.ErrorCode = errCodeMSALAcquire
 			a.ErrorDetail = err.Error()
 		})
 		return

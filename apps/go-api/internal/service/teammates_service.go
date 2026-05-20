@@ -501,12 +501,12 @@ func extractSynthesisSessionLabels(matches []legacymatch.SynthesisMatchRow) doma
 // synthesisExperienceLabel dÃƒÂ©rive le label d'expÃƒÂ©rience d'un match (miroir de filters_service.go).
 func synthesisExperienceLabel(m legacymatch.SynthesisMatchRow) string {
 	if m.IsFirefight {
-		return "PVE"
+		return expTypePVE
 	}
 	if m.IsRanked {
-		return "PVP classé"
+		return expTypePVPRanked
 	}
-	return "PVP non classé"
+	return expTypePVPUnranked
 }
 
 // filterSynthesisByCascade applique les filtres experience_types et playlists sur les matchs.
@@ -940,12 +940,12 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 			key = r.MapUI
 		}
 		if key == "" {
-			key = "Unknown"
+			key = tsLabelUnknown
 		}
 		if _, ok := m[key]; !ok {
 			lbl := r.MapUI
 			if lbl == "" {
-				lbl = "Unknown"
+				lbl = tsLabelUnknown
 			}
 			m[key] = &stats{mapUI: lbl}
 		}

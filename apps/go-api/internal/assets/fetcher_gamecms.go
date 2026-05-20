@@ -92,7 +92,7 @@ func (f *GameCMSFetcher) fetchMedalImage(ctx context.Context, ref Ref) (Payload,
 		return nil, fmt.Errorf("%w: read body: %v", ErrUpstreamUnavailable, err)
 	}
 	return BinaryPayload{
-		ContentType: "image/png",
+		ContentType: MimeImagePNG,
 		Bytes:       data,
 		ETag:        contentHash(data),
 	}, nil
@@ -122,7 +122,7 @@ func (f *GameCMSFetcher) fetchChallengeBadge(ctx context.Context, ref Ref) (Payl
 		return nil, fmt.Errorf("%w: read body: %v", ErrUpstreamUnavailable, err)
 	}
 	return BinaryPayload{
-		ContentType: "image/png",
+		ContentType: MimeImagePNG,
 		Bytes:       data,
 		ETag:        contentHash(data),
 	}, nil

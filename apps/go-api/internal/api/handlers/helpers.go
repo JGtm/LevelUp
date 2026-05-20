@@ -12,6 +12,25 @@ import (
 	"reflect"
 )
 
+// Clés JSON partagées entre handlers (params actor logs, response error envelopes).
+// Externalisées pour éviter les doublons goconst dans les helpers et middlewares.
+const (
+	jsonKeyStatus    = "status"
+	jsonKeyCount     = "count"
+	jsonKeyCode      = "code"
+	jsonKeyMessage   = "message"
+	jsonKeyRetryable = "retryable"
+
+	// Valeurs courantes
+	jsonBoolTrueStr = "true"
+
+	// Codes d'erreur partagés (MSAL device-code flow).
+	errCodeMSALAcquire = "msal_acquire_error"
+
+	// Modes auth.
+	authModeXbox = "xbox"
+)
+
 // sanitizeFloatsForJSON parcourt v via reflect et neutralise toute valeur
 // float64/float32 NaN ou +/-Inf (non représentable en JSON).
 // Pour un *float64 NaN/Inf, le pointeur est mis à nil (champ omitempty disparait).
@@ -156,7 +175,7 @@ func httpError(ctx context.Context, w http.ResponseWriter, message string, statu
 // Séparé de writeError pour permettre la réutilisation (writeServerError, et
 // futurs helpers d'erreur).
 func logErrorResponse(ctx context.Context, status int, code, message string, err error) {
-	attrs := []any{"status", status, "code", code, "message", message}
+	attrs := []any{jsonKeyStatus, status, jsonKeyCode, code, jsonKeyMessage, message}
 	if err != nil {
 		attrs = append(attrs, "err", err)
 	}

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -207,7 +208,7 @@ type dbProfileEntry struct {
 // Si titleFilter est non vide, ne retourne que les joueurs de ce titre.
 func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error) {
 	if c.DemoMode {
-		titleSlug := "halo_infinite"
+		titleSlug := title.DefaultSlug
 		if len(titleFilter) > 0 && titleFilter[0] != "" {
 			titleSlug = titleFilter[0]
 		}
@@ -269,7 +270,7 @@ func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.
 	if len(titleFilter) > 0 {
 		filter = titleFilter[0]
 	}
-	if filter != "" && filter != "halo_infinite" {
+	if filter != "" && filter != title.DefaultSlug {
 		return []domain.PlayerSummary{}, nil
 	}
 
@@ -285,7 +286,7 @@ func (c *AppConfig) loadPlayersV2(data []byte, titleFilter ...string) ([]domain.
 			XUID:           p.XUID,
 			WaypointPlayer: wp,
 			IsDemo:         false,
-			TitleSlug:      "halo_infinite",
+			TitleSlug:      title.DefaultSlug,
 		})
 	}
 	return players, nil

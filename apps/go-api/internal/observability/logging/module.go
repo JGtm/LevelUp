@@ -103,7 +103,7 @@ func computeModule(pc uintptr) string {
 // + duckdb → "duckdb" pour les opérations bas-niveau, "provider" pour le swap).
 func mapPackageToModule(pkg, fullPath string) string {
 	switch pkg {
-	case "sync":
+	case ModuleSync:
 		return ModuleSync
 	case "sharedprovider":
 		return ModuleProvider

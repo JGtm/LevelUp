@@ -154,7 +154,7 @@ func (h *MediaHandler) emitMediaAdded(
 			Severity:    notifications.SeverityInfo,
 			TitleKey:    "notif.media_added.title",
 			BodyKey:     "notif.media_added.body",
-			Params:      map[string]any{"actor_name": gamertag, "count": newIndexed},
+			Params:      map[string]any{"actor_name": gamertag, jsonKeyCount: newIndexed},
 			TargetRoute: fmt.Sprintf("/players/%s/media", slug),
 			Actor:       &notifications.Actor{Name: gamertag},
 			Source:      "media_handler",

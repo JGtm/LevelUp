@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/profile"
@@ -36,7 +37,7 @@ type PlayerProfileHandler struct {
 // NewPlayerProfileHandler construit le handler.
 func NewPlayerProfileHandler(resolve ProgressionResolver, titleSlug string) *PlayerProfileHandler {
 	if titleSlug == "" {
-		titleSlug = "halo_infinite"
+		titleSlug = title.DefaultSlug
 	}
 	return &PlayerProfileHandler{resolve: resolve, titleSlug: titleSlug}
 }

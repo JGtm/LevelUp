@@ -326,24 +326,37 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 // teammates.07 — Impact scoreboard (8 badges)
 // ---------------------------------------------------------------------------
 
+// Badge keys canoniques (parité avec analysis.ComputeMatchImpactFull).
+const (
+	impactBadgeFirstBlood      = "first_blood"
+	impactBadgeClutchFinisher  = "clutch_finisher"
+	impactBadgeLastCasualty    = "last_casualty"
+	impactBadgeLastGroupKill   = "last_group_kill"
+	impactBadgeFirstGroupDeath = "first_group_death"
+	impactBadgeSilentHero      = "silent_hero"
+	impactBadgeFalseBrother    = "false_brother"
+	impactBadgeKamikaze        = "kamikaze"
+	impactBadgeTopKiller       = "top_killer"
+)
+
 // impactBadgeOrd est l'ordre canonique des colonnes agrégat du scoreboard.
 var impactBadgeOrd = []string{
-	"first_blood", "clutch_finisher", "last_casualty", "last_group_kill",
-	"first_group_death", "silent_hero", "false_brother", "kamikaze", "top_killer",
+	impactBadgeFirstBlood, impactBadgeClutchFinisher, impactBadgeLastCasualty, impactBadgeLastGroupKill,
+	impactBadgeFirstGroupDeath, impactBadgeSilentHero, impactBadgeFalseBrother, impactBadgeKamikaze, impactBadgeTopKiller,
 }
 
 // impactScoreWeights mappe chaque badge à son poids dans le score global du
 // joueur (cf. .ai/charts_specs/teammates/07_impact_taquinerie.yaml constants).
 var impactScoreWeights = map[string]float64{
-	"clutch_finisher":   2.0,
-	"first_blood":       2.0,
-	"last_casualty":     -2.0,
-	"silent_hero":       1.5,
-	"false_brother":     -1.5,
-	"last_group_kill":   -1.0,
-	"first_group_death": -1.0,
-	"kamikaze":          -1.0,
-	"top_killer":        1.0,
+	impactBadgeClutchFinisher:  2.0,
+	impactBadgeFirstBlood:      2.0,
+	impactBadgeLastCasualty:    -2.0,
+	impactBadgeSilentHero:      1.5,
+	impactBadgeFalseBrother:    -1.5,
+	impactBadgeLastGroupKill:   -1.0,
+	impactBadgeFirstGroupDeath: -1.0,
+	impactBadgeKamikaze:        -1.0,
+	impactBadgeTopKiller:       1.0,
 }
 
 // buildSquadImpactMatrix charge les events highlight + participants des matchs
@@ -641,11 +654,11 @@ func (s *TeammatesService) buildSquadFirstEvents(
 		}
 		secs := e.TimeMS / 1000
 		switch e.EventType {
-		case "kill":
+		case analysis.EventTypeKill:
 			if ft.firstKillS == -1 || secs < ft.firstKillS {
 				ft.firstKillS = secs
 			}
-		case "death":
+		case analysis.EventTypeDeath:
 			if ft.firstDeathS == -1 || secs < ft.firstDeathS {
 				ft.firstDeathS = secs
 			}
@@ -1401,7 +1414,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 				if e.MatchID != mid {
 					continue
 				}
-				if e.EventType != "kill" {
+				if e.EventType != analysis.EventTypeKill {
 					continue
 				}
 				if filterXUID != "" && e.XUID != filterXUID {

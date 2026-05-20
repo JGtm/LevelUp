@@ -53,11 +53,11 @@ func RequireCapability(registry *titlePkg.Registry, cap titlePkg.Capability) fun
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusServiceUnavailable)
 				_ = json.NewEncoder(w).Encode(map[string]any{
-					"code":       "capability_unavailable",
-					"capability": string(cap),
-					"title_slug": slug,
-					"message":    "Cette fonctionnalité n'est pas disponible pour ce titre.",
-					"retryable":  false,
+					errKeyCode:      "capability_unavailable",
+					"capability":    string(cap),
+					"title_slug":    slug,
+					errKeyMessage:   "Cette fonctionnalité n'est pas disponible pour ce titre.",
+					errKeyRetryable: false,
 				})
 				return
 			}

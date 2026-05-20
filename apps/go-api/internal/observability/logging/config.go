@@ -7,6 +7,13 @@ import (
 	"strings"
 )
 
+// Formats de sortie console reconnus (LEVELUP_LOG_FORMAT).
+const (
+	ConsoleFormatCompact = "compact"
+	ConsoleFormatText    = "text"
+	ConsoleFormatJSON    = "json"
+)
+
 // Config résume la configuration du système de logging multi-module.
 // Chargée depuis les variables d'environnement au boot du serveur.
 type Config struct {
@@ -84,17 +91,17 @@ func LoadConfig(repoRoot string) Config {
 //  3. Défaut → compact
 func parseConsoleFormat() string {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_LOG_FORMAT"))) {
-	case "compact":
-		return "compact"
-	case "text":
-		return "text"
-	case "json":
-		return "json"
+	case ConsoleFormatCompact:
+		return ConsoleFormatCompact
+	case ConsoleFormatText:
+		return ConsoleFormatText
+	case ConsoleFormatJSON:
+		return ConsoleFormatJSON
 	}
 	if parseBoolEnv("LEVELUP_LOG_JSON", false) {
-		return "json"
+		return ConsoleFormatJSON
 	}
-	return "compact"
+	return ConsoleFormatCompact
 }
 
 // parseIntEnv retourne l'entier depuis env, sinon le défaut. Valeurs négatives

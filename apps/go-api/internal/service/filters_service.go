@@ -16,7 +16,7 @@ import (
 )
 
 // Constantes expérience (ordre affiché dans l'UI).
-var experienceLabels = []string{"PVP non classé", "PVP classé", "PVE"}
+var experienceLabels = []string{expTypePVPUnranked, expTypePVPRanked, expTypePVE}
 
 // FiltersService calcule FilterContextResolved depuis les données du repo.
 type FiltersService struct {

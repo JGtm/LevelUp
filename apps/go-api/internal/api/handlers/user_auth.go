@@ -72,7 +72,7 @@ func (h *UserAuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	// D3 cohabitation : en mode "xbox", le login password est réservé aux admins
 	// (fallback si SSO down). Les users normaux passent obligatoirement par le SSO Xbox.
-	if h.authMode == "xbox" && user.Role != domain.RoleAdmin {
+	if h.authMode == authModeXbox && user.Role != domain.RoleAdmin {
 		slog.Warn("auth: login password non-admin bloqué en mode xbox",
 			"username", user.Username, "role", user.Role)
 		writeError(r.Context(), w, http.StatusForbidden, "password_login_admin_only",

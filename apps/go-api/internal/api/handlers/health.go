@@ -64,8 +64,8 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // de liveness — voir /readyz.
 func (h *HealthHandler) Liveness(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status": "alive",
-		"uptime": time.Since(h.startedAt).Round(time.Second).String(),
+		jsonKeyStatus: "alive",
+		"uptime":      time.Since(h.startedAt).Round(time.Second).String(),
 	})
 }
 
@@ -102,7 +102,7 @@ func (h *HealthHandler) Readiness(w http.ResponseWriter, r *http.Request) {
 		statusLabel = "not_ready"
 	}
 	writeJSON(w, status, map[string]any{
-		"status": statusLabel,
-		"checks": checks,
+		jsonKeyStatus: statusLabel,
+		"checks":      checks,
 	})
 }

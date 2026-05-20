@@ -71,7 +71,7 @@ func (h *NotificationsHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	f := notifications.ListFilter{
-		UnreadOnly: q.Get("unread_only") == "true",
+		UnreadOnly: q.Get("unread_only") == jsonBoolTrueStr,
 		Category:   notifications.Category(q.Get("category")),
 		Limit:      atoi(q.Get("limit")),
 		BeforeID:   atoi64(q.Get("before_id")),

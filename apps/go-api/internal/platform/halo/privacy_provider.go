@@ -72,7 +72,7 @@ const defaultStatsHost = "https://halostats.svc.halowaypoint.com"
 // Retourne un MatchPrivacyInfo non-nil même en cas d'erreur (fallback gracieux).
 func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domain.MatchPrivacyInfo, error) {
 	if xuid == "" {
-		return &domain.MatchPrivacyInfo{Hint: "auth_required"}, nil
+		return &domain.MatchPrivacyInfo{Hint: errHintAuthRequired}, nil
 	}
 
 	// Sprint 54 B5 : vérifier le cache avant tout appel Waypoint.
@@ -82,14 +82,14 @@ func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domai
 
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
-		return &domain.MatchPrivacyInfo{Hint: "auth_required"}, nil
+		return &domain.MatchPrivacyInfo{Hint: errHintAuthRequired}, nil
 	}
 
 	url := fmt.Sprintf("%s/hi/players/xuid(%s)/matches-privacy", defaultStatsHost, xuid)
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
 		// Privacy non critique — fallback partiel sans mettre en cache l'erreur.
-		return &domain.MatchPrivacyInfo{IsPartial: true, Hint: "fetch_error"}, nil
+		return &domain.MatchPrivacyInfo{IsPartial: true, Hint: errHintFetchError}, nil
 	}
 
 	var resp privacyResponse
@@ -105,13 +105,19 @@ func (p *HaloProvider) GetMatchPrivacy(ctx context.Context, xuid string) (*domai
 	return info, nil
 }
 
+// Constantes privacy Waypoint.
+const (
+	privacyStatusPrivate   = "Private"
+	privacyHintFullPrivate = "full_private"
+)
+
 // parsePrivacyResponse convertit la réponse brute Waypoint en MatchPrivacyInfo.
 func parsePrivacyResponse(resp *privacyResponse) *domain.MatchPrivacyInfo {
 	info := &domain.MatchPrivacyInfo{}
-	if resp.AllMatchesPrivacy == "Private" {
+	if resp.AllMatchesPrivacy == privacyStatusPrivate {
 		info.IsPrivate = true
-		info.Hint = "full_private"
-	} else if resp.RankedMatchesPrivacy == "Private" || resp.PublicMatchesPrivacy == "Private" {
+		info.Hint = privacyHintFullPrivate
+	} else if resp.RankedMatchesPrivacy == privacyStatusPrivate || resp.PublicMatchesPrivacy == privacyStatusPrivate {
 		info.IsPartial = true
 		info.Hint = "partial_private"
 	}

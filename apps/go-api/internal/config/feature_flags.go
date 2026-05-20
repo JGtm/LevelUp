@@ -181,7 +181,7 @@ func applyFlagsMap(ff *FeatureFlags, m map[string]string) {
 
 // parseBackend convertit une string en Backend (défaut BackendGo si valeur inconnue).
 func parseBackend(s string) Backend {
-	if strings.ToLower(s) == "python" {
+	if strings.ToLower(s) == string(BackendPython) {
 		return BackendPython
 	}
 	return BackendGo

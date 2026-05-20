@@ -55,7 +55,7 @@ func buildTrioTimeseries(
 			Key:        keyPrefix + "." + gt,
 			LabelKey:   labelKey,
 			Datapoints: dps,
-			Meta:       map[string]any{"gamertag": gt},
+			Meta:       map[string]any{chartMetaGamertag: gt},
 		})
 	}
 	return out

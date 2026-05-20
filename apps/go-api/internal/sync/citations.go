@@ -261,7 +261,7 @@ LIMIT 1`
 		"score":              float64(score),
 		"damage_dealt":       damagDealt,
 		"damage_taken":       damageTaken,
-		"accuracy":           accuracy,
+		MetricKeyAccuracy:    accuracy,
 		"headshot_kills":     float64(headshotKills),
 		"melee_kills":        float64(meleeKills),
 		"power_weapon_kills": float64(powerWeaponKills),

@@ -15,6 +15,17 @@ import (
 	"levelup/go-api/internal/games/canonical"
 )
 
+// Types d'assets catalogue (clés stables stockées dans catalog_fetch_queue.asset_type,
+// asset_translations.kind, etc.). Centralisés ici pour servir aux callers
+// title-agnostic (service/, sync/, platform/duckdb/) qui ne peuvent pas importer
+// les constantes typées de halo_infinite.AssetTypeXxx.
+const (
+	AssetKindPlaylist    = "playlist"
+	AssetKindPair        = "pair"
+	AssetKindMap         = "map"
+	AssetKindGameVariant = "game_variant"
+)
+
 // TitleCatalogAdapter expose les opérations catalogue title-spécifiques.
 //
 // Les implémentations connues :

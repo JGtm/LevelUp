@@ -766,12 +766,12 @@ func squadGrade(score float64) string {
 // Miroir de synthesisExperienceLabel dans teammates_service.go.
 func canonicalRowExperienceLabel(r canonical.PlayerMatchRow) string {
 	if r.Summary.IsPvE != nil && *r.Summary.IsPvE {
-		return "PVE"
+		return expTypePVE
 	}
 	if r.Summary.IsRanked != nil && *r.Summary.IsRanked {
-		return "PVP classé"
+		return expTypePVPRanked
 	}
-	return "PVP non classé"
+	return expTypePVPUnranked
 }
 
 // filterRowsByCascade filtre une slice de PlayerMatchRow selon les critères

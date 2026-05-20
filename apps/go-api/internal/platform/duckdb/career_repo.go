@@ -794,15 +794,22 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 // GetRivals retourne les top némésis (par deaths DESC) et top souffre-douleur
 // (par frags DESC), 10 chacun, depuis killer_victim_pairs via SharedReader.
 // Pas de seuil min — le ratio est calculé côté service.
+//
+// rivalsOrderColXxx : colonnes SQL acceptées par queryRivals.
+const (
+	rivalsOrderColFrags  = "frags"
+	rivalsOrderColDeaths = "deaths"
+)
+
 func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.CareerRivalRawRow, err error) {
 	ctx, cancel := context.WithTimeout(ctx, careerRivalsTimeout)
 	defer cancel()
 
-	nemeses, err = r.queryRivals(ctx, "deaths")
+	nemeses, err = r.queryRivals(ctx, rivalsOrderColDeaths)
 	if err != nil {
 		return nil, nil, err
 	}
-	victims, err = r.queryRivals(ctx, "frags")
+	victims, err = r.queryRivals(ctx, rivalsOrderColFrags)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -811,7 +818,7 @@ func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.C
 
 // queryRivals exécute Q27CareerRivalsTpl avec orderCol pour le tri (frags ou deaths).
 func (r *CareerRepo) queryRivals(ctx context.Context, orderCol string) ([]domain.CareerRivalRawRow, error) {
-	if orderCol != "frags" && orderCol != "deaths" {
+	if orderCol != rivalsOrderColFrags && orderCol != rivalsOrderColDeaths {
 		return nil, fmt.Errorf("CareerRepo.queryRivals: invalid order column %q", orderCol)
 	}
 	sqlText := fmt.Sprintf(Q27CareerRivalsTpl, orderCol)

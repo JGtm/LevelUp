@@ -25,9 +25,9 @@ func RequireAdmin(demoMode bool, authMode string) func(http.Handler) http.Handle
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				_ = json.NewEncoder(w).Encode(map[string]any{
-					"code":      "admin_required",
-					"message":   "Accès réservé aux administrateurs.",
-					"retryable": false,
+					errKeyCode:      "admin_required",
+					errKeyMessage:   "Accès réservé aux administrateurs.",
+					errKeyRetryable: false,
 				})
 				return
 			}

@@ -450,7 +450,7 @@ func InsertKillerVictimPairsFromEvents(
 ) error {
 	raw := make([]analysis.RawEvent, 0, len(events))
 	for _, ev := range events {
-		if ev.EventType != "kill" && ev.EventType != "death" {
+		if ev.EventType != analysis.EventTypeKill && ev.EventType != analysis.EventTypeDeath {
 			continue
 		}
 		raw = append(raw, analysis.RawEvent{

@@ -73,9 +73,9 @@ func BuildRadarSeries(
 			LabelKey: "squad.radar.player",
 			Axes:     axes,
 			Meta: map[string]any{
-				"gamertag":    gt,
-				"mode_family": modeFamily,
-				"raw_by_axis": rawDebug,
+				chartMetaGamertag: gt,
+				"mode_family":     modeFamily,
+				"raw_by_axis":     rawDebug,
 			},
 		})
 	}

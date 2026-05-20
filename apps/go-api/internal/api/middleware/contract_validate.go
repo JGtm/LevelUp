@@ -87,7 +87,7 @@ func validateErrorShape(parsed any, r *http.Request, status int) {
 		return
 	}
 	missing := []string{}
-	for _, field := range []string{"code", "message", "retryable"} {
+	for _, field := range []string{errKeyCode, errKeyMessage, errKeyRetryable} {
 		if _, found := obj[field]; !found {
 			missing = append(missing, field)
 		}

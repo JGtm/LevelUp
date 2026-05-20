@@ -15,6 +15,8 @@ package sync
 import (
 	"fmt"
 	"time"
+
+	"levelup/go-api/internal/games/halo_infinite"
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -118,7 +120,7 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row := &MatchRegistryRow{
 		MatchID:      matchID,
 		StartTime:    startTime,
-		ModeCategory: "Other",
+		ModeCategory: halo_infinite.ModeCategoryOther,
 		FirstSyncBy:  syncBy,
 	}
 

@@ -218,7 +218,7 @@ func (r *DefaultResolver) entryToPayload(ref Ref, entry *IndexEntry) Payload {
 			}
 		}
 		if entry.URL != "" {
-			return URLPayload{URL: entry.URL, ContentType: "image/png"}
+			return URLPayload{URL: entry.URL, ContentType: MimeImagePNG}
 		}
 	}
 	if len(entry.RawJSON) > 0 {

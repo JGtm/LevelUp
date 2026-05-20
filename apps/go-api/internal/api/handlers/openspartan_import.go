@@ -139,8 +139,8 @@ func (h *OpenSpartanImportHandler) StartImport(w http.ResponseWriter, r *http.Re
 	go h.runImport(jobStatus.JobID, expectedXUID, gamertag, tmpPath)
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
-		"job_id": jobStatus.JobID,
-		"status": jobStatus.Status,
+		"job_id":      jobStatus.JobID,
+		jsonKeyStatus: jobStatus.Status,
 	})
 }
 
