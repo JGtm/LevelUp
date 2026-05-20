@@ -297,6 +297,26 @@ func (r *HomeRepo) enrichSpartanIdentity(ctx context.Context, row *domain.HomeSp
 //     BadgeImageURL=unranked_(10-remaining).png et MeasurementMatchesRemaining
 //     non-nil ; le front affichera "En placement" sans inventer.
 //   - Matured (placement_remaining = 0) : retourne rating + tier badge habituel.
+//
+// peakRow : scratch interne pour la classification CSR/LUSR + best per group.
+type peakRow struct {
+	matchID       string
+	playlistGroup string // "_unknown" si NULL en DB
+	ratingValue   float64
+	ratingType    string // raw msr.rating_type
+	tier          string
+	subTier       int
+	tierLabel     string
+	recency       sql.NullTime
+}
+
+// peakRegistryInfo : projection Phase B match_registry pour classification CSR/LUSR.
+type peakRegistryInfo struct {
+	isRanked     bool
+	playlistName string
+	pairName     string
+}
+
 func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *domain.HomeSkillPeakRow {
 	if r == nil || r.pdb == nil || r.pdb.Player == nil {
 		return nil
@@ -310,63 +330,202 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 		}
 	}
 
-	var ratingValue sql.NullFloat64
-	var tierLabel sql.NullString
-	var tier sql.NullString
-	var subTier sql.NullInt16
-	var placementRemaining sql.NullInt32
-	if err := r.pdb.ReadDB().QueryRow(ctx, Q26eHomeSkillPeakByType, ratingType).Scan(
-		&ratingValue, &tierLabel, &tier, &subTier, &placementRemaining,
-	); err != nil {
-		if err == sql.ErrNoRows {
-			slog.DebugContext(ctx, "loadHomeSkillPeak: Q26e no rows", "rating_type", ratingType, "xuid", r.pdb.XUID)
-			return nil
-		}
+	playerRows, err := r.loadPeakPhaseA(ctx)
+	if err != nil {
 		if isTableNotFoundErr(err) {
-			slog.DebugContext(ctx, "loadHomeSkillPeak: table missing", "rating_type", ratingType, "xuid", r.pdb.XUID, "err", err)
+			slog.DebugContext(ctx, "loadHomeSkillPeak: match_skill_rank missing",
+				"rating_type", ratingType, "xuid", r.pdb.XUID, "err", err)
 			return nil
 		}
-		slog.WarnContext(ctx, "loadHomeSkillPeak: Q26e query failed (silent drop)",
+		slog.WarnContext(ctx, "loadHomeSkillPeak: Phase A failed (silent drop)",
 			"rating_type", ratingType, "xuid", r.pdb.XUID, "err", err)
 		return nil
 	}
-	if !ratingValue.Valid {
-		slog.WarnContext(ctx, "loadHomeSkillPeak: Q26e returned invalid rating_value (NULL)",
-			"rating_type", ratingType, "xuid", r.pdb.XUID,
-			"placement_remaining_valid", placementRemaining.Valid,
-			"placement_remaining", placementRemaining.Int32)
+	if len(playerRows) == 0 {
+		return nil
+	}
+	matchIDs := make([]string, 0, len(playerRows))
+	for _, pr := range playerRows {
+		matchIDs = append(matchIDs, pr.matchID)
+	}
+	registryByMatch := r.loadPeakPhaseB(ctx, matchIDs)
+	return r.assemblePeak(playerRows, registryByMatch, ratingType)
+}
+
+// loadPeakPhaseA : query match_skill_rank sur pdb.Player (player-only).
+func (r *HomeRepo) loadPeakPhaseA(ctx context.Context) ([]peakRow, error) {
+	rows, err := r.pdb.Player.Query(ctx, Q26ePeakPhaseAPlayer)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []peakRow
+	for rows.Next() {
+		var (
+			matchID    string
+			playlist   sql.NullString
+			rating     sql.NullFloat64
+			ratingType sql.NullString
+			tier       sql.NullString
+			subTier    sql.NullInt16
+			tierLabel  sql.NullString
+			recency    sql.NullTime
+		)
+		if err := rows.Scan(&matchID, &playlist, &rating, &ratingType, &tier, &subTier, &tierLabel, &recency); err != nil {
+			return nil, err
+		}
+		if !rating.Valid {
+			continue
+		}
+		pr := peakRow{
+			matchID:       matchID,
+			playlistGroup: "_unknown",
+			ratingValue:   rating.Float64,
+			ratingType:    optionalNullStringValue(ratingType),
+			tier:          optionalNullStringValue(tier),
+			subTier:       optionalNullInt16Value(subTier),
+			tierLabel:     optionalNullStringValue(tierLabel),
+			recency:       recency,
+		}
+		if playlist.Valid && strings.TrimSpace(playlist.String) != "" {
+			pr.playlistGroup = playlist.String
+		}
+		out = append(out, pr)
+	}
+	return out, rows.Err()
+}
+
+// loadPeakPhaseB : enrichit avec match_registry via SharedReader.
+func (r *HomeRepo) loadPeakPhaseB(ctx context.Context, matchIDs []string) map[string]peakRegistryInfo {
+	out := make(map[string]peakRegistryInfo, len(matchIDs))
+	if len(matchIDs) == 0 || r.pdb.SharedReader == nil {
+		return out
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "loadHomeSkillPeak: Phase B SharedReader unavailable",
+			"xuid", r.pdb.XUID, "err", err)
+		return out
+	}
+	defer release()
+
+	query := fmt.Sprintf(Q26ePeakPhaseBRegistryTpl, Placeholders(len(matchIDs)))
+	rows, err := sharedDB.QueryContext(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		slog.WarnContext(ctx, "loadHomeSkillPeak: Phase B query failed",
+			"xuid", r.pdb.XUID, "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			matchID      string
+			isRanked     bool
+			playlistName string
+			pairName     string
+		)
+		if err := rows.Scan(&matchID, &isRanked, &playlistName, &pairName); err != nil {
+			continue
+		}
+		out[matchID] = peakRegistryInfo{isRanked: isRanked, playlistName: playlistName, pairName: pairName}
+	}
+	return out
+}
+
+// assemblePeak : filtre par effective_type, groupe, sélectionne le best matured.
+func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string]peakRegistryInfo, ratingType string) *domain.HomeSkillPeakRow {
+	want := strings.ToUpper(strings.TrimSpace(ratingType))
+	type groupBest struct {
+		row        peakRow
+		matchCount int
+	}
+	byGroup := make(map[string]*groupBest)
+	for _, pr := range playerRows {
+		if classifyPeakType(pr, registryByMatch) != want {
+			continue
+		}
+		gb, ok := byGroup[pr.playlistGroup]
+		if !ok {
+			gb = &groupBest{row: pr}
+			byGroup[pr.playlistGroup] = gb
+		}
+		gb.matchCount++
+		if isBetterPeak(pr, gb.row) {
+			gb.row = pr
+		}
+	}
+	if len(byGroup) == 0 {
 		return nil
 	}
 
-	tierStr := optionalNullStringValue(tier)
-	tierLabelStr := optionalNullStringValue(tierLabel)
-	subTierInt := optionalNullInt16Value(subTier)
-	remainingInt := 0
-	if placementRemaining.Valid {
-		remainingInt = int(placementRemaining.Int32)
+	const placementThreshold = 10
+	var chosen *groupBest
+	for _, gb := range byGroup {
+		switch {
+		case chosen == nil:
+			chosen = gb
+		case gb.matchCount >= placementThreshold && chosen.matchCount < placementThreshold:
+			chosen = gb
+		case (gb.matchCount >= placementThreshold) == (chosen.matchCount >= placementThreshold):
+			if gb.row.ratingValue > chosen.row.ratingValue {
+				chosen = gb
+			}
+		}
+	}
+	remaining := placementThreshold - chosen.matchCount
+	if remaining < 0 {
+		remaining = 0
 	}
 
-	peak := &domain.HomeSkillPeakRow{RatingValue: ratingValue.Float64}
-	// En placement : on force le badge unranked_N.png et on masque le tier
-	// hérité d'un match isolé (peu représentatif tant que les 10 matchs ne
-	// sont pas faits). buildHomeSkillPeakBadgeURL gère déjà cette branche
-	// quand on passe (tier="", remaining>0).
-	if remainingInt > 0 {
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, remainingInt)
-		remCopy := remainingInt
+	peak := &domain.HomeSkillPeakRow{RatingValue: chosen.row.ratingValue}
+	if remaining > 0 {
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, remaining)
+		remCopy := remaining
 		peak.MeasurementMatchesRemaining = &remCopy
-	} else {
-		// Bug #1 (mai 2026) : LUSR utilise les mêmes assets que CSR (fichiers
-		// stockés sous /static/ranks/halo_infinite/). Sans le slug, l'URL
-		// pointait sur 404.
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(tierStr, tierLabelStr, subTierInt, homeStaticTitleSlug, 0)
-		if tierLabel.Valid {
-			peak.TierLabel = stringPtr(tierLabelStr)
-		}
-		zero := 0
-		peak.MeasurementMatchesRemaining = &zero
+		return peak
 	}
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(chosen.row.tier, chosen.row.tierLabel, chosen.row.subTier, homeStaticTitleSlug, 0)
+	if strings.TrimSpace(chosen.row.tierLabel) != "" {
+		peak.TierLabel = stringPtr(chosen.row.tierLabel)
+	}
+	zero := 0
+	peak.MeasurementMatchesRemaining = &zero
 	return peak
+}
+
+// classifyPeakType : heuristique CSR/LUSR identique à Q26e historique.
+func classifyPeakType(pr peakRow, registryByMatch map[string]peakRegistryInfo) string {
+	if info, ok := registryByMatch[pr.matchID]; ok {
+		if info.isRanked ||
+			strings.Contains(strings.ToLower(info.playlistName), "ranked") ||
+			strings.Contains(strings.ToLower(info.pairName), "ranked") {
+			return "CSR"
+		}
+		return "LUSR"
+	}
+	rt := strings.ToUpper(strings.TrimSpace(pr.ratingType))
+	if rt == "CSR" {
+		return "CSR"
+	}
+	return "LUSR"
+}
+
+// isBetterPeak : ordre rating DESC, recency DESC, sub_tier DESC, match_id DESC.
+func isBetterPeak(candidate, current peakRow) bool {
+	if candidate.ratingValue != current.ratingValue {
+		return candidate.ratingValue > current.ratingValue
+	}
+	if candidate.recency.Valid && current.recency.Valid && !candidate.recency.Time.Equal(current.recency.Time) {
+		return candidate.recency.Time.After(current.recency.Time)
+	}
+	if candidate.recency.Valid != current.recency.Valid {
+		return candidate.recency.Valid
+	}
+	if candidate.subTier != current.subTier {
+		return candidate.subTier > current.subTier
+	}
+	return candidate.matchID > current.matchID
 }
 
 // loadCSRAlltimePeak lit le meilleur CSR alltime depuis player_csr_snapshots.
@@ -416,66 +575,61 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 // dernier rang compÃ©titif connu (Q26g). Retourne (nil, nil) si aucune donnÃ©e.
 // Le nom de playlist est rÃ©solu depuis asset_translations (metadata) puis adaptÃ© Ã  la locale.
 func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) ([]domain.HomePlaylistRank, error) {
-	if r == nil || r.pdb == nil || r.pdb.Player == nil {
+	if r == nil || r.pdb == nil || r.pdb.Player == nil || r.pdb.SharedReader == nil {
 		return nil, nil
 	}
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q26gHomePlaylistRanks, r.pdb.XUID)
+	// Sprint P7 / ADR 0016 : 3 phases.
+	phaseB, err := r.loadPlaylistPhaseB(ctx)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil
 		}
 		return nil, err
 	}
-	defer rows.Close()
+	if len(phaseB) == 0 {
+		return nil, nil
+	}
+	matchIDs := make([]string, 0, len(phaseB))
+	plIDs := make([]string, 0, len(phaseB))
+	for _, p := range phaseB {
+		if p.lastMatchID != "" {
+			matchIDs = append(matchIDs, p.lastMatchID)
+		}
+		if p.playlistID != "" {
+			plIDs = append(plIDs, p.playlistID)
+		}
+	}
+	msrByMatch := r.loadPlaylistPhaseAMSR(ctx, matchIDs)
+	snapshotByPlaylist := r.loadPlaylistPhaseASnapshot(ctx, plIDs)
 
 	type rawItem struct {
 		playlistID   string
 		playlistName string
 		item         domain.HomePlaylistRank
 	}
-
-	var raws []rawItem
-	for rows.Next() {
-		var playlistID sql.NullString
-		var playlistName sql.NullString
-		var isRanked sql.NullBool
-		var ratingType sql.NullString
-		var ratingValue sql.NullFloat64
-		var tier sql.NullString
-		var tierFR sql.NullString
-		var subTier sql.NullInt16
-		var tierLabel sql.NullString
-		var measurementRemaining sql.NullInt32
-
-		if err := rows.Scan(&playlistID, &playlistName, &isRanked, &ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel, &measurementRemaining); err != nil {
-			return nil, err
-		}
-
+	raws := make([]rawItem, 0, len(phaseB))
+	for _, p := range phaseB {
 		item := domain.HomePlaylistRank{
-			PlaylistName: playlistName.String,
-			IsRanked:     isRanked.Bool,
+			PlaylistName: p.playlistName,
+			IsRanked:     p.isRanked,
 		}
-		if ratingValue.Valid {
-			rt := strings.ToUpper(strings.TrimSpace(ratingType.String))
-			item.RatingType = &rt
-			item.RatingValue = &ratingValue.Float64
-			if tierLabel.Valid {
-				item.TierLabel = stringPtr(tierLabel.String)
+		if msr, ok := msrByMatch[p.lastMatchID]; ok {
+			ratingType := "LUSR"
+			if p.isRanked {
+				ratingType = "CSR"
 			}
-			item.BadgeImageURL = buildHomeSkillPeakBadgeURL(
-				optionalNullStringValue(tier),
-				optionalNullStringValue(tierLabel),
-				optionalNullInt16Value(subTier),
-				homeStaticTitleSlug,
-				0,
-			)
-		} else if isRanked.Bool {
-			// Placement (CSR ranked sans rating calculé) : émettre unranked_N.png.
-			// N = 10 - matchs restants (clamp 0..9). Si pas de snapshot → unranked_0.
+			item.RatingType = &ratingType
+			ratingValueCopy := msr.ratingValue
+			item.RatingValue = &ratingValueCopy
+			if msr.tierLabel != "" {
+				item.TierLabel = stringPtr(msr.tierLabel)
+			}
+			item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0)
+		} else if p.isRanked {
 			completed := 0
-			if measurementRemaining.Valid && measurementRemaining.Int32 > 0 {
-				completed = 10 - int(measurementRemaining.Int32)
+			if rem, ok := snapshotByPlaylist[p.playlistID]; ok && rem > 0 {
+				completed = 10 - rem
 			}
 			if completed < 0 {
 				completed = 0
@@ -484,19 +638,12 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 				completed = 9
 			}
 			item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
-			if measurementRemaining.Valid {
-				remaining := int(measurementRemaining.Int32)
-				item.MeasurementMatchesRemaining = &remaining
+			if rem, ok := snapshotByPlaylist[p.playlistID]; ok {
+				remCopy := rem
+				item.MeasurementMatchesRemaining = &remCopy
 			}
 		}
-		raws = append(raws, rawItem{
-			playlistID:   playlistID.String,
-			playlistName: playlistName.String,
-			item:         item,
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+		raws = append(raws, rawItem{playlistID: p.playlistID, playlistName: p.playlistName, item: item})
 	}
 
 	// Enrichissement FR depuis asset_translations (mÃªme source que les tuiles de matchs).
@@ -515,6 +662,114 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		result = append(result, raw.item)
 	}
 	return result, nil
+}
+
+// playlistPhaseBRow : projection Phase B (shared) — playlist + dernier match.
+type playlistPhaseBRow struct {
+	playlistID   string
+	playlistName string
+	isRanked     bool
+	lastMatchID  string
+}
+
+// playlistMSRRow : projection Phase A1 (player) — rating du last_match_id.
+type playlistMSRRow struct {
+	ratingValue float64
+	tier        string
+	tierFR      string
+	subTier     int
+	tierLabel   string
+}
+
+// loadPlaylistPhaseB : top 3 playlists pour xuid via SharedReader.
+func (r *HomeRepo) loadPlaylistPhaseB(ctx context.Context) ([]playlistPhaseBRow, error) {
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "LoadRecentPlaylistRanks: SharedReader unavailable",
+			"xuid", r.pdb.XUID, "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q26gPlaylistPhaseBShared, r.pdb.XUID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []playlistPhaseBRow
+	for rows.Next() {
+		var p playlistPhaseBRow
+		var lastPlayed sql.NullTime
+		if err := rows.Scan(&p.playlistID, &p.playlistName, &p.isRanked, &lastPlayed, &p.lastMatchID); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// loadPlaylistPhaseAMSR : rating + tier des last_match_id depuis match_skill_rank.
+func (r *HomeRepo) loadPlaylistPhaseAMSR(ctx context.Context, matchIDs []string) map[string]playlistMSRRow {
+	out := make(map[string]playlistMSRRow, len(matchIDs))
+	if len(matchIDs) == 0 {
+		return out
+	}
+	query := fmt.Sprintf(Q26gPlaylistPhaseAMSRTpl, Placeholders(len(matchIDs)))
+	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		slog.DebugContext(ctx, "LoadRecentPlaylistRanks: Phase A1 (MSR) failed",
+			"xuid", r.pdb.XUID, "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var matchID string
+		var ratingValue sql.NullFloat64
+		var tier, tierFR, tierLabel sql.NullString
+		var subTier sql.NullInt16
+		if err := rows.Scan(&matchID, &ratingValue, &tier, &tierFR, &subTier, &tierLabel); err != nil {
+			continue
+		}
+		if !ratingValue.Valid {
+			continue
+		}
+		out[matchID] = playlistMSRRow{
+			ratingValue: ratingValue.Float64,
+			tier:        optionalNullStringValue(tier),
+			tierFR:      optionalNullStringValue(tierFR),
+			subTier:     optionalNullInt16Value(subTier),
+			tierLabel:   optionalNullStringValue(tierLabel),
+		}
+	}
+	return out
+}
+
+// loadPlaylistPhaseASnapshot : current_measurement_remaining par playlist_id.
+func (r *HomeRepo) loadPlaylistPhaseASnapshot(ctx context.Context, playlistIDs []string) map[string]int {
+	out := make(map[string]int, len(playlistIDs))
+	if len(playlistIDs) == 0 {
+		return out
+	}
+	query := fmt.Sprintf(Q26gPlaylistPhaseASnapshotTpl, Placeholders(len(playlistIDs)))
+	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(playlistIDs)...)
+	if err != nil {
+		slog.DebugContext(ctx, "LoadRecentPlaylistRanks: Phase A2 (snapshot) failed",
+			"xuid", r.pdb.XUID, "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var playlistID string
+		var remaining sql.NullInt32
+		if err := rows.Scan(&playlistID, &remaining); err != nil {
+			continue
+		}
+		if remaining.Valid {
+			out[playlistID] = int(remaining.Int32)
+		}
+	}
+	return out
 }
 
 // resolvePlaylistNameForLocale retourne le nom de playlist adaptÃ© Ã  la locale.
@@ -1287,7 +1542,20 @@ func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.Hom
 func (r *HomeRepo) LoadFavoriteWeapon(ctx context.Context, locale string) (string, int, error) {
 	var weaponID uint64
 	var totalKills int
-	err := r.pdb.ReadDB().QueryRow(ctx, Q26kFavoriteWeapon, r.pdb.XUID).Scan(&weaponID, &totalKills)
+
+	// Sprint P7 / ADR 0016 : v_weapon_kills est shared-only, exécuter via
+	// SharedReader (la conn player n'a plus shared attaché).
+	if r.pdb == nil || r.pdb.SharedReader == nil {
+		return "", 0, nil
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "LoadFavoriteWeapon: SharedReader unavailable",
+			"err", err, "xuid", r.pdb.XUID, "locale", locale)
+		return "", 0, nil //nolint:nilerr // dégradation silencieuse côté contrat externe
+	}
+	err = sharedDB.QueryRowContext(ctx, Q26kFavoriteWeapon, r.pdb.XUID).Scan(&weaponID, &totalKills)
+	release()
 	if err != nil {
 		if err != sql.ErrNoRows && !isTableNotFoundErr(err) {
 			slog.WarnContext(ctx, "LoadFavoriteWeapon: query failed (silent degradation)",

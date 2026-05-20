@@ -1,3 +1,68 @@
+## [2026-05-20] fix(home) — HomeRepo migré vers SharedReader (ADR 0016 oubli sprint P7)
+
+**Statut** : Complété (3/4 régressions home corrigées, 1 hors scope).
+
+**Contexte** : suite à mon premier commit (ae0edbd0), l'utilisateur signale que rien n'est corrigé sur l'UI (0 changement visible) malgré mes tests verts. Diagnostic via `/api/v1/healthz/home?player=JGtm` (mon smoke endpoint) révèle que TOUTES les 5 sections critiques sont `missing` : banner, highest_csr, highest_lusr, recent_playlists, favorite_weapon.
+
+**Cause racine** : ADR 0016 / sprint P7 (le même jour, 2026-05-20) a retiré l'ATTACH `shared` sur la conn `player` du pool DuckDB et migré 11 repos applicatifs (media, post-sync, engagement, profile, career, explorer, sessions, stats, leaderboard, exclusions, match_view) vers `pdb.SharedReader`. **HomeRepo a été oublié**. Logs prod confirment :
+
+```
+Catalog Error: Table with name "shared.match_participants" does not exist 
+  because schema "shared" does not exist
+Catalog Error: Table with name "shared.medals_earned" does not exist
+```
+
+Toutes les queries home (`shared.match_registry`, `shared.match_participants`, `shared.v_weapon_kills`) échouaient silencieusement → `loadHomeSkillPeak` retournait `nil`, `LoadRecentPlaylistRanks` retournait erreur → vide → home vide.
+
+**Mes premiers tests étaient inadéquats** : la fixture `seedPlayerSchema` crée `shared.*` *dans* la conn player (CREATE TABLE shared.X), donc le test ne reproduit JAMAIS l'isolation player↔shared de prod. Mes tests passaient en isolation mais le code échouait en prod. Erreur de ma part : j'aurais dû tester via un setup qui reproduit l'ADR 0016.
+
+**Décisions techniques** :
+
+1. **Q26e (LUSR/CSR peak)** — split en 3 phases :
+   - Phase A (player) : `Q26ePeakPhaseAPlayer` → toutes les rows `match_skill_rank` avec rating non-null.
+   - Phase B (shared) : `Q26ePeakPhaseBRegistryTpl` via `pdb.SharedReadDB().Get(ctx)` → is_ranked + playlist_name + pair_name pour ces match_ids.
+   - Phase C (Go) : classification CSR/LUSR par heuristique (is_ranked OR playlist_name/pair_name LIKE 'ranked'), group by playlist_group, sélection du best matured (>= 10 matchs) ou placement le plus proche de la fin.
+   - Fix collateral : `playlist_group` peut être NULL (anciennes rows pré-colonne) → normalisé via `playlistGroup: "_unknown"` dans le scratch struct (avant : `JOIN ... ON gc.playlist_group = bpg.playlist_group` éliminait silencieusement TOUTES les rows à playlist_group NULL — sémantique SQL `NULL = NULL` → NULL → exclu de l'inner JOIN — 758 rows perdues pour JGtm).
+
+2. **Q26g (recent playlists)** — split en 3 phases :
+   - Phase B (shared) : `Q26gPlaylistPhaseBShared` → top 3 playlists pour xuid avec `ARG_MAX(match_id, start_time)` (last_match_id par playlist).
+   - Phase A1 (player) : `Q26gPlaylistPhaseAMSRTpl` → rating + tier des last_match_id depuis match_skill_rank.
+   - Phase A2 (player) : `Q26gPlaylistPhaseASnapshotTpl` → current_measurement_remaining par playlist_id depuis player_csr_snapshots.
+   - Phase C (Go) : assemble + badge unranked en placement + label asset.
+
+3. **Q26k (favorite weapon)** — shared-only, exécutée via `pdb.SharedReadDB().Get(ctx)` (préfixe `shared.` retiré du SQL).
+
+4. **`isBetterPeak` + `classifyPeakType`** : helpers extraits pour la sélection deterministe.
+
+5. **Smoke endpoint `/healthz/home`** : déjà existant (commit ae0edbd0), a permis le diagnostic immédiat. Sans ce smoke, les 5 régressions auraient été invisibles dans les tests verts.
+
+6. **`LoadFavoriteWeapon` + `loadHomeSkillPeak`** : ajout `slog.WarnContext` sur erreurs réelles (au-delà de `sql.ErrNoRows` et table missing). Transforme silent drop en observabilité.
+
+**Résultats** :
+- `highest_lusr` : ✅ OK (était missing → 758 rows JGtm classées correctement)
+- `recent_playlists` : ✅ OK (était missing → 3 playlists retournées)
+- `favorite_weapon` : ✅ OK (était missing → arme top détectée)
+- `highest_csr` : ❌ DATA missing — aucune row CSR dans `match_skill_rank` ni `player_csr_snapshots.alltime_value`. Hors scope (le CSR vient via auto-sync API qui dépend de tokens — sync nominal devrait l'écrire automatiquement à chaque nouveau match ranked, séparé de ce fix).
+- `banner` : ❌ LIVE chain fonctionne pour emblem + backdrop (visible dans la réponse) mais Halo `/customization/appearance` ne retourne pas de BannerImagePath pour ces joueurs. Le parser cherche déjà 9 key paths (BannerImagePath, NameplateImagePath, PlayerTitlePath, Banner.*, Nameplate.*). Probablement champ déplacé par Halo récemment → à diag dans `halo_client.go` (WIP utilisateur en cours).
+
+**Tests verts** :
+- `go build -tags cgo ./...` ✅
+- `go vet ./...` ✅
+- `go test -tags "cgo integration" -run TestHomeRepo ./internal/platform/duckdb/` → 12 tests verts (4 LoadSpartanIdentity, 3 LoadRecentPlaylistRanks, 4 LoadHomeSkillPeak, 1 LoadFavoriteWeapon).
+
+**Fichiers modifiés** :
+- `apps/go-api/internal/platform/duckdb/queries_home_citations.go` — Q26ePeakPhaseAPlayer + Q26ePeakPhaseBRegistryTpl + Q26gPlaylistPhaseBShared + Q26gPlaylistPhaseAMSRTpl + Q26gPlaylistPhaseASnapshotTpl ; Q26k préfixe `shared.` retiré ; anciens Q26eHomeSkillPeakByType + Q26gHomePlaylistRanks conservés (peuvent être supprimés ultérieurement, pas appelés).
+- `apps/go-api/internal/platform/duckdb/home_repo.go` — `loadHomeSkillPeak` + `LoadRecentPlaylistRanks` + `LoadFavoriteWeapon` refactor Phase A+B+C ; helpers `peakRow`, `peakRegistryInfo`, `classifyPeakType`, `isBetterPeak`, `loadPeakPhaseA`, `loadPeakPhaseB`, `assemblePeak`, `playlistPhaseBRow`, `playlistMSRRow`, `loadPlaylistPhaseB`, `loadPlaylistPhaseAMSR`, `loadPlaylistPhaseASnapshot`.
+
+**Anti-régression manquant (à faire dans un PR séparé)** :
+- Test d'intégration qui simule l'ADR 0016 : player conn SANS `shared` attaché + shared dans une conn séparée wrappée par SharedReader. La fixture actuelle (`seedPlayerSchema`) crée `shared.*` *dans* la conn player → les tests passent même quand le code fait l'erreur prod. Sans ce test, n'importe quel futur repo migré vers `pdb.ReadDB().Query("FROM shared.X")` sera vert en CI mais cassé en prod.
+
+**Prochaine étape pour le user** :
+- Banner LIVE : diag pourquoi Halo ne renvoie pas BannerImagePath (peut nécessiter d'ajouter un nouveau key path au parser, ou de fetch via un autre endpoint comme dend/grunt l'utilise probablement).
+- highest_csr : vérifier que l'auto-sync écrit bien des CSR à chaque match ranked (dépend de `ExtractCSRRowIfRanked` + `is_ranked=TRUE` qui n'est jamais set en DB — régression sync connue depuis 10 jours).
+
+---
+
 ## [2026-05-20] fix(home) — placement CSR/LUSR backend-driven + smoke /healthz/home + filet anti-régression
 
 **Statut** : Complété (branche `fix/media-paths-portable`).

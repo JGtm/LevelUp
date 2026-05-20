@@ -204,6 +204,33 @@ LIMIT 1`
 //
 // Le CASE de classification CSR/LUSR garde le fallback heuristique sur
 // playlist_name/pair_name (régression historique is_ranked=FALSE non corrigée).
+// Q26ePeakPhaseAPlayer : Phase A (player-only) — match_skill_rank brut.
+// Sprint P7 / ADR 0016 (2026-05-20) : exécutée via pdb.Player, sans
+// shared. Classification CSR/LUSR faite côté Go après Phase B.
+const Q26ePeakPhaseAPlayer = `
+SELECT
+	msr.match_id,
+	msr.playlist_group,
+	msr.rating_value,
+	msr.rating_type,
+	msr.tier,
+	msr.sub_tier,
+	msr.tier_label,
+	COALESCE(msr.updated_at, msr.start_time, msr.created_at) AS recency
+FROM match_skill_rank msr
+WHERE msr.rating_value IS NOT NULL`
+
+// Q26ePeakPhaseBRegistryTpl : Phase B (shared-only) — registry pour
+// classification. Exécutée via pdb.SharedReadDB().Get() — pas de préfixe.
+const Q26ePeakPhaseBRegistryTpl = `
+SELECT
+	mr.match_id,
+	COALESCE(mr.is_ranked, FALSE)  AS is_ranked,
+	COALESCE(mr.playlist_name, '') AS playlist_name,
+	COALESCE(mr.pair_name, '')     AS pair_name
+FROM match_registry mr
+WHERE mr.match_id IN (%s)`
+
 const Q26eHomeSkillPeakByType = `
 WITH classified AS (
 	SELECT
@@ -283,6 +310,64 @@ LIMIT 1`
 // rating_* sont NULL pour les playlists sans rang calculÃ©.
 // measurement_matches_remaining vient de player_csr_snapshots (snapshot le plus rÃ©cent par playlist)
 // pour permettre d'Ã©mettre `unranked_N.png` pendant la phase de placement (10 â†’ 0 matchs restants).
+// Q26gPlaylistPhaseBShared : Phase B (shared) — top 3 playlists pour xuid
+// avec le dernier match_id par playlist. Sprint P7 / ADR 0016 : sans préfixe
+// shared. (exécuté via pdb.SharedReadDB().Get()).
+const Q26gPlaylistPhaseBShared = `
+WITH per_playlist AS (
+	SELECT
+		r.playlist_id,
+		COALESCE(MAX(r.playlist_name), '') AS playlist_name,
+		MAX(CASE
+			WHEN COALESCE(r.is_ranked, FALSE)
+				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+			THEN 1 ELSE 0
+		END) > 0 AS is_ranked,
+		MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_played,
+		ARG_MAX(r.match_id, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_match_id
+	FROM match_participants mp
+	JOIN match_registry r ON r.match_id = mp.match_id
+	WHERE mp.xuid = ?
+	  AND NULLIF(TRIM(COALESCE(r.playlist_id, '')), '') IS NOT NULL
+	GROUP BY r.playlist_id
+)
+SELECT playlist_id, playlist_name, is_ranked, last_played, last_match_id
+FROM per_playlist
+ORDER BY last_played DESC
+LIMIT 3`
+
+// Q26gPlaylistPhaseAMSRTpl : Phase A1 (player) — rating + tier des last_match_id.
+const Q26gPlaylistPhaseAMSRTpl = `
+SELECT
+	match_id,
+	rating_value,
+	NULLIF(TRIM(tier), '')        AS tier,
+	NULLIF(TRIM(tier_fr), '')     AS tier_fr,
+	COALESCE(sub_tier, 0)         AS sub_tier,
+	NULLIF(TRIM(tier_label), '')  AS tier_label
+FROM match_skill_rank
+WHERE match_id IN (%s)
+  AND rating_value IS NOT NULL`
+
+// Q26gPlaylistPhaseASnapshotTpl : Phase A2 (player) — placement remaining
+// par playlist_id depuis player_csr_snapshots (snapshot le plus récent).
+const Q26gPlaylistPhaseASnapshotTpl = `
+WITH ranked AS (
+	SELECT
+		playlist_id,
+		current_measurement_remaining,
+		ROW_NUMBER() OVER (
+			PARTITION BY playlist_id
+			ORDER BY fetched_at DESC, season_id DESC
+		) AS rn
+	FROM player_csr_snapshots
+	WHERE playlist_id IN (%s)
+)
+SELECT playlist_id, current_measurement_remaining
+FROM ranked
+WHERE rn = 1`
+
 const Q26gHomePlaylistRanks = `
 WITH recent_playlists AS (
 	SELECT
@@ -388,7 +473,7 @@ const Q26kFavoriteWeapon = `
 SELECT
     wk.effective_weapon_id AS weapon_id,
     COUNT(*)               AS total_kills
-FROM shared.v_weapon_kills wk
+FROM v_weapon_kills wk
 WHERE wk.xuid = ?
   AND wk.effective_weapon_id NOT IN (0, 1, 2)
 GROUP BY wk.effective_weapon_id
