@@ -1,3 +1,62 @@
+## [2026-05-20] fix(duckdb) — P0 : audit + sentinel pour résidus `shared.X` post-ADR 0016
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`).
+
+**Contexte** : un appel HTTP `/api/media` a planté en prod avec `LoadMediaFiles: Catalog Error: Table with name "shared.match_registry" does not exist because schema "shared" does not exist`. Le commit 9c.5 (retrait final `attachShared`, 19 mai) a migré 3 méthodes de `media_repo.go` vers SharedReader (`LoadMatchCandidatesForMedia`, `loadMatchLobbies`, `SetMediaMatchAssociation`) mais a oublié `LoadMediaFiles`, `CountMediaFiles`, `LoadMediaFilterOptions` qui passent par Q37 — laquelle contient `LEFT JOIN shared.match_registry` exécuté sur la conn `SharedSocial`.
+
+Les tests media-filters passaient toujours parce que le mock `newTestPlayerDBForMediaScenario` appelait `seedSharedDBSchema(t, social)` ([media_repo_filters_test.go:47](apps/go-api/internal/platform/duckdb/media_repo_filters_test.go#L47)) — créant `CREATE SCHEMA shared` directement dans la conn social, ce qui falsifie la topologie multi-DB de prod et masque le bug.
+
+**Décisions P0** (audit + sentinel, sans refactor) :
+
+1. **Audit exhaustif** publié dans [.ai/V7/AUDIT_SHARED_READER_LEAKS.md](.ai/V7/AUDIT_SHARED_READER_LEAKS.md). Sites CRITIQUES identifiés :
+   - Q37 média (3 fcts) sur `r.socialDB()` ([queries_home_citations.go:466-472](apps/go-api/internal/platform/duckdb/queries_home_citations.go#L466))
+   - 4 fcts post-sync sur `pdb.Player` ([post_sync_progression_queries.go:56,134,145,182](apps/go-api/internal/api/post_sync_progression_queries.go#L56), [post_sync_deltas.go:280,299](apps/go-api/internal/api/post_sync_deltas.go#L280))
+   - 4 fcts engagement score sur `pdb.ReadDB()` ([engagement_score_repo_queries.go:43,72,97,129,209](apps/go-api/internal/platform/duckdb/engagement_score_repo_queries.go#L43))
+   - 5 fcts progression profile sur `s.db=pdb.Player` ([progression/profile/queries.go:31,93,139,180,204](apps/go-api/internal/progression/profile/queries.go#L31))
+   - Q25NeighborMatches + Q25NeighborMatchesTemplate sur `r.pdb.ReadDB()` ([match_view_repo.go:711,757](apps/go-api/internal/platform/duckdb/match_view_repo.go#L711))
+   - + à nettoyer : `match_history_repo.go:246`, `bootstrap_repo.go:92` (préfixe `shared.` inutile sur SharedReader)
+
+2. **Test sentinel** [`TestOpenPlayerDB_NoSharedSchemaOnPoolConns`](apps/go-api/internal/platform/duckdb/pool_shared_reader_integration_test.go) — vérifie que `SELECT 1 FROM shared.match_registry` ÉCHOUE sur `pdb.Player`/`pdb.Metadata`/`pdb.SharedSocial`, et que la même query sans préfixe RÉUSSIT via `SharedReader.Get(ctx)`. Garde-fou contre toute future régression "ré-introduction d'ATTACH".
+
+3. **Annotation FIXME** sur `seedSharedDBSchema` ([player_repos_test.go:332](apps/go-api/internal/platform/duckdb/player_repos_test.go#L332)) — explicite le mensonge de topologie en attendant le refactor P1 qui retirera le besoin du faux schéma.
+
+**Résultats observés** :
+- `go vet -tags=integration ./internal/platform/duckdb/...` : clean
+- `TestOpenPlayerDB_NoSharedSchemaOnPoolConns` : PASS (preuve que l'invariant prod est correctement modélisé)
+- `TestMediaFilters_*` : 30+ tests verts (le mensonge du mock continue à les faire passer en attendant P1)
+
+**Prochaine étape** : Phase P1 — refactor Q37 (LoadMediaFiles + Count + FilterOptions) en jointure Go via SharedReader. Le mensonge `seedSharedDBSchema(social)` sera retiré dans la foulée.
+
+---
+
+## [2026-05-20] chore(observability) — Allègement de 5 logs INFO bruyants sur la console
+
+**Statut** : Complété (branche `feat/stats-page-rework`).
+
+**Contexte** : malgré le ConsoleHandler compact (commit 20 ci-dessous), 5 lignes INFO dominent encore le flux temps réel en occupant 150-250 caractères pour peu d'info utile :
+1. `rta: event de présence (payload sans titre actif)` — incluait `raw=<JSON brut>` à chaque event Xbox sans titre actif (très fréquent : keep-alive, Offline).
+2. `prestige: tuning loaded` — path absolu Windows complet en INFO (info one-shot au boot).
+3. `watcher: tokens path` — même problème, émis deux fois (boot + construction du handler).
+4. `oauth_refresh: échange refresh_token → access_token démarré` — doublonne le log de clôture "OK"/"échoué" qui porte déjà la duration ; en plus l'attribut explicite `"event", evID` apparaissait en console car la clé `event` n'est pas dans `defaultSkipAttrs` (seul `event_id` l'est).
+5. `data_health: cycle terminé` — 8 compteurs presque toujours à zéro.
+
+**Décisions** :
+
+1. **RTA presence** ([presence/rta_client.go:493](apps/go-api/internal/presence/rta_client.go#L493)) — INFO conservé court (xuid+state+title), `raw` déplacé sur un slog.DebugContext séparé. Le payload reste accessible via `LEVELUP_LOGS_FILE_LEVEL=debug`.
+2. **Prestige tuning** ([prestige/tuning.go:229](apps/go-api/internal/prestige/tuning.go#L229)) — passé en `slog.Debug` (info de boot, pas d'intérêt en INFO).
+3. **Watcher tokens path** — passé en `slog.Debug` dans [cmd/server/main.go:728](apps/go-api/cmd/server/main.go#L728), supprimé dans [handlers/watcher_handler.go:48](apps/go-api/internal/api/handlers/watcher_handler.go#L48) (doublon).
+4. **OAuth refresh "démarré"** ([auth/oauth_refresh.go:75](apps/go-api/internal/platform/auth/oauth_refresh.go#L75)) — log supprimé. Le `logging.WithEvent` reste appelé pour injecter `event_id` dans ctx (le ContextHandler le propage automatiquement sur les logs de clôture "OK"/"échoué"). L'evID renvoyé est ignoré (`_`) puisque plus utilisé localement.
+5. **Data health** ([scheduler/data_health_check.go:219](apps/go-api/internal/scheduler/data_health_check.go#L219)) — branche `if WarningsTotal == 0` → ligne courte (`warnings_total=0 duration=…`), sinon dump complet des compteurs pour le diag.
+
+**Résultats observés** :
+- `go vet ./...` : clean
+- `go build ./...` : clean
+- Tests des 5 packages touchés (presence, prestige, scheduler, auth, auth/pool) : OK (5.1s + 0.4s + 1.9s + 5.9s + 0.9s).
+
+**Prochaine étape** : observer les logs en runtime pour confirmer la réduction du bruit ; envisager d'ajouter `event` à `defaultSkipAttrs` si d'autres call-sites utilisent encore cette clé hors ContextHandler.
+
+---
+
 ## [2026-05-20] feat(observability) — Commit 20 : ConsoleHandler compact + tronquage + skip attrs verbeux
 
 **Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 20 — finalisation logging, console lisible sans surcharger le terminal).
