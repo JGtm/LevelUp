@@ -142,7 +142,9 @@ func extractPathAndQuery(rawURL string) string {
 // buildPayload construit le payload à signer selon le protocole PoP Xbox.
 func buildPayload(ts int64, pathAndQuery, authToken, body string) []byte {
 	// [4B policy_version BE] + [0x00]
-	var buf []byte
+	// Pre-allocation : 4 (pv) + 1 + 8 (ft) + 1 + 4 (BE_uint32) + 1 +
+	// path + 1 + token + 1 + body + 1.
+	buf := make([]byte, 0, 22+len(pathAndQuery)+len(authToken)+len(body))
 	pv := make([]byte, 4)
 	binary.BigEndian.PutUint32(pv, popPolicyVersion)
 	buf = append(buf, pv...)

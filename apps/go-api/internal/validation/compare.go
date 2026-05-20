@@ -238,7 +238,7 @@ func compareBitmasks(goDb, pyDb *sql.DB) ([]BitmaskStats, error) {
 
 	// Pour les DBs joueur (stats.duckdb), le champ bitmask principal est absent
 	// (migré dans shared_matches_v2). On vérifie player_match_enrichment.performance_score.
-	var stats []BitmaskStats
+	stats := make([]BitmaskStats, 0, 1)
 
 	var goNull, pyNull int64
 	errGo := goDb.QueryRow(

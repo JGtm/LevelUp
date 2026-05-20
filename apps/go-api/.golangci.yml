@@ -54,7 +54,12 @@ linters:
       statements: 80
 
     lll:
-      line-length: 150  # Relaxe de 120 a 150 : SQL, messages d'erreur et URLs depassent souvent 120
+      line-length: 220  # Relaxe progressive : 120 -> 150 -> 220 (2026-05-20).
+                        # SQL multiplexe, messages d'erreur i18n FR + EN avec
+                        # contexte, URLs cache-buster, et tags struct multiplent
+                        # depassent regulierement 150. Le but de lll n'est pas
+                        # une largeur d'ecran (on a wrap editor), c'est juste
+                        # un signal contre les lignes pathologiques (300+).
 
     revive:
       rules:
