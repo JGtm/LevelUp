@@ -1,3 +1,35 @@
+## [2026-05-21] feat(citations) — Correction sémantique progression par match (R1-R7) — Branche fix/citations-progression-semantic
+
+**Statut** : Complété (6 commits sur branche `fix/citations-progression-semantic`).
+
+**Contexte** : match `b8c1b220-5ef4-4dee-9e92-77d3ff55d6d3` affichait des citations "Maîtrise en..." (composites) sans qu'aucun enfant n'ait été masterisé. Root cause : `RunBackfillCompositeOnlyCitations` utilisait `val > 0` (moindre contribution dans le match = participe) au lieu de "l'enfant a traversé son palier final".
+
+**Décision technique** : implémenter les règles R1-R8 dans le moteur Go, en 3 phases par match :
+- Phase A : leaves — delta = min(raw, max(tier_targets) − cumulPre), cap R1-R3
+- Phase B : état post-match des feuilles
+- Phase C : transitions composites/métas — `ComputeCompositeTransitions`, ordre topologique, une seule passe par nœud, `transitioned[]` pré-calculé une fois
+
+**Résultats** :
+- 20 tests (T1-T10 + 4 existants + 6 engine) : tous verts
+- `BackfillMatchCitations` : tri chrono + baseline cumulPre + update incrémental
+- `RunBackfillCompositeOnlyCitations` (rescue) : même sémantique R4-R7 via `ComputeCompositeTransitions`
+- CLI `--citations-recompute-all` + invariants V1-V4 post-compute
+
+**Fichiers modifiés** :
+- `internal/analysis/citations_engine.go` — `CitationProgressInput`, `ComputeFullMatchCitations`, `ParseTierMax` (exporté)
+- `internal/analysis/citations_composite.go` — `ComputeCompositeTransitions` (exporté), ordre topologique
+- `internal/analysis/citations_composite_test.go` — T1-T10
+- `internal/analysis/citations.go` — `OverrideCompositeTotals` utilise `ParseTierMax`
+- `internal/sync/citations.go` — `sortMatchIDsChrono`, `loadCumulExcluding`, `deleteCitationForMatch`
+- `internal/sync/citations_backfill.go` — `RunBackfillCompositeOnlyCitations` réécrit, `deleteCompositeCitationsForMatch`
+- `internal/sync/citations_checks.go` — nouveau, invariants V1-V4
+- `cmd/levelup/cmd_backfill.go` — `--citations-recompute-all`
+- `internal/ops/seed.go` — `brute_slayer` + `skimmer_slayer` : `TierTargets` ajoutés
+
+**Conclusion** : le moteur est désormais autonome et correct. Un `--citations-recompute-all` sur les players existants est recommandé pour purger les faux composites historiques.
+
+---
+
 ## [2026-05-21] audit(duckdb) — 3 bugs au boot serveur Go (ATTACH global + media_files JGtm + Q26h shared.medals_earned)
 
 **Statut** : Diagnostic seul — audit livré dans [.ai/AUDIT_DUCKDB_ATTACH_2026-05-21.md](.ai/AUDIT_DUCKDB_ATTACH_2026-05-21.md). Aucune ligne de code modifiée (l'utilisateur n'a demandé que la documentation).
