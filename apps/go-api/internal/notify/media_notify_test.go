@@ -83,7 +83,7 @@ func TestQueryUnnotifiedMedia_SkipsNotified(t *testing.T) {
 
 func TestMarkMediaNotified_Empty(t *testing.T) {
 	db := openMediaNotifyDB(t)
-	err := markMediaNotified(db, nil)
+	err := markMediaNotified(t.Context(), db, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestMarkMediaNotified_WithData(t *testing.T) {
 		('/path/a.mp4', 'a.mp4', 'video'),
 		('/path/b.png', 'b.png', 'image')`)
 
-	err := markMediaNotified(db, []string{"/path/a.mp4"})
+	err := markMediaNotified(t.Context(), db, []string{"/path/a.mp4"})
 	if err != nil {
 		t.Fatal(err)
 	}

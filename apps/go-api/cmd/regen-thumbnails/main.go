@@ -192,7 +192,7 @@ func main() {
 		generated := 0
 		var genErrs []string
 		if !*dryRun {
-			generated, genErrs = ops.GenerateThumbnails(playerDir, thumbsDir)
+			generated, genErrs = ops.GenerateThumbnails(context.Background(), playerDir, thumbsDir)
 		}
 		totalGenerated += generated
 

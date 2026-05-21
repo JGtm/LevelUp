@@ -119,7 +119,7 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 	for i, r := range rows {
 		paths[i] = r.FilePath
 	}
-	if err := markMediaNotified(db, paths); err != nil {
+	if err := markMediaNotified(ctx, db, paths); err != nil {
 		slog.ErrorContext(ctx, "discord_media_mark_failed", "op", "media", "gamertag", gamertag, "err", err)
 	}
 }
@@ -171,7 +171,7 @@ func queryUnnotifiedMedia(ctx context.Context, db *sql.DB) ([]mediaRow, error) {
 	return result, rows.Err()
 }
 
-func markMediaNotified(db *sql.DB, filePaths []string) error {
+func markMediaNotified(ctx context.Context, db *sql.DB, filePaths []string) error {
 	if len(filePaths) == 0 {
 		return nil
 	}
@@ -187,7 +187,7 @@ func markMediaNotified(db *sql.DB, filePaths []string) error {
 		"UPDATE media_files SET discord_notified_at = ? WHERE file_path IN (%s)",
 		strings.Join(placeholders, ", "),
 	)
-	_, err := db.Exec(q, args...)
+	_, err := db.ExecContext(ctx, q, args...)
 	return err
 }
 

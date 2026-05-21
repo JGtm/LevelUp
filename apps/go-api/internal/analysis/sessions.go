@@ -313,5 +313,5 @@ func buildSessionLabel(start, end time.Time, count int) string {
 	if startStr == endStr {
 		return fmt.Sprintf("%s %s (%d)", start.Format("02/01/2006"), startStr, count)
 	}
-	return fmt.Sprintf("%s %sâ%s (%d)", start.Format("02/01/2006"), startStr, endStr, count)
+	return fmt.Sprintf("%s %s–%s (%d)", start.Format("02/01/2006"), startStr, endStr, count)
 }
