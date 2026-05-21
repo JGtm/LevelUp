@@ -5,16 +5,18 @@
 // (pas d'appel API Halo requis), utile pour bootstrap ou re-run en masse.
 //
 // Backfills supportes :
-//   - --engagement-scores [--force]
-//   - --citations         [--force]
-//   - --lusr              [--force]  (recalcule LUSR TrueSkill 2 + poids médailles)
-//   - --perf              [--force]  (recalcule performance score relatif v5)
+//   - --engagement-scores          [--force]
+//   - --citations                  [--force]
+//   - --citations-recompute-all              (recompute total + checks V1-V4)
+//   - --lusr                       [--force]  (recalcule LUSR TrueSkill 2 + poids médailles)
+//   - --perf                       [--force]  (recalcule performance score relatif v5)
 //
 // Usage :
 //
 //	levelup backfill --gamertag X --lusr  [--force]
 //	levelup backfill --all          --perf  [--force]
 //	levelup backfill --all          --lusr --perf --force
+//	levelup backfill --gamertag X --citations-recompute-all
 package main
 
 import (
@@ -45,6 +47,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	assistsModel := fs.Bool("assists-model", false, "Calcule le modèle OLS expected_assists par mode (player_assists_model dans stats.duckdb)")
 	weapons := fs.Bool("weapons", false, "Backfill weapon_kills depuis film CDN (tous les participants par match)")
 	compositeOnly := fs.Bool("composite-only", false, "Backfill citations composites uniquement (additive, sans recalcul depuis shared_matches)")
+	citationsRecomputeAll := fs.Bool("citations-recompute-all", false, "Recompute total des citations (force=true) + vérifications invariants V1-V4")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -56,8 +59,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*lusr && !*csr && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --csr, --perf, --assists-model, --weapons ou --composite-only)")
+	if !*engagementScores && !*citations && !*lusr && !*csr && !*perf && !*assistsModel && !*weapons && !*compositeOnly && !*citationsRecomputeAll {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --citations-recompute-all, --lusr, --csr, --perf, --assists-model, --weapons ou --composite-only)")
 	}
 
 	ctx := context.Background()
@@ -153,6 +156,16 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 			return err
 		}
 		return runBackfillCompositeOnlyForPlayer(ctx, cfg, player.Gamertag, player.XUID)
+	}
+	if *citationsRecomputeAll {
+		if *allPlayers {
+			return runRecomputeAllCitationsAll(ctx, cfg)
+		}
+		player, err := loadPlayerSummary(cfg, *gamertag)
+		if err != nil {
+			return err
+		}
+		return runRecomputeAllCitationsForPlayer(ctx, cfg, player.Gamertag, player.XUID)
 	}
 	return nil
 }
@@ -774,4 +787,87 @@ func runBackfillCompositeOnlyOne(ctx context.Context, cfg *config.AppConfig, gam
 
 	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
 	return engine.RunBackfillCompositeOnlyCitations(ctx)
+}
+
+// ── Citations recompute-all (force + vérifications V1-V4) ─────────────────────
+
+func runRecomputeAllCitationsAll(ctx context.Context, cfg *config.AppConfig) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total, processed, skipped, failed := len(players), 0, 0, 0
+
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			skipped++
+			fmt.Printf("citations-recompute-all SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		if runErr := runRecomputeAllCitationsOne(ctx, cfg, player.Gamertag, player.XUID); runErr != nil {
+			failed++
+			fmt.Printf("citations-recompute-all FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
+			continue
+		}
+		processed++
+	}
+
+	fmt.Printf("citations-recompute-all batch: total=%d processed=%d skipped=%d failed=%d\n",
+		total, processed, skipped, failed)
+	if failed > 0 {
+		return fmt.Errorf("citations-recompute-all: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func runRecomputeAllCitationsForPlayer(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) error {
+	return runRecomputeAllCitationsOne(ctx, cfg, gamertag, xuid)
+}
+
+// runRecomputeAllCitationsOne : recompute force=true puis invariants V1-V4.
+func runRecomputeAllCitationsOne(ctx context.Context, cfg *config.AppConfig, gamertag, xuid string) error {
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	playerDBPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, gamertag)
+	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
+	metaDBPath := resolver.MetadataDBPath(titlePkg.DefaultSlug)
+
+	for _, p := range []struct {
+		path   string
+		target migration.TargetDB
+	}{
+		{playerDBPath, migration.TargetPlayer},
+		{sharedDBPath, migration.TargetShared},
+		{metaDBPath, migration.TargetMetadata},
+	} {
+		if err := applyMigrationsOnDB(p.path, p.target); err != nil {
+			return fmt.Errorf("migrations %s: %w", p.path, err)
+		}
+	}
+
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, gamertag, xuid, nil, nil)
+
+	updated, err := engine.RunBackfillCitations(ctx, true)
+	if err != nil {
+		return fmt.Errorf("recompute citations: %w", err)
+	}
+	fmt.Printf("citations-recompute-all OK: gamertag=%s matches_updated=%d\n", gamertag, updated)
+
+	violations, err := engine.RunCitationPostComputeChecks(ctx)
+	if err != nil {
+		return fmt.Errorf("post-compute checks: %w", err)
+	}
+	if len(violations) == 0 {
+		fmt.Printf("citations-recompute-all checks OK: gamertag=%s invariants=V1-V4\n", gamertag)
+		return nil
+	}
+	for _, v := range violations {
+		fmt.Printf("citations-recompute-all VIOLATION [%s]: gamertag=%s %s\n", v.Rule, gamertag, v.Details)
+	}
+	return fmt.Errorf("citations-recompute-all: %d violation(s) détectée(s) pour %s", len(violations), gamertag)
 }
