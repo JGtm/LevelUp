@@ -56,7 +56,12 @@
 
 - Backfill historique multi-saisons snapshots (S1-S12) — `runCSRSnapshotSync` ne fetche que saison courante.
 - Création de 5 assets dédiés au seuil 5 (mapping proportionnel sur les 10 existantes acceptable).
-- Tests E2E HTTP complets (5 scénarios planifiés) + integration cross-component — fondations posées via tests unitaires, à étendre selon besoin.
+
+**Extensions livrées en suite** :
+
+- **Tests E2E intégration** (commit `test(e2e): 5 scénarios pipeline CSR end-to-end`) — `csr_pipeline_e2e_integration_test.go` couvre les 5 scénarios planifiés : home placement S13 threshold 5, home recent playlists mixed states, career CSRs merge catalogue+snapshots, diag endpoint coverage gap, display threshold dynamique S2 vs S13. Setup temp DBs (player + shared + metadata) avec toutes les migrations appliquées. 5/5 PASS, ~6s.
+
+- **Option A : table shared.match_csrs** (commit `feat(sync,shared): capture CSR de TOUS les participants ranked`) — comble le trou "CSR jeté pour les autres joueurs du match". Migration `add_shared_match_csrs` (TargetShared) + table PK=(match_id, xuid). Sync engine étendu : `ExtractAllSharedCSRRows` itère sur skillData[xuid] + `UpsertSharedCSRs` batch UPSERT. 10 tests (unit + integration + E2E sync simulé 4 joueurs). Permet désormais comparaisons CSR cross-joueurs (Squad, "qui était mieux classé", coéquipiers en placement) — fondement data prêt, à consommer par futures features front.
 
 ---
 
