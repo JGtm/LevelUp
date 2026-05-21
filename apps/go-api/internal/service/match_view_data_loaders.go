@@ -1,0 +1,459 @@
+// Package service — orchestration du chargement parallèle + assemblage
+// séquentiel des données Match View.
+//
+// Extrait de match_view_service.go (audit #1 god files). Sépare le routage
+// errgroup vers les repos (loadMatchViewDataParallel) du builder façade
+// (buildMatchViewFromData) qui appelle les builders par onglet définis dans
+// match_view_builders_*.go.
+package service
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"strings"
+
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
+
+	"golang.org/x/sync/errgroup"
+)
+
+// matchViewData centralise les payloads chargés en parallèle pour un match.
+// Champ par champ aligné sur les sources repo (Q12/Q14/Q17/Q21/...) — voir
+// loadMatchViewDataParallel pour la sémantique de chaque slot.
+type matchViewData struct {
+	stats      *domain.PlayerMatchStatsRaw
+	enrich     *domain.MatchEnrichmentRaw
+	scoreboard []domain.ScoreboardRaw
+	medals     []domain.MedalRaw
+	events     []domain.EventRaw
+	// canonicalEvents : chargés via port.HighlightEventsRepository si câblé
+	// (chunk MV4.A, loader unifié Phase 0). Sinon, conversion à la volée
+	// depuis events (chunk MV2 legacy). Consommés par les builders narrative
+	// (cadence + impact 8 rôles).
+	canonicalEvents []canonical.HighlightEvent
+	// encounterStats : stats riches par encounter (chunk MV4.C') chargées
+	// via Q23b. Permet narrative.ComputeEncounterBadges (ally_plus +
+	// tough_enemy). Optionnel — degradation gracieuse vers badge ordinal
+	// seul si la repo retourne nil.
+	encounterStats []domain.EncounterStatsRaw
+	kvPairs        []domain.KVPairRaw
+	skillRank      *domain.SkillRankRaw
+	encounters     []domain.EncounterRaw
+	media          []domain.MediaAssocRaw
+	expected       *domain.ExpectedStatsRaw
+	bulkMedals     []domain.BulkMedalRaw
+	bulkWeapons    []domain.BulkWeaponKillRaw
+	matchCitations []domain.CitationMatchViewRow
+	richCitations  []domain.HomeMatchCitationRaw
+	histRows       []domain.MatchHistAvgRow
+	objectiveScore int
+}
+
+// loadMatchViewDataParallel lance en parallèle (errgroup) tous les chargements
+// secondaires nécessaires à GetMatchView. Toutes les erreurs sont loggées en
+// warn et ignorées (dégradation gracieuse, le builder gère les nil/vides).
+//
+// Seul `g.Wait()` peut remonter une erreur (annulation ctx).
+//
+//nolint:funlen,cyclop // routage errgroup linéaire ~20 chargements concurrents — découper davantage ne réduit pas la complexité réelle.
+func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchID string) (matchViewData, error) {
+	var d matchViewData
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var e error
+		d.stats, e = s.repo.GetPlayerMatchStats(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: stats indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.enrich, e = s.repo.GetMatchEnrichment(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: enrichment indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.scoreboard, e = s.repo.GetMatchScoreboard(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: scoreboard indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		// Score PSA catégorie 'objective' pour le joueur courant — alimente l'axe
+		// Objective du radar synergie. Dégradation silencieuse à 0.
+		d.objectiveScore, e = s.repo.GetMatchObjectiveScore(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: objective score indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.medals, e = s.repo.GetMatchMedals(gctx, s.xuid, matchID)
+		if e != nil {
+			slog.Warn("match_view: medals indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.events, e = s.repo.GetMatchEvents(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: events indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	// MV4.A : chargement parallèle des events via le loader unifié si câblé.
+	// Si l'eventsRepo n'est pas injecté, canonicalEvents reste nil et les
+	// builders narrative retomberont sur la conversion à la volée (chunk MV2).
+	if s.eventsRepo != nil {
+		g.Go(func() error {
+			filters := port.HighlightEventFilters{MatchIDs: []string{matchID}}
+			if e := filters.Validate(); e != nil {
+				slog.WarnContext(gctx, "match_view: HighlightEventFilters invalides",
+					"match_id", matchID, "err", e)
+				return nil
+			}
+			canonicalEv, e := s.eventsRepo.LoadHighlightEvents(gctx, s.titleSlug, filters)
+			if e != nil {
+				if !errors.Is(e, games.ErrCapabilityNotSupported) {
+					slog.WarnContext(gctx, "match_view: LoadHighlightEvents echec",
+						"match_id", matchID, "err", e)
+				}
+				return nil
+			}
+			d.canonicalEvents = canonicalEv
+			return nil
+		})
+	}
+
+	// MV4.B' : awards chargés après l'errgroup principal car ils dépendent du
+	// scoreboard (xuids). Voir l'appel `s.loadAwardsForScoreboard(...)` plus
+	// bas, après `g.Wait()`.
+	g.Go(func() error {
+		var e error
+		d.kvPairs, e = s.repo.GetMatchKVPairs(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: kv_pairs indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: skill_rank indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.encounters, e = s.repo.GetMatchEncounters(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: encounters indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	// MV4.C' : chargement parallele des stats encounter riches (Q23b).
+	g.Go(func() error {
+		var e error
+		d.encounterStats, e = s.repo.GetMatchEncounterStats(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: encounter_stats indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		// Q24 retourne tous les auteurs (cross-joueur) : un coéquipier peut
+		// avoir uploadé un media pour ce match.
+		d.media, e = s.repo.GetMatchMedia(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: media indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.expected, e = s.repo.GetMatchExpectedStats(gctx, matchID, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: expected_stats indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.bulkMedals, e = s.repo.GetMatchBulkMedals(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: bulk_medals indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.bulkWeapons, e = s.repo.GetMatchBulkWeaponKills(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: bulk_weapons indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.histRows, e = s.repo.GetHistoryForAvg(gctx, s.xuid)
+		if e != nil {
+			slog.Warn("match_view: hist_avg indisponibles", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	if s.citationsRepo != nil {
+		g.Go(func() error {
+			var e error
+			d.matchCitations, e = s.citationsRepo.LoadMatchCitationsForView(gctx, matchID)
+			if e != nil {
+				slog.Warn("match_view: citations indisponibles", "match_id", matchID, "err", e)
+			}
+			return nil
+		})
+		g.Go(func() error {
+			var e error
+			d.richCitations, e = s.citationsRepo.LoadMatchCitationsRich(gctx, matchID)
+			if e != nil {
+				slog.Warn("match_view: rich citations indisponibles", "match_id", matchID, "err", e)
+			}
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return matchViewData{}, err
+	}
+	return d, nil
+}
+
+// buildMatchViewFromData assemble séquentiellement la MatchViewResponse depuis
+// la meta + les données chargées en parallèle. Aucun appel I/O bloquant ici à
+// l'exception du lookup IsMatchFavorite (PK indexée, cheap) et du loader
+// friendsExtras (qui peut faire des fan-out vers les DBs amies — best-effort).
+//
+//nolint:funlen,cyclop // assemblage linéaire 4 onglets + header — découper davantage casserait la lisibilité du payload final.
+func (s *MatchViewService) buildMatchViewFromData(
+	ctx context.Context,
+	matchID string,
+	meta *domain.MatchMetaRaw,
+	d matchViewData,
+) domain.MatchViewResponse {
+	// Durée pour les bins tug-of-war
+	var durationMS int64
+	if meta != nil && meta.PlayableDurationSeconds != nil {
+		durationMS = *meta.PlayableDurationSeconds * 1000
+	}
+
+	// IsFavorite : lookup synchrone (cheap, indexé sur PK player_slug+match_id).
+	// Dégradation gracieuse si socialRepo nil ou shared_social indisponible.
+	isFavorite := false
+	if s.socialRepo != nil && s.playerSlug != "" {
+		if fav, ferr := s.socialRepo.IsMatchFavorite(ctx, s.playerSlug, matchID); ferr == nil {
+			isFavorite = fav
+		} else {
+			slog.WarnContext(ctx, "match_view: IsMatchFavorite échoué",
+				"match_id", matchID, "player", s.playerSlug, "err", ferr)
+		}
+	}
+
+	// expected_assists — uniquement pour le joueur suivi (is_me), jamais pour
+	// les autres lignes du scoreboard.
+	// Chaîne de résolution :
+	//   1. Modèle personnel OLS (player_assists_model dans stats.duckdb)
+	//   2. Fallback modèle populationnel (assists_model_coefs dans metadata.duckdb)
+	if d.stats != nil && meta != nil && meta.GameVariantName != nil {
+		v := computeExpectedAssists(ctx, s.repo, s.metadataRepo, *meta.GameVariantName, d.stats)
+		if v != nil {
+			if d.expected == nil {
+				d.expected = &domain.ExpectedStatsRaw{}
+			}
+			d.expected.AssistsExpected = v
+			// Propager aussi sur la ligne is_me du scoreboard (expander PlayerDetailPanel).
+			for i := range d.scoreboard {
+				if d.scoreboard[i].XUID == s.xuid {
+					d.scoreboard[i].AssistsExpected = v
+					break
+				}
+			}
+		}
+	}
+
+	header := buildMatchHeader(ctx, matchID, meta, d.stats, d.enrich, d.scoreboard, s.assetURL, isFavorite)
+	rank := buildRankBlock(d.skillRank, s.assetURL)
+	summary := buildSummaryTabFull(d.stats, d.medals, d.expected, d.histRows, meta, s.titleSlug, d.richCitations)
+	combat := buildCombatTabFull(matchID, d.bulkWeapons, d.events, d.canonicalEvents, d.kvPairs, d.scoreboard, s.xuid, durationMS)
+	// Extras per-friend (panneau d'expander scoreboard) : best-effort, on
+	// charge depuis chaque player DB d'ami configuré. Si pas de loader injecté
+	// → map vide (section "Local" inactive sauf pour `is_me`).
+	var friendsExtras map[string]port.FriendMatchExtras
+	if s.friendsExtras != nil {
+		xuids := make([]string, 0, len(d.scoreboard))
+		for _, sb := range d.scoreboard {
+			if sb.XUID != "" && sb.XUID != s.xuid {
+				xuids = append(xuids, sb.XUID)
+			}
+		}
+		if len(xuids) > 0 {
+			gvn := ""
+			if meta != nil && meta.GameVariantName != nil {
+				gvn = *meta.GameVariantName
+			}
+			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
+		}
+	}
+	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, s.assetURL)
+	mediaTab := buildMediaTab(d.media)
+
+	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/
+	// accuracy/deaths/damage/score). Mêmes formules que le radar squad
+	// (loadSynergyMateAxes), appliquées à un seul match. Pas besoin de
+	// personal_score_awards — toutes les colonnes nécessaires sont déjà dans
+	// match_participants. L'axe Objective reste neutre (threshold=0).
+	modeFamily := matchModeFamilyFromMeta(meta)
+	radarSeries := BuildMatchRadarFromScoreboard(d.scoreboard, s.xuid, d.objectiveScore, modeFamily)
+	var radar []any
+	for _, rs := range radarSeries {
+		radar = append(radar, rs)
+	}
+
+	// RC6 — détection sync incomplet : le match_registry est OK (sinon on aurait
+	// court-circuité plus haut), mais une ou plusieurs sources secondaires sont
+	// vides. Le front peut afficher un bandeau dégradé au lieu de l'écran
+	// "Match introuvable ou erreur de chargement" full-page.
+	partialReasons := detectPartialMatchData(d.stats, d.scoreboard, d.events, d.medals)
+
+	return domain.MatchViewResponse{
+		Header:         header,
+		Rank:           rank,
+		SummaryTab:     summary,
+		CombatTab:      combat,
+		TeamTab:        team,
+		MediaTab:       mediaTab,
+		CitationsTab:   buildCitationsTab(d.matchCitations, d.medals, s.titleSlug),
+		Radar:          radar,
+		IsPartial:      len(partialReasons) > 0,
+		PartialReasons: partialReasons,
+	}
+}
+
+// loadAwardsForScoreboard charge les awards pour tous les xuids du scoreboard
+// (chunk MV4.B'). Sérialisé après l'errgroup principal — la liste des xuids
+// dépend du scoreboard chargé en parallèle. Dégradation gracieuse :
+//
+//	awardsRepo nil       -> retourne nil
+//	scoreboard vide      -> retourne nil
+//	capability absente   -> retourne nil (silencieux)
+//	autre erreur         -> log warn + retourne nil
+func (s *MatchViewService) loadAwardsForScoreboard(
+	ctx context.Context,
+	matchID string,
+	scoreboard []domain.ScoreboardRaw,
+) []port.PersonalScoreAwardRow {
+	if s.awardsRepo == nil || len(scoreboard) == 0 {
+		return nil
+	}
+	xuids := extractMatchSquadXUIDs(scoreboard)
+	if len(xuids) == 0 {
+		return nil
+	}
+	filters := port.PersonalScoreAwardsFilters{
+		MatchIDs: []string{matchID},
+		XUIDs:    xuids,
+	}
+	if err := filters.Validate(); err != nil {
+		slog.WarnContext(ctx, "match_view: PersonalScoreAwardsFilters invalides",
+			"match_id", matchID, "err", err)
+		return nil
+	}
+	rows, err := s.awardsRepo.LoadPersonalScoreAwards(ctx, s.titleSlug, filters)
+	if err != nil {
+		if !errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.WarnContext(ctx, "match_view: LoadPersonalScoreAwards echec",
+				"match_id", matchID, "err", err)
+		}
+		return nil
+	}
+	return rows
+}
+
+// matchModeFamilyFromMeta résout la mode family pour le calcul des seuils
+// radar (narrative.DefaultThresholds). Best-effort : on inspecte pair_name
+// pour identifier slayer / ctf / strongholds / oddball.
+//
+// Si la pair_name ne match aucun pattern connu, retourne "" (thresholds
+// custom neutres).
+func matchModeFamilyFromMeta(meta *domain.MatchMetaRaw) string {
+	if meta == nil || meta.PairName == nil {
+		return ""
+	}
+	name := strings.ToLower(*meta.PairName)
+	switch {
+	case strings.Contains(name, "slayer"):
+		return "slayer"
+	case strings.Contains(name, "ctf") || strings.Contains(name, "capture"):
+		return "ctf"
+	case strings.Contains(name, "stronghold"):
+		return "strongholds"
+	case strings.Contains(name, "oddball") || strings.Contains(name, "neutral"):
+		return "oddball"
+	}
+	return ""
+}
+
+// detectPartialMatchData inspecte les sources secondaires d'un match et
+// retourne la liste des raisons (codes stables) pour lesquelles la vue est
+// considérée partielle. Vide si tout est plein.
+//
+// Codes utilisés (stables — front les mappe à des messages i18n) :
+//   - "scoreboard_empty"     → Q12 a renvoyé 0 lignes
+//   - "events_empty"         → Q21 a renvoyé 0 highlight events
+//   - "player_stats_empty"   → Q17 stats joueur courant absentes (outcome = 0)
+//   - "medals_empty"         → Q14 a renvoyé 0 médailles (rare ; certains modes
+//     n'attribuent pas de médailles, donc pas critique pour la sync mais utile
+//     pour le front)
+func detectPartialMatchData(
+	stats *domain.PlayerMatchStatsRaw,
+	scoreboard []domain.ScoreboardRaw,
+	events []domain.EventRaw,
+	medals []domain.MedalRaw,
+) []string {
+	var reasons []string
+	if len(scoreboard) == 0 {
+		reasons = append(reasons, "scoreboard_empty")
+	}
+	if len(events) == 0 {
+		reasons = append(reasons, "events_empty")
+	}
+	if stats == nil || stats.OutcomeCode == 0 {
+		reasons = append(reasons, "player_stats_empty")
+	}
+	if len(medals) == 0 {
+		reasons = append(reasons, "medals_empty")
+	}
+	return reasons
+}
+
+// strDeref retourne la valeur d'un *string ou "<nil>" pour les logs structurés.
+// Évite les faux-positifs "<nil>" dans slog quand on veut juste tracer le contenu.
+func strDeref(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
+}
