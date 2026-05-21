@@ -7,6 +7,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -34,7 +35,7 @@ func createDBAt(t *testing.T, path string) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestCheckDuckDB_FileAbsent(t *testing.T) {
-	check := checkDuckDB("test_absent", "/nonexistent/db.duckdb")
+	check := checkDuckDB(context.Background(), "test_absent", "/nonexistent/db.duckdb")
 	if check.OK {
 		t.Error("expected OK=false pour fichier absent")
 	}
@@ -45,7 +46,7 @@ func TestCheckDuckDB_FileAbsent(t *testing.T) {
 
 func TestCheckDuckDB_ValidDB(t *testing.T) {
 	path := openTempDB(t) // helper défini dans seed_cgo_test.go
-	check := checkDuckDB("test_valid", path)
+	check := checkDuckDB(context.Background(), "test_valid", path)
 	if !check.OK {
 		t.Errorf("expected OK=true pour DB valide, got msg=%q", check.Message)
 	}
@@ -83,7 +84,7 @@ func TestCheckFileExists_Present(t *testing.T) {
 
 func TestRunHealthcheck_EmptyDir(t *testing.T) {
 	dir := t.TempDir()
-	report := RunHealthcheck(HealthcheckOptions{RepoRoot: dir})
+	report := RunHealthcheck(context.Background(), HealthcheckOptions{RepoRoot: dir})
 	// Le rapport doit exister et contenir au moins le check "os"
 	if len(report.Checks) == 0 {
 		t.Fatal("expected au moins 1 check dans le rapport")
@@ -117,7 +118,7 @@ func TestRunHealthcheck_WithDBs(t *testing.T) {
 	createDBAt(t, filepath.Join(warehouseDir, "shared_matches_v2.duckdb"))
 	createDBAt(t, filepath.Join(warehouseDir, "metadata.duckdb"))
 
-	report := RunHealthcheck(HealthcheckOptions{RepoRoot: dir})
+	report := RunHealthcheck(context.Background(), HealthcheckOptions{RepoRoot: dir})
 	if len(report.Checks) == 0 {
 		t.Fatal("expected checks dans le rapport")
 	}

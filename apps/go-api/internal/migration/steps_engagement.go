@@ -50,10 +50,10 @@ func init() {
 				return nil
 			}
 			for _, col := range []struct{ name, typ string }{
-				{"engagement_score", "DOUBLE"},
-				{"engagement_score_brut", "DOUBLE"},
-				{"engagement_score_confidence", "VARCHAR"},
-				{"mode_category", "VARCHAR"},
+				{"engagement_score", colDouble},
+				{"engagement_score_brut", colDouble},
+				{"engagement_score_confidence", colVarchar},
+				{"mode_category", colVarchar},
 			} {
 				if err := addColumnIfMissing(db, "player_match_enrichment", col.name, col.typ); err != nil {
 					return err
@@ -106,10 +106,10 @@ func init() {
 				return nil
 			}
 			for _, col := range []struct{ name, typ string }{
-				{"engagement_pace_player", "DOUBLE"},
-				{"engagement_pace_team", "DOUBLE"},
-				{"engagement_pace_lobby", "DOUBLE"},
-				{"engagement_player_activity", "INTEGER"},
+				{"engagement_pace_player", colDouble},
+				{"engagement_pace_team", colDouble},
+				{"engagement_pace_lobby", colDouble},
+				{"engagement_player_activity", colInteger},
 			} {
 				if err := addColumnIfMissing(db, "player_match_enrichment", col.name, col.typ); err != nil {
 					return err

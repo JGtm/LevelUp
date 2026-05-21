@@ -225,14 +225,14 @@ func init() {
 				return err
 			}
 			cols := []struct{ name, typ string }{
-				{"accuracy", "FLOAT"},
+				{"accuracy", colFloat},
 				{"end_time", "TIMESTAMP"},
-				{"session_id", "INTEGER"},
-				{"session_label", "VARCHAR"},
-				{"rank", "SMALLINT"},
-				{"damage_dealt", "FLOAT"},
-				{"personal_score", "INTEGER"},
-				{"performance_score", "FLOAT"},
+				{"session_id", colInteger},
+				{"session_label", colVarchar},
+				{"rank", colSmallInt},
+				{"damage_dealt", colFloat},
+				{"personal_score", colInteger},
+				{"performance_score", colFloat},
 			}
 			for _, c := range cols {
 				if err := addColumnIfMissing(db, "match_stats", c.name, c.typ); err != nil {
@@ -322,8 +322,8 @@ func init() {
 			// Colonnes ajoutées après la création initiale
 			for _, c := range []struct{ name, typ string }{
 				{"start_time", "TIMESTAMP"},
-				{"rating_deviation", "FLOAT"},
-				{"playlist_group", "VARCHAR"},
+				{"rating_deviation", colFloat},
+				{"playlist_group", colVarchar},
 			} {
 				_ = addColumnIfMissing(db, "match_skill_rank", c.name, c.typ)
 			}

@@ -7,6 +7,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -98,7 +99,7 @@ func TestWalkMediaDir_WithMedia(t *testing.T) {
 
 func TestListBaseTables_Empty(t *testing.T) {
 	_, db := openDiagDB(t)
-	tables, err := listBaseTables(db)
+	tables, err := listBaseTables(context.Background(), db)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -118,7 +119,7 @@ func TestListBaseTables_WithTables(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	tables, err := listBaseTables(db)
+	tables, err := listBaseTables(context.Background(), db)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -139,7 +140,7 @@ func TestListBaseTables_WithTables(t *testing.T) {
 
 func TestEnsureMediaTables_CreatesTable(t *testing.T) {
 	_, db := openDiagDB(t)
-	if err := ensureMediaTables(db); err != nil {
+	if err := ensureMediaTables(context.Background(), db); err != nil {
 		t.Fatalf("ensureMediaTables inattendu: %v", err)
 	}
 	// Vérifier que les tables existent via information_schema
@@ -157,7 +158,7 @@ func TestEnsureMediaTables_CreatesTable(t *testing.T) {
 func TestEnsureMediaTables_Idempotent(t *testing.T) {
 	_, db := openDiagDB(t)
 	for i := 0; i < 3; i++ {
-		if err := ensureMediaTables(db); err != nil {
+		if err := ensureMediaTables(context.Background(), db); err != nil {
 			t.Fatalf("ensureMediaTables iteration %d: %v", i, err)
 		}
 	}
@@ -170,7 +171,7 @@ func TestEnsureMediaTables_Idempotent(t *testing.T) {
 func TestLoadKnownHashes_NoTable(t *testing.T) {
 	_, db := openDiagDB(t)
 	// Sans table media_files → erreur SQL attendue
-	_, err := loadKnownHashes(db)
+	_, err := loadKnownHashes(context.Background(), db)
 	if err == nil {
 		t.Error("expected error (table absente)")
 	}
@@ -178,10 +179,10 @@ func TestLoadKnownHashes_NoTable(t *testing.T) {
 
 func TestLoadKnownHashes_EmptyTable(t *testing.T) {
 	_, db := openDiagDB(t)
-	if err := ensureMediaTables(db); err != nil {
+	if err := ensureMediaTables(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
-	hashes, err := loadKnownHashes(db)
+	hashes, err := loadKnownHashes(context.Background(), db)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -192,13 +193,13 @@ func TestLoadKnownHashes_EmptyTable(t *testing.T) {
 
 func TestLoadKnownHashes_WithData(t *testing.T) {
 	_, db := openDiagDB(t)
-	if err := ensureMediaTables(db); err != nil {
+	if err := ensureMediaTables(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO media_files (id, file_path, file_hash, kind) VALUES (1, '/a.mp4', 'abc123', 'video'), (2, '/b.mp4', 'def456', 'video')`); err != nil {
 		t.Fatal(err)
 	}
-	hashes, err := loadKnownHashes(db)
+	hashes, err := loadKnownHashes(context.Background(), db)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -307,7 +308,7 @@ func TestIndexMedia_ConcurrentSameDB_NoRace(t *testing.T) {
 		wg.Add(1)
 		go func(idx int, s string) {
 			defer wg.Done()
-			_, errs[idx] = IndexMedia(makeOpts(s))
+			_, errs[idx] = IndexMedia(context.Background(), makeOpts(s))
 		}(i, sub)
 	}
 	wg.Wait()
@@ -344,7 +345,7 @@ func TestIndexMedia_ConcurrentSameDB_SameDir(t *testing.T) {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
-			_, errs[idx] = IndexMedia(optsVal)
+			_, errs[idx] = IndexMedia(context.Background(), optsVal)
 		}(i)
 	}
 	wg.Wait()
@@ -369,7 +370,7 @@ func openInsertTestDB(t *testing.T) (*sql.DB, string) {
 	if err != nil {
 		t.Fatalf("sql.Open: %v", err)
 	}
-	if err := ensureMediaTables(db); err != nil {
+	if err := ensureMediaTables(context.Background(), db); err != nil {
 		db.Close()
 		t.Fatalf("ensureMediaTables: %v", err)
 	}
@@ -408,7 +409,7 @@ func TestInsertMediaFile_Priority1_XboxFilename(t *testing.T) {
 
 	// captureTimeUnix pointe sur 2000-01-01 (doit être ignoré au profit du filename)
 	clientTs := int64(946684800)
-	if err := insertMediaFile(db, path, "hash_p1", "spartan", &clientTs, loc, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, path, "hash_p1", "spartan", &clientTs, loc, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -435,7 +436,7 @@ func TestInsertMediaFile_Priority2_ClientTimestamp(t *testing.T) {
 
 	// 2024-06-01 12:00:00 UTC
 	clientTs := int64(1717243200)
-	if err := insertMediaFile(db, path, "hash_p2", "spartan", &clientTs, nil, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, path, "hash_p2", "spartan", &clientTs, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -458,7 +459,7 @@ func TestInsertMediaFile_NoSource_LeavesNull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := insertMediaFile(db, path, "hash_null", "spartan", nil, nil, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, path, "hash_null", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -491,7 +492,7 @@ func TestInsertMediaFile_Priority1_OBSFilename(t *testing.T) {
 
 	// captureTimeUnix bidon (doit être ignoré au profit du filename)
 	clientTs := int64(946684800)
-	if err := insertMediaFile(db, path, "hash_obs", "spartan", &clientTs, loc, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, path, "hash_obs", "spartan", &clientTs, loc, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
@@ -521,7 +522,7 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer dbSocial.Close()
-	if err := ensureMediaTables(dbSocial); err != nil {
+	if err := ensureMediaTables(context.Background(), dbSocial); err != nil {
 		t.Fatal(err)
 	}
 
@@ -572,7 +573,7 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 		t.Fatalf("INSERT media_files: %v", err)
 	}
 
-	n, err := AssociateMediaWithMatches(dbSocial, matchesPath, 2, "Europe/Paris")
+	n, err := AssociateMediaWithMatches(context.Background(), dbSocial, matchesPath, 2, "Europe/Paris")
 	if err != nil {
 		t.Fatalf("AssociateMediaWithMatches: %v", err)
 	}
@@ -596,7 +597,7 @@ func TestInsertMediaFile_StemDedup_OldFileGone(t *testing.T) {
 	if err := os.WriteFile(oldPath, []byte("video mp4"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, oldPath, "hash_mp4", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (mp4): %v", err)
 	}
 
@@ -627,7 +628,7 @@ func TestInsertMediaFile_StemDedup_OldFileGone(t *testing.T) {
 	}
 
 	// 4. Indexer capture.webm
-	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, newPath, "hash_webm", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (webm): %v", err)
 	}
 
@@ -672,7 +673,7 @@ func TestInsertMediaFile_StemDedup_BothFilesPresent(t *testing.T) {
 	if err := os.WriteFile(oldPath, []byte("video mp4"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := insertMediaFile(db, oldPath, "hash_mp4", "spartan", nil, nil, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, oldPath, "hash_mp4", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (mp4): %v", err)
 	}
 
@@ -690,7 +691,7 @@ func TestInsertMediaFile_StemDedup_BothFilesPresent(t *testing.T) {
 	}
 
 	// 3. Essayer d'indexer capture.webm
-	if err := insertMediaFile(db, newPath, "hash_webm", "spartan", nil, nil, MediaPathStore{}); err != nil {
+	if err := insertMediaFile(context.Background(), db, newPath, "hash_webm", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile (webm): %v", err)
 	}
 

@@ -52,8 +52,8 @@ var playlistFRSeeds = []playlistFRMapping{
 	{"Tactical Slayer", "Assassin tactique"},
 	{"Tactical Slayer (Snipers)", "Assassin tactique (Snipers)"},
 	{"Team Doubles", "Duo en équipe"},
-	{"Team Slayer", "Assassin en équipe"},
-	{"Team Snipers", "Snipers en équipe"},
+	{modeTeamSlayer, modeTeamSlayerFR},
+	{modeTeamSnipers, modeTeamSnipersFR},
 }
 
 // applyPlaylistFRSeeds met à jour metadata.asset_translations pour les

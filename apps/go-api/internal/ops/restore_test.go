@@ -9,6 +9,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -77,7 +78,7 @@ func TestRestorePlayer_DryRun(t *testing.T) {
 	createTestPlayerDB(t, dbPath)
 	exportTestParquet(t, dbPath, backupDir)
 
-	result, err := RestorePlayer(RestoreOptions{
+	result, err := RestorePlayer(context.Background(), RestoreOptions{
 		Gamertag:     "TestSpartan",
 		PlayerDBPath: dbPath,
 		BackupDir:    backupDir,
@@ -124,7 +125,7 @@ func TestRestorePlayer_RestoreAndVerify(t *testing.T) {
 	dstDB.Close()
 
 	// Restaurer
-	result, err := RestorePlayer(RestoreOptions{
+	result, err := RestorePlayer(context.Background(), RestoreOptions{
 		Gamertag:     "TestSpartan",
 		PlayerDBPath: restoreDBPath,
 		BackupDir:    backupDir,
@@ -180,7 +181,7 @@ func TestRestorePlayer_NoBackupFiles(t *testing.T) {
 	db, _ := sql.Open("duckdb", dbPath)
 	db.Close()
 
-	_, err := RestorePlayer(RestoreOptions{
+	_, err := RestorePlayer(context.Background(), RestoreOptions{
 		PlayerDBPath: dbPath,
 		BackupDir:    emptyBackupDir,
 	})
