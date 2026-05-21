@@ -62,6 +62,18 @@ func NewCareerLiveRepo(pdb *PlayerDB) *CareerLiveRepo {
 // Pattern ARG_MAX + FILTER identique à Q26cHomeSpartanIdentity, étendu à
 // xp_total et adornment_path. La table contient potentiellement plusieurs
 // xuids historiques (cas rare), on filtre explicitement.
+//
+// Note `xuid || ''` : workaround d'une corruption d'index ART connue sur
+// player_db (cf. docs/INCIDENT_2026-05-20_match_participants_index.md ET
+// diag 2026-05-21 sur career_progression). Sans cette concat, le filter
+// pushdown sur l'index PK retournait un sous-ensemble strict des rows et
+// l'ARG_MAX(banner_image_url) FILTER pickait un snapshot vide alors qu'une
+// row récente non visible portait la bannière. La concat défait le pushdown
+// (force un table-scan complet — perf négligeable, table < 1k rows par
+// joueur sur la cadence 5 min). Migration `rebuild_career_progression…`
+// reconstruit la table pour éliminer la corruption à la source, mais ce
+// workaround reste en place comme défense permanente (DuckDB est connu pour
+// ces régressions d'index, cf. duckdb/duckdb#9999 et apparentés).
 const qLoadLastCareerRank = `
 SELECT
     COALESCE(ARG_MAX(rank,              recorded_at), 0)                                                    AS rank,
@@ -77,7 +89,7 @@ SELECT
     ARG_MAX(backdrop_image_url, recorded_at) FILTER (WHERE NULLIF(TRIM(backdrop_image_url), '') IS NOT NULL) AS backdrop_image_url,
     ARG_MAX(adornment_path,     recorded_at) FILTER (WHERE NULLIF(TRIM(adornment_path),     '') IS NOT NULL) AS adornment_path
 FROM career_progression
-WHERE xuid = ?`
+WHERE xuid || '' = ?`
 
 // LoadLastCareerRank retourne la projection per-field-merged de la dernière
 // row connue. Garantit un fallback robuste : si la dernière row a un emblem

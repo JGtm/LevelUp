@@ -1,3 +1,46 @@
+## [2026-05-21] fix(home) — Bannière vraie racine : corruption ART DuckDB sur career_progression
+
+**Statut** : Complété (branche `fix/media-paths-portable`).
+
+**Contexte** : malgré l'overlay défensif livré la veille (commit `8ae11a64`), l'utilisateur a constaté visuellement (screenshot home Mission Control) que la bannière reste absente pour les 3 joueurs et que Madina97294 ressort une identité Spartan complètement vide (CSR/LUSR seuls — pas de spartan_id, banner, emblem, ni career_rank). Verdict : *« c'est toujours pas assez solide et toujours pas UX first »*.
+
+**Diagnostic** : tracé end-to-end depuis le screenshot.
+
+1. `curl /api/v1/players/JGtm/pages/home` → banner présent ✓
+2. `curl /api/v1/players/Madina97294/pages/home` → `spartan_identity` ne contient que `highest_csr` + `highest_lusr`. Pas de banner. Pas de spartan_id. Pas de career_rank. ✗
+3. Vérification DB read-only via Go cmd dédié (server stoppé) : Madina A 74 rows dans `career_progression` avec banner non-vide (123 caractères) sur les snapshots du 2026-05-20.
+4. **Reproduction du bug** : la même requête `SELECT ... FROM career_progression WHERE xuid = '2533274858283686'` retourne **65 rows** au lieu de **74**. Workaround `WHERE xuid || '' = '...'` (defeat filter pushdown) retourne bien les 74.
+5. Toutes les 9 rows manquantes sont les snapshots récents (2026-05-20) qui portent la bannière. Les FILTER `ARG_MAX(banner_image_url) WHERE NOT NULL` pickaient un snapshot 2026-05-08 sans banner.
+6. **Diag étendu** : JGtm 86/106 visibles, Chocoboflor 67/78, Madina 65/74. **Les 3 player_db sont corrompus**.
+
+**Root cause** : corruption d'index ART (Adaptive Radix Tree) sur la primary key implicite de `career_progression`. Même classe de bug que `shared.match_participants` documenté dans [docs/INCIDENT_2026-05-20_match_participants_index.md](docs/INCIDENT_2026-05-20_match_participants_index.md), mais sur les player DBs. Le filter pushdown sur l'index ART retourne un sous-ensemble strict des rows réellement présentes.
+
+**Pourquoi l'overlay défensif livré la veille ne suffisait pas** : il s'appuyait sur `LoadLastCareerRank` pour récupérer le fallback DB. Or `LoadLastCareerRank` exécute justement la requête `WHERE xuid = ?` cassée → retourne un sous-ensemble qui ne contient pas la dernière bannière → fallback ne fournit jamais la bonne valeur. Le filet DB ne pouvait pas attraper ce qu'il ne voyait pas.
+
+**Décision** : **double défense** — fix la requête + fix la table.
+
+1. **[career_live_repo.go:qLoadLastCareerRank](apps/go-api/internal/platform/duckdb/career_live_repo.go)** : `WHERE xuid = ?` → `WHERE xuid || '' = ?`. Le concat force un table-scan complet (perf négligeable, < 1k rows par joueur). Défense **permanente** : DuckDB est connu pour ces régressions d'index, le workaround reste en place même après rebuild.
+
+2. **[steps_player_rebuild_career_progression.go](apps/go-api/internal/migration/steps_player_rebuild_career_progression.go)** : nouvelle migration TargetPlayer qui rebuild `career_progression` via swap (CREATE __rebuilt → INSERT SELECT * → DROP → RENAME). Reconstruit l'index ART from scratch. Idempotente via sentinel `sync_meta.career_progression_rebuilt_v1`.
+
+**Validation live** :
+
+| Joueur | Avant migration | Après migration | Stress test 5x |
+|--------|-----------------|-----------------|----------------|
+| JGtm | banner OK (le seul) | banner OK | 5/5 stable |
+| Chocoboflor | banner manquant | banner OK | 5/5 stable |
+| Madina97294 | identité vide | identité complète | 5/5 stable |
+
+Log de migration au boot : `migration rebuild_career_progression: table rebuilt (ART corruption defeated) rows_before_scan=74 rows_after_rebuild=74`.
+
+**Tests** :
+- `go test ./internal/platform/duckdb/` count=1 timeout=180s : tous verts (11.0 s), incl. `TestCareerLiveRepo_LoadLastCareerRank_*` qui couvrent le per-field merge.
+- `go test ./internal/migration/` : vert.
+
+**Prochaine étape** : commit (workaround + migration + thought log). Pour les autres tables potentiellement corrompues sur shared_matches_v2 (cf. INCIDENT_2026-05-20), une migration similaire reste à planifier — sortir du scope de ce fix qui se concentre sur la home banner UX.
+
+---
+
 ## [2026-05-20] fix(home) — Overlay défensif identité Spartan : la bannière ne disparaît plus
 
 **Statut** : Complété (branche `fix/media-paths-portable`).
