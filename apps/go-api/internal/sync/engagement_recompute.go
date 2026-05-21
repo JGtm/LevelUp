@@ -46,6 +46,11 @@ var engagementCoefModes = []string{"PvP_ranked", "PvP_unranked"}
 //   - moins de temporal.MinMatchesForCoef samples valides pour la categorie
 //
 // Retourne le nombre de coefs persistes (0 a len(engagementCoefModes)).
+//
+// siblings ; aujourd'hui best-effort (logs warn sur erreurs internes, jamais
+// remonté au caller).
+//
+//nolint:unparam // err maintenu en signature pour cohérence avec batchCompute*
 func batchRecomputeCoefficients(
 	ctx context.Context,
 	playerDB *sql.DB,

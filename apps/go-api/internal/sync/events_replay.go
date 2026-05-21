@@ -90,6 +90,16 @@ func FindBrokenHighlightEventMatches(ctx context.Context, db *sql.DB, limit int)
 	return out, rows.Err()
 }
 
+// Statuts canoniques retournés par ReplayHighlightEventsForMatches via le
+// callback ReplayProgressFn. Utilisés aussi par les tests d'intégration pour
+// asserter le résultat.
+const (
+	replayStatusHealed       = "healed"
+	replayStatusNoFilm       = "no_film"
+	replayStatusParseAnomaly = "parse_anomaly"
+	replayStatusError        = "error"
+)
+
 // ReplayProgressFn est un callback optionnel appelé pour chaque match traité.
 // `done` et `total` permettent au caller d'afficher une progression.
 // `status` est l'un de "healed", "no_film", "parse_anomaly", "error" — utile
@@ -146,19 +156,19 @@ func ReplayHighlightEventsForMatches(
 		switch {
 		case err != nil:
 			res.Errors++
-			status = "error"
+			status = replayStatusError
 			slog.WarnContext(ctx, "ReplayHighlightEvents: ProcessHighlightEvents échoué",
 				"match_id", matchID, "err", err)
 		case dummy.EventsInserted > 0:
 			res.Healed++
 			res.EventsInserted += dummy.EventsInserted
-			status = "healed"
+			status = replayStatusHealed
 		case len(dummy.Warnings) > 0:
 			res.ParseAnomaly++
-			status = "parse_anomaly"
+			status = replayStatusParseAnomaly
 		default:
 			res.NoFilm++
-			status = "no_film"
+			status = replayStatusNoFilm
 		}
 
 		if progressFn != nil {
