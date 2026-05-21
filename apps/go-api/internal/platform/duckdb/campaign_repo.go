@@ -285,16 +285,46 @@ func (p *CampaignSampleProvider) LoadAxisSamples(
 //	Étape 2 (pdb.Player) : SELECT match_id, value FROM lusr_component_history
 //	  WHERE component_name = ? AND match_id IN (...)
 //	Étape 3 (Go) : merge en respectant l'ordre chronologique de l'étape 1.
+//
+// lusrMatchTS : (match_id, start_time) pour ordre chronologique.
+type lusrMatchTS struct {
+	matchID string
+	ts      time.Time
+}
+
 func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 	ctx context.Context,
 	component, playlistGroup string,
 	since, until time.Time,
 ) ([]float64, error) {
-	// Étape 1 : match_ids ordonnés chronologiquement depuis shared.
-	type matchTS struct {
-		matchID string
-		ts      time.Time
+	matches, err := p.loadLUSRMatchIDsInWindow(ctx, component, playlistGroup, since, until)
+	if err != nil || len(matches) == 0 {
+		return nil, err
 	}
+
+	matchIDs := make([]string, 0, len(matches))
+	for _, m := range matches {
+		matchIDs = append(matchIDs, m.matchID)
+	}
+	values, err := p.loadLUSRValuesByMatch(ctx, component, matchIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ressort selon l'ordre chronologique des matchs.
+	var out []float64
+	for _, m := range matches {
+		if v, ok := values[m.matchID]; ok {
+			out = append(out, v)
+		}
+	}
+	return out, nil
+}
+
+// loadLUSRMatchIDsInWindow charge les match_ids ordonnés chronologiquement depuis shared.
+func (p *CampaignSampleProvider) loadLUSRMatchIDsInWindow(
+	ctx context.Context, component, playlistGroup string, since, until time.Time,
+) ([]lusrMatchTS, error) {
 	sharedQ := `
 		SELECT match_id, start_time
 		FROM match_registry
@@ -321,25 +351,22 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 			"component", component, "err", err)
 		return nil, nil //nolint:nilerr
 	}
-	var matches []matchTS
+	defer sharedRows.Close()
+	var matches []lusrMatchTS
 	for sharedRows.Next() {
-		var m matchTS
+		var m lusrMatchTS
 		if err := sharedRows.Scan(&m.matchID, &m.ts); err != nil {
-			sharedRows.Close()
 			return nil, err
 		}
 		matches = append(matches, m)
 	}
-	sharedRows.Close()
-	if len(matches) == 0 {
-		return nil, nil
-	}
+	return matches, nil
+}
 
-	// Étape 2 : valeurs lusr par match_id depuis player.
-	matchIDs := make([]string, 0, len(matches))
-	for _, m := range matches {
-		matchIDs = append(matchIDs, m.matchID)
-	}
+// loadLUSRValuesByMatch charge map[match_id]value depuis player.lusr_component_history.
+func (p *CampaignSampleProvider) loadLUSRValuesByMatch(
+	ctx context.Context, component string, matchIDs []string,
+) (map[string]float64, error) {
 	playerQ := fmt.Sprintf(`
 		SELECT match_id, value
 		FROM lusr_component_history
@@ -355,8 +382,6 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 	}
 	defer rows.Close()
 
-	// Étape 3 : merge — collecte les valeurs dans une map puis ressort selon
-	// l'ordre chronologique de l'étape 1.
 	values := make(map[string]float64, len(matchIDs))
 	for rows.Next() {
 		var mid string
@@ -368,16 +393,7 @@ func (p *CampaignSampleProvider) loadLUSRComponentSamples(
 			values[mid] = v.Float64
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	var out []float64
-	for _, m := range matches {
-		if v, ok := values[m.matchID]; ok {
-			out = append(out, v)
-		}
-	}
-	return out, rows.Err()
+	return values, rows.Err()
 }
 
 // axisValueExpression mappe (axis, kind=radar) → expression SQL sur

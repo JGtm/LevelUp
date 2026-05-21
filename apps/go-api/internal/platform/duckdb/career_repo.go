@@ -83,81 +83,107 @@ func (r *CareerRepo) GetXPHistory(ctx context.Context) ([]domain.XPHistoryPoint,
 //     SharedReader avec WHERE match_id IN (...).
 //   - Phase C : tri par start_time ASC + calcul rating_delta côté Go via
 //     LAG manuel par (rating_type, playlist_group).
+//
+// lusrPlayerRow projette une ligne match_skill_rank côté player.
+type lusrPlayerRow struct {
+	MatchID       string
+	RatingType    string
+	RatingValue   float64
+	TierLabel     *string
+	PlaylistGroup *string
+	Tier          sql.NullString
+	SubTier       sql.NullInt16
+}
+
+// lusrRegistryInfo agrège start_time + playlist depuis shared.match_registry.
+type lusrRegistryInfo struct {
+	RecordedAt   *time.Time
+	PlaylistName string
+	PlaylistID   string
+}
+
 func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpointDTO, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	type playerRow struct {
-		MatchID       string
-		RatingType    string
-		RatingValue   float64
-		TierLabel     *string
-		PlaylistGroup *string
-		Tier          sql.NullString
-		SubTier       sql.NullInt16
-	}
-	rows, err := r.pdb.Player.Query(ctx, Q8LUSRHistoryPlayer)
+	playerRows, matchIDs, err := r.loadLUSRPlayerRows(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase A: %w", err)
-	}
-	defer rows.Close()
-
-	var playerRows []playerRow
-	matchIDs := make([]string, 0)
-	for rows.Next() {
-		var p playerRow
-		if err := rows.Scan(&p.MatchID, &p.RatingType, &p.RatingValue, &p.TierLabel,
-			&p.PlaylistGroup, &p.Tier, &p.SubTier); err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan A: %w", err)
-		}
-		playerRows = append(playerRows, p)
-		matchIDs = append(matchIDs, p.MatchID)
-	}
-	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	if len(playerRows) == 0 {
 		return nil, nil
 	}
 
-	// Phase B : enrich match_registry via SharedReader.
-	type registryInfo struct {
-		RecordedAt   *time.Time
-		PlaylistName string
-		PlaylistID   string
-	}
-	registryByMatch := make(map[string]registryInfo, len(matchIDs))
-	{
-		sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: shared reader: %w", err)
-		}
-		query := fmt.Sprintf(Q8LUSRHistoryRegistryTpl, Placeholders(len(matchIDs)))
-		regRows, err := sharedDB.QueryContext(ctx, query, ToAnySlice(matchIDs)...)
-		if err != nil {
-			release()
-			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase B: %w", err)
-		}
-		for regRows.Next() {
-			var mid string
-			var info registryInfo
-			var ts sql.NullTime
-			if err := regRows.Scan(&mid, &ts, &info.PlaylistName, &info.PlaylistID); err != nil {
-				regRows.Close()
-				release()
-				return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan B: %w", err)
-			}
-			if ts.Valid {
-				t := ts.Time
-				info.RecordedAt = &t
-			}
-			registryByMatch[mid] = info
-		}
-		regRows.Close()
-		release()
+	registryByMatch, err := r.loadLUSRRegistryInfo(ctx, matchIDs)
+	if err != nil {
+		return nil, err
 	}
 
-	// Phase C : assemble + tri + LAG rating_delta.
+	results := assembleLUSRResults(playerRows, registryByMatch)
+	sortLUSRResultsByRecordedAt(results)
+	computeLUSRRatingDeltas(results)
+
+	r.enrichLUSRPlaylistNames(ctx, results)
+	return results, nil
+}
+
+// loadLUSRPlayerRows charge match_skill_rank du joueur (phase A).
+func (r *CareerRepo) loadLUSRPlayerRows(ctx context.Context) ([]lusrPlayerRow, []string, error) {
+	rows, err := r.pdb.Player.Query(ctx, Q8LUSRHistoryPlayer)
+	if err != nil {
+		return nil, nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase A: %w", err)
+	}
+	defer rows.Close()
+
+	var playerRows []lusrPlayerRow
+	matchIDs := make([]string, 0)
+	for rows.Next() {
+		var p lusrPlayerRow
+		if err := rows.Scan(&p.MatchID, &p.RatingType, &p.RatingValue, &p.TierLabel,
+			&p.PlaylistGroup, &p.Tier, &p.SubTier); err != nil {
+			return nil, nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan A: %w", err)
+		}
+		playerRows = append(playerRows, p)
+		matchIDs = append(matchIDs, p.MatchID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	return playerRows, matchIDs, nil
+}
+
+// loadLUSRRegistryInfo enrichit match_registry (phase B) via SharedReader.
+func (r *CareerRepo) loadLUSRRegistryInfo(ctx context.Context, matchIDs []string) (map[string]lusrRegistryInfo, error) {
+	out := make(map[string]lusrRegistryInfo, len(matchIDs))
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: shared reader: %w", err)
+	}
+	defer release()
+	query := fmt.Sprintf(Q8LUSRHistoryRegistryTpl, Placeholders(len(matchIDs)))
+	regRows, err := sharedDB.QueryContext(ctx, query, ToAnySlice(matchIDs)...)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase B: %w", err)
+	}
+	defer regRows.Close()
+	for regRows.Next() {
+		var mid string
+		var info lusrRegistryInfo
+		var ts sql.NullTime
+		if err := regRows.Scan(&mid, &ts, &info.PlaylistName, &info.PlaylistID); err != nil {
+			return nil, fmt.Errorf("CareerRepo.GetLUSRHistory scan B: %w", err)
+		}
+		if ts.Valid {
+			t := ts.Time
+			info.RecordedAt = &t
+		}
+		out[mid] = info
+	}
+	return out, nil
+}
+
+// assembleLUSRResults compose les DTOs en croisant phases A et B.
+func assembleLUSRResults(playerRows []lusrPlayerRow, registryByMatch map[string]lusrRegistryInfo) []domain.LUSRCheckpointDTO {
 	results := make([]domain.LUSRCheckpointDTO, 0, len(playerRows))
 	for _, p := range playerRows {
 		cp := domain.LUSRCheckpointDTO{
@@ -185,21 +211,28 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 		)
 		results = append(results, cp)
 	}
-	// Tri ASC par recorded_at (NULLS LAST), reproduit l'ORDER BY de la query.
+	return results
+}
+
+// sortLUSRResultsByRecordedAt trie par recorded_at ASC (NULLS LAST).
+func sortLUSRResultsByRecordedAt(results []domain.LUSRCheckpointDTO) {
 	sort.SliceStable(results, func(i, j int) bool {
 		ai, aj := results[i].RecordedAt, results[j].RecordedAt
 		if ai == nil && aj == nil {
 			return false
 		}
 		if ai == nil {
-			return false // i après j (NULLS LAST)
+			return false
 		}
 		if aj == nil {
 			return true
 		}
 		return ai.Before(*aj)
 	})
-	// rating_delta = current - previous par (rating_type, playlist_group).
+}
+
+// computeLUSRRatingDeltas calcule rating_delta = current - prev par (rating_type, playlist_group).
+func computeLUSRRatingDeltas(results []domain.LUSRCheckpointDTO) {
 	type lagKey struct {
 		ratingType    string
 		playlistGroup string
@@ -216,9 +249,6 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 		}
 		prev[key] = results[i].RatingValue
 	}
-
-	r.enrichLUSRPlaylistNames(ctx, results)
-	return results, nil
 }
 
 // enrichLUSRPlaylistNames résout les noms de playlists FR via asset_translations.
@@ -270,29 +300,22 @@ func (r *CareerRepo) enrichLUSRPlaylistNames(ctx context.Context, cps []domain.L
 //     avec filtres time_played>=180 + NOT is_firefight + IN match_ids.
 //   - Phase C : merge + sections WIN/LOSS + tri par dominance flag (priorité
 //     section) + perf_score + top 10 chaque section.
+//
+// topMatchPMERow projette player_match_enrichment (perf + dominance).
+type topMatchPMERow struct {
+	matchID       string
+	perfScore     float64
+	dominanceFlag int
+}
+
 func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	type pmeRow struct {
-		matchID       string
-		perfScore     float64
-		dominanceFlag int
-	}
-	pmes := make(map[string]pmeRow)
-	pmeRows, err := r.pdb.Player.Query(ctx, Q9TopMatchesPlayer)
+	pmes, err := r.loadTopMatchPMERows(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.GetTopMatches: phase A: %w", err)
+		return nil, err
 	}
-	for pmeRows.Next() {
-		var p pmeRow
-		if err := pmeRows.Scan(&p.matchID, &p.perfScore, &p.dominanceFlag); err != nil {
-			pmeRows.Close()
-			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan A: %w", err)
-		}
-		pmes[p.matchID] = p
-	}
-	pmeRows.Close()
 	if len(pmes) == 0 {
 		return nil, nil
 	}
@@ -302,7 +325,40 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 		matchIDs = append(matchIDs, id)
 	}
 
-	// Phase B : shared via SharedReader.
+	enriched, err := r.loadTopMatchSharedRows(ctx, matchIDs, pmes)
+	if err != nil {
+		return nil, err
+	}
+
+	wins, losses := splitWinsLossesAndSortTopMatches(enriched)
+	results := make([]domain.TopMatchRawRow, 0, len(wins)+len(losses))
+	results = append(results, wins...)
+	results = append(results, losses...)
+	return results, nil
+}
+
+// loadTopMatchPMERows charge phase A : player_match_enrichment.
+func (r *CareerRepo) loadTopMatchPMERows(ctx context.Context) (map[string]topMatchPMERow, error) {
+	pmes := make(map[string]topMatchPMERow)
+	pmeRows, err := r.pdb.Player.Query(ctx, Q9TopMatchesPlayer)
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetTopMatches: phase A: %w", err)
+	}
+	defer pmeRows.Close()
+	for pmeRows.Next() {
+		var p topMatchPMERow
+		if err := pmeRows.Scan(&p.matchID, &p.perfScore, &p.dominanceFlag); err != nil {
+			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan A: %w", err)
+		}
+		pmes[p.matchID] = p
+	}
+	return pmes, nil
+}
+
+// loadTopMatchSharedRows charge phase B (shared) + merge avec pmes.
+func (r *CareerRepo) loadTopMatchSharedRows(
+	ctx context.Context, matchIDs []string, pmes map[string]topMatchPMERow,
+) ([]domain.TopMatchRawRow, error) {
 	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetTopMatches: shared reader: %w", err)
@@ -338,8 +394,16 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 	if err := sharedRows.Err(); err != nil {
 		return nil, err
 	}
+	return enriched, nil
+}
 
-	// Phase C : sections + tri + top 10.
+// splitWinsLossesAndSortTopMatches répartit en sections WIN/LOSS, trie chaque
+// section et coupe au top 10.
+//
+// WIN : dominance ∈ (5,3,1) prioritaires (remontada/contre-remontada/domination), tri DESC.
+// LOSS : dominance ∈ (4,2) prioritaires (débandade/humiliation), tri DESC.
+// Tiebreak : perf_score DESC (WIN) ou ASC (LOSS, les moins bons en premier).
+func splitWinsLossesAndSortTopMatches(enriched []domain.TopMatchRawRow) ([]domain.TopMatchRawRow, []domain.TopMatchRawRow) {
 	var wins, losses []domain.TopMatchRawRow
 	for _, m := range enriched {
 		switch m.Outcome {
@@ -349,8 +413,6 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 			losses = append(losses, m)
 		}
 	}
-	// WIN : dominance ∈ (5,3,1) prioritaires (= remontada/contre-remontada/domination), tri DESC.
-	// Tiebreak : perf_score DESC.
 	sort.SliceStable(wins, func(i, j int) bool {
 		pi := topMatchDominancePriority(wins[i].DominanceFlag, []int{5, 3, 1})
 		pj := topMatchDominancePriority(wins[j].DominanceFlag, []int{5, 3, 1})
@@ -359,8 +421,6 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 		}
 		return wins[i].PerformanceScore > wins[j].PerformanceScore
 	})
-	// LOSS : dominance ∈ (4,2) prioritaires (= débandade/humiliation), tri DESC.
-	// Tiebreak : perf_score ASC (les moins bons en premier).
 	sort.SliceStable(losses, func(i, j int) bool {
 		pi := topMatchDominancePriority(losses[i].DominanceFlag, []int{4, 2})
 		pj := topMatchDominancePriority(losses[j].DominanceFlag, []int{4, 2})
@@ -375,10 +435,7 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 	if len(losses) > 10 {
 		losses = losses[:10]
 	}
-	results := make([]domain.TopMatchRawRow, 0, len(wins)+len(losses))
-	results = append(results, wins...)
-	results = append(results, losses...)
-	return results, nil
+	return wins, losses
 }
 
 // topMatchDominancePriority retourne la valeur du dominance_flag si présent

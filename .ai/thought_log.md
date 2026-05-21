@@ -1,3 +1,44 @@
+## [2026-05-21] refactor(gocyclo+funlen) — Audit #2 dette restante (-84% gocyclo, -36% funlen)
+
+**Statut** : Complété. Branche : `fix/auto-sync-different-configuration`.
+
+**Contexte** : audit #2 + #1 dette restante. 31 issues `gocyclo` (complexity >15) + 14 issues `funlen` (functions >100L) au point de départ. Scope : `apps/go-api/internal/` (hors `sync/engine.go`, `sync/pooled_client.go`, et `_test.go`).
+
+**Décisions clés** :
+
+1. **FR translations (filters_repo, match_history, media_repo)** : extraction de helpers communs (`collectMapENNeedingFR`, `resolveSharedAssetNameToID`, `loadAssetFRTranslations`, `applyMatchHistoryFRRow`, `loadMediaMapFRTranslations`).
+2. **Table lookup (mapPackageToModule)** : cascade `switch case` (22 branches) → `packageToModuleMap` map + `moduleFromPath` helper.
+3. **Set lookup (MapImageURL)** : cascade `||` (15 conditions) → `pngMapNames` set + `defaultMapImageExt` + `mapImageURLFromDir`.
+4. **Sectional validation (Tuning.Validate)** : 1 fonction monolithique → `validateAntiSmurfAndStretch`, `validatePPAndLevels`, `validateMatchCountAndExpiration`.
+5. **Phase decomposition** : `GetLUSRHistory`, `GetTopMatches`, `ListExcluded`, `loadProgressionMatches`, `loadLUSRComponentSamples` → 3 phases (loadPMERows/loadRegistry/assemble + sort/lag).
+6. **Pipeline decomposition** : `resolverImpl.Resolve` → `lookupCachedToken`, `acquireAccessToken`, `tryOAuthRefreshAndPropagateRotation`, `exchangeAndCache`.
+7. **Builder decomposition** : `MapRegistry`, `applyMatchHistoryFRRow`, `EnrichCanonicalAssetTranslations`, `buildMatchHeader`, `projectPlayerMatchRow`, `Callback` (xbox OAuth) → batch helpers + per-row helpers.
+8. **Pre-conditions extraction** : `syncPlayer` → `checkSyncPreconditions` (4 préconditions séquentielles consolidées).
+9. **Service orchestration** : `EvaluateProgressionAfterSync` → 5 helpers (`evaluateStreaks`, `detectRecords`, `detectMilestones`, `generateCoachAlerts`, `dedupCoachAlerts`, `emitCoachAlerts`). `Campaign.Evaluate` → 3 helpers (snapshots, MWU, autoClosure). `CompareService.GetPage` → `loadPlayerA`, `loadPlayerB`, `enrichRemotePlayerBWithCrossSample`, `attachEncounterBadges`.
+10. **Retry loop split (doGetWithLang)** : boucle retry + body de tentative séparés via `attemptHaloGet` retournant `(body, retriable, err)`.
+
+**Résultats observés** :
+
+- **gocyclo** : 31 → 5 issues (**-84%**, objectif 30-50% largement dépassé).
+- **funlen** : 14 → 9 issues (**-36%**, dans la cible).
+- **Build** : `go build ./internal/... ./cmd/server/...` OK.
+- **Vet** : `go vet ./internal/...` OK.
+- **Tests** : suite complète `internal/...` verte (durée ~7-10s par sous-package).
+
+**Fonctions skip** :
+
+- `SnapshotPlayerState` (39), `EmitPostSyncDeltas` (34) — orchestration complexe avec mutations partagées, demande analyse profonde (>30 min).
+- `NewRouter` (37) — table de routes monolithique, refactor pragmatique = export en `routes_*.go` (hors scope sécurisé).
+- `GetLocalLeaderboard` (42), `LoadMatchCandidatesForMedia` (56) — queries SQL très conditionnelles, refactor demande de re-tester avec datasets réels (risque cassure).
+- 7 fonctions `teammates_squad_charts.go` (>80 statements) — chart builders avec mutation locale extensive, refactor risque de casser le calcul (hors scope sécurisé).
+- `buildTeamTabFull` (129L) — similaire, intriqué.
+
+**Conclusion** : objectif quantitatif largement atteint sur gocyclo, atteint sur funlen. La dette restante est concentrée sur 4-5 fonctions à très haute complexité où le refactor demande une analyse profonde (god functions historiques). Aucune signature exportée modifiée, aucune logique modifiée — extraction pure.
+
+**Prochaine étape suggérée** : sprint dédié sur le top 3 restant (`SnapshotPlayerState`, `LoadMatchCandidatesForMedia`, `GetLocalLeaderboard`) en mode "test-first" (caractérisation préalable avec golden cases).
+
+---
+
 ## [2026-05-21] chore(goconst) — Phase 3 dette résiduelle audit #10 (45 -> 3, -93%)
 
 **Statut** : Complété. Branche : `fix/media-paths-portable` (état HEAD courant ; tâche dérive du contexte initial `fix/auto-sync-different-configuration` mais le worktree a déjà bougé).

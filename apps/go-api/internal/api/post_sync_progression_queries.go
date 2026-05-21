@@ -33,6 +33,16 @@ const AccuracyThresholdForDays = 0.50
 //
 // Sortie : 2 vues du même set de matchs — streaks.MatchActivity (timing +
 // KDA pour predicates perf) et records.MatchInput (5 métriques pour PB).
+type progressionMatchRow struct {
+	matchID   string
+	startTime time.Time
+	kda       float64
+	kills     float64
+	accuracy  float64
+	personal  float64
+	timeSec   float64
+}
+
 func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackDays int, now time.Time) ([]streaks.MatchActivity, []records.MatchInput, error) {
 	if pdb == nil || pdb.Player == nil {
 		return nil, nil, fmt.Errorf("loadProgressionMatches: player DB not attached")
@@ -41,8 +51,22 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// P2 (ADR 0016) : split cross-DB en 2 phases.
-	// Phase A : shared via SharedReader (match_participants + match_registry).
+	loaded, matchIDs, err := loadProgressionSharedMatches(ctx, pdb, since)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	perfByMatch, err := loadProgressionPerfScores(ctx, pdb, matchIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	activities, inputs := assembleProgressionResults(loaded, perfByMatch)
+	return activities, inputs, nil
+}
+
+// loadProgressionSharedMatches charge participants + registry depuis shared via SharedReader.
+func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, since time.Time) ([]progressionMatchRow, []string, error) {
 	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadProgressionMatches: shared reader: %w", err)
@@ -68,20 +92,11 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 	}
 	defer rows.Close()
 
-	type matchRow struct {
-		matchID   string
-		startTime time.Time
-		kda       float64
-		kills     float64
-		accuracy  float64
-		personal  float64
-		timeSec   float64
-	}
-	var loaded []matchRow
+	var loaded []progressionMatchRow
 	matchIDs := make([]string, 0)
 	for rows.Next() {
 		var (
-			r         matchRow
+			r         progressionMatchRow
 			startTime sql.NullTime
 		)
 		if err := rows.Scan(&r.matchID, &startTime, &r.kda, &r.kills, &r.accuracy, &r.personal, &r.timeSec); err != nil {
@@ -97,37 +112,43 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 	if err := rows.Err(); err != nil {
 		return nil, nil, err
 	}
+	return loaded, matchIDs, nil
+}
 
-	// Phase B : performance_score depuis player_match_enrichment.
+// loadProgressionPerfScores charge performance_score depuis player_match_enrichment.
+func loadProgressionPerfScores(ctx context.Context, pdb *duckdb.PlayerDB, matchIDs []string) (map[string]float64, error) {
 	perfByMatch := make(map[string]float64, len(matchIDs))
-	if len(matchIDs) > 0 {
-		placeholders := make([]string, len(matchIDs))
-		args := make([]any, len(matchIDs))
-		for i, id := range matchIDs {
-			placeholders[i] = "?"
-			args[i] = id
-		}
-		pmeRows, err := pdb.Player.Query(ctx, `
-			SELECT match_id, COALESCE(performance_score, 0)
-			FROM player_match_enrichment
-			WHERE match_id IN (`+joinProgressionPlaceholders(placeholders)+`)
-		`, args...)
-		if err != nil {
-			return nil, nil, fmt.Errorf("query performance_score: %w", err)
-		}
-		for pmeRows.Next() {
-			var mid string
-			var perf float64
-			if err := pmeRows.Scan(&mid, &perf); err != nil {
-				pmeRows.Close()
-				return nil, nil, fmt.Errorf("scan performance_score: %w", err)
-			}
-			perfByMatch[mid] = perf
-		}
-		pmeRows.Close()
+	if len(matchIDs) == 0 {
+		return perfByMatch, nil
 	}
+	placeholders := make([]string, len(matchIDs))
+	args := make([]any, len(matchIDs))
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	pmeRows, err := pdb.Player.Query(ctx, `
+		SELECT match_id, COALESCE(performance_score, 0)
+		FROM player_match_enrichment
+		WHERE match_id IN (`+joinProgressionPlaceholders(placeholders)+`)
+	`, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query performance_score: %w", err)
+	}
+	defer pmeRows.Close()
+	for pmeRows.Next() {
+		var mid string
+		var perf float64
+		if err := pmeRows.Scan(&mid, &perf); err != nil {
+			return nil, fmt.Errorf("scan performance_score: %w", err)
+		}
+		perfByMatch[mid] = perf
+	}
+	return perfByMatch, nil
+}
 
-	// Phase C : assembler activities + inputs.
+// assembleProgressionResults compose les 2 vues (activities + inputs) à partir des rows + perf scores.
+func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[string]float64) ([]streaks.MatchActivity, []records.MatchInput) {
 	activities := make([]streaks.MatchActivity, 0, len(loaded))
 	inputs := make([]records.MatchInput, 0, len(loaded))
 	for _, r := range loaded {
@@ -155,7 +176,7 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 			},
 		})
 	}
-	return activities, inputs, nil
+	return activities, inputs
 }
 
 // joinProgressionPlaceholders compose une chaîne `?,?,...` pour clause IN.

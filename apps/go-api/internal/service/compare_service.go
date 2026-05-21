@@ -44,77 +44,14 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 
 	g.Go(func() error {
 		var err error
-		statsA, err = s.repo.GetLocalStats(gctx, s.xuidA, s.titleSlug)
-		if err != nil {
-			return err
-		}
-		statsA.IsLocal = true
-		// ATH depuis stats.duckdb — best-effort (non-fatal si absent).
-		var athErr error
-		ath, athErr = s.repo.GetPlayerATH(gctx)
-		if athErr != nil {
-			slog.DebugContext(gctx, "CompareService: ATH non disponible (best-effort)", "xuid", s.xuidA, "err", athErr)
-		}
-		// Arme favorite depuis shared.weapon_kills — best-effort.
-		var wErr error
-		statsA.FavoriteWeapon, wErr = s.repo.GetFavoriteWeapon(gctx, s.xuidA)
-		if wErr != nil {
-			slog.DebugContext(gctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
-		}
-		return nil
+		statsA, ath, err = s.loadPlayerA(gctx)
+		return err
 	})
 
 	g.Go(func() error {
-		xuidB, _ := s.repo.ResolveXUID(gctx, req.TargetGamertag)
-		xuidBResolved = xuidB
-		if xuidB != "" {
-			local, err := s.repo.GetLocalStats(gctx, xuidB, s.titleSlug)
-			if err == nil && local != nil {
-				local.IsLocal = true
-				local.FavoriteWeapon, _ = s.repo.GetFavoriteWeapon(gctx, xuidB)
-
-				// ATH depuis sa propre stats.duckdb — best-effort (pool lookup).
-				if athB, athErr := s.repo.GetPlayerATHFor(gctx, local.Gamertag, s.titleSlug); athErr != nil {
-					slog.DebugContext(gctx, "CompareService: ATH joueur B non disponible (best-effort)", "gamertag", local.Gamertag, "err", athErr)
-				} else if athB != nil {
-					local.CareerRank = athB.CareerRank
-					local.PerfATH = athB.PerfATH
-					local.LusrATH = athB.LusrATH
-				}
-
-				statsB = local
-				slog.DebugContext(gctx, "CompareService: joueur B résolu localement", "gamertag", req.TargetGamertag, "xuid", xuidB)
-				return nil
-			}
-		}
-		// Fallback : Waypoint.
-		slog.DebugContext(gctx, "CompareService: joueur B non local, fallback Waypoint", "gamertag", req.TargetGamertag)
-		remote, err := s.provider.FetchRemoteStats(gctx, req.TargetGamertag, s.titleSlug)
-		if err != nil {
-			return fmt.Errorf("CompareService.GetPage: stats joueur B introuvables: %w", err)
-		}
-		statsB = remote
-		// Enrichissement best-effort : si xuidB est résolu localement (matchs
-		// partagés présents dans shared.match_participants), on calcule les 4
-		// métriques locale-only sur l'échantillon croisé.
-		if xuidB != "" {
-			if sample, sErr := s.repo.GetCrossMatchSample(gctx, s.xuidA, xuidB); sErr != nil {
-				slog.DebugContext(gctx, "CompareService: cross-match sample non disponible (best-effort)", "err", sErr)
-			} else if sample != nil && sample.MatchesCount > 0 {
-				statsB.IsLocalSample = true
-				statsB.MaxKillingSpree = sample.MaxKillingSpree
-				statsB.AvgLifeSecs = sample.AvgLifeSecs
-				statsB.PerfectKillsPerGame = sample.PerfectKillsPerGame
-				statsB.HeadshotKillsPerGame = sample.HeadshotKillsPerGame
-				// Réoriente Matches sur la taille de l'échantillon : c'est ce qui
-				// alimente sample_size_b côté UI, et la note "(sur N parties)" doit
-				// refléter la base de calcul des locale-only — pas le total Waypoint.
-				statsB.Matches = sample.MatchesCount
-				slog.DebugContext(gctx, "CompareService: stats B enrichies par échantillon croisé",
-					"gamertag_b", req.TargetGamertag, "matches", sample.MatchesCount)
-			}
-		}
-		return nil
+		var err error
+		statsB, xuidBResolved, err = s.loadPlayerB(gctx, req.TargetGamertag)
+		return err
 	})
 
 	if err := g.Wait(); err != nil {
@@ -136,27 +73,118 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 		TitleSlug: s.titleSlug,
 	}
 
-	// Badges de rencontres historiques — best-effort, ne bloque pas la réponse.
-	if xuidBResolved != "" {
-		if enc, err := s.repo.GetEncounterStats(ctx, s.xuidA, xuidBResolved); err == nil && enc != nil && enc.TotalEncounters > 0 {
-			stats := narrative.EncounterStats{
-				XUID:            xuidBResolved,
-				Gamertag:        statsB.Gamertag,
-				TotalEncounters: enc.TotalEncounters,
-				AllyCount:       enc.AllyCount,
-				EnemyCount:      enc.EnemyCount,
-				WinrateAsAlly:   enc.WinrateAsAlly,
-				WinrateVsEnemy:  enc.WinrateVsEnemy,
-				KillsDealt:      enc.KillsDealt,
-				DeathsSuffered:  enc.DeathsSuffered,
-			}
-			resp.EncounterBadges = convertNarrativeBadgesCompare(narrative.ComputeEncounterBadges(stats, enc.TotalEncounters))
-			slog.DebugContext(ctx, "CompareService: encounter badges calculés",
-				"gamertag_b", statsB.Gamertag, "total", enc.TotalEncounters, "badges", len(resp.EncounterBadges))
+	s.attachEncounterBadges(ctx, &resp, xuidBResolved, statsB.Gamertag)
+	return resp, nil
+}
+
+// loadPlayerA charge stats du joueur courant + ATH + arme favorite. ATH/arme
+// sont best-effort (loggées en debug si absentes).
+func (s *CompareService) loadPlayerA(ctx context.Context) (*domain.NormalizedPlayerStats, *domain.PlayerATH, error) {
+	statsA, err := s.repo.GetLocalStats(ctx, s.xuidA, s.titleSlug)
+	if err != nil {
+		return nil, nil, err
+	}
+	statsA.IsLocal = true
+	ath, athErr := s.repo.GetPlayerATH(ctx)
+	if athErr != nil {
+		slog.DebugContext(ctx, "CompareService: ATH non disponible (best-effort)", "xuid", s.xuidA, "err", athErr)
+	}
+	var wErr error
+	statsA.FavoriteWeapon, wErr = s.repo.GetFavoriteWeapon(ctx, s.xuidA)
+	if wErr != nil {
+		slog.DebugContext(ctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
+	}
+	return statsA, ath, nil
+}
+
+// loadPlayerB tente d'abord la résolution locale (xuid → stats locales), sinon
+// fallback Waypoint. Renvoie aussi le xuid résolu (vide si pas de match local).
+func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string) (*domain.NormalizedPlayerStats, string, error) {
+	xuidB, _ := s.repo.ResolveXUID(ctx, targetGamertag)
+	if xuidB != "" {
+		if local, err := s.repo.GetLocalStats(ctx, xuidB, s.titleSlug); err == nil && local != nil {
+			s.enrichLocalPlayerB(ctx, local, xuidB)
+			slog.DebugContext(ctx, "CompareService: joueur B résolu localement", "gamertag", targetGamertag, "xuid", xuidB)
+			return local, xuidB, nil
 		}
 	}
+	// Fallback : Waypoint.
+	slog.DebugContext(ctx, "CompareService: joueur B non local, fallback Waypoint", "gamertag", targetGamertag)
+	remote, err := s.provider.FetchRemoteStats(ctx, targetGamertag, s.titleSlug)
+	if err != nil {
+		return nil, xuidB, fmt.Errorf("CompareService.GetPage: stats joueur B introuvables: %w", err)
+	}
+	if xuidB != "" {
+		s.enrichRemotePlayerBWithCrossSample(ctx, remote, xuidB, targetGamertag)
+	}
+	return remote, xuidB, nil
+}
 
-	return resp, nil
+// enrichLocalPlayerB enrichit un joueur B local avec FavoriteWeapon + ATH propre.
+func (s *CompareService) enrichLocalPlayerB(ctx context.Context, local *domain.NormalizedPlayerStats, xuidB string) {
+	local.IsLocal = true
+	local.FavoriteWeapon, _ = s.repo.GetFavoriteWeapon(ctx, xuidB)
+
+	athB, athErr := s.repo.GetPlayerATHFor(ctx, local.Gamertag, s.titleSlug)
+	if athErr != nil {
+		slog.DebugContext(ctx, "CompareService: ATH joueur B non disponible (best-effort)", "gamertag", local.Gamertag, "err", athErr)
+		return
+	}
+	if athB != nil {
+		local.CareerRank = athB.CareerRank
+		local.PerfATH = athB.PerfATH
+		local.LusrATH = athB.LusrATH
+	}
+}
+
+// enrichRemotePlayerBWithCrossSample calcule les 4 métriques locale-only sur
+// l'échantillon croisé (matchs en commun avec le joueur A).
+func (s *CompareService) enrichRemotePlayerBWithCrossSample(
+	ctx context.Context, remote *domain.NormalizedPlayerStats, xuidB, targetGamertag string,
+) {
+	sample, sErr := s.repo.GetCrossMatchSample(ctx, s.xuidA, xuidB)
+	if sErr != nil {
+		slog.DebugContext(ctx, "CompareService: cross-match sample non disponible (best-effort)", "err", sErr)
+		return
+	}
+	if sample == nil || sample.MatchesCount == 0 {
+		return
+	}
+	remote.IsLocalSample = true
+	remote.MaxKillingSpree = sample.MaxKillingSpree
+	remote.AvgLifeSecs = sample.AvgLifeSecs
+	remote.PerfectKillsPerGame = sample.PerfectKillsPerGame
+	remote.HeadshotKillsPerGame = sample.HeadshotKillsPerGame
+	remote.Matches = sample.MatchesCount
+	slog.DebugContext(ctx, "CompareService: stats B enrichies par échantillon croisé",
+		"gamertag_b", targetGamertag, "matches", sample.MatchesCount)
+}
+
+// attachEncounterBadges calcule les badges historiques de rencontre. Best-effort.
+func (s *CompareService) attachEncounterBadges(
+	ctx context.Context, resp *domain.CompareResponse, xuidB, gamertagB string,
+) {
+	if xuidB == "" {
+		return
+	}
+	enc, err := s.repo.GetEncounterStats(ctx, s.xuidA, xuidB)
+	if err != nil || enc == nil || enc.TotalEncounters == 0 {
+		return
+	}
+	stats := narrative.EncounterStats{
+		XUID:            xuidB,
+		Gamertag:        gamertagB,
+		TotalEncounters: enc.TotalEncounters,
+		AllyCount:       enc.AllyCount,
+		EnemyCount:      enc.EnemyCount,
+		WinrateAsAlly:   enc.WinrateAsAlly,
+		WinrateVsEnemy:  enc.WinrateVsEnemy,
+		KillsDealt:      enc.KillsDealt,
+		DeathsSuffered:  enc.DeathsSuffered,
+	}
+	resp.EncounterBadges = convertNarrativeBadgesCompare(narrative.ComputeEncounterBadges(stats, enc.TotalEncounters))
+	slog.DebugContext(ctx, "CompareService: encounter badges calculés",
+		"gamertag_b", gamertagB, "total", enc.TotalEncounters, "badges", len(resp.EncounterBadges))
 }
 
 func convertNarrativeBadgesCompare(badges []narrative.EncounterBadge) []domain.MatchEncounterBadge {

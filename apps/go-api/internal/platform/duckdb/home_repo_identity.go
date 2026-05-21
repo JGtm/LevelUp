@@ -100,42 +100,53 @@ func (r *HomeRepo) BuildSpartanIdentityFromCareerRow(ctx context.Context, career
 	}
 	row := &domain.HomeSpartanIdentityRow{}
 	if careerRow != nil {
-		row.RankNumber = careerRow.Rank
-		row.CurrentXP = careerRow.CurrentXP
-		row.XPForNextRank = careerRow.XPForNextRank
-		row.IsMaxRank = careerRow.IsMaxRank
-		if careerRow.SpartanID != "" {
-			row.SpartanID = stringPtr(careerRow.SpartanID)
-		}
-		if careerRow.RankName != "" {
-			row.RankName = stringPtr(careerRow.RankName)
-		}
-		if careerRow.RankTier != "" {
-			row.RankTier = stringPtr(careerRow.RankTier)
-		}
-		if careerRow.BannerImageURL != "" {
-			row.BannerImageURL = buildHomeIdentityAssetURL("banner", r.titleSlug(), careerRow.BannerImageURL)
-		}
-		if careerRow.EmblemImageURL != "" {
-			row.EmblemImageURL = buildHomeIdentityAssetURL("emblem", r.titleSlug(), careerRow.EmblemImageURL)
-		}
-		if careerRow.BackdropImageURL != "" {
-			row.BackdropImageURL = buildHomeIdentityAssetURL("backdrop", r.titleSlug(), careerRow.BackdropImageURL)
-		}
-		if careerRow.AdornmentPath != "" {
-			row.AdornmentImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), careerRow.AdornmentPath)
-		}
-		r.enrichSpartanIdentity(ctx, row)
+		r.populateIdentityFromCareerRow(ctx, row, careerRow)
 	}
 	row.HighestCSR = r.loadHomeSkillPeak(ctx, "CSR")
 	row.HighestLUSR = r.loadHomeSkillPeak(ctx, "LUSR")
 
-	if row.SpartanID == nil && row.RankNumber <= 0 &&
-		row.BannerImageURL == nil && row.EmblemImageURL == nil && row.BackdropImageURL == nil &&
-		row.HighestCSR == nil && row.HighestLUSR == nil {
+	if isEmptyHomeIdentity(row) {
 		return nil
 	}
 	return row
+}
+
+// populateIdentityFromCareerRow copie les champs visibles + URLs d'assets
+// depuis CareerRankRow vers HomeSpartanIdentityRow, puis hydrate via metadata.
+func (r *HomeRepo) populateIdentityFromCareerRow(ctx context.Context, row *domain.HomeSpartanIdentityRow, careerRow *CareerRankRow) {
+	row.RankNumber = careerRow.Rank
+	row.CurrentXP = careerRow.CurrentXP
+	row.XPForNextRank = careerRow.XPForNextRank
+	row.IsMaxRank = careerRow.IsMaxRank
+	if careerRow.SpartanID != "" {
+		row.SpartanID = stringPtr(careerRow.SpartanID)
+	}
+	if careerRow.RankName != "" {
+		row.RankName = stringPtr(careerRow.RankName)
+	}
+	if careerRow.RankTier != "" {
+		row.RankTier = stringPtr(careerRow.RankTier)
+	}
+	if careerRow.BannerImageURL != "" {
+		row.BannerImageURL = buildHomeIdentityAssetURL("banner", r.titleSlug(), careerRow.BannerImageURL)
+	}
+	if careerRow.EmblemImageURL != "" {
+		row.EmblemImageURL = buildHomeIdentityAssetURL("emblem", r.titleSlug(), careerRow.EmblemImageURL)
+	}
+	if careerRow.BackdropImageURL != "" {
+		row.BackdropImageURL = buildHomeIdentityAssetURL("backdrop", r.titleSlug(), careerRow.BackdropImageURL)
+	}
+	if careerRow.AdornmentPath != "" {
+		row.AdornmentImageURL = buildHomeIdentityAssetURL("career-rank", r.titleSlug(), careerRow.AdornmentPath)
+	}
+	r.enrichSpartanIdentity(ctx, row)
+}
+
+// isEmptyHomeIdentity retourne true si la row n'a aucun champ visible (joueur jamais sync'd).
+func isEmptyHomeIdentity(row *domain.HomeSpartanIdentityRow) bool {
+	return row.SpartanID == nil && row.RankNumber <= 0 &&
+		row.BannerImageURL == nil && row.EmblemImageURL == nil && row.BackdropImageURL == nil &&
+		row.HighestCSR == nil && row.HighestLUSR == nil
 }
 
 // enrichSpartanIdentity hydrate les paths d'assets visuels du rang carrière

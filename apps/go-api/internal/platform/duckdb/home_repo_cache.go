@@ -68,8 +68,21 @@ type challengeSnapshotRow struct {
 // LoadCachedChallenges retourne un résumé des snapshots récents depuis challenge_snapshots
 // (la snapshot la plus récente par challenge_path dans la fenêtre ttl).
 func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) (*domain.ChallengesResponse, bool, error) {
+	snapshots, err := r.queryRecentChallengeSnapshots(ctx, ttl)
+	if err != nil {
+		return nil, false, err
+	}
+	if len(snapshots) == 0 {
+		return nil, false, nil
+	}
+	resp := buildChallengesResponseFromSnapshots(snapshots)
+	return resp, true, nil
+}
+
+// queryRecentChallengeSnapshots charge la dernière snapshot de chaque challenge_path
+// dans la fenêtre TTL. Retourne nil sans erreur si la table est absente.
+func (r *HomeRepo) queryRecentChallengeSnapshots(ctx context.Context, ttl time.Duration) ([]challengeSnapshotRow, error) {
 	secs := int64(ttl.Seconds())
-	// Sélectionne la snapshot la plus récente par challenge_path dans la fenêtre TTL.
 	query := fmt.Sprintf(`
 		SELECT status, xp_reward, expires_at, snapshot_at
 		FROM (
@@ -84,9 +97,9 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 	rows, err := r.pdb.ReadDB().Query(ctx, query, r.pdb.XUID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
-			return nil, false, nil
+			return nil, nil
 		}
-		return nil, false, fmt.Errorf("home_repo: cache challenges query: %w", err)
+		return nil, fmt.Errorf("home_repo: cache challenges query: %w", err)
 	}
 	defer rows.Close()
 
@@ -94,17 +107,18 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 	for rows.Next() {
 		var s challengeSnapshotRow
 		if err := rows.Scan(&s.status, &s.xpReward, &s.expiresAt, &s.snapshotAt); err != nil {
-			return nil, false, fmt.Errorf("home_repo: cache challenges scan: %w", err)
+			return nil, fmt.Errorf("home_repo: cache challenges scan: %w", err)
 		}
 		snapshots = append(snapshots, s)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	if len(snapshots) == 0 {
-		return nil, false, nil
-	}
+	return snapshots, nil
+}
 
+// buildChallengesResponseFromSnapshots agrège un slice de snapshots en ChallengesResponse.
+func buildChallengesResponseFromSnapshots(snapshots []challengeSnapshotRow) *domain.ChallengesResponse {
 	total := len(snapshots)
 	completed := 0
 	xpAvailable := 0
@@ -145,5 +159,5 @@ func (r *HomeRepo) LoadCachedChallenges(ctx context.Context, ttl time.Duration) 
 		s := latestSnapshot.UTC().Format(time.RFC3339)
 		resp.SnapshotAt = &s
 	}
-	return resp, true, nil
+	return resp
 }

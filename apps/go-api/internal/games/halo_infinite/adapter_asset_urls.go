@@ -121,6 +121,24 @@ func (a *AssetURLAdapter) WithMapImagesDir(dir string) *AssetURLAdapter {
 // TitleSlug retourne "halo_infinite".
 func (a *AssetURLAdapter) TitleSlug() string { return a.titleSlug }
 
+// pngMapNames : set des map names dont l'extension par défaut est .png (mode permissif).
+var pngMapNames = map[string]struct{}{
+	"Aquarius":                 {},
+	"Bazaar":                   {},
+	"Behemoth":                 {},
+	"Breaker":                  {},
+	"Breaker Heavies":          {},
+	"Catalyst":                 {},
+	"Deadlock":                 {},
+	"Deadlock Heavies":         {},
+	"Highpower":                {},
+	"Highpower Heavies":        {},
+	"Highpower Sentry Defense": {},
+	"Launch Site":              {},
+	"Recharge":                 {},
+	"Streets":                  {},
+}
+
 // MapImageURL retourne l'URL de l'image d'une map.
 // Si WithMapImagesDir a été appelé, seuls les noms avec un fichier image réel
 // retournent une URL — les variantes mode+map sans image retournent "".
@@ -133,29 +151,37 @@ func (a *AssetURLAdapter) MapImageURL(mapName string) string {
 		return ""
 	}
 	if a.mapImageExts != nil {
-		// En mode répertoire, exclure les variantes mode+map sans image dédiée.
-		for _, suffix := range mapVariantSuffixes {
-			if strings.HasSuffix(mapName, suffix) {
-				return ""
-			}
-		}
-		ext, ok := a.mapImageExts[mapName]
-		if !ok {
+		return a.mapImageURLFromDir(mapName)
+	}
+	ext := defaultMapImageExt(mapName)
+	return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
+}
+
+// mapImageURLFromDir résout l'URL depuis le répertoire d'images configuré.
+// Exclut les variantes mode+map sans image dédiée.
+func (a *AssetURLAdapter) mapImageURLFromDir(mapName string) string {
+	for _, suffix := range mapVariantSuffixes {
+		if strings.HasSuffix(mapName, suffix) {
 			return ""
 		}
-		return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
 	}
-	// Mode permissif (tests, pas de répertoire configuré) : jpg par défaut.
-	ext := ".jpg"
-	if mapName == "Aquarius" || mapName == "Bazaar" || mapName == "Behemoth" ||
-		mapName == "Breaker" || mapName == "Breaker Heavies" || mapName == "Catalyst" ||
-		mapName == "Deadlock" || mapName == "Deadlock Heavies" || mapName == "Highpower" ||
-		mapName == "Highpower Heavies" || mapName == "Highpower Sentry Defense" ||
-		mapName == "Launch Site" || mapName == "Recharge" || mapName == "Streets" ||
-		strings.HasSuffix(mapName, " - Ranked") {
-		ext = ".png"
+	ext, ok := a.mapImageExts[mapName]
+	if !ok {
+		return ""
 	}
 	return static.URL(static.KindMap, a.titleSlug, encodeSpaces(mapName), ext)
+}
+
+// defaultMapImageExt retourne l'extension par défaut en mode permissif (sans répertoire).
+// .png pour les maps connues, .jpg sinon.
+func defaultMapImageExt(mapName string) string {
+	if _, ok := pngMapNames[mapName]; ok {
+		return ".png"
+	}
+	if strings.HasSuffix(mapName, " - Ranked") {
+		return ".png"
+	}
+	return ".jpg"
 }
 
 // WeaponImageURL retourne l'URL de l'image d'une arme à partir de son name_en.
