@@ -227,6 +227,12 @@ func (r *MediaRepo) CurrentPlayerSlug() string {
 // fenÃªtre temporelle [capture_start - window, capture_start + window].
 // Inclut les KPIs du joueur pour aider Ã  reconnaÃ®tre le bon match.
 // Si capture_start_utc est nul â†’ fallback mtime, sinon liste vide.
+//
+// cross-DB match scan (shared + player KPIs) → assemblage candidates. La complexité
+// reflète les nombreux fallbacks (capture_start_utc → mtime, NULL playlists, etc.).
+// Splitter éclaterait la cohésion du flow.
+//
+//nolint:funlen,gocyclo // Pipeline ENTIER : lookup media → fenêtre temporelle →
 func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath string, windowMinutes int) (domain.MediaMatchCandidatesResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

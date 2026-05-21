@@ -128,6 +128,8 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSes
 //
 // Si LoadFor échoue pour un teammate, sa ligne reste vide (cells nil) et
 // un warn est loggé.
+//
+//nolint:funlen // chart-builder cohésif (compute counts → aggregate → cells matrix).
 func (s *TeammatesService) buildSquadMapHeatmap(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -365,6 +367,8 @@ var impactScoreWeights = map[string]float64{
 //
 // Restreint le set de joueurs à : main + coéquipiers sélectionnés. Les badges
 // d'autres joueurs (adversaires) sont ignorés.
+//
+//nolint:funlen // chart-builder cohésif (load events → compute badges → matrix).
 func (s *TeammatesService) buildSquadImpactMatrix(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -581,6 +585,8 @@ func formatFirstEventsBinLabel(rightEdgeSec int) string {
 // buildSquadFirstEvents charge les events highlight, calcule pour chaque
 // (match_id, xuid de l'escouade) le first_kill_s et first_death_s, puis
 // bucket en bins de 15 s. Retourne nil si aucun event ou aucun joueur résolu.
+//
+//nolint:funlen // chart-builder cohésif (load events → first kill/death → 15s bins).
 func (s *TeammatesService) buildSquadFirstEvents(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -793,6 +799,8 @@ func (s *TeammatesService) buildSquadFirstEvents(
 //   - aucun match commun avec au moins un coéquipier
 //   - aucun joueur avec xuid résolu
 //   - le repo ne renvoie aucune donnée (capability absente ou tables vides)
+//
+//nolint:funlen // chart-builder cohésif (load weapons → resolve xuid → kill counts).
 func (s *TeammatesService) buildSquadWeaponKills(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -939,6 +947,8 @@ func (s *TeammatesService) buildSquadWeaponKills(
 //
 // Les MatchOrder sont alignés (0..N-1) sur les matchs triés chronologiquement
 // par StartTime ASC. Tous les joueurs ont la même longueur de série.
+//
+//nolint:funlen // chart-builder cohésif (intersect matchs → perfs per joueur → align MatchOrder).
 func (s *TeammatesService) buildSquadPerformanceSeries(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
@@ -1310,6 +1320,8 @@ const intensityMinMatches = 3
 //
 // Renvoie nil si <3 matchs (section masquée), aucun kill event, ou aucune
 // option ne produit de profil.
+//
+//nolint:funlen // chart-builder cohésif (load kills → 10-bucket phases → profil per option).
 func (s *TeammatesService) buildSquadIntensityProfile(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,

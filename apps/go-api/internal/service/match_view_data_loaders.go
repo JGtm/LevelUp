@@ -360,6 +360,11 @@ func (s *MatchViewService) buildMatchViewFromData(
 //	scoreboard vide      -> retourne nil
 //	capability absente   -> retourne nil (silencieux)
 //	autre erreur         -> log warn + retourne nil
+//
+// tests utilisent toujours "m1" — la signature reste configurable et le caller prod
+// passe le vrai matchID variable.
+//
+//nolint:unparam // matchID paramétré (caller passe le matchID courant), bien que les
 func (s *MatchViewService) loadAwardsForScoreboard(
 	ctx context.Context,
 	matchID string,

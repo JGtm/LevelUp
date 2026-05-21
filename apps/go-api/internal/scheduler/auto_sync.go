@@ -368,6 +368,11 @@ const (
 //
 // Enregistre toujours un PlayerOutcomeDetail (via defer) pour exposition via
 // /api/v1/_diag/auto-sync/snapshot.
+//
+// présente) → exécution sync delta → enregistrement outcome. Splitter forcerait à
+// dupliquer le state PlayerOutcomeDetail dans les sous-fonctions.
+//
+//nolint:funlen // Orchestrateur sync-per-player : guards (cooldown, watcher, DB
 func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSummary) syncOutcome {
 	// Sprint B1 commit 17 : event_id par joueur (sous-événement du tick).
 	// Permet de filtrer logs/*.log pour reconstituer le timeline d'un user

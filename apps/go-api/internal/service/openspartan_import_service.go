@@ -252,6 +252,10 @@ func (s *OpenSpartanImportService) validateOwner(
 
 // importMatches iterates every match in the reader, applies the mapper,
 // and writes registry/participants/medals via the sync.* helpers.
+//
+// aujourd'hui best-effort par-match (les erreurs sont accumulées dans result.Errors).
+//
+//nolint:unparam // err maintenu pour signature cohérente avec import* siblings ;
 func (s *OpenSpartanImportService) importMatches(
 	ctx context.Context,
 	sharedDB *sql.DB,
@@ -318,6 +322,10 @@ func (s *OpenSpartanImportService) writeOneMatch(
 }
 
 // importHighlights walks HighlightEvents and writes one event per row.
+//
+// aujourd'hui best-effort par-highlight (les erreurs sont accumulées dans result.Errors).
+//
+//nolint:unparam // err maintenu pour signature cohérente avec import* siblings ;
 func (s *OpenSpartanImportService) importHighlights(
 	ctx context.Context,
 	sharedDB *sql.DB,

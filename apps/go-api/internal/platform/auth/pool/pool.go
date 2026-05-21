@@ -203,6 +203,10 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 }
 
 // acquirePinnedPlayer : lookup par gamertag, retourne ErrNoTokenForPlayer si absent ou malsain.
+//
+// même si le lookup en mémoire pure n'a pas besoin de timeout/cancel aujourd'hui.
+//
+//nolint:unparam // ctx maintenu pour cohérence avec l'interface caller (Acquire(ctx))
 func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*Lease, error) {
 	p.slotMu.RLock()
 	slotIdx, ok := p.slotsByGt[gamertag]

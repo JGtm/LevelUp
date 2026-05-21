@@ -22,6 +22,12 @@ import (
 // Header
 // ---------------------------------------------------------------------------
 
+// buildMatchHeader assemble la section header de la Match View depuis meta, stats,
+// enrich, scoreboard et assetURL.
+//
+// l'en-tête (cf. roadmap Q3 2026). Aujourd'hui non lu, signature stable.
+//
+//nolint:unparam // scoreboard maintenu pour future intégration MVP/LVP badges dans
 func buildMatchHeader(
 	ctx context.Context,
 	matchID string,

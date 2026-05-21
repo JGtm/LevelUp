@@ -41,10 +41,7 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 	}
 
 	// Étape 1 : obtenir un access_token Microsoft frais.
-	accessToken, err := refreshAccessTokenForUser(ctx, tokens)
-	if err != nil {
-		return "", fmt.Errorf("refresh_user_xsts: refresh access_token: %w", err)
-	}
+	accessToken := refreshAccessTokenForUser(ctx, tokens)
 	if accessToken == "" {
 		return "", fmt.Errorf("refresh_user_xsts: aucun access_token obtenu (cache vide ou expiré)")
 	}
@@ -80,7 +77,11 @@ func RefreshUserXSTS(ctx context.Context, store *MultiUserTokenStore, xuid strin
 // 1. Si MSALCacheJSON présent → AcquireTokenSilent (utilise le RT depuis le cache).
 // 2. Sinon, si tokens.AccessToken encore valide → retourne tel quel.
 // 3. Sinon : "" (l'appelant retournera une erreur, user doit re-login Xbox SSO).
-func refreshAccessTokenForUser(ctx context.Context, tokens *UserTokens) (string, error) {
+//
+// Les erreurs intermédiaires (AcquireTokenSilent) sont loguées en WARN et ignorées
+// — la fonction tombe sur le fallback access_token stocké ou retourne "" pour
+// signaler "pas de token, re-login requis".
+func refreshAccessTokenForUser(ctx context.Context, tokens *UserTokens) string {
 	if tokens.MSALCacheJSON != "" {
 		accessor := NewInMemoryCacheAccessorFromJSON(tokens.MSALCacheJSON)
 		token, err := AcquireTokenSilent(ctx, accessor)
@@ -95,7 +96,7 @@ func refreshAccessTokenForUser(ctx context.Context, tokens *UserTokens) (string,
 			if updatedCache, serr := accessor.Serialize(); serr == nil && updatedCache != "" {
 				tokens.MSALCacheJSON = updatedCache
 			}
-			return token, nil
+			return token
 		}
 	}
 
@@ -104,8 +105,8 @@ func refreshAccessTokenForUser(ctx context.Context, tokens *UserTokens) (string,
 	if tokens.AccessToken != "" && time.Now().Add(safetyMargin).Before(tokens.OAuthExpiresAt) {
 		slog.DebugContext(ctx, "refresh_user_xsts: réutilisation access_token stocké encore valide",
 			"xuid", tokens.XUID)
-		return tokens.AccessToken, nil
+		return tokens.AccessToken
 	}
 
-	return "", nil
+	return ""
 }

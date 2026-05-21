@@ -174,6 +174,10 @@ type homePageData struct {
 // Le cache TTL stocke encore les rows canonical pour rÃ©trocompat avec les
 // signatures Get/Set existantes (qui prennent matches/sessions legacy) â€” la
 // suppression du cache legacy est tracker dans une follow-up dÃ©diÃ©e.
+// finale, cf. commentaire ci-dessous) ; conservé pour exposition future de métrique
+// + retour du cache hit quand la couche canonical-aware sera ajoutée (P4.4).
+//
+//nolint:unparam // fromCache aujourd'hui toujours false (cache bypassé en P4.3
 func (s *HomeService) fetchMatchesAndSessions(ctx context.Context) (
 	canonicalRows []canonical.PlayerMatchRow, fromCache bool, err error,
 ) {

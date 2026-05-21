@@ -222,7 +222,7 @@ func MergeCitationTotals(
 				if t.Total >= lastTier {
 					item.MasteryPct = 100.0
 				} else {
-					item.MasteryPct, _ = computeTierProgress(t.Total, tiers)
+					item.MasteryPct = computeTierProgress(t.Total, tiers)
 					for _, tier := range tiers {
 						if t.Total < tier {
 							item.NextTierTarget = tier

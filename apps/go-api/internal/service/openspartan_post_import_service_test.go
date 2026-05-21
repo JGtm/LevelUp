@@ -45,7 +45,7 @@ func setupPostImportEnv(t *testing.T) *postImportTestEnv {
 		t.Fatalf("open shared: %v", err)
 	}
 	t.Cleanup(func() { _ = sharedDB.Close() })
-	if err := sync.EnsureSharedSchema(sharedDB); err != nil {
+	if err := sync.EnsureSharedSchema(t.Context(), sharedDB); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	if _, err := sharedDB.Exec(`

@@ -92,10 +92,7 @@ func TestRefreshAccessTokenForUser_NoCache_AccessTokenStillValid(t *testing.T) {
 		AccessToken:    "still-valid",
 		OAuthExpiresAt: time.Now().Add(30 * time.Minute),
 	}
-	got, err := refreshAccessTokenForUser(context.Background(), tokens)
-	if err != nil {
-		t.Fatalf("err = %v", err)
-	}
+	got := refreshAccessTokenForUser(context.Background(), tokens)
 	if got != "still-valid" {
 		t.Errorf("got = %q, want still-valid (réutilise stocké)", got)
 	}
@@ -107,10 +104,7 @@ func TestRefreshAccessTokenForUser_NoCache_AccessTokenExpired(t *testing.T) {
 		AccessToken:    "expired",
 		OAuthExpiresAt: time.Now().Add(-1 * time.Hour),
 	}
-	got, err := refreshAccessTokenForUser(context.Background(), tokens)
-	if err != nil {
-		t.Errorf("err = %v, want nil (échec silencieux retourne \"\")", err)
-	}
+	got := refreshAccessTokenForUser(context.Background(), tokens)
 	if got != "" {
 		t.Errorf("got = %q, want vide (token expiré ne devrait pas être réutilisé)", got)
 	}
@@ -122,10 +116,7 @@ func TestRefreshAccessTokenForUser_NoCache_NoToken(t *testing.T) {
 		AccessToken:    "",
 		OAuthExpiresAt: time.Now().Add(30 * time.Minute),
 	}
-	got, err := refreshAccessTokenForUser(context.Background(), tokens)
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
+	got := refreshAccessTokenForUser(context.Background(), tokens)
 	if got != "" {
 		t.Errorf("got = %q, want vide (pas de token et pas de cache)", got)
 	}
