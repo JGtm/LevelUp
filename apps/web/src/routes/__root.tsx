@@ -77,9 +77,6 @@ function RootLayout() {
       <div className="flex h-screen items-center justify-center">
         <span className="text-sm text-muted-foreground animate-pulse">
           {failureCount > 0
-            // Texte technique de progression de retry (incluant interpolation) ;
-            // surface utilisateur tres breve, garde-fou contre l'erreur d'API.
-            // eslint-disable-next-line @levelup/no-hardcoded-strings
             ? `Connexion à l'API… (tentative ${failureCount + 1}/7)`
             : t('common.root.loading_app')}
         </span>
@@ -93,7 +90,11 @@ function RootLayout() {
         <div className="text-center space-y-2">
           <p className="font-semibold text-destructive">{t('common.root.api_unreachable')}</p>
           <p className="text-sm text-muted-foreground">
-            {t('common.root.api_check_server_prefix')}<code>make go-api-run</code>{t('common.root.api_check_server_suffix')}
+            {t('common.root.api_check_server_prefix')}
+            {/* Nom de commande shell technique, non traduit */}
+            {/* eslint-disable-next-line @levelup/no-hardcoded-strings */}
+            <code>make go-api-run</code>
+            {t('common.root.api_check_server_suffix')}
           </p>
           <button
             className="text-sm underline text-primary"

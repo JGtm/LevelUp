@@ -11,6 +11,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartInitialSync, useJobStatus } from './queries'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 interface StepInitialSyncProps {
   playerSlug: string
@@ -22,6 +24,8 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
   const setCurrentJobId = useSetupFlowStore((s) => s.setCurrentJobId)
   const startSync = useStartInitialSync()
   const queryClient = useQueryClient()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // Reprendre depuis le job actif connu (session serveur) ou le job local du store
   const resolvedJobId = activeSyncJobId ?? currentJobId
@@ -57,18 +61,16 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Synchronisation initiale</h2>
+      <h2 className="text-lg font-semibold">{t('common.setup.initial_sync_title')}</h2>
       <p className="text-sm text-muted-foreground">
-        Nous allons télécharger vos matchs Halo Infinite et calculer vos statistiques.
-        Cela prend environ 2–4 minutes selon votre historique.
+        {t('common.setup.initial_sync_intro')}
       </p>
       <p className="text-xs text-muted-foreground">
-        Les règles de regroupement des sessions et les badges de performance sont configurables
-        dans{' '}
+        {t('common.setup.session_rules_note')}{' '}
         <Link to="/settings" search={{ tab: 'analyse' }} className="underline hover:text-foreground">
-          Paramètres → Analyse
+          {t('common.setup.settings_analysis')}
         </Link>{' '}
-        après la synchronisation.
+        {t('common.setup.after_sync_suffix')}
       </p>
 
       {!resolvedJobId && (
@@ -98,14 +100,14 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {/* Compteurs métier */}
           {job.matches_done != null && job.matches_total != null && (
             <p className="text-sm text-muted-foreground">
-              {job.matches_done} / {job.matches_total} matchs récupérés
+              {job.matches_done} / {job.matches_total} {t('common.setup.matches_retrieved')}
             </p>
           )}
 
           {/* ETA */}
           {job.eta_seconds != null && job.status === 'running' && (
             <p className="text-xs text-muted-foreground">
-              Temps restant estimé : environ {Math.ceil(job.eta_seconds / 60)} min
+              {t('common.setup.time_remaining_about')} {Math.ceil(job.eta_seconds / 60)} min
             </p>
           )}
 
@@ -120,15 +122,15 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {job.status === 'succeeded' && (
             <div className="space-y-2">
               <p className="text-success font-medium">
-                ✓ Synchronisation terminée&thinsp;!
+                {t('common.setup.sync_complete')}
                 {job.result?.matches_imported != null && (
                   <span className="font-normal text-muted-foreground">
-                    {' '}{Number(job.result.matches_imported)} matchs importés.
+                    {' '}{Number(job.result.matches_imported)} {t('common.setup.matches_imported')}
                   </span>
                 )}
               </p>
               <Button onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.bootstrap })}>
-                Ouvrir l'application
+                {t('common.setup.open_app')}
               </Button>
             </div>
           )}
@@ -137,7 +139,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {job.status === 'interrupted' && (
             <div className="space-y-2">
               <p className="text-warning font-medium">
-                ⚡ Synchronisation interrompue (redémarrage serveur).
+                {t('common.setup.sync_interrupted')}
               </p>
               <Button
                 variant="outline"
@@ -146,7 +148,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
                   handleStart()
                 }}
               >
-                Reprendre la synchronisation
+                {t('common.setup.resume_sync')}
               </Button>
             </div>
           )}
@@ -154,7 +156,7 @@ export function StepInitialSync({ playerSlug }: StepInitialSyncProps) {
           {/* Erreur */}
           {job.status === 'failed' && (
             <div className="space-y-2">
-              <p className="text-destructive font-medium">✗ Échec de la synchronisation.</p>
+              <p className="text-destructive font-medium">{t('common.setup.sync_failed')}</p>
               {job.error?.code && (
                 <p className="text-sm text-muted-foreground">
                   {errorMessages[job.error.code] ?? job.error.message}

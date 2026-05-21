@@ -19,11 +19,15 @@ import { useLogin } from '@/features/auth/queries'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { API_BASE_URL, type ApiError } from '@/lib/api/client'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function XboxLoginPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const oauthCodeFlowEnabled = useAppShellStore((s) => s.oauthCodeFlowEnabled)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [forceDeviceCode, setForceDeviceCode] = useState(false)
 
@@ -65,7 +69,7 @@ export function XboxLoginPage() {
                 onClick={() => setShowAdminLogin(true)}
                 className="underline underline-offset-2 hover:text-foreground transition-colors"
               >
-                Connexion admin (mot de passe)
+                {t('common.auth.xbox_admin_login')}
               </button>
             </p>
           </CardContent>
@@ -84,6 +88,8 @@ interface RedirectFlowPanelProps {
 }
 
 function RedirectFlowPanel({ onUseDeviceCode }: RedirectFlowPanelProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   function handleClick() {
     // Redirect plein-page vers le backend qui génère le state CSRF + redirect
     // vers Microsoft /authorize. Microsoft renvoie l'user vers /auth/xbox/callback
@@ -95,10 +101,10 @@ function RedirectFlowPanel({ onUseDeviceCode }: RedirectFlowPanelProps) {
     <div className="space-y-5 text-center">
       <h2 className="text-lg font-semibold">Connexion Xbox</h2>
       <p className="text-sm text-muted-foreground">
-        Connectez-vous avec votre compte Microsoft pour accéder à vos statistiques Halo.
+        {t('common.auth.xbox_connect_microsoft')}
       </p>
       <Button onClick={handleClick} className="w-full">
-        Se connecter avec Xbox
+        {t('common.auth.xbox_sign_in')}
       </Button>
       <p className="text-xs text-muted-foreground">
         <button
@@ -106,7 +112,7 @@ function RedirectFlowPanel({ onUseDeviceCode }: RedirectFlowPanelProps) {
           onClick={onUseDeviceCode}
           className="underline underline-offset-2 hover:text-foreground transition-colors"
         >
-          Utiliser un code à 9 caractères (sur un autre appareil)
+          {t('common.auth.xbox_use_9char_code')}
         </button>
       </p>
     </div>
@@ -122,6 +128,8 @@ interface XboxFlowPanelProps {
 }
 
 function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [attemptId, setAttemptId] = useState<string | null>(null)
   const [userCode, setUserCode] = useState<string | null>(null)
   const [verificationUri, setVerificationUri] = useState<string | null>(null)
@@ -208,7 +216,7 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
   }
 
   if (startFlow.isPending || !attemptId) {
-    return <Spinner label="Préparation de la connexion Xbox…" />
+    return <Spinner label={t('common.auth.xbox_preparing')} />
   }
 
   if (status?.status === 'failed' || status?.status === 'expired' || (secondsLeft !== null && secondsLeft <= 0)) {
@@ -226,18 +234,18 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
   if (status?.status === 'authorized' || status?.status === 'provisioned') {
     return (
       <div className="space-y-3 text-center">
-        <p className="text-success font-semibold">✓ Authentification réussie</p>
+        <p className="text-success font-semibold">{t('common.auth.xbox_auth_success')}</p>
         {status.gamertag && (
           <p className="text-sm text-muted-foreground">Bienvenue, {status.gamertag}</p>
         )}
-        <Spinner size="sm" label="Chargement…" />
+        <Spinner size="sm" label={t('common.empty.loading')} />
       </div>
     )
   }
 
   // En attente du user_code (rare — flow démarré mais user_code pas encore propagé).
   if (!userCode) {
-    return <Spinner label="Génération du code…" />
+    return <Spinner label={t('common.auth.xbox_generating_code')} />
   }
 
   const uri = verificationUri ?? 'https://microsoft.com/devicelogin'
@@ -248,13 +256,13 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-center">Connexion Xbox</h2>
       <p className="text-sm text-muted-foreground text-center">
-        Rendez-vous sur{' '}
+        {t('common.setup.go_to')}{' '}
         <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline">
           {uri.replace('https://', '')}
         </a>
       </p>
       <div className="rounded-lg bg-card border px-6 py-4 text-center">
-        <p className="mb-2 text-xs text-muted-foreground">Code à saisir</p>
+        <p className="mb-2 text-xs text-muted-foreground">{t('common.auth.xbox_code_to_enter')}</p>
         <span className="text-3xl font-mono font-bold tracking-widest text-foreground select-all">
           {userCode}
         </span>
@@ -268,13 +276,12 @@ function XboxFlowPanel({ onAuthorized }: XboxFlowPanelProps) {
         </p>
       )}
       <p className="text-xs text-muted-foreground text-center animate-pulse">
-        En attente de l'authentification…
+        {t('common.setup.waiting_auth')}
       </p>
 
       {/* Disclaimer anti-phishing (cf. SPRINT_XBOX_SSO §8 piège 9). */}
       <div className="rounded-md bg-muted/40 border border-muted px-3 py-2 text-xs text-muted-foreground">
-        Ne saisis ce code que si TU viens de cliquer "Se connecter avec Xbox".
-        Quelqu'un qui partage son écran ne devrait jamais te demander de saisir un code.
+        {t('common.auth.xbox_only_if_you_clicked')}
       </div>
     </div>
   )
@@ -291,6 +298,8 @@ interface AdminPasswordPanelProps {
 function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -331,7 +340,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="mb-4 rounded-md bg-warning/10 border border-warning/30 px-3 py-2 text-xs text-warning">
-              Connexion admin uniquement. Les utilisateurs normaux se connectent via Xbox.
+              {t('common.auth.xbox_admin_only')}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -352,7 +361,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
               </div>
               <div>
                 <label htmlFor="admin-password" className="block text-sm font-medium text-foreground mb-1">
-                  Mot de passe
+                  {t('common.auth.password_label')}
                 </label>
                 <input
                   id="admin-password"
@@ -379,7 +388,7 @@ function AdminPasswordPanel({ onBack }: AdminPasswordPanelProps) {
                 onClick={onBack}
                 className="underline underline-offset-2 hover:text-foreground transition-colors"
               >
-                ← Retour à la connexion Xbox
+                {t('common.auth.xbox_back_to_xbox')}
               </button>
             </p>
           </CardContent>

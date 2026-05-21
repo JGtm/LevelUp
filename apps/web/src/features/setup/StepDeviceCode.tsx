@@ -8,8 +8,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useSetupFlowStore } from '@/stores/setupFlowStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useStartDeviceFlow, useDeviceFlowStatus } from './queries'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function StepDeviceCode() {
   const currentAttemptId = useSetupFlowStore((s) => s.currentAttemptId)
@@ -20,6 +23,8 @@ export function StepDeviceCode() {
   const setDeviceFlowCodes = useSetupFlowStore((s) => s.setDeviceFlowCodes)
   const queryClient = useQueryClient()
   const startFlow = useStartDeviceFlow()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // Countdown
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null)
@@ -77,7 +82,7 @@ export function StepDeviceCode() {
   }
 
   if (startFlow.isPending || (!status && !deviceFlowUserCode)) {
-    return <Spinner label="Démarrage du Device Code Flow…" />
+    return <Spinner label={t('common.setup.device_starting')} />
   }
 
   // Codes d'erreur structurés
@@ -105,14 +110,14 @@ export function StepDeviceCode() {
   if (status?.status === 'authorized' || status?.status === 'provisioned') {
     return (
       <div className="space-y-2">
-        <p className="text-success font-semibold">✓ Authentification réussie !</p>
+        <p className="text-success font-semibold">{t('common.setup.device_auth_success')}</p>
         {status.gamertag && (
           <div className="rounded-lg border border-success/30 bg-success/10 p-3">
-            <p className="text-xs text-muted-foreground">Compte Microsoft identifié :</p>
+            <p className="text-xs text-muted-foreground">{t('common.setup.microsoft_account_identified')}</p>
             <p className="mt-0.5 text-lg font-bold text-success">{status.gamertag}</p>
           </div>
         )}
-        <Spinner size="sm" label="Chargement du profil…" />
+        <Spinner size="sm" label={t('common.setup.profile_loading_short')} />
       </div>
     )
   }
@@ -123,13 +128,13 @@ export function StepDeviceCode() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Connexion Microsoft</h2>
+      <h2 className="text-lg font-semibold">{t('common.setup.microsoft_connection_title')}</h2>
       <p className="text-sm text-muted-foreground">
-        Rendez-vous sur{' '}
+        {t('common.setup.go_to')}{' '}
         <a href={uri} target="_blank" rel="noopener noreferrer" className="text-primary underline">
           {uri.replace('https://', '')}
         </a>{' '}
-        et entrez ce code :
+        {t('common.setup.enter_this_code')}
       </p>
       <div className="rounded-lg bg-card px-6 py-4 text-center">
         {deviceFlowUserCode ? (
@@ -142,14 +147,14 @@ export function StepDeviceCode() {
       </div>
       {secondsLeft != null && secondsLeft > 0 && (
         <p className="text-center text-xs text-muted-foreground">
-          Code valide encore{' '}
+          {t('common.setup.code_valid_still')}{' '}
           <span className={secondsLeft < 60 ? 'text-warning font-semibold' : ''}>
             {mins}:{String(secs).padStart(2, '0')}
           </span>
         </p>
       )}
       <p className="text-xs text-muted-foreground text-center animate-pulse">
-        En attente de l'authentification…
+        {t('common.setup.waiting_auth')}
       </p>
     </div>
   )
