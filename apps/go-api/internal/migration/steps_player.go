@@ -401,7 +401,7 @@ func init() {
 func applyCareerProgressionSequence(db *sql.DB) error {
 	// Vérifier si la séquence est déjà présente
 	var colDefault sql.NullString
-	err := db.QueryRow(
+	err := db.QueryRowContext(bootCtx(),
 		"SELECT column_default FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'career_progression' AND column_name = 'id'",
 	).Scan(&colDefault)
 	if err == nil && colDefault.Valid && len(colDefault.String) > 0 {
@@ -412,7 +412,7 @@ func applyCareerProgressionSequence(db *sql.DB) error {
 
 	// Backup → drop → recreate avec séquence
 	var maxID int
-	if err := db.QueryRow("SELECT COALESCE(MAX(id), 0) FROM career_progression").Scan(&maxID); err != nil {
+	if err := db.QueryRowContext(bootCtx(), "SELECT COALESCE(MAX(id), 0) FROM career_progression").Scan(&maxID); err != nil {
 		// Table vide ou inexistante — créer directement
 		return execScript(db, `
 			CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
@@ -492,7 +492,7 @@ func init() {
 			if err != nil || !exists {
 				return err
 			}
-			_, err = db.Exec(`
+			_, err = db.ExecContext(bootCtx(), `
 				UPDATE career_progression
 				SET banner_image_url = ''
 				WHERE banner_image_url LIKE '%/Waypoint/file/images/%'
@@ -500,7 +500,7 @@ func init() {
 			if err != nil {
 				return fmt.Errorf("cleanup banner_image_url: %w", err)
 			}
-			_, err = db.Exec(`
+			_, err = db.ExecContext(bootCtx(), `
 				UPDATE career_progression
 				SET emblem_image_url = ''
 				WHERE emblem_image_url LIKE '%/Waypoint/file/images/%'
@@ -508,7 +508,7 @@ func init() {
 			if err != nil {
 				return fmt.Errorf("cleanup emblem_image_url: %w", err)
 			}
-			_, err = db.Exec(`
+			_, err = db.ExecContext(bootCtx(), `
 				UPDATE career_progression
 				SET backdrop_image_url = ''
 				WHERE backdrop_image_url LIKE '%/Waypoint/file/images/%'
@@ -539,7 +539,7 @@ func applyFixMvSessionStats(db *sql.DB) error {
 
 	// Vérifier le type actuel
 	var dataType string
-	err = db.QueryRow(
+	err = db.QueryRowContext(bootCtx(),
 		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'mv_session_stats' AND column_name = 'session_id'",
 	).Scan(&dataType)
 	if err != nil || dataType == "VARCHAR" {

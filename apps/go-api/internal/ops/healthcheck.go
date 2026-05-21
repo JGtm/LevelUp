@@ -9,6 +9,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -49,7 +50,7 @@ type HealthCheck struct {
 // RunHealthcheck effectue tous les contrôles d'intégrité.
 // Portage de check_env.py + logique Python healthcheck.
 // Utilise PathResolver pour les chemins title-aware (Sprint 44).
-func RunHealthcheck(opts HealthcheckOptions) HealthReport {
+func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 	start := time.Now()
 	var checks []HealthCheck //nolint:prealloc
 
@@ -83,13 +84,13 @@ func RunHealthcheck(opts HealthcheckOptions) HealthReport {
 		{"shared_matches_v2", pr.SharedDBPath("halo_infinite")},
 		{"metadata", pr.MetadataDBPath("halo_infinite")},
 	} {
-		checks = append(checks, checkDuckDB(db.name, db.path))
+		checks = append(checks, checkDuckDB(ctx, db.name, db.path))
 	}
 
 	// 6. shared_pve.duckdb (optionnel)
 	pvePath := pr.SharedPVEDBPath("halo_infinite")
 	if _, err := os.Stat(pvePath); err == nil {
-		checks = append(checks, checkDuckDB("shared_pve", pvePath))
+		checks = append(checks, checkDuckDB(ctx, "shared_pve", pvePath))
 	}
 
 	// 7. Joueurs configurés
@@ -100,7 +101,7 @@ func RunHealthcheck(opts HealthcheckOptions) HealthReport {
 				continue
 			}
 			dbPath := pr.PlayerDBPath("halo_infinite", e.Name())
-			checks = append(checks, checkDuckDB("player:"+e.Name(), dbPath))
+			checks = append(checks, checkDuckDB(ctx, "player:"+e.Name(), dbPath))
 		}
 	}
 
@@ -156,7 +157,7 @@ func checkFileExists(name, path string) HealthCheck {
 }
 
 // checkDuckDB vérifie qu'une DB DuckDB s'ouvre et répond à COUNT(*).
-func checkDuckDB(name, path string) HealthCheck {
+func checkDuckDB(ctx context.Context, name, path string) HealthCheck {
 	if _, err := os.Stat(path); err != nil {
 		return HealthCheck{Name: name, OK: false, Message: "fichier absent"}
 	}
@@ -167,7 +168,7 @@ func checkDuckDB(name, path string) HealthCheck {
 	defer db.Close()
 
 	var count int
-	if err := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_type = 'BASE TABLE'").Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM information_schema.tables WHERE table_type = 'BASE TABLE'").Scan(&count); err != nil {
 		return HealthCheck{Name: name, OK: false, Message: fmt.Sprintf("requête: %v", err)}
 	}
 	return HealthCheck{Name: name, OK: true, Message: fmt.Sprintf("%d tables", count)}

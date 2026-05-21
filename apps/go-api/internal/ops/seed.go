@@ -10,6 +10,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -50,7 +51,7 @@ type careerRankJSON struct {
 
 // SeedCareerRanks peuple la table career_ranks depuis le JSON source.
 // Portage de populate_career_ranks() Python.
-func SeedCareerRanks(opts SeedOptions) (SeedResult, error) {
+func SeedCareerRanks(ctx context.Context, opts SeedOptions) (SeedResult, error) {
 	jsonPath := opts.DataDir + "/cache/career_ranks_metadata.json"
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
@@ -67,7 +68,7 @@ func SeedCareerRanks(opts SeedOptions) (SeedResult, error) {
 	}
 	defer db.Close()
 
-	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS career_ranks (
+	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS career_ranks (
 		rank_id INTEGER PRIMARY KEY,
 		title_en VARCHAR, title_fr VARCHAR,
 		subtitle VARCHAR, tier VARCHAR, grade INTEGER,
@@ -78,7 +79,7 @@ func SeedCareerRanks(opts SeedOptions) (SeedResult, error) {
 
 	inserted, skipped := 0, 0
 	for _, r := range ranks {
-		res, err := db.Exec(`INSERT OR IGNORE INTO career_ranks VALUES (?,?,?,?,?,?,?,?)`,
+		res, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO career_ranks VALUES (?,?,?,?,?,?,?,?)`,
 			r.RankID, r.TitleEN, r.TitleFR, r.Subtitle, r.Tier, r.Grade, r.XPRequired, r.IconPath)
 		if err != nil {
 			return SeedResult{Component: "career_ranks"}, fmt.Errorf("insert rank %d: %w", r.RankID, err)
@@ -131,7 +132,7 @@ type CitationMapping struct {
 //
 // Compte distinctement Inserted (nouvelles citations) et Skipped (citations
 // déjà présentes — leurs colonnes sont quand même rafraîchies via DO UPDATE).
-func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
+func SeedCitationMappings(ctx context.Context, opts SeedOptions) (SeedResult, error) {
 	db, err := sql.Open("duckdb", opts.MetaDBPath)
 	if err != nil {
 		return SeedResult{Component: "citation_mappings"}, fmt.Errorf("ouverture metadata: %w", err)
@@ -140,7 +141,7 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 
 	// Schéma v2 complet : compatible migrations add_citation_mappings +
 	// add_citation_mappings_pk + add_citation_mappings_v2_fields.
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS citation_mappings (
 			citation_name_norm    VARCHAR PRIMARY KEY,
 			citation_name_display VARCHAR NOT NULL,
@@ -167,7 +168,7 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 	}
 
 	existing := make(map[string]struct{})
-	rows, err := db.Query(`SELECT citation_name_norm FROM citation_mappings`)
+	rows, err := db.QueryContext(ctx, `SELECT citation_name_norm FROM citation_mappings`)
 	if err != nil {
 		return SeedResult{Component: "citation_mappings"}, fmt.Errorf("scan existing: %w", err)
 	}
@@ -212,7 +213,7 @@ func SeedCitationMappings(opts SeedOptions) (SeedResult, error) {
 		if m.MedalID > 0 {
 			medalArg = uint64(m.MedalID) //nolint:gosec
 		}
-		if _, err := db.Exec(upsert,
+		if _, err := db.ExecContext(ctx, upsert,
 			m.Norm, m.Display, m.MappingType,
 			medalArg, nullStr(m.MedalIDs), nullStr(m.StatName),
 			nullStr(m.AwardName), nullStr(m.AwardCategory),
@@ -813,7 +814,7 @@ func defaultCitationMappings() []CitationMapping {
 // SeedMedalDefinitions vérifie que medal_definitions est peuplé.
 // La logique complète de population vient de l'API 343i (async) — ici on injecte
 // les médailles custom si la table est vide.
-func SeedMedalDefinitions(opts SeedOptions) (SeedResult, error) {
+func SeedMedalDefinitions(ctx context.Context, opts SeedOptions) (SeedResult, error) {
 	db, err := sql.Open("duckdb", opts.MetaDBPath)
 	if err != nil {
 		return SeedResult{Component: "medal_definitions"}, fmt.Errorf("ouverture metadata: %w", err)
@@ -821,13 +822,13 @@ func SeedMedalDefinitions(opts SeedOptions) (SeedResult, error) {
 	defer db.Close()
 
 	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'medal_definitions'`).Scan(&count); err != nil || count == 0 {
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'medal_definitions'`).Scan(&count); err != nil || count == 0 {
 		return SeedResult{
 			Component: "medal_definitions",
 			Message:   "table absente — lancer d'abord les migrations",
 		}, nil
 	}
-	if err := db.QueryRow("SELECT COUNT(*) FROM medal_definitions").Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM medal_definitions").Scan(&count); err != nil {
 		return SeedResult{Component: "medal_definitions"}, err
 	}
 	return SeedResult{

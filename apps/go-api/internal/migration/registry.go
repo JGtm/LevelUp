@@ -66,8 +66,8 @@ type migrationState struct {
 }
 
 // ensureMigrationTable crée la table de tracking si absente.
-func ensureMigrationTable(db *sql.DB) error {
-	_, err := db.Exec(`
+func ensureMigrationTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
 			name          VARCHAR PRIMARY KEY,
 			description   VARCHAR,
@@ -80,8 +80,8 @@ func ensureMigrationTable(db *sql.DB) error {
 }
 
 // getApplied charge l'état de toutes les migrations déjà appliquées.
-func getApplied(db *sql.DB) (map[string]migrationState, error) {
-	rows, err := db.Query("SELECT name, schema_done, backfill_done FROM schema_migrations")
+func getApplied(ctx context.Context, db *sql.DB) (map[string]migrationState, error) {
+	rows, err := db.QueryContext(ctx, "SELECT name, schema_done, backfill_done FROM schema_migrations")
 	if err != nil {
 		return nil, err
 	}
@@ -113,10 +113,10 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 	cycleStart := time.Now()
 	slog.InfoContext(ctx, "migration: cycle démarré", "target", target, "event", evID)
 
-	if err := ensureMigrationTable(db); err != nil {
+	if err := ensureMigrationTable(ctx, db); err != nil {
 		return fmt.Errorf("migration: ensure table: %w", err)
 	}
-	applied, err := getApplied(db)
+	applied, err := getApplied(ctx, db)
 	if err != nil {
 		return fmt.Errorf("migration: get applied: %w", err)
 	}
@@ -137,7 +137,7 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 				return fmt.Errorf("migration %s schema: %w", m.Name, err)
 			}
 			backfillDone := m.ApplyBackfill == nil
-			if _, err := db.Exec(
+			if _, err := db.ExecContext(ctx,
 				`INSERT INTO schema_migrations (name, description, applied_at, schema_done, backfill_done)
 				 VALUES (?, ?, ?, TRUE, ?)`,
 				m.Name, m.Description, time.Now(), backfillDone,
@@ -163,7 +163,7 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 					"name", m.Name, "duration_ms", time.Since(bStart).Milliseconds(), "err", err)
 				continue // ne bloque pas les suivantes
 			}
-			if _, err := db.Exec(
+			if _, err := db.ExecContext(ctx,
 				"UPDATE schema_migrations SET backfill_done = TRUE WHERE name = ?",
 				m.Name,
 			); err != nil {

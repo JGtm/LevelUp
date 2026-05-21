@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -38,7 +39,7 @@ func runBackup(cfg *config.AppConfig, args []string) error {
 	if outDir == "" {
 		outDir = pr.BackupDir(*titleSlug, *gamertag)
 	}
-	result, err := ops.BackupPlayer(ops.BackupOptions{
+	result, err := ops.BackupPlayer(context.Background(), ops.BackupOptions{
 		Gamertag:         *gamertag,
 		PlayerDBPath:     dbPath,
 		OutputDir:        outDir,
@@ -80,7 +81,7 @@ func runRestore(cfg *config.AppConfig, args []string) error {
 	if *tables != "" {
 		tableList = strings.Split(*tables, ",")
 	}
-	result, err := ops.RestorePlayer(ops.RestoreOptions{
+	result, err := ops.RestorePlayer(context.Background(), ops.RestoreOptions{
 		Gamertag:     *gamertag,
 		PlayerDBPath: dbPath,
 		BackupDir:    *backupDir,
@@ -119,7 +120,7 @@ func runArchive(cfg *config.AppConfig, args []string) error {
 		return fmt.Errorf("format --cutoff invalide (attendu: YYYY-MM-DD): %w", err)
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
-	result, err := ops.ArchiveMatches(ops.ArchiveOptions{
+	result, err := ops.ArchiveMatches(context.Background(), ops.ArchiveOptions{
 		Gamertag:     *gamertag,
 		XUID:         *xuid,
 		PlayerDBPath: pr.PlayerDBPath(*titleSlug, *gamertag),
@@ -166,7 +167,7 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 	default:
 		resolvedCapturesDir = pr.ResolveCapturesDir(*titleSlug, *gamertag, cfg.MediaCapturesBaseDir)
 	}
-	result, err := ops.IndexMedia(ops.MediaIndexOptions{
+	result, err := ops.IndexMedia(context.Background(), ops.MediaIndexOptions{
 		Gamertag:            *gamertag,
 		PlayerDBPath:        pr.PlayerDBPath(*titleSlug, *gamertag),
 		SharedSocialDBPath:  pr.SharedSocialDBPath(*titleSlug),
@@ -211,13 +212,14 @@ func runSeed(cfg *config.AppConfig, args []string) error {
 	}
 	var result ops.SeedResult
 	var err error
+	ctx := context.Background()
 	switch args[0] {
 	case "career-ranks":
-		result, err = ops.SeedCareerRanks(opts)
+		result, err = ops.SeedCareerRanks(ctx, opts)
 	case "citation-mappings":
-		result, err = ops.SeedCitationMappings(opts)
+		result, err = ops.SeedCitationMappings(ctx, opts)
 	case "medals":
-		result, err = ops.SeedMedalDefinitions(opts)
+		result, err = ops.SeedMedalDefinitions(ctx, opts)
 	default:
 		return fmt.Errorf("composant inconnu: %q (career-ranks | citation-mappings | medals)", args[0])
 	}

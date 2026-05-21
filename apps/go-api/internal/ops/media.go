@@ -14,6 +14,7 @@
 package ops
 
 import (
+	"context"
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
@@ -84,7 +85,7 @@ var supportedExtensions = map[string]string{
 // Thread-safe : sérialise les accès par chemin de DB cible (mutex par path).
 //
 //nolint:funlen // portage fidèle de MediaIndexer.scan_and_index Python — séquentiel
-func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
+func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, error) {
 	if opts.BufferMin <= 0 {
 		opts.BufferMin = 2
 	}
@@ -109,7 +110,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	// Appliquer la timezone après ouverture pour un DATEDIFF correct (DST).
 	tz := SanitizeMediaTimezone(opts.Timezone)
 	if tz != "" {
-		if _, err := db.Exec("SET TimeZone = '" + tz + "'"); err != nil {
+		if _, err := db.ExecContext(ctx, "SET TimeZone = '"+tz+"'"); err != nil {
 			slog.Warn("IndexMedia: SET TimeZone échoué, DST possiblement incorrect",
 				"timezone", tz, "err", err)
 		} else {
@@ -134,11 +135,11 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		"timezone", opts.Timezone,
 		"force_rescan", opts.ForceRescan)
 
-	if err := ensureMediaTables(db); err != nil {
+	if err := ensureMediaTables(ctx, db); err != nil {
 		return MediaIndexResult{}, err
 	}
 
-	known, err := loadKnownHashes(db)
+	known, err := loadKnownHashes(ctx, db)
 	if err != nil {
 		return MediaIndexResult{}, err
 	}
@@ -168,7 +169,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		if opts.CaptureTimes != nil {
 			clientTS = opts.CaptureTimes[filepath.Base(path)]
 		}
-		if err := insertMediaFile(db, path, hash, opts.Gamertag, clientTS, loc, store); err != nil {
+		if err := insertMediaFile(ctx, db, path, hash, opts.Gamertag, clientTS, loc, store); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: insert: %v", path, err))
 			continue
 		}
@@ -179,7 +180,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 		"scanned", result.Scanned, "new_files", result.NewFiles)
 
 	// Association avec les matchs
-	assoc, err := AssociateMediaWithMatches(db, opts.SharedMatchesDBPath, opts.BufferMin, opts.Timezone)
+	assoc, err := AssociateMediaWithMatches(ctx, db, opts.SharedMatchesDBPath, opts.BufferMin, opts.Timezone)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
 	} else {
@@ -197,7 +198,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 	}
 
 	// Lier les miniatures présentes sur disque aux enregistrements dont thumbnail_path est NULL.
-	if n, backfillErr := BackfillThumbnailPaths(db, opts.CapturesDir, thumbsDir, opts.Gamertag, store); backfillErr != nil {
+	if n, backfillErr := BackfillThumbnailPaths(ctx, db, opts.CapturesDir, thumbsDir, opts.Gamertag, store); backfillErr != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("backfill_thumbnails: %v", backfillErr))
 	} else {
 		result.Thumbnails += n
@@ -217,7 +218,7 @@ func IndexMedia(opts MediaIndexOptions) (MediaIndexResult, error) {
 // sharedMatchesPath : chemin vers shared_matches_v2.duckdb (peut être vide — association ignorée).
 // bufferMin : buffer en minutes autour de la fenêtre du match (défaut 2).
 // timezone : IANA pour SET TimeZone (nécessaire car start_time est un TIMESTAMP naïf Paris).
-func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin int, timezone string) (int, error) {
+func AssociateMediaWithMatches(ctx context.Context, db *sql.DB, sharedMatchesPath string, bufferMin int, timezone string) (int, error) {
 	if sharedMatchesPath == "" {
 		return 0, nil
 	}
@@ -227,7 +228,7 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 
 	// SET TimeZone pour interpréter correctement les TIMESTAMP naïfs de match_registry.
 	if tz := SanitizeMediaTimezone(timezone); tz != "" {
-		if _, err := db.Exec("SET TimeZone = '" + tz + "'"); err != nil {
+		if _, err := db.ExecContext(ctx, "SET TimeZone = '"+tz+"'"); err != nil {
 			slog.Warn("AssociateMediaWithMatches: SET TimeZone échoué",
 				"timezone", tz, "err", err)
 		}
@@ -238,10 +239,10 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 		"timezone", timezone)
 
 	// ATTACH la DB des matchs en lecture seule pour accéder à match_registry.
-	if _, err := db.Exec(fmt.Sprintf(`ATTACH '%s' AS shared_matches (READ_ONLY)`, sharedMatchesPath)); err != nil {
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(`ATTACH '%s' AS shared_matches (READ_ONLY)`, sharedMatchesPath)); err != nil {
 		return 0, fmt.Errorf("attach shared_matches: %w", err)
 	}
-	defer db.Exec(`DETACH shared_matches`) //nolint:errcheck
+	defer db.ExecContext(ctx, `DETACH shared_matches`) //nolint:errcheck
 
 	// La capture doit se situer dans [start_utc - buffer, end_utc + buffer].
 	// start_time_utc/end_time_utc sont TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
@@ -285,7 +286,7 @@ func AssociateMediaWithMatches(db *sql.DB, sharedMatchesPath string, bufferMin i
 		) ranked
 		WHERE rn = 1
 	`, bufferMin, bufferMin)
-	res, err := db.Exec(q)
+	res, err := db.ExecContext(ctx, q)
 	if err != nil {
 		slog.Error("AssociateMediaWithMatches: erreur SQL", "err", err)
 		return 0, err
@@ -434,7 +435,7 @@ func generateAnimatedThumbnail(videoPath, webpPath string) error {
 // ownerSlug est utilisé pour construire le path relatif stable
 // ({owner_slug}/thumbs/{filename}) qui sera stocké en DB. Si store est en mode
 // legacy (CapturesBase vide), on stocke le path absolu — comportement pré-refactor.
-func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir, ownerSlug string, store MediaPathStore) (int, error) {
+func BackfillThumbnailPaths(ctx context.Context, db *sql.DB, videosDir, thumbsDir, ownerSlug string, store MediaPathStore) (int, error) {
 	entries, err := os.ReadDir(thumbsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -469,7 +470,7 @@ func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir, ownerSlug string, 
 
 		// Mettre à jour la vidéo dont file_name commence par videoBase (n'importe quelle extension vidéo).
 		// On utilise LIKE 'base.%' pour éviter les faux positifs de préfixe.
-		res, err := db.Exec(`
+		res, err := db.ExecContext(ctx, `
 			UPDATE media_files
 			SET thumbnail_path = ?
 			WHERE thumbnail_path IS NULL
@@ -492,18 +493,18 @@ func BackfillThumbnailPaths(db *sql.DB, videosDir, thumbsDir, ownerSlug string, 
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-func ensureMediaTables(db *sql.DB) error {
-	if _, err := db.Exec(`CREATE SEQUENCE IF NOT EXISTS media_files_id_seq START 1`); err != nil {
+func ensureMediaTables(ctx context.Context, db *sql.DB) error {
+	if _, err := db.ExecContext(ctx, `CREATE SEQUENCE IF NOT EXISTS media_files_id_seq START 1`); err != nil {
 		return err
 	}
 
 	// Si la table existe avec l'ancien schéma (id VARCHAR, issu de create_base_player_schema)
 	// et qu'elle est vide, on la supprime pour la recréer correctement.
-	if err := dropLegacyMediaFilesIfNeeded(db); err != nil {
+	if err := dropLegacyMediaFilesIfNeeded(ctx, db); err != nil {
 		return err
 	}
 
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS media_files (
 			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
 			player_slug VARCHAR,
@@ -546,11 +547,11 @@ func ensureMediaTables(db *sql.DB) error {
 		{"file_stem", "VARCHAR"},
 		{"file_ext", "VARCHAR"},
 	} {
-		if _, err := db.Exec("ALTER TABLE media_files ADD COLUMN IF NOT EXISTS " + col.name + " " + col.typ); err != nil {
+		if _, err := db.ExecContext(ctx, "ALTER TABLE media_files ADD COLUMN IF NOT EXISTS "+col.name+" "+col.typ); err != nil {
 			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
 		}
 	}
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS media_match_associations (
 			media_file_id INTEGER,
 			match_id VARCHAR,
@@ -564,10 +565,10 @@ func ensureMediaTables(db *sql.DB) error {
 // dropLegacyMediaFilesIfNeeded supprime la table media_files si elle a l'ancien schéma
 // (id VARCHAR, issue de create_base_player_schema) et qu'elle est vide.
 // Ceci permet à ensureMediaTables de recréer la table avec le bon schéma.
-func dropLegacyMediaFilesIfNeeded(db *sql.DB) error {
+func dropLegacyMediaFilesIfNeeded(ctx context.Context, db *sql.DB) error {
 	// Vérifier si la colonne id est de type VARCHAR (ancien schéma).
 	var dataType string
-	err := db.QueryRow(
+	err := db.QueryRowContext(ctx,
 		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'media_files' AND column_name = 'id'",
 	).Scan(&dataType)
 	if err != nil {
@@ -579,20 +580,20 @@ func dropLegacyMediaFilesIfNeeded(db *sql.DB) error {
 	}
 	// Vérifier que la table est vide avant de la supprimer.
 	var count int
-	if err := db.QueryRow("SELECT COUNT(*) FROM media_files").Scan(&count); err != nil || count > 0 {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM media_files").Scan(&count); err != nil || count > 0 {
 		return nil // Table non-vide ou erreur : on ne touche pas aux données.
 	}
-	if _, err := db.Exec("DROP TABLE media_files"); err != nil {
+	if _, err := db.ExecContext(ctx, "DROP TABLE media_files"); err != nil {
 		return fmt.Errorf("dropLegacyMediaFilesIfNeeded: DROP TABLE: %w", err)
 	}
-	if _, err := db.Exec("DROP TABLE IF EXISTS media_match_associations"); err != nil {
+	if _, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS media_match_associations"); err != nil {
 		return fmt.Errorf("dropLegacyMediaFilesIfNeeded: DROP TABLE media_match_associations: %w", err)
 	}
 	return nil
 }
 
-func loadKnownHashes(db *sql.DB) (map[string]bool, error) {
-	rows, err := db.Query("SELECT file_hash FROM media_files WHERE file_hash IS NOT NULL")
+func loadKnownHashes(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, "SELECT file_hash FROM media_files WHERE file_hash IS NOT NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -653,7 +654,7 @@ func fileHash(path string) (string, error) {
 // dérivé via store.ToRel : format stable {owner_slug}/{rel_in_owner_dir}.
 // Si le store est en mode legacy (CapturesBase vide ou conversion échoue),
 // le path absolu est stocké tel quel — comportement pré-refactor.
-func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location, store MediaPathStore) error {
+func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug string, captureTimeUnix *int64, loc *time.Location, store MediaPathStore) error {
 	ext := strings.ToLower(filepath.Ext(path))
 	kind := supportedExtensions[ext]
 	baseName := filepath.Base(path)
@@ -720,7 +721,7 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 	// Sinon → INSERT.
 	var existingID string
 	var existingPath string
-	err := db.QueryRow(`
+	err := db.QueryRowContext(ctx, `
 		SELECT id, file_path FROM media_files
 		WHERE player_slug = ? AND file_stem = ?
 	`, playerSlug, stem).Scan(&existingID, &existingPath)
@@ -740,7 +741,7 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 		// On met à jour aussi duration / capture_end_utc puisque le fichier
 		// physique a changé (re-encodage) — sauf si la nouvelle valeur est NULL
 		// (on garde l'ancienne dans ce cas via COALESCE).
-		_, err := db.Exec(`
+		_, err := db.ExecContext(ctx, `
 			UPDATE media_files
 			SET file_path = ?, file_name = ?, file_ext = ?, file_hash = ?, kind = ?,
 				duration_seconds = COALESCE(?, duration_seconds),
@@ -761,7 +762,7 @@ func insertMediaFile(db *sql.DB, path, hash, playerSlug string, captureTimeUnix 
 	// (capture_start_utc / capture_end_utc / duration_seconds). mtime n'est
 	// volontairement pas écrit (cf. commentaire plus haut).
 	// INSERT OR IGNORE évite les doublons par file_path UNIQUE (même contenus uploadé 2×).
-	_, err = db.Exec(`
+	_, err = db.ExecContext(ctx, `
 		INSERT OR IGNORE INTO media_files (
 			player_slug, file_path, file_name, file_stem, file_ext, file_hash, kind,
 			capture_start_utc, capture_end_utc, duration_seconds

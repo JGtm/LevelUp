@@ -58,10 +58,12 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	t.Cleanup(func() { sdb.Close() })
 	if err := execScript(sdb, `
 		CREATE TABLE match_registry (
-			match_id     VARCHAR PRIMARY KEY,
-			start_time   TIMESTAMPTZ,
-			is_ranked    BOOLEAN DEFAULT FALSE,
-			is_firefight BOOLEAN DEFAULT FALSE
+			match_id      VARCHAR PRIMARY KEY,
+			start_time    TIMESTAMPTZ,
+			is_ranked     BOOLEAN DEFAULT FALSE,
+			is_firefight  BOOLEAN DEFAULT FALSE,
+			playlist_name VARCHAR,
+			pair_name     VARCHAR
 		);
 	`); err != nil {
 		t.Fatal(err)

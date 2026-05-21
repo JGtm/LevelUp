@@ -354,7 +354,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 	slog.InfoContext(ctx, "upload: démarrage indexation",
 		"captures_dir", req.CapturesDir, "buffer_min", tol, "timezone", s.timezone)
 
-	idxResult, err := ops.IndexMedia(ops.MediaIndexOptions{
+	idxResult, err := ops.IndexMedia(ctx, ops.MediaIndexOptions{
 		PlayerDBPath:        req.DBPath,
 		SharedSocialDBPath:  req.SharedSocialDBPath,
 		SharedMatchesDBPath: req.SharedMatchesDBPath,
@@ -444,7 +444,7 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 	slog.InfoContext(ctx, "ReassociateMedia: associations auto supprimées (manuelles préservées)", "count", oldCount)
 
 	// 3 — Re-créer les associations.
-	newAssoc, err := ops.AssociateMediaWithMatches(db, req.SharedMatchesDBPath, bufferMin, s.timezone)
+	newAssoc, err := ops.AssociateMediaWithMatches(ctx, db, req.SharedMatchesDBPath, bufferMin, s.timezone)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("association: %v", err))
 		slog.ErrorContext(ctx, "ReassociateMedia: association échouée", "err", err)
@@ -455,7 +455,7 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 	if req.CapturesDir != "" {
 		thumbsDir := filepath.Join(req.CapturesDir, "thumbs")
 		store := ops.MediaPathStore{CapturesBase: req.CapturesBase}
-		if n, backfillErr := ops.BackfillThumbnailPaths(db, req.CapturesDir, thumbsDir, req.Gamertag, store); backfillErr != nil {
+		if n, backfillErr := ops.BackfillThumbnailPaths(ctx, db, req.CapturesDir, thumbsDir, req.Gamertag, store); backfillErr != nil {
 			slog.WarnContext(ctx, "ReassociateMedia: backfill thumbnail_path échoué", "err", backfillErr)
 		} else {
 			slog.InfoContext(ctx, "ReassociateMedia: thumbnail_path backfillé", "updated", n)
