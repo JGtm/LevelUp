@@ -131,7 +131,7 @@ func openCachedDB(
 	defer openDBsMu.Unlock()
 
 	if cached, ok := openDBs[key]; ok {
-		if err := cached.db.sqlDB.Ping(); err == nil {
+		if err := cached.db.sqlDB.PingContext(context.Background()); err == nil {
 			cached.refCount++
 			return cached.db, nil
 		}
@@ -292,7 +292,7 @@ func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
 			return nil, fmt.Errorf("duckdb.%s(%s): %w", op, path, err)
 		}
 	}
-	if err := sqlDB.Ping(); err != nil {
+	if err := sqlDB.PingContext(context.Background()); err != nil {
 		sqlDB.Close()
 		return nil, fmt.Errorf("duckdb.%s ping(%s): %w", op, path, err)
 	}

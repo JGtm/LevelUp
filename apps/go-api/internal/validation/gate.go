@@ -10,6 +10,7 @@
 package validation
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -90,7 +91,7 @@ type GateCheckConfig struct {
 
 // RunGateCheck4 exécute la checklist automatisée de la Gate Phase 4.
 // Sprint 44 : utilise PathResolver pour les chemins.
-func RunGateCheck4(cfg GateCheckConfig) *GateReport {
+func RunGateCheck4(ctx context.Context, cfg GateCheckConfig) *GateReport {
 	report := &GateReport{
 		GeneratedAt: time.Now(),
 	}
@@ -115,28 +116,28 @@ func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 			"shared-db",
 			"shared_matches_v2.duckdb accessible en lecture",
 			func() (bool, string) {
-				return checkDBAccessible(pr.SharedDBPath("halo_infinite"))
+				return checkDBAccessible(ctx, pr.SharedDBPath("halo_infinite"))
 			},
 		},
 		{
 			"metadata-db",
 			"metadata.duckdb accessible en lecture",
 			func() (bool, string) {
-				return checkDBAccessible(pr.MetadataDBPath("halo_infinite"))
+				return checkDBAccessible(ctx, pr.MetadataDBPath("halo_infinite"))
 			},
 		},
 		{
 			"shared-tables",
 			"Tables critiques présentes dans shared_matches_v2.duckdb",
 			func() (bool, string) {
-				return checkSharedTables(pr.SharedDBPath("halo_infinite"))
+				return checkSharedTables(ctx, pr.SharedDBPath("halo_infinite"))
 			},
 		},
 		{
 			"shared-views",
 			"Vues V6 présentes (v_gamertag_lookup, v_match_full, v_weapon_kills)",
 			func() (bool, string) {
-				return checkSharedViews(pr.SharedDBPath("halo_infinite"))
+				return checkSharedViews(ctx, pr.SharedDBPath("halo_infinite"))
 			},
 		},
 		{
@@ -146,7 +147,7 @@ func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 				if cfg.Gamertag == "" {
 					return true, "ignoré (pas de gamertag configuré)"
 				}
-				return checkMigrationsApplied(
+				return checkMigrationsApplied(ctx,
 					cfg.RepoRoot, cfg.Gamertag,
 				)
 			},
@@ -158,7 +159,7 @@ func RunGateCheck4(cfg GateCheckConfig) *GateReport {
 				if cfg.Gamertag == "" {
 					return true, "ignoré (pas de gamertag configuré)"
 				}
-				return checkPlayerDB(titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, cfg.Gamertag))
+				return checkPlayerDB(ctx, titlePkg.NewPathResolver(cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, cfg.Gamertag))
 			},
 		},
 		{
@@ -213,7 +214,7 @@ func checkBinary(repoRoot string) (bool, string) {
 	return false, "binaire introuvable dans apps/go-api/bin/ ou bin/ — lancer 'make build'"
 }
 
-func checkDBAccessible(dbPath string) (bool, string) {
+func checkDBAccessible(ctx context.Context, dbPath string) (bool, string) {
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, fmt.Sprintf("fichier absent: %s", dbPath)
 	}
@@ -222,13 +223,13 @@ func checkDBAccessible(dbPath string) (bool, string) {
 		return false, fmt.Sprintf("open error: %v", err)
 	}
 	defer db.Close()
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		return false, fmt.Sprintf("ping error: %v", err)
 	}
 	return true, ""
 }
 
-func checkSharedTables(dbPath string) (bool, string) {
+func checkSharedTables(ctx context.Context, dbPath string) (bool, string) {
 	required := []string{
 		tableMatchRegistry,
 		"match_participants",
@@ -246,14 +247,14 @@ func checkSharedTables(dbPath string) (bool, string) {
 	}
 	defer db.Close()
 
-	missing := checkTablesExist(db, required)
+	missing := checkTablesExist(ctx, db, required)
 	if len(missing) > 0 {
 		return false, fmt.Sprintf("tables manquantes: %s", strings.Join(missing, ", "))
 	}
 	return true, fmt.Sprintf("%d tables critiques présentes", len(required))
 }
 
-func checkSharedViews(dbPath string) (bool, string) {
+func checkSharedViews(ctx context.Context, dbPath string) (bool, string) {
 	requiredViews := []string{
 		"v_gamertag_lookup",
 		"v_match_full",
@@ -268,14 +269,14 @@ func checkSharedViews(dbPath string) (bool, string) {
 	}
 	defer db.Close()
 
-	missing := checkViewsExist(db, requiredViews)
+	missing := checkViewsExist(ctx, db, requiredViews)
 	if len(missing) > 0 {
 		return false, fmt.Sprintf("vues V6 manquantes: %s (relancer les migrations)", strings.Join(missing, ", "))
 	}
 	return true, "toutes les vues V6 présentes"
 }
 
-func checkMigrationsApplied(repoRoot, gamertag string) (bool, string) {
+func checkMigrationsApplied(ctx context.Context, repoRoot, gamertag string) (bool, string) {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	dbPath := pr.PlayerDBPath("halo_infinite", gamertag)
 	if _, err := os.Stat(dbPath); err != nil {
@@ -288,7 +289,7 @@ func checkMigrationsApplied(repoRoot, gamertag string) (bool, string) {
 	defer db.Close()
 
 	var cnt int64
-	if err := db.QueryRow("SELECT COUNT(*) FROM schema_migrations").Scan(&cnt); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM schema_migrations").Scan(&cnt); err != nil {
 		return false, "table schema_migrations absente (migrations jamais exécutées)"
 	}
 	if cnt < 10 {
@@ -297,7 +298,7 @@ func checkMigrationsApplied(repoRoot, gamertag string) (bool, string) {
 	return true, fmt.Sprintf("%d migrations trackées dans schema_migrations", cnt)
 }
 
-func checkPlayerDB(dbPath string) (bool, string) {
+func checkPlayerDB(ctx context.Context, dbPath string) (bool, string) {
 	if _, err := os.Stat(dbPath); err != nil {
 		return false, fmt.Sprintf("DB joueur absente: %s", dbPath)
 	}
@@ -308,7 +309,7 @@ func checkPlayerDB(dbPath string) (bool, string) {
 	defer db.Close()
 
 	var cnt int64
-	if err := db.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&cnt); err != nil {
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM player_match_enrichment").Scan(&cnt); err != nil {
 		return false, "table player_match_enrichment absente"
 	}
 	if cnt == 0 {
@@ -359,11 +360,11 @@ func checkDiscordNotify(repoRoot string) (bool, string) {
 // Utilitaires DB
 // ─────────────────────────────────────────────────────────────────────────────
 
-func checkTablesExist(db *sql.DB, tables []string) []string {
+func checkTablesExist(ctx context.Context, db *sql.DB, tables []string) []string {
 	var missing []string
 	for _, t := range tables {
 		var cnt int
-		err := db.QueryRow(
+		err := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='main' AND table_name=?", t,
 		).Scan(&cnt)
 		if err != nil || cnt == 0 {
@@ -373,11 +374,11 @@ func checkTablesExist(db *sql.DB, tables []string) []string {
 	return missing
 }
 
-func checkViewsExist(db *sql.DB, views []string) []string {
+func checkViewsExist(ctx context.Context, db *sql.DB, views []string) []string {
 	var missing []string
 	for _, v := range views {
 		var cnt int
-		err := db.QueryRow(
+		err := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='main' AND table_name=? AND table_type='VIEW'", v,
 		).Scan(&cnt)
 		if err != nil || cnt == 0 {

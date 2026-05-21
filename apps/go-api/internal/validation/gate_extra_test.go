@@ -162,7 +162,7 @@ func TestRunGateCheck4_EmptyDir(t *testing.T) {
 	dir := t.TempDir()
 	dbProfiles := filepath.Join(dir, "db_profiles.json")
 	// Pas de binaire, pas de DB, pas de db_profiles.json
-	report := RunGateCheck4(GateCheckConfig{
+	report := RunGateCheck4(t.Context(), GateCheckConfig{
 		RepoRoot:       dir,
 		DBProfilesPath: dbProfiles,
 		Gamertag:       "",
@@ -200,7 +200,7 @@ func TestRunGateCheck4_WithBinaryAndProfiles(t *testing.T) {
 	}
 
 	t.Setenv("DISCORD_WEBHOOK_URL", "")
-	report := RunGateCheck4(GateCheckConfig{
+	report := RunGateCheck4(t.Context(), GateCheckConfig{
 		RepoRoot:       dir,
 		DBProfilesPath: dbProfiles,
 		Gamertag:       "",

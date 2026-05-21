@@ -8,6 +8,7 @@
 package validation
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"math"
@@ -84,7 +85,7 @@ type ComparisonReport struct {
 //
 // Les deux DBs doivent être stats.duckdb produits par le moteur Go et Python
 // pour le même joueur. La comparaison est read-only.
-func ComparePlayerDBs(goDBPath, pythonDBPath string) (*ComparisonReport, error) {
+func ComparePlayerDBs(ctx context.Context, goDBPath, pythonDBPath string) (*ComparisonReport, error) {
 	goDB, err := sql.Open("duckdb", goDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
 		return nil, fmt.Errorf("open go DB: %w", err)
@@ -104,25 +105,25 @@ func ComparePlayerDBs(goDBPath, pythonDBPath string) (*ComparisonReport, error) 
 	}
 
 	// 1. Comparaison row counts par table
-	goTables, err := listTables(goDB)
+	goTables, err := listTables(ctx, goDB)
 	if err != nil {
 		return nil, fmt.Errorf("list go tables: %w", err)
 	}
-	pyTables, err := listTables(pyDB)
+	pyTables, err := listTables(ctx, pyDB)
 	if err != nil {
 		return nil, fmt.Errorf("list python tables: %w", err)
 	}
 
-	report.Tables = compareTableCounts(goDB, pyDB, goTables, pyTables)
+	report.Tables = compareTableCounts(ctx, goDB, pyDB, goTables, pyTables)
 
 	// 2. Bitmask analysis (player_match_enrichment)
-	bitmasks, err := compareBitmasks(goDB, pyDB)
+	bitmasks, err := compareBitmasks(ctx, goDB, pyDB)
 	if err == nil {
 		report.Bitmasks = bitmasks
 	}
 
 	// 3. Match ID overlap (player_match_enrichment)
-	overlap, err := compareMatchIDs(goDB, pyDB)
+	overlap, err := compareMatchIDs(ctx, goDB, pyDB)
 	if err == nil {
 		report.MatchOverlap = overlap
 	}
@@ -136,8 +137,8 @@ func ComparePlayerDBs(goDBPath, pythonDBPath string) (*ComparisonReport, error) 
 // Helpers internes
 // ─────────────────────────────────────────────────────────────────────────────
 
-func listTables(db *sql.DB) (map[string]bool, error) {
-	rows, err := db.Query(
+func listTables(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx,
 		"SELECT table_name FROM information_schema.tables WHERE table_schema='main' AND table_type='BASE TABLE'",
 	)
 	if err != nil {
@@ -155,13 +156,13 @@ func listTables(db *sql.DB) (map[string]bool, error) {
 	return tables, rows.Err()
 }
 
-func countRows(db *sql.DB, table string) (int64, error) {
+func countRows(ctx context.Context, db *sql.DB, table string) (int64, error) {
 	var n int64
-	err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&n)
+	err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&n)
 	return n, err
 }
 
-func compareTableCounts(goDB, pyDB *sql.DB, goTables, pyTables map[string]bool) []TableComparison {
+func compareTableCounts(ctx context.Context, goDB, pyDB *sql.DB, goTables, pyTables map[string]bool) []TableComparison {
 	// Union des tables des deux DBs
 	allTables := make(map[string]bool)
 	for t := range goTables {
@@ -192,14 +193,14 @@ func compareTableCounts(goDB, pyDB *sql.DB, goTables, pyTables map[string]bool) 
 		case inGo && !inPy:
 			tc.Status = statusMissPy
 			tc.Notes = append(tc.Notes, "table absente côté Python")
-			tc.RowsGo, _ = countRows(goDB, table)
+			tc.RowsGo, _ = countRows(ctx, goDB, table)
 		case !inGo && inPy:
 			tc.Status = statusMissGo
 			tc.Notes = append(tc.Notes, "table absente côté Go")
-			tc.RowsPython, _ = countRows(pyDB, table)
+			tc.RowsPython, _ = countRows(ctx, pyDB, table)
 		default:
-			tc.RowsGo, _ = countRows(goDB, table)
-			tc.RowsPython, _ = countRows(pyDB, table)
+			tc.RowsGo, _ = countRows(ctx, goDB, table)
+			tc.RowsPython, _ = countRows(ctx, pyDB, table)
 			tc.Delta = tc.RowsGo - tc.RowsPython
 			if tc.RowsPython > 0 {
 				tc.DeltaPct = float64(tc.Delta) / float64(tc.RowsPython) * 100
@@ -225,7 +226,7 @@ func classifyDelta(delta, pyRows int64) string {
 	return statusDiverge
 }
 
-func compareBitmasks(goDB, pyDB *sql.DB) ([]BitmaskStats, error) {
+func compareBitmasks(ctx context.Context, goDB, pyDB *sql.DB) ([]BitmaskStats, error) {
 	type bitmaskQuery struct {
 		table  string
 		column string
@@ -241,10 +242,10 @@ func compareBitmasks(goDB, pyDB *sql.DB) ([]BitmaskStats, error) {
 	stats := make([]BitmaskStats, 0, 1)
 
 	var goNull, pyNull int64
-	errGo := goDB.QueryRow(
+	errGo := goDB.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NULL",
 	).Scan(&goNull)
-	errPy := pyDB.QueryRow(
+	errPy := pyDB.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM player_match_enrichment WHERE performance_score IS NULL",
 	).Scan(&pyNull)
 
@@ -253,8 +254,8 @@ func compareBitmasks(goDB, pyDB *sql.DB) ([]BitmaskStats, error) {
 	}
 
 	var goTotal, pyTotal int64
-	_ = goDB.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&goTotal)
-	_ = pyDB.QueryRow("SELECT COUNT(*) FROM player_match_enrichment").Scan(&pyTotal)
+	_ = goDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM player_match_enrichment").Scan(&goTotal)
+	_ = pyDB.QueryRowContext(ctx, "SELECT COUNT(*) FROM player_match_enrichment").Scan(&pyTotal)
 
 	var goPct, pyPct float64
 	if goTotal > 0 {
@@ -284,13 +285,13 @@ func compareBitmasks(goDB, pyDB *sql.DB) ([]BitmaskStats, error) {
 	return stats, nil
 }
 
-func compareMatchIDs(goDB, pyDB *sql.DB) (*MatchOverlap, error) {
+func compareMatchIDs(ctx context.Context, goDB, pyDB *sql.DB) (*MatchOverlap, error) {
 	// Charger les match_ids de player_match_enrichment dans les deux DBs
-	goIDs, err := loadMatchIDs(goDB)
+	goIDs, err := loadMatchIDs(ctx, goDB)
 	if err != nil {
 		return nil, fmt.Errorf("load go match_ids: %w", err)
 	}
-	pyIDs, err := loadMatchIDs(pyDB)
+	pyIDs, err := loadMatchIDs(ctx, pyDB)
 	if err != nil {
 		return nil, fmt.Errorf("load python match_ids: %w", err)
 	}
@@ -320,8 +321,8 @@ func compareMatchIDs(goDB, pyDB *sql.DB) (*MatchOverlap, error) {
 	}, nil
 }
 
-func loadMatchIDs(db *sql.DB) (map[string]bool, error) {
-	rows, err := db.Query("SELECT match_id FROM player_match_enrichment")
+func loadMatchIDs(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment")
 	if err != nil {
 		return nil, err
 	}

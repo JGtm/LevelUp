@@ -45,7 +45,7 @@ func openClosedDB(t *testing.T) string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestCheckDBAccessible_Absent(t *testing.T) {
-	ok, msg := checkDBAccessible("/nonexistent/path/test.duckdb")
+	ok, msg := checkDBAccessible(t.Context(), "/nonexistent/path/test.duckdb")
 	if ok {
 		t.Error("expected false pour DB absente")
 	}
@@ -56,7 +56,7 @@ func TestCheckDBAccessible_Absent(t *testing.T) {
 
 func TestCheckDBAccessible_Valid(t *testing.T) {
 	path := openClosedDB(t)
-	ok, msg := checkDBAccessible(path)
+	ok, msg := checkDBAccessible(t.Context(), path)
 	if !ok {
 		t.Errorf("expected true pour DB valide, got msg=%q", msg)
 	}
@@ -68,7 +68,7 @@ func TestCheckDBAccessible_Valid(t *testing.T) {
 
 func TestCheckTablesExist_AllMissing(t *testing.T) {
 	_, db := openTestDB(t)
-	missing := checkTablesExist(db, []string{"table_a", "table_b"})
+	missing := checkTablesExist(t.Context(), db, []string{"table_a", "table_b"})
 	if len(missing) != 2 {
 		t.Errorf("expected 2 missing, got %d: %v", len(missing), missing)
 	}
@@ -79,7 +79,7 @@ func TestCheckTablesExist_PartialPresent(t *testing.T) {
 	if _, err := db.Exec("CREATE TABLE present_table (id INTEGER)"); err != nil {
 		t.Fatal(err)
 	}
-	missing := checkTablesExist(db, []string{"present_table", "absent_table"})
+	missing := checkTablesExist(t.Context(), db, []string{"present_table", "absent_table"})
 	if len(missing) != 1 || missing[0] != "absent_table" {
 		t.Errorf("expected [absent_table], got %v", missing)
 	}
@@ -93,7 +93,7 @@ func TestCheckTablesExist_AllPresent(t *testing.T) {
 	if _, err := db.Exec("CREATE TABLE tbl2 (name TEXT)"); err != nil {
 		t.Fatal(err)
 	}
-	missing := checkTablesExist(db, []string{"tbl1", "tbl2"})
+	missing := checkTablesExist(t.Context(), db, []string{"tbl1", "tbl2"})
 	if len(missing) != 0 {
 		t.Errorf("expected 0 missing, got %v", missing)
 	}
@@ -105,7 +105,7 @@ func TestCheckTablesExist_AllPresent(t *testing.T) {
 
 func TestCheckViewsExist_AllMissing(t *testing.T) {
 	_, db := openTestDB(t)
-	missing := checkViewsExist(db, []string{"v_nonexistent"})
+	missing := checkViewsExist(t.Context(), db, []string{"v_nonexistent"})
 	if len(missing) != 1 {
 		t.Errorf("expected 1 missing, got %d", len(missing))
 	}
@@ -119,7 +119,7 @@ func TestCheckViewsExist_WithView(t *testing.T) {
 	if _, err := db.Exec("CREATE VIEW v_test AS SELECT * FROM base"); err != nil {
 		t.Fatal(err)
 	}
-	missing := checkViewsExist(db, []string{"v_test", "v_absent"})
+	missing := checkViewsExist(t.Context(), db, []string{"v_test", "v_absent"})
 	if len(missing) != 1 || missing[0] != "v_absent" {
 		t.Errorf("expected [v_absent], got %v", missing)
 	}
@@ -130,7 +130,7 @@ func TestCheckViewsExist_WithView(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestCheckSharedTables_DBAbsent(t *testing.T) {
-	ok, msg := checkSharedTables("/nonexistent/shared.duckdb")
+	ok, msg := checkSharedTables(t.Context(), "/nonexistent/shared.duckdb")
 	if ok {
 		t.Error("expected false pour DB absente")
 	}
@@ -141,7 +141,7 @@ func TestCheckSharedTables_DBAbsent(t *testing.T) {
 
 func TestCheckSharedTables_DBEmpty(t *testing.T) {
 	path := openClosedDB(t)
-	ok, msg := checkSharedTables(path)
+	ok, msg := checkSharedTables(t.Context(), path)
 	if ok {
 		t.Errorf("expected false (tables manquantes), got msg=%q", msg)
 	}
@@ -152,7 +152,7 @@ func TestCheckSharedTables_DBEmpty(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestCheckSharedViews_DBAbsent(t *testing.T) {
-	ok, msg := checkSharedViews("/nonexistent/shared.duckdb")
+	ok, msg := checkSharedViews(t.Context(), "/nonexistent/shared.duckdb")
 	if ok {
 		t.Error("expected false pour DB absente")
 	}
@@ -161,7 +161,7 @@ func TestCheckSharedViews_DBAbsent(t *testing.T) {
 
 func TestCheckSharedViews_DBEmpty(t *testing.T) {
 	path := openClosedDB(t)
-	ok, msg := checkSharedViews(path)
+	ok, msg := checkSharedViews(t.Context(), path)
 	if ok {
 		t.Errorf("expected false (vues manquantes), got msg=%q", msg)
 	}
@@ -173,7 +173,7 @@ func TestCheckSharedViews_DBEmpty(t *testing.T) {
 
 func TestCheckMigrationsApplied_DBAbsent(t *testing.T) {
 	dir := t.TempDir()
-	ok, msg := checkMigrationsApplied(dir, "GhostPlayer")
+	ok, msg := checkMigrationsApplied(t.Context(), dir, "GhostPlayer")
 	if ok {
 		t.Error("expected false (DB absente)")
 	}
@@ -185,7 +185,7 @@ func TestCheckMigrationsApplied_DBAbsent(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestCheckPlayerDB_FileAbsent(t *testing.T) {
-	ok, msg := checkPlayerDB("/nonexistent/stats.duckdb")
+	ok, msg := checkPlayerDB(t.Context(), "/nonexistent/stats.duckdb")
 	if ok {
 		t.Error("expected false (fichier absent)")
 	}
@@ -194,7 +194,7 @@ func TestCheckPlayerDB_FileAbsent(t *testing.T) {
 
 func TestCheckPlayerDB_TableAbsent(t *testing.T) {
 	path := openClosedDB(t)
-	ok, msg := checkPlayerDB(path)
+	ok, msg := checkPlayerDB(t.Context(), path)
 	if ok {
 		t.Errorf("expected false (table absente), got msg=%q", msg)
 	}
@@ -222,7 +222,7 @@ func TestCheckPlayerDB_TableEmpty(t *testing.T) {
 	db2.Close()
 	_ = path // path de openTestDB, pas utilisé
 
-	ok, msg := checkPlayerDB(dbPath)
+	ok, msg := checkPlayerDB(t.Context(), dbPath)
 	if ok {
 		t.Errorf("expected false (table vide), got msg=%q", msg)
 	}
