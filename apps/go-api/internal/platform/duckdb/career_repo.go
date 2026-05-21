@@ -880,12 +880,47 @@ func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRo
 	return results, rows.Err()
 }
 
-// GetCSRSnapshots retourne les classements CSR du joueur depuis player_csr_snapshots.
-// Retourne slice vide (pas d'erreur) si la table n'existe pas ou est vide.
+// GetCSRSnapshots retourne les classements CSR du joueur depuis player_csr_snapshots,
+// mergés avec le catalogue des playlists ranked actives (metadata.duckdb).
+//
+// Comportement :
+//   - Pour chaque playlist ayant un snapshot : on retourne la ligne snapshot (badge tier ou unranked).
+//   - Pour chaque playlist ranked du catalogue sans snapshot : on insère une ligne placement
+//     synthétique (Tier="", MeasurementMatchesRemaining=10, badge unranked_0.png) afin que
+//     la page Carrière affiche toutes les playlists classées, même celles à 0 match joué.
+//
+// Retourne slice vide (pas d'erreur) si ni snapshots ni catalogue ne sont disponibles.
 func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlaylistCSR, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	snapshots, err := r.loadCSRSnapshotRows(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	catalog := r.loadRankedPlaylistsCatalog(ctx)
+	if len(catalog) == 0 {
+		return snapshots, nil
+	}
+
+	seen := make(map[string]struct{}, len(snapshots))
+	for _, s := range snapshots {
+		seen[s.PlaylistID] = struct{}{}
+	}
+	out := snapshots
+	for _, c := range catalog {
+		if _, ok := seen[c.playlistID]; ok {
+			continue
+		}
+		out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name))
+	}
+	return out, nil
+}
+
+// loadCSRSnapshotRows lit player_csr_snapshots (logique historique). Retourne
+// nil sans erreur si la table n'existe pas (joueur jamais syncé pour CSR).
+func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context) ([]domain.CareerPlaylistCSR, error) {
 	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrSnapshots)
 	if err != nil {
 		if isTableNotFoundErr(err) {
@@ -921,4 +956,49 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlayli
 		out = append(out, p)
 	}
 	return out, rows.Err()
+}
+
+// rankedCatalogEntry : playlist ranked active du catalogue partagé (metadata).
+type rankedCatalogEntry struct {
+	playlistID string
+	name       string
+}
+
+// loadRankedPlaylistsCatalog lit playlists_catalog (metadata.duckdb) et retourne
+// les playlists ranked actives du titre du joueur. Retourne nil silencieusement
+// si la table ou la connexion metadata est indisponible (dégradation legacy).
+func (r *CareerRepo) loadRankedPlaylistsCatalog(ctx context.Context) []rankedCatalogEntry {
+	if r.pdb == nil || r.pdb.Metadata == nil {
+		return nil
+	}
+	titleSlug := strings.TrimSpace(r.pdb.TitleSlug)
+	if titleSlug == "" {
+		titleSlug = homeStaticTitleSlug
+	}
+	rows, err := r.pdb.Metadata.Query(ctx, QPlaylistsCatalogRanked, titleSlug)
+	if err != nil {
+		return nil
+	}
+	defer rows.Close()
+	var out []rankedCatalogEntry
+	for rows.Next() {
+		var e rankedCatalogEntry
+		if err := rows.Scan(&e.playlistID, &e.name); err != nil {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+// newPlacementPlaylistCSR construit une ligne synthétique pour une playlist
+// ranked du catalogue jamais jouée (0 match de placement effectué).
+func newPlacementPlaylistCSR(playlistID, name string) domain.CareerPlaylistCSR {
+	p := domain.CareerPlaylistCSR{
+		PlaylistID:   playlistID,
+		PlaylistName: name,
+	}
+	p.Current.MeasurementMatchesRemaining = 10
+	p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, 10)
+	return p
 }
