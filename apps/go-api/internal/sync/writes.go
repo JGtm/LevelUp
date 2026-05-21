@@ -6,6 +6,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strconv"
@@ -27,7 +28,7 @@ import (
 // de vérité non-ambiguë pour les requêtes d'affichage. start_time / end_time
 // (TIMESTAMP naïf) restent écrits par compat ; leur convention bytes dépend
 // de la session TZ DuckDB et n'est plus utilisée pour exposer la date au front.
-func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
+func InsertRegistryIfNotExists(ctx context.Context, db *sql.DB, row MatchRegistryRow) error {
 	now := time.Now().UTC()
 	startUTC := row.StartTime.UTC()
 	var endUTC interface{}
@@ -35,7 +36,7 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 		t := row.EndTime.UTC()
 		endUTC = t
 	}
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO match_registry (
 			match_id, start_time, end_time, start_time_utc, end_time_utc,
 			playlist_id, playlist_name, playlist_version_id,
@@ -91,13 +92,13 @@ func InsertRegistryIfNotExists(db *sql.DB, row MatchRegistryRow) error {
 // l'existant. Cela permet de re-syncer pour combler des champs vides
 // (typiquement team_mmr/enemy_mmr quand le skill endpoint a échoué la
 // première fois) sans détruire les données déjà persistées.
-func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
+func InsertParticipants(ctx context.Context, db *sql.DB, rows []ParticipantRow) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	now := time.Now().UTC()
 	for _, row := range rows {
-		_, err := db.Exec(`
+		_, err := db.ExecContext(ctx, `
 			INSERT INTO match_participants (
 				match_id, xuid, gamertag,
 				team_id, outcome, rank, score,
@@ -163,13 +164,13 @@ func InsertParticipants(db *sql.DB, rows []ParticipantRow) error {
 
 // InsertMedals insère les médailles d'un match (INSERT OR IGNORE).
 // Portage de batch_upsert_rows sur medals_earned (Python _shared_writes.py).
-func InsertMedals(db *sql.DB, rows []MedalRow) error {
+func InsertMedals(ctx context.Context, db *sql.DB, rows []MedalRow) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	now := time.Now().UTC()
 	for _, row := range rows {
-		_, err := db.Exec(`
+		_, err := db.ExecContext(ctx, `
 			INSERT OR IGNORE INTO medals_earned (match_id, xuid, medal_name_id, count, created_at)
 			VALUES (?, ?, ?, ?, ?)`,
 			row.MatchID, row.XUID, row.MedalNameID, row.Count, now,
@@ -185,7 +186,7 @@ func InsertMedals(db *sql.DB, rows []MedalRow) error {
 // Portage de _upsert_xuid_alias() (Python _shared_writes.py).
 // Pour les bots, le nom d'affichage est toujours résolu via BotDisplayName
 // ("bid(3.0)" → "343 Bot 3") indépendamment du gamertag brut de l'API.
-func UpsertXUIDAlias(db *sql.DB, xuid, gamertag string) error {
+func UpsertXUIDAlias(ctx context.Context, db *sql.DB, xuid, gamertag string) error {
 	if xuid == "" || gamertag == "" {
 		return nil
 	}
@@ -193,7 +194,7 @@ func UpsertXUIDAlias(db *sql.DB, xuid, gamertag string) error {
 		gamertag = analysis.BotDisplayName(xuid)
 	}
 	now := time.Now().UTC()
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO xuid_aliases (xuid, gamertag, last_seen, source, updated_at)
 		VALUES (?, ?, ?, 'sync', ?)
 		ON CONFLICT (xuid) DO UPDATE SET
@@ -214,9 +215,9 @@ func UpsertXUIDAlias(db *sql.DB, xuid, gamertag string) error {
 
 // UpsertPlayerEnrichment insère/met à jour une ligne dans player_match_enrichment.
 // Portage de _insert_enrichment_row() (Python _engine_writes.py).
-func UpsertPlayerEnrichment(db *sql.DB, matchID, teammatesSig string) error {
+func UpsertPlayerEnrichment(ctx context.Context, db *sql.DB, matchID, teammatesSig string) error {
 	now := time.Now().UTC()
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO player_match_enrichment
 			(match_id, teammates_signature, created_at, updated_at)
 		VALUES (?, ?, ?, ?)
@@ -233,9 +234,9 @@ func UpsertPlayerEnrichment(db *sql.DB, matchID, teammatesSig string) error {
 
 // SetSyncMeta met à jour une clé dans sync_meta.
 // Portage de _update_sync_meta() (Python engine.py).
-func SetSyncMeta(db *sql.DB, key, value string) error {
+func SetSyncMeta(ctx context.Context, db *sql.DB, key, value string) error {
 	now := time.Now().UTC()
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO sync_meta (key, value, updated_at) VALUES (?, ?, ?)
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
 		key, value, now,
@@ -257,10 +258,10 @@ func nullStr(s string) *string {
 // WriteSessionAssignments écrit session_id et session_label dans player_match_enrichment.
 // Seules les lignes dont le match_id existe déjà sont mises à jour (UPDATE).
 // Retourne le nombre de lignes affectées.
-func WriteSessionAssignments(db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
+func WriteSessionAssignments(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
 	updated := 0
 	for _, a := range assignments {
-		result, err := db.Exec(`
+		result, err := db.ExecContext(ctx, `
 			UPDATE player_match_enrichment
 			SET    session_id    = ?,
 			       session_label = ?,
@@ -289,7 +290,7 @@ func WriteSessionAssignments(db *sql.DB, assignments []domain.SessionAssignment)
 // `database/sql` les uint64 dont le bit 63 est set ("values with high bit set are
 // not supported"), or de nombreux IDs filmshell Halo (ex `f408190f42c9679f`)
 // dépassent 2^63. Le cast côté DuckDB préserve la valeur unsigned exacte.
-func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) error {
+func InsertWeaponKills(ctx context.Context, db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) error {
 	// Garde-fou anti-perte de données : un appel avec attrs=[] doit être un
 	// no-op total. Le DELETE+INSERT-batch a vidé silencieusement les rows
 	// existantes pour ~1010 matchs en mai 2026 quand un --weapons --force
@@ -300,18 +301,18 @@ func InsertWeaponKills(db *sql.DB, matchID, xuid string, attrs []WeaponKillRow) 
 		return nil
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("InsertWeaponKills begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.Exec(`DELETE FROM weapon_kills WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM weapon_kills WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
 		return fmt.Errorf("InsertWeaponKills delete: %w", err)
 	}
 
 	for _, r := range attrs {
-		if _, err := tx.Exec(`
+		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO weapon_kills (
 				match_id, xuid, time_ms, weapon_id, reconciled_as,
 				delta_ms, confidence, attribution_path,
@@ -351,12 +352,12 @@ type WeaponKillRow struct {
 
 // MarkWeaponKillsDone met à jour le bit MBitWeaponKills ou MBitWeaponKillsNoFilm
 // dans match_registry.backfill_completed.
-func MarkWeaponKillsDone(db *sql.DB, matchID string, noFilm bool) error {
+func MarkWeaponKillsDone(ctx context.Context, db *sql.DB, matchID string, noFilm bool) error {
 	bit := MBitWeaponKills
 	if noFilm {
 		bit = MBitWeaponKillsNoFilm
 	}
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
 		WHERE match_id = ?
@@ -377,18 +378,18 @@ func MarkWeaponKillsDone(db *sql.DB, matchID string, noFilm bool) error {
 //
 // Idempotent : ré-exécuter pour le même (matchID, xuid) écrase les rows
 // précédentes, ce qui est attendu pour réparer une extraction défaillante.
-func InsertPersonalScoreAwards(db *sql.DB, matchID, xuid string, rows []PersonalScoreAwardRow) error {
-	tx, err := db.Begin()
+func InsertPersonalScoreAwards(ctx context.Context, db *sql.DB, matchID, xuid string, rows []PersonalScoreAwardRow) error {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("InsertPersonalScoreAwards begin: %w", err)
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	if _, err := tx.Exec(`DELETE FROM personal_score_awards WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM personal_score_awards WHERE match_id = ? AND xuid = ?`, matchID, xuid); err != nil {
 		return fmt.Errorf("InsertPersonalScoreAwards delete(%s,%s): %w", matchID, xuid, err)
 	}
 	for _, r := range rows {
-		if _, err := tx.Exec(`
+		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO personal_score_awards
 				(match_id, xuid, award_name, award_category, award_count, award_score)
 			VALUES (?, ?, ?, ?, ?, ?)`,
@@ -406,11 +407,11 @@ func InsertPersonalScoreAwards(db *sql.DB, matchID, xuid string, rows []Personal
 
 // InsertHighlightEvents insère les événements highlight en lot (INSERT OR IGNORE).
 // Retourne le nombre de lignes effectivement insérées.
-func InsertHighlightEvents(db *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
 	if len(events) == 0 {
 		return 0, nil
 	}
-	stmt, err := db.Prepare(`
+	stmt, err := db.PrepareContext(ctx, `
 		INSERT OR IGNORE INTO highlight_events
 			(match_id, event_type, time_ms, xuid, type_hint)
 		VALUES (?, ?, ?, ?, ?)`)
@@ -422,7 +423,7 @@ func InsertHighlightEvents(db *sql.DB, matchID string, events []analysis.Highlig
 	inserted := 0
 	for _, ev := range events {
 		xuid := strconv.FormatUint(ev.XUID, 10)
-		res, execErr := stmt.Exec(matchID, ev.EventType, ev.TimeMS, xuid, ev.TypeHint)
+		res, execErr := stmt.ExecContext(ctx, matchID, ev.EventType, ev.TimeMS, xuid, ev.TypeHint)
 		if execErr != nil {
 			return inserted, fmt.Errorf("InsertHighlightEvents exec(%s): %w", matchID, execErr)
 		}
@@ -444,6 +445,7 @@ func InsertHighlightEvents(db *sql.DB, matchID string, events []analysis.Highlig
 // plusieurs fois dans un match) — donc `INSERT OR IGNORE` est rejeté par
 // DuckDB. À la place, idempotence via DELETE + INSERT pour ce match.
 func InsertKillerVictimPairsFromEvents(
+	ctx context.Context,
 	db *sql.DB,
 	matchID string,
 	events []analysis.HighlightEvent,
@@ -467,11 +469,11 @@ func InsertKillerVictimPairsFromEvents(
 		return nil
 	}
 
-	if _, err := db.Exec(`DELETE FROM killer_victim_pairs WHERE match_id = ?`, matchID); err != nil {
+	if _, err := db.ExecContext(ctx, `DELETE FROM killer_victim_pairs WHERE match_id = ?`, matchID); err != nil {
 		return fmt.Errorf("InsertKillerVictimPairs delete(%s): %w", matchID, err)
 	}
 
-	stmt, err := db.Prepare(`
+	stmt, err := db.PrepareContext(ctx, `
 		INSERT INTO killer_victim_pairs
 			(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, time_ms, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`)
@@ -482,7 +484,7 @@ func InsertKillerVictimPairsFromEvents(
 
 	now := time.Now().UTC()
 	for _, p := range pairs {
-		if _, execErr := stmt.Exec(matchID, p.KillerXUID, p.KillerGT, p.VictimXUID, p.VictimGT, p.TimeMS, now); execErr != nil {
+		if _, execErr := stmt.ExecContext(ctx, matchID, p.KillerXUID, p.KillerGT, p.VictimXUID, p.VictimGT, p.TimeMS, now); execErr != nil {
 			return fmt.Errorf("InsertKillerVictimPairs exec(%s): %w", matchID, execErr)
 		}
 	}
@@ -491,8 +493,8 @@ func InsertKillerVictimPairsFromEvents(
 
 // MarkEventsLoaded positionne le bit MBitEvents dans backfill_completed
 // et passe events_loaded = TRUE (source de vérité pour le backfill).
-func MarkEventsLoaded(db *sql.DB, matchID string) error {
-	_, err := db.Exec(`
+func MarkEventsLoaded(ctx context.Context, db *sql.DB, matchID string) error {
+	_, err := db.ExecContext(ctx, `
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?,
 		    events_loaded = TRUE
@@ -504,8 +506,8 @@ func MarkEventsLoaded(db *sql.DB, matchID string) error {
 }
 
 // MarkKillerVictimLoaded positionne le bit MBitKillerVictim dans match_registry.backfill_completed.
-func MarkKillerVictimLoaded(db *sql.DB, matchID string) error {
-	_, err := db.Exec(`
+func MarkKillerVictimLoaded(ctx context.Context, db *sql.DB, matchID string) error {
+	_, err := db.ExecContext(ctx, `
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
 		WHERE match_id = ?`, MBitKillerVictim, matchID)
@@ -541,17 +543,17 @@ const backfillFlagParticipants = 512
 // À appeler depuis insertFetchedMatch APRÈS un InsertParticipants réussi
 // quand fm.SkillError est nil ET que MergeSkillIntoParticipants a été appelé
 // (= skillData non vide).
-func MarkSkillLoaded(db *sql.DB, matchID string) error {
+func MarkSkillLoaded(ctx context.Context, db *sql.DB, matchID string) error {
 	// PBit* sur match_participants — uniquement les rows ayant team_mmr
 	// effectivement rempli (sinon mensonge sur un participant skipped).
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(ctx, `
 		UPDATE match_participants
 		SET backfill_bits = COALESCE(backfill_bits, 0) | ?
 		WHERE match_id = ? AND team_mmr IS NOT NULL`, skillBitsCombined, matchID); err != nil {
 		return fmt.Errorf("MarkSkillLoaded participants(%s): %w", matchID, err)
 	}
 	// BackfillFlags["skill"] sur match_registry.
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(ctx, `
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
 		WHERE match_id = ?`, backfillFlagSkill, matchID); err != nil {
@@ -563,8 +565,8 @@ func MarkSkillLoaded(db *sql.DB, matchID string) error {
 // MarkParticipantsDone positionne le bit BackfillFlags["participants"] sur
 // match_registry.backfill_completed. À appeler APRÈS un InsertParticipants
 // réussi.
-func MarkParticipantsDone(db *sql.DB, matchID string) error {
-	_, err := db.Exec(`
+func MarkParticipantsDone(ctx context.Context, db *sql.DB, matchID string) error {
+	_, err := db.ExecContext(ctx, `
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
 		WHERE match_id = ?`, backfillFlagParticipants, matchID)

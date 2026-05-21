@@ -364,7 +364,7 @@ func TestLoadKnownMatchIDs_Deduplication(t *testing.T) {
 
 	// Insert some known matches
 	for _, id := range []string{"match-old-1", "match-old-2", "match-old-3"} {
-		if err := UpsertPlayerEnrichment(playerDB, id, ""); err != nil {
+		if err := UpsertPlayerEnrichment(t.Context(), playerDB, id, ""); err != nil {
 			t.Fatalf("UpsertPlayerEnrichment: %v", err)
 		}
 	}
@@ -467,7 +467,7 @@ func TestRunDelta_StopsAtKnownMatch(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 
 	// Pre-insert a "known" match
-	if err := UpsertPlayerEnrichment(playerDB, "match-known", ""); err != nil {
+	if err := UpsertPlayerEnrichment(t.Context(), playerDB, "match-known", ""); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment: %v", err)
 	}
 
@@ -517,7 +517,7 @@ func TestRunFull_ContinuesPastKnown(t *testing.T) {
 	playerDB, sharedDB := newInMemoryDBs(t)
 
 	// Pre-insert known match
-	if err := UpsertPlayerEnrichment(playerDB, "match-known", ""); err != nil {
+	if err := UpsertPlayerEnrichment(t.Context(), playerDB, "match-known", ""); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment: %v", err)
 	}
 
@@ -688,7 +688,7 @@ func TestSetSyncMeta_ReadBack(t *testing.T) {
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
-	if err := SetSyncMeta(playerDB, "last_delta_sync", now); err != nil {
+	if err := SetSyncMeta(t.Context(), playerDB, "last_delta_sync", now); err != nil {
 		t.Fatalf("SetSyncMeta: %v", err)
 	}
 
@@ -708,8 +708,8 @@ func TestSetSyncMeta_Overwrite(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 
-	_ = SetSyncMeta(playerDB, "test_key", "value1")
-	_ = SetSyncMeta(playerDB, "test_key", "value2")
+	_ = SetSyncMeta(t.Context(), playerDB, "test_key", "value1")
+	_ = SetSyncMeta(t.Context(), playerDB, "test_key", "value2")
 
 	var val string
 	err := playerDB.QueryRow("SELECT value FROM sync_meta WHERE key = 'test_key'").Scan(&val)

@@ -27,7 +27,7 @@ func TestInsertRegistryIfNotExists(t *testing.T) {
 		PlaylistName: &plName,
 		FirstSyncBy:  "test-player",
 	}
-	if err := intsync.InsertRegistryIfNotExists(db, row); err != nil {
+	if err := intsync.InsertRegistryIfNotExists(t.Context(), db, row); err != nil {
 		t.Fatalf("InsertRegistryIfNotExists: %v", err)
 	}
 
@@ -41,7 +41,7 @@ func TestInsertRegistryIfNotExists(t *testing.T) {
 	}
 
 	// INSERT OR IGNORE → pas de doublon
-	if err := intsync.InsertRegistryIfNotExists(db, row); err != nil {
+	if err := intsync.InsertRegistryIfNotExists(t.Context(), db, row); err != nil {
 		t.Fatalf("second insert should not fail: %v", err)
 	}
 	_ = db.QueryRow("SELECT COUNT(*) FROM match_registry WHERE match_id = ?", "test-match-001").Scan(&count)
@@ -53,7 +53,7 @@ func TestInsertRegistryIfNotExists(t *testing.T) {
 func TestUpsertXUIDAlias(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
 
-	if err := intsync.UpsertXUIDAlias(db, "xuid-001", "PlayerOne"); err != nil {
+	if err := intsync.UpsertXUIDAlias(t.Context(), db, "xuid-001", "PlayerOne"); err != nil {
 		t.Fatalf("UpsertXUIDAlias: %v", err)
 	}
 
@@ -66,7 +66,7 @@ func TestUpsertXUIDAlias(t *testing.T) {
 	}
 
 	// Upsert avec un nouveau gamertag → mise à jour
-	if err := intsync.UpsertXUIDAlias(db, "xuid-001", "PlayerOneRenamed"); err != nil {
+	if err := intsync.UpsertXUIDAlias(t.Context(), db, "xuid-001", "PlayerOneRenamed"); err != nil {
 		t.Fatalf("UpsertXUIDAlias update: %v", err)
 	}
 	_ = db.QueryRow("SELECT gamertag FROM xuid_aliases WHERE xuid = ?", "xuid-001").Scan(&gamertag)
@@ -82,7 +82,7 @@ func TestInsertMedals(t *testing.T) {
 		{MatchID: "m1", XUID: "x1", MedalNameID: 100, Count: 3},
 		{MatchID: "m1", XUID: "x1", MedalNameID: 200, Count: 1},
 	}
-	if err := intsync.InsertMedals(db, rows); err != nil {
+	if err := intsync.InsertMedals(t.Context(), db, rows); err != nil {
 		t.Fatalf("InsertMedals: %v", err)
 	}
 
@@ -96,7 +96,7 @@ func TestInsertMedals(t *testing.T) {
 func TestSetSyncMeta(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
 
-	if err := intsync.SetSyncMeta(db, "last_sync", "2025-01-01T00:00:00Z"); err != nil {
+	if err := intsync.SetSyncMeta(t.Context(), db, "last_sync", "2025-01-01T00:00:00Z"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -107,7 +107,7 @@ func TestSetSyncMeta(t *testing.T) {
 	}
 
 	// Upsert
-	_ = intsync.SetSyncMeta(db, "last_sync", "2025-06-01T00:00:00Z")
+	_ = intsync.SetSyncMeta(t.Context(), db, "last_sync", "2025-06-01T00:00:00Z")
 	_ = db.QueryRow("SELECT value FROM sync_meta WHERE key = 'last_sync'").Scan(&val)
 	if val != "2025-06-01T00:00:00Z" {
 		t.Errorf("expected 2025-06-01T00:00:00Z after upsert, got %s", val)
@@ -149,7 +149,7 @@ func TestInsertParticipants(t *testing.T) {
 			KDA:     &kda092,
 		},
 	}
-	if err := intsync.InsertParticipants(db, rows); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, rows); err != nil {
 		t.Fatalf("InsertParticipants: %v", err)
 	}
 
@@ -167,7 +167,7 @@ func TestInsertParticipants(t *testing.T) {
 	}
 
 	// Idempotence: re-insert should not fail or duplicate
-	if err := intsync.InsertParticipants(db, rows); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, rows); err != nil {
 		t.Fatalf("second InsertParticipants should not fail: %v", err)
 	}
 	_ = db.QueryRow("SELECT COUNT(*) FROM match_participants WHERE match_id = 'm1'").Scan(&count)
@@ -176,7 +176,7 @@ func TestInsertParticipants(t *testing.T) {
 	}
 
 	// Empty slice should no-op
-	if err := intsync.InsertParticipants(db, nil); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, nil); err != nil {
 		t.Fatalf("InsertParticipants(nil) should not fail: %v", err)
 	}
 }
@@ -199,7 +199,7 @@ func TestInsertParticipants_UpsertFillsNullSkill(t *testing.T) {
 			Deaths:  &deaths,
 		},
 	}
-	if err := intsync.InsertParticipants(db, first); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, first); err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
 
@@ -224,7 +224,7 @@ func TestInsertParticipants_UpsertFillsNullSkill(t *testing.T) {
 			KillsExpected: &ke,
 		},
 	}
-	if err := intsync.InsertParticipants(db, second); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, second); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 
@@ -271,7 +271,7 @@ func TestInsertParticipants_UpsertPreservesNonNull(t *testing.T) {
 			TeamMMR: &tm, EnemyMMR: &em,
 		},
 	}
-	if err := intsync.InsertParticipants(db, first); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, first); err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
 
@@ -285,7 +285,7 @@ func TestInsertParticipants_UpsertPreservesNonNull(t *testing.T) {
 			// TeamMMR / EnemyMMR : nil
 		},
 	}
-	if err := intsync.InsertParticipants(db, second); err != nil {
+	if err := intsync.InsertParticipants(t.Context(), db, second); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 
@@ -304,7 +304,7 @@ func TestUpsertPlayerEnrichment(t *testing.T) {
 	db := testutil.NewInMemoryPlayer(t)
 
 	// Insert new enrichment
-	if err := intsync.UpsertPlayerEnrichment(db, "m1", "sig-abc"); err != nil {
+	if err := intsync.UpsertPlayerEnrichment(t.Context(), db, "m1", "sig-abc"); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment: %v", err)
 	}
 
@@ -315,7 +315,7 @@ func TestUpsertPlayerEnrichment(t *testing.T) {
 	}
 
 	// Upsert with new signature
-	if err := intsync.UpsertPlayerEnrichment(db, "m1", "sig-def"); err != nil {
+	if err := intsync.UpsertPlayerEnrichment(t.Context(), db, "m1", "sig-def"); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment update: %v", err)
 	}
 	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sig)
@@ -324,7 +324,7 @@ func TestUpsertPlayerEnrichment(t *testing.T) {
 	}
 
 	// Upsert with empty string → should preserve existing via COALESCE
-	if err := intsync.UpsertPlayerEnrichment(db, "m1", ""); err != nil {
+	if err := intsync.UpsertPlayerEnrichment(t.Context(), db, "m1", ""); err != nil {
 		t.Fatalf("UpsertPlayerEnrichment empty: %v", err)
 	}
 	_ = db.QueryRow("SELECT teammates_signature FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sig)
@@ -348,7 +348,7 @@ func TestInsertWeaponKills(t *testing.T) {
 		{TimeMS: 1000, WeaponID: &wid1, Confidence: "high", AttributionPath: "direct"},
 		{TimeMS: 2000, WeaponID: &wid2, ReconciledAs: &rec, DeltaMS: &delta, Confidence: "medium", PlayerIndex: &pidx},
 	}
-	if err := intsync.InsertWeaponKills(db, "m1", "x1", attrs); err != nil {
+	if err := intsync.InsertWeaponKills(t.Context(), db, "m1", "x1", attrs); err != nil {
 		t.Fatalf("InsertWeaponKills: %v", err)
 	}
 
@@ -362,7 +362,7 @@ func TestInsertWeaponKills(t *testing.T) {
 	attrs2 := []intsync.WeaponKillRow{
 		{TimeMS: 3000, WeaponID: &wid1, Confidence: "low", AttributionPath: "swap"},
 	}
-	if err := intsync.InsertWeaponKills(db, "m1", "x1", attrs2); err != nil {
+	if err := intsync.InsertWeaponKills(t.Context(), db, "m1", "x1", attrs2); err != nil {
 		t.Fatalf("InsertWeaponKills replace: %v", err)
 	}
 	_ = db.QueryRow("SELECT COUNT(*) FROM weapon_kills WHERE match_id = 'm1' AND xuid = 'x1'").Scan(&count)
@@ -388,7 +388,7 @@ func TestMarkWeaponKillsDone(t *testing.T) {
 	// Seed a match
 	_, _ = db.Exec("INSERT INTO match_registry (match_id) VALUES ('m1')")
 
-	if err := intsync.MarkWeaponKillsDone(db, "m1", false); err != nil {
+	if err := intsync.MarkWeaponKillsDone(t.Context(), db, "m1", false); err != nil {
 		t.Fatalf("MarkWeaponKillsDone: %v", err)
 	}
 
@@ -400,7 +400,7 @@ func TestMarkWeaponKillsDone(t *testing.T) {
 
 	// Mark no-film variant
 	_, _ = db.Exec("INSERT INTO match_registry (match_id) VALUES ('m2')")
-	if err := intsync.MarkWeaponKillsDone(db, "m2", true); err != nil {
+	if err := intsync.MarkWeaponKillsDone(t.Context(), db, "m2", true); err != nil {
 		t.Fatalf("MarkWeaponKillsDone noFilm: %v", err)
 	}
 	_ = db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id = 'm2'").Scan(&bits)
@@ -423,7 +423,7 @@ func TestWriteSessionAssignments_UpdatesRows(t *testing.T) {
 		{MatchID: "m2", SessionID: 1, SessionLabel: "Session 1"},
 		{MatchID: "m3", SessionID: 2, SessionLabel: "Session 2"},
 	}
-	n, err := intsync.WriteSessionAssignments(db, assignments)
+	n, err := intsync.WriteSessionAssignments(t.Context(), db, assignments)
 	if err != nil {
 		t.Fatalf("WriteSessionAssignments: %v", err)
 	}
@@ -445,7 +445,7 @@ func TestWriteSessionAssignments_UpdatesRows(t *testing.T) {
 
 func TestWriteSessionAssignments_EmptySlice(t *testing.T) {
 	db := testutil.NewInMemoryPlayer(t)
-	n, err := intsync.WriteSessionAssignments(db, nil)
+	n, err := intsync.WriteSessionAssignments(t.Context(), db, nil)
 	if err != nil {
 		t.Fatalf("WriteSessionAssignments(nil): %v", err)
 	}
@@ -461,7 +461,7 @@ func TestWriteSessionAssignments_MissingMatchID_Zero(t *testing.T) {
 	assignments := []domain.SessionAssignment{
 		{MatchID: "nonexistent", SessionID: 1, SessionLabel: "S1"},
 	}
-	n, err := intsync.WriteSessionAssignments(db, assignments)
+	n, err := intsync.WriteSessionAssignments(t.Context(), db, assignments)
 	if err != nil {
 		t.Fatalf("WriteSessionAssignments: %v", err)
 	}

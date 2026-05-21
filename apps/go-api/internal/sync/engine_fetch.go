@@ -126,7 +126,7 @@ func (e *SyncEngine) insertFetchedMatch(
 	fm *fetchedMatch,
 ) error {
 	// Registry (obligatoire).
-	if err := InsertRegistryIfNotExists(sharedDB, *fm.Registry); err != nil {
+	if err := InsertRegistryIfNotExists(ctx, sharedDB, *fm.Registry); err != nil {
 		slog.ErrorContext(ctx, "sync: InsertRegistry échoué",
 			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 		)
@@ -138,7 +138,7 @@ func (e *SyncEngine) insertFetchedMatch(
 		if fm.SkillError != nil {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("skill %s: %v", fm.MatchID, fm.SkillError))
 		}
-		if err := InsertParticipants(sharedDB, fm.Participants); err != nil {
+		if err := InsertParticipants(ctx, sharedDB, fm.Participants); err != nil {
 			slog.ErrorContext(ctx, "sync: InsertParticipants échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Participants), "err", err,
 			)
@@ -149,7 +149,7 @@ func (e *SyncEngine) insertFetchedMatch(
 		// Phase 2 du plan PLAN_BITMASKS_AUDIT_FIX : marquer le bit
 		// participants pour que `levelup backfill --participants` ne re-traite
 		// pas indéfiniment ce match.
-		if markErr := MarkParticipantsDone(sharedDB, fm.MatchID); markErr != nil {
+		if markErr := MarkParticipantsDone(ctx, sharedDB, fm.MatchID); markErr != nil {
 			slog.WarnContext(ctx, "sync: MarkParticipantsDone échoué",
 				"match_id", fm.MatchID, "err", markErr)
 		}
@@ -158,7 +158,7 @@ func (e *SyncEngine) insertFetchedMatch(
 		// données (fm.SkillError nil ET team_mmr présent sur ≥1 participant).
 		// MarkSkillLoaded filtre lui-même sur team_mmr IS NOT NULL côté SQL.
 		if fm.SkillError == nil && hasAnyTeamMMR(fm.Participants) {
-			if markErr := MarkSkillLoaded(sharedDB, fm.MatchID); markErr != nil {
+			if markErr := MarkSkillLoaded(ctx, sharedDB, fm.MatchID); markErr != nil {
 				slog.WarnContext(ctx, "sync: MarkSkillLoaded échoué",
 					"match_id", fm.MatchID, "err", markErr)
 			}
@@ -169,7 +169,7 @@ func (e *SyncEngine) insertFetchedMatch(
 		for _, p := range fm.Participants {
 			if p.Gamertag != nil && *p.Gamertag != "" {
 				if globalDB != nil {
-					_ = UpsertXUIDAlias(globalDB, p.XUID, *p.Gamertag)
+					_ = UpsertXUIDAlias(ctx, globalDB, p.XUID, *p.Gamertag)
 				}
 				aliased++
 			}
@@ -181,7 +181,7 @@ func (e *SyncEngine) insertFetchedMatch(
 
 	// Medals.
 	if len(fm.Medals) > 0 {
-		if err := InsertMedals(sharedDB, fm.Medals); err != nil {
+		if err := InsertMedals(ctx, sharedDB, fm.Medals); err != nil {
 			slog.ErrorContext(ctx, "sync: InsertMedals échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "count", len(fm.Medals), "err", err,
 			)
@@ -206,7 +206,7 @@ func (e *SyncEngine) insertFetchedMatch(
 	}
 
 	// Player enrichment.
-	if err := UpsertPlayerEnrichment(playerDB, fm.MatchID, ""); err != nil {
+	if err := UpsertPlayerEnrichment(ctx, playerDB, fm.MatchID, ""); err != nil {
 		slog.ErrorContext(ctx, "sync: UpsertPlayerEnrichment échoué",
 			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 		)
@@ -216,7 +216,7 @@ func (e *SyncEngine) insertFetchedMatch(
 	// PersonalScoreAwards (player DB, par joueur synchronisé). Non-bloquant :
 	// un échec produit un warning, le sync continue.
 	if len(fm.PSA) > 0 {
-		if err := InsertPersonalScoreAwards(playerDB, fm.MatchID, e.xuid, fm.PSA); err != nil {
+		if err := InsertPersonalScoreAwards(ctx, playerDB, fm.MatchID, e.xuid, fm.PSA); err != nil {
 			slog.WarnContext(ctx, "sync: InsertPersonalScoreAwards échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 			)

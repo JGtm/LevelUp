@@ -79,7 +79,7 @@ func healStatsForRecentMatches(
 		// par ExtractParticipants ; UPSERT préserve l'existant via COALESCE.
 		participants := ExtractParticipants(matchJSON)
 		ensureGamertagForSelf(participants, xuid, selfGamertag)
-		if err := InsertParticipants(sharedDB, participants); err != nil {
+		if err := InsertParticipants(ctx, sharedDB, participants); err != nil {
 			slog.WarnContext(ctx, "healStats: upsert participants échoué",
 				"match_id", matchID, "err", err)
 			continue
@@ -89,7 +89,7 @@ func healStatsForRecentMatches(
 		// les nouveaux ne sont pas NULL.
 		reg, err := ExtractRegistry(matchJSON, "heal")
 		if err == nil && reg != nil {
-			if err := InsertRegistryIfNotExists(sharedDB, *reg); err != nil {
+			if err := InsertRegistryIfNotExists(ctx, sharedDB, *reg); err != nil {
 				slog.DebugContext(ctx, "healStats: upsert registry skipped",
 					"match_id", matchID, "err", err)
 			}

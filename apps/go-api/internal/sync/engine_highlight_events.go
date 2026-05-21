@@ -65,7 +65,7 @@ func insertHighlightEventsFromData(
 		return nil
 	}
 
-	n, err := InsertHighlightEvents(sharedDB, matchID, events)
+	n, err := InsertHighlightEvents(ctx, sharedDB, matchID, events)
 	if err != nil {
 		return fmt.Errorf("InsertHighlightEvents: %w", err)
 	}
@@ -74,28 +74,28 @@ func insertHighlightEventsFromData(
 	if globalDB != nil {
 		for _, ev := range events {
 			if ev.XUID != 0 && ev.Gamertag != "" {
-				_ = UpsertXUIDAlias(globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag)
+				_ = UpsertXUIDAlias(ctx, globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag)
 			}
 		}
 	}
 
 	if n > 0 {
 		result.EventsInserted += n
-		_ = MarkEventsLoaded(sharedDB, matchID)
+		_ = MarkEventsLoaded(ctx, sharedDB, matchID)
 	}
 
 	// Fix Phase 1bis (mai 2026) : ne marquer MBitKillerVictim que si l'insert
 	// a réellement réussi. Avant, l'insert + le mark étaient appelés
 	// inconditionnellement avec `_ =` qui swallowait l'erreur — bit menteur
 	// dormant, masqué tant que les events n'arrivaient pas (parser cassé).
-	if pairsErr := InsertKillerVictimPairsFromEvents(sharedDB, matchID, events); pairsErr != nil {
+	if pairsErr := InsertKillerVictimPairsFromEvents(ctx, sharedDB, matchID, events); pairsErr != nil {
 		slog.WarnContext(ctx, "InsertKillerVictimPairs échoué", "match_id", matchID, "err", pairsErr)
 		if result != nil {
 			result.Warnings = append(result.Warnings,
 				fmt.Sprintf("killer_victim_pairs %s: %v", matchID, pairsErr))
 		}
 	} else {
-		_ = MarkKillerVictimLoaded(sharedDB, matchID)
+		_ = MarkKillerVictimLoaded(ctx, sharedDB, matchID)
 	}
 
 	return nil
@@ -123,7 +123,7 @@ func ProcessHighlightEvents(
 		)
 		// Marquer events_loaded=TRUE pour ne pas retenter à chaque sync : le
 		// film 404 est définitif (Halo ne sauve pas le film de tous les matchs).
-		if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
+		if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
 			slog.DebugContext(ctx, "MarkEventsLoaded échoué (no-film)",
 				"match_id", matchID, "err", markErr)
 		}
@@ -150,7 +150,7 @@ func ProcessHighlightEvents(
 		return nil
 	}
 
-	n, err := InsertHighlightEvents(sharedDB, matchID, events)
+	n, err := InsertHighlightEvents(ctx, sharedDB, matchID, events)
 	if err != nil {
 		return fmt.Errorf("InsertHighlightEvents: %w", err)
 	}
@@ -161,7 +161,7 @@ func ProcessHighlightEvents(
 	if globalDB != nil {
 		for _, ev := range events {
 			if ev.XUID != 0 && ev.Gamertag != "" {
-				if uErr := UpsertXUIDAlias(globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag); uErr == nil {
+				if uErr := UpsertXUIDAlias(ctx, globalDB, strconv.FormatUint(ev.XUID, 10), ev.Gamertag); uErr == nil {
 					aliasCount++
 				}
 			}
@@ -170,17 +170,17 @@ func ProcessHighlightEvents(
 
 	if n > 0 {
 		result.EventsInserted += n
-		if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
+		if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
 			slog.WarnContext(ctx, "MarkEventsLoaded échoué", "match_id", matchID, "err", markErr)
 		}
 	}
 
-	pairsErr := InsertKillerVictimPairsFromEvents(sharedDB, matchID, events)
+	pairsErr := InsertKillerVictimPairsFromEvents(ctx, sharedDB, matchID, events)
 	if pairsErr != nil {
 		slog.WarnContext(ctx, "InsertKillerVictimPairs échoué", "match_id", matchID, "err", pairsErr)
 		// Non-bloquant : on continue.
 	} else {
-		if markErr := MarkKillerVictimLoaded(sharedDB, matchID); markErr != nil {
+		if markErr := MarkKillerVictimLoaded(ctx, sharedDB, matchID); markErr != nil {
 			slog.WarnContext(ctx, "MarkKillerVictimLoaded échoué", "match_id", matchID, "err", markErr)
 		}
 	}

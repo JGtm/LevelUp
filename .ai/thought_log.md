@@ -1,3 +1,43 @@
+## [2026-05-21] chore(noctx) — propagation ctx vers internal/sync (rounds 1-3 complets)
+
+**Statut** : Complété — 73 → 0 noctx dans `internal/sync/`.
+
+**Contexte** : golangci-lint v2 `noctx` linter exige les variantes `*Context` des
+méthodes `database/sql`. 73 issues au point de départ.
+
+**Décision technique** :
+- Round 1 (commit 5ceec4e9) : aggregates/backfill/career/csr — 24 occurrences.
+- Round 2 (bundled dans 892c55ff) : engagement/engagement_recompute/events_replay/
+  exclusion_filter/medal_exploit_loader/performance/pve/schema/session_recalc/
+  skill_rating_loaders — 25 occurrences.
+- Round 3 : writes.go (8 fonctions Public) + propagation cascade dans
+  backfill_personal_scores, backfill_weapons, career, engine, engine_fetch,
+  engine_highlight_events, engine_process_match, events_heal, session_recalc,
+  skill_heal, stats_heal + tests. 24 occurrences + propagation cascade.
+
+Pattern : `ctx context.Context` en premier paramètre des fonctions publiques
+exportées (InsertRegistryIfNotExists, InsertParticipants, InsertMedals,
+UpsertXUIDAlias, UpsertPlayerEnrichment, SetSyncMeta, WriteSessionAssignments,
+InsertWeaponKills, MarkWeaponKillsDone, InsertPersonalScoreAwards,
+InsertHighlightEvents, InsertKillerVictimPairsFromEvents, MarkEventsLoaded,
+MarkKillerVictimLoaded, MarkSkillLoaded, MarkParticipantsDone, EnsurePlayerSchema,
+EnsureSharedSchema) et privées. `db.Begin()` → `db.BeginTx(ctx, nil)`, `tx.Exec()`
+→ `tx.ExecContext(ctx, ...)`, `db.Prepare()` → `db.PrepareContext(ctx, ...)`.
+
+Pour `OpenPlayerDB`/`OpenSharedDB` (top-level boot, sans contexte caller) :
+`context.Background()` avec commentaire justificatif — opérations idempotentes
+`CREATE TABLE IF NOT EXISTS` non-annulables.
+
+Tests adaptés massivement via `t.Context()`. Benchmark utilise `b.Context()`.
+
+**Résultats observés** : `go build ./...` clean ; `go test -tags=integration
+./internal/sync/... ./internal/service/...` passe (sync 43s, service 12s).
+Compteur noctx descendu de 73 → 0 dans `internal/sync/`.
+
+**Prochaine étape** : -.
+
+---
+
 ## [2026-05-21] chore(noctx) — propagation ctx vers internal/sync (round 1)
 
 **Statut** : En cours (round 1 livré, ~24 occurrences résiduelles).

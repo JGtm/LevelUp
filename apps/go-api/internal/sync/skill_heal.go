@@ -99,7 +99,7 @@ func healSkillForMissingMatches(
 				KillsStddev:    sd.KillsStdDev,
 			})
 		}
-		if err := InsertParticipants(sharedDB, updates); err != nil {
+		if err := InsertParticipants(ctx, sharedDB, updates); err != nil {
 			slog.WarnContext(ctx, "healSkill: upsert échoué",
 				"match_id", matchID, "err", err)
 			continue
