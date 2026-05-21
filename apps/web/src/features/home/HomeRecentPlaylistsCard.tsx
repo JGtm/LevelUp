@@ -76,8 +76,13 @@ export function HomeRecentPlaylistsCard({
               const isPlacement =
                 remaining > 0 ||
                 (item.is_ranked && item.rating_value == null && !item.tier_label)
+              // Phase 6 : placement_total injecté par le backend (5 ou 10 selon saison).
+              // Fallback 10 pour payloads legacy.
+              const placementTotal = item.placement_total ?? 10
               const placementCompleted =
-                remaining > 0 ? Math.min(9, Math.max(0, 10 - remaining)) : null
+                remaining > 0
+                  ? Math.min(placementTotal - 1, Math.max(0, placementTotal - remaining))
+                  : null
               const badgeImageURL =
                 item.badge_image_url ?? (isPlacement ? unrankedBadgeURL() : null)
               const showRatingValue = !isPlacement && item.rating_value != null
@@ -131,7 +136,7 @@ export function HomeRecentPlaylistsCard({
                         className="text-xs text-muted-foreground"
                       >
                         {placementCompleted != null
-                          ? `En placement (${placementCompleted}/10)`
+                          ? `En placement (${placementCompleted}/${placementTotal})`
                           : 'En placement'}
                       </p>
                     ) : item.rating_value == null && (

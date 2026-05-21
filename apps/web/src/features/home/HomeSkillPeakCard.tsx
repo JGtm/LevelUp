@@ -84,7 +84,11 @@ export function HomeSkillPeakCard({
 /**
  * resolveSkillPeakState — lit l'état d'un skill peak depuis le summary backend.
  *
- * Source de vérité : `peak.measurement_matches_remaining` (10..0).
+ * Source de vérité : `peak.measurement_matches_remaining` + `peak.placement_total`.
+ * Phase 6 du plan pipeline CSR : depuis Season 3 (mars 2023) Halo utilise un
+ * seuil 5 au lieu de 10. Le backend expose `placement_total` (5 ou 10) ; on
+ * fallback à 10 pour les payloads legacy.
+ *
  * Le `hasHistory` reste consulté en dégradation pour les responses backend
  * antérieures à mai 2026 (qui retournaient `peak=null` pour les joueurs en
  * placement). À supprimer une fois tous les clients à jour.
@@ -97,8 +101,9 @@ export function resolveSkillPeakState(
   if (peak) {
     const remaining = peak.measurement_matches_remaining ?? 0
     if (remaining > 0) {
-      const completed = Math.max(0, Math.min(10, 10 - remaining))
-      return { state: 'placement', detail: `En placement (${completed}/10)` }
+      const total = peak.placement_total ?? 10
+      const completed = Math.max(0, Math.min(total - 1, total - remaining))
+      return { state: 'placement', detail: `En placement (${completed}/${total})` }
     }
     return { state: 'value', detail: '' }
   }

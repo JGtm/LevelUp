@@ -920,6 +920,9 @@ export interface CareerCSRRank {
   sub_tier: number
   measurement_matches_remaining: number
   badge_image_url?: string | null
+  /** Seuil placement de la saison du snapshot (5 depuis S3, 10 historique).
+   *  Toujours présent depuis Phase 6 du plan pipeline CSR. */
+  placement_total: number
 }
 
 export interface CareerPlaylistCSR {
@@ -1416,10 +1419,15 @@ export interface HomeSkillPeakSummary {
    * (10 matchs par playlist_group). Sémantique :
    *   - absent / null : champ non remonté (legacy)
    *   - 0             : phase de placement terminée → afficher rating + tier
-   *   - >0            : afficher "En placement (10-N)/10", badge_image_url
-   *                     pointe déjà sur unranked_(10-N).png côté backend
+   *   - >0            : afficher "En placement (X/N)", badge_image_url
+   *                     pointe déjà sur unranked_X.png côté backend (mapping
+   *                     proportionnel selon placement_total)
    */
   measurement_matches_remaining?: number | null
+  /** Seuil placement de la saison (5 depuis S3 mars 2023, 10 historique).
+   *  Phase 6 du plan pipeline CSR. nil → fallback front à 10 (back-compat
+   *  payloads pré-Phase 6). */
+  placement_total?: number | null
 }
 
 export interface HomePlaylistRank {
@@ -1429,8 +1437,10 @@ export interface HomePlaylistRank {
   rating_value?: number | null
   tier_label?: string | null
   badge_image_url?: string | null
-  /** Matchs de placement restants (10→0). Présent uniquement pour CSR ranked en placement. */
+  /** Matchs de placement restants (threshold→0). Présent uniquement pour CSR ranked en placement. */
   measurement_matches_remaining?: number | null
+  /** Seuil placement de la saison du match (5 ou 10). nil → fallback front à 10. */
+  placement_total?: number | null
 }
 
 export interface HomeSpartanIdentity {
