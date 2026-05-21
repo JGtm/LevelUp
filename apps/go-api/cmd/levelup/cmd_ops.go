@@ -91,7 +91,7 @@ func runCompareDB(_ *config.AppConfig, args []string) error {
 	if *goPath == "" || *pyPath == "" {
 		return fmt.Errorf("--go-db et --python-db sont obligatoires")
 	}
-	report, err := validation.ComparePlayerDBs(*goPath, *pyPath)
+	report, err := validation.ComparePlayerDBs(context.Background(), *goPath, *pyPath)
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func runGateCheck(cfg *config.AppConfig, args []string) error {
 		DBProfilesPath: cfg.DBProfilesPath,
 		Gamertag:       *gamertag,
 	}
-	report := validation.RunGateCheck4(gateCfg)
+	report := validation.RunGateCheck4(context.Background(), gateCfg)
 	if *asJSON {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")

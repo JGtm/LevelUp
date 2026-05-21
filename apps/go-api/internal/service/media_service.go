@@ -412,7 +412,7 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 
 	// Appliquer la timezone pour les opérations sur timestamps.
 	if tz := ops.SanitizeMediaTimezone(s.timezone); tz != "" {
-		if _, err := db.Exec("SET TimeZone = '" + tz + "'"); err != nil {
+		if _, err := db.ExecContext(ctx, "SET TimeZone = '"+tz+"'"); err != nil {
 			slog.WarnContext(ctx, "ReassociateMedia: SET TimeZone échoué",
 				"timezone", s.timezone, "err", err)
 		}
@@ -423,7 +423,7 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 		time.Now().UTC().Format("20060102T150405Z"))
 	createBackupSQL := fmt.Sprintf(
 		`CREATE TABLE %s AS SELECT * FROM media_match_associations`, backupTable)
-	if _, err := db.Exec(createBackupSQL); err != nil {
+	if _, err := db.ExecContext(ctx, createBackupSQL); err != nil {
 		return nil, fmt.Errorf("backup table: %w", err)
 	}
 	result.BackupTable = backupTable
@@ -436,7 +436,7 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM media_match_associations WHERE NOT COALESCE(is_manual, FALSE)").Scan(&oldCount); err != nil {
 		slog.WarnContext(ctx, "ReassociateMedia: COUNT avant suppression échoué", "err", err)
 	}
-	if _, err := db.Exec("DELETE FROM media_match_associations WHERE NOT COALESCE(is_manual, FALSE)"); err != nil {
+	if _, err := db.ExecContext(ctx, "DELETE FROM media_match_associations WHERE NOT COALESCE(is_manual, FALSE)"); err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("DELETE: %v", err))
 		return result, fmt.Errorf("supprimer associations: %w", err)
 	}

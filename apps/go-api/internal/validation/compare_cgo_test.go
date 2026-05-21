@@ -61,7 +61,7 @@ func TestListTables(t *testing.T) {
 	_, _ = db.Exec("CREATE TABLE foo (id INT)")
 	_, _ = db.Exec("CREATE TABLE bar (id INT)")
 
-	tables, err := listTables(db)
+	tables, err := listTables(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestCountRows(t *testing.T) {
 	_, _ = db.Exec("CREATE TABLE items (id INT)")
 	_, _ = db.Exec("INSERT INTO items VALUES (1), (2), (3)")
 
-	n, err := countRows(db, "items")
+	n, err := countRows(t.Context(), db, "items")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestCompareTableCounts_SameTables(t *testing.T) {
 	goTables := map[string]bool{"t1": true}
 	pyTables := map[string]bool{"t1": true}
 
-	result := compareTableCounts(goDb, pyDb, goTables, pyTables)
+	result := compareTableCounts(t.Context(), goDb, pyDb, goTables, pyTables)
 	if len(result) != 1 {
 		t.Fatalf("expected 1 comparison, got %d", len(result))
 	}
@@ -124,7 +124,7 @@ func TestCompareTableCounts_MissingPython(t *testing.T) {
 	goTables := map[string]bool{"only_go": true}
 	pyTables := map[string]bool{}
 
-	result := compareTableCounts(goDb, pyDb, goTables, pyTables)
+	result := compareTableCounts(t.Context(), goDb, pyDb, goTables, pyTables)
 	found := false
 	for _, tc := range result {
 		if tc.TableName == "only_go" {
@@ -151,7 +151,7 @@ func TestCompareTableCounts_MissingGo(t *testing.T) {
 	goTables := map[string]bool{}
 	pyTables := map[string]bool{"only_py": true}
 
-	result := compareTableCounts(goDb, pyDb, goTables, pyTables)
+	result := compareTableCounts(t.Context(), goDb, pyDb, goTables, pyTables)
 	found := false
 	for _, tc := range result {
 		if tc.TableName == "only_py" {
@@ -176,7 +176,7 @@ func TestLoadMatchIDs(t *testing.T) {
 	_, _ = db.Exec("CREATE TABLE player_match_enrichment (match_id VARCHAR, performance_score DOUBLE)")
 	_, _ = db.Exec("INSERT INTO player_match_enrichment VALUES ('m1', 10), ('m2', 20)")
 
-	ids, err := loadMatchIDs(db)
+	ids, err := loadMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestCompareMatchIDs(t *testing.T) {
 	_, _ = pyDb.Exec("CREATE TABLE player_match_enrichment (match_id VARCHAR, performance_score DOUBLE)")
 	_, _ = pyDb.Exec("INSERT INTO player_match_enrichment VALUES ('m1', 10), ('m2', 20), ('m4', 40)")
 
-	overlap, err := compareMatchIDs(goDb, pyDb)
+	overlap, err := compareMatchIDs(t.Context(), goDb, pyDb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -230,7 +230,7 @@ func TestCompareBitmasks(t *testing.T) {
 	_, _ = goDb.Exec("INSERT INTO player_match_enrichment VALUES ('m1', 42, 's1', true), ('m2', NULL, 's1', true)")
 	_, _ = pyDb.Exec("INSERT INTO player_match_enrichment VALUES ('m1', 42, 's1', true), ('m2', 42, 's1', true)")
 
-	stats, err := compareBitmasks(goDb, pyDb)
+	stats, err := compareBitmasks(t.Context(), goDb, pyDb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestComparePlayerDBs_FullRoundtrip(t *testing.T) {
 	goPath := setupPlayerDB(t, dir, "go.duckdb", goIDs, false)
 	pyPath := setupPlayerDB(t, dir, "py.duckdb", pyIDs, false)
 
-	report, err := ComparePlayerDBs(goPath, pyPath)
+	report, err := ComparePlayerDBs(t.Context(), goPath, pyPath)
 	if err != nil {
 		t.Fatalf("ComparePlayerDBs: %v", err)
 	}
@@ -263,7 +263,7 @@ func TestComparePlayerDBs_BadGoPath(t *testing.T) {
 	dir := t.TempDir()
 	pyPath := setupPlayerDB(t, dir, "py.duckdb", nil, false)
 
-	_, err := ComparePlayerDBs(filepath.Join(dir, "nonexistent.duckdb"), pyPath)
+	_, err := ComparePlayerDBs(t.Context(), filepath.Join(dir, "nonexistent.duckdb"), pyPath)
 	if err == nil {
 		t.Fatal("expected error for bad Go path")
 	}
@@ -273,7 +273,7 @@ func TestComparePlayerDBs_BadPyPath(t *testing.T) {
 	dir := t.TempDir()
 	goPath := setupPlayerDB(t, dir, "go.duckdb", nil, false)
 
-	_, err := ComparePlayerDBs(goPath, filepath.Join(dir, "nonexistent.duckdb"))
+	_, err := ComparePlayerDBs(t.Context(), goPath, filepath.Join(dir, "nonexistent.duckdb"))
 	if err == nil {
 		t.Fatal("expected error for bad Python path")
 	}
@@ -284,7 +284,7 @@ func TestComparePlayerDBs_NullPerformanceScore(t *testing.T) {
 	goPath := setupPlayerDB(t, dir, "go.duckdb", []string{"m1", "m2"}, true)  // all NULL
 	pyPath := setupPlayerDB(t, dir, "py.duckdb", []string{"m1", "m2"}, false) // all 42.0
 
-	report, err := ComparePlayerDBs(goPath, pyPath)
+	report, err := ComparePlayerDBs(t.Context(), goPath, pyPath)
 	if err != nil {
 		t.Fatalf("ComparePlayerDBs: %v", err)
 	}

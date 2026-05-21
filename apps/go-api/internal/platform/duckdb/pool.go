@@ -346,7 +346,7 @@ func initGlobalXuidAliasesSchema(globalPath string) error {
 		return err
 	}
 	defer db.Close()
-	_, err = db.SQLDb().Exec(`
+	_, err = db.SQLDb().ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS xuid_aliases (
 			xuid VARCHAR PRIMARY KEY,
 			gamertag VARCHAR NOT NULL,

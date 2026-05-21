@@ -60,7 +60,7 @@ func init() {
 
 			// Cleanup défensif : si une migration partielle précédente a laissé
 			// la table temporaire, la supprimer avant de recommencer.
-			if _, err := db.Exec(`DROP TABLE IF EXISTS player_records_v2`); err != nil {
+			if _, err := db.ExecContext(bootCtx(), `DROP TABLE IF EXISTS player_records_v2`); err != nil {
 				return fmt.Errorf("extend_player_records: drop stale v2: %w", err)
 			}
 
