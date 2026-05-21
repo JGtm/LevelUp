@@ -56,7 +56,7 @@ func BackfillMatchCitations(
 			slog.Warn("BackfillMatchCitations: context", "match_id", matchID, "err", err)
 			continue
 		}
-		deltas := analysis.ComputeFullMatchCitations(citCtx, mappings)
+		deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{Ctx: citCtx}, mappings)
 		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
 			slog.Warn("BackfillMatchCitations: write", "match_id", matchID, "err", err)
 		}
