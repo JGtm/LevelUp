@@ -99,6 +99,25 @@ func MapRegistry(ms openspartan.MatchStats, opts MapOptions) (MatchRegistryRow, 
 			row.PairVersionID = strPtrOrNil(ms.MatchInfo.PlaylistMapModePair.VersionID)
 		}
 	}
+	// SeasonID + IsRanked (Phase 9.5) : le payload OpenSpartan expose déjà ces
+	// infos qui n'étaient pas exploitées historiquement (rows.go:29 "false by
+	// default"). On les lit ici pour éviter que chaque import OpenSpartan
+	// recrée le bug "0 ranked + season_id NULL" qui nécessite ensuite un
+	// backfill migration.
+	if sid := strings.TrimSpace(ms.MatchInfo.SeasonID); sid != "" {
+		row.SeasonID = &sid
+	}
+	// Heuristique nom playlist (cohérente avec sync/transforms_helpers.go:isRankedPlaylist
+	// + le fallback dans csr_backfill.go).
+	if row.PlaylistName != nil && strings.Contains(strings.ToLower(*row.PlaylistName), "ranked") {
+		row.IsRanked = true
+	} else if ms.MatchInfo.Playlist != nil {
+		// Si PlaylistName n'est pas encore résolu (peuplé par post-import recompute),
+		// on essaie via PairName si déjà disponible (rare en import-time mais sûr).
+		if row.PairName != nil && strings.HasPrefix(strings.ToLower(*row.PairName), "ranked:") {
+			row.IsRanked = true
+		}
+	}
 	if len(ms.Teams) >= 1 {
 		if s, ps, ok := teamScores(ms.Teams[0].Stats); ok {
 			s16 := int16(s)

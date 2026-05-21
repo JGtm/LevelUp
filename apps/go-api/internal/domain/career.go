@@ -147,6 +147,9 @@ type CareerCSRRank struct {
 	SubTier                     int     `json:"sub_tier"`
 	MeasurementMatchesRemaining int     `json:"measurement_matches_remaining"`
 	BadgeImageURL               *string `json:"badge_image_url,omitempty"`
+	// PlacementTotal = seuil placement de la saison du snapshot (5 depuis S3,
+	// 10 historique). Toujours présent depuis Phase 6 du plan pipeline CSR.
+	PlacementTotal int `json:"placement_total"`
 }
 
 // CareerPlaylistCSR regroupe les classements d'un joueur pour une playlist ranked.

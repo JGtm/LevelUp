@@ -51,6 +51,12 @@ type MatchRegistryRow struct {
 	Team0PSScore            *int // somme des PersonalScore équipe 0
 	Team1PSScore            *int // somme des PersonalScore équipe 1
 	FirstSyncBy             string
+	// SeasonID est l'identifiant CSR de la saison du match (ex. "CsrSeason13-1").
+	// Lu depuis matchInfo["SeasonId"] (payload Halo officiel). Permet le lookup
+	// threshold dynamique côté display (cf. csr_placement_thresholds). NULL pour
+	// les anciens matchs syncés avant l'introduction du champ — la migration
+	// `shared_backfill_is_ranked_and_season` populate via dérivation start_time.
+	SeasonID *string
 }
 
 // ParticipantRow représente une ligne dans match_participants (shared).
@@ -147,6 +153,15 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	// Flags
 	row.IsRanked = isRankedPlaylist(matchInfo)
 	row.IsFirefight = isFirefightMatch(matchInfo)
+
+	// SeasonID lu depuis le payload Halo (matchInfo["SeasonId"]). Pivote vers le
+	// catalogue local (csr_placement_thresholds) pour calculer le bon "(X/N)" en
+	// display selon la saison du match. Si absent du payload (anciennes saisons
+	// ou drift API), reste nil — la migration backfill le populera via dérivation
+	// depuis start_time.
+	if sid, _ := matchInfo["SeasonId"].(string); sid != "" {
+		row.SeasonID = strPtr(sid)
+	}
 	if row.PairName != nil {
 		row.ModeCategory = determineModeCategory(*row.PairName)
 	}

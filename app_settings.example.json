@@ -20,5 +20,6 @@
   "tailscale_enabled": false,
   "user_timezone": "Europe/Paris",
   "watcher_presence_enabled": true,
-  "career_top_exclude_btb": false
+  "career_top_exclude_btb": false,
+  "csr_season_id": "CsrSeason13-1"
 }

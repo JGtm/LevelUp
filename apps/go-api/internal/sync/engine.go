@@ -480,16 +480,35 @@ func (e *SyncEngine) processMatch(
 					"match_id", matchID, "players_with_skill", len(skillData),
 				)
 				// CSR par-match : pour les matchs classés, le payload skill
-				// contient RankRecap.PostMatchCsr. On persiste côté player DB.
-				// Non-bloquant : tout échec laisse le sync continuer.
+				// contient RankRecap.PostMatchCsr pour TOUS les joueurs.
+				//
+				// 1) Player DB : on persiste le CSR du joueur synchronisé dans
+				//    match_skill_rank (legacy path, single-player).
+				// 2) Shared DB : on persiste le CSR de TOUS les participants
+				//    dans match_csrs (Option A du plan : permet les comparaisons
+				//    cross-joueurs Squad, "qui était mieux classé", etc.).
+				//
+				// Les deux paths sont non-bloquants.
 				if row := ExtractCSRRowIfRanked(reg, skillData[e.xuid]); row != nil {
 					if csrErr := UpsertCSRRow(playerDB, row); csrErr != nil {
 						slog.WarnContext(ctx, "processMatch: UpsertCSRRow échoué",
 							"gamertag", e.gamertag, "match_id", matchID, "err", csrErr,
 						)
 					} else {
-						slog.DebugContext(ctx, "processMatch: CSR row écrite",
+						slog.DebugContext(ctx, "processMatch: CSR row écrite (player DB)",
 							"match_id", matchID, "tier", row.Tier, "tier_label", row.TierLabel,
+						)
+					}
+				}
+				if sharedRows := ExtractAllSharedCSRRows(reg, skillData); len(sharedRows) > 0 {
+					if csrErr := UpsertSharedCSRs(sharedDB, sharedRows); csrErr != nil {
+						slog.WarnContext(ctx, "processMatch: UpsertSharedCSRs échoué",
+							"gamertag", e.gamertag, "match_id", matchID,
+							"participants", len(sharedRows), "err", csrErr,
+						)
+					} else {
+						slog.DebugContext(ctx, "processMatch: shared CSR rows écrites",
+							"match_id", matchID, "participants", len(sharedRows),
 						)
 					}
 				}
