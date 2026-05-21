@@ -31,7 +31,7 @@ func findRole(out []RoleAssignment, role ImpactRole) *RoleAssignment {
 func TestIdentifyImpactRoles_Empty(t *testing.T) {
 	t.Parallel()
 	got := IdentifyImpactRoles(nil, nil, nil)
-	if got != nil && len(got) != 0 {
+	if len(got) != 0 {
 		t.Errorf("expected nil/empty, got %+v", got)
 	}
 }

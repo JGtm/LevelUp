@@ -372,7 +372,7 @@ func TestUnionMatchIDs_PreservesOrderAndDedupes(t *testing.T) {
 }
 
 func TestUnionMatchIDs_EmptyInputs(t *testing.T) {
-	if got := UnionMatchIDs(nil, nil); got != nil && len(got) != 0 {
+	if got := UnionMatchIDs(nil, nil); len(got) != 0 {
 		t.Errorf("expected empty, got %v", got)
 	}
 	a := []string{"x", "y"}

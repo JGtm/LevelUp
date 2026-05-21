@@ -46,7 +46,7 @@ func TestPercentileRankInverse_HalfPoint(t *testing.T) {
 
 func TestComputePerformanceSeries_Empty(t *testing.T) {
 	result := ComputePerformanceSeries(nil)
-	if result != nil && len(result) != 0 {
+	if len(result) != 0 {
 		t.Errorf("expected empty result on nil input, got %d elements", len(result))
 	}
 }

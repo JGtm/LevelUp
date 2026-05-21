@@ -1,3 +1,47 @@
+## [2026-05-21] fix(ci) — 3 CI échecs corrigés + 6 staticcheck (S1009 + S1017) éliminés
+
+**Statut** : Complété.
+
+**Contexte** : Run CI commit `72c5a804` montrait 3 failures :
+- `Go Coverage (CGO_ENABLED=1)` : 3 tests `TestGetOrOpen_*LegacySchema*` cassés par migration `rebuild_career_progression_defeat_art_corruption` qui INSERT dans `sync_meta(updated_at)` alors que les seed tests créent un schéma legacy à 2 colonnes (`key, value`).
+- `E2E React (Playwright)` : workflow build avec `CGO_ENABLED=0` mais `cmd/server/` importe `platform/duckdb` → `build constraints exclude all Go files in lib/linux-amd64`.
+- `Go Baseline Tests (non-régression)` : baseline JSONL référençait 9 tests legitimement renommés/supprimés (`TestHealthScheduler_E2E_*` × 5, `TestFilePathToURL_SinglePlayerCapturesBase/*` × 3, `TestGetCareerRank_BannerEmptyWhenNoNameplate`).
+
+**Décision technique** :
+1. `markRebuildDone()` (`steps_player_rebuild_career_progression.go:124`) appelle `addColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")` avant l'UPSERT — robuste aux schémas legacy.
+2. `.github/workflows/ci.yml` : E2E React passe à `CGO_ENABLED=1` (ubuntu-latest fournit gcc). Cohérent avec le workflow `Go Coverage` qui utilise déjà CGO=1.
+3. Baseline `.ai/baselines/tests_pre_migration.jsonl` régénérée via `go test -tags=integration -count=1 -p 1 -json ./...` (36862 lignes, 0 failed).
+4. S1009 (5 occurrences) : `if got != nil && len(got) != 0` → `if len(got) != 0` dans `analysis/narrative/*_test.go`, `analysis/performance_score_test.go`, `service/engagement_player_service.go:161,166`, `sync/events_replay_test.go:375`.
+5. S1017 (2 occurrences) : `if strings.HasPrefix(s, "- ") { s = strings.TrimPrefix(s, "- ") }` → `s := strings.TrimPrefix(line, "- ")` dans `service/release_notes_service.go:186,194`.
+
+**Résultats observés** : `go test ./internal/service ./internal/analysis/... ./internal/sync` passe. golangci-lint `staticcheck` S1009/S1017 = 0 occurrences résiduelles.
+
+**Prochaine étape** : Items 1-3, 5, 6 du bilan utilisateur (noctx résiduels, funlen+gocyclo, unparam, frontend, computeCompositeScore).
+
+---
+
+## [2026-05-21] diag(duckdb) — `metadata.duckdb` verrouillée au hot-reload Air : diagnostic complet, fix non appliqué
+
+**Statut** : Complété (côté diagnostic). Correctif non implémenté — attente go/no-go.
+
+**Contexte** : symptôme reporté par admin@lvelup.info à 19:49 : rafale de 6 lignes `[ERROR] duckdb: ouverture DB échouée path=...metadata.duckdb` + 6 lignes `[WARN] metadata verrouillée, nouvelle tentative...` au boot Air. User frustré par l'apparence de refus d'écriture alors qu'un `SharedDBProvider` est censé garantir la temporisation.
+
+**Décision technique** : ne PAS appliquer de fix immédiat — d'abord cartographier le problème dans un doc dédié pour permettre la reprise par un collègue. Première proposition (démoter le log ERROR en DEBUG) refusée comme bricolage. Deuxième proposition (audit complet shutdown + callers + Air) validée mais nécessite mesures avant exécution.
+
+**Constats clés** :
+1. Le retry [`cmd/server/main.go:338-349`](../apps/go-api/cmd/server/main.go#L338-L349) (12 × 500 ms) finit par réussir — **aucune écriture n'est réellement refusée**, c'est la perception qui est trompeuse.
+2. Le `SharedDBProvider` (ADR 0016) ne s'applique pas : conflit inter-process (ancien Air zombie ↔ nouveau process), pas intra-process.
+3. La cause racine est soit Air SIGKILL avant shutdown gracieux complet, soit leak de `refCount` sur le pool cached de `metadata.duckdb` ([`db.go:43-46`](../apps/go-api/internal/platform/duckdb/db.go#L43-L46)).
+4. 6 callers de `OpenReadWriteShared(metaPath)` ont chacun leur propre stratégie de retry (12×500ms, 3×500ms, ou aucun) — incohérence dans le code.
+
+**Résultats observés** :
+- Document de diagnostic créé : [`docs/INCIDENT_2026-05-21_metadata_duckdb_lock_air_hot_reload.md`](../docs/INCIDENT_2026-05-21_metadata_duckdb_lock_air_hot_reload.md). Contient symptômes, contexte architectural, hypothèses de cause racine, plan d'action 4 étapes (instrumentation shutdown → audit callers → mesure Air → nettoyage logs), critères d'acceptation, annexes commandes/refs.
+- Aucun code touché. Aucun test impacté.
+
+**Conclusion / prochaine étape** : étape 1 du plan = ajouter `DumpCachedLeaks()` dans [`internal/platform/duckdb/db.go`](../apps/go-api/internal/platform/duckdb/db.go) + log au shutdown de [`cmd/server/main.go`](../apps/go-api/cmd/server/main.go) pour identifier les leaks de refCount. ~5 lignes. À faire dans une branche dédiée `fix/metadata-duckdb-lock-on-restart` (la branche courante `fix/media-paths-portable` est dédiée à autre chose).
+
+---
+
 ## [2026-05-21] refactor(sync) — engine.go secondary split round 2 : 1017L → 466L (audit #7 / dette #1)
 
 **Statut** : Complété.
@@ -42593,3 +42637,40 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 - CSR backfill integration : tous les tests passent SAUF `TestBackfillCSRFromAPI_HandlesPlacement` qui échoue sur `rating_value: want NULL for placement, got 0`. Bug **pré-existant et hors scope** : le commit `ae0edbd0 fix(home): placement CSR/LUSR backend-driven` a délibérément changé `csr_writes.go:133-134` pour stocker `0.0` (contrainte NOT NULL) au lieu de NULL ; le test n'a pas été mis à jour. Le SQL binder error sur `playlist_name`/`pair_name` est **éliminé** (objectif tâche 1 atteint).
 
 **Prochaine étape** : commit unique sur `fix/media-paths-portable` (l'utilisateur se charge du commit). Note pour suivi : `TestBackfillCSRFromAPI_HandlesPlacement` doit être aligné sur le nouveau comportement (assert `rating_value == 0`, pas NULL) — séparé.
+
+---
+
+## [2026-05-21] Audit page Ascension vide — pipeline V2 jamais déclenché en condition réelle
+
+**Statut** : Diagnostiqué, non corrigé. Document de remédiation livré → `.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md`.
+
+**Symptôme** : page `/players/<slug>/ascension` affiche les 3 messages d'état vide (`Aucune streak en cours`, `Pas encore de record`, `Aucun milestone configuré pour ce titre`) pour les 4 joueurs configurés, malgré 769 matchs ingérés pour JGtm.
+
+**Vérification live** (serveur tournant, :8000) :
+- `GET /api/v1/players/JGtm/milestones` → `{"items":[]}`
+- `GET /api/v1/players/JGtm/streaks` → `{"items":[]}`
+- `GET /api/v1/players/JGtm/records` → `{"personal_bests":[],"history":[]}`
+- Idem pour Chocoboflor, Madina97294, XxDaemonGamerxX.
+
+**Causes racines identifiées** :
+
+1. **`milestone_catalog` jamais peuplé au boot** : `cmd/server/main.go:580-596` applique la migration `create_milestone_catalog_metadata` (table créée) mais n'appelle **jamais** `milestones.SyncCatalog(...)` qui chargerait les 13 entrées du TOML `config/titles/halo_infinite/milestones/catalog.toml`. La fonction `SyncCatalog` existe et est testée (9 unit tests), mais sans call site applicatif. `grep -r "milestones.SyncCatalog" apps/go-api/` → uniquement la définition et les tests.
+
+2. **Hook progression V2 câblé uniquement sur sync HTTP, jamais sur auto-sync** :
+   - `server.go:535` attache `buildPostSyncDeltaHook` **seulement** sur le `SyncHandler` HTTP (`sync_handler.go:251` + `:334`).
+   - Le scheduler auto-sync (`scheduler/auto_sync.go:464`) appelle directement `runner.RunDelta(...)` du `SyncEngine`, qui n'invoque **aucun** étape progression V2.
+   - Grep dans `internal/scheduler/` et `internal/sync/` : **0 référence** à `progression`, `EvaluateProgressionAfterSync`, `EmitPostSyncDeltas`, `SnapshotPlayerState`.
+   - Logs `logs/sync.log` confirment : étapes `post-sync: skill self-heal`, `events self-heal` présentes, **aucune trace** des étapes V2.
+   - Avec `spnkr_auto_sync_enabled=true` + interval 15min, **100 % des syncs** en condition réelle passent par l'auto-sync → pipeline V2 jamais exécuté.
+
+**Impact étendu** : le hook désactivé contient aussi `EmitPostSyncDeltas` → **toutes les notifications post-sync** sont aussi muettes en auto-sync (career_rank, skill_tier, citation_tier, threshold_crossed, personal_record, etc.). Le bug Ascension est la pointe de l'iceberg.
+
+**Solutions documentées** (cf. `AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md` §5) :
+- **Solution A** (~30min) : `RegisterMilestonesSeedMigration` calqué sur le pattern `RegisterPrestigeSeedMigration` — migration backfill idempotente qui appelle `milestones.SyncCatalog`.
+- **Solution B** (2-4h) : 3 options, recommandation B1 = déplacer l'orchestration progression dans `SyncEngine.runPostSyncPipeline` pour qu'**aucun** chemin de sync ne puisse l'oublier. B2 (hook scheduler analogique HTTP) acceptable comme remédiation rapide.
+
+**Note design** : la cause atténuante C (streaks ne se rétroactivent pas, démarrent uniquement sur bucket courant) est **intentionnelle** par design de `streaks/evaluator.go:100-112`. Post-fix, streaks resteront vides tant que l'utilisateur ne joue pas un match aujourd'hui — comportement attendu.
+
+**Diag annexe** : script `cmd/diag_ascension/main.go` créé puis supprimé après usage (fichier Windows verrouillé par le serveur en RW → impossible d'ouvrir les DB en RO sans arrêter le serveur). Diagnostic final fait via les endpoints HTTP, plus pratique.
+
+**Prochaine étape** : utilisateur décide quand attaquer les fixes (A puis B). Aucune modification code dans cette session — uniquement audit + doc + thought_log.
