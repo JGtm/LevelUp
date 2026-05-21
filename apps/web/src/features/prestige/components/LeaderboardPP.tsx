@@ -11,6 +11,9 @@
 import type { Tier } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface LeaderboardEntry {
   user_id: string
@@ -44,6 +47,8 @@ export function LeaderboardPP({
   onArcFilterChange,
 }: LeaderboardPPProps) {
   const sorted = [...entries].sort((a, b) => b.total_pp - a.total_pp)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   return (
     <div className="space-y-3">
@@ -55,7 +60,7 @@ export function LeaderboardPP({
             onChange={(e) => onArcFilterChange(e.target.value || undefined)}
             className="rounded-md border border-border bg-card px-2 py-1 text-xs"
           >
-            <option value="">Tous les arcs</option>
+            <option value="">{t('common.prestige.all_arcs')}</option>
             {arcChoices.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.title}
@@ -67,7 +72,7 @@ export function LeaderboardPP({
 
       {sorted.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Aucun ami dérivé de l'escouade ou des relations pour cette période.
+          {t('common.prestige.no_friends_for_period')}
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border">

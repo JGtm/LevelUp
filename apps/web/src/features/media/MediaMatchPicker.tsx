@@ -20,6 +20,9 @@ import { useFieldMappings, useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { resolveTeamNameFromID } from '@/lib/halo/teamNames'
 import { tokenCssVar } from '@/lib/accessibility'
 import { OUTCOME_LABELS_FALLBACK_FR } from './fallback.i18n'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 const WINDOW_OPTIONS = [15, 60, 180] as const
 
@@ -116,6 +119,7 @@ function LobbyTeams({ lobby }: { lobby: MediaMatchCandidate['lobby'] }) {
   }, [lobby])
 
   if (!lobby || lobby.length === 0) {
+    // eslint-disable-next-line @levelup/no-hardcoded-strings
     return <p className="text-3xs italic text-muted-foreground">Lobby indisponible</p>
   }
 
@@ -167,6 +171,8 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
   const [pendingMatchID, setPendingMatchID] = useState<string | null>(null)
   const { data, isLoading, isError } = useMediaMatchCandidates(playerSlug, filePath, windowMinutes)
   const associate = useAssociateMediaToMatch(playerSlug)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   // Phase 4 plan finition multi-titres : libellés outcomes via TOML, fallback FR.
   const { data: fieldMappings } = useFieldMappings()
   const outcomeLabel = (outcome: number | null | undefined): { text: string; cls: string } => {
@@ -237,6 +243,7 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
           ))}
           {data && (
             <span className="ml-auto text-muted-foreground">
+              {/* eslint-disable-next-line @levelup/no-hardcoded-strings */}
               {candidates.length} match(s) trouvé(s)
             </span>
           )}
@@ -244,10 +251,10 @@ export function MediaMatchPicker({ playerSlug, filePath, onClose, hasCurrentMatc
 
         <div className="flex-1 overflow-y-auto px-3 py-2">
           {isLoading && <p className="p-4 text-center text-sm text-muted-foreground">Chargement…</p>}
-          {isError && <p className="p-4 text-center text-sm text-destructive">Erreur de chargement</p>}
+          {isError && <p className="p-4 text-center text-sm text-destructive">{t('common.leaderboard.load_error')}</p>}
           {!isLoading && !isError && candidates.length === 0 && (
             <p className="p-4 text-center text-sm text-muted-foreground">
-              Aucun match trouvé dans cette fenêtre. Élargis la recherche.
+              {t('common.leaderboard.no_match_in_window')}
             </p>
           )}
           <ul className="flex flex-col gap-2">
