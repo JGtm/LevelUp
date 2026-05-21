@@ -45,12 +45,13 @@ interface BadgeSpec {
 const BADGE_MAP: Record<string, BadgeSpec> = {
   // Kill events
   first_blood:       { emoji: '🩸', eventKind: 'kill',  tone: 'auto' },
-  top_gun:           { emoji: '🎯', eventKind: 'kill',  tone: 'good' },
-  clutch_finisher:   { emoji: '⚡', eventKind: 'kill',  tone: 'good' },
-  last_group_kill:   { emoji: '🔥', eventKind: 'kill',  tone: 'good' },
+  top_gun:           { emoji: '🔫', eventKind: 'kill',  tone: 'good' },
+  clutch_finisher:   { emoji: '🎯', eventKind: 'kill',  tone: 'good' },
+  last_group_kill:   { emoji: '🐌', eventKind: 'kill',  tone: 'bad'  },
+  kamikaze:          { emoji: '💣', eventKind: 'kill',  tone: 'bad'  },
   // Death events (player_xuid = victime alliée — le frag est porté par l'adverse)
-  first_group_death: { emoji: '💀', eventKind: 'death', tone: 'bad'  },
-  last_casualty:     { emoji: '🪦', eventKind: 'death', tone: 'good' }, // dernier mort = survivant le plus longtemps (positif)
+  first_group_death: { emoji: '🪦', eventKind: 'death', tone: 'bad'  },
+  last_casualty:     { emoji: '👻', eventKind: 'death', tone: 'good' },
 }
 
 interface CurvePt { tMs: number; y: number }
@@ -121,6 +122,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const yMaxData = Math.max(allyCum, enemyCum, 1)
 
       // ---- Couleurs (tokens — palette okabe-ito / cividis / etc.) -------
+      const tc = getEChartsThemeColors()
       const colorAlly  = resolveToken('team-ally')
       const colorEnemy = resolveToken('team-enemy')
       const accentGood = resolveToken('success')   // vert
@@ -136,7 +138,18 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const placedAbove: Placed[] = []
       const placedBelow: Placed[] = []
 
-      const CHIP_TEXT_COLOR = '#000000' // color-allow: structural WCAG AA — chip text on bright chips
+      // Rich text styles pour les chips — 2 variantes (good/bad) car accent varie par badge
+      const chipRich = (border: string) => ({
+        backgroundColor: tc.tooltipBg,
+        borderColor: border,
+        borderWidth: 1,
+        borderRadius: 6,
+        padding: [5, 9],
+        color: tc.text,
+        fontSize: 10,
+        fontWeight: 'bold',
+        lineHeight: 20,
+      })
 
       type MarkPoint = Record<string, unknown>
       type MarkLineSeg = [Record<string, unknown>, Record<string, unknown>]
@@ -184,7 +197,8 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
         else tone = item.spec.tone
         const accent = tone === 'good' ? accentGood : accentBad
 
-        const formatter = `${item.spec.emoji} ${item.b.label}\n${meta.gamertag}`
+        const chipLabel = `${item.spec.emoji} ${meta.gamertag}`
+        const toneTag = tone === 'good' ? 'g' : 'b'
         const sinkMP = team === 'ally' ? allyMP : enemyMP
         const sinkML = team === 'ally' ? allyML : enemyML
         sinkMP.push({
@@ -196,22 +210,22 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
         })
         sinkMP.push({
           coord: [item.tMs, yChip],
-          symbol: 'roundRect',
-          symbolSize: [124, 32],
-          itemStyle: { color: accent, opacity: 0.92, borderColor: accent, borderWidth: 1.5 },
+          symbol: 'circle',
+          symbolSize: 1,
+          itemStyle: { color: 'transparent', borderColor: 'transparent' },
           label: {
             show: true,
-            formatter,
-            color: CHIP_TEXT_COLOR,
-            fontSize: 10,
-            fontWeight: 'bold',
+            formatter: `{${toneTag}|${chipLabel}}`,
+            rich: {
+              g: chipRich(accentGood),
+              b: chipRich(accentBad),
+            },
             align: 'center',
             verticalAlign: 'middle',
-            lineHeight: 13,
           },
         })
         sinkML.push([
-          { coord: [item.tMs, yAt], lineStyle: { color: accent, width: 1.5, type: 'solid', opacity: 0.9 } },
+          { coord: [item.tMs, yAt], lineStyle: { color: accent, width: 1, type: 'dashed', opacity: 0.5 } },
           { coord: [item.tMs, yChip] },
         ])
       }
@@ -226,7 +240,6 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
         ? Math.min(0, ...placedBelow.map((p) => p.yChip - chipHeightY))
         : 0
 
-      const tc = getEChartsThemeColors()
       const axis = getAxisBase(tc)
       return {
         backgroundColor: CHART_BG,
@@ -250,9 +263,8 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
           {
             name: t.combatTeamLabel,
             type: 'line',
-            step: 'end',
             showSymbol: false,
-            lineStyle: { color: colorAlly, width: 2.5 },
+            lineStyle: { color: colorAlly, width: 2 },
             itemStyle: { color: colorAlly },
             data: allyCurve.map((p) => [p.tMs, p.y]),
             markPoint: { silent: true, data: allyMP },
@@ -262,9 +274,8 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
           {
             name: t.combatEnemyLabel,
             type: 'line',
-            step: 'end',
             showSymbol: false,
-            lineStyle: { color: colorEnemy, width: 2.5 },
+            lineStyle: { color: colorEnemy, width: 2 },
             itemStyle: { color: colorEnemy },
             data: enemyCurve.map((p) => [p.tMs, p.y]),
             markPoint: { silent: true, data: enemyMP },
