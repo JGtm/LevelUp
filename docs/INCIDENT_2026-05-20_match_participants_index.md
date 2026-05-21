@@ -122,6 +122,65 @@ Tous les pipelines de production qui passent par `match_participants ... WHERE m
 
 ---
 
+## Incident connexe confirmé — `career_progression` (2026-05-21)
+
+Le lendemain du diagnostic, un second agent a découvert la **même classe de bug** sur une table différente :
+
+- **Table** : `career_progression` dans chacun des 3 `data/players/{gamertag}/stats.duckdb`
+- **PK corrompue** : index ART implicite sur `xuid`
+- **Symptôme** : `WHERE xuid = ?` retournait un sous-ensemble des rows
+
+| Joueur | Visible via index | Réel (full scan) |
+|---|---:|---:|
+| JGtm | 86 | 106 |
+| Chocoboflor | 67 | 78 |
+| Madina97294 | 65 | 74 |
+
+Pour Madina, les 9 rows manquantes étaient les snapshots récents portant la bannière — `ARG_MAX(banner_image_url)` piquait un snapshot du 2026-05-08 sans banner → identité Spartan vide.
+
+**Fix appliqué** (commits `2e0f0247` + `651b9de6`) :
+- Workaround permanent : `WHERE xuid || '' = ?` dans `qLoadLastCareerRank`
+- Migration idempotente `rebuild_career_progression_defeat_art_corruption` : `CREATE __rebuilt → INSERT SELECT * → DROP → RENAME`, sentinel dans `sync_meta`
+
+**Conséquence pour ce diagnostic** : la corruption ART n'est **pas isolée** à `shared_matches_v2.duckdb`. Elle touche plusieurs fichiers DuckDB du repo (`shared_matches_v2.duckdb`, `stats.duckdb` × N joueurs). L'investigation cause racine (step 6 ci-dessous) est critique — ce n'est pas un accident sur une table, c'est un pattern systémique.
+
+---
+
+## Pourquoi un rebuild complet est obligatoire
+
+### L'index ART de DuckDB
+
+DuckDB indexe les clés primaires avec un **Adaptive Radix Tree (ART)** — une structure en arbre radix adaptative stockée directement dans le fichier `.duckdb`, au même niveau que les pages de données. Pour la table `match_participants`, cet arbre mappe chaque valeur de `match_id` vers la liste des adresses physiques des rows correspondantes.
+
+Quand DuckDB évalue `WHERE match_id = '50cd2d8c-...'`, le query planner voit que cette colonne est couverte par la PK et décide d'un **filter pushdown** : au lieu de scanner toutes les pages, il consulte l'arbre ART pour obtenir directement la liste des offsets. C'est ce mécanisme qui est cassé — l'arbre ne retourne qu'une adresse (1 row) là où il devrait en retourner 10.
+
+### Pourquoi `ALTER TABLE ... ADD PRIMARY KEY` ne suffit pas
+
+L'enchaînement :
+
+```sql
+ALTER TABLE match_participants DROP PRIMARY KEY;
+ALTER TABLE match_participants ADD PRIMARY KEY (match_id, xuid);
+```
+
+reconstruit l'index ART **mais relit les rows via la structure interne existante** pour trouver les valeurs à indexer. Si cette structure sous-jacente est corrompue, la reconstruction peut reproduire exactement le même arbre défectueux en repassant par le même chemin de lecture.
+
+DuckDB ne dispose pas d'une commande `REINDEX` équivalente à PostgreSQL (`REINDEX TABLE match_participants`). Il n'existe pas de chemin pour "réparer" un ART in-place.
+
+### Pourquoi `CREATE TABLE AS SELECT *` fonctionne
+
+```sql
+CREATE TABLE _mp_new AS SELECT * FROM match_participants;
+```
+
+Ce `SELECT *` **sans clause `WHERE`** force un **table-scan physique complet** : DuckDB lit les pages de données séquentiellement, sans consulter l'index ART. Il voit donc les 10 rows de `50cd2d8c`, et l'intégralité des rows de tous les matchs.
+
+La table `_mp_new` est créée avec un **index ART vierge**, construit sur des données complètes lues depuis les pages physiques. `DROP TABLE match_participants` supprime ensuite l'ancienne table *avec* son index corrompu. Le `ADD PRIMARY KEY` final crée un index propre sur une table propre.
+
+C'est le seul chemin sûr dans DuckDB pour reconstruire un index ART corrompu.
+
+---
+
 ## Plan de correction
 
 ### Étape 0 — Backup
@@ -187,13 +246,17 @@ query := "SELECT match_id, xuid, team_id, COALESCE(kills_expected, 0) FROM match
 
 ### Étape 6 — Investigation cause racine
 
-Pourquoi l'index ART s'est-il corrompu ? Pistes :
+**Contexte mis à jour** : deux tables dans deux fichiers DuckDB distincts présentent le même symptôme (`career_progression` dans `stats.duckdb`, `match_participants` dans `shared_matches_v2.duckdb`). La probabilité d'un bug driver/moteur est donc élevée.
 
-- Crash du sync engine pendant un INSERT/UPDATE sur match_participants — chercher dans `data/logs/` un panic récent contenant `match_participants`.
-- Bug du driver `github.com/duckdb/duckdb-go/v2 v2.10502.0` — vérifier le changelog upstream pour des fixes sur ART/filter pushdown postérieurs à cette version.
-- Concurrent write pendant une lecture sans isolation — vérifier que le sync utilise bien des transactions.
+Pistes à creuser dans l'ordre :
 
-Pas bloquant pour le fix immédiat, mais à creuser pour éviter récidive.
+1. **Bug driver `duckdb-go/v2 v2.10502.0`** — vérifier le changelog upstream pour des issues ART/filter-pushdown postérieures à cette version. C'est la piste la plus probable vu que le symptôme est reproductible sur des tables sans rapport, dans des fichiers différents, créés à des moments différents.
+
+2. **Crash du sync engine** — chercher dans `data/logs/` un panic récent contenant `match_participants` ou `career_progression`. Un crash en plein INSERT peut laisser un index ART dans un état intermédiaire.
+
+3. **Concurrent write sans isolation** — vérifier que le sync utilise bien des transactions explicites sur ces tables. Un write concurrent peut introduire des incohérences dans l'arbre si les pages ne sont pas verrouillées correctement.
+
+Pas bloquant pour le fix immédiat, mais à creuser avant la prochaine montée de version DuckDB pour éviter récidive systémique.
 
 ---
 
