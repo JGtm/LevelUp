@@ -8,9 +8,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/time/rate"
 )
+
+// fastLimiter retourne un rate.Limiter quasi-illimité (1000 RPS) pour les tests
+// qui n'ont pas besoin de tester le rate-limiting lui-même.
+func fastLimiter() *rate.Limiter {
+	return rate.NewLimiter(rate.Every(time.Millisecond), 1)
+}
 
 // zlibCompress wraps test fixtures to mimic the Halo CDN's zlib-compressed blobs.
 func zlibCompress(t *testing.T, data []byte) []byte {
@@ -40,7 +49,7 @@ func TestDoGet_Success(t *testing.T) {
 		http:           srv.Client(),
 		spartanToken:   "spartan",
 		clearanceToken: "clear",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 	body, err := c.doGet(context.Background(), srv.URL+"/test")
 	if err != nil {
@@ -61,7 +70,7 @@ func TestDoGet_NotFound(t *testing.T) {
 		http:           srv.Client(),
 		spartanToken:   "s",
 		clearanceToken: "c",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 	_, err := c.doGet(context.Background(), srv.URL+"/test")
 	if err == nil {
@@ -79,7 +88,7 @@ func TestDoGet_Unauthorized(t *testing.T) {
 		http:           srv.Client(),
 		spartanToken:   "s",
 		clearanceToken: "c",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 	_, err := c.doGet(context.Background(), srv.URL+"/test")
 	if err == nil {
@@ -88,22 +97,21 @@ func TestDoGet_Unauthorized(t *testing.T) {
 }
 
 func TestRateWait_FirstCall(t *testing.T) {
-	c := &HaloAPIClient{minInterval: time.Millisecond}
+	// Avec rate.Limiter, le bucket commence plein (burst=1) → premier appel
+	// consomme le token initial sans attente.
+	c := &HaloAPIClient{limiter: rate.NewLimiter(rate.Every(50*time.Millisecond), 1)}
 	start := time.Now()
 	c.rateWait(context.Background())
-	if time.Since(start) > 50*time.Millisecond {
-		t.Fatal("first call should not wait")
-	}
-	if c.lastRequest.IsZero() {
-		t.Fatal("lastRequest should be set")
+	if time.Since(start) > 10*time.Millisecond {
+		t.Fatalf("first call should not wait, got %v", time.Since(start))
 	}
 }
 
 func TestRateWait_SecondCall(t *testing.T) {
-	c := &HaloAPIClient{
-		minInterval: 50 * time.Millisecond,
-		lastRequest: time.Now(),
-	}
+	// Après avoir consommé le token initial, le second appel doit attendre
+	// l'intervalle configuré (~50ms).
+	c := &HaloAPIClient{limiter: rate.NewLimiter(rate.Every(50*time.Millisecond), 1)}
+	c.rateWait(context.Background()) // consomme le burst
 	start := time.Now()
 	c.rateWait(context.Background())
 	elapsed := time.Since(start)
@@ -114,15 +122,48 @@ func TestRateWait_SecondCall(t *testing.T) {
 
 func TestNewHaloAPIClient_DefaultRate(t *testing.T) {
 	c := NewHaloAPIClient("s", "c", 0)
-	if c.minInterval != time.Second/10 {
-		t.Fatalf("expected default 100ms interval, got %v", c.minInterval)
+	if c.limiter == nil {
+		t.Fatal("expected limiter to be set")
+	}
+	if got := c.limiter.Limit(); got != rate.Limit(10) {
+		t.Fatalf("expected default 10 RPS, got %v", got)
 	}
 }
 
 func TestNewHaloAPIClient_CustomRate(t *testing.T) {
 	c := NewHaloAPIClient("s", "c", 5)
-	if c.minInterval != time.Second/5 {
-		t.Fatalf("expected 200ms interval, got %v", c.minInterval)
+	if got := c.limiter.Limit(); got != rate.Limit(5) {
+		t.Fatalf("expected 5 RPS, got %v", got)
+	}
+}
+
+// TestRateWait_ConcurrentRespectsRPS valide que rate-limiting tient sous
+// concurrence (régression du bug data-race lastRequest pré-rate.Limiter).
+// À lancer avec `go test -race ./internal/sync/...` pour la couverture race.
+func TestRateWait_ConcurrentRespectsRPS(t *testing.T) {
+	const rps = 20 // 20 RPS = intervalle 50ms
+	const n = 10   // 10 goroutines parallèles
+	c := &HaloAPIClient{limiter: rate.NewLimiter(rate.Limit(rps), 1)}
+
+	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer wg.Done()
+			c.rateWait(context.Background())
+		}()
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	// Borne basse théorique : (n-1) tokens à émettre après le burst initial,
+	// à 1 token tous les 50ms = (n-1) * 50ms. Tolérance 80% pour absorber le
+	// jitter scheduler.
+	minExpected := time.Duration(n-1) * time.Second / time.Duration(rps) * 80 / 100
+	if elapsed < minExpected {
+		t.Fatalf("rate-limiting cassé : %d appels concurrents à %d RPS terminés en %v (attendu ≥ %v)",
+			n, rps, elapsed, minExpected)
 	}
 }
 
@@ -171,7 +212,7 @@ func TestGetMatchStats_InvalidUUID(t *testing.T) {
 }
 
 func TestBackoff_Short(t *testing.T) {
-	c := &HaloAPIClient{minInterval: time.Millisecond}
+	c := &HaloAPIClient{limiter: fastLimiter()}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	start := time.Now()
@@ -184,7 +225,7 @@ func TestBackoff_Short(t *testing.T) {
 }
 
 func TestBackoff_CancelledContext(t *testing.T) {
-	c := &HaloAPIClient{minInterval: time.Millisecond}
+	c := &HaloAPIClient{limiter: fastLimiter()}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already cancelled
 	start := time.Now()
@@ -205,7 +246,7 @@ func TestGetMatchHistory_Success(t *testing.T) {
 		http:           srv.Client(),
 		spartanToken:   "s",
 		clearanceToken: "c",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 	// We can't easily override haloStatsHost, but doGet accepts any URL.
 	// Use doGet directly for success path, then test parsing via GetMatchHistory indirectly.
@@ -230,7 +271,7 @@ func TestGetMatchStats_SuccessViaDoGet(t *testing.T) {
 		http:           srv.Client(),
 		spartanToken:   "s",
 		clearanceToken: "c",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 	body, err := c.doGet(context.Background(), srv.URL+"/hi/matches/00000000-0000-0000-0000-000000000001/stats")
 	if err != nil {
@@ -258,7 +299,7 @@ func TestDoGet_ServerError_Retry(t *testing.T) {
 		http:           srv.Client(),
 		spartanToken:   "s",
 		clearanceToken: "c",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 	body, err := c.doGet(context.Background(), srv.URL+"/test")
 	if err != nil {
@@ -294,7 +335,7 @@ func newFilmTestClient(srv *httptest.Server) *HaloAPIClient {
 		http:           &http.Client{Transport: &redirectTransport{host: host}},
 		spartanToken:   "s",
 		clearanceToken: "c",
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 }
 
@@ -639,7 +680,7 @@ func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 		clearanceToken: "c",
 		economyBaseURL: srv.URL,
 		gameCMSBaseURL: srv.URL,
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 
 	data, err := c.GetCareerRank(context.Background(), "2535469190789936")
@@ -740,7 +781,7 @@ func TestGetCareerRank_BannerDerivedFromEmblemNameplate(t *testing.T) {
 		clearanceToken: "c",
 		economyBaseURL: srv.URL,
 		gameCMSBaseURL: srv.URL,
-		minInterval:    time.Millisecond,
+		limiter:        fastLimiter(),
 	}
 
 	data, err := c.GetCareerRank(context.Background(), "2533274823110022")

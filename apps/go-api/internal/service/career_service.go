@@ -629,7 +629,7 @@ func computeHighlightAvailablePlaylists(pool []domain.HighlightMatchPoolRow, exp
 // matchPassesExperience : true si le match passe le filtre Expérience.
 func matchPassesExperience(isRanked bool, experience string) bool {
 	switch experience {
-	case "ranked":
+	case scopeRanked:
 		return isRanked
 	case "unranked":
 		return !isRanked

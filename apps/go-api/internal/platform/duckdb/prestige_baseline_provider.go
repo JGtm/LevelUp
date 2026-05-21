@@ -154,8 +154,8 @@ func mapMetricToColumn(metric string) string {
 		return "accuracy"
 	case "FieldKills", "kills":
 		return "kills"
-	case "FieldDeaths", "deaths":
-		return "deaths"
+	case "FieldDeaths", rivalsOrderColDeaths:
+		return rivalsOrderColDeaths
 	case "FieldAssists", "assists":
 		return "assists"
 	case "FieldHeadshotKills", "headshot_kills":

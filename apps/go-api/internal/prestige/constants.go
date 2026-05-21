@@ -43,3 +43,15 @@ const (
 	TelemetryAbandoned        = "abandoned"
 	TelemetryPalierRecomputed = "palier_recomputed"
 )
+
+// Noms de métriques canoniques utilisés par les défis Prestige.
+//
+// Coexistent deux formats : noms PascalCase (legacy, dérivés des champs
+// canonical.PlayerMatchRow.Field*) et snake_case (API publique / TOML tuning).
+// Tout évaluateur doit accepter les deux orthographes pour rester
+// rétrocompatible. Centralisés ici pour éviter la duplication littérale.
+const (
+	MetricWinRatePascal = "FieldWinRate"
+	MetricWinRateSnake  = "win_rate"
+	MetricKDAPascal     = "FieldKDA"
+)

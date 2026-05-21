@@ -61,9 +61,9 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 			IsRanked:     p.isRanked,
 		}
 		if msr, ok := msrByMatch[p.lastMatchID]; ok {
-			ratingType := "LUSR"
+			ratingType := ratingTypeLUSR
 			if p.isRanked {
-				ratingType = "CSR"
+				ratingType = ratingTypeCSR
 			}
 			item.RatingType = &ratingType
 			ratingValueCopy := msr.ratingValue

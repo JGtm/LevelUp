@@ -76,9 +76,9 @@ func AcquireXSTSForRTA(ctx context.Context, accessToken string) (*XSTSResult, er
 // Retourne le token complet avec userhash (nécessaire pour l'auth RTA).
 func requestXSTSTokenFull(ctx context.Context, client *http.Client, userToken, relyingParty string) (*XSTSResult, error) {
 	body := map[string]any{
-		"RelyingParty": relyingParty,
-		"TokenType":    "JWT",
-		"Properties": map[string]any{
+		xboxFieldRelyingParty: relyingParty,
+		xboxFieldTokenType:    "JWT",
+		xboxFieldProperties: map[string]any{
 			"UserTokens": []string{userToken},
 			"SandboxId":  "RETAIL",
 		},
@@ -89,7 +89,7 @@ func requestXSTSTokenFull(ctx context.Context, client *http.Client, userToken, r
 	if err != nil {
 		return nil, err
 	}
-	token, ok := resp["Token"].(string)
+	token, ok := resp[xboxFieldToken].(string)
 	if !ok || token == "" {
 		return nil, fmt.Errorf("token absent dans la réponse XSTS")
 	}

@@ -85,7 +85,7 @@ func (s *AttemptStore) GetOrCreate(sessionID string) (*Attempt, bool) {
 	defer s.mu.Unlock()
 
 	if id, ok := s.bySession[sessionID]; ok {
-		if a := s.attempts[id]; a != nil && a.Status == "pending" {
+		if a := s.attempts[id]; a != nil && a.Status == AttemptStatusPending {
 			return a, false
 		}
 	}
@@ -94,7 +94,7 @@ func (s *AttemptStore) GetOrCreate(sessionID string) (*Attempt, bool) {
 		AttemptID: uuid.New().String(),
 		SessionID: sessionID,
 		StartedAt: time.Now(),
-		Status:    "pending",
+		Status:    AttemptStatusPending,
 	}
 	s.attempts[a.AttemptID] = a
 	s.bySession[sessionID] = a.AttemptID

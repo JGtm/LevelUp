@@ -128,6 +128,10 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 // Types + requêtes médias
 // ─────────────────────────────────────────────────────────────────────────────
 
+// mediaKindVideo est la valeur du champ Kind pour un média vidéo (mp4, clip).
+// Le pendant mediaKindImage est implicite (toute autre valeur).
+const mediaKindVideo = "video"
+
 type mediaRow struct {
 	FilePath string
 	FileName string
@@ -194,7 +198,7 @@ func markMediaNotified(db *sql.DB, filePaths []string) error {
 func buildMediaEmbed(rows []mediaRow, gamertag, lang string) Embed {
 	nVideos, nImages := 0, 0
 	for _, r := range rows {
-		if r.Kind == "video" {
+		if r.Kind == mediaKindVideo {
 			nVideos++
 		} else {
 			nImages++
@@ -233,7 +237,7 @@ func buildMediaEmbed(rows []mediaRow, gamertag, lang string) Embed {
 			break
 		}
 		icon := "📸"
-		if r.Kind == "video" {
+		if r.Kind == mediaKindVideo {
 			icon = "🎬"
 		}
 		value := r.FileName

@@ -404,9 +404,9 @@ func requiredCompositeFor(currentMu, targetMu, sigma float64) float64 {
 // Réf : analyse heuristique narrative ↔ composantes (cf. plan §4.3).
 func narrativeAxesForComponent(comp string) []string {
 	switch comp {
-	case "kills_vs_expected", "offensive_conversion":
+	case analysis.PerfMetricKillsVsExpected, "offensive_conversion":
 		return []string{string(narrative.AxisCombat), string(narrative.AxisImpact)}
-	case "deaths_vs_expected", "defensive_resistance":
+	case analysis.PerfMetricDeathsVsExpected, "defensive_resistance":
 		return []string{string(narrative.AxisSurvival)}
 	case "win_factor":
 		return []string{string(narrative.AxisObjective)}

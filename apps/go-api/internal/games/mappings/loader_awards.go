@@ -81,15 +81,20 @@ func (s *AwardMappingSet) All() map[string]AwardMapping {
 	return out
 }
 
+// axisObjective est l'axe de participation "objective" (porteur du drapeau, etc.).
+// Aligné sur narrative.AxisObjective. Centralisé ici pour réduire les littéraux
+// (référencé dans allowedAxes + message d'erreur de validation).
+const axisObjective = "objective"
+
 // allowedAxes liste les axes ParticipationAxis canoniques.
 // Aligné sur narrative.ParticipationAxis. Toute autre valeur est rejetée.
 var allowedAxes = map[string]struct{}{
-	"combat":    {},
-	"survival":  {},
-	"support":   {},
-	"score":     {},
-	"objective": {},
-	"impact":    {},
+	"combat":      {},
+	"survival":    {},
+	"support":     {},
+	"score":       {},
+	axisObjective: {},
+	"impact":      {},
 }
 
 // LoadAwardsFromFile lit et valide un awards.toml à un chemin donné.

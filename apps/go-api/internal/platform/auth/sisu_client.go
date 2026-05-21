@@ -78,14 +78,14 @@ func initSISUSessionWithURL(
 	slog.DebugContext(ctx, "sisu: initialisation session", "app_id", appID)
 
 	body := map[string]any{
-		"AppId":       appID,
-		"TitleId":     titleID,
-		"DeviceToken": deviceToken,
-		"Offers":      []string{"service::user.auth.xboxlive.com::MBI_SSL"},
-		"ProofKey":    kp.GetProofKey(),
-		"RedirectUri": sisuRedirectURI,
-		"Sandbox":     sisuSandbox,
-		"TokenType":   "code",
+		"AppId":            appID,
+		"TitleId":          titleID,
+		"DeviceToken":      deviceToken,
+		"Offers":           []string{"service::user.auth.xboxlive.com::MBI_SSL"},
+		"ProofKey":         kp.GetProofKey(),
+		"RedirectUri":      sisuRedirectURI,
+		"Sandbox":          sisuSandbox,
+		xboxFieldTokenType: "code",
 		"Query": map[string]string{
 			"display":               "touch",
 			"code_challenge":        codeChallenge,

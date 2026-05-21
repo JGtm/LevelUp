@@ -20,6 +20,10 @@ import (
 // Types Discord webhook
 // ─────────────────────────────────────────────────────────────────────────────
 
+// keyDiscordVersionFooter est la clé i18n du footer de notification "nouvelle
+// version". Centralisée pour réduire la duplication (cf. lint goconst).
+const keyDiscordVersionFooter = "discord_version_footer"
+
 // EmbedField est un champ inline ou non d'un embed Discord.
 type EmbedField struct {
 	Name   string `json:"name"`
@@ -225,7 +229,7 @@ var discordStrings = map[string]map[string]string{
 		"fr": "🚀 LevelUp v{version} — Nouvelle version déployée",
 		"en": "🚀 LevelUp v{version} — New version deployed",
 	},
-	"discord_version_footer": {
+	keyDiscordVersionFooter: {
 		"fr": "LevelUp · Mise à jour automatique",
 		"en": "LevelUp · Auto-update",
 	},

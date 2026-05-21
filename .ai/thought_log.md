@@ -1,3 +1,48 @@
+## [2026-05-21] fix(halo_client) — Race condition rateWait + switch vers rate.Limiter + bench RPS
+
+**Statut** : Phase 1 complète (fix race + tests), Phase 2 complète (bench dry-run), validation prod RPS=5 en attente. Branche `fix/media-paths-portable` (continuation).
+
+**Contexte** : audit comparatif des paramètres rate-limit entre SPNKr (Python, lib officielle, 5 RPS par service), SpartanRecord (TS/Firebase, aucun rate-limit proactif) et notre client Go (`apps/go-api/internal/sync/halo_client.go`). Deux problèmes détectés :
+
+1. **Data race confirmée** : `HaloAPIClient.lastRequest time.Time` (`halo_client.go:116`) était lu/écrit sans mutex dans `rateWait()` alors que `engine.go:312-331` lance jusqu'à 25 goroutines parallèles via `errgroup`, chacune chaînant 2-3 appels API → 50-75 accès concurrents au champ. Le commentaire du struct affirmait "Thread-safe" mais c'était faux pour ce champ. Conséquence : rate-limit non déterministe sous concurrence, RPS effectif pouvant excéder la valeur configurée.
+
+2. **RPS=1 en prod** (`cmd/server/main.go:809`) — très conservateur vs SPNKr=5. Hypothèse : économie possible côté wall-clock sans déclencher de 429.
+
+**Décision** :
+
+- Phase 1 : remplacer `minInterval time.Duration` + `lastRequest time.Time` par `*rate.Limiter` (token bucket thread-safe natif, `golang.org/x/time/rate` — déjà transitif). `NewHaloAPIClient` crée `rate.NewLimiter(rate.Limit(rps), 1)` (burst=1 pour reproduire le comportement actuel sans pic). `rateWait()` devient `c.limiter.Wait(ctx)` — 5 lignes au lieu de 13.
+- Phase 2 : binaire dédié `cmd/bench-rps` avec mode `sim` (httptest local + `redirectTransport` réécrivant les URLs Halo, latence configurable) et mode `real` (vraie API, env `SPARTAN_TOKEN`/`CLEARANCE_TOKEN`, **aucune écriture DB** — s'arrête après l'équivalent Phase 2 de `SyncEngine.fetchMatchData`). Méthode chainable `WithHTTPClient` ajoutée pour permettre l'injection du `*http.Client` redirigé.
+
+**Validation Phase 1** :
+- `go build ./...` : OK
+- `go test -race ./internal/sync/...` : 11.9s, tous verts incluant le nouveau `TestRateWait_ConcurrentRespectsRPS` (10 goroutines parallèles à 20 RPS, vérifie wall-clock ≥ 360ms = borne théorique * 80%)
+- 4 tests rate existants adaptés à la nouvelle API (`limiter.Limit()` vs `minInterval`)
+- 17 occurrences `minInterval: time.Millisecond` dans les tests remplacées par helper `fastLimiter()`
+
+**Validation Phase 2** (mode sim, latence simulée 150ms/req, 25 matchs, 51 appels par cycle) :
+
+| RPS cfg | Wall-clock | RPS effectif | Gain vs RPS=1 |
+|---------|------------|--------------|---------------|
+| 1       | 50.15s     | 1.02         | baseline      |
+| 3       | 16.82s     | 3.03         | **3×**        |
+| 5       | 10.15s     | 5.02         | **5×**        |
+
+Le rate-limiter `golang.org/x/time/rate` colle au RPS configuré à 2% près. Conclusion technique : passer prod de RPS=1 → RPS=5 économise ~40 secondes par sync delta, sans modification autre que `RequestsPerSecond: 5` dans `cmd/server/main.go:809`.
+
+**Validation Phase 2 bis — mode real sur API Halo Infinite** (JGtm, 153 appels au total) :
+
+| RPS cfg | Wall-clock | RPS effectif | Erreurs | 429 |
+|---------|------------|--------------|---------|-----|
+| 1       | 50.09s     | 1.02         | 0       | **0** |
+| 3       | 16.76s     | 3.04         | 0       | **0** |
+| 5       | 10.09s     | 5.05         | 0       | **0** |
+
+Résultats quasi identiques au mode sim (écart < 1%). **L'API Microsoft tolère 5 RPS sans déclencher de throttle** depuis un client unique — cohérent avec le défaut SPNKr de 5 RPS par service. Aucune écriture DB durant le bench (binaire s'arrête après les appels GET).
+
+**Prochaine étape** : flip `RequestsPerSecond: 1` → `5` dans [cmd/server/main.go:809](apps/go-api/cmd/server/main.go#L809). Commit groupé attendu avec les autres modifications WIP de la branche `fix/media-paths-portable`.
+
+---
+
 ## [2026-05-21] fix(home) — Bannière vraie racine : corruption ART DuckDB sur career_progression
 
 **Statut** : Complété (branche `fix/media-paths-portable`).

@@ -37,6 +37,10 @@ const (
 	homeColorNegative = "negative"
 )
 
+// homeOutcomeLabelFallback est le label retourné quand l'outcome code n'est pas
+// reconnu (defaut FR/EN identique : "Match").
+const homeOutcomeLabelFallback = "Match"
+
 // Tones d'outcome partagÃ©s entre la projection JSON (home) et les filtres
 // (match_filter). DÃ©clarÃ©s ici car le package n'a pas de fichier de constantes
 // partagÃ©es et home_locale.go est le point d'entrÃ©e des codes outcome.
@@ -101,12 +105,12 @@ func outcomeLabelForLocale(outcome int, locale string) string {
 		if label, ok := homeOutcomeLabelsEN[outcome]; ok {
 			return label
 		}
-		return "Match"
+		return homeOutcomeLabelFallback
 	}
 	if label, ok := homeOutcomeLabels[outcome]; ok {
 		return label
 	}
-	return "Match"
+	return homeOutcomeLabelFallback
 }
 
 func outcomeLabel(code int) string {

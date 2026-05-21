@@ -211,7 +211,7 @@ func TestListRecords_WithPBAndHistory(t *testing.T) {
 			Value  float64 `json:"value"`
 		} `json:"personal_bests"`
 		History []struct {
-			ID    string `json:"id"`
+			ID    string  `json:"id"`
 			Value float64 `json:"value"`
 		} `json:"history"`
 	}
@@ -266,8 +266,8 @@ func TestListMilestones_CatalogPlusEarned(t *testing.T) {
 	}
 	var body struct {
 		Items []struct {
-			ID       string `json:"id"`
-			Earned   bool   `json:"earned"`
+			ID       string     `json:"id"`
+			Earned   bool       `json:"earned"`
 			EarnedAt *time.Time `json:"earned_at"`
 		} `json:"items"`
 	}

@@ -11,6 +11,13 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
+// Labels Source canoniques d'une CredentialSource.
+// Identiques aux valeurs attendues par les tests resolver_test.go.
+const (
+	credSourceDuckDBMSAL  = "duckdb_msal"
+	credSourceDuckDBOAuth = "duckdb_oauth"
+)
+
 // discoveryImpl scanne les sources de credentials (env + DuckDB) pour construire une liste de CredentialSource.
 type discoveryImpl struct {
 	cfg       *config.AppConfig
@@ -84,13 +91,13 @@ func (d *discoveryImpl) Scan(ctx context.Context) ([]CredentialSource, error) {
 
 		// Déterminer la source exacte pour logs.
 		if msal != "" && oauth != "" {
-			source.Source = "duckdb_msal+duckdb_oauth"
+			source.Source = credSourceDuckDBMSAL + "+" + credSourceDuckDBOAuth
 		} else if msal != "" {
-			source.Source = "duckdb_msal"
+			source.Source = credSourceDuckDBMSAL
 		} else if envToken != "" {
 			source.Source = "env_oauth"
 		} else {
-			source.Source = "duckdb_oauth"
+			source.Source = credSourceDuckDBOAuth
 		}
 
 		sources = append(sources, source)

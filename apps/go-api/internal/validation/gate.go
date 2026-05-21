@@ -20,6 +20,11 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 )
 
+// tableMatchRegistry est le nom de la table centrale shared_matches_v2 listant
+// les matchs uniques. Référencé par la checklist Gate et les tests de
+// comparaison (compare_test.go) — centralisé ici pour éviter la duplication.
+const tableMatchRegistry = "match_registry"
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,7 +230,7 @@ func checkDBAccessible(dbPath string) (bool, string) {
 
 func checkSharedTables(dbPath string) (bool, string) {
 	required := []string{
-		"match_registry",
+		tableMatchRegistry,
 		"match_participants",
 		"medals_earned",
 		"highlight_events",

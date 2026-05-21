@@ -531,7 +531,7 @@ func metricCeiling(metric string) float64 {
 	switch metric {
 	case "FieldAccuracy", "accuracy":
 		return 1.0
-	case "FieldWinRate", "win_rate":
+	case MetricWinRatePascal, MetricWinRateSnake:
 		return 100.0
 	case "performance_score":
 		return 100.0
@@ -543,8 +543,8 @@ func metricCeiling(metric string) float64 {
 func metricKindFor(metric string) MetricKind {
 	switch metric {
 	case "FieldAccuracy", "accuracy",
-		"FieldWinRate", "win_rate",
-		"FieldKDA", "FieldKDR", "kda", "kdr",
+		MetricWinRatePascal, MetricWinRateSnake,
+		MetricKDAPascal, "FieldKDR", "kda", "kdr",
 		"performance_score":
 		return MetricRatio
 	}
