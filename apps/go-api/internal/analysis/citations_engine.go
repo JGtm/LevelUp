@@ -33,12 +33,22 @@ func RegisterCustomDispatcher(fn func(string, domain.CitationContext) int) {
 	customDispatcher = fn
 }
 
+// CitationProgressInput regroupe les données nécessaires au calcul de progression
+// d'un match : contexte stats/medals/awards du match + état cumulatif avant ce match.
+// CumulPre[citation_name_norm] = SUM(value) dans match_citations pour tous les matchs
+// antérieurs au match courant. Nil ou vide = aucun historique (premier match).
+type CitationProgressInput struct {
+	Ctx      domain.CitationContext
+	CumulPre map[string]int
+}
+
 // ComputeFullMatchCitations calcule les deltas de citations avec le moteur complet.
 // Gère tous les mapping_types dont composite (post-traitement).
-// ctx  : données du match (medals, stats, awards, events, playlist, …).
-// mappings : règles chargées depuis citation_mappings (Q40).
+// in.Ctx      : données du match (medals, stats, awards, events, playlist, …).
+// in.CumulPre : cumul avant ce match (nil accepté — traité comme vide).
+// mappings    : règles chargées depuis citation_mappings.
 func ComputeFullMatchCitations(
-	ctx domain.CitationContext,
+	in CitationProgressInput,
 	mappings []domain.CitationFullMapping,
 ) []domain.CitationMatchDelta {
 	totals := make(map[string]int, len(mappings))
@@ -46,7 +56,7 @@ func ComputeFullMatchCitations(
 		if m.MappingType == domain.CitationMappingTypeComposite {
 			continue // calculé en post-traitement après le dispatch principal
 		}
-		val := dispatchFull(m, ctx)
+		val := dispatchFull(m, in.Ctx)
 		if val > 0 {
 			totals[m.NameNorm] += val
 		}

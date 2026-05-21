@@ -63,7 +63,7 @@ func TestComposite_AllChildrenFire(t *testing.T) {
 	// Inject stats so that wins_slayer et wins_ctf ont une valeur >= 1.
 	// Le moteur lit Stats["wins_slayer"] via dispatchFull/stat.
 	ctx := injectStats(map[string]float64{"wins_slayer": 1, "wins_ctf": 1})
-	deltas := analysis.ComputeFullMatchCitations(ctx, mappings)
+	deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{Ctx: ctx}, mappings)
 
 	found := false
 	for _, d := range deltas {
@@ -92,7 +92,7 @@ func TestComposite_OneChildMissing(t *testing.T) {
 		},
 	)
 	ctx := injectStats(map[string]float64{"wins_slayer": 1, "wins_ctf": 0})
-	deltas := analysis.ComputeFullMatchCitations(ctx, mappings)
+	deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{Ctx: ctx}, mappings)
 	for _, d := range deltas {
 		if d.NameNorm == "combo_wins" && d.Value != 1 {
 			t.Errorf("combo_wins: attendu 1, obtenu %d", d.Value)
@@ -113,7 +113,7 @@ func TestComposite_NoChildFires(t *testing.T) {
 	)
 	// wins_slayer = 2 < tiers(5) → not masterised
 	ctx := injectStats(map[string]float64{"wins_slayer": 2})
-	deltas := analysis.ComputeFullMatchCitations(ctx, mappings)
+	deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{Ctx: ctx}, mappings)
 	for _, d := range deltas {
 		if d.NameNorm == "combo_wins" {
 			t.Errorf("combo_wins ne doit pas apparaître si aucun enfant masterisé, obtenu %d", d.Value)
@@ -132,7 +132,7 @@ func TestComposite_NoTierTargets(t *testing.T) {
 		},
 	)
 	ctx := injectStats(map[string]float64{"kills_badge": 3})
-	deltas := analysis.ComputeFullMatchCitations(ctx, mappings)
+	deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{Ctx: ctx}, mappings)
 	found := false
 	for _, d := range deltas {
 		if d.NameNorm == "combo_any" {
