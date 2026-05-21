@@ -888,8 +888,8 @@ fr = "Mon escouade (amis par défaut)"
 en = "My squad (default friends)"
 
 [common.settings.squad_intro]
-fr = "Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade."
-en = "Gamertags of teammates preselected when opening the Squad page."
+fr = "Gamertags des coéquipiers présélectionnés à l'ouverture de la page Escouade. Les joueurs déjà configurés dans l'app apparaissent en priorité."
+en = "Gamertags of teammates preselected when opening the Squad page. Already configured players appear first."
 
 [common.settings.gamertag_search_placeholder]
 fr = "Rechercher ou saisir un gamertag…"

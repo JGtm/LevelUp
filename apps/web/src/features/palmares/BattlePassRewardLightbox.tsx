@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 import { itemTypeLabel, normalizeRarity, rarityLabel, rarityStyle } from './rarity'
 
@@ -70,6 +73,8 @@ export function BattlePassRewardLightbox({
 }) {
   const [currentIndex, setCurrentIndex] = useState(() => clampIndex(startIndex, rewards.length))
   const animatingRef = useRef(false)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   useEffect(() => {
     if (animatingRef.current) return
@@ -218,7 +223,7 @@ export function BattlePassRewardLightbox({
                 event.stopPropagation()
                 navigate('prev')
               }}
-              aria-label="Récompense précédente"
+              aria-label={t('common.battlepass.prev_aria')}
               className="absolute left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
@@ -231,7 +236,7 @@ export function BattlePassRewardLightbox({
                 event.stopPropagation()
                 navigate('next')
               }}
-              aria-label="Récompense suivante"
+              aria-label={t('common.battlepass.next_aria')}
               className="absolute right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>

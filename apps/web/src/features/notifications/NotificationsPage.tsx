@@ -13,6 +13,8 @@ import { useDismiss, useMarkAllRead, useMarkRead, useMarkUnread } from './mutati
 import { NotificationItem } from './NotificationItem'
 import type { Notification, NotificationCategory } from './types'
 import { ALL_CATEGORIES } from './types'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 const PAGE_LIMIT = 50
 
@@ -21,6 +23,7 @@ export function NotificationsPage() {
   const playerSlug = params.playerSlug
   const locale = useAppShellStore((s) => s.locale)
   const t = getNotificationsText(locale)
+  const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const [unreadOnly, setUnreadOnly] = useState(false)
   const [category, setCategory] = useState<NotificationCategory | undefined>(undefined)
@@ -144,11 +147,11 @@ export function NotificationsPage() {
       {selectedIds.size > 0 && (
         <div
           role="region"
-          aria-label="Actions groupées"
+          aria-label={tc('common.notifications.bulk_actions_aria')}
           className="sticky bottom-4 mt-4 flex flex-wrap items-center gap-2 rounded-md border border-border bg-popover p-3 shadow-lg"
         >
           <span className="text-sm text-popover-foreground">
-            {selectedIds.size} sélectionnée(s)
+            {selectedIds.size} {tc('common.notifications.selected_suffix')}
           </span>
           <button
             type="button"
@@ -174,7 +177,7 @@ export function NotificationsPage() {
             type="button"
             onClick={() => setSelectedIds(new Set())}
             className="ml-auto text-xs text-muted-foreground hover:text-popover-foreground"
-            aria-label="Désélectionner tout"
+            aria-label={tc('common.notifications.deselect_all_aria')}
           >
             ×
           </button>

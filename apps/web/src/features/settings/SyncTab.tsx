@@ -155,7 +155,6 @@ export function SyncTab({ merged, handleChange, t }: TabProps) {
         <CardContent>
           <p className="text-sm text-muted-foreground mb-3">
             {tc('common.settings.squad_intro')}
-            Les joueurs déjà configurés dans l'app apparaissent en priorité.
           </p>
           <GamertagCombobox
             selected={(merged.friend_gamertags as string[] | undefined) ?? []}
