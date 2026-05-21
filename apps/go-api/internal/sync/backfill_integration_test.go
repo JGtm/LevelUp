@@ -201,7 +201,7 @@ func TestFindMatchesMissingParticipantBits_All(t *testing.T) {
 	db := openBackfillTestDB(t)
 	seedBackfillShared(t, db)
 
-	matches, err := FindMatchesMissingParticipantBits(db, "xuid001", 1, false, 0)
+	matches, err := FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func TestFindMatchesMissingParticipantBits_Force(t *testing.T) {
 	}
 
 	// Force mode should return all
-	matches, err := FindMatchesMissingParticipantBits(db, "xuid001", 1, true, 0)
+	matches, err := FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, true, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestFindMatchesMissingParticipantBits_Force(t *testing.T) {
 	}
 
 	// Non-force should skip m1
-	matches, err = FindMatchesMissingParticipantBits(db, "xuid001", 1, false, 0)
+	matches, err = FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, false, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestFindMatchesMissingParticipantBits_Limit(t *testing.T) {
 	db := openBackfillTestDB(t)
 	seedBackfillShared(t, db)
 
-	matches, err := FindMatchesMissingParticipantBits(db, "xuid001", 1, false, 1)
+	matches, err := FindMatchesMissingParticipantBits(t.Context(), db, "xuid001", 1, false, 1)
 	if err != nil {
 		t.Fatal(err)
 	}

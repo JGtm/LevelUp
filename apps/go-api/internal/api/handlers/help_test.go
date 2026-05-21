@@ -2,6 +2,7 @@
 package handlers_test
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -19,8 +20,10 @@ import (
 // Utilisé par les tests qui veulent s'appuyer uniquement sur le README disque.
 type noopGit struct{}
 
-func (noopGit) LogSHAs(_, _ string) ([]string, error)   { return nil, nil }
-func (noopGit) ShowFile(_, _, _ string) (string, error) { return "", nil }
+func (noopGit) LogSHAs(_ context.Context, _, _ string) ([]string, error) { return nil, nil }
+func (noopGit) ShowFile(_ context.Context, _, _, _ string) (string, error) {
+	return "", nil
+}
 
 // makeHelpHandler instancie un HelpHandler avec le service release notes
 // configuré pour ne pas appeler git (P8.10) — fallback disque uniquement.

@@ -24,7 +24,7 @@ func openDiagDB(t *testing.T) (path string, db *sql.DB) {
 	if err != nil {
 		t.Fatalf("openDiagDB: %v", err)
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(t.Context()); err != nil {
 		db.Close()
 		t.Fatalf("openDiagDB ping: %v", err)
 	}

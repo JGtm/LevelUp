@@ -62,7 +62,7 @@ func TestResolveDemoPlayer_FixturePresent_OpensWithoutError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create fixture stats.duckdb: %v", err)
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(t.Context()); err != nil {
 		t.Fatalf("ping fixture: %v", err)
 	}
 	_ = db.Close()

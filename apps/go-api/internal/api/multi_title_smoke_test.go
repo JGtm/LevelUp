@@ -66,7 +66,7 @@ func TestSmoke_FieldMappings_FlagOff_RouteAbsent(t *testing.T) {
 	t.Setenv("MULTI_TITLE_API_ENABLED", "false")
 
 	router := buildTestRouter(t)
-	req := httptest.NewRequest("GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -94,7 +94,7 @@ func TestSmoke_FieldMappings_FlagOn_RouteRegistered(t *testing.T) {
 	}
 
 	router := buildTestRouter(t)
-	req := httptest.NewRequest("GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/api/v1/titles/halo_infinite/field-mappings?locale=fr", nil)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 

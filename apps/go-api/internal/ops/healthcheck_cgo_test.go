@@ -23,7 +23,7 @@ func createDBAt(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("createDBAt open %s: %v", path, err)
 	}
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(t.Context()); err != nil {
 		db.Close()
 		t.Fatalf("createDBAt ping %s: %v", path, err)
 	}

@@ -758,7 +758,7 @@ func applyHighlightEventsAutoincrement(db *sql.DB) error {
 	}
 
 	var colDefault sql.NullString
-	err = db.QueryRow(
+	err = db.QueryRowContext(bootCtx(),
 		"SELECT column_default FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'highlight_events' AND column_name = 'id'",
 	).Scan(&colDefault)
 	if err == nil && colDefault.Valid && len(colDefault.String) > 4 {
@@ -766,7 +766,7 @@ func applyHighlightEventsAutoincrement(db *sql.DB) error {
 	}
 
 	var maxID int
-	_ = db.QueryRow("SELECT COALESCE(MAX(id), 0) FROM highlight_events").Scan(&maxID)
+	_ = db.QueryRowContext(bootCtx(), "SELECT COALESCE(MAX(id), 0) FROM highlight_events").Scan(&maxID)
 	startVal := maxID + 1
 
 	return execScript(db, fmt.Sprintf(`
@@ -792,7 +792,7 @@ func applyHighlightEventsAutoincrement(db *sql.DB) error {
 func applyMedalsBigint(db *sql.DB) error {
 	// Vérifier le type actuel
 	var dataType string
-	err := db.QueryRow(
+	err := db.QueryRowContext(bootCtx(),
 		"SELECT data_type FROM information_schema.columns WHERE table_schema = 'main' AND table_name = 'medals_earned' AND column_name = 'medal_name_id'",
 	).Scan(&dataType)
 	if err != nil || dataType == "BIGINT" {
@@ -893,13 +893,13 @@ func applyResolutionViews(db *sql.DB) error {
 		analysis.BotSQLCase(xuidExpr),
 		xuidExpr,
 	)
-	if _, err := db.Exec(viewSQL); err != nil {
+	if _, err := db.ExecContext(bootCtx(), viewSQL); err != nil {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 
 	// v_match_full — requires metadata ATTACHed as 'meta'
 	// Simplified version that works with or without meta
-	_, _ = db.Exec(`
+	_, _ = db.ExecContext(bootCtx(), `
 		CREATE OR REPLACE VIEW v_match_full AS
 		SELECT mr.*
 		FROM match_registry mr
@@ -907,7 +907,7 @@ func applyResolutionViews(db *sql.DB) error {
 
 	// v_killer_victim_full
 	if exists, _ := tableExists(db, "killer_victim_pairs"); exists {
-		_, _ = db.Exec(`
+		_, _ = db.ExecContext(bootCtx(), `
 			CREATE OR REPLACE VIEW v_killer_victim_full AS
 			SELECT
 				kvp.*,
@@ -921,7 +921,7 @@ func applyResolutionViews(db *sql.DB) error {
 
 	// v_weapon_kills
 	if exists, _ := tableExists(db, "weapon_kills"); exists {
-		_, _ = db.Exec(`
+		_, _ = db.ExecContext(bootCtx(), `
 			CREATE OR REPLACE VIEW v_weapon_kills AS
 			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM weapon_kills
@@ -933,7 +933,7 @@ func applyResolutionViews(db *sql.DB) error {
 
 // applyMvPlayerMatchesView crée ou recrée mv_player_matches.
 func applyMvPlayerMatchesView(db *sql.DB) error {
-	_, err := db.Exec(`
+	_, err := db.ExecContext(bootCtx(), `
 		CREATE OR REPLACE VIEW mv_player_matches AS
 		SELECT
 			mr.match_id,

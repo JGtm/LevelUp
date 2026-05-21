@@ -11,6 +11,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -88,6 +89,7 @@ func FindMatchesMissingData(
 //
 // Portage de find_matches_missing_participant_bits() (detection.py).
 func FindMatchesMissingParticipantBits(
+	ctx context.Context,
 	sharedDB *sql.DB,
 	xuid string,
 	bitsRequired int,
@@ -113,7 +115,7 @@ func FindMatchesMissingParticipantBits(
 		query += fmt.Sprintf(" LIMIT %d", maxMatches)
 	}
 
-	rows, err := sharedDB.Query(query, xuid)
+	rows, err := sharedDB.QueryContext(ctx, query, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("FindMatchesMissingParticipantBits: %w", err)
 	}

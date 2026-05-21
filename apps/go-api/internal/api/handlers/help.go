@@ -10,6 +10,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -28,7 +29,7 @@ type helpDiskCache struct {
 // ReleaseNotesBuilder est l'interface implémentée par
 // service.ReleaseNotesService.Build (port-style pour testabilité).
 type ReleaseNotesBuilder interface {
-	Build(lang string) (string, error)
+	Build(ctx context.Context, lang string) (string, error)
 }
 
 // HelpHandler sert les notes de version. Cache double couche : mémoire (TTL
@@ -65,7 +66,7 @@ func (h *HelpHandler) GetReleaseNotes(w http.ResponseWriter, r *http.Request) {
 		lang = "fr"
 	}
 
-	content, err := h.loadCached(lang)
+	content, err := h.loadCached(r.Context(), lang)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "RELEASE_NOTES_ERROR", "Impossible de charger les notes de version")
 		return
@@ -73,7 +74,7 @@ func (h *HelpHandler) GetReleaseNotes(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"content": content})
 }
 
-func (h *HelpHandler) loadCached(lang string) (string, error) {
+func (h *HelpHandler) loadCached(ctx context.Context, lang string) (string, error) {
 	// 1. Cache mémoire (lecture rapide).
 	h.mu.RLock()
 	if e, ok := h.memory[lang]; ok && time.Since(e.loadedAt) < h.ttl {
@@ -97,7 +98,7 @@ func (h *HelpHandler) loadCached(lang string) (string, error) {
 	}
 
 	// 3. Reconstruction via le service + écriture cache.
-	content, err := h.builder.Build(lang)
+	content, err := h.builder.Build(ctx, lang)
 	if err != nil {
 		return "", err
 	}
