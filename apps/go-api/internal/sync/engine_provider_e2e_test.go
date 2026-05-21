@@ -42,10 +42,10 @@ type e2eTestEnv struct {
 	gamertag string
 	xuid     string
 
-	sharedPath   string
-	playerPath   string
-	metaPath     string
-	globalPath   string
+	sharedPath string
+	playerPath string
+	metaPath   string
+	globalPath string
 
 	provider sharedprovider.Provider
 	pool     *duckdb.PlayerDB
@@ -171,14 +171,14 @@ func (env *e2eTestEnv) seedMockMatches(matchIDPrefix string, count int) {
 // pool joueur via SharedReader pendant que sync écrit.
 //
 // Le test :
-//   1. Démarre 10 goroutines reader qui poll `COUNT(*) FROM match_registry`
-//      via pool.SharedReadDB().Get() (chemin HTTP-like).
-//   2. Démarre 1 goroutine sync qui appelle engine.RunDelta() avec 5 batches
-//      de 4 matchs (mock client réinitialisé entre chaque batch pour
-//      simuler 5 cycles de swap RO→RW→RO).
-//   3. Attend la fin du sync, puis 200ms de readers supplémentaires.
-//   4. Assert : zéro erreur "different configuration" ou "Catalog Error",
-//      ≥ 20 matchs écrits, readers majoritairement OK.
+//  1. Démarre 10 goroutines reader qui poll `COUNT(*) FROM match_registry`
+//     via pool.SharedReadDB().Get() (chemin HTTP-like).
+//  2. Démarre 1 goroutine sync qui appelle engine.RunDelta() avec 5 batches
+//     de 4 matchs (mock client réinitialisé entre chaque batch pour
+//     simuler 5 cycles de swap RO→RW→RO).
+//  3. Attend la fin du sync, puis 200ms de readers supplémentaires.
+//  4. Assert : zéro erreur "different configuration" ou "Catalog Error",
+//     ≥ 20 matchs écrits, readers majoritairement OK.
 func TestE2E_SyncEngine_HTTPReaders_Concurrency_integration(t *testing.T) {
 	env := newE2EEnv(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

@@ -76,14 +76,14 @@ func TestE2E_RunDeltaAndBackfill_Concurrent_NoFriction_integration(t *testing.T)
 	defer cancel()
 
 	var (
-		runDeltaErr     error
-		runBackfillErr  error
-		readerOK        atomic.Int64
-		readerErr       atomic.Int64
-		readerCatalog   atomic.Int64
-		readerDiffCfg   atomic.Int64
-		stopReaders     atomic.Bool
-		readersWG       sync.WaitGroup
+		runDeltaErr    error
+		runBackfillErr error
+		readerOK       atomic.Int64
+		readerErr      atomic.Int64
+		readerCatalog  atomic.Int64
+		readerDiffCfg  atomic.Int64
+		stopReaders    atomic.Bool
+		readersWG      sync.WaitGroup
 	)
 
 	// 5 readers HTTP-like en boucle.
