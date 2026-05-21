@@ -16,6 +16,8 @@ import {
   useGenerateInvite,
   useRevokeInvite,
 } from '@/features/auth/queries'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function AdminPage() {
   const navigate = useNavigate()
@@ -52,6 +54,8 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
   const deleteUser = useDeleteUser()
   const changeRole = useChangeRole()
   const resetPassword = useResetPassword()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const [resetTarget, setResetTarget] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
@@ -91,7 +95,7 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : !users?.length ? (
-          <p className="text-sm text-muted-foreground">Aucun utilisateur.</p>
+          <p className="text-sm text-muted-foreground">{t('common.admin.no_users')}</p>
         ) : (
           <div className="space-y-3">
             {users.map((u) => (
@@ -131,14 +135,14 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
             {resetTarget && (
               <div className="flex items-center gap-2 rounded-md border border-dashed px-4 py-3">
                 <span className="text-sm text-muted-foreground">
-                  Nouveau MDP pour <strong>{resetTarget}</strong> :
+                  {t('common.admin.new_password_for')} <strong>{resetTarget}</strong> :
                 </span>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-40 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                  placeholder="8 car. min."
+                  placeholder={t('common.auth.password_placeholder_short')}
                 />
                 <Button size="sm" onClick={() => handleResetPassword(resetTarget)}>
                   OK
@@ -164,6 +168,8 @@ function InvitesSection() {
   const { data: invites, isLoading } = useAdminInvites()
   const generateInvite = useGenerateInvite()
   const revokeInvite = useRevokeInvite()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   function handleGenerate() {
     generateInvite.mutate(7, {
@@ -181,7 +187,7 @@ function InvitesSection() {
     <Card>
       <CardContent className="pt-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Codes d'invitation</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('common.admin.invitation_codes_section')}</h2>
           <Button size="sm" onClick={handleGenerate} disabled={generateInvite.isPending}>
             {generateInvite.isPending ? 'Génération…' : 'Générer un code'}
           </Button>
@@ -190,7 +196,7 @@ function InvitesSection() {
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : !invites?.length ? (
-          <p className="text-sm text-muted-foreground">Aucun code d'invitation.</p>
+          <p className="text-sm text-muted-foreground">{t('common.admin.no_invitation_codes')}</p>
         ) : (
           <div className="space-y-2">
             {invites.map((inv) => (

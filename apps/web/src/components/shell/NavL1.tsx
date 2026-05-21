@@ -17,6 +17,8 @@ import { useJobStatus } from '@/features/setup/queries'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { StreakBadge } from '@/features/ascension/StreakBadge'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 // ─── SyncStatusIndicator ───────────────────────────────────────────────────
 
 /**
@@ -30,6 +32,8 @@ function SyncStatusIndicator() {
   const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
   const { data } = useJobStatus(activeSyncJobId ?? '', !!activeSyncJobId)
   const status = data?.status
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   useEffect(() => {
     if (
@@ -53,8 +57,8 @@ function SyncStatusIndicator() {
   if (isRunning) {
     return (
       <span
-        title="Synchronisation en cours…"
-        aria-label="Synchronisation en cours"
+        title={t('common.shell.sync_running_title')}
+        aria-label={t('common.shell.sync_running_aria')}
         className="flex shrink-0 items-center"
       >
         <svg
@@ -84,8 +88,8 @@ function SyncStatusIndicator() {
 
   return (
     <span
-      title="À jour"
-      aria-label="Synchronisation à jour"
+      title={t('common.shell.sync_uptodate_title')}
+      aria-label={t('common.shell.sync_uptodate_aria')}
       className="flex shrink-0 items-center"
     >
       <svg
@@ -309,6 +313,8 @@ interface SettingsSplitButtonProps {
 function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -357,7 +363,7 @@ function SettingsSplitButton({ tabs, isActive }: SettingsSplitButtonProps) {
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="px-1.5 py-1.5 cursor-pointer"
-          aria-label="Onglets Paramètres"
+          aria-label={t('common.shell.settings_tabs_aria')}
           aria-expanded={open}
           aria-haspopup="menu"
         >
@@ -410,6 +416,8 @@ export function NavL1() {
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const canManageInstance = useAppShellStore((s) => s.capabilities?.can_manage_instance ?? false)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const { data: settings } = useSettings()
   const showProgression = settings?.show_progression ?? true
   const routerState = useRouterState()
@@ -435,13 +443,13 @@ export function NavL1() {
     <nav
       className="flex h-12 shrink-0 items-center gap-0.5 border-b border-border bg-sidebar px-3"
       role="navigation"
-      aria-label="Navigation principale"
+      aria-label={t('common.shell.nav_main_aria')}
     >
       {/* ── Logo ────────────────────────────────────────────────────────── */}
       <Link
         to={playerSlug ? resolvePath('/players/$playerSlug/home') as never : '/'}
         className="mr-3 flex shrink-0 items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-sidebar-accent"
-        aria-label="LevelUp — retour à l'accueil"
+        aria-label={t('common.shell.logo_aria')}
       >
         <img src="/logo.png" alt="LevelUp" className="h-7 w-7 shrink-0 object-contain" />
         <span className="hidden text-sm font-bold text-sidebar-foreground sm:block">LevelUp</span>

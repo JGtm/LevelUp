@@ -13,12 +13,17 @@ import { CareerTopMatchesTable } from './CareerTopMatchesTable'
 import { CareerEncountersSection } from './CareerEncountersSection'
 import { CareerRankingBlock } from './CareerRankingBlock'
 import { AchievementsCareerSection } from '@/features/achievements/AchievementsCareerSection'
+import { formatMessage } from '@/lib/i18n/format'
+import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useCareerPage, useCareerTopMatches } from './queries'
 
 
 export function CareerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const navigate = useNavigate()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
   const { data, isLoading, isError, refetch } = useCareerPage(playerSlug)
   const [showAllTopMatches, setShowAllTopMatches] = useState(false)
   const { data: fullTopMatches, isLoading: loadingTopMatches } = useCareerTopMatches(
@@ -33,12 +38,12 @@ export function CareerPage() {
       <div className="p-6">
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="font-medium text-destructive">Erreur lors du chargement de la carrière.</p>
+            <p className="font-medium text-destructive">{t('career.errors.load_failed')}</p>
             <button
               onClick={() => refetch()}
               className="mt-2 text-sm text-primary underline"
             >
-              Réessayer
+              {t('career.errors.retry')}
             </button>
           </CardContent>
         </Card>
@@ -50,9 +55,9 @@ export function CareerPage() {
     return (
       <div className="p-6">
         <EmptyStateCard
-          title="Données de carrière indisponibles"
-          description="Aucune réponse exploitable n'a été renvoyée pour cette page. Vérifie la source de données ou relance le chargement."
-          actionLabel="Réessayer"
+          title={t('career.empty.progression_unavailable')}
+          description={t('career.empty.no_response_description')}
+          actionLabel={t('career.errors.retry')}
           onAction={() => refetch()}
         />
       </div>
@@ -73,7 +78,7 @@ export function CareerPage() {
             variant="outline"
             onClick={() => void navigate({ to: '/players/$playerSlug/compare', params: { playerSlug } })}
           >
-            Comparer
+            {t('career.actions.compare')}
           </Button>
         </div>
         {/* Résumé + progression */}
@@ -104,7 +109,7 @@ export function CareerPage() {
           <div className="space-y-4">
             {loadingTopMatches ? (
               <div className="flex justify-center py-4">
-                <Spinner size="sm" label="Chargement…" />
+                <Spinner size="sm" label={t('career.encounters.loading')} />
               </div>
             ) : showAllTopMatches ? (
               <>
@@ -123,7 +128,7 @@ export function CareerPage() {
               <>
                 <CareerTopMatchesTable
                   items={topMatchesItems}
-                  title="Meilleurs matchs récents"
+                  title={t('career.top_matches.section_title')}
                   playerSlug={playerSlug}
                 />
                 <div className="flex justify-center">
@@ -132,7 +137,7 @@ export function CareerPage() {
                     size="sm"
                     onClick={() => setShowAllTopMatches(true)}
                   >
-                    Voir tous les top matchs
+                    {t('career.top_matches.see_all')}
                   </Button>
                 </div>
               </>
@@ -140,8 +145,8 @@ export function CareerPage() {
           </div>
         ) : (
           <EmptyStateCard
-            title="Top matchs indisponibles"
-            description="Aucun match distinctif n'a été calculé pour cette page de carrière."
+            title={t('career.top_matches.empty_title')}
+            description={t('career.top_matches.empty_description')}
           />
         )}
 

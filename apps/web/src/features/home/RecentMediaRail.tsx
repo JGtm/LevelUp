@@ -8,6 +8,9 @@ import { useRecentMediaRail, useToggleMediaLike } from '@/features/media/queries
 import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
+import { formatMessage } from '@/lib/i18n/format'
+import { homeManifest, type HomeManifestKey } from '@/lib/i18n/generated/home'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 const HOME_MEDIA_LIMIT = 20
 
@@ -26,6 +29,8 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [autoChain, setAutoChain] = useState(false)
   const picker = useMediaPicker()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
   const items = data?.items.items ?? []
   const recentTotal = recentQuery.data?.items.pagination.total
   const likedTotal = likedQuery.data?.items.pagination.total
@@ -58,7 +63,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">
-            {mediaTab === 'recent' ? 'Médias récents' : 'Médias aimés'}
+            {mediaTab === 'recent' ? t('home.media.title_recent') : t('home.media.title_liked')}
           </CardTitle>
           <div className="flex items-center gap-1 border-b border-transparent">
             <Button
@@ -71,7 +76,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              Récents{recentTotal !== undefined && <span className="ml-1.5 opacity-70">({recentTotal})</span>}
+              {t('home.media.tab_recent')}{recentTotal !== undefined && <span className="ml-1.5 opacity-70">({recentTotal})</span>}
             </Button>
             <Button
               variant="ghost"
@@ -83,7 +88,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
-              Aimés{likedTotal !== undefined && <span className="ml-1.5 opacity-70">({likedTotal})</span>}
+              {t('home.media.tab_liked')}{likedTotal !== undefined && <span className="ml-1.5 opacity-70">({likedTotal})</span>}
             </Button>
           </div>
         </div>
@@ -92,12 +97,12 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
       <CardContent>
         {isLoading ? (
           <div className="flex min-h-32 items-center justify-center">
-            <Spinner size="md" label="Chargement des médias récents…" />
+            <Spinner size="md" label={t('home.media.loading')} />
           </div>
         ) : isError ? (
           <EmptyStateNotice
-            title="Médias récents indisponibles"
-            description="La preview média n'a pas pu être chargée pour le moment."
+            title={t('home.media.unavailable_title')}
+            description={t('home.media.unavailable_description')}
           />
         ) : items.length > 0 ? (
           <Carousel>
@@ -121,13 +126,13 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
           </Carousel>
         ) : mediaTab === 'liked' ? (
           <EmptyStateNotice
-            title="Aucun média aimé"
-            description="Marquez vos captures ou clips avec le ♥ pour les retrouver ici."
+            title={t('home.media.empty_liked_title')}
+            description={t('home.media.empty_liked_description')}
           />
         ) : (
           <EmptyStateNotice
-            title="Aucun média récent disponible"
-            description="Aucune capture ou clip n'est associé au joueur pour le scope actuel."
+            title={t('home.media.empty_recent_title')}
+            description={t('home.media.empty_recent_description')}
           />
         )}
       </CardContent>

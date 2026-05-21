@@ -19,12 +19,16 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { StepDeviceCode } from './StepDeviceCode'
 import { StepPlayer } from './StepPlayer'
 import { StepInitialSync } from './StepInitialSync'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function SetupPage() {
   const navigate = useNavigate()
   const setupState = useAppShellStore((s) => s.setupState)
   const isBootstrapped = useAppShellStore((s) => s.isBootstrapped)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const setupRequired = useAppShellStore((s) => s.setupRequired)
 
@@ -38,7 +42,7 @@ export function SetupPage() {
   if (!isBootstrapped) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Spinner size="lg" label="Vérification de la configuration…" />
+        <Spinner size="lg" label={t('common.setup.config_loading')} />
       </div>
     )
   }
@@ -49,7 +53,7 @@ export function SetupPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="LevelUp" className="h-8 w-8 rounded-full" />
-            <CardTitle>Configuration de LevelUp</CardTitle>
+            <CardTitle>{t('common.setup.config_title')}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -60,12 +64,12 @@ export function SetupPage() {
           )}
           {setupState === 'profile_ready_no_sync' && !currentPlayer && (
             /* Joueur pas encore connu localement mais provisioning en cours */
-            <Spinner label="Chargement du profil joueur…" />
+            <Spinner label={t('common.setup.profile_loading')} />
           )}
           {setupState === 'ready' && (
             <div className="space-y-4">
-              <p className="text-success font-semibold">✓ Configuration terminée !</p>
-              <Button onClick={() => navigate({ to: '/' })}>Accéder à l'application</Button>
+              <p className="text-success font-semibold">{t('common.setup.config_done')}</p>
+              <Button onClick={() => navigate({ to: '/' })}>{t('common.setup.access_app')}</Button>
             </div>
           )}
         </CardContent>

@@ -503,3 +503,33 @@ en = "Ally team"
 [explorer.player.table_as_enemy]
 fr = "Équipe ennemie"
 en = "Enemy team"
+
+# ─── Gamertag search input ────────────────────────────────────────────────
+
+[explorer.search.placeholder]
+fr = "Rechercher un joueur…"
+en = "Search a player…"
+
+[explorer.search.group_configured]
+fr = "Joueurs configurés"
+en = "Configured players"
+
+[explorer.search.group_frequent]
+fr = "Coéquipiers fréquents"
+en = "Frequent teammates"
+
+[explorer.search.group_others]
+fr = "Autres joueurs"
+en = "Other players"
+
+[explorer.search.loading]
+fr = "Recherche…"
+en = "Searching…"
+
+[explorer.search.no_results]
+fr = "Aucun joueur trouvé pour \"{query}\""
+en = "No player found for \"{query}\""
+
+[explorer.search.badge_exact]
+fr = "Exact"
+en = "Exact"

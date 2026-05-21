@@ -5,6 +5,9 @@ import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { SynthesisDetailedStats } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   stats: SynthesisDetailedStats
@@ -48,6 +51,8 @@ function buildDonutOption(series: ChartSeries<KillTypePoint>[]): EChartsCoreOpti
 
 export function SynthesisKillTypesDonut({ stats, height = 280 }: Props) {
   const { data: fieldMappings } = useFieldMappings()
+  const locale = useAppShellStore((s) => s.locale)
+  const title = formatMessage(synthesisManifest, 'synthesis.charts.kill_types_title', locale)
   const total =
     stats.total_headshot_kills +
     stats.total_grenade_kills +
@@ -73,7 +78,7 @@ export function SynthesisKillTypesDonut({ stats, height = 280 }: Props) {
 
   return (
     <ChartCard
-      title="Répartition des frags"
+      title={title}
       series={series}
       buildOption={buildOption}
       height={height}

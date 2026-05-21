@@ -1,5 +1,8 @@
 import { Link } from '@tanstack/react-router'
 import { useRef, useEffect, useState } from 'react'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface HelpSplitButtonProps {
   isActive: boolean
@@ -8,6 +11,8 @@ interface HelpSplitButtonProps {
 export function HelpSplitButton({ isActive }: HelpSplitButtonProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -81,7 +86,7 @@ export function HelpSplitButton({ isActive }: HelpSplitButtonProps) {
             onClick={() => setOpen(false)}
             className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
           >
-            Glossaire &amp; Concepts
+            {t('common.help.glossary')}
           </Link>
           <Link
             to="/help"
@@ -90,7 +95,7 @@ export function HelpSplitButton({ isActive }: HelpSplitButtonProps) {
             onClick={() => setOpen(false)}
             className="block px-3 py-1.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground whitespace-nowrap"
           >
-            Notes de version
+            {t('common.help.release_notes')}
           </Link>
         </div>
       )}

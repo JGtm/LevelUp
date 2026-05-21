@@ -10,6 +10,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useRegister } from '@/features/auth/queries'
 import { queryKeys } from '@/lib/query/keys'
 import type { ApiError } from '@/lib/api/client'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -17,6 +19,8 @@ export function RegisterPage() {
   const authMode = useAppShellStore((s) => s.authMode)
   const registrationMode = useAppShellStore((s) => s.registrationMode)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -83,14 +87,14 @@ export function RegisterPage() {
           <CardContent className="pt-6">
             {firstLaunch && (
               <div className="mb-4 rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
-                Premier lancement — votre compte sera administrateur.
+                {t('common.auth.first_launch_admin')}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="reg-username" className="block text-sm font-medium text-foreground mb-1">
-                  Identifiant
+                  {t('common.auth.username_label')}
                 </label>
                 <input
                   id="reg-username"
@@ -103,13 +107,13 @@ export function RegisterPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="3-30 caractères"
+                  placeholder={t('common.auth.username_placeholder_range')}
                 />
               </div>
 
               <div>
                 <label htmlFor="reg-password" className="block text-sm font-medium text-foreground mb-1">
-                  Mot de passe
+                  {t('common.auth.password_label')}
                 </label>
                 <input
                   id="reg-password"
@@ -121,13 +125,13 @@ export function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="8 caractères minimum"
+                  placeholder={t('common.auth.password_placeholder_min')}
                 />
               </div>
 
               <div>
                 <label htmlFor="reg-confirm" className="block text-sm font-medium text-foreground mb-1">
-                  Confirmer le mot de passe
+                  {t('common.auth.confirm_password')}
                 </label>
                 <input
                   id="reg-confirm"
@@ -146,7 +150,7 @@ export function RegisterPage() {
               {needsInvite && (
                 <div>
                   <label htmlFor="reg-invite" className="block text-sm font-medium text-foreground mb-1">
-                    Code d'invitation
+                    {t('common.auth.invitation_code')}
                   </label>
                   <input
                     id="reg-invite"
@@ -170,9 +174,9 @@ export function RegisterPage() {
             </form>
 
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Déjà un compte ?{' '}
+              {t('common.auth.already_account')}{' '}
               <Link to="/login" className="text-primary underline underline-offset-2">
-                Se connecter
+                {t('common.auth.login_action')}
               </Link>
             </p>
           </CardContent>

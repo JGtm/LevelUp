@@ -87,6 +87,8 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
+  const locale = useAppShellStore((s) => s.locale) as ManifestLocale
+  const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
   // P4.4 (revue 2026-04-29 B3) : K/D agrégé canonique sum/sum depuis l'API.
   const kd = overview.total_kdr != null
     ? overview.total_kdr.toFixed(2)
@@ -175,13 +177,13 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
               <div className="flex gap-4 mt-4 items-stretch">
                 <div className="flex flex-col justify-between gap-4 w-[21rem] shrink-0">
                   {(overview.longest_win_streak ?? 0) > 1 && (
-                    <AccentCard label="Victoires consécutives (max)" value={String(overview.longest_win_streak)} accent="outcome-win" />
+                    <AccentCard label={t('synthesis.kpi.win_streak_max')} value={String(overview.longest_win_streak)} accent="outcome-win" />
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     {overview.best_kills_match != null && (
                       <AccentCard label={`Meilleur match · ${labelOf('kills').toLowerCase()}`} value={String(overview.best_kills_match)} accent="outcome-win" />
                     )}
-                    <AccentCard label="Folie meurtrière (max)" value={detailedStats.max_killing_spree.toLocaleString('fr-FR')} accent="outcome-win" />
+                    <AccentCard label={t('synthesis.kpi.killing_spree_max')} value={detailedStats.max_killing_spree.toLocaleString('fr-FR')} accent="outcome-win" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
@@ -195,7 +197,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
                       <AccentCard label={fieldMappings?.fields['shots_hit']?.label ?? 'Tirs au but'}      value={detailedStats.total_shots_hit.toLocaleString('fr-FR')}   accent="info" />
                       {detailedStats.total_shots_fired > 0 && (
                         <AccentCard
-                          label="Précision brute"
+                          label={t('synthesis.kpi.raw_accuracy')}
                           value={`${((detailedStats.total_shots_hit / detailedStats.total_shots_fired) * 100).toFixed(1)}%`}
                           accent="info"
                         />
@@ -221,7 +223,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
                     <div>
                       <div className="grid grid-cols-2 gap-2">
                         {detailedStats.total_vehicles_destroyed > 0 && (
-                          <AccentCard label="Véhicules détruits" value={detailedStats.total_vehicles_destroyed.toLocaleString('fr-FR')} accent="warning" />
+                          <AccentCard label={t('synthesis.kpi.vehicles_destroyed')} value={detailedStats.total_vehicles_destroyed.toLocaleString('fr-FR')} accent="warning" />
                         )}
                         {detailedStats.total_hijacks > 0 && (
                           <AccentCard label="Hijacks" value={detailedStats.total_hijacks.toLocaleString('fr-FR')} accent="chart-series-4" />
@@ -422,7 +424,7 @@ export function SynthesisPage() {
     return (
       <div className="px-6">
         <EmptyStateCard
-          title="Synthèse indisponible"
+          title={t('synthesis.empty.synthesis_unavailable')}
           description="Aucune charge utile n'a été renvoyée pour cette page. Vérifie les agrégats solo/escouade et le contexte de filtres."
         />
       </div>
@@ -532,17 +534,17 @@ export function SynthesisPage() {
 
       {/* synthesis.05 — Bipolaire Solo vs Escouade */}
       <SynthesisBipolaireChart
-        title="Comparaison Solo / Escouade"
+        title={t('synthesis.section.comparison')}
         metrics={comparisonMetrics}
         fieldLabels={comparisonMetrics.map((m) => labelOf(m.label))}
       />
 
       {/* synthesis.03 — Heatmap activité jour × heure */}
-      <SynthesisHeatmapChart title="Activité par jour et heure" cells={data.heatmap_data ?? []} />
+      <SynthesisHeatmapChart title={t('synthesis.section.activity')} cells={data.heatmap_data ?? []} />
 
       {/* synthesis.04 — Top semaines */}
       {topWeeks.length > 0 && (
-        <SynthesisTopWeeksChart title="Matchs Top vs Total par semaine" weeks={topWeeks} />
+        <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
       )}
 
       {/* Relations / Rivalités D6 */}

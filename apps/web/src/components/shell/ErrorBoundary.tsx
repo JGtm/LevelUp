@@ -6,6 +6,14 @@
  * Doit être un class component (React exige componentDidCatch).
  */
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+
+// ErrorBoundary est une class component : impossible d'utiliser useAppShellStore.
+// On résout en locale "fr" par défaut au moment du rendu (fallback FR-first).
+function tr(key: CommonManifestKey): string {
+  return formatMessage(commonManifest, key, 'fr')
+}
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -40,9 +48,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       }
       return (
         <div className="flex h-screen flex-col items-center justify-center gap-4 bg-muted p-8 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">Une erreur est survenue</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{tr('common.error.boundary_title')}</h1>
           <p className="text-muted-foreground">
-            L&apos;application a rencontré un problème inattendu. Rechargez la page pour réessayer.
+            {tr('common.error.boundary_description')}
           </p>
           <pre className="max-w-lg overflow-auto rounded bg-muted p-4 text-left text-xs text-muted-foreground">
             {this.state.error?.message}
@@ -52,7 +60,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             onClick={() => window.location.reload()}
             type="button"
           >
-            Recharger la page
+            {tr('common.error.reload_action')}
           </button>
         </div>
       )

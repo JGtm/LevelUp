@@ -15,6 +15,8 @@ import { useLogin } from '@/features/auth/queries'
 import { XboxLoginPage } from '@/features/auth/XboxLoginPage'
 import { queryKeys } from '@/lib/query/keys'
 import type { ApiError } from '@/lib/api/client'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -22,6 +24,8 @@ export function LoginPage() {
   const authMode = useAppShellStore((s) => s.authMode)
   const registrationMode = useAppShellStore((s) => s.registrationMode)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -53,9 +57,9 @@ export function LoginPage() {
         onError: (err) => {
           const apiErr = err as unknown as ApiError
           if (apiErr.code === 'invalid_credentials') {
-            setError('Identifiants incorrects.')
+            setError(t('common.auth.invalid_credentials'))
           } else {
-            setError(apiErr.message ?? 'Erreur de connexion.')
+            setError(apiErr.message ?? t('common.auth.connection_error'))
           }
         },
       },
@@ -77,7 +81,7 @@ export function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-foreground mb-1">
-                  Identifiant
+                  {t('common.auth.username_label')}
                 </label>
                 <input
                   id="username"
@@ -88,12 +92,12 @@ export function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Votre identifiant"
+                  placeholder={t('common.auth.username_placeholder')}
                 />
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
-                  Mot de passe
+                  {t('common.auth.password_label')}
                 </label>
                 <input
                   id="password"
@@ -113,15 +117,15 @@ export function LoginPage() {
               )}
 
               <Button type="submit" className="w-full" disabled={login.isPending}>
-                {login.isPending ? 'Connexion…' : 'Se connecter'}
+                {login.isPending ? t('common.auth.login_pending') : t('common.auth.login_action')}
               </Button>
             </form>
 
             {canRegister && (
               <p className="mt-4 text-center text-sm text-muted-foreground">
-                Pas encore de compte ?{' '}
+                {t('common.auth.no_account_prompt')}{' '}
                 <Link to="/register" className="text-primary underline underline-offset-2">
-                  Créer un compte
+                  {t('common.auth.create_account')}
                 </Link>
               </p>
             )}

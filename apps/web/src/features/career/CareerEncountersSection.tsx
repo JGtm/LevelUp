@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import type { CareerEncounter } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { formatMessage } from '@/lib/i18n/format'
+import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useCareerEncounters } from './queries'
 
 interface Props {
@@ -36,6 +39,8 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
   // Phase D plan multi-titres : libellés métier issus du backend TOML avec
   // fallback gracieux sur les valeurs FR locales si MULTI_TITLE_API_ENABLED off.
   const { data: fieldMappings } = useFieldMappings()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
   return (
@@ -43,12 +48,12 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border text-xs font-medium text-muted-foreground">
-            <th className="pb-2 text-left">Joueur</th>
+            <th className="pb-2 text-left">{t('career.encounters.col_player')}</th>
             <th className="pb-2 text-right">{labelOf('total_matches_played')}</th>
             <th className="pb-2 text-right">{labelOf('win_rate')}</th>
-            <th className="pb-2 text-right">Victoires</th>
-            <th className="pb-2 text-right">Défaites</th>
-            <th className="pb-2 text-right">Dernière rencontre</th>
+            <th className="pb-2 text-right">{t('career.encounters.col_wins')}</th>
+            <th className="pb-2 text-right">{t('career.encounters.col_losses')}</th>
+            <th className="pb-2 text-right">{t('career.encounters.col_last_encounter')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -77,6 +82,8 @@ function EncounterTable({ items }: { items: CareerEncounter[] }) {
 export function CareerEncountersSection({ playerSlug, preview }: Props) {
   const [showAll, setShowAll] = useState(false)
   const { data, isLoading } = useCareerEncounters(playerSlug, showAll)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
 
   const items = showAll && data ? data.items : (preview ?? [])
 
@@ -84,24 +91,24 @@ export function CareerEncountersSection({ playerSlug, preview }: Props) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Rencontres fréquentes</CardTitle>
+          <CardTitle className="text-base">{t('career.encounters.section_title')}</CardTitle>
           <Badge variant="secondary">{items.length} joueur{items.length !== 1 ? 's' : ''}</Badge>
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <div className="flex justify-center py-6">
-            <Spinner size="sm" label="Chargement…" />
+            <Spinner size="sm" label={t('career.encounters.loading')} />
           </div>
         ) : items.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">Aucune rencontre enregistrée.</p>
+          <p className="py-6 text-center text-sm text-muted-foreground">{t('career.encounters.empty')}</p>
         ) : (
           <>
             <EncounterTable items={items} />
             {!showAll && (preview?.length ?? 0) > 0 && (
               <div className="mt-4 flex justify-center">
                 <Button variant="outline" size="sm" onClick={() => setShowAll(true)}>
-                  Voir toutes les rencontres
+                  {t('career.encounters.see_all')}
                 </Button>
               </div>
             )}

@@ -283,3 +283,59 @@ en = "+{n, number}"
 [match_view.skill.delta_negative]
 fr = "{n, number}"
 en = "{n, number}"
+
+# ─── MatchStatCards (KPI cards) ─────────────────────────────────────────────
+
+[match_view.cards.no_csr_data]
+fr = "pas de données CSR"
+en = "no CSR data"
+
+[match_view.cards.bot_teammate_title]
+fr = "Coéquipier bot présent dans ce match"
+en = "Bot teammate present in this match"
+
+[match_view.cards.kd_vs_nemesis]
+fr = "K/D vs nemesis"
+en = "K/D vs nemesis"
+
+[match_view.cards.mmr_team_vs_enemy]
+fr = "MMR équipe vs adverse"
+en = "Team vs enemy MMR"
+
+[match_view.cards.frags_vs_expected]
+fr = "Frags vs attendus"
+en = "Kills vs expected"
+
+[match_view.cards.deaths_vs_expected]
+fr = "Morts vs attendues"
+en = "Deaths vs expected"
+
+[match_view.cards.avg_life]
+fr = "Vie moy."
+en = "Avg. life"
+
+[match_view.cards.label_ally]
+fr = "allié"
+en = "ally"
+
+[match_view.cards.label_enemy]
+fr = "adverse"
+en = "enemy"
+
+[match_view.cards.label_real]
+fr = "réel"
+en = "actual"
+
+[match_view.cards.label_expected]
+fr = "attendu"
+en = "expected"
+
+[match_view.cards.expected_prefix]
+fr = "attendu"
+en = "expected"
+
+# ─── MatchFragDiffChart ────────────────────────────────────────────────────
+
+[match_view.frag_diff.title]
+fr = "Frags différentiel cumulé — tous les joueurs"
+en = "Cumulative frag differential — all players"

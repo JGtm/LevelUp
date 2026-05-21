@@ -9,6 +9,9 @@ import { useMemo } from 'react'
 import type { CascadeInput, LabelValue } from '@/lib/api/types'
 import { useDismissable } from './_hooks'
 import { CheckboxGroup } from './CheckboxGroup'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export interface FiltresPillProps {
   open: boolean
@@ -37,6 +40,8 @@ export function FiltresPill({
   isFetching = false,
 }: FiltresPillProps) {
   const ref = useDismissable(open, onClose)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   function toggleValue(key: keyof CascadeInput, value: string) {
     const current = (cascade[key] ?? []) as string[]
@@ -107,7 +112,7 @@ export function FiltresPill({
         {incompatibleCount > 0 && (
           <span
             title={`${incompatibleCount} filtre${incompatibleCount > 1 ? 's' : ''} incompatible${incompatibleCount > 1 ? 's' : ''} — ouvrez pour corriger`}
-            aria-label="Filtres incompatibles"
+            aria-label={t('common.filters.incompatible_aria')}
           >
             ⚠
           </span>
@@ -124,12 +129,12 @@ export function FiltresPill({
       {open && (
         <div
           role="dialog"
-          aria-label="Filtres avancés"
+          aria-label={t('common.filters.advanced_aria')}
           className="absolute left-0 top-full z-40 mt-1 grid w-[28rem] grid-cols-2 gap-3 rounded-md border border-border bg-background p-3 shadow-lg"
         >
           {isFetching && (
             <p className="col-span-2 text-2xs text-muted-foreground animate-pulse">
-              Mise à jour des options disponibles…
+              {t('common.filters.options_updating')}
             </p>
           )}
           {!isFetching && incompatibleCount > 0 && (
@@ -140,7 +145,7 @@ export function FiltresPill({
             </p>
           )}
           <CheckboxGroup
-            title="Type d'expérience"
+            title={t('common.filters.experience_type_title')}
             options={available.experience_types}
             selected={(cascade.experience_types ?? []) as string[]}
             onToggle={(v) => toggleValue('experience_types', v)}
