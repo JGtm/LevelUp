@@ -1,3 +1,86 @@
+## [2026-05-21] refactor(sync) — engine.go secondary split round 2 : 1017L → 466L (audit #7 / dette #1)
+
+**Statut** : Complété.
+
+**Contexte** : audit #7 + audit #1 dette finale. Round 1 avait extrait engine_acquire.go + engine_options.go + engine_backfills.go + engine_postsync.go. Reste dans engine.go (1017L après round 1) : SyncEngine struct + run() core (300L) + processMatch (158L legacy) + fetchedMatch struct/fetchMatchData/insertFetchedMatch (218L) + insertHighlightEventsFromData/ProcessHighlightEvents (166L) + helpers privates. Approche ULTRA-CONSERVATIVE imposée — code core sync.
+
+**Décision technique** : 3 extractions safe (toutes même package, comportement INCHANGÉ — pur déplacement).
+
+1. **engine_process_match.go** (183L) : `processMatch` legacy séquentiel encore utilisé par engine_e2e_test.go (~12 call sites). Conservé tel quel : path parallèle (fetchMatchData + insertFetchedMatch) est le code de prod, mais les tests historiques le valident.
+2. **engine_fetch.go** (257L) : `fetchedMatch` struct + `fetchMatchData` (Phase 2 errgroup) + `insertFetchedMatch` (Phase 3 séquentiel) + `hasAnyTeamMMR` helper. Pipeline parallèle fetch + insert order-preserving.
+3. **engine_highlight_events.go** (197L) : `insertHighlightEventsFromData` (in-line via insertFetchedMatch) + `ProcessHighlightEvents` (standalone exposé pour events_heal / events_replay / golden_test / cmd/replay_highlight_events). Parse anomaly logic factorisée mais dupliquée intentionnellement entre les deux entry points.
+
+**Cleanup imports engine.go** : retirés `analysis`, `observability`, `strconv` (déplacés vers engine_highlight_events.go).
+
+**Résultats observés** :
+- `engine.go` : 1017L → **466L** (-551L, -54%) — objectif <800L largement dépassé.
+- `go build ./internal/sync/... ./cmd/server/...` : OK clean.
+- `go vet ./internal/sync/...` : OK clean.
+- `go test -tags=integration ./internal/sync/ -count=1 -timeout=180s` : ok (33.6s).
+
+**Notes de couplage** : les 3 nouveaux fichiers partagent le package `sync` donc accès direct à `SyncEngine` (struct, méthodes), helpers privés (`ensureGamertagForSelf`, `UpsertXUIDAlias`, `MarkParticipantsDone`…) et types (`ParticipantRow`, `MatchRegistryRow`, `MatchCSRRow`…). Aucune signature publique modifiée. `engine_e2e_test.go` continue d'appeler `e.processMatch(...)` directement (méthode privée → tests in-package OK).
+
+**Conclusion** : split réussi sans refactor. engine.go désormais 466L (struct + RunDelta + RunFull + run() core + loadKnownMatchIDs). Round 1 + 2 cumulé : engine.go était ~2000L pré-refactor, désormais 466L réparti sur 7 fichiers cohésifs (`engine.go`, `engine_acquire.go`, `engine_backfills.go`, `engine_fetch.go`, `engine_highlight_events.go`, `engine_options.go`, `engine_postsync.go`, `engine_process_match.go`).
+
+---
+
+## [2026-05-21] fix(sync) — auto-sync ne renvoyait rien depuis le 6 mai : 2 bugs en chaîne (URL endpoint + drop new matches)
+
+**Statut** : En cours. Code dans HEAD via les commits cleanup parallèles, **validation live JGtm reportée** (trop de churn parallèle empêche un cycle complet de tourner sans interruption air).
+
+**Contexte** : symptôme reporté par admin@lvelup.info : "aucun match inséré depuis le 5 mai, sync auto tourne mais rien n'arrive". Health endpoint `last_sync_at=2026-05-06T18:01:25Z` confirmé, `match_count=1569` figé. Branche `fix/auto-sync-different-configuration` ouverte depuis 3 semaines pour ça.
+
+**Investigation logs locaux** (sync.log, scheduler.log, auth.log) :
+
+1. Scheduler **tourne bien aux 15 min** comme configuré (`interval:900s`).
+2. Sync delta s'exécute pour les joueurs in-pool — Chocoboflor + JGtm pré-fix.
+3. À chaque cycle, l'API Halo retourne **toujours `b8c1b220-5ef4-4dee-9e92-77d3ff55d6d3`** (= dernier match inséré le 6 mai) en tête → delta s'arrête immédiatement → `inserted:0, skipped:1`.
+
+**Diagnostic initial erroné** : OAuth pool cassé (probe JGtm : `discovered_in_pool:false`, Madina97294 : `invalid_grant`). Recommandation re-login → corrigé par le user qui m'a indiqué que les refresh tokens sont bons en prod (mêmes tokens VPS). À retenir : `invalid_grant` local ≠ token mort, peut être un effet de bord dev (rotation race entre serveurs locaux/prod sur la même DB).
+
+**Vraie cause #1 — endpoint URL** (suite challenge user "tu as regardé Grunt ?") :
+
+- Grunt .NET [StatsModule.cs](https://github.com/dend/grunt/blob/master/src/dotnet/Den.Dev.Grunt/Den.Dev.Grunt/Core/Modules/HaloInfinite/StatsModule.cs) + Node.js [stats.module.ts](https://github.com/dend/grunt/blob/master/src/node/src/modules/halo-infinite/stats.module.ts) + SPNKr + [blog Den Delimarsky](https://den.dev/blog/halo-api-match-stats/) : path `/hi/players/xuid({xuid})/matches` **strictement requis**, pas le gamertag textuel.
+- Notre code [halo_client.go:175](apps/go-api/internal/sync/halo_client.go#L175) passait `e.gamertag` brut → `/hi/players/JGtm/matches`. L'API ne 404 PAS — elle retourne une **réponse cachée stale figée** (le dernier match vu via gamertag = `b8c1b220` du 6 mai).
+- Fix : caller [engine.go](apps/go-api/internal/sync/engine.go) passe `fmt.Sprintf("xuid(%s)", e.xuid)` au lieu de `e.gamertag`. Doc comment updated pour signaler l'exigence.
+- Pourquoi ça marchait avant le 6 mai : hypothèse plausible = Halo CDN a durci son résolveur gamertag→xuid autour de cette date, le path gamertag est désormais cache-stale plutôt que résolu serveur-side.
+
+**Vraie cause #2 — boucle delta drop les nouveaux matchs** (découverte après le fix #1) :
+
+- Post-fix URL, le log A1 (que j'ai ajouté) montre `first_match_id: cd89b091 (2026-05-11)` — l'API renvoie du frais désormais.
+- MAIS la sync s'arrête sur `match connu b8c1b220` avec `processed:0, inserted:0`. Soit : `cd89b091` (nouveau) est collecté dans `toFetch`, puis `b8c1b220` (connu) déclenche `goto done` qui **saute par-dessus la Phase 2 fetch + Phase 3 insert** → `cd89b091` jamais fetché.
+- Fix : remplacer `goto done` par `stopAfterFlush := true; break` pour que les Phases 2-3 tournent sur ce qui est déjà dans `toFetch`, puis exit. Label `done:` retiré (plus de goto).
+
+**3 actionables transverses appliqués en parallèle** :
+
+1. **Log INFO sentinelle** [engine.go:275](apps/go-api/internal/sync/engine.go#L275) — `"sync: 1er match retourné par API"` avec `first_match_id` + `first_match_start_time`. Sentinelle directe pour détecter une API stale : si ces valeurs ne bougent pas entre cycles, problème côté API/auth, pas côté delta.
+
+2. **Contract test fixturé** [halo_client_contract_test.go](apps/go-api/internal/sync/halo_client_contract_test.go) + [testdata/halo/match_history_response.json](apps/go-api/internal/sync/testdata/halo/match_history_response.json) — premier test à asserter à la fois le format URL `xuid(NNN)` ET le parsing MatchHistoryEntry sur une réponse représentative. Garde-fou pour ce path entier.
+
+3. **Counter `ConsecutiveZeroInserts`** dans [`PlayerOutcomeDetail`](apps/go-api/internal/scheduler/auto_sync.go) + WARN slog au seuil 6 cycles (= 1h30 sans aucun insert). Aurait flagué l'incident dès J+1. Tests dans [auto_sync_zero_insert_test.go](apps/go-api/internal/scheduler/auto_sync_zero_insert_test.go) (3 cas : increments-then-resets, preserved-on-skipped, reaches-threshold).
+
+**Validation partielle live** (pré-restart user) :
+
+- Cycle 23:17:31 (post-fix URL seulement) : `first_match_id: cd89b091 (2026-05-11)` ✓ — URL fix marche.
+- `inserted: 0` malgré le 1er match nouveau → confirmé bug delta loop (fix #2 appliqué après).
+
+**Pourquoi JGtm n'a rien rendu malgré les fix** : le for-loop `RunOnce` itère séquentiellement (4 joueurs). Chocoboflor passe en 5 sec sur le sync delta MAIS son post-sync pipeline (heal events + weapon + perf scores + achievements + friends recompute) tourne 1-5 min derrière. Quand air rebuild pendant ce post-sync, le processus est tué et **JGtm n'est jamais appelé**. Depuis hier 23:17, **JGtm n'a strictement jamais eu un sync sous le nouveau code**. Le watcher RTA pour JGtm s'init bien (XSTS frais à 08:24, 08:25, 08:26, 08:39 aujourd'hui) mais aucun event MatchEnded reçu (probablement parce que les fenêtres serveur up sont trop courtes vs. timing de jeu).
+
+**Prochaines étapes (quand le tree sera stable)** :
+
+1. Forcer un sync JGtm via `POST /sync/initial?gamertag=JGtm` (besoin CSRF whitelist temporaire ou trigger UI).
+2. Observer dans sync.log : `1er match retourné par API` pour JGtm devrait montrer un match du 19/20 mai (jour de jeu reporté par user) si l'API Halo a bien indexé. Si `inserted >= 1` → fix complet validé per-player.
+3. Considérer un fix annexe : décorréler le post-sync pipeline du for-loop joueurs (le rendre asynchrone post-cycle) pour éviter qu'un joueur monopolise le cycle au détriment des autres.
+4. Patcher [engine.go:201](apps/go-api/internal/sync/engine.go#L201) pour utiliser `cfg.SharedProvider` au lieu d'ouvrir metadata.duckdb en direct (finit ADR 0016 — actuellement le warning "different configuration" désactive `EnrichRegistryFromMetadata`, non-bloquant mais sale).
+5. Renommer commits parallèles : les fix sync ont été aspirés dans `chore(cleanup): supprime 47 items unused` et `refactor(gocyclo+funlen)`. À séparer pour traçabilité (`fix(sync): URL endpoint xuid(NNN)` + `fix(sync): delta loop drops new matches before known`).
+
+**Sources** :
+- [GitHub - dend/grunt](https://github.com/dend/grunt) (.NET + Node.js Halo API wrapper officiel)
+- [Den Delimarsky — Getting Halo Infinite Match Stats With Official Halo API](https://den.dev/blog/halo-api-match-stats/)
+- [GitHub - acurtis166/SPNKr](https://github.com/acurtis166/SPNKr)
+
+---
+
 ## [2026-05-21] refactor(gocyclo+funlen) — Audit #2 dette restante (-84% gocyclo, -36% funlen)
 
 **Statut** : Complété. Branche : `fix/auto-sync-different-configuration`.
