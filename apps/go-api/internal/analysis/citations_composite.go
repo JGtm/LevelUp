@@ -16,13 +16,13 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// computeCompositeTransitions calcule les deltas des citations composite et méta.
+// ComputeCompositeTransitions calcule les deltas des citations composite et méta.
 //
 // Chaque composite est traité exactement une fois, seulement quand tous ses enfants
 // composites ont déjà été résolus (ordre topologique implicite via passes itératives).
 // Les leaves sont pré-calculées une seule fois dans transitioned — elles ne sont
 // jamais re-comptées, évitant le double comptage entre passes.
-func computeCompositeTransitions(
+func ComputeCompositeTransitions(
 	cumulPre, cumulPost map[string]int,
 	tierMaxByNorm map[string]int,
 	mappings []domain.CitationFullMapping,

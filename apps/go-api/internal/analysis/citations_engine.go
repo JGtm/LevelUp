@@ -86,7 +86,7 @@ func ComputeFullMatchCitations(
 	}
 
 	// Phase C — composites/métas : transitions de palier (R4-R7).
-	compositeDeltas := computeCompositeTransitions(cumulPre, cumulPost, tierMax, mappings)
+	compositeDeltas := ComputeCompositeTransitions(cumulPre, cumulPost, tierMax, mappings)
 
 	all := make([]domain.CitationMatchDelta, 0, len(leafDeltas)+len(compositeDeltas))
 	for n, v := range leafDeltas {
@@ -119,14 +119,14 @@ func capLeafDelta(raw, pre, maxTier int) int {
 func buildTierMaxIndex(mappings []domain.CitationFullMapping) map[string]int {
 	idx := make(map[string]int, len(mappings))
 	for _, m := range mappings {
-		idx[m.NameNorm] = parseTierMax(m.TierTargets)
+		idx[m.NameNorm] = ParseTierMax(m.TierTargets)
 	}
 	return idx
 }
 
-// parseTierMax retourne la valeur maximale d'un CSV tier_targets.
+// ParseTierMax retourne la valeur maximale d'un CSV tier_targets.
 // Retourne 0 si nil ou vide.
-func parseTierMax(tierTargetsCSV *string) int {
+func ParseTierMax(tierTargetsCSV *string) int {
 	if tierTargetsCSV == nil || *tierTargetsCSV == "" {
 		return 0
 	}

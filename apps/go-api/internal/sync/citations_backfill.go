@@ -131,12 +131,12 @@ func deleteCitationsForMatches(ctx context.Context, playerDB *sql.DB, matchIDs [
 }
 
 // RunBackfillCompositeOnlyCitations recalcule les citations composites en s'appuyant
-// uniquement sur les valeurs déjà présentes dans match_citations (pas de lecture shared).
-// Toujours non-destructif : INSERT ... ON CONFLICT DO NOTHING.
+// uniquement sur les valeurs feuilles déjà présentes dans match_citations.
 //
-// Logique per-match : un enfant "contribue" dès que val > 0 (les tier_targets sont des
-// seuils cumulatifs affichage, pas des filtres per-match). Gère les composites imbriqués
-// via passes répétées (ex: all_weapons_mastery → human_weapons_mastery → br75_mastery).
+// Outil de secours (rescue) : ne relit pas les stats/médailles depuis shared.
+// Sémantique correcte : un enfant composite déclenche le parent (+1) uniquement
+// quand son cumulatif franchit son palier final dans ce match (même règle que le
+// moteur principal ComputeCompositeTransitions, R4-R7).
 func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int, error) {
 	writer, err := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer)
 	if err != nil {
@@ -157,6 +157,13 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	defer metaDB.Close()
 	metaDB.SetMaxOpenConns(1)
 
+	sharedDB, err := sql.Open("duckdb", e.sharedDBPath+"?access_mode=READ_ONLY")
+	if err != nil {
+		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open shared: %w", err)
+	}
+	defer sharedDB.Close()
+	sharedDB.SetMaxOpenConns(1)
+
 	mappings, err := loadFullCitationMappings(ctx, metaDB)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations mappings: %w", err)
@@ -168,8 +175,13 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 
 	compositeNames := buildCompositeNameSet(mappings)
 
-	// Charge toutes les valeurs non-composites de match_citations (leaf citations).
-	// Les composites existants sont exclus pour éviter d'utiliser des données obsolètes.
+	// tierMax par citation_name_norm (max(tier_targets), 0 si absent).
+	tierMax := make(map[string]int, len(mappings))
+	for _, m := range mappings {
+		tierMax[m.NameNorm] = analysis.ParseTierMax(m.TierTargets)
+	}
+
+	// Charge toutes les citations feuilles depuis match_citations, hors composites.
 	nonCompositesPerMatch, err := loadNonCompositeCitationsByMatch(ctx, playerHandle.SQLDb(), compositeNames)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations load data: %w", err)
@@ -179,31 +191,76 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 		return 0, nil
 	}
 
+	// Tri chrono des matchIDs pour que le cumulPre soit exact entre les passes.
+	allMatchIDs := make([]string, 0, len(nonCompositesPerMatch))
+	for id := range nonCompositesPerMatch {
+		allMatchIDs = append(allMatchIDs, id)
+	}
+	sorted, err := sortMatchIDsChrono(ctx, sharedDB, allMatchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "composite-only: sort chrono failed, ordre non garanti", "err", err)
+		sorted = allMatchIDs
+	}
+
+	cumulPre := make(map[string]int)
 	written := 0
-	for matchID, totals := range nonCompositesPerMatch {
-		// Multi-pass : gère composites imbriqués (all_weapons → human_weapons → br75).
-		analysis.ApplyCompositeCitationsPerMatch(totals, mappings)
+
+	for _, matchID := range sorted {
+		leafDeltas := nonCompositesPerMatch[matchID]
+
+		// cumulPost feuilles = cumulPre + deltas ce match.
+		cumulPost := make(map[string]int, len(cumulPre)+len(leafDeltas))
+		for k, v := range cumulPre {
+			cumulPost[k] = v
+		}
+		for k, v := range leafDeltas {
+			cumulPost[k] += v
+		}
+
+		compositeDeltas := analysis.ComputeCompositeTransitions(cumulPre, cumulPost, tierMax, mappings)
+
+		// Supprimer les anciens composites pour ce match, réécrire les nouveaux.
+		if err := deleteCompositeCitationsForMatch(ctx, playerHandle.SQLDb(), matchID, compositeNames); err != nil {
+			slog.WarnContext(ctx, "composite-only: delete", "match_id", matchID, "err", err)
+		}
+
 		var deltas []domain.CitationMatchDelta
-		for _, m := range mappings {
-			if m.MappingType != "composite" {
-				continue
+		for norm, v := range compositeDeltas {
+			deltas = append(deltas, domain.CitationMatchDelta{NameNorm: norm, Value: v})
+		}
+		if len(deltas) > 0 {
+			if err := writeCitations(ctx, playerHandle.SQLDb(), matchID, deltas); err != nil {
+				return written, fmt.Errorf("composite-only write %s: %w", matchID, err)
 			}
-			if v := totals[m.NameNorm]; v > 0 {
-				deltas = append(deltas, domain.CitationMatchDelta{NameNorm: m.NameNorm, Value: v})
-			}
+			written++
 		}
-		if len(deltas) == 0 {
-			continue
+
+		// Mise à jour cumulPre pour le match suivant.
+		for k, v := range leafDeltas {
+			cumulPre[k] += v
 		}
-		if err := writeCitations(ctx, playerHandle.SQLDb(), matchID, deltas); err != nil {
-			return written, fmt.Errorf("composite-only write %s: %w", matchID, err)
+		for k, v := range compositeDeltas {
+			cumulPre[k] += v
 		}
-		written++
 	}
 
 	slog.InfoContext(ctx, "composite-only: terminé",
 		"player", e.gamertag, "matches_updated", written)
 	return written, nil
+}
+
+// deleteCompositeCitationsForMatch supprime les citations composites d'un match
+// avant réécriture (rescue tool — on ne touche pas les feuilles déjà correctes).
+func deleteCompositeCitationsForMatch(ctx context.Context, db *sql.DB, matchID string, compositeNames map[string]struct{}) error {
+	for norm := range compositeNames {
+		if _, err := db.ExecContext(ctx,
+			`DELETE FROM match_citations WHERE match_id = ? AND citation_name_norm = ?`,
+			matchID, norm,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // buildCompositeNameSet retourne l'ensemble des citation_name_norm de type composite.
