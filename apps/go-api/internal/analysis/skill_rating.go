@@ -53,6 +53,7 @@ const (
 	playlistGroupBigTeam   = "big_team_battle"
 	playlistGroupFirefight = "firefight"
 	playlistGroupCustom    = "custom"
+	playlistGroupArena     = "arena"
 )
 
 var playlistGroupPrefixes = map[string]string{
@@ -455,7 +456,7 @@ func resolvePlaylistGroup(playlistName, pairName string) string {
 			return group
 		}
 	}
-	return "arena"
+	return playlistGroupArena
 }
 
 func getOrCreateState(states map[string]*playerState, group string) *playerState {

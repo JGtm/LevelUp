@@ -327,7 +327,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// match_participants. L'axe Objective reste neutre (threshold=0).
 	modeFamily := matchModeFamilyFromMeta(meta)
 	radarSeries := BuildMatchRadarFromScoreboard(d.scoreboard, s.xuid, d.objectiveScore, modeFamily)
-	var radar []any
+	radar := make([]any, 0, len(radarSeries))
 	for _, rs := range radarSeries {
 		radar = append(radar, rs)
 	}
