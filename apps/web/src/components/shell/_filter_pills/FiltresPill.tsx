@@ -139,9 +139,7 @@ export function FiltresPill({
           )}
           {!isFetching && incompatibleCount > 0 && (
             <p className="col-span-2 rounded border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-3xs text-destructive">
-              {incompatibleCount} filtre{incompatibleCount > 1 ? 's' : ''} incompatible
-              {incompatibleCount > 1 ? 's' : ''} avec la sélection actuelle. Cliquez Analyser pour
-              les retirer automatiquement.
+              {formatMessage(commonManifest, 'common.filters.incompatible_full', locale, { n: incompatibleCount })}
             </p>
           )}
           <CheckboxGroup

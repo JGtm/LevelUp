@@ -30,6 +30,8 @@ import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { tokenCssVar } from '@/lib/accessibility'
 import { getSquadText } from './i18n'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { log } from './_logger'
 import { SquadContext } from './SquadContext'
 import { getSquadTeammateColors } from './colors'
@@ -86,6 +88,7 @@ export function SquadLayout() {
   useFiltersResolve(playerSlug, useSquadFilterStore)
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
+  const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const storageKey = `squad-teammates-${playerSlug}`
 
   // ── Sélection coéquipiers ────────────────────────────────────────────────
@@ -423,9 +426,9 @@ export function SquadLayout() {
               applySessionLabels([])
             }}
             className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
-            title="Réinitialiser tous les filtres"
+            title={tCommon('common.filters.reset_title')}
           >
-            ↺ Réinitialiser
+            {tCommon('common.filters.reset_label')}
           </button>
         </div>
         {/* Rail de navigation période/session — placé DANS la barre sticky pour

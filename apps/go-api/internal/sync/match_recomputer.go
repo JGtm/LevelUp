@@ -98,12 +98,12 @@ func (r *MatchRecomputer) RecomputeAfterExclusion(ctx context.Context, matchID s
 
 	medalMap := loadMedalExploitMap(ctx, r.metadataDBPath, sharedSQL, r.xuid)
 
-	updatedPerf, err := batchComputePerformanceScores(playerSQL, sharedSQL, r.xuid, medalMap, true)
+	updatedPerf, err := batchComputePerformanceScores(ctx, playerSQL, sharedSQL, r.xuid, medalMap, true)
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion perf: %w", err)
 	}
 
-	updatedLUSR, err := batchComputeLUSR(playerSQL, sharedSQL, r.xuid, medalMap, true)
+	updatedLUSR, err := batchComputeLUSR(ctx, playerSQL, sharedSQL, r.xuid, medalMap, true)
 	if err != nil {
 		return fmt.Errorf("MatchRecomputer.RecomputeAfterExclusion lusr: %w", err)
 	}

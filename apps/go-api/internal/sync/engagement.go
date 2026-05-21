@@ -65,13 +65,13 @@ func batchComputeEngagementScores(
 	xuid string,
 	force bool,
 ) (int, error) {
-	if !engagementColumnsAvailable(playerDB) {
+	if !engagementColumnsAvailable(ctx, playerDB) {
 		slog.WarnContext(ctx, "engagement: colonnes manquantes, migration Phase 2 a appliquer",
 			"xuid", xuid)
 		return 0, nil
 	}
 
-	matches, err := loadMatchesForEngagement(sharedDB, xuid)
+	matches, err := loadMatchesForEngagement(ctx, sharedDB, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("batchComputeEngagementScores: load matches: %w", err)
 	}
@@ -79,7 +79,7 @@ func batchComputeEngagementScores(
 		return 0, nil
 	}
 
-	existing := loadExistingEngagementScores(playerDB)
+	existing := loadExistingEngagementScores(ctx, playerDB)
 	historyByMode := make(map[string][]domain.HistoricalEngagementBrut)
 	updated := 0
 	now := time.Now().UTC()
@@ -95,7 +95,7 @@ func batchComputeEngagementScores(
 
 		modeCategory := normalizeModeCategoryFromFlags(m.IsRanked)
 
-		events, err := loadEventsForMatch(sharedDB, m.MatchID)
+		events, err := loadEventsForMatch(ctx, sharedDB, m.MatchID)
 		if err != nil {
 			slog.DebugContext(ctx, "engagement: events load failed",
 				"match_id", m.MatchID, "err", err)
@@ -105,7 +105,7 @@ func batchComputeEngagementScores(
 			continue
 		}
 
-		teamXUIDs, err := loadTeamXUIDs(sharedDB, m.MatchID, m.TargetTeamID, xuid)
+		teamXUIDs, err := loadTeamXUIDs(ctx, sharedDB, m.MatchID, m.TargetTeamID, xuid)
 		if err != nil {
 			slog.DebugContext(ctx, "engagement: team xuids load failed",
 				"match_id", m.MatchID, "err", err)
@@ -116,7 +116,7 @@ func batchComputeEngagementScores(
 
 		history, ok := historyByMode[modeCategory]
 		if !ok {
-			history = loadHistoryForCategory(playerDB, modeCategory, m.MatchID)
+			history = loadHistoryForCategory(ctx, playerDB, modeCategory, m.MatchID)
 			historyByMode[modeCategory] = history
 		}
 
@@ -150,7 +150,7 @@ func batchComputeEngagementScores(
 			continue
 		}
 
-		if err := persistEngagementScore(playerDB, m.MatchID, modeCategory, result, now); err != nil {
+		if err := persistEngagementScore(ctx, playerDB, m.MatchID, modeCategory, result, now); err != nil {
 			slog.ErrorContext(ctx, "engagement: persist failed",
 				"match_id", m.MatchID, "err", err)
 			observability.IncCounter("engagement_persist_error_total")
@@ -160,7 +160,7 @@ func batchComputeEngagementScores(
 
 		// Persist match_intensity dans shared.match_registry (best-effort).
 		if result.MatchIntensity > 0 {
-			_ = persistMatchIntensity(sharedDB, m.MatchID, result.MatchIntensity)
+			_ = persistMatchIntensity(ctx, sharedDB, m.MatchID, result.MatchIntensity)
 		}
 
 		// Met a jour l'historique en memoire pour les matchs suivants
@@ -177,9 +177,9 @@ func batchComputeEngagementScores(
 
 // engagementColumnsAvailable verifie la presence de la colonne engagement_score
 // sur player_match_enrichment.
-func engagementColumnsAvailable(playerDB *sql.DB) bool {
+func engagementColumnsAvailable(ctx context.Context, playerDB *sql.DB) bool {
 	var count int
-	err := playerDB.QueryRow(`
+	err := playerDB.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM information_schema.columns
 		WHERE table_name = 'player_match_enrichment'
 		  AND column_name = 'engagement_score'
@@ -199,7 +199,7 @@ func engagementColumnsAvailable(playerDB *sql.DB) bool {
 // Note : MarkEventsLoaded() synchronise events_loaded (boolean legacy) et
 // le bit MBitEvents (bitmask) ; on utilise le bit pour cohérence avec le
 // reste du projet (skill, weapon_kills, pve, etc. utilisent tous des bits).
-func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchRow, error) {
+func loadMatchesForEngagement(ctx context.Context, sharedDB *sql.DB, xuid string) ([]engagementMatchRow, error) {
 	q := fmt.Sprintf(`
 		SELECT
 			mr.match_id,
@@ -222,7 +222,7 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 		  )
 		ORDER BY mr.start_time ASC
 	`, MBitEvents)
-	rows, err := sharedDB.Query(q, xuid)
+	rows, err := sharedDB.QueryContext(ctx, q, xuid)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +250,7 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 	// Pour chaque match, charger NTeam et NHumansLobby (1 query par match — pas optimal
 	// mais simple pour Phase 3 ; pourrait etre joint dans la query principale en Phase 3.b).
 	for i := range out {
-		nTeam, nLobby := loadTeamSizes(sharedDB, out[i].MatchID, out[i].TargetTeamID)
+		nTeam, nLobby := loadTeamSizes(ctx, sharedDB, out[i].MatchID, out[i].TargetTeamID)
 		out[i].NTeam = nTeam
 		out[i].NHumansLobby = nLobby
 		out[i].IsTeamMode = nTeam > 1 // FFA si NTeam=1
@@ -259,7 +259,7 @@ func loadMatchesForEngagement(sharedDB *sql.DB, xuid string) ([]engagementMatchR
 }
 
 // loadTeamSizes compte les humains de l'equipe alliee et du lobby pour un match.
-func loadTeamSizes(sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby int) {
+func loadTeamSizes(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby int) {
 	const q = `
 		SELECT
 			SUM(CASE WHEN team_id = ? AND xuid NOT LIKE 'bid(%' THEN 1 ELSE 0 END),
@@ -268,7 +268,7 @@ func loadTeamSizes(sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby 
 		WHERE match_id = ?
 	`
 	var team, lobby sql.NullInt64
-	_ = sharedDB.QueryRow(q, teamID, matchID).Scan(&team, &lobby)
+	_ = sharedDB.QueryRowContext(ctx, q, teamID, matchID).Scan(&team, &lobby)
 	return int(team.Int64), int(lobby.Int64)
 }
 
@@ -284,14 +284,14 @@ func loadTeamSizes(sharedDB *sql.DB, matchID string, teamID int) (nTeam, nLobby 
 // nil sans erreur. L'engagement_score restera NULL pour ce match — pas de
 // fallback possible : killer_victim_pairs est derive de highlight_events,
 // donc toujours present/absent ensemble.
-func loadEventsForMatch(sharedDB *sql.DB, matchID string) ([]canonical.HighlightEvent, error) {
+func loadEventsForMatch(ctx context.Context, sharedDB *sql.DB, matchID string) ([]canonical.HighlightEvent, error) {
 	const q = `
 		SELECT match_id, event_type, COALESCE(time_ms, 0), COALESCE(xuid, '')
 		FROM highlight_events
 		WHERE match_id = ?
 		ORDER BY time_ms ASC
 	`
-	rows, err := sharedDB.Query(q, matchID)
+	rows, err := sharedDB.QueryContext(ctx, q, matchID)
 	if err != nil {
 		return nil, err
 	}
@@ -308,7 +308,7 @@ func loadEventsForMatch(sharedDB *sql.DB, matchID string) ([]canonical.Highlight
 }
 
 // loadTeamXUIDs charge les XUIDs des coequipiers humains (joueur cible exclu).
-func loadTeamXUIDs(sharedDB *sql.DB, matchID string, teamID int, targetXUID string) (map[string]bool, error) {
+func loadTeamXUIDs(ctx context.Context, sharedDB *sql.DB, matchID string, teamID int, targetXUID string) (map[string]bool, error) {
 	const q = `
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
@@ -316,7 +316,7 @@ func loadTeamXUIDs(sharedDB *sql.DB, matchID string, teamID int, targetXUID stri
 		  AND xuid NOT LIKE 'bid(%'
 		  AND xuid <> ?
 	`
-	rows, err := sharedDB.Query(q, matchID, teamID, targetXUID)
+	rows, err := sharedDB.QueryContext(ctx, q, matchID, teamID, targetXUID)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +368,7 @@ func eventActor(e canonical.HighlightEvent) string {
 
 // loadHistoryForCategory charge les residus historiques du joueur sur une
 // categorie de mode, en excluant le match courant.
-func loadHistoryForCategory(playerDB *sql.DB, modeCategory, excludeMatchID string) []domain.HistoricalEngagementBrut {
+func loadHistoryForCategory(ctx context.Context, playerDB *sql.DB, modeCategory, excludeMatchID string) []domain.HistoricalEngagementBrut {
 	const q = `
 		SELECT match_id, engagement_score_brut
 		FROM player_match_enrichment
@@ -378,7 +378,7 @@ func loadHistoryForCategory(playerDB *sql.DB, modeCategory, excludeMatchID strin
 		ORDER BY match_id DESC
 		LIMIT 200
 	`
-	rows, err := playerDB.Query(q, modeCategory, excludeMatchID)
+	rows, err := playerDB.QueryContext(ctx, q, modeCategory, excludeMatchID)
 	if err != nil {
 		return nil
 	}
@@ -397,8 +397,8 @@ func loadHistoryForCategory(playerDB *sql.DB, modeCategory, excludeMatchID strin
 
 // loadExistingEngagementScores retourne un set de match_id qui ont deja un
 // score persiste. Permet de skip rapidement sans force.
-func loadExistingEngagementScores(playerDB *sql.DB) map[string]bool {
-	rows, err := playerDB.Query(`
+func loadExistingEngagementScores(ctx context.Context, playerDB *sql.DB) map[string]bool {
+	rows, err := playerDB.QueryContext(ctx, `
 		SELECT match_id FROM player_match_enrichment
 		WHERE engagement_score IS NOT NULL
 	`)
@@ -423,6 +423,7 @@ func loadExistingEngagementScores(playerDB *sql.DB) map[string]bool {
 // non appliquee), retombe sur la version 5-col (sans paces) pour rester
 // compatible avec les bases anterieures.
 func persistEngagementScore(
+	ctx context.Context,
 	playerDB *sql.DB,
 	matchID, modeCategory string,
 	result domain.EngagementScoreResult,
@@ -432,8 +433,8 @@ func persistEngagementScore(
 	if result.EngagementScore != nil {
 		scoreArg = *result.EngagementScore
 	}
-	if pacesColumnsAvailable(playerDB) {
-		_, err := playerDB.Exec(`
+	if pacesColumnsAvailable(ctx, playerDB) {
+		_, err := playerDB.ExecContext(ctx, `
 			INSERT INTO player_match_enrichment (
 				match_id, engagement_score, engagement_score_brut,
 				engagement_score_confidence, mode_category,
@@ -456,7 +457,7 @@ func persistEngagementScore(
 		return err
 	}
 	// Fallback : pre-migration recompute coefs (5 colonnes).
-	_, err := playerDB.Exec(`
+	_, err := playerDB.ExecContext(ctx, `
 		INSERT INTO player_match_enrichment (
 			match_id, engagement_score, engagement_score_brut,
 			engagement_score_confidence, mode_category, updated_at
@@ -473,9 +474,9 @@ func persistEngagementScore(
 
 // pacesColumnsAvailable verifie la presence de la colonne engagement_pace_team
 // (et donc du jeu complet de 4 colonnes paces ajoutees ensemble par migration).
-func pacesColumnsAvailable(playerDB *sql.DB) bool {
+func pacesColumnsAvailable(ctx context.Context, playerDB *sql.DB) bool {
 	var count int
-	err := playerDB.QueryRow(`
+	err := playerDB.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM information_schema.columns
 		WHERE table_name = 'player_match_enrichment'
 		  AND column_name = 'engagement_pace_team'
@@ -484,8 +485,8 @@ func pacesColumnsAvailable(playerDB *sql.DB) bool {
 }
 
 // persistMatchIntensity met a jour shared.match_registry.match_intensity.
-func persistMatchIntensity(sharedDB *sql.DB, matchID string, intensity float64) error {
-	_, err := sharedDB.Exec(`
+func persistMatchIntensity(ctx context.Context, sharedDB *sql.DB, matchID string, intensity float64) error {
+	_, err := sharedDB.ExecContext(ctx, `
 		UPDATE match_registry SET match_intensity = ?
 		WHERE match_id = ?
 	`, intensity, matchID)

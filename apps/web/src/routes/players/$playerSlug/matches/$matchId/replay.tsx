@@ -6,6 +6,9 @@
  */
 import { createFileRoute, useParams, Link } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export const Route = createFileRoute(
   '/players/$playerSlug/matches/$matchId/replay',
@@ -18,20 +21,22 @@ function RejeuPage() {
     playerSlug: string
     matchId: string
   }
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   return (
     <div className="p-6">
       <Card>
         <CardContent className="py-12 text-center space-y-3">
           <p className="text-muted-foreground text-sm">
-            Le rejouer le match en 2D est en cours de développement.
+            {t('common.replay.in_development')}
           </p>
           <Link
             to="/players/$playerSlug/matches/$matchId"
             params={{ playerSlug, matchId }}
             className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            ← Retour au match
+            {t('common.replay.back_to_match')}
           </Link>
         </CardContent>
       </Card>

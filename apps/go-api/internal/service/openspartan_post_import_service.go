@@ -165,7 +165,7 @@ func (s *OpenSpartanPostImportService) recomputePerfScores(
 		return
 	}
 	defer releaseShared()
-	n, err := sync.BatchComputePerformanceScores(playerDB, sharedDB, xuid, force)
+	n, err := sync.BatchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, force)
 	if err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "perf_scores", Err: err.Error()})
 		s.log.Warn("post_import_perf_scores_failed", "xuid", xuid, "err", err)

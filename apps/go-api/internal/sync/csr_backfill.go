@@ -71,7 +71,7 @@ func BackfillCSRFromAPI(
 
 	var existingCSR map[string]bool
 	if !force {
-		existingCSR, err = loadExistingRatingIDs(playerDB, "CSR")
+		existingCSR, err = loadExistingRatingIDs(ctx, playerDB, "CSR")
 		if err != nil {
 			return res, fmt.Errorf("BackfillCSRFromAPI: load existing CSR: %w", err)
 		}

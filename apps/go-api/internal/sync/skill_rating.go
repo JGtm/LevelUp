@@ -6,6 +6,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -118,7 +119,13 @@ type compositeMatchRow struct {
 //
 // Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids
 // renormalisés.
-func computeCompositeScore( //nolint:unparam // teammateAvgKE réservé pour future formule de synergie
+//
+// (teammateAvgKE = synergie escouade ; avgMedalExploit = bonus exploit ; avgOffConv
+// = offensive conversion ; avgDefRes = defensive resistance). Aujourd'hui tous nil,
+// activés via PerfTier roadmap. Signature stable pour éviter les refactos cascade.
+//
+//nolint:unparam // 4 params réservés pour futures composantes du score composite
+func computeCompositeScore(
 	row *compositeMatchRow,
 	avgAccuracy *float64,
 	teammateAvgKE *float64,
@@ -300,9 +307,9 @@ func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU f
 // medalExploitByMatch : match_id → score brut d'exploit médailles (nil = pas de données).
 // force : si true, recalcule même les matchs déjà présents (utile après changement de formule).
 // Retourne le nombre de matchs mis à jour.
-func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
+func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
 	// 1. Charger les matchs non classés, non-firefight, triés chronologiquement.
-	matches, err := loadLUSRMatchData(sharedDB, xuid)
+	matches, err := loadLUSRMatchData(ctx, sharedDB, xuid)
 	if err != nil {
 		return 0, err
 	}
@@ -312,7 +319,7 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 
 	// Filtrer les matchs marqués `is_excluded` côté playerDB : ils ne doivent ni
 	// alimenter la cascade TrueSkill ni recevoir de rating LUSR.
-	excluded, err := loadExcludedMatchIDs(playerDB)
+	excluded, err := loadExcludedMatchIDs(ctx, playerDB)
 	if err != nil {
 		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
 	}
@@ -338,17 +345,17 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 	for i, m := range matches {
 		matchIDs[i] = m.MatchID
 	}
-	participantsByMatch, err := loadLUSRParticipants(sharedDB, matchIDs)
+	participantsByMatch, err := loadLUSRParticipants(ctx, sharedDB, matchIDs)
 	if err != nil {
 		return 0, err
 	}
 
 	// 3. Charger les matchs déjà classés CSR (protéger) et LUSR (pour mode incrémental).
-	existingCSR, err := loadExistingRatingIDs(playerDB, "CSR")
+	existingCSR, err := loadExistingRatingIDs(ctx, playerDB, "CSR")
 	if err != nil {
 		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
 	}
-	existingLUSR, err := loadExistingRatingIDs(playerDB, "LUSR")
+	existingLUSR, err := loadExistingRatingIDs(ctx, playerDB, "LUSR")
 	if err != nil {
 		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
 	}
@@ -365,7 +372,7 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 	if force {
 		states = make(map[string]*PlayerState)
 	} else {
-		states = loadExistingLUSRStates(playerDB)
+		states = loadExistingLUSRStates(ctx, playerDB)
 		for pg, st := range states {
 			seedRatings[pg] = st.MU
 		}
@@ -394,7 +401,7 @@ func batchComputeLUSR(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMat
 	}
 
 	// 7. Écrire les résultats.
-	return upsertLUSRRatings(playerDB, results, existingCSR, existingLUSRForUpsert, seedRatings)
+	return upsertLUSRRatings(ctx, playerDB, results, existingCSR, existingLUSRForUpsert, seedRatings)
 }
 
 // computeSkillRatingsBatch calcule mu/sigma pour chaque match séquentiellement.

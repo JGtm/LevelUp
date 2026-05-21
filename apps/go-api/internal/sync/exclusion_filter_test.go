@@ -18,7 +18,7 @@ func openExclusionDB(t *testing.T) *sql.DB {
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
 
-	if err := execScript(db, `
+	if err := execScript(t.Context(), db, `
 		CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,
 			is_excluded BOOLEAN DEFAULT FALSE,
@@ -34,7 +34,7 @@ func openExclusionDB(t *testing.T) *sql.DB {
 func TestLoadExcludedMatchIDs_Empty(t *testing.T) {
 	db := openExclusionDB(t)
 
-	result, err := loadExcludedMatchIDs(db)
+	result, err := loadExcludedMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -56,7 +56,7 @@ func TestLoadExcludedMatchIDs_OnlyExcludedReturned(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := loadExcludedMatchIDs(db)
+	result, err := loadExcludedMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestLoadExcludedMatchIDs_NullIsExcludedTreatedAsFalse(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO player_match_enrichment (match_id, is_excluded) VALUES ('m1', NULL)`); err != nil {
 		t.Fatal(err)
 	}
-	result, err := loadExcludedMatchIDs(db)
+	result, err := loadExcludedMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}

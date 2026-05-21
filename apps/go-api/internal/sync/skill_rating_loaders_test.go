@@ -54,7 +54,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -62,7 +62,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 
 func TestLoadLUSRMatchData_Empty(t *testing.T) {
 	db := openLUSRDB(t)
-	data, err := loadLUSRMatchData(db, "xuid_none")
+	data, err := loadLUSRMatchData(t.Context(), db, "xuid_none")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestLoadLUSRMatchData_WithData(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
 		('m1', 'xuid1', 2, 15, 5, 3, 12.0, 6.0, 3000.0, 1500.0, 0.55, 0)`)
 
-	data, err := loadLUSRMatchData(db, "xuid1")
+	data, err := loadLUSRMatchData(t.Context(), db, "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestLoadLUSRMatchData_FiltersRanked(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kills_expected, deaths_expected, damage_dealt, damage_taken, accuracy, team_id) VALUES
 		('m1', 'xuid1', 2, 10, 5, 2, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0)`)
 
-	data, err := loadLUSRMatchData(db, "xuid1")
+	data, err := loadLUSRMatchData(t.Context(), db, "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestLoadLUSRMatchData_FiltersRanked(t *testing.T) {
 
 func TestLoadLUSRParticipants_Empty(t *testing.T) {
 	db := openLUSRDB(t)
-	result, err := loadLUSRParticipants(db, nil)
+	result, err := loadLUSRParticipants(t.Context(), db, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestLoadLUSRParticipants_WithData(t *testing.T) {
 		('m1', 'xuid1', 2, 10, 5, 2, 10.0, 5.0, 2000.0, 1000.0, 0.5, 0),
 		('m1', 'xuid2', 3, 8, 7, 1, 9.0, 6.0, 1800.0, 1200.0, 0.4, 1)`)
 
-	result, err := loadLUSRParticipants(db, []string{"m1"})
+	result, err := loadLUSRParticipants(t.Context(), db, []string{"m1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestLoadLUSRParticipants_WithData(t *testing.T) {
 
 func TestLoadExistingRatingIDs_Empty(t *testing.T) {
 	db := openLUSRDB(t)
-	result, err := loadExistingRatingIDs(db, "LUSR")
+	result, err := loadExistingRatingIDs(t.Context(), db, "LUSR")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestLoadExistingRatingIDs_WithData(t *testing.T) {
 	db.Exec(`INSERT INTO match_skill_rank (match_id, rating_type, rating_value, rating_deviation, playlist_group, start_time)
 		VALUES ('m1', 'LUSR', 25.0, 8.33, 'social', '2025-01-01'::TIMESTAMPTZ)`)
 
-	result, err := loadExistingRatingIDs(db, "LUSR")
+	result, err := loadExistingRatingIDs(t.Context(), db, "LUSR")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestLoadExistingRatingIDs_ErrorPropagation(t *testing.T) {
 	if _, err := db.Exec(`DROP TABLE match_skill_rank`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := loadExistingRatingIDs(db, "CSR"); err == nil {
+	if _, err := loadExistingRatingIDs(t.Context(), db, "CSR"); err == nil {
 		t.Fatal("expected error when table missing, got nil")
 	}
 }
@@ -217,7 +217,7 @@ func TestUpsertLUSR_DoesNotOverwriteExistingCSR_NormalMode(t *testing.T) {
 		PlaylistGroup:   "arena_slayer",
 	}}
 
-	updated, err := upsertLUSRRatings(db, results, existingCSR, existingLUSR, nil)
+	updated, err := upsertLUSRRatings(t.Context(), db, results, existingCSR, existingLUSR, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +243,7 @@ func TestUpsertLUSR_SQLGuardWhenGoFilterBypassed(t *testing.T) {
 		PlaylistGroup:   "arena_slayer",
 	}}
 
-	updated, err := upsertLUSRRatings(db, results, emptyCSR, emptyLUSR, nil)
+	updated, err := upsertLUSRRatings(t.Context(), db, results, emptyCSR, emptyLUSR, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestUpsertLUSR_CounterReflectsOnlyRealWrites(t *testing.T) {
 		{MatchID: "m_new_2", RatingValue: 500.0, PlaylistGroup: "arena_slayer"},
 	}
 
-	updated, err := upsertLUSRRatings(db, results, existingCSR, existingLUSR, nil)
+	updated, err := upsertLUSRRatings(t.Context(), db, results, existingCSR, existingLUSR, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestBatchComputeLUSR_ForceMode_PreservesCSR(t *testing.T) {
 	}
 	seedCSR(t, db, "m1", 1500.0)
 
-	if _, err := batchComputeLUSR(db, db, "xuid1", nil, true); err != nil {
+	if _, err := batchComputeLUSR(t.Context(), db, db, "xuid1", nil, true); err != nil {
 		t.Fatal(err)
 	}
 	assertCSRPreserved(t, db, "m1", 1500.0)

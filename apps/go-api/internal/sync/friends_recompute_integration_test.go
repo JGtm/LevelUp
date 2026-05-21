@@ -165,7 +165,7 @@ func TestPlayerMatchEnrichment_DefaultFalse(t *testing.T) {
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
 
-	if err := EnsurePlayerSchema(db); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
 

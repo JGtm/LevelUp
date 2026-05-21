@@ -72,7 +72,7 @@ func openReplayShared(t *testing.T) *sql.DB {
 			gamertag VARCHAR
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

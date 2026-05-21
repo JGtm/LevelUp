@@ -12,6 +12,9 @@
  */
 import { useState } from 'react'
 import type { LabelValue } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 const COLLAPSE_THRESHOLD = 4
 
@@ -34,6 +37,8 @@ export function CheckboxGroup({
   disableCollapse = false,
 }: CheckboxGroupProps) {
   const [showUnavailable, setShowUnavailable] = useState(false)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   if (options.length === 0 && zombies.length === 0) return null
 
@@ -108,7 +113,7 @@ export function CheckboxGroup({
         {zombies.map((value) => (
           <label
             key={`zombie-${value}`}
-            title="Incompatible avec les filtres actifs — cliquez pour désélectionner"
+            title={t('common.filters.incompatible_title')}
             className="flex cursor-pointer items-center gap-2 px-2 py-1 text-xs text-destructive/70 line-through transition-colors hover:bg-destructive/10"
           >
             <input

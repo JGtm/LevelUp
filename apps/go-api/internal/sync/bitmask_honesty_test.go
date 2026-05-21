@@ -95,7 +95,7 @@ func openHonestyShared(t *testing.T, withBrokenKVP bool) *sql.DB {
 			gamertag VARCHAR
 		);
 	` + kvpDDL
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

@@ -75,7 +75,7 @@ func openFixtureDB(t *testing.T, ddl string) *sql.DB {
 	}
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatalf("execScript DDL: %v", err)
 	}
 	return db
@@ -668,7 +668,7 @@ func TestPipelineFixture_WeaponKills_IdempotentRerun(t *testing.T) {
 func TestPipelineFixture_PerformanceScore(t *testing.T) {
 	f := buildPipelineFixture(t)
 
-	n, err := batchComputePerformanceScores(f.player, f.shared, fixXUID, nil, false)
+	n, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, false)
 	if err != nil {
 		t.Fatalf("batchComputePerformanceScores: %v", err)
 	}
@@ -693,11 +693,11 @@ func TestPipelineFixture_PerformanceScore(t *testing.T) {
 func TestPipelineFixture_PerformanceScore_Idempotent(t *testing.T) {
 	f := buildPipelineFixture(t)
 
-	n1, err := batchComputePerformanceScores(f.player, f.shared, fixXUID, nil, false)
+	n1, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	n2, err := batchComputePerformanceScores(f.player, f.shared, fixXUID, nil, false)
+	n2, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -706,7 +706,7 @@ func TestPipelineFixture_PerformanceScore_Idempotent(t *testing.T) {
 		t.Fatalf("second run (force=false) a mis à jour %d matchs au lieu de 0", n2)
 	}
 	// Force=true doit tout re-calculer
-	n3, err := batchComputePerformanceScores(f.player, f.shared, fixXUID, nil, true)
+	n3, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -721,7 +721,7 @@ func TestPipelineFixture_PerformanceScore_Idempotent(t *testing.T) {
 func TestPipelineFixture_LUSRRatings(t *testing.T) {
 	f := buildPipelineFixture(t)
 
-	n, err := batchComputeLUSR(f.player, f.shared, fixXUID, nil, false)
+	n, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false)
 	if err != nil {
 		t.Fatalf("batchComputeLUSR: %v", err)
 	}
@@ -745,7 +745,7 @@ func TestPipelineFixture_LUSRRatings(t *testing.T) {
 func TestPipelineFixture_LUSRRatings_RankedExcluded(t *testing.T) {
 	f := buildPipelineFixture(t)
 
-	_, err := batchComputeLUSR(f.player, f.shared, fixXUID, nil, false)
+	_, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1052,12 +1052,12 @@ func TestPipelineFixture_FullSequence(t *testing.T) {
 	}
 
 	// Étape 2 — performance_score
-	if _, err := batchComputePerformanceScores(f.player, f.shared, fixXUID, nil, false); err != nil {
+	if _, err := batchComputePerformanceScores(t.Context(), f.player, f.shared, fixXUID, nil, false); err != nil {
 		t.Fatalf("[étape 2] performance_score: %v", err)
 	}
 
 	// Étape 3 — LUSR ratings
-	if _, err := batchComputeLUSR(f.player, f.shared, fixXUID, nil, false); err != nil {
+	if _, err := batchComputeLUSR(t.Context(), f.player, f.shared, fixXUID, nil, false); err != nil {
 		t.Fatalf("[étape 3] LUSR: %v", err)
 	}
 

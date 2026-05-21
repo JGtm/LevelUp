@@ -40,7 +40,7 @@ func openSharedForBackfill(t *testing.T) *sql.DB {
 			avg_life_seconds DOUBLE
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 
@@ -54,7 +54,7 @@ func openSharedForBackfill(t *testing.T) *sql.DB {
 			('m2', 'xuid1', 'Player1', 100, 1, NULL, NULL, NULL, 50, 20, 1000.0, 800.0, NULL),
 			('m3', 'xuid1', 'Player1', 100, 1, 10, 5, 3, 50, 20, 1000.0, 800.0, 30.0);
 	`
-	if err := execScript(db, inserts); err != nil {
+	if err := execScript(t.Context(), db, inserts); err != nil {
 		t.Fatal(err)
 	}
 	return db

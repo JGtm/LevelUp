@@ -48,7 +48,7 @@ func openSharedForAll(t *testing.T) *sql.DB {
 		);
 		CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_id BIGINT, count INTEGER);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 

@@ -20,6 +20,8 @@ import { FiltresPill } from './_filter_pills/FiltresPill'
 import { PeriodePill } from './_filter_pills/PeriodePill'
 import { SaisonPill } from './_filter_pills/SaisonPill'
 import { SessionMultiSelect } from '@/components/ui/SessionMultiSelect'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import {
   DEFAULT_CASCADE,
   DEFAULT_PERIOD,
@@ -29,6 +31,10 @@ import {
 } from './_filter_pills/_hooks'
 
 // ─── Re-exports pour les consommateurs externes (SquadLayout, SquadV2RouteHost…) ───
+// Ces re-exports cohabitent intentionnellement avec FilterOmnibar pour servir
+// de point d'entrée unique aux consommateurs. Le coût HMR (fast refresh sur
+// les composants) est accepté tant que ce module reste petit.
+/* eslint-disable react-refresh/only-export-components */
 
 export { FiltresPill, type FiltresPillProps } from './_filter_pills/FiltresPill'
 export { PeriodePill } from './_filter_pills/PeriodePill'
@@ -47,6 +53,8 @@ export {
   useDismissable,
 } from './_filter_pills/_hooks'
 export type { PresetId } from './_filter_pills/_hooks'
+
+/* eslint-enable react-refresh/only-export-components */
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 
@@ -71,6 +79,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
   const resetFilters = filterStore((s) => s.resetFilters)
   const playerSlug = useAppShellStore((s) => s.currentPlayer?.player_slug ?? '')
   const locale = useAppShellStore((s) => s.locale)
+  const tCommon = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // État local (pending) — commité vers le store uniquement sur "Analyser".
   const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
@@ -100,10 +109,13 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
     setActive((cur) => (cur === which ? null : which))
   const closeAll = () => setActive(null)
 
-  const allSessions =
-    previewData?.session_options?.all_sessions ??
-    resolvedContext?.session_options?.all_sessions ??
-    []
+  const allSessions = useMemo(
+    () =>
+      previewData?.session_options?.all_sessions ??
+      resolvedContext?.session_options?.all_sessions ??
+      [],
+    [previewData?.session_options?.all_sessions, resolvedContext?.session_options?.all_sessions],
+  )
   const sessionLabels = useMemo<SessionLabelEntry[]>(
     () => allSessions
       .filter((s) => !s.is_squad)
@@ -271,7 +283,7 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
         <span
           className="shrink-0 text-xs text-muted-foreground"
           aria-live="polite"
-          title="Nombre de matchs correspondant aux filtres actifs"
+          title={tCommon('common.filters.matches_count_title')}
         >
           {totalAfter} match{totalAfter > 1 ? 's' : ''}
         </span>
@@ -300,9 +312,9 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
             resetFilters()
           }}
           className="shrink-0 text-xs text-muted-foreground transition-colors hover:text-destructive"
-          title="Réinitialiser tous les filtres"
+          title={tCommon('common.filters.reset_title')}
         >
-          ↺ Réinitialiser
+          {tCommon('common.filters.reset_label')}
         </button>
       )}
     </div>

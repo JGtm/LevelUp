@@ -3,6 +3,8 @@
  */
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export const Route = createFileRoute('/')({
   component: IndexPage,
@@ -11,13 +13,15 @@ export const Route = createFileRoute('/')({
 function IndexPage() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   if (!currentPlayer && availablePlayers.length === 0) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Aucun joueur configuré.{' '}
+        {t('common.index.no_player_configured')}{' '}
         <a href="/setup" className="ml-1 text-primary underline">
-          Configurer l'application
+          {t('common.index.configure_app')}
         </a>
       </div>
     )

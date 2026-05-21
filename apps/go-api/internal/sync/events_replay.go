@@ -129,7 +129,7 @@ func ReplayHighlightEventsForMatches(
 			return res, err
 		}
 
-		if err := clearEventsLoaded(sharedDB, matchID); err != nil {
+		if err := clearEventsLoaded(ctx, sharedDB, matchID); err != nil {
 			res.Errors++
 			slog.WarnContext(ctx, "ReplayHighlightEvents: clearEventsLoaded échoué",
 				"match_id", matchID, "err", err)
@@ -210,8 +210,8 @@ func SortedMatchIDs(ids []string) []string {
 // clearEventsLoaded remet `events_loaded=FALSE` et clear le bit `MBitEvents`
 // dans `match_registry.backfill_completed`, pour que le pipeline de re-parse
 // traite le match comme à faire.
-func clearEventsLoaded(db *sql.DB, matchID string) error {
-	_, err := db.Exec(`
+func clearEventsLoaded(ctx context.Context, db *sql.DB, matchID string) error {
+	_, err := db.ExecContext(ctx, `
 		UPDATE match_registry
 		SET events_loaded      = FALSE,
 		    backfill_completed = COALESCE(backfill_completed, 0) & ~?

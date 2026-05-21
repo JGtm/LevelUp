@@ -7,6 +7,9 @@
  */
 import type { PeriodInput, PeriodPresetCount } from '@/lib/api/types'
 import { PERIOD_PRESETS, detectActivePreset, presetPeriod, useDismissable } from './_hooks'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface PeriodePillProps {
   open: boolean
@@ -30,6 +33,8 @@ export function PeriodePill({
   const ref = useDismissable(open, onClose)
   const detected = detectActivePreset(period)
   const hasPeriod = !!(period?.start_date || period?.end_date)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   let triggerLabel = 'Toutes les périodes'
   if (hasPeriod) {
@@ -129,7 +134,7 @@ export function PeriodePill({
           </div>
 
           <p className="text-2xs text-muted-foreground">
-            Sélectionner une période vide automatiquement la session active.
+            {t('common.filters.period_session_auto')}
           </p>
         </div>
       )}

@@ -47,7 +47,7 @@ func openWeaponDB(t *testing.T) *sql.DB {
 			player_index INTEGER
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

@@ -1,3 +1,6 @@
+// Vite scaffolding leftover — not imported anywhere in production code.
+// Conserve pour reference ; pas de strings traduites dans le manifest i18n.
+/* eslint-disable @levelup/no-hardcoded-strings */
 import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'

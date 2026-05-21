@@ -32,7 +32,7 @@ func TestPOC_AttachRWFromPlayerConn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("bootstrap shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(boot.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), boot.SQLDb()); err != nil {
 		_ = boot.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestPOC_AttachRWWithSecondConnRO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("bootstrap shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(boot.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), boot.SQLDb()); err != nil {
 		_ = boot.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestPOC_AttachRWWithSecondPlayerConn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("bootstrap shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(boot.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), boot.SQLDb()); err != nil {
 		_ = boot.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}

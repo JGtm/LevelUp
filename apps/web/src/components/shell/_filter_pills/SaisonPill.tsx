@@ -12,6 +12,9 @@ import { useMemo } from 'react'
 import type { SeasonCount } from '@/lib/api/types'
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
 import { useDismissable } from './_hooks'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface SaisonPillProps {
   open: boolean
@@ -43,6 +46,8 @@ export function SaisonPill({
   onClear,
 }: SaisonPillProps) {
   const ref = useDismissable(open, onClose)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const countsByID = useMemo(() => {
     const m = new Map<string, number>()
@@ -90,7 +95,7 @@ export function SaisonPill({
       {open && (
         <div
           role="dialog"
-          aria-label="Choix de la saison"
+          aria-label={t('common.filters.season_aria')}
           className="absolute left-0 top-full z-40 mt-1 flex w-72 flex-col gap-1 rounded-md border border-border bg-background p-2 shadow-lg"
         >
           {onClear && (
