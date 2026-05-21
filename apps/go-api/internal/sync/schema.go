@@ -207,6 +207,22 @@ CREATE TABLE IF NOT EXISTS xuid_aliases (
     source     VARCHAR,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS match_csrs (
+    match_id                     VARCHAR NOT NULL,
+    xuid                         VARCHAR NOT NULL,
+    rating_type                  VARCHAR NOT NULL DEFAULT 'CSR',
+    rating_value                 FLOAT,
+    tier                         VARCHAR,
+    sub_tier                     SMALLINT DEFAULT 0,
+    tier_label                   VARCHAR,
+    rating_delta                 FLOAT,
+    measurement_matches_remaining INTEGER DEFAULT 0,
+    season_id                    VARCHAR,
+    created_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (match_id, xuid)
+);
 `
 
 // EnsurePlayerSchema crée les tables player si elles n'existent pas.
