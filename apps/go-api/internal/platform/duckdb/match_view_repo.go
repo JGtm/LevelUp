@@ -29,12 +29,19 @@ func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
 }
 
 // GetMatchMeta retourne les métadonnées du match (Q13).
+// Exécutée sur SharedReader (ADR 0016) — Q13 lit match_registry (shared-only).
 func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*domain.MatchMetaRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchMeta: shared reader: %w", err)
+	}
+	defer release()
+
 	var row domain.MatchMetaRaw
-	err := r.pdb.ReadDB().QueryRow(ctx, Q13MatchMeta, matchID).Scan(
+	err = sharedDB.QueryRowContext(ctx, Q13MatchMeta, matchID).Scan(
 		&row.MatchID,
 		&row.StartTime,
 		&row.DurationSeconds,
@@ -155,12 +162,19 @@ func (r *MatchViewRepo) lookupMapImageURL(ctx context.Context, mapAssetID string
 }
 
 // GetPlayerMatchStats retourne les stats du joueur pour ce match (Q17).
+// Exécutée sur SharedReader (ADR 0016) — Q17 lit match_participants (shared-only).
 func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID string) (*domain.PlayerMatchStatsRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return &domain.PlayerMatchStatsRaw{}, nil //nolint:nilerr
+	}
+	defer release()
+
 	var s domain.PlayerMatchStatsRaw
-	err := r.pdb.ReadDB().QueryRow(ctx, Q17PlayerMatchStats, matchID, xuid).Scan(
+	err = sharedDB.QueryRowContext(ctx, Q17PlayerMatchStats, matchID, xuid).Scan(
 		&s.OutcomeCode,
 		&s.TeamID,
 		&s.RankInTeam,
@@ -208,12 +222,20 @@ func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) 
 }
 
 // GetMatchScoreboard retourne les stats de tous les joueurs (Q12).
+// Exécutée sur SharedReader (ADR 0016) — Q12 lit medals_earned + weapon_kills
+// + match_participants + v_gamertag_lookup (shared-only).
 func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) ([]domain.ScoreboardRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: shared reader: %w", err)
+	}
+	defer release()
+
 	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE
-	rows, err := r.pdb.ReadDB().Query(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
+	rows, err := sharedDB.QueryContext(ctx, Q12MatchScoreboard, matchID, matchID, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
@@ -335,11 +357,18 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 }
 
 // GetMatchMedals retourne les médailles du joueur dans ce match (Q14).
+// Exécutée sur SharedReader (ADR 0016) — Q14 lit medals_earned (shared-only).
 func (r *MatchViewRepo) GetMatchMedals(ctx context.Context, xuid, matchID string) ([]domain.MedalRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q14MatchMedals, xuid, matchID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchMedals: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q14MatchMedals, xuid, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchMedals: %w", err)
 	}
@@ -409,9 +438,16 @@ func (r *MatchViewRepo) GetMatchWeaponKills(ctx context.Context, xuid, matchID s
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q16WeaponKills, xuid, matchID)
+	// Q16 lit v_weapon_kills (shared-only) — via SharedReader (ADR 0016).
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		return nil, nil
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q16WeaponKills, xuid, matchID)
+	if err != nil {
+		return nil, nil //nolint:nilerr
 	}
 	defer rows.Close()
 
@@ -780,14 +816,23 @@ func (r *MatchViewRepo) GetMatchNeighborsFiltered(
 }
 
 // GetMatchSkillRank retourne le rang compétitif pour ce match (Q22).
-// Utilise la player DB (match_skill_rank).
+//
+// Cross-DB split (ADR 0016) : on lit d'abord match_skill_rank sur la conn
+// Player (Q22a — rating_type_raw + tier/value/delta), puis on enrichit
+// rating_type via match_registry sur SharedReader (Q22b — is_ranked +
+// playlist_name + pair_name). Le calcul CASE/STRPOS qui était inline dans
+// Q22 est réimplémenté en Go pour respecter la séparation des connexions.
 func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var row domain.SkillRankRaw
-	err := r.pdb.ReadDB().QueryRow(ctx, Q22MatchSkillRank, matchID).Scan(
-		&row.RatingType,
+	// Phase A — player.match_skill_rank.
+	var (
+		row           domain.SkillRankRaw
+		ratingTypeRaw string
+	)
+	err := r.pdb.ReadDB().QueryRow(ctx, Q22aMatchSkillRankPlayer, matchID).Scan(
+		&ratingTypeRaw,
 		&row.TierLabel,
 		&row.RatingValue,
 		&row.RatingDelta,
@@ -799,16 +844,60 @@ func (r *MatchViewRepo) GetMatchSkillRank(ctx context.Context, matchID string) (
 		// Absent pour les matchs non-ranked ou sans donnée skill → nil sans erreur
 		return nil, nil //nolint:nilerr
 	}
+
+	// Phase B — shared.match_registry (best-effort : si la lecture échoue
+	// ou si le match n'est pas dans le registry, on retombe sur ratingTypeRaw).
+	row.RatingType = resolveMatchRatingType(ctx, r.pdb.SharedReadDB(), matchID, ratingTypeRaw)
 	return &row, nil
 }
 
+// resolveMatchRatingType reproduit le CASE/STRPOS inline de l'ancien Q22 :
+//   - si match_registry présent : CSR si is_ranked OU playlist_name/pair_name
+//     contient "ranked" (case-insensitive), sinon LUSR.
+//   - sinon : fallback sur le rating_type_raw stocké dans match_skill_rank
+//     ("CSR" si égal après TRIM/UPPER, sinon LUSR).
+func resolveMatchRatingType(ctx context.Context, sr SharedReader, matchID, ratingTypeRaw string) string {
+	if sr != nil {
+		db, release, err := sr.Get(ctx)
+		if err == nil {
+			defer release()
+			var (
+				isRanked     bool
+				playlistName string
+				pairName     string
+			)
+			scanErr := db.QueryRowContext(ctx, Q22bMatchRegistryRankedFlag, matchID).
+				Scan(&isRanked, &playlistName, &pairName)
+			if scanErr == nil {
+				if isRanked ||
+					strings.Contains(strings.ToLower(playlistName), "ranked") ||
+					strings.Contains(strings.ToLower(pairName), "ranked") {
+					return "CSR"
+				}
+				return "LUSR"
+			}
+		}
+	}
+	if strings.EqualFold(strings.TrimSpace(ratingTypeRaw), "CSR") {
+		return "CSR"
+	}
+	return "LUSR"
+}
+
 // GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).
-// Utilise la player DB (avec shared. attaché).
+// Exécutée sur SharedReader (ADR 0016) — Q23 lit match_participants +
+// v_gamertag_lookup (shared-only).
 func (r *MatchViewRepo) GetMatchEncounters(ctx context.Context, matchID, myXUID string) ([]domain.EncounterRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q23MatchEncounters,
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounters: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q23MatchEncounters,
 		matchID, myXUID, // this_match WHERE
 		matchID, myXUID, // my_team WHERE
 		myXUID, // me.xuid = ?
@@ -840,7 +929,15 @@ func (r *MatchViewRepo) GetMatchEncounterStats(ctx context.Context, matchID, myX
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q23bMatchEncounterStats,
+	// Q23b lit match_participants + match_registry + killer_victim_pairs +
+	// v_gamertag_lookup (shared-only) — via SharedReader (ADR 0016).
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("MatchViewRepo.GetMatchEncounterStats: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q23bMatchEncounterStats,
 		matchID, myXUID, // this_match
 		matchID, myXUID, // my_team
 		myXUID,         // my_history
@@ -925,13 +1022,19 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 }
 
 // GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).
-// Utilise la player DB (avec shared. attaché).
+// Exécutée sur SharedReader (ADR 0016) — Q26 lit match_participants (shared-only).
 func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid string) (*domain.ExpectedStatsRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
 	var row domain.ExpectedStatsRaw
-	err := r.pdb.ReadDB().QueryRow(ctx, Q26MatchExpectedStats, matchID, xuid).Scan(
+	err = sharedDB.QueryRowContext(ctx, Q26MatchExpectedStats, matchID, xuid).Scan(
 		&row.KillsExpected,
 		&row.DeathsExpected,
 		&row.KillsStddev,
@@ -945,11 +1048,18 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 }
 
 // GetMatchBulkMedals retourne les médailles de tous les joueurs du match (Q27).
+// Exécutée sur SharedReader (ADR 0016) — Q27 lit medals_earned (shared-only).
 func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) ([]domain.BulkMedalRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q27BulkMedals, matchID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q27BulkMedals, matchID)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}
@@ -983,11 +1093,20 @@ func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) 
 
 // GetHistoryForAvg retourne les 50 derniers matchs du joueur (Q29) pour le
 // calcul des moyennes historiques K/D/A + spree/headshots/perfect.
+// Exécutée sur SharedReader (ADR 0016) — Q29 lit match_participants +
+// match_registry + medals_earned (shared-only).
 func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]domain.MatchHistAvgRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q29HistoryForAvg, xuid, xuid)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "GetHistoryForAvg shared reader failed", "err", err)
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q29HistoryForAvg, xuid, xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "GetHistoryForAvg query failed", "err", err)
 		return nil, nil //nolint:nilerr
@@ -1018,11 +1137,18 @@ func (r *MatchViewRepo) GetHistoryForAvg(ctx context.Context, xuid string) ([]do
 // GetMatchBulkWeaponKills retourne les kills par arme de tous les joueurs (Q28).
 // Applique la fusion variante→canonique par xuid (regroupe Duelist Energy Sword
 // + Elite Bloodblade + Energy Sword sous le même canonique pour chaque joueur).
+// Exécutée sur SharedReader (ADR 0016) — Q28 lit weapon_kills (shared-only).
 func (r *MatchViewRepo) GetMatchBulkWeaponKills(ctx context.Context, matchID string) ([]domain.BulkWeaponKillRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q28BulkWeaponKills, matchID)
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q28BulkWeaponKills, matchID)
 	if err != nil {
 		return nil, nil //nolint:nilerr
 	}

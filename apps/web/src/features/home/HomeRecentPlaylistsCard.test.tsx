@@ -32,7 +32,7 @@ describe('HomeRecentPlaylistsCard', () => {
 
     expect(screen.getByText('Ranked Slayer')).toBeInTheDocument()
     expect(screen.getByText('Quick Play')).toBeInTheDocument()
-    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement 4/10')
+    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement (4/10)')
     const unrankedImg = screen.getByTestId('home-rank-unranked-image') as HTMLImageElement
     expect(unrankedImg.getAttribute('src')).toBe('/static/ranks/halo_infinite/unranked_4.png')
     expect(screen.getByText('Sans classement')).toBeInTheDocument()
@@ -57,5 +57,71 @@ describe('HomeRecentPlaylistsCard', () => {
 
     expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement')
     expect(screen.getByTestId('home-rank-unranked-label').textContent).not.toMatch(/\d+\/10/)
+  })
+
+  // Phase 6 du plan pipeline CSR : seuil dynamique placement_total.
+  it('affiche "En placement (3/5)" pour la saison S13 (placement_total=5)', () => {
+    renderWithProviders(
+      <HomeRecentPlaylistsCard
+        recentPlaylistRanks={[
+          {
+            playlist_name: 'Assassin classé',
+            is_ranked: true,
+            rating_type: 'CSR',
+            rating_value: null,
+            tier_label: null,
+            badge_image_url: '/static/ranks/halo_infinite/unranked_6.png',
+            measurement_matches_remaining: 2,
+            placement_total: 5, // S3+
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement (3/5)')
+    const img = screen.getByTestId('home-rank-unranked-image') as HTMLImageElement
+    expect(img.getAttribute('src')).toBe('/static/ranks/halo_infinite/unranked_6.png')
+  })
+
+  it('affiche "En placement (4/10)" pour la saison historique S2 (placement_total=10)', () => {
+    renderWithProviders(
+      <HomeRecentPlaylistsCard
+        recentPlaylistRanks={[
+          {
+            playlist_name: 'Ranked Arena (S2 archive)',
+            is_ranked: true,
+            rating_type: 'CSR',
+            rating_value: null,
+            tier_label: null,
+            badge_image_url: '/static/ranks/halo_infinite/unranked_4.png',
+            measurement_matches_remaining: 6,
+            placement_total: 10,
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement (4/10)')
+  })
+
+  it('fallback à placement_total=10 quand le backend ne fournit pas le champ (back-compat legacy)', () => {
+    renderWithProviders(
+      <HomeRecentPlaylistsCard
+        recentPlaylistRanks={[
+          {
+            playlist_name: 'Ranked Arena',
+            is_ranked: true,
+            rating_type: 'CSR',
+            rating_value: null,
+            tier_label: null,
+            badge_image_url: '/static/ranks/halo_infinite/unranked_3.png',
+            measurement_matches_remaining: 7,
+            // placement_total absent
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement (3/10)')
   })
 })

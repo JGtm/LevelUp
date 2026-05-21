@@ -99,8 +99,10 @@ func OverrideCompositeTotals(
 						count++
 					}
 				} else {
-					// Enfant feuille : masterisé si val >= max(tier_targets).
-					if compositeChildMasterised(aggMap[child], tierMap[child]) {
+					// Enfant feuille (cumul) : masterisé si val >= max(tier_targets).
+					// Sans tier_targets → masterisé dès val > 0 (affichage cumulatif).
+					maxT := ParseTierMax(tierMap[child])
+					if (maxT == 0 && aggMap[child] > 0) || (maxT > 0 && aggMap[child] >= maxT) {
 						count++
 					}
 				}

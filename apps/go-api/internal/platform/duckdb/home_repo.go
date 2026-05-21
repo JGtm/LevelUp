@@ -16,6 +16,7 @@
 package duckdb
 
 import (
+	"context"
 	"database/sql"
 	"strings"
 
@@ -34,8 +35,10 @@ const homeStaticTitleSlug = "halo_infinite"
 // asset_translations en-US). Évite la dépendance manuelle à la CLI à chaque
 // ajout de fichier static.
 type HomeRepo struct {
-	pdb      *PlayerDB
-	assetURL homeAssetURLAdapter
+	pdb            *PlayerDB
+	assetURL       homeAssetURLAdapter
+	thresholdsRepo *CSRThresholdsRepo // optionnel : sans repo, le seuil par défaut (5) est utilisé
+	currentCSRSID  string             // saison CSR courante (ex "CsrSeason13-1") ; vide → fallback default
 }
 
 // homeAssetURLAdapter expose l'unique méthode dont HomeRepo a besoin de
@@ -59,6 +62,25 @@ func NewHomeRepo(pdb *PlayerDB) *HomeRepo {
 func (r *HomeRepo) WithAssetURL(a homeAssetURLAdapter) *HomeRepo {
 	r.assetURL = a
 	return r
+}
+
+// WithCSRThresholds injecte le repo de lookup season → seuil placement CSR
+// (Phase 6 du plan pipeline CSR). Optionnel : sans repo, le seuil par défaut
+// (CSRPlacementThresholdDefault=5) est utilisé pour tous les calculs CSR,
+// ce qui peut afficher des valeurs erronnées pour les matchs historiques S1-S2.
+func (r *HomeRepo) WithCSRThresholds(repo *CSRThresholdsRepo, currentSeasonID string) *HomeRepo {
+	r.thresholdsRepo = repo
+	r.currentCSRSID = currentSeasonID
+	return r
+}
+
+// csrThreshold retourne le seuil placement pour une saison donnée. Helper
+// interne avec dégradation gracieuse si thresholdsRepo n'est pas injecté.
+func (r *HomeRepo) csrThreshold(seasonID string) int {
+	if r.thresholdsRepo == nil {
+		return CSRPlacementThresholdDefault
+	}
+	return r.thresholdsRepo.Get(context.Background(), seasonID)
 }
 
 func (r *HomeRepo) titleSlug() string {

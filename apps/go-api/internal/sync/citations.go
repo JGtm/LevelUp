@@ -28,13 +28,17 @@ import (
 // sharedDB   : connexion à shared_matches_v2.duckdb (medals, stats, events, weapon_kills).
 // playerDB   : connexion à stats.duckdb du joueur (awards en lecture, match_citations en écriture).
 // xuid       : identifiant Xbox du joueur.
-// matchIDs   : liste des match_id à traiter.
+// matchIDs   : liste des match_id à traiter (triés en interne par start_time ASC).
 func BackfillMatchCitations(
 	ctx context.Context,
 	metadataDB, sharedDB, playerDB *sql.DB,
 	xuid string,
 	matchIDs []string,
 ) error {
+	if len(matchIDs) == 0 {
+		return nil
+	}
+
 	mappings, err := loadFullCitationMappings(ctx, metadataDB)
 	if err != nil {
 		return fmt.Errorf("BackfillMatchCitations: mappings: %w", err)
@@ -50,17 +54,59 @@ func BackfillMatchCitations(
 		weaponNames = map[uint64]string{}
 	}
 
-	for _, matchID := range matchIDs {
+	// Tri chrono pour que le cumulPre soit correct entre les matchs du batch.
+	sorted, err := sortMatchIDsChrono(ctx, sharedDB, matchIDs)
+	if err != nil {
+		slog.Warn("BackfillMatchCitations: sort chrono failed, ordre non garanti", "err", err)
+		sorted = matchIDs
+	}
+
+	// Baseline : somme cumulée des citations pour les matchs hors du batch courant.
+	// Pour un sync incrémental (nouveaux matchs), ces matchs sont antérieurs → correct.
+	// Pour un recompute total (all matchIDs), la baseline est {} (tout est exclu).
+	cumulPre, err := loadCumulExcluding(ctx, playerDB, matchIDs)
+	if err != nil {
+		return fmt.Errorf("BackfillMatchCitations: cumulPre baseline: %w", err)
+	}
+
+	slog.InfoContext(ctx, "citations: traitement batch",
+		"xuid", xuid, "match_count", len(sorted), "baseline_citations", len(cumulPre))
+
+	written, skipped := 0, 0
+	for _, matchID := range sorted {
 		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, weaponNames, xuid, matchID)
 		if err != nil {
 			slog.Warn("BackfillMatchCitations: context", "match_id", matchID, "err", err)
+			skipped++
 			continue
 		}
-		deltas := analysis.ComputeFullMatchCitations(citCtx, mappings)
+
+		deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{
+			Ctx:      citCtx,
+			CumulPre: cumulPre,
+		}, mappings)
+
+		// Idempotence : suppression avant réécriture.
+		if err := deleteCitationForMatch(ctx, playerDB, matchID); err != nil {
+			slog.Warn("BackfillMatchCitations: delete", "match_id", matchID, "err", err)
+			skipped++
+			continue
+		}
+
 		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
 			slog.Warn("BackfillMatchCitations: write", "match_id", matchID, "err", err)
+			skipped++
+			continue
+		}
+
+		written++
+		// Mise à jour incrémentale du cumulPre pour le match suivant dans le batch.
+		for _, d := range deltas {
+			cumulPre[d.NameNorm] += d.Value
 		}
 	}
+	slog.InfoContext(ctx, "citations: batch terminé",
+		"xuid", xuid, "written", written, "skipped", skipped)
 	return nil
 }
 
@@ -374,4 +420,88 @@ ON CONFLICT (match_id, citation_name_norm) DO NOTHING`
 		}
 	}
 	return nil
+}
+
+// sortMatchIDsChrono trie les match_ids par start_time ASC depuis shared.match_registry.
+// Les match_ids absents du registre sont placés à la fin.
+func sortMatchIDsChrono(ctx context.Context, db *sql.DB, matchIDs []string) ([]string, error) {
+	if len(matchIDs) <= 1 {
+		return matchIDs, nil
+	}
+	placeholders := make([]string, len(matchIDs))
+	args := make([]any, len(matchIDs))
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+	q := `SELECT match_id FROM match_registry WHERE match_id IN (` +
+		strings.Join(placeholders, ",") + `) ORDER BY start_time ASC`
+
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sorted := make([]string, 0, len(matchIDs))
+	seen := make(map[string]bool, len(matchIDs))
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		sorted = append(sorted, id)
+		seen[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for _, id := range matchIDs {
+		if !seen[id] {
+			sorted = append(sorted, id)
+		}
+	}
+	return sorted, nil
+}
+
+// loadCumulExcluding charge la somme cumulée des citations en excluant les matchIDs
+// à recomputer. Sert de baseline pour le calcul incrémental du cumulPre.
+func loadCumulExcluding(ctx context.Context, db *sql.DB, matchIDs []string) (map[string]int, error) {
+	var (
+		q    string
+		args []any
+	)
+	if len(matchIDs) == 0 {
+		q = `SELECT citation_name_norm, COALESCE(SUM(value), 0) FROM match_citations GROUP BY citation_name_norm`
+	} else {
+		placeholders := make([]string, len(matchIDs))
+		args = make([]any, len(matchIDs))
+		for i, id := range matchIDs {
+			placeholders[i] = "?"
+			args[i] = id
+		}
+		q = `SELECT citation_name_norm, COALESCE(SUM(value), 0) FROM match_citations WHERE match_id NOT IN (` +
+			strings.Join(placeholders, ",") + `) GROUP BY citation_name_norm`
+	}
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make(map[string]int)
+	for rows.Next() {
+		var name string
+		var total int
+		if err := rows.Scan(&name, &total); err != nil {
+			return nil, err
+		}
+		result[name] = total
+	}
+	return result, rows.Err()
+}
+
+// deleteCitationForMatch supprime les citations d'un match avant réécriture (idempotence).
+func deleteCitationForMatch(ctx context.Context, db *sql.DB, matchID string) error {
+	_, err := db.ExecContext(ctx, `DELETE FROM match_citations WHERE match_id = ?`, matchID)
+	return err
 }

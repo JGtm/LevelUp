@@ -204,7 +204,7 @@ func TestComputeFullMatchCitations_MedalType(t *testing.T) {
 		Stats:  map[string]float64{},
 		Awards: map[string]int{},
 	}
-	deltas := ComputeFullMatchCitations(ctx, mappings)
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
 	if len(deltas) != 1 {
 		t.Fatalf("attendu 1 delta, got %d", len(deltas))
 	}
@@ -222,7 +222,7 @@ func TestComputeFullMatchCitations_StatType(t *testing.T) {
 		Stats:  map[string]float64{"kills": 12.0},
 		Awards: map[string]int{},
 	}
-	deltas := ComputeFullMatchCitations(ctx, mappings)
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
 	if len(deltas) != 1 || deltas[0].Value != 12 {
 		t.Errorf("attendu 12, got %v", deltas)
 	}
@@ -237,7 +237,7 @@ func TestComputeFullMatchCitations_AwardType(t *testing.T) {
 		Stats:  map[string]float64{},
 		Awards: map[string]int{"hijacked_mongoose": 2},
 	}
-	deltas := ComputeFullMatchCitations(ctx, mappings)
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
 	if len(deltas) != 1 || deltas[0].Value != 2 {
 		t.Errorf("attendu 2, got %v", deltas)
 	}
@@ -252,7 +252,7 @@ func TestComputeFullMatchCitations_CompositeSkipped(t *testing.T) {
 		Stats:  map[string]float64{},
 		Awards: map[string]int{},
 	}
-	deltas := ComputeFullMatchCitations(ctx, mappings)
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
 	if len(deltas) != 0 {
 		t.Errorf("composite doit être ignoré par-match, got %d deltas", len(deltas))
 	}
@@ -267,7 +267,7 @@ func TestComputeFullMatchCitations_ZeroValuesExcluded(t *testing.T) {
 		Stats:  map[string]float64{},
 		Awards: map[string]int{},
 	}
-	deltas := ComputeFullMatchCitations(ctx, mappings)
+	deltas := ComputeFullMatchCitations(CitationProgressInput{Ctx: ctx}, mappings)
 	if len(deltas) != 0 {
 		t.Errorf("valeur 0 ne doit pas produire de delta, got %d", len(deltas))
 	}

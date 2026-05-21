@@ -23,8 +23,11 @@ interface Props {
 
 function csrTierLabel(rank: CareerCSRRank, placementLabel: string): string {
   if (!rank.tier) {
-    const completed = 10 - rank.measurement_matches_remaining
-    return `${placementLabel} ${completed}/10`
+    // Phase 6 : placement_total (5 ou 10) injecté par le backend selon la saison
+    // du snapshot. Fallback 10 si payload legacy.
+    const total = rank.placement_total > 0 ? rank.placement_total : 10
+    const completed = Math.min(total - 1, Math.max(0, total - rank.measurement_matches_remaining))
+    return `${placementLabel} (${completed}/${total})`
   }
   return rank.sub_tier > 0 ? `${rank.tier} ${rank.sub_tier}` : rank.tier
 }
@@ -141,7 +144,7 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                           ? cp.tier_label
                             ? `${cp.tier_label} · ${Math.round(cp.rating_value).toLocaleString()}`
                             : Math.round(cp.rating_value).toLocaleString()
-                          : t('career.ranking.placement') + ' 0/10'}
+                          : `${t('career.ranking.placement')} (0/10)`}
                       </p>
                     </div>
                   </li>

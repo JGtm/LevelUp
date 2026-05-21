@@ -1,32 +1,148 @@
-// Package analysis — citations_composite.go : calcul des citations composite par match.
+// Package analysis — citations_composite.go : transitions de palier pour les citations
+// composite et méta (composite de composites).
 //
-// Port Go de src/analysis/citations/composite.py (_apply_composite_citations).
-// Les citations composite ne sont PAS calculées ligne-par-ligne dans le moteur principal ;
-// elles sont calculées en post-traitement à partir des totaux du même match.
-//
-// Valeur = nombre d'enfants « masterisés » dans ce match :
-//   - masterisé si child_val >= max(tier_targets) si tier_targets non vide
-//   - masterisé si child_val > 0 sinon
+// Sémantique R4-R7 :
+//   R4 : composite +1 par enfant qui traverse son palier final dans le match courant.
+//        Condition : cumulPre[child] < max(tier_targets[child]) AND cumulPost[child] >= max.
+//   R6 : passes itératives pour les métas (composite de composites).
+//   R7 : sans tier_targets sur un composite, max = len(children).
+//        Sans tier_targets sur une leaf enfant, max = 0 → jamais de transition.
 package analysis
 
 import (
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	"levelup/go-api/internal/domain"
 )
 
-// ApplyCompositeCitations est la version exportée de computeCompositeCitations.
-// Utilisée par le moteur principal (per-match, avec vérification des tiers).
-func ApplyCompositeCitations(totals map[string]int, mappings []domain.CitationFullMapping) {
-	computeCompositeCitations(totals, mappings)
+// ComputeCompositeTransitions calcule les deltas des citations composite et méta.
+//
+// Chaque composite est traité exactement une fois, seulement quand tous ses enfants
+// composites ont déjà été résolus (ordre topologique implicite via passes itératives).
+// Les leaves sont pré-calculées une seule fois dans transitioned — elles ne sont
+// jamais re-comptées, évitant le double comptage entre passes.
+func ComputeCompositeTransitions(
+	cumulPre, cumulPost map[string]int,
+	tierMaxByNorm map[string]int,
+	mappings []domain.CitationFullMapping,
+) map[string]int {
+	childCountByNorm := buildChildrenCountIndex(mappings)
+	result := make(map[string]int)
+
+	// transitioned[norm] = true si le nœud a traversé son palier final dans ce match.
+	// Pour les composites : marqué après calcul si newTotal >= maxComp.
+	transitioned := make(map[string]bool, len(mappings))
+	for _, m := range mappings {
+		if m.MappingType == domain.CitationMappingTypeComposite {
+			continue
+		}
+		max := tierMaxByNorm[m.NameNorm]
+		if max > 0 && cumulPre[m.NameNorm] < max && cumulPost[m.NameNorm] >= max {
+			transitioned[m.NameNorm] = true
+		}
+	}
+
+	// processed[norm] = true quand le delta du composite est final (traité une seule fois).
+	processed := make(map[string]bool, len(mappings))
+	for _, m := range mappings {
+		if m.MappingType != domain.CitationMappingTypeComposite {
+			processed[m.NameNorm] = true // les leaves sont "processed" dès le départ
+		}
+	}
+
+	// Passes jusqu'à stabilisation (max = profondeur de la hiérarchie composite).
+	// Chaque passe traite les composites dont tous les enfants composites sont déjà résolus.
+	for range 5 {
+		changed := false
+		for _, m := range mappings {
+			if m.MappingType != domain.CitationMappingTypeComposite ||
+				m.CompositeChildren == nil || *m.CompositeChildren == "" ||
+				processed[m.NameNorm] {
+				continue
+			}
+			children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
+			if err != nil || len(children) == 0 {
+				processed[m.NameNorm] = true
+				continue
+			}
+
+			// Attendre que tous les enfants composites soient résolus (ordre topo).
+			allReady := true
+			for _, child := range children {
+				if childCountByNorm[child] > 0 && !processed[child] {
+					allReady = false
+					break
+				}
+			}
+			if !allReady {
+				continue
+			}
+
+			newlyMastered := 0
+			for _, child := range children {
+				maxChild := effectiveMax(tierMaxByNorm[child], childCountByNorm[child])
+				if maxChild > 0 && transitioned[child] {
+					newlyMastered++ // R4
+				}
+			}
+
+			processed[m.NameNorm] = true
+			changed = true
+
+			if newlyMastered == 0 {
+				continue
+			}
+
+			maxComp := effectiveMax(tierMaxByNorm[m.NameNorm], len(children))
+			capRoom := maxComp - cumulPre[m.NameNorm]
+			if capRoom <= 0 {
+				transitioned[m.NameNorm] = true // déjà au max → peut déclencher méta parent
+				continue
+			}
+			delta := newlyMastered
+			if delta > capRoom {
+				delta = capRoom
+			}
+			result[m.NameNorm] = delta
+			cumulPost[m.NameNorm] += delta
+			if cumulPre[m.NameNorm]+delta >= maxComp {
+				transitioned[m.NameNorm] = true // R4 → peut déclencher méta parent
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+	return result
 }
 
-// ApplyCompositeCitationsPerMatch calcule les composites per-match en mode backfill.
-// Différence avec computeCompositeCitations : un enfant est "actif dans ce match"
-// dès que val > 0 — les tier_targets sont des seuils cumulatifs, pas per-match.
-// Gère les composites imbriqués via passes répétées jusqu'à stabilisation.
+// effectiveMax retourne max si > 0, sinon fallback.
+func effectiveMax(max, fallback int) int {
+	if max > 0 {
+		return max
+	}
+	return fallback
+}
+
+// buildChildrenCountIndex construit l'index name_norm → nb d'enfants pour les composites.
+func buildChildrenCountIndex(mappings []domain.CitationFullMapping) map[string]int {
+	idx := make(map[string]int)
+	for _, m := range mappings {
+		if m.MappingType != domain.CitationMappingTypeComposite || m.CompositeChildren == nil {
+			continue
+		}
+		children, _ := parseCompositeChildrenJSON(*m.CompositeChildren)
+		idx[m.NameNorm] = len(children)
+	}
+	return idx
+}
+
+// ApplyCompositeCitationsPerMatch est un outil de rescue pour recalculer les composites
+// à partir de valeurs existantes dans match_citations (mode backfill d'urgence).
+// Le sync autonome (BackfillMatchCitations) gère la sémantique correcte automatiquement.
+//
+// Sera refactorisé pour utiliser le moteur unifié (commit 4).
 func ApplyCompositeCitationsPerMatch(totals map[string]int, mappings []domain.CitationFullMapping) {
 	for range 5 {
 		if !applyCompositesPass(totals, mappings) {
@@ -35,12 +151,11 @@ func ApplyCompositeCitationsPerMatch(totals map[string]int, mappings []domain.Ci
 	}
 }
 
-// applyCompositesPass effectue une passe sur les composites.
-// Retourne true si au moins une valeur a changé (indique qu'une autre passe est utile).
 func applyCompositesPass(totals map[string]int, mappings []domain.CitationFullMapping) bool {
 	changed := false
 	for _, m := range mappings {
-		if m.MappingType != domain.CitationMappingTypeComposite || m.CompositeChildren == nil || *m.CompositeChildren == "" {
+		if m.MappingType != domain.CitationMappingTypeComposite ||
+			m.CompositeChildren == nil || *m.CompositeChildren == "" {
 			continue
 		}
 		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
@@ -61,39 +176,7 @@ func applyCompositesPass(totals map[string]int, mappings []domain.CitationFullMa
 	return changed
 }
 
-// computeCompositeCitations enrichit totals avec les valeurs des citations composite.
-// Doit être appelée après le dispatch principal (tous les autres mapping_types calculés).
-// Les composites utilisent les valeurs déjà dans totals pour déterminer combien
-// d'enfants sont masterisés dans ce match.
-func computeCompositeCitations(totals map[string]int, mappings []domain.CitationFullMapping) {
-	// Index name_norm → TierTargets (CSV) pour résoudre les seuils des enfants.
-	childTiers := make(map[string]*string, len(mappings))
-	for i := range mappings {
-		childTiers[mappings[i].NameNorm] = mappings[i].TierTargets
-	}
-
-	for _, m := range mappings {
-		if m.MappingType != domain.CitationMappingTypeComposite || m.CompositeChildren == nil || *m.CompositeChildren == "" {
-			continue
-		}
-		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
-		if err != nil || len(children) == 0 {
-			continue
-		}
-		count := 0
-		for _, child := range children {
-			if compositeChildMasterised(totals[child], childTiers[child]) {
-				count++
-			}
-		}
-		if count > 0 {
-			totals[m.NameNorm] += count
-		}
-	}
-}
-
 // parseCompositeChildrenJSON décode la liste JSON des enfants d'une citation composite.
-// Ex: `["wins_ctf","wins_slayer","wins_strongholds"]` → slice de strings.
 func parseCompositeChildrenJSON(s string) ([]string, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -104,27 +187,4 @@ func parseCompositeChildrenJSON(s string) ([]string, error) {
 		return nil, err
 	}
 	return children, nil
-}
-
-// compositeChildMasterised retourne true si val atteint le seuil max de tierTargets.
-// Si tierTargets est nil ou vide, masterisé dès que val > 0.
-// Réutilise la même logique que computeTierProgress pour la cohérence.
-func compositeChildMasterised(val int, tierTargetsCSV *string) bool {
-	if val <= 0 {
-		return false
-	}
-	if tierTargetsCSV == nil || *tierTargetsCSV == "" {
-		return true
-	}
-	maxTier := 0
-	for _, part := range strings.Split(*tierTargetsCSV, ",") {
-		v, err := strconv.Atoi(strings.TrimSpace(part))
-		if err == nil && v > maxTier {
-			maxTier = v
-		}
-	}
-	if maxTier == 0 {
-		return true
-	}
-	return val >= maxTier
 }

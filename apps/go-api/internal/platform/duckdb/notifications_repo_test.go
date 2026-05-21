@@ -332,26 +332,22 @@ func TestPlayerRecords_UpsertAndLoad(t *testing.T) {
 	pdb := openNotifPlayerDB(t, dbPath)
 	ctx := context.Background()
 
-	// Insert via raw SQL pour bypasser le repo (focus sur le schéma shared_social)
-	rwDB, err := duckdb.OpenReadWrite(pdb.SharedSocial.Path())
-	if err != nil {
-		t.Fatalf("rwDB: %v", err)
-	}
-	if _, err := rwDB.Exec(ctx, `
+	// Insert via raw SQL pour bypasser le repo (focus sur le schéma shared_social).
+	// Use pdb.SharedSocial directement — le pool joueur l'a déjà ouverte en
+	// OpenReadWriteShared, pas besoin de ré-ouvrir un *DB séparé.
+	if _, err := pdb.SharedSocial.Exec(ctx, `
 		INSERT INTO player_records (xuid, metric, value, achieved_match_id)
 		VALUES (?, 'best_kda', 4.5, 'm1')`, pdb.XUID); err != nil {
 		t.Fatalf("seed insert: %v", err)
 	}
-	rwDB.Close()
 
 	// Read via SharedSocial pour vérifier round-trip + scoping xuid
 	var v float64
 	var matchID string
-	err = pdb.SharedSocial.QueryRow(ctx,
+	if err := pdb.SharedSocial.QueryRow(ctx,
 		`SELECT value, achieved_match_id FROM player_records WHERE xuid = ? AND metric = 'best_kda'`,
 		pdb.XUID,
-	).Scan(&v, &matchID)
-	if err != nil {
+	).Scan(&v, &matchID); err != nil {
 		t.Fatalf("scan: %v", err)
 	}
 	if v != 4.5 {
