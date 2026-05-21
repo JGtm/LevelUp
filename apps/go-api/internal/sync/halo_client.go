@@ -30,6 +30,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -104,16 +106,15 @@ type MatchHistoryEntry struct {
 }
 
 // HaloAPIClient est le client HTTP pour l'API Halo Infinite stats.
-// Thread-safe : utilise net/http.Client (concurrency-safe).
+// Thread-safe : net/http.Client + rate.Limiter sont concurrency-safe.
 type HaloAPIClient struct {
 	http           *http.Client
 	spartanToken   string
 	clearanceToken string
 	economyBaseURL string
 	gameCMSBaseURL string
-	// minInterval est l'intervalle minimum entre deux requêtes (rate limiting).
-	minInterval time.Duration
-	lastRequest time.Time
+	// limiter applique le rate-limiting (token bucket, thread-safe natif).
+	limiter *rate.Limiter
 	// localFilmCache est consulté avant l'API pour les manifestes et chunks
 	// film. Nil = cache désactivé (comportement standard).
 	localFilmCache *LocalFilmCache
@@ -133,7 +134,7 @@ func NewHaloAPIClient(spartanToken, clearanceToken string, requestsPerSecond int
 		clearanceToken: clearanceToken,
 		economyBaseURL: "https://economy.svc.halowaypoint.com",
 		gameCMSBaseURL: haloGameCMSHost,
-		minInterval:    time.Second / time.Duration(requestsPerSecond),
+		limiter:        rate.NewLimiter(rate.Limit(requestsPerSecond), 1),
 	}
 }
 
@@ -142,6 +143,27 @@ func NewHaloAPIClient(spartanToken, clearanceToken string, requestsPerSecond int
 // répertoire n'existe pas, le cache reste désactivé.
 func (c *HaloAPIClient) WithLocalFilmCache(cache *LocalFilmCache) *HaloAPIClient {
 	c.localFilmCache = cache
+	return c
+}
+
+// WithHTTPClient remplace le *http.Client interne — utilisé par les benchs et
+// tests d'intégration pour rediriger les URLs Halo vers un httptest.Server via
+// un http.RoundTripper custom. Passer nil restaure le client par défaut.
+func (c *HaloAPIClient) WithHTTPClient(httpClient *http.Client) *HaloAPIClient {
+	if httpClient != nil {
+		c.http = httpClient
+	}
+	return c
+}
+
+// WithLimiter remplace le rate.Limiter interne par un limiter externe partagé.
+// Utilisé par PooledHaloClient pour appliquer un rate-limit global commun à
+// toutes les requêtes du pool (sinon chaque HaloAPIClient éphémère démarre
+// avec son propre bucket plein → rate-limit inopérant). Passer nil est ignoré.
+func (c *HaloAPIClient) WithLimiter(limiter *rate.Limiter) *HaloAPIClient {
+	if limiter != nil {
+		c.limiter = limiter
+	}
 	return c
 }
 
@@ -528,20 +550,13 @@ func (c *HaloAPIClient) doGet(ctx context.Context, rawURL string) ([]byte, error
 	return nil, fmt.Errorf("doGet %s: %d tentatives échouées — %w", rawURL, maxRetries, lastErr)
 }
 
-// rateWait bloque jusqu'à ce que l'intervalle minimum soit écoulé depuis la dernière requête.
+// rateWait bloque jusqu'à ce qu'un token soit disponible dans le bucket.
+// Thread-safe : rate.Limiter sérialise les accès concurrents nativement.
 func (c *HaloAPIClient) rateWait(ctx context.Context) {
-	if c.lastRequest.IsZero() {
-		c.lastRequest = time.Now()
+	if c.limiter == nil {
 		return
 	}
-	wait := c.minInterval - time.Since(c.lastRequest)
-	if wait > 0 {
-		select {
-		case <-ctx.Done():
-		case <-time.After(wait):
-		}
-	}
-	c.lastRequest = time.Now()
+	_ = c.limiter.Wait(ctx)
 }
 
 // backoff attend un délai exponentiel avant de retenter.

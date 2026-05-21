@@ -55,9 +55,9 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 	slog.DebugContext(ctx, "xbox_device_code: démarrage Device Code Flow", "client_id", clientID)
 
 	form := url.Values{
-		"client_id":     {clientID},
-		"scope":         {xboxScopes},
-		"response_type": {"device_code"},
+		oauthFieldClientID: {clientID},
+		oauthFieldScope:    {xboxScopes},
+		"response_type":    {oauthFieldDeviceCode},
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, strings.NewReader(form.Encode()))
@@ -88,7 +88,7 @@ func startXboxDeviceCodeWithURL(ctx context.Context, client *http.Client, client
 		return nil, fmt.Errorf("xbox_device_code: JSON start: %w", err)
 	}
 
-	deviceCode, _ := data["device_code"].(string)
+	deviceCode, _ := data[oauthFieldDeviceCode].(string)
 	userCode, _ := data["user_code"].(string)
 	verificationURI, _ := data["verification_uri"].(string)
 	if verificationURI == "" {
@@ -144,9 +144,9 @@ func pollXboxDeviceCodeWithURL(
 		}
 
 		form := url.Values{
-			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
-			"client_id":   {clientID},
-			"device_code": {deviceCode},
+			"grant_type":         {"urn:ietf:params:oauth:grant-type:device_code"},
+			oauthFieldClientID:   {clientID},
+			oauthFieldDeviceCode: {deviceCode},
 		}
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, targetURL, strings.NewReader(form.Encode()))
@@ -169,7 +169,7 @@ func pollXboxDeviceCodeWithURL(
 
 		// Succès
 		if at, ok := data["access_token"].(string); ok && at != "" {
-			rt, _ := data["refresh_token"].(string)
+			rt, _ := data[oauthFieldRefreshToken].(string)
 			slog.InfoContext(ctx, "xbox_device_code: Device Code Flow complété")
 			return at, rt, nil
 		}

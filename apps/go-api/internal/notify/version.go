@@ -109,7 +109,7 @@ func BuildVersionEmbed(version, changelog, lang string) Embed {
 		Title:       title,
 		Description: desc,
 		Color:       colorVersion,
-		Footer:      &EmbedFooter{Text: T("discord_version_footer", lang)},
+		Footer:      &EmbedFooter{Text: T(keyDiscordVersionFooter, lang)},
 	}
 }
 

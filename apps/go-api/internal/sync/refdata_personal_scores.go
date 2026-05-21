@@ -14,6 +14,16 @@
 //     "penalty", "other") stockée dans personal_score_awards.award_category.
 package sync
 
+// Catégories utilisées dans personal_score_awards.award_category.
+// Référencées par psaCategory + nombre suffisant d'occurrences pour
+// déclencher goconst.
+const (
+	psaCatKill      = "kill"
+	psaCatAssist    = "assist"
+	psaCatObjective = "objective"
+	psaCatVehicle   = "vehicle"
+)
+
 // IDs canoniques (FNV1a32 du nom EN — stables côté API Halo).
 const (
 	psaKilledPlayer           uint64 = 1024030246
@@ -213,50 +223,50 @@ var psaPoints = map[uint64]int{
 // psaCategory : NameId → catégorie pour personal_score_awards.award_category.
 // Catégories : "kill", "assist", "objective", "vehicle", "penalty", "other".
 var psaCategory = map[uint64]string{
-	psaKilledPlayer:           "kill",
-	psaEliminatedPlayer:       "kill",
-	psaCarrierKilled:          "kill",
-	psaKillAssist:             "assist",
-	psaMarkAssist:             "assist",
-	psaSensorAssist:           "assist",
-	psaEMPAssist:              "assist",
-	psaDriverAssist:           "assist",
-	psaFlagCaptureAssist:      "assist",
-	psaFlagCaptured:           "objective",
-	psaFlagStolen:             "objective",
-	psaFlagReturned:           "objective",
-	psaFlagTaken:              "objective",
-	psaRunnerStopped:          "objective",
-	psaBallControl:            "objective",
-	psaBallTaken:              "objective",
-	psaCarrierStopped:         "objective",
-	psaHillControl:            "objective",
-	psaHillScored:             "objective",
-	psaZoneCaptured50:         "objective",
-	psaZoneCaptured75:         "objective",
-	psaZoneCaptured100:        "objective",
-	psaZoneSecured:            "objective",
-	psaPowerSeedSecured:       "objective",
-	psaPowerSeedStolen:        "objective",
-	psaStockpileScored:        "objective",
-	psaExtractionInitiated:    "objective",
-	psaExtractionConverted:    "objective",
-	psaExtractionCompleted:    "objective",
-	psaExtractionDenied:       "objective",
-	psaHackedTerminal:         "objective",
-	psaDestroyedBanshee:       "vehicle",
-	psaDestroyedChopper:       "vehicle",
-	psaDestroyedFalcon:        "vehicle",
-	psaDestroyedGhost:         "vehicle",
-	psaDestroyedGungoose:      "vehicle",
-	psaDestroyedMongoose:      "vehicle",
-	psaDestroyedPhantom:       "vehicle",
-	psaDestroyedRazorback:     "vehicle",
-	psaDestroyedRocketWarthog: "vehicle",
-	psaDestroyedScorpion:      "vehicle",
-	psaDestroyedWarthog:       "vehicle",
-	psaDestroyedWasp:          "vehicle",
-	psaDestroyedWraith:        "vehicle",
+	psaKilledPlayer:           psaCatKill,
+	psaEliminatedPlayer:       psaCatKill,
+	psaCarrierKilled:          psaCatKill,
+	psaKillAssist:             psaCatAssist,
+	psaMarkAssist:             psaCatAssist,
+	psaSensorAssist:           psaCatAssist,
+	psaEMPAssist:              psaCatAssist,
+	psaDriverAssist:           psaCatAssist,
+	psaFlagCaptureAssist:      psaCatAssist,
+	psaFlagCaptured:           psaCatObjective,
+	psaFlagStolen:             psaCatObjective,
+	psaFlagReturned:           psaCatObjective,
+	psaFlagTaken:              psaCatObjective,
+	psaRunnerStopped:          psaCatObjective,
+	psaBallControl:            psaCatObjective,
+	psaBallTaken:              psaCatObjective,
+	psaCarrierStopped:         psaCatObjective,
+	psaHillControl:            psaCatObjective,
+	psaHillScored:             psaCatObjective,
+	psaZoneCaptured50:         psaCatObjective,
+	psaZoneCaptured75:         psaCatObjective,
+	psaZoneCaptured100:        psaCatObjective,
+	psaZoneSecured:            psaCatObjective,
+	psaPowerSeedSecured:       psaCatObjective,
+	psaPowerSeedStolen:        psaCatObjective,
+	psaStockpileScored:        psaCatObjective,
+	psaExtractionInitiated:    psaCatObjective,
+	psaExtractionConverted:    psaCatObjective,
+	psaExtractionCompleted:    psaCatObjective,
+	psaExtractionDenied:       psaCatObjective,
+	psaHackedTerminal:         psaCatObjective,
+	psaDestroyedBanshee:       psaCatVehicle,
+	psaDestroyedChopper:       psaCatVehicle,
+	psaDestroyedFalcon:        psaCatVehicle,
+	psaDestroyedGhost:         psaCatVehicle,
+	psaDestroyedGungoose:      psaCatVehicle,
+	psaDestroyedMongoose:      psaCatVehicle,
+	psaDestroyedPhantom:       psaCatVehicle,
+	psaDestroyedRazorback:     psaCatVehicle,
+	psaDestroyedRocketWarthog: psaCatVehicle,
+	psaDestroyedScorpion:      psaCatVehicle,
+	psaDestroyedWarthog:       psaCatVehicle,
+	psaDestroyedWasp:          psaCatVehicle,
+	psaDestroyedWraith:        psaCatVehicle,
 	psaBetrayedPlayer:         "penalty",
 	psaSelfDestruction:        "penalty",
 	// "other" : revive, hijacks, conversion_denied, collected_bonus_xp, custom.

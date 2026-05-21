@@ -27,6 +27,17 @@ import (
 	"levelup/go-api/internal/service"
 )
 
+// Constantes partagées par les EmitInput émis depuis ce module.
+const (
+	// postSyncSource est la valeur du champ Source pour les notifications
+	// émises après une sync (utilisée par notifications.Emitter pour la
+	// dédup et l'analytics).
+	postSyncSource = "post_sync"
+	// paramKeyCount est la clé "count" du Params{} pour les notifications
+	// delta agrégées (objectives, citations, friend_sync, etc.).
+	paramKeyCount = "count"
+)
+
 // buildPostSyncDeltaHook construit la closure consommée par sync_handler :
 // elle prend une snapshot avant le run, retourne une fonction qui prend
 // la snapshot d'après et émet les notifications correspondantes.
@@ -369,7 +380,7 @@ func EmitPostSyncDeltas(
 				"previous":  before.CurrentRank,
 			},
 			TargetRoute: fmt.Sprintf("/players/%s/career", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: career_rank", "err", err)
 		}
@@ -384,9 +395,9 @@ func EmitPostSyncDeltas(
 			Severity:    notifications.SeveritySuccess,
 			TitleKey:    "notif.objective_completed.title",
 			BodyKey:     "notif.objective_completed.body",
-			Params:      map[string]any{"count": delta},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: objective_completed", "err", err)
 		}
@@ -403,10 +414,10 @@ func EmitPostSyncDeltas(
 			Severity:     notifications.SeveritySuccess,
 			TitleKey:     "notif.challenge_completed.title",
 			BodyKey:      "notif.challenge_completed.body",
-			Params:       map[string]any{"count": delta},
+			Params:       map[string]any{paramKeyCount: delta},
 			TargetRoute:  fmt.Sprintf("/players/%s/objectifs", slug),
 			TargetSearch: map[string]any{"tab": "challenges"},
-			Source:       "post_sync",
+			Source:       postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: challenge_completed", "err", err)
 		}
@@ -438,7 +449,7 @@ func EmitPostSyncDeltas(
 				"previous_sub_tier": oldSub,
 			},
 			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: skill_tier", "playlist", playlist, "err", err)
 		}
@@ -452,9 +463,9 @@ func EmitPostSyncDeltas(
 			Severity:    notifications.SeveritySuccess,
 			TitleKey:    "notif.battlepass_completed.title",
 			BodyKey:     "notif.battlepass_completed.body",
-			Params:      map[string]any{"count": delta},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/career/season-pass", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: battlepass_completed", "err", err)
 		}
@@ -469,9 +480,9 @@ func EmitPostSyncDeltas(
 			Severity:    notifications.SeveritySuccess,
 			TitleKey:    "notif.citation_tier.title",
 			BodyKey:     "notif.citation_tier.body",
-			Params:      map[string]any{"count": delta},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/citations", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: citation_tier", "err", err)
 		}
@@ -486,9 +497,9 @@ func EmitPostSyncDeltas(
 			Severity:    notifications.SeveritySuccess,
 			TitleKey:    "notif.citation_mastery.title",
 			BodyKey:     "notif.citation_mastery.body",
-			Params:      map[string]any{"count": delta},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/citations", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: citation_mastery", "err", err)
 		}
@@ -502,10 +513,10 @@ func EmitPostSyncDeltas(
 			Severity:     notifications.SeverityInfo,
 			TitleKey:     "notif.challenge_added.title",
 			BodyKey:      "notif.challenge_added.body",
-			Params:       map[string]any{"count": delta},
+			Params:       map[string]any{paramKeyCount: delta},
 			TargetRoute:  fmt.Sprintf("/players/%s/objectifs", slug),
 			TargetSearch: map[string]any{"tab": "challenges"},
-			Source:       "post_sync",
+			Source:       postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: challenge_added", "err", err)
 		}
@@ -524,9 +535,9 @@ func EmitPostSyncDeltas(
 			Severity:    notifications.SeverityInfo,
 			TitleKey:    "notif.objective_assigned.title",
 			BodyKey:     "notif.objective_assigned.body",
-			Params:      map[string]any{"count": delta},
+			Params:      map[string]any{paramKeyCount: delta},
 			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: objective_assigned", "err", err)
 		}
@@ -542,7 +553,7 @@ func EmitPostSyncDeltas(
 			BodyKey:     "notif.threshold_crossed.body",
 			Params:      map[string]any{"metric_key": "kd_ratio", "value": fmt.Sprintf("%.2f", level)},
 			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		})
 	}
 
@@ -555,7 +566,7 @@ func EmitPostSyncDeltas(
 			BodyKey:     "notif.threshold_crossed.body",
 			Params:      map[string]any{"metric_key": "winrate", "value": fmt.Sprintf("%.0f%%", level*100)},
 			TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
-			Source:      "post_sync",
+			Source:      postSyncSource,
 		})
 	}
 
@@ -578,7 +589,7 @@ func EmitPostSyncDeltas(
 					"previous":   fmt.Sprintf("%.2f", oldRec.Value),
 				},
 				TargetRoute: fmt.Sprintf("/players/%s/synthesis", slug),
-				Source:      "post_sync",
+				Source:      postSyncSource,
 			})
 		}
 		// Toujours persister la nouvelle valeur (init au premier passage,

@@ -296,9 +296,9 @@ func TestRunForDB_Shared_VGamertagLookup_ResolvesBotNames(t *testing.T) {
 		xuid     string
 		expected string
 	}{
-		{"bid(3.0)", "343 Ellis"},     // bot connu
-		{"bid(15.0)", "343 Mak"},      // bot connu
-		{"bid(999.0)", "bid(999.0)"},  // bot inconnu → fallback xuid brut (acceptable)
+		{"bid(3.0)", "343 Ellis"},    // bot connu
+		{"bid(15.0)", "343 Mak"},     // bot connu
+		{"bid(999.0)", "bid(999.0)"}, // bot inconnu → fallback xuid brut (acceptable)
 	}
 	for _, c := range cases {
 		var got string

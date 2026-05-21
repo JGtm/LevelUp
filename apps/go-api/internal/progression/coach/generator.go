@@ -22,6 +22,10 @@ import (
 // FilterRecent (cf. dedup.go) avec une liste de notifications récentes
 // fournie par l'orchestrateur.
 
+// alertParamMetric est la clé "metric" du payload Params{} d'une Alert coach.
+// Centralisée pour réduire la duplication littérale (records + milestones).
+const alertParamMetric = "metric"
+
 // LUSRSnapshot capture l'état LUSR pour la passe d'évaluation.
 type LUSRSnapshot struct {
 	// Mu courant.
@@ -128,10 +132,10 @@ func buildRecordAlerts(input GenerateInput) []Alert {
 		switch {
 		case r.NewPB:
 			params := map[string]any{
-				"metric":   string(r.Metric),
-				"period":   string(r.Period),
-				"value":    r.Value,
-				"match_id": r.MatchID,
+				alertParamMetric: string(r.Metric),
+				"period":         string(r.Period),
+				"value":          r.Value,
+				"match_id":       r.MatchID,
 			}
 			if r.PreviousValue != nil {
 				params["previous_value"] = *r.PreviousValue
@@ -144,9 +148,9 @@ func buildRecordAlerts(input GenerateInput) []Alert {
 			})
 		case r.NearMiss:
 			params := map[string]any{
-				"metric": string(r.Metric),
-				"period": string(r.Period),
-				"value":  r.Value,
+				alertParamMetric: string(r.Metric),
+				"period":         string(r.Period),
+				"value":          r.Value,
 			}
 			if r.PreviousValue != nil {
 				params["target"] = *r.PreviousValue
@@ -174,11 +178,11 @@ func buildMilestoneAlerts(input GenerateInput) []Alert {
 				Type:     AlertTypeMilestoneUnlocked,
 				Severity: notifications.SeveritySuccess,
 				Params: map[string]any{
-					"milestone_id": r.Milestone.ID,
-					"title_en":     r.Milestone.TitleEN,
-					"title_fr":     r.Milestone.TitleFR,
-					"metric":       r.Milestone.Metric,
-					"threshold":    r.Milestone.Threshold,
+					"milestone_id":   r.Milestone.ID,
+					"title_en":       r.Milestone.TitleEN,
+					"title_fr":       r.Milestone.TitleFR,
+					alertParamMetric: r.Milestone.Metric,
+					"threshold":      r.Milestone.Threshold,
 				},
 				DedupKey: r.Milestone.ID,
 			})
@@ -187,12 +191,12 @@ func buildMilestoneAlerts(input GenerateInput) []Alert {
 				Type:     AlertTypeMilestoneNearMiss,
 				Severity: notifications.SeverityInfo,
 				Params: map[string]any{
-					"milestone_id": r.Milestone.ID,
-					"title_en":     r.Milestone.TitleEN,
-					"title_fr":     r.Milestone.TitleFR,
-					"metric":       r.Milestone.Metric,
-					"threshold":    r.Milestone.Threshold,
-					"progress":     r.Progress,
+					"milestone_id":   r.Milestone.ID,
+					"title_en":       r.Milestone.TitleEN,
+					"title_fr":       r.Milestone.TitleFR,
+					alertParamMetric: r.Milestone.Metric,
+					"threshold":      r.Milestone.Threshold,
+					"progress":       r.Progress,
 				},
 				DedupKey: r.Milestone.ID,
 			})

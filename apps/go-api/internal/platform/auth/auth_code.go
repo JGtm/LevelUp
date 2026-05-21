@@ -55,11 +55,11 @@ func ExchangeAuthorizationCode(ctx context.Context, code, redirectURI string) (*
 	}
 
 	body := url.Values{
-		"client_id":    {clientID},
-		"grant_type":   {"authorization_code"},
-		"code":         {code},
-		"redirect_uri": {redirectURI},
-		"scope":        {xboxScopes},
+		oauthFieldClientID: {clientID},
+		"grant_type":       {"authorization_code"},
+		oauthFieldCode:     {code},
+		"redirect_uri":     {redirectURI},
+		oauthFieldScope:    {xboxScopes},
 	}
 
 	// App confidentielle : inclure client_secret si défini.
@@ -124,12 +124,12 @@ func BuildAuthorizeURL(redirectURI, state string) string {
 		clientID = LevelUpClientID
 	}
 	params := url.Values{
-		"client_id":     {clientID},
-		"response_type": {"code"},
-		"redirect_uri":  {redirectURI},
-		"scope":         {xboxScopes},
-		"state":         {state},
-		"response_mode": {"query"},
+		oauthFieldClientID: {clientID},
+		"response_type":    {"code"},
+		"redirect_uri":     {redirectURI},
+		oauthFieldScope:    {xboxScopes},
+		"state":            {state},
+		"response_mode":    {"query"},
 	}
 	return fmt.Sprintf("%s/oauth2/v2.0/authorize?%s", MSALAuthority, params.Encode())
 }

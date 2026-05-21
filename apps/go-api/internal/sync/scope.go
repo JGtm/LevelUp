@@ -390,15 +390,15 @@ func (s *SyncScope) NeedsLocalOnly() bool {
 // requestedTypeMap maps scope field → bitmask key for backfill_completed tracking.
 // Identique à _REQUESTED_TYPE_MAP Python.
 var requestedTypeMap = map[string]string{
-	"Medals":              "medals",
-	"Events":              "events",
-	"Skill":               "skill",
-	"PersonalScores":      "personal_scores",
+	"Medals":              BackfillTypeMedals,
+	"Events":              BackfillTypeEvents,
+	"Skill":               BackfillTypeSkill,
+	"PersonalScores":      BackfillTypePersonalScores,
 	"PerformanceScores":   "performance_scores",
-	"Aliases":             "aliases",
-	"Accuracy":            "accuracy",
-	"Shots":               "shots",
-	"EnemyMMR":            "enemy_mmr",
+	"Aliases":             BackfillTypeAliases,
+	"Accuracy":            MetricKeyAccuracy,
+	"Shots":               BackfillTypeShots,
+	"EnemyMMR":            BackfillTypeEnemyMMR,
 	"Assets":              "assets",
 	"Participants":        "participants",
 	"ParticipantsScores":  "participants_scores",

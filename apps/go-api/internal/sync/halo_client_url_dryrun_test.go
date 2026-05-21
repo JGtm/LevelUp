@@ -18,6 +18,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // captureTransport enregistre la dernière requête HTTP traversée et la
@@ -50,7 +52,7 @@ func newDryRunClient(srv *httptest.Server) (*HaloAPIClient, *captureTransport) {
 		http:           &http.Client{Transport: ct},
 		spartanToken:   "spartan-token-test",
 		clearanceToken: "clearance-token-test",
-		minInterval:    time.Millisecond,
+		limiter:        rate.NewLimiter(rate.Every(time.Millisecond), 1),
 	}, ct
 }
 

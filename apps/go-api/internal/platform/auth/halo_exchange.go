@@ -109,9 +109,9 @@ func ExchangeXSTSForHaloTokens(ctx context.Context, xstsToken string) (*domain.H
 // requestUserToken obtient un User Token XBL depuis un access_token Microsoft.
 func requestUserToken(ctx context.Context, client *http.Client, accessToken string) (string, error) {
 	body := map[string]any{
-		"RelyingParty": "http://auth.xboxlive.com",
-		"TokenType":    "JWT",
-		"Properties": map[string]string{
+		xboxFieldRelyingParty: "http://auth.xboxlive.com",
+		xboxFieldTokenType:    "JWT",
+		xboxFieldProperties: map[string]string{
 			"AuthMethod": "RPS",
 			"SiteName":   "user.auth.xboxlive.com",
 			"RpsTicket":  "d=" + accessToken,
@@ -123,7 +123,7 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 	if err != nil {
 		return "", err
 	}
-	token, ok := resp["Token"].(string)
+	token, ok := resp[xboxFieldToken].(string)
 	if !ok || token == "" {
 		return "", fmt.Errorf("token absent dans la réponse XBL")
 	}
@@ -134,9 +134,9 @@ func requestUserToken(ctx context.Context, client *http.Client, accessToken stri
 // Retourne (token, gamertag, xuid, error) — gamertag/xuid extraits de DisplayClaims.xui[0].
 func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyingParty string) (string, string, string, error) {
 	body := map[string]any{
-		"RelyingParty": relyingParty,
-		"TokenType":    "JWT",
-		"Properties": map[string]any{
+		xboxFieldRelyingParty: relyingParty,
+		xboxFieldTokenType:    "JWT",
+		xboxFieldProperties: map[string]any{
 			"UserTokens": []string{userToken},
 			"SandboxId":  "RETAIL",
 		},
@@ -147,7 +147,7 @@ func requestXSTSToken(ctx context.Context, client *http.Client, userToken, relyi
 	if err != nil {
 		return "", "", "", err
 	}
-	token, ok := resp["Token"].(string)
+	token, ok := resp[xboxFieldToken].(string)
 	if !ok || token == "" {
 		return "", "", "", fmt.Errorf("token absent dans la réponse XSTS")
 	}
@@ -182,7 +182,7 @@ func requestSpartanToken(ctx context.Context, client *http.Client, xstsToken str
 		"Audience":   "urn:343:s3:services",
 		"MinVersion": "4",
 		"Proof": []map[string]string{
-			{"Token": xstsToken, "TokenType": "Xbox_XSTSv3"},
+			{xboxFieldToken: xstsToken, xboxFieldTokenType: "Xbox_XSTSv3"},
 		},
 	}
 	resp, err := postJSON(ctx, client, spartanTokenURL, map[string]string{

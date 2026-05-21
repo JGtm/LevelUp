@@ -50,14 +50,14 @@ func (s *WatcherAttemptStore) GetOrCreate() (*WatcherAttempt, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.current != nil && s.current.Status == "pending" {
+	if s.current != nil && s.current.Status == AttemptStatusPending {
 		return s.current, false
 	}
 
 	a := &WatcherAttempt{
 		AttemptID: uuid.New().String(),
 		StartedAt: time.Now(),
-		Status:    "pending",
+		Status:    AttemptStatusPending,
 	}
 	s.current = a
 	return a, true

@@ -112,23 +112,36 @@ const (
 // Conservé pour rétrocompatibilité. Les bits ≥ 16 utilisent MatchBits.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Noms canoniques des types de backfill, partagés entre BackfillFlags
+// (this file) et requestedTypeMap (scope.go). Centralisés pour éviter
+// les duplications littérales (lint goconst).
+const (
+	BackfillTypeMedals         = "medals"
+	BackfillTypeEvents         = "events"
+	BackfillTypeSkill          = "skill"
+	BackfillTypePersonalScores = "personal_scores"
+	BackfillTypeShots          = "shots"
+	BackfillTypeEnemyMMR       = "enemy_mmr"
+	BackfillTypeAliases        = "aliases"
+)
+
 // BackfillFlags mappe les noms de flags legacy vers leur valeur de bit.
 var BackfillFlags = map[string]int{
-	"medals":          1 << 0, // 1
-	"events":          1 << 1, // 2
-	"skill":           1 << 2, // 4
-	"personal_scores": 1 << 3, // 8
+	BackfillTypeMedals:         1 << 0, // 1
+	BackfillTypeEvents:         1 << 1, // 2
+	BackfillTypeSkill:          1 << 2, // 4
+	BackfillTypePersonalScores: 1 << 3, // 8
 	// performance_scores supprimé : granularité joueur×match (bit 4 non utilisé)
-	"accuracy":              1 << 5,  // 32
-	"shots":                 1 << 6,  // 64
-	"enemy_mmr":             1 << 7,  // 128
+	MetricKeyAccuracy:       1 << 5,  // 32
+	BackfillTypeShots:       1 << 6,  // 64
+	BackfillTypeEnemyMMR:    1 << 7,  // 128
 	"assets":                1 << 8,  // 256
 	"participants":          1 << 9,  // 512
 	"participants_scores":   1 << 10, // 1024
 	"participants_kda":      1 << 11, // 2048
 	"participants_shots":    1 << 12, // 4096
 	"participants_damage":   1 << 13, // 8192
-	"aliases":               1 << 14, // 16384
+	BackfillTypeAliases:     1 << 14, // 16384
 	"participants_avg_life": 1 << 15, // 32768
 	// weapon_kills (bit 18 = 262144) — OBSOLÈTE, voir MBitWeaponKills (1<<21)
 	"weapon_kills": 1 << 18, // 262144

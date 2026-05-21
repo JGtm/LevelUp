@@ -37,9 +37,9 @@ func requestDeviceTokenWithURL(ctx context.Context, client *http.Client, kp *PoP
 
 	deviceID := "{" + strings.ToUpper(uuid.New().String()) + "}"
 	body := map[string]any{
-		"RelyingParty": deviceRelyingParty,
-		"TokenType":    "JWT",
-		"Properties": map[string]any{
+		xboxFieldRelyingParty: deviceRelyingParty,
+		xboxFieldTokenType:    "JWT",
+		xboxFieldProperties: map[string]any{
 			"AuthMethod": "ProofOfPossession",
 			"DeviceType": deviceType,
 			"Id":         deviceID,
@@ -89,7 +89,7 @@ func requestDeviceTokenWithURL(ctx context.Context, client *http.Client, kp *PoP
 	if err := json.Unmarshal(raw, &data); err != nil {
 		return "", fmt.Errorf("device_token: décodage JSON: %w", err)
 	}
-	token, ok := data["Token"].(string)
+	token, ok := data[xboxFieldToken].(string)
 	if !ok || token == "" {
 		return "", fmt.Errorf("device_token: champ Token absent ou vide")
 	}

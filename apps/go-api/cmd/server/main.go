@@ -806,7 +806,7 @@ func startWatcherDaemon(
 		MaxMatches:        25,
 		WithParticipants:  true,
 		WithMedals:        true,
-		RequestsPerSecond: 1,
+		RequestsPerSecond: 5,
 	})
 
 	// daemon est déclaré ici pour permettre à la closure RefreshRTAAuth d'y référer

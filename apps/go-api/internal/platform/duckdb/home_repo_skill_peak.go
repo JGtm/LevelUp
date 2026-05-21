@@ -22,6 +22,21 @@ import (
 	"levelup/go-api/internal/games/halo_infinite"
 )
 
+// Labels rating_type (UPPERCASE pour cohérence DB : match_skill_rank.rating_type).
+// canonical.RatingType{CSR,LUSR} reste lowercase pour l'API publique.
+const (
+	ratingTypeLUSR = "LUSR"
+	ratingTypeCSR  = "CSR"
+)
+
+// Tier names canoniques Halo Infinite (PascalCase pour l'affichage UI).
+// Utilisés par canonicalHomeSkillTierName + tests de classification rang.
+const (
+	tierBronze  = "Bronze"
+	tierGold    = "Gold"
+	tierDiamond = "Diamond"
+)
+
 // peakRow : scratch interne pour la classification CSR/LUSR + best per group.
 type peakRow struct {
 	matchID       string
@@ -237,15 +252,15 @@ func classifyPeakType(pr peakRow, registryByMatch map[string]peakRegistryInfo) s
 		if info.isRanked ||
 			strings.Contains(strings.ToLower(info.playlistName), "ranked") ||
 			strings.Contains(strings.ToLower(info.pairName), "ranked") {
-			return "CSR"
+			return ratingTypeCSR
 		}
-		return "LUSR"
+		return ratingTypeLUSR
 	}
 	rt := strings.ToUpper(strings.TrimSpace(pr.ratingType))
-	if rt == "CSR" {
-		return "CSR"
+	if rt == ratingTypeCSR {
+		return ratingTypeCSR
 	}
-	return "LUSR"
+	return ratingTypeLUSR
 }
 
 // isBetterPeak : ordre rating DESC, recency DESC, sub_tier DESC, match_id DESC.
@@ -384,15 +399,15 @@ func normalizeHomeSkillPeakBadgeParts(tier string, tierLabel string, subTier int
 func canonicalHomeSkillTierName(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "bronze":
-		return "Bronze"
+		return tierBronze
 	case "silver":
 		return "Silver"
 	case "gold":
-		return "Gold"
+		return tierGold
 	case "platinum":
 		return "Platinum"
 	case "diamond":
-		return "Diamond"
+		return tierDiamond
 	case "onyx":
 		return "Onyx"
 	default:

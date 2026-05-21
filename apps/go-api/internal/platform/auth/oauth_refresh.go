@@ -95,10 +95,10 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 	}
 
 	body := url.Values{
-		"client_id":     {clientID},
-		"grant_type":    {"refresh_token"},
-		"refresh_token": {refreshToken},
-		"scope":         {xboxScopes},
+		oauthFieldClientID:     {clientID},
+		"grant_type":           {"refresh_token"},
+		oauthFieldRefreshToken: {refreshToken},
+		oauthFieldScope:        {xboxScopes},
 	}
 
 	// Si l'app Azure est confidentielle (SPNKR_AZURE_CLIENT_SECRET défini),

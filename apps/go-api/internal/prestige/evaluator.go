@@ -159,7 +159,7 @@ func computeAverage(matches []MatchSample, metric string) float64 {
 	if len(matches) == 0 {
 		return 0
 	}
-	if metric == "FieldWinRate" || metric == "win_rate" {
+	if metric == MetricWinRatePascal || metric == MetricWinRateSnake {
 		wins := 0
 		for _, m := range matches {
 			if m.IsWin {
@@ -188,7 +188,7 @@ func minMatchesForMetric(t Tuning, c Challenge) int {
 		}
 		return n
 	}
-	if c.Metric != "FieldWinRate" && c.Metric != "win_rate" {
+	if c.Metric != MetricWinRatePascal && c.Metric != MetricWinRateSnake {
 		return 0
 	}
 	return t.WinRateMinForWindow(c.WindowType, c.WindowValue)

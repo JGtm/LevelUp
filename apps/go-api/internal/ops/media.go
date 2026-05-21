@@ -32,6 +32,20 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
+// Kinds de média indexés dans media_files.kind. Aussi utilisés dans la
+// classification des extensions (supportedExtensions) — centralisés ici.
+const (
+	mediaKindVideo = "video"
+	mediaKindImage = "image"
+)
+
+// Types de colonne DuckDB récurrents dans les ALTER TABLE ADD COLUMN
+// de cette indexation. Centralisés pour réduire le bruit goconst.
+const (
+	colTypeVarchar     = "VARCHAR"
+	colTypeTimestampTZ = "TIMESTAMPTZ"
+)
+
 // indexMu sérialise les IndexMedia par chemin de DB cible.
 // DuckDB ne supporte pas ATTACH/DETACH concurrent sur la même instance.
 var (
@@ -70,10 +84,10 @@ type MediaIndexResult struct {
 
 // supportedExtensions sont les formats vidéo/image reconnus.
 var supportedExtensions = map[string]string{
-	".mp4": "video", ".mov": "video", ".avi": "video",
-	".mkv": "video", ".webm": "video",
-	".png": "image", ".jpg": "image", ".jpeg": "image",
-	".bmp": "image", ".gif": "image",
+	".mp4": mediaKindVideo, ".mov": mediaKindVideo, ".avi": mediaKindVideo,
+	".mkv": mediaKindVideo, ".webm": mediaKindVideo,
+	".png": mediaKindImage, ".jpg": mediaKindImage, ".jpeg": mediaKindImage,
+	".bmp": mediaKindImage, ".gif": mediaKindImage,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,7 +334,7 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 			continue
 		}
 		ext := strings.ToLower(filepath.Ext(e.Name()))
-		if supportedExtensions[ext] != "video" {
+		if supportedExtensions[ext] != mediaKindVideo {
 			continue
 		}
 		base := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
@@ -353,14 +367,14 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 // testable sans dépendre de ffprobe ni du filesystem.
 func computeMediaEnd(kind string, captureAt *time.Time, duration float64, durationKnown bool) (captureEnd *time.Time, durationSec *float64) {
 	switch kind {
-	case "image":
+	case mediaKindImage:
 		if captureAt != nil {
 			end := *captureAt
 			captureEnd = &end
 		}
 		zero := 0.0
 		durationSec = &zero
-	case "video":
+	case mediaKindVideo:
 		if durationKnown {
 			d := duration
 			durationSec = &d
@@ -531,21 +545,21 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 	// par d'anciennes migrations qui n'avaient pas capture_start_utc.
 	// ADD COLUMN IF NOT EXISTS évite d'avorter la connexion.
 	for _, col := range []struct{ name, typ string }{
-		{"capture_start_utc", "TIMESTAMPTZ"},
-		{"capture_end_utc", "TIMESTAMPTZ"},
-		{"file_hash", "VARCHAR"},
-		{"kind", "VARCHAR"},
-		{"thumbnail_path", "VARCHAR"},
-		{"player_slug", "VARCHAR"},
+		{"capture_start_utc", colTypeTimestampTZ},
+		{"capture_end_utc", colTypeTimestampTZ},
+		{"file_hash", colTypeVarchar},
+		{"kind", colTypeVarchar},
+		{"thumbnail_path", colTypeVarchar},
+		{"player_slug", colTypeVarchar},
 		{"duration_seconds", "DOUBLE"},
-		{"status", "VARCHAR"},
-		{"mtime", "TIMESTAMPTZ"},
+		{"status", colTypeVarchar},
+		{"mtime", colTypeTimestampTZ},
 		{"indexed_at", "TIMESTAMPTZ DEFAULT NOW()"},
 		{"liked", "BOOLEAN DEFAULT FALSE"},
-		{"liked_at", "TIMESTAMPTZ"},
+		{"liked_at", colTypeTimestampTZ},
 		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
-		{"file_stem", "VARCHAR"},
-		{"file_ext", "VARCHAR"},
+		{"file_stem", colTypeVarchar},
+		{"file_ext", colTypeVarchar},
 	} {
 		if _, err := db.ExecContext(ctx, "ALTER TABLE media_files ADD COLUMN IF NOT EXISTS "+col.name+" "+col.typ); err != nil {
 			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
@@ -704,7 +718,7 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	// les tests unitaires (sans ffprobe).
 	var duration float64
 	var durationKnown bool
-	if kind == "video" {
+	if kind == mediaKindVideo {
 		if d, err := probeVideoDuration(path); err == nil {
 			duration = d
 			durationKnown = true

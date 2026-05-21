@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+// versionUnknown est le placeholder retourné quand la version DuckDB n'a pas
+// pu être lue (DB indisponible / pragma indisponible) — utilisé par /health.
+const versionUnknown = "unknown"
+
 // SharedReader est l'interface minimale dont BootstrapRepo a besoin pour
 // lire `shared_matches_v2.duckdb`. Elle est volontairement structurelle —
 // satisfaite par sharedprovider.Provider (sous-package) sans import croisé
@@ -61,7 +65,7 @@ func (r *BootstrapRepo) GetDBVersion(ctx context.Context) (string, error) {
 
 	db, release, err := r.shared.Get(ctx)
 	if err != nil {
-		return "unknown", nil //nolint:nilerr // dégradation acceptable pour /health
+		return versionUnknown, nil //nolint:nilerr // dégradation acceptable pour /health
 	}
 	defer release()
 
@@ -71,7 +75,7 @@ func (r *BootstrapRepo) GetDBVersion(ctx context.Context) (string, error) {
 		// fallback : essayer SELECT version()
 		err2 := db.QueryRowContext(ctx, "SELECT version()").Scan(&version)
 		if err2 != nil {
-			return "unknown", nil
+			return versionUnknown, nil
 		}
 	}
 	return version, nil
