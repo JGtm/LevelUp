@@ -12,6 +12,9 @@
 import { useRef, useState, useEffect } from 'react'
 import type { TeammateOption } from '@/lib/api/types'
 import { useGamertagSuggestions } from './useGamertagSuggestions'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 // ─── Props ──────────────────────────────────────────────────────────────────────
 
@@ -63,6 +66,8 @@ export function GamertagCombobox({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // ─── Fermeture click-outside ────────────────────────────────────────────────
   useEffect(() => {
@@ -225,7 +230,7 @@ export function GamertagCombobox({
           {configured.length > 0 && (
             <div>
               <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
-                Joueurs configurés
+                {t('common.gamertag.players_configured')}
               </div>
               {configured.map((item) => (
                 <DropdownItem
@@ -243,7 +248,7 @@ export function GamertagCombobox({
           {frequent.length > 0 && (
             <div>
               <div className="sticky top-0 bg-popover/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
-                Coéquipiers fréquents
+                {t('common.gamertag.frequent_teammates')}
               </div>
               {frequent.map((item) => (
                 <DropdownItem
@@ -283,7 +288,7 @@ export function GamertagCombobox({
           {/* Message vide */}
           {showEmptyMessage && (
             <div className="px-3 py-2 text-sm text-muted-foreground">
-              Aucun joueur trouvé pour "{trimmed}"
+              {t('common.gamertag.no_player_found_prefix')}{trimmed}"
             </div>
           )}
 

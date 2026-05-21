@@ -35,6 +35,8 @@ export function GeneralTab({ merged, handleChange, t }: TabProps) {
               onChange={(e) => handleChange('user_timezone', e.target.value)}
               className="rounded border border-input px-2 py-1 text-sm"
             >
+              {/* Identifiants timezone IANA — pas de traduction (techniques) */}
+              {/* eslint-disable @levelup/no-hardcoded-strings */}
               <option value="Europe/Paris">Europe/Paris</option>
               <option value="Europe/London">Europe/London</option>
               <option value="America/New_York">America/New_York</option>
@@ -42,6 +44,7 @@ export function GeneralTab({ merged, handleChange, t }: TabProps) {
               <option value="America/Chicago">America/Chicago</option>
               <option value="Asia/Tokyo">Asia/Tokyo</option>
               <option value="UTC">UTC</option>
+              {/* eslint-enable @levelup/no-hardcoded-strings */}
             </select>
           </div>
           <ToggleRow label={t.showRecords} value={merged.show_records ?? false} onChange={(v) => handleChange('show_records', v)} />

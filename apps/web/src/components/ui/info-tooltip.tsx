@@ -1,4 +1,7 @@
 import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 interface InfoTooltipProps {
   /** Texte ou contenu affiché dans le tooltip */
@@ -14,6 +17,8 @@ interface InfoTooltipProps {
 export function InfoTooltip({ content, iconClass = 'w-4 h-4' }: InfoTooltipProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   useEffect(() => {
     if (!open) return
@@ -34,7 +39,7 @@ export function InfoTooltip({ content, iconClass = 'w-4 h-4' }: InfoTooltipProps
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}
-        aria-label="Plus d'informations"
+        aria-label={t('common.tooltip.more_info_aria')}
       >
         i
       </button>
