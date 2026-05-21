@@ -1,3 +1,57 @@
+## [2026-05-21] chore(goconst) — Phase 3 dette résiduelle audit #10 (45 -> 3, -93%)
+
+**Statut** : Complété. Branche : `fix/media-paths-portable` (état HEAD courant ; tâche dérive du contexte initial `fix/auto-sync-different-configuration` mais le worktree a déjà bougé).
+
+**Contexte** : agent goconst phase 1+2 avait extrait ~270 constantes (15+ packages). Audit #10 dette restante : 45 issues `goconst` initialement listées, mais le scan complet en révélait 78 (probable cache lint). Tâche : réduire au maximum sans toucher aux signatures ni aux `_test.go`.
+
+**Décisions clés** :
+
+1. **Constantes SQL types DuckDB** dans `internal/migration/helpers.go` : `colDouble/colFloat/colInteger/colSmallInt/colVarchar` (5 littéraux ALTER TABLE remplacés dans `steps_engagement.go`, `steps_player.go`, `steps_shared.go`).
+2. **API OAuth/Xbox payload fields** centralisés dans `internal/platform/auth/api_constants.go` : `xboxFieldRelyingParty/TokenType/Properties/Token` + `oauthFieldClientID/Scope/Code/RefreshToken/DeviceCode`. Refactor des 7 fichiers concernés (`halo_exchange.go`, `device_token.go`, `xsts.go`, `sisu_client.go`, `oauth_refresh.go`, `auth_code.go`, `xbox_device_code.go`).
+3. **Réutilisations de constantes existantes** :
+   - `AttemptStatusPending` (auth/attempt_store) — 2 fichiers
+   - `MetricKeyAccuracy` (sync/skill_config) — 2 fichiers
+   - `scopeRanked` (service/match_history_service) — 1 fichier
+   - `rivalsOrderColDeaths` (platform/duckdb/career_repo) — 1 fichier
+   - `PerfMetricKillsVsExpected/DeathsVsExpected` (analysis/performance_score) — 1 fichier
+4. **Seed data citation_mappings** (`internal/ops/seed.go`) : 22 constantes pour mapping types (`mappingTypeAward/Stat/PVEStat/...`), catégories (`citationCatModeJeu/Vehicule/Arme/...`), sub-catégories (`citationSubGeneral/UNSC/Banished/...`), tier targets CSV (`tierTargets3_6_9_15_30/...`). Refactor de la table seed via `replace_all` sur ~150 lignes.
+5. **JSON keys Halo API** dans `sync/halo_client.go` : `jsonKeyAppearance/Emblem/CommonData/Path/ImagePath/Media/MediaURL/...` (9 constantes pour les chemins `[]string` de `firstNonEmptyPayloadString`). + même chose pour `sync/pve.go` (`jsonKeyPlayerID`, `jsonKeyXuid`).
+6. **PSA categories** dans `sync/refdata_personal_scores.go` : `psaCatKill/Assist/Objective/Vehicle` consolident les 44 entrées de la map `psaCategory`.
+
+**Résultats lint** :
+- **Avant** : 45 issues goconst (compte initial) / 78 issues (scan complet après pour cache miss)
+- **Après** : 3 issues résiduelles documentées, justifiées :
+  - `oauth_refresh.go:99` "refresh_token" — valeur grant_type OAuth-spec (sémantique différente de la clé champ payload `oauthFieldRefreshToken`)
+  - `challenges_details.go:447` "Threshold" — 1 struct tag (non-constantable) + 1 valeur de slice
+  - `events_replay.go:155` "healed" — valeur de statut (1 prod) vs clé de log structuré (2 prod ailleurs, sémantique log différente)
+
+**Files touchés (production)** : 23 fichiers
+- `internal/migration/{helpers.go, steps_engagement.go, steps_player.go, steps_shared.go, steps_metadata.go, steps_metadata_playlist_fr.go}`
+- `internal/platform/auth/{api_constants.go (nouveau), halo_exchange.go, device_token.go, xsts.go, sisu_client.go, oauth_refresh.go, auth_code.go, xbox_device_code.go, attempt_store.go, watcher_attempt_store.go}`
+- `internal/platform/auth/pool/discovery.go`
+- `internal/platform/duckdb/{home_repo_skill_peak.go, home_repo_playlist_ranks.go, bootstrap_repo.go, prestige_baseline_provider.go}`
+- `internal/notify/{discord.go, version.go, notifiers.go}`
+- `internal/analysis/home_locale.go`
+- `internal/games/mappings/loader_awards.go`
+- `internal/prestige/{constants.go, evaluator.go, service.go}`
+- `internal/progression/{coach/generator.go, profile/service.go}`
+- `internal/validation/gate.go`
+- `internal/service/career_service.go`
+- `internal/ops/{seed.go, media.go}`
+- `internal/api/post_sync_deltas.go`
+- `internal/sync/{backfill_flags.go, scope.go, pve.go, transforms.go, refdata_personal_scores.go, halo_client.go}`
+
+**Constantes créées** : ~55 nouvelles. **Réutilisations** : 5 constantes existantes.
+
+**Validation** :
+- `go build ./internal/... ./cmd/server/...` : OK
+- `go test ./internal/{notify,ops,migration,platform/auth,platform/duckdb,prestige,progression,validation,analysis,games,service,api}/... -count=1 -timeout=180s` : tous verts (29 packages testés)
+- Note : `internal/sync/...` tests échouent à cause d'un changement local pré-existant sur `pooled_client_test.go` (modifié par un autre agent — pas touché par cette tâche).
+
+**Conclusion** : dette goconst quasi-épuisée. Les 3 résidus sont des limitations structurelles (struct tag, sémantique distincte du même littéral) et seront ignorées par la lint en prod.
+
+---
+
 ## [2026-05-21] fix(halo_client) — Race condition rateWait + switch vers rate.Limiter + bench RPS
 
 **Statut** : Phase 1 complète (fix race + tests), Phase 2 complète (bench dry-run), validation prod RPS=5 en attente. Branche `fix/media-paths-portable` (continuation).
@@ -39,7 +93,52 @@ Le rate-limiter `golang.org/x/time/rate` colle au RPS configuré à 2% près. Co
 
 Résultats quasi identiques au mode sim (écart < 1%). **L'API Microsoft tolère 5 RPS sans déclencher de throttle** depuis un client unique — cohérent avec le défaut SPNKr de 5 RPS par service. Aucune écriture DB durant le bench (binaire s'arrête après les appels GET).
 
-**Prochaine étape** : flip `RequestsPerSecond: 1` → `5` dans [cmd/server/main.go:809](apps/go-api/cmd/server/main.go#L809). Commit groupé attendu avec les autres modifications WIP de la branche `fix/media-paths-portable`.
+**Phase 3 — flip prod + audit chemin auto-sync (pool)** :
+
+Le flip `RequestsPerSecond: 1` → `5` dans [cmd/server/main.go:809](apps/go-api/cmd/server/main.go#L809) ne touche QUE les syncs manuels via `POST /api/sync`. Audit du chemin auto-sync (scheduler) a révélé un **second bug** :
+
+[auto_sync.go:187-188](apps/go-api/internal/scheduler/auto_sync.go#L187-L188) câble un `PooledHaloClient` via `engine.SetCustomClient(pooledClient)`, qui court-circuite le `HaloAPIClient` standard. Et [pooled_client.go::newAPIClient](apps/go-api/internal/sync/pooled_client.go) créait **un nouveau HaloAPIClient avec un nouveau rate.Limiter à chaque requête** (`NewHaloAPIClient(spartan, clearance, 1)` à chaque Acquire). Chaque limiter démarre avec burst=1 → 1 token gratuit immédiatement consommé → rate-limiting de facto **désactivé sur le chemin auto-sync**. Seul le cooldown 429/503 post-mortem du pool protégeait Microsoft. Note importante : le pool exposait déjà `PoolOptions.PerTokenRPS` (`internal/platform/auth/pool/types.go:135` doc disant "RPS effectif total = PerTokenRPS × Size()") mais cette intention n'était jamais implémentée — `slot` ne portait pas de `*rate.Limiter`.
+
+**Décision** : deux options présentées au user après audit comparatif :
+- Option 1 — limiter unique partagé dans `PooledHaloClient` (fallback simple, 5 RPS total pool).
+- Option 2 — limiter par-token dans le pool lui-même (5 RPS × N tokens = 5N RPS global).
+
+Séquencement choisi : implémenter Option 1, valider Option 2 par bench multi-token, basculer si OK.
+
+**Phase 3a — Option 1 livrée** :
+- [halo_client.go](apps/go-api/internal/sync/halo_client.go) : nouvelle méthode chainable `WithLimiter(*rate.Limiter)` pour injection externe.
+- [pooled_client.go](apps/go-api/internal/sync/pooled_client.go) : champ `sharedLimiter *rate.Limiter` (renommé en `fallbackLimiter` lors du passage à Option 2), `NewPooledHaloClient` signature étendue avec `requestsPerSecond int`, `newAPIClient()` injecte le limiter partagé via `WithLimiter`.
+- Constante `defaultPooledRPS = 5` alignée sur le sync manuel.
+- Adapté 3 call sites prod (`scheduler/auto_sync.go`, `cmd/levelup/cmd_sync.go`) + 11 call sites tests (`pooled_client_test.go`).
+- Test concurrent `TestPooledHaloClient_FallbackLimiter` valide l'invariant sous 10 goroutines parallèles à 20 RPS (~450ms wall-clock = (n-1)/rps).
+
+**Phase 3b — bench multi-token mode `real-multi`** ajouté à `cmd/bench-rps`. Exchange MSAL+Halo des tokens via `auth.NewMSALProvider().TryOAuthRefresh()` + `auth.ExchangeAccessToken()` pour chaque gamertag du flag `-gamertags NAME:XUID,...`. Validation sur 3 tokens réels (JGTM, CHOCOBOFLOR, MADINA97294, 153 appels API) :
+
+| Tokens | RPS par-token | RPS effectif global | Wall-clock | 429 |
+|--------|---------------|---------------------|------------|-----|
+| 2      | 5             | 10.11               | 10.09s     | **0** |
+| 3      | 5             | 14.84               | 10.31s     | **0** |
+
+L'API Microsoft tolère 15 RPS depuis 1 IP / 3 identités distinctes sans throttle. Option 2 validée empiriquement.
+
+**Phase 3c — Option 2 livrée** :
+- [pool/types.go](apps/go-api/internal/platform/auth/pool/types.go) : `Lease.Limiter *rate.Limiter` (nil = fallback caller).
+- [pool/pool.go](apps/go-api/internal/platform/auth/pool/pool.go) : `slot.limiter` initialisé au `NewPool()` avec `rate.NewLimiter(rate.Limit(opts.PerTokenRPS), 1)`. `acquireAnyPublic` et `acquirePinnedPlayer` populent `Lease.Limiter` avec `slot.limiter`. La doc `PoolOptions.PerTokenRPS` était déjà alignée — c'était l'implémentation qui manquait.
+- [pooled_client.go](apps/go-api/internal/sync/pooled_client.go) : `newAPIClient(*pool.Lease)` consulte `lease.Limiter` (path Option 2) avec fallback sur `fallbackLimiter` si nil (path mocks/tests). `sharedLimiter` → `fallbackLimiter` renommé.
+- [cmd/server/main.go::buildAutoSyncPool](apps/go-api/cmd/server/main.go#L663-L667) : `PerTokenRPS: 1` → `5`.
+- Tests `TestPooledHaloClient_FallbackLimiter` + `TestPooledHaloClient_LeaseLimiterPriority` couvrent les deux paths.
+
+**Validation finale** : `go test -race ./internal/sync/... ./internal/platform/auth/pool/... ./internal/scheduler/...` → all green (16.2s total). Build complet OK.
+
+**Résumé gain par chemin de sync** :
+
+| Chemin | Avant audit | Après livraison |
+|--------|-------------|-----------------|
+| Sync manuel `POST /api/sync` (1 user) | 50s, RPS=1 effectif | **10s, RPS=5** (`cmd/server/main.go:809`) |
+| Auto-sync scheduler (1 user via pool) | rate-limit inopérant (limiter neuf par requête) | **10s borné, RPS=5/token** |
+| Auto-sync scheduler (N users via pool) | rate-limit inopérant, risque 429 latent | **5N RPS borné, sécurisé** |
+
+**Prochaine étape** : commit groupé avec les autres modifications WIP de la branche `fix/media-paths-portable`. Aucun changement de comportement utilisateur visible — uniquement performance + sécurité rate-limit.
 
 ---
 

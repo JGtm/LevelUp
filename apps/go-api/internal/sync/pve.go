@@ -16,6 +16,14 @@ import (
 	"strings"
 )
 
+// Clés JSON Halo API payload joueur — utilisées pour extraire le XUID
+// depuis playerMap["PlayerId"] / playerMap["Xuid"]. Centralisées pour
+// réduire la duplication littérale (cf. lint goconst).
+const (
+	jsonKeyPlayerID = "PlayerId"
+	jsonKeyXuid     = "Xuid"
+)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Modèle
 // ─────────────────────────────────────────────────────────────────────────────
@@ -110,7 +118,7 @@ func findPveStatsDict(playerMap map[string]any) map[string]any {
 // extractPlayerXUID extrait le XUID depuis une map joueur (vs extractXUID(string)).
 func extractPlayerXUID(playerMap map[string]any) string {
 	// Format : Xuid ou PlayerId = "xuid(1234567890)"
-	for _, key := range []string{"Xuid", "PlayerId"} {
+	for _, key := range []string{jsonKeyXuid, jsonKeyPlayerID} {
 		if raw, ok := playerMap[key].(string); ok && raw != "" {
 			return cleanXUID(raw)
 		}
@@ -119,7 +127,7 @@ func extractPlayerXUID(playerMap map[string]any) string {
 	props, _ := playerMap["PlayerProperties"].([]any)
 	if len(props) > 0 {
 		if first, ok := props[0].(map[string]any); ok {
-			if id, ok := first["PlayerId"].(string); ok {
+			if id, ok := first[jsonKeyPlayerID].(string); ok {
 				return cleanXUID(id)
 			}
 		}

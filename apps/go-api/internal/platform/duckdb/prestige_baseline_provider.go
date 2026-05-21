@@ -14,6 +14,13 @@ import (
 	"levelup/go-api/internal/prestige"
 )
 
+// Noms de colonnes match_participants utilisés par mapMetricToColumn.
+// Centralisés pour éviter la duplication littérale (lint goconst).
+const (
+	metricColAccuracy = "accuracy"
+	metricColKills    = "kills"
+)
+
 // HaloBaselineProvider lit les matchs récents d'un joueur Halo Infinite
 // pour fournir baseline + percentile au module Prestige.
 //
@@ -150,10 +157,10 @@ func mapMetricToColumn(metric string) string {
 		return "kda"
 	case "FieldKDR", "kd":
 		return "kd"
-	case "FieldAccuracy", "accuracy":
-		return "accuracy"
-	case "FieldKills", "kills":
-		return "kills"
+	case "FieldAccuracy", metricColAccuracy:
+		return metricColAccuracy
+	case "FieldKills", metricColKills:
+		return metricColKills
 	case "FieldDeaths", rivalsOrderColDeaths:
 		return rivalsOrderColDeaths
 	case "FieldAssists", "assists":

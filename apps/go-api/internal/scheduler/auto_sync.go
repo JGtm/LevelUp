@@ -184,7 +184,7 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 		})
 	}
 	if s.pool != nil {
-		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid)
+		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid, 0) // 0 = defaultPooledRPS
 		engine.SetCustomClient(pooledClient)
 	}
 	return engine

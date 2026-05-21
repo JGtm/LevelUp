@@ -6,12 +6,25 @@ import (
 	"fmt"
 	"log/slog"
 
+	"golang.org/x/time/rate"
+
 	"levelup/go-api/internal/platform/auth/pool"
 )
+
+// defaultPooledRPS est le RPS fallback pour PooledHaloClient quand le pool
+// n'expose pas de Lease.Limiter (cas des mocks/tests). En prod, le pool fournit
+// son propre limiter par-token (Option 2 de l'audit 2026-05-21) — voir
+// internal/platform/auth/pool/types.go::Lease.Limiter et PoolOptions.PerTokenRPS.
+const defaultPooledRPS = 5
 
 // PooledHaloClient implémente HaloClient en utilisant un pool de tokens partagés.
 // Chaque appel Acquire() crée un HaloAPIClient avec un token frais du pool.
 // PolicyAnyPublic pour endpoints publics, PolicyPinnedPlayer pour endpoints privacy.
+//
+// Rate-limiting (Option 2 de l'audit 2026-05-21) : chaque slot du pool a son
+// propre *rate.Limiter (PerTokenRPS) — throughput global = PerTokenRPS × Size().
+// newAPIClient() consulte Lease.Limiter à chaque requête ; si nil (mocks),
+// fallback sur fallbackLimiter local.
 type PooledHaloClient struct {
 	p pool.Pool
 
@@ -19,17 +32,28 @@ type PooledHaloClient struct {
 	pinnedGamertag string
 	pinnedXUID     string
 
+	// fallbackLimiter est utilisé uniquement quand Lease.Limiter est nil
+	// (mocks de test). En prod, le pool fournit le limiter par-token.
+	fallbackLimiter *rate.Limiter
+
 	// localFilmCache (optionnel) — propage au HaloAPIClient construit par Acquire.
 	localFilmCache *LocalFilmCache
 }
 
 // NewPooledHaloClient crée un client pooled.
 // pinnedGamertag/pinnedXUID : si non-vides, les endpoints privacy utilisent ce token (ex: GetCareerRank).
-func NewPooledHaloClient(p pool.Pool, pinnedGamertag, pinnedXUID string) *PooledHaloClient {
+// requestsPerSecond : utilisé uniquement comme fallback si le pool ne fournit
+// pas de Lease.Limiter (≤ 0 → defaultPooledRPS). En prod, c'est PerTokenRPS
+// configuré à NewPool() qui pilote le throughput.
+func NewPooledHaloClient(p pool.Pool, pinnedGamertag, pinnedXUID string, requestsPerSecond int) *PooledHaloClient {
+	if requestsPerSecond <= 0 {
+		requestsPerSecond = defaultPooledRPS
+	}
 	return &PooledHaloClient{
-		p:              p,
-		pinnedGamertag: pinnedGamertag,
-		pinnedXUID:     pinnedXUID,
+		p:               p,
+		pinnedGamertag:  pinnedGamertag,
+		pinnedXUID:      pinnedXUID,
+		fallbackLimiter: rate.NewLimiter(rate.Limit(requestsPerSecond), 1),
 	}
 }
 
@@ -39,9 +63,15 @@ func (pc *PooledHaloClient) WithLocalFilmCache(cache *LocalFilmCache) *PooledHal
 	return pc
 }
 
-// newAPIClient construit un HaloAPIClient avec un lease + cache eventuel.
-func (pc *PooledHaloClient) newAPIClient(spartan, clearance string) *HaloAPIClient {
-	c := NewHaloAPIClient(spartan, clearance, 1)
+// newAPIClient construit un HaloAPIClient éphémère qui utilise le rate-limiter
+// du slot (lease.Limiter, Option 2). Fallback sur fallbackLimiter si nil.
+func (pc *PooledHaloClient) newAPIClient(lease *pool.Lease) *HaloAPIClient {
+	limiter := lease.Limiter
+	if limiter == nil {
+		limiter = pc.fallbackLimiter
+	}
+	c := NewHaloAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken, defaultPooledRPS).
+		WithLimiter(limiter)
 	if pc.localFilmCache != nil {
 		c = c.WithLocalFilmCache(pc.localFilmCache)
 	}
@@ -79,7 +109,7 @@ func (pc *PooledHaloClient) GetMatchHistory(
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	result, err := client.GetMatchHistory(ctx, gamertag, matchType, start, count)
 	pc.notifyPoolOnHTTPError(err)
 	return result, err
@@ -93,7 +123,7 @@ func (pc *PooledHaloClient) GetMatchStats(ctx context.Context, matchID string) (
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	result, err := client.GetMatchStats(ctx, matchID)
 	pc.notifyPoolOnHTTPError(err)
 	return result, err
@@ -111,7 +141,7 @@ func (pc *PooledHaloClient) GetMatchSkill(
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	result, err := client.GetMatchSkill(ctx, matchID, xuids)
 	pc.notifyPoolOnHTTPError(err)
 	return result, err
@@ -125,7 +155,7 @@ func (pc *PooledHaloClient) GetMatchFilm(ctx context.Context, matchID string) (m
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	result, ok, err := client.GetMatchFilm(ctx, matchID)
 	pc.notifyPoolOnHTTPError(err)
 	return result, ok, err
@@ -139,7 +169,7 @@ func (pc *PooledHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	result, ver, ok, err := client.GetHighlightEventsChunk(ctx, matchID)
 	pc.notifyPoolOnHTTPError(err)
 	return result, ver, ok, err
@@ -165,7 +195,7 @@ func (pc *PooledHaloClient) GetCareerRank(ctx context.Context, xuid string) (*Ca
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	// HaloAPIClient handles 401/403 internally (returns nil, nil)
 	return client.GetCareerRank(ctx, xuid)
 }
@@ -180,7 +210,7 @@ func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID st
 	}
 	defer lease.Release()
 
-	client := pc.newAPIClient(lease.Tokens.SpartanToken, lease.Tokens.ClearanceToken)
+	client := pc.newAPIClient(lease)
 	result, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
 	pc.notifyPoolOnHTTPError(err)
 	return result, err
