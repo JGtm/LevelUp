@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { HomePlaylistRank } from '@/lib/api/types'
+import { unrankedBadgeURL } from '@/lib/staticAssets'
 
 function RankBadge({
   imageUrl,
@@ -68,12 +69,19 @@ export function HomeRecentPlaylistsCard({
         {items.length > 0 ? (
           <ul className="space-y-4" data-testid="home-recent-playlists-list">
             {items.map((item) => {
+              // Détection placement alignée sur HomeSkillPeakCard.resolveSkillPeakState :
+              // measurement_matches_remaining > 0 est la source de vérité ; on garde
+              // l'ancien fallback (rating null + pas de tier) pour les payloads legacy.
+              const remaining = item.measurement_matches_remaining ?? 0
               const isPlacement =
-                item.is_ranked && item.rating_value == null && !item.tier_label
+                remaining > 0 ||
+                (item.is_ranked && item.rating_value == null && !item.tier_label)
               const placementCompleted =
-                item.measurement_matches_remaining != null
-                  ? Math.min(9, Math.max(0, 10 - item.measurement_matches_remaining))
-                  : null
+                remaining > 0 ? Math.min(9, Math.max(0, 10 - remaining)) : null
+              const badgeImageURL =
+                item.badge_image_url ?? (isPlacement ? unrankedBadgeURL() : null)
+              const showRatingValue = !isPlacement && item.rating_value != null
+              const showTierLabel = !isPlacement && item.tier_label
 
               return (
                 <li
@@ -81,15 +89,11 @@ export function HomeRecentPlaylistsCard({
                   className="flex items-center gap-3"
                   data-testid="home-recent-playlist-item"
                 >
-                  {/* Badge rang ou indicateur visuel — badge_image_url est toujours fourni
-                      par le backend pour les playlists classées (rang CSR ou unranked_N.png
-                      en placement). Fallback NeutralRankPlaceholder uniquement pour les
-                      playlists non classées sans rating calculé. */}
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center">
-                    {item.badge_image_url ? (
+                    {badgeImageURL ? (
                       <RankBadge
-                        imageUrl={item.badge_image_url}
-                        label={item.tier_label ?? (isPlacement ? 'En placement' : 'Rang')}
+                        imageUrl={badgeImageURL}
+                        label={isPlacement ? 'En placement' : (item.tier_label ?? 'Rang')}
                         testId={isPlacement ? 'home-rank-unranked-image' : undefined}
                         opacity={isPlacement ? 'dim' : 'full'}
                       />
@@ -98,7 +102,6 @@ export function HomeRecentPlaylistsCard({
                     )}
                   </div>
 
-                  {/* Infos playlist + rang */}
                   <div className="min-w-0 flex-1">
                     <p
                       data-testid="home-recent-playlist-name"
@@ -107,15 +110,15 @@ export function HomeRecentPlaylistsCard({
                       {item.playlist_name || 'Playlist inconnue'}
                     </p>
 
-                    {item.rating_value != null && (
+                    {showRatingValue && (
                       <p className="text-xs font-semibold tabular-nums text-foreground">
                         {item.rating_type === 'LUSR'
-                          ? `${Math.round(item.rating_value)} pts`
-                          : `${Math.round(item.rating_value)} CSR`}
+                          ? `${Math.round(item.rating_value!)} pts`
+                          : `${Math.round(item.rating_value!)} CSR`}
                       </p>
                     )}
 
-                    {item.tier_label ? (
+                    {showTierLabel ? (
                       <p
                         data-testid="home-rank-tier-label"
                         className="truncate text-xs text-muted-foreground"
@@ -128,7 +131,7 @@ export function HomeRecentPlaylistsCard({
                         className="text-xs text-muted-foreground"
                       >
                         {placementCompleted != null
-                          ? `En placement ${placementCompleted}/10`
+                          ? `En placement (${placementCompleted}/10)`
                           : 'En placement'}
                       </p>
                     ) : item.rating_value == null && (
