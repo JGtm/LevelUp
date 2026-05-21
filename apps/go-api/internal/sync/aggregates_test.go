@@ -81,7 +81,7 @@ func openMemForShared(t *testing.T) *sql.DB {
 func TestRefreshAggregates_OnEmptyDB(t *testing.T) {
 	db := openMemForAggregates(t)
 
-	count, err := refreshAggregates(db)
+	count, err := refreshAggregates(t.Context(), db)
 	if err != nil {
 		t.Fatalf("refreshAggregates: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestRefreshAggregates_WithData(t *testing.T) {
 	_, _ = db.Exec(`INSERT INTO player_match_enrichment VALUES ('m1', 75.0, 's1', 'S1', true)`)
 	_, _ = db.Exec(`INSERT INTO match_skill_rank VALUES ('m1', 'LUSR', 1500.0, 'Ranked Slayer')`)
 
-	count, err := refreshAggregates(db)
+	count, err := refreshAggregates(t.Context(), db)
 	if err != nil {
 		t.Fatalf("refreshAggregates avec données: %v", err)
 	}
@@ -121,7 +121,7 @@ func TestRefreshAggregates_Idempotent(t *testing.T) {
 	_, _ = db.Exec(`INSERT INTO player_match_enrichment VALUES ('m1', 80.0, 's1', 'Session1', false)`)
 
 	for i := 1; i <= 3; i++ {
-		_, err := refreshAggregates(db)
+		_, err := refreshAggregates(t.Context(), db)
 		if err != nil {
 			t.Fatalf("passe %d: %v", i, err)
 		}
@@ -140,7 +140,7 @@ func TestRefreshAggregates_Idempotent(t *testing.T) {
 func TestRefreshSharedViews_OnEmptyDB(t *testing.T) {
 	db := openMemForShared(t)
 
-	count, err := refreshSharedViews(db)
+	count, err := refreshSharedViews(t.Context(), db)
 	if err != nil {
 		t.Fatalf("refreshSharedViews: %v", err)
 	}

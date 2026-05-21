@@ -297,13 +297,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 
 	// 4. Aggregates (materialized views)
 	slog.DebugContext(ctx, "post-sync: refresh aggregates player", "gamertag", e.gamertag)
-	if n, err := refreshAggregates(playerDB); err != nil {
+	if n, err := refreshAggregates(ctx, playerDB); err != nil {
 		slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.ViewsRefreshed = n
 	}
 	slog.DebugContext(ctx, "post-sync: refresh shared views", "gamertag", e.gamertag)
-	if n, err := refreshSharedViews(sharedDB); err != nil {
+	if n, err := refreshSharedViews(ctx, sharedDB); err != nil {
 		slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.ViewsRefreshed += n

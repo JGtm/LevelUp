@@ -1,3 +1,29 @@
+## [2026-05-21] chore(noctx) — propagation ctx vers internal/sync (round 1)
+
+**Statut** : En cours (round 1 livré, ~24 occurrences résiduelles).
+
+**Contexte** : golangci-lint v2 `noctx` linter exige les variantes `*Context` des
+méthodes `database/sql`. 73 issues dans `internal/sync/` au point de départ.
+
+**Décision technique** : Round 1 — aggregates/backfill/career/csr. Propagation
+ctx via le premier paramètre `ctx context.Context` pour les helpers privés
+(getMatchSource, hasBackfillCompletedColumn, playerDoneGuard, getKillsForPlayer,
+getXuidToPI, getAllKillsForMatch, getMatchParticipantXuids, saveCareerRank,
+enrichCareerRankFromMetadata, saveCSRSnapshots, refreshAggregates,
+refreshSharedViews, recreateMaterializedView, recreateSQLView,
+loadRankedMatchesForCSRBackfill, findMatchesInSharedAll, findMatchesInSharedDB)
+et exports publics (FindMatchesMissingData, UpsertCSRRow, RefreshAggregates).
+Tests adaptés via `t.Context()`.
+
+**Résultats observés** : `go build ./internal/sync/...` clean ; `go test -tags=integration
+./internal/sync/...` passe (39s). Compteur noctx descendu de 73 → 49.
+
+**Prochaine étape** : Round 2 — engagement/engagement_recompute/events_replay/
+exclusion_filter/medal_exploit_loader/performance/pve/schema/session_recalc/
+skill_rating_loaders puis round 3 sur writes.go (+ tests).
+
+---
+
 ## [2026-05-21] fix(ci) — 3 CI échecs corrigés + 6 staticcheck (S1009 + S1017) éliminés
 
 **Statut** : Complété.

@@ -58,7 +58,7 @@ func BackfillCSRFromAPI(
 ) (CSRBackfillResult, error) {
 	var res CSRBackfillResult
 
-	matches, err := loadRankedMatchesForCSRBackfill(sharedDB)
+	matches, err := loadRankedMatchesForCSRBackfill(ctx, sharedDB)
 	if err != nil {
 		return res, fmt.Errorf("BackfillCSRFromAPI: load ranked: %w", err)
 	}
@@ -120,7 +120,7 @@ func BackfillCSRFromAPI(
 			continue
 		}
 
-		if err := UpsertCSRRow(playerDB, row); err != nil {
+		if err := UpsertCSRRow(ctx, playerDB, row); err != nil {
 			res.SkillErrors++
 			slog.WarnContext(ctx, "BackfillCSRFromAPI: UpsertCSRRow échoué",
 				"match_id", m.MatchID, "err", err)
@@ -164,8 +164,8 @@ func BackfillCSRFromAPI(
 // celle utilisée par Q26eHomeSkillPeakByType côté lecture — sans elle, le
 // CSR backfill serait un no-op silencieux pour les joueurs touchés par la
 // régression is_ranked.
-func loadRankedMatchesForCSRBackfill(sharedDB *sql.DB) ([]MatchRegistryRow, error) {
-	rows, err := sharedDB.Query(`
+func loadRankedMatchesForCSRBackfill(ctx context.Context, sharedDB *sql.DB) ([]MatchRegistryRow, error) {
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT match_id, start_time
 		FROM match_registry
 		WHERE start_time IS NOT NULL

@@ -806,7 +806,7 @@ func TestEnrichCareerRankFromMetadata(t *testing.T) {
 	}
 
 	data := &CareerRankData{XUID: "123", CurrentRank: 174, CurrentXP: 21840}
-	if err := enrichCareerRankFromMetadata(metaDB, data); err != nil {
+	if err := enrichCareerRankFromMetadata(t.Context(), metaDB, data); err != nil {
 		t.Fatalf("enrichCareerRankFromMetadata: %v", err)
 	}
 	if data.CurrentRankName != "Colonel Platinum 2" {

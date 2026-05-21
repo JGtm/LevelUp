@@ -45,7 +45,7 @@ func (e *SyncEngine) RunBackfill(ctx context.Context, scope *SyncScope) ([]strin
 	}
 	defer releaseShared()
 
-	return FindMatchesMissingData(playerHandle.SQLDb(), sharedDB, e.xuid, scope)
+	return FindMatchesMissingData(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, scope)
 }
 
 // RunBackfillComebackBadges calcule et persiste le dominance_flag pour les

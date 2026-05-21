@@ -227,7 +227,7 @@ func (e *SyncEngine) insertFetchedMatch(
 	// CSR par-match (player DB). Renseigné par fetchMatchData uniquement pour
 	// les matchs classés dont RankRecap était présent. Non-bloquant.
 	if fm.CSRRow != nil {
-		if err := UpsertCSRRow(playerDB, fm.CSRRow); err != nil {
+		if err := UpsertCSRRow(ctx, playerDB, fm.CSRRow); err != nil {
 			slog.WarnContext(ctx, "sync: UpsertCSRRow échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 			)

@@ -78,7 +78,7 @@ func TestGetMatchSource_MatchRegistry(t *testing.T) {
 	db := openBackfillTestDB(t)
 	seedBackfillShared(t, db)
 
-	src := getMatchSource(db)
+	src := getMatchSource(t.Context(), db)
 	if src != "match_registry" {
 		t.Fatalf("expected match_registry, got %s", src)
 	}
@@ -91,7 +91,7 @@ func TestGetMatchSource_VMatchFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	src := getMatchSource(db)
+	src := getMatchSource(t.Context(), db)
 	if src != "v_match_full" {
 		t.Fatalf("expected v_match_full, got %s", src)
 	}
@@ -103,7 +103,7 @@ func TestHasBackfillCompletedColumn_True(t *testing.T) {
 	db := openBackfillTestDB(t)
 	seedBackfillShared(t, db)
 
-	if !hasBackfillCompletedColumn(db) {
+	if !hasBackfillCompletedColumn(t.Context(), db) {
 		t.Fatal("expected true")
 	}
 }
@@ -114,7 +114,7 @@ func TestHasBackfillCompletedColumn_False(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if hasBackfillCompletedColumn(db) {
+	if hasBackfillCompletedColumn(t.Context(), db) {
 		t.Fatal("expected false")
 	}
 }
@@ -127,7 +127,7 @@ func TestPlayerDoneGuard_Empty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	guard := playerDoneGuard(db, "player_match_enrichment", "performance_score")
+	guard := playerDoneGuard(t.Context(), db, "player_match_enrichment", "performance_score")
 	if guard != "1=1" {
 		t.Fatalf("expected 1=1, got %s", guard)
 	}
@@ -142,7 +142,7 @@ func TestPlayerDoneGuard_WithData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	guard := playerDoneGuard(db, "player_match_enrichment", "performance_score")
+	guard := playerDoneGuard(t.Context(), db, "player_match_enrichment", "performance_score")
 	if guard == "1=1" {
 		t.Fatal("expected NOT IN clause, got 1=1")
 	}
@@ -160,7 +160,7 @@ func TestPlayerDoneGuard_NoColumn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	guard := playerDoneGuard(db, "match_citations", "")
+	guard := playerDoneGuard(t.Context(), db, "match_citations", "")
 	if guard == "1=1" {
 		t.Fatal("expected NOT IN clause")
 	}
@@ -170,7 +170,7 @@ func TestPlayerDoneGuard_NoColumn(t *testing.T) {
 
 func TestFindMatchesMissingData_NilScope(t *testing.T) {
 	db := openBackfillTestDB(t)
-	_, err := FindMatchesMissingData(db, db, "xuid001", nil)
+	_, err := FindMatchesMissingData(t.Context(), db, db, "xuid001", nil)
 	if err == nil {
 		t.Fatal("expected error for nil scope")
 	}
@@ -185,7 +185,7 @@ func TestFindMatchesMissingData_Events(t *testing.T) {
 	scope := &SyncScope{Events: true, DetectionMode: "or"}
 	scope.Resolve()
 
-	matches, err := FindMatchesMissingData(playerDB, sharedDB, "xuid001", scope)
+	matches, err := FindMatchesMissingData(t.Context(), playerDB, sharedDB, "xuid001", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
