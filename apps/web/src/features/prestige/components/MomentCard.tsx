@@ -61,8 +61,9 @@ export function MomentCard({
         boxShadow: isMythic ? `0 0 24px ${color}40` : undefined,
       }}
     >
-      {/* En-tête : LEVELUP · PRESTIGE */}
+      {/* En-tête : LEVELUP · PRESTIGE (marque produit, non traduit) */}
       <div className="absolute left-3 right-3 top-2 flex items-center justify-between text-2xs uppercase tracking-widest text-muted-foreground">
+        {/* eslint-disable-next-line @levelup/no-hardcoded-strings */}
         <span>LevelUp · Prestige</span>
       </div>
 

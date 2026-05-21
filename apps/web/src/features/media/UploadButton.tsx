@@ -3,6 +3,9 @@
  */
 import { useRef, useState } from 'react'
 import { useUploadMedia } from './queries'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 const ACCEPTED_EXTS = '.mp4,.mov,.avi,.mkv,.webm,.png,.jpg,.jpeg,.bmp,.gif'
 const ACCEPTED_MIME = new Set([
@@ -20,6 +23,8 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const { mutate, isPending, isSuccess, data, error, reset } = useUploadMedia(playerSlug)
   const [isDragging, setIsDragging] = useState(false)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   function handleFiles(list: FileList | null) {
     if (!list || list.length === 0) return
@@ -77,18 +82,18 @@ export function UploadButton({ playerSlug, fullWidth = false }: Props) {
         {isPending ? (
           <>
             <span className="animate-spin text-xl">⏳</span>
-            <span>Import en cours…</span>
+            <span>{t('common.media.import_in_progress')}</span>
           </>
         ) : isDragging ? (
           <>
             <span className="text-xl">📂</span>
-            <span className="font-medium">Déposer les fichiers</span>
+            <span className="font-medium">{t('common.media.drop_files')}</span>
           </>
         ) : (
           <>
             <span className="text-xl">⬆</span>
-            <span>Glisser-déposer ou <span className="underline">parcourir</span></span>
-            <span className="text-xs opacity-60">MP4, MOV, AVI, MKV, PNG, JPG…</span>
+            <span>{t('common.media.drag_or')} <span className="underline">parcourir</span></span>
+            <span className="text-xs opacity-60">{t('common.media.supported_formats')}</span>
           </>
         )}
       </div>

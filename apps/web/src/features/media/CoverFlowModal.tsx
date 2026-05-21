@@ -102,6 +102,7 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
         <svg className="mb-3 h-10 w-10 text-muted-foreground/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
         </svg>
+        {/* eslint-disable-next-line @levelup/no-hardcoded-strings */}
         <p className="text-sm font-medium">Lecture impossible</p>
         <p className="mt-1 text-xs text-muted-foreground">{error}</p>
         {basename && <p className="mt-2 text-xs text-muted-foreground/70">{basename}</p>}

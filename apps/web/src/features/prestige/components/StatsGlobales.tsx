@@ -16,6 +16,9 @@ import type { Challenge, Tier, ChallengeMode } from '@/lib/prestige'
 import { TIER_COLORS, TIER_LABELS_FR } from '@/lib/prestige'
 import { useAssetLabel } from '@/lib/i18n/fieldMappings'
 import { CADENCE_FREE_FALLBACK_FR } from '../fallback.i18n'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 interface StatsGlobalesProps {
   /** Tous les défis du joueur (actifs + terminés). */
@@ -28,6 +31,8 @@ const TIERS: Tier[] = ['normal', 'heroic', 'legendary', 'mythic']
 
 export function StatsGlobales({ challenges }: StatsGlobalesProps) {
   const [modeFilter, setModeFilter] = useState<ModeFilter>('all')
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const filtered = useMemo(
     () => (modeFilter === 'all' ? challenges : challenges.filter((c) => c.mode === modeFilter)),
@@ -59,7 +64,7 @@ export function StatsGlobales({ challenges }: StatsGlobalesProps) {
 
       {/* Taux de complétion global */}
       <div className="rounded-md border border-border bg-card p-3">
-        <p className="text-xs text-muted-foreground">Taux de complétion</p>
+        <p className="text-xs text-muted-foreground">{t('common.prestige.completion_rate')}</p>
         <p className="mt-0.5 text-xl font-semibold">
           {stats.totalCreated === 0
             ? '—'
@@ -72,9 +77,9 @@ export function StatsGlobales({ challenges }: StatsGlobalesProps) {
 
       {/* Top métriques */}
       <div className="rounded-md border border-border bg-card p-3">
-        <p className="mb-2 text-xs text-muted-foreground">Top métriques travaillées</p>
+        <p className="mb-2 text-xs text-muted-foreground">{t('common.prestige.top_metrics')}</p>
         {stats.topMetrics.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Aucune donnée pour ce filtre.</p>
+          <p className="text-xs text-muted-foreground">{t('common.prestige.no_data_for_filter')}</p>
         ) : (
           <ul className="space-y-1">
             {stats.topMetrics.map(({ metric, count }) => (

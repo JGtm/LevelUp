@@ -11,9 +11,13 @@
 import { useState } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { LeaderboardPP, type LeaderboardEntry } from './components/LeaderboardPP'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function LeaderboardPPPage() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const [period, setPeriod] = useState<'week' | 'month' | 'all'>('all')
 
   // Phase 5 minimale : pas de fetch backend tant que le leaderboard cross-amis
@@ -25,7 +29,7 @@ export function LeaderboardPPPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">Leaderboard PP</h1>
         <p className="text-sm text-muted-foreground">
-          Classement Prestige entre amis dérivés de ton escouade et tes relations.
+          {t('common.prestige.leaderboard_intro')}
         </p>
       </header>
 
@@ -33,7 +37,7 @@ export function LeaderboardPPPage() {
         <LeaderboardPP entries={entries} period={period} onPeriodChange={setPeriod} />
       ) : (
         <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          Sélectionne un joueur pour voir le leaderboard.
+          {t('common.prestige.select_player_for_leaderboard')}
         </div>
       )}
     </div>
