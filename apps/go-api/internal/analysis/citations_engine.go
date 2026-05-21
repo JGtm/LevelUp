@@ -43,35 +43,100 @@ type CitationProgressInput struct {
 }
 
 // ComputeFullMatchCitations calcule les deltas de citations avec le moteur complet.
-// Gère tous les mapping_types dont composite (post-traitement).
-// in.Ctx      : données du match (medals, stats, awards, events, playlist, …).
-// in.CumulPre : cumul avant ce match (nil accepté — traité comme vide).
-// mappings    : règles chargées depuis citation_mappings.
+//
+// Sémantique progression (R1-R8) :
+//   - Leaf : delta = min(raw, max(tier_targets) − cumulPre). Zéro si déjà masterisée (R3).
+//   - Composite : +1 par enfant qui traverse son palier final durant ce match (R4).
+//   - Méta (composite de composites) : même règle en cascade, passes itératives (R6).
+//   - Sans tier_targets sur une leaf : delta = raw, pas de cap, pas de transition composite (R7).
+//   - Sans tier_targets sur un composite : max = len(children) (R7).
 func ComputeFullMatchCitations(
 	in CitationProgressInput,
 	mappings []domain.CitationFullMapping,
 ) []domain.CitationMatchDelta {
-	totals := make(map[string]int, len(mappings))
+	cumulPre := in.CumulPre
+	if cumulPre == nil {
+		cumulPre = map[string]int{}
+	}
+
+	tierMax := buildTierMaxIndex(mappings)
+
+	// Phase A — leaves : dispatch + cap (R1-R3).
+	leafDeltas := make(map[string]int, len(mappings))
 	for _, m := range mappings {
 		if m.MappingType == domain.CitationMappingTypeComposite {
-			continue // calculé en post-traitement après le dispatch principal
+			continue
 		}
-		val := dispatchFull(m, in.Ctx)
-		if val > 0 {
-			totals[m.NameNorm] += val
+		raw := dispatchFull(m, in.Ctx)
+		if raw <= 0 {
+			continue
+		}
+		if delta := capLeafDelta(raw, cumulPre[m.NameNorm], tierMax[m.NameNorm]); delta > 0 {
+			leafDeltas[m.NameNorm] = delta
 		}
 	}
 
-	// Post-traitement : citations composite (valeur = nb d'enfants masterisés dans ce match).
-	computeCompositeCitations(totals, mappings)
+	// Phase B — état post-match des leaves.
+	cumulPost := make(map[string]int, len(cumulPre)+len(leafDeltas))
+	for k, v := range cumulPre {
+		cumulPost[k] = v
+	}
+	for k, v := range leafDeltas {
+		cumulPost[k] += v
+	}
 
-	deltas := make([]domain.CitationMatchDelta, 0, len(totals))
-	for norm, val := range totals {
-		if val > 0 {
-			deltas = append(deltas, domain.CitationMatchDelta{NameNorm: norm, Value: val})
+	// Phase C — composites/métas : transitions de palier (R4-R7).
+	compositeDeltas := computeCompositeTransitions(cumulPre, cumulPost, tierMax, mappings)
+
+	all := make([]domain.CitationMatchDelta, 0, len(leafDeltas)+len(compositeDeltas))
+	for n, v := range leafDeltas {
+		all = append(all, domain.CitationMatchDelta{NameNorm: n, Value: v})
+	}
+	for n, v := range compositeDeltas {
+		all = append(all, domain.CitationMatchDelta{NameNorm: n, Value: v})
+	}
+	return all
+}
+
+// capLeafDelta applique R1-R3 : cap du delta brut au cap-room restant avant le palier final.
+// maxTier == 0 → pas de tier_targets → pas de cap, delta = raw.
+func capLeafDelta(raw, pre, maxTier int) int {
+	if maxTier == 0 {
+		return raw
+	}
+	capRoom := maxTier - pre
+	if capRoom <= 0 {
+		return 0
+	}
+	if raw > capRoom {
+		return capRoom
+	}
+	return raw
+}
+
+// buildTierMaxIndex construit l'index citation_name_norm → max(tier_targets).
+// Retourne 0 pour les citations sans tier_targets.
+func buildTierMaxIndex(mappings []domain.CitationFullMapping) map[string]int {
+	idx := make(map[string]int, len(mappings))
+	for _, m := range mappings {
+		idx[m.NameNorm] = parseTierMax(m.TierTargets)
+	}
+	return idx
+}
+
+// parseTierMax retourne la valeur maximale d'un CSV tier_targets.
+// Retourne 0 si nil ou vide.
+func parseTierMax(tierTargetsCSV *string) int {
+	if tierTargetsCSV == nil || *tierTargetsCSV == "" {
+		return 0
+	}
+	max := 0
+	for _, part := range strings.Split(*tierTargetsCSV, ",") {
+		if v, err := strconv.Atoi(strings.TrimSpace(part)); err == nil && v > max {
+			max = v
 		}
 	}
-	return deltas
+	return max
 }
 
 func dispatchFull(m domain.CitationFullMapping, ctx domain.CitationContext) int {
