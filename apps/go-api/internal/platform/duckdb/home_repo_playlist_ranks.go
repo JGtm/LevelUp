@@ -239,11 +239,13 @@ func buildPlaylistRankItem(
 
 	msrIsPlacement := hasMSR && (msr.tier == "Placement" || strings.HasPrefix(msr.tierLabel, "Placement"))
 	snapIsPlacement := hasSnap && snapRem > 0
-	isPlacement := p.isRanked && (snapIsPlacement || msrIsPlacement)
+	// Une playlist classée sans MSR ET sans snapshot positif est traitée comme
+	// placement à 0 match joué (parité avec l'ancien code `else if p.isRanked`).
+	isPlacement := p.isRanked && (snapIsPlacement || msrIsPlacement || !hasMSR)
 
 	switch {
 	case isPlacement:
-		remaining := 0
+		remaining := 10 // défaut : 0 match de placement joué
 		switch {
 		case snapIsPlacement:
 			remaining = snapRem

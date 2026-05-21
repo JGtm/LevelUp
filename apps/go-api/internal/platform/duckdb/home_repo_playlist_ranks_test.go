@@ -152,6 +152,33 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshotNoMSR(t *testing.T) {
 	}
 }
 
+func TestBuildPlaylistRankItem_RankedNoMSRNoSnapshot(t *testing.T) {
+	t.Parallel()
+	// Régression : playlist ranked vue dans match_registry mais sans MSR
+	// (aucun match ranked joué) ET sans snapshot CSR (sync CSR jamais lancée).
+	// Doit ressortir un placement à 0/10 avec badge unranked_0.png, pas un item vide.
+	p := playlistPhaseBRow{
+		playlistID:   "pl-ranked",
+		playlistName: "Assassin classé",
+		isRanked:     true,
+		lastMatchID:  "m1",
+	}
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{})
+
+	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 10 {
+		t.Errorf("MeasurementMatchesRemaining: want 10 (placement à 0 match), got %v", item.MeasurementMatchesRemaining)
+	}
+	if item.BadgeImageURL == nil || !contains(*item.BadgeImageURL, "unranked_0") {
+		t.Errorf("BadgeImageURL: want unranked_0.png, got %v", item.BadgeImageURL)
+	}
+	if item.RatingValue != nil {
+		t.Errorf("RatingValue: want nil, got %v", *item.RatingValue)
+	}
+	if item.RatingType == nil || *item.RatingType != "CSR" {
+		t.Errorf("RatingType: want CSR, got %v", item.RatingType)
+	}
+}
+
 func TestBuildPlaylistRankItem_NonRankedNoMSR(t *testing.T) {
 	t.Parallel()
 	// Playlist sociale jamais classée : on ne fabrique rien.
