@@ -7,6 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type { SynthesisHighlightsPreview, SynthesisMatchHighlight } from '@/lib/api/types'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest, type SynthesisManifestKey } from '@/lib/i18n/generated/synthesis'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface HighlightRowProps {
   item: SynthesisMatchHighlight
@@ -67,16 +70,18 @@ export function SynthesisHighlightsSection({ highlights, playerSlug }: Synthesis
     : highlights.top_by_kda
 
   const worst = highlights.worst_by_deaths
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: SynthesisManifestKey) => formatMessage(synthesisManifest, key, locale)
 
   const hasData = best.length > 0 || worst.length > 0
 
   if (!hasData) {
     return (
       <Card>
-        <CardHeader><CardTitle>Performances marquantes</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('synthesis.highlights.section_title')}</CardTitle></CardHeader>
         <CardContent>
           <EmptyStateNotice
-            title="Aucun match remarquable"
+            title={t('synthesis.highlights.no_remarkable_match')}
             description="Pas de données de performance pour le scope et la période sélectionnés."
           />
         </CardContent>
@@ -91,7 +96,7 @@ export function SynthesisHighlightsSection({ highlights, playerSlug }: Synthesis
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {best.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Meilleurs matchs</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('synthesis.highlights.best_matches')}</CardTitle></CardHeader>
           <CardContent className="p-0">
             {best.map((item) => (
               <HighlightRow
@@ -106,7 +111,7 @@ export function SynthesisHighlightsSection({ highlights, playerSlug }: Synthesis
       )}
       {worst.length > 0 && (
         <Card>
-          <CardHeader><CardTitle>Matchs difficiles</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('synthesis.highlights.tough_matches')}</CardTitle></CardHeader>
           <CardContent className="p-0">
             {worst.map((item) => (
               <HighlightRow

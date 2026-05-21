@@ -145,3 +145,71 @@ en = "Solo"
 [synthesis.scope.squad_label]
 fr = "Escouade"
 en = "Squad"
+
+# ─── Sections / titres charts (top hardcoded strings) ────────────────────
+
+[synthesis.highlights.section_title]
+fr = "Performances marquantes"
+en = "Highlight performances"
+
+[synthesis.highlights.no_remarkable_match]
+fr = "Aucun match remarquable"
+en = "No remarkable match"
+
+[synthesis.charts.kill_types_title]
+fr = "Répartition des frags"
+en = "Kill type distribution"
+
+[synthesis.charts.weapon_kills_title]
+fr = "Frags par arme"
+en = "Kills by weapon"
+
+[synthesis.kpi.win_streak_max]
+fr = "Victoires consécutives (max)"
+en = "Win streak (max)"
+
+[synthesis.kpi.killing_spree_max]
+fr = "Folie meurtrière (max)"
+en = "Killing spree (max)"
+
+[synthesis.kpi.raw_accuracy]
+fr = "Précision brute"
+en = "Raw accuracy"
+
+[synthesis.kpi.vehicles_destroyed]
+fr = "Véhicules détruits"
+en = "Vehicles destroyed"
+
+[synthesis.empty.synthesis_unavailable]
+fr = "Synthèse indisponible"
+en = "Synthesis unavailable"
+
+[synthesis.charts.top_vs_total_per_week]
+fr = "Matchs Top vs Total par semaine"
+en = "Top vs Total matches per week"
+
+# ─── Relations preview section ───────────────────────────────────────────
+
+[synthesis.relations.section_title]
+fr = "Relations de jeu"
+en = "Gameplay relationships"
+
+[synthesis.relations.section_description]
+fr = "Les visages qui reviennent le plus souvent dans le scope courant."
+en = "The faces appearing most frequently in the current scope."
+
+[synthesis.relations.matches_with]
+fr = "matchs · avec"
+en = "matches · with"
+
+[synthesis.relations.open_full_view]
+fr = "Ouvrir la vue complète"
+en = "Open full view"
+
+[synthesis.relations.empty_title]
+fr = "Aucune relation détectée"
+en = "No relationship detected"
+
+[synthesis.relations.frequent_allies_title]
+fr = "Alliés fréquents"
+en = "Frequent allies"

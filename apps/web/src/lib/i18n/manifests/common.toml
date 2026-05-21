@@ -82,3 +82,285 @@ en = "Loading…"
 [common.empty.error]
 fr = "Erreur de chargement"
 en = "Loading error"
+
+# ─── Shell : navigation et sync status (NavL1, NavL2, AppShellHeader) ───────
+
+[common.shell.sync_running_title]
+fr = "Synchronisation en cours…"
+en = "Sync in progress…"
+
+[common.shell.sync_running_aria]
+fr = "Synchronisation en cours"
+en = "Sync running"
+
+[common.shell.sync_uptodate_title]
+fr = "À jour"
+en = "Up to date"
+
+[common.shell.sync_uptodate_aria]
+fr = "Synchronisation à jour"
+en = "Sync up to date"
+
+[common.shell.nav_main_aria]
+fr = "Navigation principale"
+en = "Main navigation"
+
+[common.shell.logo_aria]
+fr = "LevelUp — retour à l'accueil"
+en = "LevelUp — back to home"
+
+[common.shell.settings_tabs_aria]
+fr = "Onglets Paramètres"
+en = "Settings tabs"
+
+[common.shell.nav_career_aria]
+fr = "Navigation carrière"
+en = "Career navigation"
+
+[common.shell.nav_analytics_aria]
+fr = "Navigation analytique"
+en = "Analytics navigation"
+
+[common.shell.nav_player_aria]
+fr = "Navigation joueur"
+en = "Player navigation"
+
+[common.shell.player_change_aria]
+fr = "Changer de titre"
+en = "Change title"
+
+[common.shell.player_select]
+fr = "Sélectionner un joueur"
+en = "Select a player"
+
+# ─── Filter pills (FiltresPill, etc.) ────────────────────────────────────
+
+[common.filters.incompatible_aria]
+fr = "Filtres incompatibles"
+en = "Incompatible filters"
+
+[common.filters.advanced_aria]
+fr = "Filtres avancés"
+en = "Advanced filters"
+
+[common.filters.options_updating]
+fr = "Mise à jour des options disponibles…"
+en = "Updating available options…"
+
+[common.filters.experience_type_title]
+fr = "Type d'expérience"
+en = "Experience type"
+
+# ─── Player scope navigation ────────────────────────────────────────────
+
+[common.player_scope.nav_aria]
+fr = "Navigation joueur"
+en = "Player navigation"
+
+[common.player_scope.section_label]
+fr = "Navigation joueur"
+en = "Player navigation"
+
+[common.player_scope.section_title]
+fr = "Parcours principal"
+en = "Main journey"
+
+[common.player_scope.secondary_label]
+fr = "Vues secondaires"
+en = "Secondary views"
+
+[common.player_scope.secondary_hint]
+fr = "Accès plus ciblés"
+en = "More targeted access"
+
+# ─── App shell header ────────────────────────────────────────────────────
+
+[common.shell.header_subtitle]
+fr = "Un shell plus compact, sans sidebar, pour lire vite et plonger plus loin quand c'est utile."
+en = "A more compact shell, sidebarless, for fast reading and deeper dives when needed."
+
+[common.shell.halo_session_label]
+fr = "Session Halo :"
+en = "Halo session:"
+
+[common.shell.hint_section_kept]
+fr = "Le shell garde la section courante quand c'est possible, sinon il revient sur l'accueil du joueur."
+en = "The shell keeps the current section when possible, otherwise it falls back to the player home."
+
+# ─── Filter pill experience type ────────────────────────────────────────
+
+[common.filters.playlists_title]
+fr = "Playlists"
+en = "Playlists"
+
+[common.filters.modes_title]
+fr = "Modes"
+en = "Modes"
+
+[common.filters.maps_title]
+fr = "Cartes"
+en = "Maps"
+
+# ─── Error boundary fallback (class component, locale = fr fallback) ────
+
+[common.error.boundary_title]
+fr = "Une erreur est survenue"
+en = "An error occurred"
+
+[common.error.boundary_description]
+fr = "L'application a rencontré un problème inattendu. Rechargez la page pour réessayer."
+en = "The application encountered an unexpected problem. Reload the page to try again."
+
+[common.error.reload_action]
+fr = "Recharger la page"
+en = "Reload page"
+
+# ─── Auth pages (LoginPage, RegisterPage) ────────────────────────────
+
+[common.auth.username_label]
+fr = "Identifiant"
+en = "Username"
+
+[common.auth.username_placeholder]
+fr = "Votre identifiant"
+en = "Your username"
+
+[common.auth.password_label]
+fr = "Mot de passe"
+en = "Password"
+
+[common.auth.password_placeholder_min]
+fr = "8 caractères minimum"
+en = "8 characters minimum"
+
+[common.auth.password_placeholder_short]
+fr = "8 car. min."
+en = "8 char. min."
+
+[common.auth.username_placeholder_range]
+fr = "3-30 caractères"
+en = "3-30 characters"
+
+[common.auth.confirm_password]
+fr = "Confirmer le mot de passe"
+en = "Confirm password"
+
+[common.auth.invitation_code]
+fr = "Code d'invitation"
+en = "Invitation code"
+
+[common.auth.login_action]
+fr = "Se connecter"
+en = "Sign in"
+
+[common.auth.login_pending]
+fr = "Connexion…"
+en = "Signing in…"
+
+[common.auth.no_account_prompt]
+fr = "Pas encore de compte ?"
+en = "No account yet?"
+
+[common.auth.create_account]
+fr = "Créer un compte"
+en = "Create account"
+
+[common.auth.already_account]
+fr = "Déjà un compte ?"
+en = "Already have an account?"
+
+[common.auth.first_launch_admin]
+fr = "Premier lancement — votre compte sera administrateur."
+en = "First launch — your account will be administrator."
+
+[common.auth.invalid_credentials]
+fr = "Identifiants incorrects."
+en = "Invalid credentials."
+
+[common.auth.connection_error]
+fr = "Erreur de connexion."
+en = "Connection error."
+
+# ─── Help menu ───────────────────────────────────────────────────────────
+
+[common.help.glossary]
+fr = "Glossaire & Concepts"
+en = "Glossary & Concepts"
+
+[common.help.release_notes]
+fr = "Notes de version"
+en = "Release notes"
+
+# ─── Admin & setup pages ────────────────────────────────────────────────
+
+[common.admin.no_users]
+fr = "Aucun utilisateur."
+en = "No users."
+
+[common.admin.new_password_for]
+fr = "Nouveau MDP pour"
+en = "New password for"
+
+[common.admin.invitation_codes_section]
+fr = "Codes d'invitation"
+en = "Invitation codes"
+
+[common.admin.no_invitation_codes]
+fr = "Aucun code d'invitation."
+en = "No invitation codes."
+
+[common.setup.config_loading]
+fr = "Vérification de la configuration…"
+en = "Checking configuration…"
+
+[common.setup.config_title]
+fr = "Configuration de LevelUp"
+en = "LevelUp setup"
+
+[common.setup.profile_loading]
+fr = "Chargement du profil joueur…"
+en = "Loading player profile…"
+
+[common.setup.config_done]
+fr = "✓ Configuration terminée !"
+en = "✓ Setup complete!"
+
+[common.setup.access_app]
+fr = "Accéder à l'application"
+en = "Access the app"
+
+# ─── Media upload ───────────────────────────────────────────────────────
+
+[common.media.import_in_progress]
+fr = "Import en cours…"
+en = "Import in progress…"
+
+[common.media.drop_files]
+fr = "Déposer les fichiers"
+en = "Drop files"
+
+[common.media.drag_or]
+fr = "Glisser-déposer ou"
+en = "Drag and drop or"
+
+[common.media.supported_formats]
+fr = "MP4, MOV, AVI, MKV, PNG, JPG…"
+en = "MP4, MOV, AVI, MKV, PNG, JPG…"
+
+# ─── Leaderboard ────────────────────────────────────────────────────────
+
+[common.leaderboard.season_placeholder]
+fr = "Saison (ex: Season5)"
+en = "Season (e.g. Season5)"
+
+[common.leaderboard.playlist_placeholder]
+fr = "Playlist (optionnel)"
+en = "Playlist (optional)"
+
+[common.leaderboard.season_prefix]
+fr = "— Saison :"
+en = "— Season:"
+
+[common.leaderboard.empty_title]
+fr = "Classement vide"
+en = "Empty leaderboard"

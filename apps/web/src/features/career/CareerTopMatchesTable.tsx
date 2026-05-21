@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import type { CareerTopMatch } from '@/lib/api/types'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
+import { formatMessage } from '@/lib/i18n/format'
+import { careerManifest, type CareerManifestKey } from '@/lib/i18n/generated/career'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   items: CareerTopMatch[]
@@ -38,10 +41,16 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
   const params = useParams({ strict: false }) as { playerSlug?: string }
   const playerSlug = slugProp ?? params.playerSlug ?? ''
   const navigateToMatch = useNavigateToMatch(playerSlug)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CareerManifestKey) => formatMessage(careerManifest, key, locale)
 
   const filtered = variant ? items.filter((m) => m.variant === variant) : items
   const defaultTitle =
-    variant === 'worst' ? 'Pires matchs' : variant === 'best' ? 'Meilleurs matchs' : 'Top matchs'
+    variant === 'worst'
+      ? t('career.top_matches.default_title_worst')
+      : variant === 'best'
+        ? t('career.top_matches.default_title_best')
+        : t('career.top_matches.default_title_neutral')
 
   function goToMatch(matchId: string) {
     navigateToMatch(matchId, {
@@ -65,16 +74,16 @@ export function CareerTopMatchesTable({ items, variant, title, playerSlug: slugP
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs font-medium text-muted-foreground">
-                <th className="pb-2 text-left">#</th>
-                <th className="pb-2 text-left">Date</th>
-                <th className="pb-2 text-left">Carte / Mode</th>
-                <th className="pb-2 text-right">K</th>
-                <th className="pb-2 text-right">D</th>
-                <th className="pb-2 text-right">A</th>
-                <th className="pb-2 text-right">K/D</th>
-                <th className="pb-2 text-right">Score</th>
-                <th className="pb-2 text-right">Résultat</th>
-                <th className="pb-2 text-left pl-3">Badge</th>
+                <th className="pb-2 text-left">{t('career.top_matches.col_index')}</th>
+                <th className="pb-2 text-left">{t('career.top_matches.col_date')}</th>
+                <th className="pb-2 text-left">{t('career.top_matches.col_map_mode')}</th>
+                <th className="pb-2 text-right">{t('career.top_matches.col_kills_short')}</th>
+                <th className="pb-2 text-right">{t('career.top_matches.col_deaths_short')}</th>
+                <th className="pb-2 text-right">{t('career.top_matches.col_assists_short')}</th>
+                <th className="pb-2 text-right">{t('career.top_matches.col_kd')}</th>
+                <th className="pb-2 text-right">{t('career.top_matches.col_score')}</th>
+                <th className="pb-2 text-right">{t('career.top_matches.col_outcome')}</th>
+                <th className="pb-2 text-left pl-3">{t('career.top_matches.col_badge')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

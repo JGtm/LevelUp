@@ -2,6 +2,8 @@ import { Link } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 import {
   PLAYER_PRIMARY_NAV_ITEMS,
@@ -47,19 +49,21 @@ function PlayerNavLink({ item, playerSlug, tone }: PlayerNavLinkProps) {
 
 export function PlayerScopeNav() {
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   if (!currentPlayer) return null
 
   return (
-    <nav aria-label="Navigation joueur" className="space-y-3">
+    <nav aria-label={t('common.player_scope.nav_aria')} className="space-y-3">
       <div className="rounded-[28px] border border-border bg-card/90 p-3 shadow-sm backdrop-blur">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-2 px-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-3xs font-semibold uppercase tracking-label-xl text-muted-foreground">
-                Navigation joueur
+                {t('common.player_scope.section_label')}
               </p>
               <h2 className="mt-1 text-base font-semibold tracking-tight text-foreground">
-                Parcours principal
+                {t('common.player_scope.section_title')}
               </h2>
             </div>
             <Badge variant="outline" className="w-fit border-border bg-muted text-muted-foreground">
@@ -83,9 +87,9 @@ export function PlayerScopeNav() {
       <div className="rounded-2xl border border-border bg-card p-3 shadow-sm backdrop-blur">
         <div className="mb-2 flex items-center justify-between px-2">
           <p className="text-3xs font-semibold uppercase tracking-label-xl text-muted-foreground">
-            Vues secondaires
+            {t('common.player_scope.secondary_label')}
           </p>
-          <span className="text-xs text-muted-foreground">Accès plus ciblés</span>
+          <span className="text-xs text-muted-foreground">{t('common.player_scope.secondary_hint')}</span>
         </div>
 
         <div className="flex flex-wrap gap-2">

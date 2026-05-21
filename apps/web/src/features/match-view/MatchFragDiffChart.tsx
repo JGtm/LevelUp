@@ -24,6 +24,9 @@ import type {
 import { allPlayersFragDiffSeries, formatBinSeconds } from './_chartSeries'
 import { buildMatchPlayerColors, buildXUIDToGamertagMap } from './colors'
 import type { MatchViewText } from './i18n'
+import { formatMessage } from '@/lib/i18n/format'
+import { matchViewManifest } from '@/lib/i18n/generated/match_view'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   events: MatchHighlightEvent[]
@@ -45,6 +48,8 @@ export function MatchFragDiffChart({
   t,
   friendGamertags,
 }: Props) {
+  const locale = useAppShellStore((s) => s.locale)
+  const chartTitle = formatMessage(matchViewManifest, 'match_view.frag_diff.title', locale)
   const xuidToGamertag = buildXUIDToGamertagMap(scoreboard, pairs, roster)
   const colors = buildMatchPlayerColors(scoreboard, meXUID, friendGamertags, roster)
   const series = allPlayersFragDiffSeries(events, xuidToGamertag, meXUID, colors.tokenByXUID)
@@ -70,7 +75,7 @@ export function MatchFragDiffChart({
     <Card>
       <CardContent className="py-4">
         <TimeseriesLineChart
-          title="Frags différentiel cumulé — tous les joueurs"
+          title={chartTitle}
           height={360}
           xAxisType="value"
           timeAxis={false}

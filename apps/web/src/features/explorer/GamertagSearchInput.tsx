@@ -10,6 +10,9 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { useGamertagSuggestions } from '@/components/ui/useGamertagSuggestions'
 import type { TeammateOption } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   onSelect: (gamertag: string) => void
@@ -24,7 +27,7 @@ interface Props {
 
 export function GamertagSearchInput({
   onSelect,
-  placeholder = 'Rechercher un joueur…',
+  placeholder,
   initialValue,
   frequentOptions,
   excludeGamertags,
@@ -32,6 +35,10 @@ export function GamertagSearchInput({
   const [query, setQuery] = useState(initialValue ?? '')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: ExplorerManifestKey, vars?: Record<string, unknown>) =>
+    formatMessage(explorerManifest, key, locale, vars)
+  const resolvedPlaceholder = placeholder ?? t('explorer.search.placeholder')
 
   const { configured, frequent, remote, isRemoteLoading, hasAnyResult, remoteAttempted } =
     useGamertagSuggestions({ query, frequentOptions, excludeGamertags })
@@ -85,7 +92,7 @@ export function GamertagSearchInput({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
+        placeholder={resolvedPlaceholder}
       />
 
       {showDropdown && (
@@ -93,7 +100,7 @@ export function GamertagSearchInput({
           {configured.length > 0 && (
             <div>
               <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
-                Joueurs configurés
+                {t('explorer.search.group_configured')}
               </div>
               {configured.map((item) => (
                 <SuggestionRow
@@ -109,7 +116,7 @@ export function GamertagSearchInput({
           {frequent.length > 0 && (
             <div>
               <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
-                Coéquipiers fréquents
+                {t('explorer.search.group_frequent')}
               </div>
               {frequent.map((item) => (
                 <SuggestionRow
@@ -125,13 +132,13 @@ export function GamertagSearchInput({
           {remote.length > 0 && (
             <div>
               <div className="sticky top-0 bg-background/95 px-3 py-1.5 text-3xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border/50">
-                Autres joueurs
+                {t('explorer.search.group_others')}
               </div>
               {remote.map((item) => (
                 <SuggestionRow
                   key={item.gamertag}
                   gamertag={item.gamertag}
-                  badge={item.exact_match ? 'Exact' : undefined}
+                  badge={item.exact_match ? t('explorer.search.badge_exact') : undefined}
                   onSelect={() => pick(item.gamertag)}
                 />
               ))}
@@ -139,12 +146,12 @@ export function GamertagSearchInput({
           )}
 
           {isRemoteLoading && (
-            <div className="px-4 py-2 text-sm text-muted-foreground">Recherche…</div>
+            <div className="px-4 py-2 text-sm text-muted-foreground">{t('explorer.search.loading')}</div>
           )}
 
           {showEmpty && (
             <div className="px-4 py-2 text-sm text-muted-foreground">
-              Aucun joueur trouvé pour "{trimmed}"
+              {t('explorer.search.no_results', { query: trimmed })}
             </div>
           )}
         </div>

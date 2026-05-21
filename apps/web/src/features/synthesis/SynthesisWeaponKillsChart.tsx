@@ -4,6 +4,9 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getEChartsThemeColors } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SynthesisWeaponKillEntry } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 interface Props {
   weapons: SynthesisWeaponKillEntry[]
@@ -56,6 +59,8 @@ function buildWeaponKillsOption(series: ChartSeries<WeaponPoint>[]): EChartsCore
 }
 
 export function SynthesisWeaponKillsChart({ weapons, height, fillHeight }: Props) {
+  const locale = useAppShellStore((s) => s.locale)
+  const title = formatMessage(synthesisManifest, 'synthesis.charts.weapon_kills_title', locale)
   const series: ChartSeries<WeaponPoint>[] = [{
     key: 'weapon-kills',
     datapoints: weapons.map((w) => ({ label: w.label, kills: w.kills })),
@@ -72,7 +77,7 @@ export function SynthesisWeaponKillsChart({ weapons, height, fillHeight }: Props
 
   return (
     <ChartCard
-      title="Frags par arme"
+      title={title}
       series={series}
       buildOption={buildOption}
       height={computedHeight}

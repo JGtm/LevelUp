@@ -14,6 +14,9 @@
 import { Link, useRouterState, useParams } from '@tanstack/react-router'
 import { FilterOmnibar } from './FilterOmnibar'
 import { PeriodSessionRail } from './PeriodSessionRail'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
@@ -45,6 +48,8 @@ export function NavL2() {
   const pathname = routerState.location.pathname
   const params = useParams({ strict: false }) as { playerSlug?: string }
   const playerSlug = params.playerSlug ?? ''
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const section = detectSection(pathname)
   if (!section) return null
@@ -61,7 +66,7 @@ export function NavL2() {
       <div
         className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
         role="navigation"
-        aria-label="Navigation carrière"
+        aria-label={t('common.shell.nav_career_aria')}
       >
         <div className="flex items-center gap-0 px-4">
           {CAREER_TABS.map((tab) => {
@@ -94,7 +99,7 @@ export function NavL2() {
     <div
       className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
       role="navigation"
-      aria-label="Navigation analytique"
+      aria-label={t('common.shell.nav_analytics_aria')}
     >
       <FilterOmnibar matchContext="solo" />
       <PeriodSessionRail />

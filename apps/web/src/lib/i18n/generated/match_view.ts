@@ -2,6 +2,18 @@
 // Source : apps/web/src/lib/i18n/manifests/match_view.toml
 
 export const matchViewManifest = {
+  "match_view.cards.avg_life": { fr: "Vie moy.", en: "Avg. life" },
+  "match_view.cards.bot_teammate_title": { fr: "Coéquipier bot présent dans ce match", en: "Bot teammate present in this match" },
+  "match_view.cards.deaths_vs_expected": { fr: "Morts vs attendues", en: "Deaths vs expected" },
+  "match_view.cards.expected_prefix": { fr: "attendu", en: "expected" },
+  "match_view.cards.frags_vs_expected": { fr: "Frags vs attendus", en: "Kills vs expected" },
+  "match_view.cards.kd_vs_nemesis": { fr: "K/D vs nemesis", en: "K/D vs nemesis" },
+  "match_view.cards.label_ally": { fr: "allié", en: "ally" },
+  "match_view.cards.label_enemy": { fr: "adverse", en: "enemy" },
+  "match_view.cards.label_expected": { fr: "attendu", en: "expected" },
+  "match_view.cards.label_real": { fr: "réel", en: "actual" },
+  "match_view.cards.mmr_team_vs_enemy": { fr: "MMR équipe vs adverse", en: "Team vs enemy MMR" },
+  "match_view.cards.no_csr_data": { fr: "pas de données CSR", en: "no CSR data" },
   "match_view.citations.empty": { fr: "Aucune citation pour ce match", en: "No citation for this match" },
   "match_view.citations.medals_section": { fr: "Médailles", en: "Medals" },
   "match_view.citations.section_title": { fr: "Citations gagnées", en: "Citations earned" },
@@ -14,6 +26,7 @@ export const matchViewManifest = {
   "match_view.combat.section_weapons": { fr: "Armes utilisées", en: "Weapons used" },
   "match_view.empty.no_data": { fr: "Aucune donnée disponible pour ce match", en: "No data available for this match" },
   "match_view.error.load_failed": { fr: "Impossible de charger le détail du match", en: "Failed to load match detail" },
+  "match_view.frag_diff.title": { fr: "Frags différentiel cumulé — tous les joueurs", en: "Cumulative frag differential — all players" },
   "match_view.header.duration_label": { fr: "Durée", en: "Duration" },
   "match_view.header.outcome_label": { fr: "Résultat", en: "Outcome" },
   "match_view.header.performance_score_label": { fr: "Score de performance", en: "Performance score" },

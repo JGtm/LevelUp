@@ -2,6 +2,8 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 import {
   buildPlayerDestination,
@@ -24,6 +26,8 @@ function TitleSwitcher() {
   const currentTitleSlug = useAppShellStore((s) => s.currentTitleSlug)
   const isTitleSwitching = useAppShellStore((s) => s.isTitleSwitching)
   const switchTitle = useAppShellStore((s) => s.switchTitle)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const currentTitle =
     availableTitles.find((t) => t.slug === currentTitleSlug)?.name ?? currentTitleSlug
@@ -41,12 +45,12 @@ function TitleSwitcher() {
       value={currentTitleSlug}
       disabled={isTitleSwitching}
       onChange={(e) => { void switchTitle(e.target.value) }}
-      aria-label="Changer de titre"
+      aria-label={t('common.shell.player_change_aria')}
       className="rounded-full border border-border bg-background/70 px-3 py-1 text-sm font-medium text-muted-foreground outline-none transition focus:border-ring hover:border-border hover:bg-primary/10 hover:text-primary disabled:opacity-50 cursor-pointer"
     >
-      {availableTitles.map((t) => (
-        <option key={t.slug} value={t.slug} className="text-foreground">
-          {t.name}
+      {availableTitles.map((title) => (
+        <option key={title.slug} value={title.slug} className="text-foreground">
+          {title.name}
         </option>
       ))}
     </select>
@@ -60,6 +64,8 @@ export function AppShellHeader() {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const setCurrentPlayer = useAppShellStore((s) => s.setCurrentPlayer)
   const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   function handlePlayerChange(nextPlayerSlug: string) {
     const nextPlayer = availablePlayers.find((player) => player.player_slug === nextPlayerSlug)
@@ -91,8 +97,7 @@ export function AppShellHeader() {
                 <TitleSwitcher />
               </div>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Un shell plus compact, sans sidebar, pour lire vite et plonger plus loin quand
-                c&apos;est utile.
+                {t('common.shell.header_subtitle')}
               </p>
             </div>
           </Link>
@@ -100,7 +105,7 @@ export function AppShellHeader() {
           <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             {linkedHaloIdentity && (
               <Badge variant="secondary" className="bg-muted px-3 py-1 text-foreground">
-                Session Halo : {linkedHaloIdentity.gamertag}
+                {t('common.shell.halo_session_label')} {linkedHaloIdentity.gamertag}
               </Badge>
             )}
             {GLOBAL_SHELL_LINKS.map((item) => (
@@ -142,7 +147,7 @@ export function AppShellHeader() {
                   onChange={(event) => handlePlayerChange(event.target.value)}
                   className="w-full rounded-2xl border border-border/10 bg-card/10 px-4 py-3 text-sm text-card-foreground outline-none transition focus:border-ring focus:bg-card/15"
                 >
-                  {!currentPlayer && <option value="">Sélectionner un joueur</option>}
+                  {!currentPlayer && <option value="">{t('common.shell.player_select')}</option>}
                   {availablePlayers.map((player) => (
                     <option key={player.player_slug} value={player.player_slug} className="text-foreground">
                       {player.gamertag}
@@ -150,8 +155,7 @@ export function AppShellHeader() {
                   ))}
                 </select>
                 <span className="text-xs text-muted-foreground xl:text-right">
-                  Le shell garde la section courante quand c&apos;est possible, sinon il revient sur
-                  l&apos;accueil du joueur.
+                  {t('common.shell.hint_section_kept')}
                 </span>
               </div>
             </label>

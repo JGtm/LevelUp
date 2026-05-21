@@ -411,3 +411,85 @@ en = "No LUSR checkpoint available for this player."
 [career.ranking.placement]
 fr = "Placement"
 en = "Placement"
+
+# ─── Encounters (table additional columns) ──────────────────────────────────
+
+[career.encounters.col_player]
+fr = "Joueur"
+en = "Player"
+
+[career.encounters.col_wins]
+fr = "Victoires"
+en = "Wins"
+
+[career.encounters.col_losses]
+fr = "Défaites"
+en = "Losses"
+
+[career.encounters.col_last_encounter]
+fr = "Dernière rencontre"
+en = "Last encounter"
+
+[career.encounters.loading]
+fr = "Chargement…"
+en = "Loading…"
+
+[career.encounters.empty]
+fr = "Aucune rencontre enregistrée."
+en = "No encounter recorded."
+
+[career.encounters.see_all]
+fr = "Voir toutes les rencontres"
+en = "View all encounters"
+
+# ─── Compare action ────────────────────────────────────────────────────────
+
+[career.actions.compare]
+fr = "Comparer"
+en = "Compare"
+
+# ─── Top matches (table columns) ────────────────────────────────────────────
+
+[career.top_matches.col_index]
+fr = "#"
+en = "#"
+
+[career.top_matches.col_date]
+fr = "Date"
+en = "Date"
+
+[career.top_matches.col_map_mode]
+fr = "Carte / Mode"
+en = "Map / Mode"
+
+[career.top_matches.col_kills_short]
+fr = "K"
+en = "K"
+
+[career.top_matches.col_deaths_short]
+fr = "D"
+en = "D"
+
+[career.top_matches.col_assists_short]
+fr = "A"
+en = "A"
+
+[career.top_matches.col_score]
+fr = "Score"
+en = "Score"
+
+[career.top_matches.col_badge]
+fr = "Badge"
+en = "Badge"
+
+[career.top_matches.default_title_best]
+fr = "Meilleurs matchs"
+en = "Best matches"
+
+[career.top_matches.default_title_worst]
+fr = "Pires matchs"
+en = "Worst matches"
+
+[career.top_matches.default_title_neutral]
+fr = "Top matchs"
+en = "Top matches"

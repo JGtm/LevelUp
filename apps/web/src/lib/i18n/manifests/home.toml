@@ -476,3 +476,107 @@ en = "Open-ended"
 [home.prestige.objectives_view_all]
 fr = "Voir tous ({n})"
 en = "View all ({n})"
+
+# ─── Battle pass panel (HomeBattlePassPanel) ──────────────────────────────
+
+[home.battle_pass.title]
+fr = "Pass de combat"
+en = "Battle pass"
+
+[home.battle_pass.loading]
+fr = "Chargement du pass de combat..."
+en = "Loading battle pass..."
+
+[home.battle_pass.unavailable_prefix]
+fr = "Non disponible"
+en = "Not available"
+
+[home.battle_pass.default_hint]
+fr = "live API non configurée"
+en = "live API not configured"
+
+[home.battle_pass.no_pass_title]
+fr = "Aucun pass détecté"
+en = "No pass detected"
+
+[home.battle_pass.no_pass_description]
+fr = "Aucune progression de pass saisonnier n'a été renvoyée pour ce joueur."
+en = "No season pass progression returned for this player."
+
+[home.battle_pass.no_tiers]
+fr = "Aucun palier disponible pour ce pass."
+en = "No tier available for this pass."
+
+[home.battle_pass.badge_owned]
+fr = "Premium"
+en = "Premium"
+
+[home.battle_pass.badge_active]
+fr = "Actif"
+en = "Active"
+
+[home.battle_pass.no_description]
+fr = "Aucune description disponible pour ce pass."
+en = "No description available for this pass."
+
+[home.battle_pass.active_pass_label]
+fr = "Pass actif"
+en = "Active pass"
+
+[home.battle_pass.badge_current]
+fr = "Palier actuel"
+en = "Current tier"
+
+[home.battle_pass.badge_obtained]
+fr = "Obtenu"
+en = "Obtained"
+
+[home.battle_pass.badge_free]
+fr = "Gratuit"
+en = "Free"
+
+# ─── Recent media rail (RecentMediaRail) ──────────────────────────────────
+
+[home.media.title_recent]
+fr = "Médias récents"
+en = "Recent media"
+
+[home.media.title_liked]
+fr = "Médias aimés"
+en = "Liked media"
+
+[home.media.tab_recent]
+fr = "Récents"
+en = "Recent"
+
+[home.media.tab_liked]
+fr = "Aimés"
+en = "Liked"
+
+[home.media.loading]
+fr = "Chargement des médias récents…"
+en = "Loading recent media…"
+
+[home.media.unavailable_title]
+fr = "Médias récents indisponibles"
+en = "Recent media unavailable"
+
+[home.media.unavailable_description]
+fr = "La preview média n'a pas pu être chargée pour le moment."
+en = "Media preview could not be loaded right now."
+
+[home.media.empty_liked_title]
+fr = "Aucun média aimé"
+en = "No liked media"
+
+[home.media.empty_liked_description]
+fr = "Marquez vos captures ou clips avec le ♥ pour les retrouver ici."
+en = "Mark your captures or clips with ♥ to find them here."
+
+[home.media.empty_recent_title]
+fr = "Aucun média récent disponible"
+en = "No recent media available"
+
+[home.media.empty_recent_description]
+fr = "Aucune capture ou clip n'est associé au joueur pour le scope actuel."
+en = "No capture or clip associated with the player for the current scope."

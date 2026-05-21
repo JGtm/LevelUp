@@ -13,6 +13,9 @@ import type { MatchViewRank, MatchExpectedStats, MatchNemesisRow, MatchSummaryKp
 import { skillDeltaScale, kdScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
+import { formatMessage } from '@/lib/i18n/format'
+import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 // ---------------------------------------------------------------------------
 // C3 — StatExpectedCard (réel vs attendu)
@@ -31,6 +34,8 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
   const delta = actual != null && expected != null ? actual - expected : null
   const isFavorable =
     delta == null ? null : lowerIsBetter ? delta < 0 : delta > 0
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
   return (
     <div
@@ -42,7 +47,7 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
       <p className="text-2xl font-bold text-foreground">{actual ?? '—'}</p>
       {hasData && expected != null ? (
         <p className="text-xs text-muted-foreground mt-0.5">
-          attendu {expected.toFixed(1)}{' '}
+          {t('match_view.cards.expected_prefix')} {expected.toFixed(1)}{' '}
           {delta != null && (
             <span
               className="font-semibold"
@@ -59,7 +64,7 @@ export function StatExpectedCard({ label, actual, expected, lowerIsBetter = fals
           )}
         </p>
       ) : (
-        <p className="text-xs text-muted-foreground mt-0.5">pas de données CSR</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('match_view.cards.no_csr_data')}</p>
       )}
     </div>
   )
@@ -112,6 +117,8 @@ interface MatchRankBadgeProps {
 }
 
 export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
   if (rank.rating_type === 'none' || !rank.tier_label) return null
 
   const delta = rank.delta_value
@@ -143,7 +150,7 @@ export function MatchRankBadge({ rank, hadBotTeammate = false }: MatchRankBadgeP
         </span>
       )}
       {hadBotTeammate && (
-        <span className="ml-2 rounded bg-warning/20 px-2 py-0.5 text-2xs text-warning" title="Coéquipier bot présent dans ce match">
+        <span className="ml-2 rounded bg-warning/20 px-2 py-0.5 text-2xs text-warning" title={t('match_view.cards.bot_teammate_title')}>
           🤖 bot
         </span>
       )}
@@ -160,6 +167,8 @@ interface KdIndicatorCardProps {
 }
 
 export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
   if (!nemesis) return null
 
   const kd = nemesis.killed_me > 0 ? nemesis.i_killed / nemesis.killed_me : nemesis.i_killed
@@ -167,7 +176,7 @@ export function KdIndicatorCard({ nemesis }: KdIndicatorCardProps) {
   return (
     <div className="rounded-lg border border-border bg-card px-4 py-3">
       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
-        K/D vs nemesis
+        {t('match_view.cards.kd_vs_nemesis')}
       </p>
       <div className="flex items-baseline gap-2">
         <span
@@ -271,6 +280,8 @@ interface MatchSummaryCardsSectionProps {
 
 export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCardsSectionProps) {
   const { expected_kills, expected_deaths } = expectedStats
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
   const killsDelta =
     kpis.kills != null && expected_kills != null ? kpis.kills - expected_kills : null
@@ -281,37 +292,37 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <MatchVsStatCard
-        label="MMR équipe vs adverse"
+        label={t('match_view.cards.mmr_team_vs_enemy')}
         primary={kpis.team_mmr ?? null}
         secondary={kpis.enemy_mmr ?? null}
-        primaryLabel="allié"
-        secondaryLabel="adverse"
+        primaryLabel={t('match_view.cards.label_ally')}
+        secondaryLabel={t('match_view.cards.label_enemy')}
         delta={kpis.delta_mmr ?? null}
         lowerIsBetter={false}
         precision={0}
       />
       <MatchVsStatCard
-        label="Frags vs attendus"
+        label={t('match_view.cards.frags_vs_expected')}
         primary={kpis.kills}
         secondary={expected_kills != null ? Math.round(expected_kills) : null}
-        primaryLabel="réel"
-        secondaryLabel="attendu"
+        primaryLabel={t('match_view.cards.label_real')}
+        secondaryLabel={t('match_view.cards.label_expected')}
         delta={killsDelta}
         lowerIsBetter={false}
         precision={0}
       />
       <MatchVsStatCard
-        label="Morts vs attendues"
+        label={t('match_view.cards.deaths_vs_expected')}
         primary={kpis.deaths}
         secondary={expected_deaths != null ? Math.round(expected_deaths) : null}
-        primaryLabel="réel"
-        secondaryLabel="attendu"
+        primaryLabel={t('match_view.cards.label_real')}
+        secondaryLabel={t('match_view.cards.label_expected')}
         delta={deathsDelta}
         lowerIsBetter={true}
         precision={0}
       />
       <MatchVsStatCard
-        label="Vie moy."
+        label={t('match_view.cards.avg_life')}
         primary={kpis.average_life ?? null}
       />
     </div>
