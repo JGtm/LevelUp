@@ -304,8 +304,11 @@ func TestBackfillCSRFromAPI_HandlesPlacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ratingValue.Valid {
-		t.Errorf("rating_value: want NULL for placement, got %v", ratingValue.Float64)
+	// Note : depuis commit ae0edbd0, rating_value est stocke 0.0 (au lieu de
+	// NULL) pour respecter la contrainte NOT NULL sur match_skill_rank.
+	// Le caller distingue placement vs rating reel via measurement_matches_remaining > 0.
+	if !ratingValue.Valid || ratingValue.Float64 != 0 {
+		t.Errorf("rating_value: want 0.0 for placement (NOT NULL contraint), got valid=%v float=%v", ratingValue.Valid, ratingValue.Float64)
 	}
 	if tier != "Placement" {
 		t.Errorf("tier: want Placement, got %q", tier)
