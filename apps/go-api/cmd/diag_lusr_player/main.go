@@ -24,8 +24,9 @@ import (
 	"sort"
 	"strings"
 
-	duckdb "github.com/duckdb/duckdb-go/v2"
 	lusync "levelup/go-api/internal/sync"
+
+	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
 const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
