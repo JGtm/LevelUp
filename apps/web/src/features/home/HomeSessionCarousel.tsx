@@ -11,6 +11,9 @@ import { kdScale } from '@/lib/accessibility/scales'
 import { getPerfColor } from '@/lib/perf-color'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 function ChevronUpIcon() {
   return (
@@ -91,6 +94,8 @@ export function HomeSessionCarousel({
   const [isAnimating, setIsAnimating] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // Nettoyage si le composant est démonté en cours d'animation
   useEffect(() => () => { cleanupRef.current?.() }, [])
@@ -153,7 +158,7 @@ export function HomeSessionCarousel({
           disabled={displayIdx === 0 || isAnimating}
           onClick={() => handleChange(displayIdx - 1)}
           className={chevronBottomCls}
-          aria-label="Session plus récente"
+          aria-label={t('common.home.newer_session_aria')}
         >
           <ChevronUpIcon />
         </button>
@@ -276,7 +281,7 @@ export function HomeSessionCarousel({
         disabled={displayIdx >= total - 1 || isAnimating}
         onClick={() => handleChange(displayIdx + 1)}
         className={chevronBottomCls}
-        aria-label="Session plus ancienne"
+        aria-label={t('common.home.older_session_aria')}
       >
         <ChevronDownIcon />
       </button>

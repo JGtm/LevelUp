@@ -13,6 +13,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import type { LeaderboardEntry } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 interface LeaderboardBlockProps {
   playerSlug: string
@@ -89,6 +92,8 @@ export function LeaderboardBlock({
 }: LeaderboardBlockProps) {
   const [season, setSeason] = useState(defaultSeason ?? '')
   const [playlist, setPlaylist] = useState(defaultPlaylist ?? '')
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const { data, isLoading, isError, error } = useLeaderboard(
     playerSlug,
@@ -106,21 +111,21 @@ export function LeaderboardBlock({
               type="text"
               value={season}
               onChange={(e) => setSeason(e.target.value)}
-              placeholder="Saison (ex: Season5)"
+              placeholder={t('common.leaderboard.season_placeholder')}
               className="border rounded px-2 py-1 w-28 focus:outline-none focus:ring-1 focus:ring-ring"
             />
             <input
               type="text"
               value={playlist}
               onChange={(e) => setPlaylist(e.target.value)}
-              placeholder="Playlist (optionnel)"
+              placeholder={t('common.leaderboard.playlist_placeholder')}
               className="border rounded px-2 py-1 w-32 focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
         </div>
         {data && (
           <p className="text-xs text-muted-foreground mt-1">
-            {data.total} joueur{data.total > 1 ? 's' : ''} — Saison :{' '}
+            {data.total} joueur{data.total > 1 ? 's' : ''} {t('common.leaderboard.season_prefix')}{' '}
             <span className="font-medium">{data.season_id || '—'}</span>
           </p>
         )}
@@ -145,8 +150,8 @@ export function LeaderboardBlock({
         {data && data.entries.length === 0 && (
           <div className="p-4">
             <EmptyStateCard
-              title="Classement vide"
-              description="Aucun joueur trouvé pour cette saison/playlist."
+              title={t('common.leaderboard.empty_title')}
+              description={t('common.leaderboard.no_match_in_window')}
             />
           </div>
         )}

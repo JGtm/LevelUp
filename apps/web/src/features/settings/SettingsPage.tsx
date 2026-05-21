@@ -20,6 +20,8 @@ import type { TabProps } from './_settingsShared'
 import { GeneralTab } from './GeneralTab'
 import { SyncTab } from './SyncTab'
 import { AnalyseTab } from './AnalyseTab'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 // ─── Onglet Utilisateurs ────────────────────────────────────────────────────
 
@@ -88,6 +90,7 @@ export function SettingsPage() {
   const isAdmin = useAppShellStore((s) => s.isAdmin)
   const locale = normalizeSettingsLocale(useAppShellStore((s) => s.locale))
   const t = getSettingsText(locale)
+  const tc = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const [localSettings, setLocalSettings] = useState<Partial<SettingsResponse>>({})
   const [saveStatus, setSaveStatus] = useState<'saved' | 'error' | null>(null)
@@ -158,7 +161,7 @@ export function SettingsPage() {
 
       {/* Onglets */}
       <div className="border-b border-border px-6">
-        <nav className="-mb-px flex gap-4" aria-label="Onglets paramètres">
+        <nav className="-mb-px flex gap-4" aria-label={tc('common.settings.tabs_aria')}>
           {(
             [
               { id: 'general', label: t.tabGeneral },

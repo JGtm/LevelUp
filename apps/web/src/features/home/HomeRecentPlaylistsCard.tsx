@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { HomePlaylistRank } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 function RankBadge({
   imageUrl,
@@ -57,11 +60,13 @@ export function HomeRecentPlaylistsCard({
   recentPlaylistRanks?: HomePlaylistRank[]
 }) {
   const items = recentPlaylistRanks ?? []
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   return (
     <Card data-testid="home-recent-playlists-card" className="flex self-start flex-col">
       <CardHeader className="space-y-0 pb-3">
-        <CardTitle className="text-base">Playlists récentes</CardTitle>
+        <CardTitle className="text-base">{t('common.home.recent_playlists')}</CardTitle>
       </CardHeader>
 
       <CardContent>
@@ -136,7 +141,7 @@ export function HomeRecentPlaylistsCard({
                         data-testid="home-rank-neutral-label"
                         className="text-xs text-muted-foreground"
                       >
-                        Sans classement
+                        {t('common.home.unranked')}
                       </p>
                     )}
                   </div>
@@ -146,7 +151,7 @@ export function HomeRecentPlaylistsCard({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Aucune playlist récente disponible.
+            {t('common.home.no_recent_playlist')}
           </p>
         )}
       </CardContent>
