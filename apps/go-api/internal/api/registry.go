@@ -732,6 +732,17 @@ func (r *ServiceRegistry) newCareerLiveService(pdb *duckdb.PlayerDB, homeRepo *d
 // cmd/migrate-static-maps à chaque ajout de fichier static). Dégradation
 // gracieuse : sans titleResolver ou sans adapter, le HomeRepo reste nu et
 // ne fait que le lookup registry.
+// CSRCoverageProvider implémente handlers.CSRCoverageFactory : résout slug →
+// (provider coverage, xuid). Utilisé par l'endpoint /_diag/csr-coverage/{slug}
+// (Phase 9 du plan pipeline CSR).
+func (r *ServiceRegistry) CSRCoverageProvider(ctx context.Context, slug string) (handlers.CSRCoverageProvider, string, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, "", err
+	}
+	return duckdb.NewCSRCoverageRepo(pdb), pdb.XUID, nil
+}
+
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	repo := duckdb.NewHomeRepo(pdb)
 	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
