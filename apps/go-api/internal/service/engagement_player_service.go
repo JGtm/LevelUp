@@ -158,12 +158,12 @@ func (s *PlayerEngagementService) GetTimeseries(
 	}
 
 	var truncatedTo *int
-	if rows != nil && len(rows) > engagementWorkCap {
+	if len(rows) > engagementWorkCap {
 		n := engagementWorkCap
 		truncatedTo = &n
 		rows = rows[:engagementWorkCap]
 	}
-	if fallbackIDs != nil && len(fallbackIDs) > engagementWorkCap {
+	if len(fallbackIDs) > engagementWorkCap {
 		n := engagementWorkCap
 		truncatedTo = &n
 		fallbackIDs = fallbackIDs[:engagementWorkCap]

@@ -21,7 +21,7 @@ func sptr(s string) *string { return &s }
 func TestComputeFirstEventsPerMatch_Empty(t *testing.T) {
 	t.Parallel()
 	got := ComputeFirstEventsPerMatch(nil, "p1", nil)
-	if got != nil && len(got) != 0 {
+	if len(got) != 0 {
 		t.Errorf("expected empty/nil, got %+v", got)
 	}
 }

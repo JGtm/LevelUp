@@ -342,11 +342,11 @@ jobs:
 
       - name: Build Go backend
         working-directory: apps/go-api
-        # Le binaire serveur est dans cmd/server/, pas cmd/api/ (renommage
-        # historique non propagé au workflow E2E).
-        run: CGO_ENABLED=0 go build -o levelup-api ./cmd/server/
+        # CGO_ENABLED=1 obligatoire : cmd/server/ importe platform/duckdb qui
+        # dépend de duckdb-go-bindings (binding C). ubuntu-latest fournit gcc.
+        run: CGO_ENABLED=1 go build -o levelup-api ./cmd/server/
         env:
-          CGO_ENABLED: "0"
+          CGO_ENABLED: "1"
 
       - name: Start backend in demo mode
         working-directory: apps/go-api
@@ -359,7 +359,6 @@ jobs:
             sleep 1
           done
         env:
-          CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
 
       - name: Start frontend dev server

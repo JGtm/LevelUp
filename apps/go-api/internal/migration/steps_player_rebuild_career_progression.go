@@ -121,6 +121,9 @@ func init() {
 }
 
 // markRebuildDone écrit le sentinel d'idempotence dans sync_meta.
+// Robuste aux schémas legacy (sync_meta sans updated_at) : ajoute la colonne
+// si manquante avant l'INSERT/UPSERT (cf. tests pool_migration_test.go qui
+// seed un schéma 2-colonnes).
 func markRebuildDone(db *sql.DB) error {
 	hasMeta, err := tableExists(db, "sync_meta")
 	if err != nil || !hasMeta {
@@ -128,6 +131,9 @@ func markRebuildDone(db *sql.DB) error {
 		// appliquée. On laisse passer sans erreur ; la prochaine application
 		// re-check.
 		return nil
+	}
+	if err := addColumnIfMissing(db, "sync_meta", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"); err != nil {
+		return fmt.Errorf("rebuild_career: ensure updated_at: %w", err)
 	}
 	_, err = db.ExecContext(bootCtx(), `
 		INSERT INTO sync_meta (key, value, updated_at)

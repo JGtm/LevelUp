@@ -182,18 +182,12 @@ func extractWhatsNewBlocks(content string) map[string]string {
 }
 
 func isVersionLine(line string) bool {
-	s := line
-	if strings.HasPrefix(s, "- ") {
-		s = strings.TrimPrefix(s, "- ")
-	}
+	s := strings.TrimPrefix(line, "- ")
 	return strings.HasPrefix(s, "**v") && len(s) > 5
 }
 
 func extractVersionKey(line string) string {
-	s := line
-	if strings.HasPrefix(s, "- ") {
-		s = strings.TrimPrefix(s, "- ")
-	}
+	s := strings.TrimPrefix(line, "- ")
 	s = strings.TrimPrefix(s, "**")
 	s = strings.TrimPrefix(s, "v")
 	parts := strings.FieldsFunc(s, func(r rune) bool {
