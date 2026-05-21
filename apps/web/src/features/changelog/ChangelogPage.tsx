@@ -8,15 +8,20 @@ import {
   type ChangelogEntry,
   type ChangelogSection,
 } from './parseChangelog'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function ChangelogPage() {
   const { data, isLoading, error } = useChangelog()
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   if (isLoading) return null
   if (error || !data) {
     return (
       <div className="p-6">
-        <p className="text-destructive">Impossible de charger le changelog.</p>
+        <p className="text-destructive">{t('common.changelog.load_failed')}</p>
       </div>
     )
   }
@@ -27,11 +32,11 @@ export function ChangelogPage() {
     <div className="p-6 space-y-8">
       <div>
         <h1 className="text-2xl font-bold">Changelog</h1>
-        <p className="text-sm text-muted-foreground mt-1">Journal des modifications du projet.</p>
+        <p className="text-sm text-muted-foreground mt-1">{t('common.changelog.subtitle')}</p>
       </div>
 
       {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Aucune entrée disponible.</p>
+        <p className="text-sm text-muted-foreground">{t('common.changelog.empty')}</p>
       ) : (
         <ol className="relative border-l border-border space-y-10 pl-8">
           {entries.map((entry) => (

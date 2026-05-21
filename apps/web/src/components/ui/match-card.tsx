@@ -14,6 +14,8 @@ import { CitationProgressRing } from './citation-progress-ring'
 import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface MatchCardProps {
   match: RecentMatchItem
@@ -91,6 +93,7 @@ function buildMatchHeading(match: RecentMatchItem, locale: 'fr' | 'en'): string 
 
 export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, onToggleFavorite, favoriteDisabled }: MatchCardProps) {
   const heading = buildMatchHeading(m, locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const outcomeStyle = getMatchCardOutcomeStyle(m.outcome_tone)
   const scoreLabel = m.score_label?.trim() ?? ''
   const narrativeBadges = m.narrative_badges ?? []
@@ -252,7 +255,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
             )}
             {rankInTeam != null && (
               <span className="text-2xs font-medium text-muted-foreground leading-none">
-                Placement : #{rankInTeam}
+                {t('common.match_card.placement_prefix')}{rankInTeam}
               </span>
             )}
             </>
