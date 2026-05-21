@@ -170,7 +170,7 @@ func runSyncDeltaAll(
 			engine.SetLocalFilmCache(cache)
 		}
 
-		pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID)
+		pooledClient := go_sync.NewPooledHaloClient(pool, player.Gamertag, player.XUID, 0) // 0 = defaultPooledRPS
 		if cache != nil {
 			pooledClient.WithLocalFilmCache(cache)
 		}

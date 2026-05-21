@@ -249,7 +249,7 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 		if !ok {
 			continue
 		}
-		xuid := extractXUID(asString(player["PlayerId"]))
+		xuid := extractXUID(asString(player[jsonKeyPlayerID]))
 		if xuid == "" || seen[xuid] {
 			continue
 		}
@@ -361,7 +361,7 @@ func ExtractMedals(matchJSON map[string]any) []MedalRow {
 		if !ok {
 			continue
 		}
-		xuid := extractXUID(asString(player["PlayerId"]))
+		xuid := extractXUID(asString(player[jsonKeyPlayerID]))
 		if xuid == "" {
 			continue
 		}

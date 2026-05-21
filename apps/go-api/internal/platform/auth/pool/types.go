@@ -11,6 +11,8 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/time/rate"
+
 	"levelup/go-api/internal/domain"
 )
 
@@ -85,8 +87,9 @@ const (
 // Appellé (sous la forme de Lease) doit invoquer Release() après utilisation.
 type Lease struct {
 	Tokens   *domain.HaloTokens
-	Gamertag string // gamertag du compte propriétaire du token
-	Release  func() // remet le slot dispo (sémaphore ou no-op selon la politique)
+	Gamertag string        // gamertag du compte propriétaire du token
+	Release  func()        // remet le slot dispo (sémaphore ou no-op selon la politique)
+	Limiter  *rate.Limiter // rate.Limiter du slot (PerTokenRPS) — nil si le pool n'expose pas
 }
 
 // Pool gère N tokens vivants avec deux modes d'acquisition.

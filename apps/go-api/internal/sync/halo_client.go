@@ -802,6 +802,21 @@ type customizationAppearance struct {
 	EmblemConfigurationID string
 }
 
+// Clés JSON Halo API customization payload — utilisées par
+// parseCustomizationAppearance / extractCustomizationMediaPath pour
+// naviguer dans la réponse imbriquée (Appearance.Banner.ImagePath, etc.).
+const (
+	jsonKeyAppearance  = "Appearance"
+	jsonKeyEmblem      = "Emblem"
+	jsonKeyEmblemPath  = "EmblemPath"
+	jsonKeyCommonData  = "CommonData"
+	jsonKeyImagePath   = "ImagePath"
+	jsonKeyPath        = "Path"
+	jsonKeyDisplayPath = "DisplayPath"
+	jsonKeyMedia       = "Media"
+	jsonKeyMediaURL    = "MediaUrl"
+)
+
 func parseCustomizationAppearance(body []byte) (*customizationAppearance, error) {
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
@@ -810,29 +825,29 @@ func parseCustomizationAppearance(body []byte) (*customizationAppearance, error)
 
 	return &customizationAppearance{
 		ServiceTag: firstNonEmptyPayloadString(payload,
-			[]string{"Appearance", "ServiceTag"},
+			[]string{jsonKeyAppearance, "ServiceTag"},
 		),
 		BannerImagePath: firstNonEmptyPayloadString(payload,
-			[]string{"Appearance", "BannerImagePath"},
-			[]string{"Appearance", "NameplateImagePath"},
-			[]string{"Appearance", "PlayerTitlePath"},
-			[]string{"Appearance", "Nameplate", "NameplateImagePath"},
-			[]string{"Appearance", "Nameplate", "ImagePath"},
-			[]string{"Appearance", "Nameplate", "Path"},
-			[]string{"Appearance", "Banner", "BannerImagePath"},
-			[]string{"Appearance", "Banner", "ImagePath"},
-			[]string{"Appearance", "Banner", "Path"},
+			[]string{jsonKeyAppearance, "BannerImagePath"},
+			[]string{jsonKeyAppearance, "NameplateImagePath"},
+			[]string{jsonKeyAppearance, "PlayerTitlePath"},
+			[]string{jsonKeyAppearance, "Nameplate", "NameplateImagePath"},
+			[]string{jsonKeyAppearance, "Nameplate", jsonKeyImagePath},
+			[]string{jsonKeyAppearance, "Nameplate", jsonKeyPath},
+			[]string{jsonKeyAppearance, "Banner", "BannerImagePath"},
+			[]string{jsonKeyAppearance, "Banner", jsonKeyImagePath},
+			[]string{jsonKeyAppearance, "Banner", jsonKeyPath},
 		),
 		BackdropImagePath: firstNonEmptyPayloadString(payload,
-			[]string{"Appearance", "BackdropImagePath"},
+			[]string{jsonKeyAppearance, "BackdropImagePath"},
 		),
 		EmblemPath: firstNonEmptyPayloadString(payload,
-			[]string{"Appearance", "Emblem", "EmblemPath"},
-			[]string{"Appearance", "EmblemPath"},
+			[]string{jsonKeyAppearance, jsonKeyEmblem, jsonKeyEmblemPath},
+			[]string{jsonKeyAppearance, jsonKeyEmblemPath},
 		),
 		EmblemConfigurationID: stringifyCustomizationConfigurationID(firstNonEmptyPayloadValue(payload,
-			[]string{"Appearance", "Emblem", "ConfigurationId"},
-			[]string{"Appearance", "Emblem", "ConfigurationID"},
+			[]string{jsonKeyAppearance, jsonKeyEmblem, "ConfigurationId"},
+			[]string{jsonKeyAppearance, jsonKeyEmblem, "ConfigurationID"},
 		)),
 	}, nil
 }
@@ -896,10 +911,10 @@ func (c *HaloAPIClient) resolveCustomizationImageURL(ctx context.Context, invent
 
 func extractCustomizationMediaPath(payload map[string]any) string {
 	paths := [][]string{
-		{"CommonData", "DisplayPath", "Media", "MediaUrl", "Path"},
-		{"DisplayPath", "Media", "MediaUrl", "Path"},
-		{"ImagePath", "Media", "MediaUrl", "Path"},
-		{"CommonData", "ImagePath", "Media", "MediaUrl", "Path"},
+		{jsonKeyCommonData, jsonKeyDisplayPath, jsonKeyMedia, jsonKeyMediaURL, jsonKeyPath},
+		{jsonKeyDisplayPath, jsonKeyMedia, jsonKeyMediaURL, jsonKeyPath},
+		{jsonKeyImagePath, jsonKeyMedia, jsonKeyMediaURL, jsonKeyPath},
+		{jsonKeyCommonData, jsonKeyImagePath, jsonKeyMedia, jsonKeyMediaURL, jsonKeyPath},
 	}
 	for _, keys := range paths {
 		if value := nestedPayloadString(payload, keys...); value != "" {

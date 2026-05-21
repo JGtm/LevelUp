@@ -387,10 +387,16 @@ func (s *SyncScope) NeedsLocalOnly() bool {
 		s.LUSR || s.SkillRank || s.EngagementScores || s.AssistsModel
 }
 
+// Noms de champs SyncScope utilisés comme clés dans requestedTypeMap et fieldVals.
+// Centralisés pour réduire la duplication littérale (lint goconst).
+const (
+	scopeFieldMedals = "Medals"
+)
+
 // requestedTypeMap maps scope field → bitmask key for backfill_completed tracking.
 // Identique à _REQUESTED_TYPE_MAP Python.
 var requestedTypeMap = map[string]string{
-	"Medals":              BackfillTypeMedals,
+	scopeFieldMedals:      BackfillTypeMedals,
 	"Events":              BackfillTypeEvents,
 	"Skill":               BackfillTypeSkill,
 	"PersonalScores":      BackfillTypePersonalScores,
@@ -417,7 +423,7 @@ var requestedTypeMap = map[string]string{
 // pour le bitmask backfill_completed.
 func (s *SyncScope) RequestedTypes() []string {
 	fieldVals := map[string]bool{
-		"Medals":              s.Medals,
+		scopeFieldMedals:      s.Medals,
 		"Events":              s.Events,
 		"Skill":               s.Skill,
 		"PersonalScores":      s.PersonalScores,

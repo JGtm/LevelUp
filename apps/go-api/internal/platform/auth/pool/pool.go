@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/time/rate"
+
 	"levelup/go-api/internal/observability/logging"
 )
 
@@ -42,10 +44,13 @@ type poolImpl struct {
 }
 
 // slot encapsule l'état d'un token dans le pool.
+// Chaque slot possède son propre *rate.Limiter (Option 2 de l'audit 2026-05-21) :
+// PerTokenRPS appliqué par identité distincte → throughput global = PerTokenRPS × Size().
 type slot struct {
 	gamertag    string
 	xuid        string
 	resolved    *ResolvedTokens
+	limiter     *rate.Limiter // rate-limit par-token, partagé entre tous les leases sortants
 	mu          sync.RWMutex
 	healthy     bool // faux après 401/403, remis vrai après Refresh réussi
 	lastRefresh time.Time
@@ -103,6 +108,7 @@ func NewPool(
 			gamertag:    src.Gamertag,
 			xuid:        src.XUID,
 			resolved:    resolved,
+			limiter:     rate.NewLimiter(rate.Limit(opts.PerTokenRPS), 1),
 			healthy:     true,
 			lastRefresh: time.Now(),
 		}
@@ -180,6 +186,7 @@ func (p *poolImpl) acquireAnyPublic(ctx context.Context) (*Lease, error) {
 			return &Lease{
 				Tokens:   slot.resolved.Tokens,
 				Gamertag: slot.gamertag,
+				Limiter:  slot.limiter,
 				Release: func() {
 					// Remettre le slot dans le canal.
 					p.anyPublicChan <- slotIdx
@@ -219,6 +226,7 @@ func (p *poolImpl) acquirePinnedPlayer(ctx context.Context, gamertag string) (*L
 	return &Lease{
 		Tokens:   slot.resolved.Tokens,
 		Gamertag: gamertag,
+		Limiter:  slot.limiter,
 		Release:  func() {}, // No-op pour PolicyPinnedPlayer.
 	}, nil
 }

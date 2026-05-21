@@ -3,7 +3,11 @@ package sync
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
+	"time"
+
+	"golang.org/x/time/rate"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/auth/pool"
@@ -13,7 +17,8 @@ import (
 type mockPool struct {
 	tokens           map[string]*domain.HaloTokens // gamertag → tokens
 	err              error
-	onHTTPErrorCalls []int // Track statusCode values for OnHTTPError calls
+	onHTTPErrorCalls []int         // Track statusCode values for OnHTTPError calls
+	slotLimiter      *rate.Limiter // Si non-nil, populé dans Lease.Limiter (Option 2)
 }
 
 func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinnedGamertag string) (*pool.Lease, error) {
@@ -52,6 +57,7 @@ func (m *mockPool) Acquire(ctx context.Context, policy pool.AcquirePolicy, pinne
 		Tokens:   tokens,
 		Gamertag: gt,
 		Release:  func() {},
+		Limiter:  m.slotLimiter,
 	}, nil
 }
 
@@ -91,7 +97,7 @@ func TestPooledHaloClientGetMatchHistory(t *testing.T) {
 			"Alice": testTokens("Alice"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	ctx := context.Background()
 	// Appel va utiliser PolicyAnyPublic et acquérir le token "Alice".
@@ -114,7 +120,7 @@ func TestPooledHaloClientGetMatchStats(t *testing.T) {
 			"Bob": testTokens("Bob"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	ctx := context.Background()
 	_, err := client.GetMatchStats(ctx, "match-id-123")
@@ -138,7 +144,7 @@ func TestPooledHaloClientGetCareerRank_PinnedToken(t *testing.T) {
 			"Alice": testTokens("Alice"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "Alice", "xuid_alice")
+	client := NewPooledHaloClient(mp, "Alice", "xuid_alice", 0)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -159,7 +165,7 @@ func TestPooledHaloClientGetCareerRank_NoPinnedToken(t *testing.T) {
 		},
 	}
 	// Pas de pinned token.
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	ctx := context.Background()
 	result, err := client.GetCareerRank(ctx, "xuid_alice")
@@ -178,7 +184,7 @@ func TestPooledHaloClientGetCareerRank_PoolError(t *testing.T) {
 		tokens: make(map[string]*domain.HaloTokens),
 		err:    errors.New("no healthy tokens"),
 	}
-	client := NewPooledHaloClient(mp, "Alice", "xuid_alice")
+	client := NewPooledHaloClient(mp, "Alice", "xuid_alice", 0)
 
 	ctx := context.Background()
 	result, err := client.GetCareerRank(ctx, "xuid_alice")
@@ -197,7 +203,7 @@ func TestPooledHaloClientAcquireFailure(t *testing.T) {
 		tokens: make(map[string]*domain.HaloTokens),
 		err:    errors.New("no tokens available"),
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	ctx := context.Background()
 	_, err := client.GetMatchHistory(ctx, "Bob", "all", 0, 25)
@@ -216,7 +222,7 @@ func TestPooledHaloClientInterface(t *testing.T) {
 			"test": testTokens("test"),
 		},
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	// Vérifier que client implémente HaloClient.
 	var _ HaloClient = client
@@ -230,7 +236,7 @@ func TestPooledHaloClientNotifyHTTPError_429(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "test", "xuid_test")
+	client := NewPooledHaloClient(mp, "test", "xuid_test", 0)
 
 	// Simuler un 429 HTTP error.
 	err := &HTTPError{
@@ -257,7 +263,7 @@ func TestPooledHaloClientNotifyHTTPError_503(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	// Simuler un 503 HTTP error.
 	err := &HTTPError{
@@ -284,7 +290,7 @@ func TestPooledHaloClientNotifyHTTPError_OtherStatus(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	// Simuler un 500 HTTP error (non-429/503).
 	err := &HTTPError{
@@ -300,6 +306,104 @@ func TestPooledHaloClientNotifyHTTPError_OtherStatus(t *testing.T) {
 	}
 }
 
+// makeLease forge un *pool.Lease pour les tests internes de newAPIClient.
+func makeLease(spartan, clearance string, limiter *rate.Limiter) *pool.Lease {
+	return &pool.Lease{
+		Tokens:   &domain.HaloTokens{SpartanToken: spartan, ClearanceToken: clearance},
+		Gamertag: "test",
+		Release:  func() {},
+		Limiter:  limiter,
+	}
+}
+
+// TestPooledHaloClient_FallbackLimiter valide le path fallback : quand le
+// Lease ne porte pas de Limiter (cas legacy / mock minimal), newAPIClient
+// utilise fallbackLimiter — tous les HaloAPIClient le partagent.
+func TestPooledHaloClient_FallbackLimiter(t *testing.T) {
+	mp := &mockPool{tokens: map[string]*domain.HaloTokens{"alice": testTokens("alice")}}
+	const rps = 20
+	const n = 10
+	pc := NewPooledHaloClient(mp, "", "", rps)
+
+	// Sanity : Lease.Limiter nil → newAPIClient retombe sur fallbackLimiter.
+	leaseNil := makeLease("s1", "c1", nil)
+	c1 := pc.newAPIClient(leaseNil)
+	c2 := pc.newAPIClient(makeLease("s2", "c2", nil))
+	if c1.limiter != c2.limiter || c1.limiter != pc.fallbackLimiter {
+		t.Fatal("avec Lease.Limiter nil, les HaloAPIClient doivent partager pc.fallbackLimiter")
+	}
+
+	// Concurrence : N goroutines via fallback. Throughput ≤ rps.
+	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer wg.Done()
+			c := pc.newAPIClient(makeLease("s", "c", nil))
+			c.rateWait(context.Background())
+		}()
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	minExpected := time.Duration(n-1) * time.Second / time.Duration(rps) * 80 / 100
+	if elapsed < minExpected {
+		t.Fatalf("fallback limiter inopérant : %d goroutines à %d RPS terminées en %v (attendu ≥ %v)",
+			n, rps, elapsed, minExpected)
+	}
+}
+
+// TestPooledHaloClient_LeaseLimiterPriority valide l'invariant Option 2 : si
+// le Lease porte un Limiter (pool en prod), newAPIClient l'utilise au lieu du
+// fallback. Régression du bug pré-Option 1+2 où chaque newAPIClient créait un
+// limiter neuf (burst=1 plein) → rate-limit inopérant.
+func TestPooledHaloClient_LeaseLimiterPriority(t *testing.T) {
+	const slotRPS = 20
+	slotLim := rate.NewLimiter(rate.Limit(slotRPS), 1)
+	mp := &mockPool{
+		tokens:      map[string]*domain.HaloTokens{"alice": testTokens("alice")},
+		slotLimiter: slotLim,
+	}
+	pc := NewPooledHaloClient(mp, "", "", 100) // fallback 100 RPS - doit NE PAS être utilisé
+
+	// Sanity : Lease.Limiter prend le pas sur fallbackLimiter.
+	lease, err := mp.Acquire(context.Background(), pool.PolicyAnyPublic, "")
+	if err != nil {
+		t.Fatalf("mockPool.Acquire: %v", err)
+	}
+	c := pc.newAPIClient(lease)
+	if c.limiter != slotLim {
+		t.Fatal("newAPIClient doit utiliser Lease.Limiter (slot) et pas le fallback")
+	}
+	if c.limiter == pc.fallbackLimiter {
+		t.Fatal("newAPIClient ne doit PAS utiliser fallbackLimiter quand Lease.Limiter est non-nil")
+	}
+
+	// Concurrence : N goroutines via slotLimiter. Throughput borné par slotRPS,
+	// pas par le fallback (100 RPS).
+	const n = 10
+	start := time.Now()
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func() {
+			defer wg.Done()
+			lease, _ := mp.Acquire(context.Background(), pool.PolicyAnyPublic, "")
+			c := pc.newAPIClient(lease)
+			c.rateWait(context.Background())
+		}()
+	}
+	wg.Wait()
+	elapsed := time.Since(start)
+
+	minExpected := time.Duration(n-1) * time.Second / time.Duration(slotRPS) * 80 / 100
+	if elapsed < minExpected {
+		t.Fatalf("lease.Limiter inopérant : %d goroutines à %d RPS slot terminées en %v (attendu ≥ %v) — le fallback à 100 RPS a peut-être été utilisé",
+			n, slotRPS, elapsed, minExpected)
+	}
+}
+
 // TestPooledHaloClientNotifyHTTPError_NilError teste qu'une erreur nil est ignorée.
 func TestPooledHaloClientNotifyHTTPError_NilError(t *testing.T) {
 	mp := &mockPool{
@@ -308,7 +412,7 @@ func TestPooledHaloClientNotifyHTTPError_NilError(t *testing.T) {
 		},
 		onHTTPErrorCalls: []int{},
 	}
-	client := NewPooledHaloClient(mp, "", "")
+	client := NewPooledHaloClient(mp, "", "", 0)
 
 	// Passer nil comme erreur.
 	client.notifyPoolOnHTTPError(nil)
