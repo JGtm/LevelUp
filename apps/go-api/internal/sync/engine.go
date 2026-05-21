@@ -392,7 +392,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	}
 
 	// ─── sync_meta ──────────────────────────────────────────────────────────────
-	if err := SetSyncMeta(playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
+	if err := SetSyncMeta(ctx, playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
 		result.AddWarning(fmt.Sprintf("SetSyncMeta: %v", err))
 	}
 

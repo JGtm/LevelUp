@@ -386,10 +386,10 @@ func TestInsertWeaponKills_Idempotent(t *testing.T) {
 		{TimeMS: 10000, WeaponID: ptrU64(456), Confidence: "medium", AttributionPath: "formula_a"},
 	}
 
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows); err != nil {
 		t.Fatal(err)
 	}
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows); err != nil {
 		t.Fatalf("idempotent second insert: %v", err)
 	}
 
@@ -414,15 +414,15 @@ func TestInsertWeaponKills_EmptyPreservesExisting(t *testing.T) {
 	rows := []WeaponKillRow{
 		{TimeMS: 5000, WeaponID: ptrU64(123), Confidence: "high", AttributionPath: "fire_event"},
 	}
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows); err != nil {
 		t.Fatal(err)
 	}
 
 	// Appel avec attrs=[] — ne doit PAS effacer la ligne précédente.
-	if err := InsertWeaponKills(db, "m1", "xuid1", nil); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", nil); err != nil {
 		t.Fatalf("unexpected error on empty insert: %v", err)
 	}
-	if err := InsertWeaponKills(db, "m1", "xuid1", []WeaponKillRow{}); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", []WeaponKillRow{}); err != nil {
 		t.Fatalf("unexpected error on empty slice insert: %v", err)
 	}
 
@@ -440,14 +440,14 @@ func TestInsertWeaponKills_DoesNotDeleteOtherXuid(t *testing.T) {
 	rows1 := []WeaponKillRow{{TimeMS: 5000, WeaponID: ptrU64(100), Confidence: "high", AttributionPath: "fire_event"}}
 	rows2 := []WeaponKillRow{{TimeMS: 7000, WeaponID: ptrU64(200), Confidence: "medium", AttributionPath: "formula_a"}}
 
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows1); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows1); err != nil {
 		t.Fatal(err)
 	}
-	if err := InsertWeaponKills(db, "m1", "xuid2", rows2); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid2", rows2); err != nil {
 		t.Fatal(err)
 	}
 	// Re-insert xuid1 — doit laisser les lignes xuid2 intactes.
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows1); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows1); err != nil {
 		t.Fatal(err)
 	}
 
@@ -467,7 +467,7 @@ func TestInsertWeaponKills_UBigintMaxRoundtrip(t *testing.T) {
 	rows := []WeaponKillRow{
 		{TimeMS: 1000, WeaponID: &maxU64, Confidence: "high", AttributionPath: "fire_event"},
 	}
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows); err != nil {
 		t.Fatalf("UBIGINT max insert: %v", err)
 	}
 	var readBack uint64
@@ -484,7 +484,7 @@ func TestInsertWeaponKills_NilWeaponID(t *testing.T) {
 	rows := []WeaponKillRow{
 		{TimeMS: 1000, WeaponID: nil, Confidence: "none", AttributionPath: "none"},
 	}
-	if err := InsertWeaponKills(db, "m1", "xuid1", rows); err != nil {
+	if err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows); err != nil {
 		t.Fatalf("nil weapon_id insert: %v", err)
 	}
 	var count int

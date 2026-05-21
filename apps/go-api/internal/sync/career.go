@@ -132,8 +132,8 @@ func saveCareerRank(ctx context.Context, db *sql.DB, data *CareerRankData) error
 	}
 
 	// Mettre à jour sync_meta
-	_ = SetSyncMeta(db, "last_career_sync_at", now.Format(time.RFC3339))
-	_ = SetSyncMeta(db, "current_rank", fmt.Sprintf("%d", data.CurrentRank))
+	_ = SetSyncMeta(ctx, db, "last_career_sync_at", now.Format(time.RFC3339))
+	_ = SetSyncMeta(ctx, db, "current_rank", fmt.Sprintf("%d", data.CurrentRank))
 
 	return nil
 }

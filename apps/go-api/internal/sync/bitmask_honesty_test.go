@@ -123,7 +123,7 @@ func TestInsertHighlightEventsFromData_DoesNotMarkKVLoadedOnInsertFailure(t *tes
 	// InsertKillerVictimPairsFromEvents directement. Le test ci-dessous
 	// cible directement la fonction Insert pour valider que le bit n'est
 	// pas mis sur erreur.
-	if _, err := InsertHighlightEvents(db, "m1", events); err != nil {
+	if _, err := InsertHighlightEvents(t.Context(), db, "m1", events); err != nil {
 		t.Fatalf("InsertHighlightEvents: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestInsertHighlightEventsFromData_DoesNotMarkKVLoadedOnInsertFailure(t *tes
 	}
 
 	// Tenter l'insert — doit échouer car le schéma kvp est buggé.
-	if err := InsertKillerVictimPairsFromEvents(db, "m1", events); err == nil {
+	if err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", events); err == nil {
 		t.Fatal("InsertKillerVictimPairsFromEvents devrait échouer sur schéma buggé")
 	}
 
@@ -327,7 +327,7 @@ func TestMarkSkillLoaded_FiltersByTeamMMR(t *testing.T) {
 	_, _ = db.Exec(`INSERT INTO match_participants (match_id, xuid, team_mmr) VALUES ('m-skill', 'b', 1600.0)`)
 	_, _ = db.Exec(`INSERT INTO match_participants (match_id, xuid, team_mmr) VALUES ('m-skill', 'c', NULL)`)
 
-	if err := MarkSkillLoaded(db, "m-skill"); err != nil {
+	if err := MarkSkillLoaded(t.Context(), db, "m-skill"); err != nil {
 		t.Fatalf("MarkSkillLoaded: %v", err)
 	}
 
@@ -370,7 +370,7 @@ func TestMarkSkillLoaded_Idempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := MarkSkillLoaded(db, "m-idemp"); err != nil {
+	if err := MarkSkillLoaded(t.Context(), db, "m-idemp"); err != nil {
 		t.Fatalf("MarkSkillLoaded: %v", err)
 	}
 	var bf int64
@@ -386,7 +386,7 @@ func TestMarkParticipantsDone_SetsBit(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m-parts')`); err != nil {
 		t.Fatal(err)
 	}
-	if err := MarkParticipantsDone(db, "m-parts"); err != nil {
+	if err := MarkParticipantsDone(t.Context(), db, "m-parts"); err != nil {
 		t.Fatalf("MarkParticipantsDone: %v", err)
 	}
 	var bf int64

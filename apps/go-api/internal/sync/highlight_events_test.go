@@ -64,7 +64,7 @@ func openEventsDB(t *testing.T) *sql.DB {
 
 func TestInsertHighlightEvents_Empty(t *testing.T) {
 	db := openEventsDB(t)
-	n, err := InsertHighlightEvents(db, "m1", nil)
+	n, err := InsertHighlightEvents(t.Context(), db, "m1", nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestInsertHighlightEvents_InsertAndCount(t *testing.T) {
 		{XUID: 2_500_000_000_000_002, Gamertag: "PlayerB", EventType: "death", TypeHint: 20, TimeMS: 2000},
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "medal", TypeHint: 50, TimeMS: 3000, IsMedal: true, MedalType: 100},
 	}
-	n, err := InsertHighlightEvents(db, "m1", events)
+	n, err := InsertHighlightEvents(t.Context(), db, "m1", events)
 	if err != nil {
 		t.Fatalf("InsertHighlightEvents: %v", err)
 	}
@@ -100,13 +100,13 @@ func TestInsertHighlightEvents_IdempotentOnDuplicate(t *testing.T) {
 	events := []analysis.HighlightEvent{
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "kill", TypeHint: 50, TimeMS: 1000},
 	}
-	n1, err := InsertHighlightEvents(db, "m1", events)
+	n1, err := InsertHighlightEvents(t.Context(), db, "m1", events)
 	if err != nil {
 		t.Fatalf("first insert: %v", err)
 	}
 	// Deuxième insert identique → INSERT OR IGNORE sur la contrainte UNIQUE (match_id, xuid, time_ms, event_type).
 	// L'event est ignoré (n=0), pas d'erreur.
-	n2, err := InsertHighlightEvents(db, "m1", events)
+	n2, err := InsertHighlightEvents(t.Context(), db, "m1", events)
 	if err != nil {
 		t.Fatalf("second insert: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestInsertHighlightEvents_IdempotentOnDuplicate(t *testing.T) {
 
 func TestInsertKillerVictimPairsFromEvents_Empty(t *testing.T) {
 	db := openEventsDB(t)
-	err := InsertKillerVictimPairsFromEvents(db, "m1", nil)
+	err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", nil)
 	if err != nil {
 		t.Fatalf("unexpected error for nil events: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestInsertKillerVictimPairsFromEvents_WithKillAndDeath(t *testing.T) {
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "kill", TimeMS: 5000},
 		{XUID: 2_500_000_000_000_002, Gamertag: "PlayerB", EventType: "death", TimeMS: 5003},
 	}
-	err := InsertKillerVictimPairsFromEvents(db, "m1", events)
+	err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", events)
 	if err != nil {
 		t.Fatalf("InsertKillerVictimPairsFromEvents: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestInsertKillerVictimPairsFromEvents_OnlyMedals_NoPairs(t *testing.T) {
 	events := []analysis.HighlightEvent{
 		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "medal", TimeMS: 5000, IsMedal: true},
 	}
-	err := InsertKillerVictimPairsFromEvents(db, "m1", events)
+	err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", events)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestMarkEventsLoaded_SetsFlag(t *testing.T) {
 	db := openEventsDB(t)
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
 
-	if err := MarkEventsLoaded(db, "m1"); err != nil {
+	if err := MarkEventsLoaded(t.Context(), db, "m1"); err != nil {
 		t.Fatalf("MarkEventsLoaded: %v", err)
 	}
 
@@ -208,7 +208,7 @@ func TestMarkKillerVictimLoaded_SetsBit(t *testing.T) {
 	db := openEventsDB(t)
 	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
 
-	if err := MarkKillerVictimLoaded(db, "m1"); err != nil {
+	if err := MarkKillerVictimLoaded(t.Context(), db, "m1"); err != nil {
 		t.Fatalf("MarkKillerVictimLoaded: %v", err)
 	}
 

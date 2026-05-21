@@ -113,7 +113,7 @@ func TestGetXuidToPI_WithData(t *testing.T) {
 
 func TestInsertWeaponKills_Empty(t *testing.T) {
 	db := openWeaponDB(t)
-	err := InsertWeaponKills(db, "m1", "xuid1", nil)
+	err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestInsertWeaponKills_WithData(t *testing.T) {
 		{TimeMS: 5000, WeaponID: ptrU64(123), Confidence: "high", AttributionPath: "fire_event"},
 		{TimeMS: 10000, WeaponID: ptrU64(456), Confidence: "medium", AttributionPath: "timeline"},
 	}
-	err := InsertWeaponKills(db, "m1", "xuid1", rows)
+	err := InsertWeaponKills(t.Context(), db, "m1", "xuid1", rows)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestMarkWeaponKillsDone_WithFilm(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec("INSERT INTO match_registry (match_id) VALUES ('m1')")
 
-	err := MarkWeaponKillsDone(db, "m1", false)
+	err := MarkWeaponKillsDone(t.Context(), db, "m1", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestMarkWeaponKillsDone_NoFilm(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec("INSERT INTO match_registry (match_id) VALUES ('m1')")
 
-	err := MarkWeaponKillsDone(db, "m1", true)
+	err := MarkWeaponKillsDone(t.Context(), db, "m1", true)
 	if err != nil {
 		t.Fatal(err)
 	}

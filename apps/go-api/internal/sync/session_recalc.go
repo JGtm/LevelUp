@@ -112,7 +112,7 @@ func recalculateSessionsInline(
 	assignments := analysis.ComputeSessionsWithContext(matchRows, opts)
 	groups := analysis.BuildSessionGroups(matchRows, assignments)
 	assignments = analysis.MergeSessionLabels(assignments, groups)
-	n, err := WriteSessionAssignments(playerDB, assignments)
+	n, err := WriteSessionAssignments(ctx, playerDB, assignments)
 	if err != nil {
 		return 0, fmt.Errorf("recalculateSessionsInline write: %w", err)
 	}
@@ -175,7 +175,7 @@ func RecalculatePlayerSessions(
 	groups := analysis.BuildSessionGroups(matchRows, assignments)
 	assignments = analysis.MergeSessionLabels(assignments, groups)
 
-	n, err := WriteSessionAssignments(playerHandle.SQLDb(), assignments)
+	n, err := WriteSessionAssignments(ctx, playerHandle.SQLDb(), assignments)
 	if err != nil {
 		return 0, fmt.Errorf("RecalculatePlayerSessions write: %w", err)
 	}

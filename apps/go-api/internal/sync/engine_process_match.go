@@ -60,7 +60,7 @@ func (e *SyncEngine) processMatch(
 			"gamertag", e.gamertag, "match_id", matchID, "err", err,
 		)
 	}
-	if err := InsertRegistryIfNotExists(sharedDB, *reg); err != nil {
+	if err := InsertRegistryIfNotExists(ctx, sharedDB, *reg); err != nil {
 		slog.ErrorContext(ctx, "processMatch: InsertRegistry échoué",
 			"gamertag", e.gamertag, "match_id", matchID, "err", err,
 		)
@@ -105,7 +105,7 @@ func (e *SyncEngine) processMatch(
 			}
 		}
 
-		if err := InsertParticipants(sharedDB, participants); err != nil {
+		if err := InsertParticipants(ctx, sharedDB, participants); err != nil {
 			slog.ErrorContext(ctx, "processMatch: InsertParticipants échoué",
 				"gamertag", e.gamertag, "match_id", matchID, "count", len(participants), "err", err,
 			)
@@ -118,7 +118,7 @@ func (e *SyncEngine) processMatch(
 			if p.Gamertag != nil && *p.Gamertag != "" {
 				// P5.3 : écriture dans la DB globale xbox_aliases.duckdb.
 				if globalDB != nil {
-					_ = UpsertXUIDAlias(globalDB, p.XUID, *p.Gamertag)
+					_ = UpsertXUIDAlias(ctx, globalDB, p.XUID, *p.Gamertag)
 				}
 				aliased++
 			}
@@ -131,7 +131,7 @@ func (e *SyncEngine) processMatch(
 	// ─── medals_earned ─────────────────────────────────────────────────────────
 	if opts.WithMedals {
 		medals := ExtractMedals(matchJSON)
-		if err := InsertMedals(sharedDB, medals); err != nil {
+		if err := InsertMedals(ctx, sharedDB, medals); err != nil {
 			slog.ErrorContext(ctx, "processMatch: InsertMedals échoué",
 				"gamertag", e.gamertag, "match_id", matchID, "count", len(medals), "err", err,
 			)
@@ -155,7 +155,7 @@ func (e *SyncEngine) processMatch(
 	}
 
 	// ─── player_match_enrichment (player DB) ───────────────────────────────────
-	if err := UpsertPlayerEnrichment(playerDB, matchID, ""); err != nil {
+	if err := UpsertPlayerEnrichment(ctx, playerDB, matchID, ""); err != nil {
 		slog.ErrorContext(ctx, "processMatch: UpsertPlayerEnrichment échoué",
 			"gamertag", e.gamertag, "match_id", matchID, "err", err,
 		)
@@ -165,7 +165,7 @@ func (e *SyncEngine) processMatch(
 	// ─── personal_score_awards (player DB) ─────────────────────────────────────
 	psaRows := ExtractPersonalScoreAwards(matchJSON, matchID, e.xuid)
 	if len(psaRows) > 0 {
-		if err := InsertPersonalScoreAwards(playerDB, matchID, e.xuid, psaRows); err != nil {
+		if err := InsertPersonalScoreAwards(ctx, playerDB, matchID, e.xuid, psaRows); err != nil {
 			slog.WarnContext(ctx, "processMatch: InsertPersonalScoreAwards échoué",
 				"gamertag", e.gamertag, "match_id", matchID, "err", err,
 			)

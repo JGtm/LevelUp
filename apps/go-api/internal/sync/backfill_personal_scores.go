@@ -65,7 +65,7 @@ func (e *SyncEngine) BackfillPersonalScoreAwardsForMatches(
 			// Aucun PSA pour ce joueur dans ce match (ex: DNF, ou stats privées).
 			// On insère quand même un DELETE — pour idempotence — via
 			// InsertPersonalScoreAwards avec rows vides.
-			if err := InsertPersonalScoreAwards(playerDB, matchID, e.xuid, nil); err != nil {
+			if err := InsertPersonalScoreAwards(ctx, playerDB, matchID, e.xuid, nil); err != nil {
 				slog.WarnContext(ctx, "backfill_psa: clear échoué",
 					"match_id", matchID, "err", err,
 				)
@@ -73,7 +73,7 @@ func (e *SyncEngine) BackfillPersonalScoreAwardsForMatches(
 			matches++
 			continue
 		}
-		if err := InsertPersonalScoreAwards(playerDB, matchID, e.xuid, extracted); err != nil {
+		if err := InsertPersonalScoreAwards(ctx, playerDB, matchID, e.xuid, extracted); err != nil {
 			slog.WarnContext(ctx, "backfill_psa: InsertPersonalScoreAwards échoué",
 				"match_id", matchID, "err", err,
 			)

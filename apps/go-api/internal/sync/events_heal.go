@@ -78,7 +78,7 @@ func healEventsForRecentMatches(
 		eventsInserted := dummy.EventsInserted > eventsBefore
 		hasAnomaly := len(dummy.Warnings) > 0
 		if err == nil && !hasAnomaly {
-			if markErr := MarkEventsLoaded(sharedDB, matchID); markErr != nil {
+			if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
 				slog.DebugContext(ctx, "healEvents: MarkEventsLoaded échoué",
 					"match_id", matchID, "err", markErr)
 			}
