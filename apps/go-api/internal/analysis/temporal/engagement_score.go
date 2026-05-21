@@ -151,7 +151,7 @@ func ComputeEngagementScore(input EngagementScoreInput) (domain.EngagementScoreR
 		DenominatorN:      denominatorN,
 	})
 
-	curve = annotateDeaths(curve, input.PlayerEvents, input.MatchStartMS, samplingMS)
+	curve = annotateDeaths(curve, input.PlayerEvents, samplingMS)
 
 	residualBrut := computeResidualBrut(curve)
 	matchIntensity := computeMatchIntensity(input.LobbyEvents, matchDurationMS, input.NHumansLobby)
@@ -349,7 +349,7 @@ func selectExpectedReference(input EngagementScoreInput) (coef float64, denomEve
 // annotateDeaths positionne les flags PostDeathFlag et IsPassiveDeath sur les
 // points de la courbe. Une mort est "passive" si elle est precedee par un
 // creux d'inactivite > PassiveDeathThresholdMS sans event d'engagement du joueur.
-func annotateDeaths(curve []domain.EngagementPoint, playerEvents []canonical.HighlightEvent, matchStartMS, samplingMS int64) []domain.EngagementPoint {
+func annotateDeaths(curve []domain.EngagementPoint, playerEvents []canonical.HighlightEvent, samplingMS int64) []domain.EngagementPoint {
 	if len(curve) == 0 || len(playerEvents) == 0 {
 		return curve
 	}

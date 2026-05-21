@@ -23,6 +23,11 @@ import (
 // Team Tab
 // ---------------------------------------------------------------------------
 
+// buildTeamTabFull assemble scoreboard + kvPairs + encounters + medals + weapons
+// en sortie unique pour l'onglet Team. titleSlug maintenu pour future dispatch
+// multi-titres (canonical adapter resolution).
+//
+//nolint:funlen,unparam // Orchestrateur cohésif ; splitter perdrait la vue d'ensemble.
 func buildTeamTabFull(
 	scoreboard []domain.ScoreboardRaw,
 	kvPairs []domain.KVPairRaw,

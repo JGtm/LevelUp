@@ -106,6 +106,11 @@ func parseConsoleFormat() string {
 
 // parseIntEnv retourne l'entier depuis env, sinon le défaut. Valeurs négatives
 // remplacées par 0 (interprétées comme "désactivé" — pas de tronquage).
+//
+// LEVELUP_LOG_*) ; aujourd'hui un seul caller passe 200 mais la signature reste
+// stable pour éviter une refacto au prochain ajout.
+//
+//nolint:unparam // def est paramétré pour extensibilité (futures variables env
 func parseIntEnv(key string, def int) int {
 	raw := strings.TrimSpace(os.Getenv(key))
 	if raw == "" {

@@ -58,7 +58,7 @@ func TestRealDB_FullPipeline(t *testing.T) {
 	}
 	t.Cleanup(func() { sharedHandle.Close() })
 	sharedDB := sharedHandle.SQLDb()
-	if err := sync.EnsureSharedSchema(sharedDB); err != nil {
+	if err := sync.EnsureSharedSchema(t.Context(), sharedDB); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	if _, err := sharedDB.Exec(`

@@ -240,6 +240,11 @@ func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityR
 // répond. C'est exactement le tradeoff "home fast + données live"
 // recherché — plus solide qu'un budget de fetch sync (qui pénalisait
 // chaque chargement de home quand Halo ne répond pas dans les temps).
+//
+// du service ; aujourd'hui le merge est tout-en-mémoire (best-effort sur erreurs
+// internes loggées), mais une future intégration LiveAPI pourrait remonter ici.
+//
+//nolint:unparam // err maintenu en signature pour cohérence avec autres fetchers
 func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string) (*duckdb.CareerRankRow, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	hasAuth := tokens != nil && tokens.SpartanToken != ""

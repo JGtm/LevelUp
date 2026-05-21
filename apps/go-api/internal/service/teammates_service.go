@@ -87,6 +87,11 @@ func (s *TeammatesService) WithMedalDefs(repo port.MedalDefinitionsRepository) *
 }
 
 // GetPage retourne la page Teammates avec options, comparaisons et solo ref.
+//
+// boucle gamertags → calcule timeseries/heatmap/impact. Splitter en sous-fonctions
+// nécessiterait 5+ params chacune et perdrait la vue d'ensemble du flow.
+//
+//nolint:funlen // Orchestrateur séquentiel : charge top → filtre → applique cascade →
 func (s *TeammatesService) GetPage(
 	ctx context.Context,
 	playerXUID string,

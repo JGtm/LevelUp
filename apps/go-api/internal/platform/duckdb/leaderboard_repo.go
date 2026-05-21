@@ -36,6 +36,11 @@ func NewLeaderboardRepo(pdb *PlayerDB) *LeaderboardRepo {
 //   - Phase B : match_registry (shared) via SharedReader avec IN match_ids.
 //   - Phase C : merge + effective_type + filtre playlist + tri sort_time +
 //     csr_value + LIMIT 1, côté Go.
+//
+// filtres optionnels (titleSlug/season/playlist) : la complexité reflète la cardinalité
+// métier, pas un défaut de conception. Splitter rendrait le flow A→B→C illisible.
+//
+//nolint:funlen,gocyclo // Cross-DB merge avec 3 phases séquentielles et branches de
 func (r *LeaderboardRepo) GetLocalLeaderboard(ctx context.Context, titleSlug, season, playlist string) ([]domain.LeaderboardEntry, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

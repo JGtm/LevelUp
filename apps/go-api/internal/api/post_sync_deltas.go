@@ -134,6 +134,11 @@ type PlayerSnapshot struct {
 //
 // `citationsSvc` peut être nil — dans ce cas les compteurs citation_tier /
 // citation_mastery restent à 0 (pas d'émission).
+//
+// performance, etc.) avec branches NULL-aware. Complexité linéaire en nombre de KPIs
+// trackés, pas un défaut de design.
+//
+//nolint:funlen,gocyclo // Snapshot scanne 12+ tables (career, citations, achievements,
 func SnapshotPlayerState(
 	ctx context.Context,
 	pdb *duckdb.PlayerDB,
@@ -354,6 +359,11 @@ func thresholdCrossed(before, after, step float64) (crossed bool, level float64)
 // Best-effort : toute erreur est loguée et n'interrompt pas le flux de sync.
 // `pdb` est passé pour persister les nouveaux records ; peut être nil
 // (dans ce cas personal_record est skippé).
+//
+// et émet 1 notification par delta significatif. Complexité reflète le nombre
+// de KPIs surveillés, pas un défaut de conception.
+//
+//nolint:funlen,gocyclo // Émetteur multi-événements : compare ~12 snapshots delta
 func EmitPostSyncDeltas(
 	ctx context.Context,
 	emitter notifications.Emitter,

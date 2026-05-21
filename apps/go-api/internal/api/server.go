@@ -52,6 +52,11 @@ import (
 // daemon peut être nil si le watcher n'est pas actif au démarrage.
 // tokenProvider peut être nil : MSALProvider est utilisé par défaut.
 // Retourne aussi le *ServiceRegistry pour permettre au démon watcher de lier le TTL dynamique.
+//
+// conditionnels (MULTI_TITLE_API_ENABLED, PRESTIGE_ENABLED, etc.). Complexité
+// reflète la surface API, pas un défaut de conception.
+//
+//nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
 func NewRouter(
 	cfg *config.AppConfig,
 	bootRepo port.BootstrapRepository,

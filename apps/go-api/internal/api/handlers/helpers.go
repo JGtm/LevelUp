@@ -124,6 +124,10 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 
 // writeJSONCached sérialise v, pose un ETag SHA-256 et retourne 304 si le client est à jour.
 // À utiliser sur les endpoints GET dont les données changent peu entre deux syncs.
+//
+// tous les callers passent 200/OK mais la signature reste configurable.
+//
+//nolint:unparam // status paramétré pour cohérence avec writeJSON ; aujourd'hui
 func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v interface{}) {
 	sanitizeFloatsForJSON(v)
 	body, err := json.Marshal(v)

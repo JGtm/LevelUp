@@ -33,28 +33,28 @@ func parseTierTargets(s string) []int {
 
 // computeTierProgress calcule le pourcentage de progression vers le prochain palier.
 // Formule : (total - prevTier) / (currTier - prevTier) × 100.
-// Retourne (100.0, true) si total >= dernier palier (masterisé).
-// Retourne (0.0, false) si tiers est vide ou total <= 0.
-func computeTierProgress(total int, tiers []int) (pct float64, fullyMastered bool) {
+// Retourne 100.0 si total >= dernier palier (masterisé).
+// Retourne 0.0 si tiers est vide ou total <= 0.
+func computeTierProgress(total int, tiers []int) float64 {
 	if len(tiers) == 0 {
-		return 0, false
+		return 0
 	}
 	lastTier := tiers[len(tiers)-1]
 	if total >= lastTier {
-		return 100.0, true
+		return 100.0
 	}
 	prevTier := 0
 	for _, t := range tiers {
 		if total < t {
 			width := t - prevTier
 			if width <= 0 {
-				return 0, false
+				return 0
 			}
-			return float64(total-prevTier) / float64(width) * 100.0, false
+			return float64(total-prevTier) / float64(width) * 100.0
 		}
 		prevTier = t
 	}
-	return 100.0, true
+	return 100.0
 }
 
 // BuildCitationSnippets construit au plus `limit` snippets de citations depuis les lignes brutes.
@@ -83,7 +83,7 @@ func BuildCitationSnippets(rows []domain.HomeMatchCitationRaw, limit int) []doma
 			}
 		}
 
-		pct, _ := computeTierProgress(row.Cumulative, tiers)
+		pct := computeTierProgress(row.Cumulative, tiers)
 
 		isNewlyMastered := false
 		if len(tiers) > 0 {
