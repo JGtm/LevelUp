@@ -30,6 +30,75 @@
 
 ---
 
+## [2026-05-21] feat(csr-pipeline) — Pipeline CSR Halo end-to-end : config + backfill + threshold dynamique + display + diag
+
+**Statut** : Complété (branche `fix/csr-placement-alignment`, 8 commits incrémentaux Phase 0-10).
+
+**Contexte** : extension du fix initial "alignement placement display" qui s'est révélé être l'arbre cachant la forêt. Diagnostic révèle que **toute la pipeline CSR ne capture aucune donnée** sur ce PC (0/1569 matchs marqués ranked, 0 CSR row dans MSR pour 3 joueurs, 0 snapshot Waypoint, catalogue mal classifié, seuil hardcodé 10 alors qu'Halo a baissé à 5 depuis S3 mars 2023). Le user a demandé "la totale qu'on en finisse avec cette histoire" → implémentation complète + tests.
+
+**Saison courante confirmée** : `CsrSeason13-1` (Infinite, depuis 2025-11-18), source `config/titles/halo_infinite/mappings/assets.toml` display_order=130 end_date absent.
+
+**Arbre causal des 8 trous fonctionnels résolus** :
+
+| # | Trou | Phase fix |
+|---|---|---|
+| A | `csr_season_id` config absente → snapshots Waypoint jamais sync | 0 (config) + 10 (warn log) |
+| B | `match_registry.is_ranked = FALSE` historique (régression 2026-05-10) | 1 (migration backfill SQL) |
+| C | `playlists_catalog` mal classifié (Ranked Arena → "social") | 2 (re-run populate, opérationnel) |
+| D | `match_skill_rank.CSR` vide partout (cascade de B) | 3 (backfill CLI, opérationnel) |
+| E | `player_csr_snapshots` vide partout (cascade de A) | 4 (sync auto après config) |
+| F | Seuil placement hardcode 10 (vrai = 5 depuis S3 mars 2023) | 5 (table) + 6 (BE display) + 7 (FE) |
+| G | DB Chocoboflor WAL corrompu | 8 (opérationnel) |
+| H | Aucune visibilité coverage CSR | 9 (endpoint diag) |
+
+**8 commits livrés sur la branche** :
+
+1. `fix(home/playlist-ranks)` — placement 0/10 quand isRanked+noMSR+noSnapshot
+2. `feat(csr)` — table csr_placement_thresholds (seed S1-S13) + warn log csrSeasonID — Phase 5+10
+3. `feat(csr)` — csr_season_id="CsrSeason13-1" dans app_settings.example + 7 tests loader — Phase 0
+4. `feat(shared)` — migration backfill is_ranked + season_id sur match_registry (5 tests, idempotent) — Phase 1
+5. `feat(sync,openspartan)` — populer season_id à l'écriture (extract payload + INSERT) — Phase 9.5
+6. `feat(home,career)` — backend display threshold dynamique + mapping image proportionnel + injection registry — Phase 6
+7. `feat(web)` — consume placement_total dynamique côté frontend (3 composants + 3 tests) — Phase 7
+8. `feat(api)` — endpoint /_diag/csr-coverage/{slug} + 4 tests handler — Phase 9
+
+**Décisions techniques notables** :
+
+- **Mapping image proportionnel** : seuil 5 réutilise les 10 images existantes via `imageIndex = completed * 10 / threshold` (3/5 → unranked_6.png). Évite création de 5 nouveaux assets.
+- **Wrappers back-compat** : `unrankedBadgeURL` et `buildHomeSkillPeakBadgeURL` conservés (threshold=10 identité), variantes `*ForThreshold` pour les nouveaux callers. Zéro régression sur les tests existants.
+- **`CSRThresholdsRepo` avec cache mémoire** + constante `CSRPlacementThresholdDefault=5` dupliquée dans `sync` et `duckdb` packages pour éviter import cycle.
+- **Source saison double** : `MatchInfo.SeasonId` payload Halo (Phase 9.5 lecture à l'écriture) + fallback bornes start_time via dates hardcodées dans migration Phase 1.
+
+**Validation tests** :
+
+- Backend Go : ~40 nouveaux tests (CSRThresholdsRepo×8, migration backfill×5, sync transforms SeasonID×4, OpenSpartan mapper×3, buildPlaylistRankItem threshold×6, newPlacementPlaylistCSR×3, diag handler×4, warn log×2, config loader×7). Zéro régression existant via wrappers back-compat.
+- Frontend Vitest : 4 nouveaux tests (3 HomeRecentPlaylistsCard + 1 HomeRankingStates). 17/17 verts.
+- TypeScript : `npx tsc --noEmit` 0 erreur. Go vet : 0 warning.
+
+**Étapes opérationnelles (à exécuter par l'utilisateur)** :
+
+1. Restart `make dev` → migrations Phase 1 + Phase 5 actives au boot + warn Phase 10 si config absente.
+2. `cd apps/go-api && go run ./cmd/populate-playlists-catalog/ --from-match-registry --title halo_infinite` (Phase 2).
+3. `levelup backfill --gamertag JGtm --csr --force` (idem Chocoboflor, Madina97294) — Phase 3.
+4. Sync delta → snapshots auto via post-sync (Phase 4).
+5. `curl /api/v1/_diag/csr-coverage/JGtm | jq` → validation needs_backfill=false.
+6. DB Chocoboflor : restart serveur (replay WAL en RW) ou suppression manuelle du .wal orphelin (Phase 8).
+
+**Hors-scope future PR** :
+
+- Backfill historique multi-saisons snapshots (S1-S12) — `runCSRSnapshotSync` ne fetche que saison courante.
+- Création de 5 assets dédiés au seuil 5 (mapping proportionnel sur les 10 existantes acceptable).
+
+**Extensions livrées en suite** :
+
+- **Tests E2E intégration** (commit `test(e2e): 5 scénarios pipeline CSR end-to-end`) — `csr_pipeline_e2e_integration_test.go` couvre les 5 scénarios planifiés : home placement S13 threshold 5, home recent playlists mixed states, career CSRs merge catalogue+snapshots, diag endpoint coverage gap, display threshold dynamique S2 vs S13. Setup temp DBs (player + shared + metadata) avec toutes les migrations appliquées. 5/5 PASS, ~6s.
+
+- **Option A : table shared.match_csrs** (commit `feat(sync,shared): capture CSR de TOUS les participants ranked`) — comble le trou "CSR jeté pour les autres joueurs du match". Migration `add_shared_match_csrs` (TargetShared) + table PK=(match_id, xuid). Sync engine étendu : `ExtractAllSharedCSRRows` itère sur skillData[xuid] + `UpsertSharedCSRs` batch UPSERT. 10 tests (unit + integration + E2E sync simulé 4 joueurs). Permet désormais comparaisons CSR cross-joueurs (Squad, "qui était mieux classé", coéquipiers en placement) — fondement data prêt, à consommer par futures features front.
+
+- **Backfill historique `--shared-csr` + dry-run** (commit `feat(sync,cli): backfill historique shared.match_csrs + --dry-run`) — rattrape `shared.match_csrs` pour les matchs ranked déjà en DB. `BackfillSharedCSRsFromAPI` + `SyncEngine.RunBackfillSharedCSR` + CLI `--shared-csr [--force] [--dry-run]`. 7 tests (idempotence, dry-run no-API, force, partial coverage, error tolerance, context cancel). Dry-run validé sur les 3 joueurs réels : 50 matchs ranked détectés (JGtm 8 + Madina 34 + Chocoboflor 8 + DaemonGamer 0).
+
+---
+
 ## [2026-05-21] audit(duckdb) — 3 bugs au boot serveur Go (ATTACH global + media_files JGtm + Q26h shared.medals_earned)
 
 **Statut** : Diagnostic seul — audit livré dans [.ai/AUDIT_DUCKDB_ATTACH_2026-05-21.md](.ai/AUDIT_DUCKDB_ATTACH_2026-05-21.md). Aucune ligne de code modifiée (l'utilisateur n'a demandé que la documentation).

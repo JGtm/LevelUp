@@ -325,14 +325,15 @@ WITH per_playlist AS (
 			THEN 1 ELSE 0
 		END) > 0 AS is_ranked,
 		MAX(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_played,
-		ARG_MAX(r.match_id, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_match_id
+		ARG_MAX(r.match_id, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_match_id,
+		ARG_MAX(r.season_id, COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')) AS last_season_id
 	FROM match_participants mp
 	JOIN match_registry r ON r.match_id = mp.match_id
 	WHERE mp.xuid = ?
 	  AND NULLIF(TRIM(COALESCE(r.playlist_id, '')), '') IS NOT NULL
 	GROUP BY r.playlist_id
 )
-SELECT playlist_id, playlist_name, is_ranked, last_played, last_match_id
+SELECT playlist_id, playlist_name, is_ranked, last_played, last_match_id, last_season_id
 FROM per_playlist
 ORDER BY last_played DESC
 LIMIT 3`

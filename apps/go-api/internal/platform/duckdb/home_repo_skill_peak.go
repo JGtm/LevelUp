@@ -171,8 +171,17 @@ func (r *HomeRepo) loadPeakPhaseB(ctx context.Context, matchIDs []string) map[st
 }
 
 // assemblePeak : filtre par effective_type, groupe, sélectionne le best matured.
+// Phase 6 : threshold paramétré (CSR=lookup season ou default, LUSR=10).
 func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string]peakRegistryInfo, ratingType string) *domain.HomeSkillPeakRow {
 	want := strings.ToUpper(strings.TrimSpace(ratingType))
+	// LUSR garde son seuil interne de 10 (algorithme local). CSR utilise la
+	// saison courante du HomeRepo (configurée via WithCSRThresholds) ou le
+	// default S3+ (=5) si non câblé.
+	threshold := 10
+	if want == "CSR" {
+		threshold = r.csrThreshold(r.currentCSRSID)
+	}
+
 	type groupBest struct {
 		row        peakRow
 		matchCount int
@@ -196,33 +205,34 @@ func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string
 		return nil
 	}
 
-	const placementThreshold = 10
 	var chosen *groupBest
 	for _, gb := range byGroup {
 		switch {
 		case chosen == nil:
 			chosen = gb
-		case gb.matchCount >= placementThreshold && chosen.matchCount < placementThreshold:
+		case gb.matchCount >= threshold && chosen.matchCount < threshold:
 			chosen = gb
-		case (gb.matchCount >= placementThreshold) == (chosen.matchCount >= placementThreshold):
+		case (gb.matchCount >= threshold) == (chosen.matchCount >= threshold):
 			if gb.row.ratingValue > chosen.row.ratingValue {
 				chosen = gb
 			}
 		}
 	}
-	remaining := placementThreshold - chosen.matchCount
+	remaining := threshold - chosen.matchCount
 	if remaining < 0 {
 		remaining = 0
 	}
 
 	peak := &domain.HomeSkillPeakRow{RatingValue: chosen.row.ratingValue}
+	totalCopy := threshold
+	peak.PlacementTotal = &totalCopy
 	if remaining > 0 {
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, remaining)
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, homeStaticTitleSlug, remaining, threshold)
 		remCopy := remaining
 		peak.MeasurementMatchesRemaining = &remCopy
 		return peak
 	}
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(chosen.row.tier, chosen.row.tierLabel, chosen.row.subTier, homeStaticTitleSlug, 0)
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(chosen.row.tier, chosen.row.tierLabel, chosen.row.subTier, homeStaticTitleSlug, 0, threshold)
 	if strings.TrimSpace(chosen.row.tierLabel) != "" {
 		peak.TierLabel = stringPtr(chosen.row.tierLabel)
 	}
@@ -272,6 +282,9 @@ func isBetterPeak(candidate, current peakRow) bool {
 // (la playlist la plus avancée dans son placement) pour que la home affiche
 // "En placement N/10" au lieu de "Aucune partie classée".
 func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeakRow {
+	// Phase 6 : threshold de la saison courante pour les calculs CSR.
+	threshold := r.csrThreshold(r.currentCSRSID)
+
 	var value sql.NullFloat64
 	var tier sql.NullString
 	var subTier sql.NullInt16
@@ -279,19 +292,26 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 		peak := &domain.HomeSkillPeakRow{RatingValue: value.Float64}
 		tierStr := optionalNullStringValue(tier)
 		subTierInt := optionalNullInt16Value(subTier)
-		peak.BadgeImageURL = buildHomeSkillPeakBadgeURL(tierStr, "", subTierInt, homeStaticTitleSlug, 0)
+		peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(tierStr, "", subTierInt, homeStaticTitleSlug, 0, threshold)
 		if tierStr != "" {
 			peak.TierLabel = stringPtr(tierStr)
 		}
 		zero := 0
 		peak.MeasurementMatchesRemaining = &zero
+		totalCopy := threshold
+		peak.PlacementTotal = &totalCopy
 		return peak
 	}
 
 	// Pas d'alltime : tenter de récupérer l'état de placement le plus avancé.
 	// MIN(current_measurement_remaining) = playlist la plus proche de la fin
-	// du placement (10 → 0). Si pas de snapshot du tout : retourner nil pour
-	// laisser Q26e fallback prendre la suite.
+	// du placement (threshold → 0). Si pas de snapshot du tout : retourner nil
+	// pour laisser Q26e fallback prendre la suite.
+	//
+	// NOTE : à terme, on pourrait lire le season_id ici aussi pour appliquer le
+	// threshold de cette saison-là spécifiquement. Pour l'instant on prend le
+	// threshold de la saison courante — acceptable dans 99% des cas (joueur en
+	// placement = saison récente).
 	var minRemaining sql.NullInt32
 	if err := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT MIN(current_measurement_remaining)
@@ -303,15 +323,38 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 	}
 	remaining := int(minRemaining.Int32)
 	peak := &domain.HomeSkillPeakRow{RatingValue: 0}
-	peak.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, remaining)
+	peak.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, homeStaticTitleSlug, remaining, threshold)
 	peak.MeasurementMatchesRemaining = &remaining
+	totalCopy := threshold
+	peak.PlacementTotal = &totalCopy
 	return peak
 }
 
-// unrankedBadgeURL retourne l'URL du badge unranked_N.png.
-// N = placementsCompleted (0-9) — total de 10 parties de placement pour CSR et LUSR.
+// unrankedBadgeURL retourne l'URL du badge unranked_N.png pour un placement à
+// seuil 10 (compat historique). Préfèrer unrankedBadgeURLForThreshold pour les
+// nouveaux callers qui veulent supporter le seuil dynamique par saison.
 func unrankedBadgeURL(placementsCompleted int, titleSlug string) *string {
-	n := placementsCompleted
+	return unrankedBadgeURLForThreshold(placementsCompleted, 10, titleSlug)
+}
+
+// unrankedBadgeURLForThreshold retourne l'URL du badge unranked en mappant
+// proportionnellement la progression sur les 10 images disponibles
+// (unranked_0.png .. unranked_9.png).
+//
+// Phase 6 du plan pipeline CSR : depuis Season 3 (2023-03-07) Halo utilise
+// un seuil 5 au lieu de 10. On recycle les images existantes via un mapping
+// régulier :
+//
+//	threshold=10 : completed * 10 / 10 = identité (0,1,2,3,4,5,6,7,8,9)
+//	threshold=5  : completed * 10 / 5  = 0,2,4,6,8 (5 images utilisées)
+//
+// N est ensuite clampé [0, 9] pour les bornes (completed négatif ou ≥ threshold).
+func unrankedBadgeURLForThreshold(placementsCompleted, threshold int, titleSlug string) *string {
+	if threshold <= 0 {
+		threshold = 10 // garde-fou
+	}
+	// Mapping proportionnel : completed * 10 / threshold.
+	n := (placementsCompleted * 10) / threshold
 	if n < 0 {
 		n = 0
 	}
@@ -326,16 +369,24 @@ func unrankedBadgeURL(placementsCompleted int, titleSlug string) *string {
 	return &url
 }
 
-// buildHomeSkillPeakBadgeURL construit l'URL du badge de rang.
-// titleSlug : slug de titre (ex "halo_infinite") pour les ratings game-specific (CSR).
-// Passer "" pour les ratings cross-titre (LUSR) - l'URL n'inclut pas de slug.
-// measurementMatchesRemaining > 0 → badge unranked_N.png (N = 10 - remaining, capped 0-9).
+// buildHomeSkillPeakBadgeURL construit l'URL du badge de rang (compat seuil 10).
+// Wrapper de buildHomeSkillPeakBadgeURLForThreshold. Préfèrer la version
+// "ForThreshold" pour les nouveaux callers conscients du seuil dynamique.
 func buildHomeSkillPeakBadgeURL(tier string, tierLabel string, subTier int, titleSlug string, measurementMatchesRemaining int) *string {
+	return buildHomeSkillPeakBadgeURLForThreshold(tier, tierLabel, subTier, titleSlug, measurementMatchesRemaining, 10)
+}
+
+// buildHomeSkillPeakBadgeURLForThreshold construit l'URL du badge avec seuil
+// dynamique pour le calcul de l'image placement. Phase 6 du plan pipeline CSR.
+func buildHomeSkillPeakBadgeURLForThreshold(tier string, tierLabel string, subTier int, titleSlug string, measurementMatchesRemaining, threshold int) *string {
 	normalizedTier, normalizedSubTier := normalizeHomeSkillPeakBadgeParts(tier, tierLabel, subTier)
 	if normalizedTier == "" {
 		if measurementMatchesRemaining > 0 {
-			completed := 10 - measurementMatchesRemaining
-			return unrankedBadgeURL(completed, titleSlug)
+			if threshold <= 0 {
+				threshold = 10
+			}
+			completed := threshold - measurementMatchesRemaining
+			return unrankedBadgeURLForThreshold(completed, threshold, titleSlug)
 		}
 		return nil
 	}

@@ -55,7 +55,7 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshot(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 4}
 
-	item := buildPlaylistRankItem(p, msr, snap)
+	item := buildPlaylistRankItem(p, msr, snap, 10)
 
 	if item.RatingValue != nil {
 		t.Errorf("RatingValue: want nil (placement), got %v", *item.RatingValue)
@@ -88,7 +88,7 @@ func TestBuildPlaylistRankItem_PlacementFromMSROnly(t *testing.T) {
 	}
 	snap := map[string]int{} // pas de snapshot
 
-	item := buildPlaylistRankItem(p, msr, snap)
+	item := buildPlaylistRankItem(p, msr, snap, 10)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 7 {
 		t.Errorf("MeasurementMatchesRemaining: want 7, got %v", item.MeasurementMatchesRemaining)
@@ -111,7 +111,7 @@ func TestBuildPlaylistRankItem_StableRank(t *testing.T) {
 	}
 	snap := map[string]int{"pl-ranked": 0} // matured
 
-	item := buildPlaylistRankItem(p, msr, snap)
+	item := buildPlaylistRankItem(p, msr, snap, 10)
 
 	if item.RatingValue == nil || *item.RatingValue != 1450 {
 		t.Errorf("RatingValue: want 1450, got %v", item.RatingValue)
@@ -139,7 +139,7 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshotNoMSR(t *testing.T) {
 	msr := map[string]playlistMSRRow{} // pas de MSR
 	snap := map[string]int{"pl-ranked": 9}
 
-	item := buildPlaylistRankItem(p, msr, snap)
+	item := buildPlaylistRankItem(p, msr, snap, 10)
 
 	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 9 {
 		t.Errorf("MeasurementMatchesRemaining: want 9, got %v", item.MeasurementMatchesRemaining)
@@ -152,6 +152,102 @@ func TestBuildPlaylistRankItem_PlacementFromSnapshotNoMSR(t *testing.T) {
 	}
 }
 
+func TestBuildPlaylistRankItem_RankedNoMSRNoSnapshot(t *testing.T) {
+	t.Parallel()
+	// Régression : playlist ranked vue dans match_registry mais sans MSR
+	// (aucun match ranked joué) ET sans snapshot CSR (sync CSR jamais lancée).
+	// Doit ressortir un placement à 0/10 avec badge unranked_0.png, pas un item vide.
+	p := playlistPhaseBRow{
+		playlistID:   "pl-ranked",
+		playlistName: "Assassin classé",
+		isRanked:     true,
+		lastMatchID:  "m1",
+	}
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 10)
+
+	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 10 {
+		t.Errorf("MeasurementMatchesRemaining: want 10 (placement à 0 match), got %v", item.MeasurementMatchesRemaining)
+	}
+	if item.BadgeImageURL == nil || !contains(*item.BadgeImageURL, "unranked_0") {
+		t.Errorf("BadgeImageURL: want unranked_0.png, got %v", item.BadgeImageURL)
+	}
+	if item.RatingValue != nil {
+		t.Errorf("RatingValue: want nil, got %v", *item.RatingValue)
+	}
+	if item.RatingType == nil || *item.RatingType != "CSR" {
+		t.Errorf("RatingType: want CSR, got %v", item.RatingType)
+	}
+}
+
+// ─── Phase 6 : seuil dynamique S3+ (threshold=5) ─────────────────────────
+
+func TestBuildPlaylistRankItem_Threshold5_PlacementFromSnapshot(t *testing.T) {
+	t.Parallel()
+	// Seuil S3+ : 5 matchs. Snapshot remaining=2 → completed=3 → 3/5 progress.
+	// Mapping image proportionnel : 3*10/5 = 6 → unranked_6.png.
+	p := playlistPhaseBRow{
+		playlistID: "pl-ranked", playlistName: "Ranked Arena", isRanked: true, lastMatchID: "m1",
+		lastSeasonID: "CsrSeason13-1",
+	}
+	msr := map[string]playlistMSRRow{
+		"m1": {ratingValue: 0, tier: "Placement", tierLabel: "Placement (2 restants)"},
+	}
+	snap := map[string]int{"pl-ranked": 2}
+
+	item := buildPlaylistRankItem(p, msr, snap, 5)
+
+	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 2 {
+		t.Errorf("MeasurementMatchesRemaining: want 2, got %v", item.MeasurementMatchesRemaining)
+	}
+	if item.PlacementTotal == nil || *item.PlacementTotal != 5 {
+		t.Errorf("PlacementTotal: want 5, got %v", item.PlacementTotal)
+	}
+	if item.BadgeImageURL == nil || !contains(*item.BadgeImageURL, "unranked_6") {
+		t.Errorf("BadgeImageURL: want unranked_6.png (proportional 3/5 → 6/10), got %v", item.BadgeImageURL)
+	}
+}
+
+func TestBuildPlaylistRankItem_Threshold5_NoMatchYet(t *testing.T) {
+	t.Parallel()
+	// Joueur sur playlist ranked S13 mais aucun match joué.
+	// → placement 0/5, badge unranked_0.png, placement_total=5.
+	p := playlistPhaseBRow{
+		playlistID: "pl-ranked", playlistName: "Assassin classé", isRanked: true, lastMatchID: "m1",
+		lastSeasonID: "CsrSeason13-1",
+	}
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 5)
+
+	if item.MeasurementMatchesRemaining == nil || *item.MeasurementMatchesRemaining != 5 {
+		t.Errorf("MeasurementMatchesRemaining: want 5, got %v", item.MeasurementMatchesRemaining)
+	}
+	if item.PlacementTotal == nil || *item.PlacementTotal != 5 {
+		t.Errorf("PlacementTotal: want 5, got %v", item.PlacementTotal)
+	}
+	if item.BadgeImageURL == nil || !contains(*item.BadgeImageURL, "unranked_0") {
+		t.Errorf("BadgeImageURL: want unranked_0.png, got %v", item.BadgeImageURL)
+	}
+}
+
+func TestBuildPlaylistRankItem_Threshold5_MaturedRankExposesPlacementTotal(t *testing.T) {
+	t.Parallel()
+	// Rang matured doit aussi exposer placement_total (pour info front).
+	p := playlistPhaseBRow{
+		playlistID: "pl-ranked", playlistName: "Ranked Arena", isRanked: true, lastMatchID: "m1",
+		lastSeasonID: "CsrSeason13-1",
+	}
+	msr := map[string]playlistMSRRow{
+		"m1": {ratingValue: 1450, tier: "Onyx", tierLabel: "Onyx 1450"},
+	}
+	item := buildPlaylistRankItem(p, msr, map[string]int{"pl-ranked": 0}, 5)
+
+	if item.PlacementTotal == nil || *item.PlacementTotal != 5 {
+		t.Errorf("PlacementTotal: want 5 (matured ranked), got %v", item.PlacementTotal)
+	}
+	if item.MeasurementMatchesRemaining != nil {
+		t.Errorf("MeasurementMatchesRemaining: want nil (matured), got %v", *item.MeasurementMatchesRemaining)
+	}
+}
+
 func TestBuildPlaylistRankItem_NonRankedNoMSR(t *testing.T) {
 	t.Parallel()
 	// Playlist sociale jamais classée : on ne fabrique rien.
@@ -161,7 +257,7 @@ func TestBuildPlaylistRankItem_NonRankedNoMSR(t *testing.T) {
 		isRanked:     false,
 		lastMatchID:  "m1",
 	}
-	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{})
+	item := buildPlaylistRankItem(p, map[string]playlistMSRRow{}, map[string]int{}, 10)
 
 	if item.MeasurementMatchesRemaining != nil {
 		t.Errorf("MeasurementMatchesRemaining: want nil, got %v", *item.MeasurementMatchesRemaining)
@@ -176,9 +272,9 @@ func TestBuildPlaylistRankItem_NonRankedNoMSR(t *testing.T) {
 
 // ─── newPlacementPlaylistCSR ────────────────────────────────────────────
 
-func TestNewPlacementPlaylistCSR_DefaultValues(t *testing.T) {
+func TestNewPlacementPlaylistCSR_DefaultValues_Threshold5(t *testing.T) {
 	t.Parallel()
-	p := newPlacementPlaylistCSR("pl-id", "Ranked Slayer")
+	p := newPlacementPlaylistCSR("pl-id", "Ranked Slayer", 5)
 
 	if p.PlaylistID != "pl-id" {
 		t.Errorf("PlaylistID: want pl-id, got %q", p.PlaylistID)
@@ -186,14 +282,38 @@ func TestNewPlacementPlaylistCSR_DefaultValues(t *testing.T) {
 	if p.PlaylistName != "Ranked Slayer" {
 		t.Errorf("PlaylistName: want \"Ranked Slayer\", got %q", p.PlaylistName)
 	}
-	if p.Current.MeasurementMatchesRemaining != 10 {
-		t.Errorf("Current.MeasurementMatchesRemaining: want 10, got %d", p.Current.MeasurementMatchesRemaining)
+	if p.Current.MeasurementMatchesRemaining != 5 {
+		t.Errorf("Current.MeasurementMatchesRemaining: want 5 (threshold=5), got %d", p.Current.MeasurementMatchesRemaining)
+	}
+	if p.Current.PlacementTotal != 5 {
+		t.Errorf("Current.PlacementTotal: want 5, got %d", p.Current.PlacementTotal)
 	}
 	if p.Current.Tier != "" {
 		t.Errorf("Current.Tier: want empty (placement), got %q", p.Current.Tier)
 	}
 	if p.Current.BadgeImageURL == nil || !contains(*p.Current.BadgeImageURL, "unranked_0") {
 		t.Errorf("Current.BadgeImageURL: want unranked_0.png, got %v", p.Current.BadgeImageURL)
+	}
+}
+
+func TestNewPlacementPlaylistCSR_LegacyThreshold10(t *testing.T) {
+	t.Parallel()
+	p := newPlacementPlaylistCSR("pl-id", "Ranked Doubles", 10)
+
+	if p.Current.MeasurementMatchesRemaining != 10 {
+		t.Errorf("Current.MeasurementMatchesRemaining: want 10 (legacy threshold), got %d", p.Current.MeasurementMatchesRemaining)
+	}
+	if p.Current.PlacementTotal != 10 {
+		t.Errorf("Current.PlacementTotal: want 10, got %d", p.Current.PlacementTotal)
+	}
+}
+
+func TestNewPlacementPlaylistCSR_ZeroThresholdFallsBackToDefault(t *testing.T) {
+	t.Parallel()
+	p := newPlacementPlaylistCSR("pl-id", "X", 0)
+
+	if p.Current.MeasurementMatchesRemaining != CSRPlacementThresholdDefault {
+		t.Errorf("want fallback to default (%d), got %d", CSRPlacementThresholdDefault, p.Current.MeasurementMatchesRemaining)
 	}
 }
 

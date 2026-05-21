@@ -34,6 +34,8 @@ type HomeSkillPeakRow struct {
 	TierLabel                   *string
 	BadgeImageURL               *string
 	MeasurementMatchesRemaining *int
+	// PlacementTotal = seuil placement (5 ou 10). Propagé vers HomeSkillPeakSummary.PlacementTotal.
+	PlacementTotal *int
 }
 
 // HomeSpartanIdentityRow est la projection brute de l'identité record pour la home.
@@ -122,6 +124,11 @@ type HomeSkillPeakSummary struct {
 	TierLabel                   *string `json:"tier_label,omitempty"`
 	BadgeImageURL               *string `json:"badge_image_url,omitempty"`
 	MeasurementMatchesRemaining *int    `json:"measurement_matches_remaining,omitempty"`
+	// PlacementTotal = nombre total de matchs de placement requis pour la
+	// saison du peak (5 depuis Season 3, 10 historique). Permet au front
+	// d'afficher "En placement (X/N)" avec le bon dénominateur.
+	// nil → fallback front à 10 (back-compat clients anciens).
+	PlacementTotal *int `json:"placement_total,omitempty"`
 }
 
 // HomePlaylistRank associe une playlist récente à son dernier rang compétitif connu.
@@ -136,6 +143,9 @@ type HomePlaylistRank struct {
 	TierLabel                   *string  `json:"tier_label,omitempty"`
 	BadgeImageURL               *string  `json:"badge_image_url,omitempty"`
 	MeasurementMatchesRemaining *int     `json:"measurement_matches_remaining,omitempty"`
+	// PlacementTotal = seuil placement de la saison du match (5 ou 10).
+	// nil → fallback front à 10 (back-compat).
+	PlacementTotal *int `json:"placement_total,omitempty"`
 }
 
 // HomeSpartanIdentity représente le bloc identitaire compact de la home.

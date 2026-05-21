@@ -160,6 +160,34 @@ describe('Home ranking states', () => {
     expect(screen.getByTestId('home-highest-lusr-detail')).toHaveTextContent('En placement (6/10)')
   })
 
+  // Phase 6 du plan pipeline CSR : seuil dynamique placement_total.
+  it('affiche "En placement (3/5)" quand le backend renvoie placement_total=5 (saison S3+)', async () => {
+    const response = buildHomeResponse()
+    response.spartan_identity = {
+      ...response.spartan_identity!,
+      highest_csr: {
+        rating_value: 0,
+        tier_label: null,
+        badge_image_url: '/static/ranks/halo_infinite/unranked_6.png',
+        measurement_matches_remaining: 2,
+        placement_total: 5, // S13 et postérieures
+      },
+    }
+    response.has_ranked_history = true
+
+    server.use(
+      http.get('/api/v1/players/:playerSlug/pages/home', () => HttpResponse.json(response)),
+    )
+
+    renderWithProviders(<HomePage />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-highest-csr-detail')).toHaveTextContent('En placement (3/5)')
+    })
+    const badge = screen.getByTestId('home-highest-csr-unranked') as HTMLImageElement
+    expect(badge.src).toContain('/static/ranks/halo_infinite/unranked_6.png')
+  })
+
   it('affiche le rating + tier quand peak.measurement_matches_remaining=0 (matured)', async () => {
     const response = buildHomeResponse()
     response.spartan_identity = {
