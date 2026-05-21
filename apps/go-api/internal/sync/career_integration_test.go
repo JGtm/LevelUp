@@ -71,7 +71,7 @@ func TestSaveCareerRank(t *testing.T) {
 		IsMaxRank:       false,
 		BannerImageURL:  "https://example.test/banner.png",
 	}
-	err := saveCareerRank(db, data)
+	err := saveCareerRank(t.Context(), db, data)
 	if err != nil {
 		t.Fatal(err)
 	}

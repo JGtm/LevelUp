@@ -136,7 +136,7 @@ func TestSaveCareerRank_Insert(t *testing.T) {
 		BannerImageURL:  "https://example.test/banner.png",
 	}
 
-	if err := saveCareerRank(db, data); err != nil {
+	if err := saveCareerRank(t.Context(), db, data); err != nil {
 		t.Fatalf("saveCareerRank: %v", err)
 	}
 
@@ -166,7 +166,7 @@ func TestSaveCareerRank_MultipleSnapshots(t *testing.T) {
 			CurrentRank: rank,
 			CurrentXP:   i * 1000,
 		}
-		if err := saveCareerRank(db, data); err != nil {
+		if err := saveCareerRank(t.Context(), db, data); err != nil {
 			t.Fatalf("saveCareerRank rank=%d: %v", rank, err)
 		}
 	}

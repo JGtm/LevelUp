@@ -18,6 +18,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -162,12 +163,12 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 // classé n'a jamais de LUSR valide — le LUSR est exclu des matchs ranked par
 // loadLUSRMatchData). La garde-fou SQL inverse (LUSR ne peut pas écraser CSR)
 // reste dans upsertLUSRRatings et n'est pas affectée.
-func UpsertCSRRow(playerDB *sql.DB, row *MatchCSRRow) error {
+func UpsertCSRRow(ctx context.Context, playerDB *sql.DB, row *MatchCSRRow) error {
 	if row == nil {
 		return nil
 	}
 	now := time.Now().UTC()
-	_, err := playerDB.Exec(`
+	_, err := playerDB.ExecContext(ctx, `
 		INSERT INTO match_skill_rank
 			(match_id, rating_type, rating_value, rating_deviation,
 			 tier, tier_fr, sub_tier, tier_label,

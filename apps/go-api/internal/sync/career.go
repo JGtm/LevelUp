@@ -113,9 +113,9 @@ func parseCareerRank(body map[string]interface{}, xuid string) *CareerRankData {
 // saveCareerRank insère un snapshot de progression dans la player DB.
 //
 //nolint:unused // utilisée par career_test.go + career_integration_test.go
-func saveCareerRank(db *sql.DB, data *CareerRankData) error {
+func saveCareerRank(ctx context.Context, db *sql.DB, data *CareerRankData) error {
 	now := time.Now().UTC()
-	_, err := db.Exec(`
+	_, err := db.ExecContext(ctx, `
 		INSERT INTO career_progression (
 			xuid, rank, rank_name, rank_tier,
 			current_xp, xp_for_next_rank, xp_total,
@@ -138,7 +138,7 @@ func saveCareerRank(db *sql.DB, data *CareerRankData) error {
 	return nil
 }
 
-func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
+func enrichCareerRankFromMetadata(ctx context.Context, db *sql.DB, data *CareerRankData) error {
 	if db == nil || data == nil {
 		return nil
 	}
@@ -150,7 +150,7 @@ func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
 		xpRequired    int
 		adornmentPath sql.NullString
 	)
-	err := db.QueryRow(
+	err := db.QueryRowContext(ctx,
 		`SELECT title_en, tier_type, grade, xp_required, adornment_icon_path
 		 FROM career_ranks
 		 WHERE rank_id = ?`,
@@ -173,7 +173,7 @@ func enrichCareerRankFromMetadata(db *sql.DB, data *CareerRankData) error {
 	}
 
 	var completedXP int
-	if err := db.QueryRow(
+	if err := db.QueryRowContext(ctx,
 		`SELECT COALESCE(SUM(xp_required), 0)
 		 FROM career_ranks
 		 WHERE rank_id < ?`,
@@ -203,18 +203,18 @@ func syncPlayerCSRs(
 	if len(csrs) == 0 {
 		return 0, nil
 	}
-	return saveCSRSnapshots(db, csrs, seasonID)
+	return saveCSRSnapshots(ctx, db, csrs, seasonID)
 }
 
 // saveCSRSnapshots insère ou remplace les snapshots CSR dans player_csr_snapshots.
-func saveCSRSnapshots(db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (int, error) {
+func saveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (int, error) {
 	now := time.Now().UTC()
 	var inserted int
 	for _, c := range csrs {
 		if strings.TrimSpace(c.PlaylistID) == "" {
 			continue
 		}
-		_, err := db.Exec(`
+		_, err := db.ExecContext(ctx, `
 			INSERT OR REPLACE INTO player_csr_snapshots (
 				playlist_id, playlist_name, queue, input, season_id,
 				current_value, current_tier, current_sub_tier, current_measurement_remaining,

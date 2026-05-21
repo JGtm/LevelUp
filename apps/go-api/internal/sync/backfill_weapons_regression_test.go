@@ -29,7 +29,7 @@ func TestGetXuidToPI_OrderByRank(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid1', 0, 2)`)
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid3', 1, 1)`)
 
-	result, err := getXuidToPI(db, "m1")
+	result, err := getXuidToPI(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestGetXuidToPI_NullRankLast(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants(match_id, xuid, team_id, rank) VALUES ('m1', 'xuid1', 0, 1)`)
 	db.Exec(`INSERT INTO match_participants(match_id, xuid, team_id, rank) VALUES ('m1', 'xuidNull', 0, NULL)`)
 
-	result, err := getXuidToPI(db, "m1")
+	result, err := getXuidToPI(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestGetAllKillsForMatch_DeduplicatesDuplicateRows(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`) // doublon
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 10000)`)
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestGetKillsForPlayer_DeduplicatesDuplicateRows(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`) // doublon
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 10000)`)
 
-	kills, err := getKillsForPlayer(db, "m1", "xuid1")
+	kills, err := getKillsForPlayer(t.Context(), db, "m1", "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestGetAllKillsForMatch_MeleeTypeAggregated(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'melee_kill', 5000)`)
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestGetKillsForPlayer_GrenadeTypeAggregated(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'grenade_kill', 5000)`)
 
-	kills, err := getKillsForPlayer(db, "m1", "xuid1")
+	kills, err := getKillsForPlayer(t.Context(), db, "m1", "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestGetAllKillsForMatch_MultipleParticipants(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid2', 'kill', 7000)`)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid2', 'melee_kill', 9000)`)
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestGetAllKillsForMatch_ExcludesNonKillEvents(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'death', 6000)`)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'assist', 7000)`)
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +192,7 @@ func TestGetAllKillsForMatch_XUIDAndMatchIDSet(t *testing.T) {
 	db := openWeaponDB(t)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid_alpha', 'kill', 3000)`)
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestGetAllKillsForMatch_OtherMatchExcluded(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 5000)`)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m2', 'xuid1', 'kill', 5000)`) // autre match
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestGetAllKillsForMatch_NullTimeMS(t *testing.T) {
 	// NULL time_ms doit être traité comme 0 (pas de panic).
 	db.Exec(`INSERT INTO highlight_events(match_id, xuid, event_type, time_ms) VALUES ('m1', 'xuid1', 'kill', NULL)`)
 
-	kills, err := getAllKillsForMatch(db, "m1")
+	kills, err := getAllKillsForMatch(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +248,7 @@ func TestGetMatchParticipantXuids_ReturnsDistinct(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid2', 0, 2)`)
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid3', 1, 1)`)
 
-	xuids, err := getMatchParticipantXuids(db, "m1")
+	xuids, err := getMatchParticipantXuids(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestGetMatchParticipantXuids_OtherMatchExcluded(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid1', 0, 1)`)
 	db.Exec(`INSERT INTO match_participants VALUES ('m2', 'xuid2', 0, 1)`)
 
-	xuids, err := getMatchParticipantXuids(db, "m1")
+	xuids, err := getMatchParticipantXuids(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -104,7 +104,7 @@ func TestHasBackfillCompletedColumn_WithColumn(t *testing.T) {
 		t.Fatalf("CREATE: %v", err)
 	}
 
-	if !hasBackfillCompletedColumn(db) {
+	if !hasBackfillCompletedColumn(t.Context(), db) {
 		t.Error("hasBackfillCompletedColumn devrait retourner true")
 	}
 }
@@ -121,7 +121,7 @@ func TestHasBackfillCompletedColumn_WithoutColumn(t *testing.T) {
 		t.Fatalf("CREATE: %v", err)
 	}
 
-	if hasBackfillCompletedColumn(db) {
+	if hasBackfillCompletedColumn(t.Context(), db) {
 		t.Error("hasBackfillCompletedColumn devrait retourner false sans colonne")
 	}
 }

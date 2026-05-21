@@ -83,7 +83,7 @@ func openPlayerForAll(t *testing.T) *sql.DB {
 }
 
 func TestFindMatchesMissingData_NilScope2(t *testing.T) {
-	_, err := FindMatchesMissingData(nil, nil, "xuid1", nil)
+	_, err := FindMatchesMissingData(t.Context(), nil, nil, "xuid1", nil)
 	if err == nil {
 		t.Fatal("expected error for nil scope")
 	}
@@ -95,7 +95,7 @@ func TestFindMatchesMissingData_EmptyScope(t *testing.T) {
 	scope := &SyncScope{}
 	scope.Resolve()
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestFindMatchesMissingData_MedalsScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Medals: true}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestFindMatchesMissingData_EventsScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Events: true}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestFindMatchesMissingData_AccuracyScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Accuracy: true}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestFindMatchesMissingData_ShotsScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Shots: true}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestFindMatchesMissingData_EnemyMMRScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{EnemyMMR: true}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestFindMatchesMissingData_ForceNoFilm(t *testing.T) {
 	// ForceNoFilm should imply Weapons + ForceWeapons
 	scope := &SyncScope{ForceNoFilm: true}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestFindMatchesMissingData_ParticipantsScores_WithLocal(t *testing.T) {
 		Medals:             true,
 	}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestFindMatchesMissingData_MaxMatches(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Medals: true, MaxMatches: 2}
 
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestFindMatchesMissingData_SkillScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Skill: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestFindMatchesMissingData_ForceSkill(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Skill: true, ForceSkill: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestFindMatchesMissingData_EventsLoadedExcludesWithoutForce(t *testing.T) {
 	sdb.Exec("UPDATE match_registry SET events_loaded=TRUE")
 
 	scope := &SyncScope{Events: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestFindMatchesMissingData_ForceEvents(t *testing.T) {
 	sdb.Exec("UPDATE match_registry SET events_loaded=TRUE")
 
 	scope := &SyncScope{Events: true, ForceEvents: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -309,7 +309,7 @@ func TestFindMatchesMissingData_ForcePersonalScores(t *testing.T) {
 
 	// Sans force : tous filtrés par la guard
 	scopeNoForce := &SyncScope{PersonalScores: true}
-	resultNoForce, err := FindMatchesMissingData(pdb, sdb, "xuid1", scopeNoForce)
+	resultNoForce, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scopeNoForce)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -319,7 +319,7 @@ func TestFindMatchesMissingData_ForcePersonalScores(t *testing.T) {
 
 	// Avec force : tous retournés
 	scopeForce := &SyncScope{PersonalScores: true, ForcePersonalScores: true}
-	resultForce, err := FindMatchesMissingData(pdb, sdb, "xuid1", scopeForce)
+	resultForce, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scopeForce)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestFindMatchesMissingData_AssetsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Assets: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +346,7 @@ func TestFindMatchesMissingData_ForceAssetsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Assets: true, ForceAssets: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestFindMatchesMissingData_PVEScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{PVEStats: true}
 	// No firefight matches → should return 0
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +375,7 @@ func TestFindMatchesMissingData_ForcePVEScope(t *testing.T) {
 	// Set one match as firefight
 	sdb.Exec("UPDATE match_registry SET is_firefight=TRUE WHERE match_id='match1'")
 	scope := &SyncScope{PVEStats: true, ForcePVEStats: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -388,7 +388,7 @@ func TestFindMatchesMissingData_WeaponsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Weapons: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +402,7 @@ func TestFindMatchesMissingData_ForceWeaponsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Weapons: true, ForceWeapons: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,7 +415,7 @@ func TestFindMatchesMissingData_ParticipantsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Participants: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +428,7 @@ func TestFindMatchesMissingData_ForceParticipantsScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{Participants: true, ForceParticipants: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +442,7 @@ func TestFindMatchesMissingData_PlayableDurationScope(t *testing.T) {
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{PlayableDuration: true}
 	// All matches have NULL playable_duration_seconds → all returned
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +455,7 @@ func TestFindMatchesMissingData_ForceAliases(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{ForceAliases: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,7 +468,7 @@ func TestFindMatchesMissingData_PerformanceForce(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{PerformanceScores: true, ForcePerformanceScores: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -481,7 +481,7 @@ func TestFindMatchesMissingData_PersonalScoresScope(t *testing.T) {
 	pdb := openPlayerForAll(t)
 	sdb := openSharedForAll(t)
 	scope := &SyncScope{PersonalScores: true}
-	result, err := FindMatchesMissingData(pdb, sdb, "xuid1", scope)
+	result, err := FindMatchesMissingData(t.Context(), pdb, sdb, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}

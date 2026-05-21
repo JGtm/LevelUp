@@ -63,7 +63,7 @@ func openSharedForBackfill(t *testing.T) *sql.DB {
 func TestFindMatchesInSharedDB_ParticipantsScores(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsScores: true}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestFindMatchesInSharedDB_ParticipantsScores(t *testing.T) {
 func TestFindMatchesInSharedDB_ParticipantsKDA(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsKDA: true}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestFindMatchesInSharedDB_ParticipantsKDA(t *testing.T) {
 func TestFindMatchesInSharedDB_ParticipantsShots(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsShots: true}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestFindMatchesInSharedDB_ParticipantsShots(t *testing.T) {
 func TestFindMatchesInSharedDB_ParticipantsDamage(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsDamage: true}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestFindMatchesInSharedDB_ParticipantsDamage(t *testing.T) {
 func TestFindMatchesInSharedDB_ParticipantsAvgLife(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsAvgLife: true}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +124,7 @@ func TestFindMatchesInSharedDB_ParticipantsAvgLife(t *testing.T) {
 func TestFindMatchesInSharedDB_ForceShots(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsShots: true, ForceParticipantsShots: true}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestFindMatchesInSharedDB_ForceShots(t *testing.T) {
 func TestFindMatchesInSharedDB_NoScope(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +149,7 @@ func TestFindMatchesInSharedDB_NoScope(t *testing.T) {
 func TestFindMatchesInSharedDB_MaxMatches(t *testing.T) {
 	db := openSharedForBackfill(t)
 	scope := &SyncScope{ParticipantsAvgLife: true, MaxMatches: 1}
-	matches, err := findMatchesInSharedDB(db, "xuid1", scope)
+	matches, err := findMatchesInSharedDB(t.Context(), db, "xuid1", scope)
 	if err != nil {
 		t.Fatal(err)
 	}

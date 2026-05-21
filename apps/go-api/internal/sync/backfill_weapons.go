@@ -66,7 +66,7 @@ func BackfillWeaponKillsForMatch(
 	}
 
 	// 5. Récupérer les kills et le mapping xuid → player_index.
-	kills, err := getKillsForPlayer(sharedDB, matchID, xuid)
+	kills, err := getKillsForPlayer(ctx, sharedDB, matchID, xuid)
 	if err != nil {
 		return true, fmt.Errorf("BackfillWeaponKillsForMatch kills(%s): %w", matchID, err)
 	}
@@ -80,7 +80,7 @@ func BackfillWeaponKillsForMatch(
 		return true, nil
 	}
 
-	xuidToPI, err := getXuidToPI(sharedDB, matchID)
+	xuidToPI, err := getXuidToPI(ctx, sharedDB, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "backfill_weapons: xuidToPI non disponible", "match_id", matchID, "err", err)
 		xuidToPI = map[string]int{}
@@ -158,7 +158,7 @@ func BackfillWeaponKillsForMatchAll(
 	}
 
 	// 5. Récupérer les kills de TOUS les participants.
-	allKills, err := getAllKillsForMatch(sharedDB, matchID)
+	allKills, err := getAllKillsForMatch(ctx, sharedDB, matchID)
 	if err != nil {
 		return true, fmt.Errorf("BackfillWeaponKillsForMatchAll getAllKills(%s): %w", matchID, err)
 	}
@@ -168,7 +168,7 @@ func BackfillWeaponKillsForMatchAll(
 	}
 
 	// 6. Récupérer le mapping xuid → player_index (covers tous les participants).
-	xuidToPI, err := getXuidToPI(sharedDB, matchID)
+	xuidToPI, err := getXuidToPI(ctx, sharedDB, matchID)
 	if err != nil {
 		slog.WarnContext(ctx, "backfill_weapons_all: xuidToPI non disponible", "match_id", matchID, "err", err)
 		xuidToPI = map[string]int{}
@@ -188,7 +188,7 @@ func BackfillWeaponKillsForMatchAll(
 	)
 
 	// 8. Récupérer les participants et insérer par xuid.
-	xuids, err := getMatchParticipantXuids(sharedDB, matchID)
+	xuids, err := getMatchParticipantXuids(ctx, sharedDB, matchID)
 	if err != nil {
 		return true, fmt.Errorf("BackfillWeaponKillsForMatchAll getParticipants(%s): %w", matchID, err)
 	}
@@ -298,8 +298,8 @@ func (e *SyncEngine) BackfillWeaponKillsForMatches(
 //
 // Note : `killer_victim_pairs` n'a pas de colonne `weapon_type` — la
 // distinction melee/grenade vient de l'event_type lui-même dans le film.
-func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error) {
-	rows, err := db.Query(`
+func getKillsForPlayer(ctx context.Context, db *sql.DB, matchID, xuid string) ([]analysis.Kill, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT
 			time_ms,
 			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END) AS is_melee,
@@ -341,8 +341,8 @@ func getKillsForPlayer(db *sql.DB, matchID, xuid string) ([]analysis.Kill, error
 
 // getXuidToPI construit le mapping xuid → player_index en se basant sur
 // l'ordre des participants (team_id ASC, rank ASC).
-func getXuidToPI(db *sql.DB, matchID string) (map[string]int, error) {
-	rows, err := db.Query(`
+func getXuidToPI(ctx context.Context, db *sql.DB, matchID string) (map[string]int, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT xuid FROM match_participants
 		WHERE match_id = ?
 		ORDER BY team_id, rank NULLS LAST`, matchID)
@@ -367,8 +367,8 @@ func getXuidToPI(db *sql.DB, matchID string) (map[string]int, error) {
 // getAllKillsForMatch récupère les kills de TOUS les participants d'un match.
 // Utile pour le backfill multi-joueurs : au lieu d'appeler getKillsForPlayer
 // par xuid, on récupère une seule fois tous les kills et on itère sur les xuids.
-func getAllKillsForMatch(db *sql.DB, matchID string) ([]analysis.Kill, error) {
-	rows, err := db.Query(`
+func getAllKillsForMatch(ctx context.Context, db *sql.DB, matchID string) ([]analysis.Kill, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT
 			xuid, time_ms,
 			MAX(CASE WHEN LOWER(COALESCE(event_type, '')) LIKE '%melee%' THEN TRUE ELSE FALSE END) AS is_melee,
@@ -410,8 +410,8 @@ func getAllKillsForMatch(db *sql.DB, matchID string) ([]analysis.Kill, error) {
 }
 
 // getMatchParticipantXuids retourne la liste des xuids participants à un match.
-func getMatchParticipantXuids(db *sql.DB, matchID string) ([]string, error) {
-	rows, err := db.Query(`
+func getMatchParticipantXuids(ctx context.Context, db *sql.DB, matchID string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT xuid FROM match_participants WHERE match_id = ?
 		ORDER BY xuid`, matchID)
 	if err != nil {

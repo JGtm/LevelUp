@@ -92,7 +92,7 @@ func (e *SyncEngine) processMatch(
 				// contient RankRecap.PostMatchCsr. On persiste côté player DB.
 				// Non-bloquant : tout échec laisse le sync continuer.
 				if row := ExtractCSRRowIfRanked(reg, skillData[e.xuid]); row != nil {
-					if csrErr := UpsertCSRRow(playerDB, row); csrErr != nil {
+					if csrErr := UpsertCSRRow(ctx, playerDB, row); csrErr != nil {
 						slog.WarnContext(ctx, "processMatch: UpsertCSRRow échoué",
 							"gamertag", e.gamertag, "match_id", matchID, "err", csrErr,
 						)

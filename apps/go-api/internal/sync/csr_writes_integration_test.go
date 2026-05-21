@@ -62,7 +62,7 @@ func TestUpsertCSRRow_InsertNew(t *testing.T) {
 		PlaylistGroup: "ranked",
 		StartTime:     time.Date(2026, 5, 15, 14, 0, 0, 0, time.UTC),
 	}
-	if err := UpsertCSRRow(db, row); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("UpsertCSRRow: %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestUpsertCSRRow_PlacementInsertWithZeroRating(t *testing.T) {
 		StartTime:                   time.Date(2026, 5, 18, 12, 0, 0, 0, time.UTC),
 		MeasurementMatchesRemaining: 3,
 	}
-	if err := UpsertCSRRow(db, row); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("UpsertCSRRow placement: %v (régression : retour de rating_value=nil ?)", err)
 	}
 
@@ -198,7 +198,7 @@ func TestUpsertCSRRow_ReplacesLUSR(t *testing.T) {
 		PlaylistGroup: "ranked",
 		StartTime:     time.Date(2026, 5, 15, 14, 0, 0, 0, time.UTC),
 	}
-	if err := UpsertCSRRow(db, row); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("UpsertCSRRow: %v", err)
 	}
 
@@ -231,7 +231,7 @@ func TestUpsertCSRRow_PlacementWithNullValue(t *testing.T) {
 		StartTime:                   time.Date(2026, 5, 15, 14, 0, 0, 0, time.UTC),
 		MeasurementMatchesRemaining: 3,
 	}
-	if err := UpsertCSRRow(db, row); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("UpsertCSRRow: %v", err)
 	}
 
@@ -263,10 +263,10 @@ func TestUpsertCSRRow_Idempotent(t *testing.T) {
 		Tier: "Platinum", TierFR: "Platine", SubTier: 1, TierLabel: "Platine 1",
 		PlaylistGroup: "ranked", StartTime: time.Now().UTC(),
 	}
-	if err := UpsertCSRRow(db, row); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("first upsert: %v", err)
 	}
-	if err := UpsertCSRRow(db, row); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("second upsert: %v", err)
 	}
 	var count int
@@ -280,7 +280,7 @@ func TestUpsertCSRRow_Idempotent(t *testing.T) {
 
 func TestUpsertCSRRow_NilRow_NoOp(t *testing.T) {
 	db := openCSRDB(t)
-	if err := UpsertCSRRow(db, nil); err != nil {
+	if err := UpsertCSRRow(t.Context(), db, nil); err != nil {
 		t.Fatalf("UpsertCSRRow(nil) should be no-op, got %v", err)
 	}
 	var count int

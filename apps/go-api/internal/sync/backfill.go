@@ -23,6 +23,7 @@ import (
 // Portage de find_matches_missing_data() (detection.py).
 // Le scope doit être Resolve() avant appel.
 func FindMatchesMissingData(
+	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
 	xuid string,
 	scope *SyncScope,
@@ -49,7 +50,7 @@ func FindMatchesMissingData(
 	var sharedMatchIDs []string
 	if participantsRequested {
 		var err error
-		sharedMatchIDs, err = findMatchesInSharedDB(sharedDB, xuid, scope)
+		sharedMatchIDs, err = findMatchesInSharedDB(ctx, sharedDB, xuid, scope)
 		if err != nil {
 			return nil, fmt.Errorf("findMatchesInSharedDB: %w", err)
 		}
@@ -60,7 +61,7 @@ func FindMatchesMissingData(
 	}
 
 	// ── Détection données via shared DB ──
-	localMatchIDs, err := findMatchesInSharedAll(playerDB, sharedDB, xuid, scope)
+	localMatchIDs, err := findMatchesInSharedAll(ctx, playerDB, sharedDB, xuid, scope)
 	if err != nil {
 		return nil, fmt.Errorf("findMatchesInSharedAll: %w", err)
 	}
@@ -103,7 +104,7 @@ func FindMatchesMissingParticipantBits(
 		condition = fmt.Sprintf("(COALESCE(mp.backfill_bits, 0) & %d) != %d", bitsRequired, bitsRequired)
 	}
 
-	mrSrc := getMatchSource(sharedDB)
+	mrSrc := getMatchSource(ctx, sharedDB)
 	query := fmt.Sprintf(`
 		SELECT mp.match_id
 		FROM match_participants mp
@@ -137,8 +138,8 @@ func FindMatchesMissingParticipantBits(
 // ─────────────────────────────────────────────────────────────────────────────
 
 // getMatchSource retourne "v_match_full" si la vue existe, sinon "match_registry".
-func getMatchSource(db *sql.DB) string {
-	row := db.QueryRow("SELECT 1 FROM v_match_full LIMIT 1")
+func getMatchSource(ctx context.Context, db *sql.DB) string {
+	row := db.QueryRowContext(ctx, "SELECT 1 FROM v_match_full LIMIT 1")
 	var dummy int
 	if err := row.Scan(&dummy); err == nil {
 		return "v_match_full"
@@ -147,9 +148,9 @@ func getMatchSource(db *sql.DB) string {
 }
 
 // hasBackfillCompletedColumn vérifie si match_registry possède backfill_completed.
-func hasBackfillCompletedColumn(db *sql.DB) bool {
-	row := db.QueryRow(
-		"SELECT COUNT(*) FROM information_schema.columns " +
+func hasBackfillCompletedColumn(ctx context.Context, db *sql.DB) bool {
+	row := db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM information_schema.columns "+
 			"WHERE table_name = 'match_registry' AND column_name = 'backfill_completed'",
 	)
 	var count int
@@ -175,7 +176,7 @@ func doneGuard(flagName string, hasBFCol bool) string {
 // playerDoneGuard retourne une clause SQL excluant les matchs déjà traités
 // dans la player DB (per-player guard).
 // Utilise des paramètres liés (NOT IN avec sous-requête) pour empêcher toute injection SQL.
-func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
+func playerDoneGuard(ctx context.Context, playerDB *sql.DB, table string, column string) string {
 	var query string
 	if column != "" {
 		query = fmt.Sprintf("SELECT match_id FROM %s WHERE %s IS NOT NULL", table, column)
@@ -183,7 +184,7 @@ func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
 		query = fmt.Sprintf("SELECT DISTINCT match_id FROM %s", table)
 	}
 
-	rows, err := playerDB.Query(query)
+	rows, err := playerDB.QueryContext(ctx, query)
 	if err != nil {
 		return "1=1"
 	}
@@ -227,12 +228,13 @@ func playerDoneGuard(playerDB *sql.DB, table string, column string) string {
 // findMatchesInSharedAll — détection V5 FINALE : tous les flags via shared DB.
 // Portage de _find_matches_in_shared_all() (detection.py).
 func findMatchesInSharedAll(
+	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
 	xuid string,
 	scope *SyncScope,
 ) ([]string, error) {
 	var conditions []string
-	hasBFCol := hasBackfillCompletedColumn(sharedDB)
+	hasBFCol := hasBackfillCompletedColumn(ctx, sharedDB)
 
 	// Médailles — per-player
 	if scope.Medals {
@@ -266,7 +268,7 @@ func findMatchesInSharedAll(
 			conditions = append(conditions, "1=1")
 		} else {
 			conditions = append(conditions,
-				playerDoneGuard(playerDB, "personal_score_awards", ""))
+				playerDoneGuard(ctx, playerDB, "personal_score_awards", ""))
 		}
 	}
 
@@ -276,7 +278,7 @@ func findMatchesInSharedAll(
 			conditions = append(conditions, "1=1")
 		} else {
 			conditions = append(conditions,
-				playerDoneGuard(playerDB, "player_match_enrichment", "performance_score"))
+				playerDoneGuard(ctx, playerDB, "player_match_enrichment", "performance_score"))
 		}
 	}
 
@@ -286,7 +288,7 @@ func findMatchesInSharedAll(
 			conditions = append(conditions, "1=1")
 		} else {
 			conditions = append(conditions,
-				playerDoneGuard(playerDB, "player_match_enrichment", "engagement_score"))
+				playerDoneGuard(ctx, playerDB, "player_match_enrichment", "engagement_score"))
 		}
 	}
 
@@ -386,7 +388,7 @@ func findMatchesInSharedAll(
 		params = append(params, xuid)
 	}
 
-	mrSrc := getMatchSource(sharedDB)
+	mrSrc := getMatchSource(ctx, sharedDB)
 	query := fmt.Sprintf(`
 		SELECT DISTINCT mp.match_id
 		FROM match_participants mp
@@ -398,7 +400,7 @@ func findMatchesInSharedAll(
 		query += fmt.Sprintf(" LIMIT %d", scope.MaxMatches)
 	}
 
-	rows, err := sharedDB.Query(query, params...)
+	rows, err := sharedDB.QueryContext(ctx, query, params...)
 	if err != nil {
 		slog.Warn("backfill: détection V5 shared DB échouée", "err", err)
 		return nil, nil // match Python behavior: log + return []
@@ -419,12 +421,13 @@ func findMatchesInSharedAll(
 // findMatchesInSharedDB — détection participants-only dans shared DB.
 // Portage de _find_matches_in_shared_db() (detection.py).
 func findMatchesInSharedDB(
+	ctx context.Context,
 	sharedDB *sql.DB,
 	xuid string,
 	scope *SyncScope,
 ) ([]string, error) {
 	var conditions []string
-	hasBFCol := hasBackfillCompletedColumn(sharedDB)
+	hasBFCol := hasBackfillCompletedColumn(ctx, sharedDB)
 
 	// Participants scores/rank
 	if scope.ParticipantsScores {
@@ -488,7 +491,7 @@ func findMatchesInSharedDB(
 		query += fmt.Sprintf(" LIMIT %d", scope.MaxMatches)
 	}
 
-	rows, err := sharedDB.Query(query, xuid)
+	rows, err := sharedDB.QueryContext(ctx, query, xuid)
 	if err != nil {
 		slog.Warn("backfill: détection shared DB échouée", "err", err)
 		return nil, nil

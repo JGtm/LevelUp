@@ -6,6 +6,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -72,10 +73,10 @@ var sharedSQLViews = []MaterializedView{
 
 // refreshAggregates recrée les vues matérialisées dans la player DB.
 // Retourne le nombre de vues créées.
-func refreshAggregates(playerDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
+func refreshAggregates(ctx context.Context, playerDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
 	count := 0
 	for _, mv := range playerMaterializedViews {
-		if err := recreateMaterializedView(playerDB, mv); err != nil {
+		if err := recreateMaterializedView(ctx, playerDB, mv); err != nil {
 			slog.Warn("aggregates: échec vue matérialisée", "view", mv.Name, "err", err)
 			continue
 		}
@@ -87,15 +88,15 @@ func refreshAggregates(playerDB *sql.DB) (int, error) { //nolint:unparam // erro
 // RefreshAggregates est l'export public de refreshAggregates pour les
 // callers hors-package qui doivent rebuild mv_player_matches après un UPDATE
 // direct (cf. friends_recompute.go §4 plan Squad/Sessions).
-func RefreshAggregates(playerDB *sql.DB) (int, error) {
-	return refreshAggregates(playerDB)
+func RefreshAggregates(ctx context.Context, playerDB *sql.DB) (int, error) {
+	return refreshAggregates(ctx, playerDB)
 }
 
 // refreshSharedViews recrée les vues SQL dans la shared DB (idempotent).
-func refreshSharedViews(sharedDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
+func refreshSharedViews(ctx context.Context, sharedDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
 	count := 0
 	for _, v := range sharedSQLViews {
-		if err := recreateSQLView(sharedDB, v); err != nil {
+		if err := recreateSQLView(ctx, sharedDB, v); err != nil {
 			slog.Warn("aggregates: échec shared view", "view", v.Name, "err", err)
 			continue
 		}
@@ -105,22 +106,22 @@ func refreshSharedViews(sharedDB *sql.DB) (int, error) { //nolint:unparam // err
 }
 
 // recreateMaterializedView exécute DROP TABLE IF EXISTS + CREATE TABLE AS SELECT.
-func recreateMaterializedView(db *sql.DB, mv MaterializedView) error {
+func recreateMaterializedView(ctx context.Context, db *sql.DB, mv MaterializedView) error {
 	drop := fmt.Sprintf("DROP TABLE IF EXISTS %s", mv.Name)
-	if _, err := db.Exec(drop); err != nil {
+	if _, err := db.ExecContext(ctx, drop); err != nil {
 		return fmt.Errorf("drop %s: %w", mv.Name, err)
 	}
 	create := fmt.Sprintf("CREATE TABLE %s AS %s", mv.Name, mv.Query)
-	if _, err := db.Exec(create); err != nil {
+	if _, err := db.ExecContext(ctx, create); err != nil {
 		return fmt.Errorf("create %s: %w", mv.Name, err)
 	}
 	return nil
 }
 
 // recreateSQLView exécute CREATE OR REPLACE VIEW.
-func recreateSQLView(db *sql.DB, v MaterializedView) error {
+func recreateSQLView(ctx context.Context, db *sql.DB, v MaterializedView) error {
 	stmt := fmt.Sprintf("CREATE OR REPLACE VIEW %s AS %s", v.Name, v.Query)
-	if _, err := db.Exec(stmt); err != nil {
+	if _, err := db.ExecContext(ctx, stmt); err != nil {
 		return fmt.Errorf("view %s: %w", v.Name, err)
 	}
 	return nil

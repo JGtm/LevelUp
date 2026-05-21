@@ -55,7 +55,7 @@ func openWeaponDB(t *testing.T) *sql.DB {
 
 func TestGetKillsForPlayer_Empty(t *testing.T) {
 	db := openWeaponDB(t)
-	kills, err := getKillsForPlayer(db, "m1", "xuid1")
+	kills, err := getKillsForPlayer(t.Context(), db, "m1", "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestGetKillsForPlayer_WithData(t *testing.T) {
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid1', 'kill', 10000)`)
 	db.Exec(`INSERT INTO highlight_events VALUES ('m1', 'xuid2', 'kill', 7000)`)
 
-	kills, err := getKillsForPlayer(db, "m1", "xuid1")
+	kills, err := getKillsForPlayer(t.Context(), db, "m1", "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestGetKillsForPlayer_WithData(t *testing.T) {
 
 func TestGetXuidToPI_Empty(t *testing.T) {
 	db := openWeaponDB(t)
-	result, err := getXuidToPI(db, "m1")
+	result, err := getXuidToPI(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func TestGetXuidToPI_WithData(t *testing.T) {
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid2', 0, 2)`)
 	db.Exec(`INSERT INTO match_participants VALUES ('m1', 'xuid3', 1, 1)`)
 
-	result, err := getXuidToPI(db, "m1")
+	result, err := getXuidToPI(t.Context(), db, "m1")
 	if err != nil {
 		t.Fatal(err)
 	}
