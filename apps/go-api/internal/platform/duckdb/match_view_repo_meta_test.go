@@ -54,6 +54,11 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			duration_seconds INTEGER, playable_duration_seconds INTEGER,
 			team_0_score INTEGER, team_1_score INTEGER)`,
+		// Vue root-level : les queries SharedReader migrées P5/P7 lisent
+		// `FROM match_registry` (sans préfixe), car la conn cible
+		// directement le catalogue shared_matches_v2 en prod. Le schéma
+		// `shared` est conservé pour les inserts de test legacy.
+		`CREATE VIEW match_registry AS SELECT * FROM shared.match_registry`,
 	} {
 		if _, err := player.Exec(ctx, q); err != nil {
 			t.Fatalf("seed player schema: %v\nSQL: %s", err, q)
