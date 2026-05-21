@@ -50,7 +50,7 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	compositeOnly := fs.Bool("composite-only", false, "Backfill citations composites uniquement (additive, sans recalcul depuis shared_matches)")
 	citationsRecomputeAll := fs.Bool("citations-recompute-all", false, "Recompute total des citations (force=true) + vérifications invariants V1-V4")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
-	dryRun := fs.Bool("dry-run", false, "Mode dry-run (--shared-csr uniquement) : compte les matchs à backfiller sans appel API ni écriture")
+	dryRun := fs.Bool("dry-run", false, "Mode dry-run (--shared-csr ou --lusr) : --shared-csr compte les matchs sans appel API ni écriture ; --lusr compute LUSR sans écrire et diff vs état persisté par playlist_group")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -64,8 +64,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*engagementScores && !*citations && !*citationsRecomputeAll && !*lusr && !*csr && !*sharedCSR && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
 		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --citations-recompute-all, --lusr, --csr, --shared-csr, --perf, --assists-model, --weapons ou --composite-only)")
 	}
-	if *dryRun && !*sharedCSR {
-		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr")
+	if *dryRun && !*sharedCSR && !*lusr {
+		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr ou --lusr")
 	}
 
 	ctx := context.Background()
@@ -100,7 +100,21 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 		}
 	}
 	if *lusr {
-		if *allPlayers {
+		if *dryRun {
+			if *allPlayers {
+				if err := runBackfillAllLUSRDryRun(ctx, cfg); err != nil {
+					return err
+				}
+			} else {
+				player, err := loadPlayerSummary(cfg, *gamertag)
+				if err != nil {
+					return err
+				}
+				if err := runBackfillLUSRDryRunForPlayer(ctx, cfg, player); err != nil {
+					return err
+				}
+			}
+		} else if *allPlayers {
 			if err := runBackfillAllLUSR(ctx, cfg, *force); err != nil {
 				return err
 			}
@@ -403,6 +417,87 @@ func runBackfillLUSRForPlayer(ctx context.Context, cfg *config.AppConfig, player
 	}
 	fmt.Printf("backfill lusr OK: gamertag=%s updated=%d force=%t\n", player.Gamertag, updated, force)
 	return nil
+}
+
+// ── LUSR dry-run (preview, sans écriture) ─────────────────────────────────────
+//
+// Simule un recompute force=true et imprime un diff per-playlist_group :
+// (OldMU, NewMU, delta). Utile pour valider l'impact d'un rebuild ART
+// (cf. Phase 1 plan stabilisation 2026-05-22) avant d'engager l'écriture.
+
+func runBackfillAllLUSRDryRun(ctx context.Context, cfg *config.AppConfig) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total, processed, skipped, failed := len(players), 0, 0, 0
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			skipped++
+			fmt.Printf("dry-run lusr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		if err := runBackfillLUSRDryRunForPlayer(ctx, cfg, &player); err != nil {
+			failed++
+			fmt.Printf("dry-run lusr FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
+			continue
+		}
+		processed++
+	}
+	fmt.Printf("dry-run lusr batch: total=%d processed=%d skipped=%d failed=%d (aucune écriture)\n",
+		total, processed, skipped, failed)
+	if failed > 0 {
+		return fmt.Errorf("dry-run lusr: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func runBackfillLUSRDryRunForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary) error {
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
+	report, err := engine.RunBackfillLUSRDryRun(ctx)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\n══ dry-run lusr %s (xuid=%s) ══\n", player.Gamertag, player.XUID)
+	fmt.Printf("  matches_processed: %d\n", report.MatchesProcessed)
+	if len(report.Playlists) == 0 {
+		fmt.Printf("  (aucun playlist_group calculé — pas de matchs éligibles)\n")
+		return nil
+	}
+	fmt.Printf("  %-30s %-15s %-15s %-12s %s\n", "playlist_group", "OLD μ/σ", "NEW μ/σ", "Δ μ", "matchs")
+	fmt.Printf("  %s\n", strings.Repeat("─", 90))
+	for _, p := range report.Playlists {
+		fmt.Printf("  %-30s %-15s %-15s %+8.1f    %d\n",
+			truncate(p.PlaylistGroup, 30),
+			formatMuSigma(p.OldMU, p.OldSigma),
+			formatMuSigma(p.NewMU, p.NewSigma),
+			p.DeltaMU(),
+			p.MatchCount,
+		)
+	}
+	if !report.HasChanges() {
+		fmt.Printf("  → AUCUN CHANGEMENT significatif (tous deltas < 1.0 μ)\n")
+	}
+	return nil
+}
+
+func formatMuSigma(mu, sigma float64) string {
+	if mu == 0 && sigma == 0 {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.1f/%.1f", mu, sigma)
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n-1] + "…"
 }
 
 // ── CSR backfill ───────────────────────────────────────────────────────────────

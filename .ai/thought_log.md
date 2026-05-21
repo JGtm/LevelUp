@@ -1,3 +1,34 @@
+## [2026-05-22] fix(duckdb) — Phase 1 stabilisation : rebuild ART match_participants + probe ART + filet de garde boot + dry-run LUSR
+
+**Statut** : En cours (Phase 1.1-1.8 livrés, 1.9 validation runtime à suivre).
+
+**Contexte** : Plan de stabilisation post-merge citations en 5 phases (cf. .ai/AUDIT_*.md + docs/INCIDENT_*.md). Phase 1 cible la corruption d'index ART confirmée sur shared_matches_v2.match_participants (LUSR Madina97294 figé en Argent IV au lieu de fin Platine/Diamant attendu) et étend la couverture à toutes les tables PK VARCHAR.
+
+**Décisions techniques** :
+- Migration `rebuild_match_participants_defeat_art_corruption` (TargetShared, idempotent via sentinel `match_participants_rebuilt_v1`) — pattern identique à `rebuild_career_progression_defeat_art_corruption` (commits 2e0f0247 + 651b9de6). Swap CTAS via PRAGMA table_info pour préserver les colonnes ajoutées via ALTER. Recrée vues (`applyResolutionViews` + `applyMvPlayerMatchesView`) et 6 indexes idx_mp_*.
+- Helper générique `ProbeARTDivergences(db, sampleSize)` dans `internal/platform/duckdb/art_probe.go` : enumère via `information_schema` toutes les tables avec PK VARCHAR, compare `WHERE pk = ?` (filter pushdown) vs `WHERE pk || '' = ?` (table-scan forcé) sur N samples par table. Reporte les divergences.
+- Filet de garde au boot `BootARTGuard(ctx, db, dbLabel, sampleSize)` câblé dans `cmd/server/main.go` après ouverture metaDB + sharedReader. Non-bloquant : log WARN structuré par divergence + métrique expvar `art_corruption_detected_<db>_<table>`. Démarrage serveur continue même si corruption détectée — le rebuild migration s'applique au boot suivant si nécessaire.
+- Dry-run LUSR `RunBackfillLUSRDryRun` + CLI `levelup backfill --lusr --dry-run` : compute force=true sans écriture, diff par playlist_group (OldMU/NewMU + delta). Permet de valider l'impact post-rebuild ART avant write réel. Cibles de validation sauvegardées en mémoire utilisateur (Madina ≈ Platine/Diamant, Choco+JGtm ≈ Or).
+- Diagnostic JGtm `cmd/diag_player_schemas/` : confirme que media_files absente est **comportement attendu** post-migration `drop_media_from_player_db` (data déplacée vers shared_social). Le vrai bug = Q28RecentMedia + 3 régressions audit exécutées sur player conn = Phase 3 SharedReader routing.
+
+**Résultats observés** :
+- Bug repro baseline confirmé : Chocoboflor 10/10 ✓, JGtm 10/10 ✓, Madina97294 1/10 ✗ (corruption isolée à Madina, déclenchée par sa liste IN de 1079 match_ids).
+- Tests : migration rebuild 6/6 PASS, probe ART 5/5 PASS (incl. dataset 100 rows), dry-run LUSR 3/3 PASS, anti-régression `TestART_FilterPushdown_NoTruncation` PASS.
+- Backup complet vers `data/backups/phase1-2026-05-22/` (warehouse + 4 players, 341 MB).
+- Fix collateral : 3 tests cassés par signature `EnsureSharedSchema(ctx, db)` de la branche citations — corrigés.
+- Fonction dupliquée `openSharedForBackfill` (collision merge) — renommée en `openSharedForCSRBackfill` côté csr.
+- ⚠️ Chocoboflor `stats.duckdb.wal` orphelin détecté (replay impossible en RO) — à traiter par restart serveur ou suppression manuelle.
+
+**Dettes pré-existantes documentées** (à traiter Phase 5) :
+- 5 tests `internal/platform/duckdb` failing (TestMatchViewRepo + 4 TestHomeRepo) — schémas test pas updatés pour `weapon_kills` namespace + `season_id` column. Origine = merge citations sans validation CGO.
+- `TestContractRoutesDocumented` failing : route `/api/v1/_diag/csr-coverage/{*}` ajoutée par citations sans entrée OpenAPI.
+- `TestLoadCSRSeasonID_ProductionSettingsHasField` failing : `app_settings.json` racine sans champ `csr_season_id`.
+- Q28RecentMedia + 3 régressions audit home_repo exécutées sur player conn au lieu de shared_social → Phase 3.
+
+**Prochaine étape** : Phase 1.9 validation runtime — appliquer le rebuild sur les DBs prod backupées (test isolé), relancer `diag_lusr_player` pour confirmer Madina 1/10 → 10/10, puis `levelup backfill --lusr --dry-run --all` pour valider les cibles LUSR squad. Si OK → écrire pour de vrai. Puis commit + push branche `fix/duckdb-art-corruption-rebuild`.
+
+---
+
 ## [2026-05-22] merge(fix/citations-progression-semantic) — fusion sur fix/media-paths-portable
 
 **Statut** : Complété.

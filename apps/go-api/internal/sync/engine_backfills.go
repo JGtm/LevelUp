@@ -129,6 +129,32 @@ func (e *SyncEngine) RunBackfillEngagementCoefficients(ctx context.Context) (int
 	return batchRecomputeCoefficients(ctx, playerHandle.SQLDb(), e.xuid)
 }
 
+// RunBackfillLUSRDryRun simule un recompute LUSR sans écrire en DB. Compare
+// l'état persisté actuel avec celui qui serait produit par un recompute force,
+// agrégé par playlist_group. Utile pour valider l'impact d'un rebuild ART
+// (cf. Phase 1 plan stabilisation 2026-05-22) avant d'engager l'écriture.
+//
+// Retourne un LUSRDryRunReport. Lock writer non requis (lecture seule) ;
+// le caller doit s'assurer qu'aucun sync ne tourne en parallèle pour avoir
+// un snapshot cohérent.
+func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunReport, error) {
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfillLUSRDryRun OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	// shared DB en read-only suffit pour le dry-run.
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("RunBackfillLUSRDryRun: %w", err)
+	}
+	defer releaseShared()
+
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	return batchComputeLUSRPreview(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap)
+}
+
 // RunBackfillLUSR recalcule le LUSR TrueSkill 2 pour tous les matchs du joueur.
 // force=true : recalcule depuis zéro même si les matchs ont déjà un rating.
 // Les poids des médailles (medal_exploit) sont chargés depuis la metadata DB (best-effort).
