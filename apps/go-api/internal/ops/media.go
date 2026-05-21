@@ -393,8 +393,8 @@ func computeMediaEnd(kind string, captureAt *time.Time, duration float64, durati
 // caller doit traiter ça comme "durée inconnue" — la durée n'est pas critique
 // (juste utilisée pour capture_end_utc = capture_start_utc + duration), donc
 // échec silencieux côté insert.
-func probeVideoDuration(videoPath string) (float64, error) {
-	cmd := exec.Command("ffprobe",
+func probeVideoDuration(ctx context.Context, videoPath string) (float64, error) {
+	cmd := exec.CommandContext(ctx, "ffprobe",
 		"-v", "error",
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
@@ -719,7 +719,7 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 	var duration float64
 	var durationKnown bool
 	if kind == mediaKindVideo {
-		if d, err := probeVideoDuration(path); err == nil {
+		if d, err := probeVideoDuration(ctx, path); err == nil {
 			duration = d
 			durationKnown = true
 		} else {

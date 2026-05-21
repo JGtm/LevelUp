@@ -102,7 +102,7 @@ func NotifyNewMedia(cfg NotifyConfig, dbPath, gamertag string) {
 	}
 	defer db.Close()
 
-	rows, err := queryUnnotifiedMedia(db)
+	rows, err := queryUnnotifiedMedia(ctx, db)
 	if err != nil || len(rows) == 0 {
 		return
 	}
@@ -139,7 +139,7 @@ type mediaRow struct {
 	MatchID  string
 }
 
-func queryUnnotifiedMedia(db *sql.DB) ([]mediaRow, error) {
+func queryUnnotifiedMedia(ctx context.Context, db *sql.DB) ([]mediaRow, error) {
 	q := `
 		SELECT
 			mf.file_path,
@@ -153,7 +153,7 @@ func queryUnnotifiedMedia(db *sql.DB) ([]mediaRow, error) {
 		ORDER BY mf.indexed_at DESC
 		LIMIT 10
 	`
-	rows, err := db.Query(q)
+	rows, err := db.QueryContext(ctx, q)
 	if err != nil {
 		// Table absente ou vide : pas une erreur critique
 		return nil, nil //nolint:nilerr

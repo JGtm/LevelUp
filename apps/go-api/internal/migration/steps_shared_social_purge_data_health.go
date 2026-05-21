@@ -53,7 +53,7 @@ func init() {
 			// Court-circuit : si zéro ligne à purger, pas la peine de payer
 			// le swap (idempotent ↔ DB neuve ou ré-run après cleanup OK).
 			var toDelete int
-			if err := db.QueryRow(`
+			if err := db.QueryRowContext(bootCtx(), `
 				SELECT COUNT(*) FROM player_notifications
 				WHERE category = 'data_health_warning'
 			`).Scan(&toDelete); err != nil {
@@ -99,7 +99,7 @@ func init() {
 				`CREATE INDEX IF NOT EXISTS idx_pn_xuid_category     ON player_notifications(xuid, category)`,
 			}
 			for _, sqlStmt := range stmts {
-				if _, err := db.Exec(sqlStmt); err != nil {
+				if _, err := db.ExecContext(bootCtx(), sqlStmt); err != nil {
 					return fmt.Errorf("purge_data_health: swap step (%s): %w",
 						firstWords(sqlStmt, 3), err)
 				}

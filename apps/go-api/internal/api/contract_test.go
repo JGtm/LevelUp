@@ -304,7 +304,7 @@ func TestContractContentTypeJSON(t *testing.T) {
 
 	for _, rt := range routesToTest {
 		t.Run(rt.method+" "+rt.path, func(t *testing.T) {
-			req := httptest.NewRequest(rt.method, rt.path, http.NoBody)
+			req := httptest.NewRequestWithContext(t.Context(), rt.method, rt.path, http.NoBody)
 			req.Header.Set("Accept", "application/json")
 			w := httptest.NewRecorder()
 

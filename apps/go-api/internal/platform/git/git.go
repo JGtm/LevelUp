@@ -7,6 +7,7 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -19,8 +20,8 @@ type CLI struct{}
 func NewCLI() *CLI { return &CLI{} }
 
 // LogSHAs retourne les SHAs (descendants → ancêtres) ayant modifié relPath.
-func (g *CLI) LogSHAs(repoRoot, relPath string) ([]string, error) {
-	cmd := exec.Command("git", "log", "--all", "--format=%H", "--", relPath)
+func (g *CLI) LogSHAs(ctx context.Context, repoRoot, relPath string) ([]string, error) {
+	cmd := exec.CommandContext(ctx, "git", "log", "--all", "--format=%H", "--", relPath)
 	cmd.Dir = repoRoot
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
@@ -39,8 +40,8 @@ func (g *CLI) LogSHAs(repoRoot, relPath string) ([]string, error) {
 }
 
 // ShowFile retourne le contenu de relPath au commit sha.
-func (g *CLI) ShowFile(repoRoot, sha, relPath string) (string, error) {
-	cmd := exec.Command("git", "show", sha+":"+relPath)
+func (g *CLI) ShowFile(ctx context.Context, repoRoot, sha, relPath string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "show", sha+":"+relPath)
 	cmd.Dir = repoRoot
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout

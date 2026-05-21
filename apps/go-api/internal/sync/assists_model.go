@@ -49,7 +49,7 @@ type assistsCoefs struct {
 }
 
 // loadAssistsSamples charge les données d'entraînement depuis shared_matches_v2.
-func loadAssistsSamples(sharedDB *sql.DB, xuid string) ([]assistsSample, error) {
+func loadAssistsSamples(ctx context.Context, sharedDB *sql.DB, xuid string) ([]assistsSample, error) {
 	const q = `
 		SELECT
 			COALESCE(r.game_variant_name, '__unknown__'),
@@ -72,7 +72,7 @@ func loadAssistsSamples(sharedDB *sql.DB, xuid string) ([]assistsSample, error) 
 		  AND NOT isnan(COALESCE(CAST(p.damage_taken AS DOUBLE), 0.0))
 		ORDER BY r.game_variant_name
 	`
-	rows, err := sharedDB.Query(q, xuid)
+	rows, err := sharedDB.QueryContext(ctx, q, xuid)
 	if err != nil {
 		return nil, fmt.Errorf("loadAssistsSamples: %w", err)
 	}
@@ -209,11 +209,11 @@ func fitOLS(rows []assistsSample) *assistsCoefs {
 }
 
 // upsertAssistsModels persiste les modèles dans player_assists_model.
-func upsertAssistsModels(playerDB *sql.DB, models []assistsCoefs) error {
+func upsertAssistsModels(ctx context.Context, playerDB *sql.DB, models []assistsCoefs) error {
 	if len(models) == 0 {
 		return nil
 	}
-	tx, err := playerDB.Begin()
+	tx, err := playerDB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("upsertAssistsModels begin: %w", err)
 	}
@@ -237,7 +237,7 @@ func upsertAssistsModels(playerDB *sql.DB, models []assistsCoefs) error {
 			n_samples         = excluded.n_samples,
 			computed_at       = excluded.computed_at
 	`
-	stmt, err := tx.Prepare(upsert)
+	stmt, err := tx.PrepareContext(ctx, upsert)
 	if err != nil {
 		return fmt.Errorf("upsertAssistsModels prepare: %w", err)
 	}
@@ -245,7 +245,7 @@ func upsertAssistsModels(playerDB *sql.DB, models []assistsCoefs) error {
 
 	now := time.Now().UTC()
 	for _, m := range models {
-		if _, err := stmt.Exec(
+		if _, err := stmt.ExecContext(ctx,
 			m.gameVariantName,
 			m.intercept, m.coefKills, m.coefDeaths,
 			m.coefDamageDealt, m.coefDamageTaken, m.coefMMRDelta,
@@ -278,7 +278,7 @@ func batchComputePlayerAssistsModel(ctx context.Context, playerDB, sharedDB *sql
 		}
 	}
 
-	samples, err := loadAssistsSamples(sharedDB, xuid)
+	samples, err := loadAssistsSamples(ctx, sharedDB, xuid)
 	if err != nil {
 		return 0, fmt.Errorf("batchComputePlayerAssistsModel: %w", err)
 	}
@@ -303,7 +303,7 @@ func batchComputePlayerAssistsModel(ctx context.Context, playerDB, sharedDB *sql
 		return 0, nil
 	}
 
-	if err := upsertAssistsModels(playerDB, models); err != nil {
+	if err := upsertAssistsModels(ctx, playerDB, models); err != nil {
 		return 0, fmt.Errorf("batchComputePlayerAssistsModel upsert: %w", err)
 	}
 	return len(models), nil

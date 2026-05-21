@@ -41,7 +41,7 @@ func openMediaNotifyDB(t *testing.T) *sql.DB {
 
 func TestQueryUnnotifiedMedia_Empty(t *testing.T) {
 	db := openMediaNotifyDB(t)
-	rows, err := queryUnnotifiedMedia(db)
+	rows, err := queryUnnotifiedMedia(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestQueryUnnotifiedMedia_WithData(t *testing.T) {
 		('/path/a.mp4', 'a.mp4', 'video'),
 		('/path/b.png', 'b.png', 'image')`)
 
-	rows, err := queryUnnotifiedMedia(db)
+	rows, err := queryUnnotifiedMedia(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestQueryUnnotifiedMedia_SkipsNotified(t *testing.T) {
 	db.Exec(`INSERT INTO media_files (file_path, file_name, kind) VALUES
 		('/path/b.png', 'b.png', 'image')`)
 
-	rows, err := queryUnnotifiedMedia(db)
+	rows, err := queryUnnotifiedMedia(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}

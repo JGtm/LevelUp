@@ -11,6 +11,7 @@ package service
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,7 +39,7 @@ func NewReleaseNotesService(repoRoot string, git port.GitProvider) *ReleaseNotes
 //  1. Lire le README sur disque (working tree) — capte les modifs non
 //     committées et a la priorité sur les snapshots git.
 //  2. Compléter avec les snapshots git pour les versions absentes du WT.
-func (s *ReleaseNotesService) Build(lang string) (string, error) {
+func (s *ReleaseNotesService) Build(ctx context.Context, lang string) (string, error) {
 	relPath := readmeRelPath(lang)
 	blocks := map[string]string{}
 
@@ -50,9 +51,9 @@ func (s *ReleaseNotesService) Build(lang string) (string, error) {
 	}
 
 	// 2. Snapshots git pour enrichir les versions absentes.
-	if shas, err := s.git.LogSHAs(s.repoRoot, relPath); err == nil {
+	if shas, err := s.git.LogSHAs(ctx, s.repoRoot, relPath); err == nil {
 		for _, sha := range shas {
-			raw, err := s.git.ShowFile(s.repoRoot, sha, relPath)
+			raw, err := s.git.ShowFile(ctx, s.repoRoot, sha, relPath)
 			if err != nil {
 				continue
 			}
