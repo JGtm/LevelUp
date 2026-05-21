@@ -444,6 +444,7 @@ func coerceChallengeInt(value any) (int, bool) {
 	case float64:
 		return int(v), true
 	case map[string]any:
+		//nolint:goconst // "Threshold"/"Value"/"Count" sont des clés JSON Halo (PascalCase + camelCase variantes), pas des constantes métier à factoriser.
 		for _, key := range []string{"value", "Value", "threshold", "Threshold", "count", "Count"} {
 			if resolved, ok := coerceChallengeInt(v[key]); ok {
 				return resolved, true
