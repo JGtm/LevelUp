@@ -625,12 +625,17 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 	if pdb == nil || pdb.SharedSocial == nil || pdb.XUID == "" {
 		return fmt.Errorf("upsertPlayerRecord: shared_social or xuid missing")
 	}
-	rwDB, err := duckdb.OpenReadWrite(pdb.SharedSocial.Path())
-	if err != nil {
-		return fmt.Errorf("open rw: %w", err)
-	}
-	defer rwDB.Close()
-	_, err = rwDB.Exec(ctx, `
+	// pdb.SharedSocial est déjà ouverte en mode RW partagé par le pool joueur
+	// (cf. pool.go::openPlayerDB → OpenReadWriteShared). Pas besoin de ré-ouvrir
+	// un *DB séparé — ça créerait un refcount supplémentaire pour rien et
+	// laissait, avant ce fix, un OpenReadWrite (maxOpenConns=1) en compétition
+	// avec OpenReadWriteShared (maxOpenConns=4) pour la même clé cache "rw:path".
+	//
+	// Concurrence : DuckDB sérialise les writes au niveau MVCC. Pour les volumes
+	// shared_social (likes, favoris, ascension, records post-sync) — micro-INSERTs
+	// — la sérialisation interne suffit. Les writers HTTP qui veulent une
+	// arbitration explicite peuvent passer par pdb.AcquireSharedSocialWriter.
+	_, err := pdb.SharedSocial.Exec(ctx, `
 		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
 		VALUES (?, ?, ?, NOW(), ?, NOW())
 		ON CONFLICT (xuid, metric) DO UPDATE SET

@@ -224,10 +224,16 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}
 
 	// SharedSocial est optionnel : absent si le fichier n'existe pas encore.
-	// Ouvert en read-write pour permettre les écritures (favoris, likes).
+	// Ouvert en OpenReadWriteShared (maxOpenConns=4) — comme metadata.duckdb :
+	// lectures concurrentes (handlers HTTP media/likes/favoris/ascension) +
+	// écritures occasionnelles (post-sync records, INSERTs unitaires). Tous les
+	// autres call sites runtime (registry_notifications, post_sync_deltas,
+	// prestige_setup) doivent aussi utiliser OpenReadWriteShared pour partager
+	// la même clé cache "rw:path" et éviter "different configuration" errors
+	// (mix avec OpenReadOnly historiquement, fixé en commit 21).
 	var socialDB *DB
 	if cfg.SharedSocialDBPath != "" {
-		socialDB, err = OpenReadWrite(cfg.SharedSocialDBPath, cfg.UserTimezone)
+		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath, cfg.UserTimezone)
 		if err != nil {
 			// Non bloquant : la DB sera créée lors de la prochaine migration.
 			// On log Warn pour garder une trace (l'absence du fichier au boot est
