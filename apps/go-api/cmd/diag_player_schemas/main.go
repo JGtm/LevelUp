@@ -142,5 +142,32 @@ func inspectPlayerDB(ctx context.Context, path string) error {
 		}
 	}
 
+	// Pour match_skill_rank : breakdown par rating_type + playlist_group.
+	if tables["match_skill_rank"] {
+		msrRows, err := db.QueryContext(ctx, `
+			SELECT rating_type, COALESCE(playlist_group, ''), COUNT(*), AVG(rating_value)
+			FROM match_skill_rank
+			GROUP BY rating_type, COALESCE(playlist_group, '')
+			ORDER BY rating_type, COUNT(*) DESC
+		`)
+		if err == nil {
+			fmt.Printf("  match_skill_rank breakdown :\n")
+			for msrRows.Next() {
+				var rt, pg string
+				var n int
+				var avg sql.NullFloat64
+				if err := msrRows.Scan(&rt, &pg, &n, &avg); err != nil {
+					continue
+				}
+				avgStr := "n/a"
+				if avg.Valid {
+					avgStr = fmt.Sprintf("%.1f", avg.Float64)
+				}
+				fmt.Printf("    %-6s %-25s n=%-4d avg_rv=%s\n", rt, pg, n, avgStr)
+			}
+			msrRows.Close()
+		}
+	}
+
 	return nil
 }
