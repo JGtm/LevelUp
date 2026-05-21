@@ -36,9 +36,16 @@ INPUT="${1:?usage: $0 <profile.out.raw>}"
 # A — Légitimes (CGO/boilerplate)
 EXCLUDE_LEGITIMATE=(
   'go-api/internal/api/gen/'
-  'go-api/cmd/msal-poc/'
-  'go-api/cmd/levelup/'
-  'go-api/cmd/server/'
+  'go-api/cmd/'              # tous les CLI/diag tools (56 sous-dirs : diag_*,
+                             # backfill_*, check_*, audit_*, regen_*, etc.) —
+                             # flag parsing + duckdb queries ad hoc, pas de
+                             # logique métier testable (cf. 286/292 funcs à 0%
+                             # malgré les usages prod réguliers). Extension de
+                             # l'exclusion historique cmd/levelup/server/msal-poc.
+  'go-api/scripts/'          # utilitaires Go (warm_bp_assets, import_bp_*,
+                             # check_syncmeta, repair_tracks_table) — même
+                             # rationale : scripts ponctuels, pas de logique
+                             # à tester (23/23 funcs à 0%).
   'go-api/internal/port/'
   'go-api/internal/sync/testutil/'
   'go-api/internal/platform/duckdb/'
