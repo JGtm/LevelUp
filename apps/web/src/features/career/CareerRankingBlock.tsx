@@ -23,8 +23,8 @@ interface Props {
 
 function csrTierLabel(rank: CareerCSRRank, placementLabel: string): string {
   if (!rank.tier) {
-    const completed = 10 - rank.measurement_matches_remaining
-    return `${placementLabel} ${completed}/10`
+    const completed = Math.min(9, Math.max(0, 10 - rank.measurement_matches_remaining))
+    return `${placementLabel} (${completed}/10)`
   }
   return rank.sub_tier > 0 ? `${rank.tier} ${rank.sub_tier}` : rank.tier
 }
@@ -141,7 +141,7 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                           ? cp.tier_label
                             ? `${cp.tier_label} · ${Math.round(cp.rating_value).toLocaleString()}`
                             : Math.round(cp.rating_value).toLocaleString()
-                          : t('career.ranking.placement') + ' 0/10'}
+                          : `${t('career.ranking.placement')} (0/10)`}
                       </p>
                     </div>
                   </li>

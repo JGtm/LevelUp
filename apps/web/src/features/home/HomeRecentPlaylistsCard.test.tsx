@@ -32,7 +32,7 @@ describe('HomeRecentPlaylistsCard', () => {
 
     expect(screen.getByText('Ranked Slayer')).toBeInTheDocument()
     expect(screen.getByText('Quick Play')).toBeInTheDocument()
-    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement 4/10')
+    expect(screen.getByTestId('home-rank-unranked-label')).toHaveTextContent('En placement (4/10)')
     const unrankedImg = screen.getByTestId('home-rank-unranked-image') as HTMLImageElement
     expect(unrankedImg.getAttribute('src')).toBe('/static/ranks/halo_infinite/unranked_4.png')
     expect(screen.getByText('Sans classement')).toBeInTheDocument()
