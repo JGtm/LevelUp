@@ -22,7 +22,26 @@ const careerRivalsTimeout = 20 * time.Second
 
 // CareerRepo implémente port.CareerRepository.
 type CareerRepo struct {
-	pdb *PlayerDB
+	pdb            *PlayerDB
+	thresholdsRepo *CSRThresholdsRepo // optionnel : sans repo, default=5
+	currentCSRSID  string             // saison CSR courante (vide → default)
+}
+
+// WithCSRThresholds injecte le repo de lookup season → seuil placement CSR
+// (Phase 6 du plan pipeline CSR). Optionnel.
+func (r *CareerRepo) WithCSRThresholds(repo *CSRThresholdsRepo, currentSeasonID string) *CareerRepo {
+	r.thresholdsRepo = repo
+	r.currentCSRSID = currentSeasonID
+	return r
+}
+
+// csrThreshold retourne le seuil placement pour une saison. Helper interne avec
+// dégradation gracieuse si thresholdsRepo n'est pas injecté.
+func (r *CareerRepo) csrThreshold(seasonID string) int {
+	if r.thresholdsRepo == nil {
+		return CSRPlacementThresholdDefault
+	}
+	return r.thresholdsRepo.Get(context.Background(), seasonID)
 }
 
 // NewCareerRepo crée un CareerRepo depuis un PlayerDB.
@@ -913,7 +932,10 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlayli
 		if _, ok := seen[c.playlistID]; ok {
 			continue
 		}
-		out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name))
+		// Saison courante (currentCSRSID) → threshold à appliquer aux playlists
+		// non encore jouées par le joueur cette saison.
+		threshold := r.csrThreshold(r.currentCSRSID)
+		out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name, threshold))
 	}
 	return out, nil
 }
@@ -933,7 +955,7 @@ func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context) ([]domain.CareerPl
 	var out []domain.CareerPlaylistCSR
 	for rows.Next() {
 		var p domain.CareerPlaylistCSR
-		var seasonID string // col 5 — stored in DB but not exposed in the DTO
+		var seasonID string // col 5 — exposé via PlacementTotal lookup ci-dessous
 		if err := rows.Scan(
 			&p.PlaylistID, &p.PlaylistName, &p.Queue, &p.Input,
 			&seasonID,
@@ -943,15 +965,22 @@ func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context) ([]domain.CareerPl
 		); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetCSRSnapshots scan: %w", err)
 		}
-		p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURL(
+		// Phase 6 : lookup threshold par saison du snapshot. Renseigne
+		// PlacementTotal sur les 3 niveaux (Current/Season/AllTime) pour que le
+		// front puisse afficher "(X/N)" avec le bon N selon l'historique.
+		threshold := r.csrThreshold(seasonID)
+		p.Current.PlacementTotal = threshold
+		p.Season.PlacementTotal = threshold
+		p.AllTime.PlacementTotal = threshold
+		p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(
 			p.Current.Tier, "", p.Current.SubTier, homeStaticTitleSlug,
-			p.Current.MeasurementMatchesRemaining,
+			p.Current.MeasurementMatchesRemaining, threshold,
 		)
-		p.Season.BadgeImageURL = buildHomeSkillPeakBadgeURL(
-			p.Season.Tier, "", p.Season.SubTier, homeStaticTitleSlug, 0,
+		p.Season.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(
+			p.Season.Tier, "", p.Season.SubTier, homeStaticTitleSlug, 0, threshold,
 		)
-		p.AllTime.BadgeImageURL = buildHomeSkillPeakBadgeURL(
-			p.AllTime.Tier, "", p.AllTime.SubTier, homeStaticTitleSlug, 0,
+		p.AllTime.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(
+			p.AllTime.Tier, "", p.AllTime.SubTier, homeStaticTitleSlug, 0, threshold,
 		)
 		out = append(out, p)
 	}
@@ -992,13 +1021,20 @@ func (r *CareerRepo) loadRankedPlaylistsCatalog(ctx context.Context) []rankedCat
 }
 
 // newPlacementPlaylistCSR construit une ligne synthétique pour une playlist
-// ranked du catalogue jamais jouée (0 match de placement effectué).
-func newPlacementPlaylistCSR(playlistID, name string) domain.CareerPlaylistCSR {
+// ranked du catalogue jamais jouée (0 match de placement effectué). threshold
+// est le seuil placement de la saison courante (5 depuis S3, 10 historique).
+func newPlacementPlaylistCSR(playlistID, name string, threshold int) domain.CareerPlaylistCSR {
+	if threshold <= 0 {
+		threshold = CSRPlacementThresholdDefault
+	}
 	p := domain.CareerPlaylistCSR{
 		PlaylistID:   playlistID,
 		PlaylistName: name,
 	}
-	p.Current.MeasurementMatchesRemaining = 10
-	p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURL("", "", 0, homeStaticTitleSlug, 10)
+	p.Current.MeasurementMatchesRemaining = threshold
+	p.Current.PlacementTotal = threshold
+	p.Season.PlacementTotal = threshold
+	p.AllTime.PlacementTotal = threshold
+	p.Current.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold("", "", 0, homeStaticTitleSlug, threshold, threshold)
 	return p
 }

@@ -250,6 +250,15 @@ func (r *ServiceRegistry) Career(ctx context.Context, slug string) (port.CareerS
 		return nil, err
 	}
 	careerRepo := duckdb.NewCareerRepo(pdb)
+	// Phase 6 du plan CSR : injection thresholds repo + saison courante. Permet
+	// à GetCSRSnapshots de renseigner PlacementTotal par snapshot.season_id.
+	if pdb.Metadata != nil {
+		csrSeasonID := ""
+		if r.cfg != nil {
+			csrSeasonID = r.cfg.CurrentCSRSeasonID
+		}
+		careerRepo = careerRepo.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata), csrSeasonID)
+	}
 	svc := service.NewCareerService(careerRepo).WithTitleSlug(pdb.TitleSlug)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
@@ -725,6 +734,16 @@ func (r *ServiceRegistry) newCareerLiveService(pdb *duckdb.PlayerDB, homeRepo *d
 // ne fait que le lookup registry.
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	repo := duckdb.NewHomeRepo(pdb)
+	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
+	// Sans cette injection, le seuil par défaut (5) est utilisé partout, ce qui
+	// est juste pour les saisons S3+ mais incorrect pour les historiques S1-S2.
+	if pdb.Metadata != nil {
+		csrSeasonID := ""
+		if r.cfg != nil {
+			csrSeasonID = r.cfg.CurrentCSRSeasonID
+		}
+		repo = repo.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata), csrSeasonID)
+	}
 	if r.titleResolver == nil {
 		return repo
 	}
