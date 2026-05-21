@@ -202,6 +202,9 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 		sorted = allMatchIDs
 	}
 
+	slog.InfoContext(ctx, "composite-only: recalcul démarré",
+		"player", e.gamertag, "matches", len(sorted), "composites", len(compositeNames))
+
 	cumulPre := make(map[string]int)
 	written := 0
 
@@ -323,8 +326,11 @@ func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedD
 		return 0, fmt.Errorf("select: %w", err)
 	}
 	if len(matchIDs) == 0 {
+		slog.DebugContext(ctx, "citations post-sync: aucun nouveau match", "player", e.gamertag)
 		return 0, nil
 	}
+	slog.InfoContext(ctx, "citations post-sync: nouveaux matchs détectés",
+		"player", e.gamertag, "count", len(matchIDs))
 	if err := BackfillMatchCitations(ctx, metaDB, sharedDB, playerDB, e.xuid, matchIDs); err != nil {
 		return 0, fmt.Errorf("backfill: %w", err)
 	}

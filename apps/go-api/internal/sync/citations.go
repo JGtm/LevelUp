@@ -69,10 +69,15 @@ func BackfillMatchCitations(
 		return fmt.Errorf("BackfillMatchCitations: cumulPre baseline: %w", err)
 	}
 
+	slog.InfoContext(ctx, "citations: traitement batch",
+		"xuid", xuid, "match_count", len(sorted), "baseline_citations", len(cumulPre))
+
+	written, skipped := 0, 0
 	for _, matchID := range sorted {
 		citCtx, err := buildCitationContext(ctx, sharedDB, playerDB, weaponNames, xuid, matchID)
 		if err != nil {
 			slog.Warn("BackfillMatchCitations: context", "match_id", matchID, "err", err)
+			skipped++
 			continue
 		}
 
@@ -84,19 +89,24 @@ func BackfillMatchCitations(
 		// Idempotence : suppression avant réécriture.
 		if err := deleteCitationForMatch(ctx, playerDB, matchID); err != nil {
 			slog.Warn("BackfillMatchCitations: delete", "match_id", matchID, "err", err)
+			skipped++
 			continue
 		}
 
 		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
 			slog.Warn("BackfillMatchCitations: write", "match_id", matchID, "err", err)
+			skipped++
 			continue
 		}
 
+		written++
 		// Mise à jour incrémentale du cumulPre pour le match suivant dans le batch.
 		for _, d := range deltas {
 			cumulPre[d.NameNorm] += d.Value
 		}
 	}
+	slog.InfoContext(ctx, "citations: batch terminé",
+		"xuid", xuid, "written", written, "skipped", skipped)
 	return nil
 }
 

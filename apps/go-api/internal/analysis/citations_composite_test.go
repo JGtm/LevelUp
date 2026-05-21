@@ -360,6 +360,123 @@ func TestProgression_T10_OrderIndependence(t *testing.T) {
 	}
 }
 
+// =============================================================================
+// Tests T11-T14 — cas-limites composites/métas
+// =============================================================================
+
+// mappingCompositeWithTiers : composite avec tier_targets (max explicite sur le composite lui-même).
+func mappingCompositeWithTiers(norm, children, tiers string) domain.CitationFullMapping {
+	return domain.CitationFullMapping{
+		NameNorm:          norm,
+		MappingType:       "composite",
+		CompositeChildren: strPtr(children),
+		TierTargets:       strPtr(tiers),
+	}
+}
+
+// T11 : composite déjà au max (capRoom ≤ 0) ne prend pas de delta mais
+// declenche quand même le méta parent via transitioned[].
+func TestProgression_T11_CompositeAlreadyMaxCascadesToMeta(t *testing.T) {
+	tiers := "10"
+	mappings := buildMappings(
+		[]domain.CitationFullMapping{mappingStat("leaf_a", &tiers)},
+		[]domain.CitationFullMapping{
+			mappingComposite("mid", `["leaf_a"]`),  // max=1 (len children)
+			mappingComposite("meta", `["mid"]`),    // max=1 (len children)
+		},
+	)
+	// mid déjà au max (cumulPre=1), meta pas encore (cumulPre=0).
+	// leaf_a traverse son palier → mid capRoom=0 → pas de delta pour mid
+	// mais transitioned[mid]=true → meta doit recevoir +1.
+	in := injectProgress(
+		map[string]float64{"leaf_a": 5},
+		map[string]int{"leaf_a": 8, "mid": 1},
+	)
+	deltas := analysis.ComputeFullMatchCitations(in, mappings)
+	assertDelta(t, deltas, "leaf_a", 2)  // 10-8=2
+	assertNoDelta(t, deltas, "mid")      // capRoom=0 → pas de delta
+	assertDelta(t, deltas, "meta", 1)    // cascade : mid était transitioned → meta +1
+}
+
+// T12 : composite avec tier_targets — delta capé si newlyMastered > capRoom.
+func TestProgression_T12_CompositePartialCapByTierTargets(t *testing.T) {
+	childTiers := "5"
+	mappings := append(
+		[]domain.CitationFullMapping{
+			mappingStat("c1", &childTiers),
+			mappingStat("c2", &childTiers),
+			mappingStat("c3", &childTiers),
+		},
+		mappingCompositeWithTiers("comp_t", `["c1","c2","c3"]`, "2"), // max=2, pas 3
+	)
+	// 3 enfants traversent leur max, mais composite capé à 2 (tier_targets).
+	in := injectProgress(
+		map[string]float64{"c1": 5, "c2": 5, "c3": 5},
+		map[string]int{"c1": 3, "c2": 3, "c3": 3},
+	)
+	deltas := analysis.ComputeFullMatchCitations(in, mappings)
+	assertDelta(t, deltas, "comp_t", 2) // newlyMastered=3 > capRoom=2 → delta=2
+}
+
+// T13 : enfant présent dans composite_children mais absent des mappings (disabled).
+// L'enfant disabled ne déclenche pas de transition ; l'enfant enabled oui.
+func TestProgression_T13_DisabledChildIgnored(t *testing.T) {
+	tiers := "10"
+	mappings := buildMappings(
+		[]domain.CitationFullMapping{mappingStat("enabled_c", &tiers)},
+		// "disabled_c" absent des mappings (not enabled IS FALSE)
+		[]domain.CitationFullMapping{mappingComposite("comp", `["enabled_c","disabled_c"]`)},
+	)
+	// enabled_c traverse son max ; disabled_c absent → maxChild=0 → ignoré.
+	in := injectProgress(
+		map[string]float64{"enabled_c": 5},
+		map[string]int{"enabled_c": 8},
+	)
+	deltas := analysis.ComputeFullMatchCitations(in, mappings)
+	assertDelta(t, deltas, "enabled_c", 2)  // 10-8=2
+	assertDelta(t, deltas, "comp", 1)       // 1 enfant enabled traverse → +1
+	assertNoDelta(t, deltas, "disabled_c")  // absent des mappings → pas de dispatch
+}
+
+// T14 : deux composites distincts partagent le même enfant.
+// Chacun doit recevoir +1 indépendamment.
+func TestProgression_T14_TwoCompositesShareChild(t *testing.T) {
+	tiers := "5"
+	mappings := buildMappings(
+		[]domain.CitationFullMapping{
+			mappingStat("shared", &tiers),
+			mappingStat("excl_a", &tiers),
+		},
+		[]domain.CitationFullMapping{
+			mappingComposite("comp_a", `["shared","excl_a"]`), // shared traverse, excl_a non
+			mappingComposite("comp_b", `["shared"]`),          // shared traverse → +1
+		},
+	)
+	in := injectProgress(
+		map[string]float64{"shared": 5, "excl_a": 2},
+		map[string]int{"shared": 3, "excl_a": 0},
+	)
+	deltas := analysis.ComputeFullMatchCitations(in, mappings)
+	assertDelta(t, deltas, "shared", 2) // 5-3=2
+	assertDelta(t, deltas, "comp_a", 1) // shared traverse → +1
+	assertDelta(t, deltas, "comp_b", 1) // shared traverse → +1 (indépendant)
+}
+
+// T15 : leaf sans palier + composite → composite ne reçoit jamais de delta (R7/R8).
+// Note : ce cas est déjà couvert par TestComposite_NoTierTargets (leaf) ;
+// ici on vérifie qu'un composite lui-même sans tier_targets et dont AUCUN enfant
+// n'a de tier_targets reste à 0.
+func TestProgression_T15_NoTierTargetsAnywhere(t *testing.T) {
+	mappings := buildMappings(
+		[]domain.CitationFullMapping{mappingStat("free_leaf", nil)}, // pas de tier_targets
+		[]domain.CitationFullMapping{mappingComposite("free_comp", `["free_leaf"]`)},
+	)
+	in := injectProgress(map[string]float64{"free_leaf": 10}, nil)
+	deltas := analysis.ComputeFullMatchCitations(in, mappings)
+	assertDelta(t, deltas, "free_leaf", 10) // écrit librement (pas de cap)
+	assertNoDelta(t, deltas, "free_comp")   // pas de palier final → pas de transition
+}
+
 func TestMVPLVP_InsufficientBestCells(t *testing.T) {
 	// A n'a qu'une seule best cell (kills) → pas de MVP (besoin ≥ 2)
 	scoreboard := []domain.ScoreboardRaw{
