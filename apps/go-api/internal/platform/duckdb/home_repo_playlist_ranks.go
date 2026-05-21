@@ -12,10 +12,35 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"levelup/go-api/internal/domain"
 )
+
+// placementRemainingRe extrait N depuis "Placement (N restant)" ou
+// "Placement (N restants)" écrit par csr_writes.formatCSRTierLabel.
+var placementRemainingRe = regexp.MustCompile(`\((\d+)\s*restant`)
+
+// parsePlacementRemaining extrait le N d'un tier_label "Placement (N restants)".
+// Retourne 10 si non parsable (joueur en placement, 0 match joué).
+func parsePlacementRemaining(label string) int {
+	m := placementRemainingRe.FindStringSubmatch(label)
+	if len(m) < 2 {
+		return 10
+	}
+	var n int
+	if _, err := fmt.Sscanf(m[1], "%d", &n); err != nil {
+		return 10
+	}
+	if n < 0 {
+		return 0
+	}
+	if n > 10 {
+		return 10
+	}
+	return n
+}
 
 // LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes jouées avec leur
 // dernier rang compétitif connu (Q26g). Retourne (nil, nil) si aucune donnée.
@@ -56,40 +81,11 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 	}
 	raws := make([]rawItem, 0, len(phaseB))
 	for _, p := range phaseB {
-		item := domain.HomePlaylistRank{
-			PlaylistName: p.playlistName,
-			IsRanked:     p.isRanked,
-		}
-		if msr, ok := msrByMatch[p.lastMatchID]; ok {
-			ratingType := "LUSR"
-			if p.isRanked {
-				ratingType = "CSR"
-			}
-			item.RatingType = &ratingType
-			ratingValueCopy := msr.ratingValue
-			item.RatingValue = &ratingValueCopy
-			if msr.tierLabel != "" {
-				item.TierLabel = stringPtr(msr.tierLabel)
-			}
-			item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0)
-		} else if p.isRanked {
-			completed := 0
-			if rem, ok := snapshotByPlaylist[p.playlistID]; ok && rem > 0 {
-				completed = 10 - rem
-			}
-			if completed < 0 {
-				completed = 0
-			}
-			if completed > 9 {
-				completed = 9
-			}
-			item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
-			if rem, ok := snapshotByPlaylist[p.playlistID]; ok {
-				remCopy := rem
-				item.MeasurementMatchesRemaining = &remCopy
-			}
-		}
-		raws = append(raws, rawItem{playlistID: p.playlistID, playlistName: p.playlistName, item: item})
+		raws = append(raws, rawItem{
+			playlistID:   p.playlistID,
+			playlistName: p.playlistName,
+			item:         buildPlaylistRankItem(p, msrByMatch, snapshotByPlaylist),
+		})
 	}
 
 	// Enrichissement FR depuis asset_translations (même source que les tuiles de matchs).
@@ -216,6 +212,72 @@ func (r *HomeRepo) loadPlaylistPhaseASnapshot(ctx context.Context, playlistIDs [
 		}
 	}
 	return out
+}
+
+// buildPlaylistRankItem assemble l'item domain.HomePlaylistRank pour une
+// playlist Phase B en croisant MSR (Phase A1) et snapshot (Phase A2).
+//
+// Détection placement (parité avec resolveSkillPeakState côté front) :
+//   - snapshot.current_measurement_remaining > 0, OU
+//   - MSR avec tier="Placement" / tier_label commence par "Placement"
+//     (sync écrit rating_value=0.0 en placement pour respecter NOT NULL du
+//     schéma, cf. csr_writes.go).
+//
+// En placement : RatingValue/TierLabel laissés nil, BadgeImageURL=unranked_N.png,
+// MeasurementMatchesRemaining=remaining (le front affichera "En placement (X/10)").
+func buildPlaylistRankItem(
+	p playlistPhaseBRow,
+	msrByMatch map[string]playlistMSRRow,
+	snapshotByPlaylist map[string]int,
+) domain.HomePlaylistRank {
+	item := domain.HomePlaylistRank{
+		PlaylistName: p.playlistName,
+		IsRanked:     p.isRanked,
+	}
+	msr, hasMSR := msrByMatch[p.lastMatchID]
+	snapRem, hasSnap := snapshotByPlaylist[p.playlistID]
+
+	msrIsPlacement := hasMSR && (msr.tier == "Placement" || strings.HasPrefix(msr.tierLabel, "Placement"))
+	snapIsPlacement := hasSnap && snapRem > 0
+	isPlacement := p.isRanked && (snapIsPlacement || msrIsPlacement)
+
+	switch {
+	case isPlacement:
+		remaining := 0
+		switch {
+		case snapIsPlacement:
+			remaining = snapRem
+		case msrIsPlacement:
+			remaining = parsePlacementRemaining(msr.tierLabel)
+		}
+		completed := 10 - remaining
+		if completed < 0 {
+			completed = 0
+		}
+		if completed > 9 {
+			completed = 9
+		}
+		item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
+		remCopy := remaining
+		item.MeasurementMatchesRemaining = &remCopy
+		ratingType := "CSR"
+		item.RatingType = &ratingType
+		// RatingValue / TierLabel laissés nil : signal explicite au front.
+
+	case hasMSR:
+		ratingType := "LUSR"
+		if p.isRanked {
+			ratingType = "CSR"
+		}
+		item.RatingType = &ratingType
+		ratingValueCopy := msr.ratingValue
+		item.RatingValue = &ratingValueCopy
+		if msr.tierLabel != "" {
+			item.TierLabel = stringPtr(msr.tierLabel)
+		}
+		item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0)
+	}
+	return item
 }
 
 // resolvePlaylistNameForLocale retourne le nom de playlist adapté à la locale.
