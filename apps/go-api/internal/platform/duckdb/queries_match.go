@@ -27,10 +27,11 @@ LIMIT 50`
 
 // Q12 : Match view — scoreboard complet d'un match.
 // Paramètres : ?1 = match_id (medals), ?2 = match_id (weapons), ?3 = match_id (WHERE).
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q12MatchScoreboard = `
 WITH me_perfect AS (
     SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
-    FROM shared.medals_earned
+    FROM medals_earned
     WHERE match_id = ? AND medal_name_id = 1512363953
     GROUP BY xuid
 ),
@@ -39,7 +40,7 @@ top_weapons AS (
     FROM (
         SELECT xuid, COALESCE(reconciled_as, weapon_id) AS wid, COUNT(*) AS wk,
                ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
-        FROM shared.weapon_kills
+        FROM weapon_kills
         WHERE match_id = ? AND COALESCE(reconciled_as, weapon_id) NOT IN (0, 1, 2)
         GROUP BY xuid, COALESCE(reconciled_as, weapon_id)
     ) t WHERE rn = 1
@@ -79,8 +80,8 @@ SELECT
     p.deaths_expected,
     p.kills_stddev,
     p.deaths_stddev
-FROM shared.match_participants p
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+FROM match_participants p
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
 LEFT JOIN top_weapons w ON p.xuid = w.xuid
 WHERE p.match_id = ?
@@ -96,6 +97,7 @@ ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST`
 
 // Q13 : Match view — métadonnées du match.
 // Paramètre : ? = match_id.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q13MatchMeta = `
 SELECT
     r.match_id,
@@ -121,17 +123,18 @@ SELECT
     COALESCE(r.pair_name_fr, r.pair_name) AS pair_name_fr,
     r.pair_id,
     r.game_variant_id
-FROM shared.match_registry r
+FROM match_registry r
 WHERE r.match_id = ?`
 
 // Q14 : Médailles d'un joueur pour un match.
 // Paramètres : ?1 = xuid, ?2 = match_id.
 // Les labels sont résolus ensuite via pdb.Metadata.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q14MatchMedals = `
 SELECT
     me.medal_name_id,
     me.count
-FROM shared.medals_earned me
+FROM medals_earned me
 WHERE me.xuid = ? AND me.match_id = ?
 ORDER BY me.count DESC`
 
@@ -152,11 +155,12 @@ ORDER BY he.time_ms ASC`
 // Les labels sont résolus ensuite via pdb.Metadata.
 // Utilise v_weapon_kills (effective_weapon_id = COALESCE(reconciled_as, weapon_id))
 // pour appliquer la fusion d'armes (M392→Bandit Evo, Fuel Rod→M41 SPNKr, etc.).
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q16WeaponKills = `
 SELECT
     wk.effective_weapon_id AS weapon_id,
     COUNT(*) AS kills
-FROM shared.v_weapon_kills wk
+FROM v_weapon_kills wk
 WHERE wk.xuid = ? AND wk.match_id = ?
   AND wk.effective_weapon_id NOT IN (0, 1, 2)
 GROUP BY wk.effective_weapon_id
@@ -168,6 +172,7 @@ ORDER BY kills DESC`
 // assists, kda, accuracy, personal_score, avg_life_seconds, time_played_seconds,
 // shots_fired, shots_hit, damage_dealt, damage_taken, team_mmr, enemy_mmr,
 // headshot_kills, max_killing_spree.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q17PlayerMatchStats = `
 SELECT
     COALESCE(p.outcome, 0)         AS outcome_code,
@@ -189,11 +194,12 @@ SELECT
     p.enemy_mmr,
     p.headshot_kills,
     p.max_killing_spree
-FROM shared.match_participants p
+FROM match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`
 
 // Q29 : Historique récent (50 matchs) pour moyennes K/D/A + spree/headshots/perfect.
 // Paramètres : ?1 = xuid (recent CTE), ?2 = xuid (perfect CTE).
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q29HistoryForAvg = `
 WITH recent AS (
     SELECT
@@ -206,15 +212,15 @@ WITH recent AS (
         COALESCE(r.pair_name, '')      AS pair_name,
         COALESCE(r.is_firefight, FALSE) AS is_firefight,
         COALESCE(r.is_ranked, FALSE)    AS is_ranked
-    FROM shared.match_participants p
-    JOIN shared.match_registry r ON r.match_id = p.match_id
+    FROM match_participants p
+    JOIN match_registry r ON r.match_id = p.match_id
     WHERE p.xuid = ?
     ORDER BY r.start_time DESC NULLS LAST
     LIMIT 50
 ),
 perfect AS (
     SELECT m.match_id, COALESCE(SUM(m.count), 0) AS perfect_kills
-    FROM shared.medals_earned m
+    FROM medals_earned m
     WHERE m.xuid = ?
       AND m.match_id IN (SELECT match_id FROM recent)
       AND m.medal_name_id = 1512363953
@@ -375,21 +381,15 @@ SELECT
 FROM current c
 LIMIT 1`
 
-// Q22 : Rang compétitif du joueur pour ce match (match_skill_rank — player DB).
+// Q22a : Rang compétitif du joueur pour ce match (player DB seule).
 // Paramètre : ? = match_id.
-const Q22MatchSkillRank = `
+//
+// Cross-DB split (ADR 0016) : on lit d'abord les colonnes match_skill_rank
+// sur la conn Player (Q22a), puis on lit séparément match_registry sur
+// SharedReader (Q22b) pour calculer le rating_type effectif côté Go.
+const Q22aMatchSkillRankPlayer = `
 SELECT
-    CASE
-        WHEN mr.match_id IS NOT NULL THEN CASE
-            WHEN COALESCE(mr.is_ranked, FALSE)
-                OR STRPOS(LOWER(COALESCE(mr.playlist_name, '')), 'ranked') > 0
-                OR STRPOS(LOWER(COALESCE(mr.pair_name, '')), 'ranked') > 0
-            THEN 'CSR'
-            ELSE 'LUSR'
-        END
-        WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
-        ELSE 'LUSR'
-    END AS rating_type,
+    UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) AS rating_type_raw,
     msr.tier_label,
     msr.rating_value,
     msr.rating_delta,
@@ -397,21 +397,33 @@ SELECT
     msr.tier,
     msr.sub_tier
 FROM match_skill_rank msr
-LEFT JOIN shared.match_registry mr ON mr.match_id = msr.match_id
 WHERE msr.match_id = ?
+LIMIT 1`
+
+// Q22b : Métadonnées registry minimales pour déduire rating_type (CSR/LUSR).
+// Paramètre : ? = match_id. Exécutée sur SharedReader (ADR 0016).
+const Q22bMatchRegistryRankedFlag = `
+SELECT
+    COALESCE(is_ranked, FALSE) AS is_ranked,
+    COALESCE(playlist_name, '') AS playlist_name,
+    COALESCE(pair_name, '')     AS pair_name
+FROM match_registry
+WHERE match_id = ?
 LIMIT 1`
 
 // Q23 : Rencontres historiques avec chaque participant de ce match.
 // Paramètres : ?1 = match_id, ?2 = myXUID (this_match excl.), ?3 = match_id,
 //
 //	?4 = myXUID (my_team), ?5 = myXUID (me.xuid=?).
+//
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
            COALESCE(vg.gamertag, p.xuid) AS gamertag,
            FALSE AS is_bot
-    FROM shared.match_participants p
-    LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+    FROM match_participants p
+    LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : leur xuid 'bid(N.0)' est unique par match → aucun
@@ -419,7 +431,7 @@ WITH this_match AS (
       AND p.xuid NOT LIKE 'bid(%'
 ),
 my_team AS (
-    SELECT team_id FROM shared.match_participants
+    SELECT team_id FROM match_participants
     WHERE match_id = ? AND xuid = ?
     LIMIT 1
 )
@@ -430,8 +442,8 @@ SELECT
     COUNT(DISTINCT hist.match_id) AS count_together,
     (tm.team_id = (SELECT team_id FROM my_team)) AS is_ally
 FROM this_match tm
-LEFT JOIN shared.match_participants me ON me.xuid = ?
-LEFT JOIN shared.match_participants hist
+LEFT JOIN match_participants me ON me.xuid = ?
+LEFT JOIN match_participants hist
     ON hist.match_id = me.match_id AND hist.xuid = tm.xuid
 GROUP BY tm.xuid, tm.gamertag, tm.is_bot, tm.team_id
 ORDER BY count_together DESC`
@@ -450,25 +462,27 @@ ORDER BY count_together DESC`
 //	?6 = myXUID  (kv kills_dealt)
 //	?7 = myXUID  (kv deaths_suffered)
 //	?8 = myXUID  (kv join condition)
+//
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q23bMatchEncounterStats = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
            COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag
-    FROM shared.match_participants p
-    LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p.xuid
+    FROM match_participants p
+    LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?
       AND p.xuid != ?
       -- Bots exclus : pas d'historique cross-match pertinent (cf. Q23).
       AND p.xuid NOT LIKE 'bid(%'
 ),
 my_team AS (
-    SELECT team_id FROM shared.match_participants
+    SELECT team_id FROM match_participants
     WHERE match_id = ? AND xuid = ?
     LIMIT 1
 ),
 my_history AS (
     SELECT match_id, team_id, outcome
-    FROM shared.match_participants
+    FROM match_participants
     WHERE xuid = ?
 ),
 encounter_history AS (
@@ -480,9 +494,9 @@ encounter_history AS (
         COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS hist_start_time
     FROM this_match tm
     JOIN my_history h ON 1=1
-    JOIN shared.match_participants hist
+    JOIN match_participants hist
         ON hist.match_id = h.match_id AND hist.xuid = tm.xuid
-    LEFT JOIN shared.match_registry mr ON mr.match_id = h.match_id
+    LEFT JOIN match_registry mr ON mr.match_id = h.match_id
 ),
 encounter_stats AS (
     SELECT
@@ -503,7 +517,7 @@ kv_stats AS (
         SUM(CASE WHEN kv.killer_xuid = ? AND kv.victim_xuid = tm.xuid THEN kv.kill_count ELSE 0 END) AS kills_dealt,
         SUM(CASE WHEN kv.killer_xuid = tm.xuid AND kv.victim_xuid = ? THEN kv.kill_count ELSE 0 END) AS deaths_suffered
     FROM this_match tm
-    LEFT JOIN shared.killer_victim_pairs kv
+    LEFT JOIN killer_victim_pairs kv
         ON ((kv.killer_xuid = ? AND kv.victim_xuid = tm.xuid)
             OR (kv.killer_xuid = tm.xuid AND kv.victim_xuid = ?))
     GROUP BY tm.xuid
@@ -549,12 +563,13 @@ ORDER BY mf.capture_end_utc ASC NULLS LAST`
 // Q27 : Médailles de tous les joueurs d'un match (bulk).
 // Paramètre : ? = match_id.
 // Retourne 3 colonnes : xuid, medal_name_id, count.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q27BulkMedals = `
 SELECT
     xuid,
     medal_name_id,
     SUM(count) AS count
-FROM shared.medals_earned
+FROM medals_earned
 WHERE match_id = ?
 GROUP BY xuid, medal_name_id
 ORDER BY xuid, count DESC`
@@ -563,12 +578,13 @@ ORDER BY xuid, count DESC`
 // Paramètre : ? = match_id.
 // Retourne 3 colonnes : xuid, weapon_id, kills.
 // Requête directe sur weapon_kills (sans passer par v_weapon_kills).
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q28BulkWeaponKills = `
 SELECT
     wk.xuid,
     COALESCE(wk.reconciled_as, wk.weapon_id) AS weapon_id,
     COUNT(*) AS kills
-FROM shared.weapon_kills wk
+FROM weapon_kills wk
 WHERE wk.match_id = ?
   AND COALESCE(wk.reconciled_as, wk.weapon_id) NOT IN (0, 1, 2)
 GROUP BY wk.xuid, COALESCE(wk.reconciled_as, wk.weapon_id)
@@ -576,11 +592,12 @@ ORDER BY wk.xuid, kills DESC`
 
 // Q26 : Stats attendues du joueur pour ce match (match_participants expected columns).
 // Paramètres : ?1 = match_id, ?2 = xuid.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q26MatchExpectedStats = `
 SELECT
     p.kills_expected,
     p.deaths_expected,
     p.kills_stddev,
     p.deaths_stddev
-FROM shared.match_participants p
+FROM match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`
