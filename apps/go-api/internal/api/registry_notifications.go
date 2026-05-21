@@ -117,8 +117,15 @@ func (r *ServiceRegistry) MediaRecipientResolver(cfg *config.AppConfig) func(
 
 // loadRecentMediaMatchIDs : SELECT DISTINCT match_id depuis shared_social.media_match_associations
 // où created_at >= since. Plafonné implicitement par le nombre d'uploads concomitants.
+//
+// IMPORTANT : OpenReadWriteShared (et NON OpenReadOnly) — shared_social.duckdb
+// est déjà ouverte en mode RW partagé par le pool joueur (pool.go) et par
+// prestige_setup au boot. Un OpenReadOnly ici créerait une 2e clé cache
+// ("ro:"+path) → 2 duckdb_open() avec des access_mode différents sur le même
+// fichier → erreur "Can't open a connection to same database file with a
+// different configuration". Cf. fix similaire commit 9c.5 sur shared_matches_v2.
 func loadRecentMediaMatchIDs(ctx context.Context, sharedSocialDBPath string, since time.Time) ([]string, error) {
-	db, err := duckdb.OpenReadOnly(sharedSocialDBPath)
+	db, err := duckdb.OpenReadWriteShared(sharedSocialDBPath)
 	if err != nil {
 		return nil, err
 	}
