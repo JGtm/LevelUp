@@ -96,7 +96,7 @@ func ExchangeRefreshTokenWithRotation(ctx context.Context, refreshToken string) 
 
 	body := url.Values{
 		oauthFieldClientID:     {clientID},
-		"grant_type":           {"refresh_token"},
+		"grant_type":           {oauthFieldRefreshToken},
 		oauthFieldRefreshToken: {refreshToken},
 		oauthFieldScope:        {xboxScopes},
 	}

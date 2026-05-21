@@ -278,7 +278,7 @@ func (s *OpenSpartanImportService) importMatches(
 		if opts.OnProgress != nil {
 			opts.OnProgress(parsed, result.TotalMatches)
 		}
-		s.writeOneMatch(sharedDB, pm, mapOpts, opts.DryRun, result)
+		s.writeOneMatch(ctx, sharedDB, pm, mapOpts, opts.DryRun, result)
 	}
 	return nil
 }
@@ -286,6 +286,7 @@ func (s *OpenSpartanImportService) importMatches(
 // writeOneMatch maps + writes one match's contribution to the shared DB.
 // Errors per stage are recorded but never abort the whole import.
 func (s *OpenSpartanImportService) writeOneMatch(
+	ctx context.Context,
 	sharedDB *sql.DB,
 	pm *openspartan.ParsedMatch,
 	mapOpts mapper.MapOptions,
@@ -303,18 +304,18 @@ func (s *OpenSpartanImportService) writeOneMatch(
 		result.InsertedMedals += len(mm.Medals)
 		return
 	}
-	if err := sync.InsertRegistryIfNotExists(sharedDB, toSyncRegistry(mm.Registry)); err != nil {
+	if err := sync.InsertRegistryIfNotExists(ctx, sharedDB, toSyncRegistry(mm.Registry)); err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_registry", Err: err.Error()})
 		return
 	}
 	result.InsertedMatches++
 	result.InsertedMatchIDs = append(result.InsertedMatchIDs, pm.MatchID)
-	if err := sync.InsertParticipants(sharedDB, toSyncParticipants(mm.Participants)); err != nil {
+	if err := sync.InsertParticipants(ctx, sharedDB, toSyncParticipants(mm.Participants)); err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_participants", Err: err.Error()})
 	} else {
 		result.InsertedParticipants += len(mm.Participants)
 	}
-	if err := sync.InsertMedals(sharedDB, toSyncMedals(mm.Medals)); err != nil {
+	if err := sync.InsertMedals(ctx, sharedDB, toSyncMedals(mm.Medals)); err != nil {
 		result.Errors = append(result.Errors, ImportError{MatchID: pm.MatchID, Stage: "insert_medals", Err: err.Error()})
 	} else {
 		result.InsertedMedals += len(mm.Medals)
@@ -348,7 +349,7 @@ func (s *OpenSpartanImportService) importHighlights(
 			continue
 		}
 		event := toAnalysisEvent(row)
-		n, err := sync.InsertHighlightEvents(sharedDB, row.MatchID, []analysis.HighlightEvent{event})
+		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []analysis.HighlightEvent{event})
 		if err != nil {
 			result.Errors = append(result.Errors, ImportError{MatchID: hl.MatchID, Stage: "insert_highlight", Err: err.Error()})
 			continue
@@ -376,7 +377,7 @@ func (s *OpenSpartanImportService) importAliases(
 		return
 	}
 	for _, a := range rows {
-		if err := sync.UpsertXUIDAlias(sharedDB, a.XUID, a.Gamertag); err != nil {
+		if err := sync.UpsertXUIDAlias(ctx, sharedDB, a.XUID, a.Gamertag); err != nil {
 			result.Errors = append(result.Errors, ImportError{Stage: "upsert_alias", Err: err.Error()})
 			continue
 		}

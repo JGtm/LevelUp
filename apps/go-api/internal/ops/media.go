@@ -204,7 +204,7 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// Générer les miniatures WebP manquantes via ffmpeg, puis lier en DB.
 	// Couvre tous les chemins d'indexation : upload, scan, reindex.
 	thumbsDir := filepath.Join(opts.CapturesDir, "thumbs")
-	if thumbN, thumbErrs := GenerateThumbnails(opts.CapturesDir, thumbsDir); thumbN > 0 || len(thumbErrs) > 0 {
+	if thumbN, thumbErrs := GenerateThumbnails(ctx, opts.CapturesDir, thumbsDir); thumbN > 0 || len(thumbErrs) > 0 {
 		result.Thumbnails += thumbN
 		for _, e := range thumbErrs {
 			result.Errors = append(result.Errors, "generate_thumbnail: "+e)
@@ -319,7 +319,7 @@ func AssociateMediaWithMatches(ctx context.Context, db *sql.DB, sharedMatchesPat
 // Les GIFs legacy déjà présents sur disque sont conservés tels quels (pas de
 // regénération) — le backfill DB reconnaît les deux formats.
 // Nécessite ffmpeg compilé avec libwebp dans le PATH.
-func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
+func GenerateThumbnails(ctx context.Context, videosDir, thumbsDir string) (int, []string) {
 	os.MkdirAll(thumbsDir, 0o755) //nolint:errcheck
 	generated := 0
 	var errs []string
@@ -346,7 +346,7 @@ func GenerateThumbnails(videosDir, thumbsDir string) (int, []string) {
 			continue // GIF legacy présent, on le garde (pas de backfill bulk)
 		}
 		srcPath := filepath.Join(videosDir, e.Name())
-		if err := generateAnimatedThumbnail(srcPath, thumbPath); err != nil {
+		if err := generateAnimatedThumbnail(ctx, srcPath, thumbPath); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", e.Name(), err))
 			continue
 		}
@@ -423,8 +423,8 @@ func probeVideoDuration(ctx context.Context, videoPath string) (float64, error) 
 // (~25-35 % de taille) et 24-bit (vs palette 8-bit du GIF) pour des couleurs
 // fidèles à la source. Compatible avec gif-hover-thumbnail.tsx (Image()/canvas
 // indifférents au format animé).
-func generateAnimatedThumbnail(videoPath, webpPath string) error {
-	cmd := exec.Command("ffmpeg", "-y",
+func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) error {
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-y",
 		"-ss", "5",
 		"-t", "3",
 		"-i", videoPath,
