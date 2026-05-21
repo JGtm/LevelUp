@@ -218,6 +218,62 @@ func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfil
 	return res, nil
 }
 
+// RunBackfillSharedCSR rattrape shared.match_csrs pour tous les matchs ranked
+// où le joueur a participé. Wrapper sur BackfillSharedCSRsFromAPI avec
+// acquisition du shared writer + résolution du client Halo (skip API si dry-run).
+//
+// Différent de RunBackfillCSR :
+//   - RunBackfillCSR écrit player.match_skill_rank pour le joueur synchronisé.
+//   - RunBackfillSharedCSR écrit shared.match_csrs pour TOUS les participants
+//     du match (option A du plan : permet comparaisons cross-joueurs).
+func (e *SyncEngine) RunBackfillSharedCSR(ctx context.Context, opts SharedCSRBackfillOpts) (SharedCSRBackfillResult, error) {
+	var empty SharedCSRBackfillResult
+	empty.DryRun = opts.DryRun
+
+	// En non-dry-run, les tokens Halo sont indispensables pour appeler /skill.
+	if !opts.DryRun && (e.tokens == nil || e.tokens.SpartanToken == "") {
+		return empty, fmt.Errorf("RunBackfillSharedCSR: tokens Halo absents (re-login requis) — utiliser --dry-run sinon")
+	}
+
+	slog.InfoContext(ctx, "RunBackfillSharedCSR: démarrage",
+		"gamertag", e.gamertag, "xuid", e.xuid, "force", opts.Force, "dry_run", opts.DryRun)
+
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	if err != nil {
+		return empty, fmt.Errorf("RunBackfillSharedCSR: %w", err)
+	}
+	defer releaseShared()
+
+	var client HaloClient
+	if !opts.DryRun {
+		if e.customClient != nil {
+			client = e.customClient
+		} else {
+			client = NewHaloAPIClient(e.tokens.SpartanToken, e.tokens.ClearanceToken, 5)
+		}
+	}
+	// En dry-run, client peut rester nil — BackfillSharedCSRsFromAPI ne l'appelle pas.
+
+	res, err := BackfillSharedCSRsFromAPI(ctx, client, sharedDB, e.xuid, opts)
+	if err != nil {
+		slog.ErrorContext(ctx, "RunBackfillSharedCSR: échec", "gamertag", e.gamertag, "err", err)
+		return res, err
+	}
+	slog.InfoContext(ctx, "RunBackfillSharedCSR: terminé",
+		"gamertag", e.gamertag,
+		"ranked_total", res.RankedMatches,
+		"already_complete", res.AlreadyComplete,
+		"need_backfill", res.NeedBackfill,
+		"fetched", res.Fetched,
+		"inserted", res.Inserted,
+		"skipped_no_recap", res.SkippedNoRankRecap,
+		"skill_errors", res.SkillErrors,
+		"upsert_errors", res.UpsertErrors,
+		"dry_run", res.DryRun,
+	)
+	return res, nil
+}
+
 // RunBackfillPerf recalcule le performance score relatif pour tous les matchs du joueur.
 // force=true : recalcule même si les matchs ont déjà un score (utile après changement de formule).
 func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, error) {

@@ -41,11 +41,13 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	citations := fs.Bool("citations", false, "Backfill des citations (match_citations) depuis citation_mappings + medals + stats + awards")
 	lusr := fs.Bool("lusr", false, "Backfill LUSR TrueSkill 2 avec poids medailles v5")
 	csr := fs.Bool("csr", false, "Backfill CSR par-match via GetMatchSkill (RankRecap). Idempotent ; --force re-fetche tous les matchs ranked")
+	sharedCSR := fs.Bool("shared-csr", false, "Backfill shared.match_csrs (CSR de TOUS les participants des matchs ranked). --dry-run pour compter sans écrire.")
 	perf := fs.Bool("perf", false, "Backfill performance score relatif v5 (off_conv + def_res + medal_exploit)")
 	assistsModel := fs.Bool("assists-model", false, "Calcule le modèle OLS expected_assists par mode (player_assists_model dans stats.duckdb)")
 	weapons := fs.Bool("weapons", false, "Backfill weapon_kills depuis film CDN (tous les participants par match)")
 	compositeOnly := fs.Bool("composite-only", false, "Backfill citations composites uniquement (additive, sans recalcul depuis shared_matches)")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
+	dryRun := fs.Bool("dry-run", false, "Mode dry-run (--shared-csr uniquement) : compte les matchs à backfiller sans appel API ni écriture")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -56,8 +58,11 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*lusr && !*csr && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --csr, --perf, --assists-model, --weapons ou --composite-only)")
+	if !*engagementScores && !*citations && !*lusr && !*csr && !*sharedCSR && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --lusr, --csr, --shared-csr, --perf, --assists-model, --weapons ou --composite-only)")
+	}
+	if *dryRun && !*sharedCSR {
+		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr")
 	}
 
 	ctx := context.Background()
@@ -117,6 +122,21 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 				return err
 			}
 			if err := runBackfillCSRForPlayer(ctx, cfg, player, *force); err != nil {
+				return err
+			}
+		}
+	}
+	if *sharedCSR {
+		if *allPlayers {
+			if err := runBackfillAllSharedCSR(ctx, cfg, *force, *dryRun); err != nil {
+				return err
+			}
+		} else {
+			player, err := loadPlayerSummary(cfg, *gamertag)
+			if err != nil {
+				return err
+			}
+			if err := runBackfillSharedCSRForPlayer(ctx, cfg, player, *force, *dryRun); err != nil {
 				return err
 			}
 		}
@@ -440,6 +460,96 @@ func runBackfillCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player 
 	}
 	fmt.Printf("backfill csr OK: gamertag=%s inserted=%d already=%d no_recap=%d errors=%d force=%t\n",
 		player.Gamertag, res.Inserted, res.AlreadyHadCSR, res.SkippedNoRankRecap, res.SkillErrors, force)
+	return nil
+}
+
+// ── Shared CSR backfill (Option A — all participants per match) ────────────
+//
+// Persiste le CSR de TOUS les joueurs d'un match ranked dans shared.match_csrs
+// (vs. legacy --csr qui n'écrit que le CSR du joueur sync dans sa player DB).
+// Mode --dry-run : compte les matchs nécessitant un backfill sans appel API
+// ni écriture — idéal pour valider l'ampleur avant exécution réelle.
+
+func runBackfillAllSharedCSR(ctx context.Context, cfg *config.AppConfig, force, dryRun bool) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	total, processed, skipped, failed, totalInserted := len(players), 0, 0, 0, 0
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			skipped++
+			fmt.Printf("backfill shared-csr SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
+		if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
+			failed++
+			fmt.Printf("backfill shared-csr FAIL: gamertag=%s err=migrations shared: %v\n", player.Gamertag, err)
+			continue
+		}
+
+		var tokens *domain.HaloTokens
+		if !dryRun {
+			t, tokErr := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+			if tokErr != nil {
+				skipped++
+				fmt.Printf("backfill shared-csr SKIP: gamertag=%s reason=%v (try --dry-run)\n", player.Gamertag, tokErr)
+				continue
+			}
+			tokens = t
+		}
+
+		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+		res, runErr := engine.RunBackfillSharedCSR(ctx, go_sync.SharedCSRBackfillOpts{Force: force, DryRun: dryRun})
+		if runErr != nil {
+			failed++
+			fmt.Printf("backfill shared-csr FAIL: gamertag=%s err=%v\n", player.Gamertag, runErr)
+			continue
+		}
+		processed++
+		totalInserted += res.Inserted
+		fmt.Printf("backfill shared-csr OK: gamertag=%s ranked=%d already_complete=%d need_backfill=%d fetched=%d inserted=%d no_recap=%d errors=%d dry_run=%t\n",
+			player.Gamertag, res.RankedMatches, res.AlreadyComplete, res.NeedBackfill,
+			res.Fetched, res.Inserted, res.SkippedNoRankRecap, res.SkillErrors+res.UpsertErrors, res.DryRun)
+	}
+	fmt.Printf("backfill shared-csr batch: total=%d processed=%d skipped=%d failed=%d total_inserted=%d dry_run=%t\n",
+		total, processed, skipped, failed, totalInserted, dryRun)
+	if failed > 0 {
+		return fmt.Errorf("backfill shared-csr: %d joueur(s) en echec", failed)
+	}
+	return nil
+}
+
+func runBackfillSharedCSRForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, force, dryRun bool) error {
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	sharedDBPath := resolver.SharedDBPath(titlePkg.DefaultSlug)
+	if err := applyMigrationsOnDB(sharedDBPath, migration.TargetShared); err != nil {
+		return fmt.Errorf("backfill shared-csr: migrations shared: %w", err)
+	}
+
+	var tokens *domain.HaloTokens
+	if !dryRun {
+		t, err := refreshHaloTokensForPlayer(ctx, player.Gamertag)
+		if err != nil {
+			return fmt.Errorf("backfill shared-csr: tokens Halo indisponibles pour %s: %w (utiliser --dry-run pour compter sans appel API)", player.Gamertag, err)
+		}
+		tokens = t
+	}
+
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, tokens, nil)
+	res, err := engine.RunBackfillSharedCSR(ctx, go_sync.SharedCSRBackfillOpts{Force: force, DryRun: dryRun})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("backfill shared-csr OK: gamertag=%s ranked=%d already_complete=%d need_backfill=%d fetched=%d inserted=%d no_recap=%d errors=%d force=%t dry_run=%t\n",
+		player.Gamertag, res.RankedMatches, res.AlreadyComplete, res.NeedBackfill,
+		res.Fetched, res.Inserted, res.SkippedNoRankRecap, res.SkillErrors+res.UpsertErrors, force, res.DryRun)
 	return nil
 }
 
