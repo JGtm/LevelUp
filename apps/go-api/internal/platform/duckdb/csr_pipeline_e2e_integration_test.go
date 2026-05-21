@@ -4,11 +4,11 @@
 // pour la pipeline CSR end-to-end (Phase 6+9+display).
 //
 // Couvre les 5 scénarios planifiés au Niveau 3 du plan pipeline CSR :
-//   1. Home highest_csr placement S13 → threshold 5, badge unranked mappé
-//   2. Home recent_playlist_ranks mixed states (matured + placement + social)
-//   3. Career CSRs merge catalogue + snapshots (synthetic rows pour playlists non jouées)
-//   4. Diag endpoint detect coverage gap
-//   5. Display threshold dynamique S2 historique (threshold=10) vs S13 (threshold=5)
+//  1. Home highest_csr placement S13 → threshold 5, badge unranked mappé
+//  2. Home recent_playlist_ranks mixed states (matured + placement + social)
+//  3. Career CSRs merge catalogue + snapshots (synthetic rows pour playlists non jouées)
+//  4. Diag endpoint detect coverage gap
+//  5. Display threshold dynamique S2 historique (threshold=10) vs S13 (threshold=5)
 //
 // Setup : temp DuckDB shared + player + metadata avec migrations appliquées,
 // seeded via INSERT direct (pas de mock Halo client — couvre uniquement les
@@ -59,7 +59,7 @@ func setupPipelineEnv(t *testing.T) *pipelineEnv {
 		t.Fatalf("open player: %v", err)
 	}
 	t.Cleanup(func() { _ = playerDB.Close() })
-	if err := syncpkg.EnsurePlayerSchema(playerDB.SQLDb()); err != nil {
+	if err := syncpkg.EnsurePlayerSchema(context.Background(), playerDB.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
 	// Appliquer les migrations player (ajoute measurement_matches_remaining sur
@@ -76,7 +76,7 @@ func setupPipelineEnv(t *testing.T) *pipelineEnv {
 		t.Fatalf("open shared: %v", err)
 	}
 	t.Cleanup(func() { _ = sharedDB.Close() })
-	if err := syncpkg.EnsureSharedSchema(sharedDB.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(context.Background(), sharedDB.SQLDb()); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 

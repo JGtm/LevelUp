@@ -349,6 +349,26 @@ func main() {
 	}
 	slog.Debug("DuckDB ouvert")
 
+	// --- 3.bis. Filet de garde corruption ART (Phase 1, plan stabilisation
+	// 2026-05-22). Scanne shared_matches_v2 + metadata pour détecter les
+	// tables dont l'index ART est corrompu (filter pushdown qui rate des
+	// rows — cf. INCIDENT_2026-05-20_match_participants_index.md). Non-
+	// bloquant : log WARN + métrique expvar si divergence, le serveur démarre.
+	// Sample 5 par table ; suffisant pour démasquer le bug qui dépend du
+	// contenu de la liste IN, pas d'une valeur unique.
+	{
+		bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer bootCancel()
+		if sharedSQL, release, err := sharedReader.Get(bootCtx); err == nil {
+			duckdb.BootARTGuard(bootCtx, sharedSQL, "shared", 5)
+			release()
+		} else {
+			slog.WarnContext(bootCtx, "art_guard: shared reader indisponible pour probe boot",
+				"err", err)
+		}
+		duckdb.BootARTGuard(bootCtx, metaDB.SQLDb(), "metadata", 5)
+	}
+
 	// --- 4. Repositories + services ---
 	bootRepo := duckdb.NewBootstrapRepo(sharedReader, metaDB)
 	bootSvc := service.NewBootstrapService(cfg, bootRepo).

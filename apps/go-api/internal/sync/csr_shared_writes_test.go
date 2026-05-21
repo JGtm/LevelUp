@@ -6,6 +6,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -46,10 +47,10 @@ func mkSkill(tier string, value float64, subTier, remaining int, preValue float6
 func TestExtractAllSharedCSRRows_RankedMatch_AllParticipants(t *testing.T) {
 	reg := mkReg("m1", "CsrSeason13-1", true)
 	skill := map[string]*MatchSkillData{
-		"xuid-A": mkSkill("Gold", 1100, 4, 0, 1085),    // matured, delta=+15
-		"xuid-B": mkSkill("Onyx", 1850, 0, 0, 1800),    // Onyx no subTier
-		"xuid-C": mkSkill("", 0, 0, 3, -1),             // placement (remaining=3)
-		"xuid-D": nil,                                  // skip
+		"xuid-A": mkSkill("Gold", 1100, 4, 0, 1085),     // matured, delta=+15
+		"xuid-B": mkSkill("Onyx", 1850, 0, 0, 1800),     // Onyx no subTier
+		"xuid-C": mkSkill("", 0, 0, 3, -1),              // placement (remaining=3)
+		"xuid-D": nil,                                   // skip
 		"xuid-E": {PostMatchCSR: nil, PreMatchCSR: nil}, // skip (no PostMatchCSR)
 	}
 	rows := ExtractAllSharedCSRRows(reg, skill)
@@ -103,7 +104,7 @@ func TestExtractAllSharedCSRRows_TruncatedPayload_Skipped(t *testing.T) {
 	// ExtractCSRRowIfRanked garde-fou).
 	reg := mkReg("m1", "CsrSeason13-1", true)
 	skill := map[string]*MatchSkillData{
-		"xuid-A": mkSkill("", 0, 0, 0, -1),       // tronqué → skip
+		"xuid-A": mkSkill("", 0, 0, 0, -1),        // tronqué → skip
 		"xuid-B": mkSkill("Gold", 1100, 4, 0, -1), // OK
 	}
 	rows := ExtractAllSharedCSRRows(reg, skill)
@@ -139,7 +140,7 @@ func openTempSharedForCSR(t *testing.T) *sql.DB {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := EnsureSharedSchema(db); err != nil {
+	if err := EnsureSharedSchema(context.Background(), db); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	return db
@@ -210,7 +211,7 @@ func TestUpsertSharedCSRs_NullableSeasonID(t *testing.T) {
 	row := SharedMatchCSRRow{
 		MatchID: "m1", XUID: "xA", RatingType: "CSR",
 		Tier: "Placement", MeasurementMatchesRemaining: 3, TierLabel: "Placement (3)",
-		SeasonID: "", // explicitement vide
+		SeasonID:  "", // explicitement vide
 		StartTime: time.Now(),
 	}
 	if err := UpsertSharedCSRs(db, []SharedMatchCSRRow{row}); err != nil {

@@ -1,11 +1,11 @@
-// Package sync — csr_shared_backfill_test.go : tests intégration de
+// Package sync â€” csr_shared_backfill_test.go : tests intÃ©gration de
 // BackfillSharedCSRsFromAPI.
 //
 // Couvre :
 //   - dry-run sans appel API
-//   - idempotence (skip si shared.match_csrs déjà rempli)
+//   - idempotence (skip si shared.match_csrs dÃ©jÃ  rempli)
 //   - --force re-fetch
-//   - capture per-participant (4 joueurs sur 1 match → 4 rows)
+//   - capture per-participant (4 joueurs sur 1 match â†’ 4 rows)
 //   - mock Halo client (no network)
 package sync
 
@@ -20,9 +20,9 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// mockSkillClient implémente l'interface HaloClient. Seul GetMatchSkill est
-// effectivement exercé par BackfillSharedCSRsFromAPI ; les autres méthodes
-// retournent zéro pour satisfaire le contrat.
+// mockSkillClient implÃ©mente l'interface HaloClient. Seul GetMatchSkill est
+// effectivement exercÃ© par BackfillSharedCSRsFromAPI ; les autres mÃ©thodes
+// retournent zÃ©ro pour satisfaire le contrat.
 type mockSkillClient struct {
 	skillByMatch map[string]map[string]*MatchSkillData
 	calls        int
@@ -67,21 +67,21 @@ func (m *mockSkillClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]Playe
 	return nil, nil
 }
 
-func openSharedForBackfill(t *testing.T) *sql.DB {
+func openSharedForCSRBackfill(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := EnsureSharedSchema(db); err != nil {
+	if err := EnsureSharedSchema(context.Background(), db); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	return db
 }
 
 // seedBackfillScenario : 1 match ranked avec 4 participants, et 1 match social
-// (ne doit jamais être touché par le backfill).
+// (ne doit jamais Ãªtre touchÃ© par le backfill).
 func seedBackfillScenario(t *testing.T, db *sql.DB, player string) {
 	t.Helper()
 	// 1 match ranked
@@ -99,7 +99,7 @@ func seedBackfillScenario(t *testing.T, db *sql.DB, player string) {
 			t.Fatalf("insert match_participants %s: %v", x, err)
 		}
 	}
-	// 1 match social (control — backfill ne doit PAS le voir)
+	// 1 match social (control â€” backfill ne doit PAS le voir)
 	if _, err := db.Exec(`
 		INSERT INTO match_registry (match_id, start_time, playlist_id, playlist_name, pair_name, is_ranked)
 		VALUES ('m-social', TIMESTAMP '2026-04-14 12:00:00', 'pl-qp', 'Quick Play', 'Slayer', FALSE)
@@ -125,10 +125,10 @@ func mockSkillForRankedMatch() map[string]map[string]*MatchSkillData {
 	}
 }
 
-// ─── DRY-RUN ─────────────────────────────────────────────────────────────────
+// â”€â”€â”€ DRY-RUN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_DryRun_CountsWithoutAPICall(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
 	client := &mockSkillClient{skillByMatch: mockSkillForRankedMatch()}
 
@@ -155,7 +155,7 @@ func TestBackfillSharedCSRs_DryRun_CountsWithoutAPICall(t *testing.T) {
 	if client.calls != 0 {
 		t.Errorf("mock client called %d times in dry-run, expected 0", client.calls)
 	}
-	// Vérifier que rien n'a été écrit dans match_csrs.
+	// VÃ©rifier que rien n'a Ã©tÃ© Ã©crit dans match_csrs.
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs`).Scan(&n); err != nil {
 		t.Fatalf("count match_csrs: %v", err)
@@ -165,10 +165,10 @@ func TestBackfillSharedCSRs_DryRun_CountsWithoutAPICall(t *testing.T) {
 	}
 }
 
-// ─── EXECUTION RÉELLE ────────────────────────────────────────────────────────
+// â”€â”€â”€ EXECUTION RÃ‰ELLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_RealRun_InsertsAllParticipants(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
 	client := &mockSkillClient{skillByMatch: mockSkillForRankedMatch()}
 
@@ -186,7 +186,7 @@ func TestBackfillSharedCSRs_RealRun_InsertsAllParticipants(t *testing.T) {
 	if client.calls != 1 {
 		t.Errorf("mock client calls: want 1, got %d", client.calls)
 	}
-	// Vérifier les 4 rows présentes.
+	// VÃ©rifier les 4 rows prÃ©sentes.
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs WHERE match_id='m-ranked'`).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
@@ -194,7 +194,7 @@ func TestBackfillSharedCSRs_RealRun_InsertsAllParticipants(t *testing.T) {
 	if n != 4 {
 		t.Errorf("want 4 rows in match_csrs, got %d", n)
 	}
-	// Vérifier que le match social n'a PAS été touché.
+	// VÃ©rifier que le match social n'a PAS Ã©tÃ© touchÃ©.
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs WHERE match_id='m-social'`).Scan(&n); err != nil {
 		t.Fatalf("count social: %v", err)
 	}
@@ -203,14 +203,14 @@ func TestBackfillSharedCSRs_RealRun_InsertsAllParticipants(t *testing.T) {
 	}
 }
 
-// ─── IDEMPOTENCE ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ IDEMPOTENCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_Idempotent_SkipsAlreadyComplete(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
 	client := &mockSkillClient{skillByMatch: mockSkillForRankedMatch()}
 
-	// 1er run : insère 4 rows.
+	// 1er run : insÃ¨re 4 rows.
 	if _, err := BackfillSharedCSRsFromAPI(context.Background(), client, db, "xuid-A",
 		SharedCSRBackfillOpts{}); err != nil {
 		t.Fatalf("1er run: %v", err)
@@ -234,10 +234,10 @@ func TestBackfillSharedCSRs_Idempotent_SkipsAlreadyComplete(t *testing.T) {
 	}
 }
 
-// ─── FORCE ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ FORCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_Force_RefetchesEvenIfComplete(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
 	client := &mockSkillClient{skillByMatch: mockSkillForRankedMatch()}
 
@@ -246,7 +246,7 @@ func TestBackfillSharedCSRs_Force_RefetchesEvenIfComplete(t *testing.T) {
 		SharedCSRBackfillOpts{}); err != nil {
 		t.Fatalf("1er run: %v", err)
 	}
-	// 2e run avec --force : doit re-fetch même si déjà complet.
+	// 2e run avec --force : doit re-fetch mÃªme si dÃ©jÃ  complet.
 	client.calls = 0
 	res, err := BackfillSharedCSRsFromAPI(context.Background(), client, db, "xuid-A",
 		SharedCSRBackfillOpts{Force: true})
@@ -264,12 +264,12 @@ func TestBackfillSharedCSRs_Force_RefetchesEvenIfComplete(t *testing.T) {
 	}
 }
 
-// ─── NETWORK ERROR TOLERANCE ─────────────────────────────────────────────────
+// â”€â”€â”€ NETWORK ERROR TOLERANCE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_SkillErrorContinues(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
-	// 2e match ranked pour exercer la boucle après une erreur.
+	// 2e match ranked pour exercer la boucle aprÃ¨s une erreur.
 	if _, err := db.Exec(`
 		INSERT INTO match_registry (match_id, start_time, playlist_id, playlist_name, pair_name, is_ranked, season_id)
 		VALUES ('m-ranked-2', TIMESTAMP '2026-04-16 12:00:00', 'pl-arena', 'Ranked Arena', 'Ranked:CTF', TRUE, 'CsrSeason13-1')
@@ -283,7 +283,7 @@ func TestBackfillSharedCSRs_SkillErrorContinues(t *testing.T) {
 	skill["m-ranked-2"] = map[string]*MatchSkillData{
 		"xuid-A": mkSkill("Gold", 1200, 5, 0, 1180),
 	}
-	client := &mockSkillClient{skillByMatch: skill, failNext: true} // 1er appel échoue
+	client := &mockSkillClient{skillByMatch: skill, failNext: true} // 1er appel Ã©choue
 
 	res, err := BackfillSharedCSRsFromAPI(context.Background(), client, db, "xuid-A",
 		SharedCSRBackfillOpts{})
@@ -293,21 +293,21 @@ func TestBackfillSharedCSRs_SkillErrorContinues(t *testing.T) {
 	if res.SkillErrors != 1 {
 		t.Errorf("SkillErrors: want 1, got %d", res.SkillErrors)
 	}
-	// Le 2e match doit s'être passé OK.
+	// Le 2e match doit s'Ãªtre passÃ© OK.
 	if res.Inserted < 1 {
-		t.Errorf("Inserted: want ≥1 (m-ranked-2 should succeed), got %d", res.Inserted)
+		t.Errorf("Inserted: want â‰¥1 (m-ranked-2 should succeed), got %d", res.Inserted)
 	}
 }
 
-// ─── CONTEXT CANCEL ──────────────────────────────────────────────────────────
+// â”€â”€â”€ CONTEXT CANCEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_RespectContextCancel(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
 	client := &mockSkillClient{skillByMatch: mockSkillForRankedMatch()}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	cancel() // annule immédiatement
+	cancel() // annule immÃ©diatement
 	_, err := BackfillSharedCSRsFromAPI(ctx, client, db, "xuid-A", SharedCSRBackfillOpts{})
 	if err == nil {
 		t.Error("expected context.Canceled error, got nil")
@@ -317,12 +317,12 @@ func TestBackfillSharedCSRs_RespectContextCancel(t *testing.T) {
 	}
 }
 
-// ─── PARTIAL COVERAGE (gap detected) ─────────────────────────────────────────
+// â”€â”€â”€ PARTIAL COVERAGE (gap detected) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 func TestBackfillSharedCSRs_PartialCoverage_BackfillsGap(t *testing.T) {
-	db := openSharedForBackfill(t)
+	db := openSharedForCSRBackfill(t)
 	seedBackfillScenario(t, db, "xuid-A")
-	// Pré-remplir match_csrs avec seulement 2 rows sur 4 (gap = 2 vs 4 participants).
+	// PrÃ©-remplir match_csrs avec seulement 2 rows sur 4 (gap = 2 vs 4 participants).
 	now := time.Now()
 	for _, x := range []string{"xuid-A", "xuid-B"} {
 		if _, err := db.Exec(`
@@ -339,14 +339,14 @@ func TestBackfillSharedCSRs_PartialCoverage_BackfillsGap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
-	// 2 rows < 4 participants → NeedBackfill=1, UPSERT remplace les 2 existantes + ajoute les 2 manquantes.
+	// 2 rows < 4 participants â†’ NeedBackfill=1, UPSERT remplace les 2 existantes + ajoute les 2 manquantes.
 	if res.NeedBackfill != 1 {
 		t.Errorf("NeedBackfill: want 1 (partial), got %d", res.NeedBackfill)
 	}
 	if res.Inserted != 4 {
 		t.Errorf("Inserted: want 4 (all upserted), got %d", res.Inserted)
 	}
-	// Toutes les 4 rows finales doivent être présentes.
+	// Toutes les 4 rows finales doivent Ãªtre prÃ©sentes.
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs WHERE match_id='m-ranked'`).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
