@@ -63,7 +63,7 @@ func NewCareerLiveRepo(pdb *PlayerDB) *CareerLiveRepo {
 // xp_total et adornment_path. La table contient potentiellement plusieurs
 // xuids historiques (cas rare), on filtre explicitement.
 //
-// Note `xuid || ''` : workaround d'une corruption d'index ART connue sur
+// Note `xuid || ”` : workaround d'une corruption d'index ART connue sur
 // player_db (cf. docs/INCIDENT_2026-05-20_match_participants_index.md ET
 // diag 2026-05-21 sur career_progression). Sans cette concat, le filter
 // pushdown sur l'index PK retournait un sous-ensemble strict des rows et
