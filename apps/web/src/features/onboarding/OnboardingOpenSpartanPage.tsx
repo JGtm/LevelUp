@@ -14,10 +14,15 @@ import { useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { OpenSpartanImportCard } from './OpenSpartanImportCard'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function OnboardingOpenSpartanPage() {
   const navigate = useNavigate()
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -28,11 +33,9 @@ export function OnboardingOpenSpartanPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Bienvenue sur LevelUp</CardTitle>
+            <CardTitle>{t('common.onboarding.welcome')}</CardTitle>
             <CardDescription>
-              On synchronise tes derniers matchs depuis Halo Waypoint. Tu peux continuer
-              vers le dashboard, la sync tourne en arrière-plan et tes données
-              apparaîtront au fur et à mesure.
+              {t('common.onboarding.sync_running_intro')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -53,14 +56,11 @@ export function OnboardingOpenSpartanPage() {
           onToggle={(e) => setShowAdvanced((e.target as HTMLDetailsElement).open)}
         >
           <summary className="cursor-pointer select-none p-4 text-sm font-medium hover:bg-muted/50 transition-colors">
-            Options avancées →
+            {t('common.onboarding.advanced_options')}
           </summary>
           <div className="border-t border-border p-4">
             <p className="mb-4 text-sm text-muted-foreground">
-              Tu as déjà utilisé un autre client Halo qui stocke ses données en local
-              (OpenSpartan) ? Tu peux importer son fichier <code>.db</code> ici pour
-              récupérer des matchs plus anciens que ce que l'API Halo expose
-              aujourd'hui.
+              {t('common.onboarding.openspartan_intro')} <code>.db</code> {t('common.onboarding.openspartan_intro_suffix')}
             </p>
             {showAdvanced && <OpenSpartanImportCard />}
           </div>

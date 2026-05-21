@@ -22,6 +22,9 @@ import { Spinner } from '@/components/ui/spinner'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useJobStatus } from '@/features/setup/queries'
 import type { AsyncJobStatus, ApiErrorSchema } from '@/lib/api/types'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 import { useStartOpenSpartanImport, type OpenSpartanImportResult } from './queries'
 
@@ -35,6 +38,8 @@ export function OpenSpartanImportCard() {
   // Incremented on reset to re-mount the <input type="file">, the only
   // reliable way to clear a file input without touching refs during render.
   const [fileInputKey, setFileInputKey] = useState(0)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const startMutation = useStartOpenSpartanImport()
   const jobQuery = useJobStatus(jobId ?? '', !!jobId)
@@ -93,10 +98,9 @@ export function OpenSpartanImportCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Importer depuis OpenSpartan</CardTitle>
+        <CardTitle>{t('common.onboarding.import_card_title')}</CardTitle>
         <CardDescription>
-          Si tu as déjà utilisé OpenSpartan, importe ton fichier <code>.db</code> pour récupérer
-          des matchs plus anciens que ce que l'API Halo expose.
+          {t('common.onboarding.import_card_desc')} <code>.db</code> {t('common.onboarding.import_card_desc_suffix')}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -144,6 +148,8 @@ interface IdleStageProps {
 }
 
 function IdleStage(props: IdleStageProps) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   const dropzoneClass = `block border-2 border-dashed rounded-md p-6 text-center cursor-pointer transition-colors ${
     props.dragOver ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
   }`
@@ -172,7 +178,7 @@ function IdleStage(props: IdleStageProps) {
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Glisse-dépose ton fichier <code>.db</code> ici ou clique pour parcourir
+            {t('common.onboarding.drop_file_here')} <code>.db</code> {t('common.onboarding.drop_file_or_browse')}
           </p>
         )}
         <input
@@ -252,14 +258,16 @@ function SuccessStage({
   result: OpenSpartanImportResult | null
   onReset: () => void
 }) {
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
   if (!result) {
     return (
       <div className="space-y-3" data-testid="openspartan-success">
         <p className="text-sm font-medium" style={{ color: tokenCssVar('success') }}>
-          ✓ Import terminé
+          {t('common.onboarding.import_finished')}
         </p>
         <Button variant="ghost" onClick={onReset}>
-          Importer un autre fichier
+          {t('common.onboarding.import_another_file')}
         </Button>
       </div>
     )
@@ -268,10 +276,10 @@ function SuccessStage({
   return (
     <div className="space-y-3" data-testid="openspartan-success">
       <p className="text-sm font-medium" style={{ color: tokenCssVar('success') }}>
-        ✓ Import réussi
+        {t('common.onboarding.import_success')}
       </p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-        <dt className="text-muted-foreground">Matchs importés</dt>
+        <dt className="text-muted-foreground">{t('common.onboarding.matches_imported')}</dt>
         <dd className="font-mono">
           {result.inserted_matches} / {result.total_matches}
         </dd>
@@ -279,21 +287,21 @@ function SuccessStage({
         <dd className="font-mono">{result.inserted_participants}</dd>
         <dt className="text-muted-foreground">Médailles</dt>
         <dd className="font-mono">{result.inserted_medals}</dd>
-        <dt className="text-muted-foreground">Highlight events</dt>
+        <dt className="text-muted-foreground">{t('common.onboarding.highlight_events')}</dt>
         <dd className="font-mono">{result.inserted_highlights}</dd>
         <dt className="text-muted-foreground">Alias XUID</dt>
         <dd className="font-mono">{result.inserted_aliases}</dd>
         {post && (
           <>
-            <dt className="text-muted-foreground">Sessions calculées</dt>
+            <dt className="text-muted-foreground">{t('common.onboarding.sessions_computed')}</dt>
             <dd className="font-mono">{post.sessions_touched}</dd>
-            <dt className="text-muted-foreground">Performance scores</dt>
+            <dt className="text-muted-foreground">{t('common.onboarding.perf_scores')}</dt>
             <dd className="font-mono">{post.perf_scores_touched}</dd>
           </>
         )}
         {result.errors_count > 0 && (
           <>
-            <dt className="text-muted-foreground">Erreurs ignorées</dt>
+            <dt className="text-muted-foreground">{t('common.onboarding.errors_ignored')}</dt>
             <dd className="font-mono" style={{ color: tokenCssVar('warning') }}>
               {result.errors_count}
             </dd>
@@ -301,7 +309,7 @@ function SuccessStage({
         )}
       </dl>
       <Button variant="ghost" onClick={onReset}>
-        Importer un autre fichier
+        {t('common.onboarding.import_another_file')}
       </Button>
     </div>
   )
@@ -334,6 +342,7 @@ function FailureStage({
  * service to a user-facing French sentence. Falls back to the raw message
  * when the code is unknown.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function failureMessageFromCode(err: ApiErrorSchema | null): string {
   if (!err) return 'Erreur inconnue.'
   switch (err.code) {

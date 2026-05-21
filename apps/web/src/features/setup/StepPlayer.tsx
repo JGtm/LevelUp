@@ -11,6 +11,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { queryKeys } from '@/lib/query/keys'
 import { useCreatePlayer } from './queries'
 import { getApiErrorMessage } from './_helpers'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export function StepPlayer() {
   const linkedHaloIdentity = useAppShellStore((s) => s.linkedHaloIdentity)
@@ -18,6 +20,8 @@ export function StepPlayer() {
   const queryClient = useQueryClient()
   const createPlayer = useCreatePlayer()
   const gamertag = linkedHaloIdentity?.gamertag ?? gamertagInput
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   function handleCreate() {
     if (!gamertag.trim()) return
@@ -34,12 +38,12 @@ export function StepPlayer() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Créer votre profil joueur</h2>
+      <h2 className="text-lg font-semibold">{t('common.setup.create_player_profile')}</h2>
 
       {linkedHaloIdentity ? (
         /* Carte de confirmation — identité résolue depuis la session */
         <div className="rounded-lg border border-primary/30 bg-primary/10 p-4">
-          <p className="text-xs text-muted-foreground">Identité Halo liée à cette session :</p>
+          <p className="text-xs text-muted-foreground">{t('common.setup.halo_identity_linked')}</p>
           <p className="mt-1 text-2xl font-bold text-primary">
             {linkedHaloIdentity.gamertag}
           </p>
@@ -47,13 +51,13 @@ export function StepPlayer() {
             XUID {linkedHaloIdentity.xuid}
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            Un profil local sera créé pour ce compte.
+            {t('common.setup.local_profile_will_be_created')}
           </p>
         </div>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Entrez votre Gamertag Xbox pour créer votre profil.
+            {t('common.setup.enter_gamertag')}
           </p>
           <Input
             value={gamertagInput}
