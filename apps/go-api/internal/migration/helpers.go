@@ -7,6 +7,17 @@ import (
 	"strings"
 )
 
+// DuckDB column type names (utilises lors des ALTER TABLE ADD COLUMN).
+// Centralisés ici pour réduire la duplication des littéraux dans les
+// migrations additives (cf. lint goconst).
+const (
+	colDouble   = "DOUBLE"
+	colFloat    = "FLOAT"
+	colInteger  = "INTEGER"
+	colSmallInt = "SMALLINT"
+	colVarchar  = "VARCHAR"
+)
+
 // bootCtx retourne le contexte racine utilise par les migrations DDL boot-time.
 // Les migrations tournent au demarrage du serveur (cmd/server/main.go) ou au
 // boot d'un pool DuckDB (internal/platform/duckdb/pool.go) : il n'existe pas

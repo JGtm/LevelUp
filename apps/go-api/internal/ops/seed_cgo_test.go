@@ -7,6 +7,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"os"
@@ -42,7 +43,7 @@ func TestSeedCareerRanks_JSONAbsent(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := openTempDB(t)
 
-	_, err := SeedCareerRanks(SeedOptions{MetaDBPath: dbPath, DataDir: dir})
+	_, err := SeedCareerRanks(context.Background(), SeedOptions{MetaDBPath: dbPath, DataDir: dir})
 	if err == nil {
 		t.Error("expected error (JSON absent)")
 	}
@@ -67,7 +68,7 @@ func TestSeedCareerRanks_ValidRanks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := SeedCareerRanks(SeedOptions{MetaDBPath: dbPath, DataDir: dir})
+	result, err := SeedCareerRanks(context.Background(), SeedOptions{MetaDBPath: dbPath, DataDir: dir})
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -97,11 +98,11 @@ func TestSeedCareerRanks_Idempotent(t *testing.T) {
 	}
 
 	opts := SeedOptions{MetaDBPath: dbPath, DataDir: dir}
-	r1, err := SeedCareerRanks(opts)
+	r1, err := SeedCareerRanks(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("première exécution: %v", err)
 	}
-	r2, err := SeedCareerRanks(opts)
+	r2, err := SeedCareerRanks(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("deuxième exécution: %v", err)
 	}
@@ -127,7 +128,7 @@ func TestSeedCareerRanks_InvalidJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := SeedCareerRanks(SeedOptions{MetaDBPath: dbPath, DataDir: dir})
+	_, err := SeedCareerRanks(context.Background(), SeedOptions{MetaDBPath: dbPath, DataDir: dir})
 	if err == nil {
 		t.Error("expected error (JSON invalide)")
 	}
@@ -140,7 +141,7 @@ func TestSeedCareerRanks_InvalidJSON(t *testing.T) {
 func TestSeedCitationMappings_Valid(t *testing.T) {
 	dbPath := openTempDB(t)
 
-	result, err := SeedCitationMappings(SeedOptions{MetaDBPath: dbPath})
+	result, err := SeedCitationMappings(context.Background(), SeedOptions{MetaDBPath: dbPath})
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -156,11 +157,11 @@ func TestSeedCitationMappings_Idempotent(t *testing.T) {
 	dbPath := openTempDB(t)
 
 	opts := SeedOptions{MetaDBPath: dbPath}
-	r1, err := SeedCitationMappings(opts)
+	r1, err := SeedCitationMappings(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("première exécution: %v", err)
 	}
-	r2, err := SeedCitationMappings(opts)
+	r2, err := SeedCitationMappings(context.Background(), opts)
 	if err != nil {
 		t.Fatalf("deuxième exécution: %v", err)
 	}
@@ -182,7 +183,7 @@ func TestSeedCitationMappings_Idempotent(t *testing.T) {
 func TestSeedMedalDefinitions_TableAbsent(t *testing.T) {
 	dbPath := openTempDB(t)
 
-	result, err := SeedMedalDefinitions(SeedOptions{MetaDBPath: dbPath})
+	result, err := SeedMedalDefinitions(context.Background(), SeedOptions{MetaDBPath: dbPath})
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -213,7 +214,7 @@ func TestSeedMedalDefinitions_TablePresent(t *testing.T) {
 	}
 	db.Close()
 
-	result, err := SeedMedalDefinitions(SeedOptions{MetaDBPath: dbPath})
+	result, err := SeedMedalDefinitions(context.Background(), SeedOptions{MetaDBPath: dbPath})
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}

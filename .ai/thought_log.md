@@ -42284,3 +42284,44 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Résultats observés** : Tests Go (7/7 Kamikaze + score weights coverage) + frontend (5/5 SquadImpactScoreboard) verts. Typecheck propre sur les fichiers touchés (les 3 erreurs TS résiduelles concernent `OpenSpartanImportCard.tsx` et `SessionOutcomeTape.tsx`, hors scope).
 
 **Prochaine étape** : commit + PR. Pas de migration DB, pas de SyncScope, pas de répercussion sur la page Match (narrative non touché).
+
+---
+
+## [2026-05-21] Fix SQL binder CSR backfill + dette noctx internal/ops
+
+**Statut** : Complété (build vert + tests verts hors bug fonctionnel pré-existant).
+
+**Contexte** : 2 cleanups Go en scope restreint sur la branche `fix/media-paths-portable`.
+
+**Décisions techniques** :
+
+1. **Tâche 1 — SQL bug `playlist_name not found`** : la query `loadRankedMatchesForCSRBackfill` (csr_backfill.go:168) référence `playlist_name` et `pair_name` (heuristique fallback pour la régression `is_ranked=FALSE`). Le setup test in-memory (`openCSRBackfillDBs`) créait `match_registry` sans ces colonnes → Binder Error sur tous les tests. Fix : ajout des deux colonnes au CREATE TABLE, valeurs laissées à NULL (les tests existants s'appuient sur `is_ranked=TRUE`, le fallback heuristique n'est pas testé ici).
+
+2. **Tâche 2 — noctx dans internal/ops/** : 5 fichiers traités (archive.go, backup.go, restore.go, diagnose.go, healthcheck.go, media.go, seed.go). Stratégie : ajouter `ctx context.Context` comme **premier paramètre** des fonctions exportées et des helpers privés qui font de la DB I/O, puis remplacer `db.Exec/Query/QueryRow` par `db.ExecContext/QueryContext/QueryRowContext`. Callers propagés :
+   - CLI (`cmd/levelup/cmd_data.go`, `cmd/levelup/cmd_ops.go`, `cmd/regen-thumbnails/main.go`) : `context.Background()` (pas de ctx ambiant dans les sous-commandes).
+   - Services (`service/media_index_service.go`, `service/media_service.go`) : `ctx` déjà disponible dans la signature → propagation directe.
+   - Tests CGO (`archive_restore_cgo_test.go`, `diagnose_cgo_test.go`, `healthcheck_cgo_test.go`, `media_backup_cgo_test.go`, `seed_cgo_test.go`, `restore_test.go`) : `context.Background()` ajouté à chaque site.
+
+**Décompte noctx fixés** : 23 sites de production (db.Exec/Query/QueryRow) convertis vers `*Context` :
+- archive.go : 5 (1 export + 4 helpers)
+- backup.go : 4
+- restore.go : 3
+- diagnose.go : 6
+- healthcheck.go : 1
+- media.go : 14 (IndexMedia + AssociateMediaWithMatches + BackfillThumbnailPaths + ensureMediaTables + dropLegacyMediaFilesIfNeeded + loadKnownHashes + insertMediaFile)
+- seed.go : 7
+
+**Items skippés** : aucun. Tous les sites identifiables comme ops/ ont été convertis.
+
+**Hors scope (laissés intacts)** :
+- `GenerateThumbnails` (ffmpeg subprocess, pas de DB).
+- `FindAvailableBackups`, `ReadBackupMetadata` (filesystem pur, pas de DB).
+- `findLatestParquetFiles` (filesystem pur).
+
+**Résultats observés** :
+- `go build ./...` (avec et sans `-tags=integration`) : OK.
+- `go vet ./internal/ops/... ./cmd/levelup/... ./cmd/regen-thumbnails/... ./internal/service/...` : OK avec et sans `-tags=integration`.
+- `go test ./internal/ops/...` (sans integration) : `ok 6.4s` (suites CGO complètes incl. media_backup, seed, diagnose, healthcheck, archive/restore).
+- CSR backfill integration : tous les tests passent SAUF `TestBackfillCSRFromAPI_HandlesPlacement` qui échoue sur `rating_value: want NULL for placement, got 0`. Bug **pré-existant et hors scope** : le commit `ae0edbd0 fix(home): placement CSR/LUSR backend-driven` a délibérément changé `csr_writes.go:133-134` pour stocker `0.0` (contrainte NOT NULL) au lieu de NULL ; le test n'a pas été mis à jour. Le SQL binder error sur `playlist_name`/`pair_name` est **éliminé** (objectif tâche 1 atteint).
+
+**Prochaine étape** : commit unique sur `fix/media-paths-portable` (l'utilisateur se charge du commit). Note pour suivi : `TestBackfillCSRFromAPI_HandlesPlacement` doit être aligné sur le nouveau comportement (assert `rating_value == 0`, pas NULL) — séparé.

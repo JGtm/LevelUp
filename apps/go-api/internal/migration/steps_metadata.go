@@ -10,6 +10,25 @@ import (
 	"fmt"
 )
 
+// Mode canoniques (EN) — utilisés comme clés dans mode_name_tr et comme
+// labels FR identiques (Halo n'a pas de traduction officielle pour ces modes).
+const (
+	modeAttrition  = "Attrition"
+	modeExtraction = "Extraction"
+	modeOddball    = "Oddball"
+)
+
+// Labels mode (cross-fichier metadata + playlist_fr).
+const (
+	modeTeamSlayer    = "Team Slayer"
+	modeTeamSnipers   = "Team Snipers"
+	modeTeamSlayerFR  = "Assassin en équipe"
+	modeTeamSnipersFR = "Snipers en équipe"
+)
+
+// Traductions FR récurrentes (≥4 occurrences dans les seeds metadata).
+const labelEnergySwordFR = "Épée à énergie"
+
 func init() {
 	Register(Migration{
 		Name:        "add_asset_translations",
@@ -457,11 +476,11 @@ func applyModeNameTr(db *sql.DB) error {
 	type modeRow struct{ modeEN, lang, name string }
 	rows := []modeRow{
 		{"Assault", "en", "Assault"},
-		{"Attrition", "en", "Attrition"},
+		{modeAttrition, "en", modeAttrition},
 		{"CTF", "en", "CTF"},
 		{"CTF 3 Captures", "en", "CTF (3 Captures)"},
 		{"Escalation Slayer", "en", "Escalation Slayer"},
-		{"Extraction", "en", "Extraction"},
+		{modeExtraction, "en", modeExtraction},
 		{"FFA Slayer", "en", "FFA Slayer"},
 		{"Fiesta CTF", "en", "Fiesta CTF"},
 		{"Fiesta Slayer", "en", "Fiesta Slayer"},
@@ -474,7 +493,7 @@ func applyModeNameTr(db *sql.DB) error {
 		{"Neutral Bomb", "en", "Neutral Bomb"},
 		{"Neutral Bomb Squad", "en", "Neutral Bomb Squad"},
 		{"Neutral Flag CTF", "en", "Neutral Flag CTF"},
-		{"Oddball", "en", "Oddball"},
+		{modeOddball, "en", modeOddball},
 		{"One Bomb", "en", "One Bomb"},
 		{"One Flag CTF", "en", "One Flag CTF"},
 		{"Sentry Defense", "en", "Sentry Defense"},
@@ -483,17 +502,17 @@ func applyModeNameTr(db *sql.DB) error {
 		{"Slayer", "en", "Slayer"},
 		{"Stockpile", "en", "Stockpile"},
 		{"Strongholds", "en", "Strongholds"},
-		{"Team Slayer", "en", "Team Slayer"},
-		{"Team Snipers", "en", "Team Snipers"},
+		{modeTeamSlayer, "en", modeTeamSlayer},
+		{modeTeamSnipers, "en", modeTeamSnipers},
 		{"Total Control", "en", "Total Control"},
 		{"VIP", "en", "VIP"},
 		// FR
 		{"Assault", "fr", "Assaut"},
-		{"Attrition", "fr", "Attrition"},
+		{modeAttrition, "fr", modeAttrition},
 		{"CTF", "fr", "Capture du drapeau"},
 		{"CTF 3 Captures", "fr", "CDD 3 captures"},
 		{"Escalation Slayer", "fr", "Escalade"},
-		{"Extraction", "fr", "Extraction"},
+		{modeExtraction, "fr", modeExtraction},
 		{"FFA Slayer", "fr", "Chacun pour soi"},
 		{"Fiesta CTF", "fr", "Fiesta CDD"},
 		{"Fiesta Slayer", "fr", "Fiesta"},
@@ -506,7 +525,7 @@ func applyModeNameTr(db *sql.DB) error {
 		{"Neutral Bomb", "fr", "Bombe neutre"},
 		{"Neutral Bomb Squad", "fr", "Escouade bombe neutre"},
 		{"Neutral Flag CTF", "fr", "Drapeau neutre"},
-		{"Oddball", "fr", "Oddball"},
+		{modeOddball, "fr", modeOddball},
 		{"One Bomb", "fr", "Bombe neutre"},
 		{"One Flag CTF", "fr", "Drapeau neutre"},
 		{"Sentry Defense", "fr", "Défense sentinelle"},
@@ -515,8 +534,8 @@ func applyModeNameTr(db *sql.DB) error {
 		{"Slayer", "fr", "Assassin"},
 		{"Stockpile", "fr", "Stockage"},
 		{"Strongholds", "fr", "Bases"},
-		{"Team Slayer", "fr", "Assassin en équipe"},
-		{"Team Snipers", "fr", "Snipers en équipe"},
+		{modeTeamSlayer, "fr", modeTeamSlayerFR},
+		{modeTeamSnipers, "fr", modeTeamSnipersFR},
 		{"Total Control", "fr", "Contrôle total"},
 		{"VIP", "fr", "VIP"},
 	}
@@ -595,10 +614,10 @@ func applyWeaponLabels(db *sql.DB) error {
 		{0xdaf193c742c9679f, "Stalker Rifle", "Fusil traqueur"},
 		{0x3e07021742c9679f, "Vestige Carbine", "Carabine Vestige"},
 		{0xfd98554c42c9679f, "VK78 Commando", "VK78 Commando"},
-		{0x4ff3937e42c9679f, "Energy Sword", "Épée à énergie"},
-		{0x4ff3937e8978aa7a, "Duelist Energy Sword", "Épée à énergie"},
-		{0x4ff3937e1ec48c7a, "Elite Bloodblade", "Épée à énergie"},
-		{0x0c55765f7a9376a0, "Infected Energy Sword", "Épée à énergie"},
+		{0x4ff3937e42c9679f, "Energy Sword", labelEnergySwordFR},
+		{0x4ff3937e8978aa7a, "Duelist Energy Sword", labelEnergySwordFR},
+		{0x4ff3937e1ec48c7a, "Elite Bloodblade", labelEnergySwordFR},
+		{0x0c55765f7a9376a0, "Infected Energy Sword", labelEnergySwordFR},
 		{0x841ac5e5a730e49f, "Diminisher of Hope", "Marteau antigravité"},
 		{0x841ac5e5d8d07ca1, "Rushdown Hammer", "Marteau antigravité"},
 		{0xb6dbead842c9679f, "Frag Grenade", "Grenade frag"},
