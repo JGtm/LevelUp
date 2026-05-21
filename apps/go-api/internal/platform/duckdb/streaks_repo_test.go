@@ -72,12 +72,12 @@ func TestStreaksRepo_GetActive_ExcludesBroken(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 
 	broken := streaks.Streak{
-		ID:               "streak_broken",
-		UserID:           "user_42",
-		TitleSlug:        "halo_infinite",
-		Type:             streaks.StreakTypeDailyPlay,
-		StartedAt:        now.AddDate(0, 0, -10),
-		CurrentLength:    7, BestLength: 7,
+		ID:            "streak_broken",
+		UserID:        "user_42",
+		TitleSlug:     "halo_infinite",
+		Type:          streaks.StreakTypeDailyPlay,
+		StartedAt:     now.AddDate(0, 0, -10),
+		CurrentLength: 7, BestLength: 7,
 		ShieldsAvailable: streaks.MaxShieldsPerMonth,
 		Status:           streaks.StreakStatusBroken,
 		BrokenAt:         &now,
@@ -101,12 +101,12 @@ func TestStreaksRepo_UpsertOverwrites(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 
 	s := streaks.Streak{
-		ID:               "streak_overwrite",
-		UserID:           "user_42",
-		TitleSlug:        "halo_infinite",
-		Type:             streaks.StreakTypeWeeklyPlay,
-		StartedAt:        now.AddDate(0, 0, -14),
-		CurrentLength:    2, BestLength: 2,
+		ID:            "streak_overwrite",
+		UserID:        "user_42",
+		TitleSlug:     "halo_infinite",
+		Type:          streaks.StreakTypeWeeklyPlay,
+		StartedAt:     now.AddDate(0, 0, -14),
+		CurrentLength: 2, BestLength: 2,
 		ShieldsAvailable: streaks.MaxShieldsPerMonth,
 		Status:           streaks.StreakStatusActive,
 	}

@@ -7,10 +7,11 @@
 // vient d'être Closed depuis un autre handle dans le même process ?
 //
 // 4 scénarios testés, du plus simple au plus complexe :
-//   S1 : Open RO → Close → Open RW (sanity check)
-//   S2 : Open RO #1 (kept open) → Open RO #2 (cache hit) → Close #2 → Open RW
-//   S3 : RO + ATTACH RW dans player → Close + Reopen player → Open RW
-//   S4 : Comme S3 mais avec un Sleep pour laisser le driver C purger
+//
+//	S1 : Open RO → Close → Open RW (sanity check)
+//	S2 : Open RO #1 (kept open) → Open RO #2 (cache hit) → Close #2 → Open RW
+//	S3 : RO + ATTACH RW dans player → Close + Reopen player → Open RW
+//	S4 : Comme S3 mais avec un Sleep pour laisser le driver C purger
 package duckdb_test
 
 import (

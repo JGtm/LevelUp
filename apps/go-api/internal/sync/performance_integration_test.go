@@ -111,10 +111,10 @@ func TestLoadHistoryForPerf_PopulatesChain(t *testing.T) {
 			"INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, time_played_seconds) VALUES (?, 'xuid1', 2, 5, 5, 600)",
 			mid)
 	}
-	insert("c1", "2025-01-01T01:00:00Z", "BTB:Slayer", false, false, false)     // → btb
-	insert("c2", "2025-01-01T02:00:00Z", "", true, false, false)                // → ranked (flag wins)
-	insert("c3", "2025-01-01T03:00:00Z", "Firefight:KOTH", false, true, false)  // → firefight (flag wins)
-	insert("c4", "2025-01-01T04:00:00Z", "", false, false, true)                // → fallback arena_slayer (pair NULL)
+	insert("c1", "2025-01-01T01:00:00Z", "BTB:Slayer", false, false, false)    // → btb
+	insert("c2", "2025-01-01T02:00:00Z", "", true, false, false)               // → ranked (flag wins)
+	insert("c3", "2025-01-01T03:00:00Z", "Firefight:KOTH", false, true, false) // → firefight (flag wins)
+	insert("c4", "2025-01-01T04:00:00Z", "", false, false, true)               // → fallback arena_slayer (pair NULL)
 
 	rows, err := loadHistoryForPerf(db, "xuid1")
 	if err != nil {

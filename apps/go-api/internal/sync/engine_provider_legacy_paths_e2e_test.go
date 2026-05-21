@@ -45,12 +45,12 @@ func TestE2E_BackfillEvents_WithProvider_NoFriction_integration(t *testing.T) {
 	defer cancel()
 
 	var (
-		readerOK         atomic.Int64
-		readerErr        atomic.Int64
-		readerCatalog    atomic.Int64
-		readerDiffCfg    atomic.Int64
-		stopReaders      atomic.Bool
-		readersWG        sync.WaitGroup
+		readerOK      atomic.Int64
+		readerErr     atomic.Int64
+		readerCatalog atomic.Int64
+		readerDiffCfg atomic.Int64
+		stopReaders   atomic.Bool
+		readersWG     sync.WaitGroup
 	)
 	for i := 0; i < 5; i++ {
 		readersWG.Add(1)

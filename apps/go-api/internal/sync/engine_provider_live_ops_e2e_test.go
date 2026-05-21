@@ -63,12 +63,12 @@ func TestE2E_LiveReads_AllRepos_DuringSync_NoFriction_integration(t *testing.T) 
 	gamertagRepo := duckdb.NewGamertagRepo(env.provider)
 
 	var (
-		opsOK            atomic.Int64
-		opsErrBenign     atomic.Int64 // erreurs métier acceptables (DB vide, etc.)
-		opsCatalog       atomic.Int64 // erreurs critiques de coordination
-		opsDiffCfg       atomic.Int64
-		stopReaders      atomic.Bool
-		readersWG        sync.WaitGroup
+		opsOK        atomic.Int64
+		opsErrBenign atomic.Int64 // erreurs métier acceptables (DB vide, etc.)
+		opsCatalog   atomic.Int64 // erreurs critiques de coordination
+		opsDiffCfg   atomic.Int64
+		stopReaders  atomic.Bool
+		readersWG    sync.WaitGroup
 	)
 
 	classifyOp := func(err error) {
