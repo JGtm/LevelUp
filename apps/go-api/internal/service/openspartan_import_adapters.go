@@ -58,6 +58,7 @@ func toSyncRegistry(m mapper.MatchRegistryRow) sync.MatchRegistryRow {
 		Team0PSScore:            m.Team0PsScore,
 		Team1PSScore:            m.Team1PsScore,
 		FirstSyncBy:             m.FirstSyncBy,
+		SeasonID:                m.SeasonID, // Phase 9.5 — propage le SeasonID OpenSpartan vers le sync writer
 	}
 }
 

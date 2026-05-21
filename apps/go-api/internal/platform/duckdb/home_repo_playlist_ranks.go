@@ -12,10 +12,35 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"levelup/go-api/internal/domain"
 )
+
+// placementRemainingRe extrait N depuis "Placement (N restant)" ou
+// "Placement (N restants)" écrit par csr_writes.formatCSRTierLabel.
+var placementRemainingRe = regexp.MustCompile(`\((\d+)\s*restant`)
+
+// parsePlacementRemaining extrait le N d'un tier_label "Placement (N restants)".
+// Retourne 10 si non parsable (joueur en placement, 0 match joué).
+func parsePlacementRemaining(label string) int {
+	m := placementRemainingRe.FindStringSubmatch(label)
+	if len(m) < 2 {
+		return 10
+	}
+	var n int
+	if _, err := fmt.Sscanf(m[1], "%d", &n); err != nil {
+		return 10
+	}
+	if n < 0 {
+		return 0
+	}
+	if n > 10 {
+		return 10
+	}
+	return n
+}
 
 // LoadRecentPlaylistRanks retourne les 3 dernières playlists distinctes jouées avec leur
 // dernier rang compétitif connu (Q26g). Retourne (nil, nil) si aucune donnée.
@@ -51,8 +76,15 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 
 	raws := make([]playlistRawItem, 0, len(phaseB))
 	for _, p := range phaseB {
-		item := buildHomePlaylistRankItem(p, msrByMatch, snapshotByPlaylist)
-		raws = append(raws, playlistRawItem{playlistID: p.playlistID, playlistName: p.playlistName, item: item})
+		// Phase 6 : threshold lookup par saison du dernier match. Fallback à
+		// CSRPlacementThresholdDefault si season_id absent (matchs anciens
+		// non backfillés ou playlists sociales).
+		threshold := r.csrThreshold(p.lastSeasonID)
+		raws = append(raws, playlistRawItem{
+			playlistID:   p.playlistID,
+			playlistName: p.playlistName,
+			item:         buildPlaylistRankItem(p, msrByMatch, snapshotByPlaylist, threshold),
+		})
 	}
 
 	// Enrichissement FR depuis asset_translations (même source que les tuiles de matchs).
@@ -139,11 +171,15 @@ func fillPlacementItem(item *domain.HomePlaylistRank, playlistID string, snapsho
 }
 
 // playlistPhaseBRow : projection Phase B (shared) — playlist + dernier match.
+// lastSeasonID est l'identifiant CSR de la saison du dernier match (ex.
+// "CsrSeason13-1") — peut être vide pour les matchs antérieurs au backfill
+// season_id (Phase 1).
 type playlistPhaseBRow struct {
 	playlistID   string
 	playlistName string
 	isRanked     bool
 	lastMatchID  string
+	lastSeasonID string
 }
 
 // playlistMSRRow : projection Phase A1 (player) — rating du last_match_id.
@@ -175,9 +211,11 @@ func (r *HomeRepo) loadPlaylistPhaseB(ctx context.Context) ([]playlistPhaseBRow,
 	for rows.Next() {
 		var p playlistPhaseBRow
 		var lastPlayed sql.NullTime
-		if err := rows.Scan(&p.playlistID, &p.playlistName, &p.isRanked, &lastPlayed, &p.lastMatchID); err != nil {
+		var lastSeasonID sql.NullString
+		if err := rows.Scan(&p.playlistID, &p.playlistName, &p.isRanked, &lastPlayed, &p.lastMatchID, &lastSeasonID); err != nil {
 			return nil, err
 		}
+		p.lastSeasonID = optionalNullStringValue(lastSeasonID)
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -244,6 +282,89 @@ func (r *HomeRepo) loadPlaylistPhaseASnapshot(ctx context.Context, playlistIDs [
 		}
 	}
 	return out
+}
+
+// buildPlaylistRankItem assemble l'item domain.HomePlaylistRank pour une
+// playlist Phase B en croisant MSR (Phase A1) et snapshot (Phase A2).
+//
+// Détection placement (parité avec resolveSkillPeakState côté front) :
+//   - snapshot.current_measurement_remaining > 0, OU
+//   - MSR avec tier="Placement" / tier_label commence par "Placement"
+//     (sync écrit rating_value=0.0 en placement pour respecter NOT NULL du
+//     schéma, cf. csr_writes.go).
+//
+// threshold : seuil de placement de la saison du match (5 depuis S3, 10 historique).
+// Phase 6 du plan : passé par le caller via lookup CSRThresholdsRepo(p.lastSeasonID).
+//
+// En placement : RatingValue/TierLabel laissés nil, BadgeImageURL=unranked_N.png
+// (mapping proportionnel via threshold), MeasurementMatchesRemaining=remaining,
+// PlacementTotal=threshold.
+func buildPlaylistRankItem(
+	p playlistPhaseBRow,
+	msrByMatch map[string]playlistMSRRow,
+	snapshotByPlaylist map[string]int,
+	threshold int,
+) domain.HomePlaylistRank {
+	if threshold <= 0 {
+		threshold = CSRPlacementThresholdDefault
+	}
+	item := domain.HomePlaylistRank{
+		PlaylistName: p.playlistName,
+		IsRanked:     p.isRanked,
+	}
+	msr, hasMSR := msrByMatch[p.lastMatchID]
+	snapRem, hasSnap := snapshotByPlaylist[p.playlistID]
+
+	msrIsPlacement := hasMSR && (msr.tier == "Placement" || strings.HasPrefix(msr.tierLabel, "Placement"))
+	snapIsPlacement := hasSnap && snapRem > 0
+	// Une playlist classée sans MSR ET sans snapshot positif est traitée comme
+	// placement à 0 match joué (parité avec l'ancien code `else if p.isRanked`).
+	isPlacement := p.isRanked && (snapIsPlacement || msrIsPlacement || !hasMSR)
+
+	switch {
+	case isPlacement:
+		remaining := threshold // défaut : 0 match de placement joué
+		switch {
+		case snapIsPlacement:
+			remaining = snapRem
+		case msrIsPlacement:
+			remaining = parsePlacementRemaining(msr.tierLabel)
+		}
+		completed := threshold - remaining
+		if completed < 0 {
+			completed = 0
+		}
+		if completed >= threshold {
+			completed = threshold - 1
+		}
+		item.BadgeImageURL = unrankedBadgeURLForThreshold(completed, threshold, homeStaticTitleSlug)
+		remCopy := remaining
+		item.MeasurementMatchesRemaining = &remCopy
+		totalCopy := threshold
+		item.PlacementTotal = &totalCopy
+		ratingType := "CSR"
+		item.RatingType = &ratingType
+		// RatingValue / TierLabel laissés nil : signal explicite au front.
+
+	case hasMSR:
+		ratingType := "LUSR"
+		if p.isRanked {
+			ratingType = "CSR"
+		}
+		item.RatingType = &ratingType
+		ratingValueCopy := msr.ratingValue
+		item.RatingValue = &ratingValueCopy
+		if msr.tierLabel != "" {
+			item.TierLabel = stringPtr(msr.tierLabel)
+		}
+		item.BadgeImageURL = buildHomeSkillPeakBadgeURLForThreshold(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0, threshold)
+		// Rang matured : on expose quand même le placement_total pour info front.
+		if p.isRanked {
+			totalCopy := threshold
+			item.PlacementTotal = &totalCopy
+		}
+	}
+	return item
 }
 
 // resolvePlaylistNameForLocale retourne le nom de playlist adapté à la locale.

@@ -43,6 +43,11 @@ type MatchRegistryRow struct {
 	FirstSyncAt             time.Time
 	LastUpdatedAt           time.Time
 	PlayerCount             int16
+	// SeasonID est l'identifiant CSR de la saison du match (ex. "CsrSeason13-1").
+	// Phase 9.5 du plan pipeline CSR : lu depuis le payload OpenSpartan
+	// (MatchInfo.SeasonId, déjà disponible mais non exploité historiquement)
+	// au lieu de laisser NULL et compter sur la migration de backfill.
+	SeasonID *string
 }
 
 // MatchParticipantRow mirrors a row in shared.match_participants. One row

@@ -223,8 +223,64 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 		return nil, fmt.Errorf("pool: open metadata db: %w", err)
 	}
 
-	socialDB := openSharedSocialDB(ctx, cfg)
-	attachGlobalXuidAliasesIfConfigured(ctx, playerDB, socialDB, cfg)
+	// SharedSocial est optionnel : absent si le fichier n'existe pas encore.
+	// Ouvert en OpenReadWriteShared (maxOpenConns=4) — comme metadata.duckdb :
+	// lectures concurrentes (handlers HTTP media/likes/favoris/ascension) +
+	// écritures occasionnelles (post-sync records, INSERTs unitaires). Tous les
+	// autres call sites runtime (registry_notifications, post_sync_deltas,
+	// prestige_setup) doivent aussi utiliser OpenReadWriteShared pour partager
+	// la même clé cache "rw:path" et éviter "different configuration" errors
+	// (mix avec OpenReadOnly historiquement, fixé en commit 21).
+	var socialDB *DB
+	if cfg.SharedSocialDBPath != "" {
+		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath, cfg.UserTimezone)
+		if err != nil {
+			// Non bloquant : la DB sera créée lors de la prochaine migration.
+			// On log Warn pour garder une trace (l'absence du fichier au boot est
+			// normale, mais une erreur ouverture sur fichier existant indique
+			// verrou / corruption qu'on veut voir).
+			slog.WarnContext(ctx, "pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)",
+				"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", err)
+			socialDB = nil
+		} else {
+			// Appliquer les migrations shared_social (idempotentes).
+			if mErr := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); mErr != nil {
+				slog.ErrorContext(ctx, "pool: migrations SharedSocial échouées",
+					"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", mErr)
+			}
+		}
+	}
+
+	// attachShared sur la conn player a été retiré (ADR 0016, commit 9c.5).
+	// Toutes les queries shared passent désormais par SharedReader (Provider en
+	// prod, LegacySharedReader pour les tests sans Provider injecté).
+	// Sprint P0→P7 (2026-05-20) a finalisé la migration de tous les repos
+	// applicatifs (media, post-sync, engagement, profile, career, explorer,
+	// sessions, stats, leaderboard, exclusions, match_view).
+
+	// P5.3 : ATTACH global xbox_aliases (mapping xuid→gamertag global Microsoft).
+	// Non-bloquant : si la DB globale n'existe pas encore (avant migration), les
+	// requêtes qui font `JOIN global.xuid_aliases` retomberont sur NULL.
+	if cfg.GlobalXuidAliasesDBPath != "" {
+		if err := attachGlobalXuidAliases(ctx, playerDB, cfg.GlobalXuidAliasesDBPath); err != nil {
+			// Non bloquant : si l'attach échoue, les queries `JOIN global.xuid_aliases`
+			// retomberont sur NULL (tolérance prévue côté query).
+			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (player conn)",
+				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
+		}
+	}
+
+	// attachShared sur SharedSocial retiré aussi.
+	// media_repo passe désormais entièrement par SharedReader pour les queries
+	// shared.* — plus aucune conn du pool ne porte d'ATTACH shared.
+	// P5.3 : ATTACH global xbox_aliases sur SharedSocial aussi (media_repo fait
+	// `JOIN global.xuid_aliases` sur les likers de médias).
+	if socialDB != nil && cfg.GlobalXuidAliasesDBPath != "" {
+		if err := attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath); err != nil {
+			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (social conn)",
+				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
+		}
+	}
 
 	// SharedReader (commit 8a) : par défaut, wrap pdb.Shared en mode legacy.
 	// Si cfg.SharedReader fourni (mode B-swap), on l'utilise tel quel — le

@@ -369,6 +369,12 @@ func NewRouter(
 		// dev. Cf. handlers/health_home.go.
 		r.With(middleware.NoStore).Get("/healthz/home", handlers.NewHealthHomeHandler(reg.HomeCtxWithAuth).Check)
 
+		// Phase 9 du plan pipeline CSR : diagnostic coverage CSR pour un joueur.
+		// Permet de vérifier en 1 ligne si le pipeline a bien capturé les CSR
+		// (matured + placement) ou s'il faut lancer un backfill.
+		r.With(middleware.NoStore).Get("/_diag/csr-coverage/{player_slug}",
+			handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).GetCoverage)
+
 		// Phase A multi-titres : exposition des field mappings TOML.
 		// Derrière MULTI_TITLE_API_ENABLED.
 		//

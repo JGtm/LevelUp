@@ -545,6 +545,16 @@ SELECT
 FROM player_csr_snapshots
 ORDER BY alltime_value DESC, current_value DESC`
 
+// QPlaylistsCatalogRanked : liste les playlists ranked actives du catalogue
+// pour un titre donné (metadata.duckdb). Utilisé par la page Carrière pour
+// afficher toutes les playlists classées du joueur, y compris celles sans
+// snapshot dans player_csr_snapshots (placement à 0 match joué).
+const QPlaylistsCatalogRanked = `
+SELECT playlist_asset_id, COALESCE(name_canonical, '')
+FROM playlists_catalog
+WHERE title_slug = ? AND is_ranked = TRUE AND is_active = TRUE
+ORDER BY name_canonical`
+
 // Q26csrAlltimePeak : récupère le meilleur CSR alltime toutes playlists confondues.
 // Utilisé par la home page pour remplacer la lecture depuis match_skill_rank.
 const Q26csrAlltimePeak = `

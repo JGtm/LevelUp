@@ -242,6 +242,10 @@ func buildHomeSkillPeak(raw *domain.HomeSkillPeakRow) *domain.HomeSkillPeakSumma
 		rem := *raw.MeasurementMatchesRemaining
 		summary.MeasurementMatchesRemaining = &rem
 	}
+	if raw.PlacementTotal != nil {
+		total := *raw.PlacementTotal
+		summary.PlacementTotal = &total
+	}
 	return summary
 }
 
