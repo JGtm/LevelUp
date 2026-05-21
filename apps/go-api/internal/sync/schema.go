@@ -152,7 +152,8 @@ CREATE TABLE IF NOT EXISTS match_registry (
     last_updated_at           TIMESTAMP,
     player_count              SMALLINT DEFAULT 0,
     created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    season_id                 VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS match_participants (
