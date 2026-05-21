@@ -1,15 +1,26 @@
 package migration
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
 )
 
-// columnExists vérifie si une colonne existe dans une table.
+// bootCtx retourne le contexte racine utilise par les migrations DDL boot-time.
+// Les migrations tournent au demarrage du serveur (cmd/server/main.go) ou au
+// boot d'un pool DuckDB (internal/platform/duckdb/pool.go) : il n'existe pas
+// de scope HTTP/RPC pertinent, et l'annulation n'a pas de valeur metier (un
+// rollback laisse la DB dans un etat incoherent). On utilise donc explicitement
+// context.Background() pour satisfaire le lint noctx tout en preservant la
+// semantique non-cancellable d'origine.
+func bootCtx() context.Context { return context.Background() }
+
+// columnExists verifie si une colonne existe dans une table.
 func columnExists(db *sql.DB, table, column string) (bool, error) {
 	var count int
-	err := db.QueryRow(
+	err := db.QueryRowContext(
+		bootCtx(),
 		"SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = 'main' AND table_name = ? AND column_name = ?",
 		table, column,
 	).Scan(&count)
@@ -19,10 +30,11 @@ func columnExists(db *sql.DB, table, column string) (bool, error) {
 	return count > 0, nil
 }
 
-// tableExists vérifie si une table existe.
+// tableExists verifie si une table existe.
 func tableExists(db *sql.DB, table string) (bool, error) {
 	var count int
-	err := db.QueryRow(
+	err := db.QueryRowContext(
+		bootCtx(),
 		"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'main' AND table_name = ?",
 		table,
 	).Scan(&count)
@@ -41,9 +53,9 @@ func addColumnIfMissing(db *sql.DB, table, column, colType string) error {
 	if exists {
 		return nil
 	}
-	_, err = db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colType))
+	_, err = db.ExecContext(bootCtx(), fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colType))
 	if err != nil {
-		// Ignorer "already exists" au cas où race condition
+		// Ignorer "already exists" au cas ou race condition
 		if strings.Contains(err.Error(), "already exists") {
 			return nil
 		}
@@ -52,9 +64,9 @@ func addColumnIfMissing(db *sql.DB, table, column, colType string) error {
 	return nil
 }
 
-// createIndexSafe crée un index en ignorant les erreurs "already exists".
+// createIndexSafe cree un index en ignorant les erreurs "already exists".
 func createIndexSafe(db *sql.DB, ddl string) error {
-	_, err := db.Exec(ddl)
+	_, err := db.ExecContext(bootCtx(), ddl)
 	if err != nil && (strings.Contains(err.Error(), "already exists") ||
 		strings.Contains(err.Error(), "read only") ||
 		strings.Contains(err.Error(), "does not exist")) {
@@ -63,17 +75,17 @@ func createIndexSafe(db *sql.DB, ddl string) error {
 	return err
 }
 
-// execScript exécute un script SQL multi-statements.
+// execScript execute un script SQL multi-statements.
 func execScript(db *sql.DB, script string) error {
 	for _, stmt := range splitSQL(script) {
-		if _, err := db.Exec(stmt); err != nil {
+		if _, err := db.ExecContext(bootCtx(), stmt); err != nil {
 			return fmt.Errorf("execScript: %w (stmt=%.80s)", err, stmt)
 		}
 	}
 	return nil
 }
 
-// splitSQL découpe un script SQL en instructions individuelles.
+// splitSQL decoupe un script SQL en instructions individuelles.
 func splitSQL(script string) []string {
 	var stmts []string
 	var cur strings.Builder

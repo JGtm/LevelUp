@@ -17,6 +17,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -51,7 +52,7 @@ type ArchiveResult struct {
 
 // ArchiveMatches exporte les matchs antérieurs à cutoffDate en Parquet.
 // Portage de archive_matches() Python.
-func ArchiveMatches(opts ArchiveOptions) (ArchiveResult, error) {
+func ArchiveMatches(ctx context.Context, opts ArchiveOptions) (ArchiveResult, error) {
 	if err := os.MkdirAll(opts.ArchiveDir, 0o755); err != nil {
 		return ArchiveResult{}, fmt.Errorf("création archive dir: %w", err)
 	}
@@ -64,7 +65,7 @@ func ArchiveMatches(opts ArchiveOptions) (ArchiveResult, error) {
 
 	// Compter les matchs archivables
 	var count int
-	if err := db.QueryRow(`
+	if err := db.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ? AND mr.start_time < ?
@@ -91,13 +92,13 @@ func ArchiveMatches(opts ArchiveOptions) (ArchiveResult, error) {
 
 	var files []string
 	if opts.ByYear {
-		years, err := listArchivableYears(db, opts.XUID, opts.CutoffDate)
+		years, err := listArchivableYears(ctx, db, opts.XUID, opts.CutoffDate)
 		if err != nil {
 			return ArchiveResult{}, err
 		}
 		for _, year := range years {
 			outPath := filepath.Join(opts.ArchiveDir, fmt.Sprintf("matches_%d.parquet", year))
-			if err := exportYearToParquet(db, opts.XUID, year, outPath); err != nil {
+			if err := exportYearToParquet(ctx, db, opts.XUID, year, outPath); err != nil {
 				return ArchiveResult{}, fmt.Errorf("export année %d: %w", year, err)
 			}
 			files = append(files, outPath)
@@ -105,7 +106,7 @@ func ArchiveMatches(opts ArchiveOptions) (ArchiveResult, error) {
 	} else {
 		outPath := filepath.Join(opts.ArchiveDir, fmt.Sprintf("matches_before_%s.parquet",
 			opts.CutoffDate.Format("20060102")))
-		if err := exportAllToParquet(db, opts.XUID, opts.CutoffDate, outPath); err != nil {
+		if err := exportAllToParquet(ctx, db, opts.XUID, opts.CutoffDate, outPath); err != nil {
 			return ArchiveResult{}, fmt.Errorf("export: %w", err)
 		}
 		files = append(files, outPath)
@@ -122,7 +123,7 @@ func ArchiveMatches(opts ArchiveOptions) (ArchiveResult, error) {
 			return ArchiveResult{}, fmt.Errorf("ouverture shared DB rw: %w", err)
 		}
 		defer rwDB.Close()
-		if err := deleteArchivedParticipants(rwDB, opts.XUID, opts.CutoffDate); err != nil {
+		if err := deleteArchivedParticipants(ctx, rwDB, opts.XUID, opts.CutoffDate); err != nil {
 			return ArchiveResult{}, fmt.Errorf("suppression: %w", err)
 		}
 	}
@@ -136,8 +137,8 @@ func ArchiveMatches(opts ArchiveOptions) (ArchiveResult, error) {
 	}, nil
 }
 
-func listArchivableYears(db *sql.DB, xuid string, cutoff time.Time) ([]int, error) {
-	rows, err := db.Query(`
+func listArchivableYears(ctx context.Context, db *sql.DB, xuid string, cutoff time.Time) ([]int, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT DISTINCT YEAR(mr.start_time) AS yr
 		FROM match_participants mp
 		JOIN match_registry mr ON mr.match_id = mp.match_id
@@ -159,7 +160,7 @@ func listArchivableYears(db *sql.DB, xuid string, cutoff time.Time) ([]int, erro
 	return years, rows.Err()
 }
 
-func exportYearToParquet(db *sql.DB, xuid string, year int, outPath string) error {
+func exportYearToParquet(ctx context.Context, db *sql.DB, xuid string, year int, outPath string) error {
 	q := fmt.Sprintf(`
 		COPY (
 			SELECT mp.* FROM match_participants mp
@@ -167,11 +168,11 @@ func exportYearToParquet(db *sql.DB, xuid string, year int, outPath string) erro
 			WHERE mp.xuid = '%s' AND YEAR(mr.start_time) = %d
 		) TO '%s' (FORMAT PARQUET, COMPRESSION 'zstd', COMPRESSION_LEVEL 9)
 	`, xuid, year, outPath)
-	_, err := db.Exec(q)
+	_, err := db.ExecContext(ctx, q)
 	return err
 }
 
-func exportAllToParquet(db *sql.DB, xuid string, cutoff time.Time, outPath string) error {
+func exportAllToParquet(ctx context.Context, db *sql.DB, xuid string, cutoff time.Time, outPath string) error {
 	q := fmt.Sprintf(`
 		COPY (
 			SELECT mp.* FROM match_participants mp
@@ -179,12 +180,12 @@ func exportAllToParquet(db *sql.DB, xuid string, cutoff time.Time, outPath strin
 			WHERE mp.xuid = '%s' AND mr.start_time < '%s'
 		) TO '%s' (FORMAT PARQUET, COMPRESSION 'zstd', COMPRESSION_LEVEL 9)
 	`, xuid, cutoff.Format(time.RFC3339), outPath)
-	_, err := db.Exec(q)
+	_, err := db.ExecContext(ctx, q)
 	return err
 }
 
-func deleteArchivedParticipants(db *sql.DB, xuid string, cutoff time.Time) error {
-	_, err := db.Exec(`
+func deleteArchivedParticipants(ctx context.Context, db *sql.DB, xuid string, cutoff time.Time) error {
+	_, err := db.ExecContext(ctx, `
 		DELETE FROM match_participants
 		WHERE xuid = ?
 		  AND match_id IN (

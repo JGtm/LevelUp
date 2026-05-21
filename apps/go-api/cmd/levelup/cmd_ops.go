@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -23,7 +24,7 @@ func runHealthcheck(cfg *config.AppConfig, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	report := ops.RunHealthcheck(ops.HealthcheckOptions{
+	report := ops.RunHealthcheck(context.Background(), ops.HealthcheckOptions{
 		RepoRoot: cfg.RepoRoot,
 		Verbose:  *verbose,
 	})
@@ -48,7 +49,7 @@ func runDiagnose(args []string) error {
 	if *dbPath == "" {
 		return fmt.Errorf("--db est obligatoire")
 	}
-	report, err := ops.DiagnoseDB(ops.DiagnoseOptions{DBPath: *dbPath, Verbose: *verbose})
+	report, err := ops.DiagnoseDB(context.Background(), ops.DiagnoseOptions{DBPath: *dbPath, Verbose: *verbose})
 	if err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func runCheckEnv(cfg *config.AppConfig) error {
 	fmt.Printf("app_settings.json : %s\n", cfg.AppSettingsPath)
 	fmt.Println()
 	// Healthcheck rapide
-	report := ops.RunHealthcheck(ops.HealthcheckOptions{RepoRoot: cfg.RepoRoot})
+	report := ops.RunHealthcheck(context.Background(), ops.HealthcheckOptions{RepoRoot: cfg.RepoRoot})
 	fmt.Print(report.Summary())
 	if !report.OK {
 		return fmt.Errorf("environnement incomplet")

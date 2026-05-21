@@ -14,6 +14,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -46,7 +47,7 @@ type RestoreResult struct {
 
 // RestorePlayer restaure les tables d'une DB joueur depuis les fichiers Parquet.
 // Portage de restore_player() Python.
-func RestorePlayer(opts RestoreOptions) (RestoreResult, error) {
+func RestorePlayer(ctx context.Context, opts RestoreOptions) (RestoreResult, error) {
 	parquetFiles, ts, err := findLatestParquetFiles(opts.BackupDir)
 	if err != nil {
 		return RestoreResult{}, fmt.Errorf("recherche fichiers backup: %w", err)
@@ -92,7 +93,7 @@ func RestorePlayer(opts RestoreOptions) (RestoreResult, error) {
 	defer db.Close()
 
 	for table, parqPath := range parquetFiles {
-		if err := restoreTable(db, table, parqPath, opts.Replace); err != nil {
+		if err := restoreTable(ctx, db, table, parqPath, opts.Replace); err != nil {
 			return result, fmt.Errorf("restauration table %s: %w", table, err)
 		}
 		result.TablesLoaded = append(result.TablesLoaded, table)
@@ -158,9 +159,9 @@ func findLatestParquetFiles(backupDir string) (map[string]string, string, error)
 }
 
 // restoreTable restaure une table depuis un fichier Parquet.
-func restoreTable(db *sql.DB, table, parqPath string, replace bool) error {
+func restoreTable(ctx context.Context, db *sql.DB, table, parqPath string, replace bool) error {
 	if replace {
-		if _, err := db.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %q", table)); err != nil {
+		if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %q", table)); err != nil {
 			return fmt.Errorf("DROP TABLE: %w", err)
 		}
 	}
@@ -168,7 +169,7 @@ func restoreTable(db *sql.DB, table, parqPath string, replace bool) error {
 		`CREATE TABLE IF NOT EXISTS %q AS SELECT * FROM read_parquet('%s')`,
 		table, parqPath,
 	)
-	if _, err := db.Exec(q); err != nil {
+	if _, err := db.ExecContext(ctx, q); err != nil {
 		return err
 	}
 	return nil

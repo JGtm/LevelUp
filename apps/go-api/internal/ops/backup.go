@@ -13,6 +13,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -50,7 +51,7 @@ type TableBackupInfo struct {
 
 // BackupPlayer sauvegarde toutes les tables d'une DB joueur en Parquet Zstd.
 // Portage de backup_player() Python.
-func BackupPlayer(opts BackupOptions) (BackupResult, error) {
+func BackupPlayer(ctx context.Context, opts BackupOptions) (BackupResult, error) {
 	if opts.CompressionLevel == 0 {
 		opts.CompressionLevel = 9
 	}
@@ -64,7 +65,7 @@ func BackupPlayer(opts BackupOptions) (BackupResult, error) {
 	}
 	defer db.Close()
 
-	tables, err := listBaseTables(db)
+	tables, err := listBaseTables(ctx, db)
 	if err != nil {
 		return BackupResult{}, fmt.Errorf("liste tables: %w", err)
 	}
@@ -74,7 +75,7 @@ func BackupPlayer(opts BackupOptions) (BackupResult, error) {
 
 	for _, table := range tables {
 		outPath := filepath.Join(opts.OutputDir, fmt.Sprintf("%s_%s.parquet", table, ts))
-		rows, err := exportTableToParquet(db, table, outPath, opts.CompressionLevel)
+		rows, err := exportTableToParquet(ctx, db, table, outPath, opts.CompressionLevel)
 		if err != nil {
 			return BackupResult{}, fmt.Errorf("export table %s: %w", table, err)
 		}
@@ -108,8 +109,8 @@ func BackupPlayer(opts BackupOptions) (BackupResult, error) {
 }
 
 // listBaseTables retourne les noms des tables BASE TABLE (pas les vues).
-func listBaseTables(db *sql.DB) ([]string, error) {
-	rows, err := db.Query(`
+func listBaseTables(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT table_name FROM information_schema.tables
 		WHERE table_type = 'BASE TABLE'
 		ORDER BY table_name
@@ -130,10 +131,10 @@ func listBaseTables(db *sql.DB) ([]string, error) {
 }
 
 // exportTableToParquet exporte une table en Parquet Zstd et retourne le nb de lignes.
-func exportTableToParquet(db *sql.DB, table, outPath string, compressionLevel int) (int64, error) {
+func exportTableToParquet(ctx context.Context, db *sql.DB, table, outPath string, compressionLevel int) (int64, error) {
 	// Compter d'abord
 	var count int64
-	if err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %q", table)).Scan(&count); err != nil {
+	if err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %q", table)).Scan(&count); err != nil {
 		return 0, err
 	}
 	// COPY TO avec Zstd
@@ -141,7 +142,7 @@ func exportTableToParquet(db *sql.DB, table, outPath string, compressionLevel in
 		`COPY %q TO '%s' (FORMAT PARQUET, COMPRESSION 'zstd', COMPRESSION_LEVEL %d)`,
 		table, outPath, compressionLevel,
 	)
-	if _, err := db.Exec(q); err != nil {
+	if _, err := db.ExecContext(ctx, q); err != nil {
 		return 0, err
 	}
 	return count, nil

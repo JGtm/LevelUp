@@ -122,7 +122,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 					j.ProgressPct = &reindexPct
 				})
 
-				if _, err := ops.IndexMedia(ops.MediaIndexOptions{
+				if _, err := ops.IndexMedia(ctx, ops.MediaIndexOptions{
 					PlayerDBPath:        dbPath,
 					SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
 					SharedMatchesDBPath: pr.SharedDBPath(titleSlug),
@@ -200,7 +200,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 			j.ProgressPct = &pct
 		})
 
-		if _, err := ops.IndexMedia(ops.MediaIndexOptions{
+		if _, err := ops.IndexMedia(ctx, ops.MediaIndexOptions{
 			PlayerDBPath:        dbPath,
 			SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
 			SharedMatchesDBPath: pr.SharedDBPath(titleSlug),

@@ -7,6 +7,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"path/filepath"
 	"testing"
@@ -39,7 +40,7 @@ func TestDiagnoseDB_EmptyDB(t *testing.T) {
 	path, db := openDiagDB(t)
 	db.Close() // fermer avant DiagnoseDB (read_only)
 
-	report, err := DiagnoseDB(DiagnoseOptions{DBPath: path})
+	report, err := DiagnoseDB(context.Background(), DiagnoseOptions{DBPath: path})
 	if err != nil {
 		t.Fatalf("DiagnoseDB inattendu: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestDiagnoseDB_WithTable(t *testing.T) {
 	}
 	db.Close()
 
-	report, err := DiagnoseDB(DiagnoseOptions{DBPath: path, Verbose: true})
+	report, err := DiagnoseDB(context.Background(), DiagnoseOptions{DBPath: path, Verbose: true})
 	if err != nil {
 		t.Fatalf("DiagnoseDB inattendu: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestDiagnoseDB_WithView(t *testing.T) {
 	}
 	db.Close()
 
-	report, err := DiagnoseDB(DiagnoseOptions{DBPath: path})
+	report, err := DiagnoseDB(context.Background(), DiagnoseOptions{DBPath: path})
 	if err != nil {
 		t.Fatalf("DiagnoseDB inattendu: %v", err)
 	}
@@ -102,7 +103,7 @@ func TestDiagnoseDB_WithView(t *testing.T) {
 }
 
 func TestDiagnoseDB_InvalidPath(t *testing.T) {
-	_, err := DiagnoseDB(DiagnoseOptions{DBPath: "/totally/nonexistent/path.duckdb"})
+	_, err := DiagnoseDB(context.Background(), DiagnoseOptions{DBPath: "/totally/nonexistent/path.duckdb"})
 	if err == nil {
 		t.Error("expected error pour path invalide")
 	}
@@ -114,7 +115,7 @@ func TestDiagnoseDB_InvalidPath(t *testing.T) {
 
 func TestDescribeAllTables_Empty(t *testing.T) {
 	_, db := openDiagDB(t)
-	tables, err := describeAllTables(db, false)
+	tables, err := describeAllTables(context.Background(), db, false)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -125,7 +126,7 @@ func TestDescribeAllTables_Empty(t *testing.T) {
 
 func TestListViews_Empty(t *testing.T) {
 	_, db := openDiagDB(t)
-	views, err := listViews(db)
+	views, err := listViews(context.Background(), db)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -136,7 +137,7 @@ func TestListViews_Empty(t *testing.T) {
 
 func TestListIndexes_Empty(t *testing.T) {
 	_, db := openDiagDB(t)
-	indexes, err := listIndexes(db)
+	indexes, err := listIndexes(context.Background(), db)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -154,7 +155,7 @@ func TestListIndexes_WithIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	// listIndexes n'échoue pas même si information_schema.statistics varie
-	_, err := listIndexes(db)
+	_, err := listIndexes(context.Background(), db)
 	if err != nil {
 		t.Fatalf("listIndexes inattendu: %v", err)
 	}

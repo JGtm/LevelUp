@@ -285,7 +285,7 @@ func init() {
 			return addColumnIfMissing(db, "match_registry", "team_1_ps_score", "INTEGER")
 		},
 		ApplyBackfill: func(db *sql.DB) error {
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry SET
 					team_0_ps_score = sub.s0,
 					team_1_ps_score = sub.s1
@@ -331,7 +331,7 @@ func init() {
 			_ = addColumnIfMissing(db, "weapon_kills", "reconciled_as", "UBIGINT")
 			_ = addColumnIfMissing(db, "weapon_kills", "attribution_path", "VARCHAR DEFAULT 'none'")
 			_ = addColumnIfMissing(db, "weapon_kills", "player_index", "INTEGER")
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				CREATE OR REPLACE VIEW v_weapon_kills AS
 				SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id FROM weapon_kills
 			`)
@@ -351,7 +351,7 @@ func init() {
 		TargetDB:    TargetShared,
 		Description: "Corrige bid(X.0 → bid(X.0) dans match_participants",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				UPDATE match_participants SET xuid = xuid || ')'
 				WHERE xuid LIKE 'bid(%' AND xuid NOT LIKE 'bid(%)'
 			`)
@@ -364,7 +364,7 @@ func init() {
 		TargetDB:    TargetShared,
 		Description: "Résout les gamertags de bots bid(X.0) → '343 Bot X' dans xuid_aliases",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				UPDATE xuid_aliases
 				SET gamertag   = '343 Bot ' || regexp_extract(xuid, 'bid\((\d+)', 1),
 				    updated_at = current_timestamp
@@ -380,7 +380,7 @@ func init() {
 		TargetDB:    TargetShared,
 		Description: "Remet events_loaded=FALSE pour matchs sans highlight_events",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry SET events_loaded = FALSE
 				WHERE events_loaded = TRUE
 					AND match_id NOT IN (SELECT DISTINCT match_id FROM highlight_events)
@@ -495,7 +495,7 @@ func init() {
 			//  B) real_start_time IS NULL ou égal à start_time (film_match_start_ms absent/nul) :
 			//     on ne peut pas se fier au delta → utiliser first_sync_at.
 			//     first_sync_at ≥ 2026-03-01 → post-fix DuckDB = UTC ; sinon → Paris.
-			if _, err := db.Exec(`
+			if _, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry SET
 					start_time_utc = CASE
 						WHEN real_start_time IS NOT NULL
@@ -514,7 +514,7 @@ func init() {
 			`); err != nil {
 				return fmt.Errorf("backfill start_time_utc: %w", err)
 			}
-			if _, err := db.Exec(`
+			if _, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry SET
 					end_time_utc = start_time_utc + (duration_seconds * INTERVAL '1 second')
 				WHERE end_time_utc IS NULL
@@ -592,7 +592,7 @@ func init() {
 		Description: "Re-backfill start_time_utc et end_time_utc via session TZ (corrige les +/-1/2h des matchs post-mars 2026)",
 		ApplySchema: func(db *sql.DB) error { return nil }, // pas de DDL — colonnes déjà créées par add_start_time_utc_to_match_registry
 		ApplyBackfill: func(db *sql.DB) error {
-			if _, err := db.Exec(`
+			if _, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry SET
 					start_time_utc = start_time::TIMESTAMPTZ,
 					end_time_utc   = end_time::TIMESTAMPTZ
@@ -602,7 +602,7 @@ func init() {
 			}
 			// Filet de sécurité : si end_time est NULL mais duration connue,
 			// reconstruit end_time_utc depuis start_time_utc + duration.
-			if _, err := db.Exec(`
+			if _, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry SET
 					end_time_utc = start_time_utc + (duration_seconds * INTERVAL '1 second')
 				WHERE end_time_utc IS NULL
@@ -668,7 +668,7 @@ func dropAssistsExpectedShared(db *sql.DB) error {
 	drop := map[string]bool{"assists_expected": true, "assists_stddev": true}
 
 	// Lire la liste réelle des colonnes.
-	rows, err := db.Query(`PRAGMA table_info('match_participants')`)
+	rows, err := db.QueryContext(bootCtx(), `PRAGMA table_info('match_participants')`)
 	if err != nil {
 		return fmt.Errorf("pragma table_info match_participants: %w", err)
 	}
@@ -710,7 +710,7 @@ func dropAssistsExpectedShared(db *sql.DB) error {
 		if end > len(s) {
 			end = len(s)
 		}
-		if _, err := db.Exec(s); err != nil {
+		if _, err := db.ExecContext(bootCtx(), s); err != nil {
 			return fmt.Errorf("dropAssistsExpected (%s...): %w", s[:end], err)
 		}
 	}
@@ -729,7 +729,7 @@ func dropAssistsExpectedShared(db *sql.DB) error {
 		"CREATE INDEX IF NOT EXISTS idx_mp_xuid       ON match_participants(xuid)",
 		"CREATE INDEX IF NOT EXISTS idx_mp_match_id   ON match_participants(match_id)",
 	} {
-		if _, err := db.Exec(ddl); err != nil {
+		if _, err := db.ExecContext(bootCtx(), ddl); err != nil {
 			return fmt.Errorf("recreate index: %w", err)
 		}
 	}

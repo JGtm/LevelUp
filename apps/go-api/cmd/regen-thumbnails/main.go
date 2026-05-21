@@ -17,6 +17,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"flag"
@@ -198,7 +199,7 @@ func main() {
 		// 4. Relinker en DB
 		linked := 0
 		if !*dryRun {
-			n, backfillErr := ops.BackfillThumbnailPaths(db, playerDir, thumbsDir, slug, store)
+			n, backfillErr := ops.BackfillThumbnailPaths(context.Background(), db, playerDir, thumbsDir, slug, store)
 			if backfillErr != nil {
 				fmt.Fprintf(os.Stderr, "[%s] backfill: %v\n", slug, backfillErr)
 				continue

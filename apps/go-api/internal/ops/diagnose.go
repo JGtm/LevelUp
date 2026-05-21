@@ -8,6 +8,7 @@
 package ops
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -51,7 +52,7 @@ type IndexInfo struct {
 
 // DiagnoseDB inspecte le schéma complet d'une DB DuckDB.
 // Portage des diagnostics de schéma Python.
-func DiagnoseDB(opts DiagnoseOptions) (DiagnoseReport, error) {
+func DiagnoseDB(ctx context.Context, opts DiagnoseOptions) (DiagnoseReport, error) {
 	db, err := sql.Open("duckdb", opts.DBPath+"?access_mode=read_only")
 	if err != nil {
 		return DiagnoseReport{}, fmt.Errorf("ouverture: %w", err)
@@ -60,21 +61,21 @@ func DiagnoseDB(opts DiagnoseOptions) (DiagnoseReport, error) {
 
 	report := DiagnoseReport{DBPath: opts.DBPath}
 
-	if report.Tables, err = describeAllTables(db, opts.Verbose); err != nil {
+	if report.Tables, err = describeAllTables(ctx, db, opts.Verbose); err != nil {
 		return report, fmt.Errorf("tables: %w", err)
 	}
-	if report.Views, err = listViews(db); err != nil {
+	if report.Views, err = listViews(ctx, db); err != nil {
 		return report, fmt.Errorf("vues: %w", err)
 	}
-	if report.Indexes, err = listIndexes(db); err != nil {
+	if report.Indexes, err = listIndexes(ctx, db); err != nil {
 		return report, fmt.Errorf("index: %w", err)
 	}
 	return report, nil
 }
 
 // describeAllTables retourne le schéma de toutes les tables BASE TABLE.
-func describeAllTables(db *sql.DB, verbose bool) ([]TableSchema, error) {
-	rows, err := db.Query(`
+func describeAllTables(ctx context.Context, db *sql.DB, verbose bool) ([]TableSchema, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT table_name FROM information_schema.tables
 		WHERE table_type = 'BASE TABLE'
 		ORDER BY table_name
@@ -97,7 +98,7 @@ func describeAllTables(db *sql.DB, verbose bool) ([]TableSchema, error) {
 
 	var tables []TableSchema //nolint:prealloc
 	for _, name := range tableNames {
-		ts, err := describeTable(db, name, verbose)
+		ts, err := describeTable(ctx, db, name, verbose)
 		if err != nil {
 			return nil, err
 		}
@@ -107,10 +108,10 @@ func describeAllTables(db *sql.DB, verbose bool) ([]TableSchema, error) {
 }
 
 // describeTable retourne le schéma d'une table.
-func describeTable(db *sql.DB, name string, withCount bool) (TableSchema, error) {
+func describeTable(ctx context.Context, db *sql.DB, name string, withCount bool) (TableSchema, error) {
 	ts := TableSchema{Name: name}
 
-	rows, err := db.Query(`
+	rows, err := db.QueryContext(ctx, `
 		SELECT column_name, data_type, is_nullable
 		FROM information_schema.columns
 		WHERE table_name = ?
@@ -134,7 +135,7 @@ func describeTable(db *sql.DB, name string, withCount bool) (TableSchema, error)
 	}
 
 	if withCount {
-		if err := db.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %q", name)).Scan(&ts.RowCount); err != nil {
+		if err := db.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM %q", name)).Scan(&ts.RowCount); err != nil {
 			ts.RowCount = -1
 		}
 	}
@@ -142,8 +143,8 @@ func describeTable(db *sql.DB, name string, withCount bool) (TableSchema, error)
 }
 
 // listViews retourne les noms des vues.
-func listViews(db *sql.DB) ([]string, error) {
-	rows, err := db.Query(`
+func listViews(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT table_name FROM information_schema.tables
 		WHERE table_type = 'VIEW'
 		ORDER BY table_name
@@ -164,8 +165,8 @@ func listViews(db *sql.DB) ([]string, error) {
 }
 
 // listIndexes retourne les index de la DB.
-func listIndexes(db *sql.DB) ([]IndexInfo, error) {
-	rows, err := db.Query(`
+func listIndexes(ctx context.Context, db *sql.DB) ([]IndexInfo, error) {
+	rows, err := db.QueryContext(ctx, `
 		SELECT index_name, table_name
 		FROM information_schema.statistics
 		ORDER BY table_name, index_name

@@ -47,7 +47,7 @@ func init() {
 			}
 			if hasMeta {
 				var marker sql.NullString
-				if err := db.QueryRow(`SELECT value FROM sync_meta WHERE key = ?`,
+				if err := db.QueryRowContext(bootCtx(), `SELECT value FROM sync_meta WHERE key = ?`,
 					careerProgressionRebuildMetaKey).Scan(&marker); err == nil && marker.Valid {
 					// Déjà rebuild → no-op.
 					return nil
@@ -67,7 +67,7 @@ func init() {
 			// Diag : compter rows pour log informatif (et estimer la perte
 			// potentielle pre-rebuild).
 			var before int
-			if err := db.QueryRow(`SELECT COUNT(*) FROM career_progression`).Scan(&before); err != nil {
+			if err := db.QueryRowContext(bootCtx(), `SELECT COUNT(*) FROM career_progression`).Scan(&before); err != nil {
 				return fmt.Errorf("rebuild_career: count before: %w", err)
 			}
 
@@ -101,14 +101,14 @@ func init() {
 				`ALTER TABLE career_progression__rebuilt RENAME TO career_progression`,
 			}
 			for _, sqlStmt := range stmts {
-				if _, err := db.Exec(sqlStmt); err != nil {
+				if _, err := db.ExecContext(bootCtx(), sqlStmt); err != nil {
 					return fmt.Errorf("rebuild_career: swap step (%s): %w",
 						firstWords(sqlStmt, 3), err)
 				}
 			}
 
 			var after int
-			if err := db.QueryRow(`SELECT COUNT(*) FROM career_progression`).Scan(&after); err != nil {
+			if err := db.QueryRowContext(bootCtx(), `SELECT COUNT(*) FROM career_progression`).Scan(&after); err != nil {
 				return fmt.Errorf("rebuild_career: count after: %w", err)
 			}
 			slog.Info("migration rebuild_career_progression: table rebuilt (ART corruption defeated)",
@@ -129,7 +129,7 @@ func markRebuildDone(db *sql.DB) error {
 		// re-check.
 		return nil
 	}
-	_, err = db.Exec(`
+	_, err = db.ExecContext(bootCtx(), `
 		INSERT INTO sync_meta (key, value, updated_at)
 		VALUES (?, 'true', NOW())
 		ON CONFLICT (key) DO UPDATE SET

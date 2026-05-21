@@ -405,7 +405,7 @@ func init() {
 		TargetDB:    TargetMetadata,
 		Description: "Colonne title_id sur xbox_achievement_definitions (filtre par jeu — halo_infinite) pour exclure les succès d'autres titres Xbox stockés avant l'introduction du filtre titleId.",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS title_id VARCHAR DEFAULT ''`)
+			_, err := db.ExecContext(bootCtx(), `ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS title_id VARCHAR DEFAULT ''`)
 			return err
 		},
 	})
@@ -415,7 +415,7 @@ func init() {
 		TargetDB:    TargetMetadata,
 		Description: "Supprime les succès Xbox sans title_id connu (insertés avant le filtre halo_infinite). L'utilisateur doit relancer sync-achievements après cette migration.",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`DELETE FROM xbox_achievement_definitions WHERE title_id = '' OR title_id IS NULL`)
+			_, err := db.ExecContext(bootCtx(), `DELETE FROM xbox_achievement_definitions WHERE title_id = '' OR title_id IS NULL`)
 			return err
 		},
 	})
@@ -425,7 +425,7 @@ func init() {
 		TargetDB:    TargetMetadata,
 		Description: "Colonne xbox_title_id sur xbox_achievement_definitions : identifiant Xbox numérique du titre source (ex: '1144039928' pour Halo Infinite). Peuplée lors du prochain sync-achievements. Permet au frontend de filtrer les succès cross-titres sans DELETE.",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS xbox_title_id VARCHAR DEFAULT ''`)
+			_, err := db.ExecContext(bootCtx(), `ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS xbox_title_id VARCHAR DEFAULT ''`)
 			return err
 		},
 	})
@@ -435,7 +435,7 @@ func init() {
 		TargetDB:    TargetMetadata,
 		Description: "Colonne service_config_id (SCID Xbox) sur xbox_achievement_definitions. Le SCID est le seul discriminateur fiable par jeu : l'API Xbox retourne tous les achievements de la franchise quand on filtre par titleId. Peuplée lors du prochain sync-achievements.",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(`ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS service_config_id VARCHAR DEFAULT ''`)
+			_, err := db.ExecContext(bootCtx(), `ALTER TABLE xbox_achievement_definitions ADD COLUMN IF NOT EXISTS service_config_id VARCHAR DEFAULT ''`)
 			return err
 		},
 	})
@@ -443,7 +443,7 @@ func init() {
 
 // applyModeNameTr crée et peuple mode_name_tr avec les traductions connues.
 func applyModeNameTr(db *sql.DB) error {
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(bootCtx(), `
 		CREATE TABLE IF NOT EXISTS mode_name_tr (
 			mode_en VARCHAR NOT NULL,
 			lang    VARCHAR NOT NULL,
@@ -522,7 +522,7 @@ func applyModeNameTr(db *sql.DB) error {
 	}
 
 	for _, r := range rows {
-		if _, err := db.Exec(
+		if _, err := db.ExecContext(bootCtx(),
 			"INSERT OR IGNORE INTO mode_name_tr (mode_en, lang, name) VALUES (?, ?, ?)",
 			r.modeEN, r.lang, r.name,
 		); err != nil {
@@ -541,7 +541,7 @@ func ApplyWeaponLabels(db *sql.DB) error {
 
 // applyWeaponLabels crée et peuple weapon_labels avec tous les IDs connus.
 func applyWeaponLabels(db *sql.DB) error {
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(bootCtx(), `
 		CREATE TABLE IF NOT EXISTS weapon_labels (
 			weapon_id UBIGINT PRIMARY KEY,
 			name_en   VARCHAR NOT NULL,
@@ -613,7 +613,7 @@ func applyWeaponLabels(db *sql.DB) error {
 			"INSERT OR IGNORE INTO weapon_labels (weapon_id, name_en, name_fr) VALUES (%d, ?, ?)",
 			l.id,
 		)
-		if _, err := db.Exec(q, l.en, l.fr); err != nil {
+		if _, err := db.ExecContext(bootCtx(), q, l.en, l.fr); err != nil {
 			return err
 		}
 	}

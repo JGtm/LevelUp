@@ -70,7 +70,7 @@ func applyPlaylistFRSeeds(db *sql.DB) error {
 		//    Le matching est par NAME (pas par asset_id) car asset_translations
 		//    est indexée par UUID + lang ; on identifie les lignes corrompues
 		//    par leur valeur courante == nom EN.
-		if _, err := db.Exec(`
+		if _, err := db.ExecContext(bootCtx(), `
 			UPDATE asset_translations
 			SET name = ?
 			WHERE asset_type = 'playlist'
@@ -84,7 +84,7 @@ func applyPlaylistFRSeeds(db *sql.DB) error {
 		// 2. INSERT OR IGNORE des lignes fr-FR manquantes : si on a une ligne
 		//    en-US avec ce nom mais aucune ligne fr-FR pour le même asset_id.
 		//    Couvre le cas où la sync n'a stocké que la lang en-US.
-		if _, err := db.Exec(`
+		if _, err := db.ExecContext(bootCtx(), `
 			INSERT OR IGNORE INTO asset_translations (asset_id, asset_type, lang, name)
 			SELECT en.asset_id, 'playlist', 'fr-FR', ?
 			FROM asset_translations en

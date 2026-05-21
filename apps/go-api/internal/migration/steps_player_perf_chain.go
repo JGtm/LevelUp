@@ -21,7 +21,7 @@ func init() {
 		Description: "Ajout de la colonne performance_chain à player_match_enrichment" +
 			" (découplage du score de performance par chaîne de playlist, 6 chaînes).",
 		ApplySchema: func(db *sql.DB) error {
-			_, err := db.Exec(
+			_, err := db.ExecContext(bootCtx(),
 				`ALTER TABLE player_match_enrichment ADD COLUMN IF NOT EXISTS performance_chain VARCHAR`,
 			)
 			return err

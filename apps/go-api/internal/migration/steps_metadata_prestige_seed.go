@@ -119,7 +119,7 @@ func seedTemplates(db *sql.DB, path string) error {
 		if modeFilter == "" {
 			modeFilter = "universal"
 		}
-		_, err := db.Exec(`
+		_, err := db.ExecContext(bootCtx(), `
 			INSERT INTO challenge_template (
 				id, title_slug, metric, window_type, window_value, cadence, eval_type,
 				mode_filter, label_en, label_fr, description_en, description_fr,
@@ -171,7 +171,7 @@ func seedPresets(db *sql.DB, path string) error {
 	}
 	now := time.Now().UTC()
 	for _, a := range doc.Arcs {
-		_, err := db.Exec(`
+		_, err := db.ExecContext(bootCtx(), `
 			INSERT INTO preset_arc (id, title_slug, title_en, title_fr,
 			                       description_en, description_fr, schema_version, updated_at)
 			VALUES (?, ?, ?, ?, ?, ?, 1, ?)
@@ -190,7 +190,7 @@ func seedPresets(db *sql.DB, path string) error {
 			return fmt.Errorf("seed presets: upsert arc %s: %w", a.ID, err)
 		}
 		for _, s := range a.Steps {
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				INSERT INTO preset_arc_step (preset_arc_id, position, template_id, target_tier)
 				VALUES (?, ?, ?, ?)
 				ON CONFLICT (preset_arc_id, position) DO UPDATE SET

@@ -5,6 +5,7 @@
 package ops
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -24,7 +25,7 @@ func TestListArchivableYears_DBEmpty(t *testing.T) {
 	}
 
 	cutoff := time.Now()
-	years, err := listArchivableYears(db, "xuid_test", cutoff)
+	years, err := listArchivableYears(context.Background(), db, "xuid_test", cutoff)
 	if err != nil {
 		t.Fatalf("inattendu: %v", err)
 	}
@@ -39,7 +40,7 @@ func TestListArchivableYears_DBEmpty(t *testing.T) {
 
 func TestRestoreTable_InvalidParquet(t *testing.T) {
 	_, db := openDiagDB(t)
-	err := restoreTable(db, "new_table", "/nonexistent/data.parquet", false)
+	err := restoreTable(context.Background(), db, "new_table", "/nonexistent/data.parquet", false)
 	if err == nil {
 		t.Error("expected error pour parquet invalide")
 	}
@@ -52,7 +53,7 @@ func TestRestoreTable_ReplaceWithInvalidParquet(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Avec replace=true : DROP TABLE IF EXISTS doit passer, puis CREATE échoue
-	err := restoreTable(db, "my_table", "/nonexistent/data.parquet", true)
+	err := restoreTable(context.Background(), db, "my_table", "/nonexistent/data.parquet", true)
 	if err == nil {
 		t.Error("expected error pour parquet invalide")
 	}
