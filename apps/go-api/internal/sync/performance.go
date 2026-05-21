@@ -8,6 +8,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -391,8 +392,8 @@ func prepareHistoryMetrics(history []historyRow) map[string][]float64 {
 // loadHistoryForPerf charge tous les matchs du joueur depuis shared DB pour le batch.
 // Le champ damage_taken est utilisé pour defensive_resistance (combat yield v5).
 // Chaque row est classée dans une chaîne via GetPerformanceChain (jamais vide).
-func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
-	rows, err := sharedDB.Query(`
+func loadHistoryForPerf(ctx context.Context, sharedDB *sql.DB, xuid string) ([]historyRow, error) {
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
 			mr.match_id, mr.start_time,
 			COALESCE(mp.kills, 0), COALESCE(mp.deaths, 0),
@@ -475,12 +476,12 @@ func loadHistoryForPerf(sharedDB *sql.DB, xuid string) ([]historyRow, error) {
 //
 // medalExploit override is set to nil — callers that need the exploit-aware
 // variant (sync engine) still use the unexported helper.
-func BatchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, force bool) (int, error) {
-	return batchComputePerformanceScores(playerDB, sharedDB, xuid, nil, force)
+func BatchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, force bool) (int, error) {
+	return batchComputePerformanceScores(ctx, playerDB, sharedDB, xuid, nil, force)
 }
 
-func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
-	allMatches, err := loadHistoryForPerf(sharedDB, xuid)
+func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, medalExploitByMatch map[string]float64, force bool) (int, error) {
+	allMatches, err := loadHistoryForPerf(ctx, sharedDB, xuid)
 	if err != nil {
 		return 0, err
 	}
@@ -490,7 +491,7 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 
 	// Filtrer les matchs marqués `is_excluded` côté playerDB : ils ne doivent ni
 	// peser dans la fenêtre glissante ni recevoir de score.
-	excluded, err := loadExcludedMatchIDs(playerDB)
+	excluded, err := loadExcludedMatchIDs(ctx, playerDB)
 	if err != nil {
 		return 0, fmt.Errorf("batchComputePerformanceScores: %w", err)
 	}
@@ -523,7 +524,7 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 	// Si la classification a changé rétroactivement (cas rare), on recompute.
 	existingChain := make(map[string]string)
 	if !force {
-		existRows, queryErr := playerDB.Query(
+		existRows, queryErr := playerDB.QueryContext(ctx,
 			`SELECT match_id, performance_chain
 			   FROM player_match_enrichment
 			  WHERE performance_score IS NOT NULL`)
@@ -606,7 +607,7 @@ func batchComputePerformanceScores(playerDB, sharedDB *sql.DB, xuid string, meda
 
 			score := computeRelativePerformanceScore(&match, window)
 			if score != nil {
-				_, err := playerDB.Exec(`
+				_, err := playerDB.ExecContext(ctx, `
 					INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
 					VALUES (?, ?, ?, ?)
 					ON CONFLICT (match_id) DO UPDATE SET

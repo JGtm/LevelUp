@@ -102,7 +102,7 @@ func RecomputeIsWithFriendsCore(
 	}
 
 	// Résoudre les gamertags amis → XUIDs via xuid_aliases.
-	friendXUIDs := LookupFriendXUIDs(sharedDB, friendGamertags)
+	friendXUIDs := LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
 	res.FriendXUIDsCount = len(friendXUIDs)
 	if len(friendXUIDs) == 0 {
 		slog.WarnContext(ctx, "friends recompute: no xuid resolved",

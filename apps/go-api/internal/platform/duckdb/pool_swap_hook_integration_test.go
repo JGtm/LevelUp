@@ -36,7 +36,7 @@ func setupPoolFixturesForSwap(t *testing.T) (sharedPath string, provider sharedp
 	if err != nil {
 		t.Fatalf("OpenReadWrite shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(sb.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), sb.SQLDb()); err != nil {
 		_ = sb.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
@@ -209,7 +209,7 @@ func TestPool_PrepareForSharedSwap_NoopWithoutSharedReader_integration(t *testin
 	if err != nil {
 		t.Fatalf("OpenReadWrite shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(sb.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), sb.SQLDb()); err != nil {
 		_ = sb.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}

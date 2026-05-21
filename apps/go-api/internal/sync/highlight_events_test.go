@@ -54,7 +54,7 @@ func openEventsDB(t *testing.T) *sql.DB {
 			events_loaded      BOOLEAN DEFAULT FALSE
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

@@ -29,7 +29,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	}
 	pdb.SetMaxOpenConns(1)
 	t.Cleanup(func() { pdb.Close() })
-	if err := execScript(pdb, `
+	if err := execScript(t.Context(), pdb, `
 		CREATE TABLE match_skill_rank (
 			match_id                      VARCHAR PRIMARY KEY,
 			rating_type                   VARCHAR NOT NULL,
@@ -56,7 +56,7 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	}
 	sdb.SetMaxOpenConns(1)
 	t.Cleanup(func() { sdb.Close() })
-	if err := execScript(sdb, `
+	if err := execScript(t.Context(), sdb, `
 		CREATE TABLE match_registry (
 			match_id      VARCHAR PRIMARY KEY,
 			start_time    TIMESTAMPTZ,

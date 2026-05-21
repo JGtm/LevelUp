@@ -26,11 +26,11 @@ import (
 func newInMemoryDBs(t *testing.T) (*sql.DB, *sql.DB) {
 	t.Helper()
 	playerDB := openMemDB(t)
-	if err := EnsurePlayerSchema(playerDB); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
 	sharedDB := openMemDB(t)
-	if err := EnsureSharedSchema(sharedDB); err != nil {
+	if err := EnsureSharedSchema(t.Context(), sharedDB); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	return playerDB, sharedDB
@@ -358,7 +358,7 @@ func TestProcessMatch_MultipleMatches(t *testing.T) {
 
 func TestLoadKnownMatchIDs_Deduplication(t *testing.T) {
 	playerDB := openMemDB(t)
-	if err := EnsurePlayerSchema(playerDB); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("schema: %v", err)
 	}
 
@@ -369,7 +369,7 @@ func TestLoadKnownMatchIDs_Deduplication(t *testing.T) {
 		}
 	}
 
-	known, err := loadKnownMatchIDs(playerDB)
+	known, err := loadKnownMatchIDs(t.Context(), playerDB)
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestRunDelta_NewMatches(t *testing.T) {
 	defer sharedDB.Close()
 
 	// Initially no known matches
-	known, err := loadKnownMatchIDs(playerDB.SQLDb())
+	known, err := loadKnownMatchIDs(t.Context(), playerDB.SQLDb())
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs: %v", err)
 	}
@@ -453,7 +453,7 @@ func TestRunDelta_NewMatches(t *testing.T) {
 	}
 
 	// After processing, known should contain 2
-	known2, err := loadKnownMatchIDs(playerDB.SQLDb())
+	known2, err := loadKnownMatchIDs(t.Context(), playerDB.SQLDb())
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs 2nd call: %v", err)
 	}
@@ -483,7 +483,7 @@ func TestRunDelta_StopsAtKnownMatch(t *testing.T) {
 
 	mock := &mockHaloClient{history: history, statsBody: statsBody}
 
-	known, _ := loadKnownMatchIDs(playerDB)
+	known, _ := loadKnownMatchIDs(t.Context(), playerDB)
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "0000000000000000"}
 	opts := domain.DefaultSyncOptions()
 
@@ -532,7 +532,7 @@ func TestRunFull_ContinuesPastKnown(t *testing.T) {
 	}
 	mock := &mockHaloClient{history: history, statsBody: statsBody}
 
-	known, _ := loadKnownMatchIDs(playerDB)
+	known, _ := loadKnownMatchIDs(t.Context(), playerDB)
 	e := &SyncEngine{gamertag: "TestPlayer", xuid: "0000000000000000"}
 	opts := domain.DefaultSyncOptions()
 
@@ -683,7 +683,7 @@ func TestProcessMatch_APICallCounting(t *testing.T) {
 
 func TestSetSyncMeta_ReadBack(t *testing.T) {
 	playerDB := openMemDB(t)
-	if err := EnsurePlayerSchema(playerDB); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("schema: %v", err)
 	}
 
@@ -704,7 +704,7 @@ func TestSetSyncMeta_ReadBack(t *testing.T) {
 
 func TestSetSyncMeta_Overwrite(t *testing.T) {
 	playerDB := openMemDB(t)
-	if err := EnsurePlayerSchema(playerDB); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), playerDB); err != nil {
 		t.Fatalf("schema: %v", err)
 	}
 

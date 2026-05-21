@@ -70,14 +70,14 @@ func loadSessionMatchRowsDirect(ctx context.Context, sharedDB *sql.DB, xuid stri
 
 // LookupFriendXUIDs retourne les XUIDs des gamertags depuis xuid_aliases.
 // Les gamertags non trouvés sont silencieusement ignorés.
-func LookupFriendXUIDs(sharedDB *sql.DB, gamertags []string) []string {
+func LookupFriendXUIDs(ctx context.Context, sharedDB *sql.DB, gamertags []string) []string {
 	if len(gamertags) == 0 {
 		return nil
 	}
 	var xuids []string
 	for _, gt := range gamertags {
 		var xuid string
-		if err := sharedDB.QueryRow(
+		if err := sharedDB.QueryRowContext(ctx,
 			"SELECT xuid FROM xuid_aliases WHERE LOWER(gamertag) = LOWER(?)", gt,
 		).Scan(&xuid); err == nil && xuid != "" {
 			xuids = append(xuids, xuid)
@@ -100,7 +100,7 @@ func recalculateSessionsInline(
 	friendGamertags []string,
 ) (int, error) {
 	if len(friendGamertags) > 0 {
-		opts.FriendsXUIDs = LookupFriendXUIDs(sharedDB, friendGamertags)
+		opts.FriendsXUIDs = LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
 	}
 	matchRows, err := loadSessionMatchRowsDirect(ctx, sharedDB, xuid)
 	if err != nil {
@@ -159,7 +159,7 @@ func RecalculatePlayerSessions(
 
 	// Résoudre les XUIDs des amis si nécessaire.
 	if len(friendGamertags) > 0 {
-		opts.FriendsXUIDs = LookupFriendXUIDs(sharedDB, friendGamertags)
+		opts.FriendsXUIDs = LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
 	}
 
 	matchRows, err := loadSessionMatchRowsDirect(ctx, sharedDB, xuid)

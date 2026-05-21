@@ -186,7 +186,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 
 	// 1. Performance scores
 	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
-	if n, err := batchComputePerformanceScores(playerDB, sharedDB, e.xuid, nil, false); err != nil {
+	if n, err := batchComputePerformanceScores(ctx, playerDB, sharedDB, e.xuid, nil, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: perf scores échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.PerfScoresComputed = n
@@ -254,7 +254,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 2. LUSR (TrueSkill 2) — best-effort medal data depuis metadata DB
 	slog.DebugContext(ctx, "post-sync: calcul LUSR", "gamertag", e.gamertag)
 	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	if n, err := batchComputeLUSR(playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
+	if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: LUSR échoué", "gamertag", e.gamertag, "err", err)
 	} else {
 		r.LUSRUpdated = n

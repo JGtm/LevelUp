@@ -4,6 +4,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -55,8 +56,8 @@ type lusrResult struct {
 
 // ── Chargeurs SQL ────────────────────────────────────────────────────────────
 
-func loadLUSRMatchData(sharedDB *sql.DB, xuid string) ([]lusrMatchData, error) {
-	rows, err := sharedDB.Query(`
+func loadLUSRMatchData(ctx context.Context, sharedDB *sql.DB, xuid string) ([]lusrMatchData, error) {
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT
 			mr.match_id, mr.start_time, mr.playlist_name, mr.pair_name,
 			mp.outcome, COALESCE(mp.kills, 0), COALESCE(mp.deaths, 0),
@@ -111,7 +112,7 @@ func loadLUSRMatchData(sharedDB *sql.DB, xuid string) ([]lusrMatchData, error) {
 	return result, rows.Err()
 }
 
-func loadLUSRParticipants(sharedDB *sql.DB, matchIDs []string) (map[string][]lusrParticipant, error) {
+func loadLUSRParticipants(ctx context.Context, sharedDB *sql.DB, matchIDs []string) (map[string][]lusrParticipant, error) {
 	result := make(map[string][]lusrParticipant)
 	if len(matchIDs) == 0 {
 		return result, nil
@@ -129,7 +130,7 @@ func loadLUSRParticipants(sharedDB *sql.DB, matchIDs []string) (map[string][]lus
 	}
 	query += ")"
 
-	rows, err := sharedDB.Query(query, args...)
+	rows, err := sharedDB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return result, fmt.Errorf("loadLUSRParticipants: %w", err)
 	}
@@ -153,9 +154,9 @@ func loadLUSRParticipants(sharedDB *sql.DB, matchIDs []string) (map[string][]lus
 // loadExistingRatingIDs renvoie l'ensemble des match_id ayant le rating_type donné.
 // Toute erreur SQL/scan est propagée — un map vide silencieux désactiverait la garde
 // en profondeur Go qui protège les CSR contre l'écrasement par LUSR.
-func loadExistingRatingIDs(playerDB *sql.DB, ratingType string) (map[string]bool, error) {
+func loadExistingRatingIDs(ctx context.Context, playerDB *sql.DB, ratingType string) (map[string]bool, error) {
 	result := make(map[string]bool)
-	rows, err := playerDB.Query("SELECT match_id FROM match_skill_rank WHERE rating_type = ?", ratingType)
+	rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM match_skill_rank WHERE rating_type = ?", ratingType)
 	if err != nil {
 		return nil, fmt.Errorf("loadExistingRatingIDs(%s): %w", ratingType, err)
 	}
@@ -173,9 +174,9 @@ func loadExistingRatingIDs(playerDB *sql.DB, ratingType string) (map[string]bool
 	return result, nil
 }
 
-func loadExistingLUSRStates(playerDB *sql.DB) map[string]*PlayerState {
+func loadExistingLUSRStates(ctx context.Context, playerDB *sql.DB) map[string]*PlayerState {
 	states := make(map[string]*PlayerState)
-	rows, err := playerDB.Query(`
+	rows, err := playerDB.QueryContext(ctx, `
 		SELECT msr.playlist_group, msr.rating_value, msr.rating_deviation
 		FROM match_skill_rank msr
 		JOIN (
@@ -209,6 +210,7 @@ func loadExistingLUSRStates(playerDB *sql.DB) map[string]*PlayerState {
 }
 
 func upsertLUSRRatings(
+	ctx context.Context,
 	playerDB *sql.DB,
 	results []lusrResult,
 	existingCSR, existingLUSR map[string]bool,
@@ -262,7 +264,7 @@ func upsertLUSRRatings(
 
 		// Garde-fou SQL : la clause WHERE empêche toute écriture LUSR de remplacer
 		// un CSR pré-existant (données API irrécupérables si écrasées).
-		res, err := playerDB.Exec(`
+		res, err := playerDB.ExecContext(ctx, `
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
 				 tier, tier_fr, sub_tier, tier_label,
@@ -306,7 +308,7 @@ func upsertLUSRRatings(
 		// match_skill_rank. Best-effort — un échec n'empêche pas la mise à
 		// jour du rating principal.
 		if len(r.Components) > 0 {
-			if err := writeLUSRComponentHistory(playerDB, r.MatchID, r.Components, now); err != nil {
+			if err := writeLUSRComponentHistory(ctx, playerDB, r.MatchID, r.Components, now); err != nil {
 				slog.Warn("upsertLUSRRatings: lusr_component_history write failed",
 					"match_id", r.MatchID, "err", err)
 			}
@@ -329,6 +331,7 @@ func upsertLUSRRatings(
 //
 // Best-effort : un échec sur 1 composante ne stoppe pas les autres.
 func writeLUSRComponentHistory(
+	ctx context.Context,
 	playerDB *sql.DB,
 	matchID string,
 	components map[string]float64,
@@ -337,7 +340,7 @@ func writeLUSRComponentHistory(
 	weights := CompositeWeights
 	for name, value := range components {
 		weight := weights[name]
-		_, err := playerDB.Exec(`
+		_, err := playerDB.ExecContext(ctx, `
 			INSERT INTO lusr_component_history (match_id, component_name, value, weight, computed_at)
 			VALUES (?, ?, ?, ?, ?)
 			ON CONFLICT (match_id, component_name) DO UPDATE SET

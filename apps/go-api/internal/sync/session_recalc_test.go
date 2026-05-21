@@ -21,7 +21,7 @@ func TestLookupFriendXUIDs_Found(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	xuids := LookupFriendXUIDs(db, []string{"PlayerOne"})
+	xuids := LookupFriendXUIDs(t.Context(), db, []string{"PlayerOne"})
 	if len(xuids) != 1 || xuids[0] != "xuid-1" {
 		t.Errorf("expected [xuid-1], got %v", xuids)
 	}
@@ -35,7 +35,7 @@ func TestLookupFriendXUIDs_CaseInsensitive(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	xuids := LookupFriendXUIDs(db, []string{"playertwo"})
+	xuids := LookupFriendXUIDs(t.Context(), db, []string{"playertwo"})
 	if len(xuids) != 1 || xuids[0] != "xuid-2" {
 		t.Errorf("expected [xuid-2], got %v", xuids)
 	}
@@ -44,7 +44,7 @@ func TestLookupFriendXUIDs_CaseInsensitive(t *testing.T) {
 func TestLookupFriendXUIDs_NotFound(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
 
-	xuids := LookupFriendXUIDs(db, []string{"Inconnu"})
+	xuids := LookupFriendXUIDs(t.Context(), db, []string{"Inconnu"})
 	if len(xuids) != 0 {
 		t.Errorf("expected empty, got %v", xuids)
 	}
@@ -52,11 +52,11 @@ func TestLookupFriendXUIDs_NotFound(t *testing.T) {
 
 func TestLookupFriendXUIDs_EmptySlice(t *testing.T) {
 	db := testutil.NewInMemoryShared(t)
-	xuids := LookupFriendXUIDs(db, nil)
+	xuids := LookupFriendXUIDs(t.Context(), db, nil)
 	if xuids != nil {
 		t.Errorf("expected nil, got %v", xuids)
 	}
-	xuids = LookupFriendXUIDs(db, []string{})
+	xuids = LookupFriendXUIDs(t.Context(), db, []string{})
 	if xuids != nil {
 		t.Errorf("expected nil for empty slice, got %v", xuids)
 	}
@@ -71,7 +71,7 @@ func TestLookupFriendXUIDs_PartialMatch(t *testing.T) {
 	}
 
 	// Un gamertag trouvé, un absent → seul le trouvé retourné.
-	xuids := LookupFriendXUIDs(db, []string{"PlayerThree", "GhostPlayer"})
+	xuids := LookupFriendXUIDs(t.Context(), db, []string{"PlayerThree", "GhostPlayer"})
 	if len(xuids) != 1 || xuids[0] != "xuid-3" {
 		t.Errorf("expected [xuid-3], got %v", xuids)
 	}

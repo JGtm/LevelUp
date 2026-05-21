@@ -364,3 +364,117 @@ en = "— Season:"
 [common.leaderboard.empty_title]
 fr = "Classement vide"
 en = "Empty leaderboard"
+
+# ─── Root layout (API errors, bootstrap) ────────────────────────────────
+
+[common.root.api_unreachable]
+fr = "Impossible de contacter l'API."
+en = "Cannot reach the API."
+
+[common.root.api_check_server_prefix]
+fr = "Vérifiez que le serveur Go est démarré ("
+en = "Make sure the Go server is running ("
+
+[common.root.api_check_server_suffix]
+fr = ")."
+en = ")."
+
+[common.root.api_retry]
+fr = "Réessayer"
+en = "Retry"
+
+[common.root.loading_app]
+fr = "Chargement LevelUp…"
+en = "Loading LevelUp…"
+
+# ─── Index route (no player configured) ─────────────────────────────────
+
+[common.index.no_player_configured]
+fr = "Aucun joueur configuré."
+en = "No player configured."
+
+[common.index.configure_app]
+fr = "Configurer l'application"
+en = "Configure the app"
+
+# ─── Replay placeholder ─────────────────────────────────────────────────
+
+[common.replay.in_development]
+fr = "Le rejouer le match en 2D est en cours de développement."
+en = "The 2D match replay is under development."
+
+[common.replay.back_to_match]
+fr = "← Retour au match"
+en = "← Back to match"
+
+# ─── Filter pills (tooltips, ARIA) ──────────────────────────────────────
+
+[common.filters.reset_title]
+fr = "Réinitialiser tous les filtres"
+en = "Reset all filters"
+
+[common.filters.reset_label]
+fr = "↺ Réinitialiser"
+en = "↺ Reset"
+
+[common.filters.matches_count_title]
+fr = "Nombre de matchs correspondant aux filtres actifs"
+en = "Number of matches matching active filters"
+
+[common.filters.incompatible_title]
+fr = "Incompatible avec les filtres actifs — cliquez pour désélectionner"
+en = "Incompatible with active filters — click to deselect"
+
+[common.filters.with_selection_hint]
+fr = "avec la sélection actuelle. Cliquez Analyser pour"
+en = "with the current selection. Click Analyse to"
+
+[common.filters.incompatible_full]
+fr = "{n, plural, one {# filtre incompatible} other {# filtres incompatibles}} avec la sélection actuelle. Cliquez Analyser pour les retirer automatiquement."
+en = "{n, plural, one {# incompatible filter} other {# incompatible filters}} with the current selection. Click Analyse to remove them automatically."
+
+[common.filters.period_session_auto]
+fr = "Sélectionner une période vide automatiquement la session active."
+en = "Selecting a period automatically empties the active session."
+
+[common.filters.season_aria]
+fr = "Choix de la saison"
+en = "Season selector"
+
+[common.filters.session_search_placeholder]
+fr = "Rechercher une session…"
+en = "Search a session…"
+
+[common.filters.session_all]
+fr = "Toutes les sessions"
+en = "All sessions"
+
+[common.filters.session_no_match]
+fr = "Aucune session ne correspond."
+en = "No session matches."
+
+# ─── Gamertag combobox (sectioned dropdown) ─────────────────────────────
+
+[common.gamertag.players_configured]
+fr = "Joueurs configurés"
+en = "Configured players"
+
+[common.gamertag.frequent_teammates]
+fr = "Coéquipiers fréquents"
+en = "Frequent teammates"
+
+[common.gamertag.no_player_found_prefix]
+fr = "Aucun joueur trouvé pour \""
+en = "No player found for \""
+
+# ─── Info tooltip ───────────────────────────────────────────────────────
+
+[common.tooltip.more_info_aria]
+fr = "Plus d'informations"
+en = "More information"
+
+# ─── Match card ─────────────────────────────────────────────────────────
+
+[common.match_card.placement_prefix]
+fr = "Placement : #"
+en = "Placement: #"

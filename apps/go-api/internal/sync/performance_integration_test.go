@@ -46,7 +46,7 @@ func openPerfDB(t *testing.T) *sql.DB {
 			updated_at TIMESTAMPTZ
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -68,7 +68,7 @@ func seedPerfMatches(t *testing.T, db *sql.DB, n int) {
 
 func TestLoadHistoryForPerf_Empty(t *testing.T) {
 	db := openPerfDB(t)
-	rows, err := loadHistoryForPerf(db, "xuid_none")
+	rows, err := loadHistoryForPerf(t.Context(), db, "xuid_none")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestLoadHistoryForPerf_Empty(t *testing.T) {
 func TestLoadHistoryForPerf_WithData(t *testing.T) {
 	db := openPerfDB(t)
 	seedPerfMatches(t, db, 5)
-	rows, err := loadHistoryForPerf(db, "xuid1")
+	rows, err := loadHistoryForPerf(t.Context(), db, "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestLoadHistoryForPerf_PopulatesChain(t *testing.T) {
 	insert("c3", "2025-01-01T03:00:00Z", "Firefight:KOTH", false, true, false) // → firefight (flag wins)
 	insert("c4", "2025-01-01T04:00:00Z", "", false, false, true)               // → fallback arena_slayer (pair NULL)
 
-	rows, err := loadHistoryForPerf(db, "xuid1")
+	rows, err := loadHistoryForPerf(t.Context(), db, "xuid1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestLoadHistoryForPerf_PopulatesChain(t *testing.T) {
 
 func TestBatchComputePerformanceScores_Empty(t *testing.T) {
 	db := openPerfDB(t)
-	n, err := batchComputePerformanceScores(db, db, "xuid_none", nil, false)
+	n, err := batchComputePerformanceScores(t.Context(), db, db, "xuid_none", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestBatchComputePerformanceScores_WithData(t *testing.T) {
 	db := openPerfDB(t)
 	// Need >MinMatchesForRelative matches for any scoring
 	seedPerfMatches(t, db, MinMatchesForRelative+10)
-	n, err := batchComputePerformanceScores(db, db, "xuid1", nil, false)
+	n, err := batchComputePerformanceScores(t.Context(), db, db, "xuid1", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +198,7 @@ func TestBatchComputePerformanceScores_PartitionsByChain(t *testing.T) {
 	// 12 matchs arena_slayer (10 premiers sans score, 2 derniers scorés)
 	seedPerfMatchesWithChain(t, db, 200, 12, "Arena:Slayer", false, false)
 
-	n, err := batchComputePerformanceScores(db, db, "xuid1", nil, false)
+	n, err := batchComputePerformanceScores(t.Context(), db, db, "xuid1", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,7 +266,7 @@ func TestBatchComputePerformanceScores_SkipExistingPreservesChain(t *testing.T) 
 	seedPerfMatchesWithChain(t, db, 0, 12, "Arena:Slayer", false, false)
 
 	// 1er run : compute initial
-	n1, err := batchComputePerformanceScores(db, db, "xuid1", nil, false)
+	n1, err := batchComputePerformanceScores(t.Context(), db, db, "xuid1", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestBatchComputePerformanceScores_SkipExistingPreservesChain(t *testing.T) 
 	}
 
 	// 2e run sans force : devrait skipper tous (même chaîne).
-	n2, err := batchComputePerformanceScores(db, db, "xuid1", nil, false)
+	n2, err := batchComputePerformanceScores(t.Context(), db, db, "xuid1", nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +284,7 @@ func TestBatchComputePerformanceScores_SkipExistingPreservesChain(t *testing.T) 
 	}
 
 	// 3e run avec force=true : devrait tout recomputer.
-	n3, err := batchComputePerformanceScores(db, db, "xuid1", nil, true)
+	n3, err := batchComputePerformanceScores(t.Context(), db, db, "xuid1", nil, true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -55,7 +55,7 @@ func setupE2E(t *testing.T) *e2eEnv {
 		t.Fatalf("open shared duckdb: %v", err)
 	}
 	t.Cleanup(func() { _ = sharedDB.Close() })
-	if err := sync.EnsureSharedSchema(sharedDB); err != nil {
+	if err := sync.EnsureSharedSchema(t.Context(), sharedDB); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	// highlight_events lives in a separate migration — mirror it here.

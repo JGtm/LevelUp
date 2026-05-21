@@ -53,7 +53,7 @@ func TestBaselineRedConflictExists_integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("bootstrap OpenReadWrite: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(bootstrap.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), bootstrap.SQLDb()); err != nil {
 		_ = bootstrap.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}

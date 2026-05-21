@@ -13,7 +13,7 @@ import (
 
 func TestEnsurePlayerSchema_InMemory(t *testing.T) {
 	db := openTestDB(t)
-	if err := EnsurePlayerSchema(db); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
 		t.Fatalf("EnsurePlayerSchema: %v", err)
 	}
 	// Verify tables exist
@@ -30,10 +30,10 @@ func TestEnsurePlayerSchema_InMemory(t *testing.T) {
 
 func TestEnsurePlayerSchema_Idempotent(t *testing.T) {
 	db := openTestDB(t)
-	if err := EnsurePlayerSchema(db); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
 		t.Fatalf("first call: %v", err)
 	}
-	if err := EnsurePlayerSchema(db); err != nil {
+	if err := EnsurePlayerSchema(t.Context(), db); err != nil {
 		t.Fatalf("second call should be idempotent: %v", err)
 	}
 }
@@ -42,7 +42,7 @@ func TestEnsurePlayerSchema_Idempotent(t *testing.T) {
 
 func TestEnsureSharedSchema_InMemory(t *testing.T) {
 	db := openTestDB(t)
-	if err := EnsureSharedSchema(db); err != nil {
+	if err := EnsureSharedSchema(t.Context(), db); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	for _, tbl := range []string{
@@ -57,10 +57,10 @@ func TestEnsureSharedSchema_InMemory(t *testing.T) {
 
 func TestEnsureSharedSchema_Idempotent(t *testing.T) {
 	db := openTestDB(t)
-	if err := EnsureSharedSchema(db); err != nil {
+	if err := EnsureSharedSchema(t.Context(), db); err != nil {
 		t.Fatalf("first: %v", err)
 	}
-	if err := EnsureSharedSchema(db); err != nil {
+	if err := EnsureSharedSchema(t.Context(), db); err != nil {
 		t.Fatalf("second (idempotent): %v", err)
 	}
 }
@@ -69,7 +69,7 @@ func TestEnsureSharedSchema_Idempotent(t *testing.T) {
 
 func TestExecScript_Simple(t *testing.T) {
 	db := openTestDB(t)
-	err := execScript(db, "CREATE TABLE t1 (id INT); CREATE TABLE t2 (id INT);")
+	err := execScript(t.Context(), db, "CREATE TABLE t1 (id INT); CREATE TABLE t2 (id INT);")
 	if err != nil {
 		t.Fatalf("execScript: %v", err)
 	}
@@ -79,14 +79,14 @@ func TestExecScript_Simple(t *testing.T) {
 
 func TestExecScript_Empty(t *testing.T) {
 	db := openTestDB(t)
-	if err := execScript(db, ""); err != nil {
+	if err := execScript(t.Context(), db, ""); err != nil {
 		t.Fatalf("execScript empty: %v", err)
 	}
 }
 
 func TestExecScript_InvalidSQL(t *testing.T) {
 	db := openTestDB(t)
-	err := execScript(db, "THIS IS NOT SQL;")
+	err := execScript(t.Context(), db, "THIS IS NOT SQL;")
 	if err == nil {
 		t.Fatal("expected error for invalid SQL")
 	}

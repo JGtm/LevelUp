@@ -37,7 +37,7 @@ func openPveDB(t *testing.T) *sql.DB {
 			backfill_completed INTEGER DEFAULT 0
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db
@@ -45,7 +45,7 @@ func openPveDB(t *testing.T) *sql.DB {
 
 func TestInsertPveStats_Empty(t *testing.T) {
 	db := openPveDB(t)
-	n, err := InsertPveStats(db, nil)
+	n, err := InsertPveStats(t.Context(), db, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +60,7 @@ func TestInsertPveStats_Insert(t *testing.T) {
 		{MatchID: "m1", XUID: "x1", WavesCompleted: 5, BossKills: 2, TotalKills: 100, Deaths: 3, DamageDealt: 5000.0},
 		{MatchID: "m2", XUID: "x1", WavesCompleted: 3, BossKills: 1, TotalKills: 50, Deaths: 5, DamageDealt: 2500.0},
 	}
-	n, err := InsertPveStats(db, rows)
+	n, err := InsertPveStats(t.Context(), db, rows)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,10 +78,10 @@ func TestInsertPveStats_Insert(t *testing.T) {
 func TestInsertPveStats_Upsert(t *testing.T) {
 	db := openPveDB(t)
 	row := PveMatchStatsRow{MatchID: "m1", XUID: "x1", WavesCompleted: 5}
-	InsertPveStats(db, []PveMatchStatsRow{row})
+	InsertPveStats(t.Context(), db, []PveMatchStatsRow{row})
 
 	row.WavesCompleted = 10
-	n, err := InsertPveStats(db, []PveMatchStatsRow{row})
+	n, err := InsertPveStats(t.Context(), db, []PveMatchStatsRow{row})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestMarkPveStatsDone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := MarkPveStatsDone(db, "m1"); err != nil {
+	if err := MarkPveStatsDone(t.Context(), db, "m1"); err != nil {
 		t.Fatal(err)
 	}
 

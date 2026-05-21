@@ -10,7 +10,7 @@ import noHardcodedStrings from './eslint-rules/no-hardcoded-strings.js'
 export default defineConfig([
   // Tests E2E Playwright : moins stricts (mocks any, ts-ignore acceptes
   // pour test-helpers, prefer-const variable selon contexte de test).
-  globalIgnores(['dist', 'e2e/**']),
+  globalIgnores(['dist', 'e2e/**', 'coverage/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

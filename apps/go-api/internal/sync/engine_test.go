@@ -32,7 +32,7 @@ func TestLoadKnownMatchIDs_EmptyTable(t *testing.T) {
 		t.Fatalf("CREATE: %v", err)
 	}
 
-	known, err := loadKnownMatchIDs(db)
+	known, err := loadKnownMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestLoadKnownMatchIDs_WithMatches(t *testing.T) {
 	_, _ = db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('aabbccdd-0000-0000-0000-000000000001')`)
 	_, _ = db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES ('aabbccdd-0000-0000-0000-000000000002')`)
 
-	known, err := loadKnownMatchIDs(db)
+	known, err := loadKnownMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatalf("loadKnownMatchIDs: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestLoadKnownMatchIDs_MissingTable(t *testing.T) {
 	}
 	defer db.Close()
 
-	known, err := loadKnownMatchIDs(db)
+	known, err := loadKnownMatchIDs(t.Context(), db)
 	if err != nil {
 		t.Fatalf("attendu nil, obtenu %v", err)
 	}

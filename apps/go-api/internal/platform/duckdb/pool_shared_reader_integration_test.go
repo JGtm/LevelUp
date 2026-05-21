@@ -32,7 +32,7 @@ func setupPoolFixtures(t *testing.T) (sharedPath, metaPath, playerPath string) {
 	if err != nil {
 		t.Fatalf("OpenReadWrite shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(sb.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), sb.SQLDb()); err != nil {
 		_ = sb.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}

@@ -7,6 +7,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -23,9 +24,9 @@ import (
 // d'échouer le batch. En prod la colonne est créée par migration au boot.
 //
 // Erreurs SQL inattendues (autres que schéma) : propagées normalement.
-func loadExcludedMatchIDs(playerDB *sql.DB) (map[string]bool, error) {
+func loadExcludedMatchIDs(ctx context.Context, playerDB *sql.DB) (map[string]bool, error) {
 	result := make(map[string]bool)
-	rows, err := playerDB.Query(
+	rows, err := playerDB.QueryContext(ctx,
 		`SELECT match_id FROM player_match_enrichment WHERE COALESCE(is_excluded, FALSE) = TRUE`)
 	if err != nil {
 		if isSchemaMissingErr(err) {

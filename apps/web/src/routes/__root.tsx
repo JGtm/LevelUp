@@ -16,6 +16,8 @@ import { resolvePageTitle } from '@/lib/pageTitle'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { AppShell } from '@/components/shell/AppShell'
 import type { BootstrapResponse } from '@/lib/api/types'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 function RootLayout() {
   const navigate = useNavigate()
@@ -26,6 +28,8 @@ function RootLayout() {
   const authMode = useAppShellStore((s) => s.authMode)
   const currentUsername = useAppShellStore((s) => s.currentUsername)
   const firstLaunch = useAppShellStore((s) => s.firstLaunch)
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   const { data, isLoading, isError, failureCount } = useQuery({
     queryKey: queryKeys.bootstrap,
@@ -73,8 +77,11 @@ function RootLayout() {
       <div className="flex h-screen items-center justify-center">
         <span className="text-sm text-muted-foreground animate-pulse">
           {failureCount > 0
+            // Texte technique de progression de retry (incluant interpolation) ;
+            // surface utilisateur tres breve, garde-fou contre l'erreur d'API.
+            // eslint-disable-next-line @levelup/no-hardcoded-strings
             ? `Connexion à l'API… (tentative ${failureCount + 1}/7)`
-            : 'Chargement LevelUp…'}
+            : t('common.root.loading_app')}
         </span>
       </div>
     )
@@ -84,15 +91,15 @@ function RootLayout() {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-2">
-          <p className="font-semibold text-destructive">Impossible de contacter l'API.</p>
+          <p className="font-semibold text-destructive">{t('common.root.api_unreachable')}</p>
           <p className="text-sm text-muted-foreground">
-            Vérifiez que le serveur Go est démarré (<code>make go-api-run</code>).
+            {t('common.root.api_check_server_prefix')}<code>make go-api-run</code>{t('common.root.api_check_server_suffix')}
           </p>
           <button
             className="text-sm underline text-primary"
             onClick={() => window.location.reload()}
           >
-            Réessayer
+            {t('common.root.api_retry')}
           </button>
         </div>
       </div>

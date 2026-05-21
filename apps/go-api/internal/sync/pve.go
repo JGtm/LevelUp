@@ -11,6 +11,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -253,7 +254,7 @@ func float64From(m map[string]any, key string) float64 {
 
 // InsertPveStats insère (INSERT OR REPLACE) des lignes dans pve_match_stats.
 // Portage de batch_insert_pve_stats() Python (batch_insert.py).
-func InsertPveStats(db *sql.DB, rows []PveMatchStatsRow) (int, error) {
+func InsertPveStats(ctx context.Context, db *sql.DB, rows []PveMatchStatsRow) (int, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
@@ -275,7 +276,7 @@ func InsertPveStats(db *sql.DB, rows []PveMatchStatsRow) (int, error) {
 		)`
 	inserted := 0
 	for _, r := range rows {
-		if _, err := db.Exec(q,
+		if _, err := db.ExecContext(ctx, q,
 			r.MatchID, r.XUID,
 			r.WavesCompleted, r.BossKills,
 			r.GruntKills, r.EliteKills, r.JackalKills, r.BruteKills,
@@ -292,8 +293,8 @@ func InsertPveStats(db *sql.DB, rows []PveMatchStatsRow) (int, error) {
 
 // MarkPveStatsDone marque MBitPVEStats dans match_registry.backfill_completed.
 // Portage de _try_insert_pve_stats() Python (engine.py).
-func MarkPveStatsDone(sharedDB *sql.DB, matchID string) error {
-	_, err := sharedDB.Exec(`
+func MarkPveStatsDone(ctx context.Context, sharedDB *sql.DB, matchID string) error {
+	_, err := sharedDB.ExecContext(ctx, `
 		UPDATE match_registry
 		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
 		WHERE match_id = ?

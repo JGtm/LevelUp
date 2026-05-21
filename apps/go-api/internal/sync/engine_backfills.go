@@ -153,7 +153,7 @@ func (e *SyncEngine) RunBackfillLUSR(ctx context.Context, force bool) (int, erro
 	defer releaseShared()
 
 	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	return batchComputeLUSR(playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
+	return batchComputeLUSR(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour
@@ -241,7 +241,7 @@ func (e *SyncEngine) RunBackfillPerf(ctx context.Context, force bool) (int, erro
 	defer releaseShared()
 
 	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	return batchComputePerformanceScores(playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
+	return batchComputePerformanceScores(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, force)
 }
 
 // loadMedalExploitMapBestEffort charge les scores d'exploit médailles depuis la metadata DB.
@@ -265,12 +265,12 @@ func loadMedalExploitMap(ctx context.Context, metadataDBPath string, sharedDB *s
 	defer metaDB.Close() //nolint:errcheck
 	metaDB.SetMaxOpenConns(1)
 
-	diffMap, err := LoadMedalDifficultyFromMeta(metaDB)
+	diffMap, err := LoadMedalDifficultyFromMeta(ctx, metaDB)
 	if err != nil || len(diffMap) == 0 {
 		slog.DebugContext(ctx, "loadMedalExploitMap: difficulty map vide", "err", err)
 		return nil
 	}
-	result, err := ComputeMedalExploitByMatch(sharedDB, diffMap, xuid)
+	result, err := ComputeMedalExploitByMatch(ctx, sharedDB, diffMap, xuid)
 	if err != nil {
 		slog.DebugContext(ctx, "loadMedalExploitMap: compute échoué", "err", err)
 		return nil

@@ -51,13 +51,13 @@ func batchRecomputeCoefficients(
 	playerDB *sql.DB,
 	xuid string,
 ) (int, error) {
-	if !pacesColumnsAvailable(playerDB) {
+	if !pacesColumnsAvailable(ctx, playerDB) {
 		slog.DebugContext(ctx, "engagement coefs: paces columns absent, skip recompute",
 			"xuid", xuid)
 		observability.IncCounter("engagement_unavailable_skips_total")
 		return 0, nil
 	}
-	if !coefficientsTableAvailable(playerDB) {
+	if !coefficientsTableAvailable(ctx, playerDB) {
 		slog.DebugContext(ctx, "engagement coefs: coefficients table absent, skip recompute",
 			"xuid", xuid)
 		observability.IncCounter("engagement_unavailable_skips_total")
@@ -143,9 +143,9 @@ func coefBucket(coef float64) string {
 
 // coefficientsTableAvailable verifie la presence de engagement_coefficients
 // dans la player DB.
-func coefficientsTableAvailable(playerDB *sql.DB) bool {
+func coefficientsTableAvailable(ctx context.Context, playerDB *sql.DB) bool {
 	var count int
-	err := playerDB.QueryRow(`
+	err := playerDB.QueryRowContext(ctx, `
 		SELECT COUNT(*) FROM information_schema.tables
 		WHERE table_name = 'engagement_coefficients'
 	`).Scan(&count)

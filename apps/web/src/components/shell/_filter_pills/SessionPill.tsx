@@ -7,6 +7,9 @@
 import { useMemo, useState } from 'react'
 import type { SessionOption } from '@/lib/api/types'
 import { useDismissable } from './_hooks'
+import { useAppShellStore } from '@/stores/appShellStore'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
 export interface SessionPillProps {
   open: boolean
@@ -29,6 +32,8 @@ export function SessionPill({
 }: SessionPillProps) {
   const ref = useDismissable(open, onClose)
   const [search, setSearch] = useState('')
+  const locale = useAppShellStore((s) => s.locale)
+  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
 
   // Masquer les sessions retournant 0 matchs avec les filtres actifs (sauf
   // celle déjà sélectionnée — pour ne pas la faire disparaître brutalement).
@@ -43,7 +48,7 @@ export function SessionPill({
     return visibleSessions.filter((s) => s.label.toLowerCase().includes(q))
   }, [visibleSessions, search])
 
-  const triggerLabel = currentLabel ? `Session : ${currentLabel}` : 'Toutes les sessions'
+  const triggerLabel = currentLabel ? `Session : ${currentLabel}` : t('common.filters.session_all')
 
   return (
     <div ref={ref} className="relative shrink-0">
@@ -74,7 +79,7 @@ export function SessionPill({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher une session…"
+              placeholder={t('common.filters.session_search_placeholder')}
               className="w-full rounded border border-input bg-background px-2 py-1 text-xs focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               autoFocus
             />
@@ -88,12 +93,12 @@ export function SessionPill({
                 pickedId === null ? 'bg-primary/10 text-primary' : 'text-foreground',
               ].join(' ')}
             >
-              <span className="font-medium">Toutes les sessions</span>
+              <span className="font-medium">{t('common.filters.session_all')}</span>
               <span className="text-2xs text-muted-foreground">{visibleSessions.length}</span>
             </button>
             {filtered.length === 0 ? (
               <p className="px-3 py-4 text-center text-xs text-muted-foreground">
-                Aucune session ne correspond.
+                {t('common.filters.session_no_match')}
               </p>
             ) : (
               filtered.map((s) => {

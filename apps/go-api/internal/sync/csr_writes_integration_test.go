@@ -42,7 +42,7 @@ func openCSRDB(t *testing.T) *sql.DB {
 			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 	`
-	if err := execScript(db, ddl); err != nil {
+	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

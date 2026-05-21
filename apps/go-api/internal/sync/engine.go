@@ -180,7 +180,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	defer releaseShared()
 
 	// P5.3 : DB globale xbox_aliases (mapping xuid→gamertag global Microsoft).
-	globalDB, globalCleanup, err := openGlobalDB(e.globalDBPath)
+	globalDB, globalCleanup, err := openGlobalDB(ctx, e.globalDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "sync: ouverture global DB échouée — alias upsert désactivé",
 			"db", e.globalDBPath, "err", err)
@@ -209,7 +209,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
 	// ─── Match IDs déjà connus (player DB) ───────────────────────────────────
-	known, err := loadKnownMatchIDs(playerDB)
+	known, err := loadKnownMatchIDs(ctx, playerDB)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: chargement match_ids connus échoué", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run loadKnownMatchIDs: %w", err)
@@ -437,8 +437,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 // loadKnownMatchIDs retourne l'ensemble des match_ids déjà présents dans
 // player_match_enrichment (player DB).
-func loadKnownMatchIDs(db *sql.DB) (map[string]bool, error) {
-	rows, err := db.Query("SELECT match_id FROM player_match_enrichment")
+func loadKnownMatchIDs(ctx context.Context, db *sql.DB) (map[string]bool, error) {
+	rows, err := db.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment")
 	if err != nil {
 		// Table peut ne pas exister si le schéma vient d'être créé — OK.
 		return map[string]bool{}, nil

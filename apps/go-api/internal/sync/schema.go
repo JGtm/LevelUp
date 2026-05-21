@@ -6,6 +6,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -210,14 +211,14 @@ CREATE TABLE IF NOT EXISTS xuid_aliases (
 
 // EnsurePlayerSchema crée les tables player si elles n'existent pas.
 // Idempotent — peut être appelé à chaque ouverture de connexion.
-func EnsurePlayerSchema(db *sql.DB) error {
-	return execScript(db, playerSchemaSQL)
+func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
+	return execScript(ctx, db, playerSchemaSQL)
 }
 
 // EnsureSharedSchema crée les tables shared si elles n'existent pas.
 // Idempotent — peut être appelé à chaque ouverture de connexion.
-func EnsureSharedSchema(db *sql.DB) error {
-	return execScript(db, sharedSchemaSQL)
+func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
+	return execScript(ctx, db, sharedSchemaSQL)
 }
 
 // OpenPlayerDB ouvre stats.duckdb d'un joueur en lecture/écriture via le cache process-level.
@@ -231,7 +232,11 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("OpenPlayerDB open %s: %w", path, err)
 	}
-	if err := EnsurePlayerSchema(handle.SQLDb()); err != nil {
+	// EnsurePlayerSchema est une opération de boot idempotente (CREATE TABLE IF
+	// NOT EXISTS). Pas de contexte caller au moment de l'ouverture du handle ;
+	// les appels ne sont pas annulables côté caller — context.Background() est
+	// le bon choix ici.
+	if err := EnsurePlayerSchema(context.Background(), handle.SQLDb()); err != nil {
 		handle.Close()
 		return nil, fmt.Errorf("OpenPlayerDB schema %s: %w", path, err)
 	}
@@ -244,7 +249,7 @@ func OpenPlayerDB(path string) (*duckdbpkg.DB, error) {
 //
 // Retourne (*sql.DB, cleanup, error). Le cleanup ferme la connexion ; le
 // caller l'appelle via defer.
-func openGlobalDB(path string) (*sql.DB, func(), error) {
+func openGlobalDB(ctx context.Context, path string) (*sql.DB, func(), error) {
 	if path == "" {
 		return nil, nil, fmt.Errorf("openGlobalDB: empty path")
 	}
@@ -256,7 +261,7 @@ func openGlobalDB(path string) (*sql.DB, func(), error) {
 		return nil, nil, fmt.Errorf("openGlobalDB open %s: %w", path, err)
 	}
 	db := handle.SQLDb()
-	if _, err := db.Exec(`
+	if _, err := db.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS xuid_aliases (
 			xuid VARCHAR PRIMARY KEY,
 			gamertag VARCHAR NOT NULL,
@@ -281,7 +286,9 @@ func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("OpenSharedDB open %s: %w", path, err)
 	}
-	if err := EnsureSharedSchema(handle.SQLDb()); err != nil {
+	// EnsureSharedSchema est une opération de boot idempotente (CREATE TABLE IF
+	// NOT EXISTS). Pas de contexte caller — context.Background() OK.
+	if err := EnsureSharedSchema(context.Background(), handle.SQLDb()); err != nil {
 		handle.Close()
 		return nil, fmt.Errorf("OpenSharedDB schema %s: %w", path, err)
 	}
@@ -289,9 +296,9 @@ func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 }
 
 // execScript exécute un script SQL multi-instructions séparées par ";".
-func execScript(db *sql.DB, script string) error {
+func execScript(ctx context.Context, db *sql.DB, script string) error {
 	for _, stmt := range splitSQL(script) {
-		if _, err := db.Exec(stmt); err != nil {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execScript: %w (stmt=%q)", err, truncate(stmt, 80))
 		}
 	}

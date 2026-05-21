@@ -40,7 +40,7 @@ func newSharedDuckDBForTest(t *testing.T) *sql.DB {
 		t.Fatalf("open duckdb: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	if err := sync.EnsureSharedSchema(db); err != nil {
+	if err := sync.EnsureSharedSchema(t.Context(), db); err != nil {
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
 	if _, err := db.Exec(`

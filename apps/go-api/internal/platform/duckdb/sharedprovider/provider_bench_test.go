@@ -21,7 +21,7 @@ func setupSharedDBForBench(b *testing.B) string {
 	if err != nil {
 		b.Fatalf("bootstrap OpenReadWrite: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(bootstrap.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(b.Context(), bootstrap.SQLDb()); err != nil {
 		_ = bootstrap.Close()
 		b.Fatalf("EnsureSharedSchema: %v", err)
 	}

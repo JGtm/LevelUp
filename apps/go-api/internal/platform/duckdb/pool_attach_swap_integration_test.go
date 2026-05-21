@@ -28,7 +28,7 @@ func setupSharedAndPlayer(t *testing.T) (sharedPath string, playerDB *duckdb.DB)
 	if err != nil {
 		t.Fatalf("bootstrap OpenReadWrite shared: %v", err)
 	}
-	if err := syncpkg.EnsureSharedSchema(boot.SQLDb()); err != nil {
+	if err := syncpkg.EnsureSharedSchema(t.Context(), boot.SQLDb()); err != nil {
 		_ = boot.Close()
 		t.Fatalf("EnsureSharedSchema: %v", err)
 	}
