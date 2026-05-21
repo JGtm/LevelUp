@@ -260,6 +260,24 @@ func (r *MetadataRepo) ResolveAssetNamesBulk(
 	if len(assetIDs) == 0 {
 		return nil, nil
 	}
+	perAsset, err := r.loadAssetTranslationsPerLang(ctx, assetType, assetIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[string]string, len(perAsset))
+	for assetID, langs := range perAsset {
+		if picked := pickAssetNameByPreferredLang(langs, preferredLangs); picked != "" {
+			out[assetID] = picked
+		}
+	}
+	return out, nil
+}
+
+// loadAssetTranslationsPerLang retourne map[asset_id]map[lang]name pour les asset_ids.
+func (r *MetadataRepo) loadAssetTranslationsPerLang(
+	ctx context.Context, assetType string, assetIDs []string,
+) (map[string]map[string]string, error) {
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(assetIDs)), ",")
 	args := make([]any, 0, len(assetIDs)+1)
 	args = append(args, assetType)
@@ -278,7 +296,6 @@ func (r *MetadataRepo) ResolveAssetNamesBulk(
 	}
 	defer rows.Close()
 
-	// Collecte par asset_id : map[asset_id]map[lang]name
 	perAsset := make(map[string]map[string]string)
 	for rows.Next() {
 		var assetID, lang, name string
@@ -293,36 +310,30 @@ func (r *MetadataRepo) ResolveAssetNamesBulk(
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	return perAsset, nil
+}
 
-	out := make(map[string]string, len(perAsset))
-	for assetID, langs := range perAsset {
-		picked := ""
-		for _, pref := range preferredLangs {
-			if n, present := langs[pref]; present {
-				picked = n
-				break
-			}
-		}
-		if picked == "" {
-			// fallback déterministe : première lang par ordre alphabétique
-			keys := make([]string, 0, len(langs))
-			for k := range langs {
-				keys = append(keys, k)
-			}
-			for i := 1; i < len(keys); i++ {
-				for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
-					keys[j], keys[j-1] = keys[j-1], keys[j]
-				}
-			}
-			if len(keys) > 0 {
-				picked = langs[keys[0]]
-			}
-		}
-		if picked != "" {
-			out[assetID] = picked
+// pickAssetNameByPreferredLang choisit le nom selon preferredLangs, fallback déterministe
+// sur la première lang par ordre alphabétique.
+func pickAssetNameByPreferredLang(langs map[string]string, preferredLangs []string) string {
+	for _, pref := range preferredLangs {
+		if n, present := langs[pref]; present {
+			return n
 		}
 	}
-	return out, nil
+	keys := make([]string, 0, len(langs))
+	for k := range langs {
+		keys = append(keys, k)
+	}
+	for i := 1; i < len(keys); i++ {
+		for j := i; j > 0 && keys[j] < keys[j-1]; j-- {
+			keys[j], keys[j-1] = keys[j-1], keys[j]
+		}
+	}
+	if len(keys) > 0 {
+		return langs[keys[0]]
+	}
+	return ""
 }
 
 // PreferredLangsForLocale retourne l'ordre de préférence linguistique standard

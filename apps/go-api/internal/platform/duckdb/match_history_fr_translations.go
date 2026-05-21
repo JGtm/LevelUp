@@ -59,44 +59,66 @@ func applyMatchHistoryFRTranslations(ctx context.Context, pdb *PlayerDB, rows []
 	}
 	modeFR := loadModeFRBatch(ctx, pdb, modeENSet)
 
-	// Application : helper unifié analysis.ResolvePairNameFR pour les paires
-	// (mode_name_tr puis re-lookup via asset_translations puis raw fallback).
-	// Map / Playlist : pas de table de traduction sub-name → fallback raw direct
-	// si COALESCE SQL a renvoyé l'EN.
+	applyMatchHistoryFRRow(rows, mapNames, pairNames, playlistNames, modeFR)
+}
+
+// applyMatchHistoryFRRow applique les traductions FR (map, pair, playlist) à chaque row.
+// Extraction pour réduire la complexité de applyMatchHistoryFRTranslations.
+func applyMatchHistoryFRRow(
+	rows []domain.MatchHistoryRawRow,
+	mapNames, pairNames, playlistNames map[string]string,
+	modeFR map[string]string,
+) {
 	for i := range rows {
-		// Map : si MapNameFR == MapName (= COALESCE fallback), enrichir.
-		if rows[i].MapID != nil {
-			id := *rows[i].MapID
-			if needsHomeAssetTranslation(derefString(rows[i].MapNameFR), derefString(rows[i].MapName)) {
-				if name := strings.TrimSpace(mapNames[id]); name != "" {
-					rows[i].MapNameFR = &name
-				}
-			}
-		}
+		applyMatchHistoryMapFR(&rows[i], mapNames)
+		applyMatchHistoryPairFR(&rows[i], pairNames, modeFR)
+		applyMatchHistoryPlaylistFR(&rows[i], playlistNames)
+	}
+}
 
-		// Pair / Mode : cascade unifiée (mode_name_tr → asset re-lookup → raw).
-		var assetName string
-		if rows[i].PairID != nil {
-			assetName = pairNames[*rows[i].PairID]
-		}
-		if fr := analysis.ResolvePairNameFR(
-			derefString(rows[i].PairName),
-			derefString(rows[i].PairNameFR),
-			assetName,
-			modeFR,
-		); fr != "" {
-			rows[i].PairNameFR = &fr
-		}
+// applyMatchHistoryMapFR enrichit MapNameFR si COALESCE SQL a renvoyé l'EN.
+func applyMatchHistoryMapFR(row *domain.MatchHistoryRawRow, mapNames map[string]string) {
+	if row.MapID == nil {
+		return
+	}
+	if !needsHomeAssetTranslation(derefString(row.MapNameFR), derefString(row.MapName)) {
+		return
+	}
+	if name := strings.TrimSpace(mapNames[*row.MapID]); name != "" {
+		row.MapNameFR = &name
+	}
+}
 
-		// Playlist : si PlaylistName == PlaylistNameEN (FR manquant), enrichir.
-		if rows[i].PlaylistID != nil {
-			id := *rows[i].PlaylistID
-			if needsHomeAssetTranslation(derefString(rows[i].PlaylistName), derefString(rows[i].PlaylistNameEN)) {
-				if name := strings.TrimSpace(playlistNames[id]); name != "" {
-					rows[i].PlaylistName = &name
-				}
-			}
-		}
+// applyMatchHistoryPairFR applique la cascade unifiée mode_name_tr → asset re-lookup → raw.
+func applyMatchHistoryPairFR(
+	row *domain.MatchHistoryRawRow,
+	pairNames map[string]string,
+	modeFR map[string]string,
+) {
+	var assetName string
+	if row.PairID != nil {
+		assetName = pairNames[*row.PairID]
+	}
+	if fr := analysis.ResolvePairNameFR(
+		derefString(row.PairName),
+		derefString(row.PairNameFR),
+		assetName,
+		modeFR,
+	); fr != "" {
+		row.PairNameFR = &fr
+	}
+}
+
+// applyMatchHistoryPlaylistFR enrichit PlaylistName si COALESCE SQL a renvoyé l'EN.
+func applyMatchHistoryPlaylistFR(row *domain.MatchHistoryRawRow, playlistNames map[string]string) {
+	if row.PlaylistID == nil {
+		return
+	}
+	if !needsHomeAssetTranslation(derefString(row.PlaylistName), derefString(row.PlaylistNameEN)) {
+		return
+	}
+	if name := strings.TrimSpace(playlistNames[*row.PlaylistID]); name != "" {
+		row.PlaylistName = &name
 	}
 }
 

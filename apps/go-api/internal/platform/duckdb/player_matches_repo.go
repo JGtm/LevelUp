@@ -107,65 +107,9 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 
 	args := []any{r.pdb.XUID}
 
-	if since := periodSince(f.Period); since != nil {
-		sb.WriteString(" AND r.start_time >= ?")
-		args = append(args, *since)
-	}
-	if len(f.OutcomeIn) > 0 {
-		placeholders := make([]string, 0, len(f.OutcomeIn))
-		for _, o := range f.OutcomeIn {
-			placeholders = append(placeholders, "?")
-			args = append(args, outcomeToInt(o))
-		}
-		fmt.Fprintf(&sb, " AND COALESCE(p.outcome, 0) IN (%s)",
-			strings.Join(placeholders, ","))
-	}
-	if f.IsFirefight != nil {
-		sb.WriteString(" AND COALESCE(r.is_firefight, FALSE) = ?")
-		args = append(args, *f.IsFirefight)
-	}
-	if f.IsRanked != nil {
-		sb.WriteString(` AND (CASE
-			WHEN COALESCE(r.is_ranked, FALSE)
-				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
-				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
-			THEN TRUE ELSE FALSE END) = ?`)
-		args = append(args, *f.IsRanked)
-	}
-	if f.MinTimePlayedSeconds != nil {
-		sb.WriteString(" AND COALESCE(p.time_played_seconds, 0) >= ?")
-		args = append(args, *f.MinTimePlayedSeconds)
-	}
-	if len(f.ExcludeFriendsXUIDs) > 0 {
-		placeholders := make([]string, 0, len(f.ExcludeFriendsXUIDs))
-		for _, x := range f.ExcludeFriendsXUIDs {
-			placeholders = append(placeholders, "?")
-			args = append(args, x)
-		}
-		fmt.Fprintf(&sb, " AND p.match_id NOT IN (SELECT match_id FROM match_participants WHERE xuid IN (%s))",
-			strings.Join(placeholders, ","))
-	}
-	if f.BTBExcluded {
-		sb.WriteString(" AND (r.pair_name IS NULL OR LOWER(r.pair_name) NOT LIKE '%btb%')")
-	}
-	if f.PlaylistKind != nil {
-		clause, err := playlistKindClause(*f.PlaylistKind)
-		if err != nil {
-			return "", nil, sharedQueryHints{}, err
-		}
-		if clause != "" {
-			sb.WriteString(" AND ")
-			sb.WriteString(clause)
-		}
-	}
-	if len(f.MapIDs) > 0 {
-		placeholders := make([]string, 0, len(f.MapIDs))
-		for _, id := range f.MapIDs {
-			placeholders = append(placeholders, "?")
-			args = append(args, id)
-		}
-		fmt.Fprintf(&sb, " AND COALESCE(r.map_id, '') IN (%s)",
-			strings.Join(placeholders, ","))
+	appendPlayerMatchScalarFilters(&sb, &args, f)
+	if err := appendPlayerMatchSetFilters(&sb, &args, f); err != nil {
+		return "", nil, sharedQueryHints{}, err
 	}
 
 	hints, orderBy, err := classifyOrderBy(f.OrderBy)
@@ -183,6 +127,77 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	}
 
 	return sb.String(), args, hints, nil
+}
+
+// appendPlayerMatchScalarFilters ajoute les filtres scalaires (Period, IsFirefight,
+// IsRanked, MinTimePlayedSeconds, BTBExcluded).
+func appendPlayerMatchScalarFilters(sb *strings.Builder, args *[]any, f port.PlayerMatchFilters) {
+	if since := periodSince(f.Period); since != nil {
+		sb.WriteString(" AND r.start_time >= ?")
+		*args = append(*args, *since)
+	}
+	if f.IsFirefight != nil {
+		sb.WriteString(" AND COALESCE(r.is_firefight, FALSE) = ?")
+		*args = append(*args, *f.IsFirefight)
+	}
+	if f.IsRanked != nil {
+		sb.WriteString(` AND (CASE
+			WHEN COALESCE(r.is_ranked, FALSE)
+				OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+				OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+			THEN TRUE ELSE FALSE END) = ?`)
+		*args = append(*args, *f.IsRanked)
+	}
+	if f.MinTimePlayedSeconds != nil {
+		sb.WriteString(" AND COALESCE(p.time_played_seconds, 0) >= ?")
+		*args = append(*args, *f.MinTimePlayedSeconds)
+	}
+	if f.BTBExcluded {
+		sb.WriteString(" AND (r.pair_name IS NULL OR LOWER(r.pair_name) NOT LIKE '%btb%')")
+	}
+}
+
+// appendPlayerMatchSetFilters ajoute les filtres IN (OutcomeIn, ExcludeFriendsXUIDs,
+// MapIDs) et PlaylistKind. Peut retourner une erreur sur PlaylistKind invalide.
+func appendPlayerMatchSetFilters(sb *strings.Builder, args *[]any, f port.PlayerMatchFilters) error {
+	if len(f.OutcomeIn) > 0 {
+		placeholders := make([]string, 0, len(f.OutcomeIn))
+		for _, o := range f.OutcomeIn {
+			placeholders = append(placeholders, "?")
+			*args = append(*args, outcomeToInt(o))
+		}
+		fmt.Fprintf(sb, " AND COALESCE(p.outcome, 0) IN (%s)",
+			strings.Join(placeholders, ","))
+	}
+	if len(f.ExcludeFriendsXUIDs) > 0 {
+		placeholders := make([]string, 0, len(f.ExcludeFriendsXUIDs))
+		for _, x := range f.ExcludeFriendsXUIDs {
+			placeholders = append(placeholders, "?")
+			*args = append(*args, x)
+		}
+		fmt.Fprintf(sb, " AND p.match_id NOT IN (SELECT match_id FROM match_participants WHERE xuid IN (%s))",
+			strings.Join(placeholders, ","))
+	}
+	if f.PlaylistKind != nil {
+		clause, err := playlistKindClause(*f.PlaylistKind)
+		if err != nil {
+			return err
+		}
+		if clause != "" {
+			sb.WriteString(" AND ")
+			sb.WriteString(clause)
+		}
+	}
+	if len(f.MapIDs) > 0 {
+		placeholders := make([]string, 0, len(f.MapIDs))
+		for _, id := range f.MapIDs {
+			placeholders = append(placeholders, "?")
+			*args = append(*args, id)
+		}
+		fmt.Fprintf(sb, " AND COALESCE(r.map_id, '') IN (%s)",
+			strings.Join(placeholders, ","))
+	}
+	return nil
 }
 
 // sharedQueryHints regroupe les hints sur le découpage ORDER BY + LIMIT entre
@@ -530,19 +545,29 @@ type playerMatchScanResult struct {
 
 // projectPlayerMatchRow construit la row canonique depuis les valeurs scannees.
 func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
-	teamIDPtr := s.teamID
-	durationPtr := s.durationSeconds
-	killsPtr, deathsPtr, assistsPtr := s.kills, s.deaths, s.assists
-	headshotPtr := s.headshotKills
-	timePlayedPtr := s.timePlayedSeconds
+	outcome := projectOutcome(s)
+	teams := projectTeamScores(s)
+	skillSnap := projectSkillSnapshot(s)
+	dmgDealt, dmgTaken := projectDamageStats(s)
 
-	// Bug #5 : si outcome NULL/0 en DB, l'Outcome canonical reste vide.
-	var outcome canonical.Outcome
-	if s.outcomeCode.Valid && s.outcomeCode.Int64 != 0 {
-		outcome = outcomeFromInt(int(s.outcomeCode.Int64))
+	return canonical.PlayerMatchRow{
+		Summary:    projectMatchSummary(s, outcome, teams),
+		Self:       projectSelfParticipant(s, outcome, dmgDealt, dmgTaken),
+		Enrichment: projectEnrichment(s, skillSnap),
 	}
+}
 
-	// Scores des équipes (team_0_score / team_1_score, -1 = absent via COALESCE).
+// projectOutcome retourne l'Outcome canonique. Outcome vide si NULL/0 en DB.
+func projectOutcome(s playerMatchScanResult) canonical.Outcome {
+	if s.outcomeCode.Valid && s.outcomeCode.Int64 != 0 {
+		return outcomeFromInt(int(s.outcomeCode.Int64))
+	}
+	return ""
+}
+
+// projectTeamScores assemble les TeamSnapshot depuis team_0_score / team_1_score.
+// Une valeur -1 (COALESCE) signifie absent et est exclue.
+func projectTeamScores(s playerMatchScanResult) []canonical.TeamSnapshot {
 	var teams []canonical.TeamSnapshot
 	if s.team0Score >= 0 {
 		score := s.team0Score
@@ -552,32 +577,38 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 		score := s.team1Score
 		teams = append(teams, canonical.TeamSnapshot{TeamID: 1, Score: &score})
 	}
+	return teams
+}
 
-	// SkillSnapshot depuis match_skill_rank (LEFT JOIN — nil si absent).
-	var skillSnap *canonical.SkillSnapshot
-	if s.skillRatingType.Valid && s.skillRatingType.String != "" {
-		snap := canonical.SkillSnapshot{
-			RatingType:    canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
-			RatingValue:   nullFloatPtr(s.skillRatingValue),
-			Delta:         nullFloatPtr(s.skillDelta),
-			PlaylistGroup: nullStringPtr(s.skillPlaylistGroup),
-		}
-		if s.skillTier.Valid && s.skillTier.String != "" {
-			tier := strings.ToLower(s.skillTier.String)
-			snap.TierCode = &tier
-		}
-		if s.skillTierFR.Valid && s.skillTierFR.String != "" {
-			tierFR := s.skillTierFR.String
-			snap.TierCodeFR = &tierFR
-		}
-		if s.skillSubTier.Valid {
-			st := int(s.skillSubTier.Int64)
-			snap.SubTier = &st
-		}
-		skillSnap = &snap
+// projectSkillSnapshot extrait le SkillSnapshot depuis match_skill_rank.
+// Retourne nil si LEFT JOIN absent.
+func projectSkillSnapshot(s playerMatchScanResult) *canonical.SkillSnapshot {
+	if !s.skillRatingType.Valid || s.skillRatingType.String == "" {
+		return nil
 	}
+	snap := canonical.SkillSnapshot{
+		RatingType:    canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
+		RatingValue:   nullFloatPtr(s.skillRatingValue),
+		Delta:         nullFloatPtr(s.skillDelta),
+		PlaylistGroup: nullStringPtr(s.skillPlaylistGroup),
+	}
+	if s.skillTier.Valid && s.skillTier.String != "" {
+		tier := strings.ToLower(s.skillTier.String)
+		snap.TierCode = &tier
+	}
+	if s.skillTierFR.Valid && s.skillTierFR.String != "" {
+		tierFR := s.skillTierFR.String
+		snap.TierCodeFR = &tierFR
+	}
+	if s.skillSubTier.Valid {
+		st := int(s.skillSubTier.Int64)
+		snap.SubTier = &st
+	}
+	return &snap
+}
 
-	// Bug #3 : damage_dealt/damage_taken sont DOUBLE en DB.
+// projectDamageStats convertit damage_dealt / damage_taken (DOUBLE en DB) en *int.
+func projectDamageStats(s playerMatchScanResult) (*int, *int) {
 	var dmgDealt, dmgTaken *int
 	if s.damageDealt.Valid {
 		v := int(s.damageDealt.Float64)
@@ -587,59 +618,73 @@ func projectPlayerMatchRow(s playerMatchScanResult) canonical.PlayerMatchRow {
 		v := int(s.damageTaken.Float64)
 		dmgTaken = &v
 	}
+	return dmgDealt, dmgTaken
+}
 
-	row := canonical.PlayerMatchRow{
-		Summary: canonical.MatchSummary{
-			MatchID:         s.matchID,
-			StartedAtUTC:    s.startTime,
-			DurationSeconds: &durationPtr,
-			MatchType:       matchTypeFromFlags(s.isRanked, s.isFirefight),
-			Playlist:        assetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
-			Map:             assetReference("map", s.mapID, s.mapName, s.mapNameFR),
-			GameVariant:     assetReference("game_variant", s.variantID, s.variantName, ""),
-			PairMode:        assetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
-			IsRanked:        &s.isRanked,
-			IsPvE:           &s.isFirefight,
-			Outcome:         outcome,
-			Teams:           teams,
-		},
-		Self: canonical.MatchParticipant{
-			Identity:         canonical.PlayerIdentity{XUID: s.xuid, Gamertag: s.gamertag},
-			TeamID:           &teamIDPtr,
-			Outcome:          outcome,
-			Kills:            &killsPtr,
-			Deaths:           &deathsPtr,
-			Assists:          &assistsPtr,
-			HeadshotKills:    &headshotPtr,
-			KDA:              nullFloatPtr(s.kda),
-			Accuracy:         nullFloatPtr(s.accuracy),
-			AvgLifeSeconds:   nullFloatPtr(s.avgLifeSeconds),
-			TimePlayed:       &timePlayedPtr,
-			DamageDealt:      dmgDealt,
-			DamageTaken:      dmgTaken,
-			MaxKillingSpree:  nullInt64ToIntPtr(s.maxKillingSpree),
-			PersonalScore:    nullInt64ToIntPtr(s.personalScore),
-			RankInMatch:      nullInt64ToIntPtr(s.rankInMatch),
-			GrenadeKills:     nullInt64ToIntPtr(s.grenadeKills),
-			MeleeKills:       nullInt64ToIntPtr(s.meleeKills),
-			PowerWeaponKills: nullInt64ToIntPtr(s.powerWeaponKills),
-			ShotsFired:       nullInt64ToIntPtr(s.shotsFired),
-			ShotsHit:         nullInt64ToIntPtr(s.shotsHit),
-			PerfectKills:     nullInt64ToIntPtr(s.perfectKills),
-		},
-		Enrichment: canonical.PlayerMatchEnrichment{
-			SessionID:        nullStringPtr(s.sessionID),
-			SessionLabel:     nullStringPtr(s.sessionLabel),
-			PerformanceScore: nullFloatPtr(s.performanceScore),
-			DominanceFlag:    canonical.DominanceFlag(s.dominanceFlag),
-			HadBotTeammate:   s.hadBotTeammate,
-			IsWithFriends:    s.isWithFriends,
-			TeamMMR:          nullFloatPtr(s.teamMMR),
-			EnemyMMR:         nullFloatPtr(s.enemyMMR),
-			SkillSnapshot:    skillSnap,
-		},
+// projectMatchSummary projette la section Summary depuis les champs scannés.
+func projectMatchSummary(s playerMatchScanResult, outcome canonical.Outcome, teams []canonical.TeamSnapshot) canonical.MatchSummary {
+	durationPtr := s.durationSeconds
+	return canonical.MatchSummary{
+		MatchID:         s.matchID,
+		StartedAtUTC:    s.startTime,
+		DurationSeconds: &durationPtr,
+		MatchType:       matchTypeFromFlags(s.isRanked, s.isFirefight),
+		Playlist:        assetReference("playlist", s.playlistID, s.playlistName, s.playlistNameFR),
+		Map:             assetReference("map", s.mapID, s.mapName, s.mapNameFR),
+		GameVariant:     assetReference("game_variant", s.variantID, s.variantName, ""),
+		PairMode:        assetReference("pair_mode", s.pairID, s.pairName, s.pairNameFR),
+		IsRanked:        &s.isRanked,
+		IsPvE:           &s.isFirefight,
+		Outcome:         outcome,
+		Teams:           teams,
 	}
-	return row
+}
+
+// projectSelfParticipant projette la section Self depuis les champs scannés.
+func projectSelfParticipant(s playerMatchScanResult, outcome canonical.Outcome, dmgDealt, dmgTaken *int) canonical.MatchParticipant {
+	teamIDPtr := s.teamID
+	killsPtr, deathsPtr, assistsPtr := s.kills, s.deaths, s.assists
+	headshotPtr := s.headshotKills
+	timePlayedPtr := s.timePlayedSeconds
+	return canonical.MatchParticipant{
+		Identity:         canonical.PlayerIdentity{XUID: s.xuid, Gamertag: s.gamertag},
+		TeamID:           &teamIDPtr,
+		Outcome:          outcome,
+		Kills:            &killsPtr,
+		Deaths:           &deathsPtr,
+		Assists:          &assistsPtr,
+		HeadshotKills:    &headshotPtr,
+		KDA:              nullFloatPtr(s.kda),
+		Accuracy:         nullFloatPtr(s.accuracy),
+		AvgLifeSeconds:   nullFloatPtr(s.avgLifeSeconds),
+		TimePlayed:       &timePlayedPtr,
+		DamageDealt:      dmgDealt,
+		DamageTaken:      dmgTaken,
+		MaxKillingSpree:  nullInt64ToIntPtr(s.maxKillingSpree),
+		PersonalScore:    nullInt64ToIntPtr(s.personalScore),
+		RankInMatch:      nullInt64ToIntPtr(s.rankInMatch),
+		GrenadeKills:     nullInt64ToIntPtr(s.grenadeKills),
+		MeleeKills:       nullInt64ToIntPtr(s.meleeKills),
+		PowerWeaponKills: nullInt64ToIntPtr(s.powerWeaponKills),
+		ShotsFired:       nullInt64ToIntPtr(s.shotsFired),
+		ShotsHit:         nullInt64ToIntPtr(s.shotsHit),
+		PerfectKills:     nullInt64ToIntPtr(s.perfectKills),
+	}
+}
+
+// projectEnrichment projette la section Enrichment (PME + skill).
+func projectEnrichment(s playerMatchScanResult, skillSnap *canonical.SkillSnapshot) canonical.PlayerMatchEnrichment {
+	return canonical.PlayerMatchEnrichment{
+		SessionID:        nullStringPtr(s.sessionID),
+		SessionLabel:     nullStringPtr(s.sessionLabel),
+		PerformanceScore: nullFloatPtr(s.performanceScore),
+		DominanceFlag:    canonical.DominanceFlag(s.dominanceFlag),
+		HadBotTeammate:   s.hadBotTeammate,
+		IsWithFriends:    s.isWithFriends,
+		TeamMMR:          nullFloatPtr(s.teamMMR),
+		EnemyMMR:         nullFloatPtr(s.enemyMMR),
+		SkillSnapshot:    skillSnap,
+	}
 }
 
 // outcomeToInt convertit un canonical.Outcome (string) vers le code int stocke

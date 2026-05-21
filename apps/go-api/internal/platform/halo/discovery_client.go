@@ -117,57 +117,59 @@ func (p *HaloProvider) doGetWithLang(ctx context.Context, rawURL string, lang st
 			}
 		}
 
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("new request: %w", err)
-		}
-
-		req.Header.Set("Accept-Language", lang)
-		req.Header.Set("Accept", "application/json")
-		if p.staticTokens != nil {
-			req.Header.Set("x-343-authorization-spartan", p.staticTokens.SpartanToken)
-			if p.staticTokens.ClearanceToken != "" {
-				req.Header.Set("343-clearance", p.staticTokens.ClearanceToken)
-			}
-		}
-
-		resp, err := p.client.Do(req)
-		if err != nil {
-			lastErr = fmt.Errorf("http do: %w", err)
-			continue
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		if err != nil {
-			lastErr = fmt.Errorf("read body: %w", err)
-			continue
-		}
-
-		if resp.StatusCode == http.StatusOK {
+		body, retriable, err := p.attemptHaloGet(ctx, rawURL, lang)
+		if err == nil {
 			return body, nil
 		}
-
-		// 404 : asset inexistant ou supprimé par 343 → erreur non retriable
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, fmt.Errorf("asset not found (404)")
+		if !retriable {
+			return nil, err
 		}
-
-		// 401/403 : token absent ou expiré → non retriable
-		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-			return nil, fmt.Errorf("http %d: auth requise — %s", resp.StatusCode, string(body))
-		}
-
-		// 5xx : erreur serveur → retry
-		if resp.StatusCode >= 500 {
-			lastErr = fmt.Errorf("server error %d", resp.StatusCode)
-			continue
-		}
-
-		// Autre erreur (4xx) : non retriable
-		return nil, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
+		lastErr = err
 	}
 
 	return nil, fmt.Errorf("max retries exceeded: %w", lastErr)
+}
+
+// attemptHaloGet effectue une tentative GET unique. Retourne (body, retriable, err).
+// retriable=true → l'appelant doit retry avec backoff ; retriable=false → erreur finale.
+func (p *HaloProvider) attemptHaloGet(ctx context.Context, rawURL, lang string) ([]byte, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, false, fmt.Errorf("new request: %w", err)
+	}
+
+	req.Header.Set("Accept-Language", lang)
+	req.Header.Set("Accept", "application/json")
+	if p.staticTokens != nil {
+		req.Header.Set("x-343-authorization-spartan", p.staticTokens.SpartanToken)
+		if p.staticTokens.ClearanceToken != "" {
+			req.Header.Set("343-clearance", p.staticTokens.ClearanceToken)
+		}
+	}
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, true, fmt.Errorf("http do: %w", err)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if err != nil {
+		return nil, true, fmt.Errorf("read body: %w", err)
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		return body, false, nil
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, false, fmt.Errorf("asset not found (404)")
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, false, fmt.Errorf("http %d: auth requise — %s", resp.StatusCode, string(body))
+	}
+	if resp.StatusCode >= 500 {
+		return nil, true, fmt.Errorf("server error %d", resp.StatusCode)
+	}
+	return nil, false, fmt.Errorf("http %d: %s", resp.StatusCode, string(body))
 }

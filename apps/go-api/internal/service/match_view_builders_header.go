@@ -44,6 +44,22 @@ func buildMatchHeader(
 		return h
 	}
 
+	applyMatchHeaderMetaLabels(&h, meta)
+	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
+	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
+	h.IsRanked = meta.IsRanked
+	if meta.MapAssetID != nil {
+		h.WaypointURL = fmt.Sprintf("https://www.halowaypoint.com/halo-infinite/matches/%s", matchID)
+	}
+
+	applyMatchHeaderOutcome(&h, meta, stats)
+	applyMatchHeaderEnrichment(&h, stats, enrich)
+
+	return h
+}
+
+// applyMatchHeaderMetaLabels renseigne StartTime, MapUI, MapID, ModeUI, PlaylistLabel.
+func applyMatchHeaderMetaLabels(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw) {
 	h.StartTime = meta.StartTime
 	if meta.StartTime != nil {
 		h.StartTimeLabel = formatDateFRLong(*meta.StartTime)
@@ -66,90 +82,88 @@ func buildMatchHeader(
 	if modeUI != nil {
 		h.ModeUI = *modeUI
 	}
-	// Playlist : priorité à la traduction FR (asset_translations), fallback
-	// nom brut EN (match_registry.playlist_name).
 	if meta.PlaylistNameFR != nil && *meta.PlaylistNameFR != "" {
 		h.PlaylistLabel = *meta.PlaylistNameFR
 	} else if meta.PlaylistName != nil {
 		h.PlaylistLabel = *meta.PlaylistName
 	}
-	// MapImageURL : cascade de résolution
-	//   1. map_images_registry (lookup par map_id stable, peuplé par
-	//      cmd/migrate-static-maps).
-	//   2. AssetURLAdapter avec **nom EN résolu** (asset_translations en-US) —
-	//      l'adapter indexe les fichiers `static/maps/halo_infinite/{name}.{ext}`
-	//      par nom EN. Sans le nom EN, on aurait l'UUID brut de
-	//      match_registry.map_name → l'adapter rejette via uuidRe.
-	//   3. AssetURLAdapter avec map_name brut (legacy fallback — utile si
-	//      asset_translations EN absent et map_name est déjà un nom propre).
+}
+
+// applyMatchHeaderMapImage applique la cascade MapImageURL :
+//  1. map_images_registry (meta.MapImageURL).
+//  2. AssetURLAdapter avec nom EN résolu (asset_translations en-US).
+//  3. AssetURLAdapter avec map_name brut (legacy).
+func applyMatchHeaderMapImage(
+	ctx context.Context, h *domain.MatchViewHeader, matchID string,
+	meta *domain.MatchMetaRaw, assetURL games.TitleAssetURLAdapter,
+) {
 	if meta.MapImageURL != nil && *meta.MapImageURL != "" {
 		h.MapImageURL = meta.MapImageURL
-	} else if assetURL != nil {
-		nameForAdapter := ""
-		if meta.MapNameEN != nil && *meta.MapNameEN != "" {
-			nameForAdapter = *meta.MapNameEN
-		} else if meta.MapName != nil && *meta.MapName != "" {
-			nameForAdapter = *meta.MapName
-		}
-		if nameForAdapter != "" {
-			if url := assetURL.MapImageURL(nameForAdapter); url != "" {
-				h.MapImageURL = &url
-			} else {
-				slog.WarnContext(ctx, "match_header: map image missing",
-					"match_id", matchID,
-					"map_name_used", nameForAdapter,
-					"map_name_raw", strDeref(meta.MapName),
-					"map_name_en", strDeref(meta.MapNameEN))
-			}
+		return
+	}
+	if assetURL == nil {
+		return
+	}
+	nameForAdapter := ""
+	if meta.MapNameEN != nil && *meta.MapNameEN != "" {
+		nameForAdapter = *meta.MapNameEN
+	} else if meta.MapName != nil && *meta.MapName != "" {
+		nameForAdapter = *meta.MapName
+	}
+	if nameForAdapter == "" {
+		return
+	}
+	if url := assetURL.MapImageURL(nameForAdapter); url != "" {
+		h.MapImageURL = &url
+		return
+	}
+	slog.WarnContext(ctx, "match_header: map image missing",
+		"match_id", matchID,
+		"map_name_used", nameForAdapter,
+		"map_name_raw", strDeref(meta.MapName),
+		"map_name_en", strDeref(meta.MapNameEN))
+}
+
+// applyMatchHeaderOutcome remplit OutcomeCode/Label/Color + ScoreLabel.
+func applyMatchHeaderOutcome(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, stats *domain.PlayerMatchStatsRaw) {
+	if stats == nil || stats.OutcomeCode == 0 {
+		return
+	}
+	code := stats.OutcomeCode
+	h.OutcomeCode = &code
+	h.OutcomeLabel = outcomeLabel(code)
+	h.OutcomeColor = outcomeColor(code)
+	h.OutcomeColorToken = outcomeColorToken(code)
+	h.ScoreLabel = buildScoreLabelFromMeta(meta, stats)
+}
+
+// applyMatchHeaderEnrichment renseigne PerfDisplay/Color, IsExcluded, DominanceFlag/Badge.
+func applyMatchHeaderEnrichment(
+	h *domain.MatchViewHeader, stats *domain.PlayerMatchStatsRaw, enrich *domain.MatchEnrichmentRaw,
+) {
+	if enrich == nil {
+		return
+	}
+	isDNF := stats != nil && stats.OutcomeCode == 4
+	if enrich.PerformanceScore != nil && !isDNF {
+		perf := *enrich.PerformanceScore
+		display := fmt.Sprintf("%.0f", perf)
+		h.PerfDisplay = display
+		color := perfColor(perf)
+		h.PerfColor = &color
+		h.PerfColorToken = perfColorToken(perf)
+	}
+	h.IsExcluded = enrich.IsExcluded
+
+	flag := canonical.DominanceFlag(enrich.DominanceFlag)
+	if badge := narrative.ResolveDominanceBadge(flag); badge != nil {
+		h.DominanceFlag = true
+		h.DominanceBadge = &domain.MatchViewDominanceBadge{
+			Flag:       int(badge.Flag),
+			LabelKey:   badge.LabelKey,
+			ColorToken: badge.ColorToken,
 		}
 	}
-	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
-	h.IsRanked = meta.IsRanked
-	if meta.MapAssetID != nil {
-		h.WaypointURL = fmt.Sprintf("https://www.halowaypoint.com/halo-infinite/matches/%s", matchID)
-	}
-
-	if stats != nil && stats.OutcomeCode != 0 {
-		code := stats.OutcomeCode
-		h.OutcomeCode = &code
-		h.OutcomeLabel = outcomeLabel(code)
-		h.OutcomeColor = outcomeColor(code)
-		// Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup hex codes.
-		// OutcomeColorToken est résolu côté front via tokenCssVar(),
-		// remplace progressivement OutcomeColor (hex legacy).
-		h.OutcomeColorToken = outcomeColorToken(code)
-		h.ScoreLabel = buildScoreLabelFromMeta(meta, stats)
-	}
-
-	if enrich != nil {
-		isDNF := stats != nil && stats.OutcomeCode == 4
-		if enrich.PerformanceScore != nil && !isDNF {
-			perf := *enrich.PerformanceScore
-			display := fmt.Sprintf("%.0f", perf)
-			h.PerfDisplay = display
-			color := perfColor(perf)
-			h.PerfColor = &color
-			// Token sémantique perf-tier-1..5 (cf. MV3 cleanup hex).
-			h.PerfColorToken = perfColorToken(perf)
-		}
-		h.IsExcluded = enrich.IsExcluded
-
-		// Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné sur les fondations
-		// narrative. Résolution du badge typé via narrative.ResolveDominanceBadge.
-		// Le bool legacy `dominance_flag` reste exposé pour rétrocompat (true si
-		// un badge narratif s'applique).
-		flag := canonical.DominanceFlag(enrich.DominanceFlag)
-		if badge := narrative.ResolveDominanceBadge(flag); badge != nil {
-			h.DominanceFlag = true
-			h.DominanceBadge = &domain.MatchViewDominanceBadge{
-				Flag:       int(badge.Flag),
-				LabelKey:   badge.LabelKey,
-				ColorToken: badge.ColorToken,
-			}
-		}
-	}
-
-	return h
 }
 
 // buildScoreLabelFromMeta construit "X-Y" depuis team_0_score/team_1_score de

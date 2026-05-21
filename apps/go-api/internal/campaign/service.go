@@ -242,19 +242,36 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 	if !c.IsActive() {
 		return nil
 	}
-	// Pré-snapshot : avant StartedAt, capé 100 matchs.
-	preStart := c.StartedAt.AddDate(0, 0, -180)
-	pre, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, preStart, c.StartedAt)
-	if len(pre) > 100 {
-		pre = pre[len(pre)-100:]
-	}
-	// Post-snapshot : depuis StartedAt jusqu'à now.
-	post, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, c.StartedAt, now)
+	pre, post := s.loadCampaignSnapshots(ctx, c, now)
 
 	eval := Evaluation{
 		MatchesSinceStart: len(post),
 		EvaluatedAt:       now,
 	}
+	applyCampaignAggregateStats(&eval, post)
+	applyCampaignMannWhitney(ctx, &eval, c, pre, post)
+	s.applyCampaignAutoClosureRules(ctx, &eval, c, now)
+	if eval.AutoClosureSuggested {
+		slog.InfoContext(ctx, "campaign: auto-closure suggested",
+			"campaign_id", c.ID, "axis", c.Axis, "reason", eval.AutoClosureReason,
+		)
+	}
+	return s.repo.UpdateEvaluation(ctx, c.ID, eval)
+}
+
+// loadCampaignSnapshots charge pre (180j cappé 100) + post (depuis StartedAt).
+func (s *Service) loadCampaignSnapshots(ctx context.Context, c ImprovementCampaign, now time.Time) ([]float64, []float64) {
+	preStart := c.StartedAt.AddDate(0, 0, -180)
+	pre, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, preStart, c.StartedAt)
+	if len(pre) > 100 {
+		pre = pre[len(pre)-100:]
+	}
+	post, _ := s.samples.LoadAxisSamples(ctx, c.UserID, c.TitleSlug, c.Axis, c.AxisKind, c.PlaylistGroup, c.StartedAt, now)
+	return pre, post
+}
+
+// applyCampaignAggregateStats renseigne CurrentRaw + CurrentLOWESS depuis post.
+func applyCampaignAggregateStats(eval *Evaluation, post []float64) {
 	if len(post) > 0 {
 		raw := mean(post)
 		eval.CurrentRaw = sql.NullFloat64{Float64: roundTo(raw, 2), Valid: true}
@@ -265,48 +282,54 @@ func (s *Service) Evaluate(ctx context.Context, c ImprovementCampaign, now time.
 			eval.CurrentLOWESS = sql.NullFloat64{Float64: roundTo(last, 2), Valid: true}
 		}
 	}
-	if len(post) >= MinMatchesForMannWhitney && len(pre) >= 3 {
-		_, p := MannWhitneyU(pre, post)
-		eval.MannWhitneyP = sql.NullFloat64{Float64: p, Valid: true}
-		eval.ProgressionConfirmed = p < MannWhitneyThreshold
-		if eval.ProgressionConfirmed {
-			slog.InfoContext(ctx, "campaign: progression confirmed",
-				"campaign_id", c.ID, "axis", c.Axis, "p_value", p,
-				"matches_post", len(post), "matches_pre", len(pre),
-			)
-		}
+}
+
+// applyCampaignMannWhitney calcule le test MWU + flag ProgressionConfirmed.
+func applyCampaignMannWhitney(ctx context.Context, eval *Evaluation, c ImprovementCampaign, pre, post []float64) {
+	if len(post) < MinMatchesForMannWhitney || len(pre) < 3 {
+		return
 	}
-	// R5 : suggérer clôture si plateau (60j sans variation > 0.02 sur LOWESS).
-	if !eval.ProgressionConfirmed &&
-		now.Sub(c.StartedAt) > PlateauWindowDays*24*time.Hour {
-		if eval.CurrentLOWESS.Valid {
-			delta := math.Abs(eval.CurrentLOWESS.Float64 - c.SnapshotValue)
-			if delta < 0.02 {
-				eval.AutoClosureSuggested = true
-				eval.AutoClosureReason = "plateau_60d"
-			}
-		}
-	}
-	// R5 condition 2 (V2 §4) : l'axe est-il toujours dans les leviers
-	// prioritaires actuels du joueur ? S'il en est sorti, on suggère la
-	// clôture pour libérer la place vers un axe plus pertinent.
-	// Priorité plus haute que plateau (overwrite si applicable).
-	if !eval.ProgressionConfirmed && s.leverages != nil {
-		current, err := s.leverages.CurrentLeverageComponents(ctx, c.UserID, c.TitleSlug)
-		if err != nil {
-			slog.WarnContext(ctx, "campaign: leverage provider failed (R5 cond 2 skipped)",
-				"campaign_id", c.ID, "err", err)
-		} else if !containsString(current, c.Axis) && len(current) > 0 {
-			eval.AutoClosureSuggested = true
-			eval.AutoClosureReason = "axis_no_longer_priority"
-		}
-	}
-	if eval.AutoClosureSuggested {
-		slog.InfoContext(ctx, "campaign: auto-closure suggested",
-			"campaign_id", c.ID, "axis", c.Axis, "reason", eval.AutoClosureReason,
+	_, p := MannWhitneyU(pre, post)
+	eval.MannWhitneyP = sql.NullFloat64{Float64: p, Valid: true}
+	eval.ProgressionConfirmed = p < MannWhitneyThreshold
+	if eval.ProgressionConfirmed {
+		slog.InfoContext(ctx, "campaign: progression confirmed",
+			"campaign_id", c.ID, "axis", c.Axis, "p_value", p,
+			"matches_post", len(post), "matches_pre", len(pre),
 		)
 	}
-	return s.repo.UpdateEvaluation(ctx, c.ID, eval)
+}
+
+// applyCampaignAutoClosureRules applique les 2 règles R5 (plateau, leverage).
+//
+// R5.1 : plateau 60j sans variation > 0.02 sur LOWESS.
+// R5.2 (V2 §4) : axe sorti des leviers prioritaires (priorité plus haute, overwrite).
+func (s *Service) applyCampaignAutoClosureRules(
+	ctx context.Context, eval *Evaluation, c ImprovementCampaign, now time.Time,
+) {
+	if eval.ProgressionConfirmed {
+		return
+	}
+	if now.Sub(c.StartedAt) > PlateauWindowDays*24*time.Hour && eval.CurrentLOWESS.Valid {
+		delta := math.Abs(eval.CurrentLOWESS.Float64 - c.SnapshotValue)
+		if delta < 0.02 {
+			eval.AutoClosureSuggested = true
+			eval.AutoClosureReason = "plateau_60d"
+		}
+	}
+	if s.leverages == nil {
+		return
+	}
+	current, err := s.leverages.CurrentLeverageComponents(ctx, c.UserID, c.TitleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "campaign: leverage provider failed (R5 cond 2 skipped)",
+			"campaign_id", c.ID, "err", err)
+		return
+	}
+	if !containsString(current, c.Axis) && len(current) > 0 {
+		eval.AutoClosureSuggested = true
+		eval.AutoClosureReason = "axis_no_longer_priority"
+	}
 }
 
 func containsString(slice []string, target string) bool {

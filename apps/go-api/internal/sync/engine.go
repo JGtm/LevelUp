@@ -283,6 +283,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 		// ─── Phase 1 : Filtrer et préparer les matchs à fetcher ───
 		var toFetch []string // MatchIDs à fetcher (l'ordre suit `entries`)
+		// stopAfterFlush : on a rencontré un match connu en mode delta. On
+		// arrête après avoir fetché/inséré les nouveaux déjà collectés —
+		// ne PAS goto done direct sinon on perd les entries unknown qui
+		// précèdent le connu dans la même page (bug 2026-05-21 : page
+		// renvoyait [cd89b091 (new May 11), b8c1b220 (known May 6)] →
+		// goto done sautait Phase 2 → cd89b091 jamais inséré).
+		stopAfterFlush := false
 
 		for _, entry := range entries {
 			if processed >= opts.MaxMatches {
@@ -291,11 +298,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			if known[entry.MatchID] {
 				result.MatchesSkipped++
 				if isDelta {
-					slog.InfoContext(ctx, "sync: match connu rencontré — arrêt delta",
+					slog.InfoContext(ctx, "sync: match connu rencontré — arrêt delta après flush",
 						"gamertag", e.gamertag, "match_id", entry.MatchID,
 						"processed", processed, "skipped", result.MatchesSkipped,
+						"pending_fetch", len(toFetch),
 					)
-					goto done
+					stopAfterFlush = true
+					break
 				}
 				continue
 			}
@@ -355,13 +364,17 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			}
 		}
 
+		if stopAfterFlush {
+			// Match connu rencontré, mais les unknowns déjà collectés ont été
+			// fetchés/insérés via Phase 2-3 ci-dessus. On peut sortir.
+			break
+		}
 		if isDelta && allKnown {
 			break
 		}
 		start += len(entries)
 	}
 
-done:
 	slog.InfoContext(ctx, "sync: boucle pagination terminée",
 		"gamertag", e.gamertag, "mode", mode,
 		"inserted", result.MatchesInserted, "skipped", result.MatchesSkipped,

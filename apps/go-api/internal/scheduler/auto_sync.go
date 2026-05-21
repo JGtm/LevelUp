@@ -401,44 +401,8 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		s.recordOutcome(detail)
 	}()
 
-	// Précondition : pool initialisé.
-	if s.pool == nil {
-		slog.InfoContext(ctx, "auto_sync: pool nil, joueur ignoré", "gamertag", p.Gamertag)
-		detail.Reason = "pool de tokens non initialisé (aucun credential découvert au boot)"
-		outcome = outcomeSkipped
-		return outcome
-	}
-
-	// Précondition : ce joueur a-t-il un token dans le pool ?
-	if !s.pool.HasPlayer(p.Gamertag) {
-		slog.InfoContext(ctx, "auto_sync: joueur absent du pool, ignoré",
-			"gamertag", p.Gamertag,
-			"hint", "définir SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local ou faire une sync initiale",
-		)
-		detail.Reason = "joueur absent du pool (pas de token discoverable via Discovery — vérifier .env.local et sync_meta)"
-		outcome = outcomeSkipped
-		return outcome
-	}
-
-	// Précondition : watcher actif sur ce joueur ?
-	if s.ActivityChecker != nil && s.ActivityChecker.IsPlayerActive(p.Gamertag) {
-		slog.InfoContext(ctx, "auto_sync: watcher actif sur ce joueur — tick cédé",
-			"gamertag", p.Gamertag,
-		)
-		detail.Reason = "watcher actif (Watching/Syncing/Cooling) — tick cédé"
-		outcome = outcomeSkipped
-		return outcome
-	}
-
-	// Précondition : DB joueur présente (sinon la 1re sync doit créer le schéma —
-	// on préfère skip et laisser l'utilisateur faire une sync initiale explicite).
-	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",
-			"gamertag", p.Gamertag, "db_path", dbPath,
-			"hint", "lancer la sync initiale via POST /sync/initial pour créer la DB",
-		)
-		detail.Reason = "DB joueur absente — sync initiale jamais effectuée"
+	if skipReason, ok := s.checkSyncPreconditions(ctx, p); !ok {
+		detail.Reason = skipReason
 		outcome = outcomeSkipped
 		return outcome
 	}
@@ -521,6 +485,38 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	}
 	outcome = outcomeOK
 	return outcome
+}
+
+// checkSyncPreconditions vérifie les 4 préconditions de sync (pool initialisé,
+// joueur dans pool, watcher inactif, DB présente). Retourne (raison_skip, false)
+// si une précondition échoue, sinon ("", true).
+func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain.PlayerSummary) (string, bool) {
+	if s.pool == nil {
+		slog.InfoContext(ctx, "auto_sync: pool nil, joueur ignoré", "gamertag", p.Gamertag)
+		return "pool de tokens non initialisé (aucun credential découvert au boot)", false
+	}
+	if !s.pool.HasPlayer(p.Gamertag) {
+		slog.InfoContext(ctx, "auto_sync: joueur absent du pool, ignoré",
+			"gamertag", p.Gamertag,
+			"hint", "définir SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local ou faire une sync initiale",
+		)
+		return "joueur absent du pool (pas de token discoverable via Discovery — vérifier .env.local et sync_meta)", false
+	}
+	if s.ActivityChecker != nil && s.ActivityChecker.IsPlayerActive(p.Gamertag) {
+		slog.InfoContext(ctx, "auto_sync: watcher actif sur ce joueur — tick cédé",
+			"gamertag", p.Gamertag,
+		)
+		return "watcher actif (Watching/Syncing/Cooling) — tick cédé", false
+	}
+	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",
+			"gamertag", p.Gamertag, "db_path", dbPath,
+			"hint", "lancer la sync initiale via POST /sync/initial pour créer la DB",
+		)
+		return "DB joueur absente — sync initiale jamais effectuée", false
+	}
+	return "", true
 }
 
 // CurrentInterval retourne l'intervalle courant depuis les settings.

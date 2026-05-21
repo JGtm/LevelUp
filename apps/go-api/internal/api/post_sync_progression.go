@@ -146,64 +146,102 @@ func EvaluateProgressionAfterSync(
 		}
 	}
 
-	// ── 2. streaks ─────────────────────────────────────────────────────────
-	if deps.StreaksEvaluator != nil {
-		// V2 §4 : médiane personnelle KDA sur la fenêtre 120j servant de
-		// seuil pour les streaks perf-based (daily_perf, weekly_kda_threshold).
-		// Si moins de 10 matchs : pas assez de signal → on garde 0 (les types
-		// perf-based ne se déclenchent pas, c'est cohérent).
-		kdaMedian := medianKDA(activities)
-		results, err := deps.StreaksEvaluator.Evaluate(ctx, streaks.EvaluateInput{
-			UserID:    userID,
-			TitleSlug: titleSlug,
-			Now:       now,
-			Matches:   activities,
-			Thresholds: map[streaks.StreakType]float64{
-				streaks.StreakTypeDailyPlay:          0,
-				streaks.StreakTypeWeeklyPlay:         0,
-				streaks.StreakTypeDailyPerf:          kdaMedian,
-				streaks.StreakTypeWeeklyKDAThreshold: kdaMedian,
-			},
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "progression: streaks.Evaluate", "err", err)
-		}
-		res.StreakResults = results
-	}
+	res.StreakResults = evaluateStreaks(ctx, deps, userID, titleSlug, now, activities)
+	res.RecordResults = detectRecords(ctx, deps, pdb.XUID, userID, titleSlug, now, matchInputs)
+	res.MilestoneResults = detectMilestones(ctx, deps, userID, titleSlug, now, playerStats)
 
-	// ── 3. records ─────────────────────────────────────────────────────────
-	if deps.RecordsDetector != nil {
-		results, err := deps.RecordsDetector.Detect(ctx, records.DetectInput{
-			XUID:      pdb.XUID,
-			UserID:    userID,
-			TitleSlug: titleSlug,
-			Now:       now,
-			Matches:   matchInputs,
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "progression: records.Detect", "err", err)
-		}
-		res.RecordResults = results
-	}
-
-	// ── 4. milestones ──────────────────────────────────────────────────────
-	if deps.MilestonesDetector != nil {
-		results, err := deps.MilestonesDetector.Detect(ctx, milestones.DetectInput{
-			UserID:    userID,
-			TitleSlug: titleSlug,
-			Now:       now,
-			Stats:     playerStats,
-		})
-		if err != nil {
-			slog.WarnContext(ctx, "progression: milestones.Detect", "err", err)
-		}
-		res.MilestoneResults = results
-	}
-
-	// ── 5. coach ───────────────────────────────────────────────────────────
 	if deps.CoachGenerator == nil {
 		return res, nil
 	}
+	alerts := generateCoachAlerts(ctx, deps, userID, titleSlug, now, &res, cb, prof)
+	res.AlertsGenerated = len(alerts)
+
+	deduped := dedupCoachAlerts(ctx, deps, alerts, now)
+	res.AlertsDeduped = res.AlertsGenerated - len(deduped)
+
+	if deps.Emitter == nil {
+		return res, nil
+	}
+	res.AlertsEmitted = emitCoachAlerts(ctx, deps, deduped)
+	return res, nil
+}
+
+// evaluateStreaks invoque deps.StreaksEvaluator si présent. Best-effort.
+func evaluateStreaks(
+	ctx context.Context, deps ProgressionDeps,
+	userID, titleSlug string, now time.Time, activities []streaks.MatchActivity,
+) []streaks.EvaluationResult {
+	if deps.StreaksEvaluator == nil {
+		return nil
+	}
+	// V2 §4 : médiane personnelle KDA sur la fenêtre 120j servant de seuil
+	// pour les streaks perf-based (daily_perf, weekly_kda_threshold).
+	kdaMedian := medianKDA(activities)
+	results, err := deps.StreaksEvaluator.Evaluate(ctx, streaks.EvaluateInput{
+		UserID:    userID,
+		TitleSlug: titleSlug,
+		Now:       now,
+		Matches:   activities,
+		Thresholds: map[streaks.StreakType]float64{
+			streaks.StreakTypeDailyPlay:          0,
+			streaks.StreakTypeWeeklyPlay:         0,
+			streaks.StreakTypeDailyPerf:          kdaMedian,
+			streaks.StreakTypeWeeklyKDAThreshold: kdaMedian,
+		},
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "progression: streaks.Evaluate", "err", err)
+	}
+	return results
+}
+
+// detectRecords invoque deps.RecordsDetector si présent. Best-effort.
+func detectRecords(
+	ctx context.Context, deps ProgressionDeps,
+	xuid, userID, titleSlug string, now time.Time, matchInputs []records.MatchInput,
+) []records.DetectionResult {
+	if deps.RecordsDetector == nil {
+		return nil
+	}
+	results, err := deps.RecordsDetector.Detect(ctx, records.DetectInput{
+		XUID:      xuid,
+		UserID:    userID,
+		TitleSlug: titleSlug,
+		Now:       now,
+		Matches:   matchInputs,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "progression: records.Detect", "err", err)
+	}
+	return results
+}
+
+// detectMilestones invoque deps.MilestonesDetector si présent. Best-effort.
+func detectMilestones(
+	ctx context.Context, deps ProgressionDeps,
+	userID, titleSlug string, now time.Time, playerStats milestones.PlayerStats,
+) []milestones.DetectionResult {
+	if deps.MilestonesDetector == nil {
+		return nil
+	}
+	results, err := deps.MilestonesDetector.Detect(ctx, milestones.DetectInput{
+		UserID:    userID,
+		TitleSlug: titleSlug,
+		Now:       now,
+		Stats:     playerStats,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "progression: milestones.Detect", "err", err)
+	}
+	return results
+}
+
+// generateCoachAlerts construit l'input coach et invoque le CoachGenerator.
+func generateCoachAlerts(
+	ctx context.Context, deps ProgressionDeps,
+	userID, titleSlug string, now time.Time,
+	res *ProgressionResult, cb comebackContext, prof *profile.PlayerProfile,
+) []coach.Alert {
 	coachInput := coach.GenerateInput{
 		UserID:           userID,
 		TitleSlug:        titleSlug,
@@ -228,10 +266,13 @@ func EvaluateProgressionAfterSync(
 			}}
 		}
 	}
-	alerts := deps.CoachGenerator.Generate(ctx, coachInput)
-	res.AlertsGenerated = len(alerts)
+	return deps.CoachGenerator.Generate(ctx, coachInput)
+}
 
-	// ── 6. Dédup ───────────────────────────────────────────────────────────
+// dedupCoachAlerts filtre les alertes par déduplication temporelle.
+func dedupCoachAlerts(
+	ctx context.Context, deps ProgressionDeps, alerts []coach.Alert, now time.Time,
+) []coach.Alert {
 	var recent []notifications.Notification
 	if deps.NotificationsRepo != nil {
 		lr, err := deps.NotificationsRepo.List(ctx, notifications.ListFilter{
@@ -243,13 +284,13 @@ func EvaluateProgressionAfterSync(
 			recent = lr.Items
 		}
 	}
-	deduped := coach.FilterRecent(alerts, recent, now, ProgressionDedupWindow)
-	res.AlertsDeduped = res.AlertsGenerated - len(deduped)
+	return coach.FilterRecent(alerts, recent, now, ProgressionDedupWindow)
+}
 
-	// ── 7. Émission ────────────────────────────────────────────────────────
-	if deps.Emitter == nil {
-		return res, nil
-	}
+// emitCoachAlerts émet les alertes via deps.Emitter. Retourne le nombre émis.
+// ErrCategoryDisabled (pref off) est silencieux et n'incrémente pas le compteur.
+func emitCoachAlerts(ctx context.Context, deps ProgressionDeps, deduped []coach.Alert) int {
+	emitted := 0
 	for i := range deduped {
 		coach.AnnotateDedupKey(&deduped[i])
 		input := deduped[i].ToEmitInput()
@@ -258,7 +299,6 @@ func EvaluateProgressionAfterSync(
 			continue
 		}
 		if err := deps.Emitter.Emit(ctx, input); err != nil {
-			// ErrCategoryDisabled = pref off → silencieux, pas un échec.
 			if errors.Is(err, notifications.ErrCategoryDisabled) {
 				continue
 			}
@@ -266,9 +306,9 @@ func EvaluateProgressionAfterSync(
 				"type", deduped[i].Type, "err", err)
 			continue
 		}
-		res.AlertsEmitted++
+		emitted++
 	}
-	return res, nil
+	return emitted
 }
 
 // BuildPlayerProgressionDeps construit l'ensemble des dépendances de

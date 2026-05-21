@@ -118,22 +118,50 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	code, ok := h.validateCallbackParams(w, r, sess)
+	if !ok {
+		return
+	}
+
+	tokenResult, exchangeResult, ok := h.exchangeCallbackTokens(w, r, code)
+	if !ok {
+		return
+	}
+
+	xstsRTA := h.tryAcquireXSTSForRTA(r, tokenResult.AccessToken)
+	attempt := buildXboxOAuthAttempt(tokenResult, exchangeResult, xstsRTA)
+
+	if !h.linkAttemptToSession(w, r, attempt, sess) {
+		return
+	}
+
+	h.persistSessionAfterOAuth(r, sess, exchangeResult)
+
+	slog.InfoContext(r.Context(), "auth_xbox_oauth: login réussi via Authorization Code Flow",
+		"gamertag", exchangeResult.Gamertag, "xuid", exchangeResult.XUID)
+
+	// Redirect vers postLoginURL (front prend la suite).
+	http.Redirect(w, r, h.postLoginURL, http.StatusFound)
+}
+
+// validateCallbackParams vérifie error/code/state + CSRF, écrit la réponse d'erreur
+// si nécessaire. Retourne (code, true) si tout est OK, sinon ("", false).
+func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http.Request, sess *domain.SessionData) (string, bool) {
 	// Erreur Microsoft (user a refusé ou autre).
 	if errCode := r.URL.Query().Get("error"); errCode != "" {
 		errDesc := r.URL.Query().Get("error_description")
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: erreur Microsoft", "error", errCode, "description", errDesc)
-		// Effacer le state pour empêcher la rejouabilité.
 		sess.OAuthState = ""
 		_ = h.sessionStore.Save(sess)
 		writeError(r.Context(), w, http.StatusBadRequest, "oauth_denied", errDesc)
-		return
+		return "", false
 	}
 
 	code := r.URL.Query().Get("code")
 	state := r.URL.Query().Get("state")
 	if code == "" || state == "" {
 		writeError(r.Context(), w, http.StatusBadRequest, "missing_params", "code ou state absent")
-		return
+		return "", false
 	}
 
 	// Vérification CSRF : state doit matcher celui stocké en session.
@@ -144,35 +172,46 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: state mismatch — possible CSRF",
 			"expected_set", expected != "", "received_set", state != "")
 		writeError(r.Context(), w, http.StatusForbidden, "state_mismatch", "state CSRF invalide")
-		return
+		return "", false
 	}
+	return code, true
+}
 
-	// Exchange code → tokens Microsoft.
+// exchangeCallbackTokens fait ExchangeAuthorizationCode puis provider.Exchange.
+func (h *XboxOAuthHandler) exchangeCallbackTokens(
+	w http.ResponseWriter, r *http.Request, code string,
+) (*auth_platform.AuthCodeResult, *auth_platform.ExchangeResult, bool) {
 	tokenResult, err := auth_platform.ExchangeAuthorizationCode(r.Context(), code, h.redirectURI)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: échange code échec", "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "code_exchange_failed", err.Error())
-		return
+		return nil, nil, false
 	}
-
-	// Chaîne d'échange : access_token Microsoft → tokens Halo + identité.
 	exchangeResult, err := h.provider.Exchange(r.Context(), tokenResult.AccessToken)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: provider.Exchange échec", "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "halo_exchange_failed", err.Error())
-		return
+		return nil, nil, false
 	}
+	return tokenResult, exchangeResult, true
+}
 
-	// AcquireXSTSForRTA best-effort (PR 2.5a).
-	var xstsRTA *auth_platform.XSTSResult
-	if rtaResult, xerr := auth_platform.AcquireXSTSForRTA(r.Context(), tokenResult.AccessToken); xerr == nil {
-		xstsRTA = rtaResult
-	} else {
+// tryAcquireXSTSForRTA best-effort, retourne nil si l'acquisition échoue (non bloquant).
+func (h *XboxOAuthHandler) tryAcquireXSTSForRTA(r *http.Request, accessToken string) *auth_platform.XSTSResult {
+	rtaResult, xerr := auth_platform.AcquireXSTSForRTA(r.Context(), accessToken)
+	if xerr != nil {
 		slog.WarnContext(r.Context(), "auth_xbox_oauth: AcquireXSTSForRTA échec (non bloquant)", "err", xerr)
+		return nil
 	}
+	return rtaResult
+}
 
-	// Construire un Attempt éphémère pour réutiliser LinkStrategy.OnAuthSuccess
-	// (même contrat que pollDeviceFlow du Device Code Flow).
+// buildXboxOAuthAttempt assemble l'Attempt éphémère pour LinkStrategy.OnAuthSuccess.
+func buildXboxOAuthAttempt(
+	tokenResult *auth_platform.AuthCodeResult,
+	exchangeResult *auth_platform.ExchangeResult,
+	xstsRTA *auth_platform.XSTSResult,
+) *auth_platform.Attempt {
 	attempt := &auth_platform.Attempt{
 		Status:               auth_platform.AttemptStatusAuthorized,
 		SpartanToken:         exchangeResult.Tokens.SpartanToken,
@@ -186,32 +225,33 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		attempt.XSTSRTAUserHash = xstsRTA.UserHash
 		attempt.XSTSRTAExpiresAt = xstsRTA.NotAfter
 	}
-	// Note : Authorization Code Flow donne directement le refresh_token brut
-	// (contrairement au Device Code via MSAL qui ne l'expose pas). Pour rester
-	// compatible avec le MultiUserTokenStore (qui attend MSALCacheJSON), on ne
-	// peut pas réutiliser ce RT tel quel — il faudrait un store distinct ou un
-	// helper qui construit un cache MSAL à partir d'un RT brut. Différé.
-	// En pratique : la persistance via XboxSSOLinkStrategy fonctionne (XSTS RTA
-	// + access_token), mais le refresh ultérieur via MSAL silent ne sera pas
-	// possible. À l'expiration du XSTS (~55min), le user devra re-faire le
-	// flow. Acceptable pour PR 4 (flux interactif).
+	return attempt
+}
 
-	// Wire la session via la LinkStrategy injectée (XboxSSOLinkStrategy).
-	if h.linkStrategy != nil {
-		if err := h.linkStrategy.OnAuthSuccess(r.Context(), attempt, sess); err != nil {
-			if errors.Is(err, auth_platform.ErrSessionNotAuthenticated) {
-				// PasswordLinkStrategy renvoie ça en mode password — on est en mode xbox,
-				// donc ne devrait pas arriver. Log warning et continue.
-				slog.WarnContext(r.Context(), "auth_xbox_oauth: LinkStrategy renvoie ErrSessionNotAuthenticated")
-			} else {
-				slog.ErrorContext(r.Context(), "auth_xbox_oauth: LinkStrategy.OnAuthSuccess échec", "err", err)
-				writeError(r.Context(), w, http.StatusInternalServerError, "link_failed", err.Error())
-				return
-			}
-		}
+// linkAttemptToSession invoque LinkStrategy.OnAuthSuccess. Retourne true si OK
+// (ou erreur tolérée non-bloquante), false si l'erreur est fatale (réponse écrite).
+func (h *XboxOAuthHandler) linkAttemptToSession(
+	w http.ResponseWriter, r *http.Request, attempt *auth_platform.Attempt, sess *domain.SessionData,
+) bool {
+	if h.linkStrategy == nil {
+		return true
 	}
+	if err := h.linkStrategy.OnAuthSuccess(r.Context(), attempt, sess); err != nil {
+		if errors.Is(err, auth_platform.ErrSessionNotAuthenticated) {
+			slog.WarnContext(r.Context(), "auth_xbox_oauth: LinkStrategy renvoie ErrSessionNotAuthenticated")
+			return true
+		}
+		slog.ErrorContext(r.Context(), "auth_xbox_oauth: LinkStrategy.OnAuthSuccess échec", "err", err)
+		writeError(r.Context(), w, http.StatusInternalServerError, "link_failed", err.Error())
+		return false
+	}
+	return true
+}
 
-	// Stocker les Halo tokens dans la session (jamais exposés).
+// persistSessionAfterOAuth renseigne les Halo tokens et l'identité, puis sauvegarde la session.
+func (h *XboxOAuthHandler) persistSessionAfterOAuth(
+	r *http.Request, sess *domain.SessionData, exchangeResult *auth_platform.ExchangeResult,
+) {
 	sess.AuthReady = true
 	sess.HaloTokens = &domain.HaloTokens{
 		SpartanToken:   exchangeResult.Tokens.SpartanToken,
@@ -226,10 +266,4 @@ func (h *XboxOAuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	if err := h.sessionStore.Save(sess); err != nil {
 		slog.ErrorContext(r.Context(), "auth_xbox_oauth: save session post-login échec", "err", err)
 	}
-
-	slog.InfoContext(r.Context(), "auth_xbox_oauth: login réussi via Authorization Code Flow",
-		"gamertag", exchangeResult.Gamertag, "xuid", exchangeResult.XUID)
-
-	// Redirect vers postLoginURL (front prend la suite).
-	http.Redirect(w, r, h.postLoginURL, http.StatusFound)
 }

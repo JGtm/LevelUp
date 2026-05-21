@@ -98,60 +98,55 @@ func computeModule(pc uintptr) string {
 	return ModuleGeneral
 }
 
+// packageToModuleMap : table de mapping package → module canonique.
+// Construite à l'initialisation pour éviter une cascade de switch case
+// (réduit la complexité cyclomatique de mapPackageToModule).
+var packageToModuleMap = map[string]string{
+	ModuleSync:       ModuleSync,
+	"sharedprovider": ModuleProvider,
+	"duckdb":         ModuleDuckDB,
+	"dblease":        ModuleDuckDB,
+	"pool":           ModulePool,
+	"scheduler":      ModuleScheduler,
+	"handlers":       ModuleHandlers,
+	"service":        ModuleService,
+	"auth":           ModuleAuth,
+	"msalauth":       ModuleAuth,
+	"assets":         ModuleAssets,
+	"prestige":       ModulePrestige,
+	"campaign":       ModulePrestige,
+	"media":          ModuleMedia,
+	"mediaservice":   ModuleMedia,
+	"notifications":  ModuleNotif,
+	"migration":      ModuleMigration,
+	"api":            ModuleHTTP,
+	"watcher":        ModuleAuth, // tokens watcher fait partie de l'auth flow
+	"rta":            ModuleAuth,
+	"main":           ModuleGeneral, // cmd/server/main.go : boot/shutdown
+}
+
 // mapPackageToModule fait le mapping nom-de-package → nom-de-module canonique.
 // Plusieurs packages peuvent se grouper sous un seul module (e.g. sharedprovider
 // + duckdb → "duckdb" pour les opérations bas-niveau, "provider" pour le swap).
 func mapPackageToModule(pkg, fullPath string) string {
-	switch pkg {
-	case ModuleSync:
-		return ModuleSync
-	case "sharedprovider":
-		return ModuleProvider
-	case "duckdb", "dblease":
-		// Cas spécial : "pool*.go" dans duckdb sont logiquement le "pool"
-		// joueur — mais pour les distinguer il faudrait introspect le fichier
-		// source. On garde "duckdb" générique pour ce package.
-		return ModuleDuckDB
-	case "pool":
-		// internal/platform/auth/pool (token discovery, refresh).
-		return ModulePool
-	case "scheduler":
-		return ModuleScheduler
-	case "handlers":
-		return ModuleHandlers
-	case "service":
-		return ModuleService
-	case "auth", "msalauth":
+	if m, ok := packageToModuleMap[pkg]; ok {
+		return m
+	}
+	return moduleFromPath(fullPath)
+}
+
+// moduleFromPath applique l'heuristique secondaire sur le fullPath.
+func moduleFromPath(fullPath string) string {
+	switch {
+	case strings.Contains(fullPath, "observability"):
+		return ModuleHealth
+	case strings.Contains(fullPath, "data_health"), strings.Contains(fullPath, "health"):
+		return ModuleHealth
+	case strings.Contains(fullPath, "/auth/"), strings.Contains(fullPath, "/platform/auth"):
 		return ModuleAuth
-	case "assets":
-		return ModuleAssets
-	case "prestige", "campaign":
-		return ModulePrestige
-	case "media", "mediaservice":
-		return ModuleMedia
-	case "notifications":
-		return ModuleNotif
-	case "migration":
-		return ModuleMigration
-	case "api":
-		return ModuleHTTP
-	case "watcher", "rta":
-		return ModuleAuth // tokens watcher fait partie de l'auth flow
-	case "main":
-		// cmd/server/main.go : logs de boot/shutdown. Catégorie "general".
+	default:
 		return ModuleGeneral
 	}
-	// Heuristique secondaire sur le fullPath.
-	if strings.Contains(fullPath, "observability") {
-		return ModuleHealth
-	}
-	if strings.Contains(fullPath, "data_health") || strings.Contains(fullPath, "health") {
-		return ModuleHealth
-	}
-	if strings.Contains(fullPath, "/auth/") || strings.Contains(fullPath, "/platform/auth") {
-		return ModuleAuth
-	}
-	return ModuleGeneral
 }
 
 // SanitizeModuleName normalise un nom de module pour usage en nom de fichier

@@ -232,6 +232,23 @@ func LoadTuning(path string) Tuning {
 
 // Validate vérifie la cohérence des valeurs.
 func (t Tuning) Validate() error {
+	if err := t.validateAntiSmurfAndStretch(); err != nil {
+		return err
+	}
+	if err := t.validatePPAndLevels(); err != nil {
+		return err
+	}
+	if err := t.validateMatchCountAndExpiration(); err != nil {
+		return err
+	}
+	if t.SquadPool.SizeMin > t.SquadPool.SizeMax {
+		return fmt.Errorf("squad_pool size_min > size_max")
+	}
+	return nil
+}
+
+// validateAntiSmurfAndStretch valide les sections anti_smurf et stretch_thresholds.
+func (t Tuning) validateAntiSmurfAndStretch() error {
 	if t.AntiSmurf.MinStretch <= 0 {
 		return fmt.Errorf("anti_smurf.min_stretch must be > 0")
 	}
@@ -240,6 +257,11 @@ func (t Tuning) Validate() error {
 		t.Stretch.Legendary >= t.Stretch.Mythic {
 		return fmt.Errorf("stretch_thresholds non monotones")
 	}
+	return nil
+}
+
+// validatePPAndLevels valide pp_amounts, levels et baseline.
+func (t Tuning) validatePPAndLevels() error {
 	if t.PPAmounts.Normal >= t.PPAmounts.Heroic ||
 		t.PPAmounts.Heroic >= t.PPAmounts.Legendary ||
 		t.PPAmounts.Legendary >= t.PPAmounts.Mythic {
@@ -262,6 +284,11 @@ func (t Tuning) Validate() error {
 	if t.Baseline.WindowMatches <= 0 {
 		return fmt.Errorf("baseline.window_matches must be > 0")
 	}
+	return nil
+}
+
+// validateMatchCountAndExpiration valide match_count et expiration.
+func (t Tuning) validateMatchCountAndExpiration() error {
 	if t.MatchCount.Normal <= 0 || t.MatchCount.Normal >= t.MatchCount.Heroic ||
 		t.MatchCount.Heroic >= t.MatchCount.Legendary ||
 		t.MatchCount.Legendary >= t.MatchCount.Mythic {
@@ -271,9 +298,6 @@ func (t Tuning) Validate() error {
 		t.Expiration.HeroicHours >= t.Expiration.LegendaryHours ||
 		t.Expiration.LegendaryHours >= t.Expiration.MythicHours {
 		return fmt.Errorf("expiration non monotone ou invalide")
-	}
-	if t.SquadPool.SizeMin > t.SquadPool.SizeMax {
-		return fmt.Errorf("squad_pool size_min > size_max")
 	}
 	return nil
 }

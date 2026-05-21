@@ -808,20 +808,47 @@ func (r *MediaRepo) enrichMediaMapTranslations(ctx context.Context, rows []domai
 		return
 	}
 
+	ids := collectMediaMapIDs(rows)
+	if len(ids) == 0 {
+		return
+	}
+
+	translations := r.loadMediaMapFRTranslations(ctx, ids)
+	if len(translations) == 0 {
+		return
+	}
+
+	for i := range rows {
+		if rows[i].MapID == nil {
+			continue
+		}
+		if nameFR, ok := translations[*rows[i].MapID]; ok && nameFR != "" {
+			rows[i].MapName = &nameFR
+		}
+	}
+}
+
+// collectMediaMapIDs extrait les map_id distincts non-vides depuis les rows.
+func collectMediaMapIDs(rows []domain.MediaFileRow) []string {
 	seen := make(map[string]struct{})
 	for _, row := range rows {
 		if row.MapID != nil && *row.MapID != "" {
 			seen[*row.MapID] = struct{}{}
 		}
 	}
-	if len(seen) == 0 {
-		return
-	}
-
-	placeholders := make([]string, 0, len(seen))
-	args := make([]any, 0, len(seen)+1)
-	args = append(args, "map")
+	out := make([]string, 0, len(seen))
 	for id := range seen {
+		out = append(out, id)
+	}
+	return out
+}
+
+// loadMediaMapFRTranslations charge asset_translations (fr-FR > fr) pour les map_id donnés.
+func (r *MediaRepo) loadMediaMapFRTranslations(ctx context.Context, ids []string) map[string]string {
+	placeholders := make([]string, 0, len(ids))
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, "map")
+	for _, id := range ids {
 		placeholders = append(placeholders, "?")
 		args = append(args, id)
 	}
@@ -835,7 +862,7 @@ ORDER BY lang DESC`
 
 	dbRows, err := r.pdb.Metadata.Query(ctx, q, args...)
 	if err != nil {
-		return
+		return nil
 	}
 	defer dbRows.Close()
 
@@ -849,15 +876,7 @@ ORDER BY lang DESC`
 			translations[assetID] = name
 		}
 	}
-
-	for i := range rows {
-		if rows[i].MapID == nil {
-			continue
-		}
-		if nameFR, ok := translations[*rows[i].MapID]; ok && nameFR != "" {
-			rows[i].MapName = &nameFR
-		}
-	}
+	return translations
 }
 
 // mediaFilterOptionPair regroupe l'id source (map_id ou pair_name brut) et le

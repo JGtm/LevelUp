@@ -123,34 +123,9 @@ func (s *SynthesisService) GetSynthesisPage(
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
 		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
 	}
-	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
-		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-	)
+	canonicalRows, err := s.loadAndEnrichCanonicalRows(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("SynthesisService load: %w", err)
-	}
-	slog.DebugContext(ctx, "synthesis: loaded canonical",
-		"rows", len(canonicalRows), "title_slug", s.titleSlug)
-	// Enrichit Labels["fr"] sur Map/Playlist/GameVariant/PairMode des rows
-	// canoniques (asset_translations + mode_name_tr). Même helper que la home,
-	// pour que toutes les analyses (breakdowns "Par carte"/"Par mode", KPIs, etc.)
-	// lisent les libellés FR. Best-effort : erreur non fatale.
-	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, canonicalRows); err != nil {
-		slog.WarnContext(ctx, "synthesis: EnrichCanonicalAssetTranslations failed", "err", err)
-	} else {
-		// Diagnostic : compte les rows dont Map et PairMode ont une trad FR
-		// après enrichissement. Aide à confirmer côté logs que la cascade tourne.
-		mapFR, pairFR := 0, 0
-		for _, r := range canonicalRows {
-			if r.Summary.Map != nil && r.Summary.Map.Labels["fr"] != "" {
-				mapFR++
-			}
-			if r.Summary.PairMode != nil && r.Summary.PairMode.Labels["fr"] != "" {
-				pairFR++
-			}
-		}
-		slog.InfoContext(ctx, "synthesis: canonical FR enrichment",
-			"rows", len(canonicalRows), "map_fr_count", mapFR, "pair_fr_count", pairFR)
+		return nil, err
 	}
 	filteredCanon, filtersApplied, filtersIgnored := filterSynthesisByPeriodCanonical(canonicalRows, period, req.StartDate, req.EndDate)
 	c := req.Filters.Cascade
@@ -179,34 +154,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	detailedStats := buildSynthesisDetailedStatsFromCanonical(filteredCanon)
 
 	// P9 : fun stats depuis personal_score_awards (requete separee, erreur non fatale)
-	if s.personalScoreAwardsRepo != nil && s.playerXUID != "" {
-		matchIDs := make([]string, 0, len(filteredCanon))
-		for _, r := range filteredCanon {
-			matchIDs = append(matchIDs, r.Summary.MatchID)
-		}
-		if len(matchIDs) > 0 {
-			funStats, _ := buildSynthesisFunStatsFromAwards(ctx, s.personalScoreAwardsRepo, s.titleSlug, matchIDs, s.playerXUID)
-			detailedStats.TotalBetrayals = funStats.TotalBetrayals
-			detailedStats.TotalSuicides = funStats.TotalSuicides
-			detailedStats.TotalVehiclesDestroyed = funStats.TotalVehiclesDestroyed
-			detailedStats.TotalHijacks = funStats.TotalHijacks
-		}
-	}
+	s.applyFunStatsToDetailedStats(ctx, &detailedStats, filteredCanon)
 
 	// Frags par arme : best-effort, ignoré si repo absent ou capability manquante.
-	var topWeaponKills []domain.SynthesisWeaponKillEntry
-	if s.weaponKillsRepo != nil && s.gamertag != "" && len(filteredCanon) > 0 {
-		matchIDs := make([]string, 0, len(filteredCanon))
-		for _, r := range filteredCanon {
-			matchIDs = append(matchIDs, r.Summary.MatchID)
-		}
-		wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
-		if rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf); err == nil {
-			topWeaponKills = buildTopWeaponKills(rows, 20)
-		} else {
-			slog.DebugContext(ctx, "synthesis: weapon kills non disponibles (best-effort)", "err", err)
-		}
-	}
+	topWeaponKills := s.loadTopWeaponKills(ctx, filteredCanon)
 
 	scope := domain.SynthesisScope{
 		Period:         period,
@@ -231,6 +182,78 @@ func (s *SynthesisService) GetSynthesisPage(
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
 	}, nil
+}
+
+// loadAndEnrichCanonicalRows charge les canonical rows et applique
+// EnrichCanonicalAssetTranslations + log diagnostic FR. Best-effort sur enrich.
+func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]canonical.PlayerMatchRow, error) {
+	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("SynthesisService load: %w", err)
+	}
+	slog.DebugContext(ctx, "synthesis: loaded canonical",
+		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, canonicalRows); err != nil {
+		slog.WarnContext(ctx, "synthesis: EnrichCanonicalAssetTranslations failed", "err", err)
+		return canonicalRows, nil
+	}
+	mapFR, pairFR := 0, 0
+	for _, r := range canonicalRows {
+		if r.Summary.Map != nil && r.Summary.Map.Labels["fr"] != "" {
+			mapFR++
+		}
+		if r.Summary.PairMode != nil && r.Summary.PairMode.Labels["fr"] != "" {
+			pairFR++
+		}
+	}
+	slog.InfoContext(ctx, "synthesis: canonical FR enrichment",
+		"rows", len(canonicalRows), "map_fr_count", mapFR, "pair_fr_count", pairFR)
+	return canonicalRows, nil
+}
+
+// applyFunStatsToDetailedStats charge fun stats depuis personal_score_awards
+// et les fusionne dans DetailedStats. Best-effort silencieux.
+func (s *SynthesisService) applyFunStatsToDetailedStats(
+	ctx context.Context, detailedStats *domain.SynthesisDetailedStats, filteredCanon []canonical.PlayerMatchRow,
+) {
+	if s.personalScoreAwardsRepo == nil || s.playerXUID == "" {
+		return
+	}
+	matchIDs := make([]string, 0, len(filteredCanon))
+	for _, r := range filteredCanon {
+		matchIDs = append(matchIDs, r.Summary.MatchID)
+	}
+	if len(matchIDs) == 0 {
+		return
+	}
+	funStats, _ := buildSynthesisFunStatsFromAwards(ctx, s.personalScoreAwardsRepo, s.titleSlug, matchIDs, s.playerXUID)
+	detailedStats.TotalBetrayals = funStats.TotalBetrayals
+	detailedStats.TotalSuicides = funStats.TotalSuicides
+	detailedStats.TotalVehiclesDestroyed = funStats.TotalVehiclesDestroyed
+	detailedStats.TotalHijacks = funStats.TotalHijacks
+}
+
+// loadTopWeaponKills agrège les frags par arme sur le scope filtré (top 20).
+// Best-effort : nil si repo absent ou capability manquante.
+func (s *SynthesisService) loadTopWeaponKills(
+	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
+) []domain.SynthesisWeaponKillEntry {
+	if s.weaponKillsRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
+		return nil
+	}
+	matchIDs := make([]string, 0, len(filteredCanon))
+	for _, r := range filteredCanon {
+		matchIDs = append(matchIDs, r.Summary.MatchID)
+	}
+	wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
+	rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf)
+	if err != nil {
+		slog.DebugContext(ctx, "synthesis: weapon kills non disponibles (best-effort)", "err", err)
+		return nil
+	}
+	return buildTopWeaponKills(rows, 20)
 }
 
 // =============================================================================

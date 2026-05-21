@@ -49,47 +49,10 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 	msrByMatch := r.loadPlaylistPhaseAMSR(ctx, matchIDs)
 	snapshotByPlaylist := r.loadPlaylistPhaseASnapshot(ctx, plIDs)
 
-	type rawItem struct {
-		playlistID   string
-		playlistName string
-		item         domain.HomePlaylistRank
-	}
-	raws := make([]rawItem, 0, len(phaseB))
+	raws := make([]playlistRawItem, 0, len(phaseB))
 	for _, p := range phaseB {
-		item := domain.HomePlaylistRank{
-			PlaylistName: p.playlistName,
-			IsRanked:     p.isRanked,
-		}
-		if msr, ok := msrByMatch[p.lastMatchID]; ok {
-			ratingType := ratingTypeLUSR
-			if p.isRanked {
-				ratingType = ratingTypeCSR
-			}
-			item.RatingType = &ratingType
-			ratingValueCopy := msr.ratingValue
-			item.RatingValue = &ratingValueCopy
-			if msr.tierLabel != "" {
-				item.TierLabel = stringPtr(msr.tierLabel)
-			}
-			item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0)
-		} else if p.isRanked {
-			completed := 0
-			if rem, ok := snapshotByPlaylist[p.playlistID]; ok && rem > 0 {
-				completed = 10 - rem
-			}
-			if completed < 0 {
-				completed = 0
-			}
-			if completed > 9 {
-				completed = 9
-			}
-			item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
-			if rem, ok := snapshotByPlaylist[p.playlistID]; ok {
-				remCopy := rem
-				item.MeasurementMatchesRemaining = &remCopy
-			}
-		}
-		raws = append(raws, rawItem{playlistID: p.playlistID, playlistName: p.playlistName, item: item})
+		item := buildHomePlaylistRankItem(p, msrByMatch, snapshotByPlaylist)
+		raws = append(raws, playlistRawItem{playlistID: p.playlistID, playlistName: p.playlistName, item: item})
 	}
 
 	// Enrichissement FR depuis asset_translations (même source que les tuiles de matchs).
@@ -108,6 +71,71 @@ func (r *HomeRepo) LoadRecentPlaylistRanks(ctx context.Context, locale string) (
 		result = append(result, raw.item)
 	}
 	return result, nil
+}
+
+// playlistRawItem : tuple (playlistID, playlistName brut, item construit).
+type playlistRawItem struct {
+	playlistID   string
+	playlistName string
+	item         domain.HomePlaylistRank
+}
+
+// buildHomePlaylistRankItem assemble une HomePlaylistRank à partir d'un row Phase B
+// + les MSR/snapshot Phase A. Si rang MSR connu → badge ranked ; sinon mode placement
+// (badge unranked + matches_remaining) ; sinon item nu.
+func buildHomePlaylistRankItem(
+	p playlistPhaseBRow,
+	msrByMatch map[string]playlistMSRRow,
+	snapshotByPlaylist map[string]int,
+) domain.HomePlaylistRank {
+	item := domain.HomePlaylistRank{
+		PlaylistName: p.playlistName,
+		IsRanked:     p.isRanked,
+	}
+	if msr, ok := msrByMatch[p.lastMatchID]; ok {
+		fillRankedMSRItem(&item, p.isRanked, msr)
+		return item
+	}
+	if p.isRanked {
+		fillPlacementItem(&item, p.playlistID, snapshotByPlaylist)
+	}
+	return item
+}
+
+// fillRankedMSRItem renseigne RatingType, RatingValue, TierLabel et BadgeImageURL
+// depuis un MSR connu (ranked LUSR/CSR).
+func fillRankedMSRItem(item *domain.HomePlaylistRank, isRanked bool, msr playlistMSRRow) {
+	ratingType := ratingTypeLUSR
+	if isRanked {
+		ratingType = ratingTypeCSR
+	}
+	item.RatingType = &ratingType
+	ratingValueCopy := msr.ratingValue
+	item.RatingValue = &ratingValueCopy
+	if msr.tierLabel != "" {
+		item.TierLabel = stringPtr(msr.tierLabel)
+	}
+	item.BadgeImageURL = buildHomeSkillPeakBadgeURL(msr.tier, msr.tierLabel, msr.subTier, homeStaticTitleSlug, 0)
+}
+
+// fillPlacementItem renseigne BadgeImageURL (unranked) + MeasurementMatchesRemaining
+// pour le mode placement (10 matchs avant rang).
+func fillPlacementItem(item *domain.HomePlaylistRank, playlistID string, snapshotByPlaylist map[string]int) {
+	completed := 0
+	if rem, ok := snapshotByPlaylist[playlistID]; ok && rem > 0 {
+		completed = 10 - rem
+	}
+	if completed < 0 {
+		completed = 0
+	}
+	if completed > 9 {
+		completed = 9
+	}
+	item.BadgeImageURL = unrankedBadgeURL(completed, homeStaticTitleSlug)
+	if rem, ok := snapshotByPlaylist[playlistID]; ok {
+		remCopy := rem
+		item.MeasurementMatchesRemaining = &remCopy
+	}
 }
 
 // playlistPhaseBRow : projection Phase B (shared) — playlist + dernier match.

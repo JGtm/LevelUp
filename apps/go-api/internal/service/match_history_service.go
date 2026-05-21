@@ -173,34 +173,7 @@ func (s *MatchHistoryService) GetPage(
 	// solo/squad indépendamment du filtre période courant.
 	sessionLabels := buildMatchHistorySessionLabels(rawRows)
 
-	// BriefingKPIs : alimente <SessionBriefing> en haut de la page Stats.
-	// Charge les canonical rows et filtre par les match_id du scope filtré
-	// (mêmes filtres que la table). Dégradation gracieuse si playerMatchesRepo
-	// n'est pas câblé.
-	var briefingKPIs *domain.KPIStats
-	if s.playerMatchesRepo != nil && s.titleSlug != "" && s.gamertag != "" && len(filtered) > 0 {
-		canonicalRows, cerr := s.playerMatchesRepo.LoadPlayerMatches(
-			ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
-		)
-		if cerr != nil {
-			slog.WarnContext(ctx, "match_history.briefing_kpis.load_failed", "err", cerr)
-		} else {
-			keep := make(map[string]struct{}, len(filtered))
-			for _, r := range filtered {
-				keep[r.MatchID] = struct{}{}
-			}
-			scoped := make([]canonical.PlayerMatchRow, 0, len(filtered))
-			for _, c := range canonicalRows {
-				if _, ok := keep[c.Summary.MatchID]; ok {
-					scoped = append(scoped, c)
-				}
-			}
-			if len(scoped) > 0 {
-				kpis := analysis.ComputeKPIStats(scoped)
-				briefingKPIs = &kpis
-			}
-		}
-	}
+	briefingKPIs := s.loadBriefingKPIs(ctx, filtered)
 
 	return domain.MatchHistoryPageResponse{
 		Summary: domain.MatchHistoryQuerySummary{
@@ -228,6 +201,38 @@ func (s *MatchHistoryService) GetPage(
 		SessionLabels:       sessionLabels,
 		BriefingKPIs:        briefingKPIs,
 	}, nil
+}
+
+// loadBriefingKPIs charge les canonical rows + filtre par match_ids du scope filtré
+// puis calcule les KPIs. Best-effort : nil si playerMatchesRepo absent ou échec.
+func (s *MatchHistoryService) loadBriefingKPIs(
+	ctx context.Context, filtered []domain.MatchHistoryRawRow,
+) *domain.KPIStats {
+	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" || len(filtered) == 0 {
+		return nil
+	}
+	canonicalRows, cerr := s.playerMatchesRepo.LoadPlayerMatches(
+		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
+	)
+	if cerr != nil {
+		slog.WarnContext(ctx, "match_history.briefing_kpis.load_failed", "err", cerr)
+		return nil
+	}
+	keep := make(map[string]struct{}, len(filtered))
+	for _, r := range filtered {
+		keep[r.MatchID] = struct{}{}
+	}
+	scoped := make([]canonical.PlayerMatchRow, 0, len(filtered))
+	for _, c := range canonicalRows {
+		if _, ok := keep[c.Summary.MatchID]; ok {
+			scoped = append(scoped, c)
+		}
+	}
+	if len(scoped) == 0 {
+		return nil
+	}
+	kpis := analysis.ComputeKPIStats(scoped)
+	return &kpis
 }
 
 // filterMatchHistoryRowsBySoloSessions garde les rows dont SessionLabel

@@ -44,37 +44,57 @@ func (r *Reader) LoadXuidAliases(ctx context.Context) ([]XuidAliasRow, error) {
 
 	var out []XuidAliasRow
 	for rows.Next() {
-		var (
-			xuid, gamertag sql.NullString
-			lastSeenStr    sql.NullString
-			source         sql.NullString
-		)
-		if err := rows.Scan(&xuid, &gamertag, &lastSeenStr, &source); err != nil {
-			return nil, fmt.Errorf("openspartan: scan XuidAliases: %w", err)
+		row, ok, err := scanXuidAliasRow(rows)
+		if err != nil {
+			return nil, err
 		}
-		if !xuid.Valid || !gamertag.Valid || xuid.String == "" || gamertag.String == "" {
-			continue
+		if ok {
+			out = append(out, row)
 		}
-		row := XuidAliasRow{
-			XUID:     xuid.String,
-			Gamertag: gamertag.String,
-		}
-		if source.Valid {
-			row.Source = source.String
-		}
-		if lastSeenStr.Valid {
-			if t, err := time.Parse(time.RFC3339Nano, lastSeenStr.String); err == nil {
-				row.LastSeen = &t
-			} else if t, err := time.Parse(time.RFC3339, lastSeenStr.String); err == nil {
-				row.LastSeen = &t
-			}
-		}
-		out = append(out, row)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("openspartan: iterate XuidAliases: %w", err)
 	}
 	return out, nil
+}
+
+// scanXuidAliasRow extrait une ligne XuidAliasRow depuis un *sql.Rows positionné.
+// Retourne ok=false pour les rows invalides (xuid/gamertag manquants) sans erreur.
+func scanXuidAliasRow(rows *sql.Rows) (XuidAliasRow, bool, error) {
+	var (
+		xuid, gamertag sql.NullString
+		lastSeenStr    sql.NullString
+		source         sql.NullString
+	)
+	if err := rows.Scan(&xuid, &gamertag, &lastSeenStr, &source); err != nil {
+		return XuidAliasRow{}, false, fmt.Errorf("openspartan: scan XuidAliases: %w", err)
+	}
+	if !xuid.Valid || !gamertag.Valid || xuid.String == "" || gamertag.String == "" {
+		return XuidAliasRow{}, false, nil
+	}
+	row := XuidAliasRow{
+		XUID:     xuid.String,
+		Gamertag: gamertag.String,
+	}
+	if source.Valid {
+		row.Source = source.String
+	}
+	if lastSeenStr.Valid {
+		row.LastSeen = parseAliasTimestamp(lastSeenStr.String)
+	}
+	return row, true, nil
+}
+
+// parseAliasTimestamp parse un timestamp d'alias (RFC3339Nano puis RFC3339).
+// Retourne nil si aucun format ne matche.
+func parseAliasTimestamp(s string) *time.Time {
+	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
+		return &t
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return &t
+	}
+	return nil
 }
 
 // AliasMap is a convenience helper that builds a {xuid: gamertag} lookup map

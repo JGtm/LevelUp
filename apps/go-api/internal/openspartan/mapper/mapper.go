@@ -73,12 +73,25 @@ func MapRegistry(ms openspartan.MatchStats, opts MapOptions) (MatchRegistryRow, 
 		FirstSyncAt:             now,
 		LastUpdatedAt:           now,
 	}
-	if !ms.MatchInfo.EndTime.IsZero() {
-		end := ms.MatchInfo.EndTime
-		row.EndTime = &end
-		endUTC := end.UTC()
-		row.EndTimeUTC = &endUTC
+	assignRegistryEndTime(&row, ms.MatchInfo.EndTime)
+	assignRegistryAssetIDs(&row, ms)
+	assignRegistryTeamScores(&row, ms.Teams)
+	return row, nil
+}
+
+// assignRegistryEndTime renseigne EndTime + EndTimeUTC si non-zéro.
+func assignRegistryEndTime(row *MatchRegistryRow, endTime time.Time) {
+	if endTime.IsZero() {
+		return
 	}
+	row.EndTime = &endTime
+	endUTC := endTime.UTC()
+	row.EndTimeUTC = &endUTC
+}
+
+// assignRegistryAssetIDs renseigne MapID, GameVariantID, PlaylistID, PairID
+// et leurs versions, en tolérant les champs optionnels manquants.
+func assignRegistryAssetIDs(row *MatchRegistryRow, ms openspartan.MatchStats) {
 	if id := strings.TrimSpace(ms.MatchInfo.MapVariant.AssetID); id != "" {
 		row.MapID = &id
 		row.MapVersionID = strPtrOrNil(ms.MatchInfo.MapVariant.VersionID)
@@ -99,21 +112,24 @@ func MapRegistry(ms openspartan.MatchStats, opts MapOptions) (MatchRegistryRow, 
 			row.PairVersionID = strPtrOrNil(ms.MatchInfo.PlaylistMapModePair.VersionID)
 		}
 	}
-	if len(ms.Teams) >= 1 {
-		if s, ps, ok := teamScores(ms.Teams[0].Stats); ok {
+}
+
+// assignRegistryTeamScores renseigne Team0/Team1 scores depuis le slice Teams.
+func assignRegistryTeamScores(row *MatchRegistryRow, teams []openspartan.Team) {
+	if len(teams) >= 1 {
+		if s, ps, ok := teamScores(teams[0].Stats); ok {
 			s16 := int16(s)
 			row.Team0Score = &s16
 			row.Team0PsScore = &ps
 		}
 	}
-	if len(ms.Teams) >= 2 {
-		if s, ps, ok := teamScores(ms.Teams[1].Stats); ok {
+	if len(teams) >= 2 {
+		if s, ps, ok := teamScores(teams[1].Stats); ok {
 			s16 := int16(s)
 			row.Team1Score = &s16
 			row.Team1PsScore = &ps
 		}
 	}
-	return row, nil
 }
 
 // teamScores extracts Score and PersonalScore from a Teams[i].Stats raw

@@ -280,81 +280,20 @@ func (r *FiltersRepo) applyMapFRTranslations(ctx context.Context, rows []domain.
 	if r.pdb.Metadata == nil {
 		return
 	}
-	uniqueEN := make(map[string]struct{}, 16)
-	for _, row := range rows {
-		en := derefString(row.MapName)
-		if en != "" && en == derefString(row.MapNameFR) {
-			uniqueEN[en] = struct{}{}
-		}
-	}
+	uniqueEN := r.collectMapENNeedingFR(rows)
 	if len(uniqueEN) == 0 {
 		return
-	}
-
-	mapNames := make([]string, 0, len(uniqueEN))
-	for n := range uniqueEN {
-		mapNames = append(mapNames, n)
-	}
-	ph := Placeholders(len(mapNames))
-	q1 := fmt.Sprintf(`SELECT DISTINCT map_name, map_id FROM match_registry WHERE map_name IN (%s) AND map_id IS NOT NULL`, ph)
-	args1 := make([]any, len(mapNames))
-	for i, n := range mapNames {
-		args1[i] = n
 	}
 
 	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	db, release, err := r.pdb.SharedReadDB().Get(ctx2)
-	if err != nil {
-		return
-	}
-	defer release()
-
-	idRows, err := db.QueryContext(ctx2, q1, args1...)
-	if err != nil {
-		return
-	}
-	defer idRows.Close()
-
-	nameToID := make(map[string]string, len(mapNames))
-	for idRows.Next() {
-		var name, id string
-		if idRows.Scan(&name, &id) == nil && name != "" && id != "" {
-			nameToID[name] = id
-		}
-	}
-	idRows.Close()
-	if len(nameToID) == 0 {
+	nameToID, ok := r.resolveSharedAssetNameToID(ctx2, uniqueEN, "map_name", "map_id")
+	if !ok || len(nameToID) == 0 {
 		return
 	}
 
-	mapIDs := make([]string, 0, len(nameToID))
-	for _, id := range nameToID {
-		mapIDs = append(mapIDs, id)
-	}
-	ph2 := Placeholders(len(mapIDs))
-	q2 := fmt.Sprintf(`SELECT asset_id, name FROM asset_translations WHERE asset_type = 'map' AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s) ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`, ph2)
-	args2 := make([]any, len(mapIDs))
-	for i, id := range mapIDs {
-		args2[i] = id
-	}
-
-	trRows, err := r.pdb.Metadata.Query(ctx2, q2, args2...)
-	if err != nil {
-		return
-	}
-	defer trRows.Close()
-
-	idToFR := make(map[string]string, len(mapIDs))
-	for trRows.Next() {
-		var assetID, name string
-		if trRows.Scan(&assetID, &name) == nil {
-			if _, exists := idToFR[assetID]; !exists {
-				idToFR[assetID] = name
-			}
-		}
-	}
+	idToFR := r.loadAssetFRTranslations(ctx2, nameToID, "map")
 	if len(idToFR) == 0 {
 		return
 	}
@@ -372,47 +311,49 @@ func (r *FiltersRepo) applyMapFRTranslations(ctx context.Context, rows []domain.
 	}
 }
 
-// applyPlaylistFRTranslations enrichit PlaylistName quand playlist_name_fr est absent de
-// match_registry (PlaylistName == PlaylistNameEN = COALESCE fallback EN).
-// Best-effort : erreurs silencieuses.
-func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []domain.FilterMatchRow) {
-	if r.pdb.Metadata == nil {
-		return
-	}
-	uniqueEN := make(map[string]struct{}, 8)
+// collectMapENNeedingFR retourne les noms EN distincts pour lesquels la traduction FR
+// est manquante (MapNameFR == MapName : fallback COALESCE).
+func (r *FiltersRepo) collectMapENNeedingFR(rows []domain.FilterMatchRow) map[string]struct{} {
+	uniqueEN := make(map[string]struct{}, 16)
 	for _, row := range rows {
-		en := derefString(row.PlaylistNameEN)
-		if en != "" && en == derefString(row.PlaylistName) {
+		en := derefString(row.MapName)
+		if en != "" && en == derefString(row.MapNameFR) {
 			uniqueEN[en] = struct{}{}
 		}
 	}
-	if len(uniqueEN) == 0 {
-		return
-	}
+	return uniqueEN
+}
 
+// resolveSharedAssetNameToID résout en map (name → id) depuis shared.match_registry pour
+// un set de noms EN. Helper générique pour FR translations (map, playlist).
+func (r *FiltersRepo) resolveSharedAssetNameToID(
+	ctx context.Context,
+	uniqueEN map[string]struct{},
+	nameCol, idCol string,
+) (map[string]string, bool) {
 	names := make([]string, 0, len(uniqueEN))
 	for n := range uniqueEN {
 		names = append(names, n)
 	}
 	ph := Placeholders(len(names))
-	q1 := fmt.Sprintf(`SELECT DISTINCT playlist_name, playlist_id FROM match_registry WHERE playlist_name IN (%s) AND playlist_id IS NOT NULL`, ph)
-	args1 := make([]any, len(names))
+	q := fmt.Sprintf(
+		`SELECT DISTINCT %s, %s FROM match_registry WHERE %s IN (%s) AND %s IS NOT NULL`,
+		nameCol, idCol, nameCol, ph, idCol,
+	)
+	args := make([]any, len(names))
 	for i, n := range names {
-		args1[i] = n
+		args[i] = n
 	}
 
-	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx2)
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		return
+		return nil, false
 	}
 	defer release()
 
-	idRows, err := db.QueryContext(ctx2, q1, args1...)
+	idRows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
-		return
+		return nil, false
 	}
 	defer idRows.Close()
 
@@ -423,29 +364,38 @@ func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []do
 			nameToID[name] = id
 		}
 	}
-	idRows.Close()
-	if len(nameToID) == 0 {
-		return
-	}
+	return nameToID, true
+}
 
-	plIDs := make([]string, 0, len(nameToID))
+// loadAssetFRTranslations charge les traductions FR (fr-FR > fr) depuis metadata.asset_translations
+// pour un set d'IDs résolus, en priorisant fr-FR > fr.
+func (r *FiltersRepo) loadAssetFRTranslations(
+	ctx context.Context,
+	nameToID map[string]string,
+	assetType string,
+) map[string]string {
+	ids := make([]string, 0, len(nameToID))
 	for _, id := range nameToID {
-		plIDs = append(plIDs, id)
+		ids = append(ids, id)
 	}
-	ph2 := Placeholders(len(plIDs))
-	q2 := fmt.Sprintf(`SELECT asset_id, name FROM asset_translations WHERE asset_type = 'playlist' AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s) ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`, ph2)
-	args2 := make([]any, len(plIDs))
-	for i, id := range plIDs {
-		args2[i] = id
+	ph := Placeholders(len(ids))
+	q := fmt.Sprintf(
+		`SELECT asset_id, name FROM asset_translations WHERE asset_type = ? AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s) ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`,
+		ph,
+	)
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, assetType)
+	for _, id := range ids {
+		args = append(args, id)
 	}
 
-	trRows, err := r.pdb.Metadata.Query(ctx2, q2, args2...)
+	trRows, err := r.pdb.Metadata.Query(ctx, q, args...)
 	if err != nil {
-		return
+		return nil
 	}
 	defer trRows.Close()
 
-	idToFR := make(map[string]string, len(plIDs))
+	idToFR := make(map[string]string, len(ids))
 	for trRows.Next() {
 		var assetID, name string
 		if trRows.Scan(&assetID, &name) == nil {
@@ -454,6 +404,30 @@ func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []do
 			}
 		}
 	}
+	return idToFR
+}
+
+// applyPlaylistFRTranslations enrichit PlaylistName quand playlist_name_fr est absent de
+// match_registry (PlaylistName == PlaylistNameEN = COALESCE fallback EN).
+// Best-effort : erreurs silencieuses.
+func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []domain.FilterMatchRow) {
+	if r.pdb.Metadata == nil {
+		return
+	}
+	uniqueEN := r.collectPlaylistENNeedingFR(rows)
+	if len(uniqueEN) == 0 {
+		return
+	}
+
+	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	nameToID, ok := r.resolveSharedAssetNameToID(ctx2, uniqueEN, "playlist_name", "playlist_id")
+	if !ok || len(nameToID) == 0 {
+		return
+	}
+
+	idToFR := r.loadAssetFRTranslations(ctx2, nameToID, "playlist")
 	if len(idToFR) == 0 {
 		return
 	}
@@ -469,6 +443,19 @@ func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []do
 			}
 		}
 	}
+}
+
+// collectPlaylistENNeedingFR retourne les playlist names EN distincts dont la traduction FR
+// est absente de match_registry.
+func (r *FiltersRepo) collectPlaylistENNeedingFR(rows []domain.FilterMatchRow) map[string]struct{} {
+	uniqueEN := make(map[string]struct{}, 8)
+	for _, row := range rows {
+		en := derefString(row.PlaylistNameEN)
+		if en != "" && en == derefString(row.PlaylistName) {
+			uniqueEN[en] = struct{}{}
+		}
+	}
+	return uniqueEN
 }
 
 func derefString(s *string) string {
