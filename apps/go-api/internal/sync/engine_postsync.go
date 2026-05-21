@@ -316,9 +316,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 }
 
 // runCSRSnapshotSync récupère les classements CSR du joueur pour la saison courante
-// et les persiste dans player_csr_snapshots. Best-effort : skippé si csrSeasonID vide.
+// et les persiste dans player_csr_snapshots. Best-effort : skippé si csrSeasonID vide
+// (avec WARN explicite pour rendre cette régression de config visible aux ops).
 func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) {
 	if strings.TrimSpace(e.csrSeasonID) == "" {
+		// Visibilité explicite : sans cette config, player_csr_snapshots reste vide
+		// éternellement et la home affiche "Aucun classement". Bug racine difficile
+		// à diagnostiquer côté UI ; un WARN rend le silence visible aux ops.
+		slog.WarnContext(ctx,
+			"post-sync: CSR snapshot sync SKIPPED — csr_season_id non configuré "+
+				"(ajouter le champ \"csr_season_id\" dans app_settings.json, ex. \"CsrSeason13-1\", "+
+				"ou définir l'env var LEVELUP_CSR_SEASON_ID)",
+			"gamertag", e.gamertag,
+		)
 		return
 	}
 	slog.DebugContext(ctx, "post-sync: sync CSR snapshots", "gamertag", e.gamertag, "season", e.csrSeasonID)

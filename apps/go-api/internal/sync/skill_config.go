@@ -29,7 +29,15 @@ const (
 	// DrawProbability est la probabilité implicite d'égalité.
 	DrawProbability = 0.06
 	// MinMatchesForRating est le nombre minimum de matchs pour un rating fiable.
+	// (Algorithme local LUSR ; séparé du seuil placement CSR Microsoft.)
 	MinMatchesForRating = 10
+	// CSRPlacementThresholdDefault est le seuil de matchs de placement CSR par
+	// défaut (depuis Season 3, 2023-03-07). Lookup par season_id via
+	// metadata.csr_placement_thresholds pour les saisons antérieures (S1-S2 = 10).
+	CSRPlacementThresholdDefault = 5
+	// LUSRPlacementThreshold est le seuil de matchs requis avant le calcul d'un
+	// LUSR stable. Inchangé (algorithme local). Exposé pour parité avec CSR.
+	LUSRPlacementThreshold = 10
 	// MinRating est le rating minimum global.
 	MinRating = 200.0
 	// KElo est l'amplitude du changement mu par match.
