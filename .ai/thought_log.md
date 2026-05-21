@@ -25,7 +25,14 @@
 - `TestLoadCSRSeasonID_ProductionSettingsHasField` failing : `app_settings.json` racine sans champ `csr_season_id`.
 - Q28RecentMedia + 3 régressions audit home_repo exécutées sur player conn au lieu de shared_social → Phase 3.
 
-**Prochaine étape** : Phase 1.9 validation runtime — appliquer le rebuild sur les DBs prod backupées (test isolé), relancer `diag_lusr_player` pour confirmer Madina 1/10 → 10/10, puis `levelup backfill --lusr --dry-run --all` pour valider les cibles LUSR squad. Si OK → écrire pour de vrai. Puis commit + push branche `fix/duckdb-art-corruption-rebuild`.
+**Phase 1.9 résultats (validation runtime)** :
+- Migration `rebuild_match_participants_defeat_art_corruption` appliquée sur `shared_matches_v2.duckdb` prod via `cmd/apply_shared_migrations` : 24617 rows préservées, 32 colonnes, 220ms.
+- Diag post-rebuild : **Madina 1/10 → 10/10 visibles** ✓ (corruption ART défaite). Chocoboflor et JGtm restent à 10/10.
+- Aussi appliquées : 2 migrations citations en attente (`shared_backfill_is_ranked_and_season` + `add_shared_match_csrs`).
+- ⚠️ **Découverte majeure** : dry-run LUSR post-rebuild montre Madina **EN BAISSE** (arena_slayer 1412.4 → 1303.8, btb 1289.3 → 1076.7) au lieu de remonter vers ses cibles Platine/Diamant attendues (~1700-1900). Chocoboflor (~1466 arena_slayer) et JGtm (~1515) restent dans leur cible Or — légère baisse de 20-40 pts. Le rebuild ART révèle un 2e bug caché : le `carry-adj` de TrueSkill 2 pénalise les bons joueurs qui carry leur équipe (kills/KE ≈ 1 sur lobby plus faible → score compressé vers 0.5). Exactement ce que `docs/INCIDENT_2026-05-20_match_participants_index.md` §Étape 1 craignait après que le bug ART soit corrigé.
+- **Décision** : LUSR NON écrit en prod. Le rebuild ART est livré, le dry-run est en place. L'utilisateur doit arbitrer : (A) accepter recompute actuel + investiguer carry-adj séparément, (B) garder LUSR actuel intact et investiguer carry-adj avant write, (C) investiguer carry-adj maintenant avant tout write.
+
+**Prochaine étape** : push branche `fix/duckdb-art-corruption-rebuild`, attendre décision utilisateur sur carry-adj, puis enchaîner Phase 2 (cleanup logs Air).
 
 ---
 
