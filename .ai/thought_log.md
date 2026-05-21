@@ -1,3 +1,73 @@
+## [2026-05-21] audit(duckdb) — 3 bugs au boot serveur Go (ATTACH global + media_files JGtm + Q26h shared.medals_earned)
+
+**Statut** : Diagnostic seul — audit livré dans [.ai/AUDIT_DUCKDB_ATTACH_2026-05-21.md](.ai/AUDIT_DUCKDB_ATTACH_2026-05-21.md). Aucune ligne de code modifiée (l'utilisateur n'a demandé que la documentation).
+
+**Contexte** : logs `logs/duckdb.log` (11:13:34 → 11:13:45) montrent 3 familles d'erreurs sur la branche `fix/csr-placement-alignment` au boot et au premier appel home.
+
+**Bugs identifiés** :
+
+1. **`Unique file handle conflict` sur `xbox_aliases.duckdb`** — `attachGlobalXuidAliases` ([pool.go:327-348](apps/go-api/internal/platform/duckdb/pool.go#L327)) n'est pas idempotent à travers (a) la limitation driver `go-duckdb` "single-instance-per-file" qui fait qu'un même fichier ne peut être attaché qu'une fois par alias dans le process, (b) le pool `sql.DB` multi-conns où ATTACH et le fallback `SELECT COUNT(*) FROM global.xuid_aliases` partent sur des conns physiques différentes, (c) la cacheKey partagée `"rw:" + path` entre `OpenReadWriteShared` et `OpenReadWrite` qui fait que tous les joueurs réutilisent le même `*DB` pour `shared_social.duckdb`.
+
+2. **`Table media_files does not exist` (player DB JGtm)** — migration `create_base_player_schema` ([steps_player.go:67-75](apps/go-api/internal/migration/steps_player.go#L67-L75)) crée bien `media_files`, mais la DB de JGtm ne l'a pas. Hypothèses : DB régénérée hors flow, ou migration plantée silencieusement (peut-être par cascade du bug 1). Bug latent supplémentaire : mismatch `filename` (migration) vs `file_name` (query).
+
+3. **`schema "shared" does not exist` sur `Q26hMatchMedalsTemplate`** — query [queries_home_citations.go:95-103](apps/go-api/internal/platform/duckdb/queries_home_citations.go#L95-L103) exécutée sur player conn qui n'a plus l'ATTACH `shared` depuis ADR 0016. Call site oublié non listé dans [SHARED_READER_LEAKS](.ai/V7/AUDIT_SHARED_READER_LEAKS.md) / [SHARED_READER_GAPS](.ai/V7/AUDIT_SHARED_READER_GAPS.md). Audit complémentaire (agent Explore) a identifié 2 régressions sœurs dans le même module home : `LoadHomeMatches` ([home_repo_matches.go:17](apps/go-api/internal/platform/duckdb/home_repo_matches.go#L17)) et `CountPlayerMatches` ([home_repo_matches.go:98](apps/go-api/internal/platform/duckdb/home_repo_matches.go#L98)) — toutes deux non visibles dans les logs livrés mais présentes en code.
+
+**Résultats observés** : les trois bugs surviennent **dans le même boot** sans lien causal direct, mais on suspecte que le bug 1 cascade (player conn marquée invalidée) pourrait expliquer le bug 2 (migrations non appliquées sur JGtm). À investiguer.
+
+**Conclusion / prochaine étape** : doc d'audit complet livré avec plan d'attaque P0/P1/P2 proposé. L'utilisateur arbitre l'ordre des fix (probable : bug 3 d'abord — fix simple, 3 sites concentrés dans `home_repo` ; puis bug 1 — idempotence `sync.Once` process-level ; bug 2 diag manuel sur la DB JGtm).
+
+---
+
+## [2026-05-21] fix(csr,home,career) — Alignement placement CSR : Playlists récentes + Carrière
+
+**Statut** : Complété (branche `fix/csr-placement-alignment`).
+
+**Contexte** : la carte "Meilleur CSR" sur la home affiche correctement `En placement (X/10)` + badge `unranked_X.png`. La carte "Playlists récentes" (même page) affiche un mix incohérent : `0 CSR` + tier label `Placement (4 restants)` + placeholder `—`. La section CSR de la page Carrière retourne l'empty state `Pas de données CSR` même quand le joueur a des playlists classées (utilisateur attend la liste complète, même 0 match joué).
+
+**Root cause triple** :
+
+1. **Sync écrit** `match_skill_rank.rating_value=0.0` en placement (contrainte `NOT NULL` du schéma, cf. [csr_writes.go:133-144](apps/go-api/internal/sync/csr_writes.go#L133-L144)) avec `tier="Placement"` et `tier_label="Placement (N restants)"`.
+
+2. **Backend home** ([home_repo_playlist_ranks.go:63-91](apps/go-api/internal/platform/duckdb/home_repo_playlist_ranks.go#L63-L91)) : la branche MSR remplit `RatingValue=0` / `TierLabel="Placement (4 restants)"` / `BadgeImageURL=nil` (car `canonicalHomeSkillTierName("Placement")` → `""`) et ne pose jamais `MeasurementMatchesRemaining`. La branche placement n'était jamais empruntée tant qu'une ligne MSR existait.
+
+3. **Frontend home** ([HomeRecentPlaylistsCard.tsx:71](apps/web/src/features/home/HomeRecentPlaylistsCard.tsx#L71)) : détection placement = `rating_value == null && !tier_label` — échoue car `0 ≠ null` et `tier_label` rempli. Ignorait `measurement_matches_remaining` (contrairement à `resolveSkillPeakState` dans HomeSkillPeakCard).
+
+4. **Backend carrière** ([career_repo.go:885](apps/go-api/internal/platform/duckdb/career_repo.go#L885)) : `GetCSRSnapshots` ne lit que `player_csr_snapshots` ; vide → empty state. N'exploitait pas `playlists_catalog` (metadata.duckdb, alimenté par DiscoveryUGC).
+
+**Décisions** :
+
+1. **Backend home** : extrait `buildPlaylistRankItem(p, msr, snap)` qui détecte le placement en priorité (snapshot > 0 OU MSR.tier=="Placement"/label commence par "Placement"). En placement : `RatingValue=nil`, `TierLabel=nil`, `BadgeImageURL=unranked_N.png`, `MeasurementMatchesRemaining=remaining`. Helper `parsePlacementRemaining(label)` pour le fallback quand snapshot absent.
+
+2. **Backend carrière** : `GetCSRSnapshots` merge maintenant `player_csr_snapshots` + `playlists_catalog WHERE is_ranked=TRUE AND is_active=TRUE` (via `r.pdb.Metadata`). Playlists ranked sans snapshot → injectées avec `MeasurementMatchesRemaining=10` + badge `unranked_0.png`. Garantit que la liste n'est jamais vide tant que le catalogue existe.
+
+3. **Frontend home** : `HomeRecentPlaylistsCard` lit `measurement_matches_remaining > 0` comme signal primaire (parité avec `resolveSkillPeakState`). Format `En placement (X/10)` (parenthèses). Fallback `unrankedBadgeURL()` quand badge backend absent en placement. Masquage de `0 CSR` quand placement.
+
+4. **Frontend carrière** : `csrTierLabel` adopte le format `Placement (X/10)` (parenthèses, parité home). Même chose pour le fallback LUSR `Placement (0/10)`.
+
+**Tests** :
+
+- `home_repo_playlist_ranks_test.go` : 10 nouveaux tests unitaires (`TestParsePlacementRemaining_*` × 4, `TestBuildPlaylistRankItem_*` × 5, `TestNewPlacementPlaylistCSR_*` × 1) — tous verts.
+- `go test ./internal/platform/duckdb/... -short` : 17.0s, tous verts (aucune régression).
+- `npx vitest run` sur `HomeRecentPlaylistsCard.test.tsx` (assertion mise à jour `En placement 4/10` → `En placement (4/10)`), `HomeRankingStates.test.tsx`, `CareerHubPage.test.tsx`, `CareerPage.test.tsx` : 15/15 verts.
+- `npx tsc --noEmit` : zéro erreur.
+- `go vet ./internal/platform/duckdb/...` : zéro warning.
+
+**Fichiers modifiés** :
+
+- [apps/go-api/internal/platform/duckdb/home_repo_playlist_ranks.go](apps/go-api/internal/platform/duckdb/home_repo_playlist_ranks.go) : extraction `buildPlaylistRankItem`, helper `parsePlacementRemaining`, import `regexp`.
+- [apps/go-api/internal/platform/duckdb/career_repo.go](apps/go-api/internal/platform/duckdb/career_repo.go) : refonte `GetCSRSnapshots` (merge catalogue), nouvelles méthodes `loadCSRSnapshotRows` / `loadRankedPlaylistsCatalog` / `newPlacementPlaylistCSR`.
+- [apps/go-api/internal/platform/duckdb/queries_career.go](apps/go-api/internal/platform/duckdb/queries_career.go) : nouvelle const SQL `QPlaylistsCatalogRanked`.
+- [apps/web/src/features/home/HomeRecentPlaylistsCard.tsx](apps/web/src/features/home/HomeRecentPlaylistsCard.tsx) : détection `measurement_matches_remaining`, format parenthèses, fallback badge, masquage `0 CSR`.
+- [apps/web/src/features/career/CareerRankingBlock.tsx](apps/web/src/features/career/CareerRankingBlock.tsx) : `csrTierLabel` + fallback LUSR alignés sur le format home.
+- `apps/go-api/internal/platform/duckdb/home_repo_playlist_ranks_test.go` : nouveau fichier tests.
+- `apps/web/src/features/home/HomeRecentPlaylistsCard.test.tsx` : assertion format mise à jour.
+
+**Hors-scope** : pas de touche au schéma DB ni au sync CSR (`rating_value=0` en placement reste une contrainte assumée du schéma `NOT NULL`). Pas de regénération des manifests i18n (le label `career.ranking.placement="Placement"` reste inchangé ; seul le format avec parenthèses est ajusté côté code).
+
+**Prochaine étape** : commit + push, demander à l'utilisateur de tester sur sa home/carrière. Si l'alignement strict du wording (`En placement` plutôt que `Placement` côté carrière FR) est requis, prévoir une mise à jour ciblée du manifest TOML + regénération.
+
+---
+
 ## [2026-05-21] fix(home) — Bannière vraie racine : corruption ART DuckDB sur career_progression
 
 **Statut** : Complété (branche `fix/media-paths-portable`).
@@ -1049,6 +1119,50 @@ Les tests media-filters passaient toujours parce que le mock `newTestPlayerDBFor
 - Tests des 5 packages touchés (presence, prestige, scheduler, auth, auth/pool) : OK (5.1s + 0.4s + 1.9s + 5.9s + 0.9s).
 
 **Prochaine étape** : observer les logs en runtime pour confirmer la réduction du bruit ; envisager d'ajouter `event` à `defaultSkipAttrs` si d'autres call-sites utilisent encore cette clé hors ContextHandler.
+
+---
+
+## [2026-05-20] fix(db) — Commit 21 : éliminer le mix RO/RW sur shared_social (cause résiduelle "different configuration")
+
+**Statut** : Complété (branche `fix/auto-sync-different-configuration`, commit 21 — finalise l'audit DBs post-SharedDBProvider).
+
+**Contexte** : utilisateur a posé la bonne question : "et metadata + shared_social, on ne les a pas oubliés ?". Audit complet runtime serveur lancé sur les 3 fichiers DuckDB partagés (`metadata`, `shared_social`, player `stats.duckdb`).
+
+**Découverte clé — le cache `openCachedDB`** :
+`OpenReadWrite` et `OpenReadWriteShared` partagent **la même clé cache `"rw:"+path`** ([db.go:106](apps/go-api/internal/platform/duckdb/db.go#L106) vs [db.go:121](apps/go-api/internal/platform/duckdb/db.go#L121)). Le 2e appel sur le même path récupère le `*DB` cached du 1er (Ping OK → refcount++), même si les `maxOpenConns` demandés diffèrent (4 vs 1). Ce **n'est pas** une cause de "different configuration".
+
+La VRAIE cause du bug "Can't open a connection to same database file with a different configuration" : `OpenReadOnly` (clé `"ro:"+path`) + n'importe quel `OpenReadWrite*` (clé `"rw:"+path`) sur le même fichier dans le même process → 2 vrais `duckdb_open()` avec des `access_mode` différents → DuckDB refuse.
+
+**Verdict de l'audit** :
+
+| BDD | Risque "different configuration" | Pourquoi |
+|---|---|---|
+| **metadata.duckdb** | ✅ Aucun | 100% `OpenReadWriteShared` au runtime serveur (pool, prestige_setup, lab/provider, server.go). Aucun `OpenReadOnly`. Les CLI tools (`refresh-metadata`, `seed-*`) sont des processus distincts — collision inter-process possible mais c'est un autre problème (file lock OS), pas un bug serveur. |
+| **player stats.duckdb** | ✅ Aucun | Mix `OpenReadWrite` (pool.go:193, sync engine) + `OpenReadWriteShared` (onRotated callback, AcquirePlayerWriterStandalone) — **MAIS** même clé cache `"rw:"+path` → cache merge transparent. Pas de crash, juste maxOpenConns du 1er gagnant. |
+| **shared_social.duckdb** | ⚠️ Présent | Mix `OpenReadOnly` (`registry_notifications.go:121` `loadRecentMediaMatchIDs`) + `OpenReadWrite`/`OpenReadWriteShared` (pool, prestige_setup, post_sync_deltas) → clés cache différentes → 2 `duckdb_open()` → CRASH potentiel en collision media upload + post-sync. |
+
+**Fix shared_social** :
+
+1. **`internal/api/registry_notifications.go:121`** : `OpenReadOnly` → `OpenReadWriteShared` (CRITIQUE — élimine la seule clé `"ro:"+path` sur shared_social).
+2. **`internal/api/post_sync_deltas.go:628`** : supprime le `OpenReadWrite + defer Close` redondant, utilise `pdb.SharedSocial.Exec` directement (déjà ouvert RWShared par le pool). Le fichier mélangeait déjà `pdb.SharedSocial.QueryRow` (ligne 607) pour la lecture et `OpenReadWrite` séparé pour l'écriture — incohérence corrigée.
+3. **`internal/platform/duckdb/pool.go:230`** : `OpenReadWrite(cfg.SharedSocialDBPath)` → `OpenReadWriteShared` (intent : lectures concurrentes HTTP + écritures occasionnelles favoris/likes/ascension/records). Commentaire mis à jour.
+4. **`internal/platform/duckdb/notifications_repo_test.go:336`** : fixture test alignée — `OpenReadWrite + Close` redondant remplacé par `pdb.SharedSocial.Exec` direct (cohérent avec le nouveau pattern prod).
+
+**Sécurité sous écriture concurrente** (question explicite user : likes/favoris/ascension simultanés) :
+- DuckDB sérialise les writes en interne via MVCC (single writer commit lock). Pour des micro-INSERTs (1 ligne) — ce qui est le cas de shared_social — la sérialisation est ms-scale, imperceptible.
+- L'infrastructure `dblease.KindSharedSocial` + `pdb.AcquireSharedSocialWriterTimeout` existe déjà (utilisée par `registry_notifications.go:63`, `registry.go:515/585`, `prestige_lazy_service.go:124`) pour les writers HTTP qui veulent une arbitration applicative explicite.
+- Pas besoin d'ajouter un Provider B-swap pour shared_social — le pattern est trop lourd pour des micro-écritures non bloquantes.
+
+**Hypothèse pour "can't open connection" sur metadata vu sur l'autre PC user** :
+Collision **inter-process** avec un CLI tool (`refresh-metadata`, `seed-weapon-labels`, `migrate-static-maps`, `cmd_sync_achievements`) lancé pendant que le serveur tournait. DuckDB ne supporte pas le partage file-lock entre process distincts. **Mitigation** : ne pas lancer ces CLI pendant que le serveur est actif. À documenter dans le runbook ops.
+
+**Vérification** : `go vet ./...` clean sur tout le module. Build serveur runtime KO pour cause MSYS2/CGO link pré-existante (toolchain GCC 16 incompatible libduckdb_static), indépendant de ce commit.
+
+**Conclusion / prochaine étape** : Les 3 DBs partagées sont désormais protégées contre le bug "different configuration" :
+- `shared_matches_v2.duckdb` : `SharedDBProvider` B-swap (commits 1-9 + ADR 0016).
+- `metadata.duckdb` : 100% `OpenReadWriteShared` au runtime serveur (déjà acquis pré-sprint).
+- `shared_social.duckdb` : 100% `OpenReadWriteShared` au runtime serveur (ce commit).
+- Player `stats.duckdb` : safe via cache merge entre `OpenReadWrite` et `OpenReadWriteShared` (déjà acquis pré-sprint).
 
 ---
 
