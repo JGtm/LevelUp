@@ -49,7 +49,10 @@ check_tests() {
   echo "▶ Comparaison de la suite courante vs baseline"
   echo "  Baseline : $BASELINE_TESTS"
 
-  local current_jsonl
+  # Note: current_jsonl est volontairement global (pas `local`) car la trap
+  # EXIT s'exécute APRÈS le retour de la fonction, à un moment où le scope
+  # local est détruit. Sous `set -u` un `local` ici déclenche
+  # "current_jsonl: unbound variable" au cleanup (incident 2026-05-22).
   current_jsonl=$(mktemp)
   trap 'rm -f "$current_jsonl"' EXIT
 
@@ -102,7 +105,8 @@ check_coverage() {
 
   echo "▶ Comparaison de la couverture vs baseline"
 
-  local current_raw current_txt
+  # Note: globaux volontairement (pas `local`) — la trap EXIT s'exécute APRÈS
+  # le retour de la fonction (cf. check_tests pour le même pattern).
   current_raw=$(mktemp --suffix=.raw)
   current_txt=$(mktemp --suffix=.txt)
   trap 'rm -f "$current_raw" "$current_txt"' EXIT
