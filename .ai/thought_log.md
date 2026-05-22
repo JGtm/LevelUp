@@ -1,3 +1,31 @@
+## [2026-05-22] fix(duckdb) — Phase 3 stabilisation : sync.Once ATTACH global + migrations 3 régressions SharedReader
+
+**Statut** : Complété (branche `fix/duckdb-pool-hardening` depuis `chore/metadata-shutdown-cleanup`).
+
+**Contexte** : Suite Phase 2 (cleanup logs), traitement de la classe d'erreurs "Unique file handle conflict" (boot multi-joueurs) + des 3 régressions home_repo qui exécutent des queries `shared.*` sur la player conn alors que l'ATTACH shared a été retiré (ADR 0016). Cf. `docs/INCIDENT_2026-05-20_match_participants_index.md` annexe C + audits SharedReader.
+
+**Décisions techniques** :
+- **sync.Once process-level pour `attachGlobalXuidAliases`** : map `attachGlobalByPath[path]` → `*attachGlobalState{once, err}`. 1er appel attache (ou crée le schema si fichier absent), suivants no-opent en réutilisant `state.err`. Cause racine : DuckDB instance partagée au niveau process. ATTACH sur un fichier donné est process-wide, pas per-conn ni per-sql.DB. Helper `resetGlobalAttachState()` exposé pour les tests.
+- **Migration 3 queries home_repo vers SharedReader** :
+  - `CountPlayerMatches` (Q26b) : `pdb.ReadDB()` → `SharedReadDB().Get(ctx)`. Query SQL met à jour `FROM shared.match_participants` → `FROM match_participants`.
+  - `LoadMatchMedals` (Q26h) : idem, query `FROM shared.medals_earned` → `FROM medals_earned`.
+  - `LoadRecentMedia` (Q28) : `pdb.ReadDB()` → `pdb.SharedSocial` (et non pas SharedReader — media_files + media_match_associations vivent dans shared_social.duckdb depuis migration `drop_media_from_player_db`).
+- **Q26 (LoadHomeMatches) NON migré** : query cross-DB qui mixe shared (match_participants + match_registry + medals_earned) ET player (player_match_enrichment + match_skill_rank). Le split refactor en 2 phases Go-side est substantiel — reporté à Phase 3.bis ou Phase 5.
+- **Handoff shared_social (5 fichiers non commités du 2026-05-20)** : vérifié. `registry_notifications.go` utilise déjà `OpenReadWriteShared` (ligne 128) post-merge citations. Le fix est déjà appliqué — Phase 3.4 = no-op.
+
+**Résultats observés** :
+- Build complet OK. Tests `TestAttachGlobal_IdempotentMultipleCalls` + `TestAttachGlobal_DifferentDBsSamePath` PASS (sync.Once élimine la 2e+ tentative ATTACH avec "Unique file handle conflict").
+- Tests existants `TestProbeART_*` toujours PASS.
+- Aucune nouvelle régression dans la suite globale (2 fails pré-existants `TestContractRoutesDocumented` + `TestLoadCSRSeasonID_*` restent inchangés — dettes branche citations).
+- 3 régressions SharedReader éliminées : `pool.log` et `duckdb.log` post-boot devraient ne plus montrer ni "schema shared does not exist" ni "Table with name media_files does not exist" pour ces endpoints.
+
+**Prochaine étape** : push branche `fix/duckdb-pool-hardening`, puis Phase 4 (Pipeline V2 Ascension — option B1 refactor `SyncEngine`).
+
+**À traiter ultérieurement (Phase 3.bis ou 5)** :
+- Q26 LoadHomeMatches : split en 2 phases Go-side (shared via SharedReader → match_ids + données shared, puis player via pdb.Player pour pme + msr).
+
+---
+
 ## [2026-05-22] chore(metadata) — Phase 2 stabilisation : cleanup logs hot-reload Air + fix fuite refCount PrestigeBundle
 
 **Statut** : Complété (branche `chore/metadata-shutdown-cleanup` depuis `fix/duckdb-art-corruption-rebuild`).

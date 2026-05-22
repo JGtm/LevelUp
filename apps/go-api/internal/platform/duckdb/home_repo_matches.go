@@ -93,9 +93,23 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatch
 }
 
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).
+//
+// Phase 3 plan stabilisation 2026-05-22 : migré de pdb.ReadDB() (player conn)
+// vers SharedReader.Get(). match_participants vit dans shared_matches_v2 et
+// l'ATTACH shared sur la player conn a été retiré au sprint P0→P7 (ADR 0016).
+// La query référence désormais `match_participants` sans préfixe `shared.`
+// (cf. Q26bCountPlayerMatches dans queries_home_citations.go).
 func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
+	if r.pdb.SharedReader == nil {
+		return 0, nil
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer release()
 	var count int
-	err := r.pdb.ReadDB().QueryRow(ctx, Q26bCountPlayerMatches, r.pdb.XUID).Scan(&count)
+	err = sharedDB.QueryRowContext(ctx, Q26bCountPlayerMatches, r.pdb.XUID).Scan(&count)
 	return count, err
 }
 
@@ -126,8 +140,18 @@ func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSess
 
 // LoadRecentMedia charge les médias récents du joueur (Q28).
 // Retourne une liste vide si la table media_files n'existe pas.
+//
+// Phase 3 plan stabilisation 2026-05-22 : migré de pdb.ReadDB() (player conn)
+// vers pdb.SharedSocial. La table media_files (et media_match_associations)
+// a été déplacée vers shared_social.duckdb via migration
+// drop_media_from_player_db (cf. steps_player.go:370). Avant ce fix, la
+// query lançait "Catalog Error: Table with name media_files does not exist"
+// sur la player conn — cf. AUDIT_DUCKDB_ATTACH_2026-05-21 §2.
 func (r *HomeRepo) LoadRecentMedia(ctx context.Context, limit int) ([]domain.HomeMediaRow, error) {
-	rows, err := r.pdb.ReadDB().Query(ctx, Q28RecentMedia, limit)
+	if r.pdb.SharedSocial == nil {
+		return nil, nil
+	}
+	rows, err := r.pdb.SharedSocial.Query(ctx, Q28RecentMedia, limit)
 	if err != nil {
 		// La table media_files peut ne pas exister — dégradation silencieuse.
 		if isTableNotFoundErr(err) {

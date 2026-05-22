@@ -97,7 +97,7 @@ SELECT
     me.match_id,
     me.medal_name_id,
     COALESCE(me.count, 1) AS count
-FROM shared.medals_earned me
+FROM medals_earned me
 WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`
@@ -139,7 +139,7 @@ GROUP BY citation_name_norm, citation_name_display, image_path, tier_targets`
 // Q26b : Home -- nombre total de matchs d un joueur (pas de LIMIT).
 // Parametre : ?1 = xuid du joueur.
 const Q26bCountPlayerMatches = `
-SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
+SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
 
 // Q26c : Home -- identitÃ© record compacte depuis career_progression.
 // Un seul scan via ARG_MAX â€” remplace les 5 sous-requÃªtes corrÃ©lÃ©es de l'ancienne version.
