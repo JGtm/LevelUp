@@ -184,7 +184,12 @@ func CloseAll() {
 	})
 }
 
-// openPlayerDB ouvre et initialise un PlayerDB complet.
+// openPlayerDB ouvre et initialise un PlayerDB complet. Boot per-player :
+// migrations + open RW + ATTACH shared/social/metadata + SharedReader bswap vs
+// legacy + xuid_aliases global optionnel. Splitter casserait l'atomicité du
+// boot (cleanup en cascade sur erreur).
+//
+//nolint:gocyclo // assemblage boot avec cleanup en cascade, cohésion requise.
 func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) {
 	if err := ensurePlayerDBMigrations(cfg.PlayerDBPath); err != nil {
 		return nil, fmt.Errorf("pool: migrate player db %s: %w", cfg.Gamertag, err)
@@ -308,6 +313,8 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 
 // openSharedSocialDB ouvre la DB SharedSocial (optionnelle). Retourne nil en
 // cas d'échec (non bloquant : absence normale au boot, fichier créé en sync).
+//
+//nolint:unused // WIP refacto Phase 3 stabilisation pool — péremption 2026-06-22 (à câbler dans openPlayerDB ou supprimer).
 func openSharedSocialDB(ctx context.Context, cfg PlayerPoolConfig) *DB {
 	if cfg.SharedSocialDBPath == "" {
 		return nil
@@ -331,6 +338,8 @@ func openSharedSocialDB(ctx context.Context, cfg PlayerPoolConfig) *DB {
 // (tolérance prévue côté query — retombe sur NULL).
 //
 // P5.3 : mapping xuid→gamertag global Microsoft pour les JOIN global.xuid_aliases.
+//
+//nolint:unused // WIP refacto Phase 3 stabilisation pool — péremption 2026-06-22 (à câbler dans openPlayerDB ou supprimer).
 func attachGlobalXuidAliasesIfConfigured(
 	ctx context.Context, playerDB, socialDB *DB, cfg PlayerPoolConfig,
 ) {
@@ -392,6 +401,8 @@ var (
 // resetGlobalAttachState efface l'état sync.Once par path. Utilisé par les
 // tests qui ouvrent/ferment des DBs globales successivement (sinon le 2e
 // test du run récupère l'état "already attached" du 1er).
+//
+//nolint:unused // WIP test helper Phase 3 — péremption 2026-06-22 (à câbler dans tests sync.Once ou supprimer).
 func resetGlobalAttachState() {
 	attachGlobalMu.Lock()
 	defer attachGlobalMu.Unlock()

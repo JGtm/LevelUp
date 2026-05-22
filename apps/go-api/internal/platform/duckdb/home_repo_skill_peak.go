@@ -32,9 +32,11 @@ const (
 // Tier names canoniques Halo Infinite (PascalCase pour l'affichage UI).
 // Utilisés par canonicalHomeSkillTierName + tests de classification rang.
 const (
-	tierBronze  = "Bronze"
-	tierGold    = "Gold"
-	tierDiamond = "Diamond"
+	tierBronze    = "Bronze"
+	tierGold      = "Gold"
+	tierDiamond   = "Diamond"
+	tierOnyx      = "Onyx"
+	placementTier = "Placement"
 )
 
 // peakRow : scratch interne pour la classification CSR/LUSR + best per group.
@@ -186,7 +188,11 @@ func (r *HomeRepo) loadPeakPhaseB(ctx context.Context, matchIDs []string) map[st
 }
 
 // assemblePeak : filtre par effective_type, groupe, sélectionne le best matured.
-// Phase 6 : threshold paramétré (CSR=lookup season ou default, LUSR=10).
+// Phase 6 : threshold paramétré (CSR=lookup season ou default, LUSR=10). Pipeline
+// filtre+regroupement+sélection peak avec branches effective_type (CSR/LUSR/derived)
+// + threshold (season vs default vs LUSR=10).
+//
+//nolint:gocyclo // cohésion du flow filtre→group→select, splitter casse la lisibilité.
 func (r *HomeRepo) assemblePeak(playerRows []peakRow, registryByMatch map[string]peakRegistryInfo, ratingType string) *domain.HomeSkillPeakRow {
 	want := strings.ToUpper(strings.TrimSpace(ratingType))
 	// LUSR garde son seuil interne de 10 (algorithme local). CSR utilise la
@@ -460,7 +466,7 @@ func canonicalHomeSkillTierName(value string) string {
 	case "diamond":
 		return tierDiamond
 	case "onyx":
-		return "Onyx"
+		return tierOnyx
 	default:
 		return ""
 	}

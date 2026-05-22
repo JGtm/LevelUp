@@ -71,7 +71,10 @@ func wWin(t, eps float64) float64 {
 //
 // Battre des adversaires plus forts (muOpp > mu) donne plus de gain ;
 // battre des adversaires plus faibles en demi-mesure peut descendre mu.
-// Sigma : réduction TrueSkill standard.
+// Sigma : réduction TrueSkill standard. weightFactor réservé pour pondération
+// asymétrique (carry-adj Phase 1.bis cf. thought_log 2026-05-22).
+//
+//nolint:unparam // weightFactor toujours 1.0 aujourd'hui, signature configurable pour formule à venir.
 func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) {
 	expectedScore := 1.0 / (1.0 + math.Exp(-(mu-muOpp)/(2.0*Beta)))
 	deltaMU := KElo * (actualScore - expectedScore) * weightFactor
@@ -125,13 +128,11 @@ type compositeMatchRow struct {
 // que le composite (utilisé par les tests existants).
 //
 // Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids
-// renormalisés.
-//
+// renormalisés. 4 params réservés pour futures composantes du score composite
 // (enemyAvgKE = carry adjustment vs adversaires ; avgMedalExploit = bonus exploit ;
 // avgOffConv = offensive conversion ; avgDefRes = defensive resistance).
-// Signature stable pour éviter les refactos cascade.
 //
-//nolint:unparam // 4 params réservés pour futures composantes du score composite
+//nolint:unparam // signature stable pour formule PerfTier roadmap, callers passent nil aujourd'hui.
 func computeCompositeScore(
 	row *compositeMatchRow,
 	avgAccuracy *float64,

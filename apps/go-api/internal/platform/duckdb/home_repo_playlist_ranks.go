@@ -115,6 +115,8 @@ type playlistRawItem struct {
 // buildHomePlaylistRankItem assemble une HomePlaylistRank à partir d'un row Phase B
 // + les MSR/snapshot Phase A. Si rang MSR connu → badge ranked ; sinon mode placement
 // (badge unranked + matches_remaining) ; sinon item nu.
+//
+//nolint:unused // WIP refacto Phase B home_repo playlist ranks — péremption 2026-06-22 (à câbler ou supprimer).
 func buildHomePlaylistRankItem(
 	p playlistPhaseBRow,
 	msrByMatch map[string]playlistMSRRow,
@@ -136,6 +138,8 @@ func buildHomePlaylistRankItem(
 
 // fillRankedMSRItem renseigne RatingType, RatingValue, TierLabel et BadgeImageURL
 // depuis un MSR connu (ranked LUSR/CSR).
+//
+//nolint:unused // WIP refacto Phase B home_repo playlist ranks — péremption 2026-06-22 (à câbler ou supprimer).
 func fillRankedMSRItem(item *domain.HomePlaylistRank, isRanked bool, msr playlistMSRRow) {
 	ratingType := ratingTypeLUSR
 	if isRanked {
@@ -152,6 +156,8 @@ func fillRankedMSRItem(item *domain.HomePlaylistRank, isRanked bool, msr playlis
 
 // fillPlacementItem renseigne BadgeImageURL (unranked) + MeasurementMatchesRemaining
 // pour le mode placement (10 matchs avant rang).
+//
+//nolint:unused // WIP refacto Phase B home_repo playlist ranks — péremption 2026-06-22 (à câbler ou supprimer).
 func fillPlacementItem(item *domain.HomePlaylistRank, playlistID string, snapshotByPlaylist map[string]int) {
 	completed := 0
 	if rem, ok := snapshotByPlaylist[playlistID]; ok && rem > 0 {
@@ -298,7 +304,11 @@ func (r *HomeRepo) loadPlaylistPhaseASnapshot(ctx context.Context, playlistIDs [
 //
 // En placement : RatingValue/TierLabel laissés nil, BadgeImageURL=unranked_N.png
 // (mapping proportionnel via threshold), MeasurementMatchesRemaining=remaining,
-// PlacementTotal=threshold.
+// PlacementTotal=threshold. Assemblage Phase B des items par-playlist : branches
+// isPlacement vs hasMSR vs fallback unranked, chacune avec sa logique
+// tier/badge/value. La complexité reflète le nombre d'états légitimes du modèle.
+//
+//nolint:gocyclo // branches multiples par état métier, splitter perd la cohésion.
 func buildPlaylistRankItem(
 	p playlistPhaseBRow,
 	msrByMatch map[string]playlistMSRRow,
@@ -315,7 +325,7 @@ func buildPlaylistRankItem(
 	msr, hasMSR := msrByMatch[p.lastMatchID]
 	snapRem, hasSnap := snapshotByPlaylist[p.playlistID]
 
-	msrIsPlacement := hasMSR && (msr.tier == "Placement" || strings.HasPrefix(msr.tierLabel, "Placement"))
+	msrIsPlacement := hasMSR && (msr.tier == placementTier || strings.HasPrefix(msr.tierLabel, placementTier))
 	snapIsPlacement := hasSnap && snapRem > 0
 	// Une playlist classée sans MSR ET sans snapshot positif est traitée comme
 	// placement à 0 match joué (parité avec l'ancien code `else if p.isRanked`).
@@ -342,14 +352,14 @@ func buildPlaylistRankItem(
 		item.MeasurementMatchesRemaining = &remCopy
 		totalCopy := threshold
 		item.PlacementTotal = &totalCopy
-		ratingType := "CSR"
+		ratingType := ratingTypeCSR
 		item.RatingType = &ratingType
 		// RatingValue / TierLabel laissés nil : signal explicite au front.
 
 	case hasMSR:
-		ratingType := "LUSR"
+		ratingType := ratingTypeLUSR
 		if p.isRanked {
-			ratingType = "CSR"
+			ratingType = ratingTypeCSR
 		}
 		item.RatingType = &ratingType
 		ratingValueCopy := msr.ratingValue

@@ -68,7 +68,7 @@ func BackfillSharedCSRsFromAPI(
 ) (SharedCSRBackfillResult, error) {
 	res := SharedCSRBackfillResult{DryRun: opts.DryRun}
 
-	matches, err := loadRankedMatchesForSharedCSRBackfill(sharedDB, xuid)
+	matches, err := loadRankedMatchesForSharedCSRBackfill(ctx, sharedDB, xuid)
 	if err != nil {
 		return res, fmt.Errorf("BackfillSharedCSRsFromAPI: load ranked: %w", err)
 	}
@@ -95,12 +95,12 @@ func BackfillSharedCSRsFromAPI(
 			return res, err
 		}
 
-		nParticipants, errCount := countMatchParticipants(sharedDB, m.MatchID)
+		nParticipants, errCount := countMatchParticipants(ctx, sharedDB, m.MatchID)
 		if errCount != nil {
 			res.SkillErrors++ // catégorisation simple : erreur DB classée comme erreur de fetch
 			continue
 		}
-		nExisting, errCount := countMatchCSRRows(sharedDB, m.MatchID)
+		nExisting, errCount := countMatchCSRRows(ctx, sharedDB, m.MatchID)
 		if errCount != nil {
 			res.SkillErrors++
 			continue
@@ -121,7 +121,7 @@ func BackfillSharedCSRsFromAPI(
 		}
 
 		// Récupère TOUS les xuids participants pour l'appel /skill.
-		xuids, errXUIDs := loadParticipantXUIDs(sharedDB, m.MatchID)
+		xuids, errXUIDs := loadParticipantXUIDs(ctx, sharedDB, m.MatchID)
 		if errXUIDs != nil || len(xuids) == 0 {
 			res.SkillErrors++
 			slog.WarnContext(ctx, "BackfillSharedCSRsFromAPI: loadParticipantXUIDs échoué",
@@ -146,7 +146,7 @@ func BackfillSharedCSRsFromAPI(
 			continue
 		}
 
-		if err := UpsertSharedCSRs(sharedDB, rows); err != nil {
+		if err := UpsertSharedCSRs(ctx, sharedDB, rows); err != nil {
 			res.UpsertErrors++
 			slog.WarnContext(ctx, "BackfillSharedCSRsFromAPI: UpsertSharedCSRs échoué",
 				"match_id", m.MatchID, "rows", len(rows), "err", err)
@@ -186,8 +186,8 @@ func BackfillSharedCSRsFromAPI(
 //
 // Fallback heuristique playlist_name LIKE '%ranked%' identique à la fonction
 // player-scoped pour couvrir les régressions is_ranked.
-func loadRankedMatchesForSharedCSRBackfill(sharedDB *sql.DB, xuid string) ([]MatchRegistryRow, error) {
-	rows, err := sharedDB.Query(`
+func loadRankedMatchesForSharedCSRBackfill(ctx context.Context, sharedDB *sql.DB, xuid string) ([]MatchRegistryRow, error) {
+	rows, err := sharedDB.QueryContext(ctx, `
 		SELECT DISTINCT r.match_id, r.start_time, r.season_id
 		FROM match_registry r
 		JOIN match_participants mp ON mp.match_id = r.match_id
@@ -222,15 +222,18 @@ func loadRankedMatchesForSharedCSRBackfill(sharedDB *sql.DB, xuid string) ([]Mat
 	return out, rows.Err()
 }
 
-func countMatchParticipants(db *sql.DB, matchID string) (int, error) {
+func countMatchParticipants(ctx context.Context, db *sql.DB, matchID string) (int, error) {
 	var n int
-	err := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE match_id = ?`, matchID).Scan(&n)
+	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_participants WHERE match_id = ?`, matchID).Scan(&n)
 	return n, err
 }
 
-func countMatchCSRRows(db *sql.DB, matchID string) (int, error) {
+// nilerr explicite : table absente = 0 rows attendu (caller traite comme "tout à backfiller").
+//
+//nolint:unparam // err maintenu pour cohérence avec countMatchParticipants ;
+func countMatchCSRRows(ctx context.Context, db *sql.DB, matchID string) (int, error) {
 	var n int
-	err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs WHERE match_id = ?`, matchID).Scan(&n)
+	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_csrs WHERE match_id = ?`, matchID).Scan(&n)
 	if err != nil {
 		// Table absente → 0 rows. On retourne (0, nil) pour ne pas casser le flow.
 		// Le caller traitera comme "tout à backfiller".
@@ -239,8 +242,8 @@ func countMatchCSRRows(db *sql.DB, matchID string) (int, error) {
 	return n, nil
 }
 
-func loadParticipantXUIDs(db *sql.DB, matchID string) ([]string, error) {
-	rows, err := db.Query(`SELECT DISTINCT xuid FROM match_participants WHERE match_id = ? AND xuid IS NOT NULL AND xuid <> ''`, matchID)
+func loadParticipantXUIDs(ctx context.Context, db *sql.DB, matchID string) ([]string, error) {
+	rows, err := db.QueryContext(ctx, `SELECT DISTINCT xuid FROM match_participants WHERE match_id = ? AND xuid IS NOT NULL AND xuid <> ''`, matchID)
 	if err != nil {
 		return nil, err
 	}

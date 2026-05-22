@@ -38,7 +38,7 @@ func init() {
 			// Étape 1 : marquer ranked les rows dont le nom playlist ou pair contient "ranked".
 			// (Halo retourne les noms en EN dans le payload — testé : 0 occurrence de FR
 			//  "classé"/"classée" dans la base ; l'heuristique EN couvre 100% des cas.)
-			if _, err := db.Exec(`
+			if _, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry
 				SET is_ranked = TRUE
 				WHERE COALESCE(is_ranked, FALSE) = FALSE
@@ -56,7 +56,7 @@ func init() {
 			//   - metadata.csr_placement_thresholds (Phase 5)
 			// Évalué uniquement pour les rows ranked sans season_id (premier run + cas
 			// de drift). Idempotent : 2e run = 0 rows mises à jour.
-			_, err := db.Exec(`
+			_, err := db.ExecContext(bootCtx(), `
 				UPDATE match_registry
 				SET season_id = CASE
 					WHEN start_time >= TIMESTAMP '2025-11-18' THEN 'CsrSeason13-1'
