@@ -57,6 +57,32 @@ type ServiceRegistry struct {
 	seasonsCatalog   *service.SeasonsCatalog   // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
 	rankCatalog      *mappings.RankCatalog     // nil → CareerService.next_rank_name reste vide
 	rankImageURLs    map[int]*string           // nil → CareerService.rank_image_url et next_rank_image_url restent absents
+	prestigeBundle   *PrestigeBundle           // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
+}
+
+// WithPrestigeBundle attache le bundle Prestige au registry. Le bundle détient
+// des handles OpenReadWriteShared(sharedSocial) + OpenReadWriteShared(metadata)
+// qui DOIVENT être fermés au shutdown via reg.Close() — sinon fuite de
+// refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21_metadata
+// _duckdb_lock_air_hot_reload.md).
+func (r *ServiceRegistry) WithPrestigeBundle(b *PrestigeBundle) *ServiceRegistry {
+	r.prestigeBundle = b
+	return r
+}
+
+// Close libère les ressources détenues par le registry — actuellement le
+// PrestigeBundle (handles sharedSocial + metadata). Idempotent.
+// Phase 2 plan stabilisation 2026-05-22 : appelé depuis cmd/server/main.go
+// au shutdown AVANT metaDB.Close() pour décrémenter proprement le refCount
+// sur metadata.
+func (r *ServiceRegistry) Close() {
+	if r == nil {
+		return
+	}
+	if r.prestigeBundle != nil {
+		r.prestigeBundle.Close()
+		r.prestigeBundle = nil
+	}
 }
 
 // NewServiceRegistry crée un ServiceRegistry câblé avec config.ResolvePlayer.

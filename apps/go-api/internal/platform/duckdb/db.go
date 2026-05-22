@@ -50,6 +50,27 @@ var (
 	openDBs   = map[string]*cachedDB{}
 )
 
+// DumpCachedLeaks retourne un snapshot des entrées encore présentes dans le
+// cache openDBs (clé → refCount). Pour diagnostic post-shutdown : si CloseAll
+// a été appelé et que le map n'est pas vide, ça veut dire qu'un caller a
+// oublié son Close() apparié → fuite de handle DuckDB → verrou au prochain
+// hot-reload Air sur Windows.
+//
+// Phase 2 plan stabilisation 2026-05-22. Utilisé dans cmd/server/main.go
+// après le bloc shutdown gracieux pour logger les leaks détectés.
+func DumpCachedLeaks() map[string]int {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+	if len(openDBs) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(openDBs))
+	for k, c := range openDBs {
+		out[k] = c.refCount
+	}
+	return out
+}
+
 // sanitizeTimezone valide un nom de timezone IANA pour éviter les injections SQL.
 // Retourne "" si la valeur contient des caractères non autorisés.
 func sanitizeTimezone(tz string) string {
@@ -141,7 +162,14 @@ func openCachedDB(
 
 	sqlDB, err := openSQLDBFor(dsn, timezone, op, path)
 	if err != nil {
-		slog.Error("duckdb: ouverture DB échouée",
+		// Phase 2 plan stabilisation 2026-05-22 : démoté de Error à Debug. Cette
+		// branche est principalement déclenchée par les retries au boot
+		// (cmd/server/main.go OpenReadWriteShared metaPath × 12, AssetMetadata
+		// × 3, etc.) où Air n'a pas encore libéré le HANDLE Windows post-SIGKILL.
+		// Le caller a l'info pour logger au bon niveau (Warn sur tentative
+		// intermédiaire, Error sur abandon final). Logger ici en Error spammait
+		// 11 lignes ERROR pour 1 boot réussi.
+		slog.Debug("duckdb: ouverture DB échouée",
 			"path", path, "op", op, "dsn", dsn, "err", err)
 		return nil, err
 	}
