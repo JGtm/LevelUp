@@ -162,7 +162,11 @@ Livré : [`docs/adr/0018-concurrent-write-model.md`](../../docs/adr/0018-concurr
   - `shared.highlight_events` : append-only, pas besoin.
 - Référence ADR 0016 (B-swap RO↔RW).
 
-### 2.3 Singleflight par `(match_id, xuid)` pour `match_participants` (2h)
+### 2.3 Singleflight par `(match_id, xuid)` pour `match_participants` — ✅ FAIT 2026-05-23 (commit aef47968)
+
+**Livré** : `participantsSF singleflight.Group` package-level dans [`writes.go`](../../apps/go-api/internal/sync/writes.go). `InsertParticipants` dédupe par `"match_id|xuid"`. Logique SQL extraite dans `insertParticipantRow`. Sémantique : N appelants sur même clé → 1 SQL exec, autres reçoivent le résultat partagé.
+
+**Validation TDD** : `TestStressUpsertParticipants_*` (3 tests) passent post-fix après avoir échoué baseline (49 + 1061 + 28 failures). Perfs : 8.3s → 0.7s sur même-clé grâce au dedupe.
 
 **But** : SAFETY, pas perf. Empêcher 2 goroutines de UPSERT la même row simultanément (cause de la race ART).
 
@@ -440,7 +444,9 @@ _ = eg.Wait()
 
 Effort : ~8h.
 
-### 5.1 Stress test concurrent `match_participants` — TDD avant Phase 2.3 (2h)
+### 5.1 Stress test concurrent `match_participants` — ✅ FAIT 2026-05-23 (commit aef47968)
+
+**Livré** : [`concurrent_upsert_stress_test.go`](../../apps/go-api/internal/sync/concurrent_upsert_stress_test.go) — 3 tests intégration `-race` : SameKey_NoCrash_OneRow, DifferentKeys_AllPresent, BatchPerCall. **TDD strict appliqué** : tests écrits AVANT le singleflight, ont échoué baseline puis passent post-fix.
 
 **Livrable** : `apps/go-api/internal/sync/concurrent_upsert_stress_test.go`.
 
