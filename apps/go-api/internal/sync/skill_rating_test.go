@@ -103,3 +103,54 @@ func TestTrueskillUpdate_SigmaPositive(t *testing.T) {
 	}
 	_ = newMu
 }
+
+// ── muOpp branché : expectedScore dynamique ───────────────────────────────────
+
+// TestTrueskillUpdate_StrongerOpponents : battre des adversaires plus forts
+// (muOpp > mu) doit donner un gain supérieur à battre des égaux avec le même composite.
+func TestTrueskillUpdate_StrongerOpponents_MoreGain(t *testing.T) {
+	mu, sigma := 1400.0, InitialSigma // joueur Or
+	composite := 0.65                 // bonne perf
+
+	// Adversaires égaux (muOpp = mu)
+	newMuEqual, _ := trueskillUpdate(mu, sigma, mu, InitialSigma, composite, 1.0)
+	gainEqual := newMuEqual - mu
+
+	// Adversaires Platine (muOpp > mu)
+	newMuStrong, _ := trueskillUpdate(mu, sigma, 1700.0, InitialSigma, composite, 1.0)
+	gainStrong := newMuStrong - mu
+
+	if gainStrong <= gainEqual {
+		t.Errorf("adversaires forts devraient donner plus de gain: fort=%.2f egal=%.2f", gainStrong, gainEqual)
+	}
+}
+
+// TestTrueskillUpdate_WeakerOpponents_LessGain : battre des adversaires plus faibles
+// avec le même composite doit donner moins de gain (ou perdre du mu si performance neutre).
+func TestTrueskillUpdate_WeakerOpponents_LessGain(t *testing.T) {
+	mu, sigma := 1600.0, InitialSigma // joueur Platine
+	composite := 0.65
+
+	// Adversaires égaux
+	newMuEqual, _ := trueskillUpdate(mu, sigma, mu, InitialSigma, composite, 1.0)
+	gainEqual := newMuEqual - mu
+
+	// Adversaires Or (muOpp < mu)
+	newMuWeak, _ := trueskillUpdate(mu, sigma, 1300.0, InitialSigma, composite, 1.0)
+	gainWeak := newMuWeak - mu
+
+	if gainWeak >= gainEqual {
+		t.Errorf("adversaires faibles devraient donner moins de gain: faible=%.2f egal=%.2f", gainWeak, gainEqual)
+	}
+}
+
+// TestTrueskillUpdate_EqualOpponents_NeutralPerf : avec muOpp=mu et composite=0.5
+// (performance exactement attendue), le delta mu doit être nul.
+func TestTrueskillUpdate_EqualOpponents_NeutralPerfZeroDelta(t *testing.T) {
+	mu, sigma := InitialMU, InitialSigma
+	newMu, _ := trueskillUpdate(mu, sigma, mu, sigma, 0.5, 1.0)
+	delta := newMu - mu
+	if delta != 0 {
+		t.Errorf("perf neutre vs égaux : delta mu attendu 0, got %.4f", delta)
+	}
+}

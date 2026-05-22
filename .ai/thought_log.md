@@ -1,3 +1,29 @@
+## [2026-05-22] diag(lusr) — Simulation 5 variantes de formule + diagnostic fenêtre temporelle
+
+**Statut** : Complété (branche `fix/duckdb-art-corruption-rebuild`).
+
+**Contexte** : Madina97294 (Diamond estimé) reste Argent III (1286) malgré carry adjustment + muOpp. Simulation des pistes A/B/C/A+C via `--compare-formulas` pour identifier si la formule seule peut corriger l'écart vs JGtm (Or II, 1444).
+
+**Décision technique** : Création de `skill_formula_sim.go` avec 5 variantes (baseline / piste-C : DvE 0.24→0.12 / piste-A : ajuste DE × Kills/KE / piste-A+C : combiné / piste-B : KDA fusionné). Méthode : repart de InitialMU=1500 pour chaque variante, fenêtre configurable `--last-n`.
+
+**Résultats — arena_slayer, 3 joueurs, full history** :
+- baseline : Madina=1286 (Arg III), JGtm=1444 (Or II), Choco=1451 (Or II) — gap 158
+- piste-C : Madina=1344 (+58), JGtm=1467 (+23), Choco=1393 (-58) — réduit l'écart, pénalise Choco
+- piste-A : Madina=1309 (+23), JGtm=1492 (+48), Choco=1412 (-39) — empire le gap
+- piste-A+C : Madina=1355 (+69), JGtm=1492 (+48), Choco=1373 (-78) — meilleure option formule
+- piste-B : Madina=1339, JGtm=1656 (!), Choco=1691 (!) — inflation massive, éliminé
+
+**Diagnostic fenêtre temporelle (arena_slayer, baseline)** :
+- 20 matchs depuis 1500 : Madina=1483, JGtm=1474, Choco=1466 → Madina DEVANT
+- 100 matchs depuis 1500 : Madina=1432, JGtm=1449, Choco=1466 → quasi-égaux
+- Tous les matchs depuis 1500 : Madina=1286, JGtm=1444 → gap de 158 pts
+
+**Conclusion** : ce n'est pas la formule — c'est la fenêtre temporelle. Sur 100 matchs récents, Madina est quasi-égal à JGtm. L'écart full-history reflète des performances plus faibles en début de carrière (plusieurs centaines de matchs). Aucune variante de formule ne corrige ça structurellement.
+
+**Prochaine étape recommandée** : introduire un `LUSR_recent` fenêtré (50 derniers matchs par chaîne) en lecture seule à côté du LUSR full-history. Ce serait la métrique à afficher prioritairement dans le UI.
+
+---
+
 ## [2026-05-22] feat(media) — Thumbnails WebP animés : fenêtre d'extraction proportionnelle
 
 **Statut** : Complété (branche `feat/ascension-pipeline-v2-wiring`).

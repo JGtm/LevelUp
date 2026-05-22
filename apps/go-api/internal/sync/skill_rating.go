@@ -64,10 +64,17 @@ func wWin(t, eps float64) float64 {
 // ── TrueSkill update ────────────────────────────────────────────────────────
 
 // trueskillUpdate met à jour (mu, sigma) après un match.
-// Mu : formule Elo-style continue (K_ELO × (score - 0.5) × wf).
-// Sigma : réduction TrueSkill à t=0.
-func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) { //nolint:unparam // muOpp réservé pour TrueSkill 2 complet
-	deltaMU := KElo * (actualScore - 0.5) * weightFactor
+// Mu : Elo-style avec baseline dynamique basée sur muOpp.
+//
+//	expectedScore = 1 / (1 + exp(-(mu - muOpp) / (2 × Beta)))
+//	deltaMU       = KElo × (actualScore - expectedScore) × wf
+//
+// Battre des adversaires plus forts (muOpp > mu) donne plus de gain ;
+// battre des adversaires plus faibles en demi-mesure peut descendre mu.
+// Sigma : réduction TrueSkill standard.
+func trueskillUpdate(mu, sigma, muOpp, sigmaOpp, actualScore, weightFactor float64) (float64, float64) {
+	expectedScore := 1.0 / (1.0 + math.Exp(-(mu-muOpp)/(2.0*Beta)))
+	deltaMU := KElo * (actualScore - expectedScore) * weightFactor
 	newMU := math.Max(MinRating, mu+deltaMU)
 
 	c2 := 2.0*Beta*Beta + sigma*sigma + sigmaOpp*sigmaOpp
@@ -120,21 +127,21 @@ type compositeMatchRow struct {
 // Les composantes manquantes (valeur 0 ou avg nil) sont ignorées et les poids
 // renormalisés.
 //
-// (teammateAvgKE = synergie escouade ; avgMedalExploit = bonus exploit ; avgOffConv
-// = offensive conversion ; avgDefRes = defensive resistance). Aujourd'hui tous nil,
-// activés via PerfTier roadmap. Signature stable pour éviter les refactos cascade.
+// (enemyAvgKE = carry adjustment vs adversaires ; avgMedalExploit = bonus exploit ;
+// avgOffConv = offensive conversion ; avgDefRes = defensive resistance).
+// Signature stable pour éviter les refactos cascade.
 //
 //nolint:unparam // 4 params réservés pour futures composantes du score composite
 func computeCompositeScore(
 	row *compositeMatchRow,
 	avgAccuracy *float64,
-	teammateAvgKE *float64,
+	enemyAvgKE *float64,
 	avgDamageEff *float64,
 	avgMedalExploit *float64,
 	avgOffConv *float64,
 	avgDefRes *float64,
 ) float64 {
-	composite, _ := computeCompositeScoreWithBreakdown(row, avgAccuracy, teammateAvgKE, avgDamageEff, avgMedalExploit, avgOffConv, avgDefRes)
+	composite, _ := computeCompositeScoreWithBreakdown(row, avgAccuracy, enemyAvgKE, avgDamageEff, avgMedalExploit, avgOffConv, avgDefRes)
 	return composite
 }
 
@@ -149,7 +156,7 @@ func computeCompositeScore(
 func computeCompositeScoreWithBreakdown(
 	row *compositeMatchRow,
 	avgAccuracy *float64,
-	teammateAvgKE *float64,
+	enemyAvgKE *float64,
 	avgDamageEff *float64,
 	avgMedalExploit *float64,
 	avgOffConv *float64,
@@ -164,12 +171,20 @@ func computeCompositeScoreWithBreakdown(
 	var valid []entry
 
 	// 1. kills_vs_expected
+	// Carry adjustment asymétrique : compresse le bonus quand les adversaires
+	// sont faibles (playerKE >> enemyAvgKE), mais ne touche pas aux pénalités.
+	// Référence : enemyAvgKE (difficulté réelle des adversaires), pas les
+	// coéquipiers — évite de pénaliser un carry pour la faiblesse de son équipe.
+	// Floor carryAdj à 1.0 : pas d'amplification si les adversaires sont plus forts.
 	if row.KillsExpected > 0 {
 		score := sigmoidRatio(row.Kills, row.KillsExpected)
-		if teammateAvgKE != nil && *teammateAvgKE > 0 && row.KillsExpected > 0 {
-			carryRatio := row.KillsExpected / *teammateAvgKE
-			carryAdj := clampF(carryRatio, 0.5, 2.0)
-			score = clampF(score*(1.0/carryAdj)+0.5*(1.0-1.0/carryAdj), 0.0, 1.0)
+		if enemyAvgKE != nil && *enemyAvgKE > 0 {
+			carryRatio := row.KillsExpected / *enemyAvgKE
+			carryAdj := clampF(carryRatio, 1.0, 2.0)
+			if score > 0.5 {
+				score = clampF(0.5+(score-0.5)/carryAdj, 0.0, 1.0)
+			}
+			// score ≤ 0.5 : pénalité pleine, non modifiée
 		}
 		valid = append(valid, entry{MetricKeyKillsVsExpected, score, w[MetricKeyKillsVsExpected]})
 	}
@@ -416,7 +431,8 @@ type LUSRPlaylistPreview struct {
 	OldSigma      float64
 	NewMU         float64 // dernier rating qui serait écrit
 	NewSigma      float64
-	MatchCount    int // nombre de matchs qui contribueraient à ce playlist_group
+	MatchCount    int                // nombre de matchs qui contribueraient à ce playlist_group
+	ComponentAvgs map[string]float64 // moyenne par composante sur tous les matchs du groupe
 }
 
 // DeltaMU retourne NewMU - OldMU. Positif = LUSR remonte (joueur sous-évalué
@@ -511,20 +527,35 @@ func batchComputeLUSRPreview(
 	// loadLUSRMatchData → COALESCE start_time_utc).
 	finalByPG := make(map[string]*lusrResult, len(results))
 	countByPG := make(map[string]int, len(results))
+	compSums := make(map[string]map[string]float64)
+	compCounts := make(map[string]map[string]int)
 	for i := range results {
 		r := &results[i]
 		finalByPG[r.PlaylistGroup] = r
 		countByPG[r.PlaylistGroup]++
+		if compSums[r.PlaylistGroup] == nil {
+			compSums[r.PlaylistGroup] = make(map[string]float64)
+			compCounts[r.PlaylistGroup] = make(map[string]int)
+		}
+		for comp, val := range r.Components {
+			compSums[r.PlaylistGroup][comp] += val
+			compCounts[r.PlaylistGroup][comp]++
+		}
 	}
 
 	// Construire le rapport — un PlaylistPreview par playlist_group.
 	report.MatchesProcessed = len(results)
 	for pg, r := range finalByPG {
+		avgs := make(map[string]float64, len(compSums[pg]))
+		for comp, sum := range compSums[pg] {
+			avgs[comp] = sum / float64(compCounts[pg][comp])
+		}
 		preview := LUSRPlaylistPreview{
 			PlaylistGroup: pg,
 			NewMU:         r.RatingValue,
 			NewSigma:      r.RatingDeviation,
 			MatchCount:    countByPG[pg],
+			ComponentAvgs: avgs,
 		}
 		if old, ok := oldStates[pg]; ok && old != nil {
 			preview.OldMU = old.MU
@@ -575,8 +606,8 @@ func computeSkillRatingsBatch(
 		allParts := participantsByMatch[match.MatchID]
 		matchAvgKE, matchStdKE := computeMatchKEStats(allParts)
 
-		// Séparer coéquipiers et adversaires
-		teammateKEs, enemyKEs := splitParticipantKEs(match.TeamID, allParts)
+		// Séparer coéquipiers et adversaires (teammateKEs inutilisé depuis v2 carry fix)
+		_, enemyKEs := splitParticipantKEs(match.TeamID, allParts)
 
 		// Force adversaire (ancrée sur state.MU)
 		muOpp, sigmaOpp := computeEnemyStrength(enemyKEs, matchAvgKE, matchStdKE, state.MU)
@@ -588,15 +619,15 @@ func computeSkillRatingsBatch(
 		avgOffConv := rollingAvgPtr(state.OffConversionHistory)
 		avgDefRes := rollingAvgPtr(state.DefResistanceHistory)
 
-		// Teammate avg KE
-		var teammateAvgKE *float64
-		if len(teammateKEs) > 0 {
+		// Enemy avg KE — référence du carry adjustment (difficulté des adversaires).
+		var enemyAvgKE *float64
+		if len(enemyKEs) > 0 {
 			sum := 0.0
-			for _, ke := range teammateKEs {
+			for _, ke := range enemyKEs {
 				sum += ke
 			}
-			avg := sum / float64(len(teammateKEs))
-			teammateAvgKE = &avg
+			avg := sum / float64(len(enemyKEs))
+			enemyAvgKE = &avg
 		}
 
 		// Guard : match sans outcome
@@ -632,7 +663,7 @@ func computeSkillRatingsBatch(
 			OffensiveConversion: offConv,
 			DefensiveResistance: defRes,
 		}
-		composite, breakdown := computeCompositeScoreWithBreakdown(cRow, avgAcc, teammateAvgKE, avgDmgEff, avgMedalExploit, avgOffConv, avgDefRes)
+		composite, breakdown := computeCompositeScoreWithBreakdown(cRow, avgAcc, enemyAvgKE, avgDmgEff, avgMedalExploit, avgOffConv, avgDefRes)
 
 		// Update TrueSkill
 		newMU, newSigma := trueskillUpdate(state.MU, state.Sigma, muOpp, sigmaOpp, composite, 1.0)
