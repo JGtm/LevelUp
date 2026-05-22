@@ -56,6 +56,8 @@ tags:
     description: "Routes administration (auth admin requis)"
   - name: assets
     description: "Servir des assets binaires (images, médias)"
+  - name: diagnostics
+    description: "Endpoints diagnostic admin/dev (lecture seule)"
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -2199,6 +2201,52 @@ paths:
       summary: "Lance un backfill (job long)"
       responses:
         "200": { description: "Job créé, voir GET /jobs/{job_id}" }
+
+  # -------------------------------------------------------------------------
+  # Diagnostics (admin/dev — lecture seule)
+  # -------------------------------------------------------------------------
+  /_diag/csr-coverage/{player_slug}:
+    get:
+      tags: [diagnostics]
+      operationId: getDiagCSRCoverage
+      summary: "Diag couverture CSR pour un joueur"
+      description: |
+        Phase 9 du plan pipeline CSR. Permet de vérifier en 1 ligne si le
+        pipeline CSR a bien capturé les données (snapshots Waypoint + MSR
+        matured/placement) ou s'il faut lancer un backfill.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Couverture CSR"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CSRCoverage"
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /_diag/progression/{player_slug}:
+    get:
+      tags: [diagnostics]
+      operationId: getDiagProgression
+      summary: "Diag pipeline progression V2 (Ascension)"
+      description: |
+        Phase 4 plan stabilisation 2026-05-22. Compte les rows dans les
+        tables V2 (streak, player_records, record_history, milestone_earned,
+        milestone_catalog) pour vérifier que EvaluateProgressionAfterSync
+        tourne bien sur l'auto-sync. Si tous les counts joueur sont à 0
+        après plusieurs cycles auto-sync (15 min × N), le pipeline V2
+        n'est pas câblé correctement.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "État pipeline progression V2"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressionDiag"
+        "404": { $ref: "#/components/responses/NotFound" }
 
 # ---------------------------------------------------------------------------
 # Components
@@ -4478,3 +4526,92 @@ components:
           type: string
         is_fallback:
           type: boolean
+
+    # -------------------------------------------------------------------------
+    # Diagnostics (Phase 4-5 plan stabilisation 2026-05-22)
+    # -------------------------------------------------------------------------
+    CSRCoverage:
+      type: object
+      description: |
+        Couverture CSR pour un joueur — Phase 9 plan pipeline CSR.
+        Permet de vérifier que les snapshots Waypoint + les rows
+        match_skill_rank rating_type='CSR' sont complets, ou si un
+        backfill est nécessaire.
+      required: [player_slug, xuid, snapshots, match_skill_rank_csr, needs_backfill]
+      properties:
+        player_slug:
+          type: string
+        xuid:
+          type: string
+        snapshots:
+          $ref: "#/components/schemas/CSRSnapshotsCoverage"
+        match_skill_rank_csr:
+          $ref: "#/components/schemas/MSRCSRCoverage"
+        needs_backfill:
+          type: boolean
+
+    CSRSnapshotsCoverage:
+      type: object
+      description: Résumé player_csr_snapshots pour un joueur.
+      required: [total, with_alltime_value, with_placement_remaining]
+      properties:
+        total:
+          type: integer
+        with_alltime_value:
+          type: integer
+        with_placement_remaining:
+          type: integer
+
+    MSRCSRCoverage:
+      type: object
+      description: Résumé match_skill_rank rating_type='CSR'.
+      required: [total, matured, placement, ranked_matches_in_registry, coverage_gap]
+      properties:
+        total:
+          type: integer
+        matured:
+          type: integer
+        placement:
+          type: integer
+        ranked_matches_in_registry:
+          type: integer
+        coverage_gap:
+          type: integer
+          description: Matchs ranked sans row CSR — devrait être 0 après backfill.
+
+    ProgressionDiag:
+      type: object
+      description: |
+        État des tables progression V2 (Ascension) pour un joueur — Phase 4
+        plan stabilisation 2026-05-22. Counts sur streak/player_records/
+        record_history/milestone_earned/milestone_catalog. Si tous les counts
+        joueur sont à 0 après plusieurs cycles auto-sync (15 min × N), le
+        pipeline V2 n'est pas câblé.
+      required:
+        - player_slug
+        - streak_count
+        - player_records_count
+        - record_history_count
+        - milestone_earned_count
+        - milestone_catalog_count
+      properties:
+        player_slug:
+          type: string
+        streak_count:
+          type: integer
+          description: Rows dans la table streak (player DB).
+        player_records_count:
+          type: integer
+          description: PB du joueur dans shared_social.player_records.
+        record_history_count:
+          type: integer
+          description: Historique de records dans la player DB.
+        milestone_earned_count:
+          type: integer
+          description: Milestones débloqués par le joueur.
+        milestone_catalog_count:
+          type: integer
+          description: Catalogue référentiel des milestones (metadata.duckdb).
+        pipeline_wired_at:
+          type: string
+          description: Timestamp du dernier post-sync delta (sync_meta).
