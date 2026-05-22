@@ -7,14 +7,81 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"log/slog"
+	"strings"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 )
 
 // LoadHomeMatches charge tous les matchs du joueur (Q26).
+//
+// Phase 3.bis plan stabilisation 2026-05-22 : split en 2 phases Go-side pour
+// éliminer le mix cross-DB (player + shared) qui forçait l'ATTACH shared sur
+// la player conn — interdit depuis ADR 0016.
+//
+//   - Phase A : Q26HomeMatchesSharedPart via SharedReader → toutes les colonnes
+//     shared + tri chronologique + LIMIT 150. Source de vérité de la liste.
+//   - Phase B : Q26HomeMatchesPlayerEnrichTpl sur pdb.Player → enrichissement
+//     pme + msr pour les match_ids retournés par Phase A.
+//   - Merge : map[match_id]playerEnrich + iteration Go-side, calcul du
+//     skill_rating_type via CASE Go (cf. Q26 SQL original).
 func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatchRow, error) {
-	rows, err := r.pdb.ReadDB().Query(ctx, Q26HomeMatches, r.pdb.XUID, r.pdb.XUID)
+	if r.pdb.SharedReader == nil {
+		return nil, nil
+	}
+	// ── Phase A — shared ───────────────────────────────────────────────────
+	result, err := r.loadHomeMatchesSharedPart(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return result, nil
+	}
+	// ── Phase B — player enrichment ────────────────────────────────────────
+	matchIDs := make([]string, 0, len(result))
+	for i := range result {
+		matchIDs = append(matchIDs, result[i].MatchID)
+	}
+	enrichByMatchID, err := r.loadHomeMatchesPlayerEnrich(ctx, matchIDs)
+	if err != nil {
+		// Best-effort : log + dégradation gracieuse (sans pme/msr).
+		slog.WarnContext(ctx, "LoadHomeMatches: player enrich phase failed, dégradation gracieuse",
+			"xuid", r.pdb.XUID, "matches", len(matchIDs), "err", err)
+		enrichByMatchID = nil
+	}
+	// ── Merge Go-side ──────────────────────────────────────────────────────
+	for i := range result {
+		row := &result[i]
+		applyHomeMatchPlayerEnrich(row, enrichByMatchID[row.MatchID])
+		row.SkillRatingType = resolveHomeMatchSkillRatingType(*row, enrichByMatchID[row.MatchID])
+		tier := ""
+		if row.SkillTier != nil {
+			tier = *row.SkillTier
+		}
+		tierLabel := ""
+		if row.SkillTierLabel != nil {
+			tierLabel = *row.SkillTierLabel
+		}
+		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, homeStaticTitleSlug, 0)
+	}
+
+	r.enrichHomeMatchTranslations(ctx, result)
+	return result, nil
+}
+
+// loadHomeMatchesSharedPart : Phase A — query shared via SharedReader. Retourne
+// les rows partielles (champs shared remplis, champs player vides → enrichis
+// par Phase B).
+func (r *HomeRepo) loadHomeMatchesSharedPart(ctx context.Context) ([]legacymatch.HomeMatchRow, error) {
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("LoadHomeMatches sharedReader: %w", err)
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q26HomeMatchesSharedPart, r.pdb.XUID, r.pdb.XUID)
 	if err != nil {
 		return nil, err
 	}
@@ -39,13 +106,10 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatch
 			&row.PlaylistNameFR,
 			&row.IsFirefight,
 			&row.IsRanked,
-			&row.SessionLabel,
-			&row.IsWithFriends,
 			&row.Outcome,
 			&row.TeamID,
 			&row.Team0Score,
 			&row.Team1Score,
-			&row.DominanceFlag,
 			&row.Kills,
 			&row.Deaths,
 			&row.Assists,
@@ -58,14 +122,6 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatch
 			&row.DamageTaken,
 			&row.TeamMMR,
 			&row.EnemyMMR,
-			&row.PerformanceScore,
-			&row.SkillRatingValue,
-			&row.SkillRatingType,
-			&row.SkillTier,
-			&row.SkillSubTier,
-			&row.SkillTierLabel,
-			&row.SkillRatingDelta,
-			&row.SkillPlaylistGroup,
 			&row.RankInTeam,
 			&row.HeadshotKills,
 			&row.PerfectKills,
@@ -73,23 +129,137 @@ func (r *HomeRepo) LoadHomeMatches(ctx context.Context) ([]legacymatch.HomeMatch
 		); err != nil {
 			return nil, err
 		}
-		tier := ""
-		if row.SkillTier != nil {
-			tier = *row.SkillTier
-		}
-		tierLabel := ""
-		if row.SkillTierLabel != nil {
-			tierLabel = *row.SkillTierLabel
-		}
-		row.SkillRankImageURL = buildHomeSkillPeakBadgeURL(tier, tierLabel, row.SkillSubTier, homeStaticTitleSlug, 0)
 		result = append(result, row)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
-	r.enrichHomeMatchTranslations(ctx, result)
 	return result, nil
+}
+
+// homeMatchPlayerEnrich : projection Phase B (pme + msr).
+type homeMatchPlayerEnrich struct {
+	sessionLabel     sql.NullString
+	isWithFriends    bool
+	dominanceFlag    int
+	performanceScore sql.NullFloat64
+	ratingType       sql.NullString
+	ratingValue      sql.NullFloat64
+	tier             sql.NullString
+	subTier          int
+	tierLabel        sql.NullString
+	ratingDelta      sql.NullFloat64
+	playlistGroup    sql.NullString
+}
+
+// loadHomeMatchesPlayerEnrich : Phase B — query player conn pour pme + msr.
+func (r *HomeRepo) loadHomeMatchesPlayerEnrich(ctx context.Context, matchIDs []string) (map[string]*homeMatchPlayerEnrich, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(matchIDs))
+	args := make([]interface{}, 0, len(matchIDs))
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	query := fmt.Sprintf(Q26HomeMatchesPlayerEnrichTpl, strings.Join(placeholders, ", "))
+
+	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	if err != nil {
+		// Table pme peut être absente sur DB fraîche → dégradation gracieuse.
+		if isTableNotFoundErr(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[string]*homeMatchPlayerEnrich, len(matchIDs))
+	for rows.Next() {
+		var (
+			matchID string
+			e       homeMatchPlayerEnrich
+		)
+		if err := rows.Scan(
+			&matchID,
+			&e.sessionLabel,
+			&e.isWithFriends,
+			&e.dominanceFlag,
+			&e.performanceScore,
+			&e.ratingType,
+			&e.ratingValue,
+			&e.tier,
+			&e.subTier,
+			&e.tierLabel,
+			&e.ratingDelta,
+			&e.playlistGroup,
+		); err != nil {
+			return nil, err
+		}
+		out[matchID] = &e
+	}
+	return out, rows.Err()
+}
+
+// applyHomeMatchPlayerEnrich applique les champs Phase B sur une ligne Phase A.
+// Si enrich est nil (joueur jamais ingéré pour ce match), tous les champs
+// restent à leur valeur zéro / nil — le frontend dégrade gracieusement.
+func applyHomeMatchPlayerEnrich(row *legacymatch.HomeMatchRow, enrich *homeMatchPlayerEnrich) {
+	if enrich == nil {
+		return
+	}
+	if enrich.sessionLabel.Valid {
+		s := enrich.sessionLabel.String
+		row.SessionLabel = &s
+	}
+	row.IsWithFriends = enrich.isWithFriends
+	row.DominanceFlag = enrich.dominanceFlag
+	if enrich.performanceScore.Valid {
+		v := enrich.performanceScore.Float64
+		row.PerformanceScore = &v
+	}
+	if enrich.ratingValue.Valid {
+		v := enrich.ratingValue.Float64
+		row.SkillRatingValue = &v
+	}
+	if enrich.tier.Valid {
+		s := enrich.tier.String
+		row.SkillTier = &s
+	}
+	row.SkillSubTier = enrich.subTier
+	if enrich.tierLabel.Valid {
+		s := enrich.tierLabel.String
+		row.SkillTierLabel = &s
+	}
+	if enrich.ratingDelta.Valid {
+		v := enrich.ratingDelta.Float64
+		row.SkillRatingDelta = &v
+	}
+	if enrich.playlistGroup.Valid {
+		s := enrich.playlistGroup.String
+		row.SkillPlaylistGroup = &s
+	}
+}
+
+// resolveHomeMatchSkillRatingType : équivalent Go de la CASE SQL Q26 originale.
+//
+//	WHEN is_ranked OR playlist_name contains 'ranked' OR pair_name contains 'ranked' → 'CSR'
+//	WHEN UPPER(TRIM(msr.rating_type)) = 'CSR' → 'CSR'
+//	ELSE 'LUSR'
+func resolveHomeMatchSkillRatingType(row legacymatch.HomeMatchRow, enrich *homeMatchPlayerEnrich) string {
+	if row.IsRanked ||
+		strings.Contains(strings.ToLower(row.PlaylistName), "ranked") ||
+		strings.Contains(strings.ToLower(row.PairName), "ranked") {
+		return "CSR"
+	}
+	if enrich != nil && enrich.ratingType.Valid {
+		rt := strings.ToUpper(strings.TrimSpace(enrich.ratingType.String))
+		if rt == "CSR" {
+			return "CSR"
+		}
+	}
+	return "LUSR"
 }
 
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).

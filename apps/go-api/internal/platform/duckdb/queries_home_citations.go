@@ -6,15 +6,28 @@ import (
 	"strings"
 )
 
-// Q26 : Home â€” matchs d un joueur avec KPIs pour le hero card.
-// Parametre : ?1 = xuid du joueur.
-// LIMIT 150 : couvre hero card, highlights, recent matches et summaries de sessions rÃ©centes.
-// Le total rÃ©el vient de Q26bCountPlayerMatches (requÃªte sÃ©parÃ©e).
-// Les sessions complÃ¨tes sont chargÃ©es indÃ©pendamment via Q27HomeSessions.
-const Q26HomeMatches = `
+// Q26 — Home : matchs d'un joueur avec KPIs pour le hero card.
+//
+// Phase 3.bis plan stabilisation 2026-05-22 : split en 2 queries Go-side pour
+// éviter le mix cross-DB (player + shared) qui forçait l'ATTACH shared sur la
+// player conn — pattern interdit depuis ADR 0016 (cf. AUDIT §3 + §5).
+//
+//   - Q26HomeMatchesSharedPart : tables shared uniquement (match_participants,
+//     match_registry, medals_earned via CTE perfect). Exécutée via SharedReader.
+//     Tri chronologique + LIMIT 150 = source de vérité de la liste.
+//   - Q26HomeMatchesPlayerEnrichTpl : tables player uniquement
+//     (player_match_enrichment, match_skill_rank), filtrée par match_id IN (%s).
+//     Exécutée sur pdb.Player.
+//
+// Le merge Go-side reconstruit la HomeMatchRow complète. Cf. LoadHomeMatches.
+//
+// Paramètres :
+//   - Q26HomeMatchesSharedPart : ?1 = xuid (CTE perfect), ?2 = xuid (WHERE mp.xuid)
+//   - Q26HomeMatchesPlayerEnrichTpl : pas de paramètre, juste IN (%s) match_ids
+const Q26HomeMatchesSharedPart = `
 WITH perfect AS (
     SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
-    FROM shared.medals_earned
+    FROM medals_earned
     WHERE xuid = ? AND medal_name_id = 1512363953
     GROUP BY match_id
 )
@@ -24,29 +37,26 @@ SELECT
     COALESCE(r.map_id, '')                                  AS map_id,
     COALESCE(r.map_name, '')                                AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                 AS map_name_fr,
-	COALESCE(r.pair_id, '')                                  AS pair_id,
+    COALESCE(r.pair_id, '')                                 AS pair_id,
     COALESCE(r.pair_name, '')                               AS pair_name,
     COALESCE(r.pair_name_fr, r.pair_name, '')               AS pair_name_fr,
-	COALESCE(r.game_variant_id, '')                          AS game_variant_id,
-	COALESCE(r.game_variant_name, '')                        AS game_variant_name,
-	COALESCE(r.playlist_id, '')                              AS playlist_id,
-	COALESCE(r.playlist_name, '')                            AS playlist_name,
-	COALESCE(r.playlist_name_fr, r.playlist_name, '')       AS playlist_name_fr,
+    COALESCE(r.game_variant_id, '')                         AS game_variant_id,
+    COALESCE(r.game_variant_name, '')                       AS game_variant_name,
+    COALESCE(r.playlist_id, '')                             AS playlist_id,
+    COALESCE(r.playlist_name, '')                           AS playlist_name,
+    COALESCE(r.playlist_name_fr, r.playlist_name, '')       AS playlist_name_fr,
     COALESCE(r.is_firefight, FALSE)                         AS is_firefight,
     CASE
-		WHEN COALESCE(r.is_ranked, FALSE)
-			OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
-			OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
-		THEN TRUE
-		ELSE FALSE
-	END                                                      AS is_ranked,
-    pme.session_label,
-    COALESCE(pme.is_with_friends, FALSE)                    AS is_with_friends,
+        WHEN COALESCE(r.is_ranked, FALSE)
+            OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
+            OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
+        THEN TRUE
+        ELSE FALSE
+    END                                                     AS is_ranked,
     COALESCE(mp.outcome, 0)                                 AS outcome,
-	COALESCE(mp.team_id, -1)                                AS team_id,
-	COALESCE(r.team_0_score, -1)                            AS team_0_score,
-	COALESCE(r.team_1_score, -1)                            AS team_1_score,
-	COALESCE(pme.dominance_flag, 0)                         AS dominance_flag,
+    COALESCE(mp.team_id, -1)                                AS team_id,
+    COALESCE(r.team_0_score, -1)                            AS team_0_score,
+    COALESCE(r.team_1_score, -1)                            AS team_1_score,
     COALESCE(mp.kills, 0)                                   AS kills,
     COALESCE(mp.deaths, 0)                                  AS deaths,
     COALESCE(mp.assists, 0)                                 AS assists,
@@ -61,33 +71,36 @@ SELECT
     mp.damage_taken,
     mp.team_mmr,
     mp.enemy_mmr,
-    pme.performance_score,
-    msr.rating_value                                        AS skill_rating_value,
-    CASE
-        WHEN COALESCE(r.is_ranked, FALSE)
-            OR STRPOS(LOWER(COALESCE(r.playlist_name, '')), 'ranked') > 0
-            OR STRPOS(LOWER(COALESCE(r.pair_name, '')), 'ranked') > 0
-        THEN 'CSR'
-        WHEN UPPER(COALESCE(NULLIF(TRIM(msr.rating_type), ''), '')) = 'CSR' THEN 'CSR'
-        ELSE 'LUSR'
-    END                                                      AS skill_rating_type,
-    msr.tier                                                AS skill_tier,
-    COALESCE(msr.sub_tier, 0)                               AS skill_sub_tier,
-    msr.tier_label                                          AS skill_tier_label,
-    msr.rating_delta                                        AS skill_rating_delta,
-    msr.playlist_group                                      AS skill_playlist_group,
     mp.rank                                                 AS rank_in_team,
     COALESCE(mp.headshot_kills, 0)                          AS headshot_kills,
     COALESCE(perfect.perfect_kills, 0)                      AS perfect_kills,
     mp.max_killing_spree                                    AS max_killing_spree
-FROM shared.match_participants mp
-JOIN shared.match_registry r ON r.match_id = mp.match_id
-LEFT JOIN player_match_enrichment pme ON pme.match_id = mp.match_id
-LEFT JOIN match_skill_rank msr ON msr.match_id = mp.match_id
+FROM match_participants mp
+JOIN match_registry r ON r.match_id = mp.match_id
 LEFT JOIN perfect ON perfect.match_id = mp.match_id
 WHERE mp.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
 LIMIT 150`
+
+// Q26HomeMatchesPlayerEnrichTpl : enrichissement player (pme + msr) pour un
+// lot de match_ids. À utiliser via fmt.Sprintf(tpl, strings.Join(placeholders, ", ")).
+const Q26HomeMatchesPlayerEnrichTpl = `
+SELECT
+    pme.match_id,
+    pme.session_label,
+    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends,
+    COALESCE(pme.dominance_flag, 0)      AS dominance_flag,
+    pme.performance_score,
+    msr.rating_type,
+    msr.rating_value,
+    msr.tier,
+    COALESCE(msr.sub_tier, 0)            AS sub_tier,
+    msr.tier_label,
+    msr.rating_delta,
+    msr.playlist_group
+FROM player_match_enrichment pme
+LEFT JOIN match_skill_rank msr ON msr.match_id = pme.match_id
+WHERE pme.match_id IN (%s)`
 
 // Q26h : Home â€” mÃ©dailles par match pour un joueur, lots de match_id.
 // ParamÃ¨tres : ?1 = xuid. Les match_id sont injectÃ©s dynamiquement via IN (%s).
@@ -455,14 +468,21 @@ ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
 // Q28 : Home â€” medias recents depuis media_files + media_match_associations.
 // Parametre : ?1 = LIMIT (nombre de medias).
-// Retourne uniquement les medias actifs, triÃ©s par date de modification desc.
+// Retourne uniquement les medias actifs, triés par date de modification desc.
+//
+// Phase 3 plan stabilisation 2026-05-22 : migré vers pdb.SharedSocial. Le
+// schéma shared_social.media_files + media_match_associations diffère de
+// l'ancien player.media_files :
+//   - JOIN via `mma.media_file_id = mf.id` (au lieu de file_path/media_path)
+//   - match_start_time absent → retourné NULL (consumer doit dériver depuis
+//     match_registry si besoin via une autre query Go-side)
 const Q28RecentMedia = `
 SELECT
     mf.file_name,
     mma.match_id,
-    mma.match_start_time
+    NULL::TIMESTAMP AS match_start_time
 FROM media_files mf
-LEFT JOIN media_match_associations mma ON mf.file_path = mma.media_path
+LEFT JOIN media_match_associations mma ON mma.media_file_id = mf.id
 WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ?`

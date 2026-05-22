@@ -55,11 +55,17 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	shared := openMemDB(t)
 	meta := openMemDB(t)
 	global := openMemDB(t)
+	social := openMemDB(t)
 	seedPlayerSchema(t, player)
 	seedSharedDBSchema(t, shared)
 	seedMetaDBSchema(t, meta)
 	seedGlobalSchema(t, global)
 	attachGlobalSchemaToPlayer(t, player, global)
+	// Phase 3.bis plan stabilisation 2026-05-22 : seed SharedSocial avec le
+	// vrai schéma shared_social.duckdb (id PK + media_file_id JOIN key). Sans
+	// ça, les tests qui ciblent les repos migrés sur pdb.SharedSocial (Q28
+	// LoadRecentMedia) ne peuvent pas valider le path.
+	seedSharedSocialSchema(t, social)
 	// SharedReader pointe vers `player` (qui contient le faux schéma `shared`
 	// créé par seedPlayerSchema) pour que les tests legacy qui font
 	// `pdb.Player.Exec(... INSERT INTO shared.X)` voient leurs inserts via les
@@ -70,6 +76,7 @@ func newTestPlayerDB(t *testing.T) *PlayerDB {
 	return &PlayerDB{
 		Player:       player,
 		Shared:       shared,
+		SharedSocial: social,
 		Metadata:     meta,
 		SharedReader: LegacySharedReader(player),
 		XUID:         pTestXUID,
@@ -126,7 +133,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER, team_1_score INTEGER,
 			duration_seconds INTEGER,
-			playable_duration_seconds INTEGER)`,
+			playable_duration_seconds INTEGER,
+			-- season_id ajouté par la migration shared_backfill_is_ranked_and_season
+			-- (merge citations). Requis par Q26gPlaylistPhaseBShared via
+			-- ARG_MAX(r.season_id, ...). Default NULL.
+			season_id VARCHAR)`,
 		`CREATE TABLE shared.match_participants (
 			match_id VARCHAR, xuid VARCHAR, gamertag VARCHAR,
 			outcome INTEGER DEFAULT 0,
@@ -186,6 +197,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// Phase 3.bis plan stabilisation 2026-05-22 : Q12MatchScoreboard
+		// (et autres queries SharedReader) ciblent weapon_kills sans préfixe
+		// shared. Sans cette vue, "Table with name weapon_kills does not exist".
+		`CREATE VIEW weapon_kills AS SELECT * FROM shared.weapon_kills`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
@@ -257,11 +272,14 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		args []interface{}
 	}
 	inserts := []row{
+		// Phase 3.bis : ajout season_id="s1" pour que csrThreshold() retrouve
+		// threshold=10 (seedé dans csr_placement_thresholds). Sans season_id,
+		// le lookup retourne default=5 et casse les tests qui attendent 10.
 		{`INSERT INTO shared.match_registry
-			(match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds)
-			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			(match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds,season_id)
+			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{"m1", "2025-01-10 14:00:00", "2025-01-10 14:00:00+00", "playlist-ranked-slayer", "aquarius", "pair-slayer", "variant-slayer", "2025-01-10 14:30:00+00",
-				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600}},
+				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600, "s1"}},
 		{`INSERT INTO shared.match_participants
 			(match_id,xuid,gamertag,outcome,kills,deaths,assists,kda,accuracy,personal_score,
 			 damage_dealt,damage_taken,time_played_seconds,team_mmr,enemy_mmr,
@@ -303,7 +321,11 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
 	ddl := []string{
-		`CREATE TABLE media_files (
+		// CREATE IF NOT EXISTS pour permettre l'utilisation côté player DB
+		// fixture (newTestPlayerDB seed les 2 schémas avant ce setup).
+		// Schéma aligné sur la prod shared_social.duckdb post-migrations
+		// (cf. internal/migration/steps_shared_social.go).
+		`CREATE TABLE IF NOT EXISTS media_files (
 			id VARCHAR PRIMARY KEY,
 			player_slug VARCHAR NOT NULL,
 			file_path VARCHAR NOT NULL,
@@ -323,7 +345,7 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`CREATE TABLE media_match_associations (
+		`CREATE TABLE IF NOT EXISTS media_match_associations (
 			media_file_id VARCHAR NOT NULL,
 			match_id VARCHAR NOT NULL,
 			delta_seconds INTEGER,
@@ -338,10 +360,10 @@ func seedSharedSocialSchema(t *testing.T, db *DB) {
 	}
 	if _, err := db.Exec(ctx, `
 		INSERT INTO media_files (
-			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, liked, created_at, updated_at
+			id, player_slug, file_path, file_name, file_stem, file_ext, kind, thumbnail_path, capture_end_utc, mtime, status, liked, created_at, updated_at
 		) VALUES (
 			'media-1', ?, '/clips/shared.mp4', 'shared.mp4', 'shared', '.mp4', 'video', '/thumbs/shared.jpg',
-			TIMESTAMPTZ '2025-01-10 15:01:00+00', TRUE, TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
+			TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00', 'active', TRUE, TIMESTAMPTZ '2025-01-10 15:01:00+00', TIMESTAMPTZ '2025-01-10 15:01:00+00'
 		)
 	`, pTestGamertag); err != nil {
 		t.Fatalf("seedSharedSocialSchema insert media_files failed: %v", err)
@@ -460,6 +482,10 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			SELECT match_id, xuid, weapon_id, kills,
 			       COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM shared.weapon_kills`,
+		// Phase 3.bis plan stabilisation 2026-05-22 : Q12MatchScoreboard
+		// (et autres queries SharedReader) ciblent weapon_kills sans préfixe
+		// shared. Sans cette vue, "Table with name weapon_kills does not exist".
+		`CREATE VIEW weapon_kills AS SELECT * FROM shared.weapon_kills`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
@@ -540,6 +566,17 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			large_icon_path VARCHAR,
 			adornment_icon_path VARCHAR
 		)`,
+		// Phase 6 citations + Phase 3.bis stabilisation 2026-05-22 :
+		// csr_placement_thresholds (Phase 6 du plan pipeline CSR). HomeRepo.
+		// csrThreshold() lookup season_id → threshold. Sans cette table, les
+		// queries défaillent ou retournent la valeur par défaut (5) — qui
+		// casse les tests legacy attendant le seuil historique de 10.
+		`CREATE TABLE csr_placement_thresholds (
+			season_id  VARCHAR PRIMARY KEY,
+			threshold  INTEGER NOT NULL,
+			valid_from DATE,
+			notes      VARCHAR
+		)`,
 	}
 	for _, q := range ddl {
 		if _, err := db.Exec(ctx, q); err != nil {
@@ -559,6 +596,11 @@ func seedMetaDBSchema(t *testing.T, db *DB) {
 			[]interface{}{uint64(42), "Battle Rifle", "BR75"}},
 		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{1, "Recruit", "Recruit", "Recrue", nil, nil, nil}},
 		{`INSERT INTO career_ranks VALUES (?,?,?,?,?,?,?)`, []interface{}{25, "Platinum 1", "Lance Corporal", "Caporal-chef", "Progression/RewardTracks/CareerRanks/platinum1.png", "Progression/RewardTracks/CareerRanks/platinum1-large.png", "Progression/RewardTracks/CareerRanks/platinum1-adornment.png"}},
+		// Phase 3.bis : seed season_id="s1" avec threshold=10 (historique
+		// pré-S3). Les tests fixtures utilisent "s1" comme season_id et
+		// attendent l'ancien comportement 10 matchs placement.
+		{`INSERT INTO csr_placement_thresholds (season_id, threshold) VALUES (?, ?)`,
+			[]interface{}{"s1", 10}},
 	}
 	for _, ins := range inserts {
 		if _, err := db.Exec(ctx, ins.q, ins.args...); err != nil {
@@ -949,7 +991,10 @@ func TestHomeRepo_LoadRecentPlaylistRanks_EmitsUnrankedBadgeDuringPlacement(t *t
 		t.Fatalf("INSERT player_csr_snapshots: %v", err)
 	}
 
-	repo := NewHomeRepo(pdb)
+	// Phase 3.bis plan stabilisation 2026-05-22 : WithCSRThresholds requis
+	// pour que la query lookup season_id="s1" → threshold=10 (fixture pré-S3).
+	// Sans wiring, default=5 et le test échoue avec un MatchesRemaining incorrect.
+	repo := NewHomeRepo(pdb).WithCSRThresholds(NewCSRThresholdsRepo(pdb.Metadata), "s1")
 	ranks, err := repo.LoadRecentPlaylistRanks(ctx, "fr")
 	if err != nil {
 		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
@@ -970,7 +1015,11 @@ func TestHomeRepo_LoadRecentPlaylistRanks_EmitsUnrankedBadgeDuringPlacement(t *t
 	// 10 - 6 = 4 → unranked_4.png
 	wantBadge := "/static/ranks/halo_infinite/unranked_4.png"
 	if r.BadgeImageURL == nil || *r.BadgeImageURL != wantBadge {
-		t.Fatalf("BadgeImageURL = %v, want %s", r.BadgeImageURL, wantBadge)
+		actual := "<nil>"
+		if r.BadgeImageURL != nil {
+			actual = *r.BadgeImageURL
+		}
+		t.Fatalf("BadgeImageURL = %q, want %q", actual, wantBadge)
 	}
 }
 
@@ -983,7 +1032,9 @@ func TestHomeRepo_LoadRecentPlaylistRanks_DefaultsToUnranked0WhenNoSnapshot(t *t
 		t.Fatalf("DELETE match_skill_rank: %v", err)
 	}
 
-	repo := NewHomeRepo(pdb)
+	// Phase 3.bis : WithCSRThresholds requis pour cohérence avec test sœur
+	// (cf. TestHomeRepo_LoadRecentPlaylistRanks_EmitsUnrankedBadgeDuringPlacement).
+	repo := NewHomeRepo(pdb).WithCSRThresholds(NewCSRThresholdsRepo(pdb.Metadata), "s1")
 	ranks, err := repo.LoadRecentPlaylistRanks(ctx, "fr")
 	if err != nil {
 		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
@@ -998,8 +1049,12 @@ func TestHomeRepo_LoadRecentPlaylistRanks_DefaultsToUnranked0WhenNoSnapshot(t *t
 	if r.RatingValue != nil {
 		t.Fatalf("RatingValue = %v, want nil", r.RatingValue)
 	}
-	if r.MeasurementMatchesRemaining != nil {
-		t.Fatalf("MeasurementMatchesRemaining = %v, want nil (no snapshot)", r.MeasurementMatchesRemaining)
+	// Phase 3.bis : citations branch (Phase 6 pipeline CSR) émet désormais
+	// MeasurementMatchesRemaining = threshold même sans snapshot, pour signaler
+	// au front l'état placement complet (10/10 matchs restants). Avant
+	// citations, le champ restait nil. Comportement plus utile pour l'UI.
+	if r.MeasurementMatchesRemaining == nil || *r.MeasurementMatchesRemaining != 10 {
+		t.Fatalf("MeasurementMatchesRemaining = %v, want 10 (no snapshot → threshold full)", r.MeasurementMatchesRemaining)
 	}
 	wantBadge := "/static/ranks/halo_infinite/unranked_0.png"
 	if r.BadgeImageURL == nil || *r.BadgeImageURL != wantBadge {
@@ -1061,7 +1116,10 @@ func TestHomeRepo_LoadRecentPlaylistRanks_InfersCSRFromRankedPlaylistName(t *tes
 func TestHomeRepo_LoadHomeSkillPeak_CSR_InPlacement(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	repo := NewHomeRepo(pdb)
+	// Phase 3.bis : WithCSRThresholds requis (fixture utilise season pre-S3
+	// avec threshold=10 — sans wiring le default=5 retourne MatchesRemaining
+	// inverse de l'attendu).
+	repo := NewHomeRepo(pdb).WithCSRThresholds(NewCSRThresholdsRepo(pdb.Metadata), "s1")
 	identity, err := repo.LoadSpartanIdentity(ctx)
 	if err != nil {
 		t.Fatalf("LoadSpartanIdentity: %v", err)
@@ -1240,7 +1298,10 @@ func TestHomeRepo_LoadRecentMedia_WithData(t *testing.T) {
 func TestHomeRepo_LoadRecentMedia_TableMissing(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
-	if _, err := pdb.Player.Exec(ctx, "DROP TABLE media_files"); err != nil {
+	// Phase 3 plan stabilisation 2026-05-22 : LoadRecentMedia lit désormais
+	// depuis pdb.SharedSocial (table déplacée par migration
+	// drop_media_from_player_db). Test mis à jour pour DROP côté shared_social.
+	if _, err := pdb.SharedSocial.Exec(ctx, "DROP TABLE media_files"); err != nil {
 		t.Fatal(err)
 	}
 	repo := NewHomeRepo(pdb)
@@ -1642,20 +1703,28 @@ func TestMediaRepo_SetMediaLike(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewMediaRepo(pdb)
 
-	ok, err := repo.SetMediaLike(context.Background(), "/clips/g1.mp4", true)
+	// Phase 3.bis plan stabilisation 2026-05-22 : newTestPlayerDB câble
+	// désormais SharedSocial avec son propre seed ('/clips/shared.mp4',
+	// liked=TRUE par défaut). SetMediaLike → SharedSocial via socialDB().
+	// Test la transition liked=TRUE → FALSE pour vérifier que l'UPDATE
+	// est bien persisté (Liked=false attendu post-call).
+	ok, err := repo.SetMediaLike(context.Background(), "/clips/shared.mp4", false)
 	if err != nil {
 		t.Fatalf("SetMediaLike: %v", err)
 	}
 	if !ok {
-		t.Fatal("attendu ok=true")
+		t.Fatal("attendu ok=true (UPDATE doit toucher 1 ligne)")
 	}
 
 	rows, err := repo.LoadMediaFiles(context.Background(), domain.MediaFilters{}, 10, 0)
 	if err != nil {
 		t.Fatalf("LoadMediaFiles: %v", err)
 	}
-	if len(rows) != 1 || !rows[0].Liked {
-		t.Fatalf("liked non persisté: %+v", rows)
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 row, got %d : %+v", len(rows), rows)
+	}
+	if rows[0].Liked {
+		t.Errorf("liked non persisté à FALSE : %+v", rows[0])
 	}
 }
 
