@@ -155,6 +155,25 @@ func (e *SyncEngine) RunBackfillLUSRDryRun(ctx context.Context) (*LUSRDryRunRepo
 	return batchComputeLUSRPreview(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap)
 }
 
+// RunFormulaSim simule les 5 variantes de formule LUSR sur les lastN derniers matchs.
+// Lecture seule — aucune écriture DB. lastN=0 → tous les matchs.
+func (e *SyncEngine) RunFormulaSim(ctx context.Context, lastN int) (*FormulaSimReport, error) {
+	playerHandle, err := OpenPlayerDB(e.playerDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("RunFormulaSim OpenPlayerDB: %w", err)
+	}
+	defer playerHandle.Close()
+
+	sharedDB, releaseShared, err := e.acquireSharedWriter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("RunFormulaSim: %w", err)
+	}
+	defer releaseShared()
+
+	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+	return RunFormulaSim(ctx, playerHandle.SQLDb(), sharedDB, e.xuid, medalMap, lastN)
+}
+
 // RunBackfillLUSR recalcule le LUSR TrueSkill 2 pour tous les matchs du joueur.
 // force=true : recalcule depuis zéro même si les matchs ont déjà un rating.
 // Les poids des médailles (medal_exploit) sont chargés depuis la metadata DB (best-effort).

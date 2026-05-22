@@ -51,6 +51,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	citationsRecomputeAll := fs.Bool("citations-recompute-all", false, "Recompute total des citations (force=true) + vérifications invariants V1-V4")
 	force := fs.Bool("force", false, "Force le recalcul meme si deja persiste")
 	dryRun := fs.Bool("dry-run", false, "Mode dry-run (--shared-csr ou --lusr) : --shared-csr compte les matchs sans appel API ni écriture ; --lusr compute LUSR sans écrire et diff vs état persisté par playlist_group")
+	compareFormulas := fs.Bool("compare-formulas", false, "Simulation des 5 variantes de formule LUSR (baseline/piste-A/B/C/A+C) sur --last-n matchs")
+	lastN := fs.Int("last-n", 20, "Nombre de derniers matchs pour --compare-formulas (0 = tous)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -61,8 +63,8 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 	if !*allPlayers && strings.TrimSpace(*gamertag) == "" {
 		return fmt.Errorf("--gamertag est obligatoire sauf avec --all")
 	}
-	if !*engagementScores && !*citations && !*citationsRecomputeAll && !*lusr && !*csr && !*sharedCSR && !*perf && !*assistsModel && !*weapons && !*compositeOnly {
-		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --citations-recompute-all, --lusr, --csr, --shared-csr, --perf, --assists-model, --weapons ou --composite-only)")
+	if !*engagementScores && !*citations && !*citationsRecomputeAll && !*lusr && !*csr && !*sharedCSR && !*perf && !*assistsModel && !*weapons && !*compositeOnly && !*compareFormulas {
+		return fmt.Errorf("aucun backfill selectionne (utiliser --engagement-scores, --citations, --citations-recompute-all, --lusr, --csr, --shared-csr, --perf, --assists-model, --weapons, --composite-only ou --compare-formulas)")
 	}
 	if *dryRun && !*sharedCSR && !*lusr {
 		return fmt.Errorf("--dry-run n'est supporté qu'avec --shared-csr ou --lusr")
@@ -200,6 +202,21 @@ func runBackfill(cfg *config.AppConfig, args []string) error {
 			return err
 		}
 		return runRecomputeAllCitationsForPlayer(ctx, cfg, player.Gamertag, player.XUID)
+	}
+	if *compareFormulas {
+		if *allPlayers {
+			if err := runFormulaSimAll(ctx, cfg, *lastN); err != nil {
+				return err
+			}
+		} else {
+			player, err := loadPlayerSummary(cfg, *gamertag)
+			if err != nil {
+				return err
+			}
+			if err := runFormulaSimForPlayer(ctx, cfg, player, *lastN); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -469,6 +486,17 @@ func runBackfillLUSRDryRunForPlayer(ctx context.Context, cfg *config.AppConfig, 
 		fmt.Printf("  (aucun playlist_group calculé — pas de matchs éligibles)\n")
 		return nil
 	}
+	// Ordre canonique des composantes pour l'affichage reproductible.
+	compOrder := []struct{ key, short string }{
+		{go_sync.MetricKeyKillsVsExpected, "KvE"},
+		{go_sync.MetricKeyDeathsVsExpected, "DvE"},
+		{go_sync.MetricKeyWinFactor, "win"},
+		{go_sync.MetricKeyDamageEfficiency, "dmg"},
+		{go_sync.MetricKeyAccuracyDelta, "acc"},
+		{go_sync.MetricKeyMedalExploit, "med"},
+		{go_sync.MetricKeyOffensiveConv, "off"},
+		{go_sync.MetricKeyDefensiveResist, "def"},
+	}
 	fmt.Printf("  %-30s %-15s %-15s %-12s %s\n", "playlist_group", "OLD μ/σ", "NEW μ/σ", "Δ μ", "matchs")
 	fmt.Printf("  %s\n", strings.Repeat("─", 90))
 	for _, p := range report.Playlists {
@@ -479,9 +507,86 @@ func runBackfillLUSRDryRunForPlayer(ctx context.Context, cfg *config.AppConfig, 
 			p.DeltaMU(),
 			p.MatchCount,
 		)
+		if len(p.ComponentAvgs) > 0 {
+			fmt.Printf("    avgs:")
+			for _, c := range compOrder {
+				if v, ok := p.ComponentAvgs[c.key]; ok {
+					marker := " "
+					if v < 0.48 {
+						marker = "↓"
+					} else if v > 0.52 {
+						marker = "↑"
+					}
+					fmt.Printf("  %s=%.3f%s", c.short, v, marker)
+				}
+			}
+			fmt.Println()
+		}
 	}
 	if !report.HasChanges() {
 		fmt.Printf("  → AUCUN CHANGEMENT significatif (tous deltas < 1.0 μ)\n")
+	}
+	return nil
+}
+
+// ── Simulation de formules LUSR ──────────────────────────────────────────────
+//
+// Compare 5 variantes (baseline / piste-A / B / C / A+C) sur les N derniers
+// matchs, partant de InitialMU=1500. Aide à choisir la formule optimale.
+
+func runFormulaSimAll(ctx context.Context, cfg *config.AppConfig, lastN int) error {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		return fmt.Errorf("chargement db_profiles.json: %w", err)
+	}
+	if len(players) == 0 {
+		return fmt.Errorf("aucun joueur configure")
+	}
+	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
+	for _, player := range players {
+		dbPath := resolver.PlayerDBPath(titlePkg.DefaultSlug, player.Gamertag)
+		if _, statErr := os.Stat(dbPath); os.IsNotExist(statErr) {
+			fmt.Printf("sim-formula SKIP: gamertag=%s reason=no_player_db\n", player.Gamertag)
+			continue
+		}
+		if err := runFormulaSimForPlayer(ctx, cfg, &player, lastN); err != nil {
+			fmt.Printf("sim-formula FAIL: gamertag=%s err=%v\n", player.Gamertag, err)
+		}
+	}
+	return nil
+}
+
+func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, player *domain.PlayerSummary, lastN int) error {
+	engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, nil, nil)
+	report, err := engine.RunFormulaSim(ctx, lastN)
+	if err != nil {
+		return err
+	}
+	labelN := "tous"
+	if lastN > 0 {
+		labelN = fmt.Sprintf("%d", lastN)
+	}
+	fmt.Printf("\n══ sim-formula %s (last %s matchs, depuis μ=1500) ══\n", player.Gamertag, labelN)
+	if len(report.Results) == 0 {
+		fmt.Printf("  (aucun match éligible LUSR)\n")
+		return nil
+	}
+	// En-tête
+	fmt.Printf("  %-20s %6s", "chain", "matchs")
+	for _, v := range go_sync.SimulationVariants {
+		fmt.Printf("  %-18s", v.Name)
+	}
+	fmt.Println()
+	fmt.Printf("  %s\n", strings.Repeat("─", 20+7+len(go_sync.SimulationVariants)*20))
+
+	for _, r := range report.Results {
+		fmt.Printf("  %-20s %6d", r.Chain, r.MatchCount)
+		for _, v := range go_sync.SimulationVariants {
+			mu := r.MUByVariant[v.Name]
+			tier := go_sync.FormatTierLabel(mu)
+			fmt.Printf("  %6.0f %-11s", mu, tier)
+		}
+		fmt.Println()
 	}
 	return nil
 }

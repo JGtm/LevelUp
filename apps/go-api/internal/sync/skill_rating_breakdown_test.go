@@ -115,6 +115,88 @@ func TestCompositeScore_BackwardCompat(t *testing.T) {
 	}
 }
 
+// ── Carry adjustment (asymétrique, référence enemyAvgKE) ─────────────────────
+
+// TestCarryAdj_OverperformNeverBelowNeutral : quand le joueur dépasse son KE
+// face à des adversaires faibles (carryAdj max = 2.0), le score ajusté reste
+// strictement > 0.5 — le carry adjustment ne crée jamais de perte de MU.
+func TestCarryAdj_OverperformNeverBelowNeutral(t *testing.T) {
+	outcome := 2
+	row := &compositeMatchRow{
+		Kills:          20,
+		KillsExpected:  10, // 2× KE → raw sigmoid = 0.667
+		DeathsExpected: 8,
+		Deaths:         6,
+		Outcome:        &outcome,
+	}
+	enemyAvgKE := 5.0 // carryRatio = 10/5 = 2.0 → carryAdj = 2.0 (cap)
+	_, breakdown := computeCompositeScoreWithBreakdown(row, nil, &enemyAvgKE, nil, nil, nil, nil)
+	kve, ok := breakdown[MetricKeyKillsVsExpected]
+	if !ok {
+		t.Fatal("kills_vs_expected absent du breakdown")
+	}
+	if kve <= 0.5 {
+		t.Errorf("kills_vs_expected après carry adj = %.4f, attendu > 0.5", kve)
+	}
+}
+
+// TestCarryAdj_UnderperformFullPenalty : si le joueur est sous son KE, la pénalité
+// est intacte même avec un carryAdj élevé (pas d'adoucissement des mauvais matchs).
+func TestCarryAdj_UnderperformFullPenalty(t *testing.T) {
+	outcome := 3
+	row := &compositeMatchRow{
+		Kills:         4,
+		KillsExpected: 10, // 0.4× KE → raw sigmoid ≈ 0.286
+		Outcome:       &outcome,
+	}
+	rawScore := sigmoidRatio(4, 10)
+
+	enemyAvgKE := 5.0
+	_, breakdown := computeCompositeScoreWithBreakdown(row, nil, &enemyAvgKE, nil, nil, nil, nil)
+	kve := breakdown[MetricKeyKillsVsExpected]
+	if kve != rawScore {
+		t.Errorf("kills_vs_expected sous KE : attendu raw %.4f, obtenu %.4f (carry adj ne doit pas adoucir)", rawScore, kve)
+	}
+}
+
+// TestCarryAdj_NoAmplificationStrongerEnemies : si les adversaires sont plus forts
+// (enemyAvgKE > playerKE), carryAdj = 1.0 (floor) — aucune amplification.
+func TestCarryAdj_NoAmplificationStrongerEnemies(t *testing.T) {
+	outcome := 2
+	row := &compositeMatchRow{
+		Kills:         15,
+		KillsExpected: 10,
+		Outcome:       &outcome,
+	}
+	rawScore := sigmoidRatio(15, 10)
+
+	enemyAvgKE := 18.0 // adversaires bien plus forts → carryRatio = 10/18 < 1 → floor 1.0
+	_, breakdown := computeCompositeScoreWithBreakdown(row, nil, &enemyAvgKE, nil, nil, nil, nil)
+	kve := breakdown[MetricKeyKillsVsExpected]
+	if kve != rawScore {
+		t.Errorf("face à des adversaires forts : attendu raw %.4f, obtenu %.4f (pas d'amplification)", rawScore, kve)
+	}
+}
+
+// TestCarryAdj_EvenMatch_NoEffect : adversaires au même niveau → carryAdj = 1.0,
+// score inchangé.
+func TestCarryAdj_EvenMatch_NoEffect(t *testing.T) {
+	outcome := 2
+	row := &compositeMatchRow{
+		Kills:         15,
+		KillsExpected: 10,
+		Outcome:       &outcome,
+	}
+	rawScore := sigmoidRatio(15, 10)
+
+	enemyAvgKE := 10.0 // même niveau → carryRatio = 1.0 → carryAdj = 1.0
+	_, breakdown := computeCompositeScoreWithBreakdown(row, nil, &enemyAvgKE, nil, nil, nil, nil)
+	kve := breakdown[MetricKeyKillsVsExpected]
+	if kve != rawScore {
+		t.Errorf("match équilibré : attendu raw %.4f, obtenu %.4f", rawScore, kve)
+	}
+}
+
 func keysOf(m map[string]float64) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
