@@ -480,6 +480,16 @@ func main() {
 	var router http.Handler
 	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler)
 
+	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
+	// l'auto-sync scheduler. Avant ce fix, l'auto-sync court-circuitait
+	// systématiquement le pipeline progression V2 (streaks/records/milestones/
+	// notifications delta). Maintenant les 3 entry points (HTTP, auto-sync,
+	// CLI futur) invoquent le MÊME runner via SyncEngine.WithPostSyncRunner.
+	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause B.
+	if postSyncRunner := api.NewPostSyncRunner(reg); postSyncRunner != nil {
+		autoScheduler.WithPostSyncRunner(postSyncRunner)
+	}
+
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
 	go api.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
