@@ -9,7 +9,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
@@ -283,15 +285,26 @@ func (r *HomeRepo) CountPlayerMatches(ctx context.Context) (int, error) {
 	return count, err
 }
 
-// LoadHomeSessions charge les sessions avec label depuis player_match_enrichment (Q27).
+// LoadHomeSessions charge les sessions avec label depuis player_match_enrichment.
+//
+// Phase 3.bis plan stabilisation 2026-05-22 : split en 2 phases Go-side pour
+// éliminer le mix cross-DB (player + shared).
+//
+//   - Phase A : Q27HomeSessionsPlayerPart sur pdb.Player → match_id, session_id,
+//     session_label, is_with_friends pour tous les pme avec label non-NULL.
+//   - Phase B : Q27HomeSessionsSharedStartTimesTpl sur SharedReader →
+//     start_time pour le lot de match_ids retourné par Phase A.
+//   - Merge + sort by start_time DESC Go-side.
 func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSessionRow, error) {
-	rows, err := r.pdb.ReadDB().Query(ctx, Q27HomeSessions)
+	// ── Phase A — player conn ──────────────────────────────────────────────
+	rows, err := r.pdb.ReadDB().Query(ctx, Q27HomeSessionsPlayerPart)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var result []legacymatch.HomeSessionRow
+	matchIDs := make([]string, 0)
 	for rows.Next() {
 		var row legacymatch.HomeSessionRow
 		if err := rows.Scan(
@@ -299,13 +312,89 @@ func (r *HomeRepo) LoadHomeSessions(ctx context.Context) ([]legacymatch.HomeSess
 			&row.SessionID,
 			&row.SessionLabel,
 			&row.IsWithFriends,
-			&row.StartTime,
 		); err != nil {
 			return nil, err
 		}
 		result = append(result, row)
+		matchIDs = append(matchIDs, row.MatchID)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return result, nil
+	}
+
+	// ── Phase B — shared conn pour start_time ──────────────────────────────
+	startTimeByMatchID := r.loadHomeSessionsStartTimes(ctx, matchIDs)
+
+	// ── Merge ──────────────────────────────────────────────────────────────
+	for i := range result {
+		if st, ok := startTimeByMatchID[result[i].MatchID]; ok {
+			tCopy := st
+			result[i].StartTime = &tCopy
+		}
+	}
+	// Sort by StartTime DESC (nil StartTime → fin).
+	sort.SliceStable(result, func(i, j int) bool {
+		a, b := result[i].StartTime, result[j].StartTime
+		switch {
+		case a == nil && b == nil:
+			return false
+		case a == nil:
+			return false
+		case b == nil:
+			return true
+		default:
+			return a.After(*b)
+		}
+	})
+	return result, nil
+}
+
+// loadHomeSessionsStartTimes : Phase B helper. Retourne un map vide en cas
+// d'erreur (dégradation gracieuse — les rows sans start_time iront en fin
+// de liste après le tri).
+func (r *HomeRepo) loadHomeSessionsStartTimes(ctx context.Context, matchIDs []string) map[string]time.Time {
+	out := make(map[string]time.Time, len(matchIDs))
+	if len(matchIDs) == 0 || r.pdb.SharedReader == nil {
+		return out
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "LoadHomeSessions: shared reader unavailable for start_time enrichment",
+			"xuid", r.pdb.XUID, "err", err)
+		return out
+	}
+	defer release()
+
+	placeholders := make([]string, len(matchIDs))
+	args := make([]interface{}, 0, len(matchIDs))
+	for i, id := range matchIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	query := fmt.Sprintf(Q27HomeSessionsSharedStartTimesTpl, strings.Join(placeholders, ", "))
+	rows, err := sharedDB.QueryContext(ctx, query, args...)
+	if err != nil {
+		slog.WarnContext(ctx, "LoadHomeSessions: shared query failed",
+			"xuid", r.pdb.XUID, "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			matchID string
+			st      sql.NullTime
+		)
+		if err := rows.Scan(&matchID, &st); err != nil {
+			continue
+		}
+		if st.Valid {
+			out[matchID] = st.Time
+		}
+	}
+	return out
 }
 
 // LoadRecentMedia charge les médias récents du joueur (Q28).
