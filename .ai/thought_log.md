@@ -1,3 +1,124 @@
+## [2026-05-22] fix(sync) — Double zlib decompression sur highlight_events + parallel heal loops + cross-player dedup
+
+**Statut** : Complété (build + vet + tests verts). Code dans HEAD via les commits cleanup parallèles.
+
+**Contexte** : suite à la sync réussie du 22 mai (83 matchs insérés), l'utilisateur reporte 3 problèmes :
+1. La page match view → onglet détail rend aucun graphique pour le dernier match commun à tous les joueurs (highlight_events vide).
+2. Le post-sync prend 8 min pour 21 matchs malgré le bump RPS et le pool de tokens.
+3. Choco devrait être quasi-instantané sur les matchs partagés avec Madina mais re-fetch tout.
+
+**Fix #1 — Double zlib decompression dans le pipeline highlight_events** :
+
+Le commit `9cc4c2bb` du 8 mai 2026 (`fix(halo-api): décompression zlib des chunks film`) a ajouté l'appel `zlib.NewReader` dans [halo_client.go:downloadBlob](apps/go-api/internal/sync/halo_client.go) pour décompresser les blobs CDN Azure (qui arrivent en zlib brut). Mais [analysis.ParseHighlightEvents](apps/go-api/internal/analysis/highlight_event_parser.go) appelait encore `zlib.NewReader` sur le résultat → **double décompression**. Les fresh downloads (déjà décompressés) échouaient avec "zlib: invalid header" car les bytes ne commencent plus par `0x78`.
+
+Symptôme : pagination JGtm 22 mai → `inserted:41, warnings:41` — 100% des matchs avec `ParseHighlightEvents: zlib: zlib: invalid header`. Le path cache (LocalFilmCache.LoadChunk retourne du zlib brut hérité du projet Python) parsait OK ; le path fresh download échouait. Ça explique pourquoi les anciens matchs avaient des highlight_events mais pas les nouveaux.
+
+Fix : `ParseHighlightEvents` rendu **tolérant aux 2 formats** — tente `zlib.NewReader` puis fallback sur data brute si le header zlib est invalide. Aucune perte de données : les 41 matchs JGtm seront re-essayés au prochain tick auto-sync par `healEventsForRecentMatches` (qui scan `events_loaded=FALSE`), et cette fois le parsing réussira. Recovery automatique sans backfill manuel.
+
+2 tests ajoutés : `TestParseHighlightEvents_NonZlibBytesTreatedAsPlain` (non-zlib → no error, 0 events si pas de marqueur) et `TestParseHighlightEvents_PlainBytes_FreshDownloadPath` (plain bytes via buildRawChunk → events parsés correctement). Fixture réelle v41 (275 events) toujours OK.
+
+**Fix #2 — Parallélisation des heal loops (Action B)** :
+
+Les 4 heal loops du post-sync étaient strictement séquentiels (`for _, matchID := range matchIDs`) avec 1-2 calls API par match. Pour JGtm 22 mai : skill heal (32 matches × ~500ms RTT) + events heal (20 × 2 calls × ~500ms) + weapon heal (10 × 2 calls × ~500ms) = ~1m30s post-pagination. Tout ça pendant que le pool a 3 tokens × per-token-RPS=10 capable de soutenir 30 RPS.
+
+Fix : `errgroup.WithContext + SetLimit(healParallelism=8)` sur les 4 fonctions :
+- `healEventsForRecentMatches` ([events_heal.go](apps/go-api/internal/sync/events_heal.go))
+- `healWeaponKillsForRecentMatches` ([events_heal.go](apps/go-api/internal/sync/events_heal.go))
+- `healSkillForMissingMatches` ([skill_heal.go](apps/go-api/internal/sync/skill_heal.go))
+- `healStatsForRecentMatches` ([stats_heal.go](apps/go-api/internal/sync/stats_heal.go))
+
+Const `healParallelism = 8` partagée (déclarée dans events_heal.go) : pool_size × 2 pour saturer les 3 tokens sans pression mémoire. Le throttling réel vient toujours du rate limiter per-token, errgroup limite juste les goroutines pending. mu.Mutex protège les compteurs `healed`/`noFilm`. errgroup ne propage pas l'erreur (best-effort par-match). Gain attendu : 3-5× sur les heal steps.
+
+**Fix #3 — Cross-player dedup (Action A)** :
+
+Avant : `loadKnownMatchIDs(playerDB)` lisait uniquement `player_match_enrichment` du joueur courant. Quand Madina ingérait 21 matchs, ils étaient dans `shared.match_registry` + `shared.match_participants` (avec rows pour CHAQUE participant incl. Choco/JGtm), mais le set "known" de Choco ne les voyait pas → Choco re-fetchait les 21 matchs depuis Halo API (84 calls inutiles).
+
+Fix : `loadKnownMatchIDs(playerDB, sharedDB, xuid)` étendu pour UNION avec `SELECT DISTINCT match_id FROM shared.match_participants WHERE xuid = ?`. Le post-sync (perf scores, LUSR, citations) UPSERT naturellement les rows enrichment manquantes pour les matchs déjà en shared — pas besoin de pré-création explicite. Signature updatée sur 7 call-sites (1 prod + 6 tests). 2 tests régression : `TestLoadKnownMatchIDs_UnionWithSharedParticipants` (3 shared + 1 player + 1 other-xuid → 4 known) et `TestLoadKnownMatchIDs_NilSharedFallsBackToPlayer` (rétro-compat).
+
+**Diagnostics complémentaires donnés à l'utilisateur (non-actionnés)** :
+
+- **LUSR full-scan load** ([skill_rating.go:326](apps/go-api/internal/sync/skill_rating.go)) : `loadLUSRMatchData` charge tous les matchs unranked du joueur (~600 rows) à chaque sync, même si 1 nouveau. Le compute est incrémental (filtre `existingCSR ∪ existingLUSR` en mémoire Go) mais le load est full-scan. Fix proposé : pousser le filtre en SQL via `WHERE match_id NOT IN (?, ?, ...)` depuis la liste des matchs déjà classés.
+- **DROP TABLE non-atomique sur les MVs** ([aggregates.go:109](apps/go-api/internal/sync/aggregates.go)) : `DROP TABLE IF EXISTS X; CREATE TABLE X AS SELECT ...` en 2 statements séparés → fenêtre de non-dispo + risque de perte si crash entre les 2. Fix proposé : `CREATE TABLE X_new; BEGIN; DROP TABLE X; ALTER TABLE X_new RENAME TO X; COMMIT;`.
+- **Intra-match parallelism (Action C reportée)** : `fetchMatchData` fait GetMatchStats → GetMatchSkill → GetHighlightEventsChunk séquentiellement dans une goroutine. Pourrait paralléliser les 3 calls indépendants pour gagner ~30% sur la pagination.
+
+**Validations** :
+- `go vet ./...` : clean
+- `go build ./...` : OK
+- `go test ./internal/sync/...` : 10.0s PASS (incl. tests TestLoadKnownMatchIDs union + nil)
+- `go test ./internal/analysis/...` : PASS (incl. TestParseHighlightEvents_PlainBytes_FreshDownloadPath nouveau + TestParseHighlightEvents_RealV41Fixture 275 events OK)
+
+**Effet attendu au prochain cycle** :
+- Choco pagination : 9s → <1s sur les matchs partagés avec Madina (skip API via shared-aware known).
+- Post-sync heal steps : ~5× plus rapide (parallel 8 vs séquentiel).
+- Highlight events : les 41 matchs JGtm seront recovery'd via events_heal au prochain tick (idempotent, `events_loaded=FALSE` les re-target).
+
+**Prochaines étapes (follow-up)** :
+
+1. Action C — paralléliser intra-match calls (GetMatchStats + GetMatchSkill + GetHighlightEventsChunk via errgroup).
+2. Fix LUSR load : push filter en SQL pour ne charger que les nouveaux matchs.
+3. Fix MV atomic rename (`CREATE _new + RENAME` pattern dans `recreateMaterializedView`).
+4. Backfill manuel des dominance flags pour les 83 matchs insérés (le wiring post-sync est en place pour les futurs syncs, mais les 83 d'hier ont besoin d'un `levelup backfill --comeback` one-shot).
+5. ART corruption detector (Action 3.5 reportée du 22 mai).
+
+---
+
+## [2026-05-22] fix(sync,observability) — Crash post-sync silencieux + dominance flags gap : 4 instrumentations
+
+**Statut** : Complété (build + vet + tests sync/scheduler verts). Code dans HEAD via les commits cleanup parallèles.
+
+**Contexte** : suite à l'incident 2026-05-20 (fix URL `xuid(NNN)` + fix delta loop `goto done`), le sync auto a réussi son premier cycle complet le 22 mai à 18:31-18:41 — **83 nouveaux matchs insérés** (Madina 21, Chocoboflor 21, JGtm 41). MAIS le post-sync pipeline JGtm a été tué silencieusement à 18:41:19 après l'étape `had_bot_teammate` (étape 0e/14) : aucun panic Go capturé, aucun stack trace, le serveur s'est juste arrêté de logger. User signale en plus que LUSR + dominance flags (DOMINATION / HUMILIATION / REMONTADA) sont absents pour les 83 nouveaux matchs.
+
+**4 instrumentations appliquées** :
+
+### Action 1 — `debug.SetCrashOutput` dans main.go
+
+[main.go](apps/go-api/cmd/server/main.go) : ouverture `logs/server.crash.log` au boot, `debug.SetCrashOutput(crashFile, ...)` pour rediriger toutes les sorties runtime crash (panics, fatal errors, deadlock detection) vers le fichier. Avant ce fix, le panic Go partait sur stderr du binaire — non capturé par air sur Windows (`logs/air.err.log` stale du 20 mai). Cause directe du diag impossible le 22 mai. Header avec PID + timestamp à chaque boot pour distinguer les sessions. Best-effort : si ouverture fichier échoue, le binaire continue (panics ressortent sur stderr comme avant). Go 1.26.1 ≥ 1.23 requis pour `SetCrashOutput`.
+
+### Action 2 — `defer recover()` + stack dump dans `runPostSyncPipeline`
+
+[engine_postsync.go](apps/go-api/internal/sync/engine_postsync.go) : named return `r domain.PostSyncResult` + `defer func() { if rec := recover(); rec != nil { slog.ErrorContext(..., "stack", string(debug.Stack())) } }()` au début de `runPostSyncPipeline`. Catch les panics Go (nil deref, slice out-of-bounds, type assertion, etc.) dans n'importe quelle étape des 14 et permet :
+- Stack trace complet dans `logs/sync.log` au niveau ERROR
+- Résultat partiel retourné (ce qui a réussi avant le panic est préservé)
+- Sync continue avec next player au lieu de tuer tout le process
+
+Combiné avec Action 1, on couvre les 2 chemins de mort : panics Go récupérables (Action 2) + fatals runtime/deadlock detection (Action 1).
+
+### Action 3 — Heartbeat 30s dans main.go
+
+Goroutine séparée [main.go](apps/go-api/cmd/server/main.go) post-`srv.Serve()` qui logue toutes les 30s : `slog.InfoContext("heartbeat: alive", uptime_s, goroutines)`. Permet de distinguer 3 modes d'échec au prochain incident :
+- Crash Go : Action 1/2 capture + heartbeat s'arrête net
+- Deadlock/hang : heartbeat continue MAIS `goroutines` croît anormalement, OU les autres logs cessent alors que heartbeat continue
+- Process killed externally (air, OOM, antivirus) : silence total brutal, pas de gracieful shutdown
+
+Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
+
+### Action 4 — `BackfillDominanceFlags` câblé dans le post-sync auto
+
+[engine_postsync.go](apps/go-api/internal/sync/engine_postsync.go) : nouvelle étape 1.7 entre citations (1.6) et LUSR (2) qui appelle `BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, insertedIDs)` quand `len(insertedIDs) > 0`. Comble un **gap de design** : avant 2026-05-22, ces flags n'étaient calculés que via le CLI manuel `levelup backfill --comeback`, jamais en sync auto. Symptôme observé : les 83 matchs insérés le 22 mai n'ont pas leur dominance_flag. Idempotent (UPSERT par match_id), best-effort (erreur sur 1 match n'interrompt pas le batch), pas de blocage du pipeline en cas d'échec global (slog.WarnContext).
+
+**Action 3.5 reportée — ART corruption detector** : initialement prévu un goroutine de ping `SELECT 1` contre shared toutes les 60s avec détection pattern "database has been invalidated". Plus invasif qu'estimé (acquisition reader via Provider, intégration data_health). Reporté en follow-up — Action 1 + 2 couvrent déjà les cas Go runtime, et l'heartbeat (Action 3) révèlera les hangs DuckDB.
+
+**Validations** :
+- `go vet ./...` : clean (zero output)
+- `go build ./...` : OK
+- `go test ./internal/sync/...` : 10.8s PASS (incl. les contract tests fix #1)
+- `go test ./internal/scheduler/...` : 0.9s PASS (incl. zero-insert counter tests)
+
+**Recovery actions pour l'incident en cours** :
+
+1. Restart serveur → DuckDB replay WAL → 83 matchs récupérés (fichiers `.wal` à 18:39-18:41 confirmés).
+2. Prochain tick auto-sync → post-sync re-tournera (idempotent) → LUSR, perf scores, sessions, citations, **dominance flags** (Action 4) calculés cette fois.
+3. Si trous résiduels suspects (latence Halo CDN) → `POST /sync/initial?gamertag=X` (full mode) pour traverser toute l'historique API.
+
+**Prochaines étapes (follow-up)** :
+
+1. ART corruption detector via ping périodique shared + notif `data_health_warning` sur match pattern "invalidated".
+2. Test E2E dédié à l'étape dominance flags dans `engine_provider_e2e_test.go` (assertion sur `player_match_enrichment.dominance_flag` post-sync).
+3. Cleanup commits parallèles : les fix observability/dominance seront aspirés dans les commits `chore(cleanup)` automatisés → séparer en `fix(observability): crash capture + recover` + `fix(sync): dominance flags in post-sync`.
+4. Patcher [engine.go ATTACH metadata](apps/go-api/internal/sync/engine.go) pour utiliser `cfg.SharedProvider` — finit ADR 0016 (warning "different configuration" déjà observé, non bloquant).
+
+---
+
 ## [2026-05-22] docs — Phase 5 plan stabilisation : ADR 0017 + ADR 0014 update + runbook ops + archive audits
 
 **Statut** : Complété (branche `docs/post-stabilisation`).
