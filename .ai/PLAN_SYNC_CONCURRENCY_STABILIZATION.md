@@ -197,7 +197,17 @@ Effort : **~9h** (recalibré, +4h vs estimation initiale).
 
 **Priorité réelle après audit Agent 3** : paralléliser le path le plus coûteux du post-sync = `processWeaponKillsInline`. Les sous-phases 3.2 et 3.3 sont dépriorisées (gains marginaux confirmés par audit).
 
-### 3.0 NEW — Paralléliser `processWeaponKillsInline` EN MODE TDD (P0c, 2h)
+### 3.0 NEW — Paralléliser `processWeaponKillsInline` EN MODE TDD — ✅ FAIT 2026-05-23 (commit fc772f80)
+
+**Livré** : [`backfill_weapons.go::processWeaponKillsInline`](../../apps/go-api/internal/sync/backfill_weapons.go) → errgroup.SetLimit(healParallelism=8), mu.Mutex sur compteurs, best-effort par-match, cancel propagé via ctx.Err().
+
+**Tests TDD** ([`backfill_weapons_parallel_test.go`](../../apps/go-api/internal/sync/backfill_weapons_parallel_test.go)) : 4 tests écrits AVANT impl :
+- `Concurrent_NoRace` (100 matchs, -race clean)
+- `LatencyParallelFasterThanSequential` (16×100ms latence → ÉCHEC baseline 1.6s, PASSE post-impl)
+- `Idempotent` (2 runs successifs)
+- `CancelMidRun` (ctx.Cancel à mi-parcours)
+
+**4 tests existants** `TestProcessWeaponKillsInline_*` toujours verts post-refactor.
 
 **Source** : Audit Agent 3 (handoff §3). **C'est le gain le plus impactant identifié — ~150-200s économisés par cycle Madina.**
 
