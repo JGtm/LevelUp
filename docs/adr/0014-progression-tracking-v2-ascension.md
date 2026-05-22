@@ -1,8 +1,27 @@
 # ADR 0014 — Progression Tracking V2 (Ascension)
 
-**Date** : 2026-05-18
+**Date** : 2026-05-18 ; mis à jour 2026-05-22 (Phase 4 plan stabilisation — wiring fix)
 **Status** : Accepted
-**Branch** : `feat/progression-tracking-ascension` (commits 1-10)
+**Branch** : `feat/progression-tracking-ascension` (commits 1-10), `feat/ascension-pipeline-v2-wiring` (Phase 4 commits)
+
+## 2026-05-22 — Wiring corrigé (Phase 4 plan stabilisation)
+
+Cette ADR a longtemps documenté la conception V2 sans signaler que **le câblage applicatif était incomplet** : le hook post-sync (delta notifications + pipeline progression) était attaché uniquement au `SyncHandler` HTTP. L'auto-sync scheduler (15 min, source de 100% des syncs en condition réelle) court-circuitait le handler en appelant `SyncEngine.RunDelta` directement.
+
+Conséquence observée : tables `streak`, `record_history`, `player_records`, `milestone_earned` **restaient vides indéfiniment**. Page Ascension affichait "Aucun milestone configuré" pour tous les joueurs.
+
+Cf. [.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md](../../.ai/AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21.md) pour le diagnostic complet.
+
+**Fix appliqué (branche `feat/ascension-pipeline-v2-wiring`)** :
+- Interface `port.PostSyncRunner` (before/finalizer) — `internal/port/post_sync_runner.go`
+- `SyncEngine.WithPostSyncRunner(runner, slug)` — injection process-level
+- Invocation dans `engine.run()` : `BeforeSync` au début, finalizer sur succès uniquement
+- Adapter `api.NewPostSyncRunner(reg)` wrap `buildPostSyncDeltaHook(reg)` comme implémentation
+- Injection dans `AutoSyncScheduler.WithPostSyncRunner` câblée dans `cmd/server/main.go`
+- Migration backfill `seed_milestone_catalog_v1` qui charge le TOML au boot (idempotente, multi-titres-ready) — sinon `milestone_catalog` restait vide même si le pipeline tournait
+- Endpoint diag `GET /api/v1/_diag/progression/{player_slug}` — counts des 5 tables V2 pour validation post-déploiement
+- Tests garde anti-régression (`TestSyncEngine_WithPostSyncRunner_*` + `TestAutoSyncScheduler_DefaultRunnerFactory_InjectsRunner`)
+
 
 ## Context
 
