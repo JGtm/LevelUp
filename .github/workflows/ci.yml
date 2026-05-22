@@ -315,6 +315,11 @@ jobs:
   e2e-react:
     name: E2E React (Playwright)
     runs-on: ubuntu-latest
+    # Coût ~3-5 min + flakiness retries=2 → on évite de bruiter les feature
+    # branches. Trigger : push sur main (verdict après merge) + PR vers main
+    # (verdict avant merge). Pour lancer à la demande sur une feature branch :
+    # `cd apps/web && npx playwright test` localement, ou rebaser sur main.
+    if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     defaults:
       run:
         working-directory: apps/web
