@@ -12,9 +12,21 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
+
+// participantsSF déduplique les UPSERTs concurrents sur match_participants par
+// clé naturelle (match_id, xuid). Sert à empêcher la corruption d'index ART
+// observée en prod le 2026-05-22 (cf. ADR 0018 + plan Phase 1.3).
+//
+// Sémantique : si N goroutines appellent l'UPSERT sur la même clé en même
+// temps, 1 seule exécute le statement SQL ; les autres attendent et reçoivent
+// son résultat. Sur des clés différentes : aucune sérialisation (parallèle).
+// Coût négligeable (lookup map mémoire).
+var participantsSF singleflight.Group
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shared DB writes
@@ -99,66 +111,83 @@ func InsertParticipants(ctx context.Context, db *sql.DB, rows []ParticipantRow) 
 	}
 	now := time.Now().UTC()
 	for _, row := range rows {
-		_, err := db.ExecContext(ctx, `
-			INSERT INTO match_participants (
-				match_id, xuid, gamertag,
-				team_id, outcome, rank, score,
-				kills, deaths, assists,
-				shots_fired, shots_hit,
-				damage_dealt, damage_taken,
-				kda, accuracy, personal_score,
-				time_played_seconds, avg_life_seconds,
-				kills_expected, deaths_expected, kills_stddev, deaths_stddev,
-				team_mmr, enemy_mmr,
-				headshot_kills,
-				max_killing_spree, grenade_kills, melee_kills, power_weapon_kills,
-				created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (match_id, xuid) DO UPDATE SET
-				gamertag            = COALESCE(EXCLUDED.gamertag,            match_participants.gamertag),
-				team_id             = COALESCE(EXCLUDED.team_id,             match_participants.team_id),
-				outcome             = COALESCE(EXCLUDED.outcome,             match_participants.outcome),
-				rank                = COALESCE(EXCLUDED.rank,                match_participants.rank),
-				score               = COALESCE(EXCLUDED.score,               match_participants.score),
-				kills               = COALESCE(EXCLUDED.kills,               match_participants.kills),
-				deaths              = COALESCE(EXCLUDED.deaths,              match_participants.deaths),
-				assists             = COALESCE(EXCLUDED.assists,             match_participants.assists),
-				shots_fired         = COALESCE(EXCLUDED.shots_fired,         match_participants.shots_fired),
-				shots_hit           = COALESCE(EXCLUDED.shots_hit,           match_participants.shots_hit),
-				damage_dealt        = COALESCE(EXCLUDED.damage_dealt,        match_participants.damage_dealt),
-				damage_taken        = COALESCE(EXCLUDED.damage_taken,        match_participants.damage_taken),
-				kda                 = COALESCE(EXCLUDED.kda,                 match_participants.kda),
-				accuracy            = COALESCE(EXCLUDED.accuracy,            match_participants.accuracy),
-				personal_score      = COALESCE(EXCLUDED.personal_score,      match_participants.personal_score),
-				time_played_seconds = COALESCE(EXCLUDED.time_played_seconds, match_participants.time_played_seconds),
-				avg_life_seconds    = COALESCE(EXCLUDED.avg_life_seconds,    match_participants.avg_life_seconds),
-				kills_expected      = COALESCE(EXCLUDED.kills_expected,      match_participants.kills_expected),
-				deaths_expected     = COALESCE(EXCLUDED.deaths_expected,     match_participants.deaths_expected),
-				kills_stddev        = COALESCE(EXCLUDED.kills_stddev,        match_participants.kills_stddev),
-				deaths_stddev       = COALESCE(EXCLUDED.deaths_stddev,       match_participants.deaths_stddev),
-				team_mmr            = COALESCE(EXCLUDED.team_mmr,            match_participants.team_mmr),
-				enemy_mmr           = COALESCE(EXCLUDED.enemy_mmr,           match_participants.enemy_mmr),
-				headshot_kills      = COALESCE(EXCLUDED.headshot_kills,      match_participants.headshot_kills),
-				max_killing_spree   = COALESCE(EXCLUDED.max_killing_spree,   match_participants.max_killing_spree),
-				grenade_kills       = COALESCE(EXCLUDED.grenade_kills,       match_participants.grenade_kills),
-				melee_kills         = COALESCE(EXCLUDED.melee_kills,         match_participants.melee_kills),
-				power_weapon_kills  = COALESCE(EXCLUDED.power_weapon_kills,  match_participants.power_weapon_kills)`,
-			row.MatchID, row.XUID, row.Gamertag,
-			row.TeamID, row.Outcome, row.Rank, row.Score,
-			row.Kills, row.Deaths, row.Assists,
-			row.ShotsFired, row.ShotsHit,
-			row.DamageDealt, row.DamageTaken,
-			row.KDA, row.Accuracy, row.PersonalScore,
-			row.TimePlayedSeconds, row.AvgLifeSeconds,
-			row.KillsExpected, row.DeathsExpected, row.KillsStddev, row.DeathsStddev,
-			row.TeamMMR, row.EnemyMMR,
-			row.HeadshotKills,
-			row.MaxKillingSpree, row.GrenadeKills, row.MeleeKills, row.PowerWeaponKills,
-			now,
-		)
+		row := row // capture pour la closure singleflight
+		key := row.MatchID + "|" + row.XUID
+		// Singleflight dédupe les UPSERTs concurrents sur la même clé
+		// (match_id, xuid) — cf. ADR 0018 + plan Phase 1.3. Évite les races
+		// ART DuckDB observées en prod le 2026-05-22.
+		_, err, _ := participantsSF.Do(key, func() (any, error) {
+			return nil, insertParticipantRow(ctx, db, row, now)
+		})
 		if err != nil {
-			return fmt.Errorf("InsertParticipants(%s/%s): %w", row.MatchID, row.XUID, err)
+			return err
 		}
+	}
+	return nil
+}
+
+// insertParticipantRow exécute l'UPSERT SQL d'un seul ParticipantRow. Extrait
+// de InsertParticipants pour être appelable via singleflight (Phase 1.3).
+func insertParticipantRow(ctx context.Context, db *sql.DB, row ParticipantRow, now time.Time) error {
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO match_participants (
+			match_id, xuid, gamertag,
+			team_id, outcome, rank, score,
+			kills, deaths, assists,
+			shots_fired, shots_hit,
+			damage_dealt, damage_taken,
+			kda, accuracy, personal_score,
+			time_played_seconds, avg_life_seconds,
+			kills_expected, deaths_expected, kills_stddev, deaths_stddev,
+			team_mmr, enemy_mmr,
+			headshot_kills,
+			max_killing_spree, grenade_kills, melee_kills, power_weapon_kills,
+			created_at
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT (match_id, xuid) DO UPDATE SET
+			gamertag            = COALESCE(EXCLUDED.gamertag,            match_participants.gamertag),
+			team_id             = COALESCE(EXCLUDED.team_id,             match_participants.team_id),
+			outcome             = COALESCE(EXCLUDED.outcome,             match_participants.outcome),
+			rank                = COALESCE(EXCLUDED.rank,                match_participants.rank),
+			score               = COALESCE(EXCLUDED.score,               match_participants.score),
+			kills               = COALESCE(EXCLUDED.kills,               match_participants.kills),
+			deaths              = COALESCE(EXCLUDED.deaths,              match_participants.deaths),
+			assists             = COALESCE(EXCLUDED.assists,             match_participants.assists),
+			shots_fired         = COALESCE(EXCLUDED.shots_fired,         match_participants.shots_fired),
+			shots_hit           = COALESCE(EXCLUDED.shots_hit,           match_participants.shots_hit),
+			damage_dealt        = COALESCE(EXCLUDED.damage_dealt,        match_participants.damage_dealt),
+			damage_taken        = COALESCE(EXCLUDED.damage_taken,        match_participants.damage_taken),
+			kda                 = COALESCE(EXCLUDED.kda,                 match_participants.kda),
+			accuracy            = COALESCE(EXCLUDED.accuracy,            match_participants.accuracy),
+			personal_score      = COALESCE(EXCLUDED.personal_score,      match_participants.personal_score),
+			time_played_seconds = COALESCE(EXCLUDED.time_played_seconds, match_participants.time_played_seconds),
+			avg_life_seconds    = COALESCE(EXCLUDED.avg_life_seconds,    match_participants.avg_life_seconds),
+			kills_expected      = COALESCE(EXCLUDED.kills_expected,      match_participants.kills_expected),
+			deaths_expected     = COALESCE(EXCLUDED.deaths_expected,     match_participants.deaths_expected),
+			kills_stddev        = COALESCE(EXCLUDED.kills_stddev,        match_participants.kills_stddev),
+			deaths_stddev       = COALESCE(EXCLUDED.deaths_stddev,       match_participants.deaths_stddev),
+			team_mmr            = COALESCE(EXCLUDED.team_mmr,            match_participants.team_mmr),
+			enemy_mmr           = COALESCE(EXCLUDED.enemy_mmr,           match_participants.enemy_mmr),
+			headshot_kills      = COALESCE(EXCLUDED.headshot_kills,      match_participants.headshot_kills),
+			max_killing_spree   = COALESCE(EXCLUDED.max_killing_spree,   match_participants.max_killing_spree),
+			grenade_kills       = COALESCE(EXCLUDED.grenade_kills,       match_participants.grenade_kills),
+			melee_kills         = COALESCE(EXCLUDED.melee_kills,         match_participants.melee_kills),
+			power_weapon_kills  = COALESCE(EXCLUDED.power_weapon_kills,  match_participants.power_weapon_kills)`,
+		row.MatchID, row.XUID, row.Gamertag,
+		row.TeamID, row.Outcome, row.Rank, row.Score,
+		row.Kills, row.Deaths, row.Assists,
+		row.ShotsFired, row.ShotsHit,
+		row.DamageDealt, row.DamageTaken,
+		row.KDA, row.Accuracy, row.PersonalScore,
+		row.TimePlayedSeconds, row.AvgLifeSeconds,
+		row.KillsExpected, row.DeathsExpected, row.KillsStddev, row.DeathsStddev,
+		row.TeamMMR, row.EnemyMMR,
+		row.HeadshotKills,
+		row.MaxKillingSpree, row.GrenadeKills, row.MeleeKills, row.PowerWeaponKills,
+		now,
+	)
+	if err != nil {
+		return fmt.Errorf("InsertParticipants(%s/%s): %w", row.MatchID, row.XUID, err)
 	}
 	return nil
 }
