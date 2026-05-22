@@ -80,7 +80,22 @@ type HighlightEvent struct {
 	MedalType int
 }
 
-// ParseHighlightEvents décompresse et parse le chunk highlight events binaire Halo.
+// ParseHighlightEvents parse le chunk highlight events binaire Halo.
+//
+// Le chunk peut arriver dans 2 états selon la source :
+//   - **Fresh download via halo_client.downloadBlob** : déjà décompressé (le
+//     CDN renvoie du zlib brut que downloadBlob inflate depuis fix 9cc4c2bb
+//     du 8 mai 2026). data est en clair.
+//   - **Cached via LocalFilmCache.LoadChunk** : encore en zlib (le cache
+//     hérité du projet Python stocke les chunks compressés tels que reçus
+//     du CDN avant le fix). data commence par 0x78 0x.. (header zlib).
+//
+// On gère les 2 formats : on tente une décompression zlib, si elle échoue
+// avec un header invalide on suppose que data est déjà en clair. Cette
+// double-tolérance résout l'incident 2026-05-22 (41/41 matchs JGtm failed
+// avec "zlib: invalid header" sur les fresh downloads, alors que les
+// matchs anciens cachés parsaient OK).
+//
 // filmMajorVersion provient de CustomData.FilmMajorVersion dans le manifest.
 // Retourne les événements parsés ; les events non reconnus sont silencieusement ignorés.
 func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, error) {
@@ -88,17 +103,20 @@ func ParseHighlightEvents(data []byte, filmMajorVersion int) ([]HighlightEvent, 
 		return nil, nil
 	}
 
-	r, err := zlib.NewReader(bytes.NewReader(data))
-	if err != nil {
-		return nil, fmt.Errorf("ParseHighlightEvents zlib: %w", err)
+	payload := data
+	if r, err := zlib.NewReader(bytes.NewReader(data)); err == nil {
+		// Path cache : data était zlib-compressé, on décompresse.
+		defer r.Close()
+		inflated, inflErr := io.ReadAll(r)
+		if inflErr != nil {
+			return nil, fmt.Errorf("ParseHighlightEvents decompress: %w", inflErr)
+		}
+		payload = inflated
 	}
-	defer r.Close()
-	decompressed, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("ParseHighlightEvents decompress: %w", err)
-	}
+	// Sinon (err != nil sur zlib.NewReader = pas un header zlib) : data est
+	// déjà en clair (path fresh download post-fix 9cc4c2bb). Pas d'erreur.
 
-	return scanEvents(decompressed, filmMajorVersion), nil
+	return scanEvents(payload, filmMajorVersion), nil
 }
 
 // scanEvents identifie chaque XUID dans le flux binaire (au bit près) et

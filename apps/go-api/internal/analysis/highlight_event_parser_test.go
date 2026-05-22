@@ -114,10 +114,49 @@ func TestParseHighlightEvents_EmptySlice(t *testing.T) {
 	}
 }
 
-func TestParseHighlightEvents_InvalidZlib(t *testing.T) {
-	_, err := ParseHighlightEvents([]byte{0x01, 0x02, 0x03}, 40)
-	if err == nil {
-		t.Fatal("expected error for invalid zlib data, got nil")
+// TestParseHighlightEvents_NonZlibBytesTreatedAsPlain : depuis fix 2026-05-22,
+// si data n'a pas un header zlib valide on suppose qu'elle est déjà
+// décompressée (path fresh download via halo_client.downloadBlob qui inflate
+// depuis le 8 mai). On ne retourne PAS d'erreur, on scan les bytes tels quels.
+// Si le contenu ne contient aucun marqueur 0xc0 valide → 0 events, sans erreur.
+func TestParseHighlightEvents_NonZlibBytesTreatedAsPlain(t *testing.T) {
+	events, err := ParseHighlightEvents([]byte{0x01, 0x02, 0x03}, 40)
+	if err != nil {
+		t.Fatalf("attendu nil, got %v (data non-zlib doit être traitée comme plain)", err)
+	}
+	if len(events) != 0 {
+		t.Errorf("attendu 0 event sur 3 bytes random, got %d", len(events))
+	}
+}
+
+// TestParseHighlightEvents_PlainBytes_FreshDownloadPath : reproduit le path
+// fresh download — buildRawChunk donne du plain binaire, on passe ce plain
+// directement (pas de zlibCompress). Doit parser comme si c'était décompressé.
+// Régression du bug 2026-05-22 (41/41 matchs JGtm "zlib invalid header" car
+// downloadBlob décompresse déjà depuis 9cc4c2bb mais le parser tentait un
+// 2e zlib).
+func TestParseHighlightEvents_PlainBytes_FreshDownloadPath(t *testing.T) {
+	const (
+		xuid     = uint64(2_500_000_000_000_002)
+		gamertag = "FreshDownloadPlayer"
+		timeMS   = 12345
+	)
+	plain := buildRawChunk(xuid, gamertag, typeHintKill, timeMS, false, 0)
+
+	// PAS de zlibCompress — simule le path fresh download (déjà décompressé
+	// par downloadBlob).
+	events, err := ParseHighlightEvents(plain, 42)
+	if err != nil {
+		t.Fatalf("ParseHighlightEvents plain: %v", err)
+	}
+	if len(events) == 0 {
+		t.Fatal("attendu ≥ 1 event sur plain bytes, got 0 — fix 2026-05-22 régressé")
+	}
+	if events[0].XUID != xuid {
+		t.Errorf("XUID: got %d, want %d", events[0].XUID, xuid)
+	}
+	if events[0].TimeMS != timeMS {
+		t.Errorf("TimeMS: got %d, want %d", events[0].TimeMS, timeMS)
 	}
 }
 

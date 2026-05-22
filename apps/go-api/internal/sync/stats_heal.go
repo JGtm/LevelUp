@@ -15,6 +15,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // healStatsForRecentMatches détecte les matchs récents où le joueur a
@@ -64,37 +67,51 @@ func healStatsForRecentMatches(
 		return 0, nil
 	}
 
+	// Parallélisation 2026-05-22 : 1 GetMatchStats par match (pas de film),
+	// les calls peuvent tourner en parallèle. mu protège le compteur. errgroup
+	// ne propage pas l'erreur (best-effort par-match).
+	var mu sync.Mutex
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(healParallelism)
 	for _, matchID := range matchIDs {
-		if ctx.Err() != nil {
-			return healed, ctx.Err()
-		}
-		matchJSON, err := client.GetMatchStats(ctx, matchID)
-		if err != nil {
-			slog.WarnContext(ctx, "healStats: GetMatchStats échoué",
-				"match_id", matchID, "err", err)
-			continue
-		}
-		// Re-extract participants — les nouvelles colonnes (max_spree,
-		// grenade/melee/power, time_played, avg_life, gamertag) sont remplies
-		// par ExtractParticipants ; UPSERT préserve l'existant via COALESCE.
-		participants := ExtractParticipants(matchJSON)
-		ensureGamertagForSelf(participants, xuid, selfGamertag)
-		if err := InsertParticipants(ctx, sharedDB, participants); err != nil {
-			slog.WarnContext(ctx, "healStats: upsert participants échoué",
-				"match_id", matchID, "err", err)
-			continue
-		}
-		// Re-extract registry pour combler team_0_ps_score / team_1_ps_score.
-		// L'UPSERT registry préserve l'existant et écrase team_X_ps_score si
-		// les nouveaux ne sont pas NULL.
-		reg, err := ExtractRegistry(matchJSON, "heal")
-		if err == nil && reg != nil {
-			if err := InsertRegistryIfNotExists(ctx, sharedDB, *reg); err != nil {
-				slog.DebugContext(ctx, "healStats: upsert registry skipped",
-					"match_id", matchID, "err", err)
+		matchID := matchID
+		eg.Go(func() error {
+			if egCtx.Err() != nil {
+				return egCtx.Err()
 			}
-		}
-		healed++
+			matchJSON, gErr := client.GetMatchStats(egCtx, matchID)
+			if gErr != nil {
+				slog.WarnContext(egCtx, "healStats: GetMatchStats échoué",
+					"match_id", matchID, "err", gErr)
+				return nil
+			}
+			// Re-extract participants — les nouvelles colonnes (max_spree,
+			// grenade/melee/power, time_played, avg_life, gamertag) sont
+			// remplies par ExtractParticipants ; UPSERT préserve l'existant
+			// via COALESCE.
+			participants := ExtractParticipants(matchJSON)
+			ensureGamertagForSelf(participants, xuid, selfGamertag)
+			if pErr := InsertParticipants(egCtx, sharedDB, participants); pErr != nil {
+				slog.WarnContext(egCtx, "healStats: upsert participants échoué",
+					"match_id", matchID, "err", pErr)
+				return nil
+			}
+			// Re-extract registry pour combler team_0_ps_score / team_1_ps_score.
+			// UPSERT registry préserve l'existant et écrase team_X_ps_score
+			// si les nouveaux ne sont pas NULL.
+			reg, rErr := ExtractRegistry(matchJSON, "heal")
+			if rErr == nil && reg != nil {
+				if insErr := InsertRegistryIfNotExists(egCtx, sharedDB, *reg); insErr != nil {
+					slog.DebugContext(egCtx, "healStats: upsert registry skipped",
+						"match_id", matchID, "err", insErr)
+				}
+			}
+			mu.Lock()
+			healed++
+			mu.Unlock()
+			return nil
+		})
 	}
+	_ = eg.Wait()
 	return healed, nil
 }
