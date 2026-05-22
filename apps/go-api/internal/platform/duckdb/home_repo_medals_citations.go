@@ -92,7 +92,19 @@ func (r *HomeRepo) LoadMatchMedals(ctx context.Context, matchIDs []string) (map[
 	}
 	query := fmt.Sprintf(Q26hMatchMedalsTemplate, strings.Join(placeholders, ", "))
 
-	rows, err := r.pdb.ReadDB().Query(ctx, query, args...)
+	// Phase 3 plan stabilisation 2026-05-22 : migré de pdb.ReadDB() (player
+	// conn) vers SharedReader.Get(). shared.medals_earned vit dans
+	// shared_matches_v2 et l'ATTACH shared sur la player conn a été retiré
+	// (ADR 0016). Référence sans préfixe `shared.` désormais.
+	if r.pdb.SharedReader == nil {
+		return result, nil
+	}
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return result, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return result, nil // dégradation silencieuse
 	}
