@@ -19,8 +19,10 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -99,8 +101,24 @@ func (e *SyncEngine) runPostSyncPipeline(
 	playerDB, sharedDB *sql.DB,
 	client HaloClient,
 	insertedIDs []string,
-) domain.PostSyncResult {
-	var r domain.PostSyncResult
+) (r domain.PostSyncResult) {
+	// Capture des panics du pipeline post-sync — avant ce defer un panic dans
+	// n'importe quelle étape (perf scores, LUSR, citations, etc.) tuait
+	// silencieusement tout le process server sans laisser de stack trace dans
+	// les logs (cf. incident 2026-05-22, post-sync JGtm tué à 18:41:19 sans
+	// trace). On capture, on logue le stack, et on retourne le résultat partiel
+	// — le sync engine continue avec ce qui a réussi, le tick scheduler suivant
+	// pourra retenter (toutes les étapes sont idempotentes).
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.ErrorContext(ctx, "post-sync: PANIC récupéré",
+				"gamertag", e.gamertag,
+				"panic", fmt.Sprintf("%v", rec),
+				"stack", string(debug.Stack()),
+				"hint", "résultat partiel retourné, étapes idempotentes — prochain tick retentera",
+			)
+		}
+	}()
 
 	// Sprint B1 commit 18 : event_id pour tracer le pipeline post-sync à
 	// travers ses 14+ étapes (stats heal, skill heal, events heal, weapons,
@@ -249,6 +267,24 @@ func (e *SyncEngine) runPostSyncPipeline(
 	} else if n > 0 {
 		slog.InfoContext(ctx, "post-sync: citations calculées",
 			"gamertag", e.gamertag, "match_count", n)
+	}
+
+	// 1.7 Dominance flags (best-effort) — calcule DOMINATION / HUMILIATION /
+	// REMONTADA / DÉBÂCLE / CONTRE-REMONTADA pour les matchs nouvellement
+	// insérés et les écrit dans player_match_enrichment.dominance_flag.
+	// Comble un gap de design : avant 2026-05-22 ces flags n'étaient calculés
+	// que via le backfill manuel `levelup backfill --comeback`, jamais en
+	// auto-sync — symptôme : 41 nouveaux matchs JGtm insérés sans dominance.
+	// BackfillDominanceFlags est idempotent (UPSERT par match_id) et best-effort
+	// par match (erreur sur 1 match n'interrompt pas le batch).
+	if len(insertedIDs) > 0 {
+		if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, insertedIDs); err != nil {
+			slog.WarnContext(ctx, "post-sync: dominance flags échoué",
+				"gamertag", e.gamertag, "err", err, "count", len(insertedIDs))
+		} else {
+			slog.InfoContext(ctx, "post-sync: dominance flags calculés",
+				"gamertag", e.gamertag, "match_count", len(insertedIDs))
+		}
 	}
 
 	// 2. LUSR (TrueSkill 2) — best-effort medal data depuis metadata DB

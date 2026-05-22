@@ -16,6 +16,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // healSkillForMissingMatches récupère les match_id du joueur où team_mmr est
@@ -61,51 +64,67 @@ func healSkillForMissingMatches(
 		return 0, nil
 	}
 
+	// Parallélisation 2026-05-22 : GetMatchSkill = 1 API call/match, on peut
+	// les paralléliser. L'UPSERT participants sérialise au niveau DuckDB. Gain
+	// principal vient du réseau (Halo skill endpoint ~300-500ms RTT).
 	healed := 0
+	var mu sync.Mutex
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(healParallelism)
 	for _, matchID := range matchIDs {
-		// 2. Lister les XUIDs humains de ce match.
-		humanXUIDs, err := loadHumanXUIDsForMatch(ctx, sharedDB, matchID)
-		if err != nil {
-			slog.WarnContext(ctx, "healSkill: load xuids échoué",
-				"match_id", matchID, "err", err)
-			continue
-		}
-		if len(humanXUIDs) == 0 {
-			continue // bots-only ou match custom
-		}
+		matchID := matchID
+		eg.Go(func() error {
+			if egCtx.Err() != nil {
+				return egCtx.Err()
+			}
+			// 2. Lister les XUIDs humains de ce match.
+			humanXUIDs, lErr := loadHumanXUIDsForMatch(egCtx, sharedDB, matchID)
+			if lErr != nil {
+				slog.WarnContext(egCtx, "healSkill: load xuids échoué",
+					"match_id", matchID, "err", lErr)
+				return nil
+			}
+			if len(humanXUIDs) == 0 {
+				return nil // bots-only ou match custom
+			}
 
-		// 3. GetMatchSkill.
-		skill, err := client.GetMatchSkill(ctx, matchID, humanXUIDs)
-		if err != nil {
-			slog.WarnContext(ctx, "healSkill: GetMatchSkill échoué",
-				"match_id", matchID, "err", err)
-			continue
-		}
-		if len(skill) == 0 {
-			continue // skill absent (custom/local)
-		}
+			// 3. GetMatchSkill.
+			skill, skErr := client.GetMatchSkill(egCtx, matchID, humanXUIDs)
+			if skErr != nil {
+				slog.WarnContext(egCtx, "healSkill: GetMatchSkill échoué",
+					"match_id", matchID, "err", skErr)
+				return nil
+			}
+			if len(skill) == 0 {
+				return nil // skill absent (custom/local)
+			}
 
-		// 4. Construire ParticipantRow minimaux et UPSERT (COALESCE conserve
-		// les autres colonnes : kills, deaths, etc.).
-		updates := make([]ParticipantRow, 0, len(skill))
-		for _, sd := range skill {
-			updates = append(updates, ParticipantRow{
-				MatchID:        matchID,
-				XUID:           sd.XUID,
-				TeamMMR:        sd.TeamMMR,
-				EnemyMMR:       sd.EnemyMMR,
-				KillsExpected:  sd.KillsExpected,
-				DeathsExpected: sd.DeathsExpected,
-				KillsStddev:    sd.KillsStdDev,
-			})
-		}
-		if err := InsertParticipants(ctx, sharedDB, updates); err != nil {
-			slog.WarnContext(ctx, "healSkill: upsert échoué",
-				"match_id", matchID, "err", err)
-			continue
-		}
-		healed++
+			// 4. Construire ParticipantRow minimaux et UPSERT (COALESCE conserve
+			// les autres colonnes : kills, deaths, etc.).
+			updates := make([]ParticipantRow, 0, len(skill))
+			for _, sd := range skill {
+				updates = append(updates, ParticipantRow{
+					MatchID:        matchID,
+					XUID:           sd.XUID,
+					TeamMMR:        sd.TeamMMR,
+					EnemyMMR:       sd.EnemyMMR,
+					KillsExpected:  sd.KillsExpected,
+					DeathsExpected: sd.DeathsExpected,
+					KillsStddev:    sd.KillsStdDev,
+				})
+			}
+			if upErr := InsertParticipants(egCtx, sharedDB, updates); upErr != nil {
+				slog.WarnContext(egCtx, "healSkill: upsert échoué",
+					"match_id", matchID, "err", upErr)
+				return nil
+			}
+			mu.Lock()
+			healed++
+			mu.Unlock()
+			return nil
+		})
 	}
+	_ = eg.Wait()
 	return healed, nil
 }
 

@@ -25,6 +25,8 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"syscall"
@@ -127,6 +129,26 @@ func main() {
 
 	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
 	logsCfg := logging.LoadConfig(preliminaryRepoRoot)
+
+	// Crash output : redirige les panics Go runtime + fatal errors vers un
+	// fichier dédié (sinon ils partent sur stderr qui n'est capturé nulle part
+	// sous air/Windows). Sans ça : crash silencieux, pas de stack trace, diag
+	// impossible — symptôme de l'incident 2026-05-22 (post-sync JGtm tué à
+	// 18:41:19 sans aucune trace). Best-effort : si l'ouverture échoue, on
+	// continue (le crash ira sur stderr comme avant).
+	if logsCfg.LogsDir != "" {
+		crashLogPath := filepath.Join(logsCfg.LogsDir, "server.crash.log")
+		if crashFile, err := os.OpenFile(crashLogPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644); err == nil {
+			_, _ = fmt.Fprintf(crashFile, "\n=== server start %s pid=%d ===\n", time.Now().Format(time.RFC3339), os.Getpid())
+			if err := debug.SetCrashOutput(crashFile, debug.CrashOptions{}); err != nil {
+				slog.Warn("crash_output: SetCrashOutput échoué", "err", err, "path", crashLogPath)
+				_ = crashFile.Close()
+			}
+		} else {
+			slog.Warn("crash_output: ouverture fichier échouée — panics resteront sur stderr",
+				"err", err, "path", crashLogPath)
+		}
+	}
 
 	var logHandler slog.Handler
 	switch logsCfg.ConsoleFormat {
@@ -518,6 +540,28 @@ func main() {
 		if err := srv.Serve(ln); err != nil && err != http.ErrServerClosed {
 			slog.Error("server error", "err", err)
 			os.Exit(1)
+		}
+	}()
+
+	// Heartbeat 30s — sentinelle de vie du process. Si les logs cessent de
+	// montrer "alive" mais que le binaire est toujours en mémoire → deadlock
+	// ou hang. Si les logs s'arrêtent ET le process disparaît → crash (cf.
+	// logs/server.crash.log + recover() dans post-sync). Diagnostic immédiat
+	// au prochain incident type 2026-05-22 (silence total post 18:41:19).
+	startedAt := time.Now()
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-schedulerCtx.Done():
+				return
+			case <-ticker.C:
+				slog.InfoContext(schedulerCtx, "heartbeat: alive",
+					"uptime_s", int(time.Since(startedAt).Seconds()),
+					"goroutines", runtime.NumGoroutine(),
+				)
+			}
 		}
 	}()
 

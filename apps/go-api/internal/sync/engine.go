@@ -235,7 +235,10 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	slog.DebugContext(ctx, "sync: DBs ouvertes", "gamertag", e.gamertag)
 
 	// â”€â”€â”€ Match IDs dÃ©jÃ  connus (player DB) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-	known, err := loadKnownMatchIDs(ctx, playerDB)
+	// Known set étendu : player_match_enrichment ∪ shared.match_participants
+	// WHERE xuid=e.xuid. Permet de skipper le fetch API quand un autre joueur
+	// du même cycle a déjà ingéré le match en shared (cross-player dedup).
+	known, err := loadKnownMatchIDs(ctx, playerDB, sharedDB, e.xuid)
 	if err != nil {
 		slog.ErrorContext(ctx, "sync: chargement match_ids connus Ã©chouÃ©", "gamertag", e.gamertag, "err", err)
 		return result, fmt.Errorf("run loadKnownMatchIDs: %w", err)
@@ -470,22 +473,55 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 // loadKnownMatchIDs retourne l'ensemble des match_ids dÃ©jÃ  prÃ©sents dans
 // player_match_enrichment (player DB).
-func loadKnownMatchIDs(ctx context.Context, db *sql.DB) (map[string]bool, error) {
-	rows, err := db.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment")
-	if err != nil {
-		// Table peut ne pas exister si le schÃ©ma vient d'Ãªtre crÃ©Ã© â€” OK.
-		return map[string]bool{}, nil
-	}
-	defer rows.Close()
+// loadKnownMatchIDs construit le set des match_id "connus" pour ce joueur.
+//
+// Source 1 — playerDB.player_match_enrichment : matchs déjà ingérés dans la
+// pipeline complète (registry + participants + enrichment per-player).
+//
+// Source 2 — sharedDB.match_participants WHERE xuid=? : matchs déjà présents
+// en shared pour ce joueur (typiquement parce qu'un AUTRE joueur du même
+// cycle de sync a déjà fait le fetch + insert via insertFetchedMatch — qui
+// écrit toutes les rows participants y compris celle de notre xuid). Avant
+// 2026-05-22 ce 2e check n'existait pas, donc Chocoboflor re-fetchait depuis
+// Halo API 21 matchs déjà insérés par Madina dans le même tick (84 calls
+// inutiles). Le post-sync (batchComputePerformanceScores, batchComputeLUSR,
+// citations) UPSERT naturellement les rows enrichment manquantes pour les
+// matchs déjà en shared.
+//
+// sharedDB peut être nil (cas tests / boot avant shared init) → seule la
+// source 1 est consultée.
+func loadKnownMatchIDs(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (map[string]bool, error) {
+	known := make(map[string]bool, 512)
 
-	known := make(map[string]bool, 256)
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err == nil {
-			known[id] = true
+	// Source 1 : player_match_enrichment (per-player).
+	if rows, err := playerDB.QueryContext(ctx, "SELECT match_id FROM player_match_enrichment"); err == nil {
+		for rows.Next() {
+			var id string
+			if scanErr := rows.Scan(&id); scanErr == nil {
+				known[id] = true
+			}
 		}
+		_ = rows.Close()
 	}
-	return known, rows.Err()
+	// Note: erreur ignorée (table peut ne pas exister sur schéma frais).
+
+	// Source 2 : shared.match_participants pour ce xuid (cross-player dedup).
+	if sharedDB != nil && strings.TrimSpace(xuid) != "" {
+		rows, err := sharedDB.QueryContext(ctx, "SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?", xuid)
+		if err == nil {
+			for rows.Next() {
+				var id string
+				if scanErr := rows.Scan(&id); scanErr == nil {
+					known[id] = true
+				}
+			}
+			_ = rows.Close()
+		}
+		// Erreur ignorée idem : si la table n'existe pas (cas tests minimaux),
+		// fallback gracieux sur la source 1 seule.
+	}
+
+	return known, nil
 }
 
 // runPostSyncPipeline : dÃ©placÃ© vers engine_postsync.go (refactor 2026-05-21).
