@@ -520,6 +520,12 @@ func main() {
 		watcherDaemon.Stop()
 	}
 
+	// Phase 2 plan stabilisation 2026-05-22 : mesurer la durée totale du
+	// shutdown pour valider que Air SIGKILL (stop_timeout=20s) n'est jamais
+	// atteint en pratique. Si shutdown_total_duration_ms > 15000, augmenter
+	// le timeout Air OU identifier l'étape qui traîne.
+	shutdownStart := time.Now()
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -542,12 +548,41 @@ func main() {
 	}
 
 	duckdb.CloseAll()
+
+	// Phase 2 plan stabilisation 2026-05-22 : fermer le ServiceRegistry AVANT
+	// metaDB.Close() pour décrémenter proprement le refCount sur metadata
+	// porté par PrestigeBundle (cf. INCIDENT_2026-05-21_metadata_duckdb_lock
+	// _air_hot_reload.md §3.2 leak refCount). Sans ça, refCount=2 au moment
+	// du metaDB.Close() → décrément à 1 → handle Windows tenu jusqu'à exit
+	// process → verrou metadata au prochain hot-reload Air.
+	if reg != nil {
+		reg.Close()
+	}
+
 	if err := closeShared(); err != nil {
 		slog.Warn("fermeture shared DB", "err", err)
 	}
 	if err := metaDB.Close(); err != nil {
 		slog.Warn("fermeture metadata DB", "err", err)
 	}
+
+	// Phase 2 plan stabilisation 2026-05-22 : détecter les fuites de refCount
+	// sur le cache openDBs. Une fuite ici = HANDLE Windows tenu jusqu'à exit
+	// process → verrou metadata.duckdb au prochain hot-reload Air.
+	// cf. docs/INCIDENT_2026-05-21_metadata_duckdb_lock_air_hot_reload.md
+	if leaks := duckdb.DumpCachedLeaks(); len(leaks) > 0 {
+		for k, refs := range leaks {
+			slog.Warn("shutdown_db_leak",
+				"cache_key", k,
+				"refCount", refs)
+		}
+		slog.Warn("shutdown_db_leak aggregate",
+			"leaks_count", len(leaks))
+	}
+
+	slog.Info("shutdown_total_duration_ms",
+		"ms", time.Since(shutdownStart).Milliseconds())
+
 	// Sprint B1 commit 16 : fermer proprement les fichiers logs/{module}.log
 	// (flush + close des handles). Idempotent.
 	if multiHandler != nil {

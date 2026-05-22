@@ -1,3 +1,25 @@
+## [2026-05-22] chore(metadata) — Phase 2 stabilisation : cleanup logs hot-reload Air + fix fuite refCount PrestigeBundle
+
+**Statut** : Complété (branche `chore/metadata-shutdown-cleanup` depuis `fix/duckdb-art-corruption-rebuild`).
+
+**Contexte** : Suite Phase 1 (rebuild ART), traitement du verrou `metadata.duckdb` au hot-reload Air documenté dans `docs/INCIDENT_2026-05-21_metadata_duckdb_lock_air_hot_reload.md`. Cosmétique au sens "le serveur démarre quand même" mais bruyant (11 lignes ERROR pour 1 boot réussi) et révélateur d'une fuite réelle.
+
+**Décisions techniques** :
+- `duckdb.DumpCachedLeaks()` : snapshot post-shutdown du cache `openDBs` pour détecter les fuites de refCount. Retourne `map[cacheKey]refCount` ou nil si propre. Câblé dans `cmd/server/main.go` au shutdown : log WARN par leak + agrégat.
+- Démotion `slog.Error → slog.Debug` sur `openCachedDB` ligne 144 (`duckdb: ouverture DB échouée`). Cette branche est principalement déclenchée par retries au boot (cmd/server retry × 12 + AssetMetadata × 3). Le caller a toute l'info pour logger au bon niveau. Élimine le spam ERROR au hot-reload.
+- Métrique `shutdown_total_duration_ms` ajoutée au shutdown : permet de valider que Air `stop_timeout=20s` n'est jamais atteint.
+- **Fuite refCount PrestigeBundle identifiée et fixée** : `NewPrestigeBundle` (api/prestige_setup.go:69) ouvre `metadata.duckdb` via `OpenReadWriteShared` qui partage la clé cache `"rw:"+metaPath` avec le boot principal → refCount=2. Au shutdown, `metaDB.Close()` décrémente à 1 → handle Windows tenu jusqu'à exit. Fix : ajout `ServiceRegistry.WithPrestigeBundle()` + `ServiceRegistry.Close()` appelé AVANT `metaDB.Close()` dans le shutdown gracieux. `PrestigeBundle.Close()` existait déjà mais n'était jamais appelé applicativement.
+
+**Résultats observés** :
+- Build complet OK. 3/3 tests DumpCachedLeaks (EmptyMap, DetectsLeak, DoubleOpenSameKey) PASS.
+- Aucune nouvelle régression dans la suite tests globale (les 2 fails pré-existants `TestContractRoutesDocumented` + `TestLoadCSRSeasonID_ProductionSettingsHasField` restent inchangés — dettes branche citations).
+- Audit Close() apparié sur les 6 sites callers metadata : 5 OK, 1 défaillant (PrestigeBundle) → fixé.
+- Diff côté caller : aucun call site existant ne dépendait du `slog.Error` démoté (vérifié par grep).
+
+**Prochaine étape** : push branche `chore/metadata-shutdown-cleanup`, puis Phase 3 (couche pool/connections — sync.Once ATTACH global + 3 régressions SharedReader + handoff shared_social commit).
+
+---
+
 ## [2026-05-22] fix(duckdb) — Phase 1 stabilisation : rebuild ART match_participants + probe ART + filet de garde boot + dry-run LUSR
 
 **Statut** : En cours (Phase 1.1-1.8 livrés, 1.9 validation runtime à suivre).
