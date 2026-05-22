@@ -102,6 +102,30 @@ FROM player_match_enrichment pme
 LEFT JOIN match_skill_rank msr ON msr.match_id = pme.match_id
 WHERE pme.match_id IN (%s)`
 
+// Q27HomeSessionsPlayerPart : Phase A de Q27 — sessions du joueur depuis
+// player_match_enrichment uniquement. Le start_time est récupéré via une
+// 2e query SharedReader (cf. Q27HomeSessionsSharedStartTimes).
+//
+// Phase 3.bis plan stabilisation 2026-05-22 : split de Q27HomeSessions
+// (qui mixait player + shared) en 2 phases Go-side. Pattern aligné sur Q26.
+const Q27HomeSessionsPlayerPart = `
+SELECT
+    pme.match_id,
+    pme.session_id,
+    pme.session_label,
+    COALESCE(pme.is_with_friends, FALSE) AS is_with_friends
+FROM player_match_enrichment pme
+WHERE pme.session_label IS NOT NULL`
+
+// Q27HomeSessionsSharedStartTimesTpl : Phase B de Q27 — start_time pour
+// un lot de match_ids depuis match_registry (shared).
+const Q27HomeSessionsSharedStartTimesTpl = `
+SELECT
+    match_id,
+    COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_time
+FROM match_registry
+WHERE match_id IN (%s)`
+
 // Q26h : Home â€” mÃ©dailles par match pour un joueur, lots de match_id.
 // ParamÃ¨tres : ?1 = xuid. Les match_id sont injectÃ©s dynamiquement via IN (%s).
 // RequÃªte sur pdb.Player (shared attachÃ©) ; labels rÃ©solus ensuite via metadata.
@@ -451,20 +475,10 @@ LEFT JOIN last_skill ls ON ls.playlist_id = rp.playlist_id AND ls.rn = 1
 LEFT JOIN csr_snapshot cs ON cs.playlist_id = rp.playlist_id AND cs.rn = 1
 ORDER BY rp.last_played DESC`
 
-// Q27 : Home â€” sessions depuis player_match_enrichment.
-// Pas de parametre (les donnees sont dans la DB joueur).
-// Retourne les matchs avec un label de session pour le resumÃ© solo/escouade.
-const Q27HomeSessions = `
-SELECT
-    pme.match_id,
-    pme.session_id,
-    pme.session_label,
-    COALESCE(pme.is_with_friends, FALSE)    AS is_with_friends,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time
-FROM player_match_enrichment pme
-LEFT JOIN shared.match_registry r ON r.match_id = pme.match_id
-WHERE pme.session_label IS NOT NULL
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
+// Q27HomeSessions : DÉPRÉCIÉ — split en 2 phases via
+// Q27HomeSessionsPlayerPart + Q27HomeSessionsSharedStartTimesTpl
+// (Phase 3.bis plan stabilisation 2026-05-22). Conservé en commentaire
+// comme référence historique. Code mort retiré.
 
 // Q28 : Home â€” medias recents depuis media_files + media_match_associations.
 // Parametre : ?1 = LIMIT (nombre de medias).
