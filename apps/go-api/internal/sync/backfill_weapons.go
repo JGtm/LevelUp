@@ -18,6 +18,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
 )
@@ -229,6 +232,21 @@ func BackfillWeaponKillsForMatchAll(
 // (i.e. sans acquérir de lease). Utilisé depuis le PostSync chain où le shared
 // lease est déjà détenu. Coût : 1 download film par match. Films absents
 // (404/410) sont silencieux (matchs trop anciens).
+//
+// Parallélisé via errgroup.SetLimit(healParallelism=8) — plan Phase 3.0,
+// gain ~150-200s/cycle Madina (cf. .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md
+// + handoff §3 priorité 1). Le rate limiter du HaloAPIClient cap les calls
+// API parallèles ; les writes weapon_kills sont append-only (DELETE+INSERT
+// par (match_id, xuid)) donc pas de conflit ART.
+//
+// Contrat de sortie (lock par TDD avant impl) :
+//   - matchIDs vide → (0, 0, nil)
+//   - Tous films présents → done = len(matchIDs), noFilm = 0
+//   - Tous films absents → done = 0, noFilm = len(matchIDs)
+//   - 1 call par match_id (ni duplicate ni perte)
+//   - Idempotent sur runs consécutifs
+//   - ctx.Cancel → retourne ctx.Err() (les goroutines en cours abortent)
+//   - Erreurs par-match : loggées WARN, best-effort (ne propage pas)
 func processWeaponKillsInline(
 	ctx context.Context,
 	sharedDB *sql.DB,
@@ -236,20 +254,38 @@ func processWeaponKillsInline(
 	xuid string,
 	matchIDs []string,
 ) (done, noFilm int, err error) {
+	if len(matchIDs) == 0 {
+		return 0, 0, nil
+	}
+	var mu sync.Mutex
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(healParallelism)
 	for _, matchID := range matchIDs {
-		if ctx.Err() != nil {
-			return done, noFilm, ctx.Err()
-		}
-		found, procErr := BackfillWeaponKillsForMatch(ctx, client, sharedDB, matchID, xuid)
-		if procErr != nil {
-			slog.WarnContext(ctx, "weapon_kills: erreur match", "match_id", matchID, "err", procErr)
-			continue
-		}
-		if found {
-			done++
-		} else {
-			noFilm++
-		}
+		matchID := matchID // capture pour closure
+		eg.Go(func() error {
+			if egCtx.Err() != nil {
+				return egCtx.Err()
+			}
+			found, procErr := BackfillWeaponKillsForMatch(egCtx, client, sharedDB, matchID, xuid)
+			if procErr != nil {
+				slog.WarnContext(egCtx, "weapon_kills: erreur match", "match_id", matchID, "err", procErr)
+				return nil // best-effort : on n'interrompt pas les autres goroutines
+			}
+			mu.Lock()
+			if found {
+				done++
+			} else {
+				noFilm++
+			}
+			mu.Unlock()
+			return nil
+		})
+	}
+	_ = eg.Wait()
+	// Propager ctx.Err() si cancellation pendant la run (préserve la sémantique
+	// de l'ancienne version séquentielle qui retournait ctx.Err()).
+	if ctx.Err() != nil {
+		return done, noFilm, ctx.Err()
 	}
 	return done, noFilm, nil
 }
