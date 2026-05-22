@@ -1,3 +1,26 @@
+## [2026-05-22] docs — Phase 5 plan stabilisation : ADR 0017 + ADR 0014 update + runbook ops + archive audits
+
+**Statut** : Complété (branche `docs/post-stabilisation`).
+
+**Contexte** : Clôture du plan de stabilisation 2026-05-22 (4 branches techniques livrées). Phase 5 = documentation + archive des 5 docs d'audit/incident qui ont déclenché le plan.
+
+**Livrables** :
+- `docs/adr/0017-rebuild-art-corruption-pattern.md` : généralise le pattern `rebuild_<table>_defeat_art_corruption` appliqué sur `career_progression` (commits 2e0f0247+651b9de6) puis `match_participants` (Phase 1). Documente la procédure swap CTAS + sentinel d'idempotence + filet de garde au boot. Inclut hypothèses upstream `duckdb-go` v2.10502 (issue à ouvrir post montée de version).
+- `docs/adr/0014-progression-tracking-v2-ascension.md` : ajout section "2026-05-22 — Wiring corrigé" qui pointe vers la solution B1 (interface `port.PostSyncRunner` + injection `SyncEngine.WithPostSyncRunner`) déployée Phase 4. Rappel : avant Phase 4, l'auto-sync 15 min (100% des syncs en réel) court-circuitait TOUT le pipeline progression V2 — tables `streak`/`record_history`/`player_records`/`milestone_earned` restaient vides indéfiniment.
+- `docs/RUNBOOK_OPS_DUCKDB_CLI_TOOLS.md` : procédure ops pour les 15+ CLI tools qui modifient les DBs partagées (metadata, shared_matches_v2, shared_social, xbox_aliases global). Liste explicite des outils à ne pas lancer pendant que le serveur tourne ; les diagnostics (read-only) restent OK.
+- `.ai/archive/stabilisation-2026-05-22/` : 5 audits/incidents déplacés avec README qui mappe chacun → phase de résolution + branche.
+
+**Dettes pré-existantes à traiter (hors Phase 5)** :
+- `TestContractRoutesDocumented` : route `/api/v1/_diag/csr-coverage/{*}` non documentée dans openapi.yaml (héritée du merge citations). Ajouter l'entrée + maintenant `/api/v1/_diag/progression/{*}` créé en Phase 4.5.
+- `TestLoadCSRSeasonID_ProductionSettingsHasField` : `app_settings.json` racine ne contient pas `csr_season_id` (champ requis par citations).
+- 5 tests `internal/platform/duckdb` (TestMatchViewRepo + 4 TestHomeRepo) failing : schémas de test pas updatés pour `weapon_kills` namespace + colonne `season_id`. Pas critique en runtime, mais à corriger pour CI propre.
+
+**Investigation upstream `duckdb-go`** : reportée à la prochaine montée de version DuckDB. Repro minimal disponible via `cmd/diag_lusr_player` + backup `data/backups/phase1-2026-05-22/`.
+
+**Prochaine étape** : push branche `docs/post-stabilisation`. Clôture du plan stabilisation. Sous-tâches restantes : Phase 3.bis (Q26 split cross-DB) et investigation gap LUSR Madina (1.bis suite — sigma/breakdown).
+
+---
+
 ## [2026-05-22] diag(lusr) — Simulation 5 variantes de formule + diagnostic fenêtre temporelle
 
 **Statut** : Complété (branche `fix/duckdb-art-corruption-rebuild`).
