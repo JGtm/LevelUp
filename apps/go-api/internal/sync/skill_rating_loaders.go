@@ -38,6 +38,9 @@ type lusrParticipant struct {
 	XUID          string
 	TeamID        *int
 	KillsExpected float64
+	Kills         float64
+	Deaths        float64
+	DamageDealt   float64
 }
 
 // lusrResult contient le résultat du calcul LUSR pour un match.
@@ -119,7 +122,7 @@ func loadLUSRParticipants(ctx context.Context, sharedDB *sql.DB, matchIDs []stri
 	}
 
 	// Build IN clause with placeholders.
-	query := "SELECT match_id, xuid, team_id, COALESCE(kills_expected, 0) FROM match_participants WHERE match_id IN ("
+	query := "SELECT match_id, xuid, team_id, COALESCE(kills_expected, 0), COALESCE(kills, 0), COALESCE(deaths, 0), COALESCE(damage_dealt, 0) FROM match_participants WHERE match_id IN ("
 	args := make([]interface{}, len(matchIDs))
 	for i, id := range matchIDs {
 		if i > 0 {
@@ -139,7 +142,7 @@ func loadLUSRParticipants(ctx context.Context, sharedDB *sql.DB, matchIDs []stri
 	for rows.Next() {
 		var p lusrParticipant
 		var teamID sql.NullInt64
-		if err := rows.Scan(&p.MatchID, &p.XUID, &teamID, &p.KillsExpected); err != nil {
+		if err := rows.Scan(&p.MatchID, &p.XUID, &teamID, &p.KillsExpected, &p.Kills, &p.Deaths, &p.DamageDealt); err != nil {
 			continue
 		}
 		if teamID.Valid {

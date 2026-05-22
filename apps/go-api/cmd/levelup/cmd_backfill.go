@@ -588,6 +588,12 @@ func runFormulaSimForPlayer(ctx context.Context, cfg *config.AppConfig, player *
 		}
 		fmt.Println()
 	}
+	// Sigma baseline par chaîne — mesure la convergence TrueSkill.
+	fmt.Printf("  sigma (baseline):")
+	for _, r := range report.Results {
+		fmt.Printf("  %s=%.1f", r.Chain, r.SigmaByVariant["baseline"])
+	}
+	fmt.Println()
 	return nil
 }
 
