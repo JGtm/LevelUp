@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
 )
 
@@ -135,6 +136,14 @@ type AutoSyncScheduler struct {
 	// *sync.SyncEngine configuré avec un PooledHaloClient pinné.
 	RunnerFactory DeltaRunnerFactory
 
+	// postSyncRunner (Phase 4 plan stabilisation 2026-05-22) — runner injecté
+	// dans chaque SyncEngine créé par defaultRunnerFactory. Câblé depuis
+	// cmd/server/main.go via WithPostSyncRunner après création du
+	// ServiceRegistry. Nil → feature off (legacy : auto-sync sautait TOUT le
+	// post-sync delta + progression V2, cf. AUDIT_ASCENSION_PIPELINE_
+	// DISCONNECTED_2026-05-21 cause B).
+	postSyncRunner port.PostSyncRunner
+
 	// Snapshot par joueur du dernier cycle — pour l'endpoint admin diagnostic.
 	snapshotMu      gosync.RWMutex
 	lastCycleAt     time.Time
@@ -187,7 +196,26 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid, 0) // 0 = defaultPooledRPS
 		engine.SetCustomClient(pooledClient)
 	}
+	// Phase 4 plan stabilisation 2026-05-22 : injecter le runner post-sync
+	// (notifications delta + pipeline progression V2). Sans ça, auto-sync
+	// sautait TOUT le pipeline → page Ascension vide + notifications muettes.
+	// gamertag = PlayerSlug (cf. config.go:284 — PlayerSlug = gamertag dans
+	// db_profiles.json).
+	if s.postSyncRunner != nil {
+		engine.WithPostSyncRunner(s.postSyncRunner, gamertag)
+	}
 	return engine
+}
+
+// WithPostSyncRunner branche le runner post-sync (Phase 4 plan stabilisation
+// 2026-05-22). Le runner sera injecté dans chaque SyncEngine créé par
+// defaultRunnerFactory. À appeler depuis cmd/server/main.go après création
+// du ServiceRegistry, AVANT autoSyncScheduler.Run.
+//
+// Nil runner → no-op (legacy : feature désactivée).
+func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *AutoSyncScheduler {
+	s.postSyncRunner = runner
+	return s
 }
 
 // Snapshot retourne un cliché thread-safe du dernier cycle de sync, incluant
