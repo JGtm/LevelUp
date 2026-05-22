@@ -130,7 +130,9 @@ Diagnostic via l'agent d'audit :
 
 Effort : ~4h. **Objectif : empêcher les races ART, PAS gagner de la perf sur les writes.**
 
-### 2.1 Cartographier tous les writers de `match_participants` (1h)
+### 2.1 Cartographier tous les writers de `match_participants` — ✅ FAIT 2026-05-23
+
+Tableau exhaustif livré dans [ADR 0018 §Context](../../docs/adr/0018-concurrent-write-model.md#cartographie-des-writers-sur-sharedmatch_participants). 8 callers identifiés, dont 2 problématiques (heal stats + heal skill, errgroup 8 goroutines).
 
 **Livrable** : tableau dans l'ADR 0018 (§2.2).
 
@@ -143,7 +145,9 @@ Effort : ~4h. **Objectif : empêcher les races ART, PAS gagner de la perf sur le
 - `sync/backfill_weapons.go:265` — backfill séquentiel (OK)
 - `service/openspartan_import_service.go:313` — import OpenSpartan one-shot (OK)
 
-### 2.2 ADR 0018 — Concurrent Write Model (1h)
+### 2.2 ADR 0018 — Concurrent Write Model — ✅ FAIT 2026-05-23
+
+Livré : [`docs/adr/0018-concurrent-write-model.md`](../../docs/adr/0018-concurrent-write-model.md). Status Proposed (Accepted après livraison Phase 1.3).
 
 **Livrable** : `docs/adr/0018-concurrent-write-model.md`.
 
