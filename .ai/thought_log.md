@@ -1,3 +1,59 @@
+## [2026-05-22] feat(media) — Thumbnails WebP animés : fenêtre d'extraction proportionnelle
+
+**Statut** : Complété (branche `feat/ascension-pipeline-v2-wiring`).
+
+**Décision technique** : Remplacement des valeurs hardcodées `-ss 5 -t 3 fps=10` par un calcul proportionnel via `thumbnailWindow()` : skip=20%, extract=20% de la durée réelle du clip (bornes [3s-15s] et [3s-8s]), fps passé à 12. Probe via `probeVideoDuration()` déjà disponible dans le package ; fallback `-ss 5 -t 3` si ffprobe échoue.
+
+**Résultats** : 113 WebP régénérés (JGtm=108, Madina97294=5). Pour un clip de 30s : skip=6s, extract=6s — double de la durée précédente avec un point de départ plus représentatif.
+
+**Conclusion** : Sujet clos. Aucune régression DB (92 paths reliés, delta = vidéos sans correspondance match).
+
+---
+
+## [2026-05-22] fix(lusr) — muOpp branché dans trueskillUpdate + dry-run tous joueurs
+
+**Statut** : Complété (branche `fix/duckdb-art-corruption-rebuild`).
+
+**Contexte** : Suite correctif carry adjustment (enemyAvgKE). Branchement de `muOpp` dans `trueskillUpdate` — le paramètre était présent en signature mais ignoré. Puis dry-run complet (4 joueurs) pour valider l'effet des deux correctifs combinés.
+
+**Décision technique** :
+- `expectedScore = 1/(1+exp(-(mu-muOpp)/(2×Beta)))` remplace le baseline fixe 0.5.
+- Battre des adversaires plus forts donne plus de gain ; battre des faibles en demi-mesure peut coûter du mu.
+- `muOpp` ancré sur `state.MU` via `estimateIndividualMU` → equilibre à long terme quand mu converge.
+
+**Résultats dry-run** :
+- JGtm (758 matchs) : arena_slayer 1443, arena_objectif 1466, chaos 1460 → Or II-III ✓
+- Chocoboflor (381 matchs) : arena_slayer 1450, arena_objectif 1439 → Or I-II ✓
+- Madina97294 (1045 matchs) : arena_slayer 1286 (Arg V), arena_objectif 1386 (Arg VI), btb **1078 Bronze II** ✗
+- XxDaemonGamerxX (22 matchs) : ~1490-1497, sigma élevé (trop peu de matchs)
+
+**Problème persistant** : Madina reste sous JGtm/Chocoboflor en arena malgré les deux correctifs. BTB 1078 / 526 matchs est statistiquement solide (sigma 115 = confiant). Le système croit sincèrement que Madina est Argent. Suspect principal : `deaths_vs_expected` (poids 0.24) — style carry agressif → morts > DeathsExpected → composante systématiquement < 0.5 qui contre-balance kills_vs_expected.
+
+**Prochaine étape** : Inspecter la table `lusr_component_history` (ou dry-run avec breakdown) pour voir les moyennes par composante pour Madina vs JGtm. Confirmer ou infirmer l'hypothèse deaths_vs_expected avant tout nouveau correctif.
+
+---
+
+## [2026-05-22] fix(lusr) — Carry adjustment : référence enemyAvgKE + formule asymétrique
+
+**Statut** : Complété (branche `fix/duckdb-art-corruption-rebuild`).
+
+**Contexte** : Madina97294 (niveau Diamant estimé) stagnait en Argent malgré des performances 2× supérieures à ses coéquipiers JGtm et Chocoboflor. Analyse de la formule composite LUSR : le carry adjustment utilisait `teammateAvgKE` comme référence, pénalisant le joueur pour la faiblesse de ses alliés plutôt que pour la faiblesse de ses adversaires.
+
+**Décisions techniques** :
+- **Référence carry adjustment** : `teammateAvgKE` → `enemyAvgKE`. La difficulté réelle d'un match est déterminée par les adversaires, pas les coéquipiers. Un carry qui fait face à une opposition forte ne devrait pas être pénalisé.
+- **Formule asymétrique** : remplacement de `score*(1/carryAdj)+0.5*(1-1/carryAdj)` (symétrique, pull vers 0.5 dans les deux sens) par `0.5 + (score-0.5)/carryAdj` appliqué uniquement quand `score > 0.5`. Garantit que le carry adjustment ne crée jamais de perte de MU quand le joueur surperforme son KE.
+- **Floor carryAdj à 1.0** (au lieu de 0.5) : empêche l'amplification artificielle du score face à des adversaires plus forts que le joueur (double comptage avec le signal déjà encodé dans le KE).
+- **Suppression du calcul `teammateAvgKE`** dans le batch loop : remplacé par `enemyAvgKE` calculé depuis `enemyKEs` (déjà disponible via `splitParticipantKEs`).
+
+**Résultats observés** :
+- 4 nouveaux tests carry adjustment PASS (`TestCarryAdj_OverperformNeverBelowNeutral`, `TestCarryAdj_UnderperformFullPenalty`, `TestCarryAdj_NoAmplificationStrongerEnemies`, `TestCarryAdj_EvenMatch_NoEffect`).
+- Suite `go test ./internal/sync/...` complète PASS. `go vet ./internal/sync/...` propre.
+- 2 échecs pré-existants (`TestContractRoutesDocumented`, `TestLoadCSRSeasonID_*`) inchangés — hors scope.
+
+**Prochaine étape** : Rebuild LUSR Madina97294 avec `force=true` pour recomputer les ratings depuis zéro avec la nouvelle formule. Valider via dry-run que les cibles (fin Platine/début Diamant) sont atteintes.
+
+---
+
 ## [2026-05-22] fix(duckdb) — Phase 3 stabilisation : sync.Once ATTACH global + migrations 3 régressions SharedReader
 
 **Statut** : Complété (branche `fix/duckdb-pool-hardening` depuis `chore/metadata-shutdown-cleanup`).
