@@ -1,0 +1,624 @@
+# PLAN — Stabilisation sync : parallélisation network + safety concurrent + tests régression
+
+**Statut** : Brouillon, **amendé 2026-05-22 après audit handoff** (4 agents parallèles), attente validation utilisateur. Pas une ligne de code écrite sur les phases ci-dessous.
+**Auteur** : Claude (agent IA), session du 2026-05-22.
+**Branche cible** : à définir (probablement nouvelle branche depuis `fix/media-paths-portable` ou main).
+**Effort estimé** : **~24h** de travail focus (recalibré post-audit, +3h vs estimation initiale).
+**Handoff prérequis** : [`HANDOFF_SYNC_CONCURRENCY_AUDIT.md`](HANDOFF_SYNC_CONCURRENCY_AUDIT.md) — DOIT être lu en parallèle de ce plan.
+
+---
+
+## 0. Philosophie et priorités (DIRECTIVES UTILISATEUR + RECALIBRAGE AUDIT)
+
+**Le bottleneck c'est UNIQUEMENT le réseau, pas le compute ni les writes DB.**
+
+L'audit du 22 mai (Agent 3, breakdown logs réels) a mesuré :
+- **Network = 95%** du temps Madina (~456s sur 479s) — appels Halo API à 300-500ms RTT vers Azure US
+- **Compute Go = ~5%** cumulés sur tous les batchs (perf scores, LUSR, engagement, aggregates) → **~5s total pour 1085 matchs**
+- **DB writes = négligeable** (sub-second, jamais "slow query" loggué)
+
+→ **Parallélisation à privilégier (P0/P1)** :
+- Téléchargements API qui sont actuellement séquentiels — notamment **`processWeaponKillsInline`** (séquentiel sur 21 films × ~10-13s = 210-275s par cycle Madina, gros gain ~150-200s)
+- Scheduler RunOnce séquentiel sur joueurs → parallèle (gain 15min → 5-8min)
+
+→ **Parallélisation à NE PAS prioriser (correction du plan initial)** :
+- **Writes DB** : DuckDB sérialise de toute façon. Wanting 8 goroutines qui UPSERT la même table = races ART pour zéro gain perf
+- **Compute** : 5% du temps total. Optimiser le parse zlib / scanEvents / batchComputeLUSR déplace 5-10% d'une enveloppe qui n'est PAS le bottleneck. Phase 3.2 (move parse) et Phase 3.3 (intra-match parallel API) **dépriorisées P3** (ROI réel : 100-500ms et 200-300ms/match capped par rate limiter)
+
+**Singleflight (Phase 2)** : sert à la SAFETY (empêcher 2 paths concurrents de UPSERT la même row simultanément, ce qui corrompt l'index ART), **PAS à la perf**.
+
+**Configuration rate limiter prod (à connaître)** : `PerTokenRPS=5 × 3 tokens = 15 RPS effectif` (et non 30 RPS comme initialement supposé). Burst=1 strict. C'est une borne dure qui cap tous les gains de parallélisation API intra-match.
+
+---
+
+## 1. Contexte et historique
+
+### 1.1 Le problème initial (20 mai 2026)
+
+L'utilisateur a signalé 4 problèmes :
+1. Sync auto qui n'insère plus de matchs depuis le 6 mai (14 jours de silence).
+2. Sync lente + pas assez parallélisée.
+3. Crashes silencieux sans stack trace.
+4. Données incomplètes (dominance flags pas câblés).
+
+### 1.2 Ce qui a été fait depuis (déjà dans HEAD)
+
+| Fix | Statut | Notes |
+|---|---|---|
+| URL endpoint `/hi/players/xuid(NNN)/matches` | Validé live | 83 matchs insérés post-fix |
+| Delta loop : `goto done` → `stopAfterFlush` | Validé live | Évite de drop les nouveaux matchs collectés avant un known |
+| Log INFO "sync: 1er match retourné par API" | Passif | Sentinelle de fraîcheur API |
+| Counter `ConsecutiveZeroInserts` + WARN seuil 6 | Passif | Alerte si N cycles sans insert |
+| `debug.SetCrashOutput` vers `logs/server.crash.log` | Partiel | Capte panics Go, PAS les `duckdb::FatalException` C++ |
+| `defer recover()` dans `runPostSyncPipeline` | Partiel | Idem, bypass C++ |
+| Heartbeat goroutine 30s | Passif | Distingue crash / deadlock / kill externe |
+| Dominance flags wiring dans post-sync (étape 1.7) | Validé | `BackfillDominanceFlags` câblée pour les nouveaux matchs |
+| Cross-player dedup : `loadKnownMatchIDs` UNION `shared.match_participants WHERE xuid=?` | Validé tests | Choco skippe le fetch API quand Madina vient de syncer |
+| Parallel heal loops (errgroup + SetLimit 8) | **Suspect** | Concurrent UPSERTs match_participants aggravent races ART |
+| Double zlib `ParseHighlightEvents` rendu tolérant | Validé | Fix régression du 8 mai sur fresh downloads |
+| ~~Scoreboard Q12 WHERE relâché~~ | **REVERTÉ** | N'a fixé qu'1 match sur 1610, pas worth le diff |
+
+### 1.3 Le crash qui a déclenché ce plan
+
+```
+terminate called after throwing an instance of 'duckdb::FatalException'
+  what():  "INTERNAL Error: Failed to append to PRIMARY_match_participants_match_id_xuid:
+  Constraint Error: PRIMARY KEY or UNIQUE constraint violation:
+  duplicate key 0941d737-1fb4-4a11-8a9a-169624911729, 2533274828226170"
+```
+
+Crash C++ levé depuis le binding cgo DuckDB. Bypass `recover()` Go et `debug.SetCrashOutput`. Le process meurt brutalement.
+
+### 1.4 Le vrai bug racine — ART index corruption DuckDB
+
+Diagnostic via l'agent d'audit :
+
+- **ART (Adaptive Radix Tree)** = structure d'index interne que DuckDB utilise pour les PRIMARY KEY et UNIQUE constraints.
+- Sur certains patterns d'UPSERT répétés avec concurrence, l'index ART se désynchronise de la table : la PK existe physiquement mais le lookup index la rate.
+- Conséquences :
+  - Queries `WHERE match_id = ?` renvoient 0-N rows incomplètes (data physiquement présente mais invisible via index).
+  - INSERTs ultérieurs croient pouvoir ajouter (l'index dit "absent") puis explosent au commit avec `Constraint Error: duplicate key`.
+
+**Détection actuelle** : `BootARTGuard` ([art_probe.go:251](apps/go-api/internal/platform/duckdb/art_probe.go)) existe déjà, log WARN au boot mais **ne corrige rien**.
+
+**Quantification** :
+- 8 matchs détectés ART-corrompus depuis le 22 mai 18:11 (incl. `0941d737-...` du crash).
+- Sur 50 samples random : ~2% des matchs présentent `indexed != scan` (~32 matchs sur 1610 estimés).
+- Match `de3cec8b-...` : 1 participant via index, 9 via scan → 8 invisibles côté scoreboard.
+
+**5 queries vulnérables** (toutes `WHERE match_id = ?` sur match_participants) : Q12, Q16, Q17, Q26, Q28.
+
+---
+
+## 1bis. Phase 0 — Bump driver DuckDB v1.5.2 → v1.5.3 (NEW, P0a)
+
+**Effort : ~1h. Pari à faible coût qui peut résoudre tout seul.**
+
+**Source** : Audit Agent 2 (handoff §2).
+
+**Rationale** :
+- Driver actuel : `github.com/duckdb/duckdb-go/v2 v2.10502.0` → DuckDB **1.5.2**.
+- **v1.5.3** sorti le 20 mai 2026, corrige un edge case d'index deletion.
+- DuckDB v1.4.1 changelog mentionne **exactement notre symptôme** : *"ART index could omit rows non-deterministically when running on multiple threads"*.
+- v1.5.2 a backporté des race condition fixes (PR #20804) mais pas tous (issue #18782 reste OPEN).
+
+**Étapes** :
+1. `go get github.com/duckdb/duckdb-go/v2@v2.10503.0` (vérifier le tag exact dispo).
+2. `go mod tidy`, `go build ./...`, `go test ./...` — observer si la suite passe sans régression.
+3. Déployer en dev, lancer un cycle sync complet, vérifier les compteurs `BootARTGuard` après 24h.
+4. **Si la corruption ART disparaît** : on évite singleflight + rebuild runtime, gain énorme.
+5. **Si la corruption persiste** : on continue avec Phase 1 (singleflight).
+6. **Si la corruption AUGMENTE après bump** : REVERT vers v1.4.3 LTS au lieu d'avancer.
+
+**Critères de complétion** :
+- `go.mod` updated, build clean, tests verts.
+- 24h en dev sans crash `duckdb::FatalException`.
+- `art_corruption_detected_total` n'incrémente pas sur de NOUVEAUX matchs.
+
+**Risque** : nouveau bug introduit par v1.5.3. Mitigation : revert v1.4.3 LTS si KO.
+
+---
+
+## 2. Phase 1 — Safety concurrent (protection ART)
+
+Effort : ~4h. **Objectif : empêcher les races ART, PAS gagner de la perf sur les writes.**
+
+### 2.1 Cartographier tous les writers de `match_participants` (1h)
+
+**Livrable** : tableau dans l'ADR 0018 (§2.2).
+
+**Sources connues à auditer** :
+- `sync/writes.go:103` — `InsertParticipants` (UPSERT générique, point d'entrée unique)
+- `sync/writes.go:551` — `MarkSkillLoaded` (UPDATE backfill_bits)
+- `sync/engine_fetch.go:141` — sync engine pagination (Phase 3 sequential, déjà OK)
+- `sync/stats_heal.go:94` — heal stats (8 goroutines depuis Action B)
+- `sync/skill_heal.go:116` — heal skill (8 goroutines depuis Action B)
+- `sync/backfill_weapons.go:265` — backfill séquentiel (OK)
+- `service/openspartan_import_service.go:313` — import OpenSpartan one-shot (OK)
+
+### 2.2 ADR 0018 — Concurrent Write Model (1h)
+
+**Livrable** : `docs/adr/0018-concurrent-write-model.md`.
+
+**Contenu** :
+- Cartographie des tables shared et leur policy de concurrence.
+- Pattern obligatoire : `dblease.AcquireWriter` + singleflight par clé naturelle pour les tables PK-indexées.
+- Liste des tables avec policy explicite :
+  - `shared.match_participants` : singleflight par `(match_id, xuid)` — bug ART connu.
+  - `shared.match_registry` : `INSERT IF NOT EXISTS` suffit, déjà protégé.
+  - `shared.medals_earned` : `INSERT OR IGNORE` suffit, déjà protégé.
+  - `shared.weapon_kills` : append-only, pas besoin.
+  - `shared.highlight_events` : append-only, pas besoin.
+- Référence ADR 0016 (B-swap RO↔RW).
+
+### 2.3 Singleflight par `(match_id, xuid)` pour `match_participants` (2h)
+
+**But** : SAFETY, pas perf. Empêcher 2 goroutines de UPSERT la même row simultanément (cause de la race ART).
+
+**Design** : wrapper autour de `InsertParticipants` :
+```go
+// Pseudo-code à valider en impl.
+var participantsSF singleflight.Group
+
+func InsertParticipantsSafe(ctx context.Context, db *sql.DB, rows []ParticipantRow) error {
+    for _, row := range rows {
+        key := row.MatchID + "|" + row.XUID
+        _, err, _ := participantsSF.Do(key, func() (any, error) {
+            return nil, insertSingleParticipant(ctx, db, row)
+        })
+        if err != nil { return err }
+    }
+    return nil
+}
+```
+
+**Tests** : voir Phase 4.1.
+
+---
+
+## 3. Phase 2 — Parallélisation network (le vrai gain perf)
+
+Effort : **~9h** (recalibré, +4h vs estimation initiale).
+
+**Priorité réelle après audit Agent 3** : paralléliser le path le plus coûteux du post-sync = `processWeaponKillsInline`. Les sous-phases 3.2 et 3.3 sont dépriorisées (gains marginaux confirmés par audit).
+
+### 3.0 NEW — Paralléliser `processWeaponKillsInline` EN MODE TDD (P0c, 2h)
+
+**Source** : Audit Agent 3 (handoff §3). **C'est le gain le plus impactant identifié — ~150-200s économisés par cycle Madina.**
+
+**Constat audit** :
+- `processWeaponKillsInline` ([backfill_weapons.go:232-255](apps/go-api/internal/sync/backfill_weapons.go#L232)) est une boucle `for matchID := range matchIDs` **SANS goroutine, séquentielle**.
+- Sur cycle Madina 22 mai : 21 films × ~10-13s/match = **210-275s** dans le "gap noir" entre `had_bot_teammate` (18:29:56) et CSR (18:34:31).
+- Sur cycle JGtm : 41 films × ~10-13s = **~8 minutes potentielles** sériel. Crash JGtm probablement dans ce gap.
+- Le pattern `errgroup + SetLimit(healParallelism=8)` existe DÉJÀ dans `healWeaponKillsForRecentMatches` ([events_heal.go:179-202](apps/go-api/internal/sync/events_heal.go#L179)) — à reproduire.
+
+**Approche obligatoire : TDD STRICT** (directive utilisateur) :
+
+#### 3.0.a — Écrire les tests AVANT de modifier le code (1h)
+
+**Livrables** :
+- `apps/go-api/internal/sync/backfill_weapons_test.go` (extension) : nouvelle suite `TestProcessWeaponKillsInline_*`.
+- **Test du contrat de sortie** (le plus important) : doit définir précisément ce qu'on attend en sortie de `processWeaponKillsInline` avant de toucher au code :
+  - Pour N matchs en entrée, retourne `(done int, noFilm int, err error)` avec valeurs prédictibles
+  - Les writes en DB sur `weapon_kills` doivent être identiques bit-à-bit à la version séquentielle
+  - L'ordre des writes par `(match_id, xuid)` n'importe pas (table append-only)
+  - Pas de fuite goroutine après retour (vérif via `runtime.NumGoroutine()`)
+- **Test idempotence** : 2 runs consécutifs sur les mêmes match_ids → même résultat, pas de doublons
+- **Test annulation** : `ctx.Cancel` à mi-parcours → les matchs déjà traités restent committés, les autres annulés sans corruption
+- **Test stress concurrent** : 100 matchs en parallèle, run avec `-race`, assert pas de panic ni race detected
+- **Test fixture réaliste** : utiliser un mock client qui simule des latences variables (50-2000ms) pour vérifier que la parallélisation gagne effectivement du temps
+
+**Critère de complétion 3.0.a** : tous les tests écrits ÉCHOUENT sur le code actuel (séquentiel) OU passent comme baseline. Documenter la baseline temps d'exécution sur N matchs.
+
+#### 3.0.b — Implémenter la parallélisation (1h)
+
+**Conditions** : tous les tests 3.0.a écrits AVANT d'éditer `backfill_weapons.go`.
+
+**Pattern à appliquer** (à valider lors de l'impl, basé sur `healWeaponKillsForRecentMatches`) :
+```go
+// Pseudo-code
+var mu sync.Mutex
+eg, egCtx := errgroup.WithContext(ctx)
+eg.SetLimit(healParallelism) // 8 ; const partagée events_heal.go
+for _, matchID := range matchIDs {
+    matchID := matchID
+    eg.Go(func() error {
+        if egCtx.Err() != nil { return egCtx.Err() }
+        result, err := backfillSingleMatchWeaponKills(egCtx, ...)
+        mu.Lock()
+        if result.found { done++ } else { noFilm++ }
+        mu.Unlock()
+        return nil // best-effort
+    })
+}
+_ = eg.Wait()
+```
+
+**Tests** : faire passer la suite 3.0.a au vert. Mesurer le gain réel via benchmark Phase 5.4.
+
+**Critère de complétion 3.0.b** : tests verts, build clean, benchmark montre ≥ 3× speedup sur 20 matchs.
+
+### 3.1 Vérification : highlight_events chunks téléchargés en parallèle entre matchs (0.5h)
+
+**À vérifier** dans le code actuel :
+- Phase 2 de la pagination (errgroup parallèle) appelle `fetchMatchData` par match.
+- Dans `fetchMatchData` : `GetMatchStats` → `GetMatchSkill` → `GetHighlightEventsChunk` séquentiels.
+- Le `GetHighlightEventsChunk` télécharge UN chunk par match → l'analyse parallèle se fait entre matchs (via le errgroup parent), pas dans-match.
+
+**État actuel** : download chunk = parallèle entre matchs (via errgroup pagination).
+→ **Déjà OK pour le téléchargement entre matchs**. La vérification confirme juste que ça marche bien.
+
+### 3.2 ~~Move parse highlight_events vers la phase parallèle~~ **DÉPRIORISÉ P3** (1.5h)
+
+**Source** : Audit Agent 1 + Agent 4 — gain réel mesuré beaucoup plus faible qu'estimé.
+
+**Constat audit** :
+- Parse time par match : 30-150ms (sur 800KB inflaté).
+- Sur page de 25 matchs avec films : ~2.5s wall-time bloquant Phase 3 actuel.
+- Gain réel parallélisé à 4-8 cœurs : **~100-500ms par page**, soit 5-15% du wall-time pagination (vs 10-30% annoncé initialement).
+- Agent 3 a confirmé : **compute = 5% du temps total**. Optimiser ici déplace 5% d'une enveloppe non bottleneck.
+
+**Verdict** : faisable techniquement (parser re-entrant, blockers nuls — cf. handoff §4), mais ROI faible. À faire en bonus si du temps reste après les P0-P2.
+
+**Implémentation si retenu** : ajouter à `fetchedMatch` : `HighlightEvents []analysis.HighlightEvent` + `HighlightParseAnomaly bool`. Dans `fetchMatchData` parse après download + libérer `fm.HighlightData = nil`. Refactorer `insertHighlightEventsFromData` en version qui prend events déjà parsés.
+
+### 3.3 ~~Intra-match : paralléliser GetMatchStats + GetMatchSkill + GetHighlightEventsChunk~~ **DÉPRIORISÉ P3** (1h)
+
+**Source** : Audit Agent 1.
+
+**Constat audit** :
+- Rate limiter prod = `PerTokenRPS=5 × 3 tokens = 15 RPS effectif` (et non 30).
+- Burst=1 strict → pas de "bouffée", 200ms strict entre tokens.
+- Lancer 3 calls simultanés par match au lieu de 3 séquentiels n'augmente PAS le RPS effectif, ça change juste la latence wall-clock perçue par match.
+- Gain wall-clock par match : **~200-300ms** (vs 1 RTT complet de 300-500ms annoncé).
+- Sur 20 matchs : **~1-2 secondes max** (et non ~10s annoncés).
+
+**Verdict** : ROI trop faible vs effort de refactor. À skipper sauf si on a un trou de planning.
+
+### 3.4 Paralléliser le scheduler `RunOnce` (1h) — P1, confirmé par audit
+
+**Confirmé Agent 1** : gain réel 15min → 5-8min sur 3 joueurs, cohérent avec estimation initiale.
+
+**Pas de risque deadlock** : `dblease.leaseMutex` sérialise les writes shared au niveau Go applicatif, mais les API calls + post-sync par-player tournent en parallèle. Pas de double-writer cgo DuckDB.
+
+**Prérequis** : Phase 1 (singleflight) validée en stress test 5.1 — sinon races ART aggravées par les heals concurrents inter-joueurs.
+
+**Cible** : [auto_sync.go:357-367](apps/go-api/internal/scheduler/auto_sync.go#L357) — remplacer le `for _, p := range players` par `errgroup` avec `SetLimit(s.pool.Size())`.
+
+### 3.5 Heal loops parallèles — keep network parallel, sérialiser les writes (1h)
+
+**Décision philosophique** :
+- Les heal loops font tous `GetMatch[Stats|Skill|HighlightEventsChunk]` (réseau lent) puis UPSERT (DB rapide).
+- Garder les goroutines parallèles pour les CALLS API (Phase Action B).
+- Mais via le singleflight Phase 2.3, les UPSERTs sur la même `(match_id, xuid)` se sérialisent naturellement — pas de race.
+
+**État final attendu** :
+- `healEventsForRecentMatches` : 8 goroutines parallèles (downloads films) + writes `highlight_events` (append-only, pas de race).
+- `healWeaponKillsForRecentMatches` : idem (writes `weapon_kills` append-only).
+- `healSkillForMissingMatches` : 8 goroutines parallèles + writes `match_participants` protégés par singleflight.
+- `healStatsForRecentMatches` : idem.
+
+### 3.6 NEW — Bump `healParallelism` 8 → 16-32 sur paths network-only (P2, 30min)
+
+**Source** : Audit Agent 3 (handoff §3 priorité 2).
+
+**Constat** : `healSkillForMissingMatches` fait un seul `GetMatchSkill` par match + write rapide. Sur batch de 35 matchs avec parallelism=8 : 8.3s observé (Madina). Avec parallelism=16-32, gain estimé skill heal de 8s → 4s (capped par rate limiter 15 RPS effectif).
+
+**Cible** : 
+- Garder `healParallelism = 8` (const dans `events_heal.go`) pour les heal loops qui font des WRITES sur match_participants (skill + stats — protégés par singleflight).
+- Ajouter `healParallelismNetworkOnly = 24` pour les heals qui ne touchent QUE des tables append-only (events + weapon_kills + dominance backfill).
+
+**Validation** : tests stress 5.1 doit passer avec les 2 valeurs. Pas de régression race ART (vu les writes append-only).
+
+### 3.7 NEW — Fusionner events_heal + weapon_heal dans un errgroup unique (P2, 30min)
+
+**Source** : Audit Agent 3 (handoff §3 priorité 3).
+
+**Constat** : sur cycle Madina, `healEventsForRecentMatches` (4.2s) puis `healWeaponKillsForRecentMatches` (174s) sont en série. Les deux téléchargent le **même type de ressource** (films Halo). En série, le pool HTTP a des moments creux.
+
+**Cible** : encapsuler les 2 dans un seul `errgroup` qui consomme les match_ids à parser pour chaque type. Saturer le pool HTTP en continu.
+
+**Gain estimé** : 20-30% sur les deux étapes combinées (Madina : 178s → ~125-140s).
+
+**Risque** : ordre d'insertion des heal types peut compter (events avant weapon_kills si un dépend de l'autre). À auditer avant impl.
+
+---
+
+## 4. Phase 3 — Recovery + observabilité (résilience)
+
+Effort : ~6h.
+
+### 4.1 ART rebuild incrémental (3h)
+
+**Mécanisme** :
+- `BootARTGuard` existant détecte mais ne corrige pas.
+- Étendre pour :
+  1. Exécution périodique (toutes les N min ou sur trigger événement).
+  2. Quand corruption détectée : swap-table en arrière-plan (lease writer pris pour la durée).
+
+**Pattern swap-table** (déjà utilisé dans `migration/steps_shared_social_purge_data_health.go` pour `player_notifications`) :
+```sql
+BEGIN;
+CREATE TABLE match_participants_rebuild AS SELECT * FROM match_participants;
+-- index ART rebuild automatique sur la nouvelle table
+DROP TABLE match_participants;
+ALTER TABLE match_participants_rebuild RENAME TO match_participants;
+COMMIT;
+```
+
+**Coût** : sur 50k rows, swap < 1s. Lock writer pendant cette fenêtre.
+
+**Trigger** : automatic au boot ET sur détection runtime via Phase 4.3.
+
+### 4.2 Détection du C++ FATAL DuckDB (1h)
+
+**Problème** : `terminate called after throwing duckdb::FatalException` est un crash C++ qui bypass `recover()` Go.
+
+**Solution** : signal handler SIGABRT dans main.go.
+```go
+sigAbort := make(chan os.Signal, 1)
+signal.Notify(sigAbort, syscall.SIGABRT)
+go func() {
+    <-sigAbort
+    buf := make([]byte, 64<<10)
+    n := runtime.Stack(buf, true)
+    crashFile.Write(buf[:n])
+    os.Exit(2)
+}()
+```
+
+**Limitation** : SIGABRT depuis libc `terminate()` peut tuer le process avant que le handler tourne. À tester. Si KO, fallback : wrapper superviseur (overkill).
+
+### 4.3 Métriques concurrence (2h)
+
+**Livrable** : expvar publié sur `/debug/vars`.
+
+Compteurs :
+- `upsert_match_participants_total{result="ok|conflict|fatal"}`
+- `singleflight_dedupe_total` — appelants qui ont reçu le résultat d'un autre
+- `art_corruption_detected_total{table="match_participants"}`
+- `art_rebuild_runs_total{result="ok|error"}`
+- `highlight_events_parse_total{result="ok|stale_cache|invalid_data"}`
+
+**Notif data_health_warning** : si `art_corruption_detected_total` > 0 sur 24h ET pas de rebuild réussi.
+
+### 4.4 NEW — Recompute force=true post-rebuild ART (P1, 2h)
+
+**Source** : Audit Agent 2 (handoff §2 risque résiduel #6).
+
+**Problème critique non listé dans le plan initial** : pendant la période où l'ART était corrompue, les batchs computed sur les rows partiellement visibles ont produit des résultats FAUX. Exemple documenté dans [`steps_shared_rebuild_match_participants.go:17`](apps/go-api/internal/migration/steps_shared_rebuild_match_participants.go#L17) : **LUSR de Madina figé à Argent IV au lieu de Platine**.
+
+**Conséquence** : le rebuild swap-table de Phase 4.1 récupère les rows en DB, mais les valeurs dérivées (LUSR cascade, performance scores, sessions, citations, dominance flags) restent figées sur l'état corrompu.
+
+**Action obligatoire après rebuild** : lancer un recompute `force=true` pour chaque joueur dont des matchs étaient corrompus :
+
+```go
+// Pseudo-code post-rebuild
+for _, playerXUID := range affectedPlayers {
+    batchComputeLUSR(playerDB, sharedDB, playerXUID, medalMap, true /* force */)
+    batchComputePerformanceScores(playerDB, sharedDB, playerXUID, nil, true)
+    BackfillDominanceFlags(sharedDB, playerDB, playerXUID, affectedMatchIDs)
+    RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, playerXUID, friends, false)
+    // Sessions recalc + engagement recompute
+}
+```
+
+**Critère de complétion** : 1 cycle complet de recompute par joueur affecté, validé par observation manuelle (LUSR Madina = Platine attendu, pas Argent IV).
+
+**Risque** : Long sur grosses player DBs (LUSR cascade O(N)). Lancer en background, ne pas bloquer le boot.
+
+### 4.5 NEW — Paralléliser refreshAggregates + refreshSharedViews (P3, 1h)
+
+**Source** : Audit Agent 1 (handoff §1, opportunité O4).
+
+**Constat** : étape 4 du post-sync (`refreshAggregates` sur player DB + `refreshSharedViews` sur shared DB) tournent séquentiellement. DBs différentes → parallélisables sans risque.
+
+**Cible** : wrapper dans un `errgroup` :
+```go
+eg, egCtx := errgroup.WithContext(ctx)
+eg.Go(func() error { _, err := refreshAggregates(egCtx, playerDB); return err })
+eg.Go(func() error { _, err := refreshSharedViews(egCtx, sharedDB); return err })
+_ = eg.Wait()
+```
+
+**Gain estimé** : 500ms-2s par cycle. Marginal mais quasi-gratuit.
+
+---
+
+## 5. Phase 4 — Tests qui bloquent les régressions
+
+Effort : ~8h.
+
+### 5.1 Stress test concurrent `match_participants` — TDD avant Phase 2.3 (2h)
+
+**Livrable** : `apps/go-api/internal/sync/concurrent_upsert_stress_test.go`.
+
+```go
+func TestStressUpsertMatchParticipants_NoCrash(t *testing.T) {
+    // Spawn 50 goroutines × 1000 UPSERTs sur la même (match_id, xuid)
+    // Assert : zéro panic, table contient exactement 1 row à la fin
+    // Run avec -race
+}
+```
+
+**C'est le test qui ÉCHOUERAIT aujourd'hui**. Une fois Phase 2.3 implémentée, il passe.
+
+### 5.2 Property-based test idempotence (2h)
+
+**Livrable** : `concurrent_upsert_property_test.go`.
+
+```go
+func TestPropertyConcurrentUpsertsIdempotent(t *testing.T) {
+    // Génère K match_ids × M xuids × N UPSERTs aléatoires
+    // Exécute en goroutines concurrentes
+    // Assert : état final = union des rows uniques (pas de duplicate, pas de perte)
+}
+```
+
+### 5.3 E2E concurrent multi-player sync (2h)
+
+**Livrable** : `apps/go-api/internal/scheduler/auto_sync_concurrent_e2e_test.go`.
+
+Scénario :
+1. Crée 3 joueurs avec 5 matchs partagés + 5 solo chacun.
+2. Lance `RunOnce` qui sync les 3 en parallèle (Phase 3.4).
+3. Assert : tous les matchs partagés dans shared exactement 1 fois, chaque joueur a ses 10 enrichments.
+4. Run avec `-race`.
+5. Itérer 100 cycles consécutifs.
+
+### 5.4 Benchmark perf cycle complet (1h)
+
+**Livrable** : `auto_sync_bench_test.go`.
+
+```go
+func BenchmarkAutoSync_3Players_20Matches(b *testing.B) {
+    // Baseline tracée dans le repo.
+}
+```
+
+Bench focalisé sur les paths que Phase 3 optimise : parse parallèle, intra-match parallel, scheduler parallel.
+
+### 5.5 ART corruption detection + rebuild regression test (1h)
+
+**Livrable** : `art_rebuild_test.go`.
+
+Force une corruption, vérifie détection, lance rebuild, vérifie consistance.
+
+---
+
+## 6. Hors scope explicite
+
+Ces points ne sont PAS dans ce plan. Notés ailleurs si applicable.
+
+| Sujet | Statut | Où ? |
+|---|---|---|
+| `roster` / `nemesis_duels` dead code | **À noter dans BACKLOG.md** | Décision produit (implémenter vs retirer du schéma OpenAPI). Action explicite à ajouter. |
+| `weapon_kills` empty pour match `de3cec8b` | À diag séparé | Probablement xuid sans kills dans ce match. Pas lié à la concurrence. |
+| Fix LUSR full-scan load | Hors scope | Push filter en SQL. Optimisation perf compute (incremental load). À considérer après stabilisation. |
+| MV atomic rename pattern | Hors scope | `recreateMaterializedView` non-atomique. Indépendant de l'ART. |
+| Backfill one-shot dominance pour les 83 matchs hier | Hors scope | CLI à lancer manuellement après stabilisation. |
+| Optimisation parse `scanEvents` bit-level | Hors scope | Profile + optim CPU si benchmark Phase 5.4 montre que c'est le bottleneck. |
+
+---
+
+## 7. Récap chiffré (RECALIBRÉ post-audit)
+
+| Phase | Effort | Bénéfice principal |
+|---|---|---|
+| **0 NEW — Bump driver v1.5.3** | 1h | Pari low-cost. Peut résoudre tout seul si le bug ART est fixé upstream. |
+| 2 — Safety concurrent (singleflight + ADR) | 4h | Plus de race ART au niveau applicatif. SAFETY, pas du perf. |
+| 3 — Parallélisation network | **9h** (+4h) | Sync 14 min → ~3-5 min. **§3.0 NEW = gain le plus impactant (~150-200s/cycle)**. §3.2/§3.3 dépriorisés. §3.6/§3.7 NEW. |
+| 4 — Recovery + observabilité | **9h** (+3h) | Auto-heal corruptions ART, recompute post-rebuild (LUSR/perf force=true), capture crashes C++. |
+| 5 — Tests régression | 8h | CI bloque les régressions futures (stress + property + E2E + bench). |
+| **Total** | **~24h** (+3h vs initial) | Plan pérenne, validé par audit. |
+
+---
+
+## 8. Ordre d'exécution recommandé (RECALIBRÉ post-audit)
+
+**P0 — Stop le crash + gain perf le plus impactant** :
+1. **Phase 0** (bump driver v1.5.3) — 1h, pari low-cost. Si la corruption ART disparaît → on saute la moitié du reste.
+2. **Phase 2.1 + 2.2** (cartographie + ADR 0018) — avant toute écriture de code, on aligne sur le contract.
+3. **Phase 5.1** (stress test concurrent UPSERT) — écrit AVANT la Phase 2.3 pour validation TDD. Le test échoue d'abord.
+4. **Phase 2.3** (singleflight) — fix le crash, pass le test 5.1.
+5. **Phase 3.0** (paralléliser `processWeaponKillsInline`) — **TDD obligatoire** (tests d'abord, output attendu défini avant code). Gain ~150-200s/cycle Madina.
+
+**P1 — Recovery + parallélisation scheduler** :
+6. **Phase 4.1** (ART rebuild runtime) — recovery automatique pour les ~32 matchs déjà corrompus.
+7. **Phase 4.4** (recompute force=true post-rebuild) — recalcule LUSR/perf/sessions/dominance pour les joueurs affectés (sinon Madina reste figée en Argent IV).
+8. **Phase 3.4** (parallel scheduler RunOnce) — après singleflight validé. Gain 15min → 5-8min.
+9. **Phase 3.5** (heal loops avec safety singleflight).
+
+**P2 — Observabilité + optims marginales** :
+10. **Phase 4.2 + 4.3** (signal handler SIGABRT + métriques expvar).
+11. **Phase 3.6 + 3.7** (bump healParallelism + fusion heal loops).
+
+**P3 — Tests régression + optims bonus** :
+12. **Phase 5.2 → 5.5** (property test + E2E concurrent + bench + ART rebuild test).
+13. **Phase 3.1** (vérif parallel download, juste confirmation).
+14. **Phase 4.5** (parallel refreshAggregates + refreshSharedViews) — gain 500ms-2s.
+15. **Phase 3.2** (move parse) — DÉPRIORISÉ, à faire si du temps reste.
+16. **Phase 3.3** (intra-match parallel API) — DÉPRIORISÉ FORTEMENT, ROI marginal.
+
+---
+
+## 9. Critères de succès
+
+| Critère | Mesure |
+|---|---|
+| Plus de `duckdb::FatalException` | 7 jours de sync continue sans crash |
+| Sync 3 joueurs × 20 matchs | < 5 min wall-time |
+| Couverture tests concurrence | `go test -race -tags=integration ./internal/sync/...` passe |
+| Détection + recovery ART | Au moins 1 test E2E qui force une corruption et la résout |
+| ART corruption en prod | 0 matchs corrompus détectés sur 7 jours après rebuild initial |
+| Parse highlight_events parallèle | Phase 3 d'`insertFetchedMatch` ne fait plus de zlib decompress (juste write) |
+
+---
+
+## 10. Risques identifiés
+
+| Risque | Probabilité | Mitigation |
+|---|---|---|
+| Bump driver v1.5.3 introduit nouveau bug | Faible | Revert v1.4.3 LTS si KO. Tests verts requis avant déploiement. |
+| Bump driver ne corrige pas l'ART | Moyenne | Plan B = singleflight (Phase 2). Pas un risque, c'est le scenario nominal. |
+| `singleflight` ne résout pas TOUTES les races (ex: 2 process distincts) | Faible | DuckDB single-writer process via B-swap (ADR 0016) |
+| `SIGABRT` arrive trop tard pour être catché en Go | Moyenne | Tester sur Windows + Linux. Si KO, fallback wrapper superviseur |
+| Rebuild ART échoue sur grosse table | Faible | Tester sur shared 50k+ rows. Si KO, batch par chunk de match_ids |
+| Tests stress trop lents pour CI | Faible | Tag `slow` ou run hebdo |
+| Phase 3.4 (parallel scheduler) introduit deadlocks dblease | Moyenne | Phase 5.3 (E2E concurrent multi-player) doit le catcher |
+| **Phase 3.0 (parallel processWeaponKillsInline) introduit régression silencieuse** | Moyenne | **TDD obligatoire — tests écrits AVANT code. Contrat de sortie défini avant impl.** Stress test + idempotence + cancel + race. |
+| Recompute force=true post-rebuild très long (Phase 4.4) | Moyenne | Lancer en background, ne pas bloquer le boot. Métrique exposée. |
+| Move parse vers Phase 2 alourdit les goroutines | Faible | Le parse reste rapide (ms) vs network (~500ms). Pas de pression mémoire significative. (DÉPRIORISÉ de toute façon) |
+
+---
+
+## 11. État de la décision
+
+**À ce stade** : plan en attente de validation utilisateur. Pas une ligne de code écrite sur ce plan.
+
+**Q ouvertes pour l'utilisateur** :
+1. L'ordre des phases convient-il ?
+2. Budget temps à respecter (split sur plusieurs jours / sprints) ?
+3. Branche cible : nouvelle ou continuer sur `fix/media-paths-portable` ?
+4. Pour `roster` / `nemesis_duels` : entry à ajouter dans `BACKLOG.md` (priorité ? deadline ?).
+
+---
+
+## 12. Handoff — résultats d'analyse préliminaire des 4 agents
+
+Avant le démarrage de l'implémentation, 4 agents d'analyse ont été lancés en parallèle pour **valider/réfuter empiriquement les postulats de ce plan**. Leurs livrables sont consolidés dans le document compagnon :
+
+→ [`.ai/HANDOFF_SYNC_CONCURRENCY_AUDIT.md`](HANDOFF_SYNC_CONCURRENCY_AUDIT.md)
+
+Ce handoff couvre :
+
+1. **Audit parallélisation actuelle** : validation/refus des 6 postulats du plan sur l'état réel du sync engine (download chunks parallèles, parse séquentiel, intra-match séquentiel, scheduler séquentiel, heal loops parallèles depuis Action B, rate limiter).
+2. **Deep dive ART corruption DuckDB** : validation que singleflight est la bonne stratégie ou alternatives, statut upstream du bug DuckDB, recommandation finale de recovery.
+3. **Performance breakdown réel** : timeline parsée depuis les logs du 22 mai (Madina 8min, Choco 4min) avec décomposition network/compute/DB write — valide ou refute le postulat "writes DB pas le bottleneck".
+4. **Highlight events pipeline** : faisabilité du move parse → Phase 2 parallèle, thread-safety du parser, gain estimé.
+
+**Ce handoff DOIT être lu avant de démarrer l'implémentation.** Il peut amender certaines phases (priorisation, scope, blockers découverts).
+
+---
+
+## 13. Vérification UI en direct via Chrome DevTools MCP
+
+**État** : **MCP Chrome DevTools DISPONIBLE depuis le 2026-05-22 (post-restart utilisateur)**. Tools disponibles : `mcp__chrome-devtools__*` (navigate_page, take_snapshot, list_network_requests, evaluate_script, performance_start_trace, take_screenshot, lighthouse_audit, etc.).
+
+**Pourquoi en avoir besoin pour ce plan** : pouvoir charger la page match-view dans Chrome, inspecter le réseau (XHR / fetch), voir quelles requêtes API échouent ou retournent du vide, et corréler avec les fixes en cours. Sans ça, on est aveugle sur le rendu front-end et on doit demander à l'utilisateur de faire l'inspection manuellement à chaque tour.
+
+**Étapes du plan où le MCP sera utile** :
+- Phase 3.4 (parallel scheduler) : vérifier que la page match-view reflète bien le sync des 3 joueurs concurrents sans glitch UI.
+- Phase 4.1 (ART rebuild) : confirmer en direct que le scoreboard repopulate après un rebuild.
+- Phase 5.3 (E2E concurrent test) : compléter le test Go par une vérification UI réelle.
+- Tout fix de bug front signalé par l'utilisateur (ex: sections vides match-view, graphiques absents).
+
+---
+
+## Annexe A — Lectures recommandées avant de démarrer
+
+- ADR 0016 — SharedDBProvider B-swap (RO↔RW)
+- `apps/go-api/internal/platform/duckdb/art_probe.go` — BootARTGuard existant
+- `apps/go-api/internal/migration/steps_shared_social_purge_data_health.go` — pattern swap-table déjà utilisé pour `player_notifications`
+- DuckDB issue tracker : "ART", "INSERT ON CONFLICT", "concurrent UPSERT"
+- `.ai/thought_log.md` entrées 20/21/22 mai pour le contexte des fixes précédents
