@@ -610,6 +610,16 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		migration.RegisterPrestigeSeedMigration(prestigeConfigDir)
 	}
 
+	// Seed Milestones catalogue (Phase 4 plan stabilisation 2026-05-22) via
+	// migration backfill multi-titres. Pattern identique à Prestige.
+	// configTitlesRoot = parent du dossier titre (ex: config/titles/) — itère
+	// sur tous les `<slug>/milestones/catalog.toml` présents.
+	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause A.
+	if prestigeConfigDir != "" {
+		configTitlesRoot := filepath.Dir(prestigeConfigDir)
+		migration.RegisterMilestonesSeedMigration(configTitlesRoot)
+	}
+
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
 	if err != nil {
