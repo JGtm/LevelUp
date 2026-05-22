@@ -418,18 +418,52 @@ func probeVideoDuration(ctx context.Context, videoPath string) (float64, error) 
 	return d, nil
 }
 
-// generateAnimatedThumbnail génère un WebP animé (3 s à partir de t=5s, 10 fps,
-// 480px) via ffmpeg/libwebp en single-pass. Beaucoup plus compact qu'un GIF
-// (~25-35 % de taille) et 24-bit (vs palette 8-bit du GIF) pour des couleurs
-// fidèles à la source. Compatible avec gif-hover-thumbnail.tsx (Image()/canvas
-// indifférents au format animé).
+// thumbnailWindow calcule le point de départ et la durée d'extraction pour le
+// WebP animé en fonction de la durée totale du clip. Règle : skip=20%,
+// extract=20%, avec bornes min/max pour éviter les cas extrêmes. Si
+// skip+extract dépasse la durée disponible, on repart de 0.
+func thumbnailWindow(totalDur float64) (skip, extract float64) {
+	const (
+		skipPct    = 0.20
+		extractPct = 0.20
+		minSkip    = 3.0
+		maxSkip    = 15.0
+		minExtract = 3.0
+		maxExtract = 8.0
+	)
+	clamp := func(v, lo, hi float64) float64 {
+		if v < lo {
+			return lo
+		}
+		if v > hi {
+			return hi
+		}
+		return v
+	}
+	skip = clamp(totalDur*skipPct, minSkip, maxSkip)
+	extract = clamp(totalDur*extractPct, minExtract, maxExtract)
+	if skip+extract > totalDur-1 {
+		skip = 0
+		extract = clamp(totalDur*0.4, minExtract, maxExtract)
+	}
+	return skip, extract
+}
+
+// generateAnimatedThumbnail génère un WebP animé via ffmpeg/libwebp.
+// La fenêtre d'extraction (skip + durée) est calculée proportionnellement à la
+// durée du clip via thumbnailWindow — fallback sur 5s/3s si ffprobe échoue.
+// Résolution 480px largeur, fps=12, qualité 75, compression max.
 func generateAnimatedThumbnail(ctx context.Context, videoPath, webpPath string) error {
+	skip, extract := 5.0, 3.0
+	if dur, err := probeVideoDuration(ctx, videoPath); err == nil {
+		skip, extract = thumbnailWindow(dur)
+	}
 	cmd := exec.CommandContext(ctx, "ffmpeg", "-y",
-		"-ss", "5",
-		"-t", "3",
+		"-ss", strconv.FormatFloat(skip, 'f', 2, 64),
+		"-t", strconv.FormatFloat(extract, 'f', 2, 64),
 		"-i", videoPath,
 		"-an",
-		"-vf", "fps=10,scale=480:-1:flags=lanczos",
+		"-vf", "fps=12,scale=480:-1:flags=lanczos",
 		"-c:v", "libwebp",
 		"-loop", "0",
 		"-q:v", "75",
