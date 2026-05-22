@@ -379,6 +379,14 @@ func NewRouter(
 		r.With(middleware.NoStore).Get("/_diag/csr-coverage/{player_slug}",
 			handlers.NewDiagCSRHandler(reg.CSRCoverageProvider).GetCoverage)
 
+		// Phase 4 plan stabilisation 2026-05-22 : diagnostic progression V2
+		// (Ascension). Compte les rows dans streak/player_records/record_history/
+		// milestone_earned + milestone_catalog. Permet de vérifier que
+		// EvaluateProgressionAfterSync tourne bien sur l'auto-sync (avant Phase 4
+		// ces tables restaient vides — cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED).
+		r.With(middleware.NoStore).Get("/_diag/progression/{player_slug}",
+			handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).GetDiag)
+
 		// Phase A multi-titres : exposition des field mappings TOML.
 		// Derrière MULTI_TITLE_API_ENABLED.
 		//

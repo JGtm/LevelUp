@@ -769,6 +769,17 @@ func (r *ServiceRegistry) CSRCoverageProvider(ctx context.Context, slug string) 
 	return duckdb.NewCSRCoverageRepo(pdb), pdb.XUID, nil
 }
 
+// ProgressionDiagProvider implémente handlers.ProgressionDiagFactory : résout
+// slug → provider diag pipeline V2 (streaks/records/milestones). Utilisé par
+// l'endpoint /_diag/progression/{slug} (Phase 4 plan stabilisation 2026-05-22).
+func (r *ServiceRegistry) ProgressionDiagProvider(ctx context.Context, slug string) (handlers.ProgressionDiagProvider, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	return duckdb.NewProgressionDiagRepo(pdb), nil
+}
+
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	repo := duckdb.NewHomeRepo(pdb)
 	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
