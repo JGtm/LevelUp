@@ -90,9 +90,16 @@ Diagnostic via l'agent d'audit :
 
 ---
 
-## 1bis. Phase 0 — Bump driver DuckDB v1.5.2 → v1.5.3 (NEW, P0a)
+## 1bis. Phase 0 — Bump driver DuckDB v1.5.2 → v1.5.3 (NEW, P0a) — ✅ FAIT 2026-05-22 (commit 25b56846)
 
-**Effort : ~1h. Pari à faible coût qui peut résoudre tout seul.**
+**Effort réel : ~30min. Pari low-cost en place.**
+
+**Validation déploiement** : tests verts (sync 10.5s, analysis 4 pkgs, scheduler 1.1s, platform/duckdb 12.5s, validation, watcher). vet clean.
+
+**À surveiller en prod (24h)** :
+- Plus de `duckdb::FatalException` crash
+- `art_corruption_detected_total` n'incrémente pas sur de NOUVEAUX matchs
+- Si KO → continuer Phase 1 (singleflight). Si AGGRAVATION → revert v1.4.3 LTS.
 
 **Source** : Audit Agent 2 (handoff §2).
 
