@@ -1,10 +1,11 @@
 // Package sync — citations_checks.go : invariants post-compute pour match_citations.
 //
 // Invariants vérifiés (V1-V4) :
-//   V1 : aucune valeur ≤ 0 dans match_citations (delta zéro ne doit pas être écrit).
-//   V2 : cumul feuille ≤ max(tier_targets) pour les citations avec tier_targets.
-//   V3 : cumul composite ≤ effectiveMax(tier_targets, len(children)).
-//   V4 : valeur per-match d'un composite ≤ len(children).
+//
+//	V1 : aucune valeur ≤ 0 dans match_citations (delta zéro ne doit pas être écrit).
+//	V2 : cumul feuille ≤ max(tier_targets) pour les citations avec tier_targets.
+//	V3 : cumul composite ≤ effectiveMax(tier_targets, len(children)).
+//	V4 : valeur per-match d'un composite ≤ len(children).
 package sync
 
 import (
@@ -122,7 +123,12 @@ func checkV2LeafCumul(
 	return out
 }
 
-// checkV3CompositeCumul : cumul composite ≤ effectiveMax.
+// checkV3CompositeCumul : cumul composite ≤ effectiveMax. tierMax maintenu pour
+// cohérence avec sibling checkers (checkV1*/V2*/V4* prennent tous le même tuple).
+// Le composite calcule son propre effectiveMax via ParseTierMax + childCount,
+// mais la signature reste stable pour permettre un dispatcher uniforme.
+//
+//nolint:unparam // signature uniforme dispatcher cross-checkers, tierMax lu par V2/V4.
 func checkV3CompositeCumul(
 	mappings []domain.CitationFullMapping,
 	tierMax, childCountByNorm map[string]int,

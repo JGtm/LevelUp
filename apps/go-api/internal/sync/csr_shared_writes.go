@@ -12,6 +12,7 @@
 package sync
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -95,13 +96,13 @@ func ExtractAllSharedCSRRows(reg *MatchRegistryRow, skillByXUID map[string]*Matc
 // UpsertSharedCSRs écrit ou met à jour les rows shared.match_csrs.
 // ON CONFLICT (match_id, xuid) DO UPDATE SET : préserve la donnée la plus
 // fraîche. Non-bloquant : retourne nil si rows est vide (rien à faire).
-func UpsertSharedCSRs(sharedDB *sql.DB, rows []SharedMatchCSRRow) error {
+func UpsertSharedCSRs(ctx context.Context, sharedDB *sql.DB, rows []SharedMatchCSRRow) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	now := time.Now().UTC()
 	for _, row := range rows {
-		_, err := sharedDB.Exec(`
+		_, err := sharedDB.ExecContext(ctx, `
 			INSERT INTO match_csrs (
 				match_id, xuid, rating_type, rating_value,
 				tier, sub_tier, tier_label, rating_delta,

@@ -167,8 +167,8 @@ func TestComposite_NoTierTargets(t *testing.T) {
 	)
 	ctx := injectStats(map[string]float64{"kills_badge": 3})
 	deltas := analysis.ComputeFullMatchCitations(analysis.CitationProgressInput{Ctx: ctx}, mappings)
-	assertDelta(t, deltas, "kills_badge", 3)  // leaf sans tier → écrite librement
-	assertNoDelta(t, deltas, "combo_any")     // composite sans max sur l'enfant → pas de transition
+	assertDelta(t, deltas, "kills_badge", 3) // leaf sans tier → écrite librement
+	assertNoDelta(t, deltas, "combo_any")    // composite sans max sur l'enfant → pas de transition
 }
 
 // ---------------------------------------------------------------------------
@@ -256,8 +256,8 @@ func TestProgression_T4_CompositeChildCrossesMax(t *testing.T) {
 	)
 	in := injectProgress(map[string]float64{"br75": 10}, map[string]int{"br75": 495})
 	deltas := analysis.ComputeFullMatchCitations(in, mappings)
-	assertDelta(t, deltas, "br75", 5)    // 500-495 = 5 (capé)
-	assertDelta(t, deltas, "unsc", 1)    // transition ✓
+	assertDelta(t, deltas, "br75", 5) // 500-495 = 5 (capé)
+	assertDelta(t, deltas, "unsc", 1) // transition ✓
 }
 
 // T5 : composite — enfant déjà masterisé avant le match → pas de transition.
@@ -381,8 +381,8 @@ func TestProgression_T11_CompositeAlreadyMaxCascadesToMeta(t *testing.T) {
 	mappings := buildMappings(
 		[]domain.CitationFullMapping{mappingStat("leaf_a", &tiers)},
 		[]domain.CitationFullMapping{
-			mappingComposite("mid", `["leaf_a"]`),  // max=1 (len children)
-			mappingComposite("meta", `["mid"]`),    // max=1 (len children)
+			mappingComposite("mid", `["leaf_a"]`), // max=1 (len children)
+			mappingComposite("meta", `["mid"]`),   // max=1 (len children)
 		},
 	)
 	// mid déjà au max (cumulPre=1), meta pas encore (cumulPre=0).
@@ -393,9 +393,9 @@ func TestProgression_T11_CompositeAlreadyMaxCascadesToMeta(t *testing.T) {
 		map[string]int{"leaf_a": 8, "mid": 1},
 	)
 	deltas := analysis.ComputeFullMatchCitations(in, mappings)
-	assertDelta(t, deltas, "leaf_a", 2)  // 10-8=2
-	assertNoDelta(t, deltas, "mid")      // capRoom=0 → pas de delta
-	assertDelta(t, deltas, "meta", 1)    // cascade : mid était transitioned → meta +1
+	assertDelta(t, deltas, "leaf_a", 2) // 10-8=2
+	assertNoDelta(t, deltas, "mid")     // capRoom=0 → pas de delta
+	assertDelta(t, deltas, "meta", 1)   // cascade : mid était transitioned → meta +1
 }
 
 // T12 : composite avec tier_targets — delta capé si newlyMastered > capRoom.
@@ -433,9 +433,9 @@ func TestProgression_T13_DisabledChildIgnored(t *testing.T) {
 		map[string]int{"enabled_c": 8},
 	)
 	deltas := analysis.ComputeFullMatchCitations(in, mappings)
-	assertDelta(t, deltas, "enabled_c", 2)  // 10-8=2
-	assertDelta(t, deltas, "comp", 1)       // 1 enfant enabled traverse → +1
-	assertNoDelta(t, deltas, "disabled_c")  // absent des mappings → pas de dispatch
+	assertDelta(t, deltas, "enabled_c", 2) // 10-8=2
+	assertDelta(t, deltas, "comp", 1)      // 1 enfant enabled traverse → +1
+	assertNoDelta(t, deltas, "disabled_c") // absent des mappings → pas de dispatch
 }
 
 // T14 : deux composites distincts partagent le même enfant.

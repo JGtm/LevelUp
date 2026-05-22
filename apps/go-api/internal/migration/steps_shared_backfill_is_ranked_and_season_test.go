@@ -3,12 +3,13 @@
 // Package migration — Phase 1 du plan pipeline CSR.
 //
 // Tests : la migration `shared_backfill_is_ranked_and_season` doit
-//   (a) ajouter la colonne match_registry.season_id
-//   (b) marquer is_ranked=TRUE pour les playlists "Ranked Arena/Slayer" /
-//       pair_name "Ranked:..."
-//   (c) dériver season_id depuis start_time via les bornes du seasons catalog
-//   (d) être idempotente (2e run = no-op via schema_migrations.backfill_done)
-//   (e) ne pas toucher aux rows déjà ranked / season_id non-NULL
+//
+//	(a) ajouter la colonne match_registry.season_id
+//	(b) marquer is_ranked=TRUE pour les playlists "Ranked Arena/Slayer" /
+//	    pair_name "Ranked:..."
+//	(c) dériver season_id depuis start_time via les bornes du seasons catalog
+//	(d) être idempotente (2e run = no-op via schema_migrations.backfill_done)
+//	(e) ne pas toucher aux rows déjà ranked / season_id non-NULL
 package migration
 
 import (

@@ -872,16 +872,16 @@ func resolveMatchRatingType(ctx context.Context, sr SharedReader, matchID, ratin
 				if isRanked ||
 					strings.Contains(strings.ToLower(playlistName), "ranked") ||
 					strings.Contains(strings.ToLower(pairName), "ranked") {
-					return "CSR"
+					return ratingTypeCSR
 				}
-				return "LUSR"
+				return ratingTypeLUSR
 			}
 		}
 	}
-	if strings.EqualFold(strings.TrimSpace(ratingTypeRaw), "CSR") {
-		return "CSR"
+	if strings.EqualFold(strings.TrimSpace(ratingTypeRaw), ratingTypeCSR) {
+		return ratingTypeCSR
 	}
-	return "LUSR"
+	return ratingTypeLUSR
 }
 
 // GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).

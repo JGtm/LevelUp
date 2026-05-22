@@ -255,11 +255,11 @@ func resolveHomeMatchSkillRatingType(row legacymatch.HomeMatchRow, enrich *homeM
 	}
 	if enrich != nil && enrich.ratingType.Valid {
 		rt := strings.ToUpper(strings.TrimSpace(enrich.ratingType.String))
-		if rt == "CSR" {
-			return "CSR"
+		if rt == ratingTypeCSR {
+			return ratingTypeCSR
 		}
 	}
-	return "LUSR"
+	return ratingTypeLUSR
 }
 
 // CountPlayerMatches retourne le nombre total de matchs du joueur (Q26b).

@@ -2,11 +2,12 @@
 // composite et méta (composite de composites).
 //
 // Sémantique R4-R7 :
-//   R4 : composite +1 par enfant qui traverse son palier final dans le match courant.
-//        Condition : cumulPre[child] < max(tier_targets[child]) AND cumulPost[child] >= max.
-//   R6 : passes itératives pour les métas (composite de composites).
-//   R7 : sans tier_targets sur un composite, max = len(children).
-//        Sans tier_targets sur une leaf enfant, max = 0 → jamais de transition.
+//
+//	R4 : composite +1 par enfant qui traverse son palier final dans le match courant.
+//	     Condition : cumulPre[child] < max(tier_targets[child]) AND cumulPost[child] >= max.
+//	R6 : passes itératives pour les métas (composite de composites).
+//	R7 : sans tier_targets sur un composite, max = len(children).
+//	     Sans tier_targets sur une leaf enfant, max = 0 → jamais de transition.
 package analysis
 
 import (

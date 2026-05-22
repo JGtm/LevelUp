@@ -155,7 +155,7 @@ func TestUpsertSharedCSRs_InsertsBatch(t *testing.T) {
 		{MatchID: "m1", XUID: "xB", RatingType: "CSR", RatingValue: &v2, Tier: "Onyx", SubTier: 0, TierLabel: "Onyx 1850", SeasonID: "CsrSeason13-1", StartTime: time.Now()},
 		{MatchID: "m1", XUID: "xC", RatingType: "CSR", Tier: "Placement", MeasurementMatchesRemaining: 3, TierLabel: "Placement (3 restants)", SeasonID: "CsrSeason13-1", StartTime: time.Now()},
 	}
-	if err := UpsertSharedCSRs(db, rows); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, rows); err != nil {
 		t.Fatalf("UpsertSharedCSRs: %v", err)
 	}
 	var count int
@@ -171,7 +171,7 @@ func TestUpsertSharedCSRs_UpdateOnConflict(t *testing.T) {
 	db := openTempSharedForCSR(t)
 	v1 := 1100.0
 	row := SharedMatchCSRRow{MatchID: "m1", XUID: "xA", RatingType: "CSR", RatingValue: &v1, Tier: "Gold", SubTier: 4, TierLabel: "Or 4", SeasonID: "CsrSeason13-1", StartTime: time.Now()}
-	if err := UpsertSharedCSRs(db, []SharedMatchCSRRow{row}); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, []SharedMatchCSRRow{row}); err != nil {
 		t.Fatalf("1er insert: %v", err)
 	}
 	// Re-write avec valeur différente → UPSERT doit mettre à jour
@@ -181,7 +181,7 @@ func TestUpsertSharedCSRs_UpdateOnConflict(t *testing.T) {
 	row.SubTier = 5
 	row.TierLabel = "Or 5"
 	row.RatingDelta = &d
-	if err := UpsertSharedCSRs(db, []SharedMatchCSRRow{row}); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, []SharedMatchCSRRow{row}); err != nil {
 		t.Fatalf("UPSERT: %v", err)
 	}
 	var gotValue float64
@@ -198,10 +198,10 @@ func TestUpsertSharedCSRs_UpdateOnConflict(t *testing.T) {
 
 func TestUpsertSharedCSRs_EmptyRows_NoOp(t *testing.T) {
 	db := openTempSharedForCSR(t)
-	if err := UpsertSharedCSRs(db, nil); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, nil); err != nil {
 		t.Errorf("nil rows: want nil error, got %v", err)
 	}
-	if err := UpsertSharedCSRs(db, []SharedMatchCSRRow{}); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, []SharedMatchCSRRow{}); err != nil {
 		t.Errorf("empty rows: want nil error, got %v", err)
 	}
 }
@@ -214,7 +214,7 @@ func TestUpsertSharedCSRs_NullableSeasonID(t *testing.T) {
 		SeasonID:  "", // explicitement vide
 		StartTime: time.Now(),
 	}
-	if err := UpsertSharedCSRs(db, []SharedMatchCSRRow{row}); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, []SharedMatchCSRRow{row}); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 	var sid sql.NullString
@@ -238,7 +238,7 @@ func TestEndToEnd_ExtractAndUpsert_AllParticipants(t *testing.T) {
 		"xuid-4": mkSkill("", 0, 0, 5, -1), // placement (S3+ : remaining=5)
 	}
 	rows := ExtractAllSharedCSRRows(reg, skill)
-	if err := UpsertSharedCSRs(db, rows); err != nil {
+	if err := UpsertSharedCSRs(t.Context(), db, rows); err != nil {
 		t.Fatalf("E2E upsert: %v", err)
 	}
 	var total, placement, matured int
