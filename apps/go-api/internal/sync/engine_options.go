@@ -17,6 +17,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/port"
 )
 
 // NewSyncEngine crée un moteur de sync pour un joueur.
@@ -91,6 +92,24 @@ func (e *SyncEngine) WithFriendsLoader(loader FriendsLoader) *SyncEngine {
 // Requis pour que runCSRSnapshotSync appelle l'API — skip silencieux si absent.
 func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {
 	e.csrSeasonID = id
+	return e
+}
+
+// WithPostSyncRunner branche le runner post-sync (Phase 4 plan stabilisation
+// 2026-05-22). Le runner est invoqué dans runPostSyncPipeline avant + après
+// la sync — il capture un snapshot before, attend la fin de la sync, puis
+// émet les notifications delta + lance le pipeline progression V2.
+//
+// slug : identifiant URL du joueur (PlayerSlug), passé au runner.BeforeSync.
+// Sert à la résolution ServiceRegistry.resolve(slug) côté runner.
+//
+// Nil runner → feature off, legacy behavior (sync sans hook).
+// Avant ce sprint : seul SyncHandler HTTP avait le hook → auto-sync et CLI
+// sautaient TOUT le post-sync delta + progression (notifications muettes,
+// page Ascension vide).
+func (e *SyncEngine) WithPostSyncRunner(runner port.PostSyncRunner, slug string) *SyncEngine {
+	e.postSyncRunner = runner
+	e.postSyncSlug = slug
 	return e
 }
 

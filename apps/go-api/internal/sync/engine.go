@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/port"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -90,6 +91,20 @@ type SyncEngine struct {
 	// InjectÃ© via WithSharedProvider depuis main.go / scheduler en mode
 	// flag-on. CohÃ©rent avec PlayerPoolConfig.SharedReader cÃ´tÃ© pool.
 	sharedProvider sharedprovider.Provider
+
+	// postSyncRunner (Phase 4 plan stabilisation 2026-05-22) — runner invoqué
+	// avant + après chaque sync réussie pour émettre les notifications delta
+	// (career_rank, citation_tier, threshold_crossed, etc.) ET lancer le
+	// pipeline progression V2 Ascension (streaks/records/milestones/coach).
+	//
+	// Nil → feature off (legacy : avant ce sprint, seuls les syncs HTTP
+	// déclenchaient ces hooks via SyncHandler.WithPostSyncDeltaHook ; auto-sync
+	// et CLI sautaient TOUT le post-sync delta + progression).
+	//
+	// Injecté via WithPostSyncRunner depuis main.go (SyncHandler + scheduler).
+	// postSyncSlug : identifiant URL du joueur, passé au runner.BeforeSync.
+	postSyncRunner port.PostSyncRunner
+	postSyncSlug   string
 }
 
 // NewSyncEngine, WithPrestigeHook, WithResolver, WithSharedProvider,
@@ -146,6 +161,17 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	if err := opts.Validate(); err != nil {
 		slog.ErrorContext(ctx, "sync: options invalides", "err", err, "gamertag", e.gamertag)
 		return result, fmt.Errorf("run: options invalides: %w", err)
+	}
+
+	// Phase 4 plan stabilisation 2026-05-22 : capture du snapshot before-sync
+	// pour la couche post-sync (delta notifications + pipeline progression V2).
+	// Le runner est nil si non injecté (legacy / tests) — feature off.
+	// Le finalizer sera invoqué en succès uniquement (chemin terminal de run,
+	// ligne ~435 `return result, nil`) — sur erreur, le finalizer n'est jamais
+	// appelé pour éviter d'émettre des deltas sur snapshot post-sync incohérent.
+	var postSyncFinalizer port.PostSyncFinalizer
+	if e.postSyncRunner != nil && e.postSyncSlug != "" {
+		postSyncFinalizer = e.postSyncRunner.BeforeSync(ctx, e.postSyncSlug)
 	}
 
 	// â”€â”€â”€ Write leases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -417,6 +443,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		"duration_s", fmt.Sprintf("%.2f", result.DurationSeconds),
 		"status", result.Status(),
 	)
+
+	// Phase 4 plan stabilisation 2026-05-22 : invoque le finalizer post-sync
+	// (notifications delta + pipeline progression V2) capturé en début de run.
+	// Best-effort : toute erreur dans le finalizer reste contenue côté runner.
+	if postSyncFinalizer != nil {
+		postSyncFinalizer(ctx)
+	}
 	return result, nil
 }
 
