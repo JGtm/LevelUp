@@ -1,9 +1,27 @@
 # INCIDENT — Corruption d'index ART DuckDB (récurrent)
 
-**Status** : 🟡 EN COURS — workaround en place, validation Plan J (CHECKPOINT) en cours.
+**Status** : 🔴 **DIAGNOSTIC FINAL** — bug DuckDB upstream non-contournable au pattern SQL. **Vraie solution = refactor Collect → Persist** ([REFACTOR_COLLECT_PERSIST.md](REFACTOR_COLLECT_PERSIST.md)).
 **Premier signalement** : 2026-05-20 (`docs/INCIDENT_2026-05-20_match_participants_index.md`).
-**Reproduit en prod** : 2026-05-23 (cette session).
-**Dernière mise à jour** : 2026-05-23 18h15.
+**Reproduit en prod** : 2026-05-23.
+**Dernière mise à jour** : 2026-05-23 20h00.
+
+## VERDICT EMPIRIQUE FINAL (2026-05-23 19h33)
+
+Migrations UPDATE-then-INSERT (commit `acad4603`) ont été testées en prod : **AUCUN effet**. Le FATAL revient exactement de la même façon :
+
+```
+19:33:20 upsertLUSRRatings: exec LUSR update failed
+FATAL Error: Invalid Input Error: Failed to delete all rows from index.
+```
+
+**Cause root** : DuckDB étant **columnar**, les UPDATE sont implémentés comme **DELETE+INSERT en interne** (rewrite de la row entière). Donc UPDATE consulte aussi l'index ART en mode DELETE → bug ART déclenché par UPDATE.
+
+**Implications** :
+- Aucun pattern SQL (UPSERT, UPDATE, INSERT OR REPLACE) ne contourne le bug
+- La seule solution = **éliminer les UPDATEs concurrents** sur les tables critiques
+- → Architecture Collect → Persist avec INSERT-only batch
+
+**Doc dédié** : [REFACTOR_COLLECT_PERSIST.md](REFACTOR_COLLECT_PERSIST.md) — design complet validé 2026-05-23.
 
 ---
 

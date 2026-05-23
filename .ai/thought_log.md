@@ -1,3 +1,48 @@
+## [2026-05-23] verdict ART final — UPDATE = DELETE+INSERT en columnar — refactor Collect→Persist designé
+
+**Statut** : 🔴 Diagnostic final + design validé. Implementation demain.
+
+**Verdict empirique** : 2 cycles consécutifs testés en prod aujourd'hui (18:13 + 19:33), avec et sans nos migrations UPDATE-then-INSERT (commit `acad4603`). **Aucune différence**. Le FATAL ART revient à chaque cycle dès qu'on touche `match_skill_rank`, `player_match_enrichment` ou `match_participants` avec un UPDATE/UPSERT.
+
+**Cause root identifiée** : DuckDB étant un **engine columnar**, l'UPDATE est implémenté en interne comme **DELETE+INSERT** (re-write de la row entière pour préserver l'efficacité columnar). Donc UPDATE consulte aussi l'index ART en mode DELETE → bug ART déclenché par UPDATE pur, pas seulement par `ON CONFLICT DO UPDATE`.
+
+**Confirmé par** : `WriteSessionAssignments` est déjà UPDATE-only depuis longtemps, mais FATAL identique au cycle 17h07. Mes migrations UPDATE-then-INSERT n'apportent rien.
+
+**Vraies options explorées, verdict** :
+
+| Option | Verdict |
+|---|---|
+| `ON CONFLICT DO UPDATE` (actuel) | ❌ DELETE+INSERT, déclenche bug ART |
+| `INSERT OR REPLACE` | ❌ Identique à ON CONFLICT (sucre syntaxique) |
+| `UPDATE` pur | ❌ Columnar = DELETE+INSERT en interne, même bug |
+| `SELECT-then-UPDATE-or-INSERT` | ❌ L'UPDATE consulte toujours l'ART |
+| `PRAGMA CHECKPOINT` post-sync | ❌ Trop tard (FATAL casse la conn avant) |
+| Rebuild swap CTAS (manuel/auto-heal) | ⚠️ Répare mais la corruption REVIENT à l'usage |
+| **Collect → Persist (INSERT-only batch)** | ✅ **Seule solution propre et pérenne** |
+
+**Design Collect → Persist validé** (cf. `.ai/REFACTOR_COLLECT_PERSIST.md`, 13 sections, 11 décisions tranchées) :
+
+- 1 batch = 1 match COMPLET (data API + tous les enrichments locaux)
+- Cache fetch intermédiaire sur disque (debug + tests + recovery)
+- WAL JSON durable avant Submit (crash safe)
+- 1 worker goroutine par DB target (sérialise les writes)
+- Atomicité par batch (TX BEGIN/COMMIT)
+- Granularité fine = reprise au crash près
+- LUSR cascade reste cohérente (lit l'état persisté de match N-1)
+- Réutilisable par sync engine + CLI backfill + scripts
+
+**9 trous identifiés et tranchés en revue** : ordonnancement matchs, atomicité cross-DB, backpressure, worker sizing, recovery boot, cleanup WAL, métriques expvar, multi-titres, test recovery crash.
+
+**Prochaine étape** : Phase 1 implementation (~4h) — créer `internal/persist/` package avec MatchBatch, BatchQueue, Persister, tests TDD.
+
+Effort total estimé : ~18h sur 2-3 jours.
+
+**Leçon apprise** : j'ai gaspillé 4h cette session à tester des workarounds SQL (singleflight, CHECKPOINT, UPDATE-then-INSERT) avant d'écouter la proposition initiale du user : repenser l'archi. Quand un bug semble "ingérable", c'est souvent qu'on est dans le mauvais paradigme — revenir aux principes (séparer collect/persist) règle le problème par construction.
+
+**Branche** : `chore/post-stabilisation-debt` (commits prévus séparés). Création de `refactor/collect-persist` envisagée pour isoler le refactor majeur.
+
+---
+
 ## [2026-05-23] incident(art) — Validation prod du plan stabilisation + découverte facette DELETE-side du bug ART
 
 **Statut** : 🟡 EN COURS — workaround en place, Plan J (CHECKPOINT) en validation au prochain cycle (~18h28).
