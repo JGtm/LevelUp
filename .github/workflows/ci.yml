@@ -359,7 +359,7 @@ jobs:
           LEVELUP_DEMO_MODE=true LEVELUP_API_PORT=8000 ./levelup-api &
           echo "Backend PID: $!"
           # Attendre que l'API réponde (max 30s)
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             curl -sf http://localhost:8000/health && break
             sleep 1
           done
@@ -371,7 +371,7 @@ jobs:
           VITE_API_BASE_URL=http://localhost:8000 npm run dev &
           echo "Frontend PID: $!"
           # Attendre que Vite soit prêt (max 30s)
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             curl -sf http://localhost:5173 && break
             sleep 1
           done

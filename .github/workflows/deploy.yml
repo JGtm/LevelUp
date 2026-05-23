@@ -12,24 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validation YAML workflows
+      - name: Validation workflows GitHub Actions (actionlint)
+        # actionlint : binaire Go natif, validation sémantique GitHub Actions
+        # (script officiel rhysd/actionlint). Remplace l'ancien python3+pyyaml.
         run: |
-          pip install pyyaml -q
-          python3 - <<'EOF'
-          import yaml, os, sys
-          errors = 0
-          for f in sorted(os.listdir(".github/workflows")):
-              if not f.endswith((".yml", ".yaml")):
-                  continue
-              path = os.path.join(".github/workflows", f)
-              try:
-                  yaml.safe_load(open(path, encoding="utf-8"))
-                  print(f"  ✅ {f}")
-              except yaml.YAMLError as e:
-                  print(f"  ❌ {f}: {e}")
-                  errors += 1
-          sys.exit(errors)
-          EOF
+          bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
 
       - name: Validation syntaxe Bash (scripts/*.sh)
         run: |

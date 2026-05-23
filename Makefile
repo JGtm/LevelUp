@@ -70,8 +70,11 @@ test-e2e-ui:
 
 GO_API_DIR := apps/go-api
 API_PORT ?= 8000
-# Version depuis le fichier VERSION (ou tag Git en fallback)
-GO_VERSION := $(shell cat VERSION 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+# Version depuis le dernier tag Git (fallback "dev" si pas de tag).
+# Le fichier VERSION a été supprimé 2026-05-22 : numéro de version plus affiché
+# côté UI (FeedbackDrawer.appVersion=null), seul le ldflags injection sert
+# pour les logs boot + notif Discord nouvelle version.
+GO_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 # Racine du repo de données (contient db_profiles.json + data/players/).
 # Laisser vide par défaut pour la résoudre au runtime depuis le repo courant.
 # Surchargeable via env si on veut pointer ailleurs.

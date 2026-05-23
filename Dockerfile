@@ -31,7 +31,8 @@ RUN go mod download
 # Code source Go
 COPY apps/go-api/ ./
 
-# Lire la version depuis VERSION (injectée via ldflags)
+# Version injectée via ldflags. ARG VERSION peut être passé par le caller
+# (release.yml extrait depuis le tag git, docker-compose laisse "dev").
 ARG VERSION=dev
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -ldflags "-X main.version=${VERSION} -extldflags '-static'" \
