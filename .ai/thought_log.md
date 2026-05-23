@@ -1,3 +1,45 @@
+## [2026-05-23] design — Plan coaching complet : profil + patterns + leviers (v3)
+
+**Statut** : Complété (plan seulement — pas de code).
+
+**Décision technique** : Audit end-to-end du système de coaching a révélé 3 niveaux de problèmes : (1) streaks perf-based cassées (médiane KDA calculée mais jamais injectée), (2) `PlayerProfile` A1/A2/B/C + leviers entièrement calculés côté backend mais sans aucun hook frontend — endpoint fantôme, (3) Pattern Engine manquant. Plan restructuré en 4 phases avec valeur joueur à chaque livraison : Phase 0 = réparer + surfacer les orphelins (~3h), Phase 1 = patterns contextuels par mode/map/squad avec OC/DR/DeltaCSR/DeltaLUSR (~6h), Phase 2 = patterns comportementaux tilt/fatigue/engagement drop avec paire EngageScore+ResidualBrut (~5h), Phase 3 = leviers calibrés sur p60 + 4 nouveaux AlertTypes coach (~5h). Frontière claire : `ProfileService.C` = leviers agrégats LUSR, Pattern Engine = leviers calibrés contextuels — complémentaires, non redondants.
+
+**Livrables** :
+- `.ai/PLAN_PATTERN_ENGINE.md` — plan v3 détaillé (14 commits, ~19h, architecture en couches, use cases métier par phase).
+
+**Résultats** : Aucun code modifié. Plan prêt pour implémentation.
+
+**Prochaine étape** : Commit 1 = fix streaks perf-based (1 ligne `post_sync_progression.go` + test) sur branche `feat/pattern-engine`.
+
+---
+
+## [2026-05-23] ux — CSR/LUSR : "Non classé" pour 0 matchs de placement
+
+**Statut** : Complété.
+
+**Décision technique** : Distinction entre 0 matchs de placement (joueur n'a pas commencé → "Non classé") et 1-N matchs en cours (→ "En placement (X/N)"). Appliqué uniformément sur CSR et LUSR. Ajout clé i18n `career.ranking.unranked` (TOML + generated). 4 points de modification : `HomeSkillPeakCard.resolveSkillPeakState`, `HomeRecentPlaylistsCard` (label badge + texte), `CareerRankingBlock.csrTierLabel` (CSR), `CareerRankingBlock` ligne LUSR (`cp === null`). Legacy path (payload sans `measurement_matches_remaining`) conserve "En placement" faute d'information.
+
+**Résultats** : 5 fichiers modifiés, 0 régression attendue (branche logique indépendante).
+
+**Prochaine étape** : Phase 1 câblage OC/DR Career.
+
+---
+
+## [2026-05-23] design — Plan câblage profil combat OC + DR + Engagement
+
+**Statut** : Complété (plan seulement — pas de code).
+
+**Décision technique** : Exploration DD/(K+A) → abandonné (doublon `offensive_conversion`). Audit complet des surfaces : OC/DR déjà wired dans Match View Scoreboard, MatchCard et Timeseries — manquants dans Career, Session Compare, Synthesis, Escouade. Engagement wired uniquement en intra-match et squad. `ResidualBrut` (cross-joueurs) vs `EngagementScore` (self-relatif) clarifiés. Archétypes Soldat/Fonçeur/Sniper/Fantôme définis avec distinctions DR (Proie facile vs vrai Fantôme).
+
+**Livrables** :
+- `.ai/PLAN_COMBAT_PROFILE_WIRING.md` — plan 6 phases avec état des lieux, fichiers cibles, ordre recommandé.
+
+**Résultats** : Aucun code modifié. ADR 0018 supprimé (prématuré).
+
+**Prochaine étape** : Phase 1 = Career KPI tiles OC + DR (~1 j, risque faible).
+
+---
+
 ## [2026-05-23] ux — Rangs de carrière en chiffres romains (sous-rang 1–6)
 
 **Statut** : Complété (branche `chore/post-stabilisation-debt`).
