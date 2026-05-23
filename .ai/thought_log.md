@@ -1,3 +1,49 @@
+## [2026-05-24] Auth unification — Option E.v1 livrée (Discovery + watcher stores)
+
+**Statut** : Complété
+
+**Tâche** : Implémenter Option E.v1 du plan auth unification (`.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md`) — étendre `Discovery.Scan()` pour lire aussi les watcher token stores. Objectif : peupler le pool tokens Spartan au 1er boot du serveur sans dépendre de `.env.local` ni d'un sync manuel ayant écrit dans `sync_meta` DuckDB.
+
+**Décisions techniques principales** :
+
+- **NewDiscoveryWithStores** (`internal/platform/auth/pool/discovery.go`) : nouveau constructeur qui prend en plus `*auth.MultiUserTokenStore` (PR 2.5a, `data/auth/watcher_tokens/{xuid}.json`) et `*auth.TokenStore` (legacy mono-user, `data/auth/watcher_tokens.json`). Les 2 sont optionnels (nil = comportement pré-existant).
+
+- **Restructuration boucle Scan** : avant le fix, le code skip un joueur (`continue`) dès que sa player DB est introuvable, AVANT de checker les watcher stores. Restructuré pour tolérer DB absente et continuer le scan via les sources externes.
+
+- **Source labels** : `credSourceWatcherMSAL` et `credSourceWatcherLegacy` pour traçabilité dans logs/pool.log. Visible dans expvar via `pool.size` post-boot.
+
+- **Wiring main.go::buildAutoSyncPool** : instancie les 2 stores via `PathResolver.WatcherTokensDir()` / `WatcherTokensPath()` et les passe à `NewDiscoveryWithStores`. Backward-compat préservée (`NewDiscovery` legacy continue de marcher pour les anciens callers).
+
+- **E.v2 différé** : le callback push watcher→pool n'est pas implémenté. Le pool refresher loop existant retry les slots unhealthy automatiquement (10s tick). Latence max acceptable. Reporté dans BACKLOG.md `[auth/unification]`.
+
+**Résultats observés** :
+
+- 4 tests TDD GREEN (`discovery_watcher_test.go`) :
+  - MultiUserStore peuple pool quand DuckDB vide
+  - LegacyStore peuple pool quand DuckDB vide
+  - Pas de stores → backward-compat (0 source si DuckDB+env vides)
+  - XUID vide → MultiUserStore skipped (anti path-traversal)
+
+- Smoke test prod (serveur réel) :
+  - **Avant E.v1** : `pool: scan terminé total_players_scanned=4 players_with_token=0` → auto-sync skip tous
+  - **Après E.v1** : `pool: scan terminé players_with_token=4`, `auto_sync: pool initialisé size=4`
+  - Source legacy_watcher utilisée (data/auth/watcher_tokens.json contient un RT actif)
+  - logs/pool.log correctement créé via multi-module dispatcher (event_id propagé : `auth.resolve:GAMERTAG:hash`)
+  - 4 slots Spartan créés (`pool: créé size=4 perTokenRPS=5`)
+
+**Bénéfice utilisateur** : Phase 3 du refactor Collect→Persist devient activable en prod **immédiatement** via `LEVELUP_PERSIST_BATCH=1`, sans intervention manuelle préalable. L'auto-sync scheduler tournera dès le 1er cycle (15min après boot).
+
+**Hors scope traité** : Note ajoutée à `PLAN_TITLE_AGNOSTIC_REFACTORING.md` (Phase 1.6) pour la future extension multi-titre du pool (clé `(titleSlug, gamertag)` au lieu de `gamertag` seul). Effort ~1-2j, à programmer quand un 2e titre arrivera (Reach via MCC).
+
+**Prochaine étape** :
+
+1. **USER** : activer Phase 3 Collect→Persist en prod via `LEVELUP_PERSIST_BATCH=1` + observer 10 cycles (le pool est désormais peuplé, l'auto-sync va tourner).
+2. **Si validation Phase 3 OK** : Phase 5 cleanup anti-ART.
+3. **Si latence MSAL refresh observée problématique** : implémenter E.v2 (callback push) — référence backlog item `[auth/unification]`.
+4. **Plus tard** : migration PR 2.5b (watcher daemon → MultiUserTokenStore) — référence backlog item `[auth/cleanup]`.
+
+---
+
 ## [2026-05-24] Phase 3 prep — gap C timeout + BACKLOG + plan auth + audit ART (0 corruption)
 
 **Statut** : Complété

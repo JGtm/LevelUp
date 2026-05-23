@@ -210,6 +210,24 @@ Sur la modif récente `drop assists_expected/assists_stddev` (Halo Infinite ne r
 
 **Critère de complétion** : `internal/migration/` ne contient plus aucune DDL Halo-specific. Ajouter un titre = créer son dossier `ddl/` + l'enregistrer. Le test `OpenSpartanImport_E2E_test.go` continue de passer (rows OpenSpartan respectent la DDL HI).
 
+### Phase 1.6 — Pool tokens multi-titre (NOUVELLE 2026-05-24)
+
+**Effort** : ~1-2 j
+**Contexte** : aujourd'hui un seul titre (Halo Infinite). `internal/platform/auth/pool/` gère un pool de Spartan tokens par joueur mais **sans dimension `titleSlug`** explicite. Quand un 2e titre arrivera (Reach via MCC, autre jeu Microsoft), il faudra que le pool puisse stocker des tokens spécifiques par couple `(titleSlug, gamertag)` — un même joueur peut avoir des credentials différents selon le jeu (différents Spartan endpoints, scopes OAuth potentiellement différents).
+
+**Acquis** : `Pool` a déjà une méthode `SetCurrentTitle(slug)` qui prépare le terrain — il faut étendre pour vraiment supporter plusieurs titres simultanés (pas juste un "currentTitle" mono-valué).
+
+**Lien avec sprint auth unification** : si le sprint Option E du `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md` est livré avant Phase 1.6 (très probable), le refactor unification a déjà identifié `TokenProvider` comme source de vérité + `Pool` comme cache. Étendre la clé du cache de `gamertag` vers `(titleSlug, gamertag)` est la touche naturelle à ce moment-là.
+
+**Tâches** :
+- [ ] `Pool` interne : `sync.Map[string]Slot` → `sync.Map[poolKey]Slot` avec `poolKey = struct{TitleSlug, Gamertag string}`. Méthodes `Get`, `HasPlayer` prennent (titleSlug, gamertag).
+- [ ] `Discovery.Scan()` (ou son remplaçant post-unification) itère sur **tous les titres enregistrés** dans le `title.Registry`, pas seulement le slug courant.
+- [ ] `PooledHaloClient` paramétré par titleSlug en plus de gamertag/xuid.
+- [ ] Tests : 2 titres fixtures (halo_infinite + synthetic_title_b), même gamertag, vérifier que les 2 entries pool coexistent sans conflit.
+- [ ] Garde compat : si appelé sans titleSlug (anciens chemins), défaut sur `title.DefaultSlug` jusqu'à migration complète.
+
+**Critère de complétion** : ajouter un 2e titre n'oblige plus à recréer un pool ad-hoc — le pool existant accommode automatiquement le nouveau slug via Discovery.
+
 ### Phase 1.7a — TOML capabilities binaires (light, NOUVELLE v2.5)
 
 **Effort** : 2 jours

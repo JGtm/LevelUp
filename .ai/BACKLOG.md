@@ -12,6 +12,26 @@
 
 ---
 
+### [auth/unification] E.v2 — Callback push watcher → pool (optimisation latence)
+
+**Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — E.v1 livré couvre déjà le besoin principal (pool peuplé au boot).
+
+**Contexte** : Suite à E.v1 (`Discovery.Scan` lit les watcher stores au boot, commit `feat(auth): E.v1 ...`), le pool est correctement peuplé au démarrage du serveur. Mais si le watcher rafraîchit le MSAL en cours de session, le pool ne le voit pas tant que son refresher loop interne (10s tick) n'a pas re-tenté le slot.
+
+**Impact actuel** : faible. Le pool refresher loop retry automatiquement les slots unhealthy. Latence max ~10s entre refresh watcher et update pool.
+
+**E.v2 — fix** : ajouter callback `OnTokenRefreshed(gamertag, accessToken)` sur le watcher daemon. Au boot, registrer une lambda qui call `pool.UpdateSlot(gamertag, newTokens)`. Push instantané = 0 latence.
+
+**Effort** : ~2h
+- Pool.UpdateSlot(gamertag, ResolvedTokens) method
+- watcher.RegisterOnRefresh(callback) hook
+- Wiring main.go : `watcher.RegisterOnRefresh(func(gt, at) { pool.UpdateSlot(gt, ...) })`
+- Tests TDD : callback push update slot
+
+**Quand traiter** : si on observe en prod des fenêtres de "token stale" entre refresh watcher et pool retry (improbable mais possible sous charge).
+
+---
+
 ### [auth/security] Chiffrement at-rest des watcher tokens
 
 **Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — outil reste single-user local, threat model accepté.
