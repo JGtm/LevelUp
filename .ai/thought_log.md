@@ -190,6 +190,29 @@ Reste P2 plan stab : 4.2 SIGABRT handler (1h), 4.3 expvar metrics complet (2h), 
 
 ---
 
+## [2026-05-23] feat(p3.6) — Bump healParallelism 8→24 sur les paths network-only
+
+**Statut** : Phase 3.6 DONE en 1 commit (`6e437986`). Branche 21 commits ahead origin.
+
+**Idée** : conserver `healParallelism = 8` pour les heal loops qui font des UPSERT sur `match_participants` (skill + stats, déjà protégés par singleflight phase 2.3 mais coûteux CGO), introduire `healParallelismNetworkOnly = 24` pour les heal loops dont les writes sont append-only sans risque de race ART (events + weapon_kills).
+
+**3 sites bumpés à 24** :
+- `healEventsForRecentMatches` (events_heal.go:88)
+- `healWeaponKillsForRecentMatches` (events_heal.go:191)
+- `processWeaponKillsInline` (backfill_weapons.go:262, déjà parallélisé en phase 3.0)
+
+**2 sites inchangés à 8** :
+- `healSkillForMissingMatches` (skill_heal.go:73) — UPSERT match_participants
+- `healStatsForRecentMatches` (stats_heal.go:75) — UPSERT match_participants
+
+**Pas de TDD direct** : les tests existants couvrent déjà le contrat (idempotence, no-race, cancel propagation). Le bump à 24 est une optimisation de capacité, pas un changement sémantique. Audit Agent 3 estime gain ~50% sur ces étapes (cap par rate limiter HTTP du pool).
+
+**Ajustement test CancelMidRun** : passé de 20 à 100 matchs. Avec parallelism=24, 20 matchs × 50ms = 1 vague de 50ms, donc le cancel à 75ms arrivait après la fin. Avec 100 matchs × 50ms et parallelism=24, on a ~4 vagues = 200ms, le cancel à 75ms catche bien mid-run.
+
+**Conclusion** : optimisation low-effort, gain perf modeste mais cumulé avec 3.0 et 3.4 ça ajoute encore. Le throttling réel reste le rate limiter HTTP — bumper plus haut serait inutile sans augmenter le nombre de tokens dans le pool.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).
