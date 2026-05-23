@@ -1,0 +1,416 @@
+//go:build integration
+
+// Package ops — seed_demo_integration_test.go : test end-to-end avec DuckDB live.
+//
+// Crée des fixtures source (shared + player + metadata), lance SeedDemo, et
+// vérifie les outputs : tables filtrées + xuid anonymisé + configs JSON.
+//
+// CGO_ENABLED=1 requis (driver duckdb).
+package ops
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	_ "github.com/duckdb/duckdb-go/v2"
+)
+
+// seedSourceDBs crée des DBs source factices (3 matchs, 2 joueurs) prêtes pour
+// SeedDemo. Retourne le tempdir + les 3 chemins source.
+func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) {
+	t.Helper()
+	tmpDir = t.TempDir()
+	srcPlayer = filepath.Join(tmpDir, "src_player.duckdb")
+	srcShared = filepath.Join(tmpDir, "src_shared.duckdb")
+	srcMeta = filepath.Join(tmpDir, "src_meta.duckdb")
+
+	const sourceXUID = "1111111111111111"
+
+	// metadata.duckdb : minimal (juste 1 table avec 1 row pour vérifier la copie).
+	metaDB, err := sql.Open("duckdb", srcMeta)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer metaDB.Close()
+	if _, err := metaDB.Exec(`CREATE TABLE career_ranks (rank_id INTEGER, rank_name VARCHAR)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := metaDB.Exec(`INSERT INTO career_ranks VALUES (1, 'Recruit'), (2, 'Iron')`); err != nil {
+		t.Fatal(err)
+	}
+
+	// shared_matches_v2.duckdb : 3 matchs, 2 joueurs.
+	sharedDB, err := sql.Open("duckdb", srcShared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sharedDB.Close()
+	mustExec(t, sharedDB, `
+		CREATE TABLE match_registry (
+			match_id VARCHAR PRIMARY KEY,
+			start_time TIMESTAMP,
+			map_name VARCHAR,
+			playlist_name VARCHAR,
+			pair_name VARCHAR
+		)`)
+	mustExec(t, sharedDB, `
+		CREATE TABLE match_participants (
+			match_id VARCHAR,
+			xuid VARCHAR,
+			gamertag VARCHAR,
+			kills INTEGER,
+			deaths INTEGER
+		)`)
+	mustExec(t, sharedDB, `CREATE TABLE medals_earned (match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT)`)
+	mustExec(t, sharedDB, `CREATE TABLE highlight_events (match_id VARCHAR, event_type VARCHAR, xuid VARCHAR, time_ms INTEGER)`)
+	mustExec(t, sharedDB, `CREATE TABLE weapon_kills (match_id VARCHAR, xuid VARCHAR, weapon_id UBIGINT, reconciled_as UBIGINT)`)
+	mustExec(t, sharedDB, `CREATE TABLE killer_victim_pairs (match_id VARCHAR, killer_xuid VARCHAR, victim_xuid VARCHAR)`)
+	mustExec(t, sharedDB, `CREATE TABLE xuid_aliases (xuid VARCHAR PRIMARY KEY, gamertag VARCHAR)`)
+
+	// 3 matchs : m1 (le plus récent), m2 (milieu), m3 (le plus ancien).
+	mustExec(t, sharedDB, `
+		INSERT INTO match_registry VALUES
+		('m1', TIMESTAMP '2026-05-22 18:00:00', 'Aquarius', 'Ranked Slayer', 'Ranked:Slayer'),
+		('m2', TIMESTAMP '2026-05-21 18:00:00', 'Bazaar', 'Open Crossplay', 'Open:CTF'),
+		('m3', TIMESTAMP '2026-05-20 18:00:00', 'Live Fire', 'Ranked Slayer', 'Ranked:Slayer')`)
+	mustExec(t, sharedDB, `
+		INSERT INTO match_participants VALUES
+		('m1', '`+sourceXUID+`', 'JGtm', 15, 8),
+		('m1', '2222222222222222', 'Other', 10, 12),
+		('m2', '`+sourceXUID+`', 'JGtm', 8, 10),
+		('m3', '`+sourceXUID+`', 'JGtm', 20, 5)`)
+	mustExec(t, sharedDB, `
+		INSERT INTO medals_earned VALUES
+		('m1', '`+sourceXUID+`', 100),
+		('m2', '`+sourceXUID+`', 200),
+		('m3', '`+sourceXUID+`', 100)`)
+	mustExec(t, sharedDB, `
+		INSERT INTO xuid_aliases VALUES
+		('`+sourceXUID+`', 'JGtm'),
+		('2222222222222222', 'Other')`)
+
+	// player stats.duckdb
+	playerDB, err := sql.Open("duckdb", srcPlayer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer playerDB.Close()
+	mustExec(t, playerDB, `
+		CREATE TABLE player_match_enrichment (
+			match_id VARCHAR PRIMARY KEY,
+			xuid VARCHAR,
+			session_id VARCHAR,
+			performance_score DOUBLE
+		)`)
+	mustExec(t, playerDB, `
+		CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`)
+	mustExec(t, playerDB, `CREATE TABLE sessions (session_id VARCHAR, label VARCHAR)`)
+	mustExec(t, playerDB, `
+		CREATE TABLE career_progression (rank INTEGER, recorded_at TIMESTAMP)`)
+	mustExec(t, playerDB, `CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`)
+	mustExec(t, playerDB, `
+		CREATE TABLE match_skill_rank (
+			match_id VARCHAR PRIMARY KEY,
+			xuid VARCHAR,
+			rating_value DOUBLE
+		)`)
+
+	mustExec(t, playerDB, `
+		INSERT INTO player_match_enrichment VALUES
+		('m1', '`+sourceXUID+`', 'sess1', 78.5),
+		('m2', '`+sourceXUID+`', 'sess1', 65.0),
+		('m3', '`+sourceXUID+`', 'sess2', 82.3)`)
+	mustExec(t, playerDB, `INSERT INTO match_citations VALUES ('m1', 'kills', 15), ('m2', 'kills', 8)`)
+	mustExec(t, playerDB, `INSERT INTO sessions VALUES ('sess1', 'Session 1'), ('sess2', 'Session 2')`)
+	mustExec(t, playerDB, `INSERT INTO career_progression VALUES (10, TIMESTAMP '2026-05-22 18:00:00')`)
+	mustExec(t, playerDB, `INSERT INTO sync_meta VALUES ('xuid', '`+sourceXUID+`'), ('msal_token_cache', 'SECRET_DO_NOT_LEAK')`)
+	mustExec(t, playerDB, `INSERT INTO match_skill_rank VALUES ('m1', '`+sourceXUID+`', 1200.5)`)
+
+	return tmpDir, srcPlayer, srcShared, srcMeta
+}
+
+func mustExec(t *testing.T, db *sql.DB, q string) {
+	t.Helper()
+	if _, err := db.Exec(q); err != nil {
+		t.Fatalf("exec %q: %v", q[:min(60, len(q))], err)
+	}
+}
+
+func TestSeedDemo_EndToEnd_HappyPath(t *testing.T) {
+	tmpDir, srcPlayer, srcShared, srcMeta := seedSourceDBs(t)
+	const sourceXUID = "1111111111111111"
+	outDir := filepath.Join(tmpDir, "out")
+
+	opts := SeedDemoOptions{
+		SourcePlayerDB: srcPlayer,
+		SourceSharedDB: srcShared,
+		SourceMetaDB:   srcMeta,
+		SourceXUID:     sourceXUID,
+		OutDir:         outDir,
+		MaxMatches:     2, // limite à 2 → on garde m1 + m2 (les plus récents)
+		SourceLabel:    "JGtm",
+		ServiceTag:     "SPTA",
+		IncludeMedia:   false, // testé séparément
+	}
+	res, err := SeedDemo(context.Background(), opts)
+	if err != nil {
+		t.Fatalf("SeedDemo: %v", err)
+	}
+
+	// ── Sélection matches : m1 + m2 (m3 exclu par LIMIT 2)
+	if len(res.MatchIDs) != 2 {
+		t.Errorf("MatchIDs count = %d, want 2", len(res.MatchIDs))
+	}
+	wantMatches := map[string]bool{"m1": true, "m2": true}
+	for _, id := range res.MatchIDs {
+		if !wantMatches[id] {
+			t.Errorf("unexpected matchID: %s (m3 doit être exclu)", id)
+		}
+	}
+
+	// ── metadata copiée
+	outMeta := filepath.Join(outDir, "warehouse", "metadata.duckdb")
+	if _, err := os.Stat(outMeta); err != nil {
+		t.Fatalf("metadata.duckdb absent: %v", err)
+	}
+	verifyMetaCopied(t, outMeta)
+
+	// ── shared filtré + anonymisé
+	outShared := filepath.Join(outDir, "warehouse", "shared_matches_v2.duckdb")
+	verifySharedExtracted(t, outShared, sourceXUID)
+
+	// ── player filtré + anonymisé
+	outPlayer := filepath.Join(outDir, "players", DefaultDemoGamertag, "stats.duckdb")
+	verifyPlayerExtracted(t, outPlayer, sourceXUID)
+
+	// ── configs JSON
+	verifyConfigsWritten(t, outDir, "JGtm", "SPTA", false)
+}
+
+func TestSeedDemo_EndToEnd_NoMatchesForXUID(t *testing.T) {
+	_, srcPlayer, srcShared, srcMeta := seedSourceDBs(t)
+	tmpDir := t.TempDir()
+	opts := SeedDemoOptions{
+		SourcePlayerDB: srcPlayer,
+		SourceSharedDB: srcShared,
+		SourceMetaDB:   srcMeta,
+		SourceXUID:     "9999999999999999", // xuid inexistant
+		OutDir:         filepath.Join(tmpDir, "out"),
+		MaxMatches:     10,
+		SourceLabel:    "Phantom",
+	}
+	_, err := SeedDemo(context.Background(), opts)
+	if err == nil {
+		t.Fatal("expected error for unknown xuid")
+	}
+	if err != nil && !contains(err.Error(), "aucun match") {
+		t.Errorf("err = %v, want 'aucun match'", err)
+	}
+}
+
+func TestSeedDemo_EndToEnd_OutDirCreated(t *testing.T) {
+	tmpDir, srcPlayer, srcShared, srcMeta := seedSourceDBs(t)
+	// OutDir niché 3 niveaux profond, doit être créé récursivement.
+	outDir := filepath.Join(tmpDir, "a", "b", "c", "demo")
+	opts := SeedDemoOptions{
+		SourcePlayerDB: srcPlayer,
+		SourceSharedDB: srcShared,
+		SourceMetaDB:   srcMeta,
+		SourceXUID:     "1111111111111111",
+		OutDir:         outDir,
+		MaxMatches:     5,
+		SourceLabel:    "JGtm",
+	}
+	if _, err := SeedDemo(context.Background(), opts); err != nil {
+		t.Fatalf("SeedDemo: %v", err)
+	}
+	if _, err := os.Stat(outDir); err != nil {
+		t.Errorf("outDir not created: %v", err)
+	}
+}
+
+// ── Helpers de vérification ──────────────────────────────────────────────────
+
+func verifyMetaCopied(t *testing.T, path string) {
+	t.Helper()
+	db, err := sql.Open("duckdb", path+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM career_ranks`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("metadata.career_ranks = %d, want 2 (copie complète)", n)
+	}
+}
+
+func verifySharedExtracted(t *testing.T, path, sourceXUID string) {
+	t.Helper()
+	db, err := sql.Open("duckdb", path+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// match_registry : 2 matchs (m1 + m2).
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_registry`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("match_registry rows = %d, want 2", n)
+	}
+
+	// m3 ne doit pas être dans le set.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_registry WHERE match_id = 'm3'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("m3 leaked in shared filtré")
+	}
+
+	// match_participants : sourceXUID doit être anonymisé en DefaultDemoXUID.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("sourceXUID encore présent dans match_participants (%d rows)", n)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_participants WHERE xuid = ?`, DefaultDemoXUID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("demoXUID dans match_participants = %d, want 2 (1 par match m1+m2)", n)
+	}
+
+	// xuid_aliases : sourceXUID anonymisé aussi.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM xuid_aliases WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("sourceXUID encore présent dans xuid_aliases")
+	}
+
+	// vue v_match_full doit exister.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM v_match_full`).Scan(&n); err != nil {
+		t.Errorf("v_match_full inaccessible: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("v_match_full rows = %d, want 2", n)
+	}
+}
+
+func verifyPlayerExtracted(t *testing.T, path, sourceXUID string) {
+	t.Helper()
+	db, err := sql.Open("duckdb", path+"?access_mode=READ_ONLY")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// player_match_enrichment : 2 rows (m1 + m2), m3 exclu.
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("player_match_enrichment rows = %d, want 2", n)
+	}
+	// xuid anonymisé.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("sourceXUID encore dans player_match_enrichment")
+	}
+
+	// sync_meta : msal_token_cache exclu, xuid mis à jour.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("msal_token_cache LEAKED dans sync_meta démo")
+	}
+	var demoXUIDValue string
+	if err := db.QueryRow(`SELECT value FROM sync_meta WHERE key = 'xuid'`).Scan(&demoXUIDValue); err != nil {
+		t.Fatal(err)
+	}
+	if demoXUIDValue != DefaultDemoXUID {
+		t.Errorf("sync_meta.xuid = %q, want %q", demoXUIDValue, DefaultDemoXUID)
+	}
+
+	// sessions : copié intégralement (2 rows : sess1 + sess2).
+	if err := db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("sessions rows = %d, want 2 (copie intégrale)", n)
+	}
+
+	// match_skill_rank : 1 row (m1), anonymisé.
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Errorf("sourceXUID dans match_skill_rank, anonymisation manquée")
+	}
+}
+
+func verifyConfigsWritten(t *testing.T, outDir, sourceGamertag, serviceTag string, mediaEnabled bool) {
+	t.Helper()
+	profilesPath := filepath.Join(outDir, "db_profiles.json")
+	data, err := os.ReadFile(profilesPath)
+	if err != nil {
+		t.Fatalf("read profiles: %v", err)
+	}
+	var profiles map[string]any
+	if err := json.Unmarshal(data, &profiles); err != nil {
+		t.Fatalf("parse profiles: %v", err)
+	}
+	demoProfile, _ := profiles["profiles"].(map[string]any)[DefaultDemoGamertag].(map[string]any)
+	if demoProfile == nil {
+		t.Fatal("profile DEMO absent")
+	}
+	if v, _ := demoProfile["xuid"].(string); v != DefaultDemoXUID {
+		t.Errorf("DEMO.xuid = %q", v)
+	}
+	if v, _ := demoProfile["waypoint_player"].(string); v != sourceGamertag {
+		t.Errorf("DEMO.waypoint_player = %q, want %q", v, sourceGamertag)
+	}
+
+	settingsPath := filepath.Join(outDir, "app_settings.json")
+	settingsData, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read settings: %v", err)
+	}
+	var settings map[string]any
+	if err := json.Unmarshal(settingsData, &settings); err != nil {
+		t.Fatalf("parse settings: %v", err)
+	}
+	if v, _ := settings["profile_service_tag"].(string); v != serviceTag {
+		t.Errorf("service_tag = %q, want %q", v, serviceTag)
+	}
+	if v, _ := settings["media_enabled"].(bool); v != mediaEnabled {
+		t.Errorf("media_enabled = %v, want %v", v, mediaEnabled)
+	}
+}
+
+func contains(haystack, needle string) bool {
+	for i := 0; i+len(needle) <= len(haystack); i++ {
+		if haystack[i:i+len(needle)] == needle {
+			return true
+		}
+	}
+	return false
+}
+
+// Sanity ensure time.Time import usage (utilisé par seedSourceDBs ailleurs).
+var _ = time.Now

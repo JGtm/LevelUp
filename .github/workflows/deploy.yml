@@ -93,10 +93,17 @@ jobs:
             # Permissions fixées automatiquement par docker-entrypoint.sh (gosu pattern)
             mkdir -p data/demo
 
+            # Étape 1 : peupler les référentiels (career_ranks, citations, medals)
+            # dans data/demo/warehouse/metadata.duckdb. Idempotent.
             docker compose run --rm levelup \
               levelup seed career-ranks citation-mappings medals
-            # TODO: remplacer par la commande Go de génération des données démo
-            # (équivalent de l'ancien scripts/prepare_demo_data.py --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo)
+
+            # Étape 2 : extraire les matchs/player du joueur source (JGtm) en
+            # anonymisant son xuid → 0000000000000000. Réécrit shared/player/
+            # configs + médias. Cf. internal/ops/seed_demo.go (portage de
+            # l'ancien scripts/prepare_demo_data.py supprimé en c03707aa).
+            docker compose run --rm levelup \
+              levelup seed-demo --gamertag JGtm --max-matches 50 --service-tag SPTA --out data/demo
 
             # [Guard] Vérification post-regen — les fichiers doivent exister et être des fichiers
             echo "[regen] Vérification fichiers post-regen..."

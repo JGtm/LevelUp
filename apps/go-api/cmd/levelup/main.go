@@ -69,6 +69,8 @@ func main() {
 		exitErr = runIndexMedia(cfg, args)
 	case "seed":
 		exitErr = runSeed(cfg, args)
+	case "seed-demo":
+		exitErr = runSeedDemo(cfg, args)
 	case "notify-version":
 		exitErr = runNotifyVersion(cfg, args)
 	case "notify-sync":
@@ -128,6 +130,7 @@ Commandes:
   archive         Archiver les matchs anciens en Parquet
   index-media     Indexer et associer les medias au joueur
   seed            Peupler les referentiels metadata.duckdb
+  seed-demo       Generer les donnees demo (data/demo/) depuis un joueur source anonymise
   notify-version  Envoyer une notification Discord de nouvelle version
   notify-sync     Envoyer une notification Discord de fin de sync (test/debug)
   compare-db      Comparer la parite Go vs Python (DB joueur)
