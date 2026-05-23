@@ -39,6 +39,16 @@ const (
 	mediaKindImage = "image"
 )
 
+// Extensions video reconnues. Centralisées pour réduire la duplication entre
+// supportedExtensions (indexation prod) et classifyMediaKind (seed_demo).
+const (
+	extMP4  = ".mp4"
+	extMOV  = ".mov"
+	extAVI  = ".avi"
+	extMKV  = ".mkv"
+	extWEBM = ".webm"
+)
+
 // Types de colonne DuckDB récurrents dans les ALTER TABLE ADD COLUMN
 // de cette indexation. Centralisés pour réduire le bruit goconst.
 const (
@@ -84,8 +94,8 @@ type MediaIndexResult struct {
 
 // supportedExtensions sont les formats vidéo/image reconnus.
 var supportedExtensions = map[string]string{
-	".mp4": mediaKindVideo, ".mov": mediaKindVideo, ".avi": mediaKindVideo,
-	".mkv": mediaKindVideo, ".webm": mediaKindVideo,
+	extMP4: mediaKindVideo, extMOV: mediaKindVideo, extAVI: mediaKindVideo,
+	extMKV: mediaKindVideo, extWEBM: mediaKindVideo,
 	".png": mediaKindImage, ".jpg": mediaKindImage, ".jpeg": mediaKindImage,
 	".bmp": mediaKindImage, ".gif": mediaKindImage,
 }

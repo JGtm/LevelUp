@@ -195,6 +195,64 @@ func runIndexMedia(cfg *config.AppConfig, args []string) error {
 // seed
 // ─────────────────────────────────────────────────────────────────────────────
 
+// runSeedDemo génère le jeu de données démo (data/demo/) depuis un joueur source.
+// Portage de scripts/prepare_demo_data.py (supprimé au commit c03707aa lors du
+// nettoyage Python legacy).
+func runSeedDemo(cfg *config.AppConfig, args []string) error {
+	fs := flag.NewFlagSet("seed-demo", flag.ExitOnError)
+	gamertag := fs.String("gamertag", "JGtm", "Gamertag source (lu depuis db_profiles.json)")
+	maxMatches := fs.Int("max-matches", ops.DefaultMaxMatches, "Nombre de matchs à extraire")
+	outDir := fs.String("out", "data/demo", "Répertoire de sortie (relatif au repo root)")
+	serviceTag := fs.String("service-tag", "SPTA", "Spartan ID affiché sous le gamertag DEMO")
+	maxMedia := fs.Int("max-media", ops.DefaultMaxMedia, "Nombre max de fichiers média à extraire")
+	noMedia := fs.Bool("no-media", false, "Désactiver l'extraction média")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	// Résoudre le xuid source depuis db_profiles.json.
+	profilesPath := cfg.DBProfilesPath
+	if profilesPath == "" {
+		profilesPath = filepath.Join(cfg.RepoRoot, "db_profiles.json")
+	}
+	sourceXUID, srcPlayerRel, err := ops.ResolveSourceXUIDFromProfiles(profilesPath, *gamertag)
+	if err != nil {
+		return fmt.Errorf("seed-demo: resolve xuid: %w", err)
+	}
+
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	opts := ops.SeedDemoOptions{
+		SourcePlayerDB: filepath.Join(cfg.RepoRoot, srcPlayerRel),
+		SourceSharedDB: pr.SharedDBPath(title.DefaultSlug),
+		SourceMetaDB:   pr.MetadataDBPath(title.DefaultSlug),
+		SourceXUID:     sourceXUID,
+		OutDir:         filepath.Join(cfg.RepoRoot, *outDir),
+		MaxMatches:     *maxMatches,
+		SourceLabel:    *gamertag,
+		ServiceTag:     *serviceTag,
+		IncludeMedia:   !*noMedia,
+		MaxMedia:       *maxMedia,
+	}
+
+	ctx := context.Background()
+	res, err := ops.SeedDemo(ctx, opts)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("✅ Données démo générées dans %s\n", res.OutDir)
+	fmt.Printf("   - %d matchs extraits\n", len(res.MatchIDs))
+	fmt.Printf("   - metadata.duckdb: copiée\n")
+	fmt.Printf("   - shared_matches_v2.duckdb: %v\n", res.SharedRows)
+	fmt.Printf("   - stats.duckdb: %v\n", res.PlayerRows)
+	if res.MediaCopied > 0 {
+		fmt.Printf("   - %d fichiers média copiés\n", res.MediaCopied)
+	}
+	fmt.Printf("   - db_profiles.json + app_settings.json: écrits\n")
+	fmt.Printf("   Durée: %s\n", res.Duration.Round(time.Millisecond))
+	return nil
+}
+
 func runSeed(cfg *config.AppConfig, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("composant requis: career-ranks | citation-mappings | medals")
