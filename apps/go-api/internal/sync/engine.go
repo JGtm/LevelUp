@@ -291,8 +291,13 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// Wrap le client avec un cache fichier sous data/sync_cache/{cycle_id}/.
 	// Désactivable via LEVELUP_PERSIST_NO_FETCH_CACHE=1. cycle_id = eventID
 	// du run (créé via logging.WithEvent en début de run).
+	//
+	// L'eventID contient `:` (format `sync.RunDelta:abc123`) qui est interdit
+	// dans les noms de fichier/dossier sur Windows. On normalise `:` → `_`
+	// pour le nom du dossier de cache.
 	if os.Getenv("LEVELUP_PERSIST_NO_FETCH_CACHE") != "1" && e.syncCacheDir != "" {
-		cacheDir := filepath.Join(e.syncCacheDir, eventID)
+		safeCycleID := strings.ReplaceAll(eventID, ":", "_")
+		cacheDir := filepath.Join(e.syncCacheDir, safeCycleID)
 		client = NewCachedHaloClient(client, FetchCacheConfig{CacheDir: cacheDir})
 		slog.InfoContext(ctx, "sync: cache fetch intermédiaire actif",
 			"gamertag", e.gamertag, "cache_dir", cacheDir)
