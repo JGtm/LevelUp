@@ -24,7 +24,10 @@ import (
 	"log/slog"
 	"os"
 	gosync "sync"
+	"sync/atomic"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
@@ -349,22 +352,49 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 		return res
 	}
 	res.Total = len(players)
+
+	// Phase 3.4 (plan stabilisation 2026-05-22) — paralléliser le cycle :
+	// chaque syncPlayer tourne dans une goroutine, errgroup.SetLimit borne à
+	// la taille du pool de tokens. Gain estimé 15min → 5-8min sur 3 joueurs.
+	//
+	// Safety : syncPlayer met à jour s.playerOutcomes via recordOutcome qui est
+	// protégé par s.snapshotMu. Les writes shared sont déjà sérialisés par
+	// dblease.leaseMutex + singleflight match_participants (phase 2.3). Les
+	// compteurs locaux (Synced/Skipped/Failed) sont protégés via atomic.Int32.
+	parallelism := s.poolSizeSafe()
+	if parallelism < 1 {
+		parallelism = 1
+	}
 	slog.InfoContext(ctx, "auto_sync: démarrage du cycle",
 		"player_count", res.Total,
-		"pool_size", s.poolSizeSafe(),
+		"pool_size", parallelism,
+		"parallel", parallelism > 1,
 	)
 
+	var synced, skipped, failed atomic.Int32
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(parallelism)
 	for _, p := range players {
-		outcome := s.syncPlayer(ctx, p)
-		switch outcome {
-		case outcomeOK:
-			res.Synced++
-		case outcomeSkipped:
-			res.Skipped++
-		case outcomeFailed:
-			res.Failed++
-		}
+		p := p
+		eg.Go(func() error {
+			outcome := s.syncPlayer(egCtx, p)
+			switch outcome {
+			case outcomeOK:
+				synced.Add(1)
+			case outcomeSkipped:
+				skipped.Add(1)
+			case outcomeFailed:
+				failed.Add(1)
+			}
+			// Best-effort : un échec syncPlayer n'annule pas les autres goroutines.
+			// L'erreur est déjà loggée + reflétée dans res.Failed++.
+			return nil
+		})
 	}
+	_ = eg.Wait()
+	res.Synced = int(synced.Load())
+	res.Skipped = int(skipped.Load())
+	res.Failed = int(failed.Load())
 
 	res.Duration = time.Since(start)
 
