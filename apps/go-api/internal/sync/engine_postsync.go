@@ -24,6 +24,9 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"sync/atomic"
+
+	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -331,19 +334,36 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
-	// 4. Aggregates (materialized views)
-	slog.DebugContext(ctx, "post-sync: refresh aggregates player", "gamertag", e.gamertag)
-	if n, err := refreshAggregates(ctx, playerDB); err != nil {
-		slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
-	} else {
-		r.ViewsRefreshed = n
-	}
-	slog.DebugContext(ctx, "post-sync: refresh shared views", "gamertag", e.gamertag)
-	if n, err := refreshSharedViews(ctx, sharedDB); err != nil {
-		slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
-	} else {
-		r.ViewsRefreshed += n
-	}
+	// 4. Aggregates (materialized views) — Phase 4.5 plan stabilisation
+	// 2026-05-22 : refreshAggregates (player DB) et refreshSharedViews
+	// (shared DB) tournent en parallèle via errgroup. DBs différentes →
+	// pas de risque de conflit ni de race. Gain marginal 500ms-2s/cycle
+	// (les 2 refresh sont des CREATE OR REPLACE VIEW idempotents). Le
+	// compteur ViewsRefreshed est atomic pour éviter une race sur l'ajout
+	// concurrent.
+	slog.DebugContext(ctx, "post-sync: refresh aggregates+views (parallel)", "gamertag", e.gamertag)
+	var viewsRefreshed atomic.Int32
+	egRefresh := &errgroup.Group{}
+	egRefresh.Go(func() error {
+		n, err := refreshAggregates(ctx, playerDB)
+		if err != nil {
+			slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
+			return nil //nolint:nilerr // best-effort, ne propage pas (cohérent avec ancien comportement)
+		}
+		viewsRefreshed.Add(int32(n))
+		return nil
+	})
+	egRefresh.Go(func() error {
+		n, err := refreshSharedViews(ctx, sharedDB)
+		if err != nil {
+			slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
+			return nil //nolint:nilerr // best-effort idem
+		}
+		viewsRefreshed.Add(int32(n))
+		return nil
+	})
+	_ = egRefresh.Wait()
+	r.ViewsRefreshed = int(viewsRefreshed.Load())
 
 	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
 	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
