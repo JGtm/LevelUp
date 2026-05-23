@@ -984,9 +984,24 @@ func rankIDFromData(rank *domain.CareerRankData) int {
 	return rank.RankNumber
 }
 
+// rankSubRoman convertit un sous-rang arabe (1–6) en chiffre romain.
+// "Bronze 1" → "Bronze I", "Diamant 6" → "Diamant VI", "Onyx" → "Onyx".
+func rankSubRoman(label string) string {
+	n := len(label)
+	if n < 2 || label[n-2] != ' ' {
+		return label
+	}
+	c := label[n-1]
+	if c < '1' || c > '6' {
+		return label
+	}
+	roman := [7]string{"", "I", "II", "III", "IV", "V", "VI"}
+	return label[:n-2] + " " + roman[c-'0']
+}
+
 func formatRankLabel(rank *domain.CareerRankData) string {
 	if rank.RankLabel != nil && *rank.RankLabel != "" {
-		return *rank.RankLabel
+		return rankSubRoman(*rank.RankLabel)
 	}
 	var parts []string
 	if rank.RankName != nil && *rank.RankName != "" {
@@ -1000,7 +1015,7 @@ func formatRankLabel(rank *domain.CareerRankData) string {
 		for _, p := range parts[1:] {
 			result += " - " + p
 		}
-		return result
+		return rankSubRoman(result)
 	}
 	return fmt.Sprintf("Rang %d", rank.RankNumber)
 }

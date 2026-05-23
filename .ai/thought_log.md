@@ -604,6 +604,152 @@ Stoppe via `schedulerCtx.Done()` (graceful shutdown ok).
 
 ---
 
+## [2026-05-23] design — Plan coaching complet : profil + patterns + leviers (v3)
+
+**Statut** : Complété (plan seulement — pas de code).
+
+**Décision technique** : Audit end-to-end du système de coaching a révélé 3 niveaux de problèmes : (1) streaks perf-based cassées (médiane KDA calculée mais jamais injectée), (2) `PlayerProfile` A1/A2/B/C + leviers entièrement calculés côté backend mais sans aucun hook frontend — endpoint fantôme, (3) Pattern Engine manquant. Plan restructuré en 4 phases avec valeur joueur à chaque livraison : Phase 0 = réparer + surfacer les orphelins (~3h), Phase 1 = patterns contextuels par mode/map/squad avec OC/DR/DeltaCSR/DeltaLUSR (~6h), Phase 2 = patterns comportementaux tilt/fatigue/engagement drop avec paire EngageScore+ResidualBrut (~5h), Phase 3 = leviers calibrés sur p60 + 4 nouveaux AlertTypes coach (~5h). Frontière claire : `ProfileService.C` = leviers agrégats LUSR, Pattern Engine = leviers calibrés contextuels — complémentaires, non redondants.
+
+**Livrables** :
+- `.ai/PLAN_PATTERN_ENGINE.md` — plan v3 détaillé (14 commits, ~19h, architecture en couches, use cases métier par phase).
+
+**Résultats** : Aucun code modifié. Plan prêt pour implémentation.
+
+**Prochaine étape** : Commit 1 = fix streaks perf-based (1 ligne `post_sync_progression.go` + test) sur branche `feat/pattern-engine`.
+
+---
+
+## [2026-05-23] ux — CSR/LUSR : "Non classé" pour 0 matchs de placement
+
+**Statut** : Complété.
+
+**Décision technique** : Distinction entre 0 matchs de placement (joueur n'a pas commencé → "Non classé") et 1-N matchs en cours (→ "En placement (X/N)"). Appliqué uniformément sur CSR et LUSR. Ajout clé i18n `career.ranking.unranked` (TOML + generated). 4 points de modification : `HomeSkillPeakCard.resolveSkillPeakState`, `HomeRecentPlaylistsCard` (label badge + texte), `CareerRankingBlock.csrTierLabel` (CSR), `CareerRankingBlock` ligne LUSR (`cp === null`). Legacy path (payload sans `measurement_matches_remaining`) conserve "En placement" faute d'information.
+
+**Résultats** : 5 fichiers modifiés, 0 régression attendue (branche logique indépendante).
+
+**Prochaine étape** : Phase 1 câblage OC/DR Career.
+
+---
+
+## [2026-05-23] design — Plan câblage profil combat OC + DR + Engagement
+
+**Statut** : Complété (plan seulement — pas de code).
+
+**Décision technique** : Exploration DD/(K+A) → abandonné (doublon `offensive_conversion`). Audit complet des surfaces : OC/DR déjà wired dans Match View Scoreboard, MatchCard et Timeseries — manquants dans Career, Session Compare, Synthesis, Escouade. Engagement wired uniquement en intra-match et squad. `ResidualBrut` (cross-joueurs) vs `EngagementScore` (self-relatif) clarifiés. Archétypes Soldat/Fonçeur/Sniper/Fantôme définis avec distinctions DR (Proie facile vs vrai Fantôme).
+
+**Livrables** :
+- `.ai/PLAN_COMBAT_PROFILE_WIRING.md` — plan 6 phases avec état des lieux, fichiers cibles, ordre recommandé.
+
+**Résultats** : Aucun code modifié. ADR 0018 supprimé (prématuré).
+
+**Prochaine étape** : Phase 1 = Career KPI tiles OC + DR (~1 j, risque faible).
+
+---
+
+## [2026-05-23] ux — Rangs de carrière en chiffres romains (sous-rang 1–6)
+
+**Statut** : Complété (branche `chore/post-stabilisation-debt`).
+
+**Décision technique** : Conversion "Bronze 1" → "Bronze I" partout où les rangs de carrière sont affichés. Helper `rankSubRoman(label)` : détecte l'espace + chiffre 1–6 en fin de chaîne et remplace par le chiffre romain correspondant. Défini dans 3 packages sans couplage entre eux (`service`, `analysis`, `api`). Pas exporté — usage local dans chaque package.
+
+**Livrables** :
+- `internal/service/career_service.go` : `rankSubRoman` + appliqué dans `formatRankLabel()` (fallback RankLabel + résultat final)
+- `internal/analysis/home_kpis.go` : `rankSubRoman` + appliqué dans `buildHomeCareerRank()` fallback `RankName`
+- `internal/api/post_sync_deltas.go` : `rankSubRoman` + appliqué sur `CurrentRankName` dans la notification `career_rank`
+
+**Résultats** : `go build ./...` — OK. Aucun hex couleur introduit, aucune violation de taille.
+
+**Prochaine étape** : Vérification visuelle (page Career, home hero card, notifications post-sync).
+
+---
+
+## [2026-05-23] ux — Fusion flamme Ascension + widget home Ascension/Prestige
+
+**Statut** : Complété (branche `feat/post-sync-media-scan`).
+
+**Décision technique** :
+- **NavL1** : Icône flamme SVG (`NavFlameIcon`) intégrée dans le label du bouton "Ascension" via champ `icon?: ReactNode` sur `L1Section`. Nouvel onglet "Streaks" → `/ascension` ajouté au dropdown. `matchPathname` étendu à `/ascension`. `StreakBadge` standalone supprimé (badge count retiré pour netteté).
+- **HomeAscensionWidget** : Nouveau composant (`features/home/HomeAscensionWidget.tsx`) affichant toutes les streaks non-cassées (active + paused) avec longueur courante et multiplicateur PP. Skeleton loading, empty state, lien "Voir tout →".
+- **HomePage** : Section Prestige encapsulée dans une grille `xl:grid-cols-[1fr_2fr] xl:items-start` avec `HomeAscensionWidget` à gauche (1/3) et `HomePrestigeSection` à droite (2/3). Sur mobile : empilement vertical (`grid-cols-1`).
+
+**Résultats** : 3 fichiers modifiés + 1 créé. Aucun hex couleur introduit, aucun import Pandas/SQLite, aucune violation de taille.
+
+**Prochaine étape** : Vérification visuelle (flamme dans nav, widget home).
+
+---
+
+## [2026-05-23] feat — Butterfly Synthèse : matchs classés, rendement, résistance
+
+**Statut** : Complété (branche `chore/post-stabilisation-debt`).
+
+**Décision technique** : Ajout de 3 nouvelles métriques dans le graphe butterfly Solo/Escouade de la page Synthèse. Calcul OC/DR agrégé : `OC = 225 × (ΣKills + ΣAssists/3) / ΣDamageDelt` et `DR = ΣDamageTaken / (225 × ΣDeaths)` — cohérent avec `combat_yield.go`. `ranked_match_count` compté via `canonical.MatchSummary.IsRanked`.
+
+**Positionnement** : `ranked_match_count` après `match_count` · `offensive_conversion` après `avg_damage_dealt` · `defensive_resistance` après `avg_damage_taken`. 15 → 18 items.
+
+**Livrables** : `domain/squad.go` (+3 champs `SynthesisKPIs`) · `analysis/squad_breakdown.go` (`extKPIAcc.sumKills` + `nRanked`, `applyTo`, `ComputeComparisonMetrics`) · `config/fields.toml` (3 labels FR/EN) · `SynthesisBipolaireChart.tsx` (formatage %).
+
+**Prochaine étape** : Vérification visuelle après redémarrage API Go.
+
+---
+
+## [2026-05-23] ux — Terminologie "Objectifs" (≠ Défis Halo) + Rendement/Résistance dans KpiGrid
+
+**Statut** : Complété (branche `feat/post-sync-media-scan`).
+
+**Décision technique** :
+- **Défis → Objectifs** : Le terme "Défis" est réservé aux challenges officiels Halo Infinite (hebdo/quotidien). Toutes les occurrences dans le système Prestige/Ascension (ObjectifsPage.tsx, NavL1.tsx onglet, common.toml prestige section, profile.toml campaign/suggestions) remplacées par "Objectifs". Fichiers i18n générés après TOML. Les sections `home.challenges.*` et `palmares.season_pass.challenges_*` (challenges Halo officiels) sont inchangées.
+- **Rendement & Résistance dans KpiGrid** : Ajout de `AvgOffensiveConversion *float64` et `AvgDefensiveResistance *float64` à `domain.KPIStats`. Calcul dans `ComputeKPIStats` via `ComputeCombatYield` per-match + moyenne (même logique que `home_canonical_kpis.go`). Champs propagés TS (`types.ts`), labels FR/EN ajoutés à `BriefingTexts`, 2 cards conditionnelles dans `KpiGrid` (affichées si données dispo). Format : `(val*100).toFixed(0)%` aligné home page.
+- **Graphe Rendement & Résistance** : Axe Y formaté en `%`, tooltip reformaté (`pctFormatter`), label réf "Réf. 1.0" → "Réf. 100%".
+
+**Complément** : 2 graphes supplémentaires corrigés — `TimeseriesCombatYield.tsx` (stats solo MatchHistory) et `squadEfficiencyChart.ts` (escouade axe Y). Total 14 fichiers modifiés, Go compile, TypeScript propre (0 erreur).
+
+**Prochaine étape** : Vérification visuelle en app.
+
+---
+
+## [2026-05-22] chore — Uniformisation UI/UX : rendement/résistance %, chiffres romains CSR/LUSR, badge kamikaze sans timestamp
+
+**Statut** : Complété (branche `chore/post-stabilisation-debt`).
+
+**Décision technique** :
+- **Rendement/Résistance** : Le format de référence (KPI bar home + MatchScoreboard) est `(val*100).toFixed(0)%` pour le rendement et `((val-1)*100).toFixed(0)%` pour la résistance. `CombatYieldBar` tooltip et le chart squad affichaient le ratio brut `.toFixed(2)` — uniformisés en `%`. Le squad chart tooltip distingue les deux séries via `opts.rendementLabel` / `opts.resistanceLabel`.
+- **Chiffres romains CSR/LUSR** : Trois points en chiffres arabes corrigés : (1) `home_canonical_skill.go` (badge home API — ajout d'un tableau `csrSubTierRoman` local), (2) `LeaderboardBlock.tsx`, (3) `CareerRankingBlock.tsx` section CSR. Les notifications (`format.ts`) converties via `enrichParams` pour couvrir aussi les notifications existantes stockées en base. Template i18n simplifié : suppression du label "sous-palier" / "sub" devenu redondant avec le chiffre romain.
+- **Badge kamikaze** : Badge "fréquence sur tout le match" — le `time_ms` correspond à une occurrence spécifique non représentative. Ajouté à `BADGE_META` avec `hideTime: true` et `variant: 'secondary'` (aligné sur les autres badges stat-based). Le graphe `MatchKDCumulChart` n'est pas affecté (continue à positionner le badge sur la courbe).
+
+**Résultats** : 8 fichiers modifiés, 0 régression architecturale (pas de nouvelle abstraction, pas de duplication).
+
+**Prochaine étape** : Vérification visuelle.
+
+---
+
+## [2026-05-22] feat — Post-sync media scan (indexation automatique des captures après sync)
+
+**Statut** : Complété (branche `feat/post-sync-media-scan`).
+
+**Décision technique** : Couplage de l'indexation médias au pipeline post-sync via un hook `func(ctx context.Context)` injecté dans `SyncEngine`. Pattern identique au `prestigeHook` existant — best-effort, non-bloquant.
+
+**Problème résolu** : Les fichiers médias (vidéos OBS, captures Xbox) déposés dans `captures/` avant ou pendant une sync n'étaient jamais associés aux matchs automatiquement. L'association ne se faisait que sur upload HTTP ou scan manuel via `/settings/media/scan`. L'auto-sync (15 min) ignorait complètement les médias.
+
+**Livrables** :
+- `sync/engine.go` : champ `mediaHook func(ctx context.Context)` ajouté à `SyncEngine`
+- `sync/engine_options.go` : `WithMediaScanHook` option setter
+- `sync/engine_postsync.go` : appel du hook en étape 4.5 (après aggregates, avant achievements)
+- `service/media_index_service.go` : `BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn func() string)` — factory exportée, charge `MediaCapturesBaseDir` depuis settings de façon paresseuse
+- `scheduler/auto_sync.go` : câblage dans `defaultRunnerFactory` (auto-sync 15 min + watcher)
+- `handlers/sync_handler.go` : câblage dans `newEngineFor` (sync HTTP manuelle)
+
+**Propriétés** :
+- `ForceRescan=false` → seuls les nouveaux fichiers sont traités ; coût nul si rien de nouveau
+- Répertoire absent → skip silencieux
+- Erreur → `slog.Warn` non-fatal, sync inchangée
+- `capturesBaseDirFn` lazy → respecte les settings modifiés live sans redémarrage
+
+**Résultats** : `go build ./...` OK, zéro erreur.
+
+**Prochaine étape** : aucune (feature complète). Amélioration possible si la génération de thumbnails ffmpeg devient un goulot : extraire en goroutine détachée avec timeout.
+
+---
+
 ## [2026-05-22] docs — Phase 5 plan stabilisation : ADR 0017 + ADR 0014 update + runbook ops + archive audits
 
 **Statut** : Complété (branche `docs/post-stabilisation`).

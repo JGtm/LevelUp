@@ -66,6 +66,7 @@ export const careerManifest = {
   "career.ranking.lusr_section": { fr: "LUSR", en: "LUSR" },
   "career.ranking.lusr_tooltip": { fr: "Le LUSR (LevelUp Skill Rating) est calculé localement depuis vos résultats récents. Indépendant du CSR officiel.", en: "LUSR (LevelUp Skill Rating) is calculated locally from your recent results. Independent from the official CSR." },
   "career.ranking.placement": { fr: "Placement", en: "Placement" },
+  "career.ranking.unranked": { fr: "Non classé", en: "Unranked" },
   "career.ranking.title": { fr: "Classements", en: "Rankings" },
   "career.ranking.tooltip": { fr: "CSR : classement officiel Halo Waypoint par playlist ranked. LUSR : rating local calculé depuis vos matchs synchés.", en: "CSR: official Halo Waypoint ranking per ranked playlist. LUSR: local rating calculated from your synced matches." },
   "career.rivals.col_deaths": { fr: "Morts", en: "Deaths" },

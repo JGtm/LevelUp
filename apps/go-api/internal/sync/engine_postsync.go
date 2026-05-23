@@ -367,6 +367,15 @@ func (e *SyncEngine) runPostSyncPipeline(
 	_ = egRefresh.Wait()
 	r.ViewsRefreshed = int(viewsRefreshed.Load())
 
+	// 4.5 Media scan post-sync — indexe les captures présentes dans le dossier
+	// du joueur et les associe aux matchs fraîchement insérés (best-effort).
+	// ForceRescan=false : seuls les nouveaux fichiers sont traités → coût nul
+	// si aucune nouvelle capture depuis la dernière sync.
+	if e.mediaHook != nil {
+		slog.DebugContext(ctx, "post-sync: scan médias", "gamertag", e.gamertag)
+		e.mediaHook(ctx)
+	}
+
 	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
 	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
 

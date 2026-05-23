@@ -230,6 +230,7 @@ type TopWeekEntry struct {
 // SynthesisKPIs contient les métriques agrégées solo ou escouade (Sprint 43).
 type SynthesisKPIs struct {
 	MatchCount             int      `json:"match_count"`
+	RankedMatchCount       int      `json:"ranked_match_count"`
 	Wins                   int      `json:"wins"`
 	TotalTimePlayedSeconds int      `json:"total_time_played_seconds"`
 	KDRatio                *float64 `json:"kd_ratio"`
@@ -245,6 +246,8 @@ type SynthesisKPIs struct {
 	AvgDamageDealt         *float64 `json:"avg_damage_dealt"`
 	AvgDamageTaken         *float64 `json:"avg_damage_taken"`
 	PerfectKillsPerMatch   *float64 `json:"perfect_kills_per_match"`
+	AvgOffensiveConversion *float64 `json:"avg_offensive_conversion,omitempty"`
+	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
 }
 
 // ComparisonMetricItem est une métrique bipolaire solo / escouade.

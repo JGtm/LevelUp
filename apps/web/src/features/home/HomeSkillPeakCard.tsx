@@ -103,6 +103,7 @@ export function resolveSkillPeakState(
     if (remaining > 0) {
       const total = peak.placement_total ?? 10
       const completed = Math.max(0, Math.min(total - 1, total - remaining))
+      if (completed === 0) return { state: 'placement', detail: 'Non classé' }
       return { state: 'placement', detail: `En placement (${completed}/${total})` }
     }
     return { state: 'value', detail: '' }

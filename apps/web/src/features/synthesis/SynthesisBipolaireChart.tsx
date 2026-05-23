@@ -35,8 +35,13 @@ function formatMetricValue(key: string, value: number): string {
     case 'accuracy':
       // 0-100 nativement dans canonical.PlayerSelf (échelle API Halo) → pas de ×100
       return `${value.toFixed(1)}%`
+    case 'offensive_conversion':
+      return `${Math.round(value * 100)}%`
+    case 'defensive_resistance':
+      return `${Math.round((value - 1) * 100)}%`
     case 'performance_score':
     case 'match_count':
+    case 'ranked_match_count':
     case 'avg_damage_dealt':
     case 'avg_damage_taken':
       return value.toFixed(0)

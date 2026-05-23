@@ -25,6 +25,7 @@ import { HomeSessionCarousel } from './HomeSessionCarousel'
 import { HomeSpartanIdentityBanner } from './HomeSpartanIdentityBanner'
 import { HomeHeroKPIGrid } from './HomeHeroKPIGrid'
 import { HomePrestigeSection } from './HomePrestigeSection'
+import { HomeAscensionWidget } from './HomeAscensionWidget'
 import { useHomePage, useSeasonPassPreview } from './queries'
 import { useSettings } from '@/features/settings/queries'
 import { useSetMatchFavorite } from '@/features/match-history/queries'
@@ -302,9 +303,12 @@ export function HomePage() {
           </Card>
         </div>
 
-        {/* Section Prestige unifiée (PP + arc + objectifs) — masquée si show_progression=false */}
+        {/* Section Ascension (1/3) + Prestige (2/3) — masquées si show_progression=false */}
         {showProgression && (
-          <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr] xl:items-start">
+            <HomeAscensionWidget playerSlug={playerSlug} locale={locale} />
+            <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
+          </div>
         )}
 
         {/* Highlights */}

@@ -84,7 +84,18 @@ export function buildSquadEfficiencyTrackOption(
         const label = xLabels[items[0].dataIndex] ?? `#${items[0].dataIndex + 1}`
         const lines = items
           .filter((it) => it.value !== null)
-          .map((it) => `${it.marker} ${it.seriesName}: <b>${(it.value as number).toFixed(2)}</b>`)
+          .map((it) => {
+            const val = it.value as number
+            let formatted: string
+            if (it.seriesName === opts.rendementLabel) {
+              formatted = `${Math.round(val * 100)}%`
+            } else if (it.seriesName === opts.resistanceLabel) {
+              formatted = `${Math.round((val - 1) * 100)}%`
+            } else {
+              formatted = val.toFixed(2)
+            }
+            return `${it.marker} ${it.seriesName}: <b>${formatted}</b>`
+          })
         return `<div style="font-size:11px">${label}<br/>${lines.join('<br/>')}</div>`
       },
     },
@@ -105,7 +116,7 @@ export function buildSquadEfficiencyTrackOption(
       max: opts.yMax,
       axisLabel: {
         ...axis.axisLabel,
-        formatter: (v: number) => v.toFixed(1),
+        formatter: (v: number) => `${Math.round(v * 100)}%`,
       },
     },
     series: [

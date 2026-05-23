@@ -51,6 +51,8 @@ const (
 	csrRankImageTemplate = csrRankImageBasePath + "120px-HINF-CSR_%s%d.png"
 )
 
+var csrSubTierRoman = [7]string{"", "I", "II", "III", "IV", "V", "VI"}
+
 func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*string, *string) {
 	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
 	if tierEN == "" {
@@ -81,7 +83,7 @@ func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*st
 		if st < 1 || st > 6 {
 			return nil, nil
 		}
-		label = fmt.Sprintf("%s %d", display, st)
+		label = fmt.Sprintf("%s %s", display, csrSubTierRoman[st])
 		urlStr = fmt.Sprintf(csrRankImageTemplate, tierENcap, st)
 	}
 

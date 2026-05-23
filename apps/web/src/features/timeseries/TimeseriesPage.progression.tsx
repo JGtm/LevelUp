@@ -149,9 +149,9 @@ export function TimeseriesProgressionTab({
       >
         <TimeseriesEfficiency
           rows={data.match_rows ?? []}
-          rendementLabel={locale === 'en' ? 'Output' : 'Rendement'}
-          resistanceLabel={locale === 'en' ? 'Resistance' : 'Résistance'}
-          refLabel={locale === 'en' ? 'Ref. 1.0' : 'Réf. 1.0'}
+          rendementLabel={fieldMappings?.fields['offensive_conversion']?.label ?? 'Rendement'}
+          resistanceLabel={fieldMappings?.fields['defensive_resistance']?.label ?? 'Résistance'}
+          refLabel={locale === 'en' ? 'Ref. 100%' : 'Réf. 100%'}
         />
       </ChartFrame>
 
