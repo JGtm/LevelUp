@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 )
 
 // participantsSF déduplique les UPSERTs concurrents sur match_participants par
@@ -116,12 +117,19 @@ func InsertParticipants(ctx context.Context, db *sql.DB, rows []ParticipantRow) 
 		// Singleflight dédupe les UPSERTs concurrents sur la même clé
 		// (match_id, xuid) — cf. ADR 0018 + plan Phase 1.3. Évite les races
 		// ART DuckDB observées en prod le 2026-05-22.
-		_, err, _ := participantsSF.Do(key, func() (any, error) {
+		_, err, shared := participantsSF.Do(key, func() (any, error) {
 			return nil, insertParticipantRow(ctx, db, row, now)
 		})
+		// Phase 4.3 métriques : compteur des hits singleflight (dédupe) pour
+		// observabilité de la concurrence réelle en prod via /debug/vars.
+		if shared {
+			observability.IncCounter("singleflight_dedupe_total")
+		}
 		if err != nil {
+			observability.IncCounter("upsert_match_participants_total_error")
 			return err
 		}
+		observability.IncCounter("upsert_match_participants_total_ok")
 	}
 	return nil
 }
