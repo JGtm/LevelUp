@@ -1,3 +1,42 @@
+## [2026-05-24] Phase 3 prep — gap C timeout + BACKLOG + plan auth + audit ART (0 corruption)
+
+**Statut** : Complété
+
+**Tâche** : Suite aux questions du user sur safety/guards + cohérence MSAL vs pool + dommages ART :
+1. Implémenter gap C (timeout par Persist call)
+2. Documenter les 6 gaps restants dans BACKLOG.md
+3. Rédiger un plan d'analyse pour fixer l'incohérence auth (MSAL TokenProvider vs auth.Pool)
+4. Auditer la DB shared pour quantifier la corruption ART et décider si restore backup nécessaire
+
+**Décisions techniques principales** :
+
+- **Gap C — timeout par Persist call** : `persistTimeout = 30 * time.Second` ; chaque appel `SharedPersister.Persist` et `PlayerPersister.Persist` est désormais wrappé avec `context.WithTimeout(ctx, persistTimeout)`. Si DuckDB hang (lock interne, IO disque saturée), la TX est annulée via ctx, defer Rollback nettoie, et un nouveau compteur expvar `persist_{shared,player}_total_timeout` permet l'observation. Commit `engine_batch_path.go`.
+
+- **BACKLOG des 6 gaps** : créée section `[persist/safety]` dans `.ai/BACKLOG.md` listant A (retry backoff), B (DLQ), D (circuit breaker), E (health endpoint), F (RecoverPending boot wiring), G (test FATAL injecté). Effort estimé par item (45min à 2h). À traiter post-Phase 3 stabilisée, ou plus tôt si incident.
+
+- **Plan auth unification** : créé `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md` (~250 lignes). Documente la divergence (3 sources credentials × 3 consommateurs indépendants) + causes historiques (pool legacy multi-joueur vs MSAL provider plus récent ajouté pour watcher RTA). 5 options analysées (A re-scan périodique, B watcher notifie pool, C SyncEngine écrit sync_meta au début, D Discovery lit aussi watcher_tokens.json, E unification sur TokenProvider gros refactor). Recommandation : **court terme = D+C combo** (~1h30 effort, peuple pool sans reboot), **long terme = E** (unification, 6-8h, après Phase 3 stabilisée).
+
+- **Audit ART corruption** : créé `cmd/diag_art_corruption_audit/main.go` (read-only sur shared_matches_v2.duckdb). Résultats :
+  - 1622 matchs registry / 25131 participants rows / **1622 distinct match_id dans participants** = 100% cohérence
+  - **0 matchs avec 0 participants** (pas d'INSERT raté)
+  - **0 matchs avec <4 participants** (pas de partial write)
+  - 12 matchs dans la fenêtre incident 22-23 mai → tous OK
+  - 271 rows `shared.match_csrs` préservées (CSR backfill intact)
+  - **Verdict : DB saine, pas besoin de restore le backup pre-CSR**. Le bug ART faisait crasher les UPSERT (FATAL) → TX rollback → aucune écriture partielle persistée. Les RebuildART runtime + retry legacy ont protégé l'intégrité.
+
+**Résultats observés** :
+
+- `go build ./...` clean, `go vet ./...` clean.
+- Tests intégration sync + persist GREEN après ajout du timeout.
+
+**Prochaine étape** :
+
+1. **USER** : décision GO/NO-GO pour activer Phase 3 — l'audit ART confirme que la DB est saine, donc activation sereine.
+2. **USER** : choisir si on attaque immédiatement le plan auth (option D+C) ou si on le pousse en backlog pour après Phase 3 validée.
+3. Si activation Phase 3 + observation 5-10 cycles OK : Phase 5 cleanup anti-ART (suppression singleflight, CHECKPOINT, UPDATE-then-INSERT).
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Smoke test prod + 2 fixes (Windows dir + NaN JSON)
 
 **Statut** : Complété

@@ -24,11 +24,19 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
+
+// persistTimeout — timeout par appel Persist (gap C de l'audit safety/guards).
+// Évite un hang infini si DuckDB est bloqué (lock interne, IO disque) — la
+// TX est annulée via ctx, defer Rollback nettoie. 30s est large : un INSERT
+// batch de 10-20 rows en TX DuckDB tourne typiquement en <500ms. Au-delà,
+// quelque chose va clairement mal (lock contention, IO saturée).
+const persistTimeout = 30 * time.Second
 
 // submitOrInsertMatch est le point de branchement unique entre le chemin
 // legacy (insertFetchedMatch) et le chemin Collect→Persist (submitMatchAsBatch).
@@ -87,9 +95,16 @@ func (e *SyncEngine) submitMatchAsBatch(
 	} else {
 		// Chemin SYNC (Phase 2.3) — pas de WAL, pas de worker, juste les
 		// Persisters directs sur les connexions DB ouvertes par run().
+		// Timeout par Persist : évite un hang infini si DuckDB est bloqué.
 		sharedP := persist.NewSharedPersister(sharedDB)
-		if err := sharedP.Persist(ctx, batch); err != nil {
+		sharedCtx, sharedCancel := context.WithTimeout(ctx, persistTimeout)
+		err := sharedP.Persist(sharedCtx, batch)
+		sharedCancel()
+		if err != nil {
 			observability.IncCounter("persist_shared_total_error")
+			if ctxErr := sharedCtx.Err(); ctxErr != nil {
+				observability.IncCounter("persist_shared_total_timeout")
+			}
 			slog.ErrorContext(ctx, "submitMatchAsBatch: SharedPersister.Persist échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
 			return fmt.Errorf("submitMatchAsBatch shared: %w", err)
@@ -97,8 +112,14 @@ func (e *SyncEngine) submitMatchAsBatch(
 		observability.IncCounter("persist_shared_total_ok")
 
 		playerP := persist.NewPlayerPersister(playerDB)
-		if err := playerP.Persist(ctx, batch); err != nil {
+		playerCtx, playerCancel := context.WithTimeout(ctx, persistTimeout)
+		err = playerP.Persist(playerCtx, batch)
+		playerCancel()
+		if err != nil {
 			observability.IncCounter("persist_player_total_error")
+			if ctxErr := playerCtx.Err(); ctxErr != nil {
+				observability.IncCounter("persist_player_total_timeout")
+			}
 			slog.ErrorContext(ctx, "submitMatchAsBatch: PlayerPersister.Persist échoué",
 				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
 			return fmt.Errorf("submitMatchAsBatch player: %w", err)

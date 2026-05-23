@@ -12,6 +12,55 @@
 
 ---
 
+### [persist/safety] Garde-fous restants post-Phase 3 Collect→Persist
+
+**Noté le** : 2026-05-24 | **Priorité** : 🟡 Moyenne — non-bloquants pour Phase 3 (rollback via feature flag + code legacy intact)
+
+**Contexte** : Audit safety/guards du chemin `submitMatchAsBatch` (cf. ADR 0019, RUNBOOK_PHASE3, thought_log 2026-05-23). 19 garde-fous actifs livrés ; 6 gaps identifiés et reportés ici. Le gap C (timeout par Persist call) a été fixé immédiatement car simple et utile en prod (commit 2026-05-24).
+
+**Gaps à traiter quand pertinent** :
+
+1. **[A] Retry avec backoff sur erreur transitoire** (`persist`)
+   - **Problème** : Un Persist qui échoue (lock timeout, DB busy, IO error) reste en WAL jusqu'au prochain boot. Pas de retry dans le cycle courant.
+   - **Impact** : Latence ajoutée (le batch attend le prochain reboot ou auto-sync) sans réelle perte de données.
+   - **Fix** : `persist.WithRetry(maxRetries, baseDelay)` autour du Persist call dans `submitMatchAsBatch` ou dans le Worker. Backoff exponentiel : 1s, 2s, 4s, abandon.
+   - **Effort** : ~1h.
+
+2. **[B] DLQ après N retries** (`persist`)
+   - **Problème** : Si un batch corrompu cause une erreur répétée, il reste en WAL indéfiniment (jusqu'à `PurgeOldWAL > 7j`). Pas de dead-letter quarantine.
+   - **Impact** : Batches "poison" boucle au boot via `RecoverPending` jusqu'à expiration WAL. Logs polluent.
+   - **Fix** : Compteur de retries dans le WAL filename (ex. `batch_id.attempts=N.json`) ou métadonnée dans le JSON. Au-delà de N (3-5), déplacer dans `walDir/dlq/` + alerte ERROR.
+   - **Effort** : ~1h30.
+
+3. **[D] Circuit breaker sur série d'erreurs** (`persist`)
+   - **Problème** : Si Persist échoue sur 10 batches consécutifs, le sync continue à submit (potentiel cascading failure).
+   - **Impact** : Surconsommation API + ressources + logs spam quand DB est en panne.
+   - **Fix** : Pattern circuit breaker classique (closed/open/half-open). Si error rate > threshold sur fenêtre 1min, ouvrir → skip Submit + log WARN + métrique. Half-open recheck toutes les 30s.
+   - **Effort** : ~2h.
+
+4. **[E] Health check endpoint `/health/persist`** (`api`)
+   - **Problème** : Pas d'endpoint dédié pour load balancer / monitoring externe (Datadog, Uptime Robot).
+   - **Impact** : Diagnostic ops via `/debug/vars` uniquement (pas de status compact).
+   - **Fix** : `GET /health/persist` → 200 OK + JSON `{wal_pending: 0, last_persist_ok_at: "...", recent_errors: 0}`. 503 si pending > seuil ou erreurs récentes > seuil.
+   - **Effort** : ~45min.
+
+5. **[F] RecoverPending wiré au boot serveur** (`cmd/server`)
+   - **Problème** : Le mode async (queue + worker) a un mécanisme `RecoverPending` testé en E2E mais pas appelé au boot du serveur prod.
+   - **Impact** : Si crash mid-cycle en mode async, les batches en WAL ne sont pas rejoués au boot suivant.
+   - **Mitigation actuelle** : Mode async non-activé par défaut (Phase 3 active uniquement le mode sync sans WAL).
+   - **Fix** : Dans `cmd/server/main.go`, au boot : `queue := persist.NewBatchQueue(...)` ; `_ = queue.RecoverPending()` ; `worker.Run(ctx)` (goroutine).
+   - **Effort** : ~1h. **Dépendance** : Faire AVANT d'activer le mode async en prod.
+
+6. **[G] Test E2E avec FATAL DuckDB injecté** (`internal/persist`)
+   - **Problème** : Les tests TDD unitaires couvrent les cas isolés (atomicity, idempotence, parse error). Pas de test qui simule un FATAL DuckDB mid-batch et vérifie la recovery propre.
+   - **Impact** : Confiance moindre sur le path de recovery en cas de crash réel.
+   - **Fix** : Mock `txBeginner` qui retourne une erreur FATAL après N rows insérées. Vérifier que la TX rollback, le WAL reste, et RecoverPending peut rejouer.
+   - **Effort** : ~1h.
+
+**Quand traiter** : après Phase 3 activée et stabilisée (10+ cycles propres en prod). Ou plus tôt si un incident révèle un de ces gaps.
+
+---
+
 ### [frontend/nav] Nettoyage code de navigation mort — `PlayerScopeNav` + constantes `shellNavigation`
 
 **Noté le** : 2026-05-10 | **Priorité** : Basse — cosmétique, 0 impact fonctionnel
