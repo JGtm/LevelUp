@@ -50,14 +50,14 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 w-48 rounded-md bg-popover border border-border px-3 py-2 text-xs shadow-lg pointer-events-none">
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-pos') }}>Offensif</span>
-        <span className="text-muted-foreground">{offensiveConversion != null ? offensiveConversion.toFixed(2) : '—'}</span>
+        <span className="text-muted-foreground">{offensiveConversion != null ? `${Math.round(offensiveConversion * 100)}%` : '—'}</span>
       </div>
       {damagePerKill != null && (
         <div className="text-muted-foreground mb-1">{Math.round(damagePerKill)} dmg/kill</div>
       )}
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Défensif</span>
-        <span className="text-muted-foreground">{defensiveResistance != null ? defensiveResistance.toFixed(2) : '—'}</span>
+        <span className="text-muted-foreground">{defensiveResistance != null ? `${Math.round((defensiveResistance - 1) * 100)}%` : '—'}</span>
       </div>
       {damagePerDeath != null && (
         <div className="text-muted-foreground">{Math.round(damagePerDeath)} dmg/mort</div>

@@ -131,11 +131,12 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
     ? computeTrend(kpis.avg_life_seconds, teamAvgKpis.avg_life_seconds)
     : 'none'
 
-  // Card conditionnelle : présente uniquement si rank_delta existe pour le
-  // scope. Cachée proprement si aucun match avec rating dans le scope.
+  // Cards conditionnelles : rank_delta et rendement/résistance si données dispo.
   const hasDelta = kpis.rank_delta != null
+  const hasOC = kpis.avg_offensive_conversion != null
+  const hasDR = kpis.avg_defensive_resistance != null
   const baseCols = omitSummaryCards ? 5 : 7
-  const colCount = baseCols + (hasDelta ? 1 : 0)
+  const colCount = baseCols + (hasDelta ? 1 : 0) + (hasOC ? 1 : 0) + (hasDR ? 1 : 0)
   // Tailwind ne purge pas les `grid-cols-N` dynamiques → utiliser inline
   // grid-template-columns pour un colCount calculé.
   const gridStyle: CSSProperties = {
@@ -200,6 +201,20 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
           value={formatMmss(kpis.avg_life_seconds)}
           trend={trendLife}
         />
+        {hasOC && (
+          <KpiCell
+            label={texts.grid.rendement}
+            value={`${((kpis.avg_offensive_conversion ?? 0) * 100).toFixed(0)}%`}
+            sub={texts.grid.refBaseline}
+          />
+        )}
+        {hasDR && (
+          <KpiCell
+            label={texts.grid.resistance}
+            value={`${((kpis.avg_defensive_resistance ?? 0) * 100).toFixed(0)}%`}
+            sub={texts.grid.refBaseline}
+          />
+        )}
         {hasDelta && (
           <KpiCell
             label={

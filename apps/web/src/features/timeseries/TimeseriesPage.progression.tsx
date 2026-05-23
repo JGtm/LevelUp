@@ -151,7 +151,7 @@ export function TimeseriesProgressionTab({
           rows={data.match_rows ?? []}
           rendementLabel={locale === 'en' ? 'Output' : 'Rendement'}
           resistanceLabel={locale === 'en' ? 'Resistance' : 'Résistance'}
-          refLabel={locale === 'en' ? 'Ref. 1.0' : 'Réf. 1.0'}
+          refLabel={locale === 'en' ? 'Ref. 100%' : 'Réf. 100%'}
         />
       </ChartFrame>
 
