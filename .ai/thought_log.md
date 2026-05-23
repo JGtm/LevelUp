@@ -1,3 +1,69 @@
+## [2026-05-23] incident(art) — Validation prod du plan stabilisation + découverte facette DELETE-side du bug ART
+
+**Statut** : 🟡 EN COURS — workaround en place, Plan J (CHECKPOINT) en validation au prochain cycle (~18h28).
+
+**Contexte** : après finalisation du plan stabilisation (12 phases livrées), le user a demandé un rebuild + test live pour vérifier l'efficacité des couches anti-corruption. Le test a révélé **2 facettes** du bug ART DuckDB, dont une non couverte par BootARTGuard.
+
+**Doc dédié créé** : [`.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md`](INCIDENT_ART_CORRUPTION_DUCKDB.md) — symptômes, causes, pistes (validées/invalidées), impacts, TODO. À consulter en priorité pour toute future investigation ART.
+
+**Findings principaux** :
+
+1. **Boot validation initiale OK** : driver v1.5.3 actif, BootARTGuard `aucune corruption ART détectée` (7 tables shared + 36 tables metadata), heartbeat stable, métriques expvar exposées. → Conclusion prématurée : "plan stabilisation efficace".
+
+2. **1er cycle auto-sync à 15h34 = CATASTROPHE** : 74 erreurs FATAL vs 10 UPSERT OK sur shared.match_participants. Pattern signature :
+   ```
+   FATAL Error: Invalid Input Error: Failed to delete all rows from index. Only deleted 0 out of N rows.
+   ```
+   Suivi de cascade `database has been invalidated` sur toute la connexion DuckDB.
+
+3. **Diagnostic vrai bug** : c'est une **NOUVELLE facette du bug ART** côté DELETE qui n'était pas dans `docs/INCIDENT_2026-05-20_match_participants_index.md` (lequel documente la facette SELECT-side). DuckDB exécute `ON CONFLICT DO UPDATE` en DELETE+INSERT en interne ; le DELETE consulte un index ART qui contient des entries fantômes → FATAL.
+
+4. **BootARTGuard est aveugle à cette facette** : il compare SELECT counts (filter pushdown vs scan), pas DELETE. → Auto-heal Phase 4.1 inactif sur cette régression.
+
+5. **Le bug régénère après rebuild** : sentinel `match_participants_rebuilt_v1` déjà posé en prod (rebuild précédent OK), pourtant la corruption est revenue. Driver v1.5.3 réduit la facette SELECT mais ne fixe pas DELETE-side.
+
+**Actions appliquées dans la session** :
+
+| Action | Commit | Effet |
+|---|---|---|
+| Premier rebuild manuel via `force_rebuild_art` sur shared (25069 rows préservées) | déjà committé `3e178df9` | Débloque shared, 446 UPSERT OK au cycle suivant |
+| Tests TDD `art_upsert_patterns_test.go` comparant ON CONFLICT / INSERT OR REPLACE / SELECT-then-UPDATE | non-committé (gardé en `internal/sync/`) | **Démontre que Option A est INVALIDE** : les 3 patterns ont 49 erreurs identiques en `:memory:` (TransactionContext, pas le FATAL ART). Le bug est dans la persistence ART, pas dans le pattern SQL. |
+| `RebuildPlayerMatchEnrichmentART` + `force_rebuild_art --all` étendu | `487eea4e` | Couvre player DBs ; 4 player DBs rebuild OK (Chocoboflor 410, JGtm 815, Madina 1106, XxDaemon 22) |
+| Plan J : `CHECKPOINT` post-sync (Phase 4.1.c) | `ae82901e` | Hypothèse : compaction WAL DuckDB évite l'accumulation d'entries ART fantômes. EN VALIDATION. |
+
+**Pistes invalidées dans la session** :
+- ❌ **Option A : `INSERT OR REPLACE` à la place de `ON CONFLICT DO UPDATE`** — Test TDD démontre que c'est le même code path DuckDB → même bug. Cela m'a fait gagner ~5h en évitant une migration massive de 5 tables pour rien.
+
+**Pistes créatives explorées** (cf. doc dédié pour détails) :
+- ⭐ **Plan J : CHECKPOINT régulier** — solution la plus élégante si elle marche, gratuite (juste un PRAGMA).
+- Plan I : Skip no-op UPSERT (réduit volume).
+- Plan B+C : auto-heal runtime + reopen pool sur FATAL.
+- Plan F : append-only (radical).
+
+**Diagnostic complet du bug ART DuckDB après cette session** :
+- Deux facettes : SELECT-side (mai 2020) + DELETE-side (mai 2023 cette session).
+- Affecte au moins 4 tables : `shared.match_participants`, `shared.player_notifications`, `player.player_match_enrichment`, `player.streaks`. Toutes ont PK VARCHAR + UPSERT intensif.
+- Régénère avec usage prolongé. Rebuild nécessaire (manuel ou auto).
+- DuckDB upstream à reporter (issue + repro).
+
+**Méthodologie respectée** :
+- TDD strict pour `RebuildPlayerMatchEnrichmentART` (5 tests, baseline rouge → vert post-impl).
+- TDD exploratoire pour `art_upsert_patterns_test.go` (3 patterns comparés, conclusion claire).
+- Doc dédié `.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md` avant prochain incident similaire (référence pour les futurs débuts de session).
+- Pas de commit destructif (le user a explicitement validé chaque étape via AskUserQuestion).
+
+**Prochaine étape immédiate** : observer le cycle à 18h28:44 pour valider Plan J. Critères de succès :
+- `checkpoint_runs_total_ok_player` + `_shared` doivent incrémenter.
+- `upsert_match_participants_total_error` doit rester à 0.
+- Aucun `FATAL Error: Failed to delete all rows from index` dans les logs.
+- Cycle se termine proprement (4 joueurs synced ou skipped, pas failed).
+
+**Si Plan J fonctionne** : on a une solution durable, on commit le test invalide-option-A pour documentation, on reporte le bug upstream à DuckDB.
+
+**Si Plan J échoue** : escalade vers Plan B+C (auto-heal runtime + reopen pool sur FATAL). Plus complexe mais robuste.
+
+---
+
 ## [2026-05-23] test(ops,seed-demo) — CLI E2E pérennisé via `go build` + os/exec
 
 **Statut** : Complété. Test `TestSeedDemoCLI_E2E` ajouté dans `apps/go-api/internal/ops/seed_demo_cli_test.go` (~100 L, build tag `integration`, CGO requis).
