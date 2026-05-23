@@ -331,8 +331,8 @@ fr = "On t'aide à voir ta trajectoire — pas à la garantir."
 en = "We help you see your trajectory — not guarantee it."
 
 [profile.suggestions.title]
-fr = "Défis suggérés"
-en = "Suggested challenges"
+fr = "Objectifs suggérés"
+en = "Suggested objectives"
 
 [profile.suggestions.row_subtitle]
 fr = "Palier : {tier}{arc, select, true { · étape d'arc} other {}}"
@@ -381,12 +381,12 @@ fr = "Joue encore {missing, plural, =1 {1 match} other {# matchs}} sur ta playli
 en = "Play {missing, plural, =1 {1 more match} other {# more matches}} on your target playlist to see your trend."
 
 [campaign.tracker.linked_none]
-fr = "Aucun défi lié pour l'instant — lance-en un depuis la section progression."
-en = "No linked challenge yet — start one from the progression section."
+fr = "Aucun objectif lié pour l'instant — lance-en un depuis la section progression."
+en = "No linked objective yet — start one from the progression section."
 
 [campaign.tracker.linked_count]
-fr = "{n, plural, =1 {1 défi lié à cette campagne.} other {# défis liés à cette campagne.}}"
-en = "{n, plural, =1 {1 challenge linked to this campaign.} other {# challenges linked to this campaign.}}"
+fr = "{n, plural, =1 {1 objectif lié à cette campagne.} other {# objectifs liés à cette campagne.}}"
+en = "{n, plural, =1 {1 objective linked to this campaign.} other {# objectives linked to this campaign.}}"
 
 [campaign.tracker.kpi_snapshot]
 fr = "Snapshot"
@@ -491,8 +491,8 @@ fr = "Pour mesurer la campagne uniquement sur ces matchs. Tu peux laisser « tou
 en = "To measure the campaign only on these matches. Leave \"all playlists\" if you play varied."
 
 [campaign.modal.skip]
-fr = "Skip — créer juste un défi libre"
-en = "Skip — just create a free challenge"
+fr = "Skip — créer juste un objectif libre"
+en = "Skip — just create a free objective"
 
 [campaign.modal.cancel]
 fr = "Annuler"
