@@ -134,10 +134,73 @@ func InsertParticipants(ctx context.Context, db *sql.DB, rows []ParticipantRow) 
 	return nil
 }
 
-// insertParticipantRow exécute l'UPSERT SQL d'un seul ParticipantRow. Extrait
-// de InsertParticipants pour être appelable via singleflight (Phase 1.3).
+// insertParticipantRow exécute l'écriture SQL d'un seul ParticipantRow.
+// Extrait de InsertParticipants pour être appelable via singleflight (Phase 1.3).
+//
+// Pattern UPDATE-then-INSERT (2026-05-23, contournement bug ART DuckDB
+// DELETE-side). On évite ON CONFLICT DO UPDATE qui fait DELETE+INSERT en
+// interne et stresse l'index ART de match_participants. Le pattern préserve
+// la sémantique COALESCE (UPDATE conserve les valeurs existantes si la
+// nouvelle est NULL).
+//
+//  1. UPDATE in-place avec COALESCE par colonne — la PK ne change pas,
+//     donc l'index ART n'est pas touché.
+//  2. Si RowsAffected == 0 → la row n'existe pas → INSERT pur.
+//  3. Si INSERT échoue avec PK conflict → race rare (autre goroutine a
+//     inséré entre l'UPDATE et l'INSERT) → tolère silencieusement.
 func insertParticipantRow(ctx context.Context, db *sql.DB, row ParticipantRow, now time.Time) error {
-	_, err := db.ExecContext(ctx, `
+	// 1. UPDATE in-place : préserve les valeurs existantes via COALESCE.
+	res, err := db.ExecContext(ctx, `
+		UPDATE match_participants SET
+			gamertag            = COALESCE(?, gamertag),
+			team_id             = COALESCE(?, team_id),
+			outcome             = COALESCE(?, outcome),
+			rank                = COALESCE(?, rank),
+			score               = COALESCE(?, score),
+			kills               = COALESCE(?, kills),
+			deaths              = COALESCE(?, deaths),
+			assists             = COALESCE(?, assists),
+			shots_fired         = COALESCE(?, shots_fired),
+			shots_hit           = COALESCE(?, shots_hit),
+			damage_dealt        = COALESCE(?, damage_dealt),
+			damage_taken        = COALESCE(?, damage_taken),
+			kda                 = COALESCE(?, kda),
+			accuracy            = COALESCE(?, accuracy),
+			personal_score      = COALESCE(?, personal_score),
+			time_played_seconds = COALESCE(?, time_played_seconds),
+			avg_life_seconds    = COALESCE(?, avg_life_seconds),
+			kills_expected      = COALESCE(?, kills_expected),
+			deaths_expected     = COALESCE(?, deaths_expected),
+			kills_stddev        = COALESCE(?, kills_stddev),
+			deaths_stddev       = COALESCE(?, deaths_stddev),
+			team_mmr            = COALESCE(?, team_mmr),
+			enemy_mmr           = COALESCE(?, enemy_mmr),
+			headshot_kills      = COALESCE(?, headshot_kills),
+			max_killing_spree   = COALESCE(?, max_killing_spree),
+			grenade_kills       = COALESCE(?, grenade_kills),
+			melee_kills         = COALESCE(?, melee_kills),
+			power_weapon_kills  = COALESCE(?, power_weapon_kills)
+		WHERE match_id = ? AND xuid = ?`,
+		row.Gamertag, row.TeamID, row.Outcome, row.Rank, row.Score,
+		row.Kills, row.Deaths, row.Assists,
+		row.ShotsFired, row.ShotsHit,
+		row.DamageDealt, row.DamageTaken,
+		row.KDA, row.Accuracy, row.PersonalScore,
+		row.TimePlayedSeconds, row.AvgLifeSeconds,
+		row.KillsExpected, row.DeathsExpected, row.KillsStddev, row.DeathsStddev,
+		row.TeamMMR, row.EnemyMMR,
+		row.HeadshotKills,
+		row.MaxKillingSpree, row.GrenadeKills, row.MeleeKills, row.PowerWeaponKills,
+		row.MatchID, row.XUID,
+	)
+	if err != nil {
+		return fmt.Errorf("InsertParticipants(%s/%s) update: %w", row.MatchID, row.XUID, err)
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return nil
+	}
+	// 2. Row n'existe pas → INSERT.
+	_, err = db.ExecContext(ctx, `
 		INSERT INTO match_participants (
 			match_id, xuid, gamertag,
 			team_id, outcome, rank, score,
@@ -151,36 +214,7 @@ func insertParticipantRow(ctx context.Context, db *sql.DB, row ParticipantRow, n
 			headshot_kills,
 			max_killing_spree, grenade_kills, melee_kills, power_weapon_kills,
 			created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (match_id, xuid) DO UPDATE SET
-			gamertag            = COALESCE(EXCLUDED.gamertag,            match_participants.gamertag),
-			team_id             = COALESCE(EXCLUDED.team_id,             match_participants.team_id),
-			outcome             = COALESCE(EXCLUDED.outcome,             match_participants.outcome),
-			rank                = COALESCE(EXCLUDED.rank,                match_participants.rank),
-			score               = COALESCE(EXCLUDED.score,               match_participants.score),
-			kills               = COALESCE(EXCLUDED.kills,               match_participants.kills),
-			deaths              = COALESCE(EXCLUDED.deaths,              match_participants.deaths),
-			assists             = COALESCE(EXCLUDED.assists,             match_participants.assists),
-			shots_fired         = COALESCE(EXCLUDED.shots_fired,         match_participants.shots_fired),
-			shots_hit           = COALESCE(EXCLUDED.shots_hit,           match_participants.shots_hit),
-			damage_dealt        = COALESCE(EXCLUDED.damage_dealt,        match_participants.damage_dealt),
-			damage_taken        = COALESCE(EXCLUDED.damage_taken,        match_participants.damage_taken),
-			kda                 = COALESCE(EXCLUDED.kda,                 match_participants.kda),
-			accuracy            = COALESCE(EXCLUDED.accuracy,            match_participants.accuracy),
-			personal_score      = COALESCE(EXCLUDED.personal_score,      match_participants.personal_score),
-			time_played_seconds = COALESCE(EXCLUDED.time_played_seconds, match_participants.time_played_seconds),
-			avg_life_seconds    = COALESCE(EXCLUDED.avg_life_seconds,    match_participants.avg_life_seconds),
-			kills_expected      = COALESCE(EXCLUDED.kills_expected,      match_participants.kills_expected),
-			deaths_expected     = COALESCE(EXCLUDED.deaths_expected,     match_participants.deaths_expected),
-			kills_stddev        = COALESCE(EXCLUDED.kills_stddev,        match_participants.kills_stddev),
-			deaths_stddev       = COALESCE(EXCLUDED.deaths_stddev,       match_participants.deaths_stddev),
-			team_mmr            = COALESCE(EXCLUDED.team_mmr,            match_participants.team_mmr),
-			enemy_mmr           = COALESCE(EXCLUDED.enemy_mmr,           match_participants.enemy_mmr),
-			headshot_kills      = COALESCE(EXCLUDED.headshot_kills,      match_participants.headshot_kills),
-			max_killing_spree   = COALESCE(EXCLUDED.max_killing_spree,   match_participants.max_killing_spree),
-			grenade_kills       = COALESCE(EXCLUDED.grenade_kills,       match_participants.grenade_kills),
-			melee_kills         = COALESCE(EXCLUDED.melee_kills,         match_participants.melee_kills),
-			power_weapon_kills  = COALESCE(EXCLUDED.power_weapon_kills,  match_participants.power_weapon_kills)`,
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		row.MatchID, row.XUID, row.Gamertag,
 		row.TeamID, row.Outcome, row.Rank, row.Score,
 		row.Kills, row.Deaths, row.Assists,
@@ -195,7 +229,14 @@ func insertParticipantRow(ctx context.Context, db *sql.DB, row ParticipantRow, n
 		now,
 	)
 	if err != nil {
-		return fmt.Errorf("InsertParticipants(%s/%s): %w", row.MatchID, row.XUID, err)
+		if isPKConflictError(err) {
+			// 3. Race rare : autre goroutine a inséré entre UPDATE et INSERT.
+			// Singleflight (writes.go::participantsSF) protège déjà contre ce cas
+			// pour les calls concurrents dans le même process, mais on garde le
+			// fallback au cas où.
+			return nil
+		}
+		return fmt.Errorf("InsertParticipants(%s/%s) insert: %w", row.MatchID, row.XUID, err)
 	}
 	return nil
 }

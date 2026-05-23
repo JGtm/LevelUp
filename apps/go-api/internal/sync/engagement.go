@@ -433,42 +433,72 @@ func persistEngagementScore(
 	if result.EngagementScore != nil {
 		scoreArg = *result.EngagementScore
 	}
+	// Pattern UPDATE-then-INSERT (2026-05-23, contournement bug ART DuckDB
+	// DELETE-side sur player_match_enrichment). On évite ON CONFLICT DO
+	// UPDATE qui fait DELETE+INSERT en interne et corrompt l'index ART.
 	if pacesColumnsAvailable(ctx, playerDB) {
-		_, err := playerDB.ExecContext(ctx, `
+		res, err := playerDB.ExecContext(ctx, `
+			UPDATE player_match_enrichment SET
+				engagement_score = ?,
+				engagement_score_brut = ?,
+				engagement_score_confidence = ?,
+				mode_category = ?,
+				engagement_pace_player = ?,
+				engagement_pace_team = ?,
+				engagement_pace_lobby = ?,
+				engagement_player_activity = ?,
+				updated_at = ?
+			WHERE match_id = ?
+		`, scoreArg, result.ResidualBrut, result.Confidence, modeCategory,
+			result.MeanPaceJoueur, result.MeanPaceTeam, result.MeanPaceLobby,
+			result.PlayerActivity, now, matchID)
+		if err != nil {
+			return fmt.Errorf("engagement UPDATE: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			return nil
+		}
+		// Row n'existe pas → INSERT.
+		_, err = playerDB.ExecContext(ctx, `
 			INSERT INTO player_match_enrichment (
 				match_id, engagement_score, engagement_score_brut,
 				engagement_score_confidence, mode_category,
 				engagement_pace_player, engagement_pace_team, engagement_pace_lobby,
 				engagement_player_activity, updated_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (match_id) DO UPDATE SET
-				engagement_score = EXCLUDED.engagement_score,
-				engagement_score_brut = EXCLUDED.engagement_score_brut,
-				engagement_score_confidence = EXCLUDED.engagement_score_confidence,
-				mode_category = EXCLUDED.mode_category,
-				engagement_pace_player = EXCLUDED.engagement_pace_player,
-				engagement_pace_team = EXCLUDED.engagement_pace_team,
-				engagement_pace_lobby = EXCLUDED.engagement_pace_lobby,
-				engagement_player_activity = EXCLUDED.engagement_player_activity,
-				updated_at = EXCLUDED.updated_at
 		`, matchID, scoreArg, result.ResidualBrut, result.Confidence, modeCategory,
 			result.MeanPaceJoueur, result.MeanPaceTeam, result.MeanPaceLobby,
 			result.PlayerActivity, now)
+		if err != nil && isPKConflictError(err) {
+			return nil // race rare, ignore
+		}
 		return err
 	}
 	// Fallback : pre-migration recompute coefs (5 colonnes).
-	_, err := playerDB.ExecContext(ctx, `
+	res, err := playerDB.ExecContext(ctx, `
+		UPDATE player_match_enrichment SET
+			engagement_score = ?,
+			engagement_score_brut = ?,
+			engagement_score_confidence = ?,
+			mode_category = ?,
+			updated_at = ?
+		WHERE match_id = ?
+	`, scoreArg, result.ResidualBrut, result.Confidence, modeCategory, now, matchID)
+	if err != nil {
+		return fmt.Errorf("engagement UPDATE (fallback): %w", err)
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		return nil
+	}
+	_, err = playerDB.ExecContext(ctx, `
 		INSERT INTO player_match_enrichment (
 			match_id, engagement_score, engagement_score_brut,
 			engagement_score_confidence, mode_category, updated_at
 		) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (match_id) DO UPDATE SET
-			engagement_score = EXCLUDED.engagement_score,
-			engagement_score_brut = EXCLUDED.engagement_score_brut,
-			engagement_score_confidence = EXCLUDED.engagement_score_confidence,
-			mode_category = EXCLUDED.mode_category,
-			updated_at = EXCLUDED.updated_at
 	`, matchID, scoreArg, result.ResidualBrut, result.Confidence, modeCategory, now)
+	if err != nil && isPKConflictError(err) {
+		return nil
+	}
 	return err
 }
 
