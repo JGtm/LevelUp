@@ -607,21 +607,41 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 
 			score := computeRelativePerformanceScore(&match, window)
 			if score != nil {
-				_, err := playerDB.ExecContext(ctx, `
-					INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
-					VALUES (?, ?, ?, ?)
-					ON CONFLICT (match_id) DO UPDATE SET
-						performance_score = EXCLUDED.performance_score,
-						performance_chain = EXCLUDED.performance_chain,
-						updated_at        = EXCLUDED.updated_at`,
-					match.MatchID, *score, chain, now)
+				// Pattern UPDATE-then-INSERT (2026-05-23, contournement bug ART
+				// DuckDB DELETE-side). On évite ON CONFLICT DO UPDATE qui fait
+				// DELETE+INSERT en interne et corrompt l'index ART de
+				// player_match_enrichment au fil des cycles.
+				res, err := playerDB.ExecContext(ctx, `
+					UPDATE player_match_enrichment SET
+						performance_score = ?,
+						performance_chain = ?,
+						updated_at        = ?
+					WHERE match_id = ?`,
+					*score, chain, now, match.MatchID)
 				if err != nil {
 					execErrors++
-					slog.Warn("batchComputePerformanceScores: UPSERT failed",
+					slog.Warn("batchComputePerformanceScores: UPDATE failed",
 						"match_id", match.MatchID, "chain", chain, "xuid", xuid, "err", err)
 				} else {
-					updated++
-					updatedByChain[chain]++
+					n, _ := res.RowsAffected()
+					if n == 0 {
+						// Row n'existe pas → INSERT
+						_, insErr := playerDB.ExecContext(ctx, `
+							INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
+							VALUES (?, ?, ?, ?)`,
+							match.MatchID, *score, chain, now)
+						if insErr != nil && !isPKConflictError(insErr) {
+							execErrors++
+							slog.Warn("batchComputePerformanceScores: INSERT failed",
+								"match_id", match.MatchID, "chain", chain, "xuid", xuid, "err", insErr)
+						} else {
+							updated++
+							updatedByChain[chain]++
+						}
+					} else {
+						updated++
+						updatedByChain[chain]++
+					}
 				}
 			}
 		}
