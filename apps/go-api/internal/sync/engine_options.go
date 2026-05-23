@@ -42,6 +42,7 @@ func NewSyncEngine(
 		sharedDBPath:   pr.SharedDBPath(titlePkg.DefaultSlug),
 		globalDBPath:   pr.GlobalXuidAliasesDBPath(),
 		metadataDBPath: pr.MetadataDBPath(titlePkg.DefaultSlug),
+		syncCacheDir:   pr.SyncCacheDir(),
 		tokens:         tokens,
 		provider:       provider,
 	}

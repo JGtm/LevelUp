@@ -46,6 +46,7 @@ const (
 	ModuleNotif     = "notifications"
 	ModuleMigration = "migration" // schémas DB
 	ModuleHealth    = "health"    // data_health scheduler
+	ModulePersist   = "persist"   // refactor Collect→Persist : queue, workers, persisters
 	ModuleGeneral   = "general"   // fallback pour logs non catégorisés
 )
 
@@ -119,6 +120,7 @@ var packageToModuleMap = map[string]string{
 	"mediaservice":   ModuleMedia,
 	"notifications":  ModuleNotif,
 	"migration":      ModuleMigration,
+	"persist":        ModulePersist,
 	"api":            ModuleHTTP,
 	"watcher":        ModuleAuth, // tokens watcher fait partie de l'auth flow
 	"rta":            ModuleAuth,

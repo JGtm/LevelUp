@@ -1,0 +1,237 @@
+// Package sync — fetch_cache.go : cache fetch intermédiaire pour le refactor
+// Collect→Persist (cf. REFACTOR_COLLECT_PERSIST.md §3.5 / §10 Q7).
+//
+// **Pourquoi** : économie quota API + recovery sans re-fetch + debug
+// (voir exactement ce que l'API a renvoyé pour un match donné).
+//
+// **Architecture** : wrapping transparent autour d'un HaloClient existant.
+// Le cache est un système fichier simple sous `data/sync_cache/{cycle_id}/` :
+//
+//	data/sync_cache/
+//	└── {cycle_id}/                          (créé au début de run())
+//	    ├── match_{id}_stats.json            (raw GetMatchStats response)
+//	    ├── match_{id}_skill.json            (raw GetMatchSkill response)
+//	    └── match_{id}_highlight_chunk.bin   (raw chunk highlight events)
+//
+// **Cycle de vie** :
+//   - cycle_id = event_id du run() (déjà créé via logging.WithEvent).
+//   - Création lazy au 1er write.
+//   - Lecture : si fichier existe, skip l'appel API.
+//   - Pas de delete par batch — purge par âge (>7 jours) via PurgeOldCache.
+//
+// **Désactivation** : `LEVELUP_PERSIST_NO_FETCH_CACHE=1` → wrapper inactif
+// (renvoie directement les appels à l'inner client, sans cache).
+
+package sync
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+// FetchCacheConfig configure un cachedHaloClient.
+type FetchCacheConfig struct {
+	// CacheDir : répertoire de cache (typiquement `data/sync_cache/{cycle_id}/`).
+	// Créé lazy au 1er write. Si vide → cache désactivé (fall-through inner).
+	CacheDir string
+	// Disabled : court-circuite complètement le cache (lecture ET écriture).
+	// Activé par `LEVELUP_PERSIST_NO_FETCH_CACHE=1`.
+	Disabled bool
+}
+
+// cachedHaloClient wrap un HaloClient et ajoute un cache disque sur les
+// méthodes coûteuses (GetMatchStats, GetMatchSkill, GetHighlightEventsChunk).
+// Les autres méthodes (history, career, CSRs) sont pass-through (peu de
+// bénéfice à cacher l'history qui change à chaque sync).
+type cachedHaloClient struct {
+	inner HaloClient
+	cfg   FetchCacheConfig
+}
+
+// NewCachedHaloClient construit un wrapping cache autour d'un HaloClient.
+// Si cfg.Disabled, retourne directement inner (pas de wrapping).
+func NewCachedHaloClient(inner HaloClient, cfg FetchCacheConfig) HaloClient {
+	if cfg.Disabled || cfg.CacheDir == "" {
+		return inner
+	}
+	return &cachedHaloClient{inner: inner, cfg: cfg}
+}
+
+// ─── Pass-through (non cachés) ────────────────────────────────────────────
+
+func (c *cachedHaloClient) GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]MatchHistoryEntry, error) {
+	return c.inner.GetMatchHistory(ctx, gamertag, matchType, start, count)
+}
+
+func (c *cachedHaloClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
+	// Films chunks = volume gros. Pas cachés ici — utiliser LocalFilmCache pour ça.
+	return c.inner.GetMatchFilm(ctx, matchID)
+}
+
+func (c *cachedHaloClient) GetCareerRank(ctx context.Context, xuid string) (*CareerRankData, error) {
+	return c.inner.GetCareerRank(ctx, xuid)
+}
+
+func (c *cachedHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string) ([]PlayerPlaylistCSR, error) {
+	return c.inner.GetPlayerCSRs(ctx, xuid, seasonID)
+}
+
+// ─── Cachés ───────────────────────────────────────────────────────────────
+
+// GetMatchStats : check cache → si miss, call API + write cache.
+func (c *cachedHaloClient) GetMatchStats(ctx context.Context, matchID string) (map[string]any, error) {
+	path := c.statsPath(matchID)
+	if data, err := os.ReadFile(path); err == nil {
+		var out map[string]any
+		if jerr := json.Unmarshal(data, &out); jerr == nil {
+			slog.DebugContext(ctx, "fetch_cache: hit GetMatchStats",
+				"match_id", matchID, "path", path)
+			return out, nil
+		}
+		// Cache corrompu → fall-through API et écrase.
+		slog.WarnContext(ctx, "fetch_cache: corrupted GetMatchStats cache, refetching",
+			"match_id", matchID, "path", path)
+	}
+	out, err := c.inner.GetMatchStats(ctx, matchID)
+	if err != nil {
+		return out, err
+	}
+	c.writeJSON(path, out, "GetMatchStats", matchID)
+	return out, nil
+}
+
+// GetMatchSkill : idem. Skip cache si erreur côté inner.
+func (c *cachedHaloClient) GetMatchSkill(ctx context.Context, matchID string, xuids []string) (map[string]*MatchSkillData, error) {
+	path := c.skillPath(matchID)
+	if data, err := os.ReadFile(path); err == nil {
+		var out map[string]*MatchSkillData
+		if jerr := json.Unmarshal(data, &out); jerr == nil {
+			slog.DebugContext(ctx, "fetch_cache: hit GetMatchSkill",
+				"match_id", matchID, "path", path)
+			return out, nil
+		}
+	}
+	out, err := c.inner.GetMatchSkill(ctx, matchID, xuids)
+	if err != nil {
+		return out, err
+	}
+	c.writeJSON(path, out, "GetMatchSkill", matchID)
+	return out, nil
+}
+
+// GetHighlightEventsChunk : check cache (chunk bin + meta json).
+func (c *cachedHaloClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
+	binPath := c.highlightChunkPath(matchID)
+	metaPath := binPath + ".meta.json"
+
+	if binData, err := os.ReadFile(binPath); err == nil {
+		if metaData, mErr := os.ReadFile(metaPath); mErr == nil {
+			var meta struct {
+				Version int  `json:"version"`
+				Found   bool `json:"found"`
+			}
+			if json.Unmarshal(metaData, &meta) == nil {
+				slog.DebugContext(ctx, "fetch_cache: hit GetHighlightEventsChunk",
+					"match_id", matchID, "bytes", len(binData))
+				return binData, meta.Version, meta.Found, nil
+			}
+		}
+	}
+	data, version, found, err := c.inner.GetHighlightEventsChunk(ctx, matchID)
+	if err != nil {
+		return data, version, found, err
+	}
+	if found && len(data) > 0 {
+		if err := c.ensureCacheDir(); err == nil {
+			_ = os.WriteFile(binPath, data, 0o644)
+			meta := struct {
+				Version int  `json:"version"`
+				Found   bool `json:"found"`
+			}{Version: version, Found: found}
+			if mData, jErr := json.Marshal(meta); jErr == nil {
+				_ = os.WriteFile(metaPath, mData, 0o644)
+			}
+		}
+	}
+	return data, version, found, nil
+}
+
+// ─── Helpers cache ─────────────────────────────────────────────────────────
+
+func (c *cachedHaloClient) statsPath(matchID string) string {
+	return filepath.Join(c.cfg.CacheDir, "match_"+matchID+"_stats.json")
+}
+
+func (c *cachedHaloClient) skillPath(matchID string) string {
+	return filepath.Join(c.cfg.CacheDir, "match_"+matchID+"_skill.json")
+}
+
+func (c *cachedHaloClient) highlightChunkPath(matchID string) string {
+	return filepath.Join(c.cfg.CacheDir, "match_"+matchID+"_highlight_chunk.bin")
+}
+
+func (c *cachedHaloClient) ensureCacheDir() error {
+	return os.MkdirAll(c.cfg.CacheDir, 0o755)
+}
+
+// writeJSON sérialise + écrit best-effort (log warn si fail, ne propage pas).
+func (c *cachedHaloClient) writeJSON(path string, v any, op, matchID string) {
+	if err := c.ensureCacheDir(); err != nil {
+		slog.Warn("fetch_cache: mkdir failed", "dir", c.cfg.CacheDir, "err", err)
+		return
+	}
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		slog.Warn("fetch_cache: marshal failed", "op", op, "match_id", matchID, "err", err)
+		return
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		slog.Warn("fetch_cache: write failed", "op", op, "match_id", matchID, "path", path, "err", err)
+	}
+}
+
+// PurgeOldFetchCache supprime les sous-dossiers (cycle_id) du root cache dir
+// plus vieux que maxAge. Best-effort : continue sur erreur fichier individuel,
+// retourne le nombre de dossiers supprimés.
+//
+// Cas d'usage : janitor périodique (1× / jour) qui retire les cycles anciens.
+// Default maxAge recommandé : 7 jours (cf. REFACTOR_COLLECT_PERSIST.md §3.5).
+func PurgeOldFetchCache(rootDir string, maxAge time.Duration) (int, error) {
+	entries, err := os.ReadDir(rootDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil // dir absent = rien à purger
+		}
+		return 0, fmt.Errorf("fetch_cache: read root %s: %w", rootDir, err)
+	}
+	cutoff := time.Now().Add(-maxAge)
+	purged := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().After(cutoff) {
+			continue
+		}
+		path := filepath.Join(rootDir, e.Name())
+		if err := os.RemoveAll(path); err != nil {
+			slog.Warn("fetch_cache: purge dir failed", "dir", path, "err", err)
+			continue
+		}
+		purged++
+	}
+	if purged > 0 {
+		slog.Info("fetch_cache: purge",
+			"root", rootDir, "purged_dirs", purged, "max_age", maxAge)
+	}
+	return purged, nil
+}

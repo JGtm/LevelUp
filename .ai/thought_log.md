@@ -1,3 +1,41 @@
+## [2026-05-23] Refactor Collect-Persist — Items oubliés (cache fetch + module log + cases cochées)
+
+**Statut** : Complété
+
+**Tâche** : Reprise sur les 3 reproches valides du user :
+1. Le **cache fetch intermédiaire** était documenté dans `doc.go` mais jamais implémenté.
+2. Les **logs** ne profitaient pas du système multi-module existant (`internal/observability/logging/`) — module `persist` absent de la table de routing, donc tombait dans `logs/general.log`.
+3. Le doc `REFACTOR_COLLECT_PERSIST.md` avait toujours toutes ses cases vides — tracking cassé.
+
+**Décisions techniques principales** :
+
+- **Cache fetch intermédiaire** (`internal/sync/fetch_cache.go`) : wrapper transparent `cachedHaloClient` autour d'un HaloClient. Cache disque sous `data/sync_cache/{cycle_id}/`, où `cycle_id` = event_id du run (déjà créé via `logging.WithEvent`). Cache uniquement les méthodes coûteuses (GetMatchStats, GetMatchSkill, GetHighlightEventsChunk). Pass-through pour history/career/CSRs/film (history change à chaque sync, film est gros et déjà couvert par LocalFilmCache).
+  - Activé par défaut, désactivable via `LEVELUP_PERSIST_NO_FETCH_CACHE=1`.
+  - Cache corrompu → re-fetch automatique + overwrite.
+  - `PurgeOldFetchCache(rootDir, maxAge)` pour janitor périodique (cycle_id dirs > 7j).
+  - 7 tests TDD GREEN : hit, miss, disabled, empty dir, corrupted, purge old, purge missing.
+  - Câblé dans `engine.go::run()` après l'init client API.
+  - `PathResolver.SyncCacheDir()` ajouté pour le chemin canonique `data/sync_cache/`.
+
+- **Module log `persist`** (`internal/observability/logging/module.go`) : ajout de `ModulePersist = "persist"` aux constantes + entrée dans `packageToModuleMap`. Les logs depuis `internal/persist/*.go` partent désormais dans `logs/persist.log` (avant : tombaient dans `logs/general.log` via fallback). Auto-routing via runtime.FuncForPC + nom de package.
+  - L'event_id est déjà propagé via ctx depuis `SyncEngine.run()` (ligne 171 `logging.WithEvent(ctx, "sync.Run"+mode)`) → tous les logs `slog.InfoContext/ErrorContext` du chemin persist incluent automatiquement l'event_id pour grep cross-module.
+
+- **Tracking REFACTOR_COLLECT_PERSIST.md** : section §8 entièrement mise à jour avec les ✅ par item (avec référence commit), 🟡 pour les items code-prêts-en-attente-user (Phase 3 activation, Phase 5 cleanup), [N/A] pour les items hors scope révisé (cmd/seed-* et cmd/diag_* non concernés). Ajout d'une section "Phases bonus livrées" (B6 PurgeOldWAL, B7 expvar, async layer) et "Items reportés" (cache fetch DONE désormais, B8 multi-titres deferred, BatchQueue server wiring deferred).
+
+**Résultats observés** :
+
+- 7 tests TDD cache fetch GREEN.
+- Full `internal/sync` (42s) + `internal/persist` (6s) suites GREEN après ajout.
+- `go vet ./...` clean.
+
+**Prochaine étape** :
+
+1. **USER** : exécuter `.ai/RUNBOOK_PHASE3_ACTIVATION.md` — étape 1 staging avec `LEVELUP_PERSIST_BATCH=1`.
+2. **USER** : observer `logs/persist.log` et `logs/sync.log` pour la traçabilité event_id.
+3. **USER** : observer `data/sync_cache/{cycle_id}/` pour vérifier que le cache se peuple (puis se purge >7j via janitor si on l'appelle).
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Phase 4 (CLI cmd_sync) + Phase 5 plan + Phase 6 docs finales
 
 **Statut** : Complété
