@@ -213,6 +213,29 @@ Reste P2 plan stab : 4.2 SIGABRT handler (1h), 4.3 expvar metrics complet (2h), 
 
 ---
 
+## [2026-05-23] feat(p4.2) — SIGABRT/SIGSEGV handler pour capture FatalException C++ DuckDB
+
+**Statut** : Phase 4.2 DONE en 1 commit (`c7d343a6`). Branche 23 commits ahead origin.
+
+**Contexte** : DuckDB peut lever des `FatalException` C++ depuis cgo (memory error, ART corruption non-récupérée, etc.). `recover()` Go ne capte pas ces erreurs car elles bypass la stack Go via libc `terminate()` → `abort()` → SIGABRT. Sans handler, le process meurt silencieusement sans dump.
+
+**Livré** :
+- `installFatalSignalHandler(crashFile *os.File)` : enregistre `signal.Notify(SIGABRT, SIGSEGV)` + goroutine qui dispatche vers `dumpFatalStack` + `os.Exit(2)`.
+- `dumpFatalStack(w io.Writer, sig os.Signal)` : header (timestamp + signal + pid) + `runtime.Stack(buf, true)` toutes goroutines + marqueur fin.
+- Hoist du `crashFile` en variable outer-scope (avant : scope-local au if `debug.SetCrashOutput`).
+
+**Pourquoi os.Exit(2)** : `abort()` libc ré-émet le signal après le retour du handler. Sans `os.Exit` explicite, le process meurt silencieusement et notre dump n'a pas le temps d'être flush sur disque.
+
+**Limitation Windows assumée** : `signal.Notify(SIGABRT)` compile mais ne fire pas (Windows utilise SEH au lieu des signaux POSIX). Code defensive cross-platform : no-op sur Windows, actif Linux/macOS. Important pour le futur déploiement Linux (où les crashes terminate() seront enfin capturés).
+
+**Tests** : 2 unit tests sur `dumpFatalStack` (la fonction pure, testable via `bytes.Buffer` + signal mock). `installFatalSignalHandler` non testé directement car le handler appelle `os.Exit` qui terminerait le test. La testabilité est conservée via la décomposition (handler = signal.Notify + appel dumpFatalStack).
+
+**Conclusion** : Phase 4.2 livrée, ferme le dernier gap d'observabilité crash. Combiné avec `debug.SetCrashOutput` (panic Go) + heartbeat 30s + auto-heal ART boot, on a maintenant une triple ligne de défense contre les "crash silencieux mid-cycle" qui ont rendu l'incident 2026-05-22 difficile à diagnostiquer (post-sync JGtm tué à 18:41:19 sans trace).
+
+Reste P3 plan stab : 4.3 expvar metrics complet (2h), 3.7 fusion events_heal + weapon_heal errgroup (30min), 5.2-5.5 tests régression (8h cumulé). Aucune urgence — fonctionnalités de stabilité incrémentales.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).
