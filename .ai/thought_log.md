@@ -1,3 +1,64 @@
+## [2026-05-24] Smoke test prod Phase 3 — découverte critique : post-sync compute ART persiste
+
+**Statut** : Complété (mode honnête — Phase 5 cleanup BLOQUÉE)
+
+**Tâche** : Smoke test autonome du chemin Collect→Persist en prod avec 4 joueurs réels, validation pré-Phase 5 cleanup. User a demandé "agis de manière autonome et conclus les étapes restantes proprement".
+
+**Résultats observés** :
+
+- ✅ Boot serveur clean : `pool_size=4` (E.v1 watcher stores fait son job)
+- ✅ Path `submitMatchAsBatch` VALIDÉ : 10 matchs persistés pour XxDaemonGamerxX, **0 FATAL Error** sur ce path
+- ✅ Métriques expvar : `persist_batch_committed_total=10`, `persist_shared_total_ok=10`, `persist_player_total_ok=10`
+- ✅ Cycle XxDaemonGamerxX : 107s (sous le seuil 8min)
+- ✅ Logs multi-module : `logs/pool.log`, `logs/sync.log` créés avec event_id propagé
+- ⚠️ **`art_corruption_detected_shared_medals_earned=1`** : BootARTGuard a détecté une corruption pré-existante (pas causée par notre path)
+- ❌ **MAIS** : post-sync compute déclenche encore le bug ART en chaîne sur Chocoboflor et Madina97294 :
+
+```
+upsertLUSRRatings: exec LUSR update failed err="FATAL Error: Invalid Input Error: Failed to delete all rows…"
+post-sync: sessions échoué : WriteSessionAssignments: FATAL Error
+post-sync: perf scores échoué : batchComputePerformanceScores: FATAL Error
+post-sync: friends recompute échoué : updateIsWithFriendsBatch: FATAL Error
+```
+
+**Découverte critique** : Phase 2 du refactor Collect→Persist a refactor le path **INSERT per-match** mais le **post-sync compute** (LUSR cascade, sessions, perf, friends, dominance, engagement) fait toujours des UPDATE concurrents sur `player_match_enrichment` + `match_skill_rank` → bug ART. Le legacy `singleflight` + `RebuildART` runtime restent nécessaires pour mitigéer.
+
+**7 sites UPDATE post-sync identifiés** (cf. `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md`) :
+1. `comeback.go:181` — dominance_flag
+2. `engagement.go:441,479` — engagement_*
+3. `enrichments.go:75` — had_bot_teammate
+4. `friends_recompute.go:231` — is_with_friends
+5. `performance.go:615` — performance_score
+6. `session_recalc.go:115,178` (via WriteSessionAssignments) — session_id
+7. `skill_rating_loaders.go:301` (upsertLUSRRatings) — match_skill_rank
+
+**Décisions techniques principales** :
+
+- **Phase 5 cleanup BLOQUÉE** : ne peut pas supprimer le legacy (singleflight, CHECKPOINT, UPDATE-then-INSERT migrations, BootARTGuard auto-heal) tant que ces 7 sites UPDATE ne sont pas migrés en INSERT-only.
+- **Nouveau plan Phase 4** créé : `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md` détaille les 7 sites + 5 options de refactor analysées. Recommandation : Option E (compute en RAM + INSERT batch atomique via nouveau `PostSyncPersister`). Effort 6-10h.
+- **Status REFACTOR_COLLECT_PERSIST.md mis à jour** : Phase 3 marquée 🟡 PARTIELLE (path insert OK, post-sync KO). Phase 5 ⏳ BLOQUÉE par Phase 4.
+- **Autonomie limite assumée** : impossible de "conclure proprement" Phase 5 sans Phase 4 préalable. La Phase 4 est un sprint dédié non livrable en session courante (6-10h + smoke test prod multi-cycles).
+
+**Pragmatique pour le user** :
+- Le path Collect→Persist apporte un **bénéfice net immédiat** : 10 matchs persistés sans FATAL pour XxDaemonGamerxX (avant : ces 10 matchs auraient déclenché les UPSERT concurrents → FATAL ART probable).
+- Le mode "partiel" est déployable : `LEVELUP_PERSIST_BATCH=1` peut rester actif. Le sync se termine `status=success` malgré les warnings post-sync. Le legacy auto-heal continue de masquer le problème post-sync (comme avant le refactor).
+- Le bug ART n'est pas pire qu'avant — il a juste été déplacé du path insert vers le path post-sync (où le legacy mitigation reste actif).
+
+**Résultats observés (recap)** :
+
+- Smoke test : 4 cycles complétés (Chocoboflor 12s, XxDaemonGamerxX 107s, JGtm 180s, Madina97294 253s)
+- 1 cycle 100% succès (XxDaemonGamerxX avec 10 nouveaux matchs)
+- 3 cycles "success avec warnings post-sync" (Chocoboflor, JGtm, Madina97294 — 0 nouveaux matchs, post-sync compute échoue sur DB déjà invalidée)
+- Pas de régression vs legacy : status sync globalement "success"
+
+**Prochaine étape** :
+
+1. **USER** : décider si on lance Phase 4 (effort 6-10h sprint dédié) ou si on reste en mode "partiel" en attendant.
+2. **Si Phase 4** : implémenter `PostSyncPersister` selon Option E + refactor 7 sites + smoke test + Phase 5 cleanup possible derrière.
+3. **Si mode partiel** : laisser `LEVELUP_PERSIST_BATCH=1` actif en prod, le bug ART post-sync est non-bloquant (auto-heal legacy le mitige), bénéfice net du Phase 2 sur le path insert.
+
+---
+
 ## [2026-05-24] Auth unification — Option E.v1 livrée (Discovery + watcher stores)
 
 **Statut** : Complété
