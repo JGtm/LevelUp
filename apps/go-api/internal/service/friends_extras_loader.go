@@ -17,6 +17,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -53,6 +54,7 @@ type FriendProfile struct {
 func NewFriendsExtrasResolver(
 	friendsByXUID map[string]FriendProfile,
 	opener FriendDBOpener,
+	assetURL games.TitleAssetURLAdapter,
 ) port.FriendsExtrasResolver {
 	return func(ctx context.Context, matchID string, gameVariantName string, xuids []string) map[string]port.FriendMatchExtras {
 		out := make(map[string]port.FriendMatchExtras, len(xuids))
@@ -67,7 +69,7 @@ func NewFriendsExtrasResolver(
 					"xuid", xuid, "gamertag", profile.Gamertag, "err", err)
 				continue
 			}
-			extras := loadOneFriendExtras(ctx, repo, matchID, gameVariantName, xuid)
+			extras := loadOneFriendExtras(ctx, repo, matchID, gameVariantName, xuid, assetURL)
 			if extras != nil {
 				out[xuid] = *extras
 			}
@@ -88,6 +90,7 @@ func loadOneFriendExtras(
 	ctx context.Context,
 	repo FriendMatchExtrasRepo,
 	matchID, gameVariantName, xuid string,
+	assetURL games.TitleAssetURLAdapter,
 ) *port.FriendMatchExtras {
 	var (
 		extras  port.FriendMatchExtras
@@ -105,11 +108,17 @@ func loadOneFriendExtras(
 		slog.WarnContext(ctx, "friends_extras: load skill rank failed",
 			"match_id", matchID, "xuid", xuid, "err", err)
 	} else if rank != nil {
+		iconURL := resolveSkillIconURL(rank.Tier, rank.SubTier, rank.TierLabel, assetURL)
+		var iconURLPtr *string
+		if iconURL != "" {
+			iconURLPtr = &iconURL
+		}
 		extras.SkillRank = &domain.MatchScoreboardSkillRank{
 			RatingType:  rank.RatingType,
 			TierLabel:   rank.TierLabel,
 			RatingValue: rank.RatingValue,
 			RatingDelta: rank.RatingDelta,
+			IconURL:     iconURLPtr,
 		}
 		hasData = true
 	}

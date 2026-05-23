@@ -189,6 +189,34 @@ func buildScoreLabelFromMeta(meta *domain.MatchMetaRaw, stats *domain.PlayerMatc
 	return fmt.Sprintf("%d-%d", s0, s1)
 }
 
+// resolveSkillIconURL retourne l'URL du badge CSR/LUSR depuis tier + sub_tier.
+// Extrait de buildRankBlock pour être réutilisé par le scoreboard (tous joueurs).
+func resolveSkillIconURL(tier *string, subTier *int, tierLabel *string, assetURL games.TitleAssetURLAdapter) string {
+	if assetURL == nil || tier == nil || *tier == "" {
+		return ""
+	}
+	t := *tier
+	st := 0
+	if subTier != nil {
+		st = *subTier
+	}
+	if st <= 0 && tierLabel != nil {
+		parts := strings.Fields(strings.TrimSpace(*tierLabel))
+		if len(parts) > 1 {
+			if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
+				st = n
+			}
+		}
+	}
+	if strings.EqualFold(t, "Onyx") {
+		return assetURL.CSRRankImageURLOnyx()
+	}
+	if st >= 1 && st <= 6 {
+		return assetURL.CSRRankImageURL(t, st)
+	}
+	return ""
+}
+
 // buildRankBlock construit le bloc rank depuis SkillRankRaw.
 //
 // IconURL est résolu via TitleAssetURLAdapter (CSRRankImageURL ou
@@ -221,31 +249,7 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 		rank.ProgressPct = &pct
 	}
 
-	// Badge image — LUSR utilise les mêmes fichiers que CSR (même dossier static).
-	// Onyx : pas de sub-tier → CSRRankImageURLOnyx().
-	// Autres tiers (Bronze, Silver, Gold, Platinum, Diamond) : tier + sub-tier.
-	// Sources : match_skill_rank.tier (EN, TitleCase) + match_skill_rank.sub_tier.
-	if assetURL == nil || sr.Tier == nil || *sr.Tier == "" {
-		return rank
-	}
-	tier := *sr.Tier
-	subTier := 0
-	if sr.SubTier != nil {
-		subTier = *sr.SubTier
-	}
-	// Fallback : dériver sub_tier depuis tier_label quand sub_tier = 0 (défaut DB).
-	if subTier <= 0 && sr.TierLabel != nil {
-		parts := strings.Fields(strings.TrimSpace(*sr.TierLabel))
-		if len(parts) > 1 {
-			if n, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-				subTier = n
-			}
-		}
-	}
-	if strings.EqualFold(tier, "Onyx") {
-		rank.IconURL = assetURL.CSRRankImageURLOnyx()
-	} else if subTier >= 1 && subTier <= 6 {
-		rank.IconURL = assetURL.CSRRankImageURL(tier, subTier)
-	}
+	// Badge image — délégué au helper partagé avec le scoreboard.
+	rank.IconURL = resolveSkillIconURL(sr.Tier, sr.SubTier, sr.TierLabel, assetURL)
 	return rank
 }

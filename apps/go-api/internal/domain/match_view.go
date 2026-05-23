@@ -343,6 +343,7 @@ type MatchScoreboardSkillRank struct {
 	TierLabel   *string  `json:"tier_label,omitempty"`   // ex: "Onyx 1500"
 	RatingValue *float64 `json:"rating_value,omitempty"` // valeur numérique
 	RatingDelta *float64 `json:"rating_delta,omitempty"` // ±delta vs match précédent
+	IconURL     *string  `json:"icon_url,omitempty"`     // URL du badge image (CSR tier)
 }
 
 // MatchScoreboardRow : ligne du scoreboard.

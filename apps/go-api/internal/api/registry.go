@@ -523,7 +523,7 @@ func (r *ServiceRegistry) buildFriendsExtrasResolver(mainPDB *duckdb.PlayerDB) p
 		}
 		return duckdb.NewMatchViewRepo(pdb, pdb.XUID), nil
 	}
-	return service.NewFriendsExtrasResolver(friendsByXUID, opener)
+	return service.NewFriendsExtrasResolver(friendsByXUID, opener, r.assetURLFor(mainPDB.TitleSlug))
 }
 
 // Engagement retourne un PlayerEngagementService pour le joueur.
