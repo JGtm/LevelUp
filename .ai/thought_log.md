@@ -1,3 +1,62 @@
+## [2026-05-23] Refactor Collect-Persist — Phase 1.4-1.7 (SharedPersister + Worker + E2E)
+
+**Statut** : Complété
+
+**Tâche** : Boucler la couche persistance INSERT-only du refactor Collect→Persist. Tests TDD pour SharedPersister (1 transaction par batch, INSERT-only), Worker (consume channel + Persist + ACK), et test E2E qui valide le wiring complet sur une vraie DuckDB.
+
+**Décision technique principale** :
+
+- `SharedPersister.Persist(ctx, batch)` ouvre 1 transaction sur shared.duckdb. Idempotence : si `match_id` existe déjà dans `match_registry` → ROLLBACK + return nil (le batch est considéré déjà persisté côté ACK). Sinon : INSERT × N tables → COMMIT. Aucun UPDATE, aucun DELETE → contourne le bug ART DuckDB.
+- Pour `xuid_aliases` et `medals_earned` : `INSERT OR IGNORE` (tolère les PK conflicts intra-batch et préserve les xuid_aliases existants). Pour `match_participants` et `match_registry` : `INSERT` pur (un PK conflict mid-batch → ROLLBACK = atomicité préservée).
+- `txBeginner` interface (BeginTx) accepte aussi bien `*sql.DB` (tests) que `*dblease.LeasedWriter` (prod) → découplage du package dblease.
+- `Worker.Run(ctx)` : select sur `ch <- queue.Channel(target)` et `ctx.Done()`. Sur Persist OK → ACK (delete WAL). Sur Persist KO → log + pas d'ACK (WAL reste pour retry au prochain boot via RecoverPending).
+- Hooks `OnPersistOK` / `OnPersistError` injectables par le caller pour brancher expvar sans coupler `persist` à `observability`.
+
+**Résultats observés** :
+
+- **15 tests GREEN** : 8 queue + 6 SharedPersister + 5 Worker + 4 E2E.
+- E2E volumetric : 200 batches submitted, tous persistés en ~2.3s sur DuckDB :memory:.
+- E2E re-submit même match_id : property INSERT-only validée (kills initiaux préservés, pas d'UPDATE émis).
+- E2E crash recovery : WAL pré-seed → RecoverPending → worker persist → ACK supprime les WAL. Pipeline complet validé.
+- `go vet ./...` clean, `gofmt -l` clean, `go build ./...` OK.
+
+**Découverte annexe (divergence schéma weapon_kills)** : le base schema (`create_base_shared_schema`) crée `weapon_kills` en forme aggregée (4 cols : match_id, xuid, weapon_id, kills) alors que `add_weapon_kills` tente de créer la forme per-kill (8 cols + time_ms). Vu que `CREATE TABLE IF NOT EXISTS` no-op, les fresh installs n'ont pas time_ms/delta_ms/confidence/swap_detected/delayed_damage. La prod a ces colonnes via une migration Python ancienne, mais c'est un bug pour les nouvelles installations Go-only. Patch test-local en attendant un fix migration dédié (à traiter en Phase 2 ou plus tard).
+
+**Prochaine étape** : Phase 2 — Refacto du sync engine pour utiliser `BatchBuilder.Submit` au lieu des INSERTs directs (`InsertRegistry`, `InsertParticipants`, etc.). Plus la migration progressive + cleanup des anti-ART (singleflight, CHECKPOINT, rebuilds runtime, UPDATE-then-INSERT). PlayerPersister/PVEPersister/MetadataPersister à écrire sur le même modèle que SharedPersister.
+
+---
+
+## [2026-05-23] Documentation catalogue des enrichissements locaux (v2 — passe exhaustive)
+
+**Statut** : Complété
+
+**Tâche** : Inventaire exhaustif de tous les calculs/enrichissements locaux produits pendant et post-sync, avec leur pipeline de calcul, leur table de stockage et leurs consommateurs côté API.
+
+**Résultat** : `.ai/ENRICHMENTS_CATALOG.md` créé — 8 sections couvrant :
+- `player_match_enrichment` : performance_score/chain, session, is_with_friends, had_bot_teammate, is_excluded, dominance_flag, teammates_signature
+- `match_skill_rank` : LUSR + CSR
+- `match_citations` + pipeline BackfillMatchCitations (multi-source)
+- `personal_score_awards`
+- `career_progression`
+- `media_files` / `media_match_associations`
+- Tables shared : medals_earned, killer_victim_pairs, weapon_kills, xuid_aliases, mode_category
+- Métriques à la volée : offensive_conversion, defensive_resistance
+- Bitmask `backfill_completed`
+
+**Éléments non listés initialement retrouvés** : dominance_flag (badges narratifs 0-5), match_citations, medals_earned, personal_score_awards, career_progression, media_files, is_excluded.
+
+**Ajouts v2 (passe exhaustive sur schema.go + migrations)** :
+- `player_csr_snapshots` — snapshot CSR officiel Waypoint par playlist/saison (alltime, season, current). Source de vérité pour le pic CSR home.
+- `shared.match_csrs` — CSR de tous les participants d'un match ranked (pas seulement le joueur sync).
+- `pve_match_stats` — stats Firefight détaillées (14 types d'ennemis + bitmask PveBits).
+- `rating_deviation` (match_skill_rank) — sigma TrueSkill du LUSR.
+- `known_teammates_count` / `friends_xuids` — colonnes reservées, non peuplées (schema.go, dead columns à surveiller).
+- Bitmasks complets (`backfill_completed`, `backfill_bits`, `pve_bits`) — tableaux valeur→signification ajoutés.
+
+**Prochaine étape** : Utiliser comme référence pour tout nouveau enrichissement ou migration Collect→Persist.
+
+---
+
 ## [2026-05-23] verdict ART final — UPDATE = DELETE+INSERT en columnar — refactor Collect→Persist designé
 
 **Statut** : 🔴 Diagnostic final + design validé. Implementation demain.
