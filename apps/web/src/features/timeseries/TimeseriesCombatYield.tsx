@@ -128,13 +128,35 @@ export function buildCombatYieldOption(
   const ocSeries = series.find((s) => s.key === 'combat.oc')
   const drSeries = series.find((s) => s.key === 'combat.dr')
 
+  const pctAxis = (v: number) => `${Math.round(v * 100)}%`
   return {
     backgroundColor: CHART_BG,
     grid: { top: 16, bottom: 56, left: 56, right: 16 },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      formatter: (params: Array<{ seriesName: string; value: [string, number | null]; marker: string }>) => {
+        const lines = params
+          .filter((p) => p.value?.[1] != null)
+          .map((p) => {
+            const val = p.value[1] as number
+            const isOC = p.seriesName === labels.ocSeries
+            const formatted = isOC
+              ? `${Math.round(val * 100)}%`
+              : `${Math.round((val - 1) * 100) >= 0 ? '+' : ''}${Math.round((val - 1) * 100)}%`
+            return `${p.marker}${p.seriesName}: <b>${formatted}</b>`
+          })
+        return lines.join('<br/>')
+      },
+    },
     legend: { ...getLegendBase(tc), data: [labels.ocSeries, labels.drSeries] },
     xAxis: { ...axis, type: 'time' },
-    yAxis: { ...axis, type: 'value', min: 0 },
+    yAxis: {
+      ...axis,
+      type: 'value',
+      min: 0,
+      axisLabel: { ...axis.axisLabel, formatter: pctAxis },
+    },
     series: [
       {
         type: 'line',
@@ -153,13 +175,13 @@ export function buildCombatYieldOption(
           data: [
             {
               yAxis: OC_P80,
-              name: `${labels.ocReference} (${OC_P80})`,
+              name: `${labels.ocReference} (${Math.round(OC_P80 * 100)}%)`,
               label: {
                 show: true,
                 position: 'end',
                 color: ocColor,
                 fontSize: 10,
-                formatter: `${labels.ocReference} (${OC_P80})`,
+                formatter: `${labels.ocReference} (${Math.round(OC_P80 * 100)}%)`,
               },
             },
           ],
@@ -182,13 +204,13 @@ export function buildCombatYieldOption(
           data: [
             {
               yAxis: DR_P80,
-              name: `${labels.drReference} (${DR_P80})`,
+              name: `${labels.drReference} (${Math.round(DR_P80 * 100)}%)`,
               label: {
                 show: true,
                 position: 'end',
                 color: drColor,
                 fontSize: 10,
-                formatter: `${labels.drReference} (${DR_P80})`,
+                formatter: `${labels.drReference} (${Math.round(DR_P80 * 100)}%)`,
               },
             },
           ],

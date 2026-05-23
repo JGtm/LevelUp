@@ -247,10 +247,19 @@ export function TimeseriesEfficiency({
     const oc = rows.map((r) => computeOC(r))
     const dr = rows.map((r) => computeDR(r))
 
+    const pctFormatter = (v: number) => `${(v * 100).toFixed(0)}%`
     return {
       backgroundColor: CHART_BG,
-      grid: { top: 16, right: 16, bottom: 64, left: 48, containLabel: true },
-      tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+      grid: { top: 16, right: 16, bottom: 64, left: 52, containLabel: true },
+      tooltip: {
+        ...getTooltipBase(tc),
+        trigger: 'axis',
+        formatter: (params: Array<{ seriesName: string; value: number | null; marker: string }>) =>
+          params
+            .filter((p) => p.value != null)
+            .map((p) => `${p.marker}${p.seriesName}: <b>${pctFormatter(p.value as number)}</b>`)
+            .join('<br/>'),
+      },
       legend: { ...getLegendBase(tc), bottom: 0 },
       xAxis: {
         ...getAxisBase(tc),
@@ -258,7 +267,11 @@ export function TimeseriesEfficiency({
         data: categories,
         axisLabel: { ...getAxisBase(tc).axisLabel, interval: 0, fontSize: 9 },
       },
-      yAxis: { ...getAxisBase(tc), type: 'value' },
+      yAxis: {
+        ...getAxisBase(tc),
+        type: 'value',
+        axisLabel: { ...getAxisBase(tc).axisLabel, formatter: pctFormatter },
+      },
       series: [
         {
           type: 'line',
