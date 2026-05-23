@@ -235,3 +235,117 @@ func TestBuildBatchFromFetchedMatch_NoCSRRow_NoSkillRank(t *testing.T) {
 		t.Errorf("SkillRank doit être nil (CSRRow absent), got %+v", batch.PlayerData.SkillRank)
 	}
 }
+
+// ─── Test 8 : SharedCSRs → batch.Shared.MatchCSRs ─────────────────────────
+
+func TestBuildBatchFromFetchedMatch_SharedCSRs_MappedToBatch(t *testing.T) {
+	fm := &fetchedMatch{
+		MatchID:  "m_scsr_001",
+		Registry: sampleRegistry("m_scsr_001"),
+		SharedCSRs: []SharedMatchCSRRow{
+			{
+				MatchID: "m_scsr_001", XUID: "1111",
+				RatingType: "CSR", RatingValue: cF64Ptr(1450),
+				Tier: "Onyx", SubTier: 0, TierLabel: "Onyx 1450",
+				SeasonID: "CsrSeason13-1",
+			},
+			{
+				MatchID: "m_scsr_001", XUID: "2222",
+				RatingType: "CSR", RatingValue: cF64Ptr(1500),
+				Tier: "Onyx", SubTier: 0, TierLabel: "Onyx 1500",
+				MeasurementMatchesRemaining: 0,
+			},
+		},
+	}
+	batch, err := buildBatchFromFetchedMatch(fm, "halo_infinite", "Alice", "1111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batch.Shared.MatchCSRs) != 2 {
+		t.Errorf("MatchCSRs : %d, want 2", len(batch.Shared.MatchCSRs))
+	}
+	got := batch.Shared.MatchCSRs[0]
+	if got.XUID != "1111" || got.RatingType != "CSR" {
+		t.Errorf("MatchCSRs[0] = %+v", got)
+	}
+	if got.Tier == nil || *got.Tier != "Onyx" {
+		t.Errorf("Tier = %+v, want Onyx", got.Tier)
+	}
+	if got.SeasonID == nil || *got.SeasonID != "CsrSeason13-1" {
+		t.Errorf("SeasonID = %+v, want CsrSeason13-1", got.SeasonID)
+	}
+}
+
+func TestBuildBatchFromFetchedMatch_NoSharedCSRs_BatchEmpty(t *testing.T) {
+	fm := &fetchedMatch{
+		MatchID:  "m_noscsr_001",
+		Registry: sampleRegistry("m_noscsr_001"),
+		// SharedCSRs nil (non-ranked)
+	}
+	batch, err := buildBatchFromFetchedMatch(fm, "halo_infinite", "Alice", "1111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(batch.Shared.MatchCSRs) != 0 {
+		t.Errorf("MatchCSRs : %d, want 0", len(batch.Shared.MatchCSRs))
+	}
+}
+
+// ─── Test 9 : PveStats → batch.PVE.Stats (slice) ──────────────────────────
+
+func TestBuildBatchFromFetchedMatch_PveStats_MappedToBatch(t *testing.T) {
+	fm := &fetchedMatch{
+		MatchID:  "m_pve_001",
+		Registry: sampleRegistry("m_pve_001"),
+		PveStats: []PveMatchStatsRow{
+			{
+				MatchID: "m_pve_001", XUID: "1111",
+				WavesCompleted: 5, BossKills: 2, GruntKills: 30,
+				TotalKills: 43, Deaths: 8, DamageDealt: 12500.5,
+				PveBitsValue: 0xFFFF,
+			},
+			{
+				MatchID: "m_pve_001", XUID: "2222",
+				WavesCompleted: 5, BossKills: 1,
+				TotalKills: 25, Deaths: 12,
+			},
+		},
+	}
+	batch, err := buildBatchFromFetchedMatch(fm, "halo_infinite", "Alice", "1111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if batch.PVE == nil {
+		t.Fatal("batch.PVE nil (PveStats présent)")
+	}
+	if len(batch.PVE.Stats) != 2 {
+		t.Errorf("PVE.Stats : %d, want 2", len(batch.PVE.Stats))
+	}
+	first := batch.PVE.Stats[0]
+	if first.XUID != "1111" || first.WavesCompleted != 5 || first.TotalKills != 43 {
+		t.Errorf("PVE.Stats[0] = %+v", first)
+	}
+	if first.PveBits == nil || *first.PveBits != 0xFFFF {
+		t.Errorf("PVE.Stats[0].PveBits = %+v, want 0xFFFF", first.PveBits)
+	}
+	// 2e row : PveBitsValue=0 → PveBits=nil (sentinelle non-renseignée).
+	second := batch.PVE.Stats[1]
+	if second.PveBits != nil {
+		t.Errorf("PVE.Stats[1].PveBits = %+v, want nil (PveBitsValue=0)", second.PveBits)
+	}
+}
+
+func TestBuildBatchFromFetchedMatch_NoPveStats_BatchPVENil(t *testing.T) {
+	fm := &fetchedMatch{
+		MatchID:  "m_nopve_001",
+		Registry: sampleRegistry("m_nopve_001"),
+		// PveStats nil (non firefight)
+	}
+	batch, err := buildBatchFromFetchedMatch(fm, "halo_infinite", "Alice", "1111")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if batch.PVE != nil {
+		t.Errorf("batch.PVE doit être nil (PveStats absent), got %+v", batch.PVE)
+	}
+}
