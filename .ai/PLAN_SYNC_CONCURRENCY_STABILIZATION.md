@@ -419,7 +419,7 @@ Compteurs :
 
 **Notif data_health_warning** : si `art_corruption_detected_total` > 0 sur 24h ET pas de rebuild réussi.
 
-### 4.4 NEW — Recompute force=true post-rebuild ART (P1, 2h)
+### 4.4 NEW — Recompute force=true post-rebuild ART — ✅ FAIT step 1/2 (fonction publique) 2026-05-23 (commit b65e0417)
 
 **Source** : Audit Agent 2 (handoff §2 risque résiduel #6).
 
@@ -427,22 +427,37 @@ Compteurs :
 
 **Conséquence** : le rebuild swap-table de Phase 4.1 récupère les rows en DB, mais les valeurs dérivées (LUSR cascade, performance scores, sessions, citations, dominance flags) restent figées sur l'état corrompu.
 
-**Action obligatoire après rebuild** : lancer un recompute `force=true` pour chaque joueur dont des matchs étaient corrompus :
+**Livré step 1/2** : nouvelle fonction publique [`sync.RecomputeAfterARTRebuild`](../apps/go-api/internal/sync/recompute_after_art_rebuild.go) qui orchestre les 4 cascades en séquence, best-effort par étape :
+1. `BatchComputeLUSR(force=true)` — nouveau wrapper public exposé (medal map nil).
+2. `BatchComputePerformanceScores(force=true)` — wrapper public existant.
+3. `BackfillDominanceFlags` sur la liste complète des match_ids du joueur (chargés via `WHERE xuid || '' = ?` pour court-circuiter l'ART).
+4. `RecomputeIsWithFriendsCore` (skip si friend list vide).
 
+API :
 ```go
-// Pseudo-code post-rebuild
-for _, playerXUID := range affectedPlayers {
-    batchComputeLUSR(playerDB, sharedDB, playerXUID, medalMap, true /* force */)
-    batchComputePerformanceScores(playerDB, sharedDB, playerXUID, nil, true)
-    BackfillDominanceFlags(sharedDB, playerDB, playerXUID, affectedMatchIDs)
-    RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, playerXUID, friends, false)
-    // Sessions recalc + engagement recompute
-}
+func RecomputeAfterARTRebuild(
+    ctx context.Context,
+    playerDB, sharedDB *sql.DB,
+    xuid string,
+    friendGamertags []string,
+) (RecomputeAfterARTRebuildReport, error)
 ```
 
-**Critère de complétion** : 1 cycle complet de recompute par joueur affecté, validé par observation manuelle (LUSR Madina = Platine attendu, pas Argent IV).
+Best-effort : chaque cascade peut échouer sans bloquer les suivantes (erreurs accumulées dans `report.Errors`). Erreur globale uniquement si TOUTES les cascades ont échoué (`allCascadesFailed`).
 
-**Risque** : Long sur grosses player DBs (LUSR cascade O(N)). Lancer en background, ne pas bloquer le boot.
+Logging riche : 1 INFO par étape + 1 INFO summary final avec counts + duration_ms + errors_count.
+
+**Trigger step 2/2 (à venir = sub-phase 4.4.b)** : décider du scope (tous joueurs vs joueurs ciblés) et du moment (auto post-rebuild boot, sync engine periodic, ou CLI tool manuel). Comme la fonction touche aux données utilisateur, on défère ce wiring hors-bande pour le valider avec l'utilisateur. La fonction publique est dès maintenant callable depuis n'importe quel caller (CLI tool, handler diagnostique, sync engine, etc.).
+
+**4 tests TDD écrits AVANT impl** ([`recompute_after_art_rebuild_test.go`](../apps/go-api/internal/sync/recompute_after_art_rebuild_test.go)) :
+- `ProducesAllCascadeOutputs` : 15 matchs > threshold perf, vérifie LUSR + performance + dominance produits.
+- `EmptyData_NoOp` : DB vide, no-op gracieux, counts à 0.
+- `Idempotent` : 2 passes successives produisent les mêmes counts.
+- `SkipsFriendsWhenEmpty` : friend list nil → FriendXUIDsCount = 0.
+
+Critère TDD : baseline rouge (undefined symbol), verts post-impl. Suite intégration sync complète reste verte (36s).
+
+**Risque** : Long sur grosses player DBs (LUSR cascade O(N), perf cascade O(N×window)). Sur 1000+ matchs ça peut prendre plusieurs minutes. Le caller (CLI tool ou auto-trigger) DOIT lancer en background.
 
 ### 4.5 NEW — Paralléliser refreshAggregates + refreshSharedViews (P3, 1h)
 
