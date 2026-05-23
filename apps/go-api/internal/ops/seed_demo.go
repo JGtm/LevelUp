@@ -238,23 +238,60 @@ func validateSeedDemoOpts(opts *SeedDemoOptions) error {
 	return nil
 }
 
+// profileEntry est la structure d'un profil joueur dans db_profiles.json.
+type profileEntry struct {
+	XUID   string `json:"xuid"`
+	DBPath string `json:"db_path"`
+}
+
 // ResolveSourceXUIDFromProfiles lit db_profiles.json et retourne le xuid + le
 // chemin player DB pour le gamertag donné.
+//
+// Supporte 2 formats :
+//   - v3.0 multi-titres : profiles.{titleSlug}.{gamertag}.{xuid,db_path} (cherche
+//     d'abord dans halo_infinite, puis dans tous les autres titres).
+//   - v2.1 legacy : profiles.{gamertag}.{xuid,db_path} (un seul niveau).
 func ResolveSourceXUIDFromProfiles(profilesPath, gamertag string) (xuid, playerDBPath string, err error) {
 	data, err := os.ReadFile(profilesPath)
 	if err != nil {
 		return "", "", fmt.Errorf("read profiles: %w", err)
 	}
-	var doc struct {
-		Profiles map[string]struct {
-			XUID   string `json:"xuid"`
-			DBPath string `json:"db_path"`
-		} `json:"profiles"`
+
+	// Tentative v3.0 (nested par titre).
+	var docV3 struct {
+		Version  string                             `json:"version"`
+		Profiles map[string]map[string]profileEntry `json:"profiles"`
 	}
-	if err := json.Unmarshal(data, &doc); err != nil {
+	if err := json.Unmarshal(data, &docV3); err == nil && docV3.Version >= "3.0" {
+		// Chercher d'abord dans halo_infinite (titre par défaut), puis fallback
+		// sur le premier titre qui contient le gamertag.
+		if titleProfiles, ok := docV3.Profiles["halo_infinite"]; ok {
+			if p, ok := titleProfiles[gamertag]; ok {
+				if p.XUID == "" {
+					return "", "", fmt.Errorf("profile %q sans xuid", gamertag)
+				}
+				return p.XUID, p.DBPath, nil
+			}
+		}
+		for _, titleProfiles := range docV3.Profiles {
+			if p, ok := titleProfiles[gamertag]; ok {
+				if p.XUID == "" {
+					return "", "", fmt.Errorf("profile %q sans xuid", gamertag)
+				}
+				return p.XUID, p.DBPath, nil
+			}
+		}
+		return "", "", fmt.Errorf("gamertag %q introuvable dans %s (v3.0)", gamertag, profilesPath)
+	}
+
+	// Fallback v2.1 (flat par gamertag, legacy).
+	var docV2 struct {
+		Profiles map[string]profileEntry `json:"profiles"`
+	}
+	if err := json.Unmarshal(data, &docV2); err != nil {
 		return "", "", fmt.Errorf("parse profiles: %w", err)
 	}
-	p, ok := doc.Profiles[gamertag]
+	p, ok := docV2.Profiles[gamertag]
 	if !ok {
 		return "", "", fmt.Errorf("gamertag %q introuvable dans %s", gamertag, profilesPath)
 	}
@@ -442,8 +479,11 @@ func extractPlayerTables(
 	}
 
 	// Anonymisation : sourceXUID → demoXUID dans tables avec colonne xuid.
+	// Schéma player_match_enrichment / match_skill_rank / match_citations : PAS de xuid
+	// (player DB mono-joueur, xuid implicite via path /data/players/{gamertag}/).
+	// Seule career_progression a une colonne xuid à anonymiser (cf. steps_player.go:36-51).
 	if err := anonymizeXUIDInTables(ctx, dst, sourceXUID, demoXUID,
-		[]string{playerEnrichmentTable, "match_skill_rank"}); err != nil {
+		[]string{"career_progression"}); err != nil {
 		// Non bloquant
 		slog.WarnContext(ctx, "seed-demo: anonymize player partielle", "err", err)
 	}
