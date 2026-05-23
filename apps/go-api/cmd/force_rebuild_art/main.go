@@ -41,12 +41,31 @@ import (
 )
 
 func main() {
-	// Path par défaut (relatif au repo root). Override possible via --db.
+	// --all : rebuild shared + tous les player DBs (extension 2026-05-23).
+	all := flag("all", "", "rebuild shared + toutes les player DBs (data/titles/halo_infinite/players/*)")
+	// --db : path explicite vers UNE DB shared.
 	dbPath := flag("db",
 		filepath.Join("data", "titles", "halo_infinite", "warehouse", "shared_matches_v2.duckdb"),
-		"chemin vers shared_matches_v2.duckdb")
+		"chemin vers shared_matches_v2.duckdb (mode shared uniquement)")
+	// --player-db : path explicite vers UN player stats.duckdb.
+	playerDB := flag("player-db", "", "chemin vers un player stats.duckdb (mode player uniquement)")
 
-	abs, err := filepath.Abs(dbPath)
+	if all != "" && all != "false" {
+		rebuildAll()
+		return
+	}
+
+	if playerDB != "" {
+		rebuildPlayerDB(playerDB)
+		return
+	}
+
+	rebuildSharedDB(dbPath)
+}
+
+// rebuildSharedDB rebuild la table match_participants dans shared_matches_v2.duckdb.
+func rebuildSharedDB(path string) {
+	abs, err := filepath.Abs(path)
 	if err != nil {
 		log.Fatalf("abs path: %v", err)
 	}
@@ -54,10 +73,9 @@ func main() {
 		log.Fatalf("DB introuvable: %s (err: %v)", abs, err)
 	}
 
-	fmt.Printf("══ force_rebuild_art ══\n")
+	fmt.Printf("══ force_rebuild_art (shared) ══\n")
 	fmt.Printf("DB cible : %s\n\n", abs)
 
-	// Ouvre en RW. DuckDB refusera si un autre process tient déjà le fichier.
 	db, err := sql.Open("duckdb", abs)
 	if err != nil {
 		log.Fatalf("open RW: %v (serveur encore en cours ?)", err)
@@ -67,7 +85,6 @@ func main() {
 
 	ctx := context.Background()
 
-	// 1. Diag pré-rebuild : count rows.
 	var rowsBefore int
 	if err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM match_participants`).Scan(&rowsBefore); err != nil {
@@ -75,19 +92,13 @@ func main() {
 	}
 	fmt.Printf("Rows pre-rebuild : %d\n", rowsBefore)
 
-	// 2. Efface le sentinel pour que la prochaine boot relance applyRebuild...
-	// Mais on appelle RebuildMatchParticipantsART direct ici, donc le sentinel
-	// n'est pas consulté. On l'efface quand même au cas où le serveur
-	// référencerait ailleurs.
 	if _, err := db.ExecContext(ctx,
 		`DELETE FROM sync_meta WHERE key = 'match_participants_rebuilt_v1'`); err != nil {
-		// Pas fatal — la table peut ne pas avoir cette key.
 		fmt.Printf("WARN: delete sentinel: %v (non-bloquant)\n", err)
 	} else {
 		fmt.Println("Sentinel match_participants_rebuilt_v1 effacé.")
 	}
 
-	// 3. Rebuild swap CTAS.
 	fmt.Println("\nLancement rebuild swap CTAS...")
 	start := time.Now()
 	if err := migration.RebuildMatchParticipantsART(ctx, db); err != nil {
@@ -95,14 +106,13 @@ func main() {
 	}
 	dur := time.Since(start)
 
-	// 4. Validation post-rebuild.
 	var rowsAfter int
 	if err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM match_participants`).Scan(&rowsAfter); err != nil {
 		log.Fatalf("count after: %v", err)
 	}
 
-	fmt.Printf("\n══ Résultat ══\n")
+	fmt.Printf("\n══ Résultat shared ══\n")
 	fmt.Printf("Rows avant : %d\n", rowsBefore)
 	fmt.Printf("Rows après : %d\n", rowsAfter)
 	fmt.Printf("Durée      : %v\n", dur)
@@ -111,7 +121,91 @@ func main() {
 		fmt.Printf("\n⚠ ALERTE : row count différent ! Investigation requise.\n")
 		os.Exit(1)
 	}
-	fmt.Println("\n✓ Rebuild terminé sans perte.")
+	fmt.Println("\n✓ Rebuild shared terminé sans perte.")
+}
+
+// rebuildPlayerDB rebuild la table player_match_enrichment dans le stats.duckdb
+// d'un joueur.
+func rebuildPlayerDB(path string) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		log.Fatalf("abs path: %v", err)
+	}
+	if _, err := os.Stat(abs); err != nil {
+		log.Fatalf("player DB introuvable: %s (err: %v)", abs, err)
+	}
+
+	fmt.Printf("══ force_rebuild_art (player) ══\n")
+	fmt.Printf("Player DB : %s\n\n", abs)
+
+	db, err := sql.Open("duckdb", abs)
+	if err != nil {
+		log.Fatalf("open RW: %v (serveur encore en cours ?)", err)
+	}
+	defer db.Close()
+	db.SetMaxOpenConns(1)
+
+	ctx := context.Background()
+
+	var rowsBefore int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&rowsBefore); err != nil {
+		log.Fatalf("count before: %v", err)
+	}
+	fmt.Printf("Rows pre-rebuild : %d\n", rowsBefore)
+
+	start := time.Now()
+	if err := migration.RebuildPlayerMatchEnrichmentART(ctx, db); err != nil {
+		log.Fatalf("RebuildPlayerMatchEnrichmentART: %v", err)
+	}
+	dur := time.Since(start)
+
+	var rowsAfter int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&rowsAfter); err != nil {
+		log.Fatalf("count after: %v", err)
+	}
+
+	fmt.Printf("\n══ Résultat player ══\n")
+	fmt.Printf("Rows avant : %d\n", rowsBefore)
+	fmt.Printf("Rows après : %d\n", rowsAfter)
+	fmt.Printf("Durée      : %v\n", dur)
+
+	if rowsAfter != rowsBefore {
+		fmt.Printf("\n⚠ ALERTE : row count différent ! Investigation requise.\n")
+		os.Exit(1)
+	}
+	fmt.Println("\n✓ Rebuild player terminé sans perte.")
+}
+
+// rebuildAll itère shared puis tous les player DBs présents sous
+// data/titles/halo_infinite/players/{gamertag}/stats.duckdb.
+func rebuildAll() {
+	fmt.Println("══ force_rebuild_art --all ══")
+
+	// 1. Shared.
+	rebuildSharedDB(filepath.Join("data", "titles", "halo_infinite", "warehouse", "shared_matches_v2.duckdb"))
+
+	// 2. Player DBs : itère data/titles/halo_infinite/players/*/stats.duckdb.
+	playersDir := filepath.Join("data", "titles", "halo_infinite", "players")
+	entries, err := os.ReadDir(playersDir)
+	if err != nil {
+		log.Fatalf("read players dir %s: %v", playersDir, err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		playerDB := filepath.Join(playersDir, entry.Name(), "stats.duckdb")
+		if _, err := os.Stat(playerDB); err != nil {
+			fmt.Printf("\nSkip %s (pas de stats.duckdb)\n", entry.Name())
+			continue
+		}
+		fmt.Printf("\n--- Player : %s ---\n", entry.Name())
+		rebuildPlayerDB(playerDB)
+	}
+
+	fmt.Println("\n✓ Rebuild --all terminé.")
 }
 
 // flag : helper minimal pour args CLI sans dépendance externe.
