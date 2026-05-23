@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -136,18 +137,41 @@ func main() {
 	// impossible — symptôme de l'incident 2026-05-22 (post-sync JGtm tué à
 	// 18:41:19 sans aucune trace). Best-effort : si l'ouverture échoue, on
 	// continue (le crash ira sur stderr comme avant).
+	//
+	// Phase 4.2 (plan stabilisation 2026-05-22) : on garde aussi un handle sur
+	// le crashFile pour brancher un signal handler SIGABRT/SIGSEGV — utile
+	// pour capturer les FatalException C++ de DuckDB (terminate() raise
+	// SIGABRT côté libc Linux) avant que le process ne meure silencieusement.
+	var crashFile *os.File
 	if logsCfg.LogsDir != "" {
 		crashLogPath := filepath.Join(logsCfg.LogsDir, "server.crash.log")
-		if crashFile, err := os.OpenFile(crashLogPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644); err == nil {
-			_, _ = fmt.Fprintf(crashFile, "\n=== server start %s pid=%d ===\n", time.Now().Format(time.RFC3339), os.Getpid())
-			if err := debug.SetCrashOutput(crashFile, debug.CrashOptions{}); err != nil {
-				slog.Warn("crash_output: SetCrashOutput échoué", "err", err, "path", crashLogPath)
-				_ = crashFile.Close()
+		if f, err := os.OpenFile(crashLogPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644); err == nil {
+			_, _ = fmt.Fprintf(f, "\n=== server start %s pid=%d ===\n", time.Now().Format(time.RFC3339), os.Getpid())
+			if setErr := debug.SetCrashOutput(f, debug.CrashOptions{}); setErr != nil {
+				slog.Warn("crash_output: SetCrashOutput échoué", "err", setErr, "path", crashLogPath)
+				_ = f.Close()
+			} else {
+				crashFile = f
 			}
 		} else {
 			slog.Warn("crash_output: ouverture fichier échouée — panics resteront sur stderr",
 				"err", err, "path", crashLogPath)
 		}
+	}
+
+	// Phase 4.2 — signal handler SIGABRT (+ SIGSEGV) pour capturer les
+	// FatalException C++ levées par DuckDB depuis cgo. `recover()` Go ne capte
+	// pas ces erreurs car elles bypass la stack Go via libc terminate(). Le
+	// handler dump la stack de toutes les goroutines puis os.Exit(2) — sinon
+	// abort() ré-émet le signal après notre handler et le process meurt
+	// silencieusement.
+	//
+	// Note Windows : signal.Notify(SIGABRT) compile mais ne fire pas — sur
+	// Windows les erreurs C++ font des structured exceptions (SEH), pas des
+	// signaux POSIX. Code defensive cross-platform : on l'enregistre quand
+	// même, sur Linux/macOS ça fonctionne, sur Windows c'est un no-op.
+	if crashFile != nil {
+		installFatalSignalHandler(crashFile)
 	}
 
 	var logHandler slog.Handler
@@ -1070,6 +1094,45 @@ func startWatcherDaemon(
 		"rta_auth", "ok",
 	)
 	return daemon
+}
+
+// installFatalSignalHandler enregistre un handler SIGABRT (+ SIGSEGV) qui
+// dump la stack de toutes les goroutines vers crashFile avant exit. Capture
+// les FatalException C++ de DuckDB que recover() Go ne peut pas attraper.
+//
+// Phase 4.2 du plan stabilisation 2026-05-22. Cf. main() au boot.
+//
+// Pré-condition : crashFile non-nil, ouvert en append.
+//
+// Note : sur Windows, signal.Notify(SIGABRT) compile mais ne fire pas. Le
+// handler est un no-op sur cette plateforme — pas grave, on garde le code
+// cross-platform.
+func installFatalSignalHandler(crashFile *os.File) {
+	sigFatal := make(chan os.Signal, 1)
+	signal.Notify(sigFatal, syscall.SIGABRT, syscall.SIGSEGV)
+	go func() {
+		s := <-sigFatal
+		dumpFatalStack(crashFile, s)
+		// os.Exit(2) bypass les defers, mais le process est déjà mort logiquement —
+		// abort() ré-émettra le signal sinon. C'est le seul moyen d'éviter le
+		// double-crash silencieux.
+		os.Exit(2)
+	}()
+}
+
+// dumpFatalStack écrit un en-tête (timestamp + signal + pid) puis la stack
+// complète de toutes les goroutines dans le crashFile. Extrait pour
+// testabilité (unit test peut passer un *bytes.Buffer + un faux signal).
+func dumpFatalStack(w io.Writer, sig os.Signal) {
+	_, _ = fmt.Fprintf(w, "\n=== fatal signal %s at %s pid=%d ===\n",
+		sig, time.Now().Format(time.RFC3339), os.Getpid())
+	// Buffer 1 MB : suffit pour ~5000 goroutines avec frames raisonnables.
+	// On veut TOUTES les goroutines (all=true) pour identifier deadlocks /
+	// fuites au moment du crash.
+	buf := make([]byte, 1<<20)
+	n := runtime.Stack(buf, true)
+	_, _ = w.Write(buf[:n])
+	_, _ = w.Write([]byte("\n=== end fatal stack ===\n"))
 }
 
 // staticTokenProvider fournit les tokens Halo depuis le token store.
