@@ -1,3 +1,34 @@
+## [2026-05-23] Refactor Collect-Persist — Phase 2.1 buildBatchFromFetchedMatch (collect.go)
+
+**Statut** : Complété
+
+**Tâche** : Démarrer Phase 2 du refactor — collecteur qui transforme un `fetchedMatch` (data déjà fetchée depuis l'API Halo) en `*persist.MatchBatch`, prêt à être Submit() dans la BatchQueue. Coexiste avec `insertFetchedMatch` legacy (pas de switch de flow, juste un nouveau code path).
+
+**Décision technique principale** :
+
+- Fonction `buildBatchFromFetchedMatch(fm, titleSlug, gamertag, xuid) (*persist.MatchBatch, error)` 100% pure (pas d'I/O DB/API). Le parsing des highlight_events binaires est délégué à `analysis.ParseHighlightEvents` ; la conversion `HighlightEvent → RawEvent → KVPair` mirror du chemin legacy (`InsertKillerVictimPairsFromEvents`).
+- Si `analysis.ParseHighlightEvents` échoue, le batch est toujours retourné (sans events) et l'erreur de parse est wrappée dans le retour. Le caller décide si c'est un warning ou fatal — comportement aligné sur le legacy qui logge "parse_anomaly" mais continue.
+- `matchCSRRowToSkillRankInsert` helper : conversion `MatchCSRRow → persist.SkillRankInsert` avec `RatingType="CSR"` forcé (les rows LUSR viendront du post-sync compute Phase 2.2).
+- `XUIDAliases` agrégés depuis participants ET events (les events peuvent contenir des XUIDs hors participants — joueurs ennemis vus dans le film).
+- Coexistence avec `insertFetchedMatch` : pas de feature flag pour l'instant, le nouveau code est mort jusqu'à l'orchestrateur Phase 2.3.
+
+**Couverture INSERT mapping** (audit complet) : 9/14 chemins legacy couverts par le batch. Gaps explicites :
+- xuid_aliases dans `data/global/xbox_aliases.duckdb` (DB séparée, le batch n'écrit que dans shared)
+- weapon_kills (backfill film, hors fetchedMatch)
+- shared.match_csrs (lobby CSR, nécessite extension de fetchMatchData en Phase 2.2)
+- pve_match_stats (firefight, fetchedMatch ne l'extrait pas)
+- Mark* bitmasks (à calculer avant Submit en mode INSERT-only)
+
+**Résultats observés** :
+
+- 8 tests TDD GREEN : nil fm, nil Registry, minimal, full, aliases filtering, no highlights, garbage highlight data, no CSR.
+- `internal/sync` test suite full pass après ajout : aucune régression.
+- `go vet ./...` clean.
+
+**Prochaine étape** : Phase 2.2 — étendre `fetchMatchData` (skillData → shared.match_csrs ; PVE extraction → fm.PveStats) puis intégrer les enrichments post-sync (performance_score, session_id, friends, dominance) dans le builder avant Submit. Décision attendue côté user : doit-on étendre fetchedMatch (struct grossit) ou créer un type `collectedMatch` séparé pour découpler le legacy ?
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — PVEPersister + MetadataPersister (couche persistance complète)
 
 **Statut** : Complété
