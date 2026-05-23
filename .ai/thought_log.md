@@ -1,3 +1,38 @@
+## [2026-05-23] Refactor Collect-Persist — Phase 2.3.b + 2.4 (env var câblée + E2E)
+
+**Statut** : Complété
+
+**Tâche** : Câbler la variable d'env `LEVELUP_PERSIST_BATCH=1` dans les 2 sites de prod (scheduler auto-sync + sync_handler HTTP) puis écrire le test E2E qui exerce le pipeline complet (`fetchMatchData → submitOrInsertMatch → DB`) avec `mockHaloClient`.
+
+**Décision technique principale** :
+
+- Phase 2.3.b — câblage env var :
+  - `internal/scheduler/auto_sync.go::defaultRunnerFactory` lit `os.Getenv("LEVELUP_PERSIST_BATCH")` et appelle `engine.WithBatchPersistMode(true)` si "1". Pour les syncs périodiques.
+  - `internal/api/handlers/sync_handler.go` (factory engine pour le `POST /sync` HTTP-triggered) : même lecture, même switch. Aligné sur le scheduler.
+  - Default désactivé → comportement strictement identique à pre-refactor. Activation progressive prévue : 1 cycle staging → vérifier 0 FATAL ART → activation prod.
+
+- Phase 2.4 — tests E2E :
+  - `TestE2ECollectPersist_FetchThenBatchSubmit` : 2 matchs via `mockHaloClient` → `fetchMatchData` → `submitOrInsertMatch` (batchMode=true) → vérif `match_registry`, `match_participants`, `medals_earned`, `player_match_enrichment` peuplés.
+  - `TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite` : re-submit du MÊME match → kills initial préservé, registry toujours à 1 row (property INSERT-only validée bout-en-bout).
+  - `patchSharedSchemaForBatch` helper : ALTER TABLE pour ajouter `match_intensity`, `backfill_completed`, `backfill_bits` (mêmes divergences schema migration/EnsureSharedSchema que weapon_kills, à fixer en migration dédiée Phase 5).
+
+**Résultats observés** :
+
+- 4 tests engine_batch_path GREEN (smoke + routing + 2 E2E).
+- Full `internal/sync` (42s) + `internal/persist` (6s) suites GREEN.
+- `go vet ./...` clean.
+- **Phase 2 du refactor Collect→Persist est livrée bout-en-bout**. Le chemin batch est désormais activable via `LEVELUP_PERSIST_BATCH=1` ; default off.
+
+**Prochaine étape** : Phase 3 du plan REFACTOR_COLLECT_PERSIST — activation progressive en prod. Lancer 1 cycle staging avec `LEVELUP_PERSIST_BATCH=1`, observer 5 cycles, vérifier qu'aucun FATAL ART ne se produit côté shared.match_participants, comparer perf vs legacy, puis flip default à on.
+
+Items secondaires reportés pour après l'activation :
+- Câblage PVE/Metadata persisters dans submitMatchAsBatch (le batch les contient déjà mais l'orchestrateur ne les appelle pas)
+- Couche queue+worker async (Phase 3 du plan original — pas critique pour le fix ART, mais nécessaire pour découpler fetch/persist)
+- Cleanup anti-ART (Phase 5) : singleflight, CHECKPOINT, UPDATE-then-INSERT migrations — à supprimer une fois batchMode validé en prod
+- B6 cleanup WAL/cache > 7j, B7 expvar branchement, B8 multi-titres workers map
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Phase 2.3 orchestrateur + feature flag
 
 **Statut** : Complété (côté engine ; câblage env var côté server reste à faire)
