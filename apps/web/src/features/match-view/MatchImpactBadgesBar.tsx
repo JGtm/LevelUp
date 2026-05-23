@@ -22,6 +22,8 @@ interface BadgeMeta {
   order: number
   /** style visuel — outline par défaut */
   variant?: 'outline' | 'secondary' | 'default'
+  /** true = ne pas afficher le time_ms même s'il est présent (badges "fréquence match entier") */
+  hideTime?: boolean
 }
 
 const BADGE_META: Record<string, BadgeMeta> = {
@@ -34,6 +36,7 @@ const BADGE_META: Record<string, BadgeMeta> = {
   top_killer: { order: 7, variant: 'secondary' },
   silent_hero: { order: 8, variant: 'secondary' },
   false_brother: { order: 9, variant: 'secondary' },
+  kamikaze: { order: 10, variant: 'secondary', hideTime: true },
   // Alias — anciens keys backend (avant le portage analysis Go).
   tourist: { order: 5 },
   finisher: { order: 3 },
@@ -101,7 +104,7 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
         // un "Premier sang 2535472884034919".
         const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
         const isMe = player?.is_me ?? false
-        const time = formatTime(b.time_ms)
+        const time = BADGE_META[b.key]?.hideTime ? null : formatTime(b.time_ms)
         const description = badgeI18n.badgeDescriptions[b.key]
         const hasSubline = gamertag !== null || time !== null
         return (

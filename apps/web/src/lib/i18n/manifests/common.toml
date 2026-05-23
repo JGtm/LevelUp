@@ -744,8 +744,8 @@ fr = "Sélectionne un joueur pour voir tes objectifs."
 en = "Select a player to see your objectives."
 
 [common.prestige.objectives_subtitle]
-fr = "Profil, défis et campagnes d'amélioration personnelle."
-en = "Profile, challenges and personal improvement campaigns."
+fr = "Profil, objectifs et campagnes d'amélioration personnelle."
+en = "Profile, objectives and personal improvement campaigns."
 
 [common.prestige.module_not_enabled_p5]
 fr = "Le module Prestige n'est pas encore activé sur ce serveur (Phase 5)."
@@ -756,20 +756,20 @@ fr = "Le module Prestige n'est pas encore activé sur ce serveur."
 en = "The Prestige module is not yet enabled on this server."
 
 [common.prestige.free_challenges]
-fr = "Défis libres ("
-en = "Free challenges ("
+fr = "Objectifs libres ("
+en = "Free objectives ("
 
 [common.prestige.new_challenge]
-fr = "+ Nouveau défi"
-en = "+ New challenge"
+fr = "+ Nouvel objectif"
+en = "+ New objective"
 
 [common.prestige.piloted_challenges]
-fr = "Défis pilotés ("
-en = "Piloted challenges ("
+fr = "Objectifs pilotés ("
+en = "Piloted objectives ("
 
 [common.prestige.piloted_intro]
-fr = "Le système t'attribue des défis quotidiens, hebdo et mensuels."
-en = "The system assigns you daily, weekly and monthly challenges."
+fr = "Le système t'attribue des objectifs quotidiens, hebdo et mensuels."
+en = "The system assigns you daily, weekly and monthly objectives."
 
 [common.prestige.phase5_minimal_title]
 fr = "Phase 5 minimale : non implémenté côté backend"
@@ -846,8 +846,8 @@ fr = "Chargement des suggestions…"
 en = "Loading suggestions…"
 
 [common.prestige.no_templates_available]
-fr = "Aucun template disponible. Bascule en mode libre pour créer un défi sur mesure."
-en = "No templates available. Switch to free mode to create a custom challenge."
+fr = "Aucun template disponible. Bascule en mode libre pour créer un objectif sur mesure."
+en = "No templates available. Switch to free mode to create a custom objective."
 
 [common.prestige.pick_template_hint]
 fr = "Choisis un template ; ajuste la cible si tu veux."
@@ -858,8 +858,8 @@ fr = "Génération des propositions…"
 en = "Generating proposals…"
 
 [common.prestige.three_challenges_catalog]
-fr = "3 défis tirés du catalogue, à accepter directement."
-en = "3 challenges from the catalog, ready to accept."
+fr = "3 objectifs tirés du catalogue, à accepter directement."
+en = "3 objectives from the catalog, ready to accept."
 
 [common.prestige.accept_heroic_prefix]
 fr = "Accepter (Heroic :"
