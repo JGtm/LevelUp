@@ -199,6 +199,7 @@ func BuildRecentMatchesWithFavoritesFromCanonical(
 			HeadshotKills:            intPtrIfPos(derefIntZero(r.Self.HeadshotKills)),
 			PerfectKills:             intPtrIfPos(derefIntZero(r.Self.PerfectKills)),
 			SessionLabel:             r.Enrichment.SessionLabel,
+			IsRanked:                 r.Summary.IsRanked != nil && *r.Summary.IsRanked,
 		})
 	}
 	return items

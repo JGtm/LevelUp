@@ -54,7 +54,7 @@ func TestLoadOneFriendExtras_PopulatesPerformanceScore(t *testing.T) {
 	repo := &mockFriendRepo{
 		enrichResult: &domain.MatchEnrichmentRaw{PerformanceScore: &score},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res == nil {
 		t.Fatal("expected non-nil extras when enrichment present")
 	}
@@ -79,7 +79,7 @@ func TestLoadOneFriendExtras_PopulatesSkillRank(t *testing.T) {
 			RatingDelta: &delta,
 		},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res == nil {
 		t.Fatal("expected non-nil extras when skill_rank present")
 	}
@@ -102,7 +102,7 @@ func TestLoadOneFriendExtras_BothSourcesEmpty_ReturnsNil(t *testing.T) {
 		enrichResult: &domain.MatchEnrichmentRaw{}, // PerformanceScore nil
 		rankResult:   nil,
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res != nil {
 		t.Errorf("expected nil when no usable data, got %+v", res)
 	}
@@ -117,7 +117,7 @@ func TestLoadOneFriendExtras_EnrichErrorDoesntBlockRank(t *testing.T) {
 		enrichErr:  errors.New("db locked"),
 		rankResult: &domain.SkillRankRaw{RatingType: "CSR", TierLabel: &tier},
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res == nil {
 		t.Fatal("expected non-nil extras (skill rank present)")
 	}
@@ -135,7 +135,7 @@ func TestLoadOneFriendExtras_BothErrors_ReturnsNil(t *testing.T) {
 		enrichErr: errors.New("enrich db locked"),
 		rankErr:   errors.New("rank db locked"),
 	}
-	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1")
+	res := loadOneFriendExtras(context.Background(), repo, "match-1", "", "xuid-1", nil)
 	if res != nil {
 		t.Errorf("expected nil when both sources error, got %+v", res)
 	}
@@ -165,7 +165,7 @@ func TestNewFriendsExtrasResolver_LookupsFriendByXUID(t *testing.T) {
 	friends := map[string]FriendProfile{
 		"friend-xuid-1": {XUID: "friend-xuid-1", Gamertag: "Friend1", TitleSlug: "halo_infinite"},
 	}
-	resolver := NewFriendsExtrasResolver(friends, opener)
+	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
 	out := resolver(context.Background(), "match-1", "", []string{"friend-xuid-1"})
 
@@ -191,7 +191,7 @@ func TestNewFriendsExtrasResolver_SkipsUnknownXUIDs(t *testing.T) {
 	friends := map[string]FriendProfile{
 		"known-xuid": {XUID: "known-xuid", Gamertag: "Known", TitleSlug: "halo_infinite"},
 	}
-	resolver := NewFriendsExtrasResolver(friends, opener)
+	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
 	// Demande un xuid non configuré dans friends → opener jamais appelé.
 	out := resolver(context.Background(), "match-1", "", []string{"unknown-xuid", "another-unknown"})
@@ -212,7 +212,7 @@ func TestNewFriendsExtrasResolver_OpenerErrorIsSilenced(t *testing.T) {
 	friends := map[string]FriendProfile{
 		"friend-1": {XUID: "friend-1", Gamertag: "Friend1", TitleSlug: "halo_infinite"},
 	}
-	resolver := NewFriendsExtrasResolver(friends, opener)
+	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
 	out := resolver(context.Background(), "match-1", "", []string{"friend-1"})
 
@@ -238,7 +238,7 @@ func TestNewFriendsExtrasResolver_PartialResults(t *testing.T) {
 		"xuid-1": {XUID: "xuid-1", Gamertag: "Friend1", TitleSlug: "halo_infinite"},
 		"xuid-2": {XUID: "xuid-2", Gamertag: "Friend2", TitleSlug: "halo_infinite"},
 	}
-	resolver := NewFriendsExtrasResolver(friends, opener)
+	resolver := NewFriendsExtrasResolver(friends, opener, nil)
 
 	out := resolver(context.Background(), "match-1", "", []string{"xuid-1", "xuid-2"})
 
@@ -254,4 +254,4 @@ func TestNewFriendsExtrasResolver_PartialResults(t *testing.T) {
 }
 
 // Garantit que le type port.FriendsExtrasResolver est bien satisfait.
-var _ port.FriendsExtrasResolver = NewFriendsExtrasResolver(nil, nil)
+var _ port.FriendsExtrasResolver = NewFriendsExtrasResolver(nil, nil, nil)

@@ -110,11 +110,17 @@ func buildTeamTabFull(
 				// header.had_bot_teammate qui est rempli ailleurs (page card).
 			}
 			if mySkillRank != nil {
+				iconURL := resolveSkillIconURL(mySkillRank.Tier, mySkillRank.SubTier, mySkillRank.TierLabel, assetURL)
+				var iconURLPtr *string
+				if iconURL != "" {
+					iconURLPtr = &iconURL
+				}
 				row.SkillRank = &domain.MatchScoreboardSkillRank{
 					RatingType:  mySkillRank.RatingType,
 					TierLabel:   mySkillRank.TierLabel,
 					RatingValue: mySkillRank.RatingValue,
 					RatingDelta: mySkillRank.RatingDelta,
+					IconURL:     iconURLPtr,
 				}
 			}
 		} else if extras, ok := friendsExtras[s.XUID]; ok {

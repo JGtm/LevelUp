@@ -244,6 +244,9 @@ type RecentMatchItem struct {
 	// SessionLabel : permet au frontend de filtrer recent_matches par session
 	// (ex. OutcomeSequenceTape limitée à la dernière session). Bug #6.
 	SessionLabel *string `json:"session_label,omitempty"`
+	// IsRanked : true si la playlist est classée (CSR officiel).
+	// Source : canonical.MatchSummary.IsRanked (issu de match_registry.is_ranked).
+	IsRanked bool `json:"is_ranked,omitempty"`
 }
 
 // RecentMatchMedal est une médaille compacte pour l'affichage dans MatchCard.
