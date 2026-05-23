@@ -83,6 +83,10 @@ type SharedBatch struct {
 
 	// XUIDAliases : nouveaux mappings xuid→gamertag observés dans le match.
 	XUIDAliases []XUIDAliasInsert `json:"xuid_aliases,omitempty"`
+
+	// MatchCSRs : CSR de tous les participants d'un match ranked (lobby
+	// context pour match view / compare). Vide pour les matchs non-ranked.
+	MatchCSRs []MatchCSRInsert `json:"match_csrs,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

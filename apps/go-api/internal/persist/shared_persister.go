@@ -110,6 +110,9 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistXUIDAliases(ctx, tx, s.XUIDAliases); err != nil {
 		return err
 	}
+	if err := persistMatchCSRs(ctx, tx, s.MatchCSRs); err != nil {
+		return err
+	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("persist: Commit %s: %w", s.Match.MatchID, err)
@@ -138,6 +141,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			duration_seconds, playable_duration_seconds,
 			real_start_time, team_0_score, team_1_score,
 			team_0_ps_score, team_1_ps_score,
+			match_intensity, backfill_completed,
 			first_sync_by, first_sync_at, last_updated_at,
 			created_at, updated_at
 		) VALUES (
@@ -149,6 +153,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			?, ?, ?, ?,
 			?, ?,
 			?, ?, ?,
+			?, ?,
 			?, ?,
 			?, ?, ?,
 			?, ?
@@ -162,6 +167,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 		row.DurationSeconds, row.PlayableDurationSeconds,
 		row.RealStartTime, row.Team0Score, row.Team1Score,
 		row.Team0PSScore, row.Team1PSScore,
+		row.MatchIntensity, row.BackfillCompleted,
 		row.FirstSyncBy, now, now,
 		now, now,
 	)
@@ -190,8 +196,9 @@ func persistParticipants(ctx context.Context, tx *sql.Tx, rows []domain.MatchPar
 				team_mmr, enemy_mmr,
 				headshot_kills,
 				max_killing_spree, grenade_kills, melee_kills, power_weapon_kills,
+				backfill_bits,
 				created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			row.MatchID, row.XUID, row.Gamertag,
 			row.TeamID, row.Outcome, row.Rank, row.Score,
 			row.Kills, row.Deaths, row.Assists,
@@ -203,6 +210,7 @@ func persistParticipants(ctx context.Context, tx *sql.Tx, rows []domain.MatchPar
 			row.TeamMMR, row.EnemyMMR,
 			row.HeadshotKills,
 			row.MaxKillingSpree, row.GrenadeKills, row.MeleeKills, row.PowerWeaponKills,
+			row.BackfillBits,
 			now,
 		)
 		if err != nil {
@@ -312,6 +320,32 @@ func persistXUIDAliases(ctx context.Context, tx *sql.Tx, rows []XUIDAliasInsert)
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT xuid_aliases %s: %w", a.XUID, err)
+		}
+	}
+	return nil
+}
+
+func persistMatchCSRs(ctx context.Context, tx *sql.Tx, rows []MatchCSRInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+	for _, c := range rows {
+		ratingType := c.RatingType
+		if ratingType == "" {
+			ratingType = "CSR"
+		}
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO match_csrs (
+				match_id, xuid, rating_type,
+				rating_value, tier, sub_tier, tier_label,
+				rating_delta, measurement_matches_remaining, season_id
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			c.MatchID, c.XUID, ratingType,
+			c.RatingValue, c.Tier, c.SubTier, c.TierLabel,
+			c.RatingDelta, c.MeasurementMatchesRemaining, c.SeasonID,
+		)
+		if err != nil {
+			return fmt.Errorf("persist: INSERT match_csrs %s/%s: %w", c.MatchID, c.XUID, err)
 		}
 	}
 	return nil

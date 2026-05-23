@@ -42,14 +42,52 @@
 // pour debug + tests + recovery sans re-fetch. Désactivable via
 // LEVELUP_PERSIST_NO_FETCH_CACHE=1.
 //
-// **Extensibilité — ajouter un enrichment local** :
-//  1. Migration DB : ajouter la colonne dans `internal/migration/`.
-//  2. Ajouter le champ pointer dans `EnrichmentRow` (ce package).
-//  3. Ajouter une branche `if row.NewField != nil { ... }` dans
-//     `buildEnrichmentInsertSQL` (sql_builder.go).
-//  4. Implémenter le compute pur dans `internal/sync/my_enrichment.go`.
-//  5. Appeler le compute + assigner dans le batch dans l'orchestrator.
-//  6. Test E2E qui valide que le nouveau champ est persisté.
+// **Extensibilité — ajouter un enrichment local sur player_match_enrichment** :
 //
-// Cf. `.ai/REFACTOR_COLLECT_PERSIST.md` pour le design complet.
+//  1. Migration DB : ajouter la colonne dans `internal/migration/steps_player*.go`
+//     via `addColumnIfMissing(db, "player_match_enrichment", "X", "DOUBLE")`.
+//  2. Ajouter le champ pointer dans `EnrichmentRow` (rows.go).
+//  3. Ajouter une entrée dans la liste de champs de
+//     `player_persister.go::enrichmentFields()` :
+//     `if row.X != nil { append(fields, fieldEntry{"X", *row.X}) }`.
+//  4. Implémenter le compute pur dans `internal/analysis/*` ou `internal/sync/*`.
+//  5. Brancher dans l'orchestrator : `builder.SetEnrichment(enrichmentRow)`.
+//  6. Test TDD dans `player_persister_test.go` qui assigne le champ et vérifie
+//     qu'il est persisté en DB.
+//
+// **Extensibilité — ajouter une NOUVELLE TABLE shared** :
+//
+//  1. Migration DB : `CREATE TABLE IF NOT EXISTS` dans `steps_shared*.go`.
+//  2. Ajouter un struct `XxxInsert` dans rows.go.
+//  3. Ajouter `[]XxxInsert` dans `SharedBatch` (batch.go).
+//  4. Ajouter `AddXxx()` setter dans `BatchBuilder` (builder.go).
+//  5. Ajouter `persistXxx()` helper dans `shared_persister.go` + appel
+//     dans `Persist()`.
+//  6. Test TDD dans `shared_persister_test.go`.
+//
+// **Hors scope MatchBatch** — écritures NON liées à un match précis. Ces
+// workflows restent en dehors du flux Collect→Persist (ad-hoc writes via
+// repo dédié ou post-sync direct sur la DB). À documenter ici pour ne pas
+// se faire piéger lors du prochain refactor :
+//
+//   - `player_csr_snapshots` (player DB) : snapshot CSR officiel Waypoint par
+//     playlist+saison. 1 fois par cycle de sync, pas per-match.
+//   - `engagement_coefficients` (player DB) : coefs team_share/lobby_share
+//     par (xuid, mode_category). Recompute aggregate post-sync.
+//   - `player_assists_model` (player DB) : coefs régression expected_assists
+//     personnalisés par (joueur × game_variant). Recompute via
+//     `--assists-model` CLI sur l'historique entier.
+//   - `assists_model_coefs` (metadata DB) : coefs populationnels, fallback si
+//     pas assez de données joueur. Peuplé par `cmd/seed-assists-model`.
+//   - `media_files` / `media_match_associations` (player DB) : workflow
+//     d'indexation de medias, ne suit pas le flux sync de matchs.
+//   - `match_exclusion` (`is_excluded`) (player DB) : action utilisateur via
+//     PATCH /players/{slug}/matches/{id}/exclusion. Pas de relation avec
+//     le sync. Écrit par `match_exclusion_repo.go`.
+//   - `known_teammates_count` / `friends_xuids` (player_match_enrichment) :
+//     colonnes réservées dans le schéma, jamais peuplées. Ne pas
+//     implémenter sans clarifier l'usage en amont.
+//
+// Cf. `.ai/REFACTOR_COLLECT_PERSIST.md` pour le design complet,
+// `.ai/ENRICHMENTS_CATALOG.md` pour l'inventaire exhaustif des données.
 package persist

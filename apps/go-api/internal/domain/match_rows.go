@@ -52,6 +52,19 @@ type MatchRegistryRow struct {
 	// Lu depuis matchInfo["SeasonId"] (payload Halo officiel). Permet le lookup
 	// threshold dynamique côté display (cf. csr_placement_thresholds).
 	SeasonID *string
+
+	// MatchIntensity (DOUBLE) — events/min/joueur du lobby. Caractéristique
+	// permanente du match (calculée 1 fois, ne change pas). Set au moment de
+	// l'INSERT par le sync engine quand les events sont déjà fetched.
+	// Cf. internal/migration/steps_engagement.go.
+	MatchIntensity *float64
+
+	// BackfillCompleted (INTEGER, bitmask) — état d'avancement du backfill pour
+	// ce match. En mode INSERT-only (Phase 1 refactor Collect→Persist), la
+	// valeur finale doit être calculée AVANT le Submit du batch (cumulative
+	// OR sur tous les MBit* positionnés pendant la collecte). Plus de UPDATE
+	// post-coup possible. Cf. internal/sync/writes.go::MBit* constantes.
+	BackfillCompleted *int64
 }
 
 // MatchParticipantRow représente une ligne COMPLÈTE dans
@@ -97,6 +110,13 @@ type MatchParticipantRow struct {
 	MeleeKills        *int
 	PowerWeaponKills  *int
 	DeathsStddev      *float64
+
+	// BackfillBits (INTEGER, bitmask) — état des colonnes par joueur×match
+	// (PBitTeamMMR, PBitEnemyMMR, PBitKillsExp, PBitDeathsExp, PBitAccuracy,
+	// PBitShots, PBitDamage, PBitAvgLife, PBitMedals, PBitKDA, PBitTimePlayed,
+	// PBitKillerVictim). Set à l'INSERT en mode Collect→Persist (calculé par
+	// le collecteur au moment où il sait quelles colonnes sont fiables).
+	BackfillBits *int
 }
 
 // MedalRow représente une ligne dans shared.medals_earned.

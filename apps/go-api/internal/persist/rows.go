@@ -36,11 +36,11 @@ type EnrichmentRow struct {
 	// Engagement (computed depuis pace player/team/lobby)
 	EngagementScore           *float64 `json:"engagement_score,omitempty"`
 	EngagementScoreBrut       *float64 `json:"engagement_score_brut,omitempty"`
-	EngagementScoreConfidence *float64 `json:"engagement_score_confidence,omitempty"`
+	EngagementScoreConfidence *string  `json:"engagement_score_confidence,omitempty"` // "full" / "partial" / "insufficient_history"
 	EngagementPacePlayer      *float64 `json:"engagement_pace_player,omitempty"`
 	EngagementPaceTeam        *float64 `json:"engagement_pace_team,omitempty"`
 	EngagementPaceLobby       *float64 `json:"engagement_pace_lobby,omitempty"`
-	EngagementPlayerActivity  *float64 `json:"engagement_player_activity,omitempty"`
+	EngagementPlayerActivity  *int     `json:"engagement_player_activity,omitempty"` // INTEGER en DB
 	ModeCategory              *string  `json:"mode_category,omitempty"`
 
 	// Session (groupage temporel)
@@ -126,11 +126,16 @@ type CitationInsert struct {
 }
 
 // PersonalScoreAwardInsert — row pour player.personal_score_awards.
+//
+// Schema cf. sync/schema.go : id (seq auto), match_id, xuid, award_name,
+// award_category, award_count, award_score, created_at (DEFAULT).
 type PersonalScoreAwardInsert struct {
 	MatchID       string `json:"match_id"`
-	AwardID       string `json:"award_id"`
-	Count         int    `json:"count"`
-	PersonalScore int    `json:"personal_score"`
+	XUID          string `json:"xuid"`
+	AwardName     string `json:"award_name"`
+	AwardCategory string `json:"award_category"`
+	AwardCount    int    `json:"award_count"`
+	AwardScore    int    `json:"award_score"`
 }
 
 // CareerProgressionInsert — row pour player.career_progression.
@@ -161,6 +166,11 @@ type SessionInsert struct {
 }
 
 // PVEMatchStatsInsert — row pour shared_pve.pve_match_stats (Firefight).
+//
+// PveBits : bitmask de complétion par colonne kills (PveBitTotalKills,
+// PveBitBossKills, PveBitGrunt…Warden). Calculé par le collecteur au moment
+// où il sait quelles kills counts sont fiables. Set à l'INSERT en mode
+// Collect→Persist (plus de UPDATE post-coup).
 type PVEMatchStatsInsert struct {
 	MatchID      string `json:"match_id"`
 	XUID         string `json:"xuid"`
@@ -176,6 +186,26 @@ type PVEMatchStatsInsert struct {
 	SoldierKills int    `json:"soldier_kills"`
 	KnightKills  int    `json:"knight_kills"`
 	WardenKills  int    `json:"warden_kills"`
+	PveBits      *int   `json:"pve_bits,omitempty"`
+}
+
+// MatchCSRInsert — row pour shared.match_csrs (CSR de tous les participants
+// d'un match ranked, pas seulement le joueur synchronisé). PK (match_id, xuid).
+//
+// Distincte de SkillRankInsert (qui vit en player.match_skill_rank et stocke
+// le CSR/LUSR du joueur synchronisé pour ses propres analyses). match_csrs
+// permet d'afficher les ratings des coéquipiers/adversaires dans match view.
+type MatchCSRInsert struct {
+	MatchID                     string   `json:"match_id"`
+	XUID                        string   `json:"xuid"`
+	RatingType                  string   `json:"rating_type"` // "CSR" (forcé pour cette table)
+	RatingValue                 *float64 `json:"rating_value,omitempty"`
+	Tier                        *string  `json:"tier,omitempty"`
+	SubTier                     *int     `json:"sub_tier,omitempty"`
+	TierLabel                   *string  `json:"tier_label,omitempty"`
+	RatingDelta                 *float64 `json:"rating_delta,omitempty"`
+	MeasurementMatchesRemaining *int     `json:"measurement_matches_remaining,omitempty"`
+	SeasonID                    *string  `json:"season_id,omitempty"`
 }
 
 // ModeNameTranslationInsert — row pour metadata.mode_name_tr.
