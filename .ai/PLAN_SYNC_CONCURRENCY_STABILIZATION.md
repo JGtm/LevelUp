@@ -332,17 +332,22 @@ Suite scheduler complète verte avec `-race` (2.4s). Aucune régression sur les 
 - `healSkillForMissingMatches` : 8 goroutines parallèles + writes `match_participants` protégés par singleflight.
 - `healStatsForRecentMatches` : idem.
 
-### 3.6 NEW — Bump `healParallelism` 8 → 16-32 sur paths network-only (P2, 30min)
+### 3.6 NEW — Bump `healParallelism` 8 → 24 sur paths network-only — ✅ FAIT 2026-05-23 (commit 6e437986)
 
 **Source** : Audit Agent 3 (handoff §3 priorité 2).
 
-**Constat** : `healSkillForMissingMatches` fait un seul `GetMatchSkill` par match + write rapide. Sur batch de 35 matchs avec parallelism=8 : 8.3s observé (Madina). Avec parallelism=16-32, gain estimé skill heal de 8s → 4s (capped par rate limiter 15 RPS effectif).
+**Livré** : introduction de `healParallelismNetworkOnly = 24` dans `events_heal.go` à côté du `healParallelism = 8` existant. Bumped les 3 heal loops dont les writes touchent uniquement des tables append-only :
+- `healEventsForRecentMatches` (writes `highlight_events`)
+- `healWeaponKillsForRecentMatches` (writes `weapon_kills`)
+- `processWeaponKillsInline` (writes `weapon_kills`, déjà parallélisé en phase 3.0)
 
-**Cible** : 
-- Garder `healParallelism = 8` (const dans `events_heal.go`) pour les heal loops qui font des WRITES sur match_participants (skill + stats — protégés par singleflight).
-- Ajouter `healParallelismNetworkOnly = 24` pour les heals qui ne touchent QUE des tables append-only (events + weapon_kills + dominance backfill).
+**Conservé à 8** : `healSkillForMissingMatches` + `healStatsForRecentMatches` (UPSERT sur `match_participants` protégés par singleflight phase 2.3, mais opérations CGO plus lourdes).
 
-**Validation** : tests stress 5.1 doit passer avec les 2 valeurs. Pas de régression race ART (vu les writes append-only).
+**Throttle réel** = rate limiter HTTP du HaloAPIClient (~15 RPS effectif sur 3 tokens). Les goroutines supplémentaires attendent le slot ; pas de pression mémoire.
+
+**Audit Agent 3** estime gain ~8s → 4s sur skill_heal (similaire sur events/weapon_kills, mais ici on bump uniquement les network-only car les writes sur match_participants doivent rester capped).
+
+**Tests** : suite intégration sync complète verte (36s + race 2.8s). Le test `CancelMidRun` ajusté (20 → 100 matchs) pour rester pertinent avec parallelism=24 — sinon le cancel à 75ms arrivait après la fin de l'unique vague.
 
 ### 3.7 NEW — Fusionner events_heal + weapon_heal dans un errgroup unique (P2, 30min)
 
