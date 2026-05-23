@@ -2,6 +2,7 @@
 // Source : apps/web/src/lib/i18n/manifests/match_view.toml
 
 export const matchViewManifest = {
+  "match_view.cards.assists_vs_expected": { fr: "Assistances vs attendues", en: "Assists vs expected" },
   "match_view.cards.avg_life": { fr: "Vie moy.", en: "Avg. life" },
   "match_view.cards.bot_teammate_title": { fr: "Coéquipier bot présent dans ce match", en: "Bot teammate present in this match" },
   "match_view.cards.deaths_vs_expected": { fr: "Morts vs attendues", en: "Deaths vs expected" },

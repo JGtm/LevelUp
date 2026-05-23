@@ -259,18 +259,18 @@ function AntagonistSection({ result, title, nemesisLabel, bullyLabel }: { result
 // 6. Données locales
 // ---------------------------------------------------------------------------
 
-interface LocalRow { perfDisplay?: string; perfColorToken?: string; ratingType?: string; tierLabel?: string; ratingDelta?: number | null; hadBotTeammate?: boolean }
+interface LocalRow { perfDisplay?: string; perfColorToken?: string; ratingType?: string; tierLabel?: string; ratingDelta?: number | null; iconUrl?: string | null; hadBotTeammate?: boolean }
 
 function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRank?: MatchViewRank): LocalRow | null {
   const local: LocalRow = {}
   let hasData = false
   if (row.is_me) {
     if (header?.performance_display) { local.perfDisplay = header.performance_display; local.perfColorToken = header.performance_color_token; hasData = true }
-    if (mainRank?.tier_label) { local.ratingType = mainRank.rating_type; local.tierLabel = mainRank.tier_label; local.ratingDelta = mainRank.delta_value; hasData = true }
+    if (mainRank?.tier_label) { local.ratingType = mainRank.rating_type; local.tierLabel = mainRank.tier_label; local.ratingDelta = mainRank.delta_value; local.iconUrl = mainRank.icon_url; hasData = true }
     if (header?.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   } else {
     if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); hasData = true }
-    if (row.skill_rank?.tier_label) { local.ratingType = row.skill_rank.rating_type; local.tierLabel = row.skill_rank.tier_label; local.ratingDelta = row.skill_rank.rating_delta; hasData = true }
+    if (row.skill_rank?.tier_label) { local.ratingType = row.skill_rank.rating_type; local.tierLabel = row.skill_rank.tier_label; local.ratingDelta = row.skill_rank.rating_delta; local.iconUrl = row.skill_rank.icon_url; hasData = true }
     if (row.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   }
   return hasData ? local : null
@@ -285,8 +285,17 @@ function LocalSection({ data, t }: { data: LocalRow; t: MatchViewText }) {
   if (data.tierLabel) {
     const label = data.ratingType === 'CSR' ? t.sbDetailCsr : t.sbDetailLusr
     const sign = (data.ratingDelta ?? 0) >= 0 ? '+' : ''
-    const display = data.ratingDelta != null ? `${data.tierLabel} (${sign}${data.ratingDelta.toFixed(0)} pts)` : data.tierLabel
-    rows.push(<KvRow key="rank" label={label} value={display} />)
+    const deltaStr = data.ratingDelta != null ? ` (${sign}${data.ratingDelta.toFixed(0)} pts)` : ''
+    rows.push(
+      <KvRow key="rank" label={label} value={
+        <span className="flex items-center gap-1.5">
+          {data.iconUrl && (
+            <img src={data.iconUrl} alt={data.tierLabel} className="h-6 w-6 object-contain" loading="lazy" />
+          )}
+          <span>{data.tierLabel}{deltaStr}</span>
+        </span>
+      } />
+    )
   }
   if (data.hadBotTeammate) rows.push(<KvRow key="bot" label={t.sbDetailBotNoteLabel} value={t.sbDetailBotNoteValue} />)
   if (rows.length === 0) return null

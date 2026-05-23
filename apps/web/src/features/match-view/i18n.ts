@@ -141,6 +141,7 @@ export interface MatchViewText {
   sbColDamageTaken: string
   sbColShotsHit: string
   sbColAccuracy: string
+  sbColCsr: string
   // Nav contextuelle — Phase 2c (descriptor → label compact)
   ctxRecent: string
   ctxFavorites: string
@@ -283,6 +284,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColDamageTaken: 'Dégâts subis',
     sbColShotsHit: 'Tirs au but',
     sbColAccuracy: 'Précision',
+    sbColCsr: 'CSR',
     ctxRecent: 'récents',
     ctxFavorites: 'favoris',
     ctxMedia: 'avec média',
@@ -421,6 +423,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sbColDamageTaken: 'Damage taken',
     sbColShotsHit: 'Shots hit',
     sbColAccuracy: 'Accuracy',
+    sbColCsr: 'CSR',
     ctxRecent: 'recent',
     ctxFavorites: 'favorites',
     ctxMedia: 'with media',

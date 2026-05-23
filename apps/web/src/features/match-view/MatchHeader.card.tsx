@@ -235,7 +235,8 @@ function TitleAndActionsRow({
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+          {header.is_ranked && <RankedIcon className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />}
           {matchTitle}
         </h1>
         {(header.start_time_label || header.playlist_label || header.playable_duration_seconds) && (
@@ -369,6 +370,29 @@ interface DominanceBadgeInlineProps {
   labelKey: string
   colorToken: string
   locale: MatchViewLocale
+}
+
+// ── RankedIcon ─────────────────────────────────────────────────────────────
+// Bouclier SVG (≠ étoile favori) indiquant un match classé officiel (CSR).
+
+export function RankedIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* color-allow: currentColor uniquement — couleur hérité du contexte */}
+      <path
+        fillRule="evenodd"
+        d="M12 1.5a.75.75 0 0 1 .493.186l7.5 6.75A.75.75 0 0 1 20.25 9v6a6.75 6.75 0 0 1-13.5 0V9a.75.75 0 0 1 .257-.564l7.5-6.75A.75.75 0 0 1 12 1.5Zm0 1.652L5.25 9.283V15a5.25 5.25 0 0 0 10.5 0V9.283L12 3.152Z"
+        clipRule="evenodd"
+      />
+      <path d="m11.47 10.22-1.5 1.5a.75.75 0 0 0 1.06 1.06l.97-.97.97.97a.75.75 0 1 0 1.06-1.06l-1.5-1.5a.75.75 0 0 0-1.06 0Z" />
+    </svg>
+  )
 }
 
 export function DominanceBadgeInline({ labelKey, colorToken, locale }: DominanceBadgeInlineProps) {

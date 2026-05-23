@@ -1338,6 +1338,8 @@ export interface RecentMatchItem {
   top_citations?: MatchCitationSnippet[] | null
   /** Bug #6 — permet au front de filtrer l'OutcomeSequenceTape sur la dernière session. */
   session_label?: string | null
+  /** True si la playlist est classée (CSR officiel). Source : match_registry.is_ranked. */
+  is_ranked?: boolean | null
 }
 
 export interface MatchCitationSnippet {
@@ -2547,6 +2549,8 @@ export interface MatchScoreboardSkillRank {
   tier_label?: string | null
   rating_value?: number | null
   rating_delta?: number | null
+  /** URL du badge image CSR/LUSR (résolu côté backend via TitleAssetURLAdapter). */
+  icon_url?: string | null
 }
 
 export interface MatchRosterRow {
