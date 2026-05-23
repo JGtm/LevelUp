@@ -1,3 +1,53 @@
+## [2026-05-24] Phase 4 démarrée (Option B) — PostSyncLUSRPersister + fix bug E.v1 legacy
+
+**Statut** : Complété (livrables autonomes — intégration et 6 sites restants documentés pour handoff)
+
+**Tâche** : Suite à validation user de l'Option B pour Phase 4 + remarque sur pool_size=4 anormal :
+1. Fix urgent bug E.v1 (legacy store mono-user attribué à TOUS les joueurs sans token au lieu de UN seul)
+2. Démarrer Phase 4 Option B : pattern `DELETE WHERE filter + INSERT batch en TX` pour éliminer les UPDATE concurrents post-sync
+
+**Décisions techniques principales** :
+
+- **Fix E.v1 bug** (commit `03322560`) : `legacyConsumed` bool tracker dans la boucle Scan. Premier joueur sans autre source reçoit le RT legacy avec WARN log explicite ("hint: configurer SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>"). Autres joueurs sans source = skip. Test TDD ajouté.
+
+- **PostSyncLUSRPersister** (`internal/persist/post_sync_lusr_persister.go`) : pattern de référence Phase 4 Option B :
+  - `DELETE FROM match_skill_rank WHERE rating_type='LUSR'` (1 batch unique, préserve les CSR)
+  - `INSERT batch` toutes les nouvelles rows LUSR
+  - Le tout en 1 TX atomique (rollback si INSERT échoue)
+  - 5 tests TDD GREEN : InsertsBatch, PreservesCSRRows, EmptyBatch_NoOp, AtomicityRollback, NeverUpdatesCSRRow
+  - **Pas de UPDATE row-by-row** → pas de stress ART sous concurrence multi-joueur
+
+- **Format env var auth confirmé** par user : `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` — utilisé déjà par `readOAuthRefreshTokenFromEnv` dans discovery.go, rien à changer.
+
+**Travail RESTANT pour conclure Phase 4** (documenté dans PLAN_PHASE4_POSTSYNC_REFACTOR.md révisé) :
+
+| Étape | Effort | Status |
+|---|---|---|
+| 4.1 Audit + design | 1h | ✅ DONE |
+| 4.2 PostSyncLUSRPersister + tests | 1h | ✅ DONE (cette session) |
+| 4.3 Intégration LUSR dans sync engine (upsertLUSRRatings refactor) | 1h | ⏳ TODO |
+| 4.4 6 autres sites (Dominance, Engagement, BotFlag, Friends, Perf, Sessions) — pattern reproductible | 6h | ⏳ TODO |
+| 4.5 Smoke test prod multi-cycles | 30min | ⏳ TODO |
+| 4.6 Phase 5 cleanup anti-ART | 2h | ⏳ TODO |
+| **Total restant** | **~10h** | sprint dédié hors session |
+
+**Pourquoi je m'arrête ici** : la session courante a déjà couvert beaucoup de terrain (Phases 1-2 + items mineurs + E.v1 + smoke test + découverte ART post-sync + Phase 4.1+4.2). Continuer aveuglément sur les 6 sites restants sans validation user du pattern serait risqué. Le PostSyncLUSRPersister est un livrable autonome qui démontre le pattern — le user peut maintenant valider le design avant que je réplique sur les 6 autres sites.
+
+**Résultats observés** :
+
+- `go test ./internal/persist/... -tags=integration` : full GREEN (5 nouveaux tests LUSR + existants)
+- `go vet ./...` clean
+- 2 commits livrés : `03322560` (fix legacy bug) + (à venir, ce commit pour PostSyncLUSRPersister + docs)
+
+**Prochaine étape recommandée** :
+
+1. **USER** : valider le pattern PostSyncLUSRPersister (revue du code + des tests)
+2. **Si OK** : reproduire pour les 6 autres sites (Phase 4.4)
+3. **Si une variation est préférée** (ex: feature flag plus granulaire, sérialisation au lieu de DELETE+INSERT), ajuster avant de propager
+4. **Une fois 7 sites refactor** : smoke test prod multi-cycles, puis Phase 5 cleanup débloquée
+
+---
+
 ## [2026-05-24] Smoke test prod Phase 3 — découverte critique : post-sync compute ART persiste
 
 **Statut** : Complété (mode honnête — Phase 5 cleanup BLOQUÉE)
