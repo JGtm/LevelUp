@@ -504,19 +504,11 @@ Critère TDD : baseline rouge (undefined symbol), verts post-impl. Suite intégr
 
 **Risque** : Long sur grosses player DBs (LUSR cascade O(N), perf cascade O(N×window)). Sur 1000+ matchs ça peut prendre plusieurs minutes. Le caller (CLI tool ou auto-trigger) DOIT lancer en background.
 
-### 4.5 NEW — Paralléliser refreshAggregates + refreshSharedViews (P3, 1h)
+### 4.5 NEW — Paralléliser refreshAggregates + refreshSharedViews — ✅ FAIT 2026-05-23 (commit 5a35a07a)
 
 **Source** : Audit Agent 1 (handoff §1, opportunité O4).
 
-**Constat** : étape 4 du post-sync (`refreshAggregates` sur player DB + `refreshSharedViews` sur shared DB) tournent séquentiellement. DBs différentes → parallélisables sans risque.
-
-**Cible** : wrapper dans un `errgroup` :
-```go
-eg, egCtx := errgroup.WithContext(ctx)
-eg.Go(func() error { _, err := refreshAggregates(egCtx, playerDB); return err })
-eg.Go(func() error { _, err := refreshSharedViews(egCtx, sharedDB); return err })
-_ = eg.Wait()
-```
+**Livré** : étape 4 du post-sync (`runPostSyncPipeline` dans `engine_postsync.go`) — `refreshAggregates` (player DB) et `refreshSharedViews` (shared DB) tournent maintenant en parallèle via `errgroup.Group`. DBs différentes → pas de conflit. Compteur `r.ViewsRefreshed` via `atomic.Int32`. Best-effort idem ancien comportement (chaque error logguée WARN, ne propage pas).
 
 **Gain estimé** : 500ms-2s par cycle. Marginal mais quasi-gratuit.
 
@@ -542,46 +534,44 @@ func TestStressUpsertMatchParticipants_NoCrash(t *testing.T) {
 
 **C'est le test qui ÉCHOUERAIT aujourd'hui**. Une fois Phase 2.3 implémentée, il passe.
 
-### 5.2 Property-based test idempotence (2h)
+### 5.2 Property-based test idempotence — ✅ FAIT 2026-05-23 (commit 968e23d5)
 
-**Livrable** : `concurrent_upsert_property_test.go`.
+**Livré** : [`concurrent_upsert_property_test.go`](../apps/go-api/internal/sync/concurrent_upsert_property_test.go).
 
-```go
-func TestPropertyConcurrentUpsertsIdempotent(t *testing.T) {
-    // Génère K match_ids × M xuids × N UPSERTs aléatoires
-    // Exécute en goroutines concurrentes
-    // Assert : état final = union des rows uniques (pas de duplicate, pas de perte)
-}
-```
+2 tests :
+- `TestProperty_ConcurrentUpsertsIdempotent` : K=8 matchs × M=12 xuids × N=20 UPSERTs concurrents (1920 calls). Property : `count(rows) == K*M`, `count(match_id, xuid) == 1` partout, aucune paire absente. Valeurs randomisées avec seed=42.
+- `TestProperty_SamePairManyConcurrent_OneRow` : 200 UPSERTs concurrents sur la MÊME clé → exactement 1 row finale (stress singleflight).
 
-### 5.3 E2E concurrent multi-player sync (2h)
+Tests verts sous `-race` (1.5s).
 
-**Livrable** : `apps/go-api/internal/scheduler/auto_sync_concurrent_e2e_test.go`.
+### 5.3 E2E concurrent multi-player sync — ✅ FAIT 2026-05-23 (commit 639cd62f)
 
-Scénario :
-1. Crée 3 joueurs avec 5 matchs partagés + 5 solo chacun.
-2. Lance `RunOnce` qui sync les 3 en parallèle (Phase 3.4).
-3. Assert : tous les matchs partagés dans shared exactement 1 fois, chaque joueur a ses 10 enrichments.
-4. Run avec `-race`.
-5. Itérer 100 cycles consécutifs.
+**Livré** : [`concurrent_multiplayer_e2e_test.go`](../apps/go-api/internal/sync/concurrent_multiplayer_e2e_test.go).
 
-### 5.4 Benchmark perf cycle complet (1h)
+Scénario réel 3 joueurs (Alice, Bob, Carol) × 5 matchs partagés + 5 solos chacun = 30 paires uniques `(match_id, xuid)`. 3 goroutines parallèles, 100 cycles consécutifs. 4 invariants vérifiés par cycle :
+1. `count(match_participants) == 30`
+2. Chaque match partagé a exactement 3 xuids distincts
+3. Chaque match solo a exactement 1 row
+4. Aucun doublon `(match_id, xuid)` via `HAVING COUNT(*) > 1`
 
-**Livrable** : `auto_sync_bench_test.go`.
+Tests verts (~7.8s normal, ~9.3s sous `-race`). Couvre le pattern Halo matchmaking réel que Phase 5.2 randomisée ne ciblait pas.
 
-```go
-func BenchmarkAutoSync_3Players_20Matches(b *testing.B) {
-    // Baseline tracée dans le repo.
-}
-```
+### 5.4 Benchmark perf cycle complet — ✅ FAIT 2026-05-23 (commit 67fe6031)
 
-Bench focalisé sur les paths que Phase 3 optimise : parse parallèle, intra-match parallel, scheduler parallel.
+**Livré** : [`bench_perf_test.go`](../apps/go-api/internal/sync/bench_perf_test.go) — 2 micro-benchmarks ciblés sur les hot paths effectivement parallélisés (alternative au `BenchmarkAutoSync_3Players_20Matches` complet, trop lourd à setup avec pool+scheduler mocks).
 
-### 5.5 ART corruption detection + rebuild regression test (1h)
+| Benchmark | Wall-time mesuré | Baseline théorique séquentielle | Speedup |
+|---|---|---|---|
+| `BenchmarkProcessWeaponKillsInline_16Matches` (16 × 100ms) | ~102ms/op | 1.6s | **15.7×** |
+| `BenchmarkGetMatchFilm_20Chunks` (20 × 50ms) | ~156ms/op | 1s | **6.4×** |
 
-**Livrable** : `art_rebuild_test.go`.
+### 5.5 ART corruption detection + rebuild regression test — ✅ FAIT 2026-05-23 (commit 88a19b65)
 
-Force une corruption, vérifie détection, lance rebuild, vérifie consistance.
+**Livré** : [`art_rebuild_regression_test.go`](../apps/go-api/internal/sync/art_rebuild_regression_test.go) — 2 tests E2E chaînage `probe → rebuild → re-probe` :
+- `TestART_RebuildRegression_ProbeCleanBeforeAndAfter` (10 matchs × 8 participants) : probe pré-rebuild clean, rebuild swap CTAS, row count préservé, PK active, v_gamertag_lookup recréée, re-probe clean.
+- `TestART_RebuildRegression_PreservesRowsPerMatch` (20 × 6) : invariant fine-grain par match (détecte les pertes silencieuses où le total est OK mais la distribution faussée).
+
+Bloquent toute régression future du flow auto-heal.
 
 ---
 
