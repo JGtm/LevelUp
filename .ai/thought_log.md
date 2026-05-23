@@ -37,6 +37,47 @@
 
 ---
 
+## [2026-05-23] feat(p4.1) — Auto-heal ART runtime au boot + nettoyage WIP utilisateur
+
+**Statut** : Phase 4.1 livrée en 2 commits (extraction runtime + branchement BootARTGuard). WIP utilisateur (CSR badges scoreboard + bouclier ranked + carte expected_assists) commité en 3 commits propres. Branche `chore/post-stabilisation-debt` 11 commits ahead origin.
+
+**Cleanup utilisateur d'abord** (directive : "vas commit tout proprement d'abord stp et après tu continues"). WIP réparti en 3 commits :
+1. `8b9d9228` backend — `domain.MatchScoreboardSkillRank.IconURL`, `domain.RecentMatchItem.IsRanked`, helper `resolveSkillIconURL` extrait de `buildRankBlock`, `NewFriendsExtrasResolver` prend `TitleAssetURLAdapter`, fix 5 call-sites test stale (test fixaitre `go vet ./internal/service/...`).
+2. `9a610b6b` frontend — colonne CSR badge `MatchScoreboard` (gated `header.is_ranked`), bouclier SVG ranked sur `MatchCard` + `MatchHeader.card`, icône CSR dans `PlayerDetailPanel`, carte `Assistances vs attendues` (5e MatchVsStatCard). Cle i18n `sbColCsr` ajoutée pour passer le lint no-hardcoded-fields (CSR est dans fields.toml).
+3. `ad3d72d0` diag `cmd/diag_csr_check/` — outil read-only de répartition LUSR vs CSR par joueur. Vet fix (`Println` newline redondant) intégré au commit Phase 4.1 step 2.
+
+**Phase 4.1 livrée en TDD strict** :
+
+1. **Step 1/2 — Extraction runtime** (commit `d2ca98ce`) : nouvelle fonction `migration.RebuildMatchParticipantsART(ctx, db) error` exportée, idempotente par design (PAS de sentinel sync_meta, contrairement à `applyRebuildMatchParticipants` qui en pose un). La migration délègue maintenant au runtime puis pose son sentinel par-dessus. **5 tests TDD écrits AVANT extraction** (`steps_shared_runtime_art_rebuild_test.go`) : Idempotent_NoSentinel, RecreatesPrimaryKey, PreservesColumns, NoTableNoOp, RecreatesViews. Échouent baseline (undefined symbol), passent post-extraction. 6 tests existants migration toujours verts (mécanique identique via délégation).
+
+2. **Step 2/2 — Branchement BootARTGuard → rebuild** (commit `20c23eda`) : dans `cmd/server/main.go`, après `BootARTGuard` sur shared, si une divergence sur `match_participants` est détectée ET `cfg.SharedProvider` non-nil :
+   - `provider.AcquireWriter(ctx)` (drain + swap RO→RW)
+   - `migration.RebuildMatchParticipantsART(ctx, w.DB())`
+   - `w.Release()` (swap RW→RO)
+   - Re-probe en RO pour confirmer la disparition
+
+Helpers `hasMatchParticipantsARTDivergence(report)` + `tryAutoHealMatchParticipantsART(ctx, provider, reader)`. Timeout boot étendu 30s → 60s. Non-bloquant (errors → log + métrique, serveur continue).
+
+**Métriques expvar ajoutées** (Phase 4.3 partielle livrée en avance pour observer le rebuild) :
+- `art_rebuild_runs_total_attempts`
+- `art_rebuild_runs_total_ok`
+- `art_rebuild_runs_total_error_acquire`
+- `art_rebuild_runs_total_error`
+- `art_rebuild_runs_total_still_diverged`
+- `art_rebuild_runs_total_skipped_legacy` (si pas de SharedProvider)
+
+**Scope volontairement restreint** : auto-heal AU BOOT UNIQUEMENT. Le mode runtime périodique (cf. plan §4.1 trigger "automatic au boot ET sur détection runtime via Phase 4.3") est défer en sous-phase **4.1.b** car requiert coordination avec le scheduler de sync actif (drain readers en pleine charge, risque deadlock). Au boot, no concurrent writers → trivialement safe.
+
+**Prochaines étapes** :
+- **Phase 4.4** — Recompute force=true post-rebuild (LUSR Madina figé Argent IV à recalculer).
+- **Phase 3.4** — Parallel scheduler RunOnce (gain 15min → 5-8min).
+- **Phase 4.2** — SIGABRT handler pour capture FatalException C++.
+- **Phase 4.1.b** — Runtime periodic ART rebuild (plus complexe, drain readers en charge).
+
+**Conclusion** : Phase 4.1 livrée prudemment (TDD strict + scope restreint). Auto-heal au boot suffit comme première garde — si la corruption recurre malgré le driver bump v1.5.3 (Phase 0), le prochain redémarrage la corrigera automatiquement. Pas d'urgence sur 4.1.b avant d'observer l'effet du driver bump en prod.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).

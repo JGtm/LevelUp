@@ -353,13 +353,25 @@ _ = eg.Wait()
 
 Effort : ~6h.
 
-### 4.1 ART rebuild incrémental (3h)
+### 4.1 ART rebuild incrémental — ✅ FAIT (boot uniquement) 2026-05-23 (commits d2ca98ce + 20c23eda)
 
-**Mécanisme** :
-- `BootARTGuard` existant détecte mais ne corrige pas.
-- Étendre pour :
-  1. Exécution périodique (toutes les N min ou sur trigger événement).
-  2. Quand corruption détectée : swap-table en arrière-plan (lease writer pris pour la durée).
+**Livré (step 1/2)** : extraction `migration.RebuildMatchParticipantsART(ctx, db)` runtime, idempotente par design (pas de sentinel), réutilisable. La migration `applyRebuildMatchParticipants` délègue à cette fonction puis pose son sentinel par-dessus. 5 tests TDD verts + 6 tests migration existants verts.
+
+**Livré (step 2/2)** : branchement dans [`cmd/server/main.go`](../apps/go-api/cmd/server/main.go) — après `BootARTGuard` sur shared, si une divergence sur `match_participants` est détectée ET `cfg.SharedProvider` non-nil (mode B-swap), déclenche :
+1. `AcquireWriter` via Provider (drain readers, swap RO→RW)
+2. `migration.RebuildMatchParticipantsART(ctx, w.DB())` — swap CTAS
+3. `Release` (swap RW→RO)
+4. Re-probe en RO pour confirmer la disparition de la divergence
+
+Helpers : `hasMatchParticipantsARTDivergence(report)` + `tryAutoHealMatchParticipantsART(ctx, provider, reader)`. Non-bloquant : tout échec logge + métrique mais le serveur continue. Timeout boot étendu 30s → 60s.
+
+**Métriques expvar ajoutées** :
+- `art_rebuild_runs_total_attempts`
+- `art_rebuild_runs_total_ok`
+- `art_rebuild_runs_total_error_acquire`
+- `art_rebuild_runs_total_error`
+- `art_rebuild_runs_total_still_diverged`
+- `art_rebuild_runs_total_skipped_legacy`
 
 **Pattern swap-table** (déjà utilisé dans `migration/steps_shared_social_purge_data_health.go` pour `player_notifications`) :
 ```sql
@@ -373,7 +385,7 @@ COMMIT;
 
 **Coût** : sur 50k rows, swap < 1s. Lock writer pendant cette fenêtre.
 
-**Trigger** : automatic au boot ET sur détection runtime via Phase 4.3.
+**Trigger** : ✅ automatic au boot. **Détection runtime périodique = sous-phase 4.1.b à venir** (plus complexe car requiert coordination avec scheduler de sync actif). Au boot, no concurrent writers → trivialement safe.
 
 ### 4.2 Détection du C++ FATAL DuckDB (1h)
 
