@@ -1,3 +1,54 @@
+## [2026-05-23] Refactor Collect-Persist — Items mineurs Phase 2 + async layer + Phase 3 activation prep
+
+**Statut** : Complété côté code. Activation effective à faire par le user (étapes 1-4 du runbook).
+
+**Tâche** : Boucler les items mineurs reportés post-Phase 2 (B6 cleanup WAL, B7 expvar, async layer) puis préparer Phase 3 (activation prog) avec ADR + runbook.
+
+**Décisions techniques principales** :
+
+- **B7 expvar** : ajout des counters `persist_shared_total_ok/_error`, `persist_player_total_ok/_error`, `persist_batch_committed_total`, `persist_batch_submitted_total` dans `submitMatchAsBatch`. Observabilité prête pour le bake-off staging via `/debug/vars`.
+
+- **B6 PurgeOldWAL** : nouvelle méthode `BatchQueue.PurgeOldWAL(maxAge)` qui supprime les WAL files > maxAge dans walDir/ + walDir/corrupted/. Préparation au janitor périodique (à câbler en Phase 4 async activation).
+
+- **PVE/Metadata Persisters** : décision documentée dans doc.go — NON câblés dans submitMatchAsBatch car ajouterait un comportement hors-scope du fix ART (legacy live sync n'écrit pas ces tables ; c'est le job des backfills CLI). Les persisters restent disponibles pour usage futur (tests isolés validés).
+
+- **Async layer optionnelle** : `BatchQueue.PendingCount()` + `Drain(ctx)` ajoutés. `SyncEngine.batchQueue` field + `WithBatchQueue` option. `submitMatchAsBatch` route vers `queue.Submit` si batchQueue non-nil (path WAL durable + worker async) sinon Persister direct (path sync Phase 2.3). `run()` appelle `queue.Drain` (timeout 60s) entre la boucle pagination et `runConditionalPostSync` — garantit que post-sync compute lit la DB peuplée. 4 tests TDD GREEN (PendingCount, Drain, ctx cancel) + 1 E2E async GREEN (Submit → worker → Drain → DB).
+
+- **3 modes opérationnels** documentés dans ADR 0019 :
+  | Mode | Activation | Path |
+  |---|---|---|
+  | Legacy | default | insertFetchedMatch (UPSERT direct) |
+  | Sync batch | `LEVELUP_PERSIST_BATCH=1` | submitMatchAsBatch + Persister direct (Phase 3) |
+  | Async batch | + `WithBatchQueue` (pas de flag pour l'instant) | queue.Submit + worker + Drain (Phase 4) |
+
+**Phase 3 livrables** :
+
+- `docs/adr/0019-collect-persist-architecture.md` — ADR formel avec architecture, modes d'activation, property "ajout facile d'enrichment", critères de validation.
+- `.ai/RUNBOOK_PHASE3_ACTIVATION.md` — runbook étape par étape :
+  1. Staging 1 cycle + critères Go/No-Go
+  2. Staging 5 cycles consécutifs
+  3. Prod 4 joueurs / 24h
+  4. Flip default à on
+  5. Activation async (Phase 4 si bénéfice observé)
+  + Métriques expvar à monitorer + rollback rapide.
+
+- **B8 multi-titres workers map** : reporté (Halo Infinite seul titre actuel ; forward-compat sans valeur immédiate, à refaire quand un 2e titre apparaîtra).
+
+**Résultats observés** :
+
+- 50+ tests TDD GREEN sur `internal/persist` + `internal/sync` (Phase 2.1-2.4 + items mineurs).
+- `go vet ./...` clean, `go build ./...` clean.
+- Default OFF : zéro régression possible tant que `LEVELUP_PERSIST_BATCH` n'est pas exportée.
+- 6 commits Phase 2 + 1 commit items mineurs (`04b56f96`) → branche `refactor/collect-persist` prête pour PR/merge.
+
+**Prochaine étape** :
+
+1. **User** : exécuter le runbook `.ai/RUNBOOK_PHASE3_ACTIVATION.md` (staging puis prod, observation 24h).
+2. **Si Phase 3 OK** : Phase 5 cleanup anti-ART (suppression singleflight, CHECKPOINT, UPDATE-then-INSERT, RebuildART runtime).
+3. **Si bénéfice async observé** : Phase 4 — câbler `BatchQueue + Workers` dans `cmd/server/main.go` au boot (création queue + start workers + injection dans engine via scheduler/handler).
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Phase 2.3.b + 2.4 (env var câblée + E2E)
 
 **Statut** : Complété
