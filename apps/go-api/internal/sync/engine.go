@@ -490,6 +490,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 //
 // sharedDB peut être nil (cas tests / boot avant shared init) → seule la
 // source 1 est consultée.
+//
+// aujourd'hui best-effort interne (tables manquantes = warning silencieux), mais
+// future migration cross-DB pourrait remonter une erreur ici.
+//
+//nolint:unparam // err maintenu pour signature standard (caller engine.go:241 check),
 func loadKnownMatchIDs(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (map[string]bool, error) {
 	known := make(map[string]bool, 512)
 
