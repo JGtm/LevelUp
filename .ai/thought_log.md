@@ -1,3 +1,68 @@
+## [2026-05-23] feat(sync,stabilisation) — Plan stabilisation : driver bump + singleflight + parallel weapon_kills (Phases 0, 2.1-2.3, 3.0, 5.1 livrées)
+
+**Statut** : 6 phases du plan `.ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` livrées en 10 commits sur la branche `chore/post-stabilisation-debt`. Reste P1 (Phase 4.1 ART rebuild runtime, 4.4 recompute force=true, 3.4 parallel scheduler) + P2/P3 (observabilité, tests régression complémentaires).
+
+**Contexte** : suite à l'audit handoff `.ai/HANDOFF_SYNC_CONCURRENCY_AUDIT.md` (4 agents parallèles), validation utilisateur du plan + démarrage de l'implémentation prudente, commits réguliers.
+
+**Travaux livrés** :
+
+1. **Phase 0 — Driver DuckDB v1.5.2 → v1.5.3** (commit 25b56846, ~30min) : pari low-cost validé par audit Agent 2. v1.4.1 changelog mentionne exactement notre symptôme *"ART index could omit rows non-deterministically when running on multiple threads"*. À observer 24h en prod — si la corruption disparaît seule, on évite singleflight + rebuild. Tests verts sync (10.5s), analysis, scheduler, platform/duckdb (12.5s).
+
+2. **Phase 2.1 + 2.2 — Cartographie writers + ADR 0018** (commit a31386b7, ~1.5h) : audit de tous les call-sites `InsertParticipants` + `UPDATE match_participants` (8 callers identifiés). 2 paths problématiques : `skill_heal` + `stats_heal` avec errgroup 8 goroutines depuis Action B. ADR 0018 documente le contract concurrence + alternatives écartées (mutex global, transactions, retry, batch INSERT, sharding).
+
+3. **Phase 5.1 + 2.3 — Stress test TDD + singleflight `InsertParticipants`** (commit aef47968, ~2h) : 3 tests intégration `-race` (SameKey_NoCrash_OneRow, DifferentKeys_AllPresent, BatchPerCall). **TDD strict** : tests rouges baseline (49 + 1061 + 28 failures sans singleflight), verts post-impl. Wrapper `participantsSF singleflight.Group` package-level, dédupe par `"match_id|xuid"`. Perfs : 8.3s → 0.7s sur même-clé grâce au dedupe.
+
+4. **Phase 3.0 — Paralléliser `processWeaponKillsInline` en TDD** (commit fc772f80, ~2h) : c'est le gain le plus impactant identifié par Agent 3 (~150-200s/cycle Madina). **TDD strict** : 4 tests écrits AVANT impl (Concurrent_NoRace, LatencyParallelFasterThanSequential, Idempotent, CancelMidRun). Le test perf échouait baseline (1.6s vs <700ms) puis passe post-impl. Pattern : `errgroup.SetLimit(healParallelism=8)` + `mu.Mutex` sur compteurs + best-effort par-match + cancel propagé via ctx.Err(). 4 tests existants `TestProcessWeaponKillsInline_*` toujours verts post-refactor.
+
+5. **Consolidation des fixes 20-22 mai dans HEAD** (commit 53fc48da) : URL endpoint xuid(NNN), delta loop stopAfterFlush, ART tolerance, double zlib fix, dominance flag wiring, parallel heal loops (Action B), debug.SetCrashOutput, heartbeat 30s, defer recover post-sync. Tous déjà testés en prod (83 matchs insérés post-fix URL).
+
+**Méthodologie respectée** :
+- Plan validé utilisateur avant code écrit
+- TDD strict sur Phases 5.1 et 3.0 (test rouge → impl → test vert)
+- Commits réguliers (10 dans la session, chacun atomique et reviewable)
+- Plan-review skill invoqué avant chaque changement
+- Delivery-checklist skill invoqué avant chaque commit
+- Tests verts à chaque étape (sync, scheduler, analysis, platform/duckdb)
+
+**Bugs externes au scope non touchés** :
+- `vet` warning préexistant sur `cmd/diag_csr_check/main.go` (fmt.Println redundant newline)
+- WIP utilisateur `expected_assists` en cours sur `service/friends_extras_loader_test.go:57` — signature de `loadOneFriendExtras` updatée mais pas tous les call-sites test. Bloque `go test ./internal/service/...`. Pas dans mon scope.
+
+**Prochaines étapes (à valider par user avant exécution)** :
+- **Phase 4.1** — ART rebuild runtime : pattern swap-table `CREATE TABLE _rebuild AS SELECT *` + `DROP + RENAME` atomic, déclenché par `BootARTGuard` étendu en runtime (pas que au boot). Risque MOYEN-HAUT (lock writer ~1s pendant le swap).
+- **Phase 4.4** — Recompute force=true post-rebuild : recalcule LUSR/perf/sessions/dominance pour les joueurs dont les matchs étaient ART-corrompus (cf. LUSR Madina figé Argent IV).
+- **Phase 3.4** — Parallel scheduler RunOnce : errgroup sur la boucle joueurs, gain 15min → 5-8min sur cycle 3 joueurs.
+
+**Conclusion** : majeure partie de la P0 livrée, en sécurité (TDD, plan-review, commits atomiques). La P1 (recovery + parallel scheduler) attend la validation utilisateur car risque non-trivial (lock writer, deadlock potentiel).
+
+---
+
+## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
+
+**Statut** : Complété (go build + tsc --noEmit clean).
+
+**Décision technique principale** : Propager `IsRanked` jusqu'aux tuiles (`RecentMatchItem`) et résoudre les URLs de badges CSR côté Go via `resolveSkillIconURL` (helper partagé entre `buildRankBlock`, `buildTeamTabFull` et `FriendsExtrasResolver`). Côté front : colonne CSR conditionnelle dans le scoreboard (TanStack Table), badge + delta dans `PlayerDetailPanel`, shield SVG `currentColor` dans `MatchHeader.card` et `match-card`.
+
+**Changements Go** :
+- `domain/match_view.go` : `MatchScoreboardSkillRank` + champ `IconURL *string`
+- `domain/home.go` : `RecentMatchItem` + champ `IsRanked bool`
+- `service/match_view_builders_header.go` : extraction helper `resolveSkillIconURL` (Onyx vs tier+sub-tier 1-6)
+- `service/match_view_builders_team.go` : peuple `IconURL` pour le joueur principal
+- `service/friends_extras_loader.go` : ajout param `assetURL games.TitleAssetURLAdapter`, peuple `IconURL` pour les amis
+- `api/registry.go` : passage de `r.assetURLFor(mainPDB.TitleSlug)` au resolver
+- `analysis/home_canonical_recent.go` : peuple `IsRanked` depuis `r.Summary.IsRanked`
+
+**Changements Front** :
+- `lib/api/types.ts` : `icon_url` dans `MatchScoreboardSkillRank`, `is_ranked` dans `RecentMatchItem`
+- `MatchScoreboard.tsx` : colonne `csr_badge` conditionnelle (image seule, `h-7 w-7`)
+- `PlayerDetailPanel.tsx` : `LocalRow.iconUrl`, `buildLocalRow` extrait `icon_url`, `LocalSection` affiche `<img h-6 w-6>` + tier_label + delta
+- `MatchHeader.card.tsx` : `RankedIcon` (shield SVG exporté), affiché à gauche du titre si `header.is_ranked`
+- `match-card.tsx` : `MatchCardRankedIcon` (shield `h-3 w-3`) dans les tuiles
+
+**Validations** : `go build ./...` OK, `tsc --noEmit` OK.
+
+---
+
 ## [2026-05-22] fix(sync) — Double zlib decompression sur highlight_events + parallel heal loops + cross-player dedup
 
 **Statut** : Complété (build + vet + tests verts). Code dans HEAD via les commits cleanup parallèles.
