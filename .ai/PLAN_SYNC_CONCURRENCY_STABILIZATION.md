@@ -418,18 +418,20 @@ COMMIT;
 
 **Limitation connue** : SIGABRT depuis libc terminate() peut tuer le process avant que le handler tourne (race entre signal dispatch et abort re-raise). En pratique sur Linux glibc, le handler a généralement quelques ms pour s'exécuter. Si KO en prod, fallback : wrapper superviseur (overkill, pas urgent).
 
-### 4.3 Métriques concurrence (2h)
+### 4.3 Métriques concurrence — ✅ FAIT 2026-05-23 (commit 3eceff44, complete les compteurs livres en 4.1/4.4.b)
 
 **Livrable** : expvar publié sur `/debug/vars`.
 
-Compteurs :
-- `upsert_match_participants_total{result="ok|conflict|fatal"}`
-- `singleflight_dedupe_total` — appelants qui ont reçu le résultat d'un autre
-- `art_corruption_detected_total{table="match_participants"}`
-- `art_rebuild_runs_total{result="ok|error"}`
-- `highlight_events_parse_total{result="ok|stale_cache|invalid_data"}`
+Compteurs livrés (clés expvar plates, sans labels — convention Go stdlib) :
+- `upsert_match_participants_total_ok` / `_error` (writes.go, commit 3eceff44).
+- `singleflight_dedupe_total` (writes.go, commit 3eceff44) — incrément quand `singleflight.Do` retourne `shared=true`.
+- `art_corruption_detected_<dbLabel>_<table>` (art_probe.go, déjà livré phase 1 BootARTGuard).
+- `art_rebuild_runs_total_attempts` / `_ok` / `_error_acquire` / `_error` / `_still_diverged` / `_skipped_legacy` (main.go, phase 4.1).
+- `art_autoheal_recompute_started` / `_finished` / `_player_ok` / `_player_error_open` / `_player_error_lease` / `_player_error_shared` / `_player_error` (main.go, phase 4.4.b).
+- `highlight_events_parse_total_ok` / `_stale_cache` / `_invalid_data` (engine_highlight_events.go, commit 3eceff44).
+- `highlight_events_parse_anomaly_total` (legacy, conservé pour compat dashboard existant).
 
-**Notif data_health_warning** : si `art_corruption_detected_total` > 0 sur 24h ET pas de rebuild réussi.
+**Notif data_health_warning** (NON livré, à brancher si besoin sur le canal Discord existant) : si `art_corruption_detected_*` > 0 sur 24h ET pas de `art_rebuild_runs_total_ok` correspondant. Pour l'instant l'utilisateur surveille manuellement /debug/vars au reboot.
 
 ### 4.4 NEW — Recompute force=true post-rebuild ART — ✅ FAIT 2026-05-23 (commits b65e0417 step 1/2 + 5d9984fb step 2/2 opt-in)
 

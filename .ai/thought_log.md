@@ -236,6 +236,30 @@ Reste P3 plan stab : 4.3 expvar metrics complet (2h), 3.7 fusion events_heal + w
 
 ---
 
+## [2026-05-23] feat(p4.3) — Métriques expvar concurrence (singleflight + upsert + parse)
+
+**Statut** : Phase 4.3 DONE en 1 commit (`3eceff44`). Branche 25 commits ahead origin.
+
+**Compteurs ajoutés ce commit** (en plus des `art_rebuild_runs_total_*` et `art_autoheal_recompute_*` déjà livrés en 4.1/4.4.b) :
+- `singleflight_dedupe_total` (writes.go::InsertParticipants) — incrément quand `singleflight.Do` retourne `shared=true`. C'est la **preuve concrète en prod** que la concurrence ciblée par ADR 0018 existe vraiment, sans avoir à reproduire l'incident.
+- `upsert_match_participants_total_ok` / `_error` (writes.go) — succès vs erreur SQL/cgo sur l'UPSERT.
+- `highlight_events_parse_total_ok` / `_stale_cache` / `_invalid_data` (engine_highlight_events.go, 2 sites) — distinction entre parse réussi avec events, anomalie chunk non-vide → 0 events (déjà signalée par `_anomaly_total`), erreur de parse (zlib KO).
+
+**Décision Go stdlib convention** : pas de labels comme Prometheus, juste des compteurs plats avec suffixe (ex `_ok` / `_error`). Conforme à ADR 0009 (expvar stdlib, pas Prometheus en multi-user).
+
+**Pas de TDD direct** : compteurs additifs sans logique métier. Les tests existants (10s unit + 37s integration) couvrent les chemins instrumentés sans régression.
+
+**Phase 3.7 skipped** (volontairement) : fusion events_heal + weapon_heal en errgroup parallèle promet 4.2s de gain sur un loop de 174s (~2.4%) avec risque de double-download du même film (cache-miss). Pas rentable vs coût. Plus pertinent dans un futur refactor "cache films inter-heal".
+
+**Conclusion** : observabilité du plan stabilisation maintenant complète. Toutes les surfaces critiques (corruption ART, rebuild, recompute, singleflight dedupe, upsert, parse) sont instrumentées. /debug/vars du serveur en prod montrera direct si :
+- `singleflight_dedupe_total` > 0 → la dédupe a effectivement tiré (validation ADR 0018).
+- `art_corruption_detected_*` > 0 ET `art_rebuild_runs_total_ok` = 0 → corruption non auto-réparée, intervention manuelle requise.
+- `highlight_events_parse_total_stale_cache` >> `_ok` → bug de parse régresse.
+
+Plan de stabilisation finalisé. Reste uniquement P3 : tests régression complémentaires (5.2-5.5, 8h) qui sont des nice-to-have, pas des fixes critiques.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).
