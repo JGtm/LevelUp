@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
 )
 
@@ -23,83 +24,17 @@ import (
 // Structs de sortie
 // ──────────────────────────────────────────────────────────────────────────────
 
-// MatchRegistryRow représente une ligne dans match_registry (shared).
-type MatchRegistryRow struct {
-	MatchID                 string
-	StartTime               time.Time
-	EndTime                 *time.Time
-	PlaylistID              *string
-	PlaylistName            *string
-	PlaylistVersionID       *string
-	MapID                   *string
-	MapName                 *string
-	MapVersionID            *string
-	PairID                  *string
-	PairName                *string
-	PairVersionID           *string
-	GameVariantID           *string
-	GameVariantName         *string
-	GameVariantVersionID    *string
-	ModeCategory            string
-	IsRanked                bool
-	IsFirefight             bool
-	DurationSeconds         *int
-	PlayableDurationSeconds *int
-	RealStartTime           *time.Time
-	Team0Score              *int
-	Team1Score              *int
-	Team0PSScore            *int // somme des PersonalScore équipe 0
-	Team1PSScore            *int // somme des PersonalScore équipe 1
-	FirstSyncBy             string
-	// SeasonID est l'identifiant CSR de la saison du match (ex. "CsrSeason13-1").
-	// Lu depuis matchInfo["SeasonId"] (payload Halo officiel). Permet le lookup
-	// threshold dynamique côté display (cf. csr_placement_thresholds). NULL pour
-	// les anciens matchs syncés avant l'introduction du champ — la migration
-	// `shared_backfill_is_ranked_and_season` populate via dérivation start_time.
-	SeasonID *string
-}
+// MatchRegistryRow — alias vers domain.MatchRegistryRow.
+// La définition canonique vit dans internal/domain/match_rows.go (déplacé
+// 2026-05-23 pour casser le cycle d'import sync ⇄ persist).
+type MatchRegistryRow = domain.MatchRegistryRow
 
-// ParticipantRow représente une ligne dans match_participants (shared).
-type ParticipantRow struct {
-	MatchID           string
-	XUID              string
-	Gamertag          *string
-	TeamID            *int
-	Outcome           *int
-	Rank              *int
-	Score             *int
-	Kills             *int
-	Deaths            *int
-	Assists           *int
-	ShotsFired        *int
-	ShotsHit          *int
-	DamageDealt       *float64
-	DamageTaken       *float64
-	KDA               *float64
-	Accuracy          *float64
-	PersonalScore     *int
-	TimePlayedSeconds *int
-	AvgLifeSeconds    *float64
-	KillsExpected     *float64
-	DeathsExpected    *float64
-	KillsStddev       *float64
-	TeamMMR           *float64
-	EnemyMMR          *float64
-	HeadshotKills     *int
-	MaxKillingSpree   *int
-	GrenadeKills      *int
-	MeleeKills        *int
-	PowerWeaponKills  *int
-	DeathsStddev      *float64
-}
+// ParticipantRow — alias vers domain.MatchParticipantRow (la row COMPLÈTE).
+// À ne pas confondre avec domain.ParticipantRow (minimal, 5 champs, pour analysis).
+type ParticipantRow = domain.MatchParticipantRow
 
-// MedalRow représente une ligne dans medals_earned (shared).
-type MedalRow struct {
-	MatchID     string
-	XUID        string
-	MedalNameID int64
-	Count       int
-}
+// MedalRow — alias vers domain.MedalRow.
+type MedalRow = domain.MedalRow
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ExtractRegistry

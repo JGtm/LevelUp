@@ -1,0 +1,167 @@
+// Package persist — builder.go : BatchBuilder fluent API pour construire un
+// MatchBatch côté caller (sync engine, backfill CLI, scripts).
+//
+// Usage type :
+//
+//	builder := persist.NewBatchBuilder("halo_infinite", "Madina97294", "2533274858283686", "sync_delta")
+//	builder.SetMatch(matchRegistryRow)
+//	builder.AddParticipants(participants)
+//	builder.AddMedals(medals)
+//	builder.SetEnrichment(enrichment) // ALL enrichments en 1 row
+//	builder.SetSkillRank(lusrRow)
+//	batch := builder.Build()
+//	queue.Submit(batch)
+
+package persist
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
+
+// BatchBuilder accumule les données d'un batch puis produit un MatchBatch
+// immutable via Build().
+//
+// Non thread-safe — chaque goroutine collectrice utilise son propre builder.
+type BatchBuilder struct {
+	batch MatchBatch
+}
+
+// NewBatchBuilder crée un builder pour un match donné. Initialise l'ID
+// unique du batch (UUID v4) et le timestamp de création.
+func NewBatchBuilder(titleSlug, gamertag, xuid, source string) *BatchBuilder {
+	return &BatchBuilder{
+		batch: MatchBatch{
+			BatchID:   newBatchID(),
+			TitleSlug: titleSlug,
+			Player:    gamertag,
+			XUID:      xuid,
+			CreatedAt: time.Now().UTC(),
+			Source:    source,
+		},
+	}
+}
+
+// SetMatch fixe la row match_registry du match (1 seul).
+func (b *BatchBuilder) SetMatch(row *domain.MatchRegistryRow) *BatchBuilder {
+	b.batch.Shared.Match = row
+	return b
+}
+
+// AddParticipants ajoute les rows match_participants.
+func (b *BatchBuilder) AddParticipants(rows []domain.MatchParticipantRow) *BatchBuilder {
+	b.batch.Shared.Participants = append(b.batch.Shared.Participants, rows...)
+	return b
+}
+
+// AddMedals ajoute les rows medals_earned.
+func (b *BatchBuilder) AddMedals(rows []domain.MedalRow) *BatchBuilder {
+	b.batch.Shared.Medals = append(b.batch.Shared.Medals, rows...)
+	return b
+}
+
+// AddHighlightEvents ajoute les rows highlight_events.
+func (b *BatchBuilder) AddHighlightEvents(rows []HighlightEventInsert) *BatchBuilder {
+	b.batch.Shared.HighlightEvents = append(b.batch.Shared.HighlightEvents, rows...)
+	return b
+}
+
+// AddWeaponKills ajoute les rows weapon_kills.
+func (b *BatchBuilder) AddWeaponKills(rows []WeaponKillInsert) *BatchBuilder {
+	b.batch.Shared.WeaponKills = append(b.batch.Shared.WeaponKills, rows...)
+	return b
+}
+
+// AddKillerVictim ajoute les rows killer_victim_pairs.
+func (b *BatchBuilder) AddKillerVictim(rows []KillerVictimInsert) *BatchBuilder {
+	b.batch.Shared.KillerVictim = append(b.batch.Shared.KillerVictim, rows...)
+	return b
+}
+
+// AddXUIDAliases ajoute les rows xuid_aliases.
+func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
+	b.batch.Shared.XUIDAliases = append(b.batch.Shared.XUIDAliases, rows...)
+	return b
+}
+
+// SetEnrichment fixe la row player_match_enrichment (UNE row complète avec
+// tous les enrichments locaux computed).
+func (b *BatchBuilder) SetEnrichment(row *EnrichmentRow) *BatchBuilder {
+	b.batch.PlayerData.Enrichment = row
+	return b
+}
+
+// SetSkillRank fixe la row match_skill_rank pour ce match.
+func (b *BatchBuilder) SetSkillRank(row *SkillRankInsert) *BatchBuilder {
+	b.batch.PlayerData.SkillRank = row
+	return b
+}
+
+// AddLUSRComponents ajoute le breakdown LUSR (8 composantes typiquement).
+func (b *BatchBuilder) AddLUSRComponents(rows []LUSRComponentInsert) *BatchBuilder {
+	b.batch.PlayerData.LUSRComponents = append(b.batch.PlayerData.LUSRComponents, rows...)
+	return b
+}
+
+// AddCitations ajoute les citations gagnées pour ce match.
+func (b *BatchBuilder) AddCitations(rows []CitationInsert) *BatchBuilder {
+	b.batch.PlayerData.Citations = append(b.batch.PlayerData.Citations, rows...)
+	return b
+}
+
+// AddPersonalScoreAwards ajoute les awards PersonalScore.
+func (b *BatchBuilder) AddPersonalScoreAwards(rows []PersonalScoreAwardInsert) *BatchBuilder {
+	b.batch.PlayerData.PersonalScoreAwards = append(b.batch.PlayerData.PersonalScoreAwards, rows...)
+	return b
+}
+
+// SetCareerProgression fixe le snapshot career si le rang a changé.
+func (b *BatchBuilder) SetCareerProgression(row *CareerProgressionInsert) *BatchBuilder {
+	b.batch.PlayerData.CareerProgression = row
+	return b
+}
+
+// SetSession fixe la session pour ce match.
+func (b *BatchBuilder) SetSession(row *SessionInsert) *BatchBuilder {
+	b.batch.PlayerData.Session = row
+	return b
+}
+
+// SetPVEStats fixe les stats Firefight si le match est PVE.
+func (b *BatchBuilder) SetPVEStats(row *PVEMatchStatsInsert) *BatchBuilder {
+	if b.batch.PVE == nil {
+		b.batch.PVE = &PVEBatch{}
+	}
+	b.batch.PVE.Stats = row
+	return b
+}
+
+// AddModeNameTranslations ajoute des traductions au metadata batch (rare).
+func (b *BatchBuilder) AddModeNameTranslations(rows []ModeNameTranslationInsert) *BatchBuilder {
+	if b.batch.Metadata == nil {
+		b.batch.Metadata = &MetadataBatch{}
+	}
+	b.batch.Metadata.ModeNameTranslations = append(
+		b.batch.Metadata.ModeNameTranslations, rows...)
+	return b
+}
+
+// Build retourne le MatchBatch immuable. Le builder ne doit plus être
+// utilisé après Build (state non-clear par design — créer un nouveau
+// builder pour un autre batch).
+func (b *BatchBuilder) Build() *MatchBatch {
+	out := b.batch
+	return &out
+}
+
+// newBatchID génère un identifiant unique court (16 hex chars, 8 bytes).
+// Pas un UUID v4 complet pour économiser l'espace dans le WAL filename.
+// Collision probability négligeable au volume considéré (< 1M batches/jour).
+func newBatchID() string {
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
+}

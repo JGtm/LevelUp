@@ -416,18 +416,10 @@ func ubigintArg(p *uint64) any {
 	return strconv.FormatUint(*p, 10)
 }
 
-// WeaponKillRow est la représentation d'une ligne weapon_kills.
-type WeaponKillRow struct {
-	TimeMS          int
-	WeaponID        *uint64
-	ReconciledAs    *uint64
-	DeltaMS         *int
-	Confidence      string
-	AttributionPath string
-	SwapDetected    bool
-	DelayedDamage   bool
-	PlayerIndex     *int
-}
+// WeaponKillRow — alias vers domain.WeaponKillRow.
+// La définition canonique vit dans internal/domain/match_rows.go (déplacé
+// 2026-05-23 pour casser le cycle d'import sync ⇄ persist).
+type WeaponKillRow = domain.WeaponKillRow
 
 // MarkWeaponKillsDone met à jour le bit MBitWeaponKills ou MBitWeaponKillsNoFilm
 // dans match_registry.backfill_completed.
