@@ -419,7 +419,7 @@ Compteurs :
 
 **Notif data_health_warning** : si `art_corruption_detected_total` > 0 sur 24h ET pas de rebuild réussi.
 
-### 4.4 NEW — Recompute force=true post-rebuild ART — ✅ FAIT step 1/2 (fonction publique) 2026-05-23 (commit b65e0417)
+### 4.4 NEW — Recompute force=true post-rebuild ART — ✅ FAIT 2026-05-23 (commits b65e0417 step 1/2 + 5d9984fb step 2/2 opt-in)
 
 **Source** : Audit Agent 2 (handoff §2 risque résiduel #6).
 
@@ -447,7 +447,11 @@ Best-effort : chaque cascade peut échouer sans bloquer les suivantes (erreurs a
 
 Logging riche : 1 INFO par étape + 1 INFO summary final avec counts + duration_ms + errors_count.
 
-**Trigger step 2/2 (à venir = sub-phase 4.4.b)** : décider du scope (tous joueurs vs joueurs ciblés) et du moment (auto post-rebuild boot, sync engine periodic, ou CLI tool manuel). Comme la fonction touche aux données utilisateur, on défère ce wiring hors-bande pour le valider avec l'utilisateur. La fonction publique est dès maintenant callable depuis n'importe quel caller (CLI tool, handler diagnostique, sync engine, etc.).
+**Step 2/2 livré (4.4.b) — opt-in auto-recompute post-rebuild boot** (commit `5d9984fb`) : `tryAutoHealMatchParticipantsART` retourne maintenant un `bool` (rebuild OK?) ; si vrai ET env var `LEVELUP_ART_AUTOHEAL_RECOMPUTE=1` posée ET >=1 joueur configuré → spawn `runPostRebuildRecompute` en background. La goroutine itère sur les joueurs, GetOrOpen + AcquirePlayerWriter via pool DuckDB + sharedReader RO, appelle `RecomputeAfterARTRebuild`. Best-effort par joueur. ctx = `context.Background()` pour survivre à un shutdown serveur.
+
+**Métriques expvar** : `art_autoheal_recompute_started`, `_finished`, `_player_ok`, `_player_error_open`, `_player_error_lease`, `_player_error_shared`, `_player_error`.
+
+**Par défaut** (sans `LEVELUP_ART_AUTOHEAL_RECOMPUTE=1`) : aucun changement de comportement, rebuild Phase 4.1 fonctionne tel quel sans toucher aux valeurs dérivées. L'utilisateur peut activer le recompute quand il valide le comportement sur son setup.
 
 **4 tests TDD écrits AVANT impl** ([`recompute_after_art_rebuild_test.go`](../apps/go-api/internal/sync/recompute_after_art_rebuild_test.go)) :
 - `ProducesAllCascadeOutputs` : 15 matchs > threshold perf, vérifie LUSR + performance + dominance produits.
