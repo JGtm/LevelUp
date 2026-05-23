@@ -810,7 +810,12 @@ func buildAutoSyncPool(
 	tokenProvider auth.TokenProvider,
 ) pool.Pool {
 	pr := title.NewPathResolver(cfg.RepoRoot)
-	discovery := pool.NewDiscovery(cfg, pr, title.DefaultSlug)
+	// E.v1 — attacher les watcher stores au Discovery pour peupler le pool
+	// avec MSAL frais (watcher daemon les rafraîchit chaque ~5min) au 1er
+	// boot sans dépendre d'un sync manuel ayant écrit sync_meta DuckDB.
+	multiUserStore := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
+	legacyStore := auth.NewTokenStore(pr.WatcherTokensPath())
+	discovery := pool.NewDiscoveryWithStores(cfg, pr, title.DefaultSlug, multiUserStore, legacyStore)
 	sources, err := discovery.Scan(ctx)
 	if err != nil {
 		slog.Error("auto_sync: pool discovery échoué", "err", err)
