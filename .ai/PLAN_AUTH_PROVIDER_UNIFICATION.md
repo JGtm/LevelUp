@@ -192,6 +192,61 @@ Concrètement :
 
 ---
 
+## 5.bis Réponses Q&A user (2026-05-24)
+
+### Q : Pourquoi le watcher token n'est pas aligné avec MultiUserTokenStore ?
+
+2 stores coexistent dans `internal/platform/auth/` :
+
+- **TokenStore legacy** (`token_store.go`) — mono-user, `data/auth/watcher_tokens.json`. Utilisé par le watcher daemon **historique**.
+- **MultiUserTokenStore** (`multi_user_token_store.go`) — multi-user, dossier `data/auth/watcher_tokens/{xuid}.json`. Utilisé par le **flow SSO Xbox PR 2.5a** uniquement.
+
+Le commentaire dans `multi_user_token_store.go:11` :
+> "LEGACY : le watcher daemon historique utilise TokenStore (mono-user). MultiUserTokenStore est utilisé par le flow SSO Xbox PR 2.5a uniquement. **Migration du watcher : différée à PR 2.5b.**"
+
+→ Non-alignement = **dette technique connue**, pas un bug. PR 2.5b prévue mais pas livrée.
+
+### Q : Pourquoi les tokens en clair ?
+
+`grep -rn "Encrypt|cipher|aes" internal/platform/auth/` → **0 résultat**. Aucun chiffrement at-rest.
+
+Seule protection : **permissions 0600** (lisible uniquement par l'user owner) + dossier 0700.
+
+Standard pour outil desktop single-user :
+- Pas de threat model multi-tenant (1 machine = 1 utilisateur)
+- "Vol de fichier" implique déjà compromission machine → keychain local serait aussi compromis
+- Tokens **TTL court** : Spartan ~3h, XSTS ~12h
+- Refresh token **révocable côté Microsoft** si fuite détectée
+- Standard de fait dans la communauté Halo (SPNKr Python utilise `auth_tokens.json` identique)
+
+**Recommandation backlog** : si l'outil est distribué à des users non-techniciens, ajouter chiffrement at-rest via Windows DPAPI / macOS Keychain / Linux libsecret (wrap natif). Effort ~3h, valeur marginale tant que l'outil reste single-user local.
+
+### Q : Le pool utilise-t-il bien tous les tokens Spartan disponibles ?
+
+**Oui** — confirmé dans `internal/scheduler/auto_sync.go:383-395` :
+
+```go
+parallelism := s.poolSizeSafe()   // = pool.Size() = nb tokens dispo
+eg.SetLimit(parallelism)          // errgroup borne à N goroutines
+for _, p := range players {
+    eg.Go(func() error { return s.syncPlayer(egCtx, p) })
+}
+```
+
+Et `pool/README.md:172` : "engine.go fetches matches in parallel via `errgroup.SetLimit(pool.Size())`".
+
+| Pool size | syncPlayer en parallèle | Sortie cycle 3 joueurs |
+|---|---|---|
+| 0 | 0 (skip) | 0 sync |
+| 1 | 1 (sériel) | ~15 min |
+| 3-4 | 3-4 | ~5-8 min |
+
+**Conséquence directe sur l'incident ART** : c'est exactement la **parallélisation N=4** qui a stressé l'index ART de `shared.match_participants`. 4 workers UPSERT sur la même DB → bug DELETE-side ART. Les mitigations legacy (dblease mutex + singleflight) ont réduit la fréquence sans supprimer. Collect→Persist (Phase 1-2) résout par construction (INSERT-only).
+
+**La parallélisation reste OK** : la racine du bug n'est pas la concurrence des syncs (correctement sérialisée via dblease), c'est l'usage UPSERT dans cette concurrence. INSERT-only + parallel pool = pas de problème.
+
+---
+
 ## 6. Hors scope
 
 - **Suppression du pool** : NON, il reste — c'est un accélérateur cache Spartan partagé multi-joueur, pas un héritage.
