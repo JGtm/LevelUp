@@ -1,3 +1,49 @@
+## [2026-05-23] Refactor Collect-Persist — Phase 4 (CLI cmd_sync) + Phase 5 plan + Phase 6 docs finales
+
+**Statut** : Complété
+
+**Tâche** : Boucler les Phases 4, 5 (doc-only), 6 du plan REFACTOR_COLLECT_PERSIST. Phase 5-code (suppression du legacy anti-ART) attend la validation Phase 3 en prod — documenté dans `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md` pour exécution ultérieure.
+
+**Décisions techniques principales** :
+
+- **Phase 4 — CLI** : audit des 20+ sites `NewSyncEngine(...)` dans `cmd/`. Seuls 2 sites (`cmd/levelup/cmd_sync.go` runSyncDelta + runSyncDeltaAll) appellent `RunDelta` et sont donc concernés par `LEVELUP_PERSIST_BATCH`. Les autres CLI (`cmd/backfill_all/main.go`, `cmd/levelup/cmd_backfill.go`) utilisent des chemins de compute distincts (`BackfillLUSR`, `BackfillCitations`, `BackfillWeaponKills*`, etc.) qui n'appellent pas `submitMatchAsBatch` — donc non concernés. Wirage env var ajouté dans les 2 sites du CLI sync, identique au pattern scheduler/handler.
+
+- **Phase 5 doc-only** :
+  - ADR 0017 (rebuild ART) marqué **OBSOLÈTE** — superseded by ADR 0019. Outil ops manuel reste dispo.
+  - ADR 0018 (singleflight) marqué **OBSOLÈTE le même jour qu'il a été proposé** — empiriquement insuffisant face au bug ART. Reste dans le code legacy tant que Phase 5 cleanup pas exécutée.
+  - `PLAN_PHASE5_CLEANUP_ANTI_ART.md` créé : plan détaillé des 7 items à supprimer (singleflight, CHECKPOINT, BootARTGuard auto-heal, RebuildART runtime, force_rebuild_art garder, migrations acad4603, bits Mark*) avec garde-fous (NE PAS supprimer insertFetchedMatch ni le feature flag).
+
+- **Phase 6 docs finales** :
+  - `CLAUDE.md` : règle architecture écritures DB ajoutée — "toute nouvelle écriture per-match passe par `persist.BatchBuilder.Submit`". Référence ADR 0019.
+  - `INCIDENT_ART_CORRUPTION_DUCKDB.md` : status passé de 🔴 DIAGNOSTIC FINAL à 🟢 RÉSOLU CÔTÉ CODE. Section RÉSOLUTION ajoutée avec les 3 modes opérationnels (Legacy / Sync batch / Async batch).
+  - ADR 0019 déjà livré (commit 730894aa).
+  - Runbook `.ai/RUNBOOK_PHASE3_ACTIVATION.md` déjà livré.
+
+**Résultats observés** :
+
+- `go build ./...` clean après wiring CLI.
+- `go vet ./...` clean.
+- Documentation cohérente entre ADR 0019, INCIDENT.md, CLAUDE.md, RUNBOOK_PHASE3, PLAN_PHASE5.
+
+**État global refactor Collect→Persist** :
+
+| Phase | Statut | Notes |
+|---|---|---|
+| 1 — Infrastructure | ✅ Livré | queue + 4 persisters + worker + 34 tests TDD |
+| 2 — Sync engine refactor | ✅ Livré | collect.go + submitMatchAsBatch + flag + 12+4 tests E2E |
+| 3 — Activation progressive | 🟡 Code prêt | flip env var = USER prod (cf. RUNBOOK) |
+| 4 — Backfill CLI + scripts | ✅ Livré | wiring `cmd_sync.go` (2 sites) |
+| 5 — Cleanup anti-ART | 🟡 Plan documenté | Code à supprimer post-validation Phase 3 (cf. PLAN_PHASE5) |
+| 6 — Documentation finale | ✅ Livré | ADR 0019 + CLAUDE.md + INCIDENT.md + RUNBOOK |
+
+**Prochaine étape** :
+
+1. **USER** : exécuter Phase 3 activation (cf. RUNBOOK) — staging puis prod, observer 10 cycles.
+2. **USER** : une fois Phase 3 validée, lancer Phase 5 cleanup (cf. PLAN_PHASE5_CLEANUP_ANTI_ART.md).
+3. **USER** : créer PR depuis `refactor/collect-persist` → `main`.
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Items mineurs Phase 2 + async layer + Phase 3 activation prep
 
 **Statut** : Complété côté code. Activation effective à faire par le user (étapes 1-4 du runbook).

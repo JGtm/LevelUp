@@ -1,9 +1,25 @@
 # INCIDENT — Corruption d'index ART DuckDB (récurrent)
 
-**Status** : 🔴 **DIAGNOSTIC FINAL** — bug DuckDB upstream non-contournable au pattern SQL. **Vraie solution = refactor Collect → Persist** ([REFACTOR_COLLECT_PERSIST.md](REFACTOR_COLLECT_PERSIST.md)).
+**Status** : 🟢 **RÉSOLU CÔTÉ CODE** — refactor Collect → Persist livré branche `refactor/collect-persist`. Activation prod en attente (`LEVELUP_PERSIST_BATCH=1`, cf. [RUNBOOK_PHASE3_ACTIVATION.md](RUNBOOK_PHASE3_ACTIVATION.md)).
 **Premier signalement** : 2026-05-20 (`docs/INCIDENT_2026-05-20_match_participants_index.md`).
 **Reproduit en prod** : 2026-05-23.
-**Dernière mise à jour** : 2026-05-23 20h00.
+**Solution livrée** : 2026-05-23 (branche `refactor/collect-persist`, ADR 0019).
+**Dernière mise à jour** : 2026-05-23.
+
+## RÉSOLUTION (2026-05-23)
+
+Le refactor **Collect → Persist** est livré : couche persistance INSERT-only sur 4 DBs (Shared/Player/PVE/Metadata) + orchestrateur sync `submitMatchAsBatch` (engine_batch_path.go) + feature flag `LEVELUP_PERSIST_BATCH=1`.
+
+**3 modes opérationnels** :
+1. Legacy (default) — `insertFetchedMatch` UPSERT direct sur `shared.match_participants` → ART bug actif.
+2. **Sync batch** (`LEVELUP_PERSIST_BATCH=1`) — `submitMatchAsBatch` + `persist.SharedPersister/PlayerPersister.Persist()` (INSERT-only, pas de WAL). **ART bug supprimé par construction**.
+3. **Async batch** (`+ WithBatchQueue`) — queue + worker + WAL durable + Drain. À activer Phase 4 si bénéfice observé.
+
+**Garanties post-activation Phase 3** :
+- Aucun UPDATE/UPSERT concurrent sur `shared.match_participants` (les workers persisters utilisent INSERT en TX atomique avec check `EXISTS(match_id)` pour l'idempotence).
+- Pas de DELETE-side index access → pas de stress sur l'ART → corruption impossible par construction.
+
+**Référence** : ADR 0019 (`docs/adr/0019-collect-persist-architecture.md`), runbook activation (`.ai/RUNBOOK_PHASE3_ACTIVATION.md`).
 
 ## VERDICT EMPIRIQUE FINAL (2026-05-23 19h33)
 

@@ -47,6 +47,15 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0014-progression-tracking-v2-ascension.md` — couches Streaks + Records & Milestones + Coach proactif (V2 Ascension)
 - `docs/adr/0015-player-profile-ascension-v1.md` — V1 PlayerProfile partiel (3/10 commits livrés, 7 reportés)
 - `docs/adr/0016-shared-db-provider-b-swap.md` — SharedDBProvider RO↔RW swap (élimine conflit auto_sync "different configuration")
+- `docs/adr/0019-collect-persist-architecture.md` — refactor Collect→Persist anti-corruption ART DuckDB (INSERT-only sur shared, fix le bug `Failed to delete all rows from index`)
+
+**Règle architecture écritures DB (Phase 3 du refactor Collect→Persist en cours)** :
+
+Toute NOUVELLE écriture dans une DB partagée (shared, player, pve, metadata) sur un chemin per-match passe par `internal/persist/BatchBuilder.Submit()` → `persist.*Persister.Persist()`. Plus de UPSERT/UPDATE concurrents sur les tables critiques (`shared.match_registry`, `shared.match_participants`, `shared.medals_earned`, `player_match_enrichment`, etc.) — sinon le bug ART DuckDB ressurgit.
+
+- **Live sync** : `submitMatchAsBatch` (activé par `LEVELUP_PERSIST_BATCH=1`, cf. `engine_batch_path.go`).
+- **Backfills CLI** : refactor ad-hoc à faire au cas par cas — les backfills "UPDATE-style" qui ne touchent PAS `shared.match_participants` (LUSR, citations, engagement, etc.) peuvent rester UPDATE car non concernés par l'ART bug.
+- **Ajout d'enrichment local sur `player_match_enrichment`** : 3 étapes seulement (migration ALTER + champ pointer dans `EnrichmentRow` + 1 if-block dans `enrichmentFields()`). Cf. ADR 0019 + `internal/persist/doc.go`.
 
 **Skills agent** (à invoquer avant tout commit) : `.claude/skills/{arch-rules, canonical-types, color-tokens, foundations-usage, delivery-checklist, plan-review, halo-modes, db-schema, frontend-patterns, go-features}/SKILL.md`.
 

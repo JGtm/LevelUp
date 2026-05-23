@@ -65,6 +65,11 @@ func runSyncDelta(cfg *config.AppConfig, args []string) error {
 	if cache := loadLocalFilmCache(); cache != nil {
 		engine.SetLocalFilmCache(cache)
 	}
+	// Phase 4 refactor Collect→Persist : aligner CLI sur scheduler + handler
+	// (cf. internal/scheduler/auto_sync.go::defaultRunnerFactory).
+	if os.Getenv("LEVELUP_PERSIST_BATCH") == "1" {
+		engine = engine.WithBatchPersistMode(true)
+	}
 	opts := domain.DefaultSyncOptions()
 	opts.MatchType = *matchType
 	opts.MaxMatches = *maxMatches
@@ -165,6 +170,10 @@ func runSyncDeltaAll(
 
 		engine := go_sync.NewSyncEngine(cfg.RepoRoot, player.Gamertag, player.XUID, &domain.HaloTokens{}, provider).
 			WithCSRSeasonID(cfg.CurrentCSRSeasonID)
+		// Phase 4 refactor Collect→Persist : aligner CLI batch sur scheduler + handler.
+		if os.Getenv("LEVELUP_PERSIST_BATCH") == "1" {
+			engine = engine.WithBatchPersistMode(true)
+		}
 		cache := loadLocalFilmCache()
 		if cache != nil {
 			engine.SetLocalFilmCache(cache)
