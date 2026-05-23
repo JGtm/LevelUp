@@ -1,3 +1,32 @@
+## [2026-05-23] Refactor Collect-Persist — Phase 2.2 extension fetchedMatch (SharedCSRs + PveStats)
+
+**Statut** : Complété
+
+**Tâche** : Étendre le collecteur Phase 2.1 pour couvrir les 2 dernières tables per-match qui manquaient (`shared.match_csrs`, `shared_pve.pve_match_stats`) via l'extension du DTO `fetchedMatch`. Choix architectural validé : Option 1 (étendre `fetchedMatch`) car le couplage avec le legacy est temporaire (jusqu'à Phase 5 cleanup) et minimal (les nouveaux champs sont juste ignorés par `insertFetchedMatch`).
+
+**Décision technique principale** :
+
+- `fetchedMatch.SharedCSRs []SharedMatchCSRRow` peuplé par `ExtractAllSharedCSRRows(reg, skillData)` (déjà existante, utilisée par le path UpsertSharedCSRs legacy). Mappé vers `batch.Shared.MatchCSRs` via `sharedCSRRowToMatchCSRInsert`.
+- `fetchedMatch.PveStats []PveMatchStatsRow` peuplé par `ExtractPveStats(matchID, json)` si `reg.IsFirefight`. Mappé vers `batch.PVE.Stats` (slice) via `pveMatchStatsRowToInsert`.
+- Refactor `persist.PVEBatch.Stats *PVEMatchStatsInsert → []PVEMatchStatsInsert` car le sync écrit 1 row par participant Firefight, pas seulement le joueur sync. Renommé `BatchBuilder.SetPVEStats → AddPVEStats` ; PVEPersister boucle sur la slice.
+- **Cycle d'import cassé** : `internal/sync` → `internal/persist` (via collect.go) + `internal/persist/player_persister_test.go` → `internal/sync` (via EnsurePlayerSchema) = cycle illégal au test build. Fix : inliné le schema SQL nécessaire dans `playerTestSchemaSQL` (test-only const dans le fichier de test persist), supprimé l'import `internal/sync`. Code dupliqué (~30 lignes SQL) accepté comme dette temporaire — sera résolu en Phase 5 ou par une extraction `internal/sync/playerschema/` séparée.
+
+**Couverture INSERT mapping mise à jour** : 11/14 chemins legacy couverts par le batch. Reste hors scope :
+- `weapon_kills` (backfill film séparé, pas dans fetchedMatch)
+- `xuid_aliases dans data/global/xbox_aliases.duckdb` (DB séparée, le batch n'écrit que dans shared)
+- Mark* bitmasks (UPDATE-style, à calculer en pré-Submit)
+
+**Résultats observés** :
+
+- 12 tests TDD GREEN pour `buildBatchFromFetchedMatch` (les 8 précédents + 4 nouveaux : SharedCSRs mappé, no-CSRs vide, PveStats slice, no-PveStats nil).
+- `internal/sync` test suite full pass après extension : aucune régression.
+- `internal/persist` full suite (queue+shared+player+pve+meta+worker+e2e) toujours GREEN après refactor PVEBatch.Stats slice.
+- `go vet ./...` clean, `go build ./...` clean.
+
+**Prochaine étape** : Phase 2.3 — écrire l'orchestrateur du sync qui appelle `buildBatchFromFetchedMatch` + `queue.Submit` dans une boucle (vs `insertFetchedMatch` legacy). Feature flag `LEVELUP_PERSIST_BATCH=1` pour switcher au boot. Workers déjà prêts (Shared/Player/PVE/Metadata Persisters livrés).
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Phase 2.1 buildBatchFromFetchedMatch (collect.go)
 
 **Statut** : Complété

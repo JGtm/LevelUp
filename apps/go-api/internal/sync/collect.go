@@ -155,13 +155,91 @@ func buildBatchFromFetchedMatch(
 		builder.SetSkillRank(matchCSRRowToSkillRankInsert(fm.CSRRow))
 	}
 
-	// Enrichment placeholder — Phase 2.2 enrichira (performance_score,
-	// session_id, is_with_friends, dominance_flag, engagement_*, etc.).
+	// Shared CSRs (lobby) — CSR de tous les participants ranked.
+	if len(fm.SharedCSRs) > 0 {
+		mcInserts := make([]persist.MatchCSRInsert, 0, len(fm.SharedCSRs))
+		for _, s := range fm.SharedCSRs {
+			mcInserts = append(mcInserts, sharedCSRRowToMatchCSRInsert(s))
+		}
+		builder.AddMatchCSRs(mcInserts)
+	}
+
+	// PVE Firefight stats — toutes les rows participants si match firefight.
+	if len(fm.PveStats) > 0 {
+		pveInserts := make([]persist.PVEMatchStatsInsert, 0, len(fm.PveStats))
+		for _, p := range fm.PveStats {
+			pveInserts = append(pveInserts, pveMatchStatsRowToInsert(p))
+		}
+		builder.AddPVEStats(pveInserts)
+	}
+
+	// Enrichment placeholder — les enrichments post-sync compute
+	// (performance_score, session_id, is_with_friends, dominance_flag,
+	// engagement_*) sont UPDATEd post-Submit par les fonctions
+	// engine_postsync.go. Le placeholder ici porte juste le PK.
 	builder.SetEnrichment(&persist.EnrichmentRow{
 		MatchID: fm.MatchID,
 	})
 
 	return builder.Build(), parseErr
+}
+
+// sharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
+// persist.MatchCSRInsert (batch).
+func sharedCSRRowToMatchCSRInsert(s SharedMatchCSRRow) persist.MatchCSRInsert {
+	tier := s.Tier
+	subTier := s.SubTier
+	tierLabel := s.TierLabel
+	out := persist.MatchCSRInsert{
+		MatchID:     s.MatchID,
+		XUID:        s.XUID,
+		RatingType:  s.RatingType,
+		RatingValue: s.RatingValue,
+		Tier:        &tier,
+		SubTier:     &subTier,
+		TierLabel:   &tierLabel,
+		RatingDelta: s.RatingDelta,
+	}
+	if s.MeasurementMatchesRemaining != 0 {
+		mr := s.MeasurementMatchesRemaining
+		out.MeasurementMatchesRemaining = &mr
+	}
+	if s.SeasonID != "" {
+		sid := s.SeasonID
+		out.SeasonID = &sid
+	}
+	return out
+}
+
+// pveMatchStatsRowToInsert convertit PveMatchStatsRow (sync) →
+// persist.PVEMatchStatsInsert (batch). PveBits *int car colonne optionnelle.
+func pveMatchStatsRowToInsert(r PveMatchStatsRow) persist.PVEMatchStatsInsert {
+	out := persist.PVEMatchStatsInsert{
+		MatchID:        r.MatchID,
+		XUID:           r.XUID,
+		WavesCompleted: r.WavesCompleted,
+		BossKills:      r.BossKills,
+		GruntKills:     r.GruntKills,
+		EliteKills:     r.EliteKills,
+		JackalKills:    r.JackalKills,
+		BruteKills:     r.BruteKills,
+		HunterKills:    r.HunterKills,
+		SkimmerKills:   r.SkimmerKills,
+		CrawlerKills:   r.CrawlerKills,
+		SoldierKills:   r.SoldierKills,
+		KnightKills:    r.KnightKills,
+		WardenKills:    r.WardenKills,
+		SentinelKills:  r.SentinelKills,
+		MarineKills:    r.MarineKills,
+		TotalKills:     r.TotalKills,
+		Deaths:         r.Deaths,
+		DamageDealt:    r.DamageDealt,
+	}
+	if r.PveBitsValue != 0 {
+		v := int(r.PveBitsValue)
+		out.PveBits = &v
+	}
+	return out
 }
 
 // matchCSRRowToSkillRankInsert convertit le MatchCSRRow (struct interne sync)

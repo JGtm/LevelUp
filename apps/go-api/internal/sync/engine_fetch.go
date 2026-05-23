@@ -26,8 +26,13 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour insertion.
-// Utilisé pour paralléliser les fetches tout en gardant les inserts séquentiels.
+// fetchedMatch contient les données extraites d'un GetMatchStats, prêtes pour
+// insertion (chemin legacy `insertFetchedMatch`) ou conversion en MatchBatch
+// (chemin Collect→Persist `buildBatchFromFetchedMatch`).
+//
+// Les deux chemins consomment ce type : insertFetchedMatch écrit directement
+// dans les DBs (legacy), buildBatchFromFetchedMatch produit un *persist.MatchBatch
+// à Submit dans la BatchQueue. Coexistence pendant la transition Phase 2.
 type fetchedMatch struct {
 	MatchID        string
 	Registry       *MatchRegistryRow
@@ -41,8 +46,20 @@ type fetchedMatch struct {
 	SkillError     error // Non-bloquant si présent
 	// CSRRow : ligne CSR à insérer côté player DB. Renseignée uniquement
 	// pour les matchs classés dont le payload skill contient RankRecap.
-	// Inséré dans insertFetchedMatch.
+	// Inséré dans insertFetchedMatch / batch.PlayerData.SkillRank.
 	CSRRow *MatchCSRRow
+
+	// SharedCSRs : CSR de TOUS les participants ranked du match (lobby
+	// context). Produit par ExtractAllSharedCSRRows à partir de skillData,
+	// utilisé par batch.Shared.MatchCSRs. Vide si match non-ranked ou
+	// skillData absent. Cf. ADR/csr_shared_writes.go.
+	SharedCSRs []SharedMatchCSRRow
+
+	// PveStats : stats Firefight pour TOUS les participants du match
+	// (1 row par joueur). Produit par ExtractPveStats si le match est
+	// firefight (GameVariantCategory 41/42). Vide sinon.
+	// Utilisé par batch.PVE.Stats (slice).
+	PveStats []PveMatchStatsRow
 }
 
 // fetchMatchData exécute le fetch et l'extraction pour un match (pur, sans DB).
@@ -91,14 +108,24 @@ func (e *SyncEngine) fetchMatchData(
 				fm.SkillError = fmt.Errorf("GetMatchSkill: %w", skillErr)
 			} else if len(skillData) > 0 {
 				fm.Participants = MergeSkillIntoParticipants(fm.Participants, skillData)
-				// CSR par-match : extraction depuis RankRecap si match classé.
-				// L'écriture en player DB est différée à insertFetchedMatch.
+				// CSR par-match (player DB) : extraction depuis RankRecap si
+				// match classé. L'écriture en player DB est différée à
+				// insertFetchedMatch (legacy) ou batch.PlayerData.SkillRank.
 				fm.CSRRow = ExtractCSRRowIfRanked(fm.Registry, skillData[e.xuid])
+				// CSR de tous les participants ranked (shared.match_csrs)
+				// — lobby context, utilisé par batch.Shared.MatchCSRs.
+				fm.SharedCSRs = ExtractAllSharedCSRRows(fm.Registry, skillData)
 			}
 		}
 	}
 	if opts.WithMedals {
 		fm.Medals = ExtractMedals(matchJSON)
+	}
+	// PVE Firefight stats — extraits si le match est firefight (déterminé
+	// dans la registry). Tous les participants ; le batch écrit dans
+	// shared_pve.pve_match_stats PK (match_id, xuid). Cf. batch.PVE.Stats.
+	if fm.Registry != nil && fm.Registry.IsFirefight {
+		fm.PveStats = ExtractPveStats(matchID, matchJSON)
 	}
 	// PersonalScores du joueur courant — toujours extraits (pas de flag dédié,
 	// même cycle de vie que les participants). La table n'est pas dans shared :

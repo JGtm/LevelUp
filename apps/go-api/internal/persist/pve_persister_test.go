@@ -46,7 +46,7 @@ func openPVETestDB(t *testing.T) *sql.DB {
 func helperPVEBatch(matchID, xuid string) *MatchBatch {
 	intPtr := func(v int) *int { return &v }
 	b := NewBatchBuilder("halo_infinite", "Alice", xuid, "test")
-	b.SetPVEStats(&PVEMatchStatsInsert{
+	b.AddPVEStats([]PVEMatchStatsInsert{{
 		MatchID:        matchID,
 		XUID:           xuid,
 		WavesCompleted: 5,
@@ -67,7 +67,7 @@ func helperPVEBatch(matchID, xuid string) *MatchBatch {
 		Deaths:         8,
 		DamageDealt:    12500.5,
 		PveBits:        intPtr(0xFFFF),
-	})
+	}})
 	return b.Build()
 }
 
@@ -137,7 +137,7 @@ func TestPVEPersister_Persist_DuplicatePK_Idempotent(t *testing.T) {
 
 	// 2e batch même PK, total_kills différent → doit être skip
 	b2 := helperPVEBatch("pve_dup", "1111")
-	b2.PVE.Stats.TotalKills = 99999
+	b2.PVE.Stats[0].TotalKills = 99999
 
 	if err := p.Persist(context.Background(), b2); err != nil {
 		t.Fatalf("2e Persist (idempotent attendu): %v", err)

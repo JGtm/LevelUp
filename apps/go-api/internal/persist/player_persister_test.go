@@ -25,8 +25,62 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/migration"
-	"levelup/go-api/internal/sync"
 )
+
+// playerTestSchemaSQL — schema minimum pour tests PlayerPersister.
+//
+// Le schema reel vit dans internal/sync/schema.go (playerSchemaSQL +
+// EnsurePlayerSchema). On l'inline ici pour eviter l'import cycle
+// internal/sync -> internal/persist (via collect.go) et inversement.
+// Suit la divergence schema migrations vs playerSchemaSQL documentee
+// dans doc.go ; les migrations couvrent player_match_enrichment et la
+// plupart des tables, mais personal_score_awards + match_skill_rank
+// (versions modernes avec sequence) ne sont creees que par playerSchemaSQL.
+const playerTestSchemaSQL = `
+CREATE SEQUENCE IF NOT EXISTS personal_score_awards_id_seq;
+CREATE TABLE IF NOT EXISTS personal_score_awards (
+    id         INTEGER   PRIMARY KEY DEFAULT nextval('personal_score_awards_id_seq'),
+    match_id   VARCHAR   NOT NULL,
+    xuid       VARCHAR   NOT NULL,
+    award_name VARCHAR   NOT NULL,
+    award_category VARCHAR,
+    award_count INTEGER  DEFAULT 1,
+    award_score INTEGER  DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS match_skill_rank (
+    match_id          VARCHAR PRIMARY KEY,
+    rating_type       VARCHAR NOT NULL,
+    rating_value      FLOAT,
+    rating_deviation  FLOAT,
+    tier              VARCHAR,
+    tier_fr           VARCHAR,
+    sub_tier          SMALLINT DEFAULT 0,
+    tier_label        VARCHAR,
+    rating_delta      FLOAT,
+    playlist_group    VARCHAR,
+    start_time        TIMESTAMP,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- Crée aussi player_match_enrichment EN AMONT des migrations addColumnIfMissing
+-- qui dépendent de son existence (engagement migration skip si table absente).
+CREATE TABLE IF NOT EXISTS player_match_enrichment (
+    match_id               VARCHAR   PRIMARY KEY,
+    performance_score      FLOAT,
+    performance_chain      VARCHAR,
+    session_id             VARCHAR,
+    session_label          VARCHAR,
+    is_with_friends        BOOLEAN   DEFAULT FALSE,
+    teammates_signature    VARCHAR,
+    known_teammates_count  SMALLINT,
+    friends_xuids          VARCHAR,
+    had_bot_teammate       BOOLEAN,
+    is_excluded            BOOLEAN   DEFAULT FALSE,
+    created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -41,16 +95,14 @@ func openPlayerTestDB(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 
-	// Bootstrap FIRST : crée les tables de base via playerSchemaSQL
-	// (player_match_enrichment, match_skill_rank, personal_score_awards
-	// avec sequence, etc.). Les migrations addColumnIfMissing qui suivent
-	// dépendent de l'existence de ces tables — celles qui skip silencieusement
-	// si la table n'existe pas (ex. engagement_score) ne s'appliqueraient pas
-	// dans l'ordre inverse.
-	if err := sync.EnsurePlayerSchema(t.Context(), db); err != nil {
-		t.Fatalf("EnsurePlayerSchema: %v", err)
+	// Bootstrap FIRST : crée les tables de base via playerTestSchemaSQL
+	// inline (équivalent test-local de sync.EnsurePlayerSchema —
+	// l'import sync est interdit ici à cause du cycle persist↔sync).
+	// Les migrations addColumnIfMissing qui suivent ajoutent les colonnes
+	// optionnelles (engagement_score, dominance_flag, etc.).
+	if _, err := db.Exec(playerTestSchemaSQL); err != nil {
+		t.Fatalf("playerTestSchemaSQL: %v", err)
 	}
-	// Migrations player officielles (ajoutent les colonnes optionnelles)
 	if err := migration.RunForDB(db, migration.TargetPlayer); err != nil {
 		t.Fatalf("migrate player: %v", err)
 	}

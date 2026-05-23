@@ -36,7 +36,7 @@ func (p *PVEPersister) Persist(ctx context.Context, batch *MatchBatch) error {
 	if batch == nil {
 		return errors.New("persist: PVEPersister.Persist: batch nil")
 	}
-	if batch.PVE == nil || batch.PVE.Stats == nil {
+	if batch.PVE == nil || len(batch.PVE.Stats) == 0 {
 		return nil
 	}
 
@@ -46,13 +46,14 @@ func (p *PVEPersister) Persist(ctx context.Context, batch *MatchBatch) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := persistPVEStats(ctx, tx, batch.PVE.Stats); err != nil {
-		return err
+	for i := range batch.PVE.Stats {
+		if err := persistPVEStats(ctx, tx, &batch.PVE.Stats[i]); err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("persist: Commit pve %s/%s: %w",
-			batch.PVE.Stats.MatchID, batch.PVE.Stats.XUID, err)
+		return fmt.Errorf("persist: Commit pve %s: %w", batch.PVE.Stats[0].MatchID, err)
 	}
 	return nil
 }

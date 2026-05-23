@@ -137,12 +137,16 @@ func (b *BatchBuilder) SetSession(row *SessionInsert) *BatchBuilder {
 	return b
 }
 
-// SetPVEStats fixe les stats Firefight si le match est PVE.
-func (b *BatchBuilder) SetPVEStats(row *PVEMatchStatsInsert) *BatchBuilder {
+// AddPVEStats ajoute des rows pve_match_stats (1 par participant du match
+// Firefight). Allocation lazy de PVEBatch si pas encore initialisé.
+func (b *BatchBuilder) AddPVEStats(rows []PVEMatchStatsInsert) *BatchBuilder {
+	if len(rows) == 0 {
+		return b
+	}
 	if b.batch.PVE == nil {
 		b.batch.PVE = &PVEBatch{}
 	}
-	b.batch.PVE.Stats = row
+	b.batch.PVE.Stats = append(b.batch.PVE.Stats, rows...)
 	return b
 }
 

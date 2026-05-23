@@ -115,9 +115,11 @@ type PlayerBatch struct {
 	Session *SessionInsert `json:"session,omitempty"`
 }
 
-// PVEBatch — Firefight stats (1 match Firefight).
+// PVEBatch — Firefight stats (1 match Firefight). Une row par participant
+// (PK shared_pve.pve_match_stats = (match_id, xuid)). Le sync collecte tous
+// les participants présents dans le payload Halo, pas seulement le joueur sync.
 type PVEBatch struct {
-	Stats *PVEMatchStatsInsert `json:"stats,omitempty"`
+	Stats []PVEMatchStatsInsert `json:"stats,omitempty"`
 }
 
 // MetadataBatch — rare en sync, ex. nouvelles traductions mode/playlist.
