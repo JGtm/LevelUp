@@ -100,10 +100,13 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 		t.Fatal(err)
 	}
 	defer playerDB.Close()
+	// Schéma player aligné sur la prod (cf. internal/sync/schema.go + steps_player.go) :
+	// - player_match_enrichment : PAS de colonne xuid (player DB mono-joueur)
+	// - match_skill_rank : PAS de colonne xuid (idem)
+	// - career_progression : A une colonne xuid (anonymisée)
 	mustExec(t, playerDB, `
 		CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,
-			xuid VARCHAR,
 			session_id VARCHAR,
 			performance_score DOUBLE
 		)`)
@@ -111,25 +114,28 @@ func seedSourceDBs(t *testing.T) (tmpDir, srcPlayer, srcShared, srcMeta string) 
 		CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`)
 	mustExec(t, playerDB, `CREATE TABLE sessions (session_id VARCHAR, label VARCHAR)`)
 	mustExec(t, playerDB, `
-		CREATE TABLE career_progression (rank INTEGER, recorded_at TIMESTAMP)`)
+		CREATE TABLE career_progression (
+			xuid VARCHAR NOT NULL,
+			rank INTEGER,
+			recorded_at TIMESTAMP
+		)`)
 	mustExec(t, playerDB, `CREATE TABLE sync_meta (key VARCHAR PRIMARY KEY, value VARCHAR)`)
 	mustExec(t, playerDB, `
 		CREATE TABLE match_skill_rank (
 			match_id VARCHAR PRIMARY KEY,
-			xuid VARCHAR,
 			rating_value DOUBLE
 		)`)
 
 	mustExec(t, playerDB, `
 		INSERT INTO player_match_enrichment VALUES
-		('m1', '`+sourceXUID+`', 'sess1', 78.5),
-		('m2', '`+sourceXUID+`', 'sess1', 65.0),
-		('m3', '`+sourceXUID+`', 'sess2', 82.3)`)
+		('m1', 'sess1', 78.5),
+		('m2', 'sess1', 65.0),
+		('m3', 'sess2', 82.3)`)
 	mustExec(t, playerDB, `INSERT INTO match_citations VALUES ('m1', 'kills', 15), ('m2', 'kills', 8)`)
 	mustExec(t, playerDB, `INSERT INTO sessions VALUES ('sess1', 'Session 1'), ('sess2', 'Session 2')`)
-	mustExec(t, playerDB, `INSERT INTO career_progression VALUES (10, TIMESTAMP '2026-05-22 18:00:00')`)
+	mustExec(t, playerDB, `INSERT INTO career_progression VALUES ('`+sourceXUID+`', 10, TIMESTAMP '2026-05-22 18:00:00')`)
 	mustExec(t, playerDB, `INSERT INTO sync_meta VALUES ('xuid', '`+sourceXUID+`'), ('msal_token_cache', 'SECRET_DO_NOT_LEAK')`)
-	mustExec(t, playerDB, `INSERT INTO match_skill_rank VALUES ('m1', '`+sourceXUID+`', 1200.5)`)
+	mustExec(t, playerDB, `INSERT INTO match_skill_rank VALUES ('m1', 1200.5)`)
 
 	return tmpDir, srcPlayer, srcShared, srcMeta
 }
@@ -317,19 +323,13 @@ func verifyPlayerExtracted(t *testing.T, path, sourceXUID string) {
 	defer db.Close()
 
 	// player_match_enrichment : 2 rows (m1 + m2), m3 exclu.
+	// Note : pas de colonne xuid (player DB mono-joueur, xuid implicite via path).
 	var n int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment`).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 2 {
 		t.Errorf("player_match_enrichment rows = %d, want 2", n)
-	}
-	// xuid anonymisé.
-	if err := db.QueryRow(`SELECT COUNT(*) FROM player_match_enrichment WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
-		t.Fatal(err)
-	}
-	if n != 0 {
-		t.Errorf("sourceXUID encore dans player_match_enrichment")
 	}
 
 	// sync_meta : msal_token_cache exclu, xuid mis à jour.
@@ -355,12 +355,26 @@ func verifyPlayerExtracted(t *testing.T, path, sourceXUID string) {
 		t.Errorf("sessions rows = %d, want 2 (copie intégrale)", n)
 	}
 
-	// match_skill_rank : 1 row (m1), anonymisé.
-	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
+	// match_skill_rank : 1 row (m1). Pas de colonne xuid (player DB mono-joueur).
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("match_skill_rank rows = %d, want 1 (m1 ranked seulement)", n)
+	}
+
+	// career_progression : anonymisé (a une vraie colonne xuid).
+	if err := db.QueryRow(`SELECT COUNT(*) FROM career_progression WHERE xuid = ?`, sourceXUID).Scan(&n); err != nil {
 		t.Fatal(err)
 	}
 	if n != 0 {
-		t.Errorf("sourceXUID dans match_skill_rank, anonymisation manquée")
+		t.Errorf("sourceXUID dans career_progression, anonymisation manquée")
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM career_progression WHERE xuid = ?`, DefaultDemoXUID).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Errorf("career_progression[xuid=DEMO] = %d, want 1", n)
 	}
 }
 

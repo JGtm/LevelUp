@@ -187,6 +187,50 @@ func TestResolveSourceXUIDFromProfiles_FileMissing(t *testing.T) {
 	}
 }
 
+func TestResolveSourceXUIDFromProfiles_V3MultiTitres(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "db_profiles.json")
+	content := `{
+		"version": "3.0",
+		"profiles": {
+			"halo_infinite": {
+				"JGtm": {"xuid": "2533274823110022", "db_path": "data/titles/halo_infinite/players/JGtm/stats.duckdb"},
+				"Other": {"xuid": "1111111111111111", "db_path": "data/titles/halo_infinite/players/Other/stats.duckdb"}
+			},
+			"halo_reach": {
+				"LegacyPlayer": {"xuid": "9999999999999999", "db_path": "data/titles/halo_reach/players/LegacyPlayer/stats.duckdb"}
+			}
+		}
+	}`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Gamertag dans halo_infinite (titre par défaut) — résolution directe.
+	xuid, dbPath, err := ResolveSourceXUIDFromProfiles(path, "JGtm")
+	if err != nil {
+		t.Fatalf("JGtm: %v", err)
+	}
+	if xuid != "2533274823110022" {
+		t.Errorf("JGtm.xuid = %q", xuid)
+	}
+	if dbPath != "data/titles/halo_infinite/players/JGtm/stats.duckdb" {
+		t.Errorf("JGtm.dbPath = %q", dbPath)
+	}
+	// Gamertag dans un autre titre — fallback cross-title.
+	xuid2, _, err := ResolveSourceXUIDFromProfiles(path, "LegacyPlayer")
+	if err != nil {
+		t.Fatalf("LegacyPlayer: %v", err)
+	}
+	if xuid2 != "9999999999999999" {
+		t.Errorf("LegacyPlayer.xuid = %q", xuid2)
+	}
+	// Gamertag inconnu.
+	_, _, err = ResolveSourceXUIDFromProfiles(path, "Missing")
+	if err == nil || !strings.Contains(err.Error(), "introuvable") {
+		t.Errorf("Missing: expected 'introuvable', got %v", err)
+	}
+}
+
 func TestResolveSourceXUIDFromProfiles_EmptyXUID(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "db_profiles.json")
