@@ -18,7 +18,9 @@
 package sync
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"time"
 
@@ -44,6 +46,18 @@ import (
 //   - Bitmasks backfill_completed / backfill_bits (à calculer côté caller
 //     en fonction des données effectivement fetched + skill réussi)
 func buildBatchFromFetchedMatch(
+	fm *fetchedMatch,
+	titleSlug, gamertag, xuid string,
+) (*persist.MatchBatch, error) {
+	return buildBatchFromFetchedMatchCtx(context.Background(), fm, titleSlug, gamertag, xuid)
+}
+
+// buildBatchFromFetchedMatchCtx — variante avec ctx pour propager l'event_id
+// dans les logs DEBUG du collect. Appelée par submitMatchAsBatch qui a un ctx
+// avec event_id. La signature sans ctx (buildBatchFromFetchedMatch) reste
+// disponible pour les tests purs sans observabilité.
+func buildBatchFromFetchedMatchCtx(
+	ctx context.Context,
 	fm *fetchedMatch,
 	titleSlug, gamertag, xuid string,
 ) (*persist.MatchBatch, error) {
@@ -181,7 +195,26 @@ func buildBatchFromFetchedMatch(
 		MatchID: fm.MatchID,
 	})
 
-	return builder.Build(), parseErr
+	batch := builder.Build()
+	slog.DebugContext(ctx, "collect: batch built",
+		"match_id", fm.MatchID,
+		"gamertag", gamertag,
+		"participants", len(batch.Shared.Participants),
+		"medals", len(batch.Shared.Medals),
+		"highlight_events", len(batch.Shared.HighlightEvents),
+		"killer_victim", len(batch.Shared.KillerVictim),
+		"shared_csrs", len(batch.Shared.MatchCSRs),
+		"xuid_aliases", len(batch.Shared.XUIDAliases),
+		"psa", len(batch.PlayerData.PersonalScoreAwards),
+		"player_csr", batch.PlayerData.SkillRank != nil,
+		"pve_rows", func() int {
+			if batch.PVE == nil {
+				return 0
+			}
+			return len(batch.PVE.Stats)
+		}(),
+	)
+	return batch, parseErr
 }
 
 // sharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
