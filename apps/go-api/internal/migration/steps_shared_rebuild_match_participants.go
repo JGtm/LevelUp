@@ -83,13 +83,59 @@ func applyRebuildMatchParticipants(db *sql.DB) error {
 		return markMatchParticipantsRebuildDone(db)
 	}
 
+	// Délègue à la fonction runtime (sans sentinel) — séparation propre entre
+	// la mécanique de rebuild SQL et l'idempotence migration via sync_meta.
+	if err := RebuildMatchParticipantsART(ctx, db); err != nil {
+		return err
+	}
+	return markMatchParticipantsRebuildDone(db)
+}
+
+// RebuildMatchParticipantsART exécute le rebuild swap CTAS de la table
+// match_participants pour défaire la corruption d'index ART (cf. Phase 4.1
+// du plan stabilisation 2026-05-22, docs/adr/0018-concurrent-write-model.md
+// et docs/INCIDENT_2026-05-20_match_participants_index.md).
+//
+// IDEMPOTENTE PAR DESIGN — peut être rappelée à chaque boot ou périodiquement
+// quand BootARTGuard détecte une nouvelle divergence ART. Ne pose AUCUN
+// sentinel (contrairement à applyRebuildMatchParticipants côté migration).
+//
+// Étapes :
+//  1. PRAGMA table_info pour énumérer les colonnes actuelles (robuste aux
+//     ALTER TABLE futurs).
+//  2. CREATE TABLE __rebuilt AS SELECT <cols> FROM match_participants
+//     (le SELECT * sans WHERE force un table-scan complet qui court-circuite
+//     l'index ART corrompu).
+//  3. DROP TABLE match_participants (cascade sur vues).
+//  4. RENAME __rebuilt → match_participants.
+//  5. ADD PRIMARY KEY (match_id, xuid).
+//  6. Recrée les vues (applyResolutionViews + applyMvPlayerMatchesView).
+//  7. Recrée les 6 indexes idx_mp_*.
+//
+// No-op gracieux si la table match_participants est absente.
+//
+// Verrou : pas de lock interne. Le caller (cmd/server au boot, ou un trigger
+// runtime périodique) doit garantir qu'aucun writer concurrent n'opère
+// pendant l'exécution. Au boot, le serveur n'a pas encore démarré son
+// scheduler de sync donc c'est trivialement safe.
+func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
+	hasTable, err := tableExists(db, "match_participants")
+	if err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: check table: %w", err)
+	}
+	if !hasTable {
+		// Pas de table → no-op silencieux (vs applyRebuildMatchParticipants
+		// qui pose un sentinel ; la version runtime ne pose rien).
+		return nil
+	}
+
 	cols, err := loadMatchParticipantsColumns(ctx, db)
 	if err != nil {
-		return fmt.Errorf("rebuild_mp: enumerate columns: %w", err)
+		return fmt.Errorf("rebuild_mp_runtime: enumerate columns: %w", err)
 	}
 	if len(cols) == 0 {
 		// Table existe mais sans colonnes — état impossible mais on sécurise.
-		return markMatchParticipantsRebuildDone(db)
+		return nil
 	}
 	colList := strings.Join(cols, ", ")
 
@@ -97,7 +143,7 @@ func applyRebuildMatchParticipants(db *sql.DB) error {
 	var before int
 	if err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM match_participants`).Scan(&before); err != nil {
-		return fmt.Errorf("rebuild_mp: count before: %w", err)
+		return fmt.Errorf("rebuild_mp_runtime: count before: %w", err)
 	}
 
 	// Swap CTAS. Le SELECT * (sans WHERE) force un table-scan complet qui
@@ -113,21 +159,21 @@ func applyRebuildMatchParticipants(db *sql.DB) error {
 	}
 	for _, sqlStmt := range stmts {
 		if _, err := db.ExecContext(ctx, sqlStmt); err != nil {
-			return fmt.Errorf("rebuild_mp: swap step (%s): %w",
+			return fmt.Errorf("rebuild_mp_runtime: swap step (%s): %w",
 				firstWords(sqlStmt, 3), err)
 		}
 	}
 
-	// Recrée vues + indexes (cf. dropAssistsExpectedShared lignes 718-731).
+	// Recrée vues + indexes.
 	if err := applyResolutionViews(db); err != nil {
-		return fmt.Errorf("rebuild_mp: recreate resolution views: %w", err)
+		return fmt.Errorf("rebuild_mp_runtime: recreate resolution views: %w", err)
 	}
 	if err := applyMvPlayerMatchesView(db); err != nil {
-		return fmt.Errorf("rebuild_mp: recreate mv_player_matches: %w", err)
+		return fmt.Errorf("rebuild_mp_runtime: recreate mv_player_matches: %w", err)
 	}
 	for _, ddl := range matchParticipantsIndexes {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
-			return fmt.Errorf("rebuild_mp: recreate index: %w", err)
+			return fmt.Errorf("rebuild_mp_runtime: recreate index: %w", err)
 		}
 	}
 
@@ -135,15 +181,15 @@ func applyRebuildMatchParticipants(db *sql.DB) error {
 	var after int
 	if err := db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM match_participants`).Scan(&after); err != nil {
-		return fmt.Errorf("rebuild_mp: count after: %w", err)
+		return fmt.Errorf("rebuild_mp_runtime: count after: %w", err)
 	}
 
-	slog.Info("migration rebuild_match_participants: table rebuilt (ART corruption defeated)",
+	slog.InfoContext(ctx, "rebuild_match_participants_runtime: table rebuilt (ART corruption defeated)",
 		"rows_before_rebuild", before,
 		"rows_after_rebuild", after,
 		"columns_preserved", len(cols),
 	)
-	return markMatchParticipantsRebuildDone(db)
+	return nil
 }
 
 // loadMatchParticipantsColumns énumère les colonnes via PRAGMA table_info.
