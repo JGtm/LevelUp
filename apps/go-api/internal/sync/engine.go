@@ -105,6 +105,12 @@ type SyncEngine struct {
 	// postSyncSlug : identifiant URL du joueur, passé au runner.BeforeSync.
 	postSyncRunner port.PostSyncRunner
 	postSyncSlug   string
+
+	// mediaHook est appelé à la fin du pipeline post-sync pour indexer les
+	// médias présents dans le dossier captures/ et les associer aux matchs
+	// fraîchement synchronisés. Best-effort : nil → feature off.
+	// Injecté via WithMediaScanHook depuis scheduler + SyncHandler.
+	mediaHook func(ctx context.Context)
 }
 
 // NewSyncEngine, WithPrestigeHook, WithResolver, WithSharedProvider,

@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
 )
 
@@ -203,6 +204,18 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 	// db_profiles.json).
 	if s.postSyncRunner != nil {
 		engine.WithPostSyncRunner(s.postSyncRunner, gamertag)
+	}
+	// Media scan post-sync : indexe les captures présentes sur disque et les
+	// associe aux matchs fraîchement synchronisés. capturesBaseDirFn charge
+	// MediaCapturesBaseDir à chaque tick pour respecter les settings live.
+	if s.settings != nil {
+		engine.WithMediaScanHook(service.BuildMediaScanHook(s.cfg.RepoRoot, gamertag, func() string {
+			cfg, _ := s.settings.Load()
+			if cfg != nil {
+				return cfg.MediaCapturesBaseDir
+			}
+			return ""
+		}))
 	}
 	return engine
 }
