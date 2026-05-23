@@ -319,6 +319,16 @@ func computeEnemyStrength(enemyKEs []float64, matchAvgKE, matchStdKE, playerMU f
 // Structs lusrMatchData, lusrParticipant, lusrResult et loaders SQL → skill_rating_loaders.go.
 // Constante LUSRMaxDelta → skill_config.go.
 
+// BatchComputeLUSR est le wrapper public de batchComputeLUSR. Utilisé par
+// RecomputeAfterARTRebuild (phase 4.4) et tout caller hors-package qui doit
+// recompute la cascade LUSR (typiquement après un rebuild ART, un changement
+// de formule, ou un backfill manuel). medal exploit map laissée nil — les
+// callers qui veulent l'override exploit-aware (sync engine) utilisent encore
+// le helper privé batchComputeLUSR.
+func BatchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string, force bool) (int, error) {
+	return batchComputeLUSR(ctx, playerDB, sharedDB, xuid, nil, force)
+}
+
 // batchComputeLUSR calcule le LUSR pour tous les matchs non classés.
 // medalExploitByMatch : match_id → score brut d'exploit médailles (nil = pas de données).
 // force : si true, recalcule même les matchs déjà présents (utile après changement de formule).
