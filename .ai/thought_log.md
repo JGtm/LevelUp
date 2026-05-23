@@ -78,6 +78,43 @@ Helpers `hasMatchParticipantsARTDivergence(report)` + `tryAutoHealMatchParticipa
 
 ---
 
+## [2026-05-23] feat(p4.4 step 1/2) — RecomputeAfterARTRebuild orchestrateur des 4 cascades force=true
+
+**Statut** : Phase 4.4 step 1/2 livrée en 1 commit (`b65e0417`). Step 2/2 (trigger : CLI tool ou auto post-rebuild) défer en sub-phase 4.4.b pour validation utilisateur sur scope.
+
+**Contexte** : Phase 4.1 répare l'ART au boot mais les valeurs dérivées (LUSR/performance/dominance/is_with_friends) restent figées sur l'état corrompu. Exemple documenté : LUSR Madina figé Argent IV au lieu de Platine attendu. Audit Agent 2 risque résiduel #6.
+
+**Livré (TDD strict)** : nouvelle fonction publique `sync.RecomputeAfterARTRebuild(ctx, playerDB, sharedDB, xuid, friendGamertags) (report, error)`. Orchestre :
+1. `BatchComputeLUSR(force=true)` — nouveau wrapper public exposé pour callers hors-package
+2. `BatchComputePerformanceScores(force=true)` — wrapper public existant
+3. `BackfillDominanceFlags` sur la liste complète match_ids (chargée via `WHERE xuid || '' = ?` pour court-circuiter ART)
+4. `RecomputeIsWithFriendsCore` (skip si friend list vide)
+
+**Stratégie best-effort** : chaque cascade peut échouer sans bloquer les suivantes (erreurs accumulées dans `report.Errors`). Erreur globale uniquement si toutes les cascades ont échoué (`allCascadesFailed`). Privilégie la récupération partielle.
+
+**Logging riche** : 1 INFO par étape + 1 INFO summary final avec counts + duration_ms + errors_count. Toutes les erreurs non-fatales loggées ERROR avec err + xuid + cascade name.
+
+**4 tests TDD écrits AVANT impl** (baseline rouge → vert post-impl) :
+1. `ProducesAllCascadeOutputs` (15 matchs > threshold perf=10, valide LUSR + performance + dominance produits)
+2. `EmptyData_NoOp` (DB vide, gracieux)
+3. `Idempotent` (2 passes successives = mêmes counts)
+4. `SkipsFriendsWhenEmpty` (friend list nil → 0 friend_xuids)
+
+**Itération sur le test** : 1ère exécution ProducesAllCascadeOutputs a échoué sur :
+- `medal_name_id` column missing (mon seed avait `medal_id`) → fix schema dans openRecomputeDB
+- `performance threshold` (10 matchs ≥ threshold 10 ne suffit pas, certains matchs n'atteignent pas la fenêtre glissante) → bump seed à 15 matchs
+
+Suite intégration sync complète reste verte (36s, aucune régression sur les autres tests).
+
+**Trigger step 2/2** : reporté en sub-phase 4.4.b. Plusieurs options à discuter avec l'utilisateur :
+- (a) Auto-trigger post-rebuild boot : élégant mais touche tous les joueurs trackés à chaque rebuild, risqué si la fonction a un bug.
+- (b) CLI tool dédié `cmd/recompute_after_art_rebuild/` : l'utilisateur l'invoque manuellement pour les joueurs affectés (Madina en priorité).
+- (c) Hook dans le sync engine : recompute à la fin du prochain cycle sync (1× par joueur après détection de corruption).
+
+**Conclusion** : Phase 4.4 step 1/2 livrée. La fonction publique est dès maintenant callable depuis n'importe quel caller futur. Le wiring reste à décider — mieux vaut valider le scope hors-bande car ça touche aux données utilisateur. Suite logique pour la prochaine session : décider du trigger ou passer à Phase 3.4 (parallel scheduler) qui n'a pas ce risque data.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).
