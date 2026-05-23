@@ -279,7 +279,7 @@ interface MatchSummaryCardsSectionProps {
 }
 
 export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCardsSectionProps) {
-  const { expected_kills, expected_deaths } = expectedStats
+  const { expected_kills, expected_deaths, expected_assists } = expectedStats
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: MatchViewManifestKey) => formatMessage(matchViewManifest, key, locale)
 
@@ -289,8 +289,11 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
   const deathsDelta =
     kpis.deaths != null && expected_deaths != null ? kpis.deaths - expected_deaths : null
 
+  const assistsDelta =
+    kpis.assists != null && expected_assists != null ? kpis.assists - expected_assists : null
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
       <MatchVsStatCard
         label={t('match_view.cards.mmr_team_vs_enemy')}
         primary={kpis.team_mmr ?? null}
@@ -319,6 +322,16 @@ export function MatchSummaryCardsSection({ kpis, expectedStats }: MatchSummaryCa
         secondaryLabel={t('match_view.cards.label_expected')}
         delta={deathsDelta}
         lowerIsBetter={true}
+        precision={0}
+      />
+      <MatchVsStatCard
+        label={t('match_view.cards.assists_vs_expected')}
+        primary={kpis.assists}
+        secondary={expected_assists != null ? Math.round(expected_assists) : null}
+        primaryLabel={t('match_view.cards.label_real')}
+        secondaryLabel={t('match_view.cards.label_expected')}
+        delta={assistsDelta}
+        lowerIsBetter={false}
         precision={0}
       />
       <MatchVsStatCard

@@ -310,6 +310,10 @@ en = "Kills vs expected"
 fr = "Morts vs attendues"
 en = "Deaths vs expected"
 
+[match_view.cards.assists_vs_expected]
+fr = "Assistances vs attendues"
+en = "Assists vs expected"
+
 [match_view.cards.avg_life]
 fr = "Vie moy."
 en = "Avg. life"
