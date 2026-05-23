@@ -27,6 +27,20 @@ import (
 	"levelup/go-api/internal/service"
 )
 
+// rankSubRoman convertit "Bronze 1" → "Bronze I" pour les sous-rangs 1–6.
+func rankSubRoman(label string) string {
+	n := len(label)
+	if n < 2 || label[n-2] != ' ' {
+		return label
+	}
+	c := label[n-1]
+	if c < '1' || c > '6' {
+		return label
+	}
+	roman := [7]string{"", "I", "II", "III", "IV", "V", "VI"}
+	return label[:n-2] + " " + roman[c-'0']
+}
+
 // Constantes partagées par les EmitInput émis depuis ce module.
 const (
 	// postSyncSource est la valeur du champ Source pour les notifications
@@ -386,7 +400,7 @@ func EmitPostSyncDeltas(
 			BodyKey:  "notif.career_rank.body",
 			Params: map[string]any{
 				"rank":      after.CurrentRank,
-				"rank_name": after.CurrentRankName,
+				"rank_name": rankSubRoman(after.CurrentRankName),
 				"previous":  before.CurrentRank,
 			},
 			TargetRoute: fmt.Sprintf("/players/%s/career", slug),

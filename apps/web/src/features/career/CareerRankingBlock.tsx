@@ -6,6 +6,9 @@
  * Colonne droite : dernier checkpoint LUSR par playlist_group.
  */
 import { Card, CardContent } from '@/components/ui/card'
+
+const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
+const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { CareerLusrSection, CareerCSRRank } from '@/lib/api/types'
@@ -29,7 +32,7 @@ function csrTierLabel(rank: CareerCSRRank, placementLabel: string): string {
     const completed = Math.min(total - 1, Math.max(0, total - rank.measurement_matches_remaining))
     return `${placementLabel} (${completed}/${total})`
   }
-  return rank.sub_tier > 0 ? `${rank.tier} ${rank.sub_tier}` : rank.tier
+  return rank.sub_tier > 0 ? `${rank.tier} ${toRoman(rank.sub_tier)}` : rank.tier
 }
 
 function formatCSRValue(rank: CareerCSRRank): string {

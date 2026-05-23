@@ -39,6 +39,13 @@ function resolveTemplate(
   return interpolate(template, enrichParams(params, locale))
 }
 
+const ROMAN_NOTIF = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
+
+function subTierToRoman(v: unknown): string {
+  if (typeof v !== 'number' || v <= 0) return ''
+  return ROMAN_NOTIF[v] ?? String(v)
+}
+
 // enrichParams ajoute les paramètres dérivés (ex: metric_label depuis metric_key)
 // résolus via i18n. Permet aux templates d'utiliser {metric_label} sans que le
 // backend ait à connaître la locale.
@@ -46,6 +53,7 @@ function resolveTemplate(
 // 2026-05-18 — Progression V2 : le coach generator passe `metric` (pas
 // `metric_key`) dans ses params. Fallback sur `metric` + nouvel enrichissement
 // `period` → `period_label` pour les templates near_miss.
+// 2026-05-22 — sub_tier / previous_sub_tier convertis en chiffres romains.
 function enrichParams(
   params: Record<string, unknown> | undefined,
   locale: NotificationsLocale,
@@ -63,6 +71,12 @@ function enrichParams(
   }
   if (out.period_label == null && typeof params.period === 'string') {
     out.period_label = t.periodLabel[params.period] ?? params.period
+  }
+  // Normalise sub_tier entier → chiffre romain (couvre notifications déjà stockées).
+  for (const key of ['sub_tier', 'previous_sub_tier'] as const) {
+    if (typeof out[key] === 'number') {
+      out[key] = subTierToRoman(out[key])
+    }
   }
   return out
 }
