@@ -220,6 +220,12 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 			return ""
 		}))
 	}
+	// Phase 2.3 refactor Collect→Persist : env var opt-in pour basculer la
+	// boucle d'insertion sur le chemin INSERT-only (SharedPersister +
+	// PlayerPersister). Default désactivé → legacy insertFetchedMatch.
+	if os.Getenv("LEVELUP_PERSIST_BATCH") == "1" {
+		engine.WithBatchPersistMode(true)
+	}
 	return engine
 }
 
