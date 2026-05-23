@@ -1,10 +1,10 @@
 /**
  * ObjectifsPage — page principale du module Prestige.
  *
- * 2 onglets : Défis (actifs + créer) et Mon parcours (rétrospective + arcs).
+ * 2 onglets : Objectifs (actifs + créer) et Mon parcours (rétrospective + arcs).
  * Référence : Axe 8 du plan PLAN_challenges_xp_system.md.
  *
- * Toggle "Défis pilotés" (mode pilote) en tête de l'onglet Défis.
+ * Toggle "Objectifs pilotés" (mode pilote) en tête de l'onglet Objectifs.
  * Phase 5 : version minimale fonctionnelle, à enrichir avec vrais flows UX.
  */
 import { useState } from 'react'
@@ -24,6 +24,7 @@ import type { AxisKind } from '@/lib/playerProfile'
 import { useActiveCampaign } from './hooks/usePlayerProfile'
 import { PRESTIGE_LEVEL_NAMES_FALLBACK } from './fallback.i18n'
 import { useChallenges, useArcs, useMyPrestige, useAbandonChallenge } from './hooks'
+import { Tooltip } from '@/components/ui/tooltip'
 
 type TabKey = 'challenges' | 'parcours'
 
@@ -49,13 +50,13 @@ export function ObjectifsPage() {
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">Ascension</h1>
         <p className="text-sm text-muted-foreground">
-          Profil, défis et campagnes d&apos;amélioration personnelle.
+          Profil, objectifs et campagnes d&apos;amélioration personnelle.
         </p>
       </header>
 
       <nav className="flex border-b border-border">
         <TabButton
-          label="Défis"
+          label="Objectifs"
           active={tab === 'challenges'}
           onClick={() => navigate({ search: {} as never })}
         />
@@ -98,7 +99,7 @@ function TabButton({ label, active, onClick }: TabButtonProps) {
   )
 }
 
-// ───────────────── Onglet Défis ─────────────────
+// ───────────────── Onglet Objectifs ─────────────────
 
 interface TabProps {
   userId: string
@@ -136,7 +137,7 @@ function ChallengesTab({ userId, titleSlug }: TabProps) {
   }
 
   const handleAbandon = (id: string) => {
-    if (confirm('Abandonner ce défi ? Cooldown 48h sur la métrique.')) {
+    if (confirm('Abandonner cet objectif ? Cooldown 48h sur la métrique.')) {
       abandon.mutate(id)
     }
   }
@@ -148,20 +149,20 @@ function ChallengesTab({ userId, titleSlug }: TabProps) {
       <section>
         <header className="mb-2 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase text-muted-foreground">
-            Défis libres ({libres.length})
+            Objectifs libres ({libres.length})
           </h2>
           <button
             type="button"
             onClick={() => setShowForm(true)}
             className="rounded-md border border-border px-3 py-1 text-xs hover:bg-accent"
           >
-            + Nouveau défi
+            + Nouvel objectif
           </button>
         </header>
         <ChallengeGrid
           challenges={libres}
           loading={isLoading}
-          emptyMessage="Aucun défi libre actif."
+          emptyMessage="Aucun objectif libre actif."
           onAbandon={handleAbandon}
         />
       </section>
@@ -169,7 +170,7 @@ function ChallengesTab({ userId, titleSlug }: TabProps) {
       {pilotes.length > 0 && (
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase text-muted-foreground">
-            Défis pilotés ({pilotes.length})
+            Objectifs pilotés ({pilotes.length})
           </h2>
           <ChallengeGrid challenges={pilotes} loading={false} emptyMessage="" onAbandon={handleAbandon} />
         </section>
@@ -184,8 +185,11 @@ function PilotModeToggle() {
     <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
       <div>
         <h3 className="text-sm font-semibold">Mode pilote</h3>
-        <p className="text-xs text-muted-foreground">
-          Le système t'attribue des défis quotidiens, hebdo et mensuels avec des plafonds (3/5/2).
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          Le système t'attribue des objectifs quotidiens, hebdo et mensuels avec des plafonds.
+          <Tooltip content="3 quotidiens · 5 hebdomadaires · 2 mensuels">
+            <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-muted-foreground/40 text-[9px] leading-none text-muted-foreground cursor-default select-none">i</span>
+          </Tooltip>
         </p>
       </div>
       <button
@@ -332,7 +336,7 @@ function ParcoursTab({ userId, titleSlug }: TabProps) {
         </h2>
         {completedSorted.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            Les moment cards apparaîtront ici à la validation de tes premiers défis.
+            Les moment cards apparaîtront ici à la validation de tes premiers objectifs.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

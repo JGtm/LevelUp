@@ -398,6 +398,14 @@ format        = "integer"
 display_order = 10
 group         = "derived"
 
+[fields.ranked_match_count]
+labels        = { en = "Ranked Matches", fr = "Matchs classés" }
+storage_unit  = "count"
+display_unit  = "count"
+format        = "integer"
+display_order = 11
+group         = "derived"
+
 [fields.headshots_per_match]
 labels        = { en = "Headshots / match", fr = "Tirs à la tête / match" }
 storage_unit  = ""
@@ -452,6 +460,24 @@ storage_unit  = "count"
 display_unit  = "count"
 format        = "integer"
 display_order = 70
+group         = "derived"
+
+[fields.offensive_conversion]
+labels        = { en = "Efficiency", fr = "Rendement" }
+description   = { en = "225 × (kills + assists/3) / damage dealt — offensive combat yield.", fr = "225 × (frags + assists/3) / dégâts infligés — rendement offensif." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 71
+group         = "derived"
+
+[fields.defensive_resistance]
+labels        = { en = "Resistance", fr = "Résistance" }
+description   = { en = "damage taken / (225 × deaths) — defensive combat yield.", fr = "dégâts subis / (225 × morts) — résistance défensive." }
+storage_unit  = ""
+display_unit  = ""
+format        = "kdr_2"
+display_order = 72
 group         = "derived"
 
 [fields.avg_life_seconds]

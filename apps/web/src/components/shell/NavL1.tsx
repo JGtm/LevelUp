@@ -8,7 +8,7 @@
  * split button : clic sur le label → landing, clic sur ▾ → dropdown des onglets.
  */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
@@ -16,7 +16,6 @@ import { HelpSplitButton } from './HelpSplitButton'
 import { useJobStatus } from '@/features/setup/queries'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
-import { StreakBadge } from '@/features/ascension/StreakBadge'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 // ─── SyncStatusIndicator ───────────────────────────────────────────────────
@@ -108,6 +107,27 @@ function SyncStatusIndicator() {
     </span>
   )
 }
+// ─── Icône flamme (label Ascension) ──────────────────────────────────────────
+
+function NavFlameIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </svg>
+  )
+}
+
 // ─── Définition des sections L1 ───────────────────────────────────────────────
 
 interface L1Tab {
@@ -120,6 +140,8 @@ interface L1Tab {
 interface L1Section {
   key: string
   label: string
+  /** Icône optionnelle affichée avant le label (ex: flamme pour Ascension). */
+  icon?: ReactNode
   /** Route par défaut lors du clic sur le label (avec $playerSlug en placeholder). */
   defaultPath: string
   /** Retourne true si le pathname courant appartient à cette section. */
@@ -132,9 +154,8 @@ interface L1Section {
 // - Synthèse devient un onglet de Stats (transverse : sa famille naturelle)
 // - Pass saisonnier devient un onglet de Carrière (progression temporelle)
 // - Palmarès renommé en "Communauté" + ajout onglet Leaderboard PP
-// - Nouvelle entrée L1 "Ascension" (page Prestige : Défis + Parcours)
-//   Renommé depuis "Objectifs" (V1 PlayerProfile Ascension commit-8).
-//   Le route path /objectifs est conservé pour compat — seul le label change.
+// - Nouvelle entrée L1 "Ascension" (page Prestige : Objectifs + Parcours)
+//   Route path /objectifs conservé. Label rétabli "Objectifs" (≠ "Défis" in-game Halo).
 const L1_SECTIONS: L1Section[] = [
   {
     key: 'home',
@@ -177,11 +198,13 @@ const L1_SECTIONS: L1Section[] = [
   {
     key: 'objectifs',
     label: 'Ascension',
+    icon: <NavFlameIcon />,
     defaultPath: '/players/$playerSlug/objectifs',
-    matchPathname: (p) => /\/players\/[^/]+\/objectifs/.test(p),
+    matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
     tabs: [
-      { key: 'challenges', label: 'Défis', path: '/players/$playerSlug/objectifs' },
+      { key: 'challenges', label: 'Objectifs', path: '/players/$playerSlug/objectifs' },
       { key: 'parcours', label: 'Parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
+      { key: 'streaks', label: 'Séries', path: '/players/$playerSlug/ascension' },
     ],
   },
   {
@@ -247,9 +270,10 @@ function SplitButton({ section, isActive, resolvedDefaultPath, resolvePath }: Sp
       <div className={wrapperClass}>
         <Link
           to={resolvedDefaultPath as never}
-          className="px-3 py-1.5 whitespace-nowrap"
+          className="flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap"
           aria-current={isActive ? 'page' : undefined}
         >
+          {section.icon}
           {section.label}
         </Link>
 
@@ -478,13 +502,14 @@ export function NavL1() {
               key={section.key}
               to={resolvedDefaultPath as never}
               className={[
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
+                'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap',
                 isActive
                   ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
               ].join(' ')}
               aria-current={isActive ? 'page' : undefined}
             >
+              {section.icon}
               {section.label}
             </Link>
           )
@@ -518,9 +543,6 @@ export function NavL1() {
           </span>
         )
       )}
-
-      {/* ── Streak badge (per-player, V2 progression) ────────────────────── */}
-      {currentPlayer && <StreakBadge playerSlug={currentPlayer.player_slug} />}
 
       {/* ── Cloche notifications (per-player) ────────────────────────────── */}
       {currentPlayer && <NotificationsBell playerSlug={currentPlayer.player_slug} />}

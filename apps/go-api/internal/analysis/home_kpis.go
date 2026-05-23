@@ -262,7 +262,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	// (tests, mode dÃ©gradÃ©).
 	title := lookupRankLabel(ranks, raw.RankNumber, loc)
 	if title == "" {
-		title = strings.TrimSpace(optionalStringValue(raw.RankName))
+		title = rankSubRoman(strings.TrimSpace(optionalStringValue(raw.RankName)))
 	}
 	if title == "" {
 		title = strings.TrimSpace(optionalStringValue(raw.RankTier))
@@ -298,6 +298,20 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 
 // lookupRankLabel retourne le libellÃ© localisÃ© du rang via le catalog, ou ""
 // si ranks est nil ou si l'entrÃ©e est absente.
+// rankSubRoman convertit un libellé de rang "Bronze 1" → "Bronze I" (sous-rang 1–6).
+func rankSubRoman(label string) string {
+	n := len(label)
+	if n < 2 || label[n-2] != ' ' {
+		return label
+	}
+	c := label[n-1]
+	if c < '1' || c > '6' {
+		return label
+	}
+	roman := [7]string{"", "I", "II", "III", "IV", "V", "VI"}
+	return label[:n-2] + " " + roman[c-'0']
+}
+
 func lookupRankLabel(ranks *mappings.RankCatalog, rankID int, locale string) string {
 	if ranks == nil {
 		return ""

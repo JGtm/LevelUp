@@ -8,6 +8,7 @@
  *   · Rendement · Résist. · Dégâts/Frags
  */
 import { Fragment, useMemo, useState } from 'react'
+import { useFieldLabel } from '@/lib/i18n/fieldMappings'
 import {
   type ColumnDef,
   flexRender,
@@ -37,7 +38,7 @@ import {
   type Extremes,
 } from './MatchScoreboard.logic'
 
-function buildHighlightCols(t: MatchViewText): ColDef[] {
+function buildHighlightCols(t: MatchViewText, offensiveLabel: string, defensiveLabel: string): ColDef[] {
   return [
     { key: 'rank', label: 'Rang', inverted: true },
     { key: 'score', label: 'Score', inverted: false, fmt: (v) => new Intl.NumberFormat('fr-FR').format(v) },
@@ -56,8 +57,8 @@ function buildHighlightCols(t: MatchViewText): ColDef[] {
     { key: 'damage_dealt', label: t.sbColDamageDealt, inverted: false, fmt: (v) => v.toFixed(0) },
     { key: 'damage_taken', label: t.sbColDamageTaken, inverted: true, fmt: (v) => v.toFixed(0) },
     { key: 'avg_life_seconds', label: 'Vie moy.', inverted: false, fmt: (v) => formatDurationMMSS(v, '—') },
-    { key: 'offensive_conversion', label: 'Rendement', inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
-    { key: 'defensive_resistance', label: 'Résist.', inverted: false, fmt: (v) => `${((v - 1) * 100).toFixed(0)}%` },
+    { key: 'offensive_conversion', label: offensiveLabel, inverted: false, fmt: (v) => `${(v * 100).toFixed(0)}%` },
+    { key: 'defensive_resistance', label: defensiveLabel, inverted: false, fmt: (v) => `${((v - 1) * 100).toFixed(0)}%` },
   ]
 }
 
@@ -86,8 +87,10 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
   const [expandedXuid, setExpandedXuid] = useState<string | null>(null)
   const { playerSlug } = useParams({ strict: false }) as { playerSlug?: string }
   const navigate = useNavigate()
+  const offensiveLabel = useFieldLabel('offensive_conversion')
+  const defensiveLabel = useFieldLabel('defensive_resistance')
 
-  const highlightCols = useMemo(() => buildHighlightCols(t), [t])
+  const highlightCols = useMemo(() => buildHighlightCols(t, offensiveLabel, defensiveLabel), [t, offensiveLabel, defensiveLabel])
   const teams = useMemo(
     () => Array.from(new Set(rows.map((r) => r.team_side ?? ''))).sort(),
     [rows],

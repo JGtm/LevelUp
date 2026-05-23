@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -217,6 +218,48 @@ func (d *DirMediaIndexer) ScanAllMedia(
 	}
 
 	return nil
+}
+
+// BuildMediaScanHook construit la closure `func(ctx)` à injecter dans SyncEngine
+// via WithMediaScanHook. Elle scanne le répertoire captures/ du joueur et indexe
+// les nouveaux fichiers médias (ForceRescan=false), puis les associe aux matchs.
+//
+// capturesBaseDirFn est un chargeur paresseux : appelé à chaque sync pour lire
+// MediaCapturesBaseDir depuis les settings courants (évite de capturer une valeur
+// périmée au boot).
+//
+// Usage typique :
+//
+//	hook := service.BuildMediaScanHook(cfg.RepoRoot, gamertag, func() string {
+//	    s, _ := settingsStore.Load()
+//	    if s != nil { return s.MediaCapturesBaseDir }
+//	    return ""
+//	})
+//	engine.WithMediaScanHook(hook)
+func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn func() string) func(ctx context.Context) {
+	return func(ctx context.Context) {
+		capturesBaseDir := ""
+		if capturesBaseDirFn != nil {
+			capturesBaseDir = capturesBaseDirFn()
+		}
+		pr := titlePkg.NewPathResolver(repoRoot)
+		titleSlug := titlePkg.DefaultSlug
+		capturesDir := pr.ResolveCapturesDir(titleSlug, gamertag, capturesBaseDir)
+		if _, err := os.Stat(capturesDir); err != nil {
+			return // répertoire absent → rien à indexer
+		}
+		if _, err := ops.IndexMedia(ctx, ops.MediaIndexOptions{
+			PlayerDBPath:        pr.PlayerDBPath(titleSlug, gamertag),
+			SharedSocialDBPath:  pr.SharedSocialDBPath(titleSlug),
+			SharedMatchesDBPath: pr.SharedDBPath(titleSlug),
+			CapturesDir:         capturesDir,
+			CapturesBase:        capturesBaseDir,
+			ForceRescan:         false,
+			Gamertag:            gamertag,
+		}); err != nil {
+			slog.WarnContext(ctx, "post-sync: media scan échoué (non-fatal)", "gamertag", gamertag, "err", err)
+		}
+	}
 }
 
 // resetPlayerMediaIndex supprime toutes les entrées media_files et media_match_associations

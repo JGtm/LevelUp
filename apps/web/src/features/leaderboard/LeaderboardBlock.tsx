@@ -6,6 +6,9 @@
  *   <LeaderboardBlock playerSlug={slug} />
  */
 import { useState } from 'react'
+
+const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
+const toRoman = (n: number): string => SUB_TIER_ROMAN[n] ?? String(n)
 import { useNavigate } from '@tanstack/react-router'
 import { useLeaderboard } from './queries'
 import { Spinner } from '@/components/ui/spinner'
@@ -73,7 +76,7 @@ function LeaderboardRow({
       <td className="py-2 pr-4 text-center">
         <span className="inline-block px-2 py-0.5 rounded bg-accent text-accent-foreground text-xs font-semibold">
           {entry.tier}
-          {entry.sub_tier > 0 ? ` ${entry.sub_tier}` : ''}
+          {entry.sub_tier > 0 ? ` ${toRoman(entry.sub_tier)}` : ''}
         </span>
       </td>
       <td className="py-2 text-right font-mono text-foreground">

@@ -22,6 +22,7 @@ import (
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
+	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
 )
 
@@ -106,6 +107,16 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 	// readers HTTP pendant cette fenêtre. Wire identique à scheduler/auto_sync.go.
 	if h.cfg.SharedProvider != nil {
 		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	}
+	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
+	if h.settingsStore != nil {
+		engine = engine.WithMediaScanHook(service.BuildMediaScanHook(h.cfg.RepoRoot, gamertag, func() string {
+			s, _ := h.settingsStore.Load()
+			if s != nil {
+				return s.MediaCapturesBaseDir
+			}
+			return ""
+		}))
 	}
 	return engine
 }

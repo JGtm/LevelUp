@@ -37,6 +37,9 @@ export interface BriefingTexts {
     perMatch: string
     rankDeltaCSR: string
     rankDeltaLUSR: string
+    rendement: string
+    resistance: string
+    refBaseline: string
   }
   /** Format pluriel pour les libellés outcomes — utilisé dans la Results bar */
   pluralize: (count: number, singular: string) => string
@@ -69,6 +72,9 @@ const FR: BriefingTexts = {
     perMatch: '/match',
     rankDeltaCSR: 'Delta CSR',
     rankDeltaLUSR: 'Delta LUSR',
+    rendement: 'Rendement',
+    resistance: 'Résistance',
+    refBaseline: 'réf. 100%',
   },
   // FR : ajout "s" si count > 1, sauf "Abandon" qui prend aussi "s".
   // Toutes nos labels (Victoire/Défaite/Égalité/Abandon) suivent la même règle.
@@ -102,6 +108,9 @@ const EN: BriefingTexts = {
     perMatch: '/match',
     rankDeltaCSR: 'CSR change',
     rankDeltaLUSR: 'LUSR change',
+    rendement: 'Rendement',
+    resistance: 'Resistance',
+    refBaseline: 'ref. 100%',
   },
   // EN : pluralisation par "s" couvre nos labels outcomes (Win → Wins, Loss → Losses
   // est géré séparément si needed — ici on assume singulier sans -s).

@@ -2832,6 +2832,8 @@ export interface KPIStats {
    *  classé/non-classé dans le scope. Couleur par signe (pos/neg/neutral). */
   rank_delta?: RankDelta
   performance_score?: number | null
+  avg_offensive_conversion?: number | null
+  avg_defensive_resistance?: number | null
   outcomes: { wins: number; losses: number; ties: number; dnf: number }
 }
 
