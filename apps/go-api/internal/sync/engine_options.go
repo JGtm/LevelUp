@@ -119,6 +119,16 @@ func (e *SyncEngine) SetCustomClient(client HaloClient) {
 	e.customClient = client
 }
 
+// WithMediaScanHook attache un hook d'indexation médias post-sync (best-effort).
+// Le hook est appelé à la fin de runPostSyncPipeline : il scanne le répertoire
+// captures/ du joueur, détecte les nouveaux fichiers et les associe aux matchs
+// fraîchement insérés en DB. Nil → feature off.
+// À construire via service.BuildMediaScanHook (injecté depuis scheduler + SyncHandler).
+func (e *SyncEngine) WithMediaScanHook(hook func(ctx context.Context)) *SyncEngine {
+	e.mediaHook = hook
+	return e
+}
+
 // SetLocalFilmCache injecte un cache disque film hérité du projet Python.
 // Le cache sera consulté avant l'API pour les manifestes et chunks
 // REPLICATION_DATA. Sans effet si nil ou si le repertoire est introuvable.
