@@ -19,6 +19,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/persist"
 )
 
 func openBatchPathTestDB(t *testing.T, target migration.TargetDB) *sql.DB {
@@ -275,6 +276,87 @@ func TestE2ECollectPersist_FetchThenBatchSubmit(t *testing.T) {
 	if n := countRows(t, playerDB, "player_match_enrichment"); n != 2 {
 		t.Errorf("player_match_enrichment : %d, want 2", n)
 	}
+}
+
+// ─── Test E2E ASYNC : queue + worker + Drain ───────────────────────────
+
+// Vérifie que le path async (batchQueue non-nil) Submit → worker persiste →
+// Drain bloque jusqu'à ACK complet → DB peuplée. Vérifie aussi que les WAL
+// files sont nettoyés post-ACK.
+func TestE2ECollectPersist_AsyncQueuePath_DrainBlocksUntilPersisted(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+	patchSharedSchemaForBatch(t, sharedDB)
+
+	// Setup BatchQueue + Worker pour le shared DB (path async).
+	walDir := t.TempDir()
+	q, err := persist.NewBatchQueue(persist.BatchQueueConfig{WALDir: walDir, ChanBufSize: 16})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Worker shared : consomme la queue + persiste via SharedPersister.
+	sharedP := persist.NewSharedPersister(sharedDB)
+	playerP := persist.NewPlayerPersister(playerDB)
+	combined := &combinedPersister{shared: sharedP, player: playerP}
+	w := persist.NewWorker("test-async", q, persist.TargetShared, combined)
+
+	wCtx, wCancel := context.WithCancel(context.Background())
+	defer wCancel()
+	go func() { _ = w.Run(wCtx) }()
+
+	// SyncEngine en mode batchMode=true + batchQueue (chemin async).
+	mock := &mockHaloClient{
+		history:   makeHistory("aabbccdd-0000-4000-8000-000000000088"),
+		statsBody: map[string]map[string]any{"aabbccdd-0000-4000-8000-000000000088": makeMatchJSON("aabbccdd-0000-4000-8000-000000000088", 2)},
+	}
+	e := &SyncEngine{
+		gamertag: "Player0", xuid: "0000000000000000",
+		titleSlug:  "halo_infinite",
+		batchMode:  true,
+		batchQueue: q, // ← active le path async
+	}
+	opts := domain.SyncOptions{
+		MatchType: "matchmaking", MaxMatches: 10,
+		WithParticipants: true, WithMedals: true,
+	}
+	fm, err := e.fetchMatchData(context.Background(), mock, "aabbccdd-0000-4000-8000-000000000088", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := &domain.SyncResult{}
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm); err != nil {
+		t.Fatalf("submitOrInsertMatch async: %v", err)
+	}
+
+	// Drain : attendre que le worker ait persisté.
+	drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer drainCancel()
+	if err := q.Drain(drainCtx); err != nil {
+		t.Fatalf("Drain: %v", err)
+	}
+
+	// Post-Drain : le batch doit être persisté en DB ET les WAL files supprimés.
+	if n := countRows(t, sharedDB, "match_registry"); n != 1 {
+		t.Errorf("match_registry post-async : %d, want 1", n)
+	}
+	if pending, _ := q.PendingCount(); pending != 0 {
+		t.Errorf("PendingCount post-Drain : %d, want 0", pending)
+	}
+}
+
+// combinedPersister combine SharedPersister + PlayerPersister en 1 BatchPersister
+// pour le test async (le Worker n'a qu'un seul persister).
+type combinedPersister struct {
+	shared *persist.SharedPersister
+	player *persist.PlayerPersister
+}
+
+func (c *combinedPersister) Persist(ctx context.Context, batch *persist.MatchBatch) error {
+	if err := c.shared.Persist(ctx, batch); err != nil {
+		return err
+	}
+	return c.player.Persist(ctx, batch)
 }
 
 // ─── Property INSERT-only : re-submit même match n'écrase pas ────────────

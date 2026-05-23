@@ -26,6 +26,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
 
@@ -73,18 +74,36 @@ func (e *SyncEngine) submitMatchAsBatch(
 		result.AddWarning(fmt.Sprintf("highlight_events %s: %v", fm.MatchID, parseErr))
 	}
 
-	sharedP := persist.NewSharedPersister(sharedDB)
-	if err := sharedP.Persist(ctx, batch); err != nil {
-		slog.ErrorContext(ctx, "submitMatchAsBatch: SharedPersister.Persist échoué",
-			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
-		return fmt.Errorf("submitMatchAsBatch shared: %w", err)
-	}
+	// Chemin ASYNC (queue + worker) si batchQueue non-nil. Sinon SYNC direct.
+	if e.batchQueue != nil {
+		if err := e.batchQueue.Submit(batch); err != nil {
+			observability.IncCounter("persist_batch_submit_error")
+			slog.ErrorContext(ctx, "submitMatchAsBatch: queue.Submit échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
+			return fmt.Errorf("submitMatchAsBatch queue: %w", err)
+		}
+		observability.IncCounter("persist_batch_submitted_total")
+		// Le worker async persiste + ACK plus tard. Drain à la fin du cycle.
+	} else {
+		// Chemin SYNC (Phase 2.3) — pas de WAL, pas de worker, juste les
+		// Persisters directs sur les connexions DB ouvertes par run().
+		sharedP := persist.NewSharedPersister(sharedDB)
+		if err := sharedP.Persist(ctx, batch); err != nil {
+			observability.IncCounter("persist_shared_total_error")
+			slog.ErrorContext(ctx, "submitMatchAsBatch: SharedPersister.Persist échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
+			return fmt.Errorf("submitMatchAsBatch shared: %w", err)
+		}
+		observability.IncCounter("persist_shared_total_ok")
 
-	playerP := persist.NewPlayerPersister(playerDB)
-	if err := playerP.Persist(ctx, batch); err != nil {
-		slog.ErrorContext(ctx, "submitMatchAsBatch: PlayerPersister.Persist échoué",
-			"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
-		return fmt.Errorf("submitMatchAsBatch player: %w", err)
+		playerP := persist.NewPlayerPersister(playerDB)
+		if err := playerP.Persist(ctx, batch); err != nil {
+			observability.IncCounter("persist_player_total_error")
+			slog.ErrorContext(ctx, "submitMatchAsBatch: PlayerPersister.Persist échoué",
+				"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err)
+			return fmt.Errorf("submitMatchAsBatch player: %w", err)
+		}
+		observability.IncCounter("persist_player_total_ok")
 	}
 
 	// xuid_aliases global DB — non couvert par les Persisters (DB séparée).
@@ -107,6 +126,7 @@ func (e *SyncEngine) submitMatchAsBatch(
 	}
 	result.MatchesInserted++
 	result.InsertedMatchIDs = append(result.InsertedMatchIDs, fm.MatchID)
+	observability.IncCounter("persist_batch_committed_total")
 
 	slog.InfoContext(ctx, "submitMatchAsBatch: match persisté",
 		"gamertag", e.gamertag, "match_id", fm.MatchID,

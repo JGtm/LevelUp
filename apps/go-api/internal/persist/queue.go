@@ -11,6 +11,7 @@
 package persist
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // ErrQueueClosed est retourné par Submit après que Close ait été appelé.
@@ -185,6 +187,64 @@ func (q *BatchQueue) RecoverPending() error {
 	return nil
 }
 
+// PendingCount retourne le nombre de fichiers WAL en attente (= batches
+// submitted mais pas encore ACKés). Lit le dossier walDir/ — exclut le
+// sous-dossier corrupted/.
+//
+// Utilisé par Drain() pour savoir quand tous les batches d'un cycle ont
+// été persistés. Implémentation simple (count files on disk) plutôt qu'un
+// compteur mémoire — robuste aux crash + recovery, pas de désynchro
+// possible entre l'état mémoire et le disque.
+func (q *BatchQueue) PendingCount() (int, error) {
+	entries, err := os.ReadDir(q.walDir)
+	if err != nil {
+		return 0, fmt.Errorf("persist: read WALDir for pending count: %w", err)
+	}
+	n := 0
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		if isJSONFile(e.Name()) {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// Drain attend que tous les batches en attente (PendingCount == 0) soient
+// persistés. Sondage périodique du dossier walDir/. Retourne ctx.Err() si
+// le contexte est annulé avant que le drain ne soit complet.
+//
+// Cas d'usage : appelé à la fin d'un cycle de sync pour garantir que tous
+// les batches submitted ont été persistés AVANT que /sync retourne (parité
+// de comportement avec le path synchrone legacy).
+//
+// Sondage à 50ms : compromis entre réactivité (le worker termine vite) et
+// charge CPU (ReadDir n'est pas gratuit). Pour un cycle typique 10-100
+// matchs, le drain prend < 1s en nominal.
+func (q *BatchQueue) Drain(ctx context.Context) error {
+	const pollInterval = 50 * time.Millisecond
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	for {
+		n, err := q.PendingCount()
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			// retry
+		}
+	}
+}
+
 // Close termine la queue : Submit ultérieurs retourneront ErrQueueClosed.
 // Les batches déjà dans le channel restent lisibles par les workers.
 func (q *BatchQueue) Close() error {
@@ -205,4 +265,82 @@ func isJSONFile(name string) bool {
 		return false
 	}
 	return name[len(name)-5:] == ".json"
+}
+
+// PurgeOldWAL supprime les fichiers WAL plus vieux que maxAge dans walDir
+// et walDir/corrupted/. Idempotent — safe à appeler périodiquement.
+//
+// Best-effort : continue sur erreur fichier, retourne la 1ère erreur I/O
+// fatale (ex: ReadDir échoue). Retourne le nombre de fichiers supprimés.
+//
+// Cas d'usage : janitor périodique (ex: 1× / jour) qui retire les batches
+// qui n'ont jamais pu être persistés (DB indisponible long terme, WAL
+// corrompus laissés post-recovery). Sans cleanup, walDir/ peut accumuler
+// indéfiniment et masquer des incidents avec des recovery anciens.
+//
+// Default maxAge recommandé : 7 jours. Au-delà, un batch non-persisté
+// signale un incident grave (alerte ops) — soit on l'a manqué, soit la
+// donnée est obsolète (un re-sync delta couvrira les matchs récents).
+func (q *BatchQueue) PurgeOldWAL(maxAge time.Duration) (int, error) {
+	cutoff := time.Now().Add(-maxAge)
+	purged := 0
+
+	// Dossier principal walDir/*.json
+	if n, err := purgeJSONFilesOlderThan(q.walDir, cutoff, false); err != nil {
+		return purged, err
+	} else {
+		purged += n
+	}
+
+	// Sous-dossier corrupted/ — best-effort (peut ne pas exister)
+	corruptedDir := filepath.Join(q.walDir, "corrupted")
+	if _, err := os.Stat(corruptedDir); err == nil {
+		if n, err := purgeJSONFilesOlderThan(corruptedDir, cutoff, true); err != nil {
+			slog.Warn("persist: purge corrupted dir failed",
+				"dir", corruptedDir, "err", err)
+		} else {
+			purged += n
+		}
+	}
+
+	if purged > 0 {
+		slog.Info("persist: WAL purge",
+			"wal_dir", q.walDir, "purged_files", purged, "max_age", maxAge)
+	}
+	return purged, nil
+}
+
+// purgeJSONFilesOlderThan supprime les fichiers .json plus vieux que cutoff
+// dans dir. `corruptedDir=true` ajoute un log warn par fichier supprimé
+// (les fichiers corrompus méritent une trace, contrairement aux WAL normaux).
+func purgeJSONFilesOlderThan(dir string, cutoff time.Time, corruptedDir bool) (int, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 0, fmt.Errorf("persist: read %s: %w", dir, err)
+	}
+	purged := 0
+	for _, entry := range entries {
+		if entry.IsDir() || !isJSONFile(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue // skip fichier inaccessible
+		}
+		if info.ModTime().After(cutoff) {
+			continue // récent → garder
+		}
+		path := filepath.Join(dir, entry.Name())
+		if err := os.Remove(path); err != nil {
+			slog.Warn("persist: purge remove failed",
+				"file", path, "err", err)
+			continue
+		}
+		purged++
+		if corruptedDir {
+			slog.Warn("persist: corrupted WAL purged",
+				"file", entry.Name(), "age", time.Since(info.ModTime()))
+		}
+	}
+	return purged, nil
 }

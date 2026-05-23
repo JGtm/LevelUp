@@ -276,6 +276,209 @@ func TestBatchQueue_RecoverPending_Idempotent(t *testing.T) {
 	}
 }
 
+// ─── Test PendingCount + Drain ─────────────────────────────────────────────
+
+func TestBatchQueue_PendingCount_CountsJSONFiles(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Submit 3 batches (Submit écrit le WAL)
+	for _, id := range []string{"p1", "p2", "p3"} {
+		if err := q.Submit(helperNewBatch(t, id, "Alice")); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	n, err := q.PendingCount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 3 {
+		t.Errorf("PendingCount = %d, want 3", n)
+	}
+
+	// ACK 1 — pending doit baisser à 2
+	if err := q.ACK("p2"); err != nil {
+		t.Fatal(err)
+	}
+	n, _ = q.PendingCount()
+	if n != 2 {
+		t.Errorf("PendingCount post-ACK = %d, want 2", n)
+	}
+}
+
+func TestBatchQueue_PendingCount_IgnoresCorruptedDir(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Crée 1 WAL valide + 1 dans corrupted/
+	_ = q.Submit(helperNewBatch(t, "valid", "Alice"))
+	corrDir := filepath.Join(dir, "corrupted")
+	_ = os.MkdirAll(corrDir, 0o755)
+	_ = os.WriteFile(filepath.Join(corrDir, "bad.json"), []byte(`{`), 0o644)
+
+	n, _ := q.PendingCount()
+	if n != 1 {
+		t.Errorf("PendingCount = %d, want 1 (exclut corrupted/)", n)
+	}
+}
+
+func TestBatchQueue_Drain_WaitsForAllACKed(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	_ = q.Submit(helperNewBatch(t, "d1", "Alice"))
+	_ = q.Submit(helperNewBatch(t, "d2", "Alice"))
+
+	// ACK en background pour simuler les workers
+	go func() {
+		time.Sleep(80 * time.Millisecond)
+		_ = q.ACK("d1")
+		time.Sleep(80 * time.Millisecond)
+		_ = q.ACK("d2")
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := q.Drain(ctx); err != nil {
+		t.Fatalf("Drain: %v", err)
+	}
+
+	n, _ := q.PendingCount()
+	if n != 0 {
+		t.Errorf("post-Drain : PendingCount = %d, want 0", n)
+	}
+}
+
+func TestBatchQueue_Drain_RespectsContextCancel(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	_ = q.Submit(helperNewBatch(t, "stuck", "Alice"))
+	// Pas d'ACK → Drain doit bloquer jusqu'à timeout ctx
+
+	ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	err = q.Drain(ctx)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Error("Drain devrait retourner ctx.Err() (timeout)")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("err = %v, want context.DeadlineExceeded", err)
+	}
+	if elapsed < 100*time.Millisecond {
+		t.Errorf("Drain a retourné trop tôt (%v)", elapsed)
+	}
+}
+
+// ─── Test PurgeOldWAL ──────────────────────────────────────────────────────
+
+func TestBatchQueue_PurgeOldWAL_RemovesFilesOlderThanMaxAge(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Crée 2 WAL files : un vieux + un récent.
+	oldPath := filepath.Join(dir, "old.json")
+	if err := os.WriteFile(oldPath, []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(oldPath, time.Now().Add(-10*24*time.Hour), time.Now().Add(-10*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	recentPath := filepath.Join(dir, "recent.json")
+	if err := os.WriteFile(recentPath, []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	purged, err := q.PurgeOldWAL(7 * 24 * time.Hour)
+	if err != nil {
+		t.Fatalf("PurgeOldWAL: %v", err)
+	}
+	if purged != 1 {
+		t.Errorf("purged = %d, want 1", purged)
+	}
+
+	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+		t.Errorf("vieux WAL devrait être supprimé, err=%v", err)
+	}
+	if _, err := os.Stat(recentPath); err != nil {
+		t.Errorf("WAL récent doit être préservé, err=%v", err)
+	}
+}
+
+func TestBatchQueue_PurgeOldWAL_HandlesCorruptedDir(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	// Crée corrupted/ avec un vieux file.
+	corruptedDir := filepath.Join(dir, "corrupted")
+	if err := os.MkdirAll(corruptedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldCorrupted := filepath.Join(corruptedDir, "bad.json")
+	if err := os.WriteFile(oldCorrupted, []byte(`{`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(oldCorrupted, time.Now().Add(-30*24*time.Hour), time.Now().Add(-30*24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	purged, err := q.PurgeOldWAL(7 * 24 * time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if purged != 1 {
+		t.Errorf("purged = %d, want 1 (corrupted/bad.json)", purged)
+	}
+	if _, err := os.Stat(oldCorrupted); !os.IsNotExist(err) {
+		t.Errorf("vieux WAL corrompu devrait être supprimé")
+	}
+}
+
+func TestBatchQueue_PurgeOldWAL_EmptyDir_NoOp(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = q.Close() })
+
+	purged, err := q.PurgeOldWAL(7 * 24 * time.Hour)
+	if err != nil {
+		t.Fatalf("PurgeOldWAL empty dir: %v", err)
+	}
+	if purged != 0 {
+		t.Errorf("purged = %d, want 0 (dir vide)", purged)
+	}
+}
+
 // ─── Test 8 : ACK d'un batch inexistant → no-op, pas d'erreur ────────────
 
 func TestBatchQueue_ACK_NonExistent_NoError(t *testing.T) {
