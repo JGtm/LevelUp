@@ -1,9 +1,9 @@
 # ADR 0017 — Pattern de rebuild pour défaire la corruption d'index ART DuckDB
 
 **Date** : 2026-05-22
-**Status** : Accepted (appliqué sur `career_progression` 2026-05-21 et `match_participants` 2026-05-22)
+**Status** : ⚠️ **OBSOLÈTE (2026-05-23)** — superseded by ADR 0019 (Collect → Persist). Le rebuild ART reste disponible comme outil ops one-shot (`cmd/force_rebuild_art/`), mais l'auto-heal runtime devient inutile une fois `LEVELUP_PERSIST_BATCH=1` activé (le mode INSERT-only ne stresse plus l'index ART, donc plus de corruption à heal).
 **Branches** : `fix/duckdb-art-corruption-rebuild` (match_participants), commits `2e0f0247` + `651b9de6` (career_progression)
-**Related** : ADR 0008 (multi-title DB schema), ADR 0016 (SharedDBProvider B-swap)
+**Related** : ADR 0008 (multi-title DB schema), ADR 0016 (SharedDBProvider B-swap), **ADR 0019 (Collect→Persist, qui rend ce pattern obsolète)**
 **Incidents** : [docs/INCIDENT_2026-05-20_match_participants_index.md](../INCIDENT_2026-05-20_match_participants_index.md)
 
 ## Context
