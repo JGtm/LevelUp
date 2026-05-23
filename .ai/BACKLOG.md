@@ -12,6 +12,51 @@
 
 ---
 
+### [auth/security] Chiffrement at-rest des watcher tokens
+
+**Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — outil reste single-user local, threat model accepté.
+
+**Contexte** : `data/auth/watcher_tokens.json` (et le futur `watcher_tokens/{xuid}.json` post PR 2.5b) contient le **XSTS token** + le **MSAL cache** (qui contient le refresh_token Microsoft) **en clair JSON**, protégés uniquement par les permissions fichier (0600). Aucun chiffrement at-rest (`grep -rn "Encrypt|cipher|aes" internal/platform/auth/` → 0 résultat).
+
+**Threat model actuel** : outil desktop single-user local. Vol de fichier implique déjà compromission machine. Standard de fait dans la communauté Halo (SPNKr Python identique). Tokens TTL court (Spartan ~3h, XSTS ~12h) + refresh révocable côté Microsoft.
+
+**Pertinence du fix** :
+- 🟢 Bas si l'outil reste single-user local
+- 🟡 Moyen si on distribue à des users non-techniciens (ils n'auront pas le réflexe de protéger leur HOME)
+- 🔴 Haut si déploiement multi-tenant ou cloud (mais pas le cas actuel)
+
+**Fix proposé** : wrap natif OS via package Go `github.com/zalando/go-keyring` ou équivalent :
+- **Windows** : DPAPI (`CryptProtectData`)
+- **macOS** : Keychain
+- **Linux** : libsecret / GNOME Keyring
+
+Effort ~3h (1 nouveau package `internal/platform/auth/secureStore` qui wrap Read/Write/Delete avec fallback en clair si pas de keychain dispo).
+
+**Quand traiter** : avant distribution publique grand-public, OU si un incident token leak survient.
+
+---
+
+### [auth/cleanup] Migration watcher daemon vers MultiUserTokenStore (PR 2.5b)
+
+**Noté le** : 2026-05-24 | **Priorité** : 🟡 Moyenne — dette technique connue, blocage partiel pour vrai multi-user.
+
+**Contexte** : 2 stores tokens coexistent dans `internal/platform/auth/` :
+- **TokenStore legacy** (`token_store.go`) — mono-user, `data/auth/watcher_tokens.json`. Utilisé par le watcher daemon historique.
+- **MultiUserTokenStore** (`multi_user_token_store.go`) — multi-user, `data/auth/watcher_tokens/{xuid}.json`. Utilisé par SSO Xbox PR 2.5a.
+
+Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
+
+**Impacts** :
+- 1er user = mono-user au boot (watcher daemon ne sait gérer qu'un seul `current_user`)
+- Si plusieurs utilisateurs Xbox sur la même machine, conflit potentiel
+- Doublon de code (2 stores quasi-identiques à maintenir)
+
+**Fix** : Refactor `internal/sync/watcher_daemon.go` pour utiliser `MultiUserTokenStore` au lieu de `TokenStore`. Migrer les tokens existants au boot (lit `watcher_tokens.json` → écrit `watcher_tokens/{xuid}.json` → archive l'ancien). Effort ~2h.
+
+**Quand traiter** : avant cas d'usage multi-utilisateur réel sur même machine, OU avec le sprint auth unification (cf. `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md`).
+
+---
+
 ### [persist/safety] Garde-fous restants post-Phase 3 Collect→Persist
 
 **Noté le** : 2026-05-24 | **Priorité** : 🟡 Moyenne — non-bloquants pour Phase 3 (rollback via feature flag + code legacy intact)
