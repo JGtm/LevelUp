@@ -180,6 +180,12 @@ func (c *cachedHaloClient) ensureCacheDir() error {
 }
 
 // writeJSON sérialise + écrit best-effort (log warn si fail, ne propage pas).
+//
+// **NaN handling** : certains payloads Halo (notamment GetMatchSkill avec
+// kills_expected/deaths_expected non calculables) contiennent des float64
+// `NaN` ou `±Inf` que `encoding/json` refuse de sérialiser. C'est attendu
+// et non-bloquant pour le sync — on log en DEBUG (pas WARN) pour ne pas
+// spammer les logs. Le cache MISS au prochain run refetch normalement.
 func (c *cachedHaloClient) writeJSON(path string, v any, op, matchID string) {
 	if err := c.ensureCacheDir(); err != nil {
 		slog.Warn("fetch_cache: mkdir failed", "dir", c.cfg.CacheDir, "err", err)
@@ -187,7 +193,10 @@ func (c *cachedHaloClient) writeJSON(path string, v any, op, matchID string) {
 	}
 	data, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		slog.Warn("fetch_cache: marshal failed", "op", op, "match_id", matchID, "err", err)
+		// Erreur courante : "json: unsupported value: NaN". Pas critique,
+		// le cache devient juste un miss au prochain fetch.
+		slog.Debug("fetch_cache: marshal skipped (likely NaN/Inf in payload)",
+			"op", op, "match_id", matchID, "err", err)
 		return
 	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {

@@ -1,3 +1,45 @@
+## [2026-05-23] Refactor Collect-Persist — Smoke test prod + 2 fixes (Windows dir + NaN JSON)
+
+**Statut** : Complété
+
+**Tâche** : Smoke test du chemin Collect→Persist en condition réelle via la CLI `levelup sync-delta`. Le user avait raison : on a des tokens valides (MSAL provider via `data/auth/watcher_tokens.json`), il fallait juste utiliser la CLI (qui passe par TokenProvider) ou la session web (qui passe par OAuth cookie), pas le pool auth-env (qui scrute `.env.local`).
+
+**Décisions techniques principales** :
+
+- **Bug Windows path `:`** : eventID `sync.RunDelta:abc123` utilisé comme nom de dossier de cache → mkdir échoue sur Windows (`Nom de répertoire non valide`). Fix dans `engine.go` : `safeCycleID := strings.ReplaceAll(eventID, ":", "_")` avant `filepath.Join`. Maintenant `data/sync_cache/sync.RunDelta_abc123/` est créé OK.
+
+- **Bug JSON NaN** : payloads `GetMatchSkill` contiennent occasionnellement des `kills_expected`/`deaths_expected` = NaN (non calculable côté API). `encoding/json.Marshal` refuse les NaN/Inf. Fix dans `fetch_cache.go::writeJSON` : downgrade WARN → DEBUG quand marshal échoue (probablement NaN). Le cache devient un miss au prochain run, le sync continue sans crash.
+
+- **Smoke test confirmations** :
+  - ✅ Boot serveur clean avec `LEVELUP_PERSIST_BATCH=1` + multi-module logging actif
+  - ✅ Migrations OK (metadata + shared + pve, `applied=0` idempotent)
+  - ✅ ART guard "aucune corruption détectée" sur shared + metadata
+  - ✅ CLI sync-delta JGtm tourne sans erreur, post-sync heal 32 matchs
+  - ✅ Cache fetch `data/sync_cache/sync.RunDelta_516352dab553cbab/` créé avec 29 fichiers (skill JSON + highlight chunks + meta)
+  - ✅ event_id propagé : `event=sync.RunDelta:516352dab553cbab` visible dans les logs
+  - ⚠️ Pas pu exercer `submitMatchAsBatch` car aucun nouveau match (delta vide → heal mode). Le path est testé en E2E via mockHaloClient ; en prod il s'activera quand de nouveaux matchs arrivent.
+  - ✅ Aucun `FATAL Error: Invalid Input Error` (le sync heal touche shared.match_participants en UPDATE mais sans corruption ART → preuve que le path legacy reste fonctionnel en mode heal-only).
+
+- **Architecture découverte** : 2 providers d'auth coexistent dans le serveur :
+  1. **MSAL TokenProvider** (`buildTokenProvider: MSAL provider activé`) — utilisé par watcher daemon + CLI sync + session OAuth web. Source : `data/auth/watcher_tokens.json` + MSAL cache.
+  2. **auth.Pool** (`SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` env vars) — utilisé par auto_sync scheduler **uniquement**. Source : `.env.local`.
+  Le scheduler auto-sync requiert le auth.Pool, qui peut être vide si `.env.local` n'est pas configuré. La CLI sync-delta + le sync HTTP-triggered (via session OAuth web) utilisent MSAL et marchent indépendamment. **Hors scope du refactor** mais à noter pour Phase 3 activation : si auto-sync skip "pool non initialisé", il faut configurer `.env.local` OU déclencher le sync via UI web (qui passe par session OAuth → tokens valides).
+
+**Résultats observés** :
+
+- Full sync + persist suites GREEN après fixes (43s sync, 7s persist).
+- `go vet ./...` clean.
+
+**Prochaine étape** :
+
+1. **USER** : lancer un sync sur un joueur AVEC nouveaux matchs (ou attendre que des matchs soient joués) pour observer `submitMatchAsBatch` en action. Logs à surveiller :
+   - `logs/sync.log` : `submitMatchAsBatch: match persisté gamertag=X match_id=Y participants=N medals=N`
+   - `logs/persist.log` : créé au 1er log persist (worker shutdown, etc.)
+   - `/debug/vars` : compteurs `persist_shared_total_ok`, `persist_player_total_ok`, `persist_batch_committed_total` doivent incrémenter
+2. Surveiller absence de `FATAL Error: Invalid Input Error` sur 10 cycles.
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Items oubliés (cache fetch + module log + cases cochées)
 
 **Statut** : Complété
