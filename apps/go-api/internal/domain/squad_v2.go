@@ -139,7 +139,13 @@ type KPIStats struct {
 	// PerformanceScore : score 0-100 du joueur sur le scope filtre.
 	// Moyenne des performance_score par match (sync). Nil si aucun match enrichi.
 	PerformanceScore *float64 `json:"performance_score,omitempty"`
-	Outcomes         struct {
+	// AvgOffensiveConversion : moyenne du rendement offensif (225*(kills+assists/3)/damage_dealt).
+	// Nil si aucun match avec damage_dealt > 0.
+	AvgOffensiveConversion *float64 `json:"avg_offensive_conversion,omitempty"`
+	// AvgDefensiveResistance : moyenne de la résistance défensive (damage_taken/(225*deaths)).
+	// Nil si aucun match avec deaths > 0.
+	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
+	Outcomes               struct {
 		Wins   int `json:"wins"`
 		Losses int `json:"losses"`
 		Ties   int `json:"ties"`
