@@ -233,11 +233,11 @@ func BackfillWeaponKillsForMatchAll(
 // lease est déjà détenu. Coût : 1 download film par match. Films absents
 // (404/410) sont silencieux (matchs trop anciens).
 //
-// Parallélisé via errgroup.SetLimit(healParallelism=8) — plan Phase 3.0,
-// gain ~150-200s/cycle Madina (cf. .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md
-// + handoff §3 priorité 1). Le rate limiter du HaloAPIClient cap les calls
-// API parallèles ; les writes weapon_kills sont append-only (DELETE+INSERT
-// par (match_id, xuid)) donc pas de conflit ART.
+// Parallélisé via errgroup.SetLimit(healParallelismNetworkOnly=24) — plan
+// Phase 3.0 (gain ~150-200s/cycle Madina) puis Phase 3.6 bump 8→24
+// (network-only, writes weapon_kills append-only sans conflit ART, throttle
+// réel par rate limiter HTTP du pool de tokens). Cf.
+// .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §3.0+§3.6 + handoff §3 priorité 1.
 //
 // Contrat de sortie (lock par TDD avant impl) :
 //   - matchIDs vide → (0, 0, nil)
@@ -259,7 +259,7 @@ func processWeaponKillsInline(
 	}
 	var mu sync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(healParallelism)
+	eg.SetLimit(healParallelismNetworkOnly)
 	for _, matchID := range matchIDs {
 		matchID := matchID // capture pour closure
 		eg.Go(func() error {

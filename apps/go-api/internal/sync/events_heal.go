@@ -19,14 +19,23 @@ import (
 	"levelup/go-api/internal/domain"
 )
 
-// healParallelism : nombre max de goroutines parallèles dans les heal loops.
-// Le throttling réel vient du rate limiter du HaloAPIClient (per-token RPS),
-// cette valeur évite juste de spawner des centaines de goroutines pending sur
-// Acquire du pool. Empiriquement, 8 = pool_size×2 saturent les 3 tokens sans
-// pression mémoire. Avant 2026-05-22 les heal loops étaient strictement
-// séquentiels → ~30s par 20 matchs sur events_heal. Avec 8 en parallèle on
-// vise ~5-8s sur la même charge.
+// healParallelism : nombre max de goroutines parallèles dans les heal loops
+// qui WRITENT sur match_participants (skill_heal, stats_heal). Conservé à 8
+// car ces UPSERTs sont protégés par singleflight (phase 2.3, commit aef47968)
+// mais restent coûteux en CGO côté DuckDB. Empiriquement, 8 = pool_size×2
+// saturent les 3 tokens sans pression mémoire ni race ART.
 const healParallelism = 8
+
+// healParallelismNetworkOnly : variante pour les heal loops dont les writes
+// touchent UNIQUEMENT des tables append-only sans PK conflictuelle
+// (highlight_events, weapon_kills) — pas de risque race ART, le seul throttle
+// pertinent est le rate limiter HTTP du HaloAPIClient (~15 RPS effectif sur
+// 3 tokens). Bump à 24 → plus de goroutines en attente du token pool, qui se
+// résorbe naturellement quand le rate limiter libère un slot. Audit Agent 3
+// estime gain skill_heal 8s → 4s, similaire sur events/weapon_kills.
+//
+// Plan stabilisation 2026-05-22 §3.6.
+const healParallelismNetworkOnly = 24
 
 // healEventsForRecentMatches détecte les matchs avec `events_loaded=FALSE`
 // (registry bit absent) et tente de fetcher highlight_events + killer_victim
@@ -74,9 +83,11 @@ func healEventsForRecentMatches(
 	// long-tail (CDN + zlib decompress) qui se prêtent bien au parallélisme.
 	// DuckDB sérialise les writes côté DB donc pas de risque de corruption,
 	// le gain vient du réseau. mu protège uniquement les compteurs.
+	// Phase 3.6 : healParallelismNetworkOnly=24 — writes append-only sur
+	// highlight_events, throttle réel par rate limiter HTTP du pool.
 	var mu sync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(healParallelism)
+	eg.SetLimit(healParallelismNetworkOnly)
 	for _, matchID := range matchIDs {
 		matchID := matchID
 		eg.Go(func() error {
@@ -175,9 +186,11 @@ func healWeaponKillsForRecentMatches(
 
 	// Parallélisation idem healEvents : downloads CDN + parse parallèles, mu
 	// protège les compteurs. errgroup ne propage pas l'erreur (best-effort).
+	// Phase 3.6 : healParallelismNetworkOnly=24 — writes append-only sur
+	// weapon_kills, throttle réel par rate limiter HTTP du pool.
 	var mu sync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(healParallelism)
+	eg.SetLimit(healParallelismNetworkOnly)
 	for _, matchID := range matchIDs {
 		matchID := matchID
 		eg.Go(func() error {

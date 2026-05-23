@@ -121,10 +121,11 @@ func TestProcessWeaponKillsInline_Concurrent_NoRace(t *testing.T) {
 
 // TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential :
 // 16 matchs × 100ms latence simulée. La version SÉQUENTIELLE prend ~1.6s.
-// La version PARALLÈLE (8 workers) doit prendre ~200ms (2 vagues × 100ms).
+// La version PARALLÈLE (healParallelismNetworkOnly=24 post-phase 3.6) doit
+// prendre ~100ms + overhead (1 vague, tous matchs fit dans 24 slots).
 //
 // **Test perf qui ÉCHOUE sur le code séquentiel actuel** et passe après
-// errgroup.SetLimit(healParallelism=8).
+// errgroup.SetLimit(healParallelismNetworkOnly).
 func TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential(t *testing.T) {
 	db := openWeaponDB(t)
 	matchIDs := seedMatchesInRegistry(t, db, 16, "perf")
@@ -140,8 +141,8 @@ func TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential(t *testing
 	}
 
 	// Séquentielle attendue : 16 × 100ms = 1600ms.
-	// Parallèle (SetLimit=8) attendue : 2 vagues × 100ms = 200ms + overhead = ~300ms.
-	// On exige < 700ms pour passer (3× speedup mini), plus tolérant que les 5-7×
+	// Parallèle (SetLimit=24, phase 3.6) : 1 vague × 100ms = 100ms + overhead = ~200ms.
+	// On exige < 700ms pour passer (3× speedup mini), plus tolérant que les 5-15×
 	// estimés théoriques pour absorber la variance CI.
 	const maxAcceptable = 700 * time.Millisecond
 	if elapsed > maxAcceptable {
@@ -179,15 +180,18 @@ func TestProcessWeaponKillsInline_Idempotent(t *testing.T) {
 
 // TestProcessWeaponKillsInline_CancelMidRun : ctx.Cancel à mi-parcours doit
 // retourner ctx.Err() sans crasher. Les matchs déjà traités restent committés.
+//
+// 100 matchs × 50ms : même avec healParallelismNetworkOnly=24 (phase 3.6),
+// au moins 4 vagues = 200ms minimum → cancel à 75ms catche mid-run.
 func TestProcessWeaponKillsInline_CancelMidRun(t *testing.T) {
 	db := openWeaponDB(t)
-	matchIDs := seedMatchesInRegistry(t, db, 20, "cancel")
+	matchIDs := seedMatchesInRegistry(t, db, 100, "cancel")
 
 	client := newWeaponLatencyClient(50*time.Millisecond, matchIDs)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	// Cancel après 75ms (assez pour que 1-2 vagues parallèles commencent mais
-	// pas pour que tout soit fini).
+	// pas pour que tout soit fini, même avec parallelism=24).
 	go func() {
 		time.Sleep(75 * time.Millisecond)
 		cancel()
