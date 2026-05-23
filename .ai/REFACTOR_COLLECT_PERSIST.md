@@ -416,15 +416,15 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 - [x] **2.3** Orchestrateur `submitOrInsertMatch` + flag `batchMode` + feature flag env var (commits `c2bb4200` + `cdadb4c4`, 2 tests + cablage scheduler/handler)
 - [x] **2.4** Tests TDD E2E cycle complet via `mockHaloClient` (commit `7e89acb3`, 4 tests E2E dont async path)
 
-### Phase 3 — Migration progressive (~3h) 🟡 PARTIELLEMENT VALIDÉE 2026-05-24
+### Phase 3 — Migration progressive (~3h) 🟡 PARTIELLEMENT VALIDÉE 2026-05-24 — résolu par Phase 4
 
 - [x] **3.1** Feature flag `LEVELUP_PERSIST_BATCH=1` (opt-in) — câblé dans scheduler + handler + CLI cmd_sync.go
 - [x] **3.2** Activé pour 4 joueurs en prod via diag endpoint (smoke test 2026-05-24)
-- [🟡] **3.3** Observation : **path INSERT OK** (10 matchs persistés, `persist_*_total_ok=10`, 0 FATAL sur ce path) MAIS **bug ART persiste sur post-sync compute** (LUSR/sessions/perf/friends UPDATE)
-- [ ] **3.4** Étendre durée d'observation : bloqué par 3.3 — voir Phase 4 (nouveau, `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md`)
-- [ ] **3.5** Flip default à opt-out — bloqué par 3.3
+- [🟡] **3.3** Observation : **path INSERT OK** (10 matchs persistés, `persist_*_total_ok=10`, 0 FATAL sur ce path) MAIS **bug ART persiste sur post-sync compute** (LUSR/sessions/perf/friends UPDATE) → corrigé par Phase 4 (cf. plan dédié)
+- [ ] **3.4** Étendre durée d'observation : reprise possible après Phase 4.5 (smoke test prod avec `LEVELUP_POSTSYNC_INSERT_ONLY=1`)
+- [ ] **3.5** Flip default à opt-out — bloqué jusqu'à Phase 4.5 OK
 
-**Découverte critique 2026-05-24** : Phase 2 a refactor le path **INSERT per-match** (succès — 10 matchs persistés sans FATAL pour XxDaemonGamerxX). Mais le **post-sync compute** (LUSR cascade, sessions recalc, performance scores, friends recompute, dominance, engagement) fait toujours des UPDATE concurrents sur `player_match_enrichment` + `match_skill_rank` → bug ART déclenché. Cf. `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md` pour le plan détaillé (7 sites UPDATE à refactor).
+**Découverte critique 2026-05-24** : Phase 2 a refactor le path **INSERT per-match** (succès — 10 matchs persistés sans FATAL pour XxDaemonGamerxX). Mais le **post-sync compute** (LUSR cascade, sessions recalc, performance scores, friends recompute, dominance, engagement) faisait toujours des UPDATE concurrents sur `player_match_enrichment` + `match_skill_rank` → bug ART déclenché. **Résolu par Phase 4** (5 sites refactor batch INSERT-only via `PostSyncEnrichmentPersister` + `PostSyncLUSRPersister`, 2 sites déjà batchés laissés en l'état). Cf. `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md`.
 
 ### Phase 4 — Backfill CLI + scripts (~3h) ✅ LIVRÉ (scope révisé)
 
@@ -434,11 +434,11 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 
 **Note** : les backfills `cmd/backfill_all` et `cmd/levelup/cmd_backfill.go` (LUSR, citations, weapons, PSA, engagement, etc.) n'appellent pas `submitMatchAsBatch` — ils ont leurs propres chemins de compute UPDATE-style qui ne touchent pas `shared.match_participants` et donc ne sont pas concernés par le bug ART.
 
-### Phase 5 — Cleanup (~2h) ⏳ BLOQUÉE PAR PHASE 4
+### Phase 5 — Cleanup (~2h) ⏳ BLOQUÉE PAR PHASE 4.5 (smoke test prod)
 
 Cf. `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md` pour le plan détaillé.
 
-**Bloqueur** : tant que Phase 4 (refactor post-sync compute) n'est pas livrée, le legacy `singleflight` + `BootARTGuard` + `RebuildART` runtime restent nécessaires pour mitigéer les FATAL post-sync UPDATE. Cleanup ne peut s'exécuter qu'après les 7 sites UPDATE post-sync soient migrés en INSERT-only.
+**Bloqueur** : Phase 4 (refactor post-sync compute) est **code-complete** (commit + tests GREEN) mais nécessite un smoke test multi-cycles en prod avec `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1` pour valider empiriquement l'absence de FATAL ART. Tant que cette validation n'est pas faite, le legacy `singleflight` + `BootARTGuard` + `RebuildART` runtime restent nécessaires en sécurité.
 
 - [ ] `singleflight` dans `InsertParticipants` — à supprimer post Phase 3 validée
 - [ ] `CHECKPOINT` post-sync — à supprimer

@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -338,6 +339,10 @@ func nullStr(s string) *string {
 // Seules les lignes dont le match_id existe déjà sont mises à jour (UPDATE).
 // Retourne le nombre de lignes affectées.
 func WriteSessionAssignments(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
+	// Phase 4.4 — chemin batch INSERT-only friendly si flag actif.
+	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+		return writeSessionAssignmentsBatch(ctx, db, assignments)
+	}
 	updated := 0
 	for _, a := range assignments {
 		result, err := db.ExecContext(ctx, `

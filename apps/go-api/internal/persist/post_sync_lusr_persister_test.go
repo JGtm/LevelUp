@@ -180,6 +180,83 @@ func TestPostSyncLUSRPersister_Persist_AtomicityRollback(t *testing.T) {
 	}
 }
 
+// ─── Test 6 : Upsert ne touche QUE les match_id du batch ──────────────────
+
+func TestPostSyncLUSRPersister_Upsert_PreservesOtherLUSRRows(t *testing.T) {
+	db := openLUSRTestDB(t)
+
+	// Pré-seed 3 LUSR rows (lusr_A, lusr_B, lusr_C)
+	for _, mid := range []string{"lusr_A", "lusr_B", "lusr_C"} {
+		_, _ = db.Exec(`
+			INSERT INTO match_skill_rank (match_id, rating_type, rating_value, playlist_group)
+			VALUES (?, 'LUSR', 20.0, 'arena_slayer')
+		`, mid)
+	}
+
+	p := NewPostSyncLUSRPersister(db)
+	// Upsert seulement lusr_A et lusr_B (lusr_C doit être préservé intact)
+	rows := []LUSRRatingInsert{
+		{MatchID: "lusr_A", RatingValue: 25.0, PlaylistGroup: "arena_slayer"},
+		{MatchID: "lusr_B", RatingValue: 26.0, PlaylistGroup: "arena_slayer"},
+	}
+	if err := p.Upsert(context.Background(), rows); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+
+	// 3 LUSR rows toujours présentes
+	var n int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank WHERE rating_type='LUSR'`).Scan(&n)
+	if n != 3 {
+		t.Errorf("LUSR rows = %d, want 3 (lusr_C préservé + lusr_A/B upserted)", n)
+	}
+
+	// lusr_A et lusr_B mis à jour (rating_value=25/26)
+	var ratingA, ratingB, ratingC float64
+	_ = db.QueryRow(`SELECT rating_value FROM match_skill_rank WHERE match_id='lusr_A'`).Scan(&ratingA)
+	_ = db.QueryRow(`SELECT rating_value FROM match_skill_rank WHERE match_id='lusr_B'`).Scan(&ratingB)
+	_ = db.QueryRow(`SELECT rating_value FROM match_skill_rank WHERE match_id='lusr_C'`).Scan(&ratingC)
+
+	if ratingA != 25.0 {
+		t.Errorf("lusr_A rating = %f, want 25.0 (upserted)", ratingA)
+	}
+	if ratingB != 26.0 {
+		t.Errorf("lusr_B rating = %f, want 26.0 (upserted)", ratingB)
+	}
+	if ratingC != 20.0 {
+		t.Errorf("lusr_C rating = %f, want 20.0 (préservé, non touché)", ratingC)
+	}
+}
+
+// ─── Test 7 : Upsert préserve CSR existant ─────────────────────────────────
+
+func TestPostSyncLUSRPersister_Upsert_PreservesCSRForSameMatchID(t *testing.T) {
+	db := openLUSRTestDB(t)
+
+	// Pré-seed 1 CSR sur match_id 'ranked_match'
+	_, _ = db.Exec(`
+		INSERT INTO match_skill_rank (match_id, rating_type, rating_value, tier, playlist_group)
+		VALUES ('ranked_match', 'CSR', 1450, 'Onyx', 'ranked_arena')
+	`)
+
+	p := NewPostSyncLUSRPersister(db)
+	// Tenter d'upsert un LUSR sur le même match_id que le CSR
+	// → PK conflict (CSR a déjà la row, et le DELETE filtre LUSR only)
+	rows := []LUSRRatingInsert{
+		{MatchID: "ranked_match", RatingValue: 99.9, PlaylistGroup: "arena_slayer"},
+	}
+	err := p.Upsert(context.Background(), rows)
+	if err == nil {
+		t.Error("Upsert devrait échouer (PK conflict avec CSR existant)")
+	}
+
+	// Le CSR doit être intact
+	var rating float64
+	_ = db.QueryRow(`SELECT rating_value FROM match_skill_rank WHERE match_id='ranked_match'`).Scan(&rating)
+	if rating != 1450.0 {
+		t.Errorf("CSR rating = %f, want 1450.0 (intact)", rating)
+	}
+}
+
 // ─── Test 5 : INSERT-only property — aucun UPDATE émis ─────────────────────
 //
 // Vérifie indirectement que les rating_value des CSR ne sont jamais

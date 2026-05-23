@@ -138,27 +138,41 @@ Recompute tous les enrichments en mémoire (Go), puis 1 seul INSERT batch atomiq
 - Pattern : 1 DELETE WHERE filtre + N INSERT en TX atomique
 - Préserve les CSR (filtre `WHERE rating_type='LUSR'` sur le DELETE)
 
-### Phase 4.3 — Intégration LUSR dans le sync engine (RESTE À FAIRE)
+### Phase 4.3 — Intégration LUSR dans le sync engine ✅ DONE
 
-**Effort** : ~1h
-**Fichiers à toucher** :
-- `internal/sync/skill_rating_loaders.go::upsertLUSRRatings` — route via PostSyncLUSRPersister si flag actif
-- `internal/sync/skill_rating.go::batchComputeLUSR` — accumule les `LUSRRatingInsert` au lieu d'appeler upsertLUSRRatings row-by-row
-- Feature flag `LEVELUP_POSTSYNC_INSERT_ONLY=1` opt-in (cohérent avec LEVELUP_PERSIST_BATCH)
+**Livré** :
+- `internal/sync/skill_rating_postsync_persist.go` — `upsertLUSRRatingsBatch` accumule les `LUSRRatingInsert` et appelle `PostSyncLUSRPersister.Upsert` en 1 single TX
+- `internal/sync/skill_rating_loaders.go::upsertLUSRRatings` — dispatch via feature flag `LEVELUP_POSTSYNC_INSERT_ONLY=1`
+- User correction critique : `Upsert` (DELETE WHERE match_id IN(...) AND rating_type='LUSR' + INSERT batch) au lieu de `Persist` (full replace) — préserve les autres LUSRs et les CSRs
+- 2 tests TDD GREEN supplémentaires sur `PostSyncLUSRPersister.Upsert` (PreservesOtherLUSRRows, PreservesCSRForSameMatchID)
 
-### Phase 4.4 — Refactor 6 autres sites (PATTERN À REPRODUIRE)
+### Phase 4.4 — Refactor des sites post-sync UPDATE row-by-row ✅ DONE (5/7 sites — 2 non concernés)
 
-Pour chaque site, créer un `PostSyncXxxPersister` similaire :
-- `comeback.go:181` → `PostSyncDominancePersister`
-- `engagement.go:441,479` → `PostSyncEngagementPersister`
-- `enrichments.go:75` → `PostSyncBotFlagPersister`
-- `friends_recompute.go:231` → `PostSyncFriendsPersister`
-- `performance.go:615` → `PostSyncPerfPersister`
-- `session_recalc.go:115,178` (via WriteSessionAssignments) → `PostSyncSessionsPersister`
+**Décision de design** : au lieu de créer 6 persisters dédiés, **mutualisation via 2 persisters génériques** sur `player_match_enrichment` (whitelist colonnes anti SQL injection) :
+- `PostSyncEnrichmentPersister.BatchUpdateColumn(col, rows)` — single col, multi-row via `UPDATE … FROM (VALUES …) AS v(match_id, val)`
+- `PostSyncEnrichmentPersister.BatchUpdateMulti(rows)` — multi-col, multi-row via syntaxe étendue
+- 7 tests TDD GREEN sur le persister (BatchUpdateColumn + BatchUpdateMulti + edge cases)
 
-Chacun fait : `DELETE WHERE filter + INSERT batch en TX`. Le filter dépend de la colonne (ex: `WHERE dominance_flag IS NOT NULL` pour Dominance, `WHERE session_id IS NOT NULL` pour Sessions).
+**Sites refactorés (chemin batch derrière `LEVELUP_POSTSYNC_INSERT_ONLY=1`)** :
 
-**Effort** : ~1h par site = ~6h.
+| Site | Helper batch | Persister appelé | Status |
+|---|---|---|---|
+| `comeback.go::BackfillDominanceFlags` | `backfillDominanceFlagsBatch` | `BatchUpdateColumn("dominance_flag", rows)` | ✅ DONE |
+| `engagement.go::batchComputeEngagementScores` | accumulation in-loop + flush | `BatchUpdateMulti` (4 ou 8 cols selon migration paces) | ✅ DONE |
+| `performance.go::batchComputePerformanceScores` | accumulation `pendingUpdates` + flush | `BatchUpdateMulti` (`performance_score` + `performance_chain`) | ✅ DONE |
+| `writes.go::WriteSessionAssignments` | `writeSessionAssignmentsBatch` | `BatchUpdateMulti` (`session_id` + `session_label`) | ✅ DONE |
+| `skill_rating_loaders.go::upsertLUSRRatings` | `upsertLUSRRatingsBatch` | `PostSyncLUSRPersister.Upsert` | ✅ DONE (Phase 4.3) |
+
+**Sites non concernés (déjà single SQL UPDATE batchée) — pas de refactor nécessaire** :
+
+| Site | Pattern actuel | Raison |
+|---|---|---|
+| `enrichments.go::computeAndPersistHadBotTeammate` | `UPDATE player_match_enrichment SET had_bot_teammate=TRUE WHERE match_id IN (?,?,…) AND COALESCE(had_bot_teammate,FALSE)=FALSE` | Déjà 1 single UPDATE multi-row, pas le pattern row-by-row qui stresse l'ART |
+| `friends_recompute.go::updateIsWithFriendsBatch` | `UPDATE player_match_enrichment SET is_with_friends=TRUE WHERE COALESCE(is_with_friends,FALSE)=FALSE AND match_id IN (?,?,…)` | Idem — boucle par chunks de N matchs mais chaque chunk = 1 single UPDATE |
+
+→ Ces 2 sites pourraient être migrés vers `BatchUpdateColumn` pour cohérence stylistique mais **n'apportent aucun bénéfice fonctionnel** (déjà 1 single SQL UPDATE par appel, pas un loop UPDATE per-row). À garder en l'état pour minimiser le diff. Si bug ART persistent observé sur ces 2 sites après smoke test Phase 4.5, alors migration ; sinon laisser tel quel.
+
+**Effort réel** : ~6h sur 1 session (vs estimation initiale ~6-10h).
 
 ### Phase 4.5 — Smoke test prod — 30min
 
@@ -179,28 +193,32 @@ Une fois Phase 4.5 validée, débloque Phase 5 cleanup :
 |---|---|---|
 | 4.1 Audit + design | 1h | ✅ DONE |
 | 4.2 PostSyncLUSRPersister + tests | 1h | ✅ DONE (commit) |
-| 4.3 Intégration LUSR | 1h | ⏳ TODO |
-| 4.4 6 autres sites | 6h | ⏳ TODO |
-| 4.5 Smoke test prod | 30min | ⏳ TODO |
-| 4.6 Phase 5 cleanup | 2h | ⏳ TODO |
-| **Total restant** | **~10h** | |
+| 4.3 Intégration LUSR (Upsert + dispatch) | 1h | ✅ DONE |
+| 4.4 Refactor 5 sites + 2 mutualisés (PostSyncEnrichmentPersister) | 6h | ✅ DONE |
+| 4.5 Smoke test prod multi-cycles | 30min | ⏳ TODO (user-driven) |
+| 4.6 Phase 5 cleanup anti-ART | 2h | ⏳ TODO (post-4.5) |
+| **Total restant** | **~2h30** | |
 
 ---
 
-## État actuel des plans (consolidé 2026-05-24)
+## État actuel des plans (consolidé 2026-05-24 fin de journée)
 
 | Plan | Statut |
 |---|---|
 | REFACTOR_COLLECT_PERSIST Phases 1-2 | ✅ Livré |
-| Phase 3 activation | 🟡 **Partielle** — path insert OK, post-sync FATAL ART |
-| Phase 4 post-sync refactor | ❌ NOUVEAU — ce document |
-| Phase 5 cleanup anti-ART | ⏳ Attend Phase 4 |
+| Phase 3 activation | 🟡 **Partielle** — path insert OK, post-sync FATAL ART (corrigé par Phase 4) |
+| Phase 4 post-sync refactor | ✅ Code livré — attend smoke test prod (4.5) |
+| Phase 5 cleanup anti-ART | ⏳ Attend Phase 4.5 validation |
 | PLAN_AUTH E.v1 (Discovery + watcher stores) | ✅ Livré |
 | PLAN_AUTH E.v2 (callback push) | ⏳ Backlog |
 
-Tant que Phase 4 n'est pas faite, **garder `LEVELUP_PERSIST_BATCH` actif** :
-- Le path insert (Phase 2) marche et apporte un bénéfice net (10 matchs persistés sans FATAL pour XxDaemonGamerxX)
-- Le post-sync compute échoue avec ART mais ça n'empêche pas l'insert (le sync se termine "status=success" malgré les warnings post-sync)
-- L'auto-heal BootARTGuard + RebuildART runtime continuent de masquer le problème dans le legacy
+**Activation Phase 4 en prod** : poser les 2 flags ensemble :
 
-**Décision pragmatique** : Phase 3 est "déployable" dans un mode "partiel" (sync insert OK, post-sync compute dégradé). Le cleanup Phase 5 attend Phase 4.
+```bash
+LEVELUP_PERSIST_BATCH=1            # Phase 2 INSERT batch (déjà actif)
+LEVELUP_POSTSYNC_INSERT_ONLY=1     # Phase 4 post-sync batch (nouveau)
+```
+
+Sans `LEVELUP_POSTSYNC_INSERT_ONLY`, le chemin legacy UPDATE-then-INSERT reste actif (zéro régression — feature flag opt-in strict, dispatch en tête de chaque fonction concernée).
+
+**Décision pragmatique** : Phase 4 est **code-complete**. Validation finale = smoke test multi-cycles en prod avec les 2 flags actifs. Si 0 FATAL ART observé sur 3-5 cycles consécutifs → Phase 5 cleanup débloqué.
