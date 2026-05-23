@@ -378,12 +378,20 @@ func main() {
 	// bloquant : log WARN + métrique expvar si divergence, le serveur démarre.
 	// Sample 5 par table ; suffisant pour démasquer le bug qui dépend du
 	// contenu de la liste IN, pas d'une valeur unique.
+	//
+	// Phase 4.1 (2026-05-23) : si match_participants montre une divergence
+	// sur shared, auto-heal via swap CTAS (RebuildMatchParticipantsART).
+	// Requiert le SharedProvider (mode B-swap) pour AcquireWriter; en mode
+	// legacy on log seulement.
 	{
-		bootCtx, bootCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		bootCtx, bootCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer bootCancel()
 		if sharedSQL, release, err := sharedReader.Get(bootCtx); err == nil {
-			duckdb.BootARTGuard(bootCtx, sharedSQL, "shared", 5)
+			report := duckdb.BootARTGuard(bootCtx, sharedSQL, "shared", 5)
 			release()
+			if hasMatchParticipantsARTDivergence(report) {
+				tryAutoHealMatchParticipantsART(bootCtx, cfg.SharedProvider, sharedReader)
+			}
 		} else {
 			slog.WarnContext(bootCtx, "art_guard: shared reader indisponible pour probe boot",
 				"err", err)
@@ -1050,4 +1058,81 @@ func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, 
 		SpartanToken:   s.tokens.AccessToken,
 		ClearanceToken: "",
 	}, nil
+}
+
+// hasMatchParticipantsARTDivergence retourne true si le report BootARTGuard
+// signale une divergence ART sur la table match_participants. Utilisé pour
+// déclencher l'auto-heal Phase 4.1.
+func hasMatchParticipantsARTDivergence(report *duckdb.ARTProbeReport) bool {
+	if report == nil {
+		return false
+	}
+	for _, d := range report.Divergences {
+		if d.Table == "match_participants" {
+			return true
+		}
+	}
+	return false
+}
+
+// tryAutoHealMatchParticipantsART tente le rebuild swap CTAS de
+// match_participants quand BootARTGuard a détecté une corruption ART
+// sur shared_matches_v2. Phase 4.1 du plan stabilisation 2026-05-22.
+//
+// Pré-conditions :
+//   - provider non-nil (mode SharedProvider B-swap actif)
+//   - aucun writer concurrent (boot serveur, scheduler de sync pas encore démarré)
+//
+// En cas d'erreur (provider absent, AcquireWriter échoué, rebuild échoué) :
+// log WARN + métrique expvar, le serveur continue à booter. La divergence
+// reste détectable par les WARN du BootARTGuard initial.
+//
+// Post-rebuild : re-probe en RO pour confirmer la disparition de la
+// divergence + log INFO de succès ou WARN si toujours présente.
+func tryAutoHealMatchParticipantsART(ctx context.Context, provider sharedprovider.Provider, reader duckdb.SharedReader) {
+	if provider == nil {
+		slog.WarnContext(ctx, "art_autoheal: divergence match_participants détectée mais SharedProvider absent (mode legacy) — rebuild manuel requis via redémarrage avec LEVELUP_USE_SHARED_PROVIDER=1")
+		observability.IncCounter("art_rebuild_runs_total_skipped_legacy")
+		return
+	}
+
+	slog.InfoContext(ctx, "art_autoheal: déclenchement rebuild match_participants (BootARTGuard divergence détectée)")
+	observability.IncCounter("art_rebuild_runs_total_attempts")
+
+	w, err := provider.AcquireWriter(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "art_autoheal: AcquireWriter échoué — rebuild annulé", "err", err)
+		observability.IncCounter("art_rebuild_runs_total_error_acquire")
+		return
+	}
+	defer w.Release()
+
+	start := time.Now()
+	if err := migration.RebuildMatchParticipantsART(ctx, w.DB()); err != nil {
+		slog.ErrorContext(ctx, "art_autoheal: RebuildMatchParticipantsART échoué",
+			"err", err, "duration_ms", time.Since(start).Milliseconds())
+		observability.IncCounter("art_rebuild_runs_total_error")
+		return
+	}
+	slog.InfoContext(ctx, "art_autoheal: rebuild terminé avec succès",
+		"duration_ms", time.Since(start).Milliseconds())
+	observability.IncCounter("art_rebuild_runs_total_ok")
+
+	// Re-probe en RO pour confirmer que la divergence a disparu.
+	// On Release() le writer d'abord (defer ci-dessus l'a déjà engagé via
+	// l'unwind classique — mais ici on veut séquencer : release explicite
+	// avant le probe). Réorganisation : on capture w dans un scope local.
+	// → Simpler : on relâche manuellement maintenant et on rebrancele defer
+	// vers un no-op via sync.Once interne au WriterHandle (idempotent).
+	w.Release()
+	if sharedSQL, release, err := reader.Get(ctx); err == nil {
+		postReport := duckdb.BootARTGuard(ctx, sharedSQL, "shared_post_autoheal", 5)
+		release()
+		if hasMatchParticipantsARTDivergence(postReport) {
+			slog.WarnContext(ctx, "art_autoheal: divergence TOUJOURS présente post-rebuild — investigation manuelle requise")
+			observability.IncCounter("art_rebuild_runs_total_still_diverged")
+		} else {
+			slog.InfoContext(ctx, "art_autoheal: probe post-rebuild confirme la disparition de la divergence ART")
+		}
+	}
 }

@@ -31,7 +31,8 @@ func main() {
 	dataRoot := "../../data"
 	ctx := context.Background()
 
-	fmt.Println("══ match_skill_rank : répartition LUSR vs CSR par joueur ══\n")
+	fmt.Println("══ match_skill_rank : répartition LUSR vs CSR par joueur ══")
+	fmt.Println()
 
 	for _, player := range players {
 		playerPath := filepath.Join(dataRoot, "titles", "halo_infinite", "players", player, "stats.duckdb")
