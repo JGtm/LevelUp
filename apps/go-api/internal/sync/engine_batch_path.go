@@ -65,7 +65,7 @@ func (e *SyncEngine) submitMatchAsBatch(
 	result *domain.SyncResult,
 	fm *fetchedMatch,
 ) error {
-	batch, parseErr := buildBatchFromFetchedMatch(fm, e.titleSlug, e.gamertag, e.xuid)
+	batch, parseErr := buildBatchFromFetchedMatchCtx(ctx, fm, e.titleSlug, e.gamertag, e.xuid)
 	if parseErr != nil {
 		// Parse highlight events échoué — non-bloquant, le batch est
 		// quand même produit avec les autres rows.
