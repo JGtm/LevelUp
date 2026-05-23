@@ -1,9 +1,27 @@
 # Plan — Unifier MSAL TokenProvider et auth.Pool
 
-**Noté** : 2026-05-24
+**Noté** : 2026-05-24 (révisé après clarification user sur la raison du pool)
 **Statut** : Plan d'analyse (pas d'implémentation)
 **Effort** : 4-8h selon option retenue
 **Lien** : suite à la découverte 2026-05-23 lors du smoke test Phase 3 Collect→Persist
+
+## 0. Cadrage — pourquoi 2 systèmes (clarification user)
+
+Le pool **et** le TokenProvider sont là **par design**, pas par accident historique :
+
+- **Compat utilisateur** : 2 modes d'auth doivent coexister à long terme :
+  - **Refresh token OAuth v2** (`SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ou stocké en `sync_meta.refresh_token`) — adapté aux bricoleurs/devs qui extraient leur RT manuellement.
+  - **MSAL refresh + cache** (`data/auth/watcher_tokens.json`) — flux Microsoft natif, plus simple pour utilisateurs lambdas.
+  - Les 2 produisent in fine un **Spartan token** Halo (output identique). L'usage downstream est le même.
+
+- **Pool = cache Spartan tokens** : pas un "gestionnaire de concurrence", mais une **optimisation de vitesse**. Au boot, on échange une fois refresh→Spartan pour chaque joueur, on stocke en mémoire (`sync.Map`). Le sync utilise `PooledHaloClient` qui lit le Spartan en O(1) sans relancer un exchange OAuth/MSAL à chaque appel API. Bénéfice : un cycle multi-joueur passe d'un exchange par requête à un exchange par token-lifetime (~3h).
+
+- **TokenProvider = source de vérité pour ENTRÉE auth** : refresh OAuth v2 ou MSAL. Sait faire le `Exchange(refresh) → Spartan`. Utilisé par :
+  - Watcher daemon (refresh proactif des Spartan)
+  - Session OAuth web (login utilisateur → exchange initial)
+  - CLI `levelup sync-delta` (exchange à la demande)
+
+**Le vrai problème** n'est pas "2 systèmes", c'est **2 chemins parallèles non-synchronisés** : le watcher rafraîchit MSAL en arrière-plan mais le pool ne le voit pas tant qu'il n'y a pas de reboot ou de sync manuel qui ait écrit dans `sync_meta`.
 
 ---
 
@@ -44,9 +62,10 @@
 
 ## 2. Causes historiques (déduction)
 
-- **Pool** introduit pour gérer le multi-joueur en concurrence : chaque joueur a son token, on les load au boot dans un `sync.Map` pour éviter relectures DuckDB.
-- **MSAL provider** introduit plus tard pour le watcher RTA (Xbox Live presence) qui a besoin de XSTS frais en continu, indépendamment du sync Halo.
-- Le sync HTTP a été migré vers MSAL (session OAuth web), mais l'auto-sync a gardé le pool legacy.
+- **Pool** = cache mémoire Spartan tokens, partagé par les workers sync (multi-joueur). Au boot, `Discovery.Scan()` parcourt les joueurs configurés et populate. Lecture O(1) ensuite.
+- **MSAL provider** ajouté avec le watcher daemon (Xbox Live RTA) pour les utilisateurs lambdas qui n'extraient pas leur RT manuellement.
+- Le sync HTTP a été câblé sur MSAL (via session OAuth web → tokens utilisateur). Auto-sync a gardé le pool (compat refresh-token bricoleurs).
+- **Aucune sync entre les 2** : pas de hook "watcher refresh → pool update".
 
 **Symptôme observable** : au 1er boot post-clone, `pool: scan terminé total_players_scanned=4 players_with_token=0` → tous les joueurs skip. Il faut soit :
 - Configurer `.env.local` avec `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>`
@@ -111,37 +130,72 @@
 | Aucun couplage watcher/pool/sync | Format watcher_tokens.json ≠ format pool credential — adapter |
 | Marche au 1er boot post-watcher refresh | Le sens-de-vérité reste flou |
 
-### Option E — Unifier sur TokenProvider (gros refactor, 6-8h)
+### Option E — Unifier sur TokenProvider (refactor moyen, 4-6h) ← révisé
 
-**Idée** : auto_sync abandonne `pool.Pool` et passe directement par `auth.TokenProvider` (comme le HTTP handler et la CLI). Le pool devient juste un `[]string` (liste de gamertags avec tokens valides) interrogé via `provider.HasPlayer(gt)`.
+**Idée — le pool est CONSERVÉ comme cache, le TokenProvider devient l'entrée unique** :
+
+```
+[Refresh Token OAuth v2 / MSAL Cache]
+                │
+                ▼
+         TokenProvider          ← entrée unique, sait gérer les 2 modes
+                │ Exchange(refresh) → Spartan
+                ▼
+         Pool (sync.Map)         ← cache Spartan, partagé workers
+                │ Get(gamertag) O(1)
+                ▼
+    [Watcher | SyncEngine | PooledHaloClient]
+```
+
+Concrètement :
+- `auth.TokenProvider` reste avec 2 implémentations (`MSALProvider` + `RefreshTokenProvider`) pour gérer les 2 modes utilisateur.
+- `Discovery.Scan()` est supprimé : remplacé par `Pool.RefreshFrom(provider)` qui itère sur les joueurs configurés, appelle `provider.GetSpartanToken(gt)` (qui fait MSAL OU refresh OU les deux en cascade selon ce qui est dispo), et populate.
+- `Pool.RefreshFrom` est appelée :
+  - Au boot du serveur
+  - Périodiquement (~5min, aligné sur la fenêtre de validité Spartan ~3h)
+  - Sur callback `provider.OnTokenRefreshed(gt)` du watcher (push-based, pas polling)
+- AutoSyncScheduler ne change pas : continue à utiliser `Pool.HasPlayer()` + `PooledHaloClient`. Mais le pool est désormais **toujours synchronisé** avec MSAL.
 
 | ✅ Avantages | ❌ Inconvénients |
 |---|---|
-| **Une seule source de vérité auth** | Gros refactor (touche scheduler, PooledHaloClient, etc.) |
-| Cohérent : tous les chemins utilisent MSAL | Risque de régression sur multi-joueur concurrent |
-| Long-term clean | Effort important |
+| **Une seule entrée auth** (TokenProvider) | Refactor moyen (touche `pool/discovery.go`, ajoute callback wiring) |
+| Pool conservé : pas de régression perf multi-joueur | Couplage provider → pool (callback `OnTokenRefreshed`) |
+| Compat 2 modes refresh + MSAL **préservée** | — |
+| Pool toujours synchronisé (plus jamais vide post-boot) | — |
+| Suppression du chemin parallèle `Discovery.Scan` (dette) | — |
 
 ---
 
-## 5. Recommandation
+## 5. Recommandation (révisée)
 
-**Court terme (1 sprint, ~1h30 effort)** : combiner **Option D + Option C** :
+**Court terme (~1h30 effort)** : combiner **Option D + Option C** :
 1. Discovery.Scan() lit aussi `watcher_tokens.json` (D) → pool peuplé au 1er boot si MSAL valide.
 2. SyncEngine.run() écrit `sync_meta.refresh_token` au début du cycle (C) → cohérence sync ↔ pool maintenue.
 
-→ Résout les 3 symptômes user-visible sans gros refactor. Conserve les 2 systèmes mais les synchronise.
+→ Résout les 3 symptômes user-visible sans gros refactor. Patch pragmatique pour activer Phase 3 sans friction.
 
-**Long terme (1 sprint dédié, 6-8h)** : Option E (unification sur TokenProvider). Approche big-bang :
-- Refactor `AutoSyncScheduler` pour utiliser `TokenProvider` au lieu de `pool.Pool`.
-- Garder `pool.Pool` comme cache mémoire interne du provider (optimisation, pas API publique).
-- Migration progressive via feature flag `LEVELUP_AUTH_UNIFIED=1`.
+**Long terme (~4-6h effort)** : **Option E** (révisée) — TokenProvider devient l'entrée unique, pool reste cache :
+- Suppression de `Discovery.Scan()` (chemin parallèle dette).
+- `Pool.RefreshFrom(provider)` appelé au boot + périodiquement + sur callback `OnTokenRefreshed` du watcher.
+- TokenProvider conserve ses 2 implémentations (MSAL + RefreshToken) — **compat utilisateur préservée par design**.
+- Pool reste cache Spartan tokens — **bénéfice perf multi-joueur préservé**.
+- Migration progressive via feature flag `LEVELUP_AUTH_UNIFIED=1` (default OFF), flip après validation 1 cycle.
 
-→ Élimine la dette architecturale. À programmer après Phase 3 Collect→Persist stabilisée.
+→ Élimine la dette architecturale **sans toucher au modèle 2-modes user** ni à l'optimisation pool. À programmer **après** Phase 3 Collect→Persist stabilisée.
+
+**Pourquoi ne pas faire E directement et skipper D+C ?**
+- E nécessite des touches plus larges (refactor `Discovery.Scan` + ajout callback wiring) → plus risqué à pousser maintenant alors qu'on vient de livrer un autre gros refactor (Collect→Persist Phase 1-2).
+- D+C est un patch local et reverse-compatible (l'ancien code marche aussi).
+- Si Phase 3 active avec D+C, l'urgence E retombe → on peut prendre le temps de bien le faire.
+
+**Si on était sûr de pouvoir poser E proprement** (1 dev focus, pas de pression), on pourrait skipper D+C. Décision user.
 
 ---
 
 ## 6. Hors scope
 
+- **Suppression du pool** : NON, il reste — c'est un accélérateur cache Spartan partagé multi-joueur, pas un héritage.
+- **Suppression d'un mode d'auth** : NON, refresh token OAuth v2 ET MSAL restent supportés (compat user explicite).
 - Sécurité MSAL : refresh tokens stockés en clair dans `watcher_tokens.json` (déjà existant, audit séparé).
 - Token rotation : géré côté Microsoft via OAuth v2 refresh, déjà OK.
 - Multi-titres : aujourd'hui un seul titre (Halo Infinite). Quand un 2e titre arrivera, le pool aura besoin d'une dimension `titleSlug` — déjà prévu (`SetCurrentTitle`).
