@@ -124,29 +124,66 @@ Recompute tous les enrichments en mémoire (Go), puis 1 seul INSERT batch atomiq
 
 ---
 
-## Plan d'attaque proposé
+## Plan d'attaque proposé (révisé 2026-05-24 — Option B retenue par user)
 
-### Phase 4.1 — Audit + design (1h)
-- Identifier les 7 sites exacts (déjà fait — table ci-dessus)
-- Décider quelle stratégie par site : Option E par défaut, fallback Option D pour sites trop complexes
-- Adapter le pattern persister : `internal/persist/post_sync_persister.go`
+### Phase 4.1 — Audit + design ✅ DONE
 
-### Phase 4.2 — Refactor LUSR (skill_rating_loaders.go) — 2h
-- Site le plus critique (déclenche le FATAL en chaîne)
-- TDD : test isolé d'un upsert LUSR en INSERT-only mode
+- 7 sites UPDATE identifiés (table ci-dessus)
+- Option B retenue : `DELETE WHERE rating_type=X + INSERT batch en 1 TX`
 
-### Phase 4.3 — Refactor 6 autres sites — 3-4h
-- Un par un avec tests TDD
-- Feature flag `LEVELUP_POSTSYNC_INSERT_ONLY=1` opt-in
+### Phase 4.2 — PostSyncLUSRPersister ✅ DONE (pattern de référence)
 
-### Phase 4.4 — Smoke test prod — 1h
-- Cycle complet 4 joueurs avec les 2 flags actifs
-- Vérifier : 0 FATAL ART sur 5 cycles
-- Vérifier : enrichments cohérents avec legacy (sanity SQL)
+- `internal/persist/post_sync_lusr_persister.go` livré
+- 5 tests TDD GREEN (InsertsBatch, PreservesCSRRows, EmptyBatch_NoOp, AtomicityRollback, NeverUpdatesCSRRow)
+- Pattern : 1 DELETE WHERE filtre + N INSERT en TX atomique
+- Préserve les CSR (filtre `WHERE rating_type='LUSR'` sur le DELETE)
 
-### Phase 4.5 — Cleanup post-validation (= Phase 5 du plan initial) — 2h
-- Suppression singleflight, CHECKPOINT, BootARTGuard heal, migrations UPDATE-then-INSERT
-- Cf. `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md` (peut maintenant s'exécuter)
+### Phase 4.3 — Intégration LUSR dans le sync engine (RESTE À FAIRE)
+
+**Effort** : ~1h
+**Fichiers à toucher** :
+- `internal/sync/skill_rating_loaders.go::upsertLUSRRatings` — route via PostSyncLUSRPersister si flag actif
+- `internal/sync/skill_rating.go::batchComputeLUSR` — accumule les `LUSRRatingInsert` au lieu d'appeler upsertLUSRRatings row-by-row
+- Feature flag `LEVELUP_POSTSYNC_INSERT_ONLY=1` opt-in (cohérent avec LEVELUP_PERSIST_BATCH)
+
+### Phase 4.4 — Refactor 6 autres sites (PATTERN À REPRODUIRE)
+
+Pour chaque site, créer un `PostSyncXxxPersister` similaire :
+- `comeback.go:181` → `PostSyncDominancePersister`
+- `engagement.go:441,479` → `PostSyncEngagementPersister`
+- `enrichments.go:75` → `PostSyncBotFlagPersister`
+- `friends_recompute.go:231` → `PostSyncFriendsPersister`
+- `performance.go:615` → `PostSyncPerfPersister`
+- `session_recalc.go:115,178` (via WriteSessionAssignments) → `PostSyncSessionsPersister`
+
+Chacun fait : `DELETE WHERE filter + INSERT batch en TX`. Le filter dépend de la colonne (ex: `WHERE dominance_flag IS NOT NULL` pour Dominance, `WHERE session_id IS NOT NULL` pour Sessions).
+
+**Effort** : ~1h par site = ~6h.
+
+### Phase 4.5 — Smoke test prod — 30min
+
+- Cycle complet 4 joueurs avec `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1`
+- Vérifier : **0 FATAL ART** sur 3-5 cycles
+- Vérifier : enrichments cohérents avec legacy (sanity SQL : sample row par site refactoré)
+
+### Phase 4.6 — Cleanup post-validation (Phase 5 du plan initial) — 2h
+
+Une fois Phase 4.5 validée, débloque Phase 5 cleanup :
+- Cf. `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md`
+
+---
+
+## Effort cumulé restant
+
+| Étape | Effort | Status |
+|---|---|---|
+| 4.1 Audit + design | 1h | ✅ DONE |
+| 4.2 PostSyncLUSRPersister + tests | 1h | ✅ DONE (commit) |
+| 4.3 Intégration LUSR | 1h | ⏳ TODO |
+| 4.4 6 autres sites | 6h | ⏳ TODO |
+| 4.5 Smoke test prod | 30min | ⏳ TODO |
+| 4.6 Phase 5 cleanup | 2h | ⏳ TODO |
+| **Total restant** | **~10h** | |
 
 ---
 
