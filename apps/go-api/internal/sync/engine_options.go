@@ -95,6 +95,19 @@ func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {
 	return e
 }
 
+// WithBatchPersistMode active le chemin Collect→Persist (Phase 2.3 du refactor).
+// La boucle d'insertion utilise `submitMatchAsBatch` (INSERT-only via
+// persist.SharedPersister + persist.PlayerPersister) au lieu d'insertFetchedMatch
+// legacy. Synchrone : pas de BatchQueue ni worker async pour l'instant
+// (Phase 3 ajoutera la couche queue).
+//
+// Activé par le serveur quand LEVELUP_PERSIST_BATCH=1. Par défaut désactivé
+// → comportement strictement identique au pre-refactor.
+func (e *SyncEngine) WithBatchPersistMode(enabled bool) *SyncEngine {
+	e.batchMode = enabled
+	return e
+}
+
 // WithPostSyncRunner branche le runner post-sync (Phase 4 plan stabilisation
 // 2026-05-22). Le runner est invoqué dans runPostSyncPipeline avant + après
 // la sync — il capture un snapshot before, attend la fin de la sync, puis

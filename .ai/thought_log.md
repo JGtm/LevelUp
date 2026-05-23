@@ -1,3 +1,39 @@
+## [2026-05-23] Refactor Collect-Persist — Phase 2.3 orchestrateur + feature flag
+
+**Statut** : Complété (côté engine ; câblage env var côté server reste à faire)
+
+**Tâche** : Brancher le chemin Collect→Persist dans `SyncEngine.run()` via un feature flag opt-in. Le default reste le path legacy `insertFetchedMatch` (zéro régression). Quand `WithBatchPersistMode(true)` est appelé, la boucle d'insertion utilise `submitMatchAsBatch` (INSERT-only via persisters).
+
+**Décision technique principale** :
+
+- `SyncEngine.batchMode bool` + `WithBatchPersistMode(bool)` option — pattern identique aux autres `With*` du SyncEngine. Pas de lecture directe d'env var dans le package sync (testabilité).
+- `submitOrInsertMatch` est le point de branchement unique : `if e.batchMode { submitMatchAsBatch } else { insertFetchedMatch }`. Remplacement direct au site d'appel dans engine.go run() (1 ligne touchée).
+- `submitMatchAsBatch` :
+  - Construit le batch via `buildBatchFromFetchedMatch` (logique pure Phase 2.1/2.2).
+  - Appelle `SharedPersister.Persist` (1 TX INSERT-only sur sharedDB).
+  - Appelle `PlayerPersister.Persist` (1 TX INSERT-only sur playerDB).
+  - Best-effort `UpsertXUIDAlias` dans globalDB (hors Persisters — DB séparée pas couverte par le batch).
+  - Met à jour `result.MatchesInserted/ParticipantsDone/MedalsInserted` identique au legacy.
+- **Synchrone pour l'instant** : pas de BatchQueue ni worker async. Phase 3 ajoutera la couche queue pour découpler fetch et persist (et permettre la recovery WAL-based). L'INSERT-only suffit déjà pour résoudre le bug ART (les UPSERT concurrents sur shared.match_participants sont remplacés par INSERT séquentiels en transaction).
+
+**Hors scope Phase 2.3** :
+
+- PVE/Metadata persisters NON appelés (le batch contient leurs rows mais ne les persiste pas — Phase 2.3.b ajoutera quand l'engine ouvrira aussi sharedPVE et metadata DBs).
+- Post-sync compute (sessions, perf, LUSR, friends, citations, dominance) reste inchangé — toujours UPDATE-style sur player_match_enrichment. Pas dans la portée du fix ART (qui était sur shared.match_participants).
+- Câblage `LEVELUP_PERSIST_BATCH=1` env var côté `cmd/server/main.go` reste à faire (Phase 2.3.b).
+
+**Résultats observés** :
+
+- 2 tests d'intégration `engine_batch_path_test.go` GREEN :
+  - `TestSubmitMatchAsBatch_SmokePath` : path batch insère les rows en DB (match_registry, match_participants, medals_earned, player_match_enrichment).
+  - `TestSubmitOrInsertMatch_BatchModeFalse_RoutesToLegacy` : default reste legacy (no crash, smoke).
+- Full `internal/sync` + `internal/persist` suites GREEN après intégration.
+- `go vet ./...` clean.
+
+**Prochaine étape** : Phase 2.3.b — câbler `LEVELUP_PERSIST_BATCH=1` dans `cmd/server/main.go` (et éventuellement scheduler + sync_handler) pour activer le path en prod. Puis Phase 2.4 — test E2E qui exerce le cycle complet (RunDelta → batch → DB).
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Phase 2.2 extension fetchedMatch (SharedCSRs + PveStats)
 
 **Statut** : Complété

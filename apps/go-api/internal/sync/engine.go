@@ -111,6 +111,14 @@ type SyncEngine struct {
 	// fraîchement synchronisés. Best-effort : nil → feature off.
 	// Injecté via WithMediaScanHook depuis scheduler + SyncHandler.
 	mediaHook func(ctx context.Context)
+
+	// batchMode (Phase 2.3 refactor Collect→Persist) — si true, la boucle
+	// d'insertion utilise `submitMatchAsBatch` (chemin INSERT-only via
+	// persist.SharedPersister + persist.PlayerPersister) au lieu de
+	// `insertFetchedMatch` legacy (UPSERT direct). Feature-flag opt-in
+	// activé par WithBatchPersistMode. Synchrone : pas de BatchQueue ni
+	// worker async pour l'instant (Phase 3 ajoutera la couche queue).
+	batchMode bool
 }
 
 // NewSyncEngine, WithPrestigeHook, WithResolver, WithSharedProvider,
@@ -381,11 +389,11 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 					continue
 				}
 
-				if err := e.insertFetchedMatch(ctx, sharedDB, playerDB, globalDB, &result, fm); err != nil {
-					slog.WarnContext(ctx, "sync: insertFetchedMatch Ã©chouÃ©",
+				if err := e.submitOrInsertMatch(ctx, sharedDB, playerDB, globalDB, &result, fm); err != nil {
+					slog.WarnContext(ctx, "sync: submitOrInsertMatch Ã©chouÃ©",
 						"gamertag", e.gamertag, "match_id", fm.MatchID, "err", err,
 					)
-					result.AddWarning(fmt.Sprintf("insertFetchedMatch(%s): %v", fm.MatchID, err))
+					result.AddWarning(fmt.Sprintf("submitOrInsertMatch(%s): %v", fm.MatchID, err))
 				} else {
 					processed++
 					slog.InfoContext(ctx, "sync: match traitÃ© (parallÃ¨le)",
