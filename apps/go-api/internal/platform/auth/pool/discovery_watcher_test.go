@@ -165,6 +165,73 @@ func TestDiscoveryScan_NoStores_BackwardCompat(t *testing.T) {
 // legacy). Skip ici si la création d'une vraie player DB est trop lourde —
 // le code source suit la condition `if msal == "" && oauth == ""`.
 
+// ─── Test 4b : LegacyStore attribué à UN SEUL joueur (fix bug 2026-05-24) ─
+
+// Vérifie que le legacy mono-user store n'est PAS dupliqué sur plusieurs
+// joueurs. Sinon le même RT serait attribué à N joueurs → mismatch API.
+
+func TestDiscoveryScan_LegacyStore_AttributedToSinglePlayerOnly(t *testing.T) {
+	// 3 joueurs configurés, AUCUN n'a de token DuckDB/env. Legacy store
+	// contient 1 RT. Seul le 1er joueur doit le recevoir, les 2 autres skip.
+	repoRoot := t.TempDir()
+
+	profiles := map[string]any{
+		"version": "3.0",
+		"profiles": map[string]any{
+			"halo_infinite": map[string]any{
+				"Alice": map[string]any{
+					"db_path": "data/titles/halo_infinite/players/Alice/stats.duckdb",
+					"xuid":    "1111", "waypoint_player": "Alice",
+				},
+				"Bob": map[string]any{
+					"db_path": "data/titles/halo_infinite/players/Bob/stats.duckdb",
+					"xuid":    "2222", "waypoint_player": "Bob",
+				},
+				"Carol": map[string]any{
+					"db_path": "data/titles/halo_infinite/players/Carol/stats.duckdb",
+					"xuid":    "3333", "waypoint_player": "Carol",
+				},
+			},
+		},
+	}
+	data, err := json.MarshalIndent(profiles, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	profilesPath := filepath.Join(repoRoot, "db_profiles.json")
+	if err := os.WriteFile(profilesPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.AppConfig{
+		RepoRoot:        repoRoot,
+		DBProfilesPath:  profilesPath,
+		AppSettingsPath: filepath.Join(repoRoot, "app_settings.json"),
+	}
+
+	storePath := filepath.Join(repoRoot, "data", "auth", "watcher_tokens.json")
+	if err := os.MkdirAll(filepath.Dir(storePath), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	store := auth.NewTokenStore(storePath)
+	if err := store.Save(&auth.StoredTokens{RefreshToken: "single_legacy_rt"}); err != nil {
+		t.Fatal(err)
+	}
+
+	resolver := titlePkg.NewPathResolver(repoRoot)
+	d := NewDiscoveryWithStores(cfg, resolver, titlePkg.DefaultSlug, nil, store)
+	sources, err := d.Scan(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(sources) != 1 {
+		t.Fatalf("sources = %d, want 1 (legacy attribué à 1 SEUL joueur), got %+v", len(sources), sources)
+	}
+	if sources[0].RefreshToken != "single_legacy_rt" {
+		t.Errorf("RT = %q, want single_legacy_rt", sources[0].RefreshToken)
+	}
+}
+
 // ─── Test 5 : XUID safe — store skipped si XUID vide ──────────────────────
 
 func TestDiscoveryScan_MultiUserStore_SkippedIfXUIDEmpty(t *testing.T) {

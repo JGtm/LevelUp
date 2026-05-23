@@ -89,6 +89,13 @@ func (d *discoveryImpl) Scan(ctx context.Context) ([]CredentialSource, error) {
 		return nil, err
 	}
 
+	// Le legacy mono-user TokenStore (data/auth/watcher_tokens.json) contient
+	// UN SEUL RT qui appartient à UN seul joueur (le current_user du watcher
+	// daemon historique). Si on l'attribue à tous les joueurs sans token,
+	// on causer des erreurs API ou pire (mismatch xuid/token).
+	// → Attribuer AU PLUS UNE FOIS : premier joueur sans autre source.
+	legacyConsumed := false
+
 	sources := make([]CredentialSource, 0, len(players))
 
 	for _, player := range players {
@@ -130,12 +137,23 @@ func (d *discoveryImpl) Scan(ctx context.Context) ([]CredentialSource, error) {
 				}
 			}
 			// Mono-user legacy (data/auth/watcher_tokens.json) — n'a qu'un
-			// seul user. Match approximatif via le RefreshToken disponible
-			// dans le store ; on l'attribue au premier joueur sans token.
+			// seul user, donc on ne peut attribuer son RT qu'à UN seul
+			// joueur. Sinon on cause des erreurs API (mismatch xuid/token).
+			// → Attribué au PREMIER joueur sans autre source ; les autres
+			// sont skip (warning log pour traçabilité).
 			if msal == "" && oauth == "" && d.legacyStore != nil {
-				if st, _ := d.legacyStore.Load(); st != nil && st.RefreshToken != "" {
-					oauth = st.RefreshToken
-					watcherSource = credSourceWatcherLegacy
+				if !legacyConsumed {
+					if st, _ := d.legacyStore.Load(); st != nil && st.RefreshToken != "" {
+						oauth = st.RefreshToken
+						watcherSource = credSourceWatcherLegacy
+						legacyConsumed = true
+						slog.WarnContext(ctx, "pool: legacy mono-user store attribué (approximation — peut ne pas correspondre au bon joueur)",
+							"gamertag", player.Gamertag,
+							"hint", "configurer SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> par joueur dans .env.local pour éviter cette ambiguïté")
+					}
+				} else {
+					slog.DebugContext(ctx, "pool: legacy store déjà consommé par un autre joueur — skip",
+						"gamertag", player.Gamertag)
 				}
 			}
 		}
