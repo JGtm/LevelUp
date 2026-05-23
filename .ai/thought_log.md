@@ -146,6 +146,50 @@ Si l'utilisateur teste `LEVELUP_ART_AUTOHEAL_RECOMPUTE=1` au prochain reboot et 
 
 ---
 
+## [2026-05-23] feat(p3.4) — Paralléliser RunOnce du scheduler (errgroup + atomic counters)
+
+**Statut** : Phase 3.4 DONE en 1 commit (`b439f73e`). Branche `chore/post-stabilisation-debt` 19 commits ahead origin.
+
+**Contexte** : sur cycle prod 3 joueurs en série, ~15 min par cycle. La parallélisation = le gain perf le plus impactant niveau UX (cycle 4× plus rapide attendu). Pas de risque data car singleflight + dblease déjà en place (commits aef47968 + b65e0417).
+
+**Livré (TDD strict)** : boucle `for _, p := range players` du `RunOnce` remplacée par :
+```go
+eg, egCtx := errgroup.WithContext(ctx)
+eg.SetLimit(parallelism) // = poolSizeSafe(), clamp à 1
+for _, p := range players {
+    p := p
+    eg.Go(func() error {
+        outcome := s.syncPlayer(egCtx, p)
+        // atomic.Int32.Add sur synced/skipped/failed
+        return nil // best-effort
+    })
+}
+_ = eg.Wait()
+res.Synced/Skipped/Failed = int(synced.Load())/...
+```
+
+**Métriques de gain** : test `LatencyFasterThanSequential` avec 4 joueurs × 400ms = 1.6s baseline → 0.42s parallèle (mesuré). Soit ~4× speedup. Extrapolation prod 3 joueurs réels : 15 min → 5-8 min/cycle (cohérent avec audit Agent 1).
+
+**4 tests TDD écrits AVANT impl** :
+1. `LatencyFasterThanSequential` — baseline rouge 1.62s → vert post-impl 0.42s. Critère TDD principal.
+2. `CountersPreserved` — 4 joueurs OK → Synced=4, autres=0. Vérifie le contrat sous parallélisme.
+3. `MixedOutcomes_Counted` — 2 OK + 1 FAIL + 1 SKIP → counts exactement préservés. Race detector verra les conflits sur les counters s'ils étaient non-atomic.
+4. `CtxCancelDrainsProperly` — cancel mid-cycle, pas de crash, Total stable.
+
+**Détails techniques** :
+- `atomic.Int32` plutôt que mutex : 3 compteurs indépendants, contention faible, atomic plus rapide + lock-free.
+- `errgroup.SetLimit(poolSizeSafe())` : si poolSize=0 (mode bootstrap sans tokens), clamp à 1 pour éviter `SetLimit(0)` qui serait `SetLimit(-1)` = no limit.
+- Best-effort (return nil) : un syncPlayer qui fail est déjà reflété dans res.Failed++ via le switch outcome ; pas besoin de propager l'erreur via errgroup (qui annulerait les autres).
+- `egCtx` propagé à syncPlayer : si ctx parent cancel, tous les syncPlayer reçoivent ctx.Done(). syncPlayer cancel ses RunDelta proprement.
+
+**Suite scheduler complète verte avec `-race`** (2.4s) : 12 tests RunOnce* existants + 4 nouveaux Parallel*. Aucune régression.
+
+**Conclusion** : Phase 3.4 livrée prudemment. Le cycle de sync auto sera désormais ~3-4× plus rapide en prod. Combiné avec Phase 3.0 (processWeaponKillsInline parallel, -150-200s/cycle), c'est le passage de "cycle inutilisable car 15+ min" à "cycle confortable < 8 min".
+
+Reste P2 plan stab : 4.2 SIGABRT handler (1h), 4.3 expvar metrics complet (2h), 3.6/3.7 healParallelism bump + fusion heal loops (30min chacun).
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).

@@ -300,15 +300,24 @@ _ = eg.Wait()
 
 **Verdict** : ROI trop faible vs effort de refactor. À skipper sauf si on a un trou de planning.
 
-### 3.4 Paralléliser le scheduler `RunOnce` (1h) — P1, confirmé par audit
+### 3.4 Paralléliser le scheduler `RunOnce` — ✅ FAIT 2026-05-23 (commit b439f73e)
 
-**Confirmé Agent 1** : gain réel 15min → 5-8min sur 3 joueurs, cohérent avec estimation initiale.
+**Livré** : [`auto_sync.go::RunOnce`](../apps/go-api/internal/scheduler/auto_sync.go) — boucle `for` séquentielle remplacée par `errgroup.WithContext(ctx)` + `eg.SetLimit(poolSizeSafe())` (clamp à 1 si pool absent). Compteurs locaux `Synced/Skipped/Failed` protégés par `atomic.Int32`. Best-effort : un syncPlayer en échec n'annule pas les autres goroutines.
 
-**Pas de risque deadlock** : `dblease.leaseMutex` sérialise les writes shared au niveau Go applicatif, mais les API calls + post-sync par-player tournent en parallèle. Pas de double-writer cgo DuckDB.
+**Gain mesuré (test)** : 4 joueurs × 400ms latence simulée = 1.6s séquentiel → 0.42s parallèle (4× speedup). Sur prod 3 joueurs réels, gain estimé 15min → 5-8min par cycle.
 
-**Prérequis** : Phase 1 (singleflight) validée en stress test 5.1 — sinon races ART aggravées par les heals concurrents inter-joueurs.
+**Safety** :
+- `syncPlayer` → `recordOutcome` déjà protégé par `s.snapshotMu`.
+- Writes `shared.match_participants` sérialisés par dblease.leaseMutex + singleflight phase 2.3 (commit aef47968).
+- Pas de double-writer cgo DuckDB.
 
-**Cible** : [auto_sync.go:357-367](apps/go-api/internal/scheduler/auto_sync.go#L357) — remplacer le `for _, p := range players` par `errgroup` avec `SetLimit(s.pool.Size())`.
+**4 tests TDD écrits AVANT impl** ([`auto_sync_parallel_test.go`](../apps/go-api/internal/scheduler/auto_sync_parallel_test.go)) :
+- `LatencyFasterThanSequential` : baseline rouge 1.6s → vert post-impl 0.42s.
+- `CountersPreserved` : 4 joueurs OK → Synced=4.
+- `MixedOutcomes_Counted` : 2 OK + 1 FAIL + 1 SKIP → counts exactement préservés sous parallélisme.
+- `CtxCancelDrainsProperly` : cancel mid-cycle, pas de crash, Total stable.
+
+Suite scheduler complète verte avec `-race` (2.4s). Aucune régression sur les 12 tests `RunOnce*` existants.
 
 ### 3.5 Heal loops parallèles — keep network parallel, sérialiser les writes (1h)
 
