@@ -39,6 +39,8 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var accuracySamples int
 	var perfSum float64
 	var perfCount int
+	var offSum, offCount float64
+	var defSum, defCount float64
 	// Buckets par RatingType pour le delta de rang. On accumule les deltas
 	// pour chaque type rencontre puis on retient le type majoritaire en
 	// sortie (cf. RankDelta.Kind — exclusivite metier au sein d'un scope coherent).
@@ -72,6 +74,29 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		if r.Enrichment.PerformanceScore != nil {
 			perfSum += *r.Enrichment.PerformanceScore
 			perfCount++
+		}
+		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
+			k := 0
+			if r.Self.Kills != nil {
+				k = *r.Self.Kills
+			}
+			a := 0
+			if r.Self.Assists != nil {
+				a = *r.Self.Assists
+			}
+			d := 0
+			if r.Self.Deaths != nil {
+				d = *r.Self.Deaths
+			}
+			cy := ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
+			if cy.OffensiveConversion > 0 {
+				offSum += cy.OffensiveConversion
+				offCount++
+			}
+			if cy.DefensiveResistance > 0 {
+				defSum += cy.DefensiveResistance
+				defCount++
+			}
 		}
 		if snap := r.Enrichment.SkillSnapshot; snap != nil && snap.Delta != nil && snap.RatingType != "" {
 			b, ok := rankBuckets[snap.RatingType]
@@ -123,6 +148,14 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		}
 		fallback := math.Round(math.Min(math.Max(50+10*(kd-1), 0), 100)*10) / 10
 		stats.PerformanceScore = &fallback
+	}
+	if offCount > 0 {
+		v := math.Round(offSum/offCount*100) / 100
+		stats.AvgOffensiveConversion = &v
+	}
+	if defCount > 0 {
+		v := math.Round(defSum/defCount*100) / 100
+		stats.AvgDefensiveResistance = &v
 	}
 	if len(rankBuckets) > 0 {
 		// Type majoritaire : le bucket avec le plus de matchs.

@@ -401,17 +401,25 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 // extKPIAcc accumule les compteurs des KPIs etendus du bipolaire Solo/Escouade.
 type extKPIAcc struct {
 	sumDeaths, sumAssists, sumHeadshots   float64
+	sumKills                              float64
 	sumMaxSpree, sumDmgDealt, sumDmgTaken float64
 	sumPerfectKills                       float64
-	nSpree, nDmgDealt, nDmgTaken          int
+	nSpree, nDmgDealt, nDmgTaken         int
+	nRanked                              int
 }
 
 func (a *extKPIAcc) add(r canonical.PlayerMatchRow) {
 	if r.Self.Deaths != nil {
 		a.sumDeaths += float64(*r.Self.Deaths)
 	}
+	if r.Self.Kills != nil {
+		a.sumKills += float64(*r.Self.Kills)
+	}
 	if r.Self.Assists != nil {
 		a.sumAssists += float64(*r.Self.Assists)
+	}
+	if r.Summary.IsRanked != nil && *r.Summary.IsRanked {
+		a.nRanked++
 	}
 	if r.Self.HeadshotKills != nil {
 		a.sumHeadshots += float64(*r.Self.HeadshotKills)
@@ -456,6 +464,17 @@ func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSec
 		v := math.Round(a.sumDmgTaken / float64(a.nDmgTaken))
 		kpis.AvgDamageTaken = &v
 	}
+	// Rendement offensif agrégé : 225 × (kills + assists/3) / total_damage_dealt.
+	if a.sumDmgDealt > 0 {
+		oc := math.Round((225.0*(a.sumKills+a.sumAssists/3.0)/a.sumDmgDealt)*1000) / 1000
+		kpis.AvgOffensiveConversion = &oc
+	}
+	// Résistance défensive agrégée : total_damage_taken / (225 × deaths).
+	if a.sumDeaths > 0 && a.sumDmgTaken > 0 {
+		dr := math.Round((a.sumDmgTaken/(225.0*a.sumDeaths))*1000) / 1000
+		kpis.AvgDefensiveResistance = &dr
+	}
+	kpis.RankedMatchCount = a.nRanked
 }
 
 func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool) domain.SynthesisKPIs {
@@ -716,9 +735,12 @@ func ComputeTemporalHeatmapFromCanonical(rows []canonical.PlayerMatchRow) []doma
 
 // ComputeComparisonMetrics construit les mÃ©triques bipolaires solo/escouade.
 func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.ComparisonMetricItem {
-	items := make([]domain.ComparisonMetricItem, 0, 15)
+	items := make([]domain.ComparisonMetricItem, 0, 18)
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "match_count", SoloValue: float64(solo.MatchCount), SquadValue: float64(squad.MatchCount),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "ranked_match_count", SoloValue: float64(solo.RankedMatchCount), SquadValue: float64(squad.RankedMatchCount),
 	})
 	items = append(items, domain.ComparisonMetricItem{
 		Label: "time_played_seconds", SoloValue: float64(solo.TotalTimePlayedSeconds), SquadValue: float64(squad.TotalTimePlayedSeconds),
@@ -760,7 +782,13 @@ func ComputeComparisonMetrics(solo, squad domain.SynthesisKPIs) []domain.Compari
 		Label: "avg_damage_dealt", SoloValue: deref(solo.AvgDamageDealt), SquadValue: deref(squad.AvgDamageDealt),
 	})
 	items = append(items, domain.ComparisonMetricItem{
+		Label: "offensive_conversion", SoloValue: deref(solo.AvgOffensiveConversion), SquadValue: deref(squad.AvgOffensiveConversion),
+	})
+	items = append(items, domain.ComparisonMetricItem{
 		Label: "avg_damage_taken", SoloValue: deref(solo.AvgDamageTaken), SquadValue: deref(squad.AvgDamageTaken),
+	})
+	items = append(items, domain.ComparisonMetricItem{
+		Label: "defensive_resistance", SoloValue: deref(solo.AvgDefensiveResistance), SquadValue: deref(squad.AvgDefensiveResistance),
 	})
 	return items
 }
