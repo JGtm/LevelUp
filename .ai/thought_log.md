@@ -1,3 +1,39 @@
+## [2026-05-23] Refactor Collect-Persist — audit ENRICHMENTS_CATALOG + gaps per-match + PlayerPersister
+
+**Statut** : Complété
+
+**Tâche** : Audit exhaustif de la couverture API batch vs `.ai/ENRICHMENTS_CATALOG.md` pour ne rien oublier avant de continuer Phase 2 (sync refactor). 3 gaps identifiés et corrigés ; PlayerPersister ajouté avec property "ajout facile d'enrichment" validée par test ; doc.go rectifié.
+
+**Gaps comblés (per-match)** :
+
+- `shared.match_registry.match_intensity` (DOUBLE) → champ `MatchRegistryRow.MatchIntensity *float64` + INSERT.
+- `shared.match_registry.backfill_completed` (bitmask cumul MBit*) → champ `MatchRegistryRow.BackfillCompleted *int64` + INSERT.
+- `shared.match_participants.backfill_bits` (PBit* par colonne) → champ `MatchParticipantRow.BackfillBits *int` + INSERT.
+- `shared.match_csrs` (CSR de tous les participants d'un match ranked) → struct `MatchCSRInsert` + `SharedBatch.MatchCSRs` + `AddMatchCSRs` builder + `persistMatchCSRs` helper.
+- `shared_pve.pve_match_stats.pve_bits` → champ `PVEMatchStatsInsert.PveBits *int` (l'INSERT viendra avec le futur PVEPersister).
+
+**PlayerPersister + INSERT dynamique** :
+
+- `persistEnrichment` construit l'INSERT à partir des seuls champs pointer non-nil de `EnrichmentRow`. Pattern : 1 if-block par champ dans `enrichmentFields()`. Ajouter un enrichment = 3 changements (migration DB + pointer dans `EnrichmentRow` + 1 if-block ici). Validé par `TestPlayerPersister_PartialEnrichment_InsertsOnlyNonNilColumns` et `TestPlayerPersister_EnrichmentFields_OmitsNilPointers`.
+- Tables couvertes : player_match_enrichment (dynamique), match_skill_rank, lusr_component_history, match_citations, personal_score_awards, career_progression. Idempotence par EXISTS(player_match_enrichment).
+- Fix struct : `PersonalScoreAwardInsert` réaligné sur le vrai schéma (xuid, award_name, award_category, award_count, award_score) — ancienne version (AwardID, Count, PersonalScore) ne correspondait pas à la DB.
+- Fix struct : `EnrichmentRow.EngagementScoreConfidence` typé `*string` (au lieu de `*float64`) ; `EnrichmentRow.EngagementPlayerActivity` typé `*int` (INTEGER en DB).
+
+**Hors scope MatchBatch — documenté dans doc.go** :
+
+`player_csr_snapshots`, `engagement_coefficients`, `player_assists_model`, `assists_model_coefs` (metadata), `media_files`/`media_match_associations`, `is_excluded` (PATCH user), `known_teammates_count`/`friends_xuids` (colonnes réservées). Ces workflows restent en dehors du flux Collect→Persist (post-sync writes ad-hoc).
+
+**doc.go corrigé** : retiré les références mortes à `sql_builder.go` / `buildEnrichmentInsertSQL` (jamais créés) ; remplacé par la checklist d'extension réelle (3 étapes pour enrichment, 6 pour nouvelle table).
+
+**Résultats observés** :
+
+- 26 tests GREEN dans `internal/persist` (8 queue + 10 SharedPersister + 5 Worker + 4 E2E + 7 PlayerPersister, dont 1 test pur sur `enrichmentFields()` qui prouve la property d'omission des nil).
+- `go vet ./internal/persist/...` clean, `go build ./...` clean.
+
+**Prochaine étape** : Phase 2 du REFACTOR_COLLECT_PERSIST — refacto du sync engine pour utiliser `BatchBuilder.Submit()` au lieu des INSERTs directs (`InsertRegistry`, `InsertParticipants`, etc.). Avant : compléter PVEPersister + MetadataPersister sur le même pattern que Shared/Player.
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — Phase 1.4-1.7 (SharedPersister + Worker + E2E)
 
 **Statut** : Complété

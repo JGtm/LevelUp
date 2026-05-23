@@ -87,6 +87,13 @@ func (b *BatchBuilder) AddXUIDAliases(rows []XUIDAliasInsert) *BatchBuilder {
 	return b
 }
 
+// AddMatchCSRs ajoute les rows shared.match_csrs (CSR de tous les
+// participants du match, pour le contexte lobby ranked).
+func (b *BatchBuilder) AddMatchCSRs(rows []MatchCSRInsert) *BatchBuilder {
+	b.batch.Shared.MatchCSRs = append(b.batch.Shared.MatchCSRs, rows...)
+	return b
+}
+
 // SetEnrichment fixe la row player_match_enrichment (UNE row complète avec
 // tous les enrichments locaux computed).
 func (b *BatchBuilder) SetEnrichment(row *EnrichmentRow) *BatchBuilder {

@@ -321,3 +321,156 @@ func TestSharedPersister_NilBatch_ReturnsError(t *testing.T) {
 		t.Error("Persist(nil) devrait retourner une erreur (defensive)")
 	}
 }
+
+// ─── Test 7 : MatchIntensity + BackfillCompleted persistés ─────────────────
+
+func TestSharedPersister_MatchIntensityAndBackfillCompleted_Persisted(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	intensity := 12.5
+	bf := int64(0xFF00) // bitmask cumul events+killer_victim+pve+weapon_kills
+
+	batch := helperBuildSampleBatch("m_bits_001", "1111", "Alice")
+	batch.Shared.Match.MatchIntensity = &intensity
+	batch.Shared.Match.BackfillCompleted = &bf
+
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	var gotIntensity sql.NullFloat64
+	var gotBF sql.NullInt64
+	err := db.QueryRow(
+		"SELECT match_intensity, backfill_completed FROM match_registry WHERE match_id = ?",
+		"m_bits_001",
+	).Scan(&gotIntensity, &gotBF)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if !gotIntensity.Valid || gotIntensity.Float64 != intensity {
+		t.Errorf("match_intensity = %+v, want %f", gotIntensity, intensity)
+	}
+	if !gotBF.Valid || gotBF.Int64 != bf {
+		t.Errorf("backfill_completed = %+v, want %d", gotBF, bf)
+	}
+}
+
+// ─── Test 8 : BackfillBits sur match_participants ──────────────────────────
+
+func TestSharedPersister_ParticipantBackfillBits_Persisted(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	intPtr := func(v int) *int { return &v }
+	strPtr := func(v string) *string { return &v }
+
+	bf := 0x1FF // tous les bits stats remplis
+	batch := helperBuildSampleBatch("m_pbits_001", "1111", "Alice")
+	batch.Shared.Participants = []domain.MatchParticipantRow{
+		{
+			MatchID: "m_pbits_001", XUID: "1111", Gamertag: strPtr("Alice"),
+			Kills: intPtr(10), Deaths: intPtr(5),
+			BackfillBits: &bf,
+		},
+	}
+
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	var got sql.NullInt64
+	err := db.QueryRow(
+		"SELECT backfill_bits FROM match_participants WHERE match_id = ? AND xuid = ?",
+		"m_pbits_001", "1111",
+	).Scan(&got)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if !got.Valid || got.Int64 != int64(bf) {
+		t.Errorf("backfill_bits = %+v, want %d", got, bf)
+	}
+}
+
+// ─── Test 9 : MatchCSRs insert (lobby CSR context) ─────────────────────────
+
+func TestSharedPersister_MatchCSRs_InsertsAllParticipantCSRs(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	float64Ptr := func(v float64) *float64 { return &v }
+	intPtr := func(v int) *int { return &v }
+	strPtr := func(v string) *string { return &v }
+
+	batch := helperBuildSampleBatch("m_csr_001", "1111", "Alice")
+	batch.Shared.MatchCSRs = []MatchCSRInsert{
+		{
+			MatchID: "m_csr_001", XUID: "1111", RatingType: "CSR",
+			RatingValue: float64Ptr(1450), Tier: strPtr("Onyx"), SubTier: intPtr(0),
+			TierLabel: strPtr("Onyx"), RatingDelta: float64Ptr(+18),
+			SeasonID: strPtr("CsrSeason13-1"),
+		},
+		{
+			MatchID: "m_csr_001", XUID: "9876543210", RatingType: "CSR",
+			RatingValue: float64Ptr(1500), Tier: strPtr("Onyx"), SubTier: intPtr(0),
+			TierLabel: strPtr("Onyx"), RatingDelta: float64Ptr(-15),
+			SeasonID: strPtr("CsrSeason13-1"),
+		},
+	}
+
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs WHERE match_id = ?`, "m_csr_001").Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 2 {
+		t.Errorf("match_csrs : %d rows, want 2", n)
+	}
+
+	// Sanity sur la row du joueur sync
+	var rating sql.NullFloat64
+	var tier sql.NullString
+	err := db.QueryRow(
+		"SELECT rating_value, tier FROM match_csrs WHERE match_id = ? AND xuid = ?",
+		"m_csr_001", "1111",
+	).Scan(&rating, &tier)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if !rating.Valid || rating.Float64 != 1450 {
+		t.Errorf("rating_value = %+v, want 1450", rating)
+	}
+	if !tier.Valid || tier.String != "Onyx" {
+		t.Errorf("tier = %+v, want Onyx", tier)
+	}
+}
+
+// ─── Test 10 : MatchCSRs default RatingType = "CSR" ────────────────────────
+
+func TestSharedPersister_MatchCSRs_DefaultRatingTypeCSR(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	float64Ptr := func(v float64) *float64 { return &v }
+	batch := helperBuildSampleBatch("m_csr_dflt", "1111", "Alice")
+	batch.Shared.MatchCSRs = []MatchCSRInsert{
+		// RatingType laissé vide → doit défaulter à "CSR"
+		{MatchID: "m_csr_dflt", XUID: "1111", RatingValue: float64Ptr(1200)},
+	}
+
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	var rt string
+	if err := db.QueryRow(`SELECT rating_type FROM match_csrs WHERE match_id = ? AND xuid = ?`,
+		"m_csr_dflt", "1111").Scan(&rt); err != nil {
+		t.Fatal(err)
+	}
+	if rt != "CSR" {
+		t.Errorf("rating_type = %q, want CSR (default)", rt)
+	}
+}
