@@ -1,3 +1,32 @@
+## [2026-05-23] Refactor Collect-Persist — PVEPersister + MetadataPersister (couche persistance complète)
+
+**Statut** : Complété
+
+**Tâche** : Boucler la couche persistance du refactor avec les deux derniers Persisters (PVE Firefight + Metadata mode_name_tr) sur le même pattern que Shared/Player. Ferme l'option (a) de l'état des lieux du plan initial.
+
+**Décision technique principale** :
+
+- `PVEPersister` : INSERT OR IGNORE sur (match_id, xuid) PK car le batch est atomique (collect→persist garantit que tous les enrichments PVE sont résolus à la collecte ; pas d'UPDATE post-coup nécessaire).
+- `MetadataPersister` : INSERT OR IGNORE sur (mode_en, lang) PK pour préserver les traductions existantes (édition manuelle prime sur seed automatique du sync). Pattern aligné sur `applyModeNameTranslations` dans steps_metadata.go.
+- Mêmes principes que Shared/Player : 1 transaction par batch, defer Rollback(), no-op sur sous-batch nil, defensive error sur batch nil global.
+
+**Fix structs côté refactor** :
+
+- `PVEMatchStatsInsert` : ancienne définition (14 cols + 1 PveBits) ne correspondait pas au schéma prod (20 cols). Ajout de SentinelKills, MarineKills, TotalKills, Deaths, DamageDealt. Renommage `Waves → WavesCompleted`.
+- `ModeNameTranslationInsert` : ancienne définition (RawName, Lang, TranslatedName) ne correspondait pas au schéma (mode_en, lang, name). Renommé.
+
+**Divergence schéma pve_match_stats notée** : la migration `create_pve_match_stats` ne crée que 14 colonnes, les 5 supplémentaires (sentinel_kills, marine_kills, total_kills, deaths, damage_dealt) proviennent d'une migration Python ancienne non répliquée côté Go. Même pattern que weapon_kills observé précédemment. Patch test-local via ALTER TABLE ADD COLUMN IF NOT EXISTS — un fix migration dédié sera à faire plus tard.
+
+**Résultats observés** :
+
+- 34 tests GREEN dans `internal/persist` : 8 queue + 10 SharedPersister + 5 Worker + 4 E2E + 7 PlayerPersister + 4 PVEPersister + 4 MetadataPersister.
+- `go vet ./internal/persist/...` clean.
+- Tous les 4 Persisters (Shared, Player, PVE, Metadata) sont prêts pour Phase 2 du refactor (sync engine refactor).
+
+**Prochaine étape** : Phase 2 du REFACTOR_COLLECT_PERSIST.md — refacto du sync engine. Commencer par identifier précisément les call-sites à migrer dans `internal/sync/*.go` (InsertRegistry, InsertParticipants, InsertMedals, InsertWeaponKills, InsertKillerVictim, UpsertSharedCSRs, etc.) puis migrer 1 fichier writes.go à la fois sous TDD strict.
+
+---
+
 ## [2026-05-23] Refactor Collect-Persist — audit ENRICHMENTS_CATALOG + gaps per-match + PlayerPersister
 
 **Statut** : Complété

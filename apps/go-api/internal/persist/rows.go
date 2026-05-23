@@ -167,26 +167,36 @@ type SessionInsert struct {
 
 // PVEMatchStatsInsert — row pour shared_pve.pve_match_stats (Firefight).
 //
-// PveBits : bitmask de complétion par colonne kills (PveBitTotalKills,
-// PveBitBossKills, PveBitGrunt…Warden). Calculé par le collecteur au moment
-// où il sait quelles kills counts sont fiables. Set à l'INSERT en mode
+// Schema réel prod (cf. sync/pve.go::PveMatchStatsRow) : 19 cols + PK.
+// Le `create_pve_match_stats` migration n'en crée que 14 — les 5 autres
+// (sentinel_kills, marine_kills, total_kills, deaths, damage_dealt, pve_bits)
+// proviennent d'une migration Python ancienne non répliquée côté Go.
+// Test-local patch via ALTER TABLE ADD COLUMN IF NOT EXISTS (cf.
+// pve_persister_test.go::openPVETestDB).
+//
+// PveBits : bitmask de complétion par colonne kills. Set à l'INSERT en mode
 // Collect→Persist (plus de UPDATE post-coup).
 type PVEMatchStatsInsert struct {
-	MatchID      string `json:"match_id"`
-	XUID         string `json:"xuid"`
-	Waves        int    `json:"waves"`
-	BossKills    int    `json:"boss_kills"`
-	GruntKills   int    `json:"grunt_kills"`
-	EliteKills   int    `json:"elite_kills"`
-	JackalKills  int    `json:"jackal_kills"`
-	BruteKills   int    `json:"brute_kills"`
-	HunterKills  int    `json:"hunter_kills"`
-	SkimmerKills int    `json:"skimmer_kills"`
-	CrawlerKills int    `json:"crawler_kills"`
-	SoldierKills int    `json:"soldier_kills"`
-	KnightKills  int    `json:"knight_kills"`
-	WardenKills  int    `json:"warden_kills"`
-	PveBits      *int   `json:"pve_bits,omitempty"`
+	MatchID        string  `json:"match_id"`
+	XUID           string  `json:"xuid"`
+	WavesCompleted int     `json:"waves_completed"`
+	BossKills      int     `json:"boss_kills"`
+	GruntKills     int     `json:"grunt_kills"`
+	EliteKills     int     `json:"elite_kills"`
+	JackalKills    int     `json:"jackal_kills"`
+	BruteKills     int     `json:"brute_kills"`
+	HunterKills    int     `json:"hunter_kills"`
+	SkimmerKills   int     `json:"skimmer_kills"`
+	CrawlerKills   int     `json:"crawler_kills"`
+	SoldierKills   int     `json:"soldier_kills"`
+	KnightKills    int     `json:"knight_kills"`
+	WardenKills    int     `json:"warden_kills"`
+	SentinelKills  int     `json:"sentinel_kills"`
+	MarineKills    int     `json:"marine_kills"`
+	TotalKills     int     `json:"total_kills"`
+	Deaths         int     `json:"deaths"`
+	DamageDealt    float64 `json:"damage_dealt"`
+	PveBits        *int    `json:"pve_bits,omitempty"`
 }
 
 // MatchCSRInsert — row pour shared.match_csrs (CSR de tous les participants
@@ -209,8 +219,12 @@ type MatchCSRInsert struct {
 }
 
 // ModeNameTranslationInsert — row pour metadata.mode_name_tr.
+//
+// Schema cf. internal/migration/steps_metadata.go : (mode_en, lang, name)
+// avec PK (mode_en, lang). INSERT OR IGNORE pour préserver les traductions
+// existantes (l'edition manuelle n'est pas écrasée par les seeds automatiques).
 type ModeNameTranslationInsert struct {
-	RawName        string `json:"raw_name"`
-	Lang           string `json:"lang"`
-	TranslatedName string `json:"translated_name"`
+	ModeEN string `json:"mode_en"`
+	Lang   string `json:"lang"`
+	Name   string `json:"name"`
 }
