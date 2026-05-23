@@ -44,6 +44,9 @@ func insertHighlightEventsFromData(
 
 	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
 	if err != nil {
+		// Phase 4.3 métriques : compteur erreurs de parse (zlib invalide,
+		// format film incorrect, etc.) pour observabilité prod.
+		observability.IncCounter("highlight_events_parse_total_invalid_data")
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
@@ -53,6 +56,7 @@ func insertHighlightEventsFromData(
 		// l'historique highlight events. Désormais : WARN + compteur
 		// expvar pour qu'une regression soit immédiatement visible.
 		observability.IncCounter("highlight_events_parse_anomaly_total")
+		observability.IncCounter("highlight_events_parse_total_stale_cache")
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
 			"match_id", matchID,
 			"film_version", filmMajorVersion,
@@ -64,6 +68,7 @@ func insertHighlightEventsFromData(
 		}
 		return nil
 	}
+	observability.IncCounter("highlight_events_parse_total_ok")
 
 	n, err := InsertHighlightEvents(ctx, sharedDB, matchID, events)
 	if err != nil {
@@ -132,12 +137,14 @@ func ProcessHighlightEvents(
 
 	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
 	if err != nil {
+		observability.IncCounter("highlight_events_parse_total_invalid_data")
 		return fmt.Errorf("ParseHighlightEvents: %w", err)
 	}
 	if len(events) == 0 {
 		// Anomalie : chunk téléchargé non-vide mais 0 event parsé.
 		// Voir insertHighlightEventsFromData pour la justification.
 		observability.IncCounter("highlight_events_parse_anomaly_total")
+		observability.IncCounter("highlight_events_parse_total_stale_cache")
 		slog.WarnContext(ctx, "highlight_events parse_anomaly: chunk non-vide mais 0 events extraits",
 			"match_id", matchID,
 			"film_version", filmMajorVersion,
@@ -149,6 +156,7 @@ func ProcessHighlightEvents(
 		}
 		return nil
 	}
+	observability.IncCounter("highlight_events_parse_total_ok")
 
 	n, err := InsertHighlightEvents(ctx, sharedDB, matchID, events)
 	if err != nil {
