@@ -184,3 +184,156 @@ func TestSubmitOrInsertMatch_BatchModeFalse_RoutesToLegacy(t *testing.T) {
 	// le résultat. On vérifie juste que submitOrInsertMatch ne panique pas.
 	_ = e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm)
 }
+
+// ─── Test E2E Phase 2.4 : fetchMatchData → submitMatchAsBatch → DB ────────
+//
+// Exerce le pipeline complet du chemin Collect→Persist avec mockHaloClient :
+// HTTP API mocked → fetchMatchData (parse JSON, build fetchedMatch) →
+// submitOrInsertMatch (batchMode=true) → SharedPersister + PlayerPersister →
+// rows en DB. Aucune dépendance réseau.
+
+// patchSharedSchemaForBatch ajoute les colonnes du Phase 2.1+ schema qui
+// sont créées par migration mais absentes de sharedSchemaSQL (EnsureSharedSchema).
+// Mirror du patch test-local appliqué dans openSharedTestDB du package persist.
+func patchSharedSchemaForBatch(t *testing.T, sharedDB *sql.DB) {
+	t.Helper()
+	for _, col := range []string{
+		"match_intensity DOUBLE",
+		"backfill_completed BIGINT DEFAULT 0",
+	} {
+		if _, err := sharedDB.Exec("ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS " + col); err != nil {
+			t.Fatalf("patch match_registry %s: %v", col, err)
+		}
+	}
+	if _, err := sharedDB.Exec("ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS backfill_bits INTEGER"); err != nil {
+		t.Fatalf("patch match_participants backfill_bits: %v", err)
+	}
+}
+
+func TestE2ECollectPersist_FetchThenBatchSubmit(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+	patchSharedSchemaForBatch(t, sharedDB)
+
+	// 2 matchs avec ~2 joueurs chacun + médailles.
+	matchIDs := []string{
+		"aabbccdd-0000-4000-8000-000000000001",
+		"aabbccdd-0000-4000-8000-000000000002",
+	}
+	statsBody := map[string]map[string]any{}
+	for _, id := range matchIDs {
+		statsBody[id] = makeMatchJSON(id, 2)
+	}
+	mock := &mockHaloClient{
+		history:   makeHistory(matchIDs...),
+		statsBody: statsBody,
+	}
+
+	e := &SyncEngine{
+		gamertag: "Player0", xuid: "0000000000000000",
+		titleSlug: "halo_infinite",
+		batchMode: true, // chemin Collect→Persist
+	}
+
+	opts := domain.SyncOptions{
+		MatchType:        "matchmaking",
+		MaxMatches:       10,
+		WithParticipants: true,
+		WithMedals:       true,
+	}
+
+	result := &domain.SyncResult{}
+	for _, id := range matchIDs {
+		fm, err := e.fetchMatchData(context.Background(), mock, id, opts)
+		if err != nil {
+			t.Fatalf("fetchMatchData(%s): %v", id, err)
+		}
+		if fm == nil {
+			t.Fatalf("fetchMatchData retourne nil pour %s", id)
+		}
+		if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm); err != nil {
+			t.Fatalf("submitOrInsertMatch(%s): %v", id, err)
+		}
+	}
+
+	// Compteurs SyncResult
+	if result.MatchesInserted != 2 {
+		t.Errorf("MatchesInserted = %d, want 2", result.MatchesInserted)
+	}
+
+	// Shared DB
+	if n := countRows(t, sharedDB, "match_registry"); n != 2 {
+		t.Errorf("match_registry : %d, want 2", n)
+	}
+	if n := countRows(t, sharedDB, "match_participants"); n != 4 {
+		t.Errorf("match_participants : %d, want 4 (2 matchs x 2 joueurs)", n)
+	}
+	if n := countRows(t, sharedDB, "medals_earned"); n < 1 {
+		t.Errorf("medals_earned : %d, want >= 1", n)
+	}
+
+	// Player DB — enrichment placeholder pour chaque match
+	if n := countRows(t, playerDB, "player_match_enrichment"); n != 2 {
+		t.Errorf("player_match_enrichment : %d, want 2", n)
+	}
+}
+
+// ─── Property INSERT-only : re-submit même match n'écrase pas ────────────
+
+func TestE2ECollectPersist_ReSubmitMatch_IdempotentNoOverwrite(t *testing.T) {
+	playerDB, sharedDB := newInMemoryDBs(t)
+	patchSharedSchemaForBatch(t, sharedDB)
+
+	id := "aabbccdd-0000-4000-8000-000000000099"
+	stats := map[string]map[string]any{id: makeMatchJSON(id, 2)}
+	mock := &mockHaloClient{
+		history:   makeHistory(id),
+		statsBody: stats,
+	}
+
+	e := &SyncEngine{
+		gamertag: "Player0", xuid: "0000000000000000",
+		titleSlug: "halo_infinite", batchMode: true,
+	}
+	opts := domain.SyncOptions{
+		MatchType: "matchmaking", MaxMatches: 10,
+		WithParticipants: true, WithMedals: true,
+	}
+
+	// 1ère sync
+	fm1, err := e.fetchMatchData(context.Background(), mock, id, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := &domain.SyncResult{}
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm1); err != nil {
+		t.Fatal(err)
+	}
+
+	// Capture l'état initial — kills du joueur "xuid(0000000000000000)"
+	var initialKills int
+	err = sharedDB.QueryRow(
+		"SELECT kills FROM match_participants WHERE match_id = ? AND xuid LIKE ?",
+		id, "%0000000000000000%").Scan(&initialKills)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 2e submit du MÊME match (simule retry / re-sync)
+	fm2, _ := e.fetchMatchData(context.Background(), mock, id, opts)
+	if err := e.submitOrInsertMatch(context.Background(), sharedDB, playerDB, nil, result, fm2); err != nil {
+		t.Fatalf("2e submitOrInsertMatch: %v", err)
+	}
+
+	// La row doit toujours avoir 1 entrée registry + N participants
+	if n := countRows(t, sharedDB, "match_registry"); n != 1 {
+		t.Errorf("registry : %d après re-submit, want 1 (INSERT-only skip)", n)
+	}
+	// kills initial préservé (pas d'UPDATE)
+	var afterKills int
+	_ = sharedDB.QueryRow(
+		"SELECT kills FROM match_participants WHERE match_id = ? AND xuid LIKE ?",
+		id, "%0000000000000000%").Scan(&afterKills)
+	if afterKills != initialKills {
+		t.Errorf("kills modifié post-re-submit : initial=%d after=%d (INSERT-only viole)", initialKills, afterKills)
+	}
+}
