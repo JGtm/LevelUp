@@ -273,6 +273,33 @@ _ = eg.Wait()
 **État actuel** : download chunk = parallèle entre matchs (via errgroup pagination).
 → **Déjà OK pour le téléchargement entre matchs**. La vérification confirme juste que ça marche bien.
 
+### 3.1bis NEW — Paralléliser download chunks REPLICATION_DATA INTRA-FILM dans GetMatchFilm — ✅ FAIT 2026-05-23 (commit f00468c7)
+
+**Source** : opportunité ratée dans le sprint initial 2026-05-22, reprise sur demande utilisateur explicite ("c'est tout le traitement et les calculs qu'il faut optimisier niveau perf").
+
+**Constat** : `GetMatchFilm` ([halo_client.go:371](apps/go-api/internal/sync/halo_client.go#L371)) téléchargeait les chunks d'un film via une boucle `for` séquentielle. Un film typique = 10-30 chunks × 200-500ms RTT CDN = **3-15s wall-time par film**. Phase 3.0 avait parallélisé "1 goroutine par match" donc N films en parallèle, mais à l'intérieur de chaque match les chunks restaient sériels.
+
+**Livré** : `errgroup.SetLimit(filmChunkParallelism=8)` télécharge les chunks REPLICATION_DATA d'un film en parallèle. Mesure TDD : 10 chunks × 100ms latence simulée = **1010ms baseline → 203ms parallèle (5× speedup)**.
+
+**Architecture race-free sans mutex** :
+1. Phase séquentielle : pré-filtre cache hits vs misses (cache check = accès fichier local rapide).
+2. Phase parallèle : chaque goroutine écrit dans un slot pré-alloué de `dlResults[]` indexé par position dans `toDownload` (jamais par `chunk.Index` qui peut être sparse). Pas de map concurrent.
+3. Phase séquentielle post-`eg.Wait()` : assemble le map final. Race-free par construction.
+
+**Garde "traitement attend tous DL"** : `GetMatchFilm` ne retourne qu'après `eg.Wait()` + assemblage. Le caller `BackfillWeaponKillsForMatch` reçoit soit une erreur, soit un map ENTIÈREMENT rempli — impossible que `BuildWeaponTimelines`/`ScanFireEventsAll` voient un `rawChunks` partiel. Test `CompletesAllBeforeReturn` verrouille via compteur HTTP atomique == N au retour.
+
+**6 tests TDD écrits AVANT impl** ([halo_client_film_parallel_test.go](../apps/go-api/internal/sync/halo_client_film_parallel_test.go)) :
+- `ParallelDownloadFasterThanSequential` : test perf principal. ÉCHOUE baseline (1.01s), PASSE post-impl (0.20s).
+- `PreservesAllChunks` : ordre + contenu + métadonnées preserves, détecte les swaps inter-goroutines.
+- `CompletesAllBeforeReturn` : garde critique pour le caller.
+- `OneChunkFails_ReturnsError` : errgroup propagation.
+- `CancelMidDownload` : ctx.Cancel à mi-parcours.
+- `NoRace` : 30 chunks parallèles `-race` clean.
+
+4 tests existants (`BasicPrefix`, `MultiChunk`, `FilmAbsent`, `DownloadFails`) restent verts → **no impact**. Suite complète : unit 10.7s + race 1.2s + integration 38s tout vert.
+
+**Gain attendu en prod** : sur cycle Madina 21 films × 6s gaspillés intra-film en série = **~120s économisés** en plus du gain Phase 3.0 (~150-200s). Combiné, on attaque les fondations du "cycle 15min".
+
 ### 3.2 ~~Move parse highlight_events vers la phase parallèle~~ **DÉPRIORISÉ P3** (1.5h)
 
 **Source** : Audit Agent 1 + Agent 4 — gain réel mesuré beaucoup plus faible qu'estimé.
