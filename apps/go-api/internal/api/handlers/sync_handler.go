@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
@@ -117,6 +118,13 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 			}
 			return ""
 		}))
+	}
+	// Phase 2.3 refactor Collect→Persist : env var opt-in pour basculer la
+	// boucle d'insertion sur le chemin INSERT-only (SharedPersister +
+	// PlayerPersister). Default désactivé → legacy insertFetchedMatch.
+	// Aligne sur AutoSyncScheduler.defaultRunnerFactory.
+	if os.Getenv("LEVELUP_PERSIST_BATCH") == "1" {
+		engine = engine.WithBatchPersistMode(true)
 	}
 	return engine
 }
