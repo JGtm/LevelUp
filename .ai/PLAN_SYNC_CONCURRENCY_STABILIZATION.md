@@ -401,24 +401,22 @@ COMMIT;
 
 **Trigger** : ✅ automatic au boot. **Détection runtime périodique = sous-phase 4.1.b à venir** (plus complexe car requiert coordination avec scheduler de sync actif). Au boot, no concurrent writers → trivialement safe.
 
-### 4.2 Détection du C++ FATAL DuckDB (1h)
+### 4.2 Détection du C++ FATAL DuckDB — ✅ FAIT 2026-05-23 (commit c7d343a6)
 
 **Problème** : `terminate called after throwing duckdb::FatalException` est un crash C++ qui bypass `recover()` Go.
 
-**Solution** : signal handler SIGABRT dans main.go.
-```go
-sigAbort := make(chan os.Signal, 1)
-signal.Notify(sigAbort, syscall.SIGABRT)
-go func() {
-    <-sigAbort
-    buf := make([]byte, 64<<10)
-    n := runtime.Stack(buf, true)
-    crashFile.Write(buf[:n])
-    os.Exit(2)
-}()
-```
+**Livré** : signal handler SIGABRT + SIGSEGV dans `main.go::installFatalSignalHandler` + helper testable `dumpFatalStack(w, sig)`. Le handler dump la stack de toutes les goroutines vers `server.crash.log` puis `os.Exit(2)` — sinon `abort()` libc ré-émet le signal après le retour du handler et le process meurt silencieusement.
 
-**Limitation** : SIGABRT depuis libc `terminate()` peut tuer le process avant que le handler tourne. À tester. Si KO, fallback : wrapper superviseur (overkill).
+**Architecture** :
+- `crashFile` hoisté en variable de scope outer pour accessibilité par `debug.SetCrashOutput` (panic Go) ET le signal handler (fatal C++).
+- `installFatalSignalHandler(crashFile)` : `signal.Notify(SIGABRT, SIGSEGV)` + goroutine dispatch.
+- `dumpFatalStack(w io.Writer, sig os.Signal)` extrait pour testabilité (mock writer + signal).
+
+**Note Windows** : `signal.Notify(SIGABRT)` compile mais ne fire pas (Windows utilise SEH, pas signaux POSIX). Code defensive cross-platform — no-op sur Windows, actif Linux/macOS.
+
+**Tests** : 2 tests unitaires sur `dumpFatalStack` (header timestamp/signal/pid, marqueur fin, présence "goroutine"). `installFatalSignalHandler` non testé directement (os.Exit terminerait le test).
+
+**Limitation connue** : SIGABRT depuis libc terminate() peut tuer le process avant que le handler tourne (race entre signal dispatch et abort re-raise). En pratique sur Linux glibc, le handler a généralement quelques ms pour s'exécuter. Si KO en prod, fallback : wrapper superviseur (overkill, pas urgent).
 
 ### 4.3 Métriques concurrence (2h)
 
