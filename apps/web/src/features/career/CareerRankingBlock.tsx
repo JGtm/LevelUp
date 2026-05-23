@@ -24,13 +24,13 @@ interface Props {
   lusrData: CareerLusrSection | null | undefined
 }
 
-function csrTierLabel(rank: CareerCSRRank, placementLabel: string): string {
+function csrTierLabel(rank: CareerCSRRank, placementLabel: string, unrankedLabel: string): string {
   if (!rank.tier) {
     // Phase 6 : placement_total (5 ou 10) injecté par le backend selon la saison
     // du snapshot. Fallback 10 si payload legacy.
     const total = rank.placement_total > 0 ? rank.placement_total : 10
     const completed = Math.min(total - 1, Math.max(0, total - rank.measurement_matches_remaining))
-    return `${placementLabel} (${completed}/${total})`
+    return completed === 0 ? unrankedLabel : `${placementLabel} (${completed}/${total})`
   }
   return rank.sub_tier > 0 ? `${rank.tier} ${toRoman(rank.sub_tier)}` : rank.tier
 }
@@ -113,7 +113,7 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                         </span>
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {csrTierLabel(pl.current, t('career.ranking.placement'))}{formatCSRValue(pl.current)}
+                        {csrTierLabel(pl.current, t('career.ranking.placement'), t('career.ranking.unranked'))}{formatCSRValue(pl.current)}
                       </p>
                     </div>
                   </li>
@@ -147,7 +147,7 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
                           ? cp.tier_label
                             ? `${cp.tier_label} · ${Math.round(cp.rating_value).toLocaleString()}`
                             : Math.round(cp.rating_value).toLocaleString()
-                          : `${t('career.ranking.placement')} (0/10)`}
+                          : t('career.ranking.unranked')}
                       </p>
                     </div>
                   </li>
