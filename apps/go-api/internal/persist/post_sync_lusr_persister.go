@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // LUSRRatingInsert — row LUSR prête à INSERT dans match_skill_rank.
@@ -101,6 +102,67 @@ func (p *PostSyncLUSRPersister) Persist(ctx context.Context, rows []LUSRRatingIn
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("persist: Commit LUSR: %w", err)
+	}
+	return nil
+}
+
+// Upsert remplace les LUSR ratings des match_id fournis dans le batch.
+// Variante de Persist plus sûre : ne touche QUE les match_id présents dans
+// `rows`, préserve toutes les autres LUSR. Pattern :
+//   - DELETE FROM match_skill_rank WHERE match_id IN (?, ?, ?) AND rating_type='LUSR'
+//   - INSERT batch des nouvelles rows
+//   - Le tout en 1 TX atomique.
+//
+// Sémantique upsert : équivalent à un UPDATE-or-INSERT par match_id, mais
+// sans le pattern UPDATE-then-INSERT qui stresse l'ART. Préserve les CSR
+// (filtre rating_type='LUSR' sur le DELETE).
+//
+// Si rows est vide → no-op.
+func (p *PostSyncLUSRPersister) Upsert(ctx context.Context, rows []LUSRRatingInsert) error {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("persist: BeginTx LUSR upsert: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// 1. DELETE batch des match_id concernés (préserve CSR et autres LUSR).
+	placeholders := make([]string, len(rows))
+	args := make([]any, len(rows))
+	for i, r := range rows {
+		if r.MatchID == "" {
+			return errors.New("persist: LUSRRatingInsert.MatchID vide")
+		}
+		placeholders[i] = "?"
+		args[i] = r.MatchID
+	}
+	deleteQ := `DELETE FROM match_skill_rank WHERE rating_type='LUSR' AND match_id IN (` +
+		strings.Join(placeholders, ",") + `)`
+	if _, err := tx.ExecContext(ctx, deleteQ, args...); err != nil {
+		return fmt.Errorf("persist: DELETE LUSR batch (n=%d): %w", len(rows), err)
+	}
+
+	// 2. INSERT batch des nouvelles rows.
+	for _, r := range rows {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO match_skill_rank
+				(match_id, rating_type, rating_value, rating_deviation,
+				 tier, tier_fr, sub_tier, tier_label,
+				 rating_delta, playlist_group)
+			VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, r.RatingValue, r.RatingDeviation,
+			r.Tier, r.TierFR, r.SubTier, r.TierLabel,
+			r.RatingDelta, r.PlaylistGroup,
+		); err != nil {
+			return fmt.Errorf("persist: INSERT LUSR upsert %s: %w", r.MatchID, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("persist: Commit LUSR upsert: %w", err)
 	}
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"os"
 	"strings"
 	"time"
 )
@@ -238,6 +239,13 @@ func upsertLUSRRatings(
 	existingCSR, existingLUSR map[string]bool,
 	seedRatings map[string]float64,
 ) (int, error) {
+	// Phase 4.3 — chemin INSERT-only via PostSyncLUSRPersister si
+	// LEVELUP_POSTSYNC_INSERT_ONLY=1. Élimine le UPDATE-then-INSERT
+	// row-by-row qui stressait l'index ART en mode multi-joueur concurrent.
+	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+		return upsertLUSRRatingsBatch(ctx, playerDB, results, existingCSR, existingLUSR, seedRatings)
+	}
+
 	now := time.Now().UTC()
 	prevRating := make(map[string]float64)
 	for pg, r := range seedRatings {

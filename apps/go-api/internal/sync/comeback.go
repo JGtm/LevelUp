@@ -17,6 +17,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -34,6 +35,13 @@ func BackfillDominanceFlags(
 	xuid string,
 	matchIDs []string,
 ) error {
+	// Phase 4.4 — chemin INSERT-only batch si LEVELUP_POSTSYNC_INSERT_ONLY=1.
+	// 1 single UPDATE multi-row au lieu de N UPDATE row-by-row (réduit
+	// massivement le stress ART sur player_match_enrichment).
+	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+		return backfillDominanceFlagsBatch(ctx, sharedDB, playerDB, xuid, matchIDs)
+	}
+
 	for _, matchID := range matchIDs {
 		flag, err := computeMatchDominanceFlag(ctx, sharedDB, xuid, matchID)
 		if err != nil {

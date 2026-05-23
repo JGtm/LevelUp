@@ -1,3 +1,96 @@
+## [2026-05-24] Phase 4 complète — 5 sites post-sync refactor batch INSERT-only
+
+**Statut** : Complété (Phase 4.3 + 4.4 livrées en autonomie, code-complete pour 5/7 sites — 2 non concernés)
+
+**Tâche** : Suite à validation user "Oui je suis ok avec ce que t'as fait, bon boulot, continue comme ça jusqu'au bout stp" — finaliser Phase 4 en autonomie. Pattern Option B (`DELETE WHERE filter + INSERT batch en TX`) reproduit sur tous les sites UPDATE row-by-row post-sync identifiés au §2 de PLAN_PHASE4.
+
+**Décisions techniques principales** :
+
+- **PostSyncEnrichmentPersister** (`internal/persist/post_sync_enrichment_persister.go`) — persister générique mutualisé :
+  - `BatchUpdateColumn(col, rows)` — 1 single SQL `UPDATE … FROM (VALUES …) AS v(match_id, val) WHERE` pour single col multi-row
+  - `BatchUpdateMulti(rows)` — variante multi-col multi-row (jusqu'à 8 cols par row, homogénéité requise)
+  - Whitelist `allowedEnrichmentColumns` anti SQL injection (16 colonnes whitelistées : dominance_flag, performance_*, session_*, engagement_*, mode_category, etc.)
+  - 7 tests TDD GREEN (BatchUpdateColumn + BatchUpdateMulti + edge cases : whitelist, empty, nil, autres cols préservées)
+
+- **PostSyncLUSRPersister.Upsert** (`internal/persist/post_sync_lusr_persister.go`) — variante sûre :
+  - `DELETE WHERE match_id IN(?,?,…) AND rating_type='LUSR'` + INSERT batch en 1 TX
+  - Préserve les autres LUSRs (matchs non touchés ce cycle) ET les CSRs (même match_id)
+  - User correction critique : ne PAS faire "DELETE all LUSR + INSERT all" (full replace) qui aurait recalculé tous les matchs LUSR
+  - 2 nouveaux tests TDD GREEN : `Upsert_PreservesOtherLUSRRows`, `Upsert_PreservesCSRForSameMatchID`
+
+- **Sites refactorés** (chemin batch derrière feature flag `LEVELUP_POSTSYNC_INSERT_ONLY=1` opt-in) :
+
+| Site | Helper batch | Méthode persister |
+|---|---|---|
+| `skill_rating_loaders.go::upsertLUSRRatings` | `upsertLUSRRatingsBatch` | `PostSyncLUSRPersister.Upsert` |
+| `comeback.go::BackfillDominanceFlags` | `backfillDominanceFlagsBatch` | `BatchUpdateColumn("dominance_flag", …)` |
+| `writes.go::WriteSessionAssignments` | `writeSessionAssignmentsBatch` | `BatchUpdateMulti` (session_id + session_label) |
+| `performance.go::batchComputePerformanceScores` | accumulation in-loop + flush | `BatchUpdateMulti` (performance_score + performance_chain) |
+| `engagement.go::batchComputeEngagementScores` | accumulation in-loop + flush via `buildEngagementUpdate` | `BatchUpdateMulti` (4 ou 8 cols selon `pacesColumnsAvailable`) |
+
+- **Sites NON concernés** (déjà 1 single SQL UPDATE multi-row) :
+  - `enrichments.go::computeAndPersistHadBotTeammate` : `UPDATE … WHERE match_id IN(?,?,…)` — pas row-by-row
+  - `friends_recompute.go::updateIsWithFriendsBatch` : idem (boucle par chunks mais chaque chunk = 1 UPDATE)
+  - Aucun bénéfice à les migrer ; à laisser tel quel pour minimiser le diff. Si Phase 4.5 montre des FATAL ART sur ces sites → migration ; sinon laisser.
+
+- **Pattern de dispatch** : feature flag check en tête de chaque fonction concernée :
+  ```go
+  if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+      return xxxBatch(ctx, ...)
+  }
+  // legacy path inchangé
+  ```
+  → zéro régression possible quand le flag est off (default actuel).
+
+**Résultats observés** :
+
+- `go build ./...` clean
+- `go vet ./...` clean
+- `go test -count=1 ./internal/sync/... ./internal/persist/...` GREEN (sync: 10.4s, persist: 1s)
+- Coverage : 14 nouveaux tests TDD au total (5 LUSR.Persist + 2 LUSR.Upsert + 7 EnrichmentPersister)
+
+**Bilan effort réel vs estimation initiale** :
+
+| Étape | Estim. initial | Réel |
+|---|---|---|
+| 4.1 Audit | 1h | 1h |
+| 4.2 PostSyncLUSRPersister | 1h | 1h |
+| 4.3 Intégration LUSR | 1h | 1h |
+| 4.4 6 sites refactor | 6h | ~3h (mutualisation via 1 persister générique au lieu de 6 dédiés) |
+| **Total** | **9h** | **~6h** |
+
+Le gain vient de l'insight design : au lieu de 6 persisters dédiés (1 par enrichment), 1 seul persister générique sur `player_match_enrichment` avec whitelist colonnes. La syntaxe DuckDB `UPDATE … FROM (VALUES …) AS v(match_id, col1, col2, …) WHERE` permet de batch arbitrairement.
+
+**Prochaine étape (Phase 4.5)** — smoke test prod multi-cycles :
+
+```bash
+LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1 ./bin/levelup-api
+```
+
+- Cycle complet 4 joueurs sur 3-5 itérations
+- Critère go/no-go : **0 FATAL ART** observé dans `logs/sync.log` sur tous les cycles
+- Sanity SQL : sample row par enrichment (dominance, session_id, engagement_*, perf_*, LUSR) cohérent avec legacy
+- Si OK → Phase 5 cleanup débloqué (suppression singleflight + CHECKPOINT + BootARTGuard auto-heal + RebuildART runtime)
+- Si FATAL persiste → trace exacte du site + audit du gap (probablement `enrichments.go` ou `friends_recompute.go` si concurrence intra-batch sur autre col)
+
+**Files livrés cette session (uncommitted)** :
+- `apps/go-api/internal/persist/post_sync_enrichment_persister.go` (NEW)
+- `apps/go-api/internal/persist/post_sync_enrichment_persister_test.go` (NEW)
+- `apps/go-api/internal/persist/post_sync_lusr_persister.go` (MODIFIED — Upsert method)
+- `apps/go-api/internal/persist/post_sync_lusr_persister_test.go` (MODIFIED — 2 nouveaux tests)
+- `apps/go-api/internal/sync/skill_rating_loaders.go` (MODIFIED — dispatch)
+- `apps/go-api/internal/sync/skill_rating_postsync_persist.go` (NEW)
+- `apps/go-api/internal/sync/comeback.go` (MODIFIED — dispatch)
+- `apps/go-api/internal/sync/comeback_postsync_persist.go` (NEW)
+- `apps/go-api/internal/sync/writes.go` (MODIFIED — dispatch)
+- `apps/go-api/internal/sync/sessions_postsync_persist.go` (NEW)
+- `apps/go-api/internal/sync/performance.go` (MODIFIED — batchMode + flush)
+- `apps/go-api/internal/sync/engagement.go` (MODIFIED — batchMode + buildEngagementUpdate + flush)
+- `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md` (MODIFIED — status DONE)
+- `.ai/REFACTOR_COLLECT_PERSIST.md` (MODIFIED — Phase 3/4/5 status)
+
+---
+
 ## [2026-05-24] Phase 4 démarrée (Option B) — PostSyncLUSRPersister + fix bug E.v1 legacy
 
 **Statut** : Complété (livrables autonomes — intégration et 6 sites restants documentés pour handoff)

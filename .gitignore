@@ -106,6 +106,7 @@ data/cache/*
 # Exception : images de rang carrière bundlées au repo pour éviter
 # 272 appels Halo upstream à chaque déploiement (cf. populate-career-rank-images CLI).
 !data/cache/career-rank-image/
+data/sync_cache/
 data/backup_legacy/
 backups/
 

@@ -13,10 +13,12 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"os"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/persist"
 )
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -567,6 +569,16 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	// percentile est calculé sur la fenêtre des 50 derniers entrées de sa chaîne.
 	chainHistory := make(map[string][]historyRow)
 
+	// Phase 4.4 — chemin INSERT-only friendly si flag actif : accumule les
+	// (match_id, score, chain) en RAM puis 1 single UPDATE batch en fin de boucle.
+	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1"
+	type perfUpdate struct {
+		MatchID string
+		Score   float64
+		Chain   string
+	}
+	var pendingUpdates []perfUpdate
+
 	// Stats par chaîne pour observabilité (utile pour diagnostiquer "pourquoi si peu
 	// de matchs scorés ?" — distribution réelle des chaînes pour le joueur).
 	var (
@@ -607,7 +619,17 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 
 			score := computeRelativePerformanceScore(&match, window)
 			if score != nil {
-				// Pattern UPDATE-then-INSERT (2026-05-23, contournement bug ART
+				// Phase 4.4 batch mode : accumuler en RAM, flush en fin de boucle.
+				if batchMode {
+					pendingUpdates = append(pendingUpdates, perfUpdate{
+						MatchID: match.MatchID, Score: *score, Chain: chain,
+					})
+					updated++
+					updatedByChain[chain]++
+					chainHistory[chain] = append(history, match)
+					continue
+				}
+				// Pattern UPDATE-then-INSERT (legacy, contournement bug ART
 				// DuckDB DELETE-side). On évite ON CONFLICT DO UPDATE qui fait
 				// DELETE+INSERT en interne et corrompt l'index ART de
 				// player_match_enrichment au fil des cycles.
@@ -648,6 +670,27 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 
 		// Pousser le match courant dans l'historique de sa chaîne (toujours, même skip).
 		chainHistory[chain] = append(history, match)
+	}
+
+	// Phase 4.4 batch mode : flush des updates accumulés en 1 single SQL.
+	if batchMode && len(pendingUpdates) > 0 {
+		rows := make([]persist.EnrichmentMultiColumnUpdate, 0, len(pendingUpdates))
+		for _, u := range pendingUpdates {
+			rows = append(rows, persist.EnrichmentMultiColumnUpdate{
+				MatchID: u.MatchID,
+				Fields: map[string]any{
+					"performance_score": u.Score,
+					"performance_chain": u.Chain,
+				},
+			})
+		}
+		p := persist.NewPostSyncEnrichmentPersister(playerDB)
+		if err := p.BatchUpdateMulti(ctx, rows); err != nil {
+			slog.ErrorContext(ctx, "batchComputePerformanceScores: BatchUpdateMulti échoué",
+				"batch_size", len(rows), "err", err)
+			execErrors += len(rows)
+			updated = 0
+		}
 	}
 
 	// Résumé final : observabilité de la distribution réelle.

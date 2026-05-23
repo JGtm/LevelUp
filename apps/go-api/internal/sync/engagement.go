@@ -27,12 +27,14 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/persist"
 )
 
 // engagementMatchRow regroupe les inputs necessaires pour calculer le score
@@ -83,6 +85,13 @@ func batchComputeEngagementScores(
 	historyByMode := make(map[string][]domain.HistoricalEngagementBrut)
 	updated := 0
 	now := time.Now().UTC()
+
+	// Phase 4.4 — chemin INSERT-only friendly si LEVELUP_POSTSYNC_INSERT_ONLY=1 :
+	// on accumule les updates en RAM et on flush via PostSyncEnrichmentPersister
+	// (1 single UPDATE multi-row multi-col au lieu de N UPDATE row-by-row).
+	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1"
+	hasPaces := pacesColumnsAvailable(ctx, playerDB)
+	var pendingUpdates []persist.EnrichmentMultiColumnUpdate
 
 	for _, m := range matches {
 		if !force && existing[m.MatchID] {
@@ -150,13 +159,19 @@ func batchComputeEngagementScores(
 			continue
 		}
 
-		if err := persistEngagementScore(ctx, playerDB, m.MatchID, modeCategory, result, now); err != nil {
-			slog.ErrorContext(ctx, "engagement: persist failed",
-				"match_id", m.MatchID, "err", err)
-			observability.IncCounter("engagement_persist_error_total")
-			continue
+		if batchMode {
+			pendingUpdates = append(pendingUpdates,
+				buildEngagementUpdate(m.MatchID, modeCategory, result, now, hasPaces))
+			observability.IncCounter("engagement_score_computed_total")
+		} else {
+			if err := persistEngagementScore(ctx, playerDB, m.MatchID, modeCategory, result, now); err != nil {
+				slog.ErrorContext(ctx, "engagement: persist failed",
+					"match_id", m.MatchID, "err", err)
+				observability.IncCounter("engagement_persist_error_total")
+				continue
+			}
+			observability.IncCounter("engagement_score_computed_total")
 		}
-		observability.IncCounter("engagement_score_computed_total")
 
 		// Persist match_intensity dans shared.match_registry (best-effort).
 		if result.MatchIntensity > 0 {
@@ -172,7 +187,46 @@ func batchComputeEngagementScores(
 		updated++
 	}
 
+	// Phase 4.4 — flush des updates accumulés en 1 single UPDATE multi-row.
+	if batchMode && len(pendingUpdates) > 0 {
+		p := persist.NewPostSyncEnrichmentPersister(playerDB)
+		if err := p.BatchUpdateMulti(ctx, pendingUpdates); err != nil {
+			slog.ErrorContext(ctx, "engagement: BatchUpdateMulti échoué",
+				"batch_size", len(pendingUpdates), "err", err)
+			observability.IncCounter("engagement_persist_error_total")
+			return 0, fmt.Errorf("engagement batch flush: %w", err)
+		}
+	}
+
 	return updated, nil
+}
+
+// buildEngagementUpdate construit une EnrichmentMultiColumnUpdate pour 1 match.
+// hasPaces=true => 8 colonnes (full migration), false => 4 colonnes (fallback
+// pre-migration paces). Le set de colonnes est homogène sur tous les matchs
+// d'un même cycle (toutes les rows ont le même schema).
+func buildEngagementUpdate(matchID, modeCategory string, result domain.EngagementScoreResult, now time.Time, hasPaces bool) persist.EnrichmentMultiColumnUpdate {
+	var scoreArg any
+	if result.EngagementScore != nil {
+		scoreArg = *result.EngagementScore
+	}
+	fields := map[string]any{
+		"engagement_score":            scoreArg,
+		"engagement_score_brut":       result.ResidualBrut,
+		"engagement_score_confidence": result.Confidence,
+		"mode_category":               modeCategory,
+	}
+	if hasPaces {
+		fields["engagement_pace_player"] = result.MeanPaceJoueur
+		fields["engagement_pace_team"] = result.MeanPaceTeam
+		fields["engagement_pace_lobby"] = result.MeanPaceLobby
+		fields["engagement_player_activity"] = result.PlayerActivity
+	}
+	_ = now // updated_at géré par le persister
+	return persist.EnrichmentMultiColumnUpdate{
+		MatchID: matchID,
+		Fields:  fields,
+	}
 }
 
 // engagementColumnsAvailable verifie la presence de la colonne engagement_score
