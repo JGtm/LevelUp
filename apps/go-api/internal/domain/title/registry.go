@@ -301,6 +301,13 @@ func (p *PathResolver) JobsCachePath() string {
 	return filepath.Join(p.repoRoot, "data", "cache", "jobs.json")
 }
 
+// SyncCacheDir retourne le répertoire racine du cache fetch intermédiaire
+// (Phase 2 refactor Collect→Persist). Chaque cycle de sync crée un
+// sous-dossier `{cycle_id}/` à l'intérieur. Ex: data/sync_cache/
+func (p *PathResolver) SyncCacheDir() string {
+	return filepath.Join(p.repoRoot, "data", "sync_cache")
+}
+
 // DBProfilesPath retourne le chemin de db_profiles.json (global).
 func (p *PathResolver) DBProfilesPath() string {
 	return filepath.Join(p.repoRoot, "db_profiles.json")

@@ -398,53 +398,74 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 
 ## 8. Plan d'implémentation
 
-### Phase 1 — Infrastructure (~4h)
+### Phase 1 — Infrastructure (~4h) ✅ LIVRÉ
 
-- [ ] **1.1** Créer `internal/persist/` package
-- [ ] **1.2** Définir `MatchBatch`, `SharedBatch`, `PlayerBatch`, `PVEBatch` structs
-- [ ] **1.3** Implémenter `BatchQueue` : WAL JSON + channels + worker pattern
-- [ ] **1.4** Implémenter `Persister` : transaction batch INSERT only
-- [ ] **1.5** Tests unitaires : WAL durabilité, recovery, retry, ordering
+- [x] **1.1** Créer `internal/persist/` package (commit `65a63900`)
+- [x] **1.2** Définir `MatchBatch`, `SharedBatch`, `PlayerBatch`, `PVEBatch` structs (`internal/persist/batch.go`, `rows.go`)
+- [x] **1.3** Implémenter `BatchQueue` : WAL JSON + channels + worker pattern (`queue.go`, `worker.go`)
+- [x] **1.4** Implémenter `Persister` : transaction batch INSERT only — 4 Persisters livrés :
+  - SharedPersister (commit `d8ee8d33`)
+  - PlayerPersister (commit `e19bb504`)
+  - PVEPersister + MetadataPersister (commit `b62f78a0`)
+- [x] **1.5** Tests unitaires : 34 tests GREEN dans `internal/persist/` (queue + 4 persisters + worker + E2E)
 
-### Phase 2 — Sync engine refactor (~5h)
+### Phase 2 — Sync engine refactor (~5h) ✅ LIVRÉ
 
-- [ ] **2.1** Refactor sync delta : accumule dans `MatchBatch` au lieu d'écrire direct
-- [ ] **2.2** Refactor post-sync compute : tous les enrichments dans `EnrichmentRow` unique
-- [ ] **2.3** Submit batch à la fin du cycle au lieu d'écrire en cours
-- [ ] **2.4** Tests TDD : cycle complet collect → submit → persist
+- [x] **2.1** `buildBatchFromFetchedMatch` (collect.go) — DTO → batch pure (commit `25e24f84`, 8 tests)
+- [x] **2.2** Extension `fetchedMatch` avec SharedCSRs + PveStats + mapping batch (commit `0c1025ec`, 12 tests)
+- [x] **2.3** Orchestrateur `submitOrInsertMatch` + flag `batchMode` + feature flag env var (commits `c2bb4200` + `cdadb4c4`, 2 tests + cablage scheduler/handler)
+- [x] **2.4** Tests TDD E2E cycle complet via `mockHaloClient` (commit `7e89acb3`, 4 tests E2E dont async path)
 
-### Phase 3 — Migration progressive (~3h)
+### Phase 3 — Migration progressive (~3h) 🟡 CODE PRÊT, ACTIVATION = USER
 
-- [ ] **3.1** Feature flag `LEVELUP_PERSIST_BATCH=1` (opt-in)
-- [ ] **3.2** Activer pour 1 joueur en test
-- [ ] **3.3** Observer 5 cycles : 0 FATAL ART attendu
-- [ ] **3.4** Étendre à 4 joueurs
-- [ ] **3.5** Flip default à opt-out
+- [x] **3.1** Feature flag `LEVELUP_PERSIST_BATCH=1` (opt-in) — câblé dans scheduler + handler + CLI cmd_sync.go
+- [ ] **3.2** Activer pour 1 joueur en test (USER staging, cf. `.ai/RUNBOOK_PHASE3_ACTIVATION.md`)
+- [ ] **3.3** Observer 5 cycles : 0 FATAL ART attendu (USER)
+- [ ] **3.4** Étendre à 4 joueurs (USER prod)
+- [ ] **3.5** Flip default à opt-out (USER, après 10 cycles validés)
 
-### Phase 4 — Backfill CLI + scripts (~3h)
+### Phase 4 — Backfill CLI + scripts (~3h) ✅ LIVRÉ (scope révisé)
 
-- [ ] **4.1** Refactor `cmd/backfill/*` pour utiliser `persist.BatchQueue`
-- [ ] **4.2** Refactor `cmd/seed-*` (medal, weapon-labels, assists-model)
-- [ ] **4.3** Refactor `cmd/diag_*` qui écrivent (rare mais existe)
+- [x] **4.1** Cablage `LEVELUP_PERSIST_BATCH` dans `cmd/levelup/cmd_sync.go` (2 sites RunDelta) — commit `f741c831`
+- [N/A] **4.2** Refactor `cmd/seed-*` — non concernés (seeds initiaux, pas de concurrence write)
+- [N/A] **4.3** Refactor `cmd/diag_*` — non concernés (read-only ou ops one-shot)
 
-### Phase 5 — Cleanup (~2h)
+**Note** : les backfills `cmd/backfill_all` et `cmd/levelup/cmd_backfill.go` (LUSR, citations, weapons, PSA, engagement, etc.) n'appellent pas `submitMatchAsBatch` — ils ont leurs propres chemins de compute UPDATE-style qui ne touchent pas `shared.match_participants` et donc ne sont pas concernés par le bug ART.
 
-Retirer tout l'anti-ART devenu inutile :
-- [ ] `singleflight` dans `InsertParticipants` (writes.go) — plus de concurrence write
-- [ ] `CHECKPOINT` post-sync (engine_postsync.go::runCheckpoint) — inutile
-- [ ] `BootARTGuard` → garder uniquement la détection (log warning), retirer l'auto-heal automatique
-- [ ] `RebuildMatchParticipantsART` + `RebuildPlayerMatchEnrichmentART` → garder comme outils ops one-shot
-- [ ] `force_rebuild_art` CLI → garder comme outil ops
-- [ ] Migrations UPDATE-then-INSERT (commit `acad4603`) → **revert** (devenu code mort, le INSERT batch est plus simple)
+### Phase 5 — Cleanup (~2h) 🟡 PLAN DOCUMENTÉ, CODE ATTEND PHASE 3
 
-### Phase 6 — Documentation finale (~1h)
+Cf. `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md` pour le plan détaillé.
 
-- [ ] Update `.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md` avec verdict final
-- [ ] Update `docs/adr/` : nouvel ADR "0019-collect-persist-architecture.md"
-- [ ] Update `thought_log.md`
-- [ ] Update `CLAUDE.md` : règle "toute nouvelle écriture DB passe par persist.BatchQueue"
+- [ ] `singleflight` dans `InsertParticipants` — à supprimer post Phase 3 validée
+- [ ] `CHECKPOINT` post-sync — à supprimer
+- [ ] `BootARTGuard` auto-heal — retirer l'auto-heal, garder la détection
+- [ ] `RebuildMatchParticipantsART` runtime — garder comme outil ops, retirer call sites runtime
+- [ ] `force_rebuild_art` CLI — **GARDER** comme outil ops manuel
+- [ ] Migrations UPDATE-then-INSERT (`acad4603`) — revert ou réécrire en INSERT pur
+
+### Phase 6 — Documentation finale (~1h) ✅ LIVRÉ
+
+- [x] Update `.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md` avec verdict final (status 🔴 → 🟢, section RÉSOLUTION) — commit `f741c831`
+- [x] `docs/adr/0019-collect-persist-architecture.md` créé — commit `730894aa`
+- [x] Update `thought_log.md` (5 entrées au fil des phases)
+- [x] Update `CLAUDE.md` : règle écritures DB via `persist.BatchBuilder.Submit` — commit `f741c831`
+- [x] ADR 0017 + 0018 marqués OBSOLÈTES (superseded by 0019)
+- [x] `.ai/RUNBOOK_PHASE3_ACTIVATION.md` créé pour exécution Phase 3 côté user
+
+### Phases bonus livrées (post-design)
+
+- [x] **B6** PurgeOldWAL — méthode `BatchQueue.PurgeOldWAL(maxAge)` + 3 tests TDD (commit `04b56f96`)
+- [x] **B7** Expvar metrics (`persist_shared_total_ok/_error`, `persist_player_total_ok/_error`, `persist_batch_committed_total`, `persist_batch_submitted_total`, `persist_batch_submit_error`)
+- [x] **Async layer optionnelle** — `BatchQueue.PendingCount()` + `Drain(ctx)` + `WithBatchQueue` + Drain à fin de cycle + 4 tests TDD + 1 E2E async GREEN
+
+### Items reportés (pas critiques pour Phase 3)
+
+- [ ] **Cache fetch intermédiaire** (`data/sync_cache/{cycle_id}/`) — feature de debug + economie quota API (cf. §3.5). Mentionné dans doc.go mais pas encore implémenté.
+- [ ] **B8** Multi-titres workers map (`workers[slug][target]`) — forward-compat sans valeur immédiate (Halo Infinite seul titre actuel)
+- [ ] Câblage `BatchQueue` côté `cmd/server/main.go` au boot (création queue + start workers + injection dans SyncEngine via With...) — code prêt, activation différée
 
 **Total effort estimé** : ~18h en TDD strict, sur 2-3 jours.
+**Total livré** : ~12h effective sur 1 jour intense. Activation prod par user + Phase 5 cleanup post-validation = ~3h restants.
 
 ---
 

@@ -17,6 +17,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -51,6 +53,7 @@ type SyncEngine struct {
 	sharedDBPath   string
 	globalDBPath   string // P5.3 : data/global/xbox_aliases.duckdb (mapping xuidâ†’gamertag global)
 	metadataDBPath string
+	syncCacheDir   string // Phase 2 refactor Collect→Persist : data/sync_cache/ root (cf. PathResolver.SyncCacheDir)
 	tokens         *domain.HaloTokens
 	// provider est utilisÃ© pour rÃ©soudre l'access_token Xbox Live (achievements).
 	// Nil si non dÃ©fini (les achievements seront ignorÃ©s).
@@ -282,6 +285,17 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		}
 		client = api
 		slog.DebugContext(ctx, "sync: utilisation HaloAPIClient standard")
+	}
+
+	// Cache fetch intermédiaire (cf. REFACTOR_COLLECT_PERSIST §3.5 / §10 Q7).
+	// Wrap le client avec un cache fichier sous data/sync_cache/{cycle_id}/.
+	// Désactivable via LEVELUP_PERSIST_NO_FETCH_CACHE=1. cycle_id = eventID
+	// du run (créé via logging.WithEvent en début de run).
+	if os.Getenv("LEVELUP_PERSIST_NO_FETCH_CACHE") != "1" && e.syncCacheDir != "" {
+		cacheDir := filepath.Join(e.syncCacheDir, eventID)
+		client = NewCachedHaloClient(client, FetchCacheConfig{CacheDir: cacheDir})
+		slog.InfoContext(ctx, "sync: cache fetch intermédiaire actif",
+			"gamertag", e.gamertag, "cache_dir", cacheDir)
 	}
 
 	// â”€â”€â”€ Pagination de l'historique â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
