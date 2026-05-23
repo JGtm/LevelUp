@@ -260,6 +260,41 @@ Plan de stabilisation finalisé. Reste uniquement P3 : tests régression complé
 
 ---
 
+## [2026-05-23] feat(p3.1bis) — Paralléliser download chunks REPLICATION_DATA INTRA-FILM (TDD strict)
+
+**Statut** : Phase 3.1bis DONE en 1 commit (`f00468c7`). Branche 27 commits ahead origin.
+
+**Origine** : Lapsus dans le sprint initial 2026-05-22. L'utilisateur avait écrit explicitement "c'est tout le traitement et les calculs qu'il faut optimisier niveau perf". J'avais parallélisé inter-match (Phase 3.0) mais loupé intra-film. Le user a relevé l'omission à la fin de la session — phase rattrapée en TDD strict comme demandé.
+
+**Constat** : `GetMatchFilm` téléchargeait les 10-30 chunks d'un film en boucle `for` séquentielle. À 200-500ms RTT CDN par chunk → 3-15s wall-time par film. Sur cycle Madina 21 films × ~6s gaspillés intra-film = ~120s perdus EN PLUS du gain Phase 3.0 (150-200s sur l'inter-match).
+
+**Livré** : `errgroup.SetLimit(filmChunkParallelism=8)` dans `GetMatchFilm`. Architecture race-free sans mutex :
+- Phase 1 séquentielle : cache check + accumulation des misses dans `toDownload[]`.
+- Phase 2 parallèle : chaque goroutine écrit dans un slot pré-alloué `dlResults[i]` (indexé par position dans toDownload, pas par chunk.Index sparse). Pas de map concurrent.
+- Phase 3 séquentielle post-`eg.Wait()` : assemble le map final.
+
+**TDD strict (directive utilisateur explicite — "test driven, c'est un truc critique donc faut s'assurer du no impact")** :
+
+6 tests écrits AVANT impl, baseline rouge sur `ParallelDownloadFasterThanSequential` (1.01s wall-time confirmant la séquentialité actuelle), passe post-impl (203ms = 5× speedup mesuré). Les 5 autres tests passaient déjà sur le code séquentiel (intégrité, sync, error propagation, cancel, race-clean) → garantit le no-impact.
+
+Les 4 tests existants `TestGetMatchFilm_*` (`BasicPrefix`, `MultiChunk`, `FilmAbsent`, `DownloadFails`) restent verts → preuve formelle que la sémantique de la fonction est inchangée pour les callers.
+
+**Garde "traitement attend tous DL"** (instruction user explicite "voir aussi si le traitement de ces films va bien attendre que tout soit DL") : intrinsèque au design errgroup. `GetMatchFilm` ne return qu'après `eg.Wait()` + assemblage du map. Le caller `BackfillWeaponKillsForMatch` (backfill_weapons.go:41) reçoit donc soit une erreur (early return ligne 43), soit `found=false` (no-film, marqué done), soit `rawChunks` ENTIÈREMENT rempli. Les lignes 50-69 itèrent sur rawChunks puis appellent `BuildWeaponTimelines`/`ScanFireEventsAll` — pas de race possible avec le download car le download est terminé.
+
+Le test `CompletesAllBeforeReturn` verrouille cette propriété : compteur HTTP atomique côté httptest server vérifie qu'au moment du `return` de `GetMatchFilm`, le nombre de blobs servis == nChunks. Si la fonction returnait avant la fin (race), le compteur serait < nChunks et le test échouerait.
+
+**Compteur de gains cumulés du plan** :
+- Phase 3.0 : ~150-200s (inter-match weapon_kills parallèle)
+- Phase 3.1bis : ~120s estimé prod (intra-film chunks parallèles)
+- Phase 3.4 : 15min → 5-8min (scheduler parallèle, mesuré 4× speedup test)
+- Phase 3.6 : healParallelism 8→24 sur network-only (gain marginal absorbé par rate limiter)
+
+Sur cycle Madina, ces 4 optims devraient passer un cycle complet de ~15 min à **<4 min** (perte de fond capped par rate limiter HTTP et latence DuckDB CGO). C'est le passage de "cycle inutilisable" à "cycle confortable" sur 3 joueurs.
+
+**Conclusion** : opportunité ratée corrigée. Reste à observer en prod (`/debug/vars` + chrono des cycles). Phase 3.1bis a bouclé toutes les optims perf significatives du plan de stabilisation. P3 (tests régression 5.2-5.5) reste optionnel.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).
