@@ -103,7 +103,7 @@ export function HomeRecentPlaylistsCard({
                     {badgeImageURL ? (
                       <RankBadge
                         imageUrl={badgeImageURL}
-                        label={isPlacement ? 'En placement' : (item.tier_label ?? 'Rang')}
+                        label={isPlacement ? (placementCompleted === 0 ? 'Non classé' : 'En placement') : (item.tier_label ?? 'Rang')}
                         testId={isPlacement ? 'home-rank-unranked-image' : undefined}
                         opacity={isPlacement ? 'dim' : 'full'}
                       />
@@ -140,9 +140,11 @@ export function HomeRecentPlaylistsCard({
                         data-testid="home-rank-unranked-label"
                         className="text-xs text-muted-foreground"
                       >
-                        {placementCompleted != null
-                          ? `En placement (${placementCompleted}/${placementTotal})`
-                          : 'En placement'}
+                        {placementCompleted === 0
+                          ? 'Non classé'
+                          : placementCompleted != null
+                            ? `En placement (${placementCompleted}/${placementTotal})`
+                            : 'En placement'}
                       </p>
                     ) : item.rating_value == null && (
                       <p

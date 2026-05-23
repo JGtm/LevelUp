@@ -412,6 +412,10 @@ en = "No LUSR checkpoint available for this player."
 fr = "Placement"
 en = "Placement"
 
+[career.ranking.unranked]
+fr = "Non classé"
+en = "Unranked"
+
 # ─── Encounters (table additional columns) ──────────────────────────────────
 
 [career.encounters.col_player]
