@@ -31,6 +31,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 )
 
@@ -259,6 +260,18 @@ const (
 	filmChunkTypeHighlightEvents = 3
 )
 
+// filmChunkParallelism : nombre max de downloads CDN parallèles dans
+// GetMatchFilm. Un film typique a 10-30 chunks REPLICATION_DATA, chaque
+// download = 200-500ms RTT CDN. Avec parallelism=8, un film de 20 chunks
+// passe de ~6s séquentiel à ~1s (3 vagues). Le rate limiter par-token cape
+// l'ensemble du flux HTTP — bumper plus haut ne donnerait rien tant qu'on
+// reste sous la limite ~15 RPS effectif.
+//
+// Plan stabilisation 2026-05-22 §3.1 — opportunité ratée initialement,
+// reprise sur demande utilisateur 2026-05-23 (instruction initiale : "c'est
+// tout le traitement et les calculs qu'il faut optimisier niveau perf").
+const filmChunkParallelism = 8
+
 // filmManifest représente la réponse JSON de l'endpoint /hi/films/matches/{id}/spectate.
 // Structure validée contre spnkr/models/discovery_ugc.py (FilmCustomData + FilmChunk).
 type filmManifest struct {
@@ -342,6 +355,19 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 // Seuls les chunks ChunkType==2 (REPLICATION_DATA) sont retournés — pour le weapon scanner.
 // Retourne (chunks, true, nil) si le film est disponible.
 // Retourne (nil, false, nil) si le film est absent (404/410) — normal pour vieux matchs.
+//
+// Phase 3.1 (plan stabilisation 2026-05-22, reprise 2026-05-23) : les chunks
+// sont téléchargés en parallèle via errgroup.SetLimit(filmChunkParallelism=8).
+// Avant : boucle séquentielle, ~6s pour un film de 20 chunks à 300ms RTT.
+// Après : ~1s (3 vagues × 300ms), gain 5-6×. La fonction ne retourne qu'une
+// fois TOUS les chunks téléchargés (errgroup.Wait), donc le caller
+// BackfillWeaponKillsForMatch reçoit un map complet — aucune race possible
+// avec le traitement aval (scan fire events, kills attribution).
+//
+// **Architecture sans mutex** : chaque goroutine écrit dans un slot pré-alloué
+// du slice `dlResults` (indexé par la position dans `toDownload`, jamais par
+// chunk.Index qui peut être sparse). L'assemblage final du map se fait
+// séquentiellement après eg.Wait() — race-free par construction.
 func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[int]filmChunkData, bool, error) {
 	manifest, found, err := c.fetchFilmManifest(ctx, matchID)
 	if err != nil || !found {
@@ -349,6 +375,18 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 	}
 
 	result := make(map[int]filmChunkData)
+
+	// Phase 1 (séquentielle) : pré-filtre les chunks. Cache hits → écrits
+	// directement dans result. Misses → accumulés dans toDownload pour la
+	// phase 2 parallèle. Le cache check est rapide (fichier local), pas la
+	// peine de paralléliser.
+	type chunkToDownload struct {
+		index            int
+		startMS          int
+		durationMS       int
+		fileRelativePath string
+	}
+	var toDownload []chunkToDownload
 	for _, chunk := range manifest.CustomData.Chunks {
 		if chunk.ChunkType != filmChunkTypeReplicationData {
 			continue
@@ -362,17 +400,65 @@ func (c *HaloAPIClient) GetMatchFilm(ctx context.Context, matchID string) (map[i
 			}
 			continue
 		}
-		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
-		data, err := c.downloadBlob(ctx, chunkURL)
-		if err != nil {
-			return nil, false, fmt.Errorf("GetMatchFilm chunk %d(%s): %w", chunk.Index, matchID, err)
-		}
-		result[chunk.Index] = filmChunkData{
-			Data:       data,
-			StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
-			DurationMS: chunk.DurationMilliseconds,
-		}
+		toDownload = append(toDownload, chunkToDownload{
+			index:            chunk.Index,
+			startMS:          chunk.ChunkStartTimeOffsetMilliseconds,
+			durationMS:       chunk.DurationMilliseconds,
+			fileRelativePath: chunk.FileRelativePath,
+		})
 	}
+
+	if len(toDownload) == 0 {
+		// Tout en cache (ou pas de REPLICATION_DATA). Court-circuit identique
+		// au comportement séquentiel pré-paralléllisation.
+		if len(result) == 0 {
+			return nil, false, nil
+		}
+		return result, true, nil
+	}
+
+	// Phase 2 (parallèle) : downloads CDN concurrents. Chaque goroutine écrit
+	// dans un slot pré-alloué (no mutex). errgroup.WithContext + SetLimit
+	// borne la concurrence à filmChunkParallelism (8). Si une erreur tombe,
+	// les autres goroutines abortent via egCtx.Done() (propagé à downloadBlob
+	// via http.Request).
+	type dlResult struct {
+		index int
+		data  filmChunkData
+	}
+	dlResults := make([]dlResult, len(toDownload))
+	eg, egCtx := errgroup.WithContext(ctx)
+	eg.SetLimit(filmChunkParallelism)
+	for i, ch := range toDownload {
+		i, ch := i, ch
+		eg.Go(func() error {
+			chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, ch.fileRelativePath)
+			data, err := c.downloadBlob(egCtx, chunkURL)
+			if err != nil {
+				return fmt.Errorf("GetMatchFilm chunk %d(%s): %w", ch.index, matchID, err)
+			}
+			dlResults[i] = dlResult{
+				index: ch.index,
+				data: filmChunkData{
+					Data:       data,
+					StartMS:    ch.startMS,
+					DurationMS: ch.durationMS,
+				},
+			}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, false, err
+	}
+
+	// Phase 3 (séquentielle, post-Wait) : assemble le map final. Race-free
+	// car eg.Wait() garantit que toutes les goroutines ont terminé leur
+	// write avant ce point.
+	for _, r := range dlResults {
+		result[r.index] = r.data
+	}
+
 	if len(result) == 0 {
 		return nil, false, nil
 	}
