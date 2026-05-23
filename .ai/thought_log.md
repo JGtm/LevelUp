@@ -115,6 +115,37 @@ Suite intégration sync complète reste verte (36s, aucune régression sur les a
 
 ---
 
+## [2026-05-23] feat(p4.4.b) — opt-in auto-recompute background post-rebuild ART
+
+**Statut** : Phase 4.4 totalement DONE en 2 commits (b65e0417 step 1/2 + 5d9984fb step 2/2). Branche `chore/post-stabilisation-debt` 17 commits ahead origin.
+
+**Choix utilisateur** : opt-in "wiring 4.4.b" via env var `LEVELUP_ART_AUTOHEAL_RECOMPUTE=1`. Le user voulait autonomie sans risque data — opt-in permet de tester sans rien casser par défaut.
+
+**Livré** : auto-recompute background des 4 cascades (LUSR/perf/dominance/is_with_friends) pour tous les joueurs configurés, déclenché uniquement après un rebuild ART au boot réussi.
+
+**Mécanique** :
+1. `tryAutoHealMatchParticipantsART` retourne maintenant `bool` (signal succès rebuild).
+2. Dans le bloc auto-heal main.go : si retour true ET `LEVELUP_ART_AUTOHEAL_RECOMPUTE=1` ET >=1 joueur via `cfg.LoadPlayers()` → spawn goroutine `runPostRebuildRecompute(context.Background(), cfg, players, sharedReader)`.
+3. La goroutine itère les joueurs ; pour chacun : `duckdb.GetOrOpen` (pool) → `AcquirePlayerWriter` (lease via dblease flock) → `sharedReader.Get` (RO) → `syncpkg.RecomputeAfterARTRebuild` → log + métriques.
+
+**Design choices** :
+- `context.Background()` au lieu de bootCtx : le recompute peut prendre plusieurs minutes par joueur, survit à un shutdown serveur (pas de cancellation propagée).
+- `ctx.Done()` check entre joueurs : cancel mid-batch possible si on injecte un ctx cancellable plus tard.
+- `runPostRebuildRecomputeOnePlayer` extrait (60L) pour limiter la portée des defer (lease.Release + sharedRelease) par joueur — évite leak si la boucle continue après un défaut sur un joueur.
+- Pas de TDD direct : c'est de l'orchestration de plumbing pur. La fonction `RecomputeAfterARTRebuild` qu'elle appelle a déjà ses 4 tests TDD.
+
+**Métriques expvar ajoutées** : `art_autoheal_recompute_started`, `_finished`, `_player_ok`, `_player_error_open`, `_player_error_lease`, `_player_error_shared`, `_player_error`.
+
+**Par défaut (sans env var)** : aucun changement de comportement. Le rebuild Phase 4.1 fonctionne tel quel, les valeurs dérivées restent figées si elles l'étaient. L'utilisateur active le recompute quand il a confiance sur son setup.
+
+**Plan post-validation prod** : si l'opt-in fonctionne sur 1-2 cycles de prod, on peut flipper le default en opt-OUT (env var deviendrait `LEVELUP_ART_AUTOHEAL_RECOMPUTE=0` pour désactiver). Cf. plan §4.4 dernier paragraphe.
+
+**Conclusion** : Phase 4.4 complète. Les 4 piliers du plan de stabilisation (driver bump P0a, singleflight match_participants P2.3, parallel processWeaponKillsInline P3.0, ART rebuild boot P4.1 + recompute opt-in P4.4) sont livrés. Reste P2 (4.2 SIGABRT handler, 4.3 expvar complet) et P3 (3.4 parallel scheduler RunOnce, 3.6/3.7 healParallelism bump).
+
+Si l'utilisateur teste `LEVELUP_ART_AUTOHEAL_RECOMPUTE=1` au prochain reboot et que la corruption ART n'apparaît pas (driver bump v1.5.3 efficace), le recompute n'aura rien à faire — c'est exactement le comportement souhaité.
+
+---
+
 ## [2026-05-23] feat(match-view) — Indicateurs CSR visuels : badge scoreboard + drawer + shield ranked dans header/tiles
 
 **Statut** : Complété (go build + tsc --noEmit clean).
