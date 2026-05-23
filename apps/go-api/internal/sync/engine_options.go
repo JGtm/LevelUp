@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -98,13 +99,27 @@ func (e *SyncEngine) WithCSRSeasonID(id string) *SyncEngine {
 // WithBatchPersistMode active le chemin Collect→Persist (Phase 2.3 du refactor).
 // La boucle d'insertion utilise `submitMatchAsBatch` (INSERT-only via
 // persist.SharedPersister + persist.PlayerPersister) au lieu d'insertFetchedMatch
-// legacy. Synchrone : pas de BatchQueue ni worker async pour l'instant
-// (Phase 3 ajoutera la couche queue).
+// legacy.
+//
+// Sans WithBatchQueue : chemin synchrone (direct Persister.Persist, sans WAL).
+// Avec WithBatchQueue : chemin async (queue.Submit + worker, WAL durable).
 //
 // Activé par le serveur quand LEVELUP_PERSIST_BATCH=1. Par défaut désactivé
 // → comportement strictement identique au pre-refactor.
 func (e *SyncEngine) WithBatchPersistMode(enabled bool) *SyncEngine {
 	e.batchMode = enabled
+	return e
+}
+
+// WithBatchQueue branche une BatchQueue partagée serveur-wide. Quand non-nil
+// ET batchMode=true, submitMatchAsBatch passe par queue.Submit (WAL + async
+// worker) au lieu d'appeler les Persisters directement. À la fin du cycle,
+// run() appelle queue.Drain pour attendre la fin des persists.
+//
+// Activé par cmd/server/main.go quand LEVELUP_PERSIST_BATCH_ASYNC=1
+// (en plus de LEVELUP_PERSIST_BATCH=1). Sans, l'engine reste synchrone.
+func (e *SyncEngine) WithBatchQueue(q *persist.BatchQueue) *SyncEngine {
+	e.batchQueue = q
 	return e
 }
 

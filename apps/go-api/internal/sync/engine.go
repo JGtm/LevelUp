@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -116,9 +117,18 @@ type SyncEngine struct {
 	// d'insertion utilise `submitMatchAsBatch` (chemin INSERT-only via
 	// persist.SharedPersister + persist.PlayerPersister) au lieu de
 	// `insertFetchedMatch` legacy (UPSERT direct). Feature-flag opt-in
-	// activé par WithBatchPersistMode. Synchrone : pas de BatchQueue ni
-	// worker async pour l'instant (Phase 3 ajoutera la couche queue).
+	// activé par WithBatchPersistMode.
 	batchMode bool
+
+	// batchQueue (Phase 3 refactor Collect→Persist) — si non-nil ET batchMode,
+	// submitMatchAsBatch passe par queue.Submit (WAL + worker async) au lieu
+	// d'appeler les Persisters directement. À la fin du cycle, run() appelle
+	// queue.Drain pour attendre que tous les batches soient ACKed (parité
+	// observable avec le path sync).
+	//
+	// Si nil : submitMatchAsBatch reste synchrone (Phase 2.3 — direct
+	// Persister.Persist sans WAL). Reset à nil = pas d'async layer.
+	batchQueue *persist.BatchQueue
 }
 
 // NewSyncEngine, WithPrestigeHook, WithResolver, WithSharedProvider,
@@ -420,6 +430,21 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		"inserted", result.MatchesInserted, "skipped", result.MatchesSkipped,
 		"warnings", len(result.Warnings),
 	)
+
+	// ─── Drain async batch queue ────────────────────────────────────────
+	// En mode async (batchQueue non-nil), attendre que tous les batches
+	// soumis pendant cette boucle aient été persistés par les workers
+	// AVANT le post-sync compute. Sinon, runConditionalPostSync lirait
+	// des données qui ne sont pas encore en DB.
+	if e.batchQueue != nil {
+		drainCtx, drainCancel := context.WithTimeout(ctx, 60*time.Second)
+		if err := e.batchQueue.Drain(drainCtx); err != nil {
+			slog.WarnContext(ctx, "sync: batch queue drain incomplet",
+				"gamertag", e.gamertag, "err", err)
+			result.AddWarning(fmt.Sprintf("queue.Drain: %v", err))
+		}
+		drainCancel()
+	}
 
 	// â”€â”€â”€ Pipeline post-sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted, result.InsertedMatchIDs)

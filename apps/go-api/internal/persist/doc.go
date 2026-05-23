@@ -65,6 +65,21 @@
 //     dans `Persist()`.
 //  6. Test TDD dans `shared_persister_test.go`.
 //
+// **Parité legacy en live sync — PVE/Metadata non câblés** :
+//
+// `MatchBatch` peut transporter `PVE` et `Metadata` sous-batches (Phase 2.2
+// du refactor a ajouté l'extraction au fetch), MAIS `submitMatchAsBatch`
+// (orchestrateur Phase 2.3 du chemin Collect→Persist) NE LES PERSISTE PAS
+// pour préserver la parité avec le legacy `insertFetchedMatch` :
+//   - `pve_match_stats` est écrit par les backfills CLI (`--pve`), pas par
+//     le live sync delta. Wirer PVEPersister ici ajouterait un comportement.
+//   - `mode_name_tr` est seedé par CLI (`cmd/seed-*`), pas par le sync.
+//
+// → Décision : PVEPersister/MetadataPersister restent disponibles (testés
+// en isolation, 8 tests GREEN) mais non câblés dans `submitMatchAsBatch`.
+// À câbler quand une feature future le nécessitera (ex : auto-extract PVE
+// stats au sync, écriture de traductions dynamiques).
+//
 // **Hors scope MatchBatch** — écritures NON liées à un match précis. Ces
 // workflows restent en dehors du flux Collect→Persist (ad-hoc writes via
 // repo dédié ou post-sync direct sur la DB). À documenter ici pour ne pas
