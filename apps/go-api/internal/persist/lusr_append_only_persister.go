@@ -21,6 +21,21 @@ import (
 	"fmt"
 )
 
+// LUSRRatingInsert — row LUSR prête à INSERT dans match_skill_rank.
+// Simplifié pour le path append-only (LUSR uniquement ; CSR a son propre
+// chemin via UpsertCSRRow).
+type LUSRRatingInsert struct {
+	MatchID         string
+	RatingValue     float64
+	RatingDeviation float64
+	Tier            *string
+	TierFR          *string
+	SubTier         *int
+	TierLabel       *string
+	RatingDelta     *float64
+	PlaylistGroup   string
+}
+
 // AppendOnlyLUSRPersister écrit des ratings LUSR en mode strictement
 // append-only — chaque appel ajoute des rows, sans jamais effacer les
 // anciennes. La "version courante" d'un match est obtenue côté lecture
