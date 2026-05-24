@@ -74,3 +74,146 @@ export interface MilestoneItem {
 export interface MilestonesResponse {
   items: MilestoneItem[]
 }
+
+// ── Profile (sections A1/A2/B/C) ─────────────────────────────────────────────
+
+export interface ParticipationAxisValue {
+  axis: string  // "combat" | "survival" | "support" | "score" | "objective" | "impact"
+  value: number // 0..100
+  raw?: number
+}
+
+export interface RadarAxisInsight {
+  axis: string
+  value: number
+  message?: string
+}
+
+export interface StyleSignature {
+  first_kill_count: number
+  first_death_count: number
+  fkfd_ratio: number
+  style_key?: string // "opportunistic_finisher" | "overextended" | "hyper_engaged" | "passive"
+}
+
+export interface EngagementSnapshot {
+  score: number
+  tier: 'low' | 'regular' | 'high' | 'intense'
+  matches_per_day_avg: number
+  max_gap_days: number
+  regularity_coach?: string
+}
+
+export interface SkillRatingSnapshot {
+  tier_name: string
+  tier_name_fr: string
+  sub_tier: number
+  label: string
+  mu: number
+  sigma: number
+  next_tier_label?: string
+  next_tier_mu?: number
+  gap_to_next?: number
+  progress_ratio?: number
+}
+
+export interface LUSRComponentBreakdown {
+  name: string
+  weight: number
+  current_avg: number
+  personal_top_20: number
+  target_for_tier: number
+  trend: number
+}
+
+export interface ProgressionLeverage {
+  component: string
+  leverage_value: number
+  narrative_axes: string[]
+  coaching_message: string
+}
+
+export interface SuggestedChallenge {
+  template_id: string
+  target_tier: 'normal' | 'heroic' | 'legendary'
+  historical_streak: number
+  is_arc_step: boolean
+  arc_id?: string
+  label_fr?: string
+  label_en?: string
+  description_fr?: string
+  description_en?: string
+}
+
+export interface PlayerProfile {
+  user_id: string
+  title_slug: string
+  updated_at: string
+  has_enough_data: boolean
+  matches_analyzed: number
+  // A1 — narrative
+  dominant_role?: string
+  secondary_role?: string
+  radar_axes?: ParticipationAxisValue[]
+  strengths?: RadarAxisInsight[]
+  improvement_areas?: RadarAxisInsight[]
+  // A2 — style & discipline
+  style_signature: StyleSignature
+  engagement_snap: EngagementSnapshot
+  // B — LUSR
+  skill_rating: SkillRatingSnapshot
+  lusr_components?: LUSRComponentBreakdown[]
+  mu_trend: { metric: string; slope: number; window: number }
+  // C — coaching
+  leverages?: ProgressionLeverage[]
+  suggested_challenges?: SuggestedChallenge[]
+}
+
+// ── Patterns contextuels / comportementaux (phases 1-3) ──────────────────────
+
+export type ContextType = 'by_mode' | 'by_map' | 'by_squad'
+export type PatternSignal = 'strength' | 'weakness' | 'neutral'
+export type BehaviorType = 'tilt' | 'session_fatigue' | 'engagement_drop' | 'accuracy_plateau' | 'perf_ceiling'
+export type PatternSeverity = 'low' | 'medium' | 'high'
+
+export interface ContextualPattern {
+  type: ContextType
+  key: string
+  match_count: number
+  win_rate: number
+  avg_kda: number
+  avg_oc: number
+  avg_dr: number
+  avg_perf?: number
+  avg_delta_csr?: number
+  avg_delta_lusr?: number
+  delta: number
+  signal: PatternSignal
+}
+
+export interface BehavioralPattern {
+  type: BehaviorType
+  trigger: string
+  evidence: string
+  severity: PatternSeverity
+  confirmed: boolean
+}
+
+export interface PatternLever {
+  rank: number
+  axis: string
+  label: string
+  current_val: number
+  target_val: number
+  horizon: number
+  impact: number
+  source_pattern: string
+}
+
+export interface PatternReport {
+  window_size: number
+  context_patterns: ContextualPattern[]
+  behavior_patterns: BehavioralPattern[]
+  levers: PatternLever[]
+  computed_at: string
+}
