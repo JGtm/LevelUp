@@ -1167,10 +1167,15 @@ func startWatcherDaemon(
 
 	daemon.Start(ctx, xstsResult.AuthHeader(), playerSummaries)
 
-	// Refresh loop : met à jour les tokens XSTS et le daemon
+	// Refresh loop : met à jour les tokens XSTS et le daemon.
+	// PR 2.5b (2026-05-24) : WithMultiUserMirror — chaque refresh XSTS/OAuth
+	// du tracker initial (legacy store) est aussi mirroré dans le multi-user
+	// store. Maintient la cohérence entre les 2 stores en vue d'une future
+	// migration read-path. Read continue via legacy store (compat user).
+	multiMirror := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	refreshLoop := auth.NewRefreshLoop(store, func(result *auth.XSTSResult) {
 		daemon.UpdateAuth(result.AuthHeader())
-	})
+	}).WithMultiUserMirror(multiMirror)
 	go refreshLoop.Run(ctx)
 
 	// PR 2.5c — boot reload des userClients depuis MultiUserTokenStore.

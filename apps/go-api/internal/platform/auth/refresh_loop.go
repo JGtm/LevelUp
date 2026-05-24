@@ -42,6 +42,7 @@ type XSTSAcquireFn func(ctx context.Context, accessToken string) (*XSTSResult, e
 // RefreshLoop gère le refresh automatique des tokens.
 type RefreshLoop struct {
 	store         *TokenStore
+	multiMirror   *MultiUserTokenStore // PR 2.5b : mirror writes vers multi-user store (nullable)
 	onXSTS        RefreshCallback
 	interval      time.Duration
 	acquireXSTSFn XSTSAcquireFn // nil → AcquireXSTSForRTA (prod)
@@ -55,6 +56,17 @@ func NewRefreshLoop(store *TokenStore, onXSTSRefreshed RefreshCallback) *Refresh
 		onXSTS:   onXSTSRefreshed,
 		interval: refreshCheckInterval,
 	}
+}
+
+// WithMultiUserMirror branche un MultiUserTokenStore qui recevra une copie
+// miroir des écritures XSTS + OAuth du tracker initial (legacy TokenStore).
+// PR 2.5b — pavement pour future migration read-path : maintient la cohérence
+// entre les 2 stores tant que la lecture passe par le legacy.
+//
+// nil → no-op (comportement legacy strict).
+func (r *RefreshLoop) WithMultiUserMirror(multi *MultiUserTokenStore) *RefreshLoop {
+	r.multiMirror = multi
+	return r
 }
 
 // Run démarre la boucle de refresh. Bloquant — à lancer dans une goroutine.
@@ -137,6 +149,8 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) er
 		return err
 	}
 	slog.InfoContext(ctx, "refresh_loop: access_token renouvelé")
+	// PR 2.5b — mirror OAuth refresh vers multi-user store si configuré.
+	r.mirrorTrackerToMultiUser(ctx)
 	return nil
 }
 
@@ -173,7 +187,44 @@ func (r *RefreshLoop) refreshXSTS(ctx context.Context, tokens *StoredTokens) {
 		"expires_at", expiresAt,
 	)
 
+	// PR 2.5b — mirror XSTS vers multi-user store si configuré.
+	r.mirrorTrackerToMultiUser(ctx)
+
 	if r.onXSTS != nil {
 		r.onXSTS(result)
 	}
+}
+
+// mirrorTrackerToMultiUser copie l'état tracker actuel (legacy TokenStore)
+// vers MultiUserTokenStore[XSTSXUID]. Best-effort : log WARN sur échec mais
+// pas de propagation. Skip silencieux si multiMirror nil ou tokens incomplets.
+func (r *RefreshLoop) mirrorTrackerToMultiUser(ctx context.Context) {
+	if r.multiMirror == nil {
+		return
+	}
+	tokens, err := r.store.Load()
+	if err != nil {
+		slog.DebugContext(ctx, "refresh_loop: mirror — Load legacy échoué", "err", err)
+		return
+	}
+	if tokens.XSTSXUID == "" {
+		slog.DebugContext(ctx, "refresh_loop: mirror — xuid vide, skip")
+		return
+	}
+	mirror := &UserTokens{
+		XUID:           tokens.XSTSXUID,
+		Gamertag:       tokens.XSTSGamertag,
+		XSTSToken:      tokens.XSTSToken,
+		XSTSUserHash:   tokens.XSTSUserHash,
+		XSTSExpiresAt:  tokens.XSTSExpiresAt,
+		AccessToken:    tokens.AccessToken,
+		OAuthExpiresAt: tokens.OAuthExpiresAt,
+	}
+	if err := r.multiMirror.Upsert(mirror); err != nil {
+		slog.WarnContext(ctx, "refresh_loop: mirror vers multi-user store échoué (non-bloquant)",
+			"xuid", tokens.XSTSXUID, "err", err)
+		return
+	}
+	slog.DebugContext(ctx, "refresh_loop: mirror tracker -> multi-user OK",
+		"xuid", tokens.XSTSXUID, "gamertag", tokens.XSTSGamertag)
 }
