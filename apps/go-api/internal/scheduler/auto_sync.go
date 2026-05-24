@@ -233,10 +233,10 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 	// pour fallback legacy insertFetchedMatch (mode dégradé, ART bug actif).
 	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
 		engine.WithBatchPersistMode(true)
-		// Layer async optionnel (encore opt-in via LEVELUP_PERSIST_BATCH_ASYNC=1
-		// + queue injectée via WithBatchQueue depuis main.go). Sans queue ou
-		// flag : path synchrone direct Persister (validé Phase 4.5).
-		if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") == "1" {
+		// Phase 4.9 : layer async default ON aussi. Set LEVELUP_PERSIST_BATCH_ASYNC=0
+		// pour fallback synchrone direct Persister (validé Phase 4.5). La queue
+		// est injectée par main.go au boot si != "0" (cf. autoBatchQueue init).
+		if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
 			engine.WithBatchQueue(s.batchQueue)
 		}
 	}

@@ -41,12 +41,12 @@ func TestBuildCanonicalSkillBadge_GoldWithSubTier(t *testing.T) {
 	t.Parallel()
 	sub := 3
 	label, url := buildCanonicalSkillBadge("Or", "gold", &sub)
-	if label == nil || *label != "Or 3" {
-		t.Errorf("label = %v, want Or 3", label)
+	if label == nil || *label != "Or III" {
+		t.Errorf("label = %q, want Or III", derefStr(label))
 	}
 	wantURL := "/static/ranks/halo_infinite/120px-HINF-CSR_Gold3.png"
 	if url == nil || *url != wantURL {
-		t.Errorf("url = %v, want %q", url, wantURL)
+		t.Errorf("url = %q, want %q", derefStr(url), wantURL)
 	}
 }
 
@@ -55,12 +55,21 @@ func TestBuildCanonicalSkillBadge_DiamondLocalizedDisplay(t *testing.T) {
 	// Le tier code EN est utilisé pour l'URL (Diamond), display pour le label (Diamant).
 	sub := 1
 	label, url := buildCanonicalSkillBadge("diamant", "diamond", &sub)
-	if label == nil || *label != "Diamant 1" {
-		t.Errorf("label = %v, want Diamant 1", label)
+	if label == nil || *label != "Diamant I" {
+		t.Errorf("label = %q, want Diamant I", derefStr(label))
 	}
 	if url == nil || *url != "/static/ranks/halo_infinite/120px-HINF-CSR_Diamond1.png" {
-		t.Errorf("url = %v", url)
+		t.Errorf("url = %q", derefStr(url))
 	}
+}
+
+// derefStr helper : retourne *p ou "<nil>" — assainit les error messages
+// pour *string (le helper deref du package gère *float64 dans squad_breakdown.go).
+func derefStr(p *string) string {
+	if p == nil {
+		return "<nil>"
+	}
+	return *p
 }
 
 func TestBuildCanonicalSkillBadge_EmptyTierCodeReturnsNil(t *testing.T) {
@@ -108,11 +117,11 @@ func TestBuildCanonicalSkillBadge_EmptyDisplayUsesTierENCap(t *testing.T) {
 	// Si display vide → fallback sur tierEN capitalisé.
 	sub := 5
 	label, url := buildCanonicalSkillBadge("", "platinum", &sub)
-	if label == nil || *label != "Platinum 5" {
-		t.Errorf("label = %v, want Platinum 5", label)
+	if label == nil || *label != "Platinum V" {
+		t.Errorf("label = %q, want Platinum V", derefStr(label))
 	}
 	if url == nil || *url != "/static/ranks/halo_infinite/120px-HINF-CSR_Platinum5.png" {
-		t.Errorf("url = %v", url)
+		t.Errorf("url = %q", derefStr(url))
 	}
 }
 
@@ -121,11 +130,11 @@ func TestBuildCanonicalSkillBadge_WhitespaceDisplayUsesFallback(t *testing.T) {
 	// Display avec whitespace seulement → trim → fallback sur tierEN capitalisé.
 	sub := 2
 	label, url := buildCanonicalSkillBadge("   ", "bronze", &sub)
-	if label == nil || *label != "Bronze 2" {
-		t.Errorf("label = %v, want Bronze 2", label)
+	if label == nil || *label != "Bronze II" {
+		t.Errorf("label = %q, want Bronze II", derefStr(label))
 	}
 	if url == nil || *url != "/static/ranks/halo_infinite/120px-HINF-CSR_Bronze2.png" {
-		t.Errorf("url = %v", url)
+		t.Errorf("url = %q", derefStr(url))
 	}
 }
 
@@ -134,11 +143,11 @@ func TestBuildCanonicalSkillBadge_SubTier6Allowed(t *testing.T) {
 	// La borne supérieure inclusive est 6.
 	sub := 6
 	label, url := buildCanonicalSkillBadge("Argent", "silver", &sub)
-	if label == nil || *label != "Argent 6" {
-		t.Errorf("label = %v, want Argent 6", label)
+	if label == nil || *label != "Argent VI" {
+		t.Errorf("label = %q, want Argent VI", derefStr(label))
 	}
 	if url == nil || *url != "/static/ranks/halo_infinite/120px-HINF-CSR_Silver6.png" {
-		t.Errorf("url = %v", url)
+		t.Errorf("url = %q", derefStr(url))
 	}
 }
 

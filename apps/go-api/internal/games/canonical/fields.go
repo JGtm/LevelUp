@@ -41,15 +41,16 @@ const (
 // --- Match (group = "match") ---
 
 const (
-	FieldMatchID         FieldKey = "match_id"
-	FieldStartedAtUTC    FieldKey = "started_at_utc"
-	FieldDurationSeconds FieldKey = "duration_seconds"
-	FieldIsRanked        FieldKey = "is_ranked"
-	FieldIsPvE           FieldKey = "is_pve"
-	FieldOutcome         FieldKey = "outcome"
-	FieldPersonalScore   FieldKey = "personal_score"
-	FieldTeamScore       FieldKey = "team_score"
-	FieldRankInMatch     FieldKey = "rank_in_match"
+	FieldMatchID          FieldKey = "match_id"
+	FieldStartedAtUTC     FieldKey = "started_at_utc"
+	FieldDurationSeconds  FieldKey = "duration_seconds"
+	FieldIsRanked         FieldKey = "is_ranked"
+	FieldIsPvE            FieldKey = "is_pve"
+	FieldOutcome          FieldKey = "outcome"
+	FieldPersonalScore    FieldKey = "personal_score"
+	FieldTeamScore        FieldKey = "team_score"
+	FieldRankInMatch      FieldKey = "rank_in_match"
+	FieldRankedMatchCount FieldKey = "ranked_match_count"
 )
 
 // --- Career (group = "career") ---
@@ -102,6 +103,8 @@ const (
 	FieldPerformanceScore     FieldKey = "performance_score"
 	FieldPerfectKillsPerMatch FieldKey = "perfect_kills_per_match"
 	FieldTimePlayedSeconds    FieldKey = "time_played_seconds"
+	FieldOffensiveConversion  FieldKey = "offensive_conversion"
+	FieldDefensiveResistance  FieldKey = "defensive_resistance"
 )
 
 // AllFieldKeys retourne la liste exhaustive des FieldKey supportés par le
@@ -124,6 +127,7 @@ func AllFieldKeys() []FieldKey {
 		FieldMatchID, FieldStartedAtUTC, FieldDurationSeconds,
 		FieldIsRanked, FieldIsPvE, FieldOutcome,
 		FieldPersonalScore, FieldTeamScore, FieldRankInMatch,
+		FieldRankedMatchCount,
 		// Career
 		FieldCurrentRankID, FieldCurrentXP, FieldXPForNextRank,
 		FieldTotalMatchesPlayed, FieldTotalKillsCareer, FieldWinRate,
@@ -141,6 +145,7 @@ func AllFieldKeys() []FieldKey {
 		FieldAvgDamageDealt, FieldAvgDamageTaken, FieldAvgLifeSeconds,
 		FieldKDRatio, FieldKillsPerMin, FieldPerformanceScore,
 		FieldPerfectKillsPerMatch, FieldTimePlayedSeconds,
+		FieldOffensiveConversion, FieldDefensiveResistance,
 	}
 }
 

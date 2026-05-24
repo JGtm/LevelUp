@@ -476,15 +476,16 @@ func main() {
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
-	// Phase 4.7 closure (2026-05-24) : BatchQueue serveur-wide optionnelle.
-	// Activée via LEVELUP_PERSIST_BATCH_ASYNC=1 (+ LEVELUP_PERSIST_BATCH=1).
-	// Sans, le path INSERT-only reste synchrone (Persister.Persist direct, validé Phase 4.5).
+	// Phase 4.9 (2026-05-24) : BatchQueue serveur-wide default ON. Set
+	// LEVELUP_PERSIST_BATCH_ASYNC=0 pour fallback path synchrone (validé Phase 4.5).
 	//
-	// Avec : queue.Submit + worker async + WAL durable (recovery au boot via
-	// RecoverPending). Bénéfice : décorrélation sync/persist + résilience crash.
-	// Cycle de vie : créée 1× au boot, fermée à shutdown via autoBatchQueue.Close().
+	// Path async : queue.Submit + worker + WAL durable (recovery au boot via
+	// RecoverPending). Bénéfice : décorrélation sync/persist + résilience crash
+	// mid-persist (le batch est journalisé sur disque AVANT le push channel).
+	// Cycle de vie : créée 1× au boot, drainée + fermée à shutdown via
+	// autoBatchQueue.Drain() + Close() AVANT duckdb.CloseAll() (ordre critique).
 	var autoBatchQueue *persist.BatchQueue
-	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") == "1" {
+	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
 		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
 			WALDir:      walDir,
