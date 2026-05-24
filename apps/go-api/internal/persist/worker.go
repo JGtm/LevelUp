@@ -91,6 +91,11 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 // handle traite un batch unique : Persist puis ACK si OK.
+//
+// Phase 6 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : appelle systematiquement
+// queue.RecordPersistResult() apres Persist pour alimenter le circuit-breaker
+// sur Drain. Les hooks OnPersistOK/OnPersistError restent pour l'observabilite
+// externe (expvar) — ils sont independants du circuit-breaker.
 func (w *Worker) handle(ctx context.Context, batch *MatchBatch) {
 	if err := w.persister.Persist(ctx, batch); err != nil {
 		slog.ErrorContext(ctx, "persist worker: Persist failed",
@@ -99,6 +104,7 @@ func (w *Worker) handle(ctx context.Context, batch *MatchBatch) {
 			"source", batch.Source,
 			"err", err,
 		)
+		w.queue.RecordPersistResult(false) // alimente circuit-breaker
 		if w.OnPersistError != nil {
 			w.OnPersistError(err)
 		}
@@ -116,6 +122,7 @@ func (w *Worker) handle(ctx context.Context, batch *MatchBatch) {
 		)
 	}
 
+	w.queue.RecordPersistResult(true) // reset circuit-breaker
 	if w.OnPersistOK != nil {
 		w.OnPersistOK()
 	}

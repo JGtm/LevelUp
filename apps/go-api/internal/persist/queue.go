@@ -19,6 +19,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,7 +52,22 @@ type BatchQueue struct {
 
 	closed   bool
 	closedMu sync.RWMutex
+
+	// Phase 6 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : compteurs pour le
+	// circuit-breaker sur Drain. Le worker appelle RecordPersistResult()
+	// apres chaque batch — la queue track les echecs consecutifs pour fail
+	// fast le Drain au lieu d'attendre le timeout 60s sur un worker casse.
+	consecutiveFailures atomic.Int32
 }
+
+// circuitBreakerThreshold est le nombre d'echecs Persist consecutifs au-dela
+// duquel Drain considere le worker comme casse et fail fast.
+//
+// Choix de 5 : tolere quelques erreurs transitoires (lock retry, lease
+// race) mais detecte rapidement un probleme systematique (DSN mismatch,
+// schema absent, etc.). 5 echecs × 200ms typique = 1s avant fail fast,
+// soit 60x mieux que les 60s du timeout fixe.
+const circuitBreakerThreshold = 5
 
 // NewBatchQueue crée une BatchQueue. WALDir est créé s'il n'existe pas.
 // Retourne erreur si l'I/O échoue.
@@ -86,6 +102,13 @@ func (q *BatchQueue) Submit(batch *MatchBatch) error {
 		return ErrQueueClosed
 	}
 	q.closedMu.RUnlock()
+
+	// Phase 4 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : sanitize defensif
+	// NaN/Inf avant marshal. Cas observe en prod (cycle 20:33-20:38) :
+	// match Chocoboflor 508bd2fb + ed8adf67 + XxDaemonGamerxX cf23bfed
+	// droppes silencieusement avec "json: unsupported value: NaN".
+	// SanitizeBatch est idempotent (no-op si batch deja sanitize).
+	SanitizeBatch(batch)
 
 	// 1. Sérialise en JSON.
 	data, err := json.MarshalIndent(batch, "", "  ")
@@ -212,9 +235,42 @@ func (q *BatchQueue) PendingCount() (int, error) {
 	return n, nil
 }
 
+// RecordPersistResult notifie la queue du resultat du dernier Persist
+// effectue par le worker. Utilise pour le circuit-breaker dans Drain
+// (Phase 6 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24).
+//
+// success=true → reset le compteur d'echecs consecutifs.
+// success=false → incremente le compteur.
+//
+// Idempotent et thread-safe (atomic). Le worker l'appelle via les hooks
+// OnPersistOK/OnPersistError configures par main.go.
+func (q *BatchQueue) RecordPersistResult(success bool) {
+	if success {
+		q.consecutiveFailures.Store(0)
+	} else {
+		q.consecutiveFailures.Add(1)
+	}
+}
+
+// ConsecutiveFailures retourne le nombre d'echecs Persist consecutifs
+// depuis le dernier succes. Utile pour le monitoring expvar.
+func (q *BatchQueue) ConsecutiveFailures() int32 {
+	return q.consecutiveFailures.Load()
+}
+
+// ErrDrainCircuitBreaker est retourne par Drain quand le worker accumule
+// trop d'echecs consecutifs (circuit-breaker ouvert).
+var ErrDrainCircuitBreaker = errors.New("persist: drain aborted — worker error rate too high (circuit-breaker)")
+
 // Drain attend que tous les batches en attente (PendingCount == 0) soient
 // persistés. Sondage périodique du dossier walDir/. Retourne ctx.Err() si
 // le contexte est annulé avant que le drain ne soit complet.
+//
+// Phase 6 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : circuit-breaker sur les
+// echecs Persist consecutifs. Avant : 60s de wait fixe meme quand le worker
+// echouait sur 100% des batches (Bug #1 amplifiait Bug #2 — 285s/cycle).
+// Apres : Drain abort en ~1s (5 echecs × 200ms typique) si le worker est
+// casse, log ErrDrainCircuitBreaker.
 //
 // Cas d'usage : appelé à la fin d'un cycle de sync pour garantir que tous
 // les batches submitted ont été persistés AVANT que /sync retourne (parité
@@ -235,6 +291,15 @@ func (q *BatchQueue) Drain(ctx context.Context) error {
 		}
 		if n == 0 {
 			return nil
+		}
+		// Phase 6 circuit-breaker : si le worker a accumule trop d'echecs
+		// consecutifs ET il reste du pending, c'est qu'il est casse — fail
+		// fast au lieu d'attendre le timeout 60s.
+		if q.consecutiveFailures.Load() >= int32(circuitBreakerThreshold) {
+			return fmt.Errorf("%w (failures=%d, pending=%d)",
+				ErrDrainCircuitBreaker,
+				q.consecutiveFailures.Load(),
+				n)
 		}
 		select {
 		case <-ctx.Done():
