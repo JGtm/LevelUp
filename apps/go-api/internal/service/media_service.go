@@ -3,7 +3,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
 )
 
@@ -403,12 +403,14 @@ func (s *MediaService) ReassociateMedia(ctx context.Context, req domain.Reassoci
 		bufferMin = 2
 	}
 
-	// Ouvrir la DB en lecture-écriture.
-	db, err := sql.Open("duckdb", targetPath)
+	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (audit residuel 2026-05-25) :
+	// Ouvrir la DB en lecture-écriture via le cache duckdbpkg (DSN aligne).
+	handle, err := duckdbpkg.OpenReadWrite(targetPath)
 	if err != nil {
 		return nil, fmt.Errorf("ouverture DB: %w", err)
 	}
-	defer db.Close() //nolint:errcheck
+	defer handle.Close()
+	db := handle.SQLDb()
 
 	// Appliquer la timezone pour les opérations sur timestamps.
 	if tz := ops.SanitizeMediaTimezone(s.timezone); tz != "" {

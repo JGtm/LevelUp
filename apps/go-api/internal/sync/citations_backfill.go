@@ -160,12 +160,14 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	defer metaHandle.Close()
 	metaDB := metaHandle.SQLDb()
 
-	sharedDB, err := sql.Open("duckdb", e.sharedDBPath+"?access_mode=READ_ONLY")
+	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (audit residuel 2026-05-25) :
+	// sharedDB via cache duckdbpkg.OpenReadOnly pour DSN aligne.
+	sharedHandle, err := duckdbpkg.OpenReadOnly(e.sharedDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open shared: %w", err)
 	}
-	defer sharedDB.Close()
-	sharedDB.SetMaxOpenConns(1)
+	defer sharedHandle.Close()
+	sharedDB := sharedHandle.SQLDb()
 
 	mappings, err := loadFullCitationMappings(ctx, metaDB)
 	if err != nil {
