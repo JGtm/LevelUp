@@ -169,6 +169,14 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	combatProfile := buildCombatProfileFromCanonical(filteredCanon)
+	if combatProfile != nil {
+		slog.DebugContext(ctx, "synthesis: combat profile computed",
+			"matches", combatProfile.MatchCount,
+			"avg_oc", combatProfile.AvgOC,
+			"avg_dr", combatProfile.AvgDR,
+			"has_residual", combatProfile.AvgResidualBrut != nil,
+			"style_activity", combatProfile.StyleActivity)
+	}
 
 	return &domain.SynthesisPageV2Response{
 		Scope:             scope,
