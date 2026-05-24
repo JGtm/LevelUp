@@ -1,10 +1,18 @@
 # INCIDENT — Corruption d'index ART DuckDB (récurrent)
 
-**Status** : 🟢 **RÉSOLU CÔTÉ CODE** — refactor Collect → Persist livré branche `refactor/collect-persist`. Activation prod en attente (`LEVELUP_PERSIST_BATCH=1`, cf. [RUNBOOK_PHASE3_ACTIVATION.md](RUNBOOK_PHASE3_ACTIVATION.md)).
+**Status** : ✅ **CLOSED** — Phase 4 (post-sync batch INSERT-only) validée empiriquement 2026-05-24 : 4 cycles consécutifs × 4 joueurs = **16 syncs, 0 FATAL ART** sous `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1` (post `force_rebuild_art --all true` initial).
 **Premier signalement** : 2026-05-20 (`docs/INCIDENT_2026-05-20_match_participants_index.md`).
 **Reproduit en prod** : 2026-05-23.
-**Solution livrée** : 2026-05-23 (branche `refactor/collect-persist`, ADR 0019).
-**Dernière mise à jour** : 2026-05-23.
+**Phase 1-2 (path INSERT)** : 2026-05-23 — refactor Collect→Persist livré (ADR 0019).
+**Phase 4 (post-sync UPDATE)** : 2026-05-24 — 5 sites batch INSERT-only + RebuildMatchSkillRankART (commits 14dfd135, 4ef122b7).
+**Phase 5 (cleanup anti-ART)** : 2026-05-24 — singleflight + CHECKPOINT + auto-heal supprimés.
+**Dernière mise à jour** : 2026-05-24.
+
+## Pré-requis prod (héritage corruption)
+
+`force_rebuild_art --all true` est requis avant déploiement Phase 4 sur une DB qui a vécu en mode legacy (ART probablement corrompue). Le CLI rebuild les **3 tables critiques** : `shared.match_participants`, `player_match_enrichment`, `match_skill_rank`.
+
+Phase 4 batch INSERT-only **prévient** les futures corruptions mais ne **défait pas** une corruption pré-existante.
 
 ## RÉSOLUTION (2026-05-23)
 

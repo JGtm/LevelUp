@@ -1,7 +1,7 @@
 # ADR 0018 — Concurrent Write Model pour shared.match_participants (singleflight)
 
 **Date** : 2026-05-23
-**Status** : ⚠️ **OBSOLÈTE (2026-05-23, même jour)** — la singleflight a été testée empiriquement le 2026-05-23 sous concurrence intensive et n'a PAS supprimé le bug ART (réduit la fréquence sans l'éliminer). Superseded by ADR 0019 (Collect → Persist) qui résout le bug par construction (INSERT-only en remplacement des UPSERT concurrents). La singleflight reste dans `internal/sync/writes.go::InsertParticipants` tant que le path legacy n'est pas supprimé (Phase 5 cleanup, post-validation Phase 3).
+**Status** : ✅ **CLOSED (2026-05-24)** — la singleflight a été SUPPRIMÉE de `internal/sync/writes.go::InsertParticipants` le 2026-05-24 (Phase 5 cleanup), suite à validation empirique de Phase 4 batch INSERT-only (16 syncs / 0 FATAL). Superseded par ADR 0019 + Phase 4 qui résolvent le bug ART par construction (path INSERT-only sur shared + batch INSERT-only sur post-sync compute).
 **Branch** : `chore/post-stabilisation-debt`
 **Related** : ADR 0013 (LeasedWriter), ADR 0016 (B-swap RO↔RW), **ADR 0019 (Collect→Persist, qui rend ce pattern obsolète)**
 **Plan** : `.ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md` Phase 1

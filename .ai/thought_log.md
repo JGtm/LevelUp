@@ -1,3 +1,60 @@
+## [2026-05-24] Phase 4.6 cleanup anti-ART — singleflight + CHECKPOINT + BootARTGuard auto-heal supprimés
+
+**Statut** : Complété (4/7 items du PLAN_PHASE5, item 6 revert acad4603 différé pour validation user)
+
+**Tâche** : Suite à Phase 4.5 validée (12 syncs / 0 FATAL), exécuter Phase 4.6 cleanup en autonomie : supprimer le code de contournement ART qui devient inutile maintenant que Phase 4 batch INSERT-only fonctionne.
+
+**Items livrés** :
+
+| # | Item | Action | Fichier |
+|---|---|---|---|
+| 1 | singleflight dans InsertParticipants | Supprimé : `participantsSF` var + import + closure `Do(key, ...)` + métrique `singleflight_dedupe_total` | `internal/sync/writes.go` |
+| 2 | CHECKPOINT post-sync (Plan J) | Supprimé : `runCheckpoint()` + 2 call sites (player + shared) + métriques `checkpoint_runs_total_*` | `internal/sync/engine_postsync.go` |
+| 3 | BootARTGuard auto-heal au boot | Supprimé : appel `tryAutoHealMatchParticipantsART` + `runPostRebuildRecompute` opt-in via env. **GARDÉ** : `BootARTGuard.Detect()` (logs WARNING ART pour alerte ops) | `cmd/server/main.go` (boot block) |
+| 4 | Helpers auto-heal devenus orphelins | Supprimé : `hasMatchParticipantsARTDivergence`, `tryAutoHealMatchParticipantsART`, `runPostRebuildRecompute`, `runPostRebuildRecomputeOnePlayer` (~195 lignes) | `cmd/server/main.go` |
+
+**Items NON livrés (différés)** :
+
+- **Item 5 `force_rebuild_art` CLI** : GARDÉ comme outil ops manuel (essentiel pour défaire corruption héritée). Pas de changement.
+- **Item 6 `acad4603` revert (UPDATE-then-INSERT migrations)** : DIFFÉRÉ — gros blast radius (5 migrations touchées). Recommandation : laisser à validation user explicite avant revert.
+- **Item 7 bits MBit*/PBit*** : GARDÉ (utile aux backfill heal). Pas de changement.
+
+**Sanity check post-cleanup** :
+- `go build ./...` : clean (imports `time`, `observability` retirés de engine_postsync.go)
+- `go vet ./...` : clean
+- `go test -count=1 ./internal/sync/... ./internal/persist/... ./internal/migration/...` : all GREEN
+- `cycle 6 (post-cleanup) sync-delta --all` : **4/4 OK, 0 FATAL ART** — cleanup non-régressif
+
+**Docs mises à jour** :
+- `.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md` : status 🟢 → ✅ CLOSED (16 syncs / 0 FATAL)
+- `docs/adr/0017-rebuild-art-corruption-pattern.md` : status ⚠️ OBSOLÈTE → ✅ CLOSED (auto-heal runtime supprimé)
+- `docs/adr/0018-concurrent-write-model.md` : status ⚠️ OBSOLÈTE → ✅ CLOSED (singleflight supprimée)
+- `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md` : Phase 4.5 status DONE
+- `.ai/REFACTOR_COLLECT_PERSIST.md` : Phase 5 status DÉBLOQUÉE
+- `.ai/thought_log.md` : cette entrée
+
+**Conclusion globale Phase 4 + 4.6** :
+
+Le bug ART corruption qui hantait LevelUp depuis le 2026-05-20 est **résolu structurellement** :
+- Phase 1-2 (Collect→Persist) : path INSERT batch (commits Phases 1-2)
+- Phase 4 (post-sync) : 5 sites refactor batch INSERT-only (commit 14dfd135)
+- Phase 4.5 (smoke test prod) : 4 cycles consécutifs × 4 joueurs = 16 syncs / 0 FATAL (commit 4ef122b7)
+- Phase 4.5b (RebuildMatchSkillRankART) : fix bonus pour rebuild ART héritée (commit 4ef122b7)
+- Phase 4.6 (cleanup) : singleflight + CHECKPOINT + auto-heal supprimés (ce commit)
+
+**Pré-requis prod** : `force_rebuild_art --all true` avant déploiement sur DB héritée du mode legacy (corruption pré-existante non éliminée par Phase 4).
+
+**Files modifiés cette session (uncommitted)** :
+- `apps/go-api/internal/sync/writes.go` (singleflight removed)
+- `apps/go-api/internal/sync/engine_postsync.go` (CHECKPOINT removed)
+- `apps/go-api/cmd/server/main.go` (auto-heal removed)
+- `.ai/INCIDENT_ART_CORRUPTION_DUCKDB.md`
+- `docs/adr/0017-rebuild-art-corruption-pattern.md`
+- `docs/adr/0018-concurrent-write-model.md`
+- `.ai/thought_log.md`
+
+---
+
 ## [2026-05-24] Phase 4.5 validée empiriquement — 12 syncs / 0 FATAL ART + fix RebuildMatchSkillRankART
 
 **Statut** : Complété (Phase 4 livrée fin-à-bout, débloque Phase 4.6 cleanup)

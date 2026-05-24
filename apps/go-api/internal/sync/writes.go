@@ -13,22 +13,10 @@ import (
 	"strconv"
 	"time"
 
-	"golang.org/x/sync/singleflight"
-
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 )
-
-// participantsSF déduplique les UPSERTs concurrents sur match_participants par
-// clé naturelle (match_id, xuid). Sert à empêcher la corruption d'index ART
-// observée en prod le 2026-05-22 (cf. ADR 0018 + plan Phase 1.3).
-//
-// Sémantique : si N goroutines appellent l'UPSERT sur la même clé en même
-// temps, 1 seule exécute le statement SQL ; les autres attendent et reçoivent
-// son résultat. Sur des clés différentes : aucune sérialisation (parallèle).
-// Coût négligeable (lookup map mémoire).
-var participantsSF singleflight.Group
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Shared DB writes
@@ -113,20 +101,7 @@ func InsertParticipants(ctx context.Context, db *sql.DB, rows []ParticipantRow) 
 	}
 	now := time.Now().UTC()
 	for _, row := range rows {
-		row := row // capture pour la closure singleflight
-		key := row.MatchID + "|" + row.XUID
-		// Singleflight dédupe les UPSERTs concurrents sur la même clé
-		// (match_id, xuid) — cf. ADR 0018 + plan Phase 1.3. Évite les races
-		// ART DuckDB observées en prod le 2026-05-22.
-		_, err, shared := participantsSF.Do(key, func() (any, error) {
-			return nil, insertParticipantRow(ctx, db, row, now)
-		})
-		// Phase 4.3 métriques : compteur des hits singleflight (dédupe) pour
-		// observabilité de la concurrence réelle en prod via /debug/vars.
-		if shared {
-			observability.IncCounter("singleflight_dedupe_total")
-		}
-		if err != nil {
+		if err := insertParticipantRow(ctx, db, row, now); err != nil {
 			observability.IncCounter("upsert_match_participants_total_error")
 			return err
 		}
@@ -232,9 +207,6 @@ func insertParticipantRow(ctx context.Context, db *sql.DB, row ParticipantRow, n
 	if err != nil {
 		if isPKConflictError(err) {
 			// 3. Race rare : autre goroutine a inséré entre UPDATE et INSERT.
-			// Singleflight (writes.go::participantsSF) protège déjà contre ce cas
-			// pour les calls concurrents dans le même process, mais on garde le
-			// fallback au cas où.
 			return nil
 		}
 		return fmt.Errorf("InsertParticipants(%s/%s) insert: %w", row.MatchID, row.XUID, err)
