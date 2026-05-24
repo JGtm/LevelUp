@@ -89,13 +89,14 @@ func ToAnySlice[T any](s []T) []any {
 // Note schéma : session_id est VARCHAR en prod (cf. internal/migration/
 // steps_player.go) — c'est l'ID textuel d'une session, pas un INTEGER PK.
 type MatchEnrichment struct {
-	SessionID        sql.NullString
-	SessionLabel     sql.NullString
-	IsWithFriends    bool
-	IsExcluded       bool
-	PerformanceScore sql.NullFloat64
-	DominanceFlag    int
-	HadBotTeammate   bool
+	SessionID           sql.NullString
+	SessionLabel        sql.NullString
+	IsWithFriends       bool
+	IsExcluded          bool
+	PerformanceScore    sql.NullFloat64
+	DominanceFlag       int
+	HadBotTeammate      bool
+	EngagementScoreBrut sql.NullFloat64
 }
 
 // LoadPlayerMatchEnrichments retourne les 7 colonnes player_match_enrichment
@@ -128,7 +129,8 @@ func LoadPlayerMatchEnrichments(ctx context.Context, playerDB *DB, matchIDs []st
 		       COALESCE(is_excluded, FALSE),
 		       performance_score,
 		       COALESCE(dominance_flag, 0),
-		       COALESCE(had_bot_teammate, FALSE)
+		       COALESCE(had_bot_teammate, FALSE),
+		       engagement_score_brut
 		FROM player_match_enrichment
 		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
 
@@ -146,7 +148,7 @@ func LoadPlayerMatchEnrichments(ctx context.Context, playerDB *DB, matchIDs []st
 		)
 		if err := rows.Scan(&mid, &e.SessionID, &e.SessionLabel,
 			&e.IsWithFriends, &e.IsExcluded, &e.PerformanceScore,
-			&e.DominanceFlag, &e.HadBotTeammate); err != nil {
+			&e.DominanceFlag, &e.HadBotTeammate, &e.EngagementScoreBrut); err != nil {
 			return nil, fmt.Errorf("LoadPlayerMatchEnrichments scan: %w", err)
 		}
 		out[mid] = e

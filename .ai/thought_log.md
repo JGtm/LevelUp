@@ -1,3 +1,38 @@
+## [2026-05-24] Combat Profile Wiring — Phases 4-5 complètes
+
+**Statut** : Complété
+
+**Tâche** : Implémenter `PLAN_COMBAT_PROFILE_WIRING.md` Phases 4 (engagement dans les agrégats) et 5 (coaching proactif OC/DR/activité).
+
+**Décisions techniques** :
+
+1. **Phase 4 — `engagement_score_brut` dans le pipeline canonical** :
+   - `canonical.PlayerMatchEnrichment.EngagementScoreBrut *float64` (NEW) — vecteur de bout en bout.
+   - `MatchEnrichment` (shared_query_helpers) : champ + SQL `engagement_score_brut` + Scan.
+   - `playerMatchScanResult` + `mergePlayerMatchRows` + `projectEnrichment` dans `player_matches_repo.go`.
+   - `buildCombatProfileFromCanonical` (synthesis) et `ComputeKPIStats` : accumulent le résidu, passent `avgResidualBrut` à `ClassifyCombatProfile` → `StyleActivity` maintenant calculé.
+   - `StatsMatchRow.EngagementScoreBrut` + `StatsMatchRowFromCanonical` + `buildCompareEntry` → `SessionCompareEntry.AvgResidualBrut`.
+   - `types.ts SessionCompareEntry.avg_residual_brut?`.
+
+2. **Phase 5 — Coaching proactif OC/DR/activité** :
+   - `progressionMatchRow` : ajout `deaths`, `assists`, `dmgDealt`, `dmgTaken` (SQL + Scan).
+   - `assembleProgressionResults` : calcule OC/DR inline (formules 225×) et les pousse dans `MatchActivity.Stats["oc"/"dr"]`.
+   - `medianOC`/`medianDR`/`medianStat` helpers (refactored depuis `medianKDA`).
+   - `GenerateInput.CombatMedians *CombatMedians` (NEW struct). `generateCoachAlerts` peuple `CombatMedians` et le passe au coach.
+   - 3 nouveaux `AlertType` : `AlertTypeCombatPatternActif/Discret/Fragile` → `CategoryCombatPattern` (nouvelle catégorie notifications).
+   - `buildCombatPatternAlerts` avec thresholds copiés localement (OC_P80=0.83, DR_P80=1.59) pour éviter l'import cyclique `coach←analysis`.
+   - 5 nouveaux milestones TOML (`combat.precision_1/2/3`, `combat.endurance_1`, `combat.consistency`) + 3 nouvelles métriques agrégées dans `loadPlayerStats` (SQL COUNT avec formules OC/DR inline).
+
+**Tests ajoutés** :
+- `kpi_stats_test.go` : +2 tests Phase 4 (`EngagementScoreBrut → StyleActivity`, `NilResidual → NilStyleActivity`).
+- `generator_test.go` : +6 tests Phase 5 (`buildCombatPatternAlerts` — nil, actif, discret, fragile, all-good, HasResidual guard).
+
+**Résultats** : `go vet ./internal/...` clean, tous les tests `analysis/`, `progression/`, `service/` verts.
+
+**Prochaine étape** : commit + push PR.
+
+---
+
 ## [2026-05-24] Combat Profile Wiring — Phases 1-3 complètes
 
 **Statut** : Complété

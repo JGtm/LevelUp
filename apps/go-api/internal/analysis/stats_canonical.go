@@ -118,6 +118,7 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		out.SkillRatingType = string(r.Enrichment.SkillSnapshot.RatingType)
 	}
 	out.IsWithFriends = r.Enrichment.IsWithFriends
+	out.EngagementScoreBrut = r.Enrichment.EngagementScoreBrut
 	return out
 }
 

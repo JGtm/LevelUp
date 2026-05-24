@@ -46,6 +46,8 @@ func (a AlertType) NotificationCategory() notifications.Category {
 		return notifications.CategoryPatternBehavior
 	case AlertPatternLever:
 		return notifications.CategoryPatternLever
+	case AlertTypeCombatPatternActif, AlertTypeCombatPatternDiscret, AlertTypeCombatPatternFragile:
+		return notifications.CategoryCombatPattern
 	default:
 		return ""
 	}

@@ -36,6 +36,8 @@ type SessionCompareEntry struct {
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 3.
 	AvgOC *float64 `json:"avg_oc,omitempty"`
 	AvgDR *float64 `json:"avg_dr,omitempty"`
+	// AvgResidualBrut : résidu d'engagement moyen (player - attendu) — Phase 4.
+	AvgResidualBrut *float64 `json:"avg_residual_brut,omitempty"`
 }
 
 // SessionCompareMetricRow est une ligne de comparaison métrique A vs B.

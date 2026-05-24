@@ -54,6 +54,8 @@ const (
 	CategoryPatternWeakness Category = "pattern_weakness"
 	CategoryPatternBehavior Category = "pattern_behavior"
 	CategoryPatternLever    Category = "pattern_lever"
+	// 2026-05-24 : Combat Profile Wiring Phase 5 — alertes proactives OC/DR/activité.
+	CategoryCombatPattern Category = "combat_pattern"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
@@ -76,6 +78,8 @@ func AllCategories() []Category {
 		// Pattern Engine v3.
 		CategoryPatternStrength, CategoryPatternWeakness,
 		CategoryPatternBehavior, CategoryPatternLever,
+		// Combat Profile Phase 5.
+		CategoryCombatPattern,
 	}
 }
 

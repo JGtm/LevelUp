@@ -41,6 +41,8 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 	var perfCount int
 	var offSum, offCount float64
 	var defSum, defCount float64
+	var residualSum float64
+	var residualCount int
 	// Buckets par RatingType pour le delta de rang. On accumule les deltas
 	// pour chaque type rencontre puis on retient le type majoritaire en
 	// sortie (cf. RankDelta.Kind — exclusivite metier au sein d'un scope coherent).
@@ -97,6 +99,10 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 				defSum += cy.DefensiveResistance
 				defCount++
 			}
+		}
+		if r.Enrichment.EngagementScoreBrut != nil {
+			residualSum += *r.Enrichment.EngagementScoreBrut
+			residualCount++
 		}
 		if snap := r.Enrichment.SkillSnapshot; snap != nil && snap.Delta != nil && snap.RatingType != "" {
 			b, ok := rankBuckets[snap.RatingType]
@@ -160,7 +166,12 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		stats.AvgDefensiveResistance = &avgDR
 	}
 	if avgOC > 0 || avgDR > 0 {
-		block := ClassifyCombatProfile(avgOC, avgDR, nil, stats.MatchesCount)
+		var avgResidualBrut *float64
+		if residualCount > 0 {
+			v := residualSum / float64(residualCount)
+			avgResidualBrut = &v
+		}
+		block := ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, stats.MatchesCount)
 		stats.CombatProfile = &block
 	}
 	if len(rankBuckets) > 0 {
