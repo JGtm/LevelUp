@@ -22,7 +22,10 @@ type BackfillStartRequest struct {
 	CSR                    bool `json:"csr"`
 	EngagementScores       bool `json:"engagement_scores"`       // Phase 6 plan engagement
 	EngagementCoefficients bool `json:"engagement_coefficients"` // Phase recompute coefs (coef-only, rapide)
-	AllData                bool `json:"all_data"`
+	// ComebackBadges : calcule dominance_flag (Domination/Humiliation/Remontada/etc.)
+	// pour les matchs sans flag. Inclus dans AllData implicitement.
+	ComebackBadges bool `json:"comeback_badges"`
+	AllData        bool `json:"all_data"`
 
 	// Options
 	MaxMatches  int  `json:"max_matches"`  // 0 = illimité
