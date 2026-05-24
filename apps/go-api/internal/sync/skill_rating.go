@@ -385,7 +385,8 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 	if err != nil {
 		return 0, fmt.Errorf("batchComputeLUSR: %w", err)
 	}
-	// En mode force, on ne filtre pas les LUSR existants à l'upsert — ON CONFLICT DO UPDATE écrase.
+	// En mode force, on ne filtre pas les LUSR existants — l'INSERT append-only
+	// ajoute une nouvelle version et la vue match_skill_rank_latest renvoie la plus récente.
 	existingLUSRForUpsert := existingLUSR
 	if force {
 		existingLUSRForUpsert = make(map[string]bool)
@@ -405,7 +406,8 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 	}
 
 	// 5. En mode normal : filtrer les matchs déjà calculés.
-	//    En mode force : tout recalculer (upsertLUSRRatings écrase via ON CONFLICT).
+	//    En mode force : tout recalculer (upsertLUSRRatings ajoute une nouvelle
+	//    version append-only, la vue latest réflète automatiquement la dernière).
 	toProcess := matches
 	if !force {
 		toProcess = make([]lusrMatchData, 0, len(matches))
