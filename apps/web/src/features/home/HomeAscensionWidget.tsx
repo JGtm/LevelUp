@@ -58,7 +58,16 @@ export function HomeAscensionWidget({ playerSlug, locale }: HomeAscensionWidgetP
   const streaks = isLoading ? [] : (data?.items ?? []).filter((s) => s.status !== 'broken')
 
   return (
-    <Card className="flex flex-col self-start">
+    <Card className="relative flex flex-col overflow-hidden isolate">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-cover bg-center bg-no-repeat opacity-30"
+        style={{ backgroundImage: "url('/auntie-dot.webp')" }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 bg-card/75"
+      />
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-1.5 text-base">
           <FlameIcon />
