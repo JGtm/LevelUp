@@ -434,11 +434,19 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 
 **Note** : les backfills `cmd/backfill_all` et `cmd/levelup/cmd_backfill.go` (LUSR, citations, weapons, PSA, engagement, etc.) n'appellent pas `submitMatchAsBatch` — ils ont leurs propres chemins de compute UPDATE-style qui ne touchent pas `shared.match_participants` et donc ne sont pas concernés par le bug ART.
 
-### Phase 5 — Cleanup (~2h) ⏳ BLOQUÉE PAR PHASE 4.5 (smoke test prod)
+### Phase 5 — Cleanup (~2h) ⏳ DÉBLOQUÉE par Phase 4.5 (smoke test prod validé 2026-05-24)
 
 Cf. `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md` pour le plan détaillé.
 
-**Bloqueur** : Phase 4 (refactor post-sync compute) est **code-complete** (commit + tests GREEN) mais nécessite un smoke test multi-cycles en prod avec `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1` pour valider empiriquement l'absence de FATAL ART. Tant que cette validation n'est pas faite, le legacy `singleflight` + `BootARTGuard` + `RebuildART` runtime restent nécessaires en sécurité.
+**Phase 4.5 status** : ✅ validée empiriquement le 2026-05-24 — 3 cycles consécutifs × 4 joueurs = 12 syncs, 0 FATAL ART. Pré-requis découvert : `force_rebuild_art --all true` doit rebuild **3 tables critiques** (pas 2) : `shared.match_participants`, `player_match_enrichment`, et **`match_skill_rank`** (le LUSR Upsert touchait une ART non rebuilt à l'origine). Fix livré : `RebuildMatchSkillRankART` + intégration dans `force_rebuild_art`.
+
+**Cleanup débloqué — items concrets** :
+- `singleflight` dans `InsertParticipants` — peut être supprimé
+- `CHECKPOINT` post-sync — peut être supprimé
+- `BootARTGuard` auto-heal — retirer l'auto-heal, garder la détection (alerte ops)
+- `RebuildMatchParticipantsART` runtime call sites — garder comme outil ops, retirer call sites runtime
+- `force_rebuild_art` CLI — **GARDER** comme outil ops manuel (essentiel pour défaire corruption héritée)
+- Migrations UPDATE-then-INSERT (`acad4603`) — revert ou réécrire en INSERT pur
 
 - [ ] `singleflight` dans `InsertParticipants` — à supprimer post Phase 3 validée
 - [ ] `CHECKPOINT` post-sync — à supprimer

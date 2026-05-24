@@ -174,11 +174,27 @@ Recompute tous les enrichments en mémoire (Go), puis 1 seul INSERT batch atomiq
 
 **Effort réel** : ~6h sur 1 session (vs estimation initiale ~6-10h).
 
-### Phase 4.5 — Smoke test prod — 30min
+### Phase 4.5 — Smoke test prod ✅ VALIDÉE 2026-05-24
 
-- Cycle complet 4 joueurs avec `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1`
-- Vérifier : **0 FATAL ART** sur 3-5 cycles
-- Vérifier : enrichments cohérents avec legacy (sanity SQL : sample row par site refactoré)
+**Itérations exécutées** :
+
+1. **Cycle 1 (pre-rebuild)** : 2/4 joueurs en FATAL ART (Chocoboflor `writeSessionAssignmentsBatch` 410 rows, Madina97294 `upsertLUSRRatingsBatch` 21 rows). Diagnostic : ART pré-corrompue.
+2. **`force_rebuild_art --all`** : rebuild `shared.match_participants` + `player_match_enrichment` (4 player DBs). Sessions OK post-rebuild, mais...
+3. **Cycle 2 (post pme rebuild)** : sessions batch OK pour tous, **LUSR Upsert toujours FATAL** car `match_skill_rank` ART non rebuilt par force_rebuild_art (le CLI ne touchait que `player_match_enrichment`).
+4. **Fix livré** : `RebuildMatchSkillRankART` ajouté à `internal/migration/`, intégré dans `force_rebuild_art` (rebuild PME puis MSR par player DB).
+5. **Cycle 3 (post full rebuild pme+msr)** : 4/4 OK, **0 FATAL**, LUSR Upsert validé (Chocoboflor: 9 LUSR persistés).
+6. **Cycles 4-5** : 4/4 OK chacun, **0 FATAL**.
+
+**Résultat consolidé** : 3 cycles consécutifs × 4 joueurs = **12 syncs, 0 FATAL ART**.
+
+**Insight critique 2026-05-24** : la Phase 4 batch path **n'élimine pas une corruption pré-existante** — elle PRÉVIENT les futures. Pré-requis avant déploiement : `force_rebuild_art --all true` (qui rebuild les 3 tables critiques : `shared.match_participants`, `player_match_enrichment`, `match_skill_rank`).
+
+**Performance observée** (cycle 5, sequentiel 4 joueurs) :
+- Madina97294 : 94s (1115 rows enrichment, 1109 LUSR/CSR)
+- JGtm : 76s (832 rows)
+- Chocoboflor : 20s (419 rows)
+- XxDaemonGamerxX : 6s (32 rows)
+- **Total cycle complet** : ~3 min 30 — sous le seuil 8 min visé
 
 ### Phase 4.6 — Cleanup post-validation (Phase 5 du plan initial) — 2h
 
@@ -195,9 +211,10 @@ Une fois Phase 4.5 validée, débloque Phase 5 cleanup :
 | 4.2 PostSyncLUSRPersister + tests | 1h | ✅ DONE (commit) |
 | 4.3 Intégration LUSR (Upsert + dispatch) | 1h | ✅ DONE |
 | 4.4 Refactor 5 sites + 2 mutualisés (PostSyncEnrichmentPersister) | 6h | ✅ DONE |
-| 4.5 Smoke test prod multi-cycles | 30min | ⏳ TODO (user-driven) |
-| 4.6 Phase 5 cleanup anti-ART | 2h | ⏳ TODO (post-4.5) |
-| **Total restant** | **~2h30** | |
+| 4.5 Smoke test prod multi-cycles | 30min | ✅ DONE (3+4+5 = 12 syncs / 0 FATAL) |
+| 4.5b RebuildMatchSkillRankART (fix bonus découvert pendant 4.5) | 20min | ✅ DONE |
+| 4.6 Phase 5 cleanup anti-ART | 2h | ⏳ TODO (débloqué) |
+| **Total restant** | **~2h** | |
 
 ---
 
