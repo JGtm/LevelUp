@@ -456,31 +456,82 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// AVANT le post-sync compute. Sinon, runConditionalPostSync lirait
 	// des données qui ne sont pas encore en DB.
 	if e.batchQueue != nil {
+		// Libérer les write leases AVANT Drain — le Worker (CombinedPersister)
+		// doit acquérir ces mêmes leases pour persister. Sans release ici,
+		// le Worker bloque indéfiniment → PendingCount reste > 0 → timeout 60s.
+		//
+		// writerPlayer.Release() est idempotent (sync.Once) → le defer reste safe.
+		// releaseShared n'est pas idempotent : closure-swap pour éviter
+		// le double-release depuis le defer.
+		writerPlayer.Release()
+		_ = playerHandle.Close()
+		oldReleaseShared := releaseShared
+		releaseShared = func() {} // defer appellera ce no-op
+		oldReleaseShared()
+		playerDB = nil // invalide après Close
+		sharedDB = nil // invalide après release
+
 		drainCtx, drainCancel := context.WithTimeout(ctx, 60*time.Second)
-		if err := e.batchQueue.Drain(drainCtx); err != nil {
+		if drainErr := e.batchQueue.Drain(drainCtx); drainErr != nil {
 			slog.WarnContext(ctx, "sync: batch queue drain incomplet",
-				"gamertag", e.gamertag, "err", err)
-			result.AddWarning(fmt.Sprintf("queue.Drain: %v", err))
+				"gamertag", e.gamertag, "err", drainErr)
+			result.AddWarning(fmt.Sprintf("queue.Drain: %v", drainErr))
 		}
 		drainCancel()
+
+		// Re-acquisition post-Drain pour le pipeline post-sync.
+		// Echec → DBs restent nil → post-sync skippé proprement (pas de panic).
+		postPH, phErr := OpenPlayerDB(e.playerDBPath)
+		if phErr != nil {
+			slog.WarnContext(ctx, "sync: post-drain OpenPlayerDB echoue — post-sync skippe",
+				"gamertag", e.gamertag, "err", phErr)
+		} else {
+			defer postPH.Close()
+			playerDB = postPH.SQLDb()
+			postSDB, postRls, sErr := e.acquireSharedWriter(ctx)
+			if sErr != nil {
+				slog.WarnContext(ctx, "sync: post-drain acquireSharedWriter echoue — post-sync skippe",
+					"gamertag", e.gamertag, "err", sErr)
+				playerDB = nil
+			} else {
+				defer postRls()
+				sharedDB = postSDB
+				if wp, wpErr := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer); wpErr == nil {
+					defer wp.Release()
+				} else {
+					slog.WarnContext(ctx, "sync: post-drain AcquireWriterCtx echoue",
+						"gamertag", e.gamertag, "err", wpErr)
+				}
+			}
+		}
 	}
 
 	// â”€â”€â”€ Pipeline post-sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-	postResult := e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted, result.InsertedMatchIDs)
+	var postResult domain.PostSyncResult
+	if playerDB != nil && sharedDB != nil {
+		postResult = e.runConditionalPostSync(ctx, playerDB, sharedDB, client, result.MatchesInserted, result.InsertedMatchIDs)
+	} else if e.batchQueue != nil {
+		slog.WarnContext(ctx, "sync: post-sync skippe — DBs indisponibles apres drain async",
+			"gamertag", e.gamertag)
+	}
 	if result.MatchesInserted > 0 || postResult.AchievementsSynced {
 		result.PostSync = &postResult
-		slog.InfoContext(ctx, "sync: pipeline post-sync terminÃ©",
+		slog.InfoContext(ctx, "sync: pipeline post-sync terminé",
 			"gamertag", e.gamertag,
 			"perf_scores", postResult.PerfScoresComputed,
 			"lusr_updated", postResult.LUSRUpdated,
 			"views_refreshed", postResult.ViewsRefreshed,
 			"achievements_synced", postResult.AchievementsSynced,
+			"citations_computed", postResult.CitationsComputed,
+			"dominance_flags", postResult.DominanceFlagsComputed,
 		)
 	}
 
 	// â”€â”€â”€ sync_meta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-	if err := SetSyncMeta(ctx, playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
-		result.AddWarning(fmt.Sprintf("SetSyncMeta: %v", err))
+	if playerDB != nil {
+		if err := SetSyncMeta(ctx, playerDB, "last_delta_sync", time.Now().UTC().Format(time.RFC3339)); err != nil {
+			result.AddWarning(fmt.Sprintf("SetSyncMeta: %v", err))
+		}
 	}
 
 	// â”€â”€â”€ Hook Prestige (post-sync) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -7,6 +7,7 @@ package sync
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -275,7 +276,7 @@ func intPtrFrom(m map[string]any, key string) *int {
 
 func floatPtrFrom(m map[string]any, key string) *float64 {
 	v, ok := m[key].(float64)
-	if !ok {
+	if !ok || math.IsNaN(v) || math.IsInf(v, 0) {
 		return nil
 	}
 	return &v
