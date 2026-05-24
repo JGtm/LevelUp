@@ -103,6 +103,41 @@ func TestHomeHandler_GetHomePage_ServiceError(t *testing.T) {
 	}
 }
 
+// TestHomeHandler_GetHomePage_DBClosed_Returns503 — Phase 5 ART.
+// Quand la player DB est fermée/invalidée (signature observée en prod
+// 2026-05-24 20:43+ : "sql: database is closed"), le handler doit
+// renvoyer 503 + Retry-After plutôt qu'un 500 sec — pour que le client
+// retente après le Reopen() côté provider.
+func TestHomeHandler_GetHomePage_DBClosed_Returns503(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+	}{
+		{name: "sql database is closed", err: errors.New("PlayerMatchesRepo.Load: LoadPlayerMatchEnrichments: sql: database is closed")},
+		{name: "database has been invalidated (FATAL)", err: errors.New("FATAL Error: Failed: database has been invalidated because of a previous fatal error")},
+		{name: "Failed to delete all rows from index (ART)", err: errors.New("Invalid Input Error: Failed to delete all rows from index. Only deleted 0 out of 1 rows.")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := &mockHomeService{pageErr: tc.err}
+			factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {
+				return mock, ctx, testXUID, "gt", nil
+			}
+			r := newHomeRouter(factory, nil)
+			req := httptest.NewRequest(http.MethodGet, "/players/test-player/pages/home", nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != http.StatusServiceUnavailable {
+				t.Errorf("status = %d, want 503", w.Code)
+			}
+			if retryAfter := w.Header().Get("Retry-After"); retryAfter == "" {
+				t.Error("Retry-After header absent (attendu pour 503 recovery)")
+			}
+		})
+	}
+}
+
 func TestHomeHandler_GetBattlePass_OK(t *testing.T) {
 	mock := &mockHomeService{battlePass: domain.BattlePassResponse{}}
 	factory := func(ctx context.Context, _ string) (port.HomeService, context.Context, string, string, error) {

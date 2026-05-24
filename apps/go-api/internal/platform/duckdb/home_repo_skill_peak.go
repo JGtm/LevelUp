@@ -107,8 +107,10 @@ func (r *HomeRepo) loadHomeSkillPeak(ctx context.Context, ratingType string) *do
 }
 
 // loadPeakPhaseA : query match_skill_rank sur pdb.Player (player-only).
+// QueryRecovered (Phase 5 ART) : retry après Reopen si la handle player DB
+// est invalidée (FATAL DuckDB).
 func (r *HomeRepo) loadPeakPhaseA(ctx context.Context) ([]peakRow, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q26ePeakPhaseAPlayer)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, Q26ePeakPhaseAPlayer)
 	if err != nil {
 		return nil, err
 	}

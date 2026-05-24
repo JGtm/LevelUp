@@ -148,7 +148,7 @@ func (r *CareerRepo) GetLUSRHistory(ctx context.Context) ([]domain.LUSRCheckpoin
 
 // loadLUSRPlayerRows charge match_skill_rank du joueur (phase A).
 func (r *CareerRepo) loadLUSRPlayerRows(ctx context.Context) ([]lusrPlayerRow, []string, error) {
-	rows, err := r.pdb.Player.Query(ctx, Q8LUSRHistoryPlayer)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, Q8LUSRHistoryPlayer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("CareerRepo.GetLUSRHistory: phase A: %w", err)
 	}
@@ -359,7 +359,7 @@ func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow
 // loadTopMatchPMERows charge phase A : player_match_enrichment.
 func (r *CareerRepo) loadTopMatchPMERows(ctx context.Context) (map[string]topMatchPMERow, error) {
 	pmes := make(map[string]topMatchPMERow)
-	pmeRows, err := r.pdb.Player.Query(ctx, Q9TopMatchesPlayer)
+	pmeRows, err := r.pdb.Player.QueryRecovered(ctx, Q9TopMatchesPlayer)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetTopMatches: phase A: %w", err)
 	}
@@ -556,7 +556,7 @@ func (r *CareerRepo) loadHighlightCandidates(
 	ctx context.Context, extraClause string, extraArgs []any,
 ) ([]highlightSharedRow, map[string]highlightPMEEntry, error) {
 	pmes := make(map[string]highlightPMEEntry)
-	pmeRows, err := r.pdb.Player.Query(ctx, Q9TopMatchesPlayer)
+	pmeRows, err := r.pdb.Player.QueryRecovered(ctx, Q9TopMatchesPlayer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadHighlightCandidates: phase A: %w", err)
 	}

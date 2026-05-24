@@ -178,7 +178,9 @@ func (r *MatchHistoryRepo) mergeHistorySkillRanks(ctx context.Context, rows []do
 	ctx2, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	dbRows, err := r.pdb.Player.Query(ctx2, query, ToAnySlice(matchIDs)...)
+	// QueryRecovered (Phase 5 ART) : retry après Reopen si la handle player
+	// DB est invalidée (FATAL DuckDB).
+	dbRows, err := r.pdb.Player.QueryRecovered(ctx2, query, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return fmt.Errorf("skill_rank query: %w", err)
 	}

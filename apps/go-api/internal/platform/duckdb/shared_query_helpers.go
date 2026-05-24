@@ -132,7 +132,11 @@ func LoadPlayerMatchEnrichments(ctx context.Context, playerDB *DB, matchIDs []st
 		FROM player_match_enrichment
 		WHERE match_id IN (%s)`, Placeholders(len(matchIDs)))
 
-	rows, err := playerDB.Query(ctx, query, ToAnySlice(matchIDs)...)
+	// QueryRecovered (Phase 5 du refactor ART) : si la handle a été
+	// invalidée par un crash FATAL (le scénario du crash home 2026-05-24
+	// 20:41:04), Reopen() est appelé automatiquement et la requête est
+	// retentée. Évite la cascade `sql: database is closed` côté home.
+	rows, err := playerDB.QueryRecovered(ctx, query, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return nil, fmt.Errorf("LoadPlayerMatchEnrichments: %w", err)
 	}
