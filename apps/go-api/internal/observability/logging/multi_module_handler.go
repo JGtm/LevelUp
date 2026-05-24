@@ -23,18 +23,29 @@ import (
 //
 // Performance : les handlers fichiers sont créés lazy (premier log pour ce
 // module) et mis en cache. La sérialisation JSON est faite une seule fois
-// (slog.NewJSONHandler partagé par module). I/O fichier serializé via mu
+// (slog.NewJSONHandler partagé par module). I/O fichier sérialisé via mu
 // par module — write small (< 4KB) atomique sur les FS modernes.
 //
-// Thread-safe : tous les accès aux handlers fichiers sont protégés par mu.
+// Thread-safe : sharedFileState (mu + files) est partagée entre TOUS les clones
+// créés via WithAttrs/WithGroup. Un seul mutex protège la map — cf. clone().
 type MultiModuleHandler struct {
-	console slog.Handler // sortie console (existant + ContextHandler)
-	logsDir string       // ex: "logs/"
-	level   slog.Leveler // niveau global, partagé avec console
-	attrs   []slog.Attr  // attrs accumulés via WithAttrs
-	groups  []string     // groups via WithGroup
-	mu      sync.Mutex   // protège fileHandlers
-	files   map[string]*fileHandler
+	console slog.Handler
+	logsDir string
+	level   slog.Leveler
+	attrs   []slog.Attr
+	groups  []string
+	shared  *sharedFileState // pointeur partagé entre tous les clones
+}
+
+// sharedFileState regroupe le mutex et la map des file handlers.
+// Partagée via pointeur entre tous les clones d'un MultiModuleHandler pour
+// garantir qu'un seul mu protège la même map, quelle que soit la goroutine.
+// (Correction du bug race condition : avant, chaque clone avait son propre
+// sync.Mutex mais partageait la même files map → data race sous concurrence
+// HTTP + goroutine de sync → certains writes fichiers silencieusement perdus.)
+type sharedFileState struct {
+	mu    sync.Mutex
+	files map[string]*fileHandler
 }
 
 // fileHandler encapsule un slog.JSONHandler + son *os.File sous-jacent
@@ -66,7 +77,7 @@ func NewMultiModuleHandler(console slog.Handler, logsDir string, level slog.Leve
 		console: console,
 		logsDir: logsDir,
 		level:   level,
-		files:   make(map[string]*fileHandler),
+		shared:  &sharedFileState{files: make(map[string]*fileHandler)},
 	}, nil
 }
 
@@ -77,26 +88,20 @@ func (h *MultiModuleHandler) Enabled(ctx context.Context, level slog.Level) bool
 	if h.console.Enabled(ctx, level) {
 		return true
 	}
-	// File logging actif à un niveau plus bas que la console ?
 	return h.logsDir != "" && level >= h.level.Level()
 }
 
 // Handle écrit le record vers la console (toujours) et vers le fichier du
 // module si logsDir est configuré et level >= h.level.
 //
-// Erreur d'écriture fichier : loguée vers la console comme attribut sur le
-// record en cours, mais ne propage pas (les logs ne doivent jamais casser
-// la requête en cours).
+// Erreur d'écriture fichier : loguée vers stderr en best-effort, ne propage
+// pas (les logs ne doivent jamais casser la requête en cours).
 func (h *MultiModuleHandler) Handle(ctx context.Context, record slog.Record) error {
-	// 1. Console (comportement existant).
 	consoleErr := h.console.Handle(ctx, record)
 
-	// 2. File handler, si configuré et record dépasse le niveau file.
 	if h.logsDir != "" && record.Level >= h.level.Level() {
 		module := h.resolveModule(record)
 		if err := h.handleFile(ctx, module, record); err != nil {
-			// Best-effort : log l'erreur fichier sur la console seulement,
-			// pas de récursion (sinon boucle infinie si l'erreur persiste).
 			fmt.Fprintf(os.Stderr, "logging: write to %s.log failed: %v\n", module, err)
 		}
 	}
@@ -109,25 +114,22 @@ func (h *MultiModuleHandler) Handle(ctx context.Context, record slog.Record) err
 //   - Sinon, infère depuis le PC d'appel via detectModuleFromCaller.
 //   - Fallback ModuleGeneral.
 func (h *MultiModuleHandler) resolveModule(record slog.Record) string {
-	// Check WithAttrs accumulé sur ce handler (cas slog.With("module", ...))
 	for _, a := range h.attrs {
 		if a.Key == moduleAttrKey && a.Value.Kind() == slog.KindString {
 			return SanitizeModuleName(a.Value.String())
 		}
 	}
-	// Check attrs portés par le record lui-même
 	moduleFromRecord := ""
 	record.Attrs(func(a slog.Attr) bool {
 		if a.Key == moduleAttrKey && a.Value.Kind() == slog.KindString {
 			moduleFromRecord = a.Value.String()
-			return false // stop iteration
+			return false
 		}
 		return true
 	})
 	if moduleFromRecord != "" {
 		return SanitizeModuleName(moduleFromRecord)
 	}
-	// Auto-detect depuis le PC (record.PC est le caller de slog.Log)
 	if record.PC != 0 {
 		return SanitizeModuleName(detectModuleFromCaller(record.PC))
 	}
@@ -145,11 +147,12 @@ func (h *MultiModuleHandler) handleFile(ctx context.Context, module string, reco
 }
 
 // fileForModule retourne le fileHandler en cache pour le module, ou en crée
-// un nouveau (créé le fichier sur disque, instancie un slog.JSONHandler).
+// un nouveau (crée le fichier sur disque, instancie un slog.JSONHandler).
+// Utilise h.shared.mu — correctement partagé entre tous les clones.
 func (h *MultiModuleHandler) fileForModule(module string) (*fileHandler, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if fh, ok := h.files[module]; ok {
+	h.shared.mu.Lock()
+	defer h.shared.mu.Unlock()
+	if fh, ok := h.shared.files[module]; ok {
 		return fh, nil
 	}
 
@@ -160,13 +163,9 @@ func (h *MultiModuleHandler) fileForModule(module string) (*fileHandler, error) 
 	}
 
 	jsonHandler := slog.NewJSONHandler(f, &slog.HandlerOptions{
-		Level: h.level,
-		// AddSource : utile pour les fichiers (debug post-mortem), pas pour
-		// la console (verbeux). Activé ici, désactivé sur la console.
+		Level:     h.level,
 		AddSource: true,
 	})
-	// Appliquer les attrs/groups accumulés via WithAttrs/WithGroup pour
-	// rester cohérent avec la console.
 	var handler slog.Handler = jsonHandler
 	if len(h.attrs) > 0 {
 		handler = handler.WithAttrs(h.attrs)
@@ -176,20 +175,16 @@ func (h *MultiModuleHandler) fileForModule(module string) (*fileHandler, error) 
 	}
 
 	fh := &fileHandler{handler: handler, file: f}
-	h.files[module] = fh
+	h.shared.files[module] = fh
 	return fh, nil
 }
 
 // WithAttrs retourne un handler enrichi des attrs donnés (slog.With("k", "v")).
-// Important : les attrs sont propagés à la fois à la console ET aux fichiers.
+// Le clone partage le même *sharedFileState que le parent.
 func (h *MultiModuleHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	clone := h.clone()
 	clone.console = h.console.WithAttrs(attrs)
 	clone.attrs = append(clone.attrs, attrs...)
-	// Note : les file handlers déjà créés gardent leur ancien WithAttrs ;
-	// les futurs créés (lazy) prendront la nouvelle liste. C'est le contrat
-	// slog standard (WithAttrs retourne un NEW handler, les anciens restent
-	// intacts pour les autres call sites).
 	return clone
 }
 
@@ -201,10 +196,9 @@ func (h *MultiModuleHandler) WithGroup(name string) slog.Handler {
 	return clone
 }
 
-// clone retourne une copie superficielle prête à recevoir des attrs/groups
-// supplémentaires. mu et files sont SHARED entre clones pour garder la
-// même fenêtre d'écriture (un seul handle de fichier par module pour le
-// process).
+// clone retourne une copie du handler prête à recevoir des attrs/groups
+// supplémentaires. shared est transmis par pointeur — un seul mu protège
+// la même files map quelle que soit la goroutine qui utilise ce clone.
 func (h *MultiModuleHandler) clone() *MultiModuleHandler {
 	return &MultiModuleHandler{
 		console: h.console,
@@ -212,30 +206,24 @@ func (h *MultiModuleHandler) clone() *MultiModuleHandler {
 		level:   h.level,
 		attrs:   append([]slog.Attr(nil), h.attrs...),
 		groups:  append([]string(nil), h.groups...),
-		mu:      sync.Mutex{}, // pas partagé : chaque clone gère son propre verrou (cf. note suivante)
-		// files : NOTE — on PARTAGE la map entre clones pour éviter de
-		// ré-ouvrir N fois le même fichier. mu est local mais protège
-		// uniquement les LECTURES de la map, qui sont thread-safe via sync.Map.
-		// Actuellement on utilise un map nu — refactor TODO si contention
-		// observée.
-		files: h.files,
+		shared:  h.shared, // pointeur partagé — intentionnel
 	}
 }
 
 // Close ferme proprement tous les file handles. À appeler au shutdown du serveur.
 // Idempotent : sûr d'appeler plusieurs fois.
 func (h *MultiModuleHandler) Close() error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.shared.mu.Lock()
+	defer h.shared.mu.Unlock()
 	var firstErr error
-	for module, fh := range h.files {
+	for module, fh := range h.shared.files {
 		if fh.file != nil {
 			if err := fh.file.Close(); err != nil && firstErr == nil {
 				firstErr = fmt.Errorf("close %s.log: %w", module, err)
 			}
 			fh.file = nil
 		}
-		delete(h.files, module)
+		delete(h.shared.files, module)
 	}
 	return firstErr
 }
