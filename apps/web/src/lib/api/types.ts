@@ -2944,6 +2944,8 @@ export interface SessionCompareEntry {
   // PLAN_COMBAT_PROFILE_WIRING Phase 3
   avg_oc?: number | null
   avg_dr?: number | null
+  // PLAN_COMBAT_PROFILE_WIRING Phase 4
+  avg_residual_brut?: number | null
 }
 
 export interface SessionCompareMetricRow {

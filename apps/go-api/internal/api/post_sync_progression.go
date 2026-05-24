@@ -153,7 +153,7 @@ func EvaluateProgressionAfterSync(
 	if deps.CoachGenerator == nil {
 		return res, nil
 	}
-	alerts := generateCoachAlerts(ctx, deps, userID, titleSlug, now, &res, cb, prof)
+	alerts := generateCoachAlerts(ctx, deps, userID, titleSlug, now, &res, cb, prof, activities)
 	res.AlertsGenerated = len(alerts)
 
 	deduped := dedupCoachAlerts(ctx, deps, alerts, now)
@@ -241,6 +241,7 @@ func generateCoachAlerts(
 	ctx context.Context, deps ProgressionDeps,
 	userID, titleSlug string, now time.Time,
 	res *ProgressionResult, cb comebackContext, prof *profile.PlayerProfile,
+	activities []streaks.MatchActivity,
 ) []coach.Alert {
 	coachInput := coach.GenerateInput{
 		UserID:           userID,
@@ -265,6 +266,27 @@ func generateCoachAlerts(
 				Window:    prof.MuTrend.Window,
 			}}
 		}
+	}
+	mOC := medianOC(activities)
+	mDR := medianDR(activities)
+	if mOC > 0 || mDR > 0 {
+		var residualSum float64
+		var residualCount int
+		for _, a := range activities {
+			if v, ok := a.Stats["engagement_score_brut"]; ok {
+				residualSum += v
+				residualCount++
+			}
+		}
+		cm := &coach.CombatMedians{
+			MedianOC:    mOC,
+			MedianDR:    mDR,
+			HasResidual: residualCount >= 10,
+		}
+		if residualCount > 0 {
+			cm.AvgResidual = residualSum / float64(residualCount)
+		}
+		coachInput.CombatMedians = cm
 	}
 	return deps.CoachGenerator.Generate(ctx, coachInput)
 }
@@ -428,9 +450,23 @@ func (p *profileLeverageProvider) CurrentLeverageComponents(
 // weekly_kda_threshold. La médiane est robuste aux outliers (matchs à
 // KDA aberrant) — préférée à la moyenne pour ce cas d'usage.
 func medianKDA(activities []streaks.MatchActivity) float64 {
+	return medianStat(activities, "kda")
+}
+
+func medianOC(activities []streaks.MatchActivity) float64 {
+	return medianStat(activities, "oc")
+}
+
+func medianDR(activities []streaks.MatchActivity) float64 {
+	return medianStat(activities, "dr")
+}
+
+// medianStat calcule la médiane d'une stat nommée parmi les activités.
+// Retourne 0 si moins de 10 valeurs disponibles.
+func medianStat(activities []streaks.MatchActivity, key string) float64 {
 	values := make([]float64, 0, len(activities))
 	for _, a := range activities {
-		if v, ok := a.Stats["kda"]; ok && v > 0 {
+		if v, ok := a.Stats[key]; ok && v > 0 {
 			values = append(values, v)
 		}
 	}

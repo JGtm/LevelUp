@@ -968,28 +968,33 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 	}
 	var ocSum, drSum float64
 	var ocCount, drCount int
+	var residualSum float64
+	var residualCount int
 	for _, r := range rows {
-		if r.Self.DamageDealt == nil || r.Self.DamageTaken == nil {
-			continue
+		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
+			k, a, d := 0, 0, 0
+			if r.Self.Kills != nil {
+				k = *r.Self.Kills
+			}
+			if r.Self.Assists != nil {
+				a = *r.Self.Assists
+			}
+			if r.Self.Deaths != nil {
+				d = *r.Self.Deaths
+			}
+			cy := analysis.ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
+			if cy.OffensiveConversion > 0 {
+				ocSum += cy.OffensiveConversion
+				ocCount++
+			}
+			if cy.DefensiveResistance > 0 {
+				drSum += cy.DefensiveResistance
+				drCount++
+			}
 		}
-		k, a, d := 0, 0, 0
-		if r.Self.Kills != nil {
-			k = *r.Self.Kills
-		}
-		if r.Self.Assists != nil {
-			a = *r.Self.Assists
-		}
-		if r.Self.Deaths != nil {
-			d = *r.Self.Deaths
-		}
-		cy := analysis.ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
-		if cy.OffensiveConversion > 0 {
-			ocSum += cy.OffensiveConversion
-			ocCount++
-		}
-		if cy.DefensiveResistance > 0 {
-			drSum += cy.DefensiveResistance
-			drCount++
+		if r.Enrichment.EngagementScoreBrut != nil {
+			residualSum += *r.Enrichment.EngagementScoreBrut
+			residualCount++
 		}
 	}
 	avgOC := 0.0
@@ -1000,7 +1005,12 @@ func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.Co
 	if drCount > 0 {
 		avgDR = drSum / float64(drCount)
 	}
-	block := analysis.ClassifyCombatProfile(avgOC, avgDR, nil, len(rows))
+	var avgResidualBrut *float64
+	if residualCount > 0 {
+		v := residualSum / float64(residualCount)
+		avgResidualBrut = &v
+	}
+	block := analysis.ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, len(rows))
 	return &block
 }
 

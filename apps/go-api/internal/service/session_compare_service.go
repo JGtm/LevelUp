@@ -172,6 +172,8 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 	var minTime, maxTime time.Time
 	var ocSum, drSum float64
 	var ocCount, drCount int
+	var residualSum float64
+	var residualCount int
 	for i, m := range matches {
 		if i == 0 {
 			minTime = m.StartTime
@@ -201,6 +203,10 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 			drSum += *m.DefensiveResistance
 			drCount++
 		}
+		if m.EngagementScoreBrut != nil {
+			residualSum += *m.EngagementScoreBrut
+			residualCount++
+		}
 	}
 
 	var kda *float64
@@ -218,6 +224,11 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		v := math.Round(drSum/float64(drCount)*100) / 100
 		avgDR = &v
 	}
+	var avgResidualBrut *float64
+	if residualCount > 0 {
+		v := math.Round(residualSum/float64(residualCount)*100) / 100
+		avgResidualBrut = &v
+	}
 
 	start := minTime.Format(time.RFC3339)
 	end := maxTime.Format(time.RFC3339)
@@ -234,6 +245,7 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		DominantCategory: dominantSessionCategoryPtr(matches),
 		AvgOC:            avgOC,
 		AvgDR:            avgDR,
+		AvgResidualBrut:  avgResidualBrut,
 	}
 }
 

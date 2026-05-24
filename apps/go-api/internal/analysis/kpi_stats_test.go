@@ -416,3 +416,47 @@ func TestComputeKPIStats_CombatProfile_NilStylesBelow15Matches(t *testing.T) {
 			got.CombatProfile.StyleOffensive, got.CombatProfile.StyleDefensive)
 	}
 }
+
+func TestComputeKPIStats_CombatProfile_EngagementScoreBrut_WiresStyleActivity(t *testing.T) {
+	t.Parallel()
+	// Phase 4 : EngagementScoreBrut > +5 → StyleActivity = "actif" (≥ 15 matchs + damage).
+	residual := 10.0
+	rows := make([]canonical.PlayerMatchRow, 20)
+	for i := range rows {
+		r := mkRowWithDamage(10, 0, 5, 2000, 1800)
+		r.Enrichment.EngagementScoreBrut = &residual
+		rows[i] = r
+	}
+	got := ComputeKPIStats(rows)
+	if got.CombatProfile == nil {
+		t.Fatal("CombatProfile: want non-nil")
+	}
+	if got.CombatProfile.AvgResidualBrut == nil {
+		t.Fatal("AvgResidualBrut: want non-nil when EngagementScoreBrut set on rows")
+	}
+	if *got.CombatProfile.AvgResidualBrut != residual {
+		t.Errorf("AvgResidualBrut = %.2f, want %.2f", *got.CombatProfile.AvgResidualBrut, residual)
+	}
+	if got.CombatProfile.StyleActivity == nil || *got.CombatProfile.StyleActivity != domain.CombatStyleActivityActif {
+		t.Errorf("StyleActivity: want %q (residual=10), got %v", domain.CombatStyleActivityActif, got.CombatProfile.StyleActivity)
+	}
+}
+
+func TestComputeKPIStats_CombatProfile_NilResidual_NilStyleActivity(t *testing.T) {
+	t.Parallel()
+	// Pas de EngagementScoreBrut → AvgResidualBrut nil → StyleActivity nil.
+	rows := make([]canonical.PlayerMatchRow, 20)
+	for i := range rows {
+		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
+	}
+	got := ComputeKPIStats(rows)
+	if got.CombatProfile == nil {
+		t.Fatal("CombatProfile: want non-nil with damage")
+	}
+	if got.CombatProfile.AvgResidualBrut != nil {
+		t.Errorf("AvgResidualBrut: want nil when no EngagementScoreBrut, got %v", *got.CombatProfile.AvgResidualBrut)
+	}
+	if got.CombatProfile.StyleActivity != nil {
+		t.Errorf("StyleActivity: want nil when AvgResidualBrut nil, got %v", *got.CombatProfile.StyleActivity)
+	}
+}

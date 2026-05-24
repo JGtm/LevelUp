@@ -49,6 +49,12 @@ const (
 	AlertPatternBehavior AlertType = "pattern_behavior"
 	// AlertPatternLever : levier calibré prioritaire (pattern engine).
 	AlertPatternLever AlertType = "pattern_lever"
+	// AlertTypeCombatPatternActif : activité élevée mais conversion OC basse — signal d'amélioration.
+	AlertTypeCombatPatternActif AlertType = "combat_pattern_actif"
+	// AlertTypeCombatPatternDiscret : activité très basse (résidu engagement < -5).
+	AlertTypeCombatPatternDiscret AlertType = "combat_pattern_discret"
+	// AlertTypeCombatPatternFragile : résistance défensive systématiquement basse.
+	AlertTypeCombatPatternFragile AlertType = "combat_pattern_fragile"
 )
 
 // AllAlertTypes liste tous les types supportés.
@@ -61,6 +67,7 @@ func AllAlertTypes() []AlertType {
 		AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto,
 		AlertPatternStrength, AlertPatternWeakness,
 		AlertPatternBehavior, AlertPatternLever,
+		AlertTypeCombatPatternActif, AlertTypeCombatPatternDiscret, AlertTypeCombatPatternFragile,
 	}
 }
 

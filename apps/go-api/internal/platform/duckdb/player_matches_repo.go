@@ -384,6 +384,7 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].dominanceFlag = e.DominanceFlag
 			shared[i].hadBotTeammate = e.HadBotTeammate
 			shared[i].isWithFriends = e.IsWithFriends
+			shared[i].engagementScoreBrut = e.EngagementScoreBrut
 		}
 		if s, ok := skillRanks[shared[i].matchID]; ok {
 			shared[i].skillRatingType = s.ratingType
@@ -523,6 +524,7 @@ type playerMatchScanResult struct {
 	timePlayedSeconds, dominanceFlag            int
 	isRanked, isFirefight, hadBotTeammate       bool
 	isWithFriends                               bool
+	engagementScoreBrut                         sql.NullFloat64
 	kda, accuracy, teamMMR, enemyMMR            sql.NullFloat64
 	avgLifeSeconds                              sql.NullFloat64
 	damageDealt, damageTaken                    sql.NullFloat64
@@ -675,15 +677,16 @@ func projectSelfParticipant(s playerMatchScanResult, outcome canonical.Outcome, 
 // projectEnrichment projette la section Enrichment (PME + skill).
 func projectEnrichment(s playerMatchScanResult, skillSnap *canonical.SkillSnapshot) canonical.PlayerMatchEnrichment {
 	return canonical.PlayerMatchEnrichment{
-		SessionID:        nullStringPtr(s.sessionID),
-		SessionLabel:     nullStringPtr(s.sessionLabel),
-		PerformanceScore: nullFloatPtr(s.performanceScore),
-		DominanceFlag:    canonical.DominanceFlag(s.dominanceFlag),
-		HadBotTeammate:   s.hadBotTeammate,
-		IsWithFriends:    s.isWithFriends,
-		TeamMMR:          nullFloatPtr(s.teamMMR),
-		EnemyMMR:         nullFloatPtr(s.enemyMMR),
-		SkillSnapshot:    skillSnap,
+		SessionID:           nullStringPtr(s.sessionID),
+		SessionLabel:        nullStringPtr(s.sessionLabel),
+		PerformanceScore:    nullFloatPtr(s.performanceScore),
+		DominanceFlag:       canonical.DominanceFlag(s.dominanceFlag),
+		HadBotTeammate:      s.hadBotTeammate,
+		IsWithFriends:       s.isWithFriends,
+		TeamMMR:             nullFloatPtr(s.teamMMR),
+		EnemyMMR:            nullFloatPtr(s.enemyMMR),
+		SkillSnapshot:       skillSnap,
+		EngagementScoreBrut: nullFloatPtr(s.engagementScoreBrut),
 	}
 }
 

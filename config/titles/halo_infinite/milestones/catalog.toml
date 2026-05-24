@@ -143,3 +143,54 @@ title_fr  = "Tireur d'élite quotidien"
 title_en  = "Daily Marksman"
 icon      = "milestone_accuracy_90days"
 condition = "accuracy >= 0.50 sur 90 jours distincts"
+
+# ─── Profil de combat (OC/DR — Phase 5 PLAN_COMBAT_PROFILE_WIRING) ───────────
+# Métrique compute par l'orchestrateur post-sync depuis match_participants :
+#   combat_precision_matches  : matchs avec OC >= 0.83 (P80)
+#   combat_endurance_matches  : matchs avec DR >= 1.59 (P80)
+#   combat_excellence_matches : matchs avec OC >= 0.83 ET DR >= 1.59
+
+[[milestones]]
+id        = "halo_infinite.combat.precision_1"
+metric    = "combat_precision_matches"
+threshold = 10
+title_fr  = "Précision acquise"
+title_en  = "Precision Achieved"
+icon      = "milestone_combat_precision_1"
+condition = "10 matchs avec offensive_conversion >= 0.83"
+
+[[milestones]]
+id        = "halo_infinite.combat.precision_2"
+metric    = "combat_precision_matches"
+threshold = 50
+title_fr  = "Tireur implacable"
+title_en  = "Relentless Marksman"
+icon      = "milestone_combat_precision_2"
+condition = "50 matchs avec offensive_conversion >= 0.83"
+
+[[milestones]]
+id        = "halo_infinite.combat.precision_3"
+metric    = "combat_precision_matches"
+threshold = 200
+title_fr  = "Predator"
+title_en  = "Predator"
+icon      = "milestone_combat_precision_3"
+condition = "200 matchs avec offensive_conversion >= 0.83"
+
+[[milestones]]
+id        = "halo_infinite.combat.endurance_1"
+metric    = "combat_endurance_matches"
+threshold = 25
+title_fr  = "Blindé"
+title_en  = "Armored"
+icon      = "milestone_combat_endurance_1"
+condition = "25 matchs avec defensive_resistance >= 1.59"
+
+[[milestones]]
+id        = "halo_infinite.combat.consistency"
+metric    = "combat_excellence_matches"
+threshold = 10
+title_fr  = "Profil d'élite"
+title_en  = "Elite Profile"
+icon      = "milestone_combat_excellence"
+condition = "10 matchs avec OC >= 0.83 ET DR >= 1.59"

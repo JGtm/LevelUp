@@ -124,8 +124,9 @@ type StatsMatchRow struct {
 	PerfectKills        *int
 	// SkillRatingValue : rating CSR ou LUSR du match (depuis match_skill_rank).
 	// Nil si le titre/match n'a pas de skill snapshot.
-	SkillRatingValue *float64
-	SkillRatingType  string // "csr" | "lusr" | ""
+	SkillRatingValue    *float64
+	SkillRatingType     string   // "csr" | "lusr" | ""
+	EngagementScoreBrut *float64 // résidu brut engagement, nil si non calculé
 }
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.
