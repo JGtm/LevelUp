@@ -1,16 +1,18 @@
-// Package sync — skill_rating_postsync_persist.go : Phase 4.3 du refactor
-// Collect→Persist — chemin INSERT-only pour upsertLUSRRatings.
+// Package sync — skill_rating_postsync_persist.go : chemin batch pour
+// upsertLUSRRatings, basé sur le AppendOnlyLUSRPersister (Phase 2.C du
+// plan d'éradication ART, cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md).
 //
-// **Activation** : env var LEVELUP_POSTSYNC_INSERT_ONLY=1.
+// **Sémantique append-only** : chaque batch est un INSERT pur (pas de
+// DELETE, pas d'UPDATE). La table match_skill_rank stocke N versions
+// par (match_id, rating_type) ; la vue match_skill_rank_latest expose
+// la version la plus récente.
 //
-// Logique identique au chemin legacy (compute delta, tier, etc.) mais au
-// lieu de UPDATE-then-INSERT row-by-row, accumule les LUSRRatingInsert
-// en RAM puis appelle PostSyncLUSRPersister.Upsert qui fait DELETE WHERE
-// match_id IN (...) AND rating_type='LUSR' + INSERT batch en 1 TX atomique.
-//
-// Conserve le filtre existingCSR (skip silencieusement les matchs CSR
-// pour ne pas écraser un CSR avec un LUSR) et existingLUSR (anti-overwrite
-// si non-force).
+// Logique métier identique au chemin legacy (compute delta, tier, etc.).
+// Conserve les filtres :
+//   - existingCSR : skip les matchs ranked CSR pour ne pas écrire un LUSR
+//     sur un match déjà rated par Halo (la vue latest le préserverait,
+//     mais on évite le bruit physique).
+//   - existingLUSR : skip les LUSR déjà persistés en mode non-force.
 
 package sync
 
@@ -113,10 +115,11 @@ func upsertLUSRRatingsBatch(
 		return 0, nil
 	}
 
-	// Persist atomic batch via PostSyncLUSRPersister.
-	persister := persist.NewPostSyncLUSRPersister(playerDB)
-	if err := persister.Upsert(ctx, rows); err != nil {
-		slog.ErrorContext(ctx, "upsertLUSRRatingsBatch: PostSyncLUSRPersister.Upsert échoué",
+	// Persist atomic batch via AppendOnlyLUSRPersister (INSERT pur, jamais
+	// de DELETE → bug ART impossible par construction).
+	persister := persist.NewAppendOnlyLUSRPersister(playerDB)
+	if err := persister.Persist(ctx, rows); err != nil {
+		slog.ErrorContext(ctx, "upsertLUSRRatingsBatch: AppendOnlyLUSRPersister.Persist échoué",
 			"batch_size", len(rows), "err", err)
 		return 0, err
 	}
