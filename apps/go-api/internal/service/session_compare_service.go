@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strings"
@@ -63,14 +64,17 @@ func (s *SessionCompareService) Compare(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
 	if err != nil {
+		slog.ErrorContext(ctx, "session_compare: échec chargement canonical", "gamertag", s.gamertag, "err", err)
 		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: %w", err)
 	}
 	matches := filterStatsMatchRows(analysis.StatsMatchRowsFromCanonical(canonicalRows), req.Filters)
+	slog.DebugContext(ctx, "session_compare: rows chargés", "gamertag", s.gamertag, "canonical", len(canonicalRows), "filtered", len(matches))
 
 	// 2. Identifier les sessions disponibles.
 	sessionLabels := extractSessionLabels(matches)
 
 	if len(sessionLabels) < 2 {
+		slog.InfoContext(ctx, "session_compare: sessions insuffisantes", "gamertag", s.gamertag, "sessions", len(sessionLabels))
 		return domain.SessionCompareResponse{
 			AvailableSessions: sessionLabels,
 			Metrics:           []domain.SessionCompareMetricRow{},
@@ -82,6 +86,7 @@ func (s *SessionCompareService) Compare(
 	// SÃ©lection automatique : derniÃ¨re et avant-derniÃ¨re sessions.
 	labelA := lastOrNil(sessionLabels, req.SessionA)
 	labelB := secondLastOrNil(sessionLabels, req.SessionB)
+	slog.DebugContext(ctx, "session_compare: sélection sessions", "gamertag", s.gamertag, "session_a", labelA, "session_b", labelB, "available", len(sessionLabels))
 
 	// 3. Filtrer les matchs par session.
 	matchesA := filterBySession(matches, labelA)
@@ -91,6 +96,11 @@ func (s *SessionCompareService) Compare(
 	entryA := buildCompareEntry(matchesA, labelA)
 	entryB := buildCompareEntry(matchesB, labelB)
 	metrics := buildCompareMetrics(matchesA, matchesB)
+
+	slog.InfoContext(ctx, "session_compare: comparaison terminée",
+		"gamertag", s.gamertag,
+		"matches_a", len(matchesA), "matches_b", len(matchesB),
+		"metrics", len(metrics))
 
 	return domain.SessionCompareResponse{
 		SessionA:          entryA,
@@ -160,6 +170,10 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 	wins, losses := 0, 0
 	totalKills, totalDeaths := 0, 0
 	var minTime, maxTime time.Time
+	var ocSum, drSum float64
+	var ocCount, drCount int
+	var residualSum float64
+	var residualCount int
 	for i, m := range matches {
 		if i == 0 {
 			minTime = m.StartTime
@@ -181,12 +195,39 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		}
 		totalKills += m.Kills
 		totalDeaths += m.Deaths
+		if m.OffensiveConversion != nil {
+			ocSum += *m.OffensiveConversion
+			ocCount++
+		}
+		if m.DefensiveResistance != nil {
+			drSum += *m.DefensiveResistance
+			drCount++
+		}
+		if m.EngagementScoreBrut != nil {
+			residualSum += *m.EngagementScoreBrut
+			residualCount++
+		}
 	}
 
 	var kda *float64
 	if totalDeaths > 0 {
 		v := math.Round(float64(totalKills)/float64(totalDeaths)*100) / 100
 		kda = &v
+	}
+
+	var avgOC, avgDR *float64
+	if ocCount > 0 {
+		v := math.Round(ocSum/float64(ocCount)*100) / 100
+		avgOC = &v
+	}
+	if drCount > 0 {
+		v := math.Round(drSum/float64(drCount)*100) / 100
+		avgDR = &v
+	}
+	var avgResidualBrut *float64
+	if residualCount > 0 {
+		v := math.Round(residualSum/float64(residualCount)*100) / 100
+		avgResidualBrut = &v
 	}
 
 	start := minTime.Format(time.RFC3339)
@@ -202,6 +243,9 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		KDA:              kda,
 		PerformanceScore: averagePerformanceScore(matches),
 		DominantCategory: dominantSessionCategoryPtr(matches),
+		AvgOC:            avgOC,
+		AvgDR:            avgDR,
+		AvgResidualBrut:  avgResidualBrut,
 	}
 }
 
@@ -236,7 +280,51 @@ func buildCompareMetrics(a, b []legacymatch.StatsMatchRow) []domain.SessionCompa
 		))
 	}
 
+	// OC/DR : uniquement si au moins une session a des données dégâts.
+	ocA := averageOC(a)
+	ocB := averageOC(b)
+	if ocA != nil || ocB != nil {
+		metrics = append(metrics, compareMetric("offensive_conversion", "Conversion off.", derefFloat64(ocA), derefFloat64(ocB), "%.2f"))
+	}
+	drA := averageDR(a)
+	drB := averageDR(b)
+	if drA != nil || drB != nil {
+		metrics = append(metrics, compareMetric("defensive_resistance", "Résistance déf.", derefFloat64(drA), derefFloat64(drB), "%.2f"))
+	}
+
 	return metrics
+}
+
+func averageOC(matches []legacymatch.StatsMatchRow) *float64 {
+	var sum float64
+	var count int
+	for _, m := range matches {
+		if m.OffensiveConversion != nil {
+			sum += *m.OffensiveConversion
+			count++
+		}
+	}
+	if count == 0 {
+		return nil
+	}
+	v := math.Round(sum/float64(count)*100) / 100
+	return &v
+}
+
+func averageDR(matches []legacymatch.StatsMatchRow) *float64 {
+	var sum float64
+	var count int
+	for _, m := range matches {
+		if m.DefensiveResistance != nil {
+			sum += *m.DefensiveResistance
+			count++
+		}
+	}
+	if count == 0 {
+		return nil
+	}
+	v := math.Round(sum/float64(count)*100) / 100
+	return &v
 }
 
 func averagePerformanceScore(matches []legacymatch.StatsMatchRow) *float64 {

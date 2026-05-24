@@ -393,3 +393,80 @@ func TestAlertType_NotificationCategory_AllMapped(t *testing.T) {
 		}
 	}
 }
+
+// ─── buildCombatPatternAlerts ───────────────────────────────────────────────
+
+func TestBuildCombatPatternAlerts_NilMedians_NoAlerts(t *testing.T) {
+	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: nil})
+	if len(alerts) != 0 {
+		t.Errorf("nil CombatMedians should produce 0 alerts, got %d", len(alerts))
+	}
+}
+
+func TestBuildCombatPatternAlerts_Actif_LowOC_HighResidual(t *testing.T) {
+	cm := &CombatMedians{
+		MedianOC:    combatOCP80Threshold * 0.50, // < 70% P80 → fragile OC
+		MedianDR:    combatDRP80Threshold,         // bon DR → pas de fragile
+		AvgResidual: 10.0,                         // > +5 → actif
+		HasResidual: true,
+	}
+	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})
+	if _, ok := findAlertByType(alerts, AlertTypeCombatPatternActif); !ok {
+		t.Error("expected AlertTypeCombatPatternActif for low OC + high residual")
+	}
+	if _, ok := findAlertByType(alerts, AlertTypeCombatPatternFragile); ok {
+		t.Error("unexpected AlertTypeCombatPatternFragile with good DR")
+	}
+}
+
+func TestBuildCombatPatternAlerts_Discret_LowResidual(t *testing.T) {
+	cm := &CombatMedians{
+		MedianOC:    combatOCP80Threshold,
+		MedianDR:    combatDRP80Threshold,
+		AvgResidual: -10.0, // < -5 → discret
+		HasResidual: true,
+	}
+	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})
+	if _, ok := findAlertByType(alerts, AlertTypeCombatPatternDiscret); !ok {
+		t.Error("expected AlertTypeCombatPatternDiscret for avg_residual < -5")
+	}
+}
+
+func TestBuildCombatPatternAlerts_Fragile_LowDR(t *testing.T) {
+	cm := &CombatMedians{
+		MedianOC:    combatOCP80Threshold,
+		MedianDR:    combatDRP80Threshold * 0.50, // < 70% P80 → fragile DR
+		AvgResidual: 0,
+		HasResidual: false,
+	}
+	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})
+	if _, ok := findAlertByType(alerts, AlertTypeCombatPatternFragile); !ok {
+		t.Error("expected AlertTypeCombatPatternFragile for low DR")
+	}
+}
+
+func TestBuildCombatPatternAlerts_NoAlert_AllGood(t *testing.T) {
+	cm := &CombatMedians{
+		MedianOC:    combatOCP80Threshold,         // bon OC
+		MedianDR:    combatDRP80Threshold,         // bon DR
+		AvgResidual: 0.0,                          // modéré (>= -5, pas > +5)
+		HasResidual: true,
+	}
+	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})
+	if len(alerts) != 0 {
+		t.Errorf("no alerts expected when OC/DR/residual are all good, got %d", len(alerts))
+	}
+}
+
+func TestBuildCombatPatternAlerts_ActifRequiresHasResidual(t *testing.T) {
+	cm := &CombatMedians{
+		MedianOC:    combatOCP80Threshold * 0.50,
+		MedianDR:    combatDRP80Threshold,
+		AvgResidual: 10.0,
+		HasResidual: false, // pas assez de données résidu → pas d'alerte actif
+	}
+	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})
+	if _, ok := findAlertByType(alerts, AlertTypeCombatPatternActif); ok {
+		t.Error("AlertTypeCombatPatternActif should not fire without HasResidual")
+	}
+}

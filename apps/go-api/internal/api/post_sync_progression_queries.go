@@ -38,9 +38,13 @@ type progressionMatchRow struct {
 	startTime time.Time
 	kda       float64
 	kills     float64
+	deaths    float64
+	assists   float64
 	accuracy  float64
 	personal  float64
 	timeSec   float64
+	dmgDealt  float64
+	dmgTaken  float64
 }
 
 func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackDays int, now time.Time) ([]streaks.MatchActivity, []records.MatchInput, error) {
@@ -79,9 +83,13 @@ func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, sin
 			mr.start_time,
 			COALESCE(mp.kda, 0) AS kda,
 			COALESCE(mp.kills, 0) AS kills,
+			COALESCE(mp.deaths, 0) AS deaths,
+			COALESCE(mp.assists, 0) AS assists,
 			COALESCE(mp.accuracy, 0) AS accuracy,
 			COALESCE(mp.personal_score, 0) AS personal_score,
-			COALESCE(mp.time_played_seconds, 0) AS time_played_seconds
+			COALESCE(mp.time_played_seconds, 0) AS time_played_seconds,
+			COALESCE(mp.damage_dealt, 0) AS damage_dealt,
+			COALESCE(mp.damage_taken, 0) AS damage_taken
 		FROM match_participants mp
 		JOIN match_registry mr ON mp.match_id = mr.match_id
 		WHERE mp.xuid = ? AND mr.start_time >= ?
@@ -99,7 +107,7 @@ func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, sin
 			r         progressionMatchRow
 			startTime sql.NullTime
 		)
-		if err := rows.Scan(&r.matchID, &startTime, &r.kda, &r.kills, &r.accuracy, &r.personal, &r.timeSec); err != nil {
+		if err := rows.Scan(&r.matchID, &startTime, &r.kda, &r.kills, &r.deaths, &r.assists, &r.accuracy, &r.personal, &r.timeSec, &r.dmgDealt, &r.dmgTaken); err != nil {
 			return nil, nil, fmt.Errorf("scan progression match: %w", err)
 		}
 		if !startTime.Valid {
@@ -160,9 +168,20 @@ func assembleProgressionResults(loaded []progressionMatchRow, perfByMatch map[st
 			kpm = r.kills / minutes
 			pspm = r.personal / minutes
 		}
+		matchStats := map[string]float64{"kda": r.kda}
+		if r.dmgDealt > 0 {
+			// offensive_conversion = 225 * (kills + assists/3) / damage_dealt
+			oc := 225.0 * (r.kills + r.assists/3.0) / r.dmgDealt
+			matchStats["oc"] = oc
+		}
+		if r.dmgTaken > 0 && r.deaths > 0 {
+			// defensive_resistance = damage_taken / (225 * deaths)
+			dr := r.dmgTaken / (225.0 * r.deaths)
+			matchStats["dr"] = dr
+		}
 		activities = append(activities, streaks.MatchActivity{
 			PlayedAt: r.startTime,
-			Stats:    map[string]float64{"kda": r.kda},
+			Stats:    matchStats,
 		})
 		inputs = append(inputs, records.MatchInput{
 			MatchID:  r.matchID,
@@ -247,6 +266,30 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	out.Metrics["headshots"] = float64(headshots)
 	out.Metrics["assists"] = float64(assists)
 	out.Metrics["accuracy_threshold_days"] = float64(accuracyDays)
+
+	// combat_precision_matches : matchs avec OC >= 0.83 (OffensiveConversionP80).
+	// combat_endurance_matches : matchs avec DR >= 1.59 (DefensiveResistanceP80).
+	// combat_excellence_matches : matchs avec OC >= 0.83 ET DR >= 1.59.
+	const ocP80 = 0.83
+	const drP80 = 1.59
+	var precisionMatches, enduranceMatches, excellenceMatches int64
+	if err := sharedDB.QueryRowContext(ctx, `
+		SELECT
+			COUNT(CASE WHEN damage_dealt > 0
+				AND 225.0 * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ? THEN 1 END),
+			COUNT(CASE WHEN damage_taken > 0 AND COALESCE(deaths,0) > 0
+				AND damage_taken / (225.0 * deaths) >= ? THEN 1 END),
+			COUNT(CASE WHEN damage_dealt > 0 AND damage_taken > 0 AND COALESCE(deaths,0) > 0
+				AND 225.0 * (COALESCE(kills,0) + COALESCE(assists,0)/3.0) / damage_dealt >= ?
+				AND damage_taken / (225.0 * deaths) >= ? THEN 1 END)
+		FROM match_participants
+		WHERE xuid = ?
+	`, ocP80, drP80, ocP80, drP80, pdb.XUID).Scan(&precisionMatches, &enduranceMatches, &excellenceMatches); err != nil {
+		return out, fmt.Errorf("aggregate combat metrics: %w", err)
+	}
+	out.Metrics["combat_precision_matches"] = float64(precisionMatches)
+	out.Metrics["combat_endurance_matches"] = float64(enduranceMatches)
+	out.Metrics["combat_excellence_matches"] = float64(excellenceMatches)
 	return out, nil
 }
 

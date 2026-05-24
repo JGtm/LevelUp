@@ -270,6 +270,138 @@ Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + 
 **Plan détaillé** : voir [.ai/PLAN_LUSR_ART_HOME_CRASH.md](PLAN_LUSR_ART_HOME_CRASH.md) — 7 phases, ~3 à 5 jours, branche `fix/art-eradication-and-home-resilience`.
 
 **Prochaine étape** : validation utilisateur du plan élargi, puis Phase 1 (3 tests ART repro rouges) avant tout code de fix.
+## [2026-05-24] Combat Profile Wiring — Phases 4-5 complètes
+
+**Statut** : Complété
+
+**Tâche** : Implémenter `PLAN_COMBAT_PROFILE_WIRING.md` Phases 4 (engagement dans les agrégats) et 5 (coaching proactif OC/DR/activité).
+
+**Décisions techniques** :
+
+1. **Phase 4 — `engagement_score_brut` dans le pipeline canonical** :
+   - `canonical.PlayerMatchEnrichment.EngagementScoreBrut *float64` (NEW) — vecteur de bout en bout.
+   - `MatchEnrichment` (shared_query_helpers) : champ + SQL `engagement_score_brut` + Scan.
+   - `playerMatchScanResult` + `mergePlayerMatchRows` + `projectEnrichment` dans `player_matches_repo.go`.
+   - `buildCombatProfileFromCanonical` (synthesis) et `ComputeKPIStats` : accumulent le résidu, passent `avgResidualBrut` à `ClassifyCombatProfile` → `StyleActivity` maintenant calculé.
+   - `StatsMatchRow.EngagementScoreBrut` + `StatsMatchRowFromCanonical` + `buildCompareEntry` → `SessionCompareEntry.AvgResidualBrut`.
+   - `types.ts SessionCompareEntry.avg_residual_brut?`.
+
+2. **Phase 5 — Coaching proactif OC/DR/activité** :
+   - `progressionMatchRow` : ajout `deaths`, `assists`, `dmgDealt`, `dmgTaken` (SQL + Scan).
+   - `assembleProgressionResults` : calcule OC/DR inline (formules 225×) et les pousse dans `MatchActivity.Stats["oc"/"dr"]`.
+   - `medianOC`/`medianDR`/`medianStat` helpers (refactored depuis `medianKDA`).
+   - `GenerateInput.CombatMedians *CombatMedians` (NEW struct). `generateCoachAlerts` peuple `CombatMedians` et le passe au coach.
+   - 3 nouveaux `AlertType` : `AlertTypeCombatPatternActif/Discret/Fragile` → `CategoryCombatPattern` (nouvelle catégorie notifications).
+   - `buildCombatPatternAlerts` avec thresholds copiés localement (OC_P80=0.83, DR_P80=1.59) pour éviter l'import cyclique `coach←analysis`.
+   - 5 nouveaux milestones TOML (`combat.precision_1/2/3`, `combat.endurance_1`, `combat.consistency`) + 3 nouvelles métriques agrégées dans `loadPlayerStats` (SQL COUNT avec formules OC/DR inline).
+
+**Tests ajoutés** :
+- `kpi_stats_test.go` : +2 tests Phase 4 (`EngagementScoreBrut → StyleActivity`, `NilResidual → NilStyleActivity`).
+- `generator_test.go` : +6 tests Phase 5 (`buildCombatPatternAlerts` — nil, actif, discret, fragile, all-good, HasResidual guard).
+
+**Résultats** : `go vet ./internal/...` clean, tous les tests `analysis/`, `progression/`, `service/` verts.
+
+**Prochaine étape** : commit + push PR.
+
+---
+
+## [2026-05-24] Combat Profile Wiring — Phases 1-3 complètes
+
+**Statut** : Complété
+
+**Tâche** : Implémenter `PLAN_COMBAT_PROFILE_WIRING.md` — exposition du profil combat 3 axes (OC/DR/activité) dans Synthesis, Squad et Session Compare.
+
+**Décisions techniques** :
+
+1. **`domain/combat_profile.go`** (NEW) : `CombatProfileBlock` + 9 constantes `CombatStyle` dans le package `domain` (pas `analysis`) pour éviter le cycle d'imports. `StyleActivity` reste nil jusqu'à Phase 4 (engagement_score_brut absent de `canonical.PlayerMatchEnrichment`).
+
+2. **`analysis/combat_yield.go`** : `ClassifyCombatProfile(avgOC, avgDR float64, avgResidualBrut *float64, matchCount int)` — classification gated sur ≥15 matchs, seuils P80 (OC=0.83, DR=1.59). Helpers `classifyOffensive`/`classifyDefensive`/`classifyActivity`.
+
+3. **Phase 1 — Synthesis** : `SynthesisPageV2Response.CombatProfile` + `buildCombatProfileFromCanonical()` dans le service (boucle sur `canonical.PlayerMatchRow`, appel `ComputeCombatYield` + `ClassifyCombatProfile`).
+
+4. **Phase 2 — Squad** : `KPIStats.CombatProfile` (domain + squad/v2/types.ts). Calcul dans `kpi_stats.go` : accumulation OC/DR, appel `ClassifyCombatProfile` si au moins un des deux > 0.
+
+5. **Phase 3 — Session Compare** : `SessionCompareEntry.AvgOC/AvgDR` (domain + types.ts). `buildCompareEntry` accumule depuis `m.OffensiveConversion/m.DefensiveResistance` (déjà pré-calculés dans `StatsMatchRow`). `buildCompareMetrics` ajoute les rows OC/DR si données disponibles.
+
+6. **Frontend** :
+   - `SynthesisCombatProfileSection.tsx` (NEW) : Card OC/DR + 3 badges style — inséré après SynthesisOverviewSection.
+   - `SessionComparePage.tsx` : OC/DR via `CombatYieldBar` dans `SessionCard` (conditionnel sur présence des champs).
+   - `SquadCombatProfileRow.tsx` (NEW) : grille de profils par joueur dans Squad V2 — conditionnel sur kpis_by_xuid.
+   - `squad/v2/types.ts` : `KPIStats.combat_profile`, `avg_offensive_conversion`, `avg_defensive_resistance` ajoutés.
+
+**Résultats** : `go vet ./internal/...` propre ; `tsc --noEmit` propre.
+
+**Conclusion** : Les 3 phases de wiring sont en place. Phase 4 (StyleActivity depuis engagement_score_brut canonical) reste déférée.
+
+---
+
+## [2026-05-24] Pattern Engine v3 — audit final : logging + tests + refactoring
+
+**Statut** : Complété
+
+**Tâche** : Suite à l'audit du Pattern Engine v3, appliquer les correctifs P0/P1 identifiés : logging manquant dans le handler, tests manquants, magic numbers non injectables, fichier behavioral.go >500 lignes.
+
+**Décisions techniques** :
+
+1. **Logging `handlers/patterns.go`** : ajout de `slog.WarnContext` (player not found), `slog.DebugContext` (param n ignoré, chargement, analyse terminée), `slog.ErrorContext` (échec chargement), `slog.InfoContext` (0 rows). Pattern conforme aux autres handlers du projet.
+
+2. **Split `behavioral.go`** (518L → 250L) : extraction de `detectEngagementDrop`, `detectAccuracyPlateau`, `detectPerfCeiling` + helpers (stddev, percentile, collect*) dans `behavioral_engagement.go` (239L). Les deux fichiers restent dans le même package, zéro duplication.
+
+3. **Magic numbers → `PatternConfig`** : 7 constantes magic ajoutées au struct et à `DefaultPatternConfig()` : `EngageDropWindow` (10), `EngageDropHighThreshold` (10), `PerfCeilingMinRows` (20), `PerfCeilingWindow` (30), `PerfCeilingTopN` (10), `PerfCeilingLowessAlpha` (0.4), `PerfCeilingFlatSlopeThresh` (2.0). `detectEngagementDrop` réutilise `cfg.MinMatchesPerGroup` au lieu d'un `const minRows=5` local.
+
+4. **Tests manquants** : 5 nouveaux tests ajoutés dans `behavioral_test.go` :
+   - `TestDetectAccuracyPlateau_HighAccuracy` — précision haute ne déclenche pas
+   - `TestDetectTilt_NotEnoughLosses` — suite trop courte ne déclenche pas
+   - `TestDetectSessionFatigue_NoLongSessions` — sessions trop courtes ne déclenchent pas
+   - `TestDetectPerfCeiling_FlatLowess` — détection nominale plafond LOWESS
+   - `TestDetectPerfCeiling_NotEnoughRows` — historique insuffisant ne déclenche pas
+
+**Résultats** : 19/19 tests passent ; `go build ./...` sans erreur ; tous les fichiers modifiés < 500 lignes.
+
+**Conclusion** : Pattern Engine v3 vérifié, couverture complète sur les 5 détecteurs comportementaux et le handler HTTP.
+
+---
+
+## [2026-05-24] Pattern Engine v3 — 4 phases complètes
+
+**Statut** : Complété
+
+**Tâche** : Implémenter le Pattern Engine v3 décrit dans `.ai/PLAN_PATTERN_ENGINE.md` (phases 0.2 à 3) en 14 commits sur `feat/pattern-engine`.
+
+**Décisions techniques** :
+
+1. **Phase 0 fix (déjà en place)** : `medianKDA` était déjà injectée dans `EvaluateInput.Thresholds` (lignes 188-189 de `post_sync_progression.go`) — pas de commit 1 nécessaire.
+
+2. **Phase 0.2 — Frontend profile** :
+   - Types TS miroir du `PlayerProfile` Go (sections A1/A2/B/C + types patterns phases 1-3) dans `types.ts`
+   - Hooks `useProfile` et `usePatterns` + query keys `progressionProfile`/`progressionPatterns` dans `queries.ts` et `keys.ts`
+   - 4 nouveaux composants : `ProfileRadarSection`, `StyleBadge`, `LUSRComponentsGrid`, `LeveragePanel`
+   - `AscensionPage.tsx` restructuré avec section "Profil de jeu" conditionnelle (`has_enough_data`)
+   - i18n FR/EN étendu (radar axes, style keys, composantes LUSR, patterns, behaviors, levers)
+
+3. **Phase 1 — Patterns contextuels** :
+   - `internal/analysis/patterns/` : package stateless — `types.go`, `engine.go`, `context.go` + tests
+   - Signal Strength/Weakness/Neutral par delta win rate vs globale (seuil ±0.12)
+   - byMode, byMap, bySquad avec OC/DR/DeltaCSR/DeltaLUSR agrégés
+   - Handler `handlers/patterns.go` : split cross-DB (shared → enrichment → skill_rank → merge Go) + `computeSkillDeltas`
+   - Endpoint `GET /patterns?n=50` câblé dans `server.go`
+   - Composants frontend : `PatternContextGrid`, `SquadVsSoloCard`
+
+4. **Phase 2 — Patterns comportementaux** :
+   - `behavioral.go` : détection Tilt, SessionFatigue, EngagementDrop (paire EngageScore+ResidualBrut), AccuracyPlateau, PerfCeiling
+   - Fix `<=` pour la comparaison P25 dans EngagementDrop (test `BothMetricsLow` l'a révélé)
+   - LOWESS réutilisé depuis `internal/analysis/temporal` pour PerfCeiling
+   - Composant frontend `BehaviorAlertList`
+
+5. **Phase 3 — Leviers calibrés + coach** :
+   - `levers.go` : calibration p60, impact Pearson proxy, horizon borné [10,100]
+   - 4 nouveaux `AlertType` dans `coach/types.go` : `pattern_strength/weakness/behavior/lever`
+   - `generator.go` étendu avec `buildPatternAlerts()` (consomme `PatternReport` optionnel)
+   - Composant frontend `LeverList` (top 3 leviers impact > 0.3)
+
+**Résultats** : 14 tests unitaires passants, `go build ./...` clean.
+
+**Prochaine étape** : merge vers `main` après revue — couplage levier → Objectifs Prestige (hors scope, évolution naturelle).
 
 ---
 

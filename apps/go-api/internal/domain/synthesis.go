@@ -105,6 +105,10 @@ type SynthesisPageV2Response struct {
 
 	// Bloc frags par arme (top 20, label résolu, weapon ID non-résolu exclus)
 	TopWeaponKills []SynthesisWeaponKillEntry `json:"top_weapon_kills,omitempty"`
+
+	// Bloc profil combat (OC + DR + descripteurs) — nil si < 15 matchs dans le scope.
+	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 1.
+	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`
 }
 
 // SynthesisWeaponKillEntry est une ligne du classement frags par arme.

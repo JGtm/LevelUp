@@ -2004,6 +2004,21 @@ export interface SynthesisDetailedStats {
   total_hijacks: number
 }
 
+// PLAN_COMBAT_PROFILE_WIRING — types profil combat 3 axes.
+export type CombatStyleOffensive = 'precis' | 'equilibre' | 'genereux'
+export type CombatStyleDefensive = 'resistant' | 'solide' | 'fragile'
+export type CombatStyleActivity = 'actif' | 'modere' | 'discret'
+
+export interface CombatProfileBlock {
+  avg_oc: number
+  avg_dr: number
+  match_count: number
+  avg_residual_brut?: number | null
+  style_offensive?: CombatStyleOffensive | null
+  style_defensive?: CombatStyleDefensive | null
+  style_activity?: CombatStyleActivity | null
+}
+
 export interface SynthesisPageResponse {
   period: string
   total_matches: number
@@ -2023,6 +2038,8 @@ export interface SynthesisPageResponse {
   detailed_stats?: SynthesisDetailedStats
   // Top frags par arme (label résolu, weapon ID non-résolu exclus)
   top_weapon_kills?: SynthesisWeaponKillEntry[]
+  // PLAN_COMBAT_PROFILE_WIRING Phase 1
+  combat_profile?: CombatProfileBlock | null
 }
 
 export interface SynthesisWeaponKillEntry {
@@ -2834,6 +2851,8 @@ export interface KPIStats {
   performance_score?: number | null
   avg_offensive_conversion?: number | null
   avg_defensive_resistance?: number | null
+  // PLAN_COMBAT_PROFILE_WIRING Phase 2
+  combat_profile?: CombatProfileBlock | null
   outcomes: { wins: number; losses: number; ties: number; dnf: number }
 }
 
@@ -2922,6 +2941,11 @@ export interface SessionCompareEntry {
   performance_score: number | null
   with_friends: boolean
   dominant_category: string | null
+  // PLAN_COMBAT_PROFILE_WIRING Phase 3
+  avg_oc?: number | null
+  avg_dr?: number | null
+  // PLAN_COMBAT_PROFILE_WIRING Phase 4
+  avg_residual_brut?: number | null
 }
 
 export interface SessionCompareMetricRow {

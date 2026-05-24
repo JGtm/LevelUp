@@ -21,6 +21,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { OutcomeSequenceTape, type OutcomePoint } from '@/components/charts/OutcomeSequenceTape'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { HistoryTable } from './components/HistoryTable'
+import { SquadCombatProfileRow } from './components/SquadCombatProfileRow'
 import { WeaponsTable } from './components/WeaponsTable'
 import { MedalsGallery } from './components/MedalsGallery'
 import { useSquadV2 } from './queries'
@@ -106,6 +107,14 @@ export function SquadV2Page({ playerSlug, teammates, period, experienceTypes, pl
       {/* Briefing — KPIs + verdict squad + drill-down click */}
       {header?.solo_kpis && (
         <SessionBriefing kpis={header.solo_kpis} squad={briefingSquad} />
+      )}
+
+      {/* PLAN_COMBAT_PROFILE_WIRING Phase 2 — Profil de combat par joueur */}
+      {header?.player_cards && header?.kpis_by_xuid && (
+        <SquadCombatProfileRow
+          playerCards={header.player_cards}
+          kpisByXuid={header.kpis_by_xuid}
+        />
       )}
 
       {/* Séquence des outcomes (S13) */}
