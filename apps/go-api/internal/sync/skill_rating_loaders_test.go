@@ -38,8 +38,10 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			accuracy DOUBLE,
 			team_id INTEGER
 		);
+		CREATE SEQUENCE msr_seq START 1;
 		CREATE TABLE match_skill_rank (
-			match_id         VARCHAR PRIMARY KEY,
+			id               BIGINT DEFAULT nextval('msr_seq') PRIMARY KEY,
+			match_id         VARCHAR NOT NULL,
 			rating_type      VARCHAR NOT NULL,
 			rating_value     DOUBLE,
 			rating_deviation DOUBLE,
@@ -50,9 +52,20 @@ func openLUSRDB(t *testing.T) *sql.DB {
 			rating_delta     DOUBLE,
 			playlist_group   VARCHAR,
 			start_time       TIMESTAMPTZ,
+			written_at       TIMESTAMP NOT NULL DEFAULT now(),
 			created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE INDEX idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
+		CREATE OR REPLACE VIEW match_skill_rank_latest AS
+			SELECT * FROM match_skill_rank
+			QUALIFY ROW_NUMBER() OVER (
+				PARTITION BY match_id
+				ORDER BY
+					CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END,
+					written_at DESC,
+					id DESC
+			) = 1;
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
@@ -187,8 +200,12 @@ func assertCSRPreserved(t *testing.T, db *sql.DB, matchID string, expectedValue 
 	t.Helper()
 	var typ string
 	var val float64
+	// Vue latest avec priorité CSR : si LUSR a été inséré physiquement par
+	// un test (cas "Go filter bypassed"), la vue renvoie quand même le CSR
+	// pour ce match_id, donc la sémantique "CSR jamais écrasé" est
+	// préservée fonctionnellement.
 	err := db.QueryRow(
-		"SELECT rating_type, rating_value FROM match_skill_rank WHERE match_id = ?",
+		"SELECT rating_type, rating_value FROM match_skill_rank_latest WHERE match_id = ?",
 		matchID,
 	).Scan(&typ, &val)
 	if err != nil {
@@ -227,9 +244,13 @@ func TestUpsertLUSR_DoesNotOverwriteExistingCSR_NormalMode(t *testing.T) {
 	assertCSRPreserved(t, db, "m1", 1500.0)
 }
 
-// TestUpsertLUSR_SQLGuardWhenGoFilterBypassed simule le cas où la garde Go a sauté
-// (map existingCSR vide) : seul le garde-fou SQL doit empêcher l'écrasement, et
-// le compteur `updated` doit refléter qu'aucune ligne n'a été modifiée.
+// TestUpsertLUSR_SQLGuardWhenGoFilterBypassed simule le cas où la garde Go
+// a sauté (map existingCSR vide).
+//
+// Sémantique post-Phase-2.E : avec append-only INSERT pur, le LUSR est
+// physiquement écrit (updated=1) mais la vue match_skill_rank_latest
+// priorise CSR > LUSR — le CSR reste fonctionnellement visible et intact.
+// Le garde-fou s'est déplacé du SQL vers la vue, sans perte fonctionnelle.
 func TestUpsertLUSR_SQLGuardWhenGoFilterBypassed(t *testing.T) {
 	db := openLUSRDB(t)
 	seedCSR(t, db, "m1", 1500.0)
@@ -247,16 +268,26 @@ func TestUpsertLUSR_SQLGuardWhenGoFilterBypassed(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated != 0 {
-		t.Fatalf("updated=%d : le SQL guard a bloqué l'UPDATE, le compteur doit rester à 0", updated)
+	if updated != 1 {
+		t.Fatalf("updated=%d : append-only INSERT physique réussi, attendu 1", updated)
 	}
+	// Le CSR reste fonctionnellement visible via la vue latest (priorité CSR).
 	assertCSRPreserved(t, db, "m1", 1500.0)
 }
 
 // TestUpsertLUSR_CounterReflectsOnlyRealWrites valide le compteur sur un batch
-// hétérogène : CSR (filtré par Go), LUSR existant (filtré par Go), CSR avec
-// garde Go bypassée (bloqué par SQL guard), et 2 nouveaux matchs valides.
-// Seuls les 2 nouveaux doivent compter.
+// hétérogène : CSR filtré par Go, LUSR existant filtré par Go, CSR avec garde
+// Go bypassée, 2 nouveaux matchs.
+//
+// Sémantique post-Phase-2.E (append-only) : `updated` = nombre d'INSERTs
+// physiques réussis. Le cas "Go filter bypassed" produit un INSERT LUSR
+// physique (compté), mais la vue match_skill_rank_latest priorise CSR donc
+// le CSR reste fonctionnellement intact (cf. assertCSRPreserved).
+//
+// Cela contraste avec l'ancien comportement où le SQL guard rejetait
+// l'UPDATE (updated=2). Désormais updated=3 car m_csr_sql_only reçoit aussi
+// un INSERT LUSR physique. C'est le compromis : INSERT pur élimine le bug
+// ART, la vue garantit la sémantique métier.
 func TestUpsertLUSR_CounterReflectsOnlyRealWrites(t *testing.T) {
 	db := openLUSRDB(t)
 	seedCSR(t, db, "m_csr_filtered", 1500.0)
@@ -284,27 +315,28 @@ func TestUpsertLUSR_CounterReflectsOnlyRealWrites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated != 2 {
-		t.Fatalf("updated=%d, attendu 2 (seulement m_new_1 et m_new_2)", updated)
+	if updated != 3 {
+		t.Fatalf("updated=%d, attendu 3 (m_csr_sql_only INSERT physique + m_new_1 + m_new_2)", updated)
 	}
-	// Les deux CSR doivent être intacts.
+	// Les deux CSR sont intacts fonctionnellement (via vue latest priorité CSR).
 	assertCSRPreserved(t, db, "m_csr_filtered", 1500.0)
 	assertCSRPreserved(t, db, "m_csr_sql_only", 1600.0)
-	// Le LUSR existant n'a pas été touché (skip par Go).
+	// Le LUSR existant n'a pas été touché (skip par Go). Lecture via vue
+	// latest pour cohérence.
 	var lusrVal float64
 	if err := db.QueryRow(
-		"SELECT rating_value FROM match_skill_rank WHERE match_id = 'm_lusr_existing'",
+		"SELECT rating_value FROM match_skill_rank_latest WHERE match_id = 'm_lusr_existing'",
 	).Scan(&lusrVal); err != nil {
 		t.Fatal(err)
 	}
 	if lusrVal != 25.0 {
 		t.Fatalf("m_lusr_existing rating_value=%.2f, attendu 25.0 (skip par filtre Go)", lusrVal)
 	}
-	// Les deux nouveaux sont bien insérés en LUSR.
+	// Les deux nouveaux sont bien insérés en LUSR (visibles via vue latest).
 	for _, mid := range []string{"m_new_1", "m_new_2"} {
 		var typ string
 		if err := db.QueryRow(
-			"SELECT rating_type FROM match_skill_rank WHERE match_id = ?", mid,
+			"SELECT rating_type FROM match_skill_rank_latest WHERE match_id = ?", mid,
 		).Scan(&typ); err != nil {
 			t.Fatalf("read %s: %v", mid, err)
 		}

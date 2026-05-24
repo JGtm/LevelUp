@@ -13,8 +13,9 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-// openCSRDB ouvre une DB DuckDB en mémoire avec match_skill_rank incluant
-// la colonne measurement_matches_remaining (ajoutée par la migration Phase B).
+// openCSRDB ouvre une DB DuckDB en mémoire avec match_skill_rank dans la
+// structure post-Phase-2.B (append-only) + la vue match_skill_rank_latest
+// avec priorité CSR > LUSR (post-Phase-2.E).
 func openCSRDB(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
@@ -25,8 +26,10 @@ func openCSRDB(t *testing.T) *sql.DB {
 	t.Cleanup(func() { db.Close() })
 
 	ddl := `
+		CREATE SEQUENCE msr_seq START 1;
 		CREATE TABLE match_skill_rank (
-			match_id                      VARCHAR PRIMARY KEY,
+			id                            BIGINT DEFAULT nextval('msr_seq') PRIMARY KEY,
+			match_id                      VARCHAR NOT NULL,
 			rating_type                   VARCHAR NOT NULL,
 			rating_value                  DOUBLE,
 			rating_deviation              DOUBLE,
@@ -38,9 +41,20 @@ func openCSRDB(t *testing.T) *sql.DB {
 			playlist_group                VARCHAR,
 			start_time                    TIMESTAMPTZ,
 			measurement_matches_remaining INTEGER DEFAULT 0,
+			written_at                    TIMESTAMP NOT NULL DEFAULT now(),
 			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE INDEX idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
+		CREATE OR REPLACE VIEW match_skill_rank_latest AS
+			SELECT * FROM match_skill_rank
+			QUALIFY ROW_NUMBER() OVER (
+				PARTITION BY match_id
+				ORDER BY
+					CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END,
+					written_at DESC,
+					id DESC
+			) = 1;
 	`
 	if err := execScript(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
@@ -76,7 +90,7 @@ func TestUpsertCSRRow_InsertNew(t *testing.T) {
 		ratingDelta sql.NullFloat64
 		measurement sql.NullInt64
 	)
-	err := db.QueryRow(`SELECT rating_type, rating_value, tier, tier_fr, sub_tier, tier_label, rating_delta, measurement_matches_remaining FROM match_skill_rank WHERE match_id = ?`, "m_new_csr").
+	err := db.QueryRow(`SELECT rating_type, rating_value, tier, tier_fr, sub_tier, tier_label, rating_delta, measurement_matches_remaining FROM match_skill_rank_latest WHERE match_id = ?`, "m_new_csr").
 		Scan(&ratingType, &ratingValue, &tier, &tierFR, &subTier, &tierLabel, &ratingDelta, &measurement)
 	if err != nil {
 		t.Fatalf("select: %v", err)
@@ -149,7 +163,7 @@ func TestUpsertCSRRow_PlacementInsertWithZeroRating(t *testing.T) {
 		measurement sql.NullInt64
 		tierLabel   sql.NullString
 	)
-	err := db.QueryRow(`SELECT rating_type, rating_value, tier, measurement_matches_remaining, tier_label FROM match_skill_rank WHERE match_id = ?`, "m_placement_csr").
+	err := db.QueryRow(`SELECT rating_type, rating_value, tier, measurement_matches_remaining, tier_label FROM match_skill_rank_latest WHERE match_id = ?`, "m_placement_csr").
 		Scan(&ratingType, &ratingValue, &tier, &measurement, &tierLabel)
 	if err != nil {
 		t.Fatalf("select placement row: %v", err)
@@ -204,7 +218,9 @@ func TestUpsertCSRRow_ReplacesLUSR(t *testing.T) {
 
 	var ratingType string
 	var ratingValue sql.NullFloat64
-	err = db.QueryRow(`SELECT rating_type, rating_value FROM match_skill_rank WHERE match_id = ?`, "m_was_lusr").
+	// Sémantique append-only : LUSR et CSR coexistent physiquement, mais
+	// la vue match_skill_rank_latest priorise CSR (Phase 2.E).
+	err = db.QueryRow(`SELECT rating_type, rating_value FROM match_skill_rank_latest WHERE match_id = ?`, "m_was_lusr").
 		Scan(&ratingType, &ratingValue)
 	if err != nil {
 		t.Fatalf("select: %v", err)
@@ -238,7 +254,7 @@ func TestUpsertCSRRow_PlacementWithNullValue(t *testing.T) {
 	var ratingValue sql.NullFloat64
 	var tierLabel sql.NullString
 	var measurement sql.NullInt64
-	err := db.QueryRow(`SELECT rating_value, tier_label, measurement_matches_remaining FROM match_skill_rank WHERE match_id = ?`, "m_placement").
+	err := db.QueryRow(`SELECT rating_value, tier_label, measurement_matches_remaining FROM match_skill_rank_latest WHERE match_id = ?`, "m_placement").
 		Scan(&ratingValue, &tierLabel, &measurement)
 	if err != nil {
 		t.Fatalf("select: %v", err)
@@ -269,12 +285,21 @@ func TestUpsertCSRRow_Idempotent(t *testing.T) {
 	if err := UpsertCSRRow(t.Context(), db, row); err != nil {
 		t.Fatalf("second upsert: %v", err)
 	}
-	var count int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank WHERE match_id = ?`, "m_idem").Scan(&count); err != nil {
-		t.Fatalf("count: %v", err)
+	// Append-only : 2 rows physiques (chaque appel INSERT), 1 row côté
+	// vue latest (la version la plus récente). L'idempotence fonctionnelle
+	// est portée par la vue, pas par la table physique.
+	var physicalCount, latestCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank WHERE match_id = ?`, "m_idem").Scan(&physicalCount); err != nil {
+		t.Fatalf("count physical: %v", err)
 	}
-	if count != 1 {
-		t.Errorf("want exactly 1 row after double upsert, got %d", count)
+	if physicalCount != 2 {
+		t.Errorf("table physique : want 2 rows après 2 upsert (append-only), got %d", physicalCount)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank_latest WHERE match_id = ?`, "m_idem").Scan(&latestCount); err != nil {
+		t.Fatalf("count latest: %v", err)
+	}
+	if latestCount != 1 {
+		t.Errorf("vue latest : want exactly 1 row, got %d", latestCount)
 	}
 }
 
