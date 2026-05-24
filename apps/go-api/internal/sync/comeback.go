@@ -16,8 +16,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
-	"os"
 	"strings"
 
 	"levelup/go-api/internal/analysis"
@@ -35,24 +33,11 @@ func BackfillDominanceFlags(
 	xuid string,
 	matchIDs []string,
 ) error {
-	// Phase 4.7 closure (2026-05-24) : default flipé ON. 1 single UPDATE
-	// multi-row au lieu de N UPDATE row-by-row. Set LEVELUP_POSTSYNC_INSERT_ONLY=0
-	// pour fallback legacy row-by-row (mode dégradé, ART bug actif).
-	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0" {
-		return backfillDominanceFlagsBatch(ctx, sharedDB, playerDB, xuid, matchIDs)
-	}
-
-	for _, matchID := range matchIDs {
-		flag, err := computeMatchDominanceFlag(ctx, sharedDB, xuid, matchID)
-		if err != nil {
-			slog.Warn("BackfillDominanceFlags: compute", "match_id", matchID, "err", err)
-			continue
-		}
-		if err := writeDominanceFlag(ctx, playerDB, matchID, flag); err != nil {
-			slog.Warn("BackfillDominanceFlags: write", "match_id", matchID, "err", err)
-		}
-	}
-	return nil
+	// Phase 3 du refactor ART (suppression LEVELUP_POSTSYNC_INSERT_ONLY) :
+	// le chemin legacy row-by-row (writeDominanceFlag via ON CONFLICT DO UPDATE)
+	// est supprimé car il déclenchait le bug ART DuckDB. Le batch path est
+	// désormais le seul utilisé.
+	return backfillDominanceFlagsBatch(ctx, sharedDB, playerDB, xuid, matchIDs)
 }
 
 // computeMatchDominanceFlag calcule le flag pour un match.
@@ -170,14 +155,4 @@ ORDER BY he.time_ms ASC`, matchID)
 		events = append(events, e)
 	}
 	return events, rows.Err()
-}
-
-// writeDominanceFlag écrit ou met à jour le dominance_flag dans player_match_enrichment.
-func writeDominanceFlag(ctx context.Context, db *sql.DB, matchID string, flag int) error {
-	_, err := db.ExecContext(ctx, `
-INSERT INTO player_match_enrichment (match_id, dominance_flag)
-VALUES (?, ?)
-ON CONFLICT (match_id) DO UPDATE SET dominance_flag = excluded.dominance_flag`,
-		matchID, flag)
-	return err
 }

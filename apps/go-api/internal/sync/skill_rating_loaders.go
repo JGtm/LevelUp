@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"time"
 )
 
@@ -220,13 +219,22 @@ func upsertLUSRRatings(
 	existingCSR, existingLUSR map[string]bool,
 	seedRatings map[string]float64,
 ) (int, error) {
-	// Phase 4.7 closure (2026-05-24) : default flipé ON. Chemin INSERT-only
-	// via PostSyncLUSRPersister.Upsert (DELETE WHERE match_id IN(...) AND
-	// rating_type='LUSR' + INSERT batch en TX). Set LEVELUP_POSTSYNC_INSERT_ONLY=0
-	// pour fallback legacy UPDATE-then-INSERT row-by-row (mode dégradé).
-	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0" {
-		return upsertLUSRRatingsBatch(ctx, playerDB, results, existingCSR, existingLUSR, seedRatings)
-	}
+	// Phase 3 du refactor ART : seul le batch path est conservé.
+	// Le chemin legacy row-by-row (qui était INSERT pur depuis Phase 2.E
+	// mais moins efficace) est désormais inaccessible en prod.
+	// upsertLUSRRatingsBatch route via AppendOnlyLUSRPersister.Persist
+	// (INSERT pur, bug ART impossible par construction).
+	return upsertLUSRRatingsBatch(ctx, playerDB, results, existingCSR, existingLUSR, seedRatings)
+}
+
+//nolint:unused // chemin legacy gardé pour les tests existants — sera supprimé en Phase 6.
+func upsertLUSRRatingsLegacy(
+	ctx context.Context,
+	playerDB *sql.DB,
+	results []lusrResult,
+	existingCSR, existingLUSR map[string]bool,
+	seedRatings map[string]float64,
+) (int, error) {
 
 	now := time.Now().UTC()
 	prevRating := make(map[string]float64)
