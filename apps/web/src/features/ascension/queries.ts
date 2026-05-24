@@ -9,6 +9,8 @@ import { api } from '@/lib/api/client'
 import { queryKeys } from '@/lib/query/keys'
 import type {
   MilestonesResponse,
+  PatternReport,
+  PlayerProfile,
   RecordsResponse,
   StreaksResponse,
 } from './types'
@@ -44,6 +46,32 @@ export function useRecords(
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
     staleTime: 30_000,
+  })
+}
+
+/** Profil de jeu complet (sections A1/A2/B/C). */
+export function useProfile(playerSlug: string, windowDays = 30, enabled = true) {
+  return useQuery<PlayerProfile>({
+    queryKey: queryKeys.progressionProfile(playerSlug, windowDays),
+    queryFn: () =>
+      api.get<PlayerProfile>(`/players/${playerSlug}/profile?window_days=${windowDays}`),
+    enabled: !!playerSlug && enabled,
+    refetchInterval: 120_000,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  })
+}
+
+/** Rapport patterns contextuels + comportementaux + leviers. */
+export function usePatterns(playerSlug: string, n = 50, enabled = true) {
+  return useQuery<PatternReport>({
+    queryKey: queryKeys.progressionPatterns(playerSlug, n),
+    queryFn: () =>
+      api.get<PatternReport>(`/players/${playerSlug}/patterns?n=${n}`),
+    enabled: !!playerSlug && enabled,
+    refetchInterval: 120_000,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
   })
 }
 

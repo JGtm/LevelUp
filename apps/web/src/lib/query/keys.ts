@@ -163,4 +163,9 @@ export const queryKeys = {
     ['progression', playerSlug, 'records', historyLimit ?? 50] as const,
   progressionMilestones: (playerSlug: string) =>
     ['progression', playerSlug, 'milestones'] as const,
+  // Pattern Engine (phases 0.2-3)
+  progressionProfile: (playerSlug: string, windowDays = 30) =>
+    ['progression', playerSlug, 'profile', windowDays] as const,
+  progressionPatterns: (playerSlug: string, n = 50) =>
+    ['progression', playerSlug, 'patterns', n] as const,
 } as const
