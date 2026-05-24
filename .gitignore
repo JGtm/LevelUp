@@ -200,6 +200,12 @@ SETUP.md
 # Vite cache (apps/web)
 apps/web/.vite/
 
+# Test fixtures volumineuses — chunks binaires Halo et réponses API.
+# Régénérables via `go run ./cmd/gen_test_fixtures download-full-match` (tokens requis).
+# Les README et manifests JSON restent versionnés (légers, documentent la structure).
+apps/go-api/internal/sync/testdata/**/chunks/
+apps/go-api/internal/sync/testdata/**/api_*.json
+
 # Mockups UI HTML temporaires (scratchpad design)
 .ai/mock_*.html
 apps/web/__mockup_*.html

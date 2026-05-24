@@ -1,7 +1,8 @@
 # Plan — Fix Sync Reliability (2026-05-24)
 
 **Branche cible** : `fix/sync-reliability-2026-05-24` (depuis `refactor/collect-persist`)
-**Effort total estimé** : 4h30 sur les fixes P0+P1, +2h optionnel pour P2.
+**Effort total estimé** : 4h30 fixes P0+P1, +2h optionnel P2, +8h tests (non négociable).
+**Stratégie de tests** : voir [PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24.md](PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24.md) — pipeline complète couverte avec les 942 matchs réels (film_chunks + manifests) + 69 batches WAL locaux.
 **Auteur** : audit logs auto-sync cycle 20:33-20:38 (4 joueurs, observation des trois bugs simultanés).
 
 ---
@@ -653,14 +654,19 @@ Bench : optionnel mais utile sur `BenchmarkSubmitMatchAsBatch` si existant (le p
 
 ## Ordre de merge recommandé
 
-1. **Phase 0** + **Phase 1** + **Phase 2** dans un commit P0 (les 3 fixes "different configuration" sont liés)
-2. **Phase 3** dans un commit séparé (visibilité known set, peut être revert indépendamment)
-3. **Phase 5** dans un commit séparé (changement sémantique de `MatchesInserted`, mérite son log)
-4. **Phase 4** (NaN) en parallèle, indépendant
-5. **Phase 6** (drain adaptatif) une fois Phase 1-5 stabilisées en local
-6. **Phase 8** (backfill) après merge sur main, en one-shot
+**Préalable** : phases T0 + T6 de la stratégie de tests AVANT les fixes — les regression tests sont écrits rouges, les fixes Phase 1-5 les passent verts. C'est la signature TDD du PR.
 
-Total : 5 commits sur la branche `fix/sync-reliability-2026-05-24`, mergés en une seule PR.
+1. **Phase T0** (infrastructure fixtures, helpers `testdata/`) — commit séparé, sans logique applicative
+2. **Phase T6** (regression tests rouges) — commit séparé, prouve la reproduction des bugs
+3. **Phase 0** + **Phase 1** + **Phase 2** dans un commit P0 (les 3 fixes "different configuration" sont liés) — passe T6.1 vert
+4. **Phase 3** dans un commit séparé (visibilité known set) — passe T6.4 vert
+5. **Phase 5** dans un commit séparé (changement sémantique de `MatchesInserted`) — passe T6.3 vert
+6. **Phase 4** (NaN) en parallèle, indépendant — passe T6.2 vert
+7. **Phase T1 + T2 + T3 + T4 + T5** (tests de couverture, non-regression dédiés bugs déjà couverts T6) — commits séparés par phase de tests
+8. **Phase 6** (drain adaptatif) — passe T6.5 vert
+9. **Phase 8** (backfill rattrapage) après merge sur main, en one-shot
+
+Total : ~10 commits sur la branche `fix/sync-reliability-2026-05-24`, mergés en une seule PR. Chaque commit a un message qui référence le phase ID du plan.
 
 ---
 
@@ -670,3 +676,5 @@ Total : 5 commits sur la branche `fix/sync-reliability-2026-05-24`, mergés en u
 - INCIDENT_ART_CORRUPTION_DUCKDB.md
 - HANDOFF_SYNC_CONCURRENCY_AUDIT.md
 - PLAN_SYNC_CONCURRENCY_STABILIZATION.md (plan parallèle, focus sur les leases shared)
+- **ENRICHMENTS_CATALOG.md** — source de vérité des 35 enrichments, base de la Phase T8 de la stratégie de tests
+- **PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24.md** — stratégie de tests détaillée (T0-T8) avec matrice exhaustive des enrichments

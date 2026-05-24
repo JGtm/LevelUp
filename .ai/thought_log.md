@@ -1,3 +1,25 @@
+## [2026-05-24] Blindage tests sync reliability (sections A-H) — couverture complète
+
+**Statut** : Complété — 43/51 items [x] (88%), 3 [~] infrastructure E2E différée, 3 [!] bloqués WIP LUSR, 2 [≡] doublons assumés.
+
+**Branche** : `fix/art-eradication-and-home-resilience` (suite du WIP existant, pas de nouvelle branche par demande user).
+
+**Décision technique principale** : couvrir intégralement la pipeline sync (analysis pur → transforms → persisters → orchestration → engine → service → media) avec 8 sections de tests (A-H) mappées 1-à-1 sur les 35 enrichments du catalogue `ENRICHMENTS_CATALOG.md`. Helper `internal/testfixtures/` réutilisable par tous les packages tests via `runtime.Caller`.
+
+**Fixture E2E réelle JGtm** : `apps/go-api/internal/sync/testdata/jgtm_full_match/` (6.1 MB, gitignored) — manifest + 30 chunks (1 header + 28 replication + 1 highlight) + 3 réponses API live. Téléchargé via tokens `cmd/get-token`.
+
+**Sentinelles TDD installées** :
+- `C.4 TestCombinedPersister_NoConfigurationConflict` (build tag `bug_repro`) — ROUGE actuel reproduit le Bug #1 `Connection Error: different configuration`. Passera vert après Phase 1.
+- `E.3 / E.5 engine_phase5_sentinel_test.go` — skip explicite, retirer t.Skip après Phase 5.
+
+**Files touchés (13 nouveaux fichiers tests)** : `internal/testfixtures/` (5 fichiers + 1 test, 6 verts) ; `internal/analysis/{math_safe.go, math_safe_test.go, highlight_event_parser_jgtm_test.go}` (15+4 verts) ; `internal/sync/` (6 fichiers tests, 40 tests) ; `internal/persist/` (3 fichiers tests, 13 verts + 1 sentinelle ROUGE TDD) ; `internal/service/media_index_service_test.go` (3 verts) ; plans `.ai/PLAN_FIX_SYNC_RELIABILITY_2026-05-24.md` + `PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24.md` + gitignore.
+
+**Résultats observés** : `go build ./...` OK, `go vet` clean, 75 nouveaux tests verts + 1 ROUGE sentinelle TDD + 4 skip auto documentés. ~120 tests existants confirmés EXHAUSTIF par audit.
+
+**Prochaine étape** : appliquer Phases 1+2+3 du plan principal (P0, ~30 min) — fixes minimaux pour C.4 passer vert et résoudre les 3 bugs corrélés.
+
+---
+
 ## [2026-05-24] Éradication ART exhaustive — bloc Phase 1 à 6 livré
 
 **Statut** : Complété sur le périmètre CRITIQUE/HAUT (hot path sync). Phase 4 (handlers HTTP basse fréquence) et Phase 5 (résilience handle DB côté home) restent à traiter dans des PR ultérieurs.
