@@ -1,3 +1,65 @@
+## [2026-05-24] Phase 4.5 validée empiriquement — 12 syncs / 0 FATAL ART + fix RebuildMatchSkillRankART
+
+**Statut** : Complété (Phase 4 livrée fin-à-bout, débloque Phase 4.6 cleanup)
+
+**Tâche** : Suite à validation user "ok go pour la suite, tu peux les faire ?" — exécuter Phase 4.5 (smoke test prod multi-cycles) en autonomie. Rebuild binaires Phase 4.4, lancer cycles via `levelup sync-delta --all`, observer FATAL ART, conclure.
+
+**Itérations exécutées et apprentissages** :
+
+| Cycle | Etat avant | Résultat |
+|---|---|---|
+| **1** | ART héritée (corruption pré-existante) | 2/4 FATAL : Chocoboflor `writeSessionAssignmentsBatch` (410 rows), Madina97294 `upsertLUSRRatingsBatch` (21 rows) |
+| **Force_rebuild_art --all** | — | Rebuild OK pour `match_participants` + `player_match_enrichment` (4 player DBs) |
+| **2** | PME rebuilt | Sessions/Perf batch OK pour tous, mais **LUSR Upsert toujours FATAL** sur Madina+Chocoboflor |
+| **Diagnostic + fix** | match_skill_rank ART non couverte | Ajout `RebuildMatchSkillRankART` (`internal/migration/steps_player_rebuild_match_skill_rank.go`) + intégration dans `force_rebuild_art` (PME puis MSR par player DB) |
+| **Re-rebuild --all** | — | 4 player DBs rebuilt MSR (1109 + 832 + 419 + 32 rows, 0 perte) |
+| **3, 4, 5** | ART complète rebuilt (3 tables) | **3 cycles × 4 joueurs = 12 syncs, 0 FATAL ART** |
+
+**Insight critique** :
+- La Phase 4 batch path **ne défait PAS une corruption pré-existante** — elle PRÉVIENT les futures
+- Pré-requis avant déploiement prod : `force_rebuild_art --all true` (couvre les 3 tables critiques : `shared.match_participants`, `player_match_enrichment`, `match_skill_rank`)
+- Sans rebuild de match_skill_rank, le DELETE WHERE match_id IN(N IDs) AND rating_type='LUSR' du PostSyncLUSRPersister.Upsert échoue systématiquement avec "Failed to delete all rows from index. Only deleted 0 out of N rows" — c'est l'ART de match_skill_rank qui contient des entrées orphelines
+
+**Décisions techniques** :
+
+- `RebuildMatchSkillRankART` reproduit le pattern swap CTAS de `RebuildPlayerMatchEnrichmentART` + recrée les 2 index secondaires (`idx_msr_rating_type`, `idx_msr_playlist`) après le swap
+- `force_rebuild_art` chaine maintenant pme puis msr dans `rebuildPlayerDB` (même TX/conn ouverte) — pas de no-op silencieux si msr absente (try/skip via `SELECT COUNT(*) FROM match_skill_rank`)
+- Pas de breaking change : si player DB legacy sans msr (jamais créée), le rebuild MSR est skip propre
+
+**Résultats observés** :
+
+- `go build ./...` clean
+- `go test ./internal/sync/... ./internal/persist/...` : GREEN (10.4s + 1s)
+- Performance cycle 5 (sequentiel 4 joueurs) :
+  - Madina97294 : 94s (1115 enrichments, 1109 LUSR/CSR)
+  - JGtm : 76s (832 rows)
+  - Chocoboflor : 20s (419 rows)
+  - XxDaemonGamerxX : 6s (32 rows)
+  - Total : ~3 min 30 (sous le seuil 8 min visé)
+- 4 fichiers logs `logs/smoke_phase4/cycle{1,2,3,4,5}_*.out` (preuves empiriques archivées)
+
+**Conclusion** :
+
+Phase 4 est **livrable et validée en prod** sous condition d'un `force_rebuild_art --all true` initial pour défaire les corruptions héritées des tests/cycles antérieurs. Une fois la base de prod nettoyée, le chemin batch INSERT-only (`LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1`) tient sans FATAL ART sur N cycles consécutifs.
+
+**Phase 4.6 (cleanup anti-ART) débloquée** :
+- Suppression `singleflight` dans `InsertParticipants`
+- Suppression `CHECKPOINT` post-sync
+- Retrait auto-heal `BootARTGuard` (garder détection comme alerte ops)
+- Retrait call sites runtime `RebuildMatchParticipantsART` (garder comme outil ops manuel)
+- Garder `force_rebuild_art` CLI (essentiel pour défaire corruption héritée d'un dump SQL ou import legacy)
+
+**Files livrés cette session (uncommitted)** :
+- `apps/go-api/internal/migration/steps_player_rebuild_match_skill_rank.go` (NEW)
+- `apps/go-api/cmd/force_rebuild_art/main.go` (MODIFIED — chain msr after pme)
+- `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md` (MODIFIED — Phase 4.5 status DONE)
+- `.ai/REFACTOR_COLLECT_PERSIST.md` (MODIFIED — Phase 5 débloquée)
+- `.ai/thought_log.md` (cette entrée)
+- `logs/smoke_phase4/cycle{1,2,3,4,5}_*.out` (gitignore)
+- `bin/levelup.exe`, `bin/force_rebuild_art.exe` (rebuild — gitignore)
+
+---
+
 ## [2026-05-24] Phase 4 complète — 5 sites post-sync refactor batch INSERT-only
 
 **Statut** : Complété (Phase 4.3 + 4.4 livrées en autonomie, code-complete pour 5/7 sites — 2 non concernés)

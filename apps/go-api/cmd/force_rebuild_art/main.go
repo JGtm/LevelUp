@@ -175,7 +175,32 @@ func rebuildPlayerDB(path string) {
 		fmt.Printf("\n⚠ ALERTE : row count différent ! Investigation requise.\n")
 		os.Exit(1)
 	}
-	fmt.Println("\n✓ Rebuild player terminé sans perte.")
+	fmt.Println("\n✓ Rebuild player (player_match_enrichment) terminé sans perte.")
+
+	// Phase 4.5 follow-up 2026-05-24 : rebuild également match_skill_rank,
+	// dont l'ART corruption bloque les DELETE batch LUSR (PostSyncLUSRPersister.Upsert).
+	var msrBefore, msrAfter int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_skill_rank`).Scan(&msrBefore); err != nil {
+		// Table absente (player DB legacy sans LUSR) : silence.
+		return
+	}
+	fmt.Printf("\nmatch_skill_rank rows pre-rebuild : %d\n", msrBefore)
+	startMSR := time.Now()
+	if err := migration.RebuildMatchSkillRankART(ctx, db); err != nil {
+		log.Fatalf("RebuildMatchSkillRankART: %v", err)
+	}
+	durMSR := time.Since(startMSR)
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_skill_rank`).Scan(&msrAfter); err != nil {
+		log.Fatalf("count msr after: %v", err)
+	}
+	fmt.Printf("match_skill_rank rows : avant=%d après=%d durée=%v\n", msrBefore, msrAfter, durMSR)
+	if msrAfter != msrBefore {
+		fmt.Printf("\n⚠ ALERTE match_skill_rank : row count différent ! Investigation requise.\n")
+		os.Exit(1)
+	}
+	fmt.Println("✓ Rebuild player (match_skill_rank) terminé sans perte.")
 }
 
 // rebuildAll itère shared puis tous les player DBs présents sous
