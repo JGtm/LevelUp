@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 
@@ -246,15 +247,18 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// les UUIDs bruts en noms canoniques EN avant l'INSERT match_registry.
 	// Ã‰chec d'ouverture â†’ enrichissement dÃ©sactivÃ© pour ce run, sync continue.
 	if e.metadataDBPath != "" {
-		metaDB, metaErr := sql.Open("duckdb", e.metadataDBPath+"?access_mode=read_only")
+		// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : passage par le cache
+		// duckdbpkg.OpenReadOnly (cle "ro:"+path) pour aligner le DSN avec les
+		// autres sites RO/RW. Empeche le bug "Can't open a connection with a
+		// different configuration" cote metadata.
+		metaHandle, metaErr := duckdbpkg.OpenReadOnly(e.metadataDBPath)
 		if metaErr != nil {
 			slog.WarnContext(ctx, "sync: ouverture metadata DB Ã©chouÃ©e â€” enrich registry dÃ©sactivÃ©",
 				"db", e.metadataDBPath, "err", metaErr)
 		} else {
-			metaDB.SetMaxOpenConns(1)
-			e.metaDB = metaDB
+			e.metaDB = metaHandle.SQLDb()
 			defer func() {
-				_ = metaDB.Close()
+				_ = metaHandle.Close()
 				e.metaDB = nil
 			}()
 		}
@@ -620,19 +624,37 @@ func loadKnownMatchIDs(ctx context.Context, playerDB, sharedDB *sql.DB, xuid str
 	// Note: erreur ignorée (table peut ne pas exister sur schéma frais).
 
 	// Source 2 : shared.match_participants pour ce xuid (cross-player dedup).
+	//
+	// Phase 3 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 :
+	//   - Cast defensif `xuid || ''` aligne sur recompute_after_art_rebuild.go:156.
+	//     Empeche un mismatch silencieux si la colonne xuid drift en type sur un
+	//     titre futur (UBIGINT vs VARCHAR), incident observe en prod 2026-05-24
+	//     ou known_count=22 alors que total_matches=30 pour XxDaemonGamerxX.
+	//   - Erreur query : warn explicite (plus de swallow silencieux) pour
+	//     visibilite. Cas pathologique = known set partiel → 285s perdues sur
+	//     un joueur inactif.
 	if sharedDB != nil && strings.TrimSpace(xuid) != "" {
-		rows, err := sharedDB.QueryContext(ctx, "SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?", xuid)
-		if err == nil {
+		rows, err := sharedDB.QueryContext(ctx,
+			"SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?", xuid)
+		if err != nil {
+			slog.WarnContext(ctx,
+				"loadKnownMatchIDs: shared.match_participants query failed — known set partiel (source 1 seule)",
+				"xuid", xuid, "err", err)
+		} else {
+			addedFromShared := 0
 			for rows.Next() {
 				var id string
 				if scanErr := rows.Scan(&id); scanErr == nil {
+					if !known[id] {
+						addedFromShared++
+					}
 					known[id] = true
 				}
 			}
 			_ = rows.Close()
+			slog.DebugContext(ctx, "loadKnownMatchIDs: source 2 (shared) ajoutee",
+				"xuid", xuid, "added_from_shared", addedFromShared, "total_known", len(known))
 		}
-		// Erreur ignorée idem : si la table n'existe pas (cas tests minimaux),
-		// fallback gracieux sur la source 1 seule.
 	}
 
 	return known, nil

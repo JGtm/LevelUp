@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // RunBackfillCitations calcule et persiste les citations dans match_citations
@@ -47,12 +48,13 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 	}
 	defer releaseShared()
 
-	metaDB, err := sql.Open("duckdb", e.metadataDBPath+"?access_mode=READ_ONLY")
+	// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : cache duckdbpkg (DSN aligne).
+	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCitations open metadata: %w", err)
 	}
-	defer metaDB.Close()
-	metaDB.SetMaxOpenConns(1)
+	defer metaHandle.Close()
+	metaDB := metaHandle.SQLDb()
 
 	matchIDs, err := selectMatchesForCitations(ctx, playerHandle.SQLDb(), force)
 	if err != nil {
@@ -150,12 +152,13 @@ func (e *SyncEngine) RunBackfillCompositeOnlyCitations(ctx context.Context) (int
 	}
 	defer playerHandle.Close()
 
-	metaDB, err := sql.Open("duckdb", e.metadataDBPath+"?access_mode=READ_ONLY")
+	// Phase 2 : cache duckdbpkg (DSN aligne).
+	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("RunBackfillCompositeOnlyCitations open metadata: %w", err)
 	}
-	defer metaDB.Close()
-	metaDB.SetMaxOpenConns(1)
+	defer metaHandle.Close()
+	metaDB := metaHandle.SQLDb()
 
 	sharedDB, err := sql.Open("duckdb", e.sharedDBPath+"?access_mode=READ_ONLY")
 	if err != nil {
@@ -314,12 +317,15 @@ WHERE value > 0`)
 // au lieu d'acquérir de nouveaux leases. Best-effort : retourne (0, nil) si
 // metadata.duckdb absent ou citation_mappings vide.
 func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedDB *sql.DB) (int, error) {
-	metaDB, err := sql.Open("duckdb", e.metadataDBPath+"?access_mode=READ_ONLY")
+	// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : cache duckdbpkg (DSN aligne).
+	// Site previously failing in production avec "Can't open a connection with
+	// a different configuration" pendant le post-sync (citations_computed=0).
+	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
 	if err != nil {
 		return 0, fmt.Errorf("open metadata: %w", err)
 	}
-	defer metaDB.Close()
-	metaDB.SetMaxOpenConns(1)
+	defer metaHandle.Close()
+	metaDB := metaHandle.SQLDb()
 
 	matchIDs, err := selectMatchesForCitations(ctx, playerDB, false)
 	if err != nil {
