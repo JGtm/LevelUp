@@ -160,6 +160,8 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 	wins, losses := 0, 0
 	totalKills, totalDeaths := 0, 0
 	var minTime, maxTime time.Time
+	var ocSum, drSum float64
+	var ocCount, drCount int
 	for i, m := range matches {
 		if i == 0 {
 			minTime = m.StartTime
@@ -181,12 +183,30 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		}
 		totalKills += m.Kills
 		totalDeaths += m.Deaths
+		if m.OffensiveConversion != nil {
+			ocSum += *m.OffensiveConversion
+			ocCount++
+		}
+		if m.DefensiveResistance != nil {
+			drSum += *m.DefensiveResistance
+			drCount++
+		}
 	}
 
 	var kda *float64
 	if totalDeaths > 0 {
 		v := math.Round(float64(totalKills)/float64(totalDeaths)*100) / 100
 		kda = &v
+	}
+
+	var avgOC, avgDR *float64
+	if ocCount > 0 {
+		v := math.Round(ocSum/float64(ocCount)*100) / 100
+		avgOC = &v
+	}
+	if drCount > 0 {
+		v := math.Round(drSum/float64(drCount)*100) / 100
+		avgDR = &v
 	}
 
 	start := minTime.Format(time.RFC3339)
@@ -202,6 +222,8 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		KDA:              kda,
 		PerformanceScore: averagePerformanceScore(matches),
 		DominantCategory: dominantSessionCategoryPtr(matches),
+		AvgOC:            avgOC,
+		AvgDR:            avgDR,
 	}
 }
 
@@ -236,7 +258,51 @@ func buildCompareMetrics(a, b []legacymatch.StatsMatchRow) []domain.SessionCompa
 		))
 	}
 
+	// OC/DR : uniquement si au moins une session a des données dégâts.
+	ocA := averageOC(a)
+	ocB := averageOC(b)
+	if ocA != nil || ocB != nil {
+		metrics = append(metrics, compareMetric("offensive_conversion", "Conversion off.", derefFloat64(ocA), derefFloat64(ocB), "%.2f"))
+	}
+	drA := averageDR(a)
+	drB := averageDR(b)
+	if drA != nil || drB != nil {
+		metrics = append(metrics, compareMetric("defensive_resistance", "Résistance déf.", derefFloat64(drA), derefFloat64(drB), "%.2f"))
+	}
+
 	return metrics
+}
+
+func averageOC(matches []legacymatch.StatsMatchRow) *float64 {
+	var sum float64
+	var count int
+	for _, m := range matches {
+		if m.OffensiveConversion != nil {
+			sum += *m.OffensiveConversion
+			count++
+		}
+	}
+	if count == 0 {
+		return nil
+	}
+	v := math.Round(sum/float64(count)*100) / 100
+	return &v
+}
+
+func averageDR(matches []legacymatch.StatsMatchRow) *float64 {
+	var sum float64
+	var count int
+	for _, m := range matches {
+		if m.DefensiveResistance != nil {
+			sum += *m.DefensiveResistance
+			count++
+		}
+	}
+	if count == 0 {
+		return nil
+	}
+	v := math.Round(sum/float64(count)*100) / 100
+	return &v
 }
 
 func averagePerformanceScore(matches []legacymatch.StatsMatchRow) *float64 {

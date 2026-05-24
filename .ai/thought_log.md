@@ -1,3 +1,33 @@
+## [2026-05-24] Combat Profile Wiring — Phases 1-3 complètes
+
+**Statut** : Complété
+
+**Tâche** : Implémenter `PLAN_COMBAT_PROFILE_WIRING.md` — exposition du profil combat 3 axes (OC/DR/activité) dans Synthesis, Squad et Session Compare.
+
+**Décisions techniques** :
+
+1. **`domain/combat_profile.go`** (NEW) : `CombatProfileBlock` + 9 constantes `CombatStyle` dans le package `domain` (pas `analysis`) pour éviter le cycle d'imports. `StyleActivity` reste nil jusqu'à Phase 4 (engagement_score_brut absent de `canonical.PlayerMatchEnrichment`).
+
+2. **`analysis/combat_yield.go`** : `ClassifyCombatProfile(avgOC, avgDR float64, avgResidualBrut *float64, matchCount int)` — classification gated sur ≥15 matchs, seuils P80 (OC=0.83, DR=1.59). Helpers `classifyOffensive`/`classifyDefensive`/`classifyActivity`.
+
+3. **Phase 1 — Synthesis** : `SynthesisPageV2Response.CombatProfile` + `buildCombatProfileFromCanonical()` dans le service (boucle sur `canonical.PlayerMatchRow`, appel `ComputeCombatYield` + `ClassifyCombatProfile`).
+
+4. **Phase 2 — Squad** : `KPIStats.CombatProfile` (domain + squad/v2/types.ts). Calcul dans `kpi_stats.go` : accumulation OC/DR, appel `ClassifyCombatProfile` si au moins un des deux > 0.
+
+5. **Phase 3 — Session Compare** : `SessionCompareEntry.AvgOC/AvgDR` (domain + types.ts). `buildCompareEntry` accumule depuis `m.OffensiveConversion/m.DefensiveResistance` (déjà pré-calculés dans `StatsMatchRow`). `buildCompareMetrics` ajoute les rows OC/DR si données disponibles.
+
+6. **Frontend** :
+   - `SynthesisCombatProfileSection.tsx` (NEW) : Card OC/DR + 3 badges style — inséré après SynthesisOverviewSection.
+   - `SessionComparePage.tsx` : OC/DR via `CombatYieldBar` dans `SessionCard` (conditionnel sur présence des champs).
+   - `SquadCombatProfileRow.tsx` (NEW) : grille de profils par joueur dans Squad V2 — conditionnel sur kpis_by_xuid.
+   - `squad/v2/types.ts` : `KPIStats.combat_profile`, `avg_offensive_conversion`, `avg_defensive_resistance` ajoutés.
+
+**Résultats** : `go vet ./internal/...` propre ; `tsc --noEmit` propre.
+
+**Conclusion** : Les 3 phases de wiring sont en place. Phase 4 (StyleActivity depuis engagement_score_brut canonical) reste déférée.
+
+---
+
 ## [2026-05-24] Pattern Engine v3 — audit final : logging + tests + refactoring
 
 **Statut** : Complété

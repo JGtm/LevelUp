@@ -145,7 +145,11 @@ type KPIStats struct {
 	// AvgDefensiveResistance : moyenne de la résistance défensive (damage_taken/(225*deaths)).
 	// Nil si aucun match avec deaths > 0.
 	AvgDefensiveResistance *float64 `json:"avg_defensive_resistance,omitempty"`
-	Outcomes               struct {
+	// CombatProfile : profil combat 3 axes avec descripteurs textuels.
+	// Nil si < 15 matchs dans le scope ou si aucune donnée dégâts.
+	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 2.
+	CombatProfile *CombatProfileBlock `json:"combat_profile,omitempty"`
+	Outcomes      struct {
 		Wins   int `json:"wins"`
 		Losses int `json:"losses"`
 		Ties   int `json:"ties"`
