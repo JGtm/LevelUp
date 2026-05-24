@@ -341,3 +341,78 @@ func TestComputeTeamAvgKPIs_IgnoresNilEntry(t *testing.T) {
 		t.Errorf("KillsPerGame ignoring nil: got %v, want 9.0 (mean of 6 and 12)", got.KillsPerGame)
 	}
 }
+
+// =============================================================================
+// CombatProfile dans ComputeKPIStats
+// =============================================================================
+
+func intPtrDmg(v int) *int { return &v }
+
+func mkRowWithDamage(kills, assists, deaths int, dmgDealt, dmgTaken int) canonical.PlayerMatchRow {
+	return canonical.PlayerMatchRow{
+		Self: canonical.MatchParticipant{
+			Kills:        intPtrDmg(kills),
+			Assists:      intPtrDmg(assists),
+			Deaths:       intPtrDmg(deaths),
+			DamageDealt:  intPtrDmg(dmgDealt),
+			DamageTaken:  intPtrDmg(dmgTaken),
+		},
+	}
+}
+
+func TestComputeKPIStats_CombatProfile_SetWhenDamagePresent(t *testing.T) {
+	t.Parallel()
+	// 20 matchs avec données dégâts valides → CombatProfile non nil.
+	// 10 kills, 0 assists, 5 deaths, 2000 dmg dealt, 1800 dmg taken par match.
+	rows := make([]canonical.PlayerMatchRow, 20)
+	for i := range rows {
+		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
+	}
+	got := ComputeKPIStats(rows)
+	if got.CombatProfile == nil {
+		t.Fatal("CombatProfile: want non-nil with 20 rows of damage data")
+	}
+	if got.AvgOffensiveConversion == nil || *got.AvgOffensiveConversion <= 0 {
+		t.Errorf("AvgOffensiveConversion: want > 0, got %v", got.AvgOffensiveConversion)
+	}
+	if got.AvgDefensiveResistance == nil || *got.AvgDefensiveResistance <= 0 {
+		t.Errorf("AvgDefensiveResistance: want > 0, got %v", got.AvgDefensiveResistance)
+	}
+	// Avec ≥15 matchs → styles calculés.
+	if got.CombatProfile.StyleOffensive == nil {
+		t.Error("CombatProfile.StyleOffensive: want non-nil with 20 matchs")
+	}
+	if got.CombatProfile.StyleDefensive == nil {
+		t.Error("CombatProfile.StyleDefensive: want non-nil with 20 matchs")
+	}
+}
+
+func TestComputeKPIStats_CombatProfile_NilWhenNoDamageData(t *testing.T) {
+	t.Parallel()
+	// Rows sans DamageDealt/DamageTaken → CombatProfile nil.
+	rows := []canonical.PlayerMatchRow{
+		mkRow(10, 5, 2, 600, canonical.OutcomeWin, nil, nil),
+		mkRow(8, 7, 1, 400, canonical.OutcomeLoss, nil, nil),
+	}
+	got := ComputeKPIStats(rows)
+	if got.CombatProfile != nil {
+		t.Errorf("CombatProfile: want nil without damage data, got %+v", got.CombatProfile)
+	}
+}
+
+func TestComputeKPIStats_CombatProfile_NilStylesBelow15Matches(t *testing.T) {
+	t.Parallel()
+	// 14 matchs avec dommages → CombatProfile non-nil mais styles nil (< seuil).
+	rows := make([]canonical.PlayerMatchRow, 14)
+	for i := range rows {
+		rows[i] = mkRowWithDamage(10, 0, 5, 2000, 1800)
+	}
+	got := ComputeKPIStats(rows)
+	if got.CombatProfile == nil {
+		t.Fatal("CombatProfile: want non-nil with damage data (even < 15 matchs)")
+	}
+	if got.CombatProfile.StyleOffensive != nil || got.CombatProfile.StyleDefensive != nil {
+		t.Errorf("styles should be nil with < 15 matchs: off=%v def=%v",
+			got.CombatProfile.StyleOffensive, got.CombatProfile.StyleDefensive)
+	}
+}

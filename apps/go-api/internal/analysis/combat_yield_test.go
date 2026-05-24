@@ -113,3 +113,117 @@ func TestTooltipDamagePer_zeroCount(t *testing.T) {
 		t.Error("TooltipDamagePer with count=0 should return 0")
 	}
 }
+
+// =============================================================================
+// ClassifyCombatProfile
+// =============================================================================
+
+func TestClassifyCombatProfile_BelowMinMatches_NoStyles(t *testing.T) {
+	// < 15 matchs → styles nil, champs scalaires bien copiés.
+	block := ClassifyCombatProfile(0.90, 1.60, nil, 14)
+	if block.StyleOffensive != nil || block.StyleDefensive != nil || block.StyleActivity != nil {
+		t.Errorf("< 15 matchs: all styles should be nil, got off=%v def=%v act=%v",
+			block.StyleOffensive, block.StyleDefensive, block.StyleActivity)
+	}
+	if block.AvgOC != 0.90 || block.AvgDR != 1.60 || block.MatchCount != 14 {
+		t.Errorf("scalar fields not copied: AvgOC=%v AvgDR=%v MatchCount=%d", block.AvgOC, block.AvgDR, block.MatchCount)
+	}
+}
+
+func TestClassifyCombatProfile_ExactlyMinMatches_HasStyles(t *testing.T) {
+	// Exactement 15 matchs → styles calculés.
+	block := ClassifyCombatProfile(0.90, 1.60, nil, 15)
+	if block.StyleOffensive == nil || block.StyleDefensive == nil {
+		t.Errorf("exactly 15 matchs: off and def should be set, got off=%v def=%v",
+			block.StyleOffensive, block.StyleDefensive)
+	}
+}
+
+func TestClassifyCombatProfile_PrecisResistant(t *testing.T) {
+	// avgOC >= P80 → precis ; avgDR >= P80 → resistant.
+	block := ClassifyCombatProfile(OffensiveConversionP80, DefensiveResistanceP80, nil, 20)
+	if block.StyleOffensive == nil || *block.StyleOffensive != "precis" {
+		t.Errorf("StyleOffensive: want precis, got %v", block.StyleOffensive)
+	}
+	if block.StyleDefensive == nil || *block.StyleDefensive != "resistant" {
+		t.Errorf("StyleDefensive: want resistant, got %v", block.StyleDefensive)
+	}
+}
+
+func TestClassifyCombatProfile_EquilibreSolide(t *testing.T) {
+	// avgOC = P80 * 0.75 → equilibre ; avgDR = P80 * 0.75 → solide.
+	oc := OffensiveConversionP80 * 0.75
+	dr := DefensiveResistanceP80 * 0.75
+	block := ClassifyCombatProfile(oc, dr, nil, 20)
+	if block.StyleOffensive == nil || *block.StyleOffensive != "equilibre" {
+		t.Errorf("StyleOffensive: want equilibre, got %v", block.StyleOffensive)
+	}
+	if block.StyleDefensive == nil || *block.StyleDefensive != "solide" {
+		t.Errorf("StyleDefensive: want solide, got %v", block.StyleDefensive)
+	}
+}
+
+func TestClassifyCombatProfile_GeneruxFragile(t *testing.T) {
+	// avgOC < P80 * 0.70 → genereux ; avgDR < P80 * 0.70 → fragile.
+	oc := OffensiveConversionP80 * 0.50
+	dr := DefensiveResistanceP80 * 0.50
+	block := ClassifyCombatProfile(oc, dr, nil, 20)
+	if block.StyleOffensive == nil || *block.StyleOffensive != "genereux" {
+		t.Errorf("StyleOffensive: want genereux, got %v", block.StyleOffensive)
+	}
+	if block.StyleDefensive == nil || *block.StyleDefensive != "fragile" {
+		t.Errorf("StyleDefensive: want fragile, got %v", block.StyleDefensive)
+	}
+}
+
+func TestClassifyCombatProfile_ActivityActif(t *testing.T) {
+	residual := 6.0
+	block := ClassifyCombatProfile(OffensiveConversionP80, DefensiveResistanceP80, &residual, 20)
+	if block.StyleActivity == nil || *block.StyleActivity != "actif" {
+		t.Errorf("StyleActivity: want actif (residual=6), got %v", block.StyleActivity)
+	}
+}
+
+func TestClassifyCombatProfile_ActivityModere(t *testing.T) {
+	residual := 0.0
+	block := ClassifyCombatProfile(OffensiveConversionP80, DefensiveResistanceP80, &residual, 20)
+	if block.StyleActivity == nil || *block.StyleActivity != "modere" {
+		t.Errorf("StyleActivity: want modere (residual=0), got %v", block.StyleActivity)
+	}
+}
+
+func TestClassifyCombatProfile_ActivityDiscret(t *testing.T) {
+	residual := -10.0
+	block := ClassifyCombatProfile(OffensiveConversionP80, DefensiveResistanceP80, &residual, 20)
+	if block.StyleActivity == nil || *block.StyleActivity != "discret" {
+		t.Errorf("StyleActivity: want discret (residual=-10), got %v", block.StyleActivity)
+	}
+}
+
+func TestClassifyCombatProfile_NilResidualBrut_NilActivity(t *testing.T) {
+	// Même avec 20 matchs, StyleActivity reste nil si residualBrut non fourni.
+	block := ClassifyCombatProfile(OffensiveConversionP80, DefensiveResistanceP80, nil, 20)
+	if block.StyleActivity != nil {
+		t.Errorf("StyleActivity: want nil with nil residualBrut, got %v", block.StyleActivity)
+	}
+}
+
+func TestClassifyCombatProfile_ActivityBoundary_Minus5_IsModere(t *testing.T) {
+	// Limite basse : -5 → modéré (>= -5).
+	residual := -5.0
+	block := ClassifyCombatProfile(OffensiveConversionP80, DefensiveResistanceP80, &residual, 20)
+	if block.StyleActivity == nil || *block.StyleActivity != "modere" {
+		t.Errorf("StyleActivity: want modere at boundary -5, got %v", block.StyleActivity)
+	}
+}
+
+func TestClassifyCombatProfile_ZeroOCZeroDR(t *testing.T) {
+	// Pas de données dégâts → genereux + fragile (classes, < seuil minimal).
+	block := ClassifyCombatProfile(0, 0, nil, 20)
+	if block.StyleOffensive == nil || *block.StyleOffensive != "genereux" {
+		t.Errorf("zero OC: want genereux, got %v", block.StyleOffensive)
+	}
+	if block.StyleDefensive == nil || *block.StyleDefensive != "fragile" {
+		t.Errorf("zero DR: want fragile, got %v", block.StyleDefensive)
+	}
+}

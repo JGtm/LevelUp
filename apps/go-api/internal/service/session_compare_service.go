@@ -7,6 +7,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"sort"
 	"strings"
@@ -63,14 +64,17 @@ func (s *SessionCompareService) Compare(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
 	if err != nil {
+		slog.ErrorContext(ctx, "session_compare: échec chargement canonical", "gamertag", s.gamertag, "err", err)
 		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: %w", err)
 	}
 	matches := filterStatsMatchRows(analysis.StatsMatchRowsFromCanonical(canonicalRows), req.Filters)
+	slog.DebugContext(ctx, "session_compare: rows chargés", "gamertag", s.gamertag, "canonical", len(canonicalRows), "filtered", len(matches))
 
 	// 2. Identifier les sessions disponibles.
 	sessionLabels := extractSessionLabels(matches)
 
 	if len(sessionLabels) < 2 {
+		slog.InfoContext(ctx, "session_compare: sessions insuffisantes", "gamertag", s.gamertag, "sessions", len(sessionLabels))
 		return domain.SessionCompareResponse{
 			AvailableSessions: sessionLabels,
 			Metrics:           []domain.SessionCompareMetricRow{},
@@ -82,6 +86,7 @@ func (s *SessionCompareService) Compare(
 	// SÃ©lection automatique : derniÃ¨re et avant-derniÃ¨re sessions.
 	labelA := lastOrNil(sessionLabels, req.SessionA)
 	labelB := secondLastOrNil(sessionLabels, req.SessionB)
+	slog.DebugContext(ctx, "session_compare: sélection sessions", "gamertag", s.gamertag, "session_a", labelA, "session_b", labelB, "available", len(sessionLabels))
 
 	// 3. Filtrer les matchs par session.
 	matchesA := filterBySession(matches, labelA)
@@ -91,6 +96,11 @@ func (s *SessionCompareService) Compare(
 	entryA := buildCompareEntry(matchesA, labelA)
 	entryB := buildCompareEntry(matchesB, labelB)
 	metrics := buildCompareMetrics(matchesA, matchesB)
+
+	slog.InfoContext(ctx, "session_compare: comparaison terminée",
+		"gamertag", s.gamertag,
+		"matches_a", len(matchesA), "matches_b", len(matchesB),
+		"metrics", len(metrics))
 
 	return domain.SessionCompareResponse{
 		SessionA:          entryA,
