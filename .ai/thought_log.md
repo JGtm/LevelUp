@@ -1,3 +1,54 @@
+## [2026-05-24] Éradication ART exhaustive — bloc Phase 1 à 6 livré
+
+**Statut** : Complété sur le périmètre CRITIQUE/HAUT (hot path sync). Phase 4 (handlers HTTP basse fréquence) et Phase 5 (résilience handle DB côté home) restent à traiter dans des PR ultérieurs.
+
+**Branche** : `fix/art-eradication-and-home-resilience` (14 commits depuis `refactor/collect-persist`).
+
+**Tâche** : Suite au crash home post-sync 2026-05-24 20:41:04 (LUSR persister DELETE+INSERT déclenche bug ART DuckDB sur Chocoboflor → invalide la player DB → cascade 500 `sql: database is closed` sur la home de JGtm), éradiquer tous les chemins runtime à risque ART identifiés par l'audit `.ai/audit_art_writes.md`.
+
+**Décisions de design adoptées** :
+
+- **Schema append-only + vue latest** sur 4 tables hot path :
+  - `match_skill_rank` (player DB) — Phase 2.B + vue priorité CSR Phase 2.E
+  - `match_csrs` (shared DB) — Phase 2.F
+  - `player_csr_snapshots` (player DB) — Phase 2.G
+  - `pve_match_stats` (shared_pve DB) — Phase 2.G
+- **Persister INSERT-only** : `AppendOnlyLUSRPersister` remplace `PostSyncLUSRPersister` (Phase 2.C/D). Tous les `INSERT ... ON CONFLICT DO UPDATE` et `INSERT OR REPLACE` sur ces tables remplacés par des `INSERT` purs.
+- **Suppression env var `LEVELUP_POSTSYNC_INSERT_ONLY`** (Phase 3) : le path legacy row-by-row sur `player_match_enrichment` (ON CONFLICT DO UPDATE) est supprimé. Le batch path via `PostSyncEnrichmentPersister` devient le seul chemin runtime.
+- **Guard-rail anti-régression** (Phase 6) : test `internal/sync/no_art_patterns_test.go` qui scanne tous les fichiers .go pour détecter l'apparition de nouveaux patterns à risque sur les 4 tables protégées. Allowlist explicite avec justification.
+
+**Résultats observés** :
+
+- 14 commits propres, hooks pre-commit tous verts à chaque commit (gofmt + vet + golangci-lint + EOL + line endings + secrets)
+- Le bug ART observé en prod le 20:41:04 est éliminé par construction sur le chemin LUSR
+- Code mort supprimé : -700 lignes ancien PostSyncLUSRPersister + writeDominanceFlag + branches legacy (`batchMode := os.Getenv(...)`)
+- Suites tests `internal/persist` (10s), `internal/migration` (13s), `internal/platform/duckdb` (48s), `internal/persist` (7s) toutes vertes
+- 5 fails préexistants restent sur `internal/sync` (TestBatchComputePerformanceScores partitions/skip, TestPipelineFixture_Citations_NoMedals, TestWriteSessionAssignments_MissingMatchID_Zero, TestRecomputeAfterARTRebuild, TestProperty_ConcurrentUpsertsIdempotent) — hors scope ART, à diagnostiquer indépendamment
+
+**Prochaine étape** :
+
+1. **Critique pour le crash home complet** : Phase 5 — provider player DB résilient (`RecoverFromFATAL`) + retry handler home + status sync honnête (`partial` au lieu de `success` quand post-sync FATAL). Le crash actuel reste possible si une AUTRE table (hors 4 protégées) déclenche un FATAL.
+2. **Nice-to-have** : Phase 4 — pattern SELECT-then-UPDATE-or-INSERT sur handlers HTTP basse fréquence (streaks, records, prestige, etc.) — listés dans l'allowlist du guard-rail.
+3. **Cleanup mineur** : supprimer `upsertLUSRRatingsLegacy` (marqué `//nolint:unused`) ; nettoyer `persistEngagementScore` désormais sans appelant.
+
+**Plan détaillé** : voir `.ai/PLAN_LUSR_ART_HOME_CRASH.md` et `.ai/audit_art_writes.md`.
+
+---
+
+## [2026-05-24] Documentation LUSR carry issue — synthèse des investigations
+
+**Statut** : Complété (document de référence créé)
+
+**Tâche** : Synthétiser dans un document dédié l'ensemble des investigations sur la chute en rang LUSR de Madina97294 (carry agressif sous-évalué). Session précédente perdue, reconstruction depuis thought_log + code.
+
+**Décision technique** : Création de `.ai/LUSR_CARRY_ISSUE.md` — bilan complet : cause racine (kills_vs_expected indexé MMR Halo = 51% du composite), 5 variantes de formule testées (toutes insatisfaisantes), 2 fixes livrés (carry adj asymétrique + muOpp branché), 5 pistes non explorées, piste recommandée (LUSR_recent fenêtré 50 matchs).
+
+**Résultats observés** : Aucun fix formule connu ne comble l'écart (~500 pts) sans régresser Choco/JGtm. L'écart est principalement dû à la fenêtre temporelle (mauvaises perfs début de carrière) et non à un défaut de formule.
+
+**Prochaine étape** : Explorer piste LUSR_recent (50 derniers matchs, lecture seule, endpoint dédié).
+
+---
+
 ## [2026-05-24] Diagnostic crash home post-sync — audit ART exhaustif + plan d'éradication
 
 **Statut** : Diagnostic complété, audit exhaustif livré, plan élargi rédigé. Implémentation à valider.
