@@ -47,6 +47,66 @@ Total cumulé depuis Phase 4.5 : 9 cycles consécutifs × 4 joueurs = **36 syncs
 
 ---
 
+## [2026-05-24] Phase 4.9 + Auth E.v2 + PR 2.5b phase 1 — closure complète
+
+**Statut** : Complété (toutes les actions user "1, 2, 4, 5" du dernier prompt livrées)
+
+**Tâche** : Suite à validation user (1) flip async default, (2) backlog files + deploy runbook, (4) E.v2 + PR 2.5b auth, (5) fix 9 tests pre-existants. Skip Step 3 (merge — pas maintenant).
+
+**Items livrés** :
+
+| Step | Livrable | Commit |
+|---|---|---|
+| 1 | Flip async BatchQueue default ON (`LEVELUP_PERSIST_BATCH_ASYNC != "0"`) | dans `d3825c2f` |
+| 5 | Fix canonical.AllFieldKeys (3 keys ajoutées) + cascade 4 tests synthetic/mappings | dans `d3825c2f` |
+| 5b | Fix TestBuildCanonicalSkillBadge_* (4 tests, Roman numerals + deref helper) | dans `d3825c2f` |
+| 5c | Fix TestDiscoveryScan_*Store_Populates* (env var pollution cross-test) | dans `d3825c2f` |
+| 4 | PLAN_AUTH E.v2 — Pool.AddOrUpdateSource + periodic re-scan + 5 tests TDD | `4508df92` |
+| 4b | PLAN_AUTH PR 2.5b phase 1 — RefreshLoop.WithMultiUserMirror + 3 tests TDD | `157d80a8` |
+| 2 | RUNBOOK_PHASE4_DEPLOY.md + update `.ai/backlog` (merge actions Phase 4) + `.ai/BACKLOG.md` (status E.v2/PR 2.5b + future read-path) + PLAN_AUTH status closure | ce commit (pending) |
+
+**Décisions techniques notables** :
+
+- **E.v2 design révisé** : au lieu de callback push depuis watcher (couplage explicite), periodic re-scan global toutes les 15 min. Avantages : couvre aussi les nouveaux env vars `.env.local`, pas de wiring complexe, latence acceptable. Limitation : nouveau slot post-boot reachable seulement via PolicyPinnedPlayer (canal round-robin sized at boot, capacité fixe par design).
+
+- **PR 2.5b scope minimal** : au lieu de migrer entièrement le watcher daemon vers multi-user store (3-4h + design product requis), livrer la 1ère brique = mirror writes. Le legacy reste source of truth pour les reads, mais multi-user store reste toujours à jour. Pavement pour future PR sans rupture.
+
+- **Test isolation fix critique** : 2 tests Discovery échouaient en full suite mais passaient isolés. Root cause : `TestDiscoveryScan_MixedTokenSources` appelle `config.Load()` qui charge `.env.local` réel → env vars `SPNKR_OAUTH_REFRESH_TOKEN_*` persistent dans le process pour les tests suivants. Fix : `t.Setenv("...", "")` au début des tests qui utilisent les vrais gamertags pour neutraliser la pollution.
+
+- **Canonical types drift** : `canonical.AllFieldKeys` était la source of truth Go pour la validation des TOML mappings. 3 keys ajoutées (`ranked_match_count`, `offensive_conversion`, `defensive_resistance`) sans bump → 4 tests cassés. Pattern à automatiser : tout `[fields.X]` ajouté dans `config/titles/*/mappings/fields.toml` doit aussi être ajouté à `canonical.AllFieldKeys()` + golden file regenerated via `TESTING_UPDATE_GOLDEN=1 go test ...`.
+
+**Résultats observés** :
+
+- `go build ./...` clean
+- `go vet ./...` clean
+- `go test ./...` **full suite GREEN** (0 FAIL au final)
+- 8 nouveaux tests TDD au total (5 Pool.AddOrUpdateSource + 3 RefreshLoop.MultiUserMirror)
+- 9 tests pre-existants réparés (4 mappings/synthetic cascade + 4 BuildCanonicalSkillBadge + 2 DiscoveryScan)
+
+**État final des 2 plans** :
+
+- **REFACTOR_COLLECT_PERSIST** : 100% livré, 0 dette ART, default ON tous les flags
+- **PLAN_AUTH_PROVIDER_UNIFICATION** : E.v1 + E.v2 + PR 2.5b phase 1 ✅ ; reste read-path switch (PR 2.5b phase 2) en backlog avec décision product à prendre + chiffrement at-rest tokens en backlog 🟢 priorité basse
+
+**Files livrés cette session (uncommitted, à committer)** :
+- `.ai/BACKLOG.md` (status E.v2/PR 2.5b + nouveau item read-path switch)
+- `.ai/backlog` (merge action Phase 4 + commits list + procedure)
+- `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md` (status closure)
+- `.ai/RUNBOOK_PHASE4_DEPLOY.md` (NEW — runbook deploy + procédure backup + rebuild ART + smoke + rollback)
+- `.ai/thought_log.md` (cette entrée)
+
+**Pas livré (sur instruction user)** :
+- Merge `refactor/collect-persist` → `main` (Step 3 user "non on fait pas maintenant")
+
+**Total session** : 14 commits sur `refactor/collect-persist` depuis le smoke test Phase 3 :
+- Phase 4.2 → 4.9 (8 commits collect-persist)
+- Auth E.v2 + PR 2.5b phase 1 (2 commits)
+- Hygiene + tests (4 commits)
+
+L'incident ART qui hantait LevelUp depuis le 2026-05-20 est **structurellement résolu**, et le plan Auth Unification est livré jusqu'à son point de friction structurel (read-path switch nécessite design product).
+
+---
+
 ## [2026-05-24] Phase 4.7 closure — BatchQueue wiring + janitor + flip defaults opt-out
 
 **Statut** : Complété (Steps 1+2+3 du séquence "terminer les plans" livrés, Steps 4+5 documentés)
