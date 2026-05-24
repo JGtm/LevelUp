@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"os"
 	"sort"
 	"time"
 
@@ -563,16 +562,14 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	}
 
 	const windowSize = 50
-	now := time.Now().UTC()
 
 	// Historique cumulé par chaîne (chronologique ASC). Pour chaque match, le
 	// percentile est calculé sur la fenêtre des 50 derniers entrées de sa chaîne.
 	chainHistory := make(map[string][]historyRow)
 
-	// Phase 4.7 closure (2026-05-24) : default flipé ON. Accumulation in-RAM
-	// + flush batch en fin de boucle. Set LEVELUP_POSTSYNC_INSERT_ONLY=0 pour
-	// fallback legacy UPDATE-then-INSERT row-by-row (mode dégradé).
-	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0"
+	// Phase 3 du refactor ART : seul le batch path est conservé (le legacy
+	// ON CONFLICT DO UPDATE déclenchait le bug ART). Accumulation in-RAM
+	// + flush batch en fin de boucle via PostSyncEnrichmentPersister.
 	type perfUpdate struct {
 		MatchID string
 		Score   float64
@@ -620,37 +617,15 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 
 			score := computeRelativePerformanceScore(&match, window)
 			if score != nil {
-				// Phase 4.4 batch mode : accumuler en RAM, flush en fin de boucle.
-				if batchMode {
-					pendingUpdates = append(pendingUpdates, perfUpdate{
-						MatchID: match.MatchID, Score: *score, Chain: chain,
-					})
-					updated++
-					updatedByChain[chain]++
-					chainHistory[chain] = append(history, match)
-					continue
-				}
-				// Legacy path (LEVELUP_POSTSYNC_INSERT_ONLY=0) — UPSERT direct.
-				// Phase 4.7 revert acad4603 : retour au pattern standard
-				// ON CONFLICT DO UPDATE. Le bug ART est éliminé sur le path
-				// default (batch mode), donc plus besoin du workaround
-				// UPDATE-then-INSERT sur le path legacy.
-				_, err := playerDB.ExecContext(ctx, `
-					INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
-					VALUES (?, ?, ?, ?)
-					ON CONFLICT (match_id) DO UPDATE SET
-						performance_score = EXCLUDED.performance_score,
-						performance_chain = EXCLUDED.performance_chain,
-						updated_at        = EXCLUDED.updated_at`,
-					match.MatchID, *score, chain, now)
-				if err != nil {
-					execErrors++
-					slog.Warn("batchComputePerformanceScores: UPSERT failed",
-						"match_id", match.MatchID, "chain", chain, "xuid", xuid, "err", err)
-				} else {
-					updated++
-					updatedByChain[chain]++
-				}
+				// Accumuler en RAM, flush via PostSyncEnrichmentPersister
+				// (1 UPDATE multi-row en fin de boucle).
+				pendingUpdates = append(pendingUpdates, perfUpdate{
+					MatchID: match.MatchID, Score: *score, Chain: chain,
+				})
+				updated++
+				updatedByChain[chain]++
+				chainHistory[chain] = append(history, match)
+				continue
 			}
 		}
 
@@ -658,8 +633,8 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 		chainHistory[chain] = append(history, match)
 	}
 
-	// Phase 4.4 batch mode : flush des updates accumulés en 1 single SQL.
-	if batchMode && len(pendingUpdates) > 0 {
+	// Flush des updates accumulés en 1 single SQL.
+	if len(pendingUpdates) > 0 {
 		rows := make([]persist.EnrichmentMultiColumnUpdate, 0, len(pendingUpdates))
 		for _, u := range pendingUpdates {
 			rows = append(rows, persist.EnrichmentMultiColumnUpdate{

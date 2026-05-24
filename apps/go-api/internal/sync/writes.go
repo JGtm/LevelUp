@@ -9,7 +9,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -269,32 +268,12 @@ func nullStr(s string) *string {
 	return &s
 }
 
-// WriteSessionAssignments écrit session_id et session_label dans player_match_enrichment.
-// Seules les lignes dont le match_id existe déjà sont mises à jour (UPDATE).
+// WriteSessionAssignments écrit session_id et session_label dans
+// player_match_enrichment via le batch path (Phase 3 du refactor ART :
+// le path legacy row-by-row UPDATE a été supprimé car à risque ART).
 // Retourne le nombre de lignes affectées.
 func WriteSessionAssignments(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
-	// Phase 4.7 closure (2026-05-24) : default flipé ON. Set
-	// LEVELUP_POSTSYNC_INSERT_ONLY=0 pour fallback legacy row-by-row.
-	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0" {
-		return writeSessionAssignmentsBatch(ctx, db, assignments)
-	}
-	updated := 0
-	for _, a := range assignments {
-		result, err := db.ExecContext(ctx, `
-			UPDATE player_match_enrichment
-			SET    session_id    = ?,
-			       session_label = ?,
-			       updated_at    = CURRENT_TIMESTAMP
-			WHERE  match_id = ?`,
-			strconv.Itoa(a.SessionID), a.SessionLabel, a.MatchID,
-		)
-		if err != nil {
-			return updated, fmt.Errorf("WriteSessionAssignments(%s): %w", a.MatchID, err)
-		}
-		n, _ := result.RowsAffected()
-		updated += int(n)
-	}
-	return updated, nil
+	return writeSessionAssignmentsBatch(ctx, db, assignments)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

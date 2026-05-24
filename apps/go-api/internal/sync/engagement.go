@@ -27,7 +27,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"os"
 	"time"
 
 	"levelup/go-api/internal/analysis/temporal"
@@ -86,10 +85,10 @@ func batchComputeEngagementScores(
 	updated := 0
 	now := time.Now().UTC()
 
-	// Phase 4.7 closure (2026-05-24) : default flipé ON. Accumulation updates
-	// en RAM + flush via PostSyncEnrichmentPersister (1 single UPDATE multi-row
-	// multi-col). Set LEVELUP_POSTSYNC_INSERT_ONLY=0 pour fallback row-by-row.
-	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0"
+	// Phase 3 du refactor ART : seul le batch path est conservé (le legacy
+	// row-by-row déclenchait le bug ART). Accumulation updates en RAM +
+	// flush via PostSyncEnrichmentPersister (1 single UPDATE multi-row
+	// multi-col).
 	hasPaces := pacesColumnsAvailable(ctx, playerDB)
 	var pendingUpdates []persist.EnrichmentMultiColumnUpdate
 
@@ -159,19 +158,9 @@ func batchComputeEngagementScores(
 			continue
 		}
 
-		if batchMode {
-			pendingUpdates = append(pendingUpdates,
-				buildEngagementUpdate(m.MatchID, modeCategory, result, now, hasPaces))
-			observability.IncCounter("engagement_score_computed_total")
-		} else {
-			if err := persistEngagementScore(ctx, playerDB, m.MatchID, modeCategory, result, now); err != nil {
-				slog.ErrorContext(ctx, "engagement: persist failed",
-					"match_id", m.MatchID, "err", err)
-				observability.IncCounter("engagement_persist_error_total")
-				continue
-			}
-			observability.IncCounter("engagement_score_computed_total")
-		}
+		pendingUpdates = append(pendingUpdates,
+			buildEngagementUpdate(m.MatchID, modeCategory, result, now, hasPaces))
+		observability.IncCounter("engagement_score_computed_total")
 
 		// Persist match_intensity dans shared.match_registry (best-effort).
 		if result.MatchIntensity > 0 {
@@ -187,8 +176,8 @@ func batchComputeEngagementScores(
 		updated++
 	}
 
-	// Phase 4.4 — flush des updates accumulés en 1 single UPDATE multi-row.
-	if batchMode && len(pendingUpdates) > 0 {
+	// Flush des updates accumulés en 1 single UPDATE multi-row.
+	if len(pendingUpdates) > 0 {
 		p := persist.NewPostSyncEnrichmentPersister(playerDB)
 		if err := p.BatchUpdateMulti(ctx, pendingUpdates); err != nil {
 			slog.ErrorContext(ctx, "engagement: BatchUpdateMulti échoué",
