@@ -240,6 +240,9 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 			engine.WithBatchQueue(s.batchQueue)
 		}
 	}
+	if s.cfg.CurrentCSRSeasonID != "" {
+		engine.WithCSRSeasonID(s.cfg.CurrentCSRSeasonID)
+	}
 	return engine
 }
 

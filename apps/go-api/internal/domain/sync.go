@@ -118,4 +118,6 @@ type PostSyncResult struct {
 	SessionsAssigned         int   // recalcul session_id post-sync (auto)
 	WeaponKillsProcessed     int   // nouveaux matchs traités par le pipeline film/weapon kills
 	WeaponKillsNoFilm        int   // matchs sans film (404/410, normal pour vieux matchs)
+	CitationsComputed        int   // matchs traités par le pipeline post-sync (étape 1.6 citations)
+	DominanceFlagsComputed   int   // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
 }
