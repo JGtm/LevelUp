@@ -38,6 +38,16 @@ func (a AlertType) NotificationCategory() notifications.Category {
 		return notifications.CategoryComebackWelcome
 	case AlertTypeLOWESSPositive, AlertTypeCampaignProgress, AlertTypeCampaignCloseAuto:
 		return notifications.CategoryThresholdCrossed
+	case AlertPatternStrength:
+		return notifications.CategoryPatternStrength
+	case AlertPatternWeakness:
+		return notifications.CategoryPatternWeakness
+	case AlertPatternBehavior:
+		return notifications.CategoryPatternBehavior
+	case AlertPatternLever:
+		return notifications.CategoryPatternLever
+	case AlertTypeCombatPatternActif, AlertTypeCombatPatternDiscret, AlertTypeCombatPatternFragile:
+		return notifications.CategoryCombatPattern
 	default:
 		return ""
 	}

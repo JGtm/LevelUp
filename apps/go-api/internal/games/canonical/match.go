@@ -153,16 +153,17 @@ type PlayerMatchRow struct {
 // dans le core canonical (sessions, performance score interne, dominance flag
 // calculé au sync, contexte friends, MMR enemy si head-to-head).
 type PlayerMatchEnrichment struct {
-	SessionID        *string
-	SessionLabel     *string
-	PerformanceScore *float64
-	DominanceFlag    DominanceFlag
-	HadBotTeammate   bool
-	IsWithFriends    bool
-	FriendsXUIDs     []string // sous-ensemble présent ce match (peut être nil)
-	TeamMMR          *float64
-	EnemyMMR         *float64       // si dispo (head-to-head, sinon nil)
-	SkillSnapshot    *SkillSnapshot // ADR 0011, P4 — rating + tier + sub-tier + delta
+	SessionID           *string
+	SessionLabel        *string
+	PerformanceScore    *float64
+	DominanceFlag       DominanceFlag
+	HadBotTeammate      bool
+	IsWithFriends       bool
+	FriendsXUIDs        []string // sous-ensemble présent ce match (peut être nil)
+	TeamMMR             *float64
+	EnemyMMR            *float64       // si dispo (head-to-head, sinon nil)
+	SkillSnapshot       *SkillSnapshot // ADR 0011, P4 — rating + tier + sub-tier + delta
+	EngagementScoreBrut *float64       // résidu brut engagement (player - attendu), nil si non calculé
 }
 
 // SkillSnapshot est la projection canonique du rating de skill pour un match.

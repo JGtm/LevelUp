@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
@@ -67,6 +68,22 @@ type GenerateInput struct {
 	// HasNewActivity : true si au moins 1 match a été ingéré dans la
 	// fenêtre récente (l'orchestrateur calcule).
 	HasNewActivity bool
+
+	// PatternReport : rapport patterns (phases 1-3). Peut être nil si patterns non calculés.
+	PatternReport *patterns.PatternReport
+
+	// CombatMedians : médianes OC/DR + résidu d'engagement sur la fenêtre courante.
+	// Nil si aucune donnée de dégâts disponible pour le joueur.
+	CombatMedians *CombatMedians
+}
+
+// CombatMedians regroupe les médianes OC/DR et le résidu d'engagement moyen
+// calculés sur la fenêtre post-sync (120 jours).
+type CombatMedians struct {
+	MedianOC       float64 // médiane offensive_conversion sur la fenêtre
+	MedianDR       float64 // médiane defensive_resistance sur la fenêtre
+	AvgResidual    float64 // moyenne du résidu d'engagement brut (peut être 0 si absent)
+	HasResidual    bool    // true si au moins 10 matchs avec engagement_score_brut
 }
 
 // Generator orchestre la production d'alertes coach.
@@ -77,7 +94,7 @@ func NewGenerator() *Generator { return &Generator{} }
 
 // Generate produit la liste complète des alertes à émettre, sans dédup
 // (la dédup est appliquée en aval). Ordre des alertes : streaks → records
-// → milestones → LUSR → trends → comeback (déterministe pour tests).
+// → milestones → LUSR → trends → comeback → patterns → combat (déterministe pour tests).
 func (g *Generator) Generate(_ context.Context, input GenerateInput) []Alert {
 	out := make([]Alert, 0, 16)
 	out = append(out, buildStreakAlerts(input)...)
@@ -86,6 +103,8 @@ func (g *Generator) Generate(_ context.Context, input GenerateInput) []Alert {
 	out = append(out, buildLUSRTierApproachAlert(input)...)
 	out = append(out, buildLOWESSAlerts(input)...)
 	out = append(out, buildComebackAlert(input)...)
+	out = append(out, buildPatternAlerts(input)...)
+	out = append(out, buildCombatPatternAlerts(input)...)
 	return out
 }
 
@@ -247,6 +266,138 @@ func buildLOWESSAlerts(input GenerateInput) []Alert {
 			DedupKey: t.Component,
 		})
 	}
+	return out
+}
+
+// buildPatternAlerts émet les alertes issues du Pattern Engine (phases 1-3).
+// Retourne nil si input.PatternReport == nil.
+func buildPatternAlerts(input GenerateInput) []Alert {
+	if input.PatternReport == nil {
+		return nil
+	}
+	report := input.PatternReport
+	var out []Alert
+	for _, p := range report.ContextPatterns {
+		switch p.Signal {
+		case patterns.SignalStrength:
+			out = append(out, Alert{
+				Type:     AlertPatternStrength,
+				Severity: notifications.SeveritySuccess,
+				Params: map[string]any{
+					"context_type": string(p.Type),
+					"key":          p.Key,
+					"win_rate":     p.WinRate,
+					"delta":        p.Delta,
+				},
+				DedupKey: string(p.Type) + "|" + p.Key,
+			})
+		case patterns.SignalWeakness:
+			out = append(out, Alert{
+				Type:     AlertPatternWeakness,
+				Severity: notifications.SeverityWarn,
+				Params: map[string]any{
+					"context_type": string(p.Type),
+					"key":          p.Key,
+					"win_rate":     p.WinRate,
+					"delta":        p.Delta,
+				},
+				DedupKey: string(p.Type) + "|" + p.Key,
+			})
+		}
+	}
+	for _, b := range report.BehaviorPatterns {
+		if b.Severity == patterns.SeverityLow {
+			continue
+		}
+		out = append(out, Alert{
+			Type:     AlertPatternBehavior,
+			Severity: notifications.SeverityWarn,
+			Params: map[string]any{
+				"behavior_type": string(b.Type),
+				"trigger":       b.Trigger,
+				"evidence":      b.Evidence,
+				"severity":      string(b.Severity),
+			},
+			DedupKey: string(b.Type),
+		})
+	}
+	for _, l := range report.Levers {
+		if l.Rank > 3 || l.Impact <= 0.3 {
+			continue
+		}
+		out = append(out, Alert{
+			Type:     AlertPatternLever,
+			Severity: notifications.SeverityInfo,
+			Params: map[string]any{
+				"rank":           l.Rank,
+				"axis":           l.Axis,
+				"label":          l.Label,
+				"impact":         l.Impact,
+				"horizon":        l.Horizon,
+				"source_pattern": l.SourcePattern,
+			},
+			DedupKey: l.Axis,
+		})
+	}
+	return out
+}
+
+// combatOCP80Threshold et combatDRP80Threshold reproduisent les seuils P80
+// définis dans analysis/combat_yield.go. Copiés ici pour éviter d'importer
+// le package analysis depuis coach (séparation des couches).
+const (
+	combatOCP80Threshold = 0.83 // OffensiveConversionP80
+	combatDRP80Threshold = 1.59 // DefensiveResistanceP80
+)
+
+// buildCombatPatternAlerts émet des alertes proactives basées sur OC/DR/activité.
+//
+//   - actif   : OC basse (< 70% P80) et résidu d'engagement élevé (> +5) — joueur actif qui peut améliorer sa précision
+//   - discret : résidu d'engagement très bas (< -5) — activité faible, signal de désengagement
+//   - fragile : DR basse (< 70% P80) de manière systématique — défense à renforcer
+//
+// Les 3 alertes sont indépendantes. Retourne nil si CombatMedians == nil.
+func buildCombatPatternAlerts(input GenerateInput) []Alert {
+	if input.CombatMedians == nil {
+		return nil
+	}
+	m := input.CombatMedians
+	var out []Alert
+
+	if m.MedianOC < combatOCP80Threshold*0.70 && m.HasResidual && m.AvgResidual > 5 {
+		out = append(out, Alert{
+			Type:     AlertTypeCombatPatternActif,
+			Severity: notifications.SeverityInfo,
+			Params: map[string]any{
+				"median_oc":   m.MedianOC,
+				"avg_residual": m.AvgResidual,
+			},
+			DedupKey: "combat_actif",
+		})
+	}
+
+	if m.HasResidual && m.AvgResidual < -5 {
+		out = append(out, Alert{
+			Type:     AlertTypeCombatPatternDiscret,
+			Severity: notifications.SeverityInfo,
+			Params: map[string]any{
+				"avg_residual": m.AvgResidual,
+			},
+			DedupKey: "combat_discret",
+		})
+	}
+
+	if m.MedianDR < combatDRP80Threshold*0.70 {
+		out = append(out, Alert{
+			Type:     AlertTypeCombatPatternFragile,
+			Severity: notifications.SeverityInfo,
+			Params: map[string]any{
+				"median_dr": m.MedianDR,
+			},
+			DedupKey: "combat_fragile",
+		})
+	}
+
 	return out
 }
 

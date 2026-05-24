@@ -10,6 +10,7 @@
  */
 
 import type { ChartSeries } from '@/components/charts/ChartCard'
+import type { CombatProfileBlock } from '@/lib/api/types'
 import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 import type { ChartPoint2D } from '@/components/charts/TimeseriesLineChart'
 import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
@@ -49,6 +50,10 @@ export interface KPIStats {
   assists_per_minute: number
   avg_accuracy: number
   avg_life_seconds: number
+  avg_offensive_conversion?: number | null
+  avg_defensive_resistance?: number | null
+  // PLAN_COMBAT_PROFILE_WIRING Phase 2
+  combat_profile?: CombatProfileBlock | null
   outcomes: { wins: number; losses: number; ties: number; dnf: number }
 }
 
