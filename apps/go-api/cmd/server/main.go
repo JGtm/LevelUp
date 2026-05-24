@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 	"log/slog"
@@ -396,6 +397,19 @@ func main() {
 	}
 	slog.Debug("DuckDB ouvert")
 
+	// --- 3.ter. Résolution CSR season depuis metadata.duckdb ---
+	// Si LEVELUP_CSR_SEASON_ID n'est pas défini (ni env, ni app_settings.json),
+	// requête csr_season_calendars pour la saison active du jour. Doit être fait
+	// AVANT l'initialisation des services qui utilisent cfg.CurrentCSRSeasonID.
+	if cfg.CurrentCSRSeasonID == "" {
+		if id := resolveCSRSeasonFromDB(metaDB.SQLDb()); id != "" {
+			cfg.CurrentCSRSeasonID = id
+			slog.Info("csr_season_id résolu depuis csr_season_calendars", "season_id", id)
+		} else {
+			slog.Warn("csr_season_id absent de csr_season_calendars — sync CSR désactivé")
+		}
+	}
+
 	// --- 3.bis. Filet de garde corruption ART (Phase 1, plan stabilisation
 	// 2026-05-22). Scanne shared_matches_v2 + metadata pour détecter les
 	// tables dont l'index ART est corrompu (filter pushdown qui rate des
@@ -485,6 +499,7 @@ func main() {
 	// Cycle de vie : créée 1× au boot, drainée + fermée à shutdown via
 	// autoBatchQueue.Drain() + Close() AVANT duckdb.CloseAll() (ordre critique).
 	var autoBatchQueue *persist.BatchQueue
+	var workerWG sync.WaitGroup // tracks the batch Worker goroutine lifecycle
 	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") != "0" {
 		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
@@ -499,7 +514,27 @@ func main() {
 			autoScheduler.WithBatchQueue(q)
 			slog.InfoContext(ctx, "persist: BatchQueue activée (async path)",
 				"wal_dir", walDir)
+
+			// Câblage Worker — CombinedPersister écrit shared + player par batch.
+			// context.Background() : le Worker doit finir le batch en cours avant
+			// de s'arrêter → ne doit pas être annulé par cancelScheduler().
+			// Arrêt naturel via autoBatchQueue.Close() (channel close) au shutdown.
+			combinedP := persist.NewCombinedPersister(
+				func(workerCtx context.Context) (*sql.DB, func(), error) {
+					return syncpkg.AcquireSharedWriterStandalone(workerCtx, cfg.SharedProvider, sharedPath)
+				},
+				func(gamertag string) string { return pr.PlayerDBPath(titleSlug, gamertag) },
+			)
+			batchWorker := persist.NewWorker("combined", q, persist.TargetShared, combinedP)
+			workerWG.Add(1)
+			go func() {
+				defer workerWG.Done()
+				_ = batchWorker.Run(context.Background())
+			}()
+			slog.InfoContext(ctx, "persist: Worker combiné démarré")
+
 			// Recovery boot : re-soumet les batches WAL pending d'un crash précédent.
+			// Appelé APRES le démarrage du Worker pour traitement immédiat.
 			if rerr := q.RecoverPending(); rerr != nil {
 				slog.WarnContext(ctx, "persist: RecoverPending échoué (non-bloquant)",
 					"err", rerr)
@@ -763,6 +798,7 @@ func main() {
 			slog.Warn("persist: BatchQueue.Close échoué (non-bloquant)", "err", err)
 		}
 	}
+	workerWG.Wait() // attend la terminaison du Worker après channel close
 
 	duckdb.CloseAll()
 
@@ -957,6 +993,24 @@ func buildAutoSyncPool(
 		return nil
 	}
 	return p
+}
+
+// resolveCSRSeasonFromDB retourne le season_id CSR actif depuis csr_season_calendars.
+// Retourne "" si la table est absente ou si aucune saison couvre la date courante.
+func resolveCSRSeasonFromDB(db *sql.DB) string {
+	var id string
+	err := db.QueryRow(`
+		SELECT season_id FROM csr_season_calendars
+		WHERE title_id = 'halo_infinite'
+		  AND start_date <= CURRENT_DATE
+		  AND (end_date IS NULL OR end_date >= CURRENT_DATE)
+		ORDER BY start_date DESC
+		LIMIT 1
+	`).Scan(&id)
+	if err != nil {
+		return ""
+	}
+	return id
 }
 
 // startWatcherDaemon tente de démarrer le daemon de présence.
