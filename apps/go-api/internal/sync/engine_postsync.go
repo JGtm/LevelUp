@@ -37,6 +37,25 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
+// trackFatalErr collecte les erreurs FATAL DuckDB (IsInvalidatedError) dans
+// r.FatalErrors pour propagation vers SyncResult.Errors. À appeler après
+// chaque slog.WarnContext "post-sync: X échoué" du pipeline. Pas-op pour
+// les erreurs non-fatales (les WARN restent informatifs).
+//
+// Sémantique (Phase 5 ART — Status sync honnête) : sans ce tracking, un
+// FATAL sur le post-sync (LUSR/aggregates/citations/friends) reste loggé en
+// WARN, le sync se termine avec status="success" et le monitoring ne voit
+// pas la dégradation. Avec ce tracking, le status passe à "partial_success".
+//
+// `stepName` doit correspondre au libellé du WARN (ex. "LUSR", "citations",
+// "aggregates") pour pouvoir corréler logs ↔ FatalErrors.
+func trackFatalErr(r *domain.PostSyncResult, stepName string, err error) {
+	if err == nil || !duckdbpkg.IsInvalidatedError(err) {
+		return
+	}
+	r.FatalErrors = append(r.FatalErrors, fmt.Sprintf("%s: %v", stepName, err))
+}
+
 // runConditionalPostSync exécute le pipeline complet si des matchs ont été insérés,
 // sinon rafraîchit au moins la carrière pour mettre à jour le snapshot joueur.
 func (e *SyncEngine) runConditionalPostSync(
@@ -70,10 +89,12 @@ func (e *SyncEngine) runConditionalPostSync(
 	slog.DebugContext(ctx, "sync: aucun match inséré — refresh CSR + achievements seul (carrière live découplé)", "gamertag", e.gamertag)
 	// Carrière (XP + Spartan ID) retirée du post-sync : service.CareerLiveService
 	// la rafraîchit live à chaque chargement de /pages/home.
-	e.runCSRSnapshotSync(ctx, playerDB, client)
-	return domain.PostSyncResult{
-		AchievementsSynced: e.runAchievementsSync(ctx, playerDB),
+	res := domain.PostSyncResult{}
+	if err := e.runCSRSnapshotSync(ctx, playerDB, client); err != nil {
+		trackFatalErr(&res, "CSR snapshots", err)
 	}
+	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+	return res
 }
 
 // hasMatchesNeedingScoreRefresh indique si au moins un match a des scores
@@ -138,6 +159,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Détection via max_killing_spree IS NULL. Limit 10 pour amortir.
 	if n, err := healStatsForRecentMatches(ctx, sharedDB, client, e.xuid, e.gamertag, 10); err != nil {
 		slog.WarnContext(ctx, "post-sync: stats heal échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "stats heal", err)
 	} else if n > 0 {
 		slog.InfoContext(ctx, "post-sync: stats self-heal", "gamertag", e.gamertag, "matches_healed", n)
 	}
@@ -149,6 +171,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// dépendent de team_mmr et kills_expected.
 	if n, err := healSkillForMissingMatches(ctx, sharedDB, client, e.xuid, 200); err != nil {
 		slog.WarnContext(ctx, "post-sync: skill heal échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "skill heal", err)
 	} else if n > 0 {
 		slog.InfoContext(ctx, "post-sync: skill self-heal", "gamertag", e.gamertag, "matches_healed", n)
 	}
@@ -161,6 +184,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// même sur 404, donc converge en quelques syncs.
 	if h, nf, err := healEventsForRecentMatches(ctx, sharedDB, nil, client, 20); err != nil {
 		slog.WarnContext(ctx, "post-sync: events heal échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "events heal", err)
 	} else if h > 0 || nf > 0 {
 		slog.InfoContext(ctx, "post-sync: events self-heal",
 			"gamertag", e.gamertag, "healed", h, "no_film", nf)
@@ -173,6 +197,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// donc converge en quelques syncs.
 	if h, nf, err := healWeaponKillsForRecentMatches(ctx, sharedDB, client, e.xuid, 10); err != nil {
 		slog.WarnContext(ctx, "post-sync: weapon heal échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "weapon heal", err)
 	} else if h > 0 || nf > 0 {
 		slog.InfoContext(ctx, "post-sync: weapon self-heal",
 			"gamertag", e.gamertag, "healed", h, "no_film", nf)
@@ -182,6 +207,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Idempotent : skip les rows déjà à TRUE.
 	if n, err := computeAndPersistHadBotTeammate(ctx, playerDB, sharedDB, e.xuid); err != nil {
 		slog.WarnContext(ctx, "post-sync: had_bot_teammate échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "had_bot_teammate", err)
 	} else if n > 0 {
 		slog.InfoContext(ctx, "post-sync: had_bot_teammate", "gamertag", e.gamertag, "rows_updated", n)
 	}
@@ -200,6 +226,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 		opts := analysis.DefaultSessionOptions()
 		if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, e.xuid, opts, friends); err != nil {
 			slog.WarnContext(ctx, "post-sync: sessions échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(&r, "sessions", err)
 		} else if n > 0 {
 			r.SessionsAssigned = n
 			slog.DebugContext(ctx, "post-sync: sessions recalculées", "gamertag", e.gamertag, "count", n)
@@ -210,6 +237,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
 	if n, err := batchComputePerformanceScores(ctx, playerDB, sharedDB, e.xuid, nil, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: perf scores échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "perf scores", err)
 	} else {
 		r.PerfScoresComputed = n
 		slog.DebugContext(ctx, "post-sync: perf scores calculés", "gamertag", e.gamertag, "count", n)
@@ -220,6 +248,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	slog.DebugContext(ctx, "post-sync: calcul engagement scores", "gamertag", e.gamertag)
 	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: engagement scores échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "engagement scores", err)
 	} else if n > 0 {
 		r.EngagementScoresComputed = n
 		slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
@@ -231,6 +260,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// l'ecran (cf. .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4).
 	if n, err := batchRecomputeCoefficients(ctx, playerDB, e.xuid); err != nil {
 		slog.WarnContext(ctx, "post-sync: engagement coefs échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "engagement coefs", err)
 	} else if n > 0 {
 		r.EngagementCoefsUpdated = n
 		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
@@ -241,6 +271,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// Un nouveau sync peut amener des données → on recalcule si table vide.
 	if n, err := batchComputePlayerAssistsModel(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: assists model échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "assists model", err)
 	} else if n > 0 {
 		slog.InfoContext(ctx, "post-sync: assists model calculé", "gamertag", e.gamertag, "n_modes", n)
 	}
@@ -253,6 +284,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 		done, noFilm, werr := processWeaponKillsInline(ctx, sharedDB, client, e.xuid, insertedIDs)
 		if werr != nil {
 			slog.WarnContext(ctx, "post-sync: weapon kills échoué", "gamertag", e.gamertag, "err", werr)
+			trackFatalErr(&r, "weapon kills", werr)
 		}
 		r.WeaponKillsProcessed = done
 		r.WeaponKillsNoFilm = noFilm
@@ -267,6 +299,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// (fix citations.go) empêche les matchs à 0 delta d'être re-traités.
 	if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
 		slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "citations", err)
 	} else if n > 0 {
 		r.CitationsComputed = n
 		slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
@@ -279,12 +312,14 @@ func (e *SyncEngine) runPostSyncPipeline(
 		missingIDs, merr := selectMatchesMissingDominanceFlags(ctx, playerDB)
 		if merr != nil {
 			slog.WarnContext(ctx, "post-sync: dominance detect échoué", "gamertag", e.gamertag, "err", merr)
+			trackFatalErr(&r, "dominance detect", merr)
 		}
 		allDominanceIDs := mergeUniqMatchIDs(insertedIDs, missingIDs)
 		if len(allDominanceIDs) > 0 {
 			if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, allDominanceIDs); err != nil {
 				slog.WarnContext(ctx, "post-sync: dominance flags échoué",
 					"gamertag", e.gamertag, "err", err, "count", len(allDominanceIDs))
+				trackFatalErr(&r, "dominance flags", err)
 			} else {
 				r.DominanceFlagsComputed = len(allDominanceIDs)
 				slog.InfoContext(ctx, "post-sync: dominance flags calculés",
@@ -298,6 +333,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
 	if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
 		slog.WarnContext(ctx, "post-sync: LUSR échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "LUSR", err)
 	} else {
 		r.LUSRUpdated = n
 		slog.DebugContext(ctx, "post-sync: LUSR mis à jour", "gamertag", e.gamertag, "count", n)
@@ -313,7 +349,9 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide).
 	// Maintenu dans le post-sync : le CSR ne bouge que sur fin de match ranked,
 	// donc le déclencheur "nouveau match" reste pertinent.
-	e.runCSRSnapshotSync(ctx, playerDB, client)
+	if csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
+		trackFatalErr(&r, "CSR snapshots", csrErr)
+	}
 
 	// 3.5 Friends recompute is_with_friends (best-effort).
 	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
@@ -322,11 +360,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 	if e.friendsLoader != nil {
 		if friends, ferr := e.friendsLoader(); ferr != nil {
 			slog.WarnContext(ctx, "post-sync: friends loader échoué", "gamertag", e.gamertag, "err", ferr)
+			trackFatalErr(&r, "friends loader", ferr)
 		} else if len(friends) > 0 {
 			slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
 			fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
 			if err != nil {
 				slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
+				trackFatalErr(&r, "friends recompute", err)
 			} else if fres.MatchesPromoted > 0 {
 				r.MatchesPromotedFriends = fres.MatchesPromoted
 				slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
@@ -346,11 +386,15 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// concurrent.
 	slog.DebugContext(ctx, "post-sync: refresh aggregates+views (parallel)", "gamertag", e.gamertag)
 	var viewsRefreshed atomic.Int32
+	// Capture des erreurs en variables locales (une par goroutine) pour les
+	// agréger post-Wait sans race. trackFatalErr() est appelé après le join.
+	var aggregatesErr, sharedViewsErr error
 	egRefresh := &errgroup.Group{}
 	egRefresh.Go(func() error {
 		n, err := refreshAggregates(ctx, playerDB)
 		if err != nil {
 			slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
+			aggregatesErr = err
 			return nil //nolint:nilerr // best-effort, ne propage pas (cohérent avec ancien comportement)
 		}
 		viewsRefreshed.Add(int32(n))
@@ -360,12 +404,15 @@ func (e *SyncEngine) runPostSyncPipeline(
 		n, err := refreshSharedViews(ctx, sharedDB)
 		if err != nil {
 			slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
+			sharedViewsErr = err
 			return nil //nolint:nilerr // best-effort idem
 		}
 		viewsRefreshed.Add(int32(n))
 		return nil
 	})
 	_ = egRefresh.Wait()
+	trackFatalErr(&r, "aggregates", aggregatesErr)
+	trackFatalErr(&r, "shared views", sharedViewsErr)
 	r.ViewsRefreshed = int(viewsRefreshed.Load())
 
 	// 4.5 Media scan post-sync — indexe les captures présentes dans le dossier
@@ -386,7 +433,10 @@ func (e *SyncEngine) runPostSyncPipeline(
 // runCSRSnapshotSync récupère les classements CSR du joueur pour la saison courante
 // et les persiste dans player_csr_snapshots. Best-effort : skippé si csrSeasonID vide
 // (avec WARN explicite pour rendre cette régression de config visible aux ops).
-func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) {
+// runCSRSnapshotSync retourne nil sur succès ou skip de config, ou l'erreur
+// brute de syncPlayerCSRs en cas d'échec runtime. Le caller peut utiliser
+// trackFatalErr pour propager au SyncResult si IsInvalidatedError.
+func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) error {
 	if strings.TrimSpace(e.csrSeasonID) == "" {
 		// Visibilité explicite : sans cette config, player_csr_snapshots reste vide
 		// éternellement et la home affiche "Aucun classement". Bug racine difficile
@@ -397,15 +447,16 @@ func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, c
 				"ou définir l'env var LEVELUP_CSR_SEASON_ID)",
 			"gamertag", e.gamertag,
 		)
-		return
+		return nil
 	}
 	slog.DebugContext(ctx, "post-sync: sync CSR snapshots", "gamertag", e.gamertag, "season", e.csrSeasonID)
 	n, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: CSR snapshots échoué", "gamertag", e.gamertag, "err", err)
-		return
+		return err
 	}
 	slog.DebugContext(ctx, "post-sync: CSR snapshots sauvegardés", "gamertag", e.gamertag, "count", n)
+	return nil
 }
 
 // runAchievementsSync récupère les achievements Xbox pour le joueur et les persiste.

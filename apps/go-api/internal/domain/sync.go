@@ -120,4 +120,12 @@ type PostSyncResult struct {
 	WeaponKillsNoFilm        int   // matchs sans film (404/410, normal pour vieux matchs)
 	CitationsComputed        int   // matchs traités par le pipeline post-sync (étape 1.6 citations)
 	DominanceFlagsComputed   int   // matchs traités par le pipeline post-sync (étape 1.7 dominance_flag)
+
+	// FatalErrors collecte les erreurs FATAL DuckDB (IsInvalidatedError)
+	// rencontrées dans le post-sync — chaque entrée = "<step>: <err>".
+	// Propagée vers SyncResult.Errors par l'appelant (engine.go) pour que
+	// Status() renvoie "partial_success" au lieu de mentir avec "success"
+	// alors qu'une étape critique a invalidé une DB.
+	// Cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md Phase 5 "Status sync honnête".
+	FatalErrors []string
 }
