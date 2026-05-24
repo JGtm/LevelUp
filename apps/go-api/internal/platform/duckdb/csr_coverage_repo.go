@@ -35,13 +35,15 @@ func (r *CSRCoverageRepo) GetCoverage(ctx context.Context, playerSlug, xuid stri
 		XUID:       xuid,
 	}
 
-	// 1) player_csr_snapshots — 3 compteurs en une query
+	// 1) player_csr_snapshots — 3 compteurs en une query.
+	// Lecture via vue _latest (Phase 2.G) : la table physique est
+	// append-only, on veut le compte fonctionnel par (playlist_id, season_id).
 	if row := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT
 			COUNT(*),
 			SUM(CASE WHEN COALESCE(alltime_value,0) > 0 THEN 1 ELSE 0 END),
 			SUM(CASE WHEN COALESCE(current_measurement_remaining,0) > 0 THEN 1 ELSE 0 END)
-		FROM player_csr_snapshots
+		FROM player_csr_snapshots_latest
 	`); row != nil {
 		var total, alltime, placement sql.NullInt64
 		if err := row.Scan(&total, &alltime, &placement); err == nil {

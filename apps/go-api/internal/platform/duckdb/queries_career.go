@@ -542,7 +542,7 @@ SELECT
     COALESCE(alltime_value, 0),
     COALESCE(alltime_tier, ''),
     COALESCE(alltime_sub_tier, 0)
-FROM player_csr_snapshots
+FROM player_csr_snapshots_latest
 ORDER BY alltime_value DESC, current_value DESC`
 
 // QPlaylistsCatalogRanked : liste les playlists ranked actives du catalogue
@@ -562,7 +562,7 @@ SELECT
     alltime_value,
     alltime_tier,
     alltime_sub_tier
-FROM player_csr_snapshots
+FROM player_csr_snapshots_latest
 WHERE alltime_value IS NOT NULL AND alltime_value > 0
 ORDER BY alltime_value DESC
 LIMIT 1`

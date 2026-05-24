@@ -231,7 +231,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
 			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+		// Schéma append-only (Phase 2.G refactor ART) + vue latest
+		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (
+			id BIGINT DEFAULT nextval('pcs_seq') PRIMARY KEY,
 			playlist_id VARCHAR NOT NULL, playlist_name VARCHAR, queue VARCHAR, input VARCHAR,
 			season_id VARCHAR NOT NULL,
 			current_value FLOAT, current_tier VARCHAR, current_sub_tier SMALLINT,
@@ -239,7 +242,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			season_value FLOAT, season_tier VARCHAR, season_sub_tier SMALLINT,
 			alltime_value FLOAT, alltime_tier VARCHAR, alltime_sub_tier SMALLINT,
 			fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			PRIMARY KEY (playlist_id, season_id))`,
+			written_at TIMESTAMP NOT NULL DEFAULT now())`,
+		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
+			SELECT * FROM player_csr_snapshots
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
 		`CREATE TABLE match_citations (match_id VARCHAR, citation_name_norm VARCHAR, value INTEGER)`,
 		`CREATE TABLE media_files (
 			file_path VARCHAR PRIMARY KEY, file_name VARCHAR, kind VARCHAR,

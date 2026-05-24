@@ -110,7 +110,12 @@ CREATE TABLE IF NOT EXISTS career_progression (
 );
 CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
 
+-- Schéma append-only (Phase 2.G du refactor ART) : PK technique sur id,
+-- N versions par (playlist_id, season_id), lecture via la vue
+-- player_csr_snapshots_latest.
+CREATE SEQUENCE IF NOT EXISTS pcs_seq START 1;
 CREATE TABLE IF NOT EXISTS player_csr_snapshots (
+    id                               BIGINT DEFAULT nextval('pcs_seq') PRIMARY KEY,
     playlist_id                      VARCHAR NOT NULL,
     playlist_name                    VARCHAR,
     queue                            VARCHAR,
@@ -127,8 +132,12 @@ CREATE TABLE IF NOT EXISTS player_csr_snapshots (
     alltime_tier                     VARCHAR,
     alltime_sub_tier                 SMALLINT,
     fetched_at                       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (playlist_id, season_id)
+    written_at                       TIMESTAMP NOT NULL DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS idx_pcs_lookup ON player_csr_snapshots(playlist_id, season_id, written_at);
+CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
+    SELECT * FROM player_csr_snapshots
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1;
 `
 
 // sharedSchemaSQL crée les tables minimales dans shared_matches_v2.duckdb.
