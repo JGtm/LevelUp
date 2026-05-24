@@ -6,7 +6,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,6 +17,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/jobs"
 )
 
@@ -280,11 +280,16 @@ func resetPlayerMediaIndex(ctx context.Context, dbPath string) error {
 	}
 	defer lease.Release()
 
-	db, err := sql.Open("duckdb", dbPath)
+	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (audit residuel 2026-05-25) :
+	// passage par le cache duckdbpkg.OpenReadWrite pour DSN aligne avec sync.
+	// Sans ce fix, resetPlayerMediaIndex peut entrer en conflit "different
+	// configuration" avec un sync delta concurrent sur le meme player DB.
+	handle, err := duckdbpkg.OpenReadWrite(dbPath)
 	if err != nil {
 		return fmt.Errorf("ouverture %s: %w", dbPath, err)
 	}
-	defer db.Close()
+	defer handle.Close()
+	db := handle.SQLDb()
 
 	if _, err := db.ExecContext(ctx, `DELETE FROM media_match_associations`); err != nil {
 		return fmt.Errorf("DELETE media_match_associations: %w", err)

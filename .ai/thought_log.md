@@ -1,3 +1,54 @@
+## [2026-05-25] Sync reliability — clôture plan (G + I + J + audit sql.Open résiduel)
+
+**Statut** : Complété — finalise les 2 plans `PLAN_FIX_SYNC_RELIABILITY_2026-05-24` et `PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24` post-WIP user fini.
+
+**Branche** : `fix/art-eradication-and-home-resilience` (suite directe de 797a64c3).
+
+**Items couverts** :
+
+**Audit `grep sql.Open("duckdb"` résiduel** : 4 sites runtime fixés (engine_backfills.go:361 était oublié dans le commit Phase 2 eec02eb6). Sites alignés sur le cache `duckdbpkg` :
+- `internal/sync/engine_backfills.go:361` (loadMedalExploitMap, metadata RO)
+- `internal/sync/citations_backfill.go:163` (sharedDB RO)
+- `internal/service/media_index_service.go:283` (player DB RW)
+- `internal/service/media_service.go:407` (target DB RW)
+
+Sites laissés (CLI one-shot, validation, tests, implem cache) : tous `cmd/*` + `internal/validation/*` + `internal/sync/testutil/*` + `internal/platform/duckdb/*` — pas de risque de concurrence avec sync engine runtime. Sites runtime mineurs à surveiller : `notify/notifiers.go`, `ops/healthcheck.go`, `ops/archive.go`, `ops/backup.go`, `ops/restore.go`, `ops/seed_demo*.go`, `ops/media.go`.
+
+**I.1, I.2, I.3** : audit confirmé EXHAUSTIF après merge WIP user :
+- I.1 `batchComputeLUSR` : couvert par `art_rebuild_e2e_test.go::TestE2E_ARTPipeline_BatchComputeLUSR_ProducesWrites` (dataset 10 matchs synthétiques)
+- I.2 `AppendOnlyLUSRPersister` : 4 tests existants (PersistAccumulates, EmptyBatchNoOp, RejectsEmptyMatchID, ConcurrentInsertsNoArtCrash)
+- I.3 CSR : `csr_writes_test.go` 9 tests + `csr_art_repro_test.go` complémentaire
+
+**J.1, J.2** : fichier `internal/persist/regression_known_bugs_ref.go` créé — documentation des références croisées vers les tests existants qui couvrent les régressions ART. Pas de doublon de code, index doc pour traceability.
+
+**G.5 — `cmd/diag_replay_wal/main.go`** : CLI ops qui parcourt `data/wal/*.json`, decode chaque batch, applique `persist.SanitizeBatch`, re-marshal. Exit 1 si failures. Utilisable en CI ou diagnostic prod.
+
+**G.1 — `cmd/gen_test_fixtures/main.go`** : CLI 3 modes (`complete-chunks`, `download-full-match`, `list-external`). Automatise la procédure manuelle documentée dans `internal/sync/testdata/jgtm_full_match/README.md`. Tokens via env var `LEVELUP_SPARTAN_TOKEN` + `LEVELUP_CLEARANCE_TOKEN`.
+
+**G.3 — `internal/sync/halotest/fake_server.go` + tests** : FakeHaloServer qui sert le fixture JGtm complet via `httptest.Server` (5 endpoints). `RewriteBlobURL()` helper. 5 tests verts. Skip auto si fixture absent.
+
+**Files touchés (10 fichiers)** :
+- `internal/sync/engine_backfills.go` (audit fix)
+- `internal/sync/citations_backfill.go` (audit fix)
+- `internal/service/media_index_service.go` (audit fix)
+- `internal/service/media_service.go` (audit fix)
+- `internal/persist/regression_known_bugs_ref.go` (NEW)
+- `cmd/diag_replay_wal/main.go` (NEW)
+- `cmd/gen_test_fixtures/main.go` (NEW)
+- `internal/sync/halotest/fake_server.go` (NEW)
+- `internal/sync/halotest/fake_server_test.go` (NEW, 5 tests)
+- `.ai/thought_log.md` (cette entrée)
+
+**Résultats observés** : `go build ./...` OK, `go vet` clean, tous packages VERTS. 5 nouveaux tests halotest + smoke tests des 2 CLI passent.
+
+**État final des 2 plans** :
+- `PLAN_FIX_SYNC_RELIABILITY_2026-05-24` : 7/8 phases complétées (Phase 8 backfill rattrapage reste à activer si trous PME observés en prod)
+- `PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24` : 48/51 items [x] (Phase 8 hors scope tests)
+
+**Prochaine étape** : observer le prochain cycle auto-sync en prod, vérifier les 5 critères go/no-go du plan principal.
+
+---
+
 ## [2026-05-25] Phase 5 ART (suite) — status sync honnête (FATAL post-sync → partial_success)
 
 **Statut** : Complété. Phase 5 ART désormais complète (résilience handle DB + status honnête).

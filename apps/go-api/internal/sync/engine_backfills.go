@@ -20,6 +20,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // RunBackfill détecte les matchs avec données manquantes et retourne la liste.
@@ -358,13 +359,18 @@ func loadMedalExploitMap(ctx context.Context, metadataDBPath string, sharedDB *s
 	if metadataDBPath == "" {
 		return nil
 	}
-	metaDB, err := sql.Open("duckdb", metadataDBPath)
+	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (site residuel detecte
+	// par audit grep 2026-05-25) : passage par le cache duckdbpkg.OpenReadOnly
+	// pour aligner le DSN avec les autres sites RO du sync engine. Empeche
+	// le bug "Can't open a connection with a different configuration"
+	// lorsque loadMedalExploitMap tourne en concurrence avec engine.go:249.
+	metaHandle, err := duckdbpkg.OpenReadOnly(metadataDBPath)
 	if err != nil {
 		slog.DebugContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée", "err", err)
 		return nil
 	}
-	defer metaDB.Close() //nolint:errcheck
-	metaDB.SetMaxOpenConns(1)
+	defer metaHandle.Close()
+	metaDB := metaHandle.SQLDb()
 
 	diffMap, err := LoadMedalDifficultyFromMeta(ctx, metaDB)
 	if err != nil || len(diffMap) == 0 {
