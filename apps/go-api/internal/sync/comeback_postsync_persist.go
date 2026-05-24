@@ -44,6 +44,21 @@ func backfillDominanceFlagsBatch(
 		return nil
 	}
 
+	// Seed placeholder rows (INSERT OR IGNORE) pour aligner avec la sémantique
+	// legacy UPSERT — sinon le UPDATE batch ne touche que les rows existantes
+	// et skip silencieusement les match_id manquants (cas tests + cas CLI
+	// backfill --force sur DB neuve). En prod le path submitMatchAsBatch
+	// pré-seed déjà ces rows, donc INSERT OR IGNORE = no-op.
+	for _, r := range rows {
+		if _, err := playerDB.ExecContext(ctx,
+			`INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES (?)`,
+			r.MatchID,
+		); err != nil {
+			slog.WarnContext(ctx, "backfillDominanceFlagsBatch: seed placeholder échoué",
+				"match_id", r.MatchID, "err", err)
+		}
+	}
+
 	persister := persist.NewPostSyncEnrichmentPersister(playerDB)
 	err := persister.BatchUpdateColumn(ctx, persist.EnrichmentColumnUpdate{
 		Column: "dominance_flag",

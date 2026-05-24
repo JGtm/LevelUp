@@ -239,10 +239,11 @@ func upsertLUSRRatings(
 	existingCSR, existingLUSR map[string]bool,
 	seedRatings map[string]float64,
 ) (int, error) {
-	// Phase 4.3 — chemin INSERT-only via PostSyncLUSRPersister si
-	// LEVELUP_POSTSYNC_INSERT_ONLY=1. Élimine le UPDATE-then-INSERT
-	// row-by-row qui stressait l'index ART en mode multi-joueur concurrent.
-	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+	// Phase 4.7 closure (2026-05-24) : default flipé ON. Chemin INSERT-only
+	// via PostSyncLUSRPersister.Upsert (DELETE WHERE match_id IN(...) AND
+	// rating_type='LUSR' + INSERT batch en TX). Set LEVELUP_POSTSYNC_INSERT_ONLY=0
+	// pour fallback legacy UPDATE-then-INSERT row-by-row (mode dégradé).
+	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0" {
 		return upsertLUSRRatingsBatch(ctx, playerDB, results, existingCSR, existingLUSR, seedRatings)
 	}
 

@@ -213,8 +213,10 @@ Une fois Phase 4.5 validée, débloque Phase 5 cleanup :
 | 4.4 Refactor 5 sites + 2 mutualisés (PostSyncEnrichmentPersister) | 6h | ✅ DONE |
 | 4.5 Smoke test prod multi-cycles | 30min | ✅ DONE (3+4+5 = 12 syncs / 0 FATAL) |
 | 4.5b RebuildMatchSkillRankART (fix bonus découvert pendant 4.5) | 20min | ✅ DONE |
-| 4.6 Phase 5 cleanup anti-ART | 2h | ⏳ TODO (débloqué) |
-| **Total restant** | **~2h** | |
+| 4.6 Phase 5 cleanup anti-ART (4/7 items) | 2h | ✅ DONE — singleflight + CHECKPOINT + BootARTGuard auto-heal supprimés |
+| 4.7 Closure : BatchQueue wiring + janitor + flip defaults | 1h30 | ✅ DONE — cycles 7+8 OK, default ON validé |
+| 4.8 Item 6 PLAN_PHASE5 (revert acad4603) | 30min | ⏳ DEFER user explanation |
+| **Total restant** | **0h (sauf item 6 + PR 2.5b auth)** | |
 
 ---
 

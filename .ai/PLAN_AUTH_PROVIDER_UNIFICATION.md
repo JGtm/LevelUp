@@ -1,9 +1,34 @@
 # Plan — Unifier MSAL TokenProvider et auth.Pool
 
 **Noté** : 2026-05-24 (révisé après clarification user sur la raison du pool)
-**Statut** : Plan d'analyse (pas d'implémentation)
-**Effort** : 4-8h selon option retenue
+**Statut** : E.v1 ✅ LIVRÉ (commit 8f39923a + 03322560) — E.v2 + PR 2.5b backlog
+**Effort restant** : ~5-6h (E.v2 callback ~2h, PR 2.5b watcher tracker migration ~3-4h)
 **Lien** : suite à la découverte 2026-05-23 lors du smoke test Phase 3 Collect→Persist
+
+## Status closure 2026-05-24
+
+| Item | Status |
+|---|---|
+| E.v1 — Discovery lit watcher stores | ✅ LIVRÉ (pool peuplé au 1er boot) |
+| Fix legacy attribué à 1 seul joueur | ✅ LIVRÉ (commit 03322560) |
+| **E.v2** — callback push `OnTokenRefreshed` (TokenProvider → Pool.RefreshFrom) | ⏳ BACKLOG ~2h |
+| **PR 2.5b** — migrer watcher daemon tracker initial TokenStore → MultiUserTokenStore | ⏳ BACKLOG ~3-4h |
+| Chiffrement at-rest tokens (DPAPI/Keychain) | ⏳ BACKLOG ~3h (valeur marginale single-user) |
+
+**Détail PR 2.5b** (révisé 2026-05-24) — l'estimation initiale de ~1h était trop optimiste :
+
+Le watcher daemon a déjà 2 mécanismes multi-user OK :
+- **PR 2.5b fallback** (lines 953-987 cmd/server/main.go) : si legacy TokenStore vide, scan MultiUserTokenStore pour trouver un user avec XSTS valide → utilisé comme tracker initial
+- **PR 2.5c** (lines 1132+) : userClients RTA par user au boot depuis MultiUserTokenStore
+
+Ce qui RESTE pour PR 2.5b "vraie migration" :
+1. Décider quelle XUID devient le "tracker initial" si plusieurs valides (today = premier dans la map random Go)
+2. Migrer toutes les persist writes `store.Save(tokens)` + `store.UpdateXSTS` du watcher daemon vers `multi.Upsert(xuid, ...)` (tracker's xuid)
+3. Gérer la rotation du tracker si le user actuel se déconnecte / token expire / autre user devient principal
+4. Mettre à jour `EnsureWatcherAccessToken` + `RefreshLoop` pour accepter une XUID au lieu d'un store opaque
+5. Conserver la rétrocompatibilité : legacy `watcher_tokens.json` reste lu en fallback si vide multi-user
+
+Effort = design product (~1h) + refactor code (~2h) + tests (~1h). Recommandation : laisser en backlog tant que single-user reste le cas dominant.
 
 ## 0. Cadrage — pourquoi 2 systèmes (clarification user)
 

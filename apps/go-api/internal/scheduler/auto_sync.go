@@ -33,6 +33,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -148,6 +149,13 @@ type AutoSyncScheduler struct {
 	// DISCONNECTED_2026-05-21 cause B).
 	postSyncRunner port.PostSyncRunner
 
+	// batchQueue (Phase 4.7 closure 2026-05-24) — BatchQueue serveur-wide
+	// optionnelle. Activée via LEVELUP_PERSIST_BATCH_ASYNC=1 (+ batch mode
+	// déjà actif). Injectée par cmd/server/main.go via WithBatchQueue.
+	// Sans queue : path synchrone (Persister.Persist direct). Avec queue :
+	// path async (queue.Submit + worker, WAL durable, recovery au boot).
+	batchQueue *persist.BatchQueue
+
 	// Snapshot par joueur du dernier cycle — pour l'endpoint admin diagnostic.
 	snapshotMu      gosync.RWMutex
 	lastCycleAt     time.Time
@@ -220,13 +228,31 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 			return ""
 		}))
 	}
-	// Phase 2.3 refactor Collect→Persist : env var opt-in pour basculer la
-	// boucle d'insertion sur le chemin INSERT-only (SharedPersister +
-	// PlayerPersister). Default désactivé → legacy insertFetchedMatch.
-	if os.Getenv("LEVELUP_PERSIST_BATCH") == "1" {
+	// Phase 4.7 closure (2026-05-24) : default flipé à ON après validation
+	// empirique Phase 4.5 (16 syncs / 0 FATAL). Set LEVELUP_PERSIST_BATCH=0
+	// pour fallback legacy insertFetchedMatch (mode dégradé, ART bug actif).
+	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
 		engine.WithBatchPersistMode(true)
+		// Layer async optionnel (encore opt-in via LEVELUP_PERSIST_BATCH_ASYNC=1
+		// + queue injectée via WithBatchQueue depuis main.go). Sans queue ou
+		// flag : path synchrone direct Persister (validé Phase 4.5).
+		if s.batchQueue != nil && os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") == "1" {
+			engine.WithBatchQueue(s.batchQueue)
+		}
 	}
 	return engine
+}
+
+// WithBatchQueue branche la BatchQueue serveur-wide (Phase 4.7 closure
+// 2026-05-24). Injectée par cmd/server/main.go après NewBatchQueue.
+// Activation effective dans defaultRunnerFactory sous le double gate :
+//   - LEVELUP_PERSIST_BATCH=1 (batch mode INSERT-only sync path)
+//   - LEVELUP_PERSIST_BATCH_ASYNC=1 (queue async + WAL durable)
+//
+// Nil queue → fallback path synchrone direct Persister (déjà validé Phase 4.5).
+func (s *AutoSyncScheduler) WithBatchQueue(q *persist.BatchQueue) *AutoSyncScheduler {
+	s.batchQueue = q
+	return s
 }
 
 // WithPostSyncRunner branche le runner post-sync (Phase 4 plan stabilisation

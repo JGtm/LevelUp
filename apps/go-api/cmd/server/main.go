@@ -40,6 +40,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
@@ -475,6 +476,74 @@ func main() {
 	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
+	// Phase 4.7 closure (2026-05-24) : BatchQueue serveur-wide optionnelle.
+	// Activée via LEVELUP_PERSIST_BATCH_ASYNC=1 (+ LEVELUP_PERSIST_BATCH=1).
+	// Sans, le path INSERT-only reste synchrone (Persister.Persist direct, validé Phase 4.5).
+	//
+	// Avec : queue.Submit + worker async + WAL durable (recovery au boot via
+	// RecoverPending). Bénéfice : décorrélation sync/persist + résilience crash.
+	// Cycle de vie : créée 1× au boot, fermée à shutdown via autoBatchQueue.Close().
+	var autoBatchQueue *persist.BatchQueue
+	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") == "1" {
+		walDir := filepath.Join(cfg.RepoRoot, "data", "wal")
+		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
+			WALDir:      walDir,
+			ChanBufSize: 1000, // cf. Q2 ADR 0019 — backpressure naturelle
+		})
+		if qErr != nil {
+			slog.WarnContext(ctx, "persist: BatchQueue init échoué — fallback path synchrone",
+				"err", qErr)
+		} else {
+			autoBatchQueue = q
+			autoScheduler.WithBatchQueue(q)
+			slog.InfoContext(ctx, "persist: BatchQueue activée (async path)",
+				"wal_dir", walDir)
+			// Recovery boot : re-soumet les batches WAL pending d'un crash précédent.
+			if rerr := q.RecoverPending(); rerr != nil {
+				slog.WarnContext(ctx, "persist: RecoverPending échoué (non-bloquant)",
+					"err", rerr)
+			}
+		}
+	}
+
+	// Phase 4.7 closure : janitor périodique (1× / 24h) qui purge :
+	//   - data/sync_cache/sync.RunDelta_* > 7 jours (fetch cache éphémère)
+	//   - data/wal/*.json ACKés > 7 jours (résidus si BatchQueue active)
+	// Best-effort, non-bloquant sur erreur.
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		runJanitor := func() {
+			cacheRoot := filepath.Join(cfg.RepoRoot, "data", "sync_cache")
+			if n, err := syncpkg.PurgeOldFetchCache(cacheRoot, 7*24*time.Hour); err != nil {
+				slog.WarnContext(schedulerCtx, "janitor: PurgeOldFetchCache échoué (non-bloquant)",
+					"err", err)
+			} else if n > 0 {
+				slog.InfoContext(schedulerCtx, "janitor: fetch_cache purgé",
+					"dirs_removed", n)
+			}
+			if autoBatchQueue != nil {
+				if n, err := autoBatchQueue.PurgeOldWAL(7 * 24 * time.Hour); err != nil {
+					slog.WarnContext(schedulerCtx, "janitor: PurgeOldWAL échoué (non-bloquant)",
+						"err", err)
+				} else if n > 0 {
+					slog.InfoContext(schedulerCtx, "janitor: WAL purgé",
+						"files_removed", n)
+				}
+			}
+		}
+		// Run once at boot (in case of stale data from previous run).
+		runJanitor()
+		for {
+			select {
+			case <-schedulerCtx.Done():
+				return
+			case <-ticker.C:
+				runJanitor()
+			}
+		}
+	}()
+
 	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
 	// l'ActivityChecker : quand un joueur est en état Watching/Syncing/Cooling, le scheduler
 	// cède son tick pour ce joueur et évite deux syncs concurrentes sur la même stats.duckdb.
@@ -633,6 +702,22 @@ func main() {
 		slog.Debug("scheduler terminé")
 	case <-time.After(3 * time.Second):
 		slog.Warn("scheduler: timeout sur Wait — RunOnce probablement en cours")
+	}
+
+	// Phase 4.7 closure : drain + close BatchQueue avant CloseAll DuckDB.
+	// Drain attend les persists en cours ; Close stoppe les workers.
+	// Ordre critique : BatchQueue avant duckdb.CloseAll sinon les workers
+	// tentent d'écrire sur des DBs fermées.
+	if autoBatchQueue != nil {
+		drainCtx, drainCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if err := autoBatchQueue.Drain(drainCtx); err != nil {
+			slog.WarnContext(drainCtx, "persist: BatchQueue.Drain timeout (non-bloquant)",
+				"err", err)
+		}
+		drainCancel()
+		if err := autoBatchQueue.Close(); err != nil {
+			slog.Warn("persist: BatchQueue.Close échoué (non-bloquant)", "err", err)
+		}
 	}
 
 	duckdb.CloseAll()

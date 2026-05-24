@@ -119,11 +119,11 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 			return ""
 		}))
 	}
-	// Phase 2.3 refactor Collect→Persist : env var opt-in pour basculer la
-	// boucle d'insertion sur le chemin INSERT-only (SharedPersister +
-	// PlayerPersister). Default désactivé → legacy insertFetchedMatch.
+	// Phase 4.7 closure (2026-05-24) : default flipé à ON après validation
+	// empirique Phase 4.5 (16 syncs / 0 FATAL). Set LEVELUP_PERSIST_BATCH=0
+	// pour fallback legacy insertFetchedMatch (mode dégradé, ART bug actif).
 	// Aligne sur AutoSyncScheduler.defaultRunnerFactory.
-	if os.Getenv("LEVELUP_PERSIST_BATCH") == "1" {
+	if os.Getenv("LEVELUP_PERSIST_BATCH") != "0" {
 		engine = engine.WithBatchPersistMode(true)
 	}
 	return engine

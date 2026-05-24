@@ -569,9 +569,10 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 	// percentile est calculé sur la fenêtre des 50 derniers entrées de sa chaîne.
 	chainHistory := make(map[string][]historyRow)
 
-	// Phase 4.4 — chemin INSERT-only friendly si flag actif : accumule les
-	// (match_id, score, chain) en RAM puis 1 single UPDATE batch en fin de boucle.
-	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1"
+	// Phase 4.7 closure (2026-05-24) : default flipé ON. Accumulation in-RAM
+	// + flush batch en fin de boucle. Set LEVELUP_POSTSYNC_INSERT_ONLY=0 pour
+	// fallback legacy UPDATE-then-INSERT row-by-row (mode dégradé).
+	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0"
 	type perfUpdate struct {
 		MatchID string
 		Score   float64
