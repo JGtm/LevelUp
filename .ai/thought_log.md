@@ -1,3 +1,41 @@
+## [2026-05-25] Phase 5 ART — résilience handle DB côté lectures home
+
+**Statut** : Phase 5 cœur livrée (QueryRecovered + 503 sur handler home). Status sync honnête reporté.
+
+**Tâche** : Suite à Phase 1-6 livrée la veille, brancher l'infrastructure de recovery (`DB.Reopen`, `WithReopenOnInvalidated`, `QueryRecovered`) déjà présente sur les chemins de lecture du home qui en étaient privés. Objectif : éliminer la cascade `sql: database is closed` côté handler home après un FATAL sur une autre player DB.
+
+**Décisions techniques** :
+
+1. **QueryRecovered systématique sur les lectures player DB du chemin home** (8 sites basculés) :
+   - `LoadPlayerMatchEnrichments` (le site qui plantait précisément en prod 2026-05-24 20:43+)
+   - `PlayerMatchesRepo.loadSkillRanksForMatches`
+   - `HomeRepo.loadPeakPhaseA`
+   - `HomeRepo.loadPlaylistPhaseAMSR` + `loadPlaylistPhaseASnapshot`
+   - `MatchHistoryRepo.mergeHistorySkillRanks`
+   - `FanoutRepo.queryPlayerMatchEnrichment`
+   - `CareerRepo.loadLUSRPlayerRows` (+ 2 autres dans le même fichier)
+   - `StatsRepo.mergeStatsMatchesPME` (déjà fait par WIP parallèle utilisateur)
+
+2. **Handler home GetHomePage** : sur `sql: database is closed` ou `database has been invalidated`, renvoie `503 + Retry-After: 5` au lieu de `500 home_page_error` sec. Le client peut retenter une fois le Reopen() effectué côté provider.
+
+3. **Status sync honnête reporté** : impose de toucher 19+ sites WARN dans `engine_postsync.go` pour distinguer FATAL vs warning métier. Effort > 30 min, à diagnostiquer plus finement dans un PR dédié. Le log final affiche déjà `warnings: N` donc la dégradation est visible côté monitoring.
+
+**Résultats observés** :
+
+- Build propre, hooks pre-commit verts.
+- `TestHomeHandler_GetHomePage_DBClosed_Returns503` vert sur 3 sous-cas (sql closed / FATAL invalidated / Failed to delete from index).
+- Suite handlers entière au vert.
+
+**Phase 4 ART (Pattern C handlers HTTP) — non requise pour ce PR** : l'audit grep montre que tous les `ON CONFLICT DO UPDATE` restants sont sur des tables hors des 4 protégées par le guard-rail (`match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats`). Tables encore en `ON CONFLICT` (handlers basse fréquence + cache metadata + sync HTTP) : streaks, records, prestige_*, match_exclusions, engagement_scores (handler), notification_prefs, privacy_state, media_likes, asset/medal/map/milestones_catalog, prestige_metadata, persist_sink, queries_auth, post_sync_deltas, notifications_boot, achievements, assists_model, engagement_recompute, skill_rating_loaders (lusr_component_history), writes.go (match_registry/match_participants/sync_meta), catalog_fetcher_service. À migrer cas par cas selon priorité d'usage (handlers HTTP rares = pattern C ; sync writes = append-only ou batch).
+
+**Prochaine étape** :
+
+1. **Status sync honnête** (effort ~1h) : helper `recordPostSyncStep(result, name, err)` qui upgrade WARN en AddError sur `IsInvalidatedError`, puis `Status()` renvoie `partial_success`.
+2. **Test d'intégration FATAL DB A → home B reste 200** (effort ~2h) : setup multi-player-DBs + force FATAL via SQL invalide, vérifier que les autres handles tiennent.
+3. **Phase 4 ART systématique** : audit volumétrique des handlers HTTP listés ci-dessus puis migration pattern C ou append-only selon table.
+
+---
+
 ## [2026-05-25] Sync reliability — Phases 4 à 7 livrées (NaN + gating + circuit-breaker + obs)
 
 **Statut** : Complété — Phase 4 (NaN sanitize) + Phase 5 (post-sync gating idempotence) + Phase 6 (drain circuit-breaker) + Phase 7C (observabilité lease wait post-sync).
