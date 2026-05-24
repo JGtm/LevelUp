@@ -82,6 +82,35 @@ func (e *SyncEngine) submitMatchAsBatch(
 		result.AddWarning(fmt.Sprintf("highlight_events %s: %v", fm.MatchID, parseErr))
 	}
 
+	// Phase 4 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : sanitize NaN/Inf au
+	// point de production. Defensif (queue.Submit re-sanitize aussi, mais
+	// ici on garantit que le path SYNC sans queue est aussi protege).
+	persist.SanitizeBatch(batch)
+
+	// Phase 5 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : pre-check idempotence
+	// match_registry. Le SharedPersister no-op silently si le match_id
+	// existe deja (cf. shared_persister.go:78), mais le compteur en aval
+	// (result.MatchesInserted) etait incrementé optimistement → inflation
+	// observee en prod 2026-05-24 (XxDaemonGamerxX 9 matchs inserted/cycle
+	// alors qu'il n'a pas joue depuis 1 mois). Cascade : post-sync trigge
+	// sur InsertedMatchIDs, re-download films → 285s perdues.
+	//
+	// On determine ICI si le match est reellement nouveau, et on
+	// repercutera l'info plus bas (MatchesInserted vs MatchesSkipped +
+	// InsertedMatchIDs filtre).
+	matchAlreadyExists := false
+	if sharedDB != nil && fm.MatchID != "" {
+		var exists bool
+		if err := sharedDB.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM match_registry WHERE match_id = ?)`,
+			fm.MatchID,
+		).Scan(&exists); err == nil {
+			matchAlreadyExists = exists
+		}
+		// Erreur ignoree (tests minimaux : table absente) → on garde le
+		// comportement legacy (compte comme insert).
+	}
+
 	// Chemin ASYNC (queue + worker) si batchQueue non-nil. Sinon SYNC direct.
 	if e.batchQueue != nil {
 		if err := e.batchQueue.Submit(batch); err != nil {
@@ -139,15 +168,26 @@ func (e *SyncEngine) submitMatchAsBatch(
 	}
 
 	// Métriques : aligne avec le legacy pour ne pas casser les compteurs.
+	// Phase 5 : MatchesInserted ne compte que les matchs REELLEMENT nouveaux
+	// (pre-check match_registry plus haut). InsertedMatchIDs idem — c'est
+	// cette liste qui trigge le post-sync (films, perf scores, etc.) donc
+	// elle DOIT refleter les vrais inserts pour ne pas gaspiller 285s/cycle
+	// sur des dupes.
 	if len(fm.Participants) > 0 {
 		result.ParticipantsDone += len(fm.Participants)
 	}
 	if len(fm.Medals) > 0 {
 		result.MedalsInserted += len(fm.Medals)
 	}
-	result.MatchesInserted++
-	result.InsertedMatchIDs = append(result.InsertedMatchIDs, fm.MatchID)
-	observability.IncCounter("persist_batch_committed_total")
+	if matchAlreadyExists {
+		result.MatchesSkipped++
+		slog.DebugContext(ctx, "submitMatchAsBatch: match deja en registry — Submit pour idempotence, pas compte en inserted",
+			"gamertag", e.gamertag, "match_id", fm.MatchID)
+	} else {
+		result.MatchesInserted++
+		result.InsertedMatchIDs = append(result.InsertedMatchIDs, fm.MatchID)
+		observability.IncCounter("persist_batch_committed_total")
+	}
 
 	slog.InfoContext(ctx, "submitMatchAsBatch: match persisté",
 		"gamertag", e.gamertag, "match_id", fm.MatchID,

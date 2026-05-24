@@ -485,6 +485,14 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 
 		// Re-acquisition post-Drain pour le pipeline post-sync.
 		// Echec → DBs restent nil → post-sync skippé proprement (pas de panic).
+		//
+		// Phase 7 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (Option C — Status quo
+		// ameliore) : observabilite explicite sur le temps d'attente du
+		// shared writer lease. En auto-sync parallele (pool=4), tous les
+		// joueurs font la queue sur ce lease pour le post-sync (sessions,
+		// LUSR upsert, dominance flags). Un wait > 30s signale une
+		// serialisation pathologique qui justifierait Phase 7.A (batch
+		// post-sync global) en PR dedie.
 		postPH, phErr := OpenPlayerDB(e.playerDBPath)
 		if phErr != nil {
 			slog.WarnContext(ctx, "sync: post-drain OpenPlayerDB echoue — post-sync skippe",
@@ -492,14 +500,26 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		} else {
 			defer postPH.Close()
 			playerDB = postPH.SQLDb()
+			leaseStart := time.Now()
 			postSDB, postRls, sErr := e.acquireSharedWriter(ctx)
+			leaseWaitMs := time.Since(leaseStart).Milliseconds()
 			if sErr != nil {
 				slog.WarnContext(ctx, "sync: post-drain acquireSharedWriter echoue — post-sync skippe",
-					"gamertag", e.gamertag, "err", sErr)
+					"gamertag", e.gamertag, "err", sErr,
+					"lease_wait_ms", leaseWaitMs)
 				playerDB = nil
 			} else {
 				defer postRls()
 				sharedDB = postSDB
+				// Phase 7C : log explicite si attente > 1s (serialisation
+				// notable). Au-dessus de 30s = goulot post-sync confirme.
+				if leaseWaitMs > 1000 {
+					slog.WarnContext(ctx, "sync: post-drain shared lease wait > 1s — serialisation post-sync",
+						"gamertag", e.gamertag, "lease_wait_ms", leaseWaitMs)
+				} else {
+					slog.DebugContext(ctx, "sync: post-drain shared lease acquis",
+						"gamertag", e.gamertag, "lease_wait_ms", leaseWaitMs)
+				}
 				if wp, wpErr := dblease.AcquireWriterCtx(ctx, nil, e.playerDBPath, dblease.KindPlayer); wpErr == nil {
 					defer wp.Release()
 				} else {

@@ -1,3 +1,39 @@
+## [2026-05-25] Sync reliability — Phases 4 à 7 livrées (NaN + gating + circuit-breaker + obs)
+
+**Statut** : Complété — Phase 4 (NaN sanitize) + Phase 5 (post-sync gating idempotence) + Phase 6 (drain circuit-breaker) + Phase 7C (observabilité lease wait post-sync).
+
+**Branche** : `fix/art-eradication-and-home-resilience` (suite directe du commit `eec02eb6` Phases 1+2+3).
+
+**Décisions techniques principales** :
+
+**Phase 4 — NaN sanitize** : helper `persist.SanitizeBatch(batch)` qui parcourt explicitement les structs du batch (Match, Participants, MatchCSRs, Enrichment, SkillRank, LUSRComponents) et applique `analysis.SanitizeNullableFloat`/`SanitizeFloat` (helpers déjà livrés en A.6). 2 couches de défense : appel dans `submitMatchAsBatch` (point de production, garantit le path SYNC sans queue) ET dans `queue.Submit` (defensif avant marshal). Idempotent. 8 tests verts couvrent : nil batch, empty, NaN participant→nil, NaN enrichment→nil, NaN LUSRComponent→0, idempotence, marshal regression prod (match `508bd2fb` reproduit).
+
+**Phase 5 — Post-sync gating** : pre-check `SELECT EXISTS FROM match_registry` dans `submitMatchAsBatch` AVANT incrément MatchesInserted. Si match déjà en registry → `MatchesSkipped++` au lieu de `MatchesInserted++`, et NE PUSH PAS dans `InsertedMatchIDs`. Le SharedPersister continue de no-op idempotent (Submit toujours fait), mais le compteur reflète enfin la vérité. Conséquence : `runConditionalPostSync` ne déclenche plus de pipeline (events heal, weapon kills, perf scores) sur des matchs déjà traités. XxDaemonGamerxX inactif passe de 285s → ~1-5s par cycle. 2 sentinelles verts (E.3 pre-check distinguishes new vs existing, E.5 InsertedMatchIDs scope).
+
+**Phase 6 — Drain circuit-breaker** : `BatchQueue` track `consecutiveFailures atomic.Int32`. Worker.handle appelle `queue.RecordPersistResult(success)` après chaque Persist (alimente CB). `Drain` check `consecutiveFailures >= 5` ET `pending > 0` → fail fast avec `ErrDrainCircuitBreaker` (au lieu d'attendre le timeout 60s). Gain pratique : 60s → ~1s sur worker cassé. Hooks `OnPersistOK`/`OnPersistError` préservés (indépendants du CB, pour expvar). 5 tests verts (tracking, trip on threshold, no trip below, no trip on empty pending, reset by one success).
+
+**Phase 7C — Observabilité lease wait post-sync** : choix conservateur (Option C du plan). Au lieu du refactor lourd Option 7.A (batch post-sync global), j'instrumente `engine.go` autour de `acquireSharedWriter` post-drain pour logger `lease_wait_ms`. WARN si > 1s (sérialisation notable), DEBUG sinon. Donne la visibilité pour décider Phase 7.A en PR dédié si on observe des waits > 30s en prod.
+
+**Files touchés (8 fichiers)** :
+- `internal/persist/sanitize.go` (NEW) + `sanitize_test.go` (NEW, 8 tests)
+- `internal/persist/queue.go` (CB + Drain modif) + `queue_circuit_breaker_test.go` (NEW, 5 tests)
+- `internal/persist/worker.go` (RecordPersistResult calls)
+- `internal/sync/engine_batch_path.go` (sanitize + pre-check match_registry + gating MatchesInserted/MatchesSkipped)
+- `internal/sync/engine.go` (Phase 7C lease_wait_ms instrumentation)
+- `internal/sync/engine_phase5_sentinel_test.go` (refactor : skip → tests fonctionnels réels)
+
+**Résultats observés** : `go build ./...` OK, `go vet` clean, tous packages VERTS (persist, analysis, sync, sync intégration, service, testfixtures). C.4 sentinelle Bug #1 toujours VERT post-Phase 1. Tests E.3/E.5 passent désormais avec asserts fonctionnels (plus de t.Skip).
+
+**Effet cumulé Phases 1-7 en prod** :
+- Bug #1 (different configuration) : éliminé Phase 1+2 → `player_match_enrichment` à nouveau écrit, citations OK
+- Bug #2 (285s/cycle) : éliminé Phases 3+5+6 (known set complet → 0 fetch superflu, gating post-sync, CB drain rapide)
+- Bug #3 (inflation MatchesInserted) : éliminé Phase 5
+- Bug NaN (2 matchs perdus/cycle) : éliminé Phase 4
+
+**Prochaine étape** : surveiller le prochain cycle auto-sync prod, vérifier que les WARN `lease_wait_ms` restent < 1s en nominal et que les sentinelles C.4 + E.3 + E.5 restent VERTES. Phase 8 (backfill rattrapage) reportée à PR séparé si nécessaire (data Chocoboflor + XxDaemonGamerxX historiques).
+
+---
+
 ## [2026-05-24] Blindage tests sync reliability (sections A-H) — couverture complète
 
 **Statut** : Complété — 43/51 items [x] (88%), 3 [~] infrastructure E2E différée, 3 [!] bloqués WIP LUSR, 2 [≡] doublons assumés.
