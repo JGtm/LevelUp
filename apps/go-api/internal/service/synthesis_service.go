@@ -168,6 +168,8 @@ func (s *SynthesisService) GetSynthesisPage(
 		ComputedAt:     time.Now().UTC(),
 	}
 
+	combatProfile := buildCombatProfileFromCanonical(filteredCanon)
+
 	return &domain.SynthesisPageV2Response{
 		Scope:             scope,
 		Overview:          overview,
@@ -181,6 +183,7 @@ func (s *SynthesisService) GetSynthesisPage(
 		Breakdowns:        breakdowns,
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
+		CombatProfile:     combatProfile,
 	}, nil
 }
 
@@ -954,6 +957,51 @@ func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWea
 		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills}
 	}
 	return out
+}
+
+// buildCombatProfileFromCanonical agrège OC + DR depuis les rows canoniques filtrés
+// et construit le CombatProfileBlock (descripteurs gérés par ClassifyCombatProfile).
+// Retourne nil si aucun row valide (matchCount == 0).
+func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.CombatProfileBlock {
+	if len(rows) == 0 {
+		return nil
+	}
+	var ocSum, drSum float64
+	var ocCount, drCount int
+	for _, r := range rows {
+		if r.Self.DamageDealt == nil || r.Self.DamageTaken == nil {
+			continue
+		}
+		k, a, d := 0, 0, 0
+		if r.Self.Kills != nil {
+			k = *r.Self.Kills
+		}
+		if r.Self.Assists != nil {
+			a = *r.Self.Assists
+		}
+		if r.Self.Deaths != nil {
+			d = *r.Self.Deaths
+		}
+		cy := analysis.ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
+		if cy.OffensiveConversion > 0 {
+			ocSum += cy.OffensiveConversion
+			ocCount++
+		}
+		if cy.DefensiveResistance > 0 {
+			drSum += cy.DefensiveResistance
+			drCount++
+		}
+	}
+	avgOC := 0.0
+	if ocCount > 0 {
+		avgOC = ocSum / float64(ocCount)
+	}
+	avgDR := 0.0
+	if drCount > 0 {
+		avgDR = drSum / float64(drCount)
+	}
+	block := analysis.ClassifyCombatProfile(avgOC, avgDR, nil, len(rows))
+	return &block
 }
 
 // Mappings award_name : betrayed_player -> betrayals, self_destruction -> suicides,

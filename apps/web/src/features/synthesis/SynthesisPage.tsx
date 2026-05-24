@@ -20,6 +20,7 @@ import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
+import { SynthesisCombatProfileSection } from './SynthesisCombatProfileSection'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
@@ -530,6 +531,11 @@ export function SynthesisPage() {
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
         />
+      )}
+
+      {/* PLAN_COMBAT_PROFILE_WIRING Phase 1 — Profil de combat */}
+      {data.combat_profile != null && (
+        <SynthesisCombatProfileSection combatProfile={data.combat_profile} />
       )}
 
       {/* synthesis.05 — Bipolaire Solo vs Escouade */}

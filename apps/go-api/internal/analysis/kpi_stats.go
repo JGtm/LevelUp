@@ -149,13 +149,19 @@ func ComputeKPIStats(rows []canonical.PlayerMatchRow) domain.KPIStats {
 		fallback := math.Round(math.Min(math.Max(50+10*(kd-1), 0), 100)*10) / 10
 		stats.PerformanceScore = &fallback
 	}
+	avgOC := 0.0
+	avgDR := 0.0
 	if offCount > 0 {
-		v := math.Round(offSum/offCount*100) / 100
-		stats.AvgOffensiveConversion = &v
+		avgOC = math.Round(offSum/offCount*100) / 100
+		stats.AvgOffensiveConversion = &avgOC
 	}
 	if defCount > 0 {
-		v := math.Round(defSum/defCount*100) / 100
-		stats.AvgDefensiveResistance = &v
+		avgDR = math.Round(defSum/defCount*100) / 100
+		stats.AvgDefensiveResistance = &avgDR
+	}
+	if avgOC > 0 || avgDR > 0 {
+		block := ClassifyCombatProfile(avgOC, avgDR, nil, stats.MatchesCount)
+		stats.CombatProfile = &block
 	}
 	if len(rankBuckets) > 0 {
 		// Type majoritaire : le bucket avec le plus de matchs.

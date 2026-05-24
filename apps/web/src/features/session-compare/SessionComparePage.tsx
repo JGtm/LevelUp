@@ -15,6 +15,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SessionOutcomesDonut } from './SessionOutcomesDonut'
+import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
 
 function useSessionT() {
   const locale = useAppShellStore((s) => s.locale)
@@ -66,6 +67,15 @@ function SessionCard({
               <Badge variant="secondary" className="mt-1">
                 {entry.dominant_category}
               </Badge>
+            )}
+            {(entry.avg_oc != null || entry.avg_dr != null) && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-muted-foreground">OC/DR</span>
+                <CombatYieldBar
+                  offensiveConversion={entry.avg_oc}
+                  defensiveResistance={entry.avg_dr}
+                />
+              </div>
             )}
           </>
         ) : (
