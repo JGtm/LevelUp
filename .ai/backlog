@@ -47,6 +47,43 @@
 - [ ] Attendre approval + CI validation
 - [ ] Merger PR vers main
 
+### Main Merge (Phase 4 Collect→Persist) — ajouté 2026-05-24
+
+**Branche source** : `refactor/collect-persist` (7 commits Phase 4 + 4 commits cycles précédents)
+
+**Commits inclus** (du plus ancien au plus récent) :
+- `03322560` fix(auth) : E.v1 legacy store fix
+- `0e4b368f` feat(persist,p4.2) : PostSyncLUSRPersister
+- `14dfd135` feat(persist,sync,p4.4) : batch INSERT-only post-sync (5 sites)
+- `4ef122b7` feat(migration,p4.5) : RebuildMatchSkillRankART + smoke validé
+- `f243b235` chore(p4.6,cleanup) : supprime singleflight/CHECKPOINT/auto-heal
+- `82d0aa1a` feat(p4.7,closure) : BatchQueue wiring + janitor + flip defaults
+- `463418af` chore(p4.8,cleanup) : revert acad4603 UPDATE-then-INSERT
+- `08582b89` chore(p4.7,hygiene) : PathResolver pour data/wal + data/sync_cache
+- `d3825c2f` chore(p4.9,tests) : flip async ON + fix 9 pre-existing test failures
+- `4508df92` feat(auth,p-Ev2) : Pool.AddOrUpdateSource + periodic re-scan
+- `157d80a8` feat(auth,p-2.5b) : RefreshLoop.WithMultiUserMirror
+
+**Pré-requis merge** :
+- [ ] CI green sur `refactor/collect-persist` (go test ./... full suite)
+- [ ] Squad review du runbook `.ai/RUNBOOK_PHASE4_DEPLOY.md` (procédure deploy)
+- [ ] User a-t-il déjà migré sa DB locale ? Si non : suivre runbook AVANT merge
+
+**Procédure** :
+- [ ] Créer PR: `refactor/collect-persist` → `main`
+- [ ] Body PR : référencer ADR 0019, `.ai/RUNBOOK_PHASE4_DEPLOY.md`, et thought_log entries Phase 4.4→4.9
+- [ ] Attendre approval + CI validation
+- [ ] Merger PR vers main (squash NON recommandé — chaque commit Phase 4.x est une étape logique distincte avec entrée thought_log)
+
+**Post-merge** :
+- [ ] Tag release : `v8.0.0-phase4` (breaking si user a une DB legacy non rebuilt)
+- [ ] CHANGELOG.md : section Phase 4 (incident ART résolu, runbook deploy, breaking)
+- [ ] Annoncer dans channel ops : pré-requis `force_rebuild_art --all true` AVANT 1er boot sur prod
+
+**Items reportés (post merge OK)** :
+- [ ] Documenter le default async ON dans le README utilisateur
+- [ ] Si CI metrics observent latence WAL : tuning du janitor (24h → 12h ?)
+
 ### Post-Merge Validation
 - [ ] Vérifier baseline tests verts post-merge
 - [ ] Vérifier coverage >= 76%

@@ -12,23 +12,54 @@
 
 ---
 
-### [auth/unification] E.v2 — Callback push watcher → pool (optimisation latence)
+### [auth/unification] E.v2 — Callback push watcher → pool (optimisation latence) ✅ LIVRÉ 2026-05-24
 
-**Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — E.v1 livré couvre déjà le besoin principal (pool peuplé au boot).
+**Livré via approche révisée** (commit `4508df92`) :
+- `Pool.AddOrUpdateSource(ctx, src)` method — hot-add ou refresh d'un slot
+- Periodic re-scan goroutine en main.go (15min tick) : Discovery.Scan() + Pool.AddOrUpdateSource pour chaque source
+- 5 tests TDD GREEN
 
-**Contexte** : Suite à E.v1 (`Discovery.Scan` lit les watcher stores au boot, commit `feat(auth): E.v1 ...`), le pool est correctement peuplé au démarrage du serveur. Mais si le watcher rafraîchit le MSAL en cours de session, le pool ne le voit pas tant que son refresher loop interne (10s tick) n'a pas re-tenté le slot.
+**Différence vs plan initial** : au lieu de callback push depuis le watcher, periodic re-scan global. Avantages :
+- Couvre aussi les nouveaux env vars ajoutés en cours de session (pas seulement watcher)
+- Pas de couplage watcher → pool
+- Latence max 15 min (acceptable pour ce use case)
 
-**Impact actuel** : faible. Le pool refresher loop retry automatiquement les slots unhealthy. Latence max ~10s entre refresh watcher et update pool.
+**LIMITATION documentée** : nouveau slot ajouté APRÈS boot est seulement reachable via PolicyPinnedPlayer (canal round-robin sized at boot). Pas un problème pour LevelUp (auto-sync utilise PolicyPinnedPlayer per gamertag).
 
-**E.v2 — fix** : ajouter callback `OnTokenRefreshed(gamertag, accessToken)` sur le watcher daemon. Au boot, registrer une lambda qui call `pool.UpdateSlot(gamertag, newTokens)`. Push instantané = 0 latence.
+---
 
-**Effort** : ~2h
-- Pool.UpdateSlot(gamertag, ResolvedTokens) method
-- watcher.RegisterOnRefresh(callback) hook
-- Wiring main.go : `watcher.RegisterOnRefresh(func(gt, at) { pool.UpdateSlot(gt, ...) })`
-- Tests TDD : callback push update slot
+### [auth/unification] PR 2.5b — Watcher daemon tracker migration TokenStore → MultiUserTokenStore ✅ PARTIEL 2026-05-24
 
-**Quand traiter** : si on observe en prod des fenêtres de "token stale" entre refresh watcher et pool retry (improbable mais possible sous charge).
+**Phase 1 livrée** (commit `157d80a8`) — mirror write :
+- `RefreshLoop.WithMultiUserMirror(multi)` builder
+- Chaque refresh XSTS/OAuth du tracker (legacy store) est aussi écrit dans MultiUserTokenStore[XSTSXUID]
+- 3 tests TDD GREEN
+- Read continue via legacy store (compat user, 0 changement comportement)
+
+**Phase 2 reportée** (read-path switch, ~2-3h) :
+- Daemon principal lit depuis multi-user store au lieu de legacy
+- Tracker rotation : si tracker xuid revoke, basculer sur autre user valide
+- **Décision product requise** : si N users SSO valides, quel est le tracker principal ? (random ? premier connecté ? config explicite ?)
+
+**Quand traiter Phase 2** : si on observe en prod un cas de "tracker xuid revoque → daemon mort" qui doit être fixed sans reboot. À ce jour, le fallback existing (lines 953-987 main.go) suffit au boot.
+
+---
+
+### [auth/unification] Read-path switch vers MultiUserTokenStore (future PR post-2.5b)
+
+**Noté le** : 2026-05-24 | **Priorité** : 🟢 Basse — la phase 1 mirror suffit pour maintenir la cohérence.
+
+**Contexte** : Suite à PR 2.5b phase 1 (mirror legacy → multi-user), le multi-user store est toujours up-to-date avec le tracker actuel. La prochaine étape serait que le watcher daemon **LISE** depuis multi-user au lieu de legacy.
+
+**Bloqueur design** : si plusieurs users SSO sont enregistrés, quel xuid devient le "tracker principal" pour le watcher daemon ? Options :
+- 1. Premier dans la map (non-déterministe Go map iteration)
+- 2. Config explicite `watcher.tracker_xuid` dans app_settings.json
+- 3. User le plus récemment loggé (UpdatedAt max)
+- 4. User avec XSTS valide le plus longtemps (XSTSExpiresAt max)
+
+**Effort** : ~2-3h une fois la décision design prise.
+
+**Quand traiter** : pas urgent. Single-user reste le cas dominant.
 
 ---
 

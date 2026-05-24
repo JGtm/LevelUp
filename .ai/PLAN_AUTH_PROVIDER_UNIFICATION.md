@@ -5,14 +5,15 @@
 **Effort restant** : ~5-6h (E.v2 callback ~2h, PR 2.5b watcher tracker migration ~3-4h)
 **Lien** : suite à la découverte 2026-05-23 lors du smoke test Phase 3 Collect→Persist
 
-## Status closure 2026-05-24
+## Status closure 2026-05-24 (mis à jour 12:55)
 
 | Item | Status |
 |---|---|
-| E.v1 — Discovery lit watcher stores | ✅ LIVRÉ (pool peuplé au 1er boot) |
-| Fix legacy attribué à 1 seul joueur | ✅ LIVRÉ (commit 03322560) |
-| **E.v2** — callback push `OnTokenRefreshed` (TokenProvider → Pool.RefreshFrom) | ⏳ BACKLOG ~2h |
-| **PR 2.5b** — migrer watcher daemon tracker initial TokenStore → MultiUserTokenStore | ⏳ BACKLOG ~3-4h |
+| E.v1 — Discovery lit watcher stores | ✅ LIVRÉ (commit `8f39923a`) |
+| Fix legacy attribué à 1 seul joueur | ✅ LIVRÉ (commit `03322560`) |
+| **E.v2** — hot-add pool via periodic re-scan | ✅ LIVRÉ (commit `4508df92`) — Pool.AddOrUpdateSource + goroutine 15min |
+| **PR 2.5b phase 1** — mirror tracker writes legacy → multi-user | ✅ LIVRÉ (commit `157d80a8`) — RefreshLoop.WithMultiUserMirror |
+| **PR 2.5b phase 2** — read-path switch (daemon lit multi-user) | ⏳ BACKLOG ~2-3h (design product requis) |
 | Chiffrement at-rest tokens (DPAPI/Keychain) | ⏳ BACKLOG ~3h (valeur marginale single-user) |
 
 **Détail PR 2.5b** (révisé 2026-05-24) — l'estimation initiale de ~1h était trop optimiste :
