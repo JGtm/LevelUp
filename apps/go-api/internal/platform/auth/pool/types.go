@@ -123,6 +123,23 @@ type Pool interface {
 	// Non-bloquant : ignores les autres codes d'erreur.
 	OnHTTPError(statusCode int)
 
+	// AddOrUpdateSource (E.v2, 2026-05-24) — hot-add ou refresh d'un slot par
+	// gamertag. Si le gamertag existe déjà dans le pool : re-Resolve et update
+	// le slot (réutilise rate limiter + index round-robin). Sinon : append un
+	// nouveau slot.
+	//
+	// LIMITATION : nouveau slot ajouté APRÈS le boot est seulement reachable
+	// via PolicyPinnedPlayer (canal round-robin sized at boot, capacité non
+	// extensible sans drain/refill). Pour LevelUp ce n'est pas un problème car
+	// auto-sync utilise PolicyPinnedPlayer (1 token par joueur).
+	//
+	// Cas d'usage : periodic re-scan Discovery.Scan() détecte un nouveau token
+	// (env var ou watcher_tokens.json mis à jour) → push dans le pool sans
+	// reboot du serveur.
+	//
+	// Erreurs : resolver.Resolve échoué OU MaxSize atteint si nouveau slot.
+	AddOrUpdateSource(ctx context.Context, src CredentialSource) error
+
 	// Close stoppe les goroutines background (refresher, etc.) et libère les ressources.
 	Close()
 }

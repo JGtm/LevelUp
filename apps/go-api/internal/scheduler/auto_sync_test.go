@@ -51,7 +51,10 @@ func (m *fakePool) Size() int                       { return m.size }
 func (m *fakePool) HasPlayer(gt string) bool        { return m.hasPlayerMap[gt] }
 func (m *fakePool) MarkUnhealthy(_ string, _ error) {}
 func (m *fakePool) OnHTTPError(_ int)               {}
-func (m *fakePool) Close()                          {}
+func (m *fakePool) AddOrUpdateSource(_ context.Context, _ pool.CredentialSource) error {
+	return nil
+}
+func (m *fakePool) Close() {}
 
 // fakeActivityChecker implémente PlayerActivityChecker pour les tests.
 type fakeActivityChecker struct {
