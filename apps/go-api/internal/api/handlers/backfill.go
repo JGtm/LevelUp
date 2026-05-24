@@ -133,7 +133,27 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 			j.CurrentStep = &detStep
 		})
 
-		// ── Phase 1.5 : Comeback badges (dominance_flag) ────────────────────
+		// ── Phase 1.5 : Citations ────────────────────────────────────────────
+		// Indépendant du `missing` de la détection : requête LEFT JOIN IS NULL
+		// sur match_citations. Même pattern dblease que RunBackfillComebackBadges :
+		// sérialise avec le sync engine, prévient le bug ART DuckDB.
+		citationsUpdated := 0
+		if scope.Citations && !req.DryRun {
+			citStep := "Backfill citations"
+			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+				j.CurrentStep = &citStep
+			})
+			n, citErr := engine.RunBackfillCitations(context.Background(), scope.ForceCitations)
+			if citErr != nil {
+				h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
+					j.Warnings = append(j.Warnings,
+						fmt.Sprintf("WARN citations: %v", citErr))
+				})
+			}
+			citationsUpdated = n
+		}
+
+		// ── Phase 1.6 : Comeback badges (dominance_flag) ────────────────────
 		// Indépendant du `missing` de la détection : utilise sa propre
 		// requête SQL (matchs sans dominance_flag). Doit tourner avant
 		// l'early-return total==0 pour couvrir les joueurs à jour en données
@@ -155,7 +175,7 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		}
 
 		if req.DryRun || total == 0 {
-			done := fmt.Sprintf("Terminé (dry_run=%v, %d match(s) détectés, comeback: %d)", req.DryRun, total, comebackUpdated)
+			done := fmt.Sprintf("Terminé (dry_run=%v, %d match(s) détectés, citations: %d, comeback: %d)", req.DryRun, total, citationsUpdated, comebackUpdated)
 			pct100 := 100
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.Status = domain.JobStatusSucceeded
@@ -376,8 +396,8 @@ func (h *BackfillHandler) StartBackfill(w http.ResponseWriter, r *http.Request) 
 		h.warnUnimplemented(job.JobID, scope)
 
 		done := fmt.Sprintf(
-			"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d, comeback: %d",
-			total, weaponsInserted, psaMatchesUpdated, psaRowsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, csrInserted, csrSkipped, perfUpdated, comebackUpdated,
+			"Backfill terminé — matchs: %d, weapon kills insérés: %d, psa: %d match(s)/%d rows, engagement: %d, events healed: %d (%d events insérés), lusr: %d, csr: %d (skipped: %d), perf: %d, citations: %d, comeback: %d",
+			total, weaponsInserted, psaMatchesUpdated, psaRowsInserted, engagementComputed, eventsHealed, eventsTotal, lusrUpdated, csrInserted, csrSkipped, perfUpdated, citationsUpdated, comebackUpdated,
 		)
 		pct100 := 100
 		matchesDone := total
@@ -402,7 +422,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 	noExplicitScope := !req.Medals && !req.Events && !req.Skill &&
 		!req.PersonalScores && !req.PerformanceScores &&
 		!req.Aliases && !req.Weapons && !req.LUSR && !req.CSR && !req.EngagementScores &&
-		!req.EngagementCoefficients && !req.ComebackBadges
+		!req.EngagementCoefficients && !req.ComebackBadges && !req.Citations
 	if req.AllData || noExplicitScope {
 		// Aucun scope explicite → activer tout
 		scope.AllData = true
@@ -417,6 +437,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.CSR = true
 		scope.EngagementScores = true
 		scope.ComebackBadges = true
+		scope.Citations = true
 		// EngagementCoefficients implicite : les coefs sont recomputes en
 		// queue de RunBackfillEngagementScores, pas besoin d'activer le flag.
 	} else {
@@ -432,6 +453,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.EngagementScores = req.EngagementScores
 		scope.EngagementCoefficients = req.EngagementCoefficients
 		scope.ComebackBadges = req.ComebackBadges
+		scope.Citations = req.Citations
 	}
 
 	if req.ForceRescan {
@@ -447,6 +469,7 @@ func buildSyncScope(req domain.BackfillStartRequest) *go_sync.SyncScope {
 		scope.ForceEngagementScores = req.EngagementScores || req.AllData
 		scope.ForceEngagementCoefficients = req.EngagementCoefficients
 		scope.ForceComebackBadges = req.ComebackBadges || req.AllData
+		scope.ForceCitations = req.Citations || req.AllData
 	}
 
 	scope.Resolve()

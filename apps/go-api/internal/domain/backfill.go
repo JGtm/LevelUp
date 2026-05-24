@@ -25,7 +25,11 @@ type BackfillStartRequest struct {
 	// ComebackBadges : calcule dominance_flag (Domination/Humiliation/Remontada/etc.)
 	// pour les matchs sans flag. Inclus dans AllData implicitement.
 	ComebackBadges bool `json:"comeback_badges"`
-	AllData        bool `json:"all_data"`
+	// Citations : calcule match_citations pour les matchs sans entrée dans la table.
+	// Inclus dans AllData implicitement. Le sentinel "_processed" empêche le
+	// re-traitement des matchs à 0 delta.
+	Citations bool `json:"citations"`
+	AllData   bool `json:"all_data"`
 
 	// Options
 	MaxMatches  int  `json:"max_matches"`  // 0 = illimité
