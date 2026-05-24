@@ -1,3 +1,37 @@
+## [2026-05-25] Phase 5 ART (suite) — status sync honnête (FATAL post-sync → partial_success)
+
+**Statut** : Complété. Phase 5 ART désormais complète (résilience handle DB + status honnête).
+
+**Tâche** : Compléter Phase 5 ART en éliminant le mensonge `status:"success"` quand le post-sync a planté avec un FATAL DuckDB. Scénario prod 2026-05-24 20:41:08 sur Chocoboflor : LUSR FATAL ART → cascade friends/aggregates/achievements toutes échouent → `result.Errors` reste vide → `Status()` renvoie `success` → le monitoring ne voit rien.
+
+**Décisions techniques** :
+
+1. **Champ `FatalErrors []string` sur `PostSyncResult`** (domain/sync.go) : collecte les erreurs FATAL distinctes des warnings cosmétiques. Propagé par engine.go vers `SyncResult.Errors` AVANT le calcul du `Status()`.
+
+2. **Helper `trackFatalErr(r, stepName, err)`** (sync/engine_postsync.go) : centralise la décision FATAL-vs-non-FATAL via `duckdbpkg.IsInvalidatedError`. Pas-op pour erreurs non-fatales (les WARN restent intacts).
+
+3. **17 sites du pipeline post-sync branchés** : stats/skill/events/weapon heal, had_bot, sessions, perf, engagement scores+coefs, assists, weapon kills, citations, dominance detect+flags, LUSR, friends loader+recompute, aggregates, shared views, CSR snapshots. Pour les goroutines parallèles (aggregates+shared views), capture erreur en variable locale puis trackFatalErr après egRefresh.Wait().
+
+4. **`runCSRSnapshotSync` retourne maintenant error** au lieu de void — nécessaire pour permettre aux 2 callers (runConditionalPostSync + runPostSyncPipeline) de tracker.
+
+5. **Achievements non-tracké pour l'instant** : signature `runAchievementsSync` retourne bool, et son chemin d'erreur (token/XSTS) n'est pas un FATAL DuckDB typique. Si la cascade ART arrive jusqu'aux achievements, c'est que LUSR/friends/aggregates ont déjà reporté → le status est déjà `partial_success`.
+
+**Résultats observés** :
+
+- 10 tests verts sur les status (`domain/sync_test.go` 5 + `sync/engine_postsync_track_fatal_test.go` 5).
+- Test sentinelle `TestSyncResult_Status_PostSyncFatalDegradesStatus` reproduit exactement la cascade Chocoboflor 20:41 (3 FatalErrors → Status = `partial_success`).
+- Test `TestTrackFatalErr_MultipleSites_Cascade` valide la sémantique multi-sites.
+- `go vet ./...` propre. Aucune nouvelle régression sur la suite `internal/sync/` (les 9 fails préexistants restent inchangés).
+
+**Phase 5 ART désormais complète** :
+- ✅ `QueryRecovered` sur 8 lectures du chemin home
+- ✅ Handler home renvoie 503 + Retry-After sur FATAL DB
+- ✅ Status sync honnête : FATAL post-sync → `partial_success` (au lieu de `success` qui ment)
+
+**Prochaine étape** : reste hors scope de cette branche — Phase 4 ART (handlers HTTP basse fréquence), test d'intégration FATAL DB A → home B, et cleanup `upsertLUSRRatingsLegacy` + `persistEngagementScore`.
+
+---
+
 ## [2026-05-25] Phase 5 ART — résilience handle DB côté lectures home
 
 **Statut** : Phase 5 cœur livrée (QueryRecovered + 503 sur handler home). Status sync honnête reporté.
