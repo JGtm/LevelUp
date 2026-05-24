@@ -1,3 +1,25 @@
+## [2026-05-25] Plan backup DuckDB avec Restic intégré au serveur Go
+
+**Statut** : Complété (plan rédigé, non implémenté)
+
+**Branche** : `feat/pattern-engine` (plan uniquement, pas de code)
+
+**Décision technique principale** :
+- Export Parquet+zstd (déjà dans `ops/backup.go`) comme format de staging
+- Restic via `exec.Command` pour le versioning et la déduplication
+- Fingerprint `mtime+size` via `os.Stat()` : si aucune DB n'a changé → 0 snapshot restic créé
+- Pattern `BackupScheduler` calqué sur `HealthScheduler` (goroutine + ticker dans `main.go`)
+
+**Bug identifié dans `backup.go`** : connexion ouverte sans `?access_mode=read_only` — conflit
+potentiel si le serveur tourne. À corriger en priorité lors de l'implémentation.
+
+**Résultats observés** : plan détaillé dans `.ai/BACKUP_PLAN.md` (10 sections, checklist 10 items)
+
+**Conclusion / prochaine étape** : implémenter selon checklist — commencer par corriger
+`backup.go` puis créer `backup_manifest.go` → `backup_restic.go` → `backup_service.go`
+
+---
+
 ## [2026-05-25] Sync reliability — clôture plan (G + I + J + audit sql.Open résiduel)
 
 **Statut** : Complété — finalise les 2 plans `PLAN_FIX_SYNC_RELIABILITY_2026-05-24` et `PLAN_FIX_SYNC_TESTS_STRATEGY_2026-05-24` post-WIP user fini.
