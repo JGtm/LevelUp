@@ -49,6 +49,11 @@ const (
 	CategoryLUSRTierApproach  Category = "lusr_tier_approach"
 	CategoryStreakMilestone   Category = "streak_milestone"
 	CategoryComebackWelcome   Category = "comeback_welcome"
+	// 2026-05-24 : Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
+	CategoryPatternStrength Category = "pattern_strength"
+	CategoryPatternWeakness Category = "pattern_weakness"
+	CategoryPatternBehavior Category = "pattern_behavior"
+	CategoryPatternLever    Category = "pattern_lever"
 )
 
 // AllCategories retourne toutes les catégories MVP (utile pour les tests et le seed).
@@ -68,6 +73,9 @@ func AllCategories() []Category {
 		CategoryRecordNearMiss, CategoryMilestoneUnlocked,
 		CategoryMilestoneNearMiss, CategoryLUSRTierApproach,
 		CategoryStreakMilestone, CategoryComebackWelcome,
+		// Pattern Engine v3.
+		CategoryPatternStrength, CategoryPatternWeakness,
+		CategoryPatternBehavior, CategoryPatternLever,
 	}
 }
 

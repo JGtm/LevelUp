@@ -51,21 +51,37 @@ type PatternConfig struct {
 	FatigueSessionCovPct float64 // 0.60
 	AccuracyPlateauStd   float64 // 0.02
 	AccuracyPlateauMax   float64 // 0.45
+	// EngagementDrop
+	EngageDropWindow        int // 10 — fenêtre de matchs récents analysés
+	EngageDropHighThreshold int // 10 — seuil dropCount pour SeverityHigh
+	// PerfCeiling
+	PerfCeilingMinRows        int     // 20 — minimum de rows avec PerfScore
+	PerfCeilingWindow         int     // 30 — fenêtre d'analyse LOWESS
+	PerfCeilingTopN           int     // 10 — nombre de scores top pour meanTop
+	PerfCeilingLowessAlpha    float64 // 0.4
+	PerfCeilingFlatSlopeThresh float64 // 2.0 — pente LOWESS considérée plate
 }
 
 // DefaultPatternConfig retourne la configuration avec les seuils recommandés.
 func DefaultPatternConfig() PatternConfig {
 	return PatternConfig{
-		MinMatchesPerGroup:   5,
-		StrengthWinRateDelta: 0.12,
-		WeaknessWinRateDelta: 0.12,
-		TiltLossRun:          3,
-		TiltKDADropPct:       0.25,
-		EngageDeltaTilt:      0.20,
-		FatigueMinSession:    4,
-		FatigueSessionCovPct: 0.60,
-		AccuracyPlateauStd:   0.02,
-		AccuracyPlateauMax:   0.45,
+		MinMatchesPerGroup:         5,
+		StrengthWinRateDelta:       0.12,
+		WeaknessWinRateDelta:       0.12,
+		TiltLossRun:                3,
+		TiltKDADropPct:             0.25,
+		EngageDeltaTilt:            0.20,
+		FatigueMinSession:          4,
+		FatigueSessionCovPct:       0.60,
+		AccuracyPlateauStd:         0.02,
+		AccuracyPlateauMax:         0.45,
+		EngageDropWindow:           10,
+		EngageDropHighThreshold:    10,
+		PerfCeilingMinRows:         20,
+		PerfCeilingWindow:          30,
+		PerfCeilingTopN:            10,
+		PerfCeilingLowessAlpha:     0.4,
+		PerfCeilingFlatSlopeThresh: 2.0,
 	}
 }
 
