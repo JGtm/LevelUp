@@ -93,9 +93,27 @@ func ExtractAllSharedCSRRows(reg *MatchRegistryRow, skillByXUID map[string]*Matc
 	return out
 }
 
-// UpsertSharedCSRs écrit ou met à jour les rows shared.match_csrs.
-// ON CONFLICT (match_id, xuid) DO UPDATE SET : préserve la donnée la plus
-// fraîche. Non-bloquant : retourne nil si rows est vide (rien à faire).
+// UpsertSharedCSRs écrit des rows shared.match_csrs.
+//
+// **Sémantique append-only** (Phase 2.F du refactor ART) : chaque appel
+// produit des INSERT purs. La table contient N versions par
+// (match_id, xuid) ; la vue `match_csrs_latest` expose la version la
+// plus récente.
+//
+// Avant Phase 2.F, cette fonction faisait `INSERT ... ON CONFLICT
+// (match_id, xuid) DO UPDATE` ce qui déclenchait empiriquement le bug
+// ART DuckDB sous concurrence (cf. csr_art_repro_test.go : 19/20
+// workers crashent sur ce pattern). L'INSERT pur élimine ce risque par
+// construction.
+//
+// Note season_id : l'ancien `COALESCE(EXCLUDED.season_id,
+// match_csrs.season_id)` préservait un season_id existant si la nouvelle
+// row n'en a pas. Avec append-only, cette préservation se fait via le
+// caller : il doit fournir un season_id non-nil dans les rows (déjà le
+// cas en pratique pour les chemins de prod). Si la valeur fournie est
+// vide, on stocke NULL.
+//
+// Non-bloquant : retourne nil si rows est vide.
 func UpsertSharedCSRs(ctx context.Context, sharedDB *sql.DB, rows []SharedMatchCSRRow) error {
 	if len(rows) == 0 {
 		return nil
@@ -108,18 +126,7 @@ func UpsertSharedCSRs(ctx context.Context, sharedDB *sql.DB, rows []SharedMatchC
 				tier, sub_tier, tier_label, rating_delta,
 				measurement_matches_remaining, season_id,
 				created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (match_id, xuid) DO UPDATE SET
-				rating_type                   = EXCLUDED.rating_type,
-				rating_value                  = EXCLUDED.rating_value,
-				tier                          = EXCLUDED.tier,
-				sub_tier                      = EXCLUDED.sub_tier,
-				tier_label                    = EXCLUDED.tier_label,
-				rating_delta                  = EXCLUDED.rating_delta,
-				measurement_matches_remaining = EXCLUDED.measurement_matches_remaining,
-				season_id                     = COALESCE(EXCLUDED.season_id, match_csrs.season_id),
-				updated_at                    = EXCLUDED.updated_at
-		`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			row.MatchID, row.XUID, row.RatingType, row.RatingValue,
 			row.Tier, row.SubTier, row.TierLabel, row.RatingDelta,
 			row.MeasurementMatchesRemaining, sqlNullableString(row.SeasonID),

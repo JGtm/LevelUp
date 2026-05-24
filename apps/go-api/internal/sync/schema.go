@@ -56,8 +56,13 @@ CREATE TABLE IF NOT EXISTS sync_meta (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Schéma append-only (Phase 2.B/E du refactor ART) : PK technique sur id,
+-- N versions par (match_id, rating_type), lecture via la vue
+-- match_skill_rank_latest avec priorité CSR > LUSR.
+CREATE SEQUENCE IF NOT EXISTS msr_seq START 1;
 CREATE TABLE IF NOT EXISTS match_skill_rank (
-    match_id          VARCHAR PRIMARY KEY,
+    id                BIGINT DEFAULT nextval('msr_seq') PRIMARY KEY,
+    match_id          VARCHAR NOT NULL,
     rating_type       VARCHAR NOT NULL,
     rating_value      FLOAT,
     rating_deviation  FLOAT,
@@ -68,9 +73,22 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     rating_delta      FLOAT,
     playlist_group    VARCHAR,
     start_time        TIMESTAMP,
+    written_at        TIMESTAMP NOT NULL DEFAULT now(),
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
+CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
+CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group);
+CREATE OR REPLACE VIEW match_skill_rank_latest AS
+    SELECT * FROM match_skill_rank
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY match_id
+        ORDER BY
+            CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END,
+            written_at DESC,
+            id DESC
+    ) = 1;
 
 CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
 CREATE TABLE IF NOT EXISTS career_progression (
@@ -209,7 +227,11 @@ CREATE TABLE IF NOT EXISTS xuid_aliases (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Schéma append-only (Phase 2.F du refactor ART) : PK technique sur id,
+-- N versions par (match_id, xuid), lecture via la vue match_csrs_latest.
+CREATE SEQUENCE IF NOT EXISTS mcsrs_seq START 1;
 CREATE TABLE IF NOT EXISTS match_csrs (
+    id                           BIGINT DEFAULT nextval('mcsrs_seq') PRIMARY KEY,
     match_id                     VARCHAR NOT NULL,
     xuid                         VARCHAR NOT NULL,
     rating_type                  VARCHAR NOT NULL DEFAULT 'CSR',
@@ -220,10 +242,17 @@ CREATE TABLE IF NOT EXISTS match_csrs (
     rating_delta                 FLOAT,
     measurement_matches_remaining INTEGER DEFAULT 0,
     season_id                    VARCHAR,
+    written_at                   TIMESTAMP NOT NULL DEFAULT now(),
     created_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (match_id, xuid)
+    updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_match_csrs_lookup ON match_csrs(match_id, xuid, written_at);
+CREATE INDEX IF NOT EXISTS idx_match_csrs_xuid    ON match_csrs(xuid);
+CREATE INDEX IF NOT EXISTS idx_match_csrs_season  ON match_csrs(season_id);
+CREATE INDEX IF NOT EXISTS idx_match_csrs_match   ON match_csrs(match_id);
+CREATE OR REPLACE VIEW match_csrs_latest AS
+    SELECT * FROM match_csrs
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
 `
 
 // EnsurePlayerSchema crée les tables player si elles n'existent pas.
