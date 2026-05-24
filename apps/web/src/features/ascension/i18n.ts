@@ -4,7 +4,7 @@
  * Pattern : dictionnaire typé par locale, accessible via getAscensionText(locale).
  * Aligné avec features/{notifications,settings,help,...}/i18n.ts.
  */
-import type { StreakType } from './types'
+import type { StreakType, ContextType, BehaviorType } from './types'
 
 export type AscensionLocale = 'fr' | 'en'
 
@@ -58,6 +58,51 @@ export interface AscensionText {
   // Loading / errors
   loading: string
   errorLoading: string
+
+  // ── Profile ────────────────────────────────────────────────────────────────
+  profileSectionTitle: string
+  profileStrengths: string
+  profileImprovements: string
+  profileNotEnoughData: string
+  profileMatchesPerDay: string
+  profileLeveragesTitle: string
+  profileSuggestedChallenges: string
+  radarAxis: Record<string, string>
+  styleKey: Record<string, string>
+  engagementTier: Record<string, string>
+  lusrTierLabel: string
+  lusrGapToNext: string
+  lusrTop20: string
+  lusrTargetForTier: string
+  lusrComponent: Record<string, string>
+
+  // ── Patterns ───────────────────────────────────────────────────────────────
+  patternsSectionTitle: string
+  patternsNotEnoughData: string
+  contextType: Record<ContextType, string>
+  patternWinRate: string
+  patternMatches: string
+  signalStrength: string
+  signalWeakness: string
+  signalNeutral: string
+  squadVsSoloTitle: string
+  squadVsSoloSolo: string
+  squadVsSoloSquad: string
+
+  // ── Behaviors ──────────────────────────────────────────────────────────────
+  behaviorsSectionTitle: string
+  behaviorType: Record<BehaviorType, string>
+  behaviorAdvice: Partial<Record<BehaviorType, string>>
+  behaviorConfirmed: string
+  patternSeverity: Record<'low' | 'medium' | 'high', string>
+
+  // ── Levers ─────────────────────────────────────────────────────────────────
+  leversSectionTitle: string
+  leverImpact: string
+  leverCurrent: string
+  leverTarget: string
+  leverHorizonMatches: string
+  leverAxis: Record<string, string>
 }
 
 const METRIC_LABEL_FR: Record<string, string> = {
@@ -137,6 +182,107 @@ const FR: AscensionText = {
   },
   loading: 'Chargement…',
   errorLoading: 'Erreur lors du chargement',
+
+  // Profile
+  profileSectionTitle: 'Profil de jeu',
+  profileStrengths: 'Points forts',
+  profileImprovements: 'Axes de progression',
+  profileNotEnoughData: 'Joue encore quelques matchs pour débloquer ton profil complet (30 minimum).',
+  profileMatchesPerDay: 'match(s)/jour',
+  profileLeveragesTitle: 'Leviers prioritaires',
+  profileSuggestedChallenges: 'Défis suggérés',
+  radarAxis: {
+    combat: 'Combat',
+    survival: 'Survie',
+    support: 'Support',
+    score: 'Score',
+    objective: 'Objectif',
+    impact: 'Impact',
+  },
+  styleKey: {
+    opportunistic_finisher: 'Finisher opportuniste',
+    overextended: 'Surexposé',
+    hyper_engaged: 'Hyper engagé',
+    passive: 'Passif',
+  },
+  engagementTier: {
+    low: 'Engagement faible',
+    regular: 'Régulier',
+    high: 'Actif',
+    intense: 'Intensif',
+  },
+  lusrTierLabel: 'Rang LUSR',
+  lusrGapToNext: '+{n} μ pour',
+  lusrTop20: 'Top 20% :',
+  lusrTargetForTier: 'Cible pour le rang',
+  lusrComponent: {
+    kills_vs_expected: 'Kills vs attendu',
+    deaths_vs_expected: 'Morts vs attendu',
+    win_factor: 'Facteur victoire',
+    damage_efficiency: 'Efficacité dégâts',
+    accuracy_delta: 'Delta précision',
+    medal_exploit: 'Exploit médailles',
+    offensive_conversion: 'Conversion offensive',
+    defensive_resistance: 'Résistance défensive',
+  },
+
+  // Patterns
+  patternsSectionTitle: 'Patterns de jeu',
+  patternsNotEnoughData: 'Pas assez de matchs pour analyser tes patterns (10 minimum).',
+  contextType: {
+    by_mode: 'Par mode',
+    by_map: 'Par carte',
+    by_squad: 'Solo vs Escouade',
+  },
+  patternWinRate: 'Win rate',
+  patternMatches: 'matchs',
+  signalStrength: 'Force',
+  signalWeakness: 'Faiblesse',
+  signalNeutral: 'Neutre',
+  squadVsSoloTitle: 'Comparaison Solo / Escouade',
+  squadVsSoloSolo: 'Solo',
+  squadVsSoloSquad: 'Escouade',
+
+  // Behaviors
+  behaviorsSectionTitle: 'Comportements détectés',
+  behaviorType: {
+    tilt: 'Tilt',
+    session_fatigue: 'Fatigue de session',
+    engagement_drop: 'Désengagement',
+    accuracy_plateau: 'Plateau de précision',
+    perf_ceiling: 'Plafond de performance',
+  },
+  behaviorAdvice: {
+    tilt: 'Fais une pause après 3 défaites consécutives.',
+    session_fatigue: 'Limite tes sessions à 4-5 matchs pour maintenir ton niveau.',
+    engagement_drop: 'Varie les modes pour retrouver de la motivation.',
+    accuracy_plateau: 'Concentre-toi sur la précision avant la cadence de tir.',
+    perf_ceiling: 'Travaille les axes les plus faibles de ton radar.',
+  },
+  behaviorConfirmed: 'Confirmé',
+  patternSeverity: {
+    low: 'Faible',
+    medium: 'Moyen',
+    high: 'Élevé',
+  },
+
+  // Levers
+  leversSectionTitle: 'Leviers calibrés',
+  leverImpact: 'impact',
+  leverCurrent: 'Actuel',
+  leverTarget: 'Cible',
+  leverHorizonMatches: 'matchs',
+  leverAxis: {
+    mode_selection: 'Choix de mode',
+    map_avoidance: 'Carte à éviter',
+    squad_play: 'Jeu en escouade',
+    session_management: 'Gestion de session',
+    session_length: 'Durée de session',
+    engagement: 'Engagement',
+    accuracy: 'Précision',
+    radar_axis: 'Axe radar',
+    csr_ranked: 'CSR classé',
+  },
 }
 
 const EN: AscensionText = {
@@ -187,6 +333,107 @@ const EN: AscensionText = {
   },
   loading: 'Loading…',
   errorLoading: 'Loading error',
+
+  // Profile
+  profileSectionTitle: 'Game Profile',
+  profileStrengths: 'Strengths',
+  profileImprovements: 'Areas to improve',
+  profileNotEnoughData: 'Play a few more matches to unlock your full profile (30 minimum).',
+  profileMatchesPerDay: 'match(es)/day',
+  profileLeveragesTitle: 'Priority levers',
+  profileSuggestedChallenges: 'Suggested challenges',
+  radarAxis: {
+    combat: 'Combat',
+    survival: 'Survival',
+    support: 'Support',
+    score: 'Score',
+    objective: 'Objective',
+    impact: 'Impact',
+  },
+  styleKey: {
+    opportunistic_finisher: 'Opportunistic finisher',
+    overextended: 'Overextended',
+    hyper_engaged: 'Hyper engaged',
+    passive: 'Passive',
+  },
+  engagementTier: {
+    low: 'Low engagement',
+    regular: 'Regular',
+    high: 'Active',
+    intense: 'Intensive',
+  },
+  lusrTierLabel: 'LUSR Rank',
+  lusrGapToNext: '+{n} μ for',
+  lusrTop20: 'Top 20%:',
+  lusrTargetForTier: 'Target for rank',
+  lusrComponent: {
+    kills_vs_expected: 'Kills vs expected',
+    deaths_vs_expected: 'Deaths vs expected',
+    win_factor: 'Win factor',
+    damage_efficiency: 'Damage efficiency',
+    accuracy_delta: 'Accuracy delta',
+    medal_exploit: 'Medal exploit',
+    offensive_conversion: 'Offensive conversion',
+    defensive_resistance: 'Defensive resistance',
+  },
+
+  // Patterns
+  patternsSectionTitle: 'Play patterns',
+  patternsNotEnoughData: 'Not enough matches to analyze your patterns (10 minimum).',
+  contextType: {
+    by_mode: 'By mode',
+    by_map: 'By map',
+    by_squad: 'Solo vs Squad',
+  },
+  patternWinRate: 'Win rate',
+  patternMatches: 'matches',
+  signalStrength: 'Strength',
+  signalWeakness: 'Weakness',
+  signalNeutral: 'Neutral',
+  squadVsSoloTitle: 'Solo vs Squad comparison',
+  squadVsSoloSolo: 'Solo',
+  squadVsSoloSquad: 'Squad',
+
+  // Behaviors
+  behaviorsSectionTitle: 'Detected behaviors',
+  behaviorType: {
+    tilt: 'Tilt',
+    session_fatigue: 'Session fatigue',
+    engagement_drop: 'Disengagement',
+    accuracy_plateau: 'Accuracy plateau',
+    perf_ceiling: 'Performance ceiling',
+  },
+  behaviorAdvice: {
+    tilt: 'Take a break after 3 consecutive losses.',
+    session_fatigue: 'Limit sessions to 4-5 matches to maintain your level.',
+    engagement_drop: 'Switch modes to regain motivation.',
+    accuracy_plateau: 'Focus on accuracy before fire rate.',
+    perf_ceiling: 'Work on the weakest axes of your radar.',
+  },
+  behaviorConfirmed: 'Confirmed',
+  patternSeverity: {
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+  },
+
+  // Levers
+  leversSectionTitle: 'Calibrated levers',
+  leverImpact: 'impact',
+  leverCurrent: 'Current',
+  leverTarget: 'Target',
+  leverHorizonMatches: 'matches',
+  leverAxis: {
+    mode_selection: 'Mode selection',
+    map_avoidance: 'Map to avoid',
+    squad_play: 'Squad play',
+    session_management: 'Session management',
+    session_length: 'Session length',
+    engagement: 'Engagement',
+    accuracy: 'Accuracy',
+    radar_axis: 'Radar axis',
+    csr_ranked: 'Ranked CSR',
+  },
 }
 
 export function getAscensionText(locale: AscensionLocale): AscensionText {
