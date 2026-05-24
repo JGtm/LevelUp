@@ -1,3 +1,46 @@
+## [2026-05-24] Pattern Engine v3 — 4 phases complètes
+
+**Statut** : Complété
+
+**Tâche** : Implémenter le Pattern Engine v3 décrit dans `.ai/PLAN_PATTERN_ENGINE.md` (phases 0.2 à 3) en 14 commits sur `feat/pattern-engine`.
+
+**Décisions techniques** :
+
+1. **Phase 0 fix (déjà en place)** : `medianKDA` était déjà injectée dans `EvaluateInput.Thresholds` (lignes 188-189 de `post_sync_progression.go`) — pas de commit 1 nécessaire.
+
+2. **Phase 0.2 — Frontend profile** :
+   - Types TS miroir du `PlayerProfile` Go (sections A1/A2/B/C + types patterns phases 1-3) dans `types.ts`
+   - Hooks `useProfile` et `usePatterns` + query keys `progressionProfile`/`progressionPatterns` dans `queries.ts` et `keys.ts`
+   - 4 nouveaux composants : `ProfileRadarSection`, `StyleBadge`, `LUSRComponentsGrid`, `LeveragePanel`
+   - `AscensionPage.tsx` restructuré avec section "Profil de jeu" conditionnelle (`has_enough_data`)
+   - i18n FR/EN étendu (radar axes, style keys, composantes LUSR, patterns, behaviors, levers)
+
+3. **Phase 1 — Patterns contextuels** :
+   - `internal/analysis/patterns/` : package stateless — `types.go`, `engine.go`, `context.go` + tests
+   - Signal Strength/Weakness/Neutral par delta win rate vs globale (seuil ±0.12)
+   - byMode, byMap, bySquad avec OC/DR/DeltaCSR/DeltaLUSR agrégés
+   - Handler `handlers/patterns.go` : split cross-DB (shared → enrichment → skill_rank → merge Go) + `computeSkillDeltas`
+   - Endpoint `GET /patterns?n=50` câblé dans `server.go`
+   - Composants frontend : `PatternContextGrid`, `SquadVsSoloCard`
+
+4. **Phase 2 — Patterns comportementaux** :
+   - `behavioral.go` : détection Tilt, SessionFatigue, EngagementDrop (paire EngageScore+ResidualBrut), AccuracyPlateau, PerfCeiling
+   - Fix `<=` pour la comparaison P25 dans EngagementDrop (test `BothMetricsLow` l'a révélé)
+   - LOWESS réutilisé depuis `internal/analysis/temporal` pour PerfCeiling
+   - Composant frontend `BehaviorAlertList`
+
+5. **Phase 3 — Leviers calibrés + coach** :
+   - `levers.go` : calibration p60, impact Pearson proxy, horizon borné [10,100]
+   - 4 nouveaux `AlertType` dans `coach/types.go` : `pattern_strength/weakness/behavior/lever`
+   - `generator.go` étendu avec `buildPatternAlerts()` (consomme `PatternReport` optionnel)
+   - Composant frontend `LeverList` (top 3 leviers impact > 0.3)
+
+**Résultats** : 14 tests unitaires passants, `go build ./...` clean.
+
+**Prochaine étape** : merge vers `main` après revue — couplage levier → Objectifs Prestige (hors scope, évolution naturelle).
+
+---
+
 ## [2026-05-24] Sessions incrémentales — O(new_matches) au lieu de O(all_matches)
 
 **Statut** : Complété
