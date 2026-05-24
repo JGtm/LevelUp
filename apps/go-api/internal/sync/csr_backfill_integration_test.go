@@ -29,9 +29,13 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 	}
 	pdb.SetMaxOpenConns(1)
 	t.Cleanup(func() { pdb.Close() })
+	// Schéma append-only (Phase 2.B/E) : id PK + msr_seq + written_at + vue
+	// match_skill_rank_latest avec priorité CSR > LUSR.
 	if err := execScript(t.Context(), pdb, `
+		CREATE SEQUENCE msr_seq START 1;
 		CREATE TABLE match_skill_rank (
-			match_id                      VARCHAR PRIMARY KEY,
+			id                            BIGINT DEFAULT nextval('msr_seq') PRIMARY KEY,
+			match_id                      VARCHAR NOT NULL,
 			rating_type                   VARCHAR NOT NULL,
 			rating_value                  DOUBLE,
 			rating_deviation              DOUBLE,
@@ -43,9 +47,20 @@ func openCSRBackfillDBs(t *testing.T) (playerDB, sharedDB *sql.DB) {
 			playlist_group                VARCHAR,
 			start_time                    TIMESTAMPTZ,
 			measurement_matches_remaining INTEGER DEFAULT 0,
+			written_at                    TIMESTAMP NOT NULL DEFAULT now(),
 			created_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at                    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE INDEX idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
+		CREATE OR REPLACE VIEW match_skill_rank_latest AS
+			SELECT * FROM match_skill_rank
+			QUALIFY ROW_NUMBER() OVER (
+				PARTITION BY match_id
+				ORDER BY
+					CASE rating_type WHEN 'CSR' THEN 0 ELSE 1 END,
+					written_at DESC,
+					id DESC
+			) = 1;
 	`); err != nil {
 		t.Fatal(err)
 	}
@@ -223,10 +238,11 @@ func TestBackfillCSRFromAPI_ForceRefetchesAll(t *testing.T) {
 		t.Errorf("AlreadyHadCSR: want 0 in force mode, got %d", res.AlreadyHadCSR)
 	}
 
-	// Vérifier que la nouvelle valeur a été écrite.
+	// Vérifier que la nouvelle valeur a été écrite via la vue latest
+	// (append-only : 2 rows physiques, la dernière gagne).
 	var val float64
 	var tier string
-	err = pdb.QueryRow(`SELECT rating_value, tier FROM match_skill_rank WHERE match_id = 'm1'`).Scan(&val, &tier)
+	err = pdb.QueryRow(`SELECT rating_value, tier FROM match_skill_rank_latest WHERE match_id = 'm1'`).Scan(&val, &tier)
 	if err != nil {
 		t.Fatal(err)
 	}

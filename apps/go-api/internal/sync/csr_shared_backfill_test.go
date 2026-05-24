@@ -346,12 +346,15 @@ func TestBackfillSharedCSRs_PartialCoverage_BackfillsGap(t *testing.T) {
 	if res.Inserted != 4 {
 		t.Errorf("Inserted: want 4 (all upserted), got %d", res.Inserted)
 	}
-	// Toutes les 4 rows finales doivent Ãªtre prÃ©sentes.
+	// Sémantique append-only : la 2e passe INSERT 4 nouvelles rows
+	// physiques en plus des 2 préexistantes → 6 rows physiques.
+	// La vue match_csrs_latest projette 1 row par (match_id, xuid) → 4 rows
+	// fonctionnelles, soit le count attendu.
 	var n int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs WHERE match_id='m-ranked'`).Scan(&n); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM match_csrs_latest WHERE match_id='m-ranked'`).Scan(&n); err != nil {
 		t.Fatalf("count: %v", err)
 	}
 	if n != 4 {
-		t.Errorf("want 4 rows final, got %d", n)
+		t.Errorf("want 4 rows latest (1 par xuid), got %d", n)
 	}
 }

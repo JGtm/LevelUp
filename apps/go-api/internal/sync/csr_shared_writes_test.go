@@ -187,12 +187,15 @@ func TestUpsertSharedCSRs_UpdateOnConflict(t *testing.T) {
 	var gotValue float64
 	var gotSubTier int
 	var gotLabel string
-	if err := db.QueryRow(`SELECT rating_value, sub_tier, tier_label FROM match_csrs WHERE match_id='m1' AND xuid='xA'`).
+	// Sémantique append-only : la 2e écriture insère une nouvelle row
+	// physique. La vue match_csrs_latest renvoie la dernière version par
+	// (match_id, xuid) — c'est cette sémantique qu'on valide.
+	if err := db.QueryRow(`SELECT rating_value, sub_tier, tier_label FROM match_csrs_latest WHERE match_id='m1' AND xuid='xA'`).
 		Scan(&gotValue, &gotSubTier, &gotLabel); err != nil {
 		t.Fatalf("select: %v", err)
 	}
 	if gotValue != 1200 || gotSubTier != 5 || gotLabel != "Or 5" {
-		t.Errorf("UPSERT effet: value=%v sub=%d label=%q (want 1200/5/Or 5)", gotValue, gotSubTier, gotLabel)
+		t.Errorf("UPSERT effet (via vue latest): value=%v sub=%d label=%q (want 1200/5/Or 5)", gotValue, gotSubTier, gotLabel)
 	}
 }
 

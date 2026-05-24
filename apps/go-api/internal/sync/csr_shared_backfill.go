@@ -230,10 +230,15 @@ func countMatchParticipants(ctx context.Context, db *sql.DB, matchID string) (in
 
 // nilerr explicite : table absente = 0 rows attendu (caller traite comme "tout à backfiller").
 //
+// **Lecture via match_csrs_latest** (Phase 2.F) : la table physique est
+// append-only et peut contenir N versions par (match_id, xuid). Pour
+// l'idempotence du backfill, on veut le compte fonctionnel "combien de
+// (match_id, xuid) distincts existent", donné par la vue latest.
+//
 //nolint:unparam // err maintenu pour cohérence avec countMatchParticipants ;
 func countMatchCSRRows(ctx context.Context, db *sql.DB, matchID string) (int, error) {
 	var n int
-	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_csrs WHERE match_id = ?`, matchID).Scan(&n)
+	err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM match_csrs_latest WHERE match_id = ?`, matchID).Scan(&n)
 	if err != nil {
 		// Table absente → 0 rows. On retourne (0, nil) pour ne pas casser le flow.
 		// Le caller traitera comme "tout à backfiller".
