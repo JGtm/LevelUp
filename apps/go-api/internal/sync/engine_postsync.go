@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // runConditionalPostSync exécute le pipeline complet si des matchs ont été insérés,
@@ -437,15 +438,18 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 		return false
 	}
 
-	// Ouvrir la DB metadata (lecture-écriture pour l'upsert).
-	metadataDB, err := sql.Open("duckdb", e.metadataDBPath)
+	// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : cache duckdbpkg pour
+	// l'ecriture RW de metadata (achievements upsert). Aligne le DSN avec
+	// engine.go:249 et citations_backfill.go via OpenReadWriteShared
+	// (cle "rw:"+path partagee).
+	metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
 			"gamertag", e.gamertag, "err", err)
 		return false
 	}
-	defer metadataDB.Close() //nolint:errcheck
-	metadataDB.SetMaxOpenConns(1)
+	defer metadataHandle.Close()
+	metadataDB := metadataHandle.SQLDb()
 
 	client := NewXboxHTTPClient(xstsResult, titlePkg.XboxTitleIDFor(e.titleSlug))
 	if err := SyncAchievements(ctx, client, e.resolver, metadataDB, playerDB, e.xuid, e.titleSlug); err != nil {

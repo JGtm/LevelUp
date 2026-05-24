@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // SharedWriterFn acquiert une connexion RW sur shared_matches_v2.duckdb avec
@@ -91,11 +92,18 @@ func (p *CombinedPersister) Persist(ctx context.Context, batch *MatchBatch) erro
 	}
 	defer playerLease()
 
-	playerDB, openErr := sql.Open("duckdb", playerPath+"?access_mode=READ_WRITE")
+	// Phase 1 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : passage par le cache
+	// process-level duckdbpkg.OpenReadWrite (DSN nu) au lieu de sql.Open direct
+	// avec "?access_mode=READ_WRITE". Le DSN explicite causait un conflit
+	// "Can't open a connection with a different configuration" avec les autres
+	// sites qui ouvrent via le cache (engine.go::OpenPlayerDB). Cache key
+	// "rw:"+path est partage entre tous les callers → 0 conflit possible.
+	playerHandle, openErr := duckdbpkg.OpenReadWrite(playerPath)
 	if openErr != nil {
 		return fmt.Errorf("CombinedPersister: open player %s: %w", batch.Player, openErr)
 	}
-	defer func() { _ = playerDB.Close() }()
+	defer playerHandle.Close()
+	playerDB := playerHandle.SQLDb()
 
 	if playerErr := NewPlayerPersister(playerDB).Persist(playerCtx, batch); playerErr != nil {
 		slog.ErrorContext(ctx, "CombinedPersister: player persist échoué",

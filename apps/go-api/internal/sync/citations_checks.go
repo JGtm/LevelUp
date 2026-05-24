@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
 // CitationCheckViolation décrit une violation d'invariant post-compute.
@@ -35,12 +36,13 @@ func (e *SyncEngine) RunCitationPostComputeChecks(ctx context.Context) ([]Citati
 	}
 	defer playerHandle.Close()
 
-	metaDB, err := sql.Open("duckdb", e.metadataDBPath+"?access_mode=READ_ONLY")
+	// Phase 2 : cache duckdbpkg (DSN aligne).
+	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("RunCitationPostComputeChecks open metadata: %w", err)
 	}
-	defer metaDB.Close()
-	metaDB.SetMaxOpenConns(1)
+	defer metaHandle.Close()
+	metaDB := metaHandle.SQLDb()
 
 	mappings, err := loadFullCitationMappings(ctx, metaDB)
 	if err != nil {
