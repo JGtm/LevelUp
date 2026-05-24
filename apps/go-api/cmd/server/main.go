@@ -485,7 +485,7 @@ func main() {
 	// Cycle de vie : créée 1× au boot, fermée à shutdown via autoBatchQueue.Close().
 	var autoBatchQueue *persist.BatchQueue
 	if os.Getenv("LEVELUP_PERSIST_BATCH_ASYNC") == "1" {
-		walDir := filepath.Join(cfg.RepoRoot, "data", "wal")
+		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
 			WALDir:      walDir,
 			ChanBufSize: 1000, // cf. Q2 ADR 0019 — backpressure naturelle
@@ -514,7 +514,7 @@ func main() {
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 		runJanitor := func() {
-			cacheRoot := filepath.Join(cfg.RepoRoot, "data", "sync_cache")
+			cacheRoot := pr.SyncCacheDir()
 			if n, err := syncpkg.PurgeOldFetchCache(cacheRoot, 7*24*time.Hour); err != nil {
 				slog.WarnContext(schedulerCtx, "janitor: PurgeOldFetchCache échoué (non-bloquant)",
 					"err", err)

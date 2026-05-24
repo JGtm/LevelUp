@@ -308,6 +308,13 @@ func (p *PathResolver) SyncCacheDir() string {
 	return filepath.Join(p.repoRoot, "data", "sync_cache")
 }
 
+// WALDir retourne le répertoire WAL de la BatchQueue persist (Phase 4.7
+// closure). Contient les batches JSON pending entre Submit et ACK Persister.
+// Recovery au boot via persist.BatchQueue.RecoverPending. Ex: data/wal/
+func (p *PathResolver) WALDir() string {
+	return filepath.Join(p.repoRoot, "data", "wal")
+}
+
 // DBProfilesPath retourne le chemin de db_profiles.json (global).
 func (p *PathResolver) DBProfilesPath() string {
 	return filepath.Join(p.repoRoot, "db_profiles.json")
