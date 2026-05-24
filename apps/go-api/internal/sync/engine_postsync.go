@@ -2,16 +2,16 @@
 //
 // Extrait de engine.go (refactor 2026-05-21). Regroupe :
 //   - runConditionalPostSync : branche post-sync selon matchs insérés ou heal.
-//   - runPostSyncPipeline : pipeline complet 14+ étapes (heal stats/skill/events/
-//     weapons, had_bot, sessions, perf/engagement/LUSR/citations, CSR snapshots,
-//     friends recompute, aggregates, achievements).
+//   - runPostSyncPipeline : pipeline complet 16 étapes (heals fallback,
+//     had_bot, sessions, perf, engagement, assists, weapon kills,
+//     citations (1.6), dominance_flag (1.7), LUSR, CSR, friends, aggregates,
+//     achievements). Citations et dominance sont des étapes primaires du pipeline,
+//     pas des heals : ils tournent pour chaque nouveau match et comblent le backlog.
 //   - runCSRSnapshotSync : CSR snapshots best-effort si csrSeasonID renseigné.
 //   - runAchievementsSync + RunAchievementsOnly : sync Xbox achievements via
 //     TokenProvider (resolveAccessTokenFromDB → XSTS → SyncAchievements).
 //   - hasMatchesNeedingScoreRefresh : heuristique heal-only path.
 //   - resolveAccessTokenFromDB : lecture cache MSAL/refresh + fallback env.
-//
-// Comportement INCHANGÉ — pur déplacement.
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync
@@ -52,7 +52,7 @@ func (e *SyncEngine) runConditionalPostSync(
 
 	// Pas de nouveaux matchs : on tente d'abord un heal skill — si ça remplit
 	// des champs (team_mmr, kills_expected), il faut quand même lancer le
-	// pipeline post-sync complet pour recalculer perf/engagement/LUSR/citations
+	// pipeline post-sync complet pour recalculer perf/engagement/LUSR
 	// qui dépendent de ces champs.
 	healed, healErr := healSkillForMissingMatches(ctx, sharedDB, client, e.xuid, 200)
 	if healErr != nil {
@@ -261,32 +261,34 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
-	// 1.6 Citations (best-effort) — calcul des deltas pour les matchs absents
-	// de match_citations. Skip silencieux si metadata.duckdb introuvable ou si
-	// citation_mappings vide. Ne propage jamais d'erreur (le sync ne doit pas
-	// echouer a cause des citations).
+	// 1.6 Citations — pipeline primaire, pas un heal. Traite tous les matchs
+	// absents de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed"
+	// (fix citations.go) empêche les matchs à 0 delta d'être re-traités.
 	if n, err := e.runPostSyncCitations(ctx, playerDB, sharedDB); err != nil {
 		slog.WarnContext(ctx, "post-sync: citations échoué", "gamertag", e.gamertag, "err", err)
 	} else if n > 0 {
-		slog.InfoContext(ctx, "post-sync: citations calculées",
-			"gamertag", e.gamertag, "match_count", n)
+		r.CitationsComputed = n
+		slog.InfoContext(ctx, "post-sync: citations calculées", "gamertag", e.gamertag, "count", n)
 	}
 
-	// 1.7 Dominance flags (best-effort) — calcule DOMINATION / HUMILIATION /
-	// REMONTADA / DÉBÂCLE / CONTRE-REMONTADA pour les matchs nouvellement
-	// insérés et les écrit dans player_match_enrichment.dominance_flag.
-	// Comble un gap de design : avant 2026-05-22 ces flags n'étaient calculés
-	// que via le backfill manuel `levelup backfill --comeback`, jamais en
-	// auto-sync — symptôme : 41 nouveaux matchs JGtm insérés sans dominance.
-	// BackfillDominanceFlags est idempotent (UPSERT par match_id) et best-effort
-	// par match (erreur sur 1 match n'interrompt pas le batch).
-	if len(insertedIDs) > 0 {
-		if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, insertedIDs); err != nil {
-			slog.WarnContext(ctx, "post-sync: dominance flags échoué",
-				"gamertag", e.gamertag, "err", err, "count", len(insertedIDs))
-		} else {
-			slog.InfoContext(ctx, "post-sync: dominance flags calculés",
-				"gamertag", e.gamertag, "match_count", len(insertedIDs))
+	// 1.7 Dominance flags — matchs nouvellement insérés + backlog (dominance_flag IS NULL).
+	// Reconstruit la courbe score depuis highlight_events. Valeur 0 = calculé/sans dominance,
+	// NULL = jamais calculé. UPSERT idempotent.
+	{
+		missingIDs, merr := selectMatchesMissingDominanceFlags(ctx, playerDB)
+		if merr != nil {
+			slog.WarnContext(ctx, "post-sync: dominance detect échoué", "gamertag", e.gamertag, "err", merr)
+		}
+		allDominanceIDs := mergeUniqMatchIDs(insertedIDs, missingIDs)
+		if len(allDominanceIDs) > 0 {
+			if err := BackfillDominanceFlags(ctx, sharedDB, playerDB, e.xuid, allDominanceIDs); err != nil {
+				slog.WarnContext(ctx, "post-sync: dominance flags échoué",
+					"gamertag", e.gamertag, "err", err, "count", len(allDominanceIDs))
+			} else {
+				r.DominanceFlagsComputed = len(allDominanceIDs)
+				slog.InfoContext(ctx, "post-sync: dominance flags calculés",
+					"gamertag", e.gamertag, "count", r.DominanceFlagsComputed)
+			}
 		}
 	}
 
@@ -486,6 +488,49 @@ func (e *SyncEngine) RunAchievementsOnly(ctx context.Context) bool {
 	defer playerHandle.Close() //nolint:errcheck
 
 	return e.runAchievementsSync(ctx, playerHandle.SQLDb())
+}
+
+// selectMatchesMissingDominanceFlags retourne les match_ids dont le dominance_flag
+// est NULL (jamais calculé). La valeur 0 = "aucune dominance détectée" est un
+// résultat valide et non re-traité.
+func selectMatchesMissingDominanceFlags(ctx context.Context, playerDB *sql.DB) ([]string, error) {
+	rows, err := playerDB.QueryContext(ctx,
+		`SELECT match_id FROM player_match_enrichment WHERE dominance_flag IS NULL`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// mergeUniqMatchIDs fusionne deux slices de match_ids en dédupliquant, a en tête.
+func mergeUniqMatchIDs(a, b []string) []string {
+	if len(b) == 0 {
+		return a
+	}
+	seen := make(map[string]struct{}, len(a)+len(b))
+	result := make([]string, 0, len(a)+len(b))
+	for _, id := range a {
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			result = append(result, id)
+		}
+	}
+	for _, id := range b {
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			result = append(result, id)
+		}
+	}
+	return result
 }
 
 // resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),

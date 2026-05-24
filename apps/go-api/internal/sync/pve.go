@@ -14,6 +14,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -243,8 +244,12 @@ func computePveBits(row PveMatchStatsRow) int64 {
 }
 
 // float64From lit un float64 depuis une map JSON (les nombres JSON sont float64).
+// Retourne 0 si la valeur est NaN ou infinie (protection contre json.Marshal qui refuse ces valeurs).
 func float64From(m map[string]any, key string) float64 {
 	v, _ := m[key].(float64)
+	if math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0
+	}
 	return v
 }
 

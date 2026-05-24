@@ -405,15 +405,19 @@ ORDER BY time_ms ASC`
 }
 
 // writeCitations écrit les deltas dans match_citations (idempotent).
+// Quand deltas est vide (match sans citation active), une row sentinel
+// "_processed" est insérée : cela sort le match du pool de
+// selectMatchesForCitations et évite de le retraiter à chaque sync.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
-	if len(deltas) == 0 {
-		return nil
-	}
 	const q = `
 INSERT INTO match_citations (match_id, citation_name_norm, value)
 VALUES (?, ?, ?)
 ON CONFLICT (match_id, citation_name_norm) DO NOTHING`
 
+	if len(deltas) == 0 {
+		_, err := db.ExecContext(ctx, q, matchID, "_processed", 0)
+		return err
+	}
 	for _, d := range deltas {
 		if _, err := db.ExecContext(ctx, q, matchID, d.NameNorm, d.Value); err != nil {
 			return fmt.Errorf("writeCitations %s/%s: %w", matchID, d.NameNorm, err)
