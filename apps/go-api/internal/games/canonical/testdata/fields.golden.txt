@@ -15,6 +15,7 @@ damage_taken
 deaths
 deaths_expected
 deaths_per_min
+defensive_resistance
 duration_seconds
 elite_kills
 enemy_mmr
@@ -37,12 +38,14 @@ match_count
 match_id
 max_killing_spree
 melee_kills
+offensive_conversion
 outcome
 perfect_kills_per_match
 performance_score
 personal_score
 power_weapon_kills
 rank_in_match
+ranked_match_count
 shots_fired
 shots_hit
 started_at_utc

@@ -59,6 +59,10 @@ func fakeConfigWithPlayers(t *testing.T, gamertag, xuid string) *config.AppConfi
 // ─── Test 1 : MultiUserTokenStore peuple le pool quand DuckDB vide ────────
 
 func TestDiscoveryScan_MultiUserStore_PopulatesWhenDuckDBEmpty(t *testing.T) {
+	// Isolation : neutraliser les env vars que d'autres tests du package
+	// peuvent avoir chargées via config.Load() depuis le .env.local réel
+	// (TestDiscoveryScan_MixedTokenSources etc. — pollution cross-test).
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294", "")
 	cfg := fakeConfigWithPlayers(t, "Madina97294", "2533274858283686")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
@@ -107,6 +111,8 @@ func TestDiscoveryScan_MultiUserStore_PopulatesWhenDuckDBEmpty(t *testing.T) {
 // ─── Test 2 : Legacy mono-user TokenStore peuple le pool ──────────────────
 
 func TestDiscoveryScan_LegacyStore_PopulatesWhenDuckDBEmpty(t *testing.T) {
+	// Isolation : neutraliser env vars pollution cross-test (cf. test précédent).
+	t.Setenv("SPNKR_OAUTH_REFRESH_TOKEN_JGTM", "")
 	cfg := fakeConfigWithPlayers(t, "JGtm", "2533274823110022")
 	resolver := titlePkg.NewPathResolver(cfg.RepoRoot)
 
