@@ -241,10 +241,14 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		windowMinutes = 15
 	}
 
+	if r.pdb.SharedSocial == nil {
+		return domain.MediaMatchCandidatesResponse{}, nil
+	}
+
 	// Lire capture_start_utc + association actuelle du mÃ©dia.
 	// Match flexible : soit file_path exact (DB absolute), soit file_name
 	// (basename â€” pour quand le frontend envoie l'URL transformÃ©e et qu'on
-	// reÃ§oit ".../foo.mp4" au lieu du chemin DB original).
+	// reÃ§oit “.../foo.mp4” au lieu du chemin DB original).
 	basename := filepath.Base(filePath)
 	var captureUTC sql.NullTime
 	var currentMatchID sql.NullString

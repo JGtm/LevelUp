@@ -74,6 +74,12 @@ func (r *MediaRepo) loadMediaCandidates(
 	ctx context.Context,
 	f domain.MediaFilters,
 ) ([]mediaCandidateRow, error) {
+	// media_files réside dans shared_social.duckdb depuis drop_media_from_player_db.
+	// Si SharedSocial est nil (échec d'ouverture transitoire au démarrage du pool),
+	// on retourne vide plutôt que de propager un crash via le fallback Player DB.
+	if r.pdb.SharedSocial == nil {
+		return nil, nil
+	}
 	cfg := r.queryConfig()
 	q, args := buildMediaCandidatesQuery(f, cfg)
 
