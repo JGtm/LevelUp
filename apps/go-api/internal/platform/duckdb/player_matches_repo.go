@@ -345,7 +345,9 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 		return nil, nil
 	}
 	query := fmt.Sprintf(playerMatchesSkillRankTpl, Placeholders(len(matchIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	// QueryRecovered (Phase 5 ART) : retry après Reopen si la handle player DB
+	// est invalidée (FATAL DuckDB déclenché par un crash ART sur une autre table).
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return nil, fmt.Errorf("skill_rank query: %w", err)
 	}

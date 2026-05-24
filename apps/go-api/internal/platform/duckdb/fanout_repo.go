@@ -58,7 +58,8 @@ func (r *FanoutRepo) LoadExistingEnrichments(
 		FROM player_match_enrichment
 		WHERE match_id IN (SELECT UNNEST(?::VARCHAR[]))
 	`
-	rows, err := r.pdb.Player.Query(ctx, query, matchIDs)
+	// QueryRecovered (Phase 5 ART) : retry après Reopen si la handle est invalidée.
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, matchIDs)
 	if err != nil {
 		return nil, err
 	}

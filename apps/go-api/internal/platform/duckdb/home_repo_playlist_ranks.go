@@ -234,7 +234,7 @@ func (r *HomeRepo) loadPlaylistPhaseAMSR(ctx context.Context, matchIDs []string)
 		return out
 	}
 	query := fmt.Sprintf(Q26gPlaylistPhaseAMSRTpl, Placeholders(len(matchIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, ToAnySlice(matchIDs)...)
 	if err != nil {
 		slog.DebugContext(ctx, "LoadRecentPlaylistRanks: Phase A1 (MSR) failed",
 			"xuid", r.pdb.XUID, "err", err)
@@ -270,7 +270,7 @@ func (r *HomeRepo) loadPlaylistPhaseASnapshot(ctx context.Context, playlistIDs [
 		return out
 	}
 	query := fmt.Sprintf(Q26gPlaylistPhaseASnapshotTpl, Placeholders(len(playlistIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(playlistIDs)...)
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, ToAnySlice(playlistIDs)...)
 	if err != nil {
 		slog.DebugContext(ctx, "LoadRecentPlaylistRanks: Phase A2 (snapshot) failed",
 			"xuid", r.pdb.XUID, "err", err)

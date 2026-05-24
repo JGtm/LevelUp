@@ -94,7 +94,8 @@ func (r *StatsRepo) LoadStatsMatches(ctx context.Context) ([]legacymatch.StatsMa
 // session_label) dans results pour les match_ids passés.
 func (r *StatsRepo) mergeStatsMatchesPME(ctx context.Context, results []legacymatch.StatsMatchRow, matchIDs []string) error {
 	query := fmt.Sprintf(Q23StatsMatchesPlayerEnrichTpl, Placeholders(len(matchIDs)))
-	rows, err := r.pdb.Player.Query(ctx, query, ToAnySlice(matchIDs)...)
+	// QueryRecovered (Phase 5 ART) : retry après Reopen si la handle est invalidée.
+	rows, err := r.pdb.Player.QueryRecovered(ctx, query, ToAnySlice(matchIDs)...)
 	if err != nil {
 		return fmt.Errorf("StatsRepo.LoadStatsMatches pme: %w", err)
 	}
