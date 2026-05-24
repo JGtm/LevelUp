@@ -630,41 +630,26 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 					chainHistory[chain] = append(history, match)
 					continue
 				}
-				// Pattern UPDATE-then-INSERT (legacy, contournement bug ART
-				// DuckDB DELETE-side). On évite ON CONFLICT DO UPDATE qui fait
-				// DELETE+INSERT en interne et corrompt l'index ART de
-				// player_match_enrichment au fil des cycles.
-				res, err := playerDB.ExecContext(ctx, `
-					UPDATE player_match_enrichment SET
-						performance_score = ?,
-						performance_chain = ?,
-						updated_at        = ?
-					WHERE match_id = ?`,
-					*score, chain, now, match.MatchID)
+				// Legacy path (LEVELUP_POSTSYNC_INSERT_ONLY=0) — UPSERT direct.
+				// Phase 4.7 revert acad4603 : retour au pattern standard
+				// ON CONFLICT DO UPDATE. Le bug ART est éliminé sur le path
+				// default (batch mode), donc plus besoin du workaround
+				// UPDATE-then-INSERT sur le path legacy.
+				_, err := playerDB.ExecContext(ctx, `
+					INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
+					VALUES (?, ?, ?, ?)
+					ON CONFLICT (match_id) DO UPDATE SET
+						performance_score = EXCLUDED.performance_score,
+						performance_chain = EXCLUDED.performance_chain,
+						updated_at        = EXCLUDED.updated_at`,
+					match.MatchID, *score, chain, now)
 				if err != nil {
 					execErrors++
-					slog.Warn("batchComputePerformanceScores: UPDATE failed",
+					slog.Warn("batchComputePerformanceScores: UPSERT failed",
 						"match_id", match.MatchID, "chain", chain, "xuid", xuid, "err", err)
 				} else {
-					n, _ := res.RowsAffected()
-					if n == 0 {
-						// Row n'existe pas → INSERT
-						_, insErr := playerDB.ExecContext(ctx, `
-							INSERT INTO player_match_enrichment (match_id, performance_score, performance_chain, updated_at)
-							VALUES (?, ?, ?, ?)`,
-							match.MatchID, *score, chain, now)
-						if insErr != nil && !isPKConflictError(insErr) {
-							execErrors++
-							slog.Warn("batchComputePerformanceScores: INSERT failed",
-								"match_id", match.MatchID, "chain", chain, "xuid", xuid, "err", insErr)
-						} else {
-							updated++
-							updatedByChain[chain]++
-						}
-					} else {
-						updated++
-						updatedByChain[chain]++
-					}
+					updated++
+					updatedByChain[chain]++
 				}
 			}
 		}

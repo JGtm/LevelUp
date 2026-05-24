@@ -215,8 +215,8 @@ Une fois Phase 4.5 validée, débloque Phase 5 cleanup :
 | 4.5b RebuildMatchSkillRankART (fix bonus découvert pendant 4.5) | 20min | ✅ DONE |
 | 4.6 Phase 5 cleanup anti-ART (4/7 items) | 2h | ✅ DONE — singleflight + CHECKPOINT + BootARTGuard auto-heal supprimés |
 | 4.7 Closure : BatchQueue wiring + janitor + flip defaults | 1h30 | ✅ DONE — cycles 7+8 OK, default ON validé |
-| 4.8 Item 6 PLAN_PHASE5 (revert acad4603) | 30min | ⏳ DEFER user explanation |
-| **Total restant** | **0h (sauf item 6 + PR 2.5b auth)** | |
+| 4.8 Item 6 PLAN_PHASE5 (revert acad4603) | 30min | ✅ DONE — 5 sites legacy reverted, 3 conflits résolus, cycle 9 OK |
+| **Total restant** | **0h (sauf PR 2.5b auth backlog)** | |
 
 ---
 

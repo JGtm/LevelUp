@@ -10,27 +10,8 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"strings"
 	"time"
 )
-
-// isPKConflictError détecte si une erreur DuckDB indique une violation de
-// PRIMARY KEY constraint (typiquement après un INSERT sur une PK existante).
-// Utilisé dans le pattern UPDATE-then-INSERT pour distinguer le cas "row
-// existe avec contraintes WHERE non satisfaites" (= CSR protégé) du cas
-// "vraie erreur SQL".
-//
-// Match les patterns observés en prod DuckDB v1.5.x :
-//   - "Constraint Error: Duplicate key"
-//   - "PRIMARY KEY constraint failed"
-func isPKConflictError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "Constraint Error") &&
-		(strings.Contains(msg, "Duplicate key") || strings.Contains(msg, "PRIMARY KEY"))
-}
 
 // ── Structs de données ───────────────────────────────────────────────────────
 
@@ -293,72 +274,47 @@ func upsertLUSRRatings(
 			tierLabel = &label
 		}
 
-		// Pattern UPDATE-then-INSERT (2026-05-23, contournement bug ART DuckDB
-		// DELETE-side). On évite `INSERT ... ON CONFLICT DO UPDATE` qui fait
-		// DELETE+INSERT en interne et stresse l'index ART (corruption
-		// observée en prod : "Invalid Input Error: Failed to delete all
-		// rows from index. Only deleted 0 out of N rows").
-		//
-		// 1. UPDATE in-place (ne touche pas l'index ART, juste les valeurs
-		//    de la row si elle existe ET n'est pas CSR).
-		// 2. Si RowsAffected == 0 : soit la row n'existe pas, soit elle est
-		//    CSR (filtrée par WHERE rating_type <> 'CSR'). On tente INSERT.
-		// 3. Si INSERT échoue avec PK conflict : la row existe mais est CSR
-		//    → blockedBySQL++ (garde-fou final, équivalent au comportement
-		//    précédent).
+		// Garde-fou SQL : la clause WHERE empêche toute écriture LUSR de remplacer
+		// un CSR pré-existant (données API irrécupérables si écrasées).
 		res, err := playerDB.ExecContext(ctx, `
-			UPDATE match_skill_rank SET
+			INSERT INTO match_skill_rank
+				(match_id, rating_type, rating_value, rating_deviation,
+				 tier, tier_fr, sub_tier, tier_label,
+				 rating_delta, playlist_group, created_at, updated_at)
+			VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			ON CONFLICT (match_id) DO UPDATE SET
 				rating_type      = 'LUSR',
-				rating_value     = ?,
-				rating_deviation = ?,
-				tier             = ?,
-				tier_fr          = ?,
-				sub_tier         = ?,
-				tier_label       = ?,
-				rating_delta     = ?,
-				playlist_group   = ?,
-				updated_at       = ?
-			WHERE match_id = ? AND rating_type <> 'CSR'`,
-			ratingValue, r.RatingDeviation,
+				rating_value     = EXCLUDED.rating_value,
+				rating_deviation = EXCLUDED.rating_deviation,
+				tier             = EXCLUDED.tier,
+				tier_fr          = EXCLUDED.tier_fr,
+				sub_tier         = EXCLUDED.sub_tier,
+				tier_label       = EXCLUDED.tier_label,
+				rating_delta     = EXCLUDED.rating_delta,
+				playlist_group   = EXCLUDED.playlist_group,
+				updated_at       = EXCLUDED.updated_at
+			WHERE match_skill_rank.rating_type <> 'CSR'`,
+			r.MatchID, ratingValue, r.RatingDeviation,
 			tierName, tierFR, sub, tierLabel,
-			delta, r.PlaylistGroup, now,
-			r.MatchID)
+			delta, r.PlaylistGroup, now, now)
 		if err != nil {
 			execErrors++
-			slog.Warn("upsertLUSRRatings: exec LUSR update failed",
+			slog.Warn("upsertLUSRRatings: exec LUSR upsert failed",
 				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "err", err)
 			continue
 		}
+		// RowsAffected = 0 signifie : conflit (match_id existe) mais la garde SQL
+		// `WHERE rating_type <> 'CSR'` a rejeté l'UPDATE. C'est le signal qu'un
+		// CSR a été protégé alors que la garde Go aurait dû le filtrer en amont
+		// (loadExistingRatingIDs a vraisemblablement renvoyé un map incomplet).
 		n, raErr := res.RowsAffected()
-		if raErr == nil && n > 0 {
-			// UPDATE a tiré → row existait et n'était pas CSR. Done.
-			updated++
-		} else {
-			// UPDATE n'a rien matché → la PK n'existe pas OU c'est un CSR
-			// protégé. On tente INSERT ; un PK conflict signifie CSR protégé.
-			_, insErr := playerDB.ExecContext(ctx, `
-				INSERT INTO match_skill_rank
-					(match_id, rating_type, rating_value, rating_deviation,
-					 tier, tier_fr, sub_tier, tier_label,
-					 rating_delta, playlist_group, created_at, updated_at)
-				VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-				r.MatchID, ratingValue, r.RatingDeviation,
-				tierName, tierFR, sub, tierLabel,
-				delta, r.PlaylistGroup, now, now)
-			if insErr != nil {
-				if isPKConflictError(insErr) {
-					blockedBySQL++
-					slog.Warn("upsertLUSRRatings: SQL guard blocked LUSR overwrite of existing CSR — Go filter may be incomplete",
-						"match_id", r.MatchID, "playlist_group", r.PlaylistGroup)
-					continue
-				}
-				execErrors++
-				slog.Warn("upsertLUSRRatings: exec LUSR insert failed",
-					"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "err", insErr)
-				continue
-			}
-			updated++
+		if raErr != nil || n == 0 {
+			blockedBySQL++
+			slog.Warn("upsertLUSRRatings: SQL guard blocked LUSR overwrite of existing CSR — Go filter may be incomplete",
+				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "rows_affected_err", raErr)
+			continue
 		}
+		updated++
 
 		// V2 §1 : persister le breakdown des 8 composantes en parallèle du
 		// match_skill_rank. Best-effort — un échec n'empêche pas la mise à

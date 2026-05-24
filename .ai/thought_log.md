@@ -1,3 +1,52 @@
+## [2026-05-24] Phase 4.8 revert acad4603 — UPDATE-then-INSERT supprimé (5 sites legacy)
+
+**Statut** : Complété (user a tranché : "on historise avec Git donc rien n'est jamais perdu, on peut arracher le pansement d'un coup")
+
+**Tâche** : Suite à explication des 3 options (revert direct / réécrire en INSERT pur / ne rien faire), user a choisi Option A — revert direct du commit `acad4603` (5 migrations UPDATE-then-INSERT). Justification user : Git historise tout, pas de perte définitive.
+
+**Décisions techniques** :
+
+- `git revert acad4603` → 3 conflits sur fichiers modifiés depuis par Phase 4.7 :
+  - `apps/go-api/internal/sync/writes.go` : conflit dans `insertParticipantRow` (err handling)
+  - `apps/go-api/internal/sync/performance.go` : conflit dans `batchComputePerformanceScores` (legacy SQL)
+  - `apps/go-api/internal/sync/skill_rating_loaders.go` : conflit dans imports (os/strings)
+
+- Résolution : KEEP Phase 4.7 dispatch (default ON pour batch) + APPLY revert side (UPSERT pur) sur le legacy path :
+  - `writes.go::insertParticipantRow` : retour à `INSERT ... ON CONFLICT DO UPDATE` (UPSERT direct), suppression du err-handling `isPKConflictError` (devient inutile sans UPDATE-then-INSERT race)
+  - `performance.go::batchComputePerformanceScores` : legacy path repasse à UPSERT, batch mode (default) inchangé
+  - `skill_rating_loaders.go` : import `strings` supprimé (plus utilisé sans `isPKConflictError`)
+
+- `comeback.go` + `engagement.go` : revertés cleanly par git (changements automatiques), même pattern UPSERT restauré
+
+- Helper `isPKConflictError(err)` : éliminé du code (revert l'a retiré entièrement, plus aucun caller)
+
+**Pourquoi c'est safe** :
+
+1. Le path legacy `insertFetchedMatch` / fallback UPDATE-then-INSERT n'est plus utilisé par défaut depuis Phase 4.7 (default `LEVELUP_PERSIST_BATCH=1` + `LEVELUP_POSTSYNC_INSERT_ONLY=1`)
+2. Le revert restore le pattern ON CONFLICT DO UPDATE qui était EN PROD AVANT acad4603 (2026-05-23) — code éprouvé, juste victime du bug ART qu'on a maintenant résolu structurellement (Collect→Persist + RebuildMSR)
+3. Si l'utilisateur set `LEVELUP_PERSIST_BATCH=0` (rollback explicite) : le UPSERT pur reprend, EXPOSE au bug ART. Mais c'est documenté comme "mode dégradé legacy" + ART rebuild manuel via `force_rebuild_art --all true` reste l'outil de remédiation
+4. Git préserve l'historique : si jamais on devait restaurer UPDATE-then-INSERT, `git revert <ce commit>` ramène acad4603
+
+**Résultats observés** :
+
+- `go build ./...` clean après résolution conflits
+- `go vet ./...` clean
+- `go test ./internal/sync/... ./internal/persist/... ./internal/scheduler/...` all GREEN
+- **Cycle 9 post-revert** (sans flags explicites, default ON) : 4/4 OK, 0 FATAL ART
+
+Total cumulé depuis Phase 4.5 : 9 cycles consécutifs × 4 joueurs = **36 syncs / 0 FATAL ART** sur la branche `refactor/collect-persist`.
+
+**Files livrés (uncommitted, à committer maintenant)** :
+- `apps/go-api/internal/sync/comeback.go` (revert auto)
+- `apps/go-api/internal/sync/engagement.go` (revert auto)
+- `apps/go-api/internal/sync/performance.go` (revert + Phase 4.7 dispatch préservé)
+- `apps/go-api/internal/sync/skill_rating_loaders.go` (revert + Phase 4.7 dispatch préservé)
+- `apps/go-api/internal/sync/writes.go` (revert + Phase 4.6 cleanup préservé)
+
+**État final REFACTOR_COLLECT_PERSIST** : 100% livré, tous les items du PLAN_PHASE5 traités. Plus aucun workaround anti-ART résiduel dans le code (singleflight, CHECKPOINT, BootARTGuard auto-heal, UPDATE-then-INSERT migration — tous supprimés sur la branche).
+
+---
+
 ## [2026-05-24] Phase 4.7 closure — BatchQueue wiring + janitor + flip defaults opt-out
 
 **Statut** : Complété (Steps 1+2+3 du séquence "terminer les plans" livrés, Steps 4+5 documentés)
