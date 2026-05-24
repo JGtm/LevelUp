@@ -1,3 +1,27 @@
+## [2026-05-24] Backfill dominance_flag — POST /backfill/start étendu + 2265 matchs rattrapés
+
+**Statut** : Complété
+
+**Tâche** : Les `dominance_flag` (Domination/Humiliation/Remontada/etc.) n'étaient plus générés depuis le 7 avril 2026. Root cause : `RunBackfillComebackBadges` n'était pas exposé via l'endpoint `/backfill/start`, et la phase 1.7 du post-sync (ajoutée le 22 mai) ne couvrait que les nouveaux matchs.
+
+**Décisions techniques** :
+
+- Ajout de `ComebackBadges bool` dans `domain.BackfillStartRequest` (`json:"comeback_badges"`)
+- Inclus implicitement dans `AllData` (zéro scope explicite → tout activer)
+- Phase placée **avant** l'early-return `total==0` (phase 1.5) : le comeback backfill n'utilise pas `missing` mais fait sa propre sélection SQL (matchs avec `dominance_flag IS NULL OR dominance_flag=0`)
+- `ForceComebackBadges` géré via `force_rescan`
+
+**Résultats** :
+- Chocoboflor : 379 matchs backfillés
+- JGtm : 778 matchs backfillés
+- Madina97294 : 1076 matchs backfillés
+- XxDaemonGamerxX : 32 matchs backfillés
+- **Total : 2265 matchs** — tous les matchs depuis l'origine jusqu'au 7 avr. 2026 qui n'avaient jamais eu de flag
+
+**Prochaine étape** : Les futurs matchs sont couverts par post-sync 1.7 (commit précédent). Plus de gap.
+
+---
+
 ## [2026-05-24] Phase 4.8 revert acad4603 — UPDATE-then-INSERT supprimé (5 sites legacy)
 
 **Statut** : Complété (user a tranché : "on historise avec Git donc rien n'est jamais perdu, on peut arracher le pansement d'un coup")
