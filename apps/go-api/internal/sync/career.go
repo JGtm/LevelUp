@@ -206,7 +206,9 @@ func syncPlayerCSRs(
 	return saveCSRSnapshots(ctx, db, csrs, seasonID)
 }
 
-// saveCSRSnapshots insère ou remplace les snapshots CSR dans player_csr_snapshots.
+// saveCSRSnapshots insère des snapshots CSR dans player_csr_snapshots
+// (INSERT pur, append-only — Phase 2.G du refactor ART). La lecture
+// courante passe par la vue player_csr_snapshots_latest.
 func saveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR, seasonID string) (int, error) {
 	now := time.Now().UTC()
 	var inserted int
@@ -215,7 +217,7 @@ func saveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR,
 			continue
 		}
 		_, err := db.ExecContext(ctx, `
-			INSERT OR REPLACE INTO player_csr_snapshots (
+			INSERT INTO player_csr_snapshots (
 				playlist_id, playlist_name, queue, input, season_id,
 				current_value, current_tier, current_sub_tier, current_measurement_remaining,
 				season_value, season_tier, season_sub_tier,
@@ -229,7 +231,7 @@ func saveCSRSnapshots(ctx context.Context, db *sql.DB, csrs []PlayerPlaylistCSR,
 			now,
 		)
 		if err != nil {
-			return inserted, fmt.Errorf("saveCSRSnapshots upsert %s: %w", c.PlaylistID, err)
+			return inserted, fmt.Errorf("saveCSRSnapshots insert %s: %w", c.PlaylistID, err)
 		}
 		inserted++
 	}

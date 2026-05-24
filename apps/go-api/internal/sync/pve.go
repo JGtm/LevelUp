@@ -257,14 +257,17 @@ func float64From(m map[string]any, key string) float64 {
 // Insertion DuckDB
 // ─────────────────────────────────────────────────────────────────────────────
 
-// InsertPveStats insère (INSERT OR REPLACE) des lignes dans pve_match_stats.
+// InsertPveStats insère des lignes dans pve_match_stats (INSERT pur,
+// append-only — Phase 2.G du refactor ART). La lecture courante passe
+// par la vue pve_match_stats_latest.
+//
 // Portage de batch_insert_pve_stats() Python (batch_insert.py).
 func InsertPveStats(ctx context.Context, db *sql.DB, rows []PveMatchStatsRow) (int, error) {
 	if len(rows) == 0 {
 		return 0, nil
 	}
 	const q = `
-		INSERT OR REPLACE INTO pve_match_stats (
+		INSERT INTO pve_match_stats (
 			match_id, xuid,
 			waves_completed, boss_kills,
 			grunt_kills, elite_kills, jackal_kills, brute_kills,

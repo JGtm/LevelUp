@@ -18,8 +18,13 @@ func openPveDB(t *testing.T) *sql.DB {
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
 
+	// Schéma append-only (Phase 2.G du refactor ART) : pas de PK
+	// contraignante sur (match_id, xuid) — la sémantique "1 row par
+	// (match_id, xuid)" est portée par la vue pve_match_stats_latest.
 	ddl := `
+		CREATE SEQUENCE pve_seq START 1;
 		CREATE TABLE pve_match_stats (
+			id BIGINT DEFAULT nextval('pve_seq') PRIMARY KEY,
 			match_id VARCHAR, xuid VARCHAR,
 			waves_completed INTEGER, boss_kills INTEGER,
 			grunt_kills INTEGER, elite_kills INTEGER,
@@ -30,8 +35,12 @@ func openPveDB(t *testing.T) *sql.DB {
 			sentinel_kills INTEGER, marine_kills INTEGER,
 			total_kills INTEGER, deaths INTEGER,
 			damage_dealt DOUBLE, pve_bits INTEGER,
-			PRIMARY KEY (match_id, xuid)
+			written_at TIMESTAMP NOT NULL DEFAULT now()
 		);
+		CREATE INDEX idx_pve_lookup ON pve_match_stats(match_id, xuid, written_at);
+		CREATE OR REPLACE VIEW pve_match_stats_latest AS
+			SELECT * FROM pve_match_stats
+			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1;
 		CREATE TABLE match_registry (
 			match_id VARCHAR PRIMARY KEY,
 			backfill_completed INTEGER DEFAULT 0

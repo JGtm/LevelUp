@@ -399,7 +399,7 @@ WITH ranked AS (
 			PARTITION BY playlist_id
 			ORDER BY fetched_at DESC, season_id DESC
 		) AS rn
-	FROM player_csr_snapshots
+	FROM player_csr_snapshots_latest
 	WHERE playlist_id IN (%s)
 )
 SELECT playlist_id, current_measurement_remaining

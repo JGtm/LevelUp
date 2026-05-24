@@ -336,7 +336,7 @@ func (r *HomeRepo) loadCSRAlltimePeak(ctx context.Context) *domain.HomeSkillPeak
 	var minRemaining sql.NullInt32
 	if err := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT MIN(current_measurement_remaining)
-		FROM player_csr_snapshots
+		FROM player_csr_snapshots_latest
 		WHERE current_measurement_remaining IS NOT NULL
 		  AND current_measurement_remaining > 0
 	`).Scan(&minRemaining); err != nil || !minRemaining.Valid {
