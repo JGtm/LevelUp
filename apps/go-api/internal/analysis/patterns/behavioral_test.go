@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -142,5 +143,94 @@ func TestDetectAccuracyPlateau_LowStableAccuracy(t *testing.T) {
 	// mean ≈ 0.30 < 0.35 → pas Low, < 0.35 → Medium
 	if p.Severity != SeverityMedium && p.Severity != SeverityHigh {
 		t.Errorf("severity = %q, want Medium ou High pour mean < 0.35", p.Severity)
+	}
+}
+
+// TestDetectAccuracyPlateau_HighAccuracy vérifie qu'une précision haute n'est pas signalée.
+func TestDetectAccuracyPlateau_HighAccuracy(t *testing.T) {
+	cfg := DefaultPatternConfig()
+	var rows []MatchRow
+	// 30 matchs avec précision à 55% > AccuracyPlateauMax (0.45)
+	for i := 0; i < 30; i++ {
+		rows = append(rows, MatchRow{Accuracy: 0.55 + float64(i%3)*0.002})
+	}
+	_, ok := detectAccuracyPlateau(rows, cfg)
+	if ok {
+		t.Error("accuracy plateau ne doit pas être détecté pour une précision haute (>= AccuracyPlateauMax)")
+	}
+}
+
+// TestDetectTilt_NotEnoughLosses vérifie qu'une suite courte ne déclenche pas le tilt.
+func TestDetectTilt_NotEnoughLosses(t *testing.T) {
+	cfg := DefaultPatternConfig() // TiltLossRun = 3
+	var rows []MatchRow
+	for i := 0; i < 10; i++ {
+		rows = append(rows, makeRowWithKDA(2, 2.0)) // WIN
+	}
+	// Seulement 2 défaites consécutives (< TiltLossRun=3)
+	rows = append(rows, makeRowWithKDA(3, 0.5))
+	rows = append(rows, makeRowWithKDA(3, 0.5))
+
+	_, ok := detectTilt(rows, cfg)
+	if ok {
+		t.Error("tilt ne doit pas être détecté pour moins de TiltLossRun défaites consécutives")
+	}
+}
+
+// TestDetectSessionFatigue_NoLongSessions vérifie qu'aucune session assez longue = pas de détection.
+func TestDetectSessionFatigue_NoLongSessions(t *testing.T) {
+	cfg := DefaultPatternConfig() // FatigueMinSession = 4
+	now := time.Now().UTC()
+	var rows []MatchRow
+	// 3 sessions de 3 matchs chacune (< FatigueMinSession=4)
+	for s := 0; s < 3; s++ {
+		for i := 0; i < 3; i++ {
+			rows = append(rows, MatchRow{
+				SessionID: fmt.Sprintf("sess%d", s),
+				KDA:       2.5 - float64(i)*0.5, // KDA décroissant dans chaque session
+				Outcome:   2,
+				PlayedAt:  now.Add(time.Duration(s*3+i) * time.Minute),
+			})
+		}
+	}
+	_, ok := detectSessionFatigue(rows, cfg)
+	if ok {
+		t.Error("session fatigue ne doit pas être détectée quand toutes les sessions sont trop courtes")
+	}
+}
+
+// TestDetectPerfCeiling_FlatLowess vérifie la détection de plafond via LOWESS plate.
+func TestDetectPerfCeiling_FlatLowess(t *testing.T) {
+	cfg := DefaultPatternConfig()
+	var rows []MatchRow
+	// 25 matchs avec PerfScore stable autour de 70 (pente ≈ 0, max-meanTop < 5)
+	for i := 0; i < 25; i++ {
+		v := 70.0 + float64(i%3) // oscillation 70/71/72 → max=72, top10 mean ≈ 72
+		rows = append(rows, MatchRow{PerfScore: ptr64(v)})
+	}
+
+	p, ok := detectPerfCeiling(rows, cfg)
+	if !ok {
+		t.Fatal("perf ceiling non détecté")
+	}
+	if p.Type != BehaviorPerfCeiling {
+		t.Errorf("type = %q, want perf_ceiling", p.Type)
+	}
+	if p.Severity != SeverityMedium {
+		t.Errorf("severity = %q, want Medium", p.Severity)
+	}
+}
+
+// TestDetectPerfCeiling_NotEnoughRows vérifie qu'un faible historique ne déclenche pas.
+func TestDetectPerfCeiling_NotEnoughRows(t *testing.T) {
+	cfg := DefaultPatternConfig() // PerfCeilingMinRows = 20
+	var rows []MatchRow
+	// Seulement 15 matchs avec PerfScore (< PerfCeilingMinRows=20)
+	for i := 0; i < 15; i++ {
+		rows = append(rows, MatchRow{PerfScore: ptr64(70.0)})
+	}
+	_, ok := detectPerfCeiling(rows, cfg)
+	if ok {
+		t.Error("perf ceiling ne doit pas être détecté avec moins de PerfCeilingMinRows matchs")
 	}
 }

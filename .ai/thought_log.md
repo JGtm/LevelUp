@@ -1,3 +1,30 @@
+## [2026-05-24] Pattern Engine v3 — audit final : logging + tests + refactoring
+
+**Statut** : Complété
+
+**Tâche** : Suite à l'audit du Pattern Engine v3, appliquer les correctifs P0/P1 identifiés : logging manquant dans le handler, tests manquants, magic numbers non injectables, fichier behavioral.go >500 lignes.
+
+**Décisions techniques** :
+
+1. **Logging `handlers/patterns.go`** : ajout de `slog.WarnContext` (player not found), `slog.DebugContext` (param n ignoré, chargement, analyse terminée), `slog.ErrorContext` (échec chargement), `slog.InfoContext` (0 rows). Pattern conforme aux autres handlers du projet.
+
+2. **Split `behavioral.go`** (518L → 250L) : extraction de `detectEngagementDrop`, `detectAccuracyPlateau`, `detectPerfCeiling` + helpers (stddev, percentile, collect*) dans `behavioral_engagement.go` (239L). Les deux fichiers restent dans le même package, zéro duplication.
+
+3. **Magic numbers → `PatternConfig`** : 7 constantes magic ajoutées au struct et à `DefaultPatternConfig()` : `EngageDropWindow` (10), `EngageDropHighThreshold` (10), `PerfCeilingMinRows` (20), `PerfCeilingWindow` (30), `PerfCeilingTopN` (10), `PerfCeilingLowessAlpha` (0.4), `PerfCeilingFlatSlopeThresh` (2.0). `detectEngagementDrop` réutilise `cfg.MinMatchesPerGroup` au lieu d'un `const minRows=5` local.
+
+4. **Tests manquants** : 5 nouveaux tests ajoutés dans `behavioral_test.go` :
+   - `TestDetectAccuracyPlateau_HighAccuracy` — précision haute ne déclenche pas
+   - `TestDetectTilt_NotEnoughLosses` — suite trop courte ne déclenche pas
+   - `TestDetectSessionFatigue_NoLongSessions` — sessions trop courtes ne déclenchent pas
+   - `TestDetectPerfCeiling_FlatLowess` — détection nominale plafond LOWESS
+   - `TestDetectPerfCeiling_NotEnoughRows` — historique insuffisant ne déclenche pas
+
+**Résultats** : 19/19 tests passent ; `go build ./...` sans erreur ; tous les fichiers modifiés < 500 lignes.
+
+**Conclusion** : Pattern Engine v3 vérifié, couverture complète sur les 5 détecteurs comportementaux et le handler HTTP.
+
+---
+
 ## [2026-05-24] Pattern Engine v3 — 4 phases complètes
 
 **Statut** : Complété

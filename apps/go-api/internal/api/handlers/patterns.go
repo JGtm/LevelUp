@@ -12,6 +12,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -53,23 +54,33 @@ func (h *PatternsHandler) Mount(r chi.Router) {
 
 // GetPatterns : GET /patterns?n=50
 func (h *PatternsHandler) GetPatterns(w http.ResponseWriter, r *http.Request) {
-	pdb, err := h.resolve(r.Context(), chi.URLParam(r, "player_slug"))
+	playerSlug := chi.URLParam(r, "player_slug")
+	pdb, err := h.resolve(r.Context(), playerSlug)
 	if err != nil {
+		slog.WarnContext(r.Context(), "patterns: player not found", "player_slug", playerSlug, "err", err)
 		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
 
 	n := patternDefaultN
 	if nStr := r.URL.Query().Get("n"); nStr != "" {
-		if v, err := strconv.Atoi(nStr); err == nil && v >= patternMinN && v <= patternMaxN {
+		if v, parseErr := strconv.Atoi(nStr); parseErr == nil && v >= patternMinN && v <= patternMaxN {
 			n = v
+		} else {
+			slog.DebugContext(r.Context(), "patterns: n param ignoré (hors plage ou invalide)", "raw", nStr, "default", patternDefaultN)
 		}
 	}
 
+	slog.DebugContext(r.Context(), "patterns: chargement des rows", "player_slug", playerSlug, "n", n)
+
 	rows, err := loadPatternRows(r.Context(), pdb, n)
 	if err != nil {
+		slog.ErrorContext(r.Context(), "patterns: échec chargement rows", "player_slug", playerSlug, "n", n, "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "load_error", err.Error())
 		return
+	}
+	if len(rows) == 0 {
+		slog.InfoContext(r.Context(), "patterns: aucun row chargé — rapport vide retourné", "player_slug", playerSlug)
 	}
 
 	report := patterns.Analyze(patterns.AnalyzeInput{
@@ -78,6 +89,13 @@ func (h *PatternsHandler) GetPatterns(w http.ResponseWriter, r *http.Request) {
 		Config: patterns.DefaultPatternConfig(),
 		Now:    time.Now().UTC(),
 	})
+	slog.DebugContext(r.Context(), "patterns: analyse terminée",
+		"player_slug", playerSlug,
+		"rows", len(rows),
+		"context_patterns", len(report.ContextPatterns),
+		"behavior_patterns", len(report.BehaviorPatterns),
+		"levers", len(report.Levers),
+	)
 	writeJSON(w, http.StatusOK, report)
 }
 
