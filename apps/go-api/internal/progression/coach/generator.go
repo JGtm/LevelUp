@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"levelup/go-api/internal/analysis/patterns"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/records"
@@ -67,6 +68,9 @@ type GenerateInput struct {
 	// HasNewActivity : true si au moins 1 match a été ingéré dans la
 	// fenêtre récente (l'orchestrateur calcule).
 	HasNewActivity bool
+
+	// PatternReport : rapport patterns (phases 1-3). Peut être nil si patterns non calculés.
+	PatternReport *patterns.PatternReport
 }
 
 // Generator orchestre la production d'alertes coach.
@@ -77,7 +81,7 @@ func NewGenerator() *Generator { return &Generator{} }
 
 // Generate produit la liste complète des alertes à émettre, sans dédup
 // (la dédup est appliquée en aval). Ordre des alertes : streaks → records
-// → milestones → LUSR → trends → comeback (déterministe pour tests).
+// → milestones → LUSR → trends → comeback → patterns (déterministe pour tests).
 func (g *Generator) Generate(_ context.Context, input GenerateInput) []Alert {
 	out := make([]Alert, 0, 16)
 	out = append(out, buildStreakAlerts(input)...)
@@ -86,6 +90,7 @@ func (g *Generator) Generate(_ context.Context, input GenerateInput) []Alert {
 	out = append(out, buildLUSRTierApproachAlert(input)...)
 	out = append(out, buildLOWESSAlerts(input)...)
 	out = append(out, buildComebackAlert(input)...)
+	out = append(out, buildPatternAlerts(input)...)
 	return out
 }
 
@@ -245,6 +250,79 @@ func buildLOWESSAlerts(input GenerateInput) []Alert {
 				"window":    t.Window,
 			},
 			DedupKey: t.Component,
+		})
+	}
+	return out
+}
+
+// buildPatternAlerts émet les alertes issues du Pattern Engine (phases 1-3).
+// Retourne nil si input.PatternReport == nil.
+func buildPatternAlerts(input GenerateInput) []Alert {
+	if input.PatternReport == nil {
+		return nil
+	}
+	report := input.PatternReport
+	var out []Alert
+	for _, p := range report.ContextPatterns {
+		switch p.Signal {
+		case patterns.SignalStrength:
+			out = append(out, Alert{
+				Type:     AlertPatternStrength,
+				Severity: notifications.SeveritySuccess,
+				Params: map[string]any{
+					"context_type": string(p.Type),
+					"key":          p.Key,
+					"win_rate":     p.WinRate,
+					"delta":        p.Delta,
+				},
+				DedupKey: string(p.Type) + "|" + p.Key,
+			})
+		case patterns.SignalWeakness:
+			out = append(out, Alert{
+				Type:     AlertPatternWeakness,
+				Severity: notifications.SeverityWarn,
+				Params: map[string]any{
+					"context_type": string(p.Type),
+					"key":          p.Key,
+					"win_rate":     p.WinRate,
+					"delta":        p.Delta,
+				},
+				DedupKey: string(p.Type) + "|" + p.Key,
+			})
+		}
+	}
+	for _, b := range report.BehaviorPatterns {
+		if b.Severity == patterns.SeverityLow {
+			continue
+		}
+		out = append(out, Alert{
+			Type:     AlertPatternBehavior,
+			Severity: notifications.SeverityWarn,
+			Params: map[string]any{
+				"behavior_type": string(b.Type),
+				"trigger":       b.Trigger,
+				"evidence":      b.Evidence,
+				"severity":      string(b.Severity),
+			},
+			DedupKey: string(b.Type),
+		})
+	}
+	for _, l := range report.Levers {
+		if l.Rank > 3 || l.Impact <= 0.3 {
+			continue
+		}
+		out = append(out, Alert{
+			Type:     AlertPatternLever,
+			Severity: notifications.SeverityInfo,
+			Params: map[string]any{
+				"rank":           l.Rank,
+				"axis":           l.Axis,
+				"label":          l.Label,
+				"impact":         l.Impact,
+				"horizon":        l.Horizon,
+				"source_pattern": l.SourcePattern,
+			},
+			DedupKey: l.Axis,
 		})
 	}
 	return out
