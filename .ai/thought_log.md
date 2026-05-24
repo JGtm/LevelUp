@@ -1,3 +1,144 @@
+## [2026-05-24] Sessions incrémentales — O(new_matches) au lieu de O(all_matches)
+
+**Statut** : Complété
+
+**Tâche** : Remplacer le recalcul complet des sessions (chargement + réécriture de 700 matchs historiques à chaque sync) par un algorithme incrémental.
+
+**Analyse** : Une session fermée (session K, dès que la K+1 a démarré) est immuable par définition — aucun nouveau match ne peut la modifier. Le seul critère de fermeture est le gap > 120 min (ou changement de coéquipiers/ranked optionnel). Relire 700 matchs pour assigner 5 nouveaux n'a aucune justification fonctionnelle.
+
+**Décisions techniques** :
+
+1. **`session_append.go`** : nouvelle fonction `appendSessionsInline` qui :
+   - Charge l'ancre (dernier match assigné) depuis `player_match_enrichment` via `loadAssignedSessionsMap`
+   - Ne charge les nouveaux matchs que depuis shared (tous les rows sont chargés pour l'ancre et les labels, mais seuls les nouveaux = `session_id IS NULL` sont traités)
+   - Calcule sessions sur `[ancre] + nouveaux_matchs` → N+1 lignes au lieu de 700
+   - Applique l'offset : `session_id_réel = session_id_calculé + maxSessionID`
+   - Si la session courante est étendue : inclut les matchs existants de cette session pour recalculer le label correctement
+   - Fallback → `fullSessionCompute` si aucune ancre (premier sync) ou match hors-ordre détecté
+
+2. **`session_recalc.go`** : `recalculateSessionsInline` délègue à `appendSessionsInline` (suppression des 30 lignes de calcul full)
+
+**Résultats** : `go build ./...` OK, `go test ./...` 0 FAIL. Sync de 5 nouveaux matchs → 5-20 writes au lieu de 700. Sessions fermées : jamais relues, jamais réécrites.
+
+**Prochaine étape** : Surveiller les logs du prochain auto-sync pour confirmer "sessions persistées, changed<<total_matchs".
+
+---
+
+## [2026-05-24] Fix ART bug player_match_enrichment sessions — delta filter + row-by-row
+
+**Statut** : Complété
+
+**Tâche** : Bug ART DuckDB "Failed to delete all rows from index. Only deleted 0 out of 704 rows" sur `player_match_enrichment` lors du recalcul des sessions post-sync. Tous les 4 joueurs touchés → "post-sync: sessions échoué".
+
+**Cause racine** :
+- `recalculateSessionsInline` charge TOUS les matchs historiques (ex: 704 pour Chocoboflor) sans LIMIT.
+- `writeSessionAssignmentsBatch` → `BatchUpdateMulti` faisait 1 seul `UPDATE FROM (VALUES ...)` avec 704 rows → DuckDB devait supprimer 704 entrées ART en une seule opération → crash.
+- C'était le seul post-sync sans delta filter : performance/engagement/dominance/bot/friends ont tous un `WHERE IS NULL` ou `WHERE = FALSE` naturel.
+
+**Décisions techniques** :
+
+1. **`BatchUpdateMulti` + `BatchUpdateColumn`** (`persist/post_sync_enrichment_persister.go`) : remplacé le `UPDATE FROM (VALUES ...) AS v(...)` multi-row par N `UPDATE WHERE match_id=?` individuels dans 1 seule TX. Chaque statement ne touche qu'1 entrée ART. La TX garantit l'atomicité.
+
+2. **Delta filter sessions** (`sync/sessions_postsync_persist.go`) : ajout de `deltaSessionAssignments()` qui charge les `(session_id, session_label)` existants depuis `player_match_enrichment` et ne retourne que les assignments qui ont changé. Sur un sync de 5 nouveaux matchs : 5-20 UPDATEs max au lieu de 700. Fallback vers full update si la query de delta échoue.
+
+**Résultats** : `go build ./internal/persist/... ./internal/sync/...` OK, `go test ./...` OK (tous verts).
+
+**Prochaine étape** : Surveiller le prochain auto-sync pour confirmer "sessions persistées" avec `changed << total_matchs`.
+
+---
+
+## [2026-05-24] Fix 4 bugs sync logs (NaN, CSR season, Worker deadlock)
+
+**Statut** : Complété
+
+**Tâche** : 4 bugs observés dans les logs de sync. Bugs 1 + 3 + 4 corrigés ; Bug 2 (metadata DB injection) différé.
+
+**Décisions techniques** :
+
+1. **Bug 1 (NaN JSON)** : `float64From()` et `floatPtrFrom()` ne guardaient pas contre NaN/Inf — `json.MarshalIndent(batch)` échouait. Fix : `math.IsNaN/IsInf` guard dans `transforms_helpers.go` et `pve.go`.
+
+2. **Bug 4 (CSR season)** : Season ID lu depuis `app_settings.json` (hardcodé). Fix : résolution depuis `csr_season_calendars` au boot dans `main.go` + `WithCSRSeasonID` câblé dans `auto_sync.go:defaultRunnerFactory`.
+
+3. **Bug 3 (Worker deadlock)** :
+   - Créé `persist/combined_persister.go` : nouveau `BatchPersister` qui gère shared + player en un seul appel avec ses propres leases par batch.
+   - Modifié `sync/engine.go:run()` : release des write leases (player + shared) AVANT `Drain()` → Worker peut acquérir ses leases → `PendingCount` descend à 0. Re-acquisition post-Drain pour le pipeline post-sync.
+   - Câblé le Worker dans `cmd/server/main.go` : `CombinedPersister` + `NewWorker("combined")` + goroutine avec `context.Background()` + `workerWG` pour shutdown propre. `RecoverPending()` appelé APRES le démarrage du Worker.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/persist/... ./internal/sync/...` OK, `go vet ./...` propre.
+
+**Prochaine étape** : Surveiller les logs du prochain cycle auto-sync pour confirmer que les batches sont ACKés sans timeout Drain.
+
+---
+
+## [2026-05-24] Restauration backup post-bug ART + nettoyage DB
+
+**Statut** : Complété
+
+**Tâche** : Bug ART DuckDB ("Failed to delete all rows from index") avait corrompu shared_matches_v2.duckdb et toutes les player stats.duckdb — 12 matchs invalides après le 05/05/2026 insérés mais non supprimables (COMMIT échoue sur la shared aussi).
+
+**Décisions techniques** :
+
+1. **Tool `cmd/cleanup_post_art`** créé (pattern cleanup_orphan_match) — supprime en cascade par cutoff date. Inutilisable car la shared DB elle-même est corrompue (commit ART bug).
+
+2. **Restauration depuis backup E:\halo_infinite** (snapshot 21 mai, pré-ART, zéro match après 05/05) :
+   - Suppression des 3 WAL corrompus (shared_matches_v2, metadata, shared_social)
+   - Copie warehouse + 4 player stats.duckdb depuis E:\
+   - Vérification post-restore : `cleanup_post_art` dry-run → "Aucun match trouvé"
+
+3. **Seule donnée manquante** : CSR (match_skill_rank) pour tous les joueurs, à re-fetcher via backfill CSR.
+
+**Résultats** : DBs propres, zéro match corrompu. Prêt pour syncs frais monitorés.
+
+**Premier cycle post-restore (2026-05-24T16:10:59)** :
+- Chocoboflor : +15 matchs, 154s, SUCCESS
+- JGtm : +39 matchs, 374s, SUCCESS
+- Madina97294 : +15 matchs, 538s, SUCCESS
+- XxDaemonGamerxX : +9 matchs, 674s, SUCCESS
+- ART bug : 0 nouveau probe run, 0 dblease timeout
+- Backup copie vers E:\halo_infinite_2026-05-24 (429 MB, robocopy OK)
+
+**Prochaine étape** : Backfill CSR si nécessaire.
+
+---
+
+## [2026-05-24] Fix enrichments sync — citations + dominance_flag au sync time
+
+**Statut** : Complété (v2 — structure finale)
+
+**Tâche** : Citations stoppées depuis le 5 mai 2026 ; dominance_flag jamais calculé en auto-sync. Root causes : (1) `writeCitations` n'écrivait aucune row sentinelle quand `deltas==0` → re-traitement infini. (2) Citations et dominance avaient été retirés du pipeline principal.
+
+**Décisions techniques** :
+
+1. **Sentinel row** (`citations.go`) : `writeCitations` écrit `(_processed, 0)` quand `deltas==0`. La prochaine exécution de `selectMatchesForCitations` (LEFT JOIN IS NULL) exclut ces matchs → fin du re-traitement infini.
+
+2. **Citations et dominance dans le pipeline principal** (`engine_postsync.go`) : Étapes 1.6 (citations) et 1.7 (dominance_flag) restaurées dans `runPostSyncPipeline` après 1.55 (weapon kills) et avant 2 (LUSR). Ce sont des étapes primaires du pipeline, pas des heals — elles tournent à chaque sync. `runEnrichmentHeal` supprimé.
+
+3. **Étape 1.7 dominance** : `selectMatchesMissingDominanceFlags` (dominance_flag IS NULL) + `mergeUniqMatchIDs(insertedIDs, missingIDs)` → traite à la fois les nouveaux matchs et le backlog historique.
+
+4. **Nouveaux champs PostSyncResult** : `CitationsComputed int` et `DominanceFlagsComputed int` — commentaires corrigés (plus de référence à runEnrichmentHeal).
+
+**Résultats** : `go build ./...` et `go test ./internal/sync/...` passent (10.8s). Citations + dominance calculés en pipeline primaire à chaque sync avec nouveaux matchs.
+
+**Prochaine étape** : Lancer un backfill citations sur les joueurs pour rattraper le backlog 5 mai → 24 mai (`POST /backfill/start { "player_slug": "...", "citations": true }`).
+
+---
+
+## [2026-05-24] Fix média Chocoboflor + UI tuile Ascension
+
+**Statut** : Complété
+
+**Tâche** : (1) Page médias Chocoboflor retournait 500 "Table media_files does not exist". (2) Tuile Ascension home doit s'aligner en hauteur avec Prestige et afficher un background.
+
+**Root cause** : `pdb.SharedSocial` était nil dans le pool de Chocoboflor (échec transitoire `OpenReadWriteShared` au boot mis en cache). `socialDB()` tombait en fallback sur Player DB qui n'a plus `media_files` depuis `drop_media_from_player_db`. DuckDB suggérait `milestone_earned` confirmant la query sur player DB.
+
+**Décision technique** : Guard `if r.pdb.SharedSocial == nil { return nil, nil }` dans `loadMediaCandidates` (même pattern que `HomeRepo.LoadRecentMedia`) et `LoadMatchCandidatesForMedia`. UI : suppression `self-start` et `xl:items-start`, ajout background `auntie-dot.webp` (copié dans `apps/web/public/`) sur la tuile Ascension.
+
+**Résultats** : Build propre. La page médias affiche état vide au lieu de 500. La tuile Ascension prend la hauteur de Prestige et affiche le background. Un redémarrage serveur pour Chocoboflor devrait recréer la connexion SharedSocial correctement.
+
+**Prochaine étape** : Si le problème persiste après redémarrage, investiguer pourquoi `OpenReadWriteShared(shared_social.duckdb)` échoue pour ce joueur (vérifier les logs "pool: ouverture SharedSocial échouée").
+
+---
+
 ## [2026-05-24] Backfill dominance_flag — POST /backfill/start étendu + 2265 matchs rattrapés
 
 **Statut** : Complété

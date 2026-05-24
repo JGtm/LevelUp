@@ -305,7 +305,7 @@ export function HomePage() {
 
         {/* Section Ascension (1/3) + Prestige (2/3) — masquées si show_progression=false */}
         {showProgression && (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr] xl:items-start">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
             <HomeAscensionWidget playerSlug={playerSlug} locale={locale} />
             <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
           </div>

@@ -141,6 +141,7 @@ data/titles/halo_infinite/warehouse/*.wal
 data/titles/halo_infinite/players/
 data/global/*.duckdb
 data/global/*.wal
+data/wal/
 
 # Fichiers temporaires d'import SPNKr
 *.tmp.*.db
