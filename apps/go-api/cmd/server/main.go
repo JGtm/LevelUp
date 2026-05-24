@@ -408,43 +408,21 @@ func main() {
 	// Requiert le SharedProvider (mode B-swap) pour AcquireWriter; en mode
 	// legacy on log seulement.
 	{
+		// Phase 5 cleanup (2026-05-24) : auto-heal supprimé — Phase 4 batch
+		// INSERT-only path élimine la corruption ART à la racine. On garde la
+		// DÉTECTION (BootARTGuard) pour alerte ops, mais le rebuild auto au
+		// boot est remplacé par l'outil CLI manuel `force_rebuild_art --all true`
+		// (voir runbook Phase 4.5). Cf. ADR 0019.
 		bootCtx, bootCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer bootCancel()
-		var rebuiltART bool
 		if sharedSQL, release, err := sharedReader.Get(bootCtx); err == nil {
-			report := duckdb.BootARTGuard(bootCtx, sharedSQL, "shared", 5)
+			duckdb.BootARTGuard(bootCtx, sharedSQL, "shared", 5)
 			release()
-			if hasMatchParticipantsARTDivergence(report) {
-				rebuiltART = tryAutoHealMatchParticipantsART(bootCtx, cfg.SharedProvider, sharedReader)
-			}
 		} else {
 			slog.WarnContext(bootCtx, "art_guard: shared reader indisponible pour probe boot",
 				"err", err)
 		}
 		duckdb.BootARTGuard(bootCtx, metaDB.SQLDb(), "metadata", 5)
-
-		// Phase 4.4.b — opt-in : si rebuild ART vient d'être exécuté avec succès
-		// ET que l'env var LEVELUP_ART_AUTOHEAL_RECOMPUTE=1 est posé, on déclenche
-		// le recompute des cascades (LUSR/perf/dominance/is_with_friends) en
-		// background pour réparer les valeurs dérivées figées sur l'état corrompu.
-		// Opt-in par défaut pour limiter le risque de side-effects data le temps
-		// que l'utilisateur valide le comportement sur son setup.
-		if rebuiltART && os.Getenv("LEVELUP_ART_AUTOHEAL_RECOMPUTE") == "1" {
-			players, err := cfg.LoadPlayers()
-			if err != nil {
-				slog.WarnContext(bootCtx, "art_autoheal_recompute: LoadPlayers échoué — skip recompute",
-					"err", err)
-			} else if len(players) == 0 {
-				slog.InfoContext(bootCtx, "art_autoheal_recompute: aucun joueur configuré — skip recompute")
-			} else {
-				// Goroutine background : utilise context.Background() (pas bootCtx
-				// qui expire après 60s) car le recompute peut prendre plusieurs
-				// minutes par joueur sur de grosses DBs.
-				go runPostRebuildRecompute(context.Background(), cfg, players, sharedReader)
-				slog.InfoContext(bootCtx, "art_autoheal_recompute: goroutine background lancée",
-					"players", len(players))
-			}
-		}
 	}
 
 	// --- 4. Repositories + services ---
@@ -1150,198 +1128,4 @@ func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, 
 		SpartanToken:   s.tokens.AccessToken,
 		ClearanceToken: "",
 	}, nil
-}
-
-// hasMatchParticipantsARTDivergence retourne true si le report BootARTGuard
-// signale une divergence ART sur la table match_participants. Utilisé pour
-// déclencher l'auto-heal Phase 4.1.
-func hasMatchParticipantsARTDivergence(report *duckdb.ARTProbeReport) bool {
-	if report == nil {
-		return false
-	}
-	for _, d := range report.Divergences {
-		if d.Table == "match_participants" {
-			return true
-		}
-	}
-	return false
-}
-
-// tryAutoHealMatchParticipantsART tente le rebuild swap CTAS de
-// match_participants quand BootARTGuard a détecté une corruption ART
-// sur shared_matches_v2. Phase 4.1 du plan stabilisation 2026-05-22.
-//
-// Pré-conditions :
-//   - provider non-nil (mode SharedProvider B-swap actif)
-//   - aucun writer concurrent (boot serveur, scheduler de sync pas encore démarré)
-//
-// En cas d'erreur (provider absent, AcquireWriter échoué, rebuild échoué) :
-// log WARN + métrique expvar, le serveur continue à booter. La divergence
-// reste détectable par les WARN du BootARTGuard initial.
-//
-// Post-rebuild : re-probe en RO pour confirmer la disparition de la
-// divergence + log INFO de succès ou WARN si toujours présente.
-// Retourne true si le rebuild a effectivement été exécuté avec succès (utile
-// pour conditionner un recompute post-rebuild côté caller — phase 4.4.b).
-func tryAutoHealMatchParticipantsART(ctx context.Context, provider sharedprovider.Provider, reader duckdb.SharedReader) bool {
-	if provider == nil {
-		slog.WarnContext(ctx, "art_autoheal: divergence match_participants détectée mais SharedProvider absent (mode legacy) — rebuild manuel requis via redémarrage avec LEVELUP_USE_SHARED_PROVIDER=1")
-		observability.IncCounter("art_rebuild_runs_total_skipped_legacy")
-		return false
-	}
-
-	slog.InfoContext(ctx, "art_autoheal: déclenchement rebuild match_participants (BootARTGuard divergence détectée)")
-	observability.IncCounter("art_rebuild_runs_total_attempts")
-
-	w, err := provider.AcquireWriter(ctx)
-	if err != nil {
-		slog.ErrorContext(ctx, "art_autoheal: AcquireWriter échoué — rebuild annulé", "err", err)
-		observability.IncCounter("art_rebuild_runs_total_error_acquire")
-		return false
-	}
-	defer w.Release()
-
-	start := time.Now()
-	if err := migration.RebuildMatchParticipantsART(ctx, w.DB()); err != nil {
-		slog.ErrorContext(ctx, "art_autoheal: RebuildMatchParticipantsART échoué",
-			"err", err, "duration_ms", time.Since(start).Milliseconds())
-		observability.IncCounter("art_rebuild_runs_total_error")
-		return false
-	}
-	slog.InfoContext(ctx, "art_autoheal: rebuild terminé avec succès",
-		"duration_ms", time.Since(start).Milliseconds())
-	observability.IncCounter("art_rebuild_runs_total_ok")
-
-	// Re-probe en RO pour confirmer que la divergence a disparu.
-	// Release explicite du writer d'abord (idempotent via sync.Once dans
-	// WriterHandle — defer ci-dessus reste safe).
-	w.Release()
-	if sharedSQL, release, err := reader.Get(ctx); err == nil {
-		postReport := duckdb.BootARTGuard(ctx, sharedSQL, "shared_post_autoheal", 5)
-		release()
-		if hasMatchParticipantsARTDivergence(postReport) {
-			slog.WarnContext(ctx, "art_autoheal: divergence TOUJOURS présente post-rebuild — investigation manuelle requise")
-			observability.IncCounter("art_rebuild_runs_total_still_diverged")
-		} else {
-			slog.InfoContext(ctx, "art_autoheal: probe post-rebuild confirme la disparition de la divergence ART")
-		}
-	}
-	return true
-}
-
-// runPostRebuildRecompute exécute en background le recompute des 4 cascades
-// (LUSR/performance/dominance/is_with_friends) pour chaque joueur configuré.
-// Phase 4.4.b — opt-in via LEVELUP_ART_AUTOHEAL_RECOMPUTE=1.
-//
-// Déclenché uniquement après un rebuild ART réussi au boot (tryAutoHealMatchParticipantsART
-// a retourné true). Best-effort par joueur : si l'ouverture / lease échoue
-// pour un joueur, on logge + métrique et on continue avec le suivant.
-//
-// Pré-conditions :
-//   - players non vide
-//   - sharedReader valide (RO suffisant — la fonction ne lit que match_participants
-//     depuis shared)
-//   - aucun pool joueur n'a encore ouvert les DBs en RW (boot — généralement true)
-//
-// Trade-off : la cascade LUSR est O(N) sur les matchs, peut prendre plusieurs
-// minutes par joueur sur 1000+ matchs. Lancée en background pour ne pas
-// retarder l'API ; le serveur démarre normalement en parallèle.
-func runPostRebuildRecompute(
-	ctx context.Context,
-	cfg *config.AppConfig,
-	players []domain.PlayerSummary,
-	sharedReader duckdb.SharedReader,
-) {
-	if len(players) == 0 {
-		slog.InfoContext(ctx, "art_autoheal_recompute: aucun joueur configuré — skip")
-		return
-	}
-
-	observability.IncCounter("art_autoheal_recompute_started")
-	start := time.Now()
-	slog.InfoContext(ctx, "art_autoheal_recompute: démarrage background",
-		"players", len(players), "opt_in_flag", "LEVELUP_ART_AUTOHEAL_RECOMPUTE=1")
-
-	pr := title.NewPathResolver(cfg.RepoRoot)
-	slug := title.DefaultSlug
-
-	for _, p := range players {
-		select {
-		case <-ctx.Done():
-			slog.WarnContext(ctx, "art_autoheal_recompute: ctx annulé — arrêt anticipé",
-				"processed", 0, "total", len(players))
-			return
-		default:
-		}
-		runPostRebuildRecomputeOnePlayer(ctx, cfg, pr, slug, p, sharedReader)
-	}
-
-	slog.InfoContext(ctx, "art_autoheal_recompute: terminé",
-		"players_total", len(players),
-		"total_duration_ms", time.Since(start).Milliseconds())
-	observability.IncCounter("art_autoheal_recompute_finished")
-}
-
-// runPostRebuildRecomputeOnePlayer : 1 joueur, ouverture pool + lease + recompute
-// + release. Extrait pour limiter la portée des `defer` et éviter d'accumuler
-// les leases dans la boucle.
-func runPostRebuildRecomputeOnePlayer(
-	ctx context.Context,
-	cfg *config.AppConfig,
-	pr *title.PathResolver,
-	slug string,
-	p domain.PlayerSummary,
-	sharedReader duckdb.SharedReader,
-) {
-	playerCfg := duckdb.PlayerPoolConfig{
-		Gamertag:     p.Gamertag,
-		XUID:         p.XUID,
-		TitleSlug:    slug,
-		PlayerDBPath: pr.PlayerDBPath(slug, p.Gamertag),
-		SharedDBPath: pr.SharedDBPath(slug),
-		MetaDBPath:   pr.MetadataDBPath(slug),
-		SharedReader: sharedReader,
-	}
-	pdb, err := duckdb.GetOrOpen(ctx, playerCfg)
-	if err != nil {
-		slog.WarnContext(ctx, "art_autoheal_recompute: GetOrOpen player DB échoué — skip",
-			"gamertag", p.Gamertag, "xuid", p.XUID, "err", err)
-		observability.IncCounter("art_autoheal_recompute_player_error_open")
-		return
-	}
-
-	lease, err := pdb.AcquirePlayerWriter(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "art_autoheal_recompute: AcquirePlayerWriter échoué — skip",
-			"gamertag", p.Gamertag, "xuid", p.XUID, "err", err)
-		observability.IncCounter("art_autoheal_recompute_player_error_lease")
-		return
-	}
-	defer lease.Release()
-
-	sharedSQL, sharedRelease, err := sharedReader.Get(ctx)
-	if err != nil {
-		slog.WarnContext(ctx, "art_autoheal_recompute: shared reader échoué — skip player",
-			"gamertag", p.Gamertag, "err", err)
-		observability.IncCounter("art_autoheal_recompute_player_error_shared")
-		return
-	}
-	defer sharedRelease()
-
-	report, err := syncpkg.RecomputeAfterARTRebuild(ctx, pdb.Player.SQLDb(), sharedSQL, p.XUID, nil)
-	if err != nil {
-		slog.WarnContext(ctx, "art_autoheal_recompute: recompute global échoué",
-			"gamertag", p.Gamertag, "xuid", p.XUID, "err", err,
-			"duration_ms", report.Duration.Milliseconds())
-		observability.IncCounter("art_autoheal_recompute_player_error")
-		return
-	}
-	slog.InfoContext(ctx, "art_autoheal_recompute: player done",
-		"gamertag", p.Gamertag, "xuid", p.XUID,
-		"lusr", report.LUSRUpdated,
-		"performance", report.PerformanceUpdated,
-		"dominance_matches", report.DominanceMatches,
-		"errors_count", len(report.Errors),
-		"duration_ms", report.Duration.Milliseconds())
-	observability.IncCounter("art_autoheal_recompute_player_ok")
 }

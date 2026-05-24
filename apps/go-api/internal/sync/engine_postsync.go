@@ -25,14 +25,12 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
-	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
@@ -379,41 +377,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
 	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
 
-	// 6. CHECKPOINT player + shared (Plan J — Phase 4.1.c, 2026-05-23).
-	// Force la compaction des index ART en mémoire vers le disque. Hypothèse
-	// à valider en prod : si la corruption ART vient d'index entries fantômes
-	// accumulés en WAL, CHECKPOINT régulier les évacue avant qu'elles
-	// n'atteignent la masse critique qui déclenche le FATAL "Invalid Input
-	// Error: Failed to delete all rows from index".
-	//
-	// Best-effort : un échec de CHECKPOINT logge WARN + métrique mais ne
-	// casse pas le cycle. Pas d'impact sur ViewsRefreshed/AchievementsSynced.
-	runCheckpoint(ctx, playerDB, "player", e.gamertag)
-	runCheckpoint(ctx, sharedDB, "shared", e.gamertag)
-
 	return r
-}
-
-// runCheckpoint exécute `CHECKPOINT` sur la DB indiquée. Best-effort —
-// logue WARN + métrique sur échec mais ne propage pas l'erreur.
-//
-// Phase 4.1.c — Plan J du plan stabilisation 2026-05-22 (rev 2026-05-23) :
-// hypothèse que la compaction régulière du WAL DuckDB évite l'accumulation
-// d'entries ART fantômes qui déclenchent les FATAL `Invalid Input Error:
-// Failed to delete all rows from index` observés en prod.
-func runCheckpoint(ctx context.Context, db *sql.DB, dbLabel, gamertag string) {
-	start := time.Now()
-	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
-		slog.WarnContext(ctx, "post-sync: CHECKPOINT échoué (non-bloquant)",
-			"db", dbLabel, "gamertag", gamertag, "err", err,
-			"duration_ms", time.Since(start).Milliseconds())
-		observability.IncCounter("checkpoint_runs_total_error_" + dbLabel)
-		return
-	}
-	slog.DebugContext(ctx, "post-sync: CHECKPOINT OK",
-		"db", dbLabel, "gamertag", gamertag,
-		"duration_ms", time.Since(start).Milliseconds())
-	observability.IncCounter("checkpoint_runs_total_ok_" + dbLabel)
 }
 
 // runCSRSnapshotSync récupère les classements CSR du joueur pour la saison courante
