@@ -545,6 +545,49 @@ func main() {
 		}
 	}()
 
+	// Phase 4.9 / PLAN_AUTH E.v2 (2026-05-24) : periodic Discovery re-scan
+	// pour hot-add nouveaux tokens (env vars ajoutées, watcher_tokens.json mis
+	// à jour) sans reboot. Skip si pool nil (aucun credential au boot).
+	if autoSyncPool != nil {
+		go func() {
+			rescanTicker := time.NewTicker(15 * time.Minute)
+			defer rescanTicker.Stop()
+			runRescan := func() {
+				resolver := title.NewPathResolver(cfg.RepoRoot)
+				multiUserStore := auth.NewMultiUserTokenStore(resolver.WatcherTokensDir())
+				legacyStore := auth.NewTokenStore(resolver.WatcherTokensPath())
+				discovery := pool.NewDiscoveryWithStores(cfg, resolver, title.DefaultSlug, multiUserStore, legacyStore)
+				sources, err := discovery.Scan(schedulerCtx)
+				if err != nil {
+					slog.WarnContext(schedulerCtx, "pool: re-scan échoué (non-bloquant)",
+						"err", err)
+					return
+				}
+				added := 0
+				for _, src := range sources {
+					if err := autoSyncPool.AddOrUpdateSource(schedulerCtx, src); err != nil {
+						slog.DebugContext(schedulerCtx, "pool: re-scan AddOrUpdateSource skip",
+							"gamertag", src.Gamertag, "err", err)
+						continue
+					}
+					added++
+				}
+				if added > 0 {
+					slog.InfoContext(schedulerCtx, "pool: re-scan terminé",
+						"sources_scanned", len(sources), "sources_processed", added, "pool_size", autoSyncPool.Size())
+				}
+			}
+			for {
+				select {
+				case <-schedulerCtx.Done():
+					return
+				case <-rescanTicker.C:
+					runRescan()
+				}
+			}
+		}()
+	}
+
 	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
 	// l'ActivityChecker : quand un joueur est en état Watching/Syncing/Cooling, le scheduler
 	// cède son tick pour ce joueur et évite deux syncs concurrentes sur la même stats.duckdb.

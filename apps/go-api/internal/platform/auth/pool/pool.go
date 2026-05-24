@@ -244,7 +244,72 @@ func (p *poolImpl) HasPlayer(gamertag string) bool {
 }
 
 func (p *poolImpl) Size() int {
+	p.slotMu.RLock()
+	defer p.slotMu.RUnlock()
 	return len(p.slots)
+}
+
+// AddOrUpdateSource implémente Pool.AddOrUpdateSource() — hot-add ou refresh
+// d'un slot par gamertag (E.v2, cf. PLAN_AUTH_PROVIDER_UNIFICATION.md).
+//
+// Pre-Resolve hors lock pour ne pas bloquer Acquire() pendant l'appel réseau
+// (qui peut prendre 1-3s pour Exchange OAuth).
+func (p *poolImpl) AddOrUpdateSource(ctx context.Context, src CredentialSource) error {
+	if src.Gamertag == "" {
+		return fmt.Errorf("pool: AddOrUpdateSource gamertag vide")
+	}
+
+	resolved, err := p.resolver.Resolve(ctx, src)
+	if err != nil {
+		return fmt.Errorf("pool: AddOrUpdateSource resolve %s: %w", src.Gamertag, err)
+	}
+
+	p.slotMu.Lock()
+	defer p.slotMu.Unlock()
+
+	// Update existing slot in-place.
+	if idx, exists := p.slotsByGt[src.Gamertag]; exists {
+		s := p.slots[idx]
+		s.mu.Lock()
+		s.resolved = resolved
+		s.xuid = src.XUID
+		s.healthy = true
+		s.lastRefresh = time.Now()
+		s.mu.Unlock()
+		slog.InfoContext(ctx, "pool: slot updated",
+			"gamertag", src.Gamertag, "source", src.Source)
+		return nil
+	}
+
+	// New slot : check MaxSize cap.
+	if p.maxSize > 0 && len(p.slots) >= p.maxSize {
+		return fmt.Errorf("pool: AddOrUpdateSource pool full (maxSize=%d)", p.maxSize)
+	}
+
+	newSlot := &slot{
+		gamertag:    src.Gamertag,
+		xuid:        src.XUID,
+		resolved:    resolved,
+		limiter:     rate.NewLimiter(rate.Limit(p.perTokenRPS), 1),
+		healthy:     true,
+		lastRefresh: time.Now(),
+	}
+	newIdx := len(p.slots)
+	p.slots = append(p.slots, newSlot)
+	p.slotsByGt[src.Gamertag] = newIdx
+
+	// Best-effort push dans le canal round-robin (capacité fixe au boot).
+	// Si plein → slot reachable uniquement via PolicyPinnedPlayer.
+	select {
+	case p.anyPublicChan <- newIdx:
+	default:
+		slog.DebugContext(ctx, "pool: anyPublicChan plein, slot reachable seulement via PolicyPinnedPlayer",
+			"gamertag", src.Gamertag, "new_size", len(p.slots))
+	}
+
+	slog.InfoContext(ctx, "pool: slot ajouté (hot-add)",
+		"gamertag", src.Gamertag, "source", src.Source, "new_size", len(p.slots))
+	return nil
 }
 
 // MarkUnhealthy invalide un token après 401/403 et déclenche un Resolver.Refresh asynchrone.

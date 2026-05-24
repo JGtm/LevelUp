@@ -484,3 +484,163 @@ func TestPoolOnHTTPError_OtherStatusCode(t *testing.T) {
 	}
 	lease.Release()
 }
+
+// ─── E.v2 — AddOrUpdateSource (hot-add ou refresh d'un slot) ────────────────
+
+func TestPoolAddOrUpdateSource_NewSlot(t *testing.T) {
+	sources := testSlotEnv(2) // A, B
+	resolver := &testResolver{}
+	pool, err := NewPool(context.Background(), resolver, sources, PoolOptions{PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	if pool.Size() != 2 {
+		t.Fatalf("size init = %d, want 2", pool.Size())
+	}
+
+	// Hot-add d'un 3e gamertag C.
+	newSrc := CredentialSource{Gamertag: "C", XUID: "1002", MSALCache: "cache_C", Source: "test"}
+	if err := pool.AddOrUpdateSource(context.Background(), newSrc); err != nil {
+		t.Fatalf("AddOrUpdateSource: %v", err)
+	}
+
+	if pool.Size() != 3 {
+		t.Errorf("size after add = %d, want 3", pool.Size())
+	}
+	if !pool.HasPlayer("C") {
+		t.Error("HasPlayer(C) = false, want true")
+	}
+
+	// PolicyPinnedPlayer doit fonctionner sur le nouveau slot.
+	lease, err := pool.Acquire(context.Background(), PolicyPinnedPlayer, "C")
+	if err != nil {
+		t.Fatalf("Acquire pinned C: %v", err)
+	}
+	if lease.Gamertag != "C" {
+		t.Errorf("lease.Gamertag = %q, want C", lease.Gamertag)
+	}
+	if lease.Tokens.SpartanToken != "spartan_C" {
+		t.Errorf("lease token = %q, want spartan_C", lease.Tokens.SpartanToken)
+	}
+	lease.Release()
+}
+
+func TestPoolAddOrUpdateSource_UpdateExisting(t *testing.T) {
+	sources := testSlotEnv(2)
+	resolver := &testResolver{
+		resolved: map[string]*ResolvedTokens{
+			"A": {Gamertag: "A", XUID: "1000", Tokens: &domain.HaloTokens{SpartanToken: "spartan_A_v1"}, ExpiresAt: time.Now().Add(1 * time.Hour), Source: "test"},
+		},
+	}
+	pool, err := NewPool(context.Background(), resolver, sources, PoolOptions{PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	// Update : remplacer le token de A par une nouvelle version.
+	resolver.mu.Lock()
+	resolver.resolved["A"] = &ResolvedTokens{
+		Gamertag: "A", XUID: "1000",
+		Tokens:    &domain.HaloTokens{SpartanToken: "spartan_A_v2"},
+		ExpiresAt: time.Now().Add(1 * time.Hour), Source: "test",
+	}
+	resolver.mu.Unlock()
+
+	if err := pool.AddOrUpdateSource(context.Background(), sources[0]); err != nil {
+		t.Fatalf("AddOrUpdateSource: %v", err)
+	}
+
+	// Size inchangée.
+	if pool.Size() != 2 {
+		t.Errorf("size after update = %d, want 2 (no new slot)", pool.Size())
+	}
+
+	// Le nouveau token est servi.
+	lease, err := pool.Acquire(context.Background(), PolicyPinnedPlayer, "A")
+	if err != nil {
+		t.Fatalf("Acquire A: %v", err)
+	}
+	if lease.Tokens.SpartanToken != "spartan_A_v2" {
+		t.Errorf("token = %q, want spartan_A_v2 (refreshed)", lease.Tokens.SpartanToken)
+	}
+	lease.Release()
+}
+
+func TestPoolAddOrUpdateSource_EmptyGamertag(t *testing.T) {
+	sources := testSlotEnv(1)
+	resolver := &testResolver{}
+	pool, err := NewPool(context.Background(), resolver, sources, PoolOptions{PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	err = pool.AddOrUpdateSource(context.Background(), CredentialSource{Gamertag: ""})
+	if err == nil {
+		t.Error("AddOrUpdateSource avec gamertag vide doit échouer")
+	}
+}
+
+func TestPoolAddOrUpdateSource_MaxSizeCap(t *testing.T) {
+	sources := testSlotEnv(2)
+	resolver := &testResolver{}
+	pool, err := NewPool(context.Background(), resolver, sources, PoolOptions{MaxSize: 2, PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	// Tenter d'ajouter un 3e slot avec MaxSize=2.
+	newSrc := CredentialSource{Gamertag: "C", XUID: "1002", MSALCache: "cache_C", Source: "test"}
+	err = pool.AddOrUpdateSource(context.Background(), newSrc)
+	if err == nil {
+		t.Error("AddOrUpdateSource au-delà de MaxSize doit échouer")
+	}
+	if pool.Size() != 2 {
+		t.Errorf("size = %d, want 2 (cap respecté)", pool.Size())
+	}
+}
+
+func TestPoolAddOrUpdateSource_ResolveError(t *testing.T) {
+	// Resolver qui échoue pour gamertag "FAIL".
+	resolver := &testResolver{
+		resolved: map[string]*ResolvedTokens{
+			"A": {Gamertag: "A", XUID: "1000", Tokens: &domain.HaloTokens{SpartanToken: "spartan_A"}, ExpiresAt: time.Now().Add(1 * time.Hour), Source: "test"},
+		},
+	}
+	// Custom resolver wrapping that fails on "FAIL".
+	failResolver := &failingResolver{wrapped: resolver, failGamertag: "FAIL"}
+	pool, err := NewPool(context.Background(), failResolver, []CredentialSource{{Gamertag: "A", XUID: "1000", MSALCache: "cache_A", Source: "test"}}, PoolOptions{PerTokenRPS: 1})
+	if err != nil {
+		t.Fatalf("NewPool: %v", err)
+	}
+	defer pool.Close()
+
+	err = pool.AddOrUpdateSource(context.Background(), CredentialSource{Gamertag: "FAIL", XUID: "x", Source: "test"})
+	if err == nil {
+		t.Error("AddOrUpdateSource avec Resolve échoué doit propager l'erreur")
+	}
+	if pool.Size() != 1 {
+		t.Errorf("size = %d, want 1 (slot non ajouté si Resolve fail)", pool.Size())
+	}
+}
+
+// failingResolver est un Resolver qui échoue pour un gamertag spécifique.
+type failingResolver struct {
+	wrapped      Resolver
+	failGamertag string
+}
+
+func (fr *failingResolver) Resolve(ctx context.Context, src CredentialSource) (*ResolvedTokens, error) {
+	if src.Gamertag == fr.failGamertag {
+		return nil, errors.New("simulated resolve failure")
+	}
+	return fr.wrapped.Resolve(ctx, src)
+}
+
+func (fr *failingResolver) Refresh(ctx context.Context, gamertag string) (*ResolvedTokens, error) {
+	return fr.wrapped.Refresh(ctx, gamertag)
+}

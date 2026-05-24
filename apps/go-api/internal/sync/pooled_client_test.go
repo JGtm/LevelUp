@@ -78,6 +78,10 @@ func (m *mockPool) OnHTTPError(statusCode int) {
 	m.onHTTPErrorCalls = append(m.onHTTPErrorCalls, statusCode)
 }
 
+func (m *mockPool) AddOrUpdateSource(_ context.Context, _ pool.CredentialSource) error {
+	return nil
+}
+
 func (m *mockPool) Close() {
 	// no-op for tests
 }
