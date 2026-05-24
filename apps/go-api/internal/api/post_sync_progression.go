@@ -287,6 +287,9 @@ func generateCoachAlerts(
 			cm.AvgResidual = residualSum / float64(residualCount)
 		}
 		coachInput.CombatMedians = cm
+		slog.DebugContext(ctx, "progression: combat medians computed",
+			"user", userID, "median_oc", mOC, "median_dr", mDR,
+			"residual_count", residualCount, "avg_residual", cm.AvgResidual)
 	}
 	return deps.CoachGenerator.Generate(ctx, coachInput)
 }
