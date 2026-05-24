@@ -237,7 +237,6 @@ func upsertLUSRRatings(
 	var (
 		updated      int
 		skippedByCSR int // matchs CSR pré-existants skippés par la garde Go
-		blockedBySQL int // matchs CSR sauvés par le garde-fou SQL (garde Go a sauté)
 		execErrors   int // erreurs Exec (logguées, on continue)
 	)
 	for _, r := range results {
@@ -274,44 +273,27 @@ func upsertLUSRRatings(
 			tierLabel = &label
 		}
 
-		// Garde-fou SQL : la clause WHERE empêche toute écriture LUSR de remplacer
-		// un CSR pré-existant (données API irrécupérables si écrasées).
-		res, err := playerDB.ExecContext(ctx, `
+		// Sémantique append-only (Phase 2.E refactor ART) : INSERT pur, jamais
+		// de DELETE/UPDATE. La garde "LUSR n'écrase pas CSR" est portée par :
+		//   1. Le filtre Go amont (existingCSR map) qui évite l'INSERT physique
+		//      si un CSR existe déjà.
+		//   2. La vue match_skill_rank_latest qui priorise CSR > LUSR si les
+		//      deux coexistent physiquement (garde-fou si le filtre Go a sauté).
+		//
+		// L'ancien ON CONFLICT + clause WHERE déclenchait le bug ART DuckDB.
+		_, err := playerDB.ExecContext(ctx, `
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
 				 tier, tier_fr, sub_tier, tier_label,
 				 rating_delta, playlist_group, created_at, updated_at)
-			VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (match_id) DO UPDATE SET
-				rating_type      = 'LUSR',
-				rating_value     = EXCLUDED.rating_value,
-				rating_deviation = EXCLUDED.rating_deviation,
-				tier             = EXCLUDED.tier,
-				tier_fr          = EXCLUDED.tier_fr,
-				sub_tier         = EXCLUDED.sub_tier,
-				tier_label       = EXCLUDED.tier_label,
-				rating_delta     = EXCLUDED.rating_delta,
-				playlist_group   = EXCLUDED.playlist_group,
-				updated_at       = EXCLUDED.updated_at
-			WHERE match_skill_rank.rating_type <> 'CSR'`,
+			VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.MatchID, ratingValue, r.RatingDeviation,
 			tierName, tierFR, sub, tierLabel,
 			delta, r.PlaylistGroup, now, now)
 		if err != nil {
 			execErrors++
-			slog.Warn("upsertLUSRRatings: exec LUSR upsert failed",
+			slog.Warn("upsertLUSRRatings: exec LUSR insert failed",
 				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "err", err)
-			continue
-		}
-		// RowsAffected = 0 signifie : conflit (match_id existe) mais la garde SQL
-		// `WHERE rating_type <> 'CSR'` a rejeté l'UPDATE. C'est le signal qu'un
-		// CSR a été protégé alors que la garde Go aurait dû le filtrer en amont
-		// (loadExistingRatingIDs a vraisemblablement renvoyé un map incomplet).
-		n, raErr := res.RowsAffected()
-		if raErr != nil || n == 0 {
-			blockedBySQL++
-			slog.Warn("upsertLUSRRatings: SQL guard blocked LUSR overwrite of existing CSR — Go filter may be incomplete",
-				"match_id", r.MatchID, "playlist_group", r.PlaylistGroup, "rows_affected_err", raErr)
 			continue
 		}
 		updated++
@@ -326,11 +308,10 @@ func upsertLUSRRatings(
 			}
 		}
 	}
-	if updated > 0 || skippedByCSR > 0 || blockedBySQL > 0 || execErrors > 0 {
+	if updated > 0 || skippedByCSR > 0 || execErrors > 0 {
 		slog.Info("upsertLUSRRatings: batch terminé",
 			"updated", updated,
 			"skipped_by_csr_filter", skippedByCSR,
-			"blocked_by_sql_guard", blockedBySQL,
 			"exec_errors", execErrors,
 			"total_candidates", len(results))
 	}

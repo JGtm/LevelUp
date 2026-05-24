@@ -157,12 +157,21 @@ func ExtractCSRRowIfRanked(reg *MatchRegistryRow, skill *MatchSkillData) *MatchC
 	return row
 }
 
-// UpsertCSRRow écrit ou remplace une ligne CSR dans match_skill_rank côté
-// player DB. ON CONFLICT (match_id) DO UPDATE SET rating_type='CSR' : si une
-// ligne LUSR existait pour ce match, elle est remplacée par la CSR (un match
-// classé n'a jamais de LUSR valide — le LUSR est exclu des matchs ranked par
-// loadLUSRMatchData). La garde-fou SQL inverse (LUSR ne peut pas écraser CSR)
-// reste dans upsertLUSRRatings et n'est pas affectée.
+// UpsertCSRRow écrit une ligne CSR dans match_skill_rank côté player DB.
+//
+// **Sémantique append-only** (Phase 2.E du refactor ART) : chaque appel
+// produit un INSERT pur. La table contient N versions par (match_id,
+// rating_type) ; la vue `match_skill_rank_latest` expose la version la
+// plus récente avec priorité CSR > LUSR.
+//
+// Avant la Phase 2.E, cette fonction faisait `INSERT ... ON CONFLICT
+// (match_id) DO UPDATE` ce qui déclenchait empiriquement le bug ART
+// DuckDB sous concurrence (cf. csr_art_repro_test.go : 19/20 workers
+// crashent). L'INSERT pur élimine ce risque par construction.
+//
+// L'idempotence fonctionnelle est portée par la vue latest : un appel
+// répété avec les mêmes données produit N rows physiques mais une seule
+// version visible (la plus récente, donc identique aux précédentes).
 func UpsertCSRRow(ctx context.Context, playerDB *sql.DB, row *MatchCSRRow) error {
 	if row == nil {
 		return nil
@@ -175,20 +184,7 @@ func UpsertCSRRow(ctx context.Context, playerDB *sql.DB, row *MatchCSRRow) error
 			 rating_delta, playlist_group, start_time,
 			 measurement_matches_remaining,
 			 created_at, updated_at)
-		VALUES (?, 'CSR', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (match_id) DO UPDATE SET
-			rating_type                   = 'CSR',
-			rating_value                  = EXCLUDED.rating_value,
-			rating_deviation              = NULL,
-			tier                          = EXCLUDED.tier,
-			tier_fr                       = EXCLUDED.tier_fr,
-			sub_tier                      = EXCLUDED.sub_tier,
-			tier_label                    = EXCLUDED.tier_label,
-			rating_delta                  = EXCLUDED.rating_delta,
-			playlist_group                = EXCLUDED.playlist_group,
-			start_time                    = EXCLUDED.start_time,
-			measurement_matches_remaining = EXCLUDED.measurement_matches_remaining,
-			updated_at                    = EXCLUDED.updated_at`,
+		VALUES (?, 'CSR', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		row.MatchID, row.RatingValue,
 		row.Tier, row.TierFR, row.SubTier, row.TierLabel,
 		row.RatingDelta, row.PlaylistGroup, row.StartTime,
