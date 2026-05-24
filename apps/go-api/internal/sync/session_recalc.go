@@ -86,12 +86,11 @@ func LookupFriendXUIDs(ctx context.Context, sharedDB *sql.DB, gamertags []string
 	return xuids
 }
 
-// recalculateSessionsInline recalcule les sessions sur des DBs déjà ouvertes
-// (i.e. sans acquérir de lease ni ouvrir de handle). Conçue pour être
-// appelée depuis le PostSync chain où les leases sont déjà détenues.
+// recalculateSessionsInline calcule les sessions de façon incrémentale sur des DBs
+// déjà ouvertes (les leases sont détenues par le caller). Délègue à appendSessionsInline
+// qui ne recalcule et ne réécrit que ce qui a changé (nouveaux matchs + labels si étendus).
 //
-// Retourne (matchs_mis_à_jour, error). Erreurs non-bloquantes (no-op si pas
-// de matchs ou si shared.match_participants est vide).
+// Retourne (matchs_mis_à_jour, error).
 func recalculateSessionsInline(
 	ctx context.Context,
 	playerDB, sharedDB *sql.DB,
@@ -102,21 +101,7 @@ func recalculateSessionsInline(
 	if len(friendGamertags) > 0 {
 		opts.FriendsXUIDs = LookupFriendXUIDs(ctx, sharedDB, friendGamertags)
 	}
-	matchRows, err := loadSessionMatchRowsDirect(ctx, sharedDB, xuid)
-	if err != nil {
-		return 0, fmt.Errorf("recalculateSessionsInline load: %w", err)
-	}
-	if len(matchRows) == 0 {
-		return 0, nil
-	}
-	assignments := analysis.ComputeSessionsWithContext(matchRows, opts)
-	groups := analysis.BuildSessionGroups(matchRows, assignments)
-	assignments = analysis.MergeSessionLabels(assignments, groups)
-	n, err := WriteSessionAssignments(ctx, playerDB, assignments)
-	if err != nil {
-		return 0, fmt.Errorf("recalculateSessionsInline write: %w", err)
-	}
-	return n, nil
+	return appendSessionsInline(ctx, playerDB, sharedDB, xuid, opts)
 }
 
 // RecalculatePlayerSessions recalcule les sessions pour un joueur.
