@@ -35,10 +35,10 @@ func BackfillDominanceFlags(
 	xuid string,
 	matchIDs []string,
 ) error {
-	// Phase 4.4 — chemin INSERT-only batch si LEVELUP_POSTSYNC_INSERT_ONLY=1.
-	// 1 single UPDATE multi-row au lieu de N UPDATE row-by-row (réduit
-	// massivement le stress ART sur player_match_enrichment).
-	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+	// Phase 4.7 closure (2026-05-24) : default flipé ON. 1 single UPDATE
+	// multi-row au lieu de N UPDATE row-by-row. Set LEVELUP_POSTSYNC_INSERT_ONLY=0
+	// pour fallback legacy row-by-row (mode dégradé, ART bug actif).
+	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0" {
 		return backfillDominanceFlagsBatch(ctx, sharedDB, playerDB, xuid, matchIDs)
 	}
 

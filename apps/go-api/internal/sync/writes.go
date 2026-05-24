@@ -311,8 +311,9 @@ func nullStr(s string) *string {
 // Seules les lignes dont le match_id existe déjà sont mises à jour (UPDATE).
 // Retourne le nombre de lignes affectées.
 func WriteSessionAssignments(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
-	// Phase 4.4 — chemin batch INSERT-only friendly si flag actif.
-	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1" {
+	// Phase 4.7 closure (2026-05-24) : default flipé ON. Set
+	// LEVELUP_POSTSYNC_INSERT_ONLY=0 pour fallback legacy row-by-row.
+	if os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0" {
 		return writeSessionAssignmentsBatch(ctx, db, assignments)
 	}
 	updated := 0

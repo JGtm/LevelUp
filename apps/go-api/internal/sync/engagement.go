@@ -86,10 +86,10 @@ func batchComputeEngagementScores(
 	updated := 0
 	now := time.Now().UTC()
 
-	// Phase 4.4 — chemin INSERT-only friendly si LEVELUP_POSTSYNC_INSERT_ONLY=1 :
-	// on accumule les updates en RAM et on flush via PostSyncEnrichmentPersister
-	// (1 single UPDATE multi-row multi-col au lieu de N UPDATE row-by-row).
-	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") == "1"
+	// Phase 4.7 closure (2026-05-24) : default flipé ON. Accumulation updates
+	// en RAM + flush via PostSyncEnrichmentPersister (1 single UPDATE multi-row
+	// multi-col). Set LEVELUP_POSTSYNC_INSERT_ONLY=0 pour fallback row-by-row.
+	batchMode := os.Getenv("LEVELUP_POSTSYNC_INSERT_ONLY") != "0"
 	hasPaces := pacesColumnsAvailable(ctx, playerDB)
 	var pendingUpdates []persist.EnrichmentMultiColumnUpdate
 

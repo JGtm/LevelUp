@@ -1,3 +1,67 @@
+## [2026-05-24] Phase 4.7 closure — BatchQueue wiring + janitor + flip defaults opt-out
+
+**Statut** : Complété (Steps 1+2+3 du séquence "terminer les plans" livrés, Steps 4+5 documentés)
+
+**Tâche** : Suite à validation user "Vas y oui continue stp, on doit terminer ces plans", exécuter en autonomie la séquence de closure REFACTOR_COLLECT_PERSIST + PLAN_AUTH. User a explicitement demandé de SKIP Step 4 (Item 6 revert acad4603) — sera expliqué avant action.
+
+**Items livrés** :
+
+| Step | Livrable | Fichiers |
+|---|---|---|
+| 1+2 | BatchQueue wiring async + janitor (PurgeOldFetchCache + PurgeOldWAL 24h, maxAge 7j) au boot main.go | `cmd/server/main.go` + `internal/scheduler/auto_sync.go` (WithBatchQueue method) |
+| 3 | Flip defaults : `LEVELUP_PERSIST_BATCH` + `LEVELUP_POSTSYNC_INSERT_ONLY` passent de `== "1"` (opt-in) à `!= "0"` (opt-out, default ON) sur 9 sites | scheduler/auto_sync.go, api/handlers/sync_handler.go, sync/{comeback, engagement, performance, skill_rating_loaders, writes}.go, cmd/levelup/cmd_sync.go (2x) |
+| 3 fix | `backfillDominanceFlagsBatch` seed INSERT OR IGNORE placeholder rows avant UPDATE batch (sémantique legacy UPSERT préservée) | `internal/sync/comeback_postsync_persist.go` |
+
+**Découvertes pendant la session** :
+
+1. **BatchQueue async** est gate par 2 flags : `LEVELUP_PERSIST_BATCH=1` (déjà default ON) ET nouveau `LEVELUP_PERSIST_BATCH_ASYNC=1` (encore opt-in strict). Sans le 2e flag, path synchrone direct Persister.Persist (validé Phase 4.5). Avec : queue.Submit + worker + WAL durable + Drain shutdown.
+
+2. **Janitor** doit s'exécuter au boot (purge des données d'un crash précédent) + tick toutes les 24h. PurgeOldFetchCache cible `data/sync_cache/sync.RunDelta_*` > 7j, PurgeOldWAL cible `data/wal/*.json` ACKés > 7j (seulement si BatchQueue active).
+
+3. **Flip defaults — fix tests dominance** : 5 tests `TestBackfillDominanceFlags_*` ont commencé à échouer après le flip parce qu'ils ne pré-seedaient pas la row `player_match_enrichment` (le legacy `writeDominanceFlag` faisait `INSERT ON CONFLICT DO UPDATE`, le batch path faisait `UPDATE WHERE` strict). Fix : `backfillDominanceFlagsBatch` seed `INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES (?)` avant le UPDATE batch. En prod le `submitMatchAsBatch` pré-seed déjà → no-op.
+
+4. **Items NON livrés (raisons précises)** :
+   - **Item 6 PLAN_PHASE5 (revert `acad4603`)** : user a explicitement demandé explication avant action. Cf. section dédiée ci-dessous.
+   - **PR 2.5b auth (watcher daemon TokenStore→MultiUserTokenStore)** : estimation initiale ~1h trop optimiste après inspection. Le fallback fonctionnel est déjà en place (lines 953-987 main.go). Vraie migration = refactor tracker initial (3-4h) + design product (quelle XUID devient tracker si plusieurs valides). Documenté dans PLAN_AUTH_PROVIDER_UNIFICATION.md.
+
+**Smoke tests** :
+
+- **Cycle 7** (flags explicites POST wiring) : 4/4 OK, 0 FATAL (~3 min 30)
+- **Boot smoke `levelup-api.exe`** avec `LEVELUP_PERSIST_BATCH_ASYNC=1` : log `persist: BatchQueue activée (async path) wal_dir=...` confirmé
+- **Cycle 8** SANS aucun flag explicite : 4/4 OK, 0 FATAL, tous les sites batch actifs par default
+
+**Build/tests** :
+
+- `go build ./...` clean
+- `go vet ./...` clean
+- `go test ./internal/sync/... ./internal/persist/... ./internal/scheduler/...` all GREEN après fix dominance test
+- Total : 17 cycles smoke (1-8 + cycle 6 post-cleanup + tests bg) avec **0 FATAL ART** sous defaults nouveaux
+
+**Pré-requis prod inchangé** : `force_rebuild_art --all true` avant déploiement sur DB héritée d'un mode legacy (corruption ART pré-existante). Le default flip ne change rien à ce pré-requis.
+
+**Files livrés cette session (uncommitted)** :
+- `apps/go-api/cmd/server/main.go` (BatchQueue init + janitor goroutine + Drain shutdown)
+- `apps/go-api/internal/scheduler/auto_sync.go` (batchQueue field + WithBatchQueue method + flip default)
+- `apps/go-api/internal/api/handlers/sync_handler.go` (flip default)
+- `apps/go-api/internal/sync/comeback.go` (flip default)
+- `apps/go-api/internal/sync/comeback_postsync_persist.go` (seed INSERT OR IGNORE pre-UPDATE)
+- `apps/go-api/internal/sync/engagement.go` (flip default)
+- `apps/go-api/internal/sync/performance.go` (flip default)
+- `apps/go-api/internal/sync/skill_rating_loaders.go` (flip default)
+- `apps/go-api/internal/sync/writes.go` (flip default)
+- `apps/go-api/cmd/levelup/cmd_sync.go` (flip default, 2 sites)
+- `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md` (status 4.7 DONE + 4.8 différée)
+- `.ai/REFACTOR_COLLECT_PERSIST.md` (Phase 3 COMPLÉTÉE + items reportés résolus)
+- `.ai/PLAN_AUTH_PROVIDER_UNIFICATION.md` (status closure + PR 2.5b backlog précis)
+- `.ai/thought_log.md` (cette entrée)
+
+**État final des 2 plans après cette session** :
+
+- **REFACTOR_COLLECT_PERSIST** : Phases 1-2-3-4-4.5-4.6-4.7 ✅ — reste Item 6 (acad4603 revert) en attente d'explication user
+- **PLAN_AUTH_PROVIDER_UNIFICATION** : E.v1 ✅ — reste E.v2 + PR 2.5b en backlog documenté
+
+---
+
 ## [2026-05-24] Phase 4.6 cleanup anti-ART — singleflight + CHECKPOINT + BootARTGuard auto-heal supprimés
 
 **Statut** : Complété (4/7 items du PLAN_PHASE5, item 6 revert acad4603 différé pour validation user)

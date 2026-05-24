@@ -416,13 +416,13 @@ Match 2 → loadLatestLUSR() lit DB (inclut match 1) → compute cascade
 - [x] **2.3** Orchestrateur `submitOrInsertMatch` + flag `batchMode` + feature flag env var (commits `c2bb4200` + `cdadb4c4`, 2 tests + cablage scheduler/handler)
 - [x] **2.4** Tests TDD E2E cycle complet via `mockHaloClient` (commit `7e89acb3`, 4 tests E2E dont async path)
 
-### Phase 3 — Migration progressive (~3h) 🟡 PARTIELLEMENT VALIDÉE 2026-05-24 — résolu par Phase 4
+### Phase 3 — Migration progressive (~3h) ✅ COMPLÉTÉE 2026-05-24
 
 - [x] **3.1** Feature flag `LEVELUP_PERSIST_BATCH=1` (opt-in) — câblé dans scheduler + handler + CLI cmd_sync.go
 - [x] **3.2** Activé pour 4 joueurs en prod via diag endpoint (smoke test 2026-05-24)
-- [🟡] **3.3** Observation : **path INSERT OK** (10 matchs persistés, `persist_*_total_ok=10`, 0 FATAL sur ce path) MAIS **bug ART persiste sur post-sync compute** (LUSR/sessions/perf/friends UPDATE) → corrigé par Phase 4 (cf. plan dédié)
-- [ ] **3.4** Étendre durée d'observation : reprise possible après Phase 4.5 (smoke test prod avec `LEVELUP_POSTSYNC_INSERT_ONLY=1`)
-- [ ] **3.5** Flip default à opt-out — bloqué jusqu'à Phase 4.5 OK
+- [🟡→✅] **3.3** Path INSERT validé Phase 4.5 (12 syncs/0 FATAL) + post-sync compute corrigé Phase 4 (5 sites batch + RebuildMSR)
+- [x] **3.4** Durée d'observation étendue : 4 cycles (3+4+5+6) × 4 joueurs = 16 syncs / 0 FATAL avec `LEVELUP_PERSIST_BATCH=1 LEVELUP_POSTSYNC_INSERT_ONLY=1`
+- [x] **3.5** Flip default à opt-out — ✅ LIVRÉ Phase 4.7 (commit pending) : 9 sites passés à `!= "0"` (default ON). Set `LEVELUP_PERSIST_BATCH=0` ou `LEVELUP_POSTSYNC_INSERT_ONLY=0` pour fallback legacy
 
 **Découverte critique 2026-05-24** : Phase 2 a refactor le path **INSERT per-match** (succès — 10 matchs persistés sans FATAL pour XxDaemonGamerxX). Mais le **post-sync compute** (LUSR cascade, sessions recalc, performance scores, friends recompute, dominance, engagement) faisait toujours des UPDATE concurrents sur `player_match_enrichment` + `match_skill_rank` → bug ART déclenché. **Résolu par Phase 4** (5 sites refactor batch INSERT-only via `PostSyncEnrichmentPersister` + `PostSyncLUSRPersister`, 2 sites déjà batchés laissés en l'état). Cf. `.ai/PLAN_PHASE4_POSTSYNC_REFACTOR.md`.
 
@@ -470,11 +470,11 @@ Cf. `.ai/PLAN_PHASE5_CLEANUP_ANTI_ART.md` pour le plan détaillé.
 - [x] **B7** Expvar metrics (`persist_shared_total_ok/_error`, `persist_player_total_ok/_error`, `persist_batch_committed_total`, `persist_batch_submitted_total`, `persist_batch_submit_error`)
 - [x] **Async layer optionnelle** — `BatchQueue.PendingCount()` + `Drain(ctx)` + `WithBatchQueue` + Drain à fin de cycle + 4 tests TDD + 1 E2E async GREEN
 
-### Items reportés (pas critiques pour Phase 3)
+### Items reportés (pas critiques pour Phase 3) — STATUS 2026-05-24
 
-- [ ] **Cache fetch intermédiaire** (`data/sync_cache/{cycle_id}/`) — feature de debug + economie quota API (cf. §3.5). Mentionné dans doc.go mais pas encore implémenté.
+- [x] **Cache fetch intermédiaire** (`data/sync_cache/{cycle_id}/`) — ✅ LIVRÉ : `internal/sync/fetch_cache.go` actif (logs montrent `cache fetch intermédiaire actif` à chaque cycle). Format JSON par match (stats/skill/film + chunks .bin). Purge périodique livrée Phase 4.7 (janitor 24h, maxAge 7j).
 - [ ] **B8** Multi-titres workers map (`workers[slug][target]`) — forward-compat sans valeur immédiate (Halo Infinite seul titre actuel)
-- [ ] Câblage `BatchQueue` côté `cmd/server/main.go` au boot (création queue + start workers + injection dans SyncEngine via With...) — code prêt, activation différée
+- [x] **Câblage `BatchQueue`** côté `cmd/server/main.go` au boot — ✅ LIVRÉ Phase 4.7 : `NewBatchQueue` + `WithBatchQueue` + Drain shutdown. Gate `LEVELUP_PERSIST_BATCH_ASYNC=1` (default OFF — additif). Sans queue : path synchrone direct (validé Phase 4.5, default ON).
 
 **Total effort estimé** : ~18h en TDD strict, sur 2-3 jours.
 **Total livré** : ~12h effective sur 1 jour intense. Activation prod par user + Phase 5 cleanup post-validation = ~3h restants.
