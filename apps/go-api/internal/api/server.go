@@ -770,6 +770,11 @@ func NewRouter(
 			}
 			profileH.Mount(r)
 
+			// Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
+			// GET /api/v1/players/{player_slug}/patterns?n=50
+			patternsH := handlers.NewPatternsHandler(progressionResolve, defaultProgressionTitleSlug())
+			patternsH.Mount(r)
+
 			// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
 			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4.5 + §5.1.
 			campaignH := handlers.NewCampaignHandler(progressionResolve, defaultProgressionTitleSlug())
