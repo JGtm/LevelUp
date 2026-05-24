@@ -187,19 +187,51 @@ func TestExtractAssetID_MissingKey(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestDetermineModeCategoryTable(t *testing.T) {
-	cases := []struct{ input, want string }{
-		{"ranked-arena-2024", "Ranked"},
-		{"firefight-heroic", "Firefight"},
-		{"btb-heavies", "BTB"},
-		{"big-team-tactical", "BTB"},
-		{"fiesta-slayer", "Fiesta"},
-		{"assassination-arena", "Assassin"},
-		{"unknown-mode", "Other"},
+	cases := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		// Ranked variants
+		{"ranked_arena_2024", "ranked-arena-2024", "Ranked"},
+		{"ranked_uppercase", "RANKED-SLAYER", "Ranked"},
+		{"ranked_mixed_case", "Ranked-Arena", "Ranked"},
+
+		// Firefight variants
+		{"firefight_heroic", "firefight-heroic", "Firefight"},
+		{"firefight_capitalized", "Firefight-Boss-Rush", "Firefight"},
+
+		// BTB variants : 3 patterns reconnus
+		{"btb_short", "btb-heavies", "BTB"},
+		{"big_team_dashed", "big-team-tactical", "BTB"},
+		{"big_team_spaced", "big team battle", "BTB"},
+		{"BTB_uppercase", "BTB-CTF", "BTB"},
+
+		// Fiesta
+		{"fiesta_slayer", "fiesta-slayer", "Fiesta"},
+		{"fiesta_caps", "FIESTA-CTF", "Fiesta"},
+
+		// Assassin
+		{"assassination", "assassination-arena", "Assassin"},
+		{"assassin_short", "assassin-mode", "Assassin"},
+
+		// Other / Custom (fallback)
+		{"unknown_mode", "unknown-mode", "Other"},
+		{"empty_string", "", "Other"},
+		{"random_garbage", "xyz-foo-bar-baz", "Other"},
+		{"slayer_alone", "slayer", "Other"}, // pas de keyword reconnu
+
+		// Edge cases : pair_name avec multiple keywords — priorité du switch
+		// (ranked > firefight > btb > fiesta > assassin > other).
+		{"ranked_and_btb_ranked_wins", "ranked-btb-arena", "Ranked"},
+		{"firefight_and_fiesta_firefight_wins", "firefight-fiesta", "Firefight"},
 	}
 	for _, c := range cases {
-		got := determineModeCategory(c.input)
-		if got != c.want {
-			t.Errorf("determineModeCategory(%q) = %q, want %q", c.input, got, c.want)
-		}
+		t.Run(c.name, func(t *testing.T) {
+			got := determineModeCategory(c.input)
+			if got != c.want {
+				t.Errorf("determineModeCategory(%q) = %q, want %q", c.input, got, c.want)
+			}
+		})
 	}
 }
