@@ -548,7 +548,16 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 			"achievements_synced", postResult.AchievementsSynced,
 			"citations_computed", postResult.CitationsComputed,
 			"dominance_flags", postResult.DominanceFlagsComputed,
+			"fatal_errors", len(postResult.FatalErrors),
 		)
+	}
+	// Phase 5 ART — Status sync honnête : propager les FATAL DuckDB du
+	// post-sync vers result.Errors pour que SyncResult.Status() retourne
+	// "partial_success" au lieu de "success" quand une étape critique a
+	// invalidé une DB. Les WARN existants restent intacts pour la trace ;
+	// seuls les FATAL DB (IsInvalidatedError) sont promus en erreur sync.
+	for _, fatalErr := range postResult.FatalErrors {
+		result.AddError("post-sync " + fatalErr)
 	}
 
 	// â”€â”€â”€ sync_meta â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
