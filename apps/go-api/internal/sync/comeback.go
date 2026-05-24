@@ -173,37 +173,11 @@ ORDER BY he.time_ms ASC`, matchID)
 }
 
 // writeDominanceFlag écrit ou met à jour le dominance_flag dans player_match_enrichment.
-//
-// Pattern UPDATE-then-INSERT (2026-05-23, contournement bug ART DuckDB
-// DELETE-side). On évite ON CONFLICT DO UPDATE qui fait DELETE+INSERT en
-// interne et stresse l'index ART de player_match_enrichment.
-//
-// 1. UPDATE in-place : ne touche pas l'index ART (la PK match_id ne change pas).
-// 2. Si RowsAffected == 0 → la row n'existe pas → INSERT.
-//
-// Cas anormal : si l'INSERT échoue avec PK conflict, c'est une race rare
-// (autre goroutine a inséré entre temps). Log + ignore — l'autre goroutine
-// a déjà écrit la valeur.
 func writeDominanceFlag(ctx context.Context, db *sql.DB, matchID string, flag int) error {
-	res, err := db.ExecContext(ctx,
-		`UPDATE player_match_enrichment SET dominance_flag = ? WHERE match_id = ?`,
-		flag, matchID)
-	if err != nil {
-		return fmt.Errorf("writeDominanceFlag update: %w", err)
-	}
-	n, _ := res.RowsAffected()
-	if n > 0 {
-		return nil
-	}
-	// Row n'existe pas → INSERT.
-	_, err = db.ExecContext(ctx,
-		`INSERT INTO player_match_enrichment (match_id, dominance_flag) VALUES (?, ?)`,
+	_, err := db.ExecContext(ctx, `
+INSERT INTO player_match_enrichment (match_id, dominance_flag)
+VALUES (?, ?)
+ON CONFLICT (match_id) DO UPDATE SET dominance_flag = excluded.dominance_flag`,
 		matchID, flag)
-	if err != nil && isPKConflictError(err) {
-		// Race rare : autre goroutine a inséré entre l'UPDATE et l'INSERT.
-		// La valeur dominance_flag est probablement la même (computed déterministiquement)
-		// → tolère silencieusement.
-		return nil
-	}
 	return err
 }
