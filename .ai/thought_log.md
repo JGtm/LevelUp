@@ -1,3 +1,46 @@
+## [2026-05-24] Diagnostic crash home post-sync — audit ART exhaustif + plan d'éradication
+
+**Statut** : Diagnostic complété, audit exhaustif livré, plan élargi rédigé. Implémentation à valider.
+
+**Tâche** : Diagnostiquer le crash en boucle de la home (`GET /api/v1/players/JGtm/pages/home` → 500 `sql: database is closed`) qui apparaît après chaque sync sur la branche `refactor/collect-persist`. **Suite à demande utilisateur** : auditer TOUS les sites pouvant ressusciter le bug ART, pas juste LUSR.
+
+**Analyse** (chronologie validée uniquement post-restart 20:18:30) :
+
+1. Sync Chocoboflor à 20:41:04 → FATAL ART exact `"Failed to delete all rows from index. Only deleted 0 out of 1 rows"` sur `match_skill_rank` (player DB). Chunk 14 colonnes, presque entièrement NULL sauf match_id + rating_type=LUSR + chain=arena_objectif.
+2. Cascade : friends recompute, achievements, drop des vues mv_player_matches/mv_map_stats — toutes invalidées par le FATAL.
+3. Sync se déclare `status:"success"` malgré `lusr_updated:0` et `warnings:8`. **Le statut ment.**
+4. À partir de 20:38, la home de JGtm renvoie 500 en continu — handle `*sql.DB` détenue par `PlayerMatchesRepo` est fermée mais réutilisée.
+
+**Cause racine** :
+- `skill_rating_postsync_persist.go` annonce être INSERT-only mais fait en réalité `DELETE + INSERT` en transaction (commentaire lignes 7-9). Le `DELETE` déclenche le bug ART.
+- ADR-0019 et CLAUDE.md classaient LUSR comme "non concerné par l'ART bug" — **hypothèse démentie par les logs de ce soir**.
+- Pas de mécanisme de recovery sur les handles player DB invalidées (équivalent du swap RO↔RW du SharedDBProvider qui existe côté shared).
+
+**Audit exhaustif réalisé** ([.ai/audit_art_writes.md](audit_art_writes.md)) — 109 fichiers Go analysés, ~50 sites runtime à risque ART identifiés :
+- **9 sites CRITIQUES** (player DB hot path) : LUSR persister (×2), CSR writes player + shared, performance/comeback/engagement paths legacy, achievements, post_sync_deltas
+- **~20 sites HAUT** (player DB / shared DB) : UPDATE match_registry/match_participants, career snapshots, pve INSERT OR REPLACE, friends recompute, streaks, records
+- **~20 sites MOYENS** (cache metadata, handlers HTTP basse fréquence) : reportés en PR ultérieurs
+
+**Décisions de design adoptées** (les plus pérennes possibles) :
+
+- **A — Schema append-only + vue latest** sur tables player/shared hot path (`match_skill_rank`, `match_csrs`, `player_csr_snapshots`, `pve_match_stats`). Plus jamais de DELETE → bug ART impossible par construction.
+- **B — `player_match_enrichment`** : suppression du path legacy (`LEVELUP_POSTSYNC_INSERT_ONLY=0`), forcer batchMode toujours.
+- **C — Pattern SELECT-then-UPDATE-or-INSERT** pour handlers HTTP basse fréquence (streaks, records, prestige).
+- **D — Provider player DB résilient** : `RecoverFromFATAL(playerSlug)` + retry handler home → 503 + Retry-After au lieu de 500.
+- **E — Status sync honnête** : `partial` au lieu de `success` quand le post-sync foire.
+- **F — Guard-rail anti-régression** : test grep + allowlist explicite dans `no_art_patterns_test.go`, fail sur nouveau hit.
+
+**Corrections importantes apportées** :
+- CLAUDE.md affirme à tort "LUSR/citations/engagement peuvent rester UPDATE car non concernés par l'ART bug" — démentie par crash 20:41:04. À retirer (Phase 7).
+- Le pattern "DELETE batch + INSERT batch en TX" n'est PAS un fix : c'est exactement ce qui a planté ce soir.
+- Le test `art_upsert_patterns_test.go` en `:memory:` n'a rien prouvé (0 errors = inconclusif, pas safe).
+
+**Plan détaillé** : voir [.ai/PLAN_LUSR_ART_HOME_CRASH.md](PLAN_LUSR_ART_HOME_CRASH.md) — 7 phases, ~3 à 5 jours, branche `fix/art-eradication-and-home-resilience`.
+
+**Prochaine étape** : validation utilisateur du plan élargi, puis Phase 1 (3 tests ART repro rouges) avant tout code de fix.
+
+---
+
 ## [2026-05-24] Sessions incrémentales — O(new_matches) au lieu de O(all_matches)
 
 **Statut** : Complété
