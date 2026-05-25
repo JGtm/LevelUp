@@ -73,6 +73,34 @@ Original error: "Invalid Input Error: Failed to delete all rows from index. Only
 			err:  context.Canceled,
 			want: false,
 		},
+		// ─── Phase 5 ART suite (corrigé 2026-05-25) ─────────────────────────
+		// Signatures observées en prod 2026-05-25 11:20-11:23 sur la player
+		// DB de JGtm : "sql: database is closed" massif (home + career +
+		// teammates + filters + explorer). Avant ce fix, IsInvalidatedError
+		// retournait `false` → WithReopenOnInvalidated ne tentait pas le
+		// Reopen → 500 cascade pendant plusieurs minutes.
+		{
+			name: "stdlib database/sql closed (signature exacte prod 11:22:57)",
+			err:  errors.New("sql: database is closed"),
+			want: true,
+		},
+		{
+			name: "stdlib closed wrappée dans une chaîne d'erreurs métier",
+			err: errors.New(
+				"MatchHistoryService.GetPage: MatchHistoryRepo.LoadAll: LoadPlayerMatchEnrichments: sql: database is closed",
+			),
+			want: true,
+		},
+		{
+			name: "variante driver-level 'connection was closed'",
+			err:  errors.New("connection was closed"),
+			want: true,
+		},
+		{
+			name: "variante 'database is closed' sans préfixe sql:",
+			err:  errors.New("database is closed"),
+			want: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
