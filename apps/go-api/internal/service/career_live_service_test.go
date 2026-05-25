@@ -90,9 +90,8 @@ func (m *mockCareerLiveRepo) InsertCareerProgressionIfChanged(_ context.Context,
 }
 
 type mockIdentityBuilder struct {
-	receivedRow     *duckdb.CareerRankRow
-	receivedOverlay *duckdb.SpartanIdentityRow
-	returnNil       bool
+	receivedRow *duckdb.CareerRankRow
+	returnNil   bool
 }
 
 func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Context, row *duckdb.CareerRankRow) *domain.HomeSpartanIdentityRow {
@@ -113,31 +112,6 @@ func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Contex
 		id.EmblemImageURL = &e
 	}
 	return id
-}
-
-// ApplySpartanIdentityOverlay (Phase 3) : remplace SpartanID + URLs si
-// spartanRow présent. Implémentation simple pour les tests.
-func (m *mockIdentityBuilder) ApplySpartanIdentityOverlay(identity *domain.HomeSpartanIdentityRow, spartanRow *duckdb.SpartanIdentityRow) {
-	m.receivedOverlay = spartanRow
-	if identity == nil || spartanRow == nil {
-		return
-	}
-	if spartanRow.SpartanID != "" {
-		s := spartanRow.SpartanID
-		identity.SpartanID = &s
-	}
-	if spartanRow.BannerImageURL != "" {
-		b := spartanRow.BannerImageURL
-		identity.BannerImageURL = &b
-	}
-	if spartanRow.EmblemImageURL != "" {
-		e := spartanRow.EmblemImageURL
-		identity.EmblemImageURL = &e
-	}
-	if spartanRow.BackdropImageURL != "" {
-		k := spartanRow.BackdropImageURL
-		identity.BackdropImageURL = &k
-	}
 }
 
 // --- helpers ---
@@ -684,11 +658,6 @@ func (b *realBuilderForOverlay) BuildSpartanIdentityFromCareerRow(_ context.Cont
 		out.BackdropImageURL = &s
 	}
 	return out
-}
-
-// ApplySpartanIdentityOverlay (Phase 3) — implémentation noop pour les tests
-// qui n'ont pas besoin de l'overlay.
-func (b *realBuilderForOverlay) ApplySpartanIdentityOverlay(_ *domain.HomeSpartanIdentityRow, _ *duckdb.SpartanIdentityRow) {
 }
 
 // TestCareerLive_NilAPIResponse_NotCached vérifie que si GetCareerProgress retourne

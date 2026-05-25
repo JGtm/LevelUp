@@ -785,13 +785,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 func (r *ServiceRegistry) newCareerLiveService(pdb *duckdb.PlayerDB, homeRepo *duckdb.HomeRepo) *service.CareerLiveService {
 	repo := duckdb.NewCareerLiveRepo(pdb)
 	factory := service.CareerFetcherFactoryFromTokens(10)
-	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 2 (2026-05-25) : repo dédié
-	// `spartan_identity` câblé via WithSpartanIdentityRepo. La source de
-	// vérité customisation passe progressivement vers cette table (rank/XP
-	// reste dans career_progression).
-	spartanRepo := duckdb.NewSpartanIdentityRepo(pdb)
-	return service.NewCareerLiveService(repo, homeRepo, factory, r.careerLiveCache).
-		WithSpartanIdentityRepo(spartanRepo)
+	return service.NewCareerLiveService(repo, homeRepo, factory, r.careerLiveCache)
 }
 
 // newHomeRepo construit un HomeRepo avec l'AssetURLAdapter du titre câblé
