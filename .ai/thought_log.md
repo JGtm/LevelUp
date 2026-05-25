@@ -1,3 +1,58 @@
+## [2026-05-25] D6.4 — Sync V2 adapters PostSync + CycleBatchPersister via wrappers V1
+
+**Statut** : Complété (D6.4 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : compromis créatif validé par utilisateur — au lieu de dupliquer 600-1000 lignes des heals V1 dans V2, on ajoute 2 wrappers EXPORTÉS trivialement reviewable dans V1 (~80 lignes total) + adapters V2 qui délèguent (~250 lignes).
+
+**Décisions techniques** :
+
+1. **V1 wrappers** (`internal/sync/engine_v2bridge.go`, ~85 lignes en fichier isolé) :
+   - `(*SyncEngine).RunPostSyncForV2(ctx, playerDB, sharedDB, client, insertedIDs) → domain.PostSyncResult` : wrapper d'1 ligne vers `runPostSyncPipeline` interne. Aucune logique ajoutée. Reviewable trivialement.
+   - `BuildBatchFromRawForV2(ctx, titleSlug, gamertag, xuid, matchID, statsJSON, skillData, highlight..., ...) → *persist.MatchBatch` : parsing pur (raw JSON → MatchBatch). Délègue aux fonctions Extract* déjà exportées + `buildBatchFromFetchedMatchCtx` interne + `persist.SanitizeBatch`. ~50 lignes (mirror de fetchMatchData sans le fetch).
+   - Fichier isolé `engine_v2bridge.go` : suppression triviale en D8 cleanup (`git rm` 1 fichier).
+
+2. **V2 PostSyncRunner adapter** (`post_sync_runner.go` + `post_sync_runner_mapping.go`) :
+   - `SyncEngineFactory func(ctx, p PlayerProfile) → *sync.SyncEngine` : injection runtime du constructeur configuré (WithCSRSeasonID, WithFriendsLoader, etc.). Tests injectent une factory minimaliste.
+   - Délègue à `engine.RunPostSyncForV2(...)`.
+   - Mapping `domain.PostSyncResult` → `PlayerPostSyncResult` via init() qui installe `postSyncResultMapper` (évite import cyclique futur si on refactor).
+
+3. **V2 CycleBatchPersister adapter** (`persist_v1bridge.go`) :
+   - Pour chaque `SharedMatchData` du cycle : convert `Skill map[string]any` → `map[string]*MatchSkillData` via type assertion, appel `BuildBatchFromRawForV2`, submit à `persist.BatchQueue.Submit`.
+   - Drain final avec timeout configurable (60s default).
+   - Fetcher inconnu / parse error → log WARN + skip (non-fatal pour le cycle).
+   - Queue nil → erreur fatale (V2 nécessite la queue partagée).
+
+4. **Changement interface PostSyncRunner** : ajout `insertedIDs []string` au signature `RunPostSync(ctx, p, insertedIDs)`. Propagation depuis `RunPostSync` (function) qui prend `insertedByPlayer map[string][]string`. L'orchestrator (`cycle.go`) calcule `insertedByPlayer` après Phase 5 depuis `fetched.Matches × dedup.ParticipantsByMatch`. Tests D5 mock signature mise à jour.
+
+5. **Fix cycle d'import** : `contract_test.go` passé en `package sync_test` (black-box) car il importe v2 qui importe sync (cycle interdit en white-box).
+
+**Tests** :
+- 5 nouveaux tests `TestCycleBatchPersister_*` (nil queue error, empty batch drain, unknown fetcher skip, parse error non-fatal, real queue smoke).
+- Tests existants D5 et D6.1 adaptés au nouveau signature `RunPostSync(..., nil)`.
+
+**Résultats observés** :
+- `go build ./...` OK (V1 + V2 + scheduler + main.go).
+- `go vet ./internal/sync/v2/` clean.
+- `go test ./internal/sync/v2/` : 81/81 PASS en 1.23s.
+- `go test ./internal/sync/ -run TestD0_` (contract smoke) : PASS.
+- V1 modifications : **1 nouveau fichier** (`engine_v2bridge.go`, 85 lignes), pas de modif des fichiers V1 existants.
+
+**Bilan ligne par ligne ajouté V1** :
+- engine_v2bridge.go : ~85 lignes (2 wrappers triviaux + doc)
+
+**Bilan V2** (D6.4 seul) :
+- post_sync_runner.go : ~110 lignes
+- post_sync_runner_mapping.go : ~35 lignes
+- persist_v1bridge.go : ~145 lignes
+- persist_v1bridge_test.go : ~95 lignes
+- modifs cycle.go + post_sync.go + post_sync_test.go : ~15 lignes net
+
+**Conclusion / prochaine étape** : D6.4 livrable. Reste D6.5 : wiring `cmd/server/main.go` (instancier l'orchestrator V2 + l'injecter via `WithCycleOrchestrator`) + modifier `scheduler.RunOnce` pour dispatcher V1↔V2 selon `shouldUseV2()`. Ensuite shadow run + D8 cleanup.
+
+---
+
 ## [2026-05-25] D6.3 — Sync V2 adapters HaloClient (3 fetchers V2-native)
 
 **Statut** : Complété (D6.3 du plan ADR 0020)

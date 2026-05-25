@@ -23,7 +23,8 @@ type mockPostSyncRunner struct {
 	totalCalls  atomic.Int32
 }
 
-func (m *mockPostSyncRunner) RunPostSync(ctx context.Context, p PlayerProfile) (PlayerPostSyncResult, error) {
+func (m *mockPostSyncRunner) RunPostSync(ctx context.Context, p PlayerProfile, insertedIDs []string) (PlayerPostSyncResult, error) {
+	_ = insertedIDs // mock ignore (vérifié dans test dédié si besoin)
 	cur := m.inFlight.Add(1)
 	defer m.inFlight.Add(-1)
 	for {
@@ -61,7 +62,7 @@ func TestRunPostSync_BasicHappyPath(t *testing.T) {
 			"bob":   {CitationsComputed: 2, SkillHealed: 10},
 		},
 	}
-	res, err := RunPostSync(context.Background(), players, runner, 0)
+	res, err := RunPostSync(context.Background(), players, runner, 0, nil)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -80,7 +81,7 @@ func TestRunPostSync_BasicHappyPath(t *testing.T) {
 }
 
 func TestRunPostSync_EmptyPlayers(t *testing.T) {
-	res, err := RunPostSync(context.Background(), nil, &mockPostSyncRunner{}, 0)
+	res, err := RunPostSync(context.Background(), nil, &mockPostSyncRunner{}, 0, nil)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -101,7 +102,7 @@ func TestRunPostSync_FailureIsolation(t *testing.T) {
 			"alice": errors.New("post-sync panic recovered"),
 		},
 	}
-	res, _ := RunPostSync(context.Background(), players, runner, 0)
+	res, _ := RunPostSync(context.Background(), players, runner, 0, nil)
 	if res.PerPlayer["alice"].Err == nil {
 		t.Errorf("alice should have Err set")
 	}
@@ -129,7 +130,7 @@ func TestRunPostSync_TrueParallelExecution(t *testing.T) {
 	runner := &mockPostSyncRunner{delayFor: delayMap}
 
 	start := time.Now()
-	res, err := RunPostSync(context.Background(), players, runner, 0)
+	res, err := RunPostSync(context.Background(), players, runner, 0, nil)
 	elapsed := time.Since(start)
 
 	if err != nil {
@@ -160,7 +161,7 @@ func TestRunPostSync_ParallelismBound(t *testing.T) {
 	players := mkPlayers(playerSlugs...)
 	runner := &mockPostSyncRunner{delayFor: delayMap}
 
-	res, err := RunPostSync(context.Background(), players, runner, 2)
+	res, err := RunPostSync(context.Background(), players, runner, 2, nil)
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -180,7 +181,7 @@ func TestRunPostSync_PlayerSlugInvariantForced(t *testing.T) {
 			"alice": {PlayerSlug: "WRONG", CitationsComputed: 1},
 		},
 	}
-	res, _ := RunPostSync(context.Background(), players, runner, 0)
+	res, _ := RunPostSync(context.Background(), players, runner, 0, nil)
 	if res.PerPlayer["alice"].PlayerSlug != "alice" {
 		t.Errorf("PlayerSlug = %q, want alice (garde-rail invariant)", res.PerPlayer["alice"].PlayerSlug)
 	}
@@ -191,7 +192,7 @@ func TestRunPostSync_DurationPopulated(t *testing.T) {
 	runner := &mockPostSyncRunner{
 		delayFor: map[string]time.Duration{"alice": 20 * time.Millisecond},
 	}
-	res, _ := RunPostSync(context.Background(), players, runner, 0)
+	res, _ := RunPostSync(context.Background(), players, runner, 0, nil)
 	if res.PerPlayer["alice"].Duration == 0 {
 		t.Error("PlayerPostSyncResult.Duration should be set")
 	}
@@ -212,7 +213,7 @@ func TestRunPostSync_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	start := time.Now()
-	_, _ = RunPostSync(ctx, players, runner, 0)
+	_, _ = RunPostSync(ctx, players, runner, 0, nil)
 	elapsed := time.Since(start)
 	if elapsed > 400*time.Millisecond {
 		t.Errorf("ctx cancel not respected: elapsed=%v", elapsed)

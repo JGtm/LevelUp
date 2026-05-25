@@ -50,9 +50,14 @@ type PlayerPostSyncResult struct {
 // reader), appelle runPostSyncPipeline, libère les leases, retourne les
 // compteurs PostSyncResult mappés vers PlayerPostSyncResult.
 //
+// insertedIDs contient les match_ids fraîchement insérés en Phase 5 pour
+// ce joueur. Utilisé par runPostSyncPipeline pour cibler les heals weapon
+// kills + dominance flags sur les nouveaux matchs. Vide si le joueur n'a
+// rien eu d'inséré (cas heal-only).
+//
 // Les tests utilisent un mock direct.
 type PostSyncRunner interface {
-	RunPostSync(ctx context.Context, p PlayerProfile) (PlayerPostSyncResult, error)
+	RunPostSync(ctx context.Context, p PlayerProfile, insertedIDs []string) (PlayerPostSyncResult, error)
 }
 
 // PostSyncCycleResult agrège le résultat de Phase 6.
@@ -76,11 +81,15 @@ type PostSyncCycleResult struct {
 //   - Erreurs par-joueur capturées dans PerPlayer[slug].Err, n'annulent
 //     pas les autres.
 //   - Retourne err != nil uniquement sur échec global (ctx annulé).
+//   - insertedByPlayer (peut être nil) propage les match_ids insérés en
+//     Phase 5 à chaque post-sync (cible weapon_kills/dominance sur les
+//     nouveaux matchs).
 func RunPostSync(
 	ctx context.Context,
 	players []PlayerProfile,
 	runner PostSyncRunner,
 	parallelism int,
+	insertedByPlayer map[string][]string,
 ) (PostSyncCycleResult, error) {
 	start := time.Now()
 	res := PostSyncCycleResult{
@@ -100,7 +109,8 @@ func RunPostSync(
 		p := p
 		eg.Go(func() error {
 			pStart := time.Now()
-			pr, err := runner.RunPostSync(egCtx, p)
+			inserted := insertedByPlayer[p.PlayerSlug]
+			pr, err := runner.RunPostSync(egCtx, p, inserted)
 			pr.PlayerSlug = p.PlayerSlug // garde-rail invariant
 			if pr.Duration == 0 {
 				pr.Duration = time.Since(pStart)

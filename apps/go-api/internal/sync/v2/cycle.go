@@ -208,7 +208,15 @@ func (o *CycleOrchestratorImpl) Run(
 	}
 
 	// ─── Phase 6 — Post-sync ────────────────────────────────────────────
-	postRes, err := RunPostSync(ctx, players, o.postSyncRunner, o.cfg.PostSyncParallelism)
+	// Calcule insertedByPlayer depuis fetched + dedup pour cibler les heals
+	// weapon_kills/dominance sur les nouveaux matchs.
+	insertedByPlayer := make(map[string][]string, len(players))
+	for mID := range fetched.Matches {
+		for _, slug := range dedup.ParticipantsByMatch[mID] {
+			insertedByPlayer[slug] = append(insertedByPlayer[slug], mID)
+		}
+	}
+	postRes, err := RunPostSync(ctx, players, o.postSyncRunner, o.cfg.PostSyncParallelism, insertedByPlayer)
 	res.PhaseDurations[PhasePostSync] = postRes.Duration
 	if err != nil {
 		res.Duration = time.Since(start)
