@@ -117,6 +117,15 @@ func main() {
 	// arrive bien plus tard dans main, après le setup logging).
 	config.BootstrapEnvLocal()
 
+	// --- 0.6 Wirer la factory SocialPersister (ADR 0020 Phase 5) ---
+	// Permet à duckdb.openPlayerDB d'instancier un SharedSocialPersister
+	// sans cycle d'import (duckdb -> persist serait cyclique car persist
+	// -> duckdb via combined_persister.go). Le hook factory est lu à chaque
+	// openPlayerDB ; si nil les writes shared_social retombent en legacy.
+	duckdb.SocialPersisterFactory = func(db *sql.DB) duckdb.SocialPersister {
+		return persist.NewSharedSocialPersister(db)
+	}
+
 	// --- 1. Logging structuré ---
 	// Trois formats console (LEVELUP_LOG_FORMAT) :
 	//   - compact (défaut) : ConsoleHandler — `HH:MM:SS [INFO] sync.postSync: msg k=v`

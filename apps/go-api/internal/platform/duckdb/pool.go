@@ -318,22 +318,27 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}
 
 	// Phase 4 du refactor shared_social Collect→Persist (ADR 0020) :
-	// le SocialPersister sera injecté APRÈS openPlayerDB par main.go
-	// (pour éviter le cycle d'import duckdb↔persist). Tant qu'il est nil,
-	// les writes via Repo retomberont sur le chemin legacy db.Exec.
+	// instancier le SocialPersister via la factory injectée par main.go.
+	// Si la factory n'est pas configurée (cas tests, bootstrap CLI), reste
+	// nil et les repos retombent sur leur chemin legacy db.Exec.
+	var socialPersister SocialPersister
+	if socialDB != nil && SocialPersisterFactory != nil {
+		socialPersister = SocialPersisterFactory(socialDB.SQLDb())
+	}
 
 	return &PlayerDB{
-		Player:       playerDB,
-		Shared:       sharedDB,
-		SharedSocial: socialDB,
-		Metadata:     metaDB,
-		sharedDBPath: cfg.SharedDBPath,
-		userTimezone: cfg.UserTimezone,
-		bSwapEnabled: bSwapEnabled,
-		SharedReader: sharedReader,
-		XUID:         cfg.XUID,
-		Gamertag:     cfg.Gamertag,
-		TitleSlug:    cfg.TitleSlug,
+		Player:          playerDB,
+		Shared:          sharedDB,
+		SharedSocial:    socialDB,
+		SocialPersister: socialPersister,
+		Metadata:        metaDB,
+		sharedDBPath:    cfg.SharedDBPath,
+		userTimezone:    cfg.UserTimezone,
+		bSwapEnabled:    bSwapEnabled,
+		SharedReader:    sharedReader,
+		XUID:            cfg.XUID,
+		Gamertag:        cfg.Gamertag,
+		TitleSlug:       cfg.TitleSlug,
 	}, nil
 }
 
