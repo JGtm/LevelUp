@@ -101,6 +101,10 @@ func (r *fakeTemplateRepo) Suggest(_ context.Context, _ string, _ []string, coun
 	return r.templates[:count], nil
 }
 func (r *fakeTemplateRepo) Replace(_ context.Context, _ string, _ []Template) error { return nil }
+func (r *fakeTemplateRepo) UpsertOne(_ context.Context, t Template) error {
+	r.templates = append(r.templates, t)
+	return nil
+}
 
 // buildFullService crée un service avec tous les fakes.
 func buildFullService() (*service, *fakeChallengeRepo, *fakeArcRepo, *fakeSquadChallengeRepo, *fakeSquadRepo, *fakeTemplateRepo) {

@@ -90,6 +90,11 @@ func (r *PrestigeTemplateRepo) Suggest(ctx context.Context, titleSlug string, ex
 	return out, rows.Err()
 }
 
+// UpsertOne insère ou met à jour un seul template (wrapper sur Replace).
+func (r *PrestigeTemplateRepo) UpsertOne(ctx context.Context, t prestige.Template) error {
+	return r.Replace(ctx, t.TitleSlug, []prestige.Template{t})
+}
+
 func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, templates []prestige.Template) error {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
