@@ -685,16 +685,26 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 	if pdb == nil || pdb.SharedSocial == nil || pdb.XUID == "" {
 		return fmt.Errorf("upsertPlayerRecord: shared_social or xuid missing")
 	}
-	// pdb.SharedSocial est déjà ouverte en mode RW partagé par le pool joueur
-	// (cf. pool.go::openPlayerDB → OpenReadWriteShared). Pas besoin de ré-ouvrir
-	// un *DB séparé — ça créerait un refcount supplémentaire pour rien et
-	// laissait, avant ce fix, un OpenReadWrite (maxOpenConns=1) en compétition
-	// avec OpenReadWriteShared (maxOpenConns=4) pour la même clé cache "rw:path".
+
+	// ADR 0022 : route via Persister (append-only sur player_records_history
+	// + CHECKPOINT garanti). Élimine le UPSERT problématique qui pressionnait
+	// l'index ART DuckDB (bug #9277) et accumulait du WAL non-checkpointed
+	// (bug #7659). La vue player_records_latest expose toujours la dernière
+	// valeur pour les lecteurs.
 	//
-	// Concurrence : DuckDB sérialise les writes au niveau MVCC. Pour les volumes
-	// shared_social (likes, favoris, ascension, records post-sync) — micro-INSERTs
-	// — la sérialisation interne suffit. Les writers HTTP qui veulent une
-	// arbitration explicite peuvent passer par pdb.AcquireSharedSocialWriter.
+	// Fallback legacy : si SocialPersister pas wired (cas tests), on garde
+	// l'UPSERT direct pour compatibilité.
+	if pdb.SocialPersister != nil {
+		var matchIDPtr *string
+		if matchID != "" {
+			matchIDPtr = &matchID
+		}
+		now := time.Now().UTC()
+		return pdb.SocialPersister.AppendPlayerRecord(ctx,
+			pdb.XUID, metric, "all_time", value, &now, matchIDPtr)
+	}
+
+	// Fallback legacy (sans Persister wired).
 	_, err := pdb.SharedSocial.Exec(ctx, `
 		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
 		VALUES (?, ?, ?, NOW(), ?, NOW())

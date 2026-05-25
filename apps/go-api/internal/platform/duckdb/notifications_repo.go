@@ -12,6 +12,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -76,19 +77,56 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 	ctx, cancel := context.WithTimeout(ctx, notifWriteTimeout)
 	defer cancel()
 
-	rwDB, err := OpenReadWrite(r.sharedSocialPath())
-	if err != nil {
-		return fmt.Errorf("NotificationsRepo.Insert: open rw: %w", err)
+	// Vérification préférence catégorie (lecture, pas d'écriture).
+	if r.readDB() == nil {
+		return errNoSocial
 	}
-	defer rwDB.Close()
-
-	enabled, err := isCategoryEnabledOn(ctx, rwDB, r.xuid, n.Category)
+	enabled, err := isCategoryEnabledOn(ctx, r.readDB(), r.xuid, n.Category)
 	if err != nil {
 		return fmt.Errorf("NotificationsRepo.Insert: check pref: %w", err)
 	}
 	if !enabled {
 		return notifications.ErrCategoryDisabled
 	}
+
+	// ADR 0022 : route via Persister (CHECKPOINT garanti + TX atomique +
+	// pas de réouverture concurrente OpenReadWrite qui crée un handle
+	// supplémentaire).
+	if r.pdb.SocialPersister != nil {
+		var actorXUID, actorName *string
+		if n.Actor != nil {
+			ax := n.Actor.XUID
+			actorXUID = &ax
+			an := n.Actor.Name
+			actorName = &an
+		}
+		bodyKey := optionalStr(n.BodyKey)
+		params := optionalJSONRaw(n.Params)
+		targetRoute := optionalStr(n.TargetRoute)
+		targetSearch := optionalJSONRaw(n.TargetSearch)
+		return r.pdb.SocialPersister.CreateNotification(ctx, NotificationData{
+			XUID:         r.xuid,
+			ID:           n.ID,
+			Category:     string(n.Category),
+			Severity:     string(n.Severity),
+			TitleKey:     n.TitleKey,
+			BodyKey:      bodyKey,
+			Params:       params,
+			TargetRoute:  targetRoute,
+			TargetSearch: targetSearch,
+			ActorXUID:    actorXUID,
+			ActorName:    actorName,
+			Source:       n.Source,
+			CreatedAt:    n.CreatedAt.UTC(),
+		})
+	}
+
+	// Fallback legacy (tests sans wiring).
+	rwDB, err := OpenReadWrite(r.sharedSocialPath())
+	if err != nil {
+		return fmt.Errorf("NotificationsRepo.Insert: open rw: %w", err)
+	}
+	defer rwDB.Close()
 
 	var actorXUID, actorName any
 	if n.Actor != nil {
@@ -118,6 +156,24 @@ func (r *NotificationsRepo) Insert(ctx context.Context, n *notifications.Notific
 		return fmt.Errorf("NotificationsRepo.Insert: exec: %w", err)
 	}
 	return nil
+}
+
+// optionalStr retourne nil si la string est vide, sinon un pointeur.
+func optionalStr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+// optionalJSONRaw retourne nil si le json.RawMessage est vide, sinon un
+// pointeur string contenant la version sérialisée.
+func optionalJSONRaw(v json.RawMessage) *string {
+	if len(v) == 0 {
+		return nil
+	}
+	s := string(v)
+	return &s
 }
 
 // List paginé scopé par xuid.
