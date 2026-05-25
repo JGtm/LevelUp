@@ -21,9 +21,11 @@ type IntegrityResult struct {
 }
 
 // CheckIntegrity runs PRAGMA integrity_check on t (read-only connection).
-// Always returns a result; errors opening or querying are treated as inconclusive
-// (OK=true) so that a missing pragma support never blocks the backup cycle.
-// Log a warning separately when OK is false.
+// Always returns a result; never panics or returns an error.
+// Open failures set OK=false (can't read the file at all).
+// Query errors (e.g. pragma not supported by this DuckDB version) set OK=true
+// as they are inconclusive — not a corruption signal.
+// The caller should log a warning when OK is false.
 func CheckIntegrity(ctx context.Context, t Target) IntegrityResult {
 	res := IntegrityResult{CheckedAt: time.Now().UTC()}
 

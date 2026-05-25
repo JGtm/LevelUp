@@ -93,6 +93,7 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 	}
 
 	var exported []string
+	var integrityChecked bool
 	for _, t := range targets {
 		changed, chErr := manifest.HasChanged(t)
 		if chErr != nil {
@@ -106,6 +107,7 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 
 		ic := CheckIntegrity(ctx, t)
 		manifest.SetIntegrityResult(t.Key, ic)
+		integrityChecked = true
 		if !ic.OK {
 			slog.WarnContext(ctx, "backup: intégrité DB dégradée (sauvegarde maintenue)",
 				"key", t.Key, "detail", ic.Detail)
@@ -126,10 +128,17 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 	}
 
 	if len(exported) == 0 {
+		// Persist integrity results even when no export succeeded — so the UI can
+		// surface warnings even if restic never ran (e.g. every export failed).
+		if integrityChecked {
+			if err := manifest.SaveIntegrityOnly(); err != nil {
+				slog.WarnContext(ctx, "backup: sauvegarde résultats intégrité échouée", "err", err)
+			}
+		}
 		slog.InfoContext(ctx, "backup: aucune modification détectée — cycle ignoré",
 			"targets", len(targets),
 			"duration", time.Since(start).Round(time.Millisecond))
-		return &Result{Skipped: true, Duration: time.Since(start)}, nil
+		return &Result{Skipped: true, DurationMs: time.Since(start).Milliseconds()}, nil
 	}
 
 	initCtx, initCancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -167,7 +176,7 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 	return &Result{
 		SnapshotID: snapshotID,
 		Exported:   exported,
-		Duration:   dur,
+		DurationMs: dur.Milliseconds(),
 	}, nil
 }
 

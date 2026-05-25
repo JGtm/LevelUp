@@ -92,9 +92,21 @@ func (m *Manifest) SetIntegrityResult(key string, res IntegrityResult) {
 	m.IntegrityChecks[key] = res
 }
 
-// Save writes the manifest to disk atomically (write temp + rename).
+// Save writes the manifest to disk atomically and stamps LastBackupAt = now.
+// Call this after a successful restic snapshot.
 func (m *Manifest) Save() error {
 	m.LastBackupAt = time.Now().UTC()
+	return m.writeAtomic()
+}
+
+// SaveIntegrityOnly persists integrity check results without touching LastBackupAt.
+// Call this when a cycle ran integrity checks but no exports completed
+// (e.g. all exports failed), so the UI can still surface integrity warnings.
+func (m *Manifest) SaveIntegrityOnly() error {
+	return m.writeAtomic()
+}
+
+func (m *Manifest) writeAtomic() error {
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err

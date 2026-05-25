@@ -3298,7 +3298,7 @@ export interface BackupStatusResponse {
   last_exported?: string[]
   last_duration_ms?: number
   integrity_checks?: Record<string, IntegrityResult>
-  config: BackupConfig
+  config?: BackupConfig     // absent quand le scheduler est nil (backup non configuré)
 }
 
 export interface BackupRunResult {
