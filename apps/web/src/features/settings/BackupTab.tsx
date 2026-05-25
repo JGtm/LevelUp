@@ -16,13 +16,13 @@ interface BackupTabProps {
 function statusBadge(enabled: boolean, available: boolean, t: BackupTabProps['t']) {
   if (!enabled) return { label: t.backupStatusDisabled, cls: 'bg-muted text-muted-foreground' }
   if (!available) return { label: t.backupStatusResticMissing, cls: 'bg-destructive/20 text-destructive' }
-  return { label: t.backupStatusEnabled, cls: 'bg-green-500/20 text-green-700 dark:text-green-400' }
+  return { label: t.backupStatusEnabled, cls: 'bg-green-500/20 text-green-700 dark:text-green-400' } // color-allow: badge état système success (vert) — exception CLAUDE.md §20
 }
 
 function IntegrityBadge({ result }: { result: IntegrityResult }) {
   if (result.ok) {
     return (
-      <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-xs font-mono text-green-700 dark:text-green-400">
+      <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-xs font-mono text-green-700 dark:text-green-400"> {/* color-allow: badge état système success — exception CLAUDE.md §20 */}
         ✓
       </span>
     )
@@ -30,7 +30,7 @@ function IntegrityBadge({ result }: { result: IntegrityResult }) {
   return (
     <span
       title={result.detail}
-      className="cursor-help rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-mono text-amber-700 dark:text-amber-400"
+      className="cursor-help rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-mono text-amber-700 dark:text-amber-400" /* color-allow: badge état système warning — exception CLAUDE.md §20 */
     >
       ⚠
     </span>

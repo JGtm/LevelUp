@@ -163,18 +163,16 @@ export function HomePage() {
         {/* Hero KPIs — bannière Spartan + grille 8 tuiles. P8.4 finition (revue 2026-04-29). */}
         <div>
           <div className="space-y-4">
-            {spartanIdentity && (
-              <HomeSpartanIdentityBanner
-                spartanIdentity={spartanIdentity}
-                playerName={hero.player_name}
-                highestCSR={highestCSR}
-                highestLUSR={highestLUSR}
-                hasRankedHistory={hasRankedHistory}
-                hasUnrankedHistory={hasUnrankedHistory}
-                hasPrivacyWarning={hasPrivacyWarning}
-                identityUnavailableLabel={t('home.identity.unavailable')}
-              />
-            )}
+            <HomeSpartanIdentityBanner
+              spartanIdentity={spartanIdentity ?? {}}
+              playerName={hero.player_name}
+              highestCSR={highestCSR}
+              highestLUSR={highestLUSR}
+              hasRankedHistory={hasRankedHistory}
+              hasUnrankedHistory={hasUnrankedHistory}
+              hasPrivacyWarning={hasPrivacyWarning}
+              identityUnavailableLabel={t('home.identity.unavailable')}
+            />
 
             <HomeHeroKPIGrid
               kpis={hero.kpis}
@@ -194,7 +192,7 @@ export function HomePage() {
             errorHint={seasonPassError instanceof Error ? seasonPassError.message : null}
           />
 
-          <Card data-testid="home-challenges-card" className="flex min-h-[14rem] self-start flex-col">
+          <Card data-testid="home-challenges-card" className="flex min-h-[14rem] flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <div className="flex items-center gap-1.5">
                 <CardTitle className="text-base">{t('home.challenges.title')}</CardTitle>
@@ -303,11 +301,11 @@ export function HomePage() {
           </Card>
         </div>
 
-        {/* Section Ascension (1/3) + Prestige (2/3) — masquées si show_progression=false */}
+        {/* Section Prestige (2/3) + Ascension (1/3) — masquées si show_progression=false */}
         {showProgression && (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_2fr]">
-            <HomeAscensionWidget playerSlug={playerSlug} locale={locale} />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_1fr]">
             <HomePrestigeSection playerSlug={playerSlug} titleSlug="halo_infinite" locale={locale} />
+            <HomeAscensionWidget playerSlug={playerSlug} locale={locale} />
           </div>
         )}
 
