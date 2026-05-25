@@ -21,5 +21,10 @@
   "user_timezone": "Europe/Paris",
   "watcher_presence_enabled": true,
   "career_top_exclude_btb": false,
-  "csr_season_id": "CsrSeason13-1"
+  "csr_season_id": "CsrSeason13-1",
+  "backup_enabled": false,
+  "backup_interval": "6h",
+  "backup_keep_daily": 7,
+  "backup_keep_weekly": 4,
+  "backup_keep_monthly": 12
 }

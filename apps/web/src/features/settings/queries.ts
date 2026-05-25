@@ -11,6 +11,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type {
   AsyncJobStatus,
   BackfillStartRequest,
+  BackupRunResult,
+  BackupStatusResponse,
   SettingsResponse,
   UpdateSettingsRequest,
 } from '@/lib/api/types'
@@ -68,5 +70,23 @@ export function useStartBackfill() {
   return useMutation({
     mutationFn: (req: BackfillStartRequest) =>
       api.post<AsyncJobStatus>('/backfill/start', req),
+  })
+}
+
+export function useBackupStatus() {
+  return useQuery({
+    queryKey: [...queryKeys.settings, 'backup-status'],
+    queryFn: () => api.get<BackupStatusResponse>('/settings/backup/status'),
+    staleTime: 30 * 1000,
+  })
+}
+
+export function useRunBackup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<BackupRunResult>('/settings/backup/run', {}),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...queryKeys.settings, 'backup-status'] })
+    },
   })
 }
