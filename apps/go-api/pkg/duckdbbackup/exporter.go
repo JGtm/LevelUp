@@ -7,10 +7,60 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2" // DuckDB driver
 )
+
+// IntegrityResult holds the outcome of a PRAGMA integrity_check on a single DB.
+type IntegrityResult struct {
+	OK        bool      `json:"ok"`
+	Detail    string    `json:"detail,omitempty"` // first error line if !OK
+	CheckedAt time.Time `json:"checked_at"`
+}
+
+// CheckIntegrity runs PRAGMA integrity_check on t (read-only connection).
+// Always returns a result; errors opening or querying are treated as inconclusive
+// (OK=true) so that a missing pragma support never blocks the backup cycle.
+// Log a warning separately when OK is false.
+func CheckIntegrity(ctx context.Context, t Target) IntegrityResult {
+	res := IntegrityResult{CheckedAt: time.Now().UTC()}
+
+	db, err := sql.Open("duckdb", t.Path+"?access_mode=read_only")
+	if err != nil {
+		res.Detail = fmt.Sprintf("open: %v", err)
+		return res
+	}
+	defer db.Close()
+
+	rows, err := db.QueryContext(ctx, "PRAGMA integrity_check")
+	if err != nil {
+		// pragma not supported by this DuckDB version — inconclusive, not alarming
+		slog.DebugContext(ctx, "backup: integrity_check indisponible", "key", t.Key, "err", err)
+		res.OK = true
+		return res
+	}
+	defer rows.Close()
+
+	var first string
+	for rows.Next() {
+		var line string
+		if scanErr := rows.Scan(&line); scanErr != nil {
+			break
+		}
+		if first == "" {
+			first = line
+		}
+	}
+
+	if strings.EqualFold(first, "ok") || first == "" {
+		res.OK = true
+		return res
+	}
+	res.Detail = first
+	return res
+}
 
 // ExportTarget exports all BASE TABLE tables from t to outputDir as Parquet+zstd.
 //

@@ -104,6 +104,13 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 			continue
 		}
 
+		ic := CheckIntegrity(ctx, t)
+		manifest.SetIntegrityResult(t.Key, ic)
+		if !ic.OK {
+			slog.WarnContext(ctx, "backup: intégrité DB dégradée (sauvegarde maintenue)",
+				"key", t.Key, "detail", ic.Detail)
+		}
+
 		outDir := filepath.Join(s.cfg.BackupDir, "staging", t.Key)
 		exportCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 		_, exportErr := ExportTarget(exportCtx, t, outDir, s.cfg.CompressionLevel)
@@ -166,13 +173,14 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 
 // SchedulerStatus is the snapshot returned by Status() for the settings UI.
 type SchedulerStatus struct {
-	Enabled        bool     `json:"enabled"`
-	Available      bool     `json:"available"`
-	LastBackupAt   string   `json:"last_backup_at,omitempty"`   // RFC3339, empty if never
-	LastSnapshotID string   `json:"last_snapshot_id,omitempty"`
-	LastExported   []string `json:"last_exported,omitempty"`
-	LastDurationMs int64    `json:"last_duration_ms,omitempty"`
-	Config         struct {
+	Enabled         bool                       `json:"enabled"`
+	Available       bool                       `json:"available"`
+	LastBackupAt    string                     `json:"last_backup_at,omitempty"` // RFC3339, empty if never
+	LastSnapshotID  string                     `json:"last_snapshot_id,omitempty"`
+	LastExported    []string                   `json:"last_exported,omitempty"`
+	LastDurationMs  int64                      `json:"last_duration_ms,omitempty"`
+	IntegrityChecks map[string]IntegrityResult `json:"integrity_checks,omitempty"`
+	Config          struct {
 		Interval    string `json:"interval"`
 		KeepDaily   int    `json:"keep_daily"`
 		KeepWeekly  int    `json:"keep_weekly"`
@@ -198,6 +206,7 @@ func (s *Scheduler) Status() SchedulerStatus {
 		st.LastSnapshotID = m.LastSnapshotID
 		st.LastExported = m.LastExported
 		st.LastDurationMs = m.LastDurationMs
+		st.IntegrityChecks = m.IntegrityChecks
 	}
 	return st
 }
