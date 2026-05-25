@@ -47,6 +47,7 @@ const (
 	ModuleMigration = "migration" // schémas DB
 	ModuleHealth    = "health"    // data_health scheduler
 	ModulePersist   = "persist"   // refactor Collect→Persist : queue, workers, persisters
+	ModuleBackup    = "backup"    // pkg/duckdbbackup : scheduler restic + exporter
 	ModuleGeneral   = "general"   // fallback pour logs non catégorisés
 )
 
@@ -122,8 +123,9 @@ var packageToModuleMap = map[string]string{
 	"migration":      ModuleMigration,
 	"persist":        ModulePersist,
 	"api":            ModuleHTTP,
-	"watcher":        ModuleAuth, // tokens watcher fait partie de l'auth flow
+	"watcher":        ModuleAuth,    // tokens watcher fait partie de l'auth flow
 	"rta":            ModuleAuth,
+	"duckdbbackup":   ModuleBackup,  // pkg/duckdbbackup → logs/backup.log
 	"main":           ModuleGeneral, // cmd/server/main.go : boot/shutdown
 }
 

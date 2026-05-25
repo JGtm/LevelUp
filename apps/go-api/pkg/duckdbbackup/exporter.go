@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -37,13 +38,19 @@ func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLe
 		return 0, fmt.Errorf("list tables %s: %w", t.Key, err)
 	}
 
-	ts := time.Now().UTC().Format("20060102_150405")
+	slog.DebugContext(ctx, "backup: export démarré", "key", t.Key, "tables", len(tables))
+	start := time.Now()
+	ts := start.UTC().Format("20060102_150405")
 	for _, table := range tables {
 		outPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.parquet", table, ts))
 		if err := exportTable(ctx, db, table, outPath, compressionLevel); err != nil {
 			return 0, fmt.Errorf("export %s.%s: %w", t.Key, table, err)
 		}
 	}
+	slog.InfoContext(ctx, "backup: export terminé",
+		"key", t.Key,
+		"tables", len(tables),
+		"duration", time.Since(start).Round(time.Millisecond))
 	return len(tables), nil
 }
 
