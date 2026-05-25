@@ -1,3 +1,22 @@
+## [2026-05-26] UX polish — BP placeholder descriptions + nav SyncIndicator + media owner pills
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience` → merge dans `refactor/shared-social-collect-persist`
+
+**Décisions techniques** :
+- `isPlaceholderDescription()` en Go filtre "Placeholder Text" et les dev strings "Sx ... Pass Description" (suffixe ` Description` < 60 chars) — vérification DB : 1/30 tracks "Placeholder Text" littéral, 6/30 dev strings, 22/30 vides, 1/30 vraie desc (S03)
+- `SyncStatusIndicator` supprimé de NavL1 (check vert / spinner) — composant entier + import `useJobStatus` retirés
+- Owner pill sur `MediaThumbnailCard` : overlay haut-gauche, truncate 12 chars, couleur via hash gamertag → token squad (`narrative-dominant` / `perf-tier-3` / `divergent-pos`), caché si `owner_gamertag` === joueur actif (case-insensitive)
+- Bug pill invisible : `currentPlayerGamertag` était undefined si `currentPlayer` null dans le store → fallback `availablePlayers.find(slug)` dans `MediaPage`
+- Réassociation masquée dans `CoverFlowModal` pour médias d'autrui
+
+**Résultats** : go vet propre, tsc propre, packages modifiés OK
+
+**Prochaine étape** : merge dans `refactor/shared-social-collect-persist`
+
+---
+
 ## [2026-05-25] V2 SharedDB stale — getter pattern + restic Unlock + WAL cleanup
 
 **Statut** : Complété
