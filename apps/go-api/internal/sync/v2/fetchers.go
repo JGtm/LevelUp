@@ -24,10 +24,18 @@ import (
 // de sync.HaloClient — seulement les méthodes appelées en Phase 1/3.
 // Permet aux tests d'utiliser un mock local sans dépendre de
 // halo_client_mock_test.go (qui est dans le package sync).
+//
+// T2 : ajout GetHighlightEventsChunk pour fetcher les chunks film en
+// Phase 3 et préserver la parité V1↔V2 (V1 fetche les highlights inline
+// dans fetchMatchData).
 type HaloClient interface {
 	GetMatchHistory(ctx context.Context, gamertag, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error)
 	GetMatchStats(ctx context.Context, matchID string) (map[string]any, error)
 	GetMatchSkill(ctx context.Context, matchID string, xuids []string) (map[string]*syncpkg.MatchSkillData, error)
+	// GetHighlightEventsChunk retourne (data, filmMajorVersion, found, err).
+	// found=false (sans erreur) si le film est absent (404/410) — cas normal
+	// pour les vieux matchs. Best-effort : l'échec ne tue pas la Phase 3.
+	GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error)
 }
 
 // HaloClientFactory construit un HaloClient pinné sur un joueur (token
@@ -133,9 +141,13 @@ func NewSharedMatchFetcher(factory HaloClientFactory) SharedMatchFetcher {
 	return &sharedMatchFetcherV2{clientFactory: factory}
 }
 
-// FetchSharedMatch enchaîne GetMatchStats + GetMatchSkill avec le token du
-// canonical fetcher. GetMatchSkill best-effort : si l'endpoint répond une
-// erreur, on continue avec Skill nil (V1-compatible).
+// FetchSharedMatch enchaîne GetMatchStats + GetMatchSkill + GetHighlightEventsChunk
+// avec le token du canonical fetcher.
+//
+// Best-effort sur GetMatchSkill et GetHighlightEventsChunk : si l'endpoint
+// répond une erreur, on continue avec le champ correspondant à nil
+// (V1-compatible — V1 marque SkillError/HighlightError dans fetchedMatch
+// mais continue le batch).
 func (f *sharedMatchFetcherV2) FetchSharedMatch(
 	ctx context.Context,
 	matchID string,
@@ -177,11 +189,27 @@ func (f *sharedMatchFetcherV2) FetchSharedMatch(
 		}
 	}
 
+	// T2 — Highlight events chunk : best-effort (vieux matchs renvoient 404/410).
+	// V1 fait ce fetch inline dans fetchMatchData (engine_fetch.go:134-143).
+	// Sans ce fetch en Phase 3 V2, les highlight_events sont insérés avec 1
+	// cycle de retard via healEventsForRecentMatches.
+	highlightData, filmMajorVer, hasHighlights, hlErr := client.GetHighlightEventsChunk(ctx, matchID)
+	if hlErr != nil {
+		slog.DebugContext(ctx, "v2 GetHighlightEventsChunk failed — continuing without highlights",
+			"match_id", matchID, "err", hlErr)
+		highlightData = nil
+		filmMajorVer = 0
+		hasHighlights = false
+	}
+
 	return SharedMatchData{
-		MatchID: matchID,
-		Fetcher: fetcher.PlayerSlug,
-		Stats:   stats,
-		Skill:   skillMap,
+		MatchID:        matchID,
+		Fetcher:        fetcher.PlayerSlug,
+		Stats:          stats,
+		Skill:          skillMap,
+		HighlightChunk: highlightData,
+		FilmMajorVer:   filmMajorVer,
+		HasHighlights:  hasHighlights,
 	}, nil
 }
 

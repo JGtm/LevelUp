@@ -729,15 +729,26 @@ func main() {
 		if cached, ok := duckdb.LookupCachedDB(sharedPath); ok {
 			sharedSQLDB = cached.SQLDb()
 		}
-		v2Orch := buildSyncV2Orchestrator(
-			cfg, pr, titleSlug,
-			autoSyncPool, autoBatchQueue,
-			metaDB.SQLDb(), sharedSQLDB,
-			tokenProvider,
-		)
+		// T1 — parity-complete : passe TOUTES les dépendances que
+		// defaultRunnerFactory utilise pour câbler la SyncEngine V1.
+		// Garantit que V2 a EXACTEMENT le même runtime que V1 sur le
+		// post-sync (sessions, achievements, progression V2, media scan).
+		v2PostSyncRunner := api.NewPostSyncRunner(reg)
+		v2Orch := buildSyncV2Orchestrator(SyncV2WiringDeps{
+			Cfg:            cfg,
+			PathResolver:   pr,
+			TitleSlug:      titleSlug,
+			TokenPool:      autoSyncPool,
+			BatchQueue:     autoBatchQueue,
+			MetaDB:         metaDB.SQLDb(),
+			SharedDB:       sharedSQLDB,
+			TokenProvider:  tokenProvider,
+			Settings:       settingsStore,
+			PostSyncRunner: v2PostSyncRunner,
+		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)
-			slog.Info("sync.v2: orchestrator câblé (activation via LEVELUP_SYNC_PIPELINE=v2)")
+			slog.Info("sync.v2: orchestrator câblé parity-complete (activation via LEVELUP_SYNC_PIPELINE=v2)")
 		}
 	}
 

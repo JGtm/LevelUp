@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"log/slog"
 	"time"
+
+	"levelup/go-api/internal/observability"
 )
 
 // CycleConfig regroupe les paramètres tunables de l'orchestrator.
@@ -122,12 +124,15 @@ func (o *CycleOrchestratorImpl) Run(
 		"event", "sync.v2.cycle.start",
 		"players", len(players),
 	)
+	observability.IncCounter("sync_v2_cycle_total")
 
 	// ─── Phase 1 — Discovery ────────────────────────────────────────────
 	disc, err := RunDiscovery(ctx, players, o.loader, o.listProvider)
 	res.PhaseDurations[PhaseDiscovery] = disc.Duration
+	observability.RecordDurationMS("sync_v2_phase_duration_ms_discovery", disc.Duration.Milliseconds())
 	if err != nil {
 		res.Duration = time.Since(start)
+		observability.IncCounter("sync_v2_cycle_error_discovery")
 		return res, fmt.Errorf("phase discovery: %w", err)
 	}
 	slog.InfoContext(ctx, "sync.v2: phase discovery terminée",
@@ -146,6 +151,8 @@ func (o *CycleOrchestratorImpl) Run(
 	dedup := RunDedup(disc)
 	res.PhaseDurations[PhaseDedup] = dedup.Duration
 	res.UniqueMatches = len(dedup.UniqueMatches)
+	observability.RecordDurationMS("sync_v2_phase_duration_ms_dedup", dedup.Duration.Milliseconds())
+	observability.AddInt("sync_v2_unique_matches_total", int64(len(dedup.UniqueMatches)))
 	slog.InfoContext(ctx, "sync.v2: phase dedup terminée",
 		"event", "sync.v2.cycle.phase",
 		"phase", PhaseDedup,
@@ -155,8 +162,11 @@ func (o *CycleOrchestratorImpl) Run(
 	// ─── Phase 3 — Fetch shared ─────────────────────────────────────────
 	fetched, err := RunFetchShared(ctx, dedup, playerBySlug, o.sharedFetcher, o.cfg.FetchSharedParallelism)
 	res.PhaseDurations[PhaseFetchShared] = fetched.Duration
+	observability.RecordDurationMS("sync_v2_phase_duration_ms_fetch_shared", fetched.Duration.Milliseconds())
+	observability.AddInt("sync_v2_fetch_shared_errors_total", int64(len(fetched.Errors)))
 	if err != nil {
 		res.Duration = time.Since(start)
+		observability.IncCounter("sync_v2_cycle_error_fetch_shared")
 		return res, fmt.Errorf("phase fetch_shared: %w", err)
 	}
 	slog.InfoContext(ctx, "sync.v2: phase fetch_shared terminée",
@@ -170,8 +180,10 @@ func (o *CycleOrchestratorImpl) Run(
 	// ─── Phase 4 — Fetch per-player ─────────────────────────────────────
 	enrichments, err := RunFetchPlayer(ctx, players, dedup, o.playerFetcher, o.cfg.FetchPlayerParallelism)
 	res.PhaseDurations[PhaseFetchPlayer] = enrichments.Duration
+	observability.RecordDurationMS("sync_v2_phase_duration_ms_fetch_player", enrichments.Duration.Milliseconds())
 	if err != nil {
 		res.Duration = time.Since(start)
+		observability.IncCounter("sync_v2_cycle_error_fetch_player")
 		return res, fmt.Errorf("phase fetch_player: %w", err)
 	}
 	slog.InfoContext(ctx, "sync.v2: phase fetch_player terminée",
@@ -184,6 +196,8 @@ func (o *CycleOrchestratorImpl) Run(
 	// ─── Phase 5 — Persist ──────────────────────────────────────────────
 	persistRes := RunPersist(ctx, fetched, enrichments, o.persister)
 	res.PhaseDurations[PhasePersist] = persistRes.Duration
+	observability.RecordDurationMS("sync_v2_phase_duration_ms_persist", persistRes.Duration.Milliseconds())
+	observability.AddInt("sync_v2_matches_persisted_total", int64(persistRes.MatchesPersisted))
 	slog.InfoContext(ctx, "sync.v2: phase persist terminée",
 		"event", "sync.v2.cycle.phase",
 		"phase", PhasePersist,
@@ -196,6 +210,7 @@ func (o *CycleOrchestratorImpl) Run(
 		// Persist échec global → on continue pas vers post-sync (rien
 		// à post-syncher si rien n'a été écrit).
 		res.Duration = time.Since(start)
+		observability.IncCounter("sync_v2_cycle_error_persist")
 		for _, p := range players {
 			o.markFailed(res.PerPlayer, p.PlayerSlug, playerBySlug, "persist", persistRes.Err)
 		}
@@ -218,8 +233,10 @@ func (o *CycleOrchestratorImpl) Run(
 	}
 	postRes, err := RunPostSync(ctx, players, o.postSyncRunner, o.cfg.PostSyncParallelism, insertedByPlayer)
 	res.PhaseDurations[PhasePostSync] = postRes.Duration
+	observability.RecordDurationMS("sync_v2_phase_duration_ms_post_sync", postRes.Duration.Milliseconds())
 	if err != nil {
 		res.Duration = time.Since(start)
+		observability.IncCounter("sync_v2_cycle_error_post_sync")
 		return res, fmt.Errorf("phase post_sync: %w", err)
 	}
 	slog.InfoContext(ctx, "sync.v2: phase post_sync terminée",
@@ -234,6 +251,8 @@ func (o *CycleOrchestratorImpl) Run(
 	}
 
 	res.Duration = time.Since(start)
+	observability.RecordDurationMS("sync_v2_cycle_duration_ms", res.Duration.Milliseconds())
+	observability.IncCounter("sync_v2_cycle_success")
 	slog.InfoContext(ctx, "sync.v2: cycle terminé",
 		"event", "sync.v2.cycle.done",
 		"duration_ms", res.Duration.Milliseconds(),

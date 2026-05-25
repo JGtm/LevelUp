@@ -98,7 +98,9 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 			}
 		}
 
-		// V2 Phase 3 ne fetche pas les highlights → highlightChunk nil.
+		// T2 (parité V1) : V2 Phase 3 fetche désormais les highlights via
+		// SharedMatchFetcher. On les propage à BuildBatchFromRawForV2 pour
+		// qu'elles soient insérées en même temps que le reste.
 		matchBatch, err := syncpkg.BuildBatchFromRawForV2(
 			ctx,
 			p.titleSlug,
@@ -107,9 +109,9 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 			mID,
 			sd.Stats,
 			skillTyped,
-			nil,   // highlightChunk
-			0,     // filmMajorVer
-			false, // hasHighlights
+			sd.HighlightChunk,
+			sd.FilmMajorVer,
+			sd.HasHighlights,
 		)
 		if err != nil {
 			parseErrors++
