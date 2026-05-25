@@ -63,6 +63,10 @@ type AppSettings struct {
 	// ShowProgression — affichage du système Objectifs/Prestige (défaut : true).
 	ShowProgression bool `json:"show_progression"`
 
+	// CoachProactiveMode — toggle pont coach → Prestige (cf. ADR 0020).
+	// Opt-in explicite : défaut false (zero value).
+	CoachProactiveMode bool `json:"coach_proactive_mode"`
+
 	// Capabilities (défaut : true)
 	CanSelfProvision    bool `json:"can_self_provision"`
 	CanStartInitialSync bool `json:"can_start_initial_sync"`
@@ -288,6 +292,9 @@ func Apply(cfg *AppSettings, req *domain.UpdateSettingsRequest) {
 	if req.ShowProgression != nil {
 		cfg.ShowProgression = *req.ShowProgression
 	}
+	if req.CoachProactiveMode != nil {
+		cfg.CoachProactiveMode = *req.CoachProactiveMode
+	}
 	if req.AuthProvider != nil {
 		cfg.AuthProvider = *req.AuthProvider
 	}
@@ -336,6 +343,7 @@ func ToResponse(cfg *AppSettings) *domain.SettingsResponse {
 		OutcomeExcludeBotMatchesFromRecords: cfg.OutcomeExcludeBotMatchesFromRecords,
 		OutcomeBadgeSensitivity:             cfg.OutcomeBadgeSensitivity,
 		ShowProgression:                     cfg.ShowProgression,
+		CoachProactiveMode:                  cfg.CoachProactiveMode,
 		AuthProvider:                        cfg.AuthProvider,
 	}
 }

@@ -460,3 +460,81 @@ func TestStore_SaveLoadRoundTrip_ShowProgression(t *testing.T) {
 		t.Error("ShowProgression=false not persisted across save/load")
 	}
 }
+
+// ─── CoachProactiveMode (toggle pont coach → Prestige, ADR 0020) ────────────
+
+func TestDefaults_CoachProactiveMode(t *testing.T) {
+	d := settings.Defaults()
+	if d.CoachProactiveMode {
+		t.Error("CoachProactiveMode default should be false (opt-in)")
+	}
+}
+
+func TestStore_Load_CoachProactiveModeDefaultsFalseWhenAbsent(t *testing.T) {
+	store := newTestStore(t, map[string]interface{}{"lang": "fr"})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.CoachProactiveMode {
+		t.Error("absent coach_proactive_mode should default to false")
+	}
+}
+
+func TestStore_Load_CoachProactiveModeTrueRespected(t *testing.T) {
+	store := newTestStore(t, map[string]interface{}{
+		"lang":                 "fr",
+		"coach_proactive_mode": true,
+	})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.CoachProactiveMode {
+		t.Error("explicit coach_proactive_mode=true must be respected")
+	}
+}
+
+func TestApply_CoachProactiveMode(t *testing.T) {
+	cfg := settings.Defaults()
+	v := true
+	req := &domain.UpdateSettingsRequest{CoachProactiveMode: &v}
+	settings.Apply(cfg, req)
+	if !cfg.CoachProactiveMode {
+		t.Error("CoachProactiveMode should be true after Apply(true)")
+	}
+}
+
+func TestToResponse_CoachProactiveModeMapped(t *testing.T) {
+	cfg := settings.Defaults()
+	cfg.CoachProactiveMode = true
+	resp := settings.ToResponse(cfg)
+	if !resp.CoachProactiveMode {
+		t.Error("ToResponse: CoachProactiveMode=true not propagated")
+	}
+
+	cfg.CoachProactiveMode = false
+	resp = settings.ToResponse(cfg)
+	if resp.CoachProactiveMode {
+		t.Error("ToResponse: CoachProactiveMode=false not propagated")
+	}
+}
+
+func TestStore_SaveLoadRoundTrip_CoachProactiveMode(t *testing.T) {
+	store := newTestStore(t, map[string]interface{}{"lang": "fr"})
+	cfg, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	cfg.CoachProactiveMode = true
+	if err := store.Save(cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	cfg2, err := store.Load()
+	if err != nil {
+		t.Fatalf("Load2: %v", err)
+	}
+	if !cfg2.CoachProactiveMode {
+		t.Error("CoachProactiveMode=true not persisted across save/load")
+	}
+}

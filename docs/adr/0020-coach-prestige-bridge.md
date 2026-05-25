@@ -102,11 +102,19 @@ dans `CreateChallengeRequest` et `CreateArcRequest` (valeurs : `"user"`,
 `"pilot_mode"`, `"coach"`). Tracé dans `prestige_telemetry.source`. Aucun
 nouveau endpoint, aucun nouveau type, aucun bypass du flow standard.
 
-### Settings utilisateur
+### Settings utilisateur (révisé Phase 1 — 2026-05-25)
 
-Toggle `coach_proactive_mode` (booléen, default `false`) persisté dans une
-nouvelle table `user_preferences` (clé/valeur JSON). Lu **avant toute logique
-advisor** dans le post-sync hook — si off, short-circuit total.
+Toggle `coach_proactive_mode` (booléen, default `false`) persisté dans
+`app_settings.json` (global app-level, pattern identique à `ShowProgression`).
+LevelUp est une app locale single-user, pas multi-user — pas besoin d'une table
+`user_preferences` per-user comme initialement envisagé dans l'esquisse.
+
+Lu **avant toute logique advisor** dans le post-sync hook — si off,
+short-circuit total. Modifiable via `PATCH /api/v1/settings` (endpoint
+existant, extension purement additive de `domain.UpdateSettingsRequest`).
+
+Cette simplification ne change pas les invariants I1-I5 ni l'architecture
+`coach_advisor` — uniquement le mécanisme de stockage du toggle.
 
 ### Pas d'expiration des proposals
 
