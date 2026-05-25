@@ -62,6 +62,19 @@ type PlayerDB struct {
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
 	Metadata     *DB // metadata.duckdb (RO)
 
+	// SocialPersister est l'unique point d'écriture sur SharedSocial via le
+	// pattern Collect→Persist (ADR 0020). Garantit CHECKPOINT après chaque
+	// batch → WAL toujours vidé → bug DuckDB #7659 impossible. Tous les
+	// repos qui écrivent sur shared_social DOIVENT passer par ce Persister
+	// (sentinel parse-AST Phase 6 enforce). Nil si SharedSocial est nil.
+	//
+	// L'interface est définie ici (pas dans internal/persist) pour éviter
+	// un cycle d'import : internal/persist importe déjà internal/platform/duckdb
+	// via combined_persister.go. L'implémentation concrète
+	// persist.SharedSocialPersister satisfait cette interface structurellement
+	// et est injectée par main.go au boot après openPlayerDB.
+	SocialPersister SocialPersister
+
 	// sharedDBPath (commit 8f) — chemin du fichier shared, stocké pour permettre
 	// le re-OpenReadOnly + re-attachShared après un swap RW du Provider.
 	sharedDBPath string
@@ -238,14 +251,7 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// (mix avec OpenReadOnly historiquement, fixé en commit 21).
 	var socialDB *DB
 	if cfg.SharedSocialDBPath != "" {
-		// 2026-05-25 : on n'applique PAS la timezone sur shared_social. Le
-		// connecteur custom (NewConnector + init function SET TimeZone) est la
-		// cause racine du bug DuckDB #7659 : son replay WAL n'est pas
-		// symétrique avec un ouvre standard, ce qui fait planter le boot après
-		// chaque rebuild Air. shared_social ne contient quasiment que des
-		// TIMESTAMPTZ déjà en UTC (capture_start_utc, liked_at, achieved_at),
-		// la timezone session n'est pas nécessaire pour les requêtes.
-		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath)
+		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath, cfg.UserTimezone)
 		if err != nil {
 			// Non bloquant : la DB sera créée lors de la prochaine migration.
 			// On log Warn pour garder une trace (l'absence du fichier au boot est
@@ -310,6 +316,11 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	if sharedReader == nil {
 		sharedReader = LegacySharedReader(sharedDB)
 	}
+
+	// Phase 4 du refactor shared_social Collect→Persist (ADR 0020) :
+	// le SocialPersister sera injecté APRÈS openPlayerDB par main.go
+	// (pour éviter le cycle d'import duckdb↔persist). Tant qu'il est nil,
+	// les writes via Repo retomberont sur le chemin legacy db.Exec.
 
 	return &PlayerDB{
 		Player:       playerDB,
