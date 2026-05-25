@@ -2177,6 +2177,63 @@ paths:
         "404": { description: "Campagne inconnue" }
         "409": { description: "Campagne déjà terminée" }
 
+  # Coach Advisor — pont coach proactif → Prestige (ADR 0020).
+  # Lecture des proposals + actions accept/dismiss. La génération s'exécute
+  # côté post-sync hook (lit settings.coach_proactive_mode pour opt-in).
+  /players/{player_slug}/coach/proposals:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [pending, accepted, dismissed, superseded, obsoleted, stale]
+        description: "Filtre par status (vide = toutes les proposals)"
+    get:
+      tags: [progression]
+      operationId: listCoachProposals
+      summary: "Liste des proposals coach (challenges/arcs Prestige calibrés sur signaux récents)"
+      responses:
+        "200": { description: "Proposals" }
+        "404": { description: "Joueur inconnu" }
+        "503": { description: "Coach advisor non configuré ou indisponible pour ce joueur" }
+
+  /players/{player_slug}/coach/proposals/{id}/accept:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [progression]
+      operationId: acceptCoachProposal
+      summary: "Matérialise une proposal coach via prestige.CreateChallenge ou CreateArc (Source=\"coach\")"
+      responses:
+        "200": { description: "Accepted — challenge_id ou arc_id + challenge_ids dans la réponse" }
+        "400": { description: "id manquant" }
+        "404": { description: "Proposal ou joueur inconnu" }
+        "409": { description: "Proposal n'est plus pending (déjà accepted/dismissed/superseded/obsoleted)" }
+        "503": { description: "Coach advisor non configuré" }
+
+  /players/{player_slug}/coach/proposals/{id}/dismiss:
+    parameters:
+      - $ref: "#/components/parameters/PlayerSlug"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [progression]
+      operationId: dismissCoachProposal
+      summary: "Marque une proposal comme dismissed (idempotent — no-op si déjà résolue)"
+      responses:
+        "200": { description: "Dismissed" }
+        "400": { description: "id manquant" }
+        "404": { description: "Joueur inconnu" }
+        "503": { description: "Coach advisor non configuré" }
+
   # Watcher (présence Xbox/Steam)
   /watcher/auth/{provider}:
     parameters:
