@@ -1,12 +1,7 @@
 // Package service — release_notes_service.go : extraction des notes de version.
 //
-// P8.10 (revue 2026-04-29 gap #4) : la logique git + parsing markdown vivait
-// dans handlers/help.go (390L) — extraite ici pour respecter la séparation
-// handler ↔ service. Le handler devient un wrapper HTTP mince.
-//
-// L'accès git passe par port.GitProvider (mockable). La fonction `Build`
-// retourne le markdown complet de l'historique (working tree + git log
-// snapshots des README modifiés).
+// Source unique : docs/RELEASE_NOTES.md (EN) et docs/FR/RELEASE_NOTES.md (FR).
+// Toutes les versions y sont consignées ; plus de fallback git sur le README.
 package service
 
 import (
@@ -18,62 +13,26 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"levelup/go-api/internal/port"
 )
 
-// ReleaseNotesService construit l'historique des release notes (FR/EN).
+// ReleaseNotesService lit docs/RELEASE_NOTES.md (source unique des notes user-facing).
 type ReleaseNotesService struct {
 	repoRoot string
-	git      port.GitProvider
 }
 
-// NewReleaseNotesService crée un service avec le GitProvider injecté.
-func NewReleaseNotesService(repoRoot string, git port.GitProvider) *ReleaseNotesService {
-	return &ReleaseNotesService{repoRoot: repoRoot, git: git}
+// NewReleaseNotesService crée le service.
+func NewReleaseNotesService(repoRoot string) *ReleaseNotesService {
+	return &ReleaseNotesService{repoRoot: repoRoot}
 }
 
 // Build retourne le markdown complet des release notes pour `lang` (fr|en).
-//
-// Stratégie :
-//  1. Lire le README sur disque (working tree) — capte les modifs non
-//     committées et a la priorité sur les snapshots git.
-//  2. Compléter avec les snapshots git pour les versions absentes du WT.
-func (s *ReleaseNotesService) Build(ctx context.Context, lang string) (string, error) {
-	relPath := readmeRelPath(lang)
-	blocks := map[string]string{}
-
-	// 1. Version disque (priorité maximale).
-	if data, err := os.ReadFile(filepath.Join(s.repoRoot, filepath.FromSlash(relPath))); err == nil {
-		for ver, block := range extractWhatsNewBlocks(string(data)) {
-			blocks[ver] = block
-		}
-	}
-
-	// 2. Snapshots git pour enrichir les versions absentes.
-	if shas, err := s.git.LogSHAs(ctx, s.repoRoot, relPath); err == nil {
-		for _, sha := range shas {
-			raw, err := s.git.ShowFile(ctx, s.repoRoot, sha, relPath)
-			if err != nil {
-				continue
-			}
-			for ver, block := range extractWhatsNewBlocks(raw) {
-				if _, exists := blocks[ver]; !exists {
-					blocks[ver] = block
-				}
-			}
-		}
-	}
-
-	if len(blocks) == 0 {
-		return s.buildFromDisk(lang)
-	}
-	return assembleReleaseBlocks(blocks, lang), nil
+func (s *ReleaseNotesService) Build(_ context.Context, lang string) (string, error) {
+	return s.buildFromDisk(lang)
 }
 
 // buildFromDisk est le fallback : lit le README depuis le disque sans git.
 func (s *ReleaseNotesService) buildFromDisk(lang string) (string, error) {
-	relPath := readmeRelPath(lang)
+	relPath := releaseNotesRelPath(lang)
 	absPath := filepath.Join(s.repoRoot, filepath.FromSlash(relPath))
 	data, err := os.ReadFile(absPath)
 	if err != nil {
@@ -86,11 +45,11 @@ func (s *ReleaseNotesService) buildFromDisk(lang string) (string, error) {
 	return assembleReleaseBlocks(blocks, lang), nil
 }
 
-func readmeRelPath(lang string) string {
+func releaseNotesRelPath(lang string) string {
 	if lang == "fr" {
-		return "docs/FR/README.md"
+		return "docs/FR/RELEASE_NOTES.md"
 	}
-	return "README.md"
+	return "docs/RELEASE_NOTES.md"
 }
 
 // assembleReleaseBlocks trie les blocs de version (descendant) et les
