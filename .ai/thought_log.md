@@ -1,18 +1,111 @@
-## [2026-05-25] Fix home resilience — bannière Spartan toujours affichée
+## [2026-05-25] D0 — Sync pipeline V2 : ADR 0020 + scaffold orchestrator
+
+**Statut** : Complété (D0 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : Diagnostic cycle 13:59 a révélé 3 problèmes archi :
+1. Cross-player dedup cassée en parallèle (worker BatchQueue monothread async — writes pas visibles avant 60s).
+2. Sérialisation post-sync catastrophique sur shared writer lease (Madina97294 attend 6 min 30 s sur 8 min 30 s totales).
+3. Drain timeout fixe 60s atteint systématiquement sur tous les joueurs.
+
+Plan global : refonte cycle-level (ADR 0020) en 9 deliverables (D0→D8, ≈ 3 semaines).
+
+**Décisions techniques D0** :
+
+1. **ADR 0020 rédigé** (`docs/adr/0020-sync-pipeline-v2-cycle-orchestrator.md`) — pipeline 6 phases : Discovery → Dedup → FetchShared → FetchPlayer → Persist → PostSync. Justification empirique chiffrée du cycle 13:59.
+
+2. **Package `internal/sync/v2/` créé** avec interface `CycleOrchestrator`, types (`PlayerProfile`, `CycleResult`, `PlayerOutcome`), stub `NewStubOrchestrator()` qui retourne `ErrNotImplemented`. Permet de câbler le scheduler avant que les phases ne soient livrées.
+
+3. **Feature flag `LEVELUP_SYNC_PIPELINE=v2`** câblé dans `scheduler/auto_sync.go` via `WithCycleOrchestrator()` + helper `shouldUseV2()` (gated par env var ET orchestrator non-nil). Le dispatch effectif dans `RunOnce` arrive en D6.
+
+4. **Suite `internal/sync/contract_test.go`** créée — 10 tests contract qui définissent les invariants observables (`AllAPIMatchesPersisted`, `CrossPlayerDedupOneAPICallPerMatch`, anti-régression `HaloAPIURLFormatXUID` et `MetadataDSNAlignment`, etc.). Tous skipped avec TODO(Dx) pointant le deliverable qui les active. 2 smoke tests D0 actifs vérifient le stub.
+
+**Fix annexe pendant la session** : `runPostSyncCitations` ouvrait `metadata.duckdb` avec `OpenReadOnly` alors que le pool serveur l'a en `OpenReadWriteShared` → DuckDB refusait avec "Can't open a connection with a different configuration". Fix : utiliser `duckdbpkg.LookupCachedDB` qui retourne la connexion RW existante, ou `e.metaDB` si déjà set. Affectait tous les sync depuis le 5 mai (citations à 0).
+
+**Résultats observés** :
+
+- Build complet `go build ./...` OK
+- Vet OK
+- Tests `internal/scheduler/` passent (1.34s)
+- Smoke tests D0 (`TestD0_StubOrchestratorReturnsErrNotImplemented`, `TestD0_StubOrchestratorReturnsCycleResultWithEmptyMaps`) passent
+- 1 fail pré-existant sur `TestExtractCSRRowIfRanked_RankedStable` lié aux modifs WIP utilisateur sur `csr_writes.go` (pas du D0)
+
+**Conclusion / prochaine étape** : D0 livrable. Prochaine étape : D1 — implémentation Phase 1 (Discovery parallèle read-only) + Phase 2 (Dedup global). À démarrer dans un commit dédié sur cette branche.
+
+---
+
+## [2026-05-25] Fix chiffres romains CSR/carrière — source + home catalog
 
 **Statut** : Complété
 
 **Branche** : `fix/art-eradication-and-home-resilience`
 
-**Décision technique principale** : Double protection frontend contre la bannière vide.
-- `HomeSpartanIdentityBanner.tsx` : quand `banner_image_url` est null (joueur sans customisation ou career_progression vide), fallback sur `/titles/halo_infinite/echoes-within-header.webp` via `FALLBACK_BANNERS_BY_TITLE[titleSlug]`.
-- `HomePage.tsx` : suppression du guard `{spartanIdentity && ...}` — le composant est rendu inconditionnellement avec `spartanIdentity ?? {}`. Plus aucun cas où le bloc identité entier (gamertag + zone bannière) disparaît.
+**Contexte** : Le commit 5674248 avait introduit `rankSubRoman()` et `csrSubTierRoman` pour convertir les sous-rangs à l'affichage, mais deux sources persistaient en chiffres arabes.
 
-**Cause racine JGtm** : si `career_progression` est vide ou `rank = 0`, `buildHomeCareerRank` retourne nil → `BuildSpartanIdentity` retourne nil → API retourne `spartan_identity: null` → composant entier supprimé du DOM.
+**Décisions techniques** :
 
-**Résultats observés** : TypeScript passe sans nouvelle erreur (erreur pre-existante `SettingsPage.tsx` "backup" non liée).
+1. **`formatCSRTierLabel` (sync/csr_writes.go)** : source principale qui écrit en DB — génère "Or 3" au lieu de "Or III". Fix : remplacer `fmt.Sprintf("%s %d", tierFR, subTier)` par `fmt.Sprintf("%s %s", tierFR, csrSubTierRoman[subTier])`. Ajout d'une var locale `csrSubTierRoman` dans le package `sync`. Garde-rail : borne `1 ≤ subTier ≤ 6` remplace l'ancien `> 0`. Test `TestFormatCSRTierLabel_DiamondWithSubTier` mis à jour ("Diamant III").
 
-**Prochaine étape** : Vérifier visuellement pour JGtm après déploiement.
+2. **`buildHomeCareerRank` (analysis/home_kpis.go)** : la priorité 1 (catalog `career_rank_translations`) retournait le label brut sans passer par `rankSubRoman`. Le fallback RankName l'appliquait déjà — incohérence silencieuse. Fix : `rankSubRoman(lookupRankLabel(...))` + `rankSubRoman(nextTitle)`.
+
+**Résultats** : build OK, tests `TestFormatCSRTierLabel_*` passent. Migration `cmd/migrate-roman-ranks --apply` : 9 lignes mises à jour (Madina 7, Chocoboflor 1, JGtm 1 — toutes dans `match_skill_rank`). `match_csrs` shared : 0 ligne à corriger.
+
+**Prochaine étape** : commit.
+
+---
+
+## [2026-05-25] Fix 3 root causes WARN serveur — teammates capability, backup conflict, thumbs 404
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : après filtrage du terminal à `LEVELUP_LOG_LEVEL=warn`, 3 WARN récurrents identifiés : teammates capability not supported, backup metadata/shared_social en échec, 404 sur thumbnails médias.
+
+**Décisions techniques** :
+
+1. **Teammates `weapon_kills` / `medals_earned`** ([weapon_kills_repo.go](apps/go-api/internal/platform/duckdb/weapon_kills_repo.go), [medals_by_xuid_repo.go](apps/go-api/internal/platform/duckdb/medals_by_xuid_repo.go)) :
+   - Cause racine : introspection `WHERE table_catalog='shared' OR table_schema='shared'` ne match jamais en prod. La conn SharedReader pointe directement sur `shared_matches_v2.duckdb` → catalog = basename du fichier, schema = `main`. Le faux `CREATE SCHEMA shared` du test `newTestPlayerDB` masquait le bug depuis le commit initial.
+   - Fix : supprimer l'introspection — laisser DuckDB remonter "Table with name ... does not exist" puis convertir via `isTableNotFoundErr` → `games.ErrCapabilityNotSupported`. Plus pérenne (pas de divergence catalog/schema test vs prod).
+
+2. **Backup metadata + shared_social** ([target.go](apps/go-api/pkg/duckdbbackup/target.go), [exporter.go](apps/go-api/pkg/duckdbbackup/exporter.go), [backup_service.go](apps/go-api/internal/ops/backup_service.go), [db.go](apps/go-api/internal/platform/duckdb/db.go)) :
+   - Cause racine : DuckDB refuse une 2e ouverture `?access_mode=read_only` sur un fichier déjà détenu en RW par un autre handle in-process ("different configuration"). `metadata.duckdb` et `shared_social.duckdb` sont ouverts RW au boot par `prestige_setup.go`.
+   - Fix : ajout `Target.OpenDB OpenDBFunc` dans le package générique `pkg/duckdbbackup`. Le wiring `discoverLevelUpDBs` câble `OpenDB` pour les fichiers déjà présents dans le cache process-wide via `duckdb.LookupCachedDB(path)` (nouveau helper). `ExportTarget` et `CheckIntegrity` réutilisent la conn fournie quand `OpenDB != nil`, sinon ouvrent RO autonome. Tests régression `TestExportTarget_ReusesProvidedConn` + `TestCheckIntegrity_ReusesProvidedConn`.
+
+3. **Thumbs 404 sur `captures/thumbs/Replay X_<hash>.gif`** ([cmd/reindex-media-thumbs](apps/go-api/cmd/reindex-media-thumbs/main.go)) :
+   - Cause racine : `media_files.thumbnail_path` contient des paths obsolètes (sous-dossier `captures/`, suffixe hash, extension `.gif`) après migration vers layout `{owner}/thumbs/` + `.webp`. Le handler `ServeMediaFile` retourne 404 systématiquement.
+   - Fix : nouvelle CLI `reindex-media-thumbs` (vs `regen-thumbnails` qui supprime+regen) qui se contente de RÉPARER les pointeurs DB par stem-match : strip suffixe hash + extension, cherche `.webp` (priorité) ou `.gif` dans `{capturesBase}/{owner}/thumbs/`. UPDATE en path relatif canonique, ou NULL si aucun match (le front affiche un placeholder au lieu de spammer 404).
+
+**Résultats** : `go test ./internal/platform/duckdb/ ./internal/ops/ ./pkg/duckdbbackup/ ./cmd/reindex-media-thumbs/` + `go test -tags=integration ./internal/platform/duckdb/` passent. `go vet ./...` clean. 9 tests unitaires ajoutés (4 OpenDB regression + 8 findThumb scenarios — note : 8 stems × tests).
+
+**Prochaine étape** : lancer `reindex-media-thumbs --db data/titles/halo_infinite/warehouse/shared_social.duckdb --dry-run` pour évaluer le nombre de paths à réparer, puis exécuter sans dry-run.
+
+---
+
+## [2026-05-25] Fix home resilience — bannière Spartan toujours affichée + CustomizationRefresher
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : Triple protection (frontend + backend fallback + refresh proactif).
+
+1. **Frontend** (`HomeSpartanIdentityBanner.tsx`, `HomePage.tsx`) :
+   - `activeBannerUrl` : fallback `FALLBACK_BANNERS_BY_TITLE[titleSlug]` quand `banner_image_url` est null.
+   - Guard `{spartanIdentity && ...}` supprimé dans `HomePage.tsx` — le composant est rendu inconditionnellement avec `spartanIdentity ?? {}`.
+
+2. **Backend — population uniforme** (`scheduler/customization_refresh.go`) :
+   - `CustomizationRefresher` : après chaque cycle `RunOnce`, itère sur tous les joueurs du pool, appelle `PooledHaloClient.GetCareerRank` (combine `GetCareerProgress` + `GetSpartanCustomization`), et persiste via `InsertCareerProgressionIfChanged`.
+   - `OverlayCareerDataOntoRow` : garantit que les valeurs historiques (bannière, emblème, Spartan ID) ne régressent jamais vers vide si l'API renvoie des champs vides (ex : Spartan token expiré).
+   - Injecté dans `AutoSyncScheduler` via `WithCustomizationRefresher` (nil → feature off).
+   - Câblé dans `cmd/server/main.go` uniquement si `autoSyncPool != nil`.
+
+**Cause racine** : `career_progression.banner_image_url` reste vide pour les joueurs sans activité récente (match sync ne tourne que si nouveaux matchs) et sans visite home avec tokens valides. Le refresher comble ce gap en tournant après chaque cycle scheduler (6h par défaut).
+
+**Résultats** : `go test ./...` pass complet, `go vet ./...` clean. 5 tests unitaires ajoutés (4 overlay + 1 nil-pool no-op).
+
+**Prochaine étape** : Vérifier visuellement pour JGtm après prochain cycle scheduler (ou déclenchement manuel via endpoint admin).
 
 ---
 

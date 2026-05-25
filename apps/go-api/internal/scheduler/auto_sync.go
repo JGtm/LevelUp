@@ -23,6 +23,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	gosync "sync"
 	"sync/atomic"
 	"time"
@@ -40,6 +41,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
+	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
 const defaultIntervalHours = 6
@@ -156,6 +158,17 @@ type AutoSyncScheduler struct {
 	// path async (queue.Submit + worker, WAL durable, recovery au boot).
 	batchQueue *persist.BatchQueue
 
+	// customRefresher rafraîchit les URLs Spartan de tous les joueurs après
+	// chaque cycle RunOnce. Optionnel — nil → feature désactivée.
+	customRefresher *CustomizationRefresher
+
+	// cycleOrchestrator (ADR 0020) — pipeline V2 cycle-level. Câblé via
+	// WithCycleOrchestrator. Activation runtime gated par
+	// LEVELUP_SYNC_PIPELINE=v2 (cf. shouldUseV2). En D0 le stub renvoie
+	// ErrNotImplemented → fallback V1 silencieux ; le wiring du dispatch
+	// proprement dit arrive en D6 du plan ADR 0020.
+	cycleOrchestrator syncv2.CycleOrchestrator
+
 	// Snapshot par joueur du dernier cycle — pour l'endpoint admin diagnostic.
 	snapshotMu      gosync.RWMutex
 	lastCycleAt     time.Time
@@ -267,6 +280,40 @@ func (s *AutoSyncScheduler) WithBatchQueue(q *persist.BatchQueue) *AutoSyncSched
 func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *AutoSyncScheduler {
 	s.postSyncRunner = runner
 	return s
+}
+
+// WithCustomizationRefresher branche le refresher de customisation Spartan.
+// Appelé après chaque cycle RunOnce pour tous les joueurs du pool.
+// Nil → feature désactivée.
+func (s *AutoSyncScheduler) WithCustomizationRefresher(r *CustomizationRefresher) *AutoSyncScheduler {
+	s.customRefresher = r
+	return s
+}
+
+// WithCycleOrchestrator branche le pipeline V2 (ADR 0020). L'activation
+// runtime reste gated par LEVELUP_SYNC_PIPELINE=v2 ; câbler un orchestrator
+// non-nil sans l'env var ne change rien au comportement. Nil → V1 toujours.
+//
+// Doit être appelé depuis cmd/server/main.go au boot, avant Run.
+func (s *AutoSyncScheduler) WithCycleOrchestrator(o syncv2.CycleOrchestrator) *AutoSyncScheduler {
+	s.cycleOrchestrator = o
+	return s
+}
+
+// shouldUseV2 retourne true si le pipeline V2 doit être tenté pour le
+// prochain cycle. Conditions :
+//   - LEVELUP_SYNC_PIPELINE == "v2" (insensible à la casse)
+//   - cycleOrchestrator non-nil (câblé par main.go)
+//
+// Le dispatch effectif vers V2 (avec fallback V1 sur ErrNotImplemented ou
+// échec) est ajouté dans RunOnce en D6 du plan ADR 0020. En D0 cette
+// fonction est exposée uniquement pour les tests contract.
+func (s *AutoSyncScheduler) shouldUseV2() bool {
+	if s.cycleOrchestrator == nil {
+		return false
+	}
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("LEVELUP_SYNC_PIPELINE")))
+	return v == "v2"
 }
 
 // Snapshot retourne un cliché thread-safe du dernier cycle de sync, incluant
@@ -443,6 +490,10 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 	res.Synced = int(synced.Load())
 	res.Skipped = int(skipped.Load())
 	res.Failed = int(failed.Load())
+
+	if s.customRefresher != nil {
+		s.customRefresher.RefreshAll(ctx)
+	}
 
 	res.Duration = time.Since(start)
 
