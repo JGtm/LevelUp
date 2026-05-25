@@ -5,7 +5,17 @@ import { CoverFlowModal } from './CoverFlowModal'
 import { getMediaText } from './i18n'
 import { getMediaModalsText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import type { MediaItemRow } from '@/lib/api/types'
+
+// Tokens identiques à SQUAD_TEAMMATE_COLOR_TOKENS — cohérence visuelle inter-pages.
+const OWNER_TAG_TOKENS = ['narrative-dominant', 'perf-tier-3', 'divergent-pos'] as const
+
+function ownerTagColor(gamertag: string): string {
+  let hash = 0
+  for (const ch of gamertag) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffff
+  return tokenCssVar(OWNER_TAG_TOKENS[hash % OWNER_TAG_TOKENS.length])
+}
 
 export { CoverFlowModal as MediaLightbox }
 
@@ -172,7 +182,9 @@ export function MediaThumbnailCard({
   const hasMatch = Boolean(item.match_id)
   const isCurrentMatch = hasMatch && currentMatchId === item.match_id
   const showViewMatchLink = hasMatch && !isCurrentMatch && Boolean(playerSlug)
-  const isOwnMedia = !item.owner_gamertag || item.owner_gamertag === currentPlayerGamertag
+  const isOwnMedia = !item.owner_gamertag
+    || !currentPlayerGamertag
+    || item.owner_gamertag.toLowerCase() === currentPlayerGamertag.toLowerCase()
   const showAssociateLink = !hasMatch && Boolean(onAssociate) && isOwnMedia
   const ownerTag = !isOwnMedia && item.owner_gamertag
     ? item.owner_gamertag.length > 12 ? `${item.owner_gamertag.slice(0, 12)}…` : item.owner_gamertag
@@ -255,7 +267,10 @@ export function MediaThumbnailCard({
           </div>
         )}
         {ownerTag && (
-          <span className="absolute left-1.5 top-1.5 rounded-full bg-card/70 px-2 py-0.5 text-3xs font-semibold text-muted-foreground backdrop-blur-sm">
+          <span
+            className="absolute left-1.5 top-1.5 rounded-full bg-card/70 px-2 py-0.5 text-3xs font-semibold backdrop-blur-sm"
+            style={{ color: ownerTagColor(item.owner_gamertag!) }}
+          >
             {ownerTag}
           </span>
         )}
