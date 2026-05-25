@@ -1,3 +1,26 @@
+## [2026-05-25] V2 SharedDB stale — getter pattern + restic Unlock + WAL cleanup
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Root cause** : `deps.SharedDB *sql.DB` et `knownLoaderV2.sharedDB *sql.DB` capturaient la connexion au boot via `LookupCachedDB`. Après le premier cycle, le provider swap RO→RW→RO et ferme l'ancienne `*sql.DB` — le pointeur fixe devient stale. Tous les accès shared (reads ET writes) échouaient au cycle 2+. Un premier fix (SharedDBOpener via AcquireSharedWriterStandalone) aggravait les choses : il fermait la connexion courante pendant que KnownLoader l'utilisait (swap timeout + sql: database is closed).
+
+**Fix architectural (Option B — getter pattern)** :
+- `knownLoaderV2.sharedDB *sql.DB` → `getSharedDB func() *sql.DB` dans `known_loader.go`
+- `postSyncRunnerV2.openSharedDB SharedDBOpener` → `getSharedDB func() *sql.DB` dans `post_sync_runner.go`
+- `sync_v2_wiring.go` : `getSharedDB` appelle `LookupCachedDB(sharedPath)` à l'instant T — après chaque swap, le provider rouvre une connexion fraîche en RO, LookupCachedDB la retourne. Ni lock writer, ni connexion stale.
+
+**Effets** : reads shared (performance scores, sessions, citations, LUSR) fonctionnent en cycle 2+. Writes shared (refreshSharedViews, dominance flags) restent en RO → WARNs best-effort (limite architecturale V2 documentée : post-sync s'exécute hors du lease writer du cycle).
+
+**Restic stale lock** : `ResticClient.Unlock()` + appel avant `EnsureInit` dans `cycle()`. WAL `shared_social.duckdb.wal` corrompu (TASKKILL) supprimé.
+
+**Tests** : 96/96 V2 PASS, `go vet` propre.
+
+**Prochaine étape** : Vérifier au prochain cycle sync V2 que `v2 LoadKnown` ne retourne plus `sql: database is closed` et que les swap timeouts ont disparu.
+
+---
+
 ## [2026-05-25] cmd/token-capture — Device Code Flow pour joueur distant
 
 **Statut** : Complété

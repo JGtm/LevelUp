@@ -131,7 +131,7 @@ func buildE2EOrchestrator(t *testing.T, env *e2eEnv, client *mockNarrowClient, p
 		return d.SQLDb(), func() {}, nil
 	}
 
-	knownLoader := NewKnownLoader(playerDBOpener, env.sharedDB.SQLDb())
+	knownLoader := NewKnownLoader(playerDBOpener, func() *sql.DB { return env.sharedDB.SQLDb() })
 	clientFactory := func(_, _ string) HaloClient { return client }
 	matchListProvider := NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
 	sharedFetcher := NewSharedMatchFetcher(clientFactory)

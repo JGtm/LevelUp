@@ -367,7 +367,7 @@ export function MediaPage() {
         <div className="p-8 text-center text-destructive">{text.errorPrefix} {extractErrorMessage(error)}</div>
       ) : mediaItems.length === 0 ? (
         <Card>
-          <CardContent className="p-12 text-center text-muted-foreground">
+          <CardContent className="flex min-h-48 items-center justify-center text-muted-foreground">
             {text.emptyState}
           </CardContent>
         </Card>

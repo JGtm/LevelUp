@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -26,12 +27,28 @@ import (
 
 const (
 	// rtaEndpoint est le WebSocket RTA Xbox Live.
+	// L'URL réelle inclut un nonce query param obtenu via rtaNonceEndpoint.
 	rtaEndpoint = "wss://rta.xboxlive.com/connect"
 
+	// rtaNonceEndpoint retourne un nonce one-shot requis pour upgrader la
+	// connexion WebSocket en mode "push complet". Sans nonce, Xbox accepte
+	// la connexion mais limite les subscribes : les events ne sont pas
+	// poussés (snapshot one-shot uniquement). Cf. LucienHH/xbox-rta.
+	rtaNonceEndpoint = "https://rta.xboxlive.com/nonce"
+
 	// rtaPresenceTopicFmt est le template du topic de présence par XUID.
-	// Format officiel Microsoft (XSAPI title_presence_change_subscription.cpp) :
-	//   https://userpresence.xboxlive.com/users/xuid(<XUID>)/titles/<TITLE_ID>
-	// Cet abonnement notifie quand le joueur démarre/arrête le titre spécifié.
+	//
+	// Diagnostic 2026-05-25 (en cours) :
+	//   - `/titles/<TID>` (utilisé ici) : subscribes ACCEPTÉS mais Xbox ne
+	//     push qu'un snapshot one-shot `lastSeen` au subscribe, jamais d'events
+	//     suivants. Conséquence : watcher RTA jamais déclenché.
+	//   - `/richpresence` (testé, ne marche pas) : subscribes REFUSÉS par
+	//     Xbox avec status=3 (Unauthorized) + sub_id renvoyé en string au
+	//     lieu d'int. Probable manque de scope/RelyingParty XSTS spécifique.
+	//
+	// TODO : investiguer le bon scope XSTS pour /richpresence, OU tester
+	// d'autres endpoints (devices/current/titles/current). En attendant on
+	// reste sur /titles/<TID> qui au moins ne casse pas.
 	rtaPresenceTopicFmt = "https://userpresence.xboxlive.com/users/xuid(%s)/titles/%s"
 
 	// writeTimeout pour les messages WebSocket sortants.
@@ -39,6 +56,12 @@ const (
 
 	// pongWait est le délai max sans pong du serveur avant déconnexion.
 	pongWait = 60 * time.Second
+
+	// pingPeriod : intervalle entre 2 pings WebSocket sortants.
+	// Doit être < pongWait (typiquement pongWait * 0.9 / 2). Sans ping
+	// périodique, le serveur peut couper la connexion silencieusement et
+	// le ReadDeadline n'est jamais reset car aucun pong n'arrive.
+	pingPeriod = 25 * time.Second
 )
 
 // RTA message types (protocole Xbox)
@@ -127,6 +150,39 @@ func NewRTAClient(authHeader string) *RTAClient {
 	return c
 }
 
+// fetchNonce récupère un nonce one-shot Xbox via GET /nonce. Sans nonce,
+// la connexion WebSocket fonctionne en mode dégradé (les subscribes sont
+// acceptés mais les events ne sont pas poussés). Le nonce est consommé
+// par le query param ?nonce={nonce} de l'URL WebSocket à la connexion.
+//
+// Référence : github.com/LucienHH/xbox-rta (lib node prod-ready).
+func (c *RTAClient) fetchNonce(ctx context.Context) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rtaNonceEndpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("rta fetchNonce req: %w", err)
+	}
+	req.Header.Set("Authorization", c.authHeader)
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("rta fetchNonce do: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("rta fetchNonce status %d", resp.StatusCode)
+	}
+	var body struct {
+		Nonce string `json:"nonce"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		return "", fmt.Errorf("rta fetchNonce decode: %w", err)
+	}
+	if body.Nonce == "" {
+		return "", fmt.Errorf("rta fetchNonce: nonce vide")
+	}
+	return body.Nonce, nil
+}
+
 // Connect établit la connexion WebSocket RTA.
 func (c *RTAClient) Connect(ctx context.Context) error {
 	c.connMu.Lock()
@@ -140,7 +196,18 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	c.authExpired.Store(false)
 	c.status3GraceStarted.Store(false)
 
-	slog.InfoContext(ctx, "rta: connexion WebSocket", "endpoint", rtaEndpoint)
+	// Étape 1 : récupérer un nonce one-shot. Critique — sans ça les pushes
+	// d'events ne marchent pas (cf. fetchNonce doc).
+	nonce, err := c.fetchNonce(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "rta: fetchNonce échoué", "err", err)
+		return fmt.Errorf("rta connect: %w", err)
+	}
+	// Nonce est base64 (44 chars = 32 bytes) → contient + / = qui DOIVENT être
+	// URL-encodés sinon le handshake échoue en 400 (Bad Request) car Xbox
+	// rejette les caractères non URL-safe dans le query param.
+	connectURL := rtaEndpoint + "?nonce=" + url.QueryEscape(nonce)
+	slog.InfoContext(ctx, "rta: connexion WebSocket", "endpoint", rtaEndpoint, "nonce_len", len(nonce))
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 15 * time.Second,
@@ -152,7 +219,7 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	header := http.Header{}
 	header.Set("Authorization", c.authHeader)
 
-	conn, resp, err := dialer.DialContext(ctx, rtaEndpoint, header)
+	conn, resp, err := dialer.DialContext(ctx, connectURL, header)
 	if err != nil {
 		if resp != nil {
 			slog.ErrorContext(ctx, "rta: échec connexion WebSocket",
@@ -171,15 +238,54 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 	conn.SetPongHandler(func(string) error {
 		return conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
+	// Read deadline initial — sans ça, ReadMessage bloque indéfiniment
+	// si Xbox ne push rien (et donc aucun pong n'arrive pour reset).
+	_ = conn.SetReadDeadline(time.Now().Add(pongWait))
 
 	c.conn = conn
 	c.connected.Store(true)
 	slog.InfoContext(ctx, "rta: connecté")
+
+	// Goroutine de keepalive : envoie un ping toutes les pingPeriod.
+	// Détecte les connexions silencieusement mortes (Xbox cut la TCP
+	// sans envoyer de close frame) — le pongWait reset le ReadDeadline,
+	// si pas de pong → ReadMessage retourne err → reconnect logic prend
+	// le relais.
+	go c.pingLoop(ctx, conn)
 	return nil
 }
 
+// pingLoop envoie un ping WebSocket périodique pour garder la connexion
+// vivante et détecter les déconnexions silencieuses. S'arrête quand le
+// ctx est annulé OU quand la connexion change (Close puis Connect crée
+// un nouveau conn — la goroutine de l'ancienne conn écrit sur l'ancien
+// handle qui est fermé → erreur ignorée, return).
+func (c *RTAClient) pingLoop(ctx context.Context, conn *websocket.Conn) {
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			c.connMu.Lock()
+			cur := c.conn
+			c.connMu.Unlock()
+			if cur != conn {
+				// Une nouvelle connexion a remplacé celle-ci → on s'arrête.
+				return
+			}
+			_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				slog.DebugContext(ctx, "rta: ping échoué — connexion probablement morte", "err", err)
+				return
+			}
+		}
+	}
+}
+
 // Subscribe s'abonne au topic de présence d'un titre pour un joueur.
-// titleID est le Title ID Xbox Live du jeu (ex: "1144039928" pour Halo Infinite).
+// titleID est le Title ID Xbox Live du jeu (ex: "2043073184" pour Halo Infinite).
 func (c *RTAClient) Subscribe(ctx context.Context, xuid, titleID string, handler EventHandler) error {
 	c.connMu.Lock()
 	conn := c.conn
@@ -381,8 +487,20 @@ func (c *RTAClient) handleSubscribeResponse(ctx context.Context, msg []json.RawM
 	if err := json.Unmarshal(msg[2], &status); err != nil {
 		slog.WarnContext(ctx, "rta: subscribe response status invalide", "err", err)
 	}
+	// Xbox renvoie subID comme int pour certains endpoints (/titles/<TID>)
+	// et comme string pour d'autres (/richpresence). On essaie int d'abord,
+	// puis fallback string convertie via FNV hash pour avoir un int stable
+	// utilisable comme clé dans la map c.subs.
 	if err := json.Unmarshal(msg[3], &subID); err != nil {
-		slog.WarnContext(ctx, "rta: subscribe response sub_id invalide", "err", err)
+		var subIDStr string
+		if errStr := json.Unmarshal(msg[3], &subIDStr); errStr == nil {
+			subID = hashSubIDString(subIDStr)
+			slog.DebugContext(ctx, "rta: subID string convertie en int via hash",
+				"sub_id_str", subIDStr, "sub_id_int", subID)
+		} else {
+			slog.WarnContext(ctx, "rta: subscribe response sub_id invalide",
+				"err", err, "raw", string(msg[3]))
+		}
 	}
 
 	c.pendingMu.Lock()
@@ -526,4 +644,20 @@ func (c *RTAClient) writeMessage(data []byte) error {
 	}
 	_ = c.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 	return c.conn.WriteMessage(websocket.TextMessage, data)
+}
+
+// hashSubIDString convertit un sub_id string (renvoyé par Xbox pour
+// certains endpoints comme /richpresence) en int stable utilisable
+// comme clé dans c.subs. Utilise FNV-1a 32-bit qui a une distribution
+// uniforme et est rapide. Collisions extrêmement improbables vu le
+// petit nombre de subscriptions actives.
+func hashSubIDString(s string) int {
+	const offset32 = 2166136261
+	const prime32 = 16777619
+	h := uint32(offset32)
+	for i := 0; i < len(s); i++ {
+		h ^= uint32(s[i])
+		h *= prime32
+	}
+	return int(h)
 }

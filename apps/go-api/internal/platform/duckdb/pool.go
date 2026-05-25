@@ -238,7 +238,14 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// (mix avec OpenReadOnly historiquement, fixé en commit 21).
 	var socialDB *DB
 	if cfg.SharedSocialDBPath != "" {
-		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath, cfg.UserTimezone)
+		// 2026-05-25 : on n'applique PAS la timezone sur shared_social. Le
+		// connecteur custom (NewConnector + init function SET TimeZone) est la
+		// cause racine du bug DuckDB #7659 : son replay WAL n'est pas
+		// symétrique avec un ouvre standard, ce qui fait planter le boot après
+		// chaque rebuild Air. shared_social ne contient quasiment que des
+		// TIMESTAMPTZ déjà en UTC (capture_start_utc, liked_at, achieved_at),
+		// la timezone session n'est pas nécessaire pour les requêtes.
+		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath)
 		if err != nil {
 			// Non bloquant : la DB sera créée lors de la prochaine migration.
 			// On log Warn pour garder une trace (l'absence du fichier au boot est

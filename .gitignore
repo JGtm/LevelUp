@@ -218,3 +218,4 @@ apps/web/__mockup_*.html
 # (variable d'env non résolue côté Windows). Couvert aussi dans apps/web/.gitignore
 # pour les exécutions depuis ce sous-dossier.
 undefined/
+data/titles/halo_infinite/warehouse/*.wal*

@@ -82,7 +82,7 @@ func TestKnownLoaderV2_PlayerSourceOnly(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, nil)
+	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "alice", XUID: "1234567890123456", PlayerSlug: "alice",
@@ -111,7 +111,7 @@ func TestKnownLoaderV2_PlayerAndSharedUnion(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, sharedDB)
+	loader := NewKnownLoader(opener, func() *sql.DB { return sharedDB })
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "alice", XUID: "999",
@@ -141,7 +141,7 @@ func TestKnownLoaderV2_EmptyXUIDSkipsSharedSource(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, sharedDB)
+	loader := NewKnownLoader(opener, func() *sql.DB { return sharedDB })
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "alice", XUID: "  ", // espaces uniquement → trim vide
@@ -166,7 +166,7 @@ func TestKnownLoaderV2_NilSharedDBSkipsSource2(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, nil)
+	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "alice", XUID: "999",
@@ -185,7 +185,7 @@ func TestKnownLoaderV2_OpenPlayerDBFailureIsFatal(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return nil, nil, sql.ErrConnDone
 	}
-	loader := NewKnownLoader(opener, nil)
+	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
 	_, err := loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice"})
 	if err == nil {
 		t.Fatal("LoadKnown should return err when openPlayerDB fails")
@@ -209,7 +209,7 @@ func TestKnownLoaderV2_PlayerTableMissingIsTolerated(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return freshDB.SQLDb(), func() {}, nil
 	}
-	loader := NewKnownLoader(opener, sharedDB)
+	loader := NewKnownLoader(opener, func() *sql.DB { return sharedDB })
 
 	known, err := loader.LoadKnown(context.Background(), PlayerProfile{
 		Gamertag: "newplayer", XUID: "999",
@@ -230,7 +230,7 @@ func TestKnownLoaderV2_ReleaseCalledEvenOnError(t *testing.T) {
 	opener := func(ctx context.Context, gt string) (*sql.DB, func(), error) {
 		return playerDB.SQLDb(), func() { released = true }, nil
 	}
-	loader := NewKnownLoader(opener, nil)
+	loader := NewKnownLoader(opener, func() *sql.DB { return nil })
 	_, _ = loader.LoadKnown(context.Background(), PlayerProfile{Gamertag: "alice"})
 	if !released {
 		t.Error("release() not called — defer leak")
