@@ -12,7 +12,10 @@
 //
 // Chaque test garde un commentaire "TODO(Dx)" qui pointe le deliverable
 // qui doit le décoincer.
-package sync
+//
+// Black-box (package sync_test) pour éviter le cycle d'import
+// sync ↔ sync/v2 (D6.4 — v2 importe sync pour les types HaloClient).
+package sync_test
 
 import (
 	"testing"
