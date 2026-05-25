@@ -9,9 +9,12 @@ import (
 // Manifest persists per-Target fingerprints of the last successful backup.
 // Stored as {BackupDir}/.manifest.json.
 type Manifest struct {
-	LastBackupAt time.Time              `json:"last_backup_at"`
-	Databases    map[string]fingerprint `json:"databases"`
-	path         string
+	LastBackupAt   time.Time              `json:"last_backup_at"`
+	LastSnapshotID string                 `json:"last_snapshot_id,omitempty"`
+	LastExported   []string               `json:"last_exported,omitempty"`
+	LastDurationMs int64                  `json:"last_duration_ms,omitempty"`
+	Databases      map[string]fingerprint `json:"databases"`
+	path           string
 }
 
 type fingerprint struct {
@@ -69,6 +72,14 @@ func (m *Manifest) MarkSaved(t Target) error {
 		LastBackedUpAt: time.Now().UTC(),
 	}
 	return nil
+}
+
+// SetLastResult stores the outcome of the last successful backup cycle.
+// Must be called before Save() so the values are persisted.
+func (m *Manifest) SetLastResult(snapshotID string, exported []string, duration time.Duration) {
+	m.LastSnapshotID = snapshotID
+	m.LastExported = exported
+	m.LastDurationMs = duration.Milliseconds()
 }
 
 // Save writes the manifest to disk atomically (write temp + rename).

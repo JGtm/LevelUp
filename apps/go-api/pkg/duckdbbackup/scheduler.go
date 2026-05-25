@@ -146,11 +146,12 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 	}
 	forgetCancel()
 
+	dur := time.Since(start)
+	manifest.SetLastResult(snapshotID, exported, dur)
 	if err := manifest.Save(); err != nil {
 		slog.WarnContext(ctx, "backup: sauvegarde manifest échouée", "err", err)
 	}
 
-	dur := time.Since(start)
 	slog.InfoContext(ctx, "backup: cycle terminé",
 		"snapshot_id", snapshotID,
 		"exported", exported,
@@ -161,4 +162,42 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 		Exported:   exported,
 		Duration:   dur,
 	}, nil
+}
+
+// SchedulerStatus is the snapshot returned by Status() for the settings UI.
+type SchedulerStatus struct {
+	Enabled        bool     `json:"enabled"`
+	Available      bool     `json:"available"`
+	LastBackupAt   string   `json:"last_backup_at,omitempty"`   // RFC3339, empty if never
+	LastSnapshotID string   `json:"last_snapshot_id,omitempty"`
+	LastExported   []string `json:"last_exported,omitempty"`
+	LastDurationMs int64    `json:"last_duration_ms,omitempty"`
+	Config         struct {
+		Interval    string `json:"interval"`
+		KeepDaily   int    `json:"keep_daily"`
+		KeepWeekly  int    `json:"keep_weekly"`
+		KeepMonthly int    `json:"keep_monthly"`
+	} `json:"config"`
+}
+
+// Status reads the persisted manifest and returns a snapshot for the UI.
+// Safe to call at any time; returns sane zero values if no backup has run yet.
+func (s *Scheduler) Status() SchedulerStatus {
+	st := SchedulerStatus{
+		Enabled:   s.cfg.Enabled,
+		Available: s.restic.IsAvailable(),
+	}
+	st.Config.Interval = s.cfg.Interval.String()
+	st.Config.KeepDaily = s.cfg.KeepDaily
+	st.Config.KeepWeekly = s.cfg.KeepWeekly
+	st.Config.KeepMonthly = s.cfg.KeepMonthly
+
+	manifestPath := filepath.Join(s.cfg.BackupDir, ".manifest.json")
+	if m, err := LoadManifest(manifestPath); err == nil && !m.LastBackupAt.IsZero() {
+		st.LastBackupAt = m.LastBackupAt.UTC().Format(time.RFC3339)
+		st.LastSnapshotID = m.LastSnapshotID
+		st.LastExported = m.LastExported
+		st.LastDurationMs = m.LastDurationMs
+	}
+	return st
 }

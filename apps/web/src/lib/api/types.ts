@@ -3272,3 +3272,31 @@ export interface AchievementsPageResponse {
   summary: AchievementsSummary
   achievements: AchievementEntry[]
 }
+
+// ---------------------------------------------------------------------------
+// Backup (pkg/duckdbbackup)
+// ---------------------------------------------------------------------------
+
+export interface BackupConfig {
+  interval: string
+  keep_daily: number
+  keep_weekly: number
+  keep_monthly: number
+}
+
+export interface BackupStatusResponse {
+  enabled: boolean
+  available: boolean
+  last_backup_at?: string   // ISO 8601, absent si jamais sauvegardé
+  last_snapshot_id?: string
+  last_exported?: string[]
+  last_duration_ms?: number
+  config: BackupConfig
+}
+
+export interface BackupRunResult {
+  snapshot_id?: string
+  skipped: boolean
+  exported?: string[]
+  duration_ms?: number
+}
