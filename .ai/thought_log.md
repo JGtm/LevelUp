@@ -793,6 +793,42 @@ Structure : `data/restore/2026-05-25/halo_infinite/{db}.duckdb` + `data/restore/
 
 ---
 
+## [2026-05-25] feat: pont coach → Prestige V2 livré (Phases 1-10)
+
+**Statut** : Complété
+**Branche** : `feat/coach-proactive-prestige-bridge` (15 commits, prêt pour PR)
+
+**Décision technique** :
+Implémentation complète V2 du pont coach proactif → Prestige (ADR 0020 + 0021). 10 phases livrées en une suite cohérente :
+
+- **Phase 1** — toggle `CoachProactiveMode` dans `app_settings.json` (default false, opt-in strict).
+- **Phase 2** — package `internal/progression/coach_advisor/` types purs (Proposal/Signal/MatchScore) + matcher catalogue pondéré (lusr_component 0.5 + radar_axis 0.3 + metric 0.2).
+- **Phase 3** — table `coach_proposal` (stats.duckdb), interface `Repo` (8 méthodes), implémentation `CoachProposalRepo`, service squelette (List/Dismiss/ObsoletePendingForAxis).
+- **Phase 4** — `SignalsFromAlerts()` : traduction pure des 8 types d'alertes coach pertinents en `Signal` (filtrage des non-actionnables, normalisation strength).
+- **Phase 5** — extension `prestige.Template.Source` ('catalog' | 'coach_synthesized') + synthesizer (allowlist TOML `synthesis_grammar.toml` 10 entrées + hash ID FNV-64 pour dédup cross-joueurs + targets = stretch ratios 1.08/1.25/1.50/2.00 calculés par Prestige à l'instanciation).
+- **Phase 6** — `arc_composer.TryCompose()` : agrège ≥2 signaux convergents sur un radar_axis, cap 4 étapes, progression Normal→Mythic, titres/descriptions narratifs FR/EN par axis.
+- **Phase 7** — orchestration : `GenerateProposals` (match → synth → arc → supersession → persist) et `AcceptProposal` (challenge OU arc via prestige.CreateChallenge/CreateArc avec Source="coach"). Extension minimale Prestige : champ `Source` dans Create*Request + `TemplateRepo.UpsertOne`.
+- **Phase 8** — intégration post-sync hook (`EvaluateProgressionAfterSync` étape 8) + `CoachAdvisorBundle` (grammaire chargée au boot) + extension `ProgressionDeps`/`ServiceRegistry` + wiring `cmd/server`.
+- **Phase 9** — handlers HTTP GET `/coach/proposals`, POST `/accept`, POST `/dismiss` (8 tests httptest PASS, codes 200/400/404/409/503).
+- **Phase 10** — frontend : toggle settings (AnalyseTab.tsx + i18n FR/EN), feature `apps/web/src/features/coach/` (types DTO + queries TanStack + i18n + composant `CoachProposalsCard` avec opt-in hint, list, accept/dismiss).
+
+**Résultats observés** :
+- 15 commits sur la branche, structure linéaire (un commit par phase ou sous-phase).
+- Tests backend : 65 unitaires coach_advisor + 8 intégration repo + 8 handlers HTTP = **81 PASS, 0 FAIL**.
+- Tests frontend : 1453 vitest PASS (aucune régression).
+- Build Go : `go build ./...` propre.
+- Build frontend : typecheck ok sauf 1 erreur pré-existante sur Backup tab union (non liée à ce travail).
+- Side-fix : `apps/web/src/features/settings/BackupTab.tsx` — extracted 3 className en consts avec marqueurs `color-allow:` pour passer le lint pre-commit (les couleurs status sont sémantiques success/warning universelles, pas liées à Halo).
+
+**Conclusion** :
+Bridge V2 enrichi 100% fonctionnel. La cohérence philosophique avec Prestige est préservée par les 5 invariants gravés dans l'ADR 0020 (palier Prestige, baseline ancre, Template valide, Arc standard, signal fort). Tout est calibré : aucune valeur cible n'est inventée — Prestige reste l'unique source de vérité du calage.
+
+**Prochaines étapes possibles (hors ce PR)** :
+- Test d'intégration end-to-end (sync → proposal créée → accept → challenge Prestige actif → completion → obsolescence).
+- Intégration du `CoachProposalsCard` sur une page concrète (Ascension ou Prestige) — composant prêt à consommer.
+- Tuning des seuils via `prestige_telemetry.source='coach'` après quelques semaines de prod (cf. backlog V2.1).
+- V3 squad coach + coach négatif soft (cf. `.ai/BACKLOG_COACH_PRESTIGE.md`).
+
 ## [2026-05-25] docs(adr): pont coach proactif → Prestige (ADR 0020 + 0021)
 
 **Statut** : Complété (phase ADR ; implémentation Phase 1 à suivre)
