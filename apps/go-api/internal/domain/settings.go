@@ -55,6 +55,10 @@ type SettingsResponse struct {
 	// (section Accueil + entrée nav L1). Défaut : true.
 	ShowProgression bool `json:"show_progression"`
 
+	// CoachProactiveMode active la proposition automatique de challenges/arcs
+	// Prestige par le coach (cf. ADR 0020). Opt-in, défaut : false.
+	CoachProactiveMode bool `json:"coach_proactive_mode"`
+
 	// AuthProvider indique le mécanisme d'authentification actif.
 	// Valeurs : "msal" (défaut) | "sisu" (Xbox natif).
 	AuthProvider string `json:"auth_provider"`
@@ -109,6 +113,9 @@ type UpdateSettingsRequest struct {
 
 	// ShowProgression : toggle d'affichage Objectifs/Prestige.
 	ShowProgression *bool `json:"show_progression,omitempty"`
+
+	// CoachProactiveMode : toggle pont coach → Prestige (cf. ADR 0020).
+	CoachProactiveMode *bool `json:"coach_proactive_mode,omitempty"`
 
 	// AuthProvider bascule le mécanisme d'authentification. "msal" | "sisu".
 	AuthProvider *string `json:"auth_provider,omitempty"`
