@@ -1,0 +1,386 @@
+//go:build cgo
+
+// Package persist — tests SharedSocialPersister sur DuckDB réel.
+//
+// Couvre :
+//   - Persist d'un batch avec toutes les tables (sanity full path)
+//   - CHECKPOINT garanti (WAL vide après Persist)
+//   - Atomicité : si 1 INSERT échoue, rollback complet
+//   - IsEmpty → no-op (pas de TX inutile)
+//   - Persist batch nil → no-op
+
+package persist
+
+import (
+	"context"
+	"database/sql"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	_ "github.com/duckdb/duckdb-go/v2"
+)
+
+// setupSocialDB crée une shared_social.duckdb temporaire avec le schéma de
+// base (migrations équivalentes appliquées en SQL inline).
+func setupSocialDB(t *testing.T) (string, *sql.DB) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "shared_social.duckdb")
+	db, err := sql.Open("duckdb", path)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	schema := []string{
+		`CREATE SEQUENCE IF NOT EXISTS media_files_id_seq START 1`,
+		`CREATE TABLE media_files (
+			id INTEGER PRIMARY KEY DEFAULT nextval('media_files_id_seq'),
+			player_slug VARCHAR,
+			file_path VARCHAR UNIQUE,
+			file_name VARCHAR,
+			file_stem VARCHAR,
+			file_ext VARCHAR,
+			file_hash VARCHAR,
+			kind VARCHAR,
+			thumbnail_path VARCHAR,
+			capture_start_utc TIMESTAMPTZ,
+			capture_end_utc TIMESTAMPTZ,
+			duration_seconds DOUBLE,
+			status VARCHAR,
+			mtime TIMESTAMPTZ,
+			liked BOOLEAN DEFAULT FALSE,
+			liked_at TIMESTAMPTZ,
+			discord_notified BOOLEAN DEFAULT FALSE,
+			indexed_at TIMESTAMPTZ DEFAULT NOW()
+		)`,
+		`CREATE TABLE media_match_associations (
+			media_file_id INTEGER,
+			match_id VARCHAR,
+			delta_seconds INTEGER,
+			PRIMARY KEY (media_file_id, match_id)
+		)`,
+		`CREATE TABLE media_likes (
+			media_path VARCHAR NOT NULL,
+			liker_slug VARCHAR NOT NULL,
+			liker_gamertag VARCHAR,
+			liked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (media_path, liker_slug)
+		)`,
+		`CREATE TABLE match_favorites (
+			player_slug VARCHAR NOT NULL,
+			match_id VARCHAR NOT NULL,
+			favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (player_slug, match_id)
+		)`,
+		`CREATE TABLE player_notifications (
+			xuid VARCHAR NOT NULL,
+			id BIGINT NOT NULL,
+			category VARCHAR NOT NULL,
+			severity VARCHAR NOT NULL DEFAULT 'info',
+			title_key VARCHAR NOT NULL,
+			body_key VARCHAR,
+			params VARCHAR,
+			target_route VARCHAR,
+			target_search VARCHAR,
+			actor_xuid VARCHAR,
+			actor_name VARCHAR,
+			source VARCHAR NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			read_at TIMESTAMP,
+			PRIMARY KEY (xuid, id)
+		)`,
+		// Pour le test, on utilise la table _legacy player_records (sans _history)
+		// pour valider le fallback. La migration Phase 2 introduira _history.
+		`CREATE TABLE player_records (
+			xuid VARCHAR NOT NULL,
+			metric VARCHAR NOT NULL,
+			value DOUBLE NOT NULL,
+			achieved_at TIMESTAMP,
+			achieved_match_id VARCHAR,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (xuid, metric)
+		)`,
+	}
+	for _, sql := range schema {
+		if _, err := db.Exec(sql); err != nil {
+			t.Fatalf("schema setup: %v\nSQL: %s", err, sql)
+		}
+	}
+	return path, db
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IsEmpty + nil + no-op
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialBatch_IsEmpty(t *testing.T) {
+	b := &SharedSocialBatch{}
+	if !b.IsEmpty() {
+		t.Error("batch vide doit être IsEmpty=true")
+	}
+
+	b.MediaFiles = []MediaFileInsert{{PlayerSlug: "p"}}
+	if b.IsEmpty() {
+		t.Error("batch avec media_files ne doit pas être IsEmpty")
+	}
+}
+
+func TestSharedSocialPersister_NilBatch_NoOp(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	if err := p.Persist(context.Background(), nil); err != nil {
+		t.Errorf("Persist(nil) doit être no-op, got: %v", err)
+	}
+}
+
+func TestSharedSocialPersister_EmptyBatch_NoOp(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	if err := p.Persist(context.Background(), &SharedSocialBatch{BatchID: "empty"}); err != nil {
+		t.Errorf("Persist(empty) doit être no-op, got: %v", err)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full path : insert sur toutes les tables
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_FullBatch_PersistsAllTables(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	captureStart := time.Now().UTC().Add(-1 * time.Hour)
+	captureEnd := captureStart.Add(5 * time.Minute)
+	duration := 300.0
+	achievedAt := time.Now().UTC().Add(-30 * time.Minute)
+	matchID := "match-xyz"
+
+	batch := &SharedSocialBatch{
+		BatchID: "test-full",
+		Source:  "unit_test",
+		MediaFiles: []MediaFileInsert{
+			{
+				PlayerSlug:      "spartan",
+				FilePath:        "/cap/clip.mp4",
+				FileName:        "clip.mp4",
+				FileStem:        "clip",
+				FileExt:         ".mp4",
+				FileHash:        "deadbeef",
+				Kind:            "video",
+				CaptureStartUTC: &captureStart,
+				CaptureEndUTC:   &captureEnd,
+				DurationSeconds: &duration,
+			},
+		},
+		// MediaAssociations testé après recup id auto-incrémenté
+		Likes: []LikeInsert{
+			{MediaPath: "/cap/clip.mp4", LikerSlug: "friend1", LikerGamertag: "Friend1", LikedAt: time.Now().UTC()},
+		},
+		Favorites: []FavoriteInsert{
+			{PlayerSlug: "spartan", MatchID: matchID, FavoritedAt: time.Now().UTC()},
+		},
+		Notifications: []NotificationInsert{
+			{
+				XUID:      "xuid-123",
+				ID:        1,
+				Category:  "milestone",
+				Severity:  "success",
+				TitleKey:  "milestone.records.kda_best",
+				Source:    "test",
+				CreatedAt: time.Now().UTC(),
+			},
+		},
+		PlayerRecordsAppend: []PlayerRecordAppend{
+			{
+				XUID:            "xuid-123",
+				Metric:          "kda_best",
+				Period:          "all_time",
+				Value:           3.5,
+				AchievedAt:      &achievedAt,
+				AchievedMatchID: &matchID,
+				WrittenAt:       time.Now().UTC(),
+			},
+		},
+	}
+
+	if err := p.Persist(ctx, batch); err != nil {
+		t.Fatalf("Persist full batch: %v", err)
+	}
+
+	// Vérifier chaque table.
+	expectations := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{"media_files", "SELECT COUNT(*) FROM media_files WHERE file_path = '/cap/clip.mp4'", 1},
+		{"media_likes", "SELECT COUNT(*) FROM media_likes WHERE liker_slug = 'friend1'", 1},
+		{"match_favorites", "SELECT COUNT(*) FROM match_favorites WHERE player_slug = 'spartan'", 1},
+		{"player_notifications", "SELECT COUNT(*) FROM player_notifications WHERE xuid = 'xuid-123'", 1},
+		{"player_records", "SELECT COUNT(*) FROM player_records WHERE xuid = 'xuid-123' AND metric = 'kda_best'", 1},
+	}
+	for _, e := range expectations {
+		var count int
+		if err := db.QueryRow(e.query).Scan(&count); err != nil {
+			t.Errorf("%s query: %v", e.name, err)
+			continue
+		}
+		if count != e.want {
+			t.Errorf("%s: count=%d, want %d", e.name, count, e.want)
+		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CHECKPOINT garanti : WAL vide après Persist (anti-régression bug DuckDB #7659)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_CHECKPOINT_WALEmptyAfterPersist(t *testing.T) {
+	path, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	// Écrire un batch significatif.
+	captureStart := time.Now().UTC()
+	batch := &SharedSocialBatch{
+		BatchID: "checkpoint-test",
+		Source:  "unit_test",
+		MediaFiles: []MediaFileInsert{
+			{PlayerSlug: "p1", FilePath: "/m1.mp4", FileName: "m1.mp4", FileHash: "h1", Kind: "video", CaptureStartUTC: &captureStart},
+			{PlayerSlug: "p1", FilePath: "/m2.mp4", FileName: "m2.mp4", FileHash: "h2", Kind: "video", CaptureStartUTC: &captureStart},
+			{PlayerSlug: "p1", FilePath: "/m3.mp4", FileName: "m3.mp4", FileHash: "h3", Kind: "video", CaptureStartUTC: &captureStart},
+		},
+	}
+	if err := p.Persist(ctx, batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	// Vérifier le WAL.
+	walPath := path + ".wal"
+	info, err := os.Stat(walPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// CHECKPOINT a tout fusionné, pas de WAL → parfait
+			return
+		}
+		t.Fatalf("stat WAL: %v", err)
+	}
+	// Si le WAL existe, il doit être vide (CHECKPOINT l'a flushé).
+	if info.Size() > 0 {
+		t.Errorf("WAL non-vide après Persist+CHECKPOINT (size=%d). Risque de replay au prochain reopen.\nPath: %s",
+			info.Size(), walPath)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Atomicité : 1 INSERT échoue → rollback complet
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_Atomicity_RollbackOnFailure(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	// Batch valide en partie 1 (media_files OK) + invalide en partie 2
+	// (PK collision sur player_notifications : 2 fois la même row exacte).
+	// La 2e insert sur notifications va FAIL avec PK constraint → rollback.
+	now := time.Now().UTC()
+	batch := &SharedSocialBatch{
+		BatchID: "rollback-test",
+		Source:  "unit_test",
+		MediaFiles: []MediaFileInsert{
+			{PlayerSlug: "p", FilePath: "/rb.mp4", FileName: "rb.mp4", FileHash: "rb", Kind: "video"},
+		},
+		Notifications: []NotificationInsert{
+			{XUID: "x1", ID: 100, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now},
+			{XUID: "x1", ID: 100, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now}, // PK duplicate
+		},
+	}
+
+	err := p.Persist(ctx, batch)
+	if err == nil {
+		t.Fatal("Persist doit échouer (PK duplicate sur notification)")
+	}
+
+	// Vérifier que la media_file n'a PAS été persistée (rollback complet).
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM media_files WHERE file_path = '/rb.mp4'").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("media_file persistée malgré rollback (count=%d, want 0)", count)
+	}
+	// Vérifier que la 1re notif n'a PAS été persistée non plus.
+	if err := db.QueryRow("SELECT COUNT(*) FROM player_notifications WHERE xuid = 'x1' AND id = 100").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 0 {
+		t.Errorf("notification persistée malgré rollback (count=%d, want 0)", count)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Idempotence : INSERT OR IGNORE silencieux sur doublons
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_InsertOrIgnore_NoErrorOnDuplicate(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	batch := &SharedSocialBatch{
+		BatchID: "idemp",
+		Source:  "unit_test",
+		Likes: []LikeInsert{
+			{MediaPath: "/dup.mp4", LikerSlug: "u1", LikedAt: now},
+		},
+	}
+	if err := p.Persist(ctx, batch); err != nil {
+		t.Fatalf("1st Persist: %v", err)
+	}
+	// 2e Persist du même like (INSERT OR IGNORE) ne doit pas fail.
+	if err := p.Persist(ctx, batch); err != nil {
+		t.Fatalf("2nd Persist (duplicate): %v", err)
+	}
+	var count int
+	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/dup.mp4'").Scan(&count)
+	if count != 1 {
+		t.Errorf("dedup raté : count=%d, want 1", count)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Toggle : remove (DELETE)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_ToggleLike_AddThenRemove(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	// Add
+	if err := p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "toggle1", Source: "test",
+		Likes: []LikeInsert{{MediaPath: "/t.mp4", LikerSlug: "u", LikedAt: time.Now().UTC()}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Remove
+	if err := p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "toggle2", Source: "test",
+		LikesToRemove: []LikeRemove{{MediaPath: "/t.mp4", LikerSlug: "u"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	var count int
+	_ = db.QueryRow("SELECT COUNT(*) FROM media_likes WHERE media_path = '/t.mp4'").Scan(&count)
+	if count != 0 {
+		t.Errorf("toggle remove KO: count=%d", count)
+	}
+}
