@@ -149,36 +149,6 @@ func isEmptyHomeIdentity(row *domain.HomeSpartanIdentityRow) bool {
 		row.HighestCSR == nil && row.HighestLUSR == nil
 }
 
-// ApplySpartanIdentityOverlay override les champs customisation de identity
-// avec ceux de spartanRow (Phase 3 PLAN_SPARTAN_IDENTITY_REFACTOR §11).
-// La table dédiée `spartan_identity` devient la source de vérité pour
-// banner/emblem/backdrop/spartan_id. Le legacy `career_progression` ne
-// continue d'historiser que rank/XP.
-//
-// Comportement :
-//   - identity nil OU spartanRow nil → no-op
-//   - champ spartanRow vide → préserve l'identity courante (jamais d'écrasement
-//     par du vide, contrat UI-first « la bannière ne disparaît jamais »)
-//   - champ spartanRow rempli → remplace l'identity (la nouvelle table est
-//     PRIORITAIRE sur le legacy career_progression)
-func (r *HomeRepo) ApplySpartanIdentityOverlay(identity *domain.HomeSpartanIdentityRow, spartanRow *SpartanIdentityRow) {
-	if r == nil || identity == nil || spartanRow == nil {
-		return
-	}
-	if spartanRow.SpartanID != "" {
-		identity.SpartanID = stringPtr(spartanRow.SpartanID)
-	}
-	if spartanRow.BannerImageURL != "" {
-		identity.BannerImageURL = buildHomeIdentityAssetURL("banner", r.titleSlug(), spartanRow.BannerImageURL)
-	}
-	if spartanRow.EmblemImageURL != "" {
-		identity.EmblemImageURL = buildHomeIdentityAssetURL("emblem", r.titleSlug(), spartanRow.EmblemImageURL)
-	}
-	if spartanRow.BackdropImageURL != "" {
-		identity.BackdropImageURL = buildHomeIdentityAssetURL("backdrop", r.titleSlug(), spartanRow.BackdropImageURL)
-	}
-}
-
 // enrichSpartanIdentity hydrate les paths d'assets visuels du rang carrière
 // (image rang + adornment) depuis metadata.duckdb. Les libellés (rang courant,
 // rang suivant) sont résolus en aval par le service via le SemanticAdapter

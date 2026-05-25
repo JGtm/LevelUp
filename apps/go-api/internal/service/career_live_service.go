@@ -94,25 +94,6 @@ type CareerLiveRepo interface {
 // duckdb.HomeRepo.BuildSpartanIdentityFromCareerRow.
 type CareerIdentityBuilder interface {
 	BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *duckdb.CareerRankRow) *domain.HomeSpartanIdentityRow
-	// ApplySpartanIdentityOverlay (Phase 3 PLAN_SPARTAN_IDENTITY_REFACTOR §11)
-	// override les champs custom de identity avec ceux de spartanRow si présents.
-	// La nouvelle table `spartan_identity` devient la source de vérité.
-	// No-op si spartanRow nil ou si identity nil.
-	ApplySpartanIdentityOverlay(identity *domain.HomeSpartanIdentityRow, spartanRow *duckdb.SpartanIdentityRow)
-}
-
-// SpartanIdentityStore expose Load + Upsert sur la table dédiée
-// `spartan_identity` (PLAN_SPARTAN_IDENTITY_REFACTOR §11). Découplé du
-// legacy persist dans `career_progression` qui historise rank/XP.
-// Implémenté par duckdb.SpartanIdentityRepo.
-type SpartanIdentityStore interface {
-	Load(ctx context.Context, xuid string) (*duckdb.SpartanIdentityRow, error)
-	Upsert(
-		ctx context.Context,
-		xuid string,
-		data *duckdb.SpartanIdentityRow,
-		status duckdb.SpartanIdentityStatus,
-	) error
 }
 
 // CareerLiveService orchestre live + cache + fallback + INSERT-if-changed.
@@ -124,11 +105,6 @@ type CareerLiveService struct {
 	builder        CareerIdentityBuilder
 	fetcherFactory CareerFetcherFactory
 	cache          *CareerLiveCache
-	// spartanRepo (optionnel, ajouté Phase 2 du refactor 2026-05-25) écrit
-	// la customisation Spartan dans une table dédiée `spartan_identity`,
-	// séparée du legacy `career_progression` qui historise rank/XP. Si nil,
-	// seul le path legacy est actif (compat tests + rollback).
-	spartanRepo SpartanIdentityStore
 
 	// bgInflight déduplique les refresh background : un seul refresh actif
 	// par xuid, peu importe combien de requêtes timeoutent en parallèle.
@@ -152,17 +128,6 @@ func NewCareerLiveService(
 		cache:          cache,
 		bgInflight:     make(map[string]bool),
 	}
-}
-
-// WithSpartanIdentityRepo branche le writer dédié pour la nouvelle table
-// `spartan_identity` (PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 2). Méthode
-// chainée pour préserver la backward-compat du constructor (les tests
-// existants n'ont pas besoin d'être touchés). Idempotent.
-func (s *CareerLiveService) WithSpartanIdentityRepo(w SpartanIdentityStore) *CareerLiveService {
-	if s != nil {
-		s.spartanRepo = w
-	}
-	return s
 }
 
 // GetSpartanIdentity retourne le bloc Spartan ID complet pour la home.
@@ -218,12 +183,6 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 	// est garanti aussi complet que ce que la DB historique sait offrir.
 	identity = overlayIdentityFromFallback(identity, dbFallback)
 
-	// Étape 5 (Phase 3 PLAN_SPARTAN_IDENTITY_REFACTOR §11) : overlay PRIORITAIRE
-	// depuis la table dédiée `spartan_identity`. La nouvelle table est la source
-	// de vérité customisation — elle override les valeurs venues du legacy
-	// `career_progression`. No-op si spartanRepo non câblé ou row absente.
-	identity = s.overlayFromSpartanIdentityTable(ctx, xuid, identity)
-
 	if identity == nil {
 		careerLiveIdentityMissing.Add(1)
 		careerLiveEmptyResult.Add(1)
@@ -231,34 +190,6 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 	}
 	careerLiveIdentityServed.Add(1)
 	return identity, nil
-}
-
-// overlayFromSpartanIdentityTable charge la row `spartan_identity` pour xuid
-// et applique l'overlay sur identity via le builder. Best-effort : toute
-// erreur de lecture est loguée WARN sans casser la home (le fallback legacy
-// reste actif).
-func (s *CareerLiveService) overlayFromSpartanIdentityTable(
-	ctx context.Context,
-	xuid string,
-	identity *domain.HomeSpartanIdentityRow,
-) *domain.HomeSpartanIdentityRow {
-	if s.spartanRepo == nil || xuid == "" || identity == nil {
-		return identity
-	}
-	row, err := s.spartanRepo.Load(ctx, xuid)
-	if err != nil {
-		slog.WarnContext(ctx, careerLiveLogModule+": spartan_identity load failed",
-			"xuid", xuid, "err", err)
-		return identity
-	}
-	if row == nil {
-		// Pas encore de row spartan_identity pour ce joueur (Phase 4 backfill
-		// pas encore exécuté, ou première visite home pas encore terminée).
-		// On laisse l'identity legacy telle quelle.
-		return identity
-	}
-	s.builder.ApplySpartanIdentityOverlay(identity, row)
-	return identity
 }
 
 // overlayIdentityFromFallback applique le filet DB last-known-good par-dessus
@@ -421,13 +352,6 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 			}
 		}
 
-		// Phase 2 PLAN_SPARTAN_IDENTITY_REFACTOR (§11, 2026-05-25) : UPSERT
-		// séparé dans la table dédiée `spartan_identity`. Source de vérité
-		// pour banner/emblem/backdrop/spartan_id (le legacy persistIfChanged
-		// continue d'historiser rank/XP dans career_progression).
-		// No-op si spartanRepo non câblé (compat tests + rollback safe).
-		s.upsertSpartanIdentity(bgCtx, xuid, custom)
-
 		slog.DebugContext(bgCtx, careerLiveLogModule+": background refresh completed", "xuid", xuid)
 	}()
 }
@@ -447,6 +371,17 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 	if fetcher == nil {
 		return nil
 	}
+
+	// DIAG 2026-05-25 : trace le xuid associé aux tokens en ctx vs le xuid
+	// queried. Si mismatch (e.g., tokens JGtm utilisés pour fetcher Madina),
+	// l'API Halo Economy peut renvoyer les données du token holder au lieu
+	// du xuid queried — symptôme silencieux (pas de 401/403). Supprimer
+	// quand l'investigation est close (cf. §12 PLAN_SPARTAN_IDENTITY_REFACTOR).
+	ctxXUID := ctxkeys.HaloXUID(ctx)
+	slog.InfoContext(ctx, careerLiveLogModule+": progress fetch DIAG",
+		"query_xuid", xuid,
+		"ctx_xuid", ctxXUID,
+		"xuid_mismatch", xuid != ctxXUID)
 
 	fetch := func() (*syncpkg.CareerRankData, error) {
 		return fetcher.GetCareerProgress(ctx, xuid)
@@ -475,6 +410,13 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 		return nil
 	}
 	careerLiveProgressLive.Add(1)
+	// DIAG 2026-05-25 : log la valeur brute renvoyée par l'API pour comparer
+	// avec ce que la home affiche et ce que Halowaypoint montre.
+	slog.InfoContext(ctx, careerLiveLogModule+": progress fetch RESULT",
+		"query_xuid", xuid,
+		"api_rank", data.CurrentRank,
+		"api_xp", data.CurrentXP,
+		"api_is_max", data.IsMaxRank)
 	if s.cache != nil {
 		s.cache.PutProgress(xuid, data)
 	}
@@ -495,6 +437,14 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 	if fetcher == nil {
 		return nil
 	}
+
+	// DIAG 2026-05-25 : trace le xuid associé aux tokens en ctx vs le xuid
+	// queried (cf. fetchProgressCached pour rationale).
+	ctxXUID := ctxkeys.HaloXUID(ctx)
+	slog.InfoContext(ctx, careerLiveLogModule+": custom fetch DIAG",
+		"query_xuid", xuid,
+		"ctx_xuid", ctxXUID,
+		"xuid_mismatch", xuid != ctxXUID)
 
 	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
 		return fetcher.GetSpartanCustomization(ctx, xuid)
@@ -520,6 +470,13 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 		return nil
 	}
 	careerLiveCustomLive.Add(1)
+	// DIAG 2026-05-25 : log les URLs/SpartanID retournés par l'API.
+	slog.InfoContext(ctx, careerLiveLogModule+": custom fetch RESULT",
+		"query_xuid", xuid,
+		"spartan_id", data.SpartanID,
+		"has_banner", data.BannerImageURL != "",
+		"has_emblem", data.EmblemImageURL != "",
+		"has_backdrop", data.BackdropImageURL != "")
 	if s.cache != nil {
 		s.cache.PutCustomization(xuid, data)
 	}
@@ -556,50 +513,6 @@ func (s *CareerLiveService) persistIfChanged(ctx context.Context, xuid string, r
 	} else {
 		careerLiveInsertSkipped.Add(1)
 	}
-}
-
-// upsertSpartanIdentity persiste la customisation Spartan dans la table
-// dédiée `spartan_identity` (Phase 2 PLAN_SPARTAN_IDENTITY_REFACTOR §11).
-//
-// 3 cas en entrée :
-//   - custom non-nil avec au moins 1 champ → status=ok, UPSERT data complet
-//   - custom non-nil mais tous champs vides → status=api_empty, status-only
-//   - custom nil (échec fetch silencieux) → status=api_empty, status-only
-//
-// No-op si spartanRepo non câblé (compat tests + rollback safe).
-func (s *CareerLiveService) upsertSpartanIdentity(
-	ctx context.Context,
-	xuid string,
-	custom *syncpkg.SpartanCustomizationData,
-) {
-	if s.spartanRepo == nil || xuid == "" {
-		return
-	}
-	var (
-		data   *duckdb.SpartanIdentityRow
-		status = duckdb.SpartanIdentityStatusAPIEmpty
-	)
-	if custom != nil {
-		row := &duckdb.SpartanIdentityRow{
-			XUID:             xuid,
-			SpartanID:        custom.SpartanID,
-			BannerImageURL:   custom.BannerImageURL,
-			EmblemImageURL:   custom.EmblemImageURL,
-			BackdropImageURL: custom.BackdropImageURL,
-		}
-		if !row.IsEmpty() {
-			data = row
-			status = duckdb.SpartanIdentityStatusOK
-		}
-	}
-	if err := s.spartanRepo.Upsert(ctx, xuid, data, status); err != nil {
-		slog.WarnContext(ctx, careerLiveLogModule+": spartan_identity upsert failed",
-			"xuid", xuid, "status", status, "err", err)
-		return
-	}
-	slog.InfoContext(ctx, careerLiveLogModule+": spartan_identity upsert ok",
-		"xuid", xuid, "status", status,
-		"has_data", data != nil)
 }
 
 // serveDBFallback charge la dernière row DB et construit directement la
