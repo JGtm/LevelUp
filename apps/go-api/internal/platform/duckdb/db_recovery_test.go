@@ -447,6 +447,82 @@ func TestExecRecovered_PropagatesNonInvalidatedError(t *testing.T) {
 	}
 }
 
+// ─── Root cause fix (2026-05-25) : swap in-place sur ping fail ──────────────
+
+// TestOpenCachedDB_PingFail_SwapInPlace_PreservesExternalRefs vérifie le fix
+// du root cause observé en prod 2026-05-25 11:20-11:23 :
+//
+//   - globalPool[gamertag].Player détient une référence stable vers un *DB
+//   - À T1, un ping interne fail (drain, lock OS, etc.)
+//   - AVANT FIX : openCachedDB fermait l'ancien sqlDB + créait un NOUVEAU
+//     wrapper *DB → globalPool.Player devient orphelin (sqlDB mort)
+//   - APRÈS FIX : openCachedDB swap in-place le sqlDB dans l'ancien wrapper
+//     → globalPool.Player voit automatiquement la nouvelle handle
+func TestOpenCachedDB_PingFail_SwapInPlace_PreservesExternalRefs(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "shared_handle.duckdb")
+
+	// 1. Premier Open : crée l'entrée cache + wrapper.
+	dbA, err := duckdb.OpenReadWrite(dbPath)
+	if err != nil {
+		t.Fatalf("Open #1: %v", err)
+	}
+	defer dbA.Close()
+
+	// Simuler une référence externe persistante (style globalPool.Player).
+	externalRef := dbA
+
+	// Setup minimal pour valider que la connexion marche.
+	ctx := context.Background()
+	if _, err := dbA.Exec(ctx, "CREATE TABLE probe (id INTEGER)"); err != nil {
+		t.Fatalf("CREATE: %v", err)
+	}
+	originalSQLDB := dbA.SQLDb()
+
+	// 2. Simuler ping fail en fermant le sqlDB manuellement (équivalent à
+	// un drain DuckDB / OS lock qui ferme la connexion sans notifier le
+	// wrapper).
+	if err := originalSQLDB.Close(); err != nil {
+		t.Fatalf("close manual: %v", err)
+	}
+
+	// 3. Re-ouverture via OpenReadWrite (par exemple un autre caller qui
+	// passe par OpenPlayerDB). AVEC LE FIX : le wrapper doit être préservé,
+	// son sqlDB swapé in-place.
+	dbB, err := duckdb.OpenReadWrite(dbPath)
+	if err != nil {
+		t.Fatalf("Open #2 (après ping fail): %v", err)
+	}
+	defer dbB.Close()
+
+	// 4. Assertion clé : dbA (la référence externe) et dbB doivent être
+	// le MÊME wrapper. AVANT FIX, dbB était un nouveau wrapper et dbA
+	// devenait orphelin.
+	if dbA != dbB {
+		t.Error("openCachedDB a créé un nouveau wrapper au lieu de swap in-place — les références externes (globalPool.Player) deviendraient orphelines")
+	}
+	if externalRef != dbB {
+		t.Error("la référence externe n'est plus alignée avec le wrapper actif")
+	}
+
+	// 5. Le sqlDB a bien été remplacé (la handle morte n'est plus utilisée).
+	if dbB.SQLDb() == originalSQLDB {
+		t.Error("le sqlDB n'a pas été swapé — les requêtes vont continuer à échouer")
+	}
+
+	// 6. La connexion via la référence externe fonctionne maintenant.
+	if _, err := externalRef.Exec(ctx, "INSERT INTO probe VALUES (1)"); err != nil {
+		t.Fatalf("écriture via externalRef après swap: %v", err)
+	}
+	var n int
+	if err := externalRef.QueryRow(ctx, "SELECT COUNT(*) FROM probe").Scan(&n); err != nil {
+		t.Fatalf("lecture après swap: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("got %d rows, want 1", n)
+	}
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 func openTempDB(t *testing.T) *duckdb.DB {

@@ -156,8 +156,38 @@ func openCachedDB(
 			cached.refCount++
 			return cached.db, nil
 		}
-		_ = cached.db.sqlDB.Close()
-		delete(openDBs, key)
+		// ROOT CAUSE FIX (2026-05-25) : ping a échoué → l'ancien sqlDB n'est
+		// plus utilisable. AVANT, on Close() + delete(cache) + ouvrait un
+		// NOUVEAU wrapper *DB. Problème : globalPool.Player et les repos HTTP
+		// gardent une référence vers l'ANCIEN wrapper, dont sqlDB est mort
+		// → cascade "sql: database is closed" sur toutes les pages HTTP
+		// jusqu'au prochain restart du serveur.
+		//
+		// FIX : swap le sqlDB IN-PLACE dans l'ancien wrapper (même pattern que
+		// Reopen()). Les références externes voient automatiquement la nouvelle
+		// handle sans changement.
+		oldDB := cached.db
+		slog.WarnContext(context.Background(),
+			"duckdb: cache ping fail — swap in-place du sqlDB pour préserver les refs externes",
+			"path", oldDB.path, "op", oldDB.op, "key", key)
+		newSQLDB, err := openSQLDBFor(oldDB.dsn, oldDB.timezone, oldDB.op, oldDB.path)
+		if err != nil {
+			// Reopen impossible (fichier inaccessible, lock, etc.) — fallback :
+			// délai standard, Close + delete + signal au caller.
+			_ = oldDB.sqlDB.Close()
+			delete(openDBs, key)
+			slog.ErrorContext(context.Background(),
+				"duckdb: cache ping fail + reopen échoué — handle perdue, caller doit retry",
+				"path", oldDB.path, "op", oldDB.op, "err", err)
+			return nil, err
+		}
+		applyConnLimits(newSQLDB, oldDB.maxOpenConns, oldDB.maxIdleConns)
+		// Fermer l'ancien sqlDB en best-effort puis swap.
+		_ = oldDB.sqlDB.Close()
+		oldDB.sqlDB = newSQLDB
+		oldDB.closed = false
+		cached.refCount++
+		return oldDB, nil
 	}
 
 	sqlDB, err := openSQLDBFor(dsn, timezone, op, path)
