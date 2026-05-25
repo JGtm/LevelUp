@@ -168,4 +168,8 @@ export const queryKeys = {
     ['progression', playerSlug, 'profile', windowDays] as const,
   progressionPatterns: (playerSlug: string, n = 50) =>
     ['progression', playerSlug, 'patterns', n] as const,
+
+  // Coach Advisor proposals (ADR 0020 Phase 10)
+  coachProposals: (playerSlug: string, status?: string) =>
+    ['coach', playerSlug, 'proposals', status ?? 'all'] as const,
 } as const
