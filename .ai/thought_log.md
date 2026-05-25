@@ -1,3 +1,46 @@
+## [2026-05-25] D3 — Sync V2 Phase 4 (Per-player enrichments)
+
+**Statut** : Complété (D3 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D2. D3 livre la phase de fetch parallèle des enrichments per-player qui requièrent le token personnel du joueur (`GetPersonalScores`, `GetPlayerCSRs`, `GetCareerRank` si nécessaire).
+
+**Décisions techniques** :
+
+1. **Parallélisme imbriqué** (`fetch_player.go`) :
+   - **Externe** : 1 goroutine par joueur (cross-player parallel, tokens indépendants).
+   - **Interne** : errgroup avec `SetLimit(perPlayerParallelism)` par joueur, borne les appels concurrents par token (rate limit Halo).
+   - Architecture justifiée : chaque joueur a son propre rate limit Halo, on peut donc parler à 4 joueurs en parallèle ; mais pour UN joueur on doit borner sinon on se prend des 429.
+
+2. **`PlayerEnrichmentFetcher` interface** :
+   - Signature : `FetchPlayerEnrichment(ctx, p PlayerProfile, matchID) → PlayerEnrichmentData`.
+   - L'adapter V1-bridge wrappera HaloClient pinné sur le joueur (token perso).
+   - Data reste `map[string]any` (opaque, transformation typée en Phase 5).
+
+3. **Indexation Enrichments** : `map[PlayerSlug]map[MatchID]PlayerEnrichmentData`. Phase 5 itérera naturellement par joueur lors de la construction du méga-batch.
+
+4. **Isolation per-(player, match)** : erreurs capturées dans `Errors[slug][matchID]`. Un token expiré pour alice ne tue ni les autres matchs d'alice (`continue`), ni les autres joueurs (`continue` outer).
+
+5. **Tests unitaires** (`fetch_player_test.go`, 7 cas) :
+   - Happy path 2 joueurs × 2-3 matchs.
+   - Empty inputs (no players / no matches).
+   - **Token expiry isolation** : alice 401 sur tous ses matchs, bob continue.
+   - **Nested parallelism bound** : 2 joueurs × 8 matchs, perPlayerParallelism=3 → `maxInFlight per player <= 3` ET `globalMaxInFlight >= 4` (preuve parallélisme cross-player).
+   - Player without matches → skip silencieux (pas dans Enrichments).
+   - Context cancellation.
+   - perPlayerParallelism=0 fallback.
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 31/31 PASS (16 D1 + 8 D2 + 7 D3)
+
+**Conclusion / prochaine étape** : D3 livrable. Phase 4 codée, testée pour parallélisme imbriqué + isolation token. Prochaine étape : **D4 — Phase 5 (Persist cycle batch)** : transformation des buffers Phase 3+4 vers types canonical + 1 méga-batch via BatchBuilder. C'est la phase la plus délicate (transactionnelle, idempotente) — prévoir tests de crash recovery.
+
+---
+
 ## [2026-05-25] D2 — Sync V2 Phase 3 (Fetch shared)
 
 **Statut** : Complété (D2 du plan ADR 0020)
