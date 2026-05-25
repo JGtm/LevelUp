@@ -160,6 +160,17 @@ type Template struct {
 	// campagne.
 	IsLongTerm bool `json:"is_long_term"`
 
+	// Source distingue les templates seedés depuis TOML ("catalog") de ceux
+	// synthétisés dynamiquement par le coach_advisor ("coach_synthesized",
+	// cf. ADR 0021). Vide à la lecture = "catalog" (rétrocompat).
+	//
+	// Les templates synthétisés stockent dans normal_target/heroic_target/
+	// legendary_target/mythic_target les **stretch ratios** standards
+	// (1.08, 1.25, 1.50, 2.00) — la cible absolue est matérialisée par
+	// CalculatePalier(baseline) au moment du CreateChallenge (cf. invariants
+	// I1/I2 de l'ADR 0020).
+	Source string `json:"source,omitempty"`
+
 	SchemaVersion int       `json:"schema_version"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
