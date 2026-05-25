@@ -20,8 +20,9 @@ func NewLevelUpBackupScheduler(cfg config.BackupConfig, pr *title.PathResolver) 
 	})
 }
 
-// toPkgConfig converts a LevelUp BackupConfig to the generic duckdbbackup.Config,
-// reading RESTIC_* from the environment at conversion time.
+// toPkgConfig converts a LevelUp BackupConfig to the generic duckdbbackup.Config.
+// No password is set: restic uses --insecure-no-password (repo non chiffré,
+// adapté à un usage local personnel).
 func toPkgConfig(cfg config.BackupConfig) duckdbbackup.Config {
 	return duckdbbackup.Config{
 		Enabled:          cfg.Enabled,
@@ -31,9 +32,7 @@ func toPkgConfig(cfg config.BackupConfig) duckdbbackup.Config {
 		KeepWeekly:       cfg.KeepWeekly,
 		KeepMonthly:      cfg.KeepMonthly,
 		ResticBin:        "restic",
-		ResticRepo:       os.Getenv("RESTIC_REPOSITORY"),
-		ResticPassword:   os.Getenv("RESTIC_PASSWORD"),
-		ResticPwdFile:    os.Getenv("RESTIC_PASSWORD_FILE"),
+		ResticRepo:       cfg.ResticRepo,
 		CompressionLevel: 9,
 	}
 }

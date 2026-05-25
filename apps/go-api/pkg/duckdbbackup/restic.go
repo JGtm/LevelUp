@@ -39,7 +39,9 @@ func (r *ResticClient) EnsureInit(ctx context.Context) error {
 // Backup creates a restic snapshot of stagingDir.
 // Returns the snapshot ID on success.
 func (r *ResticClient) Backup(ctx context.Context, stagingDir string) (string, error) {
-	cmd := exec.CommandContext(ctx, r.bin(), "backup", "--json", stagingDir)
+	args := append([]string{"backup", "--json"}, r.noPasswordFlag()...)
+	args = append(args, stagingDir)
+	cmd := exec.CommandContext(ctx, r.bin(), args...)
 	cmd.Env = r.env()
 	out, err := cmd.Output()
 	if err != nil {
@@ -59,7 +61,8 @@ func (r *ResticClient) Forget(ctx context.Context) error {
 }
 
 func (r *ResticClient) run(ctx context.Context, args ...string) error {
-	cmd := exec.CommandContext(ctx, r.bin(), args...)
+	all := append(r.noPasswordFlag(), args...)
+	cmd := exec.CommandContext(ctx, r.bin(), all...)
 	cmd.Env = r.env()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -78,6 +81,16 @@ func (r *ResticClient) bin() string {
 		return r.cfg.ResticBin
 	}
 	return "restic"
+}
+
+// noPasswordFlag returns ["--insecure-no-password"] when neither ResticPassword
+// nor ResticPwdFile is configured. Restic requires this explicit flag to confirm
+// that the absence of a password is intentional (supported since restic 0.17).
+func (r *ResticClient) noPasswordFlag() []string {
+	if r.cfg.ResticPassword == "" && r.cfg.ResticPwdFile == "" {
+		return []string{"--insecure-no-password"}
+	}
+	return nil
 }
 
 // env merges the process environment with restic-specific overrides.
