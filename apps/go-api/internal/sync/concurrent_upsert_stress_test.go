@@ -99,8 +99,8 @@ func TestStressUpsertParticipants_SameKey_NoCrash_OneRow(t *testing.T) {
 	const (
 		matchID     = "aabbccdd-0000-0000-0000-000000000001"
 		xuid        = "2535469190789936"
-		nGoroutines = 50
-		nIterations = 200
+		nGoroutines = 8  // réduit (SetMaxOpenConns=1 sérialise → 50×200 dépasse le timeout CI)
+		nIterations = 25 // total = 200 ops, suffisant pour tester l'idempotence
 	)
 
 	teamID := 0
@@ -153,7 +153,7 @@ func TestStressUpsertParticipants_DifferentKeys_AllPresent(t *testing.T) {
 	const (
 		nMatches = 10
 		nXUIDs   = 8 // = 80 rows uniques attendues
-		nWriters = 16
+		nWriters = 4 // réduit pour rester dans le timeout CI avec SetMaxOpenConns=1
 	)
 
 	expectedRows := nMatches * nXUIDs
@@ -214,7 +214,7 @@ func TestStressUpsertParticipants_BatchPerCall(t *testing.T) {
 	const (
 		nMatches  = 20
 		nXuidsPer = 8
-		nWorkers  = 8
+		nWorkers  = 4 // réduit pour rester dans le timeout CI avec SetMaxOpenConns=1
 	)
 
 	rowsByMatch := make([][]ParticipantRow, nMatches)
