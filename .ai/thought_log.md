@@ -1,3 +1,54 @@
+## [2026-05-25] D4 — Sync V2 Phase 5 (Persist cycle batch)
+
+**Statut** : Complété (D4 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D3. D4 livre la phase de persist transactionnel : 1 méga-batch pour tout le cycle, écrit en sérialisation explicite (pas de goroutines). C'est le cœur de l'optim V2 — UN seul moment où le shared lease est pris, vs 97 fois en V1.
+
+**Décisions techniques** :
+
+1. **`CycleBatch` struct** :
+   - CycleID auto-généré `v2-cycle-<unix_nano>` pour traçabilité WAL recovery + diagnostic logs.
+   - Agrège Phase 3 (Matches) + Phase 4 (Enrichments) sans transformation typée — les Persisters V1 existants savent parser ces shapes raw.
+   - BuiltAt timestamp pour métriques.
+
+2. **`CycleBatchPersister` interface** :
+   - 1 méthode : `PersistCycle(ctx, batch) error`.
+   - L'adapter V1-bridge (D6) traduit `CycleBatch` → N `persist.MatchBatch` et les submit en rafale à la queue async existante. Le worker monothread traite en série MAIS sans concurrence avec d'autres syncs (le cycle est seul).
+   - Variante future : 1 méga-MatchBatch = 1 TX par DB (gain supplémentaire à mesurer post D7).
+
+3. **`RunPersist` sémantique transactionnelle stricte** :
+   - Pas de goroutines : 1 writer, 1 batch, 1 appel persister.
+   - Sur succès : `MatchesPersisted = len(input)`, `EnrichmentsPersisted = somme`.
+   - Sur erreur : counts = 0. Pas de demi-mesure — l'adapter D6 garantit l'atomicité par DB cible via les Persisters existants (rollback complet de la TX en cas d'échec).
+   - Inputs vides → skip l'appel persister (return zéro), pas d'erreur.
+
+4. **Invariants à respecter par l'adapter D6** :
+   - **Idempotence** : appeler PersistCycle 2× sur le même batch ne duplique aucune ligne (les Persisters utilisent EXISTS check sur PK).
+   - **Atomicité par DB** : chaque base écrite dans UNE TX. Crash mid-write → rollback, WAL persiste pour retry au boot.
+   - **Pas d'UPDATE/UPSERT** sur tables critiques (cf. ADR 0019) — INSERT only.
+
+5. **Tests unitaires** (`persist_test.go`, 8 cas) :
+   - Happy path 2 matchs × 3 enrichments → counts corrects + 1 seul appel persister.
+   - Empty inputs → skip persister (callCount = 0).
+   - Only enrichments no matches → appel quand même (cas refresh).
+   - Persister error → counts = 0 (sémantique transactionnelle).
+   - CycleID inclus dans Err (traçabilité).
+   - **Single persister call invariant** : 50 matchs → EXACTLY 1 appel (anti-régression V1 : 50 appels avant V2).
+   - Context cancellation.
+   - CycleID unique entre 2 cycles successifs.
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 39/39 PASS (16 D1 + 8 D2 + 7 D3 + 8 D4)
+
+**Conclusion / prochaine étape** : D4 livrable. Phase 5 codée, testée pour sémantique transactionnelle + invariant single-call + isolation. Prochaine étape : **D5 — Phase 6 (Post-sync parallèle)** : pour chaque joueur, errgroup interne sur les heals + films + citations + dominance + LUSR. C'est la phase où le gain perf maximal va se voir (Madina97294 attendait 6 min 30 du shared lease en V1 — V2 supprime totalement cette contention).
+
+---
+
 ## [2026-05-25] D3 — Sync V2 Phase 4 (Per-player enrichments)
 
 **Statut** : Complété (D3 du plan ADR 0020)
