@@ -1,3 +1,27 @@
+## [2026-05-25] fix(backup): audit final — bugs contrat + persistance + 8 nouveaux tests
+
+**Statut** : Complété — commit `a8290ad0`. 27 PASS, 2 SKIP (restic non présent en CI local).
+
+**Branche** : `feat/duckdb-backup-pkg`.
+
+**Bugs corrigés** :
+1. `Result` sans JSON tags → champs PascalCase côté API (`Skipped` au lieu de `skipped`). Fix : JSON tags + `DurationMs int64` (au lieu de `Duration time.Duration` qui donnait des nanosecondes avec le label `duration_ms`).
+2. `IntegrityChecks` non persistés quand tous les exports échouent (ex : fichier corrompu qui ne peut pas être exporté). Fix : `manifest.SaveIntegrityOnly()` (n'écrase pas `LastBackupAt`) + flag `integrityChecked` dans `cycle()`.
+3. Commentaire `CheckIntegrity` trompeur ("open errors → OK=true") corrigé : les erreurs d'ouverture donnent bien `OK=false`.
+4. `BackupStatusResponse.config` requis en TypeScript mais absent quand `backupSched == nil` → `config?` optionnel.
+
+**Tests ajoutés (8)** :
+- `TestExportTarget_Basic` : export réel DuckDB → 2 fichiers Parquet
+- `TestScheduler_Status_NoManifest` + `_WithManifest` : lecture manifest dans `Status()`
+- `TestScheduler_IntegrityPersistedOnExportFail` : `SaveIntegrityOnly` appelé même si export échoue
+- `TestManifest_SaveIntegrityOnly` : `LastBackupAt` non modifié
+- `TestGetBackupStatus_NilScheduler` + `_WithScheduler` : handlers HTTP
+- `TestPostBackupRun_NilScheduler` (503) + `_Skipped` (200 + `skipped:true`)
+
+**Conclusion** : Feature backup complète, contrat API correct, couverture solide. Branche prête à merger.
+
+---
+
 ## [2026-05-25] feat(backup): PRAGMA integrity_check informationnel par base — UI + manifest
 
 **Statut** : Complété — Go tests PASS (3 nouveaux), TS check silencieux.
