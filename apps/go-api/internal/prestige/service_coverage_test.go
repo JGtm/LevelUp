@@ -584,6 +584,11 @@ func (r *captureTemplateRepo) Replace(_ context.Context, ts string, tpl []Templa
 	r.templates = tpl
 	return r.err
 }
+func (r *captureTemplateRepo) UpsertOne(_ context.Context, t Template) error {
+	r.titleSlug = t.TitleSlug
+	r.templates = []Template{t}
+	return r.err
+}
 
 func TestLoadTemplatesFromTOML_OK(t *testing.T) {
 	body := `

@@ -81,6 +81,10 @@ type CreateArcRequest struct {
 	TitleSlug   string
 	Title       string
 	Description string
+	// Source trace l'origine d'un arc pour analytics. Valeurs : "user"
+	// (manuel, défaut si vide) | "pilot_mode" | "coach" (issu d'une
+	// acceptance coach_advisor proposal, cf. ADR 0020).
+	Source string
 }
 
 // CreateSquadChallengeRequest est l'entrée pour créer un défi d'escouade.
@@ -116,6 +120,10 @@ type CreateChallengeRequest struct {
 	IsPrivate       bool
 	TargetPerMember float64 // pour défis collectifs (0 sinon)
 	Position        int     // ordre dans l'arc (0 si standalone)
+	// Source trace l'origine d'un challenge pour analytics. Valeurs : "user"
+	// (manuel, défaut si vide) | "pilot_mode" | "coach" (issu d'une
+	// acceptance coach_advisor proposal, cf. ADR 0020).
+	Source string
 }
 
 // UpdateChallengePatch décrit une édition partielle d'un défi.

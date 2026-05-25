@@ -105,6 +105,10 @@ type TemplateRepo interface {
 	GetByID(ctx context.Context, id string) (Template, error)
 	Suggest(ctx context.Context, titleSlug string, excludeIDs []string, count int) ([]Template, error)
 	Replace(ctx context.Context, titleSlug string, templates []Template) error
+	// UpsertOne insère ou met à jour un seul template (par ID). Sémantique
+	// identique à Replace mais explicite pour l'usage isolé (notamment par
+	// coach_advisor.Synthesizer qui persiste un nouveau template synthétisé).
+	UpsertOne(ctx context.Context, template Template) error
 }
 
 // ---------- PresetArcRepo (metadata.duckdb) ----------
