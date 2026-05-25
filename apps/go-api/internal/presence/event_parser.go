@@ -1,19 +1,28 @@
 // Package presence — event_parser.go : parsing des payloads de présence Xbox RTA.
 //
-// Payload RTA attendu :
+// Trois formats de payloads sont supportés par ParsePresencePayload :
 //
-//	{
-//	  "xuid": "1234567890123456",
-//	  "presenceState": "Online",
-//	  "presenceDetails": [{
-//	    "titleid": "1144039928",
-//	    "titleName": "Halo Infinite",
-//	    "isGame": true,
-//	    "isPrimary": true,
-//	    "device": "PC",
-//	    "state": "Active"
-//	  }]
-//	}
+//  1. Format XSAPI XblPresenceRecord (initial subscribe pour topics anciens) :
+//     {
+//     "xuid":"...","presenceState":"Online",
+//     "presenceDetails":[{"titleid":"...","titleName":"...","isGame":true,
+//     "isPrimary":true,"device":"PC","state":"Active"}]
+//     }
+//
+//  2. Format string court pour events TitlePresenceChangeSubscription :
+//     "Started:1144039928" / "Ended:1144039928"
+//
+//  3. Format /users/xuid(N)/titles/<TID> + nonce (observé prod 2026-05-25) :
+//     {
+//     "xuid":"...","state":"Online",
+//     "devices":[{"type":"WindowsOneCore","titles":[{
+//     "id":"2043073184","name":"Halo Infinite","placement":"Full",
+//     "state":"Active","lastModified":"..."
+//     }]}]
+//     }
+//     OU snapshot Offline :
+//     {"xuid":"...","state":"Offline","lastSeen":{"deviceType":"...",
+//     "titleId":"...","titleName":"...","timestamp":"..."}}
 package presence
 
 import (
@@ -23,10 +32,15 @@ import (
 )
 
 // rtaPresencePayload est la structure JSON brute du payload RTA.
+// Supporte les 3 formats : presenceState/presenceDetails (XSAPI), state/devices
+// (topic /titles/<TID> + nonce), et lastSeen (snapshot Offline).
 type rtaPresencePayload struct {
-	XUID            string            `json:"xuid"`
-	PresenceState   string            `json:"presenceState"`
-	PresenceDetails []rtaPresenceItem `json:"presenceDetails"`
+	XUID            string             `json:"xuid"`
+	PresenceState   string             `json:"presenceState"` // format XSAPI
+	State           string             `json:"state"`         // format /titles/<TID> + nonce
+	PresenceDetails []rtaPresenceItem  `json:"presenceDetails"`
+	Devices         []rtaPresenceDev   `json:"devices"`
+	LastSeen        *rtaPresenceLastSe `json:"lastSeen"`
 }
 
 type rtaPresenceItem struct {
@@ -36,6 +50,29 @@ type rtaPresenceItem struct {
 	IsPrimary bool   `json:"isPrimary"`
 	Device    string `json:"device"`
 	State     string `json:"state"`
+}
+
+// rtaPresenceDev correspond à un élément de `devices[]` dans le format
+// /titles/<TID> + nonce.
+type rtaPresenceDev struct {
+	Type   string                `json:"type"` // ex. "WindowsOneCore", "Win32"
+	Titles []rtaPresenceDevTitle `json:"titles"`
+}
+
+type rtaPresenceDevTitle struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Placement    string `json:"placement"` // "Full", "Background", "Fill", "Snapped"
+	State        string `json:"state"`     // "Active", "Inactive"
+	LastModified string `json:"lastModified"`
+}
+
+// rtaPresenceLastSe correspond au champ `lastSeen` quand state=Offline.
+type rtaPresenceLastSe struct {
+	DeviceType string `json:"deviceType"`
+	TitleID    string `json:"titleId"`
+	TitleName  string `json:"titleName"`
+	Timestamp  string `json:"timestamp"`
 }
 
 // ParsePresencePayload parse un payload RTA en PresenceEvent.
@@ -69,12 +106,19 @@ func ParsePresencePayload(raw json.RawMessage, fallbackXUID string) (PresenceEve
 		xuid = fallbackXUID
 	}
 
-	event := PresenceEvent{
-		XUID:          xuid,
-		PresenceState: p.PresenceState,
+	// Le champ state racine peut être soit `presenceState` (XSAPI) soit `state`
+	// (/titles/<TID> + nonce). On prend le premier non-vide.
+	presenceState := p.PresenceState
+	if presenceState == "" {
+		presenceState = p.State
 	}
 
-	// Trouver le premier titre actif (isPrimary && isGame)
+	event := PresenceEvent{
+		XUID:          xuid,
+		PresenceState: presenceState,
+	}
+
+	// Format XSAPI : trouver le premier titre actif (isPrimary && isGame).
 	for _, item := range p.PresenceDetails {
 		if item.IsGame && item.IsPrimary {
 			event.PresenceDetail = &PresenceDetail{
@@ -88,7 +132,7 @@ func ParsePresencePayload(raw json.RawMessage, fallbackXUID string) (PresenceEve
 			break
 		}
 	}
-	// Fallback : premier item game si pas de primary
+	// Fallback : premier item game si pas de primary.
 	if event.PresenceDetail == nil {
 		for _, item := range p.PresenceDetails {
 			if item.IsGame {
@@ -101,6 +145,50 @@ func ParsePresencePayload(raw json.RawMessage, fallbackXUID string) (PresenceEve
 					State:     item.State,
 				}
 				break
+			}
+		}
+	}
+
+	// Format /titles/<TID> + nonce : devices[].titles[]. Prendre le premier
+	// titre Active ; à défaut le premier tout court. Pas de notion isGame/
+	// isPrimary dans ce format — on infère IsGame=true (le topic est déjà
+	// scopé sur un titleId qu'on a souscrit, donc c'est forcément un jeu).
+	if event.PresenceDetail == nil {
+		for _, dev := range p.Devices {
+			for _, t := range dev.Titles {
+				if t.State == "Active" {
+					event.PresenceDetail = &PresenceDetail{
+						TitleID:   t.ID,
+						TitleName: t.Name,
+						IsGame:    true,
+						IsPrimary: t.Placement == "Full",
+						Device:    dev.Type,
+						State:     t.State,
+					}
+					break
+				}
+			}
+			if event.PresenceDetail != nil {
+				break
+			}
+		}
+		// Fallback : premier titre quel que soit son state.
+		if event.PresenceDetail == nil {
+			for _, dev := range p.Devices {
+				for _, t := range dev.Titles {
+					event.PresenceDetail = &PresenceDetail{
+						TitleID:   t.ID,
+						TitleName: t.Name,
+						IsGame:    true,
+						IsPrimary: t.Placement == "Full",
+						Device:    dev.Type,
+						State:     t.State,
+					}
+					break
+				}
+				if event.PresenceDetail != nil {
+					break
+				}
 			}
 		}
 	}

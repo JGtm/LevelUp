@@ -15,6 +15,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -36,19 +37,22 @@ const (
 	// poussés (snapshot one-shot uniquement). Cf. LucienHH/xbox-rta.
 	rtaNonceEndpoint = "https://rta.xboxlive.com/nonce"
 
-	// rtaPresenceTopicFmt est le template du topic de présence par XUID.
+	// rtaPresenceTopicFmt est le template du topic de présence par XUID + titleID.
 	//
-	// Diagnostic 2026-05-25 (en cours) :
-	//   - `/titles/<TID>` (utilisé ici) : subscribes ACCEPTÉS mais Xbox ne
-	//     push qu'un snapshot one-shot `lastSeen` au subscribe, jamais d'events
-	//     suivants. Conséquence : watcher RTA jamais déclenché.
-	//   - `/richpresence` (testé, ne marche pas) : subscribes REFUSÉS par
-	//     Xbox avec status=3 (Unauthorized) + sub_id renvoyé en string au
-	//     lieu d'int. Probable manque de scope/RelyingParty XSTS spécifique.
+	// Diagnostic 2026-05-25 (3 endpoints testés post-fix nonce) :
+	//   - `/titles/<TID>` (utilisé ici) : snapshot OK au subscribe, 0 push
+	//     après (22 min d'observation, extinction Halo non détectée). Best
+	//     effort = on a au moins le snapshot initial qui détecte si l'user
+	//     est en jeu au moment de la connexion.
+	//   - `/richpresence` : status=3 persistant même avec nonce. Le RelyingParty
+	//     `http://xboxlive.com` (notre flow SPNKr) n'a pas les claims pour ce
+	//     topic. LucienHH/xbox-rta passe par `Titles.XboxAppIOS` (impersonate
+	//     l'app Xbox iOS, borderline ToS).
+	//   - `/devices/current/titles/current` : non validé.
 	//
-	// TODO : investiguer le bon scope XSTS pour /richpresence, OU tester
-	// d'autres endpoints (devices/current/titles/current). En attendant on
-	// reste sur /titles/<TID> qui au moins ne casse pas.
+	// Le push temps réel cross-titres n'étant pas accessible via notre auth,
+	// la détection des transitions Active↔Inactive est faite côté REST poll
+	// (cf. internal/presence/rest_client.go + internal/watcher/rest_poller.go).
 	rtaPresenceTopicFmt = "https://userpresence.xboxlive.com/users/xuid(%s)/titles/%s"
 
 	// writeTimeout pour les messages WebSocket sortants.
@@ -216,16 +220,21 @@ func (c *RTAClient) Connect(ctx context.Context) error {
 		// systématiquement tous les subscribes avec status=3.
 		Subprotocols: []string{"rta.xboxlive.com.V2"},
 	}
-	header := http.Header{}
-	header.Set("Authorization", c.authHeader)
-
-	conn, resp, err := dialer.DialContext(ctx, connectURL, header)
+	// Pas de header Authorization sur le WS upgrade : LucienHH/xbox-rta ne le
+	// fait pas non plus. L'auth est portée par le nonce one-shot dans l'URL —
+	// envoyer Authorization en plus du nonce déclenche un 400 Bad Request
+	// silencieux (Content-Length: 0) observé en prod 2026-05-25 21:46.
+	conn, resp, err := dialer.DialContext(ctx, connectURL, nil)
 	if err != nil {
 		if resp != nil {
+			bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
 			slog.ErrorContext(ctx, "rta: échec connexion WebSocket",
 				"err", err,
 				"status", resp.StatusCode,
+				"resp_body", string(bodyBytes),
+				"resp_headers", fmt.Sprintf("%v", resp.Header),
 			)
+			_ = resp.Body.Close()
 		} else {
 			slog.ErrorContext(ctx, "rta: échec connexion WebSocket", "err", err)
 		}

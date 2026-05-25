@@ -116,6 +116,20 @@ func (d *Daemon) AddUserClient(ctx context.Context, userTokens *auth_platform.Us
 		}
 	}
 
+	// REST poller : la vraie source de vérité pour les transitions Active↔
+	// Inactive (cf. rest_poller.go). Le RTA est gardé pour son snapshot
+	// initial mais ne push rien après ; le REST poll à 30s détecte les
+	// changements d'état réels.
+	restClient := presence.NewPresenceClient(authHeader)
+	restHandler := d.makePresenceHandler(d.rootCtx, pw)
+	restPoller := NewRESTPoller(userTokens.XUID, userTokens.Gamertag, restClient, restHandler)
+	if d.perUserAuthRefresh != nil {
+		xuid := userTokens.XUID // capture
+		restPoller.WithAuthRefresher(func(refreshCtx context.Context) (string, error) {
+			return d.perUserAuthRefresh(refreshCtx, xuid)
+		})
+	}
+
 	// Contexte dédié pour pouvoir arrêter ce userClient indépendamment.
 	clientCtx, cancel := context.WithCancel(d.rootCtx)
 	uc := &userClient{
@@ -128,7 +142,7 @@ func (d *Daemon) AddUserClient(ctx context.Context, userTokens *auth_platform.Us
 	d.userClients[userTokens.XUID] = uc
 	d.userClientsMu.Unlock()
 
-	slog.InfoContext(ctx, "watcher_daemon: userClient ajouté (RTA dédié)",
+	slog.InfoContext(ctx, "watcher_daemon: userClient ajouté (RTA + REST poller)",
 		"xuid", userTokens.XUID, "gamertag", userTokens.Gamertag)
 
 	d.wg.Add(1)
@@ -136,11 +150,22 @@ func (d *Daemon) AddUserClient(ctx context.Context, userTokens *auth_platform.Us
 		defer d.wg.Done()
 		reconnectMgr.RunWithReconnect(clientCtx)
 	}()
+
+	d.wg.Add(1)
+	go func() {
+		defer d.wg.Done()
+		restPoller.Run(clientCtx)
+	}()
 	return nil
 }
 
 // makeUserConnectFunc construit la closure connect+subscribe pour un userClient.
 // Subscribe uniquement le XUID de cet user (pas tous les players du daemon).
+//
+// Note : le push temps réel via RTA `/titles/<TID>` ne fonctionne pas pour
+// s'auto-observer (Xbox renvoie juste un snapshot puis silence). Le RTA est
+// gardé pour le snapshot initial uniquement ; la détection des transitions
+// Active↔Inactive est faite via REST poll (cf. rest_poller.go).
 func (d *Daemon) makeUserConnectFunc(rtaClient *presence.RTAClient, pw *PlayerWatcher, xuid, gamertag string) func(context.Context) error {
 	return func(connectCtx context.Context) error {
 		if err := rtaClient.Connect(connectCtx); err != nil {

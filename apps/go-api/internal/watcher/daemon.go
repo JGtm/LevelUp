@@ -410,6 +410,16 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 				pw.OnPresenceActive(evCtx)
 				return
 			}
+			// Titre présent mais pas dans le registre — log pour diagnostic.
+			// (Avant 2026-05-25 ce cas était silencieux et masquait des bugs
+			//  de mapping XboxTitleID.)
+			slog.WarnContext(evCtx, "watcher_daemon: titre non tracké (PresenceDetail présent)",
+				"gamertag", pw.gamertag,
+				"title_id", event.PresenceDetail.TitleID,
+				"title_name", event.PresenceDetail.TitleName,
+				"state", event.PresenceState,
+				"event", evID,
+			)
 		}
 
 		// Offline ou titre non tracké
