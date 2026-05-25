@@ -127,8 +127,12 @@ func TestPostSyncEnrichmentPersister_BatchUpdateMulti_UpdatesMultiCols(t *testin
 		{MatchID: "m2", Fields: map[string]any{"dominance_flag": 3, "performance_score": 82.5}},
 		{MatchID: "m3", Fields: map[string]any{"dominance_flag": 5, "performance_score": 91.2}},
 	}
-	if err := p.BatchUpdateMulti(context.Background(), rows); err != nil {
+	n, err := p.BatchUpdateMulti(context.Background(), rows)
+	if err != nil {
 		t.Fatalf("BatchUpdateMulti: %v", err)
+	}
+	if n != int64(len(rows)) {
+		t.Errorf("affected rows=%d, want %d", n, len(rows))
 	}
 
 	for _, tc := range []struct {
@@ -153,7 +157,7 @@ func TestPostSyncEnrichmentPersister_BatchUpdateMulti_RejectsInconsistentRows(t 
 		{MatchID: "m1", Fields: map[string]any{"dominance_flag": 1, "performance_score": 75.0}},
 		{MatchID: "m2", Fields: map[string]any{"dominance_flag": 3}}, // ← cols différentes
 	}
-	err := p.BatchUpdateMulti(context.Background(), rows)
+	_, err := p.BatchUpdateMulti(context.Background(), rows)
 	if err == nil {
 		t.Error("rows inhomogènes doit échouer")
 	}

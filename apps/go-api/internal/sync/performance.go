@@ -646,7 +646,7 @@ func batchComputePerformanceScores(ctx context.Context, playerDB, sharedDB *sql.
 			})
 		}
 		p := persist.NewPostSyncEnrichmentPersister(playerDB)
-		if err := p.BatchUpdateMulti(ctx, rows); err != nil {
+		if _, err := p.BatchUpdateMulti(ctx, rows); err != nil {
 			slog.ErrorContext(ctx, "batchComputePerformanceScores: BatchUpdateMulti échoué",
 				"batch_size", len(rows), "err", err)
 			execErrors += len(rows)

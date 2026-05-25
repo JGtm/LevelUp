@@ -38,6 +38,10 @@ func setupParticipantsTable(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatalf("open in-memory duckdb: %v", err)
 	}
+	// SetMaxOpenConns(1) sérialise les écritures au niveau Go-sql (prod behavior).
+	// Sans singleflight (supprimé f243b235), DuckDB ne tolère pas les UPSERTs
+	// concurrents sur plusieurs connexions simultanées.
+	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
 
 	if _, err := db.Exec(`CREATE TABLE match_participants (
