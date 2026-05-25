@@ -19,7 +19,10 @@
 
 package duckdb
 
-import "context"
+import (
+	"context"
+	"database/sql"
+)
 
 // SocialPersister est l'API d'écriture sur shared_social.duckdb.
 //
@@ -37,3 +40,17 @@ type SocialPersister interface {
 	// interne.
 	PersistBatch(ctx context.Context, batch any) error
 }
+
+// SocialPersisterFactory est un hook configuré par main.go au boot pour
+// permettre à openPlayerDB d'instancier un SocialPersister sans importer
+// internal/persist (qui causerait un cycle).
+//
+// Wiring attendu dans main.go :
+//
+//	duckdb.SocialPersisterFactory = func(db *sql.DB) duckdb.SocialPersister {
+//	    return persist.NewSharedSocialPersister(db)
+//	}
+//
+// Si nil (cas tests, bootstrap CLI), pdb.SocialPersister reste nil et les
+// repos retombent sur leur chemin legacy db.Exec.
+var SocialPersisterFactory func(db *sql.DB) SocialPersister
