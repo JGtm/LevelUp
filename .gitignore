@@ -109,6 +109,7 @@ data/cache/*
 data/sync_cache/
 data/backup_legacy/
 backups/
+data/restore/
 
 # RAG LanceDB (base vectorielle locale)
 data/rag/

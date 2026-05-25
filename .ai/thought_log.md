@@ -1,3 +1,21 @@
+## [2026-05-25] Fix home resilience — bannière Spartan toujours affichée
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : Double protection frontend contre la bannière vide.
+- `HomeSpartanIdentityBanner.tsx` : quand `banner_image_url` est null (joueur sans customisation ou career_progression vide), fallback sur `/titles/halo_infinite/echoes-within-header.webp` via `FALLBACK_BANNERS_BY_TITLE[titleSlug]`.
+- `HomePage.tsx` : suppression du guard `{spartanIdentity && ...}` — le composant est rendu inconditionnellement avec `spartanIdentity ?? {}`. Plus aucun cas où le bloc identité entier (gamertag + zone bannière) disparaît.
+
+**Cause racine JGtm** : si `career_progression` est vide ou `rank = 0`, `buildHomeCareerRank` retourne nil → `BuildSpartanIdentity` retourne nil → API retourne `spartan_identity: null` → composant entier supprimé du DOM.
+
+**Résultats observés** : TypeScript passe sans nouvelle erreur (erreur pre-existante `SettingsPage.tsx` "backup" non liée).
+
+**Prochaine étape** : Vérifier visuellement pour JGtm après déploiement.
+
+---
+
 ## [2026-05-25] Restauration DuckDB depuis snapshot restic (cmd/restore)
 
 **Statut** : Complété
