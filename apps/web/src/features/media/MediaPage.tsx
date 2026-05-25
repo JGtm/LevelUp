@@ -159,6 +159,7 @@ function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, lo
 export function MediaPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/media' })
   const locale = useAppShellStore((state) => state.locale)
+  const currentPlayerGamertag = useAppShellStore((s) => s.currentPlayer?.gamertag)
   const text = getMediaText(locale)
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
@@ -313,6 +314,7 @@ export function MediaPage() {
           globalIndexOffset={(page - 1) * PAGE_SIZE}
           globalTotal={pagination?.total ?? mediaItems.length}
           onReassociate={picker.openFor}
+          currentPlayerGamertag={currentPlayerGamertag}
           playerSlug={playerSlug}
           onOpenMatch={handleOpenMatch}
           autoChain={autoChain}
@@ -393,6 +395,7 @@ export function MediaPage() {
                         onOpen={() => setLightboxIdx(flatIndex)}
                         likeDisabled={toggleMediaLike.isPending}
                         playerSlug={playerSlug}
+                        currentPlayerGamertag={currentPlayerGamertag}
                         onAssociate={picker.openFor}
                         onOpenMatch={handleOpenMatch}
                       />
