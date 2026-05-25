@@ -37,6 +37,32 @@ positive : "tu as l'opportunité de stabiliser X" plutôt que "tu régresses sur
 
 **Effort estimé** : moyen côté code, lourd côté produit/UX.
 
+## V2.1 — Plumbing `Source` → `prestige_telemetry.source`
+
+**Idée** : ajouter une colonne `source` dans la table `prestige_telemetry` et
+propager `CreateChallengeRequest.Source` jusqu'à `EmitCreated` (puis aux
+EmitTransition pour suivre le devenir des challenges coach).
+
+**Bloqueur actuel** : la table `prestige_telemetry` est écrite mais jamais lue.
+Aucun script, aucun handler, aucun dashboard ne l'interroge. Le commentaire
+dans `types.go` mentionnant `analyze_prestige_tuning.py` réfère à un script
+qui n'existe pas — c'était une intention V1, jamais matérialisée.
+
+**Pré-requis avant d'implémenter** :
+- Construire d'abord un consommateur : soit un endpoint `GET /diag/prestige/telemetry`
+  qui agrège (taux acceptance par source, complétion par source), soit un
+  analyseur CLI Go (`cmd/prestige_tuning_analyze`) lisant directement la DB.
+- **PAS DE PYTHON** : analyseur en Go ou DuckDB CLI direct (`duckdb stats.duckdb -c 'SELECT ...'`).
+- Définir les métriques cibles : ratio accept/reject par source, taux completion
+  coach vs user vs pilot_mode, distribution de strength des proposals acceptées.
+
+**Sans consommateur** : ajouter la colonne maintenant = écriture pour personne,
+dette de schéma qui grossit. Reporter jusqu'à ce qu'un besoin analytics concret
+émerge.
+
+**Effort estimé** : rapide (ALTER TABLE + 2 lignes Go) — mais l'analyseur côté
+consommation est moyen (1 commit endpoint diag ou CLI).
+
 ## V2.1 — Job GC `coach_advisor_template_gc`
 
 **Idée** : job nocturne qui supprime les templates `source='coach_synthesized'`
