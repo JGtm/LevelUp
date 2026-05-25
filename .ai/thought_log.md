@@ -1,3 +1,47 @@
+## [2026-05-25] Mise à jour notes v7.0 — Ascension, Synthèse, Face-à-face, Session comparison, Achievement tracker
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : Audit complet du codebase vs notes existantes. 5 ajouts majeurs dans les 4 fichiers (README.md EN/FR + RELEASE_NOTES.md EN/FR) : section Ascension (radar 6 axes, style badge, LUSR components, patterns comportementaux — non mentionnée du tout), section Synthèse complète (8 charts, filtres locaux, bipolar, OC/DR), Face-à-face promu en page dédiée 1v1/1v1v1 (était "drawer"), Session comparison ajoutée, Achievement tracker UI ajouté. Nav L1 corrigée (Hall of Fame → Communauté, Ascension ajouté).
+
+**Résultats observés** : 7/7 tests help handler passent. Aucun impact sur le parser `extractWhatsNewBlocks`.
+
+**Prochaine étape** : Aucune.
+
+---
+
+## [2026-05-25] Suppression mécanique legacy git-log dans ReleaseNotesService
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : `port.GitProvider`, `platform/git/git.go` et le fallback git-log dans `Build()` supprimés. `docs/RELEASE_NOTES.md` étant la source unique avec toutes les versions, le parcours d'historique git du README est du code mort. `NewReleaseNotesService` ne prend plus qu'un seul paramètre (`repoRoot`). Tests mis à jour : `noopGit` supprimé, `setupHelpRepo` écrit dans `docs/RELEASE_NOTES.md` / `docs/FR/RELEASE_NOTES.md`.
+
+**Résultats observés** : `go build ./...` propre, 7/7 tests help passent, suite complète au vert.
+
+**Prochaine étape** : Aucune — architecture finalisée.
+
+---
+
+## [2026-05-25] README mise à jour stack Go/React + système release notes dédié
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : Deux séparations nettes.
+1. README.md (EN + FR) : badges et tech stack corrigés (Python/FastAPI/Polars → Go/ECharts/TanStack), section headless auth mise à jour (plus de référence au script Python), flux OAuth redirect ajouté dans la section auth de v7.0.
+2. `docs/RELEASE_NOTES.md` + `docs/FR/RELEASE_NOTES.md` créés comme source unique des notes user-facing (toutes versions v6.1→v7.0). `release_notes_service.go` pointe désormais sur ces fichiers (`releaseNotesRelPath`) au lieu du README. README tronqué à v7.0 uniquement + lien vers RELEASE_NOTES.md.
+
+**Résultats observés** : `go build ./internal/service/...` passe proprement. Le parser `extractWhatsNewBlocks` est inchangé : il reconnaît `## What's new` / `## Dernières nouveautés` au début du nouveau fichier.
+
+**Prochaine étape** : Aucune — la migration est terminée. Lors de la prochaine version (v7.1+), ajouter le bloc uniquement dans `docs/RELEASE_NOTES.md` (EN + FR) ; le README reste inchangé.
+
+---
+
 ## [2026-05-25] Restore backup pré-crash + backfill CSR + backup data/backups/
 
 **Statut** : Complété

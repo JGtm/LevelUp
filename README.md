@@ -3,11 +3,10 @@
 > **Analyze your Halo Infinite stats match by match, track your progress over time, and compare your performance with your squad.**
 
 [![Version](https://img.shields.io/badge/Version-7.0.0-blue.svg)](https://github.com/JGtm/LevelUp/releases/tag/v7.0.0)
-[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8.svg)](https://go.dev/)
 [![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.4%2B-FEE14E.svg)](https://duckdb.org/)
-[![Polars](https://img.shields.io/badge/Polars-1.38%2B-blue.svg)](https://pola.rs/)
+[![ECharts](https://img.shields.io/badge/ECharts-5-AA344D.svg)](https://echarts.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Feedback issues](https://img.shields.io/github/issues-search/JGtm/LevelUp?query=label%3Afeedback%20is%3Aopen&label=feedback&color=0e8a16)](https://github.com/JGtm/LevelUp/issues?q=is%3Aissue+is%3Aopen+label%3Afeedback)
 
@@ -22,7 +21,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 **A completely rebuilt app — new UX/UI**
 - **React 19 + Tailwind frontend** — instant navigation between pages, shareable URLs for every match/session/player, dark/light theme, full FR/EN i18n
 - **Unified design system** — palette, typography, spacing and components (cards, buttons, modals, tooltips, carousels, lightbox) harmonized across the whole app; no more patchwork Streamlit pages
-- **Two-level navigation** — L1 bar (Home / Synthesis / Explorer / Squad / Hall of Fame / Media / Help / Settings) plus contextual L2 tabs; everything is one click away, no more scrolling sidebar
+- **Two-level navigation** — L1 bar (Home / Synthesis / Explorer / Squad / Communauté / Ascension / Media / Help / Settings) plus contextual L2 tabs; everything is one click away, no more scrolling sidebar
 - **Modern interactions** — page transitions, deep links (`?session=`, prev/next match), hovers, side drawers, visual feedback on every action, responsive UI
 - **Go API backend** — Python → Go switch for a lighter server, faster startup, smaller memory footprint
 - **Multi-title support** — the app now handles multiple Halo games (Infinite and beyond) via a **TitleSwitcher** in the nav bar; `levelup add-title` CLI command to register a new title
@@ -38,7 +37,16 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Enriched match tiles** — KDA, squad, rank, headshots, citations, perf score and both team scores right on each tile
 - **Sessions carousel** — color-coded FDA, dominant playlist/mode, hover tooltip
 - **Liked-media tab** + recent matches carousel on the Home
-- **Synthesis page** — new L1 section with weekly highlights, top rivalries and career summary stats
+
+**Synthèse — career analytics hub**
+- **Overview dashboard** — KDA, accuracy, damage dealt/taken, headshots, perfect kills and kill streaks in one card grid, each color-coded against your all-time average; local filters for experience (ranked / unranked), period, season, playlist and mode
+- **Per-weapon kills** — full kill breakdown by weapon with count and percentage share
+- **Solo vs squad** — bipolar chart comparing your key metrics when playing solo vs with your squad
+- **Top performing weeks** — identify your peak play periods at a glance
+- **Per-map & per-mode outcomes** — win / loss / tie breakdown for every map and mode you have played
+- **Activity heatmap** — session frequency and kill density by day of week and time slot
+- **Combat profile** — Offensive Conversion (OC) and Defensive Resistance (DR) evolution over time
+- **Relations preview** — top teammates and most frequent opponents surfaced from your match history
 
 **Media V2 — likes, Discord notifications, upload**
 - **Persistent likes** — like your screenshots and clips directly from the grid, state kept across reloads
@@ -57,26 +65,40 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Encounters panel** — list of players you've crossed paths with in earlier matches
 - **Combat Yield & Perfect Kills** — new metrics in the match view
 - **V7 scoreboard** — higher info density: expected stats, skill rank, linked media, citations
+- **Session comparison** — dedicated A/B page: pick any two sessions and compare KDA, performance score, Offensive Conversion / Defensive Resistance, outcome distribution and dominant playlist side by side
 
 **Rebuilt authentication**
 - **SISU/PoP provider** — new Xbox authentication with Proof-of-Possession for more stable sessions and fewer reconnects
+- **OAuth redirect flow** — browser-based Xbox login (`/auth/xbox/login` → Microsoft → callback) as an alternative to Device Code; configurable via `LEVELUP_OAUTH_REDIRECT_URI`
 - **Local auth** — username/password mode for single-user / LAN deployments
 - **Invitation-based registration** — new `/register` page; account creation requires a server-issued invitation code (`?code=` query param); invalid or expired codes are rejected before the account is written
 
 **Xbox achievements & match events**
 - **Xbox achievements sync** — your Xbox achievements are pulled automatically from the Halo API on every sync
+- **Achievement tracker** — browse your full achievement list on the Career page: filter by unlocked / in-progress / not-started, track your Gamerscore (earned vs total), and filter by game for multi-title support
 - **Highlight events** — binary parser of match films to extract all major events (medals, clutches, spawns)
 - **Weapon kills backfill** — weapon used per frag reconstructed from the film (POV ~87 %)
 - **Comeback badges for teammates** — Remontada / Collapse / Counter-Remontada computed for squad members synced alongside you
 
-**Hall of Fame & Season Pass**
+**Communauté — Hall of Fame, Relations & Face-à-face**
 - **Multilingual Season Pass** — Battle Pass translations in 26 languages, tier images from GameCMS
-- **Relations / Leaderboard** — new Hall of Fame pages: crossed players, per-player stats, career micro-leaderboard
-- **Compare drawer** — redesigned session/player comparison UI
+- **Relations** — track all players you have crossed paths with: per-player stats, shared match history, alliance and rivalry patterns, career micro-leaderboard
+- **Face-à-face** — dedicated 1v1 (or 1v1v1 mirror) comparison page: pit any two or three players head-to-head across Combat, Precision and Bilan metrics; encounter badges mark alliances and rivals from your shared match history
 
 **Objectives & Prestige**
 - **Objectives** — individual and squad challenge system: set personal goals or create squad challenges (collective or competitive) on any Halo metric with configurable windows, tiers, and narrative arcs; earn Prestige Points (PP) on completion; two evaluation modes (threshold / cumulative) and two creation modes (free / guided)
 - **Prestige leaderboard** — PP ranking in Palmares comparing your score against your squad and relations; four tiers: Normal / Heroic / Legendary / Mythic
+
+**Ascension — progression tracking & game profile**
+- **Streak dashboard** — win streaks, loss streaks and kill streaks tracked over time, with your all-time personal records highlighted
+- **Records & milestones** — all-time personal bests (best KDA, most kills in a match, longest win streak…) plus a milestone grid showing how close you are to the next target
+- **6-axis game profile radar** — strengths and weaknesses mapped across Lethality, Precision, Resilience, Team Impact, Survivability and Consistency
+- **Style badge** — computed play-style classification (Fragger, Support, Sniper…) derived from your match history
+- **LUSR component breakdown** — each component of your rating visualized and explained so you know exactly what to improve to climb
+- **Behavioral pattern detection** — automatic detection of tilt, fatigue, engagement plateaus and skill ceilings from your recent matches
+- **Contextual patterns** — how your stats shift by mode, map and squad composition
+- **Solo vs squad card** — side-by-side comparison of your playstyle when playing alone vs with teammates
+- **Proactive coach** — a background engine analyses your progress after every sync and fires positive-only alerts in the notification center: new personal records, near-misses, LUSR tier approaching, milestone unlocks, sustained stat improvements and contextual strengths by map, mode and squad type
 
 **In-app notifications**
 - **Notification center** — per-player feed with unread badge in the nav bar, category filters, day-grouped timeline, bulk actions, and 60-second live refresh; preferences configurable per player in Settings
@@ -104,46 +126,7 @@ Major overhaul. LevelUp leaves Streamlit behind for a **React 19 + Go API** app 
 - **Live preview** — the palette switches instantly across the whole app without a page reload; a swatch preview lets you compare before committing
 - **Persistent preference** — your choice is saved in the browser and restored automatically on every visit
 
-**v6.5 — Squad heatmap & hardened settings**
-- **Per-player intensity heatmap** (Teammates) — new visualization: match × phase (early/mid/late) heatmap for every squad member. See who strikes early, who ramps up late. Toggle between "all together" and "player by player"
-- **Separate Discord notifications** — sync and backfill alerts now have their own toggle each; disabling one doesn't affect the other
-- **More robust settings** — preferences are written safely (atomic write + automatic backup); the file can no longer be corrupted on crash or forced shutdown
-- **Fixes** — records (best performance) no longer appear by default when they had been disabled
-
-**v6.4 — Media filters, squad CSR & reading aids**
-- **Media library filters** — filter your clips and screenshots by owner (my captures / teammates / no linked match), map, mode, outcome (win / loss…) and solo vs squad context. Sort by date, map, mode or outcome in one click
-- **Reading aids** — a sidebar checkbox shows or hides the ~45 explanatory callouts across the pages; disable it for a cleaner UI
-- **Redesigned career summary** — 8 compact cards side by side: Matches, Total time, Frags, Deaths, Assists, Accuracy, Time alive, Outcomes. Each card compares your value to your all-time average (green/gold/red color code at ±8 %)
-- **Win/Loss folded into Timeseries** — the Win/Loss page becomes a tab inside Timeseries; tabs renamed: Summary · Maps & Modes · Progression · Advanced
-- **Automatic teammate CSR** — when syncing a ranked match, the rank of every registered co-player is pulled and distributed automatically — no need for each one to sync their own account anymore
-- **Remontada/Collapse badges for teammates** — computed for squad members synced alongside you
-- **Sticky legend panel** (Teammates) — a floating panel displays each squad member's color for the whole scroll through the squad section
-- **Cross-session preferences** — selected player and language are remembered in the browser; filters survive updates
-
-**v6.3 — Localized names, squad records & medal details**
-- **Maps and modes in your language** — map, playlist and game mode names in French (or English) across every page: filters, tables, charts and winrate histogram
-- **Medal descriptions on hover** — hover a medal in the scoreboard or the Citations section to read its description
-- **All-time squad records** — the Teammates page shows career bests for each member (K/D, kills, streaks…) with per-player colored annotations and a per-map detail view
-- **Top Killer badge** — shown on the Impact timeline for the first player to reach 10 kills in a match
-- **Reworked first-kill/first-death histogram** — mirrored butterfly chart with 15-second buckets and real in-game time (pre-match countdown subtracted)
-- **Improved Last Match view** — map and mode merged; MMR, Kills and Deaths cards also display the opposing team score with a color-coded gap; the performance score appears right next to the rating
-- **Medals and citations in a 4-column grid** — clearer scoreboard; weapons in a 2-column grid with well-proportioned thumbnails
-- **Partial match ID search** (Explorer) — type 3+ characters of a match ID to instantly filter the list
-- **Kill cadence histogram** — new chart (Combat tab): kills by 15-second buckets for you and the enemy team, with per-team moving average
-- **Match intensity heatmap** — visualize kill density per phase across all your matches
-- **Auto-indexing media library** — your clips are re-scanned automatically in the background after each sync
-- **Fixes** — Spartan Carnage citation corrected; correct names in Discord notifications; filter calendar with free navigation across years
-
-**v6.2 — Comeback badges & unified squad view**
-- **Remontada / Collapse / Counter-Remontada badges** — the app detects comeback scenarios in your history: *Remontada* (you were losing at mid-match and won), *Collapse* (you were winning and lost), *Counter-Remontada* (you stopped the enemy comeback)
-- **Unified squad view** — 1-vs-1 and squad views merge; you get the same rich charts for 1, 2 or 3 friends
-- **Kills ↑ / Deaths ↓ chart** — kills and deaths merged into a single mirrored chart per member, to compare K/D arcs at a glance
-- **Consistent mode names** — game mode labels are now homogeneous across every page and every chart
-
-**v6.1 — Faster sync, bugs fixed**
-- **Sync ~30–40 % faster** — every synchronization completes noticeably faster
-- **Correct rank names** — the displayed rank now matches the actual tier (e.g. "Lance Corporal Diamond 1")
-- Fixes: performance scores and materialized views always up to date after sync
+**Full release history**: [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md)
 
 ---
 
@@ -322,14 +305,10 @@ Just launch the app, enter your gamertag, and authenticate via Device Code Flow
 
 ### Refresh token (advanced / headless)
 
-If you cannot use the interactive wizard (e.g. server/headless setup):
-
-```bash
-python scripts/spnkr_get_refresh_token.py --device-code
-```
-
-This prints a code to enter at `https://xbox.com/activate`, then saves the token
-automatically to `.env.local`.
+If you cannot use the interactive wizard (e.g. server/headless setup), open the login page
+at `http://localhost:5173/auth/xbox` from any browser on the same network and follow the
+Device Code Flow. Alternatively, configure a redirect URI via `LEVELUP_OAUTH_REDIRECT_URI`
+for a fully browser-based flow.
 
 ### Note for forks / developers
 
@@ -379,14 +358,11 @@ Contributions are welcome! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guide
 
 | Technology | Usage |
 |------------|-------|
-| **Python 3.12+** | Main language |
+| **Go 1.26+** | API backend |
 | **React 19 + Vite** | Frontend UI |
-| **FastAPI** | REST API backend |
-| **DuckDB 1.4** | OLAP query engine |
-| **Polars 1.38** | High-performance DataFrames |
-| **PyArrow 23** | Data interoperability |
-| **Pydantic v2** | Data validation |
-| **Plotly** | Interactive charts |
+| **TanStack Query / Router / Table** | Data fetching, routing, tables |
+| **ECharts 5** | Interactive charts |
+| **DuckDB 1.4+** | OLAP query engine |
 | **SPNKr** | Halo Infinite API |
 
 ---

@@ -2,7 +2,6 @@
 package handlers_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,40 +15,26 @@ import (
 	"levelup/go-api/internal/service"
 )
 
-// noopGit implémente port.GitProvider en retournant des résultats vides.
-// Utilisé par les tests qui veulent s'appuyer uniquement sur le README disque.
-type noopGit struct{}
-
-func (noopGit) LogSHAs(_ context.Context, _, _ string) ([]string, error) { return nil, nil }
-func (noopGit) ShowFile(_ context.Context, _, _, _ string) (string, error) {
-	return "", nil
-}
-
-// makeHelpHandler instancie un HelpHandler avec le service release notes
-// configuré pour ne pas appeler git (P8.10) — fallback disque uniquement.
 func makeHelpHandler(t *testing.T, dir string) *handlers.HelpHandler {
 	t.Helper()
-	builder := service.NewReleaseNotesService(dir, noopGit{})
+	builder := service.NewReleaseNotesService(dir)
 	return handlers.NewHelpHandler(builder, filepath.Join(dir, "data", "cache"))
 }
 
-// setupHelpRepo crée un repo git minimal dans un répertoire temporaire
-// avec un README.md contenant les sections What's new spécifiées.
-func setupHelpRepo(t *testing.T, readmeEN, readmeFR string) string {
+// setupHelpRepo crée un répertoire temporaire avec des fichiers RELEASE_NOTES.md.
+func setupHelpRepo(t *testing.T, contentEN, contentFR string) string {
 	t.Helper()
 	dir := t.TempDir()
-
-	// Initialiser un repo git bare (pas de vrai git init nécessaire pour les tests
-	// sans git — on teste le fallback sur disque).
-	docsDir := filepath.Join(dir, "docs", "FR")
-	if err := os.MkdirAll(docsDir, 0o755); err != nil {
+	docsDir := filepath.Join(dir, "docs")
+	docsFRDir := filepath.Join(dir, "docs", "FR")
+	if err := os.MkdirAll(docsFRDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte(readmeEN), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(docsDir, "RELEASE_NOTES.md"), []byte(contentEN), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if readmeFR != "" {
-		if err := os.WriteFile(filepath.Join(docsDir, "README.md"), []byte(readmeFR), 0o600); err != nil {
+	if contentFR != "" {
+		if err := os.WriteFile(filepath.Join(docsFRDir, "RELEASE_NOTES.md"), []byte(contentFR), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -156,8 +141,8 @@ func TestHelpHandler_DefaultLangFR(t *testing.T) {
 	}
 }
 
-func TestHelpHandler_MissingReadme_Returns500(t *testing.T) {
-	dir := t.TempDir() // Pas de README.md
+func TestHelpHandler_MissingReleaseNotes_Returns500(t *testing.T) {
+	dir := t.TempDir() // Pas de RELEASE_NOTES.md
 	h := makeHelpHandler(t, dir)
 	r := chi.NewRouter()
 	r.Get("/help/release-notes", h.GetReleaseNotes)
@@ -184,8 +169,8 @@ func TestHelpHandler_CacheHit(t *testing.T) {
 	}
 
 	// Modifier le fichier → le cache ne relit pas immédiatement
-	newContent := "# Modified\n## What's new\n**v99.0 — New**\n- Changed\n## Other\n"
-	_ = os.WriteFile(filepath.Join(dir, "README.md"), []byte(newContent), 0o600)
+	newContent := "## What's new\n**v99.0 — New**\n- Changed\n"
+	_ = os.WriteFile(filepath.Join(dir, "docs", "RELEASE_NOTES.md"), []byte(newContent), 0o600)
 
 	w2 := httptest.NewRecorder()
 	r.ServeHTTP(w2, httptest.NewRequest(http.MethodGet, "/help/release-notes?lang=en", nil))
@@ -198,15 +183,13 @@ func TestHelpHandler_CacheHit(t *testing.T) {
 }
 
 func TestHelpHandler_VersionOrder(t *testing.T) {
-	readme := `# LevelUp
-## What's new
+	readme := `## What's new
 **v6.0 — Old**
 - old feature
 **v7.0 — New**
 - new feature
 **v6.5 — Mid**
 - mid feature
-## Features
 `
 	dir := setupHelpRepo(t, readme, "")
 	h := makeHelpHandler(t, dir)

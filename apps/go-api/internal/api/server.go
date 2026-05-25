@@ -34,7 +34,6 @@ import (
 	_ "levelup/go-api/internal/observability"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
-	gitcli "levelup/go-api/internal/platform/git"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
@@ -435,7 +434,7 @@ func NewRouter(
 		// Aide : notes de version extraites du README (EN/FR).
 		// P8.10 : la logique git + parsing markdown vit dans
 		// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
-		releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot, gitcli.NewCLI())
+		releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot)
 		help := handlers.NewHelpHandler(releaseBuilder, filepath.Join(cfg.RepoRoot, "data", "cache"))
 		r.Get("/help/release-notes", help.GetReleaseNotes)
 
