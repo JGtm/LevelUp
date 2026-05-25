@@ -1,0 +1,266 @@
+// Package ops — media_associate.go : algorithme d'association média↔match
+// SANS ATTACH cross-DB.
+//
+// Contexte : l'ancienne implémentation faisait `ATTACH 'shared_matches.duckdb'
+// AS shared_matches (READ_ONLY)` sur la connexion RW de shared_social.duckdb
+// pour réaliser une jointure SQL directe. Ce ATTACH écrit dans le WAL une
+// entrée qui n'est PAS rejouable au prochain boot (bug DuckDB #7659 :
+// "WAL Replay fails when attach alias changes"). Conséquence : si le process
+// est killé brutalement (Air rebuild Windows), le boot suivant échoue avec
+// "INTERNAL Error: Calling DatabaseManager::GetDefaultDatabase with no
+// default database set" → SharedSocial=nil pour tous les joueurs → rail média
+// vide partout.
+//
+// Nouvelle approche (ADR 0016 conforme) :
+//   1. Charger les fenêtres temporelles des matchs depuis shared_matches_v2
+//      sur une connexion RO indépendante (DuckDB autorise N readers RO).
+//   2. Charger les media_files candidats (capture_start_utc not null, pas déjà
+//      associés) depuis shared_social via la connexion existante.
+//   3. Calculer les associations en Go (computeAssociations) — algorithme pur,
+//      isolable, testable.
+//   4. Bulk-insérer les associations dans shared_social via la connexion
+//      existante (INSERT OR IGNORE).
+//
+// Plus aucun ATTACH → plus aucune corruption WAL possible.
+
+package ops
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"time"
+
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+)
+
+// matchTimeWindow représente la fenêtre temporelle d'un match. Tous les
+// timestamps sont en UTC.
+type matchTimeWindow struct {
+	MatchID  string
+	StartUTC time.Time
+	EndUTC   time.Time
+}
+
+// unassocMediaRow représente un média à associer.
+type unassocMediaRow struct {
+	MediaFileID     int64
+	CaptureStartUTC time.Time
+}
+
+// mediaMatchAssoc est le résultat de l'algorithme d'association : un média est
+// rattaché à UN match (le meilleur selon le scoring). DeltaSeconds est la
+// distance au DÉBUT du match (cohérent avec le SQL d'origine).
+type mediaMatchAssoc struct {
+	MediaFileID  int64
+	MatchID      string
+	DeltaSeconds int
+}
+
+// loadMatchTimeWindows lit les fenêtres temporelles des matchs depuis
+// shared_matches_v2.duckdb sans ATTACH cross-DB.
+//
+// Préfère réutiliser le handle du pool process-wide (LookupCachedDB) pour
+// éviter l'erreur DuckDB "different configuration" si shared_matches est déjà
+// ouvert en RW par le pool. Fallback : ouverture autonome en RO.
+//
+// Filtre WHERE start_time_utc/end_time_utc IS NOT NULL pour garantir des
+// timestamps valides. Le fallback `start_time AT TIME ZONE 'UTC'` couvre les
+// rares matchs pré-migration add_start_time_utc_to_match_registry.
+func loadMatchTimeWindows(ctx context.Context, sharedMatchesPath string) ([]matchTimeWindow, error) {
+	var db *sql.DB
+	if cached, ok := platform_duckdb.LookupCachedDB(sharedMatchesPath); ok {
+		db = cached.SQLDb()
+		slog.Debug("loadMatchTimeWindows: handle pool réutilisé", "path", sharedMatchesPath)
+	} else {
+		var openErr error
+		db, openErr = sql.Open("duckdb", sharedMatchesPath+"?access_mode=read_only")
+		if openErr != nil {
+			return nil, fmt.Errorf("ouverture shared_matches RO: %w", openErr)
+		}
+		defer db.Close()
+		slog.Debug("loadMatchTimeWindows: handle pool absent, fallback sql.Open RO", "path", sharedMatchesPath)
+	}
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT
+			match_id,
+			COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') AS start_utc,
+			COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') AS end_utc
+		FROM match_registry
+		WHERE COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC') IS NOT NULL
+		  AND COALESCE(end_time_utc,   end_time   AT TIME ZONE 'UTC') IS NOT NULL
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query match_registry: %w", err)
+	}
+	defer rows.Close()
+
+	var windows []matchTimeWindow
+	for rows.Next() {
+		var w matchTimeWindow
+		if err := rows.Scan(&w.MatchID, &w.StartUTC, &w.EndUTC); err != nil {
+			return nil, fmt.Errorf("scan match_registry row: %w", err)
+		}
+		windows = append(windows, w)
+	}
+	return windows, rows.Err()
+}
+
+// loadUnassociatedMedia retourne les media_files dont capture_start_utc est
+// non-null ET qui ne sont pas déjà dans media_match_associations.
+func loadUnassociatedMedia(ctx context.Context, db *sql.DB) ([]unassocMediaRow, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT mf.id, mf.capture_start_utc
+		FROM media_files mf
+		WHERE mf.capture_start_utc IS NOT NULL
+		  AND mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("query media_files candidates: %w", err)
+	}
+	defer rows.Close()
+
+	var candidates []unassocMediaRow
+	for rows.Next() {
+		var c unassocMediaRow
+		if err := rows.Scan(&c.MediaFileID, &c.CaptureStartUTC); err != nil {
+			return nil, fmt.Errorf("scan media_files row: %w", err)
+		}
+		candidates = append(candidates, c)
+	}
+	return candidates, rows.Err()
+}
+
+// computeAssociations est l'algorithme PUR d'association média→match. Pour
+// chaque média, trouve le meilleur match dans la fenêtre [start - buffer, end +
+// buffer]. Préserve la sémantique exacte du SQL d'origine (ROW_NUMBER OVER
+// PARTITION BY mf.id) :
+//
+//  1. PRIORITÉ : match qui CONTIENT capture_start_utc (sans buffer) bat un
+//     match dont seul le buffer englobe la capture. Évite qu'un replay enregistré
+//     1 min après un match court ne soit attribué au match précédent.
+//  2. TIE-BREAK : distance au CENTRE du match (asc). Un replay enregistré à
+//     la fin d'un match a un delta naturel ~match_duration/2 par rapport au
+//     début ; trier par "delta vs start_time" donnerait des faux positifs sur
+//     le match suivant.
+//  3. TIE-BREAK FINAL : match_id alphabétique (déterministe).
+//
+// DeltaSeconds renvoyé = distance au DÉBUT du match (positif, en secondes) —
+// cohérent avec la sémantique stockée historiquement dans
+// media_match_associations.delta_seconds.
+//
+// Pure function : aucun side-effect, aucun I/O. Testable en isolation.
+func computeAssociations(media []unassocMediaRow, matches []matchTimeWindow, bufferMin int) []mediaMatchAssoc {
+	if bufferMin <= 0 {
+		bufferMin = 2
+	}
+	buffer := time.Duration(bufferMin) * time.Minute
+
+	out := make([]mediaMatchAssoc, 0, len(media))
+	for _, m := range media {
+		bestIdx := -1
+		bestContained := false
+		bestDistCenter := time.Duration(1<<62 - 1)
+		bestMatchID := ""
+
+		for i, w := range matches {
+			if m.CaptureStartUTC.Before(w.StartUTC.Add(-buffer)) {
+				continue
+			}
+			if m.CaptureStartUTC.After(w.EndUTC.Add(buffer)) {
+				continue
+			}
+
+			contained := !m.CaptureStartUTC.Before(w.StartUTC) && !m.CaptureStartUTC.After(w.EndUTC)
+			center := w.StartUTC.Add(w.EndUTC.Sub(w.StartUTC) / 2)
+			distCenter := absDuration(m.CaptureStartUTC.Sub(center))
+
+			if isBetterMatch(bestIdx, contained, bestContained, distCenter, bestDistCenter, w.MatchID, bestMatchID) {
+				bestIdx = i
+				bestContained = contained
+				bestDistCenter = distCenter
+				bestMatchID = w.MatchID
+			}
+		}
+
+		if bestIdx == -1 {
+			continue
+		}
+		best := matches[bestIdx]
+		deltaStart := int(absDuration(m.CaptureStartUTC.Sub(best.StartUTC)).Seconds())
+		out = append(out, mediaMatchAssoc{
+			MediaFileID:  m.MediaFileID,
+			MatchID:      best.MatchID,
+			DeltaSeconds: deltaStart,
+		})
+	}
+	return out
+}
+
+// isBetterMatch encapsule la règle de tri (contained > distCenter asc > matchID asc).
+// Premier paramètre : -1 si aucun "best" encore. Extrait pour lisibilité +
+// testabilité fine si besoin.
+func isBetterMatch(bestIdx int, contained, bestContained bool, distCenter, bestDistCenter time.Duration, matchID, bestMatchID string) bool {
+	if bestIdx == -1 {
+		return true
+	}
+	if contained != bestContained {
+		return contained // true (contained) bat false (buffer only)
+	}
+	if distCenter != bestDistCenter {
+		return distCenter < bestDistCenter
+	}
+	return matchID < bestMatchID
+}
+
+func absDuration(d time.Duration) time.Duration {
+	if d < 0 {
+		return -d
+	}
+	return d
+}
+
+// bulkInsertAssociations insère les associations calculées dans
+// media_match_associations via une transaction. INSERT OR IGNORE protège
+// contre les races (un autre IndexMedia concurrent pourrait avoir inséré
+// entre loadUnassociatedMedia et l'insert).
+//
+// Pas d'ATTACH — la connexion db est celle de shared_social (RW).
+func bulkInsertAssociations(ctx context.Context, db *sql.DB, assocs []mediaMatchAssoc) (int, error) {
+	if len(assocs) == 0 {
+		return 0, nil
+	}
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+
+	stmt, err := tx.PrepareContext(ctx, `
+		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
+		VALUES (?, ?, ?)
+	`)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, fmt.Errorf("prepare insert: %w", err)
+	}
+	defer stmt.Close()
+
+	inserted := 0
+	for _, a := range assocs {
+		res, err := stmt.ExecContext(ctx, a.MediaFileID, a.MatchID, a.DeltaSeconds)
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, fmt.Errorf("insert assoc media=%d match=%s: %w", a.MediaFileID, a.MatchID, err)
+		}
+		n, _ := res.RowsAffected()
+		inserted += int(n)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit tx: %w", err)
+	}
+	return inserted, nil
+}

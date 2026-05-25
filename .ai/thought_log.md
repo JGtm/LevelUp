@@ -1,3 +1,56 @@
+## [2026-05-25] Fix permanent WAL corruption shared_social — suppression ATTACH cross-DB
+
+**Statut** : Complété — vraie root cause identifiée et éradiquée
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Symptôme récurrent** : malgré le fix WAL/timezone du commit `4a146bed` ce matin, après chaque cycle "indexation media → restart serveur (Air rebuild)", `shared_social.duckdb` devenait inouvrable au boot avec :
+```
+INTERNAL Error: Failure while replaying WAL file "shared_social.duckdb.wal":
+Calling DatabaseManager::GetDefaultDatabase with no default database set
+```
+Conséquence : `SharedSocial=nil` pour tous les joueurs → rail média home vide + `prestige_bundle_init_failed`. Cycle vicieux : à chaque clic "Scanner médias" puis Air rebuild, la corruption se reproduisait.
+
+**Vraie root cause (avec preuve)** : bug DuckDB upstream [#7659](https://github.com/duckdb/duckdb/issues/7659) — *"WAL Replay fails when attach alias changes"*. Notre code dans `ops/media.go:AssociateMediaWithMatches` faisait :
+```go
+ATTACH '/path/shared_matches.duckdb' AS shared_matches (READ_ONLY)
+... INSERT INTO media_match_associations SELECT ... FROM media_files mf JOIN shared_matches.match_registry mr ON ... ...
+DETACH shared_matches
+```
+Le `ATTACH` (même en READ_ONLY) écrit une entrée WAL référençant l'alias `shared_matches`. Quand Air kill le process brutalement (Windows, pas de CHECKPOINT propre), le WAL persiste. Au reboot, `duckdb.NewConnector(path, initFn)` tente de rejouer le WAL → assertion `DatabaseManager::GetDefaultDatabase` parce que pendant le replay, le catalog n'est pas encore initialisé.
+
+Le fix précédent (`LookupCachedDB` dans IndexMedia) règle un autre bug (2 connexions concurrentes avec configs différentes) mais ne touche pas à l'ATTACH dans AssociateMediaWithMatches. La cause profonde restait active.
+
+**Fix permanent** (ADR 0016 conforme — *pas d'ATTACH cross-DB depuis une conn RW*) :
+- **Nouveau fichier** `ops/media_associate.go` (240 lignes) : algorithme d'association média↔match purement en Go.
+  - `loadMatchTimeWindows(ctx, path)` : lit match_registry depuis shared_matches_v2 sur une conn RO indépendante (réutilise `LookupCachedDB` si dispo, sinon `sql.Open` RO).
+  - `loadUnassociatedMedia(ctx, db)` : lit les media_files candidats sur la conn shared_social existante.
+  - `computeAssociations(media, matches, bufferMin)` : pure function. Pour chaque média, scoring (1) contained > buffer, (2) distance au centre asc, (3) match_id alphabétique asc. Préserve exactement la sémantique du `ROW_NUMBER OVER PARTITION BY` SQL d'origine.
+  - `bulkInsertAssociations(ctx, db, assocs)` : `INSERT OR IGNORE` en transaction sur shared_social. Pas d'ATTACH.
+- **Refactor** `AssociateMediaWithMatches` (ops/media.go) : orchestre les 4 helpers. Param `timezone` conservé pour rétrocompat de signature mais marqué DEPRECATED (les TIMESTAMPTZ sont déjà en UTC, plus besoin de `SET TimeZone`).
+
+**Tests** (`ops/media_associate_test.go`, 240 lignes, 11 cas) :
+- `ContainedBeatsBuffer` : match qui contient gagne contre match dont seul le buffer englobe
+- `TieBreakByDistanceToCenter` + `PreferCloserToCenter` : tie-break par centre, alphabétique en dernier recours
+- `OutOfBuffer_NoAssoc` / `InBuffer_Associates` : respect strict de la fenêtre
+- `DeltaSeconds_DistanceFromStart` / `_AbsoluteValue` : delta = distance au DÉBUT, valeur absolue
+- `NoMatches_NoAssocs` / `NoMedia_NoAssocs` : edge cases
+- `MultipleMedias_Independent` : chaque média choisi indépendamment
+- `DefaultBufferIfZero` : fallback bufferMin=2 si 0
+
+Tests E2E existants (`TestIndexMedia_E2E_*`, `TestAssociateMediaWithMatches_TimezoneWindow`) passent sans modification — la fonction publique conserve sa signature et son comportement.
+
+**Vérifié** : `go build ./...` + `go vet ./...` + `go test ./internal/ops/... ./internal/service/... ./internal/api/handlers/...` tous verts.
+
+**Garanties post-fix** :
+- Aucun `ATTACH` n'est plus exécuté sur la connexion RW de shared_social → aucune entrée WAL non-rejouable possible
+- Le bug DuckDB #7659 ne peut plus se déclencher dans notre code
+- Pas de bricolage (pas de CHECKPOINT défensif, pas de self-healing WAL delete au boot — inutiles)
+
+**WAL corrompu en cours nettoyé manuellement** (`shared_social.duckdb.wal.corrupted-20260525-1922` → `rm`). Au prochain boot, shared_social s'ouvre proprement, le scan media via UI repeuple la table avec la nouvelle implémentation sans ATTACH.
+
+---
+
 ## [2026-05-25] D7 prep — Comblage trous T1-T7 pré shadow run
 
 **Statut** : Complété (T1 → T7 du delivery-checklist post-D6.5 — V2 ready prod)
