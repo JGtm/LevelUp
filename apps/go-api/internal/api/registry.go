@@ -58,6 +58,42 @@ type ServiceRegistry struct {
 	rankCatalog      *mappings.RankCatalog     // nil → CareerService.next_rank_name reste vide
 	rankImageURLs    map[int]*string           // nil → CareerService.rank_image_url et next_rank_image_url restent absents
 	prestigeBundle   *PrestigeBundle           // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
+	advisorBundle    *CoachAdvisorBundle       // nil → coach_advisor désactivé (ADR 0020 Phase 8)
+}
+
+// WithCoachAdvisorBundle attache le bundle coach_advisor au registry.
+// Stateless côté ressources DB (le bundle ne détient qu'une grammaire en
+// mémoire) — pas de Close nécessaire.
+func (r *ServiceRegistry) WithCoachAdvisorBundle(b *CoachAdvisorBundle) *ServiceRegistry {
+	r.advisorBundle = b
+	return r
+}
+
+// CoachAdvisorBundle retourne le bundle si attaché, nil sinon.
+func (r *ServiceRegistry) CoachAdvisorBundle() *CoachAdvisorBundle {
+	if r == nil {
+		return nil
+	}
+	return r.advisorBundle
+}
+
+// PrestigeBundle retourne le bundle Prestige si attaché, nil sinon.
+// Exporté pour permettre au post-sync hook de construire les deps
+// progression V2 avec coach_advisor.
+func (r *ServiceRegistry) PrestigeBundle() *PrestigeBundle {
+	if r == nil {
+		return nil
+	}
+	return r.prestigeBundle
+}
+
+// SettingsStore retourne le store de settings si attaché, nil sinon.
+// Exporté pour permettre au post-sync hook de lire CoachProactiveMode.
+func (r *ServiceRegistry) SettingsStore() *settings_platform.Store {
+	if r == nil {
+		return nil
+	}
+	return r.settingsStore
 }
 
 // WithPrestigeBundle attache le bundle Prestige au registry. Le bundle détient

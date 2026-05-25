@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/progression/coach"
+	"levelup/go-api/internal/progression/coach_advisor"
 	"levelup/go-api/internal/progression/milestones"
 	"levelup/go-api/internal/progression/profile"
 	"levelup/go-api/internal/progression/records"
@@ -70,6 +71,13 @@ type ProgressionDeps struct {
 	CoachGenerator     *coach.Generator
 	Emitter            notifications.Emitter
 	NotificationsRepo  notifications.Repository
+
+	// CoachAdvisor invoque la génération de proposals (ADR 0020 Phase 8).
+	// Nil → étape ignorée gracieusement (pipeline reste fonctionnel).
+	CoachAdvisor coach_advisor.Service
+	// CoachProactiveMode est lu depuis settings.AppSettings.CoachProactiveMode.
+	// False (défaut) → coach_advisor.GenerateProposals short-circuit en interne.
+	CoachProactiveMode bool
 }
 
 // ProgressionResult capture l'état post-évaluation pour observabilité (tests
@@ -81,6 +89,9 @@ type ProgressionResult struct {
 	AlertsGenerated  int
 	AlertsEmitted    int
 	AlertsDeduped    int
+	// ProposalsGenerated : nombre de proposals coach_advisor créées dans cette
+	// invocation (Phase 8, ADR 0020). Inclut challenges + arcs.
+	ProposalsGenerated int
 }
 
 // EvaluateProgressionAfterSync exécute le pipeline complet. À appeler depuis
@@ -163,7 +174,44 @@ func EvaluateProgressionAfterSync(
 		return res, nil
 	}
 	res.AlertsEmitted = emitCoachAlerts(ctx, deps, deduped)
+
+	// ── 8. Coach Advisor — proposals Prestige (Phase 8, ADR 0020) ──────────
+	// Lit les alertes coach (avant ou après dédup peu importe — le coach_advisor
+	// applique sa propre supersession). Best-effort : toute erreur loggée
+	// sans interrompre le pipeline.
+	res.ProposalsGenerated = generateCoachAdvisorProposals(ctx, deps, userID, titleSlug, now, alerts)
 	return res, nil
+}
+
+// generateCoachAdvisorProposals exécute l'étape 8 du pipeline post-sync :
+// traduit les alertes coach en Signals et invoque GenerateProposals.
+//
+// Retourne 0 si CoachAdvisor=nil ou si proactive disabled (short-circuit
+// interne de GenerateProposals).
+func generateCoachAdvisorProposals(
+	ctx context.Context, deps ProgressionDeps,
+	userID, titleSlug string, now time.Time, alerts []coach.Alert,
+) int {
+	if deps.CoachAdvisor == nil {
+		return 0
+	}
+	signals := coach_advisor.SignalsFromAlerts(alerts)
+	if len(signals) == 0 {
+		return 0
+	}
+	proposals, err := deps.CoachAdvisor.GenerateProposals(ctx, coach_advisor.GenerateInput{
+		UserID:           userID,
+		TitleSlug:        titleSlug,
+		Now:              now,
+		ProactiveEnabled: deps.CoachProactiveMode,
+		Signals:          signals,
+	})
+	if err != nil {
+		slog.WarnContext(ctx, "progression: coach_advisor.GenerateProposals",
+			"err", err, "user", userID, "titleSlug", titleSlug)
+		return 0
+	}
+	return len(proposals)
 }
 
 // evaluateStreaks invoque deps.StreaksEvaluator si présent. Best-effort.
@@ -376,6 +424,40 @@ func BuildPlayerProgressionDeps(pdb *duckdb.PlayerDB, emitter notifications.Emit
 		deps.NotificationsRepo = duckdb.NewNotificationsRepo(pdb)
 	}
 	deps.CoachGenerator = coach.NewGenerator()
+	return deps
+}
+
+// BuildPlayerProgressionDepsWithAdvisor étend BuildPlayerProgressionDeps avec
+// le coach_advisor (Phase 8, ADR 0020). Tous les paramètres advisor sont
+// optionnels — si advisorBundle ou prestigeBundle vaut nil, l'étape 8 est
+// gracefully skippée.
+//
+// `proactiveMode` est lu depuis settings.AppSettings.CoachProactiveMode au
+// moment de l'invocation (rebuild par sync → toggle dynamique sans restart).
+func BuildPlayerProgressionDepsWithAdvisor(
+	pdb *duckdb.PlayerDB,
+	emitter notifications.Emitter,
+	advisorBundle *CoachAdvisorBundle,
+	prestigeBundle *PrestigeBundle,
+	proactiveMode bool,
+	playerSlug string,
+) ProgressionDeps {
+	deps := BuildPlayerProgressionDeps(pdb, emitter)
+	if advisorBundle == nil || prestigeBundle == nil || pdb == nil || pdb.Player == nil {
+		return deps
+	}
+	templates := prestigeBundle.TemplateRepoForCoach()
+	if templates == nil {
+		return deps
+	}
+	prestigeSvc, err := prestigeBundle.ServiceForPlayer(context.Background(), playerSlug)
+	if err != nil {
+		slog.Warn("coach_advisor: prestige service not available, advisor disabled",
+			"player", playerSlug, "err", err)
+		return deps
+	}
+	deps.CoachAdvisor = advisorBundle.ServiceForPlayer(pdb, templates, prestigeSvc)
+	deps.CoachProactiveMode = proactiveMode
 	return deps
 }
 

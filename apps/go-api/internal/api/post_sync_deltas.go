@@ -92,8 +92,15 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 			EmitPostSyncDeltas(ctx, emitter, slug, before, after, pdb2)
 
 			// Couche progression V2 (Ascension) — pipeline streaks/records/
-			// milestones/coach. Non bloquant : toute erreur reste en slog.Warn.
-			progDeps := BuildPlayerProgressionDeps(pdb2, emitter)
+			// milestones/coach + coach_advisor (Phase 8 ADR 0020). Non
+			// bloquant : toute erreur reste en slog.Warn.
+			progDeps := BuildPlayerProgressionDepsWithAdvisor(
+				pdb2, emitter,
+				reg.CoachAdvisorBundle(),
+				reg.PrestigeBundle(),
+				readCoachProactiveMode(reg),
+				slug,
+			)
 			if _, err := EvaluateProgressionAfterSync(ctx, pdb2, defaultProgressionTitleSlug(), progDeps, time.Now().UTC()); err != nil {
 				slog.WarnContext(ctx, "post_sync: progression evaluate", "slug", slug, "err", err)
 			}
@@ -107,6 +114,22 @@ func buildPostSyncDeltaHook(reg *ServiceRegistry) handlers.PostSyncDeltaHook {
 // (ctxkeys.TitleSlug) sera la voie à privilégier.
 func defaultProgressionTitleSlug() string {
 	return "halo_infinite"
+}
+
+// readCoachProactiveMode lit la valeur courante du toggle dans
+// app_settings.json via le SettingsStore du registry. Retourne false si le
+// store n'est pas attaché ou si la lecture échoue — comportement opt-in
+// strict (cf. ADR 0020 Phase 1).
+func readCoachProactiveMode(reg *ServiceRegistry) bool {
+	store := reg.SettingsStore()
+	if store == nil {
+		return false
+	}
+	cfg, err := store.Load()
+	if err != nil || cfg == nil {
+		return false
+	}
+	return cfg.CoachProactiveMode
 }
 
 // PlayerSnapshot capture l'état pertinent d'un joueur pour la détection delta.

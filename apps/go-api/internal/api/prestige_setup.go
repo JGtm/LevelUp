@@ -109,6 +109,17 @@ func (b *PrestigeBundle) Close() {
 	}
 }
 
+// TemplateRepoForCoach expose le PrestigeTemplateRepo du bundle pour le
+// coach_advisor (ADR 0020 Phase 8). Le coach_advisor lit le catalogue de
+// templates et peut UpsertOne un template synthétisé. Retourne nil si le
+// bundle n'est pas initialisé.
+func (b *PrestigeBundle) TemplateRepoForCoach() prestige.TemplateRepo {
+	if b == nil {
+		return nil
+	}
+	return b.templateRepo
+}
+
 // ServiceForPlayer construit un prestige.Service en injectant les repos
 // par-joueur du PlayerDB résolu.
 //
