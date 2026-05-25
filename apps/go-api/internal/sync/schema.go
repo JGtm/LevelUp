@@ -106,8 +106,12 @@ CREATE TABLE IF NOT EXISTS career_progression (
     banner_image_url VARCHAR,
     emblem_image_url VARCHAR,
     backdrop_image_url VARCHAR,
+    last_fetch_status VARCHAR,  -- Phase 6 PLAN_V2 : 'ok' / 'api_empty' / 'forbidden_403' / 'auth_missing' / 'failed'
     recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+-- ALTER additif idempotent pour migrer les player DBs existantes (post-refactor V2).
+-- DuckDB ignore ADD COLUMN si déjà présente (≥ v0.10).
+ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS last_fetch_status VARCHAR;
 CREATE INDEX IF NOT EXISTS idx_career_xuid ON career_progression(xuid);
 
 -- Schéma append-only (Phase 2.G du refactor ART) : PK technique sur id,

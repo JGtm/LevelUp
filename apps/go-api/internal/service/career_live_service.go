@@ -292,7 +292,19 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string) (*du
 	// on déclenche un refresh background détaché. La home rend déjà avec ce
 	// qu'on a (DB + parts cached). La requête suivante bénéficiera du cache
 	// frais — sans avoir attendu Halo dans le chemin critique.
-	if hasAuth && needRefresh {
+	switch {
+	case !hasAuth:
+		slog.InfoContext(ctx, careerLiveLogModule+": kickoff skipped",
+			"xuid", xuid, "reason", "no_auth_tokens",
+			"db_has_row", dbLast != nil)
+	case !needRefresh:
+		slog.DebugContext(ctx, careerLiveLogModule+": kickoff skipped",
+			"xuid", xuid, "reason", "cache_warm")
+	default:
+		slog.InfoContext(ctx, careerLiveLogModule+": kickoff fired",
+			"xuid", xuid,
+			"cache_miss_progress", cachedProgress == nil,
+			"cache_miss_custom", cachedCustom == nil)
 		s.kickoffBackgroundRefresh(xuid, tokens)
 	}
 
@@ -346,9 +358,10 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 		// Persist partial (Phase 2/3 PLAN_V2) : on n'écrit dans la nouvelle
 		// ligne QUE les champs effectivement rendus non-vides par l'API live.
 		// Les autres restent NULL et ARG_MAX FILTER WHERE NOT NULL côté
-		// lecture conserve les valeurs historiques. Pas de pollution possible
-		// par un retour API partiel.
-		s.persistPartial(bgCtx, xuid, progress, custom)
+		// lecture conserve les valeurs historiques. Pas de pollution possible.
+		// Le status (Phase 6) trace l'issue du fetch pour diag.
+		status := computeFetchStatus(progress, custom)
+		s.persistPartial(bgCtx, xuid, progress, custom, status)
 
 		slog.DebugContext(bgCtx, careerLiveLogModule+": background refresh completed", "xuid", xuid)
 	}()
@@ -369,17 +382,6 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 	if fetcher == nil {
 		return nil
 	}
-
-	// DIAG 2026-05-25 : trace le xuid associé aux tokens en ctx vs le xuid
-	// queried. Si mismatch (e.g., tokens JGtm utilisés pour fetcher Madina),
-	// l'API Halo Economy peut renvoyer les données du token holder au lieu
-	// du xuid queried — symptôme silencieux (pas de 401/403). Supprimer
-	// quand l'investigation est close (cf. §12 PLAN_SPARTAN_IDENTITY_REFACTOR).
-	ctxXUID := ctxkeys.HaloXUID(ctx)
-	slog.InfoContext(ctx, careerLiveLogModule+": progress fetch DIAG",
-		"query_xuid", xuid,
-		"ctx_xuid", ctxXUID,
-		"xuid_mismatch", xuid != ctxXUID)
 
 	fetch := func() (*syncpkg.CareerRankData, error) {
 		return fetcher.GetCareerProgress(ctx, xuid)
@@ -408,13 +410,6 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 		return nil
 	}
 	careerLiveProgressLive.Add(1)
-	// DIAG 2026-05-25 : log la valeur brute renvoyée par l'API pour comparer
-	// avec ce que la home affiche et ce que Halowaypoint montre.
-	slog.InfoContext(ctx, careerLiveLogModule+": progress fetch RESULT",
-		"query_xuid", xuid,
-		"api_rank", data.CurrentRank,
-		"api_xp", data.CurrentXP,
-		"api_is_max", data.IsMaxRank)
 	if s.cache != nil {
 		s.cache.PutProgress(xuid, data)
 	}
@@ -435,14 +430,6 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 	if fetcher == nil {
 		return nil
 	}
-
-	// DIAG 2026-05-25 : trace le xuid associé aux tokens en ctx vs le xuid
-	// queried (cf. fetchProgressCached pour rationale).
-	ctxXUID := ctxkeys.HaloXUID(ctx)
-	slog.InfoContext(ctx, careerLiveLogModule+": custom fetch DIAG",
-		"query_xuid", xuid,
-		"ctx_xuid", ctxXUID,
-		"xuid_mismatch", xuid != ctxXUID)
 
 	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
 		return fetcher.GetSpartanCustomization(ctx, xuid)
@@ -468,13 +455,6 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 		return nil
 	}
 	careerLiveCustomLive.Add(1)
-	// DIAG 2026-05-25 : log les URLs/SpartanID retournés par l'API.
-	slog.InfoContext(ctx, careerLiveLogModule+": custom fetch RESULT",
-		"query_xuid", xuid,
-		"spartan_id", data.SpartanID,
-		"has_banner", data.BannerImageURL != "",
-		"has_emblem", data.EmblemImageURL != "",
-		"has_backdrop", data.BackdropImageURL != "")
 	if s.cache != nil {
 		s.cache.PutCustomization(xuid, data)
 	}
@@ -521,21 +501,25 @@ func (s *CareerLiveService) persistIfChanged(ctx context.Context, xuid string, r
 // colonnes omises restent NULL dans la nouvelle ligne — la lecture via
 // ARG_MAX FILTER WHERE NOT NULL conserve les valeurs historiques.
 //
+// Phase 6 PLAN_V2 : status trace l'issue du fetch (ok / api_empty /
+// forbidden_403 / auth_missing / failed). Toujours écrit pour permettre
+// le diag "pourquoi ce joueur n'a pas de bannière".
+//
 // Best-effort : une erreur est loggée mais non propagée à l'appelant.
 func (s *CareerLiveService) persistPartial(
 	ctx context.Context,
 	xuid string,
 	progress *syncpkg.CareerRankData,
 	custom *syncpkg.SpartanCustomizationData,
+	status FetchStatus,
 ) {
 	if s.repo == nil {
 		return
 	}
 	partial := PartialFromLive(progress, custom)
-	if partial.IsEmpty() {
-		careerLiveInsertSkipped.Add(1)
-		return
-	}
+	statusStr := string(status)
+	partial.LastFetchStatus = &statusStr
+
 	inserted, err := s.repo.InsertCareerProgressionPartial(ctx, xuid, partial)
 	if err != nil {
 		slog.WarnContext(ctx, careerLiveLogModule+": persist partial failed",
@@ -546,6 +530,7 @@ func (s *CareerLiveService) persistPartial(
 		careerLiveInsertChanged.Add(1)
 		slog.InfoContext(ctx, careerLiveLogModule+": partial snapshot inserted",
 			"xuid", xuid,
+			"status", statusStr,
 			"has_rank", partial.Rank != nil,
 			"has_xp", partial.CurrentXP != nil,
 			"has_banner", partial.BannerImageURL != nil,
@@ -554,6 +539,24 @@ func (s *CareerLiveService) persistPartial(
 	} else {
 		careerLiveInsertSkipped.Add(1)
 	}
+}
+
+// computeFetchStatus dérive le FetchStatus depuis le résultat des 2 fetchs.
+// Source de vérité unique pour la classification des outcomes.
+func computeFetchStatus(progress *syncpkg.CareerRankData, custom *syncpkg.SpartanCustomizationData) FetchStatus {
+	hasProgress := progress != nil && (progress.CurrentRank > 0 || progress.IsMaxRank)
+	hasCustom := custom != nil && (custom.SpartanID != "" || custom.BannerImageURL != "" ||
+		custom.EmblemImageURL != "" || custom.BackdropImageURL != "")
+	if hasProgress || hasCustom {
+		return FetchStatusOK
+	}
+	// Aucune data exploitable. Si les 2 sont nil → l'API a probablement échoué
+	// silencieusement (cf. fetchProgressCached qui log "API silent skip" et
+	// retourne nil sur data == nil + cache miss). Sinon, c'est un retour vide.
+	if progress == nil && custom == nil {
+		return FetchStatusAPIEmpty
+	}
+	return FetchStatusAPIEmpty
 }
 
 // serveDBFallback charge la dernière row DB et construit directement la
