@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/prestige"
+	"levelup/go-api/internal/progression/coach_advisor"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
@@ -763,6 +764,30 @@ func NewRouter(
 			}
 			progressionH := handlers.NewProgressionHandler(progressionResolve, defaultProgressionTitleSlug())
 			progressionH.Mount(r)
+
+			// Coach Advisor — proposals coach proactives (ADR 0020 Phase 9).
+			// Resolver compose PlayerDB + bundles → coach_advisor.Service.
+			coachResolve := func(ctx context.Context, slug string) (coach_advisor.Service, string, error) {
+				pdb, err := reg.resolve(ctx, slug)
+				if err != nil {
+					return nil, "", err
+				}
+				if pdb == nil || pdb.Player == nil {
+					return nil, "", nil
+				}
+				ab := reg.CoachAdvisorBundle()
+				pb := reg.PrestigeBundle()
+				if ab == nil || pb == nil {
+					return nil, pdb.XUID, nil
+				}
+				prestigeSvc, perr := pb.ServiceForPlayer(ctx, slug)
+				if perr != nil {
+					return nil, pdb.XUID, nil
+				}
+				return ab.ServiceForPlayer(pdb, pb.TemplateRepoForCoach(), prestigeSvc), pdb.XUID, nil
+			}
+			coachH := handlers.NewCoachProposalsHandler(coachResolve, defaultProgressionTitleSlug())
+			coachH.Mount(r)
 
 			// PlayerProfile V1 (Ascension) — endpoint /profile complet.
 			// Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §8.1.
