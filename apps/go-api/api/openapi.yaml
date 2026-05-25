@@ -2234,6 +2234,38 @@ paths:
       responses:
         "200": { description: "Recalcul démarré" }
 
+  /settings/backup/status:
+    get:
+      tags: [settings]
+      operationId: getBackupStatus
+      summary: "Statut du scheduler de sauvegarde"
+      responses:
+        "200":
+          description: Statut courant (enabled, last backup, DBs exportées, config)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupStatusResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/backup/run:
+    post:
+      tags: [settings]
+      operationId: postBackupRun
+      summary: "Déclenche un cycle de sauvegarde immédiat"
+      responses:
+        "200":
+          description: Résultat du cycle (snapshot_id, bases exportées, durée)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupRunResult"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          description: Scheduler non initialisé (backup désactivé)
+
   # Sync
   /players/{player_slug}/sync:
     parameters:
@@ -2363,6 +2395,83 @@ components:
   # Schemas
   # -------------------------------------------------------------------------
   schemas:
+
+    # --- Backup ---
+    IntegrityCheckResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Vrai si PRAGMA integrity_check a retourné "ok"
+        detail:
+          type: string
+          description: Premier message d'erreur (absent si ok ou pragma non supporté)
+        checked_at:
+          type: string
+          format: date-time
+          description: Horodatage UTC de la vérification
+
+    BackupStatusResponse:
+      type: object
+      required: [enabled, available]
+      properties:
+        enabled:
+          type: boolean
+          description: Backup activé dans app_settings.json
+        available:
+          type: boolean
+          description: Binaire restic trouvé dans le PATH
+        last_backup_at:
+          type: string
+          format: date-time
+          description: Date du dernier backup réussi (absente si jamais sauvegardé)
+        last_snapshot_id:
+          type: string
+          description: ID du dernier snapshot restic
+        last_exported:
+          type: array
+          items:
+            type: string
+          description: Clés des bases exportées lors du dernier cycle
+        last_duration_ms:
+          type: integer
+          description: Durée du dernier cycle en millisecondes
+        integrity_checks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/IntegrityCheckResult"
+          description: Résultats PRAGMA integrity_check par base (clé = DB key, présent après le premier cycle)
+        config:
+          type: object
+          properties:
+            interval:
+              type: string
+              description: Intervalle entre cycles (ex. "6h0m0s")
+            keep_daily:
+              type: integer
+            keep_weekly:
+              type: integer
+            keep_monthly:
+              type: integer
+
+    BackupRunResult:
+      type: object
+      required: [skipped]
+      properties:
+        snapshot_id:
+          type: string
+          description: ID du snapshot créé (vide si skipped)
+        skipped:
+          type: boolean
+          description: Vrai si aucune DB n'a changé depuis le dernier backup
+        exported:
+          type: array
+          items:
+            type: string
+          description: Clés des bases exportées
+        duration_ms:
+          type: integer
+          description: Durée du cycle en millisecondes
 
     # --- Career CSR ---
     CareerCSRRank:

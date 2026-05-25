@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
+	"levelup/go-api/pkg/duckdbbackup"
 )
 
 // SettingsHandler gère les endpoints de configuration.
@@ -32,6 +33,7 @@ type SettingsHandler struct {
 	mediaIndexer        service.MediaIndexer
 	friendsOrchestrator port.FriendsOrchestrator    // nil = recompute désactivé (mode legacy)
 	notifierFor         NotificationsEmitterFactory // nil = pas de notifs friend_added
+	backupSched         *duckdbbackup.Scheduler     // nil = backup désactivé
 }
 
 // NewSettingsHandler crée un SettingsHandler avec le DirMediaIndexer par défaut.
@@ -67,6 +69,13 @@ func (h *SettingsHandler) WithFriendsOrchestrator(o port.FriendsOrchestrator) *S
 // fonctionne mais aucune notif n'est émise.
 func (h *SettingsHandler) WithNotificationsEmitter(f NotificationsEmitterFactory) *SettingsHandler {
 	h.notifierFor = f
+	return h
+}
+
+// WithBackupScheduler branche le scheduler de backup DuckDB.
+// Sans wiring, GetBackupStatus retourne {enabled:false} et PostBackupRun renvoie 503.
+func (h *SettingsHandler) WithBackupScheduler(s *duckdbbackup.Scheduler) *SettingsHandler {
+	h.backupSched = s
 	return h
 }
 
