@@ -52,6 +52,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/ops"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/watcher"
 )
@@ -673,6 +674,20 @@ func main() {
 		healthScheduler.Run(schedulerCtx)
 	}()
 
+	// Backup périodique DuckDB via restic (pkg/duckdbbackup).
+	// Créé inconditionnellement pour exposer le statut dans l'UI settings.
+	// Run() est appelé seulement si backup_enabled=true dans app_settings.json.
+	backupSched := ops.NewLevelUpBackupScheduler(cfg.Backup, pr)
+	if cfg.Backup.Enabled {
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			backupSched.Run(schedulerCtx)
+		}()
+	} else {
+		slog.Debug("backup: désactivé — scheduler créé mais non démarré")
+	}
+
 	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
 	var watcherCtrl watcher.DaemonController
 	if watcherDaemon != nil {
@@ -682,7 +697,7 @@ func main() {
 	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
 	// reg est assigné ici : la closure notifierGetter y accède de manière lazy (joueur actif après démarrage).
 	var router http.Handler
-	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler)
+	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched)
 
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
 	// l'auto-sync scheduler. Avant ce fix, l'auto-sync court-circuitait

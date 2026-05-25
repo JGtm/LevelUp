@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/watcher"
+	"levelup/go-api/pkg/duckdbbackup"
 )
 
 // NewRouter construit le routeur chi avec tous les endpoints.
@@ -63,6 +64,7 @@ func NewRouter(
 	daemon watcher.DaemonController,
 	tokenProvider auth_platform.TokenProvider,
 	autoSyncScheduler *scheduler.AutoSyncScheduler,
+	backupScheduler *duckdbbackup.Scheduler,
 ) (http.Handler, *ServiceRegistry) {
 	if tokenProvider == nil {
 		tokenProvider = auth_platform.NewMSALProvider()
@@ -532,12 +534,15 @@ func NewRouter(
 		}).WithNotifier(reg.NotificationsEmitter)
 		settingsHandler := handlers.NewSettingsHandler(cfg, settingsStore, jobStore).
 			WithFriendsOrchestrator(friendsOrchestrator).
-			WithNotificationsEmitter(reg.NotificationsEmitter)
+			WithNotificationsEmitter(reg.NotificationsEmitter).
+			WithBackupScheduler(backupScheduler)
 		r.Get("/settings", settingsHandler.GetSettings)
 		r.Patch("/settings", settingsHandler.PatchSettings)
 		r.Post("/settings/media/reset-index", settingsHandler.PostMediaResetIndex)
 		r.Post("/settings/media/scan", settingsHandler.PostMediaScan)
 		r.Post("/settings/sessions/recalculate", settingsHandler.PostRecalculateSessions)
+		r.Get("/settings/backup/status", settingsHandler.GetBackupStatus)
+		r.Post("/settings/backup/run", settingsHandler.PostBackupRun)
 
 		setupHandler := handlers.NewSetupHandler(cfg, sessionStore, settingsStore, jobStore,
 			service.NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot))
