@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -52,6 +53,52 @@ func TestCheckIntegrity_NonDBFile(t *testing.T) {
 	// function returns without panicking and sets CheckedAt.
 	if result.CheckedAt.IsZero() {
 		t.Error("CheckedAt should not be zero")
+	}
+}
+
+// TestExportTarget_Basic creates a real DuckDB with two tables and verifies that
+// ExportTarget produces one Parquet file per table in the output directory.
+func TestExportTarget_Basic(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "test.duckdb")
+	outDir := filepath.Join(dir, "out")
+
+	// Create a DuckDB with two tables.
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	if _, err := db.Exec("CREATE TABLE players (id INTEGER, name VARCHAR)"); err != nil {
+		db.Close()
+		t.Fatalf("create players: %v", err)
+	}
+	if _, err := db.Exec("CREATE TABLE matches (match_id VARCHAR)"); err != nil {
+		db.Close()
+		t.Fatalf("create matches: %v", err)
+	}
+	db.Close()
+
+	target := Target{Key: "test", Path: dbPath}
+	n, err := ExportTarget(context.Background(), target, outDir, 1)
+	if err != nil {
+		t.Fatalf("ExportTarget: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("expected 2 tables exported, got %d", n)
+	}
+
+	// Verify two Parquet files were created.
+	entries, err := os.ReadDir(outDir)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Errorf("expected 2 parquet files, got %d", len(entries))
+	}
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".parquet") {
+			t.Errorf("unexpected file %q (expected .parquet)", e.Name())
+		}
 	}
 }
 

@@ -13,8 +13,6 @@
 // The caller supplies a discover function that returns the list of DBs to protect.
 package duckdbbackup
 
-import "time"
-
 // Target describes a single DuckDB file to back up.
 type Target struct {
 	Key  string // short name used in the manifest and logs
@@ -23,8 +21,8 @@ type Target struct {
 
 // Result summarises a single backup cycle.
 type Result struct {
-	SnapshotID string        // restic snapshot ID; empty when Skipped
-	Skipped    bool          // true when no DB changed since last backup
-	Exported   []string      // Keys of DBs actually re-exported this cycle
-	Duration   time.Duration
+	SnapshotID string   `json:"snapshot_id,omitempty"`
+	Skipped    bool     `json:"skipped"`
+	Exported   []string `json:"exported,omitempty"`
+	DurationMs int64    `json:"duration_ms"`
 }
