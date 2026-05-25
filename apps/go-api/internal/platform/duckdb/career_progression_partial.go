@@ -41,9 +41,17 @@ type CareerProgressionPartial struct {
 	EmblemImageURL   *string
 	BackdropImageURL *string
 	AdornmentPath    *string
+	// LastFetchStatus (Phase 6 PLAN_V2) trace l'issue du dernier fetch live.
+	// Valeurs : "ok" / "api_empty" / "forbidden_403" / "auth_missing" / "failed".
+	// Set même quand tous les autres champs sont nil (signal "j'ai essayé").
+	LastFetchStatus *string
 }
 
 // IsEmpty retourne true si aucun champ n'est set.
+// IsEmpty retourne true si aucun champ de DATA n'est set. Le LastFetchStatus
+// est ignoré ici : un partial avec status="forbidden_403" et tout le reste nil
+// est considéré "empty data" mais on l'écrira quand même pour tracer la
+// tentative (cf. HasOnlyStatus).
 func (p *CareerProgressionPartial) IsEmpty() bool {
 	if p == nil {
 		return true
@@ -54,6 +62,15 @@ func (p *CareerProgressionPartial) IsEmpty() bool {
 		p.SpartanID == nil &&
 		p.BannerImageURL == nil && p.EmblemImageURL == nil &&
 		p.BackdropImageURL == nil && p.AdornmentPath == nil
+}
+
+// HasOnlyStatus retourne true si seul LastFetchStatus est set (data vide).
+// Sert au caller à décider s'il insère quand même pour tracer la tentative.
+func (p *CareerProgressionPartial) HasOnlyStatus() bool {
+	if p == nil || p.LastFetchStatus == nil {
+		return false
+	}
+	return p.IsEmpty()
 }
 
 // MatchesLast retourne true si tous les champs set de p ont déjà la même valeur
@@ -131,7 +148,13 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 	if xuid == "" {
 		return false, fmt.Errorf("InsertCareerProgressionPartial: xuid vide")
 	}
-	if partial.IsEmpty() {
+	// Phase 6 PLAN_V2 : un partial avec uniquement LastFetchStatus est inséré
+	// pour tracer une tentative qui n'a rien rendu (ex: 403 sur customization
+	// pour XxDaemonGamerxX). Sinon vide-vide → skip.
+	if partial == nil {
+		return false, nil
+	}
+	if partial.IsEmpty() && partial.LastFetchStatus == nil {
 		return false, nil
 	}
 
@@ -139,7 +162,10 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 	if err != nil {
 		return false, fmt.Errorf("InsertCareerProgressionPartial load last: %w", err)
 	}
-	if partial.MatchesLast(last) {
+	// Skip uniquement si le partial est strictement identique à la last
+	// ET qu'il n'apporte pas de nouveau status (un status est toujours utile à
+	// tracer même si data identique : permet de mesurer le taux de succès).
+	if partial.MatchesLast(last) && partial.LastFetchStatus == nil {
 		return false, nil
 	}
 
@@ -187,6 +213,9 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 	}
 	if partial.AdornmentPath != nil {
 		add("adornment_path", *partial.AdornmentPath)
+	}
+	if partial.LastFetchStatus != nil {
+		add("last_fetch_status", *partial.LastFetchStatus)
 	}
 
 	sql := fmt.Sprintf(`INSERT INTO career_progression (%s) VALUES (%s)`,

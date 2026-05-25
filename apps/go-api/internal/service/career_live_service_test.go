@@ -124,9 +124,17 @@ func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Contex
 		s := row.SpartanID
 		id.SpartanID = &s
 	}
+	if row.BannerImageURL != "" {
+		b := row.BannerImageURL
+		id.BannerImageURL = &b
+	}
 	if row.EmblemImageURL != "" {
 		e := row.EmblemImageURL
 		id.EmblemImageURL = &e
+	}
+	if row.BackdropImageURL != "" {
+		bd := row.BackdropImageURL
+		id.BackdropImageURL = &bd
 	}
 	return id
 }

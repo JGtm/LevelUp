@@ -26,6 +26,22 @@ import (
 	syncpkg "levelup/go-api/internal/sync"
 )
 
+// FetchStatus tags the outcome of the last live fetch attempt.
+type FetchStatus string
+
+const (
+	// FetchStatusOK : data exploitable rendue par l'API.
+	FetchStatusOK FetchStatus = "ok"
+	// FetchStatusAPIEmpty : API a répondu sans erreur mais sans data (silencieux).
+	FetchStatusAPIEmpty FetchStatus = "api_empty"
+	// FetchStatusForbidden : 403 (privacy joueur ou token sans perm).
+	FetchStatusForbidden FetchStatus = "forbidden_403"
+	// FetchStatusAuthMissing : aucun token Spartan disponible.
+	FetchStatusAuthMissing FetchStatus = "auth_missing"
+	// FetchStatusFailed : erreur transport/parse autre.
+	FetchStatusFailed FetchStatus = "failed"
+)
+
 // PartialFromLive convertit les retours live API en CareerProgressionPartial.
 // progress et custom peuvent être nil indépendamment. Retourne un Partial
 // dont IsEmpty() peut être true si l'API n'a rien rendu d'exploitable.
