@@ -139,7 +139,7 @@ func mkPending(id, userID, axis, metric string) coach_advisor.Proposal {
 }
 
 func TestService_ListProposals_RequiresUserAndTitle(t *testing.T) {
-	svc := coach_advisor.NewService(newFakeRepo())
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: newFakeRepo()})
 	if _, err := svc.ListProposals(context.Background(), "", "halo_infinite", ""); err == nil {
 		t.Error("expected error on empty userID")
 	}
@@ -155,7 +155,7 @@ func TestService_ListProposals_FiltersByStatus(t *testing.T) {
 	_ = repo.Create(ctx, mkPending("p2", "u1", "combat", "kda"))
 	_ = repo.MarkDismissed(ctx, "p2", time.Now())
 
-	svc := coach_advisor.NewService(repo)
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: repo})
 	pending, err := svc.ListProposals(ctx, "u1", "halo_infinite", coach_advisor.ProposalPending)
 	if err != nil {
 		t.Fatalf("ListProposals: %v", err)
@@ -166,7 +166,7 @@ func TestService_ListProposals_FiltersByStatus(t *testing.T) {
 }
 
 func TestService_DismissProposal_RequiresID(t *testing.T) {
-	svc := coach_advisor.NewService(newFakeRepo())
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: newFakeRepo()})
 	if err := svc.DismissProposal(context.Background(), ""); err == nil {
 		t.Error("expected error on empty id")
 	}
@@ -177,7 +177,7 @@ func TestService_DismissProposal_TransitionsStatus(t *testing.T) {
 	ctx := context.Background()
 	_ = repo.Create(ctx, mkPending("p1", "u1", "combat", "accuracy"))
 
-	svc := coach_advisor.NewService(repo)
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: repo})
 	if err := svc.DismissProposal(ctx, "p1"); err != nil {
 		t.Fatalf("DismissProposal: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestService_ObsoletePendingForAxis_BatchAndCount(t *testing.T) {
 	_ = repo.Create(ctx, mkPending("p2", "u1", "combat", "kda"))
 	_ = repo.Create(ctx, mkPending("p3", "u1", "score", "win_rate"))
 
-	svc := coach_advisor.NewService(repo)
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: repo})
 	n, err := svc.ObsoletePendingForAxis(ctx, "u1", "halo_infinite", "combat")
 	if err != nil {
 		t.Fatalf("ObsoletePendingForAxis: %v", err)
@@ -217,7 +217,7 @@ func TestService_ObsoletePendingForAxis_BatchAndCount(t *testing.T) {
 }
 
 func TestService_ObsoletePendingForAxis_RequiresAllParams(t *testing.T) {
-	svc := coach_advisor.NewService(newFakeRepo())
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: newFakeRepo()})
 	if _, err := svc.ObsoletePendingForAxis(context.Background(), "", "halo_infinite", "combat"); err == nil {
 		t.Error("expected error on empty userID")
 	}
@@ -236,7 +236,7 @@ func TestService_ObsoletePendingForAxis_RepoFailure_LoggedNotPropagated(t *testi
 	_ = repo.Create(ctx, mkPending("p2", "u1", "combat", "kda"))
 
 	repo.errOnMarkObsoleted = errors.New("simulated repo failure")
-	svc := coach_advisor.NewService(repo)
+	svc := coach_advisor.NewService(coach_advisor.ServiceDeps{Repo: repo})
 
 	// Best-effort : retourne (0, nil) — erreurs individuelles loggées sans interrompre
 	n, err := svc.ObsoletePendingForAxis(ctx, "u1", "halo_infinite", "combat")
