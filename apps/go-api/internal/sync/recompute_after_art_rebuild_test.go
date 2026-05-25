@@ -146,6 +146,14 @@ func seedRecomputeMatches(t *testing.T, db *sql.DB, n int, xuid string) []string
 				t.Fatalf("insert match_participants[%d,%d]: %v", i, j, err)
 			}
 		}
+		// Seed player_match_enrichment row (en prod, posée à l'ingestion
+		// initiale du match). Sans cette row, les UPDATE de la cascade
+		// (performance, dominance) sont des no-ops silencieux.
+		if _, err := db.Exec(
+			`INSERT INTO player_match_enrichment (match_id) VALUES (?)`, mid,
+		); err != nil {
+			t.Fatalf("insert player_match_enrichment[%d]: %v", i, err)
+		}
 	}
 	return ids
 }

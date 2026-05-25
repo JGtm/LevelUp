@@ -44,6 +44,10 @@ func openParticipantsDBForProperty(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// SetMaxOpenConns(1) sérialise les écritures au niveau Go-sql (prod behavior).
+	// Sans singleflight (supprimé f243b235), DuckDB ne tolère pas les UPSERTs
+	// concurrents sur plusieurs connexions simultanées.
+	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { db.Close() })
 	ddl := `
 		CREATE TABLE match_registry (

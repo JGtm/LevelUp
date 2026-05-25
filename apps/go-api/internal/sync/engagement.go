@@ -179,7 +179,7 @@ func batchComputeEngagementScores(
 	// Flush des updates accumulés en 1 single UPDATE multi-row.
 	if len(pendingUpdates) > 0 {
 		p := persist.NewPostSyncEnrichmentPersister(playerDB)
-		if err := p.BatchUpdateMulti(ctx, pendingUpdates); err != nil {
+		if _, err := p.BatchUpdateMulti(ctx, pendingUpdates); err != nil {
 			slog.ErrorContext(ctx, "engagement: BatchUpdateMulti échoué",
 				"batch_size", len(pendingUpdates), "err", err)
 			observability.IncCounter("engagement_persist_error_total")

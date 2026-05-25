@@ -48,14 +48,15 @@ func writeSessionAssignmentsBatch(ctx context.Context, db *sql.DB, assignments [
 	}
 
 	p := persist.NewPostSyncEnrichmentPersister(db)
-	if err := p.BatchUpdateMulti(ctx, rows); err != nil {
+	affected, err := p.BatchUpdateMulti(ctx, rows)
+	if err != nil {
 		slog.ErrorContext(ctx, "writeSessionAssignmentsBatch: BatchUpdateMulti échoué",
 			"batch_size", len(rows), "err", err)
 		return 0, err
 	}
 	slog.InfoContext(ctx, "writeSessionAssignmentsBatch: sessions persistées",
-		"changed", len(rows), "total_matchs", len(assignments))
-	return len(rows), nil
+		"planned", len(rows), "affected", affected, "total_matchs", len(assignments))
+	return int(affected), nil
 }
 
 // deltaSessionAssignments compare les nouveaux assignments calculés avec les

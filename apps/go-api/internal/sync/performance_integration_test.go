@@ -177,6 +177,9 @@ func seedPerfMatchesWithChain(t *testing.T, db *sql.DB, startIdx, n int, pairNam
 			mid, ts, pairName, isRanked, isFirefight)
 		db.Exec(`INSERT INTO match_participants (match_id, xuid, outcome, kills, deaths, assists, kda, accuracy, time_played_seconds, personal_score, damage_dealt, damage_taken, rank, team_mmr, enemy_mmr, kills_expected, deaths_expected) VALUES (?, 'xuid1', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			mid, 2, 10+i, 5, 3, 1.5, 0.5, 600, 1000+i, 2000.0, 500.0, 1, 1500.0, 1500.0, 10.0, 5.0)
+		// Seed la row player_match_enrichment (posée à l'ingestion en prod).
+		// Sans elle, BatchUpdateMulti UPDATE = no-op (0 rows affected).
+		db.Exec(`INSERT INTO player_match_enrichment (match_id) VALUES (?)`, mid)
 	}
 }
 

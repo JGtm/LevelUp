@@ -117,16 +117,20 @@ type EnrichmentMultiColumnUpdate struct {
 // "Failed to delete all rows from index" (cf. ADR 0019).
 // Toutes les rows doivent avoir le même set de fields (homogénéité).
 // Atomique : 1 TX. No-op si rows est vide.
-func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows []EnrichmentMultiColumnUpdate) error {
+//
+// Retourne le nombre total de rows réellement affectées (sum RowsAffected)
+// — ce qui peut différer de len(rows) si certains match_ids n'existent pas
+// dans player_match_enrichment (l'UPDATE est alors un no-op silencieux).
+func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows []EnrichmentMultiColumnUpdate) (int64, error) {
 	if len(rows) == 0 {
-		return nil
+		return 0, nil
 	}
 
 	first := rows[0]
 	columns := make([]string, 0, len(first.Fields))
 	for col := range first.Fields {
 		if !allowedEnrichmentColumns[col] {
-			return fmt.Errorf("persist: colonne %q non whitelistée", col)
+			return 0, fmt.Errorf("persist: colonne %q non whitelistée", col)
 		}
 		columns = append(columns, col)
 	}
@@ -134,14 +138,14 @@ func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows
 
 	for i, r := range rows {
 		if r.MatchID == "" {
-			return errors.New("persist: EnrichmentMultiColumnUpdate.MatchID vide")
+			return 0, errors.New("persist: EnrichmentMultiColumnUpdate.MatchID vide")
 		}
 		if len(r.Fields) != len(columns) {
-			return fmt.Errorf("persist: row %d a %d fields, attendu %d (homogénéité)", i, len(r.Fields), len(columns))
+			return 0, fmt.Errorf("persist: row %d a %d fields, attendu %d (homogénéité)", i, len(r.Fields), len(columns))
 		}
 		for _, col := range columns {
 			if _, ok := r.Fields[col]; !ok {
-				return fmt.Errorf("persist: row %d manque la colonne %q", i, col)
+				return 0, fmt.Errorf("persist: row %d manque la colonne %q", i, col)
 			}
 		}
 	}
@@ -157,24 +161,29 @@ func (p *PostSyncEnrichmentPersister) BatchUpdateMulti(ctx context.Context, rows
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("persist: BeginTx multi-col: %w", err)
+		return 0, fmt.Errorf("persist: BeginTx multi-col: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	var totalAffected int64
 	for _, r := range rows {
 		args := make([]any, 0, len(columns)+1)
 		for _, col := range columns {
 			args = append(args, r.Fields[col])
 		}
 		args = append(args, r.MatchID)
-		if _, err := tx.ExecContext(ctx, q, args...); err != nil {
-			return fmt.Errorf("persist: UPDATE multi-col %s (match_id=%s): %w",
+		res, err := tx.ExecContext(ctx, q, args...)
+		if err != nil {
+			return 0, fmt.Errorf("persist: UPDATE multi-col %s (match_id=%s): %w",
 				strings.Join(columns, "+"), r.MatchID, err)
+		}
+		if n, err := res.RowsAffected(); err == nil {
+			totalAffected += n
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("persist: Commit multi-col: %w", err)
+		return 0, fmt.Errorf("persist: Commit multi-col: %w", err)
 	}
-	return nil
+	return totalAffected, nil
 }

@@ -205,6 +205,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 		`CREATE VIEW medals_earned AS SELECT * FROM shared.medals_earned`,
 		`CREATE VIEW highlight_events AS SELECT * FROM shared.highlight_events`,
 		// ── Tables player
+		// engagement_score_brut ajouté en migration (steps_engagement.go) pour
+		// Phase 4 du combat profile (canonical engagement). Inclus directement
+		// dans le seed test pour aligner avec LoadPlayerMatchEnrichments
+		// (shared_query_helpers.go:133) qui SELECT cette colonne.
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY, performance_score DOUBLE,
 			session_id INTEGER, session_label VARCHAR,
@@ -212,6 +216,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			had_bot_teammate BOOLEAN DEFAULT FALSE,
 			is_with_friends BOOLEAN DEFAULT FALSE,
 			is_excluded BOOLEAN DEFAULT FALSE,
+			engagement_score_brut DOUBLE,
 			updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP)`,
 		// career_progression : colonne xuid utilisée par CareerLiveRepo
 		// (LoadLastCareerRank WHERE xuid = ?, InsertCareerProgressionIfChanged).

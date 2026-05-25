@@ -902,10 +902,16 @@ func TestPipelineFixture_Citations_NoMedals(t *testing.T) {
 	}
 
 	var n int
-	f.player.QueryRow("SELECT COUNT(*) FROM match_citations WHERE match_id=?", fixM3).Scan(&n)
-	// m3 n'a pas de médailles → 0 citations attendues
+	// Exclure le sentinel "_processed" écrit par writeCitations quand aucune
+	// citation réelle n'est calculée (cf. citations.go:417-420). m3 n'a pas
+	// de médailles → 0 citations réelles attendues (le sentinel marque juste
+	// le match comme traité pour éviter une re-évaluation).
+	f.player.QueryRow(
+		"SELECT COUNT(*) FROM match_citations WHERE match_id=? AND citation_name_norm <> '_processed'",
+		fixM3,
+	).Scan(&n)
 	if n != 0 {
-		t.Fatalf("expected 0 citations pour m3 (pas de médailles), got %d", n)
+		t.Fatalf("expected 0 citations réelles pour m3 (pas de médailles), got %d", n)
 	}
 }
 

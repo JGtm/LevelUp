@@ -484,6 +484,65 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   # -------------------------------------------------------------------------
+  # Pattern Engine v3 — contextes / comportements / leviers
+  # -------------------------------------------------------------------------
+  /players/{player_slug}/patterns:
+    get:
+      tags: [progression]
+      operationId: getPlayerPatterns
+      summary: "Pattern Engine v3 — contextes, comportements, leviers calibrés"
+      description: |
+        Retourne le rapport Pattern Engine (PLAN_PATTERN_ENGINE_V3) pour le
+        joueur : patterns contextuels (by mode/map/squad), patterns comportementaux
+        (tilt/fatigue/engagement/plateau/plafond), et leviers calibrés p60
+        (top 3 axes d'amélioration). Analyse sur les `n` derniers matchs.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+        - name: n
+          in: query
+          required: false
+          description: "Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50)."
+          schema:
+            type: integer
+            minimum: 10
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Rapport patterns du joueur (peut être vide si aucun match)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [window_size, context_patterns, behavior_patterns, levers, computed_at]
+                properties:
+                  window_size:
+                    type: integer
+                    description: Taille effective de la fenêtre analysée
+                  context_patterns:
+                    type: array
+                    items:
+                      type: object
+                      description: "Pattern contextuel (mode/map/squad) — schéma libre côté frontend"
+                  behavior_patterns:
+                    type: array
+                    items:
+                      type: object
+                      description: "Pattern comportemental (tilt/fatigue/...) — schéma libre"
+                  levers:
+                    type: array
+                    items:
+                      type: object
+                      description: "Levier calibré (axe d'amélioration p60)"
+                  computed_at:
+                    type: string
+                    format: date-time
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # -------------------------------------------------------------------------
   # Achievements Xbox (bilingues EN/FR)
   # -------------------------------------------------------------------------
   /players/{player_slug}/pages/achievements:
