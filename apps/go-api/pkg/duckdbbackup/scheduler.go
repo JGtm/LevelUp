@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -113,7 +114,10 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 				"key", t.Key, "detail", ic.Detail)
 		}
 
-		outDir := filepath.Join(s.cfg.BackupDir, "staging", t.Key)
+		// ":" is the namespace separator in keys but is forbidden in Windows
+		// directory names; replace with "/" so filepath.Join creates sub-dirs.
+		stagingRelPath := filepath.FromSlash(strings.ReplaceAll(t.Key, ":", "/"))
+		outDir := filepath.Join(s.cfg.BackupDir, "staging", stagingRelPath)
 		exportCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 		_, exportErr := ExportTarget(exportCtx, t, outDir, s.cfg.CompressionLevel)
 		cancel()

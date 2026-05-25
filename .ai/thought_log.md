@@ -1,3 +1,27 @@
+## [2026-05-25] Initialisation système backup DuckDB → restic
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : Mise en service complète du backup `pkg/duckdbbackup` + restic 0.18.1.
+- Restic installé via winget, copié comme `~/.local/bin/restic.exe` (PATH existant).
+- Repo restic initialisé dans `data/backups/restic-repo` avec `local:` prefix (obligatoire sur Windows pour la résolution de chemin).
+- `backup_enabled: true` ajouté dans `app_settings.json` ; `RESTIC_REPOSITORY` et `LEVELUP_BACKUP_DIR` dans `.env.local`.
+- Bug corrigé dans `scheduler.go` : `:` interdit dans les noms de répertoires Windows → remplacé par `/` pour le chemin staging (le manifest garde `:` comme séparateur sémantique).
+- `discoverLevelUpDBs` refactorisé dans `backup_service.go` : scan du dossier `data/titles/` sur le disque (plutôt que DefaultSlug hardcodé) → multi-title ready automatiquement. Clés préfixées `{slug}:` pour éviter les collisions.
+- `cmd/backup-once/main.go` créé pour lancer un cycle unique sans démarrer le serveur complet.
+
+**Résultats observés** : Premier backup lancé avec succès en 3.14s.
+- 9 DBs exportées : `xbox_aliases` + 5 warehouse (`shared_matches_v2`, `metadata`, `shared_pve`, `shared_social`) + 4 players (Chocoboflor, JGtm, Madina97294, XxDaemonGamerxX).
+- Structure staging : `staging/halo_infinite/{db}/`, `staging/halo_infinite/player/{gamertag}/` ← isolation par title confirmée.
+- Snapshot restic `6ba84d2b`, 9.97 MiB Parquet+zstd.
+- Scheduler Go planifié toutes les 6h avec rétention 7j/4sem/12mois.
+
+**Prochaine étape** : Redémarrer le serveur pour activer le scheduler périodique. Le prochain cycle ignorera les DBs non modifiées (fingerprint mtime+size dans `.manifest.json`).
+
+---
+
 ## [2026-05-25] Mise à jour notes v7.0 — Ascension, Synthèse, Face-à-face, Session comparison, Achievement tracker
 
 **Statut** : Complété
