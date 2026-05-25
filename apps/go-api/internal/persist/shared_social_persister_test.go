@@ -355,6 +355,155 @@ func TestSharedSocialPersister_InsertOrIgnore_NoErrorOnDuplicate(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PersistBatch (interface duckdb.SocialPersister) — cast any → typed
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_PersistBatch_CastsCorrectly(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	// Cast OK
+	batch := &SharedSocialBatch{
+		BatchID: "iface-test", Source: "test",
+		Likes: []LikeInsert{{MediaPath: "/i.mp4", LikerSlug: "u", LikedAt: time.Now().UTC()}},
+	}
+	if err := p.PersistBatch(ctx, batch); err != nil {
+		t.Fatalf("PersistBatch typed: %v", err)
+	}
+
+	// Cast KO sur mauvais type
+	if err := p.PersistBatch(ctx, "not a batch"); err == nil {
+		t.Error("PersistBatch sur string doit échouer avec erreur de cast")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Thumbnails + Associations + Favorites (couverture helpers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+func TestSharedSocialPersister_MediaThumbnails_UpdatesOnlyNullPath(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	// Insert un media file sans thumbnail
+	captureAt := time.Now().UTC()
+	_ = p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "th1", Source: "test",
+		MediaFiles: []MediaFileInsert{
+			{PlayerSlug: "p", FilePath: "/m.mp4", FileName: "m.mp4", FileHash: "hth",
+				Kind: "video", CaptureStartUTC: &captureAt},
+		},
+	})
+	// Récup id auto-généré
+	var id int64
+	if err := db.QueryRow(`SELECT id FROM media_files WHERE file_hash = 'hth'`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	// Update thumbnail via Persister
+	if err := p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "th2", Source: "test",
+		MediaThumbnails: []MediaThumbnailUpdate{{MediaFileID: id, ThumbnailPath: "/thumbs/m.webp"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var thumb sql.NullString
+	_ = db.QueryRow(`SELECT thumbnail_path FROM media_files WHERE id = ?`, id).Scan(&thumb)
+	if !thumb.Valid || thumb.String != "/thumbs/m.webp" {
+		t.Errorf("thumbnail non mis à jour : %v", thumb)
+	}
+}
+
+func TestSharedSocialPersister_MediaAssociations_InsertOrIgnore(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	// Insert 2 associations dont 1 doublon (même PK media_file_id+match_id)
+	batch := &SharedSocialBatch{
+		BatchID: "assoc1", Source: "test",
+		MediaAssociations: []MediaAssociationInsert{
+			{MediaFileID: 1, MatchID: "m-x", DeltaSeconds: 30},
+			{MediaFileID: 1, MatchID: "m-x", DeltaSeconds: 99}, // duplicate → IGNORE
+			{MediaFileID: 2, MatchID: "m-y", DeltaSeconds: 60},
+		},
+	}
+	if err := p.Persist(ctx, batch); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM media_match_associations`).Scan(&count)
+	if count != 2 {
+		t.Errorf("INSERT OR IGNORE associations: count=%d, want 2 (1 dup ignoré)", count)
+	}
+	// Vérifier que la 1re wins (delta=30)
+	var delta int
+	_ = db.QueryRow(`SELECT delta_seconds FROM media_match_associations WHERE media_file_id = 1`).Scan(&delta)
+	if delta != 30 {
+		t.Errorf("delta du 1er INSERT: got %d, want 30 (le doublon doit être ignoré)", delta)
+	}
+}
+
+func TestSharedSocialPersister_Favorites_AddAndRemove(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	// Add 2 favorites
+	if err := p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "fav1", Source: "test",
+		Favorites: []FavoriteInsert{
+			{PlayerSlug: "u1", MatchID: "m1", FavoritedAt: now},
+			{PlayerSlug: "u1", MatchID: "m2", FavoritedAt: now},
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Remove 1
+	if err := p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "fav2", Source: "test",
+		FavoritesToRemove: []FavoriteRemove{{PlayerSlug: "u1", MatchID: "m1"}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var count int
+	_ = db.QueryRow(`SELECT COUNT(*) FROM match_favorites WHERE player_slug = 'u1'`).Scan(&count)
+	if count != 1 {
+		t.Errorf("favorites: count=%d, want 1 (1 ajouté + 1 ajouté - 1 retiré)", count)
+	}
+}
+
+func TestSharedSocialPersister_NotificationRead_UpdatesReadAt(t *testing.T) {
+	_, db := setupSocialDB(t)
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	// Add notification
+	_ = p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "n1", Source: "test",
+		Notifications: []NotificationInsert{
+			{XUID: "x", ID: 1, Category: "c", Severity: "info", TitleKey: "t", Source: "s", CreatedAt: now},
+		},
+	})
+	// Mark as read
+	readAt := now.Add(1 * time.Hour)
+	if err := p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "n2", Source: "test",
+		NotificationReads: []NotificationReadUpdate{{XUID: "x", ID: 1, ReadAt: readAt}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var read sql.NullTime
+	_ = db.QueryRow(`SELECT read_at FROM player_notifications WHERE xuid = 'x' AND id = 1`).Scan(&read)
+	if !read.Valid {
+		t.Error("read_at non mis à jour")
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Toggle : remove (DELETE)
 // ─────────────────────────────────────────────────────────────────────────────
 
