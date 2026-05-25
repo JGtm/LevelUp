@@ -727,6 +727,8 @@ export interface SettingsResponse {
   outcome_badge_sensitivity: 'relaxed' | 'standard' | 'strict'
   // --- Affichage Objectifs/Prestige ---
   show_progression: boolean
+  // --- Coach proactif (pont coach → Prestige, cf. ADR 0020) ---
+  coach_proactive_mode: boolean
   // --- Fournisseur d'authentification (admin uniquement) ---
   auth_provider: string
 }
