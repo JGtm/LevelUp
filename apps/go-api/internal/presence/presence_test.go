@@ -134,6 +134,60 @@ func TestParsePresencePayload_EmptyDetails(t *testing.T) {
 	}
 }
 
+// Format /titles/<TID> + nonce observé en prod 2026-05-25 :
+// state + devices[].titles[]. JGtm joue à Halo Infinite ; on doit
+// extraire le titre actif depuis devices[0].titles[0].
+func TestParsePresencePayload_DevicesFormat_Active(t *testing.T) {
+	raw := json.RawMessage(`{"xuid":"2533274823110022","state":"Online","devices":[{"type":"WindowsOneCore","titles":[{"id":"2043073184","name":"Halo Infinite","placement":"Full","state":"Active","lastModified":"2026-05-25T19:53:30.5573644"}]}]}`)
+	event, err := ParsePresencePayload(raw, "fallback")
+	if err != nil {
+		t.Fatalf("ParsePresencePayload() error = %v", err)
+	}
+	if event.XUID != "2533274823110022" {
+		t.Errorf("XUID = %q, want 2533274823110022", event.XUID)
+	}
+	if event.PresenceState != "Online" {
+		t.Errorf("PresenceState = %q, want Online", event.PresenceState)
+	}
+	if event.PresenceDetail == nil {
+		t.Fatal("PresenceDetail nil (parser n'a pas reconnu le format devices[])")
+	}
+	if event.PresenceDetail.TitleID != "2043073184" {
+		t.Errorf("TitleID = %q, want 2043073184", event.PresenceDetail.TitleID)
+	}
+	if event.PresenceDetail.TitleName != "Halo Infinite" {
+		t.Errorf("TitleName = %q, want Halo Infinite", event.PresenceDetail.TitleName)
+	}
+	if event.PresenceDetail.State != "Active" {
+		t.Errorf("State = %q, want Active", event.PresenceDetail.State)
+	}
+	if !event.PresenceDetail.IsGame {
+		t.Error("IsGame should be true (topic /titles/<TID> implique game)")
+	}
+	if !event.PresenceDetail.IsPrimary {
+		t.Error("IsPrimary should be true (placement Full)")
+	}
+	if event.PresenceDetail.Device != "WindowsOneCore" {
+		t.Errorf("Device = %q, want WindowsOneCore", event.PresenceDetail.Device)
+	}
+}
+
+// Snapshot Offline avec lastSeen : on parse OK mais PresenceDetail reste nil
+// (pas de devices[].titles[] actifs).
+func TestParsePresencePayload_DevicesFormat_OfflineLastSeen(t *testing.T) {
+	raw := json.RawMessage(`{"xuid":"2533274833178266","state":"Offline","lastSeen":{"deviceType":"Win32","titleId":"2043073184","titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46.8592228"}}`)
+	event, err := ParsePresencePayload(raw, "fallback")
+	if err != nil {
+		t.Fatalf("ParsePresencePayload() error = %v", err)
+	}
+	if event.PresenceState != "Offline" {
+		t.Errorf("PresenceState = %q, want Offline", event.PresenceState)
+	}
+	if event.PresenceDetail != nil {
+		t.Error("PresenceDetail should be nil for lastSeen-only payload")
+	}
+}
+
 // =============================================================================
 // RTAClient unit tests (sans vrai WebSocket)
 // =============================================================================

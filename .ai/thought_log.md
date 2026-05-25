@@ -1,3 +1,79 @@
+## [2026-05-26] Watcher RTA fix + bascule REST polling pour la présence
+
+**Statut** : Complété (3 fixes RTA + REST poller + tests + wiring), test live en attente.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : Le watcher daemon ne déclenchait jamais de sync via RTA. Investigation longue (3h) confirmant que RTA n'est pas une solution viable pour s'auto-observer son propre compte. Bascule sur REST polling, validée par l'écosystème (xbox-webapi-python, xbox_monitor, projets Discord RP).
+
+**3 bugs RTA identifiés et corrigés (gardés car le snapshot initial reste utile)** :
+1. **Nonce manquant** — Xbox RTA exige un nonce one-shot (GET /nonce) ajouté en query param `?nonce=...` à l'URL WebSocket. Sans nonce : connexion acceptée mais aucun push d'event. Fix : `fetchNonce()` + URL-encode (base64 contient `+/=`) + drop `Authorization` header au WS upgrade (le combo nonce+Auth déclenche un 400 silencieux Content-Length:0, confirmé par LucienHH/xbox-rta qui ne passe que le nonce).
+2. **Parser format `devices[].titles[]`** — Xbox envoie un 3e format non documenté (`state` + `devices[].titles[]`) au lieu du `presenceDetails[]` historique. Parser étendu avec `rtaPresenceDev` + `rtaPresenceLastSe` + fallback de mapping (`IsPrimary = placement=="Full"`, `IsGame = true` car topic scopé sur titleID).
+3. **sub_id en string** — Sur certains refus Xbox, sub_id est renvoyé en string (JSON `"4057307567"`) au lieu d'int. Hash FNV-1a déterministe pour mapper string → int et éviter les panics du décodeur strict.
+
+**Diagnostic abandonné (3 topics RTA testés)** :
+- `/titles/<TID>` : snapshot OK au subscribe, 0 push après (22 min d'observation, extinction Halo non détectée).
+- `/richpresence` : status=3 persistant même avec nonce. RelyingParty `http://xboxlive.com` (notre flow SPNKr) n'a pas les claims. LucienHH passe par `Titles.XboxAppIOS` (impersonate l'app Xbox iOS, borderline ToS).
+- `/devices/current/titles/current` : non testé (perte de temps marginale, REST plus simple).
+
+**Décision architecturale** : REST polling adopté comme source de vérité (cf. ADR à rédiger). Interval fixe 30s — pas d'adaptatif (le scheduler global couvre déjà le fallback offline). Le RTA est gardé pour son snapshot initial (best effort) mais n'est plus authority. Coût négligeable : 4 joueurs × 1 req/30s = 8 req/min, sous tous les quotas.
+
+**Files touchés** :
+- Modifs : `internal/presence/rta_client.go` (nonce + drop Auth + hash sub_id + topic revert `/titles/<TID>`), `internal/presence/event_parser.go` (3e format `devices[]`), `internal/presence/presence_test.go` (2 nouveaux tests), `internal/watcher/daemon.go` (warn log "titre non tracké"), `internal/watcher/daemon_user_clients.go` (spawn REST poller en parallèle du RTA).
+- Nouveaux : `internal/presence/rest_client.go` (PresenceClient HTTP + HTTPError typé 401/429/5xx), `internal/presence/rest_client_test.go` (9 tests httptest avec fixtures réelles observées en prod), `internal/watcher/rest_poller.go` (boucle 30s, backoffs typés, refresh XSTS sur 401), `internal/watcher/rest_poller_test.go` (7 tests mock + interval court).
+
+**Résultats observés** :
+- Tests : 16 nouveaux tests (9 REST client + 7 REST poller) ; `go test ./internal/presence/ ./internal/watcher/ -race` vert (6.2s + 1.6s).
+- 1 test sync pré-existant échoue (`TestExtractCSRRowIfRanked_RankedStable` : `Or 5` vs `Or V`) — externe à ce scope.
+- Live test en attente : air bloqué par cascade d'erreurs sur registry.go (WIP user), à reprendre post-restart air.
+
+**Sources consultées** :
+- LucienHH/xbox-rta (Node.js, lib RTA prod-ready de référence)
+- microsoft/xbox-live-api (C++ XSAPI officiel)
+- OpenXbox/xbox-webapi-python (REST polling, pas de WS)
+- misiektoja/xbox_monitor (Python, polling 30s actif / 120s offline)
+- Microsoft Docs — RTA service overview + Presence URIs
+- XboxReplay/xboxlive-auth — RelyingParty doc
+
+**Prochaine étape** : test live (relance air, observer logs `rest_poller: démarré` + tick toutes les 30s + handler trigger sync sur transition Halo). Si succès → ADR sur le choix REST vs RTA, cleanup éventuel du RTA si le snapshot apporte rien.
+
+---
+
+## [2026-05-25] Fix halo_auth: client_id mismatch + fallback DuckDB + rotation RT
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Root cause réelle** (3 bugs distincts) :
+1. `cmd/token-capture` hardcodait `e1cb35ab` mais le serveur lit `SPNKR_AZURE_CLIENT_ID` (env var différente) → tokens capturés avec le mauvais client_id → `invalid_grant: different client_id` dès le premier refresh.
+2. `refreshTokensFromDB` ne tentait DuckDB que si l'env var était VIDE. Si l'env var était présente mais invalide (mauvais client_id), DuckDB n'était jamais essayé → faux "aucun token disponible" pour XxDaemonGamerxX qui avait un RT valide en DuckDB.
+3. `TryOAuthRefresh` (DEPRECATED) jetait silencieusement le RT rotaté → après 100 min (2 cycles cache 50 min), l'ancien RT révoqué → warning.
+
+**Fixes** :
+- `cmd/token-capture`: lire `SPNKR_AZURE_CLIENT_ID` en priorité (fallback `e1cb35ab`) — même logique que `oauth_refresh.go`.
+- `registry.go/refreshTokensFromDB`: boucle env→DuckDB avec `TryOAuthRefreshWithRotation` + persistance RT rotaté + WARN intermédiaire rétrogradé en DEBUG (pas de bruit si DuckDB réussit en fallback).
+
+**Action utilisateur requise** : recapturer les tokens Madina97294 + XxDaemonGamerxX avec le `cmd/token-capture` mis à jour.
+
+**Tests** : `go test ./internal/api/... ./cmd/token-capture/...` + `go vet` → OK.
+
+---
+
+## [2026-05-25] Fix halo_auth: rotation OAuth refresh_token non persistée
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Root cause** : `refreshTokensFromDB` utilisait la méthode DEPRECATED `TryOAuthRefresh` qui appelle `TryOAuthRefreshWithRotation` en interne mais jette silencieusement le RT rotaté (`_, err := ...`). Microsoft rotate le refresh_token à chaque usage. Le premier cache-miss (TTL 50 min) consommait le RT sans persister le nouveau — le second cache-miss (~T+100min) utilisait un RT déjà révoqué → `invalid_grant` → WARN "aucun token disponible" pour Madina97294 et xxdaemongamerxx.
+
+**Fix** : `internal/api/registry.go` — remplacer `TryOAuthRefresh` par `TryOAuthRefreshWithRotation` + appel immédiat à `duckdb.WriteOAuthRefreshToken` si `rotatedRT != ""`. Pattern identique au `pool/resolver.go:tryOAuthRefreshAndPropagateRotation` déjà existant.
+
+**Résultat** : compile OK. Les tokens ne se révoquent plus au 2e cycle de 50 min.
+
+---
+
 ## [2026-05-25] V2 SharedDB stale — getter pattern + restic Unlock + WAL cleanup
 
 **Statut** : Complété
