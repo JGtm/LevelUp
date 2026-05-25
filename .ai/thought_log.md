@@ -793,6 +793,30 @@ Structure : `data/restore/2026-05-25/halo_infinite/{db}.duckdb` + `data/restore/
 
 ---
 
+## [2026-05-25] docs(adr): pont coach proactif → Prestige (ADR 0020 + 0021)
+
+**Statut** : Complété (phase ADR ; implémentation Phase 1 à suivre)
+**Branche** : `feat/coach-proactive-prestige-bridge` (worktree dédié `.claude/worktrees/coach-prestige-bridge`, basé sur `fix/art-eradication-and-home-resilience`)
+
+**Décision technique** :
+- Création de **ADR 0020 — Coach proactif : pont vers Prestige**. Introduit un troisième acteur `internal/progression/coach_advisor/` qui consomme les signaux du coach (LOWESS, patterns, near-miss records/milestones, comeback) et propose au joueur des challenges/arcs Prestige calibrés. Le coach reste un détecteur pur (ADR 0014 inchangé) ; Prestige reste agnostique (ADR 0005 inchangé) ; le coach_advisor est l'unique point de couplage.
+- Cinq invariants gravés (I1-I5) garantissent la cohérence philosophique avec Prestige : (I1) tout challenge passe par `CalculatePalier()`, (I2) la baseline reste l'ancre, (I3) tout template synthétisé reste structurellement un `Template` valide, (I4) tout arc dynamique reste un `Arc` standard `IsPreset=false`, (I5) aucune génération sans signal fort (`strength >= 0.6`).
+- Modification minimale de Prestige : ajout d'un champ `Source string` dans `CreateChallengeRequest` / `CreateArcRequest` (valeurs `"user" | "pilot_mode" | "coach"`), tracé dans `prestige_telemetry.source`. Aucun nouvel endpoint, aucun bypass.
+- Settings utilisateur : toggle `coach_proactive_mode` (default `false`) persisté dans nouvelle table `user_preferences` clé/valeur JSON. Lu **avant toute logique advisor** dans le post-sync hook — short-circuit total si off.
+- Pas d'expiration des proposals (décision produit) : cleanup par supersession (signal plus fort sur même `(metric, radar_axis)`) + obsolescence sur completion d'un challenge accepté coach sur même axis. Job GC `stale` > 60 j optionnel V2.1.
+- Création de **ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc**. Autorise le coach à produire des templates hors catalogue (couvre les signaux sur métriques rares) ET à composer des arcs ad-hoc multi-étapes (signaux convergents sur même `radar_axis`). Sous contraintes : `synthesis_grammar.toml` allowlist stricte, targets vides (Prestige calcule), persistance avec flag `source='coach_synthesized'`, dédup par hash déterministe `(metric, window_type, window_value, cadence, eval_type, lusr_components, radar_axes)`, GC futur sur `usage_count=0`.
+- Arc composer : conditions `>= 2 signaux partageant un axis`, max 4 étapes, progression suggérée Normal→Heroic→Legendary→Mythic (Prestige recalcule à l'acceptance). Titres/descriptions paramétrés par l'axis pivot via templates statiques i18n (pas de génération LLM).
+- Création de `.ai/BACKLOG_COACH_PRESTIGE.md` : V3 explicite (squad coach, négatif soft, apprentissage automatique synthesis_grammar, cross-titre arcs, narrative tone, push externes) + V2.1 (job GC, expvar). Évite la dérive de scope sur la V2 et trace les décisions reportées.
+
+**Résultats observés** :
+- 3 fichiers créés : `docs/adr/0020-coach-prestige-bridge.md`, `docs/adr/0021-template-synthesis.md`, `.ai/BACKLOG_COACH_PRESTIGE.md`.
+- Aucune ligne de code Go ou TS écrite à ce stade — phase ADR uniquement (décision utilisateur "ADRs avant code").
+- Worktree dédié créé à `.claude/worktrees/coach-prestige-bridge` (sain, basé sur `fix/art-eradication-and-home-resilience` qui héberge le code Go), branche `feat/coach-proactive-prestige-bridge`.
+- Décisions arbitrées : Q1 (Prestige recalcule le tier), Q2 (1 arc coach actif max par joueur), Q3 (pas d'expiration fixe — supersession + obsolescence), Q4 (squad → V3 backlog).
+
+**Conclusion** :
+ADRs prêts. La cohérence philosophique avec Prestige est garantie par 5 invariants explicites, vérifiables par tests d'intégration au moment de l'implémentation. Phase suivante : Phase 1 (settings toggle) → Phase 2 (types + matcher) → Phase 3 (repo + service squelette) → Phases 5/6 (synthesizer + arc composer, cœur V2) → Phases 7-10. Branche unique pour toute l'implémentation : `feat/coach-proactive-prestige-bridge`, commits courts par phase.
+
 ## [2026-05-25] Initialisation système backup DuckDB → restic
 
 **Statut** : Complété
