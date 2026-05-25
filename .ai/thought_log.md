@@ -1,3 +1,57 @@
+## [2026-05-25] D5 — Sync V2 Phase 6 (Post-sync parallèle)
+
+**Statut** : Complété (D5 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D4. D5 livre la dernière phase logique du pipeline V2 : post-sync parallèle par joueur. C'est la phase qui débloque le gain perf maximal — Madina97294 attendait 6 min 30 sur 8 min 30 totales JUSTE pour avoir le shared lease pour son post-sync en V1. En V2 cette contention disparaît : Phase 5 a déjà tout commit, le shared lease n'est plus contesté, les heals lisent shared concurremment.
+
+**Décisions techniques** :
+
+1. **`PostSyncRunner` interface** (`post_sync.go`) :
+   - 1 méthode : `RunPostSync(ctx, p PlayerProfile) → PlayerPostSyncResult`.
+   - L'adapter V1-bridge (D6) acquiert les DB leases (player + shared reader), appelle `runPostSyncPipeline` de engine_postsync.go (réutilisé tel quel), libère, retourne les compteurs mappés.
+   - Films chunks restent parallélisés en interne via `backfill_weapons.go` errgroup(24) — pas touché.
+
+2. **`PlayerPostSyncResult` granulaire** : champs séparés pour `CitationsComputed`, `DominanceFlagsComputed`, `SkillHealed`, `EventsHealed`, `WeaponKillsHealed`, `StatsHealed`, `AchievementsSynced`. Permet l'observabilité expvar fine.
+
+3. **`RunPostSync` parallèle vrai** :
+   - Pas de borne artificielle par défaut (parallelism=0 → len(players)). Chaque joueur écrit dans sa propre DB player → aucune contention.
+   - Si parallelism > 0, errgroup.SetLimit(parallelism) — utile pour tests ou contraintes de goroutines.
+   - Erreurs per-player capturées dans `PerPlayer[slug].Err`, n'annulent pas les autres.
+   - Garde-rail invariant : `pr.PlayerSlug = p.PlayerSlug` forcé après le call (l'impl peut être distraite).
+
+4. **PerPlayer contient TOUS les joueurs** même ceux en erreur (avec `Err` non-nil). Permet à l'orchestrator d'exposer le détail par joueur sans perdre l'info.
+
+5. **Tests unitaires** (`post_sync_test.go`, 8 cas) :
+   - Happy path 2 joueurs.
+   - Empty players.
+   - Failure isolation : alice échoue, bob+charlie OK (tous présents dans PerPlayer).
+   - **True parallel execution** : 4 joueurs × 100 ms → maxInFlight == 4, elapsed ≤ 350 ms (vs 400 ms séquentiel).
+   - Parallelism bound : 6 joueurs avec parallelism=2 → maxInFlight ≤ 2.
+   - PlayerSlug invariant forcé (mock retourne "WRONG" → résultat indexé "alice").
+   - Durations populées (PerPlayer + Cycle).
+   - Context cancellation.
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 47/47 PASS (16 D1 + 8 D2 + 7 D3 + 8 D4 + 8 D5)
+
+**Conclusion / prochaine étape** : D5 livrable. **Les 6 phases du pipeline V2 sont codées et testées en isolation.** Total 47 tests unitaires, tous verts. Le pipeline est techniquement complet en pure logique.
+
+Prochaine étape : **D6 — Intégration scheduler + flag + adapters V1-bridge**. C'est la plus grosse étape : il faut :
+1. Implémenter les 5 adapters (`KnownLoader`, `MatchListProvider`, `SharedMatchFetcher`, `PlayerEnrichmentFetcher`, `CycleBatchPersister`, `PostSyncRunner`) qui wrappent les fonctions V1 existantes (`loadKnownMatchIDs`, `HaloClient`, `persist.BatchBuilder`, `runPostSyncPipeline`).
+2. Implémenter le vrai `CycleOrchestrator` qui enchaîne RunDiscovery → RunDedup → RunFetchShared → RunFetchPlayer → RunPersist → RunPostSync avec logging structuré + métriques expvar.
+3. Câbler dans `cmd/server/main.go` : instancier l'orchestrator V2, le passer au scheduler via `WithCycleOrchestrator`.
+4. Modifier `scheduler.RunOnce` : si `shouldUseV2()`, déléguer à V2 ; sinon V1 (fallback inchangé).
+5. Activer la suite contract avec adapters V1 + V2.
+
+Estimation D6 : ~3 jours, c'est la phase à plus grand risque car elle touche au flow runtime.
+
+---
+
 ## [2026-05-25] D4 — Sync V2 Phase 5 (Persist cycle batch)
 
 **Statut** : Complété (D4 du plan ADR 0020)
