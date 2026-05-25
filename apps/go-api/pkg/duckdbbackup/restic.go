@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
@@ -31,14 +32,17 @@ func (r *ResticClient) IsAvailable() bool {
 func (r *ResticClient) EnsureInit(ctx context.Context) error {
 	// `restic snapshots` exits 0 if the repo is initialised, non-0 otherwise.
 	if err := r.run(ctx, "snapshots", "--quiet"); err == nil {
+		slog.DebugContext(ctx, "backup: repo restic déjà initialisé", "repo", r.cfg.ResticRepo)
 		return nil
 	}
+	slog.InfoContext(ctx, "backup: initialisation repo restic", "repo", r.cfg.ResticRepo)
 	return r.run(ctx, "init")
 }
 
 // Backup creates a restic snapshot of stagingDir.
 // Returns the snapshot ID on success.
 func (r *ResticClient) Backup(ctx context.Context, stagingDir string) (string, error) {
+	slog.DebugContext(ctx, "backup: lancement restic backup", "dir", stagingDir)
 	args := append([]string{"backup", "--json"}, r.noPasswordFlag()...)
 	args = append(args, stagingDir)
 	cmd := exec.CommandContext(ctx, r.bin(), args...)
@@ -47,11 +51,17 @@ func (r *ResticClient) Backup(ctx context.Context, stagingDir string) (string, e
 	if err != nil {
 		return "", fmt.Errorf("restic backup: %w", err)
 	}
-	return parseSnapshotID(out), nil
+	snapshotID := parseSnapshotID(out)
+	slog.InfoContext(ctx, "backup: snapshot restic créé", "snapshot_id", snapshotID)
+	return snapshotID, nil
 }
 
 // Forget applies the configured retention policy and prunes unreferenced data.
 func (r *ResticClient) Forget(ctx context.Context) error {
+	slog.DebugContext(ctx, "backup: restic forget — nettoyage anciens snapshots",
+		"keep_daily", r.cfg.KeepDaily,
+		"keep_weekly", r.cfg.KeepWeekly,
+		"keep_monthly", r.cfg.KeepMonthly)
 	return r.run(ctx,
 		"forget", "--prune",
 		fmt.Sprintf("--keep-daily=%d", r.cfg.KeepDaily),
