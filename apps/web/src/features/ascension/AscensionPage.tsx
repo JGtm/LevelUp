@@ -1,3 +1,7 @@
+// cross-feature-allow: AscensionPage est un orchestrateur de la couche progression
+// — agrège streaks/records/milestones (features/ascension) avec settings (toggle)
+// et coach (proposals coach_advisor, ADR 0020). Composition assumée à ce niveau.
+
 /**
  * Page Ascension (V2 progression) — agrège les vues Streaks / Records /
  * Milestones / Profil de jeu / Patterns pour un joueur donné.
@@ -18,6 +22,9 @@
  * Cf. PLAN_PATTERN_ENGINE.md §0.2 §1 §2 §3.
  */
 import { useAppShellStore } from '@/stores/appShellStore'
+import { useSettings } from '@/features/settings/queries'
+import { CoachProposalsCard } from '@/features/coach/CoachProposalsCard'
+import { getCoachStrings } from '@/features/coach/i18n'
 import { getAscensionText } from './i18n'
 import { StreakDashboard } from './StreakDashboard'
 import { RecordsTimeline } from './RecordsTimeline'
@@ -35,8 +42,11 @@ import { LeverList } from './LeverList'
 export function AscensionPage() {
   const locale = useAppShellStore((s) => s.locale)
   const t = getAscensionText(locale)
+  const coachT = getCoachStrings(locale)
   const currentPlayer = useAppShellStore((s) => s.currentPlayer)
   const playerSlug = currentPlayer?.player_slug ?? ''
+  const { data: settings } = useSettings()
+  const proactiveEnabled = settings?.coach_proactive_mode ?? false
 
   if (!playerSlug) {
     return null
@@ -48,6 +58,12 @@ export function AscensionPage() {
       <StreakDashboard playerSlug={playerSlug} />
       <RecordsTimeline playerSlug={playerSlug} />
       <MilestonesGrid playerSlug={playerSlug} />
+      {/* Coach proactif — suggestions Prestige calibrées (ADR 0020). */}
+      <CoachProposalsCard
+        playerSlug={playerSlug}
+        proactiveEnabled={proactiveEnabled}
+        t={coachT}
+      />
       <GameProfileSection playerSlug={playerSlug} locale={locale} />
     </main>
   )
