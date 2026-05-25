@@ -1,3 +1,21 @@
+## [2026-05-25] Restauration DuckDB depuis snapshot restic (cmd/restore)
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** : Ajout du mode restauration au système backup.
+- `pkg/duckdbbackup/restorer.go` : `Restorer` — listing snapshots JSON + extraction via `restic restore`. Tolérance aux erreurs de timestamps Windows (C:\Users → non-bloquant si staging/ trouvé).
+- `pkg/duckdbbackup/importer.go` : `ImportFromStaging` — walk du staging, reconstruction des clés (séparateur `/`→`:`), import Parquet → DuckDB via `CREATE OR REPLACE TABLE AS SELECT FROM read_parquet(...)`. Rename .bak en cas d'échec partiel.
+- `cmd/restore/main.go` : CLI par date, ID ou latest. `--dry-run`, `--live` (avec confirmation), `--output`. Mapping clés→chemins via PathResolver (live) ou répertoire de sortie structuré par title.
+
+**Résultats observés** : Dry-run sur snapshot 6ba84d2b → 9 DBs correctement mappées.
+Structure : `data/restore/2026-05-25/halo_infinite/{db}.duckdb` + `data/restore/2026-05-25/halo_infinite/players/{gamertag}/stats.duckdb`.
+
+**Prochaine étape** : Aucune.
+
+---
+
 ## [2026-05-25] Initialisation système backup DuckDB → restic
 
 **Statut** : Complété
