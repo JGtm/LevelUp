@@ -278,14 +278,22 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// attachShared sur SharedSocial retiré aussi.
 	// media_repo passe désormais entièrement par SharedReader pour les queries
 	// shared.* — plus aucune conn du pool ne porte d'ATTACH shared.
-	// P5.3 : ATTACH global xbox_aliases sur SharedSocial aussi (media_repo fait
-	// `JOIN global.xuid_aliases` sur les likers de médias).
-	if socialDB != nil && cfg.GlobalXuidAliasesDBPath != "" {
-		if err := attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath); err != nil {
-			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (social conn)",
-				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
-		}
-	}
+	//
+	// 2026-05-25 : suppression de l'ATTACH global xbox_aliases sur SharedSocial.
+	// Root cause des "INTERNAL Error: Failure while replaying WAL file:
+	// DatabaseManager::GetDefaultDatabase" observés à chaque boot post-rebuild
+	// Air : DuckDB bug #7659 — un ATTACH écrit dans le WAL de la base RW une
+	// entrée non-rejouable au reboot. Conséquence : SharedSocial=nil partout,
+	// rail média home vide, prestige_bundle_init_failed. Cycle vicieux relancé
+	// à chaque restart serveur.
+	//
+	// Compromis fonctionnel : media_repo n'a plus accès direct à `global.
+	// xuid_aliases` via JOIN SQL sur la conn social. Les rares features qui
+	// résolvent xuid→gamertag pour les likers de médias devront passer par un
+	// lookup Go (cache process-wide ou query séparée sur xbox_aliases RO).
+	// Acceptable : feature peu utilisée, dégradation = afficher xuid brut
+	// au lieu du gamertag pour les likers externes.
+	_ = socialDB // ATTACH global supprimé — cf. commentaire ci-dessus
 
 	// SharedReader (commit 8a) : par défaut, wrap pdb.Shared en mode legacy.
 	// Si cfg.SharedReader fourni (mode B-swap), on l'utilise tel quel — le
@@ -350,12 +358,10 @@ func attachGlobalXuidAliasesIfConfigured(
 		slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (player conn)",
 			"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
 	}
-	if socialDB != nil {
-		if err := attachGlobalXuidAliases(ctx, socialDB, cfg.GlobalXuidAliasesDBPath); err != nil {
-			slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (social conn)",
-				"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
-		}
-	}
+	// ATTACH sur socialDB volontairement supprimé — cf. commentaire sur le site
+	// d'appel principal (openPlayerDB) : ATTACH sur shared_social RW contamine
+	// le WAL avec une entrée non-rejouable (bug DuckDB #7659).
+	_ = socialDB
 }
 
 func ensurePlayerDBMigrations(path string) error {
