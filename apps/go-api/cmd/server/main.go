@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
+	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
@@ -52,7 +53,6 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
-	"levelup/go-api/internal/ops"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/watcher"
 )
@@ -110,6 +110,12 @@ func main() {
 		}
 		os.Exit(0)
 	}
+
+	// --- 0.5 Charger .env.local AVANT la lecture des LEVELUP_LOG_* ---
+	// Sinon le logger boote toujours en INFO/compact même si .env.local force
+	// LEVELUP_LOG_LEVEL=warn (l'appel à config.Load qui charge .env.local
+	// arrive bien plus tard dans main, après le setup logging).
+	config.BootstrapEnvLocal()
 
 	// --- 1. Logging structuré ---
 	// Trois formats console (LEVELUP_LOG_FORMAT) :
@@ -707,6 +713,11 @@ func main() {
 	// Cf. AUDIT_ASCENSION_PIPELINE_DISCONNECTED_2026-05-21 §4 cause B.
 	if postSyncRunner := api.NewPostSyncRunner(reg); postSyncRunner != nil {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
+	}
+
+	if autoSyncPool != nil {
+		customRefresher := scheduler.NewCustomizationRefresher(cfg, autoSyncPool, titleSlug)
+		autoScheduler.WithCustomizationRefresher(customRefresher)
 	}
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la

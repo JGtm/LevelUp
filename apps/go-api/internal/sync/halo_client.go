@@ -869,6 +869,12 @@ func parseCareerProgressPayload(body []byte, xuid string) (*CareerRankData, erro
 		}
 	}
 	if current == nil {
+		preview := body
+		if len(preview) > 300 {
+			preview = preview[:300]
+		}
+		slog.Warn("halo_client: parseCareerProgressPayload — CurrentProgress introuvable",
+			"xuid", xuid, "body_preview", string(preview))
 		return nil, nil
 	}
 

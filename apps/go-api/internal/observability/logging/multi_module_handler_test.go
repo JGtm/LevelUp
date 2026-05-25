@@ -179,6 +179,46 @@ func TestMultiModuleHandler_LevelFiltering(t *testing.T) {
 	}
 }
 
+// TestMultiModuleHandler_ConsoleQuieterThanFile : console au niveau WARN et fichiers
+// au niveau INFO. Les INFO doivent partir dans le fichier mais PAS dans la console.
+// Régression : avant le fix, MultiModuleHandler.Handle appelait console.Handle()
+// sans re-vérifier console.Enabled, donc le filtre console était bypassé dès que
+// le fichier acceptait le record → INFO leak dans le terminal en prod.
+func TestMultiModuleHandler_ConsoleQuieterThanFile(t *testing.T) {
+	dir := t.TempDir()
+	var consoleBuf bytes.Buffer
+	console := slog.NewTextHandler(&consoleBuf, &slog.HandlerOptions{Level: slog.LevelWarn})
+
+	mh, err := NewMultiModuleHandler(console, dir, slog.LevelInfo)
+	if err != nil {
+		t.Fatalf("NewMultiModuleHandler: %v", err)
+	}
+	defer mh.Close()
+
+	logger := slog.New(mh)
+	logger.With("module", "sync").Info("info-should-be-file-only")
+	logger.With("module", "sync").Warn("warn-should-be-everywhere")
+
+	consoleOut := consoleBuf.String()
+	if strings.Contains(consoleOut, "info-should-be-file-only") {
+		t.Errorf("console a reçu INFO alors que son niveau est WARN. Console output:\n%s", consoleOut)
+	}
+	if !strings.Contains(consoleOut, "warn-should-be-everywhere") {
+		t.Errorf("console manque le WARN. Console output:\n%s", consoleOut)
+	}
+
+	fileData, err := os.ReadFile(filepath.Join(dir, "sync.log"))
+	if err != nil {
+		t.Fatalf("read sync.log: %v", err)
+	}
+	if !strings.Contains(string(fileData), "info-should-be-file-only") {
+		t.Errorf("fichier manque l'INFO alors que FileLevel=Info. File output:\n%s", fileData)
+	}
+	if !strings.Contains(string(fileData), "warn-should-be-everywhere") {
+		t.Errorf("fichier manque le WARN. File output:\n%s", fileData)
+	}
+}
+
 // TestMultiModuleHandler_Close_Idempotent : Close peut être appelé plusieurs fois sans crash.
 func TestMultiModuleHandler_Close_Idempotent(t *testing.T) {
 	dir := t.TempDir()

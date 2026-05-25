@@ -260,7 +260,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	// prÃ©-build cÃ´tÃ© player DB) > RankTier > "Rang N". Le fallback player-DB
 	// couvre les cas oÃ¹ le SemanticAdapter n'est pas injectÃ© dans le HomeService
 	// (tests, mode dÃ©gradÃ©).
-	title := lookupRankLabel(ranks, raw.RankNumber, loc)
+	title := rankSubRoman(lookupRankLabel(ranks, raw.RankNumber, loc))
 	if title == "" {
 		title = rankSubRoman(strings.TrimSpace(optionalStringValue(raw.RankName)))
 	}
@@ -279,7 +279,7 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 	if !raw.IsMaxRank && ranks != nil {
 		if next, ok := ranks.Next(raw.RankNumber); ok {
 			label, _ := next.FullLabel(loc)
-			nextTitle = strings.TrimSpace(label)
+			nextTitle = rankSubRoman(strings.TrimSpace(label))
 		}
 	}
 
@@ -298,18 +298,19 @@ func buildHomeCareerRank(raw *domain.HomeSpartanIdentityRow, locale string, rank
 
 // lookupRankLabel retourne le libellÃ© localisÃ© du rang via le catalog, ou ""
 // si ranks est nil ou si l'entrÃ©e est absente.
-// rankSubRoman convertit un libellé de rang "Bronze 1" → "Bronze I" (sous-rang 1–6).
+// rankSubRoman convertit tout sous-rang arabe isolé (1–6) en chiffre romain.
+// Gère les positions finale ("Or 3") et médiane ("Général 2 Platine").
 func rankSubRoman(label string) string {
-	n := len(label)
-	if n < 2 || label[n-2] != ' ' {
-		return label
-	}
-	c := label[n-1]
-	if c < '1' || c > '6' {
-		return label
-	}
 	roman := [7]string{"", "I", "II", "III", "IV", "V", "VI"}
-	return label[:n-2] + " " + roman[c-'0']
+	out := label
+	for d := byte('1'); d <= '6'; d++ {
+		r := roman[d-'0']
+		out = strings.ReplaceAll(out, " "+string(d)+" ", " "+r+" ")
+		if strings.HasSuffix(out, " "+string(d)) {
+			out = out[:len(out)-1] + r
+		}
+	}
+	return out
 }
 
 func lookupRankLabel(ranks *mappings.RankCatalog, rankID int, locale string) string {
