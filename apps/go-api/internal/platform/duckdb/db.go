@@ -192,16 +192,24 @@ func openCachedDB(
 	return db, nil
 }
 
-// IsInvalidatedError détecte les erreurs DuckDB qui marquent une connexion
-// comme fatale (ne peut plus être utilisée jusqu'au reopen ou restart).
+// IsInvalidatedError détecte les erreurs qui marquent une connexion comme
+// inutilisable et exigent un Reopen() pour récupérer. Trois classes :
 //
-// Pattern observé en prod (log 2026-05-14) :
+//  1. FATAL DuckDB (ART corruption) :
+//     "database has been invalidated because of a previous fatal error."
+//     Cause racine : « Failed to delete all rows from index. Only deleted
+//     N out of M rows. » sur un index ART avec valeurs NULL (duckdb#9277).
 //
-//	"database has been invalidated because of a previous fatal error.
-//	 The database must be restarted prior to being used again."
+//  2. Handle fermée côté stdlib database/sql (corrigé 2026-05-25) :
+//     "sql: database is closed" — retourné par toute opération sur un
+//     *sql.DB après un Close(). Observé en prod 2026-05-25 11:20-11:23
+//     en cascade massive (home + career + teammates + filters + explorer)
+//     sur la player DB de JGtm. La DB physique reste saine, c'est juste
+//     la handle Go périmée (close volontaire, swap RO↔RW, refcount cache).
+//     Avant ce fix : WithReopenOnInvalidated retournait directement
+//     l'erreur sans tenter Reopen → 500 cascade pendant plusieurs minutes.
 //
-// Cause racine connue : « Failed to delete all rows from index. Only deleted
-// N out of M rows. » sur un index ART avec valeurs NULL (cf. duckdb#9277).
+//  3. Variantes driver-level "connection was closed".
 //
 // Exporté pour que les callers (repo, scheduler) puissent décider de :
 //   - logger un incident métier (corruption d'index)
@@ -214,7 +222,10 @@ func IsInvalidatedError(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "database has been invalidated") ||
 		strings.Contains(s, "Failed to delete all rows from index") ||
-		strings.Contains(s, "database must be restarted prior")
+		strings.Contains(s, "database must be restarted prior") ||
+		strings.Contains(s, "sql: database is closed") ||
+		strings.Contains(s, "connection was closed") ||
+		strings.Contains(s, "database is closed")
 }
 
 // Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
