@@ -75,7 +75,7 @@ func TestRunPersist_HappyPath(t *testing.T) {
 		},
 	}
 	pers := &mockCyclePersister{}
-	res := RunPersist(context.Background(), fetched, enr, pers)
+	res := RunPersist(context.Background(), fetched, enr, nil, pers)
 
 	if res.Err != nil {
 		t.Fatalf("Err = %v, want nil", res.Err)
@@ -104,7 +104,7 @@ func TestRunPersist_HappyPath(t *testing.T) {
 func TestRunPersist_EmptyInputs(t *testing.T) {
 	// fetched + enrichments vides → skip l'appel persister.
 	pers := &mockCyclePersister{}
-	res := RunPersist(context.Background(), FetchSharedResult{}, FetchPlayerResult{}, pers)
+	res := RunPersist(context.Background(), FetchSharedResult{}, FetchPlayerResult{}, nil, pers)
 	if res.Err != nil {
 		t.Errorf("Err = %v, want nil", res.Err)
 	}
@@ -125,7 +125,7 @@ func TestRunPersist_OnlyEnrichmentsNoMatches(t *testing.T) {
 		},
 	}
 	pers := &mockCyclePersister{}
-	res := RunPersist(context.Background(), FetchSharedResult{}, enr, pers)
+	res := RunPersist(context.Background(), FetchSharedResult{}, enr, nil, pers)
 	if res.Err != nil {
 		t.Fatalf("Err = %v", res.Err)
 	}
@@ -149,7 +149,7 @@ func TestRunPersist_PersisterError(t *testing.T) {
 	pers := &mockCyclePersister{
 		err: errors.New("db lock timeout"),
 	}
-	res := RunPersist(context.Background(), fetched, FetchPlayerResult{}, pers)
+	res := RunPersist(context.Background(), fetched, FetchPlayerResult{}, nil, pers)
 
 	// Sémantique transactionnelle stricte : sur erreur, counts = 0.
 	if res.Err == nil {
@@ -169,6 +169,7 @@ func TestRunPersist_CycleIDIncluded(t *testing.T) {
 	res := RunPersist(context.Background(),
 		FetchSharedResult{Matches: map[string]SharedMatchData{"m1": {MatchID: "m1"}}},
 		FetchPlayerResult{},
+		nil,
 		pers,
 	)
 	if res.Err == nil || !strings.Contains(res.Err.Error(), "v2-cycle-") {
@@ -189,6 +190,7 @@ func TestRunPersist_SinglePersisterCall(t *testing.T) {
 	res := RunPersist(context.Background(),
 		FetchSharedResult{Matches: matches},
 		FetchPlayerResult{},
+		nil,
 		pers,
 	)
 	if res.Err != nil {
@@ -208,6 +210,7 @@ func TestRunPersist_ContextCancellation(t *testing.T) {
 	res := RunPersist(ctx,
 		FetchSharedResult{Matches: map[string]SharedMatchData{"m1": {MatchID: "m1"}}},
 		FetchPlayerResult{},
+		nil,
 		pers,
 	)
 	elapsed := time.Since(start)
@@ -224,11 +227,11 @@ func TestRunPersist_CycleIDUniqueAcrossCalls(t *testing.T) {
 	pers := &mockCyclePersister{}
 	_ = RunPersist(context.Background(),
 		FetchSharedResult{Matches: map[string]SharedMatchData{"m1": {MatchID: "m1"}}},
-		FetchPlayerResult{}, pers)
+		FetchPlayerResult{}, nil, pers)
 	time.Sleep(10 * time.Microsecond) // garantir un tick différent
 	_ = RunPersist(context.Background(),
 		FetchSharedResult{Matches: map[string]SharedMatchData{"m2": {MatchID: "m2"}}},
-		FetchPlayerResult{}, pers)
+		FetchPlayerResult{}, nil, pers)
 
 	if pers.callCount() != 2 {
 		t.Fatalf("callCount = %d, want 2", pers.callCount())

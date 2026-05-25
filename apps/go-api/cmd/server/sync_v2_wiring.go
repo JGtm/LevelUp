@@ -55,6 +55,12 @@ type SyncV2WiringDeps struct {
 // dépendances réelles (V1-bridge). Retourne nil si une dépendance
 // critique manque (le scheduler tombera en V1).
 //
+// Mode dry-run via LEVELUP_SYNC_V2_DRYRUN=1 : remplace persister +
+// postSyncRunner par des stubs qui LOG les données qu'ils auraient
+// écrites mais ne touchent PAS la DB. Permet de valider le pipeline
+// (Discovery → Dedup → FetchShared → FetchPlayer) en conditions
+// réelles sans aucun risque pour les données.
+//
 // Pour D8 cleanup : supprimer ce fichier + le bloc if-call dans main.go.
 func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	if deps.TokenPool == nil || deps.BatchQueue == nil {
@@ -62,8 +68,15 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		return nil
 	}
 
-	// Adapter KnownLoader : ouvre la stats.duckdb du joueur en RO.
-	playerDBOpener := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
+	dryRun := os.Getenv("LEVELUP_SYNC_V2_DRYRUN") == "1"
+	if dryRun {
+		slog.Warn("sync.v2: MODE DRY-RUN ACTIVÉ — aucune écriture DB ne sera effectuée",
+			"event", "sync.v2.dryrun.active")
+	}
+
+	// Adapter KnownLoader : ouvre la stats.duckdb du joueur en RO
+	// (Phase 1 = lecture pure des match_ids connus).
+	playerDBOpenerRO := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
 		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
 		db, err := duckdbpkg.OpenReadOnly(path)
 		if err != nil {
@@ -72,7 +85,23 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		// OpenReadOnly est cached process-wide ; Close() décrémente refCount.
 		return db.SQLDb(), func() { _ = db.Close() }, nil
 	}
-	knownLoader := syncv2.NewKnownLoader(playerDBOpener, deps.SharedDB)
+	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, deps.SharedDB)
+
+	// CRITIQUE — Adapter PostSyncRunner : ouvre la stats.duckdb du joueur
+	// en READ-WRITE car les heals post-sync UPDATE/INSERT sur 14+ tables
+	// (sessions, performance_chain, engagement_*, citations, dominance_flag,
+	// achievements, etc.). Bug observé 2026-05-25 19:41 : utiliser le
+	// playerDBOpenerRO ici causait des ERROR "Cannot execute UPDATE on
+	// database attached in read-only mode" qui silencieusement perdaient
+	// toutes les écritures post-sync.
+	playerDBOpenerRW := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
+		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
+		db, err := duckdbpkg.OpenReadWrite(path)
+		if err != nil {
+			return nil, nil, err
+		}
+		return db.SQLDb(), func() { _ = db.Close() }, nil
+	}
 
 	// HaloClient factory : pinned client par joueur via pool.
 	clientFactory := func(gamertag, xuid string) syncv2.HaloClient {
@@ -83,13 +112,25 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 	sharedFetcher := syncv2.NewSharedMatchFetcher(clientFactory)
 	playerEnrFetcher := syncv2.NewPlayerEnrichmentFetcher()
 
-	// CycleBatchPersister : utilise BuildBatchFromRawForV2 + BatchQueue partagée.
-	persister := syncv2.NewCycleBatchPersister(deps.TitleSlug, map[string]syncv2.PlayerProfile{}, deps.BatchQueue, 0)
+	// CycleBatchPersister : réel ou dry-run logger.
+	// playerBySlug est désormais passé via CycleBatch.PlayerBySlug
+	// (renseigné par l'orchestrator à chaque cycle).
+	var persister syncv2.CycleBatchPersister
+	if dryRun {
+		persister = newDryRunPersister()
+	} else {
+		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0)
+	}
 
-	// PostSyncRunner : construit un SyncEngine V1 PARITY-COMPLETE via
-	// engineFactory qui mirror exactement defaultRunnerFactory (T1 audit).
-	engineFactory := buildSyncEngineFactoryParityComplete(deps)
-	postSyncRunner := syncv2.NewPostSyncRunner(engineFactory, playerDBOpener, deps.SharedDB, clientFactory)
+	// PostSyncRunner : réel ou dry-run no-op logger.
+	// CRITIQUE : utilise playerDBOpenerRW (pas RO) — les heals UPDATE/INSERT.
+	var postSyncRunner syncv2.PostSyncRunner
+	if dryRun {
+		postSyncRunner = &dryRunPostSyncRunner{}
+	} else {
+		engineFactory := buildSyncEngineFactoryParityComplete(deps)
+		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, deps.SharedDB, clientFactory)
+	}
 
 	return syncv2.NewCycleOrchestrator(
 		knownLoader,
@@ -100,6 +141,53 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		postSyncRunner,
 		syncv2.CycleConfig{},
 	)
+}
+
+// ─── Dry-run stubs (mode validation sans écriture DB) ─────────────────
+
+// dryRunPersister implémente CycleBatchPersister en loggant ce qu'il
+// aurait écrit, sans rien toucher en DB.
+type dryRunPersister struct{}
+
+func newDryRunPersister() syncv2.CycleBatchPersister { return &dryRunPersister{} }
+
+func (p *dryRunPersister) PersistCycle(ctx context.Context, batch syncv2.CycleBatch) error {
+	enrichmentsCount := 0
+	for _, m := range batch.Enrichments {
+		enrichmentsCount += len(m)
+	}
+	slog.InfoContext(ctx, "sync.v2 DRY-RUN: PersistCycle SKIP (no write)",
+		"event", "sync.v2.dryrun.persist",
+		"cycle_id", batch.CycleID,
+		"matches_would_persist", len(batch.Matches),
+		"enrichments_would_persist", enrichmentsCount,
+	)
+	for mID, sd := range batch.Matches {
+		slog.InfoContext(ctx, "sync.v2 DRY-RUN: match récupéré (would persist)",
+			"event", "sync.v2.dryrun.match",
+			"match_id", mID,
+			"fetcher", sd.Fetcher,
+			"has_stats", sd.Stats != nil,
+			"has_skill", len(sd.Skill) > 0,
+			"has_highlights", sd.HasHighlights,
+			"highlight_bytes", len(sd.HighlightChunk),
+		)
+	}
+	return nil
+}
+
+// dryRunPostSyncRunner implémente PostSyncRunner en no-op.
+type dryRunPostSyncRunner struct{}
+
+func (r *dryRunPostSyncRunner) RunPostSync(ctx context.Context, p syncv2.PlayerProfile, insertedIDs []string) (syncv2.PlayerPostSyncResult, error) {
+	slog.InfoContext(ctx, "sync.v2 DRY-RUN: PostSync SKIP (no heal, no write)",
+		"event", "sync.v2.dryrun.postsync",
+		"player", p.PlayerSlug,
+		"inserted_ids_count", len(insertedIDs),
+	)
+	return syncv2.PlayerPostSyncResult{
+		PlayerSlug: p.PlayerSlug,
+	}, nil
 }
 
 // buildSyncEngineFactoryParityComplete construit un SyncEngineFactory

@@ -1,3 +1,17 @@
+## [2026-05-25] cmd/token-capture — Device Code Flow pour joueur distant
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique** : Utiliser le Device Code Flow Microsoft (login.microsoftonline.com, même Azure app `e1cb35ab-...` que le serveur) en HTTP pur stdlib — pas de MSAL, pas de dépendance externe. Flow : Guillaume lance le CLI sur sa machine, obtient un URL+code, les envoie à Madina par message, elle s'authentifie dans son navigateur normal, le CLI poll et écrit le refresh_token dans `token_Madina97294.txt` prêt à coller dans `.env.local`.
+
+**Résultat** : Premier test réel → Microsoft a retourné un code valide (`DQR8XWN8`, `https://www.microsoft.com/link`). Build et polling fonctionnels.
+
+**Prochaine étape** : Builder l'exe avec `GOOS=windows go build -o token-capture.exe ./cmd/token-capture/` et tester avec Madina.
+
+---
+
 ## [2026-05-25] Fix permanent WAL corruption shared_social — suppression ATTACH cross-DB
 
 **Statut** : Complété — vraie root cause identifiée et éradiquée
