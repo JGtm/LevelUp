@@ -319,15 +319,20 @@ WHERE value > 0`)
 // au lieu d'acquérir de nouveaux leases. Best-effort : retourne (0, nil) si
 // metadata.duckdb absent ou citation_mappings vide.
 func (e *SyncEngine) runPostSyncCitations(ctx context.Context, playerDB, sharedDB *sql.DB) (int, error) {
-	// Phase 2 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : cache duckdbpkg (DSN aligne).
-	// Site previously failing in production avec "Can't open a connection with
-	// a different configuration" pendant le post-sync (citations_computed=0).
-	metaHandle, err := duckdbpkg.OpenReadOnly(e.metadataDBPath)
-	if err != nil {
-		return 0, fmt.Errorf("open metadata: %w", err)
+	// Emprunte la connexion metadata déjà ouverte dans le cache process (RW par
+	// le pool serveur). OpenReadOnly échoue si une connexion RW existe déjà sur
+	// le même fichier ("Can't open a connection with a different configuration").
+	// LookupCachedDB retourne RW en priorité, RO sinon — sans incrémenter le
+	// refCount, donc pas de Close() ici.
+	var metaDB *sql.DB
+	if e.metaDB != nil {
+		metaDB = e.metaDB
+	} else if cached, ok := duckdbpkg.LookupCachedDB(e.metadataDBPath); ok {
+		metaDB = cached.SQLDb()
+	} else {
+		slog.WarnContext(ctx, "citations post-sync: metadata DB non disponible — skip", "player", e.gamertag)
+		return 0, nil
 	}
-	defer metaHandle.Close()
-	metaDB := metaHandle.SQLDb()
 
 	matchIDs, err := selectMatchesForCitations(ctx, playerDB, false)
 	if err != nil {
