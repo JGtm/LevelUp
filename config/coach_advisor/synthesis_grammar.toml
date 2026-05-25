@@ -1,0 +1,68 @@
+# Coach Advisor — synthesis_grammar.toml
+#
+# Allowlist stricte des templates synthétisables par le coach_advisor
+# (cf. ADR 0021 §"Synthèse de Template — Allowlist").
+#
+# Toute combinaison (metric, window_type, window_value, eval_type) hors de
+# cette liste retourne ErrMetricNotSynthesizable. C'est la garantie principale
+# anti-explosion combinatoire ET anti-dérive philosophique vs Prestige.
+#
+# Convention :
+#   - metric : référence un FieldKey de internal/games/canonical/fields.go
+#     OU une composante LUSR (kills_vs_expected, accuracy_delta, etc.)
+#   - windows : liste des (window_type, window_value) autorisés sous la forme
+#     "window_type:window_value" (ex: "rolling_days:14", "last_n_matches:10")
+#   - eval_type : "threshold" (moyenne fenêtre) ou "cumulative" (compteur)
+#
+# Au démarrage initial V2, périmètre volontairement restreint (~10 entrées) —
+# tuning itératif via prestige_telemetry.
+
+[[allow]]
+metric    = "accuracy"
+windows   = ["last_n_matches:10", "last_n_matches:20", "rolling_days:7", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "kda"
+windows   = ["session", "last_n_matches:10", "rolling_days:7"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "kills_vs_expected"
+windows   = ["last_n_matches:10", "last_n_matches:20"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "deaths_vs_expected"
+windows   = ["last_n_matches:10", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "accuracy_delta"
+windows   = ["last_n_matches:10", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "assists_per_kill"
+windows   = ["last_n_matches:20", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "win_rate"
+windows   = ["last_n_matches:20", "rolling_days:14", "rolling_days:30"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "performance_score"
+windows   = ["last_n_matches:10", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "headshots_total"
+windows   = ["rolling_days:7", "rolling_days:30"]
+eval_type = "cumulative"
+
+[[allow]]
+metric    = "kills_total"
+windows   = ["rolling_days:7", "rolling_days:30"]
+eval_type = "cumulative"
