@@ -1,3 +1,26 @@
+## [2026-05-25] feat(backup): onglet Sauvegarde dans Settings — statut + déclenchement manuel
+
+**Statut** : Complété — commit `5ef30038`, Go tests + TS check verts.
+
+**Branche** : `feat/duckdb-backup-pkg`.
+
+**Décision technique principale** :
+- `manifest.go` : 3 nouveaux champs persistants (`LastSnapshotID`, `LastExported`, `LastDurationMs`) + `SetLastResult()` — survit aux redémarrages.
+- `scheduler.go` : `SchedulerStatus` + `Status()` — lit le manifest + `IsAvailable()` → source de vérité unique pour l'UI.
+- `settings_backup.go` : handlers séparés (settings.go déjà à 422L) — `GetBackupStatus` (GET) + `PostBackupRun` synchrone 10 min (pas de job async pour un usage admin occasionnel).
+- `NewRouter` étendu avec `*duckdbbackup.Scheduler` (7e param) — `backupSched` créé inconditionnellement dans `main.go`, `Run()` appelé seulement si enabled.
+- Frontend : `BackupTab` autonome (badge statut, last backup, DBs en chips, bouton), i18n fr+en complet.
+
+**Résultats observés** :
+- `go test ./pkg/duckdbbackup/... ./internal/api/... ./contracttest/...` : PASS
+- `npx tsc --noEmit` : silencieux
+- contract_helpers_test.go : call site `NewRouter` corrigé (+1 arg nil)
+
+**Conclusion / prochaine étape** :
+Branche prête à merger. Activation effective : `"backup_enabled": true` + `RESTIC_REPOSITORY` + `restic init`.
+
+---
+
 ## [2026-05-25] feat/duckdb-backup-pkg — pkg générique Restic + adaptateur LevelUp + tests
 
 **Statut** : Complété — 3 commits sur `feat/duckdb-backup-pkg`, 19 tests PASS (4 skipped sans restic en PATH).
