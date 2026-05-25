@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -28,38 +28,61 @@ export interface RewardLightboxData {
   badges?: RewardLightboxBadge[]
 }
 
-type SlotPos = { x: string; scale: number; opacity: number }
-const POSITIONS: Record<number, SlotPos> = {
-  [-2]: { x: '-115%', scale: 0.55, opacity: 0 },
-  [-1]: { x: '-55%', scale: 0.7, opacity: 0.45 },
-  [0]: { x: '0%', scale: 1, opacity: 1 },
-  [1]: { x: '55%', scale: 0.7, opacity: 0.45 },
-  [2]: { x: '115%', scale: 0.55, opacity: 0 },
-}
-const ANIM_MS = 500
-const ANIM_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
-const WINDOW_RADIUS = 2
+const ANIM_MS = 280
 
 function badgeVariantFor(tone: RewardLightboxBadgeTone | undefined) {
   switch (tone) {
-    case 'current':
-      return 'default' as const
-    case 'obtained':
-      return 'success' as const
-    case 'premium':
-      return 'outline' as const
-    case 'free':
-      return 'secondary' as const
-    case 'upcoming':
-      return 'outline' as const
-    default:
-      return 'secondary' as const
+    case 'current':  return 'default' as const
+    case 'obtained': return 'success' as const
+    case 'premium':  return 'outline' as const
+    case 'free':     return 'secondary' as const
+    case 'upcoming': return 'outline' as const
+    default:         return 'secondary' as const
   }
 }
 
 function clampIndex(idx: number, len: number) {
   if (len <= 0) return 0
   return Math.min(Math.max(idx, 0), len - 1)
+}
+
+/** Vignette latérale (prev ou next) affichée en dehors du bloc principal. */
+function SideThumbnail({
+  reward,
+  dir,
+  label,
+  onClick,
+}: {
+  reward: RewardLightboxData
+  dir: 'prev' | 'next'
+  label: string
+  onClick: () => void
+}) {
+  const rarityTier = normalizeRarity(reward.quality)
+  const slotStyles = rarityStyle(rarityTier)
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onClick() }}
+      aria-label={label}
+      className={[
+        'flex h-52 w-36 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-border/50 opacity-45 transition-all duration-200 hover:opacity-75 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        slotStyles?.bg ?? 'bg-muted/60',
+        dir === 'prev' ? 'origin-right' : 'origin-left',
+      ].join(' ')}
+    >
+      {reward.imageUrl ? (
+        <img
+          src={reward.imageUrl}
+          alt=""
+          aria-hidden="true"
+          className="max-h-full max-w-full object-contain p-2"
+        />
+      ) : (
+        <span className="text-lg font-semibold text-foreground/60">{reward.rank ?? '?'}</span>
+      )}
+    </button>
+  )
 }
 
 export function BattlePassRewardLightbox({
@@ -79,13 +102,15 @@ export function BattlePassRewardLightbox({
   useEffect(() => {
     if (animatingRef.current) return
     setCurrentIndex(clampIndex(startIndex, rewards.length))
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- on resync uniquement quand le parent change explicitement startIndex
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startIndex])
 
   const clampedIdx = clampIndex(currentIndex, rewards.length)
   const canPrev = clampedIdx > 0
   const canNext = clampedIdx < rewards.length - 1
   const current = rewards[clampedIdx] ?? null
+  const prevReward = canPrev ? rewards[clampedIdx - 1] : null
+  const nextReward = canNext ? rewards[clampedIdx + 1] : null
 
   function navigate(dir: 'next' | 'prev') {
     if (animatingRef.current) return
@@ -93,9 +118,7 @@ export function BattlePassRewardLightbox({
     if (dir === 'prev' && !canPrev) return
     animatingRef.current = true
     setCurrentIndex(clampedIdx + (dir === 'next' ? 1 : -1))
-    window.setTimeout(() => {
-      animatingRef.current = false
-    }, ANIM_MS)
+    window.setTimeout(() => { animatingRef.current = false }, ANIM_MS)
   }
 
   useEffect(() => {
@@ -106,23 +129,10 @@ export function BattlePassRewardLightbox({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- navigate() lit clampedIdx+rewards.length via closure, déjà couverts dans les deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clampedIdx, rewards.length, onClose])
 
-  const slots = useMemo(() => {
-    const result: { reward: RewardLightboxData; relPos: number; absIdx: number }[] = []
-    for (let off = -WINDOW_RADIUS; off <= WINDOW_RADIUS; off++) {
-      const idx = clampedIdx + off
-      if (idx >= 0 && idx < rewards.length) {
-        result.push({ reward: rewards[idx], relPos: off, absIdx: idx })
-      }
-    }
-    return result
-  }, [rewards, clampedIdx])
-
-  if (!current) {
-    return null
-  }
+  if (!current) return null
 
   const rankLabel = current.rank == null ? null : `#${current.rank}`
   const rarityTier = normalizeRarity(current.quality)
@@ -139,92 +149,101 @@ export function BattlePassRewardLightbox({
       onClick={onClose}
       data-testid="battle-pass-reward-lightbox"
     >
-      <div
-        className={[
-          'relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl',
-          rarityStyles?.glow ?? '',
-        ].filter(Boolean).join(' ')}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 px-5 py-3">
-          <div className="min-w-0 space-y-1">
-            {subtitle && (
-              <p className="text-3xs uppercase tracking-label-xl text-muted-foreground">
-                {subtitle}
-              </p>
-            )}
-            <h2 className="truncate text-lg font-semibold sm:text-xl">{current.title}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Fermer"
-          >
-            ×
-          </button>
+      {/* Layout : [prev] [bloc central] [next] */}
+      <div className="relative flex w-full max-w-2xl items-center gap-3">
+
+        {/* Vignette précédente — EN DEHORS du bloc */}
+        <div className="flex w-36 shrink-0 justify-center">
+          {prevReward && (
+            <SideThumbnail
+              reward={prevReward}
+              dir="prev"
+              label={t('common.battlepass.prev_aria')}
+              onClick={() => navigate('prev')}
+            />
+          )}
         </div>
 
-        <div className="relative flex-1 overflow-visible">
-          <div className="relative mx-auto aspect-[4/3] w-full">
-            {slots.map(({ reward, relPos, absIdx }) => {
-              const pos = POSITIONS[relPos]
-              const isCenter = relPos === 0
-              const slotRarity = normalizeRarity(reward.quality)
-              const slotStyles = rarityStyle(slotRarity)
-              return (
-                <div
-                  key={absIdx}
-                  className={[
-                    'absolute inset-0 flex items-center justify-center overflow-hidden rounded-xl',
-                    slotStyles?.bg ?? 'bg-muted/60',
-                  ].join(' ')}
-                  style={{
-                    transform: `translateX(${pos.x}) scale(${pos.scale})`,
-                    opacity: pos.opacity,
-                    transition: `transform ${ANIM_MS}ms ${ANIM_EASE}, opacity ${ANIM_MS}ms ${ANIM_EASE}`,
-                    pointerEvents: pos.opacity === 0 ? 'none' : 'auto',
-                    zIndex: 10 - Math.abs(relPos),
-                    willChange: 'transform, opacity',
-                    cursor: isCenter ? 'default' : 'pointer',
-                  }}
-                  onClick={
-                    isCenter
-                      ? undefined
-                      : (event) => {
-                          event.stopPropagation()
-                          if (relPos < 0) navigate('prev')
-                          else navigate('next')
-                        }
-                  }
-                  aria-hidden={isCenter ? undefined : true}
-                >
-                  {reward.imageUrl ? (
-                    <img
-                      src={reward.imageUrl}
-                      alt={isCenter ? reward.title : ''}
-                      className="max-h-full max-w-full object-contain p-4"
-                      data-testid={isCenter ? 'battle-pass-reward-lightbox-image' : undefined}
-                    />
-                  ) : (
-                    <div className="flex h-48 w-48 items-center justify-center rounded-xl bg-muted/40 text-center">
-                      <p className="text-5xl font-semibold text-foreground">{reward.rank ?? '?'}</p>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+        {/* Bloc central */}
+        <div
+          className={[
+            'relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl',
+            rarityStyles?.glow ?? '',
+          ].filter(Boolean).join(' ')}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* En-tête */}
+          <div className="flex items-start justify-between gap-4 border-b border-border bg-muted/60 px-5 py-3">
+            <div className="min-w-0 space-y-1">
+              {subtitle && (
+                <p className="text-3xs uppercase tracking-label-xl text-muted-foreground">{subtitle}</p>
+              )}
+              <h2 className="truncate text-lg font-semibold sm:text-xl">{current.title}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xl leading-none text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Fermer"
+            >
+              ×
+            </button>
           </div>
 
+          {/* Image */}
+          <div
+            className={[
+              'flex aspect-square w-full items-center justify-center p-6',
+              rarityStyles?.bg ?? 'bg-muted/30',
+            ].join(' ')}
+          >
+            {current.imageUrl ? (
+              <img
+                src={current.imageUrl}
+                alt={current.title}
+                className="max-h-full max-w-full object-contain"
+                data-testid="battle-pass-reward-lightbox-image"
+              />
+            ) : (
+              <div className="flex h-32 w-32 items-center justify-center rounded-xl bg-muted/40">
+                <p className="text-5xl font-semibold text-foreground">{current.rank ?? '?'}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pied : badges + description */}
+          {(current.badges?.length || current.description || rarityTier) && (
+            <div className="space-y-3 border-t border-border bg-muted/40 px-5 py-4">
+              {(current.badges?.length || rarityTier) && (
+                <div className="flex flex-wrap gap-2">
+                  {rarityTier && rarityStyles && (
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${rarityStyles.badge}`}
+                      data-testid="battle-pass-reward-lightbox-rarity"
+                    >
+                      {rarityLabel(rarityTier)}
+                    </span>
+                  )}
+                  {current.badges?.map((badge, i) => (
+                    <Badge key={`${badge.label}-${i}`} variant={badgeVariantFor(badge.tone)}>
+                      {badge.label}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              {current.description && (
+                <p className="text-sm leading-6 text-foreground">{current.description}</p>
+              )}
+            </div>
+          )}
+
+          {/* Flèches sur le bord du bloc (complément au clic sur les vignettes) */}
           {canPrev && (
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                navigate('prev')
-              }}
+              onClick={(e) => { e.stopPropagation(); navigate('prev') }}
               aria-label={t('common.battlepass.prev_aria')}
-              className="absolute left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute left-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
             </button>
@@ -232,42 +251,27 @@ export function BattlePassRewardLightbox({
           {canNext && (
             <button
               type="button"
-              onClick={(event) => {
-                event.stopPropagation()
-                navigate('next')
-              }}
+              onClick={(e) => { e.stopPropagation(); navigate('next') }}
               aria-label={t('common.battlepass.next_aria')}
-              className="absolute right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="absolute right-2 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/80 text-foreground/80 opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
             </button>
           )}
         </div>
 
-        {(current.badges?.length || current.description || rarityTier) && (
-          <div className="space-y-3 border-t border-border bg-muted/40 px-5 py-4">
-            {(current.badges?.length || rarityTier) && (
-              <div className="flex flex-wrap gap-2">
-                {rarityTier && rarityStyles && (
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${rarityStyles.badge}`}
-                    data-testid="battle-pass-reward-lightbox-rarity"
-                  >
-                    {rarityLabel(rarityTier)}
-                  </span>
-                )}
-                {current.badges?.map((badge, i) => (
-                  <Badge key={`${badge.label}-${i}`} variant={badgeVariantFor(badge.tone)}>
-                    {badge.label}
-                  </Badge>
-                ))}
-              </div>
-            )}
-            {current.description && (
-              <p className="text-sm leading-6 text-foreground">{current.description}</p>
-            )}
-          </div>
-        )}
+        {/* Vignette suivante — EN DEHORS du bloc */}
+        <div className="flex w-36 shrink-0 justify-center">
+          {nextReward && (
+            <SideThumbnail
+              reward={nextReward}
+              dir="next"
+              label={t('common.battlepass.next_aria')}
+              onClick={() => navigate('next')}
+            />
+          )}
+        </div>
+
       </div>
     </div>
   )

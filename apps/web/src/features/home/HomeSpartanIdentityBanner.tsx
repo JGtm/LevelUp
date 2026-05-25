@@ -10,6 +10,8 @@ import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { HomeSkillPeakCard, resolveSkillPeakState } from './HomeSkillPeakCard'
 
+const FALLBACK_BANNER_URL = '/banner-default.png'
+
 interface HomeSpartanIdentityBannerProps {
   spartanIdentity: HomeSpartanIdentity
   playerName: string
@@ -35,6 +37,8 @@ export function HomeSpartanIdentityBanner({
   const locale = useAppShellStore((s) => s.locale)
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const spartanText = getSpartanIdentityText(locale)
+
+  const activeBannerUrl = spartanIdentity.banner_image_url ?? FALLBACK_BANNER_URL
   const labels = spartanText.labels
 
   const careerRank = spartanIdentity.career_rank ?? null
@@ -59,10 +63,10 @@ export function HomeSpartanIdentityBanner({
           data-testid="home-spartan-identity-banner"
           className="relative overflow-hidden bg-card"
         >
-          {spartanIdentity.banner_image_url && (
+          {activeBannerUrl && (
             <img
               data-testid="home-spartan-banner-surface"
-              src={spartanIdentity.banner_image_url}
+              src={activeBannerUrl}
               alt=""
               aria-hidden="true"
               className="absolute inset-0 h-full w-full object-cover"
@@ -70,7 +74,7 @@ export function HomeSpartanIdentityBanner({
               decoding="async"
             />
           )}
-          {spartanIdentity.banner_image_url && (
+          {activeBannerUrl && (
             <div
               className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/30 via-background/10 to-background/40"
               aria-hidden="true"
