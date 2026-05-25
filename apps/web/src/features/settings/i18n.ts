@@ -189,6 +189,11 @@ export interface SettingsText {
   progressionHint: string
   progressionGlossaryLink: string
 
+  // Onglet Analyse — Coach proactif (pont coach → Prestige, ADR 0020)
+  coachProactiveTitle: string
+  coachProactiveLabel: string
+  coachProactiveHint: string
+
   // Admin — Fournisseur d'authentification
   authProviderTitle: string
   authProviderLabel: string
@@ -447,6 +452,14 @@ const FR_TEXT: SettingsText = {
     "Prestige sur l'Accueil et l'entrée Objectifs dans la barre de navigation.",
   progressionGlossaryLink: 'En savoir plus dans le glossaire',
 
+  coachProactiveTitle: 'Coach proactif',
+  coachProactiveLabel: 'Activer les suggestions du coach',
+  coachProactiveHint:
+    "Quand activé, le coach propose des objectifs et des arcs Prestige calibrés sur vos " +
+    "tendances récentes (LOWESS positive, near-miss records, patterns de combat). Les " +
+    "propositions apparaissent dans le centre de notifications avec des boutons Accepter / " +
+    "Ignorer. Vous gardez la main : aucune création automatique. Opt-in (désactivé par défaut).",
+
   authProviderTitle: "Fournisseur d'authentification",
   authProviderLabel: 'Provider',
   authProviderMsal: 'MSAL (Azure)',
@@ -704,6 +717,14 @@ const EN_TEXT: SettingsText = {
     '(Normal, Heroic, Legendary, Mythic). Disabling hides the Prestige section on ' +
     'the Home page and the Objectives entry in the navigation bar.',
   progressionGlossaryLink: 'Learn more in the glossary',
+
+  coachProactiveTitle: 'Proactive coach',
+  coachProactiveLabel: 'Enable coach suggestions',
+  coachProactiveHint:
+    'When enabled, the coach proposes objectives and Prestige arcs calibrated on your ' +
+    'recent trends (positive LOWESS, near-miss records, combat patterns). Suggestions ' +
+    'appear in the notification center with Accept / Dismiss buttons. You stay in ' +
+    'control: nothing is created automatically. Opt-in (off by default).',
 
   authProviderTitle: 'Authentication provider',
   authProviderLabel: 'Provider',

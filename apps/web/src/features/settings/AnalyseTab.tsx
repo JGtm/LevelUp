@@ -194,6 +194,21 @@ export function AnalyseTab({ merged, handleChange, t }: TabProps) {
           </Link>
         </CardContent>
       </Card>
+
+      {/* Card : Coach proactif (pont coach → Prestige, cf. ADR 0020) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{t.coachProactiveTitle}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ToggleRow
+            label={t.coachProactiveLabel}
+            value={merged.coach_proactive_mode ?? false}
+            onChange={(v) => handleChange('coach_proactive_mode', v)}
+          />
+          <p className="text-xs text-muted-foreground">{t.coachProactiveHint}</p>
+        </CardContent>
+      </Card>
     </>
   )
 }
