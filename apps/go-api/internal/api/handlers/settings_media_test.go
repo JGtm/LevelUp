@@ -34,6 +34,7 @@ func (m *mockMediaIndexer) ResetAndReindex(
 	_ context.Context,
 	_ string,
 	_ string,
+	_ string,
 	_ bool,
 	jobStore *jobs.Store,
 	jobID string,
@@ -52,6 +53,7 @@ func (m *mockMediaIndexer) ResetAndReindex(
 
 func (m *mockMediaIndexer) ScanAllMedia(
 	_ context.Context,
+	_ string,
 	_ string,
 	_ string,
 	jobStore *jobs.Store,

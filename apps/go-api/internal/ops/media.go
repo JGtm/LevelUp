@@ -30,6 +30,8 @@ import (
 	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	platform_duckdb "levelup/go-api/internal/platform/duckdb"
 )
 
 // Kinds de média indexés dans media_files.kind. Aussi utilisés dans la
@@ -125,11 +127,35 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	unlock := indexLock(targetPath)
 	defer unlock()
 
-	db, err := sql.Open("duckdb", targetPath)
-	if err != nil {
-		return MediaIndexResult{}, fmt.Errorf("ouverture DB: %w", err)
+	// ROOT CAUSE FIX (2026-05-25) : réutiliser le handle du pool process-wide
+	// au lieu d'ouvrir une connexion directe via sql.Open. Sans ça :
+	//   1. Le pool ouvre shared_social.duckdb via duckdb.NewConnector(path, initFn)
+	//      pour appliquer SET TimeZone (cf. openSQLDBFor avec timezone != "").
+	//   2. IndexMedia ouvrait via sql.Open("duckdb", path) — driver standard,
+	//      pas de connecteur custom. Les opérations DDL (DROP TABLE / CREATE TABLE
+	//      dans dropLegacyMediaFilesIfNeeded + ensureMediaTables) partaient dans
+	//      le WAL.
+	//   3. Au prochain restart serveur, le pool réouvrait avec son connecteur custom
+	//      → DuckDB tentait de rejouer le WAL → INTERNAL Error :
+	//      "Calling DatabaseManager::GetDefaultDatabase with no default database set"
+	//      → SharedSocial = nil pour tous les joueurs → media rail vide partout.
+	//
+	// Fix : si la DB est déjà dans le pool (cas normal après openPlayerDB),
+	// on emprunte le *sql.DB existant (sans Close — c'est le pool qui possède).
+	// Sinon (cas tests ou bootstrap), fallback sur sql.Open + Close apparié.
+	var db *sql.DB
+	if cached, ok := platform_duckdb.LookupCachedDB(targetPath); ok {
+		db = cached.SQLDb()
+		slog.Debug("IndexMedia: réutilisation du handle pool", "path", targetPath)
+	} else {
+		var openErr error
+		db, openErr = sql.Open("duckdb", targetPath)
+		if openErr != nil {
+			return MediaIndexResult{}, fmt.Errorf("ouverture DB: %w", openErr)
+		}
+		defer db.Close()
+		slog.Debug("IndexMedia: handle pool absent, fallback sql.Open", "path", targetPath)
 	}
-	defer db.Close()
 
 	// Appliquer la timezone après ouverture pour un DATEDIFF correct (DST).
 	tz := SanitizeMediaTimezone(opts.Timezone)
@@ -742,16 +768,23 @@ func insertMediaFile(ctx context.Context, db *sql.DB, path, hash, playerSlug str
 			"file", baseName, "capture_start_utc", t)
 	}
 
-	// Le mtime filesystem du serveur n'est PAS utilisé en fallback : sur un fichier
-	// uploadé/copié, il correspond à l'heure d'arrivée et fausserait l'association
-	// match (média associé au match en cours pendant l'upload). Mieux vaut laisser
-	// capture_start_utc NULL → le média est inséré mais non-associé tant qu'une
-	// source fiable (regex nom de fichier ou ré-upload) n'est pas disponible.
-	// La colonne `media_files.mtime` n'est pas non plus alimentée ici : sur un
-	// fichier uploadé l'os.Stat retournerait l'heure d'écriture serveur, pas
-	// l'heure de capture — un faux signal qui empirerait le tri. Le COALESCE
-	// du timeOrderExpr s'appuie sur capture_start_utc (déjà fiable) en tête,
-	// donc mtime resterait simplement inutilisé.
+	// Priorité 3 : mtime serveur (fallback). Pour les fichiers scannés depuis
+	// disque (post-sync hook, ScanAllMedia) sans pattern reconnaissable et sans
+	// timestamp client, le mtime filesystem reste l'approximation la plus fiable
+	// — OBS / Xbox / ShadowPlay n'écrivent qu'à la fin de l'enregistrement et ne
+	// retouchent plus le fichier ensuite. Pour les uploads HTTP, ce code est
+	// rarement atteint puisque le navigateur envoie `file.lastModified` via
+	// capture_times (cf. priorité 2, web/features/media/queries.ts:302) ; le
+	// mtime de la copie serveur serait moins précis mais reste mieux que NULL.
+	if captureAt == nil {
+		if info, err := os.Stat(path); err == nil {
+			t := info.ModTime().UTC()
+			captureAt = &t
+			slog.Debug("insertMediaFile: datetime depuis mtime serveur (fallback prio 3)",
+				"file", baseName, "capture_start_utc", t)
+		}
+	}
+
 	if captureAt == nil {
 		slog.Warn("insertMediaFile: capture_start_utc indéterminé, média non-associable",
 			"file", baseName, "player", playerSlug)

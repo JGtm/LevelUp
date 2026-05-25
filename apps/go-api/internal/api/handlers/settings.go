@@ -269,11 +269,15 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 	// La copie doit être lue avant tout write concurrent.
 	jobSnapshot := *job
 
-	// Charger le dossier captures configuré dans les settings.
+	// Charger le dossier captures et la timezone configurés dans les settings.
+	// timezone est REQUISE pour que parseCaptureTimeFromFilename extraie la
+	// datetime des noms OBS/Xbox ; sans elle, capture_start_utc=NULL → 0 assoc.
 	capturesBaseDir := ""
+	timezone := ""
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
 			capturesBaseDir = cfg.MediaCapturesBaseDir
+			timezone = cfg.UserTimezone
 		}
 	}
 
@@ -285,6 +289,7 @@ func (h *SettingsHandler) PostMediaResetIndex(w http.ResponseWriter, r *http.Req
 			context.Background(),
 			h.cfg.RepoRoot,
 			capturesBaseDir,
+			timezone,
 			req.ReindexAfterReset,
 			h.jobStore,
 			job.JobID,
@@ -320,10 +325,13 @@ func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) 
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
 
+	// Cf. PostMediaResetIndex : timezone REQUISE pour la regex filename.
 	capturesBaseDir := ""
+	timezone := ""
 	if h.settingsStore != nil {
 		if cfg, err := h.settingsStore.Load(); err == nil {
 			capturesBaseDir = cfg.MediaCapturesBaseDir
+			timezone = cfg.UserTimezone
 		}
 	}
 
@@ -335,6 +343,7 @@ func (h *SettingsHandler) PostMediaScan(w http.ResponseWriter, r *http.Request) 
 			context.Background(),
 			h.cfg.RepoRoot,
 			capturesBaseDir,
+			timezone,
 			h.jobStore,
 			job.JobID,
 		)

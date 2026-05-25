@@ -230,16 +230,27 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 		engine.WithPostSyncRunner(s.postSyncRunner, gamertag)
 	}
 	// Media scan post-sync : indexe les captures présentes sur disque et les
-	// associe aux matchs fraîchement synchronisés. capturesBaseDirFn charge
-	// MediaCapturesBaseDir à chaque tick pour respecter les settings live.
+	// associe aux matchs fraîchement synchronisés. Les 2 closures lisent les
+	// settings live à chaque tick : MediaCapturesBaseDir + UserTimezone.
+	// Sans timezone, parseCaptureTimeFromFilename retourne nil → 0 associations
+	// (bug observé 2026-05-25, cf. thought_log).
 	if s.settings != nil {
-		engine.WithMediaScanHook(service.BuildMediaScanHook(s.cfg.RepoRoot, gamertag, func() string {
-			cfg, _ := s.settings.Load()
-			if cfg != nil {
-				return cfg.MediaCapturesBaseDir
-			}
-			return ""
-		}))
+		engine.WithMediaScanHook(service.BuildMediaScanHook(s.cfg.RepoRoot, gamertag,
+			func() string {
+				cfg, _ := s.settings.Load()
+				if cfg != nil {
+					return cfg.MediaCapturesBaseDir
+				}
+				return ""
+			},
+			func() string {
+				cfg, _ := s.settings.Load()
+				if cfg != nil {
+					return cfg.UserTimezone
+				}
+				return ""
+			},
+		))
 	}
 	// Phase 4.7 closure (2026-05-24) : default flipé à ON après validation
 	// empirique Phase 4.5 (16 syncs / 0 FATAL). Set LEVELUP_PERSIST_BATCH=0
