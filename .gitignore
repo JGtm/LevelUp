@@ -110,6 +110,9 @@ data/sync_cache/
 data/backup_legacy/
 backups/
 data/restore/
+# Répertoires parasites créés par des chemins Windows (backslashes mangés par bash)
+# ex: apps/go-api/UsersGuillaumeDownloads.../  lors du source .env.local par make/air
+apps/go-api/[A-Z]*/
 
 # RAG LanceDB (base vectorielle locale)
 data/rag/
