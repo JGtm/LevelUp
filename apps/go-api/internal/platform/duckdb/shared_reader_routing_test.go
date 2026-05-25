@@ -95,7 +95,7 @@ func TestSharedReader_AllHomeRepoCallsRouted(t *testing.T) {
 		for _, m := range readDBCallRe.FindAllStringSubmatch(content, -1) {
 			constName := m[1]
 			if snippet, isShared := sharedQueries[constName]; isShared {
-				violations = append(violations, formatViolation(path, constName, snippet))
+				violations = append(violations, formatRoutingViolation(path, constName, snippet))
 			}
 		}
 
@@ -109,7 +109,7 @@ func TestSharedReader_AllHomeRepoCallsRouted(t *testing.T) {
 				// Check si le fichier appelle ReadDB().Query(query, après ce Sprintf
 				// (heuristique simple : la même fonction réutilise `query` issu du Sprintf).
 				if strings.Contains(content, ".pdb.ReadDB().Query(ctx, query") {
-					violations = append(violations, formatViolation(path, tplName+" (via fmt.Sprintf+query)", snippet))
+					violations = append(violations, formatRoutingViolation(path, tplName+" (via fmt.Sprintf+query)", snippet))
 				}
 			}
 		}
@@ -159,6 +159,6 @@ func goFilesInPackage(t *testing.T, dir string) ([]string, error) {
 	return out, nil
 }
 
-func formatViolation(path, constName, snippet string) string {
+func formatRoutingViolation(path, constName, snippet string) string {
 	return path + " uses " + constName + " via .ReadDB() — SQL: " + snippet
 }

@@ -86,7 +86,13 @@ type CareerFetcherFactory func(ctx context.Context) CareerFetcher
 type CareerLiveRepo interface {
 	LoadLastCareerRank(ctx context.Context, xuid string) (*duckdb.CareerRankRow, error)
 	EnrichFromMetadata(ctx context.Context, row *duckdb.CareerRankRow) error
+	// InsertCareerProgressionIfChanged écrit une copie complète (live + carry-forward).
+	// Conservé pour compat tests legacy. Le chemin V2 utilise
+	// InsertCareerProgressionPartial qui n'écrit que les champs frais.
 	InsertCareerProgressionIfChanged(ctx context.Context, xuid string, data *duckdb.CareerRankRow) (bool, error)
+	// InsertCareerProgressionPartial écrit UNIQUEMENT les champs set du partial,
+	// les autres restent NULL (Phase 2/3 PLAN_V2 §5).
+	InsertCareerProgressionPartial(ctx context.Context, xuid string, partial *duckdb.CareerProgressionPartial) (bool, error)
 }
 
 // CareerIdentityBuilder construit le HomeSpartanIdentityRow final à partir
@@ -169,12 +175,10 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 		return dbFallback, nil
 	}
 
-	// Persist (INSERT-if-changed) — fire-and-forget. Cohérence inter-requêtes
-	// garantie tant que les champs d'identité restent stables ou progressent
-	// vers du non-vide (jamais vers du vide grâce à mergeCareerRow).
-	if merged != nil {
-		s.persistIfChanged(ctx, xuid, merged)
-	}
+	// Phase 4 PLAN_V2 : la persistance est déléguée à kickoffBackgroundRefresh
+	// (path background) qui a accès au progress+custom bruts. Le path sync
+	// se contente de servir ce qu'on a — pas de persist depuis ici, pas de
+	// risque d'écrire des champs carry-forward dans une nouvelle ligne.
 
 	identity := s.builder.BuildSpartanIdentityFromCareerRow(ctx, merged)
 
@@ -339,18 +343,12 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 		progress := s.fetchProgressCached(bgCtx, xuid)
 		custom := s.fetchCustomizationCached(bgCtx, xuid)
 
-		// Persist immédiat : on n'attend pas une 2e visite pour écrire la
-		// bannière/emblème en DB. Sans ça, le premier chargement home remplit
-		// le cache mais ne persist pas (merged était encore vide côté sync) ;
-		// après un redémarrage serveur le cache est perdu et la bannière aussi.
-		if s.repo != nil && (progress != nil || custom != nil) {
-			dbLast, _ := s.repo.LoadLastCareerRank(bgCtx, xuid)
-			merged := mergeCareerRow(progress, custom, dbLast)
-			if merged != nil {
-				_ = s.repo.EnrichFromMetadata(bgCtx, merged)
-				s.persistIfChanged(bgCtx, xuid, merged)
-			}
-		}
+		// Persist partial (Phase 2/3 PLAN_V2) : on n'écrit dans la nouvelle
+		// ligne QUE les champs effectivement rendus non-vides par l'API live.
+		// Les autres restent NULL et ARG_MAX FILTER WHERE NOT NULL côté
+		// lecture conserve les valeurs historiques. Pas de pollution possible
+		// par un retour API partiel.
+		s.persistPartial(bgCtx, xuid, progress, custom)
 
 		slog.DebugContext(bgCtx, careerLiveLogModule+": background refresh completed", "xuid", xuid)
 	}()
@@ -494,6 +492,9 @@ func (s *CareerLiveService) makeFetcher(ctx context.Context) CareerFetcher {
 
 // persistIfChanged écrit le snapshot dans career_progression si différent
 // de la dernière row. Best-effort — erreur loguée mais non propagée.
+//
+// Deprecated: utilise persistPartial pour les nouveaux chemins (V2 PLAN §5).
+// Conservé pour compat avec les appels legacy non encore migrés.
 func (s *CareerLiveService) persistIfChanged(ctx context.Context, xuid string, row *duckdb.CareerRankRow) {
 	if s.repo == nil || row == nil {
 		return
@@ -510,6 +511,46 @@ func (s *CareerLiveService) persistIfChanged(ctx context.Context, xuid string, r
 			"xuid", xuid,
 			"rank", row.Rank,
 			"current_xp", row.CurrentXP)
+	} else {
+		careerLiveInsertSkipped.Add(1)
+	}
+}
+
+// persistPartial écrit dans career_progression UNIQUEMENT les champs
+// effectivement rendus non-vides par l'API live (PartialFromLive). Les
+// colonnes omises restent NULL dans la nouvelle ligne — la lecture via
+// ARG_MAX FILTER WHERE NOT NULL conserve les valeurs historiques.
+//
+// Best-effort : une erreur est loggée mais non propagée à l'appelant.
+func (s *CareerLiveService) persistPartial(
+	ctx context.Context,
+	xuid string,
+	progress *syncpkg.CareerRankData,
+	custom *syncpkg.SpartanCustomizationData,
+) {
+	if s.repo == nil {
+		return
+	}
+	partial := PartialFromLive(progress, custom)
+	if partial.IsEmpty() {
+		careerLiveInsertSkipped.Add(1)
+		return
+	}
+	inserted, err := s.repo.InsertCareerProgressionPartial(ctx, xuid, partial)
+	if err != nil {
+		slog.WarnContext(ctx, careerLiveLogModule+": persist partial failed",
+			"xuid", xuid, "err", err)
+		return
+	}
+	if inserted {
+		careerLiveInsertChanged.Add(1)
+		slog.InfoContext(ctx, careerLiveLogModule+": partial snapshot inserted",
+			"xuid", xuid,
+			"has_rank", partial.Rank != nil,
+			"has_xp", partial.CurrentXP != nil,
+			"has_banner", partial.BannerImageURL != nil,
+			"has_emblem", partial.EmblemImageURL != nil,
+			"has_spartan_id", partial.SpartanID != nil)
 	} else {
 		careerLiveInsertSkipped.Add(1)
 	}

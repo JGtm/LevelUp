@@ -49,6 +49,10 @@ type mockCareerLiveRepo struct {
 	inserted    []*duckdb.CareerRankRow
 	insertErr   error
 	insertOK    bool
+	// Phase 2/3 PLAN_V2 : suivi des INSERT partials.
+	insertedPartials []*duckdb.CareerProgressionPartial
+	insertPartialErr error
+	insertPartialOK  bool
 }
 
 func (m *mockCareerLiveRepo) LoadLastCareerRank(_ context.Context, _ string) (*duckdb.CareerRankRow, error) {
@@ -87,6 +91,19 @@ func (m *mockCareerLiveRepo) InsertCareerProgressionIfChanged(_ context.Context,
 	cp := *row
 	m.inserted = append(m.inserted, &cp)
 	return m.insertOK, nil
+}
+
+func (m *mockCareerLiveRepo) InsertCareerProgressionPartial(_ context.Context, _ string, p *duckdb.CareerProgressionPartial) (bool, error) {
+	if m.insertPartialErr != nil {
+		return false, m.insertPartialErr
+	}
+	if p == nil {
+		return false, nil
+	}
+	// Copie défensive : tests vérifient ce qu'on a reçu sans risque de mutation.
+	cp := *p
+	m.insertedPartials = append(m.insertedPartials, &cp)
+	return m.insertPartialOK, nil
 }
 
 type mockIdentityBuilder struct {
