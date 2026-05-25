@@ -5,8 +5,11 @@
 // dans le schema actuel — cf. internal/migration/steps_shared.go), exposee
 // au port comme MedalID pour rester aligne avec le contract.
 //
-// Capability gating : verifie l'existence de shared.medals_earned via
-// information_schema.tables. Si absente -> games.ErrCapabilityNotSupported.
+// Capability gating : si shared.medals_earned est absente, DuckDB remonte une
+// erreur "Table with name ... does not exist" — interceptee via
+// isTableNotFoundErr et convertie en games.ErrCapabilityNotSupported. Plus
+// pérenne qu'une introspection information_schema (les CATALOG/SCHEMA varient
+// entre prod RO direct, sharedprovider, et tests in-memory).
 //
 // Labels medailles : non resolus dans le repo. Le service appelant peut
 // charger les libelles via CitationsRepo.LoadMedalCitationMappings (ou
@@ -52,14 +55,6 @@ func (r *MedalsByXUIDRepo) LoadMedalsForMatchesByXUID(
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	if !r.medalsEarnedTableExists(ctx) {
-		slog.DebugContext(ctx, "MedalsByXUIDRepo: shared.medals_earned missing",
-			"slug", slug,
-			"match_count", len(filters.MatchIDs),
-			"xuid_count", len(filters.XUIDs))
-		return nil, games.ErrCapabilityNotSupported
-	}
-
 	q, args := buildMedalsByXUIDQuery(filters)
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
@@ -69,6 +64,13 @@ func (r *MedalsByXUIDRepo) LoadMedalsForMatchesByXUID(
 
 	dbRows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
+		if isTableNotFoundErr(err) {
+			slog.DebugContext(ctx, "MedalsByXUIDRepo: shared.medals_earned missing",
+				"slug", slug,
+				"match_count", len(filters.MatchIDs),
+				"xuid_count", len(filters.XUIDs))
+			return nil, games.ErrCapabilityNotSupported
+		}
 		slog.ErrorContext(ctx, "MedalsByXUIDRepo: query failed",
 			"slug", slug,
 			"match_count", len(filters.MatchIDs),
@@ -129,35 +131,4 @@ LIMIT ?`)
 	}
 
 	return sb.String(), args
-}
-
-// medalsEarnedTableExists verifie la presence de shared.medals_earned.
-//
-// Accepte 2 configurations selon le mode d'attachement :
-//   - Prod : shared_matches_v2.duckdb attaché sous catalog 'shared' (ATTACH).
-//   - Tests/Workaround : tables exposées sous schema 'shared' dans le même
-//     catalog (CREATE SCHEMA shared + CREATE TABLE shared.medals_earned).
-//
-// La query teste les 2 colonnes pour éviter les faux négatifs cross-config.
-func (r *MedalsByXUIDRepo) medalsEarnedTableExists(ctx context.Context) bool {
-	if r.pdb == nil {
-		return false
-	}
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return false
-	}
-	defer release()
-
-	var count int
-	err = db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM information_schema.tables
-		WHERE table_name = 'medals_earned'
-		  AND (table_catalog = 'shared' OR table_schema = 'shared')
-	`).Scan(&count)
-	if err != nil {
-		return false
-	}
-	return count > 0
 }

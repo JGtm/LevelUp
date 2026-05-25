@@ -91,13 +91,24 @@ func (h *MultiModuleHandler) Enabled(ctx context.Context, level slog.Level) bool
 	return h.logsDir != "" && level >= h.level.Level()
 }
 
-// Handle écrit le record vers la console (toujours) et vers le fichier du
-// module si logsDir est configuré et level >= h.level.
+// Handle écrit le record vers la console (si son level la concerne) et vers le
+// fichier du module (si logsDir est configuré et record.Level >= h.level).
+//
+// IMPORTANT : on RE-VERIFIE console.Enabled avant de déléguer. Sinon, dès que
+// l'une des 2 sorties (console OU fichier) accepte le level, MultiModuleHandler.
+// Enabled retourne true et slog appelle Handle — qui écrirait alors dans la
+// console même si son niveau l'exclut (cas LEVELUP_LOG_LEVEL=warn +
+// LEVELUP_LOGS_FILE_LEVEL=info → INFO leak dans le terminal). Les handlers slog
+// standards (TextHandler/JSONHandler) ne re-filtrent pas dans Handle ; c'est
+// au caller de respecter le contrat Enabled→Handle.
 //
 // Erreur d'écriture fichier : loguée vers stderr en best-effort, ne propage
 // pas (les logs ne doivent jamais casser la requête en cours).
 func (h *MultiModuleHandler) Handle(ctx context.Context, record slog.Record) error {
-	consoleErr := h.console.Handle(ctx, record)
+	var consoleErr error
+	if h.console.Enabled(ctx, record.Level) {
+		consoleErr = h.console.Handle(ctx, record)
+	}
 
 	if h.logsDir != "" && record.Level >= h.level.Level() {
 		module := h.resolveModule(record)

@@ -146,12 +146,31 @@ func loadDiscordWebhookURL(settingsPath string) string {
 	return ""
 }
 
+// BootstrapEnvLocal charge `.env.local` depuis la racine du repo (résolue via
+// LEVELUP_REPO_ROOT ou autoDetectRepoRoot) dans os.Environ. Idempotent : les
+// variables déjà définies dans l'env du process ne sont jamais écrasées.
+//
+// À appeler le plus tôt possible dans main() pour que toute lecture
+// ultérieure de `os.Getenv` (notamment LEVELUP_LOG_LEVEL et autres
+// LEVELUP_LOG_* lus AVANT config.Load) bénéficie des valeurs locales. Sans
+// ça, le logger booterait toujours en INFO/compact même si .env.local force
+// LEVELUP_LOG_LEVEL=warn.
+func BootstrapEnvLocal() {
+	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
+	if repoRoot == "" {
+		return
+	}
+	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
+}
+
 // Load charge la configuration depuis les variables d'environnement.
 // Les valeurs par défaut correspondent au développement local.
 func Load() (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
 	// pour que SPNKR_OAUTH_REFRESH_TOKEN_* et autres vars locales soient disponibles.
+	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
+	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
 	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
 

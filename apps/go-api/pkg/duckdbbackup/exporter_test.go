@@ -102,6 +102,87 @@ func TestExportTarget_Basic(t *testing.T) {
 	}
 }
 
+// TestExportTarget_ReusesProvidedConn vérifie que quand Target.OpenDB est défini,
+// l'exporter réutilise la connexion fournie sans tenter d'ouvrir un 2e handle.
+// Régression : avant le refactor, ExportTarget appelait sql.Open avec
+// `?access_mode=read_only` et DuckDB refusait l'ouverture si un autre handle
+// in-process tenait le fichier en RW ("different configuration"). C'est ce qui
+// faisait échouer le backup de metadata.duckdb et shared_social.duckdb.
+func TestExportTarget_ReusesProvidedConn(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "rw_held.duckdb")
+	outDir := filepath.Join(dir, "out")
+
+	// Tient le fichier en RW (mode par défaut, pas access_mode=read_only).
+	rw, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatalf("open RW: %v", err)
+	}
+	defer rw.Close()
+	if _, err := rw.Exec("CREATE TABLE t (id INTEGER)"); err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+
+	// Sanity check : sans OpenDB, l'export doit échouer avec "different configuration".
+	bareTarget := Target{Key: "bare", Path: dbPath}
+	_, errBare := ExportTarget(context.Background(), bareTarget, filepath.Join(outDir, "bare"), 1)
+	if errBare == nil {
+		t.Fatal("attendu erreur 'different configuration' sans OpenDB (RW tenu par autre handle)")
+	}
+	if !strings.Contains(errBare.Error(), "different configuration") {
+		t.Logf("note : message d'erreur ne contient pas 'different configuration' : %v", errBare)
+	}
+
+	// Avec OpenDB pointant sur la conn RW existante, l'export réussit.
+	target := Target{
+		Key:  "shared",
+		Path: dbPath,
+		OpenDB: func(_ context.Context) (*sql.DB, func(), error) {
+			return rw, func() {}, nil
+		},
+	}
+	n, err := ExportTarget(context.Background(), target, outDir, 1)
+	if err != nil {
+		t.Fatalf("ExportTarget avec OpenDB: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("attendu 1 table exportée, got %d", n)
+	}
+
+	// La conn RW doit toujours être utilisable après l'export (pas fermée par release).
+	if _, err := rw.Exec("INSERT INTO t VALUES (1)"); err != nil {
+		t.Errorf("conn RW fermée par l'exporter : %v", err)
+	}
+}
+
+// TestCheckIntegrity_ReusesProvidedConn : même garantie que ExportTarget pour
+// PRAGMA integrity_check sur un fichier détenu en RW ailleurs.
+func TestCheckIntegrity_ReusesProvidedConn(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := filepath.Join(dir, "rw_held.duckdb")
+
+	rw, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatalf("open RW: %v", err)
+	}
+	defer rw.Close()
+	if _, err := rw.Exec("CREATE TABLE t (id INTEGER)"); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	target := Target{
+		Key:  "shared",
+		Path: dbPath,
+		OpenDB: func(_ context.Context) (*sql.DB, func(), error) {
+			return rw, func() {}, nil
+		},
+	}
+	res := CheckIntegrity(context.Background(), target)
+	if !res.OK {
+		t.Errorf("CheckIntegrity avec OpenDB: OK=false detail=%q", res.Detail)
+	}
+}
+
 func TestManifest_SetIntegrityResult(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, ".manifest.json")

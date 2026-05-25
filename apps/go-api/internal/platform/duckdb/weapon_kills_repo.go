@@ -5,9 +5,12 @@
 // via GROUP BY (xuid, effective_weapon_id) + COUNT(*) — pour rester aligne
 // avec Q16WeaponKills (le repo MatchViewRepo agrege deja ainsi pour 1 match).
 //
-// Capability gating : on verifie l'existence des tables shared.weapon_kills
-// (et shared.match_participants si IncludeGrenadeMelee=true) via
-// information_schema.tables. Si absente -> games.ErrCapabilityNotSupported.
+// Capability gating : si la table cible est absente (ou la vue
+// shared.v_weapon_kills), DuckDB remonte une erreur "Table with name ... does
+// not exist" — interceptee via isTableNotFoundErr et convertie en
+// games.ErrCapabilityNotSupported. Plus pérenne qu'une introspection
+// information_schema (les CATALOG/SCHEMA varient entre prod RO direct,
+// sharedprovider, et tests in-memory avec attaches simulees).
 //
 // Labels EN/FR : jointure sur metadata.weapon_labels en post-traitement Go
 // (la metadata DB est separee — ne peut pas etre jointe en SQL pur sans ATTACH).
@@ -70,14 +73,13 @@ func (r *WeaponKillsRepo) LoadWeaponKillsAggregated(
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	if !r.weaponKillsTableExists(ctx) {
-		slog.DebugContext(ctx, "WeaponKillsRepo: shared.weapon_kills missing",
-			"slug", slug, "match_count", len(filters.MatchIDs))
-		return nil, games.ErrCapabilityNotSupported
-	}
-
 	rows, err := r.queryWeaponKills(ctx, filters)
 	if err != nil {
+		if isTableNotFoundErr(err) {
+			slog.DebugContext(ctx, "WeaponKillsRepo: shared.weapon_kills missing",
+				"slug", slug, "match_count", len(filters.MatchIDs))
+			return nil, games.ErrCapabilityNotSupported
+		}
 		slog.ErrorContext(ctx, "WeaponKillsRepo: query failed",
 			"slug", slug, "match_count", len(filters.MatchIDs), "err", err)
 		return nil, fmt.Errorf("WeaponKillsRepo.LoadWeaponKillsAggregated: %w", err)
@@ -306,36 +308,4 @@ func (r *WeaponKillsRepo) attachWeaponLabels(ctx context.Context, rows []port.We
 			rows[i].Label = label
 		}
 	}
-}
-
-// weaponKillsTableExists verifie que la table shared.weapon_kills (ou la vue
-// shared.v_weapon_kills) est presente. Capability check minimal pour la
-// Phase 1 — la presence des donnees est consideree equivalente au support
-// de la capability "match.detail.weapon_kills".
-//
-// Accepte 2 configurations (cf. MedalsByXUIDRepo.medalsEarnedTableExists) :
-//   - Prod : shared_matches_v2.duckdb attaché sous catalog 'shared' (ATTACH).
-//   - Tests : tables exposées sous schema 'shared' (CREATE SCHEMA shared).
-func (r *WeaponKillsRepo) weaponKillsTableExists(ctx context.Context) bool {
-	if r.pdb == nil {
-		return false
-	}
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return false
-	}
-	defer release()
-
-	var count int
-	err = db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM information_schema.tables
-		WHERE table_name IN ('weapon_kills', 'v_weapon_kills')
-		  AND (table_catalog = 'shared' OR table_schema = 'shared')
-	`).Scan(&count)
-	if err != nil {
-		// Si la requete d'introspection echoue, on considere absent (defensive).
-		return false
-	}
-	return count > 0
 }

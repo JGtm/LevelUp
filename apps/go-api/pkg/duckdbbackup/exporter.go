@@ -20,21 +20,24 @@ type IntegrityResult struct {
 	CheckedAt time.Time `json:"checked_at"`
 }
 
-// CheckIntegrity runs PRAGMA integrity_check on t (read-only connection).
+// CheckIntegrity runs PRAGMA integrity_check on t.
 // Always returns a result; never panics or returns an error.
 // Open failures set OK=false (can't read the file at all).
 // Query errors (e.g. pragma not supported by this DuckDB version) set OK=true
 // as they are inconclusive — not a corruption signal.
 // The caller should log a warning when OK is false.
+//
+// Si t.OpenDB est défini, réutilise la connexion fournie (cas des fichiers
+// détenus en RW par le serveur). Sinon ouvre une connexion read-only autonome.
 func CheckIntegrity(ctx context.Context, t Target) IntegrityResult {
 	res := IntegrityResult{CheckedAt: time.Now().UTC()}
 
-	db, err := sql.Open("duckdb", t.Path+"?access_mode=read_only")
+	db, release, err := openTarget(ctx, t)
 	if err != nil {
 		res.Detail = fmt.Sprintf("open: %v", err)
 		return res
 	}
-	defer db.Close()
+	defer release()
 
 	rows, err := db.QueryContext(ctx, "PRAGMA integrity_check")
 	if err != nil {
@@ -66,9 +69,11 @@ func CheckIntegrity(ctx context.Context, t Target) IntegrityResult {
 
 // ExportTarget exports all BASE TABLE tables from t to outputDir as Parquet+zstd.
 //
-// The connection is opened with ?access_mode=read_only, making it safe to call
-// while another connection (e.g. the API server) holds the same file open in
-// read-write mode within the same process.
+// Si t.OpenDB est défini, réutilise la connexion fournie — requis pour les
+// fichiers déjà détenus en RW par le serveur (metadata, shared_social) car
+// DuckDB refuse une seconde ouverture avec ?access_mode=read_only sur le même
+// fichier in-process. Sinon ouvre une connexion read-only autonome (cas des
+// DBs détenues en RO ou fermées).
 //
 // Returns the number of tables exported.
 func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLevel int) (int, error) {
@@ -79,11 +84,11 @@ func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLe
 		return 0, fmt.Errorf("mkdir %s: %w", outputDir, err)
 	}
 
-	db, err := sql.Open("duckdb", t.Path+"?access_mode=read_only")
+	db, release, err := openTarget(ctx, t)
 	if err != nil {
 		return 0, fmt.Errorf("open %s: %w", t.Path, err)
 	}
-	defer db.Close()
+	defer release()
 
 	tables, err := listTables(ctx, db)
 	if err != nil {
@@ -104,6 +109,28 @@ func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLe
 		"tables", len(tables),
 		"duration", time.Since(start).Round(time.Millisecond))
 	return len(tables), nil
+}
+
+// openTarget retourne une connexion sur t et la fonction de libération
+// associée. Si t.OpenDB est défini, délègue (emprunt non-possédant — le
+// release est un no-op côté DuckDB). Sinon ouvre une connexion read-only
+// autonome qui sera fermée par release().
+func openTarget(ctx context.Context, t Target) (*sql.DB, func(), error) {
+	if t.OpenDB != nil {
+		db, release, err := t.OpenDB(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+		if release == nil {
+			release = func() {}
+		}
+		return db, release, nil
+	}
+	db, err := sql.Open("duckdb", t.Path+"?access_mode=read_only")
+	if err != nil {
+		return nil, nil, err
+	}
+	return db, func() { _ = db.Close() }, nil
 }
 
 func listTables(ctx context.Context, db *sql.DB) ([]string, error) {
