@@ -1,3 +1,39 @@
+## [2026-05-25] feat/duckdb-backup-pkg — pkg générique Restic + adaptateur LevelUp + tests
+
+**Statut** : Complété — 3 commits sur `feat/duckdb-backup-pkg`, 19 tests PASS (4 skipped sans restic en PATH).
+
+**Branche** : `feat/duckdb-backup-pkg` (depuis `fix/art-eradication-and-home-resilience`).
+
+**Décision technique principale** :
+- `pkg/duckdbbackup/` : package zéro-import-interne, réutilisable sur tout projet Go+DuckDB.
+- `Scheduler` injecte la découverte via `func() ([]Target, error)` — pas de couplage LevelUp.
+- Fingerprint `mtime+size` via `os.Stat()` : si tous les fichiers sont inchangés → `Result{Skipped:true}`, aucun appel restic.
+- `--insecure-no-password` injecté automatiquement si `ResticPassword` et `ResticPwdFile` sont vides.
+- Comportements (enabled, interval, rétention) dans `app_settings.json` ; chemins machine dans env (`LEVELUP_BACKUP_DIR`, `RESTIC_REPOSITORY`).
+- `internal/ops/backup_service.go` : adaptateur mince — convertit `config.BackupConfig` → `duckdbbackup.Config`, découvre les DBs LevelUp via `title.PathResolver`.
+- Export via `?access_mode=read_only` : évite conflit avec la connexion RW du serveur.
+- Manifest atomique : écriture `.tmp` + `os.Rename()`.
+
+**Fichiers créés** :
+- `pkg/duckdbbackup/{target,config,manifest,exporter,restic,scheduler}.go`
+- `internal/ops/backup_service.go`
+- `internal/config/` : `BackupConfig` struct + `loadBackupConfig()` (JSON behavior + env paths)
+- Tests : `pkg/duckdbbackup/{restic,config,scheduler}_test.go` + `internal/config/backup_config_test.go`
+- `app_settings.example.json` : 5 clés backup ajoutées
+- `.ai/BACKUP_PLAN.md` : plan détaillé (10 sections)
+
+**Bug corrigé** : `ops/backup.go` ouvrait la player DB sans `?access_mode=read_only` — conflit potentiel si le serveur tourne.
+
+**Résultats observés** :
+- `go test ./pkg/duckdbbackup/... ./internal/config/...` : 19 tests PASS, 4 skipped (restic absent)
+- `go build ./...` : silencieux
+- Import cycle évité : `config` n'importe pas `pkg/duckdbbackup`, conversion dans `ops/`
+
+**Conclusion / prochaine étape** :
+Branche prête à merger dans `fix/art-eradication-and-home-resilience`. Activation effective nécessite : `"backup_enabled": true` dans `app_settings.json` + `RESTIC_REPOSITORY` dans `.env.local` + `restic init`.
+
+---
+
 ## [2026-05-25] Merge `feat/pattern-engine` → `fix/art-eradication-and-home-resilience` + fix 7 tests rouges
 
 **Statut** : Complété — merge propre, suite verte, prêt pour push.
