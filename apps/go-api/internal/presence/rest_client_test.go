@@ -58,9 +58,12 @@ const fixtureOnlineOtherGame = `{
 func newTestServer(t *testing.T, status int, body string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Asserts utiles : l'URL contient bien /presence et l'auth header est passé.
-		if !strings.Contains(r.URL.Path, "/presence") {
-			t.Errorf("URL path = %q, attendu contient /presence", r.URL.Path)
+		// Asserts utiles : l'URL contient bien xuid( et l'auth header est passé.
+		if !strings.Contains(r.URL.Path, "xuid(") {
+			t.Errorf("URL path = %q, attendu contient xuid(", r.URL.Path)
+		}
+		if r.URL.Query().Get("level") != "all" {
+			t.Errorf("level query = %q, attendu all", r.URL.Query().Get("level"))
 		}
 		if r.Header.Get("Authorization") == "" {
 			t.Error("Authorization header manquant")
