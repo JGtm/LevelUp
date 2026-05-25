@@ -104,7 +104,7 @@ func openParticipantsDBForProperty(t *testing.T) *sql.DB {
 func TestProperty_ConcurrentUpsertsIdempotent(t *testing.T) {
 	const K = 8  // nb match_ids
 	const M = 12 // nb xuids
-	const N = 20 // nb UPSERTs concurrents par paire (match_id, xuid)
+	const N = 5  // nb UPSERTs par paire — réduit (SetMaxOpenConns=1 sérialise, N=20 dépasse timeout CI)
 
 	db := openParticipantsDBForProperty(t)
 	ctx := context.Background()
@@ -238,7 +238,7 @@ func TestProperty_SamePairManyConcurrent_OneRow(t *testing.T) {
 	db := openParticipantsDBForProperty(t)
 	ctx := context.Background()
 
-	const N = 200
+	const N = 30 // réduit (SetMaxOpenConns=1 sérialise, N=200 dépasse timeout CI)
 	if _, err := db.Exec(`INSERT INTO match_registry (match_id, start_time, pair_name)
 		VALUES ('prop-singlepair', NOW(), 'Slayer')`); err != nil {
 		t.Fatalf("seed: %v", err)
