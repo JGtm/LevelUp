@@ -1,3 +1,94 @@
+## [2026-05-25] D6.3 — Sync V2 adapters HaloClient (3 fetchers V2-native)
+
+**Statut** : Complété (D6.3 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D6.2. D6.3 livre les 3 adapters qui font les appels HTTP via HaloClient (V1 untouched — import des types exportés uniquement).
+
+**Décisions techniques** :
+
+1. **Interface `HaloClient` narrow** dans v2 (3 méthodes : `GetMatchHistory`, `GetMatchStats`, `GetMatchSkill`). Sous-ensemble strict de `sync.HaloClient`. Permet aux tests d'utiliser un mock local au package v2 sans dépendre de `halo_client_mock_test.go` (qui est dans le package sync).
+
+2. **Import des types `syncpkg.MatchHistoryEntry` et `syncpkg.MatchSkillData`** : V2 importe les TYPES exportés du package sync mais pas la logique. Pour D8 cleanup, déplacer ces types vers `internal/halo/types/` ou les dupliquer dans v2.
+
+3. **`HaloClientFactory func(gamertag, xuid string) HaloClient`** : factory injectée. Runtime wrappe `sync.NewPooledHaloClient(pool, gamertag, xuid, rps)`. Test renvoie un mock.
+
+4. **MatchListProvider** (`fetchers.go::matchListProviderV2`) :
+   - Anti-régression **xuid(NNN) format** : `fmt.Sprintf("xuid(%s)", prof.XUID)` passé à `GetMatchHistory`. Test dédié `TestMatchListProviderV2_XUIDFormat` vérifie l'absence du bug mai 2026 (14 jours).
+   - Pas de "cache fetch intermédiaire" V1.
+   - Pas de `stopAfterFlush` imbriqué : collecte des unknowns proprement, stop dès le 1er connu.
+   - Garde-rail `maxPages` (defaults 20) : stop après 500 matchs si bug known set vide. V1 n'en a pas.
+
+5. **SharedMatchFetcher** :
+   - GetMatchStats fatal sur erreur, GetMatchSkill best-effort (V1-compatible, vieux matchs ne tirent pas le sync).
+   - Skip GetMatchSkill si 0 participants tracked (économise 1 API call).
+   - Skill data converti `map[string]*MatchSkillData` → `map[string]any` (shape opaque de SharedMatchData).
+
+6. **PlayerEnrichmentFetcher** : **no-op pour D6.3**. Pendant main sync V1 ne fait aucun appel API per-player (PersonalScores = extraction du stats JSON, pas un appel HTTP — délégué à Phase 5 dans D6.4). L'interface reste exposée pour futures extensions (CSR snapshots, achievements).
+
+7. **Tests unitaires** (`fetchers_test.go`, 13 cas, mock HaloClient local) :
+   - **MatchListProvider** (7) : stops at first known, **XUID format** (anti-régression), paginates until known, maxPages safety, API error, nil client, all unknown no stop.
+   - **SharedMatchFetcher** (5) : Stats+Skill combined, Stats error fatal, Skill error tolerated, 0 participants skip skill call, nil client.
+   - **PlayerEnrichmentFetcher** (1) : no-op renvoie data vide avec slug+matchID set.
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 76/76 PASS en 1.22s (63 D0-D6.2 + 13 D6.3)
+- V1 inchangée.
+
+**Conclusion / prochaine étape** : D6.3 livrable. Restent D6.4 (persist + post-sync, le gros morceau — duplication des heals) et D6.5 (wiring main.go). Les fetchers sont prêts à être injectés dans le CycleOrchestrator.
+
+---
+
+## [2026-05-25] D6.2 — Sync V2 KnownLoader V2-native (duplication ciblée)
+
+**Statut** : Complété (D6.2 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : décision validée d'opter pour duplication ciblée au lieu de V1-bridge wrappers. Règle stricte : V1 ne reçoit aucune modification (pas d'export, pas de rename, pas de refactor). V2 réimplémente sa logique en s'appuyant uniquement sur les interfaces déjà exportées (HaloClient, persist, dblease, duckdbpkg).
+
+**Bénéfices** : rollback safe (V1 ne bouge pas, `LEVELUP_SYNC_PIPELINE=v1` = comportement actuel garanti), D8 cleanup trivial (rm v1 files), V2 plus propre (saute workarounds historiques V1 comme stopAfterFlush + cache fetch intermédiaire).
+
+**Décisions techniques** :
+
+1. **`PlayerDBOpener` closure** : le constructeur prend une fonction qui ouvre la stats.duckdb d'un joueur en RO + retourne une release fn. Permet :
+   - Test : injecter un opener qui renvoie un temp DuckDB.
+   - Runtime : opener wrappe `OpenPlayerDB` + `dblease.AcquireReader` côté main.go (D6.5).
+   - V2 reste decoupled : aucune dépendance directe à internal/sync.
+
+2. **Algorithme identique à V1** réimplémenté dans `v2/known_loader.go` (~100 lignes) :
+   - Source 1 : `SELECT match_id FROM player_match_enrichment`.
+   - Source 2 : `SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?`.
+   - Cast défensif `xuid || ''` conservé (incident XxDaemonGamerxX 2026-05-24 sur drift de type VARCHAR vs UBIGINT).
+   - Erreur source 1 absente → DEBUG (table peut manquer en schéma frais).
+   - Erreur source 2 → WARN explicite (known set partiel → dégrade dedup).
+   - Source 2 désactivée si `sharedDB == nil` OU `xuid trim == ""`.
+
+3. **Tests avec DuckDB temp réelle** (`known_loader_test.go`, 7 cas, pas de build tag) :
+   - Player source seule (3 matchs).
+   - Union player + shared (alice xuid=999 → 4 matchs combinés, m_other du xuid=888 exclu — vérifie filtre).
+   - XUID vide/whitespace → source 2 skipped.
+   - sharedDB nil → source 2 skipped.
+   - openPlayerDB échec → erreur fatale.
+   - player_match_enrichment table absente → toléré (schéma frais).
+   - Garde-rail : release() appelé même sur erreur Source 1 (defer).
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 63/63 PASS en 3.07s (56 D0-D6.1 + 7 D6.2)
+- Tests V1 inchangés (aucune modification de internal/sync/engine.go).
+- Commit `d2a650a1` parti (le thought_log update sera fait en complément avec D6.3).
+
+**Conclusion / prochaine étape** : D6.2 livrable. Pattern duplication ciblée validé. Prochaine étape : **D6.3 — MatchListProvider + SharedMatchFetcher + PlayerEnrichmentFetcher** (wrappent HaloClient, déjà exporté ; pas de duplication majeure côté HTTP).
+
+---
+
 ## [2026-05-25] Fix pipeline media post-sync — timezone + fallback mtime
 
 **Statut** : Complété (suite directe du fix WAL ci-dessous)
