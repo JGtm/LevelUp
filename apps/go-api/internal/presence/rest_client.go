@@ -31,9 +31,15 @@ import (
 
 const (
 	// restPresenceURLFmt est l'URL REST de la présence courante d'un user.
-	// Cf. https://userpresence.xboxlive.com URI documentés dans
-	// https://learn.microsoft.com/en-us/gaming/gdk/docs/reference/live/rest/uri/presence/atoc-reference-presence
-	restPresenceURLFmt = "https://userpresence.xboxlive.com/users/xuid(%s)/presence"
+	// Format confirmé par OpenXbox/xbox-webapi-python :
+	// GET /users/xuid({xuid})?level={user|device|title|all}
+	//
+	// `level=all` retourne state global + devices[].titles[] (le format dont
+	// on a besoin pour détecter le titre actif via le parser existant
+	// ParsePresencePayload, cf. event_parser.go).
+	//
+	// Cf. https://learn.microsoft.com/en-us/gaming/gdk/docs/reference/live/rest/uri/presence/atoc-reference-presence
+	restPresenceURLFmt = "https://userpresence.xboxlive.com/users/xuid(%s)?level=all"
 
 	// restPresenceHTTPTimeout est le délai max d'une requête HTTP individuelle.
 	// 10s couvre largement la latence Xbox typique (~200ms) avec marge réseau.
