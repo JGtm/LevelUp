@@ -65,8 +65,8 @@ describe('LeaderboardBlock', () => {
 
     // Tiers
     expect(screen.getByText('Onyx')).toBeInTheDocument()
-    expect(screen.getByText('Diamond 6')).toBeInTheDocument()
-    expect(screen.getByText('Diamond 3')).toBeInTheDocument()
+    expect(screen.getByText('Diamond VI')).toBeInTheDocument()
+    expect(screen.getByText('Diamond III')).toBeInTheDocument()
   })
 
   it('affiche le compteur total de joueurs', async () => {
