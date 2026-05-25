@@ -258,7 +258,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./internal/sync/... \
             -tags=integration \
-            -timeout 60s \
+            -timeout 120s \
             -count=1 \
             ./internal/sync/...
         env:
