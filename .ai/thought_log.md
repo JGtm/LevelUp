@@ -1,3 +1,55 @@
+## [2026-05-25] D6.1 — Sync V2 CycleOrchestratorImpl (composition 6 phases)
+
+**Statut** : Complété (D6.1 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D5. D6.1 livre le `CycleOrchestratorImpl` qui compose les 6 phases en un cycle complet, avec logging structuré + métriques de durée. Toujours pas de I/O réel — les 6 dépendances restent injectées (interfaces). Les adapters V1-bridge arrivent en D6.2-D6.4.
+
+**Décisions techniques** :
+
+1. **`NewCycleOrchestrator(loader, listProvider, sharedFetcher, playerFetcher, persister, postSyncRunner, cfg)`** :
+   - 6 dépendances obligatoires (panic si nil au runtime). Le câblage doit être complet ou ne pas activer V2 via `shouldUseV2`.
+   - `CycleConfig` avec defaults : `FetchSharedParallelism=8`, `FetchPlayerParallelism=4`, `PostSyncParallelism=0` (illimité).
+
+2. **`Run()` séquence stricte** : pas de parallélisme entre phases (chacune dépend de la précédente). Logging structuré avec `event="sync.v2.cycle.{start|phase|done|skip}"` + `phase=<name>` pour traçabilité fine.
+
+3. **Gestion d'erreurs hiérarchique** :
+   - Phase 1 (Discovery) : erreurs per-joueur capturées dans `PerPlayer[slug].Status=failed` + `FirstError`.
+   - Phase 5 (Persist) : erreur globale → tous les joueurs marqués `failed`, **post-sync skipped** (rien à post-syncher).
+   - Phase 6 (PostSync) : erreur per-joueur → status passe à `partial` (Phase 1-5 OK, mais post-sync ne s'est pas fait).
+   - Erreurs orchestrator-level (ctx cancel, panic) → return `err != nil`.
+
+4. **`PerPlayer[slug].MatchesInserted`** : approximation = nombre de matchs où ce joueur est participant (et pas fetcher exclusivement). En V2 c'est correct car tout est inséré en un mega-batch.
+
+5. **Tests d'intégration logique** (`cycle_test.go`, 9 cas) :
+   - **Full pipeline happy path** : 2 joueurs × 3 matchs (2 partagés) → unique=4, fetch shared = 4 (dedup), fetch player = 6, persister callCount=1 (mega-batch), 2 post-sync.
+   - Empty players.
+   - Phase Discovery failure : alice fail, bob OK → status correct.
+   - Phase Persist global error → post-sync NOT called, tous failed.
+   - Phase Post-sync partial failure : alice fail post-sync, bob OK → alice status=partial (Phase 1-5 OK).
+   - No matches no persist call (joueurs à jour) → 0 persister calls, post-sync appelé pour heals.
+   - CycleConfig defaults (8/4/0).
+   - CycleConfig overrides (2/1/3).
+   - **Performance lower bound** : 4 joueurs × 4 matchs × ~30ms par phase = 171ms wall time observé (vs ~8 min 30 V1 sur dataset comparable).
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 56/56 PASS en 1.20s (47 phases isolation + 9 cycle integration)
+- Le perf test confirme que le pipeline V2 est ~3000× plus rapide en logique pure (171ms vs 510s pour Madina97294 en V1) — l'écart se réduira avec les vrais I/O des adapters V1-bridge en D6.2+.
+
+**Conclusion / prochaine étape** : D6.1 livrable. La logique V2 est complète et orchestrée. Prochaines étapes (D6.2 à D6.5) :
+- D6.2 : adapter `KnownLoader` (wrap `loadKnownMatchIDs` de engine.go).
+- D6.3 : adapters Phase 3+4 (wrap `HaloClient.GetMatchStats` + `GetMatchSkill` + `GetPersonalScores`).
+- D6.4 : adapter `CycleBatchPersister` (traduit `CycleBatch` → N `MatchBatch` via `persist.BatchBuilder`) + adapter `PostSyncRunner` (wrap `runPostSyncPipeline`).
+- D6.5 : câblage `cmd/server/main.go` + dispatch `RunOnce`.
+
+Ces 4 sous-deliverables D6 touchent à V1 — risque plus élevé. Approche : livrer un par un avec tests, ne pas activer dispatch V2 en prod avant que tous soient verts (shouldUseV2 reste false par défaut).
+
+---
+
 ## [2026-05-25] D5 — Sync V2 Phase 6 (Post-sync parallèle)
 
 **Statut** : Complété (D5 du plan ADR 0020)
