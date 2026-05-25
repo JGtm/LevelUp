@@ -30,12 +30,20 @@ import (
 // pour rester compatibles avec les Persisters existants qui parsent
 // déjà ce shape. Le typage strict (canonical.PlayerMatchRow, etc.)
 // arrive en Phase 5 quand on transforme avant d'écrire.
+//
+// T2 (parité V1) : HighlightChunk + FilmMajorVer + HasHighlights sont
+// fetchés inline en Phase 3 pour atteindre la parité V1 (V1 fetche les
+// highlights dans fetchMatchData, V2 doit faire pareil sinon les
+// highlight_events sont insérés avec 1 cycle de retard via heal).
 type SharedMatchData struct {
-	MatchID   string         // canonique match_id
-	Fetcher   string         // PlayerSlug du canonical fetcher (Phase 2)
-	Stats     map[string]any // GetMatchStats raw
-	Skill     map[string]any // GetMatchSkill raw, keyed by xuid
-	FetchedAt time.Time
+	MatchID        string         // canonique match_id
+	Fetcher        string         // PlayerSlug du canonical fetcher (Phase 2)
+	Stats          map[string]any // GetMatchStats raw
+	Skill          map[string]any // GetMatchSkill raw, keyed by xuid
+	HighlightChunk []byte         // GetHighlightEventsChunk raw bytes (nil si absent/404)
+	FilmMajorVer   int            // version du film (associée au chunk)
+	HasHighlights  bool           // true si le chunk a été récupéré avec succès
+	FetchedAt      time.Time
 }
 
 // SharedMatchFetcher fetche les données shared d'un match pour le compte

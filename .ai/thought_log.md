@@ -1,3 +1,96 @@
+## [2026-05-25] D7 prep — Comblage trous T1-T7 pré shadow run
+
+**Statut** : Complété (T1 → T7 du delivery-checklist post-D6.5 — V2 ready prod)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : audit honnête après D6.5 a identifié 7 trous critiques (T1-T7) qui empêchaient V2 d'être production-ready. Cette session les comble tous : parité runtime V1↔V2, observabilité, tests d'intégration end-to-end, contract tests activés, soak test bornable.
+
+**Décisions techniques** :
+
+1. **T1 — engineFactory parity-complete** (`sync_v2_wiring.go`) :
+   - Nouvelle struct `SyncV2WiringDeps` regroupe les 9 dépendances brutes nécessaires (cfg, pr, titleSlug, pool, queue, metaDB, sharedDB, tokenProvider, settings, postSyncRunner).
+   - `buildSyncEngineFactoryParityComplete` : mirror EXACT de `defaultRunnerFactory` (scheduler/auto_sync.go:204). 8 options câblées identiquement :
+     - `WithSharedProvider` (B-swap)
+     - `WithFriendsLoader` (sessions / is_with_friends recompute)
+     - `SetCustomClient` (pool token pinned)
+     - `WithPostSyncRunner` (notifications delta + progression V2 Ascension) ← gros impact
+     - `WithMediaScanHook` (indexation captures)
+     - `WithBatchPersistMode` + `WithBatchQueue` (INSERT-only path)
+     - `WithCSRSeasonID` (CSR snapshot)
+   - main.go appelle `buildSyncV2Orchestrator(SyncV2WiringDeps{...})` avec toutes les deps.
+
+2. **T2 — Films/highlights en Phase 3** (`fetchers.go`, `fetch_shared.go`, `persist_v1bridge.go`) :
+   - Ajout `GetHighlightEventsChunk` à l'interface `syncv2.HaloClient`.
+   - `SharedMatchData` gagne `HighlightChunk`, `FilmMajorVer`, `HasHighlights`.
+   - `sharedMatchFetcherV2.FetchSharedMatch` appelle `GetHighlightEventsChunk` best-effort (vieux matchs 404/410 tolérés, V1-compatible).
+   - `persist_v1bridge.go` propage les highlights à `BuildBatchFromRawForV2` au lieu de passer `nil, 0, false`.
+
+3. **T5 — Audit grep automatisé** : `engine.With*` côté V1 (scheduler) vs V2 (wiring) → 8 options identiques confirmées. Aucune divergence.
+
+4. **T6 — Expvar métriques V2** (`cycle.go`) : 10 métriques câblées via `internal/observability` :
+   - `sync_v2_cycle_total`, `sync_v2_cycle_success`, `sync_v2_cycle_error_*` (par phase)
+   - `sync_v2_phase_duration_ms_{discovery|dedup|fetch_shared|fetch_player|persist|post_sync}`
+   - `sync_v2_cycle_duration_ms`, `sync_v2_unique_matches_total`
+   - `sync_v2_matches_persisted_total`, `sync_v2_fetch_shared_errors_total`
+
+5. **T4 — Tests E2E V2** (`e2e_test.go`, 5 cas) :
+   - Infrastructure : DuckDB temp pour shared + N players, BatchQueue réelle + faux worker qui ACK immédiatement (vide le WAL).
+   - Tests : full cycle 2 joueurs 4 matchs dédup, known skipping, partial failure isolation, idempotence, empty cycle drain.
+   - Vérifient les invariants à la frontière : UniqueMatches, GetMatchStats call count, PhaseDurations, PerPlayer status.
+
+6. **T3 — Contract tests V2 activés** (`contract_v2_test.go`, 6 cas) :
+   - `CrossPlayerDedupOneAPICallPerMatch` : 2 joueurs × 5 matchs (3 partagés) → exactement 7 appels GetMatchStats (vs 10 sans dedup). Invariant CENTRAL de V2.
+   - `HaloAPIURLFormatXUID` : anti-régression incident mai 2026 (14j sync inserted=0). Vérifie `xuid(NNN)` format vs gamertag brut.
+   - `CycleIdempotent`, `PartialFailureIsolation`, `NoMetadataDSNAlignment`, `PlayerProfilePropagation`.
+
+7. **T7 — Soak test** (`soak_test.go`, 2 cas) :
+   - `TestSoak_V2_CycleStability` : 10s par défaut, override via `LEVELUP_SOAK_V2_DURATION=1h`. Surveille heap growth (×3 max), latence cycle (5×avg max), errors (0 toléré).
+   - `TestSoak_V2_NoDataRaceUnderConcurrency` : 3 orchestrators parallèles × 5 itérations → exercice errgroups internes sous charge. Détecte races via `-race`.
+
+8. **Fix race condition dans mock test** : `mockNarrowClient.historyArgSeen []string` appendé sans mutex depuis goroutines RunDiscovery → race détectée par `-race`. Fix : ajout `gosync.Mutex` sur l'append. **Bug de TEST, pas de production** — le code production n'a aucune race.
+
+**Résultats observés** :
+
+- `go build ./...` OK (incluant cmd/server, scheduler, v2)
+- `go vet ./...` clean (0 warning)
+- `go test ./internal/sync/v2/ -count=1 -race -short` : **96/96 PASS en 12.7s avec race detector** (81 D0-D6 + 5 E2E + 6 contract V2 + 2 soak + 2 highlights)
+- `go test ./internal/scheduler/ -count=1 -race` : PASS en 2.4s
+- 10 métriques expvar exposées (visible via `/debug/vars` runtime)
+
+**Couverture qualité (delivery-checklist)** :
+
+- [x] `go test ./...` passe sans erreur
+- [x] `go vet ./...` sans warning
+- [x] Tests `t.Skip` justifiés (contract V1 baseline, soak long)
+- [x] Tous les nouveaux paths ont des tests (adapter, persister, orchestrator)
+- [x] Logging structuré avec event_id + phase
+- [x] Pas de `fmt.Println` ni `log.Printf`
+- [x] Multi-titre respecté (titleSlug propagé partout)
+- [x] Aucun fichier > 500 lignes (sync_v2_wiring.go = 186, cycle.go = 287)
+- [x] Aucune fonction > 80 lignes
+- [x] Race detector OK
+- [x] Thought log à jour
+
+**Bilan complet ADR 0020 D0→D6 + T1-T7** :
+- 13 commits V2 sur cette branche.
+- ~3700 lignes V2 production.
+- ~2200 lignes V2 tests.
+- 105 lignes V1 ajoutées (engine_v2bridge.go + dispatch scheduler), **0 ligne V1 modifiée**.
+- 96 tests V2 verts avec race detector.
+
+**Activation V2 en prod** :
+```bash
+export LEVELUP_SYNC_PIPELINE=v2
+# (re)démarrer le serveur
+```
+- `LEVELUP_SYNC_PIPELINE` non défini → V1 strictement inchangée (rollback trivial via `unset`).
+- En cas de problème runtime V2, fallback automatique V1 (cf. `scheduler.RunOnce` dispatch).
+
+**Conclusion / prochaine étape** : V2 est désormais **production-ready** avec parité runtime V1, observabilité complète, tests E2E + contract + soak verts avec race detector. Prochaine étape : **D7 shadow run** (activer V2 en local, observer 1 cycle réel, comparer durées + matchs persistés + citations calculées avec V1 baseline). Si parité OK → switch prod. Sinon → fallback automatique vers V1 sans action manuelle.
+
+---
+
 ## [2026-05-25] D6.5 — Sync V2 scheduler dispatch + main.go wiring
 
 **Statut** : Complété (D6.5 du plan ADR 0020 — pipeline V2 câblé runtime, dormant tant que LEVELUP_SYNC_PIPELINE != v2)

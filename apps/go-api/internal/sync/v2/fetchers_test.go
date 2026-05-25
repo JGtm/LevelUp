@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	gosync "sync"
 	"sync/atomic"
 	"testing"
 
@@ -16,19 +17,28 @@ import (
 // ─── Mock HaloClient narrow ───────────────────────────────────────────
 
 type mockNarrowClient struct {
-	historyByArg   map[string][]syncpkg.MatchHistoryEntry // arg = "xuid(NNN)"
-	historyErr     error
-	statsByMatch   map[string]map[string]any
-	statsErr       error
-	skillByMatch   map[string]map[string]*syncpkg.MatchSkillData
-	skillErr       error
-	historyArgSeen []string
-	statsCallCount atomic.Int32
-	skillCallCount atomic.Int32
+	historyByArg        map[string][]syncpkg.MatchHistoryEntry // arg = "xuid(NNN)"
+	historyErr          error
+	statsByMatch        map[string]map[string]any
+	statsErr            error
+	skillByMatch        map[string]map[string]*syncpkg.MatchSkillData
+	skillErr            error
+	highlightByMatch    map[string][]byte // matchID → chunk bytes
+	highlightVerByMatch map[string]int    // matchID → film major ver
+	highlightErr        error
+	// historyArgSeenMu protège historyArgSeen contre les appels concurrents
+	// de RunDiscovery (errgroup N joueurs).
+	historyArgSeenMu   gosync.Mutex
+	historyArgSeen     []string
+	statsCallCount     atomic.Int32
+	skillCallCount     atomic.Int32
+	highlightCallCount atomic.Int32
 }
 
 func (m *mockNarrowClient) GetMatchHistory(ctx context.Context, arg, matchType string, start, count int) ([]syncpkg.MatchHistoryEntry, error) {
+	m.historyArgSeenMu.Lock()
 	m.historyArgSeen = append(m.historyArgSeen, arg)
+	m.historyArgSeenMu.Unlock()
 	if m.historyErr != nil {
 		return nil, m.historyErr
 	}
@@ -57,6 +67,19 @@ func (m *mockNarrowClient) GetMatchSkill(ctx context.Context, matchID string, xu
 		return nil, m.skillErr
 	}
 	return m.skillByMatch[matchID], nil
+}
+
+func (m *mockNarrowClient) GetHighlightEventsChunk(ctx context.Context, matchID string) ([]byte, int, bool, error) {
+	m.highlightCallCount.Add(1)
+	if m.highlightErr != nil {
+		return nil, 0, false, m.highlightErr
+	}
+	chunk, ok := m.highlightByMatch[matchID]
+	if !ok {
+		return nil, 0, false, nil // 404 simulé (film absent)
+	}
+	ver := m.highlightVerByMatch[matchID]
+	return chunk, ver, true, nil
 }
 
 // ─── MatchListProvider tests ──────────────────────────────────────────
@@ -285,6 +308,74 @@ func TestSharedMatchFetcherV2_NilClient(t *testing.T) {
 		PlayerProfile{Gamertag: "alice"}, nil)
 	if err == nil {
 		t.Fatal("expected error when factory returns nil")
+	}
+}
+
+func TestSharedMatchFetcherV2_HighlightsFetchedInPhase3(t *testing.T) {
+	// T2 (parité V1) : vérifier que les highlights sont fetchés inline
+	// en Phase 3 et propagés dans SharedMatchData.
+	client := &mockNarrowClient{
+		statsByMatch: map[string]map[string]any{"m1": {"k": 1}},
+		highlightByMatch: map[string][]byte{
+			"m1": []byte("FAKE_CHUNK_DATA"),
+		},
+		highlightVerByMatch: map[string]int{"m1": 42},
+	}
+	fetcher := NewSharedMatchFetcher(func(gt, xuid string) HaloClient { return client })
+	data, err := fetcher.FetchSharedMatch(context.Background(), "m1",
+		PlayerProfile{XUID: "999"}, nil)
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if !data.HasHighlights {
+		t.Error("HasHighlights should be true")
+	}
+	if string(data.HighlightChunk) != "FAKE_CHUNK_DATA" {
+		t.Errorf("HighlightChunk = %q, want FAKE_CHUNK_DATA", string(data.HighlightChunk))
+	}
+	if data.FilmMajorVer != 42 {
+		t.Errorf("FilmMajorVer = %d, want 42", data.FilmMajorVer)
+	}
+	if client.highlightCallCount.Load() != 1 {
+		t.Errorf("highlightCallCount = %d, want 1", client.highlightCallCount.Load())
+	}
+}
+
+func TestSharedMatchFetcherV2_HighlightsAbsentToleratedAsFalse(t *testing.T) {
+	// Film 404/410 → highlightByMatch ne contient pas m1 → found=false,
+	// pas d'erreur. V1-compatible.
+	client := &mockNarrowClient{
+		statsByMatch:     map[string]map[string]any{"m1": {"k": 1}},
+		highlightByMatch: map[string][]byte{}, // vide → 404 simulé
+	}
+	fetcher := NewSharedMatchFetcher(func(gt, xuid string) HaloClient { return client })
+	data, err := fetcher.FetchSharedMatch(context.Background(), "m1",
+		PlayerProfile{XUID: "999"}, nil)
+	if err != nil {
+		t.Fatalf("Highlights absent should not be fatal: %v", err)
+	}
+	if data.HasHighlights {
+		t.Error("HasHighlights should be false when film absent")
+	}
+	if data.HighlightChunk != nil {
+		t.Errorf("HighlightChunk should be nil, got %v", data.HighlightChunk)
+	}
+}
+
+func TestSharedMatchFetcherV2_HighlightsErrorToleratedAsFalse(t *testing.T) {
+	// Erreur réseau sur GetHighlightEventsChunk → continue avec HasHighlights=false.
+	client := &mockNarrowClient{
+		statsByMatch: map[string]map[string]any{"m1": {"k": 1}},
+		highlightErr: errors.New("network error"),
+	}
+	fetcher := NewSharedMatchFetcher(func(gt, xuid string) HaloClient { return client })
+	data, err := fetcher.FetchSharedMatch(context.Background(), "m1",
+		PlayerProfile{XUID: "999"}, nil)
+	if err != nil {
+		t.Fatalf("Highlights error should not be fatal: %v", err)
+	}
+	if data.HasHighlights {
+		t.Error("HasHighlights should be false on error")
 	}
 }
 
