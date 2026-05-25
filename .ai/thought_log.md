@@ -1,3 +1,85 @@
+## [2026-05-25] Fix pipeline media post-sync — timezone + fallback mtime
+
+**Statut** : Complété (suite directe du fix WAL ci-dessous)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Symptôme** : après restauration du WAL et fix de la connexion concurrente, le serveur peut désormais lire `shared_social.duckdb` — mais 47 WARN `insertMediaFile: capture_start_utc indéterminé` apparaissaient dans les logs d'aujourd'hui pour JGtm (sur 114 fichiers scannés, 27 nouveaux insérés, **0 associés à un match**).
+
+**Root cause** : `parseCaptureTimeFromFilename` retourne immédiatement `nil` si `loc == nil`, et `loc` reste nil quand `opts.Timezone == ""`. Trois callers de `IndexMedia` ne propageaient pas la timezone :
+- `BuildMediaScanHook` (post-sync hook, scheduler/auto_sync.go + handlers/sync_handler.go)
+- `DirMediaIndexer.ResetAndReindex` (POST /settings/media/reset-index)
+- `DirMediaIndexer.ScanAllMedia` (POST /settings/media/scan)
+
+Conséquence : la regex OBS/Xbox sur les noms `Replay YYYY-MM-DD HH-MM-SS.mkv` n'était jamais tentée → `capture_start_utc = NULL` → le JOIN BETWEEN d'`AssociateMediaWithMatches` excluait toutes ces rows → 0 associations match.
+
+Par ailleurs, le commentaire historique dans `insertMediaFile` justifiait l'absence de fallback mtime serveur par "le mtime correspond à l'heure d'arrivée du fichier uploadé". Argument faux pour les fichiers **scannés** par le post-sync hook (OBS n'écrit qu'une fois, plus jamais touché), et largement contournable côté uploads (le browser envoie déjà `file.lastModified` via `capture_times`, qui prend la priorité 2 avant le mtime serveur).
+
+**Fix A — propagation timezone** :
+- Interface `MediaIndexer` : ajout du param `timezone string` à `ResetAndReindex` et `ScanAllMedia`.
+- `BuildMediaScanHook(repoRoot, gamertag, capturesBaseDirFn, timezoneFn)` : nouvelle signature avec 2 closures live-loaded depuis les settings.
+- 4 callers mis à jour : `handlers/settings.go` x2, `scheduler/auto_sync.go`, `handlers/sync_handler.go`. Lecture de `cfg.UserTimezone` (default `Europe/Paris` cf. `store.go:353`).
+
+**Fix B — fallback mtime priorité 3** :
+- `insertMediaFile` : nouvelle priorité 3 après client timestamp. Si regex KO et pas de `captureTimeUnix`, on prend `os.Stat(path).ModTime().UTC()`. Garantit qu'un fichier sur disque a toujours un timestamp exploitable.
+- Commentaire historique remplacé : explique pourquoi le mtime est OK en prio 3 (OBS write-once + uploads ont déjà la prio 2).
+
+**Tests anti-régression** (`ops/media_backup_cgo_test.go`) :
+- `TestInsertMediaFile_Priority3_ServerMtime` (remplace l'ancien `_NoSource_LeavesNull` qui validait l'ancien comportement absent)
+- `TestInsertMediaFile_PriorityOrder_RegexBeatsMtime` (sentinelle hiérarchie)
+- `TestIndexMedia_E2E_WithTimezone_AssociatesOBSReplayToMatch` (E2E nominal : 1 match registry + 1 fichier OBS → 1 assoc)
+- `TestIndexMedia_E2E_WithoutTimezone_MtimeFallback` (E2E filet Fix B : nom non-parsable + mtime in-window → 1 assoc)
+- `TestIndexMedia_E2E_BugRepro_PreFixWouldFail` (anti-régression stricte du bug 2026-05-25)
+
+**Tests propagation** (`service/media_index_service_test.go`) :
+- `TestBuildMediaScanHook_PropagatesTimezone` (vérifie via atomic counter que `timezoneFn` est bien appelée)
+- `TestBuildMediaScanHook_NilTimezoneFn_DoesNotPanic` (défense)
+
+**Vérifié** : `go build ./...` OK, `go vet ./...` clean, `go test ./internal/ops/... ./internal/service/... ./internal/api/handlers/...` tous verts.
+
+**Dette identifiée (non traitée)** : `ops/media.go` à 941L (>500L target arch-rules). Pré-existant à ce fix, à splitter ultérieurement (indexation vs association vs thumbnails vs filename parser).
+
+**Prochaine étape** : utilisateur redémarre le serveur. Au prochain post-sync (auto ou manuel), les 27 fichiers déjà indexés vont récupérer `capture_start_utc` via UPDATE (à confirmer — `INSERT OR IGNORE` ne touchera pas les rows existantes ; une réindexation forcée via `/settings/media/reset-index` peut être nécessaire pour repopuler les capture_start_utc des rows précédemment NULL).
+
+---
+
+## [2026-05-25] Fix WAL corrompu shared_social — IndexMedia ouvrait une connexion concurrente
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Symptôme** : "Aucun média récent disponible" sur la home page malgré 77 fichiers vidéo présents sur disque dans `C:\Users\Guillaume\Videos\Captures\{Player}\`. La rail média était vide pour tous les joueurs depuis le matin (alors qu'elle fonctionnait depuis >1 mois).
+
+**Investigation** (via `logs/duckdb.log`) : au boot du serveur, le pool échoue à ouvrir `shared_social.duckdb` :
+```
+pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)
+err: INTERNAL Error: Failure while replaying WAL file "shared_social.duckdb.wal":
+     Calling DatabaseManager::GetDefaultDatabase with no default database set
+```
+Conséquence : `pdb.SharedSocial = nil` pour TOUS les joueurs → `LoadRecentMedia` (Q28) et `loadMediaCandidates` (Q37 pipeline) retournent tous les deux nil sans même exécuter la requête → empty state.
+
+**Root cause** :
+1. Le pool ouvre `shared_social.duckdb` via `duckdb.NewConnector(path, initFn)` pour appliquer `SET TimeZone='Europe/Paris'` (cf. `openSQLDBFor` quand timezone != "").
+2. `IndexMedia` (`ops/media.go:128`) ouvrait via `sql.Open("duckdb", path)` — **driver standard, sans le connecteur custom**.
+3. Les opérations DDL d'`ensureMediaTables` (`CREATE SEQUENCE`, `DROP TABLE` legacy, `CREATE TABLE`, `ALTER TABLE`) partaient dans le WAL via ce 2e handle.
+4. Au prochain restart serveur, le pool réouvrait avec son connecteur custom → DuckDB tentait de rejouer le WAL → assertion failure interne → ouverture échoue → `SharedSocial = nil` partout.
+
+**Fix** (`apps/go-api/internal/ops/media.go`) :
+- `IndexMedia` utilise désormais `platform_duckdb.LookupCachedDB(targetPath)` pour réutiliser le handle du pool process-wide. Plus de 2e connexion concurrente.
+- Fallback `sql.Open` conservé pour les cas tests/bootstrap où le pool ne possède pas le fichier.
+- Le handle emprunté n'est pas Close()é (c'est le pool qui possède).
+
+**Action curative** : `shared_social.duckdb.wal` (41 KB, corrompu) renommé en `.wal.corrupted-20260525-1640` pour permettre au pool de réouvrir le fichier propre. Perte des 27 fichiers indexés à 14:06 — le prochain post-sync hook les ré-indexera.
+
+**Vérifié** : `go build ./...` OK, `go test ./internal/ops/...` OK.
+
+**Prochaine étape** : redémarrage serveur par l'utilisateur → vérifier que `SharedSocial` s'ouvre correctement (plus de warn dans pool.log) et que la rail média réapparaît.
+
+**Note** : aussi observé un bug latent dans `parseCaptureTimeFromFilename` (loc=nil si `opts.Timezone==""`) qui rend les médias non-associables aux matchs (47 WARN `capture_start_utc indéterminé` aujourd'hui pour JGtm). À traiter dans une itération séparée.
+
+---
+
 ## [2026-05-25] D6.1 — Sync V2 CycleOrchestratorImpl (composition 6 phases)
 
 **Statut** : Complété (D6.1 du plan ADR 0020)

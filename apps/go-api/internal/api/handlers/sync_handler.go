@@ -110,14 +110,24 @@ func (h *SyncHandler) newEngineFor(gamertag, xuid string, tokens *domain.HaloTok
 		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
 	}
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
+	// timezone REQUISE pour parseCaptureTimeFromFilename (cf. media_index_service).
 	if h.settingsStore != nil {
-		engine = engine.WithMediaScanHook(service.BuildMediaScanHook(h.cfg.RepoRoot, gamertag, func() string {
-			s, _ := h.settingsStore.Load()
-			if s != nil {
-				return s.MediaCapturesBaseDir
-			}
-			return ""
-		}))
+		engine = engine.WithMediaScanHook(service.BuildMediaScanHook(h.cfg.RepoRoot, gamertag,
+			func() string {
+				s, _ := h.settingsStore.Load()
+				if s != nil {
+					return s.MediaCapturesBaseDir
+				}
+				return ""
+			},
+			func() string {
+				s, _ := h.settingsStore.Load()
+				if s != nil {
+					return s.UserTimezone
+				}
+				return ""
+			},
+		))
 	}
 	// Phase 4.7 closure (2026-05-24) : default flipé à ON après validation
 	// empirique Phase 4.5 (16 syncs / 0 FATAL). Set LEVELUP_PERSIST_BATCH=0

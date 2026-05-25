@@ -71,6 +71,30 @@ func DumpCachedLeaks() map[string]int {
 	return out
 }
 
+// LookupCachedDB retourne le *DB déjà ouvert pour path s'il est présent dans
+// le cache process-wide, sinon (nil, false). Cherche d'abord la variante RW
+// (clé "rw:"+path), puis RO ("ro:"+path).
+//
+// Usage : permet à un consommateur secondaire (ex. backup scheduler) de
+// réutiliser une connexion existante au lieu d'ouvrir un 2e handle avec une
+// config différente — DuckDB refuse `?access_mode=read_only` sur un fichier
+// déjà ouvert en RW dans le même process ("Can't open a connection to same
+// database file with a different configuration").
+//
+// Aucun incrément de refCount : c'est un emprunt non-possédant. Le caller ne
+// doit pas appeler Close() sur le *DB retourné.
+func LookupCachedDB(path string) (*DB, bool) {
+	openDBsMu.Lock()
+	defer openDBsMu.Unlock()
+	if cached, ok := openDBs["rw:"+path]; ok && cached.db != nil && !cached.db.closed {
+		return cached.db, true
+	}
+	if cached, ok := openDBs["ro:"+path]; ok && cached.db != nil && !cached.db.closed {
+		return cached.db, true
+	}
+	return nil, false
+}
+
 // sanitizeTimezone valide un nom de timezone IANA pour éviter les injections SQL.
 // Retourne "" si la valeur contient des caractères non autorisés.
 func sanitizeTimezone(tz string) string {

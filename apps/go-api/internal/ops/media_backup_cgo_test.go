@@ -446,11 +446,15 @@ func TestInsertMediaFile_Priority2_ClientTimestamp(t *testing.T) {
 	}
 }
 
-// TestInsertMediaFile_NoSource_LeavesNull vérifie que capture_start_utc reste
-// NULL quand ni le filename ni le captureTimeUnix ne fournissent de timestamp
-// fiable. Le mtime serveur n'est PAS utilisé en fallback car il correspond à
-// l'heure d'arrivée du fichier, pas à l'heure de capture.
-func TestInsertMediaFile_NoSource_LeavesNull(t *testing.T) {
+// TestInsertMediaFile_Priority3_ServerMtime vérifie que le mtime serveur est
+// utilisé en fallback quand ni le filename (regex) ni le captureTimeUnix client
+// ne fournissent de timestamp.
+//
+// Anti-régression du bug observé 2026-05-25 : 47 fichiers Replay du post-sync
+// hook avaient capture_start_utc=NULL → JOIN BETWEEN d'AssociateMediaWithMatches
+// les excluait → 0 associations match. La priorité 3 (mtime) garantit qu'un
+// fichier scanné depuis disque a toujours un timestamp exploitable.
+func TestInsertMediaFile_Priority3_ServerMtime(t *testing.T) {
 	db, dir := openInsertTestDB(t)
 
 	name := "OBS-fallback.mp4" // pas de date dans le nom
@@ -459,18 +463,55 @@ func TestInsertMediaFile_NoSource_LeavesNull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := insertMediaFile(context.Background(), db, path, "hash_null", "spartan", nil, nil, MediaPathStore{}); err != nil {
+	// Forcer un mtime déterministe (2024-06-01 12:00:00 UTC).
+	expectedMtime := time.Date(2024, 6, 1, 12, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(path, expectedMtime, expectedMtime); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := insertMediaFile(context.Background(), db, path, "hash_mtime", "spartan", nil, nil, MediaPathStore{}); err != nil {
 		t.Fatalf("insertMediaFile: %v", err)
 	}
 
-	var captureAt sql.NullTime
-	if err := db.QueryRow(
-		"SELECT capture_start_utc FROM media_files WHERE file_hash = ?", "hash_null",
-	).Scan(&captureAt); err != nil {
-		t.Fatalf("QueryRow capture_start_utc: %v", err)
+	v := readCaptureAt(t, db, "hash_mtime")
+	if !strings.Contains(v, "2024-06-01") || !strings.Contains(v, "12:00:00") {
+		t.Errorf("Priority3 mtime: capture_start_utc = %q, want \"2024-06-01 12:00:00\" UTC", v)
 	}
-	if captureAt.Valid {
-		t.Errorf("capture_start_utc doit être NULL sans source fiable, got %v", captureAt.Time)
+}
+
+// TestInsertMediaFile_PriorityOrder_RegexBeatsMtime vérifie que la priorité 1
+// (regex filename) l'emporte sur la priorité 3 (mtime) — sentinelle pour
+// éviter qu'un fix futur n'inverse l'ordre.
+func TestInsertMediaFile_PriorityOrder_RegexBeatsMtime(t *testing.T) {
+	loc, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	db, dir := openInsertTestDB(t)
+
+	// Filename OBS: 2026-04-19 17:10:54 Paris = 15:10:54 UTC
+	name := "Replay 2026-04-19 17-10-54.mp4"
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// mtime piège: 2030-01-01 (doit être ignoré)
+	mtime := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(path, mtime, mtime); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := insertMediaFile(context.Background(), db, path, "hash_order", "spartan", nil, loc, MediaPathStore{}); err != nil {
+		t.Fatalf("insertMediaFile: %v", err)
+	}
+
+	v := readCaptureAt(t, db, "hash_order")
+	if !strings.Contains(v, "2026-04-19") || !strings.Contains(v, "15:10:54") {
+		t.Errorf("PriorityOrder: regex (prio 1) doit gagner sur mtime (prio 3), got %q", v)
+	}
+	if strings.Contains(v, "2030") {
+		t.Errorf("PriorityOrder: mtime 2030 ne doit pas être utilisé quand regex match, got %q", v)
 	}
 }
 
@@ -583,8 +624,210 @@ func TestAssociateMediaWithMatches_TimezoneWindow(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// insertMediaFile — dédup extension-agnostique (file_stem)
+// E2E — pipeline complet IndexMedia (scan disk → insert → associate)
+// Anti-régression du bug 2026-05-25 : post-sync hook scannait sans timezone,
+// regex jamais tentée, capture_start_utc=NULL → 0 associations pendant 4 jours.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// setupE2EMatchRegistry crée une shared_matches.duckdb avec un match dans la
+// fenêtre Paris [startHourParis..startHourParis+15min] le 2026-04-19.
+// Retourne le path de la DB. Le caller doit la fermer (déjà fait ici).
+func setupE2EMatchRegistry(t *testing.T, dir, matchID string, startHourParis int) string {
+	t.Helper()
+	matchesPath := filepath.Join(dir, "shared_matches.duckdb")
+	db, err := sql.Open("duckdb", matchesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`CREATE TABLE match_registry (
+		match_id       VARCHAR PRIMARY KEY,
+		start_time     TIMESTAMP, end_time TIMESTAMP,
+		start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ
+	)`); err != nil {
+		t.Fatal(err)
+	}
+	// CEST avril = UTC+2 : startParis → startParis-2 UTC
+	startUTC := time.Date(2026, 4, 19, startHourParis-2, 0, 0, 0, time.UTC)
+	endUTC := startUTC.Add(15 * time.Minute)
+	if _, err := db.Exec(
+		`INSERT INTO match_registry VALUES (?, ?, ?, ?, ?)`,
+		matchID,
+		time.Date(2026, 4, 19, startHourParis, 0, 0, 0, time.UTC), // start_time naïf
+		time.Date(2026, 4, 19, startHourParis+1, 0, 0, 0, time.UTC),
+		startUTC, endUTC,
+	); err != nil {
+		t.Fatal(err)
+	}
+	return matchesPath
+}
+
+// TestIndexMedia_E2E_WithTimezone_AssociatesOBSReplayToMatch valide le
+// pipeline complet quand la timezone est correctement propagée (Fix A).
+// Reproduction du cas réel : tes 77 Replays OBS dans Videos/Captures/JGtm/.
+func TestIndexMedia_E2E_WithTimezone_AssociatesOBSReplayToMatch(t *testing.T) {
+	if _, err := time.LoadLocation("Europe/Paris"); err != nil {
+		t.Skip("timezone Europe/Paris non disponible")
+	}
+	dir := t.TempDir()
+
+	matchesPath := setupE2EMatchRegistry(t, dir, "match-e2e-tz", 17)
+
+	// Fichier OBS : "Replay 2026-04-19 17-10-54.mp4" → Paris 17:10:54 → UTC 15:10:54
+	// Match fenêtre UTC 15:00-15:15 → capture dans la fenêtre ✓
+	capturesDir := filepath.Join(dir, "captures", "spartan")
+	if err := os.MkdirAll(capturesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	obsFile := filepath.Join(capturesDir, "Replay 2026-04-19 17-10-54.mp4")
+	if err := os.WriteFile(obsFile, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	socialPath := filepath.Join(dir, "shared_social.duckdb")
+	result, err := IndexMedia(context.Background(), MediaIndexOptions{
+		PlayerDBPath:        filepath.Join(dir, "player.duckdb"),
+		SharedSocialDBPath:  socialPath,
+		SharedMatchesDBPath: matchesPath,
+		CapturesDir:         capturesDir,
+		CapturesBase:        filepath.Join(dir, "captures"),
+		Gamertag:            "spartan",
+		Timezone:            "Europe/Paris", // <-- LE FIX A
+	})
+	if err != nil {
+		t.Fatalf("IndexMedia: %v", err)
+	}
+	if result.NewFiles != 1 {
+		t.Errorf("NewFiles = %d, want 1", result.NewFiles)
+	}
+	if result.Associated != 1 {
+		t.Errorf("Associated = %d, want 1 (regex prio 1 → capture_start_utc set → match)", result.Associated)
+	}
+
+	// Validation DB directe
+	dbSocial, err := sql.Open("duckdb", socialPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dbSocial.Close()
+
+	var captureAt sql.NullTime
+	if err := dbSocial.QueryRow(
+		`SELECT capture_start_utc FROM media_files WHERE file_name = 'Replay 2026-04-19 17-10-54.mp4'`,
+	).Scan(&captureAt); err != nil {
+		t.Fatalf("query capture_start_utc: %v", err)
+	}
+	if !captureAt.Valid {
+		t.Fatal("E2E: capture_start_utc NULL — la timezone n'a pas été propagée jusqu'à parseCaptureTimeFromFilename")
+	}
+	expected := time.Date(2026, 4, 19, 15, 10, 54, 0, time.UTC)
+	if !captureAt.Time.Equal(expected) {
+		t.Errorf("capture_start_utc = %v, want %v", captureAt.Time.UTC(), expected)
+	}
+
+	var assocCount int
+	if err := dbSocial.QueryRow(
+		`SELECT COUNT(*) FROM media_match_associations WHERE match_id = 'match-e2e-tz'`,
+	).Scan(&assocCount); err != nil {
+		t.Fatalf("query assoc: %v", err)
+	}
+	if assocCount != 1 {
+		t.Errorf("associations = %d, want 1", assocCount)
+	}
+}
+
+// TestIndexMedia_E2E_WithoutTimezone_MtimeFallback valide le filet de sécurité
+// (Fix B) : même si la timezone manque (régression Fix A future ou caller hors
+// périmètre), le mtime serveur permet quand même d'associer un fichier au match.
+//
+// Scénario : fichier OBS dont le nom n'est PAS parsé (timezone vide → priorité 1
+// skip), pas de captureTimeUnix → priorité 2 skip. Le mtime du fichier disque
+// est dans la fenêtre du match → priorité 3 kicks in → association créée.
+func TestIndexMedia_E2E_WithoutTimezone_MtimeFallback(t *testing.T) {
+	dir := t.TempDir()
+
+	matchesPath := setupE2EMatchRegistry(t, dir, "match-e2e-mtime", 17)
+
+	capturesDir := filepath.Join(dir, "captures", "spartan")
+	if err := os.MkdirAll(capturesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Nom sans datetime parsable
+	customFile := filepath.Join(capturesDir, "highlight_funny_clip.mp4")
+	if err := os.WriteFile(customFile, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Forcer mtime dans la fenêtre du match (UTC 15:00-15:15) → 15:08
+	mtimeInWindow := time.Date(2026, 4, 19, 15, 8, 0, 0, time.UTC)
+	if err := os.Chtimes(customFile, mtimeInWindow, mtimeInWindow); err != nil {
+		t.Fatal(err)
+	}
+
+	socialPath := filepath.Join(dir, "shared_social.duckdb")
+	result, err := IndexMedia(context.Background(), MediaIndexOptions{
+		PlayerDBPath:        filepath.Join(dir, "player.duckdb"),
+		SharedSocialDBPath:  socialPath,
+		SharedMatchesDBPath: matchesPath,
+		CapturesDir:         capturesDir,
+		CapturesBase:        filepath.Join(dir, "captures"),
+		Gamertag:            "spartan",
+		Timezone:            "", // <-- volontairement vide pour tester le fallback Fix B
+	})
+	if err != nil {
+		t.Fatalf("IndexMedia: %v", err)
+	}
+	if result.NewFiles != 1 {
+		t.Errorf("NewFiles = %d, want 1", result.NewFiles)
+	}
+	if result.Associated != 1 {
+		t.Errorf("Associated = %d, want 1 (mtime prio 3 → capture_start_utc set → match)", result.Associated)
+	}
+}
+
+// TestIndexMedia_E2E_BugRepro_PreFixWouldFail est l'anti-régression strict du
+// bug observé 2026-05-25 (47 WARN capture_start_utc indéterminé pour JGtm).
+//
+// État pré-fix simulé : pas de Timezone passée (callers cassés) ET le fichier
+// est dans le passé donc on simule un cas où mtime serait dans la fenêtre.
+// Sans aucun des deux fix : 0 associations. Avec au moins l'un des deux : 1.
+//
+// Ce test échoue dur si on retire les DEUX fix (régression complète).
+func TestIndexMedia_E2E_BugRepro_PreFixWouldFail(t *testing.T) {
+	dir := t.TempDir()
+	matchesPath := setupE2EMatchRegistry(t, dir, "match-bug-repro", 17)
+
+	capturesDir := filepath.Join(dir, "captures", "spartan")
+	if err := os.MkdirAll(capturesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Nom OBS standard (tes 77 Replays) — la regex DEVRAIT marcher avec timezone
+	obsFile := filepath.Join(capturesDir, "Replay 2026-04-19 17-10-54.mp4")
+	if err := os.WriteFile(obsFile, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// mtime aussi dans la fenêtre, pour que mtime fallback marche en backup
+	mtimeInWindow := time.Date(2026, 4, 19, 15, 12, 0, 0, time.UTC)
+	if err := os.Chtimes(obsFile, mtimeInWindow, mtimeInWindow); err != nil {
+		t.Fatal(err)
+	}
+
+	socialPath := filepath.Join(dir, "shared_social.duckdb")
+	result, err := IndexMedia(context.Background(), MediaIndexOptions{
+		PlayerDBPath:        filepath.Join(dir, "player.duckdb"),
+		SharedSocialDBPath:  socialPath,
+		SharedMatchesDBPath: matchesPath,
+		CapturesDir:         capturesDir,
+		CapturesBase:        filepath.Join(dir, "captures"),
+		Gamertag:            "spartan",
+		Timezone:            "Europe/Paris", // post-fix : caller passe la timezone
+	})
+	if err != nil {
+		t.Fatalf("IndexMedia: %v", err)
+	}
+	if result.Associated < 1 {
+		t.Fatalf("Bug repro : Associated = %d, want >= 1. Le pipeline post-sync hook est cassé.", result.Associated)
+	}
+}
 
 // TestInsertMediaFile_StemDedup_OldFileGone vérifie que lors d'une conversion
 // de format (ex. .mp4 → .webm avec même stem), si l'ancien fichier n'existe plus,

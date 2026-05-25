@@ -31,13 +31,16 @@ type MediaIndexer interface {
 	// pour tous les joueurs sous repoRoot, puis réindexe si reindexAfter=true.
 	// capturesBaseDir : si non vide, les captures sont lues depuis {capturesBaseDir}/{gamertag}/
 	// plutôt que depuis le chemin interne data/titles/.../captures/.
+	// timezone : IANA (ex: "Europe/Paris") — requis pour que parseCaptureTimeFromFilename
+	// extraie correctement la datetime depuis les noms de fichier OBS/Xbox (sinon
+	// la regex est skip → capture_start_utc=NULL → 0 associations match).
 	// Rapporte la progression via jobStore pour le job jobID.
-	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, reindexAfter bool, jobStore *jobs.Store, jobID string) error
+	ResetAndReindex(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, reindexAfter bool, jobStore *jobs.Store, jobID string) error
 
 	// ScanAllMedia indexe les médias de tous les joueurs sans supprimer les entrées
 	// existantes (opération non-destructive). ForceRescan=false : seuls les nouveaux
-	// fichiers sont insérés.
-	ScanAllMedia(ctx context.Context, repoRoot string, capturesBaseDir string, jobStore *jobs.Store, jobID string) error
+	// fichiers sont insérés. Cf. ResetAndReindex pour le param timezone.
+	ScanAllMedia(ctx context.Context, repoRoot string, capturesBaseDir string, timezone string, jobStore *jobs.Store, jobID string) error
 }
 
 // DirMediaIndexer est l'implémentation par défaut de MediaIndexer.
@@ -54,6 +57,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 	ctx context.Context,
 	repoRoot string,
 	capturesBaseDir string,
+	timezone string,
 	reindexAfter bool,
 	jobStore *jobs.Store,
 	jobID string,
@@ -131,6 +135,7 @@ func (d *DirMediaIndexer) ResetAndReindex(
 					CapturesBase:        capturesBaseDir,
 					ForceRescan:         true,
 					Gamertag:            gamertag,
+					Timezone:            timezone,
 				}); err != nil {
 					jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 						w := fmt.Sprintf("WARN reindex %s: %v", gamertag, err)
@@ -149,6 +154,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 	ctx context.Context,
 	repoRoot string,
 	capturesBaseDir string,
+	timezone string,
 	jobStore *jobs.Store,
 	jobID string,
 ) error {
@@ -209,6 +215,7 @@ func (d *DirMediaIndexer) ScanAllMedia(
 			CapturesBase:        capturesBaseDir,
 			ForceRescan:         false,
 			Gamertag:            gamertag,
+			Timezone:            timezone,
 		}); err != nil {
 			jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 				w := fmt.Sprintf("WARN scan %s: %v", gamertag, err)
@@ -224,23 +231,35 @@ func (d *DirMediaIndexer) ScanAllMedia(
 // via WithMediaScanHook. Elle scanne le répertoire captures/ du joueur et indexe
 // les nouveaux fichiers médias (ForceRescan=false), puis les associe aux matchs.
 //
-// capturesBaseDirFn est un chargeur paresseux : appelé à chaque sync pour lire
-// MediaCapturesBaseDir depuis les settings courants (évite de capturer une valeur
-// périmée au boot).
+// capturesBaseDirFn et timezoneFn sont des chargeurs paresseux : appelés à chaque
+// sync pour lire les settings courants (évite de capturer une valeur périmée au
+// boot). timezoneFn est CRITIQUE — sans timezone, parseCaptureTimeFromFilename
+// retourne nil systématiquement → capture_start_utc=NULL → 0 associations match.
 //
 // Usage typique :
 //
-//	hook := service.BuildMediaScanHook(cfg.RepoRoot, gamertag, func() string {
-//	    s, _ := settingsStore.Load()
-//	    if s != nil { return s.MediaCapturesBaseDir }
-//	    return ""
-//	})
+//	hook := service.BuildMediaScanHook(cfg.RepoRoot, gamertag,
+//	    func() string {
+//	        s, _ := settingsStore.Load()
+//	        if s != nil { return s.MediaCapturesBaseDir }
+//	        return ""
+//	    },
+//	    func() string {
+//	        s, _ := settingsStore.Load()
+//	        if s != nil { return s.UserTimezone }
+//	        return ""
+//	    },
+//	)
 //	engine.WithMediaScanHook(hook)
-func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn func() string) func(ctx context.Context) {
+func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn, timezoneFn func() string) func(ctx context.Context) {
 	return func(ctx context.Context) {
 		capturesBaseDir := ""
 		if capturesBaseDirFn != nil {
 			capturesBaseDir = capturesBaseDirFn()
+		}
+		timezone := ""
+		if timezoneFn != nil {
+			timezone = timezoneFn()
 		}
 		pr := titlePkg.NewPathResolver(repoRoot)
 		titleSlug := titlePkg.DefaultSlug
@@ -256,6 +275,7 @@ func BuildMediaScanHook(repoRoot, gamertag string, capturesBaseDirFn func() stri
 			CapturesBase:        capturesBaseDir,
 			ForceRescan:         false,
 			Gamertag:            gamertag,
+			Timezone:            timezone,
 		}); err != nil {
 			slog.WarnContext(ctx, "post-sync: media scan échoué (non-fatal)", "gamertag", gamertag, "err", err)
 		}
