@@ -37,41 +37,55 @@ func toPkgConfig(cfg config.BackupConfig) duckdbbackup.Config {
 	}
 }
 
-// discoverLevelUpDBs returns all DuckDB files managed by LevelUp:
-// global xbox_aliases + 4 warehouse DBs + one stats.duckdb per player.
+// discoverLevelUpDBs returns all DuckDB files managed by LevelUp.
+// It scans data/titles/ on disk so that new titles are picked up automatically.
+// Keys are prefixed with the title slug to avoid collisions across titles.
 // Missing files are silently skipped — the scheduler handles absent DBs gracefully.
 func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
-	slug := title.DefaultSlug
-	candidates := []duckdbbackup.Target{
-		{Key: "xbox_aliases",      Path: pr.GlobalXuidAliasesDBPath()},
-		{Key: "shared_matches_v2", Path: pr.SharedDBPath(slug)},
-		{Key: "metadata",          Path: pr.MetadataDBPath(slug)},
-		{Key: "shared_pve",        Path: pr.SharedPVEDBPath(slug)},
-		{Key: "shared_social",     Path: pr.SharedSocialDBPath(slug)},
+	targets := []duckdbbackup.Target{
+		{Key: "xbox_aliases", Path: pr.GlobalXuidAliasesDBPath()},
+	}
+	if _, err := os.Stat(pr.GlobalXuidAliasesDBPath()); err != nil {
+		targets = targets[:0]
 	}
 
-	// Keep only warehouse DBs that exist on disk.
-	targets := make([]duckdbbackup.Target, 0, len(candidates)+4)
-	for _, t := range candidates {
-		if _, err := os.Stat(t.Path); err == nil {
-			targets = append(targets, t)
-		}
-	}
-
-	// Player DBs: one stats.duckdb per subdirectory under players/.
-	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
-	entries, err := os.ReadDir(playersDir)
+	titlesDir := filepath.Join(pr.RepoRoot(), "data", "titles")
+	titleEntries, err := os.ReadDir(titlesDir)
 	if err != nil {
-		return targets, nil // no players is non-fatal
+		return targets, nil // no titles dir is non-fatal
 	}
-	for _, e := range entries {
-		if !e.IsDir() {
+
+	for _, te := range titleEntries {
+		if !te.IsDir() {
 			continue
 		}
-		targets = append(targets, duckdbbackup.Target{
-			Key:  "player:" + e.Name(),
-			Path: pr.PlayerDBPath(slug, e.Name()),
-		})
+		slug := te.Name()
+		warehouse := []duckdbbackup.Target{
+			{Key: slug + ":shared_matches_v2", Path: pr.SharedDBPath(slug)},
+			{Key: slug + ":metadata", Path: pr.MetadataDBPath(slug)},
+			{Key: slug + ":shared_pve", Path: pr.SharedPVEDBPath(slug)},
+			{Key: slug + ":shared_social", Path: pr.SharedSocialDBPath(slug)},
+		}
+		for _, t := range warehouse {
+			if _, err := os.Stat(t.Path); err == nil {
+				targets = append(targets, t)
+			}
+		}
+
+		playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
+		players, err := os.ReadDir(playersDir)
+		if err != nil {
+			continue // no players for this title is non-fatal
+		}
+		for _, pe := range players {
+			if !pe.IsDir() {
+				continue
+			}
+			targets = append(targets, duckdbbackup.Target{
+				Key:  slug + ":player:" + pe.Name(),
+				Path: pr.PlayerDBPath(slug, pe.Name()),
+			})
+		}
 	}
 	return targets, nil
 }
