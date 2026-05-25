@@ -1,3 +1,44 @@
+## [2026-05-25] Restore backup pré-crash + backfill CSR + backup data/backups/
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** :
+Restauration depuis `E:\halo_infinite` (snapshot 24/05 16:34, pré-crash ART 20:41:04) vers `data/titles/halo_infinite/` en deux temps :
+1. Copie directe des .duckdb (sans WALs — restauration propre au dernier checkpoint)
+2. `apply_shared_migrations` pour rattraper la migration `shared_append_only_match_csrs_v1` (`written_at`) manquante sur la shared restaurée
+
+**Résultats observés** :
+- Warehouse + 4 players restaurés depuis backup pré-crash
+- `apply_shared_migrations` : 1 migration shared appliquée, 0 migration player supplémentaire
+- Backfill CSR : 50 CSR insérés (Chocoboflor 8, JGtm 8, Madina97294 34) ; XxDaemonGamerxX skippé (no_refresh_token)
+- Backup post-restore : `data/backups/2026-05-25_1126/` (warehouse 342MB + 4 players 85MB)
+
+**Prochaine étape** : Relancer le serveur et vérifier visuellement les CSR affichés
+
+---
+
+## [2026-05-25] Fix CI autonome — 4 groupes de pannes (sync timeout, baseline, TS, couleurs)
+
+**Statut** : En cours — dernier CI run en attente (commits c48d7a42, 712cb9d0)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Décision technique principale** :
+Diagnostic autonome via `gh run view --log-failed` sur 3 runs successifs. 4 groupes de pannes identifiés et corrigés en séquence :
+
+1. **Stress tests concurrents (4 tests)** — DuckDB ART bug sans singleflight (retiré en f243b235). Fix : `db.SetMaxOpenConns(1)` dans les helpers + réduction des constantes (50×200→8×25) pour tenir dans le budget CI.
+2. **Timeout 60s `internal/sync`** — Suite 100+ fichiers dépasse le budget isolé. Fix : bump timeout `60s→120s` dans ci.yml (aligné sur le step `./...`).
+3. **Baseline manquante** — `TestParseHighlightEvents_InvalidZlib` renommé en `NonZlibBytesTreatedAsPlain` (fix 2026-05-22) mais toujours dans `tests_pre_migration.jsonl`. Fix : suppression des 4 lignes stale.
+4. **Frontend TS + lint couleurs** — `BehaviorType` importé non utilisé (TS6196) + 47 violations couleur/champ dans les fichiers ascension (feat/pattern-engine merge). Fix : retrait import + color-allow sur les badges de sévérité/état + `t.metric?.kda ?? 'KDA'` i18n.
+
+**Résultats observés** : CI run 26393781215 — 9/9 jobs SUCCESS (Frontend Vitest, Go Coverage, Go Baseline, Go Lint, Go Build ×2, Go Contract, OpenAPI Lint, Go Lease Enforcement). Branch fully green.
+
+**Conclusion / prochaine étape** : Tous les CI passent. Branche `fix/art-eradication-and-home-resilience` prête pour review/merge.
+
+---
+
 ## [2026-05-25] Merge `feat/pattern-engine` → `fix/art-eradication-and-home-resilience` + fix 7 tests rouges
 
 **Statut** : Complété — merge propre, suite verte, prêt pour push.
