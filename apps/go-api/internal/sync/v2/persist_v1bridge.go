@@ -21,9 +21,13 @@ import (
 
 // cycleBatchPersisterV1Bridge implémente CycleBatchPersister via les
 // wrappers V1 (engine_v2bridge.go) + persist.BatchQueue (partagé).
+//
+// Note D7 prep : la map PlayerBySlug est lue depuis CycleBatch.PlayerBySlug
+// à chaque PersistCycle (pas stockée dans le struct). Permet au persister
+// d'être instancié une seule fois au boot pendant que la liste de joueurs
+// est dynamique cycle-par-cycle.
 type cycleBatchPersisterV1Bridge struct {
 	titleSlug       string
-	playerByXuid    map[string]PlayerProfile // pour résoudre fetcher slug → xuid
 	queue           *persist.BatchQueue
 	drainCtxTimeout time.Duration // typique 60s, configurable pour tests
 }
@@ -32,29 +36,22 @@ type cycleBatchPersisterV1Bridge struct {
 //
 // Paramètres :
 //   - titleSlug : slug du titre (halo_infinite par défaut). Passé à BuildBatchFromRawForV2.
-//   - playerBySlug : index PlayerSlug → PlayerProfile pour résoudre les
-//     gamertag/xuid au moment de construire le batch (le fetcher est dans
-//     SharedMatchData.Fetcher).
 //   - queue : BatchQueue partagée (process-wide). Si nil, le persister
 //     échoue avec une erreur explicite (impossible de persister sans queue).
 //   - drainTimeout : timeout du drain à la fin du cycle. 0 → 60s default.
+//
+// playerBySlug est passé via CycleBatch.PlayerBySlug à chaque PersistCycle
+// (cf. RunPersist → orchestrator cycle.go).
 func NewCycleBatchPersister(
 	titleSlug string,
-	playerBySlug map[string]PlayerProfile,
 	queue *persist.BatchQueue,
 	drainTimeout time.Duration,
 ) CycleBatchPersister {
 	if drainTimeout <= 0 {
 		drainTimeout = 60 * time.Second
 	}
-	// Indexer aussi par xuid pour fast lookup côté fetcher slug.
-	byXuid := make(map[string]PlayerProfile, len(playerBySlug))
-	for _, p := range playerBySlug {
-		byXuid[p.XUID] = p
-	}
 	return &cycleBatchPersisterV1Bridge{
 		titleSlug:       titleSlug,
-		playerByXuid:    byXuid,
 		queue:           queue,
 		drainCtxTimeout: drainTimeout,
 	}
@@ -75,18 +72,13 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 	submitted := 0
 	parseErrors := 0
 	for mID, sd := range batch.Matches {
-		// Recovera le fetcher PlayerProfile pour avoir son gamertag.
-		// SharedMatchData.Fetcher est le PlayerSlug, mais nous n'avons
-		// pas de map slug→profile ici ; on bridge via playerByXuid en
-		// cherchant par xuid stocké dans Skill (si présent) ou via la
-		// résolution faite côté orchestrator. Pour simplifier le bridge
-		// initial, on fallback : si Fetcher slug est dans playerByXuid
-		// (en indexant par slug = clé secondaire), on utilise ; sinon
-		// on prend le 1er profile disponible.
-		fetcherProfile, ok := p.resolveFetcherProfile(sd.Fetcher)
+		// Lookup direct via batch.PlayerBySlug (renseigné par l'orchestrator
+		// à chaque cycle, cf. cycle.go Phase 5).
+		fetcherProfile, ok := batch.PlayerBySlug[sd.Fetcher]
 		if !ok {
 			slog.WarnContext(ctx, "PersistCycle: fetcher inconnu — skip match",
-				"match_id", mID, "fetcher_slug", sd.Fetcher)
+				"match_id", mID, "fetcher_slug", sd.Fetcher,
+				"player_by_slug_size", len(batch.PlayerBySlug))
 			continue
 		}
 
@@ -146,17 +138,4 @@ func (p *cycleBatchPersisterV1Bridge) PersistCycle(ctx context.Context, batch Cy
 		"parse_errors", parseErrors,
 	)
 	return nil
-}
-
-// resolveFetcherProfile lookup secondaire par slug. La construction du
-// persister via NewCycleBatchPersister indexe par xuid pour l'usage
-// principal ; ici on accepte aussi un slug en re-scannant la map (linéaire,
-// acceptable pour <100 joueurs).
-func (p *cycleBatchPersisterV1Bridge) resolveFetcherProfile(slug string) (PlayerProfile, bool) {
-	for _, prof := range p.playerByXuid {
-		if prof.PlayerSlug == slug {
-			return prof, true
-		}
-	}
-	return PlayerProfile{}, false
 }

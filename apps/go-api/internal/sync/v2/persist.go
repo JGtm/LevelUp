@@ -44,6 +44,12 @@ type CycleBatch struct {
 	// par joueur lors de la construction des sous-batches player.*.
 	Enrichments map[string]map[string]PlayerEnrichmentData
 
+	// PlayerBySlug : map des PlayerProfile du cycle courant indexée par
+	// PlayerSlug. Permet au persister de résoudre Gamertag+XUID depuis
+	// SharedMatchData.Fetcher (= PlayerSlug) sans dépendre d'un state
+	// statique. Renseignée par l'orchestrator avant PersistCycle.
+	PlayerBySlug map[string]PlayerProfile
+
 	// BuiltAt timestamp de construction du batch (pour métriques).
 	BuiltAt time.Time
 }
@@ -82,10 +88,15 @@ type PersistResult struct {
 //     (sémantique transactionnelle stricte, le caller voit Err != nil).
 //   - Si fetched.Matches et enrichments.Enrichments sont vides : skip
 //     l'appel persister (return PersistResult zéro), pas d'erreur.
+//
+// playerBySlug : map des PlayerProfile du cycle, passée dans le
+// CycleBatch pour permettre au persister de résoudre Gamertag+XUID
+// depuis le PlayerSlug du fetcher canonical (cf. persist_v1bridge.go).
 func RunPersist(
 	ctx context.Context,
 	fetched FetchSharedResult,
 	enrichments FetchPlayerResult,
+	playerBySlug map[string]PlayerProfile,
 	persister CycleBatchPersister,
 ) PersistResult {
 	start := time.Now()
@@ -100,10 +111,11 @@ func RunPersist(
 	}
 
 	batch := CycleBatch{
-		CycleID:     fmt.Sprintf("v2-cycle-%d", time.Now().UnixNano()),
-		Matches:     fetched.Matches,
-		Enrichments: enrichments.Enrichments,
-		BuiltAt:     time.Now(),
+		CycleID:      fmt.Sprintf("v2-cycle-%d", time.Now().UnixNano()),
+		Matches:      fetched.Matches,
+		Enrichments:  enrichments.Enrichments,
+		PlayerBySlug: playerBySlug,
+		BuiltAt:      time.Now(),
 	}
 
 	if err := persister.PersistCycle(ctx, batch); err != nil {

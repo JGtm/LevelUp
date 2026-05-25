@@ -29,7 +29,7 @@ func setupTestBatchQueue(t *testing.T) *persist.BatchQueue {
 }
 
 func TestCycleBatchPersister_NilQueueReturnsError(t *testing.T) {
-	persister := NewCycleBatchPersister("halo_infinite", nil, nil, 0)
+	persister := NewCycleBatchPersister("halo_infinite", nil, 0)
 	err := persister.PersistCycle(context.Background(), CycleBatch{
 		Matches: map[string]SharedMatchData{"m1": {MatchID: "m1"}},
 	})
@@ -40,8 +40,8 @@ func TestCycleBatchPersister_NilQueueReturnsError(t *testing.T) {
 
 func TestCycleBatchPersister_EmptyBatchDrainOnly(t *testing.T) {
 	q := setupTestBatchQueue(t)
-	playerBy := mkPlayerMap("alice")
-	persister := NewCycleBatchPersister("halo_infinite", playerBy, q, 100*time.Millisecond)
+	_ = mkPlayerMap("alice") // unused after persister API change
+	persister := NewCycleBatchPersister("halo_infinite", q, 100*time.Millisecond)
 	err := persister.PersistCycle(context.Background(), CycleBatch{Matches: map[string]SharedMatchData{}})
 	if err != nil {
 		t.Fatalf("err = %v (empty batch should drain cleanly)", err)
@@ -50,8 +50,8 @@ func TestCycleBatchPersister_EmptyBatchDrainOnly(t *testing.T) {
 
 func TestCycleBatchPersister_UnknownFetcherSlugSkipsMatch(t *testing.T) {
 	q := setupTestBatchQueue(t)
-	playerBy := mkPlayerMap("alice")
-	persister := NewCycleBatchPersister("halo_infinite", playerBy, q, 100*time.Millisecond)
+	_ = mkPlayerMap("alice") // unused after persister API change
+	persister := NewCycleBatchPersister("halo_infinite", q, 100*time.Millisecond)
 	err := persister.PersistCycle(context.Background(), CycleBatch{
 		Matches: map[string]SharedMatchData{
 			"m1": {MatchID: "m1", Fetcher: "ghost", Stats: map[string]any{}},
@@ -65,8 +65,8 @@ func TestCycleBatchPersister_UnknownFetcherSlugSkipsMatch(t *testing.T) {
 
 func TestCycleBatchPersister_ParsingErrorIsNonFatal(t *testing.T) {
 	q := setupTestBatchQueue(t)
-	playerBy := mkPlayerMap("alice")
-	persister := NewCycleBatchPersister("halo_infinite", playerBy, q, 200*time.Millisecond)
+	_ = mkPlayerMap("alice") // unused after persister API change
+	persister := NewCycleBatchPersister("halo_infinite", q, 200*time.Millisecond)
 	// Stats vides → ExtractRegistry échouera → batch skip avec warning.
 	err := persister.PersistCycle(context.Background(), CycleBatch{
 		Matches: map[string]SharedMatchData{
@@ -83,8 +83,8 @@ func TestCycleBatchPersister_WithRealQueueAndWorker(t *testing.T) {
 	q := setupTestBatchQueue(t)
 	// Pas de worker démarré → submit irait dans le channel, mais ici
 	// on test que drain sur batch vide retourne tout de suite (WAL vide).
-	playerBy := mkPlayerMap("alice")
-	persister := NewCycleBatchPersister("halo_infinite", playerBy, q, 200*time.Millisecond)
+	_ = mkPlayerMap("alice") // unused after persister API change
+	persister := NewCycleBatchPersister("halo_infinite", q, 200*time.Millisecond)
 	start := time.Now()
 	err := persister.PersistCycle(context.Background(), CycleBatch{})
 	elapsed := time.Since(start)

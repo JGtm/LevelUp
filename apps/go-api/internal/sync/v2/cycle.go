@@ -194,7 +194,7 @@ func (o *CycleOrchestratorImpl) Run(
 	)
 
 	// ─── Phase 5 — Persist ──────────────────────────────────────────────
-	persistRes := RunPersist(ctx, fetched, enrichments, o.persister)
+	persistRes := RunPersist(ctx, fetched, enrichments, playerBySlug, o.persister)
 	res.PhaseDurations[PhasePersist] = persistRes.Duration
 	observability.RecordDurationMS("sync_v2_phase_duration_ms_persist", persistRes.Duration.Milliseconds())
 	observability.AddInt("sync_v2_matches_persisted_total", int64(persistRes.MatchesPersisted))
