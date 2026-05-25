@@ -13,100 +13,10 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
 import { buildPlayerDestination } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
-import { useJobStatus } from '@/features/setup/queries'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
-// ─── SyncStatusIndicator ───────────────────────────────────────────────────
-
-/**
- * Indicateur permanent de statut de sync dans la L1.
- * - Check vert : aucun sync en cours (repos).
- * - Spinner   : sync en cours (job actif).
- * Se réinitialise automatiquement quand le job passe en état terminal.
- */
-function SyncStatusIndicator() {
-  const activeSyncJobId = useAppShellStore((s) => s.activeSyncJobId)
-  const setActiveSyncJobId = useAppShellStore((s) => s.setActiveSyncJobId)
-  const { data } = useJobStatus(activeSyncJobId ?? '', !!activeSyncJobId)
-  const status = data?.status
-  const locale = useAppShellStore((s) => s.locale)
-  const t = (key: CommonManifestKey) => formatMessage(commonManifest, key, locale)
-
-  useEffect(() => {
-    if (
-      activeSyncJobId &&
-      (status === 'succeeded' ||
-        status === 'failed' ||
-        status === 'cancelled' ||
-        status === 'interrupted')
-    ) {
-      setActiveSyncJobId(null)
-    }
-  }, [status, activeSyncJobId, setActiveSyncJobId])
-
-  const isRunning =
-    !!activeSyncJobId &&
-    status !== 'succeeded' &&
-    status !== 'failed' &&
-    status !== 'cancelled' &&
-    status !== 'interrupted'
-
-  if (isRunning) {
-    return (
-      <span
-        title={t('common.shell.sync_running_title')}
-        aria-label={t('common.shell.sync_running_aria')}
-        className="flex shrink-0 items-center"
-      >
-        <svg
-          className="h-3.5 w-3.5 animate-spin text-sidebar-primary"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          />
-        </svg>
-      </span>
-    )
-  }
-
-  return (
-    <span
-      title={t('common.shell.sync_uptodate_title')}
-      aria-label={t('common.shell.sync_uptodate_aria')}
-      className="flex shrink-0 items-center"
-    >
-      <svg
-        className="h-3.5 w-3.5 text-success"
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 20 20"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path
-          fillRule="evenodd"
-          d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-          clipRule="evenodd"
-        />
-      </svg>
-    </span>
-  )
-}
 // ─── Icône flamme (label Ascension) ──────────────────────────────────────────
 
 function NavFlameIcon() {
@@ -521,7 +431,6 @@ export function NavL1() {
       {/* ── Gamertag / sélecteur joueur ──────────────────────────────────── */}
       {availablePlayers.length > 1 ? (
         <div className="flex items-center gap-1.5">
-          <SyncStatusIndicator />
           <select
             value={playerSlug}
             onChange={(e) => handlePlayerChange(e.target.value)}
@@ -537,8 +446,7 @@ export function NavL1() {
         </div>
       ) : (
         currentPlayer && (
-          <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-sidebar-foreground/70">
-            <SyncStatusIndicator />
+          <span className="text-sm font-medium text-sidebar-foreground/70">
             {currentPlayer.gamertag}
           </span>
         )

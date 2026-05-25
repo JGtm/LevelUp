@@ -149,9 +149,6 @@ export function HomeBattlePassPanel({
           </div>
         </div>
 
-        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          {featuredPass.description ?? t('home.battle_pass.no_description')}
-        </p>
       </CardHeader>
 
       <CardContent className="relative space-y-6">

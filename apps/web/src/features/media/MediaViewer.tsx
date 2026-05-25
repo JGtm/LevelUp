@@ -137,6 +137,10 @@ interface MediaThumbnailCardProps {
   likeDisabled?: boolean
   /** Slug du joueur courant pour construire le lien vers la page du match. */
   playerSlug?: string
+  /** Gamertag du joueur actif — permet d'afficher le tag de l'auteur uniquement
+   *  quand le média appartient à quelqu'un d'autre, et de masquer l'association
+   *  sur les médias d'autrui. */
+  currentPlayerGamertag?: string
   /** Si renseigné et égal à `item.match_id`, supprime le lien "Voir le match"
    *  (on est déjà sur la page du match associé). */
   currentMatchId?: string | null
@@ -155,6 +159,7 @@ export function MediaThumbnailCard({
   onOpen,
   likeDisabled = false,
   playerSlug,
+  currentPlayerGamertag,
   currentMatchId,
   onAssociate,
   onOpenMatch,
@@ -167,7 +172,11 @@ export function MediaThumbnailCard({
   const hasMatch = Boolean(item.match_id)
   const isCurrentMatch = hasMatch && currentMatchId === item.match_id
   const showViewMatchLink = hasMatch && !isCurrentMatch && Boolean(playerSlug)
-  const showAssociateLink = !hasMatch && Boolean(onAssociate)
+  const isOwnMedia = !item.owner_gamertag || item.owner_gamertag === currentPlayerGamertag
+  const showAssociateLink = !hasMatch && Boolean(onAssociate) && isOwnMedia
+  const ownerTag = !isOwnMedia && item.owner_gamertag
+    ? item.owner_gamertag.length > 12 ? `${item.owner_gamertag.slice(0, 12)}…` : item.owner_gamertag
+    : null
 
   return (
     <article
@@ -244,6 +253,11 @@ export function MediaThumbnailCard({
               />
             </svg>
           </div>
+        )}
+        {ownerTag && (
+          <span className="absolute left-1.5 top-1.5 rounded-full bg-card/70 px-2 py-0.5 text-3xs font-semibold text-muted-foreground backdrop-blur-sm">
+            {ownerTag}
+          </span>
         )}
         <MediaLikeButton
           compact

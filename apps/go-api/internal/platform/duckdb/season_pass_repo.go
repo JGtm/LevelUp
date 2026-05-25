@@ -372,7 +372,7 @@ func (r *SeasonPassRepo) loadItemMetadataMap(
 		}
 		itemMap[itemPath.String] = seasonPassItemMeta{
 			Title:       coalesceNullString(title),
-			Description: nullStringPtr(description),
+			Description: descriptionPtr(description),
 			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "tier"),
 			Quality:     nullStringPtr(quality),
 			ItemType:    nullStringPtr(itemType),
@@ -462,7 +462,7 @@ func (r *SeasonPassRepo) fillItemsFromAssetIndex(
 		}
 		itemMap[id.String] = seasonPassItemMeta{
 			Title:       coalesceNullString(title),
-			Description: nullStringPtr(description),
+			Description: descriptionPtr(description),
 			ImageURL:    localBPImageURL(coalesceNullString(displayPath), "tier"),
 			Quality:     nullStringPtr(quality),
 			ItemType:    nullStringPtr(itemType),
@@ -940,7 +940,7 @@ func payloadDescription(payload *seasonPassTrackPayload) *string {
 		return nil
 	}
 	value := localizedText(payload.Description)
-	if value == "" {
+	if value == "" || isPlaceholderDescription(value) {
 		return nil
 	}
 	return &value
@@ -982,6 +982,27 @@ func nullStringPtr(value sql.NullString) *string {
 		return nil
 	}
 	return &text
+}
+
+// isPlaceholderDescription retourne true pour les valeurs de description
+// que GameCMS (Halo Infinite) laisse comme placeholder sans contenu réel.
+// Couvre : "Placeholder Text" littéral, strings de dev du type "S5 Large Op Pass Description".
+func isPlaceholderDescription(s string) bool {
+	t := strings.TrimSpace(s)
+	switch strings.ToLower(t) {
+	case "placeholder text", "placeholder", "tbd", "todo", "":
+		return true
+	}
+	// Strings internes 343 : "S5 Large Op Pass Description", "S6 Medium Op Pass 3 Description"…
+	return strings.HasSuffix(t, " Description") && len(t) < 60
+}
+
+func descriptionPtr(value sql.NullString) *string {
+	p := nullStringPtr(value)
+	if p == nil || isPlaceholderDescription(*p) {
+		return nil
+	}
+	return p
 }
 
 func mapKeys(values map[string]struct{}) []string {

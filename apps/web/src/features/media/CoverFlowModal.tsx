@@ -27,6 +27,9 @@ interface CoverFlowModalProps {
   /** Callback ouvrant le picker d'(ré)association. Le label affiché passe
    *  automatiquement de "Associer" à "Réassocier" selon `item.match_id`. */
   onReassociate?: (item: MediaItemRow) => void
+  /** Gamertag du joueur actif — masque le bouton (ré)association sur les médias
+   *  qui ne lui appartiennent pas. */
+  currentPlayerGamertag?: string
   /** Slug du joueur courant pour construire le lien "Voir le match". */
   playerSlug?: string
   /** Si renseigné et égal à `currentItem.match_id`, supprime le lien
@@ -143,6 +146,7 @@ export function CoverFlowModal({
   globalIndexOffset = 0,
   globalTotal,
   onReassociate,
+  currentPlayerGamertag,
   playerSlug,
   currentMatchId,
   onOpenMatch,
@@ -352,7 +356,7 @@ export function CoverFlowModal({
                 </a>
               )
             )}
-            {onReassociate && (
+            {onReassociate && (!currentPlayerGamertag || currentItem.owner_gamertag === currentPlayerGamertag) && (
               <button
                 type="button"
                 onClick={(e) => {

@@ -211,29 +211,24 @@ export function BattlePassRewardLightbox({
             )}
           </div>
 
-          {/* Pied : badges + description */}
-          {(current.badges?.length || current.description || rarityTier) && (
+          {/* Pied : badges + rareté */}
+          {(current.badges?.length || rarityTier) && (
             <div className="space-y-3 border-t border-border bg-muted/40 px-5 py-4">
-              {(current.badges?.length || rarityTier) && (
-                <div className="flex flex-wrap gap-2">
-                  {rarityTier && rarityStyles && (
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${rarityStyles.badge}`}
-                      data-testid="battle-pass-reward-lightbox-rarity"
-                    >
-                      {rarityLabel(rarityTier)}
-                    </span>
-                  )}
-                  {current.badges?.map((badge, i) => (
-                    <Badge key={`${badge.label}-${i}`} variant={badgeVariantFor(badge.tone)}>
-                      {badge.label}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              {current.description && (
-                <p className="text-sm leading-6 text-foreground">{current.description}</p>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {rarityTier && rarityStyles && (
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${rarityStyles.badge}`}
+                    data-testid="battle-pass-reward-lightbox-rarity"
+                  >
+                    {rarityLabel(rarityTier)}
+                  </span>
+                )}
+                {current.badges?.map((badge, i) => (
+                  <Badge key={`${badge.label}-${i}`} variant={badgeVariantFor(badge.tone)}>
+                    {badge.label}
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
 
