@@ -254,6 +254,24 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 		result.Thumbnails += n
 	}
 
+	// CHECKPOINT explicite : vide le WAL DuckDB sur disque immédiatement
+	// après l'indexation. Sans ça, le WAL accumulait les writes (INSERT,
+	// UPDATE thumbnail, INSERT association) jusqu'au prochain checkpoint
+	// automatique (qui dépend de la taille du WAL) ou jusqu'à la fermeture
+	// du process. Si Air kill brutalement (Windows SIGKILL) avant ce
+	// CHECKPOINT, le WAL restait avec des writes non-checkpointed et au
+	// reboot DuckDB tentait de les rejouer → bug upstream #7659 :
+	// "INTERNAL Error: Failure while replaying WAL file: Calling
+	// DatabaseManager::GetDefaultDatabase".
+	//
+	// Best-effort : si CHECKPOINT échoue (lock contention, etc.), les data
+	// sont commit donc OK fonctionnellement — on loggue WARN pour
+	// traçabilité.
+	if _, ckptErr := db.ExecContext(ctx, "CHECKPOINT"); ckptErr != nil {
+		slog.WarnContext(ctx, "IndexMedia: CHECKPOINT échoué (non-fatal — données committed)",
+			"path", targetPath, "err", ckptErr)
+	}
+
 	slog.Info("IndexMedia: terminé",
 		"scanned", result.Scanned,
 		"new_files", result.NewFiles,
