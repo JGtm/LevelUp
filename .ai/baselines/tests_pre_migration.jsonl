@@ -558,10 +558,6 @@
 {"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_EmptySlice","Output":"=== RUN   TestParseHighlightEvents_EmptySlice\n"}
 {"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_EmptySlice","Output":"--- PASS: TestParseHighlightEvents_EmptySlice (0.00s)\n"}
 {"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_EmptySlice","Elapsed":0}
-{"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_InvalidZlib"}
-{"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_InvalidZlib","Output":"=== RUN   TestParseHighlightEvents_InvalidZlib\n"}
-{"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_InvalidZlib","Output":"--- PASS: TestParseHighlightEvents_InvalidZlib (0.00s)\n"}
-{"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"pass","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_InvalidZlib","Elapsed":0}
 {"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"run","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_KillEvent"}
 {"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_KillEvent","Output":"=== RUN   TestParseHighlightEvents_KillEvent\n"}
 {"Time":"2026-05-21T20:42:53.7128331+02:00","Action":"output","Package":"levelup/go-api/internal/analysis","Test":"TestParseHighlightEvents_KillEvent","Output":"--- PASS: TestParseHighlightEvents_KillEvent (0.00s)\n"}

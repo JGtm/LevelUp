@@ -80,9 +80,9 @@ function ChallengePill({
   const label = locale === 'fr' ? ch.label_fr : ch.label_en
   const tierColor =
     ch.target_tier === 'legendary'
-      ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+      ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300' // color-allow: prestige tier badge — CLAUDE.md §20
       : ch.target_tier === 'heroic'
-        ? 'border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-300'
+        ? 'border-purple-500/50 bg-purple-500/10 text-purple-700 dark:text-purple-300' // color-allow: prestige tier badge — CLAUDE.md §20
         : 'border-border bg-muted text-muted-foreground'
 
   return (

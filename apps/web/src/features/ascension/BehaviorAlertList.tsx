@@ -4,7 +4,7 @@
  * Affiche sévérité + Evidence + conseil actionnable pour chaque pattern.
  * Masqué si la liste est vide.
  */
-import type { BehavioralPattern, BehaviorType, PatternSeverity } from './types'
+import type { BehavioralPattern, PatternSeverity } from './types'
 import type { AscensionText } from './i18n'
 
 interface BehaviorAlertListProps {
@@ -65,17 +65,17 @@ function severityStyle(severity: PatternSeverity) {
   switch (severity) {
     case 'high':
       return {
-        borderCls: 'border-red-500/40',
-        bgCls: 'bg-red-500/5',
-        labelCls: 'text-red-700 dark:text-red-300',
-        badgeCls: 'bg-red-500/20 text-red-700 dark:text-red-300',
+        borderCls: 'border-red-500/40', // color-allow: severity badge — CLAUDE.md §20
+        bgCls: 'bg-red-500/5', // color-allow: severity badge — CLAUDE.md §20
+        labelCls: 'text-red-700 dark:text-red-300', // color-allow: severity badge — CLAUDE.md §20
+        badgeCls: 'bg-red-500/20 text-red-700 dark:text-red-300', // color-allow: severity badge — CLAUDE.md §20
       }
     case 'medium':
       return {
-        borderCls: 'border-amber-500/40',
-        bgCls: 'bg-amber-500/5',
-        labelCls: 'text-amber-700 dark:text-amber-300',
-        badgeCls: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+        borderCls: 'border-amber-500/40', // color-allow: severity badge — CLAUDE.md §20
+        bgCls: 'bg-amber-500/5', // color-allow: severity badge — CLAUDE.md §20
+        labelCls: 'text-amber-700 dark:text-amber-300', // color-allow: severity badge — CLAUDE.md §20
+        badgeCls: 'bg-amber-500/20 text-amber-700 dark:text-amber-300', // color-allow: severity badge — CLAUDE.md §20
       }
     default:
       return {

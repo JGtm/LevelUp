@@ -44,17 +44,17 @@ export function PatternContextGrid({ patterns, t }: PatternContextGridProps) {
 
 function ContextCard({ pattern: p, t }: { pattern: ContextualPattern; t: AscensionText }) {
   const signalClass = {
-    strength: 'border-green-500/40 bg-green-500/5',
-    weakness: 'border-red-500/40 bg-red-500/5',
+    strength: 'border-green-500/40 bg-green-500/5', // color-allow: signal state — CLAUDE.md §20
+    weakness: 'border-red-500/40 bg-red-500/5', // color-allow: signal state — CLAUDE.md §20
     neutral: 'border-border bg-card',
   }[p.signal]
 
   const deltaSign = p.delta >= 0 ? '+' : ''
   const deltaClass =
     p.delta > 0
-      ? 'text-green-600 dark:text-green-400'
+      ? 'text-green-600 dark:text-green-400' // color-allow: delta trend — CLAUDE.md §20
       : p.delta < 0
-        ? 'text-red-500 dark:text-red-400'
+        ? 'text-red-500 dark:text-red-400' // color-allow: delta trend — CLAUDE.md §20
         : 'text-muted-foreground'
 
   return (
@@ -80,11 +80,11 @@ function SignalBadge({ signal, t }: { signal: ContextualPattern['signal']; t: As
   const map = {
     strength: {
       label: t.signalStrength ?? 'Force',
-      cls: 'bg-green-500/20 text-green-700 dark:text-green-300',
+      cls: 'bg-green-500/20 text-green-700 dark:text-green-300', // color-allow: signal state — CLAUDE.md §20
     },
     weakness: {
       label: t.signalWeakness ?? 'Faiblesse',
-      cls: 'bg-red-500/20 text-red-700 dark:text-red-300',
+      cls: 'bg-red-500/20 text-red-700 dark:text-red-300', // color-allow: signal state — CLAUDE.md §20
     },
     neutral: {
       label: t.signalNeutral ?? 'Neutre',
