@@ -20,6 +20,7 @@ import type { TabProps } from './_settingsShared'
 import { GeneralTab } from './GeneralTab'
 import { SyncTab } from './SyncTab'
 import { AnalyseTab } from './AnalyseTab'
+import { BackupTab } from './BackupTab'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 
@@ -107,9 +108,10 @@ export function SettingsPage() {
       | 'users'
       | 'accessibility'
       | 'notifications'
+      | 'backup'
       | null) ?? 'general'
 
-  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications') {
+  function setActiveTab(tab: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup') {
     navigate({ to: '/settings', search: { tab }, replace: true }).catch(() => {})
   }
 
@@ -169,9 +171,10 @@ export function SettingsPage() {
               { id: 'analyse', label: t.tabAnalyse },
               { id: 'accessibility', label: t.tabAccessibility },
               { id: 'notifications', label: locale === 'en' ? 'Notifications' : 'Notifications' },
+              { id: 'backup', label: t.tabBackup },
               ...(canManageInstance ? [{ id: 'lab', label: t.tabLab }] : []),
               ...(isAdmin ? [{ id: 'users', label: t.tabUsers }] : []),
-            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications'; label: string }[]
+            ] as { id: 'general' | 'sync' | 'analyse' | 'lab' | 'users' | 'accessibility' | 'notifications' | 'backup'; label: string }[]
           ).map(({ id, label }) => (
             <button
               key={id}
@@ -205,6 +208,7 @@ export function SettingsPage() {
         {activeTab === 'users' && <UsersTab merged={merged} handleChange={handleChange} t={t} />}
         {activeTab === 'accessibility' && <AccessibilityTab t={t} locale={locale} />}
         {activeTab === 'notifications' && <NotificationsSettingsTab />}
+        {activeTab === 'backup' && <BackupTab t={t} />}
       </div>
     </div>
   )

@@ -217,6 +217,27 @@ export interface SettingsText {
   allyColorLabel: string
   enemyColorLabel: string
   teamColorDefault: string
+
+  // Onglet Backup
+  tabBackup: string
+  backupTitle: string
+  backupStatusEnabled: string
+  backupStatusDisabled: string
+  backupStatusResticMissing: string
+  backupLastBackup: string
+  backupNever: string
+  backupSnapshotId: string
+  backupDatabases: string
+  backupDuration: string
+  backupRunButton: string
+  backupRunning: string
+  backupRunDone: string
+  backupRunSkipped: string
+  backupRunError: string
+  backupConfigTitle: string
+  backupConfigInterval: string
+  backupConfigRetention: string
+  backupConfigRetentionValue: string
 }
 
 const FR_TEXT: SettingsText = {
@@ -453,6 +474,26 @@ const FR_TEXT: SettingsText = {
   allyColorLabel: 'Couleur alliés',
   enemyColorLabel: 'Couleur ennemis',
   teamColorDefault: 'Défaut palette',
+
+  tabBackup: 'Sauvegarde',
+  backupTitle: 'Sauvegarde des bases DuckDB',
+  backupStatusEnabled: 'Activée',
+  backupStatusDisabled: 'Désactivée',
+  backupStatusResticMissing: 'Restic introuvable',
+  backupLastBackup: 'Dernière sauvegarde',
+  backupNever: 'Jamais sauvegardé',
+  backupSnapshotId: 'Snapshot',
+  backupDatabases: 'Bases sauvegardées',
+  backupDuration: 'Durée',
+  backupRunButton: 'Sauvegarder maintenant',
+  backupRunning: 'Sauvegarde en cours…',
+  backupRunDone: 'Sauvegarde terminée',
+  backupRunSkipped: 'Aucune modification — cycle ignoré',
+  backupRunError: 'Erreur lors de la sauvegarde',
+  backupConfigTitle: 'Configuration',
+  backupConfigInterval: 'Intervalle',
+  backupConfigRetention: 'Rétention',
+  backupConfigRetentionValue: '{daily}j / {weekly}s / {monthly}m',
 }
 
 const EN_TEXT: SettingsText = {
@@ -690,6 +731,26 @@ const EN_TEXT: SettingsText = {
   allyColorLabel: 'Ally colour',
   enemyColorLabel: 'Enemy colour',
   teamColorDefault: 'Palette default',
+
+  tabBackup: 'Backup',
+  backupTitle: 'DuckDB backup',
+  backupStatusEnabled: 'Enabled',
+  backupStatusDisabled: 'Disabled',
+  backupStatusResticMissing: 'Restic not found',
+  backupLastBackup: 'Last backup',
+  backupNever: 'Never backed up',
+  backupSnapshotId: 'Snapshot',
+  backupDatabases: 'Databases backed up',
+  backupDuration: 'Duration',
+  backupRunButton: 'Back up now',
+  backupRunning: 'Backup in progress…',
+  backupRunDone: 'Backup complete',
+  backupRunSkipped: 'No changes — cycle skipped',
+  backupRunError: 'Backup error',
+  backupConfigTitle: 'Configuration',
+  backupConfigInterval: 'Interval',
+  backupConfigRetention: 'Retention',
+  backupConfigRetentionValue: '{daily}d / {weekly}w / {monthly}m',
 }
 
 const TEXT: Record<SettingsLocale, SettingsText> = {
