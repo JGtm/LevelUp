@@ -59,7 +59,7 @@ func BackupPlayer(ctx context.Context, opts BackupOptions) (BackupResult, error)
 		return BackupResult{}, fmt.Errorf("création répertoire backup: %w", err)
 	}
 
-	db, err := sql.Open("duckdb", opts.PlayerDBPath)
+	db, err := sql.Open("duckdb", opts.PlayerDBPath+"?access_mode=read_only")
 	if err != nil {
 		return BackupResult{}, fmt.Errorf("ouverture DB: %w", err)
 	}

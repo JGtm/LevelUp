@@ -1,3 +1,105 @@
+## [2026-05-25] fix(backup): audit final — bugs contrat + persistance + 8 nouveaux tests
+
+**Statut** : Complété — commit `a8290ad0`. 27 PASS, 2 SKIP (restic non présent en CI local).
+
+**Branche** : `feat/duckdb-backup-pkg`.
+
+**Bugs corrigés** :
+1. `Result` sans JSON tags → champs PascalCase côté API (`Skipped` au lieu de `skipped`). Fix : JSON tags + `DurationMs int64` (au lieu de `Duration time.Duration` qui donnait des nanosecondes avec le label `duration_ms`).
+2. `IntegrityChecks` non persistés quand tous les exports échouent (ex : fichier corrompu qui ne peut pas être exporté). Fix : `manifest.SaveIntegrityOnly()` (n'écrase pas `LastBackupAt`) + flag `integrityChecked` dans `cycle()`.
+3. Commentaire `CheckIntegrity` trompeur ("open errors → OK=true") corrigé : les erreurs d'ouverture donnent bien `OK=false`.
+4. `BackupStatusResponse.config` requis en TypeScript mais absent quand `backupSched == nil` → `config?` optionnel.
+
+**Tests ajoutés (8)** :
+- `TestExportTarget_Basic` : export réel DuckDB → 2 fichiers Parquet
+- `TestScheduler_Status_NoManifest` + `_WithManifest` : lecture manifest dans `Status()`
+- `TestScheduler_IntegrityPersistedOnExportFail` : `SaveIntegrityOnly` appelé même si export échoue
+- `TestManifest_SaveIntegrityOnly` : `LastBackupAt` non modifié
+- `TestGetBackupStatus_NilScheduler` + `_WithScheduler` : handlers HTTP
+- `TestPostBackupRun_NilScheduler` (503) + `_Skipped` (200 + `skipped:true`)
+
+**Conclusion** : Feature backup complète, contrat API correct, couverture solide. Branche prête à merger.
+
+---
+
+## [2026-05-25] feat(backup): PRAGMA integrity_check informationnel par base — UI + manifest
+
+**Statut** : Complété — Go tests PASS (3 nouveaux), TS check silencieux.
+
+**Branche** : `feat/duckdb-backup-pkg`.
+
+**Décision technique principale** :
+- `CheckIntegrity(ctx, Target) IntegrityResult` dans `exporter.go` : ouvre la DB en read-only, lance `PRAGMA integrity_check`. Si le pragma n'est pas supporté (erreur DuckDB), retourne `OK=true` (inconclusif, non-bloquant). Si la première ligne n'est pas "ok", retourne `OK=false, Detail=firstLine`.
+- Appelé dans `scheduler.cycle()` avant `ExportTarget` pour chaque DB modifiée. Warning slog si `!ic.OK`. **Ne bloque jamais le backup.**
+- `manifest.go` : champ `IntegrityChecks map[string]IntegrityResult` + `SetIntegrityResult(key, res)` — persisté dans `.manifest.json`.
+- `SchedulerStatus.IntegrityChecks` exposé dans `GET /settings/backup/status` — lu depuis le manifest au prochain appel.
+- Frontend : `IntegrityBadge` (✓ vert / ⚠ amber avec title=detail) dans `BackupTab`, row "Intégrité" dans le dl grid après les bases sauvegardées.
+
+**Résultats observés** :
+- `TestCheckIntegrity_ValidDB`, `TestCheckIntegrity_NonDBFile`, `TestManifest_SetIntegrityResult` : PASS
+- `go build ./...` + `npx tsc --noEmit` : silencieux
+
+**Conclusion / prochaine étape** :
+Feature backup complète (pkg + scheduler + UI + integrity check). Branche prête à merger.
+
+---
+
+## [2026-05-25] feat(backup): onglet Sauvegarde dans Settings — statut + déclenchement manuel
+
+**Statut** : Complété — commit `5ef30038`, Go tests + TS check verts.
+
+**Branche** : `feat/duckdb-backup-pkg`.
+
+**Décision technique principale** :
+- `manifest.go` : 3 nouveaux champs persistants (`LastSnapshotID`, `LastExported`, `LastDurationMs`) + `SetLastResult()` — survit aux redémarrages.
+- `scheduler.go` : `SchedulerStatus` + `Status()` — lit le manifest + `IsAvailable()` → source de vérité unique pour l'UI.
+- `settings_backup.go` : handlers séparés (settings.go déjà à 422L) — `GetBackupStatus` (GET) + `PostBackupRun` synchrone 10 min (pas de job async pour un usage admin occasionnel).
+- `NewRouter` étendu avec `*duckdbbackup.Scheduler` (7e param) — `backupSched` créé inconditionnellement dans `main.go`, `Run()` appelé seulement si enabled.
+- Frontend : `BackupTab` autonome (badge statut, last backup, DBs en chips, bouton), i18n fr+en complet.
+
+**Résultats observés** :
+- `go test ./pkg/duckdbbackup/... ./internal/api/... ./contracttest/...` : PASS
+- `npx tsc --noEmit` : silencieux
+- contract_helpers_test.go : call site `NewRouter` corrigé (+1 arg nil)
+
+**Conclusion / prochaine étape** :
+Branche prête à merger. Activation effective : `"backup_enabled": true` + `RESTIC_REPOSITORY` + `restic init`.
+
+---
+
+## [2026-05-25] feat/duckdb-backup-pkg — pkg générique Restic + adaptateur LevelUp + tests
+
+**Statut** : Complété — 3 commits sur `feat/duckdb-backup-pkg`, 19 tests PASS (4 skipped sans restic en PATH).
+
+**Branche** : `feat/duckdb-backup-pkg` (depuis `fix/art-eradication-and-home-resilience`).
+
+**Décision technique principale** :
+- `pkg/duckdbbackup/` : package zéro-import-interne, réutilisable sur tout projet Go+DuckDB.
+- `Scheduler` injecte la découverte via `func() ([]Target, error)` — pas de couplage LevelUp.
+- Fingerprint `mtime+size` via `os.Stat()` : si tous les fichiers sont inchangés → `Result{Skipped:true}`, aucun appel restic.
+- `--insecure-no-password` injecté automatiquement si `ResticPassword` et `ResticPwdFile` sont vides.
+- Comportements (enabled, interval, rétention) dans `app_settings.json` ; chemins machine dans env (`LEVELUP_BACKUP_DIR`, `RESTIC_REPOSITORY`).
+- `internal/ops/backup_service.go` : adaptateur mince — convertit `config.BackupConfig` → `duckdbbackup.Config`, découvre les DBs LevelUp via `title.PathResolver`.
+- Export via `?access_mode=read_only` : évite conflit avec la connexion RW du serveur.
+- Manifest atomique : écriture `.tmp` + `os.Rename()`.
+
+**Fichiers créés** :
+- `pkg/duckdbbackup/{target,config,manifest,exporter,restic,scheduler}.go`
+- `internal/ops/backup_service.go`
+- `internal/config/` : `BackupConfig` struct + `loadBackupConfig()` (JSON behavior + env paths)
+- Tests : `pkg/duckdbbackup/{restic,config,scheduler}_test.go` + `internal/config/backup_config_test.go`
+- `app_settings.example.json` : 5 clés backup ajoutées
+- `.ai/BACKUP_PLAN.md` : plan détaillé (10 sections)
+
+**Bug corrigé** : `ops/backup.go` ouvrait la player DB sans `?access_mode=read_only` — conflit potentiel si le serveur tourne.
+
+**Résultats observés** :
+- `go test ./pkg/duckdbbackup/... ./internal/config/...` : 19 tests PASS, 4 skipped (restic absent)
+- `go build ./...` : silencieux
+- Import cycle évité : `config` n'importe pas `pkg/duckdbbackup`, conversion dans `ops/`
+
+**Conclusion / prochaine étape** :
+Branche prête à merger dans `fix/art-eradication-and-home-resilience`. Activation effective nécessite : `"backup_enabled": true` dans `app_settings.json` + `RESTIC_REPOSITORY` dans `.env.local` + `restic init`.
 ## [2026-05-25] Restore backup pré-crash + backfill CSR + backup data/backups/
 
 **Statut** : Complété
