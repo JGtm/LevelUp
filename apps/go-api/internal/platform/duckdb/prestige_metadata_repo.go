@@ -106,14 +106,18 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 		if err != nil {
 			return fmt.Errorf("encode radar_axes for %s: %w", t.ID, err)
 		}
+		source := t.Source
+		if source == "" {
+			source = "catalog"
+		}
 		if _, err := r.db.Exec(ctx, `
 			INSERT INTO challenge_template (
 				id, title_slug, metric, window_type, window_value, cadence, eval_type,
 				mode_filter, label_en, label_fr, description_en, description_fr,
 				normal_target, heroic_target, legendary_target, mythic_target,
-				lusr_components, radar_axes, is_long_term,
+				lusr_components, radar_axes, is_long_term, source,
 				schema_version, updated_at
-			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+			) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 			ON CONFLICT (id) DO UPDATE SET
 				title_slug       = excluded.title_slug,
 				metric           = excluded.metric,
@@ -133,13 +137,14 @@ func (r *PrestigeTemplateRepo) Replace(ctx context.Context, titleSlug string, te
 				lusr_components  = excluded.lusr_components,
 				radar_axes       = excluded.radar_axes,
 				is_long_term     = excluded.is_long_term,
+				source           = excluded.source,
 				schema_version   = excluded.schema_version,
 				updated_at       = excluded.updated_at`,
 			t.ID, t.TitleSlug, t.Metric, string(t.WindowType), t.WindowValue,
 			string(t.Cadence), string(t.EvalType), t.ModeFilter,
 			t.LabelEN, t.LabelFR, t.DescriptionEN, t.DescriptionFR,
 			t.NormalTarget, t.HeroicTarget, t.LegendaryTarget, t.MythicTarget,
-			lusrJSON, radarJSON, t.IsLongTerm,
+			lusrJSON, radarJSON, t.IsLongTerm, source,
 			t.SchemaVersion, t.UpdatedAt,
 		); err != nil {
 			return fmt.Errorf("upsert %s: %w", t.ID, err)
@@ -154,6 +159,7 @@ const templateSelectColumns = `
 	       label_en, label_fr, COALESCE(description_en, ''), COALESCE(description_fr, ''),
 	       normal_target, heroic_target, legendary_target, mythic_target,
 	       COALESCE(lusr_components, ''), COALESCE(radar_axes, ''), COALESCE(is_long_term, FALSE),
+	       COALESCE(source, 'catalog'),
 	       schema_version, updated_at
 	FROM challenge_template`
 
@@ -167,6 +173,7 @@ func scanTemplate(row rowScanner) (prestige.Template, error) {
 		&t.LabelEN, &t.LabelFR, &t.DescriptionEN, &t.DescriptionFR,
 		&t.NormalTarget, &t.HeroicTarget, &t.LegendaryTarget, &t.MythicTarget,
 		&lusrJSON, &radarJSON, &t.IsLongTerm,
+		&t.Source,
 		&t.SchemaVersion, &t.UpdatedAt,
 	)
 	if err != nil {
