@@ -52,6 +52,7 @@ import (
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
+	"levelup/go-api/internal/ops"
 	syncpkg "levelup/go-api/internal/sync"
 	"levelup/go-api/internal/watcher"
 )
@@ -672,6 +673,19 @@ func main() {
 		defer schedulerWG.Done()
 		healthScheduler.Run(schedulerCtx)
 	}()
+
+	// Backup périodique DuckDB via restic (pkg/duckdbbackup).
+	// Activé par LEVELUP_BACKUP_ENABLED=true + RESTIC_REPOSITORY dans .env.local.
+	if cfg.Backup.Enabled {
+		backupSched := ops.NewLevelUpBackupScheduler(cfg.Backup, pr)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			backupSched.Run(schedulerCtx)
+		}()
+	} else {
+		slog.Debug("backup: désactivé (LEVELUP_BACKUP_ENABLED non défini)")
+	}
 
 	// Convertir en interface (nil safe : un *Daemon nil ne doit pas devenir une interface non-nil)
 	var watcherCtrl watcher.DaemonController
