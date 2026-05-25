@@ -28,7 +28,7 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
         <div className="space-y-1">
           <p className="text-xs font-medium text-muted-foreground">{t.squadVsSoloSolo}</p>
           <StatRow label={t.patternWinRate} value={pct(solo.win_rate)} />
-          <StatRow label="KDA" value={solo.avg_kda.toFixed(2)} />
+          <StatRow label={t.metric?.kda ?? 'KDA'} value={solo.avg_kda.toFixed(2)} />
           <StatRow label="OC" value={solo.avg_oc.toFixed(2)} />
           <StatRow label="DR" value={solo.avg_dr.toFixed(2)} />
           <p className="text-[10px] text-muted-foreground">{solo.match_count} {t.patternMatches}</p>
@@ -40,7 +40,7 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
             value={pct(squad.win_rate)}
             highlight={better === 'squad'}
           />
-          <StatRow label="KDA" value={squad.avg_kda.toFixed(2)} highlight={squad.avg_kda > solo.avg_kda} />
+          <StatRow label={t.metric?.kda ?? 'KDA'} value={squad.avg_kda.toFixed(2)} highlight={squad.avg_kda > solo.avg_kda} />
           <StatRow label="OC" value={squad.avg_oc.toFixed(2)} />
           <StatRow label="DR" value={squad.avg_dr.toFixed(2)} />
           <p className="text-[10px] text-muted-foreground">{squad.match_count} {t.patternMatches}</p>
@@ -54,7 +54,7 @@ function StatRow({ label, value, highlight = false }: { label: string; value: st
   return (
     <div className="flex items-center justify-between text-xs">
       <span className="text-muted-foreground">{label}</span>
-      <span className={highlight ? 'font-semibold text-green-600 dark:text-green-400' : ''}>{value}</span>
+      <span className={highlight ? 'font-semibold text-green-600 dark:text-green-400' /* color-allow: highlight stat — CLAUDE.md §20 */ : ''}>{value}</span>
     </div>
   )
 }

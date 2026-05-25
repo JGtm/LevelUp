@@ -103,8 +103,8 @@ function AxisInsightGroup({
             <span
               className={
                 variant === 'strength'
-                  ? 'font-semibold text-green-600 dark:text-green-400'
-                  : 'font-semibold text-amber-600 dark:text-amber-400'
+                  ? 'font-semibold text-green-600 dark:text-green-400' // color-allow: strength/weakness indicator — CLAUDE.md §20
+                  : 'font-semibold text-amber-600 dark:text-amber-400' // color-allow: strength/weakness indicator — CLAUDE.md §20
               }
             >
               {Math.round(item.value)}

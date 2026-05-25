@@ -45,9 +45,9 @@ function ComponentBar({ component: c, t }: { component: LUSRComponentBreakdown; 
   const trendIcon = c.trend > 0.02 ? '↑' : c.trend < -0.02 ? '↓' : '→'
   const trendClass =
     c.trend > 0.02
-      ? 'text-green-600 dark:text-green-400'
+      ? 'text-green-600 dark:text-green-400' // color-allow: trend indicator — CLAUDE.md §20
       : c.trend < -0.02
-        ? 'text-red-500 dark:text-red-400'
+        ? 'text-red-500 dark:text-red-400' // color-allow: trend indicator — CLAUDE.md §20
         : 'text-muted-foreground'
 
   const label = t.lusrComponent?.[c.name] ?? c.name
@@ -65,7 +65,7 @@ function ComponentBar({ component: c, t }: { component: LUSRComponentBreakdown; 
         />
         {pctTarget > 0 && (
           <div
-            className="absolute inset-y-0 w-px bg-amber-500"
+            className={'absolute inset-y-0 w-px bg-amber-500' /* color-allow: tier target marker line — CLAUDE.md §20 */}
             style={{ left: `${pctTarget}%` }}
             title={t.lusrTargetForTier}
           />
