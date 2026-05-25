@@ -159,7 +159,9 @@ function buildGroups(items: MediaItemRow[], groupBy: string, text: MediaText, lo
 export function MediaPage() {
   const { playerSlug } = useParams({ from: '/players/$playerSlug/media' })
   const locale = useAppShellStore((state) => state.locale)
-  const currentPlayerGamertag = useAppShellStore((s) => s.currentPlayer?.gamertag)
+  const currentPlayerGamertag = useAppShellStore(
+    (s) => s.currentPlayer?.gamertag ?? s.availablePlayers.find((p) => p.player_slug === playerSlug)?.gamertag,
+  )
   const text = getMediaText(locale)
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
