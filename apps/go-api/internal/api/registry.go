@@ -775,6 +775,18 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
+// CareerLiveCtx retourne un CareerLiveService configuré pour le joueur slug.
+// Utilisé par le cron SpartanCustomizationCron qui itère sur tous les joueurs
+// du pool toutes les 8h pour rafraîchir la customisation Spartan.
+func (r *ServiceRegistry) CareerLiveCtx(ctx context.Context, slug string) (*service.CareerLiveService, *duckdb.PlayerDB, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, nil, err
+	}
+	homeRepo := r.newHomeRepo(pdb)
+	return r.newCareerLiveService(pdb, homeRepo), pdb, nil
+}
+
 // newCareerLiveService construit le service live carrière (XP + Spartan ID)
 // pour ce joueur. Le cache est process-level (partagé entre joueurs) ; les
 // dépendances DB sont scopées à la PlayerDB de ce joueur.

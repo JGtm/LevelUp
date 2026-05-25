@@ -761,11 +761,34 @@ func main() {
 		}
 	}
 
-	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
-	// CustomizationRefresher (scheduler 6h) supprimé. La customisation est
-	// désormais rafraîchie en LIVE à chaque visite home via CareerLiveService
-	// (background goroutine UPSERT dans `spartan_identity`). Le scheduler 6h
-	// dupliquait inutilement le travail du chemin live.
+	// PLAN_V2 Phase 8 (2026-05-26) : SpartanCustomizationCron tourne toutes
+	// les 8h (DefaultSpartanCustomizationInterval) pour rafraîchir la
+	// customisation Spartan de TOUS les joueurs configurés, indépendamment
+	// de l'usage UI. Réutilise CareerLiveService.GetSpartanIdentity (même
+	// path que la visite home) → kickoffBackgroundRefresh → persistPartial
+	// field-aware. Garantit qu'un joueur qui n'ouvre jamais l'app a quand
+	// même sa customisation populée en DB.
+	if autoSyncPool != nil && reg != nil {
+		// Provider qui adapte la signature ServiceRegistry.CareerLiveCtx vers
+		// celle attendue par le cron (retourne uniquement le SpartanIdentityFetcher).
+		provider := func(ctx context.Context, slug string) (scheduler.SpartanIdentityFetcher, error) {
+			svc, _, err := reg.CareerLiveCtx(ctx, slug)
+			if err != nil {
+				return nil, err
+			}
+			return svc, nil
+		}
+		spartanCron := scheduler.NewSpartanCustomizationCron(
+			cfg, autoSyncPool, provider, titleSlug, 0,
+		)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			spartanCron.Run(schedulerCtx)
+		}()
+		slog.InfoContext(ctx, "spartan_cron: scheduled",
+			"interval", scheduler.DefaultSpartanCustomizationInterval)
+	}
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
