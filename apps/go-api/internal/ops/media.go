@@ -263,11 +263,22 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	return result, nil
 }
 
-// AssociateMediaWithMatches associe chaque média au match dans la fenêtre [start_time, end_time].
-// Portage de MediaIndexer.associate_with_matches() Python.
-// sharedMatchesPath : chemin vers shared_matches_v2.duckdb (peut être vide — association ignorée).
+// AssociateMediaWithMatches associe chaque média au match dans la fenêtre
+// [start_time, end_time]. Orchestre les 4 helpers de media_associate.go :
+// chargement matchs (RO autonome) + chargement médias candidats + algorithme
+// pur Go + bulk insert.
+//
+// IMPORTANT : cette fonction ne fait PLUS de `ATTACH` cross-DB (contrairement
+// à l'ancienne version). Le ATTACH écrivait dans le WAL de shared_social une
+// entrée non-rejouable au reboot (bug DuckDB #7659), provoquant un crash
+// "Calling DatabaseManager::GetDefaultDatabase with no default database set"
+// à chaque restart serveur post-indexation. Fix permanent : faire la jointure
+// cross-DB côté Go (cf. media_associate.go pour l'algorithme).
+//
+// sharedMatchesPath : chemin vers shared_matches_v2.duckdb (vide = no-op).
 // bufferMin : buffer en minutes autour de la fenêtre du match (défaut 2).
-// timezone : IANA pour SET TimeZone (nécessaire car start_time est un TIMESTAMP naïf Paris).
+// timezone : DEPRECATED — conservé pour rétrocompat de signature mais plus
+// utilisé (les TIMESTAMPTZ sont déjà en UTC, plus besoin de SET TimeZone).
 func AssociateMediaWithMatches(ctx context.Context, db *sql.DB, sharedMatchesPath string, bufferMin int, timezone string) (int, error) {
 	if sharedMatchesPath == "" {
 		return 0, nil
@@ -276,75 +287,34 @@ func AssociateMediaWithMatches(ctx context.Context, db *sql.DB, sharedMatchesPat
 		bufferMin = 2
 	}
 
-	// SET TimeZone pour interpréter correctement les TIMESTAMP naïfs de match_registry.
-	if tz := SanitizeMediaTimezone(timezone); tz != "" {
-		if _, err := db.ExecContext(ctx, "SET TimeZone = '"+tz+"'"); err != nil {
-			slog.Warn("AssociateMediaWithMatches: SET TimeZone échoué",
-				"timezone", tz, "err", err)
-		}
-	}
 	slog.Debug("AssociateMediaWithMatches: démarrage",
 		"shared_matches_path", sharedMatchesPath,
-		"buffer_min", bufferMin,
-		"timezone", timezone)
+		"buffer_min", bufferMin)
 
-	// ATTACH la DB des matchs en lecture seule pour accéder à match_registry.
-	if _, err := db.ExecContext(ctx, fmt.Sprintf(`ATTACH '%s' AS shared_matches (READ_ONLY)`, sharedMatchesPath)); err != nil {
-		return 0, fmt.Errorf("attach shared_matches: %w", err)
-	}
-	defer db.ExecContext(ctx, `DETACH shared_matches`) //nolint:errcheck
-
-	// La capture doit se situer dans [start_utc - buffer, end_utc + buffer].
-	// start_time_utc/end_time_utc sont TIMESTAMPTZ UTC garanti (migration add_start_time_utc_to_match_registry).
-	// Fallback sur AT TIME ZONE 'UTC' pour les rares matchs sans start_time_utc.
-	//
-	// IMPORTANT : un média = UNE seule association. Algorithme de scoring :
-	//  1. Préférer un match qui CONTIENT vraiment capture_start_utc (sans buffer)
-	//     — un capture pendant le match est plus probable que pendant le buffer
-	//     du match précédent/suivant
-	//  2. Sinon, distance au CENTRE du match (pas au début) — un replay enregistré
-	//     à la fin d'un match a un delta naturel de ~match_duration/2 par rapport
-	//     au début, ce qui peut le rendre plus proche du DÉBUT du match suivant
-	//     que du match courant si on trie par "delta vs start_time"
-	q := fmt.Sprintf(`
-		INSERT OR IGNORE INTO media_match_associations (media_file_id, match_id, delta_seconds)
-		SELECT media_file_id, match_id, delta_s FROM (
-			SELECT
-				mf.id AS media_file_id,
-				mr.match_id,
-				ABS(DATEDIFF('second', mf.capture_start_utc,
-					COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC'))) AS delta_s,
-				ROW_NUMBER() OVER (
-					PARTITION BY mf.id
-					ORDER BY
-						CASE WHEN mf.capture_start_utc
-							BETWEEN COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')
-							    AND COALESCE(mr.end_time_utc,   mr.end_time   AT TIME ZONE 'UTC')
-						THEN 0 ELSE 1 END,
-						ABS(DATEDIFF('second', mf.capture_start_utc,
-							COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')
-							+ (COALESCE(mr.end_time_utc, mr.end_time AT TIME ZONE 'UTC')
-							 - COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC')) / 2)) ASC,
-						mr.match_id
-				) AS rn
-			FROM media_files mf
-			JOIN shared_matches.match_registry mr
-				ON mf.capture_start_utc
-					BETWEEN (COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') - INTERVAL '%d minutes')
-					    AND (COALESCE(mr.end_time_utc,   mr.end_time   AT TIME ZONE 'UTC') + INTERVAL '%d minutes')
-			WHERE mf.id NOT IN (SELECT media_file_id FROM media_match_associations)
-		) ranked
-		WHERE rn = 1
-	`, bufferMin, bufferMin)
-	res, err := db.ExecContext(ctx, q)
+	matches, err := loadMatchTimeWindows(ctx, sharedMatchesPath)
 	if err != nil {
-		slog.Error("AssociateMediaWithMatches: erreur SQL", "err", err)
-		return 0, err
+		return 0, fmt.Errorf("load match windows: %w", err)
 	}
-	n, _ := res.RowsAffected()
+
+	media, err := loadUnassociatedMedia(ctx, db)
+	if err != nil {
+		return 0, fmt.Errorf("load unassociated media: %w", err)
+	}
+
+	assocs := computeAssociations(media, matches, bufferMin)
+
+	n, err := bulkInsertAssociations(ctx, db, assocs)
+	if err != nil {
+		return 0, fmt.Errorf("bulk insert associations: %w", err)
+	}
+
 	slog.Info("AssociateMediaWithMatches: terminé",
-		"associations_created", n, "buffer_min", bufferMin, "timezone", timezone)
-	return int(n), nil
+		"associations_created", n,
+		"matches_loaded", len(matches),
+		"media_candidates", len(media),
+		"buffer_min", bufferMin)
+	_ = timezone // intentionnellement non-utilisé (cf. docstring)
+	return n, nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
