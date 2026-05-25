@@ -222,6 +222,12 @@ func NewRouter(
 		reg.WithPrestigeBundle(pb)
 	}
 
+	// Coach Advisor bundle (Phase 8 ADR 0020) — charge la grammaire de
+	// synthèse une fois au boot. Pas de DB-handle à fermer ; toujours non-nil
+	// (fallback grammaire vide si TOML absent, synthèse désactivée mais
+	// matching catalogue reste fonctionnel).
+	reg.WithCoachAdvisorBundle(NewCoachAdvisorBundle(cfg.RepoRoot))
+
 	var gamertagSvc port.GamertagSearchService
 	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
 	// au lieu d'un OpenReadOnly direct. Élimine le dernier handle RO non-coordonné
