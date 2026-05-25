@@ -56,6 +56,13 @@ func (r *ResticClient) Backup(ctx context.Context, stagingDir string) (string, e
 	return snapshotID, nil
 }
 
+// Unlock removes stale locks left by a previous process that was killed (e.g. Air
+// TASKKILL on Windows). Safe to call when no locks exist — restic exits 0 with
+// "no locks were removed". Should be called before Backup/Forget in each cycle.
+func (r *ResticClient) Unlock(ctx context.Context) error {
+	return r.run(ctx, "unlock")
+}
+
 // Forget applies the configured retention policy and prunes unreferenced data.
 func (r *ResticClient) Forget(ctx context.Context) error {
 	slog.DebugContext(ctx, "backup: restic forget — nettoyage anciens snapshots",

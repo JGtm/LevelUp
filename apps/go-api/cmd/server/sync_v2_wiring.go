@@ -74,6 +74,19 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 			"event", "sync.v2.dryrun.active")
 	}
 
+	// getSharedDB retourne la connexion shared courante via le cache process-wide.
+	// Appelé à l'instant T (LoadKnown, RunPostSync) — après chaque swap provider
+	// RO→RW→RO, LookupCachedDB retourne la connexion fraîche rouverte en RO.
+	// Évite le pointeur fixe capturé au boot (deps.SharedDB) qui devient stale
+	// après le premier cycle (le swap ferme l'ancienne *sql.DB).
+	sharedPath := deps.PathResolver.SharedDBPath(deps.TitleSlug)
+	getSharedDB := func() *sql.DB {
+		if cached, ok := duckdbpkg.LookupCachedDB(sharedPath); ok {
+			return cached.SQLDb()
+		}
+		return nil
+	}
+
 	// Adapter KnownLoader : ouvre la stats.duckdb du joueur en RO
 	// (Phase 1 = lecture pure des match_ids connus).
 	playerDBOpenerRO := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
@@ -85,7 +98,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		// OpenReadOnly est cached process-wide ; Close() décrémente refCount.
 		return db.SQLDb(), func() { _ = db.Close() }, nil
 	}
-	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, deps.SharedDB)
+	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, getSharedDB)
 
 	// CRITIQUE — Adapter PostSyncRunner : ouvre la stats.duckdb du joueur
 	// en READ-WRITE car les heals post-sync UPDATE/INSERT sur 14+ tables
@@ -129,7 +142,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		postSyncRunner = &dryRunPostSyncRunner{}
 	} else {
 		engineFactory := buildSyncEngineFactoryParityComplete(deps)
-		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, deps.SharedDB, clientFactory)
+		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, getSharedDB, clientFactory)
 	}
 
 	return syncv2.NewCycleOrchestrator(

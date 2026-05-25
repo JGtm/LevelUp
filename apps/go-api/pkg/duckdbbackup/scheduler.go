@@ -145,6 +145,16 @@ func (s *Scheduler) cycle(ctx context.Context) (*Result, error) {
 		return &Result{Skipped: true, DurationMs: time.Since(start).Milliseconds()}, nil
 	}
 
+	// Libère les verrous restic périmés d'un éventuel process précédent SIGKILL'd
+	// (Air hot-reload Windows). restic unlock est un no-op si le dépôt n'est pas
+	// verrouillé — sans ça, "restic backup" et "restic forget" échouent avec
+	// exit 11 "repository is already locked by PID <orphelin>".
+	unlockCtx, unlockCancel := context.WithTimeout(ctx, 30*time.Second)
+	if ulErr := s.restic.Unlock(unlockCtx); ulErr != nil {
+		slog.WarnContext(ctx, "backup: restic unlock (pre-cycle) non-bloquant", "err", ulErr)
+	}
+	unlockCancel()
+
 	initCtx, initCancel := context.WithTimeout(ctx, 2*time.Minute)
 	if err := s.restic.EnsureInit(initCtx); err != nil {
 		initCancel()

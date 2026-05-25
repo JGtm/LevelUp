@@ -32,7 +32,7 @@ type SyncEngineFactory func(ctx context.Context, p PlayerProfile) (*syncpkg.Sync
 type postSyncRunnerV2 struct {
 	engineFactory SyncEngineFactory
 	openPlayerDB  PlayerDBOpener
-	sharedDB      *sql.DB
+	getSharedDB   func() *sql.DB // retourne la connexion shared courante à l'appel
 	clientFactory HaloClientFactory
 }
 
@@ -40,21 +40,22 @@ type postSyncRunnerV2 struct {
 //
 // Paramètres :
 //   - engineFactory : construit un SyncEngine V1 configuré pour un joueur.
-//   - openPlayerDB  : ouvre la stats.duckdb du joueur en read-write (heals écrivent dedans).
-//   - sharedDB      : connexion shared partagée (read-write — les heals écrivent aussi).
+//   - openPlayerDB  : ouvre stats.duckdb du joueur en read-write (heals écrivent dedans).
+//   - getSharedDB   : retourne la connexion shared courante (fraîche après chaque swap
+//     provider RO→RW→RO). Doit appeler LookupCachedDB au moment de l'appel, pas au boot.
 //   - clientFactory : construit un HaloClient pinné sur le joueur (pour les heals API).
 //
 // insertedIDs est passé per-call par l'orchestrator (cf. cycle.go Phase 6).
 func NewPostSyncRunner(
 	engineFactory SyncEngineFactory,
 	openPlayerDB PlayerDBOpener,
-	sharedDB *sql.DB,
+	getSharedDB func() *sql.DB,
 	clientFactory HaloClientFactory,
 ) *postSyncRunnerV2 {
 	return &postSyncRunnerV2{
 		engineFactory: engineFactory,
 		openPlayerDB:  openPlayerDB,
-		sharedDB:      sharedDB,
+		getSharedDB:   getSharedDB,
 		clientFactory: clientFactory,
 	}
 }
@@ -67,11 +68,18 @@ func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, ins
 		return PlayerPostSyncResult{}, fmt.Errorf("engineFactory %s: %w", p.Gamertag, err)
 	}
 
-	playerDB, release, err := r.openPlayerDB(ctx, p.Gamertag)
+	playerDB, releasePlayer, err := r.openPlayerDB(ctx, p.Gamertag)
 	if err != nil {
 		return PlayerPostSyncResult{}, fmt.Errorf("open player DB %s: %w", p.Gamertag, err)
 	}
-	defer release()
+	defer releasePlayer()
+
+	sharedDB := r.getSharedDB()
+	if sharedDB == nil {
+		slog.WarnContext(ctx, "sync.v2 post-sync: shared DB indisponible — skip",
+			"event", "sync.v2.postsync.shared_unavailable", "player", p.PlayerSlug)
+		return PlayerPostSyncResult{PlayerSlug: p.PlayerSlug}, nil
+	}
 
 	var client syncpkg.HaloClient
 	if r.clientFactory != nil {
@@ -85,7 +93,7 @@ func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, ins
 		}
 	}
 
-	v1Res := engine.RunPostSyncForV2(ctx, playerDB, r.sharedDB, client, insertedIDs)
+	v1Res := engine.RunPostSyncForV2(ctx, playerDB, sharedDB, client, insertedIDs)
 
 	return mapV1PostSyncResult(p.PlayerSlug, v1Res), nil
 }

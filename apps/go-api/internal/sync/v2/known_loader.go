@@ -35,17 +35,18 @@ type PlayerDBOpener func(ctx context.Context, gamertag string) (db *sql.DB, rele
 // Utilise *sql.DB du package standard — aucun lien avec V1.
 type knownLoaderV2 struct {
 	openPlayerDB PlayerDBOpener
-	sharedDB     *sql.DB // process-wide handle (lecture seulement)
+	getSharedDB  func() *sql.DB // retourne la connexion shared courante à chaque appel
 }
 
 // NewKnownLoader construit un KnownLoader prêt à être injecté dans le
-// CycleOrchestrator. sharedDB peut être nil (alors source 2
-// désactivée, comportement V1-compatible — la source 1 player suffit
-// pour la dedup intra-player).
-func NewKnownLoader(playerDBOpener PlayerDBOpener, sharedDB *sql.DB) KnownLoader {
+// CycleOrchestrator. getSharedDB peut retourner nil (source 2 désactivée,
+// comportement V1-compatible — la source 1 player suffit pour la dedup
+// intra-player). Utiliser un getter plutôt qu'un *sql.DB fixe évite les
+// connexions stales après un swap provider RO→RW→RO.
+func NewKnownLoader(playerDBOpener PlayerDBOpener, getSharedDB func() *sql.DB) KnownLoader {
 	return &knownLoaderV2{
 		openPlayerDB: playerDBOpener,
-		sharedDB:     sharedDB,
+		getSharedDB:  getSharedDB,
 	}
 }
 
@@ -81,8 +82,12 @@ func (l *knownLoaderV2) LoadKnown(ctx context.Context, p PlayerProfile) (map[str
 	}
 
 	// Source 2 : shared.match_participants WHERE xuid (cross-player dedup).
-	if l.sharedDB != nil && strings.TrimSpace(p.XUID) != "" {
-		sharedRows, err := l.sharedDB.QueryContext(ctx,
+	// getSharedDB() retourne la connexion courante (fraîche après chaque swap
+	// provider RO→RW→RO) plutôt qu'un pointeur capturé au boot qui devient
+	// stale après le premier cycle.
+	sharedDB := l.getSharedDB()
+	if sharedDB != nil && strings.TrimSpace(p.XUID) != "" {
+		sharedRows, err := sharedDB.QueryContext(ctx,
 			"SELECT DISTINCT match_id FROM match_participants WHERE xuid || '' = ?", p.XUID)
 		if err != nil {
 			// Warn explicite (cohérent avec V1) : known set partiel peut
