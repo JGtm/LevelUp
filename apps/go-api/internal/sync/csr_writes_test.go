@@ -230,10 +230,10 @@ func TestTranslateTierFR_UnknownTier(t *testing.T) {
 }
 
 func TestFormatCSRTierLabel_DiamondWithSubTier(t *testing.T) {
-	// Cas standard : Diamond III avec sub-tier
+	// Cas standard : Diamond III avec sub-tier — chiffres romains
 	got := formatCSRTierLabel("Diamond", "Diamant", 3, 1650, 0)
-	if got != "Diamant 3" {
-		t.Errorf("Diamond III: got %q, want %q", got, "Diamant 3")
+	if got != "Diamant III" {
+		t.Errorf("Diamond III: got %q, want %q", got, "Diamant III")
 	}
 }
 

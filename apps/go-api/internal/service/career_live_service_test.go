@@ -659,3 +659,74 @@ func (b *realBuilderForOverlay) BuildSpartanIdentityFromCareerRow(_ context.Cont
 	}
 	return out
 }
+
+// TestCareerLive_NilAPIResponse_NotCached vérifie que si GetCareerProgress retourne
+// (nil, nil) — réponse silencieuse de l'API (401/403 ou payload non parseable) —
+// on ne met PAS nil en cache. Sans ce garde-fou, le cache stocke une entrée nil
+// qui retourne hit=true sur la requête suivante et bloque définitivement le
+// background refresh pour les 5 prochaines minutes.
+func TestCareerLive_NilAPIResponse_NotCached(t *testing.T) {
+	done := make(chan struct{})
+	fetcher := &nilSignalingFetcher{done: done}
+	dbRow := &duckdb.CareerRankRow{Rank: 50, CurrentXP: 1000, SpartanID: "SR-DB-NIL"}
+	repo := &mockCareerLiveRepo{last: dbRow}
+	builder := &mockIdentityBuilder{}
+
+	factory := func(_ context.Context) CareerFetcher { return fetcher }
+	cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+	svc := NewCareerLiveService(repo, builder, factory, cache)
+
+	// Premier appel : cache miss → DB servie + background refresh déclenché.
+	got, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	if err != nil {
+		t.Fatalf("GetSpartanIdentity: %v", err)
+	}
+	if got == nil || got.RankNumber != 50 {
+		t.Errorf("attendu DB rank=50, obtenu %+v", got)
+	}
+
+	// Attendre que la goroutine background ait terminé (fetcher signale via done).
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("background refresh n'a pas terminé dans les temps")
+	}
+
+	// Le cache ne doit PAS contenir une entrée nil pour progress.
+	// Si nil était caché, GetProgress retournerait (nil, true) et needRefresh
+	// resterait false → le refresh ne se redéclencherait jamais.
+	if p, hit := cache.GetProgress("1234567890123456"); hit {
+		t.Errorf("nil progress ne devrait pas être caché (got hit=true, data=%v)", p)
+	}
+
+	// Deuxième appel : doit rester cache miss → background refresh se redéclenche.
+	// On vérifie indirectement en vérifiant que le rank DB est toujours servi
+	// (et pas un rank=0 issu d'un merge avec nil caché).
+	got2, err := svc.GetSpartanIdentity(ctxWithTokens(t, true))
+	if err != nil {
+		t.Fatalf("GetSpartanIdentity 2e appel: %v", err)
+	}
+	if got2 == nil || got2.RankNumber != 50 {
+		t.Errorf("2e appel : attendu DB rank=50, obtenu %+v", got2)
+	}
+}
+
+// nilSignalingFetcher retourne nil pour progress (simule un skip API silencieux)
+// et signale via done quand il a été appelé.
+type nilSignalingFetcher struct {
+	done chan struct{}
+}
+
+func (f *nilSignalingFetcher) GetCareerProgress(_ context.Context, _ string) (*syncpkg.CareerRankData, error) {
+	defer func() {
+		select {
+		case f.done <- struct{}{}:
+		default:
+		}
+	}()
+	return nil, nil // API silent skip
+}
+
+func (f *nilSignalingFetcher) GetSpartanCustomization(_ context.Context, _ string) (*syncpkg.SpartanCustomizationData, error) {
+	return nil, nil
+}

@@ -10,6 +10,39 @@ import (
 const heroPlaylist = "Hero"
 
 // ---------------------------------------------------------------------------
+// rankSubRoman
+// ---------------------------------------------------------------------------
+
+func TestRankSubRoman_TrailingDigit(t *testing.T) {
+	cases := [][2]string{
+		{"Or 1", "Or I"},
+		{"Diamant 3", "Diamant III"},
+		{"Bronze 6", "Bronze VI"},
+		{"Onyx", "Onyx"},
+		{"Onyx 1850", "Onyx 1850"},
+	}
+	for _, c := range cases {
+		if got := rankSubRoman(c[0]); got != c[1] {
+			t.Errorf("rankSubRoman(%q) = %q, want %q", c[0], got, c[1])
+		}
+	}
+}
+
+func TestRankSubRoman_EmbeddedDigit(t *testing.T) {
+	cases := [][2]string{
+		{"Général 2 Platine", "Général II Platine"},
+		{"Général 3 Platine", "Général III Platine"},
+		{"Recruit 1 Bronze", "Recruit I Bronze"},
+		{"Héros 6 Or", "Héros VI Or"},
+	}
+	for _, c := range cases {
+		if got := rankSubRoman(c[0]); got != c[1] {
+			t.Errorf("rankSubRoman(%q) = %q, want %q", c[0], got, c[1])
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
 // formatRankLabel
 // ---------------------------------------------------------------------------
 

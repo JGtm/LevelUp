@@ -336,8 +336,22 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 		// On utilise les helpers cachés : ils écrivent dans la cache à la
 		// fin du fetch, ce qui est exactement ce qu'on veut pour que la
 		// prochaine requête synchrone hit la cache au lieu de retimeout.
-		_ = s.fetchProgressCached(bgCtx, xuid)
-		_ = s.fetchCustomizationCached(bgCtx, xuid)
+		progress := s.fetchProgressCached(bgCtx, xuid)
+		custom := s.fetchCustomizationCached(bgCtx, xuid)
+
+		// Persist immédiat : on n'attend pas une 2e visite pour écrire la
+		// bannière/emblème en DB. Sans ça, le premier chargement home remplit
+		// le cache mais ne persist pas (merged était encore vide côté sync) ;
+		// après un redémarrage serveur le cache est perdu et la bannière aussi.
+		if s.repo != nil && (progress != nil || custom != nil) {
+			dbLast, _ := s.repo.LoadLastCareerRank(bgCtx, xuid)
+			merged := mergeCareerRow(progress, custom, dbLast)
+			if merged != nil {
+				_ = s.repo.EnrichFromMetadata(bgCtx, merged)
+				s.persistIfChanged(bgCtx, xuid, merged)
+			}
+		}
+
 		slog.DebugContext(bgCtx, careerLiveLogModule+": background refresh completed", "xuid", xuid)
 	}()
 }
@@ -358,6 +372,17 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 		return nil
 	}
 
+	// DIAG 2026-05-25 : trace le xuid associé aux tokens en ctx vs le xuid
+	// queried. Si mismatch (e.g., tokens JGtm utilisés pour fetcher Madina),
+	// l'API Halo Economy peut renvoyer les données du token holder au lieu
+	// du xuid queried — symptôme silencieux (pas de 401/403). Supprimer
+	// quand l'investigation est close (cf. §12 PLAN_SPARTAN_IDENTITY_REFACTOR).
+	ctxXUID := ctxkeys.HaloXUID(ctx)
+	slog.InfoContext(ctx, careerLiveLogModule+": progress fetch DIAG",
+		"query_xuid", xuid,
+		"ctx_xuid", ctxXUID,
+		"xuid_mismatch", xuid != ctxXUID)
+
 	fetch := func() (*syncpkg.CareerRankData, error) {
 		return fetcher.GetCareerProgress(ctx, xuid)
 	}
@@ -376,7 +401,22 @@ func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string
 			"xuid", xuid, "err", err)
 		return nil
 	}
+	if data == nil {
+		// L'API a répondu sans erreur mais sans données exploitables (401/403
+		// silencieux ou payload non parseable). Ne pas mettre nil en cache :
+		// un nil caché retourne hit=true et supprime les tentatives suivantes.
+		slog.WarnContext(ctx, careerLiveLogModule+": progress fetch returned nil (API silent skip)",
+			"xuid", xuid)
+		return nil
+	}
 	careerLiveProgressLive.Add(1)
+	// DIAG 2026-05-25 : log la valeur brute renvoyée par l'API pour comparer
+	// avec ce que la home affiche et ce que Halowaypoint montre.
+	slog.InfoContext(ctx, careerLiveLogModule+": progress fetch RESULT",
+		"query_xuid", xuid,
+		"api_rank", data.CurrentRank,
+		"api_xp", data.CurrentXP,
+		"api_is_max", data.IsMaxRank)
 	if s.cache != nil {
 		s.cache.PutProgress(xuid, data)
 	}
@@ -397,6 +437,15 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 	if fetcher == nil {
 		return nil
 	}
+
+	// DIAG 2026-05-25 : trace le xuid associé aux tokens en ctx vs le xuid
+	// queried (cf. fetchProgressCached pour rationale).
+	ctxXUID := ctxkeys.HaloXUID(ctx)
+	slog.InfoContext(ctx, careerLiveLogModule+": custom fetch DIAG",
+		"query_xuid", xuid,
+		"ctx_xuid", ctxXUID,
+		"xuid_mismatch", xuid != ctxXUID)
+
 	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
 		return fetcher.GetSpartanCustomization(ctx, xuid)
 	}
@@ -415,7 +464,19 @@ func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid s
 			"xuid", xuid, "err", err)
 		return nil
 	}
+	if data == nil {
+		slog.WarnContext(ctx, careerLiveLogModule+": customization fetch returned nil (API silent skip)",
+			"xuid", xuid)
+		return nil
+	}
 	careerLiveCustomLive.Add(1)
+	// DIAG 2026-05-25 : log les URLs/SpartanID retournés par l'API.
+	slog.InfoContext(ctx, careerLiveLogModule+": custom fetch RESULT",
+		"query_xuid", xuid,
+		"spartan_id", data.SpartanID,
+		"has_banner", data.BannerImageURL != "",
+		"has_emblem", data.EmblemImageURL != "",
+		"has_backdrop", data.BackdropImageURL != "")
 	if s.cache != nil {
 		s.cache.PutCustomization(xuid, data)
 	}
