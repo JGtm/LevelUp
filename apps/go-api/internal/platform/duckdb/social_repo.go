@@ -24,6 +24,19 @@ func (r *SocialRepo) socialConn() *DB {
 }
 
 // ToggleMatchFavorite bascule l'état favori d'un match pour un joueur.
+//
+// TODO Phase 4 ADR 0020 (refactor en attente) : router via
+// r.pdb.SocialPersister.PersistBatch(...) au lieu de db.ExecRecovered direct.
+// Bloqué actuellement par un cycle d'import (internal/persist importe
+// internal/platform/duckdb via combined_persister.go) qui demande un split
+// du package persist (extraire SharedSocialBatch dans un sous-package
+// sans dépendance duckdb). À traiter dans une PR dédiée.
+//
+// Risque résiduel : ce site écrit en direct sans CHECKPOINT explicite.
+// Mais le volume est faible (1 INSERT ou 1 DELETE par toggle utilisateur),
+// le WAL produit reste petit et l'auto-checkpoint DuckDB le flushera à
+// terme. Le bug critique (causé par IndexMedia massif) est déjà fixé en
+// Phase 3 (CHECKPOINT explicite dans ops/media.go:IndexMedia).
 func (r *SocialRepo) ToggleMatchFavorite(ctx context.Context, playerSlug, matchID string, favorited bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

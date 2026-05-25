@@ -125,6 +125,19 @@ func NewSharedSocialPersister(db *sql.DB) *SharedSocialPersister {
 	return &SharedSocialPersister{db: db}
 }
 
+// PersistBatch implémente l'interface duckdb.SocialPersister (cf.
+// internal/platform/duckdb/social_persister_iface.go). Cast interne du
+// batch any → *SharedSocialBatch. Permet l'injection dans PlayerDB sans
+// cycle d'import (duckdb importe persist serait un cycle ; passer par any
+// + cast résout le problème).
+func (p *SharedSocialPersister) PersistBatch(ctx context.Context, batch any) error {
+	typed, ok := batch.(*SharedSocialBatch)
+	if !ok {
+		return fmt.Errorf("shared_social: PersistBatch attend *SharedSocialBatch, got %T", batch)
+	}
+	return p.Persist(ctx, typed)
+}
+
 // Persist exécute toutes les écritures du batch en UNE transaction, suivie
 // d'un CHECKPOINT pour vider le WAL DuckDB sur disque. Atomique.
 //
