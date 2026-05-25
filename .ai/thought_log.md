@@ -1,3 +1,62 @@
+## [2026-05-25] D1 — Sync V2 Phase 1 (Discovery) + Phase 2 (Dedup)
+
+**Statut** : Complété (D1 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D0 (scaffold). D1 livre les 2 premières phases du pipeline V2, sans I/O réel — interfaces + implémentation pure + suite de tests unitaires. L'intégration avec HaloClient / DuckDB arrive en D6.
+
+**Décisions techniques** :
+
+1. **Interfaces injectables** (`discovery.go`) :
+   - `KnownLoader.LoadKnown(ctx, p PlayerProfile) (map[string]bool, error)` — adapter V1-bridge wrappera `loadKnownMatchIDs(playerDB, sharedDB, xuid)` de engine.go en D6.
+   - `MatchListProvider.ListUnknownMatches(ctx, p, known) ([]string, error)` — adapter wrappera HaloClient pinned + logique de pagination delta de engine.go.
+
+   Découplage strict pour permettre des tests sans réseau ni DB en D1, et substitution claire des composants en D6.
+
+2. **`RunDiscovery`** (`discovery.go`) — Phase 1 parallèle, read-only :
+   - errgroup avec parallélisme = len(players), pas de bottleneck artificiel.
+   - Erreurs par-joueur capturées dans `DiscoveryResult.Errors` (best-effort, `nolint:nilerr` justifié).
+   - Retourne err != nil uniquement sur échec global (ctx annulé).
+   - Aucun side-effect autre que les appels read-only loader+provider.
+
+3. **`RunDedup`** (`dedup.go`) — Phase 2 pure function :
+   - Politique canonical fetcher : load balancing déterministe (joueur avec workload min, tie-break lexicographique sur PlayerSlug).
+   - Sans cette politique, le premier joueur alphabétique fetcherait tout → déséquilibre token rate-limit.
+   - Tri lexicographique des `UniqueMatches` et `ParticipantsByMatch[*]` pour déterminisme cross-run.
+   - Ignore `disc.Errors` : Phase 1 a déjà filtré, on ne lit que `PerPlayer`.
+
+4. **Tests unitaires** (`discovery_test.go` + `dedup_test.go`, 16 cas) :
+   - **Discovery** (6) : happy path, empty players, failure isolation (alice loader fail, bob OK, charlie provider fail), concurrent execution (mesure `maxInFlight >= 2`, durée <= 3x délai unitaire), context cancellation, déterminisme des clés.
+   - **Dedup** (10) : empty, single player, full overlap (2 joueurs x 4 matchs partagés → 2-2 répartition), partial overlap, property "fetcher in participants", déterminisme cross-run, property "count(unique) <= sum(unknown)" sur 5 cas dont disjoint/overlap/empty/solo, tri lexicographique, ignore Errors.
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/ -count=1 -v` : 16/16 PASS en 0.30s
+- Aucun changement runtime (Phase 1/2 pas câblées dans l'orchestrator — encore le stub `ErrNotImplemented`).
+
+**Détail trouvé pendant la session** : `.gitignore` ligne 115 (`apps/go-api/[A-Z]*/`) bloque les nouveaux fichiers dans `apps/go-api/internal/*` à cause du `core.ignorecase=true` Windows. Workaround : `git add -f` pour les nouveaux fichiers. Fix propre à proposer ultérieurement : remplacer par `apps/go-api/Users*/` (intention initiale d'attraper les directories parasites `UsersGuillaumeDownloads.../`).
+
+**Conclusion / prochaine étape** : D1 livrable. Phase 1+2 codées et testées en isolation. Prochaine étape : **D2 — Phase 3 (Fetch shared parallèle)** : errgroup(8) qui prend `DedupResult.UniqueMatches` et appelle `GetMatchStats` via HaloClient (un adapter par canonical fetcher). Buffer en mémoire pour Phase 5.
+
+---
+
+## [2026-05-25] Lightbox battle pass — layout [prev] [bloc] [next]
+
+**Statut** : Complété
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : La lightbox BattlePassRewardLightbox utilisait un "coverflow" interne (tous les slots dans un conteneur `overflow-hidden`), ce qui clippait les items voisins à l'intérieur du bloc plutôt qu'à l'extérieur.
+
+**Décision** : Restructuration complète en flex-row `[SideThumbnail] [bloc-central] [SideThumbnail]`. Les vignettes prev/next sont des éléments en dehors du bloc principal, cliquables pour naviguer. Keyboard navigation (←/→/Escape) conservée. Flèches overlay sur le bloc comme complément.
+
+**Résultats** : TypeScript OK (hors erreur pré-existante SettingsPage backup).
+
+---
+
 ## [2026-05-25] D0 — Sync pipeline V2 : ADR 0020 + scaffold orchestrator
 
 **Statut** : Complété (D0 du plan ADR 0020)
