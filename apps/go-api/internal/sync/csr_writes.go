@@ -64,10 +64,12 @@ func translateTierFR(tierEN string) string {
 	return tierEN
 }
 
+var csrSubTierRoman = [7]string{"", "I", "II", "III", "IV", "V", "VI"}
+
 // formatCSRTierLabel construit le tier_label affiché côté front. Format :
 //   - placement : "Placement (N restants)"
 //   - Onyx (pas de sous-tier) : "Onyx 1850"
-//   - autres tiers (Bronze…Diamond) : "Or 3" (FR + sub_tier romain ou arabe)
+//   - autres tiers (Bronze…Diamond) : "Or III" (FR + sous-tier en chiffres romains)
 func formatCSRTierLabel(tier, tierFR string, subTier int, value int, measurementRemaining int) string {
 	if measurementRemaining > 0 || tier == "" {
 		return fmt.Sprintf("Placement (%d restant%s)", measurementRemaining, pluralS(measurementRemaining))
@@ -75,8 +77,8 @@ func formatCSRTierLabel(tier, tierFR string, subTier int, value int, measurement
 	if tier == TierOnyx {
 		return fmt.Sprintf("Onyx %d", value)
 	}
-	if subTier > 0 {
-		return fmt.Sprintf("%s %d", tierFR, subTier)
+	if subTier >= 1 && subTier <= 6 {
+		return fmt.Sprintf("%s %s", tierFR, csrSubTierRoman[subTier])
 	}
 	return tierFR
 }
