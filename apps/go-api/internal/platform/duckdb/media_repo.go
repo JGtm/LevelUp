@@ -730,15 +730,27 @@ func (r *MediaRepo) SetMediaLikeAtomic(
 	return true, nil
 }
 
-// ToggleSharedLike Ã©crit ou supprime un like dans media_likes (shared DB).
-// Retourne l'Ã©tat liked rÃ©sultant.
+// ToggleSharedLike écrit ou supprime un like dans media_likes (shared DB).
+//
+// ADR 0022 : route via r.pdb.SocialPersister (CHECKPOINT garanti + TX
+// atomique INSERT OR IGNORE — pas d'UPSERT, donc pas de pression ART).
+// Fallback legacy si Persister pas wired.
 func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string, liked bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Route nominale : Persister.
+	if r.pdb.SocialPersister != nil {
+		if liked {
+			return r.pdb.SocialPersister.AddLike(ctx, mediaPath, likerSlug, likerGamertag)
+		}
+		return r.pdb.SocialPersister.RemoveLike(ctx, mediaPath, likerSlug)
+	}
+
+	// Fallback legacy (tests sans wiring).
 	if liked {
 		// Note : `liked_at = CURRENT_TIMESTAMP` dans le ON CONFLICT casse le binder
-		// DuckDB qui interprÃ¨te CURRENT_TIMESTAMP comme un nom de colonne.
+		// DuckDB qui interprète CURRENT_TIMESTAMP comme un nom de colonne.
 		// On utilise EXCLUDED.liked_at qui prend la valeur du VALUES (= CURRENT_TIMESTAMP).
 		_, err := r.socialDB().ExecRecovered(ctx, `
 			INSERT INTO media_likes (media_path, liker_slug, liker_gamertag, liked_at)

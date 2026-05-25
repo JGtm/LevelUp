@@ -138,6 +138,144 @@ func (p *SharedSocialPersister) PersistBatch(ctx context.Context, batch any) err
 	return p.Persist(ctx, typed)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Méthodes ciblées (interface duckdb.SocialPersister) — chaque appel = 1
+// write atomique + CHECKPOINT garanti. Construisent un mini-batch en interne
+// et délèguent à Persist.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// AddFavorite implémente duckdb.SocialPersister.AddFavorite.
+func (p *SharedSocialPersister) AddFavorite(ctx context.Context, playerSlug, matchID string) error {
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "favorite-add",
+		Source:  "social_handler",
+		Favorites: []FavoriteInsert{
+			{PlayerSlug: playerSlug, MatchID: matchID, FavoritedAt: time.Now().UTC()},
+		},
+	})
+}
+
+// RemoveFavorite implémente duckdb.SocialPersister.RemoveFavorite.
+func (p *SharedSocialPersister) RemoveFavorite(ctx context.Context, playerSlug, matchID string) error {
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "favorite-remove",
+		Source:  "social_handler",
+		FavoritesToRemove: []FavoriteRemove{
+			{PlayerSlug: playerSlug, MatchID: matchID},
+		},
+	})
+}
+
+// AddLike implémente duckdb.SocialPersister.AddLike.
+func (p *SharedSocialPersister) AddLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string) error {
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "like-add",
+		Source:  "media_handler",
+		Likes: []LikeInsert{
+			{MediaPath: mediaPath, LikerSlug: likerSlug, LikerGamertag: likerGamertag, LikedAt: time.Now().UTC()},
+		},
+	})
+}
+
+// RemoveLike implémente duckdb.SocialPersister.RemoveLike.
+func (p *SharedSocialPersister) RemoveLike(ctx context.Context, mediaPath, likerSlug string) error {
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "like-remove",
+		Source:  "media_handler",
+		LikesToRemove: []LikeRemove{
+			{MediaPath: mediaPath, LikerSlug: likerSlug},
+		},
+	})
+}
+
+// AppendPlayerRecord implémente duckdb.SocialPersister.AppendPlayerRecord.
+// Pattern append-only : INSERT pur dans player_records_history (jamais
+// UPDATE), évite la pression sur l'index ART DuckDB.
+func (p *SharedSocialPersister) AppendPlayerRecord(ctx context.Context, xuid, metric, period string, value float64, achievedAt *time.Time, achievedMatchID *string) error {
+	if period == "" {
+		period = "all_time"
+	}
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "record-append",
+		Source:  "post_sync_records",
+		PlayerRecordsAppend: []PlayerRecordAppend{
+			{
+				XUID:            xuid,
+				Metric:          metric,
+				Period:          period,
+				Value:           value,
+				AchievedAt:      achievedAt,
+				AchievedMatchID: achievedMatchID,
+				WrittenAt:       time.Now().UTC(),
+			},
+		},
+	})
+}
+
+// CreateNotification implémente duckdb.SocialPersister.CreateNotification.
+// L'argument est typé en `any` côté interface (duckdb.NotificationData) pour
+// éviter le cycle d'import — on accepte une struct compatible champ par
+// champ via reflection minimale (assertion sur le type concret).
+func (p *SharedSocialPersister) CreateNotification(ctx context.Context, n any) error {
+	// Cast depuis le type non-importé : on attend une struct avec les
+	// mêmes champs que duckdb.NotificationData. On utilise un type adapter.
+	nd, ok := n.(notificationDataLike)
+	if !ok {
+		// Tenter via reflection sur un struct anonyme compatible
+		return fmt.Errorf("shared_social: CreateNotification attend duckdb.NotificationData ou compatible, got %T", n)
+	}
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "notif-create",
+		Source:  "notification_service",
+		Notifications: []NotificationInsert{
+			{
+				XUID:         nd.GetXUID(),
+				ID:           nd.GetID(),
+				Category:     nd.GetCategory(),
+				Severity:     nd.GetSeverity(),
+				TitleKey:     nd.GetTitleKey(),
+				BodyKey:      nd.GetBodyKey(),
+				Params:       nd.GetParams(),
+				TargetRoute:  nd.GetTargetRoute(),
+				TargetSearch: nd.GetTargetSearch(),
+				ActorXUID:    nd.GetActorXUID(),
+				ActorName:    nd.GetActorName(),
+				Source:       nd.GetSource(),
+				CreatedAt:    nd.GetCreatedAt(),
+			},
+		},
+	})
+}
+
+// notificationDataLike : interface satisfaite structurellement par
+// duckdb.NotificationData. Évite le cycle d'import.
+type notificationDataLike interface {
+	GetXUID() string
+	GetID() int64
+	GetCategory() string
+	GetSeverity() string
+	GetTitleKey() string
+	GetBodyKey() *string
+	GetParams() *string
+	GetTargetRoute() *string
+	GetTargetSearch() *string
+	GetActorXUID() *string
+	GetActorName() *string
+	GetSource() string
+	GetCreatedAt() time.Time
+}
+
+// MarkNotificationRead implémente duckdb.SocialPersister.MarkNotificationRead.
+func (p *SharedSocialPersister) MarkNotificationRead(ctx context.Context, xuid string, id int64, readAt time.Time) error {
+	return p.Persist(ctx, &SharedSocialBatch{
+		BatchID: "notif-read",
+		Source:  "notification_handler",
+		NotificationReads: []NotificationReadUpdate{
+			{XUID: xuid, ID: id, ReadAt: readAt},
+		},
+	})
+}
+
 // Persist exécute toutes les écritures du batch en UNE transaction, suivie
 // d'un CHECKPOINT pour vider le WAL DuckDB sur disque. Atomique.
 //
