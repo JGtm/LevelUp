@@ -356,7 +356,11 @@ export function CoverFlowModal({
                 </a>
               )
             )}
-            {onReassociate && (!currentPlayerGamertag || !currentItem.owner_gamertag || currentItem.owner_gamertag.toLowerCase() === currentPlayerGamertag.toLowerCase()) && (
+            {onReassociate && (() => {
+              const effOwner = currentItem.owner_gamertag ?? playerSlug ?? null
+              const refPlayer = currentPlayerGamertag ?? playerSlug ?? null
+              return !effOwner || !refPlayer || effOwner.toLowerCase() === refPlayer.toLowerCase()
+            })() && (
               <button
                 type="button"
                 onClick={(e) => {

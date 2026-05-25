@@ -182,12 +182,19 @@ export function MediaThumbnailCard({
   const hasMatch = Boolean(item.match_id)
   const isCurrentMatch = hasMatch && currentMatchId === item.match_id
   const showViewMatchLink = hasMatch && !isCurrentMatch && Boolean(playerSlug)
-  const isOwnMedia = !item.owner_gamertag
-    || !currentPlayerGamertag
-    || item.owner_gamertag.toLowerCase() === currentPlayerGamertag.toLowerCase()
+  // owner_gamertag peut être absent si player_slug est NULL en DB (migration sans backfill).
+  // Fallback sur playerSlug (URL) : les fichiers sans owner explicite appartiennent au joueur de la page.
+  const effectiveOwner = item.owner_gamertag ?? playerSlug ?? null
+  // currentPlayerGamertag vient du store (joueur sélectionné dans le dropdown).
+  // Si undefined (currentPlayer null + fallback raté), on compare contre playerSlug (URL)
+  // pour au moins distinguer "fichier du joueur de la page" vs "fichier d'un autre".
+  const referencePlayer = currentPlayerGamertag ?? playerSlug ?? null
+  const isOwnMedia = !effectiveOwner
+    || !referencePlayer
+    || effectiveOwner.toLowerCase() === referencePlayer.toLowerCase()
   const showAssociateLink = !hasMatch && Boolean(onAssociate) && isOwnMedia
-  const ownerTag = !isOwnMedia && item.owner_gamertag
-    ? item.owner_gamertag.length > 12 ? `${item.owner_gamertag.slice(0, 12)}…` : item.owner_gamertag
+  const ownerTag = !isOwnMedia && effectiveOwner
+    ? effectiveOwner.length > 12 ? `${effectiveOwner.slice(0, 12)}…` : effectiveOwner
     : null
 
   return (
@@ -269,7 +276,7 @@ export function MediaThumbnailCard({
         {ownerTag && (
           <span
             className="absolute left-1.5 top-1.5 rounded-full bg-card/70 px-2 py-0.5 text-3xs font-semibold backdrop-blur-sm"
-            style={{ color: ownerTagColor(item.owner_gamertag!) }}
+            style={{ color: ownerTagColor(effectiveOwner!) }}
           >
             {ownerTag}
           </span>
