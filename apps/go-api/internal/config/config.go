@@ -70,26 +70,55 @@ type AppConfig struct {
 }
 
 // BackupConfig centralise la configuration du backup périodique.
-// Convertie en duckdbbackup.Config via ToPkgConfig().
+// Comportement (enabled, interval, retention) : app_settings.json.
+// Chemins machine (BackupDir, ResticRepo) : variables d'environnement.
 type BackupConfig struct {
-	Enabled     bool
-	BackupDir   string
-	Interval    time.Duration
-	KeepDaily   int
-	KeepWeekly  int
-	KeepMonthly int
+	Enabled     bool          // app_settings: backup_enabled
+	BackupDir   string        // env: LEVELUP_BACKUP_DIR
+	Interval    time.Duration // app_settings: backup_interval ("6h", "24h"…)
+	KeepDaily   int           // app_settings: backup_keep_daily
+	KeepWeekly  int           // app_settings: backup_keep_weekly
+	KeepMonthly int           // app_settings: backup_keep_monthly
+	ResticRepo  string        // env: RESTIC_REPOSITORY
 }
 
-// loadBackupConfig lit les variables LEVELUP_BACKUP_* depuis l'environnement.
-func loadBackupConfig(repoRoot string) BackupConfig {
-	return BackupConfig{
-		Enabled:     strings.ToLower(os.Getenv("LEVELUP_BACKUP_ENABLED")) == "true",
+// loadBackupConfig lit le comportement depuis app_settings.json et les chemins
+// depuis les variables d'environnement. Suit le même pattern que loadUserTimezone.
+func loadBackupConfig(repoRoot, settingsPath string) BackupConfig {
+	cfg := BackupConfig{
 		BackupDir:   getEnvOrDefault("LEVELUP_BACKUP_DIR", filepath.Join(repoRoot, "data", "backups")),
-		Interval:    getEnvDuration("LEVELUP_BACKUP_INTERVAL", 6*time.Hour),
-		KeepDaily:   getEnvInt("LEVELUP_BACKUP_KEEP_DAILY", 7),
-		KeepWeekly:  getEnvInt("LEVELUP_BACKUP_KEEP_WEEKLY", 4),
-		KeepMonthly: getEnvInt("LEVELUP_BACKUP_KEEP_MONTHLY", 12),
+		ResticRepo:  os.Getenv("RESTIC_REPOSITORY"),
+		Interval:    6 * time.Hour,
+		KeepDaily:   7,
+		KeepWeekly:  4,
+		KeepMonthly: 12,
 	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return cfg
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return cfg
+	}
+	if v, ok := m["backup_enabled"].(bool); ok {
+		cfg.Enabled = v
+	}
+	if v, ok := m["backup_interval"].(string); ok && v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			cfg.Interval = d
+		}
+	}
+	if v, ok := m["backup_keep_daily"].(float64); ok {
+		cfg.KeepDaily = int(v)
+	}
+	if v, ok := m["backup_keep_weekly"].(float64); ok {
+		cfg.KeepWeekly = int(v)
+	}
+	if v, ok := m["backup_keep_monthly"].(float64); ok {
+		cfg.KeepMonthly = int(v)
+	}
+	return cfg
 }
 
 // loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
@@ -150,7 +179,7 @@ func Load() (*AppConfig, error) {
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
-	cfg.Backup = loadBackupConfig(repoRoot)
+	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
 	return cfg, nil
 }
 
