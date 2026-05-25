@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useBackupStatus, useRunBackup } from '@/features/settings/queries'
 import type { getSettingsText } from '@/features/settings/i18n'
+import type { IntegrityResult } from '@/lib/api/types'
 
 interface BackupTabProps {
   t: ReturnType<typeof getSettingsText>
@@ -16,6 +17,24 @@ function statusBadge(enabled: boolean, available: boolean, t: BackupTabProps['t'
   if (!enabled) return { label: t.backupStatusDisabled, cls: 'bg-muted text-muted-foreground' }
   if (!available) return { label: t.backupStatusResticMissing, cls: 'bg-destructive/20 text-destructive' }
   return { label: t.backupStatusEnabled, cls: 'bg-green-500/20 text-green-700 dark:text-green-400' }
+}
+
+function IntegrityBadge({ result }: { result: IntegrityResult }) {
+  if (result.ok) {
+    return (
+      <span className="rounded bg-green-500/15 px-1.5 py-0.5 text-xs font-mono text-green-700 dark:text-green-400">
+        ✓
+      </span>
+    )
+  }
+  return (
+    <span
+      title={result.detail}
+      className="cursor-help rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-mono text-amber-700 dark:text-amber-400"
+    >
+      ⚠
+    </span>
+  )
 }
 
 function fmtDuration(ms: number) {
@@ -77,6 +96,20 @@ export function BackupTab({ t }: BackupTabProps) {
                     {status.last_exported.map((key) => (
                       <span key={key} className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                         {key}
+                      </span>
+                    ))}
+                  </dd>
+                </>
+              )}
+
+              {status.integrity_checks && Object.keys(status.integrity_checks).length > 0 && (
+                <>
+                  <dt className="text-muted-foreground">{t.backupIntegrityLabel}</dt>
+                  <dd className="flex flex-wrap gap-1">
+                    {Object.entries(status.integrity_checks).map(([key, result]) => (
+                      <span key={key} className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground font-mono">{key}</span>
+                        <IntegrityBadge result={result} />
                       </span>
                     ))}
                   </dd>

@@ -238,6 +238,7 @@ export interface SettingsText {
   backupConfigInterval: string
   backupConfigRetention: string
   backupConfigRetentionValue: string
+  backupIntegrityLabel: string
 }
 
 const FR_TEXT: SettingsText = {
@@ -494,6 +495,7 @@ const FR_TEXT: SettingsText = {
   backupConfigInterval: 'Intervalle',
   backupConfigRetention: 'Rétention',
   backupConfigRetentionValue: '{daily}j / {weekly}s / {monthly}m',
+  backupIntegrityLabel: 'Intégrité',
 }
 
 const EN_TEXT: SettingsText = {
@@ -751,6 +753,7 @@ const EN_TEXT: SettingsText = {
   backupConfigInterval: 'Interval',
   backupConfigRetention: 'Retention',
   backupConfigRetentionValue: '{daily}d / {weekly}w / {monthly}m',
+  backupIntegrityLabel: 'Integrity',
 }
 
 const TEXT: Record<SettingsLocale, SettingsText> = {

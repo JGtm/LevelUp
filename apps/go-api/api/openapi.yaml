@@ -2397,6 +2397,20 @@ components:
   schemas:
 
     # --- Backup ---
+    IntegrityCheckResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          description: Vrai si PRAGMA integrity_check a retourné "ok"
+        detail:
+          type: string
+          description: Premier message d'erreur (absent si ok ou pragma non supporté)
+        checked_at:
+          type: string
+          format: date-time
+          description: Horodatage UTC de la vérification
+
     BackupStatusResponse:
       type: object
       required: [enabled, available]
@@ -2422,6 +2436,11 @@ components:
         last_duration_ms:
           type: integer
           description: Durée du dernier cycle en millisecondes
+        integrity_checks:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/IntegrityCheckResult"
+          description: Résultats PRAGMA integrity_check par base (clé = DB key, présent après le premier cycle)
         config:
           type: object
           properties:

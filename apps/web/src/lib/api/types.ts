@@ -3277,6 +3277,12 @@ export interface AchievementsPageResponse {
 // Backup (pkg/duckdbbackup)
 // ---------------------------------------------------------------------------
 
+export interface IntegrityResult {
+  ok: boolean
+  detail?: string      // premier message d'erreur si !ok
+  checked_at: string   // ISO 8601 UTC
+}
+
 export interface BackupConfig {
   interval: string
   keep_daily: number
@@ -3291,6 +3297,7 @@ export interface BackupStatusResponse {
   last_snapshot_id?: string
   last_exported?: string[]
   last_duration_ms?: number
+  integrity_checks?: Record<string, IntegrityResult>
   config: BackupConfig
 }
 

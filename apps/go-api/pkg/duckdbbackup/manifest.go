@@ -9,12 +9,13 @@ import (
 // Manifest persists per-Target fingerprints of the last successful backup.
 // Stored as {BackupDir}/.manifest.json.
 type Manifest struct {
-	LastBackupAt   time.Time              `json:"last_backup_at"`
-	LastSnapshotID string                 `json:"last_snapshot_id,omitempty"`
-	LastExported   []string               `json:"last_exported,omitempty"`
-	LastDurationMs int64                  `json:"last_duration_ms,omitempty"`
-	Databases      map[string]fingerprint `json:"databases"`
-	path           string
+	LastBackupAt    time.Time                  `json:"last_backup_at"`
+	LastSnapshotID  string                     `json:"last_snapshot_id,omitempty"`
+	LastExported    []string                   `json:"last_exported,omitempty"`
+	LastDurationMs  int64                      `json:"last_duration_ms,omitempty"`
+	IntegrityChecks map[string]IntegrityResult `json:"integrity_checks,omitempty"`
+	Databases       map[string]fingerprint     `json:"databases"`
+	path            string
 }
 
 type fingerprint struct {
@@ -80,6 +81,15 @@ func (m *Manifest) SetLastResult(snapshotID string, exported []string, duration 
 	m.LastSnapshotID = snapshotID
 	m.LastExported = exported
 	m.LastDurationMs = duration.Milliseconds()
+}
+
+// SetIntegrityResult stores the integrity check result for a DB key.
+// Must be called before Save() so the value is persisted.
+func (m *Manifest) SetIntegrityResult(key string, res IntegrityResult) {
+	if m.IntegrityChecks == nil {
+		m.IntegrityChecks = make(map[string]IntegrityResult)
+	}
+	m.IntegrityChecks[key] = res
 }
 
 // Save writes the manifest to disk atomically (write temp + rename).

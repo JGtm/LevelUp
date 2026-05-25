@@ -1,3 +1,25 @@
+## [2026-05-25] feat(backup): PRAGMA integrity_check informationnel par base — UI + manifest
+
+**Statut** : Complété — Go tests PASS (3 nouveaux), TS check silencieux.
+
+**Branche** : `feat/duckdb-backup-pkg`.
+
+**Décision technique principale** :
+- `CheckIntegrity(ctx, Target) IntegrityResult` dans `exporter.go` : ouvre la DB en read-only, lance `PRAGMA integrity_check`. Si le pragma n'est pas supporté (erreur DuckDB), retourne `OK=true` (inconclusif, non-bloquant). Si la première ligne n'est pas "ok", retourne `OK=false, Detail=firstLine`.
+- Appelé dans `scheduler.cycle()` avant `ExportTarget` pour chaque DB modifiée. Warning slog si `!ic.OK`. **Ne bloque jamais le backup.**
+- `manifest.go` : champ `IntegrityChecks map[string]IntegrityResult` + `SetIntegrityResult(key, res)` — persisté dans `.manifest.json`.
+- `SchedulerStatus.IntegrityChecks` exposé dans `GET /settings/backup/status` — lu depuis le manifest au prochain appel.
+- Frontend : `IntegrityBadge` (✓ vert / ⚠ amber avec title=detail) dans `BackupTab`, row "Intégrité" dans le dl grid après les bases sauvegardées.
+
+**Résultats observés** :
+- `TestCheckIntegrity_ValidDB`, `TestCheckIntegrity_NonDBFile`, `TestManifest_SetIntegrityResult` : PASS
+- `go build ./...` + `npx tsc --noEmit` : silencieux
+
+**Conclusion / prochaine étape** :
+Feature backup complète (pkg + scheduler + UI + integrity check). Branche prête à merger.
+
+---
+
 ## [2026-05-25] feat(backup): onglet Sauvegarde dans Settings — statut + déclenchement manuel
 
 **Statut** : Complété — commit `5ef30038`, Go tests + TS check verts.
