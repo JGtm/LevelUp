@@ -158,9 +158,10 @@ type AutoSyncScheduler struct {
 	// path async (queue.Submit + worker, WAL durable, recovery au boot).
 	batchQueue *persist.BatchQueue
 
-	// customRefresher rafraîchit les URLs Spartan de tous les joueurs après
-	// chaque cycle RunOnce. Optionnel — nil → feature désactivée.
-	customRefresher *CustomizationRefresher
+	// customRefresher (DEPRECATED, supprimé par PLAN_SPARTAN_IDENTITY_REFACTOR
+	// §11 Phase 5, 2026-05-25). Le champ est retiré ; la customisation est
+	// désormais rafraîchie en LIVE via CareerLiveService.kickoffBackgroundRefresh
+	// (UPSERT dans `spartan_identity`).
 
 	// cycleOrchestrator (ADR 0020) — pipeline V2 cycle-level. Câblé via
 	// WithCycleOrchestrator. Activation runtime gated par
@@ -290,14 +291,6 @@ func (s *AutoSyncScheduler) WithBatchQueue(q *persist.BatchQueue) *AutoSyncSched
 // Nil runner → no-op (legacy : feature désactivée).
 func (s *AutoSyncScheduler) WithPostSyncRunner(runner port.PostSyncRunner) *AutoSyncScheduler {
 	s.postSyncRunner = runner
-	return s
-}
-
-// WithCustomizationRefresher branche le refresher de customisation Spartan.
-// Appelé après chaque cycle RunOnce pour tous les joueurs du pool.
-// Nil → feature désactivée.
-func (s *AutoSyncScheduler) WithCustomizationRefresher(r *CustomizationRefresher) *AutoSyncScheduler {
-	s.customRefresher = r
 	return s
 }
 
@@ -459,6 +452,26 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 	}
 	res.Total = len(players)
 
+	// ADR 0020 dispatch : si V2 est activé via env var ET orchestrator
+	// non-nil, déléguer au pipeline V2. Fallback silencieux à V1 si
+	// l'orchestrator retourne ErrNotImplemented (cas D0-D6 transitoire)
+	// ou en cas d'échec global (best-effort, V1 reprend).
+	if s.shouldUseV2() {
+		if v2Res, v2Err := s.runOnceV2(ctx, players); v2Err == nil {
+			s.snapshotMu.Lock()
+			s.lastCycleAt = time.Now()
+			copyRes := *v2Res
+			s.lastCycleResult = &copyRes
+			s.snapshotMu.Unlock()
+			return v2Res
+		} else if v2Err == syncv2.ErrNotImplemented {
+			slog.DebugContext(ctx, "auto_sync: V2 stub → fallback V1 silencieux")
+		} else {
+			slog.WarnContext(ctx, "auto_sync: V2 échec — fallback V1", "err", v2Err)
+		}
+		// Fallthrough vers V1.
+	}
+
 	// Phase 3.4 (plan stabilisation 2026-05-22) — paralléliser le cycle :
 	// chaque syncPlayer tourne dans une goroutine, errgroup.SetLimit borne à
 	// la taille du pool de tokens. Gain estimé 15min → 5-8min sur 3 joueurs.
@@ -502,9 +515,9 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 	res.Skipped = int(skipped.Load())
 	res.Failed = int(failed.Load())
 
-	if s.customRefresher != nil {
-		s.customRefresher.RefreshAll(ctx)
-	}
+	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
+	// customRefresher.RefreshAll(ctx) supprimé. La customisation est désormais
+	// rafraîchie en LIVE à chaque visite home (CareerLiveService.kickoff).
 
 	res.Duration = time.Since(start)
 
@@ -718,4 +731,50 @@ func intervalFromHours(h int) time.Duration {
 		return defaultIntervalHours * time.Hour
 	}
 	return time.Duration(h) * time.Hour
+}
+
+// runOnceV2 exécute un cycle complet via le pipeline V2 (ADR 0020).
+// Convertit []PlayerSummary → []syncv2.PlayerProfile, appelle l'orchestrator,
+// mappe le CycleResult → RunOnceResult.
+//
+// Retourne (nil, syncv2.ErrNotImplemented) si l'orchestrator est encore le
+// stub D0 — le caller doit alors fallback vers V1.
+func (s *AutoSyncScheduler) runOnceV2(ctx context.Context, players []domain.PlayerSummary) (*RunOnceResult, error) {
+	profiles := make([]syncv2.PlayerProfile, 0, len(players))
+	for _, p := range players {
+		profiles = append(profiles, syncv2.PlayerProfile{
+			Gamertag:   p.Gamertag,
+			XUID:       p.XUID,
+			PlayerSlug: p.PlayerSlug,
+		})
+	}
+
+	start := time.Now()
+	cycleRes, err := s.cycleOrchestrator.Run(ctx, profiles)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &RunOnceResult{
+		Total:    len(players),
+		Duration: time.Since(start),
+	}
+	for _, outcome := range cycleRes.PerPlayer {
+		switch outcome.Status {
+		case "ok", "partial":
+			res.Synced++
+		case "failed":
+			res.Failed++
+		default:
+			res.Skipped++
+		}
+	}
+	slog.InfoContext(ctx, "auto_sync: cycle V2 terminé",
+		"total", res.Total,
+		"synced", res.Synced,
+		"failed", res.Failed,
+		"unique_matches", cycleRes.UniqueMatches,
+		"duration", res.Duration.Round(time.Millisecond),
+	)
+	return res, nil
 }

@@ -1,3 +1,135 @@
+## [2026-05-25] D6.5 — Sync V2 scheduler dispatch + main.go wiring
+
+**Statut** : Complété (D6.5 du plan ADR 0020 — pipeline V2 câblé runtime, dormant tant que LEVELUP_SYNC_PIPELINE != v2)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : dernière étape du plan ADR 0020 (avant D7 shadow run + D8 cleanup). Câblage scheduler + main.go pour rendre V2 disponible runtime sans changer le comportement par défaut.
+
+**Décisions techniques** :
+
+1. **`scheduler.RunOnce` dispatch** : nouvelle branche au début de `RunOnce` :
+   - Si `shouldUseV2()` retourne true ET orchestrator non-nil, appelle `runOnceV2(ctx, players)`.
+   - Si V2 retourne `syncv2.ErrNotImplemented` (stub D0-D5 transitoire), log DEBUG + fallback V1 silencieux.
+   - Si V2 retourne autre erreur, log WARN + fallback V1.
+   - Si V2 réussit, retourne directement (snapshot updated).
+
+2. **`runOnceV2`** : fonction utilitaire qui convertit `[]domain.PlayerSummary` → `[]syncv2.PlayerProfile`, appelle `s.cycleOrchestrator.Run(ctx, profiles)`, mappe `CycleResult` → `RunOnceResult` (ok/partial → Synced, failed → Failed, autre → Skipped).
+
+3. **`cmd/server/main.go` wiring** : 12 lignes ajoutées juste après le câblage `postSyncRunner` :
+   - Condition : `autoSyncPool != nil && autoBatchQueue != nil && metaDB != nil`.
+   - Récupération `sharedSQLDB` via `duckdb.LookupCachedDB(sharedPath)` (handle process-wide déjà ouvert).
+   - Appel `buildSyncV2Orchestrator(...)` qui construit les 6 dépendances.
+   - Si non-nil, `autoScheduler.WithCycleOrchestrator(v2Orch)` + log INFO.
+
+4. **`cmd/server/sync_v2_wiring.go`** (~80 lignes, nouveau fichier isolé pour D8 cleanup trivial) :
+   - **playerDBOpener** : `duckdbpkg.OpenReadOnly(pr.PlayerDBPath(titleSlug, gamertag))` + release via `db.Close()` (cache-aware).
+   - **clientFactory** : `syncpkg.NewPooledHaloClient(tokenPool, gamertag, xuid, 0)`. Le `*PooledHaloClient` satisfait l'interface `syncv2.HaloClient` (sous-ensemble narrow).
+   - **matchListProvider** : `NewMatchListProvider(clientFactory, "matchmaking", 25, 20)` — pageSize 25, maxPages 20.
+   - **sharedFetcher** : `NewSharedMatchFetcher(clientFactory)`.
+   - **playerEnrFetcher** : `NewPlayerEnrichmentFetcher()` — no-op D6.3.
+   - **persister** : `NewCycleBatchPersister(titleSlug, ..., batchQueue, 0)` — drain default 60s.
+   - **engineFactory** : construit un `*syncpkg.SyncEngine` éphémère via `NewSyncEngine` + `WithCSRSeasonID` si configuré.
+   - **postSyncRunner** : `NewPostSyncRunner(engineFactory, playerDBOpener, sharedDB, clientFactory)`.
+   - Orchestrator final : `NewCycleOrchestrator(...)` avec defaults (8/4/0).
+
+5. **Comportement par défaut** : `LEVELUP_SYNC_PIPELINE` non défini ou != "v2" → `shouldUseV2()` retourne false → flow V1 strictement inchangé. Rollback = supprimer l'env var.
+
+**Activation V2 en prod** :
+```bash
+export LEVELUP_SYNC_PIPELINE=v2
+# redémarrer le serveur
+```
+
+**Résultats observés** :
+- `go build ./...` OK (cmd/server + tous les packages)
+- `go vet ./...` clean
+- `go test ./internal/sync/v2/` : 81/81 PASS en 3.02s
+- `go test ./internal/scheduler/` : tests passent (3.04s)
+- V1 modifications cumulées D6 : **2 nouveaux fichiers** (`engine_v2bridge.go` 85 lignes + auto_sync.go +52 lignes wrapper dispatch) + `cmd/server/main.go` +18 lignes + `cmd/server/sync_v2_wiring.go` 87 lignes nouveau. **Aucune logique métier V1 modifiée**.
+
+**Bilan ADR 0020 D0→D6** :
+- ADR + scaffold (D0)
+- 6 phases pipeline pure logic (D1-D5, ~1500 lignes V2 + ~1700 lignes tests)
+- Orchestrator composition (D6.1)
+- 3 adapters V2-native (D6.2-D6.3, ~600 lignes V2 + tests)
+- 2 wrappers V1 + 2 adapters V2 bridge (D6.4, ~85 V1 + 250 V2)
+- Wiring scheduler + main.go (D6.5, ~120 V1 + 80 wiring)
+- **Total : ~3500 lignes V2 nouvelles, 105 lignes V1 ajoutées (zéro modifiée), 81 tests verts, 13 commits sur la branche.**
+
+**Conclusion / prochaine étape** : **Le pipeline V2 est livré et câblé.** Activation pure opt-in via `LEVELUP_SYNC_PIPELINE=v2`. Prochaines étapes hors plan :
+- **D7 — Shadow run** (1 semaine élapsed) : activer V2 sur env local, comparer les outputs avec V1, valider la parité.
+- **D8 — Cleanup V1** (post-D7 stable) : `rm internal/sync/engine_v2bridge.go`, supprimer le dispatch dans `scheduler.RunOnce`, supprimer V1 (engine.go etc.). Estimation 1 jour.
+
+---
+
+## [2026-05-25] Spartan Identity refactor (PLAN §11) — table dédiée + 6 phases livrées
+
+**Statut** : Complété (Phases 1-6 du PLAN_SPARTAN_IDENTITY_REFACTOR §11)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : la home affichait des bannières Spartan inconstantes (« vont et viennent ») et il était impossible de tracer pourquoi un joueur n'avait pas la sienne. Cause racine : `career_progression` mélangeait historique rank/XP (append-only) ET customisation latest-only, avec un hack `ARG_MAX FILTER WHERE NOT NULL` fragile. 3 chemins d'écriture concurrents (sync match legacy + visite home + scheduler 6h) écrivaient dans cette table, sans status traçable.
+
+**Décisions techniques** :
+
+1. **Table dédiée `spartan_identity`** (1 row par xuid, UPSERT). Séparée du `career_progression` qui continue d'historiser rank/XP. Champ `last_attempt_status` (`ok` / `api_empty` / `auth_missing` / `failed`) rend le diag immédiat (`SELECT last_attempt_status FROM spartan_identity WHERE xuid = ?`). Migration enregistrée dans `internal/migration/steps_player_spartan_identity.go`.
+
+2. **Pattern SELECT-then-UPDATE-or-INSERT** côté repo (`spartan_identity_repo.go`) — atomique via TX, compatible ADR 0019 (pas de `ON CONFLICT DO UPDATE` qui stresserait l'ART). UPSERT avec data nil = status-only, préserve les URLs précédentes (contrat UI-first « la bannière ne disparaît jamais »).
+
+3. **Mode LIVE pur — scheduler 6h supprimé** (révision §11 par rapport au plan initial qui voulait garder le `CustomizationRefresher` 6h). La customisation est désormais rafraîchie uniquement à la visite home via `CareerLiveService.kickoffBackgroundRefresh` (background goroutine UPSERT). Cache mémoire 6h conservé comme throttle anti-DDoS Halo, n'est plus la source de vérité.
+
+4. **Overlay prioritaire dans `GetSpartanIdentity` Étape 5** : la nouvelle table prime sur `career_progression`. Interface `CareerIdentityBuilder` étendue avec `ApplySpartanIdentityOverlay` — `HomeRepo` implémente le mapping URL via `buildHomeIdentityAssetURL`.
+
+5. **Backfill au boot via `ApplyBackfill`** dans la migration — ARG_MAX par recorded_at (filter sur valeurs non-vides) sur `career_progression` → `spartan_identity`. Idempotent (skip si xuid déjà présent), tracé par `schema_migrations.backfill_done`. Aucune donnée historique perdue.
+
+6. **Fix nil-cache préalable (commit du matin)** : `PutProgress(xuid, nil)` empoisonnait le cache 5 min → `GetProgress` retournait `(nil, true)` → bloquait les refreshes background. Nil guard ajouté dans `fetchProgressCached` et `fetchCustomizationCached` + test régression `TestCareerLive_NilAPIResponse_NotCached`.
+
+**Phases livrées** :
+- **Phase 1** — table + migration + repo + 8 tests intégration `:memory:`
+- **Phase 2** — `kickoffBackgroundRefresh` UPSERT + interface `SpartanIdentityStore` (Load+Upsert) + méthode chainée `WithSpartanIdentityRepo` + 6 tests `upsertSpartanIdentity`
+- **Phase 3** — Étape 5 overlay dans `GetSpartanIdentity` + `ApplySpartanIdentityOverlay` sur HomeRepo + 4 tests `overlayFromSpartanIdentityTable`
+- **Phase 4** — backfill ARG_MAX FILTER + 4 tests intégration (no-op, copies last non-empty, idempotent)
+- **Phase 5** — suppression `internal/scheduler/customization_refresh.go` + son test + champ `customRefresher` + `WithCustomizationRefresher` + appel `RefreshAll` dans `RunOnce`
+- **Phase 6** — retrait logs DIAG temporaires (`progress fetch DIAG/RESULT`, `custom fetch DIAG/RESULT`) ajoutés en début de session pour l'investigation §12
+
+**Diag §12 bug token mismatch — RÉFUTÉ par les logs live** :
+- Lancé serveur diag à 17:19, visite home JGtm + Chocoboflor
+- `xuid_mismatch: false` pour les deux joueurs → pas de bug de tokens
+- API renvoie rang 184 (Cadet Diamond 3) pour JGtm → persisted à 17:20:43
+- Le rang « stale 179 » du matin venait du restore DB après ART bug du 24/05 (corruption pré-existante), pas d'un bug actuel
+
+**Audit ART préalable** :
+- 0 erreur "Failed to delete all rows from index" depuis le 20/05 23:28 (5 jours)
+- 0 WARN BootARTGuard au boot diag 17:19
+- Shared DB clean (0 registry sans participants sur 1645)
+- Phase 4 du PLAN_LUSR_ART confirmée code-complete (4.1→4.8 DONE, smoke test 12 syncs/0 FATAL d'après [.ai/V7/PLAN_PHASE4_POSTSYNC_REFACTOR.md](.ai/V7/PLAN_PHASE4_POSTSYNC_REFACTOR.md))
+- Pas besoin de rebuild ART pour les 4 player DBs
+
+**Tests cumulés** :
+- 18 tests Spartan Identity nouveaux : 8 repo intégration (`spartan_identity_repo_test.go`) + 4 migration intégration (`steps_player_spartan_identity_test.go`) + 6 service (`career_live_spartan_identity_test.go`)
+- `go test ./internal/service/...` : OK 5.5s
+- `go test ./internal/scheduler/...` : OK 2.0s
+- `go test -tags integration ./internal/migration/... ./internal/platform/duckdb/...` : OK
+- `go build ./...` : OK
+- `go vet ./...` : import cycle pré-existant dans `internal/sync` (lié à `sync/v2/contract_test.go`, pas à mes changements)
+
+**Résultats observés** :
+- Double écriture transitoire : `career_progression` continue d'historiser rank/XP, `spartan_identity` devient source de vérité customisation
+- Le legacy `LoadSpartanIdentity` reste comme fallback (Étape 4 `overlayIdentityFromFallback`) si la nouvelle table est vide pour un joueur
+- Le user verra ses URLs/SpartanID frais dès la prochaine visite home après déploiement (background UPSERT puis overlay au coup suivant)
+
+**Risques résiduels** :
+- Phase 5 supprime le scheduler 6h : un joueur qui ne visite jamais sa home n'aura jamais sa bannière backfillée. Acceptable (le backfill au boot capture l'historique career_progression, le live fetch comble le reste à la prochaine visite home)
+- Les tests Nil_Pool_NoOp etc. du `customization_refresh_test.go` supprimés étaient valables mais sans valeur résiduelle car le code testé n'existe plus
+
+**Prochaine étape** :
+- User : commit + smoke test prod multi-joueurs sur la branche
+- Si OK 24h : potentiel cleanup Phase 7 — drop des colonnes banner/emblem/backdrop/spartan_id de `career_progression`
+- Mettre à jour `.ai/PLAN_SPARTAN_IDENTITY_REFACTOR.md` §11 avec le statut « livré »
+
+---
+
 ## [2026-05-25] D6.4 — Sync V2 adapters PostSync + CycleBatchPersister via wrappers V1
 
 **Statut** : Complété (D6.4 du plan ADR 0020)

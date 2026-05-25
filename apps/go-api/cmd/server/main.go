@@ -715,10 +715,37 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
-	if autoSyncPool != nil {
-		customRefresher := scheduler.NewCustomizationRefresher(cfg, autoSyncPool, titleSlug)
-		autoScheduler.WithCustomizationRefresher(customRefresher)
+	// ADR 0020 D6.5 — câblage pipeline V2 (dormant tant que
+	// LEVELUP_SYNC_PIPELINE=v2 n'est pas positionné). En l'absence d'env
+	// var, scheduler.shouldUseV2() retourne false et le flow runtime reste
+	// 100% V1 — aucun changement de comportement.
+	//
+	// Pré-requis : autoSyncPool non-nil + autoBatchQueue non-nil. Si l'un
+	// manque, on skip le câblage : V2 sera indisponible mais V1 fonctionne.
+	if autoSyncPool != nil && autoBatchQueue != nil && metaDB != nil {
+		// Récupère le handle shared via le cache duckdb process-wide
+		// (déjà ouvert plus tôt par le serveur en RO ou RW selon mode).
+		var sharedSQLDB *sql.DB
+		if cached, ok := duckdb.LookupCachedDB(sharedPath); ok {
+			sharedSQLDB = cached.SQLDb()
+		}
+		v2Orch := buildSyncV2Orchestrator(
+			cfg, pr, titleSlug,
+			autoSyncPool, autoBatchQueue,
+			metaDB.SQLDb(), sharedSQLDB,
+			tokenProvider,
+		)
+		if v2Orch != nil {
+			autoScheduler.WithCycleOrchestrator(v2Orch)
+			slog.Info("sync.v2: orchestrator câblé (activation via LEVELUP_SYNC_PIPELINE=v2)")
+		}
 	}
+
+	// PLAN_SPARTAN_IDENTITY_REFACTOR §11 Phase 5 (2026-05-25) :
+	// CustomizationRefresher (scheduler 6h) supprimé. La customisation est
+	// désormais rafraîchie en LIVE à chaque visite home via CareerLiveService
+	// (background goroutine UPSERT dans `spartan_identity`). Le scheduler 6h
+	// dupliquait inutilement le travail du chemin live.
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
