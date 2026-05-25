@@ -1,3 +1,50 @@
+## [2026-05-25] D2 — Sync V2 Phase 3 (Fetch shared)
+
+**Statut** : Complété (D2 du plan ADR 0020)
+
+**Branche** : `fix/art-eradication-and-home-resilience`
+
+**Contexte** : suite de D1. D2 livre la phase de fetch parallèle des données shared (GetMatchStats + GetMatchSkill) par match unique, en respectant la liste canonical fetcher de Phase 2.
+
+**Décisions techniques** :
+
+1. **`SharedMatchFetcher` interface** (`fetch_shared.go`) :
+   - Signature : `FetchSharedMatch(ctx, matchID, fetcher PlayerProfile, participants []PlayerProfile) (SharedMatchData, error)`.
+   - L'adapter V1-bridge (D6) wrappera HaloClient pinned + le retry/backoff existant.
+   - Le mock test substitue trivialement.
+
+2. **`SharedMatchData` opaque** :
+   - Stats et Skill restent `map[string]any` (forme raw de l'API HaloClient).
+   - Pas de typage strict ici : les Persisters parsent déjà ce shape, la conversion vers canonical structs arrive en Phase 5 (transformation avant écriture).
+   - Évite la dépendance circulaire `v2 → sync` (et garde Phase 3 simple).
+
+3. **`RunFetchShared`** :
+   - errgroup avec `SetLimit(parallelism)` — défaut envisagé : 8 (rate limit Halo). parallelism <= 0 → fallback à 1.
+   - Per-match errors capturées dans `FetchSharedResult.Errors`, n'annulent pas les autres goroutines (`nolint:nilerr`).
+   - Garde-rails post-fetch : `data.MatchID` et `data.Fetcher` forcés à la valeur canonical (l'impl peut être distraite, on tient à l'invariant).
+   - Lookup `playerBySlug` : slug inconnu pour le canonical fetcher = erreur sur le match (bug d'orchestration). Slug inconnu pour un participant = toléré (participant non-tracké).
+
+4. **Tests unitaires** (`fetch_shared_test.go`, 8 cas) :
+   - Happy path 3 matchs avec 2 fetchers différents — vérifier que chaque match utilise son canonical fetcher.
+   - Empty dedup → empty result.
+   - Failure isolation : m2 fail, m1+m3 OK.
+   - **Parallelism bound** : 16 matchs × 30 ms délai, parallelism=4 → `maxInFlight ≤ 4` ET `>= 2`, elapsed ≤ 500 ms (vs 480 ms séquentiel théorique).
+   - Unknown fetcher slug → Error sur match, pas de panic.
+   - Canonical fetcher verifié : `calledWith` Map track le fetcher utilisé par match.
+   - Context cancellation : ctx annulé à 50 ms sur 8 matchs × 500 ms délai, doit retourner rapidement.
+   - parallelism=0 fallback (pas de panic).
+
+**Résultats observés** :
+
+- `go build ./...` OK
+- `go vet ./internal/sync/v2/` clean
+- `go test ./internal/sync/v2/` : 24/24 PASS en 0.46s (16 D1 + 8 D2)
+- Aucun changement runtime (orchestrator stub `ErrNotImplemented` toujours actif)
+
+**Conclusion / prochaine étape** : D2 livrable. Phase 3 codée, testée pour concurrence + isolation + parallelism bound. Prochaine étape : **D3 — Phase 4 (Per-player enrichments)** : pour chaque joueur, errgroup interne sur ses matchs pour fetcher les awards / personal scores qui requièrent SON token.
+
+---
+
 ## [2026-05-25] D1 — Sync V2 Phase 1 (Discovery) + Phase 2 (Dedup)
 
 **Statut** : Complété (D1 du plan ADR 0020)
