@@ -86,10 +86,12 @@ func (e *SyncEngine) RunCitationPostComputeChecks(ctx context.Context) ([]Citati
 }
 
 // checkV1NoZeroValues : aucune valeur ≤ 0 dans match_citations.
+// Exclut le sentinel "_processed" (value=0) écrit par writeCitations pour marquer
+// les matchs sans citation active (empêche le retraitement à chaque sync).
 func checkV1NoZeroValues(ctx context.Context, db *sql.DB) *CitationCheckViolation {
 	var count int
 	if err := db.QueryRowContext(ctx,
-		`SELECT COUNT(*) FROM match_citations WHERE value <= 0`,
+		`SELECT COUNT(*) FROM match_citations WHERE value <= 0 AND citation_name_norm != '_processed'`,
 	).Scan(&count); err != nil || count == 0 {
 		return nil
 	}
