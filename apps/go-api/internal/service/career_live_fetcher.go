@@ -1,0 +1,149 @@
+// Package service — career_live_fetcher.go : helpers d'accès live HTTP avec
+// cache mémoire process-level (singleflight) pour l'API Halo Economy.
+//
+// Extrait de career_live_service.go (refactor V2 dette technique 2026-05-26)
+// pour respecter la limite de 500 lignes par fichier (arch-rules).
+//
+// Responsabilités :
+//   - fetchProgressCached : récupère CareerProgress depuis cache ou live API
+//   - fetchCustomizationCached : pendant pour la customisation Spartan
+//   - makeFetcher : construit un fetcher depuis le contexte (factory injection)
+//   - CareerFetcherFactoryFromTokens : factory production basée sur les tokens ctx
+//
+// Règles de bord :
+//   - Cache hit → return immédiatement (pas d'appel HTTP)
+//   - Cache miss + factory nil → return nil (tokens absents, dégradation silent)
+//   - Live nil sans erreur → log "API silent skip", ne pas cacher (évite poison)
+//   - Live OK → put cache + return
+package service
+
+import (
+	"context"
+	"log/slog"
+
+	"levelup/go-api/internal/ctxkeys"
+	syncpkg "levelup/go-api/internal/sync"
+)
+
+// fetchProgressCached retourne la progression depuis le cache si frais, sinon
+// fait l'appel live (avec singleflight). Erreurs live → log warn + nil.
+func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string) *syncpkg.CareerRankData {
+	if s.cache != nil {
+		if cached, hit := s.cache.GetProgress(xuid); hit {
+			careerLiveProgressCache.Add(1)
+			slog.DebugContext(ctx, careerLiveLogModule+": progress cache hit", "xuid", xuid)
+			return cached
+		}
+	}
+
+	fetcher := s.makeFetcher(ctx)
+	if fetcher == nil {
+		return nil
+	}
+
+	fetch := func() (*syncpkg.CareerRankData, error) {
+		return fetcher.GetCareerProgress(ctx, xuid)
+	}
+	var (
+		data *syncpkg.CareerRankData
+		err  error
+	)
+	if s.cache != nil {
+		data, err = s.cache.DoProgress(xuid, fetch)
+	} else {
+		data, err = fetch()
+	}
+	if err != nil {
+		careerLiveProgressFail.Add(1)
+		slog.WarnContext(ctx, careerLiveLogModule+": progress fetch failed",
+			"xuid", xuid, "err", err)
+		return nil
+	}
+	if data == nil {
+		// L'API a répondu sans erreur mais sans données exploitables (401/403
+		// silencieux ou payload non parseable). Ne pas mettre nil en cache :
+		// un nil caché retourne hit=true et supprime les tentatives suivantes.
+		slog.WarnContext(ctx, careerLiveLogModule+": progress fetch returned nil (API silent skip)",
+			"xuid", xuid)
+		return nil
+	}
+	careerLiveProgressLive.Add(1)
+	if s.cache != nil {
+		s.cache.PutProgress(xuid, data)
+	}
+	return data
+}
+
+// fetchCustomizationCached : pendant pour la customisation (TTL 6 h).
+func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid string) *syncpkg.SpartanCustomizationData {
+	if s.cache != nil {
+		if cached, hit := s.cache.GetCustomization(xuid); hit {
+			careerLiveCustomCache.Add(1)
+			slog.DebugContext(ctx, careerLiveLogModule+": customization cache hit", "xuid", xuid)
+			return cached
+		}
+	}
+
+	fetcher := s.makeFetcher(ctx)
+	if fetcher == nil {
+		return nil
+	}
+
+	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
+		return fetcher.GetSpartanCustomization(ctx, xuid)
+	}
+	var (
+		data *syncpkg.SpartanCustomizationData
+		err  error
+	)
+	if s.cache != nil {
+		data, err = s.cache.DoCustomization(xuid, fetch)
+	} else {
+		data, err = fetch()
+	}
+	if err != nil {
+		careerLiveCustomFail.Add(1)
+		slog.WarnContext(ctx, careerLiveLogModule+": customization fetch failed",
+			"xuid", xuid, "err", err)
+		return nil
+	}
+	if data == nil {
+		slog.WarnContext(ctx, careerLiveLogModule+": customization fetch returned nil (API silent skip)",
+			"xuid", xuid)
+		return nil
+	}
+	careerLiveCustomLive.Add(1)
+	if s.cache != nil {
+		s.cache.PutCustomization(xuid, data)
+	}
+	return data
+}
+
+// makeFetcher construit un fetcher depuis le contexte. Retourne nil si la
+// factory n'est pas câblée ou si elle elle-même retourne nil (tokens absents).
+func (s *CareerLiveService) makeFetcher(ctx context.Context) CareerFetcher {
+	if s.fetcherFactory == nil {
+		return nil
+	}
+	return s.fetcherFactory(ctx)
+}
+
+// CareerFetcherFactoryFromTokens retourne une factory qui instancie un
+// HaloAPIClient depuis les tokens du contexte. requestsPerSecond contrôle le
+// rate limiting du client (defaults à 10 si <= 0).
+//
+// Le client est jetable : un nouvel objet par requête. Le coût d'allocation
+// est négligeable comparé au HTTP call lui-même, et permet de bénéficier
+// systématiquement des tokens à jour (refresh rotation handled in middleware).
+func CareerFetcherFactoryFromTokens(requestsPerSecond int) CareerFetcherFactory {
+	return func(ctx context.Context) CareerFetcher {
+		tokens := ctxkeys.HaloTokens(ctx)
+		if tokens == nil || tokens.SpartanToken == "" {
+			return nil
+		}
+		return syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, requestsPerSecond)
+	}
+}
+
+// Compile-time check : sync.HaloAPIClient implémente bien CareerFetcher.
+var _ CareerFetcher = (*syncpkg.HaloAPIClient)(nil)
