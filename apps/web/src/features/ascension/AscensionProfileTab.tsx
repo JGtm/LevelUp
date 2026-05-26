@@ -1,5 +1,5 @@
 // cross-feature-allow: tab orchestrateur Ascension — agrège les composants
-// prestige (CampaignTracker, ChallengeCard, ArcSummary…) et coach (proposals).
+// prestige (ChallengeCard, ArcSummary…) et coach (proposals).
 /**
  * AscensionProfileTab — tab "Profil & objectifs" (refonte 2026-05-26).
  *
@@ -20,8 +20,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings } from '@/features/settings/queries'
 import { CoachProposalsCard } from '@/features/coach/CoachProposalsCard'
 import { getCoachStrings } from '@/features/coach/i18n'
-import { CampaignTracker } from '@/features/prestige/components/CampaignTracker'
-import { StartCampaignModal } from '@/features/prestige/components/StartCampaignModal'
+import { CampaignTracker } from './campaign/CampaignTracker'
+import { StartCampaignModal } from './campaign/StartCampaignModal'
 import { CreateChallengeForm } from '@/features/prestige/components/CreateChallengeForm'
 import { ChallengeCard } from '@/features/prestige/components/ChallengeCard'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
