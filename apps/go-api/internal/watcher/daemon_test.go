@@ -214,6 +214,62 @@ func TestDaemon_MakePresenceHandler_UntrackedTitleTreatedAsInactive(t *testing.T
 // Reimport presence package reference for the test (the test file already uses it via daemon.go)
 var _ syncpkg.SyncRunner = (*mockDaemonSyncRunner)(nil)
 
+// Fix 2026-05-26 : un payload Offline avec lastSeen.titleId qui n'est pas
+// dans le registry (Xbox Dashboard "Online" id=1022622766, autre jeu, etc.)
+// NE doit PAS être stocké comme lastSeen. Évite l'UI "Vu il y a 2h sur Online".
+func TestDaemon_MakePresenceHandler_LastSeenFilteredByRegistry(t *testing.T) {
+	reg := title.NewRegistry() // contient Halo Infinite (id 2043073184)
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, reg, &mockDaemonSyncRunner{})
+
+	fetcher := &mockFetcher{results: [][]string{{}}}
+	trigger := newMockSyncTrigger()
+	pw := NewPlayerWatcher("P1", "X1", fetcher, trigger).WithPostExitGrace(0)
+	handler := d.makePresenceHandler(context.Background(), pw)
+
+	// Cas 1 : lastSeen pointe sur Dashboard Xbox (non tracké) → IGNORÉ.
+	handler(presence.PresenceEvent{
+		XUID:          "X1",
+		PresenceState: "Offline",
+		LastSeen: &presence.LastSeenInfo{
+			TitleID:   "1022622766",
+			TitleName: "Online",
+		},
+	})
+	if pw.LastSeen() != nil {
+		t.Errorf("LastSeen sur titre non tracké NE doit PAS être enregistré (Dashboard Xbox), got %+v", pw.LastSeen())
+	}
+
+	// Cas 2 : lastSeen pointe sur Halo Infinite (tracké) → ENREGISTRÉ.
+	handler(presence.PresenceEvent{
+		XUID:          "X1",
+		PresenceState: "Offline",
+		LastSeen: &presence.LastSeenInfo{
+			TitleID:   "2043073184",
+			TitleName: "Halo Infinite",
+		},
+	})
+	got := pw.LastSeen()
+	if got == nil {
+		t.Fatal("LastSeen sur Halo Infinite devrait être enregistré")
+	}
+	if got.TitleName != "Halo Infinite" {
+		t.Errorf("LastSeen.TitleName = %q, want Halo Infinite", got.TitleName)
+	}
+
+	// Cas 3 : nouveau lastSeen Dashboard n'écrase pas l'ancien Halo.
+	handler(presence.PresenceEvent{
+		XUID:          "X1",
+		PresenceState: "Offline",
+		LastSeen: &presence.LastSeenInfo{
+			TitleID:   "1022622766",
+			TitleName: "Online",
+		},
+	})
+	if pw.LastSeen() == nil || pw.LastSeen().TitleName != "Halo Infinite" {
+		t.Error("Dashboard Xbox ne doit PAS écraser le LastSeen Halo précédent")
+	}
+}
+
 func TestStateProvider_SubscribeError_ExposedInStatus(t *testing.T) {
 	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
 	d.initPlayers(context.Background(), []domain.PlayerSummary{{Gamertag: "P1", XUID: "X1"}})
