@@ -7,6 +7,8 @@ package duckdb
 // Résolveur canonique : v_gamertag_lookup gère bots + cascade
 // xuid_aliases / match_participants / fallback xuid raw. Caller fait juste
 // `COALESCE(vg.gamertag, p2.xuid)` pour couvrir les xuids orphelins (jamais en DB).
+//
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q10Encounters = `
 SELECT
     p2.xuid,
@@ -18,7 +20,7 @@ SELECT
 FROM match_participants p1
 JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.xuid = ?
 GROUP BY p2.xuid, vg.gamertag
 HAVING COUNT(*) >= 2
