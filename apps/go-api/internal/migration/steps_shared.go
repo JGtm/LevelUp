@@ -656,6 +656,16 @@ func init() {
 		ApplySchema: applyResolutionViews,
 	})
 
+	// weapon_kills_repo.go query shared.v_weapon_kills sur connexion directe à
+	// shared_matches_v2.duckdb — la migration add_weapon_kills_reconciled_as créait
+	// uniquement main.v_weapon_kills. Correction via applyResolutionViews mis à jour.
+	Register(Migration{
+		Name:        "fix_weapon_kills_view_shared_schema",
+		TargetDB:    TargetShared,
+		Description: "Crée shared.v_weapon_kills (vue était en schéma main, queries utilisent shared.)",
+		ApplySchema: applyResolutionViews,
+	})
+
 }
 
 // dropAssistsExpectedShared supprime les colonnes assists_expected / assists_stddev
@@ -919,10 +929,13 @@ func applyResolutionViews(db *sql.DB) error {
 		`)
 	}
 
-	// v_weapon_kills
+	// v_weapon_kills dans le schéma shared — weapon_kills_repo.go query
+	// shared.v_weapon_kills via SharedReadDB() (connexion directe à
+	// shared_matches_v2.duckdb, schéma "shared" = namespace interne du fichier).
 	if exists, _ := tableExists(db, "weapon_kills"); exists {
+		_, _ = db.ExecContext(bootCtx(), `CREATE SCHEMA IF NOT EXISTS shared`)
 		_, _ = db.ExecContext(bootCtx(), `
-			CREATE OR REPLACE VIEW v_weapon_kills AS
+			CREATE OR REPLACE VIEW shared.v_weapon_kills AS
 			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
 			FROM weapon_kills
 		`)
