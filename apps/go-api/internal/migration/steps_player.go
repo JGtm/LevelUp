@@ -110,6 +110,15 @@ func init() {
 	})
 
 	Register(Migration{
+		Name:        "add_career_last_fetch_status",
+		TargetDB:    TargetPlayer,
+		Description: "Phase 6 PLAN_V2 : colonne last_fetch_status sur career_progression",
+		ApplySchema: func(db *sql.DB) error {
+			return addColumnIfMissing(db, "career_progression", "last_fetch_status", "VARCHAR")
+		},
+	})
+
+	Register(Migration{
 		Name:        "add_challenge_snapshots",
 		TargetDB:    TargetPlayer,
 		Description: "Table challenge_snapshots pour historiser défis joueur",
