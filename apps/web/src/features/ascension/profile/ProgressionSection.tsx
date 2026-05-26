@@ -11,7 +11,7 @@ import type {
   SuggestedChallenge,
 } from '@/lib/playerProfile'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
-import { useProfileI18n } from '../../hooks/useProfileI18n'
+import { useProfileI18n } from './useProfileI18n'
 
 interface ProgressionSectionProps {
   leverages?: ProgressionLeverage[]

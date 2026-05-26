@@ -4,7 +4,7 @@
  * Affiché à la place du PlayerProfileCard complet quand HasEnoughData=false.
  * Garde-fou G2 du plan §4.5.4 — pas de fausse précision.
  */
-import { useProfileI18n } from '../../hooks/useProfileI18n'
+import { useProfileI18n } from './useProfileI18n'
 
 interface InsufficientDataPlaceholderProps {
   matchesAnalyzed: number

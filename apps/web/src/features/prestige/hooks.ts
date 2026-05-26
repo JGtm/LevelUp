@@ -22,9 +22,12 @@ export {
   useSuggestedTemplates,
   useJoinSquadChallenge,
 } from './hooks/usePrestige'
+// cross-feature-allow: les hooks profil/campagne vivent désormais dans
+// features/ascension/profile (refonte 2026-05-26). Re-broadcast ici pour les
+// callers prestige existants.
 export {
   profileKeys,
   useActiveCampaign,
   useCampaignMutations,
   usePlayerProfile,
-} from './hooks/usePlayerProfile'
+} from '@/features/ascension/profile/queries'
