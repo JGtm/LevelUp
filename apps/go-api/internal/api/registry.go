@@ -937,8 +937,13 @@ func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.
 // puis tente un refresh silencieux pour obtenir les tokens Halo.
 // Ordre :
 //  1. MSAL cache (sync_meta.msal_token_cache) → TrySilentRefresh
-//  2. OAuth v2 refresh_token (env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>) → TryOAuthRefresh
-//  3. OAuth v2 refresh_token (sync_meta.oauth_refresh_token) → TryOAuthRefresh
+//  2. OAuth v2 refresh_token (sync_meta.oauth_refresh_token) → TryOAuthRefreshWithRotation + persist
+//  3. OAuth v2 refresh_token (env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>) → bootstrap uniquement
+//
+// DuckDB est prioritaire sur l'env var. Au boot, le Pool lit l'env var, appelle Microsoft,
+// et persiste le RT rotaté en DuckDB via onRotated. Si ce handler HTTP lit l'env var
+// en premier (original déjà consommé par le Pool), il obtient invalid_grant.
+// Avec DuckDB en premier, il utilise le RT rotaté que le Pool vient de sauvegarder.
 func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
 	// --- Chemin 1 : MSAL cache ---
 	cacheJSON, err := duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
@@ -957,18 +962,26 @@ func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.P
 	}
 
 	// --- Chemin 2 : refresh_token OAuth v2 ---
-	// Priorité : variable d'environnement SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER>
-	// puis clé oauth_refresh_token dans sync_meta.
-	refreshToken := oauthRefreshTokenForPlayer(pdb.Gamertag)
+	// DuckDB d'abord : le Pool persiste le RT rotaté en DuckDB au boot via onRotated.
+	// L'env var est un seed bootstrap (one-shot) : une fois le RT en DuckDB, l'env var
+	// est dépassée et causerait invalid_grant si lue en premier.
+	refreshToken, _ := duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
+	source := "duckdb"
 	if refreshToken == "" {
-		refreshToken, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
+		refreshToken = oauthRefreshTokenForPlayer(pdb.Gamertag)
+		source = "env_var"
 	}
 	if refreshToken != "" {
-		accessToken, err := r.provider.TryOAuthRefresh(ctx, refreshToken)
+		accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
 		if err == nil && accessToken != "" {
+			if rotatedRT != "" && rotatedRT != refreshToken {
+				if werr := duckdb.WriteOAuthRefreshToken(ctx, pdb.Player, rotatedRT); werr != nil {
+					slog.WarnContext(ctx, "halo_auth: persistance RT rotaté échouée", "xuid", xuid, "err", werr)
+				}
+			}
 			result, err := r.provider.Exchange(ctx, accessToken)
 			if err == nil && result != nil {
-				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth v2 refresh", "xuid", xuid)
+				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth v2 refresh", "xuid", xuid, "source", source)
 				return result
 			}
 			slog.WarnContext(ctx, "halo_auth: échange access_token échoué (OAuth v2)", "xuid", xuid, "err", err)
