@@ -34,7 +34,9 @@ function normalizeBar(value: number, p80: number): number {
 }
 
 function barWidth(value: number | null | undefined, p80: number): number {
-  if (value == null || value <= 0) return 0
+  if (value == null) return 0
+  if (value < 0) return BAR_MAX_PX  // sentinel ∞ (deaths == 0)
+  if (value <= 0) return 0
   return Math.round(normalizeBar(value, p80) * BAR_MAX_PX)
 }
 
@@ -57,7 +59,9 @@ function Tooltip({ offensiveConversion, defensiveResistance, damagePerKill, dama
       )}
       <div className="flex justify-between gap-2 mb-1">
         <span className="font-semibold" style={{ color: tokenCssVar('divergent-neutral') }}>Défensif</span>
-        <span className="text-muted-foreground">{defensiveResistance != null ? `${Math.round((defensiveResistance - 1) * 100)}%` : '—'}</span>
+        <span className="text-muted-foreground">
+          {defensiveResistance == null ? '—' : defensiveResistance < 0 ? '∞' : `${Math.round((defensiveResistance - 1) * 100)}%`}
+        </span>
       </div>
       {damagePerDeath != null && (
         <div className="text-muted-foreground">{Math.round(damagePerDeath)} dmg/mort</div>
@@ -80,7 +84,7 @@ export function CombatYieldBar({
   const drWidth = barWidth(defensiveResistance, DR_P80)
 
   const hasData = (offensiveConversion != null && offensiveConversion > 0) ||
-    (defensiveResistance != null && defensiveResistance > 0)
+    (defensiveResistance != null && (defensiveResistance > 0 || defensiveResistance < 0))
 
   return (
     <div
