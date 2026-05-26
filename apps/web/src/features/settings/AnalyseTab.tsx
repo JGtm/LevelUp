@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useRecalculateSessions } from '@/features/settings/queries'
 import { ToggleRow, BulletHint, type TabProps } from './_settingsShared'
@@ -34,7 +35,7 @@ export function AnalyseTab({ merged, handleChange, t }: TabProps) {
                   type="number"
                   min={0}
                   max={1440}
-                  className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                  className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm text-foreground"
                   value={merged.session_gap_minutes ?? 120}
                   onChange={(e) =>
                     handleChange('session_gap_minutes', parseInt(e.target.value, 10) || 120)
@@ -50,7 +51,7 @@ export function AnalyseTab({ merged, handleChange, t }: TabProps) {
           <div className="flex flex-col gap-1 py-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground">{t.sessionTeamChangeLabel}</span>
-              <select
+              <Select
                 value={merged.session_team_change_mode ?? 'friends'}
                 onChange={(e) =>
                   handleChange(
@@ -58,12 +59,12 @@ export function AnalyseTab({ merged, handleChange, t }: TabProps) {
                     e.target.value as 'ignore' | 'group' | 'friends',
                   )
                 }
-                className="rounded border border-input px-2 py-1 text-sm"
+                className="w-auto"
               >
                 <option value="ignore">{t.sessionTeamChangeIgnore}</option>
                 <option value="group">{t.sessionTeamChangeGroup}</option>
                 <option value="friends">{t.sessionTeamChangeFriends}</option>
-              </select>
+              </Select>
             </div>
             <BulletHint hint={t.sessionTeamChangeHint} />
           </div>

@@ -115,7 +115,7 @@ export function SyncTab({ merged, handleChange, t }: TabProps) {
                     min={5}
                     max={1440}
                     disabled={!merged.spnkr_auto_sync_enabled}
-                    className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm disabled:cursor-not-allowed"
+                    className="w-20 rounded border border-border bg-background px-2 py-1 text-right text-sm text-foreground disabled:cursor-not-allowed"
                     value={merged.spnkr_auto_sync_interval_minutes ?? 360}
                     onChange={(e) => handleChange('spnkr_auto_sync_interval_minutes', parseInt(e.target.value, 10) || 360)}
                   />

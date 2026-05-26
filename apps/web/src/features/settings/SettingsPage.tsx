@@ -10,6 +10,7 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
 import { getSettingsText, normalizeSettingsLocale } from '@/features/settings/i18n'
@@ -48,14 +49,14 @@ function UsersTab({ merged, handleChange, t }: TabProps) {
         <CardContent className="space-y-2 divide-y divide-border/50">
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">{t.authProviderLabel}</span>
-            <select
+            <Select
               value={merged.auth_provider ?? 'msal'}
               onChange={(e) => handleChange('auth_provider', e.target.value)}
-              className="rounded border border-input px-2 py-1 text-sm"
+              className="w-auto"
             >
               <option value="msal">{t.authProviderMsal}</option>
               <option value="sisu">{t.authProviderSisu}</option>
-            </select>
+            </Select>
           </div>
           <p className="pt-2 text-xs text-muted-foreground">{t.authProviderHint}</p>
         </CardContent>

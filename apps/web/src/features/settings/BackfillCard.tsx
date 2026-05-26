@@ -156,7 +156,7 @@ export function BackfillCard({ t }: BackfillCardProps) {
             value={selectedSlug}
             onChange={(e) => setSelectedSlug(e.target.value)}
             disabled={running || realPlayers.length === 0}
-            className="rounded-md border border-input bg-background px-2 py-1 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
             {realPlayers.map((p) => (
               <option key={p.player_slug} value={p.player_slug}>{p.gamertag}</option>
