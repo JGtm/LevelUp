@@ -9,8 +9,13 @@ import type { StreakType, ContextType, BehaviorType } from './types'
 export type AscensionLocale = 'fr' | 'en'
 
 export interface AscensionText {
-  // Page wrapper
+  // Page wrapper (layout 2 onglets — refonte 2026-05-26)
   pageTitle: string
+  pageSubtitle: string
+  tabsAriaLabel: string
+  tabProfile: string
+  tabRealisations: string
+  tipsTickerAriaLabel: string
 
   // Streaks
   streaksSectionTitle: string
@@ -135,6 +140,11 @@ const METRIC_LABEL_EN: Record<string, string> = {
 
 const FR: AscensionText = {
   pageTitle: 'Ascension',
+  pageSubtitle: 'Ton profil de jeu, tes objectifs et tes accomplissements.',
+  tabsAriaLabel: 'Sections Ascension',
+  tabProfile: 'Profil & objectifs',
+  tabRealisations: 'Réalisations',
+  tipsTickerAriaLabel: 'Astuces — concepts utiles dans cette section',
   streaksSectionTitle: 'Mes streaks',
   streaksEmpty:
     "Aucune streak en cours. Joue un match aujourd'hui pour démarrer une série !",
@@ -287,6 +297,11 @@ const FR: AscensionText = {
 
 const EN: AscensionText = {
   pageTitle: 'Ascension',
+  pageSubtitle: 'Your play profile, your objectives and your achievements.',
+  tabsAriaLabel: 'Ascension sections',
+  tabProfile: 'Profile & objectives',
+  tabRealisations: 'Achievements',
+  tipsTickerAriaLabel: 'Tips — useful concepts in this section',
   streaksSectionTitle: 'My streaks',
   streaksEmpty: 'No active streak. Play a match today to start a series!',
   streakActive: 'Active',
