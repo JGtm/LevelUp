@@ -106,15 +106,14 @@ const L1_SECTIONS: L1Section[] = [
     ],
   },
   {
-    key: 'objectifs',
+    key: 'ascension',
     label: 'Ascension',
     icon: <NavFlameIcon />,
-    defaultPath: '/players/$playerSlug/objectifs',
+    defaultPath: '/players/$playerSlug/ascension',
     matchPathname: (p) => /\/players\/[^/]+\/(objectifs|ascension)/.test(p),
     tabs: [
-      { key: 'challenges', label: 'Objectifs', path: '/players/$playerSlug/objectifs' },
-      { key: 'parcours', label: 'Parcours', path: '/players/$playerSlug/objectifs?tab=parcours' },
-      { key: 'streaks', label: 'Séries', path: '/players/$playerSlug/ascension' },
+      { key: 'profile', label: 'Profil & objectifs', path: '/players/$playerSlug/ascension' },
+      { key: 'realisations', label: 'Réalisations', path: '/players/$playerSlug/ascension/realisations' },
     ],
   },
   {
@@ -359,7 +358,7 @@ export function NavL1() {
   const playerSlug = currentPlayer?.player_slug ?? ''
   const visibleSections = showProgression
     ? L1_SECTIONS
-    : L1_SECTIONS.filter((s) => s.key !== 'objectifs')
+    : L1_SECTIONS.filter((s) => s.key !== 'ascension')
 
   function resolvePath(templatePath: string): string {
     return templatePath.replace('$playerSlug', playerSlug)

@@ -1,11 +1,13 @@
 /**
- * Route /players/$playerSlug/ascension — page Ascension (V2 progression).
+ * Route /players/$playerSlug/ascension — layout Ascension à 2 onglets.
  *
- * Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §8.3.
+ * Routes enfants :
+ *   - /ascension                → tab "Profil & objectifs" (index)
+ *   - /ascension/realisations   → tab "Réalisations"
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { AscensionPage } from '@/features/ascension/AscensionPage'
+import { AscensionLayout } from '@/features/ascension/AscensionLayout'
 
 export const Route = createFileRoute('/players/$playerSlug/ascension')({
-  component: AscensionPage,
+  component: AscensionLayout,
 })
