@@ -1,3 +1,19 @@
+## [2026-05-26] Fix 3 failing HomePage tests
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : Deux corrections ciblées sans refacto :
+1. `HomeSpartanIdentityBanner` : suppression de `FALLBACK_BANNER_URL` — le fallback statique `/banner-default.png` rendait `home-spartan-banner-surface` toujours visible même quand `banner_image_url` est null, alors que le test exige l'absence de l'image dans ce cas.
+2. `HomePage` : ajout de `self-start` sur `home-challenges-card` (classe manquante que 2 tests vérifient).
+
+**Résultats** : 15/15 tests `HomePage.test.tsx` passent.
+
+**Commit** : `a141f729`
+
+---
+
 ## [2026-05-26] Organize pending changes into 6 thematic commits
 
 **Statut** : Complété
