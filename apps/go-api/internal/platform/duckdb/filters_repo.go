@@ -163,7 +163,7 @@ func (r *FiltersRepo) GetPlayerMatchCount(ctx context.Context) (int, error) {
 	defer release()
 
 	var count int
-	q := `SELECT COUNT(*) FROM shared.match_participants WHERE xuid = ?`
+	q := `SELECT COUNT(*) FROM match_participants WHERE xuid = ?`
 	err = db.QueryRowContext(ctx, q, r.pdb.XUID).Scan(&count)
 	return count, err
 }
@@ -474,8 +474,8 @@ func (r *FiltersRepo) GetAvailablePlaylists(ctx context.Context) ([]domain.Label
 	SELECT DISTINCT
 	    COALESCE(r.playlist_name_fr, r.playlist_name, '') AS label,
 	    COALESCE(r.playlist_name, '')                     AS value
-	FROM shared.match_registry r
-	JOIN shared.match_participants p ON r.match_id = p.match_id
+	FROM match_registry r
+	JOIN match_participants p ON r.match_id = p.match_id
 	WHERE p.xuid = ?
 	  AND r.playlist_name IS NOT NULL
 	  AND r.playlist_name != ''
@@ -513,8 +513,8 @@ func (r *FiltersRepo) GetAvailableMaps(ctx context.Context) ([]domain.LabelValue
 	SELECT DISTINCT
 	    COALESCE(r.map_name_fr, r.map_name, '') AS label,
 	    COALESCE(r.map_name, '')                AS value
-	FROM shared.match_registry r
-	JOIN shared.match_participants p ON r.match_id = p.match_id
+	FROM match_registry r
+	JOIN match_participants p ON r.match_id = p.match_id
 	WHERE p.xuid = ?
 	  AND r.map_name IS NOT NULL
 	ORDER BY label ASC`
