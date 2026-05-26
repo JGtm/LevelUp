@@ -8,11 +8,15 @@
 //     OpenXbox/xbox-webapi-python, misiektoja/xbox_monitor, MrCoolAndroid/
 //     Xbox-Rich-Presence-Discord, epicmanmoo/xbox-discord-rich-presence.
 //
-// Intervalle fixe 30s : on n'a pas besoin de polling adaptatif (mode offline
-// plus lent) car le scheduler global gère déjà le fallback périodique quand
-// le watcher ne déclenche pas. 30s est le bon compromis : assez réactif pour
-// rattraper une fin de match (l'API Halo met 30-60s à exposer le match dans
-// GetMatchHistory de toute façon), assez espacé pour rester sous les quotas.
+// Intervalle fixe 10s : pas de quota free vs payant côté Microsoft (on hit
+// userpresence.xboxlive.com directement avec notre XSTS personnel). 4 joueurs
+// × 1 req/10s = 24 req/min total, soit ~0.8 % de la limite documentée Xbox
+// (~50 req/s/token). Le choix de 10s donne une bonne réactivité UI sur
+// transition Active↔Inactive, tout en restant un comportement de bon citoyen.
+//
+// Note : la latence de détection "fin de match" reste dominée par l'API Halo
+// (GetMatchHistory met ~30-60s à exposer un match terminé) et la grâce
+// post-extinction (90s) — un poll plus rapide n'aide pas sur ce point.
 //
 // Refresh XSTS : si Xbox retourne 401, le poller invoque `onAuthExpired` qui
 // doit refresh le token + appeler `client.UpdateAuth(newHeader)` + retourner
@@ -30,7 +34,7 @@ import (
 
 const (
 	// restPollInterval : fréquence de poll en fonctionnement nominal.
-	restPollInterval = 30 * time.Second
+	restPollInterval = 10 * time.Second
 
 	// restPollBackoffRateLimit : pause après un 429 (rate-limit Xbox). 5 min
 	// est un délai conservateur pour ne pas aggraver.
