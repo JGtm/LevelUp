@@ -58,7 +58,7 @@ export function LeaderboardPP({
           <select
             value={arcFilter ?? ''}
             onChange={(e) => onArcFilterChange(e.target.value || undefined)}
-            className="rounded-md border border-border bg-card px-2 py-1 text-xs"
+            className="rounded-md border border-border bg-card px-2 py-1 text-xs text-card-foreground"
           >
             <option value="">{t('common.prestige.all_arcs')}</option>
             {arcChoices.map((a) => (
