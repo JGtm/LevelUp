@@ -67,19 +67,23 @@ export function AscensionProfileTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
+    <div className="space-y-10">
+      {/* ─── Couche Prestige (autonome) ──────────────────────────────────── */}
+      <LayerSection title={t.prestigeLayerTitle} description={t.prestigeLayerDescription}>
+        <MyObjectivesSection playerSlug={playerSlug} locale={locale} />
+        <MyArcsSection playerSlug={playerSlug} locale={locale} />
+      </LayerSection>
 
-      {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
-
-      <PlayerProfileV3
-        playerSlug={playerSlug}
-        onStartCampaign={hasActiveCampaign ? undefined : openStartCampaign}
-      />
-
-      <MyObjectivesSection playerSlug={playerSlug} locale={locale} />
-      <MyArcsSection playerSlug={playerSlug} locale={locale} />
-      <PatternsSection playerSlug={playerSlug} t={t} />
+      {/* ─── Couche Ascension (coaching s'appuyant sur Prestige) ──────────── */}
+      <LayerSection title={t.ascensionLayerTitle} description={t.ascensionLayerDescription}>
+        <CoachProposalsCard playerSlug={playerSlug} proactiveEnabled={proactiveEnabled} t={coachT} />
+        {hasActiveCampaign && <CampaignTracker playerSlug={playerSlug} campaign={activeCampaign} />}
+        <PlayerProfileV3
+          playerSlug={playerSlug}
+          onStartCampaign={hasActiveCampaign ? undefined : openStartCampaign}
+        />
+        <PatternsSection playerSlug={playerSlug} t={t} />
+      </LayerSection>
 
       <StartCampaignModal
         open={campaignModal.open}
@@ -89,6 +93,26 @@ export function AscensionProfileTab() {
         onOpenChange={(open) => setCampaignModal((s) => ({ ...s, open }))}
       />
     </div>
+  )
+}
+
+// ─── Layer wrapper (Prestige / Ascension) ───────────────────────────────────
+
+interface LayerSectionProps {
+  title: string
+  description: string
+  children: React.ReactNode
+}
+
+function LayerSection({ title, description, children }: LayerSectionProps) {
+  return (
+    <section className="space-y-4">
+      <header className="space-y-1 border-l-2 border-primary/40 pl-3">
+        <h2 className="text-lg font-bold tracking-tight">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </header>
+      <div className="space-y-6">{children}</div>
+    </section>
   )
 }
 
