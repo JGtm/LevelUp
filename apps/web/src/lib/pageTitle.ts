@@ -22,7 +22,10 @@ const PLAYER_ROUTE_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/players/$playerSlug/compare', title: 'Face-à-face' },
   { pattern: '/players/$playerSlug/palmares/relations', title: 'Relations' },
   { pattern: '/players/$playerSlug/palmares/prestige', title: 'Leaderboard PP' },
-  // Ascension (renommé depuis "Objectifs" — V1 PlayerProfile commit-8)
+  // Ascension (refonte 2026-05-26 : 2 onglets — Profil & objectifs + Réalisations)
+  { pattern: '/players/$playerSlug/ascension/realisations', title: 'Ascension — Réalisations' },
+  { pattern: '/players/$playerSlug/ascension', title: 'Ascension' },
+  // Route historique /objectifs redirect → /ascension (préservée pour bookmarks).
   { pattern: '/players/$playerSlug/objectifs', title: 'Ascension' },
   // Escouade
   { pattern: '/players/$playerSlug/squad/contributions', title: 'Contributions' },
