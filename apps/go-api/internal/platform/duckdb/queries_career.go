@@ -136,6 +136,7 @@ SELECT
     r.map_id,
     r.pair_id,
     r.playlist_id,
+    r.season_id,
     COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     COALESCE(p.outcome, 0)                             AS outcome,
@@ -189,13 +190,18 @@ ORDER BY cp.recorded_at DESC
 LIMIT 1`
 
 // Q7 : Career — historique XP complet.
+// Filtre les rows sans donnée XP (rank IS NULL ET xp_total=0 — inserts partiels
+// customisation-only où DEFAULT 0 s'appliquait sur xp_total). NULLIF traite
+// les 0 issus du DEFAULT comme NULL pour le fallback.
 const Q7CareerXPHistory = `
 SELECT
     cp.recorded_at,
     cp.rank          AS rank_number,
     cp.current_xp,
-    COALESCE(cp.xp_total, cp.rank * 1000) AS xp_total_cumulative
+    COALESCE(NULLIF(cp.xp_total, 0), NULLIF(cp.rank, 0) * 1000) AS xp_total_cumulative
 FROM career_progression cp
+WHERE cp.rank IS NOT NULL
+   OR NULLIF(cp.xp_total, 0) IS NOT NULL
 ORDER BY cp.recorded_at ASC`
 
 // Q8LUSRHistoryPlayerTpl : Phase A de Q8 — partie player (match_skill_rank)
@@ -549,10 +555,15 @@ ORDER BY alltime_value DESC, current_value DESC`
 // pour un titre donné (metadata.duckdb). Utilisé par la page Carrière pour
 // afficher toutes les playlists classées du joueur, y compris celles sans
 // snapshot dans player_csr_snapshots (placement à 0 match joué).
+//
+// Double signal : is_ranked=TRUE (catalog bien renseigné) OU nom contenant
+// "ranked" (fallback quand le catalog a is_ranked=FALSE par erreur d'ingest).
 const QPlaylistsCatalogRanked = `
 SELECT playlist_asset_id, COALESCE(name_canonical, '')
 FROM playlists_catalog
-WHERE title_slug = ? AND is_ranked = TRUE AND is_active = TRUE
+WHERE title_slug = ?
+  AND is_active = TRUE
+  AND (is_ranked = TRUE OR STRPOS(LOWER(COALESCE(name_canonical, '')), 'ranked') > 0)
 ORDER BY name_canonical`
 
 // Q26csrAlltimePeak : récupère le meilleur CSR alltime toutes playlists confondues.

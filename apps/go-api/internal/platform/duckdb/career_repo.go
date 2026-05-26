@@ -1009,7 +1009,43 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlayli
 			out = append(out, s)
 		}
 	}
+
+	r.enrichCSRPlaylistNames(ctx, out)
 	return out, nil
+}
+
+// enrichCSRPlaylistNames résout les noms de playlists FR via asset_translations.
+// Même pattern que enrichLUSRPlaylistNames. Best-effort : silencieux si indisponible.
+func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []domain.CareerPlaylistCSR) {
+	if r.pdb == nil || r.pdb.Metadata == nil || len(playlists) == 0 {
+		return
+	}
+	seen := make(map[string]struct{}, len(playlists))
+	var ids []string
+	for _, p := range playlists {
+		id := strings.TrimSpace(p.PlaylistID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return
+	}
+	names, err := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(ctx, "playlist", ids, PreferredLangsForLocale("fr"))
+	if err != nil || len(names) == 0 {
+		return
+	}
+	for i := range playlists {
+		id := strings.TrimSpace(playlists[i].PlaylistID)
+		if name := strings.TrimSpace(names[id]); name != "" {
+			playlists[i].PlaylistName = name
+		}
+	}
 }
 
 // loadCSRSnapshotRows lit player_csr_snapshots (logique historique). Retourne

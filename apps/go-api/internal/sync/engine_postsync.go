@@ -90,8 +90,10 @@ func (e *SyncEngine) runConditionalPostSync(
 	// Carrière (XP + Spartan ID) retirée du post-sync : service.CareerLiveService
 	// la rafraîchit live à chaque chargement de /pages/home.
 	res := domain.PostSyncResult{}
-	if err := e.runCSRSnapshotSync(ctx, playerDB, client); err != nil {
+	if csrs, err := e.runCSRSnapshotSync(ctx, playerDB, client); err != nil {
 		trackFatalErr(&res, "CSR snapshots", err)
+	} else if len(csrs) > 0 {
+		e.seedCatalogFromCSRs(ctx, csrs)
 	}
 	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
 	return res
@@ -349,8 +351,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide).
 	// Maintenu dans le post-sync : le CSR ne bouge que sur fin de match ranked,
 	// donc le déclencheur "nouveau match" reste pertinent.
-	if csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
+	// Les CSRs sont capturés pour alimenter playlists_catalog en parallèle
+	// à l'étape 4 (errgroup) — transparent, 0 latence supplémentaire.
+	var pendingCSRs []PlayerPlaylistCSR
+	if csrs, csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
 		trackFatalErr(&r, "CSR snapshots", csrErr)
+	} else {
+		pendingCSRs = csrs
 	}
 
 	// 3.5 Friends recompute is_with_friends (best-effort).
@@ -410,6 +417,14 @@ func (e *SyncEngine) runPostSyncPipeline(
 		viewsRefreshed.Add(int32(n))
 		return nil
 	})
+	// Catalog seeding en parallèle des aggregates — transparent, DB différente.
+	if len(pendingCSRs) > 0 {
+		csrsToSeed := pendingCSRs
+		egRefresh.Go(func() error {
+			e.seedCatalogFromCSRs(ctx, csrsToSeed)
+			return nil
+		})
+	}
 	_ = egRefresh.Wait()
 	trackFatalErr(&r, "aggregates", aggregatesErr)
 	trackFatalErr(&r, "shared views", sharedViewsErr)
@@ -436,7 +451,10 @@ func (e *SyncEngine) runPostSyncPipeline(
 // runCSRSnapshotSync retourne nil sur succès ou skip de config, ou l'erreur
 // brute de syncPlayerCSRs en cas d'échec runtime. Le caller peut utiliser
 // trackFatalErr pour propager au SyncResult si IsInvalidatedError.
-func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) error {
+// runCSRSnapshotSync récupère + persiste les CSR snapshots du joueur.
+// Retourne la slice CSR pour que le caller puisse alimenter playlists_catalog
+// en parallèle (cf. errgroup step 4 dans runPostSyncPipeline).
+func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) ([]PlayerPlaylistCSR, error) {
 	if strings.TrimSpace(e.csrSeasonID) == "" {
 		// Visibilité explicite : sans cette config, player_csr_snapshots reste vide
 		// éternellement et la home affiche "Aucun classement". Bug racine difficile
@@ -447,16 +465,16 @@ func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, c
 				"ou définir l'env var LEVELUP_CSR_SEASON_ID)",
 			"gamertag", e.gamertag,
 		)
-		return nil
+		return nil, nil
 	}
 	slog.DebugContext(ctx, "post-sync: sync CSR snapshots", "gamertag", e.gamertag, "season", e.csrSeasonID)
-	n, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
+	csrs, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: CSR snapshots échoué", "gamertag", e.gamertag, "err", err)
-		return err
+		return nil, err
 	}
-	slog.DebugContext(ctx, "post-sync: CSR snapshots sauvegardés", "gamertag", e.gamertag, "count", n)
-	return nil
+	slog.DebugContext(ctx, "post-sync: CSR snapshots sauvegardés", "gamertag", e.gamertag, "count", len(csrs))
+	return csrs, nil
 }
 
 // runAchievementsSync récupère les achievements Xbox pour le joueur et les persiste.
@@ -586,6 +604,22 @@ func mergeUniqMatchIDs(a, b []string) []string {
 		}
 	}
 	return result
+}
+
+// seedCatalogFromCSRs ouvre metadata.duckdb en RW et appelle seedPlaylistsCatalog.
+// Best-effort : log WARN si metadata inaccessible, n'interrompt jamais le pipeline.
+func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlaylistCSR) {
+	if e.metadataDBPath == "" || len(csrs) == 0 {
+		return
+	}
+	mh, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: catalog seed désactivé (metadata inaccessible)",
+			"gamertag", e.gamertag, "err", err)
+		return
+	}
+	defer mh.Close()
+	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
 }
 
 // resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),
