@@ -43,17 +43,19 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
   const bullyRow = pickMax(enemyDuels, (n) => n.i_killed)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="grid grid-cols-2 gap-4">
       <NemesisCard
         title={t.combatNemesisTitle}
         accentToken="outcome-loss"
         row={nemesisRow}
+        statLine={t.combatKilledMeFmt(nemesisRow?.killed_me ?? 0)}
         t={t}
       />
       <NemesisCard
         title={t.combatBullyTitle}
         accentToken="outcome-win"
         row={bullyRow}
+        statLine={t.combatIKilledFmt(bullyRow?.i_killed ?? 0)}
         t={t}
       />
     </div>
@@ -64,10 +66,11 @@ interface CardProps {
   title: string
   accentToken: SemanticToken
   row: MatchNemesisRow | null
+  statLine: string
   t: MatchViewText
 }
 
-function NemesisCard({ title, accentToken, row, t }: CardProps) {
+function NemesisCard({ title, accentToken, row, statLine, t }: CardProps) {
   const accent = tokenCssVar(accentToken)
   return (
     <div
@@ -92,13 +95,8 @@ function NemesisCard({ title, accentToken, row, t }: CardProps) {
         <div className="mt-1 truncate text-2xl font-bold text-white">
           {row?.gamertag ?? t.combatNoNemesis}
         </div>
-        <div className="mt-3 space-y-1 text-sm text-white/80">
-          <div className="tabular-nums">
-            {t.combatKilledMeFmt(row?.killed_me ?? 0)}
-          </div>
-          <div className="tabular-nums">
-            {t.combatIKilledFmt(row?.i_killed ?? 0)}
-          </div>
+        <div className="mt-3 text-sm text-white/80">
+          <div className="tabular-nums">{statLine}</div>
         </div>
       </div>
     </div>
