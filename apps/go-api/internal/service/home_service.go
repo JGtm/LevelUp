@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -408,13 +409,41 @@ func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, item
 	}
 }
 
-// selectTopMedals sÃ©lectionne au plus n mÃ©dailles parmi la liste, en privilÃ©giant
-// les mÃ©dailles avec le plus grand count (dÃ©jÃ  triÃ©es count DESC par Q26h).
-func selectTopMedals(medals []domain.RecentMatchMedal, n int) []domain.RecentMatchMedal {
-	if len(medals) <= n {
-		return medals
+// medalDifficultyWeight retourne le poids de tri d'une difficulte de medaille.
+// Mythic > Legendary > Heroic > Normal (ou vide).
+func medalDifficultyWeight(d string) int {
+	switch d {
+	case "Mythic":
+		return 3
+	case "Legendary":
+		return 2
+	case "Heroic":
+		return 1
+	default:
+		return 0
 	}
-	return medals[:n]
+}
+
+// selectTopMedals selectionne au plus n medailles, en privilegiant
+// la rarete (Mythic > Legendary > Heroic > Normal) puis le count.
+func selectTopMedals(medals []domain.RecentMatchMedal, n int) []domain.RecentMatchMedal {
+	if len(medals) == 0 {
+		return nil
+	}
+	sorted := make([]domain.RecentMatchMedal, len(medals))
+	copy(sorted, medals)
+	sort.Slice(sorted, func(i, j int) bool {
+		wi := medalDifficultyWeight(sorted[i].Difficulty)
+		wj := medalDifficultyWeight(sorted[j].Difficulty)
+		if wi != wj {
+			return wi > wj
+		}
+		return sorted[i].Count > sorted[j].Count
+	})
+	if len(sorted) <= n {
+		return sorted
+	}
+	return sorted[:n]
 }
 
 // maxCitationSnippets est le nombre maximum de citations affichÃ©es par MatchCard.
