@@ -47591,4 +47591,24 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 
 **Prochaine étape** : Générer un nouveau token Madina via `token-capture`, redémarrer proprement une fois, vérifier `source=duckdb` sur la deuxième requête.
 
-**Prochaine étape** : commit + PR. Pas de migration DB, pas de SyncScope, pas de répercussion sur la page Match (narrative non touché).
+## [2026-05-26] refactor(auth): Phase 0+1 — MultiUserTokenStore source unique tokens — En cours
+
+**Statut** : En cours · Branche worktree : `refactor/auth-tokens-single-source` (créée depuis HEAD de `refactor/shared-social-collect-persist`)
+
+**Contexte** : Le hotfix précédent (priorité DuckDB) corrige Madina mais perpétue l'anti-pattern "DuckDB OLAP utilisé comme credential store". 4 sources concurrentes coexistent (env.local, sync_meta DuckDB, MultiUserTokenStore, watcher_tokens.json mono-user) et 4 CLI tools brûlent des tokens sans persister la rotation. Refactor demandé par l'utilisateur pour avoir une source unique.
+
+**Décision technique** (validée par l'utilisateur après audit cross-features) :
+`MultiUserTokenStore` (`data/auth/watcher_tokens/{xuid}.json`) devient la source autoritaire. Migration en 6 phases (audit → extend store → migration boot → read path → write path → cleanup). Audit exhaustif vérifié sur Spartan ID live fetch, career rank/XP live fetch, token provider abstraction, Pool architecture — aucun chemin contourne les abstractions identifiées.
+
+**Phase 0 — audit & inventaire** : `.ai/AUDIT_TOKEN_STORAGE.md` créé. 12 sites de lecture, 7 sites d'écriture, 6 CLI indépendants, 3 caches process — mapping cible défini, contrats préservés (atomic rename, perms 0600/0700, xuid global ADR 0008).
+
+**Phase 1 — extension MultiUserTokenStore** :
+- `UserTokens.OAuthRefreshToken` (nouveau champ pour mode "advanced" hors MSAL SDK)
+- `UpdateOAuthRefreshToken(xuid, rt)` atomique avec préservation des autres champs
+- `UpdateMSALCache(xuid, cacheJSON)` symétrique
+- `LoadByGamertag(gamertag)` case-insensitive (pour `token-capture` qui n'a pas le xuid)
+- Factorisation `upsertLocked()` interne
+
+**Résultats observés** : 8 nouveaux tests verts (préservation champs, création-si-absent, idempotence, rejet inputs invalides, gamertag exact/lower/trim/notfound). Suite auth complète 17 PASS + 1 SKIP (Windows perms). go vet + golangci-lint propres via pre-commit hooks.
+
+**Prochaine étape** : Check-in utilisateur, puis Phase 2 (`MigrateLegacyTokensAtBoot` qui copie env.local + sync_meta → store au boot, idempotent). Phase 3 (read path inversion) après validation Phase 2.
