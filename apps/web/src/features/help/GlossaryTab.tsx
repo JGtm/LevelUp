@@ -13,6 +13,11 @@ import { tokenCssVar } from '@/lib/accessibility'
 import { type GlossaryEntry, type GlossarySection, type HelpText } from './i18n'
 
 const SECTION_ID_PREFIX = 'glossary-section-'
+const ENTRY_ID_PREFIX = 'glossary-entry-'
+
+export function buildGlossaryEntryAnchor(term: string): string {
+  return ENTRY_ID_PREFIX + slugify(term)
+}
 
 function slugify(value: string): string {
   return value
@@ -81,6 +86,21 @@ export function GlossaryTab({ text }: GlossaryTabProps) {
   }, [text.glossary.sections, normalizedQuery])
 
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map())
+  const initialAnchorScrollDone = useRef(false)
+
+  useEffect(() => {
+    if (initialAnchorScrollDone.current) return
+    if (filteredSections.length === 0) return
+    if (typeof window === 'undefined') return
+    const hash = window.location.hash.slice(1)
+    if (!hash || !hash.startsWith(ENTRY_ID_PREFIX)) return
+    const el = document.getElementById(hash)
+    if (!el) return
+    initialAnchorScrollDone.current = true
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [filteredSections])
 
   useEffect(() => {
     if (filteredSections.length === 0) return
@@ -205,7 +225,10 @@ function GlossarySectionBlock({ id, section, entries, setRef, queryTokens }: Glo
 
 function GlossaryCard({ entry, queryTokens }: { entry: GlossaryEntry; queryTokens: string[] }) {
   return (
-    <Card className="overflow-hidden transition-shadow hover:shadow-md">
+    <Card
+      id={buildGlossaryEntryAnchor(entry.term)}
+      className="overflow-hidden scroll-mt-32 transition-shadow hover:shadow-md"
+    >
       <CardHeader className="pb-2 pt-4">
         <CardTitle className="text-sm font-semibold">
           <span className="text-sidebar-primary">
