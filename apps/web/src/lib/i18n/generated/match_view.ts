@@ -27,7 +27,7 @@ export const matchViewManifest = {
   "match_view.combat.section_weapons": { fr: "Armes utilisées", en: "Weapons used" },
   "match_view.empty.no_data": { fr: "Aucune donnée disponible pour ce match", en: "No data available for this match" },
   "match_view.error.load_failed": { fr: "Impossible de charger le détail du match", en: "Failed to load match detail" },
-  "match_view.frag_diff.title": { fr: "Frags différentiel cumulé — tous les joueurs", en: "Cumulative frag differential — all players" },
+  "match_view.frag_diff.title": { fr: "Frags différentiel cumulé", en: "Cumulative frag differential — all players" },
   "match_view.header.duration_label": { fr: "Durée", en: "Duration" },
   "match_view.header.outcome_label": { fr: "Résultat", en: "Outcome" },
   "match_view.header.performance_score_label": { fr: "Score de performance", en: "Performance score" },
