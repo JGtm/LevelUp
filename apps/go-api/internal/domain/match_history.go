@@ -19,6 +19,7 @@ type MatchHistoryRawRow struct {
 	MapID              *string // UUID asset, clé de lookup asset_translations
 	PairID             *string // UUID asset
 	PlaylistID         *string // UUID asset
+	SeasonID           *string // ex. "CsrSeason13-1" — utilisé pour résoudre le threshold de placement CSR (5 ou 10 selon saison)
 	IsFirefight        bool
 	IsRanked           bool
 	SessionID          *string
@@ -41,8 +42,14 @@ type MatchHistoryRawRow struct {
 	SkillTierFR        *string // e.g. "Diamant" (affichage FR)
 	SkillRatingType    *string // "LUSR" | "CSR"
 	SkillTierLabel     *string // e.g. "Diamant IV" (label formaté DB)
-	MyTeamScore        *int    // score de l'équipe du joueur (depuis team_id)
-	EnemyTeamScore     *int    // score de l'équipe adverse
+	// PlacementDone/PlacementTotal : progression dans la phase de placement.
+	// CSR : parsé depuis SkillTierLabel "Placement (N restants)" + threshold via csr_placement_thresholds.
+	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
+	// Tous deux nil si le match n'est pas en placement.
+	PlacementDone  *int
+	PlacementTotal *int
+	MyTeamScore    *int // score de l'équipe du joueur (depuis team_id)
+	EnemyTeamScore *int // score de l'équipe adverse
 	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
 	// 4=débandade, 5=contre-remontada (cf. canonical.DominanceFlag).
 	// Peuplé par sync.BackfillDominanceFlags via engine.RunBackfillComebackBadges.
@@ -86,13 +93,19 @@ type MatchHistoryRow struct {
 	Kills                    int       `json:"kills,omitempty"`
 	Deaths                   int       `json:"deaths,omitempty"`
 	Assists                  int       `json:"assists,omitempty"`
-	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"` // "Diamant IV" ou nil
-	AverageLifeMMSS          string    `json:"average_life_mmss"`
-	DurationSeconds          *int      `json:"duration_seconds,omitempty"`
-	MatchURL                 string    `json:"match_url"`
-	IsExcluded               bool      `json:"is_excluded"`
-	IsWithFriends            bool      `json:"is_with_friends"`
-	ExperienceTypeLabel      string    `json:"experience_type_label,omitempty"`
+	SkillTierLabel           *string   `json:"skill_tier_label,omitempty"`  // "Diamant IV" ou nil
+	SkillRatingType          *string   `json:"skill_rating_type,omitempty"` // "CSR" | "LUSR" | nil
+	// PlacementDone/PlacementTotal : phase de placement (X/Y).
+	// CSR : remaining parsé de "Placement (N restants)" + threshold csr_placement_thresholds.
+	// LUSR : rang chronologique parmi les 10 plus anciens matchs sans LUSR de la chaîne.
+	PlacementDone       *int   `json:"placement_done,omitempty"`
+	PlacementTotal      *int   `json:"placement_total,omitempty"`
+	AverageLifeMMSS     string `json:"average_life_mmss"`
+	DurationSeconds     *int   `json:"duration_seconds,omitempty"`
+	MatchURL            string `json:"match_url"`
+	IsExcluded          bool   `json:"is_excluded"`
+	IsWithFriends       bool   `json:"is_with_friends"`
+	ExperienceTypeLabel string `json:"experience_type_label,omitempty"`
 	// DominanceFlag : 0=none, 1=domination, 2=humiliation, 3=remontada,
 	// 4=débandade, 5=contre-remontada. Le front résout le label via
 	// narrative.dominance.* (manifest match_view) et affiche "-" pour 0.

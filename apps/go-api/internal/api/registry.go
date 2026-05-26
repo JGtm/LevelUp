@@ -1005,6 +1005,11 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
+	if pdb.Metadata != nil {
+		// PR2 placement X/Y : résolveur season_id → threshold (5 ou 10 selon
+		// saison CSR). Fallback à 5 si absent. Cf. csr_thresholds_repo.go.
+		svc = svc.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata).Get)
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 

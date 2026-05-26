@@ -74,6 +74,10 @@ type MatchHistoryService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// csrThreshold (optionnel) : callback pour résoudre le threshold de
+	// placement CSR par saison (5 depuis S3, 10 avant). Si nil, fallback à 5.
+	// Utilisé par applyMatchPlacements pour calculer PlacementDone/Total.
+	csrThreshold CSRThresholdResolver
 }
 
 // NewMatchHistoryService crée un MatchHistoryService.
@@ -98,6 +102,14 @@ func (s *MatchHistoryService) WithPlayerMatchesRepo(repo port.PlayerMatchesRepos
 	return s
 }
 
+// WithCSRThresholds injecte le résolveur season_id → threshold de placement CSR.
+// Sans appel, le service utilise le default (5, S3+). Côté tests : laisser nil
+// pour valider le fallback ; côté prod : passer (*duckdb.CSRThresholdsRepo).Get.
+func (s *MatchHistoryService) WithCSRThresholds(resolver CSRThresholdResolver) *MatchHistoryService {
+	s.csrThreshold = resolver
+	return s
+}
+
 // GetPage charge tous les matchs, applique filtres+pagination et retourne la réponse.
 func (s *MatchHistoryService) GetPage(
 	ctx context.Context,
@@ -108,6 +120,12 @@ func (s *MatchHistoryService) GetPage(
 		return domain.MatchHistoryPageResponse{}, fmt.Errorf("MatchHistoryService.GetPage: %w", err)
 	}
 	totalUnfiltered := len(rawRows)
+
+	// Placement (X/Y) calculé sur l'ensemble brut AVANT filtrage : la
+	// stratégie LUSR (10 plus anciens par chaîne) a besoin de l'ordre
+	// chronologique global pour rester stable quels que soient les filtres
+	// Explorer appliqués ensuite.
+	applyMatchPlacements(ctx, rawRows, s.csrThreshold)
 
 	// Exclusions manuelles — avant tout autre filtrage
 	rawRows = filterExcludedRows(rawRows)
@@ -798,6 +816,9 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, waypoint st
 		Deaths:                   r.Deaths,
 		Assists:                  r.Assists,
 		SkillTierLabel:           r.SkillTierLabel,
+		SkillRatingType:          r.SkillRatingType,
+		PlacementDone:            r.PlacementDone,
+		PlacementTotal:           r.PlacementTotal,
 		AverageLifeMMSS:          formatLifeSeconds(r.AverageLifeSeconds),
 		DurationSeconds:          r.TimePlayedSeconds,
 		MatchURL:                 matchURL,
