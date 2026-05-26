@@ -1,3 +1,28 @@
+## [2026-05-26] Organize pending changes into 6 thematic commits
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Commits** :
+1. `chore(git)`: exclude v2-test-result.json from version control
+2. `refactor(sync)`: implement sync-full command for gap-filling (--gamertag X | --all, --max-matches N)
+3. `refactor(sync)`: extend session persistence with delta-filter optimization (onlyNewRows fallback for fullSessionCompute)
+4. `test(sync)`: extend post-sync persistence coverage (4 new test cases for delta-filter + onlyNewRows)
+5. `feat(cmd)`: add purge_player_media and token-capture CLI commands + career rank nameplate images
+6. `feat(i18n+media)`: update coaching_tips translations + MediaPage session grouping heuristic (≤30min gap)
+
+**Décision** : Organize by logical feature instead of file-at-a-time. Tests bundled with the refactor they validate. Config + frontend changes (coaching_tips) grouped as one cohesive feature (session-aware media + coaching context).
+
+**Résultats** :
+- `git status`: clean, nothing to commit
+- `git log --oneline -6`: shows all 6 commits on branch (8 ahead of remote)
+- Pre-commit hooks: all passed (gofmt, go vet, golangci-lint, TOML check)
+
+**Prochaine étape** : update `.ai/thought_log.md` entry (done), ready for PR or merge.
+
+---
+
 ## [2026-05-26] Watcher last_seen UI + cleanup RTA legacy
 
 **Statut** : Complété (2 commits livrés sur `refactor/shared-social-collect-persist`).
