@@ -190,7 +190,7 @@ function ExplorerFiltersBar({
           <select
             value={squadScope}
             onChange={(e) => onSquadScopeChange(e.target.value as '' | 'solo' | 'squad')}
-            className="rounded border border-input px-2 py-1 text-sm bg-background"
+            className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
           >
             {(['', 'solo', 'squad'] as const).map((v) => {
               const labelKey =
@@ -339,7 +339,7 @@ function ExplorerMatchesResultsBlock({
             <select
               value={sortKey}
               onChange={(e) => onSortKeyChange(e.target.value)}
-              className="rounded border border-input px-2 py-1 text-xs bg-background"
+              className="rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
             >
               <option value="start_time:desc">{t('explorer.sort.start_time_desc')}</option>
               <option value="start_time:asc">{t('explorer.sort.start_time_asc')}</option>
