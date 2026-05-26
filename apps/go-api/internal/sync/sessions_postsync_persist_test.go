@@ -56,7 +56,7 @@ func insertPMERow(t *testing.T, db *sql.DB, matchID string, sessionID int, sessi
 
 func TestWriteSessionAssignmentsBatch_EmptyInput_NoOp(t *testing.T) {
 	db := openSessionTestDB(t)
-	n, err := writeSessionAssignmentsBatch(context.Background(), db, nil)
+	n, err := writeSessionAssignmentsBatch(context.Background(), db, nil, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestWriteSessionAssignmentsBatch_NewAssignments_AllChanged(t *testing.T) {
 		{MatchID: "m2", SessionID: 1, SessionLabel: "Session 1"},
 		{MatchID: "m3", SessionID: 2, SessionLabel: "Session 2"},
 	}
-	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments)
+	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestWriteSessionAssignmentsBatch_NoChange_Idempotent(t *testing.T) {
 		{MatchID: "m1", SessionID: 1, SessionLabel: "Session 1"},
 		{MatchID: "m2", SessionID: 1, SessionLabel: "Session 1"},
 	}
-	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments)
+	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestWriteSessionAssignmentsBatch_PartialChange_OnlyDeltasWritten(t *testing
 		{MatchID: "m3", SessionID: 2, SessionLabel: "Session 1"}, // sid change
 		{MatchID: "m4", SessionID: 1, SessionLabel: "Session 1"}, // nouveau
 	}
-	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments)
+	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestDeltaSessionAssignments_EmptyDB_AllNew(t *testing.T) {
 		{MatchID: "m1", SessionID: 1, SessionLabel: "S1"},
 		{MatchID: "m2", SessionID: 1, SessionLabel: "S1"},
 	}
-	changed, err := deltaSessionAssignments(context.Background(), db, assignments)
+	changed, err := deltaSessionAssignments(context.Background(), db, assignments, false)
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -152,13 +152,13 @@ func TestWriteSessionAssignmentsBatch_DoubleRunIsIdempotent(t *testing.T) {
 	}
 
 	// 1er run : ecrit
-	n1, _ := writeSessionAssignmentsBatch(context.Background(), db, assignments)
+	n1, _ := writeSessionAssignmentsBatch(context.Background(), db, assignments, false)
 	if n1 != 1 {
 		t.Errorf("1er run : changed = %d, want 1", n1)
 	}
 
 	// 2eme run avec les memes assignments : 0 change
-	n2, _ := writeSessionAssignmentsBatch(context.Background(), db, assignments)
+	n2, _ := writeSessionAssignmentsBatch(context.Background(), db, assignments, false)
 	if n2 != 0 {
 		t.Errorf("2eme run : changed = %d, want 0 (idempotent)", n2)
 	}
@@ -172,7 +172,7 @@ func TestWriteSessionAssignmentsBatch_SubsequentChange(t *testing.T) {
 	a1 := []domain.SessionAssignment{
 		{MatchID: "m1", SessionID: 1, SessionLabel: "Session 1"},
 	}
-	_, _ = writeSessionAssignmentsBatch(context.Background(), db, a1)
+	_, _ = writeSessionAssignmentsBatch(context.Background(), db, a1, false)
 
 	// Verif que la valeur est bien ecrite
 	var sid sql.NullInt64
@@ -191,7 +191,7 @@ func TestWriteSessionAssignmentsBatch_SubsequentChange(t *testing.T) {
 	a2 := []domain.SessionAssignment{
 		{MatchID: "m1", SessionID: 2, SessionLabel: "Session 2"},
 	}
-	n, err := writeSessionAssignmentsBatch(context.Background(), db, a2)
+	n, err := writeSessionAssignmentsBatch(context.Background(), db, a2, false)
 	if err != nil {
 		t.Fatalf("2eme run err: %v", err)
 	}
@@ -208,6 +208,48 @@ func TestWriteSessionAssignmentsBatch_SubsequentChange(t *testing.T) {
 	}
 	if !label.Valid || label.String != "Session 2" {
 		t.Errorf("apres update : session_label = %v, want 'Session 2'", label)
+	}
+}
+
+// TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting valide le comportement
+// onlyNewRows=true : seules les rows avec session_id IS NULL sont mises à jour.
+// Les rows existantes (session_id != NULL) sont ignorées même si le computed
+// session_id diffère — évite le bulk-UPDATE → ART bug (crash JGtm 2026-05-26).
+func TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting(t *testing.T) {
+	db := openSessionTestDB(t)
+	// m1 a déjà un session_id (existant) — ne doit PAS être mis à jour.
+	// m2 a session_id NULL (nouveau) — doit être assigné.
+	insertPMERow(t, db, "m1", 1, "Session 1")
+	insertPMERow(t, db, "m2", -1, "")
+
+	assignments := []domain.SessionAssignment{
+		{MatchID: "m1", SessionID: 2, SessionLabel: "Session 2"}, // valeur different, mais existant → skip
+		{MatchID: "m2", SessionID: 2, SessionLabel: "Session 2"}, // NULL → doit etre ecrit
+	}
+	n, err := writeSessionAssignmentsBatch(context.Background(), db, assignments, true)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("changed = %d, want 1 (seul m2 NULL doit etre ecrit)", n)
+	}
+
+	// m1 inchangé
+	var sid1 int
+	if err := db.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id = 'm1'").Scan(&sid1); err != nil {
+		t.Fatalf("query m1: %v", err)
+	}
+	if sid1 != 1 {
+		t.Errorf("m1 session_id = %d, want 1 (ne doit pas etre modifie)", sid1)
+	}
+
+	// m2 assigné
+	var sid2 int
+	if err := db.QueryRow("SELECT session_id FROM player_match_enrichment WHERE match_id = 'm2'").Scan(&sid2); err != nil {
+		t.Fatalf("query m2: %v", err)
+	}
+	if sid2 != 2 {
+		t.Errorf("m2 session_id = %d, want 2", sid2)
 	}
 }
 
