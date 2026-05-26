@@ -409,8 +409,8 @@ fr = "Aucun checkpoint LUSR disponible pour ce joueur."
 en = "No LUSR checkpoint available for this player."
 
 [career.ranking.placement]
-fr = "Placement"
-en = "Placement"
+fr = "En placement"
+en = "In placement"
 
 [career.ranking.unranked]
 fr = "Non classé"
