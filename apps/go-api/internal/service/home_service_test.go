@@ -783,3 +783,47 @@ func TestHomeService_ConcurrentSetSessionActive(t *testing.T) {
 	}
 	// Pas d'assertion sur la valeur â€” on vÃ©rifie l'absence de race (-race flag)
 }
+
+func TestSelectTopMedals_RarityFirst(t *testing.T) {
+	medals := []domain.RecentMatchMedal{
+		{Name: "Assist", Count: 20, Difficulty: "Normal"},
+		{Name: "Headshot", Count: 10, Difficulty: "Normal"},
+		{Name: "Cauchemar", Count: 1, Difficulty: "Legendary"},
+		{Name: "Perfection", Count: 1, Difficulty: "Mythic"},
+		{Name: "Triple Kill", Count: 3, Difficulty: "Heroic"},
+	}
+	got := selectTopMedals(medals, 4)
+	if len(got) != 4 {
+		t.Fatalf("attendu 4 médailles, obtenu %d", len(got))
+	}
+	if got[0].Name != "Perfection" {
+		t.Errorf("attendu Perfection en 1ère position (Mythic), obtenu %q", got[0].Name)
+	}
+	if got[1].Name != "Cauchemar" {
+		t.Errorf("attendu Cauchemar en 2ème position (Legendary), obtenu %q", got[1].Name)
+	}
+	if got[2].Name != "Triple Kill" {
+		t.Errorf("attendu Triple Kill en 3ème position (Heroic), obtenu %q", got[2].Name)
+	}
+	// 4ème : Assist (count=20) avant Headshot (count=10), même difficulté Normal
+	if got[3].Name != "Assist" {
+		t.Errorf("attendu Assist en 4ème position (Normal count=20), obtenu %q", got[3].Name)
+	}
+}
+
+func TestSelectTopMedals_FewerThanN(t *testing.T) {
+	medals := []domain.RecentMatchMedal{
+		{Name: "Kill", Count: 5, Difficulty: "Normal"},
+		{Name: "Assist", Count: 3, Difficulty: "Normal"},
+	}
+	got := selectTopMedals(medals, 4)
+	if len(got) != 2 {
+		t.Fatalf("attendu 2 médailles (tout garder), obtenu %d", len(got))
+	}
+}
+
+func TestSelectTopMedals_Empty(t *testing.T) {
+	if got := selectTopMedals(nil, 4); got != nil {
+		t.Errorf("attendu nil pour entrée vide, obtenu %v", got)
+	}
+}
