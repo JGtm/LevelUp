@@ -105,6 +105,9 @@ const t = {
   watcherStateSyncing: 'Synchronisation',
   watcherStateCooling: 'Cooldown',
   watcherInGame: 'En jeu',
+  watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
+  watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
+  watcherNeverSeen: 'Jamais vu en jeu',
   backfillTitle: 'Backfill',
   backfillMedals: 'Médailles',
   backfillSkill: 'CSR/MMR',
@@ -405,5 +408,87 @@ describe('WatcherCard', () => {
         expect(screen.queryByText(/Échec surveillance/i)).not.toBeInTheDocument()
       })
     })
+  })
+
+  describe('last_seen', () => {
+    it('affiche le timestamp last_seen si présent (format relatif récent)', async () => {
+      const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString()
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [{
+          gamertag: 'JGtm',
+          xuid: '2533274823110022',
+          state: 'Idle',
+          in_game: false,
+          state_since: '',
+          state_duration: '',
+          last_seen: { timestamp: tenMinAgo, title_name: 'Halo Infinite' },
+        }],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.getByText(/Vu il y a 10 min sur Halo Infinite/i)).toBeInTheDocument()
+      })
+    })
+
+    it("n'affiche pas la ligne last_seen si absente", async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [{ gamertag: 'JGtm', xuid: '2533274823110022', state: 'Idle', in_game: false, state_since: '', state_duration: '' }],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.queryByText(/Vu il y a/i)).not.toBeInTheDocument()
+      })
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// formatLastSeen unit tests
+// ---------------------------------------------------------------------------
+import { formatLastSeen } from './WatcherCard'
+
+describe('formatLastSeen', () => {
+  const baseNow = new Date('2026-05-26T10:00:00Z')
+
+  it('< 1 min → "moins d\'1 min"', () => {
+    const ts = new Date(baseNow.getTime() - 30_000).toISOString()
+    expect(formatLastSeen(ts, 'Halo Infinite', t, 'fr', baseNow))
+      .toBe("Vu il y a moins d'1 min sur Halo Infinite")
+  })
+
+  it('< 60 min → "{N} min"', () => {
+    const ts = new Date(baseNow.getTime() - 5 * 60_000).toISOString()
+    expect(formatLastSeen(ts, 'Halo Infinite', t, 'fr', baseNow))
+      .toBe('Vu il y a 5 min sur Halo Infinite')
+  })
+
+  it('< 24 h → "{N} h"', () => {
+    const ts = new Date(baseNow.getTime() - 3 * 3_600_000).toISOString()
+    expect(formatLastSeen(ts, 'Halo Infinite', t, 'fr', baseNow))
+      .toBe('Vu il y a 3 h sur Halo Infinite')
+  })
+
+  it('< 7 j → "{N} j"', () => {
+    const ts = new Date(baseNow.getTime() - 2 * 86_400_000).toISOString()
+    expect(formatLastSeen(ts, 'Halo Infinite', t, 'fr', baseNow))
+      .toBe('Vu il y a 2 j sur Halo Infinite')
+  })
+
+  it('> 7 j → format absolu', () => {
+    const ts = '2026-05-10T08:00:00Z'
+    const out = formatLastSeen(ts, 'Halo Infinite', t, 'fr', baseNow)
+    expect(out).toMatch(/Vu le .* sur Halo Infinite/)
+    expect(out).toContain('Halo Infinite')
+  })
+
+  it('timestamp invalide → "Jamais vu en jeu"', () => {
+    expect(formatLastSeen('not-a-date', 'Halo Infinite', t, 'fr', baseNow))
+      .toBe('Jamais vu en jeu')
   })
 })

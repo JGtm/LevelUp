@@ -182,6 +182,59 @@ func TestParsePresencePayload_DevicesFormat_OfflineLastSeen(t *testing.T) {
 	}
 }
 
+// Fix PR2 2026-05-26 : le bloc `lastSeen` du payload Offline doit être
+// extrait dans event.LastSeen pour exposition UI.
+func TestParsePresencePayload_LastSeenExtracted(t *testing.T) {
+	raw := json.RawMessage(`{"xuid":"X","state":"Offline","lastSeen":{"deviceType":"Win32","titleId":"2043073184","titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46.8592228"}}`)
+	event, err := ParsePresencePayload(raw, "")
+	if err != nil {
+		t.Fatalf("ParsePresencePayload() error = %v", err)
+	}
+	if event.LastSeen == nil {
+		t.Fatal("LastSeen nil — devrait extraire le bloc lastSeen")
+	}
+	if event.LastSeen.TitleName != "Halo Infinite" {
+		t.Errorf("LastSeen.TitleName = %q, want Halo Infinite", event.LastSeen.TitleName)
+	}
+	if event.LastSeen.TitleID != "2043073184" {
+		t.Errorf("LastSeen.TitleID = %q", event.LastSeen.TitleID)
+	}
+	if event.LastSeen.DeviceType != "Win32" {
+		t.Errorf("LastSeen.DeviceType = %q", event.LastSeen.DeviceType)
+	}
+	// Timestamp parseable comme UTC.
+	if event.LastSeen.Timestamp.IsZero() {
+		t.Error("LastSeen.Timestamp non parsée")
+	}
+	if event.LastSeen.Timestamp.Year() != 2026 {
+		t.Errorf("LastSeen.Timestamp.Year = %d, want 2026", event.LastSeen.Timestamp.Year())
+	}
+}
+
+// Sans bloc lastSeen, event.LastSeen reste nil (ne crash pas).
+func TestParsePresencePayload_NoLastSeen(t *testing.T) {
+	raw := json.RawMessage(`{"xuid":"X","state":"Online","devices":[{"type":"WindowsOneCore","titles":[{"id":"2043073184","name":"Halo Infinite","state":"Active"}]}]}`)
+	event, err := ParsePresencePayload(raw, "")
+	if err != nil {
+		t.Fatalf("ParsePresencePayload() error = %v", err)
+	}
+	if event.LastSeen != nil {
+		t.Error("LastSeen devrait être nil quand payload n'a pas de bloc lastSeen")
+	}
+}
+
+// Timestamp avec Z (UTC explicite) — supporté.
+func TestParsePresencePayload_LastSeenWithZSuffix(t *testing.T) {
+	raw := json.RawMessage(`{"xuid":"X","state":"Offline","lastSeen":{"titleName":"Halo Infinite","timestamp":"2026-04-13T21:10:46Z"}}`)
+	event, err := ParsePresencePayload(raw, "")
+	if err != nil {
+		t.Fatalf("ParsePresencePayload() error = %v", err)
+	}
+	if event.LastSeen == nil || event.LastSeen.Timestamp.IsZero() {
+		t.Fatal("Timestamp avec suffixe Z devrait être parsé")
+	}
+}
+
 // =============================================================================
 // SteamPoller tests
 // =============================================================================

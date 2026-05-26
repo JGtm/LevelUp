@@ -109,6 +109,12 @@ export interface SettingsText {
   watcherStateSyncing: string
   watcherStateCooling: string
   watcherInGame: string
+  /** "Vu il y a {duration} sur {title}" — format relatif + jeu */
+  watcherLastSeenRelative: string
+  /** "Vu le {date} sur {title}" — format absolu si trop ancien */
+  watcherLastSeenAbsolute: string
+  /** "Jamais vu en jeu" — pas de last_seen connu */
+  watcherNeverSeen: string
 
   // Backfill
   backfillTitle: string
@@ -341,6 +347,9 @@ const FR_TEXT: SettingsText = {
   watcherStateSyncing: 'Synchronisation',
   watcherStateCooling: 'Cooldown',
   watcherInGame: 'En jeu',
+  watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
+  watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
+  watcherNeverSeen: 'Jamais vu en jeu',
 
   backfillTitle: 'Recalcul rétroactif',
   backfillMedals: 'Médailles',
@@ -607,6 +616,9 @@ const EN_TEXT: SettingsText = {
   watcherStateSyncing: 'Syncing',
   watcherStateCooling: 'Cooling',
   watcherInGame: 'In game',
+  watcherLastSeenRelative: 'Seen {duration} ago on {title}',
+  watcherLastSeenAbsolute: 'Last seen on {date} playing {title}',
+  watcherNeverSeen: 'Never seen in game',
 
   backfillTitle: 'Backfill',
   backfillMedals: 'Medals',

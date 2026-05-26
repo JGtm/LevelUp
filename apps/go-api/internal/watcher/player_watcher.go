@@ -18,6 +18,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"levelup/go-api/internal/presence"
 )
 
 const (
@@ -64,7 +66,11 @@ type PlayerWatcher struct {
 	inGame bool
 	// subscribeError conserve la dernière erreur d'abonnement RTA (nil si abonné avec succès)
 	subscribeError error
-	mu             sync.Mutex
+	// lastSeen : dernière info `lastSeen` reçue (titre + timestamp) — utile
+	// pour afficher "vu il y a 2h sur Halo Infinite" dans la WatcherCard
+	// Settings. Mis à jour à chaque event qui contient un bloc lastSeen.
+	lastSeen *presence.LastSeenInfo
+	mu       sync.Mutex
 }
 
 // NewPlayerWatcher crée un watcher pour un joueur.
@@ -104,6 +110,32 @@ func (pw *PlayerWatcher) SubscribeError() error {
 	pw.mu.Lock()
 	defer pw.mu.Unlock()
 	return pw.subscribeError
+}
+
+// RecordLastSeen mémorise la dernière info `lastSeen` reçue de Xbox.
+// Appelé par le handler watcher pour chaque event qui contient un bloc
+// lastSeen (typiquement les snapshots Offline). Copie superficielle pour
+// éviter qu'un mutateur tiers ne modifie l'état stocké.
+func (pw *PlayerWatcher) RecordLastSeen(info *presence.LastSeenInfo) {
+	if info == nil {
+		return
+	}
+	cp := *info
+	pw.mu.Lock()
+	pw.lastSeen = &cp
+	pw.mu.Unlock()
+}
+
+// LastSeen retourne la dernière info `lastSeen` connue, ou nil si jamais
+// reçue. Copie défensive pour ne pas exposer l'état interne.
+func (pw *PlayerWatcher) LastSeen() *presence.LastSeenInfo {
+	pw.mu.Lock()
+	defer pw.mu.Unlock()
+	if pw.lastSeen == nil {
+		return nil
+	}
+	cp := *pw.lastSeen
+	return &cp
 }
 
 // WithLiveRefresh configure le refresher live BP/Challenges.

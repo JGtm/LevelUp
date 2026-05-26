@@ -323,6 +323,12 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// répondre "pourquoi ce user a/n'a pas déclenché un sync ?"
 		evCtx, evID := logging.WithEvent(ctx, "watcher.presence:"+pw.gamertag)
 
+		// Capture `lastSeen` si présent dans le payload (snapshot Offline).
+		// Exposé via WatcherStatus pour affichage UI "vu il y a 2h sur Halo".
+		if event.LastSeen != nil {
+			pw.RecordLastSeen(event.LastSeen)
+		}
+
 		// Vérifier si le titre correspond à un jeu tracké
 		if event.PresenceDetail != nil {
 			td := d.titleReg.MatchPresence(event.PresenceDetail.TitleID)

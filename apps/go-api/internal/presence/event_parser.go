@@ -29,6 +29,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // rtaPresencePayload est la structure JSON brute du payload RTA.
@@ -116,6 +117,23 @@ func ParsePresencePayload(raw json.RawMessage, fallbackXUID string) (PresenceEve
 	event := PresenceEvent{
 		XUID:          xuid,
 		PresenceState: presenceState,
+	}
+
+	// Bloc lastSeen (format /titles/<TID> + nonce, snapshot Offline) :
+	// extrait pour afficher "vu il y a 2h sur Halo Infinite" côté UI.
+	if p.LastSeen != nil && p.LastSeen.Timestamp != "" {
+		// Xbox renvoie le timestamp en ISO 8601 sans timezone explicite,
+		// mais c'est en réalité de l'UTC (vérifié sur snapshots prod).
+		// On parse en supposant UTC ; si Xbox change un jour, on adaptera.
+		ts, err := parseXboxTimestamp(p.LastSeen.Timestamp)
+		if err == nil {
+			event.LastSeen = &LastSeenInfo{
+				Timestamp:  ts,
+				TitleID:    p.LastSeen.TitleID,
+				TitleName:  p.LastSeen.TitleName,
+				DeviceType: p.LastSeen.DeviceType,
+			}
+		}
 	}
 
 	// Format XSAPI : trouver le premier titre actif (isPrimary && isGame).
@@ -213,4 +231,31 @@ func parseTitleStateString(s, fallbackXUID string) PresenceEvent {
 		}
 	}
 	return event
+}
+
+// parseXboxTimestamp parse un timestamp Xbox au format ISO 8601 sans timezone
+// (ex: "2026-05-25T20:00:36.8996648"). Interprété comme UTC.
+//
+// Tente plusieurs layouts pour gérer les variations Xbox :
+//   - "2006-01-02T15:04:05.9999999" (fractions de seconde variables)
+//   - "2006-01-02T15:04:05Z" (avec Z)
+//   - RFC3339 strict
+func parseXboxTimestamp(s string) (time.Time, error) {
+	layouts := []string{
+		"2006-01-02T15:04:05.9999999",
+		"2006-01-02T15:04:05",
+		time.RFC3339,
+		time.RFC3339Nano,
+	}
+	// Si Xbox renvoie déjà un suffixe Z, le standard RFC3339 le gère.
+	for _, layout := range layouts {
+		if t, err := time.Parse(layout, s); err == nil {
+			// Si le layout n'a pas de timezone, on assume UTC.
+			if t.Location() == time.UTC || layout == "2006-01-02T15:04:05.9999999" || layout == "2006-01-02T15:04:05" {
+				return t.UTC(), nil
+			}
+			return t.UTC(), nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("parse xbox timestamp %q: aucun layout ne matche", s)
 }
