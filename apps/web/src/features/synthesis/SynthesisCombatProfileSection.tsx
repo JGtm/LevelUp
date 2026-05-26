@@ -21,9 +21,9 @@ const STYLE_DEFENSIVE_LABELS: Record<string, string> = {
 }
 
 const STYLE_ACTIVITY_LABELS: Record<string, string> = {
-  actif: 'Très actif',
-  modere: 'Modéré',
-  discret: 'Discret',
+  actif: 'Engagement actif',
+  modere: 'Engagement modéré',
+  discret: 'Engagement discret',
 }
 
 interface SynthesisCombatProfileSectionProps {
