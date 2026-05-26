@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import type { ImprovementCampaign } from '@/lib/playerProfile'
-// cross-feature-allow: hooks profil/campagne migres vers features/ascension/profile (refonte 2026-05-26).
 import { useCampaignMutations } from '@/features/ascension/profile/queries'
 import { useProfileI18n } from '@/features/ascension/profile/useProfileI18n'
 
