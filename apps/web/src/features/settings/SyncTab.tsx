@@ -12,7 +12,7 @@ import { apiErrorMessage } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useStartSyncAll, useJobStatus } from '@/features/setup/queries'
 import { useJobToasts } from '@/features/settings/useJobToasts'
-import { WatcherSectionBody } from '@/features/settings/WatcherCard'
+import { WatcherSection } from '@/features/settings/WatcherCard'
 import { ToggleRow, type TabProps } from './_settingsShared'
 import { BackfillCard } from './BackfillCard'
 import { formatMessage } from '@/lib/i18n/format'
@@ -131,14 +131,11 @@ export function SyncTab({ merged, handleChange, t }: TabProps) {
               {t.watcherSectionTitle}
             </h3>
             <div className="space-y-1 divide-y divide-border/30">
-              <ToggleRow
-                label={t.watcherPresenceEnabled}
-                value={merged.watcher_presence_enabled ?? false}
-                onChange={(v) => handleChange('watcher_presence_enabled', v)}
+              <WatcherSection
+                enabled={merged.watcher_presence_enabled ?? false}
+                onToggle={(v) => handleChange('watcher_presence_enabled', v)}
+                t={t}
               />
-              <div className="pt-1">
-                <WatcherSectionBody enabled={merged.watcher_presence_enabled ?? false} t={t} />
-              </div>
             </div>
           </div>
         </CardContent>

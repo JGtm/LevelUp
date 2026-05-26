@@ -4,6 +4,7 @@
  * P8.4 (revue 2026-04-29) : extraits de SettingsPage.tsx pour permettre la
  * découpe en *Tab.tsx dédiés tout en partageant ToggleRow/BulletHint.
  */
+import type * as React from 'react'
 import type { HintBullets } from '@/features/settings/i18n'
 import type { getSettingsText } from '@/features/settings/i18n'
 import type { SettingsResponse } from '@/lib/api/types'
@@ -19,25 +20,30 @@ interface ToggleRowProps {
   value: boolean
   onChange: (v: boolean) => void
   disabled?: boolean
+  /** Contenu optionnel rendu entre le label et le toggle (ex: badge statut). */
+  accessory?: React.ReactNode
 }
 
-export function ToggleRow({ label, value, onChange, disabled }: ToggleRowProps) {
+export function ToggleRow({ label, value, onChange, disabled, accessory }: ToggleRowProps) {
   return (
-    <div className={`flex items-center justify-between py-2 ${disabled ? 'opacity-40' : ''}`}>
+    <div className={`flex items-center justify-between gap-3 py-2 ${disabled ? 'opacity-40' : ''}`}>
       <span className="text-sm text-foreground">{label}</span>
-      <button
-        onClick={() => !disabled && onChange(!value)}
-        disabled={disabled}
-        className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
-          disabled ? 'cursor-not-allowed' : 'cursor-pointer'
-        } ${value && !disabled ? 'bg-primary' : 'bg-muted'}`}
-      >
-        <span
-          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow ring-0 transition-transform ${
-            value ? 'translate-x-4' : 'translate-x-0'
-          }`}
-        />
-      </button>
+      <div className="flex items-center gap-3">
+        {accessory}
+        <button
+          onClick={() => !disabled && onChange(!value)}
+          disabled={disabled}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors ${
+            disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+          } ${value && !disabled ? 'bg-primary' : 'bg-muted'}`}
+        >
+          <span
+            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow ring-0 transition-transform ${
+              value ? 'translate-x-4' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
     </div>
   )
 }
