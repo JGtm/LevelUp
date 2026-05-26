@@ -78,6 +78,13 @@ type Daemon struct {
 	coordinator *syncpkg.Coordinator
 	queue       *MatchQueue
 
+	// trackerRestClient : 1 client REST partagé entre les RESTPoller des
+	// joueurs trackés (db_profiles). Utilise l'authHeader du tracker (token
+	// JGtm) — Xbox API permet à un user d'interroger la présence de ses
+	// amis avec son propre XSTS. UpdateAuth propage le refresh à tous les
+	// pollers atomiquement.
+	trackerRestClient *presence.PresenceClient
+
 	playersMu sync.RWMutex
 	players   map[string]*PlayerWatcher // gamertag → watcher
 
@@ -136,7 +143,11 @@ func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []doma
 	// Créer le client RTA
 	d.rtaClient = presence.NewRTAClient(authHeader)
 
-	// Initialiser les PlayerWatchers
+	// Créer le client REST partagé pour les pollers tracker (même authHeader,
+	// propagé à tous les pollers via UpdateAuth atomic).
+	d.trackerRestClient = presence.NewPresenceClient(authHeader)
+
+	// Initialiser les PlayerWatchers + lancer un REST poller par joueur
 	d.initPlayers(ctx, playerList)
 
 	// Connecter RTA + souscrire les présences
@@ -203,12 +214,17 @@ func (d *Daemon) IsRunning() bool {
 	return d.running
 }
 
-// UpdateAuth met à jour le header d'auth RTA (après refresh XSTS).
+// UpdateAuth met à jour le header d'auth RTA + le client REST tracker
+// (après refresh XSTS du tracker). Les pollers REST par joueur partagent
+// ce client donc voient le nouveau header atomiquement.
 func (d *Daemon) UpdateAuth(authHeader string) {
 	if d.rtaClient != nil {
 		d.rtaClient.UpdateAuth(authHeader)
-		slog.Info("watcher_daemon: auth RTA mis à jour")
 	}
+	if d.trackerRestClient != nil {
+		d.trackerRestClient.UpdateAuth(authHeader)
+	}
+	slog.Info("watcher_daemon: auth tracker (RTA + REST) mis à jour")
 }
 
 // GetStatus retourne l'état courant du daemon via StateProvider.
@@ -318,7 +334,9 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 
 // AddUserClient + makeUserConnectFunc : voir daemon_user_clients.go (PR 2.5c).
 
-// initPlayers crée un PlayerWatcher par joueur.
+// initPlayers crée un PlayerWatcher par joueur + lance son REST poller
+// (qui utilise l'authHeader du tracker pour interroger la présence des
+// amis via l'API Xbox standard).
 func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSummary) {
 	d.playersMu.Lock()
 	defer d.playersMu.Unlock()
@@ -341,6 +359,21 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 			"gamertag", p.Gamertag,
 			"xuid", p.XUID,
 		)
+
+		// REST poller par joueur — partage le client tracker (token JGtm).
+		// Pas de doublon problématique avec AddUserClient (le poller dédié
+		// JGtm a son propre client + son propre auth refresh) : les deux
+		// pollers dispatch vers le même PlayerWatcher dont les transitions
+		// FSM sont idempotentes.
+		if d.trackerRestClient != nil {
+			handler := d.makePresenceHandler(ctx, pw)
+			poller := NewRESTPoller(p.XUID, p.Gamertag, d.trackerRestClient, handler)
+			d.wg.Add(1)
+			go func() {
+				defer d.wg.Done()
+				poller.Run(d.rootCtx)
+			}()
+		}
 	}
 }
 
@@ -410,24 +443,26 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 				pw.OnPresenceActive(evCtx)
 				return
 			}
-			// Titre présent mais pas dans le registre — log pour diagnostic.
-			// (Avant 2026-05-25 ce cas était silencieux et masquait des bugs
-			//  de mapping XboxTitleID.)
-			slog.WarnContext(evCtx, "watcher_daemon: titre non tracké (PresenceDetail présent)",
+			// Titre présent mais pas dans le registre (ex: Xbox Dashboard
+			// `Online` id=1022622766) → sémantiquement le user est sorti du
+			// jeu tracké, on bascule donc en Inactive. Avant le fix 2026-05-26
+			// ce cas était un no-op silencieux qui laissait la FSM bloquée en
+			// Watching après extinction Halo.
+			slog.InfoContext(evCtx, "watcher_daemon: titre non tracké → traité comme inactif",
 				"gamertag", pw.gamertag,
 				"title_id", event.PresenceDetail.TitleID,
 				"title_name", event.PresenceDetail.TitleName,
 				"state", event.PresenceState,
 				"event", evID,
 			)
+			pw.OnPresenceInactive(evCtx)
+			return
 		}
 
-		// Offline ou titre non tracké
-		if event.PresenceState == "Offline" || event.PresenceDetail == nil {
-			slog.DebugContext(evCtx, "watcher_daemon: présence offline ou titre non-tracké",
-				"gamertag", pw.gamertag, "state", event.PresenceState, "event", evID)
-			pw.OnPresenceInactive(evCtx)
-		}
+		// Pas de PresenceDetail (state Offline ou payload sans titre)
+		slog.DebugContext(evCtx, "watcher_daemon: présence sans titre actif",
+			"gamertag", pw.gamertag, "state", event.PresenceState, "event", evID)
+		pw.OnPresenceInactive(evCtx)
 	}
 }
 

@@ -136,7 +136,9 @@ func TestDaemon_MakePresenceHandler(t *testing.T) {
 
 	fetcher := &mockFetcher{results: [][]string{{}}}
 	trigger := newMockSyncTrigger()
-	pw := NewPlayerWatcher("P1", "X1", fetcher, trigger)
+	// WithPostExitGrace(0) pour tester la transition immédiate Inactive → Idle
+	// (le comportement avec grâce est couvert par TestPlayerWatcher_PostExitGrace_*).
+	pw := NewPlayerWatcher("P1", "X1", fetcher, trigger).WithPostExitGrace(0)
 
 	handler := d.makePresenceHandler(context.Background(), pw)
 
@@ -164,6 +166,49 @@ func TestDaemon_MakePresenceHandler(t *testing.T) {
 
 	if pw.FSM().State() != StateIdle {
 		t.Errorf("state after offline = %v, want Idle", pw.FSM().State())
+	}
+}
+
+// Fix A 2026-05-26 : un payload avec PresenceDetail mais TitleID non
+// enregistré dans le registre (ex: Xbox Dashboard `Online` 1022622766) doit
+// déclencher OnPresenceInactive — avant le fix, le handler sortait sans
+// rien faire et la FSM restait bloquée en Watching.
+func TestDaemon_MakePresenceHandler_UntrackedTitleTreatedAsInactive(t *testing.T) {
+	reg := title.NewRegistry()
+	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, reg, &mockDaemonSyncRunner{})
+
+	fetcher := &mockFetcher{results: [][]string{{}}}
+	trigger := newMockSyncTrigger()
+	pw := NewPlayerWatcher("P1", "X1", fetcher, trigger).WithPostExitGrace(0)
+
+	handler := d.makePresenceHandler(context.Background(), pw)
+
+	// 1) Détection Halo → Watching
+	handler(presence.PresenceEvent{
+		XUID:          "X1",
+		PresenceState: "Online",
+		PresenceDetail: &presence.PresenceDetail{
+			TitleID: "2043073184", TitleName: "Halo Infinite",
+			IsGame: true, IsPrimary: true,
+		},
+	})
+	if pw.FSM().State() != StateWatching {
+		t.Fatalf("après Halo : state = %v, want Watching", pw.FSM().State())
+	}
+
+	// 2) Dashboard Xbox (titre non tracké, state encore Online côté Xbox)
+	// → doit basculer en Idle (sortie du jeu Halo).
+	handler(presence.PresenceEvent{
+		XUID:          "X1",
+		PresenceState: "Online",
+		PresenceDetail: &presence.PresenceDetail{
+			TitleID: "1022622766", TitleName: "Online", // Xbox Dashboard
+			IsGame: true, IsPrimary: true,
+		},
+	})
+
+	if pw.FSM().State() != StateIdle {
+		t.Errorf("après dashboard Xbox : state = %v, want Idle (titre non tracké → inactif)", pw.FSM().State())
 	}
 }
 
