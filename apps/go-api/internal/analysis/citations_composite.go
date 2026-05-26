@@ -139,44 +139,6 @@ func buildChildrenCountIndex(mappings []domain.CitationFullMapping) map[string]i
 	return idx
 }
 
-// ApplyCompositeCitationsPerMatch est un outil de rescue pour recalculer les composites
-// à partir de valeurs existantes dans match_citations (mode backfill d'urgence).
-// Le sync autonome (BackfillMatchCitations) gère la sémantique correcte automatiquement.
-//
-// Sera refactorisé pour utiliser le moteur unifié (commit 4).
-func ApplyCompositeCitationsPerMatch(totals map[string]int, mappings []domain.CitationFullMapping) {
-	for range 5 {
-		if !applyCompositesPass(totals, mappings) {
-			break
-		}
-	}
-}
-
-func applyCompositesPass(totals map[string]int, mappings []domain.CitationFullMapping) bool {
-	changed := false
-	for _, m := range mappings {
-		if m.MappingType != domain.CitationMappingTypeComposite ||
-			m.CompositeChildren == nil || *m.CompositeChildren == "" {
-			continue
-		}
-		children, err := parseCompositeChildrenJSON(*m.CompositeChildren)
-		if err != nil || len(children) == 0 {
-			continue
-		}
-		count := 0
-		for _, child := range children {
-			if totals[child] > 0 {
-				count++
-			}
-		}
-		if count > 0 && totals[m.NameNorm] != count {
-			totals[m.NameNorm] = count
-			changed = true
-		}
-	}
-	return changed
-}
-
 // parseCompositeChildrenJSON décode la liste JSON des enfants d'une citation composite.
 func parseCompositeChildrenJSON(s string) ([]string, error) {
 	s = strings.TrimSpace(s)

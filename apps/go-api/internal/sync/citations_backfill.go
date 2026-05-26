@@ -67,8 +67,11 @@ func (e *SyncEngine) RunBackfillCitations(ctx context.Context, force bool) (int,
 	}
 
 	if force {
-		if err := deleteCitationsForMatches(ctx, playerHandle.SQLDb(), matchIDs); err != nil {
-			return 0, fmt.Errorf("RunBackfillCitations delete force: %w", err)
+		// Recréer la table plutôt que N DELETE individuels : évite le bug ART DuckDB
+		// qui survient quand des lignes corrompues (value IS NULL) bloquent la suppression
+		// par index. DROP + CREATE est équivalent à un TRUNCATE propre.
+		if err := recreateCitationsTable(ctx, playerHandle.SQLDb()); err != nil {
+			return 0, fmt.Errorf("RunBackfillCitations recreate force: %w", err)
 		}
 	}
 
@@ -117,8 +120,30 @@ ORDER BY pme.match_id`
 	return ids, rows.Err()
 }
 
-// deleteCitationsForMatches purge match_citations pour la liste de matchs
-// avant un recalcul forcé. Utilisé uniquement quand force=true.
+// recreateCitationsTable supprime et recrée match_citations à vide.
+// Utilisé pour force=true à la place de N DELETE individuels, car le bug ART DuckDB
+// peut bloquer la suppression via index quand des lignes corrompues (value IS NULL)
+// sont présentes. DROP + CREATE évite entièrement le chemin de l'index ART.
+func recreateCitationsTable(ctx context.Context, db *sql.DB) error {
+	stmts := []string{
+		`DROP TABLE IF EXISTS match_citations`,
+		`CREATE TABLE match_citations (
+			match_id            VARCHAR NOT NULL,
+			citation_name_norm  VARCHAR NOT NULL,
+			value               INTEGER DEFAULT 1,
+			PRIMARY KEY (match_id, citation_name_norm)
+		)`,
+	}
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// deleteCitationsForMatches purge match_citations pour une liste précise de matchs.
+// Utilisé uniquement pour des suppressions partielles (pas force=true).
 func deleteCitationsForMatches(ctx context.Context, playerDB *sql.DB, matchIDs []string) error {
 	if len(matchIDs) == 0 {
 		return nil
