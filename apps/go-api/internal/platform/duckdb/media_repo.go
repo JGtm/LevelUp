@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -700,6 +701,8 @@ func (r *MediaRepo) SetMediaLikeAtomic(
 		return false, fmt.Errorf("SetMediaLikeAtomic rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
+		slog.WarnContext(ctx, "SetMediaLikeAtomic: 0 rows — file_path absent en DB",
+			"file_path", filePath, "liked", liked)
 		return false, nil // file_path inconnu — caller traduit en 404 sans toucher media_likes
 	}
 

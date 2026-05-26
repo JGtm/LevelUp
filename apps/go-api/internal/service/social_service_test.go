@@ -98,29 +98,28 @@ func TestSocialService_ToggleMatchFavorite_RepoError(t *testing.T) {
 
 // ─── WithWriterAcquirer (commit 5 db-concurrency) ───
 
-// TestSocialService_ToggleMatchFavorite_LeaseBusy_PropagatesErrDBLocked vérifie
-// que ToggleMatchFavorite propage ErrDBLocked au caller quand le lease
-// shared_social est saturé. Le handler HTTP mappera en 503.
-func TestSocialService_ToggleMatchFavorite_LeaseBusy_PropagatesErrDBLocked(t *testing.T) {
+// TestSocialService_ToggleMatchFavorite_AcquirerIgnored vérifie que
+// ToggleMatchFavorite passe directement par SocialPersister sans acquérir le
+// lease shared_social. L'ancienne acquisition bloquait 45 s sur
+// MaxOpenConns(1) + CHECKPOINT async ; le lease n'est plus utilisé ici.
+func TestSocialService_ToggleMatchFavorite_AcquirerIgnored(t *testing.T) {
 	repo := &mockSocialRepo{favorites: make(map[string]bool)}
 	acquirer := func() (*dblease.LeasedWriter, error) {
 		return nil, fmt.Errorf("simulated lease busy: %w", dblease.ErrDBLocked)
 	}
 	svc := NewSocialService(repo, WithWriterAcquirer(acquirer))
 
+	// L'acquéreur est configuré mais jamais appelé — l'écriture doit réussir.
 	err := svc.ToggleMatchFavorite(context.Background(), domain.MatchFavoriteRequest{
 		PlayerSlug: "spartan-a",
 		MatchID:    "match-001",
 		Favorited:  true,
 	})
-	if err == nil {
-		t.Fatal("expected ErrDBLocked, got nil")
+	if err != nil {
+		t.Fatalf("expected nil (acquirer not called), got %v", err)
 	}
-	if !errors.Is(err, dblease.ErrDBLocked) {
-		t.Errorf("err should wrap dblease.ErrDBLocked, got %v", err)
-	}
-	if repo.favorites["spartan-a:match-001"] {
-		t.Error("favorite should not have been written when lease busy")
+	if !repo.favorites["spartan-a:match-001"] {
+		t.Error("favorite should have been written directly, bypassing acquirer")
 	}
 }
 

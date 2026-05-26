@@ -39,17 +39,9 @@ func NewSocialService(repo port.SocialRepository, opts ...SocialOption) *SocialS
 }
 
 // ToggleMatchFavorite bascule l'état favori d'un match pour un joueur.
-//
-// Si un WriterAcquirer est configuré, retourne ErrDBLocked en cas de saturation
-// du lease shared_social — le handler HTTP mappe en 503 + Retry-After.
+// Passe directement par SocialPersister (BeginTx + INSERT/DELETE + Commit),
+// sans acquérir le lease shared_social — l'ancienne acquisition bloquait
+// 45 s si une autre opération tenait le verrou (cascade CHECKPOINT + MaxOpenConns(1)).
 func (s *SocialService) ToggleMatchFavorite(ctx context.Context, req domain.MatchFavoriteRequest) error {
-	if s.acquireWriter == nil {
-		return s.repo.ToggleMatchFavorite(ctx, req.PlayerSlug, req.MatchID, req.Favorited)
-	}
-	w, err := s.acquireWriter()
-	if err != nil {
-		return err
-	}
-	defer w.Release()
 	return s.repo.ToggleMatchFavorite(ctx, req.PlayerSlug, req.MatchID, req.Favorited)
 }
