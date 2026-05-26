@@ -353,6 +353,38 @@ sans bloquer les writes per-opération. Shutdown CHECKPOINT inchangé (filet fin
 
 ---
 
+## [2026-05-26] Encart "Profil joueur cible" sur la page Explorer
+
+**Statut** : Complété (3 commits sur `feat/explorer-target-profile-card`).
+
+**Branche** : `feat/explorer-target-profile-card` (depuis `refactor/shared-social-collect-persist`).
+
+**Contexte** : Sur la page Explorer mode Joueur (`?mode=player&target=X`), on n'avait jusqu'ici qu'un briefing factuel + 2 tableaux paginés. L'utilisateur voulait un encart compact en haut des résultats donnant l'identité Spartan + stats agrégées du joueur cible — inspiré de la home et de SpartanRecord.
+
+**Décision technique** : Composer 4 sources fetch en parallèle (errgroup) :
+1. `identity` via `CareerLiveService.GetSpartanIdentityFor(ctx, xuid)` (nouveau path xuid arbitraire, persistance désactivée pour xuid tiers).
+2. `career_stats` via `PlayerStatsProvider.FetchRemoteStats` (déjà câblé pour Compare).
+3. `sample_stats` calculé localement sur les common_matches via 2 nouvelles méthodes repo (`GetParticipantStatsForMatches`, `GetMedalCountsForMatches`) + `analysis.BuildSampleStats` réutilisant `combat_yield.go`.
+4. `privacy_warning` via `PrivacyProvider.GetMatchPrivacy` (déjà câblé).
+
+**Path no-tokens explicite** : si le user connecté n'a pas d'OAuth Halo (`ctxkeys.HaloTokens(ctx) == nil`), on court-circuite les 3 goroutines live et on bascule l'identité sur `GetSpartanIdentityFromDBOnly`. Le sample reste calculé depuis DuckDB. Flag `auth_available` exposé pour que le front rende un hint "Connexion Halo requise".
+
+**Garde-fou critique** : la persistance dans `career_progression` n'est ouverte que pour le xuid du user connecté (`allowPersist := xuid == ctxkeys.HaloXUID(ctx)`). Pour un xuid tiers, on lit cache + DB + live + overlay mais on ne déclenche jamais `kickoffBackgroundRefresh` — sinon on polluerait la player DB du user avec les rangs des autres joueurs.
+
+**Tableaux** : `ExplorerMatchesTable` prend une nouvelle prop `defaultPageSize` (10 en mode Joueur). Bouton "Voir tout (20 par page)" / "Réduire (10 lignes)" pour basculer. Les deux tableaux distincts (allié + ennemi) sont conservés.
+
+**Frontend** : 4 nouveaux composants (`ExplorerTargetProfileCard`, `ExplorerTargetIdentityBanner`, `ExplorerTargetCareerStats`, `ExplorerTargetSampleStats`). Donut kill types SVG pur avec tokens `chart-series-*`, réutilise `CombatYieldBar`, `OutcomeBar`, `PrivacyBanner`, `HomeSkillPeakCard`. i18n FR+EN ajouté au manifest `explorer.toml`.
+
+**Résultats observés** :
+- Go : 1511 tests verts (analysis + service + repo + handlers + api).
+- Frontend : 22 tests Explorer verts (5 nouveaux composants + tableau expander). Suite globale 1520 tests verts.
+- typecheck propre, lint propre sur les nouveaux fichiers.
+- Pre-commit hooks (gofmt, go vet, golangci-lint, secrets) tous OK.
+
+**Prochaine étape** : push de la branche + ouverture de la PR vers `refactor/shared-social-collect-persist`.
+
+---
+
 ## [2026-05-26] Fix medals_empty faux positif — matchs sans médailles légitimes
 
 **Statut** : Complété.
