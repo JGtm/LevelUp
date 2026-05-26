@@ -596,6 +596,46 @@ func main() {
 		}
 	}()
 
+	// CHECKPOINT périodique shared_social — vide le WAL toutes les 5 min sans
+	// bloquer les writes per-opération.
+	//
+	// Pourquoi pas dans Persist() ? Avec MaxOpenConns(1), un CHECKPOINT après
+	// chaque commit monopolisait la seule connexion 100–500 ms et bloquait le
+	// prochain BeginTx (cascade deadlock sur likes/favoris).
+	//
+	// Pourquoi ça marche ici ? MaxOpenConns(1) sérialise automatiquement via
+	// database/sql : si Persist() tient la connexion, CHECKPOINT attend ; si
+	// CHECKPOINT tourne (≤ 500 ms), Persist() attend. Au pire 1 write retardé
+	// de 500 ms toutes les 5 min — largement acceptable.
+	//
+	// LookupCachedDB : pas d'ouverture propre — on réutilise la connexion du
+	// pool process-wide (même *sql.DB que SharedSocialPersister). Si le premier
+	// joueur n'a pas encore été chargé, on skip le tick silencieusement.
+	go func() {
+		ckptTicker := time.NewTicker(5 * time.Minute)
+		defer ckptTicker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ckptTicker.C:
+				socialDB, ok := duckdb.LookupCachedDB(sharedSocialPath)
+				if !ok {
+					continue // DB pas encore ouverte, skip
+				}
+				ckptStart := time.Now()
+				ckptCtx, ckptCancel := context.WithTimeout(context.Background(), 10*time.Second)
+				if _, err := socialDB.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); err != nil {
+					slog.WarnContext(ckptCtx, "shared_social: periodic checkpoint failed", "err", err)
+				} else {
+					slog.DebugContext(ckptCtx, "shared_social: periodic checkpoint",
+						"duration_ms", time.Since(ckptStart).Milliseconds())
+				}
+				ckptCancel()
+			}
+		}
+	}()
+
 	// Phase 4.9 / PLAN_AUTH E.v2 (2026-05-24) : periodic Discovery re-scan
 	// pour hot-add nouveaux tokens (env vars ajoutées, watcher_tokens.json mis
 	// à jour) sans reboot. Skip si pool nil (aucun credential au boot).
