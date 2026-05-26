@@ -26,9 +26,11 @@ func (r *FanoutRepo) CountCommonMatchesForXUID(
 	if len(matchIDs) == 0 {
 		return 0, nil
 	}
+	// ADR 0016 : SharedReader.Get retourne une conn directe à shared_matches_v2.duckdb,
+	// pas de préfixe `shared.` (les tables vivent dans le schéma `main` par défaut).
 	query := `
 		SELECT COUNT(DISTINCT match_id)
-		FROM shared.match_participants
+		FROM match_participants
 		WHERE xuid = ?
 		AND match_id IN (SELECT UNNEST(?::VARCHAR[]))
 	`
