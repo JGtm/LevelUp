@@ -211,13 +211,11 @@ func TestXboxSSOLinkStrategy_WithoutTokenStore_StillWorks(t *testing.T) {
 	}
 }
 
-// mockDaemon capture les appels AddPlayer / AddUserClient pour test.
+// mockDaemon capture les appels AddPlayer pour test.
 type mockDaemon struct {
-	running       bool
-	addCalls      []domain.PlayerSummary
-	addUserCalls  []*auth.UserTokens
-	failError     error
-	failOnAddUser bool // si true, AddUserClient retourne failError → fallback AddPlayer
+	running   bool
+	addCalls  []domain.PlayerSummary
+	failError error
 }
 
 func (m *mockDaemon) IsRunning() bool { return m.running }
@@ -225,14 +223,6 @@ func (m *mockDaemon) IsRunning() bool { return m.running }
 func (m *mockDaemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	m.addCalls = append(m.addCalls, p)
 	return m.failError
-}
-
-func (m *mockDaemon) AddUserClient(ctx context.Context, ut *auth.UserTokens) error {
-	m.addUserCalls = append(m.addUserCalls, ut)
-	if m.failOnAddUser {
-		return m.failError
-	}
-	return nil
 }
 
 func TestXboxSSOLinkStrategy_WithDaemonGetter_CallsAddPlayer(t *testing.T) {
@@ -316,7 +306,10 @@ func TestXboxSSOLinkStrategy_WithDaemonGetter_AddPlayerFailIsNonBlocking(t *test
 	}
 }
 
-func TestXboxSSOLinkStrategy_WithTokenStore_PrefersAddUserClient(t *testing.T) {
+// Cleanup 2026-05-26 : les tests AddUserClient PreferOver et FallbackOnFail
+// ont été supprimés avec la méthode (RTA legacy retiré). AddPlayer couvre
+// tous les cas via REST poll.
+func TestXboxSSOLinkStrategy_WithDaemonGetter_AddPlayerEvenWithTokenStore(t *testing.T) {
 	users := newXboxStore(t)
 	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
 	daemon := &mockDaemon{running: true}
@@ -339,77 +332,9 @@ func TestXboxSSOLinkStrategy_WithTokenStore_PrefersAddUserClient(t *testing.T) {
 		t.Fatalf("OnAuthSuccess: %v", err)
 	}
 
-	// Doit avoir appelé AddUserClient (RTA dédié), pas AddPlayer (tracker partagé).
-	if len(daemon.addUserCalls) != 1 {
-		t.Errorf("AddUserClient calls = %d, want 1", len(daemon.addUserCalls))
-	}
-	if len(daemon.addCalls) != 0 {
-		t.Errorf("AddPlayer ne devrait PAS être appelé si AddUserClient réussit, got %d", len(daemon.addCalls))
-	}
-	if len(daemon.addUserCalls) > 0 {
-		got := daemon.addUserCalls[0]
-		if got.XUID != "2535471234567890" {
-			t.Errorf("AddUserClient XUID = %q", got.XUID)
-		}
-		if got.XSTSToken != "xsts-rta-token" {
-			t.Errorf("AddUserClient XSTSToken = %q", got.XSTSToken)
-		}
-	}
-}
-
-func TestXboxSSOLinkStrategy_FallbackAddPlayerIfNoTokens(t *testing.T) {
-	users := newXboxStore(t)
-	daemon := &mockDaemon{running: true}
-	getter := func() service.WatcherDaemon { return daemon }
-
-	// Pas de tokenStore — fallback sur AddPlayer.
-	s := service.NewXboxSSOLinkStrategy(users).WithDaemonGetter(getter)
-
-	sess := &domain.SessionData{}
-	attempt := &auth.Attempt{
-		Gamertag: "Spartan42",
-		XUID:     "2535471234567890",
-	}
-
-	if err := s.OnAuthSuccess(context.Background(), attempt, sess); err != nil {
-		t.Fatalf("OnAuthSuccess: %v", err)
-	}
-
-	if len(daemon.addUserCalls) != 0 {
-		t.Errorf("AddUserClient ne devrait PAS être appelé sans tokenStore, got %d", len(daemon.addUserCalls))
-	}
+	// AddPlayer est appelé même avec tokenStore (REST poll prend le relais).
 	if len(daemon.addCalls) != 1 {
-		t.Errorf("AddPlayer calls = %d, want 1 (fallback)", len(daemon.addCalls))
-	}
-}
-
-func TestXboxSSOLinkStrategy_FallbackAddPlayerIfAddUserClientFails(t *testing.T) {
-	users := newXboxStore(t)
-	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(t.TempDir(), "watcher_tokens"))
-	daemon := &mockDaemon{running: true, failOnAddUser: true, failError: errors.New("RTA dial failed")}
-	getter := func() service.WatcherDaemon { return daemon }
-
-	s := service.NewXboxSSOLinkStrategy(users).
-		WithTokenStore(tokenStore).
-		WithDaemonGetter(getter)
-
-	sess := &domain.SessionData{}
-	attempt := &auth.Attempt{
-		Gamertag:         "Spartan42",
-		XUID:             "2535471234567890",
-		XSTSRTAToken:     "xsts-rta-token",
-		XSTSRTAUserHash:  "rta-user-hash",
-		XSTSRTAExpiresAt: time.Now().Add(55 * time.Minute),
-	}
-
-	_ = s.OnAuthSuccess(context.Background(), attempt, sess)
-
-	// Tenté AddUserClient (échec) → fallback AddPlayer.
-	if len(daemon.addUserCalls) != 1 {
-		t.Errorf("AddUserClient calls = %d, want 1 (tenté avant fallback)", len(daemon.addUserCalls))
-	}
-	if len(daemon.addCalls) != 1 {
-		t.Errorf("AddPlayer calls = %d, want 1 (fallback après échec AddUserClient)", len(daemon.addCalls))
+		t.Errorf("AddPlayer calls = %d, want 1", len(daemon.addCalls))
 	}
 }
 

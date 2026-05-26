@@ -20,7 +20,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability/logging"
-	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/presence"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -42,13 +41,8 @@ type DaemonController interface {
 	IsRunning() bool
 	GetStatus() WatcherStatus
 	// PR 2.5b — ajout dynamique d'un joueur après le démarrage (typiquement après
-	// login Xbox SSO). Si le RTA est connecté, subscribe immédiat avec l'auth
-	// header courant ; sinon le subscribe sera fait à la prochaine (re)connexion.
+	// login Xbox SSO). Crée un PlayerWatcher + REST poller pour le nouveau joueur.
 	AddPlayer(ctx context.Context, p domain.PlayerSummary) error
-	// PR 2.5c — ajout d'un user avec sa propre connexion RTA dédiée. Plus robuste
-	// qu'AddPlayer car indépendant du social graph Xbox (le user subscribe son
-	// propre XUID avec son propre auth header).
-	AddUserClient(ctx context.Context, userTokens *auth_platform.UserTokens) error
 }
 
 // DaemonConfig configure le watcher daemon.
@@ -60,48 +54,37 @@ type DaemonConfig struct {
 	// LiveRefreshFactory est une factory optionnelle pour créer un LiveRefreshTrigger
 	// par joueur. Si nil, le rafraîchissement live BP/Challenges est désactivé.
 	LiveRefreshFactory func(gamertag, xuid string) LiveRefreshTrigger
-
-	// RefreshRTAAuth est appelé par le ReconnectManager quand un subscribe RTA est
-	// refusé avec status=3 (token XSTS expiré). Doit acquérir un XSTS frais et
-	// appeler daemon.UpdateAuth avec le nouveau header. Si nil, la reconnexion
-	// attend authRefreshRetryDelay (30s) avant de retenter.
-	RefreshRTAAuth func(ctx context.Context) error
 }
 
-// userClient + PerUserAuthRefresher : voir daemon_user_clients.go (PR 2.5c).
-
 // Daemon est le démon de surveillance de présence.
+//
+// Architecture (post-cleanup RTA 2026-05-26) : un seul `PresenceClient` REST
+// partagé `trackerRestClient` utilise l'authHeader du tracker (token JGtm,
+// refresh via UpdateAuth) pour interroger la présence de chaque joueur (lui
+// + amis Xbox visibles). Chaque PlayerWatcher a son propre RESTPoller qui
+// dispatche les events vers le handler watcher → FSM → MatchPoller → sync.
 type Daemon struct {
 	cfg         DaemonConfig
-	rtaClient   *presence.RTAClient // LEGACY tracker mono-user (alimenté par Start)
 	titleReg    *title.Registry
 	coordinator *syncpkg.Coordinator
 	queue       *MatchQueue
 
 	// trackerRestClient : 1 client REST partagé entre les RESTPoller des
-	// joueurs trackés (db_profiles). Utilise l'authHeader du tracker (token
-	// JGtm) — Xbox API permet à un user d'interroger la présence de ses
-	// amis avec son propre XSTS. UpdateAuth propage le refresh à tous les
-	// pollers atomiquement.
+	// joueurs trackés. UpdateAuth propage le refresh XSTS à tous les pollers
+	// atomiquement.
 	trackerRestClient *presence.PresenceClient
 
 	playersMu sync.RWMutex
 	players   map[string]*PlayerWatcher // gamertag → watcher
 
-	// PR 2.5c — clients RTA multi-user (1 par user SSO Xbox).
-	// Coexiste avec rtaClient (tracker historique). Alimenté par AddUserClient.
-	userClientsMu      sync.RWMutex
-	userClients        map[string]*userClient // xuid → userClient
-	perUserAuthRefresh PerUserAuthRefresher   // optionnel — refresh XSTS par user
-
 	running bool
 	cancel  context.CancelFunc
-	rootCtx context.Context // capturé dans Start, utilisé par AddUserClient pour lancer ses goroutines avec un parent annulable
+	rootCtx context.Context // capturé dans Start, utilisé pour les goroutines des pollers
 
 	// wg track les goroutines internes lancées dans Start() pour que Stop()
-	// puisse les attendre. Sans ce tracking, les goroutines connectAndSubscribe
-	// et consumeQueue peuvent encore toucher metaDB après que main.go a fait
-	// duckdb.CloseAll() → handles DuckDB orphelins lors d'un SIGKILL d'air.
+	// puisse les attendre. Sans ce tracking, les goroutines peuvent encore
+	// toucher metaDB après que main.go a fait duckdb.CloseAll() → handles
+	// DuckDB orphelins lors d'un SIGKILL d'air.
 	wg sync.WaitGroup
 }
 
@@ -118,20 +101,16 @@ func NewDaemon(cfg DaemonConfig, titleReg *title.Registry, syncRunner syncpkg.Sy
 		coordinator: syncpkg.NewCoordinator(syncRunner, maxParallel),
 		queue:       NewMatchQueue(100),
 		players:     make(map[string]*PlayerWatcher),
-		userClients: make(map[string]*userClient),
 	}
 }
-
-// WithPerUserAuthRefresh : voir daemon_user_clients.go.
 
 // Start démarre le daemon. Non bloquant — lance des goroutines internes.
 func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary) {
 	ctx, d.cancel = context.WithCancel(ctx)
 	// Sprint B1 commit 17 : event_id sur le daemon (un id pour toute la vie
-	// du watcher). Sous-events spécifiques (rta, queue, player) créés dans
-	// les fonctions appelées.
+	// du watcher).
 	ctx, daemonID := logging.WithEvent(ctx, "watcher.daemon")
-	d.rootCtx = ctx // capturé pour qu'AddUserClient puisse lancer des sous-goroutines liées à la même durée de vie
+	d.rootCtx = ctx
 	d.running = true
 
 	slog.InfoContext(ctx, "watcher_daemon: démarrage",
@@ -140,22 +119,12 @@ func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []doma
 		"event", daemonID,
 	)
 
-	// Créer le client RTA
-	d.rtaClient = presence.NewRTAClient(authHeader)
-
-	// Créer le client REST partagé pour les pollers tracker (même authHeader,
-	// propagé à tous les pollers via UpdateAuth atomic).
+	// Client REST partagé pour les pollers tracker (token JGtm, propagé via
+	// UpdateAuth atomic à tous les pollers actifs).
 	d.trackerRestClient = presence.NewPresenceClient(authHeader)
 
 	// Initialiser les PlayerWatchers + lancer un REST poller par joueur
 	d.initPlayers(ctx, playerList)
-
-	// Connecter RTA + souscrire les présences
-	d.wg.Add(1)
-	go func() {
-		defer d.wg.Done()
-		d.connectAndSubscribe(ctx)
-	}()
 
 	// Consommer la queue de matchs
 	d.wg.Add(1)
@@ -174,21 +143,6 @@ func (d *Daemon) Stop() {
 	if d.cancel != nil {
 		d.cancel()
 	}
-	if d.rtaClient != nil {
-		_ = d.rtaClient.Close()
-	}
-
-	// PR 2.5c — fermer tous les userClients (chacun a son propre RTAClient).
-	d.userClientsMu.RLock()
-	for _, uc := range d.userClients {
-		if uc.cancel != nil {
-			uc.cancel()
-		}
-		if uc.rtaClient != nil {
-			_ = uc.rtaClient.Close()
-		}
-	}
-	d.userClientsMu.RUnlock()
 
 	// Attendre les goroutines internes avec un timeout dur.
 	done := make(chan struct{})
@@ -214,17 +168,14 @@ func (d *Daemon) IsRunning() bool {
 	return d.running
 }
 
-// UpdateAuth met à jour le header d'auth RTA + le client REST tracker
-// (après refresh XSTS du tracker). Les pollers REST par joueur partagent
-// ce client donc voient le nouveau header atomiquement.
+// UpdateAuth met à jour le header d'auth du client REST tracker (après
+// refresh XSTS). Les pollers REST par joueur partagent ce client donc
+// voient le nouveau header atomiquement.
 func (d *Daemon) UpdateAuth(authHeader string) {
-	if d.rtaClient != nil {
-		d.rtaClient.UpdateAuth(authHeader)
-	}
 	if d.trackerRestClient != nil {
 		d.trackerRestClient.UpdateAuth(authHeader)
 	}
-	slog.Info("watcher_daemon: auth tracker (RTA + REST) mis à jour")
+	slog.Info("watcher_daemon: auth tracker REST mis à jour")
 }
 
 // GetStatus retourne l'état courant du daemon via StateProvider.
@@ -265,14 +216,13 @@ func (d *Daemon) UpdateSubscriptions(gamertags []string) {
 	)
 }
 
-// AddPlayer ajoute un joueur au tracking dynamiquement (PR 2.5b — hook SSO Xbox).
-// Si le RTA est connecté, subscribe immédiatement avec l'auth header courant.
-// Sinon le subscribe sera fait à la prochaine connexion (connectAndSubscribe re-subscribe
-// tous les players à chaque reconnexion).
+// AddPlayer ajoute un joueur au tracking dynamiquement (typiquement après
+// login SSO Xbox). Crée un PlayerWatcher + REST poller pour le joueur en
+// utilisant le client REST partagé (token tracker).
 //
 // Erreur si XUID vide ou player démo. No-op si le joueur est déjà présent.
-// Les erreurs de subscribe RTA ne sont PAS retournées (loggées seulement) — l'ajout
-// du joueur est considéré comme réussi tant que le PlayerWatcher est créé.
+// Si le daemon n'a pas encore été démarré (rootCtx nil), le PlayerWatcher
+// est créé mais sans poller — il sera spawned au prochain Start.
 func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	if p.IsDemo {
 		return fmt.Errorf("watcher_daemon: AddPlayer ignore player démo")
@@ -281,8 +231,6 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 		return fmt.Errorf("watcher_daemon: AddPlayer requires non-empty XUID (gamertag=%q)", p.Gamertag)
 	}
 
-	// Sprint B1 commit 17 : event_id pour tracer l'ajout d'un nouveau player
-	// au watcher (typiquement déclenché par SSO Xbox login).
 	ctx, evID := logging.WithEvent(ctx, "watcher.add_player:"+p.Gamertag)
 	slog.InfoContext(ctx, "watcher_daemon: AddPlayer démarré",
 		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
@@ -308,31 +256,20 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	slog.InfoContext(ctx, "watcher_daemon: joueur ajouté dynamiquement",
 		"gamertag", p.Gamertag, "xuid", p.XUID)
 
-	// Subscribe immédiat si RTA déjà connecté ; sinon attente du prochain
-	// cycle connectAndSubscribe (qui re-souscrit tous les players du map).
-	if d.rtaClient == nil || !d.rtaClient.IsConnected() {
-		slog.DebugContext(ctx, "watcher_daemon: RTA non connecté, subscribe différé",
-			"gamertag", p.Gamertag)
-		return nil
+	// Spawn REST poller pour ce joueur (utilise le client tracker partagé).
+	// Skip si le daemon n'a pas encore été démarré (rootCtx nil) — le poller
+	// sera créé par initPlayers au prochain Start si le joueur est encore là.
+	if d.trackerRestClient != nil && d.rootCtx != nil {
+		handler := d.makePresenceHandler(d.rootCtx, pw)
+		poller := NewRESTPoller(p.XUID, p.Gamertag, d.trackerRestClient, handler)
+		d.wg.Add(1)
+		go func() {
+			defer d.wg.Done()
+			poller.Run(d.rootCtx)
+		}()
 	}
-
-	handler := d.makePresenceHandler(ctx, pw)
-	var lastErr error
-	for _, td := range d.titleReg.All() {
-		if td.XboxTitleID == "" {
-			continue
-		}
-		if err := d.rtaClient.Subscribe(ctx, p.XUID, td.XboxTitleID, handler); err != nil {
-			slog.WarnContext(ctx, "watcher_daemon: échec subscribe dynamique",
-				"gamertag", p.Gamertag, "title", td.Name, "err", err)
-			lastErr = err
-		}
-	}
-	pw.SetSubscribeError(lastErr)
 	return nil
 }
-
-// AddUserClient + makeUserConnectFunc : voir daemon_user_clients.go (PR 2.5c).
 
 // initPlayers crée un PlayerWatcher par joueur + lance son REST poller
 // (qui utilise l'authHeader du tracker pour interroger la présence des
@@ -375,50 +312,6 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 			}()
 		}
 	}
-}
-
-// connectAndSubscribe gère la connexion RTA et l'abonnement aux présences.
-func (d *Daemon) connectAndSubscribe(ctx context.Context) {
-	// Sprint B1 commit 17 : event_id pour tracer le cycle de vie RTA
-	// (connexion WebSocket, subscribe par joueur, reconnects). Hérite du
-	// daemon parent si présent — sous-event pour granularité.
-	ctx, rtaID := logging.WithEvent(ctx, "watcher.rta")
-	slog.InfoContext(ctx, "watcher_daemon: RTA connectAndSubscribe démarré", "event", rtaID)
-
-	reconnectMgr := presence.NewReconnectManager(
-		d.rtaClient,
-		presence.DefaultReconnectPolicy(),
-		func(connectCtx context.Context) error {
-			if err := d.rtaClient.Connect(connectCtx); err != nil {
-				return err
-			}
-			// Re-souscrire tous les joueurs pour chaque titre tracké.
-			// Les titres trackés sont ceux enregistrés dans le TitleRegistry avec
-			// un XboxTitleID (ex: Halo Infinite, et tout futur titre Halo ajouté).
-			trackedTitles := d.titleReg.All()
-			d.playersMu.RLock()
-			defer d.playersMu.RUnlock()
-			for _, pw := range d.players {
-				handler := d.makePresenceHandler(ctx, pw)
-				var lastErr error
-				for _, td := range trackedTitles {
-					if td.XboxTitleID == "" {
-						continue
-					}
-					if err := d.rtaClient.Subscribe(connectCtx, pw.xuid, td.XboxTitleID, handler); err != nil {
-						slog.WarnContext(connectCtx, "watcher_daemon: échec subscribe",
-							"gamertag", pw.gamertag, "title", td.Name, "err", err)
-						lastErr = err
-					}
-				}
-				pw.SetSubscribeError(lastErr)
-			}
-			return nil
-		},
-	)
-	// Brancher le callback de refresh on-demand fourni par la config.
-	reconnectMgr.OnAuthExpired = d.cfg.RefreshRTAAuth
-	reconnectMgr.RunWithReconnect(ctx)
 }
 
 // makePresenceHandler crée le callback de présence pour un joueur.
