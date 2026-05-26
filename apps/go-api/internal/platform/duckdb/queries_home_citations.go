@@ -552,13 +552,14 @@ WHERE citation_name_norm NOT LIKE '\_%%' ESCAPE '\'
 GROUP BY citation_name_norm
 ORDER BY total DESC`
 
-// Q36a : Commendations â€” total de mÃ©dailles gagnÃ©es par medal_id (xuid du joueur).
-// ParamÃ¨tre : ?1 = xuid du joueur. RequÃªte sur pdb.Player (shared attachÃ©).
+// Q36a : Commendations — total de médailles gagnées par medal_id (xuid du joueur).
+// Paramètre : ?1 = xuid du joueur.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q36aMedalTotals = `
 SELECT
     medal_id,
     SUM(count) AS total_count
-FROM shared.medals_earned
+FROM medals_earned
 WHERE xuid = ?
 GROUP BY medal_id
 ORDER BY total_count DESC`
