@@ -59,6 +59,16 @@ type ServiceRegistry struct {
 	rankImageURLs    map[int]*string           // nil → CareerService.rank_image_url et next_rank_image_url restent absents
 	prestigeBundle   *PrestigeBundle           // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
 	advisorBundle    *CoachAdvisorBundle       // nil → coach_advisor désactivé (ADR 0020 Phase 8)
+	authStore        *auth.MultiUserTokenStore // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+}
+
+// WithAuthStore attache le MultiUserTokenStore au registry — source unique des
+// tokens auth (RT + MSAL cache) post-ADR 0023. `refreshTokensFromDB` lit le store
+// AVANT de tomber sur les fallbacks legacy (sync_meta DuckDB, env var). Nil
+// possible pour les tests qui veulent l'ancien comportement legacy-only.
+func (r *ServiceRegistry) WithAuthStore(store *auth.MultiUserTokenStore) *ServiceRegistry {
+	r.authStore = store
+	return r
 }
 
 // WithCoachAdvisorBundle attache le bundle coach_advisor au registry.
@@ -933,52 +943,135 @@ func (r *ServiceRegistry) enrichWithHaloTokens(ctx context.Context, pdb *duckdb.
 	return ctx
 }
 
-// refreshTokensFromDB charge le cache MSAL ou le refresh_token OAuth v2 depuis sync_meta,
-// puis tente un refresh silencieux pour obtenir les tokens Halo.
-// Ordre :
-//  1. MSAL cache (sync_meta.msal_token_cache) → TrySilentRefresh
-//  2. OAuth v2 refresh_token (env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>) → TryOAuthRefresh
-//  3. OAuth v2 refresh_token (sync_meta.oauth_refresh_token) → TryOAuthRefresh
+// refreshTokensFromDB obtient des tokens Halo en exécutant un refresh OAuth/MSAL.
+// Source des credentials, par ordre de priorité :
+//  1. MultiUserTokenStore (ADR 0023 — source unique post-migration) :
+//     a. MSALCacheJSON → TrySilentRefresh
+//     b. OAuthRefreshToken → TryOAuthRefreshWithRotation (+ écriture rotation au store)
+//  2. Fallback legacy (DEPRECATED — log warn à chaque hit, à supprimer Phase 5) :
+//     a. sync_meta.msal_token_cache → TrySilentRefresh
+//     b. sync_meta.oauth_refresh_token → TryOAuthRefreshWithRotation
+//     c. env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> → TryOAuthRefreshWithRotation
+//
+// La Phase 2 migration (boot-time) garantit que le store contient les valeurs des
+// sources legacy si elles existaient. Le chemin legacy ne devrait être atteint
+// que sur des installs non encore migrées ou en cas de corruption du store.
 func (r *ServiceRegistry) refreshTokensFromDB(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
-	// --- Chemin 1 : MSAL cache ---
-	cacheJSON, err := duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	if err == nil && cacheJSON != "" {
-		accessToken, err := r.provider.TrySilentRefresh(ctx, cacheJSON)
-		if err == nil && accessToken != "" {
-			result, err := r.provider.Exchange(ctx, accessToken)
-			if err == nil && result != nil {
-				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache", "xuid", xuid)
-				return result
-			}
-			slog.WarnContext(ctx, "halo_auth: échange access_token échoué (MSAL)", "xuid", xuid, "err", err)
-		} else if err != nil {
-			slog.WarnContext(ctx, "halo_auth: MSAL silent refresh échoué", "xuid", xuid, "err", err)
+	// --- Source 1 : MultiUserTokenStore (canonique) ---
+	if r.authStore != nil && xuid != "" {
+		if result := r.tryRefreshFromAuthStore(ctx, pdb, xuid); result != nil {
+			return result
 		}
 	}
 
-	// --- Chemin 2 : refresh_token OAuth v2 ---
-	// Priorité : variable d'environnement SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER>
-	// puis clé oauth_refresh_token dans sync_meta.
-	refreshToken := oauthRefreshTokenForPlayer(pdb.Gamertag)
-	if refreshToken == "" {
-		refreshToken, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
-	}
-	if refreshToken != "" {
-		accessToken, err := r.provider.TryOAuthRefresh(ctx, refreshToken)
-		if err == nil && accessToken != "" {
-			result, err := r.provider.Exchange(ctx, accessToken)
-			if err == nil && result != nil {
-				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth v2 refresh", "xuid", xuid)
-				return result
-			}
-			slog.WarnContext(ctx, "halo_auth: échange access_token échoué (OAuth v2)", "xuid", xuid, "err", err)
-		} else if err != nil {
-			slog.WarnContext(ctx, "halo_auth: OAuth v2 refresh échoué", "xuid", xuid, "err", err)
-		}
+	// --- Source 2 : sync_meta DuckDB + env var (DEPRECATED) ---
+	if result := r.tryRefreshFromLegacy(ctx, pdb, xuid); result != nil {
+		return result
 	}
 
 	slog.WarnContext(ctx, "halo_auth: aucun token disponible pour le joueur", "xuid", xuid, "gamertag", pdb.Gamertag)
 	return nil
+}
+
+// tryRefreshFromAuthStore tente un refresh via le MultiUserTokenStore.
+// MSAL cache prioritaire (silent refresh), puis OAuth RT avec persistance rotation.
+func (r *ServiceRegistry) tryRefreshFromAuthStore(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
+	user, err := r.authStore.Load(xuid)
+	if err != nil || user == nil {
+		return nil
+	}
+
+	// MSAL cache → silent refresh
+	if user.MSALCacheJSON != "" {
+		accessToken, err := r.provider.TrySilentRefresh(ctx, user.MSALCacheJSON)
+		if err == nil && accessToken != "" {
+			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
+				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache (store)", "xuid", xuid)
+				return result
+			}
+		} else if err != nil {
+			slog.WarnContext(ctx, "halo_auth: MSAL silent refresh échoué (store)", "xuid", xuid, "err", err)
+		}
+	}
+
+	// OAuth RT → refresh + rotation persistée au store
+	if user.OAuthRefreshToken != "" {
+		accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, user.OAuthRefreshToken)
+		if err == nil && accessToken != "" {
+			if rotatedRT != "" && rotatedRT != user.OAuthRefreshToken {
+				if werr := r.authStore.UpdateOAuthRefreshToken(xuid, rotatedRT); werr != nil {
+					slog.WarnContext(ctx, "halo_auth: persistance RT rotaté store échouée", "xuid", xuid, "err", werr)
+				}
+			}
+			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
+				slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth refresh (store)", "xuid", xuid)
+				return result
+			}
+		} else if err != nil {
+			slog.WarnContext(ctx, "halo_auth: OAuth refresh échoué (store)", "xuid", xuid, "err", err)
+		}
+	}
+
+	return nil
+}
+
+// tryRefreshFromLegacy tente un refresh via sync_meta DuckDB + env var.
+// DEPRECATED : sera supprimé Phase 5. Logue chaque hit pour identifier les
+// installs pas encore migrées vers le store.
+func (r *ServiceRegistry) tryRefreshFromLegacy(ctx context.Context, pdb *duckdb.PlayerDB, xuid string) *auth.ExchangeResult {
+	cacheJSON, err := duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
+	if err == nil && cacheJSON != "" {
+		slog.WarnContext(ctx, "halo_auth: legacy source MSAL utilisée (sync_meta DuckDB) — à migrer",
+			"xuid", xuid, "gamertag", pdb.Gamertag, "deprecated_since", "ADR-0023")
+		if accessToken, err := r.provider.TrySilentRefresh(ctx, cacheJSON); err == nil && accessToken != "" {
+			if result, err := r.provider.Exchange(ctx, accessToken); err == nil && result != nil {
+				slog.DebugContext(ctx, "halo_auth: tokens obtenus via MSAL cache (legacy)", "xuid", xuid)
+				return result
+			}
+		}
+	}
+
+	refreshToken, _ := duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
+	source := "legacy_duckdb"
+	if refreshToken == "" {
+		refreshToken = oauthRefreshTokenForPlayer(pdb.Gamertag)
+		source = "legacy_env_var"
+	}
+	if refreshToken == "" {
+		return nil
+	}
+
+	slog.WarnContext(ctx, "halo_auth: legacy source RT utilisée — à migrer",
+		"xuid", xuid, "gamertag", pdb.Gamertag, "source", source, "deprecated_since", "ADR-0023")
+
+	accessToken, rotatedRT, err := r.provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
+	if err != nil || accessToken == "" {
+		if err != nil {
+			slog.WarnContext(ctx, "halo_auth: OAuth refresh échoué (legacy)", "xuid", xuid, "err", err)
+		}
+		return nil
+	}
+
+	// Persistance rotation : store si disponible, sinon DuckDB (legacy).
+	if rotatedRT != "" && rotatedRT != refreshToken {
+		if r.authStore != nil && xuid != "" {
+			if werr := r.authStore.UpdateOAuthRefreshToken(xuid, rotatedRT); werr != nil {
+				slog.WarnContext(ctx, "halo_auth: persistance RT rotaté store échouée (legacy refresh)", "xuid", xuid, "err", werr)
+			}
+		} else if werr := duckdb.WriteOAuthRefreshToken(ctx, pdb.Player, rotatedRT); werr != nil {
+			slog.WarnContext(ctx, "halo_auth: persistance RT rotaté DuckDB échouée", "xuid", xuid, "err", werr)
+		}
+	}
+
+	result, err := r.provider.Exchange(ctx, accessToken)
+	if err != nil || result == nil {
+		if err != nil {
+			slog.WarnContext(ctx, "halo_auth: Exchange échoué (legacy)", "xuid", xuid, "err", err)
+		}
+		return nil
+	}
+	slog.DebugContext(ctx, "halo_auth: tokens obtenus via OAuth refresh (legacy)", "xuid", xuid, "source", source)
+	return result
 }
 
 // MatchHistoryCtx retourne un MatchHistoryService + identifiants joueur.
