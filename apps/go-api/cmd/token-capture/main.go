@@ -35,6 +35,7 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/halo"
 )
 
@@ -91,7 +92,11 @@ func main() {
 		fatalf("config.Load: %v\n", err)
 	}
 
-	xuid, resolvedGT, err := resolveXUID(cfg, gamertag)
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		fatalf("LoadPlayers: %v\n", err)
+	}
+	xuid, resolvedGT, err := capturecli.ResolveXUIDByGamertag(players, gamertag)
 	if err != nil {
 		fatalf("%v\n", err)
 	}
@@ -120,20 +125,9 @@ func main() {
 
 	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
 	store := auth.NewMultiUserTokenStore(storeDir)
-	if err := store.UpdateOAuthRefreshToken(xuid, refreshToken); err != nil {
-		fatalf("écriture store: %v\n", err)
+	if err := capturecli.PersistRefreshToken(store, xuid, resolvedGT, refreshToken, halo.InvalidateCachedPlayerTokens); err != nil {
+		fatalf("persistance RT: %v\n", err)
 	}
-
-	// Compléter gamertag dans l'entrée store si nouvelle entrée vide.
-	if existing, _ := store.Load(xuid); existing != nil && existing.Gamertag == "" {
-		existing.Gamertag = resolvedGT
-		_ = store.Upsert(existing)
-	}
-
-	// Invalider le cache process des HaloTokens — force un re-acquire au prochain
-	// refresh, sinon le serveur réutiliserait des Spartan tokens dérivés de
-	// l'ancien RT chain pendant ~50 min (TTL cache).
-	halo.InvalidateCachedPlayerTokens(xuid)
 
 	fmt.Println()
 	fmt.Println(strings.Repeat("=", 60))
@@ -144,26 +138,6 @@ func main() {
 	fmt.Println("  Redémarrer le serveur (ou laisser Air relancer) — le Pool")
 	fmt.Println("  trouvera le token immédiatement, aucune édition .env.local.")
 	fmt.Println()
-}
-
-// resolveXUID résout xuid + gamertag canonique depuis db_profiles.json via le
-// gamertag fourni en argument (case-insensitive). Retourne une erreur explicite
-// si le joueur n'est pas configuré.
-func resolveXUID(cfg *config.AppConfig, gamertag string) (xuid, canonicalGT string, err error) {
-	players, lerr := cfg.LoadPlayers()
-	if lerr != nil {
-		return "", "", fmt.Errorf("LoadPlayers: %w", lerr)
-	}
-	target := strings.ToLower(strings.TrimSpace(gamertag))
-	for _, p := range players {
-		if strings.ToLower(p.Gamertag) == target {
-			if p.XUID == "" {
-				return "", "", fmt.Errorf("joueur %q présent mais xuid manquant dans db_profiles.json", p.Gamertag)
-			}
-			return p.XUID, p.Gamertag, nil
-		}
-	}
-	return "", "", fmt.Errorf("joueur %q absent de db_profiles.json — ajouter une entrée avec xuid avant token-capture", gamertag)
 }
 
 func startDeviceFlow(ctx context.Context, clientID string) (*deviceCodeResponse, error) {
