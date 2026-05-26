@@ -338,20 +338,25 @@ func (p *SharedSocialPersister) Persist(ctx context.Context, batch *SharedSocial
 		return fmt.Errorf("shared_social: commit: %w", err)
 	}
 
-	// CHECKPOINT — vider le WAL DuckDB sur disque IMMÉDIATEMENT. C'est
-	// LE garde-fou qui empêche le bug DuckDB #7659 : si Air kill le serveur
-	// après ce point, le WAL est déjà vide, donc rien à rejouer au boot
-	// suivant.
+	// CHECKPOINT asynchrone — vider le WAL DuckDB sur disque sans bloquer
+	// le caller HTTP. Le COMMIT ci-dessus garantit l'atomicité ; les données
+	// sont dans le WAL et seront rejouées si le process crashe avant que le
+	// CHECKPOINT se termine. L'async évite le blocage sur les readers actifs
+	// (typiquement 100-500ms pour un toggle like/favori).
 	//
-	// PRAGMA force_checkpoint vs CHECKPOINT : on utilise CHECKPOINT (non-force)
-	// qui attend les readers en cours et retourne quand le WAL est fusionné.
-	// Si un reader long-running tient une lock, on retentera best-effort.
-	if _, ckptErr := p.db.ExecContext(ctx, "CHECKPOINT"); ckptErr != nil {
-		// Non-fatal : le commit est déjà OK, les données sont dans le WAL.
-		// On loggue WARN pour traçabilité (Phase 6 alertera si récurrent).
-		slog.WarnContext(ctx, "shared_social: CHECKPOINT after Persist failed (non-fatal — data committed in WAL)",
-			"batch_id", batch.BatchID, "source", batch.Source, "err", ckptErr)
-	}
+	// Garde-fou WAL (bug DuckDB #7659) : un CHECKPOINT synchrone final est
+	// émis au shutdown gracieux du serveur (main.go) pour vider le WAL avant
+	// qu'Air reload le processus.
+	batchID := batch.BatchID
+	batchSrc := batch.Source
+	go func() {
+		ckptCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, ckptErr := p.db.ExecContext(ckptCtx, "CHECKPOINT"); ckptErr != nil {
+			slog.Warn("shared_social: CHECKPOINT async failed (non-fatal — data committed in WAL)",
+				"batch_id", batchID, "source", batchSrc, "err", ckptErr)
+		}
+	}()
 
 	slog.InfoContext(ctx, "shared_social: batch persisted",
 		"batch_id", batch.BatchID,

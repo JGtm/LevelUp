@@ -238,6 +238,19 @@ function resolvePresenceTone(state: string | undefined, t: SettingsText): { labe
 }
 
 /**
+ * Mappe les titleNames Xbox spéciaux vers leurs labels UI. Xbox utilise
+ * "Online" comme titleName du Dashboard, ce qui donnerait "Vu il y a 2h
+ * sur Online" — peu parlant. On remap vers "l'accueil Xbox" / "the Xbox
+ * home" pour clarifier.
+ *
+ * Tout autre titleName est passé tel quel (Halo Infinite, CS2, etc.).
+ */
+export function resolveTitleDisplayName(titleName: string, t: SettingsText): string {
+  if (titleName === 'Online') return t.watcherTitleXboxDashboard
+  return titleName
+}
+
+/**
  * Format un "vu il y a X sur Y" lisible côté UI.
  *
  * Logique :
@@ -329,7 +342,7 @@ function RTAStatus({ t }: { t: SettingsText }) {
                 </div>
                 {p.last_seen && (
                   <span className="pl-1 text-2xs italic text-muted-foreground/80">
-                    {formatLastSeen(p.last_seen.timestamp, p.last_seen.title_name, t)}
+                    {formatLastSeen(p.last_seen.timestamp, resolveTitleDisplayName(p.last_seen.title_name, t), t)}
                   </span>
                 )}
               </li>

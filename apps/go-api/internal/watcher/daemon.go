@@ -323,12 +323,12 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// répondre "pourquoi ce user a/n'a pas déclenché un sync ?"
 		evCtx, evID := logging.WithEvent(ctx, "watcher.presence:"+pw.gamertag)
 
-		// Capture `lastSeen` si présent dans le payload ET pointant sur un
-		// vrai jeu (= pas le Dashboard Xbox "Online" id=1022622766 qui
-		// donnait l'affichage trompeur "Vu il y a 2h sur Online"). On garde
-		// tous les autres jeux Xbox (CS2, COD, etc.) même non trackés — c'est
-		// une info utile pour l'utilisateur.
-		if event.LastSeen != nil && !isXboxNonGameTitle(event.LastSeen.TitleID) {
+		// Capture `lastSeen` si présent dans le payload, sans filtrage côté
+		// backend : tout est stocké tel que renvoyé par Xbox (jeu, ou
+		// Dashboard "Online" id=1022622766). Le frontend re-mappe les noms
+		// spéciaux ("Online" → "Accueil Xbox") pour une UI lisible —
+		// décision UX, pas backend.
+		if event.LastSeen != nil {
 			pw.RecordLastSeen(evCtx, event.LastSeen)
 		}
 
@@ -415,21 +415,4 @@ func (q *queueSyncTrigger) TriggerSync(_ context.Context, gamertag, xuid string,
 		MatchIDs: matchIDs,
 	})
 	return nil
-}
-
-// xboxNonGameTitleIDs liste les TitleID Xbox qui ne sont pas des jeux mais
-// des apps système (Dashboard "Online", etc.). Exclus du lastSeen pour ne
-// pas afficher "Vu il y a 2h sur Online" — info inutile à l'utilisateur.
-//
-// Cette liste peut être étendue si d'autres apps Xbox apparaissent dans la
-// présence (ex: Movies & TV, Edge). Pour l'instant seul le Dashboard est
-// problématique car Xbox utilise "Online" comme titleName quand le user est
-// connecté sans jeu actif.
-var xboxNonGameTitleIDs = map[string]struct{}{
-	"1022622766": {}, // Xbox Dashboard (titleName "Online")
-}
-
-func isXboxNonGameTitle(titleID string) bool {
-	_, ok := xboxNonGameTitleIDs[titleID]
-	return ok
 }

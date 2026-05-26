@@ -214,11 +214,10 @@ func TestDaemon_MakePresenceHandler_UntrackedTitleTreatedAsInactive(t *testing.T
 // Reimport presence package reference for the test (the test file already uses it via daemon.go)
 var _ syncpkg.SyncRunner = (*mockDaemonSyncRunner)(nil)
 
-// Fix 2026-05-26 : le Dashboard Xbox (titleName "Online", id 1022622766) ne
-// doit PAS être stocké comme lastSeen (UI "Vu il y a 2h sur Online" trompeuse).
-// Mais les autres jeux Xbox (CS2, COD…) restent affichés même non trackés —
-// info utile pour l'utilisateur.
-func TestDaemon_MakePresenceHandler_LastSeenFiltersXboxDashboard(t *testing.T) {
+// Fix 2026-05-26 : le backend NE filtre plus aucun titre — Dashboard Xbox,
+// CS2, Halo, tout est stocké tel quel. Le frontend mappe les noms spéciaux
+// ("Online" → "Accueil Xbox") pour l'affichage.
+func TestDaemon_MakePresenceHandler_LastSeenStoresAllTitles(t *testing.T) {
 	reg := title.NewRegistry()
 	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, reg, &mockDaemonSyncRunner{})
 
@@ -227,75 +226,35 @@ func TestDaemon_MakePresenceHandler_LastSeenFiltersXboxDashboard(t *testing.T) {
 	pw := NewPlayerWatcher("P1", "X1", fetcher, trigger).WithPostExitGrace(0)
 	handler := d.makePresenceHandler(context.Background(), pw)
 
-	// Cas 1 : Dashboard Xbox → IGNORÉ.
-	handler(presence.PresenceEvent{
-		XUID:          "X1",
-		PresenceState: "Offline",
-		LastSeen: &presence.LastSeenInfo{
-			TitleID:   "1022622766",
-			TitleName: "Online",
-		},
-	})
-	if pw.LastSeen() != nil {
-		t.Errorf("Dashboard Xbox NE doit PAS être enregistré, got %+v", pw.LastSeen())
-	}
-
-	// Cas 2 : Halo Infinite (tracké) → ENREGISTRÉ.
-	handler(presence.PresenceEvent{
-		XUID:          "X1",
-		PresenceState: "Offline",
-		LastSeen: &presence.LastSeenInfo{
-			TitleID:   "2043073184",
-			TitleName: "Halo Infinite",
-		},
-	})
-	got := pw.LastSeen()
-	if got == nil || got.TitleName != "Halo Infinite" {
-		t.Fatalf("Halo Infinite devrait être enregistré, got %+v", got)
-	}
-
-	// Cas 3 : CS2 (jeu Xbox NON tracké dans le registry) → ENREGISTRÉ.
-	// Info utile pour l'utilisateur ("Madina a joué à CS2 il y a 2h").
-	handler(presence.PresenceEvent{
-		XUID:          "X1",
-		PresenceState: "Offline",
-		LastSeen: &presence.LastSeenInfo{
-			TitleID:   "2076696971",
-			TitleName: "Counter-Strike 2",
-		},
-	})
-	got = pw.LastSeen()
-	if got == nil || got.TitleName != "Counter-Strike 2" {
-		t.Errorf("CS2 devrait être enregistré (jeu Xbox légitime non tracké), got %+v", got)
-	}
-
-	// Cas 4 : Dashboard arrivant après CS2 n'écrase pas CS2.
-	handler(presence.PresenceEvent{
-		XUID:          "X1",
-		PresenceState: "Offline",
-		LastSeen: &presence.LastSeenInfo{
-			TitleID:   "1022622766",
-			TitleName: "Online",
-		},
-	})
-	if pw.LastSeen() == nil || pw.LastSeen().TitleName != "Counter-Strike 2" {
-		t.Error("Dashboard Xbox ne doit PAS écraser le LastSeen CS2 précédent")
-	}
-}
-
-// Sanity check de la fonction helper.
-func TestIsXboxNonGameTitle(t *testing.T) {
-	if !isXboxNonGameTitle("1022622766") {
-		t.Error("Dashboard Xbox (1022622766) devrait être identifié comme non-game")
-	}
-	if isXboxNonGameTitle("2043073184") {
-		t.Error("Halo Infinite ne devrait PAS être non-game")
-	}
-	if isXboxNonGameTitle("2076696971") {
-		t.Error("CS2 ne devrait PAS être non-game")
-	}
-	if isXboxNonGameTitle("") {
-		t.Error("TitleID vide ne devrait pas matcher la blocklist")
+	for _, tc := range []struct {
+		name  string
+		titID string
+		titNm string
+	}{
+		{"Dashboard Xbox", "1022622766", "Online"},
+		{"Halo Infinite", "2043073184", "Halo Infinite"},
+		{"Counter-Strike 2", "2076696971", "Counter-Strike 2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handler(presence.PresenceEvent{
+				XUID:          "X1",
+				PresenceState: "Offline",
+				LastSeen: &presence.LastSeenInfo{
+					TitleID:   tc.titID,
+					TitleName: tc.titNm,
+				},
+			})
+			got := pw.LastSeen()
+			if got == nil {
+				t.Fatalf("LastSeen nil pour %s", tc.name)
+			}
+			if got.TitleName != tc.titNm {
+				t.Errorf("TitleName = %q, want %q", got.TitleName, tc.titNm)
+			}
+			if got.TitleID != tc.titID {
+				t.Errorf("TitleID = %q, want %q", got.TitleID, tc.titID)
+			}
+		})
 	}
 }
 

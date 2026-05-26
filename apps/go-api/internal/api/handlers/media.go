@@ -678,7 +678,9 @@ func (h *MediaHandler) urlToFilePath(slug, input string) string {
 		}
 	}
 	if capturesBase != "" {
-		candidate := filepath.Join(capturesBase, slug, relPath)
+		// relPath contient déjà le slug du propriétaire en préfixe (ex: "JGtm/clip.mp4").
+		// On ne rajoute PAS slug (viewer) pour éviter le double-slug "capturesBase/viewer/owner/clip.mp4".
+		candidate := filepath.Join(capturesBase, relPath)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate
 		}
@@ -694,9 +696,9 @@ func (h *MediaHandler) urlToFilePath(slug, input string) string {
 		}
 	}
 
-	// Si on ne trouve pas le fichier, renvoyer l'input pour laisser le repo
-	// retourner un 404 explicite.
-	return input
+	// Fallback : retourner relPath (pas l'URL). Pour les paths post-migration
+	// stockés en relatif (ex: "JGtm/clip.mp4"), relPath == stored path → UPDATE match.
+	return relPath
 }
 
 // resolveLikerGamertag résout le gamertag affichable depuis le slug du joueur
