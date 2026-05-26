@@ -1,0 +1,94 @@
+// Package analysis — explorer_target_stats.go : agrégation des stats du
+// joueur cible sur l'échantillon des matchs joués en commun avec le user
+// connecté (cf. Explorer mode Joueur, encart "Profil joueur cible").
+//
+// Toutes les opérations sont stateless et déterministes (pas d'accès DB,
+// pas d'IO). Réutilise ComputeCombatYield (combat_yield.go) pour les ratios
+// OffensiveConversion / DefensiveResistance.
+package analysis
+
+import "levelup/go-api/internal/domain"
+
+// BuildSampleStats agrège les totaux bruts retournés par le repo en un bloc
+// ExplorerTargetSampleStats prêt à être sérialisé.
+//
+// Tous les ratios sont retournés en pointer : nil signifie "indisponible"
+// quand le dénominateur est nul (ex : deaths=0 → KDR indéfini, shots_fired=0
+// → accuracy indéfinie). Le frontend rend "—" dans ce cas.
+//
+// Retourne nil quand sampleSize ≤ 0 ou agg == nil — l'encart masque alors la
+// section "Sur N matchs joués ensemble".
+func BuildSampleStats(
+	agg *domain.ParticipantStatsAggregate,
+	medals *domain.MedalCountsAggregate,
+	sampleSize int,
+) *domain.ExplorerTargetSampleStats {
+	if agg == nil || sampleSize <= 0 {
+		return nil
+	}
+
+	stats := &domain.ExplorerTargetSampleStats{
+		SampleSize:       sampleSize,
+		Kills:            agg.Kills,
+		Deaths:           agg.Deaths,
+		Assists:          agg.Assists,
+		Wins:             agg.Wins,
+		Losses:           agg.Losses,
+		Draws:            agg.Draws,
+		ShotsFired:       agg.ShotsFired,
+		ShotsHit:         agg.ShotsHit,
+		DamageDealt:      int(agg.DamageDealt),
+		DamageTaken:      int(agg.DamageTaken),
+		HeadshotKills:    agg.HeadshotKills,
+		MeleeKills:       agg.MeleeKills,
+		PowerWeaponKills: agg.PowerWeaponKills,
+		GrenadeKills:     agg.GrenadeKills,
+	}
+
+	if medals != nil {
+		stats.TotalMedals = medals.Total
+		stats.UniqueMedals = medals.Unique
+	}
+
+	// KDA = (kills + assists/3) / deaths.
+	// KDR = kills / deaths.
+	if agg.Deaths > 0 {
+		kda := (float64(agg.Kills) + float64(agg.Assists)/3.0) / float64(agg.Deaths)
+		kdr := float64(agg.Kills) / float64(agg.Deaths)
+		stats.KDA = &kda
+		stats.KDR = &kdr
+	}
+
+	// WinRate = wins / (wins + losses + draws). On exclut les DNF du
+	// dénominateur — convention alignée sur le reste du produit (cf. compare).
+	played := agg.Wins + agg.Losses + agg.Draws
+	if played > 0 {
+		wr := float64(agg.Wins) / float64(played)
+		stats.WinRate = &wr
+	}
+
+	// Accuracy = hits / fired.
+	if agg.ShotsFired > 0 {
+		acc := float64(agg.ShotsHit) / float64(agg.ShotsFired)
+		stats.Accuracy = &acc
+	}
+
+	// HeadshotRate = headshots / kills.
+	if agg.Kills > 0 {
+		hr := float64(agg.HeadshotKills) / float64(agg.Kills)
+		stats.HeadshotRate = &hr
+	}
+
+	// Rendement combat : réutilise la formule canonique.
+	yield := ComputeCombatYield(agg.Kills, agg.Assists, agg.DamageDealt, agg.DamageTaken, agg.Deaths)
+	if yield.OffensiveConversion > 0 {
+		oc := yield.OffensiveConversion
+		stats.OffensiveConversion = &oc
+	}
+	if yield.DefensiveResistance > 0 {
+		dr := yield.DefensiveResistance
+		stats.DefensiveResistance = &dr
+	}
+
+	return stats
+}

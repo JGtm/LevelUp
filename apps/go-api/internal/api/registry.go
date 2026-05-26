@@ -755,6 +755,16 @@ func (r *ServiceRegistry) ExplorerCtx(ctx context.Context, slug string) (port.Ex
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
+	// Wire les providers nécessaires à l'encart "Profil joueur cible" :
+	// identité Spartan live + stats carrière remote + privacy. Réutilise les
+	// mêmes briques que la home (CareerLive) et Compare (haloProvider).
+	homeRepo := r.newHomeRepo(pdb)
+	svc = svc.WithTargetProfileProviders(
+		r.newCareerLiveService(pdb, homeRepo),
+		haloProvider,
+		haloProvider,
+		pdb.TitleSlug,
+	)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
