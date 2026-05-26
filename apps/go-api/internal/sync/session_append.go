@@ -146,7 +146,7 @@ func appendSessionsInline(
 
 	// 11. Persister — le delta filter dans writeSessionAssignmentsBatch ne garde
 	// que les lignes réellement changées (nouveaux matchs + labels mis à jour si étendus)
-	return writeSessionAssignmentsBatch(ctx, playerDB, withLabels)
+	return writeSessionAssignmentsBatch(ctx, playerDB, withLabels, false)
 }
 
 // loadAssignedSessionsMap charge (match_id → {session_id, session_label}) depuis
@@ -184,9 +184,16 @@ func loadAssignedSessionsMap(ctx context.Context, db *sql.DB) (map[string]assign
 // fullSessionCompute est le fallback premier-sync : calcule et persiste toutes les sessions.
 // Utilisé quand aucune ancre n'existe (premier sync joueur) ou lors d'une découverte
 // de match hors-ordre (match antérieur à l'ancre).
+//
+// onlyNewRows=true : évite le bulk-UPDATE de rows déjà assignées qui déclencherait
+// le bug ART DuckDB "duplicate key on append" (constaté sur JGtm 2026-05-26 lors du
+// gap-fill de 20 matchs sur une base de 876 matchs existants).
 func fullSessionCompute(ctx context.Context, playerDB *sql.DB, allRows []domain.SessionMatchRow, opts domain.SessionComputeOptions) (int, error) {
 	assignments := analysis.ComputeSessionsWithContext(allRows, opts)
 	groups := analysis.BuildSessionGroups(allRows, assignments)
 	assignments = analysis.MergeSessionLabels(assignments, groups)
-	return writeSessionAssignmentsBatch(ctx, playerDB, assignments)
+	// onlyNewRows=true : n'écrit que les rows session_id IS NULL.
+	// Les sessions existantes restent inchangées (les décalages de numéros dus aux
+	// matchs comblés sont acceptés pour éviter le crash ART).
+	return writeSessionAssignmentsBatch(ctx, playerDB, assignments, true)
 }
