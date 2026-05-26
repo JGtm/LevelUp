@@ -58,8 +58,8 @@ func TestExtractCSRRowIfRanked_RankedStable(t *testing.T) {
 	if row.SubTier != 5 {
 		t.Errorf("SubTier: want 5, got %d", row.SubTier)
 	}
-	if row.TierLabel != "Or 5" {
-		t.Errorf("TierLabel: want %q, got %q", "Or 5", row.TierLabel)
+	if row.TierLabel != "Or V" {
+		t.Errorf("TierLabel: want %q, got %q", "Or V", row.TierLabel)
 	}
 	if row.RatingDelta == nil || *row.RatingDelta != 12 {
 		t.Errorf("RatingDelta: want +12, got %v", row.RatingDelta)

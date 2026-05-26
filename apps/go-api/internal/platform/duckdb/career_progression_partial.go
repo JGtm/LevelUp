@@ -169,6 +169,21 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 		return false, nil
 	}
 
+	cols, placeholders, args := buildPartialInsertColumns(xuid, partial)
+	sql := fmt.Sprintf(`INSERT INTO career_progression (%s) VALUES (%s)`,
+		strings.Join(cols, ", "), strings.Join(placeholders, ", "))
+
+	if _, err := r.pdb.Player.Exec(ctx, sql, args...); err != nil {
+		return false, fmt.Errorf("InsertCareerProgressionPartial exec: %w", err)
+	}
+	return true, nil
+}
+
+// buildPartialInsertColumns prépare cols + placeholders + args pour l'INSERT
+// dynamique. Extrait pour respecter la règle 80L par fonction (arch-rules).
+// Inclut systématiquement xuid + recorded_at ; les autres colonnes sont
+// présentes uniquement si le champ correspondant est set.
+func buildPartialInsertColumns(xuid string, p *CareerProgressionPartial) ([]string, []string, []interface{}) {
 	cols := []string{"xuid", "recorded_at"}
 	placeholders := []string{"?", "?"}
 	args := []interface{}{xuid, time.Now().UTC()}
@@ -178,51 +193,44 @@ func (r *CareerLiveRepo) InsertCareerProgressionPartial(
 		placeholders = append(placeholders, "?")
 		args = append(args, value)
 	}
-	if partial.Rank != nil {
-		add("rank", *partial.Rank)
+	if p.Rank != nil {
+		add("rank", *p.Rank)
 	}
-	if partial.CurrentXP != nil {
-		add("current_xp", *partial.CurrentXP)
+	if p.CurrentXP != nil {
+		add("current_xp", *p.CurrentXP)
 	}
-	if partial.XPForNextRank != nil {
-		add("xp_for_next_rank", *partial.XPForNextRank)
+	if p.XPForNextRank != nil {
+		add("xp_for_next_rank", *p.XPForNextRank)
 	}
-	if partial.XPTotal != nil {
-		add("xp_total", *partial.XPTotal)
+	if p.XPTotal != nil {
+		add("xp_total", *p.XPTotal)
 	}
-	if partial.IsMaxRank != nil {
-		add("is_max_rank", *partial.IsMaxRank)
+	if p.IsMaxRank != nil {
+		add("is_max_rank", *p.IsMaxRank)
 	}
-	if partial.RankName != nil {
-		add("rank_name", *partial.RankName)
+	if p.RankName != nil {
+		add("rank_name", *p.RankName)
 	}
-	if partial.RankTier != nil {
-		add("rank_tier", *partial.RankTier)
+	if p.RankTier != nil {
+		add("rank_tier", *p.RankTier)
 	}
-	if partial.SpartanID != nil {
-		add("spartan_id", *partial.SpartanID)
+	if p.SpartanID != nil {
+		add("spartan_id", *p.SpartanID)
 	}
-	if partial.BannerImageURL != nil {
-		add("banner_image_url", *partial.BannerImageURL)
+	if p.BannerImageURL != nil {
+		add("banner_image_url", *p.BannerImageURL)
 	}
-	if partial.EmblemImageURL != nil {
-		add("emblem_image_url", *partial.EmblemImageURL)
+	if p.EmblemImageURL != nil {
+		add("emblem_image_url", *p.EmblemImageURL)
 	}
-	if partial.BackdropImageURL != nil {
-		add("backdrop_image_url", *partial.BackdropImageURL)
+	if p.BackdropImageURL != nil {
+		add("backdrop_image_url", *p.BackdropImageURL)
 	}
-	if partial.AdornmentPath != nil {
-		add("adornment_path", *partial.AdornmentPath)
+	if p.AdornmentPath != nil {
+		add("adornment_path", *p.AdornmentPath)
 	}
-	if partial.LastFetchStatus != nil {
-		add("last_fetch_status", *partial.LastFetchStatus)
+	if p.LastFetchStatus != nil {
+		add("last_fetch_status", *p.LastFetchStatus)
 	}
-
-	sql := fmt.Sprintf(`INSERT INTO career_progression (%s) VALUES (%s)`,
-		strings.Join(cols, ", "), strings.Join(placeholders, ", "))
-
-	if _, err := r.pdb.Player.Exec(ctx, sql, args...); err != nil {
-		return false, fmt.Errorf("InsertCareerProgressionPartial exec: %w", err)
-	}
-	return true, nil
+	return cols, placeholders, args
 }

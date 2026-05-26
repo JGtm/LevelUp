@@ -196,38 +196,7 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 	return identity, nil
 }
 
-// overlayIdentityFromFallback applique le filet DB last-known-good par-dessus
-// le résultat live. Patché en place — l'objet identity retourné peut être :
-//   - identity (live) avec champs vides remplis depuis fallback
-//   - fallback (si identity était nil)
-//   - nil (si les deux sont nil)
-//
-// Anti-régression « bannière qui va et vient » : un fetch live qui rend
-// BannerImageURL=nil ne doit JAMAIS écraser la valeur DB historique.
-func overlayIdentityFromFallback(identity, fallback *domain.HomeSpartanIdentityRow) *domain.HomeSpartanIdentityRow {
-	if identity == nil {
-		return fallback
-	}
-	if fallback == nil {
-		return identity
-	}
-	if identity.SpartanID == nil && fallback.SpartanID != nil {
-		identity.SpartanID = fallback.SpartanID
-	}
-	if identity.BannerImageURL == nil && fallback.BannerImageURL != nil {
-		identity.BannerImageURL = fallback.BannerImageURL
-	}
-	if identity.EmblemImageURL == nil && fallback.EmblemImageURL != nil {
-		identity.EmblemImageURL = fallback.EmblemImageURL
-	}
-	if identity.BackdropImageURL == nil && fallback.BackdropImageURL != nil {
-		identity.BackdropImageURL = fallback.BackdropImageURL
-	}
-	if identity.AdornmentImageURL == nil && fallback.AdornmentImageURL != nil {
-		identity.AdornmentImageURL = fallback.AdornmentImageURL
-	}
-	return identity
-}
+// overlayIdentityFromFallback → extrait dans `career_live_merge.go`.
 
 // fetchAndMerge construit la CareerRankRow servie à la home selon le pattern
 // **stale-while-revalidate** :
@@ -367,108 +336,8 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 	}()
 }
 
-// fetchProgressCached retourne la progression depuis le cache si frais, sinon
-// fait l'appel live (avec singleflight). Erreurs live → log warn + nil.
-func (s *CareerLiveService) fetchProgressCached(ctx context.Context, xuid string) *syncpkg.CareerRankData {
-	if s.cache != nil {
-		if cached, hit := s.cache.GetProgress(xuid); hit {
-			careerLiveProgressCache.Add(1)
-			slog.DebugContext(ctx, careerLiveLogModule+": progress cache hit", "xuid", xuid)
-			return cached
-		}
-	}
-
-	fetcher := s.makeFetcher(ctx)
-	if fetcher == nil {
-		return nil
-	}
-
-	fetch := func() (*syncpkg.CareerRankData, error) {
-		return fetcher.GetCareerProgress(ctx, xuid)
-	}
-	var (
-		data *syncpkg.CareerRankData
-		err  error
-	)
-	if s.cache != nil {
-		data, err = s.cache.DoProgress(xuid, fetch)
-	} else {
-		data, err = fetch()
-	}
-	if err != nil {
-		careerLiveProgressFail.Add(1)
-		slog.WarnContext(ctx, careerLiveLogModule+": progress fetch failed",
-			"xuid", xuid, "err", err)
-		return nil
-	}
-	if data == nil {
-		// L'API a répondu sans erreur mais sans données exploitables (401/403
-		// silencieux ou payload non parseable). Ne pas mettre nil en cache :
-		// un nil caché retourne hit=true et supprime les tentatives suivantes.
-		slog.WarnContext(ctx, careerLiveLogModule+": progress fetch returned nil (API silent skip)",
-			"xuid", xuid)
-		return nil
-	}
-	careerLiveProgressLive.Add(1)
-	if s.cache != nil {
-		s.cache.PutProgress(xuid, data)
-	}
-	return data
-}
-
-// fetchCustomizationCached : pendant pour la customisation (TTL 6 h).
-func (s *CareerLiveService) fetchCustomizationCached(ctx context.Context, xuid string) *syncpkg.SpartanCustomizationData {
-	if s.cache != nil {
-		if cached, hit := s.cache.GetCustomization(xuid); hit {
-			careerLiveCustomCache.Add(1)
-			slog.DebugContext(ctx, careerLiveLogModule+": customization cache hit", "xuid", xuid)
-			return cached
-		}
-	}
-
-	fetcher := s.makeFetcher(ctx)
-	if fetcher == nil {
-		return nil
-	}
-
-	fetch := func() (*syncpkg.SpartanCustomizationData, error) {
-		return fetcher.GetSpartanCustomization(ctx, xuid)
-	}
-	var (
-		data *syncpkg.SpartanCustomizationData
-		err  error
-	)
-	if s.cache != nil {
-		data, err = s.cache.DoCustomization(xuid, fetch)
-	} else {
-		data, err = fetch()
-	}
-	if err != nil {
-		careerLiveCustomFail.Add(1)
-		slog.WarnContext(ctx, careerLiveLogModule+": customization fetch failed",
-			"xuid", xuid, "err", err)
-		return nil
-	}
-	if data == nil {
-		slog.WarnContext(ctx, careerLiveLogModule+": customization fetch returned nil (API silent skip)",
-			"xuid", xuid)
-		return nil
-	}
-	careerLiveCustomLive.Add(1)
-	if s.cache != nil {
-		s.cache.PutCustomization(xuid, data)
-	}
-	return data
-}
-
-// makeFetcher construit un fetcher depuis le contexte. Retourne nil si la
-// factory n'est pas câblée ou si elle elle-même retourne nil (tokens absents).
-func (s *CareerLiveService) makeFetcher(ctx context.Context) CareerFetcher {
-	if s.fetcherFactory == nil {
-		return nil
-	}
-	return s.fetcherFactory(ctx)
-}
+// fetchProgressCached, fetchCustomizationCached, makeFetcher → extraits dans
+// `career_live_fetcher.go` (refactor V2 dette technique 2026-05-26).
 
 // persistIfChanged écrit le snapshot dans career_progression si différent
 // de la dernière row. Best-effort — erreur loguée mais non propagée.
@@ -590,125 +459,11 @@ func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string) *d
 	return identity
 }
 
-// mergeCareerRow fusionne progress (live) + custom (live) + dbLast (carry-
-// forward) en une seule CareerRankRow. Ordre de priorité par champ :
+// mergeCareerRow, overlayIdentityFromFallback → extraits dans
+// `career_live_merge.go` (refactor V2 dette technique 2026-05-26).
 //
-//	live (si non-vide) → dbLast → zéro-valeur
-//
-// Si live retourne quelque chose pour un champ mais que la valeur est zéro
-// ou chaîne vide, le DB l'écrase. C'est exactement le comportement « per-
-// field fallback » attendu : on ne remplace jamais une valeur connue par
-// une valeur vide remontée d'un fetch partiellement réussi.
-//
-// Retourne nil si toutes les sources sont vides.
-func mergeCareerRow(
-	progress *syncpkg.CareerRankData,
-	custom *syncpkg.SpartanCustomizationData,
-	dbLast *duckdb.CareerRankRow,
-) *duckdb.CareerRankRow {
-	if progress == nil && custom == nil && dbLast == nil {
-		return nil
-	}
-
-	merged := &duckdb.CareerRankRow{}
-	mergedPerField := false
-
-	// Progress : rank, current_xp, is_max_rank.
-	if progress != nil {
-		merged.Rank = progress.CurrentRank
-		merged.CurrentXP = progress.CurrentXP
-		merged.IsMaxRank = progress.IsMaxRank
-	}
-	if dbLast != nil {
-		if merged.Rank <= 0 && dbLast.Rank > 0 {
-			merged.Rank = dbLast.Rank
-			mergedPerField = true
-		}
-		// current_xp : on ne réécrit JAMAIS depuis dbLast quand progress live
-		// a réussi — même un current_xp=0 live est l'état réel du joueur
-		// (palier juste franchi). Le carry-forward ne sert qu'en l'absence
-		// totale de live.
-		if progress == nil && merged.CurrentXP == 0 {
-			merged.CurrentXP = dbLast.CurrentXP
-		}
-		if progress == nil {
-			merged.IsMaxRank = dbLast.IsMaxRank
-		}
-	}
-
-	// Customization : spartan_id, banner, emblem, backdrop.
-	if custom != nil {
-		merged.SpartanID = custom.SpartanID
-		merged.BannerImageURL = custom.BannerImageURL
-		merged.EmblemImageURL = custom.EmblemImageURL
-		merged.BackdropImageURL = custom.BackdropImageURL
-	}
-	if dbLast != nil {
-		if merged.SpartanID == "" && dbLast.SpartanID != "" {
-			merged.SpartanID = dbLast.SpartanID
-			mergedPerField = true
-		}
-		if merged.BannerImageURL == "" && dbLast.BannerImageURL != "" {
-			merged.BannerImageURL = dbLast.BannerImageURL
-			mergedPerField = true
-		}
-		if merged.EmblemImageURL == "" && dbLast.EmblemImageURL != "" {
-			merged.EmblemImageURL = dbLast.EmblemImageURL
-			mergedPerField = true
-		}
-		if merged.BackdropImageURL == "" && dbLast.BackdropImageURL != "" {
-			merged.BackdropImageURL = dbLast.BackdropImageURL
-			mergedPerField = true
-		}
-		// Champs purement dérivés : rank_name, rank_tier, xp_for_next_rank,
-		// xp_total, adornment_path. EnrichFromMetadata les recalculera depuis
-		// merged.Rank ; le carry-forward depuis dbLast n'est utile que si
-		// metadata est indisponible.
-		if merged.RankName == "" {
-			merged.RankName = dbLast.RankName
-		}
-		if merged.RankTier == "" {
-			merged.RankTier = dbLast.RankTier
-		}
-		if merged.XPForNextRank == 0 {
-			merged.XPForNextRank = dbLast.XPForNextRank
-		}
-		if merged.XPTotal == 0 {
-			merged.XPTotal = dbLast.XPTotal
-		}
-		if merged.AdornmentPath == "" {
-			merged.AdornmentPath = dbLast.AdornmentPath
-		}
-	}
-
-	if mergedPerField {
-		careerLivePerFieldMerge.Add(1)
-	}
-	if merged.IsEmpty() {
-		return nil
-	}
-	return merged
-}
-
-// CareerFetcherFactoryFromTokens retourne une factory qui instancie un
-// HaloAPIClient depuis les tokens du contexte. requestsPerSecond contrôle le
-// rate limiting du client (defaults à 10 si <= 0).
-//
-// Le client est jetable : un nouvel objet par requête. Le coût d'allocation
-// est négligeable comparé au HTTP call lui-même, et permet de bénéficier
-// systématiquement des tokens à jour (refresh rotation handled in middleware).
-func CareerFetcherFactoryFromTokens(requestsPerSecond int) CareerFetcherFactory {
-	return func(ctx context.Context) CareerFetcher {
-		tokens := ctxkeys.HaloTokens(ctx)
-		if tokens == nil || tokens.SpartanToken == "" {
-			return nil
-		}
-		return syncpkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, requestsPerSecond)
-	}
-}
-
-// Compile-time check : sync.HaloAPIClient implémente bien CareerFetcher.
-var _ CareerFetcher = (*syncpkg.HaloAPIClient)(nil)
+// CareerFetcherFactoryFromTokens, compile-time check → extraits dans
+// `career_live_fetcher.go`.
 
 // errNoFallback est conservé pour signaler explicitement le cas "rien à
 // servir" dans les futurs chemins (CLI manuel, healthcheck). Inutilisé pour
