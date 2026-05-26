@@ -9,8 +9,17 @@ import type { StreakType, ContextType, BehaviorType } from './types'
 export type AscensionLocale = 'fr' | 'en'
 
 export interface AscensionText {
-  // Page wrapper
+  // Page wrapper (layout 2 onglets — refonte 2026-05-26)
   pageTitle: string
+  pageSubtitle: string
+  tabsAriaLabel: string
+  tabProfile: string
+  tabRealisations: string
+  tipsTickerAriaLabel: string
+  prestigeLayerTitle: string
+  prestigeLayerDescription: string
+  ascensionLayerTitle: string
+  ascensionLayerDescription: string
 
   // Streaks
   streaksSectionTitle: string
@@ -135,6 +144,17 @@ const METRIC_LABEL_EN: Record<string, string> = {
 
 const FR: AscensionText = {
   pageTitle: 'Ascension',
+  pageSubtitle: 'Ton profil de jeu, tes objectifs et tes accomplissements.',
+  tabsAriaLabel: 'Sections Ascension',
+  tabProfile: 'Profil & objectifs',
+  tabRealisations: 'Réalisations',
+  tipsTickerAriaLabel: 'Astuces — concepts utiles dans cette section',
+  prestigeLayerTitle: 'Prestige — Objectifs et arcs',
+  prestigeLayerDescription:
+    'Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l\'utiliser seul, sans coaching.',
+  ascensionLayerTitle: 'Ascension — Coaching d\'amélioration',
+  ascensionLayerDescription:
+    'Analyse ton historique pour te proposer des angles d\'amélioration ciblés. S\'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même.',
   streaksSectionTitle: 'Mes streaks',
   streaksEmpty:
     "Aucune streak en cours. Joue un match aujourd'hui pour démarrer une série !",
@@ -287,6 +307,17 @@ const FR: AscensionText = {
 
 const EN: AscensionText = {
   pageTitle: 'Ascension',
+  pageSubtitle: 'Your play profile, your objectives and your achievements.',
+  tabsAriaLabel: 'Ascension sections',
+  tabProfile: 'Profile & objectives',
+  tabRealisations: 'Achievements',
+  tipsTickerAriaLabel: 'Tips — useful concepts in this section',
+  prestigeLayerTitle: 'Prestige — Objectives and arcs',
+  prestigeLayerDescription:
+    'Autonomous system to set personal objectives and track progression. Usable on its own, no coaching required.',
+  ascensionLayerTitle: 'Ascension — Improvement coaching',
+  ascensionLayerDescription:
+    'Analyses your history to surface targeted improvement angles. Builds on Prestige (campaigns become objectives) — feel free to ignore this section if you prefer to drive your own progress.',
   streaksSectionTitle: 'My streaks',
   streaksEmpty: 'No active streak. Play a match today to start a series!',
   streakActive: 'Active',

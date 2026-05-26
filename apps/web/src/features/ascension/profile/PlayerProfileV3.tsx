@@ -1,32 +1,41 @@
 /**
- * PlayerProfileCard — Sections A1/A2/B/C du profil joueur V1.
+ * PlayerProfileV3 — orchestrateur des sections A1/A2/B/C du profil joueur.
  *
- * Orchestre les 5 sous-composants. Affiche le placeholder si has_enough_data=false.
+ * Refonte Ascension : remplace `prestige/components/PlayerProfileCard` (V1)
+ * et `ascension/GameProfileSection` (V2). Aucune régression :
+ * - reprend toutes les sections V1 (Identité, Style/Discipline,
+ *   Performance avec mu_trend et progress tier, Progression avec CTA
+ *   "Démarrer campagne" et "Lancer template")
+ * - ajoute le trend icon par composante LUSR (apport V2)
+ *
+ * Les patterns V2 (PatternContextGrid, BehaviorAlertList, LeverList)
+ * restent rendus séparément par le tab Profil & objectifs.
+ *
  * Cf. PLAN_PLAYER_PROFILE_ASCENSION.md §4 + §5.2.
  */
-import { usePlayerProfile } from '../hooks/usePlayerProfile'
-import { useProfileI18n } from '../hooks/useProfileI18n'
-import { IdentitySection } from './profile/IdentitySection'
-import { InsufficientDataPlaceholder } from './profile/InsufficientDataPlaceholder'
-import { PerformanceSection } from './profile/PerformanceSection'
-import { ProgressionSection } from './profile/ProgressionSection'
-import { StyleDisciplineSection } from './profile/StyleDisciplineSection'
+import { usePlayerProfile } from './queries'
+import { useProfileI18n } from './useProfileI18n'
+import { IdentitySection } from './IdentitySection'
+import { InsufficientDataPlaceholder } from './InsufficientDataPlaceholder'
+import { PerformanceSection } from './PerformanceSection'
+import { ProgressionSection } from './ProgressionSection'
+import { StyleDisciplineSection } from './StyleDisciplineSection'
 
 const MIN_MATCHES_FOR_PROFILE = 30
 
-interface PlayerProfileCardProps {
+interface PlayerProfileV3Props {
   playerSlug: string
   windowDays?: number
   onStartCampaign?: (axis: string, axisKind: 'radar' | 'lusr_component') => void
   onLaunchTemplate?: (templateId: string) => void
 }
 
-export function PlayerProfileCard({
+export function PlayerProfileV3({
   playerSlug,
   windowDays = 30,
   onStartCampaign,
   onLaunchTemplate,
-}: PlayerProfileCardProps) {
+}: PlayerProfileV3Props) {
   const { data: profile, isLoading, isError } = usePlayerProfile(playerSlug, windowDays)
   const { t } = useProfileI18n()
 

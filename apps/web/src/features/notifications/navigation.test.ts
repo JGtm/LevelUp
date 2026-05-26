@@ -27,6 +27,7 @@ const VALID_TOP_ROUTES = ['/changelog', '/settings'] as const
 const VALID_PLAYER_SUBPATHS = [
   '/synthesis',
   '/objectifs',
+  '/ascension',
   '/palmares',
   '/palmares/season-pass',
   '/palmares/prestige',
@@ -103,11 +104,10 @@ describe('navigation.ts - regression B1 routes notifications', () => {
     }
   })
 
-  it('challenge_added cible /objectifs avec tab=challenges', () => {
+  it('challenge_added cible /ascension (tab profil & objectifs)', () => {
     const target = resolveTarget(makeNotif('challenge_added'), PLAYER_SLUG)
     expect(target).not.toBeNull()
-    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/objectifs`)
-    expect(target!.search).toMatchObject({ tab: 'challenges' })
+    expect(target!.to).toBe(`/players/${PLAYER_SLUG}/ascension`)
   })
 
   it('app_release cible /changelog (pas /help/changelog)', () => {

@@ -131,6 +131,8 @@ describe('matchArea — toutes les routes', () => {
     ['/players/Foo/career', 'career'],
     ['/players/Foo/notifications', 'notifications'],
     ['/players/Foo/objectifs', 'objectifs'],
+    ['/players/Foo/ascension', 'objectifs'],
+    ['/players/Foo/ascension/realisations', 'objectifs'],
     ['/players/Foo/citations', 'citations'],
     ['/setup', 'settings'],
     ['/settings', 'settings'],
