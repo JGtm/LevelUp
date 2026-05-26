@@ -19,7 +19,7 @@
  *            Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -173,15 +173,21 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
-  const goToMatch = (matchId: string) => {
-    const filterSpec = filterContextToMatchFilterSpec(filterContext)
-    navigateToMatch(matchId, {
-      source: 'explorer',
-      matchIds: allMatchIds,
-      filterSpec: filterSpec ?? undefined,
-      contextDescriptor,
-    })
-  }
+  // useCallback obligatoire : goToMatch est référencé dans le cell renderer du
+  // useMemo `columns` ci-dessous. Sans ça, le closure figé au 1er render garde
+  // les `allMatchIds` initiaux (pré-filtre) → nav contextuelle hors scope.
+  const goToMatch = useCallback(
+    (matchId: string) => {
+      const filterSpec = filterContextToMatchFilterSpec(filterContext)
+      navigateToMatch(matchId, {
+        source: 'explorer',
+        matchIds: allMatchIds,
+        filterSpec: filterSpec ?? undefined,
+        contextDescriptor,
+      })
+    },
+    [navigateToMatch, allMatchIds, filterContext, contextDescriptor],
+  )
 
   // Labels outcome (pas de Badge, juste texte coloré comme Squad)
   const outcomeLabels: Record<'win' | 'loss' | 'draw' | 'dnf', string> = {
@@ -418,9 +424,23 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
+        accessorKey: 'rating_type',
+        header: t('explorer.matches.col_rating'),
+        cell: (ctx) => {
+          const v = ctx.getValue<string | null | undefined>()
+          return <span className="font-mono">{v ?? '-'}</span>
+        },
+      },
+      {
         accessorKey: 'skill_tier_label',
         header: t('explorer.matches.col_rank'),
-        cell: (ctx) => ctx.getValue<string | null | undefined>() ?? '-',
+        cell: (ctx) => {
+          const r = ctx.row.original
+          if (r.placement_done != null && r.placement_total != null) {
+            return <span className="font-mono">{r.placement_done}/{r.placement_total}</span>
+          }
+          return ctx.getValue<string | null | undefined>() ?? '-'
+        },
       },
       {
         accessorKey: 'team_mmr',
@@ -447,7 +467,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale],
+    [intlLocale, mapAssets, playlistAssets, locale, goToMatch],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
