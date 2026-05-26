@@ -76,7 +76,12 @@ func computeScoreboardRowCombatYield(s domain.ScoreboardRaw) (oc, dr, dpk, dpd *
 	if s.DamageDealt != nil && s.DamageTaken != nil {
 		cy := analysis.ComputeCombatYield(s.Kills, s.Assists, *s.DamageDealt, *s.DamageTaken, s.Deaths)
 		oc = &cy.OffensiveConversion
-		dr = &cy.DefensiveResistance
+		if s.Deaths == 0 {
+			inf := -1.0 // sentinel ∞ — jamais de valeur négative réelle
+			dr = &inf
+		} else {
+			dr = &cy.DefensiveResistance
+		}
 	}
 	if s.DamageDealt != nil && s.Kills > 0 {
 		v := *s.DamageDealt / float64(s.Kills)
