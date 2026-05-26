@@ -896,6 +896,22 @@ func main() {
 	}
 	workerWG.Wait() // attend la terminaison du Worker après channel close
 
+	// CHECKPOINT synchrone final sur shared_social.duckdb — vide le WAL avant
+	// que duckdb.CloseAll ferme les connexions. Essentiel pour le hot-reload Air
+	// (bug DuckDB #7659 : replay WAL au reopen peut échouer si le WAL contient
+	// des ops non-checkpointées). Sans risque ici : tous les workers sont arrêtés
+	// (workerWG.Wait()), aucune écriture concurrente possible.
+	if socialDBForCheckpoint, ok := duckdb.LookupCachedDB(sharedSocialPath); ok {
+		ckptCtx, ckptCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		if _, ckptErr := socialDBForCheckpoint.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); ckptErr != nil {
+			slog.Warn("shared_social: CHECKPOINT final au shutdown échoué (non-fatal — WAL sera rejoué au prochain boot)",
+				"err", ckptErr)
+		} else {
+			slog.Info("shared_social: CHECKPOINT final au shutdown terminé")
+		}
+		ckptCancel()
+	}
+
 	duckdb.CloseAll()
 
 	// Phase 2 plan stabilisation 2026-05-22 : fermer le ServiceRegistry AVANT
