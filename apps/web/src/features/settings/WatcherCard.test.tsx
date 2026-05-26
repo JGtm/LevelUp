@@ -100,7 +100,7 @@ const t = {
   watcherRtaConnected: 'RTA connecté',
   watcherRtaDisconnected: 'RTA déconnecté',
   watcherSubscribeError: 'Échec surveillance',
-  watcherStateIdle: 'En attente',
+  watcherStateIdle: 'Absent',
   watcherStateWatching: 'En surveillance',
   watcherStateSyncing: 'Synchronisation',
   watcherStateCooling: 'Cooldown',
@@ -338,7 +338,7 @@ describe('WatcherCard', () => {
       })
     })
 
-    it('traduit les états FSM (Idle → En attente)', async () => {
+    it('traduit les états FSM (Idle → Absent)', async () => {
       mockStatusData = {
         ...baseStatusData,
         daemon_running: true,
@@ -349,7 +349,7 @@ describe('WatcherCard', () => {
       }
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
       await waitFor(() => {
-        expect(screen.getByText('En attente')).toBeInTheDocument()
+        expect(screen.getByText('Absent')).toBeInTheDocument()
       })
     })
 
