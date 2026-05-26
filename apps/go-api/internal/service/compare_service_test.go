@@ -2,7 +2,11 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
+	"log/slog"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -369,4 +373,62 @@ func sortDurations(d []time.Duration) {
 			d[j], d[j-1] = d[j-1], d[j]
 		}
 	}
+}
+
+// TestLogBestEffortErr_LevelByErrorType vérifie que logBestEffortErr remonte
+// `sql.ErrNoRows` en Debug (cas attendu : pas de data) mais toute autre erreur
+// en Warn (anomalie). Anti-régression du bug 2026-05-26 où un Catalog Error
+// SharedReader vivait sous Debug silencieux.
+func TestLogBestEffortErr_LevelByErrorType(t *testing.T) {
+	t.Parallel()
+
+	var buf threadSafeBuffer
+	prev := slog.Default()
+	t.Cleanup(func() { slog.SetDefault(prev) })
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	cases := []struct {
+		name      string
+		err       error
+		wantLevel string
+	}{
+		{"sql.ErrNoRows → DEBUG", sql.ErrNoRows, "DEBUG"},
+		{"wrapped sql.ErrNoRows → DEBUG", fmt.Errorf("query: %w", sql.ErrNoRows), "DEBUG"},
+		{"generic err → WARN", errors.New("connection refused"), "WARN"},
+		{"Catalog Error → WARN", errors.New("Catalog Error: Table does not exist"), "WARN"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf.Reset()
+			logBestEffortErr(context.Background(), "test", tc.err, "xuid", "Z")
+			out := buf.String()
+			if !strings.Contains(out, `"level":"`+tc.wantLevel+`"`) {
+				t.Errorf("want level=%q in log, got: %s", tc.wantLevel, out)
+			}
+		})
+	}
+}
+
+type threadSafeBuffer struct {
+	mu  sync.Mutex
+	buf []byte
+}
+
+func (b *threadSafeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buf = append(b.buf, p...)
+	return len(p), nil
+}
+
+func (b *threadSafeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return string(b.buf)
+}
+
+func (b *threadSafeBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buf = b.buf[:0]
 }
