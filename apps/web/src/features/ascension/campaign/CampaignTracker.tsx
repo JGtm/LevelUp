@@ -17,8 +17,8 @@ import { Button } from '@/components/ui/button'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 import type { ImprovementCampaign } from '@/lib/playerProfile'
-import { useCampaignMutations } from '../hooks/usePlayerProfile'
-import { useProfileI18n } from '../hooks/useProfileI18n'
+import { useCampaignMutations } from '@/features/ascension/profile/queries'
+import { useProfileI18n } from '@/features/ascension/profile/useProfileI18n'
 
 const MIN_MATCHES_FOR_TREND = 20
 

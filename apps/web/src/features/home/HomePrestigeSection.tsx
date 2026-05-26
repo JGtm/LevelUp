@@ -144,7 +144,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-2">
         <CardTitle className="text-base">{t('home.prestige.title')}</CardTitle>
         <Link
-          to="/players/$playerSlug/objectifs"
+          to="/players/$playerSlug/ascension"
           params={{ playerSlug }}
           className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
@@ -243,7 +243,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
                 {totalPages > 1 && (
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <Link
-                      to="/players/$playerSlug/objectifs"
+                      to="/players/$playerSlug/ascension"
                       params={{ playerSlug }}
                       className="text-2xs uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
                     >

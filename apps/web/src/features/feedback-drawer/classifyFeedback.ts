@@ -110,7 +110,7 @@ const AREA_PATTERNS: Array<[RegExp, FeedbackArea]> = [
   [/\/players\/[^/]+\/citations(\/|$|\?)/, 'citations'],
   [/\/players\/[^/]+\/career(\/|$|\?)/, 'career'],
   [/\/players\/[^/]+\/notifications(\/|$|\?)/, 'notifications'],
-  [/\/players\/[^/]+\/objectifs(\/|$|\?)/, 'objectifs'],
+  [/\/players\/[^/]+\/(objectifs|ascension)(\/|$|\?)/, 'objectifs'],
   [/^\/(setup|settings)(\/|$|\?)/, 'settings'],
   [/^\/(changelog|help)(\/|$|\?)/, 'meta'],
 ]

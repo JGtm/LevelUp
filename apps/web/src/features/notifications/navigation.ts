@@ -46,18 +46,15 @@ export function resolveTarget(notif: Notification, playerSlug: string): NotifTar
     case 'objective_assigned':
     case 'objective_completed':
       return {
-        to: `/players/${playerSlug}/objectifs`,
+        to: `/players/${playerSlug}/ascension`,
         search: notif.params?.id ? { selectedObjectiveId: String(notif.params.id) } : undefined,
       }
     case 'challenge_added':
     case 'challenge_completed':
-      // Les défis sont un onglet de la page Objectifs (pas de route /defis dédiée).
+      // Les défis et objectifs vivent dans le tab "Profil & objectifs" d'Ascension.
       return {
-        to: `/players/${playerSlug}/objectifs`,
-        search: {
-          tab: 'challenges',
-          ...(notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : {}),
-        },
+        to: `/players/${playerSlug}/ascension`,
+        search: notif.params?.id ? { selectedChallengeId: String(notif.params.id) } : undefined,
       }
     case 'season_pass_level':
       return { to: `/players/${playerSlug}/palmares/season-pass` }
