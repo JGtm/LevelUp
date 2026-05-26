@@ -7,7 +7,7 @@ import { useParams } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import type { LabelValue, MediaItemRow, MediaQueryRequest } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { MediaLightbox, MediaThumbnailCard } from './MediaViewer'
+import { MediaLightbox, MediaThumbnailCard, buildOwnerColorMap } from './MediaViewer'
 import { MediaToolbar } from './MediaToolbar'
 import { MediaMatchPicker } from './MediaMatchPicker'
 import { useMediaPicker } from './useMediaPicker'
@@ -225,6 +225,11 @@ export function MediaPage() {
     [mediaItems, groupBy, text, locale],
   )
 
+  const playerColorMap = useMemo(
+    () => buildOwnerColorMap(mediaItems, currentPlayerGamertag),
+    [mediaItems, currentPlayerGamertag],
+  )
+
   const indexByPath = useMemo(() => {
     const map = new Map<string, number>()
     mediaItems.forEach((item, index) => map.set(item.file_path, index))
@@ -396,6 +401,7 @@ export function MediaPage() {
                         likeDisabled={toggleMediaLike.isPending}
                         playerSlug={playerSlug}
                         currentPlayerGamertag={currentPlayerGamertag}
+                        playerColorMap={playerColorMap}
                         onAssociate={picker.openFor}
                         onOpenMatch={handleOpenMatch}
                       />

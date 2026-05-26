@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Carousel, CarouselItem } from '@/components/ui/carousel'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useRecentMediaRail, useToggleMediaLike } from '@/features/media/queries'
-import { MediaLightbox, MediaThumbnailCard } from '@/features/media/MediaViewer'
+import { MediaLightbox, MediaThumbnailCard, buildOwnerColorMap } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { formatMessage } from '@/lib/i18n/format'
@@ -32,6 +32,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: HomeManifestKey) => formatMessage(homeManifest, key, locale)
   const items = data?.items.items ?? []
+  const playerColorMap = useMemo(() => buildOwnerColorMap(items, playerSlug), [items, playerSlug])
   const recentTotal = recentQuery.data?.items.pagination.total
   const likedTotal = likedQuery.data?.items.pagination.total
 
@@ -119,6 +120,7 @@ export function RecentMediaRail({ playerSlug }: RecentMediaRailProps) {
                   onOpen={() => setLightboxIndex(index)}
                   likeDisabled={toggleMediaLike.isPending}
                   playerSlug={playerSlug}
+                  playerColorMap={playerColorMap}
                   onAssociate={picker.openFor}
                 />
               </CarouselItem>
