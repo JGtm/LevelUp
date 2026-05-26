@@ -48,6 +48,17 @@ Ne pas sauter cette étape même pour des modifications « mineures ». L'absenc
 - `docs/adr/0015-player-profile-ascension-v1.md` — V1 PlayerProfile partiel (3/10 commits livrés, 7 reportés)
 - `docs/adr/0016-shared-db-provider-b-swap.md` — SharedDBProvider RO↔RW swap (élimine conflit auto_sync "different configuration")
 - `docs/adr/0019-collect-persist-architecture.md` — refactor Collect→Persist anti-corruption ART DuckDB (INSERT-only sur shared, fix le bug `Failed to delete all rows from index`)
+- `docs/adr/0023-auth-tokens-single-source.md` — MultiUserTokenStore source unique tokens auth (élimine env.local + sync_meta DuckDB comme credential store ; résout bug Madina invalid_grant sous Air hot-reload)
+
+**Règle auth tokens (ADR 0023)** :
+
+- **Source unique** : `data/auth/watcher_tokens/{xuid}.json` via `*auth.MultiUserTokenStore`. Contient `OAuthRefreshToken` + `MSALCacheJSON` par joueur (clé xuid).
+- **Onboarding normal** : SSO Xbox web → callback `/auth/xbox/callback` persiste le RT automatiquement.
+- **Onboarding advanced** : `go run ./cmd/token-capture/ <Gamertag>` écrit direct dans le store, ZÉRO manipulation `.env.local`. Variante `go run ./cmd/token-import/ <Gamertag>` lit le RT sur stdin (pour utilisateurs ayant un RT venu d'ailleurs).
+- **Pré-requis** : le joueur doit être déclaré dans `db_profiles.json` (avec `xuid`) avant `token-capture` / `token-import`.
+- **Sources legacy tolérées en transition** : `sync_meta.oauth_refresh_token` / `sync_meta.msal_token_cache` (DuckDB) + env var `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` sont encore lus en fallback avec warn log (`legacy_source_used`). Migration boot-time (`auth.MigrateLegacyTokens`) les copie au store au premier démarrage. Phase 5 du refactor (différée pending stabilisation) supprimera ces lectures.
+- **Pas de logique métier dans le package `auth`** : pas de dépendance DuckDB. Le caller fournit les valeurs legacy déjà lues via `LegacyAuthInputs`. Helper canonique pour les CLI : `auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)`.
+- **Cache process** (`halo.GetCachedPlayerTokens`) : `halo.InvalidateCachedPlayerTokens(xuid)` à appeler quand une rotation externe injecte un nouveau RT (cf. token-capture, token-import) — sinon le cache 50min sert encore les Spartan tokens dérivés de l'ancien RT chain.
 
 **Règle architecture écritures DB (Phase 3 du refactor Collect→Persist en cours)** :
 
