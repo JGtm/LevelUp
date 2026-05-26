@@ -219,3 +219,4 @@ apps/web/__mockup_*.html
 # pour les exécutions depuis ce sous-dossier.
 undefined/
 data/titles/halo_infinite/warehouse/*.wal*
+v2-test-result.json
