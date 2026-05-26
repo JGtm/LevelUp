@@ -42,6 +42,10 @@ type matchViewData struct {
 	encounterStats []domain.EncounterStatsRaw
 	kvPairs        []domain.KVPairRaw
 	skillRank      *domain.SkillRankRaw
+	// sharedCSRs : CSR de tous les participants depuis shared.match_csrs_latest.
+	// Nil si match non-ranked ou table absente. Utilisé comme fallback pour les
+	// joueurs non-trackés dans buildTeamTabFull.
+	sharedCSRs     map[string]*domain.SkillRankRaw
 	encounters     []domain.EncounterRaw
 	media          []domain.MediaAssocRaw
 	expected       *domain.ExpectedStatsRaw
@@ -155,6 +159,14 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		d.skillRank, e = s.repo.GetMatchSkillRank(gctx, matchID)
 		if e != nil {
 			slog.Warn("match_view: skill_rank indisponible", "match_id", matchID, "err", e)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var e error
+		d.sharedCSRs, e = s.repo.GetMatchSharedCSRs(gctx, matchID)
+		if e != nil {
+			slog.Warn("match_view: shared_csrs indisponibles", "match_id", matchID, "err", e)
 		}
 		return nil
 	})
@@ -317,7 +329,7 @@ func (s *MatchViewService) buildMatchViewFromData(
 			friendsExtras = s.friendsExtras(ctx, matchID, gvn, xuids)
 		}
 	}
-	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, s.assetURL)
+	team := buildTeamTabFull(d.scoreboard, d.kvPairs, d.encounters, d.encounterStats, d.bulkMedals, d.bulkWeapons, s.xuid, s.titleSlug, d.enrich, d.skillRank, friendsExtras, d.sharedCSRs, s.assetURL)
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar 6 axes calculé depuis le scoreboard (kills/HS/PK/assists/

@@ -40,6 +40,7 @@ func buildTeamTabFull(
 	myEnrich *domain.MatchEnrichmentRaw,
 	mySkillRank *domain.SkillRankRaw,
 	friendsExtras map[string]port.FriendMatchExtras,
+	sharedCSRs map[string]*domain.SkillRankRaw,
 	assetURL games.TitleAssetURLAdapter, //nolint:PLR0913 — coordinator function
 ) domain.MatchTeamTab {
 	// Index bulk medals et weapons par XUID pour O(1) lookup (extract helpers).
@@ -126,7 +127,13 @@ func buildTeamTabFull(
 		} else if extras, ok := friendsExtras[s.XUID]; ok {
 			row.PerformanceScore = extras.PerformanceScore
 			row.HadBotTeammate = extras.HadBotTeammate
+			// Priorité : player DB de l'ami (via FriendsExtras) > shared.match_csrs.
+			// Si l'ami n'a pas de player DB mais est dans shared.match_csrs, le bloc
+			// else ci-dessous prendra le relais.
 			row.SkillRank = extras.SkillRank
+			if row.SkillRank == nil {
+				row.SkillRank = sharedCSRToScoreboardRank(sharedCSRs[s.XUID], assetURL)
+			}
 			if extras.AssistsModel != nil {
 				dd := 0.0
 				if s.DamageDealt != nil {
@@ -150,6 +157,9 @@ func buildTeamTabFull(
 				v := math.Round(raw*100) / 100
 				row.ExpectedAssists = &v
 			}
+		} else {
+			// Joueur non-tracké : fallback sur shared.match_csrs_latest.
+			row.SkillRank = sharedCSRToScoreboardRank(sharedCSRs[s.XUID], assetURL)
 		}
 		rows = append(rows, row)
 	}
@@ -172,6 +182,26 @@ func buildTeamTabFull(
 		Scoreboard: rows,
 		Nemesis:    nemesisList,
 		Encounters: convertEncounters(encounters, encounterStats),
+	}
+}
+
+// sharedCSRToScoreboardRank convertit un SkillRankRaw depuis shared.match_csrs
+// en MatchScoreboardSkillRank avec l'icon_url résolu. Retourne nil si raw est nil.
+func sharedCSRToScoreboardRank(raw *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter) *domain.MatchScoreboardSkillRank {
+	if raw == nil {
+		return nil
+	}
+	iconURL := resolveSkillIconURL(raw.Tier, raw.SubTier, raw.TierLabel, assetURL)
+	var iconURLPtr *string
+	if iconURL != "" {
+		iconURLPtr = &iconURL
+	}
+	return &domain.MatchScoreboardSkillRank{
+		RatingType:  raw.RatingType,
+		TierLabel:   raw.TierLabel,
+		RatingValue: raw.RatingValue,
+		RatingDelta: raw.RatingDelta,
+		IconURL:     iconURLPtr,
 	}
 }
 

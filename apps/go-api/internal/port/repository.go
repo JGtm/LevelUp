@@ -193,6 +193,11 @@ type MatchViewRepository interface {
 	// GetMatchSkillRank retourne le rang compétitif pour ce match (Q22).
 	GetMatchSkillRank(ctx context.Context, matchID string) (*domain.SkillRankRaw, error)
 
+	// GetMatchSharedCSRs retourne le CSR de tous les participants d'un match
+	// ranked depuis shared.match_csrs_latest. Map xuid → SkillRankRaw.
+	// Dégradation gracieuse (nil, nil) si table absente ou match non-ranked.
+	GetMatchSharedCSRs(ctx context.Context, matchID string) (map[string]*domain.SkillRankRaw, error)
+
 	// GetMatchEncounters retourne l'historique de rencontres avec les participants (Q23).
 	GetMatchEncounters(ctx context.Context, matchID, myXUID string) ([]domain.EncounterRaw, error)
 
@@ -363,6 +368,9 @@ func (n *noopMatchViewRepo) GetMatchNeighborsFiltered(_ context.Context, _, _ st
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchSkillRank(_ context.Context, _ string) (*domain.SkillRankRaw, error) {
+	return nil, nil
+}
+func (n *noopMatchViewRepo) GetMatchSharedCSRs(_ context.Context, _ string) (map[string]*domain.SkillRankRaw, error) {
 	return nil, nil
 }
 func (n *noopMatchViewRepo) GetMatchEncounters(_ context.Context, _, _ string) ([]domain.EncounterRaw, error) {
