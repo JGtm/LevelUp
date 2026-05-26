@@ -119,3 +119,40 @@ func resetPlayerTokenStore() {
 	defer playerTokenStore.mu.Unlock()
 	playerTokenStore.store = make(map[string]cachedTokenEntry)
 }
+
+func TestPlayerTokenCache_InvalidateRemovesEntry(t *testing.T) {
+	resetPlayerTokenStore()
+	SetCachedPlayerTokens("xuid-rm", &domain.HaloTokens{SpartanToken: "to-remove"})
+
+	if got := GetCachedPlayerTokens("xuid-rm"); got == nil {
+		t.Fatal("pré-condition échec : entrée pas en cache")
+	}
+
+	InvalidateCachedPlayerTokens("xuid-rm")
+
+	if got := GetCachedPlayerTokens("xuid-rm"); got != nil {
+		t.Errorf("après Invalidate : got %v, want nil", got)
+	}
+}
+
+func TestPlayerTokenCache_InvalidateNoopWhenAbsent(t *testing.T) {
+	resetPlayerTokenStore()
+	// Pas de panic ni erreur sur xuid absent ou vide.
+	InvalidateCachedPlayerTokens("never-existed")
+	InvalidateCachedPlayerTokens("")
+}
+
+func TestPlayerTokenCache_InvalidateIsolatedToTargetXUID(t *testing.T) {
+	resetPlayerTokenStore()
+	SetCachedPlayerTokens("xuid-A", &domain.HaloTokens{SpartanToken: "keep-A"})
+	SetCachedPlayerTokens("xuid-B", &domain.HaloTokens{SpartanToken: "remove-B"})
+
+	InvalidateCachedPlayerTokens("xuid-B")
+
+	if got := GetCachedPlayerTokens("xuid-A"); got == nil || got.SpartanToken != "keep-A" {
+		t.Errorf("xuid-A devrait être préservé, got %v", got)
+	}
+	if got := GetCachedPlayerTokens("xuid-B"); got != nil {
+		t.Errorf("xuid-B devrait être invalidé, got %v", got)
+	}
+}
