@@ -20,7 +20,8 @@ import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
 import { SynthesisTopWeeksChart } from './SynthesisTopWeeksChart'
 import { SynthesisHeatmapChart } from './SynthesisHeatmapChart'
 import { SynthesisBipolaireChart } from './SynthesisBipolaireChart'
-import { SynthesisCombatProfileSection } from './SynthesisCombatProfileSection'
+import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
+import { Badge } from '@/components/ui/badge'
 import { PeriodePill, SaisonPill, DEFAULT_PERIOD } from '@/components/shell/FilterOmnibar'
 import { useActiveSeason, seasonToPeriod } from '@/features/squad/useActiveSeason'
 import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/MultiSelectFilter'
@@ -29,6 +30,7 @@ import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import type {
   CascadeInput,
+  CombatProfileBlock,
   FilterContextInput,
   PeriodInput,
   SynthesisDetailedStats,
@@ -67,6 +69,62 @@ function formatTimePlayed(seconds: number): string {
 
 // ─── Bloc 1 — Vue d'ensemble (D4) ─────────────────────────────────────────────
 
+const STYLE_OFFENSIVE_LABELS: Record<string, string> = {
+  precis: 'Offensif précis',
+  equilibre: 'Offensif équilibré',
+  genereux: 'Offensif généreux',
+}
+const STYLE_DEFENSIVE_LABELS: Record<string, string> = {
+  resistant: 'Défensif résistant',
+  solide: 'Défensif solide',
+  fragile: 'Défensif fragile',
+}
+const STYLE_ACTIVITY_LABELS: Record<string, string> = {
+  actif: 'Très actif',
+  modere: 'Modéré',
+  discret: 'Discret',
+}
+
+function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfileBlock }) {
+  const hasStyles =
+    combatProfile.style_offensive != null ||
+    combatProfile.style_defensive != null ||
+    combatProfile.style_activity != null
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-3 mt-3">
+      <span className="text-sm font-medium shrink-0">Profil de combat</span>
+      <span className="text-xs text-muted-foreground shrink-0">· {combatProfile.match_count} matchs analysés</span>
+      {hasStyles && (
+        <>
+          {combatProfile.style_offensive && (
+            <Badge variant="outline" className="text-xs">
+              {STYLE_OFFENSIVE_LABELS[combatProfile.style_offensive] ?? combatProfile.style_offensive}
+            </Badge>
+          )}
+          {combatProfile.style_defensive && (
+            <Badge variant="outline" className="text-xs">
+              {STYLE_DEFENSIVE_LABELS[combatProfile.style_defensive] ?? combatProfile.style_defensive}
+            </Badge>
+          )}
+          {combatProfile.style_activity && (
+            <Badge variant="secondary" className="text-xs">
+              {STYLE_ACTIVITY_LABELS[combatProfile.style_activity] ?? combatProfile.style_activity}
+            </Badge>
+          )}
+        </>
+      )}
+      <div className="flex items-center gap-2 ml-auto">
+        <span className="text-xs text-muted-foreground">Offensif</span>
+        <CombatYieldBar
+          offensiveConversion={combatProfile.avg_oc}
+          defensiveResistance={combatProfile.avg_dr}
+        />
+        <span className="text-xs text-muted-foreground">Défensif</span>
+      </div>
+    </div>
+  )
+}
+
 function AccentCard({ label, value, accent }: { label: string; value: string; accent: SemanticToken }) {
   return (
     <div className="rounded-lg overflow-hidden border">
@@ -83,8 +141,9 @@ interface SynthesisOverviewSectionProps {
   overview: SynthesisOverview
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
+  combatProfile?: CombatProfileBlock | null
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, combatProfile }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
@@ -112,6 +171,7 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
             <div>
               {/* Donut + 3 cartes côte à côte */}
               <div className="flex gap-4 items-stretch">
+
                 <div className="flex-1 min-w-0">
                   <SynthesisKillTypesDonut stats={detailedStats} height={260} />
                 </div>
@@ -243,6 +303,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills }: S
             </div>
 
           </div>
+        )}
+
+        {combatProfile != null && (
+          <CombatProfileInlineRow combatProfile={combatProfile} />
         )}
 
       </CardContent>
@@ -524,18 +588,14 @@ export function SynthesisPage() {
         </div>
       </div>
 
-      {/* Bloc 1 — Vue d'ensemble D4 */}
+      {/* Bloc 1 — Vue d'ensemble D4 (inclut profil de combat inline) */}
       {data.overview && (
         <SynthesisOverviewSection
           overview={data.overview}
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
+          combatProfile={data.combat_profile}
         />
-      )}
-
-      {/* PLAN_COMBAT_PROFILE_WIRING Phase 1 — Profil de combat */}
-      {data.combat_profile != null && (
-        <SynthesisCombatProfileSection combatProfile={data.combat_profile} />
       )}
 
       {/* synthesis.05 — Bipolaire Solo vs Escouade */}
