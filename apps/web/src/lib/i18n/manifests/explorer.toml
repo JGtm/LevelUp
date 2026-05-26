@@ -356,6 +356,10 @@ en = "KDA"
 fr = "ΔPerf"
 en = "ΔPerf"
 
+[explorer.matches.col_rating]
+fr = "Note"
+en = "Rating"
+
 [explorer.matches.col_rank]
 fr = "Rang"
 en = "Rank"

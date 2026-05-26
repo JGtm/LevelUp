@@ -1090,6 +1090,12 @@ export interface ExplorerMatchRow {
   perf_tier?: number
   delta_perf?: number | null
   skill_tier_label?: string | null
+  /** "CSR" (classé officiel) ou "LUSR" (interne LevelUp). Nil si pas de skill rank (PvE, Custom). */
+  rating_type?: string | null
+  /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la cellule Rang à la place du skill_tier_label. */
+  placement_done?: number | null
+  /** Seuil placement (Y). CSR : 5 ou 10 selon saison. LUSR : 10. */
+  placement_total?: number | null
   delta_mmr?: number | null
   team_mmr?: number | null
   enemy_mmr?: number | null

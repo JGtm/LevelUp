@@ -144,6 +144,15 @@ type ExplorerMatchesRow struct {
 	DeltaPerf *int `json:"delta_perf,omitempty"`
 	// SkillTierLabel : label formaté du tier ranked/LUSR (ex. "Diamant IV"), nil si absent.
 	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
+	// RatingType : "CSR" (classé officiel Microsoft) ou "LUSR" (interne LevelUp).
+	// Nil pour les matchs sans skill rank (PvE, Custom). Source : match_skill_rank.rating_type.
+	RatingType *string `json:"rating_type,omitempty"`
+	// PlacementDone/PlacementTotal : progression placement (X/Y).
+	// Si présents, l'UI affiche "X/Y" dans la colonne Rang à la place du SkillTierLabel.
+	// CSR : remaining parsé depuis "Placement (N restants)" + threshold csr_placement_thresholds.
+	// LUSR : 10 plus anciens matchs sans LUSR par chaîne (arena_slayer/arena_objectif/btb/chaos).
+	PlacementDone  *int `json:"placement_done,omitempty"`
+	PlacementTotal *int `json:"placement_total,omitempty"`
 	// DeltaMMR : variation de MMR/CSR/LUSR pour ce match (nil si non rankée).
 	DeltaMMR *float64 `json:"delta_mmr,omitempty"`
 	// TeamMMR : MMR moyen de l'équipe du joueur sur ce match (nil si non rankée).
