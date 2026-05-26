@@ -222,7 +222,7 @@ function TeamScoreboard({
     [rows, highlightCols, extremesByKey, mvp, lvp],
   )
 
-  const showCsrBadge = !!header?.is_ranked
+  const isRanked = !!header?.is_ranked
 
   const columns = useMemo<ColumnDef<ScoreboardRowVM>[]>(() => {
     const hlMap = new Map(highlightCols.map((c) => [String(c.key), c]))
@@ -240,9 +240,9 @@ function TeamScoreboard({
       }
     }
 
-    const csrBadgeCol: ColumnDef<ScoreboardRowVM> = {
+    const rankBadgeCol: ColumnDef<ScoreboardRowVM> = {
       id: 'csr_badge',
-      header: t.sbColCsr,
+      header: isRanked ? t.sbColCsr : t.sbDetailLusr,
       cell: (ctx) => {
         const url = ctx.row.original.skill_rank?.icon_url
         const label = ctx.row.original.skill_rank?.tier_label
@@ -250,7 +250,7 @@ function TeamScoreboard({
         return (
           <img
             src={url}
-            alt={label ?? 'CSR'}
+            alt={label ?? (isRanked ? t.sbColCsr : t.sbDetailLusr)}
             className="h-7 w-7 object-contain mx-auto"
             loading="lazy"
           />
@@ -313,7 +313,7 @@ function TeamScoreboard({
           )
         },
       },
-      ...(showCsrBadge ? [csrBadgeCol] : []),
+      rankBadgeCol,
       hlDef('rank'),
       hlDef('score'),
       hlDef('kills'),
@@ -342,7 +342,7 @@ function TeamScoreboard({
       hlDef('offensive_conversion'),
       hlDef('defensive_resistance'),
     ]
-  }, [highlightCols, expandedXuid, playerSlug, onPlayerClick, showCsrBadge, t])
+  }, [highlightCols, expandedXuid, playerSlug, onPlayerClick, isRanked, t])
 
   const table = useReactTable<ScoreboardRowVM>({
     data,

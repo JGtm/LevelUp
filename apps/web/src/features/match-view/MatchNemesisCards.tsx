@@ -12,6 +12,7 @@
  */
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
 import type { MatchNemesisRow, MatchScoreboardRow } from '@/lib/api/types'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
 }
 
 export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
+  const theme = useSettingsDraftStore((state) => state.localUiPrefs.theme)
+  const logoSuffix = theme === 'light' ? 'black' : 'white'
   const sb = scoreboard ?? []
   const nem = nemesis ?? []
   const sbMe = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
@@ -49,6 +52,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         accentToken="outcome-loss"
         row={nemesisRow}
         statLine={t.combatKilledMeFmt(nemesisRow?.killed_me ?? 0)}
+        logoSrc={`/icons/nemesis-${logoSuffix}.png`}
         t={t}
       />
       <NemesisCard
@@ -56,6 +60,7 @@ export function MatchNemesisCards({ nemesis, scoreboard, meXUID, t }: Props) {
         accentToken="outcome-win"
         row={bullyRow}
         statLine={t.combatIKilledFmt(bullyRow?.i_killed ?? 0)}
+        logoSrc={`/icons/victim-${logoSuffix}.png`}
         t={t}
       />
     </div>
@@ -67,10 +72,11 @@ interface CardProps {
   accentToken: SemanticToken
   row: MatchNemesisRow | null
   statLine: string
+  logoSrc: string
   t: MatchViewText
 }
 
-function NemesisCard({ title, accentToken, row, statLine, t }: CardProps) {
+function NemesisCard({ title, accentToken, row, statLine, logoSrc, t }: CardProps) {
   const accent = tokenCssVar(accentToken)
   return (
     <div
@@ -85,18 +91,26 @@ function NemesisCard({ title, accentToken, row, statLine, t }: CardProps) {
         style={{ background: accent }}
         aria-hidden="true"
       />
-      <div className="pl-2">
-        <div
-          className="text-xs font-semibold uppercase tracking-wider"
-          style={{ color: accent }}
-        >
-          {title}
-        </div>
-        <div className="mt-1 truncate text-2xl font-bold text-white">
-          {row?.gamertag ?? t.combatNoNemesis}
-        </div>
-        <div className="mt-3 text-sm text-white/80">
-          <div className="tabular-nums">{statLine}</div>
+      <div className="flex items-center gap-3 pl-2">
+        <img
+          src={logoSrc}
+          alt=""
+          aria-hidden
+          className="h-12 w-12 shrink-0 object-contain opacity-75"
+        />
+        <div className="min-w-0 flex-1">
+          <div
+            className="text-xs font-semibold uppercase tracking-wider"
+            style={{ color: accent }}
+          >
+            {title}
+          </div>
+          <div className="mt-1 truncate text-2xl font-bold text-white">
+            {row?.gamertag ?? t.combatNoNemesis}
+          </div>
+          <div className="mt-3 text-sm text-white/80">
+            <div className="tabular-nums">{statLine}</div>
+          </div>
         </div>
       </div>
     </div>
