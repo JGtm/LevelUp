@@ -495,7 +495,8 @@ func NewRouter(
 		// le portail), /authorize retourne AADSTS50011.
 		if cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != "" {
 			xboxOAuthHandler := handlers.NewXboxOAuthHandler(sessionStore, tokenProvider, cfg.DemoMode, cfg.OAuthRedirectURI).
-				WithLinkStrategy(xboxLinkStrategy)
+				WithLinkStrategy(xboxLinkStrategy).
+				WithAuthStore(authStore)
 			r.Get("/auth/xbox/login", xboxOAuthHandler.LoginRedirect)
 			r.Get("/auth/xbox/callback", xboxOAuthHandler.Callback)
 		}
