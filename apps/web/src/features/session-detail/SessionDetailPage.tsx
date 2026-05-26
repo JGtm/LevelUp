@@ -148,7 +148,7 @@ export function SessionDetailPage() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.detail.session_active')}</label>
                   <select
-                    className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     value={selectedSessionLabel}
                     onChange={(event) => setSessionLabel(event.target.value)}
                   >
@@ -163,7 +163,7 @@ export function SessionDetailPage() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.detail.session_compared')}</label>
                   <select
-                    className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                     value={selectedCompareSessionLabel}
                     onChange={(event) => setCompareSessionLabel(event.target.value)}
                   >
