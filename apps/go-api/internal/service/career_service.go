@@ -962,12 +962,17 @@ func (s *CareerService) buildCareerSummaryEnriched(rank *domain.CareerRankData) 
 	if img, ok := s.rankImageURLs[rank.RankNumber]; ok {
 		summary.RankImageURL = img
 	}
+	if s.rankCatalog != nil {
+		if label, ok := s.rankCatalog.FullLabel(rank.RankNumber, "fr"); ok && label != "" {
+			summary.RankLabel = rankSubRoman(strings.TrimSpace(label))
+		}
+	}
 	if !rank.IsMaxRank && s.rankCatalog != nil {
 		if next, ok := s.rankCatalog.Next(rank.RankNumber); ok {
 			fr, _ := next.FullLabel("fr")
 			en, _ := next.FullLabel("en")
-			summary.NextRankNameFR = strings.TrimSpace(fr)
-			summary.NextRankNameEN = strings.TrimSpace(en)
+			summary.NextRankNameFR = rankSubRoman(strings.TrimSpace(fr))
+			summary.NextRankNameEN = rankSubRoman(strings.TrimSpace(en))
 		}
 		if img, ok := s.rankImageURLs[rank.RankNumber+1]; ok {
 			summary.NextRankImageURL = img

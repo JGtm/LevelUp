@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -959,11 +960,11 @@ func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRo
 // GetCSRSnapshots retourne les classements CSR du joueur depuis player_csr_snapshots,
 // mergés avec le catalogue des playlists ranked actives (metadata.duckdb).
 //
-// Comportement :
-//   - Pour chaque playlist ayant un snapshot : on retourne la ligne snapshot (badge tier ou unranked).
-//   - Pour chaque playlist ranked du catalogue sans snapshot : on insère une ligne placement
-//     synthétique (Tier="", MeasurementMatchesRemaining=10, badge unranked_0.png) afin que
-//     la page Carrière affiche toutes les playlists classées, même celles à 0 match joué.
+// Algo catalogue-first : le catalogue est la source de vérité pour QUELLES
+// playlists afficher. Pour chaque entrée catalogue on overlay le snapshot du
+// joueur si disponible, sinon "Non classé" synthétique. Les snapshots hors
+// catalogue (playlists inactives jouées par le joueur) sont ajoutés en fin de
+// liste. Dégradation : si le catalogue est vide/indisponible → snapshots seuls.
 //
 // Retourne slice vide (pas d'erreur) si ni snapshots ni catalogue ne sont disponibles.
 func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlaylistCSR, error) {
@@ -977,22 +978,36 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlayli
 
 	catalog := r.loadRankedPlaylistsCatalog(ctx)
 	if len(catalog) == 0 {
+		slog.DebugContext(ctx, "GetCSRSnapshots: catalogue indisponible, retour snapshots seuls", "snapshots", len(snapshots))
 		return snapshots, nil
 	}
 
-	seen := make(map[string]struct{}, len(snapshots))
+	slog.DebugContext(ctx, "GetCSRSnapshots: catalogue-first", "catalog", len(catalog), "snapshots", len(snapshots))
+
+	// Index des snapshots par playlist_id pour lookup O(1).
+	snapshotIdx := make(map[string]domain.CareerPlaylistCSR, len(snapshots))
 	for _, s := range snapshots {
-		seen[s.PlaylistID] = struct{}{}
+		snapshotIdx[s.PlaylistID] = s
 	}
-	out := snapshots
+
+	// Catalogue en premier : TOUTES les playlists ranked apparaissent.
+	catalogSeen := make(map[string]struct{}, len(catalog))
+	out := make([]domain.CareerPlaylistCSR, 0, len(catalog)+len(snapshots))
 	for _, c := range catalog {
-		if _, ok := seen[c.playlistID]; ok {
-			continue
+		catalogSeen[c.playlistID] = struct{}{}
+		if snap, ok := snapshotIdx[c.playlistID]; ok {
+			out = append(out, snap)
+		} else {
+			threshold := r.csrThreshold(r.currentCSRSID)
+			out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name, threshold))
 		}
-		// Saison courante (currentCSRSID) → threshold à appliquer aux playlists
-		// non encore jouées par le joueur cette saison.
-		threshold := r.csrThreshold(r.currentCSRSID)
-		out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name, threshold))
+	}
+
+	// Snapshots hors catalogue (playlists inactives déjà jouées par le joueur).
+	for _, s := range snapshots {
+		if _, ok := catalogSeen[s.PlaylistID]; !ok {
+			out = append(out, s)
+		}
 	}
 	return out, nil
 }
@@ -1063,6 +1078,7 @@ func (r *CareerRepo) loadRankedPlaylistsCatalog(ctx context.Context) []rankedCat
 	}
 	rows, err := r.pdb.Metadata.Query(ctx, QPlaylistsCatalogRanked, titleSlug)
 	if err != nil {
+		slog.WarnContext(ctx, "loadRankedPlaylistsCatalog: query failed (dégradation)", "err", err, "titleSlug", titleSlug)
 		return nil
 	}
 	defer rows.Close()

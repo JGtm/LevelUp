@@ -62,15 +62,18 @@ func ComputeMVPLVP(scoreboard []domain.ScoreboardRaw) ScoreboardExtremes {
 			}
 			switch v {
 			case best:
-				bestCount[i]++
+				bestCount[i] += c.weight
 			case worst:
-				worstCount[i]++
+				worstCount[i] += c.weight
 			}
 		}
 	}
 
 	mvp := pickBest(humans, bestCount, mvpMinCells)
 	lvp := pickBest(humans, worstCount, mvpMinCells)
+	if mvp != "" && lvp != "" && mvp == lvp {
+		mvp = pickBestExcluding(humans, bestCount, mvpMinCells, lvp)
+	}
 	return ScoreboardExtremes{MVPXUID: mvp, LVPXUID: lvp}
 }
 
@@ -81,6 +84,7 @@ func ComputeMVPLVP(scoreboard []domain.ScoreboardRaw) ScoreboardExtremes {
 type scoreboardCol struct {
 	vals     []float64
 	inverted bool
+	weight   int
 }
 
 func humanPlayers(rows []domain.ScoreboardRaw) []domain.ScoreboardRaw {
@@ -135,17 +139,17 @@ func scoreboardColumns(rows []domain.ScoreboardRaw) []scoreboardCol {
 	}
 
 	return []scoreboardCol{
-		{kills, false},
-		{deaths, true},
-		{assists, false},
-		{kda, false},
-		{accuracy, false},
-		{score, false},
-		{damageDealt, false},
-		{damageTaken, true},
-		{headshots, false},
-		{spree, false},
-		{perfect, false},
+		{kills, false, 2},
+		{deaths, true, 2},
+		{assists, false, 1},
+		{kda, false, 3},
+		{accuracy, false, 1},
+		{score, false, 3},
+		{damageDealt, false, 2},
+		{damageTaken, true, 2},
+		{headshots, false, 1},
+		{spree, false, 1},
+		{perfect, false, 1},
 	}
 }
 
@@ -168,6 +172,23 @@ func colMinMax(vals []float64) (min, max float64) {
 func pickBest(humans []domain.ScoreboardRaw, counts []int, minCount int) string {
 	bestIdx, bestVal := -1, 0
 	for i, c := range counts {
+		if c > bestVal {
+			bestVal = c
+			bestIdx = i
+		}
+	}
+	if bestIdx < 0 || bestVal < minCount {
+		return ""
+	}
+	return humans[bestIdx].XUID
+}
+
+func pickBestExcluding(humans []domain.ScoreboardRaw, counts []int, minCount int, excludeXUID string) string {
+	bestIdx, bestVal := -1, 0
+	for i, c := range counts {
+		if humans[i].XUID == excludeXUID {
+			continue
+		}
 		if c > bestVal {
 			bestVal = c
 			bestIdx = i
