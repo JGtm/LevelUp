@@ -44,7 +44,7 @@ function inputIcon(input: string): string {
   switch (input.toLowerCase()) {
     case 'keyboard': return '⌨'
     case 'controller': return '🎮'
-    default: return '⇄'
+    default: return ''
   }
 }
 
