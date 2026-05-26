@@ -5,6 +5,7 @@
  */
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select } from '@/components/ui/select'
 import { useScanMedia } from '@/features/settings/queries'
 import { ToggleRow, type TabProps } from './_settingsShared'
 
@@ -19,21 +20,21 @@ export function GeneralTab({ merged, handleChange, t }: TabProps) {
         <CardContent className="space-y-1 divide-y divide-border/50">
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">{t.langLabel}</span>
-            <select
+            <Select
               value={merged.lang ?? 'fr'}
               onChange={(e) => handleChange('lang', e.target.value)}
-              className="rounded border border-input px-2 py-1 text-sm"
+              className="w-auto"
             >
               <option value="fr">{t.langFr}</option>
               <option value="en">{t.langEn}</option>
-            </select>
+            </Select>
           </div>
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-foreground">{t.timezoneLabel}</span>
-            <select
+            <Select
               value={merged.user_timezone ?? 'Europe/Paris'}
               onChange={(e) => handleChange('user_timezone', e.target.value)}
-              className="rounded border border-input px-2 py-1 text-sm"
+              className="w-auto"
             >
               {/* Identifiants timezone IANA — pas de traduction (techniques) */}
               {/* eslint-disable @levelup/no-hardcoded-strings */}
@@ -45,7 +46,7 @@ export function GeneralTab({ merged, handleChange, t }: TabProps) {
               <option value="Asia/Tokyo">Asia/Tokyo</option>
               <option value="UTC">UTC</option>
               {/* eslint-enable @levelup/no-hardcoded-strings */}
-            </select>
+            </Select>
           </div>
           <ToggleRow label={t.showRecords} value={merged.show_records ?? false} onChange={(v) => handleChange('show_records', v)} />
           <ToggleRow label={t.normalizeModeLabels} value={merged.normalize_mode_labels ?? true} onChange={(v) => handleChange('normalize_mode_labels', v)} />
@@ -80,7 +81,7 @@ export function GeneralTab({ merged, handleChange, t }: TabProps) {
               value={merged.media_captures_base_dir ?? ''}
               onChange={(e) => handleChange('media_captures_base_dir', e.target.value)}
               placeholder={t.mediaBaseDirPlaceholder}
-              className="w-full rounded border border-input px-2 py-1 text-sm font-mono"
+              className="w-full rounded border border-input bg-background px-2 py-1 text-sm font-mono text-foreground"
             />
             <span className="text-xs text-muted-foreground">{t.mediaBaseDirHint}</span>
           </div>
@@ -90,7 +91,7 @@ export function GeneralTab({ merged, handleChange, t }: TabProps) {
               type="number"
               value={merged.media_tolerance_minutes ?? 10}
               onChange={(e) => handleChange('media_tolerance_minutes', Number(e.target.value))}
-              className="w-20 rounded border border-input px-2 py-1 text-right text-sm"
+              className="w-20 rounded border border-input bg-background px-2 py-1 text-right text-sm text-foreground"
               min={1}
               max={60}
             />
