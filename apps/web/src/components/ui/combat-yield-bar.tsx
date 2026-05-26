@@ -3,19 +3,25 @@
  *
  * Deux segments poussant depuis le centre :
  *  - Gauche (vert)  : offensive_conversion  — normalisé par p80 = 0.83
- *  - Droite (bleu)  : defensive_resistance  — normalisé par p80 = 1.59
+ *  - Droite (bleu)  : defensive_resistance  — normalisé DEPUIS 1.0 (baseline)
+ *                     sur la plage (p80 - 1.0) = 0.59. DR=1.0 → 0px, DR=1.59 → pleine barre.
  *
- * Largeur max par côté : 120px. Clip à 1.5× p80.
+ * Largeur max par côté : 120px. Clip à 1.5× la plage de référence.
+ * Tick p80 : trait fin à 80px du centre sur chaque côté (= 1/CLIP_FACTOR × 120px).
+ * Badge débordement : valeur réelle affichée hors-barre quand clippée ou ∞.
  * Tooltip : dégâts bruts (dmg/kill et dmg/death), jamais le ratio interne.
  */
 import { useState } from 'react'
 import { tokenCssVar } from '@/lib/accessibility'
 
-/** p80 et clip factor — miroir des constantes Go combat_yield.go */
+/** p80, baseline et constantes — miroir des constantes Go combat_yield.go */
 const OC_P80 = 0.83
 const DR_P80 = 1.59
+const DR_BASELINE = 1.0
+const DR_RANGE = DR_P80 - DR_BASELINE  // 0.59 — plage utile au-dessus du baseline
 const CLIP_FACTOR = 1.5
 const BAR_MAX_PX = 120
+const P80_TICK_PX = Math.round(BAR_MAX_PX / CLIP_FACTOR)  // 80px
 
 export interface CombatYieldBarProps {
   /** offensive_conversion = 225 × (kills + assists/3) / damage_dealt */
@@ -28,16 +34,18 @@ export interface CombatYieldBarProps {
   damagePerDeath?: number | null
 }
 
-function normalizeBar(value: number, p80: number): number {
-  const clipped = Math.min(value, p80 * CLIP_FACTOR)
-  return Math.min(clipped / p80, CLIP_FACTOR) / CLIP_FACTOR
+function ocBarWidth(value: number | null | undefined): number {
+  if (value == null || value <= 0) return 0
+  const clipped = Math.min(value, OC_P80 * CLIP_FACTOR)
+  return Math.round((clipped / OC_P80 / CLIP_FACTOR) * BAR_MAX_PX)
 }
 
-function barWidth(value: number | null | undefined, p80: number): number {
+function drBarWidth(value: number | null | undefined): number {
   if (value == null) return 0
   if (value < 0) return BAR_MAX_PX  // sentinel ∞ (deaths == 0)
-  if (value <= 0) return 0
-  return Math.round(normalizeBar(value, p80) * BAR_MAX_PX)
+  if (value <= DR_BASELINE) return 0
+  const excess = Math.min(value - DR_BASELINE, DR_RANGE * CLIP_FACTOR)
+  return Math.round((excess / DR_RANGE / CLIP_FACTOR) * BAR_MAX_PX)
 }
 
 interface TooltipProps {
@@ -80,11 +88,26 @@ export function CombatYieldBar({
 }: CombatYieldBarProps) {
   const [hovered, setHovered] = useState(false)
 
-  const ocWidth = barWidth(offensiveConversion, OC_P80)
-  const drWidth = barWidth(defensiveResistance, DR_P80)
+  const ocWidth = ocBarWidth(offensiveConversion)
+  const drWidth = drBarWidth(defensiveResistance)
 
-  const hasData = (offensiveConversion != null && offensiveConversion > 0) ||
-    (defensiveResistance != null && (defensiveResistance > 0 || defensiveResistance < 0))
+  const hasData =
+    (offensiveConversion != null && offensiveConversion > 0) ||
+    (defensiveResistance != null && (defensiveResistance > DR_BASELINE || defensiveResistance < 0))
+
+  const ocClipped = offensiveConversion != null && offensiveConversion > OC_P80 * CLIP_FACTOR
+  const drIsInfinite = defensiveResistance != null && defensiveResistance < 0
+  const drClipped = !drIsInfinite && drWidth === BAR_MAX_PX
+  const showDrBadge = drIsInfinite || drClipped
+
+  const tickStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: 0,
+    width: 1,
+    height: '100%',
+    backgroundColor: 'currentColor',
+    opacity: 0.25,
+  }
 
   return (
     <div
@@ -93,8 +116,24 @@ export function CombatYieldBar({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
+      {/* Badge débordement OC — affiché à gauche hors-barre */}
+      {hasData && ocClipped && (
+        <div
+          className="absolute text-[9px] font-semibold leading-none"
+          style={{
+            right: BAR_MAX_PX + 6,
+            color: tokenCssVar('divergent-pos'),
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {Math.round(offensiveConversion! * 100)}%
+        </div>
+      )}
+
       {/* Barre offensive (gauche, pousse vers la droite) */}
-      <div className="flex justify-end" style={{ width: BAR_MAX_PX }}>
+      <div className="flex justify-end" style={{ width: BAR_MAX_PX, position: 'relative' }}>
+        {/* Tick p80 */}
+        <div style={{ ...tickStyle, right: P80_TICK_PX - 1 }} />
         {hasData && (
           <div
             className="h-2 rounded-l-full transition-all duration-300"
@@ -111,7 +150,9 @@ export function CombatYieldBar({
       <div className="w-px h-3 bg-border flex-shrink-0" />
 
       {/* Barre défensive (droite) */}
-      <div className="flex justify-start" style={{ width: BAR_MAX_PX }}>
+      <div className="flex justify-start" style={{ width: BAR_MAX_PX, position: 'relative' }}>
+        {/* Tick p80 */}
+        <div style={{ ...tickStyle, left: P80_TICK_PX - 1 }} />
         {hasData && (
           <div
             className="h-2 rounded-r-full transition-all duration-300"
@@ -123,6 +164,20 @@ export function CombatYieldBar({
           />
         )}
       </div>
+
+      {/* Badge débordement DR — affiché à droite hors-barre */}
+      {hasData && showDrBadge && (
+        <div
+          className="absolute text-[9px] font-semibold leading-none"
+          style={{
+            left: BAR_MAX_PX + 6,
+            color: tokenCssVar('divergent-neutral'),
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {drIsInfinite ? '∞' : `${Math.round((defensiveResistance! - 1) * 100)}%`}
+        </div>
+      )}
 
       {hovered && hasData && (
         <Tooltip

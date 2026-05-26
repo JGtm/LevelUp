@@ -211,7 +211,7 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
         {hasDR && (
           <KpiCell
             label={texts.grid.resistance}
-            value={`${((kpis.avg_defensive_resistance ?? 0) * 100).toFixed(0)}%`}
+            value={`${(((kpis.avg_defensive_resistance ?? 1) - 1) * 100).toFixed(0)}%`}
             sub={texts.grid.refBaseline}
           />
         )}

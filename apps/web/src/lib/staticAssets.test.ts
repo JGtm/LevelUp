@@ -62,7 +62,7 @@ describe('csrRankImageURL (default title-scoped)', () => {
 })
 
 describe('unrankedBadgeURL (default title-scoped)', () => {
-  it('retourne URL title-scopée du badge Unranked', () => {
-    expect(unrankedBadgeURL()).toBe('/static/ranks/halo_infinite/Unranked.png')
+  it('retourne URL title-scopée du badge unranked_0', () => {
+    expect(unrankedBadgeURL()).toBe('/static/ranks/halo_infinite/unranked_0.png')
   })
 })
