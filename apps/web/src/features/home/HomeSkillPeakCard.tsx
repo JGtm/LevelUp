@@ -46,13 +46,14 @@ export function HomeSkillPeakCard({
           loading="lazy"
           decoding="async"
         />
-      ) : isPlacement ? (
+      ) : isPlacement || state === 'absent' ? (
         // Legacy path : backend antérieur à mai 2026 ne fournissait pas le
         // badge unranked dans le peak. Fallback sur l'image statique générique.
+        // État 'absent' (aucun historique) : même image unranked_0, label "Non classé".
         <img
           data-testid={`${testIdPrefix}-unranked`}
           src={unrankedBadgeURL()}
-          alt="En placement"
+          alt={isPlacement ? 'En placement' : 'Non classé'}
           className="h-12 w-12 shrink-0 object-contain opacity-80"
           loading="lazy"
           decoding="async"
@@ -113,8 +114,5 @@ export function resolveSkillPeakState(
       ? { state: 'placement', detail: 'En placement' }
       : { state: 'neutral', detail: 'Sans classement' }
   }
-  return {
-    state: 'absent',
-    detail: mode === 'ranked' ? 'Aucune partie classée' : 'Aucune partie non classée',
-  }
+  return { state: 'absent', detail: 'Non classé' }
 }

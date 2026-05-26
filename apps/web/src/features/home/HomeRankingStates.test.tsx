@@ -78,7 +78,7 @@ describe('Home ranking states', () => {
     })
 
     expect(screen.getByTestId('home-highest-csr-detail')).toHaveTextContent('En placement')
-    expect(screen.getByTestId('home-highest-lusr-detail')).toHaveTextContent('Aucune partie non classée')
+    expect(screen.getByTestId('home-highest-lusr-detail')).toHaveTextContent('Non classé')
   })
 
   it('affiche un état vide explicite quand aucun classement n’est disponible', async () => {
