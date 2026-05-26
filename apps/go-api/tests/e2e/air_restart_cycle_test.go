@@ -331,6 +331,73 @@ func TestAirRestartCycle_RotationNoOp_StoreUnchanged(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Test : concurrent Resolves SAME gamertag dédupliqués par singleflight
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Régression du test retiré initialement (sans singleflight, 19 invalid_grant
+// sur 20 Resolves concurrents). Avec sfGroup, on attend : 1 refresh, 19 dédup.
+
+func TestAirRestartCycle_ConcurrentResolves_SingleflightDedup(t *testing.T) {
+	tempDir := t.TempDir()
+	storeDir := filepath.Join(tempDir, "data", "auth", "watcher_tokens")
+	const xuid = "2533274858283686"
+	const gamertag = "Madina97294"
+
+	provider := newRotationProvider()
+	store := auth.NewMultiUserTokenStore(storeDir)
+	if err := store.UpdateOAuthRefreshToken(xuid, "rt-initial"); err != nil {
+		t.Fatal(err)
+	}
+
+	src := pool.CredentialSource{
+		Gamertag:     gamertag,
+		XUID:         xuid,
+		RefreshToken: "rt-initial",
+		Source:       "watcher_oauth",
+	}
+	resolver := pool.NewResolver(provider, 1*time.Hour, rotationCallback(t, store, xuid))
+
+	// 20 résolutions concurrentes du MÊME gamertag.
+	const N = 20
+	var wg sync.WaitGroup
+	wg.Add(N)
+	errs := make(chan error, N)
+	for i := 0; i < N; i++ {
+		go func() {
+			defer wg.Done()
+			if _, err := resolver.Resolve(context.Background(), src); err != nil {
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		t.Errorf("Resolve concurrent échoué (singleflight devrait dédup) : %v", err)
+	}
+
+	refreshes := provider.refreshCallCount.Load()
+	exchanges := provider.exchangeCallCount.Load()
+	invalidGrants := provider.invalidGrantCount.Load()
+
+	t.Logf("─── singleflight dedup (N=%d Resolves concurrents même gamertag) ───", N)
+	t.Logf("  refresh_calls       : %d (attendu : 1, sf déduplique)", refreshes)
+	t.Logf("  exchange_calls      : %d (attendu : 1)", exchanges)
+	t.Logf("  invalid_grants      : %d (attendu : 0)", invalidGrants)
+
+	if refreshes != 1 {
+		t.Errorf("refresh_calls = %d, want 1 (singleflight devrait dédup en 1 seul OAuth call)", refreshes)
+	}
+	if exchanges != 1 {
+		t.Errorf("exchange_calls = %d, want 1 (singleflight devrait dédup l'exchange aussi)", exchanges)
+	}
+	if invalidGrants != 0 {
+		t.Errorf("invalid_grants = %d (devait être 0 grâce à singleflight)", invalidGrants)
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Test : Resolver.Refresh() force re-acquisition + rotation persistée
 // ─────────────────────────────────────────────────────────────────────────
 
