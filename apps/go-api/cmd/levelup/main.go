@@ -16,6 +16,7 @@
 //	levelup gate-check     [--gamertag X] [--json]
 //	levelup surface-status [--json]
 //	levelup sync-delta     (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
+//	levelup sync-full      (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //
@@ -24,7 +25,7 @@
 // Implementation des sous-commandes :
 //   - cmd_data.go    - backup, restore, archive, index-media, seed
 //   - cmd_ops.go     - healthcheck, diagnose, check-env, compare-db, gate-check, surface-status
-//   - cmd_sync.go    - sync-delta
+//   - cmd_sync.go    - sync-delta, sync-full
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
 package main
@@ -83,6 +84,8 @@ func main() {
 		exitErr = runSurfaceStatus(cfg, args)
 	case "sync-delta":
 		exitErr = runSyncDelta(cfg, args)
+	case "sync-full":
+		exitErr = runSyncFull(cfg, args)
 	case "sync-achievements":
 		exitErr = runSyncAchievements(cfg, args)
 	case "backfill":
@@ -136,7 +139,8 @@ Commandes:
   compare-db      Comparer la parite Go vs Python (DB joueur)
   gate-check      Verifier la checklist Gate Phase 4
   surface-status  Afficher le backend actif par surface (feature flags)
-	sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
+  sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
+  sync-full       Parcourir les N derniers matchs API et insérer les manquants (comble les trous)
   sync-achievements Lancer le backfill des achievements Xbox (admin one-shot, --dry-run dispo)
   backfill        Lancer un backfill local (Go-only, pas d'API) — voir --engagement-scores
   replay-events   Re-parse highlight events sur les matchs cassés (parser bit-aligné fix mai 2026)
