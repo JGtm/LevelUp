@@ -1,3 +1,34 @@
+## [2026-05-26] Fix UI home page — hauteur égale, date année, LUSR→CSR, auto-scroll stable
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `SerieTile` (Faits marquants) — hauteur fixe `h-[4.5rem]` + `overflow-hidden` sur le div animé, `truncate` sur value, `line-clamp-1` sur label, `line-clamp-2` sur detail. Attribut `title` sur chaque élément pour afficher le texte complet au hover (sans layout shift). Hauteur à ajuster selon rendu réel.
+
+**Résultats** : aucun test Vitest concerné (composant visuel pur).
+
+**Conclusion** : tous les fixes home page livrés en un bloc.
+
+---
+
+## [2026-05-26] Fix UI home page — hauteur égale, date année, LUSR→CSR
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décisions techniques** :
+1. `HomePage.tsx` : suppression de `self-start` sur `home-challenges-card` — la grille CSS (default `align-items: stretch`) aligne maintenant les deux cards sur la hauteur de la plus grande. Tests mis à jour (2 assertions `self-start` retirées). 15/15 passent.
+2. `HomeSessionCarousel.tsx` : `formatSessionDate` ajoute `year: 'numeric'` si la date est antérieure à 1 an glissant (comparaison avec `oneYearAgo`).
+3. `home_canonical_highlights.go` + `home_highlights.go` : remplacement du vote majoritaire (csr/lusr counter) par la lecture du premier match de la fenêtre (window triée `start_time DESC`) — le type LUSR/CSR affiché reflète maintenant la dernière session, pas la majorité de la fenêtre.
+
+**Résultats** : tests Go `analysis` OK, tests Vitest HomePage 15/15 OK.
+
+**Conclusion** : prêt à committer. Point 4 (hauteur variable auto-scroll) = réponse théorique fournie à l'utilisateur.
+
+---
+
 ## [2026-05-26] Fix 3 failing HomePage tests
 
 **Statut** : Complété

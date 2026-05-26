@@ -218,22 +218,21 @@ func BuildHighlights(matches []legacymatch.HomeMatchRow) []domain.HighlightItem 
 	{
 		var deltaSum float64
 		var n int
-		csr, lusr := 0, 0
+		// Type du match le plus récent (window triée start_time DESC).
+		var firstRatingType string
 		for _, m := range window {
 			if m.SkillRatingDelta != nil {
 				deltaSum += *m.SkillRatingDelta
 				n++
 			}
-			switch strings.ToUpper(m.SkillRatingType) {
-			case "CSR":
-				csr++
-			case "LUSR":
-				lusr++
+			rt := strings.ToUpper(m.SkillRatingType)
+			if rt != "" && firstRatingType == "" {
+				firstRatingType = rt
 			}
 		}
 		if n > 0 {
 			titleKey := "highlight.title.skill_delta_lusr"
-			if csr > lusr {
+			if firstRatingType == "CSR" {
 				titleKey = "highlight.title.skill_delta_csr"
 			}
 			sign := ""

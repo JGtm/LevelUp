@@ -192,7 +192,7 @@ export function HomePage() {
             errorHint={seasonPassError instanceof Error ? seasonPassError.message : null}
           />
 
-          <Card data-testid="home-challenges-card" className="flex min-h-[14rem] flex-col self-start">
+          <Card data-testid="home-challenges-card" className="flex min-h-[14rem] flex-col">
             <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
               <div className="flex items-center gap-1.5">
                 <CardTitle className="text-base">{t('home.challenges.title')}</CardTitle>

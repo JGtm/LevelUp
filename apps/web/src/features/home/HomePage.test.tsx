@@ -382,7 +382,7 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByText(/Défis actifs/i)).toBeInTheDocument()
       expect(screen.getByTestId('home-challenges-completed')).toHaveTextContent('0 / 3 complétés')
-      expect(screen.getByTestId('home-challenges-card')).toHaveClass('self-start', 'min-h-[14rem]')
+      expect(screen.getByTestId('home-challenges-card')).toHaveClass('min-h-[14rem]')
       expect(
         screen.getByText((content) => content.replace(/\s+/g, ' ').includes('4 500 XP disponibles')),
       ).toBeInTheDocument()
@@ -464,7 +464,7 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />)
 
     await waitFor(() => {
-      expect(screen.getByTestId('home-challenges-card')).toHaveClass('self-start', 'min-h-[14rem]')
+      expect(screen.getByTestId('home-challenges-card')).toHaveClass('min-h-[14rem]')
       expect(screen.getByText('Aucun défi actif')).toBeInTheDocument()
       expect(screen.getByText(/Tous les défis visibles sont terminés/i)).toBeInTheDocument()
     })

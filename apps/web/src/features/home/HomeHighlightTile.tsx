@@ -71,11 +71,11 @@ function SerieTile({ title, slides, locale, className }: SerieTileProps) {
         className={`transition-opacity duration-200 ${fading ? 'opacity-0' : 'opacity-100'}`}
         aria-live="polite"
       >
-        <p className="text-base font-bold" style={highlightColorStyle(s.value_color)}>
+        <p className="truncate text-base font-bold" title={s.value} style={highlightColorStyle(s.value_color)}>
           {s.value}
         </p>
-        <p className="text-3xs text-muted-foreground/80 leading-tight">{slideLabel}</p>
-        {slideDetail ? <p className="text-xs text-muted-foreground">{slideDetail}</p> : null}
+        <p className="line-clamp-1 text-3xs leading-tight text-muted-foreground/80" title={slideLabel}>{slideLabel}</p>
+        <p className="line-clamp-1 h-[1rem] text-xs text-muted-foreground" title={slideDetail || undefined}>{slideDetail}</p>
       </div>
       {slides.length > 1 ? (
         <div className="mt-1 flex gap-1" aria-hidden="true">
