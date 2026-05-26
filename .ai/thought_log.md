@@ -21,6 +21,12 @@
 
 **Prochaine étape** : tester en live les likes et favoris.
 
+**Complément — CHECKPOINT périodique (solution pérenne)** : suite post-mortem,
+ajout goroutine CHECKPOINT toutes les 5 min dans `main.go` via `LookupCachedDB`.
+Réutilise le même `*sql.DB` que `SharedSocialPersister` → `MaxOpenConns(1)`
+sérialise automatiquement (pas de lock applicatif supplémentaire). WAL borné
+sans bloquer les writes per-opération. Shutdown CHECKPOINT inchangé (filet final).
+
 ---
 
 ## [2026-05-26] Fix barres composites Rendement/Résistance — cohérence visuelle/valeur
@@ -47572,5 +47578,17 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 - Asset : `apps/web/src/assets/badges/fluent-flat/kamikaze.svg`.
 
 **Résultats observés** : Tests Go (7/7 Kamikaze + score weights coverage) + frontend (5/5 SquadImpactScoreboard) verts. Typecheck propre sur les fichiers touchés (les 3 erreurs TS résiduelles concernent `OpenSpartanImportCard.tsx` et `SessionOutcomeTape.tsx`, hors scope).
+
+## [2026-05-26] fix(halo_auth): invalid_grant Madina97294 — priorité DuckDB avant env var — Complété
+
+**Statut** : Complété · Branche : `refactor/shared-social-collect-persist`
+
+**Contexte** : Madina97294 obtient `invalid_grant AADSTS70000` même avec un token fraîchement généré via `go run ./cmd/token-capture/ Madina97294`. JGtm et Chocoboflor fonctionnent avec leurs tokens depuis 6 mois.
+
+**Root cause** : Air hot-reload déclenche un boot complet à chaque modification. Au boot, le Pool lit l'env var de Madina (DuckDB vide), appelle Microsoft, reçoit `(access_token, rotated_RT)`, sauve `rotated_RT` en DuckDB via `onRotated`. Token original brûlé chez Microsoft. Quelques ms plus tard, une requête HTTP → `refreshTokensFromDB` → lisait l'env var en premier (original déjà consommé) → `invalid_grant`. JGtm/Chocoboflor non affectés car leurs DuckDB ont un RT valide depuis des mois — le Pool lit DuckDB, pas l'env var.
+
+**Décision** : Inversion de priorité dans `registry.go::refreshTokensFromDB` : DuckDB d'abord, env var en seed bootstrap uniquement. Ajout de `TryOAuthRefreshWithRotation` + `WriteOAuthRefreshToken` pour auto-réparation.
+
+**Prochaine étape** : Générer un nouveau token Madina via `token-capture`, redémarrer proprement une fois, vérifier `source=duckdb` sur la deuxième requête.
 
 **Prochaine étape** : commit + PR. Pas de migration DB, pas de SyncScope, pas de répercussion sur la page Match (narrative non touché).
