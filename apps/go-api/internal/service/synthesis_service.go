@@ -8,6 +8,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -261,7 +262,18 @@ func (s *SynthesisService) loadTopWeaponKills(
 	wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
 	rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf)
 	if err != nil {
-		slog.DebugContext(ctx, "synthesis: weapon kills non disponibles (best-effort)", "err", err)
+		// ErrCapabilityNotSupported = légitime (titre sans table weapon_kills) → Debug.
+		// Toute autre erreur = anomalie (SQL invalide, conn timeout, etc.) → Warn,
+		// pour éviter qu'un nouveau bug "shared.X prefix" passe inaperçu comme en
+		// 2026-05-26 (chart breakdown armes vide pendant ~1 semaine).
+		if errors.Is(err, games.ErrCapabilityNotSupported) {
+			slog.DebugContext(ctx, "synthesis: weapon kills capability absente",
+				"title", s.titleSlug, "gamertag", s.gamertag)
+		} else {
+			slog.WarnContext(ctx, "synthesis: weapon kills query failed (best-effort, fallback nil)",
+				"title", s.titleSlug, "gamertag", s.gamertag,
+				"match_count", len(matchIDs), "err", err)
+		}
 		return nil
 	}
 	return buildTopWeaponKills(rows, 20)
