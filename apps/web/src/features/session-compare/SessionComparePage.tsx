@@ -202,7 +202,7 @@ export function SessionComparePage() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.compare.session_a_label')}</label>
                 <select
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   value={sessionA}
                   onChange={(e) => setSessionA(e.target.value)}
                 >
@@ -217,7 +217,7 @@ export function SessionComparePage() {
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">{t('session.compare.session_b_label')}</label>
                 <select
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                   value={sessionB}
                   onChange={(e) => setSessionB(e.target.value)}
                 >
