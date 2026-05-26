@@ -435,7 +435,7 @@ func TestPlayerWatcher_RecordLastSeen_Roundtrip(t *testing.T) {
 	}
 
 	ts := time.Date(2026, 5, 25, 20, 0, 36, 0, time.UTC)
-	pw.RecordLastSeen(&presence.LastSeenInfo{
+	pw.RecordLastSeen(context.Background(), &presence.LastSeenInfo{
 		Timestamp: ts,
 		TitleID:   "2043073184",
 		TitleName: "Halo Infinite",
@@ -456,8 +456,9 @@ func TestPlayerWatcher_RecordLastSeen_Roundtrip(t *testing.T) {
 // PR2 2026-05-26 : un appel avec nil ne crash pas + ne remplace pas l'état.
 func TestPlayerWatcher_RecordLastSeen_NilNoop(t *testing.T) {
 	pw := NewPlayerWatcher("p", "x", &mockFetcher{}, newMockSyncTrigger())
-	pw.RecordLastSeen(&presence.LastSeenInfo{TitleName: "Halo"})
-	pw.RecordLastSeen(nil) // ne doit pas wipe l'état précédent
+	ctx := context.Background()
+	pw.RecordLastSeen(ctx, &presence.LastSeenInfo{TitleName: "Halo"})
+	pw.RecordLastSeen(ctx, nil) // ne doit pas wipe l'état précédent
 	if pw.LastSeen() == nil || pw.LastSeen().TitleName != "Halo" {
 		t.Error("nil aurait dû être no-op, état précédent préservé")
 	}

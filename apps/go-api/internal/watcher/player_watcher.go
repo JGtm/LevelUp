@@ -116,7 +116,11 @@ func (pw *PlayerWatcher) SubscribeError() error {
 // Appelé par le handler watcher pour chaque event qui contient un bloc
 // lastSeen (typiquement les snapshots Offline). Copie superficielle pour
 // éviter qu'un mutateur tiers ne modifie l'état stocké.
-func (pw *PlayerWatcher) RecordLastSeen(info *presence.LastSeenInfo) {
+//
+// Loggue en DEBUG (filtré par défaut, activable via LEVELUP_LOGS_FILE_LEVEL=
+// debug) pour faciliter le debug des transitions présence sans polluer la
+// production.
+func (pw *PlayerWatcher) RecordLastSeen(ctx context.Context, info *presence.LastSeenInfo) {
 	if info == nil {
 		return
 	}
@@ -124,6 +128,13 @@ func (pw *PlayerWatcher) RecordLastSeen(info *presence.LastSeenInfo) {
 	pw.mu.Lock()
 	pw.lastSeen = &cp
 	pw.mu.Unlock()
+
+	slog.DebugContext(ctx, "player_watcher: last_seen mis à jour",
+		"gamertag", pw.gamertag,
+		"title_name", info.TitleName,
+		"title_id", info.TitleID,
+		"timestamp", info.Timestamp.UTC().Format("2006-01-02T15:04:05Z"),
+	)
 }
 
 // LastSeen retourne la dernière info `lastSeen` connue, ou nil si jamais
