@@ -12,7 +12,20 @@
  */
 import { test, expect } from '@playwright/test'
 
-const PLAYER = 'demo-player'
+let PLAYER = 'demo-player'
+
+test.beforeAll(async ({ request }) => {
+  // Résout le slug du joueur courant depuis le bootstrap. Permet aux tests
+  // de tourner sur instance demo (`demo-player`) ou sur instance réelle
+  // (slug = current_player.player_slug retourné par /api/v1/bootstrap).
+  const resp = await request.get('http://localhost:8000/api/v1/bootstrap')
+  if (resp.ok()) {
+    const data = await resp.json()
+    if (data?.current_player?.player_slug) {
+      PLAYER = data.current_player.player_slug
+    }
+  }
+})
 
 test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', () => {
   test('landing on /ascension renders H1, layer headers and tabs', async ({ page }) => {
@@ -37,10 +50,11 @@ test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', ()
 
     await page.getByRole('tab', { name: /Réalisations/i }).click()
     await page.waitForURL(/\/ascension\/realisations$/, { timeout: 5_000 })
-    expect(page.url()).toMatch(/\/players\/demo-player\/ascension\/realisations$/)
+    expect(page.url()).toMatch(new RegExp(`/players/${PLAYER}/ascension/realisations$`))
 
-    // Le contenu Réalisations contient le titre "Mes streaks" (StreakDashboard)
-    await expect(page.getByText(/Mes streaks/i).first()).toBeVisible()
+    // Le contenu Réalisations contient toujours la section "Moments marquants"
+    // (MomentsSection ne fait pas d'early return même si la liste est vide).
+    await expect(page.getByText(/Moments marquants/i).first()).toBeVisible()
   })
 
   test('tab switch back /ascension/realisations → /ascension', async ({ page }) => {
@@ -49,7 +63,7 @@ test.describe('Ascension — 2 onglets (Profil & objectifs + Réalisations)', ()
 
     await page.getByRole('tab', { name: /Profil & objectifs/i }).click()
     await page.waitForURL(/\/ascension$/, { timeout: 5_000 })
-    expect(page.url()).toMatch(/\/players\/demo-player\/ascension$/)
+    expect(page.url()).toMatch(new RegExp(`/players/${PLAYER}/ascension$`))
   })
 
   test('legacy /objectifs redirects to /ascension', async ({ page }) => {
