@@ -1,3 +1,52 @@
+## [2026-05-26] Spartan Identity Refactor V2 — INSERT partial field-aware + cron 8h
+
+**Statut** : Complété (8 phases)
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Plan complet** : `.ai/PLAN_SPARTAN_IDENTITY_REFACTOR_V2.md`
+
+**Contexte** : la home flickaait (bannière apparait/disparait, rang change, XP saute) post refactor §11. Cause racine : UPSERT 1-ligne avec carry-forward depuis dbLast écrivait des valeurs identiques ou polluées dans la nouvelle ligne, et l'overlay `ApplySpartanIdentityOverlay` pouvait écraser identity par du vide.
+
+**Décision architecturale principale** : 3 règles d'or — append-only avec timestamp (table `career_progression` existante conservée), per-field non-empty wins (INSERT n'inclut QUE les champs rendus non-vides par l'API), stale-while-revalidate strict (path sync ne persiste plus, seul le background goroutine UPSERT via `persistPartial`).
+
+**8 phases livrées** :
+
+1. **Revert §11** : `git revert 22a775f5` (table `spartan_identity` 1-row + overlay + repo) + suppression diag obsolète
+2-3. **INSERT partial field-aware** : `CareerProgressionPartial` struct (champs pointers nil/set), `InsertCareerProgressionPartial` SQL dynamique, `PartialFromLive(progress, custom)` avec règles strictes (Rank>0 ou IsMaxRank pour écrire progress, TrimSpace+non-empty pour custom, CurrentXP=0 valide si Rank>0)
+4. **SwR strict** : suppression du `persistIfChanged` du path sync `GetSpartanIdentity` — seul `kickoffBackgroundRefresh` écrit en DB
+5. **Diag kickoff** : log structuré "kickoff fired/skipped" avec raison (no_auth_tokens, cache_warm) ; suppression diags ad-hoc §12 (token mismatch hors scope, mis de côté)
+6. **last_fetch_status** : colonne nullable + enum FetchStatus (ok / api_empty / forbidden_403 / auth_missing / failed), toujours écrit pour tracer "j'ai essayé" (debug XxDaemonGamerxX 403)
+7. **Tests E2E hyper solides** : 8 scénarios couvrant tous les retours API partiels — live silent, custom-only, progress-only, Rank=0 explicite, début palier (XP=0), single custom field, home toujours servie depuis DB fallback, no-auth
+8. **SpartanCustomizationCron 8h** : nouveau scheduler indépendant qui itère sur tous les joueurs du pool, appelle `CareerLiveService.GetSpartanIdentity` avec leurs tokens — garantit qu'un joueur qui n'ouvre jamais l'app a quand même sa customisation populée
+
+**Résultats mesurés** :
+- 19 tests unitaires nouveaux PASS (10 PartialFromLive + 9 InsertPartial)
+- 8 tests E2E nouveaux PASS (scénarios API partiels)
+- 3 tests cron PASS
+- `go test ./...` PASS (sauf TestExtractCSRRowIfRanked_RankedStable pré-existant, hors scope)
+- `go vet ./...` clean
+- 0 emoji ajouté aux fichiers (mémoire respect)
+
+**Contrats utilisateur vérifiés** :
+- "Si un seul élément neuf est retourné, on ne met à jour que cet élément" → INSERT partial garantit l'isolation par champ
+- "Append-only avec timestamp, pas UPSERT 1 ligne" → table append-only existante conservée
+- "Lecture DB d'abord, API en background, pas de vide jamais" → SwR strict implémenté, overlay préserve les valeurs DB
+- "Couvrir customisation + rang + XP ensemble" → même flow pour tous, FetchStatus unifié
+- "Garder le scheduler à 8h" → SpartanCustomizationCron créé avec DefaultSpartanCustomizationInterval=8h
+- "Pas de revert hasardeux, plan détaillé" → revert chirurgical d'un seul commit + 7 phases granulaires
+
+**Commits livrés** (refactor/shared-social-collect-persist) :
+- `d8f425b5` Revert §11
+- `e15866c1` chore: remove diag obsolète
+- `4d6a501b` feat: INSERT partial field-aware (Phase 2+3)
+- `2a1f9ab8` feat: SwR strict + last_fetch_status + E2E tests (Phase 4-7)
+- `d6cc84a7` feat: SpartanCustomizationCron 8h (Phase 8)
+
+**Prochaine étape** : tester en live au prochain démarrage serveur, vérifier que la home n'a plus de flicker pour les 4 joueurs (JGtm, Chocoboflor, Madina97294, XxDaemonGamerxX) ; lancer `cmd/diag_customization_population` après 1 cycle 8h pour comparer avant/après. Le bug §12 (token mismatch suspect) reste à investiguer séparément.
+
+---
+
 ## [2026-05-26] UX polish — BP placeholder descriptions + nav SyncIndicator + media owner pills
 
 **Statut** : Complété
