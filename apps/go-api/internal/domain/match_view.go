@@ -568,6 +568,10 @@ type PlayerMatchStatsRaw struct {
 	EnemyMMR          *float64
 	HeadshotKills     *int
 	MaxKillingSpree   *int
+	// BackfillBits (INTEGER) — bitmask match_participants.backfill_bits pour ce joueur×match.
+	// Bit 9 (PBitMedals = 512) indique si les médailles ont été fetchées.
+	// Nil si la colonne n'est pas disponible (anciens matchs ou erreur de scan).
+	BackfillBits *int
 }
 
 // ScoreboardRaw : données brutes de Q12 (une ligne du scoreboard).

@@ -421,6 +421,10 @@ func matchModeFamilyFromMeta(meta *domain.MatchMetaRaw) string {
 	return ""
 }
 
+// pBitMedals est le bit 9 de match_participants.backfill_bits indiquant que les
+// médailles ont été fetchées pour ce joueur×match (sync.PBitMedals = 1 << 9).
+const pBitMedals = 1 << 9
+
 // detectPartialMatchData inspecte les sources secondaires d'un match et
 // retourne la liste des raisons (codes stables) pour lesquelles la vue est
 // considérée partielle. Vide si tout est plein.
@@ -429,9 +433,9 @@ func matchModeFamilyFromMeta(meta *domain.MatchMetaRaw) string {
 //   - "scoreboard_empty"     → Q12 a renvoyé 0 lignes
 //   - "events_empty"         → Q21 a renvoyé 0 highlight events
 //   - "player_stats_empty"   → Q17 stats joueur courant absentes (outcome = 0)
-//   - "medals_empty"         → Q14 a renvoyé 0 médailles (rare ; certains modes
-//     n'attribuent pas de médailles, donc pas critique pour la sync mais utile
-//     pour le front)
+//   - "medals_empty"         → Q14 a renvoyé 0 médailles ET le bit PBitMedals
+//     n'est pas positionné (médailles jamais fetchées). Si le bit est positionné,
+//     0 médaille est un résultat légitime (certains modes n'en attribuent pas).
 func detectPartialMatchData(
 	stats *domain.PlayerMatchStatsRaw,
 	scoreboard []domain.ScoreboardRaw,
@@ -449,7 +453,10 @@ func detectPartialMatchData(
 		reasons = append(reasons, "player_stats_empty")
 	}
 	if len(medals) == 0 {
-		reasons = append(reasons, "medals_empty")
+		medalsFetched := stats != nil && stats.BackfillBits != nil && (*stats.BackfillBits&pBitMedals) != 0
+		if !medalsFetched {
+			reasons = append(reasons, "medals_empty")
+		}
 	}
 	return reasons
 }

@@ -1,3 +1,21 @@
+## [2026-05-26] Fix medals_empty faux positif — matchs sans médailles légitimes
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problème** : Le match `216ad58a` a légitimement 0 médailles, mais la vue affichait le bandeau "Les médailles et citations ne sont pas disponibles" — indiscernable d'un sync incomplet.
+
+**Cause racine** : `detectPartialMatchData` flaggait `medals_empty` dès `len(medals) == 0`, sans consulter `match_participants.backfill_bits`. Le bit `PBitMedals` (bit 9 = 512) indique que le fetch a eu lieu — si positionné avec 0 résultat, c'est un résultat légitime.
+
+**Décision technique** : Ajouter `BackfillBits *int` à `PlayerMatchStatsRaw` + récupérer `backfill_bits` dans Q17 + conditionner le flag sur l'absence du bit plutôt que sur le seul count.
+
+**Résultats** : 5/5 tests verts (3 existants + 2 nouveaux cas : légitimement vide vs jamais fetchées).
+
+**Prochaine étape** : commit + PR.
+
+---
+
 ## [2026-05-26] Ascension — Suite : Campaign migré + séparation Prestige/Ascension
 
 **Statut** : Complété (2 commits — `458d0808` move Campaign + `70aa5383` layer split).
