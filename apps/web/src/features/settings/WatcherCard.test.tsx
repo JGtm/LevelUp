@@ -262,29 +262,44 @@ describe('WatcherCard', () => {
       mockStatusData = { ...baseStatusData }
     })
 
-    it('affiche l\'option "Tous les joueurs"', async () => {
+    it('affiche le label "Joueurs surveillés :" et le summary "Tous les joueurs" par défaut', async () => {
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
       await waitFor(() => {
-        expect(screen.getByText('Joueurs surveillés')).toBeInTheDocument()
-        expect(screen.getByRole('option', { name: 'Tous les joueurs' })).toBeInTheDocument()
+        // Label inline avec deux-points
+        expect(screen.getByText(/Joueurs surveillés :/)).toBeInTheDocument()
+        // Summary du <details> affiche "Tous les joueurs" car subscribed = ['all']
+        expect(screen.getByText('Tous les joueurs')).toBeInTheDocument()
       })
     })
 
-    it('affiche les joueurs disponibles dans la liste', async () => {
+    it('affiche une checkbox cochée par joueur disponible (mode all)', async () => {
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
       await waitFor(() => {
-        expect(screen.getByRole('option', { name: 'PlayerOne' })).toBeInTheDocument()
-        expect(screen.getByRole('option', { name: 'PlayerTwo' })).toBeInTheDocument()
+        // Les checkboxes sont rendues même quand le <details> est fermé (DOM).
+        const cb1 = screen.getByLabelText('PlayerOne') as HTMLInputElement
+        const cb2 = screen.getByLabelText('PlayerTwo') as HTMLInputElement
+        expect(cb1).toBeChecked()
+        expect(cb2).toBeChecked()
       })
     })
 
-    it('appelle updateSubs.mutate lors du changement de sélection', async () => {
+    it('décocher 1 joueur sur 2 envoie [PlayerTwo] (sélection explicite)', async () => {
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
-      await waitFor(() => screen.getByRole('option', { name: 'PlayerOne' }))
-      const select = screen.getByRole('combobox')
-      fireEvent.change(select, { target: { value: 'PlayerOne' } })
+      const cb1 = await waitFor(() => screen.getByLabelText('PlayerOne') as HTMLInputElement)
+      fireEvent.click(cb1)
       expect(mockUpdateSubsMutate).toHaveBeenCalledWith(
-        ['PlayerOne'],
+        ['PlayerTwo'],
+        expect.any(Object),
+      )
+    })
+
+    it('décocher tous les joueurs envoie ["all"] (équivalent au mode all)', async () => {
+      mockStatusData = { ...baseStatusData, subscribed_players: ['PlayerOne'] }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      const cb1 = await waitFor(() => screen.getByLabelText('PlayerOne') as HTMLInputElement)
+      fireEvent.click(cb1)
+      expect(mockUpdateSubsMutate).toHaveBeenCalledWith(
+        ['all'],
         expect.any(Object),
       )
     })

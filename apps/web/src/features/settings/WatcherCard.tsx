@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { ToggleRow } from '@/features/settings/_settingsShared'
 import type { SettingsText } from '@/features/settings/i18n'
 import {
   useWatcherStatus,
@@ -38,7 +39,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   )
 }
 
-function TokenStatus({ t, onStartAuth }: { t: SettingsText; onStartAuth: () => void }) {
+export function WatcherTokenStatus({ t, onStartAuth }: { t: SettingsText; onStartAuth: () => void }) {
   const { data, isLoading } = useWatcherStatus()
 
   // Pendant le premier chargement, afficher un placeholder discret
@@ -142,11 +143,16 @@ function PlayersSelector({ t }: { t: SettingsText }) {
   const availablePlayers = useAppShellStore((s) => s.availablePlayers)
   const [feedback, setFeedback] = useState<string | null>(null)
 
-  const current = data?.subscribed_players?.[0] ?? 'all'
-  const isSinglePlayer = current !== 'all' && availablePlayers.some((p) => p.gamertag === current)
+  const realPlayers = availablePlayers.filter((p) => !p.is_demo)
+  const subscribed = data?.subscribed_players ?? ['all']
+  const isAll = subscribed.length === 0 || subscribed.includes('all')
+  // Set des gamertags effectivement sélectionnés (vide si mode "all").
+  const selectedSet = new Set(isAll ? realPlayers.map((p) => p.gamertag) : subscribed)
 
-  const handleChange = (value: string) => {
-    const payload = value === 'all' ? ['all'] : [value]
+  const persist = (next: string[]) => {
+    // Si tous les joueurs sont cochés, envoyer ["all"] pour rester rétro-compat
+    // avec le contrat backend (vide ou "all" = pas de filtrage).
+    const payload = next.length === realPlayers.length || next.length === 0 ? ['all'] : next
     updateSubs.mutate(payload, {
       onSuccess: () => {
         setFeedback(t.watcherSubscriptionsUpdated)
@@ -155,20 +161,45 @@ function PlayersSelector({ t }: { t: SettingsText }) {
     })
   }
 
+  const togglePlayer = (gamertag: string) => {
+    const next = new Set(selectedSet)
+    if (next.has(gamertag)) next.delete(gamertag)
+    else next.add(gamertag)
+    persist(Array.from(next))
+  }
+
+  const summary = isAll
+    ? t.watcherPlayersAll
+    : `${selectedSet.size} / ${realPlayers.length}`
+
   return (
-    <div className="space-y-1 py-2">
-      <label className="block text-xs font-medium text-muted-foreground">{t.watcherPlayersLabel}</label>
-      <select
-        value={isSinglePlayer ? current : 'all'}
-        onChange={(e) => handleChange(e.target.value)}
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
-      >
-        <option value="all">{t.watcherPlayersAll}</option>
-        {availablePlayers.filter((p) => !p.is_demo).map((p) => (
-          <option key={p.gamertag} value={p.gamertag}>{p.gamertag}</option>
-        ))}
-      </select>
-      {feedback && <p className="text-xs text-success">{feedback}</p>}
+    <div className="py-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm text-foreground">{t.watcherPlayersLabel} :</span>
+        <details className="relative">
+          <summary className="cursor-pointer list-none rounded-md border border-input bg-background px-2 py-1 text-sm hover:bg-accent">
+            {summary}
+          </summary>
+          <div className="absolute right-0 z-10 mt-1 w-48 rounded-md border border-input bg-background p-2 shadow-lg">
+            <ul className="space-y-1">
+              {realPlayers.map((p) => (
+                <li key={p.gamertag}>
+                  <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent">
+                    <input
+                      type="checkbox"
+                      checked={selectedSet.has(p.gamertag)}
+                      onChange={() => togglePlayer(p.gamertag)}
+                      className="h-3.5 w-3.5"
+                    />
+                    <span>{p.gamertag}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      </div>
+      {feedback && <p className="mt-1 text-right text-xs text-success">{feedback}</p>}
     </div>
   )
 }
@@ -355,7 +386,7 @@ export function WatcherSectionBody({ enabled, t }: { enabled: boolean; t: Settin
   return (
     <>
       <div className="pb-2">
-        <TokenStatus t={t} onStartAuth={handleStartAuth} />
+        <WatcherTokenStatus t={t} onStartAuth={handleStartAuth} />
       </div>
       {currentAttempt && (
         <div className="py-2">
@@ -370,6 +401,71 @@ export function WatcherSectionBody({ enabled, t }: { enabled: boolean; t: Settin
       )}
       <PlayersSelector t={t} />
       <RTAStatus t={t} />
+    </>
+  )
+}
+
+/**
+ * WatcherSection : variante 2026-05-26 qui intègre le toggle + accessory token
+ * status dans une seule `ToggleRow` (label à gauche, statut token au milieu,
+ * toggle à droite). Utilisé par SyncTab.tsx. L'ancien `WatcherSectionBody`
+ * reste exporté pour les tests qui ciblent juste le body.
+ */
+export function WatcherSection({
+  enabled,
+  onToggle,
+  t,
+}: {
+  enabled: boolean
+  onToggle: (v: boolean) => void
+  t: SettingsText
+}) {
+  const startAuth = useStartWatcherAuth()
+  const [currentAttempt, setCurrentAttempt] = useState<{
+    id: string
+    userCode: string
+    verificationUrl: string
+    expiresIn: number
+  } | null>(null)
+
+  const handleStartAuth = () => {
+    startAuth.mutate(undefined, {
+      onSuccess: (data) => {
+        setCurrentAttempt({
+          id: data.attempt_id,
+          userCode: data.user_code,
+          verificationUrl: data.verification_url,
+          expiresIn: data.expires_in,
+        })
+      },
+    })
+  }
+
+  return (
+    <>
+      <ToggleRow
+        label={t.watcherPresenceEnabled}
+        value={enabled}
+        onChange={onToggle}
+        accessory={<WatcherTokenStatus t={t} onStartAuth={handleStartAuth} />}
+      />
+      {enabled && (
+        <div className="pt-1 space-y-1 divide-y divide-border/30">
+          {currentAttempt && (
+            <div className="py-2">
+              <AuthFlow
+                attemptId={currentAttempt.id}
+                userCode={currentAttempt.userCode}
+                verificationUrl={currentAttempt.verificationUrl}
+                expiresIn={currentAttempt.expiresIn}
+                t={t}
+              />
+            </div>
+          )}
+          <PlayersSelector t={t} />
+          <RTAStatus t={t} />
+        </div>
+      )}
     </>
   )
 }
