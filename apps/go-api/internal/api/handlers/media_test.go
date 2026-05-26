@@ -10,6 +10,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/go-chi/chi/v5"
@@ -17,6 +19,7 @@ import (
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
 
@@ -502,5 +505,123 @@ func TestUploadHandler_WithCaptureTimes_InvalidJSON_Ignored(t *testing.T) {
 	// Le JSON invalide est loggué et ignoré, l'upload doit réussir
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200 (capture_times invalide ignoré), got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// urlToFilePath — conversion URL→chemin stocké en DB
+// ─────────────────────────────────────────────────────────────────────────────
+
+// spyLikeService capture le MediaLikeRequest reçu par SetMediaLike.
+type spyLikeService struct {
+	mockMediaService
+	capturedReq *domain.MediaLikeRequest
+}
+
+func (s *spyLikeService) SetMediaLike(_ context.Context, req domain.MediaLikeRequest) (*domain.MediaLikeResponse, error) {
+	s.capturedReq = &req
+	return &domain.MediaLikeResponse{FilePath: req.FilePath, Liked: true}, nil
+}
+
+// patchLike envoie un PATCH /media/likes et retourne le recorder.
+func patchLike(r http.Handler, filePath string, liked bool) *httptest.ResponseRecorder {
+	body, _ := json.Marshal(domain.MediaLikeRequest{FilePath: filePath, Liked: liked})
+	req := httptest.NewRequest(http.MethodPatch, "/players/test-player/media/likes", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+// TestMediaHandler_PatchMediaLike_URLPath_FallbackToRelPath vérifie que urlToFilePath
+// dépouille le préfixe URL et transmet relPath au service quand aucun settingsStore
+// ni repoRoot n'est configuré. C'est le fix du bug double-slug (before: URL complète
+// retournée → UPDATE 0 rows → 404).
+func TestMediaHandler_PatchMediaLike_URLPath_FallbackToRelPath(t *testing.T) {
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+	r := newMediaRouter(factory) // pas de settingsStore, pas de repoRoot
+
+	urlPath := "/api/v1/players/test-player/media/files/JGtm/clip.mp4"
+	w := patchLike(r, urlPath, true)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.capturedReq == nil {
+		t.Fatal("SetMediaLike not called")
+	}
+	// URL dépouillée du préfixe → relPath avec séparateur OS.
+	wantRelPath := filepath.Join("JGtm", "clip.mp4")
+	if spy.capturedReq.FilePath != wantRelPath {
+		t.Errorf("FilePath = %q, want %q (URL stripped to relPath)", spy.capturedReq.FilePath, wantRelPath)
+	}
+}
+
+// TestMediaHandler_PatchMediaLike_PlainPath_Passthrough vérifie qu'un chemin ordinaire
+// (non préfixé par le pattern URL) passe inchangé au service.
+func TestMediaHandler_PatchMediaLike_PlainPath_Passthrough(t *testing.T) {
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+	r := newMediaRouter(factory)
+
+	plainPath := "/clips/g1.mp4"
+	w := patchLike(r, plainPath, true)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.capturedReq == nil {
+		t.Fatal("SetMediaLike not called")
+	}
+	if spy.capturedReq.FilePath != plainPath {
+		t.Errorf("FilePath = %q, want %q (unchanged)", spy.capturedReq.FilePath, plainPath)
+	}
+}
+
+// TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves vérifie que urlToFilePath
+// retourne le chemin absolu correct quand capturesBase est configuré et que le fichier
+// existe à capturesBase/relPath. Valide le fix du bug double-slug : l'ancienne version
+// cherchait capturesBase/viewer-slug/owner-slug/clip.mp4 (introuvable) ; la version
+// corrigée cherche capturesBase/owner-slug/clip.mp4 (trouve le fichier → chemin absolu).
+func TestMediaHandler_PatchMediaLike_URLPath_CapturesBaseResolves(t *testing.T) {
+	capturesBase := t.TempDir()
+	ownerDir := filepath.Join(capturesBase, "JGtm")
+	if err := os.MkdirAll(ownerDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ownerDir, "clip.mp4"), []byte("fake"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	settingsDir := t.TempDir()
+	settingsPath := filepath.Join(settingsDir, "app_settings.json")
+	settingsJSON := fmt.Sprintf(`{"media_captures_base_dir":%q}`, capturesBase)
+	if err := os.WriteFile(settingsPath, []byte(settingsJSON), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store := settings.NewStore(settingsPath)
+
+	spy := &spyLikeService{}
+	factory := func(_ context.Context, _ string) (port.MediaService, error) { return spy, nil }
+
+	r := chi.NewRouter()
+	h := handlers.NewMediaHandler(factory, nil, "").WithSettingsStore(store)
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Patch("/media/likes", h.PatchMediaLike)
+	})
+
+	urlPath := "/api/v1/players/test-player/media/files/JGtm/clip.mp4"
+	w := patchLike(r, urlPath, true)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	if spy.capturedReq == nil {
+		t.Fatal("SetMediaLike not called")
+	}
+	wantPath := filepath.Join(capturesBase, "JGtm", "clip.mp4")
+	if spy.capturedReq.FilePath != wantPath {
+		t.Errorf("FilePath = %q, want %q (capturesBase resolved to absolute)", spy.capturedReq.FilePath, wantPath)
 	}
 }

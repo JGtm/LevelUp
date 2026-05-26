@@ -1,3 +1,22 @@
+## [2026-05-26] Vérification finale likes/favorites + logging + tests urlToFilePath
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** :
+1. `shared_social_persister.go` — logging goroutine CHECKPOINT async : `slog.Warn` → `slog.WarnContext(ckptCtx, ...)` (context propagé correctement) + `slog.Debug` sur succès pour observabilité.
+2. `media_test.go` — 3 tests `urlToFilePath` via spy `spyLikeService` capturant `MediaLikeRequest.FilePath` :
+   - `URLPath_FallbackToRelPath` : URL `/api/v1/players/.../files/JGtm/clip.mp4` sans settingsStore → service reçoit `JGtm\clip.mp4` (relPath), pas l'URL complète.
+   - `PlainPath_Passthrough` : chemin ordinaire `/clips/g1.mp4` → inchangé.
+   - `URLPath_CapturesBaseResolves` : temp dir + settings store JSON avec `media_captures_base_dir` → fichier créé à `capturesBase/JGtm/clip.mp4` → service reçoit le chemin absolu. Valide que le fix double-slug fonctionne (ancienne version cherchait `capturesBase/viewer/owner/clip.mp4` introuvable).
+
+**Résultats** : `go test ./...` vert, `go vet ./...` propre. 3 nouveaux tests PASS.
+
+**Conclusion** : triangle complet cohérent — fix bug (urlToFilePath), réactivité UI (CHECKPOINT async), protection WAL (CHECKPOINT shutdown sync), logging structuré, couverture test.
+
+---
+
 ## [2026-05-26] CHECKPOINT final shutdown shared_social (anti-WAL-replay-bug)
 
 **Statut** : Complété

@@ -353,8 +353,10 @@ func (p *SharedSocialPersister) Persist(ctx context.Context, batch *SharedSocial
 		ckptCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if _, ckptErr := p.db.ExecContext(ckptCtx, "CHECKPOINT"); ckptErr != nil {
-			slog.Warn("shared_social: CHECKPOINT async failed (non-fatal — data committed in WAL)",
+			slog.WarnContext(ckptCtx, "shared_social: CHECKPOINT async failed (non-fatal — data committed in WAL)",
 				"batch_id", batchID, "source", batchSrc, "err", ckptErr)
+		} else {
+			slog.Debug("shared_social: CHECKPOINT async terminé", "batch_id", batchID, "source", batchSrc)
 		}
 	}()
 
