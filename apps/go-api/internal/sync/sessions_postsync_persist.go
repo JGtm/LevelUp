@@ -18,15 +18,23 @@ import (
 // ou session_label ont changé vs la DB courante (delta filter).
 // Sans ce filtre, le recalcul complet des sessions génère 700+ UPDATEs sur des
 // rows inchangées → bug ART DuckDB "Failed to delete all rows from index".
-func writeSessionAssignmentsBatch(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
+//
+// onlyNewRows=true : restreint les writes aux rows dont session_id IS NULL en DB.
+// Utilisé par fullSessionCompute (fallback gap-fill) pour éviter un bulk-UPDATE
+// de centaines de rows existantes → ART bug "duplicate key on append" (cf. crash
+// JGtm 2026-05-26, 20 matchs comblés + 876 rows existantes).
+func writeSessionAssignmentsBatch(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment, onlyNewRows bool) (int, error) {
 	if len(assignments) == 0 {
 		return 0, nil
 	}
 
-	changed, err := deltaSessionAssignments(ctx, db, assignments)
+	changed, err := deltaSessionAssignments(ctx, db, assignments, onlyNewRows)
 	if err != nil {
 		slog.WarnContext(ctx, "writeSessionAssignmentsBatch: delta load échoué, fallback full update",
 			"total", len(assignments), "err", err)
+		if onlyNewRows {
+			return 0, err // pas de fallback unsafe en mode onlyNewRows
+		}
 		changed = assignments // fallback safe : on écrit tout plutôt que de rater des sessions
 	}
 
@@ -62,7 +70,10 @@ func writeSessionAssignmentsBatch(ctx context.Context, db *sql.DB, assignments [
 // deltaSessionAssignments compare les nouveaux assignments calculés avec les
 // valeurs actuelles dans player_match_enrichment. Retourne uniquement les rows
 // où session_id ou session_label ont changé (ou qui n'ont pas encore de row).
-func deltaSessionAssignments(ctx context.Context, db *sql.DB, newAssignments []domain.SessionAssignment) ([]domain.SessionAssignment, error) {
+//
+// onlyNewRows=true : ne retourne que les rows dont session_id IS NULL en DB
+// (équivalent e.sid == ""). Les rows existantes ne sont jamais mises à jour.
+func deltaSessionAssignments(ctx context.Context, db *sql.DB, newAssignments []domain.SessionAssignment, onlyNewRows bool) ([]domain.SessionAssignment, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT match_id,
 		       COALESCE(CAST(session_id AS VARCHAR), ''),
@@ -91,7 +102,11 @@ func deltaSessionAssignments(ctx context.Context, db *sql.DB, newAssignments []d
 	for _, a := range newAssignments {
 		e, found := cur[a.MatchID]
 		newSID := strconv.Itoa(a.SessionID)
-		if !found || e.sid != newSID || e.label != a.SessionLabel {
+		if !found || e.sid == "" {
+			// row absente ou session_id NULL : toujours écrire
+			changed = append(changed, a)
+		} else if !onlyNewRows && (e.sid != newSID || e.label != a.SessionLabel) {
+			// mode normal (incrémental) : écrire si valeur changée
 			changed = append(changed, a)
 		}
 	}

@@ -273,7 +273,7 @@ func nullStr(s string) *string {
 // le path legacy row-by-row UPDATE a été supprimé car à risque ART).
 // Retourne le nombre de lignes affectées.
 func WriteSessionAssignments(ctx context.Context, db *sql.DB, assignments []domain.SessionAssignment) (int, error) {
-	return writeSessionAssignmentsBatch(ctx, db, assignments)
+	return writeSessionAssignmentsBatch(ctx, db, assignments, false)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
