@@ -165,7 +165,8 @@ export function MediaPage() {
   const text = getMediaText(locale)
   const [page, setPage] = useState(1)
   const [kindFilter, setKindFilter] = useState('')
-  const [authorSlugs, setAuthorSlugs] = useState<string[]>([])
+  // Défaut explicite = joueur courant sélectionné. [] = tous les auteurs (pas de filtre player_slug).
+  const [authorSlugs, setAuthorSlugs] = useState<string[]>([playerSlug])
   const [playlistFilter, setPlaylistFilter] = useState('')
   const [mapFilter, setMapFilter] = useState('')
   const [modeFilter, setModeFilter] = useState('')
@@ -177,12 +178,9 @@ export function MediaPage() {
   const picker = useMediaPicker()
   const [autoChain, setAutoChain] = useState(false)
 
-  // Par défaut on filtre sur les médias DU joueur courant. Le AuthorsMultiSelect
-  // permet d'élargir explicitement à d'autres auteurs (qui prend le pas sur
-  // section_filter via la logique backend).
   const request: MediaQueryRequest = {
     sort: sortKey,
-    section_filter: authorSlugs.length > 0 ? null : 'mine',
+    section_filter: null,
     kind_filter: kindFilter || null,
     author_slugs: authorSlugs.length > 0 ? authorSlugs : null,
     playlist_filter: playlistFilter || null,
