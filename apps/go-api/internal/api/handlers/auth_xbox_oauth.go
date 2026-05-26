@@ -29,9 +29,10 @@ type XboxOAuthHandler struct {
 	sessionStore *session.Store
 	provider     auth_platform.TokenProvider
 	demoMode     bool
-	redirectURI  string                     // URI publique de callback (config)
-	linkStrategy auth_platform.LinkStrategy // post-flow : login user
-	postLoginURL string                     // où rediriger après succès (typiquement "/")
+	redirectURI  string                             // URI publique de callback (config)
+	linkStrategy auth_platform.LinkStrategy         // post-flow : login user
+	postLoginURL string                             // où rediriger après succès (typiquement "/")
+	authStore    *auth_platform.MultiUserTokenStore // ADR 0023 : persister le RT post-SSO
 }
 
 // NewXboxOAuthHandler crée un XboxOAuthHandler.
@@ -54,6 +55,16 @@ func NewXboxOAuthHandler(
 // WithLinkStrategy injecte la LinkStrategy (typiquement XboxSSOLinkStrategy).
 func (h *XboxOAuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *XboxOAuthHandler {
 	h.linkStrategy = s
+	return h
+}
+
+// WithAuthStore injecte le MultiUserTokenStore (ADR 0023). Quand présent, le
+// callback OAuth persiste le refresh_token Microsoft frais reçu (post-flow)
+// dans le store — indispensable pour que le serveur puisse rafraîchir les
+// tokens du joueur après la première authentification SSO sans re-prompter.
+// Nil → mode legacy (pas de persistance, le RT est perdu après la requête).
+func (h *XboxOAuthHandler) WithAuthStore(s *auth_platform.MultiUserTokenStore) *XboxOAuthHandler {
+	h.authStore = s
 	return h
 }
 
@@ -178,6 +189,8 @@ func (h *XboxOAuthHandler) validateCallbackParams(w http.ResponseWriter, r *http
 }
 
 // exchangeCallbackTokens fait ExchangeAuthorizationCode puis provider.Exchange.
+// Persiste aussi le refresh_token Microsoft dans le MultiUserTokenStore (ADR 0023)
+// pour que les refresh ultérieurs n'aient pas besoin d'un nouveau flow interactif.
 func (h *XboxOAuthHandler) exchangeCallbackTokens(
 	w http.ResponseWriter, r *http.Request, code string,
 ) (*auth_platform.AuthCodeResult, *auth_platform.ExchangeResult, bool) {
@@ -193,6 +206,18 @@ func (h *XboxOAuthHandler) exchangeCallbackTokens(
 		writeError(r.Context(), w, http.StatusInternalServerError, "halo_exchange_failed", err.Error())
 		return nil, nil, false
 	}
+
+	// Persistance ADR 0023 : RT Microsoft frais → MultiUserTokenStore.
+	if h.authStore != nil && tokenResult.RefreshToken != "" && exchangeResult.XUID != "" {
+		if werr := h.authStore.UpdateOAuthRefreshToken(exchangeResult.XUID, tokenResult.RefreshToken); werr != nil {
+			slog.WarnContext(r.Context(), "auth_xbox_oauth: persistance RT au store échouée",
+				"xuid", exchangeResult.XUID, "err", werr)
+		} else {
+			slog.InfoContext(r.Context(), "auth_xbox_oauth: RT persisté au store",
+				"xuid", exchangeResult.XUID, "gamertag", exchangeResult.Gamertag)
+		}
+	}
+
 	return tokenResult, exchangeResult, true
 }
 
