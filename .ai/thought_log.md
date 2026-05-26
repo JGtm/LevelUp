@@ -1,3 +1,81 @@
+## [2026-05-26] Fix crash MatchPoller — branchement d'un vrai MatchFetcher
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme** : API Go en boucle de panic (toutes les ~30s, `logs/server.crash.log`) → app web inutilisable, message "Impossible de contacter l'API. Vérifiez que le serveur Go est démarré". Diag : `nil pointer dereference` à `match_poller.go:93` (`p.fetcher.FetchRecentMatchIDs(...)` sur fetcher nil).
+
+**Cause racine** : depuis l'introduction du `MatchPoller` (commit `b144c246`), aucune implémentation prod de `MatchFetcher` n'avait jamais été branchée — `daemon.go:245,285` passait `nil` au `PlayerWatcher`. Dès qu'un joueur passait in-game (présence Xbox détectée), FSM → Watching → startPoller → poll → nil deref → process kill → Air relance → re-crash → boucle.
+
+**Décision technique** :
+- Nouvel adaptateur `HaloMatchFetcher` (`internal/watcher/halo_match_fetcher.go`) qui wrap `*sync.PooledHaloClient` via une **interface narrow 1-méthode** (ISP + testabilité : mock 1 méthode au lieu de 8).
+- Injecté via nouveau champ `DaemonConfig.MatchFetcher` (aligné avec le pattern existant `LiveRefreshFactory`, préserve rétrocompat des tests).
+- Réutilise `autoSyncPool` (pas de pool dédié) : endpoint `/hi/players/xuid(N)/matches` public (PolicyAnyPublic), quota Microsoft par-token, dédoubler exposerait à des 429.
+- Format `xuid(N)` géré en interne — caller passe juste un xuid brut. Cf. mémoire `reference_halo_api_xuid_format.md` (incident mai 2026, 14j sans insert).
+- **Garde-fou défensif** dans `PlayerWatcher.startPoller` : si fetcher nil, Warn-once (`sync.Once`) + skip création du poller. FSM reste en Watching mais plus jamais de panic.
+
+**Résultats observés** :
+- `go vet ./...` : OK
+- `go build ./...` : OK
+- `go test ./internal/watcher/... -race -count=1` : OK (6 nouveaux tests + tous les existants)
+- Suite complète `go test ./... -short -count=1` : tous packages OK
+- Crash loop résolu, MatchPoller opérationnel pour la 1ère fois en prod
+
+**Fichiers** :
+- Créés : `internal/watcher/halo_match_fetcher.go` + `halo_match_fetcher_test.go`
+- Modifiés : `internal/watcher/daemon.go`, `internal/watcher/player_watcher.go`, `internal/watcher/watcher_test.go`, `cmd/server/main.go`
+
+**Conclusion / prochaine étape** : observer en runtime — à la prochaine session Halo lancée, vérifier que les logs montrent `match_poller: démarré interval=30s` puis `match_poller: nouveaux matchs détectés` après chaque match terminé, et que le process reste stable. Commit + push.
+
+---
+
+## [2026-05-26] Fix shared.X via SharedReader — 10 sites cassés en silence
+
+**Statut** : Complété
+
+**Décision technique** : Le bug du chart breakdown armes n'était PAS une migration manquante (diagnostic initial erroné) mais un préfixe `shared.` invalide dans les queries via SharedReader. Post-ADR 0016 (retrait ATTACH shared sur conn player), `SharedReader.Get(ctx)` retourne une connexion DIRECTE à `shared_matches_v2.duckdb` où `shared` n'est ni schéma ni catalogue. Les queries doivent utiliser les tables sans préfixe (résolues dans le schéma `main` par défaut).
+
+**Diagnostic empirique** : script temporaire avec le vrai `sharedprovider.Provider` confirmant que `SELECT 1 FROM shared.xuid_aliases LIMIT 1` échoue avec `Catalog Error: Table does not exist! Did you mean "shared_matches_v2.xuid_aliases"?`. Toutes les queries `shared.X` via SharedReader échouaient avec dégradation silencieuse côté caller (catch + fallback vide).
+
+**Scope du bug** : pas juste weapon_kills. Le test anti-régression AST-based a identifié **10 sites** au total :
+- `weapon_kills_repo.go` (4 occurrences inline, le symptôme visible)
+- `queries_match.go::Q10Encounters` (career + synthesis encounters vides)
+- `queries_home_citations.go::Q36aMedalTotals` (totaux médailles home à 0)
+- `engagement_score_repo.go::LoadMatchIntensity` (match_intensity null)
+- `fanout_repo.go::CountCommonMatchesForXUID` (compteur social squad à 0)
+- `filters_repo.go::GetPlayerMatchCount/Playlists/Maps` (3 inline SQL, cascades vides)
+- `match_exclusion_repo.go::GetMatchRegistryInfo` (lookup exclusion en erreur)
+
+Toutes étaient activement appelées mais dégradaient en silence (pas de log Error, fallback vide). L'utilisateur voyait les pages sans réaliser la dégradation.
+
+**Fix appliqué** : 7 commits atomiques (un par fichier modifié) retirant le préfixe `shared.` du SQL exécuté via SharedReader.
+
+**Filet pérenne** : nouveau test `TestSharedReader_NoSharedPrefixViaSharedReader` dans `shared_reader_routing_test.go` — parsing AST de chaque .go non-test, scan des `BasicLit` (SQL inline) ET des références const dans les fonctions qui appellent `.SharedReadDB().Get(`. Fail si l'un d'eux contient `FROM shared.X` ou `JOIN shared.X`. Complète le test existant `TestSharedReader_AllHomeRepoCallsRouted` (qui ne checkait que le pattern ReadDB côté player conn).
+
+**Résultats observés** : 
+- Query weapon_kills sur Madina97294 retourne 20 armes (MK50 Sidekick: 2035, BR75: 1724, MA40 AR: 1485, ...).
+- `go test -tags integration ./internal/platform/duckdb/` : 72.5s, full suite OK.
+- Test anti-régression vert.
+
+**Leçon** : ne pas faire confiance à un test qui passe ("Catalog Error" silencieux côté Repo + caller catch = dégradation invisible). Toujours simuler la query EXACTE avec la VRAIE connexion Provider avant de déclarer un bug réparé. Le test initial passait parce qu'il vérifiait uniquement `pdb.ReadDB()` (player conn) sans surveiller `SharedReader.Get()`.
+
+---
+
+## [2026-05-26] Fix backup — attachExistingHandles TOCTOU player DBs
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `attachExistingHandles` dans `internal/ops/backup_service.go` faisait le `LookupCachedDB` au moment du `discover()` (début du cycle). Les player DBs et `shared_social` n'étaient pas encore en cache (elles s'ouvrent lazily). Quelques ms plus tard, l'auto_sync les ouvrait en RW → l'exporter essayait d'ouvrir en RO → "Can't open a connection to same database file with a different configuration". Fix : `OpenDB` callback dynamique sur tous les targets : lookup au moment de l'appel + fallback RO si absent du cache.
+
+**Résultat** : Plus d'erreurs "export échoué" pour les player DBs. 3 snapshots restic existaient déjà (pas 1) — la policy `--keep-daily=7` ne conserve qu'1 snapshot par jour, d'où la confusion.
+
+**Conclusion** : Build + tests OK. Bug corrigé.
+
+---
+
 ## [2026-05-26] Logos némésis/souffre-douleur dans les tuiles match-view
 
 **Statut** : Complété
