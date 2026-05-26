@@ -10,8 +10,6 @@ import type { HomeSkillPeakSummary, HomeSpartanIdentity } from '@/lib/api/types'
 import { getSpartanIdentityText } from './spartanIdentity.i18n'
 import { HomeSkillPeakCard, resolveSkillPeakState } from './HomeSkillPeakCard'
 
-const FALLBACK_BANNER_URL = '/banner-default.png'
-
 interface HomeSpartanIdentityBannerProps {
   spartanIdentity: HomeSpartanIdentity
   playerName: string
@@ -38,7 +36,7 @@ export function HomeSpartanIdentityBanner({
   const numberLocale = locale === 'en' ? 'en-US' : 'fr-FR'
   const spartanText = getSpartanIdentityText(locale)
 
-  const activeBannerUrl = spartanIdentity.banner_image_url ?? FALLBACK_BANNER_URL
+  const activeBannerUrl = spartanIdentity.banner_image_url ?? null
   const labels = spartanText.labels
 
   const careerRank = spartanIdentity.career_rank ?? null
