@@ -73,7 +73,7 @@ func (r *MatchExclusionRepo) GetMatchRegistryInfo(ctx context.Context, matchID s
 			COALESCE(is_ranked, FALSE)    AS is_ranked,
 			COALESCE(is_firefight, FALSE) AS is_firefight,
 			COALESCE(pair_name, '')       AS pair_name
-		FROM shared.match_registry
+		FROM match_registry
 		WHERE match_id = ?
 		LIMIT 1
 	`, matchID).Scan(&info.MatchID, &startTime, &isRanked, &isFirefight, &pairName)
