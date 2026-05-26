@@ -1126,11 +1126,27 @@ func buildAutoSyncPool(
 		return nil // log Warn fait par le caller
 	}
 
-	// Callback de persistance du RT rotaté : ouvre la player DB en
-	// OpenReadWriteShared (partage l'instance du pool joueur) et UPSERT le
-	// nouveau RT dans sync_meta. Best-effort : une erreur est loguée mais
-	// n'interrompt pas le Resolve.
+	// Callback de persistance du RT rotaté (ADR 0023) :
+	//  1. PRIORITÉ — écriture dans MultiUserTokenStore (source canonique)
+	//  2. Compat — écriture aussi dans sync_meta DuckDB (legacy, retiré Phase 5)
+	//
+	// xuid résolu via store.LoadByGamertag (l'entrée a été créée par migration
+	// Phase 2 ou par Discovery) — fallback config.LoadPlayers si pas en store.
+	// Best-effort : une erreur sur l'une des écritures n'interrompt pas l'autre.
+	authStoreForCallback := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	onRotated := func(ctx context.Context, gamertag, newRT string) error {
+		xuid := resolveXUIDForRotation(ctx, cfg, authStoreForCallback, gamertag)
+		if xuid != "" {
+			if err := authStoreForCallback.UpdateOAuthRefreshToken(xuid, newRT); err != nil {
+				slog.WarnContext(ctx, "onRotated: écriture store échouée",
+					"gamertag", gamertag, "xuid", xuid, "err", err)
+			}
+		} else {
+			slog.WarnContext(ctx, "onRotated: xuid introuvable, store non mis à jour",
+				"gamertag", gamertag)
+		}
+
+		// Compat DuckDB (sera retiré Phase 5 quand Phase 4 sera stabilisée).
 		dbPath := pr.PlayerDBPath(title.DefaultSlug, gamertag)
 		db, err := duckdb.OpenReadWriteShared(dbPath)
 		if err != nil {
@@ -1421,6 +1437,28 @@ func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, 
 		SpartanToken:   s.tokens.AccessToken,
 		ClearanceToken: "",
 	}, nil
+}
+
+// resolveXUIDForRotation retourne le xuid associé à un gamertag pour l'écriture
+// du RT rotaté dans MultiUserTokenStore. Cherche d'abord dans le store
+// (LoadByGamertag), puis dans config.LoadPlayers en dernier recours.
+// Retourne "" si introuvable (joueur jamais migré ni configuré).
+func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *auth.MultiUserTokenStore, gamertag string) string {
+	if user, err := store.LoadByGamertag(gamertag); err == nil && user != nil && user.XUID != "" {
+		return user.XUID
+	}
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.DebugContext(ctx, "resolveXUIDForRotation: LoadPlayers erreur", "err", err)
+		return ""
+	}
+	target := strings.ToLower(strings.TrimSpace(gamertag))
+	for _, p := range players {
+		if strings.ToLower(p.Gamertag) == target {
+			return p.XUID
+		}
+	}
+	return ""
 }
 
 // migrateLegacyAuthTokensAtBoot copie les tokens legacy (env var

@@ -1,18 +1,24 @@
-// cmd/token-capture — obtient un refresh_token Microsoft pour un joueur via Device Code Flow.
+// cmd/token-capture — obtient un refresh_token Microsoft pour un joueur via Device Code Flow
+// et l'écrit directement dans le MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
 //
 // Flow :
-//  1. Initie un Device Code Flow sur login.microsoftonline.com (même Azure app que le serveur).
-//  2. Affiche le lien + code à envoyer au joueur — il s'authentifie dans son navigateur.
-//  3. Poll jusqu'à confirmation, écrit le refresh_token dans un fichier texte.
+//  1. Résout xuid depuis db_profiles.json via gamertag (config.LoadPlayers).
+//  2. Initie un Device Code Flow sur login.microsoftonline.com (même Azure app que le serveur).
+//  3. Affiche le lien + code à envoyer au joueur — il s'authentifie dans son navigateur.
+//  4. Poll jusqu'à confirmation.
+//  5. Écrit le refresh_token directement dans le store (UpdateOAuthRefreshToken) + complète
+//     l'entrée avec gamertag/xuid si nouvelle.
+//  6. Invalide le cache process des HaloTokens pour ce xuid (force re-acquire au prochain refresh).
+//
+// Aucune manipulation manuelle de .env.local nécessaire — au prochain redémarrage du serveur,
+// le Pool trouve le token dans le store et fonctionne immédiatement.
 //
 // Usage :
 //
-//	go run ./cmd/token-capture/ [gamertag]
+//	go run ./cmd/token-capture/ <gamertag>
 //	go run ./cmd/token-capture/ Madina97294
 //
-// Le fichier de sortie (token_<gamertag>.txt) contient la ligne prête à coller dans .env.local :
-//
-//	SPNKR_OAUTH_REFRESH_TOKEN_MADINA97294=<refresh_token>
+// Si le joueur n'est pas dans db_profiles.json, le tool affiche une erreur explicite.
 package main
 
 import (
@@ -25,6 +31,11 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/halo"
 )
 
 const (
@@ -70,14 +81,24 @@ func resolveClientID() string {
 }
 
 func main() {
-	gamertag := "Madina97294"
-	if len(os.Args) > 1 {
-		gamertag = os.Args[1]
+	if len(os.Args) < 2 {
+		fatalf("usage: token-capture <gamertag>\n  ex: token-capture Madina97294\n")
 	}
-	outputFile := fmt.Sprintf("token_%s.txt", gamertag)
+	gamertag := os.Args[1]
+
+	cfg, err := config.Load()
+	if err != nil {
+		fatalf("config.Load: %v\n", err)
+	}
+
+	xuid, resolvedGT, err := resolveXUID(cfg, gamertag)
+	if err != nil {
+		fatalf("%v\n", err)
+	}
 
 	clientID := resolveClientID()
 	fmt.Printf("Azure client_id utilisé : %s\n", clientID)
+	fmt.Printf("Joueur résolu : %s (xuid=%s)\n", resolvedGT, xuid)
 
 	ctx, cancel := context.WithTimeout(context.Background(), authTimeout)
 	defer cancel()
@@ -87,7 +108,7 @@ func main() {
 		fatalf("démarrage du Device Code Flow: %v\n", err)
 	}
 
-	printInstructions(gamertag, dc)
+	printInstructions(resolvedGT, dc)
 
 	_, refreshToken, err := pollToken(ctx, clientID, dc.DeviceCode, dc.Interval)
 	if err != nil {
@@ -97,17 +118,52 @@ func main() {
 		fatalf("refresh_token absent de la réponse Microsoft\n")
 	}
 
-	envKey := fmt.Sprintf("SPNKR_OAUTH_REFRESH_TOKEN_%s", strings.ToUpper(gamertag))
-	line := fmt.Sprintf("%s=%s\n", envKey, refreshToken)
-
-	if err := os.WriteFile(outputFile, []byte(line), 0600); err != nil {
-		fatalf("écriture %s: %v\n", outputFile, err)
+	storeDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+	store := auth.NewMultiUserTokenStore(storeDir)
+	if err := store.UpdateOAuthRefreshToken(xuid, refreshToken); err != nil {
+		fatalf("écriture store: %v\n", err)
 	}
 
-	fmt.Printf("\nToken écrit dans : %s\n", outputFile)
-	fmt.Println("Contenu à coller dans .env.local :")
+	// Compléter gamertag dans l'entrée store si nouvelle entrée vide.
+	if existing, _ := store.Load(xuid); existing != nil && existing.Gamertag == "" {
+		existing.Gamertag = resolvedGT
+		_ = store.Upsert(existing)
+	}
+
+	// Invalider le cache process des HaloTokens — force un re-acquire au prochain
+	// refresh, sinon le serveur réutiliserait des Spartan tokens dérivés de
+	// l'ancien RT chain pendant ~50 min (TTL cache).
+	halo.InvalidateCachedPlayerTokens(xuid)
+
 	fmt.Println()
-	fmt.Print(line)
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("  OK — Token persisté dans le store canonique\n")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("  Fichier : %s\\%s.json\n", storeDir, xuid)
+	fmt.Println()
+	fmt.Println("  Redémarrer le serveur (ou laisser Air relancer) — le Pool")
+	fmt.Println("  trouvera le token immédiatement, aucune édition .env.local.")
+	fmt.Println()
+}
+
+// resolveXUID résout xuid + gamertag canonique depuis db_profiles.json via le
+// gamertag fourni en argument (case-insensitive). Retourne une erreur explicite
+// si le joueur n'est pas configuré.
+func resolveXUID(cfg *config.AppConfig, gamertag string) (xuid, canonicalGT string, err error) {
+	players, lerr := cfg.LoadPlayers()
+	if lerr != nil {
+		return "", "", fmt.Errorf("LoadPlayers: %w", lerr)
+	}
+	target := strings.ToLower(strings.TrimSpace(gamertag))
+	for _, p := range players {
+		if strings.ToLower(p.Gamertag) == target {
+			if p.XUID == "" {
+				return "", "", fmt.Errorf("joueur %q présent mais xuid manquant dans db_profiles.json", p.Gamertag)
+			}
+			return p.XUID, p.Gamertag, nil
+		}
+	}
+	return "", "", fmt.Errorf("joueur %q absent de db_profiles.json — ajouter une entrée avec xuid avant token-capture", gamertag)
 }
 
 func startDeviceFlow(ctx context.Context, clientID string) (*deviceCodeResponse, error) {
