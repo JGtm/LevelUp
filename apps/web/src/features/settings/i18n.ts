@@ -109,6 +109,14 @@ export interface SettingsText {
   watcherStateSyncing: string
   watcherStateCooling: string
   watcherInGame: string
+  /** État Xbox Online (compte connecté à Xbox) */
+  watcherPresenceOnline: string
+  /** État Xbox Away (idle long sur Xbox) */
+  watcherPresenceAway: string
+  /** État Xbox Offline (compte déconnecté) */
+  watcherPresenceOffline: string
+  /** Présence inconnue (pas encore d'event reçu) */
+  watcherPresenceUnknown: string
   /** "Vu il y a {duration} sur {title}" — format relatif + jeu */
   watcherLastSeenRelative: string
   /** "Vu le {date} sur {title}" — format absolu si trop ancien */
@@ -347,6 +355,10 @@ const FR_TEXT: SettingsText = {
   watcherStateSyncing: 'Synchronisation',
   watcherStateCooling: 'Cooldown',
   watcherInGame: 'En jeu',
+  watcherPresenceOnline: 'En ligne',
+  watcherPresenceAway: 'Absent',
+  watcherPresenceOffline: 'Hors-ligne',
+  watcherPresenceUnknown: '—',
   watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
   watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
   watcherNeverSeen: 'Jamais vu en jeu',
@@ -616,6 +628,10 @@ const EN_TEXT: SettingsText = {
   watcherStateSyncing: 'Syncing',
   watcherStateCooling: 'Cooling',
   watcherInGame: 'In game',
+  watcherPresenceOnline: 'Online',
+  watcherPresenceAway: 'Away',
+  watcherPresenceOffline: 'Offline',
+  watcherPresenceUnknown: '—',
   watcherLastSeenRelative: 'Seen {duration} ago on {title}',
   watcherLastSeenAbsolute: 'Last seen on {date} playing {title}',
   watcherNeverSeen: 'Never seen in game',

@@ -3201,7 +3201,10 @@ export interface WatcherLastSeen {
 export interface WatcherPlayerStatus {
   gamertag: string
   xuid: string
+  /** État FSM watcher : "Idle" / "Watching" / "Syncing" / "Cooling" */
   state: string
+  /** État Xbox brut : "Online" / "Away" / "Offline" — vide si aucun event reçu */
+  presence_state?: string
   in_game: boolean
   state_since: string
   state_duration: string
