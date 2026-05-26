@@ -1,3 +1,19 @@
+## [2026-05-26] UI fixes match-view — badges dominance, timestamps, pills chart KD cumulé
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décisions techniques** :
+1. Badge dominance (`DominanceBadgeInline`) : mapping par `flag: number` (1–5) vers semantic token, car le backend envoie `color_token` en dot-notation incompatible avec les tokens frontend kebab-case.
+2. Timestamps badges et charts : format unifié `XmYYs` (`formatTime` dans MatchImpactBadgesBar, `formatBinSeconds` dans _chartSeries.ts, `formatMmSs` dans MatchKDCumulChart).
+3. Tooltips charts : `TimeseriesLineChart` et `MatchKDCumulChart` utilisent le formatter `XmYYs` sur axisPointer + tooltip formatter.
+4. Pills chart "Frags cumulés" : retour au pattern `chipRich(border)` + `{toneTag|emoji gamertag}` — une seule pill par badge avec l'emoji unicode du `BadgeSpec` + gamertag. Suppression de l'approche `{ico|}{t|}` à deux tags adjacents et de l'import `BADGE_SVG` inutilisé.
+
+**Résultats** : typecheck propre, lint sans nouveau warning.
+
+---
+
 ## [2026-05-26] Fix likes/favoris bloqués — suppression CHECKPOINT async + leaseWriter inutile
 
 **Statut** : Complété.
