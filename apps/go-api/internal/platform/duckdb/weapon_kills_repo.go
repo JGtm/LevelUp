@@ -1,12 +1,16 @@
 // Package duckdb — weapon_kills_repo.go : implementation DuckDB du loader
 // aggregat weapon_kills (port.WeaponKillsRepository).
 //
-// Source : shared.weapon_kills (1 row par kill effectif). Agregation cote DB
+// Source : weapon_kills (1 row par kill effectif). Agregation cote DB
 // via GROUP BY (xuid, effective_weapon_id) + COUNT(*) — pour rester aligne
 // avec Q16WeaponKills (le repo MatchViewRepo agrege deja ainsi pour 1 match).
 //
+// ADR 0016 : queries executees via SharedReader.Get(ctx) — connexion directe
+// au fichier shared_matches_v2.duckdb, pas de prefixe `shared.` (l'ATTACH a
+// ete retire). Toutes les tables/vues vivent dans le schema `main` par defaut.
+//
 // Capability gating : si la table cible est absente (ou la vue
-// shared.v_weapon_kills), DuckDB remonte une erreur "Table with name ... does
+// v_weapon_kills), DuckDB remonte une erreur "Table with name ... does
 // not exist" — interceptee via isTableNotFoundErr et convertie en
 // games.ErrCapabilityNotSupported. Plus pérenne qu'une introspection
 // information_schema (les CATALOG/SCHEMA varient entre prod RO direct,
@@ -18,7 +22,7 @@
 // Note grenade/melee : les types canoniques HighlightEventType ne contiennent
 // PAS "grenade_kill" ni "melee_kill" (cf. canonical/enums.go : kill, death,
 // assist, medal, finisher, clutch, first_kill, first_death). Les decomptes
-// grenade/melee sont stockes dans shared.match_participants comme colonnes
+// grenade/melee sont stockes dans match_participants comme colonnes
 // agregees (grenade_kills, melee_kills). Le repo expose donc ces totaux par
 // joueur / par match en UNION ALL avec un weapon_id sentinel (0=grenade, 1=melee)
 // quand IncludeGrenadeMelee=true. Decision documentee dans thought_log
@@ -38,7 +42,7 @@ import (
 )
 
 // Sentinel weapon_id valeurs reservees pour les rangees grenade/melee
-// venant de shared.match_participants (IncludeGrenadeMelee=true).
+// venant de match_participants (IncludeGrenadeMelee=true).
 // Choix : 0 et 1 sont deja exclus par Q16WeaponKills (NOT IN (0,1,2)),
 // donc ils ne peuvent jamais collisioner avec un weapon_id reel.
 const (
@@ -59,7 +63,7 @@ func NewWeaponKillsRepo(pdb *PlayerDB) *WeaponKillsRepo {
 // LoadWeaponKillsAggregated charge les kills aggregees par (xuid, weapon_id).
 //
 // L'appelant DOIT avoir valide les filtres ; le repo re-valide en defense.
-// Retourne games.ErrCapabilityNotSupported si shared.weapon_kills n'existe
+// Retourne games.ErrCapabilityNotSupported si weapon_kills n'existe
 // pas dans la DB cible.
 func (r *WeaponKillsRepo) LoadWeaponKillsAggregated(
 	ctx context.Context,
@@ -76,7 +80,7 @@ func (r *WeaponKillsRepo) LoadWeaponKillsAggregated(
 	rows, err := r.queryWeaponKills(ctx, filters)
 	if err != nil {
 		if isTableNotFoundErr(err) {
-			slog.DebugContext(ctx, "WeaponKillsRepo: shared.weapon_kills missing",
+			slog.DebugContext(ctx, "WeaponKillsRepo: weapon_kills missing",
 				"slug", slug, "match_count", len(filters.MatchIDs))
 			return nil, games.ErrCapabilityNotSupported
 		}
@@ -135,13 +139,13 @@ func (r *WeaponKillsRepo) queryWeaponKills(
 	return out, nil
 }
 
-// buildWeaponKillsQuery compose le SELECT principal sur shared.weapon_kills,
-// optionnellement UNION ALL avec shared.match_participants pour grenade/melee.
+// buildWeaponKillsQuery compose le SELECT principal sur v_weapon_kills,
+// optionnellement UNION ALL avec match_participants pour grenade/melee.
 //
 // Filtres :
 //   - MatchIDs (requis) -> wk.match_id IN (?,...)
 //   - Gamertag XOR XUIDs -> filtre sur wk.xuid (resolution gamertag->xuid via
-//     shared.xuid_aliases si Gamertag fourni)
+//     xuid_aliases si Gamertag fourni)
 //
 // Note : effective_weapon_id NOT IN (0,1,2) exclu pour rester aligne avec Q16
 // (sentinel des armes "no weapon"). Quand IncludeGrenadeMelee=true on injecte
@@ -167,7 +171,7 @@ SELECT
     wk.effective_weapon_id AS weapon_id,
     COUNT(*) AS kills,
     FALSE AS is_grenade_melee
-FROM shared.v_weapon_kills wk
+FROM v_weapon_kills wk
 WHERE wk.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)
@@ -196,7 +200,7 @@ SELECT
 	sb.WriteString(`::UBIGINT AS weapon_id,
     SUM(COALESCE(mp.grenade_kills, 0))::INTEGER AS kills,
     TRUE AS is_grenade_melee
-FROM shared.match_participants mp
+FROM match_participants mp
 WHERE mp.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)`)
@@ -217,7 +221,7 @@ SELECT
 	sb.WriteString(`::UBIGINT AS weapon_id,
     SUM(COALESCE(mp.melee_kills, 0))::INTEGER AS kills,
     TRUE AS is_grenade_melee
-FROM shared.match_participants mp
+FROM match_participants mp
 WHERE mp.match_id IN (`)
 	sb.WriteString(matchPlaceholders)
 	sb.WriteString(`)`)
@@ -249,7 +253,7 @@ func appendXUIDFilter(sb *strings.Builder, args *[]any, alias string, f port.Wea
   AND `)
 	sb.WriteString(alias)
 	sb.WriteString(`.xuid IN (
-      SELECT xuid FROM shared.xuid_aliases WHERE gamertag = ?
+      SELECT xuid FROM xuid_aliases WHERE gamertag = ?
   )`)
 	*args = append(*args, f.Gamertag)
 }
