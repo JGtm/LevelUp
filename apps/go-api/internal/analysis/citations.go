@@ -143,32 +143,29 @@ func OverrideCompositeTotals(
 //
 // totalRows : résultat de Q35 après OverrideCompositeTotals (composites corrigés).
 // mappings  : résultat de Q34 (metadata citation_mappings, incl. composite_children).
-// Les composites sont toujours inclus (même à 0/N) ; les citations normales à 0 sont filtrées.
+// Toutes les citations du catalogue (enabled) sont affichées, même celles non commencées (total=0).
+// Les citations inactives (skimmer, brutes) sont déjà exclues en SQL via WHERE enabled IS NOT FALSE.
 func MergeCitationTotals(
 	totalRows []domain.CitationTotalRow,
 	mappings []domain.CitationMappingRow,
 ) []domain.CitationItem {
+	// Index des totaux par nom pour lookup O(1).
+	totals := make(map[string]int, len(totalRows))
+	for _, t := range totalRows {
+		totals[t.NameNorm] = t.Total
+	}
+
+	// byNorm sert au composite children lookup (enfants activés).
 	byNorm := make(map[string]domain.CitationMappingRow, len(mappings))
 	for _, m := range mappings {
 		byNorm[m.NameNorm] = m
 	}
 
-	items := make([]domain.CitationItem, 0, len(totalRows))
-	for _, t := range totalRows {
-		m, ok := byNorm[t.NameNorm]
-		isComposite := ok && m.MappingType == domain.CitationMappingTypeComposite
-		if t.Total <= 0 && !isComposite {
-			continue // citations normales sans données → masquées ; composites toujours affichés
-		}
-		if !ok {
-			items = append(items, domain.CitationItem{
-				NameNorm:    t.NameNorm,
-				NameDisplay: t.NameNorm,
-				Category:    domain.CitationCategoryMisc,
-				Total:       t.Total,
-			})
-			continue
-		}
+	// Itérer sur le catalogue (mappings) — source de vérité pour les citations à afficher.
+	items := make([]domain.CitationItem, 0, len(mappings))
+	for _, m := range mappings {
+		total := totals[m.NameNorm] // 0 si jamais commencée
+
 		var imgURL *string
 		if m.ImagePath != nil && *m.ImagePath != "" {
 			parts := strings.Split(*m.ImagePath, "/")
@@ -180,10 +177,10 @@ func MergeCitationTotals(
 			imgURL = &p
 		}
 		item := domain.CitationItem{
-			NameNorm:    t.NameNorm,
+			NameNorm:    m.NameNorm,
 			NameDisplay: m.NameDisplay,
 			Category:    m.Category,
-			Total:       t.Total,
+			Total:       total,
 			ImageURL:    imgURL,
 			Description: m.Description,
 		}
@@ -203,11 +200,11 @@ func MergeCitationTotals(
 					n = len(children) // fallback si byNorm vide (ne devrait pas arriver)
 				}
 				item.TierCount = n
-				item.EarnedTiers = t.Total
-				if t.Total >= n {
+				item.EarnedTiers = total
+				if total >= n {
 					item.MasteryPct = 100.0
 				} else {
-					item.MasteryPct = float64(t.Total) / float64(n) * 100.0
+					item.MasteryPct = float64(total) / float64(n) * 100.0
 					item.NextTierTarget = n // objectif : tous les enfants activés
 				}
 			}
@@ -215,18 +212,18 @@ func MergeCitationTotals(
 			tiers := parseTierTargets(*m.TierTargets)
 			item.TierCount = len(tiers)
 			for _, tier := range tiers {
-				if t.Total >= tier {
+				if total >= tier {
 					item.EarnedTiers++
 				}
 			}
 			if len(tiers) > 0 {
 				lastTier := tiers[len(tiers)-1]
-				if t.Total >= lastTier {
+				if total >= lastTier {
 					item.MasteryPct = 100.0
 				} else {
-					item.MasteryPct = computeTierProgress(t.Total, tiers)
+					item.MasteryPct = computeTierProgress(total, tiers)
 					for _, tier := range tiers {
-						if t.Total < tier {
+						if total < tier {
 							item.NextTierTarget = tier
 							break
 						}

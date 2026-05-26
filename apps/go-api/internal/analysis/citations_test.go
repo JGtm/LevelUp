@@ -18,7 +18,7 @@ func TestMergeCitationTotals_Empty(t *testing.T) {
 	}
 }
 
-func TestMergeCitationTotals_ZeroTotalFiltered(t *testing.T) {
+func TestMergeCitationTotals_ZeroTotalVisible(t *testing.T) {
 	totals := []domain.CitationTotalRow{
 		{NameNorm: "triple_kill", Total: 0},
 		{NameNorm: "double_kill", Total: 5},
@@ -28,24 +28,30 @@ func TestMergeCitationTotals_ZeroTotalFiltered(t *testing.T) {
 		{NameNorm: "double_kill", NameDisplay: "Double Kill", Category: "kills"},
 	}
 	items := MergeCitationTotals(totals, mappings)
-	if len(items) != 1 {
-		t.Errorf("attendu 1 item (total>0), got %d", len(items))
+	// Les citations non commencées (Total=0) doivent apparaître — filtre supprimé.
+	if len(items) != 2 {
+		t.Errorf("attendu 2 items (toutes les citations du catalogue), got %d", len(items))
 	}
-	if items[0].NameNorm != "double_kill" {
-		t.Errorf("item attendu double_kill, got %s", items[0].NameNorm)
+	found := false
+	for _, it := range items {
+		if it.NameNorm == "triple_kill" && it.Total == 0 {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("triple_kill avec Total=0 doit être présent")
 	}
 }
 
-func TestMergeCitationTotals_NoMapping(t *testing.T) {
+func TestMergeCitationTotals_OrphanTotalIgnored(t *testing.T) {
+	// Une citation avec des données dans match_citations mais absente du catalogue
+	// (mappings vide) ne doit PAS s'afficher — le catalogue est la source de vérité.
 	totals := []domain.CitationTotalRow{
 		{NameNorm: "unknown_citation", Total: 3},
 	}
 	items := MergeCitationTotals(totals, nil)
-	if len(items) != 1 {
-		t.Errorf("attendu 1 item même sans mapping, got %d", len(items))
-	}
-	if items[0].Category != "misc" {
-		t.Errorf("catégorie par défaut attendue misc, got %s", items[0].Category)
+	if len(items) != 0 {
+		t.Errorf("attendu 0 items (orphan ignoré), got %d", len(items))
 	}
 }
 

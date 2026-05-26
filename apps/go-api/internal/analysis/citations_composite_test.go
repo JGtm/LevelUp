@@ -219,6 +219,26 @@ func TestMVPLVP_TooFewPlayers(t *testing.T) {
 	}
 }
 
+func TestMVPLVP_SamePlayerConflict(t *testing.T) {
+	// X a le plus de kills (best) ET le plus de morts (worst) — conflit MVP==LVP.
+	// Y a le moins de morts (best inversé) — candidat MVP secondaire.
+	// Règle : LVP prioritaire → X=LVP, re-sélection MVP sans X → Y=MVP.
+	scoreboard := []domain.ScoreboardRaw{
+		{XUID: "X", Kills: 20, Deaths: 15, Assists: 5, KDA: f64(1.0)},
+		{XUID: "Y", Kills: 5, Deaths: 3, Assists: 5, KDA: f64(1.0)},
+	}
+	ext := analysis.ComputeMVPLVP(scoreboard)
+	if ext.LVPXUID != "X" {
+		t.Errorf("attendu LVP=X (plus de morts), obtenu %q", ext.LVPXUID)
+	}
+	if ext.MVPXUID != "Y" {
+		t.Errorf("attendu MVP=Y (re-sélection sans X), obtenu %q", ext.MVPXUID)
+	}
+	if ext.MVPXUID != "" && ext.MVPXUID == ext.LVPXUID {
+		t.Error("MVP et LVP ne doivent pas être le même joueur")
+	}
+}
+
 // =============================================================================
 // Tests T1-T10 — sémantique progression per-match (R1-R8)
 // =============================================================================
@@ -478,15 +498,15 @@ func TestProgression_T15_NoTierTargetsAnywhere(t *testing.T) {
 }
 
 func TestMVPLVP_InsufficientBestCells(t *testing.T) {
-	// A n'a qu'une seule best cell (kills) → pas de MVP (besoin ≥ 2)
+	// Seule la colonne assists (poids 1) différencie les joueurs.
+	// Score max = 1 < seuil 2 → aucun MVP ni LVP.
 	scoreboard := []domain.ScoreboardRaw{
-		{XUID: "A", Kills: 10, Deaths: 5, Assists: 3},
+		{XUID: "A", Kills: 5, Deaths: 5, Assists: 10},
 		{XUID: "B", Kills: 5, Deaths: 5, Assists: 5},
-		{XUID: "C", Kills: 3, Deaths: 5, Assists: 8},
+		{XUID: "C", Kills: 5, Deaths: 5, Assists: 3},
 	}
 	ext := analysis.ComputeMVPLVP(scoreboard)
-	// A a top kills (+1), C a top assists (+1), aucun n'a 2+ → MVP=""
 	if ext.MVPXUID != "" {
-		t.Errorf("attendu MVP vide (aucun joueur avec ≥2 best cells), obtenu %q", ext.MVPXUID)
+		t.Errorf("attendu MVP vide (score assists=1 < seuil 2), obtenu %q", ext.MVPXUID)
 	}
 }

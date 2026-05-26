@@ -350,10 +350,16 @@ LIMIT 1`
 // Q26gPlaylistPhaseBShared : Phase B (shared) — top 3 playlists pour xuid
 // avec le dernier match_id par playlist. Sprint P7 / ADR 0016 : sans préfixe
 // shared. (exécuté via pdb.SharedReadDB().Get()).
+//
+// Fallback playlist_name : beaucoup de matchs ont playlist_id = NULL dans
+// match_registry (Social, anciens matchs non backfillés). On groupe sur
+// COALESCE(playlist_id, playlist_name) pour capturer ces cas et retourner
+// jusqu'à 3 playlists distinctes même sans playlist_id renseigné.
 const Q26gPlaylistPhaseBShared = `
 WITH per_playlist AS (
 	SELECT
-		r.playlist_id,
+		COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) AS group_key,
+		COALESCE(MAX(NULLIF(TRIM(r.playlist_id), '')), '') AS playlist_id,
 		COALESCE(MAX(r.playlist_name), '') AS playlist_name,
 		MAX(CASE
 			WHEN COALESCE(r.is_ranked, FALSE)
@@ -367,8 +373,8 @@ WITH per_playlist AS (
 	FROM match_participants mp
 	JOIN match_registry r ON r.match_id = mp.match_id
 	WHERE mp.xuid = ?
-	  AND NULLIF(TRIM(COALESCE(r.playlist_id, '')), '') IS NOT NULL
-	GROUP BY r.playlist_id
+	  AND COALESCE(NULLIF(TRIM(r.playlist_id), ''), NULLIF(TRIM(r.playlist_name), '')) IS NOT NULL
+	GROUP BY group_key
 )
 SELECT playlist_id, playlist_name, is_ranked, last_played, last_match_id, last_season_id
 FROM per_playlist
