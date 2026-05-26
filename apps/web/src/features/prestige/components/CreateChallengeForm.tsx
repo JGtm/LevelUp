@@ -129,7 +129,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
         <select
           value={metric}
           onChange={(e) => setMetric(e.target.value)}
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         >
           <option value="FieldKDA">KDA</option>
           <option value="FieldKDR">K/D</option>
@@ -149,7 +149,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           value={target}
           onChange={(e) => setTarget(e.target.value)}
           required
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         />
       </Field>
 
@@ -158,7 +158,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           <select
             value={windowType}
             onChange={(e) => setWindowType(e.target.value as WindowType)}
-            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
           >
             <option value="session">Sessions</option>
             <option value="rolling_days">Jours glissants</option>
@@ -170,7 +170,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
             type="text"
             value={windowValue}
             onChange={(e) => setWindowValue(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
           />
         </Field>
       </div>
@@ -179,7 +179,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
         <select
           value={cadence}
           onChange={(e) => setCadence(e.target.value as Cadence)}
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         >
           <option value="free">Libre</option>
           <option value="daily">Quotidien</option>
@@ -195,7 +195,7 @@ function FreeForm({ userId, titleSlug, onSuccess }: TabFormProps) {
           onChange={(e) => setLabel(e.target.value)}
           maxLength={128}
           placeholder="Ex. Slayer Lv.2"
-          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
         />
       </Field>
 
@@ -288,7 +288,7 @@ function HybridForm({ userId, titleSlug, onSuccess }: TabFormProps) {
             step="0.01"
             value={customTarget}
             onChange={(e) => setCustomTarget(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground"
           />
         </Field>
       )}

@@ -403,6 +403,76 @@ func TestE2EPipeline_DisplayThresholdDynamic_S2vsS13(t *testing.T) {
 	}
 }
 
+// ── Scénario 6 : Home Recent Playlists — playlist_id NULL groupé par playlist_name ──
+
+// TestE2EPipeline_HomeRecentPlaylists_NullPlaylistIdGroupedByName vérifie que
+// Q26gPlaylistPhaseBShared retourne plusieurs playlists distinctes même quand
+// playlist_id est NULL dans match_registry (cas Social + anciens matchs). Le
+// groupement par COALESCE(playlist_id, playlist_name) doit retourner jusqu'à
+// LIMIT 3 groupes distincts.
+func TestE2EPipeline_HomeRecentPlaylists_NullPlaylistIdGroupedByName(t *testing.T) {
+	env := setupPipelineEnv(t)
+
+	// Match 1 : playlist_id NULL, playlist_name "Quick Play" (social)
+	if _, err := env.sharedDB.SQLDb().Exec(`
+		INSERT INTO match_registry (match_id, start_time, playlist_id, playlist_name, pair_name, is_ranked, season_id)
+		VALUES (?, ?, NULL, ?, ?, ?, ?)
+	`, "null_m1", "2026-04-15T12:00:00Z", "Quick Play", "Slayer on Recharge", false, "CsrSeason13-1"); err != nil {
+		t.Fatalf("seed null_m1: %v", err)
+	}
+	if _, err := env.sharedDB.SQLDb().Exec(`
+		INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome)
+		VALUES (?, ?, ?, 0, 2)
+	`, "null_m1", pipelineTestXUID, pipelineTestSlug); err != nil {
+		t.Fatalf("seed null_m1 participant: %v", err)
+	}
+
+	// Match 2 : playlist_id NULL, playlist_name "Social Slayer" (social différent)
+	if _, err := env.sharedDB.SQLDb().Exec(`
+		INSERT INTO match_registry (match_id, start_time, playlist_id, playlist_name, pair_name, is_ranked, season_id)
+		VALUES (?, ?, NULL, ?, ?, ?, ?)
+	`, "null_m2", "2026-04-14T12:00:00Z", "Social Slayer", "Slayer on Aquarius", false, "CsrSeason13-1"); err != nil {
+		t.Fatalf("seed null_m2: %v", err)
+	}
+	if _, err := env.sharedDB.SQLDb().Exec(`
+		INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome)
+		VALUES (?, ?, ?, 0, 2)
+	`, "null_m2", pipelineTestXUID, pipelineTestSlug); err != nil {
+		t.Fatalf("seed null_m2 participant: %v", err)
+	}
+
+	// Match 3 : playlist_id renseigné, playlist ranked
+	seedMatchRegistry(t, env, "null_m3", "pl-ranked", "Ranked Arena", true, "CsrSeason13-1", "2026-04-13T12:00:00Z")
+
+	// Insérer des MSR pour chaque match (nécessaire pour Phase A1)
+	seedMSR(t, env, "null_m1", "LUSR", 1400, "", "", 0, 0)
+	seedMSR(t, env, "null_m2", "LUSR", 1380, "", "", 0, 0)
+	seedMSR(t, env, "null_m3", "LUSR", 1500, "", "", 0, 0)
+
+	items, err := env.homeRepo.LoadRecentPlaylistRanks(context.Background(), "fr")
+	if err != nil {
+		t.Fatalf("LoadRecentPlaylistRanks: %v", err)
+	}
+	// Avant le fix : playlist_id NULL → filtre WHERE excluait les 2 matchs sociaux
+	// → 1 seul item retourné (pl-ranked seulement). Après le fix : 3 groupes.
+	if len(items) != 3 {
+		names := make([]string, len(items))
+		for i, it := range items {
+			names[i] = it.PlaylistName
+		}
+		t.Fatalf("want 3 playlists (2 null-playlist_id + 1 ranked), got %d : %v", len(items), names)
+	}
+	byName := map[string]bool{}
+	for _, it := range items {
+		byName[it.PlaylistName] = true
+	}
+	for _, want := range []string{"Quick Play", "Social Slayer", "Ranked Arena"} {
+		if !byName[want] {
+			t.Errorf("playlist %q manquante dans le résultat", want)
+		}
+	}
+}
+
 // Garde-fous imports — utilisés par les helpers seed.
 var (
 	_ = sql.ErrNoRows
