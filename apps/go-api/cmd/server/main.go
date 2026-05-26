@@ -701,7 +701,7 @@ func main() {
 		}
 		return nil, fmt.Errorf("registry non initialisé")
 	}
-	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher)
+	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher, autoSyncPool)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
@@ -1179,6 +1179,7 @@ func startWatcherDaemon(
 	tokenProvider auth.TokenProvider,
 	getNotifier func(xuid string) port.SessionNotifier,
 	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error),
+	haloPool pool.Pool,
 ) *watcher.Daemon {
 	// Vérifier que le watcher est activé dans les settings
 	appSettings, err := settingsStore.Load()
@@ -1303,6 +1304,21 @@ func startWatcherDaemon(
 		RequestsPerSecond: 5,
 	})
 
+	// MatchFetcher pour le polling Halo API (/hi/players/xuid(N)/matches) du
+	// MatchPoller. Réutilise le pool de tokens auto-sync : endpoint public
+	// (PolicyAnyPublic), quota par-token Microsoft → partage le rate-limit
+	// avec le scheduler évite les 429 inutiles. Si le pool est absent (mode
+	// dégradé sans credential), le fetcher reste nil et le garde-fou dans
+	// PlayerWatcher.startPoller logge un Warn-once sans paniquer.
+	var matchFetcher watcher.MatchFetcher
+	if haloPool != nil {
+		pooled := syncpkg.NewPooledHaloClient(haloPool, "", "", 5)
+		matchFetcher = watcher.NewHaloMatchFetcher(pooled)
+		slog.Info("watcher: MatchFetcher branché sur le pool auto-sync")
+	} else {
+		slog.Warn("watcher: pool auto-sync absent — MatchPoller désactivé (mode dégradé)")
+	}
+
 	// daemon est déclaré ici pour permettre à la closure RefreshRTAAuth d'y référer
 	// avant que NewDaemon retourne (pattern forward-reference via pointeur).
 	var daemon *watcher.Daemon
@@ -1312,6 +1328,7 @@ func startWatcherDaemon(
 		RepoRoot:        cfg.RepoRoot,
 		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
 		MaxParallelSync: 2,
+		MatchFetcher:    matchFetcher,
 		LiveRefreshFactory: func(gamertag, xuid string) watcher.LiveRefreshTrigger {
 			wMetaPath := watcherPR.MetadataDBPath(watcherSlug)
 			wPlayerPath := watcherPR.PlayerDBPath(watcherSlug, gamertag)

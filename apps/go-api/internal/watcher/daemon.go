@@ -54,6 +54,13 @@ type DaemonConfig struct {
 	// LiveRefreshFactory est une factory optionnelle pour créer un LiveRefreshTrigger
 	// par joueur. Si nil, le rafraîchissement live BP/Challenges est désactivé.
 	LiveRefreshFactory func(gamertag, xuid string) LiveRefreshTrigger
+
+	// MatchFetcher est partagé entre tous les PlayerWatcher pour le polling
+	// Halo API (/hi/players/xuid(N)/matches). Si nil, le MatchPoller est
+	// désactivé (mode dégradé loggé une fois par joueur) — pas de panic.
+	// Normalement injecté depuis main avec un HaloMatchFetcher branché sur
+	// le pool de tokens auto-sync.
+	MatchFetcher MatchFetcher
 }
 
 // Daemon est le démon de surveillance de présence.
@@ -242,7 +249,7 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 			"gamertag", p.Gamertag, "xuid", p.XUID)
 		return nil
 	}
-	pw := NewPlayerWatcher(p.Gamertag, p.XUID, nil, &queueSyncTrigger{
+	pw := NewPlayerWatcher(p.Gamertag, p.XUID, d.cfg.MatchFetcher, &queueSyncTrigger{
 		queue:    d.queue,
 		gamertag: p.Gamertag,
 		xuid:     p.XUID,
@@ -282,7 +289,7 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 		if p.IsDemo || p.XUID == "" {
 			continue
 		}
-		pw := NewPlayerWatcher(p.Gamertag, p.XUID, nil, &queueSyncTrigger{
+		pw := NewPlayerWatcher(p.Gamertag, p.XUID, d.cfg.MatchFetcher, &queueSyncTrigger{
 			queue:    d.queue,
 			gamertag: p.Gamertag,
 			xuid:     p.XUID,
