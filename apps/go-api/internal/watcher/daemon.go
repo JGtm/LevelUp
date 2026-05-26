@@ -323,9 +323,11 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// répondre "pourquoi ce user a/n'a pas déclenché un sync ?"
 		evCtx, evID := logging.WithEvent(ctx, "watcher.presence:"+pw.gamertag)
 
-		// Capture `lastSeen` si présent dans le payload (snapshot Offline).
-		// Exposé via WatcherStatus pour affichage UI "vu il y a 2h sur Halo".
-		if event.LastSeen != nil {
+		// Capture `lastSeen` si présent dans le payload ET pointant sur un
+		// titre tracké. Évite d'afficher "Vu il y a 2h sur Online" quand
+		// Xbox renvoie le Dashboard (TitleID 1022622766, titleName "Online")
+		// comme dernier titre. On veut uniquement les vrais jeux trackés.
+		if event.LastSeen != nil && d.titleReg.MatchPresence(event.LastSeen.TitleID) != nil {
 			pw.RecordLastSeen(evCtx, event.LastSeen)
 		}
 
