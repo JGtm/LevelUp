@@ -482,6 +482,12 @@ func main() {
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
 	tokenProvider := buildTokenProvider(settingsStore)
 
+	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
+	// Copie SPNKR_OAUTH_REFRESH_TOKEN_<GT> (env) + sync_meta.oauth_refresh_token (DuckDB)
+	// vers le store si les entrées correspondantes n'existent pas. Idempotent, best-effort.
+	// S'exécute AVANT buildAutoSyncPool pour que le Pool trouve déjà les tokens dans le store.
+	migrateLegacyAuthTokensAtBoot(ctx, cfg)
+
 	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
 	// - Discovery scanne env + sync_meta pour découvrir les credentials joueur.
 	// - Resolver échange CredentialSource → ResolvedTokens (Spartan+Clearance)
@@ -1412,4 +1418,62 @@ func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, 
 		SpartanToken:   s.tokens.AccessToken,
 		ClearanceToken: "",
 	}, nil
+}
+
+// migrateLegacyAuthTokensAtBoot copie les tokens legacy (env var
+// SPNKR_OAUTH_REFRESH_TOKEN_* + sync_meta.oauth_refresh_token / msal_token_cache
+// dans la player DB) vers le MultiUserTokenStore unique. Voir ADR 0023.
+//
+// Idempotent, best-effort. Une erreur sur un joueur (ex. DB inexistante) ne
+// bloque pas les autres. Aucun appel HTTP — purement copie de strings entre
+// stores. S'exécute AVANT buildAutoSyncPool pour que le Pool trouve le store
+// déjà peuplé.
+//
+// Pour le caller production, la lecture des sources legacy est branchée sur
+// auth.EnvRefreshTokenForGamertag (env) + duckdb.OpenReadOnly + Read*JSON.
+// La fonction pure de migration vit dans internal/platform/auth/migration.go
+// (testable sans dépendance DuckDB).
+func migrateLegacyAuthTokensAtBoot(ctx context.Context, cfg *config.AppConfig) {
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
+
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.WarnContext(ctx, "auth_migration: LoadPlayers échoué — migration skipped", "err", err)
+		return
+	}
+	if len(players) == 0 {
+		slog.DebugContext(ctx, "auth_migration: aucun joueur configuré, rien à migrer")
+		return
+	}
+
+	// Convertir players → auth.LegacyPlayer (sans dépendance domain/title dans le package auth).
+	legacyPlayers := make([]auth.LegacyPlayer, 0, len(players))
+	for _, p := range players {
+		legacyPlayers = append(legacyPlayers, auth.LegacyPlayer{
+			XUID:         p.XUID,
+			Gamertag:     p.Gamertag,
+			PlayerDBPath: pr.PlayerDBPath(title.DefaultSlug, p.Gamertag),
+		})
+	}
+
+	reader := func(rctx context.Context, p auth.LegacyPlayer) (auth.LegacySources, error) {
+		out := auth.LegacySources{
+			EnvRT: auth.EnvRefreshTokenForGamertag(p.Gamertag),
+		}
+		// Lecture DuckDB best-effort : DB inexistante = nouveau joueur, on skip.
+		if p.PlayerDBPath != "" {
+			db, dbErr := duckdb.OpenReadOnly(p.PlayerDBPath)
+			if dbErr == nil {
+				out.DuckDBRT, _ = duckdb.ReadOAuthRefreshToken(rctx, db)
+				out.DuckDBMSAL, _ = duckdb.ReadMSALCacheJSON(rctx, db)
+				_ = db.Close()
+			}
+		}
+		return out, nil
+	}
+
+	if _, err := auth.MigrateLegacyTokens(ctx, store, legacyPlayers, reader); err != nil {
+		slog.WarnContext(ctx, "auth_migration: échec global", "err", err)
+	}
 }
