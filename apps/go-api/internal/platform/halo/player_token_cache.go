@@ -44,3 +44,17 @@ func SetCachedPlayerTokens(xuid string, tokens *domain.HaloTokens) {
 		expiresAt: time.Now().Add(playerTokenTTL),
 	}
 }
+
+// InvalidateCachedPlayerTokens supprime l'entrée d'un xuid (force un nouveau
+// refresh complet au prochain GetCachedPlayerTokens). À appeler quand un
+// événement externe (rotation RT Microsoft, révocation manuelle) rend les
+// tokens en cache potentiellement obsolètes — le TTL automatique de 50 min
+// est trop long pour ces cas. No-op si l'xuid n'est pas en cache.
+func InvalidateCachedPlayerTokens(xuid string) {
+	if xuid == "" {
+		return
+	}
+	playerTokenStore.mu.Lock()
+	defer playerTokenStore.mu.Unlock()
+	delete(playerTokenStore.store, xuid)
+}
