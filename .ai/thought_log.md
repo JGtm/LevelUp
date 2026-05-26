@@ -1,3 +1,120 @@
+## [2026-05-26] Watcher — 3 fixes complémentaires (titre non tracké + grâce extinction + REST poll friends)
+
+**Statut** : Complété (3 fixes + 6 nouveaux tests + tests existants adaptés).
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : 3 bugs détectés post-livraison REST poll (commit `5bc33574`), tous identifiés en regardant les logs `auth.log` après que JGtm a coupé Halo. Les fixes A et B closent le cycle de vie du PlayerWatcher proprement ; le C étend la couverture REST poll aux 3 amis qui n'avaient que le RTA legacy.
+
+**Bug A — handler watcher silencieux sur titre non tracké** :
+Quand Xbox renvoie `state:Online + title:"Online" (id=1022622766, dashboard Xbox)`, le handler `makePresenceHandler` loggait juste un WARN puis sortait. La FSM PlayerWatcher restait bloquée en `Watching` indéfiniment. Fix : traiter `titre non tracké` comme un signal d'inactivité (le user n'est plus dans le jeu observé) → appel `OnPresenceInactive`. Le log devient INFO (comportement attendu, plus une anomalie).
+
+**Bug B — pas de grâce post-extinction** :
+`OnPresenceInactive` stoppait le MatchPoller instantanément + transitionnait vers Idle. Or l'API Halo expose un match terminé en ~30-60s après la fin de la partie. Conséquence : sur une partie courte, on rate le dernier match si le user ferme Halo immédiatement après le résultat. Fix : timer `postExitGrace` (90s par défaut) avant le vrai stop. Si `OnPresenceActive` arrive entre temps (retour en jeu), le timer est annulé. `finalizeExit` est la fonction exécutée par le timer (mutex bien tenu, double-check `inGame`). `WithPostExitGrace(0)` désactive le mécanisme pour les tests qui veulent du stop immédiat. Choix de 90s = 1.5× le cycle MatchPoller (60s) + marge, garantit la capture du dernier match.
+
+**Bug C — REST poll seulement pour JGtm** :
+Le REST poller était spawn uniquement dans `AddUserClient` (PR 2.5c, multi-user SSO). Les 3 amis (Madina97294, Chocoboflor, XxDaemonGamerxX) n'avaient donc que le RTA legacy (snapshot only, 0 push). Fix : 1 `trackerRestClient` partagé créé dans `Start()`, et 1 `RESTPoller` par player spawné dans `initPlayers`. Le client partagé permet un seul `UpdateAuth` atomic pour tous les pollers quand le tracker rafraîchit son XSTS. Doublon JGtm (2 pollers : tracker + dédié SSO) accepté car les transitions FSM sont idempotentes ; coût = 1 req/30s additionnelle = négligeable.
+
+**Files modifiés** :
+- `internal/watcher/daemon.go` (+30L) — champ `trackerRestClient`, init dans `Start()`, REST poller par joueur dans `initPlayers`, `UpdateAuth` propage les 2 clients, handler `makePresenceHandler` appelle `OnPresenceInactive` sur titre non tracké.
+- `internal/watcher/player_watcher.go` (+70L) — champs `postExitGrace` + `postExitTimer`, `WithPostExitGrace`, refonte `OnPresenceInactive` avec timer, `finalizeExit`, `OnPresenceActive` annule le timer pendant la grâce.
+- `internal/watcher/watcher_test.go` (+95L) — 4 nouveaux tests `TestPlayerWatcher_PostExitGrace_*` (delays stop, cancel on active, idempotent inactive, no timer if idle) + 1 test existant adapté (`OnPresenceInactive_GoesIdle` utilise `WithPostExitGrace(0)`).
+- `internal/watcher/daemon_test.go` (+45L) — 1 nouveau test `TestDaemon_MakePresenceHandler_UntrackedTitleTreatedAsInactive` + 1 test existant adapté.
+
+**Résultats observés** :
+- `go test ./internal/watcher/ -race` : ok 1.9s, 6/6 nouveaux tests passent.
+- `go test ./internal/presence/ -race` : ok 5.9s.
+- `go test ./...` complet : **zéro failure** dans tout le repo.
+- `go vet ./...` : silencieux.
+- Pre-commit hooks (gofmt, golangci-lint, secrets) : passent.
+
+**Prochaine étape** : test live optionnel pour valider le comportement bout-à-bout sur les 3 amis. Le scheduler global reste le filet de sécurité ultime de toute façon.
+
+---
+
+## [2026-05-26] sync-full — combler les trous d'historique
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `RunFull` existait dans l'engine mais n'était pas exposé en CLI (seul `sync-delta` l'était, et s'arrête au premier match connu — incapable de combler un trou en milieu d'historique). Ajout de `sync-full` dans `cmd_sync.go` : même setup que `sync-delta`, appelle `engine.RunFull`, défaut `--max-matches 150` (6 pages API). Supporte `--gamertag X` et `--all` via pool. Aucune modification de l'engine.
+
+**Résultats** : `go build ./cmd/levelup/...` propre.
+
+**Usage** : `go run ./cmd/levelup sync-full --all` ou `--gamertag Madina97294`
+
+**Prochaine étape** : lancer `sync-full --all` pour combler les trous d'avril, puis re-lancer `AssociateMediaWithMatches` pour Madina97294.
+
+---
+
+## [2026-05-26] Coach & Tips — enrichissement depuis threads Reddit r/CompetitiveHalo
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : Enrichissement ciblé (3 tips + 3 entrées grammaire) sans redondance avec le contenu existant. Tous les FieldKey ajoutés à la grammaire existent déjà dans `canonical/fields.go` (pas de nouveau champ).
+
+**Ajouts tips (`coaching_tips.toml`)** :
+- `combat.strategic.3` — rendement offensif (style précis vs généreux), lien avec `offensive_conversion`
+- `survival.strategic.4` — paradoxe "low damage taken" : faibles dégâts encaissés + équipe qui perd = pas assez dans le match
+- `impact.strategic.8` — damage > K/D comme métrique primaire dans Halo Infinite (kill-trading)
+
+**Ajouts grammaire (`synthesis_grammar.toml`)** :
+- `avg_damage_dealt` — benchmark dégâts bruts par match
+- `kills_per_min` — benchmark KPM
+- `offensive_conversion` — ratio rendement offensif (DD/KA codifié)
+
+**Résultats** : build i18n OK, 82 clés générées, TS vérifié.
+
+**Conclusion** : Le coach peut maintenant synthétiser des proposals sur `avg_damage_dealt` et `kills_per_min` (métriques les plus citées dans la communauté compétitive), et les 3 insights communautaires non couverts sont intégrés dans les tips.
+
+---
+
+## [2026-05-26] Diagnostic Bug 3 — captures Madina97294 sans association
+
+**Statut** : Complété (diagnostic Phase 2/3)
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Résultats du diagnostic** (shared_social backup 2026-05-25) :
+
+| Question | Résultat |
+|---|---|
+| Q1 : type id | INTEGER ✓ (cause D écartée) |
+| Q2 : capture_start_utc | **2026-04-23 21:04:xx** — mtime serveur, PAS les timestamps des noms de fichiers |
+| Q3 : associations totales | 67 (59 auto + 8 manuelles) — système fonctionne pour les autres |
+| Q4 : Madina non-associés | 5 candidats avec capture_start_utc (mais valeur incorrecte) |
+| Q5 : fenêtres match | 1569/1569 ont end_time + end_time_utc ✓ (cause C écartée) |
+| Q8 : matchs 18-21 avril | **0 match dans match_registry** — session du 19 avril jamais syncée |
+| Q9 : timestamps corrigés | 0 match même avec les bons timestamps → confirme Q8 |
+
+**Cause racine 1 — capture_start_utc incorrect** : lors de l'upload du 23 avril, `parseCaptureTimeFromFilename` a retourné nil (timezone probablement absente dans app_settings.json à ce moment-là). Priority 3 (mtime) utilisée → `capture_start_utc = 2026-04-23`. `INSERT OR IGNORE` empêche la correction lors des ré-indexations suivantes.
+
+**Cause racine 2 — matchs absents** : les matchs du 19 avril n'ont jamais été syncés dans `match_registry`. Même avec les bons timestamps, l'algo ne peut rien trouver.
+
+**Fix nécessaire (3 étapes séquentielles)** :
+1. Corriger `capture_start_utc` via UPDATE SQL (nouveau CLI) — mettre les 5 fichiers à leurs vraies valeurs extraites du nom
+2. Syncer les matchs du 19 avril pour Madina97294
+3. Re-lancer `AssociateMediaWithMatches` (via `/settings/media/scan` ou route reassociate)
+
+---
+
+## [2026-05-26] Fix media filters — label auteurs trompeur (Bug 1+2)
+
+**Statut** : Complété (Phase 1/3)
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `authorSlugs` initialisé à `[playerSlug]` au lieu de `[]`, et `section_filter` toujours `null`. Résout le conflit sémantique où `[]` signifiait "Tous les auteurs" dans le toolbar mais `section_filter: 'mine'` dans le backend. Désormais `[playerSlug]` → label gamertag correct, `[]` → vraiment "Tous les auteurs" (aucun filtre player_slug).
+
+**Résultats** : typecheck propre. Comportement par défaut inchangé (médias du joueur courant), label désormais aligné.
+
+**Prochaine étape** : Phase 2 — diagnostic Bug 3 (Madina97294, captures sans association) via inspect_bp sur shared_social.duckdb.
+
+---
+
 ## [2026-05-26] Spartan Identity Refactor V2 — INSERT partial field-aware + cron 8h
 
 **Statut** : Complété (8 phases)

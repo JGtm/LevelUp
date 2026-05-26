@@ -23,6 +23,17 @@ import (
 const (
 	// defaultCooldown après un sync réussi.
 	defaultCooldown = 90 * time.Second
+
+	// defaultPostExitGrace : durée pendant laquelle le MatchPoller continue
+	// de tourner après détection Inactive (extinction Halo, ou bascule sur un
+	// titre non tracké comme le Dashboard Xbox).
+	//
+	// Pourquoi : l'API Halo expose un match terminé en ~30-60s après la fin
+	// de la partie. Si on stop le MatchPoller dès qu'on détecte Inactive, on
+	// rate le dernier match. 90s = ~1.5 cycle MatchPoller (60s) + marge, ce
+	// qui garantit la capture du dernier match. Si Active revient pendant
+	// la grâce, on cancel le timer et on reste en Watching.
+	defaultPostExitGrace = 90 * time.Second
 )
 
 // SyncTrigger déclenche un sync pour les match_ids détectés.
@@ -35,14 +46,19 @@ type PlayerWatcher struct {
 	gamertag string
 	xuid     string
 
-	fsm         *FSM
-	fetcher     MatchFetcher
-	syncTrigger SyncTrigger
-	liveRefresh LiveRefreshTrigger // nil si non configuré
-	cooldown    time.Duration
+	fsm           *FSM
+	fetcher       MatchFetcher
+	syncTrigger   SyncTrigger
+	liveRefresh   LiveRefreshTrigger // nil si non configuré
+	cooldown      time.Duration
+	postExitGrace time.Duration
 
 	pollerCancel context.CancelFunc
 	pollerMu     sync.Mutex
+
+	// postExitTimer : si non-nil, un timer de grâce post-extinction tourne.
+	// Cancel sur OnPresenceActive (le user est revenu en jeu).
+	postExitTimer *time.Timer
 
 	// inGame track si la présence dit "en jeu" (RTA ou Steam)
 	inGame bool
@@ -54,13 +70,20 @@ type PlayerWatcher struct {
 // NewPlayerWatcher crée un watcher pour un joueur.
 func NewPlayerWatcher(gamertag, xuid string, fetcher MatchFetcher, syncTrigger SyncTrigger) *PlayerWatcher {
 	pw := &PlayerWatcher{
-		gamertag:    gamertag,
-		xuid:        xuid,
-		fetcher:     fetcher,
-		syncTrigger: syncTrigger,
-		cooldown:    defaultCooldown,
+		gamertag:      gamertag,
+		xuid:          xuid,
+		fetcher:       fetcher,
+		syncTrigger:   syncTrigger,
+		cooldown:      defaultCooldown,
+		postExitGrace: defaultPostExitGrace,
 	}
 	pw.fsm = NewFSM(gamertag, pw.onTransition)
+	return pw
+}
+
+// WithPostExitGrace override la grâce post-extinction (pour tests).
+func (pw *PlayerWatcher) WithPostExitGrace(d time.Duration) *PlayerWatcher {
+	pw.postExitGrace = d
 	return pw
 }
 
@@ -91,10 +114,22 @@ func (pw *PlayerWatcher) WithLiveRefresh(r LiveRefreshTrigger) *PlayerWatcher {
 }
 
 // OnPresenceActive est appelé quand le joueur est détecté en jeu (RTA ou Steam).
+//
+// Si un timer de grâce post-extinction est en cours (extinction récente non
+// encore confirmée), il est cancel : le joueur est revenu en jeu avant la fin
+// de la grâce, on reste en Watching sans stop le poller.
 func (pw *PlayerWatcher) OnPresenceActive(ctx context.Context) {
 	pw.mu.Lock()
 	defer pw.mu.Unlock()
 	pw.inGame = true
+
+	// Annule la grâce post-extinction si en cours.
+	if pw.postExitTimer != nil {
+		pw.postExitTimer.Stop()
+		pw.postExitTimer = nil
+		slog.InfoContext(ctx, "player_watcher: gracieux post-extinction annulé (jeu repris)",
+			"gamertag", pw.gamertag)
+	}
 
 	state := pw.fsm.State()
 	if state == StateIdle {
@@ -112,13 +147,43 @@ func (pw *PlayerWatcher) OnPresenceActive(ctx context.Context) {
 }
 
 // OnPresenceInactive est appelé quand le joueur quitte le jeu.
+//
+// Au lieu de stop le MatchPoller immédiatement, on lance un timer de grâce
+// (postExitGrace, 90s par défaut). Le MatchPoller continue à tourner pendant
+// ce délai pour capter un éventuel dernier match (latence Halo API ~30-60s
+// pour exposer un match terminé). Si OnPresenceActive est appelé avant la
+// fin du timer, le timer est cancel et on reste en Watching.
+//
+// Pas de grâce si :
+//   - postExitGrace == 0 (config explicite, ou tests qui veulent stop immédiat)
+//   - state n'est pas Watching/Cooling (rien à stopper)
 func (pw *PlayerWatcher) OnPresenceInactive(ctx context.Context) {
 	pw.mu.Lock()
 	defer pw.mu.Unlock()
 	pw.inGame = false
 
 	state := pw.fsm.State()
-	if state == StateWatching || state == StateCooling {
+	needsStop := state == StateWatching || state == StateCooling
+
+	if needsStop && pw.postExitGrace > 0 {
+		// Démarre le timer si pas déjà en cours.
+		if pw.postExitTimer == nil {
+			slog.InfoContext(ctx, "player_watcher: extinction détectée — grâce post-extinction démarrée",
+				"gamertag", pw.gamertag,
+				"grace", pw.postExitGrace,
+			)
+			pw.postExitTimer = time.AfterFunc(pw.postExitGrace, func() {
+				pw.finalizeExit(context.Background())
+			})
+		}
+		if pw.liveRefresh != nil {
+			pw.liveRefresh.OnPresenceInactive(ctx)
+		}
+		return
+	}
+
+	if needsStop {
+		// Mode pas-de-grâce : stop immédiat (legacy comportement).
 		pw.stopPoller()
 		if err := pw.fsm.GoIdle(); err != nil {
 			slog.WarnContext(ctx, "player_watcher: erreur transition →Idle",
@@ -128,6 +193,34 @@ func (pw *PlayerWatcher) OnPresenceInactive(ctx context.Context) {
 
 	if pw.liveRefresh != nil {
 		pw.liveRefresh.OnPresenceInactive(ctx)
+	}
+}
+
+// finalizeExit est appelé par le timer postExitGrace quand la grâce expire
+// sans qu'OnPresenceActive ait été rappelé. Stop le MatchPoller + transition
+// vers Idle.
+func (pw *PlayerWatcher) finalizeExit(ctx context.Context) {
+	pw.mu.Lock()
+	defer pw.mu.Unlock()
+
+	// Re-check : si OnPresenceActive a été appelé entre temps, postExitTimer
+	// est nil et inGame est true → on ne fait rien.
+	if pw.postExitTimer == nil || pw.inGame {
+		return
+	}
+	pw.postExitTimer = nil
+
+	state := pw.fsm.State()
+	if state != StateWatching && state != StateCooling {
+		return
+	}
+
+	slog.InfoContext(ctx, "player_watcher: grâce post-extinction expirée — arrêt MatchPoller",
+		"gamertag", pw.gamertag)
+	pw.stopPoller()
+	if err := pw.fsm.GoIdle(); err != nil {
+		slog.WarnContext(ctx, "player_watcher: erreur transition →Idle (post-grace)",
+			"gamertag", pw.gamertag, "err", err)
 	}
 }
 

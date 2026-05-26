@@ -310,12 +310,116 @@ func TestPlayerWatcher_OnPresenceActive_StartsWatching(t *testing.T) {
 func TestPlayerWatcher_OnPresenceInactive_GoesIdle(t *testing.T) {
 	fetcher := &mockFetcher{results: [][]string{{}}}
 	trigger := newMockSyncTrigger()
-	pw := NewPlayerWatcher("player1", "xuid1", fetcher, trigger)
+	// WithPostExitGrace(0) désactive la grâce post-extinction pour ce test
+	// (test du contrat legacy "Inactive → Idle immédiat"). Le comportement
+	// avec grâce est couvert par TestPlayerWatcher_PostExitGrace_*.
+	pw := NewPlayerWatcher("player1", "xuid1", fetcher, trigger).WithPostExitGrace(0)
 
 	ctx := context.Background()
 	pw.OnPresenceActive(ctx)
 	pw.OnPresenceInactive(ctx)
 
+	if pw.fsm.State() != StateIdle {
+		t.Errorf("state = %v, want Idle", pw.fsm.State())
+	}
+}
+
+// Fix B 2026-05-26 : avec grâce activée, OnPresenceInactive ne stop pas
+// immédiatement le poller — il faut attendre que le timer expire.
+func TestPlayerWatcher_PostExitGrace_DelaysStop(t *testing.T) {
+	fetcher := &mockFetcher{results: [][]string{{}}}
+	trigger := newMockSyncTrigger()
+	pw := NewPlayerWatcher("player1", "xuid1", fetcher, trigger).
+		WithPostExitGrace(50 * time.Millisecond)
+
+	ctx := context.Background()
+	pw.OnPresenceActive(ctx)
+	pw.OnPresenceInactive(ctx)
+
+	// Juste après Inactive : state encore Watching (timer en cours)
+	if pw.fsm.State() != StateWatching {
+		t.Errorf("juste après Inactive : state = %v, want Watching (grâce active)", pw.fsm.State())
+	}
+
+	// Attendre que le timer expire
+	time.Sleep(120 * time.Millisecond)
+
+	if pw.fsm.State() != StateIdle {
+		t.Errorf("après expiration grâce : state = %v, want Idle", pw.fsm.State())
+	}
+}
+
+// Fix B 2026-05-26 : si OnPresenceActive arrive pendant la grâce,
+// le timer est cancel et on reste en Watching sans repasser par Idle.
+func TestPlayerWatcher_PostExitGrace_CancelOnActive(t *testing.T) {
+	fetcher := &mockFetcher{results: [][]string{{}}}
+	trigger := newMockSyncTrigger()
+	pw := NewPlayerWatcher("player1", "xuid1", fetcher, trigger).
+		WithPostExitGrace(100 * time.Millisecond)
+
+	ctx := context.Background()
+	pw.OnPresenceActive(ctx)
+	pw.OnPresenceInactive(ctx)
+
+	// Pendant la grâce, le user revient en jeu (ex: dashboard → Halo).
+	time.Sleep(20 * time.Millisecond)
+	pw.OnPresenceActive(ctx)
+
+	// Attendre que la grâce aurait normalement expiré
+	time.Sleep(120 * time.Millisecond)
+
+	if pw.fsm.State() != StateWatching {
+		t.Errorf("après cancel grâce : state = %v, want Watching", pw.fsm.State())
+	}
+	pw.mu.Lock()
+	timerStillSet := pw.postExitTimer != nil
+	pw.mu.Unlock()
+	if timerStillSet {
+		t.Error("postExitTimer non remis à nil après cancel")
+	}
+}
+
+// Fix B 2026-05-26 : si OnPresenceInactive est appelé plusieurs fois
+// d'affilée (ticks REST consécutifs Offline), un seul timer tourne.
+func TestPlayerWatcher_PostExitGrace_IdempotentInactive(t *testing.T) {
+	fetcher := &mockFetcher{results: [][]string{{}}}
+	trigger := newMockSyncTrigger()
+	pw := NewPlayerWatcher("player1", "xuid1", fetcher, trigger).
+		WithPostExitGrace(80 * time.Millisecond)
+
+	ctx := context.Background()
+	pw.OnPresenceActive(ctx)
+	pw.OnPresenceInactive(ctx)
+	pw.OnPresenceInactive(ctx) // 2e appel ne doit pas reset le timer
+	pw.OnPresenceInactive(ctx) // 3e appel non plus
+
+	// Le state reste Watching tant que le timer initial tourne
+	if pw.fsm.State() != StateWatching {
+		t.Errorf("multi-Inactive : state = %v, want Watching", pw.fsm.State())
+	}
+
+	time.Sleep(120 * time.Millisecond)
+	if pw.fsm.State() != StateIdle {
+		t.Errorf("après expiration : state = %v, want Idle", pw.fsm.State())
+	}
+}
+
+// Fix B 2026-05-26 : si on est Idle (jamais entré en Watching) et qu'on
+// reçoit Inactive, c'est un no-op (pas de timer démarré inutilement).
+func TestPlayerWatcher_PostExitGrace_NoTimerIfIdle(t *testing.T) {
+	fetcher := &mockFetcher{results: [][]string{{}}}
+	trigger := newMockSyncTrigger()
+	pw := NewPlayerWatcher("player1", "xuid1", fetcher, trigger).
+		WithPostExitGrace(50 * time.Millisecond)
+
+	pw.OnPresenceInactive(context.Background())
+
+	pw.mu.Lock()
+	timerSet := pw.postExitTimer != nil
+	pw.mu.Unlock()
+	if timerSet {
+		t.Error("timer démarré alors que state était Idle (no-op attendu)")
+	}
 	if pw.fsm.State() != StateIdle {
 		t.Errorf("state = %v, want Idle", pw.fsm.State())
 	}
