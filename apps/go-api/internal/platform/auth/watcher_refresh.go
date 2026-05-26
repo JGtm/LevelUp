@@ -49,13 +49,14 @@ const oauthAccessTokenTTL = 50 * time.Minute
 
 // RefreshTokenFromEnv retourne la valeur de SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>
 // pour un gamertag donne. Retourne "" si la variable n'est pas definie.
-// La convention de transformation du gamertag est partagee avec :
-//   - internal/api/registry.go::oauthRefreshTokenForPlayer
-//   - internal/scheduler/auto_sync.go::defaultTokenReader (env var fallback)
-//   - internal/platform/auth/pool/discovery.go::readOAuthRefreshTokenFromEnv
 //
-// Cette fonction exportee centralise la logique pour le watcher (et plus tard
-// pourra remplacer les copies dispersees).
+// DEPRECATED (ADR 0023) : l'env var est un mécanisme legacy. La source canonique
+// des refresh tokens est MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
+// La migration boot-time (`auth.MigrateLegacyTokens`) copie automatiquement les
+// SPNKR_OAUTH_REFRESH_TOKEN_* dans le store au démarrage. Cette fonction sera
+// supprimée Phase 5 ; en attendant, son comportement est partagé avec
+// `auth.EnvRefreshTokenForGamertag` (migration.go) et
+// `pool.readOAuthRefreshTokenFromEnv` (discovery.go).
 func RefreshTokenFromEnv(gamertag string) string {
 	if gamertag == "" {
 		return ""
