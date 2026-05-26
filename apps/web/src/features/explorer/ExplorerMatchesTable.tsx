@@ -19,7 +19,7 @@
  *            Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -74,6 +74,10 @@ interface Props {
    *  Utile en mode Joueur (tableaux ally/enemy) pour rendre la pagination
    *  toujours visible indépendamment du volume de données. */
   alwaysShowPagination?: boolean
+  /** Taille de page initiale (par défaut PAGE_SIZE=20). Quand inférieure à
+   *  PAGE_SIZE, un bouton "Voir tout" est affiché pour passer au mode plein
+   *  (PAGE_SIZE). Mode Joueur Explorer utilise 10 pour réduire la densité. */
+  defaultPageSize?: number
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -156,7 +160,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, alwaysShowPagination }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, alwaysShowPagination, defaultPageSize }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -450,7 +454,20 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     [intlLocale, mapAssets, playlistAssets, locale],
   )
 
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
+  // defaultPageSize=10 (mode Joueur Explorer) → l'utilisateur démarre à 10
+  // lignes avec un bouton "Voir tout" qui passe au mode 20 (PAGE_SIZE plein).
+  // Sans defaultPageSize → comportement legacy (PAGE_SIZE=20 d'emblée).
+  const compactMode = defaultPageSize != null && defaultPageSize < PAGE_SIZE
+  const [expanded, setExpanded] = useState(false)
+  const initialPageSize = compactMode && !expanded ? (defaultPageSize as number) : PAGE_SIZE
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: initialPageSize })
+
+  // Sync pageSize quand l'utilisateur toggle expanded (mode compact uniquement).
+  // Effect séparé pour éviter setState durant le render.
+  useEffect(() => {
+    const target = compactMode && !expanded ? (defaultPageSize as number) : PAGE_SIZE
+    setPagination((p) => (p.pageSize === target ? p : { pageIndex: 0, pageSize: target }))
+  }, [compactMode, expanded, defaultPageSize])
 
   const table = useReactTable<ExplorerMatchRow>({
     data: rows,
@@ -562,6 +579,24 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               {t('explorer.player.next_page')}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Bouton expander : mode compact uniquement (defaultPageSize < PAGE_SIZE)
+          et tableau a plus de lignes que la page compacte. Permet de basculer
+          de 10 lignes vers 20 sans changer de page. */}
+      {compactMode && rows.length > (defaultPageSize as number) && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            data-testid="explorer-matches-table-expander"
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded
+              ? t('explorer.matches_table.show_less')
+              : t('explorer.matches_table.show_all')}
+          </button>
         </div>
       )}
     </div>

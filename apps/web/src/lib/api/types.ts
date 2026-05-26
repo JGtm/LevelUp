@@ -1218,6 +1218,62 @@ export interface ExplorerPlayerQueryResponse {
   /** Agrégat jour × heure des matchs communs (toutes pages confondues).
    *  Coloration UI pilotée par count (intensité d'activité commune). */
   activity_heatmap?: HeatmapCell[]
+  /** Encart "Profil joueur cible" affiché en haut des résultats Explorer
+   *  mode Joueur. 4 sous-blocs best-effort + flag auth_available. */
+  target_profile?: ExplorerTargetProfile
+}
+
+/** Encart "Profil joueur cible" composite (4 sources fetch en parallèle).
+ *  Toutes les sous-sections sont nullable : le front masque celles à null
+ *  et affiche un hint "Connexion Halo requise" quand auth_available=false. */
+export interface ExplorerTargetProfile {
+  /** Identité Spartan : banner, emblem, service tag, rang carrière.
+   *  Fetch live Halo en mode auth, fallback DB locale en mode no-tokens. */
+  identity?: HomeSpartanIdentity | null
+  /** Stats carrière entière du joueur (KDA / KDR / win rate / accuracy / ...).
+   *  Fetch via halostats career-stats. null en mode no-tokens. */
+  career_stats?: NormalizedPlayerStats | null
+  /** Stats agrégées du target sur les matchs joués en commun avec le user.
+   *  Toujours calculable depuis DuckDB, null seulement si common_matches=0. */
+  sample_stats?: ExplorerTargetSampleStats | null
+  /** Avertissement privacy (none / partial / full). null en mode no-tokens. */
+  privacy_warning?: MatchPrivacyWarning | null
+  /** true si le user connecté a des tokens OAuth Halo. Sert à rendre le hint
+   *  "Connexion Halo requise" sur les sections en mode dégradé. */
+  auth_available: boolean
+}
+
+/** Stats agrégées du joueur cible sur l'échantillon des matchs en commun.
+ *  Ratios en nullable : null signifie "indisponible" (dénominateur nul). */
+export interface ExplorerTargetSampleStats {
+  sample_size: number
+  // Totaux bruts.
+  kills: number
+  deaths: number
+  assists: number
+  wins: number
+  losses: number
+  draws: number
+  shots_fired: number
+  shots_hit: number
+  damage_dealt: number
+  damage_taken: number
+  // Breakdown kill types (somme sur le sample).
+  headshot_kills: number
+  melee_kills: number
+  power_weapon_kills: number
+  grenade_kills: number
+  // Médailles totales / types distincts.
+  total_medals: number
+  unique_medals: number
+  // Ratios calculés (nullable si dénominateur nul).
+  kda?: number | null
+  kdr?: number | null
+  win_rate?: number | null
+  accuracy?: number | null
+  headshot_rate?: number | null
+  offensive_conversion?: number | null
+  defensive_resistance?: number | null
 }
 
 export interface ExplorerMatchesQueryResponse {
