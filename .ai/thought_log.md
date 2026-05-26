@@ -1,3 +1,47 @@
+## [2026-05-26] Ascension — Suite : Campaign migré + séparation Prestige/Ascension
+
+**Statut** : Complété (2 commits — `458d0808` move Campaign + `70aa5383` layer split).
+
+**Branche** : `refactor/ascension-two-tabs-and-tips` (suite des phases 4-8).
+
+**Contexte** : Discussion UX post-livraison initiale. L'utilisateur clarifie que **Prestige est un système autonome** (challenges + arcs + rang PP) et **Ascension est une couche de coaching qui le consomme** (profil + patterns + coach + campagnes). Ma refonte précédente fusionnait les deux dans un seul tab "Profil & objectifs" sans distinction visuelle — un utilisateur Prestige-only se prenait toutes les sections coaching dans la figure.
+
+**Trois options explorées** :
+- A : hiérarchie visuelle simple
+- C : toggle `ascension_coaching_enabled` (mode épuré / mode coaching)
+- D : séparation visuelle stricte + textes explicatifs (tout visible)
+
+**Choix retenu : D**. Raisons :
+- Zéro friction utilisateur (pas de setting à activer)
+- Découvrabilité Ascension totale
+- Aucune décision UX critique (défaut ON/OFF, migration returning users, etc.)
+- L'argument fort de C ne pèserait que si Ascension consommait des ressources spéciales, ce qui n'est pas le cas (React Query déjà cached, backend déjà calcule).
+
+**Commit 1 — Move Campaign vers `features/ascension/campaign/`** :
+`git mv` de `CampaignTracker.tsx` + `StartCampaignModal.tsx` depuis `features/prestige/components/` vers `features/ascension/campaign/`. Adapte les 2 imports dans `AscensionProfileTab.tsx` (deviennent relatifs `./campaign/...`). Supprime les commentaires `// cross-feature-allow` devenus obsolètes (les hooks `useCampaignMutations`/`useProfileI18n` vivent désormais dans la même feature, pas de cross-feature à justifier). Aucun changement comportemental. Renforce l'alignement domaine ↔ structure :
+- `features/prestige/` : autonome (challenges + arcs + rang PP)
+- `features/ascension/` : coaching qui consomme Prestige (profil + patterns + coach + campagnes)
+
+**Commit 2 — Layer split dans `AscensionProfileTab.tsx`** :
+Nouveau wrapper `LayerSection` (H2 + description + bordure gauche accent) qui encadre chaque couche. Réorganisation :
+- **Couche Prestige** (haut) : `MyObjectivesSection` + `MyArcsSection`. Header explicite : "Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l'utiliser seul, sans coaching."
+- **Couche Ascension** (bas) : `CoachProposalsCard` + `CampaignTracker` + `PlayerProfileV3` + `PatternsSection`. Header : "Analyse ton historique pour te proposer des angles d'amélioration ciblés. S'appuie sur Prestige (les campagnes deviennent des objectifs) — tu peux ignorer cette section si tu préfères piloter toi-même."
+
+Top-level spacing passé à `space-y-10` (au lieu de `space-y-6`) pour aérer la frontière entre les couches. `StartCampaignModal` reste hors layers (rendu on-demand par les CTAs `onStartCampaign`).
+
+4 nouvelles strings i18n FR + EN ajoutées à `getAscensionText` :
+`prestigeLayerTitle`, `prestigeLayerDescription`, `ascensionLayerTitle`, `ascensionLayerDescription`.
+
+**Résultats observés** :
+- `npm run typecheck` : OK.
+- Tests ciblés (TipsTicker, tips, navigation, classifyFeedback) : 62/62 pass.
+- Pre-commit hooks : passent (no-hardcoded-colors, no-hardcoded-fields, cross-feature, secrets, etc.).
+- Aucun cross-feature import restant côté Campaign (`AscensionProfileTab` n'importe plus aucun composant `features/prestige/components/{CampaignTracker,StartCampaignModal}`).
+
+**Prochaine étape** : QA visuelle manuelle (dev server) pour valider que la séparation Prestige/Ascension est lisible et que les bordures + descriptions ne sont pas trop visuellement bruyantes. Si OK, PR ouverte vers main.
+
+---
+
 ## [2026-05-26] Ascension — Phases 4 → 8 : V3 Profile + 2 onglets + cleanup
 
 **Statut** : Complété (3 commits, branche `refactor/ascension-two-tabs-and-tips`).
