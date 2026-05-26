@@ -53,7 +53,8 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 	{
 		var deltaSum float64
 		var n int
-		csr, lusr := 0, 0
+		// Type du match le plus récent (window triée start_time DESC).
+		var firstRatingType string
 		for _, r := range window {
 			if r.Enrichment.SkillSnapshot == nil {
 				continue
@@ -62,16 +63,14 @@ func BuildHighlightsFromCanonical(rows []canonical.PlayerMatchRow) []domain.High
 				deltaSum += *r.Enrichment.SkillSnapshot.Delta
 				n++
 			}
-			switch strings.ToUpper(string(r.Enrichment.SkillSnapshot.RatingType)) {
-			case "CSR":
-				csr++
-			case "LUSR":
-				lusr++
+			rt := strings.ToUpper(string(r.Enrichment.SkillSnapshot.RatingType))
+			if rt != "" && firstRatingType == "" {
+				firstRatingType = rt
 			}
 		}
 		if n > 0 {
 			titleKey := "highlight.title.skill_delta_lusr"
-			if csr > lusr {
+			if firstRatingType == "CSR" {
 				titleKey = "highlight.title.skill_delta_csr"
 			}
 			sign := ""

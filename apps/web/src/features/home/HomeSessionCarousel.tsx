@@ -56,8 +56,14 @@ function ChevronDownIcon() {
 function formatSessionDate(startedAt: string | null): string {
   if (!startedAt) return ''
   const d = new Date(startedAt)
+  const now = new Date()
+  const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+  const dateOpts: Intl.DateTimeFormatOptions =
+    d < oneYearAgo
+      ? { day: 'numeric', month: 'short', year: 'numeric' }
+      : { day: 'numeric', month: 'short' }
   return (
-    d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) +
+    d.toLocaleDateString('fr-FR', dateOpts) +
     ' à ' +
     d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   )
