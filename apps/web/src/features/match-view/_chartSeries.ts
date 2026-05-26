@@ -15,26 +15,29 @@ import type { SemanticToken } from '@/lib/accessibility'
 import type {
   MatchHighlightEvent,
   MatchKillerVictimPair,
+  MatchScoreboardRow,
 } from '@/lib/api/types'
 import { unknownPlayerLabel } from './colors'
 
-/** Format seconds → "m:ss" (ex 75 → "1:15"). */
+/** Format seconds → "MmSSs" (ex 75 → "1m15s"). */
 export function formatBinSeconds(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.max(0, Math.floor(seconds % 60))
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return `${m}m${s.toString().padStart(2, '0')}s`
 }
 
 /** Construction des séries du chart match_view.18 (Antagonistes — qui a tué qui).
  *
  * Format `BarStackedChart` horizontal :
- *  - 1 catégorie par tueur (ordonnée par total décroissant)
+ *  - 1 catégorie par tueur, regroupée par équipe (ennemis en haut, alliés en bas)
  *  - composants = victimes, valeur = kills
  *
  * On reçoit déjà les paires agrégées (`killer_victim` du backend).
  */
 export function antagonistStackedSeries(
   pairs: MatchKillerVictimPair[],
+  scoreboard?: MatchScoreboardRow[],
+  meXUID?: string | null,
 ): ChartSeries<ChartPointStacked>[] {
   if (pairs.length === 0) return []
 
@@ -45,8 +48,24 @@ export function antagonistStackedSeries(
     killerTotals.set(p.killer_xuid, acc)
   }
 
+  const sb = scoreboard ?? []
+  const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
+  const allyTeam = meRow?.team_side ?? null
+  const xuidToTeam = new Map<string, string | null>(sb.map((r) => [r.xuid, r.team_side]))
+
+  const isEnemy = (xuid: string): boolean => {
+    if (allyTeam == null) return false
+    const t = xuidToTeam.get(xuid)
+    return t != null && t !== allyTeam
+  }
+
   const orderedKillers = Array.from(killerTotals.entries()).sort(
-    ([, a], [, b]) => b.total - a.total,
+    ([xuidA, a], [xuidB, b]) => {
+      const enemyA = isEnemy(xuidA) ? 0 : 1
+      const enemyB = isEnemy(xuidB) ? 0 : 1
+      if (enemyA !== enemyB) return enemyA - enemyB
+      return b.total - a.total
+    },
   )
 
   const datapoints: ChartPointStacked[] = orderedKillers.map(
@@ -140,5 +159,3 @@ export function allPlayersFragDiffSeries(
     }
   })
 }
-
-

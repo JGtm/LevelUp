@@ -37,16 +37,19 @@ const ALLY_OTHER_TOKENS: SemanticToken[] = [
   'perf-tier-2',
   'narrative-encounter-ally-plus',
   'narrative-remontada',
+  'narrative-dominant',
 ]
 
-/** Tokens warm/négatifs pour les adversaires (amis ou non). */
+/** Tokens warm/négatifs pour les adversaires (amis ou non).
+ *  Règle : aucun doublon hex — perf-tier-5 retiré car identique à outcome-loss. */
 const ENEMY_TOKENS: SemanticToken[] = [
   'outcome-loss',
-  'narrative-debacle',
   'narrative-humiliation',
-  'perf-tier-4',
-  'perf-tier-5',
+  'narrative-debacle',
   'narrative-contre-remontada',
+  'narrative-encounter-coriace',
+  'chart-series-8',
+  'perf-tier-4',
 ]
 
 export interface MatchPlayerColors {
