@@ -187,6 +187,186 @@ func TestMultiUserTokenStore_AuthHeader(t *testing.T) {
 	}
 }
 
+func TestMultiUserTokenStore_UpdateOAuthRefreshToken_PreservesOtherFields(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	original := &UserTokens{
+		XUID:          "2535471234567890",
+		Gamertag:      "Madina97294",
+		XSTSToken:     "xsts-original",
+		XSTSUserHash:  "hash-original",
+		XSTSExpiresAt: time.Now().Add(1 * time.Hour),
+		MSALCacheJSON: `{"cached":"data"}`,
+	}
+	if err := s.Upsert(original); err != nil {
+		t.Fatalf("Upsert original: %v", err)
+	}
+	createdAt, _ := s.Load("2535471234567890")
+
+	if err := s.UpdateOAuthRefreshToken("2535471234567890", "rt-rotated-v1"); err != nil {
+		t.Fatalf("UpdateOAuthRefreshToken: %v", err)
+	}
+
+	loaded, err := s.Load("2535471234567890")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if loaded.OAuthRefreshToken != "rt-rotated-v1" {
+		t.Errorf("OAuthRefreshToken = %q, want rt-rotated-v1", loaded.OAuthRefreshToken)
+	}
+	if loaded.Gamertag != "Madina97294" {
+		t.Errorf("Gamertag écrasé : %q", loaded.Gamertag)
+	}
+	if loaded.XSTSToken != "xsts-original" {
+		t.Errorf("XSTSToken écrasé : %q", loaded.XSTSToken)
+	}
+	if loaded.MSALCacheJSON != `{"cached":"data"}` {
+		t.Errorf("MSALCacheJSON écrasé : %q", loaded.MSALCacheJSON)
+	}
+	if !loaded.CreatedAt.Equal(createdAt.CreatedAt) {
+		t.Errorf("CreatedAt = %v, want %v (préservé)", loaded.CreatedAt, createdAt.CreatedAt)
+	}
+}
+
+func TestMultiUserTokenStore_UpdateOAuthRefreshToken_CreatesIfAbsent(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	if err := s.UpdateOAuthRefreshToken("111", "rt-first"); err != nil {
+		t.Fatalf("UpdateOAuthRefreshToken sur xuid absent: %v", err)
+	}
+
+	loaded, err := s.Load("111")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if loaded.XUID != "111" {
+		t.Errorf("XUID = %q, want 111", loaded.XUID)
+	}
+	if loaded.OAuthRefreshToken != "rt-first" {
+		t.Errorf("OAuthRefreshToken = %q, want rt-first", loaded.OAuthRefreshToken)
+	}
+	if loaded.CreatedAt.IsZero() {
+		t.Error("CreatedAt devrait être défini")
+	}
+}
+
+func TestMultiUserTokenStore_UpdateOAuthRefreshToken_RejectsEmpty(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	if err := s.UpdateOAuthRefreshToken("111", ""); err == nil {
+		t.Error("UpdateOAuthRefreshToken avec rt vide devrait être refusé")
+	}
+	if err := s.UpdateOAuthRefreshToken("", "rt"); err == nil {
+		t.Error("UpdateOAuthRefreshToken avec xuid vide devrait être refusé")
+	}
+	if err := s.UpdateOAuthRefreshToken("../escape", "rt"); err == nil {
+		t.Error("UpdateOAuthRefreshToken avec xuid unsafe devrait être refusé")
+	}
+}
+
+func TestMultiUserTokenStore_UpdateOAuthRefreshToken_Idempotent(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	if err := s.UpdateOAuthRefreshToken("111", "rt-v1"); err != nil {
+		t.Fatalf("UpdateOAuthRefreshToken v1: %v", err)
+	}
+	if err := s.UpdateOAuthRefreshToken("111", "rt-v1"); err != nil {
+		t.Fatalf("UpdateOAuthRefreshToken v1 bis: %v", err)
+	}
+	loaded, _ := s.Load("111")
+	if loaded.OAuthRefreshToken != "rt-v1" {
+		t.Errorf("OAuthRefreshToken après double update = %q, want rt-v1", loaded.OAuthRefreshToken)
+	}
+}
+
+func TestMultiUserTokenStore_UpdateMSALCache_PreservesOtherFields(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	original := &UserTokens{
+		XUID:              "111",
+		Gamertag:          "alice",
+		OAuthRefreshToken: "rt-pre-existing",
+		XSTSToken:         "xsts",
+	}
+	if err := s.Upsert(original); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+
+	if err := s.UpdateMSALCache("111", `{"new":"cache"}`); err != nil {
+		t.Fatalf("UpdateMSALCache: %v", err)
+	}
+
+	loaded, _ := s.Load("111")
+	if loaded.MSALCacheJSON != `{"new":"cache"}` {
+		t.Errorf("MSALCacheJSON = %q", loaded.MSALCacheJSON)
+	}
+	if loaded.OAuthRefreshToken != "rt-pre-existing" {
+		t.Errorf("OAuthRefreshToken écrasé : %q", loaded.OAuthRefreshToken)
+	}
+	if loaded.XSTSToken != "xsts" {
+		t.Errorf("XSTSToken écrasé : %q", loaded.XSTSToken)
+	}
+}
+
+func TestMultiUserTokenStore_LoadByGamertag(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	_ = s.Upsert(&UserTokens{XUID: "111", Gamertag: "Madina97294", XSTSToken: "tok-madina"})
+	_ = s.Upsert(&UserTokens{XUID: "222", Gamertag: "Chocoboflor", XSTSToken: "tok-choco"})
+
+	// Match exact
+	loaded, err := s.LoadByGamertag("Madina97294")
+	if err != nil {
+		t.Fatalf("LoadByGamertag exact: %v", err)
+	}
+	if loaded.XUID != "111" {
+		t.Errorf("XUID = %q, want 111", loaded.XUID)
+	}
+
+	// Case insensitive
+	loaded, err = s.LoadByGamertag("madina97294")
+	if err != nil {
+		t.Fatalf("LoadByGamertag lower: %v", err)
+	}
+	if loaded.XUID != "111" {
+		t.Errorf("case-insensitive: XUID = %q, want 111", loaded.XUID)
+	}
+
+	// Trim whitespace
+	loaded, err = s.LoadByGamertag("  Chocoboflor  ")
+	if err != nil {
+		t.Fatalf("LoadByGamertag trim: %v", err)
+	}
+	if loaded.XUID != "222" {
+		t.Errorf("trim: XUID = %q, want 222", loaded.XUID)
+	}
+}
+
+func TestMultiUserTokenStore_LoadByGamertag_NotFound(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+	_ = s.Upsert(&UserTokens{XUID: "111", Gamertag: "alice", XSTSToken: "tok"})
+
+	_, err := s.LoadByGamertag("bob")
+	if !errors.Is(err, ErrUserTokensNotFound) {
+		t.Errorf("err = %v, want ErrUserTokensNotFound", err)
+	}
+
+	_, err = s.LoadByGamertag("")
+	if err == nil {
+		t.Error("LoadByGamertag avec gamertag vide devrait être refusé")
+	}
+}
+
+func TestMultiUserTokenStore_LoadByGamertag_EmptyDir(t *testing.T) {
+	s := NewMultiUserTokenStore(tempTokenDir(t))
+
+	_, err := s.LoadByGamertag("alice")
+	if !errors.Is(err, ErrUserTokensNotFound) {
+		t.Errorf("err = %v, want ErrUserTokensNotFound", err)
+	}
+}
+
 func TestMultiUserTokenStore_FilePermissions(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("permissions POSIX non applicables sur Windows")
