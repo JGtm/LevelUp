@@ -355,7 +355,7 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
           </span>
           <DominanceBadgeInline
             labelKey={header.dominance_badge.label_key}
-            colorToken={header.dominance_badge.color_token}
+            flag={header.dominance_badge.flag}
             locale={locale}
           />
         </>
@@ -366,9 +366,19 @@ function OutcomeRow({ header, outcomeColor, locale }: OutcomeRowProps) {
 
 // ── DominanceBadgeInline ───────────────────────────────────────────────────
 
+// Le color_token backend ("narrative.dominance.loss.strong") ne correspond pas
+// aux SemanticTokens frontend — on mappe par flag numérique comme ExplorerMatchesTable.
+const DOMINANCE_TOKENS: Partial<Record<number, SemanticToken>> = {
+  1: 'narrative-dominant',
+  2: 'narrative-humiliation',
+  3: 'narrative-remontada',
+  4: 'narrative-debacle',
+  5: 'narrative-contre-remontada',
+}
+
 interface DominanceBadgeInlineProps {
   labelKey: string
-  colorToken: string
+  flag: number
   locale: MatchViewLocale
 }
 
@@ -395,18 +405,17 @@ export function RankedIcon({ className }: { className?: string }) {
   )
 }
 
-export function DominanceBadgeInline({ labelKey, colorToken, locale }: DominanceBadgeInlineProps) {
+export function DominanceBadgeInline({ labelKey, flag, locale }: DominanceBadgeInlineProps) {
   const entry = matchViewManifest[labelKey as MatchViewManifestKey]
   const label = entry ? entry[locale] : labelKey
-  const color = tokenCssVar(colorToken as SemanticToken)
+  const token = DOMINANCE_TOKENS[flag]
+  if (!token) return null
+  const bgColor = tokenCssVar(token)
+  const textColor = tokenCssVar(`${token}-text` as SemanticToken)
   return (
     <span
-      className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-sm font-semibold uppercase tracking-wide"
-      style={{
-        backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
-        borderColor: `color-mix(in oklab, ${color} 55%, transparent)`,
-        color,
-      }}
+      className="self-center rounded px-2.5 py-0.5 text-sm font-bold uppercase tracking-wide"
+      style={{ backgroundColor: bgColor, color: textColor }}
       data-testid="match-header-dominance-badge"
     >
       {label}

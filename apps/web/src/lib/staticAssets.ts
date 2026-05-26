@@ -58,8 +58,8 @@ export function csrRankImageURL(tier: string, subTier: number, titleSlug?: strin
 }
 
 /**
- * unrankedBadgeURL retourne l'URL du badge "Unranked" (cas joueurs sans rang).
+ * unrankedBadgeURL retourne l'URL du badge unranked_0.png (0 placement effectué).
  */
 export function unrankedBadgeURL(titleSlug?: string): string {
-  return staticAssetURL('csr-rank', 'Unranked', '.png', titleSlug)
+  return staticAssetURL('csr-rank', 'unranked_0', '.png', titleSlug)
 }

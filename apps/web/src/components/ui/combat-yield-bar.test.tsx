@@ -15,12 +15,12 @@ describe('CombatYieldBar', () => {
 
   it('renders both bars when oc and dr are provided', () => {
     const { container } = render(
+      // DR=1.0 est le baseline exact → 0px (aucun excès). OC=0.5 → ~48px.
       <CombatYieldBar offensiveConversion={0.5} defensiveResistance={1.0} />,
     )
-    // jsdom convertit hex → rgb — on vérifie que les barres ont une largeur > 0
     const bars = container.querySelectorAll('.rounded-l-full, .rounded-r-full')
     expect(bars.length).toBeGreaterThan(0)
-    // Les deux barres doivent avoir une width > 0px (valeurs non nulles)
+    // Au moins la barre OC doit avoir une largeur > 0
     const widths = Array.from(bars).map((b) => (b as HTMLElement).style.width)
     expect(widths.some((w) => w !== '0px' && w !== '')).toBe(true)
   })

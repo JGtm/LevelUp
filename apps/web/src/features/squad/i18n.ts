@@ -383,7 +383,7 @@ const FR_TEXT: SquadText = {
       false_brother: 'Joueur (hors top-fragger) avec le plus de morts et le moins d\'assists',
       top_killer: 'Joueur avec le plus grand nombre de frags du match',
       top_gun: 'Premier membre du squad à atteindre 10 frags',
-      kamikaze: 'Joueur tué dans les 1,5 s qui suivent un de ses frags (le plus fréquent du match)',
+      kamikaze: 'Joueur le plus tué dans les 1,5 s qui suivent ses frags',
     },
   },
   perMinute: {

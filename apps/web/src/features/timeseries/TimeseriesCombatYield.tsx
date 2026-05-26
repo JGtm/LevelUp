@@ -26,6 +26,8 @@ import type { MatchHistoryRow } from '@/lib/api/types'
 /** p80 references — miroir des constantes Go combat_yield.go. */
 const OC_P80 = 0.83
 const DR_P80 = 1.59
+/** DR affiché normalisé depuis 1.0 : (DR_P80 - 1.0) = 0.59 */
+const DR_DISPLAY_P80 = DR_P80 - 1.0
 
 interface CombatYieldPoint {
   x: string
@@ -75,7 +77,10 @@ export function TimeseriesCombatYield({
         meta: { gamertag: labels.drSeries },
         datapoints: filtered.map((r) => ({
           x: r.start_time,
-          y: r.defensive_resistance ?? null,
+          // Normalise depuis 1.0 pour aligner l'axe Y avec OC (0..N%) plutôt que 100..N%
+          y: r.defensive_resistance != null && r.defensive_resistance >= 0
+            ? r.defensive_resistance - 1
+            : null,
         })),
       },
     ]
@@ -140,10 +145,11 @@ export function buildCombatYieldOption(
           .filter((p) => p.value?.[1] != null)
           .map((p) => {
             const val = p.value[1] as number
-            const isOC = p.seriesName === labels.ocSeries
-            const formatted = isOC
-              ? `${Math.round(val * 100)}%`
-              : `${Math.round((val - 1) * 100) >= 0 ? '+' : ''}${Math.round((val - 1) * 100)}%`
+            const pct = Math.round(val * 100)
+            // DR est déjà normalisé (value - 1), OC part de 0 — même échelle
+            const formatted = p.seriesName === labels.drSeries && pct >= 0
+              ? `+${pct}%`
+              : `${pct}%`
             return `${p.marker}${p.seriesName}: <b>${formatted}</b>`
           })
         return lines.join('<br/>')
@@ -203,14 +209,14 @@ export function buildCombatYieldOption(
           lineStyle: { color: drColor, type: 'dotted', width: 1 },
           data: [
             {
-              yAxis: DR_P80,
-              name: `${labels.drReference} (${Math.round(DR_P80 * 100)}%)`,
+              yAxis: DR_DISPLAY_P80,
+              name: `${labels.drReference} (+${Math.round(DR_DISPLAY_P80 * 100)}%)`,
               label: {
                 show: true,
                 position: 'end',
                 color: drColor,
                 fontSize: 10,
-                formatter: `${labels.drReference} (${Math.round(DR_P80 * 100)}%)`,
+                formatter: `${labels.drReference} (+${Math.round(DR_DISPLAY_P80 * 100)}%)`,
               },
             },
           ],

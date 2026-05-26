@@ -11,6 +11,7 @@ import type { RecentMatchItem } from '@/lib/api/types'
 import { getPerfColor } from '@/lib/perf-color'
 import { getMatchCardOutcomeStyle, getMatchNarrativeBadgeMeta } from './match-card-presentation'
 import { CitationProgressRing } from './citation-progress-ring'
+import { CombatYieldBar } from './combat-yield-bar'
 import { skillDeltaScale, kdScale, mmrDeltaScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
@@ -112,10 +113,7 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
   const hasKDA = m.kills != null || m.assists != null || m.deaths != null
   const kdaTotal = kills + assists + deaths
 
-  const offConv = m.offensive_conversion ?? 0
-  const defRes = m.defensive_resistance ?? 0
   const hasDamageBar = m.offensive_conversion != null || m.defensive_resistance != null
-  const damageTotal = offConv + defRes
 
   const hasAccuracyLine = m.accuracy != null || m.avg_life_secs != null
 
@@ -381,20 +379,30 @@ export function MatchCard({ match: m, locale = 'fr', timezone = 'UTC', onClick, 
                     </div>
                   </div>
                 )}
-              <div data-testid="match-card-damage-bar" className="px-3 pt-2.5 pb-2 space-y-1.5">
-                <div className="h-2 w-full rounded-full overflow-hidden flex">
-                  {offConv > 0 && <div className="h-full" style={{ width: damageTotal > 0 ? `${(offConv / damageTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('outcome-win') }} />}
-                  {defRes > 0 && <div className="h-full" style={{ width: damageTotal > 0 ? `${(defRes / damageTotal) * 100}%` : '0%', backgroundColor: tokenCssVar('perf-tier-2') }} />}
+              <div data-testid="match-card-damage-bar" className="px-3 pt-2.5 pb-2 space-y-2">
+                <div className="flex justify-center">
+                  <CombatYieldBar
+                    offensiveConversion={m.offensive_conversion}
+                    defensiveResistance={m.defensive_resistance}
+                  />
                 </div>
-                <div className="flex justify-center gap-5 mt-2">
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-foreground leading-none">{(offConv * 100).toFixed(0)}%</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('outcome-win') }}>Rendement</span>
-                  </div>
-                  <div className="flex flex-col items-center gap-0.5">
-                    <span className="text-sm font-bold text-foreground leading-none">{((defRes - 1) * 100).toFixed(0)}%</span>
-                    <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('perf-tier-2') }}>Résistance</span>
-                  </div>
+                <div className="flex justify-center gap-5">
+                  {m.offensive_conversion != null && (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-sm font-bold text-foreground leading-none">
+                        {(m.offensive_conversion * 100).toFixed(0)}%
+                      </span>
+                      <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('divergent-pos') }}>Rendement</span>
+                    </div>
+                  )}
+                  {m.defensive_resistance != null && (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-sm font-bold text-foreground leading-none">
+                        {m.defensive_resistance < 0 ? '∞' : `${((m.defensive_resistance - 1) * 100).toFixed(0)}%`}
+                      </span>
+                      <span className="text-2xs font-medium leading-none" style={{ color: tokenCssVar('divergent-neutral') }}>Résistance</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </>)}
