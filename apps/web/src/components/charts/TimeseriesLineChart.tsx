@@ -227,7 +227,17 @@ export function buildTimeseriesLineOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
-      axisPointer: { type: 'cross' },
+      axisPointer: {
+        type: 'cross',
+        ...(xAxisLabelFormatter ? { label: { formatter: ({ value }: { value: unknown }) => xAxisLabelFormatter(value as number) } } : {}),
+      },
+      ...(xAxisLabelFormatter ? {
+        formatter: (params: Array<{ axisValue: number | string; marker: string; seriesName: string; value: [number, number] }>) => {
+          if (!Array.isArray(params) || !params.length) return ''
+          const rows = params.map(p => `${p.marker} ${p.seriesName}: <b>${p.value[1]}</b>`).join('<br/>')
+          return `${xAxisLabelFormatter(params[0].axisValue)}<br/>${rows}`
+        },
+      } : {}),
     },
     legend: { ...getLegendBase(tc), data: echartsSeries.map((s) => s.name) },
     xAxis,

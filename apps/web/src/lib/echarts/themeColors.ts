@@ -25,6 +25,8 @@ export interface EChartsThemeColors {
   tooltipBg: string
   /** Bordure tooltip — var(--border). */
   tooltipBorder: string
+  /** true si le thème actif est sombre (classe `dark` sur <html>). */
+  isDark: boolean
 }
 
 /**
@@ -55,6 +57,7 @@ export function getEChartsThemeColors(): EChartsThemeColors {
     text: get('--foreground', '#f3f4f6'),
     tooltipBg: popover,
     tooltipBorder: border,
+    isDark: document.documentElement.classList.contains('dark'),
   }
 }
 
@@ -67,4 +70,5 @@ const FALLBACK_COLORS: EChartsThemeColors = {
   text: '#f3f4f6',
   tooltipBg: '#1f2937',
   tooltipBorder: '#374151',
+  isDark: true,
 }
