@@ -69,7 +69,7 @@ export function ChallengesCarousel({ userId, titleSlug, playerSlug }: Challenges
             </button>
           </div>
           <Link
-            to={`/players/${playerSlug}/objectifs` as never}
+            to={`/players/${playerSlug}/ascension` as never}
             className="rounded-md border border-border px-2 py-1 text-xs hover:bg-accent"
           >
             + Nouveau

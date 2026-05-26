@@ -1,3 +1,33 @@
+## [2026-05-26] Ascension — Phases 4 → 8 : V3 Profile + 2 onglets + cleanup
+
+**Statut** : Complété (3 commits, branche `refactor/ascension-two-tabs-and-tips`).
+
+**Phase 4 — V3 PlayerProfile dans `features/ascension/profile/`** :
+Copie des 5 sections V1 (`IdentitySection`, `StyleDisciplineSection`, `PerformanceSection`, `ProgressionSection`, `InsufficientDataPlaceholder`) + hooks (`useProfileI18n`, `queries`) depuis `prestige/` vers `ascension/profile/`. Création de `PlayerProfileV3.tsx` orchestrateur (équivalent fonctionnel de `PlayerProfileCard` V1, conserve TOUS les CTAs : `onStartCampaign`, `onLaunchTemplate`, mu_trend, progress bar tier, mu/sigma, max_gap_days, descriptions de challenges suggérés). Enrichissement : `PerformanceSection.ComponentRow` reçoit un `<TrendArrow />` SVG inline (apport V2 — flèches up/down via `tokenCssVar('outcome-win/loss')`, pas d'emoji). Migration des imports cross-feature dans `prestige/components/{CampaignTracker,StartCampaignModal}.tsx` + `prestige/hooks.ts` re-broadcast vers `ascension/profile/queries`. Suppression de `prestige/hooks/{usePlayerProfile,useProfileI18n}.ts` et `prestige/components/profile/` (dossier).
+
+**Phase 5+6+7 — Layout 2 onglets + composition + tips** :
+`AscensionLayout.tsx` = layout parent (H1 + sous-titre + `<TipsTicker />` + 2 onglets `Profil & objectifs` / `Réalisations` + `<Outlet />`). Routes file-based : `routes/players/$playerSlug/ascension.tsx` (layout), `ascension/index.tsx` (= `AscensionProfileTab`), `ascension/realisations.tsx` (= `AscensionRealisationsTab`). `routes/.../objectifs/index.tsx` devient un `redirect()` vers `/ascension` (préserve les bookmarks). `AscensionProfileTab` (~330L) compose dans l'ordre : `CoachProposalsCard` proactif → `CampaignTracker` si actif → `PlayerProfileV3` → section `MyObjectivesSection` (PilotModeToggle + libres + pilotés + form) → section `MyArcsSection` → section `PatternsSection` (PatternContextGrid + SquadVsSoloCard + BehaviorAlertList + LeverList). `AscensionRealisationsTab` (~135L) compose : `PrestigeBadge` → `StreakDashboard` → `RecordsTimeline` → `MilestonesGrid` → `StatsGlobales` → grille `MomentCard`. Strings i18n FR + EN ajoutées au manifest `getAscensionText` (pageSubtitle, tabsAriaLabel, tabProfile, tabRealisations, tipsTickerAriaLabel).
+
+**Phase 8 — Cleanup + migration des liens** :
+NavL1 : section `objectifs` renommée `ascension`, 3 tabs → 2 tabs. Suppression de 14 fichiers obsolètes : `AscensionPage.tsx`, `ProfileRadarSection.tsx`, `StyleBadge.tsx` (V2 emoji-based), `LUSRComponentsGrid.tsx`, `LeveragePanel.tsx`, `ObjectifsPage.tsx`, `PlayerProfileCard.tsx`, dossier `prestige/components/profile/` (5 fichiers), `prestige/hooks/{usePlayerProfile,useProfileI18n}.ts`. Migration des liens hardcodés `/objectifs` → `/ascension` dans : `notifications/navigation.ts` (2 sites), `home/HomePrestigeSection.tsx` (2 sites), `prestige/components/ChallengesCarousel.tsx`, `lib/pageTitle.ts`. Backend Go `post_sync_deltas.go` : 4 `TargetRoute "/objectifs"` migrés vers `/ascension` + whitelist du test mise à jour. `classifyFeedback.ts` : regex étendue pour matcher `objectifs|ascension`. Tests `navigation.test.ts` + `classifyFeedback.test.ts` adaptés.
+
+**Résultats observés** :
+- `npm run typecheck` : OK (0 erreur).
+- `npx vitest run` : 1467 pass / 3 fail / 14 skipped. Les 3 failures (`HomePage.test.tsx`) sont des régressions **pré-existantes** sur la branche `refactor/shared-social-collect-persist` (vérifié en lançant la même commande dans le worktree principal — même résultat 3 fail). Non liées à la refonte Ascension. À investiguer séparément (MSW handler `/streaks` manquant probable).
+- `go build ./...` + `go test ./internal/api/` : OK.
+- Pre-commit hooks (gofmt, golangci, secrets, no-hardcoded-colors, no-hardcoded-fields, cross-feature boundary) : passent sur les 3 commits.
+- routeTree.gen.ts régénéré via `vite dev` (court-circuit, plugin `@tanstack/router-plugin`).
+
+**Décisions notables** :
+- V2 (`GameProfileSection`) avait dégradé V1 (perte de muTrend, progress bar tier, leverages all, suggested challenges descriptions, CTAs Start campaign / Launch template). La fusion construit une V3 = base V1 enrichie du trend icon V2. Aucune perte fonctionnelle.
+- Hooks `usePlayerProfile`/`useActiveCampaign`/`useCampaignMutations`/`useProfileI18n` rapatriés sous `ascension/profile/` car ils sont du domaine "profil joueur Ascension" (cross-feature import depuis prestige reste justifié pour CampaignTracker/StartCampaignModal qui restent dans prestige/ pour les Phases ultérieures).
+- TipsTicker en CSS pur (keyframe inline), respect `prefers-reduced-motion`, pause hover/focus. Pas de drawer (refusé par l'utilisateur), pas d'emoji (interdiction étendue UI).
+- Anchors profondes glossaire : `buildGlossaryEntryAnchor(term)` → `/help?tab=glossary#glossary-entry-<slug>` ; scroll auto à mount via `requestAnimationFrame`.
+
+**Prochaine étape** : QA visuelle manuelle (dev server + tour des 2 tabs en FR + EN + reduced motion) + éventuel ajustement esthétique du ticker (vitesse, espacement). Si OK, PR ouverte vers main avec changelog.
+
+---
+
 ## [2026-05-26] Ascension — Phase 1 + 2 : glossaire enrichi + TipsTicker générique
 
 **Statut** : Complété (3 commits sur worktree `LevelUp-ascension`).

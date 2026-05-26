@@ -445,7 +445,7 @@ func EmitPostSyncDeltas(
 			TitleKey:    "notif.objective_completed.title",
 			BodyKey:     "notif.objective_completed.body",
 			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
+			TargetRoute: fmt.Sprintf("/players/%s/ascension", slug),
 			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: objective_completed", "err", err)
@@ -464,7 +464,7 @@ func EmitPostSyncDeltas(
 			TitleKey:     "notif.challenge_completed.title",
 			BodyKey:      "notif.challenge_completed.body",
 			Params:       map[string]any{paramKeyCount: delta},
-			TargetRoute:  fmt.Sprintf("/players/%s/objectifs", slug),
+			TargetRoute:  fmt.Sprintf("/players/%s/ascension", slug),
 			TargetSearch: map[string]any{"tab": "challenges"},
 			Source:       postSyncSource,
 		}); err != nil {
@@ -563,7 +563,7 @@ func EmitPostSyncDeltas(
 			TitleKey:     "notif.challenge_added.title",
 			BodyKey:      "notif.challenge_added.body",
 			Params:       map[string]any{paramKeyCount: delta},
-			TargetRoute:  fmt.Sprintf("/players/%s/objectifs", slug),
+			TargetRoute:  fmt.Sprintf("/players/%s/ascension", slug),
 			TargetSearch: map[string]any{"tab": "challenges"},
 			Source:       postSyncSource,
 		}); err != nil {
@@ -585,7 +585,7 @@ func EmitPostSyncDeltas(
 			TitleKey:    "notif.objective_assigned.title",
 			BodyKey:     "notif.objective_assigned.body",
 			Params:      map[string]any{paramKeyCount: delta},
-			TargetRoute: fmt.Sprintf("/players/%s/objectifs", slug),
+			TargetRoute: fmt.Sprintf("/players/%s/ascension", slug),
 			Source:      postSyncSource,
 		}); err != nil {
 			slog.WarnContext(ctx, "post_sync: objective_assigned", "err", err)

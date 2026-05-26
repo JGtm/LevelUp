@@ -273,6 +273,8 @@ var validPlayerSubpaths = []string{
 	"/synthesis",
 	"/objectifs",
 	"/objectifs/index",
+	"/ascension",
+	"/ascension/realisations",
 	"/palmares",
 	"/palmares/season-pass",
 	"/palmares/prestige",
