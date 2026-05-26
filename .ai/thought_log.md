@@ -1,3 +1,33 @@
+## [2026-05-26] CHECKPOINT final shutdown shared_social (anti-WAL-replay-bug)
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `main.go` — après `workerWG.Wait()` (tous les workers arrêtés, 0 écriture concurrente), avant `duckdb.CloseAll()` : `LookupCachedDB(sharedSocialPath)` + `CHECKPOINT` synchrone (timeout 5s). Garantit que le WAL shared_social est vide avant qu'Air relance le process. Complémentaire avec le CHECKPOINT async de `SharedSocialPersister.Persist()` qui couvre la latence UI.
+
+**Résultats** : `go build ./cmd/server/...` + `go test ./...` propres.
+
+**Conclusion** : triangle complet — réactivité UI (async CHECKPOINT inter-opérations) + protection WAL Air (sync CHECKPOINT au shutdown).
+
+---
+
+## [2026-05-26] Fix citations (toutes visibles) + carrière rang actuel texte + romains
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** :
+1. `MergeCitationTotals()` (analysis/citations.go) — inverser l'itération : partir des `mappings` (catalogue activé via Q34 `WHERE enabled IS NOT FALSE`) au lieu des `totalRows` (Q35 = seulement les citations avec données). Un map `totals` sert de lookup ; les citations non commencées ont `total=0` mais sont incluses. Suppression du cas orphelin (citation avec data mais sans mapping dans le catalogue). Tests mis à jour : `ZeroTotalFiltered` → `ZeroTotalVisible`, `NoMapping` → `OrphanTotalIgnored`.
+2. `buildCareerSummaryEnriched()` (service/career_service.go) — override `RankLabel` via `s.rankCatalog.FullLabel(rank.RankNumber, "fr")` + `rankSubRoman()` (avant : fallback `"Rang 146"` car `career_progression.rank_name` est NULL). Appliquer aussi `rankSubRoman()` aux `NextRankNameFR/EN` (manquait avant). Pas de changement SQL nécessaire.
+
+**Résultats** : `go test ./...` vert. Citations non commencées visibles (0/N). Rang actuel affiche "Caporal II Platine" au lieu de "Rang 146". Doublon visuel disparu.
+
+**Prochaine étape** : commit + vérification manuelle en UI.
+
+---
+
 ## [2026-05-26] Fix likes médias cassés + favoris lents (shared_social post-migration)
 
 **Statut** : Complété
