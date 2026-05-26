@@ -9,7 +9,7 @@ import type {
   LUSRComponentBreakdown,
   SkillRatingSnapshot,
 } from '@/lib/playerProfile'
-import { useProfileI18n } from '../../hooks/useProfileI18n'
+import { useProfileI18n } from './useProfileI18n'
 import type { ProfileManifestKey } from '@/lib/i18n/generated/profile'
 
 interface PerformanceSectionProps {
@@ -140,7 +140,10 @@ function ComponentRow({ component }: { component: LUSRComponentBreakdown }) {
   return (
     <li className="text-xs">
       <div className="flex justify-between">
-        <span className="font-medium">{t(labelKey)}</span>
+        <span className="flex items-center gap-1 font-medium">
+          {t(labelKey)}
+          <TrendArrow trend={component.trend} t={t} />
+        </span>
         <span className="font-mono text-muted-foreground">
           {t('profile.performance.component_current_target', {
             current: currentPct,
@@ -165,5 +168,35 @@ function ComponentRow({ component }: { component: LUSRComponentBreakdown }) {
         />
       </div>
     </li>
+  )
+}
+
+const TREND_THRESHOLD = 0.02
+
+interface TrendArrowProps {
+  trend: number
+  t: ReturnType<typeof useProfileI18n>['t']
+}
+
+function TrendArrow({ trend, t }: TrendArrowProps) {
+  if (Math.abs(trend) < TREND_THRESHOLD) return null
+  const positive = trend > 0
+  const color = tokenCssVar(positive ? 'outcome-win' : 'outcome-loss')
+  const title = t(positive ? 'profile.performance.trend_positive' : 'profile.performance.trend_negative')
+  const path = positive ? 'M3 11 L8 4 L13 11' : 'M3 5 L8 12 L13 5'
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke={color}
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <title>{title}</title>
+      <path d={path} />
+    </svg>
   )
 }
