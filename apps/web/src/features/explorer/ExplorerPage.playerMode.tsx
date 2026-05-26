@@ -12,6 +12,7 @@ import { GamertagSearchInput } from './GamertagSearchInput'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { ExplorerActivityHeatmapChart } from './ExplorerActivityHeatmapChart'
+import { ExplorerTargetProfileCard } from './ExplorerTargetProfileCard'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -143,6 +144,16 @@ export function ExplorerPlayerMode({
 
       {targetGamertag && playerQuery.data && (
         <>
+          {/* Encart "Profil joueur cible" — bandeau identité + carrière live
+              + sample stats sur common_matches. Rendu juste après la search
+              bar pour donner du contexte avant le briefing détaillé. */}
+          {playerQuery.data.target_profile && (
+            <ExplorerTargetProfileCard
+              profile={playerQuery.data.target_profile}
+              gamertag={playerQuery.data.target_gamertag || targetGamertag}
+            />
+          )}
+
           {playerQuery.data.encounter_stats ? (
             <ExplorerEncounterBriefing
               stats={playerQuery.data.encounter_stats}
@@ -161,7 +172,8 @@ export function ExplorerPlayerMode({
 
           {/* Tableau "matchs en allié" — affiché uniquement si on a au moins
               un match commun en tant qu'alliés. Pattern team-banner aligné
-              sur MatchScoreboard (token team-ally). */}
+              sur MatchScoreboard (token team-ally). 10 lignes par défaut +
+              expander pour passer à 20. */}
           {allyMatchIds.length > 0 && allyMatchesData && (
             <ExplorerMatchesTable
               rows={allyMatchesData.table.items}
@@ -175,6 +187,7 @@ export function ExplorerPlayerMode({
                 gamertag: playerQuery.data.target_gamertag || targetGamertag,
               }}
               alwaysShowPagination
+              defaultPageSize={10}
             />
           )}
 
@@ -192,6 +205,7 @@ export function ExplorerPlayerMode({
                 gamertag: playerQuery.data.target_gamertag || targetGamertag,
               }}
               alwaysShowPagination
+              defaultPageSize={10}
             />
           )}
 

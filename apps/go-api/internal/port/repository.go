@@ -243,6 +243,16 @@ type ExplorerRepository interface {
 
 	// ResolveXUIDByGamertag retourne le XUID pour un gamertag donné.
 	ResolveXUIDByGamertag(ctx context.Context, gamertag string) (string, error)
+
+	// GetParticipantStatsForMatches agrège les stats brutes du joueur (xuid)
+	// sur la liste de matchs fournie. Lecture sur shared.match_participants.
+	// Retourne nil si matchIDs vide.
+	GetParticipantStatsForMatches(ctx context.Context, xuid string, matchIDs []string) (*domain.ParticipantStatsAggregate, error)
+
+	// GetMedalCountsForMatches retourne le total d'occurrences de médailles
+	// et le nombre de types distincts gagnés par le joueur (xuid) sur la
+	// liste de matchs fournie. Lecture sur shared.medals_earned.
+	GetMedalCountsForMatches(ctx context.Context, xuid string, matchIDs []string) (*domain.MedalCountsAggregate, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -409,6 +419,12 @@ func (n *noopExplorerRepo) GetKillerVictimBetween(_ context.Context, _, _ string
 }
 func (n *noopExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
 	return "", nil
+}
+func (n *noopExplorerRepo) GetParticipantStatsForMatches(_ context.Context, _ string, _ []string) (*domain.ParticipantStatsAggregate, error) {
+	return nil, nil
+}
+func (n *noopExplorerRepo) GetMedalCountsForMatches(_ context.Context, _ string, _ []string) (*domain.MedalCountsAggregate, error) {
+	return nil, nil
 }
 
 // SessionsRepository fournit les données brutes pour le calcul des sessions.

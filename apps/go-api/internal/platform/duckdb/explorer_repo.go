@@ -5,7 +5,9 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 
 	"levelup/go-api/internal/domain"
 )
@@ -76,6 +78,117 @@ func (r *ExplorerRepo) GetKillerVictimBetween(ctx context.Context, xuid1, xuid2 
 		return domain.KillerVictimAggregate{}, fmt.Errorf("ExplorerRepo.GetKillerVictimBetween: %w", err)
 	}
 	return agg, nil
+}
+
+// GetParticipantStatsForMatches agrège les stats brutes du joueur cible
+// (xuid) sur la liste de matchs fournie. Lecture sur shared.match_participants.
+//
+// Win/loss/draw sont dérivés du champ `outcome` (1=tie, 2=win, 3=loss,
+// 4=DNF). Les DNF ne comptent ni en wins ni en losses ni en draws — convention
+// alignée sur le reste du produit (cf. compare_repo, match_view).
+//
+// Retourne nil si matchIDs est vide.
+func (r *ExplorerRepo) GetParticipantStatsForMatches(
+	ctx context.Context, xuid string, matchIDs []string,
+) (*domain.ParticipantStatsAggregate, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
+	q := fmt.Sprintf(`
+		SELECT
+			COALESCE(SUM(kills), 0)               AS kills,
+			COALESCE(SUM(deaths), 0)              AS deaths,
+			COALESCE(SUM(assists), 0)             AS assists,
+			COALESCE(SUM(CASE WHEN outcome = 2 THEN 1 ELSE 0 END), 0) AS wins,
+			COALESCE(SUM(CASE WHEN outcome = 3 THEN 1 ELSE 0 END), 0) AS losses,
+			COALESCE(SUM(CASE WHEN outcome = 1 THEN 1 ELSE 0 END), 0) AS draws,
+			COALESCE(SUM(shots_fired), 0)         AS shots_fired,
+			COALESCE(SUM(shots_hit), 0)           AS shots_hit,
+			COALESCE(SUM(damage_dealt), 0.0)      AS damage_dealt,
+			COALESCE(SUM(damage_taken), 0.0)      AS damage_taken,
+			COALESCE(SUM(headshot_kills), 0)      AS headshot_kills,
+			COALESCE(SUM(melee_kills), 0)         AS melee_kills,
+			COALESCE(SUM(power_weapon_kills), 0)  AS power_weapon_kills,
+			COALESCE(SUM(grenade_kills), 0)       AS grenade_kills
+		FROM match_participants
+		WHERE xuid = ? AND match_id IN (%s)
+	`, placeholders)
+
+	args := make([]any, 0, 1+len(matchIDs))
+	args = append(args, xuid)
+	for _, mid := range matchIDs {
+		args = append(args, mid)
+	}
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetParticipantStatsForMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	row := db.QueryRowContext(ctx, q, args...)
+	var agg domain.ParticipantStatsAggregate
+	err = row.Scan(
+		&agg.Kills, &agg.Deaths, &agg.Assists,
+		&agg.Wins, &agg.Losses, &agg.Draws,
+		&agg.ShotsFired, &agg.ShotsHit,
+		&agg.DamageDealt, &agg.DamageTaken,
+		&agg.HeadshotKills, &agg.MeleeKills,
+		&agg.PowerWeaponKills, &agg.GrenadeKills,
+	)
+	if err == sql.ErrNoRows {
+		// Aucune ligne : le joueur n'a aucun participants row sur ces matchs.
+		// On retourne un agrégat zéro (sampleSize sera 0 côté service).
+		return &domain.ParticipantStatsAggregate{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetParticipantStatsForMatches: scan: %w", err)
+	}
+	return &agg, nil
+}
+
+// GetMedalCountsForMatches retourne le total d'occurrences (SUM(count)) et le
+// nombre de types distincts de médailles gagnées par le joueur sur la liste
+// de matchs fournie. Lecture sur shared.medals_earned.
+//
+// Retourne nil si matchIDs est vide.
+func (r *ExplorerRepo) GetMedalCountsForMatches(
+	ctx context.Context, xuid string, matchIDs []string,
+) (*domain.MedalCountsAggregate, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
+	q := fmt.Sprintf(`
+		SELECT
+			COALESCE(SUM(count), 0)                  AS total,
+			COALESCE(COUNT(DISTINCT medal_name_id), 0) AS unique_count
+		FROM medals_earned
+		WHERE xuid = ? AND match_id IN (%s)
+	`, placeholders)
+
+	args := make([]any, 0, 1+len(matchIDs))
+	args = append(args, xuid)
+	for _, mid := range matchIDs {
+		args = append(args, mid)
+	}
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetMedalCountsForMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	row := db.QueryRowContext(ctx, q, args...)
+	var agg domain.MedalCountsAggregate
+	if err := row.Scan(&agg.Total, &agg.Unique); err != nil {
+		if err == sql.ErrNoRows {
+			return &domain.MedalCountsAggregate{}, nil
+		}
+		return nil, fmt.Errorf("ExplorerRepo.GetMedalCountsForMatches: scan: %w", err)
+	}
+	return &agg, nil
 }
 
 // ResolveXUIDByGamertag résout un gamertag en xuid via shared.v_gamertag_lookup (ILIKE).

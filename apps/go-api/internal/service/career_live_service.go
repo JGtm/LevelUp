@@ -158,8 +158,20 @@ func NewCareerLiveService(
 //     C'est ce qui transforme « le live a rendu null cette fois » en
 //     « on continue de servir la dernière valeur connue ».
 func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.HomeSpartanIdentityRow, error) {
-	xuid := ctxkeys.HaloXUID(ctx)
+	return s.GetSpartanIdentityFor(ctx, ctxkeys.HaloXUID(ctx))
+}
 
+// GetSpartanIdentityFor retourne l'identité Spartan pour un xuid arbitraire,
+// pas nécessairement celui du user connecté. Utilisé par l'Explorer pour
+// afficher l'identité du joueur cible recherché.
+//
+// Garde-fou critique : la persistance dans `career_progression` (déclenchée
+// par kickoffBackgroundRefresh) n'est activée QUE si le xuid passé est égal
+// au xuid du user connecté. Sinon on évite de polluer la player DB du user
+// avec les rangs/customisations d'un joueur tiers.
+//
+// Le reste du flow (cache + merge + DB fallback + overlay) reste identique.
+func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error) {
 	// Étape 1-2 : filet DB systématique. serveDBFallback est tolérant à
 	// xuid="" / repo nil (retourne nil), donc on peut toujours l'appeler.
 	dbFallback := s.serveDBFallback(ctx, xuid)
@@ -167,8 +179,15 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 		return dbFallback, nil
 	}
 
+	// allowPersist : la persistance asynchrone n'est ouverte que pour le xuid
+	// du user connecté. Pour un xuid tiers (cas Explorer), on lit le cache et
+	// on rend le résultat, mais on ne déclenche pas le kickoff background qui
+	// écrirait dans career_progression de la player DB courante (qui est
+	// celle du user, pas du target).
+	allowPersist := xuid == ctxkeys.HaloXUID(ctx)
+
 	// Étape 3 : tentative live (peut échouer transitoirement).
-	merged, err := s.fetchAndMerge(ctx, xuid)
+	merged, err := s.fetchAndMerge(ctx, xuid, allowPersist)
 	if err != nil {
 		slog.WarnContext(ctx, careerLiveLogModule+": fetch+merge failed → DB fallback",
 			"xuid", xuid, "err", err)
@@ -196,6 +215,16 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 	return identity, nil
 }
 
+// GetSpartanIdentityFromDBOnly charge l'identité Spartan d'un xuid tiers
+// strictement depuis la player DB locale, sans aucun appel live Halo.
+//
+// Utilisé dans le path no-tokens d'Explorer (cas où le user connecté n'a pas
+// de tokens OAuth Halo) : on rend ce qu'on a en local et on signale au front
+// via le flag auth_available=false. Retourne nil si la DB ne porte aucune row.
+func (s *CareerLiveService) GetSpartanIdentityFromDBOnly(ctx context.Context, xuid string) *domain.HomeSpartanIdentityRow {
+	return s.serveDBFallback(ctx, xuid)
+}
+
 // overlayIdentityFromFallback → extrait dans `career_live_merge.go`.
 
 // fetchAndMerge construit la CareerRankRow servie à la home selon le pattern
@@ -218,7 +247,7 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 // internes loggées), mais une future intégration LiveAPI pourrait remonter ici.
 //
 //nolint:unparam // err maintenu en signature pour cohérence avec autres fetchers
-func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string) (*duckdb.CareerRankRow, error) {
+func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string, allowPersist bool) (*duckdb.CareerRankRow, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
@@ -261,11 +290,19 @@ func (s *CareerLiveService) fetchAndMerge(ctx context.Context, xuid string) (*du
 	// on déclenche un refresh background détaché. La home rend déjà avec ce
 	// qu'on a (DB + parts cached). La requête suivante bénéficiera du cache
 	// frais — sans avoir attendu Halo dans le chemin critique.
+	//
+	// allowPersist=false (cas xuid tiers depuis Explorer) court-circuite le
+	// kickoff parce qu'il écrirait dans career_progression du user connecté
+	// (la player DB courante), pas dans celle du target. On garde quand même
+	// le bénéfice de la lecture cache + DB fallback.
 	switch {
 	case !hasAuth:
 		slog.InfoContext(ctx, careerLiveLogModule+": kickoff skipped",
 			"xuid", xuid, "reason", "no_auth_tokens",
 			"db_has_row", dbLast != nil)
+	case !allowPersist:
+		slog.DebugContext(ctx, careerLiveLogModule+": kickoff skipped",
+			"xuid", xuid, "reason", "persist_disabled_third_party_xuid")
 	case !needRefresh:
 		slog.DebugContext(ctx, careerLiveLogModule+": kickoff skipped",
 			"xuid", xuid, "reason", "cache_warm")
