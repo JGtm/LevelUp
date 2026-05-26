@@ -109,6 +109,7 @@ const t = {
   watcherPresenceAway: 'Absent',
   watcherPresenceOffline: 'Hors-ligne',
   watcherPresenceUnknown: '—',
+  watcherTitleXboxDashboard: "l'accueil Xbox",
   watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
   watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
   watcherNeverSeen: 'Jamais vu en jeu',
@@ -515,7 +516,7 @@ describe('WatcherCard', () => {
 // ---------------------------------------------------------------------------
 // formatLastSeen unit tests
 // ---------------------------------------------------------------------------
-import { formatLastSeen } from './WatcherCard'
+import { formatLastSeen, resolveTitleDisplayName } from './WatcherCard'
 
 describe('formatLastSeen', () => {
   const baseNow = new Date('2026-05-26T10:00:00Z')
@@ -554,5 +555,27 @@ describe('formatLastSeen', () => {
   it('timestamp invalide → "Jamais vu en jeu"', () => {
     expect(formatLastSeen('not-a-date', 'Halo Infinite', t, 'fr', baseNow))
       .toBe('Jamais vu en jeu')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// resolveTitleDisplayName unit tests
+// ---------------------------------------------------------------------------
+
+describe('resolveTitleDisplayName', () => {
+  it('mappe "Online" → "l\'accueil Xbox" (Dashboard Xbox)', () => {
+    expect(resolveTitleDisplayName('Online', t)).toBe("l'accueil Xbox")
+  })
+
+  it('garde "Halo Infinite" tel quel', () => {
+    expect(resolveTitleDisplayName('Halo Infinite', t)).toBe('Halo Infinite')
+  })
+
+  it('garde "Counter-Strike 2" tel quel', () => {
+    expect(resolveTitleDisplayName('Counter-Strike 2', t)).toBe('Counter-Strike 2')
+  })
+
+  it('garde une chaîne vide telle quelle', () => {
+    expect(resolveTitleDisplayName('', t)).toBe('')
   })
 })

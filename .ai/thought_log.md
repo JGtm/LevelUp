@@ -1,3 +1,19 @@
+## [2026-05-26] Fix likes médias cassés + favoris lents (shared_social post-migration)
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** :
+1. `urlToFilePath` (handlers/media.go) — bug double-slug : candidate construite comme `capturesBase + slug + relPath` mais `relPath` contient déjà le slug du propriétaire → chemin inexistant → fallback retournait l'URL → `UPDATE media_files WHERE file_path = URL` → 0 lignes → 404. Fix : `capturesBase + relPath` (sans slug intermédiaire) + fallback `relPath` (pas l'URL) pour couvrir les paths post-migration relatifs.
+2. CHECKPOINT async dans `SharedSocialPersister.Persist()` — le CHECKPOINT synchrone bloquait 100-500ms par toggle favori (attend la libération des locks readers). Rendu async via goroutine ; le COMMIT reste synchrone (atomicité garantie). Test WAL adapté avec polling 50ms/2s.
+
+**Résultats** : `go test ./...` passe (100%), dont `TestSharedSocialPersister_CHECKPOINT_WALEmptyAfterPersist` adapté au polling async.
+
+**Conclusion** : likes réparés, toggle favori immédiat côté UI.
+
+---
+
 ## [2026-05-26] Fix UI home page — hauteur égale, date année, LUSR→CSR, auto-scroll stable
 
 **Statut** : Complété

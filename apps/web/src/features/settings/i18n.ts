@@ -117,6 +117,8 @@ export interface SettingsText {
   watcherPresenceOffline: string
   /** Présence inconnue (pas encore d'event reçu) */
   watcherPresenceUnknown: string
+  /** Renommage du titleName "Online" (Dashboard Xbox) côté UI */
+  watcherTitleXboxDashboard: string
   /** "Vu il y a {duration} sur {title}" — format relatif + jeu */
   watcherLastSeenRelative: string
   /** "Vu le {date} sur {title}" — format absolu si trop ancien */
@@ -359,6 +361,7 @@ const FR_TEXT: SettingsText = {
   watcherPresenceAway: 'Absent',
   watcherPresenceOffline: 'Hors-ligne',
   watcherPresenceUnknown: '—',
+  watcherTitleXboxDashboard: "l'accueil Xbox",
   watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
   watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
   watcherNeverSeen: 'Jamais vu en jeu',
@@ -632,6 +635,7 @@ const EN_TEXT: SettingsText = {
   watcherPresenceAway: 'Away',
   watcherPresenceOffline: 'Offline',
   watcherPresenceUnknown: '—',
+  watcherTitleXboxDashboard: 'the Xbox home',
   watcherLastSeenRelative: 'Seen {duration} ago on {title}',
   watcherLastSeenAbsolute: 'Last seen on {date} playing {title}',
   watcherNeverSeen: 'Never seen in game',

@@ -259,20 +259,26 @@ func TestSharedSocialPersister_CHECKPOINT_WALEmptyAfterPersist(t *testing.T) {
 		t.Fatalf("Persist: %v", err)
 	}
 
-	// Vérifier le WAL.
+	// Le CHECKPOINT est async — on attend jusqu'à 2 s qu'il se termine.
 	walPath := path + ".wal"
-	info, err := os.Stat(walPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// CHECKPOINT a tout fusionné, pas de WAL → parfait
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		info, err := os.Stat(walPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return // CHECKPOINT a fusionné le WAL → pas de fichier → OK
+			}
+			t.Fatalf("stat WAL: %v", err)
+		}
+		if info.Size() == 0 {
+			return // WAL vidé → OK
+		}
+		if time.Now().After(deadline) {
+			t.Errorf("WAL non-vide 2 s après Persist+CHECKPOINT async (size=%d). Risque de replay au prochain reopen.\nPath: %s",
+				info.Size(), walPath)
 			return
 		}
-		t.Fatalf("stat WAL: %v", err)
-	}
-	// Si le WAL existe, il doit être vide (CHECKPOINT l'a flushé).
-	if info.Size() > 0 {
-		t.Errorf("WAL non-vide après Persist+CHECKPOINT (size=%d). Risque de replay au prochain reopen.\nPath: %s",
-			info.Size(), walPath)
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
