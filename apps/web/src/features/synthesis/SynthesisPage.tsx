@@ -80,9 +80,9 @@ const STYLE_DEFENSIVE_LABELS: Record<string, string> = {
   fragile: 'Défensif fragile',
 }
 const STYLE_ACTIVITY_LABELS: Record<string, string> = {
-  actif: 'Très actif',
-  modere: 'Modéré',
-  discret: 'Discret',
+  actif: 'Engagement actif',
+  modere: 'Engagement modéré',
+  discret: 'Engagement discret',
 }
 
 function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfileBlock }) {
@@ -91,7 +91,7 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
     combatProfile.style_defensive != null ||
     combatProfile.style_activity != null
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-3 mt-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border pb-3 mb-3">
       <span className="text-sm font-medium shrink-0">Profil de combat</span>
       <span className="text-xs text-muted-foreground shrink-0">· {combatProfile.match_count} matchs analysés</span>
       {hasStyles && (
@@ -163,6 +163,10 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
     <Card>
       <CardHeader><CardTitle>Vue d'ensemble</CardTitle></CardHeader>
       <CardContent>
+
+        {combatProfile != null && (
+          <CombatProfileInlineRow combatProfile={combatProfile} />
+        )}
 
         {/* Statistiques détaillées intégrées */}
         {detailedStats && (
@@ -305,9 +309,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
           </div>
         )}
 
-        {combatProfile != null && (
-          <CombatProfileInlineRow combatProfile={combatProfile} />
-        )}
 
       </CardContent>
     </Card>
