@@ -1,3 +1,57 @@
+## [2026-05-26] Médailles tuiles home — tri par rareté
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `selectTopMedals()` dans `internal/service/home_service.go` faisait un `medals[:n]` naïf sur un tableau trié count DESC — les médailles rares (Legendary/Mythic avec count=1) étaient éliminées par les communes (count élevé). Ajout de `medalDifficultyWeight()` + `sort.Slice` : tri Mythic > Legendary > Heroic > Normal, puis count en tiebreaker. 3 tests ajoutés dans `home_service_test.go`. Go `./...` 100% vert.
+
+**Prochaine étape** : backfill HTTP performance + citations pour les matchs du jour.
+
+---
+
+## [2026-05-26] MVP==LVP + résistance ∞ + poids scoreboard
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : 3 corrections sur 4 fichiers Go + 3 fichiers frontend.
+
+1. **MVP==LVP (scoreboard_extremes.go)** — ajout de poids pondérés par colonne (KDA=3, personal_score=3, kills/deaths/damage=2, reste=1) + résolution du conflit via `pickBestExcluding` : si MVP==LVP, LVP reste prioritaire et le MVP est re-sélectionné sans le LVP. Test `TestMVPLVP_SamePlayerConflict` ajouté. `TestMVPLVP_InsufficientBestCells` mis à jour (utilise assists poids=1 pour rester sous le seuil).
+
+2. **Résistance -100% → ∞ (match_view_converters.go)** — quand `deaths==0`, `DefensiveResistance` retourne `−1.0` comme sentinel (valeur impossible en production) au lieu de `0.0`. Frontend : `v < 0 → '∞'` dans le scoreboard et le tooltip ; `barWidth` traite `v < 0` comme largeur max. `hasData` inclut le cas `< 0`.
+
+3. **Performance + citations manquantes** — opérationnel : `POST /api/players/{gamertag}/backfill { performance_scores: true, citations: true }` via `internal/api/handlers/backfill.go`.
+
+**Résultats** : `go test ./...` 100% vert, `combat-yield-bar` 7/7 verts, `TestMVPLVP_*` 5/5 verts. TS sans erreur sur les fichiers modifiés. Échec pre-existant `HomeRankingStates.test.tsx` non lié.
+
+**Prochaine étape** : backfill HTTP pour les matchs récupérés aujourd'hui.
+
+---
+
+## [2026-05-26] Uniformisation affichage CSR/LUSR (home + carrière)
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : 4 corrections coordonnées front+back.
+1. `HomeSkillPeakCard.tsx` — état 'absent' (aucun historique) affiche désormais `unranked_0.png` + "Non classé" au lieu d'une abréviation texte.
+2. `Q26gPlaylistPhaseBShared` — GROUP BY passe de `playlist_id` strict à `COALESCE(playlist_id, playlist_name)` pour capturer les matchs sans `playlist_id` renseigné.
+3. `GetCSRSnapshots` (career_repo.go) — algo inversé : catalogue-first (toutes les playlists ranked apparaissent toujours) + overlay des snapshots joueur, playlists hors catalogue ajoutées en fin.
+4. i18n career — "Placement" → "En placement" (toml + generated ts).
+
+**Résultats** : `go build ./...` + `go vet ./...` + `go test ./...` 100% vert. `npm run typecheck` : 1 erreur pre-existante `SettingsPage.tsx` non liée. Vitest 154 fichiers / 1469 tests 100% verts (test `HomeRankingStates` mis à jour pour "Non classé").
+
+**Logging ajouté** : `slog.DebugContext` dans `GetCSRSnapshots` (catalog count + snapshot count) + `slog.WarnContext` dans `loadRankedPlaylistsCatalog` si query échoue.
+
+**Test ajouté** : `TestE2EPipeline_HomeRecentPlaylists_NullPlaylistIdGroupedByName` — vérifie que les matchs avec `playlist_id=NULL` + `playlist_name` non-null sont correctement regroupés et retournés (3 playlists au lieu de 1 avant le fix).
+
+**Prochaine étape** : Vérification visuelle sur xxdaemongamerxx (playlists récentes + classements carrière).
+
+---
+
 ## [2026-05-26] Vérification finale likes/favorites + logging + tests urlToFilePath
 
 **Statut** : Complété
