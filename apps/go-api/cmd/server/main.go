@@ -1244,10 +1244,13 @@ func startWatcherDaemon(
 
 	// 1) S'assurer qu'on a un access_token Microsoft frais.
 	//    EnsureWatcherAccessToken réutilise l'access_token courant s'il est
-	//    valide, sinon tente un OAuth v2 refresh depuis (a) tokens.RefreshToken
-	//    ou (b) SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag> (.env.local).
-	//    Persiste le nouveau access_token dans watcher_tokens.json.
-	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, store, tokenProvider, tokens.XSTSGamertag)
+	//    valide, sinon tente un OAuth v2 refresh depuis :
+	//    (a) MultiUserTokenStore (canonique, ADR 0023)
+	//    (b) tokens.RefreshToken (legacy watcher_tokens.json)
+	//    (c) SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag> (.env.local DEPRECATED)
+	//    Persiste la rotation dans le multi-store en priorité, puis le legacy.
+	multiStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, multiStore, store, tokenProvider, tokens.XSTSGamertag)
 	if err != nil {
 		slog.Warn("watcher: EnsureWatcherAccessToken erreur structurelle", "err", err)
 	}
