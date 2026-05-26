@@ -326,7 +326,7 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// Capture `lastSeen` si présent dans le payload (snapshot Offline).
 		// Exposé via WatcherStatus pour affichage UI "vu il y a 2h sur Halo".
 		if event.LastSeen != nil {
-			pw.RecordLastSeen(event.LastSeen)
+			pw.RecordLastSeen(evCtx, event.LastSeen)
 		}
 
 		// Vérifier si le titre correspond à un jeu tracké
