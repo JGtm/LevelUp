@@ -1,3 +1,30 @@
+## [2026-05-26] Ascension — Phase 1 + 2 : glossaire enrichi + TipsTicker générique
+
+**Statut** : Complété (3 commits sur worktree `LevelUp-ascension`).
+
+**Branche** : `refactor/ascension-two-tabs-and-tips` (worktree dédié, créé depuis `refactor/shared-social-collect-persist` HEAD `006c58ca`).
+
+**Contexte** : Refonte UX de la section Ascension (NavL1 flame) qui souffre de trois pages confuses (Objectifs / Parcours / Séries) et d'un profil joueur dupliqué entre V1 Prestige (`PlayerProfileCard`) et V2 Ascension (`GameProfileSection`). Plan validé : 2 onglets (Profil & objectifs / Réalisations) + TipsTicker contextuel par page + glossaire enrichi des concepts Ascension manquants.
+
+**Phase 1 — Glossaire enrichi + ancres profondes** :
+Ajout d'une nouvelle section "Ascension & Progression" dans `features/help/i18n.ts` FR + EN avec 14 entrées (Série, Record personnel, Palier, Arc, MomentCard, Pattern contextuel/comportemental, Levier calibré, Leverage LUSR, Tier d'engagement, Style de jeu, Multiplicateur PP, Mode pilote, Coach proactif). Helper `buildGlossaryEntryAnchor(term)` exporté depuis `GlossaryTab.tsx` pour générer des `id` stables `glossary-entry-<slug>` sur chaque card. `useEffect` au mount du tab : si `window.location.hash` matche un entry-anchor, scroll fluide vers la card (ne s'exécute qu'une fois, garde-fou `initialAnchorScrollDone.current`). `scroll-mt-32` ajouté pour offset du sticky header de recherche.
+
+**Phase 2 — Composant TipsTicker générique** :
+Nouveau `components/ui/tips-ticker.tsx` (<150L) — ticker horizontal défilant en CSS pur (keyframe inline `tips-ticker-scroll`, duration via CSS variable `--ticker-duration`). Tips dupliqués 2× pour boucle seamless ; copies dupliquées marquées `aria-hidden="true"` + `tabIndex=-1` pour exclure des lecteurs d'écran et de la navigation clavier. `motion-safe:` active l'animation ; `motion-reduce:` la désactive et passe en flex-wrap statique. Pause au hover/focus via `group-hover:[animation-play-state:paused]` Tailwind v4. Tip cliquable rend un `<a href>` natif ; sans href → `<span>` non-interactif. Tests Vitest (7/7 verts) : empty state, duplication, aria-hidden des copies, href, durée CSS variable, aria-label de la région.
+
+**Fix régression hors scope** : `routes/settings.tsx` listait 7 tabs mais `SettingsPage.tsx` en utilisait 8 (`backup` ajouté en commit `5ef30038` sans mise à jour de `SETTINGS_TABS`). Bloquait `tsc -b`. Fix isolé en commit dédié pour rester traçable.
+
+**Résultats observés** :
+- `npm run typecheck` : OK (0 erreur après fix settings).
+- `npx vitest run src/components/ui/tips-ticker.test.tsx` : 7/7 passent en 1.18s.
+- Glossaire FR : 14 nouvelles entrées dans section "Ascension & Progression" entre "Progression & Gamification" et "Navigation et organisation".
+- Glossaire EN : symétrique (mêmes 14 entrées traduites).
+- `i18n.ts` est passé de 617L à ~870L — dépasse le seuil 500L CLAUDE.md, mais c'est un fichier i18n (pattern reconnu, déjà gros avant). Pas de refactor dans ce PR.
+
+**Prochaine étape** : Phase 3 (source `buildAscensionTips` côté feature) puis Phase 4 (V3 du Profil joueur — fusion V1+V2 sans perte, le chantier critique).
+
+---
+
 ## [2026-05-26] Watcher — 3 fixes complémentaires (titre non tracké + grâce extinction + REST poll friends)
 
 **Statut** : Complété (3 fixes + 6 nouveaux tests + tests existants adaptés).
