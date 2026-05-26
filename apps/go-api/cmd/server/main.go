@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -1440,25 +1441,15 @@ func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, 
 }
 
 // resolveXUIDForRotation retourne le xuid associé à un gamertag pour l'écriture
-// du RT rotaté dans MultiUserTokenStore. Cherche d'abord dans le store
-// (LoadByGamertag), puis dans config.LoadPlayers en dernier recours.
-// Retourne "" si introuvable (joueur jamais migré ni configuré).
+// du RT rotaté dans MultiUserTokenStore. Délègue à capturecli.ResolveXUIDForRotation
+// (helper testable sans cgo). Best-effort : LoadPlayers échoué = "" silencieux.
 func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *auth.MultiUserTokenStore, gamertag string) string {
-	if user, err := store.LoadByGamertag(gamertag); err == nil && user != nil && user.XUID != "" {
-		return user.XUID
-	}
 	players, err := cfg.LoadPlayers()
 	if err != nil {
 		slog.DebugContext(ctx, "resolveXUIDForRotation: LoadPlayers erreur", "err", err)
-		return ""
+		players = nil
 	}
-	target := strings.ToLower(strings.TrimSpace(gamertag))
-	for _, p := range players {
-		if strings.ToLower(p.Gamertag) == target {
-			return p.XUID
-		}
-	}
-	return ""
+	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
 }
 
 // migrateLegacyAuthTokensAtBoot copie les tokens legacy (env var
