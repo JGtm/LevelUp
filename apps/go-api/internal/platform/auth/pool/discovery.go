@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
@@ -17,7 +18,8 @@ import (
 const (
 	credSourceDuckDBMSAL    = "duckdb_msal"
 	credSourceDuckDBOAuth   = "duckdb_oauth"
-	credSourceWatcherMSAL   = "watcher_msal"   // E.v1 : MultiUserTokenStore (PR 2.5a)
+	credSourceWatcherMSAL   = "watcher_msal"   // E.v1 : MultiUserTokenStore — MSAL cache (PR 2.5a)
+	credSourceWatcherOAuth  = "watcher_oauth"  // ADR 0023 : MultiUserTokenStore — OAuth RT
 	credSourceWatcherLegacy = "watcher_legacy" // E.v1 : mono-user TokenStore (legacy)
 )
 
@@ -81,7 +83,8 @@ func NewDiscoveryWithStores(
 	}
 }
 
-// Scan implémente Discovery.Scan() — scanne env + DuckDB pour chaque joueur.
+// Scan implémente Discovery.Scan() — scanne MultiUserTokenStore (canonique post-ADR 0023)
+// puis fallbacks DuckDB sync_meta + env var (DEPRECATED) + legacy mono-user store.
 func (d *discoveryImpl) Scan(ctx context.Context) ([]CredentialSource, error) {
 	players, err := d.cfg.LoadPlayers()
 	if err != nil {
@@ -91,113 +94,136 @@ func (d *discoveryImpl) Scan(ctx context.Context) ([]CredentialSource, error) {
 
 	// Le legacy mono-user TokenStore (data/auth/watcher_tokens.json) contient
 	// UN SEUL RT qui appartient à UN seul joueur (le current_user du watcher
-	// daemon historique). Si on l'attribue à tous les joueurs sans token,
-	// on causer des erreurs API ou pire (mismatch xuid/token).
-	// → Attribuer AU PLUS UNE FOIS : premier joueur sans autre source.
+	// daemon historique). Attribué AU PLUS UNE FOIS au premier joueur sans
+	// autre source — sinon mismatch xuid/token.
 	legacyConsumed := false
 
 	sources := make([]CredentialSource, 0, len(players))
-
 	for _, player := range players {
-		playerDBPath := d.resolver.PlayerDBPath(d.titleSlug, player.Gamertag)
-
-		// Tenter d'ouvrir la DB player en read-only pour lire sync_meta.
-		// Échec d'ouverture = DB inexistante (normal pour un joueur jamais
-		// synced) — on continue sans erreur et on tentera les autres sources.
-		var msal, oauth string
-		if playerDB, dbErr := duckdb.OpenReadOnly(playerDBPath); dbErr == nil {
-			msal, _ = duckdb.ReadMSALCacheJSON(ctx, playerDB)
-			oauth, _ = duckdb.ReadOAuthRefreshToken(ctx, playerDB)
-			_ = playerDB.Close() // best-effort fermeture
-		} else {
-			slog.DebugContext(ctx, "pool: PlayerDB introuvable — fallback sources externes",
-				"gamertag", player.Gamertag, "db", playerDBPath)
-		}
-
-		// Fallback env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> si pas de token en DuckDB.
-		envToken := ""
-		if oauth == "" {
-			envToken = readOAuthRefreshTokenFromEnv(player.Gamertag)
-			if envToken != "" {
-				oauth = envToken
-			}
-		}
-
-		// E.v1 — Fallback watcher stores si toujours rien.
-		// Le watcher daemon entretient un MSAL cache frais (refresh proactif
-		// chaque ~5min). On le lit ici pour peupler le pool au 1er boot sans
-		// dépendre d'un sync manuel ayant écrit dans sync_meta DuckDB.
-		watcherSource := ""
-		if msal == "" && oauth == "" {
-			// MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json)
-			if d.multiUserStore != nil && player.XUID != "" {
-				if ut, _ := d.multiUserStore.Load(player.XUID); ut != nil && ut.MSALCacheJSON != "" {
-					msal = ut.MSALCacheJSON
-					watcherSource = credSourceWatcherMSAL
-				}
-			}
-			// Mono-user legacy (data/auth/watcher_tokens.json) — n'a qu'un
-			// seul user, donc on ne peut attribuer son RT qu'à UN seul
-			// joueur. Sinon on cause des erreurs API (mismatch xuid/token).
-			// → Attribué au PREMIER joueur sans autre source ; les autres
-			// sont skip (warning log pour traçabilité).
-			if msal == "" && oauth == "" && d.legacyStore != nil {
-				if !legacyConsumed {
-					if st, _ := d.legacyStore.Load(); st != nil && st.RefreshToken != "" {
-						oauth = st.RefreshToken
-						watcherSource = credSourceWatcherLegacy
-						legacyConsumed = true
-						slog.WarnContext(ctx, "pool: legacy mono-user store attribué (approximation — peut ne pas correspondre au bon joueur)",
-							"gamertag", player.Gamertag,
-							"hint", "configurer SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> par joueur dans .env.local pour éviter cette ambiguïté")
-					}
-				} else {
-					slog.DebugContext(ctx, "pool: legacy store déjà consommé par un autre joueur — skip",
-						"gamertag", player.Gamertag)
-				}
-			}
-		}
-
-		// Exclure les joueurs sans aucun token.
-		if msal == "" && oauth == "" {
-			slog.DebugContext(ctx, "pool: aucun token pour joueur — exclut",
-				"gamertag", player.Gamertag)
+		src := d.scanPlayer(ctx, player, &legacyConsumed)
+		if src == nil {
 			continue
 		}
-
-		// Construire CredentialSource.
-		source := CredentialSource{
-			Gamertag:     player.Gamertag,
-			XUID:         player.XUID,
-			PlayerDBPath: playerDBPath,
-			MSALCache:    msal,
-			RefreshToken: oauth,
-		}
-
-		// Déterminer la source exacte pour logs.
-		switch {
-		case watcherSource != "":
-			source.Source = watcherSource
-		case msal != "" && oauth != "":
-			source.Source = credSourceDuckDBMSAL + "+" + credSourceDuckDBOAuth
-		case msal != "":
-			source.Source = credSourceDuckDBMSAL
-		case envToken != "":
-			source.Source = "env_oauth"
-		default:
-			source.Source = credSourceDuckDBOAuth
-		}
-
-		sources = append(sources, source)
+		sources = append(sources, *src)
 		slog.DebugContext(ctx, "pool: credential source découverte",
-			"gamertag", player.Gamertag, "source", source.Source, "has_msal", msal != "", "has_oauth", oauth != "")
+			"gamertag", src.Gamertag, "source", src.Source,
+			"has_msal", src.MSALCache != "", "has_oauth", src.RefreshToken != "")
 	}
 
 	slog.InfoContext(ctx, "pool: scan terminé",
 		"total_players_scanned", len(players),
 		"players_with_token", len(sources))
-
 	return sources, nil
+}
+
+// scanPlayer applique la priorité ADR 0023 :
+//  1. MultiUserTokenStore (RT + MSAL) — source canonique
+//  2. sync_meta DuckDB (RT + MSAL) — DEPRECATED, warn log
+//  3. env var (RT seulement) — DEPRECATED, warn log
+//  4. mono-user legacy TokenStore (RT) — fallback final, attribuable une seule fois
+//
+// Retourne nil si aucune source ne donne rien (joueur skipped).
+func (d *discoveryImpl) scanPlayer(ctx context.Context, player domain.PlayerSummary, legacyConsumed *bool) *CredentialSource {
+	playerDBPath := d.resolver.PlayerDBPath(d.titleSlug, player.Gamertag)
+
+	// --- Priorité 1 : MultiUserTokenStore (canonique post-ADR 0023) ---
+	var msal, oauth, sourceLabel string
+	if d.multiUserStore != nil && player.XUID != "" {
+		if ut, _ := d.multiUserStore.Load(player.XUID); ut != nil {
+			msal = ut.MSALCacheJSON
+			oauth = ut.OAuthRefreshToken
+			switch {
+			case msal != "" && oauth != "":
+				sourceLabel = credSourceWatcherMSAL + "+" + credSourceWatcherOAuth
+			case msal != "":
+				sourceLabel = credSourceWatcherMSAL
+			case oauth != "":
+				sourceLabel = credSourceWatcherOAuth
+			}
+		}
+	}
+
+	// --- Priorité 2 : sync_meta DuckDB (DEPRECATED) ---
+	if msal == "" || oauth == "" {
+		if dbMsal, dbOauth, ok := d.readLegacyDuckDB(ctx, player, playerDBPath); ok {
+			if msal == "" && dbMsal != "" {
+				msal = dbMsal
+				sourceLabel = appendSource(sourceLabel, credSourceDuckDBMSAL)
+			}
+			if oauth == "" && dbOauth != "" {
+				oauth = dbOauth
+				sourceLabel = appendSource(sourceLabel, credSourceDuckDBOAuth)
+			}
+		}
+	}
+
+	// --- Priorité 3 : env var (DEPRECATED) ---
+	if oauth == "" {
+		if envToken := readOAuthRefreshTokenFromEnv(player.Gamertag); envToken != "" {
+			slog.WarnContext(ctx, "pool: legacy env var utilisée — à migrer",
+				"gamertag", player.Gamertag, "deprecated_since", "ADR-0023")
+			oauth = envToken
+			sourceLabel = appendSource(sourceLabel, "env_oauth")
+		}
+	}
+
+	// --- Priorité 4 : mono-user legacy store (fallback final) ---
+	if msal == "" && oauth == "" && d.legacyStore != nil {
+		if !*legacyConsumed {
+			if st, _ := d.legacyStore.Load(); st != nil && st.RefreshToken != "" {
+				oauth = st.RefreshToken
+				sourceLabel = credSourceWatcherLegacy
+				*legacyConsumed = true
+				slog.WarnContext(ctx, "pool: legacy mono-user store attribué (approximation)",
+					"gamertag", player.Gamertag,
+					"hint", "configurer le store via token-capture pour éviter cette ambiguïté")
+			}
+		}
+	}
+
+	if msal == "" && oauth == "" {
+		slog.DebugContext(ctx, "pool: aucun token pour joueur — exclut",
+			"gamertag", player.Gamertag)
+		return nil
+	}
+
+	return &CredentialSource{
+		Gamertag:     player.Gamertag,
+		XUID:         player.XUID,
+		PlayerDBPath: playerDBPath,
+		MSALCache:    msal,
+		RefreshToken: oauth,
+		Source:       sourceLabel,
+	}
+}
+
+// readLegacyDuckDB lit msal+oauth depuis sync_meta. Logue un warn si une valeur
+// est lue (signale une install pas encore migrée vers le store).
+func (d *discoveryImpl) readLegacyDuckDB(ctx context.Context, player domain.PlayerSummary, playerDBPath string) (msal, oauth string, ok bool) {
+	playerDB, dbErr := duckdb.OpenReadOnly(playerDBPath)
+	if dbErr != nil {
+		slog.DebugContext(ctx, "pool: PlayerDB introuvable — fallback sources externes",
+			"gamertag", player.Gamertag, "db", playerDBPath)
+		return "", "", false
+	}
+	defer func() { _ = playerDB.Close() }()
+
+	msal, _ = duckdb.ReadMSALCacheJSON(ctx, playerDB)
+	oauth, _ = duckdb.ReadOAuthRefreshToken(ctx, playerDB)
+	if msal != "" || oauth != "" {
+		slog.WarnContext(ctx, "pool: legacy sync_meta DuckDB utilisée — à migrer",
+			"gamertag", player.Gamertag, "has_msal", msal != "", "has_oauth", oauth != "",
+			"deprecated_since", "ADR-0023")
+	}
+	return msal, oauth, true
+}
+
+// appendSource concatène un label de source à la liste séparée par '+'.
+func appendSource(current, add string) string {
+	if current == "" {
+		return add
+	}
+	return current + "+" + add
 }
 
 // readOAuthRefreshTokenFromEnv retourne la valeur de SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>.
