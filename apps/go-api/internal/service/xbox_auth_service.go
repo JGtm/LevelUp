@@ -26,12 +26,11 @@ import (
 // notifier le watcher d'un nouveau joueur après login Xbox SSO. Implémentée par
 // *watcher.Daemon. Définie ici pour éviter une dépendance service → watcher.
 //
-// PR 2.5c : AddUserClient est préféré à AddPlayer car il crée une connexion RTA
-// dédiée par user (résistant au social graph Xbox). AddPlayer reste pour les
-// cas où on n'a pas de UserTokens (legacy ou daemon mono-tracker).
+// Cleanup 2026-05-26 : AddUserClient (multi-user RTA dédié) supprimé en même
+// temps que la dépendance RTA WebSocket. Le watcher utilise désormais le REST
+// poller partagé via le client tracker — AddPlayer suffit.
 type WatcherDaemon interface {
 	AddPlayer(ctx context.Context, p domain.PlayerSummary) error
-	AddUserClient(ctx context.Context, userTokens *auth.UserTokens) error
 	IsRunning() bool
 }
 
@@ -145,31 +144,10 @@ func (s *XboxSSOLinkStrategy) OnAuthSuccess(ctx context.Context, attempt *auth.A
 
 // notifyWatcher ajoute l'user au tracking du watcher daemon après login Xbox SSO.
 //
-// PR 2.5c : préfère AddUserClient (1 RTA dédié par user, résistant au social
-// graph Xbox) si on a des UserTokens persistés avec un XSTS valide. Sinon,
-// fallback sur AddPlayer (utilise le tracker historique, dépend du social graph).
-//
-// Best-effort : si l'opération échoue, on loggue mais le login reste OK.
+// Cleanup 2026-05-26 : avec la suppression du RTA legacy + multi-user, il ne
+// reste qu'AddPlayer (le watcher spawn un REST poller via le client tracker
+// partagé pour ce joueur). Best-effort : un échec ne bloque pas le login.
 func (s *XboxSSOLinkStrategy) notifyWatcher(ctx context.Context, attempt *auth.Attempt, user *domain.User, daemon WatcherDaemon) {
-	// Tente AddUserClient (RTA dédié) si on a des UserTokens utilisables.
-	if s.tokenStore != nil && attempt.XSTSRTAToken != "" {
-		ut, loadErr := s.tokenStore.Load(attempt.XUID)
-		if loadErr == nil && ut != nil && ut.AuthHeader() != "" {
-			if err := daemon.AddUserClient(ctx, ut); err != nil {
-				slog.WarnContext(ctx, "xbox_sso: AddUserClient échoué, fallback AddPlayer",
-					"xuid", attempt.XUID, "gamertag", attempt.Gamertag, "err", err)
-			} else {
-				slog.InfoContext(ctx, "xbox_sso: userClient ajouté au watcher daemon (RTA dédié)",
-					"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
-				return
-			}
-		} else if loadErr != nil {
-			slog.DebugContext(ctx, "xbox_sso: tokens persistés introuvables, fallback AddPlayer",
-				"xuid", attempt.XUID, "err", loadErr)
-		}
-	}
-
-	// Fallback : AddPlayer (utilise le tracker historique).
 	player := domain.PlayerSummary{
 		PlayerSlug: attempt.Gamertag,
 		Gamertag:   attempt.Gamertag,
@@ -184,7 +162,7 @@ func (s *XboxSSOLinkStrategy) notifyWatcher(ctx context.Context, attempt *auth.A
 			"xuid", attempt.XUID, "gamertag", attempt.Gamertag, "err", err)
 		return
 	}
-	slog.InfoContext(ctx, "xbox_sso: joueur ajouté au watcher daemon (tracker partagé)",
+	slog.InfoContext(ctx, "xbox_sso: joueur ajouté au watcher daemon",
 		"xuid", attempt.XUID, "gamertag", attempt.Gamertag)
 }
 

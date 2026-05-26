@@ -7,7 +7,6 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
-	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/presence"
 	syncpkg "levelup/go-api/internal/sync"
 )
@@ -309,49 +308,5 @@ func TestDaemon_AddPlayer_NoOpIfAlreadyPresent(t *testing.T) {
 	}
 }
 
-// --- AddUserClient (PR 2.5c) -----------------------------------------------
-
-func TestDaemon_AddUserClient_RejectsBeforeStart(t *testing.T) {
-	// Sans Start, rootCtx est nil → AddUserClient refuse.
-	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
-
-	err := d.AddUserClient(context.Background(), &auth_platform.UserTokens{
-		XUID:         "1111",
-		Gamertag:     "Alice",
-		XSTSToken:    "tok",
-		XSTSUserHash: "hash",
-	})
-	if err == nil {
-		t.Error("AddUserClient avant Start devrait échouer")
-	}
-}
-
-func TestDaemon_AddUserClient_RejectsEmptyOrMissingAuth(t *testing.T) {
-	d := NewDaemon(DaemonConfig{RepoRoot: "/repo"}, title.NewRegistry(), &mockDaemonSyncRunner{})
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	d.Start(ctx, "", nil)
-	defer d.Stop()
-
-	// XUID vide.
-	err := d.AddUserClient(ctx, &auth_platform.UserTokens{
-		XUID:         "",
-		Gamertag:     "Alice",
-		XSTSToken:    "t",
-		XSTSUserHash: "h",
-	})
-	if err == nil {
-		t.Error("AddUserClient XUID vide devrait échouer")
-	}
-
-	// XSTS vide → AuthHeader vide → refusé.
-	err = d.AddUserClient(ctx, &auth_platform.UserTokens{
-		XUID:         "1111",
-		Gamertag:     "Alice",
-		XSTSToken:    "",
-		XSTSUserHash: "",
-	})
-	if err == nil {
-		t.Error("AddUserClient sans XSTS devrait échouer (AuthHeader vide)")
-	}
-}
+// Cleanup 2026-05-26 : tests AddUserClient supprimés en même temps que la
+// méthode (RTA legacy retiré). AddPlayer couvre maintenant tous les cas.

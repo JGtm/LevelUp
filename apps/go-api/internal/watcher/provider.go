@@ -2,7 +2,7 @@
 //
 // Le WatcherStateProvider est le seul point de contact entre le watcher
 // et les handlers HTTP. Aucun handler ne doit accéder directement
-// à la FSM, au RTAClient, ou au SteamPoller.
+// à la FSM, aux pollers, ou au SteamPoller.
 package watcher
 
 import (
@@ -18,10 +18,15 @@ type PlayerPresenceStatus struct {
 	StateSince     string `json:"state_since"`    // ISO 8601
 	StateDuration  string `json:"state_duration"` // durée lisible
 	CooldownLeft   string `json:"cooldown_left,omitempty"`
-	SubscribeError string `json:"subscribe_error,omitempty"` // erreur d'abonnement RTA, vide si OK
+	SubscribeError string `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
 }
 
 // WatcherStatus est le résumé global du watcher exposé à l'API.
+//
+// Le champ `rta_connected` est conservé pour compat ascendante avec l'UI
+// existante (WatcherCard) : il vaut `running` (le daemon tourne et le client
+// REST tracker est actif). `rta_subscribed` = nombre de joueurs dont le
+// REST poller est lancé.
 type WatcherStatus struct {
 	Running        bool                   `json:"running"`
 	RTAConnected   bool                   `json:"rta_connected"`
@@ -62,15 +67,14 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 		Running: p.daemon.IsRunning(),
 	}
 
-	if p.daemon.rtaClient != nil {
-		status.RTAConnected = p.daemon.rtaClient.IsConnected()
-		status.RTASubscribed = len(p.daemon.rtaClient.Subscriptions())
-	}
-
 	p.daemon.playersMu.RLock()
 	defer p.daemon.playersMu.RUnlock()
 
 	status.PlayersWatched = len(p.daemon.players)
+	// Compat ascendante : RTAConnected = daemon vivant + client REST initialisé.
+	// RTASubscribed = nombre de pollers REST actifs (= nombre de players).
+	status.RTAConnected = p.daemon.IsRunning() && p.daemon.trackerRestClient != nil
+	status.RTASubscribed = status.PlayersWatched
 	status.Players = make([]PlayerPresenceStatus, 0, len(p.daemon.players))
 
 	for _, pw := range p.daemon.players {
