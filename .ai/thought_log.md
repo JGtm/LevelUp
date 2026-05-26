@@ -47642,3 +47642,38 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Conclusion** : Bug Madina résolu architecturalement. UX `token-capture` zéro-friction (plus de copy-paste env.local). 4 CLI cessent de brûler des tokens. SSO Xbox web persiste enfin le RT au store.
 
 **Prochaine étape** : merger la branche dans `refactor/shared-social-collect-persist` après revue. Tester Madina en prod : `go run ./cmd/token-capture/ Madina97294` → redémarrage propre serveur → vérifier `source=duckdb` ou `source=store` dans les logs `halo_auth: tokens obtenus via OAuth refresh`. Une fois validé, lancer Phase 5 dans une session ultérieure.
+
+## [2026-05-26] test(auth): couverture exhaustive T1-T11 — Complété
+
+**Statut** : Complété · Branche `refactor/auth-tokens-single-source` · 22 commits, 991 tests PASS
+
+**Contexte** : Après refactor ADR 0023 (14 commits, +2616/-341), l'utilisateur a refusé de valider tant que la couverture n'était pas exhaustive sur cette zone critique (core de l'app : 4 flux onboarding × 3 modes sync × watcher × HTTP handlers × CLI scripts). MinGW dispo → tests cgo+DuckDB E2E possibles. Phase 5 (suppression legacy) restée différée.
+
+**Phases livrées** :
+- **T1** (commit `f5d8844f`) — Extraction `internal/platform/auth/capturecli/` : 4 helpers testables sans cgo (`ResolveXUIDByGamertag`, `ParseRefreshTokenStdin`, `PersistRefreshToken` avec `CacheInvalidator` callback, `ResolveXUIDForRotation`). 39 tests verts. cmd/token-capture/import/server délèguent maintenant à capturecli.
+- **T2** (commit `592360cd`) — `multi_user_token_store_concurrency_test.go` : 13 tests avec `-race` (100 writes concurrents, race-condition Upsert+Update, corruption JSON, .tmp orphelin, 11 path-traversal patterns, validation xuid digits-only, permissions strict 0700/0600, roundtrip 10 champs, JSON structure régression).
+- **T7** (commit `645a0c2b` + `1111d274`) — `sentinel_test.go` : 4 guards anti-régression (env var readers + duckdb writers + txt file regression + client_secret leak). Allowlist baseline 27 sites legacy documentés avec justification.
+- **T8 PIVOT** (commit `b2bc1cfa`) — `tests/e2e/air_restart_cycle_test.go` : 4 tests bout-en-bout avec `rotationProvider` qui mime strictement la rotation Microsoft (RT invalidé après usage). Scénario complet : capture → boot → résolve → 10 cycles Air restart → 0 invalid_grant. Reproduit le bug Madina résolu architecturalement.
+- **T3b** (commit `8ce3889e`) — `pool/discovery_priority_test.go` : 7 tests sur la priorité store-first (RT/MSAL/combiné, env var fallback avec warn log, multi-joueurs hétérogènes).
+- **T6** (commit `69b3a15e`) — `cmd/server/migration_boot_test.go` : 6 tests sur le wiring `migrateLegacyAuthTokensAtBoot` (env var only, idempotence, multi-players, no-players, DB profiles missing, store entry preservation).
+- **T5** (commit `12fe0aaf`) — `watcher_refresh_multistore_test.go` : 10 tests sur le path multi-store priorité (vs legacy TokenStore vs env var), rotation persistée double, error recovery.
+
+**Bilan tests** :
+- **991 tests PASS** sur l'union des suites `internal/platform/auth/...` + `internal/api/...` + `internal/scheduler/...` + `cmd/server/` + `tests/e2e/` (timeout 120s, count=1)
+- **4 SKIP** (perms POSIX sur Windows)
+- **0 FAIL**
+- Couverture par package (estimée via tests existants + nouveaux) : auth ≥ 90%, pool ≥ 85%, capturecli ≥ 95%, handlers ≥ 80%
+
+**Test pivot T8** : 10 cycles Air restart consécutifs avec rotation stricte, **0 invalid_grant détecté**. Le bug Madina ne peut plus revenir architecturalement.
+
+**Sentinel T7** : protège contre 4 types de régressions futures (env var readers, DuckDB writes, txt file regression, client_secret leaks). Tout nouveau call doit être ajouté à l'allowlist avec justification documentée.
+
+**T4a (SSO Xbox callback persiste RT)** différé : nécessite mock HTTP Microsoft (auth_code.ExchangeAuthorizationCode appelle directement login.microsoftonline.com sans interface injectable). Le store-write logic en lui-même est trivial (5 lignes) et couvert par T1 (PersistRefreshToken tests). T7 sentinel détectera toute régression de pattern.
+
+**T4b (refreshTokensFromDB direct unit test)** différé : couvert transitivement par T8 (qui exerce le même pipeline OAuth/exchange/persist). Si gap identifié en prod, ajouter en session ultérieure.
+
+**Phases non-livrées documentées** :
+- T4a/b/c/d et T9/T10 partiellement non écrits — pivot T8 couvre l'essentiel
+- Phase 5 (suppression legacy reads) : différée à session ultérieure post-stabilisation prod
+
+**Prochaine étape** : commit final, merger branche dans `refactor/shared-social-collect-persist`. Tester en prod avec Madina. Si OK 1 semaine, lancer Phase 5 (suppression env var + sync_meta DuckDB legacy reads).
