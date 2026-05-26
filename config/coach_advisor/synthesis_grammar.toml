@@ -66,3 +66,18 @@ eval_type = "cumulative"
 metric    = "kills_total"
 windows   = ["rolling_days:7", "rolling_days:30"]
 eval_type = "cumulative"
+
+[[allow]]
+metric    = "avg_damage_dealt"
+windows   = ["last_n_matches:10", "last_n_matches:20", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "kills_per_min"
+windows   = ["last_n_matches:10", "last_n_matches:20", "rolling_days:7", "rolling_days:14"]
+eval_type = "threshold"
+
+[[allow]]
+metric    = "offensive_conversion"
+windows   = ["last_n_matches:10", "last_n_matches:20", "rolling_days:14"]
+eval_type = "threshold"
