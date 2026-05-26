@@ -1,3 +1,291 @@
+## [2026-05-26] Logos némésis/souffre-douleur dans les tuiles match-view
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : Ajout de 4 PNGs dans `apps/web/public/icons/` (nemesis/victim x black/white). Dans `MatchNemesisCards`, lecture du thème via `useSettingsDraftStore` pour choisir le bon suffixe (`black` en light, `white` en dark). `NemesisCard` restructurée en flex row : logo `h-12 w-12 object-contain opacity-75` à gauche + texte à droite dans `min-w-0 flex-1`.
+
+**Résultat** : Logos affichés à gauche du texte, alignés verticalement au centre, harmonisés à 48×48 px via `object-contain`. Changement de thème réactif sans rechargement.
+
+**Prochaine étape** : Vérifier visuellement en dev.
+
+---
+
+## [2026-05-26] Catalogue playlists ranked — auto-seeding depuis sync CSR
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme** : La page Career Ranking n'affichait que 2 playlists ranked (Ranked Arena + Ranked Slayer). Le jeu en compte ~6 actives.
+
+**Cause racine** : `playlists_catalog` est alimenté réactivement depuis `match_registry.playlist_id`. Or 4 playlists ranked (Ranked Snipers, Ranked Doubles, RANKED LEGACY, RANKED 1V1 SHOWDOWN) n'ont jamais été jouées par les joueurs synchronisés.
+
+**Décisions techniques** :
+1. `seedPlaylistsCatalog` ajoutée dans `internal/sync/career.go` — insère les playlists ranked reçues de l'API Waypoint dans `playlists_catalog` (`ON CONFLICT DO NOTHING`). Best-effort.
+2. `syncPlayerCSRs` étendue avec `metaDB *sql.DB` + `titleSlug string` — appelle `seedPlaylistsCatalog` après `saveCSRSnapshots` si metaDB non-nil.
+3. `runCSRSnapshotSync` ouvre `metadata.duckdb` en RW (`OpenReadWriteShared`) et passe le handle. Best-effort : échec d'ouverture → WARN, sync continue.
+4. CLI `seed-ranked-playlists` déjà créé pour backfill manuel.
+5. `cmd/tmp_query/` supprimé (outil diagnostic temporaire).
+
+**Prochaine étape** : Configurer `csr_season_id` dans `app_settings.json`, lancer un sync joueur, vérifier les 6 playlists sur la page Career.
+
+---
+
+## [2026-05-26] Explorer/Carrière — colonne "Rang" affiche "X/Y" en placement (PR2)
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : suite de PR1 (colonne Note). Le tableau Explorer + Highlights Carrière affichait `"Placement (4 restants)"` brut dans la colonne Rang — peu lisible. Objectif : remplacer par `"X/Y"` (ex: `"3/10"`) quand le match est en phase de placement, sinon garder le tier label.
+
+**Stratégie validée avec utilisateur** :
+- CSR : threshold dynamique via `csr_placement_thresholds` (5 depuis S3, 10 avant). Données natives (tier_label = "Placement (N restants)").
+- LUSR : "hack" — prendre les 10 plus anciens matchs **sans LUSR** par chaîne (4 chaînes : `arena_slayer`, `arena_objectif`, `btb`, `chaos`) et leur attribuer placement 1/10 → 10/10 dans l'ordre chronologique. Pas de tier="Placement" en DB pour LUSR (contrairement à CSR).
+
+**Décision technique** :
+- Calcul placement dans le **service** (pas le repo), nouveau fichier `internal/service/match_history_placement.go`. Le repo `MatchHistoryRepo` charge déjà tous les matchs du joueur (`LoadAll`) ; le service appelle `applyMatchPlacements(ctx, rawRows, csrThreshold)` **avant** le filtrage Explorer pour que l'ordre chronologique LUSR reste stable quels que soient les filtres front.
+- Pour éviter le cycle `service → duckdb` (le package `sync` importé pour `GetLUSRChain` importe déjà `duckdb`), j'injecte le résolveur CSR via une signature callback `CSRThresholdResolver = func(ctx, seasonID) int` plutôt qu'une interface port. Câblé dans `registry.go:MatchHistoryCtx` avec `duckdb.NewCSRThresholdsRepo(pdb.Metadata).Get`.
+- `parsePlacementRemaining` dupliqué depuis `duckdb/home_repo_playlist_ranks.go` (même raison cycle import). À refactorer dans un package neutre si réutilisé une 3ème fois.
+
+**Chaîne de propagation** :
+1. SQL `Q5SharedHistory` : ajout `r.season_id` au SELECT.
+2. `MatchHistoryRawRow` : champs `SeasonID`, `PlacementDone`, `PlacementTotal` ajoutés.
+3. `applyMatchPlacements` (nouveau) : remplit `PlacementDone/Total` en place sur `rawRows`.
+4. `mapMatchHistoryRawRow` : propage vers `MatchHistoryRow` (json `placement_done` / `placement_total`).
+5. `BuildExplorerRowFromMatchHistory` : propage vers `ExplorerMatchesRow`.
+6. Front `ExplorerMatchRow` : champs ajoutés au type TS.
+7. Front `ExplorerMatchesTable.tsx` cell `skill_tier_label` : if `placement_done && placement_total` → affiche `"X/Y"` mono, sinon fallback tier label.
+
+**Tests** :
+- `internal/service/match_history_placement_test.go` (nouveau) : 6 cas couvrant parsing regex, CSR threshold 5 + 10 (saison legacy), LUSR top-10 par chaîne, skip LUSR/CSR existants, skip Ranked/Firefight.
+- `go test ./...` : OK
+- `npm run typecheck`, `npm run lint` (0 erreurs), `npx vitest run explorer career` (34/34) : tous verts.
+
+**Impact côté front** : un seul cell renderer modifié → corrige **les deux pages** (Explorer ET Carrière > Highlight matches) car `CareerHighlightMatchesSection` réutilise `ExplorerMatchesTable`.
+
+**Limites connues** :
+- Hypothèse LUSR : un joueur qui a déjà passé sa phase de placement LUSR sur une chaîne mais dont les 10 premiers matchs n'ont pas reçu de LUSR (data manquante post-migration ART) verra ces 10 vieux matchs marqués "placement" par défaut — comportement accepté ("hack").
+- Pas de couleur ni de tooltip sur "X/Y" — simple texte mono.
+
+**Prochaine étape** : commit + test visuel browser. Si nécessaire ensuite, refactor `parsePlacementRemaining` dans un package neutre (`internal/skill` ?) pour éviter la duplication avec `home_repo_playlist_ranks.go`.
+
+---
+
+## [2026-05-26] Bug Historique XP — chutes à 0 causées par DEFAULT 0 sur xp_total
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme** : Graphe "Historique XP" page Carrière affiche des chutes à 0 XP (visible chez Madina97294). Valeur impossible métier.
+
+**Cause racine** :
+`career_progression` définissait `xp_total INTEGER DEFAULT 0`. Lors des syncs de personnalisation uniquement (bannière/emblem/spartan_id), `InsertCareerProgressionPartial` n'inclut pas `xp_total` dans l'INSERT (guard `if progress.XPTotal > 0`). DuckDB applique alors `DEFAULT 0` → ligne insérée avec `xp_total = 0`. Q7 utilisait `COALESCE(cp.xp_total, cp.rank * 1000)` qui ne traite pas le 0 → l'UI lit 0 et dessine une chute.
+
+**Décisions techniques** :
+1. **`Q7CareerXPHistory`** (`queries_career.go`) : remplacé par `COALESCE(NULLIF(cp.xp_total, 0), NULLIF(cp.rank, 0) * 1000)` + filtre `WHERE cp.rank IS NOT NULL OR NULLIF(cp.xp_total, 0) IS NOT NULL` — exclut les rows sans donnée XP.
+2. **`steps_player.go`** : retiré `DEFAULT 0` sur `xp_total`, `current_xp`, `xp_for_next_rank` dans le CREATE TABLE (affecte les nouvelles DBs).
+3. **Nouvelle migration** `fix_career_xp_total_default_zero` (`steps_player_fix_career_xp_total_default.go`) : (a) `UPDATE career_progression SET xp_total = NULL WHERE xp_total = 0` — tous les 0 sont des artefacts du DEFAULT car `PartialFromLive` n'écrit xp_total que si > 0 ; (b) `ALTER TABLE ... DROP DEFAULT` sur xp_total pour les futures syncs.
+
+**Résultats attendus** : au prochain boot, la migration corrige les données existantes et le graph ne peut plus afficher 0 XP.
+
+**Prochaine étape** : Redémarrer le serveur pour appliquer la migration, vérifier visuellement le graphe Madina97294.
+
+---
+
+## [2026-05-26] Synthèse : bug graphe armes + Profil de combat inline
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problèmes** :
+1. Le graphe "frags par arme" ne s'affichait pas sur la page Synthèse.
+2. La section "Profil de combat" était une carte séparée sous "Vue d'ensemble" — à intégrer en une ligne dans la même carte.
+
+**Cause racine (graphe armes)** :
+La migration `add_weapon_kills_reconciled_as` crée `v_weapon_kills` dans le schéma `main` (sans préfixe). Or `weapon_kills_repo.go` interroge `shared.v_weapon_kills` via `SharedReadDB()` — connexion directe à `shared_matches_v2.duckdb` où `shared` désigne le namespace interne. La vue `shared.v_weapon_kills` n'existait pas → `isTableNotFoundErr` → `ErrCapabilityNotSupported` → `loadTopWeaponKills` retourne nil → chart absent.
+
+**Décisions techniques** :
+1. `applyResolutionViews` étendue pour créer `shared.v_weapon_kills` (en plus de `main.v_weapon_kills`).
+2. Migration `fix_weapon_kills_view_shared_schema` ajoutée dans `steps_shared.go` pour déclencher la correction au prochain boot.
+3. `CombatProfileInlineRow` défini directement dans `SynthesisPage.tsx` — ligne compacte (titre · N matchs · badges + CombatYieldBar) intégrée dans la `CardContent` de "Vue d'ensemble".
+4. Import `SynthesisCombatProfileSection` + bloc standalone retirés de `SynthesisPage.tsx`.
+
+**Résultats** : `go vet` et `tsc` passent sans erreur.
+
+**Prochaine étape** : Vérifier visuellement après redémarrage du serveur (migration s'applique au boot).
+
+---
+
+## [2026-05-26] Bug citations composites — données périmées + dead code
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : Match `74a8614e-fe04-49ff-afba-be9ea5f04d67` affichait "+2 progression" sur deux citations composites alors qu'aucun enfant n'avait atteint son palier final.
+
+**Cause racine** : Les données `match_citations` de ce match (et d'autres matchs anciens) ont été écrites par l'ancien moteur `applyCompositesPass` (logique `val > 0` — toute valeur enfant > 0 comptait, sans vérification de mastery). Ce moteur était actif avant le fix `df8ec2aa` (2026-05-22). Aucun `--citations-recompute-all` n'avait été lancé après ce fix.
+
+**Le moteur `ComputeCompositeTransitions` est correct** — le bug est dans les données stockées, pas dans le code.
+
+**Décision technique** :
+1. Suppression du dead code `ApplyCompositeCitationsPerMatch` + `applyCompositesPass` de `citations_composite.go` — l'ancien moteur bogué n'était jamais appelé mais trompeur.
+2. Ajout du test T16 dans `citations_composite_test.go` couvrant exactement le scénario du rapport : `cumulPre[br75]=495, raw=3 → post=498 < 500 → composite reste à 0`.
+
+**Résultats** :
+- T1-T16 passent, suite complète `go test ./...` : OK
+- `go vet ./...` : clean
+- Recompute lancé et terminé : 4/4 joueurs — invariants V1-V4 OK (Chocoboflor 468, JGtm 896, Madina97294 1152, XxDaemonGamerxX 32 matchs).
+- Corrections collatérales :
+  - `recreateCitationsTable` (DROP+CREATE) remplace N DELETE individuels pour force=true : contourne le bug ART DuckDB sur les lignes `value IS NULL`.
+  - Check V1 exclut désormais le sentinel `_processed` (value=0 intentionnel pour matchs sans citation).
+
+**Prochaine étape** : Aucune — bug clos.
+
+---
+
+## [2026-05-26] Explorer — colonne "Note" (CSR/LUSR) avant "Rang"
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : sur l'Explorer matchs, on ne distinguait pas visuellement les matchs CSR (classé officiel) des matchs LUSR (interne LevelUp) — il fallait deviner via la playlist. Ajout d'une colonne "Note" entre "ΔPerf" et "Rang" qui affiche "CSR" ou "LUSR" (ou "-" pour les matchs sans skill rank).
+
+**Décision technique** : propagation pure d'un champ Go déjà calculé en SQL — aucune nouvelle logique métier ni nouveau JOIN.
+
+Chaîne de propagation :
+1. `match_skill_rank.rating_type` (SQL, déjà sélectionné) → `MatchHistoryRawRow.SkillRatingType` (déjà scanné dans `match_history_repo.go:215`).
+2. `MatchHistoryRawRow.SkillRatingType` → `MatchHistoryRow.SkillRatingType` (ajouté json `skill_rating_type,omitempty`).
+3. `MatchHistoryRow.SkillRatingType` → `ExplorerMatchesRow.RatingType` (json `rating_type,omitempty`), via `BuildExplorerRowFromMatchHistory` (`projections.go`).
+4. Front : nouveau champ `rating_type?: string | null` dans `ExplorerMatchRow` (types.ts).
+5. UI : nouvelle colonne TanStack Table insérée avant `skill_tier_label`, label i18n `explorer.matches.col_rating` (FR "Note" / EN "Rating").
+
+**Bénéfice collatéral** : `career.go:273` utilise aussi `BuildExplorerRowFromMatchHistory` pour la page Carrière > Matchs marquants — bénéficie automatiquement de la nouvelle colonne (mais le tableau Career n'est pas modifié dans ce PR).
+
+**Résultats** :
+- `go build ./...` + `go vet` : clean
+- `go test ./internal/domain/... ./internal/api/handlers/... ./internal/service/...` : OK
+- `npm run typecheck` : OK
+- `npm run lint` : 0 erreurs (58 warnings préexistants, non liés)
+- `npx vitest run explorer` : 13/13 pass
+
+**Prochaine étape** : PR2 — afficher "X/Y" dans la colonne "Rang" pour les matchs de placement. Nécessite enrichir la query SQL (JOIN season_id depuis match_registry + lookup `csr_placement_thresholds` pour le seuil 5/10, hardcode 10 pour LUSR) et ajouter `placement_done` + `placement_total` au domaine. Plan détaillé dans `.claude/plans/ok-maintenant-il-faut-reflective-pike.md`.
+
+---
+
+## [2026-05-26] Fix nav contextuelle Explorer → MatchView — stale closure matchIds
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme reporté** : depuis l'Explorer avec filtre "PVP classé" (8 matchs), ouverture d'un match → la nav bar affiche "Match X/468" (total global) au lieu de "Match X/8" (filtré). Le contexte de navigation n'est plus scopé au filtre.
+
+**Cause racine** : stale closure dans `ExplorerMatchesTable.tsx`. La cell renderer du `useMemo` des `columns` (ligne 199-211) capturait `goToMatch`, lui-même fermant sur `allMatchIds`. Les deps du memo étaient `[intlLocale, mapAssets, playlistAssets, locale]` avec un `eslint-disable-next-line` qui ignorait `goToMatch`. Résultat : le closure figé au tout premier render gardait les `allMatchIds` initiaux (468 matchs non filtrés), même après changement de filtre.
+
+Confirmé via Chrome DevTools : `sessionStorage['levelup:matchNav:<matchId>'].ctx.matchIds` contenait 468 IDs au lieu des 8 attendus, dans l'ordre global non filtré.
+
+**Décision technique** :
+1. `goToMatch` wrappé en `useCallback` avec deps `[navigateToMatch, allMatchIds, filterContext, contextDescriptor]`.
+2. `goToMatch` ajouté aux deps du `useMemo` `columns` (avec l'`eslint-disable` conservé car les autres deps restent intentionnellement omises — `t`, `tMV`, `outcomeLabels`, etc. sont stables sur la durée du render).
+3. Import `useCallback` ajouté.
+
+**Résultats** : Vérifié en browser après fix — `matchIdsCount: 8`, `isCurrentInList: true`, compteur affiche "Match 1/8". Tests `pnpm vitest run src/features/explorer` : 13/13 pass. `pnpm typecheck` : clean.
+
+**Audit cross-tables** : 5 autres composants utilisent `columns = useMemo(...)` (MatchScoreboard, MatchEncountersTable, SquadMatchHistoryTable, SquadImpactScoreboard, SquadSynergyHistoryTable). Diagnostic :
+- **SquadSynergyHistoryTable.tsx** : MÊME bug — cell renderer "open" ligne 76-91 appelle `goToSynergyMatch` qui ferme sur `allMatchIds`, mais deps memo = `[labels, intlLocale, playerSlug, waypointBase]` sans `goToSynergyMatch`. Fix identique appliqué (useCallback + ajout aux deps).
+- **SquadMatchHistoryTable.tsx** : SAFE — onClick au niveau `<tr>` (hors memo), donc closure fresh à chaque render.
+- **MatchScoreboard, MatchEncountersTable, SquadImpactScoreboard** : SAFE — pas de closure sur `allMatchIds` dans les cell renderers (clics sur gamertag → explorer mode player, pas de matchIds nécessaires).
+
+**Prochaine étape** : commit. Le descriptor `experience_type` pour le label compact ("Matchs en PVP classé X/Y") reste à ajouter en feature séparée si voulu — `ContextDescriptor` n'a actuellement que `playlist`/`mode`/`period` mappés depuis le filtre Explorer.
+
+---
+
+## [2026-05-26] Uniformisation affichage CSR/LUSR — 4 corrections
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problèmes résolus** :
+1. Home "Meilleur CSR/LUSR" sans historique : état `absent` affichait un carré texte au lieu de `unranked_0.png` + "Non classé". Fix : `resolveSkillPeakState` retourne `{ state:'absent', detail:'Non classé' }` + JSX condition étendue à `isPlacement || state === 'absent'` dans `HomeSkillPeakCard.tsx`.
+2. `unrankedBadgeURL()` pointait sur `Unranked.png` (générique) au lieu de `unranked_0.png` (badge placement). Fix dans `staticAssets.ts`.
+3. Career "Classements" : `playlists_catalog` a `is_ranked=FALSE` pour toutes les entrées (data quality bug), donc `QPlaylistsCatalogRanked` retournait 0 lignes → "Pas de données CSR". Fix : double signal `is_ranked=TRUE OR STRPOS(LOWER(name_canonical),'ranked')>0` dans `queries_career.go`. Algorithme catalogue-first dans `career_repo.go`.
+4. i18n : "Placement" → "En placement" / "In placement" dans `career.toml` + `career.ts`. Playlist récentes : groupement par `COALESCE(playlist_id, playlist_name)` dans `Q26gPlaylistPhaseBShared`.
+
+**Résultats** : `go build ./...` OK, `go vet ./...` OK, `go test ./internal/platform/duckdb/...` OK, vitest 20/20 sur nos fichiers. Les 5 échecs frontend pre-existants (match-view colors, formatBinSeconds, CombatYield) non liés à ces changements.
+
+---
+
+## [2026-05-26] Fix InfoTooltip : héritage uppercase depuis le `<p>` parent
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problème** : Le tooltip `career.ranking.lusr_tooltip` s'affichait en majuscules. Cause : `<InfoTooltip>` placé dans un `<p className="uppercase font-semibold tracking-wide">` (section LUSR de `CareerRankingBlock`). Le `position: absolute` du popup ne casse pas l'héritage CSS de `text-transform`/`font-weight`/`letter-spacing`.
+
+**Décision technique** : Blinder le composant `InfoTooltip` plutôt que le caller — ajout de `normal-case font-normal tracking-normal` sur le popup dans `info-tooltip.tsx`. Corrige toutes les occurrences présentes et futures où le tooltip serait posé dans un libellé de section.
+
+---
+
+## [2026-05-26] Fix header match-view : Placement — masquer "CSR 0" et barre à 0%
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problème** : En placement, le header RANG affichait "Placement (1 restant)" + "CSR 0" + "Placement (1 restant)" (label barre). Cause : player DB stocke `rating_value = 0` (contrainte NOT NULL), backend renvoyait `numeric_value = 0` et `progress_pct = 0.0`.
+
+**Décision technique** : Fix dans `buildRankBlock` (`match_view_builders_header.go`) — détecter `tier == "Placement"` et ne pas envoyer `NumericVal` ni calculer `ProgressPct`. Le frontend gère déjà `null` sur ces champs (conditionnels existants). Pas de changement frontend.
+
+**Résultats** : `go build ./...` OK, `go test ./internal/service/...` OK.
+
+---
+
+## [2026-05-26] Scoreboard match-view : colonne CSR/LUSR dynamique pour tous les participants
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Ajout complémentaire** : Header de colonne dynamique + affichage pour matchs non-ranked.
+
+**Décisions techniques** :
+- `showCsrBadge = !!header?.is_ranked` → `isRanked = !!header?.is_ranked` ; la colonne est maintenant toujours présente.
+- Header dynamique : `isRanked ? t.sbColCsr : t.sbDetailLusr` ("CSR" / "LUSR").
+- L'expander (`PlayerDetailPanel.tsx`) gère déjà les deux cas via `data.ratingType === 'CSR' ? t.sbDetailCsr : t.sbDetailLusr` — aucun changement nécessaire.
+
+---
+
+## [2026-05-26] Scoreboard match-view : colonne CSR pour tous les participants
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : La colonne CSR existait déjà côté frontend (`MatchScoreboard.tsx`, conditionnelle à `is_ranked`), mais le `SkillRank` n'était peuplé que pour le joueur principal (via `match_skill_rank` player DB) et ses amis trackés (via `FriendsExtrasResolver`). La table `shared.match_csrs_latest` stockait déjà les CSR de tous les participants mais n'était jamais lue pour le scoreboard.
+
+**Décisions techniques** :
+1. Ajout de `GetMatchSharedCSRs(ctx, matchID) (map[string]*SkillRankRaw, error)` dans `port.MatchViewRepository` + noop.
+2. Query `Q30SharedMatchCSRs` sur `match_csrs_latest WHERE match_id = ?` — SharedReader (ADR 0016).
+3. Implémentation `MatchViewRepo.GetMatchSharedCSRs` dans `platform/duckdb/match_view_repo.go`.
+4. Chargement en parallèle dans `matchViewData.sharedCSRs` via errgroup.
+5. Dans `buildTeamTabFull` : nouveau paramètre `sharedCSRs` + helper `sharedCSRToScoreboardRank`. Priorité :
+   - `is_me` → player DB (inchangé)
+   - ami avec player DB → `FriendsExtras.SkillRank` (inchangé), fallback shared si nil
+   - joueur non-tracké → `sharedCSRs[xuid]`
+
+**Résultats** : `go test ./...` 100% OK. La colonne CSR affichera désormais l'image de rang pour tous les joueurs d'un match ranked (pas seulement le joueur principal).
+
+---
+
 ## [2026-05-26] UI fixes match-view — badges dominance, timestamps, pills chart KD cumulé
 
 **Statut** : Complété.
