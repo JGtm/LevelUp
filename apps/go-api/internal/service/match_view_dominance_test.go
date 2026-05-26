@@ -445,6 +445,40 @@ func TestDetectPartialMatchData_PartialMix(t *testing.T) {
 	}
 }
 
+// TestDetectPartialMatchData_MedalsLegitimatelyEmpty : 0 médaille avec PBitMedals
+// positionné → pas de "medals_empty" (match sans médailles, donnée complète).
+func TestDetectPartialMatchData_MedalsLegitimatelyEmpty(t *testing.T) {
+	bits := pBitMedals // 512 — médailles fetchées, résultat = 0
+	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2, BackfillBits: &bits}
+	scoreboard := []domain.ScoreboardRaw{{XUID: "x"}}
+	events := []domain.EventRaw{{EventType: "kill"}}
+	reasons := detectPartialMatchData(stats, scoreboard, events, nil)
+	for _, r := range reasons {
+		if r == "medals_empty" {
+			t.Errorf("medals_empty ne doit pas être émis quand PBitMedals est positionné")
+		}
+	}
+}
+
+// TestDetectPartialMatchData_MedalsNeverFetched : 0 médaille sans PBitMedals →
+// "medals_empty" doit être émis (sync incomplet).
+func TestDetectPartialMatchData_MedalsNeverFetched(t *testing.T) {
+	bits := 0 // aucun bit positionné
+	stats := &domain.PlayerMatchStatsRaw{OutcomeCode: 2, BackfillBits: &bits}
+	scoreboard := []domain.ScoreboardRaw{{XUID: "x"}}
+	events := []domain.EventRaw{{EventType: "kill"}}
+	reasons := detectPartialMatchData(stats, scoreboard, events, nil)
+	found := false
+	for _, r := range reasons {
+		if r == "medals_empty" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("medals_empty attendu quand PBitMedals n'est pas positionné, obtenu %v", reasons)
+	}
+}
+
 // TestBuildMatchHeader_IsFavorite verifie que le bool IsFavorite est exposé.
 func TestBuildMatchHeader_IsFavorite(t *testing.T) {
 	t.Parallel()

@@ -194,6 +194,7 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 		&s.EnemyMMR,
 		&s.HeadshotKills,
 		&s.MaxKillingSpree,
+		&s.BackfillBits,
 	)
 	if err != nil {
 		// Le joueur peut ne pas avoir participé → retourner une stats vide
