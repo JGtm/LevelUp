@@ -105,6 +105,10 @@ const t = {
   watcherStateSyncing: 'Synchronisation',
   watcherStateCooling: 'Cooldown',
   watcherInGame: 'En jeu',
+  watcherPresenceOnline: 'En ligne',
+  watcherPresenceAway: 'Absent',
+  watcherPresenceOffline: 'Hors-ligne',
+  watcherPresenceUnknown: '—',
   watcherLastSeenRelative: 'Vu il y a {duration} sur {title}',
   watcherLastSeenAbsolute: 'Vu le {date} sur {title}',
   watcherNeverSeen: 'Jamais vu en jeu',
@@ -338,7 +342,52 @@ describe('WatcherCard', () => {
       })
     })
 
-    it('traduit les états FSM (Idle → Absent)', async () => {
+    it('affiche le label de présence Xbox (Away → Absent) quand FSM=Idle', async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          { gamertag: 'P1', xuid: '0001', state: 'Idle', presence_state: 'Away', in_game: false, state_since: '', state_duration: '' },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.getByText('Absent')).toBeInTheDocument()
+      })
+    })
+
+    it('affiche "Hors-ligne" quand presence_state=Offline', async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          { gamertag: 'P1', xuid: '0001', state: 'Idle', presence_state: 'Offline', in_game: false, state_since: '', state_duration: '' },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.getByText('Hors-ligne')).toBeInTheDocument()
+      })
+    })
+
+    it('affiche "En ligne" quand presence_state=Online + Idle FSM', async () => {
+      mockStatusData = {
+        ...baseStatusData,
+        daemon_running: true,
+        rta_connected: true,
+        players: [
+          { gamertag: 'P1', xuid: '0001', state: 'Idle', presence_state: 'Online', in_game: false, state_since: '', state_duration: '' },
+        ],
+      }
+      renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
+      await waitFor(() => {
+        expect(screen.getByText('En ligne')).toBeInTheDocument()
+      })
+    })
+
+    it('affiche "—" si presence_state inconnu (pas encore d\'event)', async () => {
       mockStatusData = {
         ...baseStatusData,
         daemon_running: true,
@@ -349,7 +398,7 @@ describe('WatcherCard', () => {
       }
       renderWithProviders(<WatcherCard enabled={true} onToggle={vi.fn()} t={t} />)
       await waitFor(() => {
-        expect(screen.getByText('Absent')).toBeInTheDocument()
+        expect(screen.getByText('—')).toBeInTheDocument()
       })
     })
 

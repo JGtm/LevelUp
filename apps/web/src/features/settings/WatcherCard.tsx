@@ -184,6 +184,29 @@ function resolveStateLabel(state: string, t: SettingsText): string {
 }
 
 /**
+ * Résout le label + tone (background coloré) à afficher pour l'état Xbox
+ * brut (`presence_state`). Couvre les 3 valeurs Xbox + cas inconnu.
+ *
+ * Mapping tokens sémantiques :
+ *  - Online  → bg-success (vert)   = le compte est connecté à Xbox
+ *  - Away    → bg-warning (jaune)  = idle long
+ *  - Offline → bg-muted   (gris)   = vraiment déconnecté
+ *  - inconnu → bg-muted   (gris)   = pas encore d'event reçu (boot ou erreur)
+ */
+function resolvePresenceTone(state: string | undefined, t: SettingsText): { label: string; bgClass: string } {
+  switch (state) {
+    case 'Online':
+      return { label: t.watcherPresenceOnline, bgClass: 'bg-success/20 text-success-foreground' }
+    case 'Away':
+      return { label: t.watcherPresenceAway, bgClass: 'bg-warning/20 text-warning-foreground' }
+    case 'Offline':
+      return { label: t.watcherPresenceOffline, bgClass: 'bg-muted text-muted-foreground' }
+    default:
+      return { label: t.watcherPresenceUnknown, bgClass: 'bg-muted text-muted-foreground' }
+  }
+}
+
+/**
  * Format un "vu il y a X sur Y" lisible côté UI.
  *
  * Logique :
@@ -252,30 +275,35 @@ function RTAStatus({ t }: { t: SettingsText }) {
       </div>
       {data.players.length > 0 && (
         <ul className="mt-1 space-y-1">
-          {data.players.map((p) => (
-            <li key={p.xuid} className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-foreground">{p.gamertag}</span>
-                <span className="rounded bg-muted px-1 py-0.5 text-2xs">{resolveStateLabel(p.state, t)}</span>
-                {p.in_game && <span className="text-success text-2xs">{t.watcherInGame}</span>}
-                {p.subscribe_error ? (
-                  <span
-                    className="rounded bg-destructive/15 px-1 py-0.5 text-2xs text-destructive"
-                    title={p.subscribe_error}
-                  >
-                    ⚠ {t.watcherSubscribeError}
+          {data.players.map((p) => {
+            const presence = resolvePresenceTone(p.presence_state, t)
+            const fsmActive = p.state !== 'Idle'
+            return (
+              <li key={p.xuid} className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{p.gamertag}</span>
+                  <span className={`rounded px-1 py-0.5 text-2xs ${presence.bgClass}`}>{presence.label}</span>
+                  {fsmActive && (
+                    <span className="rounded bg-muted px-1 py-0.5 text-2xs">{resolveStateLabel(p.state, t)}</span>
+                  )}
+                  {p.in_game && <span className="text-success text-2xs">{t.watcherInGame}</span>}
+                  {p.subscribe_error ? (
+                    <span
+                      className="rounded bg-destructive/15 px-1 py-0.5 text-2xs text-destructive"
+                      title={p.subscribe_error}
+                    >
+                      {t.watcherSubscribeError}
+                    </span>
+                  ) : null}
+                </div>
+                {p.last_seen && (
+                  <span className="pl-1 text-2xs italic text-muted-foreground/80">
+                    {formatLastSeen(p.last_seen.timestamp, p.last_seen.title_name, t)}
                   </span>
-                ) : (
-                  <span className="text-2xs text-success">✓</span>
                 )}
-              </div>
-              {p.last_seen && (
-                <span className="pl-1 text-2xs italic text-muted-foreground/80">
-                  {formatLastSeen(p.last_seen.timestamp, p.last_seen.title_name, t)}
-                </span>
-              )}
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

@@ -329,6 +329,12 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 			pw.RecordLastSeen(evCtx, event.LastSeen)
 		}
 
+		// Capture le state Xbox brut (Online/Away/Offline) pour affichage UI
+		// précis. Différencie "Hors-ligne" (Offline) vs "Absent" (Away) vs
+		// "En ligne" (Online + pas en jeu tracké) — plus parlant que le state
+		// FSM générique "Idle".
+		pw.RecordPresenceState(event.PresenceState)
+
 		// Vérifier si le titre correspond à un jeu tracké
 		if event.PresenceDetail != nil {
 			td := d.titleReg.MatchPresence(event.PresenceDetail.TitleID)

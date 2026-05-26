@@ -70,7 +70,12 @@ type PlayerWatcher struct {
 	// pour afficher "vu il y a 2h sur Halo Infinite" dans la WatcherCard
 	// Settings. Mis à jour à chaque event qui contient un bloc lastSeen.
 	lastSeen *presence.LastSeenInfo
-	mu       sync.Mutex
+	// lastPresenceState : dernier état Xbox brut ("Online"/"Away"/"Offline")
+	// reçu d'un event présence. Exposé via WatcherStatus pour différencier UI
+	// "Hors-ligne" vs "Absent" vs "En ligne" — plus précis que le state FSM
+	// (qui reste "Idle" dans les 3 cas).
+	lastPresenceState string
+	mu                sync.Mutex
 }
 
 // NewPlayerWatcher crée un watcher pour un joueur.
@@ -147,6 +152,26 @@ func (pw *PlayerWatcher) LastSeen() *presence.LastSeenInfo {
 	}
 	cp := *pw.lastSeen
 	return &cp
+}
+
+// RecordPresenceState mémorise le dernier state Xbox brut reçu via event
+// (Online / Away / Offline). Une chaîne vide est ignorée pour ne pas
+// effacer un état précédent valide quand Xbox renvoie un payload incomplet.
+func (pw *PlayerWatcher) RecordPresenceState(state string) {
+	if state == "" {
+		return
+	}
+	pw.mu.Lock()
+	pw.lastPresenceState = state
+	pw.mu.Unlock()
+}
+
+// LastPresenceState retourne le dernier state Xbox brut connu, ou ""
+// si aucun event n'a encore été reçu (juste après boot).
+func (pw *PlayerWatcher) LastPresenceState() string {
+	pw.mu.Lock()
+	defer pw.mu.Unlock()
+	return pw.lastPresenceState
 }
 
 // WithLiveRefresh configure le refresher live BP/Challenges.

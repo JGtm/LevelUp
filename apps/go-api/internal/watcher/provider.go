@@ -13,10 +13,11 @@ import (
 type PlayerPresenceStatus struct {
 	Gamertag       string          `json:"gamertag"`
 	XUID           string          `json:"xuid"`
-	State          string          `json:"state"`          // "Idle", "Watching", "Syncing", "Cooling"
-	InGame         bool            `json:"in_game"`        // présence active
-	StateSince     string          `json:"state_since"`    // ISO 8601
-	StateDuration  string          `json:"state_duration"` // durée lisible
+	State          string          `json:"state"`                    // "Idle", "Watching", "Syncing", "Cooling"
+	PresenceState  string          `json:"presence_state,omitempty"` // "Online" / "Away" / "Offline" (état Xbox brut)
+	InGame         bool            `json:"in_game"`                  // présence active
+	StateSince     string          `json:"state_since"`              // ISO 8601
+	StateDuration  string          `json:"state_duration"`           // durée lisible
 	CooldownLeft   string          `json:"cooldown_left,omitempty"`
 	SubscribeError string          `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
 	LastSeen       *LastSeenStatus `json:"last_seen,omitempty"`       // dernière activité connue Xbox (snapshot Offline)
@@ -102,6 +103,7 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 
 		pw.mu.Lock()
 		ps.InGame = pw.inGame
+		ps.PresenceState = pw.lastPresenceState
 		if pw.subscribeError != nil {
 			ps.SubscribeError = pw.subscribeError.Error()
 		}
