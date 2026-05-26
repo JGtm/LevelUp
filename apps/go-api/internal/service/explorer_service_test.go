@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
@@ -19,6 +20,11 @@ type mockExplorerRepo struct {
 	matchErr error
 	kv       domain.KillerVictimAggregate
 	kvErr    error
+	// Encart target_profile : sample stats sur common_matches.
+	participants    *domain.ParticipantStatsAggregate
+	participantsErr error
+	medals          *domain.MedalCountsAggregate
+	medalsErr       error
 }
 
 func (m *mockExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
@@ -29,6 +35,12 @@ func (m *mockExplorerRepo) GetCommonMatches(_ context.Context, _, _ string) ([]d
 }
 func (m *mockExplorerRepo) GetKillerVictimBetween(_ context.Context, _, _ string) (domain.KillerVictimAggregate, error) {
 	return m.kv, m.kvErr
+}
+func (m *mockExplorerRepo) GetParticipantStatsForMatches(_ context.Context, _ string, _ []string) (*domain.ParticipantStatsAggregate, error) {
+	return m.participants, m.participantsErr
+}
+func (m *mockExplorerRepo) GetMedalCountsForMatches(_ context.Context, _ string, _ []string) (*domain.MedalCountsAggregate, error) {
+	return m.medals, m.medalsErr
 }
 
 // --- tests ---
@@ -243,5 +255,256 @@ func TestExplorerService_GetCommonMatches_AllyPlusBadge(t *testing.T) {
 	}
 	if !hasAllyPlus {
 		t.Error("badge ally_plus attendu (winrate 75% > 70%)")
+	}
+}
+
+// --- mocks pour les target_profile providers ---
+
+type mockTargetIdentityProvider struct {
+	live       *domain.HomeSpartanIdentityRow
+	liveErr    error
+	dbOnly     *domain.HomeSpartanIdentityRow
+	calledLive bool
+	calledDB   bool
+}
+
+func (m *mockTargetIdentityProvider) GetSpartanIdentityFor(_ context.Context, _ string) (*domain.HomeSpartanIdentityRow, error) {
+	m.calledLive = true
+	return m.live, m.liveErr
+}
+func (m *mockTargetIdentityProvider) GetSpartanIdentityFromDBOnly(_ context.Context, _ string) *domain.HomeSpartanIdentityRow {
+	m.calledDB = true
+	return m.dbOnly
+}
+
+type mockRemoteStatsProvider struct {
+	stats  *domain.NormalizedPlayerStats
+	err    error
+	called bool
+}
+
+func (m *mockRemoteStatsProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain.NormalizedPlayerStats, error) {
+	m.called = true
+	return m.stats, m.err
+}
+
+type mockPrivacyProvider struct {
+	info   *domain.MatchPrivacyInfo
+	err    error
+	called bool
+}
+
+func (m *mockPrivacyProvider) GetMatchPrivacy(_ context.Context, _ string) (*domain.MatchPrivacyInfo, error) {
+	m.called = true
+	return m.info, m.err
+}
+
+// ctxAuth construit un ctx avec ou sans tokens Halo.
+func ctxAuth(hasAuth bool, userXUID string) context.Context {
+	ctx := context.Background()
+	if hasAuth {
+		return ctxkeys.WithHaloAuth(ctx, &domain.HaloTokens{SpartanToken: "spartan-tok"}, userXUID)
+	}
+	return ctxkeys.WithHaloAuth(ctx, nil, userXUID)
+}
+
+// TestExplorerService_TargetProfile_AllSourcesAvailable couvre le cas heureux :
+// tokens présents + tous les providers livrent → les 4 sous-blocs sont remplis.
+func TestExplorerService_TargetProfile_AllSourcesAvailable(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+		{MatchID: "m2", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 3},
+	}
+	repo := &mockExplorerRepo{
+		xuid:    "target-xuid",
+		matches: matches,
+		participants: &domain.ParticipantStatsAggregate{
+			Kills: 20, Deaths: 10, Assists: 8,
+			Wins: 1, Losses: 1, Draws: 0,
+			ShotsFired: 200, ShotsHit: 100,
+			DamageDealt: 4500, DamageTaken: 3000,
+		},
+		medals: &domain.MedalCountsAggregate{Total: 42, Unique: 8},
+	}
+	idProv := &mockTargetIdentityProvider{
+		live: &domain.HomeSpartanIdentityRow{RankNumber: 76, CurrentXP: 47820},
+	}
+	remoteProv := &mockRemoteStatsProvider{
+		stats: &domain.NormalizedPlayerStats{KDA: 1.5, WinRate: 0.6, Accuracy: 0.45},
+	}
+	privProv := &mockPrivacyProvider{
+		info: &domain.MatchPrivacyInfo{IsPrivate: false, IsPartial: false},
+	}
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(idProv, remoteProv, privProv, "halo_infinite")
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "TargetPlayer", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil {
+		t.Fatal("TargetProfile attendu non-nil")
+	}
+	if !tp.AuthAvailable {
+		t.Error("AuthAvailable doit être true avec tokens")
+	}
+	if tp.Identity == nil || tp.Identity.RankNumber != 76 {
+		t.Errorf("Identity attendue rank=76, got %+v", tp.Identity)
+	}
+	if tp.CareerStats == nil || tp.CareerStats.KDA != 1.5 {
+		t.Errorf("CareerStats attendues KDA=1.5, got %+v", tp.CareerStats)
+	}
+	if tp.SampleStats == nil || tp.SampleStats.SampleSize != 2 {
+		t.Errorf("SampleStats attendues SampleSize=2, got %+v", tp.SampleStats)
+	}
+	if tp.PrivacyWarning == nil || tp.PrivacyWarning.Level != "none" {
+		t.Errorf("PrivacyWarning attendu level=none, got %+v", tp.PrivacyWarning)
+	}
+	if !idProv.calledLive {
+		t.Error("GetSpartanIdentityFor (live) devait être appelé")
+	}
+	if idProv.calledDB {
+		t.Error("GetSpartanIdentityFromDBOnly NE doit PAS être appelé avec tokens")
+	}
+}
+
+// TestExplorerService_TargetProfile_NoTokens couvre le path de dégradation
+// quand le user connecté n'a pas de tokens OAuth Halo : seules les sources
+// indépendantes des tokens doivent être actives (identity DB-only + sample).
+func TestExplorerService_TargetProfile_NoTokens(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{
+		xuid:    "target-xuid",
+		matches: matches,
+		participants: &domain.ParticipantStatsAggregate{
+			Kills: 5, Deaths: 3,
+		},
+	}
+	idProv := &mockTargetIdentityProvider{
+		dbOnly: &domain.HomeSpartanIdentityRow{RankNumber: 12},
+	}
+	remoteProv := &mockRemoteStatsProvider{
+		stats: &domain.NormalizedPlayerStats{KDA: 1.5},
+	}
+	privProv := &mockPrivacyProvider{
+		info: &domain.MatchPrivacyInfo{IsPrivate: true},
+	}
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(idProv, remoteProv, privProv, "halo_infinite")
+
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil {
+		t.Fatal("TargetProfile attendu non-nil")
+	}
+	if tp.AuthAvailable {
+		t.Error("AuthAvailable doit être false sans tokens")
+	}
+	if !idProv.calledDB {
+		t.Error("GetSpartanIdentityFromDBOnly devait être appelé sans tokens")
+	}
+	if idProv.calledLive {
+		t.Error("GetSpartanIdentityFor (live) NE doit PAS être appelé sans tokens")
+	}
+	if tp.Identity == nil || tp.Identity.RankNumber != 12 {
+		t.Errorf("Identity attendue (DB) rank=12, got %+v", tp.Identity)
+	}
+	if remoteProv.called {
+		t.Error("FetchRemoteStats NE doit PAS être appelé sans tokens")
+	}
+	if privProv.called {
+		t.Error("GetMatchPrivacy NE doit PAS être appelé sans tokens")
+	}
+	if tp.CareerStats != nil {
+		t.Errorf("CareerStats attendues nil sans tokens, got %+v", tp.CareerStats)
+	}
+	if tp.PrivacyWarning != nil {
+		t.Errorf("PrivacyWarning attendu nil sans tokens, got %+v", tp.PrivacyWarning)
+	}
+	if tp.SampleStats == nil || tp.SampleStats.SampleSize != 1 {
+		t.Errorf("SampleStats attendues SampleSize=1, got %+v", tp.SampleStats)
+	}
+}
+
+// TestExplorerService_TargetProfile_PrivateProfile couvre le rendu d'un profil
+// privé : le warning level=full est propagé au front.
+func TestExplorerService_TargetProfile_PrivateProfile(t *testing.T) {
+	repo := &mockExplorerRepo{xuid: "target", matches: nil}
+	idProv := &mockTargetIdentityProvider{
+		live: &domain.HomeSpartanIdentityRow{RankNumber: 50},
+	}
+	remoteProv := &mockRemoteStatsProvider{
+		stats: nil,
+		err:   errors.New("private profile"),
+	}
+	privProv := &mockPrivacyProvider{
+		info: &domain.MatchPrivacyInfo{IsPrivate: true, Hint: "auth_required"},
+	}
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(idProv, remoteProv, privProv, "halo_infinite")
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "PrivatePlayer", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil {
+		t.Fatal("TargetProfile attendu non-nil")
+	}
+	if tp.PrivacyWarning == nil || tp.PrivacyWarning.Level != "full" {
+		t.Errorf("PrivacyWarning attendu level=full pour profil privé, got %+v", tp.PrivacyWarning)
+	}
+	if tp.Identity == nil {
+		t.Error("Identity doit rester affichée même si profil privé")
+	}
+	if tp.CareerStats != nil {
+		t.Errorf("CareerStats attendues nil quand FetchRemoteStats échoue, got %+v", tp.CareerStats)
+	}
+}
+
+// TestExplorerService_TargetProfile_NoProviders couvre le cas où aucun
+// provider n'est wiré (rétrocompatibilité avec l'ancien constructeur) :
+// TargetProfile reste non-nil mais seules les données locales sont actives.
+func TestExplorerService_TargetProfile_NoProviders(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{
+		xuid:    "target",
+		matches: matches,
+		participants: &domain.ParticipantStatsAggregate{
+			Kills: 7, Deaths: 4,
+		},
+	}
+	svc := NewExplorerService(repo, "my-xuid")
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Player", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil {
+		t.Fatal("TargetProfile attendu non-nil même sans providers (transport AuthAvailable)")
+	}
+	if tp.Identity != nil || tp.CareerStats != nil || tp.PrivacyWarning != nil {
+		t.Errorf("identity/career/privacy attendus nil sans providers, got %+v", tp)
+	}
+	if tp.SampleStats == nil || tp.SampleStats.Kills != 7 {
+		t.Errorf("SampleStats attendues kills=7 sans providers, got %+v", tp.SampleStats)
 	}
 }

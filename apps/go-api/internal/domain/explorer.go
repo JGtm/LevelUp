@@ -76,6 +76,104 @@ type ExplorerPlayerQueryResponse struct {
 	// Joueur). Calculé sur l'ensemble des matchs communs (avant pagination).
 	// Coloration front pilotée par `count` (intensité d'activité).
 	ActivityHeatmap []TemporalHeatmapCell `json:"activity_heatmap,omitempty"`
+	// TargetProfile : encart "Profil joueur cible" affiché en haut des résultats
+	// Explorer. Composite de 4 sous-blocs best-effort (chacun peut être nil).
+	// Voir ExplorerTargetProfile pour la sémantique des champs.
+	TargetProfile *ExplorerTargetProfile `json:"target_profile,omitempty"`
+}
+
+// ExplorerTargetProfile : encart synthétique sur le joueur cible recherché
+// dans l'Explorer mode Joueur. Composite de 4 sources :
+//
+//  1. Identity : identité Spartan (banner / emblem / service tag / rang
+//     carrière) — fetch live Halo via CareerLiveService.GetSpartanIdentityFor.
+//     Fallback DB locale si live indisponible. Nil si totalement inconnu.
+//  2. CareerStats : stats agrégées carrière entière du joueur (KDA / KDR /
+//     win rate / accuracy / etc.) — fetch live Halo via PlayerStatsProvider.
+//     FetchRemoteStats. Nil si endpoint inaccessible ou no-tokens.
+//  3. SampleStats : stats calculées localement sur les matchs en commun avec
+//     le user connecté (échantillon). Toujours calculable depuis DuckDB.
+//     Nil seulement si common_matches=0.
+//  4. PrivacyWarning : niveau de privacy du profil cible (none / partial /
+//     full) — fetch via PrivacyProvider.GetMatchPrivacy. Nil si no-tokens.
+//
+// AuthAvailable : vrai si le user connecté a des tokens OAuth Halo. Quand
+// faux, les 3 premiers sous-blocs basculent en mode dégradé (identity peut
+// venir de la DB locale, career_stats et privacy sont nil). Sert au front à
+// afficher un hint "Connexion Halo requise" sur les sections masquées.
+type ExplorerTargetProfile struct {
+	Identity       *HomeSpartanIdentityRow    `json:"identity,omitempty"`
+	CareerStats    *NormalizedPlayerStats     `json:"career_stats,omitempty"`
+	SampleStats    *ExplorerTargetSampleStats `json:"sample_stats,omitempty"`
+	PrivacyWarning *MatchPrivacyWarning       `json:"privacy_warning,omitempty"`
+	AuthAvailable  bool                       `json:"auth_available"`
+}
+
+// ExplorerTargetSampleStats : stats agrégées du joueur cible calculées sur
+// les matchs joués en commun avec le user connecté. Toutes les valeurs en
+// pointer signifient "indisponible" lorsque le dénominateur est nul (deaths=0,
+// shots_fired=0, etc.) — le frontend rend "—" dans ce cas.
+type ExplorerTargetSampleStats struct {
+	// SampleSize : nombre de matchs sur lesquels l'agrégation porte.
+	SampleSize int `json:"sample_size"`
+
+	// Totaux bruts.
+	Kills       int `json:"kills"`
+	Deaths      int `json:"deaths"`
+	Assists     int `json:"assists"`
+	Wins        int `json:"wins"`
+	Losses      int `json:"losses"`
+	Draws       int `json:"draws"`
+	ShotsFired  int `json:"shots_fired"`
+	ShotsHit    int `json:"shots_hit"`
+	DamageDealt int `json:"damage_dealt"`
+	DamageTaken int `json:"damage_taken"`
+
+	// Breakdown kill types (somme sur le sample).
+	HeadshotKills    int `json:"headshot_kills"`
+	MeleeKills       int `json:"melee_kills"`
+	PowerWeaponKills int `json:"power_weapon_kills"`
+	GrenadeKills     int `json:"grenade_kills"`
+
+	// Médailles : total et nombre de types distincts gagnés sur le sample.
+	TotalMedals  int `json:"total_medals"`
+	UniqueMedals int `json:"unique_medals"`
+
+	// Ratios calculés. Nil si dénominateur nul.
+	KDA                 *float64 `json:"kda,omitempty"`
+	KDR                 *float64 `json:"kdr,omitempty"`
+	WinRate             *float64 `json:"win_rate,omitempty"`             // 0..1
+	Accuracy            *float64 `json:"accuracy,omitempty"`             // 0..1
+	HeadshotRate        *float64 `json:"headshot_rate,omitempty"`        // headshots/kills
+	OffensiveConversion *float64 `json:"offensive_conversion,omitempty"` // cf. combat_yield.go
+	DefensiveResistance *float64 `json:"defensive_resistance,omitempty"` // cf. combat_yield.go
+}
+
+// ParticipantStatsAggregate : agrégat brut renvoyé par le repo DuckDB pour le
+// joueur cible sur la liste des common_matches. Sert d'entrée à
+// analysis.BuildSampleStats — pas exposé au front.
+type ParticipantStatsAggregate struct {
+	Kills            int
+	Deaths           int
+	Assists          int
+	Wins             int
+	Losses           int
+	Draws            int
+	ShotsFired       int
+	ShotsHit         int
+	DamageDealt      float64
+	DamageTaken      float64
+	HeadshotKills    int
+	MeleeKills       int
+	PowerWeaponKills int
+	GrenadeKills     int
+}
+
+// MedalCountsAggregate : agrégat brut médailles pour un joueur sur un sample
+// de matchs (total occurrences et nombre de types distincts).
+type MedalCountsAggregate struct {
+	Total  int
+	Unique int
 }
 
 // KillerVictimAggregate : kills croisés agrégés entre deux joueurs.
