@@ -47612,3 +47612,33 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Résultats observés** : 8 nouveaux tests verts (préservation champs, création-si-absent, idempotence, rejet inputs invalides, gamertag exact/lower/trim/notfound). Suite auth complète 17 PASS + 1 SKIP (Windows perms). go vet + golangci-lint propres via pre-commit hooks.
 
 **Prochaine étape** : Check-in utilisateur, puis Phase 2 (`MigrateLegacyTokensAtBoot` qui copie env.local + sync_meta → store au boot, idempotent). Phase 3 (read path inversion) après validation Phase 2.
+
+## [2026-05-26] refactor(auth): Phases 2 à 4ter livrées + ADR 0023 — Complété (Phase 5 différée)
+
+**Statut** : Complété phases 0-4ter · Phase 5 différée pending stabilisation prod · Branche `refactor/auth-tokens-single-source`
+
+**Phases livrées** :
+- Phase 0 — Audit `.ai/AUDIT_TOKEN_STORAGE.md` (commit `893706ca`)
+- Phase 1 — `MultiUserTokenStore` étendu (`OAuthRefreshToken` + helpers + 8 tests, commit `16af4b04`)
+- Phase 2 — Migration boot-time `MigrateLegacyTokens` (14 tests, commit `8b99ef3b`)
+- Phase 3a — `registry.refreshTokensFromDB` lit store first (commit `ab0ebefa`)
+- Phase 3b — `pool/discovery.Scan` lit store first RT+MSAL (commit `9eb9b738`)
+- Phase 3c — `watcher_refresh.EnsureWatcherAccessToken` lit store (commit `5c7d87a8`)
+- Phase 3d — no-op (auto_sync déjà délégué Pool, commit `74b9755f`)
+- Phase 3bis — `halo.InvalidateCachedPlayerTokens` (3 tests, commit `06ae0e69`)
+- Phase 4 — `token-capture` refait + `token-import` nouveau + `onRotated` écrit store (commit `d1c6cf43`)
+- Phase 4bis — 4 CLI tools migrés via helper `RefreshHaloTokensViaStoreFirst` (commit `bde9f330`)
+- Phase 4ter — `auth_xbox_oauth.Callback` persiste RT post-SSO (commit `e004b7c6`)
+
+**Décision technique finale** : MultiUserTokenStore (`data/auth/watcher_tokens/{xuid}.json`) devient la source unique des tokens auth. Toute lecture/écriture passe par lui en priorité ; legacy (env var + sync_meta DuckDB) tolérée en fallback avec warn log jusqu'à Phase 5. Cf. ADR `docs/adr/0023-auth-tokens-single-source.md`.
+
+**Résultats observés (couche pure auth)** :
+- 31 tests PASS sur `internal/platform/auth/` (8 nouveaux MultiUserTokenStore + 14 migration + 3 cache invalidation + tests existants adaptés)
+- gofmt / go vet / golangci-lint propres sur tous les fichiers touchés via pre-commit hooks
+- Limites environnementales : tests Pool/Discovery (cgo+DuckDB native) non exécutables dans le shell de dev — validation prod requise
+
+**Phase 5 différée** : suppression des lectures legacy (env var + sync_meta DuckDB) attend ~1 semaine de stabilisation prod avec les phases 2-4 actives. Phase 6 (cleanup code mort + suppression `duckdb.WriteOAuthRefreshToken` et `Read*`) suit Phase 5.
+
+**Conclusion** : Bug Madina résolu architecturalement. UX `token-capture` zéro-friction (plus de copy-paste env.local). 4 CLI cessent de brûler des tokens. SSO Xbox web persiste enfin le RT au store.
+
+**Prochaine étape** : merger la branche dans `refactor/shared-social-collect-persist` après revue. Tester Madina en prod : `go run ./cmd/token-capture/ Madina97294` → redémarrage propre serveur → vérifier `source=duckdb` ou `source=store` dans les logs `halo_auth: tokens obtenus via OAuth refresh`. Une fois validé, lancer Phase 5 dans une session ultérieure.
