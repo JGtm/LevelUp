@@ -3189,6 +3189,15 @@ export interface InviteCode {
 // Watcher présence Xbox RTA
 // ---------------------------------------------------------------------------
 
+export interface WatcherLastSeen {
+  /** Timestamp RFC3339 UTC (ex: "2026-05-25T20:00:36Z") */
+  timestamp: string
+  /** Nom du jeu (ex: "Halo Infinite") */
+  title_name: string
+  /** Title ID Xbox (optionnel) */
+  title_id?: string
+}
+
 export interface WatcherPlayerStatus {
   gamertag: string
   xuid: string
@@ -3198,6 +3207,8 @@ export interface WatcherPlayerStatus {
   state_duration: string
   cooldown_left?: string
   subscribe_error?: string
+  /** Dernière activité connue Xbox (snapshot Offline). Renseigné par le REST poll. */
+  last_seen?: WatcherLastSeen
 }
 
 export interface WatcherStatusResponse {

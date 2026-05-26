@@ -11,14 +11,27 @@ import (
 
 // PlayerPresenceStatus représente l'état de présence d'un joueur exposé à l'API.
 type PlayerPresenceStatus struct {
-	Gamertag       string `json:"gamertag"`
-	XUID           string `json:"xuid"`
-	State          string `json:"state"`          // "Idle", "Watching", "Syncing", "Cooling"
-	InGame         bool   `json:"in_game"`        // présence active
-	StateSince     string `json:"state_since"`    // ISO 8601
-	StateDuration  string `json:"state_duration"` // durée lisible
-	CooldownLeft   string `json:"cooldown_left,omitempty"`
-	SubscribeError string `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
+	Gamertag       string          `json:"gamertag"`
+	XUID           string          `json:"xuid"`
+	State          string          `json:"state"`          // "Idle", "Watching", "Syncing", "Cooling"
+	InGame         bool            `json:"in_game"`        // présence active
+	StateSince     string          `json:"state_since"`    // ISO 8601
+	StateDuration  string          `json:"state_duration"` // durée lisible
+	CooldownLeft   string          `json:"cooldown_left,omitempty"`
+	SubscribeError string          `json:"subscribe_error,omitempty"` // erreur d'abonnement REST, vide si OK
+	LastSeen       *LastSeenStatus `json:"last_seen,omitempty"`       // dernière activité connue Xbox (snapshot Offline)
+}
+
+// LastSeenStatus expose la dernière activité connue d'un joueur via l'API.
+// Renseigné par le REST poll quand Xbox renvoie un snapshot Offline avec
+// un bloc `lastSeen` (typiquement quand le joueur a quitté son dernier jeu).
+//
+// Format `timestamp` : RFC3339 en UTC (ex: "2026-05-25T20:00:36Z") — parseable
+// directement par JS `new Date(...)`.
+type LastSeenStatus struct {
+	Timestamp string `json:"timestamp"`  // RFC3339 UTC
+	TitleName string `json:"title_name"` // ex: "Halo Infinite"
+	TitleID   string `json:"title_id,omitempty"`
 }
 
 // WatcherStatus est le résumé global du watcher exposé à l'API.
@@ -91,6 +104,13 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 		ps.InGame = pw.inGame
 		if pw.subscribeError != nil {
 			ps.SubscribeError = pw.subscribeError.Error()
+		}
+		if pw.lastSeen != nil {
+			ps.LastSeen = &LastSeenStatus{
+				Timestamp: pw.lastSeen.Timestamp.UTC().Format(time.RFC3339),
+				TitleName: pw.lastSeen.TitleName,
+				TitleID:   pw.lastSeen.TitleID,
+			}
 		}
 		pw.mu.Unlock()
 

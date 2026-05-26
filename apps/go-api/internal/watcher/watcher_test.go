@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/presence"
 )
 
 // =============================================================================
@@ -422,6 +424,42 @@ func TestPlayerWatcher_PostExitGrace_NoTimerIfIdle(t *testing.T) {
 	}
 	if pw.fsm.State() != StateIdle {
 		t.Errorf("state = %v, want Idle", pw.fsm.State())
+	}
+}
+
+// PR2 2026-05-26 : RecordLastSeen stocke + LastSeen retourne (copie défensive).
+func TestPlayerWatcher_RecordLastSeen_Roundtrip(t *testing.T) {
+	pw := NewPlayerWatcher("p", "x", &mockFetcher{}, newMockSyncTrigger())
+	if pw.LastSeen() != nil {
+		t.Fatal("LastSeen() devrait être nil au démarrage")
+	}
+
+	ts := time.Date(2026, 5, 25, 20, 0, 36, 0, time.UTC)
+	pw.RecordLastSeen(&presence.LastSeenInfo{
+		Timestamp: ts,
+		TitleID:   "2043073184",
+		TitleName: "Halo Infinite",
+	})
+
+	got := pw.LastSeen()
+	if got == nil {
+		t.Fatal("LastSeen() nil après Record")
+	}
+	if got.TitleName != "Halo Infinite" {
+		t.Errorf("TitleName = %q", got.TitleName)
+	}
+	if !got.Timestamp.Equal(ts) {
+		t.Errorf("Timestamp = %v, want %v", got.Timestamp, ts)
+	}
+}
+
+// PR2 2026-05-26 : un appel avec nil ne crash pas + ne remplace pas l'état.
+func TestPlayerWatcher_RecordLastSeen_NilNoop(t *testing.T) {
+	pw := NewPlayerWatcher("p", "x", &mockFetcher{}, newMockSyncTrigger())
+	pw.RecordLastSeen(&presence.LastSeenInfo{TitleName: "Halo"})
+	pw.RecordLastSeen(nil) // ne doit pas wipe l'état précédent
+	if pw.LastSeen() == nil || pw.LastSeen().TitleName != "Halo" {
+		t.Error("nil aurait dû être no-op, état précédent préservé")
 	}
 }
 

@@ -1,3 +1,46 @@
+## [2026-05-26] Watcher last_seen UI + cleanup RTA legacy
+
+**Statut** : Complété (2 commits livrés sur `refactor/shared-social-collect-persist`).
+
+**Commit 1** (`b9260382`) — `refactor(watcher): cleanup RTA WebSocket legacy` :
+Le REST poll partagé couvrant les 4 joueurs avec un seul token, le RTA WebSocket devient redondant. Suppression : `rta_client.go` (672L), `reconnect.go`, `daemon_user_clients.go` (PR 2.5c rollback), `d.rtaClient`, `connectAndSubscribe`, `WithPerUserAuthRefresh`, `RefreshRTAAuth` config, boot reload userClients dans main.go, 8 tests RTAClient/ReconnectManager. Extraction propre des types partagés (`PresenceEvent`, `PresenceDetail`, `EventHandler`, `LastSeenInfo`) dans `internal/presence/types.go`. Total : 12 fichiers, +97/-2179 lignes. `daemon.go` 510L → 403L. `MultiUserTokenStore` conservé pour le SSO Xbox flow.
+
+**Commit 2** — `feat(watcher): last_seen UI + API` :
+- Parser `ParsePresencePayload` extrait le bloc `lastSeen` (timestamp + titre) dans `event.LastSeen`. Helper `parseXboxTimestamp` gère 3 layouts ISO Xbox.
+- `PlayerWatcher.RecordLastSeen` + `LastSeen` getter (copie défensive) — stockage thread-safe.
+- `daemon.makePresenceHandler` appelle `RecordLastSeen` à chaque event ayant un bloc `lastSeen`.
+- `StateProvider.GetStatus` expose `LastSeen` dans `PlayerPresenceStatus` (JSON `last_seen`). Format timestamp : RFC3339 UTC.
+- Frontend : type `WatcherLastSeen` ajouté à `lib/api/types.ts`. Helper `formatLastSeen` (compact relatif < 7j puis absolu) avec strings FR/EN. UI `WatcherCard` affiche une ligne italique sous le gamertag : "Vu il y a 10 min sur Halo Infinite".
+- Tests : 3 nouveaux tests Go parser, 2 tests PlayerWatcher (Record/Get), 2 tests UI (présent / absent), 6 tests unit `formatLastSeen` (5 bornes temporelles + invalid). 27/27 vitest passent.
+
+**Décision** : format date côté API = RFC3339 UTC (interop directe JS `new Date()`). Côté UI = relatif compact ("10 min", "3 h", "2 j") < 7j, puis date absolue localisée. Pas de dépendance npm — helper inline (~30L).
+
+**Résultats** :
+- `go test ./internal/presence/ ./internal/watcher/ -race` : ok 1.6s + 1.9s.
+- `go vet ./...` : silencieux.
+- `npx tsc --noEmit` : silencieux.
+- Pre-commit hooks : OK.
+
+**Prochaine étape** : test live (relancer air + observer un cycle "joueur quitte Halo → REST poll capture lastSeen → UI affiche 'Vu il y a 30s sur Halo Infinite'").
+
+---
+
+## [2026-05-26] Bug ART — fullSessionCompute bulk UPDATE crash (JGtm)
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Décision technique** : `fullSessionCompute` (fallback quand un match comblé est antérieur à l'ancre de sync) recalculait toutes les sessions de l'historique et tentait de mettre à jour ~500 rows existantes via `writeSessionAssignmentsBatch`. Ce bulk UPDATE sur des rows avec PK index déclenche le bug ART DuckDB "duplicate key on append" (FatalException, exit 0xc0000409). Fix : ajout de `onlyNewRows bool` sur `deltaSessionAssignments` + `writeSessionAssignmentsBatch`. Quand `fullSessionCompute` passe `true`, seules les rows avec `session_id IS NULL` sont écrites — les sessions existantes ne sont pas retouchées (léger décalage de numéros accepté pour éviter le crash).
+
+**Résultats** : `go test ./...` PASS, `go vet ./...` propre. Nouveau test `TestWriteSessionAssignmentsBatch_OnlyNewRows_SkipsExisting`. Run `sync-full --all --max-matches 500` : 4/4 success, 0 crash, fallback full compute déclenché sur Chocoboflor (planned=9 affected=0), JGtm (planned=59 affected=20), Madina (planned=46 affected=0).
+
+**Observation Madina97294** : 0 inserted/1152 skipped — les matchs d'avril 19 sont déjà dans `match_participants` shared (synced via d'autres joueurs). Vérifier si `player_match_enrichment` a bien des rows pour ces matchs.
+
+**Prochaine étape** : vérifier enrichments des 20 matchs JGtm et 49 matchs Chocoboflor en DB.
+
+---
+
 ## [2026-05-26] Watcher — 3 fixes complémentaires (titre non tracké + grâce extinction + REST poll friends)
 
 **Statut** : Complété (3 fixes + 6 nouveaux tests + tests existants adaptés).
