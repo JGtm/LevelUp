@@ -1048,6 +1048,59 @@ func (r *MatchViewRepo) GetMatchExpectedStats(ctx context.Context, matchID, xuid
 	return &row, nil
 }
 
+// GetMatchSharedCSRs retourne le CSR de tous les participants d'un match ranked
+// depuis shared.match_csrs_latest (Q30). Map xuid → SkillRankRaw.
+// Dégradation gracieuse : nil sans erreur si table absente ou aucune donnée.
+func (r *MatchViewRepo) GetMatchSharedCSRs(ctx context.Context, matchID string) (map[string]*domain.SkillRankRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, nil //nolint:nilerr
+	}
+	defer release()
+
+	rows, err := sharedDB.QueryContext(ctx, Q30SharedMatchCSRs, matchID)
+	if err != nil {
+		return nil, nil //nolint:nilerr — table absente : match non-ranked ou avant migration
+	}
+	defer rows.Close()
+
+	result := make(map[string]*domain.SkillRankRaw)
+	for rows.Next() {
+		var (
+			xuid    string
+			row     domain.SkillRankRaw
+			subTier sql.NullInt16
+		)
+		if err := rows.Scan(
+			&xuid,
+			&row.RatingType,
+			&row.TierLabel,
+			&row.RatingValue,
+			&row.RatingDelta,
+			&row.Tier,
+			&subTier,
+		); err != nil {
+			return nil, fmt.Errorf("GetMatchSharedCSRs scan: %w", err)
+		}
+		if subTier.Valid {
+			v := int(subTier.Int16)
+			row.SubTier = &v
+		}
+		copy := row
+		result[xuid] = &copy
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(result) == 0 {
+		return nil, nil
+	}
+	return result, nil
+}
+
 // GetMatchBulkMedals retourne les médailles de tous les joueurs du match (Q27).
 // Exécutée sur SharedReader (ADR 0016) — Q27 lit medals_earned (shared-only).
 func (r *MatchViewRepo) GetMatchBulkMedals(ctx context.Context, matchID string) ([]domain.BulkMedalRaw, error) {

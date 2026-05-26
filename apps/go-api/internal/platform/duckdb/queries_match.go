@@ -591,6 +591,21 @@ WHERE wk.match_id = ?
 GROUP BY wk.xuid, COALESCE(wk.reconciled_as, wk.weapon_id)
 ORDER BY wk.xuid, kills DESC`
 
+// Q30 : CSR de tous les participants d'un match ranked depuis shared.match_csrs_latest.
+// Paramètre : ?1 = match_id.
+// Exécutée sur SharedReader — match_csrs est dans la shared DB.
+const Q30SharedMatchCSRs = `
+SELECT
+    xuid,
+    rating_type,
+    tier_label,
+    rating_value,
+    rating_delta,
+    tier,
+    sub_tier
+FROM match_csrs_latest
+WHERE match_id = ?`
+
 // Q26 : Stats attendues du joueur pour ce match (match_participants expected columns).
 // Paramètres : ?1 = match_id, ?2 = xuid.
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
