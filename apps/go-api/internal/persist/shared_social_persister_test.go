@@ -14,7 +14,6 @@ package persist
 import (
 	"context"
 	"database/sql"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -236,18 +235,19 @@ func TestSharedSocialPersister_FullBatch_PersistsAllTables(t *testing.T) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CHECKPOINT garanti : WAL vide après Persist (anti-régression bug DuckDB #7659)
+// Multi-files : plusieurs media_files dans un seul batch
+// (Le CHECKPOINT n'est plus lancé depuis Persist — il se fait au shutdown via
+// main.go pour éviter de bloquer la seule connexion MaxOpenConns(1).)
 // ─────────────────────────────────────────────────────────────────────────────
 
-func TestSharedSocialPersister_CHECKPOINT_WALEmptyAfterPersist(t *testing.T) {
-	path, db := setupSocialDB(t)
+func TestSharedSocialPersister_MultipleMediaFiles_AllInserted(t *testing.T) {
+	_, db := setupSocialDB(t)
 	p := NewSharedSocialPersister(db)
 	ctx := context.Background()
 
-	// Écrire un batch significatif.
 	captureStart := time.Now().UTC()
 	batch := &SharedSocialBatch{
-		BatchID: "checkpoint-test",
+		BatchID: "multi-files-test",
 		Source:  "unit_test",
 		MediaFiles: []MediaFileInsert{
 			{PlayerSlug: "p1", FilePath: "/m1.mp4", FileName: "m1.mp4", FileHash: "h1", Kind: "video", CaptureStartUTC: &captureStart},
@@ -259,26 +259,12 @@ func TestSharedSocialPersister_CHECKPOINT_WALEmptyAfterPersist(t *testing.T) {
 		t.Fatalf("Persist: %v", err)
 	}
 
-	// Le CHECKPOINT est async — on attend jusqu'à 2 s qu'il se termine.
-	walPath := path + ".wal"
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		info, err := os.Stat(walPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return // CHECKPOINT a fusionné le WAL → pas de fichier → OK
-			}
-			t.Fatalf("stat WAL: %v", err)
-		}
-		if info.Size() == 0 {
-			return // WAL vidé → OK
-		}
-		if time.Now().After(deadline) {
-			t.Errorf("WAL non-vide 2 s après Persist+CHECKPOINT async (size=%d). Risque de replay au prochain reopen.\nPath: %s",
-				info.Size(), walPath)
-			return
-		}
-		time.Sleep(50 * time.Millisecond)
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM media_files WHERE player_slug = 'p1'").Scan(&count); err != nil {
+		t.Fatal(err)
+	}
+	if count != 3 {
+		t.Errorf("media_files count=%d, want 3", count)
 	}
 }
 

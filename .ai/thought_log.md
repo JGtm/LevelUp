@@ -1,3 +1,48 @@
+## [2026-05-26] Fix likes/favoris bloqués — suppression CHECKPOINT async + leaseWriter inutile
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problèmes** : Likes cassés (0 rows affectées → 404 silencieux) + favoris ultra-lents (45 s de timeout).
+
+**Cause racine** : deux anti-patterns cumulés sur `MaxOpenConns(1)` :
+1. `SharedSocialPersister.Persist()` lançait un goroutine CHECKPOINT async après chaque commit. Avec une seule connexion, le CHECKPOINT la monopolisait 100–500 ms, bloquant le prochain `BeginTx()` pour les likes/favoris en cascade.
+2. `SocialService.ToggleMatchFavorite()` acquérait un `LeasedWriter` (Go mutex, timeout 45 s) avant d'écrire — mais l'écriture passait par `SocialPersister.Persist()` directement, jamais via le LeasedWriter. Le mutex était tenu pour rien.
+
+**Décisions techniques** :
+- Suppression du goroutine CHECKPOINT dans `Persist()` ; le CHECKPOINT est désormais uniquement au shutdown (`main.go`) après `workerWG.Wait()` — WAL vidé proprement sans bloquer les opérations live.
+- `ToggleMatchFavorite` passe directement par `repo.ToggleMatchFavorite` sans acquérir le lease.
+- Ajout `"log/slog"` manquant dans `media_repo.go` + `slog.WarnContext` quand `SetMediaLikeAtomic` retourne 0 rows (path absent en DB → 404 propre).
+- Test `TestSharedSocialPersister_CHECKPOINT_WALEmptyAfterPersist` (attendait CHECKPOINT async disparu) → remplacé par `TestSharedSocialPersister_MultipleMediaFiles_AllInserted`.
+- Test `TestSocialService_ToggleMatchFavorite_LeaseBusy_PropagatesErrDBLocked` (comportement supprimé) → remplacé par `TestSocialService_ToggleMatchFavorite_AcquirerIgnored`.
+
+**Résultats** : `go test ./... && go vet ./...` sans échec sur tous les packages.
+
+**Prochaine étape** : tester en live les likes et favoris.
+
+---
+
+## [2026-05-26] Fix barres composites Rendement/Résistance — cohérence visuelle/valeur
+
+**Statut** : Complété.
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Problème** : La barre DR (Résistance) affichait 53 px pour 6% de résistance, donnant l'impression d'une grande résistance. Quatre bugs identifiés sur 4 sites distincts.
+
+**Décision technique** :
+- `combat-yield-bar.tsx` : `drBarWidth` normalise désormais depuis 1.0 (baseline), non depuis 0. DR=1.06 → ~8 px (cohérent avec "6%"). Ajout tick p80 (80 px du centre) + badge débordement hors-barre (∞ ou %).
+- `match-card.tsx` : suppression de la barre proportionnelle `offConv / (offConv + defRes)` (mélange OC 0..1 et DR 1..∞ = fondamentalement cassée). Remplacée par `CombatYieldBar`.
+- `KpiGrid.tsx` : label DR `(avg_dr ?? 0) * 100` → `((avg_dr ?? 1) - 1) * 100`. DR=1.06 affichait "106%" au lieu de "6%".
+- `TimeseriesCombatYield.tsx` : données DR normalisées à `value - 1` pour aligner l'axe Y avec OC (0..N% au lieu de 100..N%). Référence p80 ajustée à 0.59.
+
+**Résultats** : typecheck passe, tous les sites cohérents avec les labels affichés.
+
+**Prochaine étape** : commit.
+
+---
+
 ## [2026-05-26] Fix medals_empty faux positif — matchs sans médailles légitimes
 
 **Statut** : Complété.

@@ -337,28 +337,10 @@ func (p *SharedSocialPersister) Persist(ctx context.Context, batch *SharedSocial
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("shared_social: commit: %w", err)
 	}
-
-	// CHECKPOINT asynchrone — vider le WAL DuckDB sur disque sans bloquer
-	// le caller HTTP. Le COMMIT ci-dessus garantit l'atomicité ; les données
-	// sont dans le WAL et seront rejouées si le process crashe avant que le
-	// CHECKPOINT se termine. L'async évite le blocage sur les readers actifs
-	// (typiquement 100-500ms pour un toggle like/favori).
-	//
-	// Garde-fou WAL (bug DuckDB #7659) : un CHECKPOINT synchrone final est
-	// émis au shutdown gracieux du serveur (main.go) pour vider le WAL avant
-	// qu'Air reload le processus.
-	batchID := batch.BatchID
-	batchSrc := batch.Source
-	go func() {
-		ckptCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		if _, ckptErr := p.db.ExecContext(ckptCtx, "CHECKPOINT"); ckptErr != nil {
-			slog.WarnContext(ckptCtx, "shared_social: CHECKPOINT async failed (non-fatal — data committed in WAL)",
-				"batch_id", batchID, "source", batchSrc, "err", ckptErr)
-		} else {
-			slog.Debug("shared_social: CHECKPOINT async terminé", "batch_id", batchID, "source", batchSrc)
-		}
-	}()
+	// Pas de CHECKPOINT ici : la connexion est configurée MaxOpenConns(1),
+	// un CHECKPOINT async prendrait la seule connexion et bloquerait le
+	// prochain BeginTx (likes, favoris) en cascade. Le CHECKPOINT synchrone
+	// au shutdown (main.go) vide le WAL avant qu'Air relance le process.
 
 	slog.InfoContext(ctx, "shared_social: batch persisted",
 		"batch_id", batch.BatchID,

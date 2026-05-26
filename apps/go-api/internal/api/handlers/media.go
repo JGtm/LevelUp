@@ -216,7 +216,10 @@ func (h *MediaHandler) PatchMediaLike(w http.ResponseWriter, r *http.Request) {
 	// (cf. transformMediaURLs / filePathToURL). Quand il rejoue ce file_path
 	// dans une mutation (like, réassociation), on doit reverser la transformation
 	// vers le chemin absolu de stockage tel que présent en DB.
+	rawPath := req.FilePath
 	req.FilePath = h.urlToFilePath(slug, req.FilePath)
+	slog.DebugContext(r.Context(), "media_like: path resolved",
+		"slug", slug, "raw", rawPath, "resolved", req.FilePath)
 
 	// Auto-injecter le liker depuis la session si absent du body.
 	// Sans liker_slug, le service ne peuple pas media_likes (table partagée
