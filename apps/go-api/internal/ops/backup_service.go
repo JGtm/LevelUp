@@ -3,7 +3,6 @@ package ops
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -100,27 +99,29 @@ func discoverLevelUpDBs(pr *title.PathResolver) ([]duckdbbackup.Target, error) {
 	return attachExistingHandles(targets), nil
 }
 
-// attachExistingHandles câble OpenDB sur les Target dont le fichier est déjà
-// ouvert dans le pool DuckDB process-wide AU MOMENT de la découverte. Pour les
-// autres (DBs jamais ouvertes ou déjà fermées), OpenDB reste nil et l'exporter
-// ouvre une connexion RO autonome.
+// attachExistingHandles câble OpenDB sur tous les targets avec un callback
+// dynamique : au moment de l'appel (pas de la découverte), il tente d'abord
+// LookupCachedDB (réutilise le handle RW existant si disponible), puis ouvre
+// une connexion RO autonome en fallback.
 //
-// La résolution est faite à chaque cycle de backup (discover s'exécute par
-// cycle), donc un fichier ouvert post-boot par une feature lazy sera détecté
-// au cycle suivant. Le callback re-résout via LookupCachedDB à chaque appel
-// pour rester correct si la conn est swap/reopen entre découverte et appel.
+// Raison : les player DBs et shared_social sont ouvertes lazily par le pool
+// (au 1er GetOrOpen / premier appel HTTP). Au moment du discover() en début
+// de cycle, elles peuvent ne pas être en cache. Mais pendant l'export (quelques
+// ms plus tard), l'auto_sync les a ouvertes en RW — ce qui fait échouer
+// sql.Open(path+"?access_mode=read_only") avec "different configuration".
+// En déportant le LookupCachedDB dans le callback, on résout au bon moment.
 func attachExistingHandles(targets []duckdbbackup.Target) []duckdbbackup.Target {
 	for i := range targets {
-		if _, ok := platform_duckdb.LookupCachedDB(targets[i].Path); !ok {
-			continue // pas dans le pool → exporter ouvrira en RO autonome
-		}
 		path := targets[i].Path
 		targets[i].OpenDB = func(_ context.Context) (*sql.DB, func(), error) {
-			cached, ok := platform_duckdb.LookupCachedDB(path)
-			if !ok {
-				return nil, nil, fmt.Errorf("duckdbbackup: handle introuvable dans le pool pour %s", path)
+			if cached, ok := platform_duckdb.LookupCachedDB(path); ok {
+				return cached.SQLDb(), func() {}, nil
 			}
-			return cached.SQLDb(), func() {}, nil
+			db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+			if err != nil {
+				return nil, nil, err
+			}
+			return db, func() { _ = db.Close() }, nil
 		}
 	}
 	return targets
