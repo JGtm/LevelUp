@@ -1,3 +1,145 @@
+## [2026-05-27] feat(lusr_v2): Phase 3e+→5 5-candidats autonomes (Strategie C + sentinelle + quit penalty + mode correlation + TTT batch)
+
+**Statut** : Complété (changements en working copy, non commités)
+
+**Contexte** : Suite à la validation Phase 3e (tier mapping non-uniforme), l'utilisateur demande l'implementation autonome de 5 chantiers sur le LUSR v2 :
+1. Bascule prod Stratégie C
+2. Sentinelle dual-row + expvar
+3. Quit penalty (TS2 §9)
+4. Mode correlation (cap w_d ≤ 0.4)
+5. TTT batch
+
+**Décisions techniques majeures** :
+- **Stratégie C dual-row** : v2 écrit DEUX rows (rating_type='LUSR' pour readers UI + 'LUSR_V2' pour audit) en 1 transaction atomique via `AppendOnlyLUSRPersister`. `LUSRRatingInsert` gagne un champ `RatingType` (default "LUSR").
+- **Quit penalty NON-§9** : la version TS2 §9 littérale REMONTE le skill du quitter (absorption d'under-perf). Rejeté → implémentation post-EP shift (μ -= delta). Constantes `DefaultQuitDeltaRelated=1.0` / `Unrelated=2.5`.
+- **Mode coupling cap absolu** : `Phase4ModeCouplingMaxWeight = 0.4` clampé dans `ApplyCrossModeLeak`. Activation gated par `LEVELUP_LUSR_V2_MODE_COUPLING=1`, default OFF.
+- **TTT batch MVP** : stats empiriques (draw_prob, kill/death mean/std) par playlist_group, source datée `batch_YYYY_MM_DD`. Le wiring shadow runner pour LIRE ces hyperparams reste à faire (Phase 5.B documenté).
+
+**Résultats observés** :
+- `go test ./internal/sync/ ./internal/persist/ ./internal/analysis/skill_v2/...` PASS
+- `go vet ./...` clean
+- TTT batch dry-run sur prod : arena_slayer 653 matches/7044 participants, kills mean 9.54, draw_prob 0.15%, all sane
+- Tests E2E nouveaux : `TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow`, `TestRunDualRowSentinel_DetectsInconsistencies`, `TestPhase3quit_*` (2), `TestRunLUSRV2Shadow_Phase4_*` (2)
+
+**Document de reprise** : `.ai/LUSR_V2_HANDOFF.md` (suggestions de commits + activation prod par étapes + Phase 5.B/6 roadmap)
+
+**Prochaine étape** : utilisateur doit autoriser les commits (rule mémoire "demander avant tout commit"). Découpage suggéré en 7 commits cohérents dans le handoff doc.
+
+---
+
+## [2026-05-28] refactor(sync): split skill_v2_shadow god-file + extract processOneShadowMatch
+
+**Statut** : Complété
+
+**Contexte** : Audit final post-livraison des 5 chantiers LUSR v2 a révélé que `internal/sync/skill_v2_shadow.go` était passé de quelques centaines de lignes à 852L (dépasse le seuil 500L de l'arch-rules). Par ailleurs `RunLUSRV2Shadow` faisait 102L (dépasse 80L).
+
+**Décision technique** :
+- Split `skill_v2_shadow.go` (852L) en 5 fichiers thématiques tous sous 500L :
+  - `skill_v2_shadow.go` (488L) — orchestration core + `processOneShadowMatch`
+  - `skill_v2_quit_penalty.go` (217L) — `isQuitter`, `identifyPrimaryQuitter`, `buildCountInputs`
+  - `skill_v2_canonical.go` (95L) — Stratégie C dual-row
+  - `skill_v2_cross_mode.go` (87L) — Phase 4 leak
+  - `skill_v2_helpers.go` (72L) — `extractXUIDs`, `loadStatesOrSeed`, `persistTeamSkillV2`
+  - `skill_v2_metrics.go` (123L) — expvar + sentinelle (déjà séparé)
+- Extraction de `processOneShadowMatch` depuis `RunLUSRV2Shadow` (102L → 45L + 50L). Introduit `shadowRunContext` (regroupe 7 paramètres en 1 struct) + `shadowRunStats` (regroupe 5 compteurs de skip).
+
+**Tests flaky pré-existants** (`internal/service`, `internal/api/handlers::TestStartImport_HappyPathReturns202WithJobID`) : investigués, non reproductibles. 3 runs `./...` consécutifs stables avant + après refactor → flakes OS-level transient (contention I/O sous parallélisme élevé), pas de bug applicatif. Le test handler accepte déjà `queued|running` → l'auteur connaissait la nature async.
+
+**Résultats observés** :
+- `go test ./...` PASS sur 2 runs consécutifs post-refactor
+- `go vet ./...` clean
+- Toutes les fonctions LUSR v2 désormais ≤ 80L
+- Tous les fichiers LUSR v2 désormais < 500L
+- Tests préexistants intacts (aucune régression suite au split)
+
+**Prochaine étape** : commits propres en chunks logiques par chantier.
+
+---
+
+## [2026-05-27] feat(lusr_v2): capture FirstJoinedTime + LastLeaveTime + backfill historique
+
+**Statut** : Complété (backfill prod en cours en background)
+
+**Contexte** : Suite à l'implementation primary/secondary quitter (basée sur `time_played_seconds` ASC comme proxy), l'utilisateur signale que le payload API contient `FirstJoinedTime` + `LastLeaveTime` (déjà parsés par `openspartan.models.go` mais jetés par le mapper) → signal absolu pour ordonner les quitters, strictement supérieur au proxy.
+
+**Décision technique** :
+- Migration : 2 colonnes `match_participants.{first_joined_time, last_leave_time}` TIMESTAMPTZ (`steps_shared_add_participation_timestamps.go`).
+- `domain.MatchParticipantRow` : `FirstJoinedTime *time.Time` + `LastLeaveTime *time.Time` (nil = jamais quitté / pas backfillé).
+- Mapper OpenSpartan + transforms sync : capture et propagation des timestamps.
+- Persist `match_participants` INSERT : 2 colonnes supplémentaires (36→38 placeholders).
+- `isQuitter` : `last_leave_time IS NOT NULL` devient signal direct top-priority avant les booleans heuristics.
+- `identifyPrimaryQuitter` : stratégie 2-niveaux qui ne mélange JAMAIS timestamp et time_played dans la même comparaison (évite qu'un quitter pre-backfill batte un post-backfill juste par hasard sur le proxy).
+- Backfill CLI `cmd/backfill_quit_timestamps` (modelé sur `backfill_participation_info`) — UPDATE idempotent WHERE first_joined_time IS NULL.
+
+**Résultats observés** :
+- Build + vet clean
+- 2 nouveaux tests : `TestIdentifyPrimaryQuitter_PrefersLastLeaveTimeOverTimePlayed` (cas critique : a1 plus petit time mais quitté plus tard → primary=b1 grâce au timestamp) + `TestIdentifyPrimaryQuitter_MixedTimestampCoverage` (timestamp prime sur fallback même si moins favorable en temps).
+- Smoke test backfill 100 matchs : 33s, 934 lignes updated, 0 erreur, 0 expiré API.
+- Backfill full lancé (1624 matchs restants) en background.
+
+**Prochaine étape** : confirmer fin backfill + rapport (% expirés API attendu sur les matchs > 6 mois). Update handoff doc avec section ParticipationInfo timestamps. Toujours en attente d'autorisation user pour commit.
+
+---
+
+## [2026-05-27] feat(lusr_v2): quit penalty — primary quitter delta plein, suivants -50%
+
+**Statut** : Complété
+
+**Contexte** : Suite à l'implementation initiale du quit penalty (Phase 3-quit avec δ_related=1.0 / δ_unrelated=2.5 uniformes), l'utilisateur précise : "le quit penalty doit influencer le premier joueur qui quitte, les suivants voient le malus réduire de 50%".
+
+**Décision technique** :
+- Sans timeline réelle, utilisation de `time_played_seconds` comme proxy temporel : le plus petit = 1er parti.
+- `identifyPrimaryQuitter(teamA, teamB)` scan global (toutes équipes) et retourne le xuid du primary.
+- `scaledQuitDelta(xuid, primary, base)` : base si primary, `base * QuitSecondaryFactor=0.5` sinon.
+- Fallback : si aucun quitter n'a `time_played_seconds` valide (anciens matchs), primary="" → tous traités comme primaires (pas de réduction silencieuse).
+- `buildTwoTeamRosters` query ajout `time_played_seconds`, schema test ajusté.
+
+**Résultats observés** :
+- 5 sous-cas testés dans `TestIdentifyPrimaryQuitter_PicksSmallestTimePlayed` : aucun quitter, un seul, deux même équipe, équipes adverses, sans time_played.
+- `TestScaledQuitDelta_PrimaryFullSecondaryHalf` valide les 3 branches (primary, secondaire, fallback empty).
+- Full regression sync + persist + skill_v2 reste PASS.
+
+**Prochaine étape** : ajout au handoff doc (`docs/LUSR_V2_HANDOFF.md` section "Priority quitter"). Toujours en attente d'autorisation user pour commit (rule mémoire).
+
+---
+
+## [2026-05-27] fix(token-capture): defaultClientID aligné sur override 39829f7a-
+
+**Statut** : Complété
+
+**Contexte** : Audit exhaustif de l'auth (cmd/refresh-career-ranks pour 4 joueurs avec
+override ON) prouve que 3/4 RTs store sont émis pour `39829f7a-` (JGtm, Chocoboflor, XxDaemon)
+et 1/4 pour `e1cb35ab-` (Madina, capturée via cmd/token-capture quand override absent).
+
+**Décision technique** : `cmd/token-capture/main.go::defaultClientID` change de `e1cb35ab-`
+vers `39829f7a-` pour aligner toute capture future sur l'override `.env.local`.
+`SPNKR_AZURE_CLIENT_ID` reste lu en priorité (priorité env > défaut hardcodé).
+`LevelUpClientID` dans `internal/platform/auth/msal_client.go` non touché (autre flow SSO web,
+hors scope).
+
+**Résultats observés** :
+- Tests `internal/platform/auth/...` PASS (auth + capturecli + pool)
+- Le commentaire en haut du `.env.local` documente le tableau de vérité prouvé par player
+- Madina marche encore via le fallback legacy DuckDB tant qu'elle n'est pas re-captured
+
+**Validation runtime end-to-end** via nouveau CLI `cmd/diag_live_economy` (RT → Spartan
+→ Economy player-gated `/hi/careerranks/careerRank1?players=xuid(X)` + `/hi/players/xuid(X)/customization/appearance`) :
+
+| Joueur          | Auth | Career rank XP live    | Customization live |
+|-----------------|------|------------------------|---------------------|
+| JGtm            | OK   | rank 185, xp 3360      | OK |
+| Chocoboflor     | OK   | rank 147, xp 8210      | OK |
+| Madina97294     | OK   | rank 201, xp 8685      | OK |
+| XxDaemonGamerxX | OK   | rank 20, xp 1560       | NIL (joueur sans Spartan customisé) |
+
+Conclusion : `client_id 39829f7a-` est viable en runtime pour TOUS les endpoints
+Halo Economy player-gated (les seuls qui nous intéressent côté produit).
+
+**Prochaine étape** : User va probablement re-capturer Madina via le nouveau token-capture
+pour aligner son store RT sur `39829f7a-` et éliminer le fallback legacy. Pas commité encore.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 3e v2 — persistance des seuils tier dans lusr_hyperparams_v2
 
 **Statut** : Complété
