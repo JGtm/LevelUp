@@ -18,16 +18,25 @@ Création de sous-branches optionnelle si plusieurs sprints en parallèle.
 
 | Sprint | Contenu | Effort | Priorité |
 |---|---|---|---|
-| **1.A** | Probabilité de victoire prédite | 1/2 jour | Haute (quick win UX) |
+| **1.A** | Probabilité de victoire prédite (backend uniquement) | 1/2 jour | Haute (quick win UX) |
 | **1.B** | Brancher les paramètres ré-estimés | 2-3h | Haute (corrige un bug latent) |
 | **1.C** | Détection escouades + correction skill | 2 jours | Haute (angle mort modèle) |
+| **1.D** | Préparer le wiring API + types frontend (placement UI reporté) | 1/2 jour | Haute (sans ça 1.A et 3.B sont des données mortes) |
 | **2.A** | Timeline du score au moment du quit | 1/2 jour | Moyenne |
 | **2.B** | Matrice de corrélation entre modes | 1 jour | Moyenne |
+| **2.C** | Sentinelle dual-row appelée après chaque sync + logs Error | 2-3h | Haute (sinon les incohérences ne sont jamais détectées) |
 | **3.A** | Recalibration auto périodique propre | 1-2 jours | Basse |
 | **3.B** | Delta de rating dans l'historique | 2h | Basse (confort UX) |
-| **Final** | Bascule canonical en prod | 1 jour | Critique |
+| **3.C** | Capability multi-titres `CapLUSR` (obligatoire) | 1/2 jour | Haute (règle projet — pas de slug-coupling) |
+| **Final** | ADR consolidée + bascule canonical en prod | 1 jour | Critique |
 
-**Total estimé : ~8 jours de dev** réparti sur N sessions.
+**Total estimé : ~9 jours de dev** réparti sur N sessions.
+
+### Pourquoi ces ajouts (2026-05-28)
+
+- **1.D — wiring API/types frontend** : les sprints 1.A et 3.B ajoutent des colonnes (`expected_win_prob`, `rating_delta`) mais sans exposition côté API + sans types TypeScript / query hooks, rien n'est visible. Le **placement UI final est reporté** (décision produit en attente : encart sur l'historique ? overlay sur la page LUSR ? section dédiée ?), mais le wiring backend → frontend peut être préparé maintenant.
+- **2.C — sentinelle automatique** : `RunDualRowSentinel` existait en CLI manuel, sans utilité prod. Hook post-sync (appel à la fin du pipeline `engine_postsync`), pas de cron séparé. Toute incohérence détectée → `slog.ErrorContext` vers `logs/sync.log` (auto-routé), pas de système de notification externe.
+- **3.C — capability `CapLUSR`** : règle projet (cf. skill arch-rules). Le code actuel branche implicitement sur `halo_infinite` sans passer par `HasCapability`. Doit être corrigé **avant la bascule canonical** sinon dette qui ne se résoudra jamais.
 
 ---
 
@@ -195,6 +204,58 @@ ensemble).
 
 ---
 
+## Sprint 1.D — Wiring API + types frontend (placement UI reporté)
+
+### Objectif
+Préparer toute la plomberie pour que le frontend puisse afficher
+`expected_win_prob` (Sprint 1.A) et `rating_delta` (Sprint 3.B) **sans
+décider du placement UI final**. Une fois la décision produit prise plus tard,
+l'intégration UI sera un patch isolé.
+
+**Décision en attente** : où afficher la probabilité de victoire — encart
+sur la timeline d'historique, overlay sur la page LUSR, badge sur la ligne
+de match, ou section dédiée "match equity sur la session". À discuter
+quand on aura vu plusieurs matchs en prod.
+
+### Architecture prévue
+- Côté Go : exposer les 2 champs dans le DTO existant qui sert les matchs (vraisemblablement `MatchSummary` ou `MatchHeader` dans `internal/domain/`)
+- Côté TypeScript : étendre les types correspondants dans `apps/web/src/lib/api/types.ts`
+- Côté MSW handler / test : maj des handlers de test pour renvoyer les nouvelles valeurs
+
+### Étapes
+
+- [ ] **1.D.1** — Identifier le DTO existant qui sert l'historique des matchs au frontend (probablement `MatchListEntry` ou similaire dans `internal/api/handlers/`)
+- [ ] **1.D.2** — Ajouter `ExpectedWinProb *float64` et `RatingDelta *float64` au DTO Go (nullables — anciens matchs n'auront pas ces valeurs)
+- [ ] **1.D.3** — Modifier le service qui construit ce DTO pour lire les valeurs depuis `match_skill_rank_latest`
+- [ ] **1.D.4** — Étendre `apps/web/src/lib/api/types.ts` avec les 2 champs optionnels
+- [ ] **1.D.5** — i18n FR + EN dans `apps/web/src/lib/i18n/manifests/` :
+  - "Match attendu" / "Expected match"
+  - "Surprise" / "Upset"
+  - "Belle performance" / "Strong performance"
+  - "Probabilité de victoire" / "Win probability"
+  - "Variation" / "Rating change"
+- [ ] **1.D.6** — Helper TypeScript `apps/web/src/features/skill/winProbCategory.ts` :
+  - `categorizeWinProb(prob: number, won: boolean): 'expected' | 'upset' | 'strong-perf' | 'balanced'`
+  - 1 helper pur, testable avec vitest
+- [ ] **1.D.7** — Tests vitest pour les 4 catégories
+- [ ] **1.D.8** — Maj handler MSW de test (`apps/web/src/test/handlers.ts`) pour renvoyer les nouvelles valeurs
+- [ ] **1.D.9** — `slog.DebugContext` côté service si on charge un match sans `expected_win_prob` (= match pré-Sprint-1.A)
+- [ ] **1.D.10** — Mise à jour `.ai/thought_log.md`
+
+### Definition of Done — Sprint 1.D
+
+- [ ] `npm run typecheck && npm run lint && npm run test` (apps/web) PASS
+- [ ] `go test ./internal/api/handlers/ ./internal/service/` PASS
+- [ ] Helper `categorizeWinProb` testé sur 4 cas
+- [ ] DTO API renvoie bien les 2 champs (vérifiable via curl sur un match avec ces données)
+- [ ] **Note dans handoff doc** : "wiring frontend prêt, placement UI en attente de décision produit"
+- [ ] Entrée `.ai/thought_log.md`
+- [ ] Commit autorisé
+
+**Date complétion** : _______________
+
+---
+
 ## Sprint 2.A — Timeline du score au moment du quit
 
 ### Objectif
@@ -251,6 +312,63 @@ plus corrélés que slayer↔chaos (chaos = mayhem). Une matrice
 
 - [ ] Tests PASS
 - [ ] Batch tourne sur prod, matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos)
+- [ ] Entrée `.ai/thought_log.md`
+- [ ] Commit autorisé
+
+**Date complétion** : _______________
+
+---
+
+## Sprint 2.C — Sentinelle dual-row après chaque sync + logs Error
+
+### Objectif
+`RunDualRowSentinel` existe en CLI manuel mais n'est appelée nulle part en
+prod. Sans appel automatique, on découvrirait une incohérence
+`OnlyLUSRV2 > 0` (= bug Stratégie C) uniquement en lançant la CLI à la main.
+Cette tâche la hooke dans le pipeline post-sync.
+
+**Décision** : pas de notif externe (pas de Slack/email/PagerDuty). Toute
+incohérence détectée est inscrite via `slog.ErrorContext` qui sera
+auto-routé vers `logs/sync.log` par le `MultiModuleHandler`. Le monitoring
+prod consiste à grep `level=ERROR` dans `logs/sync.log` périodiquement.
+
+### Étapes
+
+- [ ] **2.C.1** — Identifier le point de hook : fin de `engine_postsync.go` après les étapes existantes (`batchComputeLUSR` skippé + `RunLUSRV2Shadow` exécuté). Doit s'exécuter SEULEMENT si `IsLUSRV2Canonical()` (sinon la table dual-row n'est pas censée exister)
+- [ ] **2.C.2** — Modifier `engine_postsync.go` :
+  ```go
+  if IsLUSRV2Canonical() {
+      report, err := RunDualRowSentinel(ctx, playerDB)
+      if err != nil {
+          slog.ErrorContext(ctx, "post-sync: sentinelle dual-row échouée",
+              "err", err, "gamertag", e.gamertag)
+      } else if report.OnlyLUSRV2 > 0 {
+          slog.ErrorContext(ctx, "post-sync: sentinelle dual-row a détecté des incohérences",
+              "gamertag", e.gamertag,
+              "only_lusr_v2", report.OnlyLUSRV2,
+              "sample", report.SampleInconsistent,
+          )
+      }
+  }
+  ```
+- [ ] **2.C.3** — Vérifier que `RunDualRowSentinel` reste idempotent + read-only (déjà le cas, c'est juste un SELECT agrégé). Acceptable de l'appeler à chaque sync.
+- [ ] **2.C.4** — Garde-fou perf : si le scan prend > 5s, c'est anormal. Ajouter un timeout 30s sur le context passé à `RunDualRowSentinel` pour ne pas bloquer le post-sync.
+- [ ] **2.C.5** — Vérifier que les compteurs expvar utilisés par writeCanonicalLUSRRow (`canonicalWriteErrors`) sont aussi accompagnés systématiquement d'un `slog.ErrorContext` — grep dans le code, ajouter si manquant. **Règle : tout incrément de compteur "error" / "inconsistency" doit être doublé d'un slog.Error.**
+- [ ] **2.C.6** — Test E2E `TestEnginePostSync_RunsDualRowSentinelWhenCanonical` :
+  - Setup : sharedDB + playerDB, env canonical=on, seed 1 match avec dual-row valide
+  - Exec engine_postsync
+  - Vérifier dans le log capté qu'on a un INFO "sentinel dual-row terminé" (pas d'ERROR)
+- [ ] **2.C.7** — Test E2E `TestEnginePostSync_LogsErrorWhenSentinelInconsistent` :
+  - Setup : playerDB avec une row orpheline `LUSR_V2` sans `LUSR`
+  - Exec engine_postsync
+  - Vérifier qu'un ERROR a été émis avec les bons champs
+- [ ] **2.C.8** — Mise à jour `.ai/thought_log.md`
+
+### Definition of Done — Sprint 2.C
+
+- [ ] `go test ./internal/sync/` PASS
+- [ ] Grep `canonicalWriteErrors\|dualRowInconsistencies` : chaque incrément est précédé/suivi d'un `slog.ErrorContext`
+- [ ] Sync manuel en staging post-Sprint-1 (canonical=on) → `logs/sync.log` contient "sentinel dual-row terminé" mais 0 ligne "détecté des incohérences"
 - [ ] Entrée `.ai/thought_log.md`
 - [ ] Commit autorisé
 
@@ -323,7 +441,61 @@ ce match", il faudrait fetcher le rating précédent. Petit confort UX.
 
 ---
 
-## Sprint Final — Bascule canonical en prod
+## Sprint 3.C — Capability multi-titres `CapLUSR` (obligatoire)
+
+### Objectif
+Faire passer le LUSR v2 par le système de capabilities du projet, au lieu
+d'être implicitement spécifique à `halo_infinite`. Règle non négociable
+(skill arch-rules) : aucun `if slug == "halo_infinite"` ne doit subsister.
+
+C'est obligatoire AVANT la bascule canonical : si on bascule sans, on grave
+dans le marbre une dette qui ne se résoudra jamais (le code marche, donc
+personne ne reviendra le corriger).
+
+### Architecture prévue
+- Ajout d'une capability `CapLUSR` dans `internal/domain/title/registry.go`
+- Tous les call sites du LUSR v2 vérifient `descriptor.HasCapability(title.CapLUSR)` avant de s'exécuter
+- Si capability absente : dégradation gracieuse (pas de panic, pas d'erreur 500 — le LUSR v2 ne tourne juste pas pour ce titre)
+- Halo Infinite déclare `CapLUSR` dans son TitleDescriptor
+
+### Étapes
+
+- [ ] **3.C.1** — Audit grep `halo_infinite` dans le code LUSR v2 :
+  ```bash
+  grep -rn "halo_infinite\|HaloInfinite" internal/sync/skill_v2_*.go internal/analysis/skill_v2/ cmd/lusr_v2_*/ cmd/backfill_quit_timestamps/
+  ```
+  Identifier tous les sites de couplage implicite.
+- [ ] **3.C.2** — Ajouter `CapLUSR Capability = "lusr"` dans `internal/domain/title/registry.go` (ou wherever les capabilities sont déclarées)
+- [ ] **3.C.3** — Le `TitleDescriptor` halo_infinite déclare `CapLUSR` dans sa liste de capabilities
+- [ ] **3.C.4** — Hook dans `RunLUSRV2Shadow` :
+  ```go
+  desc, _ := registry.Get(ctxkeys.TitleSlug(ctx))
+  if desc == nil || !desc.HasCapability(title.CapLUSR) {
+      slog.DebugContext(ctx, "LUSR v2 shadow skip — capability absente",
+          "title_slug", ctxkeys.TitleSlug(ctx))
+      return 0, nil
+  }
+  ```
+- [ ] **3.C.5** — Idem pour `engine_postsync` (`batchComputeLUSR` skip + canonical) : gate sur `CapLUSR`
+- [ ] **3.C.6** — Idem pour les 3 CLIs (`cmd/lusr_v2_replay`, `cmd/backfill_quit_timestamps`, `cmd/lusr_v2_ttt_batch`) : flag `--title=halo_infinite` qui charge le descriptor + check capability avant de tourner
+- [ ] **3.C.7** — Remplacer tous les `paths.SharedDBPath("halo_infinite")` hardcodés par la prise du titre courant via `ctxkeys.TitleSlug(ctx)`
+- [ ] **3.C.8** — Test `TestRunLUSRV2Shadow_SkipsIfNoLUSRCapability` : registry avec descriptor sans CapLUSR → returns (0, nil) silencieusement
+- [ ] **3.C.9** — Vérification grep : `grep -rn "halo_infinite\|HaloInfinite" internal/sync/skill_v2_*.go cmd/lusr_v2_*/` doit retourner 0 occurrence (sauf commentaires/strings d'i18n)
+- [ ] **3.C.10** — Mise à jour `.ai/thought_log.md` + handoff doc
+
+### Definition of Done — Sprint 3.C
+
+- [ ] `grep -rn "halo_infinite" internal/sync/skill_v2_*.go internal/analysis/skill_v2/` → 0 occurrence dans le code Go (commentaires OK)
+- [ ] `go test ./...` PASS, en particulier le nouveau test `TestRunLUSRV2Shadow_SkipsIfNoLUSRCapability`
+- [ ] Manuel : enlever temporairement `CapLUSR` du descriptor halo_infinite → vérifier dans `logs/sync.log` que le shadow runner émet le DEBUG "skip — capability absente"
+- [ ] Entrée `.ai/thought_log.md`
+- [ ] Commit autorisé
+
+**Date complétion** : _______________
+
+---
+
+## Sprint Final — ADR consolidée + bascule canonical en prod
 
 ### Objectif
 Activer `LEVELUP_LUSR_CANONICAL=LUSR_V2` en prod pour que le LUSR v2 devienne
@@ -332,31 +504,50 @@ même temps. À faire APRÈS Sprint 1 (les 3 quick wins) et idéalement APRÈS
 Sprint 1.C (squad offset) pour ne pas montrer des ratings biaisés.
 
 ### Pré-requis avant de lancer
-- [ ] Sprints 1.A + 1.B + 1.C terminés (les 3 sont sur la branche LUSR v2 actuelle)
-- [ ] Backfill v2 historique complet : `cmd/lusr_v2_replay` re-tourné post-Sprint-1.C
+- [ ] Sprints **1.A + 1.B + 1.C + 1.D + 2.C + 3.C** terminés (les 3 quick wins + le wiring frontend + la sentinelle auto + la capability multi-titres). Les autres sprints (2.A / 2.B / 3.A / 3.B) peuvent attendre après bascule.
+- [ ] Backfill v2 historique complet : `cmd/lusr_v2_replay` re-tourné post-Sprint-1.C (squad offsets appliqués sur l'historique)
 - [ ] Vérifier `expvar /debug/vars` montre `levelup.lusr_v2.canonical_writes_total` qui monte avant la bascule (en mode shadow d'abord)
+- [ ] `logs/sync.log` ne contient aucun ERROR `sentinel dual-row` sur les 24h précédant la bascule (sentinelle déjà active depuis Sprint 2.C)
 
 ### Étapes
 
+#### Partie 1 — ADR consolidée
+- [ ] **F.0a** — Créer `docs/adr/0025-lusr-v2-production-stable.md` (ou mettre à jour `0024-lusr-v2-trueskill2-with-counts.md`) qui consolide :
+  - Approche TS classique + counts kills/deaths (Phase 3c)
+  - Quit penalty post-EP avec primary/secondary 50% (last_leave_time-based)
+  - Squad offset additif (Sprint 1.C)
+  - Mode coupling cap 0.4 (scalaire ou matrice si Sprint 2.B fait)
+  - Dual-row Stratégie C + sentinelle post-sync (Sprint 2.C)
+  - Capability `CapLUSR` (Sprint 3.C)
+  - Decision : pas de TS2 §9 littéral (cf. handoff)
+- [ ] **F.0b** — Si nouvel ADR : noter dans `CLAUDE.md` la référence
+- [ ] **F.0c** — Mise à jour `.ai/LUSR_V2_HANDOFF.md` → archivage `.ai/archive/` (ou suppression si l'ADR couvre tout)
+
+#### Partie 2 — Bascule staging
 - [ ] **F.1** — Staging : poser `LEVELUP_LUSR_CANONICAL=LUSR_V2` + redémarrer
 - [ ] **F.2** — Trigger 3-5 syncs manuels sur joueurs trackés
 - [ ] **F.3** — Vérifier dans `logs/sync.log` :
   - Pas de warn "fallback shadow" (= playerDB pas câblé)
   - Pas de warn "canonical write échoué"
+  - Pas d'ERROR "sentinel dual-row a détecté des incohérences"
   - Le log "post-sync: LUSR v1 skippé" apparaît
+  - Le log "sentinel dual-row terminé" apparaît à chaque sync (Sprint 2.C)
 - [ ] **F.4** — Vérifier la table `match_skill_rank` du player DB :
   - Rows avec `rating_type='LUSR'` ET `rating_type='LUSR_V2'` pour les nouveaux matchs
   - Les anciens matchs ont juste `rating_type='LUSR'` (héritage v1, légitime)
-- [ ] **F.5** — Lancer `RunDualRowSentinel` manuellement → `OnlyLUSRV2` doit être à 0
-- [ ] **F.6** — Vérifier dans l'UI : la page LUSR du joueur affiche un rating cohérent avec ses tiers tracked (Madina Diamant, Choco Or, etc.)
-- [ ] **F.7** — Si tout OK staging : passer en prod
-- [ ] **F.8** — Monitoring 24h en prod :
+- [ ] **F.5** — Vérifier dans l'UI (frontend wiring Sprint 1.D) : la page d'historique affiche les `expected_win_prob` et `rating_delta` sur les nouveaux matchs
+
+#### Partie 3 — Bascule prod
+- [ ] **F.6** — Si tout OK staging : passer en prod
+- [ ] **F.7** — Monitoring 7j en prod (relire `logs/sync.log` quotidiennement) :
   - `levelup.lusr_v2.canonical_writes_total` monte
-  - `levelup.lusr_v2.canonical_write_errors_total` reste à 0
-  - `levelup.lusr_v2.dual_row_inconsistencies_total` reste à 0
-  - Rapports utilisateurs : pas de "mon rating a saute de 200 points"
-- [ ] **F.9** — Une fois stable : supprimer `batchComputeLUSR` v1 et le branchement `IsLUSRV2Canonical()` (le flag devient permanent ON)
-- [ ] **F.10** — Mise à jour `.ai/thought_log.md` + suppression de `.ai/LUSR_V2_HANDOFF.md` (remplacé par la version stable dans `docs/`)
+  - 0 ligne `level=ERROR` avec message contenant "canonical_write_errors" ou "dual-row a détecté des incohérences"
+  - Rapports utilisateurs : pas de "mon rating a sauté de 200 points"
+
+#### Partie 4 — Nettoyage post-bascule
+- [ ] **F.8** — Une fois stable 7j : supprimer `batchComputeLUSR` v1 et le branchement `IsLUSRV2Canonical()` (le flag devient permanent ON)
+- [ ] **F.9** — Supprimer aussi la partie shadow-fallback dans `RunLUSRV2Shadow` (le code "canonical demandé mais playerDB nil → fallback shadow" devient inutile)
+- [ ] **F.10** — Mise à jour `.ai/thought_log.md`
 
 ### Definition of Done — Sprint Final
 
@@ -398,11 +589,17 @@ Sprint 1.B sans attendre 1.C. Trade-off : ratings v2 visibles mais sans
 correction squad → un peu biaisés vers le haut pour les multi-stack.
 
 **Ordre d'exécution recommandé** :
-1. Sprint 1.A (1/2j) — débloque l'UX immédiatement
-2. Sprint 1.B (2-3h) — corrige les ratings sans rien changer côté code visible
-3. Sprint 1.C (2j) — corrige l'angle mort le plus impactant
-4. Sprint Final si on veut passer en prod
-5. Sprints 2.A / 2.B / 3.A / 3.B au fil de l'eau ensuite
+1. Sprint 1.A (1/2j) — backend probabilité de victoire
+2. Sprint 1.B (2-3h) — branche les paramètres ré-estimés
+3. Sprint 1.C (2j) — squad offsets
+4. Sprint 1.D (1/2j) — wiring API + types frontend (peut être en parallèle de 1.C)
+5. Sprint 2.C (2-3h) — sentinelle auto post-sync
+6. Sprint 3.C (1/2j) — capability `CapLUSR` obligatoire
+7. Sprint Final (1j) — ADR consolidée + bascule
+8. Sprints 2.A / 2.B / 3.A / 3.B au fil de l'eau, sans urgence
 
-**Si on doit livrer "à minima"** : juste les 3 sprints du Sprint 1 + Sprint
-Final = ~3 jours de dev, et on a tout l'essentiel.
+**Si on doit livrer "à minima"** pour bascule canonical : 1.A + 1.B + 1.C +
+1.D + 2.C + 3.C + Final = **~5 jours de dev** pour avoir une bascule prod
+propre et conforme aux règles projet (capability + sentinelle active +
+frontend prêt). Les améliorations modèle (2.A, 2.B, 3.A) et le confort UX
+(3.B) viennent ensuite.
