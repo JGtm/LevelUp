@@ -85,6 +85,7 @@ var allowedEnvReaders = map[string]string{
 	"scripts/warm_bp_assets/main.go":         "Script ops one-shot, pas dans le hot path.",
 	"cmd/backfill_all/main.go":               "CLI backfill standalone — legacy auth path à migrer (cf. Phase 4bis non couverte par helper canonique).",
 	"cmd/backfill_participation_info/main.go": "CLI one-shot Phase 0 LUSR v2 — backfill participation_info, legacy auth path.",
+	"cmd/backfill_quit_timestamps/main.go":    "CLI one-shot Phase 3-quit LUSR v2 — backfill FirstJoinedTime/LastLeaveTime, même pattern que backfill_participation_info.",
 	"cmd/bench-rps/main.go":                  "Bench tool one-shot pour RPS rate limit.",
 }
 
