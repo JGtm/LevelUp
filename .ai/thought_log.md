@@ -1,3 +1,227 @@
+## [2026-05-27] fix(match_view): NaN JSON marshal — sanitize inopérant sur structs par valeur
+
+**Statut** : Complété (Étape 1 du plan ; identification de la source du NaN reportée — gérée par les logs diagnostic)
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme rapporté** : Madina97294 clique sur la tuile du match `615b3ebc-b3cc-4749-b656-2afa15996163` (Custom Game, 2026-04-19) depuis la Home → "erreur 502" dans le browser. Bug récurrent observé sur d'autres joueurs/matchs sans pattern net.
+
+**Diagnostic via logs** (`logs/handlers.log` + `logs/general.log` du 2026-05-26 11:47-48) :
+
+```
+"msg":"writeJSON: marshal failed","err":"json: unsupported value: NaN"
+```
+
+10 requêtes HTTP 500 d'affilée pour ce match précis, 45-56 ms chacune (donc **pas un panic, pas un timeout**). Body de réponse de 97 bytes = le JSON d'erreur fallback inline de `writeJSON`. Le "502" perçu côté browser vient du dev server Vite proxyfiant un 500 (selon la version/config http-proxy-middleware).
+
+**Cause racine** : `writeJSON` ([helpers.go:108](apps/go-api/internal/api/handlers/helpers.go#L108)) appelait déjà `sanitizeFloatsForJSON(v)` AVANT `json.Marshal`. Mais cette protection était **inopérante sur les structs passées par valeur** :
+
+- À [match_view.go:145](apps/go-api/internal/api/handlers/match_view.go#L145), le call est `writeJSON(w, http.StatusOK, resp)` où `resp` est `domain.MatchViewResponse` **par valeur**.
+- `reflect.ValueOf(resp)` retourne une `Value` non-addressable → pour tout champ `float64` direct dans une struct, `v.CanSet()` est `false` → `walkSanitize` skippait silencieusement le `SetFloat(0)`.
+- La fonction couvrait seulement : `map[K]float64` (via `SetMapIndex` qui marche sans CanSet) et `*float64` accessible via un pointeur parent.
+- Conséquence : un nouveau builder Go (radar, narrative, encounters, dominance, header summary…) calculant un `float64` NaN/Inf (ex. division par zéro sur Custom Game à stats partielles) faisait planter le marshal.
+
+**Décision technique** :
+
+- **Étape 1 — Fix structurel** ([helpers.go:34-127](apps/go-api/internal/api/handlers/helpers.go)) :
+  - Nouvelle signature : `sanitizeFloatsForJSON(v interface{}) (interface{}, []string)`.
+  - Si `v` est un pointeur → walk en place + retourne `v` inchangé.
+  - Si `v` est struct/slice/map/array par valeur → copie dans un `*T` addressable via `reflect.New + Set`, walk dedans, retourne `ptr.Elem().Interface()` (struct nettoyée).
+  - Pour les maps de structs (`map[K]Struct{Field NaN}`), copie value-by-value via `reflect.New + walkSanitize + SetMapIndex` (avant : skippé silencieusement).
+  - Retourne la liste des paths neutralisés (ex. `.Radar.Axes[2]`, `.ByPlayer[alice]`, `.Score`) pour logging diagnostic.
+- **Étape 2 — Garde-fou observabilité** : `writeJSON` et `writeJSONCached` logguent désormais `slog.Warn("writeJSON: NaN/Inf neutralized", paths=..., count=...)` quand au moins un NaN/Inf a été neutralisé. Permet d'identifier la source précise du NaN à la prochaine requête en production, sans patcher chaque builder à l'aveugle.
+- **Étape 3 — Tests** (5 nouveaux dans [helpers_test.go](apps/go-api/internal/api/handlers/helpers_test.go)) :
+  - `TestWriteJSON_NeutralizesNaNInStructByValue` — couvre les 6 cas : float direct, *float, slice de floats, map[K]float, struct imbriquée, +Inf/-Inf.
+  - `TestWriteJSON_PreservesValidFloats` — non-régression : 1.23 reste 1.23.
+  - `TestSanitizeFloatsForJSON_ReportsPaths` — vérifie que les paths attendus apparaissent dans la slice retournée.
+  - `TestSanitizeFloatsForJSON_NilSafe` — nil input → (nil, nil).
+  - `TestWriteJSON_PointerArgumentStillWorks` — passe `*sanitizePayload` → sanitize en place.
+
+**Audit statique** des divisions Go dans `internal/service/match_view_*.go` :
+- `match_view_builders_summary.go:188` : guard `if count == 0 { return out }` présent → OK.
+- `match_view_builders_header.go:250-255` : `tierSize = 50.0` constante → OK.
+- `match_view_converters.go:86-92` : guards `if s.Kills > 0` et `if s.Deaths > 0` présents → OK.
+
+Le NaN source ne vient donc pas de ces sites visibles ; probablement de `analysis.ComputeCombatYield`, du radar normalisé, du narrative score ou d'une formule SQL DuckDB. Le log diagnostic ajouté révèlera le path exact au prochain clic — c'est l'outil clé pour patcher la source en Étape 2 (à faire après redémarrage du serveur).
+
+**Résultats** :
+- `go vet ./internal/api/handlers/...` : OK
+- `go test ./internal/api/handlers/...` : OK (10 tests dont 5 nouveaux)
+- `go test ./internal/api/... ./internal/service/...` : OK (api 7.5s, service 3.8s)
+- `go build ./...` : OK
+- Le log diagnostic produit `WARN writeJSON: NaN/Inf neutralized paths="[.Score .Accuracy .KDA* .Axes[1] .Axes[2] .ByPlayer[alice] .Nested.Ratio]" count=7` dans les tests, validant le format.
+
+**Fichiers** :
+- Modifiés : `internal/api/handlers/helpers.go` (nouvelle signature + path tracking + log warn), `internal/api/handlers/helpers_test.go` (+5 tests).
+
+**Hors scope (volontairement reporté)** :
+- Patch source du NaN : sera fait après redémarrage du serveur, en lisant le path précis remonté par `slog.Warn("writeJSON: NaN/Inf neutralized")` au prochain clic Madina sur la tuile match. Pas de patch à l'aveugle.
+- Pas de touche aux migrations `participants_loaded=FALSE` ni aux gamertags NULL (symptômes d'autre chose, le fix doit faire qu'avec ces données partielles la réponse soit toujours sérialisable).
+
+**Conclusion / prochaine étape** :
+1. Redémarrer le serveur Go.
+2. Madina re-clique sur la tuile match `615b3ebc-...` → `logs/handlers.log` doit montrer `WARN writeJSON: NaN/Inf neutralized paths=[...]` ET la requête doit répondre 200 OK avec body JSON valide (NaN remplacés par 0).
+3. Lire le `paths=...` reporté pour identifier le builder fautif → ajouter `sanitizeF64()` ou un guard `if denom == 0` à la source.
+4. Vérifier que le bug ne se reproduit plus sur 2-3 autres matchs.
+
+---
+
+## [2026-05-27] Feature — broadcast présence active aux PlayerWatchers (sessions de groupe)
+
+**Statut** : Complété + validé tests, en attente de validation runtime au prochain in-game
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : Suite à l'incident 2026-05-27 (Madina/Choco/XxDaemon non syncés alors qu'ils jouaient avec JGtm), le diag a identifié que leur PlayerWatcher restait `Idle` car la présence Xbox via le tracker (token JGtm) ne signalait pas fiablement les autres joueurs comme `in-game Halo`. Seul JGtm passait `Watching` → MatchPoller actif uniquement pour lui → seuls ses matchs étaient détectés.
+
+**Décision design** : ajouter un broadcast simple — quand UN joueur passe `OnPresenceActive` (titre tracké), propager l'état à TOUS les autres PlayerWatcher. Cost marginal : 4× appels `GET /matches?count=25` toutes les 30s pendant la session de groupe (endpoint public PolicyAnyPublic, ~25 IDs × 4 KB par réponse). Idempotent côté FSM (pas de re-transition si déjà Watching, pas de cascade).
+
+**Implémentation** :
+- `DaemonConfig.BroadcastPresenceActive bool` (default ON, désactivable via `LEVELUP_WATCHER_BROADCAST=0`)
+- `Daemon.broadcastPresenceActive(ctx, triggeringGamertag)` itère sur `d.players` (RLock), exclut le triggering, appelle `OnPresenceActive` sur les autres
+- Branché dans `makePresenceHandler` après `pw.OnPresenceActive(evCtx)` quand `titleReg.MatchPresence(TitleID) != nil` — uniquement sur titre tracké (un Dashboard Xbox ne déclenche PAS le broadcast)
+- Log INFO `watcher_daemon: broadcast présence active triggered_by=X broadcasted_to=[Y,Z,...]` pour observabilité
+
+**Tests** (5 dans `daemon_broadcast_test.go`) :
+- PropagatesToAllOthers (scénario nominal 4 joueurs : 1 trigger → 3 autres en Watching)
+- DisabledKeepsOthersIdle (flag OFF → seul triggering activé)
+- IdempotentOnRepeatedEvents (2 events Active consécutifs OK, pas de cascade)
+- SoloPlayerNoOp (1 joueur seul, broadcast no-op, pas de panic)
+- DoesNotFireOnUntrackedTitle (Dashboard Xbox → pas de broadcast)
+
+**Résultats observés** :
+- `go test ./internal/watcher/ -count=1` : OK (1.1s, 5 nouveaux tests)
+- `go test ./... -count=1 -short` : OK (tous packages verts)
+- `go vet ./...` : OK
+- Validation runtime : serveur up sur port 8000, en attente d'un in-game pour observer le log `broadcast présence active`
+
+**Fichiers** :
+- Modifiés : `internal/watcher/daemon.go` (DaemonConfig.BroadcastPresenceActive + broadcastPresenceActive method + branchement makePresenceHandler), `cmd/server/main.go` (flag activé par défaut, override via env)
+- Créés : `internal/watcher/daemon_broadcast_test.go` (5 tests)
+
+**Conclusion / prochaine étape** : au prochain in-game Halo de n'importe quel joueur configuré, le broadcast s'activera automatiquement et tous les MatchPoller tourneront. Si latence présence Xbox > poll matches (30s), les autres MatchPoller seront déjà actifs au moment où les nouveaux match_ids deviennent disponibles côté API. Investigation détaillée présence Xbox (cf. récap session de jeu) reste possible en parallèle pour traiter la cause racine.
+
+---
+
+## [2026-05-27] Bug #4 — rows player_match_enrichment manquantes pour les teammates
+
+**Statut** : Complété + validé runtime
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme** : Après les 3 fix du matin, le `/api/v1/_diag/auto-sync/run` retournait toujours `matches_inserted:0` pour Madina/Choco/XxDaemon avec `writeSessionAssignmentsBatch planned:8 affected:0` — 8 matchs détectés en shared mais 0 row UPDATE. Toutes les pages UI restaient vides pour ces joueurs sur les 8 matchs joués avec JGtm.
+
+**Cause racine** : `loadKnownMatchIDs` (engine.go:618-631) considère qu'un match est "connu" dès qu'il apparaît dans `shared.match_participants` pour le xuid. Quand JGtm sync via le watcher, il INSERT les 8 matchs en shared avec TOUS les participants (Madina, Choco, XxDaemon). Au sync delta suivant côté Madina, `loadKnownMatchIDs` voit ces match_id pour elle → arrête le delta → `PlayerPersister.Persist` jamais appelé → **aucune row dans son `player_match_enrichment`**. Tous les UPDATE post-sync (perf, lusr, sessions, citations, dominance) sont des no-op silencieux car les rows à updater n'existent pas. Le commentaire engine.go affirmait que "le post-sync UPSERT naturellement les rows manquantes" — FAUX, j'ai vérifié `post_sync_enrichment_persister.go:83+158` ce sont des `UPDATE` purs.
+
+**Fix** : nouvelle fonction `ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, xuid)` dans `internal/sync/ensure_enrichment_rows.go`. INSERT une row vide `player_match_enrichment(match_id)` pour chaque match_id présent dans `shared.match_participants WHERE xuid=?` mais absent de `player_match_enrichment`. Appelée au tout début de `runPostSyncPipeline` (étape -2, AVANT les heals). Le post-sync UPDATE existant remplit ensuite les scores naturellement.
+
+**Bug intermédiaire (corrigé)** : `make([]string, 0, len(shared)-len(player))` paniquait avec `cap out of range` quand le joueur a un GROS historique player (1000 matchs) mais peu de matchs récents en shared (5). Fix : utiliser `len(sharedMatchIDs)` comme cap (toujours positif). Test de régression ajouté `TestEnsurePlayerEnrichmentRows_PlayerHistoryLargerThanShared`.
+
+**Validation runtime** :
+- `curl -X POST http://127.0.0.1:8000/api/v1/_diag/auto-sync/run` à 10:44:41
+- Madina : `enrichment rows créées: 8` + perf updated:8 + citations written:8 + sessions affected:8 + dominance:8 + weapon healed:3
+- Chocoboflor : `enrichment rows créées: 8` + perf updated:8 + citations written:8 + sessions affected:8 + dominance:8 + weapon healed:1
+- JGtm : 0 row créée (cas stationnaire, rows déjà persistées par le sync watcher hier soir)
+- XxDaemonGamerxX : 0 row créée (n'a pas participé aux 8 matchs JGtm)
+- 0 panic, 0 `Conflict on update`, 0 `aggregates: échec shared view`
+
+**Tests** (7 dans `ensure_enrichment_rows_test.go`) : CreatesMissingRows, Idempotent, PreservesExistingRows, FiltersByXUID, NilSharedDB, EmptyXUID, **PlayerHistoryLargerThanShared** (anti-régression panic cap).
+
+**Bug résiduel — non bloquant** : `healSkill: upsert échoué ... attached in read-only mode` apparaît encore dans les logs (logs 10:44:42+). Même classe que bug #1 d'aujourd'hui matin (auto-attach DuckDB) mais sur le path `skill_heal.go:117` qui appelle `InsertParticipants` au lieu de `CREATE VIEW`. Best-effort WARN, ne bloque pas le sync principal. À fixer en redirigeant ces upserts soit vers le sharedDB writer "propre" (sans auto-attach RO), soit en les faisant au boot comme refreshSharedViews. Sur le radar pour une prochaine session.
+
+**Fichiers** :
+- Créés : `internal/sync/ensure_enrichment_rows.go`, `internal/sync/ensure_enrichment_rows_test.go`
+- Modifiés : `internal/sync/engine_postsync.go` (étape -2 ajoutée en début de runPostSyncPipeline)
+
+**Conclusion / prochaine étape** : recharger l'UI Home/Match detail pour Madina et Chocoboflor — les 8 matchs de hier soir doivent désormais afficher perf, sessions, citations, weapon-kills, dominance correctement. Si OK : commit. Sinon : diag UI side. Bug skill_heal RO à investiguer séparément.
+
+---
+
+## [2026-05-27] 3 bugs post-sync : Q38 citations cross-DB, achievements race, refreshSharedViews auto-attach RO
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : Après le fix d'hier (Trigger câble SharedProvider), le sync watcher pour JGtm passe (8 matchs insérés à 23:38-23:40). Mais 3 erreurs persistent dans `logs/sync.log` 23:57-23:58 (cycle scheduler V2). L'utilisateur signale aussi que les UI Home/Match detail pour Madina/Choco/XxDaemon n'affichent pas les enrichments (sessions, perf, xuid, citations, weapon-frags) sur les matchs de ce soir — diag : les 3 joueurs n'ont pas eu de sync watcher (présence Xbox ne les a pas signalés in-game), donc leur `player_match_enrichment` est vide pour ces match_ids — comportement attendu mais frustrant.
+
+**3 bugs adressés** (par ordre de complexité croissante) :
+
+### Bug Q38 — citation_mappings cross-DB silencieux
+
+- **Symptôme** : `Catalog Error: Table with name citation_mappings does not exist!` sur Q38MatchViewCitations, capturé silencieusement par `return nil, nil` → page Match detail affiche des citations vides.
+- **Cause** : Q38 faisait un LEFT JOIN cross-DB entre `match_citations` (player.duckdb) et `citation_mappings` (metadata.duckdb). Post-ADR 0016 (retrait ATTACH metadata sur les conn player), le JOIN cross-DB ne marche plus.
+- **Fix** : split en 2 queries Go-side (pattern Q26) : `Q38MatchViewCitationsPlayer` sur player + `loadCitationMappingMeta` sur metadata + merge avec COALESCE(display, norm) en Go. Cf. `citations_repo.go:LoadMatchCitationsForView`.
+- **Tests** (5 dans `citations_repo_q38_test.go`) : enriched (mapping présent), no_cross_db_assertion (le SQL ne contient plus `citation_mappings`), empty (match sans citation), no_mappings (metadata vide → fallback norm), filters_zero_null (value=0 ou norm IS NULL exclus).
+
+### Bug #2 — achievements race "TransactionContext Error: Conflict on update!"
+
+- **Symptôme** : `logs/sync.log 23:58:11 achievements: sync échouée gamertag=Madina97294 err="achievements: upsert definitions: upsert definition 1: TransactionContext Error: Conflict on update!"`. Pré-existant, vu depuis 15:15.
+- **Cause** : `xbox_achievement_definitions` (table metadata) est globale (1 row par achievement_id, 144 communs aux 4 joueurs). 2 SyncEngine en parallèle (`Coordinator parallel_slots:2` + scheduler errgroup) faisaient un upsert (conflict clause) sur la même row → DuckDB lève l'erreur.
+- **Fix** : sérialisation applicative dans `runAchievementsSync` (engine_postsync.go) — `dblease.AcquireWriterCtx(ctx, nil, e.metadataDBPath, dblease.KindMetadata)` AVANT l'ouverture du handle. Le 2ème caller bloque jusqu'au Release du 1er, sans contention DuckDB.
+- **Tests** (3 dans `achievements_race_test.go`) : sérialisation 2 goroutines (assert B acquis APRÈS A released), kinds indépendantes (KindMetadata ne bloque pas KindPlayer), ctx.Done respecté (timeout 50ms vs lease 500ms → erreur).
+
+### Bug #1 — refreshSharedViews CREATE VIEW en RO mode
+
+- **Symptôme** : `Cannot execute statement of type "CREATE" on database "shared_matches_v2" which is attached in read-only mode!` sur `v_gamertag_lookup` et `v_match_full` à chaque post-sync. Best-effort donc warning, mais les vues partagées ne se rafraîchissent jamais — l'UI qui s'en sert (résolution xuid→gamertag global) lit des données stales.
+- **Cause** (validée par test repro) : auto-attach DuckDB. En runtime, le `sharedDB` writer obtenu via `Provider.AcquireWriter` peut avoir un ATTACH RO implicite sur `shared_matches_v2` (l'instance RO précédente du Provider n'est pas garbage-collected instantanément). CREATE OR REPLACE VIEW sans qualification résout `xuid_aliases` vers la DB attached RO (seule où la table existe pour DuckDB) → "Cannot execute on database X which is attached in read-only mode".
+- **Fix** : déplacer la création des VIEWs dans `EnsureSharedSchema` (boot one-time via `OpenSharedDB`, conn RW pure sans auto-attach concurrent). Retirer le call runtime `refreshSharedViews` du post-sync. Les VIEWs sont stockées dans la DB et survivent au close/reopen ; `CREATE OR REPLACE` au boot suffit (idempotent + permet l'évolution de query au prochain redémarrage).
+- **Tests** (4 dans `refresh_shared_views_boot_test.go`) : v_gamertag_lookup créée + queryable, v_match_full créée, idempotence sur 3 passes, **garde-rail code-shape** (`engine_postsync.go` ne référence plus `refreshSharedViews(...)`).
+- **Test repro** (`refresh_shared_views_ro_repro_test.go`) : confirme empiriquement que CREATE VIEW non-qualifié sur table de DB attached RO échoue, alors que la query qualifiée passe.
+
+**Résultats observés** :
+- `go build ./...` : OK
+- `go vet ./...` : OK
+- `go test ./... -count=1 -short` : OK (tous packages)
+- `go test -tags=integration ./internal/sync/ -count=1` : OK (59s)
+- Repro test isolé confirme l'auto-attach DuckDB comme cause profonde du bug #1
+- Test golden `TestPostSyncDoesNotCallRefreshSharedViews` empêche la régression code-shape
+
+**Découvertes secondaires (non corrigées)** :
+1. **Madina/Choco n'ont pas eu de sync ce soir** alors qu'ils ont joué avec JGtm. Cause probable : présence Xbox via `userpresence.xboxlive.com` ne les signale pas `in-game Halo` → `PlayerWatcher.FSM` reste `Idle` → `MatchPoller` ne démarre pas → 0 enqueue. Le sync delta scheduler à 23:57 retourne `matches_inserted:0` pour les 3, alors qu'ils ont effectivement joué. À investiguer : token TitleId scope, latence présence, ou bug parser PresenceEvent.
+2. **Suggestion utilisateur** : déclencher un sync MatchPoller pour tous les joueurs dès qu'UN au moins est `in-game Halo`. Coût marginal (les API calls retournent 25 matchs, dont peu nouveaux pour les autres). À discuter avant implémentation : conflit potentiel avec l'optimisation actuelle "per-player presence-gated".
+
+**Fichiers** :
+- Créés : `internal/sync/refresh_shared_views_boot_test.go`, `internal/sync/refresh_shared_views_ro_repro_test.go`, `internal/sync/achievements_race_test.go`, `internal/platform/duckdb/citations_repo_q38_test.go`
+- Modifiés : `internal/sync/schema.go` (EnsureSharedSchema + sharedViewsSQL), `internal/sync/engine_postsync.go` (retrait refreshSharedViews call + dblease KindMetadata), `internal/sync/aggregates.go` (refreshSharedViews reste exposé mais plus appelé en post-sync), `internal/platform/duckdb/citations_repo.go` (LoadMatchCitationsForView split), `internal/platform/duckdb/queries_home_citations.go` (Q38MatchViewCitationsPlayer remplace Q38MatchViewCitations)
+
+**Conclusion / prochaine étape** : redémarrer le serveur, refaire un sync ce soir. Vérifier dans `logs/sync.log` qu'il n'y a plus de `aggregates: échec shared view` ni de `achievements: TransactionContext Error: Conflict on update!`. Pour les citations Match detail Choco/Madina : ça reste vide tant que ces 2 joueurs ne syncent pas eux-mêmes — à traiter via la piste "présence Xbox" ou en implémentant le broadcast trigger suggéré par l'utilisateur.
+
+---
+
+## [2026-05-26] Fix path watcher : Trigger câble SharedProvider via factory partagée
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme** : Après la fix MatchPoller (commit `92565b8d`), le watcher ne crashait plus mais aucun match n'était inséré côté shared. `logs/sync.log` 23:05–23:13 : à chaque trigger `coordinator → Trigger.RunSync`, erreur `AcquireSharedWriterStandalone legacy open: ... Can't open a connection to same database file with a different configuration than existing connections`. Aucun appel à `/sync/initial` / `/sync/all` côté HTTP donc le sync manuel passait visiblement par d'autres voies, mais les logs montraient la même classe de problème (post-sync RO mode 19:18). Le `shared_matches_v2: mode sharedprovider (B-swap actif)` au boot confirmait que le provider était bien initialisé.
+
+**Cause racine** : `internal/sync/trigger.go:53` faisait `NewSyncEngine(repoRoot, gt, xuid, tokens, nil)` SANS chaîner `.WithSharedProvider(cfg.SharedProvider)`. Tous les autres callers de NewSyncEngine (auto_sync.defaultRunnerFactory, sync_handler.go, sync_v2_wiring.go, backfill.go) câblent le provider via `cfg.SharedProvider`. Le `Trigger`, lui, n'avait même pas de référence vers le provider. Donc dès qu'un joueur lançait Halo et passait Watching → MatchPoller détectait un match → Coordinator → Trigger.RunSync → engine.sharedProvider=nil → legacy path → OpenSharedDB direct → conflit avec le handle RO du `sharedprovider.Manager` global.
+
+**Décision technique** : extraire `defaultRunnerFactory` (auto_sync.go) en méthode publique `AutoSyncScheduler.BuildEngine(ctx, gamertag, xuid) *sync.SyncEngine`, qui devient l'**UNIQUE source of truth** du wiring SyncEngine pour le serveur. `defaultRunnerFactory` devient un trivial wrapper (`return s.BuildEngine(...)`). Côté sync : ajouter `EngineFactory func(ctx, gt, xuid) *SyncEngine` + `Trigger.WithEngineFactory(f)`. main.go câble `syncTrigger.WithEngineFactory(autoScheduler.BuildEngine)`. Résultat : impossible que le path watcher et le path scheduler divergent — c'est la **même closure** qui construit l'engine.
+
+**Tests anti-régression** :
+- `internal/sync/engine_introspect.go` — accesseurs publics `HasSharedProvider/HasFriendsLoader/HasPostSyncRunner/HasMediaScanHook/HasCustomClient/BatchPersistEnabled/HasBatchQueue/CSRSeasonIDForTest/Gamertag/XUID` (test-only, godoc explicite).
+- `internal/scheduler/auto_sync_build_engine_test.go` — **test golden** : `TestBuildEngine_AllOptionsWired_GoldenAntiRegression` assert que tous les `With...` sont câblés sur l'engine produit par BuildEngine, avec messages d'erreur citant l'incident pour aiguiller le futur reviewer. Si quelqu'un retire un `With...` de BuildEngine, ce test échoue.
+- `internal/sync/trigger_test.go` — tests unitaires : `WithEngineFactory_Chainable`, `RunSync_InvokesFactoryWhenWired`, `RunSync_LegacyFallbackWhenNoFactory`, `RunSync_NilEngineFromFactoryIsError`, `RunSync_TokenErrorBubblesUp`, `RunSync_FactoryEngineSharedProviderPreserved`, `RunSync_MaxMatchesFromHint`.
+- `internal/sync/trigger_engine_parity_test.go` — test parité : `TestTrigger_PaternFromFactory_RealCheckOnEngineFields` assert que l'engine produit par la factory câblée passe `HasSharedProvider()` et conserve les `WithXxx` jusqu'à l'appel RunDelta.
+
+**Résultats observés** :
+- `go build ./...` : OK
+- `go vet ./...` : OK
+- `go test ./internal/sync/ -count=1 -short` : OK (11.5s)
+- `go test ./internal/scheduler/ ./internal/watcher/ -count=1 -short` : OK
+- Test golden BuildEngine valide les 7 wirings critiques (SharedProvider, FriendsLoader, PostSyncRunner, MediaScanHook, BatchPersistMode, CSRSeasonID, gamertag/xuid)
+
+**Fichiers** :
+- Créés : `internal/sync/engine_introspect.go`, `internal/sync/trigger_engine_parity_test.go`, `internal/scheduler/auto_sync_build_engine_test.go`
+- Modifiés : `internal/sync/trigger.go`, `internal/sync/trigger_test.go`, `internal/scheduler/auto_sync.go` (extraction BuildEngine), `cmd/server/main.go` (passe autoScheduler à startWatcherDaemon + `.WithEngineFactory(autoScheduler.BuildEngine)`)
+
+**Conclusion / prochaine étape** : redémarrer le serveur, vérifier `logs/sync.log` que les triggers watcher écrivent désormais des `coordinator: sync terminé` au lieu d'erreurs "different configuration". Investiguer ensuite le bug secondaire 19:18 ("INSERT on database attached in read-only mode" sur `refreshSharedViews` + `InsertParticipants` post-sync) — symptôme différent, probablement un sql.DB pool DuckDB qui partage des connexions sous-jacentes entre RW et RO sur le même path.
+
+---
+
 ## [2026-05-26] Fix crash MatchPoller — branchement d'un vrai MatchFetcher
 
 **Statut** : Complété
