@@ -14,11 +14,17 @@ import (
 )
 
 // PlayerCounts capture les counts individuels d'un joueur (kills/deaths)
-// observés pendant un match. Utilisé par UpdateTwoTeamWithCountsEP pour
-// injecter le signal individuel TS2 §8 dans la mise à jour.
+// observés pendant un match + son statut "quit" (TS2 §9).
+// Utilisé par UpdateTwoTeamWithCountsEP pour injecter le signal individuel.
 type PlayerCounts struct {
 	Kills  *float64 // nil = pas d'obs (count ignoré)
 	Deaths *float64
+
+	// Quit indique que le joueur a quitté en cours de match (TS2 §9).
+	// QuitPenaltyDelta = magnitude de la pénalité (par défaut DefaultQuitDelta).
+	// Si Quit=false, QuitPenaltyDelta est ignoré.
+	Quit             bool
+	QuitPenaltyDelta float64
 }
 
 // CountInputs structure les counts par équipe pour rester aligné avec
@@ -27,6 +33,16 @@ type CountInputs struct {
 	TeamA []PlayerCounts // len doit matcher m.TeamA
 	TeamB []PlayerCounts // len doit matcher m.TeamB
 }
+
+// DefaultQuitDeltaRelated : pénalité quit "related" (team perdait au moment
+// du quit — quitter aurait perdu de toute façon, pénalité modérée).
+// Calibré pour ≈ β/2 en unités v2 (β ≈ 4.17 → δ ≈ 2.0).
+const DefaultQuitDeltaRelated = 1.0
+
+// DefaultQuitDeltaUnrelated : pénalité quit "unrelated" (team gagnait/égalisait
+// au moment du quit — quitter a abandonné une situation favorable, pénalité forte).
+// Calibré pour ≈ β en unités v2.
+const DefaultQuitDeltaUnrelated = 2.5
 
 // UpdateTwoTeamEP : équivalent EP de UpdateTwoTeam.
 //
@@ -127,7 +143,42 @@ func UpdateTwoTeamWithCountsEP(m TwoTeamMatch, counts *CountInputs, p Priors) (t
 	if err != nil {
 		return nil, nil, err
 	}
-	return fromEpGaussians(postA), fromEpGaussians(postB), nil
+	finalA := fromEpGaussians(postA)
+	finalB := fromEpGaussians(postB)
+	if counts != nil {
+		applyQuitPenaltyPost(finalA, counts.TeamA)
+		applyQuitPenaltyPost(finalB, counts.TeamB)
+	}
+	return finalA, finalB, nil
+}
+
+// applyQuitPenaltyPost applique le quit penalty en POST-EP : pour chaque
+// joueur marqué Quit, on retire QuitPenaltyDelta (par défaut
+// DefaultQuitDeltaRelated) à μ. Cette implémentation pragmatique encode le
+// quit penalty "communauté gaming" (= punir le quitter avec une baisse de
+// rating), distinct du modèle TS2 §9 intrinsèque (= absorber la baisse de
+// perf dans une variable under_i pour épargner le skill — qui aurait l'effet
+// inverse, REMONTER le skill du quitter).
+//
+// Choix Phase 3-quit : on prend l'interprétation "punir" parce que c'est ce
+// que la communauté Halo / le système CSR existant suggère, et c'est aussi
+// l'interprétation la plus utile UX (un joueur ne devrait pas pouvoir éviter
+// la perte de rating en quittant).
+//
+// σ n'est pas modifié : on garde la confiance EP. Un raffinement futur
+// pourrait widen σ légèrement (e.g., +β/4) pour signaler que ce match est
+// "moins informatif".
+func applyQuitPenaltyPost(team []Gaussian, counts []PlayerCounts) {
+	for i, pc := range counts {
+		if !pc.Quit {
+			continue
+		}
+		d := pc.QuitPenaltyDelta
+		if d <= 0 {
+			d = DefaultQuitDeltaRelated
+		}
+		team[i].Mu -= d
+	}
 }
 
 // flattenCountInputs convertit la représentation par-équipe en liste plate

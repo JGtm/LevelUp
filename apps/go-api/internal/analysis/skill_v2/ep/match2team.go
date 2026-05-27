@@ -52,8 +52,8 @@ type Match2TeamInput struct {
 	// Chaque CountObservation lie un (playerIdx, side, type) à une valeur
 	// observée. Le solver crée alors un sous-graphe SumFactor + PriorFactor
 	// pour chaque obs (cf. addCountObservationFactors).
-	Counts            []CountObservation
-	CountHyperparams  map[CountType]CountHyperparams // optionnel ; défaut = DefaultCountHyperparams
+	Counts           []CountObservation
+	CountHyperparams map[CountType]CountHyperparams // optionnel ; défaut = DefaultCountHyperparams
 }
 
 // Match2TeamConfig regroupe les paramètres EP — séparés des hyperparams skill
