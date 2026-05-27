@@ -402,6 +402,17 @@ func (r *ServiceRegistry) buildFriendsXPLoader(mainPDB *duckdb.PlayerDB) service
 				continue
 			}
 			if len(history) == 0 {
+				slog.DebugContext(ctx, "friends_xp: skipped, no_history",
+					"gamertag", f.gamertag)
+				continue
+			}
+			// Defense-in-depth : Q7 filtre deja xp_total > 0 cote SQL, mais on
+			// re-verifie cote Go pour blinder contre toute regression future
+			// d'ecriture (ami avec rows xp_total=0 toujours possible si une
+			// migration ulterieure ressuscite le DEFAULT 0).
+			if allZeroXPTotal(history) {
+				slog.DebugContext(ctx, "friends_xp: skipped, all_zero",
+					"gamertag", f.gamertag, "rows", len(history))
 				continue
 			}
 			results = append(results, domain.FriendXPHistory{
@@ -411,6 +422,18 @@ func (r *ServiceRegistry) buildFriendsXPLoader(mainPDB *duckdb.PlayerDB) service
 		}
 		return results, nil
 	}
+}
+
+// allZeroXPTotal retourne true si tous les XPTotal de l'historique sont <= 0.
+// Helper utilise par buildFriendsXPLoader pour eviter d'exposer une courbe
+// plate a 0 cote frontend (ex: ami avec uniquement des rows rank-only).
+func allZeroXPTotal(history []domain.XPHistoryPoint) bool {
+	for _, p := range history {
+		if p.XPTotal > 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // Achievements retourne un AchievementsService pour le joueur identifié par slug.
