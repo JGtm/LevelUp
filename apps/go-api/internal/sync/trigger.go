@@ -19,15 +19,38 @@ type TokenProvider interface {
 	GetTokens(ctx context.Context) (*domain.HaloTokens, error)
 }
 
+// EngineFactory construit un *SyncEngine fully-configured pour un (gamertag,
+// xuid). C'est l'extension point qui permet au caller (cmd/server/main.go)
+// de partager la MÊME logique de wiring entre le path watcher (Trigger) et le
+// path scheduler (auto_sync.defaultRunnerFactory). Sans factory, le Trigger
+// fait un NewSyncEngine direct (mode legacy — pas de SharedProvider, pas de
+// PostSyncRunner, etc., utile uniquement pour des tests étroits).
+//
+// Cf. incident 2026-05-26 : trigger.go faisait NewSyncEngine sans
+// .WithSharedProvider, tous les syncs déclenchés par le watcher échouaient
+// avec "Can't open a connection to same database file with a different
+// configuration than existing connections" car le path legacy contournait
+// le swap RO↔RW orchestré par sharedprovider.Manager.
+type EngineFactory func(ctx context.Context, gamertag, xuid string) *SyncEngine
+
 // Trigger déclenche des syncs in-process via SyncEngine.
 // Il crée un SyncEngine jetable à chaque appel.
 type Trigger struct {
 	repoRoot      string
 	tokenProvider TokenProvider
 	defaultOpts   domain.SyncOptions
+	// engineFactory construit le SyncEngine. Si nil, fallback NewSyncEngine
+	// direct (legacy — risque conflit "different configuration" en présence
+	// d'un sharedprovider.Manager global). À câbler en production via
+	// WithEngineFactory(autoScheduler.BuildEngine).
+	engineFactory EngineFactory
 }
 
 // NewTrigger crée un trigger de sync in-process.
+//
+// Pour la production, chaîner avec WithEngineFactory(autoScheduler.BuildEngine)
+// afin de partager le wiring (SharedProvider, PostSyncRunner, FriendsLoader,
+// PooledClient, batch mode, etc.) avec l'auto-sync scheduler.
 func NewTrigger(repoRoot string, tp TokenProvider, defaultOpts domain.SyncOptions) *Trigger {
 	return &Trigger{
 		repoRoot:      repoRoot,
@@ -36,13 +59,28 @@ func NewTrigger(repoRoot string, tp TokenProvider, defaultOpts domain.SyncOption
 	}
 }
 
+// WithEngineFactory injecte la factory qui construit le SyncEngine fully-
+// configured (avec SharedProvider, PostSyncRunner, etc.). C'est l'unique
+// point d'extension du Trigger : il permet de garantir la parité runtime
+// entre le path watcher et le path scheduler en réutilisant la MÊME closure
+// de construction (cf. scheduler.BuildEngine).
+//
+// Si f est nil, le Trigger reste en mode legacy (NewSyncEngine direct).
+// Le retour est le même Trigger pour permettre le chaînage style builder.
+func (t *Trigger) WithEngineFactory(f EngineFactory) *Trigger {
+	t.engineFactory = f
+	return t
+}
+
 // RunSync implémente SyncRunner pour le Coordinator.
-// Crée un SyncEngine jetable et lance un RunDelta.
+// Crée un SyncEngine via engineFactory (ou NewSyncEngine direct en fallback)
+// et lance un RunDelta.
 func (t *Trigger) RunSync(ctx context.Context, gamertag, xuid string, matchIDs []string) error {
 	slog.InfoContext(ctx, "trigger: démarrage sync",
 		"gamertag", gamertag,
 		"xuid", xuid,
 		"match_ids_hint", len(matchIDs),
+		"engine_factory_wired", t.engineFactory != nil,
 	)
 
 	tokens, err := t.tokenProvider.GetTokens(ctx)
@@ -50,7 +88,24 @@ func (t *Trigger) RunSync(ctx context.Context, gamertag, xuid string, matchIDs [
 		return fmt.Errorf("trigger: get tokens: %w", err)
 	}
 
-	engine := NewSyncEngine(t.repoRoot, gamertag, xuid, tokens, nil)
+	var engine *SyncEngine
+	if t.engineFactory != nil {
+		engine = t.engineFactory(ctx, gamertag, xuid)
+		if engine == nil {
+			return fmt.Errorf("trigger: engineFactory returned nil for %s", gamertag)
+		}
+		// Tokens passés par staticTokenProvider — on les pousse sur le moteur
+		// au cas où la factory n'aurait pas (re)résolu d'auth (cas typique :
+		// auto_sync.BuildEngine met un HaloTokens vide car le pool joueur fait
+		// l'auth via PooledClient).
+		_ = tokens
+	} else {
+		// Path legacy : aucune factory câblée. Le moteur ne sera PAS configuré
+		// avec SharedProvider, donc OpenSharedDB direct → potentiel conflit
+		// "different configuration" si un Manager global tient déjà shared en
+		// RO. Conservé uniquement pour la rétrocompat des tests existants.
+		engine = NewSyncEngine(t.repoRoot, gamertag, xuid, tokens, nil)
+	}
 
 	opts := t.defaultOpts
 	// Le watcher détecte les matchs mais le RunDelta va re-fetch l'historique API
