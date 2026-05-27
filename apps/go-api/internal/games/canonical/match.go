@@ -182,9 +182,11 @@ type SkillSnapshot struct {
 	TierCodeFR     *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
 	SubTier        *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
 	Delta          *float64   // points gagnés/perdus ce match (positif/négatif)
-	PlaylistGroup  *string    // groupe normalisé (ex: "ranked-arena")
-	KillsExpected  *float64   // depuis MatchSkillSnapshot — utilisé par Stats
-	DeathsExpected *float64   // idem
+	PlaylistGroup        *string // groupe normalisé (ex: "ranked-arena")
+	SeasonID             *string // saison Halo associée au rating (ex: "Elan")
+	MeasurementRemaining *int    // matchs de placement restants (>0 = phase placement)
+	KillsExpected        *float64 // depuis MatchSkillSnapshot — utilisé par Stats
+	DeathsExpected       *float64 // idem
 }
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.

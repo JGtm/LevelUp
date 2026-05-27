@@ -285,6 +285,9 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 					pt.SkillDelta = &v
 				}
 				pt.SkillRatingType = string(ss.RatingType)
+				pt.SkillPlaylistGroup = ss.PlaylistGroup
+				pt.SkillSeasonID = ss.SeasonID
+				pt.SkillMeasurementRemaining = ss.MeasurementRemaining
 			}
 			series = append(series, pt)
 		}

@@ -142,9 +142,12 @@ type SquadPerformanceSeriesPoint struct {
 	RendementOffensif   *float64 `json:"rendement_offensif,omitempty"`
 	ResistanceDefensive *float64 `json:"resistance_defensive,omitempty"`
 	TeamMMR             *float64 `json:"team_mmr,omitempty"`          // MMR équipe ce match (issu de match_skill_rank)
-	SkillRating         *float64 `json:"skill_rating,omitempty"`      // CSR ou LUSR mu du joueur (exclusifs par match)
-	SkillDelta          *float64 `json:"skill_delta,omitempty"`       // points gagnés/perdus ce match (positif/négatif)
-	SkillRatingType     string   `json:"skill_rating_type,omitempty"` // "csr" | "lusr" — vide si non disponible
+	SkillRating               *float64 `json:"skill_rating,omitempty"`               // CSR ou LUSR mu du joueur (exclusifs par match)
+	SkillDelta                *float64 `json:"skill_delta,omitempty"`                // points gagnés/perdus ce match (positif/négatif)
+	SkillRatingType           string   `json:"skill_rating_type,omitempty"`          // "csr" | "lusr" — vide si non disponible
+	SkillPlaylistGroup        *string  `json:"skill_playlist_group,omitempty"`       // groupe normalisé (ex: "ranked-arena")
+	SkillSeasonID             *string  `json:"skill_season_id,omitempty"`            // saison Halo (rupture de courbe si changement)
+	SkillMeasurementRemaining *int     `json:"skill_measurement_remaining,omitempty"` // matchs de placement restants
 }
 
 // SquadSynergyRadarAxis est l'un des 6 axes du radar de participation

@@ -25,6 +25,33 @@ import { SquadFirstEventsChart } from './SquadFirstEventsChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import type { SquadTeammateEntry } from '@/features/engagement/queries'
 import { getSquadPlayerColors } from './colors'
+import { TimeseriesSkillProgression } from '@/features/timeseries/TimeseriesSkillProgression'
+import type { TimeseriesMatchRow, SquadPerformanceSeriesPoint } from '@/lib/api/types'
+
+function adaptSquadPerfToMatchRows(pts: SquadPerformanceSeriesPoint[]): TimeseriesMatchRow[] {
+  return pts.map((p, i) => ({
+    match_id: p.match_id,
+    index: i,
+    start_time: p.start_time,
+    kills: p.kills,
+    deaths: p.deaths,
+    assists: p.assists,
+    accuracy: null,
+    outcome: null,
+    personal_score: null,
+    damage_dealt: null,
+    damage_taken: null,
+    perf_score: p.performance_score ?? null,
+    rank: null,
+    playlist_name: '',
+    time_played_seconds: null,
+    skill_rating_value: p.skill_rating ?? null,
+    skill_rating_type: p.skill_rating_type ?? null,
+    skill_playlist_group: p.skill_playlist_group ?? null,
+    skill_season_id: p.skill_season_id ?? null,
+    skill_measurement_remaining: p.skill_measurement_remaining ?? null,
+  }))
+}
 
 export function SquadContributionsPage() {
   const { selectedRows, confirmedGamertags, pageData, playerSlug } = useSquadContext()
@@ -67,8 +94,16 @@ export function SquadContributionsPage() {
     impact: t.synergyRadar.axes.impact,
   }
 
+  const mainPlayerSkillRows = useMemo(
+    () => adaptSquadPerfToMatchRows(performanceSeries?.[mainPlayerKey] ?? []),
+    [performanceSeries, mainPlayerKey],
+  )
+
   return (
     <div className="space-y-4">
+      {/* Progression CSR/LUSR du joueur principal dans le contexte de cette escouade. */}
+      <TimeseriesSkillProgression rows={mainPlayerSkillRows} locale={locale} />
+
       {(perMinuteRows.length > 0 || synergyRadar.length > 0) && (
         <div className="grid gap-4 lg:grid-cols-2">
           {perMinuteRows.length > 0 && (

@@ -403,8 +403,11 @@ func buildMatchRows(matches []legacymatch.StatsMatchRow) []domain.TimeseriesMatc
 			PerfectKills:      m.PerfectKills,
 			MapName:           m.MapName,
 			MapNameFR:         m.MapNameFR,
-			SkillRatingValue:  m.SkillRatingValue,
-			SkillRatingType:   m.SkillRatingType,
+			SkillRatingValue:          m.SkillRatingValue,
+			SkillRatingType:           m.SkillRatingType,
+			SkillPlaylistGroup:        m.SkillPlaylistGroup,
+			SkillSeasonID:             m.SkillSeasonID,
+			SkillMeasurementRemaining: m.SkillMeasurementRemaining,
 			SessionLabel:      m.SessionLabel,
 			TeamMMR:           m.TeamMMR,
 		})

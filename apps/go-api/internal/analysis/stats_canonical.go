@@ -116,6 +116,9 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		out.DeathsExpected = r.Enrichment.SkillSnapshot.DeathsExpected
 		out.SkillRatingValue = r.Enrichment.SkillSnapshot.RatingValue
 		out.SkillRatingType = string(r.Enrichment.SkillSnapshot.RatingType)
+		out.SkillPlaylistGroup = r.Enrichment.SkillSnapshot.PlaylistGroup
+		out.SkillSeasonID = r.Enrichment.SkillSnapshot.SeasonID
+		out.SkillMeasurementRemaining = r.Enrichment.SkillSnapshot.MeasurementRemaining
 	}
 	out.IsWithFriends = r.Enrichment.IsWithFriends
 	out.EngagementScoreBrut = r.Enrichment.EngagementScoreBrut

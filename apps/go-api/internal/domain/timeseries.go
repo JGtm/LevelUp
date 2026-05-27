@@ -226,10 +226,12 @@ type TimeseriesMatchRow struct {
 	// reprend le format `#N\nMap` de la page Contributions Squad).
 	MapName   string `json:"map_name,omitempty"`
 	MapNameFR string `json:"map_name_fr,omitempty"`
-	// Skill rank (CSR ou LUSR) — rating brut + type — alimente le chart Forme
-	// "Skill rank + Performance".
-	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
-	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
+	// Skill rank (CSR ou LUSR) — rating brut + type + contexte playlist/saison.
+	SkillRatingValue          *float64 `json:"skill_rating_value,omitempty"`
+	SkillRatingType           string   `json:"skill_rating_type,omitempty"`
+	SkillPlaylistGroup        *string  `json:"skill_playlist_group,omitempty"`
+	SkillSeasonID             *string  `json:"skill_season_id,omitempty"`
+	SkillMeasurementRemaining *int     `json:"skill_measurement_remaining,omitempty"`
 	// Session de rattachement — alimente l'agrégat "Performance solo par session".
 	SessionLabel *string `json:"session_label,omitempty"`
 	// MMR équipe — alimente le chart "Performance par session" (axe MMR moyen).
