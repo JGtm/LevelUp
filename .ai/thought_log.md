@@ -33,6 +33,38 @@
 
 ---
 
+## [2026-05-27] feat(lusr-v2): Phase 1d — cmd lusr_v2_replay (validation offline)
+
+**Statut** : Complété (cmd livré, run en attente — DB hold par le serveur en cours)
+
+**Contexte** : valider qualitativement le LUSR v2 sur les 4 joueurs trackés AVANT de greffer le moindre reader UI. Les cibles sont connues (memory/reference_lusr_target_levels.md) : Madina97294 = fin Platine/début Diamant, Chocoboflor + JGtm = milieu/bas Or, XxDaemonGamerxX = mauvais.
+
+**Décision technique principale** :
+
+[apps/go-api/cmd/lusr_v2_replay/main.go](../apps/go-api/cmd/lusr_v2_replay/main.go) — wrapper sur `lusync.RunLUSRV2Shadow` :
+
+1. Active `LEVELUP_LUSR_V2_ENABLED=1` programmatiquement (le cmd EST le caller).
+2. `--reset` : `DELETE FROM player_skill_state_v2` avant le run pour partir d'un état frais (priors TrueSkill default). Sans `--reset` le shadow est incrémental.
+3. Boucle sur les 4 joueurs trackés (override CLI possible), résout XUID, appelle `RunLUSRV2Shadow` qui parcourt l'historique chronologique.
+4. Sortie : rapport markdown — vue d'ensemble (1 ligne par joueur, groupe le plus joué) + détail par joueur × groupe + mapping qualitatif μ → tier inféré.
+
+**Mapping μ → tier (indicatif, à calibrer après run)** :
+- μ < 18 : Bronze
+- 18-22 : Silver
+- 22-28 : Gold (μ_0=25 = milieu Gold par construction)
+- 28-32 : Platinum
+- 32-38 : Diamond
+- 38+ : Onyx
+
+**Résultats observés** :
+
+- `go build -tags cgo ./cmd/lusr_v2_replay/` PASS, vet clean.
+- **Run pending** : la shared DB est ouverte RW par le serveur. Le run nécessite soit l'arrêt du serveur, soit une copie offline du fichier. Procédure documentée dans le `cmd/lusr_v2_replay/main.go` (usage CLI).
+
+**Prochaine étape** : run effectif du cmd → analyse des résultats → décision (Phase 2 squadOffset, ou Phase 3 kills/deaths obs, ou recalibration priors). Migration strategy v1→v2 reste à trancher (cf. discussion utilisateur, ouverte).
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 1c — shadow mode dans le pipeline sync
 
 **Statut** : Complété
