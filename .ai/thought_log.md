@@ -1,3 +1,35 @@
+## [2026-05-27] fix(career/top-matches): scan A 4 colonnes + asymétrie bot oubliée
+
+**Statut** : Complété
+
+**Branche** : `fix/career-top-matches-bot-asymmetry`
+
+**Symptôme** : `TestCareerRepo_GetTopMatches_WithData` (suite `-tags=integration`) échouait avec `CareerRepo.GetTopMatches scan A: sql: expected 4 destination arguments in Scan, not 3`. L'endpoint prod `GET /pages/career/top-matches` était donc en crash 500 (panique scan) — découvert lors de la validation post-fix XP history.
+
+**Cause** : Le commit `ec6efd2b feat(career): bot teammate asymmetry + HighlightMatchIDRow typed` a modifié `Q9TopMatchesPlayer` ([queries_career.go:259-262](apps/go-api/internal/platform/duckdb/queries_career.go#L259-L262)) pour ajouter `COALESCE(had_bot_teammate, FALSE)` au SELECT et appliquer l'asymétrie WIN/LOSS dans `GetHighlightMatchIDs`. Mais `loadTopMatchPMERows` ([career_repo.go:368-374](apps/go-api/internal/platform/duckdb/career_repo.go#L368-L374)) — qui partage la même query — n'a pas été mis à jour : scan 3 colonnes au lieu de 4. Crash systématique au premier row.
+
+**Décision technique** :
+
+Plutôt que retirer `had_bot_teammate` du SELECT (casserait `GetHighlightMatchIDs`), aligner `GetTopMatches` sur le même comportement asymétrique que `GetHighlightMatchIDs`. Justifié sémantiquement : les deux endpoints servent le même besoin utilisateur ("meilleures performances / pires performances"), il serait incohérent qu'un endpoint exclue les LOSS+bot et l'autre les inclue.
+
+Implémentation :
+- `topMatchPMERow` : +champ `hadBotTeammate bool`.
+- `loadTopMatchPMERows` : scan 4 colonnes (`+&p.hadBotTeammate`).
+- `loadTopMatchSharedRows` : filtre asymétrique au merge — `if m.Outcome == 3 && pme.hadBotTeammate { continue }`. WIN+bot conservé, LOSS+bot exclu.
+- Commentaire `GetTopMatches` mis à jour : Phase A scope révisé, Phase C documente l'asymétrie.
+- `TopMatchRawRow` (format DTO legacy léger) : pas étendu avec `HadBotTeammate` — le filtre est appliqué côté repo, le frontend `/top-matches` ne reçoit déjà pas ce flag (vs `/highlight-matches` qui l'expose pour pill UI).
+
+**Tests** :
+- `TestCareerRepo_GetTopMatches_WithData` (pré-existant) : PASS — m1 (WIN no-bot) toujours présent.
+- `TestCareerRepo_GetTopMatches_BotTeammateAsymmetry` (nouveau, calqué sur `TestCareerRepo_GetHighlightMatchIDs_BotTeammateAsymmetry`) : 4 matchs seedés (m1 WIN no-bot, m2 WIN+bot, m3 LOSS+bot, m4 LOSS no-bot) → vérifie m1, m2, m4 présents et m3 exclu. PASS.
+- `go test ./...` + `go test -tags=integration ./...` : aucun FAIL.
+
+**Pourquoi solide** : le test asymétrie verrouille le contrat ; toute future modification de Q9TopMatchesPlayer obligera à mettre à jour AUSSI ce test (impossible désormais d'oublier `GetTopMatches` quand on touche à la query partagée).
+
+**Prochaine étape** : vérifier en prod (logs / curl `/players/Madina97294/pages/career/top-matches`) que la réponse 200 OK contient bien les meilleurs/pires matchs attendus.
+
+---
+
 ## [2026-05-27] fix(career/xp-history): régression XP 25 mai + projections manquantes + amis à 0
 
 **Statut** : Complété
@@ -62,6 +94,58 @@ Le fallback `rank * 1000` est destructeur post-migration `fix_career_xp_total_de
 - Réponse `GET /players/Madina97294/pages/career` : `projections.xp_per_day_active > 0` et `xp_history` strictement croissant
 
 Surveiller `friends_xp: skipped, *` (DEBUG) en prod pour identifier les amis avec sync career chroniquement échoué (XxDaemonGamerxX en 403 documenté).
+
+---
+
+## [2026-05-27] fix(career/highlight-matches): asymétrie WIN/LOSS sur had_bot_teammate + pill "bot" UI
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Symptôme rapporté** : Match `615b3ebc-b3cc-4749-b656-2afa15996163` du 19/04/2026 de Madina97294 (WIN, 25 kills / 0 deaths, perf 97.5, dominance DOMINATION) n'apparait pas dans les "meilleures performances" de la page Carrière, alors que des matchs moins impressionnants y figurent.
+
+**Diagnostic** (via outil `cmd/diag_highlight_match` créé pour l'occasion) :
+
+État du match :
+- `performance_score = 97.50` ✓
+- `dominance_flag = 1 (DOMINATION)` ✓
+- `outcome = 2 (WIN)`, `time_played = 390s`, `is_firefight = false` ✓
+- **`had_bot_teammate = TRUE`** → exclu par Phase A : `WHERE COALESCE(had_bot_teammate, FALSE) = FALSE`.
+
+Sémantique du flag (audit dans `internal/sync/enrichments.go::computeAndPersistHadBotTeammate` + tests `enrichments_test.go`) : **strictement "bot dans MA team"** (jamais l'équipe adverse). Confirmé par `TestComputeAndPersistHadBotTeammate_BotInSameTeam_TRUE` + `_BotInOppositeTeam_FALSE`.
+
+Implication : le filtre était **sémantiquement à l'envers**. Un bot dans **ma** team me handicape (équipe effective 4v3). Une victoire dans cette config est plus méritante, pas moins. Le filtre `time_played >= 180` couvre déjà les matchs raccourcis.
+
+**Décision technique** (option A2 — asymétrie principée WIN/LOSS, validée avec l'utilisateur) :
+
+Les deux sections ne répondent pas à la même question :
+- **best_matches** = "mes exploits" → un bot teammate sous-estime ma perf si je l'exclus → **garder le match**.
+- **worst_matches** = "mes axes de progrès" → un bot teammate empêche d'isoler ma responsabilité (déséquilibre 4v3) → **exclure le match**.
+
+Implémentation :
+- `Q9TopMatchesPlayer` ([queries_career.go:241-250](apps/go-api/internal/platform/duckdb/queries_career.go#L241-L250)) : retire `WHERE had_bot_teammate = FALSE`, ajoute `had_bot_teammate` au SELECT.
+- `highlightPMEEntry` + `loadHighlightCandidates` ([career_repo.go:544-611](apps/go-api/internal/platform/duckdb/career_repo.go#L544-L611)) : propage le flag.
+- `GetHighlightMatchIDs` ([career_repo.go:621-704](apps/go-api/internal/platform/duckdb/career_repo.go#L621-L704)) : skip LOSS+bot dans le switch outcome, propage `HadBotTeammate` dans `domain.HighlightMatchIDRow`.
+- `enrichHighlightMatches` ([handlers/career.go:246](apps/go-api/internal/api/handlers/career.go#L246)) : signature change de `[]string` → `[]domain.HighlightMatchIDRow` pour réinjecter le flag dans `ExplorerMatchesRow.HadBotTeammate` après projection.
+- Domain : `HighlightMatchIDRow.HadBotTeammate` + `ExplorerMatchesRow.HadBotTeammate` (tags JSON `had_bot_teammate,omitempty`).
+- OpenAPI yaml : schéma `ExplorerMatchRow` + commentaire endpoint mis à jour.
+
+**UI** : pill `"bot"` (i18n key `explorer.matches.bot_pill`) ajoutée à la cellule `is_with_friends` de [ExplorerMatchesTable.tsx](apps/web/src/features/explorer/ExplorerMatchesTable.tsx) — affichée quand `row.had_bot_teammate === true`, à côté de la pill Solo/Escouade. Couleur amber (`#f59e0b`, color-allow car badge d'état système, pas signification métier). Tooltip i18n explicite la sémantique.
+
+**Tests** :
+- Nouveau : `TestCareerRepo_GetHighlightMatchIDs_BotTeammateAsymmetry` ([player_repos_test.go:1666](apps/go-api/internal/platform/duckdb/player_repos_test.go#L1666)) — seede 4 matchs (m1 WIN no-bot, m2 WIN+bot, m3 LOSS+bot, m4 LOSS no-bot) et vérifie que best contient m1+m2 (avec `HadBotTeammate=true` propagé pour m2), worst contient m4 et **PAS** m3.
+- `go test -tags=integration ./internal/platform/duckdb/ -run TestCareerRepo_GetHighlight` : PASS.
+- `go test ./...` : PASS (tous packages).
+- `go vet ./...` : OK.
+- `npm run typecheck` + `npm run lint` (apps/web) : 0 erreur.
+- Vitest `ExplorerMatchesTable` : 4/4 PASS.
+
+**Vérif end-to-end via diag tool** : match cible passe maintenant les filtres et apparait en **position 2 / 528 wins** dans le top 15 de Madina (juste après un autre match perf=100). Tous les top 25 wins de Madina ont `dominance_flag=1 (DOMINATION)` — c'est le `perf_score` qui les ordonne.
+
+**Outil créé** : `cmd/diag_highlight_match/main.go` — prend gamertag + match_id en args, affiche l'état du match dans Phase A (pme) + Phase B (shared), verdict de chaque filtre selon la politique A2, et le rang exact dans le tri Go (incluant top 25 avec dominance flags). Réutilisable pour tout incident futur "match X n'apparait pas chez le joueur Y".
+
+**Prochaine étape** : redémarrer le serveur, vérifier visuellement dans le navigateur que le match 615b3ebc est bien dans la section best_matches de la page carrière de Madina avec la pill "bot" affichée.
 
 ---
 

@@ -315,17 +315,20 @@ func (r *CareerRepo) enrichLUSRPlaylistNames(ctx context.Context, cps []domain.L
 //
 // Split cross-DB en 2 phases (ADR 0016) :
 //   - Phase A : player_match_enrichment (pme) sur pdb.Player avec filtre
-//     performance_score IS NOT NULL + NOT had_bot_teammate.
+//     performance_score IS NOT NULL. had_bot_teammate est récupéré pour
+//     l'asymétrie WIN/LOSS appliquée en Phase C.
 //   - Phase B : match_participants + match_registry (shared) via SharedReader
 //     avec filtres time_played>=180 + NOT is_firefight + IN match_ids.
-//   - Phase C : merge + sections WIN/LOSS + tri par dominance flag (priorité
-//     section) + perf_score + top 10 chaque section.
+//   - Phase C : merge + asymétrie bot (LOSS+bot skippé, WIN+bot conservé,
+//     cf. GetHighlightMatchIDs / commit ec6efd2b) + sections WIN/LOSS + tri
+//     par dominance flag (priorité section) + perf_score + top 10 chaque section.
 //
-// topMatchPMERow projette player_match_enrichment (perf + dominance).
+// topMatchPMERow projette player_match_enrichment (perf + dominance + bot flag).
 type topMatchPMERow struct {
-	matchID       string
-	perfScore     float64
-	dominanceFlag int
+	matchID        string
+	perfScore      float64
+	dominanceFlag  int
+	hadBotTeammate bool
 }
 
 func (r *CareerRepo) GetTopMatches(ctx context.Context) ([]domain.TopMatchRawRow, error) {
@@ -367,7 +370,7 @@ func (r *CareerRepo) loadTopMatchPMERows(ctx context.Context) (map[string]topMat
 	defer pmeRows.Close()
 	for pmeRows.Next() {
 		var p topMatchPMERow
-		if err := pmeRows.Scan(&p.matchID, &p.perfScore, &p.dominanceFlag); err != nil {
+		if err := pmeRows.Scan(&p.matchID, &p.perfScore, &p.dominanceFlag, &p.hadBotTeammate); err != nil {
 			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan A: %w", err)
 		}
 		pmes[p.matchID] = p
@@ -406,6 +409,12 @@ func (r *CareerRepo) loadTopMatchSharedRows(
 			return nil, fmt.Errorf("CareerRepo.GetTopMatches scan B: %w", err)
 		}
 		if pme, ok := pmes[m.MatchID]; ok {
+			// Asymétrie bot teammate : LOSS avec bot dans MA team = handicap
+			// 4v3, responsabilité du joueur non isolable → skip. WIN+bot reste
+			// (perf personnelle méritoire). Cohérent avec GetHighlightMatchIDs.
+			if m.Outcome == 3 && pme.hadBotTeammate {
+				continue
+			}
 			m.PerformanceScore = pme.perfScore
 			m.DominanceFlag = pme.dominanceFlag
 			enriched = append(enriched, m)
