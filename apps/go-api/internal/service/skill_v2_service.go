@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
@@ -59,13 +60,23 @@ func (s *SkillV2Service) UpdateAfterMatch(ctx context.Context, m MatchInput) err
 		return fmt.Errorf("%w: match=%s (nA=%d, nB=%d)", ErrEmptyTeam, m.MatchID, len(m.TeamAXUIDs), len(m.TeamBXUIDs))
 	}
 
+	start := time.Now()
+	slog.DebugContext(ctx, "skill_v2: UpdateAfterMatch start",
+		"match_id", m.MatchID, "group", m.PlaylistGroup,
+		"team_a_size", len(m.TeamAXUIDs), "team_b_size", len(m.TeamBXUIDs),
+		"outcome_a", m.OutcomeA)
+
 	// 1. Récupérer les états AVANT-match pour tous les joueurs.
 	teamAStates, err := s.loadStates(ctx, m.TeamAXUIDs, m.PlaylistGroup)
 	if err != nil {
+		slog.ErrorContext(ctx, "skill_v2: loadStates teamA failed",
+			"match_id", m.MatchID, "group", m.PlaylistGroup, "err", err)
 		return fmt.Errorf("loadStates teamA: %w", err)
 	}
 	teamBStates, err := s.loadStates(ctx, m.TeamBXUIDs, m.PlaylistGroup)
 	if err != nil {
+		slog.ErrorContext(ctx, "skill_v2: loadStates teamB failed",
+			"match_id", m.MatchID, "group", m.PlaylistGroup, "err", err)
 		return fmt.Errorf("loadStates teamB: %w", err)
 	}
 
@@ -80,16 +91,25 @@ func (s *SkillV2Service) UpdateAfterMatch(ctx context.Context, m MatchInput) err
 		ResultA: m.OutcomeA,
 	}, s.priors)
 	if err != nil {
+		slog.ErrorContext(ctx, "skill_v2: UpdateTwoTeam failed",
+			"match_id", m.MatchID, "group", m.PlaylistGroup, "err", err)
 		return fmt.Errorf("UpdateTwoTeam: %w", err)
 	}
 
 	// 4. Persister les nouveaux états (append-only).
 	if err := s.persistTeam(ctx, teamAStates, newA, m); err != nil {
+		slog.ErrorContext(ctx, "skill_v2: persistTeam A failed",
+			"match_id", m.MatchID, "group", m.PlaylistGroup, "err", err)
 		return fmt.Errorf("persistTeam A: %w", err)
 	}
 	if err := s.persistTeam(ctx, teamBStates, newB, m); err != nil {
+		slog.ErrorContext(ctx, "skill_v2: persistTeam B failed",
+			"match_id", m.MatchID, "group", m.PlaylistGroup, "err", err)
 		return fmt.Errorf("persistTeam B: %w", err)
 	}
+	slog.DebugContext(ctx, "skill_v2: UpdateAfterMatch ok",
+		"match_id", m.MatchID, "group", m.PlaylistGroup,
+		"duration_ms", time.Since(start).Milliseconds())
 	return nil
 }
 
@@ -126,6 +146,9 @@ func (s *SkillV2Service) loadStates(ctx context.Context, xuids []string, playlis
 				Mu:            seed.Mu,
 				Sigma:         seed.Sigma,
 			}
+			slog.DebugContext(ctx, "skill_v2: player seeded from priors",
+				"player", x, "group", playlistGroup,
+				"mu0", seed.Mu, "sigma0", seed.Sigma)
 			continue
 		}
 		out[i] = *st

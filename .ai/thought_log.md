@@ -1,3 +1,17 @@
+## [2026-05-27] refactor(session-detail): suppression barre de filtres locale + drawer inline deux colonnes
+
+**Statut** : Complété
+
+**Branche** : `feat/lusr-v2-phase0-metrics`
+
+**Décision technique** : Suppression de `useLocalFilterBar` dans `SessionDetailPage` et `SessionComparePage` — remplacé par `useSoloFilterStore((s) => s.filterContext/filterContextHash)` (store global déjà branché sur la NavL2/FilterOmnibar). Le `SessionCompareDrawer` (position `fixed top-0 h-screen`) est remplacé par une colonne inline dans le même conteneur de scroll (`main`) : quand `drawerOpen`, la page passe en `flex flex-col xl:flex-row`, la colonne principale prend `xl:flex-1` et la colonne compare `xl:w-[50%]`. Le scroll est synchronisé nativement car les deux colonnes partagent le même `<main>` sans overflow indépendant. `SessionCompareDrawer.tsx` et son test supprimés (dead code).
+
+**Résultats** : TypeScript clean, lint sans erreur dans les fichiers session. `SessionCompareMetrics` inliné dans `SessionDetailPage` avec nav prev/next/suggestion. Backdrop mobile supprimé (non pertinent pour un layout inline). Correctifs delivery-checklist : `session_compare_service.go` splitté en 4 fichiers (378/185/183/152 L), `text-green-600` → `text-success` / `bg-success/20` dans les 2 composants TSX.
+
+**Prochaine étape** : PR de la branche feat/lusr-v2-phase0-metrics
+
+---
+
 ## [2026-05-27] feat(session-compare): Phase 2 — 5 charts restants (01 skill, 04 highlights, 06 MMR, 13 participation, 14 historique)
 
 **Statut** : Complété
@@ -117,6 +131,48 @@
 - **Run pending** : la shared DB est ouverte RW par le serveur. Le run nécessite soit l'arrêt du serveur, soit une copie offline du fichier. Procédure documentée dans le `cmd/lusr_v2_replay/main.go` (usage CLI).
 
 **Prochaine étape** : run effectif du cmd → analyse des résultats → décision (Phase 2 squadOffset, ou Phase 3 kills/deaths obs, ou recalibration priors). Migration strategy v1→v2 reste à trancher (cf. discussion utilisateur, ouverte).
+
+---
+
+## [2026-05-27] audit(lusr-v2): logging + coverage tests sur le shadow runner
+
+**Statut** : Complété
+
+**Contexte** : audit complet du chantier LUSR v2 (Phases 0 à 3a, 8 commits) avant d'attaquer Phase 3b. Vérifications selon `delivery-checklist`, `arch-rules`, `plan-review` : tests, vet, logging, taille fichiers, anti-patterns.
+
+**Constats** :
+
+- `go test ./... ` PASS (toute la suite).
+- `go vet ./...` clean.
+- **Logging service couche manquant** : `internal/service/skill_v2_service.go` avait 0 slog calls. La math (`internal/analysis/skill_v2/*`) et le repo (`internal/platform/duckdb/skill_v2_repo.go`) suivent correctement le pattern "pas de log, return errors" (la math est pure, le repo wrap avec fmt.Errorf). Mais l'orchestration service doit logger les étapes significatives.
+- **Tests unitaires manquants sur le shadow runner** : `internal/sync/skill_v2_shadow.go` (326L) n'avait pas de test dédié — couvert seulement de bout-en-bout via le replay Phase 1d sur DB réelle.
+- **2 fichiers cmd dépassent 500L** : `cmd/lusr_v2_phase0/main.go` (518L) et `replay.go` (583L). cmd/ exploratoire, à split si on les garde long-terme.
+- **Migrations visibles dans les logs** : `shared_add_participation_info_booleans` (18:10:56) et `shared_create_skill_v2_tables` (18:34:39) appliquées.
+- **Incident opérationnel** : mon `taskkill /F` durant le run du replay a corrompu `data/titles/halo_infinite/players/Chocoboflor/stats.duckdb` (DB DuckDB invalidée, WAL replay échoue). Restic backups disponibles dans `data/backups/restic-repo/` — restauration à faire par l'utilisateur.
+
+**Décision technique principale** :
+
+1. **Logging service** : ajout de slog dans `SkillV2Service.UpdateAfterMatch` :
+   - `DebugContext` au start avec match_id, group, team sizes, outcome.
+   - `ErrorContext` sur chaque erreur (loadStates A/B, UpdateTwoTeam, persistTeam A/B) avec context match_id+group.
+   - `DebugContext` au end avec duration_ms.
+   - `DebugContext` dans `loadStates` quand un joueur est seed depuis priors (première observation).
+
+2. **Tests shadow runner** : nouveau [skill_v2_shadow_test.go](../apps/go-api/internal/sync/skill_v2_shadow_test.go) (301L) couvre 7 tests :
+   - `IsLUSRV2Enabled` (10 cas : "0", "1", "true", "yes", trim, junk, etc.)
+   - `outcomeToTeamResult` (6 cas : Win/Tie/Loss/DNF/unknown)
+   - `buildTwoTeamRosters` (2-team OK, FFA rejected, missing match rejected)
+   - `RunLUSRV2Shadow` : flag off no-op, full flow 2v2 (4 joueurs all updated, winners↑/losers↓ μ, watermark idempotent 2e pass), ranked filtered.
+
+**Résultats observés** :
+
+- 7 nouveaux tests PASS (instantanés sur DuckDB `:memory:`).
+- Suite complète `go test ./...` PASS, `go vet ./...` clean.
+- Couverture logging : math/repo respect du pattern "no log", service maintenant correctement loggé, shadow runner OK depuis l'origine, cmds OK.
+
+**Prochaine étape** : Phase 3b — reconstruction de `UpdateTwoTeam` sur EP (assemblage du factor graph N-vs-M depuis Phase 3a) avec régression test contre le closed-form Phase 1a.
+
+**Action utilisateur requise** : restaurer `Chocoboflor/stats.duckdb` depuis le restic backup le plus récent. Cf. `data/backups/restic-repo/snapshots/`.
 
 ---
 
