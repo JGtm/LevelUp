@@ -1,3 +1,40 @@
+## [2026-05-27] feat(lusr-v2): Phase 3b — UpdateTwoTeam reconstruit sur EP + régression closed-form
+
+**Statut** : Complété
+
+**Contexte** : Phase 3a a livré la foundation factor graph + EP. Phase 3b assemble le match factor graph 2-équipes complet sur cette foundation et démontre par régression test qu'elle produit numériquement les mêmes résultats que le closed-form Phase 1a — condition nécessaire avant de greffer kills/deaths comme observations Bayésiennes (Phase 3c).
+
+**Décision technique principale** :
+
+1. **WithinFactor** ([within_factor.go](../apps/go-api/internal/analysis/skill_v2/ep/within_factor.go)) — observation `|X| < ε` pour les draws. Moment matching sur Gaussienne tronquée bilatérale, fallback uniform pour les cas numériquement extrêmes (denom < 1e-12). Bug initial dans le sign de `newMu = mu - σ·v` corrigé en `mu + σ·v` — la dérivation Herbrich Table 1 utilise un `v` signé selon |μ| et la formule canonique est `E[Y | |Y|<ε] = μ + σ·v`.
+
+2. **Match2Team builder** ([match2team.go](../apps/go-api/internal/analysis/skill_v2/ep/match2team.go)) — `UpdateMatch2Team(input, cfg)` assemble le factor graph complet (priors → links → sums team_perf → diff → observed) et exécute le Runner. Outcome TeamLoss encodé via swap interne des équipes (le facteur d'observation est toujours `diff > ε`). Après convergence, τ² ajouté aux variances pour le random walk dynamique (parité avec closed-form).
+
+3. **Wrapper public** ([trueskill_ep.go](../apps/go-api/internal/analysis/skill_v2/trueskill_ep.go)) — `UpdateTwoTeamEP(TwoTeamMatch, Priors)` avec signature identique à `UpdateTwoTeam` (closed-form Phase 1a). Conversion `skill_v2.Gaussian (μ,σ)` ↔ `ep.Gaussian (canonical)` à la frontière. Permet d'utiliser EP en drop-in dans la pipeline LUSR v2 quand on activera Phase 3c.
+
+4. **Régression test** ([trueskill_ep_test.go](../apps/go-api/internal/analysis/skill_v2/trueskill_ep_test.go)) — 10 scenarios comparent closed-form vs EP, tolérance 1e-2 sur μ et σ : 1v1 win/loss/draw, 4v4 win, skills asymétriques (newbie vs veteran), tailles asymétriques (1v3), mixed skill team, séquence de 5 matchs (durée — pas de dérive cumulée), erreurs (équipe vide, β=0). Tous PASS.
+
+**Résultats observés** :
+
+- **57 tests PASS** dans `internal/analysis/skill_v2/...` (25 Phase 1a + 22 Phase 3a EP factors + 10 Phase 3b régression).
+- `go test ./...` clean sur tout le projet.
+- `go vet ./...` clean.
+- ~630 lignes ajoutées (4 fichiers : 2 ep + 2 wrapper/test).
+- Le closed-form Phase 1a reste en place comme fast-path. EP utilisé seulement quand on aura besoin des facteurs additionnels (Phase 3c kills/deaths).
+
+**Prochaine étape** : **Phase 3c** — ajout du `TruncatedGaussianCountFactor` pour modéliser kills/deaths comme observations Bayésiennes (TS2 §8). Le factor graph devient :
+
+```
+... priors → skills → links → perfs → sums → diff → obs_diff
+                                  ↓
+                          kill_count_i  ~ truncated(N((w_p·perf_i + w_o·perf_opp_i)·t_i, v·t_i))
+                          death_count_i ~ truncated(N((w_p·perf_i + w_o·perf_opp_i)·t_i, v·t_i))
+```
+
+avec `w_p, w_o, v` comme hyperparamètres par groupe (initialisés sur defaults Halo 5, ré-estimés Phase 5). C'est cette extension qui devrait corriger le verdict Phase 1d (Madina sous-évaluée vs Choco/JGtm sur-évalués — discrimination intra-squad impossible sans signal individuel par match).
+
+---
+
 ## [2026-05-27] refactor(session-detail): suppression barre de filtres locale + drawer inline deux colonnes
 
 **Statut** : Complété
