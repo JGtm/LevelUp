@@ -278,7 +278,7 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.Gamertag = &gt
 		}
 
-		// ParticipationInfo : TimePlayed + 4 booleans (LUSR v2 §9 quit penalty).
+		// ParticipationInfo : TimePlayed + 4 booleans + 2 timestamps (LUSR v2).
 		// L'objet est imbriqué dans le JSON (pas une clé plate).
 		if pinfo, ok := player["ParticipationInfo"].(map[string]any); ok {
 			if dur := parsePTDuration(asString(pinfo["TimePlayed"])); dur != nil {
@@ -288,6 +288,12 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.PresentAtCompletion = jsonBoolPtr(pinfo, "PresentAtCompletion")
 			row.JoinedInProgress = jsonBoolPtr(pinfo, "JoinedInProgress")
 			row.LeftInProgress = jsonBoolPtr(pinfo, "LeftInProgress")
+			if ts, err := parseISO(asString(pinfo["FirstJoinedTime"])); err == nil {
+				row.FirstJoinedTime = &ts
+			}
+			if ts, err := parseISO(asString(pinfo["LastLeaveTime"])); err == nil {
+				row.LastLeaveTime = &ts
+			}
 		}
 
 		rows = append(rows, row)

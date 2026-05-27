@@ -95,6 +95,12 @@ type MatchParticipantRow struct {
 	PresentAtCompletion bool
 	JoinedInProgress    bool
 	LeftInProgress      bool
+
+	// ParticipationInfo timestamps (LUSR v2 Phase 3-quit — 2026-05-27).
+	// FirstJoinedTime jamais nil dans l'API (toujours rempli) ; LastLeaveTime
+	// nil = joueur encore présent à la fin du match.
+	FirstJoinedTime time.Time
+	LastLeaveTime   *time.Time
 }
 
 // MedalEarnedRow mirrors a row in shared.medals_earned. PK = (match_id, xuid,

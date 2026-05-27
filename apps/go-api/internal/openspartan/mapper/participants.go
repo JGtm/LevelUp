@@ -82,6 +82,8 @@ func MapParticipants(
 			PresentAtCompletion: p.ParticipationInfo.PresentAtCompletion,
 			JoinedInProgress:    p.ParticipationInfo.JoinedInProgress,
 			LeftInProgress:      p.ParticipationInfo.LeftInProgress,
+			FirstJoinedTime:     p.ParticipationInfo.FirstJoinedTime,
+			LastLeaveTime:       p.ParticipationInfo.LastLeaveTime,
 		}
 		if avgLifeErr == nil && avgLife > 0 {
 			v := avgLife
