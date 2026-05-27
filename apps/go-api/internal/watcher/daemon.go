@@ -61,6 +61,25 @@ type DaemonConfig struct {
 	// Normalement injecté depuis main avec un HaloMatchFetcher branché sur
 	// le pool de tokens auto-sync.
 	MatchFetcher MatchFetcher
+
+	// BroadcastPresenceActive (incident 2026-05-27) : quand un joueur passe
+	// présent in-game (titre tracké), propager l'état Active à TOUS les
+	// PlayerWatcher pour qu'ils démarrent leur propre MatchPoller. Utile pour
+	// les sessions de groupe où plusieurs joueurs jouent ensemble : si la
+	// présence Xbox ne signale fiablement que JGtm (token tracker), les autres
+	// (Madina, Choco) restent en Idle et leur MatchPoller ne tourne pas — leurs
+	// nouveaux matchs ne sont jamais détectés tant que le scheduler delta ne
+	// tourne pas (15 min). Avec broadcast = true, dès que JGtm passe Watching
+	// les 3 autres aussi → leurs MatchPoller tournent → leurs nouveaux matchs
+	// sont détectés au prochain poll.
+	//
+	// Coût : 4× appels GET /matches?count=25 toutes les 30s pendant la
+	// session. Pour un endpoint public (PolicyAnyPublic du pool), c'est
+	// négligeable (~25 IDs × 4 KB par réponse).
+	//
+	// Idempotent côté PlayerWatcher : `OnPresenceActive` ne re-transitionne
+	// pas la FSM si elle est déjà Watching. Pas de risque de cascade.
+	BroadcastPresenceActive bool
 }
 
 // Daemon est le démon de surveillance de présence.
@@ -356,6 +375,12 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 					"event", evID,
 				)
 				pw.OnPresenceActive(evCtx)
+				// Broadcast l'état Active aux autres PlayerWatcher si activé.
+				// Cf. DaemonConfig.BroadcastPresenceActive godoc — incident
+				// 2026-05-27 sessions de groupe non détectées.
+				if d.cfg.BroadcastPresenceActive {
+					d.broadcastPresenceActive(evCtx, pw.gamertag)
+				}
 				return
 			}
 			// Titre présent mais pas dans le registre (ex: Xbox Dashboard
@@ -378,6 +403,45 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		slog.DebugContext(evCtx, "watcher_daemon: présence sans titre actif",
 			"gamertag", pw.gamertag, "state", event.PresenceState, "event", evID)
 		pw.OnPresenceInactive(evCtx)
+	}
+}
+
+// broadcastPresenceActive propage l'état Active à tous les PlayerWatcher
+// sauf celui qui a déclenché l'event. Utilisé pour les sessions de groupe
+// où la présence Xbox ne signale pas tous les joueurs (cf. incident
+// 2026-05-27 : Madina/Choco/XxDaemon jouent avec JGtm mais seul JGtm est
+// vu in-game par le tracker → leurs MatchPoller ne tournent pas → leurs
+// nouveaux matchs jamais détectés).
+//
+// L'appel est synchrone car `OnPresenceActive` est rapide (transition FSM
+// + démarrage poller en goroutine). Idempotent : ne re-transitionne pas
+// la FSM si déjà Watching, pas de cascade entre broadcasts simultanés.
+//
+// Le triggering player est exclu — il a déjà été activé par le handler.
+func (d *Daemon) broadcastPresenceActive(ctx context.Context, triggeringGamertag string) {
+	d.playersMu.RLock()
+	others := make([]*PlayerWatcher, 0, len(d.players))
+	otherNames := make([]string, 0, len(d.players))
+	for gt, pw := range d.players {
+		if gt == triggeringGamertag {
+			continue
+		}
+		others = append(others, pw)
+		otherNames = append(otherNames, gt)
+	}
+	d.playersMu.RUnlock()
+
+	if len(others) == 0 {
+		return
+	}
+
+	slog.InfoContext(ctx, "watcher_daemon: broadcast présence active",
+		"triggered_by", triggeringGamertag,
+		"broadcasted_to", otherNames,
+	)
+
+	for _, pw := range others {
+		pw.OnPresenceActive(ctx)
 	}
 }
 

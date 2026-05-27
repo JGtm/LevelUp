@@ -701,7 +701,7 @@ func main() {
 		}
 		return nil, fmt.Errorf("registry non initialisé")
 	}
-	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher, autoSyncPool)
+	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher, autoSyncPool, autoScheduler)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 	}
@@ -1180,6 +1180,10 @@ func startWatcherDaemon(
 	getNotifier func(xuid string) port.SessionNotifier,
 	tokenRefresher func(ctx context.Context, xuid string) (*domain.HaloTokens, error),
 	haloPool pool.Pool,
+	// autoScheduler fournit BuildEngine pour le câblage syncTrigger.
+	// Source of truth UNIQUE du wiring engine (cf. trigger.go godoc + ADR
+	// incident 2026-05-26). Doit être non-nil en production.
+	autoScheduler *scheduler.AutoSyncScheduler,
 ) *watcher.Daemon {
 	// Vérifier que le watcher est activé dans les settings
 	appSettings, err := settingsStore.Load()
@@ -1295,14 +1299,20 @@ func startWatcherDaemon(
 	// Registre de titres
 	titleReg := title.NewRegistry()
 
-	// Sync trigger (in-process)
+	// Sync trigger (in-process). On câble explicitement l'engineFactory sur
+	// scheduler.BuildEngine — c'est ce qui garantit la parité runtime entre
+	// le path watcher (Coordinator → Trigger.RunSync) et le path scheduler
+	// (auto_sync.defaultRunnerFactory). Sans ça, le SyncEngine créé par le
+	// watcher tombe en mode legacy : pas de SharedProvider → conflit
+	// "different configuration" sur shared_matches_v2.duckdb (incident
+	// 2026-05-26 23:05+).
 	syncTrigger := syncpkg.NewTrigger(cfg.RepoRoot, &staticTokenProvider{tokens: *tokens}, domain.SyncOptions{
 		MatchType:         "matchmaking",
 		MaxMatches:        25,
 		WithParticipants:  true,
 		WithMedals:        true,
 		RequestsPerSecond: 5,
-	})
+	}).WithEngineFactory(autoScheduler.BuildEngine)
 
 	// MatchFetcher pour le polling Halo API (/hi/players/xuid(N)/matches) du
 	// MatchPoller. Réutilise le pool de tokens auto-sync : endpoint public
@@ -1329,6 +1339,12 @@ func startWatcherDaemon(
 		SteamAPIKey:     os.Getenv("STEAM_API_KEY"),
 		MaxParallelSync: 2,
 		MatchFetcher:    matchFetcher,
+		// Broadcast présence active : quand un joueur passe in-game (titre
+		// tracké), tous les autres PlayerWatcher passent aussi en Watching.
+		// Évite que les sessions de groupe soient invisibles côté tracker
+		// (incident 2026-05-27 — cf. ensure_enrichment_rows.go + thought_log).
+		// Désactivable via LEVELUP_WATCHER_BROADCAST=0.
+		BroadcastPresenceActive: os.Getenv("LEVELUP_WATCHER_BROADCAST") != "0",
 		LiveRefreshFactory: func(gamertag, xuid string) watcher.LiveRefreshTrigger {
 			wMetaPath := watcherPR.MetadataDBPath(watcherSlug)
 			wPlayerPath := watcherPR.PlayerDBPath(watcherSlug, gamertag)
