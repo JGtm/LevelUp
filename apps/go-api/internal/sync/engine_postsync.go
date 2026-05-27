@@ -363,6 +363,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: LUSR mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
+	// 2.5 LUSR v2 — shadow mode (LEVELUP_LUSR_V2_ENABLED=1). Calcule en parallèle
+	// du v1 et écrit dans player_skill_state_v2. Aucun impact sur v1, aucun
+	// reader UI à ce stade. Best-effort, n'arrête jamais le pipeline.
+	if IsLUSRV2Enabled() {
+		if n, err := RunLUSRV2Shadow(ctx, sharedDB, e.xuid); err != nil {
+			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
+				"gamertag", e.gamertag, "err", err)
+		} else if n > 0 {
+			slog.InfoContext(ctx, "post-sync: LUSR v2 shadow OK",
+				"gamertag", e.gamertag, "processed", n)
+		}
+	}
+
 	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
 	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
 	// (throttle 5 min / 6 h + fallback DB per-field), appelé depuis HomeService
