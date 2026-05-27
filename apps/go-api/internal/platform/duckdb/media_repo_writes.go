@@ -21,9 +21,9 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// RÃ©cupÃ©rer l'id du mÃ©dia (match flexible : file_path exact OU basename)
+	// Récupérer l'id du média (match flexible : file_path exact OU basename).
 	basename := filepath.Base(filePath)
-	var mediaID string
+	var mediaID int64
 	if err := r.socialDB().QueryRow(ctx,
 		`SELECT id FROM media_files WHERE file_path = ? OR file_name = ? LIMIT 1`,
 		filePath, basename,
@@ -31,15 +31,23 @@ func (r *MediaRepo) SetMediaMatchAssociation(ctx context.Context, filePath, matc
 		return nil, nil, fmt.Errorf("SetMediaMatchAssociation: media not found: %w", err)
 	}
 
-	// DELETE + INSERT sÃ©quentiels. DuckDB est ACID single-writer sur fichier ;
-	// risque de race minimal pour une opÃ©ration manuelle utilisateur.
-	// is_manual = TRUE : marque la correction utilisateur pour qu'un reassociate
-	// global ultÃ©rieur ne l'Ã©crase pas.
-	if _, err := r.socialDB().ExecRecovered(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
-		return nil, nil, fmt.Errorf("delete old assoc: %w", err)
-	}
-	if _, err := r.socialDB().ExecRecovered(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
-		return nil, nil, fmt.Errorf("insert new assoc: %w", err)
+	// ADR 0021 Phase 3.2 : route via SocialPersister (TX atomique DELETE+INSERT
+	// + CHECKPOINT garanti). Fallback legacy si Persister non wired (tests).
+	if r.pdb.SocialPersister != nil {
+		if err := r.pdb.SocialPersister.SetMediaMatchAssociation(ctx, mediaID, matchID); err != nil {
+			return nil, nil, fmt.Errorf("SetMediaMatchAssociation persister: %w", err)
+		}
+	} else {
+		// Fallback legacy : DELETE + INSERT séquentiels + CHECKPOINT.
+		// is_manual = TRUE : marque la correction utilisateur pour qu'un
+		// reassociate global ultérieur ne l'écrase pas.
+		if _, err := r.socialDB().ExecRecovered(ctx, `DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaID); err != nil {
+			return nil, nil, fmt.Errorf("delete old assoc: %w", err)
+		}
+		if _, err := r.socialDB().ExecRecovered(ctx, `INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`, mediaID, matchID); err != nil {
+			return nil, nil, fmt.Errorf("insert new assoc: %w", err)
+		}
+		_ = CheckpointSharedSocial(ctx, r.socialDB())
 	}
 
 	// récupérer map/mode du nouveau match via SharedReader.
@@ -73,11 +81,23 @@ func (r *MediaRepo) queryConfig() mediaQueryConfig {
 	return mediaQueryConfig{}
 }
 
-// SetMediaLike persiste l'Ã©tat liked d'un mÃ©dia dans media_files (cache local).
+// SetMediaLike persiste l'état liked d'un média dans media_files.
+//
+// ADR 0021 Phase 3.2 : route via SocialPersister (TX atomique + CHECKPOINT
+// garanti). Fallback legacy si Persister nil (tests).
+//
+// Note : quand WriterAcquirer est wired, le service utilise SetMediaLikeAtomic
+// via LeasedWriter — chemin parallèle qui combine media_files.liked +
+// media_likes (likers sociaux) en 1 TX.
 func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked bool) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	if r.pdb.SocialPersister != nil {
+		return r.pdb.SocialPersister.SetMediaLiked(ctx, filePath, liked)
+	}
+
+	// Fallback legacy : UPDATE direct + CHECKPOINT explicite.
 	result, err := r.socialDB().ExecRecovered(ctx, `
 		UPDATE media_files
 		SET liked = ?,
@@ -87,11 +107,11 @@ func (r *MediaRepo) SetMediaLike(ctx context.Context, filePath string, liked boo
 	if err != nil {
 		return false, fmt.Errorf("SetMediaLike: %w", err)
 	}
-
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return false, fmt.Errorf("SetMediaLike rows affected: %w", err)
 	}
+	_ = CheckpointSharedSocial(ctx, r.socialDB())
 	return rowsAffected > 0, nil
 }
 
@@ -177,7 +197,8 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 		return r.pdb.SocialPersister.RemoveLike(ctx, mediaPath, likerSlug)
 	}
 
-	// Fallback legacy (tests sans wiring).
+	// Fallback legacy (tests sans wiring). CHECKPOINT immédiat post-write
+	// (ADR 0021 Phase 3.2) pour ne pas laisser de WAL non-flushé.
 	if liked {
 		// Note : `liked_at = CURRENT_TIMESTAMP` dans le ON CONFLICT casse le binder
 		// DuckDB qui interprète CURRENT_TIMESTAMP comme un nom de colonne.
@@ -189,12 +210,20 @@ func (r *MediaRepo) ToggleSharedLike(ctx context.Context, mediaPath, likerSlug, 
 				liker_gamertag = EXCLUDED.liker_gamertag,
 				liked_at = EXCLUDED.liked_at
 		`, mediaPath, likerSlug, likerGamertag)
-		return err
+		if err != nil {
+			return err
+		}
+		_ = CheckpointSharedSocial(ctx, r.socialDB())
+		return nil
 	}
 	_, err := r.socialDB().ExecRecovered(ctx, `
 		DELETE FROM media_likes WHERE media_path = ? AND liker_slug = ?
 	`, mediaPath, likerSlug)
-	return err
+	if err != nil {
+		return err
+	}
+	_ = CheckpointSharedSocial(ctx, r.socialDB())
+	return nil
 }
 
 // GetMediaLikers retourne pour chaque media_path ses likers (max 3 noms + total).

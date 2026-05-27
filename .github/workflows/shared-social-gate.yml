@@ -1,0 +1,92 @@
+name: ADR 0021 Gate — shared_social invariants
+
+# Phase 5.1 du plan ADR 0021. Job dédié qui rejoue les invariants de la
+# couche shared_social (récupération auto WAL, CHECKPOINT systématique,
+# sentinelle AST anti-ATTACH/DETACH, intégration likes/favoris/media_match).
+#
+# Déclenché sur :
+#   - Tout push qui touche les paths critiques (pool, persist, media, ops/media,
+#     migration shared_social, cmd rebuild/snapshot)
+#   - Toute PR vers main
+#
+# Race-clean exigé. Cgo + DuckDB requis (linux-amd64).
+
+on:
+  push:
+    branches: [main, feature/*, refactor/*, fix/*]
+    paths:
+      - "apps/go-api/internal/platform/duckdb/**"
+      - "apps/go-api/internal/platform/dblease/**"
+      - "apps/go-api/internal/persist/**"
+      - "apps/go-api/internal/ops/media*.go"
+      - "apps/go-api/internal/ops/media_*.go"
+      - "apps/go-api/internal/migration/steps_shared_social*.go"
+      - "apps/go-api/internal/api/post_sync*.go"
+      - "apps/go-api/internal/api/handlers/media*.go"
+      - "apps/go-api/cmd/rebuild_shared_social/**"
+      - "apps/go-api/cmd/snapshot_shared_social/**"
+      - "Makefile"
+      - ".github/workflows/shared-social-gate.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/go-api/internal/platform/duckdb/**"
+      - "apps/go-api/internal/platform/dblease/**"
+      - "apps/go-api/internal/persist/**"
+      - "apps/go-api/internal/ops/media*.go"
+      - "apps/go-api/internal/migration/steps_shared_social*.go"
+      - "apps/go-api/internal/api/post_sync*.go"
+      - "apps/go-api/cmd/rebuild_shared_social/**"
+
+jobs:
+  shared-social-gate:
+    name: Tests invariants shared_social
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/go-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: apps/go-api/go.mod
+          cache: true
+          cache-dependency-path: apps/go-api/go.sum
+
+      - name: Install build deps (CGO + DuckDB)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential
+
+      - name: Run shared_social gate (race-clean)
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          go test -race -count=1 -timeout 90s \
+            -run 'TestOpenSharedSocial|TestIsWALReplayFailure|TestQuarantineOrphanWAL|TestCheckpointSharedSocial|TestSet.*PersistsAfter|TestToggle.*PersistsAfter|TestNoATTACHOnSocialDB|TestSocialReceiverLabel|TestSentinel|TestNoUnauthorizedSharedSocialMention|TestMediaService_LikeSurvives|TestMediaService_FavoriteSurvives|TestMediaService_LikeAtomic_DuringQuarantine|TestMediaService_4Players_ConcurrentLikes|TestWALOrphanRepro|TestE2E_KillBrutal_WALOrphanRecoveryWorks|TestCommitWithCheckpoint' \
+            ./internal/platform/duckdb/ ./internal/platform/dblease/
+
+      - name: Run kill-brutal cycles (sub-process)
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          go test -race -count=1 -timeout 120s \
+            -run 'TestE2E_KillBrutal|TestAssociateMediaWithMatches_RestartCycle|TestE2E_AssociateMedia' \
+            ./internal/ops/
+
+      - name: Run rebuild_shared_social tool tests
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          go test -count=1 ./cmd/rebuild_shared_social/
+
+      - name: Coverage ratchet check (Gap 4 — fail si régression vs baseline)
+        env:
+          CGO_ENABLED: "1"
+        working-directory: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/check_coverage_ratchet.sh
+          ./scripts/check_coverage_ratchet.sh

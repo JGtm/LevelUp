@@ -264,12 +264,14 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// "INTERNAL Error: Failure while replaying WAL file: Calling
 	// DatabaseManager::GetDefaultDatabase".
 	//
-	// Best-effort : si CHECKPOINT échoue (lock contention, etc.), les data
-	// sont commit donc OK fonctionnellement — on loggue WARN pour
-	// traçabilité.
+	// ADR 0021 Phase 3.2 — passé en erreur dure : un CHECKPOINT échoué après
+	// une indexation BULK (centaines de INSERT/UPDATE potentiels) laisse une
+	// fenêtre d'exposition WAL trop large. Mieux vaut faire échouer l'opération
+	// (l'utilisateur retry) que continuer avec un WAL en sursis.
 	if _, ckptErr := db.ExecContext(ctx, "CHECKPOINT"); ckptErr != nil {
-		slog.WarnContext(ctx, "IndexMedia: CHECKPOINT échoué (non-fatal — données committed)",
+		slog.ErrorContext(ctx, "IndexMedia: CHECKPOINT échoué — abandon (ADR 0021)",
 			"path", targetPath, "err", ckptErr)
+		return result, fmt.Errorf("IndexMedia CHECKPOINT post-write: %w", ckptErr)
 	}
 
 	slog.Info("IndexMedia: terminé",
