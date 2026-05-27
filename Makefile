@@ -20,7 +20,9 @@ LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
 
 .PHONY: help web dev test-web test-e2e test-e2e-ui check-types \
         generate-types install-web \
-        go-api-build go-api-test go-api-dev _go-api-run
+        go-api-build go-api-test go-api-dev _go-api-run \
+        go-api-test-shared-social-gate install-git-hooks \
+        go-api-test-coverage-ratchet
 
 ## Affiche cette aide
 help:
@@ -156,6 +158,51 @@ go-api-coverage:
 ## Go API: vet + lint
 go-api-lint:
 	cd $(GO_API_DIR) && go vet ./internal/domain/... ./internal/analysis/...
+
+## Installe le hook pre-commit ADR 0021 (Phase 3.5).
+##
+## Le hook lance go-api-test-shared-social-gate si le commit modifie des fichiers
+## critiques (pool/persist/media/ops/migration shared_social). Bypass via
+## --no-verify (documenter dans le commit msg).
+install-git-hooks:
+	@HOOKS_DIR=$$(git rev-parse --git-path hooks 2>/dev/null); \
+	if [ -z "$$HOOKS_DIR" ]; then \
+		echo "[install-git-hooks] git rev-parse échoué — repo non-initialisé ?"; \
+		exit 1; \
+	fi; \
+	mkdir -p "$$HOOKS_DIR"; \
+	cp scripts/git-hooks/pre-commit "$$HOOKS_DIR/pre-commit"; \
+	chmod +x "$$HOOKS_DIR/pre-commit" 2>/dev/null || true; \
+	echo "[install-git-hooks] hook pre-commit installé : $$HOOKS_DIR/pre-commit"; \
+	echo "  Pour bypass exceptionnel : git commit --no-verify (à documenter)."
+
+## Go API: gate ADR 0021 — tests invariants shared_social (récupération auto WAL,
+## CHECKPOINT systématique, sentinelle AST anti-ATTACH). À lancer en CI sur PR
+## qui touche pool/media/persist/shared_social ; race-clean exigé.
+##
+## Couvre :
+##   - openSharedSocialWithWALRecovery + quarantineOrphanWAL + isWALReplayFailure
+##   - CheckpointSharedSocial (helper Phase 3.2)
+##   - sentinelle AST NoATTACHOnSocialDB + socialReceiverLabel
+##   - tests intégration SetMediaMatchAssociation/SetMediaLike/ToggleSharedLike
+##   - E2E kill brutal + restart cycle (sub-process)
+go-api-test-shared-social-gate:
+	cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		go test -race -count=1 -timeout 90s \
+		-run 'TestOpenSharedSocial|TestIsWALReplayFailure|TestQuarantineOrphanWAL|TestCheckpointSharedSocial|TestSet.*PersistsAfter|TestToggle.*PersistsAfter|TestNoATTACHOnSocialDB|TestSocialReceiverLabel|TestSentinel|TestRequireSocialPersister|TestErrSocialPersisterNotWired|TestWALOrphanRepro' \
+		./internal/platform/duckdb/
+	cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		go test -race -count=1 -timeout 120s \
+		-run 'TestE2E_KillBrutal|TestAssociateMediaWithMatches_RestartCycle|TestE2E_AssociateMedia' \
+		./internal/ops/
+	cd $(GO_API_DIR) && CGO_ENABLED=1 \
+		go test -race -count=1 -timeout 60s \
+		-run 'TestMediaE2E_RealDB' \
+		./internal/api/handlers/
+
+## Coverage ratchet (Gap 4 / Phase 5.1 strict).
+go-api-test-coverage-ratchet:
+	./scripts/check_coverage_ratchet.sh
 
 ## Go API: génère les types depuis openapi.yaml
 go-api-gen:

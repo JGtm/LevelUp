@@ -125,6 +125,11 @@ func main() {
 	duckdb.SocialPersisterFactory = func(db *sql.DB) duckdb.SocialPersister {
 		return persist.NewSharedSocialPersister(db)
 	}
+	// ADR 0021 Gap 1 : refuser silencieusement les écritures legacy en prod.
+	// Tout call site qui détecte SocialPersister == nil retourne désormais
+	// ErrSocialPersisterNotWired au lieu de fallback vers Exec direct. Permet
+	// de détecter immédiatement un bug de wiring boot.
+	duckdb.RequireSocialPersister = true
 
 	// --- 1. Logging structuré ---
 	// Trois formats console (LEVELUP_LOG_FORMAT) :
