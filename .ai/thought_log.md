@@ -1,3 +1,70 @@
+## [2026-05-27] fix(career/xp-history): régression XP 25 mai + projections manquantes + amis à 0
+
+**Statut** : Complété
+
+**Branche** : `fix/career-xp-history-monotone`
+
+**Symptômes rapportés** (joueur Madina97294, page Carrière, graphe "Historique XP") :
+1. Un seul ami affiché parmi 3 configurés, courbe plate à 0.
+2. Aucune projection rendue (ni "Projection Héros" ni "Projection optimiste").
+3. Courbe XP de Madina retombe à 0 le 25 mai 2026 (régression cumulative impossible normalement).
+
+**Cause racine unique** (les 3 symptômes ont la même origine) :
+
+`Q7CareerXPHistory` ([apps/go-api/internal/platform/duckdb/queries_career.go:196-205](apps/go-api/internal/platform/duckdb/queries_career.go#L196-L205) avant fix) utilisait :
+
+```sql
+COALESCE(NULLIF(cp.xp_total, 0), NULLIF(cp.rank, 0) * 1000) AS xp_total_cumulative
+```
+
+Le fallback `rank * 1000` est destructeur post-migration `fix_career_xp_total_default_zero` (qui a converti les `xp_total=0` legacy en NULL). Scénario :
+- Avant 25 mai : `rank=300, xp_total=5_000_000` → Q7 = 5M ✓
+- 25 mai : sync où l'API Halo Economy n'a pas renvoyé `TotalEarned` → `PartialFromLive` (déjà défensif : `if XPTotal > 0`) écrit `rank=300, xp_total=NULL`
+- Q7 calcule : `COALESCE(NULL, 300*1000) = 300_000` → **régression de 5M à 300k** (bug #3)
+- Cascade : `computeActiveXPPerDay` calcule `xpDelta = lastXP - firstXP = -4.7M ≤ 0` → retourne 0 → frontend `projections.xp_per_day_active > 0` faux → **projections invisibles** (bug #2)
+- Pour les amis : ceux avec uniquement des syncs partial customization-only (rank>0, xp_total=NULL) tracent une courbe à `rank*1000` (~10k pour un débutant) qui apparait visuellement plate à 0 (bug #1)
+
+**Décision technique** (defense-in-depth, validée avec l'utilisateur) :
+
+1. **Lecture monotone Q7** : suppression du fallback `rank*1000` (sous-estimation systématique). Q7 devient :
+   ```sql
+   MAX(cp.xp_total) OVER (ORDER BY cp.recorded_at ROWS UNBOUNDED PRECEDING ... CURRENT ROW)
+     AS xp_total_cumulative
+   FROM career_progression cp
+   WHERE cp.xp_total IS NOT NULL AND cp.xp_total > 0
+   ```
+   `MAX OVER` garantit la monotonie face à tout row aberrant futur.
+
+2. **Skip amis all-zero** ([registry.go:404-416](apps/go-api/internal/api/registry.go#L404-L416)) : helper `allZeroXPTotal()` + `slog.DebugContext` "friends_xp: skipped, all_zero" pour observabilité. Defense-in-depth : redondant avec le filtre Q7 mais blinde contre toute régression d'écriture future.
+
+3. **Pas de cleanup data** : la lecture monotone masque les rows legacy déjà polluées sans DELETE destructif. Append-only respecté, conforme ADR 0019.
+
+4. **Écriture déjà OK** : `PartialFromLive` ([career_live_partial.go:67](apps/go-api/internal/service/career_live_partial.go#L67)) écrit `xp_total` uniquement si `> 0` — pas de régression d'écriture à craindre.
+
+**Pourquoi ce fix est solide et pérenne** :
+- La migration data `fix_career_xp_total_default_zero` (déjà déployée) a converti les 0 en NULL : aucun backfill nécessaire.
+- L'écriture est déjà défensive depuis le refactor ART : aucune nouvelle row corrompue ne sera produite.
+- La lecture monotone via SQL window function gère robustement les rows legacy + tout futur incident isolé.
+- 14 tests nouveaux verrouillent les invariants (Q7 monotone : 7 cas, computeActiveXPPerDay + buildProjections : 3 cas, `allZeroXPTotal` : 4 cas).
+
+**Tests** :
+- `go test -tags=integration ./internal/platform/duckdb/ -run TestQ7XPHistory` : 7/7 PASS
+- `go test ./internal/service/ -run "TestComputeActiveXPPerDay|TestBuildProjections"` : 5/5 PASS (dont 3 nouveaux)
+- `go test ./internal/api/ -run TestAllZeroXPTotal` : 4/4 PASS
+- `TestCareerRepo_GetXPHistory_WithData` (pré-existant) : PASS — pas de régression
+- `go vet ./...` + golangci-lint via pre-commit : OK
+
+**Note collatérale** : `TestCareerRepo_GetTopMatches_WithData` cassé pré-existant ("expected 4 destination arguments not 3") introduit par commit `ec6efd2b feat(career): bot teammate asymmetry` — `loadTopMatchPMERows` ([career_repo.go:370](apps/go-api/internal/platform/duckdb/career_repo.go#L370)) scan 3 colonnes mais `Q9TopMatchesPlayer` en retourne 4 (`had_bot_teammate` ajouté). Hors scope ce PR (regression non liée XP history).
+
+**Prochaine étape** : vérification visuelle E2E à faire après merge (front sur /players/Madina97294/career) :
+- Courbe XP monotone du début à aujourd'hui
+- 2 projections visibles
+- Réponse `GET /players/Madina97294/pages/career` : `projections.xp_per_day_active > 0` et `xp_history` strictement croissant
+
+Surveiller `friends_xp: skipped, *` (DEBUG) en prod pour identifier les amis avec sync career chroniquement échoué (XxDaemonGamerxX en 403 documenté).
+
+---
+
 ## [2026-05-27] fix(match_view): NaN JSON marshal — sanitize inopérant sur structs par valeur
 
 **Statut** : Complété (Étape 1 du plan ; identification de la source du NaN reportée — gérée par les logs diagnostic)
