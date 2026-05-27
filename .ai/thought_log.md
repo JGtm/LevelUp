@@ -1,3 +1,50 @@
+## [2026-05-27] fix(lusr-v2): Phase 3e v2 — grille tier refined (CSR-aligned)
+
+**Statut** : Complété
+
+**Contexte** : Phase 3e v1 plaçait Madina (μ=26.12, p75 de la pop trackée) en Platine I, mais l'utilisateur a constaté en jeu que Madina avait été Diamant 4-5 voire Onyx en CSR Halo 5. Discussion révèle que LUSR v2 mesure le skill social (population large, plus de joueurs occasionnels) vs CSR (population sweat auto-sélectionnée), donc les tiers ne sont pas directement comparables.
+
+L'utilisateur a validé l'option B (CSR-aligned moderate inflation) : Onyx descend à top ~10 % de la pop v2 au lieu de top 1 %.
+
+**Décision technique principale** :
+
+Grille tier v2 (post-feedback) — largeurs non uniformes :
+
+| Tier | μ range | Largeur | Pop. approx. | Rationale |
+|---|---|---:|---|---|
+| Bronze | [0, 21[ | 21 | bottom ~10% | wide pour absorber les outliers bas (queue large, peu dense) |
+| Argent | [21, 22[ | 1 | 10-15% | étroit, zone de promotion |
+| Or | [22, 25[ | 3 | 15-65% | **le gros bucket de la pop** |
+| Platine | [25, 25.8[ | 0.8 | 65-70% | étroit, zone de promotion |
+| Diamant | [25.8, 27[ | 1.2 | 70-90% | |
+| Onyx | [27, ∞[ | ouvert | top ~10% | accessible (vs top 1% CSR classique — défendable pour pop sociale) |
+
+Update tests `tier_test.go` :
+- `TestInferTier_ReferencePlayers` : Madina BTB/Slayer → Diamond, Madina arena_objectif → Platinum, autres inchangés.
+- `TestInferTier_Boundaries` : nouvelles bornes.
+- `TestInferTier_SubTiers_DistributesEvenly` : Or [22, 25[ avec sub_width 0.5 (JGtm 23.52 → Or IV).
+- `TestInferTier_Onyx_NoSubTier` : Onyx commence à 27 maintenant.
+- `TestFormatTierLabel` : valeurs adaptées à la nouvelle grille (note : float64 precision sur les bornes exactes — μ=26.0 dans Diamant width 0.2 produit sub I à cause de 0.999...).
+
+**Résultats observés — re-replay sur les 4 joueurs trackés** :
+
+| Joueur | Cible | μ | Tier inféré | Verdict |
+|---|---|---:|---|---|
+| Madina BTB | Diamant 4-5 (CSR Halo 5) | 26.17 | **Diamant II** | ⚠ un peu sous cible mais ✓ tier Diamant |
+| Madina Slayer | idem | 26.12 | Diamant I | ⚠ idem |
+| Madina arena_objectif | idem | 25.75 | Platine VI | proche Diamant |
+| Chocoboflor Slayer | Or IV (CSR) | 23.81 | **Or IV** | ✓ pile poil |
+| JGtm Slayer | Or IV (CSR) | 23.52 | **Or IV** | ✓ pile poil |
+| XxDaemon Slayer | Bronze | 20.38 | **Bronze VI** | ✓ haut Bronze |
+
+**Trade-off assumé** : Madina à Diamant II au lieu de IV-V parce que son μ=26 reste seulement à p75 de notre data ; la pousser à IV-V exigerait soit μ > 26.5 (plus de wins), soit une inflation Onyx top 20-25% (ridicule). Diamant II est un bon compromis : Madina est dans le tier Diamant comme attendu.
+
+`go test ./internal/analysis/skill_v2/` PASS. `go vet ./...` clean.
+
+**Prochaine étape** : pas de travail autonome restant — la persistance des seuils dans `lusr_hyperparams_v2`, la bascule prod, et l'affichage UI nécessitent ton GO explicite.
+
+---
+
 ## [2026-05-27] refactor(config): migration feature flags vers app_settings.json
 
 **Statut** : Complété

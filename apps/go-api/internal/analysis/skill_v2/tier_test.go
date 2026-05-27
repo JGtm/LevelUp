@@ -17,18 +17,21 @@ func TestDefaultTierBoundaries_Ordered(t *testing.T) {
 
 func TestInferTier_ReferencePlayers(t *testing.T) {
 	// Vérifie que les 4 joueurs trackés (Phase 3d v3) tombent dans leurs tiers
-	// cibles. Critère ⭐ de Phase 3e — c'est pour ça qu'on a calibré les seuils.
+	// cibles. Critère ⭐ de Phase 3e v2 — c'est pour ça qu'on a calibré les seuils.
+	//
+	// Grille B v2 (post-feedback utilisateur) : Bronze large, Or = bulk,
+	// Platine étroit, Diamant large pour matcher les CSR connus.
 	bs := DefaultTierBoundaries()
 	cases := []struct {
 		name     string
 		mu       float64
 		wantTier string
 	}{
-		{"Madina BTB", 26.17, "Platinum"},        // cible Platine ✓
-		{"Madina arena_slayer", 26.12, "Platinum"},
-		{"Madina arena_objectif", 25.75, "Gold"}, // tout juste sous Platine
-		{"Chocoboflor arena_slayer", 23.81, "Gold"}, // cible Or ✓
-		{"JGtm arena_slayer", 23.52, "Gold"},     // cible Or ✓
+		{"Madina BTB", 26.17, "Diamond"},                  // cible Diamant ✓ (CSR Diamant 4-5)
+		{"Madina arena_slayer", 26.12, "Diamond"},         // cible Diamant ✓
+		{"Madina arena_objectif", 25.75, "Platinum"},      // proche Diamant, dans Platine étroit
+		{"Chocoboflor arena_slayer", 23.81, "Gold"},       // cible Or ✓
+		{"JGtm arena_slayer", 23.52, "Gold"},              // cible Or ✓
 		{"XxDaemonGamerxX arena_slayer", 20.38, "Bronze"}, // cible Bronze ✓
 	}
 	for _, c := range cases {
@@ -43,24 +46,26 @@ func TestInferTier_ReferencePlayers(t *testing.T) {
 
 func TestInferTier_Boundaries(t *testing.T) {
 	bs := DefaultTierBoundaries()
-	// Tests sur les bornes exactes.
+	// Tests sur les bornes exactes (grille Phase 3e v2).
+	// Bronze [0, 21[, Argent [21, 22[, Or [22, 25[, Platine [25, 25.8[,
+	// Diamant [25.8, 27[, Onyx [27, ∞[.
 	cases := []struct {
 		mu       float64
 		wantTier string
 	}{
-		{-100, "Bronze"},  // très bas → Bronze
+		{-100, "Bronze"},   // très bas → Bronze
 		{0, "Bronze"},
-		{21.99, "Bronze"}, // juste sous Silver
-		{22.0, "Silver"},  // borne inclusive
-		{23.49, "Silver"},
-		{23.5, "Gold"},
-		{25.99, "Gold"},
-		{26.0, "Platinum"},
-		{28.99, "Platinum"},
-		{29.0, "Diamond"},
-		{30.99, "Diamond"},
-		{31.0, "Onyx"},
-		{100.0, "Onyx"}, // très haut → Onyx
+		{20.99, "Bronze"},  // juste sous Silver
+		{21.0, "Silver"},   // borne inclusive
+		{21.99, "Silver"},
+		{22.0, "Gold"},
+		{24.99, "Gold"},
+		{25.0, "Platinum"},
+		{25.79, "Platinum"},
+		{25.8, "Diamond"},
+		{26.99, "Diamond"},
+		{27.0, "Onyx"},
+		{100.0, "Onyx"},    // très haut → Onyx
 	}
 	for _, c := range cases {
 		tier, _ := InferTier(c.mu, bs)
@@ -72,19 +77,20 @@ func TestInferTier_Boundaries(t *testing.T) {
 
 func TestInferTier_SubTiers_DistributesEvenly(t *testing.T) {
 	bs := DefaultTierBoundaries()
-	// Or = [23.5, 26.0[, 6 sous-tiers → width = 0.4167 par sous-tier.
-	// μ = 23.5 → sub 1 ; μ = 23.9 → sub 1 ; μ = 24.0 → sub 2 ; etc.
+	// Or = [22.0, 25.0[ (grille v2), 6 sous-tiers → width = 0.5 par sous-tier.
+	// μ = 22.0 → sub 1 ; μ = 22.5 → sub 2 ; μ = 23.0 → sub 3 ; etc.
 	cases := []struct {
 		mu      float64
 		wantSub int
 	}{
-		{23.5, 1},
-		{23.9, 1},
-		{24.0, 2},   // 23.5 + 1*0.4167 = 23.92, donc 24.0 = sub 2
-		{24.5, 3},
-		{25.0, 4},
-		{25.5, 5},
-		{25.9, 6},
+		{22.0, 1},
+		{22.49, 1},
+		{22.5, 2},
+		{23.0, 3},
+		{23.52, 4}, // JGtm
+		{24.0, 5},
+		{24.5, 6},
+		{24.99, 6},
 	}
 	for _, c := range cases {
 		tier, sub := InferTier(c.mu, bs)
@@ -100,7 +106,7 @@ func TestInferTier_SubTiers_DistributesEvenly(t *testing.T) {
 
 func TestInferTier_Onyx_NoSubTier(t *testing.T) {
 	bs := DefaultTierBoundaries()
-	for _, mu := range []float64{31.0, 35.0, 50.0} {
+	for _, mu := range []float64{27.0, 28.5, 35.0, 50.0} {
 		tier, sub := InferTier(mu, bs)
 		if tier.Name != "Onyx" {
 			t.Errorf("μ=%v should be Onyx", mu)
@@ -115,24 +121,27 @@ func TestFormatTierLabel(t *testing.T) {
 	bs := DefaultTierBoundaries()
 	// Convention Halo CSR : sub I (1) = bas du tier, sub VI (6) = haut.
 	// Donc μ proche du seuil supérieur du tier produit un sub élevé.
+	//
+	// Grille v2 :
+	// Bronze [0, 21[, width = 3.5 par sous-tier
+	// Or [22, 25[, width = 0.5 par sous-tier
+	// Diamant [25.8, 27[, width = 0.2 par sous-tier
 	cases := []struct {
 		mu   float64
 		want string
 	}{
-		// Bronze couvre [0, 22[, width = 22/6 ≈ 3.67
-		// μ = 1 → sub 1 (bas Bronze)
-		// μ = 20 → sub 6 (haut Bronze, proche Silver)
 		{1.0, "Bronze I"},
-		{20.0, "Bronze VI"},
-		// Or couvre [23.5, 26[, width = 2.5/6 ≈ 0.417
-		// μ = 23.5 → sub 1, μ = 24.0 → sub 2, μ = 25.9 → sub 6
-		{23.5, "Or I"},
-		{24.0, "Or II"},
-		{25.9, "Or VI"},
-		// Platine couvre [26, 29[, width = 3/6 = 0.5
-		{26.0, "Platine I"},
-		// Onyx pas de sub
-		{31.0, "Onyx"},
+		{20.0, "Bronze VI"}, // (20-0)/3.5+1 = 5.71+1 → clamp 6
+		{22.0, "Or I"},      // borne inclusive
+		{22.5, "Or II"},
+		{23.52, "Or IV"},    // JGtm
+		{24.99, "Or VI"},
+		{25.0, "Platine I"},
+		{25.8, "Diamant I"}, // borne Diamant
+		{26.0, "Diamant I"}, // (26-25.8)/0.2 → 0.999... int=0 +1 → 1 (float precision)
+		{26.17, "Diamant II"}, // Madina BTB → (26.17-25.8)/0.2 = 1.85 → 2
+		{26.5, "Diamant IV"}, // (26.5-25.8)/0.2 = 3.5 → 4
+		{27.0, "Onyx"},
 		{45.0, "Onyx"},
 	}
 	for _, c := range cases {
@@ -144,23 +153,23 @@ func TestFormatTierLabel(t *testing.T) {
 
 func TestTierBoundariesFromHyperparams_OverridesDefaults(t *testing.T) {
 	hp := map[string]float64{
-		"tier_boundary_gold":     24.0, // au lieu de 23.5
-		"tier_boundary_platinum": 27.0, // au lieu de 26.0
+		"tier_boundary_gold":     22.5, // au lieu de 22.0
+		"tier_boundary_platinum": 25.5, // au lieu de 25.0
 	}
 	bs := TierBoundariesFromHyperparams(hp)
 	for _, b := range bs {
 		switch b.Name {
 		case "Gold":
-			if b.MinMu != 24.0 {
+			if b.MinMu != 22.5 {
 				t.Errorf("Gold override échoué : %v", b.MinMu)
 			}
 		case "Platinum":
-			if b.MinMu != 27.0 {
+			if b.MinMu != 25.5 {
 				t.Errorf("Platinum override échoué : %v", b.MinMu)
 			}
 		case "Silver":
-			if b.MinMu != 22.0 {
-				t.Errorf("Silver default écrasé : %v", b.MinMu)
+			if b.MinMu != 21.0 {
+				t.Errorf("Silver default écrasé : %v (attendu 21.0)", b.MinMu)
 			}
 		}
 	}

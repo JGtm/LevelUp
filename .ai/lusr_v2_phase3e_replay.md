@@ -6,9 +6,9 @@ Replay du shadow runner sur tout l'historique LUSR-éligible des joueurs ci-dess
 
 | Joueur | XUID | Cible | Groupe le plus joué | μ (skill latent) | σ (incertitude) | Tier inféré | exp |
 |---|---|---|---|---:|---:|---|---:|
-| Madina97294 | 2533274858283686 | fin Platine / début Diamant (joueur fort) | btb | 26.17 | 0.68 | Platine I | 315 |
-| Chocoboflor | 2535469190789936 | milieu/bas Or (joueur moyen) | arena_slayer | 23.81 | 0.67 | Or I | 171 |
-| JGtm | 2533274823110022 | milieu/bas Or (joueur moyen) | arena_slayer | 23.52 | 0.67 | Or I | 236 |
+| Madina97294 | 2533274858283686 | fin Platine / début Diamant (joueur fort) | btb | 26.17 | 0.68 | Diamant II | 315 |
+| Chocoboflor | 2535469190789936 | milieu/bas Or (joueur moyen) | arena_slayer | 23.81 | 0.67 | Or IV | 171 |
+| JGtm | 2533274823110022 | milieu/bas Or (joueur moyen) | arena_slayer | 23.52 | 0.67 | Or IV | 236 |
 | XxDaemonGamerxX | 2533274833178266 | Bronze (joueur faible) | arena_slayer | 20.38 | 1.23 | Bronze VI | 19 |
 
 ## Détail par joueur × groupe
@@ -17,36 +17,36 @@ Replay du shadow runner sur tout l'historique LUSR-éligible des joueurs ci-dess
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|
-| arena_objectif | 25.75 | 0.71 | Or VI | 92 |
-| arena_slayer | 26.12 | 0.67 | Platine I | 298 |
-| btb | 26.17 | 0.68 | Platine I | 315 |
-| chaos | 25.91 | 1.47 | Or VI | 13 |
+| arena_objectif | 25.75 | 0.71 | Platine VI | 92 |
+| arena_slayer | 26.12 | 0.67 | Diamant II | 298 |
+| btb | 26.17 | 0.68 | Diamant II | 315 |
+| chaos | 25.91 | 1.47 | Diamant I | 13 |
 
 ### Chocoboflor (cible : milieu/bas Or (joueur moyen))
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|
-| arena_objectif | 23.44 | 0.81 | Argent VI | 52 |
-| arena_slayer | 23.81 | 0.67 | Or I | 171 |
-| btb | 24.58 | 4.57 | Or III | 1 |
-| chaos | 23.24 | 1.59 | Argent V | 11 |
+| arena_objectif | 23.44 | 0.81 | Or III | 52 |
+| arena_slayer | 23.81 | 0.67 | Or IV | 171 |
+| btb | 24.58 | 4.57 | Or VI | 1 |
+| chaos | 23.24 | 1.59 | Or III | 11 |
 
 ### JGtm (cible : milieu/bas Or (joueur moyen))
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|
-| arena_objectif | 23.74 | 0.73 | Or I | 80 |
-| arena_slayer | 23.52 | 0.67 | Or I | 236 |
-| btb | 21.33 | 3.48 | Bronze VI | 2 |
-| chaos | 24.52 | 0.67 | Or III | 167 |
+| arena_objectif | 23.74 | 0.73 | Or IV | 80 |
+| arena_slayer | 23.52 | 0.67 | Or IV | 236 |
+| btb | 21.33 | 3.48 | Argent III | 2 |
+| chaos | 24.52 | 0.67 | Or VI | 167 |
 
 ### XxDaemonGamerxX (cible : Bronze (joueur faible))
 
 | Groupe | μ | σ | Tier inféré | exp |
 |---|---:|---:|---|---:|
-| arena_objectif | 21.88 | 3.44 | Bronze VI | 2 |
+| arena_objectif | 21.88 | 3.44 | Argent VI | 2 |
 | arena_slayer | 20.38 | 1.23 | Bronze VI | 19 |
-| chaos | 23.76 | 4.49 | Or I | 1 |
+| chaos | 23.76 | 4.49 | Or IV | 1 |
 
 ## Lecture
 

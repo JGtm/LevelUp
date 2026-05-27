@@ -7,20 +7,29 @@ package skill_v2
 // Bronze → Argent → Or → Platine → Diamant → Onyx avec 6 sous-tiers
 // par tier sauf Onyx (rang unique).
 //
-// Les seuils sont calibrés en Phase 3e sur la distribution observée des
-// μ posteriors dans player_skill_state_v2_latest (cf. cmd/lusr_v2_tier_analysis) :
+// Grille Phase 3e v2 (post-feedback utilisateur) — calibrée pour que les
+// tiers v2 ressemblent aux ranks CSR observés en jeu. Largeurs des tiers
+// NON uniformes : Bronze large (absorbe les outliers bas, pop peu dense),
+// Or large (le gros bucket de la population), Platine étroit (zone de
+// promotion), Diamant + Onyx larges (pour pousser les top players plus haut
+// même si leur μ relatif est modeste).
 //
-//	Tier      μ min  Couverture % (p)  Joueur tracké de référence
-//	Bronze    -      0-15              XxDaemonGamerxX (μ ≈ 20.4 → p10)
-//	Argent    22.0   15-35
-//	Or        23.5   35-75             Chocoboflor / JGtm (μ ≈ 23.5 → p35-40)
-//	Platine   26.0   75-95             Madina97294 (μ ≈ 26.1 → p75-80)
-//	Diamant   29.0   95-99
-//	Onyx      31.0   99+
+//	Tier     μ range      Largeur   Couvre approx. (population)
+//	Bronze   [0, 21[      21        bottom ~10% (queue large, peu dense)
+//	Argent   [21, 22[     1         10-15% (promotion étroite)
+//	Or       [22, 25[     3         15-65% (LE gros bucket)
+//	Platine  [25, 25.8[   0.8       65-70% (promotion étroite)
+//	Diamant  [25.8, 27[   1.2       70-90%
+//	Onyx     [27, ∞[      ouvert    top ~10%
+//
+// Justification : LUSR v2 mesure le skill social (matches non classés),
+// dont la pop est plus large que le ranked CSR. Onyx à top 10% (vs top 1 %
+// classique CSR) est défendable parce qu'on inclut beaucoup de joueurs
+// occasionnels dans la population.
 //
 // Phase 5 (batch ré-estimation) pourra ré-écrire ces seuils dans
-// lusr_hyperparams_v2 avec un source = "batch_YYYY_MM". À ce moment-là,
-// LoadTierBoundaries fera le merge defaults ↔ overrides.
+// lusr_hyperparams_v2 avec un source = "batch_YYYY_MM". TierBoundariesFromHyperparams
+// fera le merge defaults ↔ overrides.
 
 import (
 	"fmt"
@@ -34,19 +43,20 @@ type TierBoundary struct {
 	SubTiers int     // nombre de sous-tiers (6 partout sauf Onyx = 1)
 }
 
-// DefaultTierBoundaries retourne la grille initiale Phase 3e, calibrée sur
-// la distribution observée 2026-05-27 (~9700 joueurs, μ médian ≈ 24.5).
+// DefaultTierBoundaries retourne la grille Phase 3e v2, calibrée sur la
+// distribution observée + cross-référence avec les ranks CSR connus des
+// joueurs trackés. Voir l'en-tête du fichier pour le rationale.
 //
-// Les bornes sont strictement ordonnées par MinMu croissant. La grille est
-// "ouverte" : Bronze couvre [-∞, MinMu_Silver) ; Onyx couvre [MinMu_Onyx, +∞).
+// Bornes strictement ordonnées par MinMu croissant. Grille ouverte :
+// Bronze couvre [-∞, MinMu_Silver) ; Onyx couvre [MinMu_Onyx, +∞).
 func DefaultTierBoundaries() []TierBoundary {
 	return []TierBoundary{
 		{Name: "Bronze", NameFR: "Bronze", MinMu: 0, SubTiers: 6},
-		{Name: "Silver", NameFR: "Argent", MinMu: 22.0, SubTiers: 6},
-		{Name: "Gold", NameFR: "Or", MinMu: 23.5, SubTiers: 6},
-		{Name: "Platinum", NameFR: "Platine", MinMu: 26.0, SubTiers: 6},
-		{Name: "Diamond", NameFR: "Diamant", MinMu: 29.0, SubTiers: 6},
-		{Name: "Onyx", NameFR: "Onyx", MinMu: 31.0, SubTiers: 1},
+		{Name: "Silver", NameFR: "Argent", MinMu: 21.0, SubTiers: 6},
+		{Name: "Gold", NameFR: "Or", MinMu: 22.0, SubTiers: 6},
+		{Name: "Platinum", NameFR: "Platine", MinMu: 25.0, SubTiers: 6},
+		{Name: "Diamond", NameFR: "Diamant", MinMu: 25.8, SubTiers: 6},
+		{Name: "Onyx", NameFR: "Onyx", MinMu: 27.0, SubTiers: 1},
 	}
 }
 
