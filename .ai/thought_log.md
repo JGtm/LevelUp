@@ -1,3 +1,71 @@
+## [2026-05-27] feat(session-compare): complétion de la page session compare — charts 07-10 + tables maps/modes
+
+**Statut** : Complété
+
+**Branche** : `feat/lusr-v2-phase0-metrics`
+
+**Contexte** : La page session compare avait des graphiques manquants et des tableaux non peuplés (MapsTable et ModesTable toujours vides côté Go, aucun chart de progression visuelle côté frontend).
+
+**Décision technique** :
+- Go domain : ajout de `SessionMatchPoint` (index, kd, cumulative, accuracy 0..1) + `MatchSeries []SessionMatchPoint` dans `SessionCompareEntry`; types structs `SessionCompareMapRow` / `SessionCompareModeRow` à la place des `map[string]interface{}`
+- Go service : `buildCompareMatchSeries` (triée chrono, cumul W/L), `buildMapTable` (agrégation par PairName), `buildModeTable` (agrégation par catégorie), metric `accuracy` ajouté dans `buildCompareMetrics`
+- Frontend (4 nouveaux composants) : `SessionCompareRadar` (wrapper RadarChart, 3 axes KD/Win%/Accuracy%), `SessionCompareBarMetrics` (BarGroupedChart normalisé 0-100), `SessionCompareCumulative` (TimeseriesLineChart catégorie), `SessionCompareKDProgression` (TimeseriesLineChart catégorie)
+- Tables maps et modes upgradées : colonnes typées avec couleurs compare-a/compare-b
+- 40 nouvelles clés i18n générées
+
+**Résultats** : go test ./internal/service/... OK · npx tsc --noEmit OK · npm run build OK (739ms)
+
+**Prochaine étape** : Charts non couverts par le mock (01 LUSR rank, 04 highlights, 06 MMR, 13 participation trend, 14 match history) — décrits dans le mock mais hors scope car nécessitent des données supplémentaires dans le service.
+
+---
+
+## [2026-05-27] feat: backfill_participation_info — backfill des 4 booleans ParticipationInfo
+
+**Statut** : Complété
+
+**Branche** : `feat/lusr-v2-phase0-metrics`
+
+**Contexte** : 1 724 matchs dans `match_participants` avec `present_at_beginning IS NULL`. Les 4 colonnes viennent de `ParticipationInfo` dans l'API Halo Stats. Dry-run fonctionne en read-only même avec le serveur actif.
+
+**Décision technique** : CLI `cmd/backfill_participation_info/main.go` (CGO). `GetMatchStats` → `ExtractParticipants` → `UPDATE SET ... WHERE IS NULL`. Idempotent. Ordonne du récent au vieux (meilleure dispo API). Dry-run en `?access_mode=read_only`.
+
+**Résultats** : 1 724 matchs traités, 26 051 lignes mises à jour, 0 expiré, 0 erreur, durée 9m37s. Backfill complet.
+
+---
+
+## [2026-05-27] feat(lusr-v2): Phase 1c — shadow mode dans le pipeline sync
+
+**Statut** : Complété
+
+**Contexte** : intégration du LUSR v2 (Phases 1a+1b) dans la pipeline post-sync, en mode "shadow" gated par `LEVELUP_LUSR_V2_ENABLED=1`. Flag off (défaut) → no-op silencieux, zéro latence. Flag on → le service v2 tourne en parallèle du v1 et remplit `player_skill_state_v2`, sans aucun reader UI à ce stade. Permet la Phase 1d (validation offline) sur des données vivantes.
+
+**Décision technique principale** :
+
+1. **Cycle import résolu** : `sync → service → sync` aurait été créé en réutilisant `service.SkillV2Service` depuis `internal/sync/skill_v2_shadow.go`. Solution : la logique orchestration (load/compute/persist) est dupliquée dans `applyMatchToSkillV2` (sync package), qui utilise directement `internal/analysis/skill_v2` (math) + `internal/platform/duckdb.SkillV2Repo` (state). `service.SkillV2Service` reste pour les callers externes (cmd Phase 1d, futurs handlers HTTP, tests). Note dans la doc du package : à refactorer en callback registered si on stabilise davantage.
+
+2. **Watermark incrémental** : la boucle ne re-traite pas les matchs déjà vus. Pour un joueur × groupe, le watermark est `player_skill_state_v2_latest.last_match_at` ; tout match avec `start_time ≤ watermark` est skip silencieusement. Permet de re-tourner le shadow sans dédup explicite côté caller.
+
+3. **Limites Phase 1c** :
+   - Matchs avec exactement **2 teams humaines** (sinon skip — FFA, 3+ teams sortent du closed-form actuel).
+   - Outcomes 2 (Win) / 1 (Tie) / 3 (Loss) ; DNF (4) skip — la quit penalty proper viendra Phase 3 TS2 §9.
+   - Filtres LUSR-éligibles identiques au v1 : non-ranked, non-firefight, durée ≥ 30s.
+
+4. **Hook** : nouvelle étape 2.5 dans `runPostSyncPipeline`, juste après le LUSR v1 (`batchComputeLUSR`). Best-effort : panic capturé par le defer existant, erreurs loggées warn et la pipeline continue.
+
+**Résultats observés** :
+
+- `go test ./internal/{sync,analysis/skill_v2,service,platform/duckdb,migration}` PASS.
+- `go vet ./...` clean.
+- Aucune régression sur les tests existants (12.5s sur sync, 23s sur platform/duckdb).
+- Avec flag off : aucune écriture, pas de log info, identique à avant.
+- Avec flag on : log info "LUSR v2 shadow terminé processed=N skipped_chain=X skipped_already_seen=Y skipped_non_two_team=Z" par sync.
+
+**Prochaine étape** : Phase 1d — `cmd/lusr_v2_replay` qui parcourt l'historique des 4 joueurs trackés en simulant le shadow (avec LEVELUP_LUSR_V2_ENABLED=1) et compare les ratings finaux aux cibles `memory/reference_lusr_target_levels.md` (Madina = fin Platine/début Diamant, Choco/JGtm = milieu/bas Or, XxDaemon = mauvais). C'est le test "le modèle est-il utile" avant de greffer le moindre reader UI.
+
+**Discussion migration (concern utilisateur)** : actuellement v1 et v2 cohabitent dans des tables séparées. Quand on voudra basculer v2 en source unique, l'idée est de **dual-writer** : v2 écrira aussi dans `match_skill_rank` avec `rating_type='LUSR_V2'` (la table accepte déjà ce discriminator + est append-only). UI reads basculent via feature flag de lecture, jamais d'écriture interrompue → aucune cellule vide possible.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 1b — domain + migration + repo + service squelette
 
 **Statut** : Complété
