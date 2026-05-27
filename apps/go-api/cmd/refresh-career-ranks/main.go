@@ -169,26 +169,20 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 
 	provider := authpkg.NewMSALProvider()
 
-	// Chemin 1 : MSAL cache.
-	if cacheJSON, _ := duckdb.ReadMSALCacheJSON(ctx, pdb.Player); cacheJSON != "" {
-		if accessToken, err := provider.TrySilentRefresh(ctx, cacheJSON); err == nil && accessToken != "" {
-			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
-				fmt.Fprintf(os.Stderr, "auth: tokens obtenus via MSAL cache (xuid=%s)\n", pdb.XUID)
-				return result.Tokens, nil
-			}
-		}
-	}
+	// ADR 0023 — pipeline canonique via MultiUserTokenStore puis legacy DuckDB.
+	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	legacy := authpkg.LegacyAuthInputs{Source: "duckdb"}
+	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
+	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
 
-	// Chemin 2 : OAuth v2 refresh_token (sync_meta).
-	if refreshToken, _ := duckdb.ReadOAuthRefreshToken(ctx, pdb.Player); refreshToken != "" {
-		if accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken); err == nil && accessToken != "" {
-			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
-				fmt.Fprintf(os.Stderr, "auth: tokens obtenus via OAuth v2 refresh (xuid=%s)\n", pdb.XUID)
-				return result.Tokens, nil
-			}
-		}
+	result, rerr := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	if rerr != nil {
+		return nil, rerr
 	}
-
+	if tokens := authpkg.HaloTokensFromExchange(result); tokens != nil {
+		fmt.Fprintf(os.Stderr, "auth: tokens obtenus pour xuid=%s\n", pdb.XUID)
+		return tokens, nil
+	}
 	return nil, fmt.Errorf("aucun token disponible pour player %q (ni MSAL cache ni OAuth refresh)", playerSlug)
 }
 

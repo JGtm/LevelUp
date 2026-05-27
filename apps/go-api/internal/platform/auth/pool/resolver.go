@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/auth"
 )
@@ -32,6 +34,19 @@ type resolverImpl struct {
 	// caller de persister le nouveau RT (sinon le prochain refresh échouera).
 	// Nullable : si nil, la rotation est seulement mise à jour en mémoire.
 	onRotated TokenRotationCallback
+
+	// sfGroup dédupplique les Resolve concurrents pour un même gamertag. Cf.
+	// `golang.org/x/sync/singleflight`. Sans cette protection, N goroutines
+	// arrivant en même temps sur un cache miss appellent toutes Microsoft avec
+	// le même RT — seule la 1ère réussit, les N-1 autres reçoivent invalid_grant
+	// (Microsoft rotate le RT à chaque usage). Avec singleflight, 1 seul appel
+	// OAuth est fait, les autres goroutines reçoivent le même résultat.
+	//
+	// Scénarios concernés en prod :
+	//   - Boot serveur : cache vide + plusieurs requêtes HTTP simultanées
+	//   - Air hot-reload : pareil, à chaque restart
+	//   - Post-token-capture : cache invalidé puis trafic
+	sfGroup singleflight.Group
 }
 
 // cachedToken encapsule un token échangé + sa date d'expiration estimée.
@@ -57,20 +72,50 @@ func NewResolver(provider auth.TokenProvider, cacheTTL time.Duration, onRotated 
 }
 
 // Resolve implémente Resolver.Resolve() — échange CredentialSource → ResolvedTokens frais.
-// Cache TTL : appels répétés pour le même gamertag rendent le cached résultat jusqu'à expiration.
+//
+// Cache TTL : appels répétés pour le même gamertag rendent le cached résultat
+// jusqu'à expiration.
+//
+// Concurrent dedup via singleflight (champ sfGroup) : N appels Resolve
+// simultanés pour le MÊME gamertag sur un cache miss → 1 seul appel OAuth
+// vers Microsoft, les N-1 autres goroutines reçoivent le même *ResolvedTokens.
+// Élimine le risque d'invalid_grant burst au boot serveur ou post-rotation.
 func (r *resolverImpl) Resolve(ctx context.Context, src CredentialSource) (*ResolvedTokens, error) {
-	// Vérifier le cache d'abord (fast path).
+	// Fast path : cache hit avant tout — pas besoin de singleflight.
 	if cached, ok := r.lookupCachedToken(ctx, src.Gamertag); ok {
 		return cached, nil
 	}
 
-	// Cache miss : event_id pour tracer l'échange OAuth/XSTS/Spartan/Clearance
-	// à travers les sous-modules (provider MSAL → halo_exchange → ...).
+	// Singleflight : dédupplique les Resolve concurrents par gamertag.
+	// La fonction passée à Do n'est exécutée QU'UNE FOIS pour les goroutines
+	// concurrentes ; les followers reçoivent le même result/error que le leader.
+	result, err, shared := r.sfGroup.Do(src.Gamertag, func() (any, error) {
+		// Re-check cache : un Resolve précédent (leader d'un singleflight antérieur)
+		// peut avoir peuplé le cache pendant qu'on attendait la place dans sf.Do.
+		if cached, ok := r.lookupCachedToken(ctx, src.Gamertag); ok {
+			return cached, nil
+		}
+		return r.resolveExpensive(ctx, src)
+	})
+
+	if shared {
+		slog.DebugContext(ctx, "pool/resolver: Resolve dédupliqué via singleflight",
+			"gamertag", src.Gamertag)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return result.(*ResolvedTokens), nil
+}
+
+// resolveExpensive exécute le pipeline OAuth refresh + Exchange (~100-500ms).
+// Appelé UNE SEULE FOIS par batch de Resolve concurrents grâce à sfGroup.Do.
+func (r *resolverImpl) resolveExpensive(ctx context.Context, src CredentialSource) (*ResolvedTokens, error) {
 	ctx, evID := logging.WithEvent(ctx, "auth.resolve:"+src.Gamertag)
 	slog.InfoContext(ctx, "pool/resolver: échange token démarré",
 		"gamertag", src.Gamertag, "source", src.Source, "event", evID)
 
-	// Pipeline : TrySilentRefresh → TryOAuthRefresh → Exchange.
 	accessToken, err := r.acquireAccessToken(ctx, &src)
 	if err != nil {
 		return nil, err
@@ -82,11 +127,7 @@ func (r *resolverImpl) Resolve(ctx context.Context, src CredentialSource) (*Reso
 		return nil, err
 	}
 
-	resolved, err := r.exchangeAndCache(ctx, src, accessToken)
-	if err != nil {
-		return nil, err
-	}
-	return resolved, nil
+	return r.exchangeAndCache(ctx, src, accessToken)
 }
 
 // lookupCachedToken retourne le token cached si encore valide, sinon (nil, false).

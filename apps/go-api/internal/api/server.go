@@ -229,6 +229,13 @@ func NewRouter(
 	// matching catalogue reste fonctionnel).
 	reg.WithCoachAdvisorBundle(NewCoachAdvisorBundle(cfg.RepoRoot))
 
+	// MultiUserTokenStore (ADR 0023) — source unique des tokens auth (RT + MSAL).
+	// refreshTokensFromDB le lit AVANT de tomber sur les fallbacks legacy
+	// (sync_meta DuckDB + env var). Idempotent : peut être re-créé à chaque boot
+	// (pointe sur le même répertoire `data/auth/watcher_tokens/`).
+	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	reg.WithAuthStore(authStore)
+
 	var gamertagSvc port.GamertagSearchService
 	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
 	// au lieu d'un OpenReadOnly direct. Élimine le dernier handle RO non-coordonné
@@ -488,7 +495,8 @@ func NewRouter(
 		// le portail), /authorize retourne AADSTS50011.
 		if cfg.AuthMode == "xbox" && cfg.OAuthRedirectURI != "" {
 			xboxOAuthHandler := handlers.NewXboxOAuthHandler(sessionStore, tokenProvider, cfg.DemoMode, cfg.OAuthRedirectURI).
-				WithLinkStrategy(xboxLinkStrategy)
+				WithLinkStrategy(xboxLinkStrategy).
+				WithAuthStore(authStore)
 			r.Get("/auth/xbox/login", xboxOAuthHandler.LoginRedirect)
 			r.Get("/auth/xbox/callback", xboxOAuthHandler.Callback)
 		}

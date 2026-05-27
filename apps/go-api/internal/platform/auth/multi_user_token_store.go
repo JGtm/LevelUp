@@ -29,17 +29,24 @@ import (
 // Le `MSALCacheJSON` est le cache MSAL sérialisé : il contient le refresh_token
 // Microsoft (que le SDK n'expose pas directement) et permet à `AcquireTokenSilent`
 // de rafraîchir l'access_token plus tard.
+//
+// Le `OAuthRefreshToken` est le refresh_token OAuth v2 brut Microsoft (mode
+// "advanced" — via cmd/token-capture device flow ou cmd/token-import). Source
+// alternative au MSALCacheJSON pour les flows qui n'utilisent pas le SDK MSAL.
+// Rotaté par Microsoft à chaque usage (cf. ADR 0023) — toute mise à jour passe
+// par UpdateOAuthRefreshToken pour préserver l'atomicité.
 type UserTokens struct {
-	XUID           string    `json:"xuid"`
-	Gamertag       string    `json:"gamertag"`
-	XSTSToken      string    `json:"xsts_token"`
-	XSTSUserHash   string    `json:"xsts_user_hash"`
-	XSTSExpiresAt  time.Time `json:"xsts_expires_at"`
-	AccessToken    string    `json:"access_token,omitempty"`
-	OAuthExpiresAt time.Time `json:"oauth_expires_at,omitempty"`
-	MSALCacheJSON  string    `json:"msal_cache_json,omitempty"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	XUID              string    `json:"xuid"`
+	Gamertag          string    `json:"gamertag"`
+	XSTSToken         string    `json:"xsts_token"`
+	XSTSUserHash      string    `json:"xsts_user_hash"`
+	XSTSExpiresAt     time.Time `json:"xsts_expires_at"`
+	AccessToken       string    `json:"access_token,omitempty"`
+	OAuthExpiresAt    time.Time `json:"oauth_expires_at,omitempty"`
+	OAuthRefreshToken string    `json:"oauth_refresh_token,omitempty"`
+	MSALCacheJSON     string    `json:"msal_cache_json,omitempty"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // IsXSTSValid retourne true si le XSTS est encore valide (avec marge).
@@ -120,35 +127,8 @@ func (s *MultiUserTokenStore) Upsert(tokens *UserTokens) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := os.MkdirAll(s.dir, 0o700); err != nil {
-		return fmt.Errorf("multi_user_token_store: mkdir %s: %w", s.dir, err)
-	}
-
-	path := s.pathFor(tokens.XUID)
-	if path == "" {
-		return fmt.Errorf("multi_user_token_store: path résolu vide pour xuid=%q", tokens.XUID)
-	}
-
-	// Préserver CreatedAt si le fichier existe déjà.
-	if existing, err := s.loadLocked(tokens.XUID); err == nil && !existing.CreatedAt.IsZero() {
-		tokens.CreatedAt = existing.CreatedAt
-	} else if tokens.CreatedAt.IsZero() {
-		tokens.CreatedAt = time.Now().UTC()
-	}
-	tokens.UpdatedAt = time.Now().UTC()
-
-	data, err := json.MarshalIndent(tokens, "", "  ")
-	if err != nil {
-		return fmt.Errorf("multi_user_token_store: marshal: %w", err)
-	}
-
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o600); err != nil {
-		return fmt.Errorf("multi_user_token_store: écriture tmp: %w", err)
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
-		return fmt.Errorf("multi_user_token_store: rename atomique: %w", err)
+	if err := s.upsertLocked(tokens); err != nil {
+		return err
 	}
 
 	slog.Debug("multi_user_token_store: tokens persistés",
@@ -237,5 +217,172 @@ func (s *MultiUserTokenStore) Remove(xuid string) error {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("multi_user_token_store: remove %s: %w", path, err)
 	}
+	return nil
+}
+
+// UpdateOAuthRefreshToken met à jour le champ OAuthRefreshToken pour un xuid en
+// préservant tous les autres champs (XSTS, MSAL cache, gamertag, CreatedAt).
+// Appelée par le callback onRotated du Pool/Resolver à chaque rotation Microsoft.
+//
+// Crée l'entrée si elle n'existe pas (utile pour cmd/token-capture sur un
+// joueur jamais authentifié auparavant). Dans ce cas, gamertag est laissé vide
+// — l'appelant doit le compléter via Upsert si nécessaire.
+//
+// Read-modify-write atomique : prend le verrou, lit, modifie, écrit via Upsert.
+// Idempotent : appeler avec le même rt ne corrompt pas.
+func (s *MultiUserTokenStore) UpdateOAuthRefreshToken(xuid, refreshToken string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	if refreshToken == "" {
+		return fmt.Errorf("multi_user_token_store: refresh_token vide pour xuid=%q", xuid)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
+		return fmt.Errorf("multi_user_token_store: lecture pour update: %w", err)
+	}
+	if existing == nil {
+		existing = &UserTokens{XUID: xuid}
+	}
+	existing.OAuthRefreshToken = refreshToken
+
+	return s.upsertLocked(existing)
+}
+
+// UpdateMSALCache met à jour le champ MSALCacheJSON pour un xuid en préservant
+// les autres champs. Symétrique de UpdateOAuthRefreshToken.
+//
+// Appelée après une session MSAL (silent refresh ou device flow) qui a rafraîchi
+// le cache. Le cache encapsule le refresh_token Microsoft que le SDK MSAL ne
+// nous expose pas directement.
+func (s *MultiUserTokenStore) UpdateMSALCache(xuid, cacheJSON string) error {
+	if !xuidIsSafe(xuid) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", xuid)
+	}
+	if cacheJSON == "" {
+		return fmt.Errorf("multi_user_token_store: cacheJSON vide pour xuid=%q", xuid)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	existing, err := s.loadLocked(xuid)
+	if err != nil && !errors.Is(err, ErrUserTokensNotFound) {
+		return fmt.Errorf("multi_user_token_store: lecture pour update: %w", err)
+	}
+	if existing == nil {
+		existing = &UserTokens{XUID: xuid}
+	}
+	existing.MSALCacheJSON = cacheJSON
+
+	return s.upsertLocked(existing)
+}
+
+// LoadByGamertag scanne le répertoire et retourne le premier UserTokens dont
+// le Gamertag matche (case-insensitive). Utilisé par cmd/token-capture et
+// cmd/token-import qui ne connaissent pas le xuid avant l'authentification.
+//
+// Retourne ErrUserTokensNotFound si aucun match. Si plusieurs entrées matchent
+// (cas pathologique : doublon gamertag pour deux xuid différents), retourne la
+// première trouvée et log un warning.
+func (s *MultiUserTokenStore) LoadByGamertag(gamertag string) (*UserTokens, error) {
+	if gamertag == "" {
+		return nil, fmt.Errorf("multi_user_token_store: gamertag vide")
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrUserTokensNotFound
+		}
+		return nil, fmt.Errorf("multi_user_token_store: scan %s: %w", s.dir, err)
+	}
+
+	target := strings.ToLower(strings.TrimSpace(gamertag))
+	var match *UserTokens
+	matchCount := 0
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".tmp") {
+			continue
+		}
+		xuid := strings.TrimSuffix(name, ".json")
+		if !xuidIsSafe(xuid) {
+			continue
+		}
+		t, err := s.loadLocked(xuid)
+		if err != nil {
+			continue
+		}
+		if strings.ToLower(t.Gamertag) == target {
+			matchCount++
+			if match == nil {
+				match = t
+			}
+		}
+	}
+
+	if matchCount == 0 {
+		return nil, ErrUserTokensNotFound
+	}
+	if matchCount > 1 {
+		slog.Warn("multi_user_token_store: plusieurs entrées matchent le gamertag",
+			"gamertag", gamertag, "count", matchCount, "selected_xuid", match.XUID,
+			"hint", "doublons à nettoyer manuellement")
+	}
+	return match, nil
+}
+
+// upsertLocked est la version interne d'Upsert sans verrouillage (le caller
+// tient déjà le mutex). Factorisé pour permettre les UpdateXxx atomiques.
+func (s *MultiUserTokenStore) upsertLocked(tokens *UserTokens) error {
+	if tokens == nil {
+		return fmt.Errorf("multi_user_token_store: tokens nil")
+	}
+	if !xuidIsSafe(tokens.XUID) {
+		return fmt.Errorf("multi_user_token_store: xuid invalide: %q", tokens.XUID)
+	}
+
+	if err := os.MkdirAll(s.dir, 0o700); err != nil {
+		return fmt.Errorf("multi_user_token_store: mkdir %s: %w", s.dir, err)
+	}
+
+	path := s.pathFor(tokens.XUID)
+	if path == "" {
+		return fmt.Errorf("multi_user_token_store: path résolu vide pour xuid=%q", tokens.XUID)
+	}
+
+	if existing, err := s.loadLocked(tokens.XUID); err == nil && !existing.CreatedAt.IsZero() {
+		tokens.CreatedAt = existing.CreatedAt
+	} else if tokens.CreatedAt.IsZero() {
+		tokens.CreatedAt = time.Now().UTC()
+	}
+	tokens.UpdatedAt = time.Now().UTC()
+
+	data, err := json.MarshalIndent(tokens, "", "  ")
+	if err != nil {
+		return fmt.Errorf("multi_user_token_store: marshal: %w", err)
+	}
+
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return fmt.Errorf("multi_user_token_store: écriture tmp: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("multi_user_token_store: rename atomique: %w", err)
+	}
+
 	return nil
 }

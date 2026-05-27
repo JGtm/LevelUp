@@ -61,7 +61,7 @@ func TestEnsureWatcherAccessToken_AccessTokenValid_NoRefresh(t *testing.T) {
 	})
 	prov := &stubProvider{}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), store, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, store, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -85,7 +85,7 @@ func TestEnsureWatcherAccessToken_AccessTokenExpired_UsesStoreRefresh(t *testing
 	})
 	prov := &stubProvider{oauthResp: "fresh-token"}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), store, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, store, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -124,7 +124,7 @@ func TestEnsureWatcherAccessToken_AccessTokenExpired_FallbackToEnvVar(t *testing
 	})
 	prov := &stubProvider{oauthResp: "fresh-token-from-env"}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), store, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, store, prov, "JGtm")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -155,7 +155,7 @@ func TestEnsureWatcherAccessToken_GamertagNormalization(t *testing.T) {
 	prov := &stubProvider{oauthResp: "fresh"}
 
 	// "My-User.Pro" doit donner la cle SPNKR_OAUTH_REFRESH_TOKEN_MY_USER_PRO
-	got, err := EnsureWatcherAccessToken(context.Background(), store, prov, "My-User.Pro")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, store, prov, "My-User.Pro")
 	if err != nil {
 		t.Fatalf("err = %v", err)
 	}
@@ -179,7 +179,7 @@ func TestEnsureWatcherAccessToken_NoRefreshTokenAvailable(t *testing.T) {
 	})
 	prov := &stubProvider{}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), store, prov, "Unknown_Gamertag_999")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, store, prov, "Unknown_Gamertag_999")
 	if err != nil {
 		t.Errorf("absence de refresh_token doit retourner (\"\", nil) — got err = %v", err)
 	}
@@ -204,7 +204,7 @@ func TestEnsureWatcherAccessToken_ProviderRefreshFails(t *testing.T) {
 	})
 	prov := &stubProvider{oauthErr: errors.New("refresh_token revoked")}
 
-	got, err := EnsureWatcherAccessToken(context.Background(), store, prov, "JGtm")
+	got, err := EnsureWatcherAccessToken(context.Background(), nil, store, prov, "JGtm")
 	if err != nil {
 		t.Errorf("erreur de refresh doit etre absorbee (mode degrade) — got err = %v", err)
 	}
@@ -218,10 +218,10 @@ func TestEnsureWatcherAccessToken_NilArguments(t *testing.T) {
 	prov := &stubProvider{}
 	store := newStoreWithTokens(t, &StoredTokens{})
 
-	if _, err := EnsureWatcherAccessToken(context.Background(), nil, prov, "JGtm"); err == nil {
-		t.Error("store nil doit retourner une erreur")
+	if _, err := EnsureWatcherAccessToken(context.Background(), nil, nil, prov, "JGtm"); err == nil {
+		t.Error("legacy store nil doit retourner une erreur")
 	}
-	if _, err := EnsureWatcherAccessToken(context.Background(), store, nil, "JGtm"); err == nil {
+	if _, err := EnsureWatcherAccessToken(context.Background(), nil, store, nil, "JGtm"); err == nil {
 		t.Error("provider nil doit retourner une erreur")
 	}
 }
