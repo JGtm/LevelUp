@@ -197,11 +197,26 @@ func New(
 	return s
 }
 
-// defaultRunnerFactory construit un *sync.SyncEngine configuré avec un
-// PooledHaloClient pinné sur (gamertag, xuid) + WithFriendsLoader. Retourne
-// nil si s.pool est nil ou si le gamertag n'est pas dans le pool — le caller
-// (syncPlayer) check ces préconditions avant.
-func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xuid string) DeltaRunner {
+// BuildEngine construit un *sync.SyncEngine fully-configured pour un
+// (gamertag, xuid) donné. C'est l'UNIQUE source of truth du wiring engine
+// pour le serveur — utilisée à la fois par defaultRunnerFactory (path
+// scheduler / auto_sync) et par cmd/server/main.go pour câbler le path
+// watcher via syncTrigger.WithEngineFactory.
+//
+// Toute évolution du wiring (nouveau hook, nouveau provider, etc.) ne doit
+// se faire QUE dans cette méthode — c'est ce qui garantit que watcher path
+// et scheduler path restent en parité runtime. Cf. incident 2026-05-26 :
+// trigger.go faisait un NewSyncEngine direct sans WithSharedProvider, le
+// path watcher tombait en legacy → conflit "different configuration".
+//
+// Sémantique des nils :
+//   - s.cfg.SharedProvider == nil → engine en mode legacy (OpenSharedDB direct)
+//   - s.settings == nil → pas de FriendsLoader, pas de MediaScanHook
+//   - s.pool == nil → pas de PooledHaloClient (le moteur tombera back sur le
+//     client default si pas .SetCustomClient — non-recommandé en prod)
+//   - s.postSyncRunner == nil → post-sync runner V1 désactivé
+//   - s.batchQueue == nil → batch mode synchrone (sans WAL durable)
+func (s *AutoSyncScheduler) BuildEngine(_ context.Context, gamertag, xuid string) *sync.SyncEngine {
 	engine := sync.NewSyncEngine(s.cfg.RepoRoot, gamertag, xuid, &domain.HaloTokens{}, s.provider)
 	// Commit 8i : en mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1), router les
 	// ouvertures RW de shared via Provider.AcquireWriter au lieu d'OpenSharedDB
@@ -269,6 +284,16 @@ func (s *AutoSyncScheduler) defaultRunnerFactory(_ context.Context, gamertag, xu
 		engine.WithCSRSeasonID(s.cfg.CurrentCSRSeasonID)
 	}
 	return engine
+}
+
+// defaultRunnerFactory adapte BuildEngine vers l'interface DeltaRunner
+// attendue par le scheduler (RunDelta-only). *sync.SyncEngine satisfait
+// DeltaRunner via sa méthode RunDelta.
+//
+// Garde un nom historique pour ne pas casser l'API interne du scheduler
+// (champ RunnerFactory, tests existants).
+func (s *AutoSyncScheduler) defaultRunnerFactory(ctx context.Context, gamertag, xuid string) DeltaRunner {
+	return s.BuildEngine(ctx, gamertag, xuid)
 }
 
 // WithBatchQueue branche la BatchQueue serveur-wide (Phase 4.7 closure
