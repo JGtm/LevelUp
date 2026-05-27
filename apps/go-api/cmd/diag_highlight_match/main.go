@@ -118,6 +118,86 @@ func main() {
 		fmt.Printf("  playlist_name:         %q\n", playlistName.String)
 	}
 
+	// --- Présence cumulée des bots dans la team du joueur ---
+	// Helpful pour comprendre pourquoi had_bot_teammate vaut TRUE/FALSE selon
+	// le seuil hybride (botPresenceMinSeconds=30 ET botPresenceMinRatio=15%).
+	var botSeconds sql.NullInt64
+	var matchDuration sql.NullInt64
+	errBot := sharedDB.QueryRow(`
+		WITH self_team AS (
+			SELECT team_id FROM match_participants WHERE match_id = ? AND xuid = ?
+		)
+		SELECT
+			SUM(COALESCE(mp_bot.time_played_seconds, 0)) AS total_bot_seconds,
+			MAX(COALESCE(r.duration_seconds, 0))         AS match_duration
+		FROM match_participants mp_bot
+		JOIN match_registry r ON r.match_id = mp_bot.match_id
+		JOIN self_team st ON mp_bot.team_id = st.team_id
+		WHERE mp_bot.match_id = ?
+		  AND mp_bot.xuid <> ?
+		  AND mp_bot.xuid LIKE 'bid(%'
+	`, matchID, xuid, matchID, xuid).Scan(&botSeconds, &matchDuration)
+	fmt.Println("\n=== Présence bots dans la team du joueur (seuil hybride) ===")
+	switch {
+	case errBot == sql.ErrNoRows || !botSeconds.Valid:
+		fmt.Println("  Pas de bot dans la team du joueur.")
+	case errBot != nil:
+		fmt.Printf("  ! erreur: %v\n", errBot)
+	default:
+		fmt.Printf("  bot_seconds_cumulés:   %d\n", botSeconds.Int64)
+		fmt.Printf("  match_duration_sec:    %d\n", matchDuration.Int64)
+		if matchDuration.Int64 > 0 {
+			ratio := float64(botSeconds.Int64) / float64(matchDuration.Int64)
+			fmt.Printf("  ratio bot/match:       %.1f%%\n", ratio*100)
+		}
+		fmt.Printf("  seuils:                bot >= 30s ET ratio >= 15%%\n")
+	}
+
+	// --- ParticipationInfo des bots dans la team du joueur (colonnes ajoutées
+	//     post mini-Phase 0.5, cf. steps_shared_add_participation_info.go). ---
+	botRows, errBP := sharedDB.Query(`
+		WITH self_team AS (
+			SELECT team_id FROM match_participants WHERE match_id = ? AND xuid = ?
+		)
+		SELECT mp_bot.xuid,
+		       COALESCE(mp_bot.time_played_seconds, 0),
+		       mp_bot.present_at_beginning,
+		       mp_bot.joined_in_progress,
+		       mp_bot.left_in_progress,
+		       mp_bot.present_at_completion
+		FROM match_participants mp_bot
+		JOIN self_team st ON mp_bot.team_id = st.team_id
+		WHERE mp_bot.match_id = ?
+		  AND mp_bot.xuid <> ?
+		  AND mp_bot.xuid LIKE 'bid(%'
+		ORDER BY mp_bot.xuid
+	`, matchID, xuid, matchID, xuid)
+	fmt.Println("\n=== ParticipationInfo des bots teammates ===")
+	if errBP != nil {
+		fmt.Printf("  ! erreur: %v\n", errBP)
+	} else {
+		defer botRows.Close()
+		any := false
+		for botRows.Next() {
+			any = true
+			var botXUID string
+			var tp int64
+			var atBegin, joined, left, atEnd sql.NullBool
+			if err := botRows.Scan(&botXUID, &tp, &atBegin, &joined, &left, &atEnd); err != nil {
+				fmt.Printf("  ! scan: %v\n", err)
+				continue
+			}
+			fmt.Printf("  bot %s — time_played=%ds\n", botXUID, tp)
+			fmt.Printf("    present_at_beginning  = %s\n", nullBoolStr(atBegin))
+			fmt.Printf("    joined_in_progress    = %s\n", nullBoolStr(joined))
+			fmt.Printf("    left_in_progress      = %s\n", nullBoolStr(left))
+			fmt.Printf("    present_at_completion = %s\n", nullBoolStr(atEnd))
+		}
+		if !any {
+			fmt.Println("  Aucun bot teammate.")
+		}
+	}
+
 	// --- Verdict des filtres ---
 	fmt.Println("\n=== Verdict des filtres ===")
 	check := func(label string, ok bool, value string) {

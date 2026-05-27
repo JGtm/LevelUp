@@ -8,14 +8,27 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { useSessionComparePage } from './queries'
-import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { DeltaCard } from '@/components/ui/delta-card'
-import type { SessionCompareEntry, SessionCompareMetricRow } from '@/lib/api/types'
+import type {
+  SessionCompareEntry,
+  SessionCompareMapRow,
+  SessionCompareModeRow,
+  SessionCompareMetricRow,
+} from '@/lib/api/types'
 import { formatMessage } from '@/lib/i18n/format'
 import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SessionOutcomesDonut } from './SessionOutcomesDonut'
 import { CombatYieldBar } from '@/components/ui/combat-yield-bar'
+import { SessionCompareRadar } from './SessionCompareRadar'
+import { SessionCompareBarMetrics } from './SessionCompareBarMetrics'
+import { SessionCompareCumulative } from './SessionCompareCumulative'
+import { SessionCompareKDProgression } from './SessionCompareKDProgression'
+import { SessionCompareSkillHeader } from './SessionCompareSkillHeader'
+import { SessionCompareMMR } from './SessionCompareMMR'
+import { SessionCompareParticipation } from './SessionCompareParticipation'
+import { SessionCompareMatchHistory } from './SessionCompareMatchHistory'
 
 function useSessionT() {
   const locale = useAppShellStore((s) => s.locale)
@@ -110,6 +123,30 @@ function MetricRow({ row }: { row: SessionCompareMetricRow }) {
   )
 }
 
+function MapTableRow({ row }: { row: SessionCompareMapRow }) {
+  return (
+    <tr className="border-b last:border-0 text-sm hover:bg-muted/30">
+      <td className="py-1.5 pr-4 text-foreground font-medium">{row.map_name}</td>
+      <td className="py-1.5 pr-4 text-center text-compare-a">{row.a_matches}</td>
+      <td className="py-1.5 pr-4 text-center text-compare-a">{row.a_wins}V {row.a_losses}D</td>
+      <td className="py-1.5 pr-4 text-center text-compare-b">{row.b_matches}</td>
+      <td className="py-1.5 text-center text-compare-b">{row.b_wins}V {row.b_losses}D</td>
+    </tr>
+  )
+}
+
+function ModeTableRow({ row }: { row: SessionCompareModeRow }) {
+  return (
+    <tr className="border-b last:border-0 text-sm hover:bg-muted/30">
+      <td className="py-1.5 pr-4 text-foreground font-medium">{row.mode_name}</td>
+      <td className="py-1.5 pr-4 text-center text-compare-a">{row.a_matches}</td>
+      <td className="py-1.5 pr-4 text-center text-compare-a">{row.a_wins}</td>
+      <td className="py-1.5 pr-4 text-center text-compare-b">{row.b_matches}</td>
+      <td className="py-1.5 text-center text-compare-b">{row.b_wins}</td>
+    </tr>
+  )
+}
+
 export function SessionComparePage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
   const t = useSessionT()
@@ -117,73 +154,53 @@ export function SessionComparePage() {
   const [sessionA, setSessionA] = useState('')
   const [sessionB, setSessionB] = useState('')
 
-  // Barre filtres locale — scope strict à la page Session-Compare.
-  const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
-    playerSlug,
-    labels: {
-      experience: t('session.filters.experience'),
-      experienceAll: t('session.filters.experience_all'),
-      experienceRanked: t('session.filters.experience_ranked'),
-      experienceUnranked: t('session.filters.experience_unranked'),
-      playlists: t('session.filters.playlists'),
-      modes: t('session.filters.modes'),
-      reset: t('session.filters.reset'),
-    },
-  })
+  const filterContext = useSoloFilterStore((s) => s.filterContext)
+  const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
 
   const { data, isLoading, isError, refetch } = useSessionComparePage(
     playerSlug,
     {
-      filters: committedFilterContext,
+      filters: filterContext,
       session_a: sessionA || null,
       session_b: sessionB || null,
     },
-    committedHash,
+    filterContextHash,
     sessionA,
     sessionB,
   )
 
   if (isLoading) {
     return (
-      <div className="flex flex-col">
-        {bar}
-        <div className="flex h-full items-center justify-center p-6">
-          <Spinner size="lg" label={t('session.compare.loading')} />
-        </div>
+      <div className="flex h-full items-center justify-center p-6">
+        <Spinner size="lg" label={t('session.compare.loading')} />
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col">
-        {bar}
-        <div className="p-6">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="font-medium text-destructive">{t('session.compare.load_error')}</p>
-              <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-                {t('session.errors.retry')}
-              </button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="font-medium text-destructive">{t('session.compare.load_error')}</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
+              {t('session.errors.retry')}
+            </button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        {bar}
-        <div className="p-6">
-          <EmptyStateCard
-            title={t('session.compare.empty_title')}
-            description={t('session.compare.empty_description')}
-            actionLabel={t('session.errors.retry')}
-            onAction={() => refetch()}
-          />
-        </div>
+      <div className="p-6">
+        <EmptyStateCard
+          title={t('session.compare.empty_title')}
+          description={t('session.compare.empty_description')}
+          actionLabel={t('session.errors.retry')}
+          onAction={() => refetch()}
+        />
       </div>
     )
   }
@@ -191,10 +208,18 @@ export function SessionComparePage() {
   const hasAvailableSessions = data.available_sessions.length > 0
   const hasComparisonSelection = Boolean(sessionA && sessionB)
 
+  const labelA = t('session.compare.session_card_title', {
+    side: 'A',
+    suffix: data.session_a?.session_label ? ` — ${data.session_a.session_label}` : '',
+  })
+  const labelB = t('session.compare.session_card_title', {
+    side: 'B',
+    suffix: data.session_b?.session_label ? ` — ${data.session_b.session_label}` : '',
+  })
+  const chartEmpty = t('session.compare.chart_empty')
+
   return (
-    <div className="flex flex-col">
-      {bar}
-      <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6">
         {hasAvailableSessions ? (
           <>
             {/* Sélecteurs A / B */}
@@ -208,9 +233,7 @@ export function SessionComparePage() {
                 >
                   <option value="">{t('session.compare.placeholder_select')}</option>
                   {data.available_sessions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
@@ -223,9 +246,7 @@ export function SessionComparePage() {
                 >
                   <option value="">{t('session.compare.placeholder_select')}</option>
                   {data.available_sessions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
@@ -239,6 +260,25 @@ export function SessionComparePage() {
 
             {hasComparisonSelection ? (
               <>
+                {/* Skill Rating (chart 01) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{t('session.compare.skill_title')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <SessionCompareSkillHeader
+                      sessionA={data.session_a}
+                      sessionB={data.session_b}
+                      labels={{
+                        title: t('session.compare.skill_title'),
+                        deltaLabel: t('session.compare.skill_delta_label'),
+                        empty: t('session.compare.skill_empty'),
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Outcomes distribution (chart 03) */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">{t('session.compare.outcomes_title')}</CardTitle>
@@ -249,18 +289,8 @@ export function SessionComparePage() {
                         sessionA={data.session_a}
                         sessionB={data.session_b}
                         labels={{
-                          sessionA: t('session.compare.session_card_title', {
-                            side: 'A',
-                            suffix: data.session_a?.session_label
-                              ? ` — ${data.session_a.session_label}`
-                              : '',
-                          }),
-                          sessionB: t('session.compare.session_card_title', {
-                            side: 'B',
-                            suffix: data.session_b?.session_label
-                              ? ` — ${data.session_b.session_label}`
-                              : '',
-                          }),
+                          sessionA: labelA,
+                          sessionB: labelB,
                           wins: t('session.compare.donut.wins'),
                           losses: t('session.compare.donut.losses'),
                           other: t('session.compare.donut.other'),
@@ -275,6 +305,94 @@ export function SessionComparePage() {
                   </CardContent>
                 </Card>
 
+                {/* Match highlights (chart 04) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{t('session.compare.highlight_title')}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {data.session_a?.best_match || data.session_b?.best_match ? (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {[
+                          { label: t('session.compare.highlight_best'), entries: [data.session_a?.best_match, data.session_b?.best_match] as const },
+                          { label: t('session.compare.highlight_worst'), entries: [data.session_a?.worst_match, data.session_b?.worst_match] as const },
+                        ].map(({ label, entries }) => (
+                          <div key={label}>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">{label}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {entries.map((match, i) => {
+                                const side = i === 0 ? 'a' : 'b'
+                                const color = side === 'a' ? 'text-compare-a border-compare-a/30' : 'text-compare-b border-compare-b/30'
+                                return match ? (
+                                  <div key={side} className={`rounded border p-2 text-xs space-y-0.5 ${color}`}>
+                                    <p className="font-medium truncate">{match.pair_name || match.playlist_name || '—'}</p>
+                                    <p className="text-muted-foreground">
+                                      {t('session.compare.highlight_kills')} {match.kills}/{match.deaths}/{match.assists}
+                                    </p>
+                                    {match.performance_score != null && (
+                                      <p>{t('session.compare.highlight_score')} {match.performance_score.toFixed(1)}</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div key={side} className="rounded border p-2 text-xs text-muted-foreground italic">—</div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyStateNotice
+                        title={t('session.compare.highlight_empty')}
+                        description={t('session.compare.chart_empty')}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Profil global radar (chart 07) */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <SessionCompareRadar
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        metrics={data.metrics}
+                        labels={{
+                          title: t('session.compare.radar_title'),
+                          axisKD: t('session.compare.radar_axis_kd'),
+                          axisWinRate: t('session.compare.radar_axis_winrate'),
+                          axisAccuracy: t('session.compare.radar_axis_accuracy'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: chartEmpty,
+                        }}
+                        height={300}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  {/* Métriques normalisées bar (chart 08) */}
+                  <Card>
+                    <CardContent className="pt-4">
+                      <SessionCompareBarMetrics
+                        metrics={data.metrics}
+                        labels={{
+                          title: t('session.compare.bar_metrics_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: chartEmpty,
+                          catKD: t('session.compare.radar_axis_kd'),
+                          catWinRate: t('session.compare.radar_axis_winrate'),
+                          catAccuracy: t('session.compare.radar_axis_accuracy'),
+                        }}
+                        height={300}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Résumé delta cards */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">{t('session.compare.summary_title')}</CardTitle>
@@ -306,6 +424,7 @@ export function SessionComparePage() {
                   </CardContent>
                 </Card>
 
+                {/* Métriques détaillées (chart 05) */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">{t('session.compare.metrics_title')}</CardTitle>
@@ -336,6 +455,109 @@ export function SessionComparePage() {
                   </CardContent>
                 </Card>
 
+                {/* MMR moyen (chart 06) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{t('session.compare.mmr_title')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <SessionCompareMMR
+                      sessionA={data.session_a}
+                      sessionB={data.session_b}
+                      labels={{
+                        title: t('session.compare.mmr_title'),
+                        teamMMR: t('session.compare.mmr_team'),
+                        enemyMMR: t('session.compare.mmr_enemy'),
+                        empty: t('session.compare.mmr_empty'),
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Cumulative + K/D progression (charts 09 et 10) */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <SessionCompareCumulative
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.cumulative_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: chartEmpty,
+                        }}
+                        height={280}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <SessionCompareKDProgression
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.kd_progression_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: chartEmpty,
+                        }}
+                        height={280}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Profil de participation 6 axes (chart 13) */}
+                <Card>
+                  <CardContent className="pt-4">
+                    <SessionCompareParticipation
+                      sessionA={data.session_a}
+                      sessionB={data.session_b}
+                      labels={{
+                        title: t('session.compare.participation_title'),
+                        sessionA: labelA,
+                        sessionB: labelB,
+                        empty: t('session.compare.participation_empty'),
+                        combat: t('session.compare.participation_combat'),
+                        survival: t('session.compare.participation_survival'),
+                        support: t('session.compare.participation_support'),
+                        score: t('session.compare.participation_score'),
+                        objective: t('session.compare.participation_objective'),
+                        impact: t('session.compare.participation_impact'),
+                      }}
+                      height={320}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Historique des matchs (chart 14) */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">{t('session.compare.history_title')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pb-4">
+                    <SessionCompareMatchHistory
+                      matchesA={data.session_a?.matches ?? []}
+                      matchesB={data.session_b?.matches ?? []}
+                      labels={{
+                        title: t('session.compare.history_title'),
+                        tabA: t('session.compare.history_tab_a'),
+                        tabB: t('session.compare.history_tab_b'),
+                        colDate: t('session.compare.history_col_date'),
+                        colKDA: t('session.compare.history_col_kda'),
+                        colMode: t('session.compare.history_col_mode'),
+                        colPerf: t('session.compare.history_col_perf'),
+                        win: t('session.compare.history_win'),
+                        loss: t('session.compare.history_loss'),
+                        other: t('session.compare.history_other'),
+                        empty: t('session.compare.history_empty'),
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Par carte (chart 12) */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">{t('session.compare.maps_title')}</CardTitle>
@@ -345,20 +567,16 @@ export function SessionComparePage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs text-muted-foreground">
-                            {Object.keys(data.maps_table[0]).map((k) => (
-                              <th key={k} className="py-2 pr-4">{k}</th>
-                            ))}
+                            <th className="py-2 pr-4">{t('session.compare.map_col_map')}</th>
+                            <th className="py-2 pr-4 text-center text-compare-a">{t('session.compare.map_col_a_matches')}</th>
+                            <th className="py-2 pr-4 text-center text-compare-a">{t('session.compare.map_col_a_wl')}</th>
+                            <th className="py-2 pr-4 text-center text-compare-b">{t('session.compare.map_col_b_matches')}</th>
+                            <th className="py-2 text-center text-compare-b">{t('session.compare.map_col_b_wl')}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {data.maps_table.map((row, i) => (
-                            <tr key={i} className="border-b last:border-0">
-                              {Object.values(row).map((v, j) => (
-                                <td key={j} className="py-1.5 pr-4 text-foreground">
-                                  {String(v ?? '-')}
-                                </td>
-                              ))}
-                            </tr>
+                          {data.maps_table.map((row) => (
+                            <MapTableRow key={row.map_name} row={row} />
                           ))}
                         </tbody>
                       </table>
@@ -371,6 +589,7 @@ export function SessionComparePage() {
                   </CardContent>
                 </Card>
 
+                {/* Par mode (chart 11) */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">{t('session.compare.modes_title')}</CardTitle>
@@ -380,20 +599,16 @@ export function SessionComparePage() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs text-muted-foreground">
-                            {Object.keys(data.modes_table[0]).map((k) => (
-                              <th key={k} className="py-2 pr-4">{k}</th>
-                            ))}
+                            <th className="py-2 pr-4">{t('session.compare.mode_col_mode')}</th>
+                            <th className="py-2 pr-4 text-center text-compare-a">{t('session.compare.mode_col_a_matches')}</th>
+                            <th className="py-2 pr-4 text-center text-compare-a">{t('session.compare.mode_col_a_wins')}</th>
+                            <th className="py-2 pr-4 text-center text-compare-b">{t('session.compare.mode_col_b_matches')}</th>
+                            <th className="py-2 text-center text-compare-b">{t('session.compare.mode_col_b_wins')}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {data.modes_table.map((row, i) => (
-                            <tr key={i} className="border-b last:border-0">
-                              {Object.values(row).map((v, j) => (
-                                <td key={j} className="py-1.5 pr-4 text-foreground">
-                                  {String(v ?? '-')}
-                                </td>
-                              ))}
-                            </tr>
+                          {data.modes_table.map((row) => (
+                            <ModeTableRow key={row.mode_name} row={row} />
                           ))}
                         </tbody>
                       </table>
@@ -419,7 +634,6 @@ export function SessionComparePage() {
             description={t('session.empty.no_sessions_description')}
           />
         )}
-      </div>
     </div>
   )
 }

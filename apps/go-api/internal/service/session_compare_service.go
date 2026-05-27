@@ -1,7 +1,12 @@
-// Package service â€” SessionCompareService : POST /pages/session-compare.
+// Package service — SessionCompareService : POST /pages/session-compare.
 //
 // Sprint 33 : compare deux sessions de jeu.
-// Charge les matchs + sessions, filtre par label, calcule les mÃ©triques A vs B.
+// Charge les matchs + sessions, filtre par label, calcule les métriques A vs B.
+//
+// Helpers extraits dans :
+//   - session_compare_stat_helpers.go   : calculs purs (winRate, avgKD, compareMetric…)
+//   - session_compare_table_helpers.go  : buildMapTable, buildModeTable, classifySessionCategory
+//   - session_compare_participation_helpers.go : profil 6 axes, lastSkillRating, avgMMR
 package service
 
 import (
@@ -10,7 +15,6 @@ import (
 	"log/slog"
 	"math"
 	"sort"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -31,7 +35,7 @@ type SessionCompareService struct {
 	gamertag          string
 }
 
-// NewSessionCompareService crÃ©e un SessionCompareService.
+// NewSessionCompareService crée un SessionCompareService.
 func NewSessionCompareService(
 	sessionsRepo port.SessionsRepository,
 	statsRepo port.StatsRepository,
@@ -50,7 +54,7 @@ func (s *SessionCompareService) WithPlayerMatchesRepo(repo port.PlayerMatchesRep
 	return s
 }
 
-// Compare exÃ©cute la comparaison entre deux sessions.
+// Compare exécute la comparaison entre deux sessions.
 func (s *SessionCompareService) Compare(
 	ctx context.Context,
 	req domain.SessionCompareRequest,
@@ -58,7 +62,7 @@ func (s *SessionCompareService) Compare(
 	// 1. Charger les matchs stats (avec session_label).
 	// P4.3 finale (ADR 0011) : path canonical exclusif.
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return domain.SessionCompareResponse{}, fmt.Errorf("SessionCompare: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
@@ -83,12 +87,12 @@ func (s *SessionCompareService) Compare(
 		return domain.SessionCompareResponse{
 			AvailableSessions: sessionLabels,
 			Metrics:           []domain.SessionCompareMetricRow{},
-			MapsTable:         []map[string]interface{}{},
-			ModesTable:        []map[string]interface{}{},
+			MapsTable:         []domain.SessionCompareMapRow{},
+			ModesTable:        []domain.SessionCompareModeRow{},
 		}, nil
 	}
 
-	// SÃ©lection automatique : derniÃ¨re et avant-derniÃ¨re sessions.
+	// Sélection automatique : dernière et avant-dernière sessions.
 	labelA := lastOrNil(sessionLabels, req.SessionA)
 	labelB := secondLastOrNil(sessionLabels, req.SessionB)
 	slog.DebugContext(ctx, "session_compare: sélection sessions", "gamertag", s.gamertag, "session_a", labelA, "session_b", labelB, "available", len(sessionLabels))
@@ -97,7 +101,7 @@ func (s *SessionCompareService) Compare(
 	matchesA := filterBySession(matches, labelA)
 	matchesB := filterBySession(matches, labelB)
 
-	// 4. Calculer les entries et mÃ©triques.
+	// 4. Calculer les entries et métriques.
 	entryA := buildCompareEntry(matchesA, labelA)
 	entryB := buildCompareEntry(matchesB, labelB)
 	metrics := buildCompareMetrics(matchesA, matchesB)
@@ -112,13 +116,13 @@ func (s *SessionCompareService) Compare(
 		SessionB:          entryB,
 		AvailableSessions: sessionLabels,
 		Metrics:           metrics,
-		MapsTable:         []map[string]interface{}{},
-		ModesTable:        []map[string]interface{}{},
+		MapsTable:         buildMapTable(matchesA, matchesB),
+		ModesTable:        buildModeTable(matchesA, matchesB),
 	}, nil
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Session label helpers
 // ---------------------------------------------------------------------------
 
 func extractSessionLabels(matches []legacymatch.StatsMatchRow) []string {
@@ -167,6 +171,10 @@ func filterBySession(matches []legacymatch.StatsMatchRow, label string) []legacy
 	}
 	return out
 }
+
+// ---------------------------------------------------------------------------
+// Entry builder
+// ---------------------------------------------------------------------------
 
 func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domain.SessionCompareEntry {
 	if len(matches) == 0 || label == "" {
@@ -238,6 +246,13 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 	start := minTime.Format(time.RFC3339)
 	end := maxTime.Format(time.RFC3339)
 
+	dominantCat := dominantSessionCategoryPtr(matches)
+	lastRating, ratingType, ratingDelta := lastSkillRating(matches)
+	avgTeamMMR, avgEnemyMMR := avgMMR(matches)
+	participation := buildSessionParticipationProfile(matches)
+	matchRows := buildSessionDetailRows(matches, dominantCat)
+	best, worst := bestWorstMatchCompare(matches, dominantCat)
+
 	return &domain.SessionCompareEntry{
 		SessionLabel:     label,
 		StartTime:        &start,
@@ -247,12 +262,26 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 		Losses:           losses,
 		KDA:              kda,
 		PerformanceScore: averagePerformanceScore(matches),
-		DominantCategory: dominantSessionCategoryPtr(matches),
+		DominantCategory: dominantCat,
 		AvgOC:            avgOC,
 		AvgDR:            avgDR,
 		AvgResidualBrut:  avgResidualBrut,
+		MatchSeries:      buildCompareMatchSeries(matches),
+		LastSkillRating:  lastRating,
+		SkillRatingType:  ratingType,
+		SkillRatingDelta: ratingDelta,
+		AvgTeamMMR:       avgTeamMMR,
+		AvgEnemyMMR:      avgEnemyMMR,
+		Participation:    participation,
+		Matches:          matchRows,
+		BestMatch:        best,
+		WorstMatch:       worst,
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Metrics builder
+// ---------------------------------------------------------------------------
 
 func buildCompareMetrics(a, b []legacymatch.StatsMatchRow) []domain.SessionCompareMetricRow {
 	metrics := make([]domain.SessionCompareMetricRow, 0, 6)
@@ -285,6 +314,13 @@ func buildCompareMetrics(a, b []legacymatch.StatsMatchRow) []domain.SessionCompa
 		))
 	}
 
+	// Accuracy : en 0..1 — formatée en % pour l'affichage texte.
+	accA := averageAccuracy(a)
+	accB := averageAccuracy(b)
+	if accA != nil || accB != nil {
+		metrics = append(metrics, compareMetric("accuracy", "Précision", derefFloat64(accA)*100, derefFloat64(accB)*100, "%.1f%%"))
+	}
+
 	// OC/DR : uniquement si au moins une session a des données dégâts.
 	ocA := averageOC(a)
 	ocB := averageOC(b)
@@ -300,220 +336,43 @@ func buildCompareMetrics(a, b []legacymatch.StatsMatchRow) []domain.SessionCompa
 	return metrics
 }
 
-func averageOC(matches []legacymatch.StatsMatchRow) *float64 {
-	var sum float64
-	var count int
-	for _, m := range matches {
-		if m.OffensiveConversion != nil {
-			sum += *m.OffensiveConversion
-			count++
-		}
-	}
-	if count == 0 {
-		return nil
-	}
-	v := math.Round(sum/float64(count)*100) / 100
-	return &v
-}
+// ---------------------------------------------------------------------------
+// Match series builder
+// ---------------------------------------------------------------------------
 
-func averageDR(matches []legacymatch.StatsMatchRow) *float64 {
-	var sum float64
-	var count int
-	for _, m := range matches {
-		if m.DefensiveResistance != nil {
-			sum += *m.DefensiveResistance
-			count++
-		}
-	}
-	if count == 0 {
-		return nil
-	}
-	v := math.Round(sum/float64(count)*100) / 100
-	return &v
-}
-
-func averagePerformanceScore(matches []legacymatch.StatsMatchRow) *float64 {
-	count := 0
-	total := 0.0
-	for _, match := range matches {
-		if match.PerfScoreComputed == nil {
-			continue
-		}
-		count++
-		total += *match.PerfScoreComputed
-	}
-	if count == 0 {
-		return nil
-	}
-	value := math.Round((total/float64(count))*10) / 10
-	return &value
-}
-
-func dominantSessionCategoryPtr(matches []legacymatch.StatsMatchRow) *string {
-	category := dominantSessionCategory(matches)
-	if category == "" {
-		return nil
-	}
-	return &category
-}
-
-func dominantSessionCategory(matches []legacymatch.StatsMatchRow) string {
+// buildCompareMatchSeries construit la série de points par match (triés chronologiquement).
+// KD est le ratio kills/deaths du match. Cumulative est le solde W/L cumulé depuis le début.
+// Accuracy est en 0..1 (ADR 0006).
+func buildCompareMatchSeries(matches []legacymatch.StatsMatchRow) []domain.SessionMatchPoint {
 	if len(matches) == 0 {
-		return ""
+		return []domain.SessionMatchPoint{}
 	}
-	counts := map[string]int{}
-	for _, match := range matches {
-		category := classifySessionCategory(match)
-		counts[category]++
-	}
-	bestLabel := ""
-	bestCount := -1
-	for label, count := range counts {
-		if count > bestCount {
-			bestLabel = label
-			bestCount = count
+	sorted := make([]legacymatch.StatsMatchRow, len(matches))
+	copy(sorted, matches)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].StartTime.Before(sorted[j].StartTime)
+	})
+	pts := make([]domain.SessionMatchPoint, 0, len(sorted))
+	cumulative := 0
+	for i, m := range sorted {
+		kd := float64(m.Kills)
+		if m.Deaths > 0 {
+			kd = math.Round(float64(m.Kills)/float64(m.Deaths)*100) / 100
 		}
-	}
-	return bestLabel
-}
-
-func sessionIsRanked(matches []legacymatch.StatsMatchRow) bool {
-	if len(matches) == 0 {
-		return false
-	}
-	ranked := 0
-	for _, match := range matches {
-		if match.IsRanked {
-			ranked++
+		if m.Outcome != nil {
+			switch *m.Outcome {
+			case analysis.OutcomeWin:
+				cumulative++
+			case analysis.OutcomeLoss:
+				cumulative--
+			}
 		}
+		pts = append(pts, domain.SessionMatchPoint{
+			Index:      i + 1,
+			KD:         kd,
+			Cumulative: cumulative,
+			Accuracy:   m.Accuracy,
+		})
 	}
-	return ranked*2 >= len(matches)
-}
-
-// CatÃ©gories de session retournÃ©es par classifySessionCategory.
-const (
-	sessionCategoryFirefight = "Firefight"
-	sessionCategoryRanked    = "Ranked"
-	sessionCategoryBTB       = "BTB"
-	sessionCategoryArena     = "Arena"
-)
-
-func classifySessionCategory(match legacymatch.StatsMatchRow) string {
-	lower := strings.ToLower(match.PlaylistName + " " + match.PairName)
-	switch {
-	case strings.Contains(lower, "firefight"):
-		return sessionCategoryFirefight
-	case match.IsRanked || strings.Contains(lower, "ranked") || strings.Contains(lower, "classÃ©"):
-		return sessionCategoryRanked
-	case strings.Contains(lower, "btb") || strings.Contains(lower, "big team"):
-		return sessionCategoryBTB
-	default:
-		return sessionCategoryArena
-	}
-}
-
-func effectiveKDA(match legacymatch.StatsMatchRow) *float64 {
-	if match.KDA != nil {
-		return match.KDA
-	}
-	if match.Deaths == 0 {
-		value := float64(match.Kills)
-		return &value
-	}
-	value := math.Round((float64(match.Kills)/float64(match.Deaths))*100) / 100
-	return &value
-}
-
-func derefFloat64(value *float64) float64 {
-	if value == nil {
-		return 0
-	}
-	return *value
-}
-
-func winRate(matches []legacymatch.StatsMatchRow) float64 {
-	if len(matches) == 0 {
-		return 0
-	}
-	wins := 0
-	for _, m := range matches {
-		if m.Outcome != nil && *m.Outcome == analysis.OutcomeWin {
-			wins++
-		}
-	}
-	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
-	return analysis.WinRate(wins, len(matches)) * 100
-}
-
-func avgKD(matches []legacymatch.StatsMatchRow) float64 {
-	if len(matches) == 0 {
-		return 0
-	}
-	k, d := 0, 0
-	for _, m := range matches {
-		k += m.Kills
-		d += m.Deaths
-	}
-	if d == 0 {
-		return float64(k)
-	}
-	return float64(k) / float64(d)
-}
-
-func killsPerGame(matches []legacymatch.StatsMatchRow) float64 {
-	if len(matches) == 0 {
-		return 0
-	}
-	total := 0
-	for _, m := range matches {
-		total += m.Kills
-	}
-	return float64(total) / float64(len(matches))
-}
-
-func deathsPerGame(matches []legacymatch.StatsMatchRow) float64 {
-	if len(matches) == 0 {
-		return 0
-	}
-	total := 0
-	for _, m := range matches {
-		total += m.Deaths
-	}
-	return float64(total) / float64(len(matches))
-}
-
-func compareMetric(key, label string, a, b float64, format string) domain.SessionCompareMetricRow {
-	va := fmt.Sprintf(format, a)
-	vb := fmt.Sprintf(format, b)
-	delta := fmt.Sprintf(format, a-b)
-	winner := determineWinner(a, b)
-	return domain.SessionCompareMetricRow{
-		Key: key, Label: label, ValueA: va, ValueB: vb,
-		Delta: &delta, Winner: winner,
-	}
-}
-
-func compareMetricInverse(key, label string, a, b float64, format string) domain.SessionCompareMetricRow {
-	va := fmt.Sprintf(format, a)
-	vb := fmt.Sprintf(format, b)
-	delta := fmt.Sprintf(format, a-b)
-	winner := determineWinner(b, a) // lower is better
-	return domain.SessionCompareMetricRow{
-		Key: key, Label: label, ValueA: va, ValueB: vb,
-		Delta: &delta, Winner: winner,
-	}
-}
-
-func determineWinner(a, b float64) *string {
-	const epsilon = 0.001
-	if math.Abs(a-b) < epsilon {
-		w := "tie"
-		return &w
-	}
-	if a > b {
-		w := "a"
-		return &w
-	}
-	w := "b"
-	return &w
+	return pts
 }
