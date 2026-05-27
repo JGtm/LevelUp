@@ -197,9 +197,10 @@ func persistParticipants(ctx context.Context, tx *sql.Tx, rows []domain.MatchPar
 				headshot_kills,
 				max_killing_spree, grenade_kills, melee_kills, power_weapon_kills,
 				present_at_beginning, present_at_completion, joined_in_progress, left_in_progress,
+				first_joined_time, last_leave_time,
 				backfill_bits,
 				created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			row.MatchID, row.XUID, row.Gamertag,
 			row.TeamID, row.Outcome, row.Rank, row.Score,
 			row.Kills, row.Deaths, row.Assists,
@@ -212,6 +213,7 @@ func persistParticipants(ctx context.Context, tx *sql.Tx, rows []domain.MatchPar
 			row.HeadshotKills,
 			row.MaxKillingSpree, row.GrenadeKills, row.MeleeKills, row.PowerWeaponKills,
 			row.PresentAtBeginning, row.PresentAtCompletion, row.JoinedInProgress, row.LeftInProgress,
+			row.FirstJoinedTime, row.LastLeaveTime,
 			row.BackfillBits,
 			now,
 		)

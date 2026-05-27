@@ -126,6 +126,12 @@ type MatchParticipantRow struct {
 	PresentAtCompletion *bool
 	JoinedInProgress    *bool
 	LeftInProgress      *bool
+
+	// ParticipationInfo timestamps (LUSR v2 Phase 3-quit — 2026-05-27).
+	// Permet d'ordonner précisément les quitters d'un match (1er parti =
+	// LastLeaveTime ASC). NULL pour les anciens matchs non backfillés.
+	FirstJoinedTime *time.Time
+	LastLeaveTime   *time.Time
 }
 
 // MedalRow représente une ligne dans shared.medals_earned.

@@ -366,6 +366,80 @@ func TestExtractParticipants_ParticipationInfoBooleans(t *testing.T) {
 	}
 }
 
+// TestExtractParticipants_ParticipationInfoTimestamps vérifie le parsing des
+// 2 timestamps absolus (LUSR v2 Phase 3-quit 2026-05-27) :
+//   - FirstJoinedTime : toujours présent dans le payload API
+//   - LastLeaveTime   : null si joueur encore présent à la fin
+func TestExtractParticipants_ParticipationInfoTimestamps(t *testing.T) {
+	j := map[string]any{
+		"MatchId": "abc",
+		"Players": []any{
+			// p1 : quitter avec timestamp de départ.
+			map[string]any{
+				"PlayerId": "xuid(1)", "PlayerType": float64(1),
+				"ParticipationInfo": map[string]any{
+					"FirstJoinedTime":     "2025-03-15T18:30:00Z",
+					"LastLeaveTime":       "2025-03-15T18:38:42Z",
+					"PresentAtBeginning":  true,
+					"PresentAtCompletion": false,
+					"LeftInProgress":      true,
+				},
+				"PlayerTeamStats": []any{map[string]any{
+					"TeamId": float64(0),
+					"Stats":  map[string]any{"CoreStats": map[string]any{}},
+				}},
+			},
+			// p2 : joueur présent jusqu'à la fin → LastLeaveTime absent du JSON.
+			map[string]any{
+				"PlayerId": "xuid(2)", "PlayerType": float64(1),
+				"ParticipationInfo": map[string]any{
+					"FirstJoinedTime":     "2025-03-15T18:30:00Z",
+					"PresentAtBeginning":  true,
+					"PresentAtCompletion": true,
+				},
+				"PlayerTeamStats": []any{map[string]any{
+					"TeamId": float64(0),
+					"Stats":  map[string]any{"CoreStats": map[string]any{}},
+				}},
+			},
+			// p3 : pas de ParticipationInfo du tout → les 2 timestamps doivent rester nil.
+			map[string]any{
+				"PlayerId": "xuid(3)", "PlayerType": float64(1),
+				"PlayerTeamStats": []any{map[string]any{
+					"TeamId": float64(0),
+					"Stats":  map[string]any{"CoreStats": map[string]any{}},
+				}},
+			},
+		},
+	}
+	rows := ExtractParticipants(j)
+	if len(rows) != 3 {
+		t.Fatalf("expected 3 rows, got %d", len(rows))
+	}
+	p1 := rows[0]
+	if p1.FirstJoinedTime == nil {
+		t.Errorf("p1 FirstJoinedTime = nil, want set")
+	} else if got := p1.FirstJoinedTime.UTC().Format("15:04:05"); got != "18:30:00" {
+		t.Errorf("p1 FirstJoinedTime UTC time = %q, want 18:30:00", got)
+	}
+	if p1.LastLeaveTime == nil {
+		t.Errorf("p1 LastLeaveTime = nil, want set (quitter)")
+	} else if got := p1.LastLeaveTime.UTC().Format("15:04:05"); got != "18:38:42" {
+		t.Errorf("p1 LastLeaveTime UTC time = %q, want 18:38:42", got)
+	}
+	p2 := rows[1]
+	if p2.FirstJoinedTime == nil {
+		t.Errorf("p2 FirstJoinedTime = nil, want set")
+	}
+	if p2.LastLeaveTime != nil {
+		t.Errorf("p2 LastLeaveTime = %v, want nil (joueur présent à la fin)", p2.LastLeaveTime)
+	}
+	p3 := rows[2]
+	if p3.FirstJoinedTime != nil || p3.LastLeaveTime != nil {
+		t.Errorf("p3 timestamps doivent rester nil (pas de ParticipationInfo block)")
+	}
+}
+
 func TestExtractParticipants_MissingMatchID(t *testing.T) {
 	j := map[string]any{"Players": []any{}}
 	if rows := ExtractParticipants(j); rows != nil {
