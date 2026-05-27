@@ -24,8 +24,13 @@ import (
 // LUSRRatingInsert — row LUSR prête à INSERT dans match_skill_rank.
 // Simplifié pour le path append-only (LUSR uniquement ; CSR a son propre
 // chemin via UpsertCSRRow).
+//
+// RatingType : permet la Stratégie C (ADR 0024) où v2 écrit DEUX rows pour le
+// même match — une avec rating_type='LUSR' (slot historique pour readers UI)
+// et une avec rating_type='LUSR_V2' (audit trail). Si vide, défaut 'LUSR'.
 type LUSRRatingInsert struct {
 	MatchID         string
+	RatingType      string // défaut 'LUSR' si vide
 	RatingValue     float64
 	RatingDeviation float64
 	Tier            *string
@@ -106,17 +111,21 @@ func (p *AppendOnlyLUSRPersister) Persist(ctx context.Context, rows []LUSRRating
 		// INSERT pur. Pas de ON CONFLICT, pas de WHERE, pas de DELETE.
 		// La PK (match_id, rating_type, written_at) tolère N versions
 		// par (match_id, rating_type). written_at = now() côté DB.
+		rt := r.RatingType
+		if rt == "" {
+			rt = "LUSR"
+		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
 				 tier, tier_fr, sub_tier, tier_label,
 				 rating_delta, playlist_group)
-			VALUES (?, 'LUSR', ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.MatchID, r.RatingValue, r.RatingDeviation,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, rt, r.RatingValue, r.RatingDeviation,
 			r.Tier, r.TierFR, r.SubTier, r.TierLabel,
 			r.RatingDelta, r.PlaylistGroup,
 		); err != nil {
-			return fmt.Errorf("persist: INSERT LUSR append-only %s: %w", r.MatchID, err)
+			return fmt.Errorf("persist: INSERT LUSR append-only %s/%s: %w", r.MatchID, rt, err)
 		}
 	}
 
