@@ -68,8 +68,6 @@ type SquadRepository interface {
 //
 // P4.3 finale : LoadSynthesisMatches retiré.
 type SynthesisRepository interface {
-	// LoadEncounters charge les encounters du joueur (Q_encounters).
-	LoadEncounters(ctx context.Context, xuid string) ([]domain.EncounterRawRow, error)
 	// LoadSynthesisHeatmap charge la heatmap carte×mode (Q33).
 	LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error)
 	// EnrichCanonicalAssetTranslations remplit Labels["fr"] sur les AssetReference

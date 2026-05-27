@@ -113,12 +113,13 @@ func (b *bestTracker) toRef() *domain.BestMatchRef {
 // synthesisBestRefs agrège les "Top X" cliquables exposés par SynthesisOverview.
 type synthesisBestRefs struct {
 	kills, kda, perf, accuracy, damage, killingSpree *domain.BestMatchRef
+	headshots, personalScore                         *domain.BestMatchRef
 }
 
 // computeSynthesisBestRefs identifie le match record pour chaque métrique
 // exposée comme carte "Top X" / "Meilleur X" côté front (Synthesis page).
 func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow) synthesisBestRefs {
-	var trK, trKDA, trPerf, trAcc, trDmg, trSpree bestTracker
+	var trK, trKDA, trPerf, trAcc, trDmg, trSpree, trHS, trPS bestTracker
 	for _, r := range rows {
 		id := r.Summary.MatchID
 		if r.Self.Kills != nil {
@@ -139,14 +140,22 @@ func computeSynthesisBestRefs(rows []canonical.PlayerMatchRow) synthesisBestRefs
 		if r.Self.MaxKillingSpree != nil {
 			trSpree.update(id, float64(*r.Self.MaxKillingSpree))
 		}
+		if r.Self.HeadshotKills != nil {
+			trHS.update(id, float64(*r.Self.HeadshotKills))
+		}
+		if r.Self.PersonalScore != nil {
+			trPS.update(id, float64(*r.Self.PersonalScore))
+		}
 	}
 	return synthesisBestRefs{
-		kills:        trK.toRef(),
-		kda:          trKDA.toRef(),
-		perf:         trPerf.toRef(),
-		accuracy:     trAcc.toRef(),
-		damage:       trDmg.toRef(),
-		killingSpree: trSpree.toRef(),
+		kills:         trK.toRef(),
+		kda:           trKDA.toRef(),
+		perf:          trPerf.toRef(),
+		accuracy:      trAcc.toRef(),
+		damage:        trDmg.toRef(),
+		killingSpree:  trSpree.toRef(),
+		headshots:     trHS.toRef(),
+		personalScore: trPS.toRef(),
 	}
 }
 
@@ -218,15 +227,22 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 		ov.AvgPerfScore = soloKPIs.PerformanceScore
 	}
 
-	refs := computeSynthesisBestRefs(rows)
+	applyBestRefsToOverview(&ov, computeSynthesisBestRefs(rows))
+	return ov
+}
+
+// applyBestRefsToOverview projette les refs calculés vers l'overview et
+// alimente aussi les champs scalaires legacy (best_kills_match / best_kda_match)
+// pour préserver le contrat OpenAPI existant.
+func applyBestRefsToOverview(ov *domain.SynthesisOverview, refs synthesisBestRefs) {
 	ov.BestKillsRef = refs.kills
 	ov.BestKDARef = refs.kda
 	ov.BestPerfRef = refs.perf
 	ov.BestAccuracyRef = refs.accuracy
 	ov.BestDamageRef = refs.damage
 	ov.BestKillingSpreeRef = refs.killingSpree
-	// Champs scalaires legacy : conservés pour le contrat OpenAPI existant et
-	// pour les éventuels consommateurs hors-FE (tests, snapshots historiques).
+	ov.BestHeadshotsRef = refs.headshots
+	ov.BestPersonalScoreRef = refs.personalScore
 	if refs.kills != nil {
 		k := int(refs.kills.Value)
 		ov.BestKillsMatch = &k
@@ -235,7 +251,6 @@ func buildSynthesisOverviewCanonical(rows []canonical.PlayerMatchRow, soloKPIs d
 		v := refs.kda.Value
 		ov.BestKDAMatch = &v
 	}
-	return ov
 }
 
 // buildHighlightsPreviewCanonical est la variante canonical de

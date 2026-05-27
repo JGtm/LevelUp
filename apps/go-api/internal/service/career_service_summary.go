@@ -234,7 +234,9 @@ func computeFallbackXPPerDay(xpTotal int, firstDate time.Time) float64 {
 
 func buildLUSRSummary(history []domain.LUSRCheckpointDTO) domain.LUSRSummary {
 	if len(history) == 0 {
-		return domain.LUSRSummary{}
+		// Init [] sur Checkpoints : un slice nil sérialise en JSON `null` et
+		// crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+		return domain.LUSRSummary{Checkpoints: []domain.LUSRCheckpointDTO{}}
 	}
 	// Snapshot actif = checkpoint le plus récent avec la valeur la plus élevée
 	best := history[0]

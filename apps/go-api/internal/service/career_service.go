@@ -202,6 +202,11 @@ func (s *CareerService) GetCareerPage(ctx context.Context) (domain.CareerPageRes
 
 	currentSeason := s.resolveCurrentSeason(ctx)
 
+	// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et crashe le
+	// front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	if xpHistory == nil {
+		xpHistory = []domain.XPHistoryPoint{}
+	}
 	resp := domain.CareerPageResponse{
 		Summary:       summary,
 		HeroProgress:  hero,

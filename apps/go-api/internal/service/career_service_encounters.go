@@ -50,7 +50,10 @@ func (s *CareerService) GetEncounters(ctx context.Context) (domain.CareerEncount
 		return domain.CareerEncountersResponse{}, fmt.Errorf("CareerService.GetEncounters: %w", err)
 	}
 
-	var teammates, enemies []domain.EncounterDTO
+	// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et crashe
+	// le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	teammates := make([]domain.EncounterDTO, 0)
+	enemies := make([]domain.EncounterDTO, 0)
 	for _, r := range rows {
 		if r.AsTeammate >= r.AsEnemy {
 			teammates = append(teammates, r)

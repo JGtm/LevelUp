@@ -68,7 +68,13 @@ func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.Times
 func buildCumulTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesCumulTab {
 	n := len(matches)
 	if n == 0 {
-		return domain.TimeseriesCumulTab{}
+		// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et
+		// crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+		return domain.TimeseriesCumulTab{
+			CumulativeKD:  []domain.CumulativePoint{},
+			CumulativeNet: []domain.CumulativePoint{},
+			RollingKD:     []domain.CumulativePoint{},
+		}
 	}
 
 	cumulKD := make([]domain.CumulativePoint, 0, n)
@@ -196,13 +202,19 @@ func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesInt
 // buildDistributionsTab construit les histogrammes KDA/kills et les corrÃ©lations.
 func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesDistributionsTab {
 	if len(matches) == 0 {
+		// Init [] plutôt que nil sur TOUS les champs slice : un slice nil
+		// sérialise en JSON `null` et crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
 		return domain.TimeseriesDistributionsTab{
-			KDABuckets:         []domain.DistributionBucket{},
-			KillsBuckets:       []domain.DistributionBucket{},
-			AccuracyBuckets:    []domain.DistributionBucket{},
-			ScorePerMinBuckets: []domain.DistributionBucket{},
-			RollingWRBuckets:   []domain.DistributionBucket{},
-			CorrelationPoints:  []domain.CorrelationDataPair{},
+			KDABuckets:             []domain.DistributionBucket{},
+			KillsBuckets:           []domain.DistributionBucket{},
+			AccuracyBuckets:        []domain.DistributionBucket{},
+			ScorePerMinBuckets:     []domain.DistributionBucket{},
+			RollingWRBuckets:       []domain.DistributionBucket{},
+			LifeBuckets:            []domain.DistributionBucket{},
+			PerfScoreBuckets:       []domain.DistributionBucket{},
+			PersonalScoreBuckets:   []domain.DistributionBucket{},
+			MaxKillingSpreeBuckets: []domain.DistributionBucket{},
+			CorrelationPoints:      []domain.CorrelationDataPair{},
 		}
 	}
 

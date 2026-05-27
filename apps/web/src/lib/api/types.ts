@@ -2098,9 +2098,10 @@ export interface SynthesisPageResponse {
   comparison_metrics: ComparisonMetricItem[]
   heatmap_data: HeatmapCell[]
   top_weeks: TopWeekItem[]
-  // Sprint 55 D5/D6/D7
+  // Sprint 55 D5/D7 — D6 (rivalries) retiré le 2026-05-27 (section
+  // "Relations de jeu" supprimée de la page Synthesis ; les encounters
+  // restent exposés par la page palmares/relations).
   highlights_preview?: SynthesisHighlightsPreview
-  rivalries_preview?: SynthesisRivalriesPreview
   breakdowns?: SynthesisBreakdowns
   // Sprint 55 D9 — scope + overview
   scope?: SynthesisScope
@@ -2149,6 +2150,21 @@ export interface SynthesisOverview {
   best_kills_match?: number | null
   best_kda_match?: number | null
   longest_win_streak?: number
+  // Refs cliquables vers le match record pour chaque métrique (2026-05-27).
+  // Permet l'ouverture du match depuis les cartes "Top X" / "Meilleur X".
+  best_kills_ref?: BestMatchRef | null
+  best_kda_ref?: BestMatchRef | null
+  best_perf_ref?: BestMatchRef | null
+  best_accuracy_ref?: BestMatchRef | null
+  best_damage_ref?: BestMatchRef | null
+  best_killing_spree_ref?: BestMatchRef | null
+  best_headshots_ref?: BestMatchRef | null
+  best_personal_score_ref?: BestMatchRef | null
+}
+
+export interface BestMatchRef {
+  match_id: string
+  value: number
 }
 
 // Sprint 55 D5 — Highlights
@@ -2165,22 +2181,6 @@ export interface SynthesisHighlightsPreview {
   top_by_kills: SynthesisMatchHighlight[]
   top_by_kda: SynthesisMatchHighlight[]
   worst_by_deaths: SynthesisMatchHighlight[]
-}
-
-// Sprint 55 D6 — Rivalries
-export interface SynthesisEncounterPreview {
-  xuid: string
-  gamertag: string
-  match_count: number
-  as_teammate: number
-  as_enemy: number
-  avg_kda: number | null
-}
-
-export interface SynthesisRivalriesPreview {
-  top_teammates: SynthesisEncounterPreview[]
-  top_enemies: SynthesisEncounterPreview[]
-  total: number
 }
 
 // Sprint 55 D7 — Breakdowns

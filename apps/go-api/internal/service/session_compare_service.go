@@ -75,6 +75,11 @@ func (s *SessionCompareService) Compare(
 
 	if len(sessionLabels) < 2 {
 		slog.InfoContext(ctx, "session_compare: sessions insuffisantes", "gamertag", s.gamertag, "sessions", len(sessionLabels))
+		// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et
+		// crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+		if sessionLabels == nil {
+			sessionLabels = []string{}
+		}
 		return domain.SessionCompareResponse{
 			AvailableSessions: sessionLabels,
 			Metrics:           []domain.SessionCompareMetricRow{},

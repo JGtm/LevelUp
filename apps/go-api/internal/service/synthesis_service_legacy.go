@@ -148,40 +148,6 @@ func topNByFunc(rows []legacymatch.SynthesisMatchRow, n int, less func(a, b lega
 	return cp[:n]
 }
 
-// buildRivalriesPreview construit les previews encounters depuis les donnÃ©es brutes.
-func buildRivalriesPreview(rows []domain.EncounterRawRow) domain.SynthesisRivalriesPreview {
-	if len(rows) == 0 {
-		return domain.SynthesisRivalriesPreview{
-			TopTeammates: []domain.SynthesisEncounterPreview{},
-			TopEnemies:   []domain.SynthesisEncounterPreview{},
-		}
-	}
-	toPreview := func(r domain.EncounterRawRow) domain.SynthesisEncounterPreview {
-		return domain.SynthesisEncounterPreview(r)
-	}
-
-	teammates := []domain.SynthesisEncounterPreview{}
-	enemies := []domain.SynthesisEncounterPreview{}
-	teamCount, enemyCount := 0, 0
-	for _, r := range rows {
-		if r.AsTeammate > r.AsEnemy && teamCount < 5 {
-			teammates = append(teammates, toPreview(r))
-			teamCount++
-		} else if r.AsEnemy >= r.AsTeammate && enemyCount < 5 {
-			enemies = append(enemies, toPreview(r))
-			enemyCount++
-		}
-		if teamCount >= 5 && enemyCount >= 5 {
-			break
-		}
-	}
-	return domain.SynthesisRivalriesPreview{
-		TopTeammates: teammates,
-		TopEnemies:   enemies,
-		Total:        len(rows),
-	}
-}
-
 // buildBreakdowns agrÃ¨ge les donnÃ©es heatmap en breakdowns carte et mode.
 func buildBreakdowns(rows []domain.SynthesisHeatmapRow) domain.SynthesisBreakdowns {
 	if len(rows) == 0 {
