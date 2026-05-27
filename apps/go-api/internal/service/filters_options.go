@@ -99,8 +99,11 @@ func buildSessionOptions(rows []domain.FilterMatchRow, cascade domain.CascadeFil
 		return agg[labels[i]].latestAt.After(agg[labels[j]].latestAt)
 	})
 
-	var all []domain.SessionOption //nolint:prealloc
-	var soloLabels, squadLabels []string
+	// Init explicite à [] : un slice nil sérialise en JSON `null` et crashe le
+	// front typé non-nullable. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	all := make([]domain.SessionOption, 0, len(labels))
+	soloLabels := make([]string, 0)
+	squadLabels := make([]string, 0)
 	for _, lbl := range labels {
 		e := agg[lbl]
 		sid := sessionID[lbl]

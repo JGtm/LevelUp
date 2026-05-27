@@ -351,13 +351,29 @@ func (s *HomeService) GetHomePage(ctx context.Context, gamertag, locale string) 
 		rankCatalog = s.semantic.Ranks()
 	}
 
+	// Garantit slices non-nil sur les champs JSON sans omitempty : un slice nil
+	// sérialise en JSON `null` et crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	recentMedia := analysis.BuildRecentMedia(d.media, 4)
+	if highlights == nil {
+		highlights = []domain.HighlightItem{}
+	}
+	if recentMatches == nil {
+		recentMatches = []domain.RecentMatchItem{}
+	}
+	if favoriteMatches == nil {
+		favoriteMatches = []domain.RecentMatchItem{}
+	}
+	if recentMedia == nil {
+		recentMedia = []domain.RecentMediaItem{}
+	}
+
 	return &domain.HomePageResponse{
 		Hero:                hero,
 		SpartanIdentity:     analysis.BuildSpartanIdentity(d.spartanIdent, locale, rankCatalog),
 		Highlights:          highlights,
 		RecentMatches:       recentMatches,
 		FavoriteMatches:     favoriteMatches,
-		RecentMedia:         analysis.BuildRecentMedia(d.media, 4),
+		RecentMedia:         recentMedia,
 		SoloSession:         soloSession,
 		SquadSession:        squadSession,
 		SoloSessions:        soloSessions,

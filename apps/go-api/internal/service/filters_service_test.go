@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/testutil"
 )
 
 // --- mock ---
@@ -71,5 +74,37 @@ func TestFiltersService_Resolve_Error(t *testing.T) {
 	_, err := svc.Resolve(context.Background(), domain.FilterContextInput{})
 	if err == nil {
 		t.Error("expected error")
+	}
+}
+
+// TestFiltersService_Resolve_Empty_JSONShape vérifie la régression du crash
+// front 2026-05-27 sur FilterOmnibar : quand totalBefore=0, emptyResolved()
+// renvoyait Playlists/Modes/Maps en nil → JSON "playlists":null → opts.filter()
+// crashait. Aujourd'hui les 4 slices sont initialisées à []. Ce test catche
+// toute régression future via testutil.RequireNoNilSlicesWithoutOmitempty.
+func TestFiltersService_Resolve_Empty_JSONShape(t *testing.T) {
+	repo := &mockFiltersRepo{rows: []domain.FilterMatchRow{}}
+	svc := NewFiltersService(repo)
+
+	resp, err := svc.Resolve(context.Background(), domain.FilterContextInput{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// 1) Garde générique via reflection : aucun slice non-omitempty ne doit être nil.
+	testutil.RequireNoNilSlicesWithoutOmitempty(t, resp)
+
+	// 2) Garde ciblée : le JSON sérialisé ne doit contenir aucun "<champ>":null
+	//    pour les 4 champs critiques d'AvailableOptions consommés par FilterOmnibar.
+	b, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("marshal error: %v", err)
+	}
+	s := string(b)
+	for _, k := range []string{"playlists", "modes", "maps", "experience_types"} {
+		needle := `"` + k + `":null`
+		if strings.Contains(s, needle) {
+			t.Errorf("JSON contains %q — front crashera sur .filter()/.map() (cf. FilterOmnibar.tsx)", needle)
+		}
 	}
 }

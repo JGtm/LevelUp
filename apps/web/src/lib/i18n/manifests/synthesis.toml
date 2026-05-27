@@ -176,6 +176,35 @@ en = "Killing spree (max)"
 fr = "Précision brute"
 en = "Raw accuracy"
 
+# Top match records (2026-05-27) — cartes cliquables ouvrant le match record
+[synthesis.kpi.top_kda]
+fr = "Top FDA"
+en = "Top KDA"
+
+[synthesis.kpi.top_perf]
+fr = "Top Performance"
+en = "Top Performance"
+
+[synthesis.kpi.top_accuracy]
+fr = "Top Précision"
+en = "Top accuracy"
+
+[synthesis.kpi.top_damage]
+fr = "Top dégâts"
+en = "Top damage"
+
+[synthesis.kpi.top_headshots]
+fr = "Top tirs à la tête"
+en = "Top headshots"
+
+[synthesis.kpi.top_personal_score]
+fr = "Top score perso"
+en = "Top personal score"
+
+[synthesis.kpi.open_match]
+fr = "Ouvrir le match"
+en = "Open match"
+
 [synthesis.kpi.vehicles_destroyed]
 fr = "Véhicules détruits"
 en = "Vehicles destroyed"
@@ -188,28 +217,4 @@ en = "Synthesis unavailable"
 fr = "Matchs Top vs Total par semaine"
 en = "Top vs Total matches per week"
 
-# ─── Relations preview section ───────────────────────────────────────────
-
-[synthesis.relations.section_title]
-fr = "Relations de jeu"
-en = "Gameplay relationships"
-
-[synthesis.relations.section_description]
-fr = "Les visages qui reviennent le plus souvent dans le scope courant."
-en = "The faces appearing most frequently in the current scope."
-
-[synthesis.relations.matches_with]
-fr = "matchs · avec"
-en = "matches · with"
-
-[synthesis.relations.open_full_view]
-fr = "Ouvrir la vue complète"
-en = "Open full view"
-
-[synthesis.relations.empty_title]
-fr = "Aucune relation détectée"
-en = "No relationship detected"
-
-[synthesis.relations.frequent_allies_title]
-fr = "Alliés fréquents"
-en = "Frequent allies"
+# Section "Relations de jeu" retirée le 2026-05-27 (cf. thought_log).

@@ -213,7 +213,9 @@ func paginate(items []domain.MatchHistoryRow, req domain.PaginationRequest) (dom
 	if end > total {
 		end = total
 	}
-	var pageItems []domain.MatchHistoryRow
+	// Init à [] plutôt que nil : un slice nil sérialise en JSON `null` et crashe
+	// le front sur .filter() / .map(). Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	pageItems := []domain.MatchHistoryRow{}
 	if start < total {
 		pageItems = items[start:end]
 	}

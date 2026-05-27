@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
 import { ProportionalBar } from '@/components/ui/proportional-bar'
-import { SynthesisRelationsPreview } from './SynthesisRelationsPreview'
 import { SynthesisKillTypesDonut } from './SynthesisKillTypesDonut'
 import { SynthesisWeaponKillsChart } from './SynthesisWeaponKillsChart'
 import { SynthesisOutcomesByGroupChart } from './SynthesisOutcomesByGroupChart'
@@ -28,7 +27,9 @@ import { MultiSelectFilter, type MultiSelectOption } from '@/features/explorer/M
 import { ExperienceDropdown, type Experience } from '@/features/_shared/ExperienceDropdown'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import type { ManifestLocale } from '@/lib/i18n/format'
+import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import type {
+  BestMatchRef,
   CascadeInput,
   CombatProfileBlock,
   FilterContextInput,
@@ -125,12 +126,34 @@ function CombatProfileInlineRow({ combatProfile }: { combatProfile: CombatProfil
   )
 }
 
-function AccentCard({ label, value, accent }: { label: string; value: string; accent: SemanticToken }) {
+interface AccentCardProps {
+  label: string
+  value: string
+  accent: SemanticToken
+  onOpenMatch?: () => void
+  openMatchLabel?: string
+}
+function AccentCard({ label, value, accent, onOpenMatch, openMatchLabel }: AccentCardProps) {
   return (
     <div className="rounded-lg overflow-hidden border">
       <div className="h-[3px]" style={{ backgroundColor: tokenCssVar(accent) }} />
       <div className="p-3">
-        <span className="text-xs text-muted-foreground block">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-muted-foreground block">{label}</span>
+          {onOpenMatch && (
+            <button
+              type="button"
+              onClick={onOpenMatch}
+              aria-label={openMatchLabel}
+              className="group flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity" aria-hidden="true">
+                <path d="M6.22 8.72a.75.75 0 0 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75h-3.5a.75.75 0 0 0 0 1.5h1.69L6.22 8.72Z" />
+                <path d="M3.5 6.75c0-.69.56-1.25 1.25-1.25H7A.75.75 0 0 0 7 4H4.75A2.75 2.75 0 0 0 2 6.75v4.5A2.75 2.75 0 0 0 4.75 14h4.5A2.75 2.75 0 0 0 12 11.25V9a.75.75 0 0 0-1.5 0v2.25c0 .69-.56 1.25-1.25 1.25h-4.5c-.69 0-1.25-.56-1.25-1.25v-4.5Z" />
+              </svg>
+            </button>
+          )}
+        </div>
         <span className="text-xl font-bold">{value}</span>
       </div>
     </div>
@@ -142,13 +165,20 @@ interface SynthesisOverviewSectionProps {
   detailedStats?: SynthesisDetailedStats
   topWeaponKills?: SynthesisWeaponKillEntry[]
   combatProfile?: CombatProfileBlock | null
+  playerSlug: string
 }
-function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, combatProfile }: SynthesisOverviewSectionProps) {
+function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, combatProfile, playerSlug }: SynthesisOverviewSectionProps) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string =>
     fieldMappings?.fields[key]?.label ?? key
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof synthesisManifest) => synthesisManifest[key][locale]
+  const navigateToMatch = useNavigateToMatch(playerSlug)
+  const openMatchLabel = t('synthesis.kpi.open_match')
+  // Helper : crée le handler onOpenMatch d'une carte si le ref backend est présent.
+  // Les match_ids des cartes "Top X" servent à un usage one-shot (pas de matchIds[] groupé).
+  const handlerFor = (ref: BestMatchRef | null | undefined) =>
+    ref ? () => navigateToMatch(ref.match_id) : undefined
   // P4.4 (revue 2026-04-29 B3) : K/D agrégé canonique sum/sum depuis l'API.
   const kd = overview.total_kdr != null
     ? overview.total_kdr.toFixed(2)
@@ -246,10 +276,84 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
                   )}
                   <div className="grid grid-cols-2 gap-2">
                     {overview.best_kills_match != null && (
-                      <AccentCard label={`Meilleur match · ${labelOf('kills').toLowerCase()}`} value={String(overview.best_kills_match)} accent="outcome-win" />
+                      <AccentCard
+                        label={`Meilleur match · ${labelOf('kills').toLowerCase()}`}
+                        value={String(overview.best_kills_match)}
+                        accent="outcome-win"
+                        onOpenMatch={handlerFor(overview.best_kills_ref)}
+                        openMatchLabel={openMatchLabel}
+                      />
                     )}
-                    <AccentCard label={t('synthesis.kpi.killing_spree_max')} value={detailedStats.max_killing_spree.toLocaleString('fr-FR')} accent="outcome-win" />
+                    <AccentCard
+                      label={t('synthesis.kpi.killing_spree_max')}
+                      value={detailedStats.max_killing_spree.toLocaleString('fr-FR')}
+                      accent="outcome-win"
+                      onOpenMatch={handlerFor(overview.best_killing_spree_ref)}
+                      openMatchLabel={openMatchLabel}
+                    />
                   </div>
+
+                  {/* Top records cliquables (2026-05-27) : FDA, Performance, Précision, Dégâts,
+                      Tirs à la tête, Score perso. Chaque carte n'est rendue que si le ref
+                      backend est présent (au moins 1 match avec une valeur exploitable). */}
+                  {(overview.best_kda_ref || overview.best_perf_ref || overview.best_accuracy_ref || overview.best_damage_ref || overview.best_headshots_ref || overview.best_personal_score_ref) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      {overview.best_kda_ref && (
+                        <AccentCard
+                          label={t('synthesis.kpi.top_kda')}
+                          value={overview.best_kda_ref.value.toFixed(2)}
+                          accent="perf-tier-3"
+                          onOpenMatch={handlerFor(overview.best_kda_ref)}
+                          openMatchLabel={openMatchLabel}
+                        />
+                      )}
+                      {overview.best_perf_ref && (
+                        <AccentCard
+                          label={t('synthesis.kpi.top_perf')}
+                          value={Math.round(overview.best_perf_ref.value).toLocaleString('fr-FR')}
+                          accent="perf-tier-3"
+                          onOpenMatch={handlerFor(overview.best_perf_ref)}
+                          openMatchLabel={openMatchLabel}
+                        />
+                      )}
+                      {overview.best_accuracy_ref && (
+                        <AccentCard
+                          label={t('synthesis.kpi.top_accuracy')}
+                          value={`${(overview.best_accuracy_ref.value * 100).toFixed(1)}%`}
+                          accent="info"
+                          onOpenMatch={handlerFor(overview.best_accuracy_ref)}
+                          openMatchLabel={openMatchLabel}
+                        />
+                      )}
+                      {overview.best_damage_ref && (
+                        <AccentCard
+                          label={t('synthesis.kpi.top_damage')}
+                          value={Math.round(overview.best_damage_ref.value).toLocaleString('fr-FR')}
+                          accent="outcome-win"
+                          onOpenMatch={handlerFor(overview.best_damage_ref)}
+                          openMatchLabel={openMatchLabel}
+                        />
+                      )}
+                      {overview.best_headshots_ref && (
+                        <AccentCard
+                          label={t('synthesis.kpi.top_headshots')}
+                          value={Math.round(overview.best_headshots_ref.value).toLocaleString('fr-FR')}
+                          accent="perf-tier-2"
+                          onOpenMatch={handlerFor(overview.best_headshots_ref)}
+                          openMatchLabel={openMatchLabel}
+                        />
+                      )}
+                      {overview.best_personal_score_ref && (
+                        <AccentCard
+                          label={t('synthesis.kpi.top_personal_score')}
+                          value={Math.round(overview.best_personal_score_ref.value).toLocaleString('fr-FR')}
+                          accent="chart-series-4"
+                          onOpenMatch={handlerFor(overview.best_personal_score_ref)}
+                          openMatchLabel={openMatchLabel}
+                        />
+                      )}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-2">
                     <AccentCard label="Frags parfaits" value={detailedStats.total_perfect_kills.toLocaleString('fr-FR')} accent="perf-tier-3" />
@@ -596,6 +700,7 @@ export function SynthesisPage() {
           detailedStats={data.detailed_stats}
           topWeaponKills={data.top_weapon_kills}
           combatProfile={data.combat_profile}
+          playerSlug={playerSlug}
         />
       )}
 
@@ -613,12 +718,6 @@ export function SynthesisPage() {
       {topWeeks.length > 0 && (
         <SynthesisTopWeeksChart title={t('synthesis.charts.top_vs_total_per_week')} weeks={topWeeks} />
       )}
-
-      {/* Relations / Rivalités D6 */}
-      {data.rivalries_preview &&
-        (data.rivalries_preview.top_teammates.length > 0 || data.rivalries_preview.top_enemies.length > 0) && (
-          <SynthesisRelationsPreview playerSlug={playerSlug} preview={data.rivalries_preview} />
-        )}
 
       {/* synthesis.01 + synthesis.02 — Répartition carte / mode D7 */}
       {data.breakdowns && (

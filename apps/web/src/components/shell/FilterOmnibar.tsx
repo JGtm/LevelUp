@@ -159,8 +159,10 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
   const rawAvailable = previewData?.available_options ?? resolvedContext?.available_options
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
-    const filterUUIDs = (opts: LabelValue[]): LabelValue[] =>
-      opts.filter((o) => !isUUIDLabel(o.label))
+    // Défense : un slice nil Go sérialise en JSON null. `?? []` garantit qu'on
+    // ne crashe pas si le backend dérape sur le contrat. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+    const filterUUIDs = (opts: LabelValue[] | null | undefined): LabelValue[] =>
+      (opts ?? []).filter((o) => !isUUIDLabel(o.label))
     return {
       playlists: filterUUIDs(rawAvailable.playlists),
       modes: filterUUIDs(rawAvailable.modes),
@@ -198,11 +200,12 @@ export function FilterOmnibar({ matchContext, filterStore = useSoloFilterStore }
     let committed = pending
     if (previewData) {
       const av = previewData.available_options
+      // Défense `?? []` : même raison que `filterUUIDs` plus haut.
       const avSets = {
-        playlists: new Set(av.playlists.map((o) => o.value)),
-        modes: new Set(av.modes.map((o) => o.value)),
-        maps: new Set(av.maps.map((o) => o.value)),
-        experience_types: new Set(av.experience_types.map((o) => o.value)),
+        playlists: new Set((av.playlists ?? []).map((o) => o.value)),
+        modes: new Set((av.modes ?? []).map((o) => o.value)),
+        maps: new Set((av.maps ?? []).map((o) => o.value)),
+        experience_types: new Set((av.experience_types ?? []).map((o) => o.value)),
       }
       const c = (pending.cascade ?? DEFAULT_CASCADE) as CascadeInput
       const cleanCascade: CascadeInput = {

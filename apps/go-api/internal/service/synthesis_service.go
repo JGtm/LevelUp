@@ -152,13 +152,21 @@ func (s *SynthesisService) GetSynthesisPage(
 	topWeeks := analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
 	heatmap := analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
 	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs)
+	slog.DebugContext(ctx, "synthesis: best refs detected",
+		"player_xuid", playerXUID,
+		"matches", len(filteredCanon),
+		"kills_ref", overview.BestKillsRef != nil,
+		"kda_ref", overview.BestKDARef != nil,
+		"perf_ref", overview.BestPerfRef != nil,
+		"accuracy_ref", overview.BestAccuracyRef != nil,
+		"damage_ref", overview.BestDamageRef != nil,
+		"killing_spree_ref", overview.BestKillingSpreeRef != nil,
+		"headshots_ref", overview.BestHeadshotsRef != nil,
+		"personal_score_ref", overview.BestPersonalScoreRef != nil,
+	)
 	highlights := buildHighlightsPreviewCanonical(filteredCanon)
 	matchCount := len(filteredCanon)
 	comparison := analysis.ComputeComparisonMetrics(soloKPIs, squadKPIs)
-
-	// D6 : rivalries â€" encounters depuis shared (requÃªte sÃ©parÃ©e)
-	encounters, _ := s.repo.LoadEncounters(ctx, playerXUID) // erreur non fatale
-	rivalries := buildRivalriesPreview(encounters)
 
 	// D7 : breakdowns map/mode depuis les rows canoniques filtrés (period-aware).
 	// Les Labels["fr"] des AssetReference ont été hydratés par
@@ -203,7 +211,6 @@ func (s *SynthesisService) GetSynthesisPage(
 		HeatmapData:       heatmap,
 		TopWeeks:          topWeeks,
 		HighlightsPreview: highlights,
-		RivalriesPreview:  rivalries,
 		Breakdowns:        breakdowns,
 		DetailedStats:     detailedStats,
 		TopWeaponKills:    topWeaponKills,
