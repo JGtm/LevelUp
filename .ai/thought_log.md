@@ -1,3 +1,33 @@
+## [2026-05-27] feat(lusr-v2): Phase 1b — domain + migration + repo + service squelette
+
+**Statut** : Complété
+
+**Contexte** : couche persistance et orchestration pour LUSR v2. Tables append-only séparées de tout l'existant v1, repo dédié pour les accès, service qui colle la math (Phase 1a) à la DB. Aucun hook dans le pipeline sync à ce stade — Phase 1c se chargera du wiring + feature flag.
+
+**Décision technique principale** :
+
+1. **Schéma** ([internal/migration/steps_shared_skill_v2.go](../apps/go-api/internal/migration/steps_shared_skill_v2.go)) — 2 tables append-only dans `shared_matches_v2.duckdb` + 2 vues `_latest` :
+   - `player_skill_state_v2(id PK, xuid, playlist_group, mu, sigma, experience, last_match_id, last_match_at, written_at)`
+   - `lusr_hyperparams_v2(id PK, playlist_group, name, value DOUBLE, source, written_at)`
+   - Pattern cohérent avec `match_skill_rank` et `match_csrs` (CLAUDE.md "Tables append-only", Phase 2 refactor ART du 2026-05-24).
+
+2. **Domain types** ([internal/domain/skill_v2.go](../apps/go-api/internal/domain/skill_v2.go)) — `SkillV2State` (snapshot d'un posterior) + `SkillV2Hyperparam` (paramètre nommé). Modèle clé/valeur plat pour les hyperparams plutôt qu'une struct riche : facilite l'ajout de `squadOffset[k]`, `experienceOffset[k]` etc. en Phase 2+ sans migration de schéma, et le dump CSV pour QA.
+
+3. **Repo** ([internal/platform/duckdb/skill_v2_repo.go](../apps/go-api/internal/platform/duckdb/skill_v2_repo.go)) — `LoadState/UpsertState/LoadHyperparams/UpsertHyperparam`. Toutes les lectures via les vues `_latest`, toutes les écritures sont des INSERT purs (ADR 0019 anti-ART). Reçoit `*sql.DB` directement plutôt que `*PlayerDB` — l'appelant (pipeline sync) ouvre déjà la shared.
+
+4. **Service** ([internal/service/skill_v2_service.go](../apps/go-api/internal/service/skill_v2_service.go)) — `SkillV2Service.UpdateAfterMatch(MatchInput)` charge l'état AVANT pour chaque XUID, instancie depuis Priors si premier match, appelle `skillv2.UpdateTwoTeam`, persiste les posteriors avec `experience++` + `last_match_id/at`. `PredictWin` pour le matchmaking et la calibration.
+
+**Résultats observés** :
+
+- 6 nouveaux tests d'intégration (build tag `cgo`, DuckDB `:memory:`) PASS : premier match instancie depuis Priors, séquence de 5 wins fait monter μ > 30, prédiction sans état = 0.5, équipe vide → erreur, append-only conserve l'historique (6 rows brutes vs 2 rows via la vue `_latest`), roundtrip hyperparams.
+- Suite complète `go test ./internal/{migration,sync,persist,openspartan/...,service,domain,analysis/skill_v2}` PASS.
+- `go vet ./...` clean.
+- ~250 lignes ajoutées (5 nouveaux fichiers + le test).
+
+**Prochaine étape** : Phase 1c — intégrer le service dans le pipeline sync (probablement post-batch, gated par `LEVELUP_LUSR_V2_ENABLED`), en réutilisant `sync.GetLUSRChain` pour le mapping pair_name → playlist_group. Puis Phase 1d : cmd de replay shadow sur l'historique des 3 joueurs de référence (Madina/Chocoboflor/JGtm) pour valider les ratings finaux vs les cibles `memory/reference_lusr_target_levels.md`.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 1a — math TrueSkill core (internal/analysis/skill_v2/)
 
 **Statut** : Complété
