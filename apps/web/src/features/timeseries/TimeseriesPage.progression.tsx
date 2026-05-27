@@ -21,6 +21,7 @@ import {
 import { ChartFrame } from './ChartFrame'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
+import { TimeseriesSkillProgression } from './TimeseriesSkillProgression'
 import type { FilterContextInput, TimeseriesPageResponse, ExplorerMatchRow } from '@/lib/api/types'
 import type { FieldMappingsResponse } from '@/lib/i18n/fieldMappings'
 import type { TimeseriesManifestKey } from '@/lib/i18n/generated/timeseries'
@@ -113,6 +114,9 @@ export function TimeseriesProgressionTab({
           />
         </ChartFrame>
       </div>
+
+      {/* Progression CSR (classé) ou LUSR (non classé) — pleine largeur, avant le bloc rank+perf. */}
+      <TimeseriesSkillProgression rows={data.match_rows ?? []} locale={locale} />
 
       {/* timeseries.19 (gauche) | Skill rank + Performance (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

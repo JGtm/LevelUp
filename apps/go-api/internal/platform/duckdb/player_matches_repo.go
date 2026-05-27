@@ -360,7 +360,8 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 			s   playerMatchSkillRankRow
 		)
 		if err := rows.Scan(&mid, &s.ratingType, &s.ratingValue, &s.tier,
-			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup); err != nil {
+			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup,
+			&s.seasonID, &s.measurementRemaining); err != nil {
 			return nil, fmt.Errorf("skill_rank scan: %w", err)
 		}
 		out[mid] = s
@@ -396,6 +397,8 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].skillSubTier = s.subTier
 			shared[i].skillDelta = s.delta
 			shared[i].skillPlaylistGroup = s.playlistGroup
+			shared[i].skillSeasonID = s.seasonID
+			shared[i].skillMeasurementRemaining = s.measurementRemaining
 		}
 	}
 
@@ -465,13 +468,15 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 // étape 3. (playerMatchEnrichmentRow + playerMatchesEnrichmentTpl retirés au
 // commit 9d.4 — remplacés par MatchEnrichment + LoadPlayerMatchEnrichments).
 type playerMatchSkillRankRow struct {
-	ratingType    sql.NullString
-	ratingValue   sql.NullFloat64
-	tier          sql.NullString
-	tierFR        sql.NullString
-	subTier       sql.NullInt64
-	delta         sql.NullFloat64
-	playlistGroup sql.NullString
+	ratingType           sql.NullString
+	ratingValue          sql.NullFloat64
+	tier                 sql.NullString
+	tierFR               sql.NullString
+	subTier              sql.NullInt64
+	delta                sql.NullFloat64
+	playlistGroup        sql.NullString
+	seasonID             sql.NullString
+	measurementRemaining sql.NullInt64
 }
 
 // playerMatchesSkillRankTpl : SQL pour l'étape 3 du split (match_skill_rank
@@ -485,7 +490,9 @@ SELECT
     tier_fr,
     sub_tier,
     rating_delta,
-    playlist_group
+    playlist_group,
+    season_id,
+    measurement_matches_remaining
 FROM match_skill_rank
 WHERE match_id IN (%s)`
 
@@ -541,6 +548,8 @@ type playerMatchScanResult struct {
 	skillSubTier                                sql.NullInt64
 	skillDelta                                  sql.NullFloat64
 	skillPlaylistGroup                          sql.NullString
+	skillSeasonID                               sql.NullString
+	skillMeasurementRemaining                   sql.NullInt64
 	maxKillingSpree, personalScore, rankInMatch sql.NullInt64
 	grenadeKills, meleeKills, powerWeaponKills  sql.NullInt64
 	shotsFired, shotsHit                        sql.NullInt64
@@ -595,6 +604,11 @@ func projectSkillSnapshot(s playerMatchScanResult) *canonical.SkillSnapshot {
 		RatingValue:   nullFloatPtr(s.skillRatingValue),
 		Delta:         nullFloatPtr(s.skillDelta),
 		PlaylistGroup: nullStringPtr(s.skillPlaylistGroup),
+		SeasonID:      nullStringPtr(s.skillSeasonID),
+	}
+	if s.skillMeasurementRemaining.Valid {
+		mr := int(s.skillMeasurementRemaining.Int64)
+		snap.MeasurementRemaining = &mr
 	}
 	if s.skillTier.Valid && s.skillTier.String != "" {
 		tier := strings.ToLower(s.skillTier.String)

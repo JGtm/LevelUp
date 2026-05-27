@@ -281,3 +281,27 @@ en = "Failed to load timeseries"
 [timeseries.errors.retry]
 fr = "Réessayer"
 en = "Retry"
+
+[timeseries.skill_progression.title_csr]
+fr = "Progression CSR"
+en = "CSR Progression"
+
+[timeseries.skill_progression.title_lusr]
+fr = "Progression LUSR"
+en = "LUSR Progression"
+
+[timeseries.skill_progression.title_mixed]
+fr = "Classement"
+en = "Skill Ranking"
+
+[timeseries.skill_progression.axis_y]
+fr = "Rating"
+en = "Rating"
+
+[timeseries.skill_progression.placement_series]
+fr = "Placement"
+en = "Placement"
+
+[timeseries.skill_progression.season_break]
+fr = "Saison"
+en = "Season"

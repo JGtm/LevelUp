@@ -1825,6 +1825,9 @@ export interface SquadPerformanceSeriesPoint {
   skill_rating?: number
   skill_delta?: number
   skill_rating_type?: 'csr' | 'lusr'
+  skill_playlist_group?: string | null
+  skill_season_id?: string | null
+  skill_measurement_remaining?: number | null
 }
 
 /** Un axe du radar synergie teammates.06 (value normalisé 0..100, raw debug). */
@@ -2846,9 +2849,12 @@ export interface TimeseriesMatchRow {
   /** Nom de carte pour étiquettes X compactes (timeseries.14 "Stats par minute"). */
   map_name?: string | null
   map_name_fr?: string | null
-  /** Skill rank (CSR/LUSR) — rating brut + type, depuis match_skill_rank. */
+  /** Skill rank (CSR/LUSR) — rating brut + type + contexte playlist/saison. */
   skill_rating_value?: number | null
   skill_rating_type?: string | null
+  skill_playlist_group?: string | null
+  skill_season_id?: string | null
+  skill_measurement_remaining?: number | null
   /** Session de rattachement (label sync). */
   session_label?: string | null
   /** MMR équipe — pour l'agrégat MMR moyen par session. */
