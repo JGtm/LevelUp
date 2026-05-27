@@ -372,3 +372,57 @@ func TestBuildProjections_Normal(t *testing.T) {
 		t.Errorf("expected positive XPPerDayFallback, got %f", p.XPPerDayFallback)
 	}
 }
+
+// TestComputeActiveXPPerDay_RegressiveHistory documente le comportement défensif :
+// si l'historique est régressif (lastXP < firstXP) on retourne 0 plutôt qu'un
+// taux négatif. Pré-fix Q7, ce cas se produisait pour Madina97294 quand le
+// fallback rank*1000 ramenait la dernière valeur sous la première.
+func TestComputeActiveXPPerDay_RegressiveHistory(t *testing.T) {
+	now := time.Now()
+	history := []domain.XPHistoryPoint{
+		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotal: 5_000_000},
+		{RecordedAt: now, XPTotal: 300_000},
+	}
+	got := computeActiveXPPerDay(history)
+	if got != 0 {
+		t.Errorf("expected 0 for regressive history, got %f", got)
+	}
+}
+
+// TestBuildProjections_RegressiveHistory vérifie qu'une projection vide
+// (XPPerDayActive=0) est bien renvoyée en cas de régression — comportement
+// observable côté frontend par l'absence des courbes "Projection Héros" et
+// "Projection optimiste". Post-fix Q7, ce cas ne devrait plus se produire en
+// prod mais le test verrouille le contrat.
+func TestBuildProjections_RegressiveHistory(t *testing.T) {
+	now := time.Now()
+	history := []domain.XPHistoryPoint{
+		{RecordedAt: now.Add(-10 * 24 * time.Hour), XPTotal: 5_000_000},
+		{RecordedAt: now, XPTotal: 300_000},
+	}
+	p := buildProjections(history, 300_000)
+	if p.XPPerDayActive != 0 {
+		t.Errorf("expected XPPerDayActive=0 for regression, got %f", p.XPPerDayActive)
+	}
+	if p.EstimatedHeroDate != nil {
+		t.Errorf("expected nil EstimatedHeroDate, got %v", *p.EstimatedHeroDate)
+	}
+}
+
+// TestBuildProjections_MadinaScenarioPostFix : avec un historique monotone
+// type Madina (3M XP à J-30 → 5M aujourd'hui), les projections sont calculées
+// et la courbe Hero est datée.
+func TestBuildProjections_MadinaScenarioPostFix(t *testing.T) {
+	now := time.Now()
+	history := []domain.XPHistoryPoint{
+		{RecordedAt: now.Add(-30 * 24 * time.Hour), XPTotal: 3_000_000},
+		{RecordedAt: now, XPTotal: 5_000_000},
+	}
+	p := buildProjections(history, 5_000_000)
+	if p.XPPerDayActive <= 0 {
+		t.Errorf("expected XPPerDayActive > 0, got %f", p.XPPerDayActive)
+	}
+	if p.EstimatedHeroDate == nil {
+		t.Errorf("expected EstimatedHeroDate set, got nil")
+	}
+}
