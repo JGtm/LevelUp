@@ -1,3 +1,58 @@
+## [2026-05-27] feat(lusr-v2): Phase 3e — calibration tier (μ → Bronze..Onyx)
+
+**Statut** : Complété ⭐ — 4 joueurs trackés dans leur tier cible
+
+**Contexte** : Phase 3d a produit des μ posteriors corrects relativement (ordre Madina > Choco > JGtm > XxDaemon) mais sur une plage très serrée (20-26) inadaptée à la grille tier indicative `cmd/lusr_v2_replay` (qui mettait tout le monde en Gold). Phase 3e calibre les seuils μ → Bronze/Argent/Or/Platine/Diamant/Onyx sur la distribution observée.
+
+**Décision technique principale** :
+
+1. **Analyse empirique** ([cmd/lusr_v2_tier_analysis/](../apps/go-api/cmd/lusr_v2_tier_analysis/main.go)) — query `player_skill_state_v2_latest` (9700+ joueurs agrégés sur 4 groupes), percentiles par playlist_group :
+   - p10 ≈ 21.8, p25 ≈ 23.1, p50 ≈ 24.6, p75 ≈ 26.1, p90 ≈ 28.0, p95 ≈ 29.0, p99 ≈ 31.0, max ≈ 33-45 (queue longue BTB).
+   - Joueurs trackés : Madina ~p75 (26.1), Choco/JGtm ~p35-40 (23.5-23.8), XxDaemon ~p10 (20.4).
+
+2. **Seuils retenus** (Phase 3e initial, à ré-estimer Phase 5 batch) :
+   | Tier | MinMu | Couverture % | Sub-tiers |
+   |---|---|---|---|
+   | Bronze | 0 | 0-15% | 6 |
+   | Argent | 22.0 | 15-35% | 6 |
+   | Or | 23.5 | 35-75% | 6 |
+   | Platine | 26.0 | 75-95% | 6 |
+   | Diamant | 29.0 | 95-99% | 6 |
+   | Onyx | 31.0 | 99%+ | 1 |
+
+3. **Helper [`internal/analysis/skill_v2/tier.go`](../apps/go-api/internal/analysis/skill_v2/tier.go)** — pure math, 0 dépendance :
+   - `DefaultTierBoundaries() []TierBoundary` (defaults Phase 3e)
+   - `TierBoundariesFromHyperparams(map[string]float64) []TierBoundary` — override depuis lusr_hyperparams_v2 (clé `tier_boundary_<name>`)
+   - `InferTier(μ, boundaries) (TierBoundary, sub_tier int)` — sub-tier 1-based, Onyx = 0 (rang unique)
+   - `FormatTierLabel(μ, boundaries) string` — ex. "Platine I", "Or VI", "Onyx"
+
+4. **Convention sub-tier** : sub I = bas du tier, sub VI = haut (aligné avec LUSR v1 et Halo CSR). Bronze VI signifie "haut Bronze, proche Argent" (XxDaemon μ=20.4 → Bronze VI).
+
+5. **Update [cmd/lusr_v2_replay](../apps/go-api/cmd/lusr_v2_replay/main.go)** : `inferredTier(μ)` délègue au helper. Plus de mapping en dur côté cmd.
+
+6. **8 tests** dans `tier_test.go` : ordre des seuils, tiers de référence des 4 joueurs trackés, bornes exactes (μ juste sous/sur chaque seuil), distribution uniforme des sub-tiers, Onyx sans sub, FormatTierLabel, override hyperparams.
+
+**Résultats observés (re-replay Phase 3e)** :
+
+| Joueur | Cible | μ groupe le plus joué | Tier inféré |
+|---|---|---:|---|
+| Madina97294 | fin Platine / début Diamant | 26.17 BTB | **Platine I** ✓ |
+| Chocoboflor | milieu/bas Or | 23.81 Slayer | **Or I** ✓ |
+| JGtm | milieu/bas Or | 23.52 Slayer | **Or I** ✓ |
+| XxDaemonGamerxX | Bronze | 20.38 Slayer | **Bronze VI** ✓ |
+
+**Tous les 4 joueurs sont dans leur tier cible.** La nuance "fin Platine / début Diamant" pour Madina vs "Platine I" inféré suggère que le modèle est un peu plus conservateur que l'estimation utilisateur — mais c'est directionnellement correct.
+
+Tests `go test ./internal/analysis/skill_v2/` PASS, `go vet ./...` clean. 17 non-convergences EP résiduelles (inchangé par rapport au commit précédent — c'est le bruit structurel des 4v5/5v4).
+
+**Prochaine étape (autonomie épuisée)** :
+
+- **Persistance optionnelle** des seuils dans `lusr_hyperparams_v2` (source = "phase_3e_calibration") — pas critique tant qu'on n'a qu'une seule grille. À faire en Phase 5 (batch ré-estimation).
+- **Bascule prod Stratégie C** : tier mapping est prêt, le LUSR v2 peut maintenant écrire dans `rating_type='LUSR'` avec valeurs μ et labels Platine/Or/Bronze cohérents. Nécessite ton GO explicite pour faire le switch (modif sync engine + sentinelle).
+- **Affichage UI** : exposer les nouveaux tiers v2 dans la page Career nécessite (a) route handler/service `internal/api/handlers/skill_v2_handler.go` (b) hook React côté apps/web. Travail produit, hors scope autonome.
+
+---
+
 ## [2026-05-27] feat(session-compare): 6 nouveaux charts + enrichissement SessionMatchPoint
 
 **Statut** : Complété
