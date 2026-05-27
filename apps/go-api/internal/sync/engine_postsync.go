@@ -155,6 +155,28 @@ func (e *SyncEngine) runPostSyncPipeline(
 	slog.InfoContext(ctx, "post-sync: pipeline démarré",
 		"gamertag", e.gamertag, "matches_inserted", len(insertedIDs), "event", evID)
 
+	// -2 Ensure player_match_enrichment rows exist for all matches where the
+	// player has a row in shared.match_participants (incident 2026-05-27).
+	//
+	// Sans cette étape, les joueurs qui apparaissent en shared via le sync
+	// d'un teammate (cas escouade) n'ont jamais de row INSERT côté
+	// player_match_enrichment, et tous les UPDATE qui suivent (perf, lusr,
+	// sessions, citations, dominance) sont des no-op silencieux. Voir
+	// ensure_enrichment_rows.go pour le contexte complet du bug.
+	//
+	// Idempotent : 0 row créée pour un joueur dont tous les enrichments
+	// existent déjà (cas stationnaire JGtm post-sync).
+	if n, err := ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "post-sync: ensure enrichment rows échoué",
+			"gamertag", e.gamertag, "err", err)
+		// Best-effort : on continue le pipeline même si ça échoue (les UPDATE
+		// resteront no-op pour les matchs sans row, mais le reste du pipeline
+		// peut quand même tourner pour les matchs qui ont déjà leurs rows).
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: enrichment rows créées",
+			"gamertag", e.gamertag, "rows_created", n)
+	}
+
 	// -1.5 Stats re-extraction heal — comble max_killing_spree, grenade/melee/
 	// power_weapon kills, time_played_seconds, avg_life_seconds, gamertag,
 	// team_X_ps_score pour les matchs synchronisés avec un ancien binaire.
@@ -407,16 +429,16 @@ func (e *SyncEngine) runPostSyncPipeline(
 		viewsRefreshed.Add(int32(n))
 		return nil
 	})
-	egRefresh.Go(func() error {
-		n, err := refreshSharedViews(ctx, sharedDB)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
-			sharedViewsErr = err
-			return nil //nolint:nilerr // best-effort idem
-		}
-		viewsRefreshed.Add(int32(n))
-		return nil
-	})
+	// Fix bug 2026-05-27 : refreshSharedViews retiré du post-sync runtime.
+	// Les vues shared (v_gamertag_lookup, v_match_full) sont désormais créées
+	// au boot via EnsureSharedSchema(). En runtime, le sharedDB writer peut
+	// avoir un ATTACH RO implicite (auto-attach DuckDB) qui fait échouer le
+	// CREATE OR REPLACE VIEW avec "Cannot execute statement of type CREATE
+	// on database shared_matches_v2 which is attached in read-only mode!"
+	// (logs/sync.log 23:57:51 et+). Les VIEW sont stockées dans la DB et
+	// survivent au close/reopen — pas besoin de les recréer après chaque sync.
+	_ = sharedViewsErr // conservé pour minimiser le diff downstream
+	// (champ ViewsRefreshed continue de refléter les vues player rebuilt).
 	// Catalog seeding en parallèle des aggregates — transparent, DB différente.
 	if len(pendingCSRs) > 0 {
 		csrsToSeed := pendingCSRs
@@ -511,6 +533,23 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	// l'ecriture RW de metadata (achievements upsert). Aligne le DSN avec
 	// engine.go:249 et citations_backfill.go via OpenReadWriteShared
 	// (cle "rw:"+path partagee).
+	//
+	// Fix race 2026-05-27 : `xbox_achievement_definitions` est globale (1 row
+	// par achievement_id, 144 communs aux 4 joueurs). 2 SyncEngine en
+	// parallèle (cf. Coordinator parallel_slots:2 ou scheduler errgroup) qui
+	// faisaient un upsert (INSERT-OR-UPDATE via conflict clause) sur la même
+	// row déclenchaient "TransactionContext Error: Conflict on update!" côté
+	// DuckDB (vu dans logs/sync.log 23:58:11 Madina97294 et précédents).
+	// Sérialisation applicative via dblease.AcquireWriterCtx(KindMetadata)
+	// — bloque le 2ème caller jusqu'au Release du 1er, sans contention DuckDB.
+	metadataLease, err := dblease.AcquireWriterCtx(ctx, nil, e.metadataDBPath, dblease.KindMetadata)
+	if err != nil {
+		slog.WarnContext(ctx, "achievements: acquisition lease metadata échouée",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+	defer metadataLease.Release()
+
 	metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
