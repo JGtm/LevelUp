@@ -19,6 +19,46 @@ Ajout de 3 champs à `SessionMatchPoint` (backend + frontend) et création de 6 
 
 ---
 
+## [2026-05-27] feat(lusr-v2): Phase 3d — câblage shadow runner + re-replay validé
+
+**Statut** : Complété ⭐ — verdict Phase 1d résolu
+
+**Contexte** : Phase 3c a livré la math (kills/deaths comme observations Bayésiennes). Phase 3d câble cette math dans le shadow runner et re-replay les 4 joueurs trackés pour valider le verdict du problème intra-squad.
+
+**Décision technique principale** :
+
+1. **`buildTwoTeamRosters` retourne `[]rosterMember`** (au lieu de `[]string`) — la struct embarque xuid + kills + deaths chargés depuis match_participants (colonnes existantes, alimentées par le sync).
+
+2. **`applyMatchToSkillV2` utilise `skill_v2.UpdateTwoTeamWithCountsEP`** au lieu du closed-form `UpdateTwoTeam`. Helper `buildCountInputs` détecte si les rosters ont des stats — si tous les joueurs ont kills/deaths == nil (cas matchs anciens hors fenêtre Mini-Phase 0.5), retourne nil et l'EP runner se comporte comme TS classique. Sinon construit la struct `CountInputs` pour passer le signal individuel.
+
+3. **Tests fixtures shadow** mis à jour : ajout des colonnes kills/deaths dans le `CREATE TABLE match_participants` du DDL test, ajout de valeurs dans tous les `INSERT` des tests existants. Les 4 tests `TestBuildTwoTeamRosters_*` et 3 tests `TestRunLUSRV2Shadow_*` restent PASS.
+
+**Résultats observés — re-replay sur les 4 joueurs trackés** :
+
+Comparaison Phase 1d (avant counts) vs Phase 3d (avec counts) sur le groupe le plus joué :
+
+| Joueur | Cible | Phase 1d | Phase 3d | Verdict |
+|---|---|---:|---:|---|
+| Madina97294 | Fort (Platine/Diamant) | μ=23.98 BTB **#1 mais sous-évaluée** | μ=**25.96** BTB **#1** ✓ | Reprise tête correcte |
+| Chocoboflor | Moyen (Or) | μ=31.27 Slayer **#1 sur-évaluée** ❌ | μ=23.87 Slayer **#2** ✓ | Redescend au bon niveau |
+| JGtm | Moyen (Or) | μ=28.25 Slayer **#2 sur-évaluée** ❌ | μ=23.46 Slayer **#3** ✓ | Redescend au bon niveau |
+| XxDaemonGamerxX | Faible (Bronze) | μ=18.06 Slayer **#4** ✓ | μ=20.29 Slayer **#4** ✓ | Reste bas |
+
+**Le problème intra-squad du verdict Phase 1d est résolu.** Madina > Choco > JGtm > XxDaemon, dans le bon ordre. Le signal individuel kills/deaths permet enfin de départager les coéquipiers récurrents (Madina, Choco, JGtm jouent ensemble dans 40-75% de leurs matchs).
+
+**Limitations observées** :
+
+- ~10% des matchs (239 sur ~2500) ne convergent pas en 200 itérations EP — exclusivement des matchs avec équipes très déséquilibrées (4v6, 5v8, etc., principalement chaos). Ces matchs sont skip silencieusement (le watermark ne bouge pas, ils seront retentés au prochain run). Solutions possibles si problème : (a) augmenter MaxIters, (b) ajouter du damping aux messages EP, (c) skip délibéré des matchs avec ratio team A/B > 2:1.
+- Valeurs absolues plus serrées que Phase 1d (toutes entre 20-26 sur l'échelle native TS μ_0=25). C'est attendu : les counts apportent de l'information qui RESSERRE l'incertitude (σ converge à ~0.67 vs ~2 en Phase 1d). Le mapping μ → tiers Bronze/Silver/.../Onyx aura besoin d'être recalibré (Phase 3e).
+
+**Prochaine étape (Phase 3e ou Phase 2)** :
+
+- **Phase 3e (calibration tier mapping)** : ajuster `inferredTier()` dans `cmd/lusr_v2_replay` ou figer les seuils dans `lusr_hyperparams_v2` (`tier_boundary_*`) pour que la grille [Bronze..Onyx] colle aux μ produits par le modèle. Sans ça l'UI verrait tout le monde en Gold.
+- **Phase 2 (squadOffset, TS2 §6)** : maintenant que les counts marchent, on peut ajouter le squadOffset sans risquer de masquer le bug intra-squad. Moins prioritaire désormais.
+- **Migration prod (Stratégie C)** : quand la calibration tier est OK, basculer le writer `rating_type='LUSR'` vers le service v2 (cf. discussion strategy migration).
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 3c — kills/deaths comme observations Bayésiennes (TS2 §8)
 
 **Statut** : Complété (math + tests)
