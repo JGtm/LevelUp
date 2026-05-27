@@ -206,6 +206,18 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// stables pour stockage DB. Mode legacy si CapturesBase vide.
 	store := MediaPathStore{CapturesBase: opts.CapturesBase}
 
+	// Réconciliation des orphelins : détecte les entrées DB dont le fichier
+	// disque a changé d'extension sans rescan (typique d'une conversion locale
+	// .mp4 → .mkv avec préservation du stem). Idempotent — exécuté en best-effort
+	// avant le walk pour limiter les inserts redondants en aval.
+	if reconciled, err := ReconcileOrphanedMediaFiles(ctx, db, opts.Gamertag, store); err != nil {
+		slog.WarnContext(ctx, "IndexMedia: réconciliation orphelins échouée",
+			"player", opts.Gamertag, "err", err)
+	} else if reconciled > 0 {
+		slog.InfoContext(ctx, "IndexMedia: orphelins resynced",
+			"player", opts.Gamertag, "count", reconciled)
+	}
+
 	for _, path := range mediaFiles {
 		hash, err := fileHash(path)
 		if err != nil {
