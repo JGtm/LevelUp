@@ -44,6 +44,8 @@ export const explorerManifest = {
   "explorer.filters.skill_tier_onyx": { fr: "Onyx", en: "Onyx" },
   "explorer.filters.skill_tier_platinum": { fr: "Platine", en: "Platinum" },
   "explorer.filters.skill_tier_silver": { fr: "Argent", en: "Silver" },
+  "explorer.matches.bot_pill": { fr: "bot", en: "bot" },
+  "explorer.matches.bot_pill_tooltip": { fr: "Un coéquipier était un bot (humain parti et remplacé).", en: "A teammate was a bot (a human player left and was replaced)." },
   "explorer.matches.col_assists": { fr: "A", en: "A" },
   "explorer.matches.col_assists_long": { fr: "Assists", en: "Assists" },
   "explorer.matches.col_date": { fr: "Date", en: "Date" },
