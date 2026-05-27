@@ -368,10 +368,13 @@ func buildCompareMatchSeries(matches []legacymatch.StatsMatchRow) []domain.Sessi
 			}
 		}
 		pts = append(pts, domain.SessionMatchPoint{
-			Index:      i + 1,
-			KD:         kd,
-			Cumulative: cumulative,
-			Accuracy:   m.Accuracy,
+			Index:           i + 1,
+			KD:              kd,
+			Cumulative:      cumulative,
+			Accuracy:        m.Accuracy,
+			PerfScore:       m.PerfScoreComputed,
+			SkillRating:     m.SkillRatingValue,
+			EngagementScore: m.EngagementScoreBrut,
 		})
 	}
 	return pts

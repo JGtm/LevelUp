@@ -664,3 +664,91 @@ en = "-"
 [session.compare.history_empty]
 fr = "Aucun match dans cette session."
 en = "No matches in this session."
+
+# ─── Kills Donut (A|B côte à côte) ──────────────────────────────────────────
+
+[session.compare.kills_donut_title]
+fr = "Répartition K/D/A"
+en = "K/D/A Breakdown"
+
+[session.compare.kills_donut_empty]
+fr = "Aucun match disponible."
+en = "No matches available."
+
+# ─── Outcome Tape (A|B empilées) ─────────────────────────────────────────────
+
+[session.compare.outcome_tape_title]
+fr = "Enchaînement résultats"
+en = "Outcome Sequence"
+
+[session.compare.outcome_tape_empty]
+fr = "Aucun match disponible."
+en = "No matches available."
+
+# ─── Performance Score Progression ───────────────────────────────────────────
+
+[session.compare.perf_progression_title]
+fr = "Progression score de performance"
+en = "Performance Score Progression"
+
+[session.compare.perf_progression_axis_match]
+fr = "Match"
+en = "Match"
+
+[session.compare.perf_progression_axis_score]
+fr = "Score perf."
+en = "Perf. score"
+
+[session.compare.perf_progression_empty]
+fr = "Données de performance indisponibles."
+en = "Performance data unavailable."
+
+# ─── LUSR / CSR Progression ──────────────────────────────────────────────────
+
+[session.compare.skill_progression_title]
+fr = "Progression LUSR / CSR"
+en = "LUSR / CSR Progression"
+
+[session.compare.skill_progression_axis_match]
+fr = "Match"
+en = "Match"
+
+[session.compare.skill_progression_axis_rating]
+fr = "Rating"
+en = "Rating"
+
+[session.compare.skill_progression_empty]
+fr = "Aucune donnée de rating disponible (session non classée ?)."
+en = "No rating data available (unranked session?)."
+
+# ─── OC / DR (Rendement offensif / Résistance défensive) ────────────────────
+
+[session.compare.ocdr_title]
+fr = "Rendement offensif · Résistance défensive"
+en = "Offensive Yield · Defensive Resistance"
+
+[session.compare.ocdr_empty]
+fr = "Aucune donnée de dégâts disponible."
+en = "No damage data available."
+
+# ─── Engagement ──────────────────────────────────────────────────────────────
+
+[session.compare.engagement_title]
+fr = "Engagement moyen"
+en = "Average Engagement"
+
+[session.compare.engagement_progression_title]
+fr = "Progression engagement"
+en = "Engagement Progression"
+
+[session.compare.engagement_axis_match]
+fr = "Match"
+en = "Match"
+
+[session.compare.engagement_axis_score]
+fr = "Score"
+en = "Score"
+
+[session.compare.engagement_empty]
+fr = "Données d'engagement indisponibles."
+en = "Engagement data unavailable."

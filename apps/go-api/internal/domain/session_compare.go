@@ -76,10 +76,13 @@ type SessionCompareMetricRow struct {
 // SessionMatchPoint est un point de données par match pour les charts de progression.
 // Accuracy est en convention 0..1 (ADR 0006) — le frontend multiplie par 100 pour l'affichage.
 type SessionMatchPoint struct {
-	Index      int      `json:"index"`      // 1-based
-	KD         float64  `json:"kd"`         // kills / deaths (deaths=0 → kills)
-	Cumulative int      `json:"cumulative"` // solde cumulé W=+1 / L=-1 / autre=0
-	Accuracy   *float64 `json:"accuracy"`   // 0..1, nil si indisponible
+	Index           int      `json:"index"`                      // 1-based
+	KD              float64  `json:"kd"`                         // kills / deaths (deaths=0 → kills)
+	Cumulative      int      `json:"cumulative"`                 // solde cumulé W=+1 / L=-1 / autre=0
+	Accuracy        *float64 `json:"accuracy"`                   // 0..1, nil si indisponible
+	PerfScore       *float64 `json:"perf_score,omitempty"`       // performance_score computé du match
+	SkillRating     *float64 `json:"skill_rating,omitempty"`     // LUSR ou CSR après ce match
+	EngagementScore *float64 `json:"engagement_score,omitempty"` // résidu brut d'engagement du match
 }
 
 // SessionCompareMapRow est une ligne du tableau par carte.

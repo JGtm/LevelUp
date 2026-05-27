@@ -29,6 +29,12 @@ import { SessionCompareSkillHeader } from './SessionCompareSkillHeader'
 import { SessionCompareMMR } from './SessionCompareMMR'
 import { SessionCompareParticipation } from './SessionCompareParticipation'
 import { SessionCompareMatchHistory } from './SessionCompareMatchHistory'
+import { SessionCompareKillsDonut } from './SessionCompareKillsDonut'
+import { SessionCompareOutcomeTape } from './SessionCompareOutcomeTape'
+import { SessionComparePerfProgression } from './SessionComparePerfProgression'
+import { SessionCompareSkillProgression } from './SessionCompareSkillProgression'
+import { SessionCompareOCDR } from './SessionCompareOCDR'
+import { SessionCompareEngagement } from './SessionCompareEngagement'
 
 function useSessionT() {
   const locale = useAppShellStore((s) => s.locale)
@@ -305,6 +311,44 @@ export function SessionComparePage() {
                   </CardContent>
                 </Card>
 
+                {/* Répartition K/D/A (côte à côte) + enchaînement résultats */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">{t('session.compare.kills_donut_title')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <SessionCompareKillsDonut
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.kills_donut_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: t('session.compare.kills_donut_empty'),
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">{t('session.compare.outcome_tape_title')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <SessionCompareOutcomeTape
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.outcome_tape_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: t('session.compare.outcome_tape_empty'),
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
                 {/* Match highlights (chart 04) */}
                 <Card>
                   <CardHeader>
@@ -503,6 +547,78 @@ export function SessionComparePage() {
                           empty: chartEmpty,
                         }}
                         height={280}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Progression perf score + LUSR/CSR */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Card>
+                    <CardContent className="pt-4">
+                      <SessionComparePerfProgression
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.perf_progression_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: t('session.compare.perf_progression_empty'),
+                        }}
+                        height={280}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-4">
+                      <SessionCompareSkillProgression
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.skill_progression_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: t('session.compare.skill_progression_empty'),
+                        }}
+                        height={280}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* OC/DR + Engagement */}
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">{t('session.compare.ocdr_title')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <SessionCompareOCDR
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.ocdr_title'),
+                          empty: t('session.compare.ocdr_empty'),
+                        }}
+                      />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">{t('session.compare.engagement_title')}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <SessionCompareEngagement
+                        sessionA={data.session_a}
+                        sessionB={data.session_b}
+                        labels={{
+                          title: t('session.compare.engagement_title'),
+                          progressionTitle: t('session.compare.engagement_progression_title'),
+                          sessionA: labelA,
+                          sessionB: labelB,
+                          empty: t('session.compare.engagement_empty'),
+                        }}
+                        height={240}
                       />
                     </CardContent>
                   </Card>

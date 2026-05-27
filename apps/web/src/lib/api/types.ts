@@ -3007,6 +3007,9 @@ export interface SessionMatchPoint {
   kd: number
   cumulative: number
   accuracy: number | null
+  perf_score?: number | null
+  skill_rating?: number | null
+  engagement_score?: number | null
 }
 
 /** Ligne du tableau par carte. */

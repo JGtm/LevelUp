@@ -1,3 +1,24 @@
+## [2026-05-27] feat(session-compare): 6 nouveaux charts + enrichissement SessionMatchPoint
+
+**Statut** : Complété
+
+**Décision technique principale** :
+Ajout de 3 champs à `SessionMatchPoint` (backend + frontend) et création de 6 composants session-compare :
+- `PerfScore`, `SkillRating`, `EngagementScore` exposés dans `match_series` (Go domain + buildCompareMatchSeries)
+- 6 TSX : `SessionCompareKillsDonut`, `SessionCompareOutcomeTape`, `SessionComparePerfProgression`, `SessionCompareSkillProgression`, `SessionCompareOCDR`, `SessionCompareEngagement`
+- Câblés dans `SessionComparePage.tsx` (imports + sections dans `hasComparisonSelection`)
+- i18n : 14 nouvelles clés dans `session.toml`, manifests régénérés (177 clés)
+
+**Résultats** :
+- `go test ./...` : tous PASS (0 FAIL)
+- `go vet ./...` : clean
+- `npm run typecheck` : 0 erreur
+- Aucun hex ni classe Tailwind de couleur directe (tokens `compare-a`/`compare-b`/`divergent-pos`/etc.)
+
+**Prochaine étape** : commit + PR
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 3c — kills/deaths comme observations Bayésiennes (TS2 §8)
 
 **Statut** : Complété (math + tests)
