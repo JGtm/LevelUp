@@ -219,6 +219,10 @@ CREATE TABLE IF NOT EXISTS match_participants (
     grenade_kills        SMALLINT,
     melee_kills          SMALLINT,
     power_weapon_kills   SMALLINT,
+    present_at_beginning  BOOLEAN,
+    present_at_completion BOOLEAN,
+    joined_in_progress    BOOLEAN,
+    left_in_progress      BOOLEAN,
     created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, xuid)
 );
