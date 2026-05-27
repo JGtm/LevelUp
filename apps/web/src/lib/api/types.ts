@@ -3001,6 +3001,40 @@ export interface TimeseriesPageResponse {
 // Session Compare (Slice 3C)
 // ---------------------------------------------------------------------------
 
+/** Point de données par match pour les charts de progression (K/D, cumul, précision). */
+export interface SessionMatchPoint {
+  index: number
+  kd: number
+  cumulative: number
+  accuracy: number | null
+}
+
+/** Ligne du tableau par carte. */
+export interface SessionCompareMapRow {
+  map_name: string
+  a_matches: number
+  a_wins: number
+  a_losses: number
+  b_matches: number
+  b_wins: number
+  b_losses: number
+}
+
+/** Ligne du tableau par mode. */
+export interface SessionCompareModeRow {
+  mode_name: string
+  a_matches: number
+  a_wins: number
+  b_matches: number
+  b_wins: number
+}
+
+/** Axe du profil de participation 6 axes, normalisé 0..100. */
+export interface SessionParticipationAxis {
+  name: string  // "combat" | "survival" | "support" | "score" | "objective" | "impact"
+  value: number // 0..100
+}
+
 export interface SessionCompareEntry {
   session_label: string
   start_time: string | null
@@ -3017,6 +3051,22 @@ export interface SessionCompareEntry {
   avg_dr?: number | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 4
   avg_residual_brut?: number | null
+  /** Série de points par match pour les charts de progression. */
+  match_series?: SessionMatchPoint[]
+  /** Dernier skill rating de la session (LUSR ou CSR). */
+  last_skill_rating?: number | null
+  skill_rating_type?: string | null   // "csr" | "lusr" | ""
+  skill_rating_delta?: number | null  // last − first
+  /** MMR moyen de la session. */
+  avg_team_mmr?: number | null
+  avg_enemy_mmr?: number | null
+  /** Profil de participation 6 axes (0..100). */
+  participation?: SessionParticipationAxis[]
+  /** Historique des matchs de la session (chronologique). */
+  matches?: SessionDetailMatchRow[]
+  /** Meilleur et pire match par performance score. */
+  best_match?: SessionDetailMatchRow | null
+  worst_match?: SessionDetailMatchRow | null
 }
 
 export interface SessionCompareMetricRow {
@@ -3039,8 +3089,8 @@ export interface SessionCompareResponse {
   session_b: SessionCompareEntry | null
   available_sessions: string[]
   metrics: SessionCompareMetricRow[]
-  maps_table: Record<string, unknown>[]
-  modes_table: Record<string, unknown>[]
+  maps_table: SessionCompareMapRow[]
+  modes_table: SessionCompareModeRow[]
 }
 
 export interface SessionDetailMatchRow {

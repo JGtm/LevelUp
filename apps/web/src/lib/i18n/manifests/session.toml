@@ -428,3 +428,239 @@ en = "Incomplete comparison"
 [session.compare.incomplete_description]
 fr = "Sélectionne une session A et une session B pour afficher les graphiques et tableaux comparatifs."
 en = "Select a session A and a session B to display comparison charts and tables."
+
+# ─── Charts de comparaison (charts 07–10) ─────────────────────────────────
+
+[session.compare.radar_title]
+fr = "Profil global — A vs B"
+en = "Overall profile — A vs B"
+
+[session.compare.radar_axis_kd]
+fr = "K/D"
+en = "K/D"
+
+[session.compare.radar_axis_winrate]
+fr = "Victoires %"
+en = "Win %"
+
+[session.compare.radar_axis_accuracy]
+fr = "Précision %"
+en = "Accuracy %"
+
+[session.compare.bar_metrics_title]
+fr = "Métriques clés — A vs B"
+en = "Key metrics — A vs B"
+
+[session.compare.cumulative_title]
+fr = "Score cumulé par match"
+en = "Cumulative score per match"
+
+[session.compare.cumulative_axis_match]
+fr = "Match"
+en = "Match"
+
+[session.compare.cumulative_axis_score]
+fr = "Solde W/L cumulé"
+en = "Cumulative W/L balance"
+
+[session.compare.cumulative_equilibrium]
+fr = "Équilibre"
+en = "Equilibrium"
+
+[session.compare.kd_progression_title]
+fr = "Évolution K/D par match"
+en = "K/D progression per match"
+
+[session.compare.kd_progression_axis_kd]
+fr = "K/D"
+en = "K/D"
+
+[session.compare.kd_progression_baseline]
+fr = "Seuil 1.0"
+en = "1.0 baseline"
+
+[session.compare.chart_empty]
+fr = "Aucune donnée disponible pour les sessions sélectionnées."
+en = "No data available for the selected sessions."
+
+[session.compare.map_col_map]
+fr = "Carte"
+en = "Map"
+
+[session.compare.map_col_a_matches]
+fr = "A — Parties"
+en = "A — Matches"
+
+[session.compare.map_col_a_wl]
+fr = "A — V/D"
+en = "A — W/L"
+
+[session.compare.map_col_b_matches]
+fr = "B — Parties"
+en = "B — Matches"
+
+[session.compare.map_col_b_wl]
+fr = "B — V/D"
+en = "B — W/L"
+
+[session.compare.mode_col_mode]
+fr = "Mode"
+en = "Mode"
+
+[session.compare.mode_col_a_matches]
+fr = "A — Parties"
+en = "A — Matches"
+
+[session.compare.mode_col_a_wins]
+fr = "A — Victoires"
+en = "A — Wins"
+
+[session.compare.mode_col_b_matches]
+fr = "B — Parties"
+en = "B — Matches"
+
+[session.compare.mode_col_b_wins]
+fr = "B — Victoires"
+en = "B — Wins"
+
+# --- Chart 01 : Skill Rating ---
+
+[session.compare.skill_title]
+fr = "Skill Rating"
+en = "Skill Rating"
+
+[session.compare.skill_empty]
+fr = "Aucun skill rating disponible pour ces sessions."
+en = "No skill rating available for these sessions."
+
+[session.compare.skill_delta_label]
+fr = "Progression"
+en = "Progression"
+
+# --- Chart 04 : Match highlights ---
+
+[session.compare.highlight_title]
+fr = "Matchs marquants"
+en = "Match highlights"
+
+[session.compare.highlight_best]
+fr = "Meilleur match"
+en = "Best match"
+
+[session.compare.highlight_worst]
+fr = "Pire match"
+en = "Worst match"
+
+[session.compare.highlight_empty]
+fr = "Aucune donnée de performance disponible."
+en = "No performance data available."
+
+[session.compare.highlight_kills]
+fr = "Kills"
+en = "Kills"
+
+[session.compare.highlight_kda]
+fr = "K/D"
+en = "K/D"
+
+[session.compare.highlight_score]
+fr = "Score"
+en = "Score"
+
+# --- Chart 06 : MMR ---
+
+[session.compare.mmr_title]
+fr = "MMR moyen de la session"
+en = "Session average MMR"
+
+[session.compare.mmr_team]
+fr = "MMR Team"
+en = "Team MMR"
+
+[session.compare.mmr_enemy]
+fr = "MMR Adversaire"
+en = "Enemy MMR"
+
+[session.compare.mmr_empty]
+fr = "MMR non disponible pour ces sessions."
+en = "MMR not available for these sessions."
+
+# --- Chart 13 : Profil de participation ---
+
+[session.compare.participation_title]
+fr = "Profil de participation (6 axes)"
+en = "Participation profile (6 axes)"
+
+[session.compare.participation_combat]
+fr = "Combat"
+en = "Combat"
+
+[session.compare.participation_survival]
+fr = "Survie"
+en = "Survival"
+
+[session.compare.participation_support]
+fr = "Support"
+en = "Support"
+
+[session.compare.participation_score]
+fr = "Score"
+en = "Score"
+
+[session.compare.participation_objective]
+fr = "Objectif"
+en = "Objective"
+
+[session.compare.participation_impact]
+fr = "Impact"
+en = "Impact"
+
+[session.compare.participation_empty]
+fr = "Aucune donnée de participation disponible."
+en = "No participation data available."
+
+# --- Chart 14 : Historique des matchs ---
+
+[session.compare.history_title]
+fr = "Historique des matchs"
+en = "Match history"
+
+[session.compare.history_tab_a]
+fr = "Session A"
+en = "Session A"
+
+[session.compare.history_tab_b]
+fr = "Session B"
+en = "Session B"
+
+[session.compare.history_col_date]
+fr = "Date"
+en = "Date"
+
+[session.compare.history_col_kda]
+fr = "K/D/A"
+en = "K/D/A"
+
+[session.compare.history_col_mode]
+fr = "Mode"
+en = "Mode"
+
+[session.compare.history_col_perf]
+fr = "Score perf."
+en = "Perf. score"
+
+[session.compare.history_win]
+fr = "V"
+en = "W"
+
+[session.compare.history_loss]
+fr = "D"
+en = "L"
+
+[session.compare.history_other]
+fr = "-"
+en = "-"
+
+[session.compare.history_empty]
+fr = "Aucun match dans cette session."
+en = "No matches in this session."
