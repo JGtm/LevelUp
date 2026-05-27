@@ -13,6 +13,21 @@ import (
 	"levelup/go-api/internal/analysis/skill_v2/ep"
 )
 
+// PlayerCounts capture les counts individuels d'un joueur (kills/deaths)
+// observés pendant un match. Utilisé par UpdateTwoTeamWithCountsEP pour
+// injecter le signal individuel TS2 §8 dans la mise à jour.
+type PlayerCounts struct {
+	Kills  *float64 // nil = pas d'obs (count ignoré)
+	Deaths *float64
+}
+
+// CountInputs structure les counts par équipe pour rester aligné avec
+// TeamA/TeamB. Doit avoir len(TeamA) == len(TeamA) etc.
+type CountInputs struct {
+	TeamA []PlayerCounts // len doit matcher m.TeamA
+	TeamB []PlayerCounts // len doit matcher m.TeamB
+}
+
 // UpdateTwoTeamEP : équivalent EP de UpdateTwoTeam.
 //
 // Garantit numériquement le même résultat (au tolérance EP près, typiquement
@@ -54,6 +69,96 @@ func UpdateTwoTeamEP(m TwoTeamMatch, p Priors) (teamA, teamB []Gaussian, err err
 	}
 
 	return fromEpGaussians(postA), fromEpGaussians(postB), nil
+}
+
+// UpdateTwoTeamWithCountsEP : variante TS2 §8 — intègre les counts (kills,
+// deaths) par joueur comme observations Bayésiennes. C'est le signal qui
+// permet de DÉPARTAGER les coéquipiers d'un même squad (cf. verdict Phase 1d
+// où Madina/Choco/JGtm bougeaient ensemble parce que win/loss seul ne
+// discrimine pas dans un squad).
+//
+// counts.TeamA[i] = obs du joueur i de TeamA. Si counts.TeamA[i] est nul
+// (Kills et Deaths nil), aucune obs n'est posée pour ce joueur. Cela permet
+// de mixer joueurs trackés (obs complète) et adversaires (pas d'obs).
+//
+// Si counts est nil → équivalent à UpdateTwoTeamEP (pas d'obs).
+func UpdateTwoTeamWithCountsEP(m TwoTeamMatch, counts *CountInputs, p Priors) (teamA, teamB []Gaussian, err error) {
+	if p.Beta <= 0 {
+		return nil, nil, fmt.Errorf("skill_v2: Beta doit être > 0 (reçu %v)", p.Beta)
+	}
+	if counts != nil {
+		if len(counts.TeamA) != len(m.TeamA) {
+			return nil, nil, fmt.Errorf("skill_v2: counts.TeamA len %d != m.TeamA len %d", len(counts.TeamA), len(m.TeamA))
+		}
+		if len(counts.TeamB) != len(m.TeamB) {
+			return nil, nil, fmt.Errorf("skill_v2: counts.TeamB len %d != m.TeamB len %d", len(counts.TeamB), len(m.TeamB))
+		}
+	}
+
+	teamAIn, err := toEpGaussians(m.TeamA)
+	if err != nil {
+		return nil, nil, err
+	}
+	teamBIn, err := toEpGaussians(m.TeamB)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	result, err := toEpResult(m.ResultA)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	drawMargin := DrawMargin(p.DrawProbability, len(m.TeamA), len(m.TeamB), p.Beta)
+
+	input := ep.Match2TeamInput{
+		TeamA:      teamAIn,
+		TeamB:      teamBIn,
+		ResultA:    result,
+		Beta:       p.Beta,
+		Tau:        p.Tau,
+		DrawMargin: drawMargin,
+	}
+	if counts != nil {
+		input.Counts = flattenCountInputs(counts)
+	}
+
+	postA, postB, err := ep.UpdateMatch2Team(input, ep.DefaultMatch2TeamConfig())
+	if err != nil {
+		return nil, nil, err
+	}
+	return fromEpGaussians(postA), fromEpGaussians(postB), nil
+}
+
+// flattenCountInputs convertit la représentation par-équipe en liste plate
+// de CountObservation que le builder ep consomme.
+func flattenCountInputs(c *CountInputs) []ep.CountObservation {
+	out := make([]ep.CountObservation, 0, 2*(len(c.TeamA)+len(c.TeamB)))
+	for i, pc := range c.TeamA {
+		if pc.Kills != nil {
+			out = append(out, ep.CountObservation{
+				PlayerIndex: i, Side: ep.SideA, Type: ep.CountKill, Value: *pc.Kills,
+			})
+		}
+		if pc.Deaths != nil {
+			out = append(out, ep.CountObservation{
+				PlayerIndex: i, Side: ep.SideA, Type: ep.CountDeath, Value: *pc.Deaths,
+			})
+		}
+	}
+	for j, pc := range c.TeamB {
+		if pc.Kills != nil {
+			out = append(out, ep.CountObservation{
+				PlayerIndex: j, Side: ep.SideB, Type: ep.CountKill, Value: *pc.Kills,
+			})
+		}
+		if pc.Deaths != nil {
+			out = append(out, ep.CountObservation{
+				PlayerIndex: j, Side: ep.SideB, Type: ep.CountDeath, Value: *pc.Deaths,
+			})
+		}
+	}
+	return out
 }
 
 func toEpGaussians(team []Gaussian) ([]ep.Gaussian, error) {

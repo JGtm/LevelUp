@@ -45,6 +45,15 @@ type Match2TeamInput struct {
 	Beta       float64 // bruit perf (β en notation TS)
 	Tau        float64 // évolution dynamique (τ en notation TS)
 	DrawMargin float64 // ε de draw, déjà calculé via DrawMargin(prob, n_a, n_b, beta)
+
+	// Counts (TS2 §8, Phase 3c). Optionnels : si vide, le match utilise
+	// uniquement le signal win/loss/draw (équivalent TS classique).
+	//
+	// Chaque CountObservation lie un (playerIdx, side, type) à une valeur
+	// observée. Le solver crée alors un sous-graphe SumFactor + PriorFactor
+	// pour chaque obs (cf. addCountObservationFactors).
+	Counts            []CountObservation
+	CountHyperparams  map[CountType]CountHyperparams // optionnel ; défaut = DefaultCountHyperparams
 }
 
 // Match2TeamConfig regroupe les paramètres EP — séparés des hyperparams skill
@@ -55,9 +64,16 @@ type Match2TeamConfig struct {
 }
 
 // DefaultMatch2TeamConfig retourne des paramètres de solver conservateurs,
-// adaptés aux factor graphs TS qui convergent en 5-20 itérations.
+// adaptés aux factor graphs TS classiques (win/loss seul) qui convergent en
+// 5-20 itérations.
+//
+// Phase 3c (count observations) ajoute des facteurs additionnels — le graph
+// peut nécessiter plus d'itérations, surtout sur des scenarios contradictoires
+// (ex : équipe gagne mais joueur a des stats faibles). MaxIters bumped à 200
+// pour absorber ces cas. La sortie reste correcte pour les cas convergents
+// en < 50 itérations.
 func DefaultMatch2TeamConfig() Match2TeamConfig {
-	return Match2TeamConfig{Tolerance: 1e-4, MaxIters: 50}
+	return Match2TeamConfig{Tolerance: 1e-4, MaxIters: 200}
 }
 
 // UpdateMatch2Team construit le graph EP, le résout, applique τ² aux variances
@@ -95,6 +111,28 @@ func UpdateMatch2Team(m Match2TeamInput, cfg Match2TeamConfig) (teamA, teamB []G
 		swapped:   swapped,
 		drawMargin: m.DrawMargin,
 	})
+
+	// Counts (Phase 3c) — append après les facteurs du match principal.
+	// On adapte le PlayerIndex/Side si on a swap pour TeamLoss : SideA dans
+	// l'input devient SideB en interne et vice versa.
+	if len(m.Counts) > 0 {
+		hyp := m.CountHyperparams
+		if hyp == nil {
+			hyp = map[CountType]CountHyperparams{
+				CountKill:  DefaultCountHyperparams(CountKill),
+				CountDeath: DefaultCountHyperparams(CountDeath),
+			}
+		}
+		adjustedCounts := m.Counts
+		if swapped {
+			adjustedCounts = make([]CountObservation, len(m.Counts))
+			for i, o := range m.Counts {
+				o.Side = flipSide(o.Side)
+				adjustedCounts[i] = o
+			}
+		}
+		factors = append(factors, addCountObservationFactors(adjustedCounts, perfA, perfB, hyp)...)
+	}
 
 	runner := NewRunner(factors)
 	runner.Tolerance = cfg.Tolerance
@@ -181,6 +219,13 @@ func buildFactors(a buildFactorsArgs) []Factor {
 		factors = append(factors, NewGreaterThanFactor("obs_win", a.diff, a.drawMargin))
 	}
 	return factors
+}
+
+func flipSide(s Side) Side {
+	if s == SideA {
+		return SideB
+	}
+	return SideA
 }
 
 func gaussianFromPrior(p Gaussian) Gaussian {
