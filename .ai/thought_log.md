@@ -1,3 +1,41 @@
+## [2026-05-27] feat(lusr-v2): Phase 3c — kills/deaths comme observations Bayésiennes (TS2 §8)
+
+**Statut** : Complété (math + tests)
+
+**Contexte** : le verdict Phase 1d a démontré que le LUSR v2 classique ne discriminait pas les coéquipiers d'un même squad (Madina, Choco, JGtm bougeaient à l'identique parce qu'ils gagnaient/perdaient ensemble — pas de signal individuel). Phase 3c implémente la section 8 du paper TS2 : kills/deaths comme observations Bayésiennes ajoutées au factor graph.
+
+**Décision technique principale** :
+
+1. **CountObservation + CountHyperparams** ([count_obs.go](../apps/go-api/internal/analysis/skill_v2/ep/count_obs.go)) :
+   - Modèle : `observed_count_i ~ N(bias + w_p · perf_i + w_o · avg(perf_opp_j), v)`
+   - 4 hyperparams par count_type : `Bias`, `WeightPlayer`, `WeightOpponent`, `ObservationVar`.
+   - Defaults calibrés pour DefaultPriors() (μ_0 = 25, σ_0 ≈ 8.33), pas pour la scale Halo 5 paper (μ_0 = 3) : pour deaths, on AJOUTE un `Bias = 25` pour compenser le fait que `w_p · perf ≈ -25` produit un expected négatif sans correction. Sur la scale du paper, bias = 0 est implicite et le `max(0, ...)` du modèle tronqué fait office de plancher ; sur notre scale, l'intercept fait le job de façon plus simple à implémenter.
+   - Détail du wiring : pour chaque obs, le code crée un sous-graph `SumFactor(perf_player, perf_opp_1..M) → expected_count_var` + `PriorFactor(expected_count_var, N(value - bias, v))`.
+
+2. **Match2TeamInput étendu** : nouveau champ `Counts []CountObservation`. Si vide, le match utilise uniquement le signal win/loss/draw (équivalent TS classique strict). Side et PlayerIndex sont swap-aware si on traite un TeamLoss en interne.
+
+3. **API publique** ([trueskill_ep.go](../apps/go-api/internal/analysis/skill_v2/trueskill_ep.go)) : nouveau `UpdateTwoTeamWithCountsEP(m, *CountInputs, p)`. Signature analogue à `UpdateTwoTeamEP` plus la structure `CountInputs` qui aligne kills/deaths par équipe. `nil` est équivalent au comportement TS classique. Validation explicite des longueurs.
+
+4. **MaxIters bumped à 200** (était 50) — les scenarios contradictoires (équipe gagne mais stats individuelles faibles) nécessitent plus d'itérations EP pour converger. Mesure de sécurité, le cas convergent reste rapide.
+
+**Résultats observés** :
+
+- **5 nouveaux tests** PASS ([trueskill_ep_counts_test.go](../apps/go-api/internal/analysis/skill_v2/trueskill_ep_counts_test.go)) :
+  - `TestPhase3c_CountsDiscriminateTeammates` ⭐ — test crucial : sur un match 2v2 win, A0 (20 kills, 4 deaths) → μ=30.7 (UP), A1 (4 kills, 20 deaths) → μ=19.5 (DOWN). **Gap = 11.2 points** entre coéquipiers qui auraient été ex aequo en TS classique.
+  - `TestPhase3c_CountsConsistentDirection` — kills↑ → μ monte ; kills↓ → μ monte moins.
+  - `TestPhase3c_CountsNilEquivalentToNoCount` — backward compat : nil counts ↔ UpdateTwoTeamEP plain.
+  - `TestPhase3c_CountsMismatchedLengths_Error` — validation entrées.
+  - `TestPhase3c_PartialCounts_OnlyTrackedPlayers` — cas réaliste : observations sur 1 joueur tracké, nil pour les autres adversaires aléatoires.
+
+- Tests Phase 3b régression (10 tests EP vs closed-form) restent PASS — l'ajout des counts n'affecte pas le cas sans counts.
+- `go vet ./internal/analysis/skill_v2/...` clean.
+
+**Limitation MVP** : le `max(0, ...)` du paper (count = max(0, normal)) n'est PAS implémenté — on traite l'observation comme Gaussienne pure. Pour les counts > 2 (cas dominant en pratique), c'est mathématiquement équivalent. Pour count = 0, l'intercept `bias` couvre le cas majoritaire. Un facteur tronqué propre pourrait être ajouté en Phase 3e si on observe des artefacts sur des matchs très courts (peu de kills/deaths).
+
+**Prochaine étape (Phase 3d)** : câbler le shadow runner (`internal/sync/skill_v2_shadow.go`) pour passer les counts à `UpdateTwoTeamWithCountsEP` au lieu de l'API plain. Puis re-run le replay (`cmd/lusr_v2_replay --reset`) et comparer aux cibles Madina/Choco/JGtm. Attendu : Madina remonte au-dessus de Choco/JGtm, ordre correct restauré.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 3b — UpdateTwoTeam reconstruit sur EP + régression closed-form
 
 **Statut** : Complété
