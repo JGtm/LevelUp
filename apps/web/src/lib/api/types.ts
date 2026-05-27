@@ -1104,6 +1104,13 @@ export interface ExplorerMatchRow {
   match_url?: string
   /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
   dominance_flag?: number
+  /**
+   * Indique qu'un coéquipier du joueur était un bot pendant le match.
+   * Présent uniquement sur les best_matches de la page carrière (exclu côté
+   * backend pour worst_matches afin d'isoler la responsabilité du joueur).
+   * Le front affiche une pill "bot" sur la card du match.
+   */
+  had_bot_teammate?: boolean
 }
 
 export interface ExplorerEncounterRow {

@@ -474,6 +474,14 @@ en = "Solo"
 fr = "Escouade"
 en = "Squad"
 
+[explorer.matches.bot_pill]
+fr = "bot"
+en = "bot"
+
+[explorer.matches.bot_pill_tooltip]
+fr = "Un coéquipier était un bot (humain parti et remplacé)."
+en = "A teammate was a bot (a human player left and was replaced)."
+
 [explorer.matches.outcome_win]
 fr = "Victoire"
 en = "Win"
