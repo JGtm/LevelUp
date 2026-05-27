@@ -543,16 +543,18 @@ type highlightSharedRow struct {
 
 // highlightPMEEntry capture les colonnes pme nécessaires au tri WIN/LOSS.
 type highlightPMEEntry struct {
-	PerfScore     float64
-	DominanceFlag int
+	PerfScore      float64
+	DominanceFlag  int
+	HadBotTeammate bool
 }
 
 // loadHighlightCandidates exécute le pipeline split commun à GetHighlightMatchIDs
 // et GetHighlightPool (ADR 0016) :
-//   - Phase A : pme (player) avec filtre perf_score + NOT had_bot_teammate.
+//   - Phase A : pme (player) avec filtre perf_score (had_bot_teammate transmis
+//     au tri Go pour exclusion asymétrique WIN-conservée / LOSS-rejetée).
 //   - Phase B : mp + r (shared via SharedReader) avec filtres time_played +
 //     NOT is_firefight + outcome ∈ {2,3} + IN match_ids + clause dynamique.
-//   - Phase C : retourne les rows enrichies + map pme[match_id]→{perf_score, dominance}.
+//   - Phase C : retourne les rows enrichies + map pme[match_id]→{perf_score, dominance, had_bot_teammate}.
 func (r *CareerRepo) loadHighlightCandidates(
 	ctx context.Context, extraClause string, extraArgs []any,
 ) ([]highlightSharedRow, map[string]highlightPMEEntry, error) {
@@ -565,7 +567,7 @@ func (r *CareerRepo) loadHighlightCandidates(
 	for pmeRows.Next() {
 		var mid string
 		var p highlightPMEEntry
-		if err := pmeRows.Scan(&mid, &p.PerfScore, &p.DominanceFlag); err != nil {
+		if err := pmeRows.Scan(&mid, &p.PerfScore, &p.DominanceFlag, &p.HadBotTeammate); err != nil {
 			pmeRows.Close()
 			return nil, nil, fmt.Errorf("loadHighlightCandidates scan A: %w", err)
 		}
@@ -632,10 +634,11 @@ func (r *CareerRepo) GetHighlightMatchIDs(ctx context.Context, filters domain.Ca
 	}
 
 	type sortableRow struct {
-		MatchID       string
-		Outcome       int
-		PerfScore     float64
-		DominanceFlag int
+		MatchID        string
+		Outcome        int
+		PerfScore      float64
+		DominanceFlag  int
+		HadBotTeammate bool
 	}
 	var wins, losses []sortableRow
 	for _, c := range cands {
@@ -644,15 +647,23 @@ func (r *CareerRepo) GetHighlightMatchIDs(ctx context.Context, filters domain.Ca
 			continue
 		}
 		row := sortableRow{
-			MatchID:       c.MatchID,
-			Outcome:       c.Outcome,
-			PerfScore:     pme.PerfScore,
-			DominanceFlag: pme.DominanceFlag,
+			MatchID:        c.MatchID,
+			Outcome:        c.Outcome,
+			PerfScore:      pme.PerfScore,
+			DominanceFlag:  pme.DominanceFlag,
+			HadBotTeammate: pme.HadBotTeammate,
 		}
 		switch c.Outcome {
 		case 2:
 			wins = append(wins, row)
 		case 3:
+			// Exclusion asymétrique : un LOSS avec bot coéquipier ne permet
+			// pas d'isoler la responsabilité du joueur (équipe handicapée 4v3).
+			// Les WIN avec bot sont conservés : la perf personnelle reste
+			// méritoire malgré le handicap d'équipe.
+			if pme.HadBotTeammate {
+				continue
+			}
 			losses = append(losses, row)
 		}
 	}
@@ -680,10 +691,18 @@ func (r *CareerRepo) GetHighlightMatchIDs(ctx context.Context, filters domain.Ca
 	}
 	results := make([]domain.HighlightMatchIDRow, 0, len(wins)+len(losses))
 	for _, w := range wins {
-		results = append(results, domain.HighlightMatchIDRow{MatchID: w.MatchID, Outcome: w.Outcome, Section: 1})
+		results = append(results, domain.HighlightMatchIDRow{
+			MatchID: w.MatchID, Outcome: w.Outcome, Section: 1,
+			HadBotTeammate: w.HadBotTeammate,
+		})
 	}
 	for _, l := range losses {
-		results = append(results, domain.HighlightMatchIDRow{MatchID: l.MatchID, Outcome: l.Outcome, Section: 2})
+		// LOSS sans bot par construction (les LOSS avec bot ont été skippés
+		// au-dessus), HadBotTeammate est donc toujours false ici.
+		results = append(results, domain.HighlightMatchIDRow{
+			MatchID: l.MatchID, Outcome: l.Outcome, Section: 2,
+			HadBotTeammate: l.HadBotTeammate,
+		})
 	}
 	return results, nil
 }
