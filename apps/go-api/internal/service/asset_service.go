@@ -40,7 +40,10 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 	if err != nil {
 		return nil, fmt.Errorf("AssetService.ListMaps: %w", err)
 	}
-	var out []canonical.AssetMeta
+	// Init [] plutôt que nil : la valeur sera marshallée à la racine d'une
+	// réponse HTTP — un slice nil donne `null` et crashe le front. Cf.
+	// testutil.RequireNoNilSlicesWithoutOmitempty.
+	out := make([]canonical.AssetMeta, 0, len(items))
 	for i := range items {
 		if s.mapImageURL != nil {
 			items[i].ImageURL = s.mapImageURL(titleID, items[i].NameEN)
@@ -65,6 +68,10 @@ func (s *AssetService) ListWeapons(ctx context.Context, titleID, search string) 
 		for i := range items {
 			items[i].ImageURL = s.weaponImageURL(titleID, items[i].NameEN)
 		}
+	}
+	// Init [] plutôt que nil : même raison que ListMaps.
+	if items == nil {
+		items = []canonical.AssetMeta{}
 	}
 	return items, nil
 }

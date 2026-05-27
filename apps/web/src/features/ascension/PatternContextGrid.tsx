@@ -68,8 +68,8 @@ function ContextCard({ pattern: p, t }: { pattern: ContextualPattern; t: Ascensi
           {t.patternWinRate} <strong className="text-foreground">{pct(p.win_rate)}</strong>
           {' '}<span className={deltaClass}>({deltaSign}{pct(p.delta)})</span>
         </span>
-        <span>OC <strong className="text-foreground">{p.avg_oc.toFixed(2)}</strong></span>
-        <span>DR <strong className="text-foreground">{p.avg_dr.toFixed(2)}</strong></span>
+        <span>OC <strong className="text-foreground">{Math.round(p.avg_oc * 100)}%</strong></span>
+        <span>DR <strong className="text-foreground">{Math.round((p.avg_dr - 1) * 100)}%</strong></span>
         <span className="text-muted-foreground/70">{p.match_count} {t.patternMatches}</span>
       </div>
     </div>

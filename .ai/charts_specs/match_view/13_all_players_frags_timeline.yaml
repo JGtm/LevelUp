@@ -8,7 +8,7 @@
 # =============================================================================
 
 id: "match_view.13"
-title: "Frags différentiel cumulé — tous les joueurs"
+title: "Frags différentiel cumulé"
 page: match_view
 section: "Onglet Combat — Timeline tous joueurs"
 source_function: "src/ui/pages/match_view_players_timeline.py::render_kd_timeline_section"
@@ -144,7 +144,7 @@ i18n_keys:
 
 # === FINGERPRINT ===
 fingerprint:
-  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"
+  source_commit: "db638c09f02008b21e6bfbd2ef560c87125400c6"  # pragma: allowlist secret
   generated_at: "2026-04-30T00:00:00Z"
   generator_version: "manual@v0"
   manual_fields: ["all"]

@@ -294,8 +294,11 @@ paths:
         Retourne les 15 meilleurs et 15 pires matchs du joueur au format
         ExplorerMatchesRow (mêmes colonnes que la page Explorer). Tri par
         priorité dominance puis performance_score (DESC pour best, ASC pour worst).
-        Filtres d'éligibilité : performance_score NOT NULL, pas de bot coéquipier,
-        time_played≥180s, is_firefight=FALSE.
+        Filtres d'éligibilité : performance_score NOT NULL, time_played≥180s,
+        is_firefight=FALSE. Asymétrie WIN/LOSS sur had_bot_teammate : les WIN
+        avec bot coéquipier sont conservés (perf personnelle méritoire malgré
+        le handicap), les LOSS avec bot coéquipier sont exclus (responsabilité
+        du joueur non isolable d'un déséquilibre 4v3).
 
         Query params optionnels filtrent côté SQL :
           - `experience` : "all" / "ranked" / "unranked"
@@ -3633,6 +3636,13 @@ components:
           type: number
           format: float
           default: 0.0
+        had_bot_teammate:
+          type: boolean
+          description: >
+            Un coéquipier était un bot. Exposé uniquement sur les best_matches
+            de la page carrière (les LOSS avec bot sont exclus côté backend
+            pour isoler la responsabilité du joueur).
+          default: false
 
     ExplorerEncounterRow:
       type: object

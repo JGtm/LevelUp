@@ -11,15 +11,17 @@ import type {
 } from '@/lib/api/types'
 
 describe('formatBinSeconds', () => {
+  // Format "MmSSs" depuis la refonte onglet Combat (97199831 / 5633afce) —
+  // remplace l'ancien "M:SS" pour éviter la confusion avec les notations CSR.
   it('formate sous 60s', () => {
-    expect(formatBinSeconds(45)).toBe('0:45')
+    expect(formatBinSeconds(45)).toBe('0m45s')
   })
   it('formate au-dessus de 60s', () => {
-    expect(formatBinSeconds(75)).toBe('1:15')
-    expect(formatBinSeconds(125)).toBe('2:05')
+    expect(formatBinSeconds(75)).toBe('1m15s')
+    expect(formatBinSeconds(125)).toBe('2m05s')
   })
   it('formate 0', () => {
-    expect(formatBinSeconds(0)).toBe('0:00')
+    expect(formatBinSeconds(0)).toBe('0m00s')
   })
 })
 
@@ -138,5 +140,3 @@ describe('allPlayersFragDiffSeries', () => {
     expect(series[0].meta?.gamertag).toBe('Joueur aaaa')
   })
 })
-
-

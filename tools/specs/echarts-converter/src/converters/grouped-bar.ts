@@ -777,7 +777,7 @@ function convertCadenceHistogram(
     {
       type: 'bar',
       stack: 'total',
-      name: 'Mon équipe',
+      name: 'Équipe',
       data: myKills,
       itemStyle: {
         color: 'rgba(0, 114, 178, 0.80)',
@@ -798,7 +798,7 @@ function convertCadenceHistogram(
     },
     {
       type: 'line',
-      name: 'MA Mon équipe',
+      name: 'Moyenne équipe',
       data: maMy,
       lineStyle: { color: 'rgba(0, 114, 178, 0.85)', width: 3 },
       itemStyle: { color: 'rgba(0, 114, 178, 0.85)' },
@@ -807,7 +807,7 @@ function convertCadenceHistogram(
     },
     {
       type: 'line',
-      name: 'MA Adversaires',
+      name: 'Moyenne Adversaires',
       data: maEnemy,
       lineStyle: { color: 'rgba(213, 94, 0, 0.85)', width: 3 },
       itemStyle: { color: 'rgba(213, 94, 0, 0.85)' },
@@ -824,7 +824,7 @@ function convertCadenceHistogram(
     symbolSize: 1,
     label: {
       show: true,
-      formatter: 'PIC',
+      formatter: 'Pic',
       position: 'top',
       color: '#E69F00',
       fontSize: 10,

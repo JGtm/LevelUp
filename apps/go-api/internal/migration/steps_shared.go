@@ -89,6 +89,10 @@ func init() {
 					deaths_stddev DOUBLE,
 					team_mmr DOUBLE,
 					enemy_mmr DOUBLE,
+					present_at_beginning BOOLEAN,
+					present_at_completion BOOLEAN,
+					joined_in_progress BOOLEAN,
+					left_in_progress BOOLEAN,
 					backfill_bits INTEGER DEFAULT 0,
 					created_at TIMESTAMP,
 					PRIMARY KEY (match_id, xuid)
@@ -916,15 +920,6 @@ func applyResolutionViews(db *sql.DB) error {
 			FROM killer_victim_pairs kvp
 			LEFT JOIN v_gamertag_lookup k ON kvp.killer_xuid = k.xuid
 			LEFT JOIN v_gamertag_lookup v ON kvp.victim_xuid = v.xuid
-		`)
-	}
-
-	// v_weapon_kills
-	if exists, _ := tableExists(db, "weapon_kills"); exists {
-		_, _ = db.ExecContext(bootCtx(), `
-			CREATE OR REPLACE VIEW v_weapon_kills AS
-			SELECT *, COALESCE(reconciled_as, weapon_id) AS effective_weapon_id
-			FROM weapon_kills
 		`)
 	}
 

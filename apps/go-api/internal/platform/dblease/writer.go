@@ -72,6 +72,34 @@ func (w *LeasedWriter) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.T
 	return w.db.BeginTx(ctx, opts)
 }
 
+// CommitWithCheckpoint commit la transaction puis exécute un CHECKPOINT
+// immédiat sur la DB sous-jacente (ADR 0021 Phase 3.2 bis).
+//
+// À utiliser pour les opérations critiques sur shared_social (likes, favoris,
+// associations média) où la fenêtre d'exposition au bug WAL orphelin doit
+// être minimisée. Le CHECKPOINT est exécuté APRÈS Commit pour ne pas bloquer
+// la TX elle-même.
+//
+// Différences vs `tx.Commit()` simple :
+//   - garanti d'un CHECKPOINT immédiat (pas d'attente du scheduler 5min)
+//   - erreur CHECKPOINT loguée mais NON propagée (les données sont déjà
+//     commit, le CHECKPOINT peut retry au prochain tick scheduler)
+//
+// Le caller doit appeler Release() ou laisser le defer s'en charger : cette
+// méthode NE LIBÈRE PAS le lease (séparation des préoccupations).
+func (w *LeasedWriter) CommitWithCheckpoint(ctx context.Context, tx *sql.Tx) error {
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("dblease: tx.Commit: %w", err)
+	}
+	if _, err := w.db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		// Non-fatal : commit déjà effectué, data persisted dans le WAL.
+		// Le CHECKPOINT scheduler 5min fera fallback.
+		slog.WarnContext(ctx, "dblease: CHECKPOINT post-commit échoué (non-fatal — scheduler 5min fallback)",
+			"kind", string(w.kind), "path", w.path, "err", err)
+	}
+	return nil
+}
+
 // Release relâche le lease. Idempotent : un second appel est no-op (pas de
 // panic, pas de double-decrement de métrique). Doit être appelé via defer
 // immédiatement après acquisition réussie pour garantir le release sur panic

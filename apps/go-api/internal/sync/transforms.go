@@ -278,12 +278,16 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			row.Gamertag = &gt
 		}
 
-		// time_played_seconds : ParticipationInfo est un objet imbriqué, pas
-		// une clé "ParticipationInfo.TimePlayed" plate. Bug pré-existant.
+		// ParticipationInfo : TimePlayed + 4 booleans (LUSR v2 §9 quit penalty).
+		// L'objet est imbriqué dans le JSON (pas une clé plate).
 		if pinfo, ok := player["ParticipationInfo"].(map[string]any); ok {
 			if dur := parsePTDuration(asString(pinfo["TimePlayed"])); dur != nil {
 				row.TimePlayedSeconds = dur
 			}
+			row.PresentAtBeginning = jsonBoolPtr(pinfo, "PresentAtBeginning")
+			row.PresentAtCompletion = jsonBoolPtr(pinfo, "PresentAtCompletion")
+			row.JoinedInProgress = jsonBoolPtr(pinfo, "JoinedInProgress")
+			row.LeftInProgress = jsonBoolPtr(pinfo, "LeftInProgress")
 		}
 
 		rows = append(rows, row)

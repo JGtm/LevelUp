@@ -736,6 +736,157 @@ func TestCareerLive_NilAPIResponse_NotCached(t *testing.T) {
 	}
 }
 
+// TestCareerLive_GetSpartanIdentityFor_ThirdPartyXUID couvre le contrat du
+// path Explorer : un xuid tiers (différent du user connecté) doit :
+//   - être servi avec les données live + DB (lecture OK)
+//   - NE PAS déclencher kickoffBackgroundRefresh (pas de persistance dans
+//     la career_progression de la player DB du user connecté)
+//
+// Le mock fetcher porte un canal `done` pour détecter si le path background
+// a été déclenché : un read dans le canal après un court délai signifie que
+// la goroutine background a tourné — comportement à proscrire pour xuid tiers.
+func TestCareerLive_GetSpartanIdentityFor_ThirdPartyXUID(t *testing.T) {
+	const (
+		userXUID   = "1234567890123456"
+		targetXUID = "9999888877776666"
+	)
+	dbRow := &duckdb.CareerRankRow{Rank: 30, CurrentXP: 500, SpartanID: "SR-DB"}
+
+	t.Run("xuid tiers : kickoff background non déclenché malgré cache miss", func(t *testing.T) {
+		bgDone := make(chan struct{}, 4)
+		fetcher := &bgSignalingFetcher{
+			progress: &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999},
+			custom:   &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE-99"},
+			bgDone:   bgDone,
+		}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		factory := func(_ context.Context) CareerFetcher { return fetcher }
+		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+		svc := NewCareerLiveService(repo, builder, factory, cache)
+
+		ctx := ctxkeys.WithHaloAuth(context.Background(),
+			&domain.HaloTokens{SpartanToken: "spartan-tok"}, userXUID)
+		got, err := svc.GetSpartanIdentityFor(ctx, targetXUID)
+		if err != nil {
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
+		}
+		if got == nil {
+			t.Fatal("identity attendue non-nil (DB fallback dispo)")
+		}
+
+		// Tolérance : on laisse un court délai pour qu'une éventuelle goroutine
+		// background ait le temps de tourner. Si elle tourne, le test échoue.
+		select {
+		case <-bgDone:
+			t.Errorf("kickoffBackgroundRefresh déclenché pour xuid tiers — fuite de persistance")
+		case <-time.After(150 * time.Millisecond):
+			// OK : pas de background refresh, comme attendu.
+		}
+
+		// Vérification additionnelle : pas d'INSERT dans career_progression.
+		if len(repo.insertedPartials) > 0 {
+			t.Errorf("InsertCareerProgressionPartial appelé %d fois — devait rester à 0 pour xuid tiers",
+				len(repo.insertedPartials))
+		}
+	})
+
+	t.Run("xuid user connecté : kickoff background normalement déclenché", func(t *testing.T) {
+		bgDone := make(chan struct{}, 4)
+		fetcher := &bgSignalingFetcher{
+			progress: &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999},
+			custom:   &syncpkg.SpartanCustomizationData{SpartanID: "SR-LIVE-99"},
+			bgDone:   bgDone,
+		}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		factory := func(_ context.Context) CareerFetcher { return fetcher }
+		cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+		svc := NewCareerLiveService(repo, builder, factory, cache)
+
+		ctx := ctxkeys.WithHaloAuth(context.Background(),
+			&domain.HaloTokens{SpartanToken: "spartan-tok"}, userXUID)
+		// Appel avec userXUID == ctxkeys.HaloXUID(ctx) → allowPersist=true
+		if _, err := svc.GetSpartanIdentityFor(ctx, userXUID); err != nil {
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
+		}
+
+		// Le background refresh doit tourner pour le user lui-même.
+		select {
+		case <-bgDone:
+			// OK : kickoff déclenché.
+		case <-time.After(500 * time.Millisecond):
+			t.Errorf("kickoffBackgroundRefresh non déclenché pour le user connecté — régression")
+		}
+	})
+}
+
+// TestCareerLive_GetSpartanIdentityFromDBOnly couvre le path no-tokens d'Explorer :
+// la méthode ne doit JAMAIS appeler le fetcher live, même avec auth en ctx.
+// Sert à rendre l'identité d'un target quand le user connecté n'a pas d'OAuth.
+func TestCareerLive_GetSpartanIdentityFromDBOnly(t *testing.T) {
+	dbRow := &duckdb.CareerRankRow{Rank: 30, CurrentXP: 500, SpartanID: "SR-DB"}
+
+	t.Run("DB non vide : retourne l'identité, fetcher jamais appelé", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{
+			progress: &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999},
+		}
+		repo := &mockCareerLiveRepo{last: dbRow}
+		builder := &mockIdentityBuilder{}
+		// Auth présente — même dans ce cas, FromDBOnly ne doit pas toucher au live.
+		svc := newService(t, fetcher, repo, builder)
+
+		got := svc.GetSpartanIdentityFromDBOnly(ctxWithTokens(t, true), "any-xuid")
+		if got == nil || got.RankNumber != 30 {
+			t.Errorf("attendu DB rank=30, obtenu %+v", got)
+		}
+		if fetcher.progCalls != 0 || fetcher.customCalls != 0 {
+			t.Errorf("fetcher invoqué : progress=%d custom=%d — FromDBOnly doit être read-only DB",
+				fetcher.progCalls, fetcher.customCalls)
+		}
+	})
+
+	t.Run("DB vide : retourne nil sans appeler le live", func(t *testing.T) {
+		fetcher := &mockCareerFetcher{}
+		repo := &mockCareerLiveRepo{last: nil}
+		builder := &mockIdentityBuilder{}
+		svc := newService(t, fetcher, repo, builder)
+
+		got := svc.GetSpartanIdentityFromDBOnly(ctxWithTokens(t, true), "any-xuid")
+		if got != nil {
+			t.Errorf("attendu nil quand DB vide, obtenu %+v", got)
+		}
+		if fetcher.progCalls != 0 || fetcher.customCalls != 0 {
+			t.Errorf("fetcher invoqué malgré DB vide : progress=%d custom=%d",
+				fetcher.progCalls, fetcher.customCalls)
+		}
+	})
+}
+
+// bgSignalingFetcher étend mockCareerFetcher avec un canal qui signale chaque
+// appel — utilisé pour détecter si kickoffBackgroundRefresh a tourné.
+type bgSignalingFetcher struct {
+	progress *syncpkg.CareerRankData
+	custom   *syncpkg.SpartanCustomizationData
+	bgDone   chan struct{}
+}
+
+func (f *bgSignalingFetcher) GetCareerProgress(_ context.Context, _ string) (*syncpkg.CareerRankData, error) {
+	select {
+	case f.bgDone <- struct{}{}:
+	default:
+	}
+	return f.progress, nil
+}
+
+func (f *bgSignalingFetcher) GetSpartanCustomization(_ context.Context, _ string) (*syncpkg.SpartanCustomizationData, error) {
+	select {
+	case f.bgDone <- struct{}{}:
+	default:
+	}
+	return f.custom, nil
+}
+
 // nilSignalingFetcher retourne nil pour progress (simule un skip API silencieux)
 // et signale via done quand il a été appelé.
 type nilSignalingFetcher struct {

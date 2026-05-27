@@ -41,7 +41,7 @@ interface Props {
 
 function GroupTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-foreground">
       {children}
     </div>
   )
@@ -56,10 +56,10 @@ function SectionGroup({ title, children }: { title: string; children: React.Reac
   )
 }
 
-function KvRow({ label, value }: { label: string; value: React.ReactNode }) {
+function KvRow({ label, value, labelStyle }: { label: string; value: React.ReactNode; labelStyle?: React.CSSProperties }) {
   return (
     <div className="flex items-center justify-between gap-4 text-xs py-0.5 min-w-[140px]">
-      <span className="text-muted-foreground whitespace-nowrap">{label}</span>
+      <span className="text-muted-foreground whitespace-nowrap" style={labelStyle}>{label}</span>
       <span className="font-mono text-foreground">{value}</span>
     </div>
   )
@@ -248,8 +248,8 @@ function AntagonistSection({ result, title, nemesisLabel, bullyLabel }: { result
   return (
     <SectionGroup title={title}>
       <div className="space-y-0.5">
-        {result.nemesisCount > 0 && <KvRow label={nemesisLabel} value={`${result.nemesisName} (${result.nemesisCount})`} />}
-        {result.bullyCount > 0 && <KvRow label={bullyLabel} value={`${result.bullyName} (${result.bullyCount})`} />}
+        {result.nemesisCount > 0 && <KvRow label={nemesisLabel} value={`${result.nemesisName} (${result.nemesisCount})`} labelStyle={{ color: tokenCssVar('outcome-loss') }} />}
+        {result.bullyCount > 0 && <KvRow label={bullyLabel} value={`${result.bullyName} (${result.bullyCount})`} labelStyle={{ color: tokenCssVar('outcome-win') }} />}
       </div>
     </SectionGroup>
   )
@@ -261,6 +261,14 @@ function AntagonistSection({ result, title, nemesisLabel, bullyLabel }: { result
 
 interface LocalRow { perfDisplay?: string; perfColorToken?: string; ratingType?: string; tierLabel?: string; ratingDelta?: number | null; iconUrl?: string | null; hadBotTeammate?: boolean }
 
+function perfTierToken(score: number): string {
+  if (score >= 80) return 'perf-tier-1'
+  if (score >= 65) return 'perf-tier-2'
+  if (score >= 50) return 'perf-tier-3'
+  if (score >= 35) return 'perf-tier-4'
+  return 'perf-tier-5'
+}
+
 function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRank?: MatchViewRank): LocalRow | null {
   const local: LocalRow = {}
   let hasData = false
@@ -269,7 +277,7 @@ function buildLocalRow(row: MatchScoreboardRow, header?: MatchViewHeader, mainRa
     if (mainRank?.tier_label) { local.ratingType = mainRank.rating_type; local.tierLabel = mainRank.tier_label; local.ratingDelta = mainRank.delta_value; local.iconUrl = mainRank.icon_url; hasData = true }
     if (header?.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   } else {
-    if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); hasData = true }
+    if (row.performance_score != null) { local.perfDisplay = Math.round(row.performance_score).toString(); local.perfColorToken = perfTierToken(row.performance_score); hasData = true }
     if (row.skill_rank?.tier_label) { local.ratingType = row.skill_rank.rating_type; local.tierLabel = row.skill_rank.tier_label; local.ratingDelta = row.skill_rank.rating_delta; local.iconUrl = row.skill_rank.icon_url; hasData = true }
     if (row.had_bot_teammate) { local.hadBotTeammate = true; hasData = true }
   }
@@ -334,7 +342,7 @@ export function PlayerDetailPanel({ row, killerVictim, citations, header, rank, 
 
   return (
     <div className="bg-card/80 border border-border rounded-b px-4 py-3 space-y-3">
-      <div className="flex flex-wrap gap-5 items-start">
+      <div className="flex flex-wrap items-start gap-y-4 divide-x divide-border/70 [&>*]:px-4 [&>*:first-child]:pl-0">
         <WeaponsSection weapons={weapons} title={t.sbDetailWeapons} />
         <div className="flex-1 min-w-0 flex flex-col gap-3">
           <MedalsSection medals={medals} title={t.sbDetailMedalsOnly} />

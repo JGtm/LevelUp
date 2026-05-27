@@ -2,34 +2,43 @@
  * MatchAntagonistChart — match_view.18.
  *
  * Graphe "qui a tué qui" sous forme de barres empilées horizontales :
- *   - 1 ligne par tueur (ordonnée par total kills décroissant)
- *   - segments empilés = victimes, colorées selon l'équipe (alliés / ennemis)
- *     pour offrir une lecture immédiate des duels intra/inter-équipes.
+ *   - 1 ligne par tueur (groupées par équipe via antagonistStackedSeries)
+ *   - segments empilés = victimes, colorées par chart-series-1..8 (distance
+ *     perceptuelle maximale) — le groupement Y-axis suffit pour la lecture équipe.
  *
  * Source : `combat_tab.killer_victim` (paires agrégées par le backend Go).
  */
 import { BarStackedChart } from '@/components/charts/BarStackedChart'
-import type {
-  MatchKillerVictimPair,
-  MatchRosterRow,
-  MatchScoreboardRow,
-} from '@/lib/api/types'
+import { resolveToken, type SemanticToken } from '@/lib/accessibility'
+import type { MatchKillerVictimPair, MatchScoreboardRow } from '@/lib/api/types'
 import { antagonistStackedSeries } from './_chartSeries'
-import { buildMatchPlayerColors } from './colors'
 import type { MatchViewText } from './i18n'
+
+// 11 tokens à distance perceptuelle maximale sur la roue des teintes.
+// chart-series-1..5 évités : trop proches (nuances d'indigo quasi-identiques).
+const ANTAGONIST_TOKENS: SemanticToken[] = [
+  'outcome-loss',
+  'chart-series-7',
+  'chart-series-6',
+  'chart-series-8',
+  'perf-tier-2',
+  'compare-a',
+  'narrative-humiliation',
+  'narrative-debacle',
+  'narrative-dominant',
+  'narrative-contre-remontada',
+  'perf-tier-4',
+]
 
 interface Props {
   pairs: MatchKillerVictimPair[] | undefined
   scoreboard: MatchScoreboardRow[]
-  roster?: MatchRosterRow[]
   meXUID: string | null
   t: MatchViewText
-  /** Gamertags amis (page Squad) — bonus visuel : couleurs squad pour les amis alliés. */
-  friendGamertags?: readonly string[]
 }
 
-export function MatchAntagonistChart({ pairs, scoreboard, roster, meXUID, t, friendGamertags }: Props) {
-  const series = antagonistStackedSeries(pairs ?? [])
+export function MatchAntagonistChart({ pairs, scoreboard, meXUID, t }: Props) {
+  const series = antagonistStackedSeries(pairs ?? [], scoreboard, meXUID)
   if (series.length === 0) {
     return (
       <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-border bg-card text-sm text-muted-foreground">
@@ -37,17 +46,19 @@ export function MatchAntagonistChart({ pairs, scoreboard, roster, meXUID, t, fri
       </div>
     )
   }
-  // Map gamertag → hex pré-résolu (allié vs ennemi, bonus squad pour amis
-  // alliés). On passe le hex directement plutôt qu'un token : ça évite que
-  // ECharts retombe sur sa palette interne (1ères couleurs en bleu) si la
-  // CSS var d'un token n'a pas pu être lue à temps.
-  const colors = buildMatchPlayerColors(scoreboard, meXUID, friendGamertags, roster)
-  const componentHexColors: Record<string, string> = {}
-  for (const [gt, hex] of colors.hexByGamertag) {
-    if (hex) componentHexColors[gt] = hex
-  }
 
-  // Hauteur dynamique : 80px de marge + 24px par tueur (min 240px).
+  // Couleurs par victime — cycle ANTAGONIST_TOKENS (11 teintes distinctes).
+  const victimSet = new Set<string>()
+  for (const s of series) {
+    for (const dp of s.datapoints) {
+      for (const key of Object.keys(dp.components)) victimSet.add(key)
+    }
+  }
+  const componentHexColors: Record<string, string> = {}
+  Array.from(victimSet).forEach((gt, idx) => {
+    componentHexColors[gt] = resolveToken(ANTAGONIST_TOKENS[idx % ANTAGONIST_TOKENS.length])
+  })
+
   const killerCount = series[0].datapoints.length
   const height = Math.max(240, 80 + 24 * killerCount)
   return (

@@ -53,6 +53,14 @@ export interface ChartCardProps<T = unknown> {
   /** Hauteur fixe en pixels (default 320). */
   height?: number
   /**
+   * Quand true, la carte s'étire pour remplir la cellule CSS Grid parente
+   * (via `h-full flex-col`). `height` devient le minimum garanti.
+   * Aucun ResizeObserver — pure CSS : `flex-1` sur le contenu + `height:100%`
+   * sur ECharts. Nécessite que le parent soit un conteneur à hauteur définie
+   * (CSS Grid avec align-items:stretch ou flex avec hauteur explicite).
+   */
+  fluid?: boolean
+  /**
    * Builder de l'option ECharts. Appele a chaque rendu avec les series
    * courantes (ne pas y faire de side-effect).
    */
@@ -74,6 +82,7 @@ export function ChartCard<T = unknown>({
   error,
   emptyMessage = 'Aucune donnée à afficher',
   height = 320,
+  fluid = false,
   buildOption,
   className = '',
   children,
@@ -89,27 +98,44 @@ export function ChartCard<T = unknown>({
     [isEmpty, loading, error, buildOption, series, themeVersion],
   )
 
+  // En mode fluid : la carte est h-full (CSS Grid stretch la pousse à la
+  // hauteur de la ligne). Le contenu est flex-1 avec minHeight = height + 24
+  // (24px = padding p-3 top+bottom, border-box). ECharts reçoit height:100%
+  // qui se résout en pixels via la hauteur flex définie. Pas de ResizeObserver
+  // → pas de boucle de rétroaction.
+  const outerCls = fluid
+    ? `relative flex h-full flex-col rounded-lg border border-border bg-card ${className}`
+    : `relative rounded-lg border border-border bg-card ${className}`
+
+  const contentStyle = fluid
+    ? { minHeight: height + 24 } // +24 = p-3 padding (border-box)
+    : { minHeight: height }
+
+  const contentCls = fluid ? 'flex-1 p-3' : 'p-3'
+
   return (
-    <div
-      className={`relative rounded-lg border border-border bg-card ${className}`}
-      data-testid="chart-card"
-    >
-      {title && <div className="border-b border-border px-3 py-2 text-sm font-medium">{title}</div>}
-      <div className="p-3" style={{ minHeight: height }}>
+    <div className={outerCls} data-testid="chart-card">
+      {title && (
+        <div className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
+          {title}
+        </div>
+      )}
+      <div className={contentCls} style={contentStyle}>
         {loading ? (
-          <ChartCardLoading height={height} />
+          <ChartCardLoading height={height} fluid={fluid} />
         ) : error ? (
-          <ChartCardError error={error} height={height} />
+          <ChartCardError error={error} height={height} fluid={fluid} />
         ) : isEmpty ? (
-          <ChartCardEmpty message={emptyMessage} height={height} />
+          <ChartCardEmpty message={emptyMessage} height={height} fluid={fluid} />
         ) : (
-          <Suspense fallback={<ChartCardLoading height={height} />}>
+          <Suspense fallback={<ChartCardLoading height={height} fluid={fluid} />}>
             <ReactECharts
               option={option}
-              style={{ height, width: '100%' }}
+              style={fluid ? { height: '100%', width: '100%' } : { height, width: '100%' }}
               notMerge
               lazyUpdate
               theme={undefined}
+              opts={{ devicePixelRatio: window.devicePixelRatio }}
               data-testid="chart-card-echarts"
             />
           </Suspense>
@@ -120,11 +146,11 @@ export function ChartCard<T = unknown>({
   )
 }
 
-function ChartCardLoading({ height }: { height: number }) {
+function ChartCardLoading({ height, fluid }: { height: number; fluid?: boolean }) {
   return (
     <div
       className="flex items-center justify-center"
-      style={{ minHeight: height }}
+      style={fluid ? { height: '100%', minHeight: height } : { minHeight: height }}
       data-testid="chart-card-loading"
     >
       <Spinner size="md" />
@@ -132,11 +158,11 @@ function ChartCardLoading({ height }: { height: number }) {
   )
 }
 
-function ChartCardError({ error, height }: { error: Error; height: number }) {
+function ChartCardError({ error, height, fluid }: { error: Error; height: number; fluid?: boolean }) {
   return (
     <div
       className="flex items-center justify-center text-sm text-destructive"
-      style={{ minHeight: height }}
+      style={fluid ? { height: '100%', minHeight: height } : { minHeight: height }}
       data-testid="chart-card-error"
       role="alert"
     >
@@ -145,11 +171,11 @@ function ChartCardError({ error, height }: { error: Error; height: number }) {
   )
 }
 
-function ChartCardEmpty({ message, height }: { message: string; height: number }) {
+function ChartCardEmpty({ message, height, fluid }: { message: string; height: number; fluid?: boolean }) {
   return (
     <div
       className="flex items-center justify-center text-sm text-muted-foreground"
-      style={{ minHeight: height }}
+      style={fluid ? { height: '100%', minHeight: height } : { minHeight: height }}
       data-testid="chart-card-empty"
     >
       {message}

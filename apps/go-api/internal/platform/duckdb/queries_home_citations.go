@@ -552,13 +552,14 @@ WHERE citation_name_norm NOT LIKE '\_%%' ESCAPE '\'
 GROUP BY citation_name_norm
 ORDER BY total DESC`
 
-// Q36a : Commendations â€” total de mÃ©dailles gagnÃ©es par medal_id (xuid du joueur).
-// ParamÃ¨tre : ?1 = xuid du joueur. RequÃªte sur pdb.Player (shared attachÃ©).
+// Q36a : Commendations — total de médailles gagnées par medal_id (xuid du joueur).
+// Paramètre : ?1 = xuid du joueur.
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q36aMedalTotals = `
 SELECT
     medal_id,
     SUM(count) AS total_count
-FROM shared.medals_earned
+FROM medals_earned
 WHERE xuid = ?
 GROUP BY medal_id
 ORDER BY total_count DESC`
@@ -576,23 +577,34 @@ WHERE mapping_type = 'medal'
   AND enabled IS NOT FALSE
   AND medal_id IS NOT NULL`
 
-// Q38 : Match view â€” top citations gagnÃ©es dans un match (match_citations + citation_mappings).
-// ParamÃ¨tre : ?1 = match_id.
-// Retourne 3 colonnes : citation_name_norm, citation_name_display, value.
-// RequÃªte sur pdb.Player (match_citations) + pdb.Metadata (citation_mappings).
-const Q38MatchViewCitations = `
+// Q38 : Match view — top citations gagnées dans un match.
+//
+// IMPORTANT — ADR 0016 (post 2026-05-26) : citation_mappings est dans
+// metadata.duckdb, pas attachée aux conn player. Q38 a été splitée en :
+//   - Q38MatchViewCitationsPlayer : top N citations brutes sur player DB
+//   - Q26jCitationMappingsForNormsTemplate (existant) : lookup display côté
+//     metadata.duckdb pour la liste de norms
+//   - merge en Go (cf. CitationsRepo.LoadMatchCitationsForView)
+//
+// L'ancienne version Q38MatchViewCitations (LEFT JOIN cross-DB) levait
+// "Catalog Error: Table with name citation_mappings does not exist" sur les
+// conn player depuis ADR 0016. Le caller capturait nil silencieusement →
+// page Match detail affichait des citations vides (incident 2026-05-26).
+//
+// Q38MatchViewCitationsPlayer — paramètre : ?1 = match_id.
+// Retourne 2 colonnes : citation_name_norm, value.
+// LIMIT 4 sur player DB → garantit les top 4 par value (même si certains
+// norms n'ont pas de mapping côté metadata, ils restent dans le top et
+// auront display=norm via COALESCE en Go).
+const Q38MatchViewCitationsPlayer = `
 SELECT
-    mc.citation_name_norm,
-    COALESCE(cm.citation_name_display, mc.citation_name_norm) AS citation_name_display,
-    mc.value
-FROM match_citations mc
-LEFT JOIN citation_mappings cm
-    ON cm.citation_name_norm = mc.citation_name_norm
-   AND cm.enabled IS NOT FALSE
-WHERE mc.match_id = ?
-  AND mc.citation_name_norm IS NOT NULL
-  AND mc.value > 0
-ORDER BY mc.value DESC
+    citation_name_norm,
+    value
+FROM match_citations
+WHERE match_id = ?
+  AND citation_name_norm IS NOT NULL
+  AND value > 0
+ORDER BY value DESC
 LIMIT 4`
 
 // Q40 : Moteur citations complet â€” tous les champs de citation_mappings.

@@ -171,6 +171,8 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 			}
 		}
 	}
+	checkpointPostMigration(ctx, db, target, appliedCount)
+
 	slog.InfoContext(ctx, "migration: cycle terminé",
 		"target", target,
 		"applied", appliedCount,
@@ -178,4 +180,41 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 		"duration_ms", time.Since(cycleStart).Milliseconds(),
 	)
 	return nil
+}
+
+// shouldCheckpointAfterMigration retourne true pour les DB sensibles au bug
+// WAL DuckDB #7659. shared_social + shared (matches) + player sont les
+// targets concernés par les ATTACH/DDL historiques. metadata est plus
+// pure (lecture seule en runtime, écriture rare) — pas critique mais on
+// CHECKPOINT quand même pour défense en profondeur.
+func shouldCheckpointAfterMigration(target TargetDB) bool {
+	switch target {
+	case TargetSharedSocial, TargetShared, TargetPlayer, TargetMetadata:
+		return true
+	default:
+		return false
+	}
+}
+
+// checkpointPostMigration exécute un CHECKPOINT post-cycle sur les targets
+// sensibles au bug WAL DuckDB #7659 (Bonus 14 ADR 0021). No-op si
+// `appliedCount == 0` ou si la target n'est pas listée comme sensible.
+//
+// Best-effort : si le CHECKPOINT échoue (lock contention rare en boot),
+// log WARN et on continue — les DDL sont déjà commit, le scheduler 5min
+// du serveur fait fallback.
+//
+// Extrait de RunForDB pour respecter la règle 80 lignes/fonction.
+func checkpointPostMigration(ctx context.Context, db *sql.DB, target TargetDB, appliedCount int) {
+	if appliedCount <= 0 || !shouldCheckpointAfterMigration(target) {
+		return
+	}
+	ckStart := time.Now()
+	if _, err := db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		slog.WarnContext(ctx, "migration: CHECKPOINT post-cycle échoué (non-fatal)",
+			"target", target, "err", err)
+		return
+	}
+	slog.DebugContext(ctx, "migration: CHECKPOINT post-cycle OK",
+		"target", target, "duration_ms", time.Since(ckStart).Milliseconds())
 }

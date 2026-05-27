@@ -89,8 +89,12 @@ describe('buildCombatYieldOption', () => {
       makeSeries([{ x: '2025-01-01', y: 0.5 }], [{ x: '2025-01-01', y: 1.0 }]),
       labels,
     ) as OptionShape
+    // OC : valeur brute p80 = 0.83.
     expect(opt.series?.[0].markLine?.data?.[0].yAxis).toBe(0.83)
-    expect(opt.series?.[1].markLine?.data?.[0].yAxis).toBe(1.59)
+    // DR : la résistance défensive est affichée normalisée depuis 1.0 (cf.
+    // DR_DISPLAY_P80 = DR_P80 - 1.0 = 0.59). Le graphe centre la résistance
+    // neutre à 0 pour une lecture intuitive "écart vs neutre".
+    expect(opt.series?.[1].markLine?.data?.[0].yAxis).toBeCloseTo(0.59, 5)
   })
 
   it('legend liste les 2 noms de séries', () => {

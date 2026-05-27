@@ -112,6 +112,7 @@ func (r *MatchHistoryRepo) loadSharedHistory(ctx context.Context) ([]domain.Matc
 			&m.MapID,
 			&m.PairID,
 			&m.PlaylistID,
+			&m.SeasonID,
 			&m.IsFirefight,
 			&m.IsRanked,
 			&m.Outcome,

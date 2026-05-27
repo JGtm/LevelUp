@@ -90,6 +90,9 @@ func (m *mockMatchViewRepo) GetHistoryForAvg(_ context.Context, _ string) ([]dom
 func (m *mockMatchViewRepo) GetPlayerAssistsModel(_ context.Context, _ string) (*domain.PlayerAssistsModel, error) {
 	return nil, nil
 }
+func (m *mockMatchViewRepo) GetMatchSharedCSRs(_ context.Context, _ string) (map[string]*domain.SkillRankRaw, error) {
+	return nil, nil
+}
 
 // --- tests localisation FR ---
 

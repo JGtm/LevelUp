@@ -362,6 +362,24 @@ func normalizeInput(in domain.FilterContextInput) domain.FilterContextInput {
 		p.StartDate, p.EndDate = p.EndDate, p.StartDate
 	}
 	in.Period = p
+	// Garantit slices non-nil sur les champs JSON sans omitempty : un slice nil
+	// Go sérialise en `null`, ce qui viole le contrat avec le frontend typé
+	// non-nullable. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	if in.Cascade.ExperienceTypes == nil {
+		in.Cascade.ExperienceTypes = []string{}
+	}
+	if in.Cascade.Playlists == nil {
+		in.Cascade.Playlists = []string{}
+	}
+	if in.Cascade.Modes == nil {
+		in.Cascade.Modes = []string{}
+	}
+	if in.Cascade.Maps == nil {
+		in.Cascade.Maps = []string{}
+	}
+	if in.Sessions.PickedSessions == nil {
+		in.Sessions.PickedSessions = []string{}
+	}
 	return in
 }
 
@@ -374,12 +392,19 @@ func emptyResolved(effective domain.FilterContextInput, sess domain.SessionOptio
 	for _, p := range periodPresets {
 		presets = append(presets, domain.PeriodPresetCount{PresetID: p.id, Days: p.days, Count: 0})
 	}
+	// Init explicite des 4 slices : un slice Go nil sérialise en JSON `null`,
+	// ce qui crashe le front (`opts.filter` sur null). Cf. filters_jsonshape_test.go.
 	return domain.FilterContextResolved{
-		Effective:        effective,
-		AvailableOptions: domain.AvailableFilterOptions{ExperienceTypes: expOpts},
-		SessionOptions:   sess,
-		Counts:           domain.FilterCounts{},
-		PeriodPresets:    presets,
+		Effective: effective,
+		AvailableOptions: domain.AvailableFilterOptions{
+			ExperienceTypes: expOpts,
+			Playlists:       []domain.LabelValue{},
+			Modes:           []domain.LabelValue{},
+			Maps:            []domain.LabelValue{},
+		},
+		SessionOptions: sess,
+		Counts:         domain.FilterCounts{},
+		PeriodPresets:  presets,
 	}
 }
 

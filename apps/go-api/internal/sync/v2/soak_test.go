@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -69,6 +71,8 @@ func TestSoak_V2_CycleStability(t *testing.T) {
 	var errorCount atomic.Int64
 	var totalDurationMS atomic.Int64
 	var maxDurationMS atomic.Int64
+	var durMu sync.Mutex
+	var allDurations []int64
 
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 	defer cancel()
@@ -90,6 +94,9 @@ func TestSoak_V2_CycleStability(t *testing.T) {
 				avgMS = totalDurationMS.Load() / count
 			}
 			maxMS := maxDurationMS.Load()
+			durMu.Lock()
+			p95MS := percentileMS(allDurations, 95)
+			durMu.Unlock()
 
 			// Heap final.
 			runtime.GC()
@@ -99,7 +106,7 @@ func TestSoak_V2_CycleStability(t *testing.T) {
 
 			t.Logf("soak: terminé après %v", elapsed)
 			t.Logf("  cycles=%d errors=%d", count, errors)
-			t.Logf("  latence avg=%dms max=%dms", avgMS, maxMS)
+			t.Logf("  latence avg=%dms p95=%dms max=%dms", avgMS, p95MS, maxMS)
 			t.Logf("  heap baseline=%d KB → final=%d KB (×%.2f)",
 				baseline.HeapAlloc/1024, final.HeapAlloc/1024, heapGrowth)
 
@@ -114,10 +121,11 @@ func TestSoak_V2_CycleStability(t *testing.T) {
 			if heapGrowth > 3.0 {
 				t.Errorf("soak: heap a cru de ×%.2f (fuite mémoire suspectée)", heapGrowth)
 			}
-			// Latence : max ne doit pas exploser au-delà de 5x avg.
-			if maxMS > 0 && avgMS > 0 && maxMS > 5*avgMS+50 {
-				t.Errorf("soak: latence max=%dms vs avg=%dms (dégradation ×%d)",
-					maxMS, avgMS, maxMS/avgMS)
+			// Latence : p95 ne doit pas dépasser 5x avg. On utilise p95 (pas max)
+			// pour ignorer les spikes GC isolés qui faussent la détection sur CI.
+			if p95MS > 0 && avgMS > 0 && p95MS > 5*avgMS+50 {
+				t.Errorf("soak: latence p95=%dms vs avg=%dms (dégradation ×%d)",
+					p95MS, avgMS, p95MS/avgMS)
 			}
 			return
 
@@ -139,8 +147,27 @@ func TestSoak_V2_CycleStability(t *testing.T) {
 					break
 				}
 			}
+			durMu.Lock()
+			allDurations = append(allDurations, cycleMS)
+			durMu.Unlock()
 		}
 	}
+}
+
+// percentileMS retourne le Nème percentile (0–100) d'une slice de durées ms.
+// Retourne 0 si la slice est vide.
+func percentileMS(durations []int64, p int) int64 {
+	if len(durations) == 0 {
+		return 0
+	}
+	sorted := make([]int64, len(durations))
+	copy(sorted, durations)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	idx := (p * len(sorted)) / 100
+	if idx >= len(sorted) {
+		idx = len(sorted) - 1
+	}
+	return sorted[idx]
 }
 
 // parseSoakDuration parse une env var de durée (ex: "10s", "1m", "1h").

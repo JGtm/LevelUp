@@ -248,8 +248,9 @@ func (s *Service) aggregateNarrative(ctx context.Context, profile *PlayerProfile
 	return nil
 }
 
-// computeStyleSignature calcule FK / FD via highlight_events si attaché à shared.
-// Pour V1 : approxime via match_participants.kills * rank_first_proxy.
+// computeStyleSignature calcule FK / FD via highlight_events.
+// (highlight_events.event_type IN ('first_kill', 'first_death') — cf. computeFKFD
+// dans queries.go. Dégradation gracieuse à 0/0 si la table est absente ou vide.)
 func (s *Service) computeStyleSignature(ctx context.Context, profile *PlayerProfile, userID string, since, until time.Time) error {
 	fk, fd, err := s.computeFKFD(ctx, userID, since, until)
 	if err != nil {

@@ -7,40 +7,58 @@
  *     Touriste, Top Gun (timing affiché)
  *   - stat-based : Bourreau, Héros silencieux, Faux-frère
  *
+ * Valence visuelle (option C) :
+ *   - Toujours  : strip gauche 3px à 30 % + fond teinté 4 %
+ *   - is_me     : strip 4px à 100 % + fond 10 % + titre coloré
+ *
  * Pictos : Fluent Emoji Flat (cf. components/feedback/BadgeIcon).
  * Aligne le rendu sur la branche main (badges + horodatage). La résolution
  * xuid → gamertag se fait via le scoreboard du match.
  */
 import { BadgeIcon } from '@/components/feedback/BadgeIcon'
 import { Tooltip } from '@/components/ui/tooltip'
+import { resolveToken } from '@/lib/accessibility'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { getSquadText } from '@/features/squad/i18n'
 import type { MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
 
+type Valence = 'positive' | 'negative' | 'neutral'
+
 interface BadgeMeta {
-  /** order d'affichage (1 = en premier) */
   order: number
-  /** style visuel — outline par défaut */
   variant?: 'outline' | 'secondary' | 'default'
-  /** true = ne pas afficher le time_ms même s'il est présent (badges "fréquence match entier") */
   hideTime?: boolean
+  valence?: Valence
 }
 
 const BADGE_META: Record<string, BadgeMeta> = {
-  first_blood: { order: 1 },
-  first_group_death: { order: 2 },
-  clutch_finisher: { order: 3 },
-  last_casualty: { order: 4 },
-  last_group_kill: { order: 5 },
-  top_gun: { order: 6 },
-  top_killer: { order: 7, variant: 'secondary' },
-  silent_hero: { order: 8, variant: 'secondary' },
-  false_brother: { order: 9, variant: 'secondary' },
-  kamikaze: { order: 10, variant: 'secondary', hideTime: true },
+  first_blood:       { order: 1, valence: 'positive' },
+  first_group_death: { order: 2, valence: 'negative' },
+  clutch_finisher:   { order: 3, valence: 'positive' },
+  last_casualty:     { order: 4, valence: 'negative' },
+  last_group_kill:   { order: 5, valence: 'positive' },
+  top_gun:           { order: 6, valence: 'positive' },
+  top_killer:        { order: 7, variant: 'secondary', valence: 'positive' },
+  silent_hero:       { order: 8, variant: 'secondary', valence: 'positive' },
+  false_brother:     { order: 9, variant: 'secondary', valence: 'negative' },
+  kamikaze:          { order: 10, variant: 'secondary', hideTime: true, valence: 'negative' },
   // Alias — anciens keys backend (avant le portage analysis Go).
-  tourist: { order: 5 },
-  finisher: { order: 3 },
-  first_victim: { order: 2 },
+  tourist:           { order: 5, valence: 'neutral' },
+  finisher:          { order: 3, valence: 'positive' },
+  first_victim:      { order: 2, valence: 'negative' },
+}
+
+// color-allow: alpha-mix structurel depuis un hex de token — pas de sens sémantique propre.
+function hexToRgba(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
+  if (!m) return `rgba(0,0,0,${alpha})`
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`
+}
+
+function valenceColorToken(v: Valence | undefined): 'success' | 'destructive' | null {
+  if (v === 'positive') return 'success'
+  if (v === 'negative') return 'destructive'
+  return null
 }
 
 function formatTime(ms: number | null | undefined): string | null {
@@ -48,7 +66,7 @@ function formatTime(ms: number | null | undefined): string | null {
   const totalSec = Math.floor(ms / 1000)
   const m = Math.floor(totalSec / 60)
   const s = totalSec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return `${m}m${s.toString().padStart(2, '0')}s`
 }
 
 function buildXUIDIndex(scoreboard: MatchScoreboardRow[]): Map<string, MatchScoreboardRow> {
@@ -57,17 +75,6 @@ function buildXUIDIndex(scoreboard: MatchScoreboardRow[]): Map<string, MatchScor
   return idx
 }
 
-/**
- * Détecte si le `gamertag` retourné par l'API est en réalité un xuid brut
- * (cas où aucun alias n'existe en DB pour ce joueur — le resolver
- * `v_gamertag_lookup` côté backend retombe sur le xuid en dernier recours).
- * On évite alors d'afficher la chaîne illisible et on dégrade vers
- * "Joueur inconnu" / pas de nom.
- *
- * Heuristique : xuid Halo = numérique pur ≥ 15 chars OU format bot `bid(N.0)`.
- * Le bot prefix devrait être déjà rendu "343 Bot N" par la vue, donc en
- * pratique on attrape surtout les numériques purs.
- */
 function isRawXUID(s: string | null | undefined): boolean {
   if (!s) return false
   if (/^bid\(/.test(s)) return true
@@ -99,14 +106,26 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
       {sorted.map((b) => {
         const player = b.player_xuid ? xuidIndex.get(b.player_xuid) : undefined
         const rawGamertag = player?.gamertag ?? null
-        // Si le gamertag est en fait un xuid brut (alias absent de toute la
-        // chaîne de résolution backend), on ne l'affiche pas — préférable à
-        // un "Premier sang 2535472884034919".
         const gamertag = isRawXUID(rawGamertag) ? null : rawGamertag
         const isMe = player?.is_me ?? false
         const time = BADGE_META[b.key]?.hideTime ? null : formatTime(b.time_ms)
         const description = badgeI18n.badgeDescriptions[b.key]
         const hasSubline = gamertag !== null || time !== null
+
+        const valence = BADGE_META[b.key]?.valence
+        const colorToken = valenceColorToken(valence)
+        const resolvedHex = colorToken ? resolveToken(colorToken) : null
+
+        const cardStyle: React.CSSProperties = resolvedHex ? {
+          boxShadow: isMe
+            ? `inset 4px 0 0 0 ${hexToRgba(resolvedHex, 1)}`
+            : `inset 3px 0 0 0 ${hexToRgba(resolvedHex, 0.3)}`,
+        } : {}
+
+        const titleStyle: React.CSSProperties = (isMe && resolvedHex)
+          ? { color: resolvedHex }
+          : {}
+
         return (
           <Tooltip
             key={`${b.key}:${b.player_xuid ?? 'anon'}`}
@@ -114,13 +133,14 @@ export function MatchImpactBadgesBar({ badges, scoreboard }: Props) {
             className="w-full flex-1"
           >
             <div
-              className={`flex h-full w-full flex-col justify-center gap-0.5 rounded-lg border bg-card px-3 py-2 ${
+              className={`flex h-full w-full flex-col justify-center gap-1.5 rounded-lg border px-3 py-2 ${
                 isMe ? 'border-primary/60' : 'border-border'
               }`}
+              style={cardStyle}
             >
               <div className="flex items-center gap-1.5">
                 <BadgeIcon badgeKey={b.key} size={14} />
-                <span className="text-sm font-medium text-foreground leading-none">
+                <span className="text-sm font-medium leading-none" style={titleStyle}>
                   {b.label}
                 </span>
               </div>

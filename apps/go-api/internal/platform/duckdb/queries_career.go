@@ -136,6 +136,7 @@ SELECT
     r.map_id,
     r.pair_id,
     r.playlist_id,
+    r.season_id,
     COALESCE(r.is_firefight, FALSE)                    AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                       AS is_ranked,
     COALESCE(p.outcome, 0)                             AS outcome,
@@ -188,14 +189,29 @@ FROM career_progression cp
 ORDER BY cp.recorded_at DESC
 LIMIT 1`
 
-// Q7 : Career — historique XP complet.
+// Q7 : Career — historique XP complet, monotone.
+//
+// Filtre les rows sans xp_total réel : post-migration fix_career_xp_total_default_zero
+// (steps_player_fix_career_xp_total_default.go), xp_total=0/NULL est toujours un
+// artefact d'un INSERT partial customization-only — jamais une valeur légitime.
+//
+// MAX(xp_total) OVER garantit la monotonie : si un row aberrant subsiste (ex :
+// xp_total chuté par bug API ou écriture concurrente), il ne fait pas régresser
+// la courbe — on garde le max précédent.
+//
+// Pas de fallback rank * 1000 : il sous-estimait massivement la vraie valeur
+// historique (un Diamant à 5M XP voyait 300_000 quand xp_total devenait NULL).
 const Q7CareerXPHistory = `
 SELECT
     cp.recorded_at,
     cp.rank          AS rank_number,
     cp.current_xp,
-    COALESCE(cp.xp_total, cp.rank * 1000) AS xp_total_cumulative
+    MAX(cp.xp_total) OVER (
+        ORDER BY cp.recorded_at
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS xp_total_cumulative
 FROM career_progression cp
+WHERE cp.xp_total IS NOT NULL AND cp.xp_total > 0
 ORDER BY cp.recorded_at ASC`
 
 // Q8LUSRHistoryPlayerTpl : Phase A de Q8 — partie player (match_skill_rank)
@@ -233,14 +249,17 @@ WHERE match_id IN (%s)`
 //
 // _s sert uniquement à séparer les sections (1=best, 2=worst) dans l'ORDER BY final.
 // Q9TopMatchesPlayer : Phase A de Q9 — partie player (pme) avec filtre
-// performance_score + had_bot_teammate. Le tri (dominance flag + perf score)
-// et la sélection par section (WIN/LOSS) sont faits côté Go après merge avec
-// shared (Phase B).
+// performance_score. Le tri (dominance flag + perf score) et la sélection
+// par section (WIN/LOSS) sont faits côté Go après merge avec shared (Phase B).
+//
+// Le flag had_bot_teammate est désormais transmis au tri Go pour exclusion
+// asymétrique : on garde les WIN avec bot coéquipier (perf personnelle
+// méritoire malgré le handicap d'équipe), on rejette les LOSS avec bot
+// coéquipier (responsabilité du joueur non isolable d'un déséquilibre 4v3).
 const Q9TopMatchesPlayer = `
-SELECT match_id, performance_score, COALESCE(dominance_flag, 0)
+SELECT match_id, performance_score, COALESCE(dominance_flag, 0), COALESCE(had_bot_teammate, FALSE)
 FROM player_match_enrichment
-WHERE performance_score IS NOT NULL
-  AND COALESCE(had_bot_teammate, FALSE) = FALSE`
+WHERE performance_score IS NOT NULL`
 
 // Q9TopMatchesShared : Phase B de Q9 — partie shared (mp + r) avec filtres
 // shared-only (time_played >= 180, is_firefight = FALSE). Filtre xuid + IN
@@ -549,10 +568,15 @@ ORDER BY alltime_value DESC, current_value DESC`
 // pour un titre donné (metadata.duckdb). Utilisé par la page Carrière pour
 // afficher toutes les playlists classées du joueur, y compris celles sans
 // snapshot dans player_csr_snapshots (placement à 0 match joué).
+//
+// Double signal : is_ranked=TRUE (catalog bien renseigné) OU nom contenant
+// "ranked" (fallback quand le catalog a is_ranked=FALSE par erreur d'ingest).
 const QPlaylistsCatalogRanked = `
 SELECT playlist_asset_id, COALESCE(name_canonical, '')
 FROM playlists_catalog
-WHERE title_slug = ? AND is_ranked = TRUE AND is_active = TRUE
+WHERE title_slug = ?
+  AND is_active = TRUE
+  AND (is_ranked = TRUE OR STRPOS(LOWER(COALESCE(name_canonical, '')), 'ranked') > 0)
 ORDER BY name_canonical`
 
 // Q26csrAlltimePeak : récupère le meilleur CSR alltime toutes playlists confondues.

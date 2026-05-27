@@ -13,7 +13,6 @@
  * dans `highlight_events` peuvent ne pas être au scoreboard mais sont
  * résolus dans les kvPairs (cf. `buildXUIDToGamertagMap`).
  */
-import { Card, CardContent } from '@/components/ui/card'
 import { TimeseriesLineChart } from '@/components/charts/TimeseriesLineChart'
 import type {
   MatchHighlightEvent,
@@ -55,11 +54,9 @@ export function MatchFragDiffChart({
   const series = allPlayersFragDiffSeries(events, xuidToGamertag, meXUID, colors.tokenByXUID)
   if (series.length === 0) {
     return (
-      <Card>
-        <CardContent className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
-          {t.fragDiffNoData}
-        </CardContent>
-      </Card>
+      <div className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+        {t.fragDiffNoData}
+      </div>
     )
   }
   // Pré-résolution hex par xuid : on extrait le suffixe xuid de la clé de
@@ -72,20 +69,16 @@ export function MatchFragDiffChart({
     return colors.hexByXUID.get(xu)
   }
   return (
-    <Card>
-      <CardContent className="py-4">
-        <TimeseriesLineChart
-          title={chartTitle}
-          height={360}
-          xAxisType="value"
-          timeAxis={false}
-          outcomeMarkers={false}
-          showSymbol={false}
-          xAxisLabelFormatter={(v) => formatBinSeconds(Number(v))}
-          series={series}
-          seriesColorResolver={colorResolver}
-        />
-      </CardContent>
-    </Card>
+    <TimeseriesLineChart
+      title={chartTitle}
+      height={360}
+      xAxisType="value"
+      timeAxis={false}
+      outcomeMarkers={false}
+      showSymbol={false}
+      xAxisLabelFormatter={(v) => formatBinSeconds(Number(v))}
+      series={series}
+      seriesColorResolver={colorResolver}
+    />
   )
 }

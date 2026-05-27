@@ -206,6 +206,18 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// stables pour stockage DB. Mode legacy si CapturesBase vide.
 	store := MediaPathStore{CapturesBase: opts.CapturesBase}
 
+	// Réconciliation des orphelins : détecte les entrées DB dont le fichier
+	// disque a changé d'extension sans rescan (typique d'une conversion locale
+	// .mp4 → .mkv avec préservation du stem). Idempotent — exécuté en best-effort
+	// avant le walk pour limiter les inserts redondants en aval.
+	if reconciled, err := ReconcileOrphanedMediaFiles(ctx, db, opts.Gamertag, store); err != nil {
+		slog.WarnContext(ctx, "IndexMedia: réconciliation orphelins échouée",
+			"player", opts.Gamertag, "err", err)
+	} else if reconciled > 0 {
+		slog.InfoContext(ctx, "IndexMedia: orphelins resynced",
+			"player", opts.Gamertag, "count", reconciled)
+	}
+
 	for _, path := range mediaFiles {
 		hash, err := fileHash(path)
 		if err != nil {
@@ -264,12 +276,14 @@ func IndexMedia(ctx context.Context, opts MediaIndexOptions) (MediaIndexResult, 
 	// "INTERNAL Error: Failure while replaying WAL file: Calling
 	// DatabaseManager::GetDefaultDatabase".
 	//
-	// Best-effort : si CHECKPOINT échoue (lock contention, etc.), les data
-	// sont commit donc OK fonctionnellement — on loggue WARN pour
-	// traçabilité.
+	// ADR 0021 Phase 3.2 — passé en erreur dure : un CHECKPOINT échoué après
+	// une indexation BULK (centaines de INSERT/UPDATE potentiels) laisse une
+	// fenêtre d'exposition WAL trop large. Mieux vaut faire échouer l'opération
+	// (l'utilisateur retry) que continuer avec un WAL en sursis.
 	if _, ckptErr := db.ExecContext(ctx, "CHECKPOINT"); ckptErr != nil {
-		slog.WarnContext(ctx, "IndexMedia: CHECKPOINT échoué (non-fatal — données committed)",
+		slog.ErrorContext(ctx, "IndexMedia: CHECKPOINT échoué — abandon (ADR 0021)",
 			"path", targetPath, "err", ckptErr)
+		return result, fmt.Errorf("IndexMedia CHECKPOINT post-write: %w", ckptErr)
 	}
 
 	slog.Info("IndexMedia: terminé",

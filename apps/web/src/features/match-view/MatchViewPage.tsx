@@ -313,18 +313,16 @@ export function MatchViewPage() {
               friendGamertags={friendGamertags}
             />
 
-            {/* Antagonistes | Némésis + Souffre-douleur */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr] items-start">
-              <MatchAntagonistChart
-                pairs={killerVictim}
-                scoreboard={scoreboard}
-                roster={roster}
-                meXUID={meXUID}
-                t={t}
-                friendGamertags={friendGamertags}
-              />
+            {/* Némésis + Souffre-douleur | Antagonistes */}
+            <div className="flex flex-col gap-4">
               <MatchNemesisCards
                 nemesis={nemesis}
+                scoreboard={scoreboard}
+                meXUID={meXUID}
+                t={t}
+              />
+              <MatchAntagonistChart
+                pairs={killerVictim}
                 scoreboard={scoreboard}
                 meXUID={meXUID}
                 t={t}

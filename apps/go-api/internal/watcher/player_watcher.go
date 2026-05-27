@@ -55,8 +55,9 @@ type PlayerWatcher struct {
 	cooldown      time.Duration
 	postExitGrace time.Duration
 
-	pollerCancel context.CancelFunc
-	pollerMu     sync.Mutex
+	pollerCancel      context.CancelFunc
+	pollerMu          sync.Mutex
+	warnNoFetcherOnce sync.Once // log Warn-once si fetcher==nil au démarrage du poller
 
 	// postExitTimer : si non-nil, un timer de grâce post-extinction tourne.
 	// Cancel sur OnPresenceActive (le user est revenu en jeu).
@@ -389,7 +390,22 @@ func (pw *PlayerWatcher) waitCooldown(ctx context.Context) {
 }
 
 // startPoller démarre le MatchPoller dans une goroutine.
+//
+// Garde-fou : si pw.fetcher est nil (config dégradée — pool de tokens absent,
+// tests, etc.), on skip la création du poller pour ne pas paniquer dans
+// MatchPoller.poll(). Log Warn-once par PlayerWatcher pour observabilité
+// sans spammer (transitions Idle↔Watching répétées).
 func (pw *PlayerWatcher) startPoller(ctx context.Context) {
+	if pw.fetcher == nil {
+		pw.warnNoFetcherOnce.Do(func() {
+			slog.WarnContext(ctx, "player_watcher: pas de MatchFetcher configuré — poller désactivé",
+				"gamertag", pw.gamertag,
+				"xuid", pw.xuid,
+			)
+		})
+		return
+	}
+
 	pw.pollerMu.Lock()
 	defer pw.pollerMu.Unlock()
 

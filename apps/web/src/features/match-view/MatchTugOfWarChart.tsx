@@ -238,13 +238,14 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
       const enemyLane = bins.map((_, i) => [i, 0])
 
       // Séries de vague : un segment épais par vague, avec label ×N à droite
-      const waveLabel = (color: string, count: number) => ({
+      const waveLabel = (color: string, count: number, position: 'top' | 'bottom') => ({
         show: true,
         formatter: `×${count}`,
         color,
         fontSize: 10,
         fontWeight: 'bold' as const,
-        distance: 4,
+        position,
+        distance: 6,
       })
       const waveTip = (side: string, w: TeamWave): string => {
         const byPlayer = new Map<string, number>()
@@ -261,13 +262,13 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
         name: `wave-ally-${wi}`,
         data: [
           { value: [w.xStart, allyLaneY], _tip: waveTip(t.combatTeamLabel, w) },
-          { value: [w.xEnd,   allyLaneY], _tip: waveTip(t.combatTeamLabel, w) },
+          { value: [w.xEnd,   allyLaneY], _tip: waveTip(t.combatTeamLabel, w), label: waveLabel(colorTeam, w.count, 'top') },
         ],
         lineStyle: { color: colorTeam, width: 4, opacity: 0.9 },
         itemStyle: { color: colorTeam, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 },
         symbol: ['circle', 'circle'] as ['circle', 'circle'],
         symbolSize: 9,
-        endLabel: waveLabel(colorTeam, w.count),
+        label: { show: false },
         legendHoverLink: false,
         xAxisIndex: 0,
         yAxisIndex: 0,
@@ -280,13 +281,13 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
         name: `wave-enemy-${wi}`,
         data: [
           { value: [w.xStart, 0], _tip: waveTip(t.combatEnemyLabel, w) },
-          { value: [w.xEnd,   0], _tip: waveTip(t.combatEnemyLabel, w) },
+          { value: [w.xEnd,   0], _tip: waveTip(t.combatEnemyLabel, w), label: waveLabel(colorEnemy, w.count, 'bottom') },
         ],
         lineStyle: { color: colorEnemy, width: 4, opacity: 0.9 },
         itemStyle: { color: colorEnemy, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 },
         symbol: ['circle', 'circle'] as ['circle', 'circle'],
         symbolSize: 9,
-        endLabel: waveLabel(colorEnemy, w.count),
+        label: { show: false },
         legendHoverLink: false,
         xAxisIndex: 1,
         yAxisIndex: 1,

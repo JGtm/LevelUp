@@ -257,6 +257,7 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 			map_id VARCHAR,
 			pair_id VARCHAR,
 			playlist_id VARCHAR,
+			season_id VARCHAR,
 			map_name VARCHAR,
 			map_name_fr VARCHAR,
 			pair_name VARCHAR,

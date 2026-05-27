@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 	"unicode"
@@ -186,24 +187,71 @@ func enrichCareerRankFromMetadata(ctx context.Context, db *sql.DB, data *CareerR
 }
 
 // syncPlayerCSRs récupère les classements CSR du joueur via l'API et les persiste.
-// Retourne (0, nil) si la saison est vide ou si l'API ne renvoie rien.
+// Retourne (nil, nil) si la saison est vide ou si l'API ne renvoie rien.
+// Retourne la slice CSR pour permettre au caller d'alimenter playlists_catalog
+// en parallèle d'autres opérations (cf. runCSRSnapshotSync → errgroup step 4).
 func syncPlayerCSRs(
 	ctx context.Context,
 	client HaloClient,
 	db *sql.DB,
 	xuid, seasonID string,
-) (int, error) {
+) ([]PlayerPlaylistCSR, error) {
 	if strings.TrimSpace(seasonID) == "" {
-		return 0, nil
+		return nil, nil
 	}
 	csrs, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
 	if err != nil {
-		return 0, fmt.Errorf("syncPlayerCSRs fetch: %w", err)
+		return nil, fmt.Errorf("syncPlayerCSRs fetch: %w", err)
 	}
 	if len(csrs) == 0 {
-		return 0, nil
+		return nil, nil
 	}
-	return saveCSRSnapshots(ctx, db, csrs, seasonID)
+	if _, err := saveCSRSnapshots(ctx, db, csrs, seasonID); err != nil {
+		return nil, err
+	}
+	return csrs, nil
+}
+
+// seedPlaylistsCatalog insère les playlists ranked découvertes via l'API CSR
+// dans playlists_catalog si elles n'y sont pas encore. Best-effort : les erreurs
+// sont loggées mais n'interrompent pas le sync.
+func seedPlaylistsCatalog(ctx context.Context, metaDB *sql.DB, csrs []PlayerPlaylistCSR, titleSlug string) {
+	now := time.Now().UTC()
+	var seeded int
+	for _, c := range csrs {
+		id := strings.TrimSpace(c.PlaylistID)
+		if id == "" {
+			continue
+		}
+		name := strings.TrimSpace(c.PlaylistName)
+		if name == "" || isUUIDLike(name) {
+			name = id
+		}
+		res, err := metaDB.ExecContext(ctx, `
+			INSERT INTO playlists_catalog
+			  (title_slug, playlist_asset_id, current_version_id, name_canonical,
+			   experience, is_ranked, is_active, first_seen_at, last_seen_at)
+			VALUES (?, ?, '', ?, 'ranked', TRUE, TRUE, ?, ?)
+			ON CONFLICT (title_slug, playlist_asset_id) DO NOTHING`,
+			titleSlug, id, name, now, now,
+		)
+		if err != nil {
+			slog.WarnContext(ctx, "seedPlaylistsCatalog: insert échoué",
+				"playlist_id", id, "titleSlug", titleSlug, "err", err)
+			continue
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			seeded++
+		}
+	}
+	if seeded > 0 {
+		slog.InfoContext(ctx, "sync: playlists catalog enrichi depuis CSR", "new", seeded, "titleSlug", titleSlug)
+	}
+}
+
+// isUUIDLike retourne true si s ressemble à un UUID v4 (36 chars, 4 tirets).
+func isUUIDLike(s string) bool {
+	return len(s) == 36 && strings.Count(s, "-") == 4
 }
 
 // saveCSRSnapshots insère des snapshots CSR dans player_csr_snapshots

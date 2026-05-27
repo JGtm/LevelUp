@@ -9,7 +9,7 @@ import type {
 
 describe('unknownPlayerLabel', () => {
   it('utilise les 4 derniers chars', () => {
-    expect(unknownPlayerLabel('1234567890aaaa')).toBe('Joueur aaaa')
+    expect(unknownPlayerLabel('1234567890aaaa')).toBe('Joueur aaaa') // pragma: allowlist secret
   })
   it('retombe sur le xuid si trop court', () => {
     expect(unknownPlayerLabel('xy')).toBe('Joueur xy')
@@ -110,10 +110,14 @@ describe('buildMatchPlayerColors — équipes', () => {
 
   it('ennemis → palette warm', () => {
     const colors = buildMatchPlayerColors(scoreboard, 'ME')
+    // Ordre ENEMY_TOKENS révisé dans 5633afce (palette antagonistes 11 tokens
+    // distincts) : outcome-loss → narrative-humiliation → narrative-debacle →
+    // narrative-contre-remontada (perf-tier-5 retiré car doublon hex avec
+    // outcome-loss).
     expect(colors.tokenByXUID.get('E1')).toBe('outcome-loss')
-    expect(colors.tokenByXUID.get('E2')).toBe('narrative-debacle')
-    expect(colors.tokenByXUID.get('E3')).toBe('narrative-humiliation')
-    expect(colors.tokenByXUID.get('E4')).toBe('perf-tier-4')
+    expect(colors.tokenByXUID.get('E2')).toBe('narrative-humiliation')
+    expect(colors.tokenByXUID.get('E3')).toBe('narrative-debacle')
+    expect(colors.tokenByXUID.get('E4')).toBe('narrative-contre-remontada')
   })
 
   it('amis alliés → tokens squad (narrative-dominant / perf-tier-3 / divergent-pos)', () => {

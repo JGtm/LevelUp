@@ -1090,6 +1090,12 @@ export interface ExplorerMatchRow {
   perf_tier?: number
   delta_perf?: number | null
   skill_tier_label?: string | null
+  /** "CSR" (classé officiel) ou "LUSR" (interne LevelUp). Nil si pas de skill rank (PvE, Custom). */
+  rating_type?: string | null
+  /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la cellule Rang à la place du skill_tier_label. */
+  placement_done?: number | null
+  /** Seuil placement (Y). CSR : 5 ou 10 selon saison. LUSR : 10. */
+  placement_total?: number | null
   delta_mmr?: number | null
   team_mmr?: number | null
   enemy_mmr?: number | null
@@ -1098,6 +1104,13 @@ export interface ExplorerMatchRow {
   match_url?: string
   /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
   dominance_flag?: number
+  /**
+   * Indique qu'un coéquipier du joueur était un bot pendant le match.
+   * Présent uniquement sur les best_matches de la page carrière (exclu côté
+   * backend pour worst_matches afin d'isoler la responsabilité du joueur).
+   * Le front affiche une pill "bot" sur la card du match.
+   */
+  had_bot_teammate?: boolean
 }
 
 export interface ExplorerEncounterRow {
@@ -1218,6 +1231,62 @@ export interface ExplorerPlayerQueryResponse {
   /** Agrégat jour × heure des matchs communs (toutes pages confondues).
    *  Coloration UI pilotée par count (intensité d'activité commune). */
   activity_heatmap?: HeatmapCell[]
+  /** Encart "Profil joueur cible" affiché en haut des résultats Explorer
+   *  mode Joueur. 4 sous-blocs best-effort + flag auth_available. */
+  target_profile?: ExplorerTargetProfile
+}
+
+/** Encart "Profil joueur cible" composite (4 sources fetch en parallèle).
+ *  Toutes les sous-sections sont nullable : le front masque celles à null
+ *  et affiche un hint "Connexion Halo requise" quand auth_available=false. */
+export interface ExplorerTargetProfile {
+  /** Identité Spartan : banner, emblem, service tag, rang carrière.
+   *  Fetch live Halo en mode auth, fallback DB locale en mode no-tokens. */
+  identity?: HomeSpartanIdentity | null
+  /** Stats carrière entière du joueur (KDA / KDR / win rate / accuracy / ...).
+   *  Fetch via halostats career-stats. null en mode no-tokens. */
+  career_stats?: NormalizedPlayerStats | null
+  /** Stats agrégées du target sur les matchs joués en commun avec le user.
+   *  Toujours calculable depuis DuckDB, null seulement si common_matches=0. */
+  sample_stats?: ExplorerTargetSampleStats | null
+  /** Avertissement privacy (none / partial / full). null en mode no-tokens. */
+  privacy_warning?: MatchPrivacyWarning | null
+  /** true si le user connecté a des tokens OAuth Halo. Sert à rendre le hint
+   *  "Connexion Halo requise" sur les sections en mode dégradé. */
+  auth_available: boolean
+}
+
+/** Stats agrégées du joueur cible sur l'échantillon des matchs en commun.
+ *  Ratios en nullable : null signifie "indisponible" (dénominateur nul). */
+export interface ExplorerTargetSampleStats {
+  sample_size: number
+  // Totaux bruts.
+  kills: number
+  deaths: number
+  assists: number
+  wins: number
+  losses: number
+  draws: number
+  shots_fired: number
+  shots_hit: number
+  damage_dealt: number
+  damage_taken: number
+  // Breakdown kill types (somme sur le sample).
+  headshot_kills: number
+  melee_kills: number
+  power_weapon_kills: number
+  grenade_kills: number
+  // Médailles totales / types distincts.
+  total_medals: number
+  unique_medals: number
+  // Ratios calculés (nullable si dénominateur nul).
+  kda?: number | null
+  kdr?: number | null
+  win_rate?: number | null
+  accuracy?: number | null
+  headshot_rate?: number | null
+  offensive_conversion?: number | null
+  defensive_resistance?: number | null
 }
 
 export interface ExplorerMatchesQueryResponse {
@@ -2029,9 +2098,10 @@ export interface SynthesisPageResponse {
   comparison_metrics: ComparisonMetricItem[]
   heatmap_data: HeatmapCell[]
   top_weeks: TopWeekItem[]
-  // Sprint 55 D5/D6/D7
+  // Sprint 55 D5/D7 — D6 (rivalries) retiré le 2026-05-27 (section
+  // "Relations de jeu" supprimée de la page Synthesis ; les encounters
+  // restent exposés par la page palmares/relations).
   highlights_preview?: SynthesisHighlightsPreview
-  rivalries_preview?: SynthesisRivalriesPreview
   breakdowns?: SynthesisBreakdowns
   // Sprint 55 D9 — scope + overview
   scope?: SynthesisScope
@@ -2080,6 +2150,21 @@ export interface SynthesisOverview {
   best_kills_match?: number | null
   best_kda_match?: number | null
   longest_win_streak?: number
+  // Refs cliquables vers le match record pour chaque métrique (2026-05-27).
+  // Permet l'ouverture du match depuis les cartes "Top X" / "Meilleur X".
+  best_kills_ref?: BestMatchRef | null
+  best_kda_ref?: BestMatchRef | null
+  best_perf_ref?: BestMatchRef | null
+  best_accuracy_ref?: BestMatchRef | null
+  best_damage_ref?: BestMatchRef | null
+  best_killing_spree_ref?: BestMatchRef | null
+  best_headshots_ref?: BestMatchRef | null
+  best_personal_score_ref?: BestMatchRef | null
+}
+
+export interface BestMatchRef {
+  match_id: string
+  value: number
 }
 
 // Sprint 55 D5 — Highlights
@@ -2096,22 +2181,6 @@ export interface SynthesisHighlightsPreview {
   top_by_kills: SynthesisMatchHighlight[]
   top_by_kda: SynthesisMatchHighlight[]
   worst_by_deaths: SynthesisMatchHighlight[]
-}
-
-// Sprint 55 D6 — Rivalries
-export interface SynthesisEncounterPreview {
-  xuid: string
-  gamertag: string
-  match_count: number
-  as_teammate: number
-  as_enemy: number
-  avg_kda: number | null
-}
-
-export interface SynthesisRivalriesPreview {
-  top_teammates: SynthesisEncounterPreview[]
-  top_enemies: SynthesisEncounterPreview[]
-  total: number
 }
 
 // Sprint 55 D7 — Breakdowns
@@ -2932,6 +3001,40 @@ export interface TimeseriesPageResponse {
 // Session Compare (Slice 3C)
 // ---------------------------------------------------------------------------
 
+/** Point de données par match pour les charts de progression (K/D, cumul, précision). */
+export interface SessionMatchPoint {
+  index: number
+  kd: number
+  cumulative: number
+  accuracy: number | null
+}
+
+/** Ligne du tableau par carte. */
+export interface SessionCompareMapRow {
+  map_name: string
+  a_matches: number
+  a_wins: number
+  a_losses: number
+  b_matches: number
+  b_wins: number
+  b_losses: number
+}
+
+/** Ligne du tableau par mode. */
+export interface SessionCompareModeRow {
+  mode_name: string
+  a_matches: number
+  a_wins: number
+  b_matches: number
+  b_wins: number
+}
+
+/** Axe du profil de participation 6 axes, normalisé 0..100. */
+export interface SessionParticipationAxis {
+  name: string  // "combat" | "survival" | "support" | "score" | "objective" | "impact"
+  value: number // 0..100
+}
+
 export interface SessionCompareEntry {
   session_label: string
   start_time: string | null
@@ -2948,6 +3051,22 @@ export interface SessionCompareEntry {
   avg_dr?: number | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 4
   avg_residual_brut?: number | null
+  /** Série de points par match pour les charts de progression. */
+  match_series?: SessionMatchPoint[]
+  /** Dernier skill rating de la session (LUSR ou CSR). */
+  last_skill_rating?: number | null
+  skill_rating_type?: string | null   // "csr" | "lusr" | ""
+  skill_rating_delta?: number | null  // last − first
+  /** MMR moyen de la session. */
+  avg_team_mmr?: number | null
+  avg_enemy_mmr?: number | null
+  /** Profil de participation 6 axes (0..100). */
+  participation?: SessionParticipationAxis[]
+  /** Historique des matchs de la session (chronologique). */
+  matches?: SessionDetailMatchRow[]
+  /** Meilleur et pire match par performance score. */
+  best_match?: SessionDetailMatchRow | null
+  worst_match?: SessionDetailMatchRow | null
 }
 
 export interface SessionCompareMetricRow {
@@ -2970,8 +3089,8 @@ export interface SessionCompareResponse {
   session_b: SessionCompareEntry | null
   available_sessions: string[]
   metrics: SessionCompareMetricRow[]
-  maps_table: Record<string, unknown>[]
-  modes_table: Record<string, unknown>[]
+  maps_table: SessionCompareMapRow[]
+  modes_table: SessionCompareModeRow[]
 }
 
 export interface SessionDetailMatchRow {

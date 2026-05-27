@@ -8,7 +8,7 @@
  * Utilise TanStack Table v8. Pagination 20/page côté client.
  * Labels carte/playlist via useFieldMappings (assets titre).
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -63,8 +63,14 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   const labels = t.history
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
-  const goToSynergyMatch = (matchId: string) =>
-    navigateToMatch(matchId, { source: 'session', matchIds: allMatchIds })
+  // useCallback obligatoire : goToSynergyMatch est référencé dans le cell renderer
+  // du useMemo `columns` ci-dessous. Sans ça, le closure figé au 1er render garde
+  // les `allMatchIds` initiaux (pré-filtre) → nav contextuelle hors scope.
+  const goToSynergyMatch = useCallback(
+    (matchId: string) =>
+      navigateToMatch(matchId, { source: 'session', matchIds: allMatchIds }),
+    [navigateToMatch, allMatchIds],
+  )
 
   const waypointBase = `https://www.halowaypoint.com/halo-infinite/players/${encodeURIComponent(playerSlug)}/matches`
 
@@ -212,7 +218,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [labels, intlLocale, playerSlug, waypointBase],
+    [labels, intlLocale, playerSlug, waypointBase, goToSynergyMatch],
   )
 
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })

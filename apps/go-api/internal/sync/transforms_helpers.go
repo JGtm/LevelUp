@@ -274,6 +274,16 @@ func intPtrFrom(m map[string]any, key string) *int {
 	return &n
 }
 
+// jsonBoolPtr lit une clé booléenne d'un objet JSON décodé. Retourne nil si la
+// clé est absente, NULL côté JSON, ou pas un booléen.
+func jsonBoolPtr(m map[string]any, key string) *bool {
+	v, ok := m[key].(bool)
+	if !ok {
+		return nil
+	}
+	return &v
+}
+
 func floatPtrFrom(m map[string]any, key string) *float64 {
 	v, ok := m[key].(float64)
 	if !ok || math.IsNaN(v) || math.IsInf(v, 0) {

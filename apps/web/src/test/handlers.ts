@@ -224,14 +224,6 @@ const synthesisFixture = {
       { match_id: 'ddddeeeeffffg222', kills: 2, deaths: 15, kda: 0.13, outcome: 3, perf_score: 55 },
     ],
   },
-  rivalries_preview: {
-    top_teammates: [
-      { gamertag: 'AllyOne', shared_matches: 8, win_rate_together: 0.75 },
-    ],
-    top_enemies: [
-      { gamertag: 'RivalOne', shared_matches: 6, win_rate_together: 0.33 },
-    ],
-  },
   breakdowns: {
     top_maps: [
       { map_name: 'Aquarius', match_count: 4, win_rate: 0.75 },

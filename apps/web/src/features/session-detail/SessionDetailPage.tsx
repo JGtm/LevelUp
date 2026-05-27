@@ -1,17 +1,10 @@
 /**
- * SessionDetailPage — page détail d'une session avec drawer compare side-by-side.
+ * SessionDetailPage — page détail d'une session avec colonne compare inline.
  *
- * Structure orchestrale ; les blocs métier vivent dans des sous-fichiers :
- *  - SessionSummaryCard (résumé KPI session active)
- *  - SessionOutcomeTape / KDATimeline / KillsDonut / PerfTrend (4 charts)
- *  - SessionMatchesTable (liste des matchs)
- *  - SessionCompareDrawer (panneau latéral side-by-side, contient le même
- *    layout pour la session comparée + SessionCompareMetrics)
- * Helpers partagés (i18n hook, formatters, outcome tone) dans `_shared.ts`.
- *
- * Layout : quand le drawer est ouvert, le contenu de la page reste pleine
- * largeur mais reçoit `xl:pr-[50vw]` pour libérer la moitié droite du viewport,
- * créant la vue 2 colonnes côte-à-côte sur desktop ≥ xl.
+ * Quand le compare est ouvert, la page passe en deux colonnes côte-à-côte (≥ xl)
+ * dans le même conteneur de scroll (`main`), donnant un scroll synchronisé naturel.
+ * La colonne compare commence sous la NavL2 car elle est dans le flux DOM de l'Outlet,
+ * pas en position fixed.
  */
 import { useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
@@ -19,9 +12,9 @@ import { useParams, useSearch } from '@tanstack/react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { EmptyStateCard } from '@/components/ui/empty-state'
+import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
-import { useLocalFilterBar } from '@/features/_shared/useLocalFilterBar'
+import { useSoloFilterStore } from '@/stores/soloFilterStore'
 
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
@@ -31,7 +24,7 @@ import { SessionKDATimeline } from './SessionKDATimeline'
 import { SessionOutcomeTape } from './SessionOutcomeTape'
 import { SessionKillsDonut } from './SessionKillsDonut'
 import { SessionPerfTrend } from './SessionPerfTrend'
-import { SessionCompareDrawer } from './SessionCompareDrawer'
+import { SessionCompareMetrics } from './SessionCompareMetrics'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -42,28 +35,18 @@ export function SessionDetailPage() {
   const [compareSessionLabel, setCompareSessionLabel] = useState('')
   const [enableCompare, setEnableCompare] = useState(false)
 
-  const { committedFilterContext, committedHash, bar } = useLocalFilterBar({
-    playerSlug,
-    labels: {
-      experience: t('session.filters.experience'),
-      experienceAll: t('session.filters.experience_all'),
-      experienceRanked: t('session.filters.experience_ranked'),
-      experienceUnranked: t('session.filters.experience_unranked'),
-      playlists: t('session.filters.playlists'),
-      modes: t('session.filters.modes'),
-      reset: t('session.filters.reset'),
-    },
-  })
+  const filterContext = useSoloFilterStore((s) => s.filterContext)
+  const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
 
   const { data, isLoading, isError, refetch } = useSessionDetailPage(
     playerSlug,
     {
-      filters: committedFilterContext,
+      filters: filterContext,
       session_label: sessionLabel || undefined,
       compare_session_label: compareSessionLabel || undefined,
       enable_compare: enableCompare,
     },
-    committedHash,
+    filterContextHash,
     sessionLabel,
     compareSessionLabel,
     enableCompare,
@@ -71,45 +54,36 @@ export function SessionDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col">
-        {bar}
-        <div className="flex h-full items-center justify-center p-6">
-          <Spinner size="lg" label={t('session.detail.loading')} />
-        </div>
+      <div className="flex h-full items-center justify-center p-6">
+        <Spinner size="lg" label={t('session.detail.loading')} />
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col">
-        {bar}
-        <div className="p-6">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <p className="font-medium text-destructive">{t('session.detail.load_error')}</p>
-              <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
-                {t('session.errors.retry')}
-              </button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="p-6">
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="font-medium text-destructive">{t('session.detail.load_error')}</p>
+            <button onClick={() => refetch()} className="mt-2 text-sm text-primary underline">
+              {t('session.errors.retry')}
+            </button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="flex flex-col">
-        {bar}
-        <div className="p-6">
-          <EmptyStateCard
-            title={t('session.detail.empty_title')}
-            description={t('session.detail.empty_description')}
-            actionLabel={t('session.errors.retry')}
-            onAction={() => refetch()}
-          />
-        </div>
+      <div className="p-6">
+        <EmptyStateCard
+          title={t('session.detail.empty_title')}
+          description={t('session.detail.empty_description')}
+          actionLabel={t('session.errors.retry')}
+          onAction={() => refetch()}
+        />
       </div>
     )
   }
@@ -122,9 +96,9 @@ export function SessionDetailPage() {
   const drawerOpen = enableCompare && hasSessions
 
   return (
-    <div className="flex flex-col">
-      {bar}
-      <div className={`space-y-6 p-6 transition-[padding] duration-200 ${drawerOpen ? 'xl:pr-[calc(50vw+1.5rem)]' : ''}`}>
+    <div className={drawerOpen ? 'flex flex-col xl:flex-row' : ''}>
+      {/* Colonne principale */}
+      <div className={`space-y-6 p-6 ${drawerOpen ? 'xl:flex-1 xl:min-w-0 xl:border-r' : ''}`}>
         {suggestionAvailable && !enableCompare && (
           <div className="flex justify-end">
             <Button
@@ -243,17 +217,95 @@ export function SessionDetailPage() {
         )}
       </div>
 
-      <SessionCompareDrawer
-        open={drawerOpen}
-        onClose={() => setEnableCompare(false)}
-        compareSession={data.compare_session}
-        compareMatches={data.compare_matches ?? []}
-        compareMetrics={data.compare_metrics}
-        suggestedCompare={data.suggested_compare}
-        previousLabel={data.previous_session_label ?? null}
-        nextLabel={data.next_session_label ?? null}
-        onSelectLabel={(label) => setCompareSessionLabel(label)}
-      />
+      {/* Colonne compare — inline dans le même flux de scroll */}
+      {drawerOpen && (
+        <div className="flex flex-col space-y-4 border-t p-4 xl:w-[50%] xl:shrink-0 xl:border-l xl:border-t-0">
+          {/* En-tête navigation */}
+          <div className="flex flex-col gap-2 border-b pb-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-foreground">
+                {data.compare_session
+                  ? t('session.detail.drawer_title', { label: data.compare_session.session_label })
+                  : t('session.detail.session_compared')}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setEnableCompare(false)}
+                aria-label={t('session.detail.drawer_close_aria')}
+                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!data.previous_session_label}
+                onClick={() => data.previous_session_label && setCompareSessionLabel(data.previous_session_label)}
+              >
+                {t('session.detail.drawer_prev_session')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!data.next_session_label}
+                onClick={() => data.next_session_label && setCompareSessionLabel(data.next_session_label)}
+              >
+                {t('session.detail.drawer_next_session')}
+              </Button>
+              {data.suggested_compare && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setCompareSessionLabel(data.suggested_compare!.session_label)}
+                >
+                  {t('session.detail.drawer_use_suggested')}
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Contenu session comparée */}
+          {data.compare_session ? (
+            <>
+              <SessionSummaryCard
+                title={t('session.detail.session_compared')}
+                entry={data.compare_session}
+                tone="compare"
+              />
+
+              <SessionOutcomeTape matches={data.compare_matches ?? []} />
+
+              <div className="grid gap-4 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <SessionKDATimeline
+                  title={t('session.detail.chart_kda_title')}
+                  matches={data.compare_matches ?? []}
+                />
+                <SessionKillsDonut
+                  title={t('session.detail.chart_kills_donut_title')}
+                  matches={data.compare_matches ?? []}
+                />
+              </div>
+
+              <SessionPerfTrend
+                title={t('session.detail.chart_perf_title')}
+                matches={data.compare_matches ?? []}
+              />
+
+              <SessionCompareMetrics metrics={data.compare_metrics} />
+            </>
+          ) : (
+            <EmptyStateNotice
+              title={t('session.detail.no_compare_title')}
+              description={t('session.detail.drawer_no_compare')}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }

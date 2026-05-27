@@ -276,6 +276,106 @@ func (p *SharedSocialPersister) MarkNotificationRead(ctx context.Context, xuid s
 	})
 }
 
+// SetMediaMatchAssociation force l'association d'un média à un match précis
+// (ADR 0021 Phase 3.2). Atomique : DELETE old assoc + INSERT new dans la même
+// TX, suivi d'un CHECKPOINT explicite pour vider le WAL immédiatement.
+//
+// Différence vs MediaAssociations (INSERT OR IGNORE) : ici on FORCE le remplacement
+// d'une assoc existante (cas utilisateur qui ré-associe manuellement un média).
+//
+// Le caller doit avoir résolu mediaFileID via une lecture séparée (cf.
+// MediaRepo.SetMediaMatchAssociation pour le lookup).
+func (p *SharedSocialPersister) SetMediaMatchAssociation(ctx context.Context, mediaFileID int64, matchID string) error {
+	start := time.Now()
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("shared_social SetMediaMatchAssociation: begin tx: %w", err)
+	}
+	rollback := func() {
+		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
+			slog.WarnContext(ctx, "shared_social SetMediaMatchAssociation: rollback failed (non-fatal)", "err", rbErr)
+		}
+	}
+
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM media_match_associations WHERE media_file_id = ?`, mediaFileID,
+	); err != nil {
+		rollback()
+		return fmt.Errorf("shared_social SetMediaMatchAssociation: delete: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO media_match_associations (media_file_id, match_id, delta_seconds, is_manual) VALUES (?, ?, 0, TRUE)`,
+		mediaFileID, matchID,
+	); err != nil {
+		rollback()
+		return fmt.Errorf("shared_social SetMediaMatchAssociation: insert: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("shared_social SetMediaMatchAssociation: commit: %w", err)
+	}
+
+	// CHECKPOINT explicite — différence vs Persist générique (qui s'appuie sur
+	// le scheduler 5min). Pour les opérations user-visibles individuelles, on
+	// préfère un CHECKPOINT immédiat. Non-fatal si échec (lock contention).
+	if _, err := p.db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		slog.WarnContext(ctx, "shared_social SetMediaMatchAssociation: CHECKPOINT post-commit non-fatal", "err", err)
+	}
+
+	slog.DebugContext(ctx, "shared_social: media_match_association set",
+		"media_file_id", mediaFileID, "match_id", matchID,
+		"duration_ms", time.Since(start).Milliseconds())
+	return nil
+}
+
+// SetMediaLiked met à jour le flag liked d'un média (ADR 0021 Phase 3.2).
+// Retourne true si la ligne media_files existait (rowsAffected > 0), false
+// sinon (file_path inconnu — caller traduit en 404).
+//
+// Atomique + CHECKPOINT immédiat — même pattern que SetMediaMatchAssociation.
+//
+// NB : ne touche QUE media_files.liked. La table media_likes (likers
+// sociaux) est manipulée séparément via AddLike/RemoveLike.
+func (p *SharedSocialPersister) SetMediaLiked(ctx context.Context, filePath string, liked bool) (bool, error) {
+	start := time.Now()
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("shared_social SetMediaLiked: begin tx: %w", err)
+	}
+	rollback := func() {
+		if rbErr := tx.Rollback(); rbErr != nil && rbErr != sql.ErrTxDone {
+			slog.WarnContext(ctx, "shared_social SetMediaLiked: rollback failed (non-fatal)", "err", rbErr)
+		}
+	}
+
+	res, err := tx.ExecContext(ctx, `
+		UPDATE media_files
+		SET liked = ?,
+			liked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
+		WHERE file_path = ?
+	`, liked, liked, filePath)
+	if err != nil {
+		rollback()
+		return false, fmt.Errorf("shared_social SetMediaLiked: update: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		rollback()
+		return false, fmt.Errorf("shared_social SetMediaLiked: rows affected: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("shared_social SetMediaLiked: commit: %w", err)
+	}
+
+	if _, err := p.db.ExecContext(ctx, "CHECKPOINT"); err != nil {
+		slog.WarnContext(ctx, "shared_social SetMediaLiked: CHECKPOINT post-commit non-fatal", "err", err)
+	}
+
+	slog.DebugContext(ctx, "shared_social: media_file liked updated",
+		"file_path", filePath, "liked", liked, "rows_affected", rowsAffected,
+		"duration_ms", time.Since(start).Milliseconds())
+	return rowsAffected > 0, nil
+}
+
 // Persist exécute toutes les écritures du batch en UNE transaction, suivie
 // d'un CHECKPOINT pour vider le WAL DuckDB sur disque. Atomique.
 //

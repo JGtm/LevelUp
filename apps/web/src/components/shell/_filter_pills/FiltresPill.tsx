@@ -51,13 +51,15 @@ export function FiltresPill({
     onSetCascade({ ...cascade, [key]: next })
   }
 
-  // Valeurs sélectionnées absentes des options disponibles = incompatibles avec les filtres actifs
+  // Valeurs sélectionnées absentes des options disponibles = incompatibles avec les filtres actifs.
+  // Défense `?? []` : un slice Go nil sérialise en JSON null et crashe le front
+  // sur .map(). Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
   const availSets = useMemo(
     () => ({
-      playlists: new Set(available.playlists.map((o) => o.value)),
-      modes: new Set(available.modes.map((o) => o.value)),
-      maps: new Set(available.maps.map((o) => o.value)),
-      experience_types: new Set(available.experience_types.map((o) => o.value)),
+      playlists: new Set((available.playlists ?? []).map((o) => o.value)),
+      modes: new Set((available.modes ?? []).map((o) => o.value)),
+      maps: new Set((available.maps ?? []).map((o) => o.value)),
+      experience_types: new Set((available.experience_types ?? []).map((o) => o.value)),
     }),
     [available],
   )

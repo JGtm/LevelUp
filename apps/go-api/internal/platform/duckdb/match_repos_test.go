@@ -225,6 +225,168 @@ func TestExplorerRepo_GetCommonMatches_WithSharedMatch(t *testing.T) {
 	}
 }
 
+func TestExplorerRepo_GetParticipantStatsForMatches(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	const targetXUID = "xuid_target_555"
+	// Insert 3 lignes participant pour le target sur m1, m2 (m3 non listé).
+	// outcome : 2=win, 3=loss, 1=draw.
+	inserts := []struct {
+		matchID                         string
+		outcome, kills, deaths, assists int
+		shotsFired, shotsHit            int
+		dmgDealt, dmgTaken              float64
+		hsKills, melee, power, grenade  int
+	}{
+		{"m1", 2, 15, 5, 3, 100, 50, 1800, 1200, 5, 1, 3, 2},
+		{"m2", 3, 8, 12, 1, 80, 30, 1100, 1500, 2, 0, 1, 0},
+	}
+	for _, in := range inserts {
+		_, err := pdb.Player.Exec(ctx,
+			`INSERT INTO shared.match_participants
+			 (match_id, xuid, gamertag, outcome, kills, deaths, assists,
+			  shots_fired, shots_hit, damage_dealt, damage_taken,
+			  headshot_kills, melee_kills, power_weapon_kills, grenade_kills, team_id)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			in.matchID, targetXUID, "TargetPlayer", in.outcome,
+			in.kills, in.deaths, in.assists,
+			in.shotsFired, in.shotsHit, in.dmgDealt, in.dmgTaken,
+			in.hsKills, in.melee, in.power, in.grenade, 1)
+		if err != nil {
+			t.Fatalf("insert %s: %v", in.matchID, err)
+		}
+	}
+	repo := NewExplorerRepo(pdb, pTestXUID)
+
+	t.Run("agrégat sur 2 matchs présents", func(t *testing.T) {
+		agg, err := repo.GetParticipantStatsForMatches(ctx, targetXUID, []string{"m1", "m2"})
+		if err != nil {
+			t.Fatalf("GetParticipantStatsForMatches: %v", err)
+		}
+		if agg == nil {
+			t.Fatal("agg attendu non-nil")
+		}
+		if agg.Kills != 23 || agg.Deaths != 17 || agg.Assists != 4 {
+			t.Errorf("K/D/A = %d/%d/%d, want 23/17/4", agg.Kills, agg.Deaths, agg.Assists)
+		}
+		if agg.Wins != 1 || agg.Losses != 1 || agg.Draws != 0 {
+			t.Errorf("W/L/D = %d/%d/%d, want 1/1/0", agg.Wins, agg.Losses, agg.Draws)
+		}
+		if agg.ShotsFired != 180 || agg.ShotsHit != 80 {
+			t.Errorf("shots = %d/%d, want 180/80", agg.ShotsFired, agg.ShotsHit)
+		}
+		if agg.DamageDealt != 2900 || agg.DamageTaken != 2700 {
+			t.Errorf("damage = %.0f/%.0f, want 2900/2700", agg.DamageDealt, agg.DamageTaken)
+		}
+		if agg.HeadshotKills != 7 || agg.MeleeKills != 1 || agg.PowerWeaponKills != 4 || agg.GrenadeKills != 2 {
+			t.Errorf("kill types = HS:%d Me:%d Pwr:%d Gr:%d, want 7/1/4/2",
+				agg.HeadshotKills, agg.MeleeKills, agg.PowerWeaponKills, agg.GrenadeKills)
+		}
+	})
+
+	t.Run("matchIDs vide → nil", func(t *testing.T) {
+		agg, err := repo.GetParticipantStatsForMatches(ctx, targetXUID, nil)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if agg != nil {
+			t.Errorf("attendu nil pour matchIDs vide, got %+v", agg)
+		}
+	})
+
+	t.Run("xuid sans participants → agrégat zéro", func(t *testing.T) {
+		agg, err := repo.GetParticipantStatsForMatches(ctx, "xuid_inconnu", []string{"m1", "m2"})
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		// SUM retourne 0 par défaut (pas une row absente), donc l'aggregate est non-nil avec des zéros.
+		if agg == nil {
+			t.Fatal("attendu non-nil (zéros), got nil")
+		}
+		if agg.Kills != 0 || agg.Deaths != 0 {
+			t.Errorf("xuid inconnu doit retourner 0/0, got %d/%d", agg.Kills, agg.Deaths)
+		}
+	})
+
+	t.Run("filtrage match_ids respecté", func(t *testing.T) {
+		// Demande uniquement m1.
+		agg, err := repo.GetParticipantStatsForMatches(ctx, targetXUID, []string{"m1"})
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if agg.Kills != 15 {
+			t.Errorf("filtré sur m1 seul, attendu Kills=15, got %d", agg.Kills)
+		}
+	})
+}
+
+func TestExplorerRepo_GetMedalCountsForMatches(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	const targetXUID = "xuid_target_555"
+	// Insert dans shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count).
+	medals := []struct {
+		medalNameID uint64
+		matchID     string
+		count       int
+	}{
+		{100, "m1", 3},  // medal 100 sur m1 ×3
+		{200, "m1", 2},  // medal 200 sur m1 ×2
+		{100, "m2", 1},  // medal 100 sur m2 ×1 (même type → unique pour total)
+		{300, "m2", 5},  // medal 300 sur m2 ×5
+		{999, "m3", 10}, // medal 999 sur m3 — exclu si on filtre m1/m2
+	}
+	for _, m := range medals {
+		_, err := pdb.Player.Exec(ctx,
+			`INSERT INTO shared.medals_earned (medal_id, medal_name_id, xuid, match_id, count) VALUES (?,?,?,?,?)`,
+			m.medalNameID, m.medalNameID, targetXUID, m.matchID, m.count)
+		if err != nil {
+			t.Fatalf("insert medal: %v", err)
+		}
+	}
+	repo := NewExplorerRepo(pdb, pTestXUID)
+
+	t.Run("agrégat sur 2 matchs : total+unique corrects, m3 exclu", func(t *testing.T) {
+		agg, err := repo.GetMedalCountsForMatches(ctx, targetXUID, []string{"m1", "m2"})
+		if err != nil {
+			t.Fatalf("GetMedalCountsForMatches: %v", err)
+		}
+		if agg == nil {
+			t.Fatal("agg attendu non-nil")
+		}
+		// Total = 3+2+1+5 = 11. Unique = {100,200,300} = 3.
+		if agg.Total != 11 {
+			t.Errorf("Total = %d, want 11", agg.Total)
+		}
+		if agg.Unique != 3 {
+			t.Errorf("Unique = %d, want 3 (medals 100/200/300, m3 exclu)", agg.Unique)
+		}
+	})
+
+	t.Run("matchIDs vide → nil", func(t *testing.T) {
+		agg, err := repo.GetMedalCountsForMatches(ctx, targetXUID, nil)
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if agg != nil {
+			t.Errorf("attendu nil pour matchIDs vide, got %+v", agg)
+		}
+	})
+
+	t.Run("xuid sans médailles → zéros", func(t *testing.T) {
+		agg, err := repo.GetMedalCountsForMatches(ctx, "xuid_inconnu", []string{"m1", "m2"})
+		if err != nil {
+			t.Fatalf("err: %v", err)
+		}
+		if agg == nil {
+			t.Fatal("attendu non-nil (zéros)")
+		}
+		if agg.Total != 0 || agg.Unique != 0 {
+			t.Errorf("attendu 0/0, got %d/%d", agg.Total, agg.Unique)
+		}
+	})
+}
+
 // ---------------------------------------------------------------------------
 // MatchViewRepo
 // ---------------------------------------------------------------------------

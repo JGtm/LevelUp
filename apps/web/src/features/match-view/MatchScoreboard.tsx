@@ -127,47 +127,35 @@ export function MatchScoreboard({ rows, killerVictim, citations, header, rank, t
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="border-b border-border px-3 py-2 text-sm font-medium">
-          {t.scoreboardTitle}
-        </div>
-        <div className="flex min-h-[200px] items-center justify-center p-3 text-sm text-muted-foreground">
-          {t.scoreboardNoData}
-        </div>
+      <div className="flex min-h-[200px] items-center justify-center text-sm text-muted-foreground">
+        {t.scoreboardNoData}
       </div>
     )
   }
 
   return (
-    // Wrapper aligné sur ChartCard (Engagement) : carte rounded + barre titre.
-    // Cf. EngagementCurve → ChartCard pour le pattern source.
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="border-b border-border px-3 py-2 text-sm font-medium">
-        {t.scoreboardTitle}
-      </div>
-      <div className="p-3 space-y-4">
-        {teams.map((side) => (
-          <TeamScoreboard
-            key={side || 'unknown'}
-            teamSide={side}
-            isMyTeam={side !== '' && side === myTeamSide}
-            rows={rows.filter((r) => (r.team_side ?? '') === side)}
-            highlightCols={highlightCols}
-            extremesByKey={extremesByKey}
-            mvpXuid={mvpXuid}
-            lvpXuid={lvpXuid}
-            expandedXuid={expandedXuid}
-            onToggleExpand={(xuid) => setExpandedXuid((cur) => (cur === xuid ? null : xuid))}
-            onPlayerClick={(gt, e) => goToExplorer(gt, e)}
-            playerSlug={playerSlug}
-            killerVictim={killerVictim}
-            citations={citations}
-            header={header}
-            rank={rank}
-            t={t}
-          />
-        ))}
-      </div>
+    <div className="space-y-4">
+      {teams.map((side) => (
+        <TeamScoreboard
+          key={side || 'unknown'}
+          teamSide={side}
+          isMyTeam={side !== '' && side === myTeamSide}
+          rows={rows.filter((r) => (r.team_side ?? '') === side)}
+          highlightCols={highlightCols}
+          extremesByKey={extremesByKey}
+          mvpXuid={mvpXuid}
+          lvpXuid={lvpXuid}
+          expandedXuid={expandedXuid}
+          onToggleExpand={(xuid) => setExpandedXuid((cur) => (cur === xuid ? null : xuid))}
+          onPlayerClick={(gt, e) => goToExplorer(gt, e)}
+          playerSlug={playerSlug}
+          killerVictim={killerVictim}
+          citations={citations}
+          header={header}
+          rank={rank}
+          t={t}
+        />
+      ))}
     </div>
   )
 }
@@ -234,7 +222,7 @@ function TeamScoreboard({
     [rows, highlightCols, extremesByKey, mvp, lvp],
   )
 
-  const showCsrBadge = !!header?.is_ranked
+  const isRanked = !!header?.is_ranked
 
   const columns = useMemo<ColumnDef<ScoreboardRowVM>[]>(() => {
     const hlMap = new Map(highlightCols.map((c) => [String(c.key), c]))
@@ -252,9 +240,9 @@ function TeamScoreboard({
       }
     }
 
-    const csrBadgeCol: ColumnDef<ScoreboardRowVM> = {
+    const rankBadgeCol: ColumnDef<ScoreboardRowVM> = {
       id: 'csr_badge',
-      header: t.sbColCsr,
+      header: isRanked ? t.sbColCsr : t.sbDetailLusr,
       cell: (ctx) => {
         const url = ctx.row.original.skill_rank?.icon_url
         const label = ctx.row.original.skill_rank?.tier_label
@@ -262,7 +250,7 @@ function TeamScoreboard({
         return (
           <img
             src={url}
-            alt={label ?? 'CSR'}
+            alt={label ?? (isRanked ? t.sbColCsr : t.sbDetailLusr)}
             className="h-7 w-7 object-contain mx-auto"
             loading="lazy"
           />
@@ -325,7 +313,7 @@ function TeamScoreboard({
           )
         },
       },
-      ...(showCsrBadge ? [csrBadgeCol] : []),
+      rankBadgeCol,
       hlDef('rank'),
       hlDef('score'),
       hlDef('kills'),
@@ -354,7 +342,7 @@ function TeamScoreboard({
       hlDef('offensive_conversion'),
       hlDef('defensive_resistance'),
     ]
-  }, [highlightCols, expandedXuid, playerSlug, onPlayerClick, showCsrBadge, t])
+  }, [highlightCols, expandedXuid, playerSlug, onPlayerClick, isRanked, t])
 
   const table = useReactTable<ScoreboardRowVM>({
     data,
@@ -377,19 +365,14 @@ function TeamScoreboard({
   // → OutlineColorPicker, thought_log 2026-05-07). Gradient horizontal pour
   // garder l'effet du Python (`linear-gradient(90deg, color 38%, bg 88%)`).
   const teamColorVar = isMyTeam ? tokenCssVar('team-ally') : tokenCssVar('team-enemy')
-  const teamHeaderBg = `linear-gradient(90deg, color-mix(in oklab, ${teamColorVar} 35%, transparent), transparent 88%)`
+  const teamHeaderBg = `color-mix(in oklab, ${teamColorVar} 30%, transparent)`
   const teamHeaderBorder = `2px solid color-mix(in oklab, ${teamColorVar} 55%, transparent)`
   const teamHeaderColor = `color-mix(in oklab, ${teamColorVar} 80%, var(--foreground))`
 
   return (
-    <div className="overflow-x-auto">
-      {/*
-        Grille complète : table border 2px (extérieur), cellules border 1px,
-        border-collapse:collapse fait que les bordures partagées prennent la
-        plus large (2px sur le périmètre, 1px entre cellules). Le `<th>` du
-        bandeau d'équipe garde son borderBottom 2px team-color.
-      */}
-      <table className="w-full border-2 border-border border-collapse text-3xs">
+    <div className="rounded-lg overflow-hidden border-2 border-border">
+      <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-3xs">
         <thead>
           <tr>
             <th
@@ -489,6 +472,7 @@ function TeamScoreboard({
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }

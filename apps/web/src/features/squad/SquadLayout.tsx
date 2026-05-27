@@ -227,8 +227,10 @@ export function SquadLayout() {
   const available = useMemo(() => {
     if (!rawAvailable) return undefined
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    const filterUUIDs = (opts: LabelValue[]): LabelValue[] =>
-      opts.filter((o) => !UUID_RE.test(o.label.trim()))
+    // Défense : un slice Go nil sérialise en JSON null. `?? []` empêche un
+    // crash si le contrat est violé. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+    const filterUUIDs = (opts: LabelValue[] | null | undefined): LabelValue[] =>
+      (opts ?? []).filter((o) => !UUID_RE.test(o.label.trim()))
     return {
       playlists: filterUUIDs(rawAvailable.playlists),
       modes: filterUUIDs(rawAvailable.modes),

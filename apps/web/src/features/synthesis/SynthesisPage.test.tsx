@@ -54,9 +54,6 @@ describe('SynthesisPage', () => {
   // régression du merge). À refondre dans un PR dédié pour cibler la nouvelle
   // UI (sectionnage par chart : SynthesisHeatmapChart, SynthesisTopWeeksChart,
   // SynthesisOutcomesByGroupChart, SynthesisBipolaireChart, SynthesisKillTypesDonut).
-  //
-  // Le test "affiche les coéquipiers et adversaires" passe encore (relations
-  // preview testid intact) — gardé tel quel.
   it.skip('affiche les selecteurs de période', async () => {
     renderWithProviders(<SynthesisPage />)
     await waitFor(() => {
@@ -147,15 +144,8 @@ describe('SynthesisPage', () => {
     })
   })
 
-  describe('relations D6', () => {
-    it('affiche les coéquipiers et adversaires', async () => {
-      renderWithProviders(<SynthesisPage />)
-      await waitFor(() => {
-        expect(screen.getByText('AllyOne')).toBeInTheDocument()
-        expect(screen.getByText('RivalOne')).toBeInTheDocument()
-      })
-    })
-  })
+  // Section "Relations de jeu" (D6) supprimée le 2026-05-27 ; les encounters
+  // restent accessibles via la page palmares/relations.
 
   describe('breakdowns D7', () => {
     it.skip('affiche la section "Par carte"', async () => {

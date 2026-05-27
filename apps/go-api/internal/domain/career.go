@@ -206,12 +206,18 @@ type CareerEncountersResponse struct {
 }
 
 // HighlightMatchIDRow est le type brut renvoyé par Q9bHighlightMatchIDs :
-// match_id + outcome + section (1=best, 2=worst). Le service délègue ensuite
-// l'enrichissement à MatchHistoryService via la whitelist MatchIDs.
+// match_id + outcome + section (1=best, 2=worst) + had_bot_teammate. Le
+// service délègue ensuite l'enrichissement à MatchHistoryService via la
+// whitelist MatchIDs.
+//
+// HadBotTeammate : propagé jusqu'au front pour affichage d'un badge sur les
+// best_matches (un LOSS avec bot est déjà exclu côté repo, le flag est donc
+// toujours pertinent en best_matches uniquement).
 type HighlightMatchIDRow struct {
-	MatchID string
-	Outcome int
-	Section int // 1 = best, 2 = worst
+	MatchID        string
+	Outcome        int
+	Section        int // 1 = best, 2 = worst
+	HadBotTeammate bool
 }
 
 // HighlightMatchPoolRow : ligne légère du pool éligible (mêmes filtres

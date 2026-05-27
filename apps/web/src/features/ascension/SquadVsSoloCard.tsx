@@ -29,8 +29,8 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
           <p className="text-xs font-medium text-muted-foreground">{t.squadVsSoloSolo}</p>
           <StatRow label={t.patternWinRate} value={pct(solo.win_rate)} />
           <StatRow label={t.metric?.kda ?? 'KDA'} value={solo.avg_kda.toFixed(2)} />
-          <StatRow label="OC" value={solo.avg_oc.toFixed(2)} />
-          <StatRow label="DR" value={solo.avg_dr.toFixed(2)} />
+          <StatRow label="OC" value={`${Math.round(solo.avg_oc * 100)}%`} />
+          <StatRow label="DR" value={`${Math.round((solo.avg_dr - 1) * 100)}%`} />
           <p className="text-[10px] text-muted-foreground">{solo.match_count} {t.patternMatches}</p>
         </div>
         <div className="space-y-1">
@@ -41,8 +41,8 @@ export function SquadVsSoloCard({ patterns, t }: SquadVsSoloCardProps) {
             highlight={better === 'squad'}
           />
           <StatRow label={t.metric?.kda ?? 'KDA'} value={squad.avg_kda.toFixed(2)} highlight={squad.avg_kda > solo.avg_kda} />
-          <StatRow label="OC" value={squad.avg_oc.toFixed(2)} />
-          <StatRow label="DR" value={squad.avg_dr.toFixed(2)} />
+          <StatRow label="OC" value={`${Math.round(squad.avg_oc * 100)}%`} />
+          <StatRow label="DR" value={`${Math.round((squad.avg_dr - 1) * 100)}%`} />
           <p className="text-[10px] text-muted-foreground">{squad.match_count} {t.patternMatches}</p>
         </div>
       </div>

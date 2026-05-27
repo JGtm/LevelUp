@@ -2,17 +2,26 @@
 // exécuté sur la connexion shared_social.duckdb (socialDB) dans tout le projet.
 //
 // Contexte : ATTACH sur une conn RW écrit dans le WAL une entrée non-rejouable
-// au reboot (bug DuckDB upstream #7659). Cf. commit fix + thought_log 2026-05-25.
+// au reboot (bug DuckDB upstream #7659). Cf. ADR 0021 + thought_log 2026-05-27.
 //
 // Ce test parse tous les fichiers .go du projet (sauf vendor + tests) et
 // vérifie qu'aucune occurrence ne :
 //
 //  1. Appelle `attachGlobalXuidAliases(*, socialDB, *)` ou `attachShared*(*, socialDB, *)`
-//  2. Exécute un SQL contenant `ATTACH ` directement sur une variable nommée
-//     `socialDB`, `sharedSocialDB`, ou similaire
+//  2. Exécute un SQL contenant `ATTACH ` :
+//     a. directement sur une variable nommée `socialDB`, `sharedSocialDB`, etc.
+//     b. via un selector chain `*.SharedSocial.Exec(...)` ou `*.socialDB().Exec(...)`
+//        (ADR 0021 Phase 2.4 — couvre les patterns repo r.pdb.SharedSocial.Exec et
+//        r.socialDB().Exec qui contournaient la détection v1).
+//
+// Whitelist : aucune entrée — l'invariant ADR 0021 est strict (aucun ATTACH
+// sur la conn shared_social, jamais, pour aucune raison). Si un cas légitime
+// émerge, l'ajouter ici avec justification + lien commit + audit CHECKPOINT
+// post-ATTACH garanti.
 //
 // Limite : ne détecte pas les ATTACH via abstractions (interfaces, méthodes
-// nommées différemment). Pragmatique : couvre les sites historiques connus.
+// nommées différemment, sql.Tx obtenu via shared_social puis tx.Exec). Pour
+// ces cas, recourir à l'audit manuel (cf. .ai/audit_shared_social_writes_2026-05-27.md).
 
 package duckdb
 
@@ -22,6 +31,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -72,23 +82,26 @@ func TestNoATTACHOnSocialDB(t *testing.T) {
 					}
 				}
 			}
-			// Cas 2 : string literal SQL "ATTACH ..." dans un ExecContext ciblant socialDB
-			// Heuristique simple : ExecContext/Exec sur receiver nommé socialDB-like.
+			// Cas 2 : string literal SQL "ATTACH ..." dans un Exec/Query ciblant socialDB.
+			// Phase 2.4 : couvre deux patterns receiver :
+			//   a) variable directe nommée socialDB-like (ex: socialDB.Exec, sharedSocialDB.Exec)
+			//   b) selector chain via SharedSocial (ex: pdb.SharedSocial.Exec, r.pdb.SharedSocial.Exec)
+			//      ou via une méthode socialDB() (ex: r.socialDB().Exec).
 			if call, ok := n.(*ast.CallExpr); ok {
 				if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
 					methodName := sel.Sel.Name
-					if methodName != "Exec" && methodName != "ExecContext" && methodName != "Query" && methodName != "QueryContext" {
+					if methodName != "Exec" && methodName != "ExecContext" && methodName != "Query" && methodName != "QueryContext" && methodName != "ExecRecovered" {
 						return true
 					}
-					recvIdent, ok := sel.X.(*ast.Ident)
-					if !ok || !isSocialDBVarName(recvIdent.Name) {
+					recvLabel := socialReceiverLabel(sel.X)
+					if recvLabel == "" {
 						return true
 					}
 					for _, arg := range call.Args {
 						if lit, ok := arg.(*ast.BasicLit); ok && lit.Kind == token.STRING {
 							if containsATTACHKeyword(lit.Value) {
 								pos := fset.Position(call.Pos())
-								violations = append(violations, formatViolation(pos, recvIdent.Name+"."+methodName+"(ATTACH ...)"))
+								violations = append(violations, formatViolation(pos, recvLabel+"."+methodName+"(ATTACH ...)"))
 							}
 						}
 					}
@@ -104,10 +117,36 @@ func TestNoATTACHOnSocialDB(t *testing.T) {
 	}
 
 	if len(violations) > 0 {
-		t.Fatalf("ATTACH detecté sur socialDB — bug DuckDB #7659 ré-introduit :\n%s\n"+
+		t.Fatalf("ATTACH/DETACH detecté sur socialDB — bug DuckDB #7659 ré-introduit :\n%s\n"+
 			"Fix : faire la jointure cross-DB en Go (cf. ops/media_associate.go) au lieu de ATTACH sur shared_social RW.",
 			strings.Join(violations, "\n"))
 	}
+}
+
+// TestNoUnauthorizedSharedSocialMention (ADR 0021 Phase 2.4) — scope file-level :
+// vérifie qu'aucun fichier Go non-test ne mentionne "shared_social" (chaîne
+// littérale) en dehors de la whitelist explicite `sharedSocialFilesWhitelist`.
+//
+// But : éviter qu'un nouveau site d'écriture émerge dans un fichier inattendu
+// (ex: un nouveau handler qui ferait `db.Exec("INSERT INTO shared_social...")`
+// directement au lieu de passer par MediaRepo / SocialPersister).
+//
+// Pour ajouter un fichier légitime : enrichir `sharedSocialFilesWhitelist` avec
+// une description explicite. Si un fichier apparaît dans les violations sans
+// raison valable, le bug est dans le code (router via Persister).
+func TestNoUnauthorizedSharedSocialMention(t *testing.T) {
+	root := findGoAPIRoot(t)
+	violations, err := listForbiddenSharedSocialMentions(root)
+	if err != nil {
+		t.Fatalf("WalkDir: %v", err)
+	}
+	if len(violations) == 0 {
+		return
+	}
+	t.Fatalf("référence à 'shared_social' hors whitelist détectée — "+
+		"si légitime, ajouter une entrée dans sharedSocialFilesWhitelist (no_attach_on_social_test.go) "+
+		"avec description justifiée :\n  - %s",
+		strings.Join(violations, "\n  - "))
 }
 
 func isATTACHFuncName(name string) bool {
@@ -121,10 +160,193 @@ func isSocialDBVarName(name string) bool {
 	return strings.Contains(lower, "social")
 }
 
+// socialReceiverLabel extrait un label "human-readable" du receiver d'un appel
+// Exec/Query si ce receiver pointe (directement ou via selector chain) vers la
+// connexion shared_social. Retourne "" sinon.
+//
+// Patterns reconnus (ADR 0021 Phase 2.4) :
+//
+//	socialDB              -> "socialDB"            (variable directe)
+//	pdb.SharedSocial      -> "pdb.SharedSocial"    (selector simple)
+//	r.pdb.SharedSocial    -> "r.pdb.SharedSocial"  (selector profond)
+//	r.socialDB()          -> "r.socialDB()"        (call method, via expr.Fun)
+func socialReceiverLabel(expr ast.Expr) string {
+	switch e := expr.(type) {
+	case *ast.Ident:
+		if isSocialDBVarName(e.Name) {
+			return e.Name
+		}
+	case *ast.SelectorExpr:
+		if isSocialDBVarName(e.Sel.Name) {
+			// Reconstruit le chemin "x.y.SharedSocial" en remontant l'arbre.
+			return selectorChainString(e)
+		}
+	case *ast.CallExpr:
+		// Cas "r.socialDB()" — le receiver est un call dont la fonction est un selector.
+		if sel, ok := e.Fun.(*ast.SelectorExpr); ok {
+			if isSocialDBVarName(sel.Sel.Name) {
+				return selectorChainString(sel) + "()"
+			}
+		}
+	}
+	return ""
+}
+
+// selectorChainString reconstruit "a.b.c" depuis un *ast.SelectorExpr profond.
+func selectorChainString(sel *ast.SelectorExpr) string {
+	switch x := sel.X.(type) {
+	case *ast.Ident:
+		return x.Name + "." + sel.Sel.Name
+	case *ast.SelectorExpr:
+		return selectorChainString(x) + "." + sel.Sel.Name
+	}
+	return sel.Sel.Name
+}
+
 func containsATTACHKeyword(litValue string) bool {
 	// litValue est inclus avec ses délimiteurs (" ou `).
+	// Phase 2.4 ADR 0021 : étendu à ATTACH + DETACH + CREATE ... ATTACHED.
+	// Tout DDL qui modifie l'arbre des bases attachées est interdit sur la conn social.
 	upper := strings.ToUpper(litValue)
-	return bytes.Contains([]byte(upper), []byte("ATTACH "))
+	b := []byte(upper)
+	return bytes.Contains(b, []byte("ATTACH ")) ||
+		bytes.Contains(b, []byte("DETACH ")) ||
+		bytes.Contains(b, []byte("ATTACHED"))
+}
+
+// sharedSocialFilesWhitelist liste les fichiers Go autorisés à mentionner la
+// chaîne "shared_social" dans un littéral string (typiquement un chemin de DB,
+// un nom de target migration, ou une référence d'audit/log). Tout fichier qui
+// référence "shared_social" hors de cette whitelist doit justifier explicitement
+// son besoin via un commentaire et une entrée ajoutée ci-dessous.
+//
+// Ordre alphabétique. Chemins relatifs à apps/go-api/ (avec / unix-style).
+var sharedSocialFilesWhitelist = map[string]string{
+	"cmd/analyze_media_tz/main.go":                    "outil one-shot diag timezone media",
+	"cmd/cleanup_media_index/main.go":                 "outil one-shot cleanup index media",
+	"cmd/diag_match_id_tables/main.go":                "outil one-shot diag match_id",
+	"cmd/migrate-media-paths/main.go":                 "outil one-shot migration paths media",
+	"cmd/migrate-to-shared-social/main.go":            "outil one-shot CLI de migration legacy",
+	"cmd/prestige-seed/main.go":                       "outil one-shot seed prestige",
+	"cmd/purge_player_media/main.go":                  "outil one-shot purge media joueur",
+	"cmd/rebuild_shared_social/main.go":               "outil one-shot reconstruction (ADR 0021)",
+	"cmd/regen-thumbnails/main.go":                    "outil one-shot regen thumbnails",
+	"cmd/reindex-media-thumbs/main.go":                "outil one-shot reindex thumbnails",
+	"cmd/restore/main.go":                             "outil one-shot restore backup",
+	"cmd/snapshot_shared_social/main.go":              "outil one-shot diag counts",
+	"cmd/wal_forensic_compare/main.go":                "outil one-shot forensique WAL (ADR 0021 Gap 2)",
+	"cmd/duckdb_7659_repro/main.go":                   "outil one-shot repro bug DuckDB upstream (ADR 0021 Bonus 13)",
+	"cmd/server/main.go":                              "boot serveur : pool init + CHECKPOINT scheduler",
+	"internal/api/registry_media.go":                  "factory MediaService + acquéreur leased writer",
+	"internal/api/registry_notifications.go":          "factory NotificationsService (shared_social path)",
+	"internal/api/post_sync_deltas.go":                "post-sync engagement/records (path Persister)",
+	"internal/api/post_sync_progression.go":           "post-sync prestige/records (path Persister)",
+	"internal/api/post_sync_progression_test.go":      "tests post-sync",
+	"internal/api/prestige_setup.go":                  "init prestige (path Persister)",
+	"internal/api/prestige_lazy_service.go":           "lazy init prestige",
+	"internal/api/server.go":                          "wiring API + boot",
+	"internal/migration/registry.go":                  "framework migration (target TargetSharedSocial)",
+	"internal/migration/migration_test.go":            "tests framework migration",
+	"internal/migration/steps_player.go":              "migrations player référencent shared_social path pour orchestration",
+	"internal/migration/steps_player_notifications.go": "migrations notifications player",
+	"internal/migration/steps_player_progression.go":  "migrations progression player",
+	"internal/migration/steps_shared.go":              "migrations shared (référence cross-target)",
+	"internal/migration/steps_shared_social.go":       "migrations shared_social principales",
+	"internal/migration/steps_shared_social_prestige.go": "migrations shared_social prestige",
+	"internal/migration/steps_shared_social_purge_data_health.go": "migrations purge",
+	"internal/migration/steps_shared_social_records_append_only.go": "migrations records append-only",
+	"internal/migration/steps_shared_social_records_window.go": "migrations records window",
+	"internal/migration/steps_shared_social_align_media_files_schema.go": "ADR 0021 Bonus 12 — align media_files legacy schema",
+	"internal/platform/duckdb/art_probe.go":           "ART probe sur shared_social",
+	"internal/platform/dblease/writer.go":             "LeasedWriter (CommitWithCheckpoint, ADR 0021 Phase 3.2 bis)",
+	"internal/notifications/service.go":               "service notifications",
+	"internal/notify/notifiers.go":                    "notifications outbound",
+	"internal/ops/backup_service.go":                  "backup/restore ops",
+	"internal/ops/media.go":                           "IndexMedia + CHECKPOINT (Phase 3.2)",
+	"internal/ops/media_associate.go":                 "association média-match sans ATTACH (ADR 0021)",
+	"internal/persist/shared_social_persister.go":     "SocialPersister canonique (CHECKPOINT garanti)",
+	"internal/persist/shared_social_rows.go":          "types batch SocialPersister",
+	"internal/platform/dblease/kind.go":               "type Kind=SharedSocial pour lease tracking",
+	"internal/platform/dblease/metrics.go":            "expvar par kind",
+	"internal/platform/duckdb/db.go":                  "API DB générique (commentaire sur policy)",
+	"internal/platform/duckdb/pool.go":                "pool : SharedSocial config + ouverture",
+	"internal/platform/duckdb/pool_shared_social_recovery.go": "recovery WAL (ADR 0021 Phase 2)",
+	"internal/platform/duckdb/pool_writers.go":        "acquéreurs LeasedWriter par kind",
+	"internal/platform/duckdb/social_repo.go":         "lectures social shared",
+	"internal/platform/duckdb/social_persister_iface.go": "interface SocialPersister consommée",
+	"internal/platform/duckdb/notifications_repo.go":  "notifications repo (lit shared_social)",
+	"internal/platform/duckdb/records_repo.go":        "records repo (lit shared_social)",
+	"internal/platform/duckdb/prestige_social_repo.go": "prestige social repo",
+	"internal/platform/duckdb/progression_diag_repo.go": "progression diag repo",
+	"internal/platform/duckdb/home_repo_matches.go":   "home recent media (lit shared_social via SharedSocial)",
+	"internal/platform/duckdb/match_view_repo_extras.go": "match view media (lit shared_social)",
+	"internal/platform/duckdb/queries_match.go":       "queries shared utilities",
+	"internal/platform/duckdb/queries_home_citations.go": "queries home utilities",
+	"internal/platform/duckdb/media_repo.go":          "MediaRepo + socialDB() helper",
+	"internal/platform/duckdb/media_repo_writes.go":   "MediaRepo writes (Phase 3.2 CHECKPOINT)",
+	"internal/platform/duckdb/media_repo_filters.go":  "MediaRepo filters",
+	"internal/platform/duckdb/media_repo_q37_pipeline.go": "pipeline Q37 (lit shared_social)",
+	"internal/platform/duckdb/media_repo_registry.go": "registry helpers",
+	"internal/platform/duckdb/media_repo_translations.go": "translations helpers",
+	"internal/platform/duckdb/social_persister_combined.go": "combined persister wiring (si présent)",
+	"internal/progression/coach/types.go":             "coach types touchent shared_social",
+	"internal/progression/records/repository.go":     "records repo wiring",
+	"internal/progression/records/types.go":          "records types",
+	"internal/prestige/repository.go":                "prestige repo wiring",
+	"internal/prestige/types.go":                     "prestige types",
+	"internal/domain/title/registry.go":              "PathResolver SharedSocialPath",
+	"internal/domain/media.go":                       "types domain Media",
+	"internal/domain/match_view.go":                  "types domain MatchView",
+	"internal/domain/progression_diag.go":            "types domain diag",
+	"internal/service/media_service.go":              "MediaService (orchestration)",
+	"internal/service/media_index_service.go":        "MediaIndexService (orchestration)",
+	"internal/service/match_view_service.go":         "MatchViewService (lit shared_social)",
+	"internal/service/match_view_data_loaders.go":    "data loaders match_view",
+	"internal/service/social_service.go":             "SocialService",
+	"internal/port/repository_data.go":               "interfaces port DBExecutor/Provider",
+	"pkg/duckdbbackup/target.go":                     "backup targets enum",
+	"pkg/duckdbbackup/exporter.go":                   "backup exporter",
+}
+
+// listForbiddenSharedSocialMentions retourne la liste des fichiers Go non-test
+// qui mentionnent "shared_social" en littéral ET ne sont pas dans la whitelist.
+// Utilisé par TestNoUnauthorizedSharedSocialMention.
+func listForbiddenSharedSocialMentions(root string) ([]string, error) {
+	var violations []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			name := d.Name()
+			if name == "vendor" || name == "tmp" || name == "testdata" || strings.HasPrefix(name, ".") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return nil
+		}
+		rel = filepath.ToSlash(rel)
+
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		if !bytes.Contains(content, []byte("shared_social")) {
+			return nil
+		}
+		if _, ok := sharedSocialFilesWhitelist[rel]; ok {
+			return nil
+		}
+		violations = append(violations, rel)
+		return nil
+	})
+	return violations, err
 }
 
 func formatViolation(pos token.Position, what string) string {

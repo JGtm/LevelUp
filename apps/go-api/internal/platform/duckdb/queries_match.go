@@ -7,6 +7,8 @@ package duckdb
 // Résolveur canonique : v_gamertag_lookup gère bots + cascade
 // xuid_aliases / match_participants / fallback xuid raw. Caller fait juste
 // `COALESCE(vg.gamertag, p2.xuid)` pour couvrir les xuids orphelins (jamais en DB).
+//
+// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q10Encounters = `
 SELECT
     p2.xuid,
@@ -18,7 +20,7 @@ SELECT
 FROM match_participants p1
 JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
-LEFT JOIN shared.v_gamertag_lookup vg ON vg.xuid = p2.xuid
+LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.xuid = ?
 GROUP BY p2.xuid, vg.gamertag
 HAVING COUNT(*) >= 2
@@ -590,6 +592,21 @@ WHERE wk.match_id = ?
   AND COALESCE(wk.reconciled_as, wk.weapon_id) NOT IN (0, 1, 2)
 GROUP BY wk.xuid, COALESCE(wk.reconciled_as, wk.weapon_id)
 ORDER BY wk.xuid, kills DESC`
+
+// Q30 : CSR de tous les participants d'un match ranked depuis shared.match_csrs_latest.
+// Paramètre : ?1 = match_id.
+// Exécutée sur SharedReader — match_csrs est dans la shared DB.
+const Q30SharedMatchCSRs = `
+SELECT
+    xuid,
+    rating_type,
+    tier_label,
+    rating_value,
+    rating_delta,
+    tier,
+    sub_tier
+FROM match_csrs_latest
+WHERE match_id = ?`
 
 // Q26 : Stats attendues du joueur pour ce match (match_participants expected columns).
 // Paramètres : ?1 = match_id, ?2 = xuid.

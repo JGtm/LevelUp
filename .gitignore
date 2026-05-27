@@ -122,6 +122,23 @@ data/demo/
 data/logs/
 data/players/
 
+# ADR 0021 — artefacts forensiques (WAL orphelins, DB corrompues, exports parquet
+# du rebuild). Conservés sur disque pour audit/forensique mais jamais versionnés.
+data/titles/*/warehouse/*.duckdb.corrupt-*
+data/titles/*/warehouse/*.wal.orphan-*
+data/titles/*/warehouse/shared_social_export_*/
+data/backups/
+
+# Tokens OAuth Halo per-joueur (SPNKR refresh tokens — SECRET, ne JAMAIS commiter)
+apps/go-api/token_*.txt
+**/token_*.txt
+
+# Artefacts test/coverage Go (générés par go test / scripts ratchet)
+apps/go-api/coverage
+apps/go-api/coverage*.out
+coverage_ratchet.out
+**/coverage.out
+
 # Sprint B1 — fichiers logs par module générés au runtime du serveur Go
 # (cf. internal/observability/logging/). LEVELUP_LOGS_DIR override possible.
 logs/

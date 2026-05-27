@@ -301,7 +301,7 @@ func (r *EngagementScoreRepo) LoadMatchIntensity(
 
 	var intensity sql.NullFloat64
 	err = db.QueryRowContext(ctx,
-		`SELECT match_intensity FROM shared.match_registry WHERE match_id = ?`,
+		`SELECT match_intensity FROM match_registry WHERE match_id = ?`,
 		matchID,
 	).Scan(&intensity)
 	if errors.Is(err, sql.ErrNoRows) {

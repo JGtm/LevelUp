@@ -692,8 +692,7 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 	// (bug #7659). La vue player_records_latest expose toujours la dernière
 	// valeur pour les lecteurs.
 	//
-	// Fallback legacy : si SocialPersister pas wired (cas tests), on garde
-	// l'UPSERT direct pour compatibilité.
+	// Path nominal : SocialPersister wired (toujours en prod via main.go).
 	if pdb.SocialPersister != nil {
 		var matchIDPtr *string
 		if matchID != "" {
@@ -704,8 +703,17 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 			pdb.XUID, metric, "all_time", value, &now, matchIDPtr)
 	}
 
-	// Fallback legacy (sans Persister wired).
-	_, err := pdb.SharedSocial.Exec(ctx, `
+	// ADR 0021 Gap 1 : en prod (RequireSocialPersister=true set par main.go),
+	// refuse d'écrire silencieusement via le path legacy — l'absence de Persister
+	// est un bug de wiring, pas un mode de fonctionnement nominal.
+	if duckdb.RequireSocialPersister {
+		return duckdb.ErrSocialPersisterNotWired
+	}
+
+	// Fallback legacy (tests uniquement — RequireSocialPersister=false par défaut).
+	// ADR 0021 Phase 3.2 : CHECKPOINT immédiat après l'UPSERT pour éviter
+	// d'accumuler du WAL non-checkpointed même en mode test.
+	if _, err := pdb.SharedSocial.Exec(ctx, `
 		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
 		VALUES (?, ?, ?, NOW(), ?, NOW())
 		ON CONFLICT (xuid, metric) DO UPDATE SET
@@ -713,8 +721,10 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 			achieved_at       = EXCLUDED.achieved_at,
 			achieved_match_id = EXCLUDED.achieved_match_id,
 			updated_at        = NOW()
-	`, pdb.XUID, metric, value, nullableMatchID(matchID))
-	return err
+	`, pdb.XUID, metric, value, nullableMatchID(matchID)); err != nil {
+		return err
+	}
+	return duckdb.CheckpointSharedSocial(ctx, pdb.SharedSocial)
 }
 
 func nullableMatchID(id string) any {
