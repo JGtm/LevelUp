@@ -162,28 +162,71 @@ func (r *CitationsRepo) LoadCitationMedalMappings(ctx context.Context) ([]domain
 	return result, rows.Err()
 }
 
-// LoadMatchCitationsForView charge les top citations d'un match pour la vue détail (Q38).
-// Utilise pdb.Player (match_citations) + pdb.Metadata (citation_mappings via LEFT JOIN
-// — non disponible sans ATTACH). Si Metadata absent, retourne les lignes sans label enrichi.
+// LoadMatchCitationsForView charge les top citations d'un match pour la vue
+// détail (Q38).
+//
+// Pattern split cross-DB (post ADR 0016, fix incident 2026-05-26) :
+//  1. Q38MatchViewCitationsPlayer sur pdb.Player → top 4 (norm, value)
+//  2. Q26jCitationMappingsForNormsTemplate sur pdb.Metadata → display par norm
+//  3. Merge en Go : COALESCE(display, norm) pour citation_name_display
+//
+// Le LEFT JOIN cross-DB de l'ancien Q38 levait silencieusement
+// "Catalog Error: citation_mappings does not exist" (citation_mappings est
+// dans metadata.duckdb, pas attachée aux conn player). Le caller capturait
+// nil → page Match detail vide.
 func (r *CitationsRepo) LoadMatchCitationsForView(ctx context.Context, matchID string) ([]domain.CitationMatchViewRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	rows, err := r.pdb.ReadDB().Query(ctx, Q38MatchViewCitations, matchID)
+	// Étape 1 : top 4 citations bruts sur player DB.
+	rows, err := r.pdb.ReadDB().Query(ctx, Q38MatchViewCitationsPlayer, matchID)
 	if err != nil {
-		return nil, nil //nolint:nilerr
+		return nil, fmt.Errorf("LoadMatchCitationsForView player query: %w", err)
 	}
 	defer rows.Close()
 
-	var result []domain.CitationMatchViewRow
+	type rawRow struct {
+		norm  string
+		value int
+	}
+	var raws []rawRow
+	normsSeen := make(map[string]struct{})
 	for rows.Next() {
-		var row domain.CitationMatchViewRow
-		if err := rows.Scan(&row.NameNorm, &row.NameDisplay, &row.Value); err != nil {
+		var rr rawRow
+		if err := rows.Scan(&rr.norm, &rr.value); err != nil {
 			return nil, fmt.Errorf("LoadMatchCitationsForView scan: %w", err)
 		}
-		result = append(result, row)
+		raws = append(raws, rr)
+		normsSeen[rr.norm] = struct{}{}
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("LoadMatchCitationsForView rows.Err: %w", err)
+	}
+	if len(raws) == 0 {
+		return nil, nil
+	}
+
+	// Étape 2 : lookup display côté metadata DB.
+	norms := make([]string, 0, len(normsSeen))
+	for n := range normsSeen {
+		norms = append(norms, n)
+	}
+	metaMap := r.loadCitationMappingMeta(ctx, norms)
+
+	// Étape 3 : merge — COALESCE(display, norm).
+	result := make([]domain.CitationMatchViewRow, 0, len(raws))
+	for _, rr := range raws {
+		display := rr.norm
+		if meta, ok := metaMap[rr.norm]; ok && meta.display != "" {
+			display = meta.display
+		}
+		result = append(result, domain.CitationMatchViewRow{
+			NameNorm:    rr.norm,
+			NameDisplay: display,
+			Value:       rr.value,
+		})
+	}
+	return result, nil
 }
 
 // LoadMatchCitationsRich charge les citations d'un match avec cumul + métadonnées de paliers.
