@@ -59,6 +59,42 @@ func (r *SkillV2Repo) LoadState(ctx context.Context, xuid, playlistGroup string)
 	return &s, nil
 }
 
+// LoadAllStates retourne tous les posteriors courants d'un joueur, un par
+// playlist_group dans lequel il a un état. Vide si jamais vu. Utilisé par la
+// Phase 4 (mode correlation) pour propager une mise à jour cross-mode.
+func (r *SkillV2Repo) LoadAllStates(ctx context.Context, xuid string) ([]domain.SkillV2State, error) {
+	rows, err := r.shared.QueryContext(ctx, `
+		SELECT xuid, playlist_group, mu, sigma, experience,
+		       last_match_id, last_match_at, written_at
+		FROM player_skill_state_v2_latest
+		WHERE xuid = ?`, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("SkillV2Repo.LoadAllStates(%s): %w", xuid, err)
+	}
+	defer rows.Close() //nolint:errcheck
+
+	var out []domain.SkillV2State
+	for rows.Next() {
+		var s domain.SkillV2State
+		var lastMatchID sql.NullString
+		var lastMatchAt sql.NullTime
+		if err := rows.Scan(
+			&s.XUID, &s.PlaylistGroup, &s.Mu, &s.Sigma, &s.Experience,
+			&lastMatchID, &lastMatchAt, &s.WrittenAt,
+		); err != nil {
+			return nil, fmt.Errorf("SkillV2Repo.LoadAllStates scan: %w", err)
+		}
+		if lastMatchID.Valid {
+			s.LastMatchID = &lastMatchID.String
+		}
+		if lastMatchAt.Valid {
+			s.LastMatchAt = &lastMatchAt.Time
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 // UpsertState écrit un nouveau snapshot du posterior. Append-only : chaque appel
 // produit une nouvelle row ; la vue _latest s'occupe de filtrer.
 func (r *SkillV2Repo) UpsertState(ctx context.Context, s domain.SkillV2State) error {
