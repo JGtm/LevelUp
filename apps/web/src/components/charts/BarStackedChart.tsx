@@ -217,7 +217,7 @@ export function buildBarStackedOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 20, bottom: 40, left: 60, right: 16 },
+    grid: { top: 20, bottom: 40, left: 8, right: 16, containLabel: true },
     tooltip,
     legend: { ...getLegendBase(tc), data: components },
     xAxis: orientation === 'horizontal' ? valueAxis : categoryAxis,

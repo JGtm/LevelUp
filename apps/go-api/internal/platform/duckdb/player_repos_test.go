@@ -1482,6 +1482,90 @@ func TestCareerRepo_GetTopMatches_WithData(t *testing.T) {
 	}
 }
 
+// TestCareerRepo_GetTopMatches_BotTeammateAsymmetry verifie l'asymetrie WIN/LOSS
+// sur had_bot_teammate, miroir de TestCareerRepo_GetHighlightMatchIDs_*.
+// GetTopMatches doit appliquer le meme tri que GetHighlightMatchIDs pour
+// coherence d'experience utilisateur entre les deux endpoints.
+//   - WIN+bot : conserve (perf personnelle meritoire malgre handicap 4v3)
+//   - LOSS+bot : exclu (responsabilite du joueur non isolable)
+//   - LOSS sans bot : conserve normalement
+func TestCareerRepo_GetTopMatches_BotTeammateAsymmetry(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+
+	// Seed: m1 existe deja (WIN, perf 85.5, no bot). Ajouter:
+	//   m2 = WIN avec bot (doit etre conserve).
+	//   m3 = LOSS avec bot (doit etre exclu).
+	//   m4 = LOSS sans bot (doit etre conserve).
+	type insert struct {
+		q    string
+		args []any
+	}
+	mkRegistry := func(id string) insert {
+		return insert{
+			q: `INSERT INTO shared.match_registry
+				(match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds,season_id)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			args: []any{id, "2025-01-11 14:00:00", "2025-01-11 14:00:00+00",
+				"playlist-x", "aquarius", "pair-slayer", "variant-slayer", "2025-01-11 14:30:00+00",
+				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600, "s1"},
+		}
+	}
+	mkParticipant := func(id string, outcome int) insert {
+		return insert{
+			q: `INSERT INTO shared.match_participants
+				(match_id,xuid,gamertag,outcome,kills,deaths,assists,kda,accuracy,personal_score,
+				 damage_dealt,damage_taken,time_played_seconds,team_mmr,enemy_mmr,
+				 kills_expected,deaths_expected,rank,is_ranked,team_id,avg_life_seconds)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			args: []any{id, pTestXUID, pTestGamertag, outcome, 10, 5, 2,
+				1.5, 0.6, 1500, 3000.0, 1500.0, 600, 1200.0, 1100.0,
+				8.0, 5.0, 1, true, 1, 45.0},
+		}
+	}
+	mkEnrichment := func(id string, perf float64, hadBot bool) insert {
+		return insert{
+			q: `INSERT INTO player_match_enrichment
+				(match_id,performance_score,session_id,session_label,dominance_flag,had_bot_teammate,is_with_friends,is_excluded)
+				VALUES (?,?,?,?,?,?,?,?)`,
+			args: []any{id, perf, 1, "Session 1", 0, hadBot, false, false},
+		}
+	}
+	rows := []insert{
+		mkRegistry("m2"), mkParticipant("m2", 2), mkEnrichment("m2", 95.0, true),
+		mkRegistry("m3"), mkParticipant("m3", 3), mkEnrichment("m3", 20.0, true),
+		mkRegistry("m4"), mkParticipant("m4", 3), mkEnrichment("m4", 25.0, false),
+	}
+	for _, r := range rows {
+		if _, err := pdb.Player.Exec(ctx, r.q, r.args...); err != nil {
+			t.Fatalf("seed %q: %v", r.q, err)
+		}
+	}
+
+	repo := NewCareerRepo(pdb)
+	matches, err := repo.GetTopMatches(ctx)
+	if err != nil {
+		t.Fatalf("GetTopMatches: %v", err)
+	}
+
+	ids := map[string]int{} // matchID -> outcome
+	for _, m := range matches {
+		ids[m.MatchID] = m.Outcome
+	}
+	if ids["m1"] != 2 {
+		t.Errorf("attendu m1 WIN (outcome=2), got %d (present: %v)", ids["m1"], ids)
+	}
+	if ids["m2"] != 2 {
+		t.Errorf("attendu m2 WIN avec bot conserve, got %d (present: %v)", ids["m2"], ids)
+	}
+	if _, present := ids["m3"]; present {
+		t.Errorf("m3 (LOSS avec bot) doit etre exclu, got %v", ids)
+	}
+	if ids["m4"] != 3 {
+		t.Errorf("attendu m4 LOSS sans bot conserve, got %d (present: %v)", ids["m4"], ids)
+	}
+}
+
 func TestCareerRepo_GetEncounters_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerRepo(pdb)
@@ -1660,6 +1744,104 @@ func TestCareerRepo_GetHighlightMatchIDs(t *testing.T) {
 	}
 	if len(rows) > 0 && rows[0].MatchID != "m1" {
 		t.Errorf("rows[0].MatchID: got %q, want m1", rows[0].MatchID)
+	}
+}
+
+// TestCareerRepo_GetHighlightMatchIDs_BotTeammateAsymmetry verifie l'asymetrie
+// WIN/LOSS sur had_bot_teammate :
+//   - Une victoire avec bot coequipier reste dans best_matches (perf personnelle
+//     legitime malgre le handicap 4v3).
+//   - Une defaite avec bot coequipier est exclue de worst_matches (responsabilite
+//     du joueur non isolable du desequilibre).
+//   - Une defaite SANS bot apparait normalement dans worst_matches.
+func TestCareerRepo_GetHighlightMatchIDs_BotTeammateAsymmetry(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+
+	// Seed: m1 existe deja (WIN, perf 85.5, no bot). Ajouter:
+	//   m2 = WIN avec bot teammate (doit etre dans best).
+	//   m3 = LOSS avec bot teammate (doit etre exclu).
+	//   m4 = LOSS sans bot (doit etre dans worst).
+	type insert struct {
+		q    string
+		args []any
+	}
+	mkRegistry := func(id string) insert {
+		return insert{
+			q: `INSERT INTO shared.match_registry
+				(match_id,start_time,start_time_utc,playlist_id,map_id,pair_id,game_variant_id,last_updated_at,map_name,pair_name,game_variant_name,playlist_name,is_ranked,team_0_score,team_1_score,duration_seconds,season_id)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			args: []any{id, "2025-01-11 14:00:00", "2025-01-11 14:00:00+00",
+				"playlist-x", "aquarius", "pair-slayer", "variant-slayer", "2025-01-11 14:30:00+00",
+				"Aquarius", "Slayer", "Arena:Slayer", "Ranked Slayer", true, 1, 3, 600, "s1"},
+		}
+	}
+	mkParticipant := func(id string, outcome int) insert {
+		return insert{
+			q: `INSERT INTO shared.match_participants
+				(match_id,xuid,gamertag,outcome,kills,deaths,assists,kda,accuracy,personal_score,
+				 damage_dealt,damage_taken,time_played_seconds,team_mmr,enemy_mmr,
+				 kills_expected,deaths_expected,rank,is_ranked,team_id,avg_life_seconds)
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			args: []any{id, pTestXUID, pTestGamertag, outcome, 10, 5, 2,
+				1.5, 0.6, 1500, 3000.0, 1500.0, 600, 1200.0, 1100.0,
+				8.0, 5.0, 1, true, 1, 45.0},
+		}
+	}
+	mkEnrichment := func(id string, perf float64, hadBot bool) insert {
+		return insert{
+			q: `INSERT INTO player_match_enrichment
+				(match_id,performance_score,session_id,session_label,dominance_flag,had_bot_teammate,is_with_friends,is_excluded)
+				VALUES (?,?,?,?,?,?,?,?)`,
+			args: []any{id, perf, 1, "Session 1", 0, hadBot, false, false},
+		}
+	}
+	rows := []insert{
+		mkRegistry("m2"), mkParticipant("m2", 2), mkEnrichment("m2", 95.0, true),
+		mkRegistry("m3"), mkParticipant("m3", 3), mkEnrichment("m3", 20.0, true),
+		mkRegistry("m4"), mkParticipant("m4", 3), mkEnrichment("m4", 25.0, false),
+	}
+	for _, r := range rows {
+		if _, err := pdb.Player.Exec(ctx, r.q, r.args...); err != nil {
+			t.Fatalf("seed %q: %v", r.q, err)
+		}
+	}
+
+	repo := NewCareerRepo(pdb)
+	out, err := repo.GetHighlightMatchIDs(ctx, domain.CareerHighlightFilters{})
+	if err != nil {
+		t.Fatalf("GetHighlightMatchIDs: %v", err)
+	}
+
+	bestIDs, worstIDs := map[string]bool{}, map[string]bool{}
+	bestBotFlag := map[string]bool{}
+	for _, row := range out {
+		switch row.Section {
+		case 1:
+			bestIDs[row.MatchID] = true
+			bestBotFlag[row.MatchID] = row.HadBotTeammate
+		case 2:
+			worstIDs[row.MatchID] = true
+		}
+	}
+
+	if !bestIDs["m1"] {
+		t.Errorf("best_matches doit contenir m1 (WIN sans bot), got %v", bestIDs)
+	}
+	if !bestIDs["m2"] {
+		t.Errorf("best_matches doit contenir m2 (WIN avec bot — asymetrie A2), got %v", bestIDs)
+	}
+	if !bestBotFlag["m2"] {
+		t.Errorf("best_matches m2.HadBotTeammate doit etre true (propagation flag UI), got false")
+	}
+	if bestBotFlag["m1"] {
+		t.Errorf("best_matches m1.HadBotTeammate doit etre false (pas de bot), got true")
+	}
+	if worstIDs["m3"] {
+		t.Errorf("worst_matches NE doit PAS contenir m3 (LOSS avec bot — exclu A2), got %v", worstIDs)
+	}
+	if !worstIDs["m4"] {
+		t.Errorf("worst_matches doit contenir m4 (LOSS sans bot), got %v", worstIDs)
 	}
 }
 

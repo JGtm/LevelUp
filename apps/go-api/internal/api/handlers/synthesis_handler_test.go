@@ -249,37 +249,3 @@ func TestSynthesisHandler_OverviewInResponse(t *testing.T) {
 	}
 }
 
-// TestSynthesisHandler_RivalriesInResponse vérifie que rivalries_preview
-// est présent dans la réponse JSON.
-func TestSynthesisHandler_RivalriesInResponse(t *testing.T) {
-	avk := 1.5
-	resp := &domain.SynthesisPageV2Response{
-		Scope: domain.SynthesisScope{Period: "all"},
-		RivalriesPreview: domain.SynthesisRivalriesPreview{
-			Total: 2,
-			TopTeammates: []domain.SynthesisEncounterPreview{
-				{XUID: "x1", Gamertag: "Alice", MatchCount: 5, AsTeammate: 4, AsEnemy: 1, AvgKDA: &avk},
-			},
-			TopEnemies: []domain.SynthesisEncounterPreview{
-				{XUID: "x2", Gamertag: "Bob", MatchCount: 3, AsTeammate: 0, AsEnemy: 3, AvgKDA: &avk},
-			},
-		},
-	}
-	mock := &mockSynthesisService{resp: resp}
-	router := newSynthesisTestRouter(synthesisContextFactory(mock, nil))
-
-	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/synthesis", nil)
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fatalf("want 200, got %d", w.Code)
-	}
-	body := w.Body.String()
-	if !strings.Contains(body, "rivalries_preview") {
-		t.Error("response should contain rivalries_preview field")
-	}
-	if !strings.Contains(body, "Alice") {
-		t.Error("response should contain teammate Alice")
-	}
-}

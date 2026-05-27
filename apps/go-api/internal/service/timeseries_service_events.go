@@ -1,0 +1,184 @@
+// Package service — timeseries_service_events.go : highlight events loader +
+// agregations associees (intensity heatmap, first events distribution).
+// Decoupe de timeseries_service.go (god-file split, refactor 2026-05-27).
+package service
+
+import (
+	"context"
+	"fmt"
+	"math"
+	"sort"
+	"time"
+
+	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/port"
+)
+
+// ---------------------------------------------------------------------------
+// First events distribution (chart .11)
+// ---------------------------------------------------------------------------
+
+// loadHighlightEvents charge les events bruts (kill / death / first_kill /
+// first_death) pour les match_ids fournis. Source unique partagée par chart
+// .11 (premier événement) et le heatmap d'intensité.
+func (s *TimeseriesService) loadHighlightEvents(
+	ctx context.Context, matchIDs []string,
+) ([]canonical.HighlightEvent, error) {
+	filters := port.HighlightEventFilters{
+		MatchIDs: matchIDs,
+		EventTypes: []canonical.HighlightEventType{
+			canonical.EventKill,
+			canonical.EventDeath,
+			canonical.EventFirstKill,
+			canonical.EventFirstDeath,
+		},
+	}
+	if err := filters.Validate(); err != nil {
+		return nil, err
+	}
+	return s.highlightEventsRepo.Load(ctx, filters)
+}
+
+// buildIntensityRows agrège les frags du joueur (events où KillerXUID == xuid)
+// en 10 buckets normalisés [0..1] par match. Réutilise narrative.ComputeMatchIntensityProfiles
+// + NormalizeIntensityBuckets sur les events filtrés solo.
+//
+// Le label affiché côté front est "Map — dd/MM" (lookup depuis matches).
+// matchOrder : préserve l'ordre des matches du scope (latest first comme
+// LoadPlayerMatches), idem squad SquadIntensityProfile.
+func buildIntensityRows(
+	events []canonical.HighlightEvent,
+	matches []legacymatch.StatsMatchRow,
+	playerXUID string,
+) []domain.IntensityMatchRow {
+	// Filtrer les events où le joueur est tueur (frags du joueur uniquement).
+	playerKills := make([]canonical.HighlightEvent, 0, len(events))
+	for _, ev := range events {
+		killer := ""
+		if ev.KillerXUID != nil {
+			killer = *ev.KillerXUID
+		} else {
+			killer = ev.XUID // fallback legacy : XUID = tueur sur kill events
+		}
+		if killer == playerXUID && (ev.EventType == string(canonical.EventKill) ||
+			ev.EventType == string(canonical.EventFirstKill)) {
+			playerKills = append(playerKills, ev)
+		}
+	}
+	if len(playerKills) == 0 {
+		return nil
+	}
+	profiles := narrative.ComputeMatchIntensityProfiles(playerKills, 10)
+	if len(profiles) == 0 {
+		return nil
+	}
+
+	// Index match_rows pour récupérer label (map_name + date).
+	type matchMeta struct {
+		label    string
+		startUTC time.Time
+	}
+	metaByID := make(map[string]matchMeta, len(matches))
+	for _, m := range matches {
+		mapName := m.MapNameFR
+		if mapName == "" {
+			mapName = m.MapName
+		}
+		date := m.StartTime.Format("02/01")
+		metaByID[m.MatchID] = matchMeta{
+			label:    fmt.Sprintf("%s — %s", mapName, date),
+			startUTC: m.StartTime,
+		}
+	}
+
+	out := make([]domain.IntensityMatchRow, 0, len(profiles))
+	for _, p := range profiles {
+		normalized := narrative.NormalizeIntensityBuckets(p.Buckets)
+		var phases [10]float64
+		for i := 0; i < 10 && i < len(normalized); i++ {
+			phases[i] = normalized[i]
+		}
+		row := domain.IntensityMatchRow{
+			MatchID: p.MatchID,
+			Phases:  phases,
+		}
+		if meta, ok := metaByID[p.MatchID]; ok {
+			row.Label = meta.label
+		} else {
+			row.Label = p.MatchID
+		}
+		out = append(out, row)
+	}
+	// Tri chronologique (plus récent en premier — DESC) cohérent avec
+	// match_rows et LoadPlayerMatches (ORDER BY start_time DESC).
+	sort.SliceStable(out, func(i, j int) bool {
+		mi := metaByID[out[i].MatchID]
+		mj := metaByID[out[j].MatchID]
+		return mi.startUTC.After(mj.startUTC)
+	})
+	return out
+}
+
+// buildFirstEventsDistribution agrège les premiers timings en buckets de 10
+// secondes + calcule les moyennes (markLines).
+func buildFirstEventsDistribution(rows []narrative.FirstEventsRow) *domain.FirstEventDistribution {
+	const binWidthSec = 10.0
+	type acc struct {
+		kills, deaths int
+	}
+	buckets := make(map[int]*acc)
+	var killSum, deathSum float64
+	var killN, deathN int
+	for _, r := range rows {
+		if r.FirstKillMS != nil {
+			sec := float64(*r.FirstKillMS) / 1000.0
+			idx := int(sec / binWidthSec)
+			if _, ok := buckets[idx]; !ok {
+				buckets[idx] = &acc{}
+			}
+			buckets[idx].kills++
+			killSum += sec
+			killN++
+		}
+		if r.FirstDeathMS != nil {
+			sec := float64(*r.FirstDeathMS) / 1000.0
+			idx := int(sec / binWidthSec)
+			if _, ok := buckets[idx]; !ok {
+				buckets[idx] = &acc{}
+			}
+			buckets[idx].deaths++
+			deathSum += sec
+			deathN++
+		}
+	}
+	if len(buckets) == 0 {
+		return nil
+	}
+	idxs := make([]int, 0, len(buckets))
+	for i := range buckets {
+		idxs = append(idxs, i)
+	}
+	sort.Ints(idxs)
+	out := make([]domain.FirstEventBucket, 0, len(idxs))
+	for _, i := range idxs {
+		out = append(out, domain.FirstEventBucket{
+			LowerSeconds: float64(i) * binWidthSec,
+			UpperSeconds: float64(i+1) * binWidthSec,
+			FirstKills:   buckets[i].kills,
+			FirstDeaths:  buckets[i].deaths,
+		})
+	}
+	dist := &domain.FirstEventDistribution{Buckets: out}
+	if killN > 0 {
+		v := math.Round((killSum/float64(killN))*10) / 10
+		dist.MeanFirstKillSeconds = &v
+	}
+	if deathN > 0 {
+		v := math.Round((deathSum/float64(deathN))*10) / 10
+		dist.MeanFirstDeathSeconds = &v
+	}
+	return dist
+}

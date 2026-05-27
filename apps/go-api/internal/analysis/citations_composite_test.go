@@ -497,6 +497,21 @@ func TestProgression_T15_NoTierTargetsAnywhere(t *testing.T) {
 	assertNoDelta(t, deltas, "free_comp")   // pas de palier final → pas de transition
 }
 
+// T16 : feuille progresse (cumulPre > 0) mais n'atteint pas le palier max → composite reste à 0.
+// Scénario exact du bug rapporté : br75 à 495/500, +3 dans ce match → post=498 < 500.
+// Aucune transition ne doit être déclenchée sur le composite.
+func TestProgression_T16_LeafPartialProgressNoComposite(t *testing.T) {
+	tiers := "25,50,100,200,500"
+	mappings := buildMappings(
+		[]domain.CitationFullMapping{mappingStat("br75", &tiers)},
+		[]domain.CitationFullMapping{mappingComposite("unsc", `["br75"]`)},
+	)
+	in := injectProgress(map[string]float64{"br75": 3}, map[string]int{"br75": 495})
+	deltas := analysis.ComputeFullMatchCitations(in, mappings)
+	assertDelta(t, deltas, "br75", 3) // la feuille progresse normalement
+	assertNoDelta(t, deltas, "unsc")  // composite reste à 0 : 498 < 500
+}
+
 func TestMVPLVP_InsufficientBestCells(t *testing.T) {
 	// Seule la colonne assists (poids 1) différencie les joueurs.
 	// Score max = 1 < seuil 2 → aucun MVP ni LVP.

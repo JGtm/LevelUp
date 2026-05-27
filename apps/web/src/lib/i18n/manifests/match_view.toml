@@ -341,5 +341,5 @@ en = "expected"
 # ─── MatchFragDiffChart ────────────────────────────────────────────────────
 
 [match_view.frag_diff.title]
-fr = "Frags différentiel cumulé — tous les joueurs"
-en = "Cumulative frag differential — all players"
+fr = "Frags différentiel cumulé"
+en = "Cumulative frag differential"

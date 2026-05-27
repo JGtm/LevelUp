@@ -117,6 +117,15 @@ type MatchParticipantRow struct {
 	// PBitKillerVictim). Set à l'INSERT en mode Collect→Persist (calculé par
 	// le collecteur au moment où il sait quelles colonnes sont fiables).
 	BackfillBits *int
+
+	// ParticipationInfo booleans (LUSR v2 — Mini-Phase 0.5).
+	// NULL pour les matchs antérieurs à la capture.
+	// quit_real = PresentAtBeginning && !PresentAtCompletion
+	// late_join = JoinedInProgress
+	PresentAtBeginning  *bool
+	PresentAtCompletion *bool
+	JoinedInProgress    *bool
+	LeftInProgress      *bool
 }
 
 // MedalRow représente une ligne dans shared.medals_earned.

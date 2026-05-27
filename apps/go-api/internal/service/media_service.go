@@ -524,6 +524,17 @@ func (s *MediaService) resolveAvailableFilters(
 	if len(options.Modes) == 0 {
 		options.Modes = fallback.Modes
 	}
+	// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et crashe
+	// le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	if options.Playlists == nil {
+		options.Playlists = []domain.LabelValue{}
+	}
+	if options.Maps == nil {
+		options.Maps = []domain.LabelValue{}
+	}
+	if options.Modes == nil {
+		options.Modes = []domain.LabelValue{}
+	}
 	return options
 }
 

@@ -67,6 +67,7 @@ func (s *SessionPageService) GetPage(
 		return domain.SessionPageResponse{
 			AvailableSessions: []string{},
 			Matches:           []domain.SessionDetailMatchRow{},
+			CompareMatches:    []domain.SessionDetailMatchRow{},
 			CompareMetrics:    []domain.SessionCompareMetricRow{},
 		}, nil
 	}
@@ -82,6 +83,7 @@ func (s *SessionPageService) GetPage(
 		return domain.SessionPageResponse{
 			AvailableSessions: labels,
 			Matches:           []domain.SessionDetailMatchRow{},
+			CompareMatches:    []domain.SessionDetailMatchRow{},
 			CompareMetrics:    []domain.SessionCompareMetricRow{},
 		}, nil
 	}

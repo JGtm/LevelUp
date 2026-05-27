@@ -1,21 +1,32 @@
 //go:build integration
 
 // Test anti-régression Phase 3 plan stabilisation 2026-05-22 :
-// TestSharedReader_AllHomeRepoCallsRouted vérifie statiquement qu'aucune query
-// référençant `shared.X` n'est exécutée via `pdb.ReadDB()` (player conn) — pattern
-// interdit depuis ADR 0016 (retrait de l'ATTACH shared sur la player conn).
 //
-// Approche : scanner les fichiers Go du package duckdb pour identifier :
-//  1. Les constantes SQL qui contiennent "FROM shared." ou "JOIN shared."
-//  2. Les appels `pdb.ReadDB().Query(...)` ou `r.pdb.ReadDB().QueryRow(...)`
+// **Test 1 — TestSharedReader_AllHomeRepoCallsRouted**
 //
-// Croisement : si une const SQL "shared.*" est utilisée via ReadDB → fail.
+// Vérifie statiquement qu'aucune query référençant `shared.X` n'est exécutée
+// via `pdb.ReadDB()` (player conn) — pattern interdit depuis ADR 0016
+// (retrait de l'ATTACH shared sur la player conn).
 //
-// Si quelqu'un réintroduit le pattern (par oubli ou par refactor sans audit),
-// ce test échoue immédiatement — pas besoin d'attendre un crash runtime.
+// **Test 2 — TestSharedReader_NoSharedPrefixViaSharedReader** (ajouté 2026-05-26)
+//
+// Vérifie l'INVERSE : aucune query référençant `shared.X` ne doit non plus
+// être exécutée via `pdb.SharedReadDB().Get(ctx)`. Cas révélé par le bug
+// weapon_kills_repo (chart breakdown armes non affiché) : `SharedReader.Get`
+// retourne une connexion directe à `shared_matches_v2.duckdb` où `shared`
+// n'est ni schéma ni catalogue par défaut — les queries `shared.X` échouent
+// silencieusement (capability not supported → nil → frontend masque le chart).
+//
+// Approche commune : scanner les fichiers Go du package duckdb pour identifier
+// les const SQL contenant `shared.X` ET les SQL inline (string literals dans
+// des function bodies via strings.Builder.WriteString), puis croiser avec
+// les callers `.SharedReadDB().Get(`.
 package duckdb
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,7 +43,7 @@ var queryConstRe = regexp.MustCompile(`(?s)const\s+(Q\w+)\s*=\s*` + "`" + `([^` 
 // la virgule suivante donne l'identifiant de la query (ou expression sprintf).
 var readDBCallRe = regexp.MustCompile(`\.pdb\.ReadDB\(\)\.(?:Query|QueryRow)\([^,)]*,\s*([A-Z]\w+)`)
 
-// sprintfReadDBRe : matche `r.pdb.ReadDB().Query(ctx, query, args...)` après
+// sprintfTemplateRe : matche `r.pdb.ReadDB().Query(ctx, query, args...)` après
 // `query := fmt.Sprintf(Q*, ...)`. Trace l'identifiant de la const template.
 var sprintfTemplateRe = regexp.MustCompile(`fmt\.Sprintf\((Q\w+Tpl|Q\w+Template)`)
 
@@ -125,6 +136,155 @@ func TestSharedReader_AllHomeRepoCallsRouted(t *testing.T) {
 	}
 }
 
+// TestSharedReader_NoSharedPrefixViaSharedReader fait échouer le test si une
+// fonction qui appelle `.SharedReadDB().Get(` contient ou référence du SQL
+// avec `FROM shared.X` ou `JOIN shared.X`. Couvre 2 cas :
+//
+//  1. **Const Q*** : `db.QueryContext(ctx, Q*, ...)` où la const contient `shared.X`.
+//  2. **SQL inline** : SQL construit via `strings.Builder.WriteString(\`...shared.X...\`)`
+//     ou passé en backtick-string directement à QueryContext (cas weapon_kills_repo).
+//
+// Implémentation : parsing AST de chaque .go non-test, analyse fonction par
+// fonction. Pour chaque fonction qui contient un appel à `.SharedReadDB().Get(`,
+// on examine tous les `*ast.BasicLit` (string literals) ET toutes les références
+// à des identifiants (consts) — si l'un d'eux match le pattern `shared.X`,
+// c'est une violation.
+//
+// Pas de whitelist : si vous gardez du SQL `shared.X` en legacy/dead code,
+// déplacez-le dans une fonction sans `SharedReader.Get`, ou supprimez-le.
+func TestSharedReader_NoSharedPrefixViaSharedReader(t *testing.T) {
+	files, err := goFilesInPackage(t, ".")
+	if err != nil {
+		t.Fatalf("list files: %v", err)
+	}
+
+	// 1. Indexer toutes les const Q* du package : nom → SQL.
+	allConsts := map[string]string{}
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		for _, m := range queryConstRe.FindAllStringSubmatch(string(raw), -1) {
+			allConsts[m[1]] = m[2]
+		}
+	}
+
+	var violations []string
+	fset := token.NewFileSet()
+
+	for _, path := range files {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		fileAST, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+
+		ast.Inspect(fileAST, func(n ast.Node) bool {
+			fn, ok := n.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				return true
+			}
+			if !funcCallsSharedReaderGet(fn) {
+				return true
+			}
+			fnName := fn.Name.Name
+
+			// Pour chaque BasicLit string et chaque ident référençant une const
+			// dans le corps de fn, vérifier si le SQL contient `shared.X`.
+			ast.Inspect(fn.Body, func(inner ast.Node) bool {
+				switch x := inner.(type) {
+				case *ast.BasicLit:
+					if x.Kind == token.STRING && containsSharedRef(x.Value) {
+						line := fset.Position(x.Pos()).Line
+						snippet := stripQuotes(x.Value)
+						snippet = strings.TrimSpace(snippet)
+						if len(snippet) > 80 {
+							snippet = snippet[:80] + "..."
+						}
+						violations = append(violations, formatSharedReaderViolation(
+							path, line, fnName, "inline SQL", snippet))
+					}
+				case *ast.Ident:
+					sql, found := allConsts[x.Name]
+					if !found || !containsSharedRef(sql) {
+						return true
+					}
+					line := fset.Position(x.Pos()).Line
+					snippet := strings.TrimSpace(sql)
+					if len(snippet) > 80 {
+						snippet = snippet[:80] + "..."
+					}
+					violations = append(violations, formatSharedReaderViolation(
+						path, line, fnName, x.Name, snippet))
+				}
+				return true
+			})
+			return true
+		})
+	}
+
+	if len(violations) == 0 {
+		return
+	}
+	// Dédup (un même const référencé plusieurs fois dans une fonction).
+	seen := map[string]struct{}{}
+	unique := violations[:0]
+	for _, v := range violations {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		unique = append(unique, v)
+	}
+	t.Errorf("%d query 'shared.*' exécutée(s) via pdb.SharedReadDB().Get() — interdit (la conn pointe directement sur shared_matches_v2.duckdb, `shared.` n'est ni schéma ni catalogue résolvable) :", len(unique))
+	for _, v := range unique {
+		t.Errorf("  %s", v)
+	}
+	t.Errorf("\nFix : retirer le préfixe `shared.` du SQL — les tables sont accessibles directement par leur nom (v_weapon_kills, xuid_aliases, match_participants, ...).")
+}
+
+// funcCallsSharedReaderGet retourne true si la fonction contient au moins un
+// appel à `.SharedReadDB().Get(`.
+func funcCallsSharedReaderGet(fn *ast.FuncDecl) bool {
+	found := false
+	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Get" {
+			return true
+		}
+		// sel.X doit être un appel à .SharedReadDB()
+		inner, ok := sel.X.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		innerSel, ok := inner.Fun.(*ast.SelectorExpr)
+		if !ok || innerSel.Sel.Name != "SharedReadDB" {
+			return true
+		}
+		found = true
+		return false
+	})
+	return found
+}
+
+// stripQuotes retire les guillemets/backticks autour d'un BasicLit STRING.
+func stripQuotes(s string) string {
+	if len(s) >= 2 && (s[0] == '`' || s[0] == '"') {
+		return s[1 : len(s)-1]
+	}
+	return s
+}
+
 // containsSharedRef retourne true si le SQL contient une référence cross-DB
 // vers le schéma `shared.` (FROM ou JOIN). Insensible à la casse.
 func containsSharedRef(sql string) bool {
@@ -161,4 +321,23 @@ func goFilesInPackage(t *testing.T, dir string) ([]string, error) {
 
 func formatRoutingViolation(path, constName, snippet string) string {
 	return path + " uses " + constName + " via .ReadDB() — SQL: " + snippet
+}
+
+func formatSharedReaderViolation(path string, line int, fnName, source, snippet string) string {
+	return filepath.ToSlash(path) + ":" + itoa(line) + " in " + fnName + "() — " + source + ": " + snippet
+}
+
+// itoa minimal (évite import strconv pour rester aligné avec le style du file).
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var buf [12]byte
+	i := len(buf)
+	for n > 0 {
+		i--
+		buf[i] = byte('0' + n%10)
+		n /= 10
+	}
+	return string(buf[i:])
 }

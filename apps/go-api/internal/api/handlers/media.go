@@ -30,6 +30,7 @@ import (
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
+	mediapkg "levelup/go-api/internal/media"
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/settings"
@@ -787,40 +788,102 @@ func (h *MediaHandler) ServeMediaFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, base := range bases {
-		absPath := filepath.Join(base, filepath.FromSlash(cleanURL))
-
-		// Anti-traversal : vérifier que le chemin résolu est dans base
-		cleanBase := filepath.Clean(base)
-		cleanAbsPath := filepath.Clean(absPath)
-		if cleanAbsPath != cleanBase &&
-			!strings.HasPrefix(cleanAbsPath, cleanBase+string(filepath.Separator)) {
-			continue
-		}
-
-		if _, err := os.Stat(cleanAbsPath); err == nil {
-			if w.Header().Get("Content-Type") == "" {
-				switch strings.ToLower(filepath.Ext(cleanAbsPath)) {
-				case ".mp4":
-					w.Header().Set("Content-Type", "video/mp4")
-				case ".webm":
-					w.Header().Set("Content-Type", "video/webm")
-				case ".mov":
-					w.Header().Set("Content-Type", "video/quicktime")
-				case ".avi":
-					w.Header().Set("Content-Type", "video/x-msvideo")
-				case ".mkv":
-					w.Header().Set("Content-Type", "video/x-matroska")
-				case ".webp":
-					w.Header().Set("Content-Type", "image/webp")
-				case ".gif":
-					w.Header().Set("Content-Type", "image/gif")
-				}
-			}
-			http.ServeFile(w, r, cleanAbsPath)
-			return
-		}
+	resolved := resolveMediaFilePath(bases, cleanURL)
+	if resolved == "" {
+		httpError(r.Context(), w, "not found", http.StatusNotFound)
+		return
 	}
 
-	httpError(r.Context(), w, "not found", http.StatusNotFound)
+	ext := strings.ToLower(filepath.Ext(resolved))
+
+	if mediapkg.RequiresRemux(ext) {
+		serveRemuxedWebM(w, r, resolved)
+		return
+	}
+
+	setMediaContentType(w, ext)
+	http.ServeFile(w, r, resolved)
+}
+
+// resolveMediaFilePath cherche le fichier sur disque parmi les bases candidates.
+// Pour chaque base :
+//  1. tente le chemin exact (cleanURL stocké en DB) ;
+//  2. si absent, tente une résolution par stem : pour chaque extension vidéo
+//     reconnue, teste {dir}/{stem}{ext}. Couvre le cas où le fichier a été
+//     converti localement (ex: .mp4 → .mkv) sans que la DB ait été resync.
+//
+// Retourne le chemin absolu trouvé (passe l'anti-traversal), ou "" si rien
+// ne match.
+func resolveMediaFilePath(bases []string, cleanURL string) string {
+	relFS := filepath.FromSlash(cleanURL)
+	stem, _ := mediapkg.StemAndExt(relFS)
+	relDir := filepath.Dir(relFS)
+
+	for _, base := range bases {
+		cleanBase := filepath.Clean(base)
+
+		// (1) Tentative exacte sur le chemin stocké.
+		exact := filepath.Clean(filepath.Join(base, relFS))
+		if isUnderBase(exact, cleanBase) {
+			if _, err := os.Stat(exact); err == nil {
+				return exact
+			}
+		}
+
+		// (2) Fallback resolution multi-extension par stem. Le `cleanURL`
+		// stocké en DB peut pointer vers une extension stale (ex: .mp4 stocké
+		// alors que le fichier réel est devenu .mkv après conversion locale).
+		if stem == "" {
+			continue
+		}
+		for _, candExt := range mediapkg.VideoExtensions {
+			candRel := filepath.Join(relDir, stem+candExt)
+			cand := filepath.Clean(filepath.Join(base, candRel))
+			if !isUnderBase(cand, cleanBase) {
+				continue
+			}
+			if _, err := os.Stat(cand); err == nil {
+				return cand
+			}
+		}
+	}
+	return ""
+}
+
+// isUnderBase implémente l'anti-traversal : refuse les paths qui sortent de
+// base (par /.. ou via symlink résolu).
+func isUnderBase(absPath, cleanBase string) bool {
+	return absPath == cleanBase || strings.HasPrefix(absPath, cleanBase+string(filepath.Separator))
+}
+
+// setMediaContentType positionne Content-Type d'après l'extension d'un fichier
+// servi directement (pas via remux). Ne modifie rien si le header est déjà set.
+func setMediaContentType(w http.ResponseWriter, ext string) {
+	if w.Header().Get("Content-Type") != "" {
+		return
+	}
+	switch ext {
+	case ".mp4":
+		w.Header().Set("Content-Type", "video/mp4")
+	case ".webm":
+		w.Header().Set("Content-Type", "video/webm")
+	case ".mov":
+		w.Header().Set("Content-Type", "video/quicktime")
+	case ".webp":
+		w.Header().Set("Content-Type", "image/webp")
+	case ".gif":
+		w.Header().Set("Content-Type", "image/gif")
+	}
+}
+
+// serveRemuxedWebM streame le fichier source remuxé en WebM via ffmpeg.
+// Le Range request n'est pas supporté (le seek vidéo sera limité aux clips
+// web-natifs). En cas d'échec ffmpeg, on log mais on ne peut plus changer le
+// status code si des bytes ont déjà été envoyés au client.
+func serveRemuxedWebM(w http.ResponseWriter, r *http.Request, absPath string) {
+	w.Header().Set("Content-Type", "video/webm")
+	if err := mediapkg.StreamRemuxAsWebM(r.Context(), absPath, w); err != nil {
+		slog.ErrorContext(r.Context(), "media remux failed",
+			"path", absPath, "err", err)
+	}
 }

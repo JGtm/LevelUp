@@ -1,0 +1,14 @@
+levelup/go-api/internal/platform/duckdb/pool_shared_social_recovery.go:97:	79.2
+levelup/go-api/internal/platform/duckdb/pool_shared_social_recovery.go:154:	100.0
+levelup/go-api/internal/platform/duckdb/pool_shared_social_recovery.go:176:	77.8
+levelup/go-api/internal/platform/duckdb/pool_shared_social_recovery.go:200:	81.8
+levelup/go-api/internal/platform/dblease/writer.go:48:	0.0
+levelup/go-api/internal/platform/dblease/writer.go:51:	0.0
+levelup/go-api/internal/platform/dblease/writer.go:54:	0.0
+levelup/go-api/internal/platform/dblease/writer.go:59:	0.0
+levelup/go-api/internal/platform/dblease/writer.go:64:	0.0
+levelup/go-api/internal/platform/dblease/writer.go:71:	100.0
+levelup/go-api/internal/platform/dblease/writer.go:90:	80.0
+levelup/go-api/internal/platform/dblease/writer.go:107:	100.0
+levelup/go-api/internal/platform/dblease/writer.go:126:	64.3
+levelup/go-api/internal/platform/dblease/writer.go:164:	0.0

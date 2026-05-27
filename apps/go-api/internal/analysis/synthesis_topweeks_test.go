@@ -9,9 +9,14 @@ import (
 )
 
 func TestComputeSynthesisTopWeeks_Empty(t *testing.T) {
+	// Retourne une slice vide initialisée et NON nil — un slice nil sérialise
+	// en JSON `null` et crashe le front non-nullable (cf. testutil.RequireNoNilSlicesWithoutOmitempty).
 	result := ComputeSynthesisTopWeeks(nil)
-	if result != nil {
-		t.Fatalf("expected nil, got %v", result)
+	if result == nil {
+		t.Fatalf("expected non-nil empty slice, got nil (sérialiserait en JSON null)")
+	}
+	if len(result) != 0 {
+		t.Fatalf("expected empty slice, got %d entries", len(result))
 	}
 }
 

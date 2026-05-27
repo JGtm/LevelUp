@@ -7,6 +7,8 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -87,14 +89,27 @@ func (s *CompareService) loadPlayerA(ctx context.Context) (*domain.NormalizedPla
 	statsA.IsLocal = true
 	ath, athErr := s.repo.GetPlayerATH(ctx)
 	if athErr != nil {
-		slog.DebugContext(ctx, "CompareService: ATH non disponible (best-effort)", "xuid", s.xuidA, "err", athErr)
+		logBestEffortErr(ctx, "CompareService: ATH non disponible", athErr, "xuid", s.xuidA)
 	}
 	var wErr error
 	statsA.FavoriteWeapon, wErr = s.repo.GetFavoriteWeapon(ctx, s.xuidA)
 	if wErr != nil {
-		slog.DebugContext(ctx, "CompareService: arme favorite non disponible (best-effort)", "xuid", s.xuidA, "err", wErr)
+		logBestEffortErr(ctx, "CompareService: arme favorite non disponible", wErr, "xuid", s.xuidA)
 	}
 	return statsA, ath, nil
+}
+
+// logBestEffortErr distingue les erreurs "pas de data" (sql.ErrNoRows, attendu)
+// des anomalies SQL/conn (anormal). Pattern motivé par le bug 2026-05-26 où
+// un Catalog Error a vécu ~1 semaine sous Debug silencieux. Cf. thought_log
+// "Fix shared.X via SharedReader — 10 sites cassés en silence".
+func logBestEffortErr(ctx context.Context, msg string, err error, kv ...any) {
+	if errors.Is(err, sql.ErrNoRows) {
+		slog.DebugContext(ctx, msg+" (no rows)", kv...)
+		return
+	}
+	attrs := append(kv, "err", err)
+	slog.WarnContext(ctx, msg+" (best-effort, fallback)", attrs...)
 }
 
 // loadPlayerB tente d'abord la résolution locale (xuid → stats locales), sinon
@@ -127,7 +142,7 @@ func (s *CompareService) enrichLocalPlayerB(ctx context.Context, local *domain.N
 
 	athB, athErr := s.repo.GetPlayerATHFor(ctx, local.Gamertag, s.titleSlug)
 	if athErr != nil {
-		slog.DebugContext(ctx, "CompareService: ATH joueur B non disponible (best-effort)", "gamertag", local.Gamertag, "err", athErr)
+		logBestEffortErr(ctx, "CompareService: ATH joueur B non disponible", athErr, "gamertag", local.Gamertag)
 		return
 	}
 	if athB != nil {
@@ -144,7 +159,7 @@ func (s *CompareService) enrichRemotePlayerBWithCrossSample(
 ) {
 	sample, sErr := s.repo.GetCrossMatchSample(ctx, s.xuidA, xuidB)
 	if sErr != nil {
-		slog.DebugContext(ctx, "CompareService: cross-match sample non disponible (best-effort)", "err", sErr)
+		logBestEffortErr(ctx, "CompareService: cross-match sample non disponible", sErr, "xuidA", s.xuidA, "xuidB", xuidB)
 		return
 	}
 	if sample == nil || sample.MatchesCount == 0 {

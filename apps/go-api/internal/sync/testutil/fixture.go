@@ -96,6 +96,10 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			grenade_kills INTEGER DEFAULT 0,
 			melee_kills INTEGER DEFAULT 0,
 			power_weapon_kills INTEGER DEFAULT 0,
+			present_at_beginning BOOLEAN,
+			present_at_completion BOOLEAN,
+			joined_in_progress BOOLEAN,
+			left_in_progress BOOLEAN,
 			created_at TIMESTAMP,
 			PRIMARY KEY (match_id, xuid)
 		)`,

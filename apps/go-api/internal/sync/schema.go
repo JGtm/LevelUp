@@ -219,6 +219,10 @@ CREATE TABLE IF NOT EXISTS match_participants (
     grenade_kills        SMALLINT,
     melee_kills          SMALLINT,
     power_weapon_kills   SMALLINT,
+    present_at_beginning  BOOLEAN,
+    present_at_completion BOOLEAN,
+    joined_in_progress    BOOLEAN,
+    left_in_progress      BOOLEAN,
     created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, xuid)
 );
@@ -274,11 +278,54 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	return execScript(ctx, db, playerSchemaSQL)
 }
 
-// EnsureSharedSchema crée les tables shared si elles n'existent pas.
-// Idempotent — peut être appelé à chaque ouverture de connexion.
+// EnsureSharedSchema crée les tables shared + les vues SQL (v_gamertag_lookup,
+// v_match_full) si elles n'existent pas. Idempotent — peut être appelé à
+// chaque ouverture de connexion.
+//
+// Les vues sont créées ICI (boot, conn RW pure ouverte par OpenReadWrite)
+// et NON depuis le post-sync runtime. Raison — fix bug 2026-05-27 :
+//
+//	En post-sync, le sharedDB writer est obtenu via Provider.AcquireWriter
+//	APRÈS qu'une instance DuckDB RO ait existé (SharedReader). Même si le
+//	Provider ferme la RO avant d'ouvrir la RW (swap), DuckDB peut auto-attacher
+//	l'ancien handle sous le nom dérivé du fichier (`shared_matches_v2`). À
+//	ce moment CREATE OR REPLACE VIEW v_gamertag_lookup AS SELECT FROM
+//	xuid_aliases tombe sur la database attached RO (resolution `xuid_aliases`
+//	→ `shared_matches_v2.xuid_aliases` car c'est la seule où la table existe)
+//	→ "Cannot execute statement of type CREATE on database shared_matches_v2
+//	which is attached in read-only mode!" (logs/sync.log 23:57:51 et+).
+//
+//	Au boot via OpenSharedDB, aucune instance RO n'existe encore → CREATE
+//	VIEW passe sans souci. Les VIEW sont stockées dans la DB elle-même, donc
+//	survivent au close/reopen. À chaque boot, CREATE OR REPLACE écrase
+//	l'ancienne définition (idempotent si la query a évolué).
 func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
-	return execScript(ctx, db, sharedSchemaSQL)
+	if err := execScript(ctx, db, sharedSchemaSQL); err != nil {
+		return err
+	}
+	return execScript(ctx, db, sharedViewsSQL)
 }
+
+// sharedViewsSQL : vues SQL recréées à chaque boot via EnsureSharedSchema.
+// Stable jusqu'à la prochaine évolution de query (recompilées au boot).
+// AVANT le fix 2026-05-27 ces VIEW étaient recreées par refreshSharedViews
+// dans le post-sync ; voir godoc EnsureSharedSchema pour le contexte.
+const sharedViewsSQL = `
+CREATE OR REPLACE VIEW v_gamertag_lookup AS
+SELECT
+    COALESCE(xa.xuid, mp.xuid) AS xuid,
+    COALESCE(xa.gamertag, mp.gamertag) AS gamertag,
+    xa.last_seen
+FROM xuid_aliases xa
+FULL OUTER JOIN (
+    SELECT DISTINCT xuid, gamertag
+    FROM match_participants
+    WHERE gamertag IS NOT NULL
+) mp ON xa.xuid = mp.xuid;
+
+CREATE OR REPLACE VIEW v_match_full AS
+SELECT mr.* FROM match_registry mr;
+`
 
 // OpenPlayerDB ouvre stats.duckdb d'un joueur en lecture/écriture via le cache process-level.
 // Crée le répertoire si nécessaire. Applique le schéma player si absent.

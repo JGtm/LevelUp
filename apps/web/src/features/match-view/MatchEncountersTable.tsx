@@ -507,14 +507,13 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
         {labels.title}
       </div>
-      <div className="p-3">
-        <div className="overflow-x-auto">
-          {/*
-            Grille complète : table border 2px (extérieur), cellules border 1px,
-            header border-b-2 plus marqué. border-collapse fait que la bordure
-            partagée prend la plus large.
-          */}
-          <table className="w-full border-2 border-border border-collapse text-xs">
+      <div className="overflow-x-auto">
+        {/*
+          Grille complète : table border 2px (extérieur), cellules border 1px,
+          header border-b-2 plus marqué. border-collapse fait que la bordure
+          partagée prend la plus large.
+        */}
+        <table className="w-full border-collapse text-xs">
             <thead>
               {table.getHeaderGroups().map((hg) => (
                 <tr key={hg.id} className="text-muted-foreground">
@@ -543,8 +542,7 @@ export function MatchEncountersTable({ rows, locale = 'fr', onPlayerClick, hideC
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+        </table>
       </div>
     </div>
   )

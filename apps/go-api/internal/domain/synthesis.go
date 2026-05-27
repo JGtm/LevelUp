@@ -68,9 +68,31 @@ type SynthesisOverview struct {
 	TotalKDR *float64 `json:"total_kdr,omitempty"`
 
 	// Records / pics
+	// BestKillsMatch / BestKDAMatch sont conservés pour compatibilité (valeurs scalaires).
+	// Les nouveaux champs *Ref ajoutent le match_id associé pour permettre la navigation
+	// depuis les cartes "Top X" / "Meilleur X" de la page Synthesis (POST 2026-05-27).
 	BestKillsMatch   *int     `json:"best_kills_match,omitempty"`
 	BestKDAMatch     *float64 `json:"best_kda_match,omitempty"`
 	LongestWinStreak int      `json:"longest_win_streak,omitempty"`
+
+	// Refs cliquables vers le match record pour chaque métrique. Nil si aucune
+	// donnée exploitable sur le scope (ex : accuracy nil sur tous les matchs).
+	BestKillsRef         *BestMatchRef `json:"best_kills_ref,omitempty"`
+	BestKDARef           *BestMatchRef `json:"best_kda_ref,omitempty"`
+	BestPerfRef          *BestMatchRef `json:"best_perf_ref,omitempty"`
+	BestAccuracyRef      *BestMatchRef `json:"best_accuracy_ref,omitempty"`
+	BestDamageRef        *BestMatchRef `json:"best_damage_ref,omitempty"`
+	BestKillingSpreeRef  *BestMatchRef `json:"best_killing_spree_ref,omitempty"`
+	BestHeadshotsRef     *BestMatchRef `json:"best_headshots_ref,omitempty"`
+	BestPersonalScoreRef *BestMatchRef `json:"best_personal_score_ref,omitempty"`
+}
+
+// BestMatchRef identifie le match record pour une métrique donnée et porte la
+// valeur observée. Permet à la page Synthesis d'ouvrir le match en question
+// via useNavigateToMatch côté front.
+type BestMatchRef struct {
+	MatchID string  `json:"match_id"`
+	Value   float64 `json:"value"`
 }
 
 // ---------------------------------------------------------------------------
@@ -95,9 +117,11 @@ type SynthesisPageV2Response struct {
 	HeatmapData       []TemporalHeatmapCell  `json:"heatmap_data"`
 	TopWeeks          []TopWeekEntry         `json:"top_weeks"`
 
-	// Blocs previews (D5/D6/D7)
+	// Blocs previews (D5/D7) — D6 (Rivalries) retiré le 2026-05-27, voir
+	// thought_log : la section "Relations de jeu" a été supprimée de la
+	// page Synthesis ; la page palmares/relations reste alimentée par
+	// CareerRepo.GetEncounters indépendamment.
 	HighlightsPreview SynthesisHighlightsPreview `json:"highlights_preview"`
-	RivalriesPreview  SynthesisRivalriesPreview  `json:"rivalries_preview"`
 	Breakdowns        SynthesisBreakdowns        `json:"breakdowns"`
 
 	// Bloc détails (P9)
@@ -136,27 +160,6 @@ type SynthesisHighlightsPreview struct {
 	TopByKills    []SynthesisMatchHighlight `json:"top_by_kills"`
 	TopByKDA      []SynthesisMatchHighlight `json:"top_by_kda"`
 	WorstByDeaths []SynthesisMatchHighlight `json:"worst_by_deaths"`
-}
-
-// ---------------------------------------------------------------------------
-// Bloc previews — Rivalries (D6)
-// ---------------------------------------------------------------------------
-
-// SynthesisEncounterPreview est un joueur fréquemment rencontré dans le scope.
-type SynthesisEncounterPreview struct {
-	XUID       string   `json:"xuid"`
-	Gamertag   string   `json:"gamertag"`
-	MatchCount int      `json:"match_count"`
-	AsTeammate int      `json:"as_teammate"`
-	AsEnemy    int      `json:"as_enemy"`
-	AvgKDA     *float64 `json:"avg_kda,omitempty"`
-}
-
-// SynthesisRivalriesPreview résume les encounters fréquents sur la période.
-type SynthesisRivalriesPreview struct {
-	TopTeammates []SynthesisEncounterPreview `json:"top_teammates"`
-	TopEnemies   []SynthesisEncounterPreview `json:"top_enemies"`
-	Total        int                         `json:"total"`
 }
 
 // ---------------------------------------------------------------------------

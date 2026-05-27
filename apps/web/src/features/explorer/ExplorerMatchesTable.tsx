@@ -19,7 +19,7 @@
  *            Dominance | K | D | A | FDA | Score | Durée |
  *            Perf (color) | ΔPerf | Rang | MMR équipe | MMR adv. | ΔMMR
  */
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   type ColumnDef,
   flexRender,
@@ -74,6 +74,10 @@ interface Props {
    *  Utile en mode Joueur (tableaux ally/enemy) pour rendre la pagination
    *  toujours visible indépendamment du volume de données. */
   alwaysShowPagination?: boolean
+  /** Taille de page initiale (par défaut PAGE_SIZE=20). Quand inférieure à
+   *  PAGE_SIZE, un bouton "Voir tout" est affiché pour passer au mode plein
+   *  (PAGE_SIZE). Mode Joueur Explorer utilise 10 pour réduire la densité. */
+  defaultPageSize?: number
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -156,7 +160,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, alwaysShowPagination }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, alwaysShowPagination, defaultPageSize }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -173,15 +177,21 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const navigateToMatch = useNavigateToMatch(playerSlug)
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const allMatchIds = useMemo(() => rows.map((r) => r.match_id), [rows])
-  const goToMatch = (matchId: string) => {
-    const filterSpec = filterContextToMatchFilterSpec(filterContext)
-    navigateToMatch(matchId, {
-      source: 'explorer',
-      matchIds: allMatchIds,
-      filterSpec: filterSpec ?? undefined,
-      contextDescriptor,
-    })
-  }
+  // useCallback obligatoire : goToMatch est référencé dans le cell renderer du
+  // useMemo `columns` ci-dessous. Sans ça, le closure figé au 1er render garde
+  // les `allMatchIds` initiaux (pré-filtre) → nav contextuelle hors scope.
+  const goToMatch = useCallback(
+    (matchId: string) => {
+      const filterSpec = filterContextToMatchFilterSpec(filterContext)
+      navigateToMatch(matchId, {
+        source: 'explorer',
+        matchIds: allMatchIds,
+        filterSpec: filterSpec ?? undefined,
+        contextDescriptor,
+      })
+    },
+    [navigateToMatch, allMatchIds, filterContext, contextDescriptor],
+  )
 
   // Labels outcome (pas de Badge, juste texte coloré comme Squad)
   const outcomeLabels: Record<'win' | 'loss' | 'draw' | 'dnf', string> = {
@@ -254,20 +264,35 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         // Pastille reprise du style match-card.tsx (tuiles match home).
         // Les couleurs hex sont autorisées (color-allow) car identifiants UX
         // génériques de catégorie, pas de palette accessibility.
+        // Pill "bot" affichée en plus quand had_bot_teammate=true (Career
+        // best_matches uniquement, cf. backend asymétrie WIN/LOSS) — couleur
+        // amber tolérée car badge d'état système, pas signification métier.
         cell: (ctx) => {
+          const row = ctx.row.original
           const isSquad = ctx.getValue<boolean>()
           return (
-            <span
-              className="rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none"
-              style={
-                isSquad
-                  ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' } // color-allow: bleu sky pour pill "Escouade"
-                  : { backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' } // color-allow: violet pour pill "Solo"
-              }
-            >
-              {isSquad
-                ? t('explorer.matches.squad_party')
-                : t('explorer.matches.squad_solo')}
+            <span className="inline-flex items-center gap-1">
+              <span
+                className="rounded-full px-2 py-0.5 text-2xs font-bold uppercase tracking-wider leading-none"
+                style={
+                  isSquad
+                    ? { backgroundColor: 'rgba(56,189,248,0.15)', color: '#38bdf8' } // color-allow: bleu sky pour pill "Escouade"
+                    : { backgroundColor: 'rgba(168,85,247,0.15)', color: '#a855f7' } // color-allow: violet pour pill "Solo"
+                }
+              >
+                {isSquad
+                  ? t('explorer.matches.squad_party')
+                  : t('explorer.matches.squad_solo')}
+              </span>
+              {row.had_bot_teammate && (
+                <span
+                  className="rounded-full px-2 py-0.5 text-2xs font-bold lowercase tracking-wider leading-none"
+                  style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b' }} // color-allow: amber pour badge d'état système
+                  title={t('explorer.matches.bot_pill_tooltip')}
+                >
+                  {t('explorer.matches.bot_pill')}
+                </span>
+              )}
             </span>
           )
         },
@@ -418,9 +443,23 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
         },
       },
       {
+        accessorKey: 'rating_type',
+        header: t('explorer.matches.col_rating'),
+        cell: (ctx) => {
+          const v = ctx.getValue<string | null | undefined>()
+          return <span className="font-mono">{v ?? '-'}</span>
+        },
+      },
+      {
         accessorKey: 'skill_tier_label',
         header: t('explorer.matches.col_rank'),
-        cell: (ctx) => ctx.getValue<string | null | undefined>() ?? '-',
+        cell: (ctx) => {
+          const r = ctx.row.original
+          if (r.placement_done != null && r.placement_total != null) {
+            return <span className="font-mono">{r.placement_done}/{r.placement_total}</span>
+          }
+          return ctx.getValue<string | null | undefined>() ?? '-'
+        },
       },
       {
         accessorKey: 'team_mmr',
@@ -447,10 +486,23 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [intlLocale, mapAssets, playlistAssets, locale],
+    [intlLocale, mapAssets, playlistAssets, locale, goToMatch],
   )
 
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
+  // defaultPageSize=10 (mode Joueur Explorer) → l'utilisateur démarre à 10
+  // lignes avec un bouton "Voir tout" qui passe au mode 20 (PAGE_SIZE plein).
+  // Sans defaultPageSize → comportement legacy (PAGE_SIZE=20 d'emblée).
+  const compactMode = defaultPageSize != null && defaultPageSize < PAGE_SIZE
+  const [expanded, setExpanded] = useState(false)
+  const initialPageSize = compactMode && !expanded ? (defaultPageSize as number) : PAGE_SIZE
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: initialPageSize })
+
+  // Sync pageSize quand l'utilisateur toggle expanded (mode compact uniquement).
+  // Effect séparé pour éviter setState durant le render.
+  useEffect(() => {
+    const target = compactMode && !expanded ? (defaultPageSize as number) : PAGE_SIZE
+    setPagination((p) => (p.pageSize === target ? p : { pageIndex: 0, pageSize: target }))
+  }, [compactMode, expanded, defaultPageSize])
 
   const table = useReactTable<ExplorerMatchRow>({
     data: rows,
@@ -562,6 +614,24 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
               {t('explorer.player.next_page')}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Bouton expander : mode compact uniquement (defaultPageSize < PAGE_SIZE)
+          et tableau a plus de lignes que la page compacte. Permet de basculer
+          de 10 lignes vers 20 sans changer de page. */}
+      {compactMode && rows.length > (defaultPageSize as number) && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            data-testid="explorer-matches-table-expander"
+            className="rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded
+              ? t('explorer.matches_table.show_less')
+              : t('explorer.matches_table.show_all')}
+          </button>
         </div>
       )}
     </div>

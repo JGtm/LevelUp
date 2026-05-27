@@ -144,7 +144,7 @@ export function MatchCadenceChart({ cadence, scoreboard, meXUID, t }: Props) {
               symbolSize: 1,
               label: {
                 show: true,
-                formatter: 'PIC',
+                formatter: 'Pic',
                 position: 'top',
                 color: colorPic,
                 fontSize: 10,

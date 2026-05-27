@@ -88,6 +88,13 @@ type MatchParticipantRow struct {
 	GrenadeKills     int16
 	MeleeKills       int16
 	PowerWeaponKills int16
+
+	// ParticipationInfo booleans (LUSR v2 — Mini-Phase 0.5).
+	// Copiés depuis openspartan.PlayerStat.ParticipationInfo.
+	PresentAtBeginning  bool
+	PresentAtCompletion bool
+	JoinedInProgress    bool
+	LeftInProgress      bool
 }
 
 // MedalEarnedRow mirrors a row in shared.medals_earned. PK = (match_id, xuid,

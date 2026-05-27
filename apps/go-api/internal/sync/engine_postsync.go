@@ -90,8 +90,10 @@ func (e *SyncEngine) runConditionalPostSync(
 	// Carrière (XP + Spartan ID) retirée du post-sync : service.CareerLiveService
 	// la rafraîchit live à chaque chargement de /pages/home.
 	res := domain.PostSyncResult{}
-	if err := e.runCSRSnapshotSync(ctx, playerDB, client); err != nil {
+	if csrs, err := e.runCSRSnapshotSync(ctx, playerDB, client); err != nil {
 		trackFatalErr(&res, "CSR snapshots", err)
+	} else if len(csrs) > 0 {
+		e.seedCatalogFromCSRs(ctx, csrs)
 	}
 	res.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
 	return res
@@ -152,6 +154,28 @@ func (e *SyncEngine) runPostSyncPipeline(
 	ctx, evID := logging.WithEvent(ctx, "sync.postSync:"+e.gamertag)
 	slog.InfoContext(ctx, "post-sync: pipeline démarré",
 		"gamertag", e.gamertag, "matches_inserted", len(insertedIDs), "event", evID)
+
+	// -2 Ensure player_match_enrichment rows exist for all matches where the
+	// player has a row in shared.match_participants (incident 2026-05-27).
+	//
+	// Sans cette étape, les joueurs qui apparaissent en shared via le sync
+	// d'un teammate (cas escouade) n'ont jamais de row INSERT côté
+	// player_match_enrichment, et tous les UPDATE qui suivent (perf, lusr,
+	// sessions, citations, dominance) sont des no-op silencieux. Voir
+	// ensure_enrichment_rows.go pour le contexte complet du bug.
+	//
+	// Idempotent : 0 row créée pour un joueur dont tous les enrichments
+	// existent déjà (cas stationnaire JGtm post-sync).
+	if n, err := ensurePlayerEnrichmentRows(ctx, playerDB, sharedDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "post-sync: ensure enrichment rows échoué",
+			"gamertag", e.gamertag, "err", err)
+		// Best-effort : on continue le pipeline même si ça échoue (les UPDATE
+		// resteront no-op pour les matchs sans row, mais le reste du pipeline
+		// peut quand même tourner pour les matchs qui ont déjà leurs rows).
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: enrichment rows créées",
+			"gamertag", e.gamertag, "rows_created", n)
+	}
 
 	// -1.5 Stats re-extraction heal — comble max_killing_spree, grenade/melee/
 	// power_weapon kills, time_played_seconds, avg_life_seconds, gamertag,
@@ -339,6 +363,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 		slog.DebugContext(ctx, "post-sync: LUSR mis à jour", "gamertag", e.gamertag, "count", n)
 	}
 
+	// 2.5 LUSR v2 — shadow mode (LEVELUP_LUSR_V2_ENABLED=1). Calcule en parallèle
+	// du v1 et écrit dans player_skill_state_v2. Aucun impact sur v1, aucun
+	// reader UI à ce stade. Best-effort, n'arrête jamais le pipeline.
+	if IsLUSRV2Enabled() {
+		if n, err := RunLUSRV2Shadow(ctx, sharedDB, e.xuid); err != nil {
+			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
+				"gamertag", e.gamertag, "err", err)
+		} else if n > 0 {
+			slog.InfoContext(ctx, "post-sync: LUSR v2 shadow OK",
+				"gamertag", e.gamertag, "processed", n)
+		}
+	}
+
 	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
 	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
 	// (throttle 5 min / 6 h + fallback DB per-field), appelé depuis HomeService
@@ -349,8 +386,13 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide).
 	// Maintenu dans le post-sync : le CSR ne bouge que sur fin de match ranked,
 	// donc le déclencheur "nouveau match" reste pertinent.
-	if csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
+	// Les CSRs sont capturés pour alimenter playlists_catalog en parallèle
+	// à l'étape 4 (errgroup) — transparent, 0 latence supplémentaire.
+	var pendingCSRs []PlayerPlaylistCSR
+	if csrs, csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
 		trackFatalErr(&r, "CSR snapshots", csrErr)
+	} else {
+		pendingCSRs = csrs
 	}
 
 	// 3.5 Friends recompute is_with_friends (best-effort).
@@ -400,16 +442,24 @@ func (e *SyncEngine) runPostSyncPipeline(
 		viewsRefreshed.Add(int32(n))
 		return nil
 	})
-	egRefresh.Go(func() error {
-		n, err := refreshSharedViews(ctx, sharedDB)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: shared views échoué", "gamertag", e.gamertag, "err", err)
-			sharedViewsErr = err
-			return nil //nolint:nilerr // best-effort idem
-		}
-		viewsRefreshed.Add(int32(n))
-		return nil
-	})
+	// Fix bug 2026-05-27 : refreshSharedViews retiré du post-sync runtime.
+	// Les vues shared (v_gamertag_lookup, v_match_full) sont désormais créées
+	// au boot via EnsureSharedSchema(). En runtime, le sharedDB writer peut
+	// avoir un ATTACH RO implicite (auto-attach DuckDB) qui fait échouer le
+	// CREATE OR REPLACE VIEW avec "Cannot execute statement of type CREATE
+	// on database shared_matches_v2 which is attached in read-only mode!"
+	// (logs/sync.log 23:57:51 et+). Les VIEW sont stockées dans la DB et
+	// survivent au close/reopen — pas besoin de les recréer après chaque sync.
+	_ = sharedViewsErr // conservé pour minimiser le diff downstream
+	// (champ ViewsRefreshed continue de refléter les vues player rebuilt).
+	// Catalog seeding en parallèle des aggregates — transparent, DB différente.
+	if len(pendingCSRs) > 0 {
+		csrsToSeed := pendingCSRs
+		egRefresh.Go(func() error {
+			e.seedCatalogFromCSRs(ctx, csrsToSeed)
+			return nil
+		})
+	}
 	_ = egRefresh.Wait()
 	trackFatalErr(&r, "aggregates", aggregatesErr)
 	trackFatalErr(&r, "shared views", sharedViewsErr)
@@ -436,7 +486,10 @@ func (e *SyncEngine) runPostSyncPipeline(
 // runCSRSnapshotSync retourne nil sur succès ou skip de config, ou l'erreur
 // brute de syncPlayerCSRs en cas d'échec runtime. Le caller peut utiliser
 // trackFatalErr pour propager au SyncResult si IsInvalidatedError.
-func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) error {
+// runCSRSnapshotSync récupère + persiste les CSR snapshots du joueur.
+// Retourne la slice CSR pour que le caller puisse alimenter playlists_catalog
+// en parallèle (cf. errgroup step 4 dans runPostSyncPipeline).
+func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, client HaloClient) ([]PlayerPlaylistCSR, error) {
 	if strings.TrimSpace(e.csrSeasonID) == "" {
 		// Visibilité explicite : sans cette config, player_csr_snapshots reste vide
 		// éternellement et la home affiche "Aucun classement". Bug racine difficile
@@ -447,16 +500,16 @@ func (e *SyncEngine) runCSRSnapshotSync(ctx context.Context, playerDB *sql.DB, c
 				"ou définir l'env var LEVELUP_CSR_SEASON_ID)",
 			"gamertag", e.gamertag,
 		)
-		return nil
+		return nil, nil
 	}
 	slog.DebugContext(ctx, "post-sync: sync CSR snapshots", "gamertag", e.gamertag, "season", e.csrSeasonID)
-	n, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
+	csrs, err := syncPlayerCSRs(ctx, client, playerDB, e.xuid, e.csrSeasonID)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: CSR snapshots échoué", "gamertag", e.gamertag, "err", err)
-		return err
+		return nil, err
 	}
-	slog.DebugContext(ctx, "post-sync: CSR snapshots sauvegardés", "gamertag", e.gamertag, "count", n)
-	return nil
+	slog.DebugContext(ctx, "post-sync: CSR snapshots sauvegardés", "gamertag", e.gamertag, "count", len(csrs))
+	return csrs, nil
 }
 
 // runAchievementsSync récupère les achievements Xbox pour le joueur et les persiste.
@@ -493,6 +546,23 @@ func (e *SyncEngine) runAchievementsSync(ctx context.Context, playerDB *sql.DB) 
 	// l'ecriture RW de metadata (achievements upsert). Aligne le DSN avec
 	// engine.go:249 et citations_backfill.go via OpenReadWriteShared
 	// (cle "rw:"+path partagee).
+	//
+	// Fix race 2026-05-27 : `xbox_achievement_definitions` est globale (1 row
+	// par achievement_id, 144 communs aux 4 joueurs). 2 SyncEngine en
+	// parallèle (cf. Coordinator parallel_slots:2 ou scheduler errgroup) qui
+	// faisaient un upsert (INSERT-OR-UPDATE via conflict clause) sur la même
+	// row déclenchaient "TransactionContext Error: Conflict on update!" côté
+	// DuckDB (vu dans logs/sync.log 23:58:11 Madina97294 et précédents).
+	// Sérialisation applicative via dblease.AcquireWriterCtx(KindMetadata)
+	// — bloque le 2ème caller jusqu'au Release du 1er, sans contention DuckDB.
+	metadataLease, err := dblease.AcquireWriterCtx(ctx, nil, e.metadataDBPath, dblease.KindMetadata)
+	if err != nil {
+		slog.WarnContext(ctx, "achievements: acquisition lease metadata échouée",
+			"gamertag", e.gamertag, "err", err)
+		return false
+	}
+	defer metadataLease.Release()
+
 	metadataHandle, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "achievements: ouverture metadata DB échouée",
@@ -586,6 +656,22 @@ func mergeUniqMatchIDs(a, b []string) []string {
 		}
 	}
 	return result
+}
+
+// seedCatalogFromCSRs ouvre metadata.duckdb en RW et appelle seedPlaylistsCatalog.
+// Best-effort : log WARN si metadata inaccessible, n'interrompt jamais le pipeline.
+func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlaylistCSR) {
+	if e.metadataDBPath == "" || len(csrs) == 0 {
+		return
+	}
+	mh, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: catalog seed désactivé (metadata inaccessible)",
+			"gamertag", e.gamertag, "err", err)
+		return
+	}
+	defer mh.Close()
+	seedPlaylistsCatalog(ctx, mh.SQLDb(), csrs, e.titleSlug)
 }
 
 // resolveAccessTokenFromDB lit le cache MSAL et le refresh token depuis sync_meta (DB déjà ouverte),

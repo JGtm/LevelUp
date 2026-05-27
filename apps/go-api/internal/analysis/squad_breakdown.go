@@ -184,7 +184,9 @@ func ComputeTopWeeks(rows []domain.SquadMatchRow) []domain.TopWeekEntry {
 // Meme logique que ComputeTopWeeks mais depuis un dataset allege (LoadSynthesisMatches).
 func ComputeSynthesisTopWeeks(rows []legacymatch.SynthesisMatchRow) []domain.TopWeekEntry {
 	if len(rows) == 0 {
-		return nil
+		// Init à [] plutôt que nil : un slice nil sérialise en JSON `null` et
+		// crashe le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+		return []domain.TopWeekEntry{}
 	}
 
 	type weekAgg struct {

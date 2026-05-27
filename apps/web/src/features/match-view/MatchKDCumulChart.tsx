@@ -44,14 +44,14 @@ interface BadgeSpec {
 
 const BADGE_MAP: Record<string, BadgeSpec> = {
   // Kill events
-  first_blood:       { emoji: '🩸', eventKind: 'kill',  tone: 'auto' },
+  first_blood:       { emoji: '⚡', eventKind: 'kill',  tone: 'auto' },
   top_gun:           { emoji: '🔫', eventKind: 'kill',  tone: 'good' },
   clutch_finisher:   { emoji: '🎯', eventKind: 'kill',  tone: 'good' },
   last_group_kill:   { emoji: '🐌', eventKind: 'kill',  tone: 'bad'  },
-  kamikaze:          { emoji: '💣', eventKind: 'kill',  tone: 'bad'  },
+  // kamikaze exclu : badge match-wide, pas de timestamp précis
   // Death events (player_xuid = victime alliée — le frag est porté par l'adverse)
   first_group_death: { emoji: '🪦', eventKind: 'death', tone: 'bad'  },
-  last_casualty:     { emoji: '👻', eventKind: 'death', tone: 'good' },
+  last_casualty:     { emoji: '💀', eventKind: 'death', tone: 'good' },
 }
 
 interface CurvePt { tMs: number; y: number }
@@ -69,7 +69,7 @@ function valueAtMs(curve: CurvePt[], tMs: number): number {
 function formatMmSs(valueMs: number): string {
   const m = Math.floor(valueMs / 60000)
   const s = Math.max(0, Math.floor((valueMs % 60000) / 1000))
-  return `${m}:${s.toString().padStart(2, '0')}`
+  return `${m}m${s.toString().padStart(2, '0')}s`
 }
 
 export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Props) {
@@ -127,6 +127,18 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const colorEnemy = resolveToken('team-enemy')
       const accentGood = resolveToken('success')   // vert
       const accentBad  = resolveToken('warning')   // orange
+      const chipRich = (border: string) => ({
+        backgroundColor: tc.tooltipBg,
+        borderColor: border,
+        borderWidth: 1,
+        borderRadius: 6,
+        padding: [5, 9],
+        color: tc.text,
+        fontSize: 11,
+        fontWeight: '600',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+        lineHeight: 20,
+      })
 
       // ---- Placement chips badges avec stagger 2D anti-collision ---------
       const baseOffset = Math.max(2.5, yMaxData * 0.18)
@@ -138,18 +150,6 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const placedAbove: Placed[] = []
       const placedBelow: Placed[] = []
 
-      // Rich text styles pour les chips — 2 variantes (good/bad) car accent varie par badge
-      const chipRich = (border: string) => ({
-        backgroundColor: tc.tooltipBg,
-        borderColor: border,
-        borderWidth: 1,
-        borderRadius: 6,
-        padding: [5, 9],
-        color: tc.text,
-        fontSize: 10,
-        fontWeight: 'bold',
-        lineHeight: 20,
-      })
 
       type MarkPoint = Record<string, unknown>
       type MarkLineSeg = [Record<string, unknown>, Record<string, unknown>]
@@ -197,10 +197,10 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
         else tone = item.spec.tone
         const accent = tone === 'good' ? accentGood : accentBad
 
-        const chipLabel = `${item.spec.emoji} ${meta.gamertag}`
-        const toneTag = tone === 'good' ? 'g' : 'b'
         const sinkMP = team === 'ally' ? allyMP : enemyMP
         const sinkML = team === 'ally' ? allyML : enemyML
+        const toneTag = tone === 'good' ? 'g' : 'b'
+        const chipLabel = `${item.spec.emoji} ${meta.gamertag}`
         sinkMP.push({
           coord: [item.tMs, yAt],
           symbol: 'circle',
@@ -243,8 +243,25 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const axis = getAxisBase(tc)
       return {
         backgroundColor: CHART_BG,
-        grid: { left: 50, right: 24, top: 24, bottom: 56, containLabel: true },
-        tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+        grid: { left: 50, right: 90, top: 24, bottom: 56, containLabel: true },
+        tooltip: {
+          ...getTooltipBase(tc),
+          trigger: 'axis',
+          axisPointer: { type: 'cross', label: { formatter: ({ value }: { value: unknown }) => formatMmSs(value as number) } },
+          formatter: (params: Array<{ axisValue: number; marker: string; seriesName: string; value: [number, number] }>) => {
+            if (!Array.isArray(params) || !params.length) return ''
+            // markPoints inherit the parent seriesName and appear as extra entries
+            // in axis-triggered tooltips — deduplicate to one entry per series.
+            const expected = new Set([t.combatTeamLabel, t.combatEnemyLabel])
+            const seen = new Map<string, typeof params[0]>()
+            for (const p of params) {
+              if (expected.has(p.seriesName) && !seen.has(p.seriesName)) seen.set(p.seriesName, p)
+            }
+            if (seen.size === 0) return ''
+            const rows = [...seen.values()].map(p => `${p.marker} ${p.seriesName}: <b>${p.value[1]}</b>`).join('<br/>')
+            return `${formatMmSs(params[0].axisValue)}<br/>${rows}`
+          },
+        },
         legend: { ...getLegendBase(tc), data: [t.combatTeamLabel, t.combatEnemyLabel] },
         xAxis: {
           ...axis,
@@ -293,6 +310,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       title={t.combatKdCumulTitle}
       series={series}
       height={340}
+      fluid
       buildOption={buildOption}
       emptyMessage={t.combatNoData}
     />

@@ -20,12 +20,10 @@ var errSynthTest = errors.New("synthesis repo error")
 // --- mock SynthesisRepository ---
 
 type mockSynthesisRepo struct {
-	synthRows     []legacymatch.SynthesisMatchRow
-	synthErr      error
-	heatmapRows   []domain.SynthesisHeatmapRow
-	heatmapErr    error
-	encounterRows []domain.EncounterRawRow
-	encounterErr  error
+	synthRows   []legacymatch.SynthesisMatchRow
+	synthErr    error
+	heatmapRows []domain.SynthesisHeatmapRow
+	heatmapErr  error
 }
 
 func (m *mockSynthesisRepo) LoadSynthesisMatches(_ context.Context, _ string) ([]legacymatch.SynthesisMatchRow, error) {
@@ -34,10 +32,6 @@ func (m *mockSynthesisRepo) LoadSynthesisMatches(_ context.Context, _ string) ([
 
 func (m *mockSynthesisRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
 	return m.heatmapRows, m.heatmapErr
-}
-
-func (m *mockSynthesisRepo) LoadEncounters(_ context.Context, _ string) ([]domain.EncounterRawRow, error) {
-	return m.encounterRows, m.encounterErr
 }
 
 func (m *mockSynthesisRepo) EnrichCanonicalAssetTranslations(_ context.Context, _ []canonical.PlayerMatchRow) error {
@@ -213,33 +207,6 @@ func TestBuildHighlightsPreview_LimitTopN(t *testing.T) {
 	}
 }
 
-// --- buildRivalriesPreview ---
-
-func TestBuildRivalriesPreview_Empty(t *testing.T) {
-	r := buildRivalriesPreview(nil)
-	if r.Total != 0 {
-		t.Errorf("empty encounters should have total=0, got %d", r.Total)
-	}
-}
-
-func TestBuildRivalriesPreview_SplitTeamEnemy(t *testing.T) {
-	avk := 1.5
-	rows := []domain.EncounterRawRow{
-		{XUID: "x1", Gamertag: "PlayerA", MatchCount: 10, AsTeammate: 8, AsEnemy: 2, AvgKDA: &avk},
-		{XUID: "x2", Gamertag: "PlayerB", MatchCount: 6, AsTeammate: 1, AsEnemy: 5, AvgKDA: &avk},
-	}
-	r := buildRivalriesPreview(rows)
-	if len(r.TopTeammates) != 1 {
-		t.Errorf("want 1 teammate, got %d", len(r.TopTeammates))
-	}
-	if len(r.TopEnemies) != 1 {
-		t.Errorf("want 1 enemy, got %d", len(r.TopEnemies))
-	}
-	if r.Total != 2 {
-		t.Errorf("total should be 2, got %d", r.Total)
-	}
-}
-
 // --- buildBreakdowns ---
 
 func TestBuildBreakdowns_Empty(t *testing.T) {
@@ -288,7 +255,6 @@ func TestGetSynthesisPage_Success(t *testing.T) {
 		heatmapRows: []domain.SynthesisHeatmapRow{
 			{MapName: "Aquarius", ModeName: "Slayer", MatchCount: 2, Wins: 1},
 		},
-		encounterRows: []domain.EncounterRawRow{},
 	}
 
 	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
@@ -415,32 +381,155 @@ func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Rivalries_FromEncounters vÃ©rifie que rivalries_preview
-// reflÃ¨te les encounters retournÃ©s par le repository.
-func TestGetSynthesisPage_Rivalries_FromEncounters(t *testing.T) {
-	avk := 1.2
-	repo := &mockSynthesisRepo{
-		synthRows: []legacymatch.SynthesisMatchRow{},
-		encounterRows: []domain.EncounterRawRow{
-			{XUID: "e1", Gamertag: "Alice", MatchCount: 5, AsTeammate: 4, AsEnemy: 1, AvgKDA: &avk},
-			{XUID: "e2", Gamertag: "Bob", MatchCount: 3, AsTeammate: 0, AsEnemy: 3, AvgKDA: &avk},
+// --- computeSynthesisBestRefs : isolation des "Top X" cliquables (2026-05-27) ---
+
+func makeCanonicalBestRow(matchID string, kills, deaths, dmg, spree int, kda, perf, acc float64) canonical.PlayerMatchRow { //nolint:revive // test helper with explicit per-metric params
+
+	k, d, dm, sp := kills, deaths, dmg, spree
+	row := canonical.PlayerMatchRow{
+		Summary: canonical.MatchSummary{MatchID: matchID, Outcome: canonical.OutcomeWin},
+		Self: canonical.MatchParticipant{
+			Kills: &k, Deaths: &d, DamageDealt: &dm, MaxKillingSpree: &sp,
+			Outcome: canonical.OutcomeWin,
 		},
 	}
-	svc := withSynthMock(NewSynthesisService(repo), repo.synthRows, repo.synthErr)
+	if kda > 0 {
+		row.Self.KDA = &kda
+	}
+	if acc > 0 {
+		row.Self.Accuracy = &acc
+	}
+	if perf > 0 {
+		row.Enrichment.PerformanceScore = &perf
+	}
+	return row
+}
 
-	resp, err := svc.GetSynthesisPage(context.Background(), "xuid", domain.SynthesisRequest{Period: "all"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestComputeSynthesisBestRefs_PicksWinningMatchPerMetric(t *testing.T) {
+	rows := []canonical.PlayerMatchRow{
+		// kills max
+		makeCanonicalBestRow("m-kills", 25, 5, 1200, 4, 3.0, 1500, 0.50),
+		// kda max
+		makeCanonicalBestRow("m-kda", 18, 2, 1000, 5, 9.0, 1300, 0.45),
+		// perf max
+		makeCanonicalBestRow("m-perf", 12, 6, 1100, 3, 2.0, 2100, 0.40),
+		// accuracy max
+		makeCanonicalBestRow("m-acc", 10, 4, 900, 3, 2.5, 1200, 0.85),
+		// damage max
+		makeCanonicalBestRow("m-dmg", 20, 7, 2200, 6, 2.8, 1400, 0.55),
+		// killing spree max
+		makeCanonicalBestRow("m-spree", 22, 8, 1800, 12, 2.5, 1600, 0.50),
 	}
-	if resp.RivalriesPreview.Total != 2 {
-		t.Errorf("rivalries.Total = %d, want 2", resp.RivalriesPreview.Total)
+
+	refs := computeSynthesisBestRefs(rows)
+
+	cases := []struct {
+		name    string
+		got     *domain.BestMatchRef
+		wantID  string
+		wantVal float64
+	}{
+		{"kills", refs.kills, "m-kills", 25},
+		{"kda", refs.kda, "m-kda", 9.0},
+		{"perf", refs.perf, "m-perf", 2100},
+		{"accuracy", refs.accuracy, "m-acc", 0.85},
+		{"damage", refs.damage, "m-dmg", 2200},
+		{"killing_spree", refs.killingSpree, "m-spree", 12},
 	}
-	// Alice (AsTeammate > AsEnemy) doit apparaÃ®tre dans TopTeammates
-	if len(resp.RivalriesPreview.TopTeammates) == 0 {
-		t.Error("expected Alice in TopTeammates (AsTeammate=4 > AsEnemy=1)")
+	for _, c := range cases {
+		if c.got == nil {
+			t.Errorf("%s: ref is nil", c.name)
+			continue
+		}
+		if c.got.MatchID != c.wantID {
+			t.Errorf("%s: match_id = %s, want %s", c.name, c.got.MatchID, c.wantID)
+		}
+		if c.got.Value != c.wantVal {
+			t.Errorf("%s: value = %v, want %v", c.name, c.got.Value, c.wantVal)
+		}
 	}
-	// Bob (AsEnemy > AsTeammate) doit apparaÃ®tre dans TopEnemies
-	if len(resp.RivalriesPreview.TopEnemies) == 0 {
-		t.Error("expected Bob in TopEnemies (AsEnemy=3 > AsTeammate=0)")
+}
+
+func TestComputeSynthesisBestRefs_TieKeepsFirstSeen(t *testing.T) {
+	rows := []canonical.PlayerMatchRow{
+		makeCanonicalBestRow("first", 10, 5, 0, 0, 2.5, 0, 0),
+		makeCanonicalBestRow("second", 10, 5, 0, 0, 2.5, 0, 0), // égalité parfaite
+	}
+	refs := computeSynthesisBestRefs(rows)
+	if refs.kills == nil || refs.kills.MatchID != "first" {
+		t.Errorf("kills tie: want first, got %+v", refs.kills)
+	}
+	if refs.kda == nil || refs.kda.MatchID != "first" {
+		t.Errorf("kda tie: want first, got %+v", refs.kda)
+	}
+}
+
+func TestComputeSynthesisBestRefs_NilFieldsYieldNilRef(t *testing.T) {
+	rows := []canonical.PlayerMatchRow{
+		// row sans accuracy ni perf ni KDA
+		{
+			Summary: canonical.MatchSummary{MatchID: "m1"},
+			Self: canonical.MatchParticipant{
+				Kills: intPtr(5), Deaths: intPtr(2),
+			},
+		},
+	}
+	refs := computeSynthesisBestRefs(rows)
+	if refs.accuracy != nil {
+		t.Errorf("accuracy: want nil ref when Self.Accuracy nil, got %+v", refs.accuracy)
+	}
+	if refs.perf != nil {
+		t.Errorf("perf: want nil ref when PerformanceScore nil, got %+v", refs.perf)
+	}
+	if refs.kda != nil {
+		t.Errorf("kda: want nil ref when Self.KDA nil, got %+v", refs.kda)
+	}
+	if refs.kills == nil || refs.kills.MatchID != "m1" {
+		t.Errorf("kills: want ref to m1, got %+v", refs.kills)
+	}
+}
+
+func TestComputeSynthesisBestRefs_HeadshotsAndPersonalScore(t *testing.T) {
+	// Test isolé pour les 2 métriques ajoutées (2026-05-27 post-RA) afin de
+	// garder makeCanonicalBestRow à 8 paramètres (sinon dette PLR0913).
+	hs1, ps1 := 8, 1200
+	hs2, ps2 := 14, 900 // m2 max headshots
+	hs3, ps3 := 5, 3500 // m3 max personal score
+	rows := []canonical.PlayerMatchRow{
+		{
+			Summary: canonical.MatchSummary{MatchID: "m1"},
+			Self:    canonical.MatchParticipant{HeadshotKills: &hs1, PersonalScore: &ps1},
+		},
+		{
+			Summary: canonical.MatchSummary{MatchID: "m2"},
+			Self:    canonical.MatchParticipant{HeadshotKills: &hs2, PersonalScore: &ps2},
+		},
+		{
+			Summary: canonical.MatchSummary{MatchID: "m3"},
+			Self:    canonical.MatchParticipant{HeadshotKills: &hs3, PersonalScore: &ps3},
+		},
+	}
+	refs := computeSynthesisBestRefs(rows)
+	if refs.headshots == nil || refs.headshots.MatchID != "m2" || refs.headshots.Value != 14 {
+		t.Errorf("headshots: want m2/14, got %+v", refs.headshots)
+	}
+	if refs.personalScore == nil || refs.personalScore.MatchID != "m3" || refs.personalScore.Value != 3500 {
+		t.Errorf("personal_score: want m3/3500, got %+v", refs.personalScore)
+	}
+}
+
+func TestComputeSynthesisBestRefs_AllZeroSkipsRef(t *testing.T) {
+	// Si toutes les valeurs sont 0 (joueur n'a jamais tué/infligé de dégâts),
+	// la carte FE ne doit pas s'afficher -> ref nil.
+	rows := []canonical.PlayerMatchRow{
+		makeCanonicalBestRow("m1", 0, 0, 0, 0, 0, 0, 0),
+		makeCanonicalBestRow("m2", 0, 0, 0, 0, 0, 0, 0),
+	}
+	refs := computeSynthesisBestRefs(rows)
+	if refs.kills != nil {
+		t.Errorf("kills: want nil when all zero, got %+v", refs.kills)
+	}
+	if refs.damage != nil {
+		t.Errorf("damage: want nil when all zero, got %+v", refs.damage)
 	}
 }

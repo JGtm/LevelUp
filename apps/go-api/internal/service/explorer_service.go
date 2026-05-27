@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"golang.org/x/sync/errgroup"
+
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
@@ -17,6 +20,18 @@ import (
 
 // outcomeWin est le code de victoire (Halo Infinite outcome = 2).
 const outcomeWin = 2
+
+// ExplorerTargetIdentityProvider abstrait le fetch de l'identité Spartan d'un
+// xuid arbitraire (live cache+merge ou DB-only). Implémenté en production par
+// *CareerLiveService — voir career_live_service.go.
+//
+// Interface locale (et non port.go) car le contrat est spécifique au flow
+// Explorer (xuid tiers, no-tokens fallback) et n'a pas vocation à être
+// implémenté ailleurs que par CareerLiveService.
+type ExplorerTargetIdentityProvider interface {
+	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
+	GetSpartanIdentityFromDBOnly(ctx context.Context, xuid string) *domain.HomeSpartanIdentityRow
+}
 
 // ExplorerService orchestre les requêtes de l'Explorer.
 type ExplorerService struct {
@@ -28,6 +43,15 @@ type ExplorerService struct {
 	// future car canonical.MatchSummary ne couvre pas encore le filtrage
 	// Explorer (joueur commun + plage temporelle).
 	dataAdapter games.TitleDataAdapter
+
+	// Providers optionnels pour l'encart "Profil joueur cible". Quand l'un
+	// d'eux est nil, la goroutine correspondante est skip et le champ
+	// correspondant de ExplorerTargetProfile reste nil. Le sample_stats
+	// (calcul local) reste toujours produit même sans providers.
+	identityProvider ExplorerTargetIdentityProvider
+	remoteStats      port.PlayerStatsProvider
+	privacyProvider  port.PrivacyProvider
+	titleSlug        string
 }
 
 // NewExplorerService crée un ExplorerService.
@@ -40,6 +64,23 @@ func NewExplorerService(repo port.ExplorerRepository, xuid string) *ExplorerServ
 // d'amorcer la bascule vers la couche canonique.
 func (s *ExplorerService) WithDataAdapter(a games.TitleDataAdapter) *ExplorerService {
 	s.dataAdapter = a
+	return s
+}
+
+// WithTargetProfileProviders injecte les providers nécessaires à l'encart
+// "Profil joueur cible" (identité Spartan live + stats carrière remote +
+// privacy). Retourne le service pour chainer. Tous les providers sont
+// optionnels — un nil skip la sous-section correspondante.
+func (s *ExplorerService) WithTargetProfileProviders(
+	identity ExplorerTargetIdentityProvider,
+	remote port.PlayerStatsProvider,
+	privacy port.PrivacyProvider,
+	titleSlug string,
+) *ExplorerService {
+	s.identityProvider = identity
+	s.remoteStats = remote
+	s.privacyProvider = privacy
+	s.titleSlug = titleSlug
 	return s
 }
 
@@ -113,10 +154,14 @@ func (s *ExplorerService) GetCommonMatches(
 	encounterStats := convertEncounterStatsToExplorer(stats, totalCount)
 	activityHeatmap := analysis.ComputeActivityHeatmapFromCommonMatches(rawMatches)
 
+	// Encart "Profil joueur cible" : 4 sources fetch en parallèle (best-effort).
+	targetProfile := s.buildTargetProfile(ctx, otherXUID, otherGamertag, rawMatches)
+
 	slog.DebugContext(ctx, "explorer_common_matches",
 		"xuid", s.xuid, "other_xuid", otherXUID,
 		"total", totalCount, "page", page, "badges", len(badges),
-		"heatmap_cells", len(activityHeatmap))
+		"heatmap_cells", len(activityHeatmap),
+		"target_profile_built", targetProfile != nil)
 
 	return domain.ExplorerPlayerQueryResponse{
 		TargetGamertag:  otherGamertag,
@@ -131,7 +176,141 @@ func (s *ExplorerService) GetCommonMatches(
 		Page:            page,
 		PageSize:        pageSize,
 		ActivityHeatmap: activityHeatmap,
+		TargetProfile:   targetProfile,
 	}, nil
+}
+
+// buildTargetProfile orchestre les 4 sources de l'encart "Profil joueur cible".
+//
+// Détection précoce du cas no-tokens (user connecté sans OAuth Halo) : on
+// court-circuite les 3 goroutines live (identity remote, career_stats, privacy)
+// et on bascule l'identité sur DB locale. Le sample_stats reste calculé depuis
+// DuckDB indépendamment des tokens.
+//
+// Tous les fetchs sont best-effort : une goroutine qui retourne nil ne
+// bloque pas les autres. Le frontend rend les sections disponibles, masque
+// celles à nil, et affiche un hint "Connexion Halo requise" si
+// AuthAvailable=false.
+func (s *ExplorerService) buildTargetProfile(
+	ctx context.Context,
+	targetXUID, targetGamertag string,
+	rawMatches []domain.CommonMatchRaw,
+) *domain.ExplorerTargetProfile {
+	tokens := ctxkeys.HaloTokens(ctx)
+	hasAuth := tokens != nil && tokens.SpartanToken != ""
+
+	var (
+		identity    *domain.HomeSpartanIdentityRow
+		careerStats *domain.NormalizedPlayerStats
+		privacy     *domain.MatchPrivacyWarning
+		sampleStats *domain.ExplorerTargetSampleStats
+	)
+	g, gctx := errgroup.WithContext(ctx)
+
+	// Goroutine 1 : identity Spartan — live si auth dispo, DB locale sinon.
+	g.Go(func() error {
+		if s.identityProvider == nil {
+			return nil
+		}
+		if !hasAuth {
+			identity = s.identityProvider.GetSpartanIdentityFromDBOnly(gctx, targetXUID)
+			return nil
+		}
+		id, idErr := s.identityProvider.GetSpartanIdentityFor(gctx, targetXUID)
+		if idErr != nil {
+			slog.WarnContext(gctx, "explorer_target_identity_failed",
+				"xuid", targetXUID, "err", idErr)
+			return nil
+		}
+		identity = id
+		return nil
+	})
+
+	// Goroutine 2 : stats carrière remote via PlayerStatsProvider.
+	g.Go(func() error {
+		if s.remoteStats == nil {
+			return nil
+		}
+		if !hasAuth {
+			slog.DebugContext(gctx, "explorer_target_career_skipped",
+				"xuid", targetXUID, "reason", "no_auth_tokens")
+			return nil
+		}
+		stats, rErr := s.remoteStats.FetchRemoteStats(gctx, targetGamertag, s.titleSlug)
+		if rErr != nil {
+			slog.WarnContext(gctx, "explorer_target_career_failed",
+				"gamertag", targetGamertag, "err", rErr)
+			return nil
+		}
+		careerStats = stats
+		return nil
+	})
+
+	// Goroutine 3 : privacy warning du target.
+	g.Go(func() error {
+		if s.privacyProvider == nil {
+			return nil
+		}
+		if !hasAuth {
+			return nil
+		}
+		info, pErr := s.privacyProvider.GetMatchPrivacy(gctx, targetXUID)
+		if pErr != nil {
+			slog.WarnContext(gctx, "explorer_target_privacy_failed",
+				"xuid", targetXUID, "err", pErr)
+			return nil
+		}
+		if info != nil {
+			privacy = domain.NewPrivacyWarning(*info)
+		}
+		return nil
+	})
+
+	// Goroutine 4 : sample stats (toujours calculé, indépendant des tokens).
+	g.Go(func() error {
+		matchIDs := extractCommonMatchIDs(rawMatches)
+		if len(matchIDs) == 0 {
+			return nil
+		}
+		agg, sErr := s.repo.GetParticipantStatsForMatches(gctx, targetXUID, matchIDs)
+		if sErr != nil {
+			slog.WarnContext(gctx, "explorer_target_sample_stats_failed",
+				"xuid", targetXUID, "err", sErr)
+			return nil
+		}
+		medals, mErr := s.repo.GetMedalCountsForMatches(gctx, targetXUID, matchIDs)
+		if mErr != nil {
+			slog.WarnContext(gctx, "explorer_target_medals_failed",
+				"xuid", targetXUID, "err", mErr)
+			// medals est nil → BuildSampleStats l'ignorera, ce n'est pas bloquant.
+		}
+		sampleStats = analysis.BuildSampleStats(agg, medals, len(matchIDs))
+		return nil
+	})
+
+	_ = g.Wait()
+
+	// On émet toujours un TargetProfile (même si toutes les sous-sections
+	// sont nil) parce que AuthAvailable porte une info utile au front.
+	return &domain.ExplorerTargetProfile{
+		Identity:       identity,
+		CareerStats:    careerStats,
+		SampleStats:    sampleStats,
+		PrivacyWarning: privacy,
+		AuthAvailable:  hasAuth,
+	}
+}
+
+// extractCommonMatchIDs extrait la liste des match_id d'un slice de common matches.
+func extractCommonMatchIDs(rawMatches []domain.CommonMatchRaw) []string {
+	if len(rawMatches) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(rawMatches))
+	for i := range rawMatches {
+		ids = append(ids, rawMatches[i].MatchID)
+	}
+	return ids
 }
 
 // convertEncounterStatsToExplorer projette narrative.EncounterStats → domain.ExplorerEncounterStats.

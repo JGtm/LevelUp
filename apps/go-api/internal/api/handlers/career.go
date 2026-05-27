@@ -125,22 +125,22 @@ func (h *CareerHandler) GetHighlightMatches(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var bestIDs, worstIDs []string
+	var bestRows, worstRows []domain.HighlightMatchIDRow
 	for _, row := range data.Rows {
 		switch row.Section {
 		case 1:
-			bestIDs = append(bestIDs, row.MatchID)
+			bestRows = append(bestRows, row)
 		case 2:
-			worstIDs = append(worstIDs, row.MatchID)
+			worstRows = append(worstRows, row)
 		}
 	}
 
-	bestMatches, err := enrichHighlightMatches(r.Context(), mhSvc, bestIDs)
+	bestMatches, err := enrichHighlightMatches(r.Context(), mhSvc, bestRows)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
 		return
 	}
-	worstMatches, err := enrichHighlightMatches(r.Context(), mhSvc, worstIDs)
+	worstMatches, err := enrichHighlightMatches(r.Context(), mhSvc, worstRows)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
 		return
@@ -239,13 +239,18 @@ func (h *CareerHandler) GetCareerCSRs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// enrichHighlightMatches enrichit une liste de match_ids via
+// enrichHighlightMatches enrichit une liste de rows highlight via
 // MatchHistoryService.GetPage(MatchIDs=...) puis projette en ExplorerMatchesRow.
 // Préserve l'ordre d'entrée (Q9b trie par dominance prio + perf, ordre que le
-// MatchHistoryService.sortItems casserait sinon).
-func enrichHighlightMatches(ctx context.Context, mhSvc port.MatchHistoryService, matchIDs []string) ([]domain.ExplorerMatchesRow, error) {
-	if len(matchIDs) == 0 {
+// MatchHistoryService.sortItems casserait sinon) et propage HadBotTeammate
+// depuis la row source (le service de match history ne lit pas ce flag).
+func enrichHighlightMatches(ctx context.Context, mhSvc port.MatchHistoryService, rows []domain.HighlightMatchIDRow) ([]domain.ExplorerMatchesRow, error) {
+	if len(rows) == 0 {
 		return []domain.ExplorerMatchesRow{}, nil
+	}
+	matchIDs := make([]string, len(rows))
+	for i, r := range rows {
+		matchIDs[i] = r.MatchID
 	}
 	req := domain.MatchHistoryQueryRequest{
 		MatchIDs: matchIDs,
@@ -264,13 +269,15 @@ func enrichHighlightMatches(ctx context.Context, mhSvc port.MatchHistoryService,
 	for _, item := range resp.Table.Items {
 		byID[item.MatchID] = item
 	}
-	out := make([]domain.ExplorerMatchesRow, 0, len(matchIDs))
-	for _, id := range matchIDs {
-		item, ok := byID[id]
+	out := make([]domain.ExplorerMatchesRow, 0, len(rows))
+	for _, src := range rows {
+		item, ok := byID[src.MatchID]
 		if !ok {
 			continue // match_id absent du whitelist (filtre is_excluded ou autre)
 		}
-		out = append(out, BuildExplorerRowFromMatchHistory(item))
+		row := BuildExplorerRowFromMatchHistory(item)
+		row.HadBotTeammate = src.HadBotTeammate
+		out = append(out, row)
 	}
 	return out, nil
 }

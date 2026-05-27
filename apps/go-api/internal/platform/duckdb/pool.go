@@ -249,23 +249,17 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	// prestige_setup) doivent aussi utiliser OpenReadWriteShared pour partager
 	// la même clé cache "rw:path" et éviter "different configuration" errors
 	// (mix avec OpenReadOnly historiquement, fixé en commit 21).
-	var socialDB *DB
-	if cfg.SharedSocialDBPath != "" {
-		socialDB, err = OpenReadWriteShared(cfg.SharedSocialDBPath, cfg.UserTimezone)
-		if err != nil {
-			// Non bloquant : la DB sera créée lors de la prochaine migration.
-			// On log Warn pour garder une trace (l'absence du fichier au boot est
-			// normale, mais une erreur ouverture sur fichier existant indique
-			// verrou / corruption qu'on veut voir).
-			slog.WarnContext(ctx, "pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)",
-				"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", err)
-			socialDB = nil
-		} else {
-			// Appliquer les migrations shared_social (idempotentes).
-			if mErr := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); mErr != nil {
-				slog.ErrorContext(ctx, "pool: migrations SharedSocial échouées",
-					"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", mErr)
-			}
+	//
+	// Récupération auto : openSharedSocialWithWALRecovery quarantines un WAL
+	// non-rejouable (bug DuckDB #7659) puis retry. Cf. pool_shared_social_recovery.go
+	// + ADR 0021. En cas d'échec persistant : socialDB=nil (dégradation graceful
+	// existante), avec slog.Error pointant vers cmd/rebuild_shared_social.
+	socialDB := openSharedSocialWithWALRecovery(ctx, cfg.SharedSocialDBPath, cfg.UserTimezone, cfg.Gamertag)
+	if socialDB != nil {
+		// Appliquer les migrations shared_social (idempotentes).
+		if mErr := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); mErr != nil {
+			slog.ErrorContext(ctx, "pool: migrations SharedSocial échouées",
+				"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", mErr)
 		}
 	}
 

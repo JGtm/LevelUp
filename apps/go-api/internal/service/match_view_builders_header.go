@@ -232,14 +232,21 @@ func buildRankBlock(sr *domain.SkillRankRaw, assetURL games.TitleAssetURLAdapter
 	if sr.TierLabel != nil {
 		rank.TierLabel = sr.TierLabel
 	}
-	rank.NumericVal = sr.RatingValue
 	rank.DeltaValue = sr.RatingDelta
+
+	// Placement : valeur numérique stockée à 0 (contrainte NOT NULL player DB)
+	// mais sans signification — on n'envoie ni NumericVal ni ProgressPct pour
+	// éviter "CSR 0" et la barre à 0% dans le header match view.
+	isPlacement := sr.Tier != nil && strings.EqualFold(*sr.Tier, "Placement")
+	if !isPlacement {
+		rank.NumericVal = sr.RatingValue
+	}
 
 	// ProgressPct : position dans le sous-tier (0.0–1.0).
 	// CSR et LUSR Halo Infinite ont tous les deux des sous-tiers de 50 points.
 	// Même constante que home_canonical.go (tierSize = 50).
-	// Onyx : nil (pas de tier suivant défini).
-	if sr.RatingValue != nil && sr.Tier != nil && !strings.EqualFold(*sr.Tier, "Onyx") {
+	// Onyx et Placement : nil (pas de tier suivant / valeur non significative).
+	if !isPlacement && sr.RatingValue != nil && sr.Tier != nil && !strings.EqualFold(*sr.Tier, "Onyx") {
 		const tierSize = 50.0
 		pts := math.Mod(*sr.RatingValue, tierSize)
 		if pts < 0 {

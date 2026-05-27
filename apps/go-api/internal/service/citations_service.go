@@ -42,6 +42,18 @@ func (s *CitationsService) GetCitationsPage(ctx context.Context) (*domain.Citati
 		total += item.Total
 	}
 
+	// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et crashe
+	// le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	if items == nil {
+		items = []domain.CitationItem{}
+	}
+	if byCategory == nil {
+		byCategory = []domain.CitationCategoryGroup{}
+	}
+	if categories == nil {
+		categories = []string{}
+	}
+
 	return &domain.CitationsPageResponse{
 		Citations:           items,
 		CitationsByCategory: byCategory,
@@ -68,6 +80,12 @@ func (s *CitationsService) GetCommendationsPage(
 
 	commendations := analysis.MergeMedalSummary(medalTotals, medalMappings)
 	grouped := analysis.GroupCommendationsByCategory(commendations)
+
+	// Init [] plutôt que nil : un slice nil sérialise en JSON `null` et crashe
+	// le front. Cf. testutil.RequireNoNilSlicesWithoutOmitempty.
+	if grouped == nil {
+		grouped = []domain.CommendationCategory{}
+	}
 
 	return &domain.CommendationsPageResponse{
 		Categories: grouped,

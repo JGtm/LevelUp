@@ -22,6 +22,7 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -58,6 +59,14 @@ type SocialPersister interface {
 	AddLike(ctx context.Context, mediaPath, likerSlug, likerGamertag string) error
 	// RemoveLike : DELETE FROM media_likes.
 	RemoveLike(ctx context.Context, mediaPath, likerSlug string) error
+
+	// SetMediaMatchAssociation : force l'association média→match (DELETE old +
+	// INSERT new dans la même TX, CHECKPOINT garanti). ADR 0021 Phase 3.2.
+	SetMediaMatchAssociation(ctx context.Context, mediaFileID int64, matchID string) error
+
+	// SetMediaLiked : UPDATE media_files.liked (+ liked_at) atomique avec
+	// CHECKPOINT garanti. Retourne true si la ligne existait. ADR 0021 Phase 3.2.
+	SetMediaLiked(ctx context.Context, filePath string, liked bool) (bool, error)
 
 	// AppendPlayerRecord : INSERT pur dans player_records_history (pattern
 	// append-only, anti-bug ART). achievedAt et achievedMatchID peuvent être
@@ -127,3 +136,20 @@ func (n NotificationData) GetCreatedAt() time.Time  { return n.CreatedAt }
 // Si nil (cas tests, bootstrap CLI), pdb.SocialPersister reste nil et les
 // repos retombent sur leur chemin legacy db.Exec.
 var SocialPersisterFactory func(db *sql.DB) SocialPersister
+
+// RequireSocialPersister, quand true, force les call sites à exiger un
+// SocialPersister wired et retourner une erreur si nil au lieu de fallback
+// silencieusement vers le path legacy db.Exec.
+//
+// Set à true par main.go au boot (cmd/server/main.go) APRÈS le wiring de
+// SocialPersisterFactory. Default false pour préserver les tests qui
+// n'instancient pas le Persister (cf. post_sync_deltas_test.go et al.).
+//
+// ADR 0021 Gap 1 : empêche silencieusement un site d'écriture de contourner
+// le CHECKPOINT systématique du Persister en prod.
+var RequireSocialPersister bool
+
+// ErrSocialPersisterNotWired est retourné par les call sites quand
+// RequireSocialPersister == true et pdb.SocialPersister == nil. Le caller
+// HTTP doit mapper en 5xx (erreur serveur — wiring boot bugué).
+var ErrSocialPersisterNotWired = errors.New("shared_social: SocialPersister non wired — refus d'écrire sans CHECKPOINT (ADR 0021 Gap 1)")
