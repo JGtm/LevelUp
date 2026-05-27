@@ -189,19 +189,29 @@ FROM career_progression cp
 ORDER BY cp.recorded_at DESC
 LIMIT 1`
 
-// Q7 : Career — historique XP complet.
-// Filtre les rows sans donnée XP (rank IS NULL ET xp_total=0 — inserts partiels
-// customisation-only où DEFAULT 0 s'appliquait sur xp_total). NULLIF traite
-// les 0 issus du DEFAULT comme NULL pour le fallback.
+// Q7 : Career — historique XP complet, monotone.
+//
+// Filtre les rows sans xp_total réel : post-migration fix_career_xp_total_default_zero
+// (steps_player_fix_career_xp_total_default.go), xp_total=0/NULL est toujours un
+// artefact d'un INSERT partial customization-only — jamais une valeur légitime.
+//
+// MAX(xp_total) OVER garantit la monotonie : si un row aberrant subsiste (ex :
+// xp_total chuté par bug API ou écriture concurrente), il ne fait pas régresser
+// la courbe — on garde le max précédent.
+//
+// Pas de fallback rank * 1000 : il sous-estimait massivement la vraie valeur
+// historique (un Diamant à 5M XP voyait 300_000 quand xp_total devenait NULL).
 const Q7CareerXPHistory = `
 SELECT
     cp.recorded_at,
     cp.rank          AS rank_number,
     cp.current_xp,
-    COALESCE(NULLIF(cp.xp_total, 0), NULLIF(cp.rank, 0) * 1000) AS xp_total_cumulative
+    MAX(cp.xp_total) OVER (
+        ORDER BY cp.recorded_at
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS xp_total_cumulative
 FROM career_progression cp
-WHERE cp.rank IS NOT NULL
-   OR NULLIF(cp.xp_total, 0) IS NOT NULL
+WHERE cp.xp_total IS NOT NULL AND cp.xp_total > 0
 ORDER BY cp.recorded_at ASC`
 
 // Q8LUSRHistoryPlayerTpl : Phase A de Q8 — partie player (match_skill_rank)
