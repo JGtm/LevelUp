@@ -1,3 +1,58 @@
+## [2026-05-27] feat(session-compare): Phase 2 — 5 charts restants (01 skill, 04 highlights, 06 MMR, 13 participation, 14 historique)
+
+**Statut** : Complété
+
+**Branche** : `feat/lusr-v2-phase0-metrics`
+
+**Décision technique** : Tous les champs manquants (SkillRating, MMR, Participation 6 axes, Matches, BestMatch/WorstMatch) ajoutés dans `SessionCompareEntry` côté domain Go et TypeScript. Profil de participation réutilise les formules Squad Synergy (narrative.ComputeParticipationProfile + synergyOffensiveConversion/synergyDefensiveResistance) avec thresholds n-scaled. Accuracy 0..1 (ADR 0006) — pas de division par 100 contrairement aux SquadMatchRow. Objective axis à 0 (pas de PSA dans StatsMatchRow).
+
+**Résultats** : 4 nouveaux composants TSX + 33 clés i18n + 4 helpers Go. TypeScript clean, go test ./internal/... all pass.
+
+**Prochaine étape** : PR de la branche feat/lusr-v2-phase0-metrics
+
+---
+
+## [2026-05-27] refactor(career): raffinement had_bot_teammate — ignore les bots late-join sans impact significatif
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : suite du seuil hybride (30s + 15% du match) livré plus tôt, le collègue a finalisé la mini-Phase 0.5 LUSR v2 (cf. [steps_shared_add_participation_info.go](apps/go-api/internal/migration/steps_shared_add_participation_info.go)) : 4 colonnes BOOLEAN sur `match_participants` (`present_at_beginning`, `joined_in_progress`, `left_in_progress`, `present_at_completion`) avec backfill historique. Ces colonnes ciblent primairement LUSR v2 §9 quit penalty mais permettent aussi un raffinement de `had_bot_teammate`.
+
+**Cas réel observé** (diag tool étendu pour afficher ParticipationInfo) : Madina/615b3ebc — bot `bid(18.0)`, `joined_in_progress=TRUE`, `present_at_completion=TRUE`, `time_played=6s` sur match 390s. Sémantique : humain quitté 6 secondes avant la fin, bot remplaçant pour la touche finale. Impact strictement nul.
+
+**Raffinement décidé** : un bot `joined_in_progress=TRUE` dont `time_played / duration_seconds < botLateJoinIgnoreRatio (30%)` est **ignoré dans la SUM polluante** (CASE WHEN dans le SQL). Les bots `present_at_beginning=TRUE` continuent d'être comptés intégralement (déséquilibre dès le début reste pénalisant même brièvement).
+
+**Sémantique** :
+- Bot remplaçant en fin de partie (`joined_in_progress` + faible présence) → ignoré → pas de pollution du flag.
+- Bot from-start ou bot late-join présent significativement (≥30% du match) → compté normalement, seuils hybrides classiques s'appliquent sur la SUM résultante.
+
+**Implémentation** ([enrichments.go](apps/go-api/internal/sync/enrichments.go)) :
+- Nouvelle constante `botLateJoinIgnoreRatio = 0.30`.
+- `querySignificantBotMatchIDs` : CASE WHEN dans le SUM ignore les bots late-join à faible présence.
+- Commentaire fonction mis à jour, TODO du collègue retiré (les 4 BOOLEAN sont maintenant utilisées).
+
+**Tests** ([enrichments_test.go](apps/go-api/internal/sync/enrichments_test.go)) :
+- Helper `insertBotWithParticipation` (les 4 BOOLEAN explicites).
+- 4 nouveaux tests :
+  - `_LateJoinBrief_FALSE` : late-join 80s/480s (16.6% < 30%) → ignoré → FALSE.
+  - `_LateJoinLong_TRUE` : late-join 200s/480s (41.6% ≥ 30%) → compté → TRUE.
+  - `_FromStartBrief_PassesNormalThresholds` : from-start 100s/480s (20.8%) → compté normalement → TRUE.
+  - `_MadinaRealCase_FALSE` : reproduit exactement Madina/615b3ebc (bot late-join 6s/390s) → FALSE après recompute.
+- Total : **17/17 PASS** (`go test -tags=integration ./internal/sync/ -run TestComputeAndPersistHadBotTeammate -v`).
+- `go test ./...` : PASS. `go vet ./...` : OK.
+
+**Diag tool** ([cmd/diag_highlight_match/main.go](apps/go-api/cmd/diag_highlight_match/main.go)) : nouvelle section "ParticipationInfo des bots teammates" qui liste pour chaque bot les 4 BOOLEAN + son time_played. Indispensable pour diagnostiquer les cas marginaux.
+
+**Vérification terrain** : diag relancé sur Madina/615b3ebc confirme `joined_in_progress=TRUE`, time_played=6s, ratio 1.5%. Avec le raffinement, ce bot est ignoré dans la SUM → flag passera à FALSE au prochain sync de Madina. Pas de backfill manuel : le post-sync hook recompute pour chaque joueur à son rythme.
+
+**Hors scope** :
+- Usage des 4 BOOLEAN pour LUSR v2 §9 quit penalty (autre PR du collègue).
+- Raffinement sur `left_in_progress` (un bot qui prend la place ET part avant la fin) — pour l'instant traité comme un bot late-join standard.
+
+---
+
 ## [2026-05-27] feat(session-compare): complétion de la page session compare — charts 07-10 + tables maps/modes
 
 **Statut** : Complété
@@ -62,6 +117,40 @@
 - **Run pending** : la shared DB est ouverte RW par le serveur. Le run nécessite soit l'arrêt du serveur, soit une copie offline du fichier. Procédure documentée dans le `cmd/lusr_v2_replay/main.go` (usage CLI).
 
 **Prochaine étape** : run effectif du cmd → analyse des résultats → décision (Phase 2 squadOffset, ou Phase 3 kills/deaths obs, ou recalibration priors). Migration strategy v1→v2 reste à trancher (cf. discussion utilisateur, ouverte).
+
+---
+
+## [2026-05-27] feat(lusr-v2): Phase 3a — factor graph + EP foundation
+
+**Statut** : Complété
+
+**Contexte** : la validation Phase 1d a démontré que le LUSR v2 classique (closed-form sans signal individuel par match) ne peut PAS départager les coéquipiers récurrents (Madina/Choco/JGtm jouent énormément en squad, leurs μ bougent ensemble). Le seul moyen propre est TS2 §8 (kills/deaths comme observations Bayésiennes), qui requiert un factor graph + Expectation Propagation.
+
+**Décision technique principale** :
+
+Nouveau sous-package [internal/analysis/skill_v2/ep/](../apps/go-api/internal/analysis/skill_v2/ep/) — foundation EP propre, indépendante du closed-form du package parent (conservé comme fast-path TS classique).
+
+1. **Gaussian en forme canonique** ([gaussian.go](../apps/go-api/internal/analysis/skill_v2/ep/gaussian.go)) — `(π = 1/σ², τ = μ/σ²)` plutôt que `(μ, σ)`. Multiplication = addition en canonique, division = soustraction, Gaussienne uniforme = élément neutre (π=0). Bien plus simple pour EP que les manipulations directes en (μ, σ).
+
+2. **Variable** ([variable.go](../apps/go-api/internal/analysis/skill_v2/ep/variable.go)) — stocke marginal courant + map des derniers messages reçus par facteur. `MessageTo(factor)` retourne `marginal / lastMessageFrom(factor)` (cancel-out propre, EP ne compte jamais 2× la même info).
+
+3. **Factor interface + Runner** ([factor.go](../apps/go-api/internal/analysis/skill_v2/ep/factor.go)) — message-pass round-robin, convergence sur max-delta < tolerance, borne MaxIters anti-divergence.
+
+4. **4 facteurs élémentaires** suffisant pour TS classique :
+   - [PriorFactor](../apps/go-api/internal/analysis/skill_v2/ep/prior_factor.go) — ancre `X ~ N(μ_0, σ_0²)`
+   - [LikelihoodFactor](../apps/go-api/internal/analysis/skill_v2/ep/likelihood_factor.go) — `Y ~ N(X, β²)` (canal bruité, ajout de variance)
+   - [SumFactor](../apps/go-api/internal/analysis/skill_v2/ep/sum_factor.go) — `Y = Σ w_i · X_i` (combinaison linéaire pondérée, gère forward AND backward)
+   - [GreaterThanFactor](../apps/go-api/internal/analysis/skill_v2/ep/greater_than_factor.go) — observation `X > ε` (Gaussienne tronquée, moment matching avec v/w corrections)
+
+5. **Validation intégration** : `TestIntegration_1v1Match` reconstruit un match 1v1 complet en EP (priors → links → diff → observation `diff > 0`) et vérifie que Δμ winner ≈ 4.66 (référence Moserware/Skills, qui est lui-même validé contre l'implémentation officielle Microsoft Research). Match exact à 0.5 près sur 100 itérations max.
+
+**Résultats observés** :
+
+- 19 tests PASS dans `internal/analysis/skill_v2/ep/` : Gaussian operations (Mul/Div/Identity/AbsoluteDifference), Variable (cancel-out propre), chaque factor isolément, integration 1v1.
+- `go vet ./...` clean, `go build ./...` OK.
+- ~900 lignes (4 fichiers source + 1 fichier test).
+
+**Prochaine étape (Phase 3b, session suivante)** : reconstruire `UpdateTwoTeam` sur EP (assemblage du match factor graph N-vs-M) avec régression test : mêmes résultats numériques que le closed-form Phase 1a. Puis Phase 3c : ajout du TruncatedGaussianCountFactor pour kills/deaths comme observations (TS2 §8). Puis Phase 3d : re-run validation sur les 4 joueurs, attente que Madina remonte au-dessus de Choco/JGtm grâce au signal kills/deaths individuel.
 
 ---
 
