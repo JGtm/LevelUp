@@ -1,3 +1,30 @@
+## [2026-05-27] feat(lusr-v2): Phase 3e v2 — persistance des seuils tier dans lusr_hyperparams_v2
+
+**Statut** : Complété
+
+**Contexte** : Phase 3e v2 commit précédent (`3583a913`) ne stockait les seuils tier qu'en code Go (`DefaultTierBoundaries`). Pour permettre à un sysadmin / une ré-estimation batch (Phase 5) de modifier les seuils sans rebuild, on persiste les valeurs dans `lusr_hyperparams_v2` et on fait lire la DB en priorité avec fallback sur les defaults Go.
+
+**Décision technique principale** :
+
+1. **Migration `shared_seed_tier_boundaries_v2`** ([steps_shared_seed_tier_boundaries_v2.go](../apps/go-api/internal/migration/steps_shared_seed_tier_boundaries_v2.go)) — `ApplyBackfill` insère 24 rows (6 seuils × 4 playlist_groups LUSR) avec `source='phase_3e_v2_default'`. Idempotent via `INSERT ... WHERE NOT EXISTS` sur `(playlist_group, name)` — re-run = 0 insert.
+
+2. **`tierResolver`** dans [cmd/lusr_v2_replay/main.go](../apps/go-api/cmd/lusr_v2_replay/main.go) — wrapper qui pré-charge les seuils par groupe au démarrage et expose `Tier(group, mu) string`. Le mécanisme `TierBoundariesFromHyperparams` du package `skill_v2` gère le fallback automatique : si la DB n'a pas de row pour un tier donné, on prend la valeur de `DefaultTierBoundaries()`.
+
+3. **Strategy de surcharge** : la table `lusr_hyperparams_v2` est append-only avec vue `_latest` (MAX(written_at) par `(playlist_group, name)`). Phase 5 batch écrira des nouvelles rows avec `source='batch_YYYY_MM'` — ces rows écraseront les `phase_3e_v2_default` via le filtre MAX. Pas besoin de DELETE.
+
+4. **Per-group flexibility** : à l'état initial, les 4 groupes ont les mêmes seuils. Phase 5 pourra calibrer différemment chaque groupe (la distribution μ peut diverger entre BTB et arena_slayer).
+
+**Résultats observés** :
+
+- `go test ./internal/analysis/skill_v2/ ./internal/migration/` PASS.
+- `go build -tags cgo ./cmd/lusr_v2_replay/` clean.
+- Re-replay identique au commit précédent (la migration n'est pas encore appliquée puisque le serveur Air est arrêté — au prochain boot, les 24 rows seront seedées et les `tier_boundary_*` chargés depuis la DB).
+- Audit log : les seuils sont maintenant traçables côté DB (`SELECT * FROM lusr_hyperparams_v2_latest WHERE name LIKE 'tier_boundary_%'` après le prochain boot).
+
+**Prochaine étape** : pas de travail autonome restant — reste la bascule prod (Stratégie C, GO utilisateur requis), l'affichage UI (travail produit), et la Phase 5 batch (ré-estimation hyperparams sur l'historique complet, lourd).
+
+---
+
 ## [2026-05-27] fix(lusr-v2): Phase 3e v2 — grille tier refined (CSR-aligned)
 
 **Statut** : Complété

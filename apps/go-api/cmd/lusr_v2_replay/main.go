@@ -94,7 +94,12 @@ func main() {
 		results[gt] = queryFinalStates(ctx, db, xuid)
 	}
 
-	writeReport(os.Stdout, players, xuidByGT, results)
+	// Phase 3e v2 : charge les seuils tier depuis lusr_hyperparams_v2_latest
+	// (seedés par la migration shared_seed_tier_boundaries_v2). Fallback sur
+	// defaults Go si la DB n'a pas encore reçu le seed.
+	resolver := newTierResolver(ctx, db, []string{"arena_slayer", "arena_objectif", "btb", "chaos"})
+
+	writeReport(os.Stdout, players, xuidByGT, results, resolver)
 }
 
 type playerGroupSummary struct {
@@ -168,13 +173,60 @@ func queryFinalStates(ctx context.Context, db *sql.DB, xuid string) map[string]p
 	return out
 }
 
-// inferredTier : mapping μ → tier label complet (ex: "Or III") via
-// le helper Phase 3e calibré sur la distribution observée.
-func inferredTier(mu float64) string {
-	return skillv2.FormatTierLabel(mu, skillv2.DefaultTierBoundaries())
+// tierResolver charge les seuils tier par playlist_group depuis lusr_hyperparams_v2
+// au démarrage, et retourne un closure qui formate les labels (ex: "Or III").
+// Si aucun seuil n'est persisté pour un groupe, fallback sur les defaults Go.
+//
+// Phase 3e v2 : les defaults Go reflètent exactement les valeurs persistées par
+// la migration shared_seed_tier_boundaries_v2 — donc à l'état initial le résultat
+// est identique. La distinction sert quand un sysadmin ou un batch Phase 5
+// écrasera certains seuils dans la DB.
+type tierResolver struct {
+	perGroup map[string][]skillv2.TierBoundary
 }
 
-func writeReport(w *os.File, players []string, xuidByGT map[string]string, results map[string]map[string]playerGroupSummary) {
+func newTierResolver(ctx context.Context, db *sql.DB, groups []string) *tierResolver {
+	r := &tierResolver{perGroup: make(map[string][]skillv2.TierBoundary, len(groups))}
+	for _, g := range groups {
+		hp := loadGroupHyperparams(ctx, db, g)
+		r.perGroup[g] = skillv2.TierBoundariesFromHyperparams(hp)
+	}
+	return r
+}
+
+// Tier retourne le label complet (ex: "Or IV") pour (group, μ).
+func (r *tierResolver) Tier(group string, mu float64) string {
+	bs, ok := r.perGroup[group]
+	if !ok {
+		bs = skillv2.DefaultTierBoundaries()
+	}
+	return skillv2.FormatTierLabel(mu, bs)
+}
+
+// loadGroupHyperparams lit les hyperparams (name → value) d'un playlist_group
+// depuis lusr_hyperparams_v2_latest. Retourne nil si la vue est vide pour ce
+// groupe — TierBoundariesFromHyperparams gérera le fallback.
+func loadGroupHyperparams(ctx context.Context, db *sql.DB, group string) map[string]float64 {
+	rows, err := db.QueryContext(ctx, `
+		SELECT name, value FROM lusr_hyperparams_v2_latest
+		WHERE playlist_group = ?`, group)
+	if err != nil {
+		slog.Warn("loadGroupHyperparams", "group", group, "err", err)
+		return nil
+	}
+	defer rows.Close() //nolint:errcheck
+	out := map[string]float64{}
+	for rows.Next() {
+		var n string
+		var v float64
+		if rows.Scan(&n, &v) == nil {
+			out[n] = v
+		}
+	}
+	return out
+}
+
+func writeReport(w *os.File, players []string, xuidByGT map[string]string, results map[string]map[string]playerGroupSummary, resolver *tierResolver) {
 	fmt.Fprintf(w, "# LUSR v2 — Phase 1d : replay sur joueurs trackés\n\n")
 	fmt.Fprintf(w, "Replay du shadow runner sur tout l'historique LUSR-éligible des joueurs ci-dessous, ")
 	fmt.Fprintf(w, "depuis l'état frais (priors par défaut TrueSkill : μ_0=25, σ_0=25/3, β=σ_0/2, τ=σ_0/100).\n\n")
@@ -204,7 +256,7 @@ func writeReport(w *os.File, players []string, xuidByGT map[string]string, resul
 		}
 		s := groups[best]
 		fmt.Fprintf(w, "| %s | %s | %s | %s | %.2f | %.2f | %s | %d |\n",
-			gt, xuid, target, best, s.Mu, s.Sigma, inferredTier(s.Mu), s.Experience)
+			gt, xuid, target, best, s.Mu, s.Sigma, resolver.Tier(best, s.Mu), s.Experience)
 	}
 
 	fmt.Fprintf(w, "\n## Détail par joueur × groupe\n\n")
@@ -225,7 +277,7 @@ func writeReport(w *os.File, players []string, xuidByGT map[string]string, resul
 		for _, g := range gnames {
 			s := groups[g]
 			fmt.Fprintf(w, "| %s | %.2f | %.2f | %s | %d |\n",
-				g, s.Mu, s.Sigma, inferredTier(s.Mu), s.Experience)
+				g, s.Mu, s.Sigma, resolver.Tier(g, s.Mu), s.Experience)
 		}
 		fmt.Fprintln(w)
 	}
