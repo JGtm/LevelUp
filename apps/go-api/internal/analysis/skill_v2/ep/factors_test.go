@@ -131,6 +131,59 @@ func TestSumFactor_BackwardInfersOneInput(t *testing.T) {
 	}
 }
 
+func TestWithinFactor_PullsTowardZero(t *testing.T) {
+	// X a un prior centré sur 4 avec σ=5 (typique d'une diff de team_perf après
+	// les links β²). On observe |X| < 2. Le posterior doit avoir μ pulled DOWN
+	// depuis 4 vers la zone (-2, +2). Paramètres choisis pour rester loin des
+	// limites numériques (denom > 1e-12).
+	x := NewVariable("x")
+	prior, _ := FromMeanVariance(4, 25) // σ = 5
+	pf := NewPriorFactor("prior", x, prior)
+	wf := NewWithinFactor("within", x, 2.0)
+
+	r := NewRunner([]Factor{pf, wf})
+	r.MaxIters = 100
+	r.Run()
+	if x.Marginal.Mu() >= 4 {
+		t.Errorf("posterior μ = %v, expected < 4 (pulled down by draw constraint)", x.Marginal.Mu())
+	}
+	if x.Marginal.Variance() >= 25 {
+		t.Errorf("posterior variance = %v, expected < 25 (tighter after observation)", x.Marginal.Variance())
+	}
+}
+
+func TestWithinFactor_SymmetricForNegativeMu(t *testing.T) {
+	// Mirror : μ = -4, σ = 5, ε = 2. Posterior doit être pulled UP depuis -4.
+	x := NewVariable("x")
+	prior, _ := FromMeanVariance(-4, 25)
+	pf := NewPriorFactor("prior", x, prior)
+	wf := NewWithinFactor("within", x, 2.0)
+
+	r := NewRunner([]Factor{pf, wf})
+	r.MaxIters = 100
+	r.Run()
+	if x.Marginal.Mu() <= -4 {
+		t.Errorf("posterior μ = %v, expected > -4 (pulled up)", x.Marginal.Mu())
+	}
+}
+
+func TestWithinFactor_ExtremeMargin_FallsBackToUniform(t *testing.T) {
+	// Cas pathologique : μ très éloigné de la draw zone (μ=10, σ=1, ε=1).
+	// Numériquement le facteur dégrade en uniform (denom < 1e-12). Vérifie
+	// qu'on ne panic pas et que la variable reste cohérente.
+	x := NewVariable("x")
+	prior, _ := FromMeanVariance(10, 1)
+	pf := NewPriorFactor("prior", x, prior)
+	wf := NewWithinFactor("within", x, 1.0)
+	r := NewRunner([]Factor{pf, wf})
+	r.MaxIters = 50
+	r.Run()
+	// Marginal doit rester finite, pas NaN.
+	if math.IsNaN(x.Marginal.Mu()) || math.IsNaN(x.Marginal.Sigma()) {
+		t.Errorf("NaN dans posterior extrême : %v", x.Marginal)
+	}
+}
+
 func TestGreaterThanFactor_BiasesUp(t *testing.T) {
 	// Si X est observée > 0 et son prior est centré sur 0, le posterior
 	// doit avoir μ > 0 et σ < σ_prior (la troncature serre la distribution).
