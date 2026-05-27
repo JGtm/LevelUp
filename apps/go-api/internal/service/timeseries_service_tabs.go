@@ -1,0 +1,411 @@
+// Package service — timeseries_service_tabs.go : builders des 4 onglets
+// Summary, Cumul, Intensity, Distributions + buildMatchRows. Decoupe de
+// timeseries_service.go (god-file split, refactor 2026-05-27).
+package service
+
+import (
+	"fmt"
+	"math"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/legacymatch"
+)
+
+// ---------------------------------------------------------------------------
+// Onglet Summary
+// ---------------------------------------------------------------------------
+
+func buildTimeseriesSummaryTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesSummaryTab {
+	cards := make([]domain.TimeseriesKpiCard, 0, 6)
+	n := len(matches)
+	if n == 0 {
+		return domain.TimeseriesSummaryTab{KpiCards: cards}
+	}
+
+	wins, totalKills, totalDeaths := 0, 0, 0
+	accSum, accN := 0.0, 0
+	for _, m := range matches {
+		if m.Outcome != nil && *m.Outcome == analysis.OutcomeWin {
+			wins++
+		}
+		totalKills += m.Kills
+		totalDeaths += m.Deaths
+		if m.Accuracy != nil {
+			accSum += *m.Accuracy
+			accN++
+		}
+	}
+
+	// TODO P4 ADR 0006 : retirer *100 (convention API canonique 0..1).
+	winRate := analysis.WinRate(wins, n) * 100
+	kd := 0.0
+	if totalDeaths > 0 {
+		kd = float64(totalKills) / float64(totalDeaths)
+	}
+
+	cards = append(cards,
+		domain.TimeseriesKpiCard{Key: "total_matches", Label: "Matchs", Value: fmt.Sprintf("%d", n)},
+		domain.TimeseriesKpiCard{Key: "win_rate", Label: "Win Rate", Value: fmt.Sprintf("%.1f%%", winRate)},
+		domain.TimeseriesKpiCard{Key: "kd_ratio", Label: "K/D", Value: fmt.Sprintf("%.2f", kd)},
+		domain.TimeseriesKpiCard{Key: "kills_per_game", Label: "Kills/game", Value: fmt.Sprintf("%.1f", float64(totalKills)/float64(n))},
+	)
+
+	if accN > 0 {
+		avgAcc := accSum / float64(accN) * 100
+		cards = append(cards, domain.TimeseriesKpiCard{
+			Key: tsMetricKeyAccuracy, Label: "PrÃ©cision", Value: fmt.Sprintf("%.1f%%", avgAcc),
+		})
+	}
+
+	return domain.TimeseriesSummaryTab{KpiCards: cards}
+}
+
+// ---------------------------------------------------------------------------
+// Onglet Cumul
+// ---------------------------------------------------------------------------
+
+func buildCumulTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesCumulTab {
+	n := len(matches)
+	if n == 0 {
+		return domain.TimeseriesCumulTab{}
+	}
+
+	cumulKD := make([]domain.CumulativePoint, 0, n)
+	cumulNet := make([]domain.CumulativePoint, 0, n)
+	rollingKD := make([]domain.CumulativePoint, 0, n)
+
+	totalKills, totalDeaths, cumulNetVal := 0, 0, 0
+	const rollingWindow = 5 // port Python compute_rolling_kd_polars(window=5)
+
+	for i, m := range matches {
+		totalKills += m.Kills
+		totalDeaths += m.Deaths
+
+		kd := 0.0
+		if totalDeaths > 0 {
+			kd = float64(totalKills) / float64(totalDeaths)
+		}
+		cumulKD = append(cumulKD, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime, Value: math.Round(kd*100) / 100,
+		})
+
+		net := m.Kills - m.Deaths
+		cumulNetVal += net
+		cumulNet = append(cumulNet, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime, Value: float64(cumulNetVal),
+		})
+
+		// Rolling K/D sur fenÃªtre glissante.
+		start := i - rollingWindow + 1
+		if start < 0 {
+			start = 0
+		}
+		rk, rd := 0, 0
+		for j := start; j <= i; j++ {
+			rk += matches[j].Kills
+			rd += matches[j].Deaths
+		}
+		rkd := 0.0
+		if rd > 0 {
+			rkd = float64(rk) / float64(rd)
+		}
+		rollingKD = append(rollingKD, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime, Value: math.Round(rkd*100) / 100,
+		})
+	}
+
+	return domain.TimeseriesCumulTab{
+		CumulativeKD:  cumulKD,
+		CumulativeNet: cumulNet,
+		RollingKD:     rollingKD,
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Onglet IntensitÃ© (Sprint 42)
+// ---------------------------------------------------------------------------
+
+// buildIntensityTab construit la heatmap jourÃ—heure et le score/min.
+func buildIntensityTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesIntensityTab {
+	if len(matches) == 0 {
+		return domain.TimeseriesIntensityTab{
+			HeatmapData:     []domain.IntensityHeatmapPoint{},
+			ScorePerMinData: []domain.CumulativePoint{},
+		}
+	}
+
+	// Heatmap jour Ã— heure.
+	type cell struct {
+		kills, deaths, count int
+	}
+	heatmap := make(map[[2]int]*cell) // [day, hour]
+
+	scorePerMin := make([]domain.CumulativePoint, 0, len(matches))
+
+	for i, m := range matches {
+		day := int(m.StartTime.Weekday())
+		// Convertir Sunday=0 â†’ Monday=0..Sunday=6
+		day = (day + 6) % 7
+		hour := m.StartTime.Hour()
+		key := [2]int{day, hour}
+		c, ok := heatmap[key]
+		if !ok {
+			c = &cell{}
+			heatmap[key] = c
+		}
+		c.kills += m.Kills
+		c.deaths += m.Deaths
+		c.count++
+
+		// Score per minute.
+		spm := 0.0
+		if m.PersonalScore != nil && m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
+			spm = float64(*m.PersonalScore) / (float64(*m.TimePlayedSeconds) / 60.0)
+		}
+		scorePerMin = append(scorePerMin, domain.CumulativePoint{
+			Index: i, StartTime: m.StartTime,
+			Value: math.Round(spm*100) / 100,
+		})
+	}
+
+	points := make([]domain.IntensityHeatmapPoint, 0, len(heatmap))
+	for key, c := range heatmap {
+		avgKD := 0.0
+		if c.deaths > 0 {
+			avgKD = float64(c.kills) / float64(c.deaths)
+		}
+		points = append(points, domain.IntensityHeatmapPoint{
+			DayOfWeek: key[0],
+			Hour:      key[1],
+			Count:     c.count,
+			AvgKD:     math.Round(avgKD*100) / 100,
+		})
+	}
+
+	return domain.TimeseriesIntensityTab{
+		HeatmapData:     points,
+		ScorePerMinData: scorePerMin,
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Onglet Distributions (Sprint 42)
+// ---------------------------------------------------------------------------
+
+// buildDistributionsTab construit les histogrammes KDA/kills et les corrÃ©lations.
+func buildDistributionsTab(matches []legacymatch.StatsMatchRow) domain.TimeseriesDistributionsTab {
+	if len(matches) == 0 {
+		return domain.TimeseriesDistributionsTab{
+			KDABuckets:         []domain.DistributionBucket{},
+			KillsBuckets:       []domain.DistributionBucket{},
+			AccuracyBuckets:    []domain.DistributionBucket{},
+			ScorePerMinBuckets: []domain.DistributionBucket{},
+			RollingWRBuckets:   []domain.DistributionBucket{},
+			CorrelationPoints:  []domain.CorrelationDataPair{},
+		}
+	}
+
+	return domain.TimeseriesDistributionsTab{
+		KDABuckets:             buildKDABuckets(matches),
+		KillsBuckets:           buildKillsBuckets(matches),
+		AccuracyBuckets:        buildAccuracyBuckets(matches),
+		ScorePerMinBuckets:     buildScorePerMinBuckets(matches),
+		RollingWRBuckets:       buildRollingWRBuckets(matches),
+		LifeBuckets:            buildLifeBuckets(matches),
+		PerfScoreBuckets:       buildPerfScoreBuckets(matches),
+		PersonalScoreBuckets:   buildPersonalScoreBuckets(matches),
+		MaxKillingSpreeBuckets: buildMaxKillingSpreeBuckets(matches),
+		CorrelationPoints:      buildCorrelationPoints(matches),
+	}
+}
+
+// buildKDABuckets crée des buckets pour la distribution FDA.
+//
+// Source : m.KDA — valeur synced depuis player_match_stats.kda (colonne BDD,
+// inclut les assists). On ne recalcule pas kills/deaths côté Go : ADR 0006
+// + revue 2026-04-29 — la canonique vient du sync. Si m.KDA est nil pour un
+// match (donnée incomplète), il est skippé du bucketing.
+func buildKDABuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
+	const (
+		binWidth = 0.25
+		maxBin   = 5.0
+	)
+	numBins := int(maxBin / binWidth)
+	counts := make([]int, numBins+1) // dernier = overflow
+
+	for _, m := range matches {
+		if m.KDA == nil {
+			continue
+		}
+		kda := *m.KDA
+		if kda < 0 {
+			kda = 0
+		}
+		idx := int(kda / binWidth)
+		if idx >= numBins {
+			idx = numBins
+		}
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, numBins+1)
+	for i, c := range counts {
+		if c == 0 {
+			continue
+		}
+		start := float64(i) * binWidth
+		end := start + binWidth
+		if i == numBins {
+			end = maxBin + binWidth
+		}
+		buckets = append(buckets, domain.DistributionBucket{
+			BucketLower: math.Round(start*100) / 100,
+			BucketUpper: math.Round(end*100) / 100,
+			Count:       c,
+		})
+	}
+	return buckets
+}
+
+// buildKillsBuckets crÃ©e des buckets pour la distribution des kills par match.
+func buildKillsBuckets(matches []legacymatch.StatsMatchRow) []domain.DistributionBucket {
+	const binWidth = 5.0
+	maxKills := 0
+	for _, m := range matches {
+		if m.Kills > maxKills {
+			maxKills = m.Kills
+		}
+	}
+	numBins := maxKills/int(binWidth) + 1
+	counts := make([]int, numBins+1)
+
+	for _, m := range matches {
+		idx := m.Kills / int(binWidth)
+		if idx > numBins {
+			idx = numBins
+		}
+		counts[idx]++
+	}
+
+	buckets := make([]domain.DistributionBucket, 0, numBins+1)
+	for i, c := range counts {
+		if c == 0 {
+			continue
+		}
+		start := float64(i) * binWidth
+		end := start + binWidth
+		buckets = append(buckets, domain.DistributionBucket{
+			BucketLower: start,
+			BucketUpper: end,
+			Count:       c,
+		})
+	}
+	return buckets
+}
+
+// buildCorrelationPoints construit les paires de corrÃ©lation pour 5 types de scatter.
+func buildCorrelationPoints(matches []legacymatch.StatsMatchRow) []domain.CorrelationDataPair {
+	points := make([]domain.CorrelationDataPair, 0, len(matches)*5)
+	for _, m := range matches {
+		kd := 0.0
+		if m.Deaths > 0 {
+			kd = float64(m.Kills) / float64(m.Deaths)
+		}
+		// DurÃ©e de vie approchÃ©e : time_played / (deaths+1)
+		lifespan := 0.0
+		if m.TimePlayedSeconds != nil && *m.TimePlayedSeconds > 0 {
+			lifespan = float64(*m.TimePlayedSeconds) / float64(m.Deaths+1)
+		}
+
+		// P7.1 (revue 2026-04-29) : Label composite ("kills_vs_kd") séparé en
+		// MetricXKey/MetricYKey ; X/Y → XValue/YValue.
+		points = append(points, domain.CorrelationDataPair{
+			MetricXKey: tsMetricKeyKills, MetricYKey: "kd_ratio",
+			XValue: float64(m.Kills), YValue: math.Round(kd*100) / 100, Outcome: m.Outcome,
+		})
+		points = append(points, domain.CorrelationDataPair{
+			MetricXKey: "lifespan", MetricYKey: tsMetricKeyKills,
+			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Kills), Outcome: m.Outcome,
+		})
+		if m.Accuracy != nil && m.KDA != nil {
+			// Accuracy déjà en % 0..100 (sync/transforms.go:315) — round à 1 décimale
+			// sans re-multiplier (bug historique du *100 qui sortait du domaine).
+			points = append(points, domain.CorrelationDataPair{
+				MetricXKey: tsMetricKeyAccuracy, MetricYKey: "kda",
+				XValue: math.Round(*m.Accuracy*10) / 10, YValue: math.Round(*m.KDA*100) / 100, Outcome: m.Outcome,
+			})
+		}
+		points = append(points, domain.CorrelationDataPair{
+			MetricXKey: "lifespan", MetricYKey: "deaths",
+			XValue: math.Round(lifespan*10) / 10, YValue: float64(m.Deaths), Outcome: m.Outcome,
+		})
+		points = append(points, domain.CorrelationDataPair{
+			MetricXKey: tsMetricKeyKills, MetricYKey: "deaths",
+			XValue: float64(m.Kills), YValue: float64(m.Deaths), Outcome: m.Outcome,
+		})
+		if m.TeamMMR != nil && m.EnemyMMR != nil {
+			points = append(points, domain.CorrelationDataPair{
+				MetricXKey: "mmr_team", MetricYKey: "mmr_enemy",
+				XValue: math.Round(*m.TeamMMR*100) / 100, YValue: math.Round(*m.EnemyMMR*100) / 100, Outcome: m.Outcome,
+			})
+		}
+	}
+	return points
+}
+
+// ---------------------------------------------------------------------------
+// Lignes match brutes (pour les charts timeline React)
+// ---------------------------------------------------------------------------
+
+// buildMatchRows convertit StatsMatchRow en TimeseriesMatchRow (1 ligne = 1 match).
+//
+// KDA et KDRatio sont calcules par P2.5 (revue 2026-04-29 ADR 0006) â€” debloque
+// la suppression du recompute K/D cote front (TimeseriesKdaBars.tsx:78, B3).
+func buildMatchRows(matches []legacymatch.StatsMatchRow) []domain.TimeseriesMatchRow {
+	rows := make([]domain.TimeseriesMatchRow, 0, len(matches))
+	for i, m := range matches {
+		// KDR canonique calcule a partir des compteurs (analysis.KDR).
+		// Distinct du KDA pre-calcule cote sync (m.KDA inclut les assists).
+		kdr := analysis.KDR(m.Kills, m.Deaths)
+		rows = append(rows, domain.TimeseriesMatchRow{
+			MatchID:           m.MatchID,
+			Index:             i,
+			StartTime:         m.StartTime,
+			Kills:             m.Kills,
+			Deaths:            m.Deaths,
+			Assists:           m.Assists,
+			KDA:               m.KDA,
+			KDRatio:           &kdr,
+			Accuracy:          m.Accuracy,
+			Outcome:           m.Outcome,
+			PersonalScore:     m.PersonalScore,
+			DamageDealt:       m.DamageDealt,
+			DamageTaken:       m.DamageTaken,
+			PerfScore:         m.PerfScoreComputed,
+			Rank:              m.Rank,
+			PlaylistName:      m.PlaylistName,
+			TimePlayedSeconds: m.TimePlayedSeconds,
+			MaxKillingSpree:   m.MaxKillingSpree,
+			HeadshotKills:     m.HeadshotKills,
+			PerfectKills:      m.PerfectKills,
+			MapName:           m.MapName,
+			MapNameFR:         m.MapNameFR,
+			SkillRatingValue:  m.SkillRatingValue,
+			SkillRatingType:   m.SkillRatingType,
+			SessionLabel:      m.SessionLabel,
+			TeamMMR:           m.TeamMMR,
+		})
+	}
+	return rows
+}
+
+// ---------------------------------------------------------------------------
+// Histogrammes supplÃ©mentaires (PrÃ©cision, Score/min, Win Rate glissant)
+// ---------------------------------------------------------------------------
+
+// buildAccuracyBuckets crée des buckets de 5 % pour la distribution de précision.
+//
+// Source : m.Accuracy stockée en pourcentage 0..100 (cf. sync/transforms.go:315
+// — `acc = shots_hit / shots_fired * 100`). NE PAS re-multiplier par 100 ; le
+// bug historique faisait coller toutes les valeurs au bin 100+ (un seul gros
