@@ -352,27 +352,36 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
-	// 2. LUSR (TrueSkill 2) — best-effort medal data depuis metadata DB
-	slog.DebugContext(ctx, "post-sync: calcul LUSR", "gamertag", e.gamertag)
-	medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
-	if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
-		slog.WarnContext(ctx, "post-sync: LUSR échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "LUSR", err)
+	// 2. LUSR v1 (TrueSkill 2 closed-form, formule composite).
+	// SKIPPÉ si LEVELUP_LUSR_CANONICAL=LUSR_V2 — alors v2 est canonical et
+	// écrit directement dans rating_type='LUSR' via Stratégie C.
+	if !IsLUSRV2Canonical() {
+		slog.DebugContext(ctx, "post-sync: calcul LUSR v1", "gamertag", e.gamertag)
+		medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
+		if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
+			slog.WarnContext(ctx, "post-sync: LUSR v1 échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(&r, "LUSR", err)
+		} else {
+			r.LUSRUpdated = n
+			slog.DebugContext(ctx, "post-sync: LUSR v1 mis à jour", "gamertag", e.gamertag, "count", n)
+		}
 	} else {
-		r.LUSRUpdated = n
-		slog.DebugContext(ctx, "post-sync: LUSR mis à jour", "gamertag", e.gamertag, "count", n)
+		slog.DebugContext(ctx, "post-sync: LUSR v1 skippé (canonical=LUSR_V2)", "gamertag", e.gamertag)
 	}
 
 	// 2.5 LUSR v2 — shadow mode (LEVELUP_LUSR_V2_ENABLED=1). Calcule en parallèle
-	// du v1 et écrit dans player_skill_state_v2. Aucun impact sur v1, aucun
-	// reader UI à ce stade. Best-effort, n'arrête jamais le pipeline.
+	// du v1 et écrit dans player_skill_state_v2.
+	//
+	// Si LEVELUP_LUSR_CANONICAL=LUSR_V2, écrit AUSSI dans match_skill_rank
+	// (rating_type='LUSR' slot historique) via Stratégie C — l'UI voit alors
+	// le v2 sans modif des readers. Cf. ADR 0024.
 	if IsLUSRV2Enabled() {
-		if n, err := RunLUSRV2Shadow(ctx, sharedDB, e.xuid); err != nil {
+		if n, err := RunLUSRV2Shadow(ctx, playerDB, sharedDB, e.xuid); err != nil {
 			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
 				"gamertag", e.gamertag, "err", err)
 		} else if n > 0 {
 			slog.InfoContext(ctx, "post-sync: LUSR v2 shadow OK",
-				"gamertag", e.gamertag, "processed", n)
+				"gamertag", e.gamertag, "processed", n, "canonical", IsLUSRV2Canonical())
 		}
 	}
 

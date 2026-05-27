@@ -29,6 +29,10 @@ const lusrV2EnvFlag = "LEVELUP_LUSR_V2_ENABLED"
 
 // IsLUSRV2Enabled retourne true si le shadow runner doit s'exécuter.
 // "1", "true", "yes" (case-insensitive) activent ; tout le reste désactive.
+//
+// Les deux autres flags (`IsLUSRV2Canonical`, `IsLUSRV2ModeCouplingEnabled`)
+// sont définis dans `skill_v2_canonical.go` / `skill_v2_cross_mode.go`
+// respectivement, à côté du code qu'ils gardent.
 func IsLUSRV2Enabled() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv(lusrV2EnvFlag)))
 	return v == "1" || v == "true" || v == "yes"
@@ -56,18 +60,35 @@ type shadowParticipant struct {
 // Retourne le nombre de matchs traités. Best-effort : les erreurs sur un match
 // n'arrêtent pas la boucle (loggées warn).
 //
+// Si LEVELUP_LUSR_CANONICAL=LUSR_V2 et `playerDB` non nil, écrit aussi le
+// résultat dans `match_skill_rank` du player DB (slot `rating_type='LUSR'`)
+// via le mapping v2 → legacy. C'est la Stratégie C (write-through aliasing,
+// ADR 0024).
+//
+// Si `playerDB` nil ou flag non canonical : v2 reste en pur shadow (écrit
+// uniquement dans `player_skill_state_v2_latest` côté shared).
+//
 // Limites Phase 1 : ne traite que les matchs avec exactement 2 teams humaines
 // distinctes. Matchs FFA, 3+ teams, ou outcomes incohérents sont skippés.
-func RunLUSRV2Shadow(ctx context.Context, sharedDB *sql.DB, xuid string) (int, error) {
+func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) (int, error) {
 	if !IsLUSRV2Enabled() {
 		return 0, nil
 	}
 	if sharedDB == nil {
 		return 0, fmt.Errorf("RunLUSRV2Shadow: sharedDB nil")
 	}
+	canonical := IsLUSRV2Canonical()
+	if canonical && playerDB == nil {
+		// Demandé canonical mais pas de playerDB → on log mais on continue
+		// en shadow pour ne pas perdre l'occasion de mettre à jour l'état v2.
+		slog.WarnContext(ctx, "LUSR v2 canonical demandé mais playerDB nil — fallback shadow",
+			"xuid", xuid)
+		canonical = false
+	}
 
 	repo := duckdb.NewSkillV2Repo(sharedDB)
 	priors := skillv2.DefaultPriors()
+	tierBoundaries := skillv2.DefaultTierBoundaries() // Phase 5 batch écrira override
 
 	matches, err := loadShadowMatches(ctx, sharedDB, xuid)
 	if err != nil {
@@ -77,68 +98,112 @@ func RunLUSRV2Shadow(ctx context.Context, sharedDB *sql.DB, xuid string) (int, e
 		return 0, nil
 	}
 
-	processed := 0
-	skippedNonTwoTeam := 0
-	skippedAlready := 0
-	skippedChain := 0
-	skippedImbalance := 0
+	ctxRun := shadowRunContext{
+		repo:           repo,
+		playerDB:       playerDB,
+		sharedDB:       sharedDB,
+		priors:         priors,
+		tierBoundaries: tierBoundaries,
+		xuid:           xuid,
+		canonical:      canonical,
+	}
+	var s shadowRunStats
 	for _, m := range matches {
-		group := GetLUSRChain(m.pairName)
-		if group == "" {
-			skippedChain++
-			continue
-		}
-		// Watermark : un match dont start_time ≤ last_match_at du groupe a déjà
-		// été traité pour ce joueur.
-		st, err := repo.LoadState(ctx, xuid, group)
-		if err != nil {
-			slog.WarnContext(ctx, "LUSR v2 shadow: LoadState échoué", "xuid", xuid, "group", group, "err", err)
-			continue
-		}
-		if st != nil && st.LastMatchAt != nil && !m.startTime.After(*st.LastMatchAt) {
-			skippedAlready++
-			continue
-		}
-		if !m.ownerHasTeam {
-			skippedNonTwoTeam++
-			continue
-		}
-		teamA, teamB, ok := buildTwoTeamRosters(ctx, sharedDB, m.matchID, m.ownerTeamID)
-		if !ok {
-			skippedNonTwoTeam++
-			continue
-		}
-		// Phase 3d : skip les matchs très déséquilibrés (ratio teams > 2:1).
-		// EP converge mal sur ces cas (chaos 4v8, 5v7+) parce que la formule
-		// sum factor amplifie les contradictions. Skipper conserve la
-		// cohérence des autres matchs et évite de perdre du temps en
-		// itérations qui n'aboutiront pas.
-		if isTeamImbalanceTooHigh(len(teamA), len(teamB)) {
-			skippedImbalance++
-			continue
-		}
-		outcomeA, ok := outcomeToTeamResult(m.ownerOutcome)
-		if !ok {
-			skippedNonTwoTeam++
-			continue
-		}
-		if err := applyMatchToSkillV2(ctx, repo, priors, m.matchID, group, m.startTime, teamA, teamB, outcomeA); err != nil {
-			slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
-				"match_id", m.matchID, "group", group, "err", err,
-				"team_a_size", len(teamA), "team_b_size", len(teamB))
-			continue
-		}
-		processed++
+		processOneShadowMatch(ctx, ctxRun, m, &s)
 	}
 	slog.InfoContext(ctx, "LUSR v2 shadow terminé",
-		"xuid", xuid, "processed", processed,
-		"skipped_chain", skippedChain,
-		"skipped_already_seen", skippedAlready,
-		"skipped_non_two_team", skippedNonTwoTeam,
-		"skipped_imbalance", skippedImbalance,
+		"xuid", xuid, "processed", s.processed,
+		"skipped_chain", s.skippedChain,
+		"skipped_already_seen", s.skippedAlready,
+		"skipped_non_two_team", s.skippedNonTwoTeam,
+		"skipped_imbalance", s.skippedImbalance,
 		"total_candidates", len(matches),
 	)
-	return processed, nil
+	return s.processed, nil
+}
+
+// shadowRunContext regroupe les dépendances stables d'une exécution shadow,
+// passées à `processOneShadowMatch` au lieu d'avoir 7 paramètres en cascade.
+type shadowRunContext struct {
+	repo           *duckdb.SkillV2Repo
+	playerDB       *sql.DB
+	sharedDB       *sql.DB
+	priors         skillv2.Priors
+	tierBoundaries []skillv2.TierBoundary
+	xuid           string
+	canonical      bool
+}
+
+// shadowRunStats compte les buckets de skip pour le log de fin de run.
+type shadowRunStats struct {
+	processed         int
+	skippedChain      int
+	skippedAlready    int
+	skippedNonTwoTeam int
+	skippedImbalance  int
+}
+
+// processOneShadowMatch applique le pipeline shadow à UN match :
+// résolution chain → watermark → rosters → EP update → écriture canonical.
+// Tout skip est compté dans `s` ; les erreurs non-bloquantes sont loggées
+// mais n'arrêtent pas la boucle parente.
+func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatch, s *shadowRunStats) {
+	group := GetLUSRChain(m.pairName)
+	if group == "" {
+		s.skippedChain++
+		return
+	}
+	// Watermark : un match dont start_time ≤ last_match_at du groupe a déjà
+	// été traité pour ce joueur.
+	st, err := c.repo.LoadState(ctx, c.xuid, group)
+	if err != nil {
+		slog.WarnContext(ctx, "LUSR v2 shadow: LoadState échoué",
+			"xuid", c.xuid, "group", group, "err", err)
+		return
+	}
+	if st != nil && st.LastMatchAt != nil && !m.startTime.After(*st.LastMatchAt) {
+		s.skippedAlready++
+		return
+	}
+	if !m.ownerHasTeam {
+		s.skippedNonTwoTeam++
+		return
+	}
+	teamA, teamB, ok := buildTwoTeamRosters(ctx, c.sharedDB, m.matchID, m.ownerTeamID)
+	if !ok {
+		s.skippedNonTwoTeam++
+		return
+	}
+	// Phase 3d : skip les matchs très déséquilibrés (ratio teams > 2:1). EP
+	// avec count observations converge mal au-delà.
+	if isTeamImbalanceTooHigh(len(teamA), len(teamB)) {
+		s.skippedImbalance++
+		return
+	}
+	outcomeA, ok := outcomeToTeamResult(m.ownerOutcome)
+	if !ok {
+		s.skippedNonTwoTeam++
+		return
+	}
+	ownerNew, err := applyMatchToSkillV2(ctx, c.repo, c.priors, m.matchID, group,
+		m.startTime, teamA, teamB, outcomeA, c.xuid)
+	if err != nil {
+		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
+			"match_id", m.matchID, "group", group, "err", err,
+			"team_a_size", len(teamA), "team_b_size", len(teamB))
+		return
+	}
+	s.processed++
+
+	// Stratégie C : si v2 est canonical, écrit aussi dans match_skill_rank
+	// (rating_type='LUSR' slot historique). Best-effort — un échec d'écriture
+	// ne re-process pas le match (watermark a déjà avancé via persistTeamSkillV2).
+	if c.canonical && ownerNew != nil {
+		if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *ownerNew, c.tierBoundaries); err != nil {
+			slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué",
+				"match_id", m.matchID, "group", group, "err", err)
+		}
+	}
 }
 
 // isTeamImbalanceTooHigh retourne true si la différence absolue des tailles
@@ -204,10 +269,18 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 }
 
 // rosterMember regroupe un xuid + ses counts pour la pipeline shadow Phase 3c.
+// Phase 3-quit (TS2 §9) ajoute les booleans ParticipationInfo + timestamps
+// pour détecter quitter / late-joiner et ORDONNER précisément les quitters.
 type rosterMember struct {
-	xuid   string
-	kills  *float64 // nil si non disponible (avant Phase 3c ou pour bots)
-	deaths *float64
+	xuid           string
+	kills          *float64 // nil si non disponible (avant Phase 3c ou pour bots)
+	deaths         *float64
+	presentAtStart sql.NullBool
+	presentAtEnd   sql.NullBool
+	leftInProgress sql.NullBool
+	lastLeaveTime  sql.NullTime    // timestamp absolu (signal idéal) — backfillé via cmd
+	timePlayedSecs sql.NullFloat64 // proxy fallback si lastLeaveTime absent
+	outcome        int             // code Halo (1=Tie,2=Win,3=Loss,4=DNF)
 }
 
 // buildTwoTeamRosters retourne (équipe du joueur, équipe adverse) ou (_, _, false)
@@ -217,7 +290,10 @@ type rosterMember struct {
 // pour pouvoir les passer en observations TS2 §8.
 func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, ownerTeamID int) (teamA, teamB []rosterMember, ok bool) {
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT xuid, team_id, kills, deaths
+		SELECT xuid, team_id, kills, deaths,
+		       present_at_beginning, present_at_completion, left_in_progress,
+		       last_leave_time, time_played_seconds,
+		       COALESCE(outcome, 0)
 		FROM match_participants
 		WHERE match_id = ?
 		  AND xuid IS NOT NULL AND xuid != ''`, matchID)
@@ -230,15 +306,27 @@ func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, 
 	for rows.Next() {
 		var xuid string
 		var teamID sql.NullInt64
-		var kills, deaths sql.NullFloat64
-		if err := rows.Scan(&xuid, &teamID, &kills, &deaths); err != nil {
+		var kills, deaths, timePlayed sql.NullFloat64
+		var pStart, pEnd, leftInProg sql.NullBool
+		var lastLeave sql.NullTime
+		var outcome int
+		if err := rows.Scan(&xuid, &teamID, &kills, &deaths,
+			&pStart, &pEnd, &leftInProg, &lastLeave, &timePlayed, &outcome); err != nil {
 			continue
 		}
 		if !teamID.Valid {
 			continue
 		}
 		tid := int(teamID.Int64)
-		m := rosterMember{xuid: xuid}
+		m := rosterMember{
+			xuid:           xuid,
+			presentAtStart: pStart,
+			presentAtEnd:   pEnd,
+			leftInProgress: leftInProg,
+			lastLeaveTime:  lastLeave,
+			timePlayedSecs: timePlayed,
+			outcome:        outcome,
+		}
 		if kills.Valid {
 			v := kills.Float64
 			m.kills = &v
@@ -298,6 +386,11 @@ func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 // se stabilisera (Phase 2/3), on pourra déplacer service.SkillV2Service vers
 // un package "shared" et supprimer ce double — ou inversement faire passer
 // le call par un callback registered au boot.
+// applyMatchToSkillV2 applique le match et persiste l'état v2. Retourne le
+// nouvel état du `ownerXUID` (côté A ou B, peu importe) — utilisé par le caller
+// pour écrire dans le slot canonical (match_skill_rank rating_type='LUSR')
+// quand Stratégie C est active. Retourne nil pour ownerNew si le owner n'est
+// pas dans la match (cas dégénéré).
 func applyMatchToSkillV2(
 	ctx context.Context,
 	repo *duckdb.SkillV2Repo,
@@ -306,123 +399,90 @@ func applyMatchToSkillV2(
 	startTime time.Time,
 	teamA, teamB []rosterMember,
 	outcomeA skillv2.TeamResult,
-) error {
+	ownerXUID string,
+) (ownerNew *domain.SkillV2State, err error) {
 	teamAXUIDs := extractXUIDs(teamA)
 	teamBXUIDs := extractXUIDs(teamB)
 
 	teamAStates, err := loadStatesOrSeed(ctx, repo, teamAXUIDs, playlistGroup, priors)
 	if err != nil {
-		return fmt.Errorf("loadStates teamA: %w", err)
+		return nil, fmt.Errorf("loadStates teamA: %w", err)
 	}
 	teamBStates, err := loadStatesOrSeed(ctx, repo, teamBXUIDs, playlistGroup, priors)
 	if err != nil {
-		return fmt.Errorf("loadStates teamB: %w", err)
+		return nil, fmt.Errorf("loadStates teamB: %w", err)
 	}
-	counts := buildCountInputs(teamA, teamB)
+	counts := buildCountInputs(teamA, teamB, outcomeA)
 	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
 		TeamA:   shadowStatesToGaussians(teamAStates),
 		TeamB:   shadowStatesToGaussians(teamBStates),
 		ResultA: outcomeA,
 	}, counts, priors)
 	if err != nil {
-		return fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
+		return nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
 	if err := persistTeamSkillV2(ctx, repo, teamAStates, newA, matchID, startTime); err != nil {
-		return fmt.Errorf("persistTeam A: %w", err)
+		return nil, fmt.Errorf("persistTeam A: %w", err)
 	}
 	if err := persistTeamSkillV2(ctx, repo, teamBStates, newB, matchID, startTime); err != nil {
-		return fmt.Errorf("persistTeam B: %w", err)
+		return nil, fmt.Errorf("persistTeam B: %w", err)
+	}
+	ownerNew = findOwnerPosterior(ownerXUID, teamAStates, newA, teamBStates, newB, matchID, playlistGroup, startTime)
+
+	// Phase 4 (mode correlation) : si activée, propage le delta du owner dans
+	// son mode primaire vers tous ses autres modes joués. w_d capé à 0.4 par
+	// la fonction skill_v2.ApplyCrossModeLeak.
+	if IsLUSRV2ModeCouplingEnabled() && ownerNew != nil {
+		ownerOld := findOwnerPrior(ownerXUID, teamAStates, teamBStates)
+		if ownerOld != nil {
+			if err := propagateCrossModeLeak(ctx, repo, *ownerOld, *ownerNew); err != nil {
+				slog.WarnContext(ctx, "Phase 4: cross-mode leak échoué",
+					"xuid", ownerXUID, "primary_group", playlistGroup, "err", err)
+			}
+		}
+	}
+	return ownerNew, nil
+}
+
+// findOwnerPosterior cherche le owner dans les rosters et reconstruit son
+// nouvel état à partir des posteriors. Retourne nil si owner pas trouvé
+// (cas dégénéré : owner pas dans le match).
+func findOwnerPosterior(ownerXUID string, priorA []domain.SkillV2State, postA []skillv2.Gaussian,
+	priorB []domain.SkillV2State, postB []skillv2.Gaussian,
+	matchID, playlistGroup string, startTime time.Time) *domain.SkillV2State {
+	for i, p := range priorA {
+		if p.XUID == ownerXUID {
+			mid := matchID
+			st := startTime
+			return &domain.SkillV2State{
+				XUID:          p.XUID,
+				PlaylistGroup: playlistGroup,
+				Mu:            postA[i].Mu,
+				Sigma:         postA[i].Sigma,
+				Experience:    p.Experience + 1,
+				LastMatchID:   &mid,
+				LastMatchAt:   &st,
+			}
+		}
+	}
+	for j, p := range priorB {
+		if p.XUID == ownerXUID {
+			mid := matchID
+			st := startTime
+			return &domain.SkillV2State{
+				XUID:          p.XUID,
+				PlaylistGroup: playlistGroup,
+				Mu:            postB[j].Mu,
+				Sigma:         postB[j].Sigma,
+				Experience:    p.Experience + 1,
+				LastMatchID:   &mid,
+				LastMatchAt:   &st,
+			}
+		}
 	}
 	return nil
 }
 
-func extractXUIDs(roster []rosterMember) []string {
-	out := make([]string, len(roster))
-	for i, m := range roster {
-		out[i] = m.xuid
-	}
-	return out
-}
-
-// buildCountInputs construit la structure CountInputs depuis les rosters.
-// Si AUCUN joueur n'a kills/deaths renseignés, retourne nil (le code en aval
-// traitera comme TS classique sans counts) — typiquement le cas des anciens
-// matchs antérieurs au sync Phase 3c.
-func buildCountInputs(teamA, teamB []rosterMember) *skillv2.CountInputs {
-	hasAny := false
-	for _, m := range teamA {
-		if m.kills != nil || m.deaths != nil {
-			hasAny = true
-			break
-		}
-	}
-	if !hasAny {
-		for _, m := range teamB {
-			if m.kills != nil || m.deaths != nil {
-				hasAny = true
-				break
-			}
-		}
-	}
-	if !hasAny {
-		return nil
-	}
-	pa := make([]skillv2.PlayerCounts, len(teamA))
-	for i, m := range teamA {
-		pa[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
-	}
-	pb := make([]skillv2.PlayerCounts, len(teamB))
-	for i, m := range teamB {
-		pb[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
-	}
-	return &skillv2.CountInputs{TeamA: pa, TeamB: pb}
-}
-
-func loadStatesOrSeed(ctx context.Context, repo *duckdb.SkillV2Repo, xuids []string, playlistGroup string, priors skillv2.Priors) ([]domain.SkillV2State, error) {
-	out := make([]domain.SkillV2State, len(xuids))
-	for i, x := range xuids {
-		st, err := repo.LoadState(ctx, x, playlistGroup)
-		if err != nil {
-			return nil, err
-		}
-		if st == nil {
-			seed := priors.NewPlayerState()
-			out[i] = domain.SkillV2State{
-				XUID: x, PlaylistGroup: playlistGroup,
-				Mu: seed.Mu, Sigma: seed.Sigma,
-			}
-			continue
-		}
-		out[i] = *st
-	}
-	return out, nil
-}
-
-func shadowStatesToGaussians(states []domain.SkillV2State) []skillv2.Gaussian {
-	out := make([]skillv2.Gaussian, len(states))
-	for i, s := range states {
-		out[i] = skillv2.Gaussian{Mu: s.Mu, Sigma: s.Sigma}
-	}
-	return out
-}
-
-func persistTeamSkillV2(ctx context.Context, repo *duckdb.SkillV2Repo, prior []domain.SkillV2State, posterior []skillv2.Gaussian, matchID string, startTime time.Time) error {
-	if len(prior) != len(posterior) {
-		return fmt.Errorf("persistTeamSkillV2: tailles incompatibles (prior=%d, posterior=%d)", len(prior), len(posterior))
-	}
-	mid := matchID
-	st := startTime
-	for i, p := range prior {
-		next := domain.SkillV2State{
-			XUID: p.XUID, PlaylistGroup: p.PlaylistGroup,
-			Mu: posterior[i].Mu, Sigma: posterior[i].Sigma,
-			Experience:  p.Experience + 1,
-			LastMatchID: &mid,
-			LastMatchAt: &st,
-		}
-		if err := repo.UpsertState(ctx, next); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+// extractXUIDs, loadStatesOrSeed, shadowStatesToGaussians, persistTeamSkillV2
+// vivent dans skill_v2_helpers.go.
+// buildCountInputs vit dans skill_v2_quit_penalty.go.

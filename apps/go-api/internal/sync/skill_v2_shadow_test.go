@@ -12,6 +12,7 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
@@ -40,6 +41,32 @@ func TestIsLUSRV2Enabled(t *testing.T) {
 			_ = os.Setenv(lusrV2EnvFlag, c.envVal)
 			if got := IsLUSRV2Enabled(); got != c.want {
 				t.Errorf("IsLUSRV2Enabled() with env=%q = %v, want %v", c.envVal, got, c.want)
+			}
+		})
+	}
+}
+
+func TestIsLUSRV2Canonical(t *testing.T) {
+	original := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrCanonicalEnvFlag, original) })
+
+	cases := []struct {
+		envVal string
+		want   bool
+	}{
+		{"", false},     // défaut = v1 canonical
+		{"LUSR", false}, // explicite v1
+		{"LUSR_V2", true},
+		{"lusr_v2", true}, // case insensitive (UPPER trim)
+		{"  LUSR_V2  ", true},
+		{"random", false},
+		{"V2", false}, // doit être exactement "LUSR_V2"
+	}
+	for _, c := range cases {
+		t.Run(c.envVal, func(t *testing.T) {
+			_ = os.Setenv(lusrCanonicalEnvFlag, c.envVal)
+			if got := IsLUSRV2Canonical(); got != c.want {
+				t.Errorf("IsLUSRV2Canonical() with env=%q = %v, want %v", c.envVal, got, c.want)
 			}
 		})
 	}
@@ -99,6 +126,128 @@ func TestOutcomeToTeamResult(t *testing.T) {
 	}
 }
 
+func TestIdentifyPrimaryQuitter_PicksSmallestTimePlayed(t *testing.T) {
+	mkQuitter := func(xuid string, timePlayed float64) rosterMember {
+		return rosterMember{
+			xuid:           xuid,
+			leftInProgress: sql.NullBool{Bool: true, Valid: true},
+			timePlayedSecs: sql.NullFloat64{Float64: timePlayed, Valid: true},
+		}
+	}
+	mkPlayer := func(xuid string, timePlayed float64) rosterMember {
+		return rosterMember{
+			xuid:           xuid,
+			timePlayedSecs: sql.NullFloat64{Float64: timePlayed, Valid: true},
+			presentAtStart: sql.NullBool{Bool: true, Valid: true},
+			presentAtEnd:   sql.NullBool{Bool: true, Valid: true},
+		}
+	}
+	cases := []struct {
+		name        string
+		teamA       []rosterMember
+		teamB       []rosterMember
+		wantPrimary string
+	}{
+		{
+			name:        "aucun quitter",
+			teamA:       []rosterMember{mkPlayer("a1", 600)},
+			teamB:       []rosterMember{mkPlayer("b1", 600)},
+			wantPrimary: "",
+		},
+		{
+			name:        "un seul quitter",
+			teamA:       []rosterMember{mkQuitter("a1", 120), mkPlayer("a2", 600)},
+			teamB:       []rosterMember{mkPlayer("b1", 600)},
+			wantPrimary: "a1",
+		},
+		{
+			name:        "deux quitters meme equipe — premier = plus petit temps",
+			teamA:       []rosterMember{mkQuitter("a1", 90), mkQuitter("a2", 250), mkPlayer("a3", 600)},
+			teamB:       []rosterMember{mkPlayer("b1", 600)},
+			wantPrimary: "a1",
+		},
+		{
+			name:        "quitters equipes adverses — choisit le premier global",
+			teamA:       []rosterMember{mkQuitter("a1", 300)},
+			teamB:       []rosterMember{mkQuitter("b1", 80)},
+			wantPrimary: "b1",
+		},
+		{
+			name:        "quitter sans time_played — exclu du tri",
+			teamA:       []rosterMember{{xuid: "a1", leftInProgress: sql.NullBool{Bool: true, Valid: true}}},
+			teamB:       []rosterMember{mkQuitter("b1", 200)},
+			wantPrimary: "b1",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := identifyPrimaryQuitter(c.teamA, c.teamB)
+			if got != c.wantPrimary {
+				t.Errorf("identifyPrimaryQuitter = %q, want %q", got, c.wantPrimary)
+			}
+		})
+	}
+}
+
+func TestIdentifyPrimaryQuitter_PrefersLastLeaveTimeOverTimePlayed(t *testing.T) {
+	t0 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	mkQuitterTs := func(xuid string, leaveTime time.Time, timePlayed float64) rosterMember {
+		return rosterMember{
+			xuid:           xuid,
+			leftInProgress: sql.NullBool{Bool: true, Valid: true},
+			lastLeaveTime:  sql.NullTime{Time: leaveTime, Valid: true},
+			timePlayedSecs: sql.NullFloat64{Float64: timePlayed, Valid: true},
+		}
+	}
+	// Cas critique : a1 a plus petit time_played (90s) MAIS quitté plus tard
+	// que b1 (leave_t = t0+5min vs t0+1min). Le primary doit être b1 grâce
+	// au timestamp absolu — c'est lui qui est parti EN PREMIER.
+	teamA := []rosterMember{mkQuitterTs("a1", t0.Add(5*time.Minute), 90)}
+	teamB := []rosterMember{mkQuitterTs("b1", t0.Add(1*time.Minute), 300)}
+	got := identifyPrimaryQuitter(teamA, teamB)
+	if got != "b1" {
+		t.Errorf("identifyPrimaryQuitter = %q, want b1 (leave_time prime sur time_played)", got)
+	}
+}
+
+func TestIdentifyPrimaryQuitter_MixedTimestampCoverage(t *testing.T) {
+	t0 := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	// a1 a un timestamp (post-backfill), b1 n'en a pas (pre-backfill).
+	// Le primary doit être a1 — on NE compare PAS timestamps vs time_played
+	// dans un même match (cf. doc identifyPrimaryQuitter).
+	withTs := rosterMember{
+		xuid:           "a1",
+		leftInProgress: sql.NullBool{Bool: true, Valid: true},
+		lastLeaveTime:  sql.NullTime{Time: t0.Add(8 * time.Minute), Valid: true},
+		timePlayedSecs: sql.NullFloat64{Float64: 480, Valid: true},
+	}
+	withoutTs := rosterMember{
+		xuid:           "b1",
+		leftInProgress: sql.NullBool{Bool: true, Valid: true},
+		timePlayedSecs: sql.NullFloat64{Float64: 60, Valid: true},
+	}
+	got := identifyPrimaryQuitter([]rosterMember{withTs}, []rosterMember{withoutTs})
+	if got != "a1" {
+		t.Errorf("identifyPrimaryQuitter = %q, want a1 (timestamp prime sur fallback)", got)
+	}
+}
+
+func TestScaledQuitDelta_PrimaryFullSecondaryHalf(t *testing.T) {
+	const base = 2.5
+	// primary = "a1" → delta plein.
+	if got := scaledQuitDelta("a1", "a1", base); got != base {
+		t.Errorf("primary delta = %v, want %v", got, base)
+	}
+	// secondaire → 50%.
+	if got := scaledQuitDelta("a2", "a1", base); got != base*0.5 {
+		t.Errorf("secondary delta = %v, want %v", got, base*0.5)
+	}
+	// primary inconnu ("") → fallback delta plein (matchs anciens sans time_played).
+	if got := scaledQuitDelta("a2", "", base); got != base {
+		t.Errorf("fallback (primary empty) delta = %v, want %v", got, base)
+	}
+}
+
 // openShadowTestDB ouvre une DuckDB en mémoire avec les tables LUSR v2 +
 // match_registry + match_participants + xuid_aliases (le minimum pour
 // tester le shadow runner end-to-end).
@@ -127,6 +276,13 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			outcome INTEGER,
 			kills DOUBLE,
 			deaths DOUBLE,
+			present_at_beginning BOOLEAN,
+			present_at_completion BOOLEAN,
+			joined_in_progress BOOLEAN,
+			left_in_progress BOOLEAN,
+			first_joined_time TIMESTAMPTZ,
+			last_leave_time TIMESTAMPTZ,
+			time_played_seconds DOUBLE,
 			PRIMARY KEY (match_id, xuid)
 		);
 		CREATE SEQUENCE player_skill_state_v2_seq START 1;
@@ -222,7 +378,7 @@ func TestRunLUSRV2Shadow_FlagOff_NoOp(t *testing.T) {
 	_ = os.Setenv(lusrV2EnvFlag, "0")
 
 	db := openShadowTestDB(t)
-	n, err := RunLUSRV2Shadow(context.Background(), db, "anyxuid")
+	n, err := RunLUSRV2Shadow(context.Background(), nil, db, "anyxuid")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
@@ -263,7 +419,7 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 		}
 	}
 
-	processed, err := RunLUSRV2Shadow(context.Background(), db, "owner")
+	processed, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
@@ -299,12 +455,190 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 	}
 
 	// Re-run : watermark → 0 traités.
-	processed2, err := RunLUSRV2Shadow(context.Background(), db, "owner")
+	processed2, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow second pass: %v", err)
 	}
 	if processed2 != 0 {
 		t.Errorf("second pass should be no-op (watermark), got n=%d", processed2)
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow vérifie la Stratégie C :
+// quand LEVELUP_LUSR_CANONICAL=LUSR_V2, le shadow runner écrit dans le
+// playerDB match_skill_rank (slot rating_type='LUSR') en plus de
+// player_skill_state_v2.
+func TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+
+	// Insert un match social 2v2.
+	startTime := time.Date(2025, 2, 1, 14, 0, 0, 0, time.UTC)
+	_, err := sharedDB.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`,
+		"m_canon", startTime, startTime)
+	if err != nil {
+		t.Fatalf("insert match_registry: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team, outcome int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 18, 6}, {"teammate", 0, 2, 12, 9},
+		{"opp1", 1, 3, 7, 14}, {"opp2", 1, 3, 8, 14},
+	} {
+		_, err := sharedDB.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			"m_canon", q.xuid, q.team, q.outcome, q.kills, q.deaths)
+		if err != nil {
+			t.Fatalf("insert participant: %v", err)
+		}
+	}
+
+	processed, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner")
+	if err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+	if processed != 1 {
+		t.Fatalf("processed = %d, want 1", processed)
+	}
+
+	// Vérifie qu'une row existe pour rating_type='LUSR' ET rating_type='LUSR_V2'
+	// (Stratégie C dual-row).
+	var countLUSR, countV2 int
+	if err := playerDB.QueryRow(`SELECT
+		COUNT(*) FILTER (WHERE rating_type = 'LUSR'),
+		COUNT(*) FILTER (WHERE rating_type = 'LUSR_V2')
+		FROM match_skill_rank WHERE match_id = ?`, "m_canon").
+		Scan(&countLUSR, &countV2); err != nil {
+		t.Fatalf("count rows: %v", err)
+	}
+	if countLUSR != 1 || countV2 != 1 {
+		t.Errorf("dual-row attendu : LUSR=%d LUSR_V2=%d (want 1+1)", countLUSR, countV2)
+	}
+
+	// Vérifie que la row LUSR a le bon mapping.
+	var ratingType, tier string
+	var ratingValue float64
+	err = playerDB.QueryRow(`SELECT rating_type, rating_value, tier
+		FROM match_skill_rank
+		WHERE match_id = ? AND rating_type = 'LUSR'`, "m_canon").
+		Scan(&ratingType, &ratingValue, &tier)
+	if err != nil {
+		t.Fatalf("no LUSR row found in match_skill_rank: %v", err)
+	}
+	if ratingValue < 1000 || ratingValue > 2500 {
+		t.Errorf("rating_value = %v hors plage v1 [1000, 2500]", ratingValue)
+	}
+	t.Logf("OK : dual-row owner posterior écrit LUSR=%d LUSR_V2=%d rating=%v tier=%s",
+		countLUSR, countV2, ratingValue, tier)
+}
+
+// openCanonicalPlayerTestDB : DuckDB :memory: avec match_skill_rank schema
+// (équivalent au schéma append-only Phase 2.F).
+func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		t.Fatalf("open duckdb player: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	const ddl = `
+		CREATE SEQUENCE match_skill_rank_id_seq;
+		CREATE TABLE match_skill_rank (
+			id              BIGINT DEFAULT nextval('match_skill_rank_id_seq') PRIMARY KEY,
+			match_id        VARCHAR NOT NULL,
+			rating_type     VARCHAR NOT NULL,
+			rating_value    FLOAT,
+			rating_deviation FLOAT,
+			tier            VARCHAR,
+			tier_fr         VARCHAR,
+			sub_tier        SMALLINT,
+			tier_label      VARCHAR,
+			rating_delta    FLOAT,
+			playlist_group  VARCHAR,
+			start_time      TIMESTAMP,
+			written_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE VIEW match_skill_rank_latest AS
+		  SELECT * FROM match_skill_rank
+		  QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, rating_type
+		                             ORDER BY written_at DESC) = 1;
+	`
+	if _, err := db.Exec(ddl); err != nil {
+		t.Fatalf("DDL match_skill_rank: %v", err)
+	}
+	return db
+}
+
+// TestRunDualRowSentinel_DetectsInconsistencies vérifie que la sentinelle
+// signale correctement les états :
+//   - LUSR seul   → ignoré (héritage v1 légitime)
+//   - LUSR + V2   → both_present (cas nominal)
+//   - LUSR_V2 seul → inconsistance (incrémente expvar)
+func TestRunDualRowSentinel_DetectsInconsistencies(t *testing.T) {
+	db := openCanonicalPlayerTestDB(t)
+
+	// Reset compteur pour assertion exacte.
+	dualRowInconsistencies.Set(0)
+
+	// Match 1 : LUSR seul (héritage v1).
+	_, err := db.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group)
+		VALUES ('m_legacy', 'LUSR', 1500, 'arena_slayer')`)
+	if err != nil {
+		t.Fatalf("insert m_legacy: %v", err)
+	}
+	// Match 2 : dual-row correct.
+	_, err = db.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group) VALUES
+		('m_both', 'LUSR', 1700, 'arena_slayer'),
+		('m_both', 'LUSR_V2', 1700, 'arena_slayer')`)
+	if err != nil {
+		t.Fatalf("insert m_both: %v", err)
+	}
+	// Match 3 : LUSR_V2 seul (bug — devrait avoir un LUSR aussi).
+	_, err = db.Exec(`INSERT INTO match_skill_rank
+		(match_id, rating_type, rating_value, playlist_group)
+		VALUES ('m_orphan', 'LUSR_V2', 1900, 'arena_slayer')`)
+	if err != nil {
+		t.Fatalf("insert m_orphan: %v", err)
+	}
+
+	report, err := RunDualRowSentinel(context.Background(), db)
+	if err != nil {
+		t.Fatalf("RunDualRowSentinel: %v", err)
+	}
+	if report.MatchesScanned != 3 {
+		t.Errorf("MatchesScanned = %d, want 3", report.MatchesScanned)
+	}
+	if report.OnlyLUSR != 1 {
+		t.Errorf("OnlyLUSR = %d, want 1", report.OnlyLUSR)
+	}
+	if report.BothPresent != 1 {
+		t.Errorf("BothPresent = %d, want 1", report.BothPresent)
+	}
+	if report.OnlyLUSRV2 != 1 {
+		t.Errorf("OnlyLUSRV2 = %d, want 1 (bug à signaler)", report.OnlyLUSRV2)
+	}
+	if len(report.SampleInconsistent) != 1 || report.SampleInconsistent[0] != "m_orphan" {
+		t.Errorf("SampleInconsistent = %v, want [m_orphan]", report.SampleInconsistent)
+	}
+	if got := dualRowInconsistencies.Value(); got != 1 {
+		t.Errorf("expvar dualRowInconsistencies = %d, want 1", got)
 	}
 }
 
@@ -328,11 +662,155 @@ func TestRunLUSRV2Shadow_RankedSkipped(t *testing.T) {
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
-	processed, err := RunLUSRV2Shadow(context.Background(), db, "owner")
+	processed, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner")
 	if err != nil {
 		t.Fatalf("RunLUSRV2Shadow: %v", err)
 	}
 	if processed != 0 {
 		t.Errorf("ranked match should be filtered by SQL, processed=%d", processed)
+	}
+}
+
+// TestRunLUSRV2Shadow_Phase4_CrossModeLeak vérifie qu'avec LEVELUP_LUSR_V2_MODE_COUPLING=1
+// activé, un match dans le mode "arena_slayer" leak son delta vers les autres
+// modes (e.g., "btb") du même joueur, capé à w_d · delta.
+func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrModeCouplingEnvFlag, "1")
+
+	db := openShadowTestDB(t)
+	repo := duckdb.NewSkillV2Repo(db)
+	ctx := context.Background()
+
+	// Seed un état pré-existant pour owner dans le mode "btb" avant qu'il
+	// joue un match dans "arena_slayer". μ = 24 (déjà un peu en-dessous du prior).
+	pretime := time.Date(2025, 1, 1, 8, 0, 0, 0, time.UTC)
+	if err := repo.UpsertState(ctx, domain.SkillV2State{
+		XUID: "owner", PlaylistGroup: "btb",
+		Mu: 24.0, Sigma: 6.0, Experience: 5,
+		LastMatchAt: &pretime,
+	}); err != nil {
+		t.Fatalf("seed btb state: %v", err)
+	}
+
+	// Match 2v2 slayer où owner gagne avec gros stats (carry).
+	startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	_, err := db.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`,
+		"m_phase4", startTime, startTime)
+	if err != nil {
+		t.Fatalf("insert match_registry: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team, outcome int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 25, 4}, {"teammate", 0, 2, 10, 9},
+		{"opp1", 1, 3, 6, 16}, {"opp2", 1, 3, 8, 14},
+	} {
+		_, err := db.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			"m_phase4", q.xuid, q.team, q.outcome, q.kills, q.deaths)
+		if err != nil {
+			t.Fatalf("insert participant: %v", err)
+		}
+	}
+
+	if _, err := RunLUSRV2Shadow(ctx, nil, db, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	// État slayer écrit (mode primaire).
+	slayer, err := repo.LoadState(ctx, "owner", "arena_slayer")
+	if err != nil || slayer == nil {
+		t.Fatalf("slayer state non créé: %v", err)
+	}
+	deltaSlayer := slayer.Mu - 25.0 // prior μ_0 = 25
+	if deltaSlayer <= 0 {
+		t.Fatalf("expected positive delta slayer (carry win), got %v", deltaSlayer)
+	}
+
+	// État btb mis à jour par leak. Δ_btb attendu = 0.3 · delta_slayer.
+	btb, err := repo.LoadState(ctx, "owner", "btb")
+	if err != nil || btb == nil {
+		t.Fatalf("btb state introuvable après leak: %v", err)
+	}
+	expectedBtbMu := 24.0 + skillv2.DefaultModeCouplingWeight*deltaSlayer
+	if diff := btb.Mu - expectedBtbMu; diff > 0.01 || diff < -0.01 {
+		t.Errorf("btb μ after leak = %v, want %v (= 24.0 + 0.3 · %v)",
+			btb.Mu, expectedBtbMu, deltaSlayer)
+	}
+	// σ inchangé.
+	if btb.Sigma != 6.0 {
+		t.Errorf("btb σ = %v, want 6.0 (leak ne modifie pas σ)", btb.Sigma)
+	}
+}
+
+// TestRunLUSRV2Shadow_Phase4_OffByDefault vérifie que sans le flag,
+// les autres modes ne sont PAS modifiés.
+func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrModeCouplingEnvFlag, "") // explicitement off
+
+	db := openShadowTestDB(t)
+	repo := duckdb.NewSkillV2Repo(db)
+	ctx := context.Background()
+
+	pretime := time.Date(2025, 1, 1, 8, 0, 0, 0, time.UTC)
+	if err := repo.UpsertState(ctx, domain.SkillV2State{
+		XUID: "owner", PlaylistGroup: "btb",
+		Mu: 24.0, Sigma: 6.0, Experience: 5,
+		LastMatchAt: &pretime,
+	}); err != nil {
+		t.Fatalf("seed btb: %v", err)
+	}
+
+	startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+	_, err := db.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`,
+		"m_phase4_off", startTime, startTime)
+	if err != nil {
+		t.Fatalf("insert match: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team, outcome int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 25, 4}, {"teammate", 0, 2, 10, 9},
+		{"opp1", 1, 3, 6, 16}, {"opp2", 1, 3, 8, 14},
+	} {
+		_, err := db.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			"m_phase4_off", q.xuid, q.team, q.outcome, q.kills, q.deaths)
+		if err != nil {
+			t.Fatalf("insert participant: %v", err)
+		}
+	}
+	if _, err := RunLUSRV2Shadow(ctx, nil, db, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	btb, err := repo.LoadState(ctx, "owner", "btb")
+	if err != nil || btb == nil {
+		t.Fatalf("btb state: %v", err)
+	}
+	if btb.Mu != 24.0 {
+		t.Errorf("btb μ = %v, want 24.0 (flag off, no leak)", btb.Mu)
 	}
 }
