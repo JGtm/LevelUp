@@ -1,0 +1,276 @@
+// Package service - synthesis_service_builders.go : builders highlights +
+// detailed stats + top weapons + combat profile + fun stats (canonical
+// path). Decoupe de synthesis_service.go (god-file split, refactor 2026-05-27).
+package service
+
+import (
+	"context"
+	"sort"
+	"strings"
+
+	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/port"
+)
+
+func buildHighlightsPreviewCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisHighlightsPreview {
+	if len(rows) == 0 {
+		return domain.SynthesisHighlightsPreview{
+			TopByKills:    []domain.SynthesisMatchHighlight{},
+			TopByKDA:      []domain.SynthesisMatchHighlight{},
+			WorstByDeaths: []domain.SynthesisMatchHighlight{},
+		}
+	}
+	toHighlight := func(r canonical.PlayerMatchRow) domain.SynthesisMatchHighlight {
+		k, d := 0, 0
+		if r.Self.Kills != nil {
+			k = *r.Self.Kills
+		}
+		if r.Self.Deaths != nil {
+			d = *r.Self.Deaths
+		}
+		// Outcome canonical â†' int Halo pour le DTO inchangÃ©.
+		var outcome int
+		switch r.Self.Outcome {
+		case canonical.OutcomeWin:
+			outcome = domain.OutcomeWin
+		case canonical.OutcomeLoss:
+			outcome = domain.OutcomeLoss
+		case canonical.OutcomeTie:
+			outcome = domain.OutcomeDraw
+		case canonical.OutcomeDNF:
+			outcome = domain.OutcomeDNF
+		}
+		return domain.SynthesisMatchHighlight{
+			MatchID:   r.Summary.MatchID,
+			Kills:     k,
+			Deaths:    d,
+			KDA:       r.Self.KDA,
+			Outcome:   outcome,
+			PerfScore: r.Enrichment.PerformanceScore,
+		}
+	}
+
+	topByKills := topNByFuncCanonical(rows, highlightTopN, func(a, b canonical.PlayerMatchRow) bool {
+		ak, bk := 0, 0
+		if a.Self.Kills != nil {
+			ak = *a.Self.Kills
+		}
+		if b.Self.Kills != nil {
+			bk = *b.Self.Kills
+		}
+		return ak > bk
+	})
+	topByKDA := topNByFuncCanonical(rows, highlightTopN, func(a, b canonical.PlayerMatchRow) bool {
+		av := 0.0
+		if a.Self.KDA != nil {
+			av = *a.Self.KDA
+		}
+		bv := 0.0
+		if b.Self.KDA != nil {
+			bv = *b.Self.KDA
+		}
+		return av > bv
+	})
+	worstByDeaths := topNByFuncCanonical(rows, highlightTopN, func(a, b canonical.PlayerMatchRow) bool {
+		ad, bd := 0, 0
+		if a.Self.Deaths != nil {
+			ad = *a.Self.Deaths
+		}
+		if b.Self.Deaths != nil {
+			bd = *b.Self.Deaths
+		}
+		return ad > bd
+	})
+
+	toSlice := func(src []canonical.PlayerMatchRow) []domain.SynthesisMatchHighlight {
+		out := make([]domain.SynthesisMatchHighlight, len(src))
+		for i, r := range src {
+			out[i] = toHighlight(r)
+		}
+		return out
+	}
+	return domain.SynthesisHighlightsPreview{
+		TopByKills:    toSlice(topByKills),
+		TopByKDA:      toSlice(topByKDA),
+		WorstByDeaths: toSlice(worstByDeaths),
+	}
+}
+
+// topNByFuncCanonical est la variante canonical de topNByFunc.
+func topNByFuncCanonical(rows []canonical.PlayerMatchRow, n int, less func(a, b canonical.PlayerMatchRow) bool) []canonical.PlayerMatchRow {
+	cp := make([]canonical.PlayerMatchRow, len(rows))
+	copy(cp, rows)
+	for i := 0; i < n && i < len(cp); i++ {
+		minIdx := i
+		for j := i + 1; j < len(cp); j++ {
+			if less(cp[j], cp[minIdx]) {
+				minIdx = j
+			}
+		}
+		cp[i], cp[minIdx] = cp[minIdx], cp[i]
+	}
+	if n > len(cp) {
+		n = len(cp)
+	}
+	return cp[:n]
+}
+
+// buildSynthesisDetailedStatsFromCanonical agrège les métriques détaillées depuis les rows canoniques.
+// Combat : headshot/grenade/melee/power kills, max killing spree.
+// Tir : shots fired/hit.
+// Dégâts : damage dealt/taken.
+func buildSynthesisDetailedStatsFromCanonical(rows []canonical.PlayerMatchRow) domain.SynthesisDetailedStats {
+	stats := domain.SynthesisDetailedStats{}
+	for _, r := range rows {
+		if r.Self.HeadshotKills != nil {
+			stats.TotalHeadshotKills += *r.Self.HeadshotKills
+		}
+		if r.Self.PerfectKills != nil {
+			stats.TotalPerfectKills += *r.Self.PerfectKills
+		}
+		if r.Self.GrenadeKills != nil {
+			stats.TotalGrenadeKills += *r.Self.GrenadeKills
+		}
+		if r.Self.MeleeKills != nil {
+			stats.TotalMeleeKills += *r.Self.MeleeKills
+		}
+		if r.Self.PowerWeaponKills != nil {
+			stats.TotalPowerWeaponKills += *r.Self.PowerWeaponKills
+		}
+		if r.Self.MaxKillingSpree != nil && *r.Self.MaxKillingSpree > stats.MaxKillingSpree {
+			stats.MaxKillingSpree = *r.Self.MaxKillingSpree
+		}
+		if r.Self.ShotsFired != nil {
+			stats.TotalShotsFired += *r.Self.ShotsFired
+		}
+		if r.Self.ShotsHit != nil {
+			stats.TotalShotsHit += *r.Self.ShotsHit
+		}
+		if r.Self.DamageDealt != nil {
+			stats.TotalDamageDealt += float64(*r.Self.DamageDealt)
+		}
+		if r.Self.DamageTaken != nil {
+			stats.TotalDamageTaken += float64(*r.Self.DamageTaken)
+		}
+		if r.Self.TimePlayed != nil {
+			stats.TotalTimePlayedSeconds += *r.Self.TimePlayed
+		}
+	}
+	return stats
+}
+
+// buildSynthesisFunStatsFromAwards agrege les fun stats depuis personal_score_awards.
+// buildTopWeaponKills filtre les rows sans label (weapon ID non résolu), trie
+// par kills desc et retourne les top N entrées.
+func buildTopWeaponKills(rows []port.WeaponKillRow, n int) []domain.SynthesisWeaponKillEntry {
+	resolved := make([]port.WeaponKillRow, 0, len(rows))
+	for _, r := range rows {
+		if r.Label != "" && !r.IsGrenadeMelee {
+			resolved = append(resolved, r)
+		}
+	}
+	sort.Slice(resolved, func(i, j int) bool { return resolved[i].Kills > resolved[j].Kills })
+	if len(resolved) > n {
+		resolved = resolved[:n]
+	}
+	out := make([]domain.SynthesisWeaponKillEntry, len(resolved))
+	for i, r := range resolved {
+		out[i] = domain.SynthesisWeaponKillEntry{Label: r.Label, Kills: r.Kills}
+	}
+	return out
+}
+
+// buildCombatProfileFromCanonical agrège OC + DR depuis les rows canoniques filtrés
+// et construit le CombatProfileBlock (descripteurs gérés par ClassifyCombatProfile).
+// Retourne nil si aucun row valide (matchCount == 0).
+func buildCombatProfileFromCanonical(rows []canonical.PlayerMatchRow) *domain.CombatProfileBlock {
+	if len(rows) == 0 {
+		return nil
+	}
+	var ocSum, drSum float64
+	var ocCount, drCount int
+	var residualSum float64
+	var residualCount int
+	for _, r := range rows {
+		if r.Self.DamageDealt != nil && r.Self.DamageTaken != nil {
+			k, a, d := 0, 0, 0
+			if r.Self.Kills != nil {
+				k = *r.Self.Kills
+			}
+			if r.Self.Assists != nil {
+				a = *r.Self.Assists
+			}
+			if r.Self.Deaths != nil {
+				d = *r.Self.Deaths
+			}
+			cy := analysis.ComputeCombatYield(k, a, float64(*r.Self.DamageDealt), float64(*r.Self.DamageTaken), d)
+			if cy.OffensiveConversion > 0 {
+				ocSum += cy.OffensiveConversion
+				ocCount++
+			}
+			if cy.DefensiveResistance > 0 {
+				drSum += cy.DefensiveResistance
+				drCount++
+			}
+		}
+		if r.Enrichment.EngagementScoreBrut != nil {
+			residualSum += *r.Enrichment.EngagementScoreBrut
+			residualCount++
+		}
+	}
+	avgOC := 0.0
+	if ocCount > 0 {
+		avgOC = ocSum / float64(ocCount)
+	}
+	avgDR := 0.0
+	if drCount > 0 {
+		avgDR = drSum / float64(drCount)
+	}
+	var avgResidualBrut *float64
+	if residualCount > 0 {
+		v := residualSum / float64(residualCount)
+		avgResidualBrut = &v
+	}
+	block := analysis.ClassifyCombatProfile(avgOC, avgDR, avgResidualBrut, len(rows))
+	return &block
+}
+
+// Mappings award_name : betrayed_player -> betrayals, self_destruction -> suicides,
+// destroyed_* -> vehicles_destroyed, hijacked_* -> hijacks.
+func buildSynthesisFunStatsFromAwards(
+	ctx context.Context,
+	repo port.PersonalScoreAwardsRepository,
+	titleSlug string,
+	matchIDs []string,
+	playerXUID string,
+) (domain.SynthesisDetailedStats, error) {
+	stats := domain.SynthesisDetailedStats{}
+
+	rows, err := repo.LoadPersonalScoreAwards(ctx, titleSlug, port.PersonalScoreAwardsFilters{
+		MatchIDs: matchIDs,
+		XUIDs:    []string{playerXUID},
+	})
+	if err != nil {
+		return stats, err
+	}
+
+	for _, row := range rows {
+		switch row.AwardName {
+		case "betrayed_player":
+			stats.TotalBetrayals += row.Total
+		case "self_destruction":
+			stats.TotalSuicides += row.Total
+		default:
+			// destroyed_* et hijacked_* patterns
+			if strings.HasPrefix(row.AwardName, "destroyed_") {
+				stats.TotalVehiclesDestroyed += row.Total
+			} else if strings.HasPrefix(row.AwardName, "hijacked_") {
+				stats.TotalHijacks += row.Total
+			}
+		}
+	}
+
+	return stats, nil
+}
