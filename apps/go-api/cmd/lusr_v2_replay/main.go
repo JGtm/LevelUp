@@ -28,6 +28,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -167,23 +168,10 @@ func queryFinalStates(ctx context.Context, db *sql.DB, xuid string) map[string]p
 	return out
 }
 
-// inferredTier : mapping qualitatif μ (échelle TrueSkill native) → tier, à
-// calibrer sur les résultats. Indicatif pour Phase 1d uniquement.
+// inferredTier : mapping μ → tier label complet (ex: "Or III") via
+// le helper Phase 3e calibré sur la distribution observée.
 func inferredTier(mu float64) string {
-	switch {
-	case mu < 18:
-		return "Bronze"
-	case mu < 22:
-		return "Silver"
-	case mu < 28:
-		return "Gold"
-	case mu < 32:
-		return "Platinum"
-	case mu < 38:
-		return "Diamond"
-	default:
-		return "Onyx"
-	}
+	return skillv2.FormatTierLabel(mu, skillv2.DefaultTierBoundaries())
 }
 
 func writeReport(w *os.File, players []string, xuidByGT map[string]string, results map[string]map[string]playerGroupSummary) {
