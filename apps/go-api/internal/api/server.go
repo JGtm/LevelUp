@@ -40,7 +40,6 @@ import (
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
-	"levelup/go-api/internal/prestige"
 	"levelup/go-api/internal/progression/coach_advisor"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
@@ -213,7 +212,7 @@ func NewRouter(
 	// le sync hook est no-op — mais le boot du bundle reste utile pour valider la
 	// config au démarrage.
 	var prestigeBundle *PrestigeBundle
-	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve); err != nil {
+	if pb, err := NewPrestigeBundle(cfg.RepoRoot, reg.resolve, cfg.PrestigeEnabled); err != nil {
 		slog.Warn("prestige_bundle_init_failed", "err", err.Error())
 	} else {
 		prestigeBundle = pb
@@ -409,7 +408,8 @@ func NewRouter(
 		// (proof-of-concept Phase C) ont été supprimés en revue 2026-04-29 P0.2
 		// Q6 — orphelins côté front même flag activé. À réintroduire en endpoint
 		// admin/debug si besoin de re-valider le pipeline canonique.
-		if handlers.MultiTitleAPIEnabled() {
+		if cfg.MultiTitleAPIEnabled {
+			slog.Info("multi_title_api_enabled", "routes", []string{"/titles/{slug}/field-mappings", "/titles/{slug}/catalog"})
 			fieldMappingsHandler := handlers.NewFieldMappingsHandler(fieldMappingsRegistry, slog.Default())
 			// V2 saisons : si le catalog est câblé, on enrichit le DTO assets
 			// avec l'union TOML + DB (cf. SeasonsCatalogForHandler ci-dessous).
@@ -829,7 +829,7 @@ func NewRouter(
 
 			// Module Prestige — routes derrière feature flag PRESTIGE_ENABLED.
 			// Le bundle a été initialisé au boot ; si nil ou flag off, routes non montées.
-			if prestigeBundle != nil && prestige.IsEnabled() {
+			if prestigeBundle != nil && cfg.PrestigeEnabled {
 				lazy := NewLazyPrestigeService(prestigeBundle, nil)
 				ph := handlers.NewPrestigeHandler(lazy)
 				// Défis

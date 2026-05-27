@@ -67,6 +67,14 @@ type AppConfig struct {
 	// Backup : configuration du scheduler de backup DuckDB via restic.
 	// Activé par LEVELUP_BACKUP_ENABLED=true.
 	Backup BackupConfig
+	// MultiTitleAPIEnabled gate les routes /api/v1/titles/{slug}/field-mappings + catalog.
+	// Source : multi_title_api_enabled dans app_settings.json. Env var MULTI_TITLE_API_ENABLED
+	// en override d'urgence (1/true/yes). Défaut : false.
+	MultiTitleAPIEnabled bool
+	// PrestigeEnabled gate les 16 routes Prestige et le hook post-sync.
+	// Source : prestige_enabled dans app_settings.json. Env var PRESTIGE_ENABLED en override.
+	// Défaut : true.
+	PrestigeEnabled bool
 }
 
 // BackupConfig centralise la configuration du backup périodique.
@@ -119,6 +127,54 @@ func loadBackupConfig(repoRoot, settingsPath string) BackupConfig {
 		cfg.KeepMonthly = int(v)
 	}
 	return cfg
+}
+
+// loadMultiTitleAPIEnabled lit multi_title_api_enabled depuis app_settings.json.
+// La var d'env MULTI_TITLE_API_ENABLED prend la priorité (override d'urgence).
+// Défaut : false.
+func loadMultiTitleAPIEnabled(settingsPath string) bool {
+	if v := os.Getenv("MULTI_TITLE_API_ENABLED"); v != "" {
+		vl := strings.ToLower(strings.TrimSpace(v))
+		return vl == "1" || vl == "true" || vl == "yes"
+	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return false
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return false
+	}
+	if b, ok := m["multi_title_api_enabled"].(bool); ok {
+		return b
+	}
+	return false
+}
+
+// loadPrestigeEnabled lit prestige_enabled depuis app_settings.json.
+// La var d'env PRESTIGE_ENABLED prend la priorité (override d'urgence).
+// Défaut : true (activé si ni JSON ni env var ne précisent la valeur).
+func loadPrestigeEnabled(settingsPath string) bool {
+	if v := os.Getenv("PRESTIGE_ENABLED"); v != "" {
+		vl := strings.ToLower(strings.TrimSpace(v))
+		switch vl {
+		case "0", "false", "no", "off":
+			return false
+		}
+		return true
+	}
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		return true
+	}
+	var m map[string]any
+	if err := json.Unmarshal(data, &m); err != nil {
+		return true
+	}
+	if b, ok := m["prestige_enabled"].(bool); ok {
+		return b
+	}
+	return true
 }
 
 // loadDiscordWebhookURL lit le webhook Discord depuis LEVELUP_DISCORD_WEBHOOK_URL,
@@ -199,6 +255,8 @@ func Load() (*AppConfig, error) {
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
+	cfg.MultiTitleAPIEnabled = loadMultiTitleAPIEnabled(appSettingsPath)
+	cfg.PrestigeEnabled = loadPrestigeEnabled(appSettingsPath)
 	return cfg, nil
 }
 
