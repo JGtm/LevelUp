@@ -34,6 +34,35 @@ Branche : `refactor/split-god-files-1000plus` (continuité demandée). Fix débl
 
 ---
 
+## [2026-05-27] feat(lusr-v2): Mini-Phase 0.5 — capture ParticipationInfo (4 booleans)
+
+**Statut** : Complété
+
+**Contexte** : préparation Phase 3 LUSR v2 (quit penalty TS2 §9). L'API Halo expose `ParticipationInfo` complet (`PresentAtBeginning`, `PresentAtCompletion`, `JoinedInProgress`, `LeftInProgress`, `TimePlayed`, `FirstJoinedTime`, `LastLeaveTime`, `ConfirmedParticipation`) — le wrapper Go [`internal/openspartan/models.go`](../apps/go-api/internal/openspartan/models.go) parse déjà tout depuis le JSON, mais le mapper et la live sync jetaient les 4 booleans (seul `TimePlayed` était propagé). Source confirmée par [den.dev/blog/halo-api-match-stats](https://den.dev/blog/halo-api-match-stats/#match-stats).
+
+**Décision technique principale** :
+
+1. **Migration `shared_add_participation_info_booleans`** ([steps_shared_add_participation_info.go](../apps/go-api/internal/migration/steps_shared_add_participation_info.go)) : 4 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ... BOOLEAN`. Idempotent. Pas de backfill — NULL pour les matchs antérieurs (re-fetch JSON depuis l'API trop coûteux, info récupérable opportunistement au prochain delta).
+2. **Domain row** ([domain/match_rows.go](../apps/go-api/internal/domain/match_rows.go)) : ajout des 4 `*bool` dans `MatchParticipantRow`.
+3. **Live sync extraction** ([sync/transforms.go](../apps/go-api/internal/sync/transforms.go) + nouveau helper `jsonBoolPtr` dans [transforms_helpers.go](../apps/go-api/internal/sync/transforms_helpers.go)) : extraction des 4 booleans depuis l'objet imbriqué `ParticipationInfo`.
+4. **Live sync INSERT** ([sync/writes.go](../apps/go-api/internal/sync/writes.go)) : INSERT + `ON CONFLICT DO UPDATE` étendus.
+5. **Persister Collect→Persist** ([persist/shared_persister.go](../apps/go-api/internal/persist/shared_persister.go)) : INSERT étendu (utilisé quand `LEVELUP_PERSIST_BATCH=1`).
+6. **Mapper OpenSpartan import** ([openspartan/mapper/{rows,participants}.go](../apps/go-api/internal/openspartan/mapper/) + [service/openspartan_import_adapters.go](../apps/go-api/internal/service/openspartan_import_adapters.go)) : propagation depuis `p.ParticipationInfo.*Bool` → mapper row → domain row.
+7. **Schemas test fixtures** : `sync/schema.go` (sharedSchemaSQL), `migration/steps_shared.go` (create_base_shared_schema), `sync/testutil/fixture.go` mis à jour pour cohérence avec la migration.
+
+**Résultats observés** :
+
+- `go test ./...` PASS (toutes packages, ~60s).
+- `go vet ./...` clean.
+- Nouveau test `TestExtractParticipants_ParticipationInfoBooleans` valide (a) extraction OK quand `ParticipationInfo` présent, (b) NULL propagé quand bloc absent.
+- Tous les chemins d'écriture (live sync legacy `writes.go`, persister Collect→Persist `shared_persister.go`, OpenSpartan import via mapper+adapter) capturent désormais les 4 booleans.
+
+**Squad info** : **non disponible côté API Halo publique** — il n'y a pas de `party_id` ni de composition de squad dans le payload. Le LUSR v2 Phase 2 utilisera donc le proxy `is_with_friends` (déjà calculé par `friends_recompute`) + comptage des coéquipiers trackés (cf. Phase 0 cmd).
+
+**Prochaine étape** : la donnée commence à entrer dans `match_participants` dès le prochain sync. Le LUSR v2 Phase 3 (quit penalty TS2 §9) pourra exploiter `quit_real = PresentAtBeginning ∧ ¬PresentAtCompletion` vs `late_join = JoinedInProgress`. À noter : les ~2500 matchs déjà syncés resteront NULL — la fenêtre de signal "quit" sera limitée aux nouveaux matchs.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 0 — métriques Menke shadow sur le LUSR v1 actuel
 
 **Statut** : Complété

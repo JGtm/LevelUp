@@ -314,6 +314,58 @@ func TestExtractParticipants_Valid(t *testing.T) {
 	}
 }
 
+func TestExtractParticipants_ParticipationInfoBooleans(t *testing.T) {
+	j := map[string]any{
+		"MatchId": "abc",
+		"Players": []any{
+			map[string]any{
+				"PlayerId": "xuid(1)", "PlayerType": float64(1),
+				"ParticipationInfo": map[string]any{
+					"TimePlayed":          "PT10M",
+					"PresentAtBeginning":  true,
+					"PresentAtCompletion": false,
+					"JoinedInProgress":    false,
+					"LeftInProgress":      true,
+				},
+				"PlayerTeamStats": []any{map[string]any{
+					"TeamId": float64(0),
+					"Stats":  map[string]any{"CoreStats": map[string]any{}},
+				}},
+			},
+			// Player without ParticipationInfo — all 4 booleans must remain nil.
+			map[string]any{
+				"PlayerId": "xuid(2)", "PlayerType": float64(1),
+				"PlayerTeamStats": []any{map[string]any{
+					"TeamId": float64(0),
+					"Stats":  map[string]any{"CoreStats": map[string]any{}},
+				}},
+			},
+		},
+	}
+	rows := ExtractParticipants(j)
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	p1 := rows[0]
+	if p1.PresentAtBeginning == nil || !*p1.PresentAtBeginning {
+		t.Errorf("p1 PresentAtBeginning = %v, want true", p1.PresentAtBeginning)
+	}
+	if p1.PresentAtCompletion == nil || *p1.PresentAtCompletion {
+		t.Errorf("p1 PresentAtCompletion = %v, want false", p1.PresentAtCompletion)
+	}
+	if p1.JoinedInProgress == nil || *p1.JoinedInProgress {
+		t.Errorf("p1 JoinedInProgress = %v, want false", p1.JoinedInProgress)
+	}
+	if p1.LeftInProgress == nil || !*p1.LeftInProgress {
+		t.Errorf("p1 LeftInProgress = %v, want true", p1.LeftInProgress)
+	}
+	p2 := rows[1]
+	if p2.PresentAtBeginning != nil || p2.PresentAtCompletion != nil ||
+		p2.JoinedInProgress != nil || p2.LeftInProgress != nil {
+		t.Errorf("p2 ParticipationInfo booleans should all be nil (no ParticipationInfo block)")
+	}
+}
+
 func TestExtractParticipants_MissingMatchID(t *testing.T) {
 	j := map[string]any{"Players": []any{}}
 	if rows := ExtractParticipants(j); rows != nil {
