@@ -1,3 +1,103 @@
+## [2026-05-27] refactor(architecture): split god-files >1000L en fichiers thématiques
+
+**Statut** : Complété
+
+**Branche** : `refactor/split-god-files-1000plus`
+
+**Contexte** : audit CLAUDE.md identifié 13 fichiers Go > 1000 lignes (limite max 500L). Plus gros : `teammates_squad_charts.go` (1846L). Objectif : découpe stricte sans changement de logique, conformément au pattern projet (mixins MRO observé dans engine.go).
+
+**Stratégie d'extraction** :
+- Pour chaque god-file : audit `grep ^func` pour identifier les groupes thématiques (3-7 sous-fichiers selon taille).
+- Extraction via `sed -n 'X,Yp'` + header injecté + `goimports -w` pour nettoyer les imports inutilisés.
+- Pas d'export/renommage : les fonctions/types restent `lowercase` package-scoped, exploitant le fait que Go autorise plusieurs fichiers dans un même package à partager les méthodes d'une struct.
+- Le fichier original est soit réduit au core (constructor + Withers + entry point principal), soit transformé en index documentaire (`teammates_squad_charts.go` 24L).
+
+**Découpe par fichier** (13 god-files → 59 fichiers thématiques, tous sous 500L) :
+
+| Fichier original | Lignes | Découpe | Max nouveau |
+|---|---|---|---|
+| `internal/platform/duckdb/career_repo.go` | 1177 | 6 fichiers (core, lusr, top_matches, highlights, encounters, csr) | 334L |
+| `internal/service/career_service.go` | 1248 | 4 fichiers (core, highlights, encounters, summary) | 408L |
+| `internal/platform/duckdb/match_view_repo.go` | 1301 | 6 fichiers (core, scoreboard, medals, weapons, neighbors_skill, extras) | 314L |
+| `internal/api/registry.go` | 1266 | 5 fichiers (core, career, pages, media, auth) | 468L |
+| `internal/service/timeseries_service.go` | 1417 | 5 fichiers (core, events, aggregations, tabs, buckets) | 445L |
+| `internal/service/teammates_squad_charts.go` | 1846 | 7 fichiers (index, sessions_maps, impact_events, weapons_perf, synergy, intensity_perminute, medal_digest) | 449L |
+| `internal/sync/halo_client.go` | 1078 | 4 fichiers (core, film, http, career) | 411L |
+| `internal/service/synthesis_service.go` | 1141 | 4 fichiers (core, legacy, canonical, builders) | 379L |
+| `internal/platform/duckdb/season_pass_repo.go` | 1037 | 4 fichiers (core, tracks, builders, helpers) | 332L |
+| `internal/port/repository.go` | 1031 | 3 fichiers (core, sessions_home, data) | 471L |
+| `internal/service/match_history_service.go` | 1007 | 3 fichiers (core, filters, enrich) | 458L |
+| `internal/service/teammates_service.go` | 1087 | 4 fichiers (core, briefing, kpis, assets) | 352L |
+| `internal/platform/duckdb/media_repo.go` | 1161 | 4 fichiers (core, filters, writes, translations) | 477L |
+
+**Commits** (13 au total sur la branche) :
+- `6471d521` career_repo
+- `0949b80e` career_service
+- `6a2f02d7` match_view_repo
+- `cf4f5de8` registry
+- `b8f5914e` timeseries_service
+- `9b37ce02` teammates_squad_charts
+- `bfc080c4` halo_client
+- `8f5c15a5` synthesis_service
+- `5ce1f12e` season_pass_repo
+- `9d81df1c` port/repository
+- `5364e7fb` match_history_service
+- `51a3eb46` teammates_service
+- `d0e5c480` media_repo
+
+**Validation** :
+- `go build ./...` : OK après chaque split (pre-commit hooks: gofmt, vet, golangci-lint, secrets — tous PASS).
+- `go test ./...` : **0 FAIL** sur toute la suite (services, api, sync, platform, etc.).
+- `go test -tags=integration ./...` : **0 FAIL** (incluant tous les TestCareerRepo_*, TestQ7XPHistory_*, TestMatchView_*, etc.).
+- `find internal -name "*.go" ! -name "*_test.go" | wc -l` (>1000L) : **0** (à l'exception de `internal/api/gen/types.gen.go` 1124L, auto-généré OpenAPI — hors scope).
+
+**Gotchas rencontrés** :
+- `sed -n 'X,Yp'` peut couper au milieu d'une fonction si on ne valide pas que la ligne X est exactement un `^func ` boundary. Erreur reproduite sur `match_history_service.go` (range 260-700 incluait `toFilterMatchRow` à la ligne 700 mais coupait son corps). Reset via `git checkout HEAD --` + re-découpe avec ranges précis 260-699 / 700-1007.
+- `gofmt` reformate parfois les commentaires de découpe en bullet list (transformation `,` → ligne suivante). Pas un bug — comportement attendu pour `// - X` au milieu d'un commentaire.
+
+**Pourquoi solide** :
+- Pas un seul changement de logique (uniquement déplacement de code entre fichiers du même package).
+- Les tests existants continuent de PASS sans modification — preuve que la structure est isomorphe.
+- Le pattern Go "multiple files, same package" est natif : les méthodes `(r *CareerRepo)` peuvent vivre dans `career_repo_lusr.go` sans problème de compilation, tant que `type CareerRepo struct` est dans le même package.
+- Chaque commit est atomique (1 god-file = 1 commit) : revert facile en cas de régression détectée plus tard.
+
+**Prochaine étape** : audit similaire sur fichiers entre 500L et 1000L (15+ fichiers concernés, ex. `internal/service/squad_service_v2.go` 988L, `internal/migration/steps_shared.go` 989L, `internal/ops/media.go` 929L). Hors scope de cette session (engagement initial : god-files > 1000L uniquement).
+
+---
+
+## [2026-05-27] feat(synthesis): cartes "Top X" cliquables (FDA, Performance, Précision, Dégâts)
+
+**Statut** : Complété (visuel à valider côté user)
+
+**Branche** : `refactor/split-god-files-1000plus` (branche active, demande user d'empiler dessus)
+
+**Demande** : ajouter sur la page Synthesis 4 KPI cards "Top FDA / Top Performance / Top Précision / Top dégâts" dans la colonne gauche du graphe Frags par arme, avec un petit bouton discret (identique à celui de la 1re colonne `ExplorerMatchesTable`) sur chaque carte "Top" et "Meilleur" pour ouvrir le match record.
+
+**Décision technique** :
+
+Le backend exposait `BestKillsMatch *int` / `BestKDAMatch *float64` (valeur uniquement, pas de match_id). Impossible de naviguer depuis ces cartes. Trois choix possibles : (a) ajouter un champ `*_match_id` à côté de chaque scalaire — duplication ; (b) réutiliser `SynthesisHighlightsPreview.TopByKills/KDA` côté FE — couplage croisé pour une donnée déjà calculée ailleurs ; (c) **introduire `BestMatchRef { match_id, value }` dans `domain.SynthesisOverview`** — structure unique, additive, OpenAPI propre. Choix (c).
+
+Implémentation :
+- `internal/domain/synthesis.go` : type `BestMatchRef` + 6 nouveaux champs `Best{Kills,KDA,Perf,Accuracy,Damage,KillingSpree}Ref *BestMatchRef`. Champs scalaires legacy (`BestKillsMatch`, `BestKDAMatch`) conservés et populés depuis les nouveaux refs (contrat OpenAPI inchangé pour clients existants).
+- `internal/service/synthesis_service.go` : extraction d'un helper `bestTracker` + `computeSynthesisBestRefs(rows)` (struct interne `synthesisBestRefs`). Source des métriques : `r.Self.{Kills,KDA,Accuracy,DamageDealt,MaxKillingSpree}` + `r.Enrichment.PerformanceScore`. La fonction `buildSynthesisOverviewCanonical` perd la boucle in-line de `bestKills`/`bestKDA` (factorisée dans `computeSynthesisBestRefs`) et reste sous 80L.
+- `bestTracker.toRef()` retourne `nil` si `value <= 0` → FE n'affiche pas la carte (sémantique : pas de match record exploitable).
+- En cas d'égalité parfaite : le premier match rencontré gagne (rows pré-triés par date, donc le plus récent en ordre desc → pertinent côté UX).
+- `synthesis_service_test.go` : 4 nouveaux tests `TestComputeSynthesisBestRefs_*` couvrant (1) pick-per-metric distinct, (2) tie keeps first, (3) nil fields → nil ref, (4) all-zero → nil ref. Helper `makeCanonicalBestRow` (renommé pour éviter collision avec `makeRow` de `session_labels_test.go`).
+- Front : `BestMatchRef` ajouté à `lib/api/types.ts`, 5 i18n keys nouvelles (`synthesis.kpi.{top_kda,top_perf,top_accuracy,top_damage,open_match}`) FR/EN, `AccentCard` étendue avec props optionnelles `onOpenMatch` + `openMatchLabel` rendant le bouton SVG copié à l'identique d'`ExplorerMatchesTable.tsx:210-220`. `SynthesisOverviewSection` reçoit `playerSlug` → `useNavigateToMatch`. 4 nouvelles cartes ajoutées dans un grid 2×2 conditionnel (rendu uniquement si ≥1 ref non nul). Cartes "Meilleur match · kills" et "Folie meurtrière (max)" reliées aux refs respectifs.
+- Précision = `Self.Accuracy` canonique (pas le ratio `shots_hit/shots_fired` brut), confirmé avec user en début de session.
+
+**Tests** :
+- `go test ./internal/service/... -count=1` → PASS (incluant les 4 nouveaux tests).
+- `npm run typecheck` → OK.
+- `npm run lint` → 0 erreurs (60 warnings préexistants, aucun introduit par ce changement).
+- `npm run test -- --run src/features/synthesis` → 17 passed, 14 skipped.
+
+**Pourquoi solide** : le legacy `BestKillsMatch/BestKDAMatch` est populé depuis le ref → tout consommateur OpenAPI existant continue de fonctionner sans changement de contrat. Les nouveaux `*Ref` sont strictement additifs. Le test "all zero → nil" verrouille la sémantique d'affichage côté FE.
+
+**Prochaine étape** : test visuel par user sur `/players/.../synthesis` — vérifier alignement 2×2 dans la colonne gauche (largeur `w-[21rem]`), discrétion du bouton SVG, navigation effective vers le match record.
+
+---
+
 ## [2026-05-27] fix(career/top-matches): scan A 4 colonnes + asymétrie bot oubliée
 
 **Statut** : Complété
