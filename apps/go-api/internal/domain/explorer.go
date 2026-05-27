@@ -266,6 +266,11 @@ type ExplorerMatchesRow struct {
 	// front résout le label via narrative.dominance.* (manifest match_view)
 	// et affiche "-" pour 0.
 	DominanceFlag int `json:"dominance_flag,omitempty"`
+	// HadBotTeammate : un coéquipier (même team_id) avait un xuid bid(...).
+	// Propagé pour la section Career best_matches (les LOSS avec bot ne sont
+	// pas exposés ici : exclus côté repo, cf. CareerRepo.GetHighlightMatchIDs).
+	// Le front affiche une pill "bot" sur la card du match.
+	HadBotTeammate bool `json:"had_bot_teammate,omitempty"`
 }
 
 // ExplorerMatchesSummary : résumé de la requête Explorer.

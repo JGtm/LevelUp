@@ -239,14 +239,17 @@ WHERE match_id IN (%s)`
 //
 // _s sert uniquement à séparer les sections (1=best, 2=worst) dans l'ORDER BY final.
 // Q9TopMatchesPlayer : Phase A de Q9 — partie player (pme) avec filtre
-// performance_score + had_bot_teammate. Le tri (dominance flag + perf score)
-// et la sélection par section (WIN/LOSS) sont faits côté Go après merge avec
-// shared (Phase B).
+// performance_score. Le tri (dominance flag + perf score) et la sélection
+// par section (WIN/LOSS) sont faits côté Go après merge avec shared (Phase B).
+//
+// Le flag had_bot_teammate est désormais transmis au tri Go pour exclusion
+// asymétrique : on garde les WIN avec bot coéquipier (perf personnelle
+// méritoire malgré le handicap d'équipe), on rejette les LOSS avec bot
+// coéquipier (responsabilité du joueur non isolable d'un déséquilibre 4v3).
 const Q9TopMatchesPlayer = `
-SELECT match_id, performance_score, COALESCE(dominance_flag, 0)
+SELECT match_id, performance_score, COALESCE(dominance_flag, 0), COALESCE(had_bot_teammate, FALSE)
 FROM player_match_enrichment
-WHERE performance_score IS NOT NULL
-  AND COALESCE(had_bot_teammate, FALSE) = FALSE`
+WHERE performance_score IS NOT NULL`
 
 // Q9TopMatchesShared : Phase B de Q9 — partie shared (mp + r) avec filtres
 // shared-only (time_played >= 180, is_firefight = FALSE). Filtre xuid + IN
