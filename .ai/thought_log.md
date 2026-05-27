@@ -1,3 +1,91 @@
+## [2026-05-27] feat(lusr-v2): Phase 1a — math TrueSkill core (internal/analysis/skill_v2/)
+
+**Statut** : Complété
+
+**Contexte** : implémentation isolée du modèle TrueSkill classique (Herbrich 2007) pour LUSR v2. Aucune dépendance vers `internal/sync` ou le LUSR v1 — coexistence totale possible. Phase 1a livre uniquement la math pure, testable en autonomie, pour pouvoir la valider avant d'y greffer la persistance (Phase 1b) et l'intégration sync (Phase 1c).
+
+**Décision technique principale** :
+
+1. **Package `internal/analysis/skill_v2/`** :
+   - [doc.go](../apps/go-api/internal/analysis/skill_v2/doc.go) — vue d'ensemble + roadmap phases.
+   - [gaussian.go](../apps/go-api/internal/analysis/skill_v2/gaussian.go) — type `Gaussian{Mu, Sigma}` + `Priors` (Mu0, Sigma0, Beta, Tau, DrawProbability) avec `DefaultPriors()` calibré sur les conventions Herbrich (μ_0=25, σ_0=25/3, β=σ_0/2, τ=σ_0/100).
+   - [math.go](../apps/go-api/internal/analysis/skill_v2/math.go) — PDF/CDF de la normale standard, fonctions `vWin/wWin` et `vDraw/wDraw` (moments de la gaussienne tronquée), `DrawMargin` (conversion P(draw) → ε), `stdNormalInvCDF` via `math.Erfinv` (Go 1.21+).
+   - [trueskill.go](../apps/go-api/internal/analysis/skill_v2/trueskill.go) — `UpdateTwoTeam` (closed-form pour matchs 2-équipes de tailles quelconques), `PredictWinProbability`, `PredictDrawProbability`.
+
+2. **Closed-form choisi pour Phase 1**, pas factor graph + EP. Suffisant pour win/loss + (à venir Phase 2) squadOffset additif. Phase 3 (kills/deaths comme observations TS2 §8) forcera le refactor vers EP — la math actuelle restera comme fast-path.
+
+3. **Conventions** : on reste sur l'échelle native TrueSkill (μ ≈ 25, σ ≈ 8) en interne. Le mapping vers la grille LUSR v1 [1000..2000] (ou autre) se fait au boundary UI (Phase 1c+).
+
+**Résultats observés** :
+
+- 25 tests unitaires PASS : validation Gaussian, PDF/CDF/InvCDF roundtrip, vWin>0 partout, wWin∈[0,1], vDraw signe opposé à t, DrawMargin monotone et zéro pour p=0 et scale en √(n_a+n_b), update 1v1 symétrique, draw rapproche, loss = inverse de win (équipes swappées), 4v4 all-move-same-direction, high-σ player bouge plus que low-σ, prédiction win équiprobable sur skills égaux, 100 matchs alternés → μ stable σ rétrécit (borné par τ).
+- `go vet ./internal/analysis/skill_v2/` clean, `go build ./...` OK.
+- ~600 lignes (source + tests).
+
+**Prochaine étape** : Phase 1b — domain + migration + repo + service squelette pour persister `player_skill_state_v2` (μ, σ, experience_count, last_match_at par joueur × playlist_group), `lusr_hyperparams_v2` (Priors stockés), table `match_skill_rank` étendue avec `rating_type='LUSR_V2'`.
+
+---
+
+## [2026-05-27] feat: fetch_film_chunks — téléchargement des chunks REPLICATION_DATA manquants
+
+**Statut** : Complété
+
+**Branche** : `feat/lusr-v2-phase0-metrics`
+
+**Contexte** : 942 manifests Python hérités dans `data/cache/film_manifests/`. Audit complet révèle 2 572 chunks REPLICATION_DATA (type 2) manquants sur 26 554 attendus. Le cache Python avait des lacunes sur les premiers et derniers chunks de certains matchs.
+
+**Décision technique** : CLI `cmd/fetch_film_chunks/main.go` standalone (pas de CGO, pas d'auth — URLs CDN pré-signées). Download HTTP + décompression zlib (même algo que `downloadBlob` interne), 8 workers parallèles, idempotent (skip si fichier déjà présent). Sauvegarde dans `data/cache/film_chunks/<shortId>/chunk_%02d.bin`.
+
+**Résultats** : 2 510 chunks téléchargés, 62 expirés (1 seul match `33b9fbe9` dont le blob CDN est purgé), 0 erreur. Durée : 2m02s. Cache à 99.8% de complétude (26 492 / 26 554).
+
+**Conclusion** : le cache est désormais complet à l'exception d'un match non récupérable. L'outil reste disponible pour les prochains matchs via `-dry-run` + relance.
+
+---
+
+## [2026-05-27] refactor(career): seuil hybride had_bot_teammate (durée bot >= 30s ET ratio >= 15%)
+
+**Statut** : Complété
+
+**Branche** : `refactor/shared-social-collect-persist`
+
+**Contexte** : suite du fix précédent (asymétrie WIN/LOSS sur `had_bot_teammate`, livré plus tôt aujourd'hui), l'utilisateur a observé que le filtre reste binaire — un bot qui passe 1 seconde dans la team marque le match comme "déséquilibré" autant qu'un bot présent 5 minutes. L'API Halo Stats expose `ParticipationInfo.TimePlayed` par participant (bots inclus), déjà persisté dans `shared.match_participants.time_played_seconds`. Un collègue ajoute prochainement 4 colonnes BOOLEAN (`present_at_beginning`, `joined_in_progress`, `left_in_progress`, `present_at_completion`) pour un raffinement futur — celles-ci sont hors scope de ce ticket.
+
+**Décision technique** : seuil hybride
+- `SUM(bot_time_played_seconds) >= 30` (plancher absolu, évite la pollution sur matchs courts)
+- ET `SUM(bot_time_played_seconds) / duration_seconds >= 0.15` (ratio, échelle au match)
+
+Asymétrie : la SOMME agrège si plusieurs bots ont traversé la team. Un bot 25s sur match 100s (25% ratio) ne passe PAS (sous 30s absolu) — protège des matchs très courts. Un bot 50s sur match 500s (10% ratio) ne passe PAS (sous 15%) — protège des matchs longs.
+
+**Implémentation** ([enrichments.go:14-181](apps/go-api/internal/sync/enrichments.go#L14-L181)) :
+- Constantes nommées `botPresenceMinSeconds = 30` et `botPresenceMinRatio = 0.15`.
+- `queryAnyBotMatchIDs` : ancienne requête (matchs avec ≥1 bot, sans seuil) — sert à identifier l'ensemble à re-évaluer.
+- `querySignificantBotMatchIDs` : nouvelle requête avec CTE `bot_presence`, GROUP BY match_id, SUM time_played, JOIN match_registry pour `duration_seconds`, HAVING les deux seuils.
+- `setHadBotFlag` : helper UPDATE avec garde idempotence (filtre "current != value").
+- Double UPDATE en sortie : SET TRUE pour `sigBotIDs`, SET FALSE pour `anyBotIDs \ sigBotIDs` (réversion correcte des flags TRUE de l'ancien algo binaire).
+- Commentaire TODO explicite référençant le futur raffinement via les 4 BOOLEAN du collègue.
+
+**Tests** ([enrichments_test.go](apps/go-api/internal/sync/enrichments_test.go)) :
+- Helpers : `insertParticipantWithTime` (force time_played explicite) + `insertMatchRegistry` (duration_seconds).
+- 7 tests existants adaptés : ajout `insertMatchRegistry` + time_played 600s par défaut pour passer le seuil.
+- 6 nouveaux tests :
+  - `_BotBrief_FALSE` : bot 10s/480s (2%) → FALSE
+  - `_BotBelowAbsolute_FALSE` : bot 25s/100s (25% ratio) → FALSE (sous 30s)
+  - `_BotBelowRatio_FALSE` : bot 50s/500s (10%) → FALSE (sous 15%)
+  - `_BotMeetsBothThresholds_TRUE` : bot 100s/480s (20.8%) → TRUE
+  - `_MultipleBotsSummed_TRUE` : 2 bots cumulant 60s/200s (30%) → TRUE
+  - `_Recompute_FlipsTrueToFalse` : PME seed TRUE + bot 10s → recompute flip à FALSE
+- `go test -tags=integration ./internal/sync/ -run TestComputeAndPersistHadBotTeammate -v` : **13/13 PASS**.
+- `go test ./...` : PASS.
+- `go vet ./...` : OK.
+
+**Diag tool** ([cmd/diag_highlight_match/main.go](apps/go-api/cmd/diag_highlight_match/main.go)) : nouvelle section "Présence bots dans la team du joueur (seuil hybride)" qui affiche `bot_seconds_cumulés`, `match_duration_sec`, ratio en %, et les seuils. Aide les futurs diagnostics "pourquoi ce match est/n'est pas marqué bot".
+
+**Vérification terrain** : diag relancé sur Madina/615b3ebc — bot présent **6s sur 390s = 1.5%**, complètement anecdotique. Au prochain sync de Madina (post-sync hook recompute automatiquement), le flag passera de TRUE à FALSE → la pill "bot" disparaitra du match dans best_matches. Pas de backfill global à lancer : chaque joueur sera recalculé à son prochain sync.
+
+**Hors scope** : ALTER TABLE (rien de notre côté), exposition `bot_presence_seconds` dans la réponse API, backfill manuel global, raffinement via les 4 BOOLEAN du collègue (PR séparée à venir).
+
+---
+
 ## [2026-05-27] fix(media): résolution multi-extension + remux WebM à la volée pour clips MKV AV1+Opus
 
 **Statut** : Complété
