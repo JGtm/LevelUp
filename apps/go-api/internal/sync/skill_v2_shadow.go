@@ -114,7 +114,8 @@ func RunLUSRV2Shadow(ctx context.Context, sharedDB *sql.DB, xuid string) (int, e
 		}
 		if err := applyMatchToSkillV2(ctx, repo, priors, m.matchID, group, m.startTime, teamA, teamB, outcomeA); err != nil {
 			slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
-				"match_id", m.matchID, "group", group, "err", err)
+				"match_id", m.matchID, "group", group, "err", err,
+				"team_a_size", len(teamA), "team_b_size", len(teamB))
 			continue
 		}
 		processed++
@@ -167,11 +168,21 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 	return out, rows.Err()
 }
 
+// rosterMember regroupe un xuid + ses counts pour la pipeline shadow Phase 3c.
+type rosterMember struct {
+	xuid   string
+	kills  *float64 // nil si non disponible (avant Phase 3c ou pour bots)
+	deaths *float64
+}
+
 // buildTwoTeamRosters retourne (équipe du joueur, équipe adverse) ou (_, _, false)
 // si le match n'a pas exactement 2 teams humaines distinctes.
-func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, ownerTeamID int) (teamA, teamB []string, ok bool) {
+//
+// Phase 3c : récupère aussi kills/deaths par joueur depuis match_participants
+// pour pouvoir les passer en observations TS2 §8.
+func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, ownerTeamID int) (teamA, teamB []rosterMember, ok bool) {
 	rows, err := sharedDB.QueryContext(ctx, `
-		SELECT xuid, team_id
+		SELECT xuid, team_id, kills, deaths
 		FROM match_participants
 		WHERE match_id = ?
 		  AND xuid IS NOT NULL AND xuid != ''`, matchID)
@@ -180,18 +191,28 @@ func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, 
 	}
 	defer rows.Close() //nolint:errcheck
 
-	teamsByID := make(map[int][]string)
+	teamsByID := make(map[int][]rosterMember)
 	for rows.Next() {
-		var p shadowParticipant
+		var xuid string
 		var teamID sql.NullInt64
-		if err := rows.Scan(&p.xuid, &teamID); err != nil {
+		var kills, deaths sql.NullFloat64
+		if err := rows.Scan(&xuid, &teamID, &kills, &deaths); err != nil {
 			continue
 		}
 		if !teamID.Valid {
 			continue
 		}
 		tid := int(teamID.Int64)
-		teamsByID[tid] = append(teamsByID[tid], p.xuid)
+		m := rosterMember{xuid: xuid}
+		if kills.Valid {
+			v := kills.Float64
+			m.kills = &v
+		}
+		if deaths.Valid {
+			v := deaths.Float64
+			m.deaths = &v
+		}
+		teamsByID[tid] = append(teamsByID[tid], m)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, nil, false
@@ -248,9 +269,12 @@ func applyMatchToSkillV2(
 	priors skillv2.Priors,
 	matchID, playlistGroup string,
 	startTime time.Time,
-	teamAXUIDs, teamBXUIDs []string,
+	teamA, teamB []rosterMember,
 	outcomeA skillv2.TeamResult,
 ) error {
+	teamAXUIDs := extractXUIDs(teamA)
+	teamBXUIDs := extractXUIDs(teamB)
+
 	teamAStates, err := loadStatesOrSeed(ctx, repo, teamAXUIDs, playlistGroup, priors)
 	if err != nil {
 		return fmt.Errorf("loadStates teamA: %w", err)
@@ -259,13 +283,14 @@ func applyMatchToSkillV2(
 	if err != nil {
 		return fmt.Errorf("loadStates teamB: %w", err)
 	}
-	newA, newB, err := skillv2.UpdateTwoTeam(skillv2.TwoTeamMatch{
+	counts := buildCountInputs(teamA, teamB)
+	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
 		TeamA:   shadowStatesToGaussians(teamAStates),
 		TeamB:   shadowStatesToGaussians(teamBStates),
 		ResultA: outcomeA,
-	}, priors)
+	}, counts, priors)
 	if err != nil {
-		return fmt.Errorf("UpdateTwoTeam: %w", err)
+		return fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
 	if err := persistTeamSkillV2(ctx, repo, teamAStates, newA, matchID, startTime); err != nil {
 		return fmt.Errorf("persistTeam A: %w", err)
@@ -274,6 +299,48 @@ func applyMatchToSkillV2(
 		return fmt.Errorf("persistTeam B: %w", err)
 	}
 	return nil
+}
+
+func extractXUIDs(roster []rosterMember) []string {
+	out := make([]string, len(roster))
+	for i, m := range roster {
+		out[i] = m.xuid
+	}
+	return out
+}
+
+// buildCountInputs construit la structure CountInputs depuis les rosters.
+// Si AUCUN joueur n'a kills/deaths renseignés, retourne nil (le code en aval
+// traitera comme TS classique sans counts) — typiquement le cas des anciens
+// matchs antérieurs au sync Phase 3c.
+func buildCountInputs(teamA, teamB []rosterMember) *skillv2.CountInputs {
+	hasAny := false
+	for _, m := range teamA {
+		if m.kills != nil || m.deaths != nil {
+			hasAny = true
+			break
+		}
+	}
+	if !hasAny {
+		for _, m := range teamB {
+			if m.kills != nil || m.deaths != nil {
+				hasAny = true
+				break
+			}
+		}
+	}
+	if !hasAny {
+		return nil
+	}
+	pa := make([]skillv2.PlayerCounts, len(teamA))
+	for i, m := range teamA {
+		pa[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
+	}
+	pb := make([]skillv2.PlayerCounts, len(teamB))
+	for i, m := range teamB {
+		pb[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
+	}
+	return &skillv2.CountInputs{TeamA: pa, TeamB: pb}
 }
 
 func loadStatesOrSeed(ctx context.Context, repo *duckdb.SkillV2Repo, xuids []string, playlistGroup string, priors skillv2.Priors) ([]domain.SkillV2State, error) {
