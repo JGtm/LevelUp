@@ -1,3 +1,74 @@
+## [2026-05-27] fix(media): résolution multi-extension + remux WebM à la volée pour clips MKV AV1+Opus
+
+**Statut** : Complété
+
+**Contexte** : utilisateur signale "Lecture impossible — Format vidéo non supporté par le navigateur" sur la page Media (et même symptôme dans la section Médias de Match View). Root cause double :
+1. Le fichier sur disque a été converti localement `.mp4` → `.mkv` (AV1+Opus) mais la DB conserve `file_path` figé à `.mp4`. Le handler [media.go:801](../apps/go-api/internal/api/handlers/media.go#L801) faisait un `os.Stat` exact → 404 systématique. Le navigateur interprète 404 comme "format invalide" pour `<video>`.
+2. Même si on résout le `.mkv`, les navigateurs ne lisent pas le container Matroska nativement. Vidéos confirmées par ffprobe : AV1 1920x1080@60 + 4 pistes Opus 48kHz (enregistrement OBS multi-source). Codecs compatibles WebM, container non.
+
+**Décision technique principale** :
+
+1. **Fallback multi-extension dans ServeMediaFile** ([apps/go-api/internal/api/handlers/media.go](../apps/go-api/internal/api/handlers/media.go)) :
+   - Extrait `resolveMediaFilePath(bases, cleanURL)` qui tente le path exact puis itère `{stem}.{ext}` pour chaque extension vidéo connue. Anti-traversal préservé.
+   - Source de vérité au serving = `file_stem` + scan disque, pas `file_path` stocké.
+
+2. **Remux à la volée MKV/AVI → WebM** ([apps/go-api/internal/media/remux.go](../apps/go-api/internal/media/remux.go)) :
+   - `StreamRemuxAsWebM(ctx, path, w)` : ffprobe pre-flight pour récupérer les codecs, puis `ffmpeg -map 0:v:0 -map 0:a -c copy -f webm pipe:1` (toutes pistes audio par défaut, conformément à la préférence utilisateur). Fallback `-map 0:a:0` si une piste secondaire est incompatible WebM.
+   - Pas de Range support (seek limité aux clips web-natifs ; clips remuxés en download progressif). Acceptable pour clips <60s.
+   - Limitation acceptée : Safari ne lit pas WebM (v2 si demande utilisateur).
+
+3. **Réconciliation orphan DB** ([apps/go-api/internal/ops/media_reconcile.go](../apps/go-api/internal/ops/media_reconcile.go)) :
+   - `ReconcileOrphanedMediaFiles(ctx, db, slug, store)` : pour chaque entrée dont `file_path` ne pointe plus à un fichier disque, scan le dossier pour un même `file_stem` sous extension reconnue. Update si exactement 1 match, log warning si ambiguïté, no-op si zéro match. Idempotent.
+   - Branché dans `IndexMedia` avant le scan principal — s'exécute à chaque rescan.
+
+**Résultats observés** :
+
+- Tests unitaires : 8 tests `extensions_test.go` + 6 tests `media_reconcile_cgo_test.go` + 3 tests `remux_test.go` + 5 tests `media_serve_test.go` = 22 nouveaux tests, tous passent.
+- Test bout-en-bout `TestServeMediaFile_RemuxMKVtoWebM` : génère un MKV AV1+Opus 1s via ffmpeg, demande l'URL `.mp4` (stale), reçoit 200 + `Content-Type: video/webm` + body commençant par signature EBML 0x1A45DFA3.
+- ffprobe confirme sample utilisateur `Replay 2026-05-26 22-11-55.mkv` : AV1 Main 1920x1080@60 + 4 pistes Opus → 100% compatible remux WebM `-c copy`.
+- Validation `go vet` clean, aucun `fmt.Println`/`log.Printf`, logging structuré `slog.ErrorContext` partout.
+
+**Conclusion / prochaine étape** :
+
+Branche : `refactor/split-god-files-1000plus` (continuité demandée). Fix débloque immédiatement la lecture sans toucher à la DB ; la prochaine indexation `IndexMedia` resyncera les paths orphelins automatiquement. Follow-ups possibles : (a) sélecteur UI multi-pistes audio via `HTMLMediaElement.audioTracks`, (b) cache disque des remux pour réintroduire Range/seek, (c) transcoding ffmpeg pour fallback Safari. À valider par l'utilisateur avant commit.
+
+---
+
+## [2026-05-27] feat(lusr-v2): Phase 0 — métriques Menke shadow sur le LUSR v1 actuel
+
+**Statut** : Complété
+
+**Contexte** : préparation d'un chantier LUSR v2 inspiré du modèle TrueSkill 2 (Minka/Cleven/Zaykov, MSR 2018) et de la méthodologie Menke (GDC, Halo/Gears). Avant d'investir dans l'implémentation Bayésienne complète (factor graph + EP), il faut **confirmer empiriquement** que les biais du LUSR v1 sur les données Halo Infinite ressemblent à ceux décrits par Menke sur Halo 5 — sinon les correctifs TS2 (squadOffset §6, experienceOffset §7, kills/deaths comme observations §8) ne sont pas les bons leviers.
+
+**Décision technique principale** :
+
+1. **Replay shadow read-only** ([apps/go-api/cmd/lusr_v2_phase0/](../apps/go-api/cmd/lusr_v2_phase0/)) — aucune modification de la prod, aucune écriture DB :
+   - `main.go` : orchestration, agrégation, rapport markdown.
+   - `replay.go` : portage local du pipeline LUSR v1 (math identique à `internal/sync/skill_rating.go`) avec interception de `mu_before`, `sigma_before`, `mu_opp` à chaque match.
+   - Sortie : rapport markdown sur stdout, à pipe dans `.ai/lusr_v2_phase0_metrics.md`.
+
+2. **P(win) prédite** = `sigmoid((mu - muOpp) / (2 * Beta))` avec Beta = 200. Comparé au win% réel (outcome=2 → 1.0, tie → 0.5, sinon 0.0) sur 3 partitions Menke :
+   - **Squad size** : 1 (solo) + nb de coéquipiers TRACKÉS (proxy faute de `participation_info` dans le schéma actuel).
+   - **Experience** : # matchs LUSR-éligibles joués avant le courant (toutes chaines).
+   - **Kill rate** : kills/min du match PRÉCÉDENT (évite data leak du match courant).
+
+3. **Périmètre** : 4 joueurs trackés (Madina97294, Chocoboflor, JGtm, XxDaemonGamerxX) = 2513 observations LUSR-éligibles totales.
+
+**Résultats observés** :
+
+- **Squad effect (duo vs solo)** : SIGNAL PRÉSENT — duo +3.0pp, solo -2.6pp, Δ +5.6pp. Carry passif confirmé sur taille 2. Anomalie taille 4 (-16.8pp) probablement due au proxy de squad (coéquipiers non-trackés invisibles).
+- **Experience effect** : signal sur les 0-9 matchs (-6.9pp, LUSR sur-évalue les nouveaux) s'amenuisant à -3.1pp sur 10-29 matchs. Cohérent Halo 5.
+- **Kill rate effect** ⭐ : SIGNAL LE PLUS FORT — Δ +7.7pp entre `kpm < 0.8` (44.8% win réel) et `kpm ≥ 2.0` (52.5%), avec LUSR prédit stable à ~50% partout. Signature exacte du TS2 §8 (kills/deaths comme observations Bayésiennes manquantes).
+- **Données qui manquent** pour LUSR v2 propre : `participation_info.PresentAtCompletion`, `participation_info.JoinInProgress`, et un vrai `party_id` / `squad_size` (à capturer côté sync).
+
+**Conclusion / prochaine étape** :
+
+GO pour Phase 1 (TrueSkill classique propre, isolé du LUSR v1 dans `internal/analysis/skill_v2/` + `internal/service/skill_v2_service.go` + tables `*_v2` séparées + feature flag `LEVELUP_LUSR_V2_ENABLED`). Phase 2 (squadOffset) en suivant. Phase 3 (kills/deaths observations) à fort ROI vu le signal kill rate. Branche actuelle : `feat/lusr-v2-phase0-metrics`. À valider par l'utilisateur avant de commit + démarrer Phase 1.
+
+Documents source : `C:\Users\Guillaume\Downloads\Menke_Josh_Significantly_Improving_your.pdf` + `C:\Users\Guillaume\Downloads\trueskill2.pdf` (textes extraits dans `.ai/menke.txt` et `.ai/trueskill2.txt` pour référence future).
+
+---
+
 ## [2026-05-27] fix(shared_social): page Media vide — WAL orphelin + corruption header DuckDB (#7659) → rebuild + recovery auto
 
 **Statut** : Complété
