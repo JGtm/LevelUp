@@ -19,6 +19,33 @@ Ajout de 3 champs à `SessionMatchPoint` (backend + frontend) et création de 6 
 
 ---
 
+## [2026-05-27] docs+fix(lusr-v2): ADR 0024 + skip team imbalance + bump MaxIters EP
+
+**Statut** : Complété
+
+**Contexte** : Phase 3d a démontré la validité du LUSR v2 sur les 4 joueurs, mais ~10% des matchs (239/2500) ne convergeaient pas en 200 itérations EP — exclusivement les matchs avec équipes très déséquilibrées (4v6+). Deux livrables : (1) documenter l'architecture complète pour les futurs développeurs ; (2) réduire le bruit de non-convergence.
+
+**Décision technique principale** :
+
+1. **ADR 0024** ([docs/adr/0024-lusr-v2-trueskill2-with-counts.md](../docs/adr/0024-lusr-v2-trueskill2-with-counts.md)) — capture l'architecture complète : modèle probabiliste, hyperparams Halo Infinite + justification du `bias = +25` pour deaths (compense l'échelle μ_0 = 25 vs Halo 5 paper μ_0 = 3), liste exhaustive des fichiers, migration Stratégie C documentée, limites connues.
+
+2. **`isTeamImbalanceTooHigh`** dans `internal/sync/skill_v2_shadow.go` — skip explicite des matchs où `|nA - nB| > 1`. Diff = 1 reste accepté (cas courant quit/late-join). Diff ≥ 2 = EP converge mal à cause de l'asymétrie du `avg(perf_opp)` dans les count factors.
+
+3. **`MaxIters` bumped à 500** (était 200) dans `DefaultMatch2TeamConfig`.
+
+4. **Nouveau test** `TestIsTeamImbalanceTooHigh` — 10 cas couvrant équilibré, diff 1 OK, diff ≥ 2 skip, équipes vides.
+
+**Résultats observés** :
+
+- **17 non-convergences au lieu de 239** (-93%) sur le re-replay.
+- **Ordre relatif inchangé** : Madina 26.17 > Choco 23.81 > JGtm 23.52 > XxDaemon 20.38 (écarts < 0.2 vs Phase 3d initial).
+- Skipped imbalance : 444 matchs (surtout chaos). Acceptable — les chaos déséquilibrés n'ont jamais été convergents.
+- `go test ./internal/sync/ ./internal/analysis/skill_v2/...` PASS.
+
+**Prochaine étape** : pas de travail autonome restant — la suite (Phase 3e calibration tier + bascule prod Stratégie C) nécessite des décisions UX/produit de l'utilisateur.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 3d — câblage shadow runner + re-replay validé
 
 **Statut** : Complété ⭐ — verdict Phase 1d résolu

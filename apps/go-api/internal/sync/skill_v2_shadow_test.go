@@ -45,6 +45,33 @@ func TestIsLUSRV2Enabled(t *testing.T) {
 	}
 }
 
+func TestIsTeamImbalanceTooHigh(t *testing.T) {
+	// Critère : |nA - nB| > 1 → trop déséquilibré → skip.
+	cases := []struct {
+		nA, nB int
+		want   bool
+		why    string
+	}{
+		{4, 4, false, "4v4 équilibré"},
+		{1, 1, false, "1v1"},
+		{4, 3, false, "diff 1 = OK (quit normal)"},
+		{4, 5, false, "diff 1 = OK (late join)"},
+		{2, 1, false, "diff 1"},
+		{4, 2, true, "diff 2 → skip"},
+		{4, 6, true, "diff 2 → skip"},
+		{5, 8, true, "diff 3 → skip"},
+		{3, 8, true, "diff 5 → skip"},
+		{0, 4, true, "équipe vide → skip"},
+		{4, 0, true, "équipe vide → skip"},
+	}
+	for _, c := range cases {
+		got := isTeamImbalanceTooHigh(c.nA, c.nB)
+		if got != c.want {
+			t.Errorf("isTeamImbalanceTooHigh(%d, %d) = %v, want %v (%s)", c.nA, c.nB, got, c.want, c.why)
+		}
+	}
+}
+
 func TestOutcomeToTeamResult(t *testing.T) {
 	cases := []struct {
 		name    string

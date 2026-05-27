@@ -81,6 +81,7 @@ func RunLUSRV2Shadow(ctx context.Context, sharedDB *sql.DB, xuid string) (int, e
 	skippedNonTwoTeam := 0
 	skippedAlready := 0
 	skippedChain := 0
+	skippedImbalance := 0
 	for _, m := range matches {
 		group := GetLUSRChain(m.pairName)
 		if group == "" {
@@ -107,6 +108,15 @@ func RunLUSRV2Shadow(ctx context.Context, sharedDB *sql.DB, xuid string) (int, e
 			skippedNonTwoTeam++
 			continue
 		}
+		// Phase 3d : skip les matchs très déséquilibrés (ratio teams > 2:1).
+		// EP converge mal sur ces cas (chaos 4v8, 5v7+) parce que la formule
+		// sum factor amplifie les contradictions. Skipper conserve la
+		// cohérence des autres matchs et évite de perdre du temps en
+		// itérations qui n'aboutiront pas.
+		if isTeamImbalanceTooHigh(len(teamA), len(teamB)) {
+			skippedImbalance++
+			continue
+		}
 		outcomeA, ok := outcomeToTeamResult(m.ownerOutcome)
 		if !ok {
 			skippedNonTwoTeam++
@@ -125,9 +135,34 @@ func RunLUSRV2Shadow(ctx context.Context, sharedDB *sql.DB, xuid string) (int, e
 		"skipped_chain", skippedChain,
 		"skipped_already_seen", skippedAlready,
 		"skipped_non_two_team", skippedNonTwoTeam,
+		"skipped_imbalance", skippedImbalance,
 		"total_candidates", len(matches),
 	)
 	return processed, nil
+}
+
+// isTeamImbalanceTooHigh retourne true si la différence absolue des tailles
+// d'équipes dépasse 1 joueur. EP avec count observations converge mal au-delà
+// — la formule expected_count = w_p · perf + w_o · avg(perf_opp) crée des
+// contradictions quand les rosters sont asymétriques (l'avg côté petite équipe
+// inclut moins de joueurs, le sum factor amplifie les écarts).
+//
+// Pour Phase 3d on skip proprement les matchs |nA - nB| > 1 (le watermark
+// ne bouge pas, donc retry au prochain run — improbable de changer en pratique).
+// Diff = 1 reste accepté (cas courant : 4v3 / 4v5 après quit/late-join).
+//
+// Cf. ADR 0024 limites — Phase 3e pourrait introduire du damping EP pour
+// élargir la tolérance, ou un facteur tronqué propre pour mieux gérer les
+// asymétries.
+func isTeamImbalanceTooHigh(nA, nB int) bool {
+	if nA == 0 || nB == 0 {
+		return true
+	}
+	diff := nA - nB
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff > 1
 }
 
 // loadShadowMatches : matchs LUSR-éligibles du joueur, ordre chrono. Mêmes
