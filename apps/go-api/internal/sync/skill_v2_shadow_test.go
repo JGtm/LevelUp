@@ -98,6 +98,8 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			xuid VARCHAR,
 			team_id INTEGER,
 			outcome INTEGER,
+			kills DOUBLE,
+			deaths DOUBLE,
 			PRIMARY KEY (match_id, xuid)
 		);
 		CREATE SEQUENCE player_skill_state_v2_seq START 1;
@@ -129,15 +131,16 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 
 func TestBuildTwoTeamRosters_TwoTeamsOK(t *testing.T) {
 	db := openShadowTestDB(t)
-	// 4 joueurs, 2 par équipe.
+	// 4 joueurs, 2 par équipe avec kills/deaths.
 	for _, q := range []struct {
-		xuid string
-		team int
+		xuid          string
+		team          int
+		kills, deaths int
 	}{
-		{"a1", 0}, {"a2", 0}, {"b1", 1}, {"b2", 1},
+		{"a1", 0, 15, 5}, {"a2", 0, 10, 8}, {"b1", 1, 8, 12}, {"b2", 1, 6, 13},
 	} {
-		_, err := db.Exec("INSERT INTO match_participants(match_id, xuid, team_id, outcome) VALUES (?, ?, ?, 2)",
-			"m1", q.xuid, q.team)
+		_, err := db.Exec("INSERT INTO match_participants(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, 2, ?, ?)",
+			"m1", q.xuid, q.team, q.kills, q.deaths)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -149,11 +152,17 @@ func TestBuildTwoTeamRosters_TwoTeamsOK(t *testing.T) {
 	if len(teamA) != 2 || len(teamB) != 2 {
 		t.Errorf("rosters sizes: A=%d, B=%d, want 2/2", len(teamA), len(teamB))
 	}
-	// xuid de team A doivent inclure a1, a2 ; team B b1, b2.
 	wantA := map[string]bool{"a1": true, "a2": true}
-	for _, x := range teamA {
-		if !wantA[x] {
-			t.Errorf("teamA contient xuid inattendu : %v", x)
+	for _, m := range teamA {
+		if !wantA[m.xuid] {
+			t.Errorf("teamA contient xuid inattendu : %v", m.xuid)
+		}
+		// Phase 3c : kills/deaths doivent être chargés
+		if m.kills == nil {
+			t.Errorf("teamA[%s] : kills nil, attendu chargé depuis DB", m.xuid)
+		}
+		if m.deaths == nil {
+			t.Errorf("teamA[%s] : deaths nil, attendu chargé depuis DB", m.xuid)
 		}
 	}
 }
@@ -162,7 +171,7 @@ func TestBuildTwoTeamRosters_FFAReject(t *testing.T) {
 	db := openShadowTestDB(t)
 	// FFA : 4 joueurs, 4 équipes différentes.
 	for i := 0; i < 4; i++ {
-		_, err := db.Exec("INSERT INTO match_participants(match_id, xuid, team_id, outcome) VALUES (?, ?, ?, 2)",
+		_, err := db.Exec("INSERT INTO match_participants(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, 2, 5, 5)",
 			"m1", string(rune('a'+i)), i)
 		if err != nil {
 			t.Fatal(err)
@@ -211,16 +220,17 @@ func TestRunLUSRV2Shadow_FullFlow_2v2Match(t *testing.T) {
 		t.Fatalf("insert match_registry: %v", err)
 	}
 	for _, q := range []struct {
-		xuid    string
-		team    int
-		outcome int
+		xuid          string
+		team          int
+		outcome       int
+		kills, deaths int
 	}{
-		{"owner", 0, 2}, {"teammate1", 0, 2},
-		{"opp1", 1, 3}, {"opp2", 1, 3},
+		{"owner", 0, 2, 18, 6}, {"teammate1", 0, 2, 12, 9},
+		{"opp1", 1, 3, 7, 14}, {"opp2", 1, 3, 8, 14},
 	} {
 		_, err := db.Exec(`INSERT INTO match_participants
-			(match_id, xuid, team_id, outcome) VALUES (?, ?, ?, ?)`,
-			"m1", q.xuid, q.team, q.outcome)
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			"m1", q.xuid, q.team, q.outcome, q.kills, q.deaths)
 		if err != nil {
 			t.Fatalf("insert participant: %v", err)
 		}
@@ -286,8 +296,8 @@ func TestRunLUSRV2Shadow_RankedSkipped(t *testing.T) {
 		t.Fatalf("insert: %v", err)
 	}
 	_, err = db.Exec(`INSERT INTO match_participants
-		(match_id, xuid, team_id, outcome) VALUES (?, ?, ?, ?)`,
-		"m_ranked", "owner", 0, 2)
+		(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+		"m_ranked", "owner", 0, 2, 10, 8)
 	if err != nil {
 		t.Fatalf("insert: %v", err)
 	}
