@@ -17,22 +17,50 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
+	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth"
 )
 
+// acquireDiagTokens fait le pipeline ADR 0023 : MultiUserTokenStore → env var fallback.
+// Persiste la rotation au store si applicable. Pour CLI diagnostic one-shot.
+func acquireDiagTokens(ctx context.Context, gamertag string) (*domain.HaloTokens, error) {
+	provider := auth.NewMSALProvider()
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("config.Load: %w", err)
+	}
+	store := auth.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+
+	var xuid string
+	if user, err := store.LoadByGamertag(gamertag); err == nil && user != nil {
+		xuid = user.XUID
+	}
+
+	legacy := auth.LegacyAuthInputs{
+		OAuthRT: os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)),
+		Source:  "env_var",
+	}
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)
+	if err != nil {
+		return nil, err
+	}
+	if tokens := auth.HaloTokensFromExchange(result); tokens != nil {
+		return tokens, nil
+	}
+	return nil, fmt.Errorf("aucun token disponible pour %s", gamertag)
+}
+
 func dumpCoating(coatingPath string) {
 	gamertag := "JGtm"
-	refreshToken := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag))
-	if refreshToken == "" {
-		fmt.Fprintln(os.Stderr, "FATAL: token absent")
-		os.Exit(1)
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	provider := auth.NewMSALProvider()
-	accessToken, _ := provider.TryOAuthRefresh(ctx, refreshToken)
-	result, _ := provider.Exchange(ctx, accessToken)
-	tokens := result.Tokens
+	tokens, err := acquireDiagTokens(ctx, gamertag)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "FATAL:", err)
+		os.Exit(1)
+	}
 
 	url := "https://gamecms-hacs.svc.halowaypoint.com/hi/progression/file/" + coatingPath
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -71,18 +99,14 @@ func main() {
 	if len(os.Args) > 2 {
 		gamertag = os.Args[2]
 	}
-	refreshToken := os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag))
-	if refreshToken == "" {
-		fmt.Fprintln(os.Stderr, "FATAL: SPNKR_OAUTH_REFRESH_TOKEN absent")
-		os.Exit(1)
-	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	provider := auth.NewMSALProvider()
-	accessToken, _ := provider.TryOAuthRefresh(ctx, refreshToken)
-	result, _ := provider.Exchange(ctx, accessToken)
-	tokens := result.Tokens
+	tokens, err := acquireDiagTokens(ctx, gamertag)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "FATAL:", err)
+		os.Exit(1)
+	}
 
 	url := "https://gamecms-hacs.svc.halowaypoint.com/hi/progression/file/" + emblemPath
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)

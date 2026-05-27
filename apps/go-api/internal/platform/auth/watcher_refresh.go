@@ -49,13 +49,14 @@ const oauthAccessTokenTTL = 50 * time.Minute
 
 // RefreshTokenFromEnv retourne la valeur de SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>
 // pour un gamertag donne. Retourne "" si la variable n'est pas definie.
-// La convention de transformation du gamertag est partagee avec :
-//   - internal/api/registry.go::oauthRefreshTokenForPlayer
-//   - internal/scheduler/auto_sync.go::defaultTokenReader (env var fallback)
-//   - internal/platform/auth/pool/discovery.go::readOAuthRefreshTokenFromEnv
 //
-// Cette fonction exportee centralise la logique pour le watcher (et plus tard
-// pourra remplacer les copies dispersees).
+// DEPRECATED (ADR 0023) : l'env var est un mécanisme legacy. La source canonique
+// des refresh tokens est MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
+// La migration boot-time (`auth.MigrateLegacyTokens`) copie automatiquement les
+// SPNKR_OAUTH_REFRESH_TOKEN_* dans le store au démarrage. Cette fonction sera
+// supprimée Phase 5 ; en attendant, son comportement est partagé avec
+// `auth.EnvRefreshTokenForGamertag` (migration.go) et
+// `pool.readOAuthRefreshTokenFromEnv` (discovery.go).
 func RefreshTokenFromEnv(gamertag string) string {
 	if gamertag == "" {
 		return ""
@@ -74,21 +75,26 @@ func RefreshTokenFromEnv(gamertag string) string {
 // disponible pour le watcher RTA. Voir doc du fichier pour la sequence.
 //
 // Parametres :
-//   - store    : TokenStore pointant sur watcher_tokens.json (lecture + Save).
-//   - provider : TokenProvider pour TryOAuthRefresh (MSAL ou SISU).
-//   - gamertag : gamertag a utiliser comme cle SPNKR_OAUTH_REFRESH_TOKEN_*.
-//     Typiquement tokens.XSTSGamertag, ou un override explicite (config).
+//   - multiStore : MultiUserTokenStore (ADR 0023, peut être nil). Source canonique
+//     du refresh_token — consulté en premier via LoadByGamertag.
+//   - store      : TokenStore legacy mono-user (watcher_tokens.json). Fallback.
+//   - provider   : TokenProvider pour TryOAuthRefresh (MSAL ou SISU).
+//   - gamertag   : gamertag pour résoudre la clé SPNKR_OAUTH_REFRESH_TOKEN_* et
+//     pour LoadByGamertag dans le multi-store.
 //
 // Retours :
-//   - access_token : la chaine a utiliser pour AcquireXSTSForRTA. "" signifie
-//     "aucun moyen d'obtenir un token" (aucun refresh_token trouve ou refresh
-//     echoue).
-//   - error : seulement pour les erreurs structurelles (impossible de lire le
-//     store). Une absence de refresh_token ou un refresh echoue retourne
-//     ("", nil) — pas une erreur — pour permettre au caller de retomber sur
-//     un mode degrade (XSTS deja stocke encore valide, par exemple).
+//   - access_token : "" si aucune source ne donne un RT utilisable.
+//   - error : seulement pour erreurs structurelles (store legacy illisible).
+//     Absence de RT ou refresh raté → ("", nil), pour permettre au caller de
+//     retomber sur un mode dégradé (XSTS déjà stocké encore valide).
+//
+// Persistance rotation : Microsoft rotate le RT à chaque usage. Si le RT est
+// rotaté, le nouveau RT est persisté en priorité dans le multi-store (canonique),
+// puis dans le store legacy (compat). Sans persistance, le prochain refresh
+// échoue avec invalid_grant.
 func EnsureWatcherAccessToken(
 	ctx context.Context,
+	multiStore *MultiUserTokenStore,
 	store *TokenStore,
 	provider TokenProvider,
 	gamertag string,
@@ -100,10 +106,6 @@ func EnsureWatcherAccessToken(
 		return "", fmt.Errorf("EnsureWatcherAccessToken: provider nil")
 	}
 
-	// Sprint B1 commit 17 : event_id pour tracer l'opération refresh
-	// watcher token (rare, déclenché par expiration access_token Microsoft
-	// après 1h). Les sous-logs OAuth refresh + TokenStore.UpdateOAuth
-	// hériteront automatiquement.
 	ctx, evID := logging.WithEvent(ctx, "auth.watcher_refresh:"+gamertag)
 	slog.DebugContext(ctx, "watcher_refresh: appel ensure_access_token",
 		"gamertag", gamertag, "event", evID)
@@ -113,8 +115,8 @@ func EnsureWatcherAccessToken(
 		return "", fmt.Errorf("EnsureWatcherAccessToken: load tokens: %w", err)
 	}
 
-	// 1. Si access_token courant est encore valide (marge confortable), le
-	//    reutiliser tel quel — pas besoin de bruler un refresh_token.
+	// 1. Si access_token courant est encore valide, le reutiliser — pas besoin
+	//    de bruler un refresh_token.
 	if tokens.IsOAuthValid(accessTokenSafetyMargin) {
 		slog.DebugContext(ctx, "watcher_refresh: access_token courant encore valide",
 			"expires_at", tokens.OAuthExpiresAt,
@@ -122,58 +124,82 @@ func EnsureWatcherAccessToken(
 		return tokens.AccessToken, nil
 	}
 
-	// 2. Chercher un refresh_token utilisable.
-	refreshToken := tokens.RefreshToken
-	source := "watcher_tokens.json"
-	if refreshToken == "" {
-		// Fallback : env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>.
-		envToken := RefreshTokenFromEnv(gamertag)
-		if envToken != "" {
-			refreshToken = envToken
-			source = "env_var"
-		}
-	}
-
+	// 2. Chercher un refresh_token. Priorité : multi-store (canonique) →
+	//    legacy store → env var (DEPRECATED).
+	refreshToken, xuid, source := lookupRefreshToken(ctx, multiStore, tokens, gamertag)
 	if refreshToken == "" {
 		slog.InfoContext(ctx, "watcher_refresh: aucun refresh_token disponible",
 			"gamertag", gamertag,
-			"hint", "definir SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local",
+			"hint", "lancer `go run ./cmd/token-capture/ <gamertag>` pour seeder le store",
 		)
 		return "", nil
 	}
 
-	// 3. Echange refresh_token → access_token.
-	newAccessToken, err := provider.TryOAuthRefresh(ctx, refreshToken)
+	// 3. Echange refresh_token → access_token (avec rotation).
+	newAccessToken, rotatedRT, err := provider.TryOAuthRefreshWithRotation(ctx, refreshToken)
 	if err != nil {
-		slog.WarnContext(ctx, "watcher_refresh: TryOAuthRefresh erreur",
-			"source", source,
-			"gamertag", gamertag,
-			"err", err,
+		slog.WarnContext(ctx, "watcher_refresh: TryOAuthRefreshWithRotation erreur",
+			"source", source, "gamertag", gamertag, "err", err,
 		)
 		return "", nil //nolint:nilerr // erreur de refresh = non fatale, caller decide
 	}
 	if newAccessToken == "" {
-		slog.InfoContext(ctx, "watcher_refresh: TryOAuthRefresh retourne vide (refresh_token revoke ?)",
-			"source", source,
-			"gamertag", gamertag,
+		slog.InfoContext(ctx, "watcher_refresh: refresh retourne vide (refresh_token revoke ?)",
+			"source", source, "gamertag", gamertag,
 		)
 		return "", nil
 	}
 
-	// 4. Persister le nouveau access_token (et le refresh_token, surtout s'il
-	//    vient de l'env var — on le met dans le fichier pour les prochains
-	//    redemarrages).
-	if updErr := store.UpdateOAuth(newAccessToken, refreshToken, oauthAccessTokenTTL); updErr != nil {
-		// Echec persistance non fatal : on a quand meme un token en memoire.
-		slog.WarnContext(ctx, "watcher_refresh: persistence access_token echouee",
-			"err", updErr,
-		)
+	// 4. Persister le RT rotaté dans le multi-store (canonique) si on l'a.
+	rtToStore := refreshToken
+	if rotatedRT != "" && rotatedRT != refreshToken {
+		rtToStore = rotatedRT
+		if multiStore != nil && xuid != "" {
+			if werr := multiStore.UpdateOAuthRefreshToken(xuid, rotatedRT); werr != nil {
+				slog.WarnContext(ctx, "watcher_refresh: persistance multi-store échouée",
+					"xuid", xuid, "err", werr,
+				)
+			}
+		}
+	}
+
+	// 5. Persister access_token (et RT pour compat) dans le legacy store.
+	if updErr := store.UpdateOAuth(newAccessToken, rtToStore, oauthAccessTokenTTL); updErr != nil {
+		slog.WarnContext(ctx, "watcher_refresh: persistence access_token echouee", "err", updErr)
 	} else {
 		slog.InfoContext(ctx, "watcher_refresh: access_token rafraichi",
-			"source", source,
-			"gamertag", gamertag,
+			"source", source, "gamertag", gamertag,
 		)
 	}
 
 	return newAccessToken, nil
+}
+
+// lookupRefreshToken applique la priorité ADR 0023 pour trouver un refresh_token :
+//  1. MultiUserTokenStore (canonique) — par gamertag
+//  2. TokenStore legacy (watcher_tokens.json)
+//  3. env var SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> (DEPRECATED)
+//
+// Retourne (rt, xuid, source) — xuid est non vide uniquement si le RT vient du
+// multi-store, et permet de persister la rotation au bon endroit.
+func lookupRefreshToken(
+	ctx context.Context,
+	multiStore *MultiUserTokenStore,
+	tokens *StoredTokens,
+	gamertag string,
+) (rt, xuid, source string) {
+	if multiStore != nil && gamertag != "" {
+		if user, err := multiStore.LoadByGamertag(gamertag); err == nil && user != nil && user.OAuthRefreshToken != "" {
+			return user.OAuthRefreshToken, user.XUID, "multi_user_store"
+		}
+	}
+	if tokens != nil && tokens.RefreshToken != "" {
+		return tokens.RefreshToken, "", "watcher_tokens.json"
+	}
+	if envToken := RefreshTokenFromEnv(gamertag); envToken != "" {
+		slog.WarnContext(ctx, "watcher_refresh: legacy env var utilisée — à migrer",
+			"gamertag", gamertag, "deprecated_since", "ADR-0023")
+		return envToken, "", "env_var"
+	}
+	return "", "", ""
 }

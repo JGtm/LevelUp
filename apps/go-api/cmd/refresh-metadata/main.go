@@ -372,36 +372,27 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 
 	provider := authpkg.NewMSALProvider()
 
-	// Chemin 1 : SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_NORM> depuis .env.local
-	if envRefresh := oauthRefreshEnvForPlayer(playerSlug); envRefresh != "" {
-		if accessToken, err := provider.TryOAuthRefresh(ctx, envRefresh); err == nil && accessToken != "" {
-			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
-				return result.Tokens, nil
-			}
-		}
-	}
-
 	pdb, err := config.ResolvePlayer(ctx, cfg, playerSlug, titlePkg.DefaultSlug)
 	if err != nil {
 		return nil, fmt.Errorf("résoudre player %q: %w", playerSlug, err)
 	}
 
-	if cacheJSON, _ := duckdb.ReadMSALCacheJSON(ctx, pdb.Player); cacheJSON != "" {
-		if accessToken, err := provider.TrySilentRefresh(ctx, cacheJSON); err == nil && accessToken != "" {
-			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
-				return result.Tokens, nil
-			}
-		}
+	// ADR 0023 — pipeline canonique via MultiUserTokenStore puis legacy.
+	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	legacy := authpkg.LegacyAuthInputs{Source: "duckdb_or_env"}
+	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
+	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
+	if legacy.OAuthRT == "" {
+		legacy.OAuthRT = oauthRefreshEnvForPlayer(playerSlug)
 	}
 
-	if refreshToken, _ := duckdb.ReadOAuthRefreshToken(ctx, pdb.Player); refreshToken != "" {
-		if accessToken, err := provider.TryOAuthRefresh(ctx, refreshToken); err == nil && accessToken != "" {
-			if result, err := provider.Exchange(ctx, accessToken); err == nil && result != nil {
-				return result.Tokens, nil
-			}
-		}
+	result, err := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	if err != nil {
+		return nil, err
 	}
-
+	if tokens := authpkg.HaloTokensFromExchange(result); tokens != nil {
+		return tokens, nil
+	}
 	return nil, fmt.Errorf("aucun token disponible pour player %q", playerSlug)
 }
 

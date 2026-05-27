@@ -22,6 +22,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"log/slog"
 	"net/http"
 
 	"levelup/go-api/internal/config"
@@ -155,10 +156,17 @@ func (h *AdminAutoSyncHandler) ProbeTokens(w http.ResponseWriter, r *http.Reques
 	res.RefreshTokenSHA256, res.RefreshTokenHead, res.RefreshTokenTail = fingerprintToken(src.RefreshToken)
 
 	// Tenter le Resolve complet (pipeline MSAL→OAuth→Exchange) avec le même
-	// callback onRotated qu'en production : si Microsoft rotate le RT, il est
-	// persisté dans sync_meta pour que le scheduler l'utilise ensuite.
+	// callback onRotated qu'en production (ADR 0023) :
+	//  1. PRIORITÉ — écriture MultiUserTokenStore (source canonique)
+	//  2. Compat — écriture aussi sync_meta DuckDB (legacy, retiré Phase 5)
+	authStoreForProbe := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	var rotated bool
 	onRotated := func(ctx context.Context, gt, newRT string) error {
+		if user, lerr := authStoreForProbe.LoadByGamertag(gt); lerr == nil && user != nil && user.XUID != "" {
+			if werr := authStoreForProbe.UpdateOAuthRefreshToken(user.XUID, newRT); werr != nil {
+				slog.WarnContext(ctx, "probe: store write échoué", "gamertag", gt, "err", werr)
+			}
+		}
 		dbPath := pr.PlayerDBPath(titlePkg.DefaultSlug, gt)
 		db, release, derr := sync.AcquirePlayerWriterStandalone(ctx, dbPath)
 		if derr != nil {

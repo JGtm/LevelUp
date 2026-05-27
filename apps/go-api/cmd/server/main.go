@@ -44,6 +44,7 @@ import (
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/auth/capturecli"
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -486,6 +487,12 @@ func main() {
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
 	settingsStore := settings.NewStore(cfg.AppSettingsPath)
 	tokenProvider := buildTokenProvider(settingsStore)
+
+	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
+	// Copie SPNKR_OAUTH_REFRESH_TOKEN_<GT> (env) + sync_meta.oauth_refresh_token (DuckDB)
+	// vers le store si les entrées correspondantes n'existent pas. Idempotent, best-effort.
+	// S'exécute AVANT buildAutoSyncPool pour que le Pool trouve déjà les tokens dans le store.
+	migrateLegacyAuthTokensAtBoot(ctx, cfg)
 
 	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
 	// - Discovery scanne env + sync_meta pour découvrir les credentials joueur.
@@ -1125,11 +1132,27 @@ func buildAutoSyncPool(
 		return nil // log Warn fait par le caller
 	}
 
-	// Callback de persistance du RT rotaté : ouvre la player DB en
-	// OpenReadWriteShared (partage l'instance du pool joueur) et UPSERT le
-	// nouveau RT dans sync_meta. Best-effort : une erreur est loguée mais
-	// n'interrompt pas le Resolve.
+	// Callback de persistance du RT rotaté (ADR 0023) :
+	//  1. PRIORITÉ — écriture dans MultiUserTokenStore (source canonique)
+	//  2. Compat — écriture aussi dans sync_meta DuckDB (legacy, retiré Phase 5)
+	//
+	// xuid résolu via store.LoadByGamertag (l'entrée a été créée par migration
+	// Phase 2 ou par Discovery) — fallback config.LoadPlayers si pas en store.
+	// Best-effort : une erreur sur l'une des écritures n'interrompt pas l'autre.
+	authStoreForCallback := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	onRotated := func(ctx context.Context, gamertag, newRT string) error {
+		xuid := resolveXUIDForRotation(ctx, cfg, authStoreForCallback, gamertag)
+		if xuid != "" {
+			if err := authStoreForCallback.UpdateOAuthRefreshToken(xuid, newRT); err != nil {
+				slog.WarnContext(ctx, "onRotated: écriture store échouée",
+					"gamertag", gamertag, "xuid", xuid, "err", err)
+			}
+		} else {
+			slog.WarnContext(ctx, "onRotated: xuid introuvable, store non mis à jour",
+				"gamertag", gamertag)
+		}
+
+		// Compat DuckDB (sera retiré Phase 5 quand Phase 4 sera stabilisée).
 		dbPath := pr.PlayerDBPath(title.DefaultSlug, gamertag)
 		db, err := duckdb.OpenReadWriteShared(dbPath)
 		if err != nil {
@@ -1248,10 +1271,13 @@ func startWatcherDaemon(
 
 	// 1) S'assurer qu'on a un access_token Microsoft frais.
 	//    EnsureWatcherAccessToken réutilise l'access_token courant s'il est
-	//    valide, sinon tente un OAuth v2 refresh depuis (a) tokens.RefreshToken
-	//    ou (b) SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag> (.env.local).
-	//    Persiste le nouveau access_token dans watcher_tokens.json.
-	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, store, tokenProvider, tokens.XSTSGamertag)
+	//    valide, sinon tente un OAuth v2 refresh depuis :
+	//    (a) MultiUserTokenStore (canonique, ADR 0023)
+	//    (b) tokens.RefreshToken (legacy watcher_tokens.json)
+	//    (c) SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag> (.env.local DEPRECATED)
+	//    Persiste la rotation dans le multi-store en priorité, puis le legacy.
+	multiStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, multiStore, store, tokenProvider, tokens.XSTSGamertag)
 	if err != nil {
 		slog.Warn("watcher: EnsureWatcherAccessToken erreur structurelle", "err", err)
 	}
@@ -1450,4 +1476,74 @@ func (s *staticTokenProvider) GetTokens(_ context.Context) (*domain.HaloTokens, 
 		SpartanToken:   s.tokens.AccessToken,
 		ClearanceToken: "",
 	}, nil
+}
+
+// resolveXUIDForRotation retourne le xuid associé à un gamertag pour l'écriture
+// du RT rotaté dans MultiUserTokenStore. Délègue à capturecli.ResolveXUIDForRotation
+// (helper testable sans cgo). Best-effort : LoadPlayers échoué = "" silencieux.
+func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *auth.MultiUserTokenStore, gamertag string) string {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.DebugContext(ctx, "resolveXUIDForRotation: LoadPlayers erreur", "err", err)
+		players = nil
+	}
+	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
+}
+
+// migrateLegacyAuthTokensAtBoot copie les tokens legacy (env var
+// SPNKR_OAUTH_REFRESH_TOKEN_* + sync_meta.oauth_refresh_token / msal_token_cache
+// dans la player DB) vers le MultiUserTokenStore unique. Voir ADR 0023.
+//
+// Idempotent, best-effort. Une erreur sur un joueur (ex. DB inexistante) ne
+// bloque pas les autres. Aucun appel HTTP — purement copie de strings entre
+// stores. S'exécute AVANT buildAutoSyncPool pour que le Pool trouve le store
+// déjà peuplé.
+//
+// Pour le caller production, la lecture des sources legacy est branchée sur
+// auth.EnvRefreshTokenForGamertag (env) + duckdb.OpenReadOnly + Read*JSON.
+// La fonction pure de migration vit dans internal/platform/auth/migration.go
+// (testable sans dépendance DuckDB).
+func migrateLegacyAuthTokensAtBoot(ctx context.Context, cfg *config.AppConfig) {
+	pr := title.NewPathResolver(cfg.RepoRoot)
+	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
+
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.WarnContext(ctx, "auth_migration: LoadPlayers échoué — migration skipped", "err", err)
+		return
+	}
+	if len(players) == 0 {
+		slog.DebugContext(ctx, "auth_migration: aucun joueur configuré, rien à migrer")
+		return
+	}
+
+	// Convertir players → auth.LegacyPlayer (sans dépendance domain/title dans le package auth).
+	legacyPlayers := make([]auth.LegacyPlayer, 0, len(players))
+	for _, p := range players {
+		legacyPlayers = append(legacyPlayers, auth.LegacyPlayer{
+			XUID:         p.XUID,
+			Gamertag:     p.Gamertag,
+			PlayerDBPath: pr.PlayerDBPath(title.DefaultSlug, p.Gamertag),
+		})
+	}
+
+	reader := func(rctx context.Context, p auth.LegacyPlayer) (auth.LegacySources, error) {
+		out := auth.LegacySources{
+			EnvRT: auth.EnvRefreshTokenForGamertag(p.Gamertag),
+		}
+		// Lecture DuckDB best-effort : DB inexistante = nouveau joueur, on skip.
+		if p.PlayerDBPath != "" {
+			db, dbErr := duckdb.OpenReadOnly(p.PlayerDBPath)
+			if dbErr == nil {
+				out.DuckDBRT, _ = duckdb.ReadOAuthRefreshToken(rctx, db)
+				out.DuckDBMSAL, _ = duckdb.ReadMSALCacheJSON(rctx, db)
+				_ = db.Close()
+			}
+		}
+		return out, nil
+	}
+
+	if _, err := auth.MigrateLegacyTokens(ctx, store, legacyPlayers, reader); err != nil {
+		slog.WarnContext(ctx, "auth_migration: échec global", "err", err)
+	}
 }
