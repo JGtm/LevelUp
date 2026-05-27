@@ -40,10 +40,13 @@ import (
 )
 
 const (
-	// defaultClientID : app publique LevelUp (fallback si SPNKR_AZURE_CLIENT_ID absent).
-	// Le serveur lit SPNKR_AZURE_CLIENT_ID en priorité (oauth_refresh.go) — ce binaire
-	// doit utiliser le même client_id pour que le token capturé soit refreshable par le serveur.
-	defaultClientID = "e1cb35ab-c41a-4ee5-a7a1-22ea4e94cdca" // #nosec G101 -- app publique
+	// defaultClientID : Azure app "halo-tools" partagée avec les watchers du parc
+	// (39829f7a-...). Fallback si SPNKR_AZURE_CLIENT_ID absent — choisi pour matcher
+	// l'override actif dans .env.local et les RTs déjà émis pour 3/4 joueurs
+	// (2026-05-27 audit cmd/refresh-career-ranks). Le serveur lit SPNKR_AZURE_CLIENT_ID
+	// en priorité (oauth_refresh.go) — ce binaire doit utiliser le même client_id
+	// pour que le token capturé soit refreshable par le serveur.
+	defaultClientID = "39829f7a-5262-4d22-a387-795c488f7102" // #nosec G101 -- app publique
 	deviceCodeURL   = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode"
 	tokenURL        = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
 	xboxScopes      = "Xboxlive.signin Xboxlive.offline_access"
