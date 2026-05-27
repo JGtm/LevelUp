@@ -33,6 +33,7 @@ import (
 //
 // Le PlayerDB (par-joueur) est résolu à la demande via PlayerResolver.
 type PrestigeBundle struct {
+	enabled        bool
 	tuning         prestige.Tuning
 	sharedSocialDB *platform_duckdb.DB
 	metadataDB     *platform_duckdb.DB
@@ -52,7 +53,7 @@ type PrestigeBundle struct {
 //
 // Si une étape échoue (TOML absent, DB injoignable), retourne nil + error.
 // L'appelant (server.go) doit décider de booter sans Prestige.
-func NewPrestigeBundle(repoRoot string, resolve PlayerResolver) (*PrestigeBundle, error) {
+func NewPrestigeBundle(repoRoot string, resolve PlayerResolver, enabled bool) (*PrestigeBundle, error) {
 	pr := titlePkg.NewPathResolver(repoRoot)
 	titleSlug := titlePkg.DefaultSlug
 
@@ -73,6 +74,7 @@ func NewPrestigeBundle(repoRoot string, resolve PlayerResolver) (*PrestigeBundle
 	}
 
 	bundle := &PrestigeBundle{
+		enabled:        enabled,
 		tuning:         tuning,
 		sharedSocialDB: sharedSocialDB,
 		metadataDB:     metadataDB,
@@ -87,7 +89,7 @@ func NewPrestigeBundle(repoRoot string, resolve PlayerResolver) (*PrestigeBundle
 	slog.Info("prestige_bundle_initialized",
 		"shared_social_path", pr.SharedSocialDBPath(titleSlug),
 		"metadata_path", pr.MetadataDBPath(titleSlug),
-		"feature_flag_enabled", prestige.IsEnabled(),
+		"feature_flag_enabled", enabled,
 	)
 	return bundle, nil
 }
@@ -178,7 +180,7 @@ func (b *PrestigeBundle) serviceAndPlayerDB(ctx context.Context, playerSlug stri
 // EvaluateForUser tant qu'on n'a pas de propagation explicite du writer du
 // sync engine au hook (commit futur).
 func (b *PrestigeBundle) RunPostSync(ctx context.Context, playerSlug, titleSlug string) {
-	if b == nil || !prestige.IsEnabled() {
+	if b == nil || !b.enabled {
 		return
 	}
 	svc, err := b.ServiceForPlayer(ctx, playerSlug)

@@ -1,3 +1,42 @@
+## [2026-05-27] refactor(config): migration feature flags vers app_settings.json
+
+**Statut** : Complété
+
+**Contexte** : `MULTI_TITLE_API_ENABLED` et `PRESTIGE_ENABLED` vivaient dans `.env.local` alors qu'ils n'ont pas de contrainte de bootstrap ni de chemin machine.
+
+**Décision technique principale** :
+- Ajout de `MultiTitleAPIEnabled bool` et `PrestigeEnabled bool` dans `AppConfig`
+- Loaders `loadMultiTitleAPIEnabled` / `loadPrestigeEnabled` dans `config.go` — JSON d'abord, env var en override d'urgence (pattern identique à `loadCSRSeasonID`)
+- `PrestigeBundle.enabled` stocke la valeur au boot — `RunPostSync` lit `b.enabled` au lieu de `prestige.IsEnabled()` au runtime
+- `server.go` utilise `cfg.MultiTitleAPIEnabled` et `cfg.PrestigeEnabled` — import `prestige` retiré
+- `contract_helpers_test.go` : `buildTestRouter` propage les `t.Setenv` via `parseBoolEnvFlag`
+- Boot log `multi_title_api_enabled` dans `server.go` pour observabilité
+
+**Résultats** : `go test ./...` zéro régression · 25 nouveaux tests `config_feature_flags_test.go` · `go vet` propre
+
+**Prochaine étape** : `LEVELUP_SYNC_PIPELINE=v2` reste en `.env.local` (bascule d'urgence ADR 0020) — à migrer quand v1 supprimé
+
+---
+
+## [2026-05-27] feat(ui): graphes progression CSR/LUSR — pages solo & escouade
+
+**Statut** : Complété
+
+**Décision technique principale** :
+
+Ajout de graphes de progression `TimeseriesSkillProgression` dans l'onglet Progression (solo) et `SquadContributionsPage` (escouade). Pipeline enrichi de 3 nouveaux champs (`skill_playlist_group`, `skill_season_id`, `skill_measurement_remaining`) propagés depuis `match_skill_rank` → canonical `SkillSnapshot` → `StatsMatchRow` → `TimeseriesMatchRow`. Ruptures de saison via `null` dans les séries ECharts + `markLine` vertical. Matchs placement = série `scatter` diamant opacity 0.5. Multi-playlists = séries distinctes avec couleurs `LUSR_GROUP_TOKENS`. Squad adapté via `adaptSquadPerfToMatchRows()` converter.
+
+**Résultats observés** :
+
+- `go build ./...` : 0 erreur
+- `tsc -b` (apps/web) : 0 erreur
+- Manifest i18n regénéré : 71 clés (7 nouvelles `timeseries.skill_progression.*`)
+- Composant affiché conditionnellement : `return null` si aucun match avec skill data (pas de bruit si filtre non classé + LUSR absent)
+
+**Prochaine étape** : vérification visuelle sur joueurs classés (CSR) — Madina97294 (Platine/Diamant) est le bon candidat pour valider les ruptures de saison et l'affichage placement.
+
+---
+
 ## [2026-05-27] feat(lusr-v2): Phase 3e — calibration tier (μ → Bronze..Onyx)
 
 **Statut** : Complété ⭐ — 4 joueurs trackés dans leur tier cible

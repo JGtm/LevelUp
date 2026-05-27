@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,9 +78,11 @@ func buildTestRouter(t *testing.T) http.Handler {
 		APIPort:         8000,
 		// SessionSecret différent de "CHANGE_ME_IN_PRODUCTION" → isProduction=true dans NewRouter,
 		// ce qui force des cookies Secure. Pour les tests httptest on reste en non-production.
-		SessionSecret: "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
-		CORSOrigins:   []string{},
-		Lang:          "fr",
+		SessionSecret:        "CHANGE_ME_IN_PRODUCTION", // pragma: allowlist secret
+		CORSOrigins:          []string{},
+		Lang:                 "fr",
+		MultiTitleAPIEnabled: parseBoolEnvFlag("MULTI_TITLE_API_ENABLED", false),
+		PrestigeEnabled:      parseBoolEnvFlag("PRESTIGE_ENABLED", true),
 	}
 
 	bootRepo := &mockBootstrapRepo{}
@@ -105,4 +108,23 @@ func mkdirTest(t *testing.T, path string) {
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatalf("mkdirTest(%s): %v", path, err)
 	}
+}
+
+// parseBoolEnvFlag lit une variable d'environnement comme booléen.
+// Retourne defaultVal si la variable est absente.
+// Valeurs falsy reconnues : "0", "false", "no", "off".
+// Valeurs truthy reconnues : "1", "true", "yes" (et tout le reste si defaultVal=true).
+func parseBoolEnvFlag(key string, defaultVal bool) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv(key)))
+	if v == "" {
+		return defaultVal
+	}
+	if defaultVal {
+		switch v {
+		case "0", "false", "no", "off":
+			return false
+		}
+		return true
+	}
+	return v == "1" || v == "true" || v == "yes"
 }
