@@ -49748,3 +49748,33 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 - `go build ./...` OK, `go vet` OK sur les nouveaux packages.
 
 **Prochaine étape** : golden_test infra → capture snapshots PRE-refacto → refacto des 5 callsites narratifs → capture POST → diff strict (aucun diff attendu sauf champ `GameplayDurationSeconds` ajouté = identique à durée en Phase 1).
+
+---
+
+## [2026-05-28] Match Timeline T0 — Phase 1 complète (câblage 3 services)
+
+**Statut** : Complété (Phase 1)
+
+**Décision technique principale** : approche révisée vs plan initial. Au lieu de modifier les 5 fonctions analysis (match_impact, first_events, intensity, cadence), la correction T0 est appliquée **en amont** via `timeline.CorrectEvents(events, timelines)` au point de chargement des events dans chaque service. Les fonctions analysis restent **inchangées** — elles reçoivent des events déjà corrigés. Bénéfices : DRY (un seul point de correction par service), moins invasif, identité garantie en Phase 1.
+
+**Insight clé** : l'identité des "gagnants" de badges narratifs (first_blood, top_gun, clutch_finisher, etc.) est **invariante** par la correction T0 — soustraire une constante par match préserve l'ordre relatif et les écarts inter-events. Seuls les `TimeMS` affichés se décalent. Vérifié par `TestCorrectEvents_PreservesRelativeOrder`.
+
+**Câblage livré (3 services consommateurs d'events)** :
+- `TimeseriesService.GetPage` — CorrectEvents avant first_events + intensity (via `BuildTimelinesFromPlayerMatches(canonicalRows)`)
+- `SquadServiceV2.loadSharedEvents` — CorrectEvents avant cadence + intensity + impact (via `sharedMatchTimelines` depuis `SquadSharedMatch.Players`)
+- `MatchViewService.buildMatchViewFromData` — CorrectEvents avant buildCombatTabFull (via `BuildForMatchMs(durationMS)`)
+
+**Point de bascule centralisé** : `timeline.phase1T0Ms()` retourne 0 partout en Phase 1. En Phase 3, la résolution du vrai T0 remplacera ce point unique (greppable). Les 3 builders timeline (`BuildFromRegistry`, `BuildTimelinesFromPlayerMatches`, `BuildForMatchMs`) y délèguent.
+
+**Filet de sécurité** :
+- `CorrectEvents` : 8 tests unitaires (identité T0=0, match absent, non-mutation, préservation ordre, multi-match).
+- Golden baseline sur 1094 events réels des 8 matchs (`golden_output.json`) — capture FirstEvents + IntensityProfiles. En Phase 3, le diff montrera le recalage T0 par match. Régénérable via `UPDATE_GOLDEN=1`.
+
+**Résultats observés** :
+- `go build ./...` OK, `go vet ./...` propre (0 warning).
+- `go test ./...` : suite complète verte, 0 échec.
+- Golden T0 stable (Phase 1 = identité confirmée).
+
+**Reste pour Phase 1 (non bloquant)** : aucun. Le câblage couvre les 3 consommateurs identifiés par `.ai/AUDIT_T0_IMPACT.md`. `time_played_seconds` + fix aberration `AvgLifeSeconds` = Phase 4 (indépendante). Activation T0 réel = Phase 3 (après Phase 2 storage/backfill).
+
+**Prochaine étape** : Phase 2 (migration `real_start_time` repurpose + ComputeT0 + backfill) — CHECKPOINT utilisateur requis avant migration DB et backfill --commit.
