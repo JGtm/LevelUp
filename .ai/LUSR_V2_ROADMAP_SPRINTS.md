@@ -123,45 +123,27 @@ ensemble).
 
 ### Étapes
 
-- [ ] **1.C.1** — Décider de la définition opérationnelle de "squad" :
-  - Pair de XUIDs ayant joué ensemble ≥ N matchs dans les M dernières semaines ?
-  - N=10, M=4 semaines → à valider sur prod : compter combien de paires éligibles pour les 4 joueurs trackés
-- [ ] **1.C.2** — Migration `steps_shared_create_squad_offset.go` :
-  - Table `player_squad_offset` append-only (PK technique `id`, clé logique `(xuid, partner_xuid, playlist_group, written_at)`)
-  - Vue `player_squad_offset_latest`
-- [ ] **1.C.3** — Repo `internal/platform/duckdb/squad_offset_repo.go` :
-  - `LoadSquadOffsets(ctx, xuid, group) (map[string]float64, error)` — par partner_xuid
-  - `UpsertSquadOffset(ctx, offset domain.SquadOffset) error`
-- [ ] **1.C.4** — Algorithme pur `internal/analysis/skill_v2/squad.go` :
-  - `ComputeSquadOffset(matchHistory []SquadMatch) float64`
-  - Approche : moyenne de (perf_real - perf_predicted_solo) sur les matchs où la paire a joué ensemble
-  - Borné à [-2.0, +2.0] (sécurité — éviter offsets délirants sur petit échantillon)
-- [ ] **1.C.5** — CLI `cmd/lusr_v2_squad_estimate/` :
-  - Scan match history, identifie paires éligibles, calcule l'offset, écrit en DB
-  - Idempotent (UPSERT append-only)
-- [ ] **1.C.6** — Application de l'offset dans `processOneShadowMatch` :
-  - Avant `applyMatchToSkillV2`, charger les offsets pour chaque partenaire présent dans le match
-  - Réduire le μ "effectif" de chaque joueur : `mu_effectif = mu_individuel + Σ(offset[partner] pour chaque partenaire présent)`
-  - L'EP update bouge `mu_individuel`, pas `mu_effectif` (l'offset est constant pour ce match)
-- [ ] **1.C.7** — Tests unitaires (`squad_test.go`) :
-  - 0 historique → offset = 0
-  - 10 matchs avec gain systématique +1.5 par-rapport-au-solo → offset proche de 1.5
-  - 5 matchs avec gain +5 → offset clampé à 2.0
-- [ ] **1.C.8** — Tests E2E :
-  - `TestRunLUSRV2Shadow_AppliesSquadOffset` — 2 paires (haut squad, faible solo) jouant ensemble → leurs μ individuels baissent moins que si pas d'offset
-- [ ] **1.C.9** — `slog.DebugContext` "squad offset appliqué" avec xuid, partner, value
-- [ ] **1.C.10** — Mise à jour handoff doc (`LUSR_V2_HANDOFF.md`) section "Phase 2 (squad offset)"
-- [ ] **1.C.11** — Mise à jour `.ai/thought_log.md`
+- [x] **1.C.1** — Définition opérationnelle : paire de XUIDs sur la même équipe ≥ N matchs (défaut 10) dans les M semaines (défaut 4), par playlist_group. Paramétrable via flags CLI.
+- [x] **1.C.2** — Migration `steps_shared_create_squad_offset.go` : `player_squad_offset` append-only (PK `id`) + vue `_latest`. TargetShared.
+- [x] **1.C.3** — Repo `duckdb.SquadOffsetRepo` : `LoadSquadOffsets(xuid, group)` (cache run-scoped) + `UpsertSquadOffset(domain.SquadOffset)` (INSERT pur).
+- [x] **1.C.4** — Algo pur `skill_v2/squad.go` : `ComputeSquadOffset([]SquadCoMatch, gain)` = `mean(Won − SoloWinProb) × gain`, clampé ±`SquadOffsetCap`(2.0). + `ApplySquadOffset`/`ClampSquadOffset`.
+- [x] **1.C.5** — CLI `cmd/lusr_v2_squad_estimate` : scan fenêtre, paires éligibles, offset, écriture 2 sens (symétrique), `--dry-run`/`--weeks`/`--min-matches`/`--gain`. **MVP first-pass** : SoloWinProb = proxy ratings solo courants (biais conservateur, à raffiner Sprint 3.A).
+- [x] **1.C.6** — Application dans `applyMatchToSkillV2` (gated `LEVELUP_LUSR_V2_SQUAD_OFFSET=1`) : μ effectif = μ + Σ(offsets partenaires présents) avant EP, retiré du posterior après. σ inchangé. Flag off → no-op exact.
+- [x] **1.C.7** — Tests unitaires squad : 0 historique → 0 ; sur-perf → offset attendu ; clamp ±2.0 ; sous-perf → −2.0.
+- [x] **1.C.8** — E2E `TestRunLUSRV2Shadow_AppliesSquadOffset` : offset +1.5, victoire squad → μ owner monte MOINS qu'sans offset (anti-inflation).
+- [x] **1.C.9** — `slog.DebugContext "LUSR v2 squad offset appliqué"` (xuid, group, offset, partners_present).
+- [x] **1.C.10** — Handoff doc : section "Phase 2 — Squad offset" ajoutée + Phase 5.B marquée livrée + étape 7 activation prod.
+- [x] **1.C.11** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 1.C
 
-- [ ] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/platform/duckdb/` PASS
-- [ ] CLI `lusr_v2_squad_estimate` tourne sur prod, produit des offsets dans [-2, +2] pour les 4 joueurs trackés (cohérents avec l'intuition : Madina/Choco/JGtm trio sûrement positif)
-- [ ] Dry-run replay du LUSR v2 avec offsets actifs → comparer μ avant/après pour les 4 trackés : pas de drift > 1.5 point pour les solo, possible drift > 0.5 pour les multi-stack
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/platform/duckdb/` PASS (+ migration), `go vet ./...` clean
+- [ ] CLI `lusr_v2_squad_estimate` tourne sur prod, offsets ∈ [-2,+2] pour les 4 trackés — **différé : prod uniquement**
+- [ ] Dry-run replay avec offsets actifs, pas de drift > 1.5 pt sur les solo — **différé : prod uniquement (flag OFF par défaut en attendant)**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28 (livré gated OFF ; activation prod après validation)
 
 ---
 

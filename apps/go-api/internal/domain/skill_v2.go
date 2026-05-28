@@ -18,10 +18,10 @@ type SkillV2State struct {
 	Sigma         float64
 	// Experience : # de matchs LUSR-éligibles joués dans ce groupe avant ce snapshot.
 	// Utilisé par Phase 2 (experienceOffset TS2 §7) ; en Phase 1 c'est purement informatif.
-	Experience    int
-	LastMatchID   *string
-	LastMatchAt   *time.Time
-	WrittenAt     time.Time
+	Experience  int
+	LastMatchID *string
+	LastMatchAt *time.Time
+	WrittenAt   time.Time
 }
 
 // SkillV2Hyperparam représente un paramètre global appris (ou figé par défaut)
@@ -36,6 +36,21 @@ type SkillV2Hyperparam struct {
 	PlaylistGroup string
 	Name          string
 	Value         float64
+	Source        string
+	WrittenAt     time.Time
+}
+
+// SquadOffset — offset de synergie d'une paire de coéquipiers sur un groupe de
+// modes (LUSR v2 Sprint 1.C). Une row dans player_squad_offset (append-only) ;
+// lecture via player_squad_offset_latest. OffsetValue est en unités μ, borné à
+// ±skill_v2.SquadOffsetCap. MatchCount = # de matchs ensemble ayant servi à
+// l'estimation (diagnostic). Source = ex. "squad_batch_2026_05_28".
+type SquadOffset struct {
+	XUID          string
+	PartnerXUID   string
+	PlaylistGroup string
+	OffsetValue   float64
+	MatchCount    int
 	Source        string
 	WrittenAt     time.Time
 }

@@ -49771,3 +49771,33 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste pour la DoD (validation prod)** : run manuel `LEVELUP_LUSR_V2_ENABLED=1 ./server` après un passage TTT batch → vérifier le log "hyperparams ré-estimés appliqués" avec overrides > 0. Non exécutable hors prod.
 
 **Prochaine étape** : Sprint 1.C — détection escouades + correction skill (squad offset).
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.C — détection escouades + correction skill — Complété (gated OFF)
+
+**Statut** : Complété, **gated OFF par défaut** · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 1.C
+
+**Contexte** : Le modèle traite N joueurs d'une même équipe comme N indépendants. Un squad coordonné gagne plus que la somme de ses parties → le μ des joueurs qui jouent souvent ensemble est SUR-estimé (les victoires de squad sont attribuées au skill individuel). C'est l'angle mort le plus impactant (les 4 trackés jouent souvent ensemble). Correction : offset de synergie par paire, appliqué au μ effectif avant l'EP.
+
+**Décision majeure — gating OFF par défaut (`LEVELUP_LUSR_V2_SQUAD_OFFSET=1`)** : la feature touche le cœur du calcul EP et son algo d'estimation est sous-spécifié + validable seulement en prod. Comme le cross-mode coupling, tout est gated → flag off ⇒ `squadRepo` nil ⇒ offsets nuls ⇒ comportement strictement identique (no-op exact, vérifié). Zéro risque prod tant que non activé+validé.
+
+**Architecture** :
+1. **Algo pur** `skill_v2/squad.go` : `ComputeSquadOffset([]SquadCoMatch, gain) float64` = `mean(Won − SoloWinProb) × gain`, clampé ±`SquadOffsetCap`(=2.0). + `ApplySquadOffset`, `ClampSquadOffset`.
+2. **Application σ-préservante** : μ_effectif = μ_individuel + Σ(offsets partenaires présents) AVANT l'EP ; posterior individuel = posterior_effectif − offset (l'offset est constant pour le match, seul le delta EP s'applique au skill individuel). Maths : prior_eff = μ+off, EP donne μ'_eff, individuel = μ'_eff − off = μ + Δ_EP. σ jamais modifié.
+3. **Effet anti-inflation** (test E2E vérifié) : sur une VICTOIRE, l'équipe boostée (μ effectif ↑) rend la victoire moins surprenante → μ individuel monte MOINS. C'est exactement la correction voulue (moins d'inflation pour les multi-stack).
+4. **Table** `player_squad_offset` (append-only + vue `_latest`, migration `shared_create_player_squad_offset`, TargetShared). **Repo** `duckdb.SquadOffsetRepo` (LoadSquadOffsets avec cache run-scoped + UpsertSquadOffset INSERT pur).
+5. **CLI** `cmd/lusr_v2_squad_estimate` : scanne les matchs 2-équipes sociaux d'une fenêtre (--weeks=4), accumule par paire (≥ --min-matches=10) les (Won, SoloWinProb), calcule l'offset (--gain=6.0), écrit dans les 2 sens (synergie symétrique). `--dry-run` pour rapport seul.
+6. **Wiring** : `applyMatchToSkillV2` prend `squadRepo` ; calcule offsets par équipe (`computeTeamSquadOffsets`), gaussiennes effectives, predict (1.A) + EP (1.B) sur l'effectif, strip avant persist. La proba 1.A reflète désormais la synergie (effectif).
+
+**MVP first-pass assumé (à raffiner en Sprint 3.A / TTT proper)** : le CLI estime `SoloWinProb` depuis les ratings solo COURANTS (proxy du pré-match). Biais : les ratings courants incluent déjà ces matchs → SoloWinProb sur-estimé → offset SOUS-estimé. **Biais conservateur (sous-correction) donc sûr** ; ré-exécuter périodiquement raffine. La calibration (gain, N, M) et l'activation prod restent à valider (dry-run replay sur les 4 trackés).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/platform/duckdb/... ./internal/migration/... ./internal/sync/` PASS (duckdb 34s, sync 137s)
+- `go vet ./...` clean ; gofmt clean ; `go build ./...` OK (CLI inclus)
+- Tests unitaires squad : 0 match → 0 ; sur-perf systématique → offset attendu ; clamp ±2.0 ; sous-perf → −2.0
+- Tests E2E : `TestRunLUSRV2Shadow_AppliesSquadOffset` (flag on, offset +1.5, victoire → μ owner monte MOINS qu'sans offset) ; flag off (pas de rows) reste no-op exact
+
+**Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_squad_estimate --dry-run` sur prod → offsets ∈ [-2,+2] cohérents pour les 4 trackés ; dry-run replay avec flag on → pas de drift > 1.5 pt sur les solo. Non exécutable hors prod.
+
+**Note hygiène** : le hint Phase 5.B imprimé par `cmd/lusr_v2_ttt_batch` (`skillv2HyperparamUsageHint`) est désormais obsolète (le wiring est fait en Sprint 1.B) — à nettoyer dans une passe ultérieure.
+
+**Prochaine étape** : Sprint 1 terminé (1.A + 1.B + 1.C). Suite possible : Sprint Final (bascule canonical prod) après validation prod des flags squad/coupling, ou Sprints 2.x/3.x au fil de l'eau.
