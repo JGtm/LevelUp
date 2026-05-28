@@ -137,7 +137,7 @@ Corrige la sur-estimation des joueurs qui jouent souvent en escouade (le modèle
 ## Phase 6 candidates (non implémentées)
 
 - **TTT proper (forward + backward smoothing)** : pour les hyperparams sigma_skill / sigma_perf / sigma_dynamic. Le batch actuel ne fait QU'une passe forward agrégée. La version complète demande un solveur EM sur factor graph sériel — non trivial, ~1-2 jours.
-- **Quit penalty avec timeline du score** : remplacer l'heuristique outcome-final par un check du score au moment du quit. Nécessite parser les `highlight_events` ou `match_progression` (à vérifier la source de vérité dans `internal/openspartan/`).
+- **Quit penalty avec timeline du score** : ⛔ INVESTIGUÉ & BLOQUÉ (Sprint 2.A, 2026-05-28). Donnée absente : `CoreStats` n'a que des scores finaux, `highlight_events` = highlights curés sans flux de scoring complet/attribution d'équipe. Réouvrir seulement si une source film/round-by-round horodatée apparaît.
 - **Mode correlation à coefficients ré-estimés par paire de modes** : remplacer le scalaire `DefaultModeCouplingWeight=0.3` par une matrice 4×4 `w_d[i][j]` calibrée empiriquement (corrélation observée entre μ_groupes pour les players multi-modes). Reste capé à 0.4.
 - **UX delta dans match_skill_rank.rating_delta** : actuellement nul en canonical (cf. `writeCanonicalLUSRRow`). Pour le calculer il faudrait fetch le previous rating_value sur le même playlist_group.
 - **Migration backfill `lusr_v2_replay` avec canonical=ON** : aujourd'hui le replay tourne en mode shadow uniquement. Pour repeupler historiquement les `rating_type='LUSR_V2'` rows, ajouter un flag `--canonical` au replay et lui passer un playerDB.
