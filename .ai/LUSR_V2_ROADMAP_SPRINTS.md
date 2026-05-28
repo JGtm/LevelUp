@@ -227,26 +227,26 @@ long-terme.
 
 ### Étapes
 
-- [ ] **3.A.1** — Étudier le paper TS2 §10 (Minka et al. 2018), section
-  "Batch through-time inference"
-- [ ] **3.A.2** — Prototype passe backward : à partir de l'état final de chaque
-  joueur, propage l'information vers les états passés
-- [ ] **3.A.3** — EM loop : forward → backward → re-estimate hyperparams →
-  forward... jusqu'à convergence
-- [ ] **3.A.4** — Métrique de convergence : delta entre 2 EM iterations
-- [ ] **3.A.5** — Tests : converger en < 10 itérations sur un dataset synthétique
-- [ ] **3.A.6** — Comparer ratings avant/après sur prod : doit donner mêmes
-  tiers, μ légèrement raffinés
-- [ ] **3.A.7** — Mise à jour `.ai/thought_log.md`
+> **Livré en tant que PROTOTYPE pur** (`skill_v2/ttt.go`). Le couplage inter-joueurs
+> complet (factor graph TS2 §10) + le câblage prod restent un follow-up (la partie
+> 1-2j+ risquée ; comparaison prod 3.A.6 de toute façon différée). Cf. thought_log 2026-05-28.
+
+- [x] **3.A.1** — Étude TS2 §10 : modèle état-espace linéaire-gaussien (random walk + observation), inférence forward (Kalman) + backward (RTS) + EM.
+- [x] **3.A.2** — Passe backward : `rtsBackward` (lisseur RTS + covariance lag-one) propage l'info des états futurs vers les passés.
+- [x] **3.A.3** — EM loop : `EstimateTTT` (kalmanForward → rtsBackward → ré-estime q=τ² et r) jusqu'à convergence.
+- [x] **3.A.4** — Convergence sur `|Δq| + |Δr| < Tol`.
+- [x] **3.A.5** — Tests synthétiques : convergence < 10 itérations ; log-vraisemblance croissante (propriété EM) ; lisseur ≤ filtre (RMSE) ; edge cases 0/1 obs.
+- [ ] **3.A.6** — Comparaison ratings prod avant/après — **différé : nécessite le TTT couplé câblé en prod (follow-up)**
+- [x] **3.A.7** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 3.A
 
-- [ ] Tests PASS, convergence atteinte
-- [ ] Replay sur prod n'introduit pas de changement abrupt de tier sur les 4 trackés (Madina reste Diamant, etc.)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS, convergence atteinte (prototype pur)
+- [ ] Replay sur prod sans changement abrupt de tier — **différé : follow-up TTT couplé**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28 (prototype ; TTT couplé prod = follow-up)
 
 ---
 

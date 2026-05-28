@@ -49840,3 +49840,28 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_ttt_batch` sur prod → matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos). Avec seulement ~4 trackés, beaucoup de paires seront sous le seuil (fallback scalaire) — la matrice gagne en densité avec la base de joueurs.
 
 **Prochaine étape** : Sprint 3.A — recalibration TTT complète (forward+backward + EM).
+
+## [2026-05-28] feat(lusr-v2): Sprint 3.A — prototype TTT (Kalman + RTS + EM) — Complété (prototype, non câblé prod)
+
+**Statut** : Complété en tant que **prototype pur testé** · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 3.A (priorité Basse, nice-to-have)
+
+**Contexte** : Le batch actuel ne fait qu'une agrégation forward (moyennes empiriques). La vraie inférence Through-Time (TS2 §10) lisse l'historique complet d'un joueur (forward + backward) et ré-estime les paramètres de dynamique/bruit en utilisant TOUTE l'information (passé + futur).
+
+**Scope assumé (prototype, pas le TTT couplé complet)** : le sprint est explicitement "étude + prototype" (3.A.1 étudier le paper, 3.A.2 "Prototype passe backward", 3.A.5 "converger sur dataset synthétique"). J'ai livré le **bloc de base** : un lisseur état-espace linéaire-gaussien 1D + EM, pur et testé. Le **couplage inter-joueurs complet** du factor graph TS2 §10 (où la variance d'observation d'un joueur dépend des time-series de ses adversaires) reste une étape ultérieure — c'est la partie 1-2j+ risquée. La comparaison prod (3.A.6) est de toute façon différée.
+
+**Implémentation** `skill_v2/ttt.go` (pur) :
+- Modèle : `s_t = s_{t-1} + w_t` (w~N(0,q), random walk du skill) ; `z_t = s_t + v_t` (v~N(0,r), mesure issue du match). Les z_t sont fournis par le caller (μ post-match) — découple le lisseur du couplage.
+- `kalmanForward` (filtre 1D + log-vraisemblance marginale) → `rtsBackward` (lisseur RTS + covariance lag-one) → `EstimateTTT` (boucle EM ré-estimant q=τ² et r, plancher `minTTTVariance`, m0/p0 fixes).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/...` PASS ; `go vet` + gofmt clean
+- `TestEstimateTTT_ConvergesUnder10Iterations` : sur random walk synthétique (q*=0.4, r*=4, T=300), EM converge en < 10 itérations (tol 2e-2 sur |Δq|+|Δr| ≈ 0.5% de r), q/r récupérés dans un facteur 3 du vrai
+- `TestEstimateTTT_LogLikelihoodNonDecreasing` : la log-vraisemblance marginale croît à chaque itération (propriété EM)
+- `TestTTT_SmootherBeatsFilter` : RMSE lisseur ≤ RMSE filtre vs états vrais (le lisseur exploite le futur)
+- Edge cases (0 / 1 observation) gérés
+
+**Non câblé prod (volontaire)** : le module n'est PAS branché dans `cmd/lusr_v2_ttt_batch` ni dans le replay. Le brancher exigerait un modèle d'observation par match (z_t, couplage opposants) = le factor graph couplé, hors scope de ce prototype. C'est une API de bibliothèque validée, prête pour le TTT couplé ultérieur (ce n'est pas du code mort : exporté + testé, point d'entrée du futur batch TTT).
+
+**Reste pour un TTT "complet"** (follow-up, non Sprint 1-3) : factor graph multi-joueurs couplé + modèle d'observation par match + écriture de τ/β ré-estimés par groupe dans lusr_hyperparams_v2 + comparaison prod (3.A.6).
+
+**Prochaine étape** : Sprint 3.B — delta de rating dans l'historique.
