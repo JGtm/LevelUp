@@ -87,34 +87,22 @@ re-estimation = écriture morte. Cette tâche connecte les deux.
 
 ### Étapes
 
-- [ ] **1.B.1** — Créer `internal/analysis/skill_v2/hyperparams_load.go` avec :
-  - `LoadPriorsFromHyperparams(params map[string]float64, defaultP Priors) Priors`
-  - Override `DrawProbability` si `draw_probability_empirical` présent
-  - Reste passé tel quel (les autres sont CountHyperparams)
-  - Logique pure, testable
-- [ ] **1.B.2** — Créer `LoadCountHyperparamsFromDB(params map[string]float64, defaults map[CountType]CountHyperparams) map[CountType]CountHyperparams`
-  - Override `Bias` pour kill / death depuis `kill_mean_empirical` / `death_mean_empirical`
-- [ ] **1.B.3** — Tests unitaires :
-  - Map vide → defaults retournés intacts
-  - Map avec uniquement draw_prob → seul DrawProbability change
-  - Map complète → tous les overrides appliqués
-- [ ] **1.B.4** — Modifier `processOneShadowMatch` (skill_v2_shadow.go) :
-  - Avant `applyMatchToSkillV2`, charger les hyperparams pour `group`
-  - Passer les Priors override à l'appel
-  - `slog.DebugContext` "hyperparams ré-estimés appliqués" avec compte de overrides
-- [ ] **1.B.5** — Refactor `applyMatchToSkillV2` pour accepter `Priors` au lieu de `priors skillv2.Priors` du shadowRunContext (qui restent les defaults)
-- [ ] **1.B.6** — Test E2E :
-  - `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` — seed une row hyperparam avec `draw_probability_empirical=0.5` (artificiellement haut), vérifier qu'un draw est moins surprenant pour le modèle
-- [ ] **1.B.7** — Mise à jour `.ai/thought_log.md`
+- [x] **1.B.1** — `internal/analysis/skill_v2/hyperparams_load.go` : `LoadPriorsFromHyperparams(params, defaultP)` override DrawProbability depuis `draw_probability_empirical` (guard [0,1[). + alias `CountType`/`CountHyperparams`, `DefaultCountHyperparamsMap`, `AppliedHyperparamCount`. Pur.
+- [x] **1.B.2** — `LoadCountHyperparamsFromDB(params, mu0)`. **CORRECTION du plan** : le doc prescrivait `bias = kill_mean_empirical` — dimensionnellement faux pour `expected = bias + w_p·perf + w_o·avg_opp`. Formule correcte : `bias = mean − (w_p + w_o)·μ0` (réduit aux défauts pour mean ~12.5).
+- [x] **1.B.3** — Tests unitaires : map vide → defaults ; draw_prob seul → seul DrawProbability change ; draw_prob invalide ignoré ; bias recalibré (12.5→defaults, 20/8→7.5/20.5).
+- [x] **1.B.4** — `resolveGroupParams` (mémoïsé par groupe) charge les hyperparams via `repo.LoadHyperparams`, override Priors + CountHyperparams, log `slog.DebugContext "hyperparams ré-estimés appliqués"` (overrides + draw_probability). Best-effort (échec → fallback defaults + warn).
+- [x] **1.B.5** — `applyMatchToSkillV2` prend `priors` (groupPriors résolu, pas c.priors) + nouveau param `countHyp` posé sur `counts.Hyperparams`. Threading via champ optionnel `CountInputs.Hyperparams` (nil → defaults) → 0 régression EP.
+- [x] **1.B.6** — E2E `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` : match nul 2v2 symétrique sans counts, draw_prob=0.5 seedé vs default → σ owner plus grand (draw moins surprenant). DDL test étendu (lusr_hyperparams_v2).
+- [x] **1.B.7** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 1.B
 
-- [ ] `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS
-- [ ] Run manuel : `LEVELUP_LUSR_V2_ENABLED=1 ./server` → vérifier dans `logs/sync.log` qu'on voit le log "hyperparams ré-estimés appliqués" avec un count > 0 pour chaque groupe (après que TTT batch ait écrit)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS
+- [ ] Run manuel : `LEVELUP_LUSR_V2_ENABLED=1 ./server` → log "hyperparams ré-estimés appliqués" count > 0 — **différé : non exécutable hors prod (requiert un passage TTT batch préalable)**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 

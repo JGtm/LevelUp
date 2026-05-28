@@ -49742,3 +49742,32 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste pour la DoD (validation prod)** : vérifier sur ≥1 match prod post-bascule que `expected_win_prob` est plausible (≈ 0.5 ± 0.3 pour la majorité). Non exécutable hors prod — comme les phases auth précédentes.
 
 **Prochaine étape** : Sprint 1.B — brancher les hyperparams ré-estimés (`LoadPriorsFromHyperparams`) dans le shadow runner.
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.B — brancher les hyperparams ré-estimés — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 1.B
+
+**Contexte** : Le CLI `cmd/lusr_v2_ttt_batch` écrit déjà en base (`lusr_hyperparams_v2`) les stats empiriques par groupe de modes — `draw_probability_empirical`, `kill_mean_empirical`, `kill_std_empirical`, `death_mean_empirical`, `death_std_empirical`, `match_count_analyzed`. Mais le shadow runner utilisait toujours `DefaultPriors()` + `DefaultCountHyperparams()` hardcodés → la ré-estimation était une **écriture morte**. Ce sprint connecte les deux.
+
+**Décisions techniques** :
+1. **`internal/analysis/skill_v2/hyperparams_load.go` (pur)** :
+   - `LoadPriorsFromHyperparams(params, defaultP) Priors` : override `DrawProbability` depuis `draw_probability_empirical` (guard [0,1[). Mu0/Sigma0/Beta/Tau non écrits par le batch → restent defaults.
+   - `LoadCountHyperparamsFromDB(params, mu0) map[CountType]CountHyperparams` : recalibre le `Bias` kill/death.
+   - Ré-export d'alias `CountType` / `CountHyperparams` + consts `CountKill`/`CountDeath` pour que `internal/sync` ne dépende pas du sous-package `ep`.
+   - `DefaultCountHyperparamsMap()` + `AppliedHyperparamCount()`.
+2. **CORRECTION du plan (étape 1.B.2)** : le doc prescrivait « bias = kill_mean_empirical » en direct. C'est **dimensionnellement faux** pour le modèle `expected_count = bias + w_p·perf + w_o·avg_opp` (ep/count_obs.go) : poser bias=mean donnerait expected ≈ 2× la moyenne à skill moyen. Formule correcte appliquée : `bias = mean − (w_p + w_o)·μ0`. Elle se réduit EXACTEMENT aux défauts (kill bias 0, death bias 25) quand la moyenne empirique vaut ~12.5 — garde-fou anti-dérive vérifié en test.
+3. **Threading sans casser de signature** : ajout d'un champ optionnel `Hyperparams map[CountType]CountHyperparams` sur `CountInputs` (nil → defaults ep). `UpdateTwoTeamWithCountsEP` le pose sur `input.CountHyperparams`. Seul appelant prod = `applyMatchToSkillV2`, donc 0 régression sur les tests EP existants.
+4. **Wiring shadow runner** : `resolveGroupParams(ctx, c, group)` résout Priors + CountHyperparams effectifs PAR GROUPE (override empirique via `repo.LoadHyperparams`), **mémoïsé** dans `shadowRunContext.priorsCache`/`countHypCache` (1 requête par groupe par run). `c.priors` reste les defaults (base). `applyMatchToSkillV2` prend désormais `countHyp` en param et le pose sur `counts.Hyperparams`. Log `slog.DebugContext "hyperparams ré-estimés appliqués"` avec count d'overrides + draw_probability. **Best-effort** : `LoadHyperparams` en échec → fallback defaults + warn (run continue).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 137s)
+- `go vet` + gofmt clean
+- Tests unitaires : map vide → defaults intacts ; seul draw_prob → seul DrawProbability change ; draw_prob invalide ignoré ; bias recalibré (12.5 → defaults, 20/8 → 7.5/20.5) ; poids/variance inchangés
+- E2E `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` : match nul 2v2 symétrique sans counts (pure TS), draw_probability_empirical=0.5 seedé vs default → σ owner PLUS grand avec la proba haute (draw moins surprenant → moins de réduction de variance). Prouve que la valeur empirique est réellement lue.
+- DDL test `openShadowTestDB` étendu avec `lusr_hyperparams_v2` (+ vue _latest).
+
+**Note** : `kill_std_empirical`/`death_std_empirical`/`match_count_analyzed` restent non câblés (le doc ne demandait que draw prob + means). La variance d'observation (`ObservationVar`) pourra être recalibrée depuis les std en Sprint 3.A (TTT batch propre).
+
+**Reste pour la DoD (validation prod)** : run manuel `LEVELUP_LUSR_V2_ENABLED=1 ./server` après un passage TTT batch → vérifier le log "hyperparams ré-estimés appliqués" avec overrides > 0. Non exécutable hors prod.
+
+**Prochaine étape** : Sprint 1.C — détection escouades + correction skill (squad offset).

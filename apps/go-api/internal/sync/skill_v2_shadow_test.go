@@ -305,6 +305,23 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			FROM player_skill_state_v2
 			GROUP BY xuid, playlist_group
 		) m ON s.xuid = m.xuid AND s.playlist_group = m.playlist_group AND s.written_at = m.max_written_at;
+		CREATE SEQUENCE lusr_hyperparams_v2_seq START 1;
+		CREATE TABLE lusr_hyperparams_v2 (
+			id              BIGINT DEFAULT nextval('lusr_hyperparams_v2_seq') PRIMARY KEY,
+			playlist_group  VARCHAR NOT NULL,
+			name            VARCHAR NOT NULL,
+			value           DOUBLE  NOT NULL,
+			source          VARCHAR NOT NULL,
+			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE VIEW lusr_hyperparams_v2_latest AS
+		SELECT h.*
+		FROM lusr_hyperparams_v2 h
+		JOIN (
+			SELECT playlist_group, name, MAX(written_at) AS max_written_at
+			FROM lusr_hyperparams_v2
+			GROUP BY playlist_group, name
+		) m ON h.playlist_group = m.playlist_group AND h.name = m.name AND h.written_at = m.max_written_at;
 	`
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatalf("DDL: %v", err)
@@ -906,5 +923,61 @@ func TestRunLUSRV2Shadow_Canonical_FirstMatchFallback(t *testing.T) {
 	// Équipes entièrement seedées au prior → match équilibré → proche de 0.5.
 	if d := winProb.Float64 - 0.5; d > 0.2 || d < -0.2 {
 		t.Errorf("first-match balanced : expected_win_prob = %v, attendu ≈ 0.5 (±0.2)", winProb.Float64)
+	}
+}
+
+// TestRunLUSRV2Shadow_UsesEmpiricalDrawProb (Sprint 1.B) prouve que la draw
+// probability empirique seedée dans lusr_hyperparams_v2 est réellement lue par
+// le runner. Sur un match nul 2v2 parfaitement symétrique SANS counts (pure
+// TrueSkill), μ reste à 25 par symétrie mais σ dépend de la marge de draw ε,
+// donc de DrawProbability. Un draw "moins surprenant" (proba haute) réduit moins
+// σ → σ plus grand. On compare deux runs identiques : seul l'hyperparam diffère.
+func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
+	original := os.Getenv(lusrV2EnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+
+	runDrawMatch := func(seedHighDrawProb bool) (mu, sigma float64) {
+		db := openShadowTestDB(t)
+		if seedHighDrawProb {
+			if _, err := db.Exec(`INSERT INTO lusr_hyperparams_v2
+				(playlist_group, name, value, source)
+				VALUES ('arena_slayer', 'draw_probability_empirical', 0.5, 'test')`); err != nil {
+				t.Fatalf("seed hyperparam: %v", err)
+			}
+		}
+		start := time.Date(2025, 4, 1, 12, 0, 0, 0, time.UTC)
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+			VALUES ('m_draw', ?, ?, 'Slayer', FALSE, FALSE, 600)`, start, start); err != nil {
+			t.Fatalf("insert match_registry: %v", err)
+		}
+		// Match nul (outcome=1 partout), SANS kills/deaths → counts nil → pure TS.
+		for _, q := range []struct {
+			xuid string
+			team int
+		}{{"owner", 0}, {"teammate", 0}, {"opp1", 1}, {"opp2", 1}} {
+			if _, err := db.Exec(`INSERT INTO match_participants
+				(match_id, xuid, team_id, outcome) VALUES ('m_draw', ?, ?, 1)`,
+				q.xuid, q.team); err != nil {
+				t.Fatalf("insert participant: %v", err)
+			}
+		}
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+			t.Fatalf("RunLUSRV2Shadow: %v", err)
+		}
+		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
+		if err != nil || st == nil {
+			t.Fatalf("LoadState owner: %v", err)
+		}
+		return st.Mu, st.Sigma
+	}
+
+	_, sigmaDefault := runDrawMatch(false)
+	_, sigmaSeeded := runDrawMatch(true)
+
+	if sigmaSeeded <= sigmaDefault {
+		t.Errorf("draw_probability empirique haute → draw moins surprenant → σ doit rester PLUS grand : seeded σ=%v doit > default σ=%v",
+			sigmaSeeded, sigmaDefault)
 	}
 }

@@ -106,6 +106,8 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 		tierBoundaries: tierBoundaries,
 		xuid:           xuid,
 		canonical:      canonical,
+		priorsCache:    make(map[string]skillv2.Priors),
+		countHypCache:  make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
 	}
 	var s shadowRunStats
 	for _, m := range matches {
@@ -124,6 +126,11 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 
 // shadowRunContext regroupe les dépendances stables d'une exécution shadow,
 // passées à `processOneShadowMatch` au lieu d'avoir 7 paramètres en cascade.
+//
+// `priors` reste les DEFAULTS ; les priors/count-hyperparams effectifs sont
+// résolus PAR GROUPE via resolveGroupParams (override empirique du batch
+// lusr_v2_ttt_batch) et mémoïsés dans priorsCache / countHypCache. Les maps
+// sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
 	repo           *duckdb.SkillV2Repo
 	playerDB       *sql.DB
@@ -132,6 +139,8 @@ type shadowRunContext struct {
 	tierBoundaries []skillv2.TierBoundary
 	xuid           string
 	canonical      bool
+	priorsCache    map[string]skillv2.Priors
+	countHypCache  map[string]map[skillv2.CountType]skillv2.CountHyperparams
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.
@@ -185,7 +194,8 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		s.skippedNonTwoTeam++
 		return
 	}
-	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.priors, m.matchID, group,
+	groupPriors, groupCountHyp := resolveGroupParams(ctx, c, group)
+	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, groupPriors, groupCountHyp, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
@@ -204,6 +214,36 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 				"match_id", m.matchID, "group", group, "err", err)
 		}
 	}
+}
+
+// resolveGroupParams retourne les Priors et CountHyperparams effectifs pour un
+// groupe de modes : les défauts surchargés par les hyperparams empiriques
+// ré-estimés par cmd/lusr_v2_ttt_batch (table lusr_hyperparams_v2). Mémoïsé par
+// groupe — 1 seul LoadHyperparams par groupe et par run.
+//
+// Best-effort : si LoadHyperparams échoue (table absente sur une DB non migrée,
+// etc.), on retombe sur les défauts + warn, et le run continue.
+func resolveGroupParams(ctx context.Context, c shadowRunContext, group string) (skillv2.Priors, map[skillv2.CountType]skillv2.CountHyperparams) {
+	if p, ok := c.priorsCache[group]; ok {
+		return p, c.countHypCache[group]
+	}
+	priors := c.priors
+	countHyp := skillv2.DefaultCountHyperparamsMap()
+	hp, err := c.repo.LoadHyperparams(ctx, group)
+	switch {
+	case err != nil:
+		slog.WarnContext(ctx, "LUSR v2: LoadHyperparams échoué — fallback defaults",
+			"group", group, "err", err)
+	case len(hp) > 0:
+		priors = skillv2.LoadPriorsFromHyperparams(hp, c.priors)
+		countHyp = skillv2.LoadCountHyperparamsFromDB(hp, c.priors.Mu0)
+		slog.DebugContext(ctx, "LUSR v2: hyperparams ré-estimés appliqués",
+			"group", group, "overrides", skillv2.AppliedHyperparamCount(hp),
+			"draw_probability", priors.DrawProbability)
+	}
+	c.priorsCache[group] = priors
+	c.countHypCache[group] = countHyp
+	return priors, countHyp
 }
 
 // isTeamImbalanceTooHigh retourne true si la différence absolue des tailles
@@ -395,6 +435,7 @@ func applyMatchToSkillV2(
 	ctx context.Context,
 	repo *duckdb.SkillV2Repo,
 	priors skillv2.Priors,
+	countHyp map[skillv2.CountType]skillv2.CountHyperparams,
 	matchID, playlistGroup string,
 	startTime time.Time,
 	teamA, teamB []rosterMember,
@@ -425,6 +466,9 @@ func applyMatchToSkillV2(
 	expectedWinProb = &probOwner
 
 	counts := buildCountInputs(teamA, teamB, outcomeA)
+	if counts != nil {
+		counts.Hyperparams = countHyp
+	}
 	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
 		TeamA:   gaussA,
 		TeamB:   gaussB,
