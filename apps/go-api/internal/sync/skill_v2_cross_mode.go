@@ -19,18 +19,18 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// lusrModeCouplingEnvFlag active la Phase 4 (cross-mode leak). Off = chaque
-// playlist_group reste totalement indépendant (comportement Phase 1-3). On =
-// applique le leak avec w_d = DefaultModeCouplingWeight après chaque update.
-//   - "1" / "true" / "yes" : actif
-//   - vide / autre         : inactif (défaut)
+// lusrModeCouplingEnvFlag contrôle la Phase 4 (cross-mode leak). **ON par défaut**
+// (décision produit 2026-05-28) : le leak applique le poids de la matrice de
+// corrélation (Sprint 2.B), avec fallback w_d = DefaultModeCouplingWeight tant que
+// la matrice n'est pas calculée. Mettre explicitement "0"/"false"/"no" pour
+// désactiver.
 const lusrModeCouplingEnvFlag = "LEVELUP_LUSR_V2_MODE_COUPLING"
 
-// IsLUSRV2ModeCouplingEnabled retourne true si la Phase 4 (cross-mode leak)
-// doit être appliquée après chaque update. Cf. lusrModeCouplingEnvFlag.
+// IsLUSRV2ModeCouplingEnabled retourne true sauf si le flag est explicitement
+// désactivé ("0"/"false"/"no"). ON par défaut. Cf. lusrModeCouplingEnvFlag.
 func IsLUSRV2ModeCouplingEnabled() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv(lusrModeCouplingEnvFlag)))
-	return v == "1" || v == "true" || v == "yes"
+	return v != "0" && v != "false" && v != "no"
 }
 
 // findOwnerPrior cherche l'état AVANT-match du owner dans les deux rosters.

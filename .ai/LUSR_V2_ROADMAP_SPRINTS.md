@@ -31,6 +31,55 @@ Création de sous-branches optionnelle si plusieurs sprints en parallèle.
 
 ---
 
+## ✅ CHECKLIST UTILISATEUR (état au 2026-05-28)
+
+> **État code** : Sprints 1.A, 1.B, 1.C, 2.A, 2.B, 3.A (prototype), 3.B = **livrés,
+> testés, committés** sur `feat/lusr-v2-phase0-metrics` (10 commits). Build + `go vet`
+> + tests verts. Rien n'est poussé ni en prod. Ce qui suit est ce qu'il TE reste.
+
+### 🔧 À FAIRE par toi — sur le serveur (je ne peux pas le faire d'ici)
+
+Pour basculer en prod cette semaine (Sprint Final), dans l'ordre :
+
+1. **Peupler les hyperparams + la matrice cross-mode** : lancer `cmd/lusr_v2_ttt_batch`
+   (sans `--dry-run`). Sans ça, le cross-mode utilise le scalaire 0.3 par défaut.
+2. **(Optionnel mais recommandé) Activer la correction d'escouade** : lancer
+   `cmd/lusr_v2_squad_estimate --dry-run` → vérifier les offsets ∈ [-2,+2] cohérents
+   pour tes 4 trackés → si OK, relancer **sans** `--dry-run`. (Le flag est déjà ON par
+   défaut, mais sans ce passage la correction ne fait rien.)
+3. **Backfill historique** : relancer `cmd/lusr_v2_replay` (rattrape l'historique v2).
+4. **Bascule** : suivre la checklist du **Sprint Final** ci-dessous (F.1→F.10) — staging
+   d'abord (`LEVELUP_LUSR_CANONICAL=LUSR_V2`), 3-5 syncs, vérifs logs/sentinelle/UI,
+   puis prod + surveillance 24h.
+
+### 🤔 À DÉCIDER par toi
+
+- **Affichage 1.A** (`expected_win_prob`, "X% de chance de gagner") : OÙ et COMMENT
+  l'afficher ? (rien ne l'affiche aujourd'hui — juste en base). Cf. section 1.A.
+- **Affichage 3.B** (`rating_delta`, "+12 LUSR ce match") : OÙ et COMMENT ? (idem). Cf. 3.B.
+- **Squad + cross-mode ON par défaut** : confirmé ? (ce sont des features qui touchent
+  le classement ; leur calibration est une 1re estimation à valider sur tes vraies
+  données — le `--dry-run` du point 2 sert à ça). Pour désactiver l'une :
+  `LEVELUP_LUSR_V2_SQUAD_OFFSET=0` ou `LEVELUP_LUSR_V2_MODE_COUPLING=0`.
+- **3.A (TTT)** : on en reste au prototype testé, ou on planifie le wiring complet
+  (lisser les μ des joueurs trackés et réécrire l'historique) ? Cf. note dans 3.A.
+
+### 👤 À FAIRE par ton collègue (dev)
+
+- **Adapter T0 (multi-titre)** : brancher `match_registry.real_start_time` au hook
+  marqué en commentaire dans `quitOffsetMs` (`internal/sync/skill_v2_quit_penalty.go`).
+  Aujourd'hui on utilise `start_time_utc` (début film) — correct pour Halo, à
+  généraliser pour les autres titres.
+
+### ⏭️ Reste à faire / différé (non bloquant pour la bascule)
+
+- Wiring complet du TTT couplé (3.A) — follow-up dédié.
+- Validations prod des features (offsets squad cohérents, matrice 4×4, deltas peuplés,
+  win-prob plausible) — se font après la bascule en observant les vraies données.
+- Nettoyage code v1 (`batchComputeLUSR`) — étape F.9, après ≥7j stables.
+
+---
+
 ## Sprint 1.A — Probabilité de victoire prédite
 
 > Référence détaillée : `.ai/LUSR_V2_WIN_PROBABILITY.md`
@@ -40,6 +89,12 @@ Exposer, pour chaque match, "votre équipe avait X% de chance de gagner" avant
 que le match commence. Permet de filtrer les défaites entre "matchs perdables"
 et "matchs vraiment au-dessus", et de mettre en valeur les belles perfs sur
 matchs donnés perdants.
+
+> 📊 **AFFICHAGE À DÉCIDER (utilisateur)** : la donnée `expected_win_prob` est
+> calculée et stockée par match, mais **rien ne l'affiche encore**. À toi de
+> décider OÙ (page match-view ? historique ? badge ?) et COMMENT (ex. "Match
+> attendu" / "Upset" / "Belle perf sur match perdable"). Tant que ce n'est pas
+> décidé, c'est juste une colonne en base, invisible côté UI.
 
 ### Architecture prévue
 - `internal/analysis/skill_v2/predict.go` — fonction pure `PredictTwoTeamWinProb(teamA, teamB []Gaussian, p Priors) (probA, probDraw, probB float64)`
@@ -139,23 +194,29 @@ ensemble).
 
 - [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/platform/duckdb/` PASS (+ migration), `go vet ./...` clean
 - [ ] CLI `lusr_v2_squad_estimate` tourne sur prod, offsets ∈ [-2,+2] pour les 4 trackés — **différé : prod uniquement**
-- [ ] Dry-run replay avec offsets actifs, pas de drift > 1.5 pt sur les solo — **différé : prod uniquement (flag OFF par défaut en attendant)**
+- [ ] Dry-run replay avec offsets actifs, pas de drift > 1.5 pt sur les solo — **différé : prod uniquement**
 - [x] Entrée `.ai/thought_log.md`
 - [x] Commit autorisé
 
-**Date complétion** : 2026-05-28 (livré gated OFF ; activation prod après validation)
+**Date complétion** : 2026-05-28. **MAJ 2026-05-28 : flag `LEVELUP_LUSR_V2_SQUAD_OFFSET` désormais ON par défaut** (décision produit). NB : aucun effet tant que `cmd/lusr_v2_squad_estimate` n'a pas peuplé d'offsets (LoadSquadOffsets vide → no-op). Donc l'activation réelle = lancer le CLI.
 
 ---
 
-## Sprint 2.A — Timeline du score au moment du quit — ⛔ ABANDONNÉ (2026-05-28)
+## Sprint 2.A — Timeline du score au moment du quit — ✅ LIVRÉ (2026-05-28)
 
-> **Donnée API absente** (issue prévue par 2.A.1). Le modèle openspartan n'expose
-> que des scores FINAUX (`CoreStats.Score`, `RoundsWon/Lost/Tied`) ; `highlight_events`
-> = highlights curés (kills/médailles) sans flux de scoring complet ni attribution
-> d'équipe → impossible de reconstruire fiablement le score-au-quit (inutile aussi
-> en modes objectifs où kills ≠ score). L'heuristique outcome-final (`quitDeltaForTeam`)
-> reste en place. Réouverture si une source film/round-by-round horodatée apparaît.
-> Cf. `.ai/thought_log.md` 2026-05-28.
+> **Réouvert après correction utilisateur** : la donnée EST disponible via la
+> timeline des frags (`killer_victim_pairs`, comme le graphe "tug of war" de la
+> page match-view). Fiable à 100% sur modes non-objectifs (frags = score), signal
+> suffisant sur modes à objectifs. On compte les frags cumulés par équipe et on
+> regarde qui mène au moment du quit. Fallback sur l'outcome final si la timeline
+> est absente (vieux matchs).
+>
+> ⚠️ **HOOK ADAPTER T0 (pour le collègue)** : le vrai T0 = `match_registry.real_start_time`
+> (début réel après countdown, ~99% des cas) doit être obtenu via un **adapter
+> titre-spécifique**. **NON implémenté ici** — on utilise `start_time_utc` (début
+> film) comme repère, ce qui est correct pour Halo. Le point d'insertion est
+> **marqué en commentaire** dans `quitOffsetMs` (`internal/sync/skill_v2_quit_penalty.go`) :
+> c'est là que l'adapter `real_start_time` doit brancher.
 
 ### Objectif
 Aujourd'hui on classe le quit "related" (équipe perdait) vs "unrelated"
@@ -166,21 +227,20 @@ juste.
 
 ### Étapes
 
-- [ ] **2.A.1** — Investiguer la source de vérité : grep `highlight_events`, `match_progression`, `events`, `score_timeline` dans `internal/openspartan/models.go`
-  - Si la donnée existe : continuer
-  - Si elle n'existe pas : abandonner ce sprint avec note dans handoff
-- [ ] **2.A.2** — Si disponible : nouvelle fonction `inferQuitContextFromTimeline(events, leaveTime, ownerTeam) (related bool, scoreDiff int)`
-- [ ] **2.A.3** — Modifier `quitDeltaForTeam(o)` en `quitDeltaForContext(scoreContext)` qui prend le contexte au moment du quit
-- [ ] **2.A.4** — Tests unitaires sur 3 cas : équipe gagnait, équipe perdait, équipe à égalité
-- [ ] **2.A.5** — Mise à jour `.ai/thought_log.md` + handoff
+- [x] **2.A.1** — Source de vérité : `killer_victim_pairs` (killer_xuid + time_ms relatif film), même base que le graphe tug-of-war (`analysis.ComputeTugOfWar`).
+- [x] **2.A.2** — `skill_v2/quit_context.go` (pur) : `InferQuitContext(frags []TeamFrag, quitMs, quitterTeamID) QuitContext` (Leading/Tied/Trailing) en comptant les frags cumulés ≤ quitMs.
+- [x] **2.A.3** — `quitDeltaForContext(ctx)` (trailing→related modéré ; leading/tied→unrelated fort). `buildCountInputs` prend `quitTimeline` et applique le contexte par quitter (fallback `quitDeltaForTeam` si timeline absente). Loader `loadQuitTimeline` + `quitOffsetMs` (**hook adapter T0 commenté**).
+- [x] **2.A.4** — Tests unitaires `quit_context_test.go` : menait / perdait / égalité / ne compte que ≤ quit / 0-0 / perspective équipe adverse.
+- [x] **2.A.5** — E2E `TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit` (quit en menant mais défaite → pénalité forte 2.5 vs fallback 1.0, écart 1.5). + thought_log + handoff.
 
 ### Definition of Done — Sprint 2.A
 
-- [ ] Tests PASS (ou sprint marqué abandonné avec justification si donnée API absente)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS (skill_v2 + sync), `go vet` clean
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
+- [ ] **À FAIRE (collègue)** : brancher l'adapter `real_start_time` au hook marqué dans `quitOffsetMs` pour le multi-titre
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28 (hook T0 adapter à compléter par le collègue)
 
 ---
 
@@ -208,7 +268,7 @@ plus corrélés que slayer↔chaos (chaos = mayhem). Une matrice
 - [x] Entrée `.ai/thought_log.md`
 - [x] Commit autorisé
 
-**Date complétion** : 2026-05-28
+**Date complétion** : 2026-05-28. **MAJ 2026-05-28 : le leak cross-mode (`LEVELUP_LUSR_V2_MODE_COUPLING`) est désormais ON par défaut** (décision produit). Tant que la matrice n'est pas calculée par le batch, le leak utilise le scalaire 0.3 (comportement Phase 4 historique).
 
 ---
 
@@ -230,6 +290,20 @@ long-terme.
 > **Livré en tant que PROTOTYPE pur** (`skill_v2/ttt.go`). Le couplage inter-joueurs
 > complet (factor graph TS2 §10) + le câblage prod restent un follow-up (la partie
 > 1-2j+ risquée ; comparaison prod 3.A.6 de toute façon différée). Cf. thought_log 2026-05-28.
+>
+> **Décisions utilisateur 2026-05-28** :
+> - **Scope** : lisser uniquement le(s) joueur(s) ayant une BDD dans l'app (joueurs
+>   actifs/trackés). S'il y a plusieurs joueurs avec BDD, on les fait tous (un par un).
+> - **Fiabilité si limité aux actifs ?** Réponse : perte **négligeable**. Le lissage
+>   travaille sur l'historique de CHAQUE joueur indépendamment ; les trackés ont le
+>   plus de matchs = la meilleure matière. La seule chose perdue vs "lisser tout le
+>   monde" est le partage d'info entre joueurs qui se sont affrontés (gain marginal
+>   pour une poignée de joueurs, et c'est ça la grosse version coûteuse).
+> - **Approche wiring restante (follow-up)** : pour chaque joueur tracké, construire
+>   la série de ses μ post-match (depuis `player_skill_state_v2`) comme observations
+>   `z_t`, appeler `EstimateTTT`, et décider où écrire les μ raffinés (réécriture
+>   historique = à trancher ; risqué avant/juste après la bascule prod). **À planifier
+>   séparément.**
 
 - [x] **3.A.1** — Étude TS2 §10 : modèle état-espace linéaire-gaussien (random walk + observation), inférence forward (Kalman) + backward (RTS) + EM.
 - [x] **3.A.2** — Passe backward : `rtsBackward` (lisseur RTS + covariance lag-one) propage l'info des états futurs vers les passés.
@@ -256,6 +330,11 @@ long-terme.
 Aujourd'hui quand on écrit une ligne `match_skill_rank`, le champ
 `rating_delta` est nul. Pour afficher au joueur "vous avez gagné +12 LUSR
 ce match", il faudrait fetcher le rating précédent. Petit confort UX.
+
+> 📊 **AFFICHAGE À DÉCIDER (utilisateur)** : `rating_delta` est désormais peuplé
+> en base, mais **rien ne l'affiche encore**. À toi de décider OÙ (ligne
+> d'historique de match ? page match-view ?) et COMMENT (ex. "+12 LUSR" en vert /
+> "−8 LUSR" en rouge). Tant que ce n'est pas décidé, c'est juste une colonne en base.
 
 ### Étapes
 

@@ -23,16 +23,17 @@ import (
 	"levelup/go-api/internal/platform/duckdb"
 )
 
-// lusrSquadOffsetEnvFlag active la Phase 2 (squad offset). Off = chaque joueur
-// est traité indépendamment (comportement Phase 1). On = applique les offsets
-// de synergie estimés par cmd/lusr_v2_squad_estimate.
+// lusrSquadOffsetEnvFlag contrôle la Phase 2 (squad offset). **ON par défaut**
+// (décision produit 2026-05-28). NB : même actif, la correction n'a d'effet que
+// si des offsets ont été estimés par cmd/lusr_v2_squad_estimate (sinon
+// LoadSquadOffsets renvoie vide → no-op). Mettre "0"/"false"/"no" pour désactiver.
 const lusrSquadOffsetEnvFlag = "LEVELUP_LUSR_V2_SQUAD_OFFSET"
 
-// IsLUSRV2SquadOffsetEnabled retourne true si la correction squad doit être
-// appliquée. Cf. lusrSquadOffsetEnvFlag.
+// IsLUSRV2SquadOffsetEnabled retourne true sauf si le flag est explicitement
+// désactivé ("0"/"false"/"no"). ON par défaut. Cf. lusrSquadOffsetEnvFlag.
 func IsLUSRV2SquadOffsetEnabled() bool {
 	v := strings.ToLower(strings.TrimSpace(os.Getenv(lusrSquadOffsetEnvFlag)))
-	return v == "1" || v == "true" || v == "yes"
+	return v != "0" && v != "false" && v != "no"
 }
 
 // computeTeamSquadOffsets retourne, pour chaque joueur de `states`, la somme des

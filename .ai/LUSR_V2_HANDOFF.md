@@ -137,7 +137,7 @@ Corrige la sur-estimation des joueurs qui jouent souvent en escouade (le modèle
 ## Phase 6 candidates (non implémentées)
 
 - **TTT proper (forward + backward smoothing)** : pour les hyperparams sigma_skill / sigma_perf / sigma_dynamic. Le batch actuel ne fait QU'une passe forward agrégée. La version complète demande un solveur EM sur factor graph sériel — non trivial, ~1-2 jours.
-- **Quit penalty avec timeline du score** : ⛔ INVESTIGUÉ & BLOQUÉ (Sprint 2.A, 2026-05-28). Donnée absente : `CoreStats` n'a que des scores finaux, `highlight_events` = highlights curés sans flux de scoring complet/attribution d'équipe. Réouvrir seulement si une source film/round-by-round horodatée apparaît.
+- **Quit penalty avec timeline du score** : ✅ LIVRÉ (Sprint 2.A, 2026-05-28). Via `killer_victim_pairs` (timeline des frags, même base que le graphe tug-of-war). `skill_v2/quit_context.go` + `quitDeltaForContext` dans `skill_v2_quit_penalty.go`. ⚠️ Hook adapter T0 (`real_start_time`) marqué en commentaire dans `quitOffsetMs` — à brancher par le collègue pour le multi-titre (Halo OK via start_time_utc).
 - **Mode correlation à coefficients ré-estimés par paire de modes** : remplacer le scalaire `DefaultModeCouplingWeight=0.3` par une matrice 4×4 `w_d[i][j]` calibrée empiriquement (corrélation observée entre μ_groupes pour les players multi-modes). Reste capé à 0.4.
 - **UX delta dans match_skill_rank.rating_delta** : actuellement nul en canonical (cf. `writeCanonicalLUSRRow`). Pour le calculer il faudrait fetch le previous rating_value sur le même playlist_group.
 - **Migration backfill `lusr_v2_replay` avec canonical=ON** : aujourd'hui le replay tourne en mode shadow uniquement. Pour repeupler historiquement les `rating_type='LUSR_V2'` rows, ajouter un flag `--canonical` au replay et lui passer un playerDB.
@@ -170,8 +170,8 @@ Chaque commit doit avoir une entrée correspondante dans `.ai/thought_log.md` (r
    - La sentinelle ne lève aucune inconsistance.
    - Les expvar `levelup.lusr_v2.canonical_writes_total` montent.
 5. **Étape 5** : prod. Garder `batchComputeLUSR` court-circuité.
-6. **Étape 6 (optionnel)** : activer `LEVELUP_LUSR_V2_MODE_COUPLING=1` pour la Phase 4. Plus risqué — observer 1 semaine en staging avant prod.
-7. **Étape 7 (optionnel, Sprint 1.C)** : run `cmd/lusr_v2_squad_estimate --dry-run` → vérifier les offsets ∈ [-2,+2] des 4 trackés. Si cohérent, run sans `--dry-run` puis activer `LEVELUP_LUSR_V2_SQUAD_OFFSET=1` en staging. Dry-run replay : pas de drift > 1.5 pt sur les solo. Plus risqué (touche le μ effectif) — observer avant prod.
+6. **Étape 6 — cross-mode (2026-05-28 : ON par défaut)** : `LEVELUP_LUSR_V2_MODE_COUPLING` est désormais actif sans flag. Lancer `cmd/lusr_v2_ttt_batch` pour calculer la matrice (sinon scalaire 0.3). Pour désactiver : `=0`. Observer en staging.
+7. **Étape 7 — squad (2026-05-28 : ON par défaut, Sprint 1.C)** : `LEVELUP_LUSR_V2_SQUAD_OFFSET` actif sans flag, MAIS sans effet tant que `cmd/lusr_v2_squad_estimate` n'a pas peuplé d'offsets. Faire `--dry-run` → vérifier offsets ∈ [-2,+2] des 4 trackés → run sans `--dry-run`. Pour désactiver : `=0`.
 
 ---
 
