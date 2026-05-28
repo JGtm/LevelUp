@@ -101,6 +101,8 @@ func (g *groupStats) deathStats() (mean, std float64) {
 func main() {
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	dryRun := flag.Bool("dry-run", false, "n'écrit pas en DB, affiche le rapport seulement")
+	smooth := flag.Bool("smooth", false, "TTT smoothing 3.A : estime τ par joueur/groupe et écrit ttt_tau_empirical")
+	writeSmoothed := flag.Bool("write-smoothed", false, "avec --smooth : écrit le μ lissé terminal dans player_skill_state_v2")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -130,6 +132,13 @@ func main() {
 	source := fmt.Sprintf("batch_%s", time.Now().Format("2006_01_02"))
 	printReport(stats, source)
 	printModeCouplingReport(matrix)
+
+	if *smooth {
+		if err := runTTTSmoothing(ctx, db, *dryRun, *writeSmoothed); err != nil {
+			slog.Error("runTTTSmoothing", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	if *dryRun {
 		slog.Info("dry-run : aucune écriture DB")
