@@ -49865,3 +49865,22 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste pour un TTT "complet"** (follow-up, non Sprint 1-3) : factor graph multi-joueurs couplé + modèle d'observation par match + écriture de τ/β ré-estimés par groupe dans lusr_hyperparams_v2 + comparaison prod (3.A.6).
 
 **Prochaine étape** : Sprint 3.B — delta de rating dans l'historique.
+
+## [2026-05-28] feat(lusr-v2): Sprint 3.B — delta de rating dans l'historique — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 3.B (confort UX, ~2h)
+
+**Contexte** : `match_skill_rank.rating_delta` était toujours nil en écriture canonical. Pour afficher "vous avez gagné +12 LUSR ce match", il faut le delta vs le rating précédent.
+
+**Décisions techniques** :
+- `writeCanonicalLUSRRow` calcule `rating_delta = rating - rating_précédent` AVANT l'insertion (la row courante n'existe pas encore → la query renvoie bien le match précédent). nil au premier match.
+- Helper `loadPreviousLUSRRating(ctx, playerDB, group)` : `SELECT rating_value FROM match_skill_rank WHERE rating_type='LUSR' AND playlist_group=? ... ORDER BY written_at DESC, id DESC LIMIT 1`. Le shadow runner traitant les matchs en ordre chronologique, le rating le plus récemment écrit EST celui du match précédent. Best-effort : ErrNoRows → nil (premier match) ; autre erreur → nil + warn (delta absent, pas de blocage).
+- Le delta est posé sur les 2 rows (LUSR + LUSR_V2) via baseRow (même rating_value).
+
+**Résultats observés** :
+- `go test ./internal/sync/` PASS ; `go vet` + gofmt clean
+- E2E `TestRunLUSRV2Shadow_Canonical_RatingDelta` : 2 matchs successifs même groupe → m1 rating_delta NULL (pas de précédent), m2 rating_delta non-nul
+
+**Reste pour la DoD (prod)** : vérifier après quelques matchs réels que `rating_delta` est populé. Non exécutable hors prod.
+
+**Prochaine étape** : hygiène — nettoyer le hint Phase 5.B obsolète + header TODO de `cmd/lusr_v2_ttt_batch`.
