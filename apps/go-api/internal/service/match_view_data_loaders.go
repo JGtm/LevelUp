@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -270,6 +271,15 @@ func (s *MatchViewService) buildMatchViewFromData(
 	var durationMS int64
 	if meta != nil && meta.PlayableDurationSeconds != nil {
 		durationMS = *meta.PlayableDurationSeconds * 1000
+	}
+
+	// Correction chronologie T0 (Phase 1 : T0=0, identité). Recale les events
+	// canoniques au référentiel gameplay avant les builders narrative (combat).
+	if len(d.canonicalEvents) > 0 {
+		tl := timeline.BuildForMatchMs(durationMS)
+		d.canonicalEvents = timeline.CorrectEvents(
+			d.canonicalEvents, map[string]domain.MatchTimeline{matchID: tl},
+		)
 	}
 
 	// IsFavorite : lookup synchrone (cheap, indexé sur PK player_slug+match_id).

@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/temporal"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -296,6 +297,20 @@ func (s *SquadServiceV2) loadSquadHistorical(
 	return stats
 }
 
+// sharedMatchTimelines indexe une MatchTimeline par match_id depuis les
+// PlayerMatchRow des matchs partagés (durée identique pour tous les joueurs
+// d'un match — on prend la première row disponible).
+func sharedMatchTimelines(shared []domain.SquadSharedMatch) map[string]domain.MatchTimeline {
+	rows := make([]canonical.PlayerMatchRow, 0, len(shared))
+	for _, m := range shared {
+		for _, pmr := range m.Players {
+			rows = append(rows, pmr)
+			break
+		}
+	}
+	return timeline.BuildTimelinesFromPlayerMatches(rows)
+}
+
 // loadSharedEvents charge les events filmes des matchs partages (squad XUIDs).
 // Capability absente -> retourne nil + CapabilityGap pour signaler S5/S6 omis.
 func (s *SquadServiceV2) loadSharedEvents(
@@ -329,6 +344,9 @@ func (s *SquadServiceV2) loadSharedEvents(
 		slog.ErrorContext(ctx, "squad: LoadHighlightEvents echec", "err", err)
 		return nil, nil
 	}
+	// Correction chronologie T0 (Phase 1 : T0=0, identite). Point unique amont :
+	// les builders cadence / intensity / impact en aval restent agnostiques.
+	events = timeline.CorrectEvents(events, sharedMatchTimelines(shared))
 	// Filtrer client-side aux squad xuids (repo retourne tous events des matchs).
 	xuidSet := make(map[string]bool, len(xuids))
 	for _, x := range xuids {

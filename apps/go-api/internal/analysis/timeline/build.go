@@ -44,6 +44,13 @@ func BuildTimelinesFromPlayerMatches(rows []canonical.PlayerMatchRow) map[string
 	return out
 }
 
+// BuildForMatchMs construit la MatchTimeline d'un match unique depuis sa durée
+// en millisecondes. Utilisé par MatchViewService qui charge un seul match.
+// Phase 1 : T0=0 via phase1T0Ms.
+func BuildForMatchMs(durationMs int64) domain.MatchTimeline {
+	return domain.NewMatchTimeline(durationMs, phase1T0Ms())
+}
+
 // phase1T0Ms est le point de bascule du strangler fig. En Phase 1 il retourne
 // toujours 0 (comportement historique préservé). En Phase 3, la résolution du
 // T0 par match remplacera les appels à cette fonction par la lecture de la
