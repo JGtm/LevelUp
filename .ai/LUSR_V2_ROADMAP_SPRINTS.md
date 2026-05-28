@@ -259,21 +259,18 @@ ce match", il faudrait fetcher le rating précédent. Petit confort UX.
 
 ### Étapes
 
-- [ ] **3.B.1** — Modifier `writeCanonicalLUSRRow` :
-  - Charger le rating LUSR le plus récent avant ce match (via `match_skill_rank_latest`)
-  - Calculer `rating_delta = new_rating - previous_rating`
-  - Si pas de précédent : delta = nil (premier match)
-- [ ] **3.B.2** — Test E2E : 2 matchs successifs pour un joueur → 2ème row a `rating_delta != nil`
-- [ ] **3.B.3** — Mise à jour `.ai/thought_log.md`
+- [x] **3.B.1** — `writeCanonicalLUSRRow` : helper `loadPreviousLUSRRating` (rating LUSR le plus récemment écrit du groupe, ordre written_at DESC, id DESC), `rating_delta = rating - précédent`, nil au premier match. Best-effort (erreur → nil + warn).
+- [x] **3.B.2** — E2E `TestRunLUSRV2Shadow_Canonical_RatingDelta` : 2 matchs successifs → m1 delta NULL, m2 delta non-nul.
+- [x] **3.B.3** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 3.B
 
-- [ ] Tests PASS
-- [ ] Vérifier en prod après quelques matchs que `rating_delta` est populé
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS (sync), `go vet` + gofmt clean
+- [ ] Vérifier en prod après quelques matchs que `rating_delta` est populé — **différé : prod**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 

@@ -13,6 +13,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -73,6 +74,14 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 		zero := 0
 		subPtr = &zero
 	}
+	// Sprint 3.B : delta vs le rating LUSR précédent du groupe ("+12 LUSR ce
+	// match"). nil au premier match. Calculé AVANT l'insertion (la row courante
+	// n'existe pas encore → la query renvoie bien le match précédent).
+	var ratingDelta *float64
+	if prev := loadPreviousLUSRRating(ctx, playerDB, state.PlaylistGroup); prev != nil {
+		d := rating - *prev
+		ratingDelta = &d
+	}
 	baseRow := persist.LUSRRatingInsert{
 		MatchID:         matchID,
 		RatingValue:     rating,
@@ -81,7 +90,7 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 		TierFR:          &tierFR,
 		SubTier:         subPtr,
 		TierLabel:       &label,
-		RatingDelta:     nil,
+		RatingDelta:     ratingDelta,
 		PlaylistGroup:   state.PlaylistGroup,
 		ExpectedWinProb: expectedWinProb,
 	}
@@ -97,4 +106,33 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	}
 	canonicalWritesTotal.Add(1)
 	return nil
+}
+
+// loadPreviousLUSRRating retourne le rating_value LUSR le plus récemment écrit
+// pour ce groupe — la "version courante" AVANT l'insertion du match en cours
+// (qui n'a pas encore été persisté quand cette fonction est appelée). Comme le
+// shadow runner traite les matchs en ordre chronologique, c'est le rating du
+// match précédent. nil si aucun (premier match du groupe).
+//
+// Best-effort : toute erreur (table non migrée, etc.) → nil + warn (le delta
+// reste simplement absent, pas de blocage de l'écriture).
+func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, playlistGroup string) *float64 {
+	var v sql.NullFloat64
+	err := playerDB.QueryRowContext(ctx, `
+		SELECT rating_value FROM match_skill_rank
+		WHERE rating_type = 'LUSR' AND playlist_group = ? AND rating_value IS NOT NULL
+		ORDER BY written_at DESC, id DESC
+		LIMIT 1`, playlistGroup).Scan(&v)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		slog.WarnContext(ctx, "LUSR v2: lecture rating précédent échouée — delta absent",
+			"group", playlistGroup, "err", err)
+		return nil
+	}
+	if !v.Valid {
+		return nil
+	}
+	return &v.Float64
 }

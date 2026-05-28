@@ -1070,3 +1070,42 @@ func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
 			muWithOffset, muNoOffset)
 	}
 }
+
+// TestRunLUSRV2Shadow_Canonical_RatingDelta (Sprint 3.B) : sur 2 matchs
+// successifs du même groupe, la 1re row LUSR a rating_delta NULL (pas de
+// précédent) et la 2e a un rating_delta non-nul (= rating - rating précédent).
+func TestRunLUSRV2Shadow_Canonical_RatingDelta(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	// 2 matchs successifs (m1 puis m2), même groupe arena_slayer.
+	seedCanonical2v2(t, sharedDB, "m1", time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC))
+	seedCanonical2v2(t, sharedDB, "m2", time.Date(2025, 6, 1, 13, 0, 0, 0, time.UTC))
+
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	readDelta := func(matchID string) sql.NullFloat64 {
+		var d sql.NullFloat64
+		if err := playerDB.QueryRow(`SELECT rating_delta FROM match_skill_rank
+			WHERE match_id = ? AND rating_type = 'LUSR'`, matchID).Scan(&d); err != nil {
+			t.Fatalf("read rating_delta %s: %v", matchID, err)
+		}
+		return d
+	}
+	if d1 := readDelta("m1"); d1.Valid {
+		t.Errorf("m1 (1er match) : rating_delta = %v, attendu NULL (pas de précédent)", d1.Float64)
+	}
+	if d2 := readDelta("m2"); !d2.Valid {
+		t.Error("m2 (2e match) : rating_delta NULL, attendu une valeur (= rating - précédent)")
+	}
+}
