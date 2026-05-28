@@ -1,3 +1,51 @@
+## [2026-05-28] feat(lusr_v2): Sprint 3.A TTT wiring complet
+
+**Statut** : Complété
+
+**Contexte** : Sprint 3.A livré initialement en prototype pur (`skill_v2/ttt.go`, EstimateTTT validé sur données synthétiques). L'utilisateur demande le wiring complet : charger les séries μ des joueurs trackés, appeler EstimateTTT, et écrire les paramètres EM en base.
+
+**Décisions techniques majeures** :
+- **LoadStateHistory** (SkillV2Repo) : lecture de la table brute `player_skill_state_v2` (pas la vue `_latest`) pour obtenir l'historique chronologique complet d'un joueur/groupe (written_at ASC). Un seul round-trip dans `loadAllHistories` pour le batch.
+- **ttt_tau_empirical** (hyperparam) : le TTT EM ré-estime q (ProcessVar = τ²) par joueur. Agrégation par groupe = mean(q_joueurs). τ_groupe = √(mean_q) écrit dans `lusr_hyperparams_v2`. Relié au runtime via `LoadPriorsFromHyperparams` → override `Priors.Tau` (guard > 0).
+- **Scope** : `player_skill_state_v2` contient TOUS les joueurs ayant une history (pas seulement les trackés). Le batch filtre les paires avec < 2 points (TTT nécessite ≥ 2 obs). En pratique, les joueurs trackés ont le plus de matchs → les meilleurs τ estimés.
+- **--write-smoothed** : option de réécriture du μ lissé terminal (SmoothedMean[last]) comme nouveau snapshot dans `player_skill_state_v2`. written_at = NOW() → `_latest` sélectionne automatiquement. Conservatif : 1 seul row par joueur/groupe (pas réécriture historique complète). À activer APRÈS bascule stable.
+- **Ordre dry-run** : le bloc `--smooth` s'exécute AVANT le `return dryRun` → `--dry-run --smooth` montre le rapport TTT sans écrire.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/...` PASS (2 nouveaux tests : TauOverride, TauInvalidIgnored + 2 cas AppliedHyperparamCount)
+- `go vet ./internal/analysis/skill_v2/... ./internal/domain/...` clean (CGO non dispo localement, vet CGO différé CI)
+- ttt_smooth.go : 195L < 200L, toutes fonctions ≤ 80L
+
+**Fichiers créés/modifiés** :
+- `internal/platform/duckdb/skill_v2_repo.go` : + `LoadStateHistory`
+- `internal/analysis/skill_v2/hyperparams_load.go` : + `hyperparamTTTTau`, override Tau, `AppliedHyperparamCount` mis à jour
+- `internal/analysis/skill_v2/hyperparams_load_test.go` : + 2 tests Tau + 2 cas AppliedHyperparamCount
+- `cmd/lusr_v2_ttt_batch/ttt_smooth.go` : nouveau (TTT wiring : loadAllHistories, runTTTSmoothing, buildGroupResults, printTTTSmoothReport)
+- `cmd/lusr_v2_ttt_batch/main.go` : + flags `--smooth` / `--write-smoothed`
+
+**Prochaine étape** : en prod, lancer `cmd/lusr_v2_ttt_batch --smooth [--dry-run]` pour voir les τ estimés par groupe, puis sans `--dry-run` pour écrire. Après ≥ 7j stables, envisager `--write-smoothed` pour corriger les μ courants.
+
+---
+
+## [2026-05-28] chore: Installation environnement de dev (nouveau PC Windows)
+
+**Statut** : Complété
+
+**Décisions techniques majeures** :
+- **GCC** : GCC 16.1.0 (ucrt64 MSYS2) est incompatible avec les libs DuckDB 1.5.3 précompilées (`__emutls_v._ZSt11__once_call` manquant). Fix : remplacement de `libstdc++.a` par la version GCC 14.2.0 extraite de l'archive MSYS2 (`/c/msys64/ucrt64/lib/libstdc++_gcc16_backup.a` conservé). La lib GCC 14 fournit les symboles emutls requis par DuckDB.
+- **make** : non installé sur ce PC. Installé via `pacman -S make` dans MSYS2. Ajouté `C:\msys64\usr\bin` au PATH utilisateur.
+- **Node.js** : installé via `winget install OpenJS.NodeJS.LTS` (v24.16.0). Présent dans machine PATH avec trailing backslash.
+- **Go** : installé via `winget install GoLang.Go` (v1.26.3). Dans machine PATH.
+- **air** : installé via `go install github.com/air-verse/air@latest`. Dans `C:\Users\GuillaumeSITBON\go\bin` (user PATH).
+- **Playwright** : browsers installés via `npx playwright install` (Chromium v1217 uniquement, conforme au `playwright.config.ts`).
+
+**Résultats observés** :
+- Tests Go (CGO=0, domain/analysis/contracttest) : 11 packages PASS
+- Tests web (Vitest) : 159 fichiers, 1510 tests PASS, 14 skipped
+- `make go-api-build` (CGO=1 + DuckDB) : OK depuis PowerShell et Git Bash (nouveau terminal)
+
+**Conclusion** : Ouvrir un **nouveau terminal Git Bash** pour hériter du PATH mis à jour. `make dev` devrait fonctionner.
+
 ## [2026-05-27] feat(lusr_v2): Phase 3e+→5 5-candidats autonomes (Strategie C + sentinelle + quit penalty + mode correlation + TTT batch)
 
 **Statut** : Complété (changements en working copy, non commités)

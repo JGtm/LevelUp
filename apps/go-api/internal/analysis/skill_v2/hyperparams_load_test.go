@@ -84,6 +84,27 @@ func TestLoadCountHyperparamsFromDB_AtypicalMeanShiftsBias(t *testing.T) {
 	}
 }
 
+func TestLoadPriorsFromHyperparams_TauOverride(t *testing.T) {
+	def := DefaultPriors()
+	got := LoadPriorsFromHyperparams(map[string]float64{"ttt_tau_empirical": 0.12}, def)
+	if math.Abs(got.Tau-0.12) > 1e-12 {
+		t.Errorf("Tau = %v, want 0.12", got.Tau)
+	}
+	if got.Mu0 != def.Mu0 || got.Sigma0 != def.Sigma0 || got.Beta != def.Beta || got.DrawProbability != def.DrawProbability {
+		t.Errorf("seul Tau doit changer : got %+v vs def %+v", got, def)
+	}
+}
+
+func TestLoadPriorsFromHyperparams_TauInvalidIgnored(t *testing.T) {
+	def := DefaultPriors()
+	for _, bad := range []float64{0.0, -0.5, -1.0} {
+		got := LoadPriorsFromHyperparams(map[string]float64{"ttt_tau_empirical": bad}, def)
+		if got.Tau != def.Tau {
+			t.Errorf("tau invalide %v doit être ignoré, got %v want %v", bad, got.Tau, def.Tau)
+		}
+	}
+}
+
 func TestAppliedHyperparamCount(t *testing.T) {
 	cases := []struct {
 		params map[string]float64
@@ -93,6 +114,8 @@ func TestAppliedHyperparamCount(t *testing.T) {
 		{map[string]float64{"draw_probability_empirical": 0.1}, 1},
 		{map[string]float64{"kill_mean_empirical": 12, "death_mean_empirical": 11}, 2},
 		{map[string]float64{"draw_probability_empirical": 0.1, "kill_mean_empirical": 12, "death_mean_empirical": 11, "match_count_analyzed": 500}, 3},
+		{map[string]float64{"ttt_tau_empirical": 0.08}, 1},
+		{map[string]float64{"draw_probability_empirical": 0.1, "kill_mean_empirical": 12, "death_mean_empirical": 11, "ttt_tau_empirical": 0.08}, 4},
 	}
 	for _, c := range cases {
 		if got := AppliedHyperparamCount(c.params); got != c.want {

@@ -31,6 +31,9 @@ const (
 	hyperparamDrawProbability = "draw_probability_empirical"
 	hyperparamKillMean        = "kill_mean_empirical"
 	hyperparamDeathMean       = "death_mean_empirical"
+	// hyperparamTTTTau : τ estimé par EM TTT (Sprint 3.A). Valeur = sqrt(mean(q))
+	// sur les joueurs trackés du groupe. Overrides Priors.Tau au runtime.
+	hyperparamTTTTau = "ttt_tau_empirical"
 )
 
 // DefaultCountHyperparamsMap retourne la map kill+death des CountHyperparams par
@@ -43,14 +46,17 @@ func DefaultCountHyperparamsMap() map[CountType]CountHyperparams {
 	}
 }
 
-// LoadPriorsFromHyperparams part de defaultP et n'override que DrawProbability si
-// `draw_probability_empirical` est présent et dans [0, 1[. Les autres scalaires
-// (Mu0, Sigma0, Beta, Tau) ne sont pas ré-estimés par le batch actuel — ils
-// restent ceux de defaultP.
+// LoadPriorsFromHyperparams part de defaultP et n'override que les scalaires
+// présents dans params :
+//   - DrawProbability si `draw_probability_empirical` ∈ [0, 1[
+//   - Tau si `ttt_tau_empirical` > 0 (Sprint 3.A TTT smoothing)
 func LoadPriorsFromHyperparams(params map[string]float64, defaultP Priors) Priors {
 	p := defaultP
 	if dp, ok := params[hyperparamDrawProbability]; ok && dp >= 0 && dp < 1 {
 		p.DrawProbability = dp
+	}
+	if tau, ok := params[hyperparamTTTTau]; ok && tau > 0 {
+		p.Tau = tau
 	}
 	return p
 }
@@ -90,7 +96,7 @@ func LoadCountHyperparamsFromDB(params map[string]float64, mu0 float64) map[Coun
 // appliqués", count > 0).
 func AppliedHyperparamCount(params map[string]float64) int {
 	n := 0
-	for _, k := range []string{hyperparamDrawProbability, hyperparamKillMean, hyperparamDeathMean} {
+	for _, k := range []string{hyperparamDrawProbability, hyperparamKillMean, hyperparamDeathMean, hyperparamTTTTau} {
 		if _, ok := params[k]; ok {
 			n++
 		}

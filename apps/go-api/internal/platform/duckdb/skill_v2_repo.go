@@ -150,6 +150,45 @@ func (r *SkillV2Repo) UpsertHyperparam(ctx context.Context, h domain.SkillV2Hype
 	return nil
 }
 
+// LoadStateHistory retourne l'historique complet des snapshots d'un joueur sur
+// un groupe de modes, dans l'ordre chronologique (written_at ASC). Contrairement
+// à LoadState qui passe par la vue _latest, cette méthode lit la table brute —
+// utilisée par le TTT smoothing pour construire la série z_t des μ observés.
+func (r *SkillV2Repo) LoadStateHistory(ctx context.Context, xuid, playlistGroup string) ([]domain.SkillV2State, error) {
+	rows, err := r.shared.QueryContext(ctx, `
+		SELECT xuid, playlist_group, mu, sigma, experience,
+		       last_match_id, last_match_at, written_at
+		FROM player_skill_state_v2
+		WHERE xuid = ? AND playlist_group = ?
+		ORDER BY written_at ASC`,
+		xuid, playlistGroup)
+	if err != nil {
+		return nil, fmt.Errorf("SkillV2Repo.LoadStateHistory(%s, %s): %w", xuid, playlistGroup, err)
+	}
+	defer rows.Close() //nolint:errcheck
+
+	var out []domain.SkillV2State
+	for rows.Next() {
+		var s domain.SkillV2State
+		var lastMatchID sql.NullString
+		var lastMatchAt sql.NullTime
+		if err := rows.Scan(
+			&s.XUID, &s.PlaylistGroup, &s.Mu, &s.Sigma, &s.Experience,
+			&lastMatchID, &lastMatchAt, &s.WrittenAt,
+		); err != nil {
+			return nil, fmt.Errorf("SkillV2Repo.LoadStateHistory scan: %w", err)
+		}
+		if lastMatchID.Valid {
+			s.LastMatchID = &lastMatchID.String
+		}
+		if lastMatchAt.Valid {
+			s.LastMatchAt = &lastMatchAt.Time
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
 // nullableStringPtr convertit un *string en any (nil → SQL NULL). Local au
 // repo car le nullableString(string) du package prend une string non-ptr.
 func nullableStringPtr(p *string) any {

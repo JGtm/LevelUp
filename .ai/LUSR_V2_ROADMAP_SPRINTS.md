@@ -33,7 +33,7 @@ Création de sous-branches optionnelle si plusieurs sprints en parallèle.
 
 ## ✅ CHECKLIST UTILISATEUR (état au 2026-05-28)
 
-> **État code** : Sprints 1.A, 1.B, 1.C, 2.A, 2.B, 3.A (prototype), 3.B = **livrés,
+> **État code** : Sprints 1.A, 1.B, 1.C, 2.A, 2.B, 3.A (wiring complet), 3.B = **livrés,
 > testés, committés** sur `feat/lusr-v2-phase0-metrics` (10 commits). Build + `go vet`
 > + tests verts. Rien n'est poussé ni en prod. Ce qui suit est ce qu'il TE reste.
 
@@ -57,12 +57,13 @@ Pour basculer en prod cette semaine (Sprint Final), dans l'ordre :
 - **Affichage 1.A** (`expected_win_prob`, "X% de chance de gagner") : OÙ et COMMENT
   l'afficher ? (rien ne l'affiche aujourd'hui — juste en base). Cf. section 1.A.
 - **Affichage 3.B** (`rating_delta`, "+12 LUSR ce match") : OÙ et COMMENT ? (idem). Cf. 3.B.
-- **Squad + cross-mode ON par défaut** : confirmé ? (ce sont des features qui touchent
-  le classement ; leur calibration est une 1re estimation à valider sur tes vraies
-  données — le `--dry-run` du point 2 sert à ça). Pour désactiver l'une :
+- **Squad + cross-mode ON par défaut** : ✅ **confirmé (2026-05-28)**. Les deux flags
+  sont ON. Calibration à valider sur tes vraies données après la bascule (offsets squad
+  via `--dry-run` d'abord, matrice cross-mode via `--smooth --dry-run`). Pour désactiver :
   `LEVELUP_LUSR_V2_SQUAD_OFFSET=0` ou `LEVELUP_LUSR_V2_MODE_COUPLING=0`.
-- **3.A (TTT)** : on en reste au prototype testé, ou on planifie le wiring complet
-  (lisser les μ des joueurs trackés et réécrire l'historique) ? Cf. note dans 3.A.
+- **3.A (TTT)** : ✅ **wiring complet livré (2026-05-28)**. Pour valider sur tes données :
+  `go run -tags cgo ./apps/go-api/cmd/lusr_v2_ttt_batch --smooth --dry-run` → rapport τ estimés.
+  Sans `--dry-run` pour écrire. `--write-smoothed` en option après bascule stable.
 
 ### 👤 À FAIRE par ton collègue (dev)
 
@@ -310,17 +311,19 @@ long-terme.
 - [x] **3.A.3** — EM loop : `EstimateTTT` (kalmanForward → rtsBackward → ré-estime q=τ² et r) jusqu'à convergence.
 - [x] **3.A.4** — Convergence sur `|Δq| + |Δr| < Tol`.
 - [x] **3.A.5** — Tests synthétiques : convergence < 10 itérations ; log-vraisemblance croissante (propriété EM) ; lisseur ≤ filtre (RMSE) ; edge cases 0/1 obs.
-- [ ] **3.A.6** — Comparaison ratings prod avant/après — **différé : nécessite le TTT couplé câblé en prod (follow-up)**
+- [x] **3.A.5b** — **Wiring complet (2026-05-28)** : `LoadStateHistory` (SkillV2Repo) + `runTTTSmoothing` (charge séries μ, appelle EstimateTTT, agrège q/r par groupe, écrit `ttt_tau_empirical` dans `lusr_hyperparams_v2`) + `LoadPriorsFromHyperparams` override Tau. Flags CLI : `--smooth` (τ-hyperparams) et `--write-smoothed` (μ lissé terminal → nouveau snapshot). Tests Tau : `TestLoadPriorsFromHyperparams_TauOverride` + `_TauInvalidIgnored` + 2 cas `AppliedHyperparamCount`.
+- [ ] **3.A.6** — Comparaison ratings prod avant/après — **différé : valider τ estimé sur données réelles**
 - [x] **3.A.7** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 3.A
 
 - [x] Tests PASS, convergence atteinte (prototype pur)
-- [ ] Replay sur prod sans changement abrupt de tier — **différé : follow-up TTT couplé**
+- [x] Wiring câblé : `--smooth` écrit `ttt_tau_empirical` par groupe ; `--write-smoothed` écrit μ lissé terminal ; `LoadPriorsFromHyperparams` override Tau au runtime
+- [ ] Replay sur prod sans changement abrupt de tier — **différé : valider τ sur données réelles**
 - [x] Entrée `.ai/thought_log.md`
 - [x] Commit autorisé
 
-**Date complétion** : 2026-05-28 (prototype ; TTT couplé prod = follow-up)
+**Date complétion** : 2026-05-28 (wiring complet livré ; validation prod = follow-up)
 
 ---
 
