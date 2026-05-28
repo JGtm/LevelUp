@@ -30,6 +30,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
@@ -196,6 +197,11 @@ func (s *TimeseriesService) GetPage(
 		if err != nil {
 			slog.WarnContext(ctx, "timeseries: highlight events load failed", "err", err)
 		} else if len(events) > 0 {
+			// Correction chronologie T0 : ramène les TimeMS au référentiel
+			// gameplay (Phase 1 : T0=0, identité). Point unique amont — les
+			// builders en aval restent agnostiques.
+			timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
+			events = timeline.CorrectEvents(events, timelines)
 			resp.FirstEvents = buildFirstEventsDistribution(
 				narrative.ComputeFirstEventsPerMatch(events, s.playerXUID, matchIDs),
 			)

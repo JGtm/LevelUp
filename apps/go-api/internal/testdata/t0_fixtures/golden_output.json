@@ -1,0 +1,172 @@
+[
+  {
+    "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+    "t0_ms": 0,
+    "first_kill_ms": 37861,
+    "first_death_ms": 54678,
+    "intensity_profiles": [
+      {
+        "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+        "n_buckets": 10,
+        "buckets": [
+          2,
+          17,
+          18,
+          16,
+          20,
+          10,
+          16,
+          16,
+          18,
+          28
+        ],
+        "total": 161,
+        "max_time_ms": 445375
+      }
+    ]
+  },
+  {
+    "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+    "t0_ms": 0,
+    "first_kill_ms": 89128,
+    "first_death_ms": 167460,
+    "intensity_profiles": [
+      {
+        "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+        "n_buckets": 10,
+        "buckets": [
+          0,
+          22,
+          32,
+          34,
+          36,
+          42,
+          60,
+          34,
+          60,
+          54
+        ],
+        "total": 374,
+        "max_time_ms": 572837
+      }
+    ]
+  },
+  {
+    "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+    "t0_ms": 0,
+    "first_kill_ms": 48093,
+    "first_death_ms": 51379,
+    "intensity_profiles": [
+      {
+        "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+        "n_buckets": 10,
+        "buckets": [
+          10,
+          16,
+          20,
+          14,
+          20,
+          18,
+          22,
+          18,
+          20,
+          28
+        ],
+        "total": 186,
+        "max_time_ms": 708258
+      }
+    ]
+  },
+  {
+    "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+    "t0_ms": 0,
+    "first_kill_ms": 53939,
+    "first_death_ms": 78181,
+    "intensity_profiles": [
+      {
+        "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+        "n_buckets": 10,
+        "buckets": [
+          0,
+          18,
+          18,
+          14,
+          20,
+          12,
+          12,
+          18,
+          18,
+          18
+        ],
+        "total": 148,
+        "max_time_ms": 413836
+      }
+    ]
+  },
+  {
+    "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+    "t0_ms": 0,
+    "first_kill_ms": 41788,
+    "first_death_ms": 45258,
+    "intensity_profiles": [
+      {
+        "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+        "n_buckets": 10,
+        "buckets": [
+          0,
+          0,
+          0,
+          4,
+          8,
+          0,
+          6,
+          4,
+          6,
+          8
+        ],
+        "total": 36,
+        "max_time_ms": 96292
+      }
+    ]
+  },
+  {
+    "match_id": "003498a3-a3c2-4a37-bf49-67e642a353b2",
+    "t0_ms": 0,
+    "first_kill_ms": null,
+    "first_death_ms": null,
+    "intensity_profiles": null
+  },
+  {
+    "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+    "t0_ms": 0,
+    "first_kill_ms": 41624,
+    "first_death_ms": 42792,
+    "intensity_profiles": [
+      {
+        "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+        "n_buckets": 10,
+        "buckets": [
+          11,
+          20,
+          17,
+          18,
+          20,
+          19,
+          24,
+          14,
+          19,
+          27
+        ],
+        "total": 189,
+        "max_time_ms": 573761
+      }
+    ]
+  },
+  {
+    "match_id": "5da6fd30-f29e-4713-93a6-73d69d87626e",
+    "t0_ms": 0,
+    "first_kill_ms": null,
+    "first_death_ms": null,
+    "intensity_profiles": null
+  }
+]
