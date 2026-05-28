@@ -1,0 +1,70 @@
+{
+  "_doc": "Reference matches for MatchTimeline T0 snapshot tests. Phase 1 captures PRE/POST refacto snapshots on these 8 matches across N service endpoints. See .ai/PLAN_MATCH_TIMELINE_T0.md §4.4.",
+  "_generated": "2026-05-28",
+  "matches": [
+    {
+      "id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "profile": "Fortress 4v4 with quitter and bot — canonical reference",
+      "pair_name": "Fortress",
+      "duration_seconds": 447,
+      "t0_seconds_estimate": 28,
+      "notes": "Vermitrax202622 quitter (3m40s), Ale60446 latecomer, bot bid(19.0) replaced Vermitrax"
+    },
+    {
+      "id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "profile": "BTB Fiesta Slayer — T0 long",
+      "pair_name": "BTB:Fiesta Slayer on Insolence",
+      "duration_seconds": 576,
+      "t0_seconds_estimate": 49,
+      "notes": "23 players, lobby slow"
+    },
+    {
+      "id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "profile": "Arena Team Slayer Forge — T0=0 (Ranked-like, playable==duration)",
+      "pair_name": "Arena:Team Slayer on Behemoth - Forge",
+      "duration_seconds": 709,
+      "t0_seconds_estimate": 0,
+      "notes": "playable_duration == duration — case where T0 fallback is the only sensible value"
+    },
+    {
+      "id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "profile": "KOTH Prism — objective mode, T0=0",
+      "pair_name": "Arena:King of the Hill on Prism",
+      "duration_seconds": 417,
+      "t0_seconds_estimate": 0,
+      "notes": "Objective mode (non-Slayer) to exercise narrative badges on different event distribution"
+    },
+    {
+      "id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "profile": "Super Husky Raid CTF — short custom",
+      "pair_name": "Super Husky Raid:CTF on Pharaoh",
+      "duration_seconds": 101,
+      "t0_seconds_estimate": 22,
+      "notes": "Very short match, custom mode, exercise edge case of short duration"
+    },
+    {
+      "id": "003498a3-a3c2-4a37-bf49-67e642a353b2",
+      "profile": "BTB Stockpile — timezone bug case",
+      "pair_name": "BTB:Stockpile on Fragmentation",
+      "duration_seconds": 357,
+      "t0_seconds_estimate": null,
+      "notes": "start_time 2023-09-15. Apparent T0=7200s due to timezone cast issue. Will validate Phase 2 fix via canonical pattern."
+    },
+    {
+      "id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "profile": "Fiesta Slayer Kiken'na — quitter + latecomer (alt of Fortress)",
+      "pair_name": "Community:Fiesta Slayer on Kiken'na",
+      "duration_seconds": 575,
+      "t0_seconds_estimate": 28,
+      "notes": "Same profile as canonical Fortress but different mode/map for diversity"
+    },
+    {
+      "id": "5da6fd30-f29e-4713-93a6-73d69d87626e",
+      "profile": "Arena Team Slayer Origin — ultra short",
+      "pair_name": "Arena:Team Slayer on Origin",
+      "duration_seconds": 45,
+      "t0_seconds_estimate": 0,
+      "notes": "45 seconds total — edge case for narrative badges (likely no first_kill detected)"
+    }
+  ]
+}

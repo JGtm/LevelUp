@@ -49717,3 +49717,34 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 - Phase 5 (suppression legacy reads) : différée à session ultérieure post-stabilisation prod
 
 **Prochaine étape** : commit final, merger branche dans `refactor/shared-social-collect-persist`. Tester en prod avec Madina. Si OK 1 semaine, lancer Phase 5 (suppression env var + sync_meta DuckDB legacy reads).
+
+---
+
+## [2026-05-28] Match Timeline T0 — Phase 1 (fondations couche d'abstraction)
+
+**Statut** : En cours (Bloc 1 / Phase 1)
+
+**Contexte** : Découverte (2026-05-27) que `match_participants.first_joined_time` pour les joueurs `present_at_beginning=true` fournit T0 = début réel du gameplay, alors que `match_registry.start_time` est le début du film (countdown pré-match inclus, ~28s médian). Les chronologies de matchs (badges narratifs, heatmaps intensité, premiers events) sont décalées de 0-60s. Recherche historique dans `.ai/MATCH_DURATION_RESEARCH.md` (T0 était réputé « fondamentalement inaccessible ») — résolu par `first_joined_time`.
+
+**Documents produits** :
+- `.ai/AUDIT_T0_IMPACT.md` — cartographie exhaustive des sites impactés (5 fichiers Go critiques : `match_impact.go` 6 badges, `narrative/{first_events,intensity,cadence}.go`, `kpi_stats.go` ; ~25 fichiers frontend passifs).
+- `.ai/PLAN_MATCH_TIMELINE_T0.md` — plan 5 phases, stratégie strangler fig.
+
+**Décision technique principale** :
+- Approche hybride (ADR 0024 à venir) : colonne stockée (repurpose `real_start_time`, inutile car offset=0ms pour tous les matchs) + couche d'abstraction `domain.MatchTimeline`.
+- Strangler fig : Phase 1 branche `MatchTimeline` partout avec T0=0 (comportement identique), Phase 3 bascule la source. Permet de valider le refacto sans changement de comportement via snapshots PRE/POST.
+- `domain.MatchTimeline{DurationMs, T0Ms}` — méthodes pures `GameplayDurationMs/Seconds`, `CorrectEventTime`, `RawTimeFromCorrected`, `IsValid`. Constructeur clamp les négatifs (best-effort, pas d'erreur) pour usage fallback partout.
+- `analysis/timeline.BuildFromRegistry` — Phase 1 retourne toujours T0=0 ; la bascule Phase 3 ne touchera que ce fichier.
+
+**Anomalies découvertes (à traiter Phase 2/4)** :
+- 1144/1724 matchs avec T0 apparent ~+1h/+2h = bug cast `start_time::TIMESTAMPTZ` ; fix via pattern canonical `COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`.
+- Aberration `AvgLifeSeconds` dans `squad_breakdown.go:380-388` et `:542-548` : écrase la valeur API correcte avec `sumTimePlayed/nTime` (= temps moyen par match, pas moyenne de vie). Fix prévu Phase 4.
+- `time_played_seconds` = `duration_seconds` pour tous (faux pour quitters/latecomers). Recalcul Phase 4 depuis `first_joined_time`/`last_leave_time`.
+
+**Résultats observés** :
+- `domain.MatchTimeline` + 7 tests verts.
+- `analysis/timeline.BuildFromRegistry` + 3 tests verts (invariant Phase 1 : gameplay==duration).
+- 8 matchs de référence sélectionnés (`internal/testdata/t0_fixtures/match_ids.json`) couvrant Fortress canonique, BTB lobby lent, Ranked T0=0, KOTH objectif, Husky court, bug timezone 2023, quitter+latecomer, ultra-court 45s.
+- `go build ./...` OK, `go vet` OK sur les nouveaux packages.
+
+**Prochaine étape** : golden_test infra → capture snapshots PRE-refacto → refacto des 5 callsites narratifs → capture POST → diff strict (aucun diff attendu sauf champ `GameplayDurationSeconds` ajouté = identique à durée en Phase 1).
