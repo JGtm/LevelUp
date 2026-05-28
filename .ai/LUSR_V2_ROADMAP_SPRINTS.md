@@ -49,44 +49,26 @@ matchs donnés perdants.
 
 ### Étapes
 
-- [ ] **1.A.1** — Créer `internal/analysis/skill_v2/predict.go` avec :
-  - `PredictTwoTeamWinProb(teamA, teamB []Gaussian, p Priors) (probA, probDraw, probB float64)`
-  - Utilise la formule TrueSkill standard avec draw margin
-  - 0 accès DB, 0 dépendance externe
-- [ ] **1.A.2** — Créer `internal/analysis/skill_v2/predict_test.go` avec :
-  - Cas équilibré (teams identiques) → probA ≈ probB ≈ 50%
-  - Cas asymétrique fort (team A μ=30 vs team B μ=20) → probA > 90%
-  - Cas avec gros σ (incertitude haute) → probabilités tirées vers 50% même si μ différent
-  - Cas avec draw_probability > 0 → probDraw > 0
-- [ ] **1.A.3** — Créer `internal/sync/skill_v2_predict_loader.go` avec :
-  - `LoadPreMatchStates(ctx, repo *duckdb.SkillV2Repo, matchID string, startTime time.Time, group string) (teamA, teamB []Gaussian, error)`
-  - Pour chaque participant : trouve la row `player_skill_state_v2` la plus récente avec `last_match_at < startTime`
-  - Fallback `priors.NewPlayerState()` si jamais joué
-  - `slog.DebugContext` pour signaler les fallbacks
-- [ ] **1.A.4** — Migration `steps_player_add_expected_win_prob.go` :
-  - `ALTER TABLE match_skill_rank ADD COLUMN IF NOT EXISTS expected_win_prob FLOAT`
-- [ ] **1.A.5** — Étendre `domain.LUSRRatingInsert` (`internal/persist/lusr_append_only_persister.go`) :
-  - Ajout champ `ExpectedWinProb *float64`
-  - INSERT statement updated (10→11 placeholders)
-- [ ] **1.A.6** — Wire dans `writeCanonicalLUSRRow` (`internal/sync/skill_v2_canonical.go`) :
-  - Avant l'écriture, charger les pré-match states + calculer la prob
-  - Stocker dans les 2 rows (LUSR + LUSR_V2)
-- [ ] **1.A.7** — Tests E2E :
-  - `TestPredictWinProb_StoresInCanonicalRow` — match 2v2, vérifier que la row LUSR contient un `expected_win_prob` dans [0,1]
-  - `TestPredictWinProb_FallbackForFirstMatch` — joueur sans historique → utilise priors initiaux
-- [ ] **1.A.8** — Métrique expvar : `levelup.lusr_v2.predictions_total` (compteur)
-- [ ] **1.A.9** — Mise à jour `.ai/thought_log.md` (entrée datée)
+- [x] **1.A.1** — Créé `internal/analysis/skill_v2/predict.go` : `PredictTwoTeamWinProb(teamA, teamB, p) (probA, probDraw, probB)`, draw margin, 0 accès DB. Helper privé `matchSpread` partagé avec `PredictWinProbability`/`PredictDrawProbability` (migrées depuis trueskill.go, refacto DRY).
+- [x] **1.A.2** — `predict_test.go` : équilibré (probA=probB), favori net μ30 vs μ20 → probA>0.9, σ haut → tiré vers 0.5, draw_probability↑ → probDraw↑, équipe vide → neutre, cohérence avec les helpers legacy.
+- [~] **1.A.3** — **ABANDONNÉ (write-off)** : `LoadPreMatchStates` non créé. Les états pré-match sont déjà en mémoire dans `applyMatchToSkillV2` (teamAStates/teamBStates) AVANT l'update ; un re-query lirait l'état POST-persist (faux) + requête redondante. Cf. thought_log 2026-05-28.
+- [x] **1.A.4** — Migration `steps_player_add_expected_win_prob.go` (additive `addColumnIfMissing`, FLOAT).
+- [x] **1.A.5** — `LUSRRatingInsert.ExpectedWinProb *float64` + INSERT (10→11 placeholders).
+- [x] **1.A.6** — Wire : `applyMatchToSkillV2` calcule la prob (in-memory) et la retourne ; `processOneShadowMatch` → `writeCanonicalLUSRRow` (nouveau param) → pose sur les 2 rows LUSR + LUSR_V2.
+- [x] **1.A.7** — Tests E2E : `TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb` (∈ [0,1]), `TestRunLUSRV2Shadow_Canonical_FirstMatchFallback` (joueurs neufs → ≈ 0.5, pas de panic).
+- [x] **1.A.8** — expvar `levelup.lusr_v2.predictions_total`.
+- [x] **1.A.9** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 1.A
 
-- [ ] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/persist/` PASS
-- [ ] `go vet ./...` clean
-- [ ] Au moins 1 match prod vérifié : la row `match_skill_rank` post-bascule contient un `expected_win_prob` plausible (proche de 0.5 ± 0.3 pour la plupart des matchs)
-- [ ] Pas de panic en cas de match avec joueur jamais vu (fallback testé)
-- [ ] Entrée `.ai/thought_log.md` ajoutée
-- [ ] Commit unique sur la branche, autorisé par l'utilisateur
+- [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/persist/` PASS (+ migration)
+- [x] `go vet ./...` clean
+- [ ] Au moins 1 match prod vérifié : la row `match_skill_rank` post-bascule contient un `expected_win_prob` plausible (proche de 0.5 ± 0.3 pour la plupart des matchs) — **différé : non exécutable hors prod**
+- [x] Pas de panic en cas de match avec joueur jamais vu (fallback testé)
+- [x] Entrée `.ai/thought_log.md` ajoutée
+- [x] Commit unique sur la branche, autorisé par l'utilisateur
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 

@@ -49717,3 +49717,28 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 - Phase 5 (suppression legacy reads) : différée à session ultérieure post-stabilisation prod
 
 **Prochaine étape** : commit final, merger branche dans `refactor/shared-social-collect-persist`. Tester en prod avec Madina. Si OK 1 semaine, lancer Phase 5 (suppression env var + sync_meta DuckDB legacy reads).
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.A — Probabilité de victoire prédite — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. `.ai/LUSR_V2_ROADMAP_SPRINTS.md` Sprint 1.A + `.ai/LUSR_V2_WIN_PROBABILITY.md`
+
+**Contexte** : 1er des 3 sprints du Sprint 1 LUSR v2 (quick win UX). Exposer pour chaque match, dans `match_skill_rank.expected_win_prob`, la proba qu'avait l'équipe du joueur de gagner AVANT le match — calculée depuis les ratings v2 pré-match. Aucune nouvelle math : c'est la quantité que le modèle utilise déjà en interne pour doser l'amplitude d'un update.
+
+**Décisions techniques** :
+1. **Fonction pure `PredictTwoTeamWinProb(teamA, teamB, p) (probA, probDraw, probB)`** dans `internal/analysis/skill_v2/predict.go`. Modèle : d = perfA - perfB ~ N(Σμ_A - Σμ_B, c²) ; A gagne si d > ε, draw si |d| < ε. probA = Φ(δ-e), probB = Φ(-δ-e), probDraw = 1 - probA - probB (somme exacte à 1).
+2. **Refacto DRY** : `PredictWinProbability` + `PredictDrawProbability` (existantes dans trueskill.go) migrées dans predict.go et partagent un helper privé `matchSpread` qui calcule δ et e une fois (évite la triple copie du calcul de c² — règle CLAUDE.md ≤2 copies).
+3. **Write-off du loader DB `LoadPreMatchStates` (étape 1.A.3 du doc abandonnée)** : les états pré-match sont déjà chargés en mémoire dans `applyMatchToSkillV2` (`teamAStates`/`teamBStates`) AVANT l'update EP. La proba est calculée à partir de ces gaussiennes. Un re-query DB tel que prévu aurait lu `player_skill_state_v2_latest` APRÈS `persistTeamSkillV2` → état POST-match, donc une proba fausse. Et c'était une requête redondante. Le endpoint HTTP à la volée mentionné par le doc relève du Sprint 2 (YAGNI ici).
+4. **Plomberie** : `applyMatchToSkillV2` retourne désormais `(ownerNew, expectedWinProb *float64, err)`. teamA est toujours l'équipe du owner (invariant `buildTwoTeamRosters`), donc probA est la proba du owner. `processOneShadowMatch` passe la valeur à `writeCanonicalLUSRRow` (nouveau param), qui la pose sur les 2 rows (LUSR + LUSR_V2) via le champ `LUSRRatingInsert.ExpectedWinProb`.
+5. **Migration** `player_add_expected_win_prob` (additive, `addColumnIfMissing`, FLOAT) — pas de réécriture de table, 0 risque ART. Colonne préservée par le CTAS de la migration append-only quel que soit l'ordre.
+6. **expvar** `levelup.lusr_v2.predictions_total` — incrémenté à chaque match traité par le shadow runner.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/persist/... ./internal/migration/... ./internal/sync/...` → PASS (sync 134s, cgo+DuckDB)
+- `go vet ./...` clean sur tout le module
+- Tests pure : balanced → probA=probB, favori net (μ30 vs μ20, σ=1) → probA>0.9, forte incertitude (σ=8) → tirée vers 0.5, DrawProbability↑ → probDraw↑
+- Tests E2E : `TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb` (proba ∈ [0,1] sur la row LUSR), `TestRunLUSRV2Shadow_Canonical_FirstMatchFallback` (4 joueurs neufs seedés au prior → ≈ 0.5, pas de panic)
+- 3 DDL de test mises à jour avec la colonne (`openCanonicalPlayerTestDB`, `openAppendOnlyLUSRTestDB`)
+
+**Reste pour la DoD (validation prod)** : vérifier sur ≥1 match prod post-bascule que `expected_win_prob` est plausible (≈ 0.5 ± 0.3 pour la majorité). Non exécutable hors prod — comme les phases auth précédentes.
+
+**Prochaine étape** : Sprint 1.B — brancher les hyperparams ré-estimés (`LoadPriorsFromHyperparams`) dans le shadow runner.

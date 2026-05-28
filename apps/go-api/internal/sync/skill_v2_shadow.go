@@ -40,12 +40,12 @@ func IsLUSRV2Enabled() bool {
 
 // shadowMatch est une vue dégroupée de match_participants utilisée par le runner.
 type shadowMatch struct {
-	matchID       string
-	startTime     time.Time
-	pairName      string
-	ownerOutcome  int
-	ownerTeamID   int
-	ownerHasTeam  bool
+	matchID      string
+	startTime    time.Time
+	pairName     string
+	ownerOutcome int
+	ownerTeamID  int
+	ownerHasTeam bool
 }
 
 // shadowParticipant : un participant brut, pour construire les rosters par équipe.
@@ -185,7 +185,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		s.skippedNonTwoTeam++
 		return
 	}
-	ownerNew, err := applyMatchToSkillV2(ctx, c.repo, c.priors, m.matchID, group,
+	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.priors, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
@@ -199,7 +199,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 	// (rating_type='LUSR' slot historique). Best-effort — un échec d'écriture
 	// ne re-process pas le match (watermark a déjà avancé via persistTeamSkillV2).
 	if c.canonical && ownerNew != nil {
-		if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *ownerNew, c.tierBoundaries); err != nil {
+		if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *ownerNew, expectedWinProb, c.tierBoundaries); err != nil {
 			slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué",
 				"match_id", m.matchID, "group", group, "err", err)
 		}
@@ -362,7 +362,7 @@ func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, 
 
 // outcomeToTeamResult convertit l'outcome Halo (codes match_participants.outcome)
 // en TeamResult skill_v2. Codes Halo (cf. internal/games/halo_infinite) :
-//   1 = Tie, 2 = Win, 3 = Loss, 4 = Did Not Finish.
+// 1 = Tie, 2 = Win, 3 = Loss, 4 = Did Not Finish.
 // DNF → skipped (le quit penalty proper sera la Phase 3 TS2 §9).
 func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 	switch o {
@@ -400,32 +400,44 @@ func applyMatchToSkillV2(
 	teamA, teamB []rosterMember,
 	outcomeA skillv2.TeamResult,
 	ownerXUID string,
-) (ownerNew *domain.SkillV2State, err error) {
+) (ownerNew *domain.SkillV2State, expectedWinProb *float64, err error) {
 	teamAXUIDs := extractXUIDs(teamA)
 	teamBXUIDs := extractXUIDs(teamB)
 
 	teamAStates, err := loadStatesOrSeed(ctx, repo, teamAXUIDs, playlistGroup, priors)
 	if err != nil {
-		return nil, fmt.Errorf("loadStates teamA: %w", err)
+		return nil, nil, fmt.Errorf("loadStates teamA: %w", err)
 	}
 	teamBStates, err := loadStatesOrSeed(ctx, repo, teamBXUIDs, playlistGroup, priors)
 	if err != nil {
-		return nil, fmt.Errorf("loadStates teamB: %w", err)
+		return nil, nil, fmt.Errorf("loadStates teamB: %w", err)
 	}
+	gaussA := shadowStatesToGaussians(teamAStates)
+	gaussB := shadowStatesToGaussians(teamBStates)
+
+	// Sprint 1.A : proba de victoire pré-match de l'équipe du owner. teamA est
+	// toujours l'équipe du owner (buildTwoTeamRosters la retourne en premier),
+	// donc probA est la quantité voulue. Calculée AVANT l'update sur les états
+	// pré-match déjà en mémoire — un re-query DB lirait le posterior
+	// post-persist, donc une valeur fausse.
+	probOwner, _, _ := skillv2.PredictTwoTeamWinProb(gaussA, gaussB, priors)
+	predictionsTotal.Add(1)
+	expectedWinProb = &probOwner
+
 	counts := buildCountInputs(teamA, teamB, outcomeA)
 	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
-		TeamA:   shadowStatesToGaussians(teamAStates),
-		TeamB:   shadowStatesToGaussians(teamBStates),
+		TeamA:   gaussA,
+		TeamB:   gaussB,
 		ResultA: outcomeA,
 	}, counts, priors)
 	if err != nil {
-		return nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
+		return nil, nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
 	if err := persistTeamSkillV2(ctx, repo, teamAStates, newA, matchID, startTime); err != nil {
-		return nil, fmt.Errorf("persistTeam A: %w", err)
+		return nil, nil, fmt.Errorf("persistTeam A: %w", err)
 	}
 	if err := persistTeamSkillV2(ctx, repo, teamBStates, newB, matchID, startTime); err != nil {
-		return nil, fmt.Errorf("persistTeam B: %w", err)
+		return nil, nil, fmt.Errorf("persistTeam B: %w", err)
 	}
 	ownerNew = findOwnerPosterior(ownerXUID, teamAStates, newA, teamBStates, newB, matchID, playlistGroup, startTime)
 
@@ -441,7 +453,7 @@ func applyMatchToSkillV2(
 			}
 		}
 	}
-	return ownerNew, nil
+	return ownerNew, expectedWinProb, nil
 }
 
 // findOwnerPosterior cherche le owner dans les rosters et reconstruit son
