@@ -59,13 +59,24 @@ func propagateCrossModeLeak(ctx context.Context, repo *duckdb.SkillV2Repo,
 	if err != nil {
 		return fmt.Errorf("LoadAllStates: %w", err)
 	}
+	// Sprint 2.B : poids de couplage par paire de modes (matrice empirique du
+	// batch, rows mode_coupling_<source>_<target> dans lusr_hyperparams_v2).
+	// Best-effort : si le chargement échoue ou si la paire n'a pas d'entrée, on
+	// retombe sur le scalaire DefaultModeCouplingWeight (comportement Phase 4).
+	coupling, err := repo.LoadHyperparams(ctx, ownerPrior.PlaylistGroup)
+	if err != nil {
+		slog.WarnContext(ctx, "Phase 4: LoadHyperparams couplage échoué — scalaire par défaut",
+			"group", ownerPrior.PlaylistGroup, "err", err)
+		coupling = nil
+	}
 	leaked := 0
 	for _, s := range allStates {
 		if s.PlaylistGroup == ownerPrior.PlaylistGroup {
 			continue // déjà écrit par persistTeamSkillV2
 		}
-		newMu := skillv2.ApplyCrossModeLeak(s.Mu, ownerPrior.Mu, ownerNew.Mu,
+		w := skillv2.CouplingWeightFor(coupling, ownerPrior.PlaylistGroup, s.PlaylistGroup,
 			skillv2.DefaultModeCouplingWeight)
+		newMu := skillv2.ApplyCrossModeLeak(s.Mu, ownerPrior.Mu, ownerNew.Mu, w)
 		shifted := s
 		shifted.Mu = newMu
 		// LastMatchID/At ne changent pas — c'est un leak, pas un nouveau match.
@@ -79,7 +90,6 @@ func propagateCrossModeLeak(ctx context.Context, repo *duckdb.SkillV2Repo,
 			"xuid", ownerPrior.XUID,
 			"primary_group", ownerPrior.PlaylistGroup,
 			"delta_mu", ownerNew.Mu-ownerPrior.Mu,
-			"weight", skillv2.DefaultModeCouplingWeight,
 			"groups_shifted", leaked,
 		)
 	}

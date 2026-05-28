@@ -49818,3 +49818,25 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Réouverture possible** si une nouvelle source apparaît : endpoint API film/round-by-round, ou parsing du film (`.ai/V7` mentionne du film weapon extraction expérimental) qui exposerait des events de scoring horodatés et complets.
 
 **Prochaine étape** : Sprint 2.B — matrice de corrélation entre modes.
+
+## [2026-05-28] feat(lusr-v2): Sprint 2.B — matrice de corrélation entre modes — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 2.B
+
+**Contexte** : Le leak cross-mode (Phase 4) utilisait un scalaire unique `DefaultModeCouplingWeight=0.3` pour TOUS les couples de modes. Or slayer↔objectif (gunplay proche) sont plus corrélés que slayer↔chaos. On remplace par une matrice `coupling[source][target]` calibrée empiriquement.
+
+**Décisions techniques** :
+1. **Algo pur** `skill_v2/mode_correlation_matrix.go` : `EstimateCouplingMatrix(map[xuid][]GroupState) map[string]map[string]float64` = corrélation de Pearson des μ entre modes sur les joueurs ayant joué les deux, clampée `[0, Phase4ModeCouplingMaxWeight=0.4]`. Symétrique. Corrélation négative → 0 (le leak additif ne modélise pas l'anti-corrélation). < `minPlayersForCoupling`(3) échantillons ou variance nulle → pas d'entrée.
+2. **Storage** : rows `mode_coupling_<source>_<target>` dans `lusr_hyperparams_v2` (playlist_group = source), via `UpsertHyperparam`. Helpers purs `ModeCouplingHyperparamName` + `CouplingWeightFor(hyperparams, source, target, fallback)`.
+3. **Runtime** : `propagateCrossModeLeak` charge `LoadHyperparams(source)` et utilise `CouplingWeightFor(...)` par target, **fallback `DefaultModeCouplingWeight` si pas d'entrée** (ou si LoadHyperparams échoue → warn). Le clamp 0.4 reste garanti par `ApplyCrossModeLeak`.
+4. **CLI** `lusr_v2_ttt_batch` étendu : `loadPlayerStatesByXUID` + `EstimateCouplingMatrix` + `writeModeCoupling` (2 sens, symétrique) + rapport. (`cmd/lusr_v2_ttt_batch/mode_coupling.go`)
+
+**Doublement gated / faible risque** : (a) le leak n'est appliqué que si `LEVELUP_LUSR_V2_MODE_COUPLING=1` (off par défaut) ; (b) tant que le batch n'a pas écrit la matrice, `CouplingWeightFor` retombe sur le scalaire 0.3 → comportement Phase 4 inchangé. La régression `TestRunLUSRV2Shadow_Phase4_CrossModeLeak` (qui attend 0.3) passe toujours.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 137s) ; `go vet` + gofmt clean ; build OK
+- Tests matrice : corrélés parfaits → 0.4 partout ; décorrélés (vecteurs orthogonaux) → 0 ; anti-corrélation → 0 ; < 3 joueurs → pas d'entrée ; CouplingWeightFor fallback
+
+**Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_ttt_batch` sur prod → matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos). Avec seulement ~4 trackés, beaucoup de paires seront sous le seuil (fallback scalaire) — la matrice gagne en densité avec la base de joueurs.
+
+**Prochaine étape** : Sprint 3.A — recalibration TTT complète (forward+backward + EM).

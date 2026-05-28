@@ -194,27 +194,21 @@ plus corrélés que slayer↔chaos (chaos = mayhem). Une matrice
 
 ### Étapes
 
-- [ ] **2.B.1** — Algorithme pur `internal/analysis/skill_v2/mode_correlation_matrix.go` :
-  - `EstimateCouplingMatrix(playerStates map[xuid][]GroupState) map[string]map[string]float64`
-  - Pour chaque paire (mode A, mode B), corrélation de Pearson entre μ_A et μ_B sur l'ensemble des joueurs ayant joué les 2
-  - Cap à 0.4 (règle métier)
-- [ ] **2.B.2** — Stockage : étendre `lusr_hyperparams_v2` avec rows
-  `mode_coupling_<source>_<target>` (source datée "batch_YYYY_MM_DD")
-- [ ] **2.B.3** — Modifier `propagateCrossModeLeak` pour utiliser la matrice
-  au lieu du scalaire
-- [ ] **2.B.4** — Étendre le CLI `lusr_v2_ttt_batch` pour calculer + écrire
-  la matrice
-- [ ] **2.B.5** — Tests unitaires : 3 modes parfaitement corrélés → matrice = 0.4 partout, 3 modes décorrélés → matrice = 0
-- [ ] **2.B.6** — Mise à jour `.ai/thought_log.md`
+- [x] **2.B.1** — `skill_v2/mode_correlation_matrix.go` : `EstimateCouplingMatrix` = Pearson des μ entre modes (joueurs ayant les 2), clampé [0, 0.4]. Symétrique ; négatif → 0 ; < 3 joueurs → pas d'entrée.
+- [x] **2.B.2** — Stockage rows `mode_coupling_<source>_<target>` dans `lusr_hyperparams_v2` (playlist_group=source). Helpers `ModeCouplingHyperparamName` + `CouplingWeightFor`.
+- [x] **2.B.3** — `propagateCrossModeLeak` charge `LoadHyperparams(source)` + `CouplingWeightFor(...)` par target, fallback `DefaultModeCouplingWeight` si pas d'entrée (comportement Phase 4 inchangé tant que matrice absente).
+- [x] **2.B.4** — CLI `lusr_v2_ttt_batch` étendu (`mode_coupling.go`) : `loadPlayerStatesByXUID` + `EstimateCouplingMatrix` + `writeModeCoupling` (2 sens) + rapport.
+- [x] **2.B.5** — Tests unitaires : corrélés parfaits → 0.4 ; décorrélés (orthogonaux) → 0 ; anti-corrélation → 0 ; sous-seuil → pas d'entrée ; CouplingWeightFor fallback.
+- [x] **2.B.6** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 2.B
 
-- [ ] Tests PASS
-- [ ] Batch tourne sur prod, matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS (skill_v2 + sync), `go vet` clean
+- [ ] Batch tourne sur prod, matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos) — **différé : prod (avec ~4 trackés, beaucoup de paires sous le seuil → fallback scalaire)**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 

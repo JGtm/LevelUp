@@ -23,8 +23,9 @@
 //   - Pas de TTT smoothing — les σ_skill sont laissés au runner.
 //
 // Usage :
-//   go run -tags cgo ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run]
-//   --dry-run : affiche le rapport sans écrire en DB
+//
+//	go run -tags cgo ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run]
+//	--dry-run : affiche le rapport sans écrire en DB
 //
 // Idempotent : ré-exécuter le même jour réécrit la même source ; chaque rerun
 // crée une nouvelle row append-only mais la vue _latest dédoublonne.
@@ -53,14 +54,14 @@ import (
 const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
 type groupStats struct {
-	matchCount    int
-	drawCount     int
-	killSum       float64
-	killSqSum     float64
-	killN         int
-	deathSum      float64
-	deathSqSum    float64
-	deathN        int
+	matchCount int
+	drawCount  int
+	killSum    float64
+	killSqSum  float64
+	killN      int
+	deathSum   float64
+	deathSqSum float64
+	deathN     int
 }
 
 func (g *groupStats) drawProb() float64 {
@@ -115,9 +116,17 @@ func main() {
 		slog.Error("computeStats", "err", err)
 		os.Exit(1)
 	}
+	// Sprint 2.B : matrice de couplage cross-mode (corrélation des μ entre modes).
+	states, err := loadPlayerStatesByXUID(ctx, db)
+	if err != nil {
+		slog.Error("loadPlayerStatesByXUID", "err", err)
+		os.Exit(1)
+	}
+	matrix := skillv2.EstimateCouplingMatrix(states)
 
 	source := fmt.Sprintf("batch_%s", time.Now().Format("2006_01_02"))
 	printReport(stats, source)
+	printModeCouplingReport(matrix)
 
 	if *dryRun {
 		slog.Info("dry-run : aucune écriture DB")
@@ -128,7 +137,11 @@ func main() {
 		slog.Error("writeHyperparams", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("Phase 5 TTT batch terminé", "source", source, "groups", len(stats))
+	if err := writeModeCoupling(ctx, repo, matrix, source); err != nil {
+		slog.Error("writeModeCoupling", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("Phase 5 TTT batch terminé", "source", source, "groups", len(stats), "coupling_pairs", len(matrix))
 	skillv2HyperparamUsageHint()
 }
 
