@@ -49801,3 +49801,20 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Note hygiène** : le hint Phase 5.B imprimé par `cmd/lusr_v2_ttt_batch` (`skillv2HyperparamUsageHint`) est désormais obsolète (le wiring est fait en Sprint 1.B) — à nettoyer dans une passe ultérieure.
 
 **Prochaine étape** : Sprint 1 terminé (1.A + 1.B + 1.C). Suite possible : Sprint Final (bascule canonical prod) après validation prod des flags squad/coupling, ou Sprints 2.x/3.x au fil de l'eau.
+
+## [2026-05-28] LUSR v2 Sprint 2.A — Timeline du score au moment du quit — ABANDONNÉ (donnée API absente)
+
+**Statut** : Abandonné avec justification (issue prévue par le plan, étape 2.A.1) · Branche `feat/lusr-v2-phase0-metrics`
+
+**Contexte** : 2.A voulait classer un quit "related" (équipe perdait au moment du quit → δ modéré) vs "unrelated" (équipe gagnait → δ fort) sur le score AU MOMENT du quit plutôt que sur l'outcome FINAL. Prérequis explicite (2.A.1) : l'API doit fournir un historique/timeline du score.
+
+**Investigation (2.A.1)** :
+- `internal/openspartan/models.go` : `CoreStats` ne contient que des agrégats FIN-DE-MATCH — `Score`, `PersonalScore`, `RoundsWon/Lost/Tied`. Aucun champ horodaté de score.
+- `highlight_events` (table shared) : colonnes `time_ms`, `event_type`, `xuid`, `type_hint`, `raw_json`. Ce sont des HIGHLIGHTS (kills/médailles notables) — un sous-ensemble curé, PAS un flux de scoring complet avec valeur de points + attribution d'équipe. Inexploitable pour reconstruire un score d'équipe courant (incomplet ; et en modes objectifs CTF/Oddball/Zones, kills ≠ score).
+- Aucune table `match_progression` / `score_timeline` ; les occurrences grep de "TeamScore/score_history" pointaient vers des scores finaux (scoreboard) ou des métriques calculées (form_score), pas une timeline.
+
+**Décision** : abandon conforme à la DoD ("sprint marqué abandonné avec justification si donnée API absente"). Reconstruire le score-au-quit depuis `highlight_events` serait un heuristique bruité (highlights incomplets, modes non-slayer) qui risquerait de MAL classer des quits et donc de mal pénaliser des ratings — coût > bénéfice. L'heuristique actuelle (outcome final dans `quitDeltaForTeam`) reste en place.
+
+**Réouverture possible** si une nouvelle source apparaît : endpoint API film/round-by-round, ou parsing du film (`.ai/V7` mentionne du film weapon extraction expérimental) qui exposerait des events de scoring horodatés et complets.
+
+**Prochaine étape** : Sprint 2.B — matrice de corrélation entre modes.

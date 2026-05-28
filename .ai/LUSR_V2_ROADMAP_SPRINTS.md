@@ -147,7 +147,15 @@ ensemble).
 
 ---
 
-## Sprint 2.A — Timeline du score au moment du quit
+## Sprint 2.A — Timeline du score au moment du quit — ⛔ ABANDONNÉ (2026-05-28)
+
+> **Donnée API absente** (issue prévue par 2.A.1). Le modèle openspartan n'expose
+> que des scores FINAUX (`CoreStats.Score`, `RoundsWon/Lost/Tied`) ; `highlight_events`
+> = highlights curés (kills/médailles) sans flux de scoring complet ni attribution
+> d'équipe → impossible de reconstruire fiablement le score-au-quit (inutile aussi
+> en modes objectifs où kills ≠ score). L'heuristique outcome-final (`quitDeltaForTeam`)
+> reste en place. Réouverture si une source film/round-by-round horodatée apparaît.
+> Cf. `.ai/thought_log.md` 2026-05-28.
 
 ### Objectif
 Aujourd'hui on classe le quit "related" (équipe perdait) vs "unrelated"
