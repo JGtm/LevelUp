@@ -8,7 +8,10 @@
 // Pas de dépendance DB / HTTP — fonctions pures testables en isolation.
 package timeline
 
-import "levelup/go-api/internal/domain"
+import (
+	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
+)
 
 // BuildFromRegistry construit une MatchTimeline depuis une row match_registry.
 //
@@ -20,5 +23,29 @@ func BuildFromRegistry(reg domain.MatchRegistryRow) domain.MatchTimeline {
 	if reg.DurationSeconds != nil {
 		durMs = int64(*reg.DurationSeconds) * 1000
 	}
-	return domain.NewMatchTimeline(durMs, 0)
+	return domain.NewMatchTimeline(durMs, phase1T0Ms())
 }
+
+// BuildTimelinesFromPlayerMatches indexe une MatchTimeline par match_id depuis
+// les rows canoniques chargées par un service (Timeseries, Squad, MatchView).
+//
+// Phase 1 : T0=0 pour tous (via phase1T0Ms) → CorrectEvents est une identité.
+// Phase 3 : la résolution du T0 lira la valeur stockée (real_start_time
+// repurposé) — un seul point à modifier, cf. phase1T0Ms.
+func BuildTimelinesFromPlayerMatches(rows []canonical.PlayerMatchRow) map[string]domain.MatchTimeline {
+	out := make(map[string]domain.MatchTimeline, len(rows))
+	for _, r := range rows {
+		var durMs int64
+		if r.Summary.DurationSeconds != nil {
+			durMs = int64(*r.Summary.DurationSeconds) * 1000
+		}
+		out[r.Summary.MatchID] = domain.NewMatchTimeline(durMs, phase1T0Ms())
+	}
+	return out
+}
+
+// phase1T0Ms est le point de bascule du strangler fig. En Phase 1 il retourne
+// toujours 0 (comportement historique préservé). En Phase 3, la résolution du
+// T0 par match remplacera les appels à cette fonction par la lecture de la
+// valeur stockée. Centralisé ici pour rendre la bascule explicite et greppable.
+func phase1T0Ms() int64 { return 0 }

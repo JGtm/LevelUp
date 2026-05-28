@@ -1,0 +1,6611 @@
+{
+  "_doc": "Fixtures golden T0 — events + metadata des 8 matchs de reference. Genere par cmd/export_t0_fixtures. Ne pas editer a la main.",
+  "matches": [
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "duration_seconds": 447,
+      "top_killer_xuid": "2533274875224535"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "duration_seconds": 576,
+      "top_killer_xuid": "2533274829022134"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "duration_seconds": 709,
+      "top_killer_xuid": "2533274918170115"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "duration_seconds": 417,
+      "top_killer_xuid": "2535449431423367"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "duration_seconds": 101,
+      "top_killer_xuid": "2533274827233748"
+    },
+    {
+      "match_id": "003498a3-a3c2-4a37-bf49-67e642a353b2",
+      "duration_seconds": 357,
+      "top_killer_xuid": ""
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "duration_seconds": 575,
+      "top_killer_xuid": "2533274816686116"
+    },
+    {
+      "match_id": "5da6fd30-f29e-4713-93a6-73d69d87626e",
+      "duration_seconds": 45,
+      "top_killer_xuid": ""
+    }
+  ],
+  "events": [
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 37861,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 37861,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 49809,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 49809,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 51060,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 51060,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 54080,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 54080,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 54678,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 55314,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 55315,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 68945,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 68945,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 72381,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 72382,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 79522,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 79522,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 81373,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 81373,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 90032,
+      "xuid": "2535420229172173"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 90032,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 95472,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 95472,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 96990,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 96990,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 105031,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 105032,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 105481,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 105481,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 105482,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 105482,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 114758,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 114758,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 130807,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 130807,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 132275,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 132275,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 140216,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 140216,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 142986,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 142986,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 147040,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 147040,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 161938,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 161938,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 164257,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 164257,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 166459,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 166459,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 170597,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 170597,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 175101,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 175102,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 182542,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 182542,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 183677,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 183677,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 190250,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 190250,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 195757,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 195758,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 205083,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 205083,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 214842,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 214842,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 216677,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 216677,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 218361,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 218361,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 219230,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 219230,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 221748,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 221749,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 233610,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 233610,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 242436,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 242436,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 248359,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 248359,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 258353,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 258353,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 263507,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 263507,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 273501,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 273501,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 275436,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 275437,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 290919,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 290919,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 291268,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 291268,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 291419,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 291419,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 295272,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 295272,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 305249,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 305249,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 307102,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 307102,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 314741,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 314741,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 316543,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 316543,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 324519,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 324519,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 326621,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 326622,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 328657,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 328657,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 329641,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 329641,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 341386,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 341386,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 349159,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 349159,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 357119,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 357119,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 357669,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 357669,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 359971,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 359971,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 375837,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 375837,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 375839,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 375839,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 387232,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 387232,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 387682,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 387683,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 388483,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 388483,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 397158,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 397158,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 401380,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 401380,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 402949,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 402949,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 410455,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 410455,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 412490,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 412491,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 412808,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 412808,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 417729,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 417730,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 421917,
+      "xuid": "2535421323800016"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 421917,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 425354,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 425354,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 427273,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 427273,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 431193,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 431193,
+      "xuid": "2535443797720345"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 439101,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 439101,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 442205,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 442205,
+      "xuid": "2533274875224535"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 442489,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 442489,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "kill",
+      "time_ms": 445374,
+      "xuid": "2533275018317489"
+    },
+    {
+      "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
+      "event_type": "death",
+      "time_ms": 445375,
+      "xuid": "2535438316355031"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 89128,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 89128,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 98111,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 98111,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 98811,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 98811,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 102415,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 102415,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 102981,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 102981,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 103813,
+      "xuid": "2535421127776990"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 103813,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 104981,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 104981,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 109594,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 109594,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 112167,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 112167,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 112664,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 112665,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 113399,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 113399,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 131588,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 131588,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 139294,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 139295,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 139297,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 139297,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 145030,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 145030,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 145634,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 145634,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 147602,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 147602,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 154046,
+      "xuid": "2535425828672654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 154046,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 156341,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 156341,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 158444,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 158445,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 160549,
+      "xuid": "2535421127776990"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 160549,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 161915,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 161915,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 163082,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 163082,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 164653,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 164653,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 165387,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 165387,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 167460,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 167460,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 168254,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 168254,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 174731,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 174731,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 180466,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 180466,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 180535,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 180535,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 186138,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 186138,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 186344,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 186344,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 188112,
+      "xuid": "2535425828672654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 188112,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 191979,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 191979,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 192778,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 192778,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 194347,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 194347,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 204025,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 204026,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 206197,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 206198,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 209931,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 209931,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 211033,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 211033,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 212936,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 212936,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 215937,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 215937,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 220876,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 220876,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 225610,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 225610,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 229551,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 229551,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 231951,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 231951,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 232459,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 232459,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 233525,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 233525,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 235891,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 235891,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 242598,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 242598,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 246501,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 246501,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 252574,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 252574,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 256880,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 256880,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 257780,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 257780,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 260683,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 260683,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 264784,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 264784,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 266457,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 266457,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 269258,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 269258,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 269859,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 269859,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 272859,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 272859,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 278670,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 278671,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 282969,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 282969,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 287076,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 287076,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 290513,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 290513,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 291046,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 291046,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 294083,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 294083,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 295318,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 295318,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 301358,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 301358,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 301921,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 301921,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 305592,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 305592,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 308565,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 308565,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 309365,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 309365,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 315071,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 315072,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 317476,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 317476,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 320947,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 320947,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 323413,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 323414,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 324645,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 324645,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 325315,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 325315,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 326449,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 326449,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 329585,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 329586,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 331623,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 331623,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 332218,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 332218,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 336224,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 336224,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 344067,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 344067,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 345367,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 345367,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 346136,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 346136,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 348438,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 348438,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 348504,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 348504,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 350240,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 350240,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 350970,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 350971,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 351037,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 351037,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 354512,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 354512,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 360349,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 360350,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 360850,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 360850,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 365322,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 365322,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 365659,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 365659,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 365991,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 365991,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 370193,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 370193,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 371998,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 371998,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 374661,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 374661,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 383103,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 383103,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 383376,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 383376,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 383642,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 383642,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 387893,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 387893,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 388178,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 388178,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 390781,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 390781,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 391815,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 391815,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 393155,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 393155,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 394554,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 394554,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 396620,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 396620,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 396687,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 396687,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 397321,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 397321,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 397724,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 397724,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 402559,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 402559,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 409834,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 409834,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 414305,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 414305,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 422643,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 422643,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 422915,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 422915,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 425785,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 425786,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 427719,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 427719,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 431151,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 431151,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 431323,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 431323,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 438664,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 438665,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 439193,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 439193,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 440197,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 440197,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 441866,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 441866,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 443035,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 443035,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 449810,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 449811,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 450446,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 450446,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 452842,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 452842,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 460982,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 460982,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 462283,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 462283,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 462553,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 462553,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 465805,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 465805,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 466696,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 466696,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 469538,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 469539,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 469736,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 469736,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 469907,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 469907,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 470067,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 470067,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 470601,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 470601,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 471774,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 471774,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 472873,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 472874,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 475210,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 475210,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 481479,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 481479,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 481979,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 481979,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 482950,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 482950,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 483113,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 483113,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 485119,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 485119,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 487457,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 487457,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 490326,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 490326,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 490659,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 490660,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 498296,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 498296,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 499568,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 499568,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 504739,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 504739,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 505373,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 505373,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 508943,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 508943,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 509574,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 509574,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 510514,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 510514,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 513111,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 513111,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 513648,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 513648,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 517952,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 517952,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 519349,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 519349,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 520452,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 520452,
+      "xuid": "2535456708901959"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 524895,
+      "xuid": "2535432599262766"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 524895,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 525196,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 525196,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 529727,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 529727,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 531329,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 531329,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 538009,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 538009,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 538637,
+      "xuid": "2535436046698882"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 538637,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 539071,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 539071,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 539304,
+      "xuid": "2535440432429342"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 539304,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 542273,
+      "xuid": "2535438275695035"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 542273,
+      "xuid": "2535430227852096"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 546549,
+      "xuid": "2535429627115371"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 546549,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 548986,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 548986,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 556925,
+      "xuid": "2535473365828147"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 556925,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 565169,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 565169,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 565171,
+      "xuid": "2533274987017654"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 565171,
+      "xuid": "2533274874657210"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 566034,
+      "xuid": "2533274973888743"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 566034,
+      "xuid": "2533274829022134"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 566404,
+      "xuid": "2535438958055424"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 566404,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 566530,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 566530,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 567001,
+      "xuid": "2533274800384073"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 567001,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 568800,
+      "xuid": "2535444529148645"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 568800,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 569437,
+      "xuid": "2535454706989865"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 569437,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 569473,
+      "xuid": "2535416202879373"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 569473,
+      "xuid": "2535442869382937"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 569901,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 569902,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 572174,
+      "xuid": "2535408494410965"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 572174,
+      "xuid": "2588899607233670"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "death",
+      "time_ms": 572837,
+      "xuid": "2535463976914180"
+    },
+    {
+      "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
+      "event_type": "kill",
+      "time_ms": 572837,
+      "xuid": "2535448582466203"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 44756,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 44756,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 48093,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 48093,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 51379,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 51379,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 56268,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 56268,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 69964,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 69964,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 74486,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 74486,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 93855,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 93856,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 102798,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 102798,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 104134,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 104135,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 121484,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 121485,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 124404,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 124404,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 127657,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 127657,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 132912,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 132912,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 145659,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 145659,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 145943,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 145943,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 153632,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 153632,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 159389,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 159389,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 163794,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 163794,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 176456,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 176457,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 178892,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 178892,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 184597,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 184597,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 189252,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 189252,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 207753,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 207753,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 215112,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 215112,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 216779,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 216779,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 218164,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 218164,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 247378,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 247379,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 269550,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 269550,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 276472,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 276472,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 277941,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 277941,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 283613,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 283614,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 283615,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 283615,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 300097,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 300097,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 308739,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 308739,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 314660,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 314661,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 318199,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 318199,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 350364,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 350364,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 350765,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 350765,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 350999,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 350999,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 351332,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 351332,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 366464,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 366465,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 372153,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 372153,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 381646,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 381646,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 395059,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 395059,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 400715,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 400715,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 406004,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 406004,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 408206,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 408206,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 410558,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 410558,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 414828,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 414828,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 434800,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 434800,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 434801,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 434802,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 436084,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 436085,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 436668,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 436668,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 440738,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 440738,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 448079,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 448079,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 459089,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 459089,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 466080,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 466081,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 466531,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 466531,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 472487,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 472487,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 483881,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 483881,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 501567,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 501567,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 503101,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 503101,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 524673,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 524673,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 525974,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 525975,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 528076,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 528076,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 530445,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 530445,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 537236,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 537236,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 542475,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 542475,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 558307,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 558307,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 577777,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 577777,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 585718,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 585718,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 587353,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 587353,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 590839,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 590839,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 591540,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 591540,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 593592,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 593593,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 595343,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 595343,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 610976,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 610977,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 611409,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 611409,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 612695,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 612695,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 641440,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 641440,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 643059,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 643059,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 645761,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 645762,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 648981,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 648981,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 651217,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 651217,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 655371,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 655371,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 656471,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 656471,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 663779,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 663779,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 668866,
+      "xuid": "2535428576102342"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 668866,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 671203,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 671203,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 694594,
+      "xuid": "2533274915407036"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 694594,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 702869,
+      "xuid": "2533274836955751"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 702870,
+      "xuid": "2533274858283686"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 705739,
+      "xuid": "2533274918170115"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 705739,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "death",
+      "time_ms": 708258,
+      "xuid": "2533274977720966"
+    },
+    {
+      "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
+      "event_type": "kill",
+      "time_ms": 708258,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 50953,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 50953,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 53939,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 53939,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 55358,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 55359,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 58678,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 58678,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 71258,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 71258,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 74443,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 74443,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 75445,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 75445,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 76212,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 76213,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 78181,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 78181,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 91944,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 91944,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 94948,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 94949,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 95065,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 95065,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 98118,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 98118,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 101721,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 101721,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 101974,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 101974,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 114835,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 114835,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 119372,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 119372,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 119723,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 119723,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 124411,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 124411,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 134222,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 134222,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 138709,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 138709,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 143830,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 143830,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 145883,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 145883,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 158396,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 158396,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 163100,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 163101,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 171075,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 171075,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 177148,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 177148,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 179817,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 179817,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 181185,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 181185,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 182153,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 182153,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 185122,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 185122,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 190478,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 190478,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 200972,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 200972,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 202123,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 202123,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 203958,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 203958,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 225447,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 225447,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 231953,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 231953,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 233738,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 233738,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 233838,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 233839,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 234822,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 234822,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 238393,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 238393,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 250420,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 250421,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 254593,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 254593,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 256211,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 256211,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 262634,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 262634,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 284590,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 284590,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 284690,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 284690,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 290578,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 290579,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 295366,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 295366,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 295517,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 295517,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 299087,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 299088,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 299237,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 299237,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 302207,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 302207,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 319958,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 319959,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 321994,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 321994,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 322610,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 322610,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 331802,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 331803,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 337625,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 337625,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 337810,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 337810,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 341363,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 341363,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 343048,
+      "xuid": "2533274827251321"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 343048,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 350289,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 350289,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 354494,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 354494,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 364070,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 364070,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 370942,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 370942,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 373645,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 373645,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 376665,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 376666,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 378150,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 378150,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 383321,
+      "xuid": "2533274932830004"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 383322,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 399589,
+      "xuid": "2533275003122618"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 399589,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 401723,
+      "xuid": "2535462591262590"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 401723,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 402408,
+      "xuid": "2533274951864735"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 402408,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 411550,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 411551,
+      "xuid": "2533274921065347"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "death",
+      "time_ms": 413836,
+      "xuid": "2535449431423367"
+    },
+    {
+      "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
+      "event_type": "kill",
+      "time_ms": 413836,
+      "xuid": "2533274823110022"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 35715,
+      "xuid": "2533274875797959"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 35715,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 35731,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 35731,
+      "xuid": "2674682457277302"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 40754,
+      "xuid": "2535407779560322"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 40754,
+      "xuid": "2535443302881457"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 41788,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 41788,
+      "xuid": "2533274827233748"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 45257,
+      "xuid": "2674682457277302"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 45257,
+      "xuid": "2533274827233748"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 45258,
+      "xuid": "2533274827233748"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 45258,
+      "xuid": "2674682457277302"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 58670,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 58670,
+      "xuid": "2533274827233748"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 60022,
+      "xuid": "2535407779560322"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 60022,
+      "xuid": "2533274875797959"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 66713,
+      "xuid": "2674682457277302"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 66713,
+      "xuid": "2533274875797959"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 69348,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 69348,
+      "xuid": "2535443302881457"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 71000,
+      "xuid": "2535443302881457"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 71000,
+      "xuid": "2535407779560322"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 82779,
+      "xuid": "2535414438252000"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 82780,
+      "xuid": "2533274875797959"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 84030,
+      "xuid": "2535414438252000"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 84030,
+      "xuid": "2535443302881457"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 85664,
+      "xuid": "2535443302881457"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 85664,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 89251,
+      "xuid": "2674682457277302"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 89251,
+      "xuid": "2533274827233748"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 89386,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 89386,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 89436,
+      "xuid": "2533274951434018"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 89436,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "kill",
+      "time_ms": 96291,
+      "xuid": "2533274875797959"
+    },
+    {
+      "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
+      "event_type": "death",
+      "time_ms": 96292,
+      "xuid": "2535407779560322"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 41624,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 41624,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 42792,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 42792,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 49549,
+      "xuid": "2533274809168815"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 49549,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 49832,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 49832,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 51918,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 51918,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 55553,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 57674,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 57674,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 72540,
+      "xuid": "2533274809168815"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 72540,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 77344,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 77344,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 78777,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 78777,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 80798,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 80798,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 89038,
+      "xuid": "2533274809168815"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 89038,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 89474,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 89474,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 90656,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 90656,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 108025,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 108025,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 108106,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 108106,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 118784,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 118784,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 122187,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 122188,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 123290,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 123290,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 132482,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 132482,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 140539,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 140539,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 147397,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 147397,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 161444,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 161444,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 163730,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 163730,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 171920,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 176744,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 176744,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 177142,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 177142,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 178061,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 178062,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 191024,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 191025,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 193577,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 193577,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 196646,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 196646,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 204188,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 204188,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 205089,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 205090,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 227862,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 227862,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 236719,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 236719,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 244462,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 244462,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 247565,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 247565,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 247567,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 247567,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 256340,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 256340,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 258059,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 258059,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 260095,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 260095,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 266935,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 266935,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 272658,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 272658,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 283484,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 283484,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 300118,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 300118,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 303520,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 303520,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 304639,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 304639,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 304906,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 304907,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 318219,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 318219,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 320655,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 320655,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 327744,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 327744,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 328112,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 328112,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 335735,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 335737,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 335737,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 350819,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 350819,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 350934,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 350934,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 353254,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 353255,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 357225,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 357225,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 372573,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 372573,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 372575,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 372575,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 379480,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 379480,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 386554,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 386554,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 391241,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 391241,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 392644,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 392644,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 392647,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 392647,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 396314,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 396314,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 408610,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 408610,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 419953,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 423611,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 423611,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 435536,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 435989,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 435989,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 452622,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 452622,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 456275,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 456275,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 458344,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 458344,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 462447,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 462447,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 465835,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 465835,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 468936,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 468936,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 477529,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 477529,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 493596,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 493596,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 498201,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 498201,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 502804,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 503388,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 503388,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 508560,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 508560,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 513666,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 513666,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 519771,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 519771,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 522809,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 522809,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 524810,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 524810,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 528581,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 528581,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 529866,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 529866,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 543897,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 543898,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 543946,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 543946,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 547668,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 547668,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 548234,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 548805,
+      "xuid": "2535419698535101"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 548805,
+      "xuid": "2535427319460797"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 567303,
+      "xuid": "2533274816686116"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 567304,
+      "xuid": "2533274881638350"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 567804,
+      "xuid": "2533274884323865"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 567804,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 567887,
+      "xuid": "2535469190789936"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 567887,
+      "xuid": "2535410767592667"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "kill",
+      "time_ms": 573760,
+      "xuid": "2533275018124379"
+    },
+    {
+      "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
+      "event_type": "death",
+      "time_ms": 573761,
+      "xuid": "2535410767592667"
+    }
+  ]
+}
