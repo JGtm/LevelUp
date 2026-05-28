@@ -49884,3 +49884,15 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste pour la DoD (prod)** : vérifier après quelques matchs réels que `rating_delta` est populé. Non exécutable hors prod.
 
 **Prochaine étape** : hygiène — nettoyer le hint Phase 5.B obsolète + header TODO de `cmd/lusr_v2_ttt_batch`.
+
+## [2026-05-28] chore(lusr-v2): nettoyage hint Phase 5.B obsolète (ttt_batch) — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+Le CLI `cmd/lusr_v2_ttt_batch` imprimait un "RAPPEL Phase 5.B — wiring shadow runner" et son header listait un "TODO Phase 5.B" — devenus FAUX depuis que le Sprint 1.B a câblé la relecture des hyperparams (`resolveGroupParams`). Anti-pattern "rappel obsolète".
+
+- Suppression de `skillv2HyperparamUsageHint()` + son appel dans `main()`.
+- Header réécrit : indique que les hyperparams sont relus au runtime (1.B) + matrice cross-mode (2.B) + pointe le prototype TTT (3.A, `ttt.go`, non branché).
+- `skillv2`/`os`/`fmt` toujours utilisés ailleurs → aucun import orphelin. Build + vet clean.
+
+**Conclusion** : enchaînement 2.A→2.B→3.A→3.B + hygiène terminé. 2.A abandonné (donnée absente), 3.A livré en prototype. Reste : bascule prod (Sprint Final) + follow-ups prod-only (activation flags squad/coupling, TTT couplé).
