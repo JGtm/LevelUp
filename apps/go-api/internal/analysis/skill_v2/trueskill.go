@@ -126,40 +126,5 @@ func sumMuVar(team []Gaussian) (mu, variance float64) {
 	return mu, variance
 }
 
-// PredictWinProbability retourne la probabilité que TeamA batte TeamB selon le
-// modèle, avant tout match. Utile pour le matchmaking et pour les métriques
-// "win % prédit vs réel" du style Phase 0.
-//
-//	P(A bat B) = Φ((μ_A - μ_B) / sqrt((n_A + n_B) β² + σ_A² + σ_B²))
-//
-// Le modèle ignore les draws ici (suffisant pour win-rate prediction).
-func PredictWinProbability(teamA, teamB []Gaussian, p Priors) float64 {
-	if len(teamA) == 0 || len(teamB) == 0 {
-		return 0.5
-	}
-	muA, varA := sumMuVar(teamA)
-	muB, varB := sumMuVar(teamB)
-	c2 := float64(len(teamA)+len(teamB))*p.Beta*p.Beta + varA + varB
-	if c2 <= 0 {
-		return 0.5
-	}
-	return stdNormalCDF((muA - muB) / math.Sqrt(c2))
-}
-
-// PredictDrawProbability retourne P(draw) selon le modèle. Pour calibration
-// de DrawProbability lors d'un éventuel batch de ré-estimation hyperparamètres.
-func PredictDrawProbability(teamA, teamB []Gaussian, p Priors) float64 {
-	if len(teamA) == 0 || len(teamB) == 0 {
-		return 0
-	}
-	muA, varA := sumMuVar(teamA)
-	muB, varB := sumMuVar(teamB)
-	c2 := float64(len(teamA)+len(teamB))*p.Beta*p.Beta + varA + varB
-	if c2 <= 0 {
-		return 0
-	}
-	c := math.Sqrt(c2)
-	eps := DrawMargin(p.DrawProbability, len(teamA), len(teamB), p.Beta)
-	delta := (muA - muB) / c
-	return stdNormalCDF((eps/c)-delta) - stdNormalCDF((-eps/c)-delta)
-}
+// PredictWinProbability / PredictDrawProbability / PredictTwoTeamWinProb vivent
+// désormais dans predict.go (partagent le helper matchSpread).

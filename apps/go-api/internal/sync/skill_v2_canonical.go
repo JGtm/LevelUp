@@ -50,9 +50,13 @@ func IsLUSRV2Canonical() bool {
 // AppendOnlyLUSRPersister.Persist) — si l'INSERT v2 échoue, le LUSR rollback
 // aussi. C'est l'invariant central de la sentinelle dual-row.
 //
+// expectedWinProb (Sprint 1.A) : proba de victoire pré-match de l'équipe du
+// owner, calculée par le caller à partir des ratings AVANT-match. nil si non
+// disponible (match dégénéré) → colonne NULL.
+//
 // Incrémente les compteurs expvar `canonicalWritesTotal` / `canonicalWriteErrors`.
 func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string,
-	state domain.SkillV2State, boundaries []skillv2.TierBoundary) error {
+	state domain.SkillV2State, expectedWinProb *float64, boundaries []skillv2.TierBoundary) error {
 	if playerDB == nil {
 		return fmt.Errorf("writeCanonicalLUSRRow: playerDB nil")
 	}
@@ -79,6 +83,7 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 		TierLabel:       &label,
 		RatingDelta:     nil,
 		PlaylistGroup:   state.PlaylistGroup,
+		ExpectedWinProb: expectedWinProb,
 	}
 	rowLUSR := baseRow
 	rowLUSR.RatingType = "LUSR"

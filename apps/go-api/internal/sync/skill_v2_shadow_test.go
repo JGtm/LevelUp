@@ -568,6 +568,7 @@ func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
 			tier_label      VARCHAR,
 			rating_delta    FLOAT,
 			playlist_group  VARCHAR,
+			expected_win_prob FLOAT,
 			start_time      TIMESTAMP,
 			written_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -812,5 +813,98 @@ func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
 	}
 	if btb.Mu != 24.0 {
 		t.Errorf("btb μ = %v, want 24.0 (flag off, no leak)", btb.Mu)
+	}
+}
+
+// seedCanonical2v2 insère un match social 2v2 (owner+teammate vs opp1+opp2)
+// dans le sharedDB de test. Utilisé par les tests Sprint 1.A.
+func seedCanonical2v2(t *testing.T, sharedDB *sql.DB, matchID string, start time.Time) {
+	t.Helper()
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`, matchID, start, start); err != nil {
+		t.Fatalf("insert match_registry: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team, outcome int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 18, 6}, {"teammate", 0, 2, 12, 9},
+		{"opp1", 1, 3, 7, 14}, {"opp2", 1, 3, 8, 14},
+	} {
+		if _, err := sharedDB.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			matchID, q.xuid, q.team, q.outcome, q.kills, q.deaths); err != nil {
+			t.Fatalf("insert participant: %v", err)
+		}
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb (Sprint 1.A) : la row
+// canonical LUSR doit porter un expected_win_prob dans [0,1].
+func TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	seedCanonical2v2(t, sharedDB, "m_winprob", time.Date(2025, 3, 1, 14, 0, 0, 0, time.UTC))
+
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	var winProb sql.NullFloat64
+	if err := playerDB.QueryRow(`SELECT expected_win_prob FROM match_skill_rank
+		WHERE match_id = ? AND rating_type = 'LUSR'`, "m_winprob").Scan(&winProb); err != nil {
+		t.Fatalf("read expected_win_prob: %v", err)
+	}
+	if !winProb.Valid {
+		t.Fatal("expected_win_prob NULL, attendu une valeur")
+	}
+	if winProb.Float64 < 0 || winProb.Float64 > 1 {
+		t.Errorf("expected_win_prob = %v hors [0,1]", winProb.Float64)
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_FirstMatchFallback (Sprint 1.A) : si aucun
+// joueur n'a d'historique, tous sont seedés au prior (μ=25) → équipes
+// équilibrées → proba ≈ 0.5, et aucune panic (fallback priors testé).
+func TestRunLUSRV2Shadow_Canonical_FirstMatchFallback(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	seedCanonical2v2(t, sharedDB, "m_firstmatch", time.Date(2025, 3, 2, 14, 0, 0, 0, time.UTC))
+
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	var winProb sql.NullFloat64
+	if err := playerDB.QueryRow(`SELECT expected_win_prob FROM match_skill_rank
+		WHERE match_id = ? AND rating_type = 'LUSR'`, "m_firstmatch").Scan(&winProb); err != nil {
+		t.Fatalf("read expected_win_prob: %v", err)
+	}
+	if !winProb.Valid {
+		t.Fatal("expected_win_prob NULL, attendu une valeur")
+	}
+	// Équipes entièrement seedées au prior → match équilibré → proche de 0.5.
+	if d := winProb.Float64 - 0.5; d > 0.2 || d < -0.2 {
+		t.Errorf("first-match balanced : expected_win_prob = %v, attendu ≈ 0.5 (±0.2)", winProb.Float64)
 	}
 }
