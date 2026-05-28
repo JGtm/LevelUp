@@ -246,19 +246,32 @@ func loadQuitTimeline(ctx context.Context, sharedDB *sql.DB, matchID string,
 		}
 		frags = append(frags, skillv2.TeamFrag{TimeMs: t, TeamID: s})
 	}
-	if err := rows.Err(); err != nil || len(frags) == 0 {
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "LUSR v2 quit-context: itération frags échouée — fallback outcome",
+			"match_id", matchID, "err", err)
 		return quitTimeline{available: false}
 	}
+	if len(frags) == 0 {
+		slog.DebugContext(ctx, "LUSR v2 quit-context: aucun frag — fallback outcome",
+			"match_id", matchID)
+		return quitTimeline{available: false}
+	}
+	slog.DebugContext(ctx, "LUSR v2 quit-context: timeline frags chargée",
+		"match_id", matchID, "frags", len(frags))
 	return quitTimeline{frags: frags, filmStartUTC: filmStartUTC, available: true}
 }
 
 // quitBaseDelta retourne le delta de base d'un quitter : depuis le CONTEXTE
 // (score au moment du quit, Sprint 2.A) si la timeline est dispo et que le joueur
 // a un timestamp de départ ; sinon depuis l'outcome FINAL de son équipe.
-func quitBaseDelta(m rosterMember, teamOutcome skillv2.TeamResult, side int, qt quitTimeline) float64 {
+func quitBaseDelta(ctx context.Context, m rosterMember, teamOutcome skillv2.TeamResult, side int, qt quitTimeline) float64 {
 	if qt.available && m.lastLeaveTime.Valid {
 		quitMs := quitOffsetMs(m.lastLeaveTime.Time, qt.filmStartUTC)
-		return quitDeltaForContext(skillv2.InferQuitContext(qt.frags, quitMs, side))
+		qc := skillv2.InferQuitContext(qt.frags, quitMs, side)
+		delta := quitDeltaForContext(qc)
+		slog.DebugContext(ctx, "LUSR v2 quit-context appliqué",
+			"xuid", m.xuid, "context", qc.String(), "quit_ms", quitMs, "delta", delta)
+		return delta
 	}
 	return quitDeltaForTeam(teamOutcome)
 }
@@ -285,7 +298,7 @@ func invertOutcome(o skillv2.TeamResult) skillv2.TeamResult {
 // est disponible, la magnitude du quit penalty dépend de la situation AU MOMENT
 // du quit (équipe perdait → modéré ; menait/égalité → fort) ; sinon fallback sur
 // l'outcome final via quitDeltaForTeam.
-func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, qt quitTimeline) *skillv2.CountInputs {
+func buildCountInputs(ctx context.Context, teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, qt quitTimeline) *skillv2.CountInputs {
 	hasAny := false
 	for _, m := range teamA {
 		if m.kills != nil || m.deaths != nil || isQuitter(m) {
@@ -311,7 +324,7 @@ func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, 
 		pa[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
 		if isQuitter(m) {
 			pa[i].Quit = true
-			base := quitBaseDelta(m, outcomeA, 0, qt) // teamA = side 0
+			base := quitBaseDelta(ctx, m, outcomeA, 0, qt) // teamA = side 0
 			pa[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, base)
 		}
 	}
@@ -320,7 +333,7 @@ func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, 
 		pb[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
 		if isQuitter(m) {
 			pb[i].Quit = true
-			base := quitBaseDelta(m, outcomeB, 1, qt) // teamB = side 1
+			base := quitBaseDelta(ctx, m, outcomeB, 1, qt) // teamB = side 1
 			pb[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, base)
 		}
 	}

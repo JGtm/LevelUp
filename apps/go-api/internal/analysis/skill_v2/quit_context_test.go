@@ -62,6 +62,19 @@ func TestInferQuitContext_NoFragsYet(t *testing.T) {
 	}
 }
 
+func TestQuitContext_String(t *testing.T) {
+	cases := map[QuitContext]string{
+		QuitWhileLeading:  "leading",
+		QuitWhileTrailing: "trailing",
+		QuitWhileTied:     "tied",
+	}
+	for c, want := range cases {
+		if got := c.String(); got != want {
+			t.Errorf("QuitContext(%d).String() = %q, want %q", c, got, want)
+		}
+	}
+}
+
 func TestInferQuitContext_PerspectiveTeam1(t *testing.T) {
 	// Mêmes frags, vus depuis l'équipe 1 : elle perd 1-3 → Trailing.
 	frags := []TeamFrag{

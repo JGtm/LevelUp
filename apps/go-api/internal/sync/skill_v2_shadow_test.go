@@ -72,6 +72,45 @@ func TestIsLUSRV2Canonical(t *testing.T) {
 	}
 }
 
+// TestDefaultOnFlags vérifie que squad offset et cross-mode coupling sont ON par
+// défaut (décision produit 2026-05-28) : actifs sauf si explicitement "0"/"false"/"no".
+func TestDefaultOnFlags(t *testing.T) {
+	cases := []struct {
+		envVal string
+		want   bool
+	}{
+		{"", true}, // défaut = ON
+		{"1", true},
+		{"true", true},
+		{"yes", true},
+		{"random", true}, // seul "0"/"false"/"no" désactive
+		{"0", false},
+		{"false", false},
+		{"no", false},
+		{"  0  ", false}, // trim
+		{"FALSE", false}, // case-insensitive
+	}
+	for _, fn := range []struct {
+		name string
+		env  string
+		f    func() bool
+	}{
+		{"SquadOffset", lusrSquadOffsetEnvFlag, IsLUSRV2SquadOffsetEnabled},
+		{"ModeCoupling", lusrModeCouplingEnvFlag, IsLUSRV2ModeCouplingEnabled},
+	} {
+		original := os.Getenv(fn.env)
+		t.Run(fn.name, func(t *testing.T) {
+			t.Cleanup(func() { _ = os.Setenv(fn.env, original) })
+			for _, c := range cases {
+				_ = os.Setenv(fn.env, c.envVal)
+				if got := fn.f(); got != c.want {
+					t.Errorf("%s avec env=%q = %v, want %v", fn.name, c.envVal, got, c.want)
+				}
+			}
+		})
+	}
+}
+
 func TestIsTeamImbalanceTooHigh(t *testing.T) {
 	// Critère : |nA - nB| > 1 → trop déséquilibré → skip.
 	cases := []struct {

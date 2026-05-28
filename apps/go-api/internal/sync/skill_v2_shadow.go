@@ -486,7 +486,7 @@ func applyMatchToSkillV2(
 	predictionsTotal.Add(1)
 	expectedWinProb = &probOwner
 
-	counts := buildCountInputs(teamA, teamB, outcomeA, qt)
+	counts := buildCountInputs(ctx, teamA, teamB, outcomeA, qt)
 	if counts != nil {
 		counts.Hyperparams = countHyp
 	}
