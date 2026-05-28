@@ -110,16 +110,27 @@ Au 2026-05-27 22:55, toutes les suites ci-dessus passent.
 
 ---
 
-## Phase 5.B — Wiring restant côté shadow runner
+## Phase 5.B — Wiring hyperparams ré-estimés — ✅ LIVRÉ (Sprint 1.B, 2026-05-28)
 
-Le `cmd/lusr_v2_ttt_batch` écrit les hyperparams empiriques dans `lusr_hyperparams_v2`, mais `RunLUSRV2Shadow` utilise toujours `skillv2.DefaultPriors()` hardcodé. Pour que la re-estimation soit EFFECTIVE :
+`resolveGroupParams` dans `skill_v2_shadow.go` charge `lusr_hyperparams_v2_latest` par groupe (mémoïsé) et override :
+1. `Priors.DrawProbability` ← `draw_probability_empirical` (via `skillv2.LoadPriorsFromHyperparams`).
+2. `CountHyperparams.Bias` kill/death ← `kill_mean_empirical` / `death_mean_empirical` (via `skillv2.LoadCountHyperparamsFromDB`).
+   - **Correction du plan** : la formule n'est PAS `bias = mean` (faux pour `expected = bias + w_p·perf + w_o·avg_opp`) mais `bias = mean − (w_p + w_o)·μ0`, qui se réduit aux défauts pour mean ~12.5.
 
-1. Charger `lusr_hyperparams_v2_latest` au début de `RunLUSRV2Shadow` (par playlist_group).
-2. Override `Priors.DrawProbability` avec `draw_probability_empirical`.
-3. Override `CountHyperparams.Bias` (kill/death) avec `kill_mean_empirical` / `death_mean_empirical`.
-4. Tester qu'un Mu0 ré-estimé proche de la moyenne kills donne un `expected_count_death` réaliste (cf. trace Phase 3c initiale qui avait montré le bug "expected_death < 0").
+Best-effort (échec LoadHyperparams → fallback defaults + warn). Log `slog.DebugContext "hyperparams ré-estimés appliqués"`. `kill_std`/`death_std`/`match_count_analyzed` restent non câblés (variance d'obs à recalibrer en TTT proper).
 
-Pas urgent — les defaults Phase 3e v2 sont raisonnables. À ouvrir quand la prochaine session veut affiner.
+---
+
+## Phase 2 — Squad offset — ✅ LIVRÉ gated OFF (Sprint 1.C, 2026-05-28)
+
+Corrige la sur-estimation des joueurs qui jouent souvent en escouade (le modèle attribuait les victoires de squad au skill individuel).
+
+- **Table** `player_squad_offset` (append-only + vue `_latest`) : offset de synergie par paire (xuid, partner_xuid) × playlist_group, en unités μ, borné ±2.0.
+- **Estimation hors-ligne** : `cmd/lusr_v2_squad_estimate` — pour chaque paire ≥ N matchs ensemble (fenêtre M semaines), offset = `mean(Won − SoloWinProb) × gain`, clampé. **MVP first-pass** : SoloWinProb proxy = ratings solo COURANTS (biais conservateur = sous-correction). À raffiner en TTT proper.
+- **Application runtime** (`skill_v2_squad.go`, gated `LEVELUP_LUSR_V2_SQUAD_OFFSET=1`) : μ effectif = μ + Σ(offsets partenaires présents) AVANT l'EP, retiré du posterior APRÈS (σ inchangé). Flag OFF → repo nil → no-op exact.
+- **Anti-inflation vérifié** (test E2E) : squad qui gagne avec offset +1.5 → μ individuel monte MOINS que sans offset.
+
+⚠️ La calibration (`gain`, seuil N, fenêtre M) et l'activation du flag en prod restent à valider (dry-run replay sur les 4 trackés).
 
 ---
 
@@ -160,6 +171,7 @@ Chaque commit doit avoir une entrée correspondante dans `.ai/thought_log.md` (r
    - Les expvar `levelup.lusr_v2.canonical_writes_total` montent.
 5. **Étape 5** : prod. Garder `batchComputeLUSR` court-circuité.
 6. **Étape 6 (optionnel)** : activer `LEVELUP_LUSR_V2_MODE_COUPLING=1` pour la Phase 4. Plus risqué — observer 1 semaine en staging avant prod.
+7. **Étape 7 (optionnel, Sprint 1.C)** : run `cmd/lusr_v2_squad_estimate --dry-run` → vérifier les offsets ∈ [-2,+2] des 4 trackés. Si cohérent, run sans `--dry-run` puis activer `LEVELUP_LUSR_V2_SQUAD_OFFSET=1` en staging. Dry-run replay : pas de drift > 1.5 pt sur les solo. Plus risqué (touche le μ effectif) — observer avant prod.
 
 ---
 

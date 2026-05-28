@@ -322,6 +322,26 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			FROM lusr_hyperparams_v2
 			GROUP BY playlist_group, name
 		) m ON h.playlist_group = m.playlist_group AND h.name = m.name AND h.written_at = m.max_written_at;
+		CREATE SEQUENCE player_squad_offset_seq START 1;
+		CREATE TABLE player_squad_offset (
+			id              BIGINT DEFAULT nextval('player_squad_offset_seq') PRIMARY KEY,
+			xuid            VARCHAR NOT NULL,
+			partner_xuid    VARCHAR NOT NULL,
+			playlist_group  VARCHAR NOT NULL,
+			offset_value    DOUBLE  NOT NULL,
+			match_count     INTEGER NOT NULL DEFAULT 0,
+			source          VARCHAR NOT NULL,
+			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE VIEW player_squad_offset_latest AS
+		SELECT o.*
+		FROM player_squad_offset o
+		JOIN (
+			SELECT xuid, partner_xuid, playlist_group, MAX(written_at) AS max_written_at
+			FROM player_squad_offset
+			GROUP BY xuid, partner_xuid, playlist_group
+		) m ON o.xuid = m.xuid AND o.partner_xuid = m.partner_xuid
+		     AND o.playlist_group = m.playlist_group AND o.written_at = m.max_written_at;
 	`
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatalf("DDL: %v", err)
@@ -979,5 +999,74 @@ func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
 	if sigmaSeeded <= sigmaDefault {
 		t.Errorf("draw_probability empirique haute → draw moins surprenant → σ doit rester PLUS grand : seeded σ=%v doit > default σ=%v",
 			sigmaSeeded, sigmaDefault)
+	}
+}
+
+// TestRunLUSRV2Shadow_AppliesSquadOffset (Sprint 1.C) prouve la correction
+// d'escouade : avec un offset de synergie positif owner↔teammate, quand le
+// squad GAGNE, le μ individuel du owner monte MOINS que sans offset (la victoire
+// est en partie attribuée à la synergie, pas au skill individuel → anti-inflation).
+// Gated : flag LEVELUP_LUSR_V2_SQUAD_OFFSET=1.
+func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origSquad := os.Getenv(lusrSquadOffsetEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrSquadOffsetEnvFlag, origSquad)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrSquadOffsetEnvFlag, "1")
+
+	// runWin joue un match 2v2 où owner+teammate GAGNENT (sans counts) et
+	// retourne le μ posterior du owner. Si withOffset, seede +1.5 owner↔teammate.
+	runWin := func(withOffset bool) float64 {
+		db := openShadowTestDB(t)
+		if withOffset {
+			for _, p := range [][2]string{{"owner", "teammate"}, {"teammate", "owner"}} {
+				if _, err := db.Exec(`INSERT INTO player_squad_offset
+					(xuid, partner_xuid, playlist_group, offset_value, match_count, source)
+					VALUES (?, ?, 'arena_slayer', 1.5, 20, 'test')`, p[0], p[1]); err != nil {
+					t.Fatalf("seed squad offset: %v", err)
+				}
+			}
+		}
+		start := time.Date(2025, 5, 1, 12, 0, 0, 0, time.UTC)
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+			VALUES ('m_squad', ?, ?, 'Slayer', FALSE, FALSE, 600)`, start, start); err != nil {
+			t.Fatalf("insert match_registry: %v", err)
+		}
+		// owner+teammate gagnent (outcome 2), opp1+opp2 perdent (3). Pas de counts.
+		for _, q := range []struct {
+			xuid          string
+			team, outcome int
+		}{{"owner", 0, 2}, {"teammate", 0, 2}, {"opp1", 1, 3}, {"opp2", 1, 3}} {
+			if _, err := db.Exec(`INSERT INTO match_participants
+				(match_id, xuid, team_id, outcome) VALUES ('m_squad', ?, ?, ?)`,
+				q.xuid, q.team, q.outcome); err != nil {
+				t.Fatalf("insert participant: %v", err)
+			}
+		}
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+			t.Fatalf("RunLUSRV2Shadow: %v", err)
+		}
+		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
+		if err != nil || st == nil {
+			t.Fatalf("LoadState owner: %v", err)
+		}
+		return st.Mu
+	}
+
+	muNoOffset := runWin(false)
+	muWithOffset := runWin(true)
+
+	// Les deux montent (victoire) au-dessus du prior 25.
+	if muNoOffset <= 25.0 {
+		t.Fatalf("victoire sans offset : μ owner = %v, attendu > 25", muNoOffset)
+	}
+	// Anti-inflation : avec offset positif, μ individuel monte MOINS.
+	if !(muWithOffset < muNoOffset) {
+		t.Errorf("offset squad +1.5 → μ owner doit monter MOINS : withOffset=%v doit < noOffset=%v",
+			muWithOffset, muNoOffset)
 	}
 }

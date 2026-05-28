@@ -87,6 +87,12 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 	}
 
 	repo := duckdb.NewSkillV2Repo(sharedDB)
+	// Sprint 1.C : repo squad seulement si le flag est actif (OFF par défaut →
+	// nil → aucun offset appliqué, comportement strictement inchangé).
+	var squadRepo *duckdb.SquadOffsetRepo
+	if IsLUSRV2SquadOffsetEnabled() {
+		squadRepo = duckdb.NewSquadOffsetRepo(sharedDB)
+	}
 	priors := skillv2.DefaultPriors()
 	tierBoundaries := skillv2.DefaultTierBoundaries() // Phase 5 batch écrira override
 
@@ -100,6 +106,7 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 
 	ctxRun := shadowRunContext{
 		repo:           repo,
+		squadRepo:      squadRepo,
 		playerDB:       playerDB,
 		sharedDB:       sharedDB,
 		priors:         priors,
@@ -133,6 +140,7 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 // sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
 	repo           *duckdb.SkillV2Repo
+	squadRepo      *duckdb.SquadOffsetRepo // nil si LEVELUP_LUSR_V2_SQUAD_OFFSET off
 	playerDB       *sql.DB
 	sharedDB       *sql.DB
 	priors         skillv2.Priors
@@ -195,7 +203,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		return
 	}
 	groupPriors, groupCountHyp := resolveGroupParams(ctx, c, group)
-	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, groupPriors, groupCountHyp, m.matchID, group,
+	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
@@ -434,6 +442,7 @@ func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 func applyMatchToSkillV2(
 	ctx context.Context,
 	repo *duckdb.SkillV2Repo,
+	squadRepo *duckdb.SquadOffsetRepo,
 	priors skillv2.Priors,
 	countHyp map[skillv2.CountType]skillv2.CountHyperparams,
 	matchID, playlistGroup string,
@@ -453,15 +462,20 @@ func applyMatchToSkillV2(
 	if err != nil {
 		return nil, nil, fmt.Errorf("loadStates teamB: %w", err)
 	}
-	gaussA := shadowStatesToGaussians(teamAStates)
-	gaussB := shadowStatesToGaussians(teamBStates)
 
-	// Sprint 1.A : proba de victoire pré-match de l'équipe du owner. teamA est
-	// toujours l'équipe du owner (buildTwoTeamRosters la retourne en premier),
-	// donc probA est la quantité voulue. Calculée AVANT l'update sur les états
-	// pré-match déjà en mémoire — un re-query DB lirait le posterior
-	// post-persist, donc une valeur fausse.
-	probOwner, _, _ := skillv2.PredictTwoTeamWinProb(gaussA, gaussB, priors)
+	// Sprint 1.C : gaussiennes EFFECTIVES (μ + offset squad). squadRepo nil (flag
+	// off) → offsets nuls → effA/effB == gaussiennes individuelles (no-op exact).
+	offsetsA := computeTeamSquadOffsets(ctx, squadRepo, teamAStates, playlistGroup)
+	offsetsB := computeTeamSquadOffsets(ctx, squadRepo, teamBStates, playlistGroup)
+	effA := applyOffsetsToGaussians(shadowStatesToGaussians(teamAStates), offsetsA)
+	effB := applyOffsetsToGaussians(shadowStatesToGaussians(teamBStates), offsetsB)
+
+	// Sprint 1.A : proba de victoire pré-match de l'équipe du owner (teamA, par
+	// construction de buildTwoTeamRosters). Sur les gaussiennes EFFECTIVES — la
+	// synergie squad rend une victoire réellement plus probable. Calculée AVANT
+	// l'update sur les états pré-match en mémoire (un re-query lirait le
+	// posterior post-persist, donc faux).
+	probOwner, _, _ := skillv2.PredictTwoTeamWinProb(effA, effB, priors)
 	predictionsTotal.Add(1)
 	expectedWinProb = &probOwner
 
@@ -469,14 +483,18 @@ func applyMatchToSkillV2(
 	if counts != nil {
 		counts.Hyperparams = countHyp
 	}
-	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
-		TeamA:   gaussA,
-		TeamB:   gaussB,
+	newEffA, newEffB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
+		TeamA:   effA,
+		TeamB:   effB,
 		ResultA: outcomeA,
 	}, counts, priors)
 	if err != nil {
 		return nil, nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
+	// Retire l'offset (constant) du posterior : seul le delta de l'EP s'applique
+	// au μ INDIVIDUEL persisté. No-op quand offsets nuls.
+	newA := stripOffsetsFromGaussians(newEffA, offsetsA)
+	newB := stripOffsetsFromGaussians(newEffB, offsetsB)
 	if err := persistTeamSkillV2(ctx, repo, teamAStates, newA, matchID, startTime); err != nil {
 		return nil, nil, fmt.Errorf("persistTeam A: %w", err)
 	}
