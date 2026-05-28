@@ -203,7 +203,13 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		return
 	}
 	groupPriors, groupCountHyp := resolveGroupParams(ctx, c, group)
-	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, m.matchID, group,
+	// Sprint 2.A : contexte du quit (score au moment du quit). Chargé seulement
+	// s'il y a un quitter ; sinon timeline vide → fallback outcome final.
+	qt := quitTimeline{available: false}
+	if hasAnyQuitter(teamA, teamB) {
+		qt = loadQuitTimeline(ctx, c.sharedDB, m.matchID, m.startTime, teamA, teamB)
+	}
+	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, qt, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
@@ -445,6 +451,7 @@ func applyMatchToSkillV2(
 	squadRepo *duckdb.SquadOffsetRepo,
 	priors skillv2.Priors,
 	countHyp map[skillv2.CountType]skillv2.CountHyperparams,
+	qt quitTimeline,
 	matchID, playlistGroup string,
 	startTime time.Time,
 	teamA, teamB []rosterMember,
@@ -479,7 +486,7 @@ func applyMatchToSkillV2(
 	predictionsTotal.Add(1)
 	expectedWinProb = &probOwner
 
-	counts := buildCountInputs(teamA, teamB, outcomeA)
+	counts := buildCountInputs(teamA, teamB, outcomeA, qt)
 	if counts != nil {
 		counts.Hyperparams = countHyp
 	}

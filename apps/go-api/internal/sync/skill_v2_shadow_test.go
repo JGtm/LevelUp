@@ -285,6 +285,13 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			time_played_seconds DOUBLE,
 			PRIMARY KEY (match_id, xuid)
 		);
+		CREATE TABLE killer_victim_pairs (
+			match_id VARCHAR,
+			killer_xuid VARCHAR,
+			victim_xuid VARCHAR,
+			kill_count INTEGER DEFAULT 1,
+			time_ms INTEGER
+		);
 		CREATE SEQUENCE player_skill_state_v2_seq START 1;
 		CREATE TABLE player_skill_state_v2 (
 			id              BIGINT DEFAULT nextval('player_skill_state_v2_seq') PRIMARY KEY,
@@ -792,9 +799,10 @@ func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
 	}
 }
 
-// TestRunLUSRV2Shadow_Phase4_OffByDefault vérifie que sans le flag,
-// les autres modes ne sont PAS modifiés.
-func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
+// TestRunLUSRV2Shadow_Phase4_ExplicitlyOff vérifie qu'avec le flag explicitement
+// désactivé ("0"), les autres modes ne sont PAS modifiés. (Le cross-mode leak est
+// désormais ON par défaut — décision produit 2026-05-28.)
+func TestRunLUSRV2Shadow_Phase4_ExplicitlyOff(t *testing.T) {
 	origEnabled := os.Getenv(lusrV2EnvFlag)
 	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
 	t.Cleanup(func() {
@@ -802,7 +810,7 @@ func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
 		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
 	})
 	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrModeCouplingEnvFlag, "") // explicitement off
+	_ = os.Setenv(lusrModeCouplingEnvFlag, "0") // explicitement désactivé
 
 	db := openShadowTestDB(t)
 	repo := duckdb.NewSkillV2Repo(db)
@@ -1107,5 +1115,77 @@ func TestRunLUSRV2Shadow_Canonical_RatingDelta(t *testing.T) {
 	}
 	if d2 := readDelta("m2"); !d2.Valid {
 		t.Error("m2 (2e match) : rating_delta NULL, attendu une valeur (= rating - précédent)")
+	}
+}
+
+// TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit (Sprint 2.A) : un joueur qui
+// quitte alors que son équipe MENAIT (mais perd le match) doit subir la pénalité
+// FORTE (unrelated) — pas la pénalité modérée du fallback outcome-final (perte).
+// On compare avec timeline de frags (menait au quit) vs sans timeline (fallback).
+func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
+	orig := os.Getenv(lusrV2EnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, orig) })
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+
+	start := time.Date(2025, 7, 1, 12, 0, 0, 0, time.UTC)
+	quitTime := start.Add(60 * time.Second) // owner part à 60s
+
+	runQuit := func(withTimeline bool) float64 {
+		db := openShadowTestDB(t)
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+			VALUES ('m_quit', ?, ?, 'Slayer', FALSE, FALSE, 600)`, start, start); err != nil {
+			t.Fatalf("insert match_registry: %v", err)
+		}
+		// owner (team0) quitte ; team0 PERD (outcome 3) vs team1 (2). Pas de counts.
+		if _, err := db.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, left_in_progress, last_leave_time)
+			VALUES ('m_quit', 'owner', 0, 3, TRUE, ?)`, quitTime); err != nil {
+			t.Fatalf("insert owner: %v", err)
+		}
+		for _, q := range []struct {
+			xuid          string
+			team, outcome int
+		}{{"teammate", 0, 3}, {"opp1", 1, 2}, {"opp2", 1, 2}} {
+			if _, err := db.Exec(`INSERT INTO match_participants
+				(match_id, xuid, team_id, outcome) VALUES ('m_quit', ?, ?, ?)`,
+				q.xuid, q.team, q.outcome); err != nil {
+				t.Fatalf("insert participant: %v", err)
+			}
+		}
+		if withTimeline {
+			// Au moment du quit (60000ms) team0 mène 3-1.
+			for _, f := range []struct {
+				killer string
+				tms    int
+			}{{"owner", 10000}, {"teammate", 20000}, {"owner", 30000}, {"opp1", 15000}} {
+				if _, err := db.Exec(`INSERT INTO killer_victim_pairs
+					(match_id, killer_xuid, victim_xuid, kill_count, time_ms)
+					VALUES ('m_quit', ?, 'victim', 1, ?)`, f.killer, f.tms); err != nil {
+					t.Fatalf("insert frag: %v", err)
+				}
+			}
+		}
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+			t.Fatalf("RunLUSRV2Shadow: %v", err)
+		}
+		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
+		if err != nil || st == nil {
+			t.Fatalf("LoadState owner: %v", err)
+		}
+		return st.Mu
+	}
+
+	muWithTimeline := runQuit(true) // menait au quit → unrelated (2.5)
+	muFallback := runQuit(false)    // pas de timeline → fallback outcome (Loss → related 1.0)
+
+	if !(muWithTimeline < muFallback) {
+		t.Errorf("menait au quit → pénalité forte → μ plus bas : withTimeline=%v doit < fallback=%v",
+			muWithTimeline, muFallback)
+	}
+	// Écart attendu = DefaultQuitDeltaUnrelated - DefaultQuitDeltaRelated = 2.5 - 1.0 = 1.5
+	// (appliqué post-EP, EP identique entre les 2 runs).
+	if diff := muFallback - muWithTimeline; diff < 1.49 || diff > 1.51 {
+		t.Errorf("écart de pénalité attendu ≈ 1.5, got %v", diff)
 	}
 }

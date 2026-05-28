@@ -49896,3 +49896,28 @@ Le CLI `cmd/lusr_v2_ttt_batch` imprimait un "RAPPEL Phase 5.B — wiring shadow 
 - `skillv2`/`os`/`fmt` toujours utilisés ailleurs → aucun import orphelin. Build + vet clean.
 
 **Conclusion** : enchaînement 2.A→2.B→3.A→3.B + hygiène terminé. 2.A abandonné (donnée absente), 3.A livré en prototype. Reste : bascule prod (Sprint Final) + follow-ups prod-only (activation flags squad/coupling, TTT couplé).
+
+## [2026-05-28] feat(lusr-v2): 2.A RÉOUVERT + implémenté + activation par défaut squad/cross-mode + décisions — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+**Déclencheur** : retours utilisateur. Corrections majeures de mes conclusions précédentes.
+
+**1. 2.A réouvert et implémenté (j'avais abandonné à tort)** : l'utilisateur a signalé que la donnée EXISTE — c'est le graphe "tug of war" de match-view (`killer_victim_pairs` : killer_xuid + time_ms relatif film, `analysis.ComputeTugOfWar`). Fiable 100% modes non-objectifs, signal suffisant sur objectifs. Implémenté :
+- `skill_v2/quit_context.go` (pur) : `InferQuitContext(frags, quitMs, quitterTeamID)` → Leading/Tied/Trailing (compte frags cumulés ≤ quitMs). + tests.
+- `skill_v2_quit_penalty.go` : `quitDeltaForContext` (trailing→related 1.0 ; leading/tied→unrelated 2.5) ; `buildCountInputs` prend `quitTimeline` et applique le contexte PAR quitter (fallback `quitDeltaForTeam` outcome-final si timeline absente) ; `loadQuitTimeline` (charge killer_victim_pairs, attribue par side) ; `hasAnyQuitter` (évite la requête si pas de quitter).
+- **HOOK ADAPTER T0** : `quitOffsetMs(leaveTime, filmStartUTC)` convertit le timestamp absolu de départ en ms repère-frags. Gros commentaire : le vrai T0 = `real_start_time` via adapter titre-spécifique, NON implémenté (on utilise start_time_utc, correct pour Halo) — c'est le point d'insertion pour le collègue.
+- Wiring : `processOneShadowMatch` charge la timeline (si quitter) → `applyMatchToSkillV2` (param `qt`) → `buildCountInputs`.
+- E2E `TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit` : quit en menant mais défaite → pénalité 2.5 vs fallback 1.0 (écart exact 1.5).
+
+**2. Squad (1.C) + cross-mode (2.B) activés PAR DÉFAUT** (décision produit) : `IsLUSRV2SquadOffsetEnabled` et `IsLUSRV2ModeCouplingEnabled` retournent true sauf "0"/"false"/"no". NB : squad sans effet tant que les offsets ne sont pas peuplés par le CLI (no-op). Cross-mode utilise le scalaire 0.3 tant que la matrice n'est pas calculée. Test `Phase4_OffByDefault` reconverti en `Phase4_ExplicitlyOff` (flag="0").
+
+**3. 3.A** : décisions notées dans le roadmap — scope = joueurs avec BDD (tous, un par un) ; réponse fiabilité (limiter aux actifs = perte négligeable car lissage par-joueur indépendant) ; approche wiring (série des μ post-match comme observations, réécriture historique à trancher) = follow-up.
+
+**4. 1.A & 3.B** : notes "AFFICHAGE À DÉCIDER" ajoutées (les données sont en base, rien ne les affiche — l'utilisateur décide où/comment).
+
+**5. Checklist utilisateur** ajoutée en tête de `LUSR_V2_ROADMAP_SPRINTS.md` : à faire serveur (lancer ttt_batch + squad_estimate + replay + bascule Final), à décider (affichages, confirmer défauts ON, 3.A), à faire collègue (adapter T0), différé.
+
+**Résultats** : `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 133s) ; `go vet` + gofmt clean ; build OK.
+
+**Prochaine étape** : la bascule prod (Sprint Final) est entre les mains de l'utilisateur (étapes serveur). Côté code, tout Sprint 1-3 est livré.
