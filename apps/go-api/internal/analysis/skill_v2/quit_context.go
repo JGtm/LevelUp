@@ -29,6 +29,18 @@ const (
 	QuitWhileLeading
 )
 
+// String retourne un libellé lisible pour les logs.
+func (c QuitContext) String() string {
+	switch c {
+	case QuitWhileLeading:
+		return "leading"
+	case QuitWhileTrailing:
+		return "trailing"
+	default:
+		return "tied"
+	}
+}
+
 // TeamFrag : un frag horodaté attribué à une équipe. TimeMs est exprimé dans le
 // même repère que le quitMs passé à InferQuitContext (typiquement ms depuis le
 // début du film).

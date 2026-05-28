@@ -49921,3 +49921,22 @@ Le CLI `cmd/lusr_v2_ttt_batch` imprimait un "RAPPEL Phase 5.B — wiring shadow 
 **Résultats** : `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 133s) ; `go vet` + gofmt clean ; build OK.
 
 **Prochaine étape** : la bascule prod (Sprint Final) est entre les mains de l'utilisateur (étapes serveur). Côté code, tout Sprint 1-3 est livré.
+
+## [2026-05-28] chore(lusr-v2): vérification finale — logging + couverture tests — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+Vérification finale demandée par l'utilisateur (complétude + logging + tests).
+
+**Build/vet/tests** : `go build ./...` + `go vet ./...` = OK. `go test` PASS sur skill_v2, sync, persist, migration, duckdb.
+
+**Couverture** : `internal/analysis/skill_v2` (cœur logique pur LUSR v2) = **89,5%**. Par fonction : predict/hyperparams/squad/mode_correlation_matrix/ttt/quit_context quasi tous 100% (quelques branches dégénérées défensives à 75-93%). sync 43,7%, persist 32,6%, migration 24,7%, duckdb 18,3% (gros packages largement legacy ; les ajouts LUSR v2 y sont couverts par E2E).
+
+**Améliorations apportées** :
+- Logging quit-context (2.A) renforcé : `rows.Err()` loggé séparément, debug "timeline chargée"/"aucun frag", debug "quit-context appliqué" par quitter (context leading/tied/trailing + delta) → utile pour valider 2.A en prod. `QuitContext.String()` ajouté (+ test).
+- `ctx` propagé à `buildCountInputs`/`quitBaseDelta` pour permettre ces logs.
+- Tests ajoutés : `TestDefaultOnFlags` (squad + cross-mode ON par défaut, off sur "0"/"false"/"no"), `TestQuitContext_String`.
+
+**Inventaire logging LUSR v2** (couche sync) : INFO aux bornes de run (shadow/sentinel terminé), WARN sur tous les chemins d'erreur/fallback (LoadState, apply, write canonical, LoadHyperparams ×2, LoadSquadOffsets, frags quit ×2, rating précédent, cross-mode leak, playerDB nil), DEBUG sur chaque décision par-match (hyperparams/squad/quit-context/cross-mode appliqués). 5 compteurs expvar `levelup.lusr_v2.*`.
+
+**Conclusion** : code LUSR v2 (Sprints 1-3 + 2.A) complet, testé, loggé. Reste opérationnel/décisionnel côté utilisateur (cf. checklist roadmap).
