@@ -1,3 +1,31 @@
+## [2026-05-29] fix(make-dev,home): make dev débloqué (binaire tronqué + node_modules) + home 500 (season_id lu sur la mauvaise table)
+
+**Statut** : Complété (branche `feat/match-timeline-t0`). NON commité (en attente d'autorisation). make dev tourne ; home vérifiée 200 + rendu Chrome complet.
+
+**Contexte — make dev cassé (2 erreurs)** :
+1. `apps/go-api/tmp/server.exe` = 1 Mo **tronqué** (écriture interrompue : header PE complet/22 sections mais image coupée → ERROR_BAD_EXE_FORMAT « pas une application valide pour cette plateforme »).
+2. `node_modules` **désync** : `rollup-plugin-visualizer` (+37 pkgs) déclarés dans package.json mais absents du disque → Vite `ERR_MODULE_NOT_FOUND`, dev server KO.
+
+**Fix make dev** : rebuild Go propre (`go build` CGO → binaire 110 Mo valide ; air le régénère correctement ensuite) ; `npm install` (38 pkgs ; réconcilie aussi `apps/web/package-lock.json`, −48 lignes). Les 2 serveurs démarrent (API 127.0.0.1:8000 + Vite localhost:5173 sur ::1).
+
+**Finding (vérif Chrome)** : `GET /api/v1/players/{j}/pages/home` → 500 pour TOUS les joueurs. Cause : `loadSkillRanksForMatches` (player_matches_repo.go) sélectionnait `season_id` + `measurement_matches_remaining` depuis `match_skill_rank` — colonnes **inexistantes** sur cette table (ni schéma prod `playerSchemaSQL`, ni write-path). Régression de la branche : commit `4646defe4` (« graphes progression CSR/LUSR ») a câblé la lecture + le fixture de test mais a oublié le schéma prod. CI verte à cause du **drift fixture↔prod** (le fixture de test créait match_skill_rank AVEC ces 2 colonnes).
+
+**Décision (option A, choisie par l'utilisateur — single source of truth)** : ces champs vivent dans `match_csrs` (shared DB), clé (match_id, xuid).
+- Nouveau loader `loadMatchCSRMetaForMatches` (query `match_csrs` shared + QUALIFY latest par match) + merge Go (étape 3b du split) ; réutilise `projectSkillSnapshot`/`canonical.SkillSnapshot` déjà en place.
+- Retrait de season_id/measurement de la query/scan/struct `match_skill_rank`.
+- Fixtures : `match_csrs` seedé dans `seedPlayerSchema`, fixture `match_skill_rank` réaligné sur le schéma prod (drift supprimé), INSERT positionnels m1/m2 15→13 valeurs.
+- Sibling même bug : `csr_coverage_repo.go` lisait aussi `measurement_matches_remaining` depuis match_skill_rank (non-fatal, erreur avalée → compteurs à 0) → logique basée sur `tier` (qui existe). La query renvoie désormais de vrais comptes.
+- 0 migration, 0 backfill, historique complet immédiatement.
+
+**Résultats observés** : home 200 pour Chocoboflor/Madina97294/JGtm (curl + Chrome : rendu complet, plus d'« Accueil indisponible » ; toutes les routes API 200). `go build` CGO OK, `go vet` clean, gofmt clean. Suite core non-CGO (domain/analysis/contracttest) verte. `TestPlayerMatchesRepo*` integration verts. Suite intégration duckdb complète : 1 seul échec = `TestNoUnauthorizedSharedSocialMention` — **pré-existant et hors sujet** (sentinel ADR 0021 ; `types.gen.go:1522` contient un commentaire généré `shared_social.player_records` depuis le commit `1cf192f43`, whitelist non mise à jour ; fichier non touché par ce fix).
+
+**Restes signalés (NON corrigés)** :
+1. Sentinel rouge pré-existant : whitelister `internal/api/gen/types.gen.go` dans `sharedSocialFilesWhitelist` (mention = doc-comment généré, pas un site d'écriture), OU retirer « shared_social » du commentaire de schéma dans openapi.yaml.
+2. Warnings React HTML pré-existants sur la home : `<button>` imbriqué (HomeSessionCarousel + InfoTooltip) et `<div>` dans `<p>` (InfoTooltip) → hydration warnings dev, non bloquants.
+3. `apps/web/package-lock.json` modifié par `npm install` (réconciliation) — à garder/committer.
+
+**Prochaine étape** : autorisation de commit (règle ask-before-commit) ; arbitrer les restes 1-3.
+
 ## [2026-05-29] refactor(web): migration types — FINDING bloquant : le contrat OpenAPI est sous-spécifié (shim de masse abandonné)
 
 **Statut** : Expérience de calibrage menée + revertée. Conclusion qui REDÉFINIT le chantier. Batch 1 (7 shims) conservé.

@@ -238,8 +238,18 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			match_id VARCHAR PRIMARY KEY, rating_type VARCHAR, rating_value DOUBLE,
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
-			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ,
-			season_id VARCHAR, measurement_matches_remaining INTEGER)`,
+			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+		// match_csrs (shared, append-only) : CSR par match/participant — source
+		// unique de season_id + measurement_matches_remaining (cf.
+		// loadMatchCSRMetaForMatches). Ces colonnes ne sont PAS sur
+		// match_skill_rank (ni en prod : schema.go playerSchemaSQL).
+		`CREATE TABLE shared.match_csrs (
+			id BIGINT, match_id VARCHAR NOT NULL, xuid VARCHAR NOT NULL,
+			rating_type VARCHAR DEFAULT 'CSR', rating_value FLOAT,
+			tier VARCHAR, sub_tier SMALLINT, tier_label VARCHAR, rating_delta FLOAT,
+			measurement_matches_remaining INTEGER DEFAULT 0, season_id VARCHAR,
+			written_at TIMESTAMP DEFAULT now())`,
+		`CREATE VIEW match_csrs AS SELECT * FROM shared.match_csrs`,
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (
@@ -313,10 +323,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			[]interface{}{25, 5000, "2025-01-10 12:00:00+00",
 				"Platinum 1", "Platinum", 10000, 50000, false, "Progression/RewardTracks/CareerRanks/platinum1-adornment.png", "JGTM", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Nameplates/test-banner.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/images/file/progression/Emblems/test-emblem.png", "https://gamecms-hacs.svc.halowaypoint.com/hi/Waypoint/file/images/backdrops/test-backdrop.png"}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "s1", nil}},
-		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "s1", nil}},
+		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m1", "CSR", 1250.5, 50.0, "Gold", "Or", 3, "Gold 3", nil, "ranked", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00", "2025-01-10 14:00:00+00"}},
+		{`INSERT INTO match_skill_rank VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			[]interface{}{"m2", "LUSR", 1750.0, 40.0, "Platinum", "Platine", 5, "Platinum V", 15.0, "social", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00", "2025-01-11 14:00:00+00"}},
 		{`INSERT INTO match_citations VALUES (?,?,?)`,
 			[]interface{}{"m1", "killing_spree", 3}},
 		{`INSERT INTO media_files (file_path,file_name,kind,mtime,status) VALUES (?,?,?,?,?)`,
