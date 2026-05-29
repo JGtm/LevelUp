@@ -38,6 +38,11 @@ const SAMPLE_FULL: ExplorerTargetProfile['sample_stats'] = {
   headshot_rate: 0.36,
   offensive_conversion: 1.2,
   defensive_resistance: 1.3,
+  kills_per_min: 1.1,
+  deaths_per_min: 0.45,
+  assists_per_min: 0.33,
+  avg_personal_score: 1850,
+  perfect_kills: 6,
 }
 
 const IDENTITY_FULL: ExplorerTargetProfile['identity'] = {

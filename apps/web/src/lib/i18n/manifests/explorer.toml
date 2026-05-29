@@ -581,11 +581,11 @@ fr = "Parties"
 en = "Matches"
 
 [explorer.target_profile.label_kda]
-fr = "KDA"
+fr = "FDA"
 en = "KDA"
 
 [explorer.target_profile.label_kdr]
-fr = "K/D"
+fr = "F/D"
 en = "K/D"
 
 [explorer.target_profile.label_win_rate]
@@ -601,27 +601,19 @@ fr = "Dégâts/partie"
 en = "Damage/game"
 
 [explorer.target_profile.label_headshot_rate]
-fr = "Headshots"
+fr = "Tirs à la tête"
 en = "Headshots"
-
-[explorer.target_profile.label_medals]
-fr = "Médailles"
-en = "Medals"
-
-[explorer.target_profile.label_medals_value]
-fr = "{total} ({unique} uniques)"
-en = "{total} ({unique} unique)"
 
 [explorer.target_profile.label_combat_yield]
 fr = "Rendement combat"
 en = "Combat yield"
 
 [explorer.target_profile.label_kill_types]
-fr = "Répartition des kills"
+fr = "Répartition des frags"
 en = "Kill types"
 
 [explorer.target_profile.kill_type_headshot]
-fr = "Headshots"
+fr = "Tirs à la tête"
 en = "Headshots"
 
 [explorer.target_profile.kill_type_melee]
@@ -643,6 +635,62 @@ en = "Other"
 [explorer.target_profile.value_unavailable]
 fr = "—"
 en = "—"
+
+[explorer.target_profile.label_perfect_kills]
+fr = "Frags parfaits"
+en = "Perfect kills"
+
+[explorer.target_profile.label_avg_score]
+fr = "Score moyen"
+en = "Avg score"
+
+[explorer.target_profile.cadence_per_match]
+fr = "Par match"
+en = "Per match"
+
+[explorer.target_profile.cadence_per_minute]
+fr = "Par minute"
+en = "Per minute"
+
+[explorer.target_profile.cadence_frags]
+fr = "Frags"
+en = "Kills"
+
+[explorer.target_profile.cadence_deaths]
+fr = "Morts"
+en = "Deaths"
+
+[explorer.target_profile.cadence_assists]
+fr = "Assists"
+en = "Assists"
+
+[explorer.target_profile.yield_offensive]
+fr = "Offensif"
+en = "Offensive"
+
+[explorer.target_profile.yield_defensive]
+fr = "Défensif"
+en = "Defensive"
+
+[explorer.target_profile.yield_dmg_per_kill]
+fr = "{n} dmg/frag"
+en = "{n} dmg/kill"
+
+[explorer.target_profile.yield_dmg_per_death]
+fr = "{n} dmg/mort"
+en = "{n} dmg/death"
+
+[explorer.target_profile.outcome_wins]
+fr = "Victoires"
+en = "Wins"
+
+[explorer.target_profile.outcome_draws]
+fr = "Nuls"
+en = "Draws"
+
+[explorer.target_profile.outcome_losses]
+fr = "Défaites"
+en = "Losses"
 
 # ─── Tableau de matchs : expander 10 → 20 ──────────────────────────────────
 
