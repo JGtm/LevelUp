@@ -1,3 +1,57 @@
+## [2026-05-29] chore: Cleanup knip phase 2 — charts leftovers + quick wins + dette lint
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
+
+**Contexte** : suite du cleanup knip (P0-P3 déjà livré). Traitement en autonomie des items « reste hors scope + charts isolés », même méthode (vérifier le câblage des pages avant suppression).
+
+**Décisions techniques majeures** :
+- **6 charts leftovers supprimés** après lecture de la page parente — remplaçant actif identifié pour chacun : `StreakBadge`→`StreakDashboard`, `CareerLusrCards`→`CareerRankingBlock`/`CareerChartsSection`, `HomeOutcomeBar`→`OutcomeSequenceTape`, `WinRateVsHistoryChart`→`WinRateVsHistoryBulletChart`, `TimeseriesCorrelationScatter`+`TimeseriesOutcomesOverTime`→retirés au rework timeseries (zéro import). `git log` confirme : tous issus d'anciens commits de feature, orphelinisés par refontes — pas du WIP.
+- **P4** : `MatchNavigation` (alias rétrocompat de `MatchNavigationBar`, migration terminée) supprimé. `formatKDA` GARDÉ — alias domaine de `formatRatio`, utilisé par `PalmaresRelationsPage` + testé (le flag knip « duplicate » est informatif, pas un bug).
+- **react-query-devtools** : câblé en dev-only dans `providers` (`import.meta.env.DEV && <ReactQueryDevtools/>`) plutôt que supprimé — transforme la dep « inutilisée » en outil, tree-shaké en prod.
+- **Dette lint pré-existante résolue** :
+  - cross-feature 11→0 : 8 paires durables (pattern agrégateur, cohérent avec le précédent de l'allowlist) légitimées dans `ALLOWED_CROSS_IMPORTS`.
+  - faux positif CSR/LUSR : `lint-no-hardcoded-fields.mjs` étendu pour skip les opérations de collection (`.has`/`.includes`/`.get('X')`), comme il skippait déjà `=== 'X'`. Fix général, pas un whitelist de fichier.
+- **knip config** minimisée (entries auto-détectées par plugins, ignores redondants retirés).
+- **Ratchet code mort** : `tools/knip-ratchet.mjs` posé (plafonds files=29 / exports=87 / types=83, échec si dépassé, branché en pre-push). Même esprit que les ratchets cross-feature/couleurs existants. Vérifié : passe à l'état courant, bloque une régression simulée.
+- **14 hooks `queries.ts` orphelins investigués 1-par-1** : 12 GARDÉS (WIP/phasé/intentionnel — PlayerProfile ADR 0015, Prestige ADR 0005, setup en cours de réécriture, prefetch/logout/cache-invalidation non câblés) ; **2 superseded retirés** : `useBattlePass`→`useSeasonPassPreview`, `useMatchNeighbors`→`useMatchNeighborsResolved` (+ import de type orphelin + mock obsolète `MatchHeader.test.tsx` nettoyés). Reste 87 exports / 83 types en backlog, désormais sous ratchet.
+
+**Résultats observés** : `tsc -b` ✓, `vite build` ✓, 3 linters custom ✓ (cross-feature 0, fields 0, colors 0), knip deps clean (react-query-devtools résolu).
+
+**Conclusion** : tous les items actionnables sûrs livrés + ratchet en place pour empêcher toute régression. Reste = 87 exports / 83 types (backlog itératif, gelé sous ratchet) + décision utilisateur sur les orphelins gardés (squad/v2, SynthesisCombatProfileSection, ChallengesCarousel, prefetch, feature-flags, App.tsx, i18n générés).
+
+## [2026-05-29] feat: Onboarding premier lancement — boot mkdir + extraction prebuilt + état halo_linked_no_profile
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`, à la demande de l'utilisateur sur la branche courante)
+
+**Contexte** : exécution de `.ai/PLAN_ONBOARDING_WIZARD.md`. L'exploration a invalidé 2 des 4 points du plan :
+- **#1 chemins périmés** : le plan visait `data/warehouse/` + `pr.PlayerBaseDir()` (inexistant). Le code utilise le schéma multi-titre `data/titles/{slug}/warehouse/` via `PathResolver.WarehouseDir(slug)`.
+- **#2/#4 écran "Azure manquant" abandonnés** : prémisse fausse. `cfg.AzureClientID` n'existe pas ; le code auth a un client public intégré (`auth.LevelUpClientID = e1cb35ab-…`) + provider SISU natif → le Device Code Flow marche **sans** config Azure. Un écran de blocage aurait pénalisé inutilement un clone frais. Confirmé avec l'utilisateur (choix "Non, sauter").
+
+**Décisions techniques majeures** :
+- **#1 `ensureWarehouseDir(pr, slug)`** (`cmd/server/main.go`) appelé avant `runMigrations`. Seul le dossier warehouse est nécessaire : `OpenReadWrite` crée le fichier `.duckdb` mais pas le dossier parent (preuve : `initGlobalXuidAliasesSchema` MkdirAll explicitement avant). Les autres dossiers runtime (players, sessions, cache, WAL, watcher_tokens) sont déjà auto-créés par leurs consommateurs (`profile_service`, `session.NewStore`, `jobs.Store`, `persist.BatchQueue`, `MultiUserTokenStore`) — pas besoin de les recréer au boot.
+- **#3 `resolveSetupState` renvoie enfin `halo_linked_no_profile`** : le bug réel. Le Device Code Flow finit en `authorized` (pas `provisioned`, cf. `auth.go:137-144` qui pose `sess.LinkedHaloIdentity` sans auto-provisionner). Avant le fix, session liée + 0 joueur → `no_halo_link` → le wizard rebouclait sur StepDeviceCode au lieu d'afficher StepPlayer. Signature passée à `(ctx, sess, players)` ; retour `halo_linked_no_profile` si `ResolveLinkedIdentity(sess) != nil`. Le contrat était déjà câblé partout ailleurs (frontend `SetupPage`/`appShellStore`/`types.ts`, `openapi.yaml`, `api/gen/types.gen.go`, SPEC_V7_BOOTSTRAP_CONTRACT) — seul le backend ne l'émettait jamais.
+
+**Tests de simulation (mock du flow sans login Microsoft SSO)** :
+- `cmd/server/boot_dirs_test.go::TestEnsureWarehouseDir_FreshCloneBoots` (tag `//go:build cgo`) — 2 sous-cas sur `t.TempDir()` (clone frais) :
+  - `missing_warehouse_dir_fails` : sans le dossier, `runMigrations` retourne une erreur → **prouve empiriquement que `OpenReadWrite` ne crée pas le dossier parent** (le fix est nécessaire, pas un no-op).
+  - `ensure_then_migrate_ok` : après `ensureWarehouseDir`, les 43 migrations shared + metadata + 13 social s'appliquent et les `.duckdb` sont créés.
+- `internal/service/bootstrap_service_test.go::TestBuild_HaloLinkedNoProfile` — teste `Build()` complet (pas juste `resolveSetupState`) avec une session post-SSO mockée (identité liée, 0 joueur) → `setup_state=halo_linked_no_profile`, `setup_required=true`, identité propagée.
+
+**Résultats observés** :
+- `go build` + `go vet ./cmd/server/ ./internal/service/` ✅ (exit 0).
+- `go test ./cmd/server/ ./internal/service/` ✅ — packages complets, aucune régression (les tests legacy `migrateLegacyAuthTokensAtBoot` passent toujours).
+- Observation clone frais (non bloquant, **pré-existant, hors scope**) : le backfill `shared_seed_tier_boundaries_v2` log un WARN `Table lusr_hyperparams_v2 does not exist` — le seed LUSR v2 ne s'applique pas sur un clone vierge (quirk d'ordre de migration). Le cycle migration se termine quand même (`applied=43/43`), boot OK.
+
+**Itération 2 (2026-05-29) — extraction prebuilt + cadrage LUSR v2** :
+- **Constat `metadata-prebuilt.zip`** : il est tracké git (3,4 MB, contient un `metadata.duckdb` de 42 MB) mais **rien ne le décompressait** (ni Go, ni Makefile, ni script, ni doc) — orphelin. Sur clone frais, les référentiels non seedés par migration (career_ranks, playlists, citations) restaient vides jusqu'au 1er fetch live.
+- **Fix `extractPrebuiltMetadataIfAbsent`** (`cmd/server/prebuilt_metadata.go`) appelé après `ensureWarehouseDir`, avant `runMigrations` : si `metadata.duckdb` absent + zip présent → `archive/zip` extrait l'entrée vers la base (write-to-temp + rename atomique). **No-op si la base existe déjà** (jamais écrasée — exigence utilisateur) ou si le zip est absent. Non-fatal (Warn) : extraction ratée ⇒ migrations créent une base vide, boot OK. Les migrations tournent ensuite sur la base extraite (idempotent, applique tout schéma > 2026-05-20).
+- Test `cmd/server/prebuilt_metadata_test.go` : 3 cas (absent→extrait / existant→non écrasé / zip absent→no-op) avec faux zip généré en test.
+- **LUSR v2 — différé post-prod (décision utilisateur)** : LUSR v2 pas en prod aujourd'hui → ni le fix d'ordre du seed statique, ni la ré-estimation empirique post-sync ne sont implémentés maintenant. Les deux sont documentés comme tâches post-prod dans `.ai/LUSR_V2_ROADMAP_SPRINTS.md` (section "Reste à faire / différé"). Distinction clé clarifiée avec l'utilisateur : le seed `shared_seed_tier_boundaries_v2` est **statique** (doit tourner immédiatement, pas gated sur des matchs ; le WARN = bug d'ordre alphabétique de fichiers) ; seule la **ré-estimation empirique** (`ttt_tau_empirical`…, via `cmd/lusr_v2_ttt_batch`) est data-dépendante.
+
+**Résultats itération 2** : `go build` + `go vet ./cmd/server/` ✅ ; `go test ./cmd/server/` package complet ✅ (extraction 3/3 + boot clone-frais 2/2 + legacy auth tokens, aucune régression).
+
+**Conclusion** : clone frais validé par simulation (boot sans crash + référentiels prebuilt extraits + onboarding post-SSO routé vers création de profil). Le seul reste = test manuel e2e avec vrai SSO Microsoft (non automatisable). LUSR v2 cadré en post-prod dans son roadmap.
+
 ## [2026-05-29] chore: Cleanup knip P0-P3 (vérif routing avant suppression)
 
 **Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
