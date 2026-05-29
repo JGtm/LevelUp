@@ -76,5 +76,4 @@ pre-push:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/govulncheck.sh
 
-    deploy-dry-run:
-      run: bash scripts/test_deploy_dry_run.sh
+    # deploy-dry-run: script scripts/test_deploy_dry_run.sh non encore créé
