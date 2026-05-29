@@ -49778,3 +49778,30 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste pour Phase 1 (non bloquant)** : aucun. Le câblage couvre les 3 consommateurs identifiés par `.ai/AUDIT_T0_IMPACT.md`. `time_played_seconds` + fix aberration `AvgLifeSeconds` = Phase 4 (indépendante). Activation T0 réel = Phase 3 (après Phase 2 storage/backfill).
 
 **Prochaine étape** : Phase 2 (migration `real_start_time` repurpose + ComputeT0 + backfill) — CHECKPOINT utilisateur requis avant migration DB et backfill --commit.
+
+---
+
+## [2026-05-29] Match Timeline T0 — Phase 2 (infra) + découverte bug TZ first_joined_time
+
+**Statut** : Code Phase 2 livré. Backfill EXÉCUTION reportée (option 2 validée user).
+
+**Livré (infrastructure, committé)** :
+- `timeline.ComputeT0(parts, startUTC) (t0Ms, T0Quality)` — pur, filet multi-joueurs (exclut bots via xuid non-numérique, ≥2 sources spread ≤2s → min, spread >2s → médiane, rejets negative/suspicious_high/no_data). 9 tests dont réf Fortress (27931ms).
+- Migration `shared_add_t0_quality` : colonne `t0_quality` + repurpose sémantique `real_start_time` = début gameplay UTC (additive, IF NOT EXISTS).
+- `cmd/backfill_t0` (dry-run + commit). **Non exécuté.**
+
+**Dry-run (lecture seule) sur 1724 matchs** : 760 `ok` (44%, médiane T0=28s), 964 `suspicious_high` (T0 > 120s).
+
+**DÉCOUVERTE bug données (non-évidente)** : `match_participants.first_joined_time` est décalé de l'offset Europe/Paris (+1h CET / +2h CEST) pour ~964 matchs. Preuve : `first_joined` tombe APRÈS `end_time` (impossible). Le code ACTUEL est SAIN (vérifié empiriquement : `parseISO` force `.UTC()` ligne 236 transforms_helpers ; le driver DuckDB préserve l'instant UTC en TIMESTAMPTZ — test isolé concluant). Donc le décalage est un HÉRITAGE de données (ancien chemin d'écriture, non isolé à la ligne) — PAS un bug actif. Deux matchs du même mois sont l'un OK l'autre décalé → dépend du chemin d'écriture, pas de la date.
+
+**Impact** : casse aussi le quit-ordering LUSR v2 (`skill_v2_shadow.go` lit `last_leave_time` pour ordonner les quitters), pas seulement T0.
+
+**Décision (option 2)** : NE PAS bricoler dans le backfill T0. Reporter à une passe data-quality dédiée qui fera, en une fois et minutieusement :
+1. `ComputeT0` mod-heure (neutralise le décalage TZ entier — robuste car countdown ~28s << 1h) → récupère les ~964 pour T0.
+2. Backfill de re-normalisation `first_joined_time` / `last_leave_time` (`-= offset Europe/Paris` sur les lignes où first_joined > end_time) → corrige LUSR.
+3. Wiring `ComputeT0` dans le sync engine post-sync.
+4. Exécution backfill_t0 --commit complet.
+
+**⚠️ DETTE PRIORITAIRE avant mise en prod** (cf. mémoire projet [data-quality-first-joined-tz]).
+
+**Prochaine étape** : passe data-quality dédiée (cf. ci-dessus). Phase 3 (activation T0 runtime) dépend de cette passe.
