@@ -97,6 +97,12 @@
 
 ---
 
+## [2026-05-29] chore(web,sessions): cleanup i18n — retrait de 10 clés session mortes
+
+**Statut** : Complété. Regen + typecheck (0) + 18 tests session-detail verts.
+
+10 clés `session.detail.*` sans aucun usage dans le code (confirmé par grep : présentes uniquement dans le manifeste généré) retirées de `session.toml` (190 → 180 clés) : les 6 rendues obsolètes par la Phase 1 (`selection_card`, `suggestion_title`, `suggested_compare_button`, `drawer_open`, `drawer_close`, `drawer_use_suggested`) + 4 mortes pré-existantes (`compare_show`, `compare_hide`, `compare_view_title`, `no_compare_description`). Regen via `build_i18n_manifests.mjs`. CONSERVÉES (encore utilisées) : `drawer_close_aria`, `drawer_title`, `drawer_prev/next_session`, `smart_selection`, `session_active/compared`, `no_compare_title`, `drawer_no_compare`.
+
 ## [2026-05-29] chore(sessions): vérif finale refonte session-detail — tests + logging confirmés
 
 **Statut** : Go/no-go OK. Refonte session-detail (anim + Phases 1-3) vérifiée de bout en bout.
