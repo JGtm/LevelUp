@@ -10,26 +10,39 @@
 # (pipes, $(), &&, quotes) vit donc dans un script dédié sous
 # scripts/git-hooks/lefthook/ appelé via `bash <script>`. Les `run` ne
 # contiennent que des tokens simples + le template {staged_files}.
+#
+# GRANULARITÉ DES STAGES :
+#   - pre-commit = checks RAPIDES et LOCAUX (fichiers stagés uniquement) :
+#     gofmt sur les fichiers stagés, marqueurs de conflit. Ne doit JAMAIS
+#     bloquer un commit sur de la dette située ailleurs dans l'arbre.
+#   - pre-push = checks COÛTEUX / SCAN D'ARBRE COMPLET : linters ratchet JS
+#     (cross-feature, hardcoded-fields/colors), golangci-lint (module entier),
+#     tests Go, govulncheck, deploy dry-run. C'est ici que la dette globale
+#     est gatée, avant que le code ne parte sur le remote / en CI.
 
 pre-commit:
   parallel: true
   commands:
 
-    # ── Go ────────────────────────────────────────────────────────────────────
-
+    # gofmt — scoped aux fichiers Go stagés (rapide, local)
     gofmt:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/gofmt.sh {staged_files}
 
+    # go vet — informatif, non bloquant (|| true dans le script)
     go-vet:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/go-vet.sh
 
-    golangci-lint:
-      glob: "apps/go-api/**/*.go"
-      run: bash scripts/git-hooks/lefthook/golangci-lint.sh
+    # Marqueurs de conflit dans le diff stagé (rapide, local)
+    check-merge-conflict:
+      run: bash scripts/git-hooks/lefthook/check-merge-conflict.sh
 
-    # ── TypeScript / React ────────────────────────────────────────────────────
+pre-push:
+  parallel: false
+  commands:
+
+    # ── Linters ratchet JS — scan d'arbre COMPLET (pas par fichier) ────────────
 
     lint-no-hardcoded-fields:
       glob: "apps/web/src/**/*.{ts,tsx}"
@@ -43,14 +56,11 @@ pre-commit:
       glob: "apps/web/src/**/*.{ts,tsx}"
       run: node tools/lint-cross-feature-imports.mjs
 
-    # ── Général ───────────────────────────────────────────────────────────────
+    # ── Go — lint module entier + tests + vulns ────────────────────────────────
 
-    check-merge-conflict:
-      run: bash scripts/git-hooks/lefthook/check-merge-conflict.sh
-
-pre-push:
-  parallel: false
-  commands:
+    golangci-lint:
+      glob: "apps/go-api/**/*.go"
+      run: bash scripts/git-hooks/lefthook/golangci-lint.sh
 
     go-test-short:
       glob: "apps/go-api/**/*.go"
