@@ -13,6 +13,8 @@ import { resolveToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
+import { sessionMatchAxisLabel } from './_shared'
+
 interface Props {
   title: string
   matches: SessionDetailMatchRow[]
@@ -32,19 +34,19 @@ export function SessionKDATimeline({ title, matches, height = 280 }: Props) {
         key: 'kills',
         labelKey: labelFor('kills'),
         colorToken: 'outcome-win',
-        datapoints: sorted.map((m) => ({ x: m.start_time, y: m.kills })),
+        datapoints: sorted.map((m, i) => ({ x: sessionMatchAxisLabel(i, m.map_name, m.pair_name), y: m.kills })),
       },
       {
         key: 'deaths',
         labelKey: labelFor('deaths'),
         colorToken: 'outcome-loss',
-        datapoints: sorted.map((m) => ({ x: m.start_time, y: m.deaths })),
+        datapoints: sorted.map((m, i) => ({ x: sessionMatchAxisLabel(i, m.map_name, m.pair_name), y: m.deaths })),
       },
       {
         key: 'assists',
         labelKey: labelFor('assists'),
         colorToken: 'outcome-draw',
-        datapoints: sorted.map((m) => ({ x: m.start_time, y: m.assists })),
+        datapoints: sorted.map((m, i) => ({ x: sessionMatchAxisLabel(i, m.map_name, m.pair_name), y: m.assists })),
       },
     ]
   }, [matches, fields])
@@ -57,12 +59,17 @@ export function SessionKDATimeline({ title, matches, height = 280 }: Props) {
     assists: resolveToken('outcome-draw'),
   }
 
+  // Axe X catégoriel : 1 étiquette par match "#N\nCarte" (façon page Escouade),
+  // intervalle clairsemé au-delà de 30 matchs pour éviter le chevauchement.
+  const xLabelInterval = matches.length > 30 ? Math.floor(matches.length / 12) : 0
+
   return (
     <TimeseriesLineChart
       title={title}
       series={series}
       height={height}
-      timeAxis
+      xAxisType="category"
+      xAxisLabelInterval={xLabelInterval}
       outcomeMarkers={false}
       seriesNameResolver={(s) => s.labelKey ?? s.key}
       seriesColorResolver={(s) => colorByKey[s.key]}

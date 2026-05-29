@@ -79,6 +79,10 @@ export interface TimeseriesLineChartProps {
    * cyclée par défaut quand un token CSS n'est pas chargé.
    */
   seriesColorResolver?: (s: ChartSeries<ChartPoint2D>, idx: number) => string | undefined
+  /** Rotation (degrés) des étiquettes de l'axe X. Default : aucune. */
+  xAxisLabelRotate?: number
+  /** ECharts `axisLabel.interval` pour l'axe X (0 = toutes les étiquettes). */
+  xAxisLabelInterval?: number
 }
 
 export function TimeseriesLineChart({
@@ -96,6 +100,8 @@ export function TimeseriesLineChart({
   smooth = false,
   xAxisLabelFormatter,
   seriesColorResolver,
+  xAxisLabelRotate,
+  xAxisLabelInterval,
 }: TimeseriesLineChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPoint2D>[]) =>
@@ -108,6 +114,8 @@ export function TimeseriesLineChart({
         smooth,
         xAxisLabelFormatter,
         seriesColorResolver,
+        xAxisLabelRotate,
+        xAxisLabelInterval,
       }),
     [
       timeAxis,
@@ -118,6 +126,8 @@ export function TimeseriesLineChart({
       smooth,
       xAxisLabelFormatter,
       seriesColorResolver,
+      xAxisLabelRotate,
+      xAxisLabelInterval,
     ],
   )
 
@@ -143,6 +153,8 @@ interface BuildOpts {
   smooth?: boolean
   xAxisLabelFormatter?: (value: number | string | Date) => string
   seriesColorResolver?: (s: ChartSeries<ChartPoint2D>, idx: number) => string | undefined
+  xAxisLabelRotate?: number
+  xAxisLabelInterval?: number
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -159,6 +171,8 @@ export function buildTimeseriesLineOption(
     smooth = false,
     xAxisLabelFormatter,
     seriesColorResolver,
+    xAxisLabelRotate,
+    xAxisLabelInterval,
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -216,10 +230,11 @@ export function buildTimeseriesLineOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const xAxis: Record<string, unknown> = { ...axis, type: resolvedAxisType }
-  if (xAxisLabelFormatter) {
-    xAxis.axisLabel = { ...axis.axisLabel, formatter: xAxisLabelFormatter }
-  }
+  const axisLabel: Record<string, unknown> = { ...(axis.axisLabel as Record<string, unknown>) }
+  if (xAxisLabelFormatter) axisLabel.formatter = xAxisLabelFormatter
+  if (xAxisLabelRotate != null) axisLabel.rotate = xAxisLabelRotate
+  if (xAxisLabelInterval != null) axisLabel.interval = xAxisLabelInterval
+  const xAxis: Record<string, unknown> = { ...axis, type: resolvedAxisType, axisLabel }
 
   return {
     backgroundColor: CHART_BG,
