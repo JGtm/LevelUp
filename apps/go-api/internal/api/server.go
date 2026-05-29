@@ -678,7 +678,7 @@ func NewRouter(
 				r.Post("/engagement/recompute_coefficients", eng.PostRecomputeCoefficients)
 			})
 
-			explorer := handlers.NewExplorerHandler(reg.ExplorerCtx, reg.MatchHistoryCtx)
+			explorer := handlers.NewExplorerHandler(reg.ExplorerCtxWithAuth, reg.MatchHistoryCtx)
 			r.Post("/pages/explorer/player-query", explorer.QueryPlayer)
 
 			// Sprint 9 : Sessions

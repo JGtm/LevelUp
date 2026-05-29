@@ -42,7 +42,7 @@ func (m *mockMatchHistoryForExplorer) ExportCSV(_ context.Context, _ domain.Matc
 }
 
 func newExplorerRouter(
-	explorerF handlers.ContextFactory[port.ExplorerService],
+	explorerF handlers.ExplorerAuthFactory,
 	matchHistF handlers.ContextFactory[port.MatchHistoryService],
 ) *chi.Mux {
 	r := chi.NewRouter()
@@ -56,11 +56,11 @@ func newExplorerRouter(
 
 func TestExplorerHandler_QueryPlayer_OK(t *testing.T) {
 	mock := &mockExplorerService{resp: domain.ExplorerPlayerQueryResponse{}}
-	explorerF := func(_ context.Context, slug string) (port.ExplorerService, string, string, error) {
+	explorerF := func(ctx context.Context, slug string) (port.ExplorerService, context.Context, string, string, error) {
 		if slug != testPlayerSlug {
-			return nil, "", "", errors.New("not found")
+			return nil, ctx, "", "", errors.New("not found")
 		}
-		return mock, testXUID, "gt", nil
+		return mock, ctx, testXUID, "gt", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
@@ -79,8 +79,8 @@ func TestExplorerHandler_QueryPlayer_OK(t *testing.T) {
 }
 
 func TestExplorerHandler_QueryPlayer_PlayerNotFound(t *testing.T) {
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return nil, "", "", errors.New("player_not_found")
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return nil, ctx, "", "", errors.New("player_not_found")
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
@@ -100,8 +100,8 @@ func TestExplorerHandler_QueryPlayer_PlayerNotFound(t *testing.T) {
 
 func TestExplorerHandler_QueryPlayer_MissingGamertag(t *testing.T) {
 	mock := &mockExplorerService{}
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return mock, testXUID, "gt", nil
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return mock, ctx, testXUID, "gt", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil
@@ -121,8 +121,8 @@ func TestExplorerHandler_QueryPlayer_MissingGamertag(t *testing.T) {
 
 func TestExplorerHandler_QueryPlayer_ServiceError(t *testing.T) {
 	mock := &mockExplorerService{err: errors.New("db_error")}
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return mock, testXUID, "gt", nil
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return mock, ctx, testXUID, "gt", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return &mockMatchHistoryForExplorer{}, testXUID, "gt", nil

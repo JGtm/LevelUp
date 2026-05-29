@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -20,6 +21,16 @@ import (
 
 // outcomeWin est le code de victoire (Halo Infinite outcome = 2).
 const outcomeWin = 2
+
+// explorerTargetLiveBudget plafonne la durée des fetchs live de l'encart
+// "Profil joueur cible" (identité live, stats carrière remote, privacy). Au-delà,
+// le contexte est annulé : les sous-sections non prêtes restent nil et la réponse
+// part avec ce qui est disponible (identité DB + sample stats locales). Même
+// philosophie que CareerLiveBudget côté home — la page ne doit jamais bloquer
+// 10s+ sur un fetch Halo lent. Un peu plus généreux car la carrière est le contenu
+// principal de cet encart. Le calcul local (sample stats) n'est PAS borné par ce
+// budget. Cf. plan explorer-target-profile-auth (volet C).
+const explorerTargetLiveBudget = 3 * time.Second
 
 // ExplorerTargetIdentityProvider abstrait le fetch de l'identité Spartan d'un
 // xuid arbitraire (live cache+merge ou DB-only). Implémenté en production par
@@ -161,7 +172,9 @@ func (s *ExplorerService) GetCommonMatches(
 		"xuid", s.xuid, "other_xuid", otherXUID,
 		"total", totalCount, "page", page, "badges", len(badges),
 		"heatmap_cells", len(activityHeatmap),
-		"target_profile_built", targetProfile != nil)
+		"target_profile_built", targetProfile != nil,
+		"auth_available", targetProfile != nil && targetProfile.AuthAvailable,
+		"career_served", targetProfile != nil && targetProfile.CareerStats != nil)
 
 	return domain.ExplorerPlayerQueryResponse{
 		TargetGamertag:  otherGamertag,
@@ -207,88 +220,30 @@ func (s *ExplorerService) buildTargetProfile(
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
-	// Goroutine 1 : identity Spartan — live si auth dispo, DB locale sinon.
-	g.Go(func() error {
-		if s.identityProvider == nil {
-			return nil
-		}
-		if !hasAuth {
-			identity = s.identityProvider.GetSpartanIdentityFromDBOnly(gctx, targetXUID)
-			return nil
-		}
-		id, idErr := s.identityProvider.GetSpartanIdentityFor(gctx, targetXUID)
-		if idErr != nil {
-			slog.WarnContext(gctx, "explorer_target_identity_failed",
-				"xuid", targetXUID, "err", idErr)
-			return nil
-		}
-		identity = id
-		return nil
-	})
+	// Budget de latence sur les fetchs live (identité/carrière/privacy). Le
+	// calcul local (sample stats) reste sur gctx, NON borné par ce budget.
+	liveCtx, cancelLive := context.WithTimeout(gctx, explorerTargetLiveBudget)
+	defer cancelLive()
 
-	// Goroutine 2 : stats carrière remote via PlayerStatsProvider.
-	g.Go(func() error {
-		if s.remoteStats == nil {
-			return nil
-		}
-		if !hasAuth {
-			slog.DebugContext(gctx, "explorer_target_career_skipped",
-				"xuid", targetXUID, "reason", "no_auth_tokens")
-			return nil
-		}
-		stats, rErr := s.remoteStats.FetchRemoteStats(gctx, targetGamertag, s.titleSlug)
-		if rErr != nil {
-			slog.WarnContext(gctx, "explorer_target_career_failed",
-				"gamertag", targetGamertag, "err", rErr)
-			return nil
-		}
-		careerStats = stats
-		return nil
-	})
-
-	// Goroutine 3 : privacy warning du target.
-	g.Go(func() error {
-		if s.privacyProvider == nil {
-			return nil
-		}
-		if !hasAuth {
-			return nil
-		}
-		info, pErr := s.privacyProvider.GetMatchPrivacy(gctx, targetXUID)
-		if pErr != nil {
-			slog.WarnContext(gctx, "explorer_target_privacy_failed",
-				"xuid", targetXUID, "err", pErr)
-			return nil
-		}
-		if info != nil {
-			privacy = domain.NewPrivacyWarning(*info)
-		}
-		return nil
-	})
-
-	// Goroutine 4 : sample stats (toujours calculé, indépendant des tokens).
-	g.Go(func() error {
-		matchIDs := extractCommonMatchIDs(rawMatches)
-		if len(matchIDs) == 0 {
-			return nil
-		}
-		agg, sErr := s.repo.GetParticipantStatsForMatches(gctx, targetXUID, matchIDs)
-		if sErr != nil {
-			slog.WarnContext(gctx, "explorer_target_sample_stats_failed",
-				"xuid", targetXUID, "err", sErr)
-			return nil
-		}
-		medals, mErr := s.repo.GetMedalCountsForMatches(gctx, targetXUID, matchIDs)
-		if mErr != nil {
-			slog.WarnContext(gctx, "explorer_target_medals_failed",
-				"xuid", targetXUID, "err", mErr)
-			// medals est nil → BuildSampleStats l'ignorera, ce n'est pas bloquant.
-		}
-		sampleStats = analysis.BuildSampleStats(agg, medals, len(matchIDs))
-		return nil
-	})
+	// 4 sources best-effort en parallèle : une source qui échoue/skip rend nil
+	// sans bloquer les autres (le front masque les sections nil).
+	g.Go(func() error { identity = s.fetchTargetIdentity(liveCtx, targetXUID, hasAuth); return nil })
+	g.Go(func() error { careerStats = s.fetchTargetCareer(liveCtx, targetGamertag, hasAuth); return nil })
+	g.Go(func() error { privacy = s.fetchTargetPrivacy(liveCtx, targetXUID, hasAuth); return nil })
+	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
 
 	_ = g.Wait()
+
+	// Observabilité : si le budget live a expiré, on a servi une réponse
+	// dégradée (sous-sections live potentiellement nil). On le trace pour
+	// distinguer "Halo lent → dégradation gracieuse" d'une vraie erreur.
+	if hasAuth && liveCtx.Err() == context.DeadlineExceeded {
+		slog.WarnContext(ctx, "explorer_target_live_budget_exceeded",
+			"xuid", targetXUID,
+			"budget", explorerTargetLiveBudget.String(),
+			"career_served", careerStats != nil,
+			"identity_served", identity != nil)
+	}
 
 	// On émet toujours un TargetProfile (même si toutes les sous-sections
 	// sont nil) parce que AuthAvailable porte une info utile au front.
@@ -299,6 +254,79 @@ func (s *ExplorerService) buildTargetProfile(
 		PrivacyWarning: privacy,
 		AuthAvailable:  hasAuth,
 	}
+}
+
+// fetchTargetIdentity charge l'identité Spartan du target : live si auth dispo,
+// DB locale sinon. Retourne nil si pas de provider ou en cas d'erreur (logguée).
+func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetXUID string, hasAuth bool) *domain.HomeSpartanIdentityRow {
+	if s.identityProvider == nil {
+		return nil
+	}
+	if !hasAuth {
+		return s.identityProvider.GetSpartanIdentityFromDBOnly(ctx, targetXUID)
+	}
+	id, err := s.identityProvider.GetSpartanIdentityFor(ctx, targetXUID)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_identity_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	return id
+}
+
+// fetchTargetCareer fetch les stats carrière remote du target (via le provider
+// décoré d'un cache). Skip silencieusement sans auth ; nil en cas d'erreur.
+func (s *ExplorerService) fetchTargetCareer(ctx context.Context, targetGamertag string, hasAuth bool) *domain.NormalizedPlayerStats {
+	if s.remoteStats == nil {
+		return nil
+	}
+	if !hasAuth {
+		slog.DebugContext(ctx, "explorer_target_career_skipped",
+			"gamertag", targetGamertag, "reason", "no_auth_tokens")
+		return nil
+	}
+	stats, err := s.remoteStats.FetchRemoteStats(ctx, targetGamertag, s.titleSlug)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_career_failed", "gamertag", targetGamertag, "err", err)
+		return nil
+	}
+	return stats
+}
+
+// fetchTargetPrivacy interroge la privacy du target. Skip sans auth ; nil en
+// cas d'erreur (logguée).
+func (s *ExplorerService) fetchTargetPrivacy(ctx context.Context, targetXUID string, hasAuth bool) *domain.MatchPrivacyWarning {
+	if s.privacyProvider == nil || !hasAuth {
+		return nil
+	}
+	info, err := s.privacyProvider.GetMatchPrivacy(ctx, targetXUID)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_privacy_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	if info == nil {
+		return nil
+	}
+	return domain.NewPrivacyWarning(*info)
+}
+
+// computeTargetSampleStats agrège les stats du target sur les matchs communs
+// (calcul local DuckDB, indépendant des tokens). nil si aucun match commun.
+func (s *ExplorerService) computeTargetSampleStats(ctx context.Context, targetXUID string, rawMatches []domain.CommonMatchRaw) *domain.ExplorerTargetSampleStats {
+	matchIDs := extractCommonMatchIDs(rawMatches)
+	if len(matchIDs) == 0 {
+		return nil
+	}
+	agg, err := s.repo.GetParticipantStatsForMatches(ctx, targetXUID, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_sample_stats_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	medals, mErr := s.repo.GetMedalCountsForMatches(ctx, targetXUID, matchIDs)
+	if mErr != nil {
+		slog.WarnContext(ctx, "explorer_target_medals_failed", "xuid", targetXUID, "err", mErr)
+		// medals est nil → BuildSampleStats l'ignorera, ce n'est pas bloquant.
+	}
+	return analysis.BuildSampleStats(agg, medals, len(matchIDs))
 }
 
 // extractCommonMatchIDs extrait la liste des match_id d'un slice de common matches.

@@ -4,6 +4,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -13,15 +14,21 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// ExplorerAuthFactory retourne un ExplorerService + contexte enrichi avec les
+// HaloTokens du propriétaire de la page. Même pattern que CompareAuthFactory :
+// le ctx enrichi doit être propagé au service pour que les fetchs live de
+// l'encart "Profil joueur cible" disposent des tokens (auth_available).
+type ExplorerAuthFactory func(ctx context.Context, slug string) (svc port.ExplorerService, enrichedCtx context.Context, xuid, gamertag string, err error)
+
 // ExplorerHandler gère les endpoints de l'Explorer.
 type ExplorerHandler struct {
-	newExplorerSvc  ContextFactory[port.ExplorerService]
+	newExplorerSvc  ExplorerAuthFactory
 	newMatchHistSvc ContextFactory[port.MatchHistoryService]
 }
 
 // NewExplorerHandler crée un ExplorerHandler.
 func NewExplorerHandler(
-	newExplorerSvc ContextFactory[port.ExplorerService],
+	newExplorerSvc ExplorerAuthFactory,
 	newMatchHistSvc ContextFactory[port.MatchHistoryService],
 ) *ExplorerHandler {
 	return &ExplorerHandler{
@@ -35,7 +42,7 @@ func NewExplorerHandler(
 // Body JSON : { "target_gamertag": "...", "limit": 50 }
 func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "player_slug")
-	svc, _, _, err := h.newExplorerSvc(r.Context(), slug)
+	svc, enrichedCtx, _, _, err := h.newExplorerSvc(r.Context(), slug)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
@@ -51,7 +58,7 @@ func (h *ExplorerHandler) QueryPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := svc.GetCommonMatches(r.Context(), req.TargetGamertag, req.Page)
+	resp, err := svc.GetCommonMatches(enrichedCtx, req.TargetGamertag, req.Page)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "explorer_error", err.Error())
 		return

@@ -230,11 +230,18 @@ func (r *ServiceRegistry) CitationsCtx(ctx context.Context, slug string) (port.C
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
-// ExplorerCtx retourne un ExplorerService + identifiants joueur.
-func (r *ServiceRegistry) ExplorerCtx(ctx context.Context, slug string) (port.ExplorerService, string, string, error) {
+// ExplorerCtxWithAuth retourne un ExplorerService + contexte enrichi avec les
+// HaloTokens du propriétaire de la page (résolus depuis le store, ADR 0023).
+//
+// L'encart "Profil joueur cible" (identité live + carrière + privacy) exige des
+// tokens dans le contexte (auth_available). Sans cet enrichissement, le service
+// court-circuite tous les fetchs live et le front affiche le hint "Connexion
+// Halo requise" — même quand le joueur a des tokens fonctionnels dans le store.
+// Même pattern que HomeCtxWithAuth et Compare.
+func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) (port.ExplorerService, context.Context, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
-		return nil, "", "", err
+		return nil, ctx, "", "", err
 	}
 	svc := service.NewExplorerService(duckdb.NewExplorerRepo(pdb, pdb.XUID), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
@@ -244,13 +251,17 @@ func (r *ServiceRegistry) ExplorerCtx(ctx context.Context, slug string) (port.Ex
 	// identité Spartan live + stats carrière remote + privacy. Réutilise les
 	// mêmes briques que la home (CareerLive) et Compare (haloProvider).
 	homeRepo := r.newHomeRepo(pdb)
+	// r.remoteStats : provider de stats carrière remote décoré d'un cache TTL
+	// (5 min) + singleflight → réouvrir la même cible est instantané (volet C.2).
+	// La privacy reste sur haloProvider direct (pas de cache).
 	svc = svc.WithTargetProfileProviders(
 		r.newCareerLiveService(pdb, homeRepo),
-		haloProvider,
+		r.remoteStats,
 		haloProvider,
 		pdb.TitleSlug,
 	)
-	return svc, pdb.XUID, pdb.Gamertag, nil
+	enriched := r.enrichWithHaloTokens(ctx, pdb)
+	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
 
 // HomeCtx retourne un HomeService + identifiants joueur.

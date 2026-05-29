@@ -107,12 +107,14 @@ func (m *mockCareerLiveRepo) InsertCareerProgressionPartial(_ context.Context, _
 }
 
 type mockIdentityBuilder struct {
-	receivedRow *duckdb.CareerRankRow
-	returnNil   bool
+	receivedRow          *duckdb.CareerRankRow
+	receivedIncludePeaks bool
+	returnNil            bool
 }
 
-func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Context, row *duckdb.CareerRankRow) *domain.HomeSpartanIdentityRow {
+func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Context, row *duckdb.CareerRankRow, includePeaks bool) *domain.HomeSpartanIdentityRow {
 	m.receivedRow = row
+	m.receivedIncludePeaks = includePeaks
 	if m.returnNil || row == nil {
 		return nil
 	}
@@ -137,6 +139,51 @@ func (m *mockIdentityBuilder) BuildSpartanIdentityFromCareerRow(_ context.Contex
 		id.BackdropImageURL = &bd
 	}
 	return id
+}
+
+// TestCareerLive_IncludePeaks_OnlyForOwner verrouille le volet B du fix
+// explorer-target-profile-auth : les skill peaks (lus sur la player DB du
+// propriétaire de la page) ne doivent être calculés QUE si le sujet de
+// l'identité est ce propriétaire (xuid == HaloXUID du ctx). Pour un joueur
+// tiers (cas Explorer cible), includePeaks doit être false — sinon on
+// afficherait les peaks du mauvais joueur et on paierait 2 scans inutiles.
+func TestCareerLive_IncludePeaks_OnlyForOwner(t *testing.T) {
+	const ownerXUID = "1234567890123456" // == ctxWithTokens xuid
+	const otherXUID = "9999999999999999"
+
+	newWithRow := func() (*CareerLiveService, *mockIdentityBuilder) {
+		repo := &mockCareerLiveRepo{last: &duckdb.CareerRankRow{Rank: 10}}
+		builder := &mockIdentityBuilder{}
+		return newService(t, nil, repo, builder), builder
+	}
+
+	t.Run("owner via GetSpartanIdentityFor → peaks inclus", func(t *testing.T) {
+		svc, builder := newWithRow()
+		if _, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), ownerXUID); err != nil {
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
+		}
+		if !builder.receivedIncludePeaks {
+			t.Fatal("attendu includePeaks=true pour le propriétaire")
+		}
+	})
+
+	t.Run("tiers via GetSpartanIdentityFor → peaks exclus", func(t *testing.T) {
+		svc, builder := newWithRow()
+		if _, err := svc.GetSpartanIdentityFor(ctxWithTokens(t, true), otherXUID); err != nil {
+			t.Fatalf("GetSpartanIdentityFor: %v", err)
+		}
+		if builder.receivedIncludePeaks {
+			t.Fatal("attendu includePeaks=false pour un joueur tiers")
+		}
+	})
+
+	t.Run("DBOnly (Explorer no-auth) → peaks exclus", func(t *testing.T) {
+		svc, builder := newWithRow()
+		_ = svc.GetSpartanIdentityFromDBOnly(ctxWithTokens(t, false), otherXUID)
+		if builder.receivedIncludePeaks {
+			t.Fatal("attendu includePeaks=false en DB-only")
+		}
+	})
 }
 
 // --- helpers ---
@@ -658,7 +705,7 @@ func TestCareerLive_GetIdentity_LiveBannerNil_DBHasOne(t *testing.T) {
 // HomeSpartanIdentityRow — comportement réaliste pour tester l'overlay.
 type realBuilderForOverlay struct{}
 
-func (b *realBuilderForOverlay) BuildSpartanIdentityFromCareerRow(_ context.Context, row *duckdb.CareerRankRow) *domain.HomeSpartanIdentityRow {
+func (b *realBuilderForOverlay) BuildSpartanIdentityFromCareerRow(_ context.Context, row *duckdb.CareerRankRow, _ bool) *domain.HomeSpartanIdentityRow {
 	if row == nil {
 		return nil
 	}
