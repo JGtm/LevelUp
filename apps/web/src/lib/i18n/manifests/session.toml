@@ -93,6 +93,27 @@ en = "Compare to another session"
 fr = "vs {label}"
 en = "vs {label}"
 
+# Pills de paramètres de session (L3 + drawer compare)
+[session.detail.pill_matches]
+fr = "{count} matchs"
+en = "{count} matches"
+
+[session.detail.category_ranked]
+fr = "Classé"
+en = "Ranked"
+
+[session.detail.category_arena]
+fr = "Arène"
+en = "Arena"
+
+[session.detail.category_firefight]
+fr = "Firefight"
+en = "Firefight"
+
+[session.detail.category_btb]
+fr = "Grande équipe"
+en = "Big Team"
+
 [session.detail.session_active]
 fr = "Session active"
 en = "Active session"
