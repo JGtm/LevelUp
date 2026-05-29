@@ -234,3 +234,7 @@ type mockCSRClient struct {
 func (m *mockCSRClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]PlayerPlaylistCSR, error) {
 	return m.csrs, m.err
 }
+
+func (m *mockCSRClient) GetPlaylistCsr(_ context.Context, _, _, _ string) (*PlayerPlaylistCSR, error) {
+	return nil, nil
+}

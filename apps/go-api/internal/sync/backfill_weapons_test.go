@@ -201,6 +201,10 @@ func (w *weaponTestClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]Play
 	return nil, nil
 }
 
+func (w *weaponTestClient) GetPlaylistCsr(_ context.Context, _, _, _ string) (*PlayerPlaylistCSR, error) {
+	return nil, nil
+}
+
 // ─── TestBackfillWeaponKillsForMatch ─────────────────────────────────────────
 
 // TestBackfillWeaponKillsForMatch_NoFilm vérifie que le pipeline s'arrête

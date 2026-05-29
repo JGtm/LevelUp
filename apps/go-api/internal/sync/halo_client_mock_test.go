@@ -148,6 +148,10 @@ func (m *mockHaloClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]Player
 	return nil, nil
 }
 
+func (m *mockHaloClient) GetPlaylistCsr(_ context.Context, _, _, _ string) (*PlayerPlaylistCSR, error) {
+	return nil, nil
+}
+
 // compile-time : mockHaloClient implémente HaloClient.
 var _ HaloClient = (*mockHaloClient)(nil)
 

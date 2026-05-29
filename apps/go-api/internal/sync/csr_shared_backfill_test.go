@@ -67,6 +67,10 @@ func (m *mockSkillClient) GetPlayerCSRs(_ context.Context, _, _ string) ([]Playe
 	return nil, nil
 }
 
+func (m *mockSkillClient) GetPlaylistCsr(_ context.Context, _, _, _ string) (*PlayerPlaylistCSR, error) {
+	return nil, nil
+}
+
 func openSharedForCSRBackfill(t *testing.T) *sql.DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")

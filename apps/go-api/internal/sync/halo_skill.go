@@ -425,3 +425,6 @@ func (c *HaloAPIClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID string
 	}
 	return out, nil
 }
+
+// GetPlaylistCsr (CSR par playlist, endpoint /hi/playlist/{id}/csrs) vit dans
+// halo_skill_csr.go (extrait pour la règle 500 lignes/fichier).
