@@ -1,3 +1,21 @@
+## [2026-05-29] fix(api): Axe 5 — cohérence du shape d'erreur HTTP (settings_backup)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 4e axe livré (Axe 5 du plan). Le helper standard `writeError` produit `{code, message, retryable}` + log serveur. L'exploration avait listé 4 cibles ; la vérif code en a invalidé 3.
+
+**Vérif code (l'exploration sur-signalait)** :
+- `settings_backup.go` `PostBackupRun` : **vraie** déviation → 503 via `http.Error` (text/plain) + 500 via `{"error": ...}`. CORRIGÉ.
+- `health_home.go` (l.66) : **PAS un bug** — c'est `/healthz/home`, endpoint de diagnostic dont le 503 renvoie volontairement `{ok, player, error, checks, empty_sections}` (même forme que son chemin succès). Le passer en `{code,message,retryable}` casserait le contrat health. Laissé tel quel.
+- middlewares `require_auth` (`writeAuthRequired`) : **PAS un bug** — émet déjà `{code,message,retryable}` via constantes, WriteHeader unique correct. Laissé tel quel.
+- `chi.Recoverer` (panic → text/plain 500) : inconsistance mineure réelle, mais corriger = wrapper le recoverer global dans la stack middleware (plus large/risqué). **Différé** (noté ici), hors scope du nettoyage localisé.
+
+**Décisions** : `PostBackupRun` → `writeError(r.Context(), w, 503, "backup_scheduler_unavailable", …)` (code aligné sur la convention `*_unavailable` existante) et `writeError(…, 500, "backup_run_failed", …)`. Test existant `TestPostBackupRun_NilScheduler` (package `handlers_test`) **renforcé** pour asserter Content-Type JSON + présence `code/message/retryable` + `code == backup_scheduler_unavailable`.
+
+**Résultats observés** : `go build` ✅, tests backup verts (status + Skipped + nouveau shape). Pas de drift parasite dans les 2 fichiers touchés.
+
+**Conclusion / prochaine étape** : Axe 5 livré (réduit à la seule vraie déviation). Suite : Axe 6 (flags morts + deadline Prestige), Axe 4 (types OpenAPI front). Follow-up optionnel : JSON sur panic recovery.
+
 ## [2026-05-29] refactor(arch): Axe 3 — interface UserTokenStore (découpler la couche API du store concret)
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
@@ -65,6 +83,22 @@
 **Non vérifié** : pas de hit HTTP live sur `/patterns` (nécessiterait Go API + DB peuplée). Loaders SQL non couverts par test DB-backed (déplacement verbatim).
 
 **Conclusion / prochaine étape** : Axe 1 livré, but de découplage atteint (handler sans SQL ni `*duckdb.*`). Suite du plan : Axe 2 (logique LUSR v2 → interfaces, Option A faible churn), puis 3 (TokenStore), 5 (erreurs HTTP), 6 (flags morts + deadline Prestige). Commits à faire par l'utilisateur.
+
+## [2026-05-29] feat(nav): Phase 4 (incrément contenu) — connexion des filtres Explorer à la nav contextuelle
+
+**Statut** : Complété (branche `feat/nav-context-unification` ; commits délégués). Incrément ciblé de la Phase 4, PAS le refactor complet (voir § Reporté).
+
+**Contexte** : gap concret différé en Phase 3 — ExplorerMatchesTable dérivait son `filterSpec` du `soloFilterStore` (vide en contexte Explorer, qui part de `DEFAULT_FILTER_CONTEXT`), donc ouvrir un match depuis Explorer perdait le scope filtré pour la nav prev/next (chronologie globale). Maintenant que le backend Q25 supporte le multi-playlist/mode (Phase 3), on pilote le filterSpec depuis les filtres locaux d'Explorer.
+
+**Décisions techniques** :
+- **`explorerScopeToFilterSpec(scope)`** (explorerScope.ts) : adaptateur scope→MatchFilterSpec — préfiguration de l'adaptateur générique `scope→MatchNavContext` de la Phase 4 complète. Mapping : playlists→playlist_names (exact), modeNames→mode_categories (cohérent avec le `contextDescriptor` qui traite déjà modeNames comme catégorie ; non-résolu = ignoré gracieusement backend), dates→date_from/to (bornes inclusives T00:00:00Z/T23:59:59Z), outcome→label **seulement si exactement 1** (MatchFilterSpec.outcome mono-valeur). Vide → undefined (URL non polluée).
+- **`filterSpecOverride?` sur ExplorerMatchesTable** : quand fourni, prime sur la dérivation soloFilterStore. Threadé ExplorerPage→ExplorerMatchesMode→ResultsBlock→table. Les tables mode Joueur (ally/enemy) ne le passent pas → fallback inchangé. La nav in-liste reste portée par `matchIds` (exact) ; le filterSpec est la couche durabilité F5/lien partagé.
+
+**Résultats** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ · tests explorer+match-nav (86) ✅ dont 6 nouveaux sur `explorerScopeToFilterSpec`.
+
+**Reporté (pending go-ahead explicite)** — le **gros refactor Phase 4** : généraliser `usePageScope` à History/Session/Squad/Home + retirer le localStorage manuel de SquadLayout + converger Solo/Squad vers le primitif commun. Raison du report : ce refactor touche `createFilterStore`/SquadLayout qui portent la sémantique « sticky jusqu'à nouvelle session » (`autoSnapToLatestSession`) — mémoire qui **fonctionne déjà bien** et que l'utilisateur valorise — pour un gain purement architectural NON lié aux 3 douleurs initiales (toutes adressées Phases 1-3). À mener comme chantier délibéré avec tests de non-régression dédiés sur l'auto-snap.
+
+**Conclusion** : les 3 douleurs initiales sont couvertes (Phase 1 retour Explorer, Phase 2 propagation SessionDetail, Phase 3 robustesse + multi-filtres) ; cet incrément ferme le dernier gap concret (Explorer multi-filtres → nav). Reste optionnel/délibéré : convergence des stores (ci-dessus), filtre session côté Q25, retrait du shim `filtersLabel`.
 
 ## [2026-05-29] feat(nav): Phase 3 unification mémoire de navigation — fiabilisation match-nav (multi-filtres backend + TTL + observabilité)
 

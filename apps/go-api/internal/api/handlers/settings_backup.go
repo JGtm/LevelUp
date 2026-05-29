@@ -21,7 +21,7 @@ func (h *SettingsHandler) GetBackupStatus(w http.ResponseWriter, _ *http.Request
 // Synchrone avec timeout de 10 minutes — adapté à un usage admin occasionnel.
 func (h *SettingsHandler) PostBackupRun(w http.ResponseWriter, r *http.Request) {
 	if h.backupSched == nil {
-		http.Error(w, "backup scheduler non initialisé", http.StatusServiceUnavailable)
+		writeError(r.Context(), w, http.StatusServiceUnavailable, "backup_scheduler_unavailable", "backup scheduler non initialisé")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
@@ -29,7 +29,7 @@ func (h *SettingsHandler) PostBackupRun(w http.ResponseWriter, r *http.Request) 
 
 	result, err := h.backupSched.RunOnce(ctx)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		writeError(r.Context(), w, http.StatusInternalServerError, "backup_run_failed", err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
