@@ -53,6 +53,17 @@
 
 ---
 
+## [2026-05-29] feat(web+go,sessions): Phase 3 refonte session-detail — tableau détail riche (duplication Explorer)
+
+**Statut** : Code complété. Front typecheck + eslint (0 err, 1 warn React-Compiler bénin sur useReactTable, idem Explorer) + 15 tests verts. Go : `domain` build OK ; le package `service` NE BUILD PAS à cause du WIP utilisateur (`career_service.go:161`, signature `GetCSRSnapshots`) — mon code (session_page_service.go, domain/session_page.go) est isolé, le type-check du package ne reporte QUE career_service.go. `go test ./internal/service` impossible tant que ce WIP n'est pas terminé.
+
+**Fait** :
+- Backend 3a (LÉGER, pas de 2e repo — verdict agent) : tout vient de `canonical.PlayerMatchRow` déjà chargé (retenu dans StatsMatchRow). Enrichi `domain.SessionDetailMatchRow` (+ type front) avec map_name, duration_seconds, team_mmr, enemy_mmr, delta_mmr, perf_tier, skill_rating_type, skill_rating_value ; peuplé dans `buildSessionDetailRows` (perf_tier via `analysis.PerfTier`, delta_mmr=team−enemy, map FR-préféré). NB : `skill_tier_label` ("Diamant IV") NON inclus (hors colonnes actées + absent de canonical) → évite la chaîne SQL→canonical→converter.
+- Frontend 3b : `SessionMatchesTable` réécrit en TanStack Table (dupliqué du pattern `ExplorerMatchesTable`, sans le couplage explorer) avec presets : `full` (Open·Heure·Mode·Map·Playlist·Issue·K/D/A·KDA·Acc·Durée·Perf+tier·Rating·ΔMMR) et `compact` (Issue·Mode·K/D/A·KDA·Perf·Rating·ΔMMR — 7 col). Couleurs via tokens (perf-tier-N, kdScale, mmrDeltaScale, getOutcomeColor). Nav match contexte session conservée. États vides via EmptyStateNotice.
+- Page : tableau principal `variant={drawerOpen ? 'compact' : 'full'}` (comparaison normalisée) + tableau compact `compare_matches` ajouté dans le drawer. +5 clés i18n col_map/col_kda_ratio/col_duration/col_rating/col_delta_mmr (regen).
+
+**À finaliser quand le package service rebuild** : `go test ./internal/service -run Session|Compare` (attendu vert — changement additif).
+
 ## [2026-05-29] feat(web,sessions): Phase 2c refonte session-detail — graphes du drawer remontés en vue single
 
 **Statut** : Complété (branche `chore/query-devtools-flag`). Front typecheck + eslint + 15 tests verts.

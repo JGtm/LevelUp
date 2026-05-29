@@ -47,6 +47,15 @@ type SessionDetailMatchRow struct {
 	DominantCategory *string      `json:"dominant_category,omitempty"`
 	OffensiveConv    *float64     `json:"offensive_conversion,omitempty"`
 	DefensiveResist  *float64     `json:"defensive_resistance,omitempty"`
+	// Champs enrichis pour le tableau détail (Phase 3), projetés depuis StatsMatchRow.
+	MapName          string   `json:"map_name,omitempty"`
+	DurationSeconds  *int     `json:"duration_seconds,omitempty"`
+	TeamMMR          *float64 `json:"team_mmr,omitempty"`
+	EnemyMMR         *float64 `json:"enemy_mmr,omitempty"`
+	DeltaMMR         *float64 `json:"delta_mmr,omitempty"`
+	PerfTier         int      `json:"perf_tier,omitempty"`
+	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
+	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.

@@ -219,6 +219,26 @@ en = "Perf. score"
 fr = "Résultat"
 en = "Outcome"
 
+[session.detail.col_map]
+fr = "Carte"
+en = "Map"
+
+[session.detail.col_kda_ratio]
+fr = "KDA"
+en = "KDA"
+
+[session.detail.col_duration]
+fr = "Durée"
+en = "Duration"
+
+[session.detail.col_rating]
+fr = "Rating"
+en = "Rating"
+
+[session.detail.col_delta_mmr]
+fr = "ΔMMR"
+en = "ΔMMR"
+
 # Compare metrics table
 [session.detail.compare_col_metric]
 fr = "Métrique"
