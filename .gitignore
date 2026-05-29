@@ -136,8 +136,10 @@ apps/go-api/token_*.txt
 # Artefacts test/coverage Go (générés par go test / scripts ratchet)
 apps/go-api/coverage
 apps/go-api/coverage*.out
+apps/go-api/cover_*
 coverage_ratchet.out
 **/coverage.out
+dev-make*.log
 
 # Sprint B1 — fichiers logs par module générés au runtime du serveur Go
 # (cf. internal/observability/logging/). LEVELUP_LOGS_DIR override possible.
