@@ -57,6 +57,7 @@ func openAppendOnlyLUSRTestDB(t *testing.T) *sql.DB {
 			tier_label        VARCHAR,
 			rating_delta      FLOAT,
 			playlist_group    VARCHAR,
+			expected_win_prob FLOAT,
 			start_time        TIMESTAMP,
 			written_at        TIMESTAMP NOT NULL DEFAULT now(),
 			created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -1,3 +1,156 @@
+## [2026-05-29] chore: Cleanup knip phase 2 — charts leftovers + quick wins + dette lint
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
+
+**Contexte** : suite du cleanup knip (P0-P3 déjà livré). Traitement en autonomie des items « reste hors scope + charts isolés », même méthode (vérifier le câblage des pages avant suppression).
+
+**Décisions techniques majeures** :
+- **6 charts leftovers supprimés** après lecture de la page parente — remplaçant actif identifié pour chacun : `StreakBadge`→`StreakDashboard`, `CareerLusrCards`→`CareerRankingBlock`/`CareerChartsSection`, `HomeOutcomeBar`→`OutcomeSequenceTape`, `WinRateVsHistoryChart`→`WinRateVsHistoryBulletChart`, `TimeseriesCorrelationScatter`+`TimeseriesOutcomesOverTime`→retirés au rework timeseries (zéro import). `git log` confirme : tous issus d'anciens commits de feature, orphelinisés par refontes — pas du WIP.
+- **P4** : `MatchNavigation` (alias rétrocompat de `MatchNavigationBar`, migration terminée) supprimé. `formatKDA` GARDÉ — alias domaine de `formatRatio`, utilisé par `PalmaresRelationsPage` + testé (le flag knip « duplicate » est informatif, pas un bug).
+- **react-query-devtools** : câblé en dev-only dans `providers` (`import.meta.env.DEV && <ReactQueryDevtools/>`) plutôt que supprimé — transforme la dep « inutilisée » en outil, tree-shaké en prod.
+- **Dette lint pré-existante résolue** :
+  - cross-feature 11→0 : 8 paires durables (pattern agrégateur, cohérent avec le précédent de l'allowlist) légitimées dans `ALLOWED_CROSS_IMPORTS`.
+  - faux positif CSR/LUSR : `lint-no-hardcoded-fields.mjs` étendu pour skip les opérations de collection (`.has`/`.includes`/`.get('X')`), comme il skippait déjà `=== 'X'`. Fix général, pas un whitelist de fichier.
+- **knip config** minimisée (entries auto-détectées par plugins, ignores redondants retirés).
+- **Ratchet code mort** : `tools/knip-ratchet.mjs` posé (plafonds files=29 / exports=87 / types=83, échec si dépassé, branché en pre-push). Même esprit que les ratchets cross-feature/couleurs existants. Vérifié : passe à l'état courant, bloque une régression simulée.
+- **14 hooks `queries.ts` orphelins investigués 1-par-1** : 12 GARDÉS (WIP/phasé/intentionnel — PlayerProfile ADR 0015, Prestige ADR 0005, setup en cours de réécriture, prefetch/logout/cache-invalidation non câblés) ; **2 superseded retirés** : `useBattlePass`→`useSeasonPassPreview`, `useMatchNeighbors`→`useMatchNeighborsResolved` (+ import de type orphelin + mock obsolète `MatchHeader.test.tsx` nettoyés). Reste 87 exports / 83 types en backlog, désormais sous ratchet.
+
+**Résultats observés** : `tsc -b` ✓, `vite build` ✓, 3 linters custom ✓ (cross-feature 0, fields 0, colors 0), knip deps clean (react-query-devtools résolu).
+
+**Conclusion** : tous les items actionnables sûrs livrés + ratchet en place pour empêcher toute régression. Reste = 87 exports / 83 types (backlog itératif, gelé sous ratchet) + décision utilisateur sur les orphelins gardés (squad/v2, SynthesisCombatProfileSection, ChallengesCarousel, prefetch, feature-flags, App.tsx, i18n générés).
+
+## [2026-05-29] feat: Onboarding premier lancement — boot mkdir + extraction prebuilt + état halo_linked_no_profile
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`, à la demande de l'utilisateur sur la branche courante)
+
+**Contexte** : exécution de `.ai/PLAN_ONBOARDING_WIZARD.md`. L'exploration a invalidé 2 des 4 points du plan :
+- **#1 chemins périmés** : le plan visait `data/warehouse/` + `pr.PlayerBaseDir()` (inexistant). Le code utilise le schéma multi-titre `data/titles/{slug}/warehouse/` via `PathResolver.WarehouseDir(slug)`.
+- **#2/#4 écran "Azure manquant" abandonnés** : prémisse fausse. `cfg.AzureClientID` n'existe pas ; le code auth a un client public intégré (`auth.LevelUpClientID = e1cb35ab-…`) + provider SISU natif → le Device Code Flow marche **sans** config Azure. Un écran de blocage aurait pénalisé inutilement un clone frais. Confirmé avec l'utilisateur (choix "Non, sauter").
+
+**Décisions techniques majeures** :
+- **#1 `ensureWarehouseDir(pr, slug)`** (`cmd/server/main.go`) appelé avant `runMigrations`. Seul le dossier warehouse est nécessaire : `OpenReadWrite` crée le fichier `.duckdb` mais pas le dossier parent (preuve : `initGlobalXuidAliasesSchema` MkdirAll explicitement avant). Les autres dossiers runtime (players, sessions, cache, WAL, watcher_tokens) sont déjà auto-créés par leurs consommateurs (`profile_service`, `session.NewStore`, `jobs.Store`, `persist.BatchQueue`, `MultiUserTokenStore`) — pas besoin de les recréer au boot.
+- **#3 `resolveSetupState` renvoie enfin `halo_linked_no_profile`** : le bug réel. Le Device Code Flow finit en `authorized` (pas `provisioned`, cf. `auth.go:137-144` qui pose `sess.LinkedHaloIdentity` sans auto-provisionner). Avant le fix, session liée + 0 joueur → `no_halo_link` → le wizard rebouclait sur StepDeviceCode au lieu d'afficher StepPlayer. Signature passée à `(ctx, sess, players)` ; retour `halo_linked_no_profile` si `ResolveLinkedIdentity(sess) != nil`. Le contrat était déjà câblé partout ailleurs (frontend `SetupPage`/`appShellStore`/`types.ts`, `openapi.yaml`, `api/gen/types.gen.go`, SPEC_V7_BOOTSTRAP_CONTRACT) — seul le backend ne l'émettait jamais.
+
+**Tests de simulation (mock du flow sans login Microsoft SSO)** :
+- `cmd/server/boot_dirs_test.go::TestEnsureWarehouseDir_FreshCloneBoots` (tag `//go:build cgo`) — 2 sous-cas sur `t.TempDir()` (clone frais) :
+  - `missing_warehouse_dir_fails` : sans le dossier, `runMigrations` retourne une erreur → **prouve empiriquement que `OpenReadWrite` ne crée pas le dossier parent** (le fix est nécessaire, pas un no-op).
+  - `ensure_then_migrate_ok` : après `ensureWarehouseDir`, les 43 migrations shared + metadata + 13 social s'appliquent et les `.duckdb` sont créés.
+- `internal/service/bootstrap_service_test.go::TestBuild_HaloLinkedNoProfile` — teste `Build()` complet (pas juste `resolveSetupState`) avec une session post-SSO mockée (identité liée, 0 joueur) → `setup_state=halo_linked_no_profile`, `setup_required=true`, identité propagée.
+
+**Résultats observés** :
+- `go build` + `go vet ./cmd/server/ ./internal/service/` ✅ (exit 0).
+- `go test ./cmd/server/ ./internal/service/` ✅ — packages complets, aucune régression (les tests legacy `migrateLegacyAuthTokensAtBoot` passent toujours).
+- Observation clone frais (non bloquant, **pré-existant, hors scope**) : le backfill `shared_seed_tier_boundaries_v2` log un WARN `Table lusr_hyperparams_v2 does not exist` — le seed LUSR v2 ne s'applique pas sur un clone vierge (quirk d'ordre de migration). Le cycle migration se termine quand même (`applied=43/43`), boot OK.
+
+**Itération 2 (2026-05-29) — extraction prebuilt + cadrage LUSR v2** :
+- **Constat `metadata-prebuilt.zip`** : il est tracké git (3,4 MB, contient un `metadata.duckdb` de 42 MB) mais **rien ne le décompressait** (ni Go, ni Makefile, ni script, ni doc) — orphelin. Sur clone frais, les référentiels non seedés par migration (career_ranks, playlists, citations) restaient vides jusqu'au 1er fetch live.
+- **Fix `extractPrebuiltMetadataIfAbsent`** (`cmd/server/prebuilt_metadata.go`) appelé après `ensureWarehouseDir`, avant `runMigrations` : si `metadata.duckdb` absent + zip présent → `archive/zip` extrait l'entrée vers la base (write-to-temp + rename atomique). **No-op si la base existe déjà** (jamais écrasée — exigence utilisateur) ou si le zip est absent. Non-fatal (Warn) : extraction ratée ⇒ migrations créent une base vide, boot OK. Les migrations tournent ensuite sur la base extraite (idempotent, applique tout schéma > 2026-05-20).
+- Test `cmd/server/prebuilt_metadata_test.go` : 3 cas (absent→extrait / existant→non écrasé / zip absent→no-op) avec faux zip généré en test.
+- **LUSR v2 — différé post-prod (décision utilisateur)** : LUSR v2 pas en prod aujourd'hui → ni le fix d'ordre du seed statique, ni la ré-estimation empirique post-sync ne sont implémentés maintenant. Les deux sont documentés comme tâches post-prod dans `.ai/LUSR_V2_ROADMAP_SPRINTS.md` (section "Reste à faire / différé"). Distinction clé clarifiée avec l'utilisateur : le seed `shared_seed_tier_boundaries_v2` est **statique** (doit tourner immédiatement, pas gated sur des matchs ; le WARN = bug d'ordre alphabétique de fichiers) ; seule la **ré-estimation empirique** (`ttt_tau_empirical`…, via `cmd/lusr_v2_ttt_batch`) est data-dépendante.
+
+**Résultats itération 2** : `go build` + `go vet ./cmd/server/` ✅ ; `go test ./cmd/server/` package complet ✅ (extraction 3/3 + boot clone-frais 2/2 + legacy auth tokens, aucune régression).
+
+**Conclusion** : clone frais validé par simulation (boot sans crash + référentiels prebuilt extraits + onboarding post-SSO routé vers création de profil). Le seul reste = test manuel e2e avec vrai SSO Microsoft (non automatisable). LUSR v2 cadré en post-prod dans son roadmap.
+
+## [2026-05-29] chore: Cleanup knip P0-P3 (vérif routing avant suppression)
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
+
+**Contexte** : suite à l'audit `.ai/AUDIT_KNIP_2026-05-28.md`, traiter P0→P3 en autonomie. Consigne forte de l'utilisateur : **vérifier le câblage des pages avant tout nettoyage** ; garder `session-compare` (travail en cours).
+
+**Décisions techniques majeures** :
+- **Méthode** : pour chaque orphelin knip, cartographier le routing TanStack (`src/routes/`) + nav (`shellNavigation.ts`) et confirmer l'existence (ou non) d'un remplaçant actif AVANT suppression. knip seul ne suffit pas — l'utilisateur a raison de demander vérif (cf. session-compare = WIP, pas mort).
+- **P0** : `zod` figé `^4.4.3` (runtime déjà en 4.3.6 hoisté ; v4 alignée, pas v3 malgré TanStack Router interne en v3).
+- **P3** : `types.ts` (OpenAPI) ignoré dans knip + faux positifs deps (`tailwindcss`, `@tailwindcss/typography` via `@plugin` CSS, `@iarna/toml`). Les 90 unused exports = backlog itératif (hors scope).
+- **Suppressions (5, confirmées mortes avec remplaçant)** : `CareerCitationsTab` (→ `CitationsPage`), `AppShellHeader`+`PlayerScopeNav` (→ `NavL1`), `KPIBar` (→ `NavL2`), `careerPageStore` (orphelin). `CareerHubPage` documente explicitement « citations ont leur page dédiée » → validation de l'intuition utilisateur.
+- **Gardés (WIP/intention)** : session-compare (demande explicite), squad/v2 pages (v1 active ; mais `squad/v2/types.ts`+`SquadEngagementView` vivants → pas de `rm` dossier), SynthesisCombatProfileSection (PLAN), ChallengesCarousel, prefetch.ts, feature-flags.ts, App.tsx (« conserve pour reference »), i18n générés, charts isolés sans remplaçant identifié.
+- **Hors scope** : `@tanstack/react-query-devtools` (vraie dep inutilisée = P5), doublons P4.
+
+**Résultats observés** :
+- `tsc -b` ✅ + `vite build` ✅ (1.22s) — zéro régression après suppression.
+- knip : unlisted deps 5→0, unused devDeps 2→0, unused deps 2→1, unused files 40→35.
+- Migration toolchain : lefthook mange les quotes inline → logique des hooks déportée en `scripts/git-hooks/lefthook/*.sh` (corrigé pendant ce travail).
+
+**Conclusion** : cleanup conservateur livré. Prochaine étape possible : décider du sort de squad/v2 + charts isolés (confirmer leftover vs recâblage), puis attaquer les 90 unused exports en itératif.
+
+## [2026-05-28] toolchain: Installation top 3 outils + migration pre-commit → lefthook
+
+**Statut** : Complété
+
+**Décisions techniques majeures** :
+- **lefthook** (binaire Go, zéro Python) remplace `pre-commit` comme hook runner — le projet ayant migré full Go, Python n'est plus requis. Les hooks `language: system` du `.pre-commit-config.yaml` sont repris à l'identique dans `lefthook.yml`. `.pre-commit-config.yaml` conservé pour référence / CI éventuel.
+- **golangci-lint** installé via `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest` (script curl échoué sur vérif checksum réseau). `.golangci.yml` v2 déjà présent dans `apps/go-api/`.
+- **govulncheck** installé via `go install golang.org/x/vuln/cmd/govulncheck@latest` — ajouté en hook `pre-push`.
+- **knip** + **rollup-plugin-visualizer** installés dans `apps/web/` (devDependencies). `knip.config.ts` créé avec entrées TanStack Router + fichiers générés ignorés. `vite.config.ts` migré vers forme fonction `({ mode }) =>` pour activer le visualizer via `ANALYZE=true vite build`.
+- `lefthook install` → hooks `pre-commit` + `pre-push` actifs dans `.git/hooks/` (était vide avant).
+
+**Résultats observés** :
+- `lefthook install` : `sync hooks: ✔️ (pre-commit, pre-push)`
+- `.git/hooks/pre-commit` + `pre-push` + `prepare-commit-msg` créés
+- Tous les binaires Go installés dans `C:/Users/GuillaumeSITBON/go/bin/` (air, gopls, lefthook, govulncheck, golangci-lint)
+
+**Conclusion** : les hooks se déclenchent maintenant à chaque commit (gofmt, go-vet, golangci-lint, lint TS × 3, check-merge-conflict) et avant push (go test -short, govulncheck, deploy-dry-run). Prochaine étape : lancer `npm run knip` une première fois pour établir la baseline du code mort TS.
+
+## [2026-05-28] plan: Onboarding Wizard — premier lancement sans données
+
+**Statut** : Planifié (`.ai/PLAN_ONBOARDING_WIZARD.md`)
+
+**Décisions techniques majeures** :
+- **Crash réel** : `data/warehouse/` manquant (pas `app_settings.json` qui gère ses defaults). Fix : `os.MkdirAll` avant `OpenReadWrite` au boot.
+- **Backend 90% fait** : `GET /bootstrap` (setup_state), `POST /setup/players`, `POST /sync/initial`. Manque wizard frontend + `ensureWarehouseDirs()` au boot.
+- **XUID** : obtenu automatiquement depuis le SSO Xbox (`DisplayClaims.xui[0].xid`) — zéro saisie manuelle.
+- **`.env.local`** : prérequis ops non générables via UI → écran dédié dans le wizard.
+
+**Conclusion** : démarrer par Phase 0 (fix crash boot, ~2h) puis wizard frontend sur `feat/onboarding-wizard`.
+
+## [2026-05-28] feat(lusr_v2): Sprint 3.A TTT wiring complet
+
+**Statut** : Complété
+
+**Contexte** : Sprint 3.A livré initialement en prototype pur (`skill_v2/ttt.go`, EstimateTTT validé sur données synthétiques). L'utilisateur demande le wiring complet : charger les séries μ des joueurs trackés, appeler EstimateTTT, et écrire les paramètres EM en base.
+
+**Décisions techniques majeures** :
+- **LoadStateHistory** (SkillV2Repo) : lecture de la table brute `player_skill_state_v2` (pas la vue `_latest`) pour obtenir l'historique chronologique complet d'un joueur/groupe (written_at ASC). Un seul round-trip dans `loadAllHistories` pour le batch.
+- **ttt_tau_empirical** (hyperparam) : le TTT EM ré-estime q (ProcessVar = τ²) par joueur. Agrégation par groupe = mean(q_joueurs). τ_groupe = √(mean_q) écrit dans `lusr_hyperparams_v2`. Relié au runtime via `LoadPriorsFromHyperparams` → override `Priors.Tau` (guard > 0).
+- **Scope** : `player_skill_state_v2` contient TOUS les joueurs ayant une history (pas seulement les trackés). Le batch filtre les paires avec < 2 points (TTT nécessite ≥ 2 obs). En pratique, les joueurs trackés ont le plus de matchs → les meilleurs τ estimés.
+- **--write-smoothed** : option de réécriture du μ lissé terminal (SmoothedMean[last]) comme nouveau snapshot dans `player_skill_state_v2`. written_at = NOW() → `_latest` sélectionne automatiquement. Conservatif : 1 seul row par joueur/groupe (pas réécriture historique complète). À activer APRÈS bascule stable.
+- **Ordre dry-run** : le bloc `--smooth` s'exécute AVANT le `return dryRun` → `--dry-run --smooth` montre le rapport TTT sans écrire.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/...` PASS (2 nouveaux tests : TauOverride, TauInvalidIgnored + 2 cas AppliedHyperparamCount)
+- `go vet ./internal/analysis/skill_v2/... ./internal/domain/...` clean (CGO non dispo localement, vet CGO différé CI)
+- ttt_smooth.go : 195L < 200L, toutes fonctions ≤ 80L
+
+**Fichiers créés/modifiés** :
+- `internal/platform/duckdb/skill_v2_repo.go` : + `LoadStateHistory`
+- `internal/analysis/skill_v2/hyperparams_load.go` : + `hyperparamTTTTau`, override Tau, `AppliedHyperparamCount` mis à jour
+- `internal/analysis/skill_v2/hyperparams_load_test.go` : + 2 tests Tau + 2 cas AppliedHyperparamCount
+- `cmd/lusr_v2_ttt_batch/ttt_smooth.go` : nouveau (TTT wiring : loadAllHistories, runTTTSmoothing, buildGroupResults, printTTTSmoothReport)
+- `cmd/lusr_v2_ttt_batch/main.go` : + flags `--smooth` / `--write-smoothed`
+
+**Prochaine étape** : en prod, lancer `cmd/lusr_v2_ttt_batch --smooth [--dry-run]` pour voir les τ estimés par groupe, puis sans `--dry-run` pour écrire. Après ≥ 7j stables, envisager `--write-smoothed` pour corriger les μ courants.
+
+---
+
+## [2026-05-28] chore: Installation environnement de dev (nouveau PC Windows)
+
+**Statut** : Complété
+
+**Décisions techniques majeures** :
+- **GCC** : GCC 16.1.0 (ucrt64 MSYS2) est incompatible avec les libs DuckDB 1.5.3 précompilées (`__emutls_v._ZSt11__once_call` manquant). Fix : remplacement de `libstdc++.a` par la version GCC 14.2.0 extraite de l'archive MSYS2 (`/c/msys64/ucrt64/lib/libstdc++_gcc16_backup.a` conservé). La lib GCC 14 fournit les symboles emutls requis par DuckDB.
+- **make** : non installé sur ce PC. Installé via `pacman -S make` dans MSYS2. Ajouté `C:\msys64\usr\bin` au PATH utilisateur.
+- **Node.js** : installé via `winget install OpenJS.NodeJS.LTS` (v24.16.0). Présent dans machine PATH avec trailing backslash.
+- **Go** : installé via `winget install GoLang.Go` (v1.26.3). Dans machine PATH.
+- **air** : installé via `go install github.com/air-verse/air@latest`. Dans `C:\Users\GuillaumeSITBON\go\bin` (user PATH).
+- **Playwright** : browsers installés via `npx playwright install` (Chromium v1217 uniquement, conforme au `playwright.config.ts`).
+
+**Résultats observés** :
+- Tests Go (CGO=0, domain/analysis/contracttest) : 11 packages PASS
+- Tests web (Vitest) : 159 fichiers, 1510 tests PASS, 14 skipped
+- `make go-api-build` (CGO=1 + DuckDB) : OK depuis PowerShell et Git Bash (nouveau terminal)
+
+**Conclusion** : Ouvrir un **nouveau terminal Git Bash** pour hériter du PATH mis à jour. `make dev` devrait fonctionner.
+
 ## [2026-05-27] feat(lusr_v2): Phase 3e+→5 5-candidats autonomes (Strategie C + sentinelle + quit penalty + mode correlation + TTT batch)
 
 **Statut** : Complété (changements en working copy, non commités)
@@ -49875,3 +50028,225 @@ Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout d
 - **time_played_seconds** : recalcul + backfill DB (checkpoint).
 
 **Prochaine étape** : Phase 3 (avec propagation real_start_time → canonical) sur contexte frais.
+## [2026-05-28] feat(lusr-v2): Sprint 1.A — Probabilité de victoire prédite — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. `.ai/LUSR_V2_ROADMAP_SPRINTS.md` Sprint 1.A + `.ai/LUSR_V2_WIN_PROBABILITY.md`
+
+**Contexte** : 1er des 3 sprints du Sprint 1 LUSR v2 (quick win UX). Exposer pour chaque match, dans `match_skill_rank.expected_win_prob`, la proba qu'avait l'équipe du joueur de gagner AVANT le match — calculée depuis les ratings v2 pré-match. Aucune nouvelle math : c'est la quantité que le modèle utilise déjà en interne pour doser l'amplitude d'un update.
+
+**Décisions techniques** :
+1. **Fonction pure `PredictTwoTeamWinProb(teamA, teamB, p) (probA, probDraw, probB)`** dans `internal/analysis/skill_v2/predict.go`. Modèle : d = perfA - perfB ~ N(Σμ_A - Σμ_B, c²) ; A gagne si d > ε, draw si |d| < ε. probA = Φ(δ-e), probB = Φ(-δ-e), probDraw = 1 - probA - probB (somme exacte à 1).
+2. **Refacto DRY** : `PredictWinProbability` + `PredictDrawProbability` (existantes dans trueskill.go) migrées dans predict.go et partagent un helper privé `matchSpread` qui calcule δ et e une fois (évite la triple copie du calcul de c² — règle CLAUDE.md ≤2 copies).
+3. **Write-off du loader DB `LoadPreMatchStates` (étape 1.A.3 du doc abandonnée)** : les états pré-match sont déjà chargés en mémoire dans `applyMatchToSkillV2` (`teamAStates`/`teamBStates`) AVANT l'update EP. La proba est calculée à partir de ces gaussiennes. Un re-query DB tel que prévu aurait lu `player_skill_state_v2_latest` APRÈS `persistTeamSkillV2` → état POST-match, donc une proba fausse. Et c'était une requête redondante. Le endpoint HTTP à la volée mentionné par le doc relève du Sprint 2 (YAGNI ici).
+4. **Plomberie** : `applyMatchToSkillV2` retourne désormais `(ownerNew, expectedWinProb *float64, err)`. teamA est toujours l'équipe du owner (invariant `buildTwoTeamRosters`), donc probA est la proba du owner. `processOneShadowMatch` passe la valeur à `writeCanonicalLUSRRow` (nouveau param), qui la pose sur les 2 rows (LUSR + LUSR_V2) via le champ `LUSRRatingInsert.ExpectedWinProb`.
+5. **Migration** `player_add_expected_win_prob` (additive, `addColumnIfMissing`, FLOAT) — pas de réécriture de table, 0 risque ART. Colonne préservée par le CTAS de la migration append-only quel que soit l'ordre.
+6. **expvar** `levelup.lusr_v2.predictions_total` — incrémenté à chaque match traité par le shadow runner.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/persist/... ./internal/migration/... ./internal/sync/...` → PASS (sync 134s, cgo+DuckDB)
+- `go vet ./...` clean sur tout le module
+- Tests pure : balanced → probA=probB, favori net (μ30 vs μ20, σ=1) → probA>0.9, forte incertitude (σ=8) → tirée vers 0.5, DrawProbability↑ → probDraw↑
+- Tests E2E : `TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb` (proba ∈ [0,1] sur la row LUSR), `TestRunLUSRV2Shadow_Canonical_FirstMatchFallback` (4 joueurs neufs seedés au prior → ≈ 0.5, pas de panic)
+- 3 DDL de test mises à jour avec la colonne (`openCanonicalPlayerTestDB`, `openAppendOnlyLUSRTestDB`)
+
+**Reste pour la DoD (validation prod)** : vérifier sur ≥1 match prod post-bascule que `expected_win_prob` est plausible (≈ 0.5 ± 0.3 pour la majorité). Non exécutable hors prod — comme les phases auth précédentes.
+
+**Prochaine étape** : Sprint 1.B — brancher les hyperparams ré-estimés (`LoadPriorsFromHyperparams`) dans le shadow runner.
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.B — brancher les hyperparams ré-estimés — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 1.B
+
+**Contexte** : Le CLI `cmd/lusr_v2_ttt_batch` écrit déjà en base (`lusr_hyperparams_v2`) les stats empiriques par groupe de modes — `draw_probability_empirical`, `kill_mean_empirical`, `kill_std_empirical`, `death_mean_empirical`, `death_std_empirical`, `match_count_analyzed`. Mais le shadow runner utilisait toujours `DefaultPriors()` + `DefaultCountHyperparams()` hardcodés → la ré-estimation était une **écriture morte**. Ce sprint connecte les deux.
+
+**Décisions techniques** :
+1. **`internal/analysis/skill_v2/hyperparams_load.go` (pur)** :
+   - `LoadPriorsFromHyperparams(params, defaultP) Priors` : override `DrawProbability` depuis `draw_probability_empirical` (guard [0,1[). Mu0/Sigma0/Beta/Tau non écrits par le batch → restent defaults.
+   - `LoadCountHyperparamsFromDB(params, mu0) map[CountType]CountHyperparams` : recalibre le `Bias` kill/death.
+   - Ré-export d'alias `CountType` / `CountHyperparams` + consts `CountKill`/`CountDeath` pour que `internal/sync` ne dépende pas du sous-package `ep`.
+   - `DefaultCountHyperparamsMap()` + `AppliedHyperparamCount()`.
+2. **CORRECTION du plan (étape 1.B.2)** : le doc prescrivait « bias = kill_mean_empirical » en direct. C'est **dimensionnellement faux** pour le modèle `expected_count = bias + w_p·perf + w_o·avg_opp` (ep/count_obs.go) : poser bias=mean donnerait expected ≈ 2× la moyenne à skill moyen. Formule correcte appliquée : `bias = mean − (w_p + w_o)·μ0`. Elle se réduit EXACTEMENT aux défauts (kill bias 0, death bias 25) quand la moyenne empirique vaut ~12.5 — garde-fou anti-dérive vérifié en test.
+3. **Threading sans casser de signature** : ajout d'un champ optionnel `Hyperparams map[CountType]CountHyperparams` sur `CountInputs` (nil → defaults ep). `UpdateTwoTeamWithCountsEP` le pose sur `input.CountHyperparams`. Seul appelant prod = `applyMatchToSkillV2`, donc 0 régression sur les tests EP existants.
+4. **Wiring shadow runner** : `resolveGroupParams(ctx, c, group)` résout Priors + CountHyperparams effectifs PAR GROUPE (override empirique via `repo.LoadHyperparams`), **mémoïsé** dans `shadowRunContext.priorsCache`/`countHypCache` (1 requête par groupe par run). `c.priors` reste les defaults (base). `applyMatchToSkillV2` prend désormais `countHyp` en param et le pose sur `counts.Hyperparams`. Log `slog.DebugContext "hyperparams ré-estimés appliqués"` avec count d'overrides + draw_probability. **Best-effort** : `LoadHyperparams` en échec → fallback defaults + warn (run continue).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 137s)
+- `go vet` + gofmt clean
+- Tests unitaires : map vide → defaults intacts ; seul draw_prob → seul DrawProbability change ; draw_prob invalide ignoré ; bias recalibré (12.5 → defaults, 20/8 → 7.5/20.5) ; poids/variance inchangés
+- E2E `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` : match nul 2v2 symétrique sans counts (pure TS), draw_probability_empirical=0.5 seedé vs default → σ owner PLUS grand avec la proba haute (draw moins surprenant → moins de réduction de variance). Prouve que la valeur empirique est réellement lue.
+- DDL test `openShadowTestDB` étendu avec `lusr_hyperparams_v2` (+ vue _latest).
+
+**Note** : `kill_std_empirical`/`death_std_empirical`/`match_count_analyzed` restent non câblés (le doc ne demandait que draw prob + means). La variance d'observation (`ObservationVar`) pourra être recalibrée depuis les std en Sprint 3.A (TTT batch propre).
+
+**Reste pour la DoD (validation prod)** : run manuel `LEVELUP_LUSR_V2_ENABLED=1 ./server` après un passage TTT batch → vérifier le log "hyperparams ré-estimés appliqués" avec overrides > 0. Non exécutable hors prod.
+
+**Prochaine étape** : Sprint 1.C — détection escouades + correction skill (squad offset).
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.C — détection escouades + correction skill — Complété (gated OFF)
+
+**Statut** : Complété, **gated OFF par défaut** · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 1.C
+
+**Contexte** : Le modèle traite N joueurs d'une même équipe comme N indépendants. Un squad coordonné gagne plus que la somme de ses parties → le μ des joueurs qui jouent souvent ensemble est SUR-estimé (les victoires de squad sont attribuées au skill individuel). C'est l'angle mort le plus impactant (les 4 trackés jouent souvent ensemble). Correction : offset de synergie par paire, appliqué au μ effectif avant l'EP.
+
+**Décision majeure — gating OFF par défaut (`LEVELUP_LUSR_V2_SQUAD_OFFSET=1`)** : la feature touche le cœur du calcul EP et son algo d'estimation est sous-spécifié + validable seulement en prod. Comme le cross-mode coupling, tout est gated → flag off ⇒ `squadRepo` nil ⇒ offsets nuls ⇒ comportement strictement identique (no-op exact, vérifié). Zéro risque prod tant que non activé+validé.
+
+**Architecture** :
+1. **Algo pur** `skill_v2/squad.go` : `ComputeSquadOffset([]SquadCoMatch, gain) float64` = `mean(Won − SoloWinProb) × gain`, clampé ±`SquadOffsetCap`(=2.0). + `ApplySquadOffset`, `ClampSquadOffset`.
+2. **Application σ-préservante** : μ_effectif = μ_individuel + Σ(offsets partenaires présents) AVANT l'EP ; posterior individuel = posterior_effectif − offset (l'offset est constant pour le match, seul le delta EP s'applique au skill individuel). Maths : prior_eff = μ+off, EP donne μ'_eff, individuel = μ'_eff − off = μ + Δ_EP. σ jamais modifié.
+3. **Effet anti-inflation** (test E2E vérifié) : sur une VICTOIRE, l'équipe boostée (μ effectif ↑) rend la victoire moins surprenante → μ individuel monte MOINS. C'est exactement la correction voulue (moins d'inflation pour les multi-stack).
+4. **Table** `player_squad_offset` (append-only + vue `_latest`, migration `shared_create_player_squad_offset`, TargetShared). **Repo** `duckdb.SquadOffsetRepo` (LoadSquadOffsets avec cache run-scoped + UpsertSquadOffset INSERT pur).
+5. **CLI** `cmd/lusr_v2_squad_estimate` : scanne les matchs 2-équipes sociaux d'une fenêtre (--weeks=4), accumule par paire (≥ --min-matches=10) les (Won, SoloWinProb), calcule l'offset (--gain=6.0), écrit dans les 2 sens (synergie symétrique). `--dry-run` pour rapport seul.
+6. **Wiring** : `applyMatchToSkillV2` prend `squadRepo` ; calcule offsets par équipe (`computeTeamSquadOffsets`), gaussiennes effectives, predict (1.A) + EP (1.B) sur l'effectif, strip avant persist. La proba 1.A reflète désormais la synergie (effectif).
+
+**MVP first-pass assumé (à raffiner en Sprint 3.A / TTT proper)** : le CLI estime `SoloWinProb` depuis les ratings solo COURANTS (proxy du pré-match). Biais : les ratings courants incluent déjà ces matchs → SoloWinProb sur-estimé → offset SOUS-estimé. **Biais conservateur (sous-correction) donc sûr** ; ré-exécuter périodiquement raffine. La calibration (gain, N, M) et l'activation prod restent à valider (dry-run replay sur les 4 trackés).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/platform/duckdb/... ./internal/migration/... ./internal/sync/` PASS (duckdb 34s, sync 137s)
+- `go vet ./...` clean ; gofmt clean ; `go build ./...` OK (CLI inclus)
+- Tests unitaires squad : 0 match → 0 ; sur-perf systématique → offset attendu ; clamp ±2.0 ; sous-perf → −2.0
+- Tests E2E : `TestRunLUSRV2Shadow_AppliesSquadOffset` (flag on, offset +1.5, victoire → μ owner monte MOINS qu'sans offset) ; flag off (pas de rows) reste no-op exact
+
+**Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_squad_estimate --dry-run` sur prod → offsets ∈ [-2,+2] cohérents pour les 4 trackés ; dry-run replay avec flag on → pas de drift > 1.5 pt sur les solo. Non exécutable hors prod.
+
+**Note hygiène** : le hint Phase 5.B imprimé par `cmd/lusr_v2_ttt_batch` (`skillv2HyperparamUsageHint`) est désormais obsolète (le wiring est fait en Sprint 1.B) — à nettoyer dans une passe ultérieure.
+
+**Prochaine étape** : Sprint 1 terminé (1.A + 1.B + 1.C). Suite possible : Sprint Final (bascule canonical prod) après validation prod des flags squad/coupling, ou Sprints 2.x/3.x au fil de l'eau.
+
+## [2026-05-28] LUSR v2 Sprint 2.A — Timeline du score au moment du quit — ABANDONNÉ (donnée API absente)
+
+**Statut** : Abandonné avec justification (issue prévue par le plan, étape 2.A.1) · Branche `feat/lusr-v2-phase0-metrics`
+
+**Contexte** : 2.A voulait classer un quit "related" (équipe perdait au moment du quit → δ modéré) vs "unrelated" (équipe gagnait → δ fort) sur le score AU MOMENT du quit plutôt que sur l'outcome FINAL. Prérequis explicite (2.A.1) : l'API doit fournir un historique/timeline du score.
+
+**Investigation (2.A.1)** :
+- `internal/openspartan/models.go` : `CoreStats` ne contient que des agrégats FIN-DE-MATCH — `Score`, `PersonalScore`, `RoundsWon/Lost/Tied`. Aucun champ horodaté de score.
+- `highlight_events` (table shared) : colonnes `time_ms`, `event_type`, `xuid`, `type_hint`, `raw_json`. Ce sont des HIGHLIGHTS (kills/médailles notables) — un sous-ensemble curé, PAS un flux de scoring complet avec valeur de points + attribution d'équipe. Inexploitable pour reconstruire un score d'équipe courant (incomplet ; et en modes objectifs CTF/Oddball/Zones, kills ≠ score).
+- Aucune table `match_progression` / `score_timeline` ; les occurrences grep de "TeamScore/score_history" pointaient vers des scores finaux (scoreboard) ou des métriques calculées (form_score), pas une timeline.
+
+**Décision** : abandon conforme à la DoD ("sprint marqué abandonné avec justification si donnée API absente"). Reconstruire le score-au-quit depuis `highlight_events` serait un heuristique bruité (highlights incomplets, modes non-slayer) qui risquerait de MAL classer des quits et donc de mal pénaliser des ratings — coût > bénéfice. L'heuristique actuelle (outcome final dans `quitDeltaForTeam`) reste en place.
+
+**Réouverture possible** si une nouvelle source apparaît : endpoint API film/round-by-round, ou parsing du film (`.ai/V7` mentionne du film weapon extraction expérimental) qui exposerait des events de scoring horodatés et complets.
+
+**Prochaine étape** : Sprint 2.B — matrice de corrélation entre modes.
+
+## [2026-05-28] feat(lusr-v2): Sprint 2.B — matrice de corrélation entre modes — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 2.B
+
+**Contexte** : Le leak cross-mode (Phase 4) utilisait un scalaire unique `DefaultModeCouplingWeight=0.3` pour TOUS les couples de modes. Or slayer↔objectif (gunplay proche) sont plus corrélés que slayer↔chaos. On remplace par une matrice `coupling[source][target]` calibrée empiriquement.
+
+**Décisions techniques** :
+1. **Algo pur** `skill_v2/mode_correlation_matrix.go` : `EstimateCouplingMatrix(map[xuid][]GroupState) map[string]map[string]float64` = corrélation de Pearson des μ entre modes sur les joueurs ayant joué les deux, clampée `[0, Phase4ModeCouplingMaxWeight=0.4]`. Symétrique. Corrélation négative → 0 (le leak additif ne modélise pas l'anti-corrélation). < `minPlayersForCoupling`(3) échantillons ou variance nulle → pas d'entrée.
+2. **Storage** : rows `mode_coupling_<source>_<target>` dans `lusr_hyperparams_v2` (playlist_group = source), via `UpsertHyperparam`. Helpers purs `ModeCouplingHyperparamName` + `CouplingWeightFor(hyperparams, source, target, fallback)`.
+3. **Runtime** : `propagateCrossModeLeak` charge `LoadHyperparams(source)` et utilise `CouplingWeightFor(...)` par target, **fallback `DefaultModeCouplingWeight` si pas d'entrée** (ou si LoadHyperparams échoue → warn). Le clamp 0.4 reste garanti par `ApplyCrossModeLeak`.
+4. **CLI** `lusr_v2_ttt_batch` étendu : `loadPlayerStatesByXUID` + `EstimateCouplingMatrix` + `writeModeCoupling` (2 sens, symétrique) + rapport. (`cmd/lusr_v2_ttt_batch/mode_coupling.go`)
+
+**Doublement gated / faible risque** : (a) le leak n'est appliqué que si `LEVELUP_LUSR_V2_MODE_COUPLING=1` (off par défaut) ; (b) tant que le batch n'a pas écrit la matrice, `CouplingWeightFor` retombe sur le scalaire 0.3 → comportement Phase 4 inchangé. La régression `TestRunLUSRV2Shadow_Phase4_CrossModeLeak` (qui attend 0.3) passe toujours.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 137s) ; `go vet` + gofmt clean ; build OK
+- Tests matrice : corrélés parfaits → 0.4 partout ; décorrélés (vecteurs orthogonaux) → 0 ; anti-corrélation → 0 ; < 3 joueurs → pas d'entrée ; CouplingWeightFor fallback
+
+**Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_ttt_batch` sur prod → matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos). Avec seulement ~4 trackés, beaucoup de paires seront sous le seuil (fallback scalaire) — la matrice gagne en densité avec la base de joueurs.
+
+**Prochaine étape** : Sprint 3.A — recalibration TTT complète (forward+backward + EM).
+
+## [2026-05-28] feat(lusr-v2): Sprint 3.A — prototype TTT (Kalman + RTS + EM) — Complété (prototype, non câblé prod)
+
+**Statut** : Complété en tant que **prototype pur testé** · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 3.A (priorité Basse, nice-to-have)
+
+**Contexte** : Le batch actuel ne fait qu'une agrégation forward (moyennes empiriques). La vraie inférence Through-Time (TS2 §10) lisse l'historique complet d'un joueur (forward + backward) et ré-estime les paramètres de dynamique/bruit en utilisant TOUTE l'information (passé + futur).
+
+**Scope assumé (prototype, pas le TTT couplé complet)** : le sprint est explicitement "étude + prototype" (3.A.1 étudier le paper, 3.A.2 "Prototype passe backward", 3.A.5 "converger sur dataset synthétique"). J'ai livré le **bloc de base** : un lisseur état-espace linéaire-gaussien 1D + EM, pur et testé. Le **couplage inter-joueurs complet** du factor graph TS2 §10 (où la variance d'observation d'un joueur dépend des time-series de ses adversaires) reste une étape ultérieure — c'est la partie 1-2j+ risquée. La comparaison prod (3.A.6) est de toute façon différée.
+
+**Implémentation** `skill_v2/ttt.go` (pur) :
+- Modèle : `s_t = s_{t-1} + w_t` (w~N(0,q), random walk du skill) ; `z_t = s_t + v_t` (v~N(0,r), mesure issue du match). Les z_t sont fournis par le caller (μ post-match) — découple le lisseur du couplage.
+- `kalmanForward` (filtre 1D + log-vraisemblance marginale) → `rtsBackward` (lisseur RTS + covariance lag-one) → `EstimateTTT` (boucle EM ré-estimant q=τ² et r, plancher `minTTTVariance`, m0/p0 fixes).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/...` PASS ; `go vet` + gofmt clean
+- `TestEstimateTTT_ConvergesUnder10Iterations` : sur random walk synthétique (q*=0.4, r*=4, T=300), EM converge en < 10 itérations (tol 2e-2 sur |Δq|+|Δr| ≈ 0.5% de r), q/r récupérés dans un facteur 3 du vrai
+- `TestEstimateTTT_LogLikelihoodNonDecreasing` : la log-vraisemblance marginale croît à chaque itération (propriété EM)
+- `TestTTT_SmootherBeatsFilter` : RMSE lisseur ≤ RMSE filtre vs états vrais (le lisseur exploite le futur)
+- Edge cases (0 / 1 observation) gérés
+
+**Non câblé prod (volontaire)** : le module n'est PAS branché dans `cmd/lusr_v2_ttt_batch` ni dans le replay. Le brancher exigerait un modèle d'observation par match (z_t, couplage opposants) = le factor graph couplé, hors scope de ce prototype. C'est une API de bibliothèque validée, prête pour le TTT couplé ultérieur (ce n'est pas du code mort : exporté + testé, point d'entrée du futur batch TTT).
+
+**Reste pour un TTT "complet"** (follow-up, non Sprint 1-3) : factor graph multi-joueurs couplé + modèle d'observation par match + écriture de τ/β ré-estimés par groupe dans lusr_hyperparams_v2 + comparaison prod (3.A.6).
+
+**Prochaine étape** : Sprint 3.B — delta de rating dans l'historique.
+
+## [2026-05-28] feat(lusr-v2): Sprint 3.B — delta de rating dans l'historique — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 3.B (confort UX, ~2h)
+
+**Contexte** : `match_skill_rank.rating_delta` était toujours nil en écriture canonical. Pour afficher "vous avez gagné +12 LUSR ce match", il faut le delta vs le rating précédent.
+
+**Décisions techniques** :
+- `writeCanonicalLUSRRow` calcule `rating_delta = rating - rating_précédent` AVANT l'insertion (la row courante n'existe pas encore → la query renvoie bien le match précédent). nil au premier match.
+- Helper `loadPreviousLUSRRating(ctx, playerDB, group)` : `SELECT rating_value FROM match_skill_rank WHERE rating_type='LUSR' AND playlist_group=? ... ORDER BY written_at DESC, id DESC LIMIT 1`. Le shadow runner traitant les matchs en ordre chronologique, le rating le plus récemment écrit EST celui du match précédent. Best-effort : ErrNoRows → nil (premier match) ; autre erreur → nil + warn (delta absent, pas de blocage).
+- Le delta est posé sur les 2 rows (LUSR + LUSR_V2) via baseRow (même rating_value).
+
+**Résultats observés** :
+- `go test ./internal/sync/` PASS ; `go vet` + gofmt clean
+- E2E `TestRunLUSRV2Shadow_Canonical_RatingDelta` : 2 matchs successifs même groupe → m1 rating_delta NULL (pas de précédent), m2 rating_delta non-nul
+
+**Reste pour la DoD (prod)** : vérifier après quelques matchs réels que `rating_delta` est populé. Non exécutable hors prod.
+
+**Prochaine étape** : hygiène — nettoyer le hint Phase 5.B obsolète + header TODO de `cmd/lusr_v2_ttt_batch`.
+
+## [2026-05-28] chore(lusr-v2): nettoyage hint Phase 5.B obsolète (ttt_batch) — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+Le CLI `cmd/lusr_v2_ttt_batch` imprimait un "RAPPEL Phase 5.B — wiring shadow runner" et son header listait un "TODO Phase 5.B" — devenus FAUX depuis que le Sprint 1.B a câblé la relecture des hyperparams (`resolveGroupParams`). Anti-pattern "rappel obsolète".
+
+- Suppression de `skillv2HyperparamUsageHint()` + son appel dans `main()`.
+- Header réécrit : indique que les hyperparams sont relus au runtime (1.B) + matrice cross-mode (2.B) + pointe le prototype TTT (3.A, `ttt.go`, non branché).
+- `skillv2`/`os`/`fmt` toujours utilisés ailleurs → aucun import orphelin. Build + vet clean.
+
+**Conclusion** : enchaînement 2.A→2.B→3.A→3.B + hygiène terminé. 2.A abandonné (donnée absente), 3.A livré en prototype. Reste : bascule prod (Sprint Final) + follow-ups prod-only (activation flags squad/coupling, TTT couplé).
+
+## [2026-05-28] feat(lusr-v2): 2.A RÉOUVERT + implémenté + activation par défaut squad/cross-mode + décisions — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+**Déclencheur** : retours utilisateur. Corrections majeures de mes conclusions précédentes.
+
+**1. 2.A réouvert et implémenté (j'avais abandonné à tort)** : l'utilisateur a signalé que la donnée EXISTE — c'est le graphe "tug of war" de match-view (`killer_victim_pairs` : killer_xuid + time_ms relatif film, `analysis.ComputeTugOfWar`). Fiable 100% modes non-objectifs, signal suffisant sur objectifs. Implémenté :
+- `skill_v2/quit_context.go` (pur) : `InferQuitContext(frags, quitMs, quitterTeamID)` → Leading/Tied/Trailing (compte frags cumulés ≤ quitMs). + tests.
+- `skill_v2_quit_penalty.go` : `quitDeltaForContext` (trailing→related 1.0 ; leading/tied→unrelated 2.5) ; `buildCountInputs` prend `quitTimeline` et applique le contexte PAR quitter (fallback `quitDeltaForTeam` outcome-final si timeline absente) ; `loadQuitTimeline` (charge killer_victim_pairs, attribue par side) ; `hasAnyQuitter` (évite la requête si pas de quitter).
+- **HOOK ADAPTER T0** : `quitOffsetMs(leaveTime, filmStartUTC)` convertit le timestamp absolu de départ en ms repère-frags. Gros commentaire : le vrai T0 = `real_start_time` via adapter titre-spécifique, NON implémenté (on utilise start_time_utc, correct pour Halo) — c'est le point d'insertion pour le collègue.
+- Wiring : `processOneShadowMatch` charge la timeline (si quitter) → `applyMatchToSkillV2` (param `qt`) → `buildCountInputs`.
+- E2E `TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit` : quit en menant mais défaite → pénalité 2.5 vs fallback 1.0 (écart exact 1.5).
+
+**2. Squad (1.C) + cross-mode (2.B) activés PAR DÉFAUT** (décision produit) : `IsLUSRV2SquadOffsetEnabled` et `IsLUSRV2ModeCouplingEnabled` retournent true sauf "0"/"false"/"no". NB : squad sans effet tant que les offsets ne sont pas peuplés par le CLI (no-op). Cross-mode utilise le scalaire 0.3 tant que la matrice n'est pas calculée. Test `Phase4_OffByDefault` reconverti en `Phase4_ExplicitlyOff` (flag="0").
+
+**3. 3.A** : décisions notées dans le roadmap — scope = joueurs avec BDD (tous, un par un) ; réponse fiabilité (limiter aux actifs = perte négligeable car lissage par-joueur indépendant) ; approche wiring (série des μ post-match comme observations, réécriture historique à trancher) = follow-up.
+
+**4. 1.A & 3.B** : notes "AFFICHAGE À DÉCIDER" ajoutées (les données sont en base, rien ne les affiche — l'utilisateur décide où/comment).
+
+**5. Checklist utilisateur** ajoutée en tête de `LUSR_V2_ROADMAP_SPRINTS.md` : à faire serveur (lancer ttt_batch + squad_estimate + replay + bascule Final), à décider (affichages, confirmer défauts ON, 3.A), à faire collègue (adapter T0), différé.
+
+**Résultats** : `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 133s) ; `go vet` + gofmt clean ; build OK.
+
+**Prochaine étape** : la bascule prod (Sprint Final) est entre les mains de l'utilisateur (étapes serveur). Côté code, tout Sprint 1-3 est livré.
+
+## [2026-05-28] chore(lusr-v2): vérification finale — logging + couverture tests — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+Vérification finale demandée par l'utilisateur (complétude + logging + tests).
+
+**Build/vet/tests** : `go build ./...` + `go vet ./...` = OK. `go test` PASS sur skill_v2, sync, persist, migration, duckdb.
+
+**Couverture** : `internal/analysis/skill_v2` (cœur logique pur LUSR v2) = **89,5%**. Par fonction : predict/hyperparams/squad/mode_correlation_matrix/ttt/quit_context quasi tous 100% (quelques branches dégénérées défensives à 75-93%). sync 43,7%, persist 32,6%, migration 24,7%, duckdb 18,3% (gros packages largement legacy ; les ajouts LUSR v2 y sont couverts par E2E).
+
+**Améliorations apportées** :
+- Logging quit-context (2.A) renforcé : `rows.Err()` loggé séparément, debug "timeline chargée"/"aucun frag", debug "quit-context appliqué" par quitter (context leading/tied/trailing + delta) → utile pour valider 2.A en prod. `QuitContext.String()` ajouté (+ test).
+- `ctx` propagé à `buildCountInputs`/`quitBaseDelta` pour permettre ces logs.
+- Tests ajoutés : `TestDefaultOnFlags` (squad + cross-mode ON par défaut, off sur "0"/"false"/"no"), `TestQuitContext_String`.
+
+**Inventaire logging LUSR v2** (couche sync) : INFO aux bornes de run (shadow/sentinel terminé), WARN sur tous les chemins d'erreur/fallback (LoadState, apply, write canonical, LoadHyperparams ×2, LoadSquadOffsets, frags quit ×2, rating précédent, cross-mode leak, playerDB nil), DEBUG sur chaque décision par-match (hyperparams/squad/quit-context/cross-mode appliqués). 5 compteurs expvar `levelup.lusr_v2.*`.
+
+**Conclusion** : code LUSR v2 (Sprints 1-3 + 2.A) complet, testé, loggé. Reste opérationnel/décisionnel côté utilisateur (cf. checklist roadmap).

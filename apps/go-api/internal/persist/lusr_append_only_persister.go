@@ -39,6 +39,10 @@ type LUSRRatingInsert struct {
 	TierLabel       *string
 	RatingDelta     *float64
 	PlaylistGroup   string
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur
+	// (LUSR v2 Sprint 1.A). nil pour les chemins qui ne la calculent pas
+	// (CSR, héritage v1) → colonne NULL.
+	ExpectedWinProb *float64
 }
 
 // AppendOnlyLUSRPersister écrit des ratings LUSR en mode strictement
@@ -119,11 +123,11 @@ func (p *AppendOnlyLUSRPersister) Persist(ctx context.Context, rows []LUSRRating
 			INSERT INTO match_skill_rank
 				(match_id, rating_type, rating_value, rating_deviation,
 				 tier, tier_fr, sub_tier, tier_label,
-				 rating_delta, playlist_group)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				 rating_delta, playlist_group, expected_win_prob)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.MatchID, rt, r.RatingValue, r.RatingDeviation,
 			r.Tier, r.TierFR, r.SubTier, r.TierLabel,
-			r.RatingDelta, r.PlaylistGroup,
+			r.RatingDelta, r.PlaylistGroup, r.ExpectedWinProb,
 		); err != nil {
 			return fmt.Errorf("persist: INSERT LUSR append-only %s/%s: %w", r.MatchID, rt, err)
 		}

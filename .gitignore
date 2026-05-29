@@ -170,6 +170,7 @@ data/*.tmp.*
 *.tmp.*
 data/tmp_*.py
 data/archive/*.bak
+tmp/*
 
 # Documentation locale (non trackée)
 ROADMAP_*.md

@@ -17,17 +17,20 @@ import (
 
 // Compteurs expvar publiés sous le namespace `levelup.lusr_v2.*`.
 //
-// canonicalWritesTotal : nombre de batchs (match) écrits avec succès en
-//   canonical mode (= 1 row LUSR + 1 row LUSR_V2 inséré atomiquement).
+// canonicalWritesTotal : batchs (match) écrits avec succès en canonical mode
+// (= 1 row LUSR + 1 row LUSR_V2 inséré atomiquement).
 // canonicalWriteErrors : échecs d'écriture canonical (transaction rollback).
-// dualRowInconsistencies : matchs détectés par RunDualRowSentinel avec
-//   un seul des deux rating_types présents dans match_skill_rank_latest.
+// dualRowInconsistencies : matchs détectés par RunDualRowSentinel avec un seul
+// des deux rating_types présents dans match_skill_rank_latest.
 // sentinelScansTotal : nombre d'exécutions de RunDualRowSentinel.
+// predictionsTotal : probabilités de victoire pré-match calculées (Sprint 1.A),
+// 1 par match traité par le shadow runner.
 var (
 	canonicalWritesTotal   = expvar.NewInt("levelup.lusr_v2.canonical_writes_total")
 	canonicalWriteErrors   = expvar.NewInt("levelup.lusr_v2.canonical_write_errors_total")
 	dualRowInconsistencies = expvar.NewInt("levelup.lusr_v2.dual_row_inconsistencies_total")
 	sentinelScansTotal     = expvar.NewInt("levelup.lusr_v2.sentinel_scans_total")
+	predictionsTotal       = expvar.NewInt("levelup.lusr_v2.predictions_total")
 )
 
 // SentinelReport est le résultat d'un scan dual-row.
