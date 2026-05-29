@@ -1,0 +1,124 @@
+/**
+ * SessionChartStack — pile de graphes analytiques d'UNE session.
+ *
+ * Rendu identique en vue principale (session active) et dans le drawer (session
+ * comparée) → comparaison "côte à côte" : on lit la session A à gauche et la session B
+ * à droite, mêmes graphes alignés. Pas de graphe combiné A/B.
+ *
+ * - `dense` (drawer) : tout en 1 colonne (le panneau est déjà étroit).
+ *   Vue principale : quelques paires en 2 colonnes.
+ * - `participationSide` / `participationColor` : l'axe du profil de participation est à
+ *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
+ */
+import type { SemanticToken } from '@/lib/accessibility'
+import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
+
+import { useSessionT } from './_shared'
+import { SessionOutcomeDonut } from './SessionOutcomeDonut'
+import { SessionKDATimeline } from './SessionKDATimeline'
+import { SessionKillsDonut } from './SessionKillsDonut'
+import { SessionModeBreakdown } from './SessionModeBreakdown'
+import { SessionFdaRadar } from './SessionFdaRadar'
+import { SessionFragsRadar } from './SessionFragsRadar'
+import { SessionFdaBars } from './SessionFdaBars'
+import { SessionParticipationBars } from './SessionParticipationBars'
+import { SessionNetScoreArea } from './SessionNetScoreArea'
+import { SessionMmrDumbbell } from './SessionMmrDumbbell'
+import { SessionPerfTrend } from './SessionPerfTrend'
+import { SessionEngagementChart } from './SessionEngagementChart'
+import { SessionOcdrScatter } from './SessionOcdrScatter'
+
+interface Props {
+  entry: SessionCompareEntry | null
+  matches: SessionDetailMatchRow[]
+  dense?: boolean
+  participationSide?: 'left' | 'right'
+  participationColor?: SemanticToken
+}
+
+export function SessionChartStack({
+  entry,
+  matches,
+  dense = false,
+  participationSide = 'right',
+  participationColor = 'compare-a',
+}: Props) {
+  const t = useSessionT()
+
+  const outcomeDonut = (
+    <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} />
+  )
+  const kdaTimeline = <SessionKDATimeline title={t('session.detail.chart_kda_title')} matches={matches} />
+  const killsDonut = <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={matches} />
+  const modeBreakdown = (
+    <SessionModeBreakdown title={t('session.detail.chart_mode_breakdown_title')} matches={matches} />
+  )
+  const fdaRadar = <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={matches} />
+  const fragsRadar = <SessionFragsRadar title={t('session.detail.chart_frags_radar_title')} entry={entry} />
+  const fdaBars = (
+    <SessionFdaBars title={t('session.detail.chart_fda_per_minute_title')} matches={matches} mode="minute" />
+  )
+  const participation = (
+    <SessionParticipationBars
+      title={t('session.compare.participation_title')}
+      entry={entry}
+      axisSide={participationSide}
+      colorToken={participationColor}
+    />
+  )
+  const netScore = <SessionNetScoreArea title={t('session.detail.chart_net_score_title')} matches={matches} />
+  const mmr = <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
+  const perf = <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={matches} />
+  const engagement = (
+    <SessionEngagementChart
+      title={t('session.detail.chart_engagement_title')}
+      matches={matches}
+      entry={entry}
+    />
+  )
+  const ocdr = <SessionOcdrScatter title={t('session.compare.ocdr_title')} matches={matches} />
+
+  if (dense) {
+    return (
+      <>
+        {outcomeDonut}
+        {kdaTimeline}
+        {killsDonut}
+        {modeBreakdown}
+        {fdaRadar}
+        {fragsRadar}
+        {fdaBars}
+        {participation}
+        {netScore}
+        {mmr}
+        {perf}
+        {engagement}
+        {ocdr}
+      </>
+    )
+  }
+
+  return (
+    <>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        {outcomeDonut}
+        {kdaTimeline}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        {killsDonut}
+        {modeBreakdown}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        {fdaRadar}
+        {fragsRadar}
+      </div>
+      {fdaBars}
+      {participation}
+      {netScore}
+      {mmr}
+      {perf}
+      {engagement}
+      {ocdr}
+    </>
+  )
+}

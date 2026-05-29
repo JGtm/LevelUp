@@ -48,24 +48,53 @@ export function buildSessionFdaBarsOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const fmt = (n: number) => Number(n.toFixed(opts.decimals))
+  const abs = (v: number) => Math.abs(v).toFixed(opts.decimals)
 
+  // Visuel page Escouade : Frags/Assists au-dessus de l'axe zéro (positifs),
+  // Morts en dessous (négatifs). Axe X accentué (= ligne zéro), labels en valeur
+  // absolue. Couleurs sémantiques par stat (win/loss/draw) plutôt que complément
+  // joueur (une seule session → pas de mapping joueur→couleur à préserver).
   const data = points.map((p) => ({
-    value: fmt(p.value),
+    value: fmt(p.key === 'deaths' ? -p.value : p.value),
     itemStyle: { color: resolveToken(STAT_TOKEN[p.key]) },
   }))
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 28, bottom: 36, left: 44, right: 16 },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
-    xAxis: { ...axis, type: 'category', data: points.map((p) => p.label) },
-    yAxis: { ...axis, type: 'value' },
+    grid: { top: 28, bottom: 36, left: 44, right: 16, containLabel: true },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: (params: unknown) => {
+        const arr = Array.isArray(params) ? params : []
+        if (arr.length === 0) return ''
+        const p = arr[0] as { name: string; value: number }
+        return `${p.name}: <b>${abs(p.value)}</b>`
+      },
+    },
+    xAxis: {
+      ...axis,
+      type: 'category',
+      data: points.map((p) => p.label),
+      axisLine: { lineStyle: { color: tc.text, width: 2 } }, // ligne zéro accentuée (foreground)
+    },
+    yAxis: {
+      ...axis,
+      type: 'value',
+      axisLabel: { ...(axis.axisLabel as Record<string, unknown>), formatter: (v: number) => abs(v) },
+    },
     series: [
       {
         type: 'bar',
         data,
         barMaxWidth: 56,
-        label: { show: true, position: 'top', formatter: (p: { value: number }) => String(p.value) },
+        label: {
+          show: true,
+          position: 'top',
+          color: tc.text,
+          formatter: (p: { value: number }) => abs(p.value),
+        },
       },
     ],
   }

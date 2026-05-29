@@ -155,10 +155,6 @@ en = "Requested session could not be reconstructed with the current filters."
 fr = "Matchs"
 en = "Matches"
 
-[session.detail.stat_wins_losses]
-fr = "Victoires / Défaites"
-en = "Wins / Losses"
-
 [session.detail.stat_kda]
 fr = "KDA"
 en = "KDA"
@@ -167,17 +163,17 @@ en = "KDA"
 fr = "Score perf."
 en = "Perf. score"
 
-[session.detail.stat_win_rate]
-fr = "Taux de victoire"
-en = "Win rate"
-
-[session.detail.stat_kdr]
-fr = "KDR"
-en = "KDR"
-
 [session.detail.stat_kills_per_match]
 fr = "Kills / match"
 en = "Kills / match"
+
+[session.detail.stat_avg_life]
+fr = "Durée de vie"
+en = "Avg. life"
+
+[session.detail.stat_off_def]
+fr = "Rendement / Résistance"
+en = "Yield / Resistance"
 
 # Colonnes table matchs
 [session.detail.col_open]
@@ -263,8 +259,12 @@ fr = "Évolution FDA"
 en = "K / D / A evolution"
 
 [session.detail.chart_outcomes_title]
-fr = "Séquence des résultats"
-en = "Outcome sequence"
+fr = "Issues de la session"
+en = "Session outcomes"
+
+[session.detail.donut_winrate_center]
+fr = "Victoires"
+en = "Win rate"
 
 [session.detail.chart_kills_donut_title]
 fr = "Répartition K / D / A"
@@ -301,6 +301,34 @@ en = "Engagement per match"
 [session.detail.engagement_axis]
 fr = "évén./min vs attendu"
 en = "events/min vs expected"
+
+[session.detail.chart_mode_breakdown_title]
+fr = "Modes joués"
+en = "Modes played"
+
+[session.detail.mode_breakdown_count]
+fr = "matchs"
+en = "matches"
+
+[session.detail.chart_net_score_title]
+fr = "Net score cumulé (Frags − Morts)"
+en = "Cumulative net score (Kills − Deaths)"
+
+[session.detail.net_score_series]
+fr = "Net cumulé"
+en = "Cumulative net"
+
+[session.detail.chart_mmr_title]
+fr = "Challenge MMR (équipe vs adverse)"
+en = "MMR challenge (team vs enemy)"
+
+[session.detail.mmr_team]
+fr = "Votre équipe"
+en = "Your team"
+
+[session.detail.mmr_enemy]
+fr = "Adverse"
+en = "Enemy"
 
 [session.detail.col_rating_delta]
 fr = "Δ rang"

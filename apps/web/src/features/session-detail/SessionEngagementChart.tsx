@@ -18,11 +18,6 @@ import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
-// Bande "normale" d'engagement : |résidu| ≤ 5 évén./min. Aligné sur classifyActivity
-// (Go) : > 5 = très actif, < −5 = en retrait. Affichée en markArea pour rendre l'échelle
-// lisible (on voit si chaque match est dans la norme / au-dessus / en retrait).
-const ENGAGEMENT_NORMAL_BAND = 5
-
 interface EngagementPoint {
   label: string
   value: number
@@ -51,22 +46,26 @@ export function buildSessionEngagementOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 64, left: 56, right: 72 },
-    tooltip: { ...getTooltipBase(tc), trigger: 'axis' },
+    // Grille alignée sur "Score de performance" (SessionPerfTrend) pour un rendu identique.
+    grid: { top: 24, bottom: 64, left: 48, right: 72 },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'axis',
+      // L'unité (évén./min vs attendu) vit dans le tooltip plutôt qu'en nom d'axe vertical,
+      // pour garder le même style épuré que "Score de performance".
+      formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+        const p = params[0]
+        return `${p.name.replace('\n', ' · ')}<br/>${p.marker} ${opts.axisName}: <b>${p.value}</b>`
+      },
+    },
     xAxis: {
       ...axis,
       type: 'category',
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    yAxis: {
-      ...axis,
-      type: 'value',
-      name: opts.axisName,
-      nameLocation: 'middle',
-      nameGap: 40,
-      nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
-    },
+    yAxis: { ...axis, type: 'value' },
     series: [
       {
         type: 'bar',
@@ -75,11 +74,6 @@ export function buildSessionEngagementOption(
           itemStyle: { color: resolveToken(p.value >= 0 ? 'divergent-pos' : 'divergent-neg') },
         })),
         barMaxWidth: 28,
-        markArea: {
-          silent: true,
-          itemStyle: { color: resolveToken('divergent-neutral'), opacity: 0.12 },
-          data: [[{ yAxis: -ENGAGEMENT_NORMAL_BAND }, { yAxis: ENGAGEMENT_NORMAL_BAND }]],
-        },
         markLine: {
           silent: true,
           symbol: 'none',

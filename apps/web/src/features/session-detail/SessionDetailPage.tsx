@@ -10,12 +10,17 @@
  * une transition `grid-template-columns` — le panneau glisse et pousse la colonne
  * principale vers la gauche. La query utilise `keepPreviousData` pour ne pas
  * démonter le layout pendant le fetch compare (sinon la transition ne joue pas).
+ *
+ * Comparaison "côte à côte" : la session active (gauche) et la session comparée
+ * (drawer, droite) affichent la MÊME pile de graphes (`SessionChartStack`), alignée.
+ * Le profil de participation s'affiche en miroir (axe à droite à gauche / à gauche à
+ * droite) pour un effet papillon symétrique.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
@@ -25,22 +30,8 @@ import { useSessionT } from './_shared'
 import { SessionSummaryCard } from './SessionSummaryCard'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionMatchesTable } from './SessionMatchesTable'
-import { SessionKDATimeline } from './SessionKDATimeline'
-import { SessionOutcomeTape } from './SessionOutcomeTape'
-import { SessionKillsDonut } from './SessionKillsDonut'
-import { SessionPerfTrend } from './SessionPerfTrend'
-import { SessionFdaBars } from './SessionFdaBars'
-import { SessionFdaRadar } from './SessionFdaRadar'
-import { SessionFragsRadar } from './SessionFragsRadar'
-import { SessionOcdrScatter } from './SessionOcdrScatter'
-import { SessionEngagementChart } from './SessionEngagementChart'
+import { SessionChartStack } from './SessionChartStack'
 import { SessionCompareMetrics } from './SessionCompareMetrics'
-import { SessionCompareKillsDonut } from '../session-compare/SessionCompareKillsDonut'
-import { SessionCompareOutcomeTape } from '../session-compare/SessionCompareOutcomeTape'
-import { SessionComparePerfProgression } from '../session-compare/SessionComparePerfProgression'
-import { SessionCompareSkillProgression } from '../session-compare/SessionCompareSkillProgression'
-import { SessionCompareOCDR } from '../session-compare/SessionCompareOCDR'
-import { SessionCompareEngagement } from '../session-compare/SessionCompareEngagement'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -67,6 +58,24 @@ export function SessionDetailPage() {
     compareSessionLabel,
     enableCompare,
   )
+
+  // En-tête L3 sticky : il doit se coller SOUS la NavL2 (elle-même sticky top-0 dans
+  // le même conteneur de scroll). On mesure la hauteur réelle de la NavL2 (sibling
+  // précédent du root de la page dans PlayerLayout) et on l'applique en `top` — sinon
+  // les deux se chevauchent à top-0 et le header L3 disparaît derrière la NavL2 au scroll.
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [navHeight, setNavHeight] = useState(0)
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const nav = root.previousElementSibling as HTMLElement | null
+    if (!nav) return
+    const update = () => setNavHeight(nav.offsetHeight)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(nav)
+    return () => ro.disconnect()
+  }, [data])
 
   if (isLoading) {
     return (
@@ -119,6 +128,7 @@ export function SessionDetailPage() {
     // pousse la colonne principale vers la gauche (un seul flux de scroll). Le
     // conteneur reste monte en permanence pour que la transition CSS se declenche.
     <div
+      ref={rootRef}
       className={`xl:grid xl:transition-[grid-template-columns] xl:duration-300 xl:ease-out ${
         drawerOpen
           ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
@@ -129,9 +139,12 @@ export function SessionDetailPage() {
       <div className={`min-w-0 space-y-6 p-6 ${drawerOpen ? 'xl:border-r' : ''}`}>
         {hasSessions ? (
           <>
-            {/* En-tete session "L3" : sticky sous la NavL2 (le <main> scrolle), bleed
-                horizontal via -mx-6 pour s'aligner sur les bords de la colonne. */}
-            <div className="sticky top-0 z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-background px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* En-tete session "L3" : sticky sous la NavL2 (top = hauteur NavL2 mesurée),
+                bleed horizontal via -mx-6 pour s'aligner sur les bords de la colonne. */}
+            <div
+              className="sticky z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-background px-6 py-3 sm:flex-row sm:items-center sm:justify-between"
+              style={{ top: navHeight }}
+            >
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -186,75 +199,22 @@ export function SessionDetailPage() {
 
             <SessionSummaryCard entry={data.current_session} />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">{t('session.detail.chart_outcomes_title')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SessionOutcomeTape matches={data.matches} />
-              </CardContent>
-            </Card>
+            <SessionChartStack
+              entry={data.current_session}
+              matches={data.matches}
+              participationSide="right"
+              participationColor="compare-a"
+            />
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-              <SessionKDATimeline title={t('session.detail.chart_kda_title')} matches={data.matches} />
-              <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={data.matches} />
-            </div>
-
-            <div className="grid gap-6 xl:grid-cols-2">
-              <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={data.matches} />
-              <SessionFragsRadar
-                title={t('session.detail.chart_frags_radar_title')}
-                entry={data.current_session}
+            {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
+            <div className="space-y-3">
+              <h2 className="text-base font-semibold text-foreground">{t('session.detail.matches_card')}</h2>
+              <SessionMatchesTable
+                matches={data.matches}
+                playerSlug={playerSlug}
+                variant={drawerOpen ? 'compact' : 'full'}
               />
             </div>
-
-            <SessionFdaBars
-              title={t('session.detail.chart_fda_per_minute_title')}
-              matches={data.matches}
-              mode="minute"
-            />
-
-            <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={data.matches} />
-
-            {/* Graphes remontes du drawer compare en vue single (sessionB=null). */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">{t('session.compare.skill_progression_title')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SessionCompareSkillProgression
-                  sessionA={data.current_session}
-                  sessionB={null}
-                  labels={{
-                    title: '',
-                    sessionA: selectedSessionLabel,
-                    sessionB: '',
-                    empty: t('session.compare.skill_progression_empty'),
-                  }}
-                />
-              </CardContent>
-            </Card>
-
-            <SessionOcdrScatter title={t('session.compare.ocdr_title')} matches={data.matches} />
-
-            <SessionEngagementChart
-              title={t('session.detail.chart_engagement_title')}
-              matches={data.matches}
-              entry={data.current_session}
-            />
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">{t('session.detail.matches_card')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SessionMatchesTable
-                  matches={data.matches}
-                  playerSlug={playerSlug}
-                  variant={drawerOpen ? 'compact' : 'full'}
-                />
-              </CardContent>
-            </Card>
           </>
         ) : (
           <EmptyStateCard
@@ -317,86 +277,30 @@ export function SessionDetailPage() {
                 </select>
               </div>
 
-              {/* Contenu session comparée */}
+              {/* Contenu session comparée — même pile de graphes que la vue principale
+                  (côte à côte), profil de participation en miroir (axe à gauche). */}
               {data.compare_session ? (
                 <>
                   <SessionSummaryCard entry={data.compare_session} />
 
                   <SessionCompareMetrics metrics={data.compare_metrics} />
 
-                  <SessionCompareOutcomeTape
-                    sessionA={data.current_session}
-                    sessionB={data.compare_session}
-                    labels={{
-                      title: t('session.compare.outcome_tape_title'),
-                      sessionA: data.current_session?.session_label ?? t('session.detail.session_active'),
-                      sessionB: data.compare_session.session_label,
-                      empty: t('session.compare.outcome_tape_empty'),
-                    }}
-                  />
-
-                  <SessionCompareKillsDonut
-                    sessionA={data.current_session}
-                    sessionB={data.compare_session}
-                    labels={{
-                      title: t('session.compare.kills_donut_title'),
-                      sessionA: data.current_session?.session_label ?? t('session.detail.session_active'),
-                      sessionB: data.compare_session.session_label,
-                      empty: t('session.compare.kills_donut_empty'),
-                    }}
-                  />
-
-                  <SessionComparePerfProgression
-                    sessionA={data.current_session}
-                    sessionB={data.compare_session}
-                    labels={{
-                      title: t('session.compare.perf_progression_title'),
-                      sessionA: data.current_session?.session_label ?? t('session.detail.session_active'),
-                      sessionB: data.compare_session.session_label,
-                      empty: t('session.compare.perf_progression_empty'),
-                    }}
-                    height={240}
-                  />
-
-                  <SessionCompareSkillProgression
-                    sessionA={data.current_session}
-                    sessionB={data.compare_session}
-                    labels={{
-                      title: t('session.compare.skill_progression_title'),
-                      sessionA: data.current_session?.session_label ?? t('session.detail.session_active'),
-                      sessionB: data.compare_session.session_label,
-                      empty: t('session.compare.skill_progression_empty'),
-                    }}
-                    height={240}
-                  />
-
-                  <SessionCompareOCDR
-                    sessionA={data.current_session}
-                    sessionB={data.compare_session}
-                    labels={{
-                      title: t('session.compare.ocdr_title'),
-                      empty: t('session.compare.ocdr_empty'),
-                    }}
-                  />
-
-                  <SessionCompareEngagement
-                    sessionA={data.current_session}
-                    sessionB={data.compare_session}
-                    labels={{
-                      title: t('session.compare.engagement_title'),
-                      progressionTitle: t('session.compare.engagement_progression_title'),
-                      sessionA: data.current_session?.session_label ?? t('session.detail.session_active'),
-                      sessionB: data.compare_session.session_label,
-                      empty: t('session.compare.engagement_empty'),
-                    }}
-                    height={200}
-                  />
-
-                  <SessionMatchesTable
+                  <SessionChartStack
+                    entry={data.compare_session}
                     matches={data.compare_matches ?? []}
-                    playerSlug={playerSlug}
-                    variant="compact"
+                    dense
+                    participationSide="left"
+                    participationColor="compare-b"
                   />
+
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">{t('session.detail.matches_card')}</h3>
+                    <SessionMatchesTable
+                      matches={data.compare_matches ?? []}
+                      playerSlug={playerSlug}
+                      variant="compact"
+                    />
+                  </div>
                 </>
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">
