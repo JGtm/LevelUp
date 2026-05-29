@@ -49921,3 +49921,42 @@ Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout d
 **Tests** : build vert. timeline + service + narrative verts.
 
 **Reste hors Phase 3** : validation UI (3 pages : MatchView timeline, SquadV2 cadence/intensity, Synthesis/Timeseries first-events) à faire par l'utilisateur ; recalcul LUSR (prod-sensitive, §4.B handoff) ; Phase 4 time_played_seconds (§4.C).
+
+---
+
+## [2026-05-29] Phase 4 (partie A) — TODO §4.D : AvgLifeSeconds legacy depuis l'API
+
+**Statut** : Complété.
+
+`ComputeSynthesisKPIs` (legacy `SynthesisMatchRow`) laissait `AvgLifeSeconds` nil faute de champ. Câblé la vraie valeur API :
+- `legacymatch.SynthesisMatchRow` : +`AvgLifeSeconds *float64`.
+- `Q33bSynthesisSharedQuery` : +`p.avg_life_seconds` (12 cols) + scan dans `LoadSynthesisMatches`.
+- `squad_breakdown.go::ComputeSynthesisKPIs` : accumulateur dédié `sumLife/nLife` depuis `r.AvgLifeSeconds` (valeur API par match), moyenne arrondie 0.1 — **mirror exact** de `ComputeSynthesisKPIsFromCanonical`. AUCUN dérivé de `time_played` (confirmé par l'utilisateur : valeur récupérée de l'API, pas calculée).
+- Fixture parité `synthesis_canonical_test.go` : AvgLife=42.5 des deux côtés → le test de parité exerce désormais le chemin AvgLife.
+
+**Résultats** : build + vet verts. Tests analysis (parité) + service + integration duckdb (Q33b) verts.
+
+**Note** : `Q33bSynthesisMatches` (constante) est du code mort (déclaré, jamais utilisé hors déclaration) — non touché ce tour, à supprimer dans un cleanup dédié.
+
+**Reste Phase 4** : recompute `time_played_seconds` (algo §7.2) — pure func + sync wiring + backfill CLI. Le backfill `--commit` est une écriture sur table ART critique (`match_participants`) → backup restic + checkpoint utilisateur + revue ART-safety AVANT exécution.
+
+---
+
+## [2026-05-29] Phase 4 (partie B) — recompute time_played_seconds (réel, countdown retranché)
+
+**Statut** : Complété (backfill DB exécuté + sync câblé).
+
+**Découverte clé (validée empiriquement)** : l'API `ParticipationInfo.TimePlayed` **inclut le countdown pré-match** ET surévalue les latecomers (ex. Fortress : tous les full-match à 447s = durée film complète, même un latecomer beg=false à 447). Le recompute depuis first_joined/last_leave dans la fenêtre `[real_start_time, start+duration]` donne le temps de jeu réel (Fortress full-match → 419s = playable).
+
+**Code (analysis/timeline)** :
+- `compute_time_played.go` : `ComputeTimePlayed(in, gameplayStart, gameplayEnd) (int64, TimePlayedQuality)` — pure. joined=MAX(first_joined,start) ; left=MIN(last_leave|end, end) ; secs=MAX(0,left-joined). Qualités ok / clamped_zero / no_data. 7 tests (full-match, quitter, latecomer, clamps).
+
+**Sync wiring** : `transforms.go::ExtractParticipants` recompute time_played via `computeMatchWindow` (start+T0 → gameplayStart, start+duration → gameplayEnd) + `ComputeTimePlayed`. Override seulement si fenêtre connue + qualité ok ; sinon valeur API conservée. Les nouveaux matchs seront cohérents avec le backfill.
+
+**Backfill** : `cmd/backfill_time_played` (dry-run par défaut + garde-rail §7.3 + comparaison vs API). Exécuté `--commit` après backup restic (snapshot `5318b296`). **25567 lignes mises à jour** (qualité ok). 189 clamped_zero + 295 no_data **non écrits** (valeur API conservée). Garde-rail : **100%** des full-match à ±5% de gameplay_duration (cible >95%). UPDATE séquentiel single-connection offline → pas de risque ART (précédent backfill_t0).
+
+**Vérif post-commit** : Fortress full-match 447→419s ; quitter beg/!end → 219s. Global time_played med=526s.
+
+**Note sémantique** : time_played_seconds = désormais temps de gameplay réel (countdown exclu). Impacte KPM et dérivés — comportement voulu (Phase 4).
+
+**Reste** : recalcul LUSR (§4.B, prod-sensitive, non abordé ce tour).

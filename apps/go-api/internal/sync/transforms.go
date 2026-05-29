@@ -172,6 +172,35 @@ func computeMatchT0(matchJSON map[string]any, startUTC time.Time) (int64, timeli
 	return timeline.ComputeT0(inputs, startUTC)
 }
 
+// computeMatchWindow résout la fenêtre de gameplay d'un match depuis son JSON :
+//
+//	gameplayStart = start_time + T0 (countdown retranché ; start_time si T0 non calculable)
+//	gameplayEnd   = start_time + duration
+//
+// Sert au recompute time_played_seconds par joueur (cf. ComputeTimePlayed).
+// ok=false si StartTime/Duration manquants → l'appelant conserve la valeur API.
+func computeMatchWindow(matchJSON map[string]any) (gameplayStart, gameplayEnd time.Time, ok bool) {
+	matchInfo, isMap := matchJSON["MatchInfo"].(map[string]any)
+	if !isMap {
+		return time.Time{}, time.Time{}, false
+	}
+	startTime, err := parseISO(asString(matchInfo["StartTime"]))
+	if err != nil {
+		return time.Time{}, time.Time{}, false
+	}
+	dur := parsePTDuration(asString(matchInfo["Duration"]))
+	if dur == nil || *dur <= 0 {
+		return time.Time{}, time.Time{}, false
+	}
+	startUTC := startTime.UTC()
+	gameplayStart = startUTC
+	if t0ms, q := computeMatchT0(matchJSON, startUTC); q.Computed() {
+		gameplayStart = startUTC.Add(time.Duration(t0ms) * time.Millisecond)
+	}
+	gameplayEnd = startUTC.Add(time.Duration(*dur) * time.Second)
+	return gameplayStart, gameplayEnd, true
+}
+
 // isNumericXUID retourne true si l'xuid est un identifiant joueur numérique
 // (bots Halo : xuid non-numérique ou vide).
 func isNumericXUID(xuid string) bool {
@@ -243,6 +272,10 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 	players, _ := matchJSON["Players"].([]any)
 	var rows []ParticipantRow //nolint:prealloc
 	seen := map[string]bool{}
+
+	// Fenêtre de gameplay (countdown retranché) pour recomputer time_played par
+	// joueur. winOK=false (StartTime/Duration manquants) → on garde la valeur API.
+	gameplayStart, gameplayEnd, winOK := computeMatchWindow(matchJSON)
 
 	for _, p := range players {
 		player, ok := p.(map[string]any)
@@ -343,6 +376,20 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 			}
 			if ts, err := parseISO(asString(pinfo["LastLeaveTime"])); err == nil {
 				row.LastLeaveTime = &ts
+			}
+		}
+
+		// Recompute time_played_seconds = temps de jeu réel (countdown retranché,
+		// quitters/latecomers gérés). L'API TimePlayed inclut le countdown et
+		// surévalue les latecomers (cf. Phase 4). Override seulement si la fenêtre
+		// est connue et le calcul exploitable (qualité ok) ; sinon valeur API.
+		if winOK && row.FirstJoinedTime != nil {
+			if secs, q := timeline.ComputeTimePlayed(
+				timeline.TimePlayedInput{FirstJoinedTime: row.FirstJoinedTime.UTC(), LastLeaveTime: row.LastLeaveTime},
+				gameplayStart, gameplayEnd,
+			); q == timeline.TimePlayedOK {
+				v := int(secs)
+				row.TimePlayedSeconds = &v
 			}
 		}
 
