@@ -50123,3 +50123,20 @@ Couvertures : timeline 97.7%, narrative 94%, skill_v2 85.8%, domain 84.6%, canon
 **Logging** : audit OK — aucun fmt.Println/log.Printf dans le code non-CLI ; fonctions pures (poids TS2, timeline) ne loggent pas (arch-rules) ; le shadow (orchestration) warn sur tous les échecs + Info completion + LogLUSRModeAtBoot (boot mode + misconfig) → logs/sync.log. Ajout observabilité TS2 : `with_gameplay_duration` dans le log final du shadow (nb de matchs où la pondération temps-joué est alimentée).
 
 **Global** : go build + vet propres, `go test ./...` vert, frontend typecheck vert. Tree propre (hors .ai/HANDOFF non suivi).
+
+---
+
+## [2026-05-29] Fix : LUSR_V2 (audit) masquait LUSR dans match_skill_rank_latest
+
+**Statut** : Complété. **Correction d'un mauvais diagnostic** : j'avais cru à un problème de frontières de tiers (μ→legacy) nécessitant une "recalibration". FAUX — les DefaultTierBoundaries sont correctes (Diamond à μ≥25.8) et les rows LUSR brutes SONT bien Diamond (1833-1866 pour Madina). La recalibration tentée (loader lusr_hyperparams_v2_latest) était un no-op (aucun tier_boundary seedé) → revertée.
+
+**Vrai bug** : Stratégie C écrit 2 rows/match dans le même batch (même written_at) — `LUSR` (UI) + `LUSR_V2` (audit). La vue `match_skill_rank_latest` départageait par `written_at DESC, id DESC` ; `LUSR_V2` (inséré après → id plus grand) gagnait ROW_NUMBER=1. Donc l'UI (`WHERE rating_type='LUSR'`) récupérait une row LUSR PÉRIMÉE (Madina Gold 1513 au lieu de Diamond 1833). Preuve : `_latest LUSR_V2` max=2000, `_latest LUSR` max=1513, raw LUSR max=1866.
+
+**Fix** :
+- Nouvelle migration `player_msr_view_lusr_over_v2_v1` : vue priorise `CASE CSR=0, LUSR=1, LUSR_V2=2` → LUSR_V2 audit ne masque plus LUSR.
+- Sentinel `RunDualRowSentinel` : lit la table RAW `match_skill_rank` (pas `_latest` qui collapse à 1 row/match et faisait des faux positifs OnlyLUSRV2).
+- Vue appliquée aux 4 DB joueur actuelles (one-off CREATE OR REPLACE) + migration pour les futures/boot.
+
+**Vérif** : Madina arena_slayer `_latest LUSR` = 2000 (Diamond/Onyx) ✓ (était 1513 Gold). Choco/JGtm Gold conformes. Build + tests migration/sync verts.
+
+**Note** : XxDaemonGamerxX a 0 match v2 écrit (matchs non LUSR-éligibles/2-team) → garde ses valeurs v1 ; sujet distinct.

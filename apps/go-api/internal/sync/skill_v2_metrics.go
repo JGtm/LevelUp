@@ -62,18 +62,22 @@ func RunDualRowSentinel(ctx context.Context, playerDB *sql.DB) (*SentinelReport,
 	sentinelScansTotal.Add(1)
 
 	if _, err := playerDB.ExecContext(ctx,
-		`SELECT 1 FROM match_skill_rank_latest LIMIT 0`); err != nil {
-		// Vue/table absente — pas une erreur, juste pas migré.
-		slog.DebugContext(ctx, "sentinel: match_skill_rank_latest absent", "err", err)
+		`SELECT 1 FROM match_skill_rank LIMIT 0`); err != nil {
+		// Table absente — pas une erreur, juste pas migré.
+		slog.DebugContext(ctx, "sentinel: match_skill_rank absent", "err", err)
 		return &SentinelReport{}, nil
 	}
 
+	// Lecture sur la table RAW (pas la vue _latest) : l'invariant dual-row
+	// concerne la coexistence des rows LUSR + LUSR_V2 d'un même match, or
+	// match_skill_rank_latest collapse à 1 row/match (priorité CSR>LUSR>LUSR_V2)
+	// et ne pourrait jamais montrer les deux. BOOL_OR sur le raw les voit.
 	rows, err := playerDB.QueryContext(ctx, `
 		WITH per_match AS (
 		  SELECT match_id,
 		         BOOL_OR(rating_type = 'LUSR')    AS has_lusr,
 		         BOOL_OR(rating_type = 'LUSR_V2') AS has_lusr_v2
-		  FROM match_skill_rank_latest
+		  FROM match_skill_rank
 		  WHERE rating_type IN ('LUSR', 'LUSR_V2')
 		  GROUP BY match_id
 		)
