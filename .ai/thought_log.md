@@ -49825,3 +49825,17 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Reste** : (a) appliquer migration `t0_quality` + `backfill_t0 --commit` (récupère 1712 T0) ; (b) mod-heure ComputeT0 (désormais défensif/optionnel, 99.3% passent déjà) ; (c) wiring ComputeT0 sync post-sync ; (d) Phase 3 activation runtime.
 
 **Prochaine étape** : backfill_t0 --commit (après migration t0_quality appliquée) + wiring sync, puis Phase 3.
+
+---
+
+## [2026-05-29] backfill_t0 --commit exécuté + migration t0_quality
+
+**Statut** : Complété (T0 persisté en base).
+
+- `backfill_t0` rendu autonome (applique `ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS t0_quality` en mode --commit).
+- Backup restic préalable `4c57d755` (état post-re-normalisation first_joined).
+- `backfill_t0 --commit` : **1724 lignes** mises à jour, **1712 T0 stockés (99.3%)** dans `real_start_time` (= début gameplay UTC) + `t0_quality`. 12 rejets (1 negative + 11 suspicious_high) → t0_quality seul, real_start_time NULL.
+
+État DB : `real_start_time` porte maintenant le vrai début gameplay (UTC) pour 1712 matchs. Phase 3 (activation runtime) peut lire `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time_utc)` comme T0Ms.
+
+**Reste** : wiring ComputeT0 au sync post-sync (écriture via persist, respecter pattern ART) + Phase 3 (remplacer `phase1T0Ms()`) + recalcul LUSR + Phase 4.
