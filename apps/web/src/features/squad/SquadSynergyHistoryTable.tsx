@@ -185,7 +185,9 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         ),
       },
       {
-        accessorKey: 'duration_seconds',
+        id: 'duration',
+        // Durée réelle de gameplay (countdown retranché) préférée, fallback brut.
+        accessorFn: (r) => r.gameplay_duration_seconds ?? r.duration_seconds,
         header: labels.duration,
         cell: (ctx) => (
           <span className="text-muted-foreground font-mono tabular-nums">

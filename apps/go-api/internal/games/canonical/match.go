@@ -45,6 +45,25 @@ type MatchSummary struct {
 	T0Ms *int64
 }
 
+// GameplayDurationSeconds retourne la VRAIE durée de gameplay (countdown
+// pré-match retranché) : DurationSeconds − T0Ms/1000, bornée à ≥ 0. Source
+// unique pour l'affichage "durée du match" homogène (vs durée brute du film).
+// Retourne nil si DurationSeconds est nil. Si T0Ms est nil (countdown inconnu),
+// retombe sur la durée brute.
+func (m MatchSummary) GameplayDurationSeconds() *int {
+	if m.DurationSeconds == nil {
+		return nil
+	}
+	gp := *m.DurationSeconds
+	if m.T0Ms != nil {
+		gp -= int(*m.T0Ms / 1000)
+	}
+	if gp < 0 {
+		gp = 0
+	}
+	return &gp
+}
+
 // MatchDetail est l'objet canonique central d'un match côté services.
 type MatchDetail struct {
 	MatchID      string

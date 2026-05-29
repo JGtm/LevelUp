@@ -154,6 +154,12 @@ SELECT
     p1.accuracy,
     COALESCE(p1.time_played_seconds, 0)                          AS time_played_seconds,
     COALESCE(r.duration_seconds, 0)                              AS duration_seconds,
+    -- Vraie durée de gameplay (countdown pré-match retranché via real_start_time).
+    GREATEST(0, COALESCE(r.duration_seconds, 0) - CASE
+        WHEN r.real_start_time IS NOT NULL THEN CAST(round(
+            (epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
+             - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))) / 1000.0
+        ) AS INTEGER) ELSE 0 END)                                AS gameplay_duration_seconds,
     COALESCE(p1.team_mmr, 0.0)                                   AS team_mmr,
     COALESCE(p1.headshot_kills, 0)                               AS headshot_kills,
     COALESCE((

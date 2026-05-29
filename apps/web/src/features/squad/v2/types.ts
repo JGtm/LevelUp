@@ -167,6 +167,9 @@ export interface HistoryTableRow {
   match_id: string
   started_at_utc: string
   duration_seconds?: number
+  /** Durée réelle de gameplay (countdown pré-match retranché). Préférée à
+   *  duration_seconds pour l'affichage de la durée du match. */
+  gameplay_duration_seconds?: number
   map_label?: string
   mode_label?: string
   playlist_label?: string

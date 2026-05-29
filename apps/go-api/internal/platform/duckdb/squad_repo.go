@@ -240,6 +240,7 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 			&row.Accuracy,
 			&row.TimePlayedSecs,
 			&row.DurationSeconds,
+			&row.GameplayDurationSeconds,
 			&row.TeamMMR,
 			&row.HeadshotKills,
 			&row.PerfectKills,

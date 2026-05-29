@@ -295,6 +295,9 @@ type SquadMatchHistoryRow struct {
 	DeltaMMR         *float64 `json:"delta_mmr,omitempty"`
 	ScoreLabel       string   `json:"score_label,omitempty"`
 	DurationSeconds  int      `json:"duration_seconds,omitempty"`
+	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché),
+	// préférée par le front pour l'affichage de la durée du match.
+	GameplayDurationSeconds int `json:"gameplay_duration_seconds,omitempty"`
 	// WinRateHist : taux de victoire historique du joueur sur cette carte
 	// (ratio 0..1). Calculé sur l'historique complet (canonicalRows non
 	// filtré). WinRateHistTotal = nombre de matchs joués sur la carte. Sert

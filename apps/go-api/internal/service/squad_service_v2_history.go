@@ -26,6 +26,9 @@ type HistoryTableRow struct {
 	MatchID         string                       `json:"match_id"`
 	StartedAtUTC    time.Time                    `json:"started_at_utc"`
 	DurationSeconds *int                         `json:"duration_seconds,omitempty"`
+	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché),
+	// préférée à DurationSeconds par le front pour un affichage homogène.
+	GameplayDurationSeconds *int                 `json:"gameplay_duration_seconds,omitempty"`
 	MapLabel        string                       `json:"map_label,omitempty"`
 	ModeLabel       string                       `json:"mode_label,omitempty"`
 	PlaylistLabel   string                       `json:"playlist_label,omitempty"`
@@ -84,6 +87,9 @@ func BuildHistoryTable(
 				if d := m.Summary.DurationSeconds; d != nil {
 					dCopy := *d
 					row.DurationSeconds = &dCopy
+				}
+				if gp := m.Summary.GameplayDurationSeconds(); gp != nil {
+					row.GameplayDurationSeconds = gp
 				}
 				if m.Summary.Map != nil {
 					row.MapLabel = m.Summary.Map.DefaultLabel

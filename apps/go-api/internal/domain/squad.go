@@ -43,6 +43,8 @@ type SquadMatchRow struct {
 	Accuracy         *float64
 	TimePlayedSecs   int
 	DurationSeconds  int
+	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché).
+	GameplayDurationSeconds int
 	TeamMMR          float64
 	SessionID        *int
 	SessionLabel     *string

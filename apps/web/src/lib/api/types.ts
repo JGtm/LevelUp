@@ -1948,6 +1948,9 @@ export interface SquadMatchHistoryRow {
   delta_mmr?: number
   score_label?: string
   duration_seconds?: number
+  /** Durée réelle de gameplay (countdown pré-match retranché). Préférée à
+   *  duration_seconds pour l'affichage de la durée du match. */
+  gameplay_duration_seconds?: number
   /** Taux de victoire historique du joueur sur cette carte (ratio 0..1). */
   win_rate_hist?: number
   /** Nombre total de matchs du joueur sur cette carte (dénominateur). */
