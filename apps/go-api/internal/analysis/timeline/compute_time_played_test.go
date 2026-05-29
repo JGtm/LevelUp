@@ -3,7 +3,27 @@ package timeline
 import (
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/domain"
 )
+
+func TestComputeTimePlayedFor_UsesTimelineClock(t *testing.T) {
+	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	tl := domain.NewMatchTimelineAt(start, 600_000, 28_000) // T0=28s, gameplay 572s
+
+	// Full-match (joined au countdown, pas de leave) → 572s.
+	joined := start.Add(2 * time.Second)
+	secs, q := ComputeTimePlayedFor(TimePlayedInput{FirstJoinedTime: joined}, tl)
+	if q != TimePlayedOK || secs != 572 {
+		t.Errorf("full-match: got (%d,%q), want (572,ok)", secs, q)
+	}
+
+	// Sans horloge absolue → NoData.
+	noClock := domain.NewMatchTimeline(600_000, 28_000)
+	if _, q := ComputeTimePlayedFor(TimePlayedInput{FirstJoinedTime: joined}, noClock); q != TimePlayedNoData {
+		t.Errorf("sans horloge: quality = %q, want no_data", q)
+	}
+}
 
 func TestComputeTimePlayed_FullMatchPlayer(t *testing.T) {
 	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)

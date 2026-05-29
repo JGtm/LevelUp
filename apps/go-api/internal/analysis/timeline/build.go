@@ -31,7 +31,9 @@ func BuildFromRegistry(reg domain.MatchRegistryRow) domain.MatchTimeline {
 	if reg.RealStartTime != nil {
 		t0Ms = reg.RealStartTime.Sub(reg.StartTime).Milliseconds()
 	}
-	return domain.NewMatchTimeline(durMs, t0Ms)
+	// Horloge absolue fournie (StartUTC) → vrai début/fin/durée accessibles via
+	// les méthodes GameplayStartUTC / GameplayEndUTC / GameplayDurationSeconds.
+	return domain.NewMatchTimelineAt(reg.StartTime, durMs, t0Ms)
 }
 
 // BuildTimelinesFromPlayerMatches indexe une MatchTimeline par match_id depuis

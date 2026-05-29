@@ -1,7 +1,37 @@
 // Package domain — match_timeline_test.go : tests purs de MatchTimeline.
 package domain
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestMatchTimeline_AbsoluteClock(t *testing.T) {
+	start := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	// duration 600s film, countdown 28s.
+	tl := NewMatchTimelineAt(start, 600_000, 28_000)
+
+	if !tl.HasClock() {
+		t.Fatal("HasClock() doit être vrai avec StartUTC renseigné")
+	}
+	if got := tl.GameplayStartUTC(); !got.Equal(start.Add(28 * time.Second)) {
+		t.Errorf("GameplayStartUTC = %v, want start+28s", got)
+	}
+	if got := tl.GameplayEndUTC(); !got.Equal(start.Add(600 * time.Second)) {
+		t.Errorf("GameplayEndUTC = %v, want start+600s", got)
+	}
+	// Vraie durée jouable = 600 − 28 = 572s.
+	if got := tl.GameplayDurationSeconds(); got != 572 {
+		t.Errorf("GameplayDurationSeconds = %d, want 572", got)
+	}
+}
+
+func TestMatchTimeline_NoClock(t *testing.T) {
+	tl := NewMatchTimeline(600_000, 28_000) // sans StartUTC
+	if tl.HasClock() {
+		t.Error("HasClock() doit être faux sans StartUTC")
+	}
+}
 
 func TestNewMatchTimeline_ClampsNegativeValues(t *testing.T) {
 	tl := NewMatchTimeline(-100, -50)
