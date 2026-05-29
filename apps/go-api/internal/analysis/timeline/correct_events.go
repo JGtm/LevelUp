@@ -36,3 +36,27 @@ func CorrectEvents(
 	}
 	return out
 }
+
+// CorrectImpactEvents est l'équivalent de CorrectEvents pour les
+// domain.ImpactEventRow (page Escouade / TeammatesService, type Q32 distinct de
+// canonical.HighlightEvent). Retourne une copie avec TimeMS ramené au
+// référentiel gameplay (T0 du match retranché). Mêmes propriétés que
+// CorrectEvents : match absent / timelines nil → identité (T0=0) ; l'identité
+// des gagnants de badges est invariante (soustraction d'une constante par
+// match) ; l'input n'est pas muté. Un TimeMS corrigé peut être négatif si
+// l'event précède T0 (countdown) — au caller de filtrer.
+func CorrectImpactEvents(
+	events []domain.ImpactEventRow,
+	timelines map[string]domain.MatchTimeline,
+) []domain.ImpactEventRow {
+	if events == nil {
+		return nil
+	}
+	out := make([]domain.ImpactEventRow, len(events))
+	copy(out, events)
+	for i := range out {
+		tl := timelines[out[i].MatchID] // zéro-value {0,0} si absent → identité
+		out[i].TimeMS = tl.CorrectEventTime(out[i].TimeMS)
+	}
+	return out
+}

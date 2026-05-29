@@ -4,8 +4,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -64,7 +66,18 @@ func (s *SquadService) GetSquadPage(
 	tmRecords := analysis.ComputeTeammateRecords(tmMatches)
 	records := mergeRecords(myRecords, tmRecords)
 
-	impactEvents, _ := s.repo.LoadImpactEvents(ctx, extractMatchIDs(myMatches))
+	impactEvents, err := s.repo.LoadImpactEvents(ctx, extractMatchIDs(myMatches))
+	if err != nil {
+		// Best-effort : l'impact est optionnel (ComputeImpactSummary dégrade en
+		// Available:false), mais on trace l'échec au lieu de l'avaler (était `_`).
+		slog.WarnContext(ctx, "squad_impact_events_load_failed",
+			"err", err.Error(), "teammate_xuid", teammateXUID)
+	}
+	// T0 (§4.A-bis) : cohérence avec le système Match Timeline — events ramenés
+	// au référentiel gameplay avant ComputeImpactSummary. Sans effet observable
+	// (SquadImpact n'expose que des compteurs, gagnants invariants par T0), mais
+	// évite que ce consommateur d'events bruts diverge du reste de la pipeline.
+	impactEvents = correctSquadImpactEvents(ctx, "squad.v1", impactEvents, timeline.BuildTimelinesFromSquadRows(myMatches))
 	impact := analysis.ComputeImpactSummary(impactEvents, playerXUID, teammateXUID)
 
 	timeseries := analysis.ComputeSquadTimeseries(myMatches, 20)

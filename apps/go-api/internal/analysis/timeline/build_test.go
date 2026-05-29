@@ -70,6 +70,25 @@ func TestBuildTimelinesFromPlayerMatches_ReadsSummaryT0Ms(t *testing.T) {
 	}
 }
 
+func TestBuildTimelinesFromSquadRows_ReadsT0Ms(t *testing.T) {
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m_t0", DurationSeconds: 600, T0Ms: ptrInt64(28000)},
+		{MatchID: "m_no_t0", DurationSeconds: 600, T0Ms: nil},
+		// Même match, autre coéquipier : même T0, écrasement sans effet.
+		{MatchID: "m_t0", DurationSeconds: 600, T0Ms: ptrInt64(28000)},
+	}
+	got := BuildTimelinesFromSquadRows(rows)
+	if got["m_t0"].T0Ms != 28000 {
+		t.Errorf("m_t0: T0Ms want 28000, got %d", got["m_t0"].T0Ms)
+	}
+	if got["m_t0"].DurationMs != 600000 {
+		t.Errorf("m_t0: DurationMs want 600000, got %d", got["m_t0"].DurationMs)
+	}
+	if got["m_no_t0"].T0Ms != 0 {
+		t.Errorf("m_no_t0: T0Ms want 0 (nil fallback), got %d", got["m_no_t0"].T0Ms)
+	}
+}
+
 func TestBuildForMatchMs_UsesT0Ms(t *testing.T) {
 	tl := BuildForMatchMs(600000, 28000)
 	if tl.T0Ms != 28000 {

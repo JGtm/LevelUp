@@ -10,13 +10,45 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
 
+// correctSquadImpactEvents ramène les TimeMS au référentiel gameplay (T0 /
+// countdown pré-match retranché, §4.A-bis) et émet un log d'observabilité
+// (combien de matchs du lot portaient un countdown réel) → logs/service.log,
+// grep "squad_t0_applied". Centralise le pattern partagé par les 4 consommateurs
+// d'events de la page Escouade (.17, .07, .13, squad V1). timelines nil ou
+// match absent → identité (T0=0).
+func correctSquadImpactEvents(
+	ctx context.Context,
+	chart string,
+	events []domain.ImpactEventRow,
+	timelines map[string]domain.MatchTimeline,
+) []domain.ImpactEventRow {
+	corrected := timeline.CorrectImpactEvents(events, timelines)
+	matchesWithT0 := 0
+	for _, tl := range timelines {
+		if tl.T0Ms > 0 {
+			matchesWithT0++
+		}
+	}
+	slog.DebugContext(ctx, "squad_t0_applied",
+		"chart", chart,
+		"n_events", len(corrected),
+		"n_matches", len(timelines),
+		"n_matches_with_t0", matchesWithT0)
+	return corrected
+}
+
+// timelines fournit le T0 par match (§4.A-bis) ; les TimeMS sont ramenés au
+// référentiel gameplay avant conversion en analysis.ImpactEvent. Une map nil ou
+// un match absent → T0=0 (identité).
 func (s *TeammatesService) loadImpactEventsByMatch(
 	ctx context.Context,
 	matchIDs []string,
+	timelines map[string]domain.MatchTimeline,
 ) map[string][]analysis.ImpactEvent {
 	out := make(map[string][]analysis.ImpactEvent, len(matchIDs))
 	if s.repo == nil || len(matchIDs) == 0 {
@@ -28,6 +60,7 @@ func (s *TeammatesService) loadImpactEventsByMatch(
 			"err", err.Error(), "n_matches", len(matchIDs))
 		return out
 	}
+	rows = correctSquadImpactEvents(ctx, "teammates.07", rows, timelines)
 	for _, r := range rows {
 		// EventType de ImpactEventRow est le BadgeKey original ou un type kill/death.
 		// analysis.ComputeMatchImpactFull attend EventType == "kill" ou "death".

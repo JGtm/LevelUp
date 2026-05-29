@@ -9,6 +9,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
 )
@@ -60,10 +61,20 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 		}
 		return nil
 	}
+	// T0 (§4.A-bis) : ramener les TimeMS au référentiel gameplay (countdown
+	// pré-match retranché) AVANT le calcul de durée et le bucketing. Le profil
+	// est auto-normalisé (dénominateur = max event time), mais sans correction
+	// le countdown gonfle le 1ᵉʳ bucket. T0 lu depuis allSquadRows (Q30.t0_ms).
+	events = correctSquadImpactEvents(ctx, "teammates.13", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
-	// 3. Pour chaque match, calculer la durée approximée = max(time_ms) sur les events.
+	// 3. Pour chaque match, calculer la durée approximée = max(time_ms) sur les
+	//    events corrigés. Les events pré-gameplay (TimeMS<0, countdown) sont
+	//    ignorés — ils ne doivent ni gonfler le dénominateur ni être bucketés.
 	maxTimeByMatch := make(map[string]int64, len(matchOrder))
 	for _, e := range events {
+		if e.TimeMS < 0 {
+			continue
+		}
 		if e.TimeMS > maxTimeByMatch[e.MatchID] {
 			maxTimeByMatch[e.MatchID] = e.TimeMS
 		}
@@ -118,6 +129,10 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 					continue
 				}
 				if e.EventType != analysis.EventTypeKill {
+					continue
+				}
+				if e.TimeMS < 0 {
+					// Event pré-gameplay (countdown) après correction T0 — ignoré.
 					continue
 				}
 				if filterXUID != "" && e.XUID != filterXUID {
@@ -299,9 +314,3 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 	}
 	return entries
 }
-
-// loadImpactEventsByMatch charge les events highlight pour la liste de
-// match_ids et renvoie une map matchID → []ImpactEvent (kills/deaths
-// horodatés). Utilise repo.LoadImpactEvents (Q32). Retourne map vide si
-// échec — le scoreboard ne sera alors construit qu'à partir des stats
-// participants.

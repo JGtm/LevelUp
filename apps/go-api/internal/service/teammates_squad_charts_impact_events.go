@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 )
 
@@ -49,8 +50,12 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		return startTimeByMatch[a].Compare(startTimeByMatch[b])
 	})
 
-	// 2. Charger les events impact pour tous les matchs.
-	eventsByMatch := s.loadImpactEventsByMatch(ctx, matchIDOrder)
+	// 2. Charger les events impact pour tous les matchs, ramenés au référentiel
+	//    gameplay (T0 / countdown pré-match retranché, §4.A-bis). Les gagnants
+	//    de badges sont invariants par T0, mais on corrige pour la cohérence des
+	//    TimeMS event-based et la robustesse future.
+	eventsByMatch := s.loadImpactEventsByMatch(
+		ctx, matchIDOrder, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
 	// 3. Charger les participants de l'ÉQUIPE ALLIÉE complète du main pour
 	//    chaque match (parité Python team_xuids dans compute_single_match_impact).
@@ -275,7 +280,10 @@ func (s *TeammatesService) buildSquadFirstEvents(
 		return nil
 	}
 
-	// 3. Charger les events.
+	// 3. Charger les events, puis les ramener au référentiel gameplay (T0 /
+	//    countdown pré-match retranché, §4.A-bis). CRITIQUE ici : ce chart
+	//    dépend des valeurs absolues (first_kill_s / first_death_s, bins 15s).
+	//    T0 lu depuis allSquadRows (Q30.t0_ms) ; match sans T0 connu → identité.
 	events, err := s.repo.LoadImpactEvents(ctx, matchIDs)
 	if err != nil || len(events) == 0 {
 		if err != nil {
@@ -283,6 +291,7 @@ func (s *TeammatesService) buildSquadFirstEvents(
 		}
 		return nil
 	}
+	events = correctSquadImpactEvents(ctx, "teammates.17", events, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
 	// 4. Pour chaque (match, xuid) calculer first_kill_s et first_death_s
 	// (en secondes, time_ms / 1000).
@@ -298,6 +307,11 @@ func (s *TeammatesService) buildSquadFirstEvents(
 			continue
 		}
 		_ = gt
+		if e.TimeMS < 0 {
+			// Event pré-gameplay (countdown) après correction T0 — ignoré.
+			// Évite la collision avec le sentinel -1 de firstKillS/firstDeathS.
+			continue
+		}
 		k := keyOf(e.MatchID, e.XUID)
 		ft := firsts[k]
 		if ft == nil {
