@@ -124,7 +124,14 @@ SELECT
     r.team_1_score,
     COALESCE(r.pair_name_fr, r.pair_name) AS pair_name_fr,
     r.pair_id,
-    r.game_variant_id
+    r.game_variant_id,
+    -- T0 offset (Match Timeline T0, Phase 3) : countdown pré-match en ms.
+    -- NULL si real_start_time absent → fallback runtime T0=0.
+    CASE
+        WHEN r.real_start_time IS NOT NULL THEN
+            epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
+            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+    END AS t0_ms
 FROM match_registry r
 WHERE r.match_id = ?`
 

@@ -43,6 +43,7 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMP, end_time TIMESTAMP,
 			start_time_utc TIMESTAMPTZ, end_time_utc TIMESTAMPTZ,
+			real_start_time TIMESTAMP,
 			playlist_id VARCHAR,
 			map_id VARCHAR,
 			pair_id VARCHAR,
@@ -131,6 +132,50 @@ func TestGetMatchMeta_ResolvesUUIDMapAndPlaylistViaAssetTranslations(t *testing.
 	}
 	if meta.PlaylistNameFR == nil || *meta.PlaylistNameFR != "Partie rapide" {
 		t.Errorf("PlaylistNameFR = %v, want Partie rapide", meta.PlaylistNameFR)
+	}
+}
+
+// TestGetMatchMeta_T0Ms vérifie le calcul de l'offset T0 (Match Timeline T0,
+// Phase 3) dans Q13 : real_start_time renseigné → T0Ms = écart ms avec
+// start_time_utc ; real_start_time absent → T0Ms nil (fallback runtime T0=0).
+func TestGetMatchMeta_T0Ms(t *testing.T) {
+	pdb := newMetaResolveTestPDB(t)
+	ctx := context.Background()
+
+	// m_t0 : countdown de 28s ; m_no_t0 : pas de real_start_time.
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, real_start_time, pair_name)
+		VALUES ('m_t0', '2026-05-05 23:16:00', '2026-05-05 23:16:00+00',
+		        '2026-05-05 23:16:28', 'qp-slayer')`); err != nil {
+		t.Fatalf("insert m_t0: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO shared.match_registry
+			(match_id, start_time, start_time_utc, pair_name)
+		VALUES ('m_no_t0', '2026-05-05 23:16:00', '2026-05-05 23:16:00+00', 'qp-slayer')`); err != nil {
+		t.Fatalf("insert m_no_t0: %v", err)
+	}
+
+	repo := NewMatchViewRepo(pdb, "test-xuid")
+
+	metaT0, err := repo.GetMatchMeta(ctx, "m_t0")
+	if err != nil {
+		t.Fatalf("GetMatchMeta(m_t0): %v", err)
+	}
+	if metaT0.T0Ms == nil {
+		t.Fatalf("m_t0: T0Ms should be non-nil")
+	}
+	if *metaT0.T0Ms != 28000 {
+		t.Errorf("m_t0: T0Ms want 28000ms, got %d", *metaT0.T0Ms)
+	}
+
+	metaNo, err := repo.GetMatchMeta(ctx, "m_no_t0")
+	if err != nil {
+		t.Fatalf("GetMatchMeta(m_no_t0): %v", err)
+	}
+	if metaNo.T0Ms != nil {
+		t.Errorf("m_no_t0: T0Ms want nil, got %d", *metaNo.T0Ms)
 	}
 }
 

@@ -231,8 +231,9 @@ func classifyOrderBy(s string) (sharedQueryHints, string, error) {
 // PlayerMatchesRepo.Load. Toutes les tables/vues référencées sont au niveau root
 // du catalogue shared_matches_v2.duckdb (pas de préfixe `shared.`).
 //
-// 39 colonnes : match metadata + participant stats + team_id + team_0/1_score
-// + perfect_kills (subquery sur medals_earned). Les colonnes PME (session,
+// 40 colonnes : match metadata + participant stats + team_id + team_0/1_score
+// + perfect_kills (subquery sur medals_earned) + t0_ms (countdown pré-match,
+// Match Timeline T0 Phase 3). Les colonnes PME (session,
 // performance, dominance, had_bot, is_with_friends) et match_skill_rank (tier,
 // rating, etc.) sont hydratées en étape 2/3 (cf. mergePlayerMatchRows).
 //
@@ -294,7 +295,14 @@ SELECT
         WHERE me.match_id = p.match_id
           AND me.xuid = p.xuid
           AND me.medal_name_id = 1512363953
-    ), 0)::INTEGER                                       AS perfect_kills
+    ), 0)::INTEGER                                       AS perfect_kills,
+    -- T0 offset (Match Timeline T0, Phase 3) : countdown pré-match en ms.
+    -- NULL si real_start_time absent → fallback runtime T0=0.
+    CASE
+        WHEN r.real_start_time IS NOT NULL THEN
+            epoch_ms(r.real_start_time AT TIME ZONE 'UTC')
+            - epoch_ms(COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC'))
+    END                                                  AS t0_ms
 FROM match_participants p
 JOIN v_match_full r ON r.match_id = p.match_id
 WHERE p.xuid = ?`
@@ -458,6 +466,7 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 		&s.grenadeKills, &s.meleeKills, &s.powerWeaponKills,
 		&s.shotsFired, &s.shotsHit,
 		&s.perfectKills,
+		&s.t0Ms,
 	); err != nil {
 		return playerMatchScanResult{}, err
 	}
@@ -554,6 +563,7 @@ type playerMatchScanResult struct {
 	grenadeKills, meleeKills, powerWeaponKills  sql.NullInt64
 	shotsFired, shotsHit                        sql.NullInt64
 	perfectKills                                sql.NullInt64
+	t0Ms                                        sql.NullInt64 // countdown pré-match en ms (Match Timeline T0)
 }
 
 // projectPlayerMatchRow construit la row canonique depuis les valeurs scannees.
@@ -655,6 +665,7 @@ func projectMatchSummary(s playerMatchScanResult, outcome canonical.Outcome, tea
 		IsPvE:           &s.isFirefight,
 		Outcome:         outcome,
 		Teams:           teams,
+		T0Ms:            nullInt64ToInt64Ptr(s.t0Ms),
 	}
 }
 
@@ -824,5 +835,15 @@ func nullInt64ToIntPtr(n sql.NullInt64) *int {
 		return nil
 	}
 	v := int(n.Int64)
+	return &v
+}
+
+// nullInt64ToInt64Ptr convertit sql.NullInt64 en *int64 (sans troncature).
+// Utilisé pour T0Ms (offset countdown en ms).
+func nullInt64ToInt64Ptr(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Int64
 	return &v
 }

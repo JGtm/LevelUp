@@ -34,6 +34,15 @@ type MatchSummary struct {
 	// avec ParticipantsXUIDs en plus ; ici on garde une version sans les
 	// participants. Nil si non chargé / non team-based.
 	Teams []TeamSnapshot
+
+	// T0Ms est l'offset en millisecondes du countdown pré-match (Match Timeline
+	// T0, Phase 3) : durée entre le start_time officiel du match et le début
+	// réel du gameplay. Dérivé en SQL de
+	// `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time_utc)`.
+	// Nil si real_start_time absent (T0 non calculable) → les builders timeline
+	// retombent sur T0=0 (chronologie brute, comportement pré-Phase 3).
+	// Champ additif (politique d'évolution canonical, cf. ADR 0005).
+	T0Ms *int64
 }
 
 // MatchDetail est l'objet canonique central d'un match côté services.
@@ -176,17 +185,17 @@ type PlayerMatchEnrichment struct {
 // Tous les champs sont optionnels (pointeurs) — un titre sans système de
 // tiers (ex: Halo MCC 1-50) peut ne renseigner que `RatingValue`.
 type SkillSnapshot struct {
-	RatingType     RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
-	RatingValue    *float64   // valeur brute du rating (CSR points, LUSR mu)
-	TierCode       *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
-	TierCodeFR     *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
-	SubTier        *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
-	Delta          *float64   // points gagnés/perdus ce match (positif/négatif)
-	PlaylistGroup        *string // groupe normalisé (ex: "ranked-arena")
-	SeasonID             *string // saison Halo associée au rating (ex: "Elan")
-	MeasurementRemaining *int    // matchs de placement restants (>0 = phase placement)
-	KillsExpected        *float64 // depuis MatchSkillSnapshot — utilisé par Stats
-	DeathsExpected       *float64 // idem
+	RatingType           RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
+	RatingValue          *float64   // valeur brute du rating (CSR points, LUSR mu)
+	TierCode             *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
+	TierCodeFR           *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
+	SubTier              *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
+	Delta                *float64   // points gagnés/perdus ce match (positif/négatif)
+	PlaylistGroup        *string    // groupe normalisé (ex: "ranked-arena")
+	SeasonID             *string    // saison Halo associée au rating (ex: "Elan")
+	MeasurementRemaining *int       // matchs de placement restants (>0 = phase placement)
+	KillsExpected        *float64   // depuis MatchSkillSnapshot — utilisé par Stats
+	DeathsExpected       *float64   // idem
 }
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.
