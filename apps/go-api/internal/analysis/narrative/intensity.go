@@ -29,14 +29,21 @@ type IntensityProfile struct {
 //
 // Tous les events avec MatchID non vide sont comptes (kill, death, medal,
 // assist, finisher, clutch, first_kill, first_death). Les events sans
-// MatchID sont ignores. La duree du match est inferee depuis le timestamp
-// max observe (proxy, audit signale que match_registry fournit la duree
-// canonique amont).
+// MatchID sont ignores.
+//
+// Dénominateur de bucketisation par match (du plus fiable au fallback) :
+//   - gameplayDurationsMS[matchID] si > 0 : VRAIE durée de gameplay (countdown
+//     retranché, source match_registry via MatchTimeline) → buckets couvrent
+//     tout le match même si le dernier event est avant la fin ;
+//   - sinon : timestamp max observé (proxy, sous-estime si events incomplets).
+//
+// gameplayDurationsMS peut être nil (tout en fallback maxTime).
 //
 // Tri : par MatchID asc.
 func ComputeMatchIntensityProfiles(
 	events []canonical.HighlightEvent,
 	nBuckets int,
+	gameplayDurationsMS map[string]int64,
 ) []IntensityProfile {
 	if nBuckets <= 0 {
 		nBuckets = 10
@@ -67,13 +74,18 @@ func ComputeMatchIntensityProfiles(
 
 	out := make([]IntensityProfile, 0, len(groups))
 	for matchID, a := range groups {
+		// Dénominateur : durée gameplay canonique si fournie, sinon maxTime proxy.
+		denom := a.maxTime
+		if d := gameplayDurationsMS[matchID]; d > 0 {
+			denom = d
+		}
 		buckets := make([]int, nBuckets)
 		// Si le match a une duree non nulle, distribuer ; sinon tout dans bucket 0.
-		if a.maxTime <= 0 {
+		if denom <= 0 {
 			buckets[0] = len(a.times)
 		} else {
 			for _, t := range a.times {
-				b := int(int64(nBuckets) * t / a.maxTime)
+				b := int(int64(nBuckets) * t / denom)
 				if b >= nBuckets {
 					b = nBuckets - 1
 				}
@@ -88,7 +100,7 @@ func ComputeMatchIntensityProfiles(
 			NBuckets: nBuckets,
 			Buckets:  buckets,
 			Total:    len(a.times),
-			MaxTime:  a.maxTime,
+			MaxTime:  denom,
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {

@@ -117,7 +117,9 @@ func TestGolden_T0Pipeline_RealMatches(t *testing.T) {
 		corrected := timeline.CorrectEvents(matchEvents, timelines)
 
 		fe := narrative.ComputeFirstEventsPerMatch(corrected, m.TopKillerXUID, []string{m.MatchID})
-		intens := narrative.ComputeMatchIntensityProfiles(corrected, 10)
+		// Intensité bucketisée sur la VRAIE durée de gameplay (countdown retranché),
+		// pas sur le dernier event observé (cf. amélioration (c)).
+		intens := narrative.ComputeMatchIntensityProfiles(corrected, 10, timeline.GameplayDurationsMS(timelines))
 
 		out := matchGoldenOutput{MatchID: m.MatchID, T0Ms: tl.T0Ms, Intensity: intens}
 		if len(fe) == 1 {

@@ -19,7 +19,7 @@ func TestBuildCadenceChart_AggregatesAcrossPlayersAndMatches(t *testing.T) {
 		"main": "x_p1",
 		"f1":   "x_p2",
 	}
-	chart := BuildCadenceChart(events, squadXUIDs, 60)
+	chart := BuildCadenceChart(events, squadXUIDs, 60, nil)
 
 	if chart.Key != "squad.synergies.cadence" {
 		t.Errorf("Key want squad.synergies.cadence, got %s", chart.Key)
@@ -55,6 +55,7 @@ func TestBuildCadenceChart_EmptySquadReturnsEmpty(t *testing.T) {
 		[]canonical.HighlightEvent{killEv("m1", "x_p1", "x_v1", 1_000)},
 		nil,
 		60,
+		nil,
 	)
 	if len(chart.Datapoints) != 0 {
 		t.Errorf("empty squad: want 0 datapoints, got %d", len(chart.Datapoints))
@@ -67,6 +68,7 @@ func TestBuildCadenceChart_DefaultPhaseSeconds(t *testing.T) {
 		[]canonical.HighlightEvent{killEv("m1", "x_p1", "x_v1", 1_000)},
 		map[string]string{"main": "x_p1"},
 		0,
+		nil,
 	)
 	if chart.Meta["phase_seconds"] != 60 {
 		t.Errorf("default phase_seconds want 60, got %v", chart.Meta["phase_seconds"])
@@ -82,7 +84,7 @@ func TestBuildIntensityHeatmap_NormalizesPerMatch(t *testing.T) {
 		evtIntensity("m1", string(canonical.EventKill), 95),
 		evtIntensity("m1", string(canonical.EventDeath), 100),
 	}
-	chart := BuildIntensityHeatmap(events, 10)
+	chart := BuildIntensityHeatmap(events, 10, nil)
 
 	if chart.Key != "squad.synergies.intensity" {
 		t.Errorf("Key want squad.synergies.intensity, got %s", chart.Key)
@@ -114,7 +116,7 @@ func TestBuildIntensityHeatmap_MultiMatchSorted(t *testing.T) {
 		evtIntensity("m_b", string(canonical.EventKill), 100),
 		evtIntensity("m_a", string(canonical.EventKill), 100),
 	}
-	chart := BuildIntensityHeatmap(events, 5)
+	chart := BuildIntensityHeatmap(events, 5, nil)
 	// 2 matchs x 5 buckets = 10 datapoints
 	if len(chart.Datapoints) != 10 {
 		t.Fatalf("want 10 datapoints, got %d", len(chart.Datapoints))
@@ -134,7 +136,7 @@ func TestBuildIntensityHeatmap_MultiMatchSorted(t *testing.T) {
 
 func TestBuildIntensityHeatmap_EmptyEvents(t *testing.T) {
 	t.Parallel()
-	chart := BuildIntensityHeatmap(nil, 10)
+	chart := BuildIntensityHeatmap(nil, 10, nil)
 	if len(chart.Datapoints) != 0 {
 		t.Errorf("empty events: want 0 datapoints, got %d", len(chart.Datapoints))
 	}

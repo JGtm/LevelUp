@@ -120,26 +120,35 @@ func BuildMatchCadenceChart(
 	events []domain.EventRaw,
 	scoreboard []domain.ScoreboardRaw,
 	matchID string,
+	gameplayDurationMS int64,
 ) *domain.ChartSeries[domain.ChartPointStacked] {
 	if len(events) == 0 || len(scoreboard) == 0 {
 		return nil
 	}
 	canonicalEvents := convertEventsRawToCanonical(events, matchID)
-	return BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard)
+	return BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard, gameplayDurationMS)
 }
 
 // BuildMatchCadenceChartFromCanonical : variante consommant directement des
 // canonical.HighlightEvent (chunk MV4.A — loader unifié). Pas de conversion.
+//
+// gameplayDurationMS (0 si inconnu) fixe le nombre de phases sur la VRAIE durée
+// de gameplay (countdown retranché) plutôt que sur le dernier kill observé.
 func BuildMatchCadenceChartFromCanonical(
 	canonicalEvents []canonical.HighlightEvent,
 	scoreboard []domain.ScoreboardRaw,
+	gameplayDurationMS int64,
 ) *domain.ChartSeries[domain.ChartPointStacked] {
 	if len(canonicalEvents) == 0 || len(scoreboard) == 0 {
 		return nil
 	}
 	squadXUIDs := extractMatchSquadXUIDs(scoreboard)
 
-	profiles := narrative.ComputeCadenceProfiles(canonicalEvents, squadXUIDs, MatchCadencePhaseSeconds)
+	var gpDur map[string]int64
+	if gameplayDurationMS > 0 {
+		gpDur = map[string]int64{canonicalEvents[0].MatchID: gameplayDurationMS}
+	}
+	profiles := narrative.ComputeCadenceProfiles(canonicalEvents, squadXUIDs, MatchCadencePhaseSeconds, gpDur)
 	if len(profiles) == 0 {
 		return nil
 	}

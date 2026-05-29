@@ -205,7 +205,7 @@ func (s *TimeseriesService) GetPage(
 			resp.FirstEvents = buildFirstEventsDistribution(
 				narrative.ComputeFirstEventsPerMatch(events, s.playerXUID, matchIDs),
 			)
-			resp.IntensityRows = buildIntensityRows(events, matches, s.playerXUID)
+			resp.IntensityRows = buildIntensityRows(events, matches, s.playerXUID, timeline.GameplayDurationsMS(timelines))
 		}
 	}
 

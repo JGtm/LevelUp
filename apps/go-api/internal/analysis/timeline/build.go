@@ -68,3 +68,20 @@ func derefInt64(p *int64) int64 {
 	}
 	return *p
 }
+
+// GameplayDurationsMS projette une map de MatchTimeline en map match_id → durée
+// de gameplay en ms (countdown retranché). Sert de dénominateur canonique aux
+// builders intensité / cadence (au lieu d'inférer la fin depuis les events).
+// Les durées ≤ 0 sont omises (le builder retombe alors sur son proxy maxTime).
+func GameplayDurationsMS(timelines map[string]domain.MatchTimeline) map[string]int64 {
+	if len(timelines) == 0 {
+		return nil
+	}
+	out := make(map[string]int64, len(timelines))
+	for id, tl := range timelines {
+		if d := tl.GameplayDurationMs(); d > 0 {
+			out[id] = d
+		}
+	}
+	return out
+}

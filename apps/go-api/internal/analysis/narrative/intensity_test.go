@@ -23,7 +23,7 @@ func TestComputeMatchIntensityProfiles_DistributesEventsAcrossBuckets(t *testing
 		evt("m1", string(canonical.EventKill), 95),   // bucket 9
 		evt("m1", string(canonical.EventMedal), 100), // bucket 9 (clamp)
 	}
-	profiles := ComputeMatchIntensityProfiles(events, 10)
+	profiles := ComputeMatchIntensityProfiles(events, 10, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile, got %d", len(profiles))
 	}
@@ -53,7 +53,7 @@ func TestComputeMatchIntensityProfiles_DefaultNBuckets(t *testing.T) {
 	events := []canonical.HighlightEvent{
 		evt("m1", string(canonical.EventKill), 100),
 	}
-	profiles := ComputeMatchIntensityProfiles(events, 0)
+	profiles := ComputeMatchIntensityProfiles(events, 0, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile, got %d", len(profiles))
 	}
@@ -68,7 +68,7 @@ func TestComputeMatchIntensityProfiles_MultiMatchSorted(t *testing.T) {
 		evt("m_b", string(canonical.EventKill), 1_000),
 		evt("m_a", string(canonical.EventKill), 2_000),
 	}
-	profiles := ComputeMatchIntensityProfiles(events, 5)
+	profiles := ComputeMatchIntensityProfiles(events, 5, nil)
 	if len(profiles) != 2 {
 		t.Fatalf("want 2 profiles, got %d", len(profiles))
 	}
@@ -83,7 +83,7 @@ func TestComputeMatchIntensityProfiles_SkipsEventsWithoutMatchID(t *testing.T) {
 		evt("", string(canonical.EventKill), 1_000),
 		evt("m1", string(canonical.EventKill), 2_000),
 	}
-	profiles := ComputeMatchIntensityProfiles(events, 5)
+	profiles := ComputeMatchIntensityProfiles(events, 5, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile (m1 only), got %d", len(profiles))
 	}
@@ -98,7 +98,7 @@ func TestComputeMatchIntensityProfiles_AllEventsAtZeroTime(t *testing.T) {
 		evt("m1", string(canonical.EventKill), 0),
 		evt("m1", string(canonical.EventDeath), 0),
 	}
-	profiles := ComputeMatchIntensityProfiles(events, 5)
+	profiles := ComputeMatchIntensityProfiles(events, 5, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile, got %d", len(profiles))
 	}
@@ -137,7 +137,7 @@ func TestNormalizeIntensityBuckets_AllZero(t *testing.T) {
 
 func TestComputeMatchIntensityProfiles_EmptyInput(t *testing.T) {
 	t.Parallel()
-	if got := ComputeMatchIntensityProfiles(nil, 10); got != nil {
+	if got := ComputeMatchIntensityProfiles(nil, 10, nil); got != nil {
 		t.Errorf("nil events: want nil, got %v", got)
 	}
 }
