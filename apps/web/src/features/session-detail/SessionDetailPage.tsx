@@ -5,6 +5,11 @@
  * dans le même conteneur de scroll (`main`), donnant un scroll synchronisé naturel.
  * La colonne compare commence sous la NavL2 car elle est dans le flux DOM de l'Outlet,
  * pas en position fixed.
+ *
+ * Animation : le conteneur est une grille dont la 2e piste passe de 0fr à 1fr via
+ * une transition `grid-template-columns` — le panneau glisse et pousse la colonne
+ * principale vers la gauche. La query utilise `keepPreviousData` pour ne pas
+ * démonter le layout pendant le fetch compare (sinon la transition ne joue pas).
  */
 import { useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
@@ -38,7 +43,7 @@ export function SessionDetailPage() {
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
 
-  const { data, isLoading, isError, refetch } = useSessionDetailPage(
+  const { data, isLoading, isError, isFetching, refetch } = useSessionDetailPage(
     playerSlug,
     {
       filters: filterContext,
@@ -94,11 +99,24 @@ export function SessionDetailPage() {
   const hasSessions = data.available_sessions.length > 0
   const suggestionAvailable = Boolean(data.suggested_compare)
   const drawerOpen = enableCompare && hasSessions
+  // Compare demande mais donnees pas encore arrivees (placeholder de la requete
+  // precedente) : on affiche un spinner dans le panneau pendant qu'il glisse.
+  const isCompareLoading = drawerOpen && !data.compare_session && isFetching
 
   return (
-    <div className={drawerOpen ? 'flex flex-col xl:flex-row' : ''}>
+    // Layout en grille a deux colonnes anime via `grid-template-columns` : la
+    // 2e colonne passe de 0fr a 1fr, ce qui fait glisser le panneau compare ET
+    // pousse la colonne principale vers la gauche (un seul flux de scroll). Le
+    // conteneur reste monte en permanence pour que la transition CSS se declenche.
+    <div
+      className={`xl:grid xl:transition-[grid-template-columns] xl:duration-300 xl:ease-out ${
+        drawerOpen
+          ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+          : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0fr)]'
+      }`}
+    >
       {/* Colonne principale */}
-      <div className={`space-y-6 p-6 ${drawerOpen ? 'xl:flex-1 xl:min-w-0 xl:border-r' : ''}`}>
+      <div className={`min-w-0 space-y-6 p-6 ${drawerOpen ? 'xl:border-r' : ''}`}>
         {suggestionAvailable && !enableCompare && (
           <div className="flex justify-end">
             <Button
@@ -217,95 +235,113 @@ export function SessionDetailPage() {
         )}
       </div>
 
-      {/* Colonne compare — inline dans le même flux de scroll */}
-      {drawerOpen && (
-        <div className="flex flex-col space-y-4 border-t p-4 xl:w-[50%] xl:shrink-0 xl:border-l xl:border-t-0">
-          {/* En-tête navigation */}
-          <div className="flex flex-col gap-2 border-b pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold text-foreground">
-                {data.compare_session
-                  ? t('session.detail.drawer_title', { label: data.compare_session.session_label })
-                  : t('session.detail.session_compared')}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setEnableCompare(false)}
-                aria-label={t('session.detail.drawer_close_aria')}
-                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!data.previous_session_label}
-                onClick={() => data.previous_session_label && setCompareSessionLabel(data.previous_session_label)}
-              >
-                {t('session.detail.drawer_prev_session')}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={!data.next_session_label}
-                onClick={() => data.next_session_label && setCompareSessionLabel(data.next_session_label)}
-              >
-                {t('session.detail.drawer_next_session')}
-              </Button>
-              {data.suggested_compare && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setCompareSessionLabel(data.suggested_compare!.session_label)}
-                >
-                  {t('session.detail.drawer_use_suggested')}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Contenu session comparée */}
-          {data.compare_session ? (
+      {/* Colonne compare — 2e piste de la grille. `overflow-hidden` masque le
+          contenu tant que la piste est a 0fr ; il se revele au fur et a mesure
+          qu'elle grandit (effet glisse + pousse). Sur mobile (< xl) elle se
+          place sous la colonne principale. */}
+      <div
+        className={`overflow-hidden ${drawerOpen ? '' : 'hidden xl:block'}`}
+        aria-hidden={!drawerOpen}
+      >
+        <div
+          className={`flex flex-col space-y-4 border-t p-4 transition-opacity duration-300 xl:border-l xl:border-t-0 ${
+            drawerOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          {(drawerOpen || data.compare_session) && (
             <>
-              <SessionSummaryCard
-                title={t('session.detail.session_compared')}
-                entry={data.compare_session}
-                tone="compare"
-              />
-
-              <SessionOutcomeTape matches={data.compare_matches ?? []} />
-
-              <div className="grid gap-4 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                <SessionKDATimeline
-                  title={t('session.detail.chart_kda_title')}
-                  matches={data.compare_matches ?? []}
-                />
-                <SessionKillsDonut
-                  title={t('session.detail.chart_kills_donut_title')}
-                  matches={data.compare_matches ?? []}
-                />
+              {/* En-tête navigation */}
+              <div className="flex flex-col gap-2 border-b pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-sm font-semibold text-foreground">
+                    {data.compare_session
+                      ? t('session.detail.drawer_title', { label: data.compare_session.session_label })
+                      : t('session.detail.session_compared')}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setEnableCompare(false)}
+                    aria-label={t('session.detail.drawer_close_aria')}
+                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!data.previous_session_label}
+                    onClick={() => data.previous_session_label && setCompareSessionLabel(data.previous_session_label)}
+                  >
+                    {t('session.detail.drawer_prev_session')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!data.next_session_label}
+                    onClick={() => data.next_session_label && setCompareSessionLabel(data.next_session_label)}
+                  >
+                    {t('session.detail.drawer_next_session')}
+                  </Button>
+                  {data.suggested_compare && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setCompareSessionLabel(data.suggested_compare!.session_label)}
+                    >
+                      {t('session.detail.drawer_use_suggested')}
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              <SessionPerfTrend
-                title={t('session.detail.chart_perf_title')}
-                matches={data.compare_matches ?? []}
-              />
+              {/* Contenu session comparée */}
+              {data.compare_session ? (
+                <>
+                  <SessionSummaryCard
+                    title={t('session.detail.session_compared')}
+                    entry={data.compare_session}
+                    tone="compare"
+                  />
 
-              <SessionCompareMetrics metrics={data.compare_metrics} />
+                  <SessionOutcomeTape matches={data.compare_matches ?? []} />
+
+                  <div className="grid gap-4 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                    <SessionKDATimeline
+                      title={t('session.detail.chart_kda_title')}
+                      matches={data.compare_matches ?? []}
+                    />
+                    <SessionKillsDonut
+                      title={t('session.detail.chart_kills_donut_title')}
+                      matches={data.compare_matches ?? []}
+                    />
+                  </div>
+
+                  <SessionPerfTrend
+                    title={t('session.detail.chart_perf_title')}
+                    matches={data.compare_matches ?? []}
+                  />
+
+                  <SessionCompareMetrics metrics={data.compare_metrics} />
+                </>
+              ) : isCompareLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Spinner size="md" label={t('session.detail.loading')} />
+                </div>
+              ) : (
+                <EmptyStateNotice
+                  title={t('session.detail.no_compare_title')}
+                  description={t('session.detail.drawer_no_compare')}
+                />
+              )}
             </>
-          ) : (
-            <EmptyStateNotice
-              title={t('session.detail.no_compare_title')}
-              description={t('session.detail.drawer_no_compare')}
-            />
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
