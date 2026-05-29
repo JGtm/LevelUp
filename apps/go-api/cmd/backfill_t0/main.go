@@ -48,6 +48,14 @@ func main() {
 	}
 	defer db.Close()
 
+	if *commit {
+		// Migration idempotente : la colonne t0_quality doit exister avant l'UPDATE.
+		if _, err := db.Exec(`ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS t0_quality VARCHAR`); err != nil {
+			fmt.Println("migration t0_quality:", err)
+			os.Exit(1)
+		}
+	}
+
 	starts, err := loadMatchStarts(db)
 	if err != nil {
 		fmt.Println("load matches:", err)
