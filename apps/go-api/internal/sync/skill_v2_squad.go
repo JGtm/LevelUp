@@ -20,7 +20,7 @@ import (
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // lusrSquadOffsetEnvFlag contrôle la Phase 2 (squad offset). **ON par défaut**
@@ -40,7 +40,7 @@ func IsLUSRV2SquadOffsetEnabled() bool {
 // offsets de synergie avec ses coéquipiers présents dans CE match (bornée à
 // ±SquadOffsetCap). Joueurs sans offset enregistré (non trackés) → 0.
 // repo nil (flag off) → slice de zéros.
-func computeTeamSquadOffsets(ctx context.Context, repo *duckdb.SquadOffsetRepo,
+func computeTeamSquadOffsets(ctx context.Context, repo port.SquadOffsetRepository,
 	states []domain.SkillV2State, group string) []float64 {
 	offsets := make([]float64, len(states))
 	if repo == nil {

@@ -21,6 +21,7 @@ import (
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // lusrV2EnvFlag est le nom de la variable d'environnement qui active le shadow.
@@ -46,13 +47,6 @@ type shadowMatch struct {
 	ownerOutcome int
 	ownerTeamID  int
 	ownerHasTeam bool
-}
-
-// shadowParticipant : un participant brut, pour construire les rosters par équipe.
-type shadowParticipant struct {
-	xuid    string
-	teamID  int
-	hasTeam bool
 }
 
 // RunLUSRV2Shadow calcule les états LUSR v2 pour tous les matchs du joueur qui
@@ -86,10 +80,15 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 		canonical = false
 	}
 
-	repo := duckdb.NewSkillV2Repo(sharedDB)
+	// Découplage (Axe 2 refactor) : la logique en aval dépend des interfaces
+	// port.* ; seul ce point d'instanciation connaît le type concret DuckDB.
+	var repo port.SkillV2Repository = duckdb.NewSkillV2Repo(sharedDB)
 	// Sprint 1.C : repo squad seulement si le flag est actif (OFF par défaut →
-	// nil → aucun offset appliqué, comportement strictement inchangé).
-	var squadRepo *duckdb.SquadOffsetRepo
+	// interface nil → aucun offset appliqué, comportement strictement inchangé).
+	// Déclaré en type interface : assigner un *duckdb.SquadOffsetRepo nil à une
+	// interface donnerait un typed-nil (interface NON nil) qui casserait le
+	// garde `repo == nil` de computeTeamSquadOffsets.
+	var squadRepo port.SquadOffsetRepository
 	if IsLUSRV2SquadOffsetEnabled() {
 		squadRepo = duckdb.NewSquadOffsetRepo(sharedDB)
 	}
@@ -139,8 +138,8 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 // lusr_v2_ttt_batch) et mémoïsés dans priorsCache / countHypCache. Les maps
 // sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
-	repo           *duckdb.SkillV2Repo
-	squadRepo      *duckdb.SquadOffsetRepo // nil si LEVELUP_LUSR_V2_SQUAD_OFFSET off
+	repo           port.SkillV2Repository
+	squadRepo      port.SquadOffsetRepository // nil si LEVELUP_LUSR_V2_SQUAD_OFFSET off
 	playerDB       *sql.DB
 	sharedDB       *sql.DB
 	priors         skillv2.Priors
@@ -447,8 +446,8 @@ func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 // pas dans la match (cas dégénéré).
 func applyMatchToSkillV2(
 	ctx context.Context,
-	repo *duckdb.SkillV2Repo,
-	squadRepo *duckdb.SquadOffsetRepo,
+	repo port.SkillV2Repository,
+	squadRepo port.SquadOffsetRepository,
 	priors skillv2.Priors,
 	countHyp map[skillv2.CountType]skillv2.CountHyperparams,
 	qt quitTimeline,

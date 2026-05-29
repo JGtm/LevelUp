@@ -11,7 +11,7 @@ import (
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 func extractXUIDs(roster []rosterMember) []string {
@@ -22,7 +22,7 @@ func extractXUIDs(roster []rosterMember) []string {
 	return out
 }
 
-func loadStatesOrSeed(ctx context.Context, repo *duckdb.SkillV2Repo, xuids []string, playlistGroup string, priors skillv2.Priors) ([]domain.SkillV2State, error) {
+func loadStatesOrSeed(ctx context.Context, repo port.SkillV2Repository, xuids []string, playlistGroup string, priors skillv2.Priors) ([]domain.SkillV2State, error) {
 	out := make([]domain.SkillV2State, len(xuids))
 	for i, x := range xuids {
 		st, err := repo.LoadState(ctx, x, playlistGroup)
@@ -50,7 +50,7 @@ func shadowStatesToGaussians(states []domain.SkillV2State) []skillv2.Gaussian {
 	return out
 }
 
-func persistTeamSkillV2(ctx context.Context, repo *duckdb.SkillV2Repo, prior []domain.SkillV2State, posterior []skillv2.Gaussian, matchID string, startTime time.Time) error {
+func persistTeamSkillV2(ctx context.Context, repo port.SkillV2Repository, prior []domain.SkillV2State, posterior []skillv2.Gaussian, matchID string, startTime time.Time) error {
 	if len(prior) != len(posterior) {
 		return fmt.Errorf("persistTeamSkillV2: tailles incompatibles (prior=%d, posterior=%d)", len(prior), len(posterior))
 	}
