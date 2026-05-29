@@ -427,3 +427,39 @@ Minimisée : entries auto-détectées par les plugins knip (Vite/Playwright/ESLi
 | Unused deps | **0** (react-query-devtools câblé) |
 | Unused files | **29** (orphelins gardés volontairement) |
 | Unused exports / types | 89 / 83 (backlog itératif) |
+
+---
+
+## ✅ RÉSOLUTION phase 2bis — 2026-05-29 (ratchet + investigation hooks)
+
+### Ratchet anti-régression
+
+`tools/knip-ratchet.mjs` (lancé en pre-push via lefthook) fige le code mort à un plafond et échoue si dépassé — même mécanisme que `lint-cross-feature-imports` (plafond 10) et `lint-no-hardcoded-colors`. Plafonds figés : **files=29, exports=87, types=83**. Vérifié : passe à l'état courant, bloque une régression simulée (exit 1). Pour abaisser au fil du nettoyage : éditer `THRESHOLDS`.
+
+### Investigation 1-par-1 des 14 hooks `queries.ts` orphelins
+
+Objectif : distinguer le vrai code mort du WIP. Verdict :
+
+| Hook | Verdict | Raison |
+|---|---|---|
+| `useBattlePass` (home) | 🗑️ **SUPPRIMÉ** | superseded par `useSeasonPassPreview` (le panel home reçoit déjà la data season-pass) |
+| `useMatchNeighbors` (match-view) | 🗑️ **SUPPRIMÉ** | superseded par `useMatchNeighborsResolved` (+ mock obsolète nettoyé) |
+| `useProfile` (ascension) | ✅ gardé | PlayerProfile partiel — ADR 0015 (7 commits reportés) |
+| `useCreateArc` / `useUpdateChallenge` / `useJoinSquadChallenge` (prestige) | ✅ gardé | Prestige à activation phasée — ADR 0005 |
+| `useStartSmokeTest` / `useStartDeltaSync` (setup) | ✅ gardé | feature setup/onboarding **en cours de réécriture** |
+| `useLogout` (auth) | ✅ gardé | endpoint `/auth/logout` réel, feature probablement non câblée (pas mort) |
+| `useComparePrefetch` (compare) | ✅ gardé | prefetch au survol non câblé (cohérent avec `lib/query/prefetch.ts`) |
+| `useInvalidateOnFeedVersion` (media) | ✅ gardé | helper d'invalidation cache « à utiliser avec useEffect » — non câblé |
+| `useEngagementProfile` (engagement) | ✅ gardé | feature engagement active, métrique probablement à afficher |
+| `useCombatYieldHistory` (timeseries) | ✅ gardé | alimente `CombatYieldTimeseries` (S56), consommateur nommé |
+| `maxIdOf` (notifications) | ✅ gardé | petit helper pur, commenté « exposé pour le toastBridge » |
+
+**Conclusion rassurante** : sur 14, **0 random dead code** — chacun mappe à une vraie feature/endpoint. 12 sont du WIP/phasé/intentionnel (gardés), 2 étaient de vrais doublons superseded (retirés avec preuve + `tsc`/test/build verts).
+
+### Baseline knip après phase 2bis
+
+| Catégorie | Valeur |
+|---|---|
+| Unlisted / unused deps | **0 / 0** |
+| Unused files | **29** (gardés volontairement) |
+| Unused exports / types | **87 / 83** (gelés sous ratchet) |

@@ -23,7 +23,6 @@ vi.mock('@tanstack/react-router', () => ({
 }))
 
 vi.mock('./queries', () => ({
-  useMatchNeighbors: () => ({ data: null }),
   useToggleMatchFavorite: () => ({ mutate: vi.fn(), isPending: false }),
 }))
 

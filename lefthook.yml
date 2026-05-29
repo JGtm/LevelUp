@@ -56,6 +56,12 @@ pre-push:
       glob: "apps/web/src/**/*.{ts,tsx}"
       run: node tools/lint-cross-feature-imports.mjs
 
+    # Ratchet code mort frontend (knip) — fige unused files/exports/types,
+    # bloque toute régression. Plafonds dans tools/knip-ratchet.mjs.
+    knip-ratchet:
+      glob: "apps/web/src/**/*.{ts,tsx}"
+      run: node tools/knip-ratchet.mjs
+
     # ── Go — lint module entier + tests + vulns ────────────────────────────────
 
     golangci-lint:
