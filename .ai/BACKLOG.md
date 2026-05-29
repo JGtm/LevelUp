@@ -12,6 +12,22 @@
 
 ---
 
+### [frontend/types] Migration `types.ts` → `generated.ts` + réconciliation du contrat OpenAPI
+
+**Noté le** : 2026-05-29 | **Priorité** : 🟡 Moyenne — non bloquant (`types.ts` manuel fonctionne) mais dette + contrat OpenAPI non fiable.
+
+**Plan complet** : [.ai/PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md)
+
+**Contexte court** : fondation posée (pipeline `generate-types` réparé, types Go régénérés, inventaire fait, 7 types « bootstrap » migrés en shim de ré-export). Le calibrage a révélé le **vrai blocage** : `openapi.yaml` est largement **sous-spécifié** vs les réponses backend réelles (shim de masse → 453 erreurs `tsc`, dont 304 « property does not exist »). Le `types.ts` manuel est plus complet que le contrat.
+
+**Donc** : le chantier n'est pas un shim mécanique mais une **réconciliation du contrat aire par aire** (compléter `openapi.yaml` → régénérer Go+front → shimer → `tsc` oracle → commit). ⛔ Ne pas re-tenter un shim global.
+
+**Buckets** : 97 matchés (à réconcilier), 217 frontend-only (→ futur `viewModels.ts`), 15 schémas sans type. 1er cas bucket B : `BootstrapResponse` (8 champs manquants au schéma).
+
+**Quand traiter** : session(s) dédiée(s). Commencer par l'aire sessions/filtres (gros bucket).
+
+---
+
 ### [POST-V7] Main Merge (blocking)
 
 - [ ] Créer PR: `fix/theme-consistency-tokens` → `main`
