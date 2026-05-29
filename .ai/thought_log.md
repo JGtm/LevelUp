@@ -1,3 +1,28 @@
+## [2026-05-29] refactor(arch): Axe 2 — découpler la logique LUSR v2 de `*duckdb.SkillV2Repo` (interfaces port)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 2e axe du plan `.ai/PLAN_SYNC_ENGINE_PORT_ABSTRACTION.md`. La v1 du plan inventait des `SyncEngine.WithSkillV2Repo` — **faux** (vérifié) : `RunLUSRV2Shadow` est une fonction autonome qui instancie le repo en interne (`duckdb.NewSkillV2Repo`) et le thread via la struct `shadowRunContext`. Option A retenue (découplage interne, zéro changement de call-site) sur Option B (injection depuis les 2 appelants + 15 tests).
+
+**Vérifs préalables (pas de devinette)** :
+- Méthodes réellement appelées par le runtime sync : `LoadState`, `LoadAllStates`, `UpsertState`, `LoadHyperparams` (4/6 — `LoadStateHistory`/`UpsertHyperparam` sont CLI-only). Interface réduite à ces 4. Squad : seul `LoadSquadOffsets` est lu en sync.
+- `internal/sync` importe déjà `internal/port` → pas de nouvelle direction de dépendance.
+
+**Décisions techniques majeures** :
+- **`port.SkillV2Repository` (4 méthodes) + `port.SquadOffsetRepository` (1 méthode)** dans `internal/port/skill_v2.go`. Le repo concret les satisfait sans modification (typage structurel).
+- **Retypage de `*duckdb.*Repo` → interfaces** dans `shadowRunContext` (2 champs) + 4 signatures : `applyMatchToSkillV2`, `loadStatesOrSeed`, `persistTeamSkillV2`, `propagateCrossModeLeak`, `computeTeamSquadOffsets`. Résultat : **`skill_v2_helpers.go`, `skill_v2_cross_mode.go`, `skill_v2_squad.go` perdent totalement l'import `duckdb`** ; seul `skill_v2_shadow.go` le garde, pour les 2 instanciations (couplage résiduel d'instanciation = exactement la promesse Option A).
+- **Piège typed-nil évité** : `var squadRepo port.SquadOffsetRepository` déclaré en type interface (pas `*duckdb.SquadOffsetRepo`), pour qu'un flag squad OFF laisse une interface VRAIMENT nil — sinon `computeTeamSquadOffsets`'s garde `repo == nil` recevrait un typed-nil (interface non-nil) et paniquerait sur `LoadSquadOffsets`. Commenté dans le code.
+
+**Tests** : la suite existante `skill_v2_shadow_test.go` (~15 cas, DuckDB réel) = filet de neutralité → **toute verte** après refacto (flag off, flow 2v2, watermark, canonical, squad offset, cross-mode…). Ajout `skill_v2_port_mock_test.go` qui **démontre le gain** : `loadStatesOrSeed` (connu→verbatim, inconnu→seed priors) et `computeTeamSquadOffsets` (repo nil→zéros) testés avec un mock en mémoire, **sans DuckDB**.
+
+**Résultats observés** : `go build` ✅, `go vet` ✅, `go test ./internal/sync/` ✅ (129s, suite complète) + `./internal/port/` ✅. Import `duckdb` confirmé absent des 3 fichiers helper, présent dans shadow.go uniquement.
+
+**Note commit** : `skill_v2_shadow.go` portait déjà une modif non-commitée pré-existante (suppression de la struct morte `shadowParticipant`, 0 référence — vérifié). Elle est incluse dans le commit Axe 2 car triviale et correcte. `aggregates.go`/`enrichments.go` (drift pré-existant non lié) NON inclus.
+
+**Non vérifié** : pas de run sync live. Comportement garanti par la suite DuckDB existante (verte) + déplacement sans changement de logique (seuls les types de paramètres changent).
+
+**Conclusion / prochaine étape** : Axe 2 livré, logique LUSR v2 stack-agnostique et mockable. Suite : Axe 3 (TokenStore), 5 (erreurs HTTP), 6 (flags morts + deadline Prestige), 4 (types OpenAPI front).
+
 ## [2026-05-29] refactor(arch): Axe 1 — découpler patterns.go de DuckDB (handler → port.PatternsRepository)
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)

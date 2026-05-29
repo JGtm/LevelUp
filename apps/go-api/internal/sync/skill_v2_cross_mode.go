@@ -16,7 +16,7 @@ import (
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/domain"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
 )
 
 // lusrModeCouplingEnvFlag contrôle la Phase 4 (cross-mode leak). **ON par défaut**
@@ -53,7 +53,7 @@ func findOwnerPrior(ownerXUID string, priorA, priorB []domain.SkillV2State) *dom
 // du owner par w_d · (μ_new - μ_old) dans le mode primaire. σ inchangé.
 // Aucun écho sur les coéquipiers/adversaires — la mesure du leak nécessite
 // une décision UX par joueur (cf. ADR à venir).
-func propagateCrossModeLeak(ctx context.Context, repo *duckdb.SkillV2Repo,
+func propagateCrossModeLeak(ctx context.Context, repo port.SkillV2Repository,
 	ownerPrior, ownerNew domain.SkillV2State) error {
 	allStates, err := repo.LoadAllStates(ctx, ownerPrior.XUID)
 	if err != nil {
