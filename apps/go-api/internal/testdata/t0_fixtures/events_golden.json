@@ -4,42 +4,50 @@
     {
       "match_id": "41b61fb9-3d71-40b7-bde7-45682fba6d57",
       "duration_seconds": 447,
-      "top_killer_xuid": "2533274875224535"
+      "top_killer_xuid": "2533274875224535",
+      "t0_ms": 27918
     },
     {
       "match_id": "ac97753c-e3b3-4132-9fb3-6032ee95a202",
       "duration_seconds": 576,
-      "top_killer_xuid": "2533274829022134"
+      "top_killer_xuid": "2533274829022134",
+      "t0_ms": 48916
     },
     {
       "match_id": "c1e8d359-5f92-4b3d-8ffd-d0dc2b954af5",
       "duration_seconds": 709,
-      "top_killer_xuid": "2533274918170115"
+      "top_killer_xuid": "2533274918170115",
+      "t0_ms": 1
     },
     {
       "match_id": "5d4295b8-b2c4-4b19-b239-31a74b82dd83",
       "duration_seconds": 417,
-      "top_killer_xuid": "2535449431423367"
+      "top_killer_xuid": "2535449431423367",
+      "t0_ms": 0
     },
     {
       "match_id": "e157a672-5ea8-4473-9bd5-f8a0c44619f0",
       "duration_seconds": 101,
-      "top_killer_xuid": "2533274827233748"
+      "top_killer_xuid": "2533274827233748",
+      "t0_ms": 21739
     },
     {
       "match_id": "003498a3-a3c2-4a37-bf49-67e642a353b2",
       "duration_seconds": 357,
-      "top_killer_xuid": ""
+      "top_killer_xuid": "",
+      "t0_ms": 0
     },
     {
       "match_id": "30bdcae7-e648-4951-9149-a65a61623af3",
       "duration_seconds": 575,
-      "top_killer_xuid": "2533274816686116"
+      "top_killer_xuid": "2533274816686116",
+      "t0_ms": 28492
     },
     {
       "match_id": "5da6fd30-f29e-4713-93a6-73d69d87626e",
       "duration_seconds": 45,
-      "top_killer_xuid": ""
+      "top_killer_xuid": "",
+      "t0_ms": 1
     }
   ],
   "events": [

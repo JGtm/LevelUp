@@ -6,10 +6,9 @@ package timeline_test
 // matchs de référence (testdata/t0_fixtures/events_golden.json, généré par
 // cmd/export_t0_fixtures). Capture FirstEvents + IntensityProfiles par match.
 //
-// Phase 1 (T0=0) : le golden EST la baseline du comportement historique. Le
-// refacto étant une identité, ce golden ne doit pas bouger.
-// Phase 3 (T0 réel) : régénérer avec UPDATE_GOLDEN=1 et reviewer le diff — il
-// montre exactement comment les chronologies se recalent par match.
+// Phase 3 (T0 réel) : le golden capture les chronologies recalées au début du
+// gameplay (TimeMS − T0 par match). Régénérer avec UPDATE_GOLDEN=1 si le calcul
+// T0 ou les fixtures changent, puis reviewer le diff.
 //
 // Régénérer : UPDATE_GOLDEN=1 go test ./internal/analysis/timeline/ -run TestGolden
 
@@ -36,6 +35,7 @@ type fixtureMatch struct {
 	MatchID         string `json:"match_id"`
 	DurationSeconds *int   `json:"duration_seconds"`
 	TopKillerXUID   string `json:"top_killer_xuid"`
+	T0Ms            *int64 `json:"t0_ms"`
 }
 
 type fixtureFile struct {
@@ -105,7 +105,13 @@ func TestGolden_T0Pipeline_RealMatches(t *testing.T) {
 		if m.DurationSeconds != nil {
 			durMs = int64(*m.DurationSeconds) * 1000
 		}
-		tl := domain.NewMatchTimeline(durMs, 0) // Phase 1: T0=0
+		// Phase 3 : T0 réel par match (countdown pré-match) depuis la fixture.
+		// 0 si real_start_time absent (fallback chronologie brute).
+		var t0Ms int64
+		if m.T0Ms != nil {
+			t0Ms = *m.T0Ms
+		}
+		tl := domain.NewMatchTimeline(durMs, t0Ms)
 		timelines := map[string]domain.MatchTimeline{m.MatchID: tl}
 
 		corrected := timeline.CorrectEvents(matchEvents, timelines)
@@ -140,6 +146,6 @@ func TestGolden_T0Pipeline_RealMatches(t *testing.T) {
 		t.Fatalf("read golden (run with UPDATE_GOLDEN=1 first): %v", err)
 	}
 	if string(got) != string(want) {
-		t.Errorf("golden mismatch — Phase 1 must be identity.\nRun UPDATE_GOLDEN=1 to inspect diff if change is intended.")
+		t.Errorf("golden mismatch.\nRun UPDATE_GOLDEN=1 to inspect diff if change is intended.")
 	}
 }
