@@ -31,6 +31,7 @@ import {
   EXPLORER_URL_KEYS,
   decodeExplorerScope,
   encodeExplorerScope,
+  explorerScopeToFilterSpec,
   type EncodedExplorerScope,
   type ExplorerScope,
 } from './explorerScope'
@@ -277,6 +278,11 @@ export function ExplorerPage() {
     return undefined
   })()
 
+  // Phase 4 : filterSpec dérivé des filtres Explorer locaux (scope) pour piloter
+  // la nav contextuelle prev/next depuis Explorer (multi-playlist/mode supportés
+  // par le backend Q25 depuis la Phase 3). Remplace la dérivation soloFilterStore.
+  const matchesFilterSpec = explorerScopeToFilterSpec(scope)
+
   // ─── Options pour les MultiSelectFilter (extrait dans helper) ────────────
   const {
     expTypeOptions,
@@ -392,6 +398,7 @@ export function ExplorerPage() {
             onResetFilters={resetFilters}
             matchesQuery={matchesQuery}
             matchesContextDescriptor={matchesContextDescriptor}
+            matchesFilterSpec={matchesFilterSpec}
           />
         )}
       </div>
