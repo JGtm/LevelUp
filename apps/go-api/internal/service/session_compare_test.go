@@ -228,3 +228,88 @@ func TestClassifySessionCategory(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildCompareEntry_DerivedMetrics couvre les champs WinRate/KDR/KillsPerMatch
+// ajoutés (Phase 2) — alimentés par les mêmes helpers que compare_metrics.
+func TestBuildCompareEntry_DerivedMetrics(t *testing.T) {
+	win := analysis.OutcomeWin
+	loss := analysis.OutcomeLoss
+	matches := []legacymatch.StatsMatchRow{
+		makeMatch("S1", 10, 5, &win),
+		makeMatch("S1", 6, 5, &loss),
+	}
+	entry := buildCompareEntry(matches, "S1")
+	if entry == nil {
+		t.Fatal("expected non-nil entry")
+	}
+	if entry.WinRate != 50 { // 1 win / 2 matchs
+		t.Fatalf("WinRate: want 50, got %v", entry.WinRate)
+	}
+	if entry.KDR != 16.0/10.0 { // (10+6) kills / (5+5) deaths
+		t.Fatalf("KDR: want 1.6, got %v", entry.KDR)
+	}
+	if entry.KillsPerMatch != 8 { // 16 kills / 2 matchs
+		t.Fatalf("KillsPerMatch: want 8, got %v", entry.KillsPerMatch)
+	}
+}
+
+// TestBuildSessionDetailRows_EnrichedFields couvre les colonnes enrichies (Phase 3)
+// projetées depuis StatsMatchRow : map FR-préférée, ΔMMR, perf_tier, durée, rating.
+func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
+	team, enemy, perf, rating := 1500.0, 1400.0, 72.0, 1450.0
+	dur := 540
+	row := legacymatch.StatsMatchRow{
+		MatchID:           "m1",
+		StartTime:         time.Now(),
+		Kills:             10,
+		Deaths:            5,
+		MapName:           "Live Fire",
+		MapNameFR:         "Tir réel",
+		TeamMMR:           &team,
+		EnemyMMR:          &enemy,
+		PerfScoreComputed: &perf,
+		TimePlayedSeconds: &dur,
+		SkillRatingValue:  &rating,
+		SkillRatingType:   "csr",
+	}
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil)
+	if len(out) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(out))
+	}
+	r := out[0]
+	if r.MapName != "Tir réel" {
+		t.Fatalf("MapName: want FR-preferred 'Tir réel', got %q", r.MapName)
+	}
+	if r.DeltaMMR == nil || *r.DeltaMMR != 100 { // 1500 - 1400
+		t.Fatalf("DeltaMMR: want 100, got %v", r.DeltaMMR)
+	}
+	if r.PerfTier != int(analysis.PerfTier(perf)) {
+		t.Fatalf("PerfTier: want %d, got %d", int(analysis.PerfTier(perf)), r.PerfTier)
+	}
+	if r.DurationSeconds == nil || *r.DurationSeconds != 540 {
+		t.Fatalf("DurationSeconds: want 540, got %v", r.DurationSeconds)
+	}
+	if r.SkillRatingValue == nil || *r.SkillRatingValue != 1450 {
+		t.Fatalf("SkillRatingValue: want 1450, got %v", r.SkillRatingValue)
+	}
+	if r.SkillRatingType != "csr" {
+		t.Fatalf("SkillRatingType: want csr, got %q", r.SkillRatingType)
+	}
+}
+
+// TestBuildSessionDetailRows_NilEnrichment vérifie la dégradation gracieuse :
+// pas de MMR/perf/rating → champs nil/zéro, pas de panic.
+func TestBuildSessionDetailRows_NilEnrichment(t *testing.T) {
+	row := legacymatch.StatsMatchRow{MatchID: "m1", StartTime: time.Now(), Kills: 3, Deaths: 2}
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil)
+	if len(out) != 1 {
+		t.Fatalf("expected 1 row, got %d", len(out))
+	}
+	r := out[0]
+	if r.DeltaMMR != nil {
+		t.Fatalf("DeltaMMR: want nil (no MMR), got %v", *r.DeltaMMR)
+	}
+	if r.PerfTier != 0 {
+		t.Fatalf("PerfTier: want 0 (no perf score), got %d", r.PerfTier)
+	}
+}

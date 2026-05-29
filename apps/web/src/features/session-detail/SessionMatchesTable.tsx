@@ -275,7 +275,7 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full' }: P
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-border">
+    <div className="overflow-x-auto rounded-md border border-border" data-testid="session-matches-table">
       <table className="w-full text-xs">
         <thead className="border-b bg-muted">
           {table.getHeaderGroups().map((hg) => (
