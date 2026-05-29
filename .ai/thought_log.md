@@ -1,3 +1,21 @@
+## [2026-05-29] test(patterns): QA finale — test DB-backed PatternsRepo + vérif globale du chantier découplage
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : vérification finale des 5 axes livrés (build/tests/couverture/logging) à la demande utilisateur.
+
+**Vérification globale** :
+- `go build ./internal/...` ✅ (tout compile ensemble, CGO/DuckDB inclus).
+- Tests verts sur les 7 packages touchés : port, platform/duckdb, sync, api, api/handlers, platform/auth, config. Couverture package : config 80%, auth 70%, handlers 57%, sync 44%, api 26%, duckdb 18%, port 22% (les interfaces n'ont pas de statements exécutables).
+- **Logging** : routage automatique par package (`internal/observability/logging/module.go`) → `logs/{module}.log`. Mes chemins modifiés routent correctement (handlers→handlers, sync→sync, auth→auth). L'Axe 5 a *amélioré* la couverture log : `writeError` logge le 503/500 que `http.Error` n'écrivait pas.
+
+**Comblement du seul vrai trou de couverture** : les 3 loaders SQL de `PatternsRepo` (loadShared/loadEnrichments/loadSkillRanks) + l'orchestration `LoadRows` n'étaient pas testés (seule la logique pure merge/deltas l'était). Ajout `patterns_repo_db_test.go` (untagged, package duckdb) : 2 DuckDB `:memory:` (player + shared), test bout-en-bout (3 loaders + merge + deltas) + cas joueur vide. Couverture `patterns_repo.go` désormais : merge/deltas 100%, loaders 85-91%, LoadRows 84% (restes = branches d'erreur DB).
+- Pattern réutilisé : `&DB{sqlDB:…, path:":memory:"}` (in-package) + `SharedReadDB()` retombe sur `LegacySharedReader(pdb.Shared)` quand `SharedReader` nil.
+
+**Résultats observés** : suite duckdb complète verte (25s) avec le nouveau fichier.
+
+**Conclusion** : chantier découplage DuckDB (Axes 1-3, 5, 6) complet, vérifié, testé, loggé. Seul Axe 4 (types OpenAPI front) reste — hors couplage DuckDB, à scoper séparément.
+
 ## [2026-05-29] chore(config): Axe 6 — suppression scaffolding surface flags Go/Python + garde-fou deadline Prestige
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
