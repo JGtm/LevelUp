@@ -10,6 +10,7 @@ import { kdScale, accuracyScale } from '@/lib/accessibility/scales'
 import type { getKPIText } from './kpi.i18n'
 import { HomeKPICard } from './HomeKPICard'
 import { OutcomeBar } from '@/components/ui/outcome-bar'
+import { OffDefComposite } from '@/components/ui/off-def-composite'
 
 interface HomeHeroKPIGridProps {
   kpis: HeroKPIs
@@ -62,12 +63,6 @@ export function HomeHeroKPIGrid({
   const dnfs = kpis.dnfs ?? 0
   const neutral = draws + dnfs
   const playtime = formatPlaytime(kpis.total_playtime_secs ?? 0, kpiText)
-  const offConv = kpis.avg_offensive_conversion
-  const defRes = kpis.avg_defensive_resistance
-  const hasOffDef = offConv != null || defRes != null
-  const off = offConv ?? 0
-  const def = defRes ?? 0
-  const total = off + def
   const acc = kpis.avg_accuracy
   const accStyle = acc != null ? { color: tokenCssVar(accuracyScale(acc)) } : undefined
 
@@ -115,20 +110,11 @@ export function HomeHeroKPIGrid({
       {/* 7 — Rendement / Résistance (barre composite) */}
       <div className="flex h-full flex-col items-center justify-center rounded-lg border border-border bg-muted px-4 py-3 text-center">
         <p className="text-xs text-muted-foreground mb-1.5">{kpiText.labels.offDef}</p>
-        {hasOffDef ? (
-          <div className="w-full">
-            <div className="h-2 w-full rounded-full overflow-hidden flex">
-              {off > 0 && <div className="h-full" style={{ width: total > 0 ? `${(off / total) * 100}%` : '50%', backgroundColor: tokenCssVar('divergent-pos') }} />}
-              {def > 0 && <div className="h-full" style={{ width: total > 0 ? `${(def / total) * 100}%` : '50%', backgroundColor: tokenCssVar('divergent-neutral') }} />}
-            </div>
-            <div className="flex justify-center gap-3 mt-2">
-              <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-pos') }}>{(off * 100).toFixed(0)}%</span>
-              <span className="text-sm font-bold leading-none" style={{ color: tokenCssVar('divergent-neutral') }}>{((def - 1) * 100).toFixed(0)}%</span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xl font-bold text-muted-foreground">—</p>
-        )}
+        <OffDefComposite
+          offensiveConversion={kpis.avg_offensive_conversion}
+          defensiveResistance={kpis.avg_defensive_resistance}
+          align="center"
+        />
       </div>
 
       {/* 8 — Précision avec code couleur */}
