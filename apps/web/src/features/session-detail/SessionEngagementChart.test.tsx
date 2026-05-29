@@ -10,6 +10,7 @@ interface OptShape {
     type: string
     data: Array<{ value: number; itemStyle: { color: string } }>
     markLine: { data: Array<{ yAxis: number }> }
+    markArea: { data: Array<Array<{ yAxis: number }>> }
   }>
   yAxis?: { name?: string }
   xAxis?: { data: string[] }
@@ -35,6 +36,9 @@ describe('buildSessionEngagementOption', () => {
     expect(bar.data).toHaveLength(2)
     expect(bar.data.every((d) => 'color' in d.itemStyle)).toBe(true)
     expect(bar.markLine.data[0].yAxis).toBe(-1) // (2 + -4) / 2
+    // Bande de référence "normale" ±5.
+    expect(bar.markArea.data[0][0].yAxis).toBe(-5)
+    expect(bar.markArea.data[0][1].yAxis).toBe(5)
     expect(opt.yAxis!.name).toBe('évén./min vs attendu')
     expect(opt.xAxis!.data).toEqual(['#1 Map', '#2 Map'])
   })
