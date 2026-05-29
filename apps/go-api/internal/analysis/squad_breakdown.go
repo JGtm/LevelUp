@@ -325,8 +325,8 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 	var totalWL, wins int
 	var sumKDA, sumAcc, sumPerf float64
 	var nKDA, nAcc, nPerf int
-	var sumKills, sumTimePlayed float64
-	var nTime int
+	var sumKills, sumTimePlayed, sumLife float64
+	var nTime, nLife int
 
 	for _, r := range rows {
 		if r.IsWithFriends != isSquad {
@@ -350,6 +350,12 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 		if r.PerformanceScore != nil {
 			sumPerf += *r.PerformanceScore
 			nPerf++
+		}
+		// AvgLifeSeconds : moyenne des valeurs API par match (jamais dérivé de
+		// time_played). Mirror exact de ComputeSynthesisKPIsFromCanonical.
+		if r.AvgLifeSeconds != nil {
+			sumLife += *r.AvgLifeSeconds
+			nLife++
 		}
 		sumKills += float64(r.Kills)
 		if r.TimePlayedSecs != nil && *r.TimePlayedSecs > 0 {
@@ -377,10 +383,13 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 		v := math.Round(sumPerf / float64(nPerf))
 		kpis.PerformanceScore = &v
 	}
-	// AvgLifeSeconds laissé nil : SynthesisMatchRow (legacy) ne porte pas la valeur
-	// API. L'ancien code y mettait sumTimePlayed/n (= temps moyen joué, FAUX). La
-	// version canonique ComputeSynthesisKPIsFromCanonical expose la vraie moyenne.
-	// TODO: charger avg_life_seconds dans SynthesisMatchRow (Q33b) pour l'exposer ici.
+	// AvgLifeSeconds = moyenne de la valeur API par match (NON sumTimePlayed/n).
+	// avg_life_seconds est désormais chargé dans SynthesisMatchRow (Q33b).
+	// Identique à ComputeSynthesisKPIsFromCanonical (garde-fou parité).
+	if nLife > 0 {
+		avgLife := math.Round(sumLife/float64(nLife)*10) / 10
+		kpis.AvgLifeSeconds = &avgLife
+	}
 	if nTime > 0 {
 		totalMinutes := sumTimePlayed / 60.0
 		if totalMinutes > 0 {
