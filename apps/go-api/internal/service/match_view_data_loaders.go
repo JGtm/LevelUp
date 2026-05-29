@@ -273,10 +273,15 @@ func (s *MatchViewService) buildMatchViewFromData(
 		durationMS = *meta.PlayableDurationSeconds * 1000
 	}
 
-	// Correction chronologie T0 (Phase 1 : T0=0, identité). Recale les events
-	// canoniques au référentiel gameplay avant les builders narrative (combat).
+	// Correction chronologie T0 (Phase 3 : T0 réel depuis meta.T0Ms, 0 si
+	// indisponible). Recale les events canoniques au référentiel gameplay avant
+	// les builders narrative (combat).
 	if len(d.canonicalEvents) > 0 {
-		tl := timeline.BuildForMatchMs(durationMS)
+		var t0Ms int64
+		if meta != nil && meta.T0Ms != nil {
+			t0Ms = *meta.T0Ms
+		}
+		tl := timeline.BuildForMatchMs(durationMS, t0Ms)
 		d.canonicalEvents = timeline.CorrectEvents(
 			d.canonicalEvents, map[string]domain.MatchTimeline{matchID: tl},
 		)

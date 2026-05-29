@@ -37,6 +37,9 @@ type matchMeta struct {
 	MatchID         string `json:"match_id"`
 	DurationSeconds *int   `json:"duration_seconds"`
 	TopKillerXUID   string `json:"top_killer_xuid"`
+	// T0Ms : offset countdown pré-match en ms (Match Timeline T0, Phase 3),
+	// dérivé de real_start_time. Nil si real_start_time absent.
+	T0Ms *int64 `json:"t0_ms"`
 }
 
 type fixture struct {
@@ -89,6 +92,15 @@ func main() {
 		// un joueur déterministe dans ComputeFirstEventsPerMatch.
 		var dur sql.NullInt64
 		_ = db.QueryRow(`SELECT duration_seconds FROM match_registry WHERE match_id = ?`, id).Scan(&dur)
+		// T0 offset (countdown pré-match) en ms : même formule que la prod
+		// (player_matches_repo / Q13). NULL si real_start_time absent.
+		var t0 sql.NullInt64
+		_ = db.QueryRow(`
+			SELECT CASE WHEN real_start_time IS NOT NULL THEN
+				epoch_ms(real_start_time AT TIME ZONE 'UTC')
+				- epoch_ms(COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'))
+			END
+			FROM match_registry WHERE match_id = ?`, id).Scan(&t0)
 		var topKiller sql.NullString
 		_ = db.QueryRow(`
 			SELECT he.xuid
@@ -102,6 +114,10 @@ func main() {
 		if dur.Valid {
 			d := int(dur.Int64)
 			meta.DurationSeconds = &d
+		}
+		if t0.Valid {
+			v := t0.Int64
+			meta.T0Ms = &v
 		}
 		fx.Matches = append(fx.Matches, meta)
 	}

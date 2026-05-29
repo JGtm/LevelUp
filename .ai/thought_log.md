@@ -49898,3 +49898,26 @@ Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout d
 **Résultats** : `go build ./...` vert. Suites standard (canonical/domain/service/timeline) vertes. Suite integration duckdb complète verte (148s). **Comportement runtime identique** car build.go lit toujours `phase1T0Ms()=0` — l'activation est le commit 2.
 
 **Reste (commit 2)** : build.go lit `r.Summary.T0Ms` / `meta.T0Ms` (3 builders), signature `BuildForMatchMs(durationMs, t0Ms int64)`, suppression `phase1T0Ms()`, adapter build_test.go, régénérer golden (`UPDATE_GOLDEN=1`) + review diffs (Fortress 41b61fb9 : first_kill 37861→~9861), puis validation UI (utilisateur).
+
+---
+
+## [2026-05-29] Phase 3 — activation T0 runtime (commit 2/2)
+
+**Statut** : Complété (comportement runtime CHANGÉ : chronologies recalées sur le gameplay réel).
+
+**Modifs** :
+- `analysis/timeline/build.go` : suppression de `phase1T0Ms()`. Les 3 builders lisent le vrai T0 :
+  - `BuildTimelinesFromPlayerMatches` → `r.Summary.T0Ms` (helper `derefInt64`, 0 si nil) — Timeseries + Squad.
+  - `BuildForMatchMs(durationMs, t0Ms int64)` → signature étendue, t0Ms depuis `MatchMetaRaw.T0Ms` — MatchView.
+  - `BuildFromRegistry` → `RealStartTime − StartTime` (pas de caller runtime, helper symétrique).
+- `service/match_view_data_loaders.go` : passe `meta.T0Ms` à `BuildForMatchMs`.
+- `analysis/timeline/build_test.go` : réécrit (invariants Phase 1 → Phase 3 : T0 dérivé, lecture Summary.T0Ms, BuildForMatchMs avec t0).
+- `cmd/export_t0_fixtures/main.go` : exporte `t0_ms` (même formule SQL que la prod).
+- `golden_test.go` : construit la timeline avec le T0 réel de la fixture (au lieu de 0 en dur).
+- Fixtures régénérées depuis la DB shared (RO) : `events_golden.json` + `golden_output.json`.
+
+**Validation golden (diff revu)** : chaque first_kill/first_death décalé d'EXACTEMENT le T0 du match (soustraction pure → CorrectEvents correct). Fortress 41b61fb9 : T0=27918ms → first_kill 37861→9943, first_death 54678→26760. ac97753c T0=48916 → 89128→40212. e157a672 T0=21739 → 41788→20049. 30bdcae7 T0=28492 → 41624→13132. Matchs sans countdown (T0=0) inchangés. Intensity profiles recalibrés.
+
+**Tests** : build vert. timeline + service + narrative verts.
+
+**Reste hors Phase 3** : validation UI (3 pages : MatchView timeline, SquadV2 cadence/intensity, Synthesis/Timeseries first-events) à faire par l'utilisateur ; recalcul LUSR (prod-sensitive, §4.B handoff) ; Phase 4 time_played_seconds (§4.C).
