@@ -172,22 +172,36 @@ WHERE match_id IN (%s)`
 // (Q5MatchHistory supprimée en P7-5 — code mort, aucun caller. Le pipeline
 //  history actuel utilise Q5SharedHistory + Q5PlayerSkillRankHistoryTpl.)
 
-// Q6 : Career — progression de rang (dernière entrée).
-// Paramètre : aucun (lit toujours le rang le plus récent).
+// Q6 : Career — progression de rang (dernier état connu, per-field-merged).
+// Paramètre : aucun.
+//
+// Pattern ARG_MAX(col, recorded_at) identique à qLoadLastCareerRank (flux home)
+// et Q26cHomeSpartanIdentity. PAS un `ORDER BY recorded_at DESC LIMIT 1` naïf :
+// le snapshot live le plus récent est souvent un partial "customization-only"
+// (cf. career_progression_partial.go) où rank/current_xp sont écrits mais
+// xp_for_next_rank/xp_total restent NULL (jamais renvoyés bruts par l'API live —
+// ce sont des dérivés metadata). Un LIMIT 1 naïf piochait cette ligne partielle
+// → jauges "progression rang/Héros" et "XP prochain rang" à 0. ARG_MAX prend la
+// dernière valeur NON-NULL par colonne indépendamment.
+//
+// xp_for_next_rank / xp_total restent recalculés depuis career_ranks
+// (CareerLiveRepo.EnrichFromMetadata) côté Go : ARG_MAX seul ne suffit pas car
+// ces colonnes peuvent valoir 0 dans toutes les lignes (DEFAULT 0 réintroduit
+// par la migration rebuild_career_progression + write-path live qui ne les
+// écrit jamais).
+//
+// MAX(recorded_at) NULL ⟺ table vide : le caller traduit en sql.ErrNoRows.
 const Q6CareerLatestRank = `
 SELECT
-    cp.rank          AS rank_number,
-    cp.current_xp,
-    cp.recorded_at,
-    cp.rank_name     AS rank_label,
-    cp.rank_name,
-    cp.rank_tier,
-    cp.xp_for_next_rank,
-    cp.xp_total,
-    cp.is_max_rank
-FROM career_progression cp
-ORDER BY cp.recorded_at DESC
-LIMIT 1`
+    COALESCE(ARG_MAX(rank,             recorded_at), 0)     AS rank_number,
+    COALESCE(ARG_MAX(current_xp,       recorded_at), 0)     AS current_xp,
+    MAX(recorded_at)                                        AS recorded_at,
+    NULLIF(TRIM(ARG_MAX(rank_name,     recorded_at)), '')   AS rank_name,
+    NULLIF(TRIM(ARG_MAX(rank_tier,     recorded_at)), '')   AS rank_tier,
+    COALESCE(ARG_MAX(xp_for_next_rank, recorded_at), 0)     AS xp_for_next_rank,
+    COALESCE(ARG_MAX(xp_total,         recorded_at), 0)     AS xp_total,
+    COALESCE(ARG_MAX(is_max_rank,      recorded_at), FALSE) AS is_max_rank
+FROM career_progression`
 
 // Q7 : Career — historique XP complet, monotone.
 //
