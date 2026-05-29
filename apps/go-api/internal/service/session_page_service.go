@@ -200,6 +200,19 @@ func buildSessionDetailRows(
 ) []domain.SessionDetailMatchRow {
 	out := make([]domain.SessionDetailMatchRow, 0, len(rows))
 	for _, row := range rows {
+		mapName := row.MapName
+		if row.MapNameFR != "" {
+			mapName = row.MapNameFR
+		}
+		var deltaMMR *float64
+		if row.TeamMMR != nil && row.EnemyMMR != nil {
+			d := *row.TeamMMR - *row.EnemyMMR
+			deltaMMR = &d
+		}
+		perfTier := 0
+		if row.PerfScoreComputed != nil {
+			perfTier = int(analysis.PerfTier(*row.PerfScoreComputed))
+		}
 		out = append(out, domain.SessionDetailMatchRow{
 			MatchID:          row.MatchID,
 			StartTime:        row.StartTime,
@@ -218,6 +231,14 @@ func buildSessionDetailRows(
 			DominantCategory: dominantCategory,
 			OffensiveConv:    row.OffensiveConversion,
 			DefensiveResist:  row.DefensiveResistance,
+			MapName:          mapName,
+			DurationSeconds:  row.TimePlayedSeconds,
+			TeamMMR:          row.TeamMMR,
+			EnemyMMR:         row.EnemyMMR,
+			DeltaMMR:         deltaMMR,
+			PerfTier:         perfTier,
+			SkillRatingType:  row.SkillRatingType,
+			SkillRatingValue: row.SkillRatingValue,
 		})
 	}
 	return out

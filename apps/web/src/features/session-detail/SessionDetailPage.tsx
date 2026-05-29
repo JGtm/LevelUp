@@ -260,7 +260,11 @@ export function SessionDetailPage() {
                 <CardTitle className="text-base">{t('session.detail.matches_card')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <SessionMatchesTable matches={data.matches} playerSlug={playerSlug} />
+                <SessionMatchesTable
+                  matches={data.matches}
+                  playerSlug={playerSlug}
+                  variant={drawerOpen ? 'compact' : 'full'}
+                />
               </CardContent>
             </Card>
           </>
@@ -401,6 +405,12 @@ export function SessionDetailPage() {
                       empty: t('session.compare.engagement_empty'),
                     }}
                     height={200}
+                  />
+
+                  <SessionMatchesTable
+                    matches={data.compare_matches ?? []}
+                    playerSlug={playerSlug}
+                    variant="compact"
                   />
                 </>
               ) : isCompareLoading ? (

@@ -3095,6 +3095,15 @@ export interface SessionDetailMatchRow {
   dominant_category: string | null
   offensive_conversion: number | null
   defensive_resistance: number | null
+  // Champs enrichis (Phase 3) pour le tableau détail.
+  map_name?: string
+  duration_seconds?: number | null
+  team_mmr?: number | null
+  enemy_mmr?: number | null
+  delta_mmr?: number | null
+  perf_tier?: number
+  skill_rating_type?: string
+  skill_rating_value?: number | null
 }
 
 export interface SessionCompareSuggestion {
