@@ -1,490 +1,338 @@
-# Plan : Axes d'amélioration architecturale
+# Plan : Réduire le couplage à DuckDB (portabilité de stack)
 
-> **Date** : 2026-05-28
+> **Date** : 2026-05-29
 > **Statut** : À implémenter
+> **Branche de travail** : `refactor/arch-port-abstractions`
+
+## But originel — ne pas le perdre de vue
+
+Question de départ : *« si je voulais quitter DuckDB, mon archi est-elle prête pour que ce soit le plus simple possible ? »*
+
+Réponse : ~70-80% portable grâce au pattern ports/adapters (services métier déjà derrière
+`port.*`, types domaine en Go pur). Ce plan attaque les **points de couplage fort restants** où du
+code de logique dépend encore directement du type concret `*duckdb.*` au lieu d'une interface.
+Chaque axe doit **réduire le couplage** — pas faire du rangement cosmétique.
+
+> ⚠️ **Leçon de la v1 de ce plan** : les détails d'exécution avaient été écrits depuis des résumés
+> d'exploration, pas depuis le code réel. Résultat : Axe 1 reposait sur une conclusion fausse et
+> Axe 2 décrivait une mécanique inexistante. **Tout le contenu ci-dessous a été vérifié dans le code
+> réel le 2026-05-29.** Règle : reconfronter chaque étape au fichier réel juste avant de coder.
+
+## Statut vérifié par axe
+
+| Axe | Couplage visé | Verdict (lu dans le code) |
+|-----|---------------|---------------------------|
+| **1. patterns.go** | Handler → `*duckdb.PlayerDB` + SQL brut | Réel. Le déplacement de helpers seul ne découple PAS (le type `*duckdb.PlayerDB` reste). Vrai fix = repo derrière interface. |
+| **2. skill_v2 sync** | Logique → `*duckdb.SkillV2Repo` | Réel. Mais PAS de `SyncEngine.WithX` : `RunLUSRV2Shadow` est une fonction autonome, repo threadé via `shadowRunContext`. |
+| **3. auth TokenStore** | Handlers → `*MultiUserTokenStore` | Réel et solide. Type concret injecté en 2 points + 1 instanciation locale. |
+| **5. erreurs HTTP** | Shape non uniforme | Réel. `settings_backup.go` confirmé (l.24 `http.Error`, l.32 `{"error":...}`). |
+| **6. feature flags morts** | Dead scaffolding | Réel. 12 surfaces consommées uniquement par `surface-status`. |
+| **4. types OpenAPI (front)** | Sync manuelle types | Prémisse issue de l'exploration, **non re-vérifiée ligne par ligne**. Concerne le front, pas le couplage DuckDB. |
 
 ---
 
-## Ordre recommandé
+## Principe transverse : tests d'abord
 
-| # | Axe | Pourquoi cet ordre |
-|---|-----|--------------------|
-| 1 | SQL helpers → package neutre | 30min, zéro risque, débloque un import propre avant le reste |
-| 2 | Repos DuckDB → port interfaces | Cœur du refacto archi Go, s'appuie sur les fondations propres |
-| 3 | `TokenStore` interface (auth) | Même pattern que l'Axe 2, couche auth |
-| 4 | Types OpenAPI générés | Migration progressive frontend, peut se faire en parallèle feature par feature |
-| 5 | Cohérence erreurs HTTP | Nettoyage localisé, pas d'impact sur les autres axes |
-| 6 | Feature flags dead code + Prestige deadline | Hygiène, risque zéro, peut se faire à tout moment |
+Pour chaque axe : tests verrouillant le comportement observable **en vert sur le code actuel** →
+refacto → mêmes tests toujours verts. Un test qui casse = comportement changé involontairement.
 
----
-
-## Principe transverse : tests d'abord (characterization tests)
-
-Pour chaque axe, la séquence est la même :
-
-1. **Écrire les tests qui capturent le contrat actuel** (ce qui entre, ce qui sort, les erreurs
-   possibles) — ces tests doivent **passer en vert** sur le code existant.
-2. **Faire le refacto**.
-3. **Vérifier que les mêmes tests passent toujours** — si l'un échoue, la modification a changé
-   un comportement, ce qui n'était pas l'intention.
-
-L'objectif n'est pas de tester la logique métier (qui ne bouge pas), mais de **verrouiller la
-surface exposée** (signatures, valeurs retournées, effets de bord observables) pour que le refacto
-soit prouvablement neutre.
+**Bonne nouvelle confirmée** : les filets de sécurité existent déjà pour les 2 axes les plus
+sensibles :
+- Axe 1 : `internal/platform/duckdb/shared_query_helpers_test.go` (couvre `Placeholders`/`ToAnySlice`).
+- Axe 2 : `internal/sync/skill_v2_shadow_test.go` (**1200+ lignes**, ~15 cas contre DuckDB réel :
+  flag off, flow 2v2, watermark idempotent, canonical, squad offset, cross-mode…). Tout refacto
+  Axe 2 doit garder cette suite verte — c'est la preuve de neutralité.
 
 ---
 
-## Axe 1 — SQL helpers → package neutre (30min)
+## Axe 1 — Découpler patterns.go de DuckDB (handler → interface)
 
-### Tests avant modification
+### Couplage réel (vérifié)
 
-`Placeholders` et `ToAnySlice` sont des fonctions pures — cas idéal pour les characterization
-tests.
+`internal/api/handlers/patterns.go` :
+- Importe `internal/platform/duckdb` (l.26).
+- Prend `*duckdb.PlayerDB` comme **type de paramètre** dans 5 fonctions (l.108, 174, 242, 296).
+- Exécute du **SQL brut** dans le handler via `pdb.Player.Query(...)` (l.253, 306).
 
-Créer `internal/sqlex/helpers_test.go` **avant** de déplacer le code :
+➡️ Déplacer `Placeholders`/`ToAnySlice` ne change rien : l'import reste à cause du type. Le vrai
+couplage, c'est que la couche handler fait de l'accès données concret au lieu de dépendre d'une
+interface — exactement le smell que les autres handlers évitent déjà via `port.*`.
 
-```go
-// Verrouille le contrat : n entrées → n placeholders séparés par virgule
-func TestPlaceholders(t *testing.T) {
-    assert.Equal(t, "$1", Placeholders(1))
-    assert.Equal(t, "$1, $2, $3", Placeholders(3))
-    assert.Equal(t, "", Placeholders(0))
-}
+### Objectif de découplage
 
-// Verrouille le contrat : []string → []any, ordre et valeurs préservés
-func TestToAnySlice(t *testing.T) {
-    in := []string{"a", "b", "c"}
-    out := ToAnySlice(in)
-    require.Len(t, out, 3)
-    assert.Equal(t, "a", out[0])
-    assert.Equal(t, "c", out[2])
-}
-```
+Le handler ne doit plus connaître ni `*duckdb.PlayerDB` ni le SQL. Il dépend d'une interface
+`port.PatternsRepository` ; l'implémentation DuckDB vit dans `internal/platform/duckdb/`.
 
-Ces tests échouent d'abord (le package n'existe pas encore), puis passent une fois le code déplacé.
+### Étapes
 
-### Modification
+1. **Tests d'abord** : caractériser ce que `loadPatternRows` / `loadPatternShared` /
+   `loadPatternEnrichments` / `loadPatternSkillRanks` retournent aujourd'hui (round-trip sur
+   DuckDB in-memory + cas vide). Ces tests doivent passer sur le code actuel.
 
-Déplacer `Placeholders` et `ToAnySlice` de `internal/platform/duckdb/shared_query_helpers.go`
-vers `internal/sqlex/helpers.go`.
+2. **Définir l'interface** dans `internal/port/` :
+   ```go
+   type PatternsRepository interface {
+       LoadRows(ctx context.Context, limit int) ([]patterns.MatchRow, error)
+       LoadShared(ctx context.Context, limit int) ([]SharedPatternRow, error)
+       LoadEnrichments(ctx context.Context, matchIDs []string) (map[string]EnrichmentRow, error)
+       LoadSkillRanks(ctx context.Context, matchIDs []string) (map[string]SkillRankRow, error)
+   }
+   ```
+   (Les types de retour `SharedPatternRow`/`EnrichmentRow`/`SkillRankRow` migrent de `handlers/`
+   vers un package neutre — `domain` ou `port` — pour ne pas créer de dépendance inverse.)
 
-Mettre à jour l'import dans `internal/api/handlers/patterns.go` (seul consommateur externe).
+3. **Implémenter** `duckdb.PatternsRepo` : déplacer le SQL brut de `patterns.go` (l.108-320) dans
+   ce repo. C'est là, et seulement là, que `Placeholders`/`ToAnySlice` sont utilisés — pas besoin
+   de les déplacer, ils restent légitimement dans `platform/duckdb`.
+
+4. **Câbler** le handler sur l'interface (via `ProgressionResolver` ou un nouveau champ injecté),
+   supprimer l'import `platform/duckdb` de `patterns.go`.
+
+5. Vérifier que les tests de l'étape 1 (re-câblés sur le repo) passent toujours.
+
+### Sous-étape optionnelle (cosmétique, faible valeur)
+
+Si on veut quand même un package SQL neutre : `Placeholders`/`ToAnySlice` ont ~25 callers internes
+au package `duckdb`. Les déplacer vers `internal/sqlex` est un churn de ~25 fichiers pour **zéro
+gain de découplage** (ils sont déjà dans la couche infra). À ne faire que si un besoin neutre
+émerge ailleurs. Sinon : laisser tel quel.
 
 ### Commits
 
 ```
-test(sqlex): characterization tests for Placeholders and ToAnySlice
-refactor(sqlex): move SQL-agnostic helpers out of platform/duckdb
+test(patterns): characterization tests for pattern data loaders
+feat(port): add PatternsRepository interface
+refactor(duckdb): implement PatternsRepo, move raw SQL out of handler
+refactor(handlers): depend on PatternsRepository, drop platform/duckdb import
 ```
+
+**Effort** : 3-5h (déplacement SQL + types + câblage). Risque modéré (déplacement de SQL réel).
 
 ---
 
-## Axe 2 — Repos DuckDB → port interfaces ⭐
+## Axe 2 — Découpler la logique LUSR v2 de `*duckdb.SkillV2Repo`
 
-### Tests avant modification
+### Couplage réel (vérifié)
 
-Deux types de tests à écrire **avant** de toucher au câblage.
+`internal/sync/skill_v2_shadow.go` :
+- `RunLUSRV2Shadow(ctx, playerDB, sharedDB *sql.DB, xuid)` — **fonction autonome**, pas de méthode
+  `SyncEngine`. (La v1 du plan inventait des `WithSkillV2Repo` sur un `SyncEngine` — **faux**.)
+- Instancie le repo en ligne 89 : `repo := duckdb.NewSkillV2Repo(sharedDB)` et conditionnellement
+  `squadRepo = duckdb.NewSquadOffsetRepo(sharedDB)` (l.94).
+- Le repo concret est threadé via la struct `shadowRunContext` (champs `repo *duckdb.SkillV2Repo`,
+  `squadRepo *duckdb.SquadOffsetRepo`) et passé à ~6 fonctions : `processOneShadowMatch`,
+  `resolveGroupParams`, `applyMatchToSkillV2`, `loadStatesOrSeed`, `persistTeamSkillV2`,
+  `propagateCrossModeLeak`, `computeTeamSquadOffsets`.
+- **Appelé depuis** : `engine_postsync.go:379` (prod), `cmd/lusr_v2_replay/main.go:88` (CLI) + ~15
+  tests — tous avec des `*sql.DB` bruts.
 
-**a) Tests de contrat sur les repos concrets**
+### Objectif de découplage
 
-Verrouiller ce que `SkillV2Repo` et `SquadOffsetRepo` retournent réellement.
-Ces tests s'exécutent contre une base DuckDB in-memory initialisée avec le schéma réel.
+Toute la **logique de calcul** (les ~6 fonctions ci-dessus) doit dépendre d'une interface, pas du
+type concret DuckDB. Ainsi l'algorithme devient testable avec un mock et indépendant du moteur.
 
-```go
-// internal/platform/duckdb/skill_v2_repo_test.go
-// Contrat : LoadState sur un xuid inexistant retourne nil, nil (pas d'erreur)
-func TestSkillV2Repo_LoadState_notFound(t *testing.T) { ... }
+### Option A — Découplage interne (recommandé, faible churn)
 
-// Contrat : UpsertState puis LoadState retourne le même état
-func TestSkillV2Repo_roundtrip(t *testing.T) { ... }
+Garde la signature `RunLUSRV2Shadow(ctx, playerDB, sharedDB *sql.DB, xuid)` et l'instanciation
+ligne 89 (seul point qui touche `duckdb`). Change **uniquement les types internes** :
 
-// Contrat : LoadHyperparams retourne une map vide (pas nil) si aucun hyperparamètre
-func TestSkillV2Repo_LoadHyperparams_empty(t *testing.T) { ... }
-```
+1. **Tests d'abord** : la suite `skill_v2_shadow_test.go` existante EST le filet. La lire, la
+   lancer en vert avant de toucher quoi que ce soit.
 
-```go
-// internal/platform/duckdb/squad_offset_repo_test.go
-// Contrat : LoadSquadOffsets est mémoïsé (2 appels = 1 seule requête SQL)
-func TestSquadOffsetRepo_memoization(t *testing.T) { ... }
+2. **Définir les interfaces** dans `internal/port/` :
+   ```go
+   type SkillV2Repository interface {
+       LoadState(ctx context.Context, xuid, playlistGroup string) (*domain.SkillV2State, error)
+       LoadHyperparams(ctx context.Context, playlistGroup string) (map[string]float64, error)
+       UpsertState(ctx context.Context, state domain.SkillV2State) error
+       // + les méthodes réellement appelées (à confirmer en lisant skill_v2_repo.go :
+       //   LoadAllStates, LoadStateHistory, UpsertHyperparam selon usage réel)
+   }
+   type SquadOffsetRepository interface {
+       LoadSquadOffsets(ctx context.Context, xuid, playlistGroup string) (map[string]float64, error)
+       UpsertSquadOffset(ctx context.Context, o domain.SquadOffset) error
+   }
+   ```
+   ⚠️ Avant d'écrire l'interface : lire `internal/platform/duckdb/skill_v2_repo.go` pour la liste
+   EXACTE des méthodes appelées (ne pas deviner). `*duckdb.SkillV2Repo` doit la satisfaire sans
+   modification.
 
-// Contrat : UpsertSquadOffset puis LoadSquadOffsets retourne la valeur insérée
-func TestSquadOffsetRepo_roundtrip(t *testing.T) { ... }
-```
+3. **Retyper** `shadowRunContext.repo` / `.squadRepo` et les ~6 signatures de fonction de
+   `*duckdb.SkillV2Repo` → `port.SkillV2Repository` (idem squad). Ligne 89 reste concrète : la
+   variable est juste affectée à un champ d'interface.
 
-**b) Test de comportement de `RunLUSRV2Shadow` via mock**
+4. Lancer la suite de tests → doit rester 100% verte (aucun comportement changé).
 
-Ce test vérifie que `RunLUSRV2Shadow` appelle bien les bonnes méthodes sur le repo avec les bons
-arguments — sans toucher à DuckDB.
+**Effet** : la logique de calcul est découplée de DuckDB et mockable. `skill_v2_shadow.go` importe
+encore `duckdb` pour la seule instanciation ligne 89 — couplage résiduel d'1 ligne au lieu de
+diffus dans tout l'algorithme.
 
-```go
-// internal/sync/skill_v2_shadow_test.go
-type mockSkillV2Repo struct {
-    loadStateCalled     bool
-    upsertStateCalled   bool
-    lastUpsertedState   domain.SkillV2State
-}
-func (m *mockSkillV2Repo) LoadState(...) (*domain.SkillV2State, error) { ... }
-// ... implémente port.SkillV2Repository
+### Option B — Découplage complet (churn élevé, optionnel)
 
-func TestRunLUSRV2Shadow_callsRepoMethods(t *testing.T) {
-    mock := &mockSkillV2Repo{}
-    engine := NewSyncEngine(...).WithSkillV2Repo(mock)
-    // ...
-    assert.True(t, mock.loadStateCalled)
-    assert.True(t, mock.upsertStateCalled)
-}
-```
+Injecter le repo depuis les appelants : signature
+`RunLUSRV2Shadow(ctx, skillRepo port.SkillV2Repository, squadRepo port.SquadOffsetRepository, playerDB *sql.DB, xuid)`.
+Supprime l'import `duckdb` de `skill_v2_shadow.go` entièrement, mais oblige à toucher
+`engine_postsync.go`, le CLI replay, et ~15 tests. À ne faire que si l'Option A ne suffit pas.
 
-Ce test **échoue d'abord** (le champ `skillV2Repo` et le wither n'existent pas encore), puis
-passe une fois le refacto fait.
+> **Recommandation** : Option A. Elle atteint le but (logique stack-agnostique, testable) pour un
+> coût faible. L'import résiduel d'1 ligne ne bloque pas un changement de stack — il se remplace
+> trivialement le jour où on swappe le repo.
 
-### Modification
-
-**Étape 1** — Créer les interfaces dans `port/` :
-
-```go
-type SkillV2Repository interface {
-    LoadState(ctx context.Context, xuid, playlistGroup string) (*domain.SkillV2State, error)
-    LoadAllStates(ctx context.Context, xuid string) ([]domain.SkillV2State, error)
-    LoadHyperparams(ctx context.Context, playlistGroup string) (map[string]float64, error)
-    LoadStateHistory(ctx context.Context, xuid, playlistGroup string) ([]domain.SkillV2State, error)
-    UpsertState(ctx context.Context, state domain.SkillV2State) error
-    UpsertHyperparam(ctx context.Context, h domain.LUSRHyperparam) error
-}
-
-type SquadOffsetRepository interface {
-    LoadSquadOffsets(ctx context.Context, xuid, playlistGroup string) (map[string]float64, error)
-    UpsertSquadOffset(ctx context.Context, o domain.SquadOffset) error
-}
-```
-
-Ajouter les noops inline (pattern établi dans le fichier).
-
-**Étape 2** — Champs + withers sur `SyncEngine` :
-
-```go
-// engine.go
-skillV2Repo     port.SkillV2Repository
-squadOffsetRepo port.SquadOffsetRepository
-
-// engine_options.go
-func (e *SyncEngine) WithSkillV2Repo(r port.SkillV2Repository) *SyncEngine { ... }
-func (e *SyncEngine) WithSquadOffsetRepo(r port.SquadOffsetRepository) *SyncEngine { ... }
-```
-
-**Étape 3** — `skill_v2_shadow.go` : supprimer les instanciations locales, lire depuis `e.*`.
-Garde en début de fonction :
-
-```go
-if e.skillV2Repo == nil {
-    return fmt.Errorf("RunLUSRV2Shadow: skillV2Repo not injected")
-}
-```
-
-**Étape 4** — Câblage au point d'entrée :
-
-```go
-engine.
-    WithSkillV2Repo(duckdb.NewSkillV2Repo(sharedDB)).
-    WithSquadOffsetRepo(duckdb.NewSquadOffsetRepo(sharedDB))
-```
-
-### Commits
+### Commits (Option A)
 
 ```
-test(sync): characterization tests for SkillV2Repo and SquadOffsetRepo contracts
-test(sync): mock-based test for RunLUSRV2Shadow repo interactions
 feat(port): add SkillV2Repository and SquadOffsetRepository interfaces
-refactor(sync): inject skill repos via port interfaces instead of direct duckdb instantiation
+refactor(sync): type LUSR v2 logic against port interfaces, not concrete DuckDB repo
 ```
 
-**Durée estimée** : 2-3h (tests inclus). Risque faible.
+**Effort** : 1-2h. Risque faible — filet de test massif existant, zéro changement de call-site.
 
 ---
 
-## Axe 3 — `TokenStore` interface (auth)
+## Axe 3 — `TokenStore` interface (auth) ✅ solide
 
-### Contexte
+### Couplage réel (vérifié)
 
-`MultiUserTokenStore` est une struct concrète injectée par type concret dans les handlers et la
-`ServiceRegistry` :
+- `handlers/auth_xbox_oauth.go:35` : `authStore *auth_platform.MultiUserTokenStore` (concret),
+  wither `WithAuthStore(*MultiUserTokenStore)`. Méthodes utilisées : `UpdateOAuthRefreshToken`.
+- `api/registry.go:76` : `authStore *auth.MultiUserTokenStore` (concret). Méthodes : `Load`,
+  `UpdateOAuthRefreshToken` (registry_auth.go).
+- `handlers/admin_auto_sync.go:162` : instancie `NewMultiUserTokenStore(...)` **en local dans le
+  handler** + `LoadByGamertag`, `UpdateOAuthRefreshToken`.
+- Test e2e existant `auth_xbox_e2e_test.go` : crée un vrai store sur tempdir → confirme qu'on ne
+  peut pas tester sans disque aujourd'hui.
 
-```go
-// handlers/auth_xbox_oauth.go
-type XboxOAuthHandler struct {
-    authStore *auth_platform.MultiUserTokenStore  // type concret
-}
+### Objectif
 
-// api/registry.go
-type ServiceRegistry struct {
-    authStore *auth.MultiUserTokenStore  // type concret
-}
-```
+Une interface `TokenStore` couvrant les méthodes réellement consommées, pour mocker en test.
 
-Conséquence : tester un handler auth nécessite créer un vrai répertoire sur disque. Les tests du
-store lui-même sont excellents (831 lignes, `t.TempDir()`, concurrence), mais les handlers qui
-le consomment ne peuvent pas utiliser de mock.
+### Étapes
 
-**Ce qui est déjà bien abstrait :** `TokenProvider` (MSAL/OAuth) est une interface ✅. Le package
-`auth` n'a aucune dépendance DuckDB ✅ (ADR 0023 respecté).
-
-**Ce qui reste concret :** `MultiUserTokenStore` + les fonctions globales
-`halo.GetCachedPlayerTokens` / `halo.InvalidateCachedPlayerTokens` (singleton process).
-
-### Tests avant modification
-
-Écrire un test de handler auth qui utilise un mock du store **avant** de créer l'interface —
-ce test échoue d'abord, puis passe une fois l'interface en place :
-
-```go
-// internal/api/handlers/auth_xbox_oauth_test.go
-type mockTokenStore struct {
-    upsertCalled bool
-    loadResult   *auth.UserTokens
-}
-func (m *mockTokenStore) Load(xuid string) (*auth.UserTokens, error) { return m.loadResult, nil }
-func (m *mockTokenStore) Upsert(tokens *auth.UserTokens) error       { m.upsertCalled = true; return nil }
-func (m *mockTokenStore) LoadByGamertag(g string) (*auth.UserTokens, error) { ... }
-func (m *mockTokenStore) UpdateOAuthRefreshToken(xuid, rt string) error     { ... }
-
-func TestXboxOAuthHandler_callback_persistsTokens(t *testing.T) {
-    store := &mockTokenStore{}
-    h := NewXboxOAuthHandler(...).WithAuthStore(store)
-    // ... simule le callback OAuth
-    assert.True(t, store.upsertCalled)
-}
-```
-
-### Modification
-
-**Étape 1** — Créer l'interface dans `internal/auth/` (ou `internal/port/`) :
-
-```go
-type TokenStore interface {
-    Load(xuid string) (*UserTokens, error)
-    Upsert(tokens *UserTokens) error
-    LoadByGamertag(gamertag string) (*UserTokens, error)
-    UpdateOAuthRefreshToken(xuid, refreshToken string) error
-}
-```
-
-`MultiUserTokenStore` implémente déjà toutes ces méthodes — aucune modification du store concret.
-
-**Étape 2** — Remplacer les types concrets dans les consommateurs :
-
-```go
-// Avant
-authStore *auth.MultiUserTokenStore
-
-// Après
-authStore auth.TokenStore
-```
-
-**Étape 3** — `halo.GetCachedPlayerTokens` / `halo.InvalidateCachedPlayerTokens` (priorité basse)
-
-Ces fonctions globales sont un singleton process. Si le besoin de les mocker émerge, créer une
-interface `TokenCache` et l'injecter — mais ce n'est pas urgent car c'est un cache interne sans
-état partagé entre tests.
+1. **Tests d'abord** : test de `XboxOAuthHandler` avec un mock store (échoue tant que le wither
+   prend un type concret) → vert après.
+2. **Définir l'interface** dans `internal/platform/auth/` :
+   ```go
+   type TokenStore interface {
+       Load(xuid string) (*UserTokens, error)
+       Upsert(tokens *UserTokens) error
+       LoadByGamertag(gamertag string) (*UserTokens, error)
+       UpdateOAuthRefreshToken(xuid, refreshToken string) error
+   }
+   ```
+   `MultiUserTokenStore` l'implémente déjà — aucune modif du concret.
+3. **Remplacer** `*auth.MultiUserTokenStore` → `auth.TokenStore` dans `registry.go`,
+   `auth_xbox_oauth.go` (champ + wither). Pour `admin_auto_sync.go` : injecter le store plutôt que
+   l'instancier en local (sinon le couplage reste).
 
 ### Commits
 
 ```
-test(auth): mock-based characterization tests for XboxOAuthHandler
+test(auth): mock-based test for XboxOAuthHandler token persistence
 feat(auth): introduce TokenStore interface
 refactor(auth): inject TokenStore interface instead of concrete MultiUserTokenStore
 ```
 
-**Durée estimée** : 1-2h. Risque faible — `MultiUserTokenStore` implémente déjà tout.
+**Effort** : 1-2h. Risque faible.
 
 ---
 
-## Axe 4 — Types OpenAPI générés (frontend) ⭐ impact long terme
+## Axe 5 — Cohérence des erreurs HTTP ✅ solide (nettoyage)
 
-### Contexte
+### État réel (vérifié)
 
-`apps/web/src/lib/api/types.ts` = **~3500 lignes** de types TypeScript maintenus manuellement.
-Un fichier `generated.ts` (via `openapi-typescript`) existe déjà mais n'est pas branché.
+Le helper standard existe et domine. Déviations confirmées dans `handlers/settings_backup.go` :
+- l.24 : `http.Error(w, "...", 503)` → text/plain au lieu de JSON.
+- l.32 : `writeJSON(..., map[string]string{"error": err.Error()})` → clé `error` au lieu du shape
+  `{code, message, retryable}`.
 
-**Bonne nouvelle (investigation Go) :** l'architecture est déjà **contract-first** côté Go.
-`apps/go-api/api/openapi.yaml` est la source de vérité (~1000 lignes), et `make gen` génère les
-types Go depuis ce fichier. La pipeline frontend peut pointer directement sur ce YAML statique —
-pas besoin d'endpoint HTTP dynamique.
+Autres cibles citées par l'exploration (à reconfirmer avant de toucher) : `health_home.go` (shape
+custom sur 503), middlewares `require_auth/admin/capability` (`json.NewEncoder` direct → risque
+double `WriteHeader`), panic recovery `chi.Recoverer` (texte brut).
 
-```json
-// apps/web/package.json
-"generate:types": "openapi-typescript ../go-api/api/openapi.yaml -o src/lib/api/generated.ts"
-```
+### Étapes
 
-Note : un endpoint `/api/v1/lab/contracts` existe dans le code Go mais n'est pas encore monté
-dans le routeur. Non bloquant pour cet axe.
-
-### Tests avant migration
-
-Avant de basculer une feature, écrire des **tests de compatibilité de types** avec `expect-type` :
-
-```typescript
-// src/lib/api/__tests__/types-compat.test-d.ts
-import { expectType } from 'tsd'
-import type { PlayerMatchRow } from '../types'      // manuel actuel
-import type { components } from '../generated'      // généré OpenAPI
-
-type GeneratedRow = components['schemas']['PlayerMatchRow']
-
-// Doit passer EN VERT avant de basculer les imports
-// Échoue si un champ manque ou diffère → documente la divergence à corriger
-declare const g: GeneratedRow
-expectType<PlayerMatchRow>(g)
-```
-
-### Modification (progressive, feature par feature)
-
-1. **Câbler la génération** (voir commande ci-dessus)
-2. **Pour chaque feature** :
-   - Écrire le test de compatibilité de type
-   - Corriger les divergences (dans `openapi.yaml` ou dans le type manuel)
-   - Basculer les imports `types.ts` → `generated.ts`
-3. **Supprimer `types.ts`** une fois toutes les features migrées
-
-### Commits (par feature)
-
-```
-chore(web): wire openapi-typescript generation from go-api/api/openapi.yaml
-test(web/types): type-compat tests for PlayerMatch types before migration
-refactor(web/engagement): migrate to generated OpenAPI types
-refactor(web/explorer): migrate to generated OpenAPI types
-...
-chore(web): remove manual types.ts
-```
-
-**Durée estimée** : 30min pour le câblage + ~1h par feature migrée.
-Risque modéré — les divergences entre types manuels et générés peuvent être surprenantes.
-
----
-
-## Axe 5 — Cohérence des erreurs HTTP (nettoyage)
-
-### Contexte
-
-Le helper `writeError()` existe et est utilisé correctement dans la grande majorité des handlers,
-avec une shape uniforme `{code, message, retryable}` et des codes HTTP cohérents. C'est solide.
-
-Trois fichiers dévient du standard et un problème transverse sur les middlewares :
-
-| Fichier | Problème |
-|---------|----------|
-| `handlers/settings_backup.go` | `http.Error()` (text/plain) + `map[string]string{"error": ...}` au lieu de `writeError()` |
-| `handlers/health_home.go` | Shape custom `{error, checks}` sur le 503 au lieu de `{code, message, retryable}` |
-| `middleware/require_auth.go` + `require_admin.go` + `require_capability.go` | `json.NewEncoder(w).Encode()` direct — risque de double `WriteHeader` |
-| Panic recovery (`chi.Recoverer`) | Retourne du texte brut, pas du JSON standardisé |
-
-### Tests avant modification
-
-Les tests existants (`contract_validate` middleware en mode `LEVELUP_CONTRACT_VALIDATE=1`)
-vérifient déjà la shape en dev. Avant de corriger, ajouter des tests unitaires sur les endpoints
-concernés qui assertent la shape JSON et le Content-Type :
-
-```go
-func TestSettingsBackupHandler_errorShape(t *testing.T) {
-    // provoque une erreur 503
-    resp := callHandler(...)
-    assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
-    var body map[string]any
-    json.Unmarshal(resp.Body.Bytes(), &body)
-    assert.Contains(t, body, "code")
-    assert.Contains(t, body, "message")
-    assert.Contains(t, body, "retryable")
-}
-```
-
-### Modification
-
-1. `settings_backup.go` → remplacer `http.Error()` et la map custom par `writeError()`
-2. `health_home.go` → aligner la shape 503 sur `{code, message, retryable}`
-3. Middlewares → extraire un helper `writeJSONError()` accessible depuis `middleware/` sans
-   import circulaire (ex: dans `internal/api/apierror/` partagé)
-4. Panic recovery → wrapper `chi.Recoverer` avec un middleware custom qui écrit du JSON standard
+1. **Tests d'abord** : assert Content-Type `application/json` + présence `code`/`message`/
+   `retryable` sur les endpoints concernés.
+2. Aligner `settings_backup.go` sur le helper standard.
+3. Reconfirmer puis corriger `health_home.go` et les middlewares (extraire un writer JSON partagé
+   accessible sans import circulaire).
 
 ### Commits
 
 ```
-test(api): assert JSON error shape on settings_backup and health_home endpoints
-fix(api): align error responses to {code, message, retryable} standard
-refactor(middleware): extract shared JSON error writer to avoid direct json.NewEncoder
+test(api): assert JSON error shape on settings_backup endpoint
+fix(api): align settings_backup error responses to standard shape
+refactor(middleware): shared JSON error writer (after re-verifying each site)
 ```
 
-**Durée estimée** : 1-2h. Risque très faible — pur nettoyage de surface.
+**Effort** : 1-2h. Risque très faible.
 
 ---
 
-## Axe 6 — Feature flags : dead scaffolding et deadline Prestige
+## Axe 6 — Feature flags morts + deadline Prestige ✅ solide
 
-### Contexte
+### État réel (vérifié)
 
-Deux problèmes distincts identifiés dans `internal/config/`.
+- Les 12 surface flags (`FeatureFlags`, `AllSurfaces`, `BackendFor`) ne sont consommés QUE par la
+  commande diagnostic `surface-status` (`cmd/levelup`). Aucun routing réel. Dead scaffolding
+  confirmé. ⚠️ Plusieurs tests en dépendent (`feature_flags_test.go`, `pure_funcs_test.go`) — à
+  supprimer avec, si on retire le scaffolding.
+- Deadline Prestige (ADR 0005, fin Q3 2026) : aucun garde-fou en code.
 
-**Ce qui est bien :** centralisation dans `internal/config/`, injection via `AppConfig`,
-testabilité avec `t.Setenv()`. Pattern propre.
+### Étapes
 
-### Problème A — 12 surface flags jamais routés (dead scaffolding)
-
-Les flags `Career`, `History`, `Explorer`, `MatchView`... (`FeatureFlags` struct, 12 champs) ont
-été préparés pour un routing Go/Python. Le seul consommateur réel est la commande diagnostic
-`surface-status` qui les *affiche* — aucun code ne les utilise jamais pour router une requête.
-
-C'est du dead code au sens du CLAUDE.md (infrastructure préparée, jamais activée).
-
-**Action :** deux options selon l'intention :
-- Si la migration Go/Python est abandonnée → supprimer `feature_flags.go` et `AllSurfaces`
-- Si elle est différée → documenter explicitement dans le fichier avec une date de révision
-
-### Problème B — Deadline Prestige non gardée en code
-
-L'ADR 0005 stipule : *"si non activé en prod avant fin Q3 2026 → archiver ou supprimer le
-module Prestige"*. Il n'existe aucun mécanisme dans le code qui signale cette échéance.
-
-**Action :** ajouter un test de garde à date fixe :
-
-```go
-// internal/config/prestige_expiry_test.go
-func TestPrestigeFlag_expiryReminder(t *testing.T) {
-    deadline := time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)
-    if time.Now().After(deadline) {
-        t.Errorf("Prestige deadline reached (ADR 0005): decide to activate or delete the module")
-    }
-}
-```
-
-Ce test échoue au CI à partir du 2026-10-01 si personne n'a agi — c'est intentionnel.
-
-### Tests avant modification
-
-Pour le dead scaffolding, vérifier d'abord qu'aucun code non trouvé par l'analyse n'utilise
-`BackendFor()` autrement que dans `cmd_ops.go` :
-
-```bash
-grep -r "BackendFor\|BackendGo\|BackendPython\|AllSurfaces" apps/go-api/ --include="*.go"
-```
+1. **Surface flags** : décision binaire —
+   - migration Go/Python abandonnée → supprimer `feature_flags.go` + `AllSurfaces` + tests + la
+     branche `surface-status` ;
+   - différée → ajouter en tête de `feature_flags.go` un commentaire daté de révision (anti
+     "compatibility guard forever" du CLAUDE.md).
+2. **Prestige** : test de garde à date fixe qui échoue au CI après le 2026-09-30 :
+   ```go
+   func TestPrestigeFlag_expiryReminder(t *testing.T) {
+       deadline := time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)
+       if time.Now().After(deadline) {
+           t.Errorf("Deadline Prestige atteinte (ADR 0005) : activer en prod ou supprimer le module")
+       }
+   }
+   ```
 
 ### Commits
 
 ```
-test(config): add expiry guard test for Prestige flag per ADR 0005
-chore(config): document surface flags as deferred scaffolding with review date
-# ou, si migration abandonnée :
-chore(config): remove unused surface backend switching scaffolding
+test(config): expiry guard for Prestige flag per ADR 0005
+chore(config): remove dead surface-switching scaffolding   # ou: document deferred with review date
 ```
 
-**Durée estimée** : 30min–1h. Risque très faible.
+**Effort** : 30min-1h. Risque très faible.
 
 ---
 
-## Récapitulatif
+## Axe 4 — Types OpenAPI générés (frontend)
 
-| Axe | Tests avant | Impact | Effort total | Risque |
-|-----|-------------|--------|--------------|--------|
-| **1. SQL helpers** | Tests unitaires fonctions pures | Propreté imports | ~1h | Très faible |
-| **2. Repos → port interfaces** | Contrat repos + mock shadow | Architecture, testabilité Go | 2-3h | Faible |
-| **3. TokenStore interface** | Mock-based handler tests | Testabilité auth | 1-2h | Faible |
-| **4. Types OpenAPI** | Type-compat tests par feature | Maintenabilité long terme | 3-6h | Modéré |
-| **5. Cohérence erreurs HTTP** | Assert shape JSON sur 3 endpoints | Fiabilité frontend | 1-2h | Très faible |
-| **6. Feature flags dead code + Prestige deadline** | Grep + test expiry | Hygiène codebase | 30min–1h | Très faible |
+> **Non re-vérifié ligne par ligne** — prémisse issue de l'exploration. Concerne la maintenabilité
+> du front, pas le couplage DuckDB. À valider dans le code avant implémentation.
+
+Prémisse : `apps/web/src/lib/api/types.ts` (~3500 l. manuelles), `generated.ts` existe mais non
+branché. Côté Go, `apps/go-api/api/openapi.yaml` est déjà source de vérité (contract-first,
+`make gen`) → `openapi-typescript` peut pointer sur ce YAML statique.
+
+Étapes : câbler la génération → tests de compat de types (`expect-type`) par feature → migration
+progressive → suppression de `types.ts`.
+
+**Effort** : 30min câblage + ~1h/feature. Risque modéré.
+
+---
+
+## Récapitulatif (ordre conseillé)
+
+| # | Axe | But découplage | Effort | Risque |
+|---|-----|----------------|--------|--------|
+| 1 | **Axe 3 — TokenStore** | Handlers auth mockables | 1-2h | Faible |
+| 2 | **Axe 6 — flags morts + Prestige** | Hygiène, dette documentée | 30min-1h | Très faible |
+| 3 | **Axe 5 — erreurs HTTP** | Fiabilité contrat front | 1-2h | Très faible |
+| 4 | **Axe 2 — logique LUSR v2 (Option A)** | Algo stack-agnostique | 1-2h | Faible |
+| 5 | **Axe 1 — patterns.go → repo** | Handler sans `*duckdb.*` | 3-5h | Modéré |
+| 6 | **Axe 4 — types OpenAPI** | Maintenabilité front | 3-6h | Modéré |
+
+Ordre = du plus solide/rapide au plus lourd. Axes 1 et 2 visent explicitement le **découplage
+DuckDB** (le but originel) ; 3/5/6 sont des gains de testabilité et d'hygiène attrapés en chemin.
