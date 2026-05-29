@@ -1,14 +1,16 @@
 /**
  * Route /players/$playerSlug/explorer — page Explorer.
+ *
+ * `validateSearch` couvre `mode`/`target` (toggle + cible joueur) ET tous les
+ * filtres de scope (dates, playlists, tiers, recherche, tri) — cf.
+ * `explorerSearchSchema` dans `@/features/explorer/explorerScope`. Cela rend
+ * les filtres durables dans l'URL (survit retour navigateur / F5 / partage).
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
 import { ExplorerPage } from '@/features/explorer/ExplorerPage'
+import { explorerSearchSchema } from '@/features/explorer/explorerScope'
 
 export const Route = createFileRoute('/players/$playerSlug/explorer/')({
-  validateSearch: z.object({
-    mode: z.enum(['matches', 'player']).optional(),
-    target: z.string().optional(),
-  }),
+  validateSearch: explorerSearchSchema,
   component: ExplorerPage,
 })

@@ -10,9 +10,12 @@
  *               (ExplorerMatchesTable, repris du SquadMatchHistoryTable).
  * Mode Joueur : historique commun paginé (20/page) + badges encounter.
  *
- * URL params : ?mode=player&target=<gamertag> — auto-switch au chargement.
+ * État persistant : `mode`/`target` + tous les filtres de scope vivent dans
+ * l'URL via `usePageScope` (+ miroir localStorage pour le cold-start). Ouvrir
+ * un match puis revenir en arrière restaure donc tous les filtres — cf. plan
+ * nav-context-unification (Phase 1) et `@/lib/page-scope`.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { useExplorerMatches, useExplorerPlayer } from './queries'
@@ -22,12 +25,31 @@ import type { ContextDescriptor } from '@/lib/match-nav/navContext'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { usePageScope } from '@/lib/page-scope/usePageScope'
+import {
+  DEFAULT_SORT_KEY,
+  EXPLORER_URL_KEYS,
+  decodeExplorerScope,
+  encodeExplorerScope,
+  type EncodedExplorerScope,
+  type ExplorerScope,
+} from './explorerScope'
 
 import { ExplorerMatchesMode } from './ExplorerPage.matchesMode'
 import { ExplorerPlayerMode } from './ExplorerPage.playerMode'
 import { buildExplorerFilterOptions } from './ExplorerPage.filterOptions'
 
 type SearchMode = 'matches' | 'player'
+
+/** Clés à valeur Set<string> du scope — typage du toggle. */
+type ExplorerSetKey =
+  | 'expTypes'
+  | 'playlists'
+  | 'mapNames'
+  | 'modeNames'
+  | 'perfTiers'
+  | 'skillTiers'
+  | 'outcomeFilter'
 
 export function ExplorerPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -45,35 +67,52 @@ export function ExplorerPage() {
   const [mode, setMode] = useState<SearchMode>(search.mode ?? 'matches')
   const [targetGamertag, setTargetGamertag] = useState(search.target ?? '')
 
-  // ─── Filtres ───────────────────────────────────────────────────────────────
-  const [perfTiers, setPerfTiers] = useState<Set<string>>(new Set())
-  const [skillTiers, setSkillTiers] = useState<Set<string>>(new Set())
-  const [outcomeFilter, setOutcomeFilter] = useState<Set<string>>(new Set())
-  const [sortKey, setSortKey] = useState('start_time:desc')
+  // ─── Scope filtres (URL = source de vérité + miroir localStorage) ────────────
+  const scopeParams = useMemo(() => ({ playerSlug }), [playerSlug])
+  const { scope, setScope, reset: resetFilters } = usePageScope<
+    ExplorerScope,
+    EncodedExplorerScope
+  >({
+    to: '/players/$playerSlug/explorer',
+    params: scopeParams,
+    storageKey: `levelup-explorer-scope:${playerSlug}`,
+    encode: encodeExplorerScope,
+    decode: decodeExplorerScope,
+    urlKeys: EXPLORER_URL_KEYS,
+  })
+
+  const {
+    startDate,
+    endDate,
+    squadScope,
+    matchIDSearch,
+    expTypes,
+    playlists,
+    mapNames,
+    modeNames,
+    perfTiers,
+    skillTiers,
+    outcomeFilter,
+    sortKey,
+  } = scope
   const [sortField, sortDir] = sortKey.split(':') as [string, string]
 
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  // saisonOpen reste local : pur état d'ouverture de dropdown (pas du scope).
   const [saisonOpen, setSaisonOpen] = useState(false)
-  const [squadScope, setSquadScope] = useState<'' | 'solo' | 'squad'>('')
-  const [expTypes, setExpTypes] = useState<Set<string>>(new Set())
-  const [playlists, setPlaylists] = useState<Set<string>>(new Set())
-  const [mapNames, setMapNames] = useState<Set<string>>(new Set())
-  const [modeNames, setModeNames] = useState<Set<string>>(new Set())
-  const [matchIDSearch, setMatchIDSearch] = useState('')
 
-  function toggleSet(setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) {
-    setter((prev) => {
-      const next = new Set(prev)
-      if (next.has(value)) next.delete(value)
-      else next.add(value)
-      return next
-    })
+  /** Toggle d'une valeur dans un Set du scope (immuable). */
+  function toggleScopeSet(key: ExplorerSetKey, value: string) {
+    const next = new Set(scope[key])
+    if (next.has(value)) next.delete(value)
+    else next.add(value)
+    setScope({ [key]: next } as Partial<ExplorerScope>)
   }
 
   function handleStartDate(v: string) {
-    setStartDate(v)
-    if (endDate && v && endDate < v) setEndDate('')
+    const patch: Partial<ExplorerScope> = { startDate: v }
+    // Si la borne haute devient antérieure à la borne basse, on la réinitialise.
+    if (endDate && v && endDate < v) patch.endDate = ''
+    setScope(patch)
   }
 
   // Saisons : dérivées du catalog du titre courant. activeSeason est calculée
@@ -101,11 +140,13 @@ export function ExplorerPage() {
 
   // Quand la dérivation change, le skill_tier doit être réinitialisé pour
   // éviter de garder un tier CSR sélectionné après bascule en non-classé.
+  // Guard sur la taille pour ne pas déclencher une navigation à vide en boucle.
   useEffect(() => {
-    if (rankedContext === '') setSkillTiers(new Set())
+    if (rankedContext === '' && skillTiers.size > 0) setScope({ skillTiers: new Set<string>() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rankedContext])
 
-  // ─── URL sync ──────────────────────────────────────────────────────────────
+  // ─── URL sync mode/target ────────────────────────────────────────────────────
   // Init unique depuis l'URL au mount — légitime pour hydrater l'état initial.
   useEffect(() => {
     if (search.mode) setMode(search.mode)
@@ -260,22 +301,7 @@ export function ExplorerPage() {
     perfTiers.size > 0 ||
     skillTiers.size > 0 ||
     outcomeFilter.size > 0 ||
-    sortKey !== 'start_time:desc'
-
-  function resetFilters() {
-    setStartDate('')
-    setEndDate('')
-    setSquadScope('')
-    setMatchIDSearch('')
-    setExpTypes(new Set())
-    setPlaylists(new Set())
-    setMapNames(new Set())
-    setModeNames(new Set())
-    setPerfTiers(new Set())
-    setSkillTiers(new Set())
-    setOutcomeFilter(new Set())
-    setSortKey('start_time:desc')
-  }
+    sortKey !== DEFAULT_SORT_KEY
 
   return (
     <div className="flex flex-col">
@@ -324,9 +350,9 @@ export function ExplorerPage() {
             squadScope={squadScope}
             squadCountByValue={squadCountByValue}
             onStartDateChange={handleStartDate}
-            onEndDateChange={setEndDate}
-            onMatchIDSearchChange={setMatchIDSearch}
-            onSquadScopeChange={setSquadScope}
+            onEndDateChange={(v) => setScope({ endDate: v })}
+            onMatchIDSearchChange={(v) => setScope({ matchIDSearch: v })}
+            onSquadScopeChange={(v) => setScope({ squadScope: v })}
             seasons={seasons}
             activeSeason={activeSeason}
             saisonOpen={saisonOpen}
@@ -334,14 +360,10 @@ export function ExplorerPage() {
             onSaisonClose={() => setSaisonOpen(false)}
             onSelectSeason={(s) => {
               const p = seasonToPeriod(s)
-              setStartDate(p.start_date ?? '')
-              setEndDate(p.end_date ?? '')
+              setScope({ startDate: p.start_date ?? '', endDate: p.end_date ?? '' })
               setSaisonOpen(false)
             }}
-            onClearPeriod={() => {
-              setStartDate('')
-              setEndDate('')
-            }}
+            onClearPeriod={() => setScope({ startDate: '', endDate: '' })}
             expTypes={expTypes}
             playlists={playlists}
             modeNames={modeNames}
@@ -357,15 +379,15 @@ export function ExplorerPage() {
             perfTierOptions={perfTierOptions}
             skillTierOptions={skillTierOptions}
             rankedContext={rankedContext}
-            onToggleExpType={(v) => toggleSet(setExpTypes, v)}
-            onTogglePlaylist={(v) => toggleSet(setPlaylists, v)}
-            onToggleModeName={(v) => toggleSet(setModeNames, v)}
-            onToggleMapName={(v) => toggleSet(setMapNames, v)}
-            onToggleOutcome={(v) => toggleSet(setOutcomeFilter, v)}
-            onTogglePerfTier={(v) => toggleSet(setPerfTiers, v)}
-            onToggleSkillTier={(v) => toggleSet(setSkillTiers, v)}
+            onToggleExpType={(v) => toggleScopeSet('expTypes', v)}
+            onTogglePlaylist={(v) => toggleScopeSet('playlists', v)}
+            onToggleModeName={(v) => toggleScopeSet('modeNames', v)}
+            onToggleMapName={(v) => toggleScopeSet('mapNames', v)}
+            onToggleOutcome={(v) => toggleScopeSet('outcomeFilter', v)}
+            onTogglePerfTier={(v) => toggleScopeSet('perfTiers', v)}
+            onToggleSkillTier={(v) => toggleScopeSet('skillTiers', v)}
             sortKey={sortKey}
-            onSortKeyChange={setSortKey}
+            onSortKeyChange={(v) => setScope({ sortKey: v })}
             hasActiveFilter={hasActiveFilter}
             onResetFilters={resetFilters}
             matchesQuery={matchesQuery}

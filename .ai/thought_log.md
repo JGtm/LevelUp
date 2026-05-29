@@ -1,3 +1,23 @@
+## [2026-05-29] feat(nav): Phase 1 unification mémoire de navigation — scope Explorer durable (URL + miroir localStorage)
+
+**Statut** : Complété (branche `feat/nav-context-unification`, créée depuis `feat/match-timeline-t0` à la demande utilisateur)
+
+**Contexte** : la « mémoire du contexte » ressentie comme incomplète/fragile par l'utilisateur est en réalité **3 mécanismes disjoints** : (1) `match-nav` (propagation avant, sessionStorage TTL 1h) ; (2) stores de filtres Solo/Squad (Zustand persist + auto-snap `lastKnownLatestSessionId` à la fin d'un sync = « sticky jusqu'à nouvelle session ») ; (3) **Explorer = aucune persistance** (filtres en `useState` local, seuls `mode`/`target` dans l'URL). D'où la douleur n°3 : ouvrir un match → retour → recherche perdue. Plan `nav-context-unification`, priorité 1 (restauration au retour), approche hybride store+URL validée.
+
+**Décisions techniques majeures** :
+- **Insight de levier** : pour le bouton retour, mettre les filtres dans l'URL suffit — `history.back()` restaure l'URL précédente avec ses query params. Le localStorage n'est qu'un **miroir cold-start** (rouvrir l'app à froid sur Explorer). URL = source de vérité, store/localStorage = secondaire.
+- **Nouveau primitif générique `apps/web/src/lib/page-scope/`** (réutilisable Phase 4) : `serialize.ts` (helpers purs Set↔csv) + `usePageScope.ts` (hook hybride). Le hook manipule 2 représentations via `encode`/`decode` : App (riche, Set<string>) ↔ Url (plate, chaînes). Mutations via `navigate({ replace: true })` (pas push → pas de pollution d'historique). Cold-start : effet de montage qui réhydrate depuis localStorage **uniquement si l'URL ne porte aucun scope** (sinon l'URL gagne). `reset()` purge le miroir pour ne pas ressusciter des filtres effacés.
+- **`createFilterStore` PAS réutilisable pour Explorer** : sa forme est figée sur `FilterContextInput` (période/sessions/cascade) ; les filtres Explorer ont une forme différente (tiers, playlists, dates, recherche). D'où le primitif générique séparé plutôt qu'un détournement.
+- **`features/explorer/explorerScope.ts`** : contrat de la page — `ExplorerScope` (App) ↔ `EncodedExplorerScope` (Url, clés courtes `start/end/scope/mid/exp/pl/maps/modes/perf/skill/outcome/sort`) + `explorerSearchSchema` Zod pour `validateSearch`. Valeurs vides → param omis (URL propre) ; tri par défaut omis.
+- **ExplorerPage rebranché** : 13 `useState` locaux → `usePageScope`. Toute la logique dérivée préservée (rankedContext, reset auto skillTiers sous garde anti-boucle, matchesContextDescriptor, saisons). `mode`/`target` laissés inchangés (déjà dans l'URL) ; ils composent avec le scope via l'updater fonctionnel `search: (prev) => ({...prev, ...})`.
+- **Limite assumée csv** : séparateur `,` sur vocabulaires Halo contrôlés (playlists/maps/modes/tiers sans virgule). Documenté dans `serialize.ts`.
+
+**Résultats observés** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ (route tree régénéré, chunk `explorerScope` bundlé) · **96 tests passent** dont 29 nouveaux (sérialisation round-trip, encode/decode défauts, Zod parse valide/invalide, hook : decode/setScope-merge/reset/cold-start restore+skip). Le test existant `ExplorerPage.test.tsx` passe sans modif (mocks `useSearch/useNavigate` compatibles).
+
+**Non vérifié** : pas de click-through navigateur live (nécessiterait Go API + browser MCP). Le fix est structurellement garanti par TanStack Router + historique navigateur, et la logique encode/decode/hook est couverte unitairement.
+
+**Conclusion / prochaine étape** : Phase 1 livrée (douleur n°3 résolue pour Explorer). Suite du plan : Phase 2 (compléter la propagation — SessionDetail cliquable, retrait du `'citation'` mort, uniformiser `contextDescriptor`), Phase 3 (fiabiliser match-nav — TTL, multi-filtres, observabilité), Phase 4 (généraliser `usePageScope` + adaptateur `scope→MatchNavContext`, en préservant le « sticky jusqu'à nouvelle session » de Solo/Squad via crochet auto-snap optionnel).
+
 ## [2026-05-29] chore: Cleanup knip phase 2 — charts leftovers + quick wins + dette lint
 
 **Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
