@@ -130,7 +130,7 @@ func TestBuildMatchCadenceChart_AggregatesKillsByPhase(t *testing.T) {
 		scoreboardRow("x_p1", 2),
 		scoreboardRow("x_p2", 3),
 	}
-	chart := BuildMatchCadenceChart(events, scoreboard, "m1")
+	chart := BuildMatchCadenceChart(events, scoreboard, "m1", 0)
 	if chart == nil {
 		t.Fatal("chart nil")
 	}
@@ -152,13 +152,14 @@ func TestBuildMatchCadenceChart_AggregatesKillsByPhase(t *testing.T) {
 
 func TestBuildMatchCadenceChart_EmptyInputs(t *testing.T) {
 	t.Parallel()
-	if got := BuildMatchCadenceChart(nil, nil, "m1"); got != nil {
+	if got := BuildMatchCadenceChart(nil, nil, "m1", 0); got != nil {
 		t.Errorf("nil events: want nil, got %v", got)
 	}
 	if got := BuildMatchCadenceChart(
 		[]domain.EventRaw{eventRawKill(1, "x")},
 		nil,
 		"m1",
+		0,
 	); got != nil {
 		t.Errorf("nil scoreboard: want nil, got %v", got)
 	}
@@ -229,7 +230,7 @@ func TestBuildMatchCadenceChartFromCanonical_NoConversion(t *testing.T) {
 		},
 	}
 	scoreboard := []domain.ScoreboardRaw{scoreboardRow("x_p1", 2)}
-	chart := BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard)
+	chart := BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard, 0)
 	if chart == nil {
 		t.Fatal("chart nil")
 	}
@@ -269,7 +270,7 @@ func TestBuildMatchImpactRoles8FromCanonical_NoConversion(t *testing.T) {
 // degradation gracieuse.
 func TestBuildMatchCadenceChartFromCanonical_EmptyInputs(t *testing.T) {
 	t.Parallel()
-	if got := BuildMatchCadenceChartFromCanonical(nil, nil); got != nil {
+	if got := BuildMatchCadenceChartFromCanonical(nil, nil, 0); got != nil {
 		t.Errorf("nil inputs: want nil, got %v", got)
 	}
 }

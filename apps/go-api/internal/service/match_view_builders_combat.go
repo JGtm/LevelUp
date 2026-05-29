@@ -77,10 +77,10 @@ func buildCombatTabFull(
 	var cadence *domain.ChartSeries[domain.ChartPointStacked]
 	var impactRoles []domain.MatchViewImpactRole
 	if len(canonicalEvents) > 0 {
-		cadence = BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard)
+		cadence = BuildMatchCadenceChartFromCanonical(canonicalEvents, scoreboard, durationMS)
 		impactRoles = BuildMatchImpactRoles8FromCanonical(canonicalEvents, scoreboard)
 	} else {
-		cadence = BuildMatchCadenceChart(events, scoreboard, matchID)
+		cadence = BuildMatchCadenceChart(events, scoreboard, matchID, durationMS)
 		impactRoles = BuildMatchImpactRoles8(events, scoreboard, matchID)
 	}
 

@@ -24,7 +24,7 @@ func TestComputeCadenceProfiles_BasicBucketing(t *testing.T) {
 		killEvtCadence("m1", "x_p1", 65_000),
 		killEvtCadence("m1", "x_p1", 175_000),
 	}
-	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 60)
+	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 60, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile, got %d", len(profiles))
 	}
@@ -63,7 +63,7 @@ func TestComputeCadenceProfiles_FiltersNonSquadAndNonKill(t *testing.T) {
 			PlayerXUID: &other,
 		}, // pas un kill -> ignore
 	}
-	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 60)
+	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 60, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile, got %d", len(profiles))
 	}
@@ -79,7 +79,7 @@ func TestComputeCadenceProfiles_MultiPlayerMultiMatch(t *testing.T) {
 		killEvtCadence("m1", "x_p2", 2_000),
 		killEvtCadence("m2", "x_p1", 3_000),
 	}
-	profiles := ComputeCadenceProfiles(events, []string{"x_p1", "x_p2"}, 60)
+	profiles := ComputeCadenceProfiles(events, []string{"x_p1", "x_p2"}, 60, nil)
 	if len(profiles) != 3 {
 		t.Fatalf("want 3 profiles (m1/p1, m1/p2, m2/p1), got %d", len(profiles))
 	}
@@ -100,7 +100,7 @@ func TestComputeCadenceProfiles_DefaultPhaseSeconds(t *testing.T) {
 	events := []canonical.HighlightEvent{
 		killEvtCadence("m1", "x_p1", 1_000),
 	}
-	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 0)
+	profiles := ComputeCadenceProfiles(events, []string{"x_p1"}, 0, nil)
 	if len(profiles) != 1 {
 		t.Fatalf("want 1 profile, got %d", len(profiles))
 	}
@@ -111,13 +111,14 @@ func TestComputeCadenceProfiles_DefaultPhaseSeconds(t *testing.T) {
 
 func TestComputeCadenceProfiles_EmptyInputs(t *testing.T) {
 	t.Parallel()
-	if got := ComputeCadenceProfiles(nil, []string{"x_p1"}, 60); got != nil {
+	if got := ComputeCadenceProfiles(nil, []string{"x_p1"}, 60, nil); got != nil {
 		t.Errorf("nil events: want nil, got %v", got)
 	}
 	if got := ComputeCadenceProfiles(
 		[]canonical.HighlightEvent{killEvtCadence("m1", "x_p1", 1_000)},
 		nil,
 		60,
+		nil,
 	); got != nil {
 		t.Errorf("nil squad: want nil, got %v", got)
 	}

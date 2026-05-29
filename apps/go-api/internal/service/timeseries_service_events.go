@@ -53,6 +53,7 @@ func buildIntensityRows(
 	events []canonical.HighlightEvent,
 	matches []legacymatch.StatsMatchRow,
 	playerXUID string,
+	gameplayDurationsMS map[string]int64,
 ) []domain.IntensityMatchRow {
 	// Filtrer les events où le joueur est tueur (frags du joueur uniquement).
 	playerKills := make([]canonical.HighlightEvent, 0, len(events))
@@ -71,7 +72,7 @@ func buildIntensityRows(
 	if len(playerKills) == 0 {
 		return nil
 	}
-	profiles := narrative.ComputeMatchIntensityProfiles(playerKills, 10)
+	profiles := narrative.ComputeMatchIntensityProfiles(playerKills, 10, gameplayDurationsMS)
 	if len(profiles) == 0 {
 		return nil
 	}

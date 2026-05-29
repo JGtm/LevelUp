@@ -53,6 +53,7 @@ func BuildCadenceChart(
 	events []canonical.HighlightEvent,
 	squadXUIDs map[string]string,
 	phaseSeconds int,
+	gameplayDurationsMS map[string]int64,
 ) domain.ChartSeries[domain.ChartPointStacked] {
 	if phaseSeconds <= 0 {
 		phaseSeconds = DefaultCadencePhaseSeconds
@@ -72,7 +73,7 @@ func BuildCadenceChart(
 	}
 	xuidToGT := reverseMap(squadXUIDs)
 
-	profiles := narrative.ComputeCadenceProfiles(events, xuids, phaseSeconds)
+	profiles := narrative.ComputeCadenceProfiles(events, xuids, phaseSeconds, gameplayDurationsMS)
 	if len(profiles) == 0 {
 		return domain.ChartSeries[domain.ChartPointStacked]{
 			Key:      chartKeySquadCadence,
@@ -153,11 +154,12 @@ func bucketCategoryLabel(idx int) string {
 func BuildIntensityHeatmap(
 	events []canonical.HighlightEvent,
 	nBuckets int,
+	gameplayDurationsMS map[string]int64,
 ) domain.ChartSeries[domain.ChartPointHeatmap] {
 	if nBuckets <= 0 {
 		nBuckets = DefaultIntensityBuckets
 	}
-	profiles := narrative.ComputeMatchIntensityProfiles(events, nBuckets)
+	profiles := narrative.ComputeMatchIntensityProfiles(events, nBuckets, gameplayDurationsMS)
 	if len(profiles) == 0 {
 		return domain.ChartSeries[domain.ChartPointHeatmap]{
 			Key:      "squad.synergies.intensity",

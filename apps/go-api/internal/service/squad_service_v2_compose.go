@@ -8,6 +8,7 @@
 package service
 
 import (
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -57,12 +58,14 @@ func buildSquadCharts(in buildSquadChartsInput) *domain.SquadCharts {
 		out.FormScore = &formScore
 	}
 
-	// Cadence + Intensite (S6) — events requis
+	// Cadence + Intensite (S6) — events requis. Durées gameplay (countdown
+	// retranché) par match pour fixer les buckets sur la vraie durée.
 	if len(in.events) > 0 {
-		cadence := BuildCadenceChart(in.events, in.squadXUIDs, DefaultCadencePhaseSeconds)
+		gpDur := timeline.GameplayDurationsMS(sharedMatchTimelines(in.sharedMatches))
+		cadence := BuildCadenceChart(in.events, in.squadXUIDs, DefaultCadencePhaseSeconds, gpDur)
 		out.Cadence = &cadence
 
-		intensity := BuildIntensityHeatmap(in.events, DefaultIntensityBuckets)
+		intensity := BuildIntensityHeatmap(in.events, DefaultIntensityBuckets, gpDur)
 		out.IntensityHeatmap = &intensity
 	}
 

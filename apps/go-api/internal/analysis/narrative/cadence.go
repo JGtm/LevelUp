@@ -32,10 +32,15 @@ type CadenceProfile struct {
 // squad (KillerXUID pas dans squad) sont aussi ignores.
 //
 // Les profiles retournes sont tries par MatchID asc puis XUID asc (stabilite).
+//
+// gameplayDurationsMS (nil-safe) fournit la VRAIE durée de gameplay par match
+// (countdown retranché, source match_registry). Quand présente, elle fixe le
+// nombre de phases ; sinon fallback sur le timestamp de kill max observé (proxy).
 func ComputeCadenceProfiles(
 	events []canonical.HighlightEvent,
 	squad []string,
 	phaseSeconds int,
+	gameplayDurationsMS map[string]int64,
 ) []CadenceProfile {
 	if phaseSeconds <= 0 {
 		phaseSeconds = 60
@@ -81,7 +86,11 @@ func ComputeCadenceProfiles(
 	phaseMS := int64(phaseSeconds) * 1000
 	out := make([]CadenceProfile, 0, len(groups))
 	for k, a := range groups {
+		// Fin de match : durée gameplay canonique si fournie, sinon kill max.
 		matchEnd := matchMaxTime[k.matchID]
+		if d := gameplayDurationsMS[k.matchID]; d > 0 {
+			matchEnd = d
+		}
 		bucketCount := int(matchEnd/phaseMS) + 1
 		if bucketCount < 1 {
 			bucketCount = 1
