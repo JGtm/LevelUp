@@ -13,6 +13,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -39,6 +40,29 @@ const lusrCanonicalEnvFlag = "LEVELUP_LUSR_CANONICAL"
 func IsLUSRV2Canonical() bool {
 	v := strings.ToUpper(strings.TrimSpace(os.Getenv(lusrCanonicalEnvFlag)))
 	return v == "LUSR_V2"
+}
+
+// LogLUSRModeAtBoot émet au démarrage un log du mode LUSR actif (routé vers
+// logs/sync.log via la détection de module par package). Confirme la config au
+// boot et ALERTE sur la misconfig dangereuse `canonical sans enabled` (v1 serait
+// skippé ET le shadow v2 ne tournerait pas → aucun rating écrit).
+func LogLUSRModeAtBoot(ctx context.Context) {
+	enabled, canonical := IsLUSRV2Enabled(), IsLUSRV2Canonical()
+	switch {
+	case canonical && !enabled:
+		slog.WarnContext(ctx, "LUSR mode: MISCONFIG — canonical=LUSR_V2 mais LUSR_V2_ENABLED absent : "+
+			"v1 skippé ET shadow v2 inactif → aucun rating écrit. Poser LEVELUP_LUSR_V2_ENABLED=1.",
+			"enabled", enabled, "canonical", canonical)
+	case canonical:
+		slog.InfoContext(ctx, "LUSR mode: v2 CANONICAL (écrit match_skill_rank rating_type=LUSR, v1 skippé)",
+			"enabled", enabled, "canonical", canonical)
+	case enabled:
+		slog.InfoContext(ctx, "LUSR mode: v2 shadow (player_skill_state_v2 seul, UI lit v1)",
+			"enabled", enabled, "canonical", canonical)
+	default:
+		slog.InfoContext(ctx, "LUSR mode: v1 (canonical historique)",
+			"enabled", enabled, "canonical", canonical)
+	}
 }
 
 // writeCanonicalLUSRRow écrit l'état v2 du owner dans match_skill_rank, en

@@ -49983,3 +49983,43 @@ Backfill Phase 4 a réduit time_played du countdown (~T0) + corrigé latecomers.
 - "life" dérivé front (time_played/(deaths+1), TimeseriesFormCharts) : ↓ léger, métrique distincte.
 - LUSR v2 : time_played sert UNIQUEMENT de fallback d'ordering des quitters (last_leave primaire) ; buildCountInputs ne passe PAS time_played comme poids EP. Shift uniforme → ordre préservé → aucun impact (le commentaire w_i=time_played/match_length dans sum_factor.go est théorique, non câblé).
 **Conclusion** : aucune casse, aucune double-comptabilisation. Changement sémantique cohérent (temps de gameplay réel partout). Pas d'action corrective requise.
+
+---
+
+## [2026-05-29] Abstraction horloge de match — vrai début / vraie fin / vraie durée
+
+**Statut** : Complété (refactor additif, source unique de vérité).
+
+**Besoin** : un point unique pour obtenir le vrai début de gameplay, la vraie fin et la vraie durée (countdown retranché), au lieu de la logique dupliquée (computeMatchWindow sync, loadMatchWindows CLI, SQL T0 éparpillé).
+
+**Décision** : enrichir `domain.MatchTimeline` (déjà l'abstraction temporelle, type pur) plutôt que créer un type parallèle. Ajout :
+- Champ `StartUTC time.Time` (début du film). Constructeur `NewMatchTimelineAt(startUTC, durationMs, t0Ms)` (NewMatchTimeline délègue avec StartUTC zero pour la correction d'events relatifs).
+- Méthodes : `GameplayStartUTC()` = StartUTC+T0 (vrai début), `GameplayEndUTC()` = StartUTC+Duration (vraie fin = fin du film, inchangée par countdown), `GameplayDurationSeconds()` (existant, vraie durée), `HasClock()`.
+- Modèle documenté : countdown au DÉBUT, la fin ne bouge pas.
+
+**Branchements** :
+- `analysis/timeline.ComputeTimePlayedFor(in, tl)` : variante branchée sur l'abstraction (fenêtre dérivée du timeline ; NoData si !HasClock()).
+- `BuildFromRegistry` → `NewMatchTimelineAt(reg.StartTime, …)`.
+- sync `computeMatchWindow` → retourne `domain.MatchTimeline` ; ExtractParticipants utilise ComputeTimePlayedFor.
+- CLI `backfill_time_played.loadMatchWindows` → `map[string]domain.MatchTimeline` ; garde-rail via tl.GameplayDurationSeconds().
+
+**Tests** : `TestMatchTimeline_AbsoluteClock` / `_NoClock` (domain) + `TestComputeTimePlayedFor_UsesTimelineClock` (timeline). Build + vet + suites domain/timeline/sync verts.
+
+---
+
+## [2026-05-29] Activation LUSR v2 canonical + logging boot + vérification finale
+
+**Statut** : Complété.
+
+### Activation LUSR v2 (canonical)
+`.env.local` (gitignored, activation locale réversible) : `LEVELUP_LUSR_V2_ENABLED=1` + `LEVELUP_LUSR_CANONICAL=LUSR_V2`. Vérifié : IsLUSRV2Enabled()=true, IsLUSRV2Canonical()=true. Effet : post-sync skippe LUSR v1, le shadow v2 écrit match_skill_rank (rating_type='LUSR' lu par l'UI, Stratégie C ADR 0024). **Forward-only** : les NOUVEAUX matchs syncés ont le rating v2 ; les matchs historiques gardent v1 jusqu'à un backfill canonical dédié (per-player match_skill_rank, mécanisme à créer — replay CLI actuel est playerDB=nil donc shadow-only). Rollback : commenter les 2 lignes + redémarrer.
+
+### Logging
+- Routage logs/ automatique par package → engine_postsync (package sync) logge déjà le mode canonical à chaque sync dans logs/sync.log ("LUSR v1 skippé (canonical=LUSR_V2)", "LUSR v2 shadow OK ... canonical=true").
+- Ajout `sync.LogLUSRModeAtBoot(ctx)` appelé au boot (cmd/server/main.go) : confirme le mode actif (v1 / v2 shadow / v2 canonical) ET **alerte WARN sur la misconfig** canonical-sans-enabled (sinon v1 skippé + shadow inactif = aucun rating écrit). Routé logs/sync.log. Test `TestLogLUSRModeAtBoot` (4 cas).
+- Fonctions pures (timeline, compute_time_played) : pas de logging (correct, arch-rules — logging à la couche orchestration sync/service).
+
+### Vérification finale
+- `go vet ./...` propre, `go build ./...` vert.
+- Couverture : internal/analysis/timeline **98.7%** (ComputeTimePlayed/For, Build* à 100%), internal/domain 84.6%.
+- Suite complète `go test ./...` : verte (cf. run).
