@@ -1,6 +1,25 @@
+## [2026-05-29] feat(carrière): CLI backfill-csr-history — peuple les saisons CSR passées
+
+**Statut** : Complété. Branche `chore/query-devtools-flag`, commit `e757f31c8`.
+
+**But** : alimenter le menu déroulant saison (section "Classements") avec les saisons passées. La sync n'écrit que la saison courante ; ce CLI backfille `player_csr_snapshots` pour les saisons antérieures via le mécanisme Grunt `GetPlaylistCsr(playlist, xuid, saison)` (endpoint skill **public** — un token de service suffit, le xuid est un paramètre, fonctionne pour toute saison passée).
+
+**Décisions techniques** :
+- Fonction réutilisable `sync.BackfillCSRHistory(ctx, client, playerDB, xuid, seasons)` (+ helpers `fetchSeasonRankedCSRs`, `hasRealCSR`) dans `internal/sync/csr_history_backfill.go`. Ne persiste QUE les entrées à **tier réel** (pas les "Non classé" des saisons jamais jouées → évite de polluer le menu). Best-effort par (saison, playlist). Snapshots append-only via `saveCSRSnapshots`.
+- CLI `cmd/backfill-csr-history/main.go` (`//go:build cgo`) : flags `-xuid` + `-player-db` (RW) requis, `-metadata-db` (RO, lit `csr_season_calendars` triées récent d'abord), `-season` (limiter à une saison), `-dry-run`, `-rate-limit`, `-env-file`. Auth canonique ADR 0023 : `auth.RefreshHaloTokensViaStoreFirst` (MultiUserTokenStore + MSALProvider) avec legacy depuis `sync_meta` du player DB. Stopper le serveur avant (player DB ouverte RW).
+- Tags rappelés : endpoint skill public → token de service ; ne dépend pas du token du joueur cible.
+
+**Résultats** : `go build ./...`, `go vet ./...` verts. Tests purs `hasRealCSR` + `fetchSeasonRankedCSRs` (filtrage tier réel, nom depuis référence, ignore nil/placement) verts. CLI compile. Fichiers 199 / 88 lignes (< 500).
+
+**Usage** : `go run ./cmd/backfill-csr-history -xuid <XUID> -player-db data/titles/halo_infinite/players/<GT>/stats.duckdb` (serveur stoppé). Puis le menu liste les saisons backfillées (le repo `AvailableCSRSeasons` lit les `season_id` distincts de `player_csr_snapshots`).
+
+**Prochaine étape** : exécuter le CLI par joueur une fois (serveur stoppé) ; vérifier le menu en dev.
+
+---
+
 ## [2026-05-29] feat(carrière): menu déroulant saison sur la section "Classements" (CSR)
 
-**Statut** : Backend + frontend livrés. Backfill historique = étape suivante (cf. ci-dessous). Branche `chore/query-devtools-flag` (WIP parallèle présent — ne stager QUE mes fichiers ranked-playlists/career-CSR). Commit non effectué (attente autorisation).
+**Statut** : Complété. Branche `chore/query-devtools-flag`, commit `a448eee20`.
 
 **Demande** : filtre liste déroulante de saison dans la section "Classements" (colonne CSR). LUSR non impacté (cumulatif, hors saison) → distinction marquée en UI.
 
@@ -21,7 +40,7 @@
 
 ## [2026-05-29] fix(squad,t0): TeammatesService câblé T0 (§4.A-bis) — premier frag / matrice impact
 
-**Statut** : Complété (code + tests + validation données réelles). Branche `chore/query-devtools-flag` (WIP Go parallèle présent — ranked playlists + sync/career ; ne stager QUE mes fichiers T0). Commit non effectué (en attente autorisation).
+**Statut** : Complété. Branche `chore/query-devtools-flag`, commit `83424e377`.
 
 **Contexte** : HANDOFF_MATCH_TIMELINE_T0 §4.A-bis. TeammatesService était le 4ᵉ consommateur d'events highlight manqué par l'audit Phase 3 : les graphes Escouade affichaient les `time_ms` depuis le début du film (countdown ~28s inclus) au lieu du référentiel gameplay. Confirmé par l'utilisateur sur le match Fortress.
 
@@ -54,7 +73,7 @@
 
 ## [2026-05-29] fix(carrière): playlists classées — allowlist autoritative (is_ranked), fin du bug récurrent
 
-**Statut** : Complété (code + tests). Branche `chore/query-devtools-flag` (WIP Go de l'utilisateur présent — ne stager QUE mes fichiers, cf. ci-dessous). Commit non effectué (en attente autorisation utilisateur).
+**Statut** : Complété. Branche `chore/query-devtools-flag`, commits `5e9398d45` (rankedplaylists), `b22fead51` (seed migration), `b272c6a42` (GetPlaylistCsr + sync).
 
 **Symptôme** : section "Classements" (page Carrière, colonne CSR) n'affichait que 2 playlists (Ranked Arena + Ranked Slayer) au lieu de toutes les classées actives. Plainte utilisateur récurrente : les playlists classées finissent marquées `is_ranked=false`.
 

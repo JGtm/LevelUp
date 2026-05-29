@@ -76,6 +76,28 @@ Critère succès : timelines/badges recalés sur le gameplay réel, golden diffs
 
 </details>
 
+### 4.A-bis — ✅ FAIT (2026-05-29) : TeammatesService câblé T0 (4ᵉ consommateur)
+
+**LIVRÉ** (branche `chore/query-devtools-flag`, commit `83424e377`). Le graphe teammates.17 « premier frag/première mort » (`SquadFirstEventsChart`) affichait les temps DEPUIS start_time (countdown inclus) — confirmé par l'utilisateur sur Fortress. Corrigé.
+
+Implémentation (cf. thought_log [2026-05-29] fix(squad,t0)) :
+1. `domain.SquadMatchRow.T0Ms *int64` + colonne `t0_ms` dans `Q30SquadMatchesSharedQuery` (formule canonique identique à `player_matches_repo`) + scan dans `loadSquadMatchesShared`.
+2. Helpers miroir Phase 3 : `timeline.BuildTimelinesFromSquadRows([]SquadMatchRow)` + `timeline.CorrectImpactEvents([]ImpactEventRow, timelines)` (point unique de correction pour le type Q32).
+3. `buildSquadFirstEvents` (.17) : correction appliquée + **skip des events `TimeMS<0`** (countdown) — sinon collision avec le sentinel `-1` de firstKillS/firstDeathS (le vrai 1ᵉʳ frag serait perdu).
+4. `buildSquadImpactMatrix` (.07) via `loadImpactEventsByMatch(…, timelines)` : invariance des badges **vérifiée** en lisant `ComputeMatchImpactFull` (min/max/ordre + diff kamikaze `dT-kT`, aucun seuil absolu ; `SquadImpactCell` n'expose aucun TimeMS) → no-op observable, corrigé pour cohérence.
+
+Validation : médiane T0 réelle 27.6s (1724/1724 matchs), 0 négatif. 4 tests ajoutés, build + tests verts.
+
+**Périmètre étendu (revue adverse + décision utilisateur 2026-05-29)** : 2 consommateurs d'events bruts supplémentaires découverts par la revue ont AUSSI été corrigés :
+- `buildSquadIntensityProfile` (teammates.13, `..._intensity_perminute.go`) : `CorrectImpactEvents` + filtre `TimeMS<0` (calcul de durée ET bucketing). Le garde `duration<=0` existant absorbe l'outlier T0=14400s.
+- `squad_service.go` (page Squad V1, `ComputeImpactSummary`) : correction appliquée — no-op observable (`SquadImpact` = compteurs only, gagnants invariants) mais cohérence de pipeline.
+Les 4 consommateurs d'events de la page Escouade (.17, .07, .13, squad-V1) appliquent désormais T0.
+
+**RESTE pour clôturer** :
+- Validation UI (agent ne peut pas) : teammates.17 (premier frag), teammates.13 (profil intensité), teammates.07 (matrice impact).
+- Dead code à supprimer (hors scope, signalé par la revue) : legacy `Q30SquadMatches` (`queries_squad.go`, 0 caller live, layout 22 cols obsolète).
+- Garde-rail qui aurait évité l'oubli : linter `no_raw_time_ms` (Phase 5, jamais faite) — bloquer tout accès `.TimeMS` hors couche timeline. Toujours pertinent (aurait attrapé .13, .17 et squad-V1 d'emblée).
+
 ### 4.B — Recalcul LUSR (prod-sensitive)
 
 `skill_v2_shadow.go` lit `last_leave_time` pour ordonner les quitters. Ce champ a été corrigé (re-normalisation §2). Si des ratings LUSR v2 ont été calculés sur l'ancien ordre (faux), **les recalculer**. ⚠️ Investiguer le mécanisme de recalcul AVANT d'agir (opération prod). Cf. mémoire `data-quality-first-joined-tz`.
