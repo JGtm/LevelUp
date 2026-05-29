@@ -51260,3 +51260,20 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 **Note** : duplication pré-existante hors scope — `buildLusrSeries` existe en double (local dans `lusrEvolution.tsx` + exporté/testé dans `lusrSeries.ts`) ; le chart utilise la copie locale. Non touché.
 
 **Prochaine étape** : validation visuelle utilisateur (page Carrière : axe Y cadré sur le palier, plus de chute à 0). Pas encore commité (en attente autorisation, avec le fix Classement sur la même branche).
+
+
+## [2026-05-29] feat(web,sessions): card composite Rendement/Résistance dans « Mes stats sur cette session » (Solo + Escouade) — Complété
+
+**Statut** : Complété · Branche `fix/solo-first-events-squad-mode`
+
+**Demande** : Dans la section « Mes stats sur cette session » (pages Solo et Escouade), aligner le format de « Rendement » (`avg_offensive_conversion`) et « Résistance » (`avg_defensive_resistance`) sur celui de la KPI bar de la home — une seule card composite (barre + 2 valeurs colorées) au lieu de deux cards séparées affichant un simple %.
+
+**Décision technique** :
+- Extraction d'un composant réutilisable `OffDefComposite` (`components/ui/off-def-composite.tsx`) : barre 2 segments (`divergent-pos` / `divergent-neutral`) + 2 valeurs colorées + fallback « — », prop `align` (`center` home / `start` grille session). Reproduit le quirk home : proportions des segments = valeurs BRUTES (`off/(off+def)`), valeurs affichées = `off*100 %` et `(def-1)*100 %`.
+- `KpiGrid` (consommé par Solo via `TimeseriesPage` + Escouade via `SquadLayout`/`SquadV2Page`) : les 2 `KpiCell` OC/DR remplacées par 1 card composite span-2 — look cohérent avec la grille (bg-card, label gauche uppercase), choix utilisateur (Option B). `colCount` recalculé (`hasComposite` → +2 colonnes) ; fallback `KpiCell` span-1 si une seule des 2 métriques présente (`hasOC` XOR `hasDR`).
+- Home (`HomeHeroKPIGrid`) : refactorée pour consommer `OffDefComposite` (`align="center"`), iso-visuel ; variables locales `off`/`def`/`total`/`hasOffDef` supprimées.
+- i18n : clé `grid.offDef` ajoutée (FR « Rendement / Résist. », EN « Off. / Def. »), alignée sur `home.kpi.off_def`. Couleurs via `tokenCssVar` uniquement (zéro hex).
+
+**Résultats** : typecheck (tsc -b) OK ; eslint 0 erreur (mes 4 fichiers sans warning) ; vitest 26/26 (5 nouveaux `off-def-composite` + 8 `SessionBriefing` sans régression + témoin `combat-yield-bar`). NB : la suite vitest échoue en sandbox (workers non spawnables → « Failed to find the runner ») — l'exécuter hors sandbox.
+
+**Prochaine étape** : validation visuelle utilisateur (home : tuile Rend/Résist. inchangée ; Solo + Escouade : card composite span-2 dans « Mes stats sur cette session »). Pas encore commité (en attente autorisation).
