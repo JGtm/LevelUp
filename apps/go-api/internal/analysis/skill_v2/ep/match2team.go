@@ -54,6 +54,37 @@ type Match2TeamInput struct {
 	// pour chaque obs (cf. addCountObservationFactors).
 	Counts           []CountObservation
 	CountHyperparams map[CountType]CountHyperparams // optionnel ; défaut = DefaultCountHyperparams
+
+	// WeightsA / WeightsB : poids wᵢ du sum-factor team_perf = Σ wᵢ·perfᵢ
+	// (TS2 : wᵢ = time_played_i / match_length). Optionnels : si nil/court OU ≤ 0,
+	// le joueur prend wᵢ = 1 (TS classique, participation pleine). Une valeur dans
+	// ]0, teamWeightFloor[ est remontée au plancher pour la stabilité de l'EP
+	// (variances ∝ 1/wₖ²) ; > 1 est ramenée à 1.
+	WeightsA []float64
+	WeightsB []float64
+}
+
+// teamWeightFloor : plancher du poids team-sum. Évite l'instabilité de l'inverse
+// SumFactor (variances ∝ 1/wₖ²) pour un joueur ayant joué une fraction infime.
+const teamWeightFloor = 0.1
+
+// resolveTeamWeight retourne le poids du joueur idx (défaut 1 si absent, plancher
+// teamWeightFloor si ≤ 0).
+func resolveTeamWeight(weights []float64, idx int) float64 {
+	if idx >= len(weights) {
+		return 1.0
+	}
+	w := weights[idx]
+	if w <= 0 {
+		return 1.0
+	}
+	if w < teamWeightFloor {
+		return teamWeightFloor
+	}
+	if w > 1.0 {
+		return 1.0
+	}
+	return w
 }
 
 // Match2TeamConfig regroupe les paramètres EP — séparés des hyperparams skill
@@ -95,8 +126,10 @@ func UpdateMatch2Team(m Match2TeamInput, cfg Match2TeamConfig) (teamA, teamB []G
 	// On démêle à la fin avant de renvoyer.
 	swapped := false
 	teamAIn, teamBIn := m.TeamA, m.TeamB
+	weightsAIn, weightsBIn := m.WeightsA, m.WeightsB
 	if m.ResultA == TeamLoss {
 		teamAIn, teamBIn = m.TeamB, m.TeamA
+		weightsAIn, weightsBIn = m.WeightsB, m.WeightsA // poids alignés sur les équipes swappées
 		swapped = true
 	}
 
@@ -115,6 +148,8 @@ func UpdateMatch2Team(m Match2TeamInput, cfg Match2TeamConfig) (teamA, teamB []G
 		result:    m.ResultA,
 		swapped:   swapped,
 		drawMargin: m.DrawMargin,
+		weightsA:  weightsAIn,
+		weightsB:  weightsBIn,
 	})
 
 	// Counts (Phase 3c) — append après les facteurs du match principal.
@@ -179,6 +214,7 @@ type buildFactorsArgs struct {
 	result                       TeamResult
 	swapped                      bool
 	drawMargin                   float64
+	weightsA, weightsB           []float64 // wᵢ team-sum (TS2), nil → 1 partout
 }
 
 // buildFactors assemble la liste de facteurs dans l'ordre où ils doivent être
@@ -200,14 +236,15 @@ func buildFactors(a buildFactorsArgs) []Factor {
 	for j := range a.teamB {
 		factors = append(factors, NewLikelihoodFactor(fmt.Sprintf("link_B_%d", j), a.skillB[j], a.perfB[j], a.betaVar))
 	}
-	// Sommes team_perf = Σ perf.
+	// Sommes team_perf = Σ wᵢ·perfᵢ. wᵢ = time_played_i / match_length (TS2) si
+	// fourni via WeightsA/B, sinon 1 (TS classique). Cf. resolveTeamWeight.
 	weightsA := make([]float64, len(a.teamA))
 	for i := range weightsA {
-		weightsA[i] = 1
+		weightsA[i] = resolveTeamWeight(a.weightsA, i)
 	}
 	weightsB := make([]float64, len(a.teamB))
 	for j := range weightsB {
-		weightsB[j] = 1
+		weightsB[j] = resolveTeamWeight(a.weightsB, j)
 	}
 	factors = append(factors,
 		NewSumFactor("team_sum_A", a.teamPerfA, a.perfA, weightsA),

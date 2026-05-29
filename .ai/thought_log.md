@@ -50055,3 +50055,42 @@ Audit (a) : seules 2 surfaces affichaient la durée BRUTE du film (countdown inc
 - **(a3) Match-view header** : `headerGameplayDurationSeconds(meta)` = duration − T0 (plus fiable que playable_duration_seconds API qui == duration sur certains Ranked). Pas de changement frontend (même champ).
 
 **Tests** : build + vet Go verts, service + integration squad verts, frontend typecheck vert.
+
+---
+
+## [2026-05-29] Backfill LUSR v2 canonical sur l'historique (per-player)
+
+**Statut** : Complété (écriture prod, validée non-dégradante).
+
+Suite à l'activation LUSR v2 canonical (.env.local) qui n'est que forward-only, backfill de l'historique : nouvelle CLI `cmd/lusr_v2_canonical_backfill` qui passe la DB JOUEUR (RW) à RunLUSRV2Shadow (playerDB ≠ nil) + LEVELUP_LUSR_CANONICAL=LUSR_V2 → writeCanonicalLUSRRow écrit match_skill_rank (rating_type='LUSR' lu par l'UI + 'LUSR_V2' audit, Stratégie C ADR 0024). Reset implicite de player_skill_state_v2 (reprocess complet, shadow incrémental). Dry-run par défaut (playerDB=nil, compte), --commit écrit.
+
+**Backup** : backup-once ne couvre QUE la shared (vérifié) → copie fichier manuelle des 4 stats.duckdb dans `data/backups/lusr_canonical_pre_2026-05-29/` (app éteinte, DBs au repos) + restic shared `6aa94473`. match_skill_rank est append-only → rollback aussi possible en supprimant les lignes appendées.
+
+**Exécution** : 888 matchs écrits (Madina 718, JGtm 165, Choco 5, Daemon 0).
+
+**Validation non-dégradation** (vue _latest LUSR = ce que lit l'UI, v1 backup vs v2) :
+- Madina arena_slayer : v1 1515.4 Gold4 → v2 1513.5 Gold4.
+- JGtm arena_slayer : v1 1590.1 Gold6 → v2 1590.1 Gold6.
+→ ratings legacy quasi identiques, aucune régression d'affichage.
+
+**Note** : v2 ≈ v1 au niveau de l'échelle legacy 1000-2000 (le mapping MapMuToLegacyRating compresse les deux vers des valeurs proches). Le "Diamant/Or" du rapport replay relève de l'échelle native skillv2 (μ + frontières seedées), distincte de l'échelle legacy de l'UI — calibration μ→legacy préexistante, hors scope de ce backfill.
+
+---
+
+## [2026-05-29] LUSR v2 — pondération temps-joué (TS2 wᵢ=time_played/match_length) BRANCHÉE
+
+**Statut** : Complété (changement d'algo de rating, validé contre cibles).
+
+Point indiqué par un collègue (commentaire `ep/sum_factor.go:10`) : le sum-factor `team_perf = Σ wᵢ·perfᵢ` avait `wᵢ=1` codé en dur (`ep/match2team.go`) → v2 tournait en TS classique (d'où v2≈v1 au backfill). Branché la vraie pondération TS2 :
+
+- `skill_v2.PlayerCounts` : +champ `Weight` (0 → 1 côté EP).
+- `ep.Match2TeamInput` : +`WeightsA/WeightsB` + `resolveTeamWeight` (défaut 1, plancher `teamWeightFloor=0.1` pour stabilité 1/wₖ², clamp ≤1). Swap Loss applique le swap aux poids.
+- `UpdateTwoTeamWithCountsEP` : `extractTeamWeights` propage les poids depuis CountInputs.
+- Shadow : `loadShadowMatches` calcule la durée gameplay (countdown retranché via real_start_time) ; `buildCountInputs` pose `wᵢ = time_played_i / gameplay_dur` (`playerTeamWeight`). Threadé via `applyMatchToSkillV2(…, gameplayDurMs)`.
+- **L'adapter "vrai début"** = `MatchTimeline`/real_start_time devient enfin load-bearing dans le rating (durée gameplay = match_length).
+
+**Tests** : `TestTS2_TimePlayedWeight_PartialPlayerMovesLess` (joueur partiel bouge moins ; poids égaux = identique). Non-régression : counts/quit verts. Schéma test shadow : +real_start_time.
+
+**Re-validation (replay --reset)** : ordre/tiers conformes aux cibles — Madina Diamant II/III, Choco+JGtm Or, Daemon Bronze. Effet modéré (full-match → w≈1).
+
+**Reste (différé, "ensuite")** : re-exécuter le backfill canonical (`cmd/lusr_v2_canonical_backfill`) pour propager les nouveaux ratings v2 dans match_skill_rank (l'actuel porte encore les valeurs pré-pondération). Possible recalibration μ→legacy si on veut la granularité v2 visible sur l'échelle UI.

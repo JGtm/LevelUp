@@ -175,7 +175,22 @@ func invertOutcome(o skillv2.TeamResult) skillv2.TeamResult {
 // distinguer related quit (team perdait → δ petit) d'unrelated quit (team
 // gagnait/égalisait → δ grand). Sans timeline du score AU moment du quit,
 // on approxime par le final outcome.
-func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult) *skillv2.CountInputs {
+// playerTeamWeight calcule le poids TS2 wᵢ = time_played_i / match_length pour
+// le sum-factor team_perf (cf. ep/sum_factor.go). Retourne 0 (→ wᵢ=1 côté EP,
+// participation pleine) si la durée gameplay ou le time_played est inconnu. Le
+// clamp [0,1] + plancher est appliqué côté EP (resolveTeamWeight).
+func playerTeamWeight(m rosterMember, gameplayDurMs int64) float64 {
+	if gameplayDurMs <= 0 || !m.timePlayedSecs.Valid || m.timePlayedSecs.Float64 <= 0 {
+		return 0
+	}
+	w := (m.timePlayedSecs.Float64 * 1000) / float64(gameplayDurMs)
+	if w > 1 {
+		w = 1
+	}
+	return w
+}
+
+func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, gameplayDurMs int64) *skillv2.CountInputs {
 	hasAny := false
 	for _, m := range teamA {
 		if m.kills != nil || m.deaths != nil || isQuitter(m) {
@@ -199,7 +214,7 @@ func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult) 
 	primaryXUID := identifyPrimaryQuitter(teamA, teamB)
 	pa := make([]skillv2.PlayerCounts, len(teamA))
 	for i, m := range teamA {
-		pa[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
+		pa[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths, Weight: playerTeamWeight(m, gameplayDurMs)}
 		if isQuitter(m) {
 			pa[i].Quit = true
 			pa[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, deltaA)
@@ -207,7 +222,7 @@ func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult) 
 	}
 	pb := make([]skillv2.PlayerCounts, len(teamB))
 	for i, m := range teamB {
-		pb[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths}
+		pb[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths, Weight: playerTeamWeight(m, gameplayDurMs)}
 		if isQuitter(m) {
 			pb[i].Quit = true
 			pb[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, deltaB)

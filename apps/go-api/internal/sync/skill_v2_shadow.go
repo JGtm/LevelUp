@@ -46,6 +46,9 @@ type shadowMatch struct {
 	ownerOutcome  int
 	ownerTeamID   int
 	ownerHasTeam  bool
+	// gameplayDurMs : vraie durée de gameplay (countdown retranché) en ms,
+	// dénominateur du poids TS2 wᵢ = time_played_i / match_length. 0 si inconnue.
+	gameplayDurMs int64
 }
 
 // shadowParticipant : un participant brut, pour construire les rosters par équipe.
@@ -186,7 +189,7 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		return
 	}
 	ownerNew, err := applyMatchToSkillV2(ctx, c.repo, c.priors, m.matchID, group,
-		m.startTime, teamA, teamB, outcomeA, c.xuid)
+		m.startTime, teamA, teamB, outcomeA, c.xuid, m.gameplayDurMs)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
 			"match_id", m.matchID, "group", group, "err", err,
@@ -238,7 +241,13 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 		       COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC') AS ts,
 		       COALESCE(mr.pair_name, ''),
 		       COALESCE(mp.outcome, 0),
-		       mp.team_id
+		       mp.team_id,
+		       -- vraie durée gameplay en ms (countdown retranché via real_start_time)
+		       GREATEST(0, COALESCE(mr.duration_seconds, 0) * 1000 - CASE
+		           WHEN mr.real_start_time IS NOT NULL THEN
+		               epoch_ms(mr.real_start_time AT TIME ZONE 'UTC')
+		               - epoch_ms(COALESCE(mr.start_time_utc, mr.start_time AT TIME ZONE 'UTC'))
+		           ELSE 0 END) AS gameplay_dur_ms
 		FROM match_registry mr
 		JOIN match_participants mp ON mr.match_id = mp.match_id
 		WHERE mp.xuid = ?
@@ -256,7 +265,7 @@ func loadShadowMatches(ctx context.Context, sharedDB *sql.DB, xuid string) ([]sh
 	for rows.Next() {
 		var m shadowMatch
 		var teamID sql.NullInt64
-		if err := rows.Scan(&m.matchID, &m.startTime, &m.pairName, &m.ownerOutcome, &teamID); err != nil {
+		if err := rows.Scan(&m.matchID, &m.startTime, &m.pairName, &m.ownerOutcome, &teamID, &m.gameplayDurMs); err != nil {
 			return nil, err
 		}
 		if teamID.Valid {
@@ -400,6 +409,7 @@ func applyMatchToSkillV2(
 	teamA, teamB []rosterMember,
 	outcomeA skillv2.TeamResult,
 	ownerXUID string,
+	gameplayDurMs int64,
 ) (ownerNew *domain.SkillV2State, err error) {
 	teamAXUIDs := extractXUIDs(teamA)
 	teamBXUIDs := extractXUIDs(teamB)
@@ -412,7 +422,7 @@ func applyMatchToSkillV2(
 	if err != nil {
 		return nil, fmt.Errorf("loadStates teamB: %w", err)
 	}
-	counts := buildCountInputs(teamA, teamB, outcomeA)
+	counts := buildCountInputs(teamA, teamB, outcomeA, gameplayDurMs)
 	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
 		TeamA:   shadowStatesToGaussians(teamAStates),
 		TeamB:   shadowStatesToGaussians(teamBStates),

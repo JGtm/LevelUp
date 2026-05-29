@@ -264,6 +264,7 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			match_id VARCHAR PRIMARY KEY,
 			start_time TIMESTAMP,
 			start_time_utc TIMESTAMPTZ,
+			real_start_time TIMESTAMP,
 			pair_name VARCHAR,
 			is_ranked BOOLEAN DEFAULT FALSE,
 			is_firefight BOOLEAN DEFAULT FALSE,
