@@ -111,7 +111,11 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 		canonical:      canonical,
 	}
 	var s shadowRunStats
+	withGameplayDur := 0 // matchs ayant une durée gameplay → pondération temps-joué alimentée
 	for _, m := range matches {
+		if m.gameplayDurMs > 0 {
+			withGameplayDur++
+		}
 		processOneShadowMatch(ctx, ctxRun, m, &s)
 	}
 	slog.InfoContext(ctx, "LUSR v2 shadow terminé",
@@ -121,6 +125,9 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 		"skipped_non_two_team", s.skippedNonTwoTeam,
 		"skipped_imbalance", s.skippedImbalance,
 		"total_candidates", len(matches),
+		// Observabilité TS2 : nb de matchs où wᵢ=time_played/durée_gameplay est
+		// alimenté (durée gameplay connue). 0 → pondération inactive (fallback wᵢ=1).
+		"with_gameplay_duration", withGameplayDur,
 	)
 	return s.processed, nil
 }
