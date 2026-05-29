@@ -43,6 +43,33 @@
 
 **Conclusion / prochaine étape** : Axe 1 livré, but de découplage atteint (handler sans SQL ni `*duckdb.*`). Suite du plan : Axe 2 (logique LUSR v2 → interfaces, Option A faible churn), puis 3 (TokenStore), 5 (erreurs HTTP), 6 (flags morts + deadline Prestige). Commits à faire par l'utilisateur.
 
+## [2026-05-29] feat(nav): Phase 3 unification mémoire de navigation — fiabilisation match-nav (multi-filtres backend + TTL + observabilité)
+
+**Statut** : Complété (branche `feat/nav-context-unification` ; commits délégués à l'utilisateur, pre-hook KO). Phase 3 **complète incl. backend** choisie par l'utilisateur.
+
+**Contexte** : Phase 3 du plan `nav-context-unification` (priorité 3 — fiabiliser match-nav). 3 axes : (a) multi-playlist/mode (avant : `MatchFilterSpec` ne portait qu'1 playlist/mode, le multi-select tombait en nav globale) ; (b) TTL sessionStorage trop court (1h) ; (c) fallback silencieux non observable.
+
+**Décisions techniques majeures** :
+- **Backend multi-valeurs (migration propre vers slices, pas de double représentation)** :
+  - `domain.MatchFilterSpec` : `PlaylistName *string`→`PlaylistNames []string`, `ModeCategory *string`→`ModeCategories []string` (+ `IsEmpty`). `applied_filters` echo PAS dans openapi → pas de churn gen/contrat ; le front ne consomme pas `applied_filters` (vérifié `useMatchNeighborsResolved.ts`).
+  - `analysis.BuildNeighborsWhereClause` : playlists → `mr.playlist_name IN (?, ?, …)` ; modes → union des préfixes de chaque catégorie en un seul OR. Helper `nonEmpty()` filtre les valeurs vides (pas de placeholder fantôme). Catégorie qui ne résout vers aucun préfixe → sautée ; si AUCUNE ne résout → `ignored`.
+  - `handlers.parseNeighborsFilterSpec` : `playlist`/`mode` parsés en CSV (`parseCsvFilterParam`), chaque valeur validée individuellement par la regex whitelist (invalides ignorées + warn). Compat mono-valeur préservée (1 valeur → slice de 1).
+- **Blast radius cartographié avant édition** : `PlaylistName`/`ModeCategory` sont des noms de champs très communs (match rows, mapper…) — édition chirurgicale des seuls usages `MatchFilterSpec` (domain, analysis, handler, 4 tests). Shim `firstOrNil([]string) *string` dans le test handler pour garder les assertions mono-valeur historiques intactes.
+- **Front TS aligné** : `MatchFilterSpec` (navContext.ts) → `playlist_names`/`mode_categories` arrays ; `filterSpecToQueryString` joint par virgule, `parseFilterSpecFromSearch` split ; `buildContextLabel` (match-view/i18n) join `', '` ; `fromFilterContext` mappe désormais TOUTES les playlists/modes (avant : seulement si exactement 1 — « scope trop large » devenu obsolète). **Bénéfice immédiat Squad** (son `squadFilterStore.cascade` a le bon vocabulaire et passe par `filterContextToMatchFilterSpec`).
+- **Explorer → filterSpec DIFFÉRÉ en Phase 4** : ExplorerMatchesTable dérive son filterSpec du `soloFilterStore` (quirk pré-existant, pas des filtres locaux Explorer) ; de plus les `modeNames` d'Explorer ne sont pas des *catégories* (vocab ≠ `mode_category`) et l'`outcomeFilter` est multi (vs single). Connexion fine = ressort de l'adaptateur `scope→MatchNavContext` (Phase 4), pas du demi-câblage ici.
+- **TTL sessionStorage 1h → 24h** : le sessionStorage meurt avec l'onglet ; un TTL court coupait le contexte sur un onglet match laissé ouvert. La durabilité « dure » est portée par l'URL.
+- **Observabilité** : `console.warn` (dev-only, `import.meta.env.DEV`) quand un `matchId` est absent de la liste du contexte → fallback API (cas anormal, avant totalement silencieux). Pas de couplage `lib/`→`features/` (pas d'import du logger filters).
+
+**Résultats observés** :
+- **Go** : `go test` (analysis/handlers/service/domain, cgo-free) ✅ ; `go test -tags=integration ./internal/platform/duckdb/` ✅ (nouveau cas `MultiPlaylist` validé contre DuckDB) ; `go build ./...` ✅. Nouveaux tests purs : multi-playlist `IN (?, ?)`, multi-mode (6 args, 1 OR), skip-empty, partial-resolve.
+- **TS** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ · **suite complète 1543 passed / 14 skipped, 0 échec** (correction d'1 test TTL écrit pour 1h). Nouveaux tests : sérialisation/parse multi-valeurs, `buildContextLabel` multi, `fromFilterContext` multi.
+
+**Correction Phase 2** : l'entrée Phase 2 affirmait à tort que `filterSpec.session_id` apportait la durabilité F5/partage. L'exploration Phase 3 a montré que **Q25 ignore `session_id`** — entrée corrigée en conséquence.
+
+**Non vérifié** : pas de click-through navigateur live ni run du serveur Go complet (build/vet/tests OK).
+
+**Conclusion / prochaine étape** : Phase 3 livrée — multi-filtres end-to-end (backend + contrat TS + producteur Squad), TTL 24h, fallback observable. Reste : Phase 4 (généraliser `usePageScope`, adaptateur `scope→MatchNavContext` qui connectera enfin Explorer proprement + préservera le « sticky jusqu'à nouvelle session » Solo/Squad) ; chantiers à part notés : filtre session côté Q25 (join player DB), retrait du shim `filtersLabel`.
+
 ## [2026-05-29] feat(nav): Phase 2 unification mémoire de navigation — propagation complétée (SessionDetail cliquable + nettoyage)
 
 **Statut** : Complété (branche `feat/nav-context-unification`, suite de la Phase 1 ; commits délégués à l'utilisateur, pre-hook KO)
@@ -52,7 +79,7 @@
 **Décisions techniques majeures** :
 - **SessionMatchesTable rendu cliquable** : ajout d'une colonne "ouvrir" (bouton icône, pattern repris d'ExplorerMatchesTable pour l'a11y — `<button>` + aria-label, pas de `<tr>` cliquable). Clic → `useNavigateToMatch` avec `source: 'session'`, `matchIds` = tous les matchs de la session (prev/next reste dans la session), `contextDescriptor: { kind: 'session', startTimeUtc }` et `filterSpec: { session_id }`.
   - **`startTimeUtc`** = match le plus ancien de la session (`reduce` min sur `start_time` ISO UTC, tri lexical = chrono). Hooks `useMemo`/`useCallback` placés AVANT l'early-return `matches.length === 0` (règles des hooks).
-  - **`session_id` = `match.session_label`** : confirmé cohérent avec le contrat existant via lecture de `filterContextToMatchFilterSpec` (`fromFilterContext.ts:60-64`, `sessions.picked → session_id` utilise déjà le label). Donc durabilité F5/partage acquise sans deviner le contrat backend.
+  - **`session_id` = `match.session_label`** : cohérent avec le contrat existant (`fromFilterContext.ts`, `sessions.picked → session_id` utilise déjà le label). ⚠️ **Correction apportée en Phase 3** : l'exploration backend a révélé que **Q25 IGNORE `session_id`** (`analysis/match_filter.go` — les sessions vivent dans `player.player_match_enrichment`, non jointe par Q25 qui tourne sur SharedReader). Le `session_id` posé dans l'URL est donc parsé mais sans effet sur les voisins : la nav in-session repose sur `matchIds` (router state + sessionStorage, TTL relevé à 24h en Phase 3) ; sur F5 < TTL c'est couvert, mais sur lien partagé / nouvel onglet on retombe sur Q25 global. L'affirmation initiale « durabilité F5/partage acquise » était donc inexacte. Implémenter le filtre session côté Q25 (join player DB) reste un chantier à part.
   - **prop `playerSlug`** ajoutée (1 seul caller : SessionDetailPage, mis à jour).
 - **i18n** : 1 clé ajoutée proprement via le TOML source (`session.detail.col_open` = Ouvrir/Open) + régénération `node apps/web/scripts/build_i18n_manifests.mjs` (session : 177→178 clés). Pas d'édition directe du généré, pas de couplage cross-feature.
 - **`'citation'` retiré de `MatchNavSource`** : confirmé mort (`grep "source: 'citation'"` → 0 occurrence ; la route/feature citations existe mais n'utilise pas match-nav). Aucun test ne le référence.

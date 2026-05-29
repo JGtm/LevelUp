@@ -44,17 +44,18 @@ func LegacyTierRange(tierName string) (min, max float64) {
 // MapMuToLegacyRating : μ v2 → rating_value legacy v1.
 //
 // Algorithme :
-//   1. Trouve le tier v2 (e.g., "Or IV") via InferTier
-//   2. Récupère la plage [min, max[ du tier dans la grille v1
-//   3. rating = min + (sub-1)/N · (max - min) avec N = nombre de sous-tiers
+//  1. Trouve le tier v2 (e.g., "Or IV") via InferTier
+//  2. Récupère la plage [min, max[ du tier dans la grille v1
+//  3. rating = min + (sub-1)/N · (max - min) avec N = nombre de sous-tiers
 //
 // Pour Onyx (sub=0), retourne min ; le caller pourrait ajouter un bonus
 // proportionnel à (μ - boundary_onyx) si on veut différencier les Onyx.
 //
 // Exemple Madina Diamant II (μ=26.17) :
-//   v2 tier = Diamond, sub = 2
-//   v1 range = [1800, 2000]
-//   rating = 1800 + 1/6 × 200 = 1833
+//
+//	v2 tier = Diamond, sub = 2
+//	v1 range = [1800, 2000]
+//	rating = 1800 + 1/6 × 200 = 1833
 func MapMuToLegacyRating(mu float64, v2Boundaries []TierBoundary) float64 {
 	tier, sub := InferTier(mu, v2Boundaries)
 	if tier.Name == "" {

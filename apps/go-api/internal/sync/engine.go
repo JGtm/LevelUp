@@ -470,7 +470,7 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		writerPlayer.Release()
 		_ = playerHandle.Close()
 		oldReleaseShared := releaseShared
-		releaseShared = func() {} // defer appellera ce no-op
+		releaseShared = func() {} //nolint:ineffassign // closure-swap intentionnel : le defer lit la variable, pas la valeur
 		oldReleaseShared()
 		playerDB = nil // invalide après Close
 		sharedDB = nil // invalide après release

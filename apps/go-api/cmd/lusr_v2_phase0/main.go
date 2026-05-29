@@ -11,9 +11,9 @@
 //  2. À chaque match : on capture mu/sigma AVANT update + force adverse →
 //     P(win) prédite = sigmoid((mu - muOpp) / (2 * Beta)).
 //  3. On agrège prédiction vs réalité, partitionné par :
-//      - taille de squad (nb de coéquipiers trackés dans le match)
-//      - nombre de matchs joués précédemment par le joueur (toutes chaines)
-//      - kill rate (kills/min) dans le match précédent
+//     - taille de squad (nb de coéquipiers trackés dans le match)
+//     - nombre de matchs joués précédemment par le joueur (toutes chaines)
+//     - kill rate (kills/min) dans le match précédent
 //
 // Aucune écriture DB. Output = rapport markdown sur stdout (à pipe dans .ai/).
 //
@@ -221,7 +221,6 @@ func writeDiscussion(w *os.File, obs []observation) {
 	fmt.Fprintf(w, "- `party_id` ou `squad_size` (entier par match-player) → vrai signal squad — sans ça, ")
 	fmt.Fprintf(w, "le proxy \"coéquipier tracké\" sera toujours bruité\n\n")
 }
-
 
 func writePlayerSummaries(w *os.File, players []string, stats map[string]playerSummary) {
 	fmt.Fprintf(w, "## 1. Vue d'ensemble par joueur\n\n")

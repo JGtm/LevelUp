@@ -142,21 +142,6 @@ func recreateCitationsTable(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// deleteCitationsForMatches purge match_citations pour une liste précise de matchs.
-// Utilisé uniquement pour des suppressions partielles (pas force=true).
-func deleteCitationsForMatches(ctx context.Context, playerDB *sql.DB, matchIDs []string) error {
-	if len(matchIDs) == 0 {
-		return nil
-	}
-	const q = `DELETE FROM match_citations WHERE match_id = ?`
-	for _, id := range matchIDs {
-		if _, err := playerDB.ExecContext(ctx, q, id); err != nil {
-			return fmt.Errorf("delete %s: %w", id, err)
-		}
-	}
-	return nil
-}
-
 // RunBackfillCompositeOnlyCitations recalcule les citations composites en s'appuyant
 // uniquement sur les valeurs feuilles déjà présentes dans match_citations.
 //

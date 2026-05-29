@@ -125,28 +125,28 @@ type SquadWeaponKills struct {
 // non disponible côté DB / pas calculé). MatchOrder est un index 0..N-1
 // commun à tous les joueurs (inner-join sur les matchs partagés).
 type SquadPerformanceSeriesPoint struct {
-	MatchID             string   `json:"match_id"`
-	StartTime           string   `json:"start_time"` // ISO 8601
-	MatchOrder          int      `json:"match_order"`
-	MapName             string   `json:"map_name,omitempty"` // libellé localisé de la carte
-	Kills               int      `json:"kills"`
-	Deaths              int      `json:"deaths"`
-	Assists             int      `json:"assists"`
-	KDA                 *float64 `json:"kda,omitempty"`
-	Accuracy            *float64 `json:"accuracy,omitempty"`
-	AvgLifeSeconds      *float64 `json:"avg_life_seconds,omitempty"`
-	PerformanceScore    *float64 `json:"performance_score,omitempty"`
-	MaxKillingSpree     *int     `json:"max_killing_spree,omitempty"`
-	HeadshotKills       *int     `json:"headshot_kills,omitempty"`
-	PerfectKills        *int     `json:"perfect_kills,omitempty"`
-	RendementOffensif   *float64 `json:"rendement_offensif,omitempty"`
-	ResistanceDefensive *float64 `json:"resistance_defensive,omitempty"`
-	TeamMMR             *float64 `json:"team_mmr,omitempty"`          // MMR équipe ce match (issu de match_skill_rank)
-	SkillRating               *float64 `json:"skill_rating,omitempty"`               // CSR ou LUSR mu du joueur (exclusifs par match)
-	SkillDelta                *float64 `json:"skill_delta,omitempty"`                // points gagnés/perdus ce match (positif/négatif)
-	SkillRatingType           string   `json:"skill_rating_type,omitempty"`          // "csr" | "lusr" — vide si non disponible
-	SkillPlaylistGroup        *string  `json:"skill_playlist_group,omitempty"`       // groupe normalisé (ex: "ranked-arena")
-	SkillSeasonID             *string  `json:"skill_season_id,omitempty"`            // saison Halo (rupture de courbe si changement)
+	MatchID                   string   `json:"match_id"`
+	StartTime                 string   `json:"start_time"` // ISO 8601
+	MatchOrder                int      `json:"match_order"`
+	MapName                   string   `json:"map_name,omitempty"` // libellé localisé de la carte
+	Kills                     int      `json:"kills"`
+	Deaths                    int      `json:"deaths"`
+	Assists                   int      `json:"assists"`
+	KDA                       *float64 `json:"kda,omitempty"`
+	Accuracy                  *float64 `json:"accuracy,omitempty"`
+	AvgLifeSeconds            *float64 `json:"avg_life_seconds,omitempty"`
+	PerformanceScore          *float64 `json:"performance_score,omitempty"`
+	MaxKillingSpree           *int     `json:"max_killing_spree,omitempty"`
+	HeadshotKills             *int     `json:"headshot_kills,omitempty"`
+	PerfectKills              *int     `json:"perfect_kills,omitempty"`
+	RendementOffensif         *float64 `json:"rendement_offensif,omitempty"`
+	ResistanceDefensive       *float64 `json:"resistance_defensive,omitempty"`
+	TeamMMR                   *float64 `json:"team_mmr,omitempty"`                    // MMR équipe ce match (issu de match_skill_rank)
+	SkillRating               *float64 `json:"skill_rating,omitempty"`                // CSR ou LUSR mu du joueur (exclusifs par match)
+	SkillDelta                *float64 `json:"skill_delta,omitempty"`                 // points gagnés/perdus ce match (positif/négatif)
+	SkillRatingType           string   `json:"skill_rating_type,omitempty"`           // "csr" | "lusr" — vide si non disponible
+	SkillPlaylistGroup        *string  `json:"skill_playlist_group,omitempty"`        // groupe normalisé (ex: "ranked-arena")
+	SkillSeasonID             *string  `json:"skill_season_id,omitempty"`             // saison Halo (rupture de courbe si changement)
 	SkillMeasurementRemaining *int     `json:"skill_measurement_remaining,omitempty"` // matchs de placement restants
 }
 

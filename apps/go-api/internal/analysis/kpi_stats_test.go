@@ -351,11 +351,11 @@ func intPtrDmg(v int) *int { return &v }
 func mkRowWithDamage(kills, assists, deaths int, dmgDealt, dmgTaken int) canonical.PlayerMatchRow {
 	return canonical.PlayerMatchRow{
 		Self: canonical.MatchParticipant{
-			Kills:        intPtrDmg(kills),
-			Assists:      intPtrDmg(assists),
-			Deaths:       intPtrDmg(deaths),
-			DamageDealt:  intPtrDmg(dmgDealt),
-			DamageTaken:  intPtrDmg(dmgTaken),
+			Kills:       intPtrDmg(kills),
+			Assists:     intPtrDmg(assists),
+			Deaths:      intPtrDmg(deaths),
+			DamageDealt: intPtrDmg(dmgDealt),
+			DamageTaken: intPtrDmg(dmgTaken),
 		},
 	}
 }

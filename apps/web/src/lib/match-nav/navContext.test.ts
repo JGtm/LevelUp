@@ -42,22 +42,24 @@ describe('persistNavContext / readNavContext', () => {
     expect(readNavContext('')).toBeNull()
   })
 
-  it('purge automatique au-delà du TTL (1h)', () => {
+  it('purge automatique au-delà du TTL (24h — Phase 3)', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-05T10:00:00Z'))
     persistNavContext('m2', baseCtx)
     expect(readNavContext('m2')).not.toBeNull()
 
-    vi.setSystemTime(new Date('2026-05-05T11:00:01Z'))
+    // +24h +1s → expiré
+    vi.setSystemTime(new Date('2026-05-06T10:00:01Z'))
     expect(readNavContext('m2')).toBeNull()
   })
 
-  it('reste lisible juste avant le TTL', () => {
+  it('reste lisible juste avant le TTL (24h)', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-05T10:00:00Z'))
     persistNavContext('m2', baseCtx)
 
-    vi.setSystemTime(new Date('2026-05-05T10:59:59Z'))
+    // +23h59m59s → encore valide
+    vi.setSystemTime(new Date('2026-05-06T09:59:59Z'))
     expect(readNavContext('m2')).toEqual(baseCtx)
   })
 
@@ -143,10 +145,10 @@ describe('filterSpecToQueryString', () => {
     expect(filterSpecToQueryString({})).toBe('')
   })
 
-  it('mappe playlist_name → playlist, mode_category → mode, etc.', () => {
+  it('mappe playlist_names → playlist, mode_categories → mode, etc.', () => {
     const spec: MatchFilterSpec = {
-      playlist_name: 'Ranked Arena',
-      mode_category: 'BTB',
+      playlist_names: ['Ranked Arena'],
+      mode_categories: ['BTB'],
       date_from: '2026-04-01T00:00:00Z',
       date_to: '2026-05-01T23:59:59Z',
       session_id: 'session-123',
@@ -162,8 +164,18 @@ describe('filterSpecToQueryString', () => {
     expect(params.get('outcome')).toBe('win')
   })
 
+  it('joint les valeurs multi par virgule (Phase 3)', () => {
+    const got = filterSpecToQueryString({
+      playlist_names: ['Ranked Arena', 'Big Team Battle'],
+      mode_categories: ['BTB', 'Fiesta'],
+    })
+    const params = new URLSearchParams(got)
+    expect(params.get('playlist')).toBe('Ranked Arena,Big Team Battle')
+    expect(params.get('mode')).toBe('BTB,Fiesta')
+  })
+
   it('encode correctement les espaces et caractères spéciaux', () => {
-    const got = filterSpecToQueryString({ playlist_name: 'Ranked Arena' })
+    const got = filterSpecToQueryString({ playlist_names: ['Ranked Arena'] })
     expect(got).toContain('playlist=Ranked+Arena')
   })
 })
@@ -181,7 +193,7 @@ describe('parseFilterSpecFromSearch', () => {
   it('parse depuis URLSearchParams', () => {
     const sp = new URLSearchParams('playlist=Ranked&outcome=win')
     expect(parseFilterSpecFromSearch(sp)).toEqual({
-      playlist_name: 'Ranked',
+      playlist_names: ['Ranked'],
       outcome: 'win',
     })
   })
@@ -190,23 +202,32 @@ describe('parseFilterSpecFromSearch', () => {
     expect(
       parseFilterSpecFromSearch({ playlist: 'Classée', mode: 'Assassin', outcome: 'loss' }),
     ).toEqual({
-      playlist_name: 'Classée',
-      mode_category: 'Assassin',
+      playlist_names: ['Classée'],
+      mode_categories: ['Assassin'],
       outcome: 'loss',
+    })
+  })
+
+  it('parse multi-valeurs (virgule) en arrays (Phase 3)', () => {
+    expect(
+      parseFilterSpecFromSearch({ playlist: 'Ranked Arena,Big Team Battle', mode: 'BTB,Fiesta' }),
+    ).toEqual({
+      playlist_names: ['Ranked Arena', 'Big Team Battle'],
+      mode_categories: ['BTB', 'Fiesta'],
     })
   })
 
   it('outcome hors whitelist : ignoré silencieusement', () => {
     expect(parseFilterSpecFromSearch({ outcome: 'invalid' })).toBeNull()
     expect(parseFilterSpecFromSearch({ playlist: 'X', outcome: 'invalid' })).toEqual({
-      playlist_name: 'X',
+      playlist_names: ['X'],
     })
   })
 
   it('round-trip toQueryString → parseFromSearch', () => {
     const orig: MatchFilterSpec = {
-      playlist_name: 'Ranked Arena',
-      mode_category: 'BTB',
+      playlist_names: ['Ranked Arena', 'Big Team Battle'],
+      mode_categories: ['BTB'],
       date_from: '2026-04-01T00:00:00Z',
       outcome: 'win',
     }
@@ -227,7 +248,7 @@ describe('parseFilterSpecFromSearch', () => {
     expect(parseFilterSpecFromSearch({ with_player: 'abc123' })).toBeNull()
     expect(
       parseFilterSpecFromSearch({ playlist: 'Ranked', with_player: '<script>' }),
-    ).toEqual({ playlist_name: 'Ranked' })
+    ).toEqual({ playlist_names: ['Ranked'] })
   })
 
   it('round-trip with_player_xuid via toQueryString', () => {

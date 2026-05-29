@@ -408,8 +408,8 @@ type extKPIAcc struct {
 	sumKills                              float64
 	sumMaxSpree, sumDmgDealt, sumDmgTaken float64
 	sumPerfectKills                       float64
-	nSpree, nDmgDealt, nDmgTaken         int
-	nRanked                              int
+	nSpree, nDmgDealt, nDmgTaken          int
+	nRanked                               int
 }
 
 func (a *extKPIAcc) add(r canonical.PlayerMatchRow) {

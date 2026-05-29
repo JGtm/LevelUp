@@ -125,6 +125,7 @@ export const sessionManifest = {
   "session.detail.col_accuracy": { fr: "Précision", en: "Accuracy" },
   "session.detail.col_kda": { fr: "K / D / A", en: "K / D / A" },
   "session.detail.col_mode": { fr: "Mode", en: "Mode" },
+  "session.detail.col_open": { fr: "Ouvrir", en: "Open" },
   "session.detail.col_outcome": { fr: "Résultat", en: "Outcome" },
   "session.detail.col_perf_score": { fr: "Score perf.", en: "Perf. score" },
   "session.detail.col_playlist": { fr: "Playlist", en: "Playlist" },

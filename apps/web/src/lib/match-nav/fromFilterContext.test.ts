@@ -20,31 +20,43 @@ describe('filterContextToMatchFilterSpec', () => {
     expect(filterContextToMatchFilterSpec(empty)).toBeNull()
   })
 
-  it('1 seule playlist : mappée en playlist_name', () => {
+  it('1 seule playlist : mappée en playlist_names (slice de 1)', () => {
     const ctx: FilterContextInput = {
       ...empty,
       cascade: { ...empty.cascade, playlists: ['Ranked Arena'] },
     }
     expect(filterContextToMatchFilterSpec(ctx)).toEqual({
-      playlist_name: 'Ranked Arena',
+      playlist_names: ['Ranked Arena'],
     })
   })
 
-  it('multi-playlists : pas de filtre (scope trop large)', () => {
+  it('multi-playlists : toutes mappées en playlist_names (Phase 3)', () => {
     const ctx: FilterContextInput = {
       ...empty,
       cascade: { ...empty.cascade, playlists: ['Ranked Arena', 'Quick Play'] },
     }
-    expect(filterContextToMatchFilterSpec(ctx)).toBeNull()
+    expect(filterContextToMatchFilterSpec(ctx)).toEqual({
+      playlist_names: ['Ranked Arena', 'Quick Play'],
+    })
   })
 
-  it('1 seul mode : mappé en mode_category', () => {
+  it('multi-modes : tous mappés en mode_categories (Phase 3)', () => {
+    const ctx: FilterContextInput = {
+      ...empty,
+      cascade: { ...empty.cascade, modes: ['BTB', 'Fiesta'] },
+    }
+    expect(filterContextToMatchFilterSpec(ctx)).toEqual({
+      mode_categories: ['BTB', 'Fiesta'],
+    })
+  })
+
+  it('1 seul mode : mappé en mode_categories (slice de 1)', () => {
     const ctx: FilterContextInput = {
       ...empty,
       cascade: { ...empty.cascade, modes: ['BTB'] },
     }
     expect(filterContextToMatchFilterSpec(ctx)).toEqual({
-      mode_category: 'BTB',
+      mode_categories: ['BTB'],
     })
   })
 
@@ -120,8 +132,8 @@ describe('filterContextToMatchFilterSpec', () => {
     expect(
       filterContextToMatchFilterSpec(ctx, { outcome: 'loss' }),
     ).toEqual({
-      playlist_name: 'Ranked Arena',
-      mode_category: 'Ranked',
+      playlist_names: ['Ranked Arena'],
+      mode_categories: ['Ranked'],
       date_from: '2026-04-01T00:00:00Z',
       date_to: '2026-05-01T23:59:59Z',
       outcome: 'loss',
