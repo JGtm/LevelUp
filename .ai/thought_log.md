@@ -50028,6 +50028,30 @@ Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout d
 - **time_played_seconds** : recalcul + backfill DB (checkpoint).
 
 **Prochaine étape** : Phase 3 (avec propagation real_start_time → canonical) sur contexte frais.
+
+---
+
+## [2026-05-29] Phase 3 — activation T0 (commit 1/2 : plomberie propagation real_start_time → canonical)
+
+**Statut** : Complété (plomberie ; comportement runtime INCHANGÉ).
+
+**Décision technique** : champ additif `T0Ms *int64` sur `canonical.MatchSummary` + `domain.MatchMetaRaw` (offset countdown en ms, sémantique title-agnostic, nil = T0 non calculable → fallback runtime 0). Calcul en SQL (pas de réinterprétation TZ en Go) via le pattern TZ canonique :
+`epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'))`.
+
+**Point de propagation unique vérifié** : `projectMatchSummary` (player_matches_repo.go) est le SEUL code prod construisant un `canonical.MatchSummary` depuis la DB (grep exhaustif) → couvre Timeseries ET Squad (mêmes PlayerMatchRow per-player). MatchView a son propre chemin (Q13 → MatchMetaRaw).
+
+**Modifs** :
+- `canonical/match.go` : +T0Ms sur MatchSummary.
+- `player_matches_repo.go` : +colonne SQL t0_ms (40 cols), +t0Ms sql.NullInt64 dans scanResult, +scan, +remplissage dans projectMatchSummary, helper `nullInt64ToInt64Ptr`.
+- `queries_match.go` (Q13) + `match_view_repo.go` (scan) + `domain/match_view.go` (MatchMetaRaw.T0Ms).
+- Tests : `TestGetMatchMeta_T0Ms` (non-tagué, vert) + `TestPlayerMatchesRepo_Load_T0MsComputed` (integration). Offset 28s → T0Ms=28000 ; real_start_time NULL → T0Ms nil.
+
+**Réparation dette test (pré-existante, non causée par cette tâche)** : le schéma de test `match_skill_rank` (player_repos_test.go) manquait `season_id` + `measurement_matches_remaining` que la requête prod `playerMatchesSkillRankTpl` sélectionne → TOUS les tests `TestPlayerMatchesRepo_Load_*` (integration) échouaient en Binder Error avant mon changement. Ajout des 2 colonnes + ajustement des 2 INSERT positionnels. Ajout aussi de `real_start_time TIMESTAMP` aux 2 schémas de test match_registry (seedPlayerSchema + match_view_repo_meta_test.go).
+
+**Résultats** : `go build ./...` vert. Suites standard (canonical/domain/service/timeline) vertes. Suite integration duckdb complète verte (148s). **Comportement runtime identique** car build.go lit toujours `phase1T0Ms()=0` — l'activation est le commit 2.
+
+**Reste (commit 2)** : build.go lit `r.Summary.T0Ms` / `meta.T0Ms` (3 builders), signature `BuildForMatchMs(durationMs, t0Ms int64)`, suppression `phase1T0Ms()`, adapter build_test.go, régénérer golden (`UPDATE_GOLDEN=1`) + review diffs (Fortress 41b61fb9 : first_kill 37861→~9861), puis validation UI (utilisateur).
+
 ## [2026-05-28] feat(lusr-v2): Sprint 1.A — Probabilité de victoire prédite — Complété
 
 **Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. `.ai/LUSR_V2_ROADMAP_SPRINTS.md` Sprint 1.A + `.ai/LUSR_V2_WIN_PROBABILITY.md`
@@ -50250,3 +50274,4 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 **Inventaire logging LUSR v2** (couche sync) : INFO aux bornes de run (shadow/sentinel terminé), WARN sur tous les chemins d'erreur/fallback (LoadState, apply, write canonical, LoadHyperparams ×2, LoadSquadOffsets, frags quit ×2, rating précédent, cross-mode leak, playerDB nil), DEBUG sur chaque décision par-match (hyperparams/squad/quit-context/cross-mode appliqués). 5 compteurs expvar `levelup.lusr_v2.*`.
 
 **Conclusion** : code LUSR v2 (Sprints 1-3 + 2.A) complet, testé, loggé. Reste opérationnel/décisionnel côté utilisateur (cf. checklist roadmap).
+
