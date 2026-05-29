@@ -1,3 +1,24 @@
+## [2026-05-29] feat(carrière): menu déroulant saison sur la section "Classements" (CSR)
+
+**Statut** : Backend + frontend livrés. Backfill historique = étape suivante (cf. ci-dessous). Branche `chore/query-devtools-flag` (WIP parallèle présent — ne stager QUE mes fichiers ranked-playlists/career-CSR). Commit non effectué (attente autorisation).
+
+**Demande** : filtre liste déroulante de saison dans la section "Classements" (colonne CSR). LUSR non impacté (cumulatif, hors saison) → distinction marquée en UI.
+
+**Stockage (rappel)** : catalogue playlists + saisons (`csr_season_calendars`) + seuils dans metadata.duckdb ; valeurs CSR **par saison** dans `player_csr_snapshots` (colonne `season_id`) DU JOUEUR. Le « par saison » n'est PAS dans metadata.
+
+**Livré** :
+- Backend : `GetCSRSnapshots(ctx, seasonID)` (vide → courante) + nouveau `AvailableCSRSeasons(ctx)` (season_id distincts de player_csr_snapshots + saison courante, tri par numéro de saison parsé décroissant, label "Saison N"). Threadé via port interfaces (CareerRepository, CareerService), service, handler (`?season=`). DTO : `CSRSeasonOption` + `CareerCSRResponse.AvailableSeasons`. Mocks/noop/call-sites mis à jour (passage `""`).
+- Frontend : `useCareerCSRs(slug, season)` + query key saison ; `CareerRankingBlock` affiche un `<select>` saison au-dessus de la colonne CSR (si ≥2 saisons) ; colonne LUSR reçoit un sous-titre "Cumulatif · hors saison" + tooltip ajusté. i18n : +3 clés régénérées via build_i18n_manifests.mjs.
+- Tests : parse/sort/label saisons (3, purs). `go build`/`go vet`/suites service+handlers+sync+duckdb vertes (hors guard pré-existant types.gen.go). Front : tsc OK.
+
+**Comportement actuel** : le menu liste les saisons ayant des snapshots CSR (la sync écrit la saison courante pour les 4 playlists actives via `augmentWithActiveRankedCSRs`). Tant qu'aucun backfill historique n'a tourné, seules les saisons déjà en base apparaissent.
+
+**Étape suivante (backfill historique — NON fait ce tour)** : peupler `player_csr_snapshots` pour les saisons passées jouées en classé via `GetPlaylistCsr(playlist, xuid, saison)`. Choisi de NE PAS le câbler dans la sync live (lecture metadata pendant sync = risque lock RW, ADR 0016) ni précipiter un CLI auth-lourd en fin de session. Reco : (a) charger la liste complète des saisons au boot (main.go lit déjà csr_season_calendars) → backfill one-time gardé par sync_meta ; ou (b) CLI `cmd/backfill-csr-history` (réutiliser `auth.RefreshHaloTokensViaStoreFirst`). Ne persister que les entrées à tier réel.
+
+**OpenAPI** : `?season=` + `available_seasons` documentés côté types.ts front (hand) ; openapi.yaml/types.gen.go à réconcilier (dette contrat déjà suivie).
+
+---
+
 ## [2026-05-29] fix(squad,t0): TeammatesService câblé T0 (§4.A-bis) — premier frag / matrice impact
 
 **Statut** : Complété (code + tests + validation données réelles). Branche `chore/query-devtools-flag` (WIP Go parallèle présent — ranked playlists + sync/career ; ne stager QUE mes fichiers T0). Commit non effectué (en attente autorisation).
@@ -19,7 +40,11 @@
 
 **Validation données réelles** (programme jetable, shared_matches_v2.duckdb) : 1724/1724 matchs avec t0_ms (100%), **médiane 27.6s** (≈ 28s attendu), 0 négatif, 1 outlier max=14400s (data-quality préexistant, hors scope ; `BuildTimelinesFromSquadRows` ne clampe que les négatifs, comme `BuildTimelinesFromPlayerMatches` ; les builders skippent les TimeMS<0 et gardent `duration<=0`).
 
-**Tests** : 5 ajoutés (timeline : `CorrectImpactEvents` ×2 + `BuildTimelinesFromSquadRows` ; service : `buildSquadFirstEvents` décalage de bin + skip countdown, `buildSquadIntensityProfile` skip countdown). `go build ./...`, `go test ./internal/service ./internal/analysis/...` verts. Build CGO via `C:\msys64\ucrt64\bin\gcc.exe` (CGO_ENABLED=1) dans ce sandbox.
+**Logging/observabilité** : helper `correctSquadImpactEvents(ctx, chart, events, timelines)` centralise correction T0 + DEBUG `squad_t0_applied` (clés `chart`/`n_events`/`n_matches`/`n_matches_with_t0`) → `logs/service.log` via MultiModuleHandler. Permet de confirmer en prod que le T0 est actif et combien de matchs portent un countdown. `squad_service.go` : l'erreur `LoadImpactEvents` jetée (`_`) est désormais loggée (WARN `squad_impact_events_load_failed`).
+
+**Tests** : 5 ajoutés (timeline : `CorrectImpactEvents` ×2 + `BuildTimelinesFromSquadRows` ; service : `buildSquadFirstEvents` décalage de bin + skip countdown, `buildSquadIntensityProfile` skip countdown). Couverture timeline **98.0%**. `go build ./...` vert. Build CGO via `C:\msys64\ucrt64\bin\gcc.exe` (CGO_ENABLED=1) dans ce sandbox.
+
+**Vérif finale (suite complète `go test ./...`)** : tous packages verts SAUF (1) `TestNoUnauthorizedSharedSocialMention` (`api/gen/types.gen.go` généré, régén OpenAPI concurrente) ; (2) cassures TRANSITOIRES `internal/{service,api/handlers}` dues au refactor CSR concurrent (interface `port.CareerRepository`/`CareerService` changée, mocks de test rattrapés EN DIRECT par l'agent concurrent pendant ma vérif → packages re-verts ensuite). AUCUN échec lié au T0. Je n'ai touché à aucun fichier concurrent (career/CSR/ranked-playlists/session/sync).
 
 **Reste-à-faire signalé (hors scope)** : suppression du legacy `Q30SquadMatches` (dead code préexistant, 0 caller) ; linter `no_raw_time_ms` (Phase 5) qui aurait attrapé .13/.17/squad-V1.
 
@@ -52,6 +77,23 @@
 **Prochaine étape** : autorisation commit utilisateur ; refresh procédure si 343 tourne les hoppers (re-fetch métadonnée). Cf. ADR éventuel + memory `reference-ranked-playlists-source`.
 
 ---
+
+## [2026-05-29] chore(sessions): vérif finale refonte session-detail — tests + logging confirmés
+
+**Statut** : Go/no-go OK. Refonte session-detail (anim + Phases 1-3) vérifiée de bout en bout.
+
+**Vérification** :
+- Go : `go build ./...` = 0 (champs additifs sur SessionCompareEntry/SessionDetailMatchRow ne cassent aucun consommateur) ; `go vet ./internal/service` = 0 ; `go test ./internal/service -run Session|Compare|Build` = ok. Le package re-buildait (WIP `career_service.go` résolu côté utilisateur entre-temps).
+- Front : typecheck = 0 ; eslint = 0 err (1 warn React-Compiler bénin sur `useReactTable`, idem Explorer) ; suite complète **1552 tests** verts (163 fichiers).
+- Aucun `fmt.Println`/`log.Printf` parasite dans mes fichiers Go.
+
+**Logging** : couverture déjà bonne — `session_page_service.GetPage` émet `slog.InfoContext("session page generated", …)` (10 clés : session, compteurs, compare, voisins) + `WarnContext` sur sessions manquantes + `InfoContext` sur no-sessions, routés vers `logs/{module}.log` (context handler observability). Mes ajouts (métriques buildCompareEntry, enrichissement buildSessionDetailRows) = projections pures sans chemin d'erreur → aucun log ajouté (éviter le bruit).
+
+**Tests ajoutés** :
+- Go (`session_compare_test.go`) : `TestBuildCompareEntry_DerivedMetrics` (WinRate/KDR/KillsPerMatch), `TestBuildSessionDetailRows_EnrichedFields` (map FR, ΔMMR, perf_tier, durée, rating), `TestBuildSessionDetailRows_NilEnrichment` (dégradation gracieuse).
+- Front (`SessionMatchesTable.test.tsx`) : presets full (colonnes riches + valeurs) vs compact (7 col, masque Open/Heure/Carte/Playlist/Durée) + état vide.
+
+**Reste (mineur, non bloquant)** : 6 clés i18n inutilisées (Phase 1) à nettoyer ; vérif visuelle navigateur non faite.
 
 ## [2026-05-29] feat(web+go,sessions): Phase 3 refonte session-detail — tableau détail riche (duplication Explorer)
 
