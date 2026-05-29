@@ -96,7 +96,7 @@ func TestServiceRegistry_CitationsCtx_ResolveError(t *testing.T) {
 
 func TestServiceRegistry_ExplorerCtx_ResolveError(t *testing.T) {
 	reg := &ServiceRegistry{resolve: failResolver}
-	_, _, _, err := reg.ExplorerCtx(context.Background(), "x")
+	_, _, _, _, err := reg.ExplorerCtxWithAuth(context.Background(), "x")
 	if !errors.Is(err, errResolve) {
 		t.Fatalf("expected resolve error, got %v", err)
 	}

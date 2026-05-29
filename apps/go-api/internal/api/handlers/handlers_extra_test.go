@@ -212,8 +212,8 @@ func TestExplorerHandler_QueryMatches_OK(t *testing.T) {
 	mockMH := &mockMatchHistoryForExplorer{
 		page: domain.MatchHistoryPageResponse{},
 	}
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return &mockExplorerService{}, testXUID1B, "GT", nil
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return &mockExplorerService{}, ctx, testXUID1B, "GT", nil
 	}
 	matchHistF := func(_ context.Context, slug string) (port.MatchHistoryService, string, string, error) {
 		if slug != testPlayerSlug {
@@ -232,8 +232,8 @@ func TestExplorerHandler_QueryMatches_OK(t *testing.T) {
 }
 
 func TestExplorerHandler_QueryMatches_PlayerNotFound(t *testing.T) {
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return &mockExplorerService{}, "x", "g", nil
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return &mockExplorerService{}, ctx, "x", "g", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return nil, "", "", errors.New("not_found")
@@ -250,8 +250,8 @@ func TestExplorerHandler_QueryMatches_PlayerNotFound(t *testing.T) {
 
 func TestExplorerHandler_QueryMatches_ServiceError(t *testing.T) {
 	mockMH := &mockMatchHistoryForExplorer{pageErr: errors.New("boom")}
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return &mockExplorerService{}, "x", "g", nil
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return &mockExplorerService{}, ctx, "x", "g", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return mockMH, "x", "g", nil
@@ -267,8 +267,8 @@ func TestExplorerHandler_QueryMatches_ServiceError(t *testing.T) {
 }
 
 func TestExplorerHandler_QueryMatches_InvalidBody(t *testing.T) {
-	explorerF := func(_ context.Context, _ string) (port.ExplorerService, string, string, error) {
-		return &mockExplorerService{}, "x", "g", nil
+	explorerF := func(ctx context.Context, _ string) (port.ExplorerService, context.Context, string, string, error) {
+		return &mockExplorerService{}, ctx, "x", "g", nil
 	}
 	matchHistF := func(_ context.Context, _ string) (port.MatchHistoryService, string, string, error) {
 		return &mockMatchHistoryForExplorer{}, "x", "g", nil

@@ -61,19 +61,20 @@ type ServiceRegistry struct {
 	resolve          PlayerResolver
 	resolveByGT      duckdb.TitlePlayerResolver // résolution (titleSlug, gamertag) → PlayerDB pour Squad V2
 	provider         auth.TokenProvider
-	assetResolver    assets.Resolver           // nil si le resolver n'est pas configuré (mode legacy)
-	timezone         string                    // IANA (ex: "Europe/Paris"), propagé aux services médias
-	notifiers        sync.Map                  // xuid → port.SessionNotifier (HomeService par joueur)
-	titleResolver    games.Resolver            // nil → services tournent sans semantic adapter (libellés via fallbacks)
-	homeMatchesCache *service.HomeMatchesCache // cache TTL process-level matches+sessions
-	careerLiveCache  *service.CareerLiveCache  // cache TTL process-level XP (5 min) + customisation (6 h)
-	settingsStore    *settings_platform.Store  // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
-	seasonsCatalog   *service.SeasonsCatalog   // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
-	rankCatalog      *mappings.RankCatalog     // nil → CareerService.next_rank_name reste vide
-	rankImageURLs    map[int]*string           // nil → CareerService.rank_image_url et next_rank_image_url restent absents
-	prestigeBundle   *PrestigeBundle           // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
-	advisorBundle    *CoachAdvisorBundle       // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore        auth.UserTokenStore       // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	assetResolver    assets.Resolver              // nil si le resolver n'est pas configuré (mode legacy)
+	timezone         string                       // IANA (ex: "Europe/Paris"), propagé aux services médias
+	notifiers        sync.Map                     // xuid → port.SessionNotifier (HomeService par joueur)
+	titleResolver    games.Resolver               // nil → services tournent sans semantic adapter (libellés via fallbacks)
+	homeMatchesCache *service.HomeMatchesCache    // cache TTL process-level matches+sessions
+	careerLiveCache  *service.CareerLiveCache     // cache TTL process-level XP (5 min) + customisation (6 h)
+	remoteStats      *service.CachedStatsProvider // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
+	settingsStore    *settings_platform.Store     // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	seasonsCatalog   *service.SeasonsCatalog      // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
+	rankCatalog      *mappings.RankCatalog        // nil → CareerService.next_rank_name reste vide
+	rankImageURLs    map[int]*string              // nil → CareerService.rank_image_url et next_rank_image_url restent absents
+	prestigeBundle   *PrestigeBundle              // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
+	advisorBundle    *CoachAdvisorBundle          // nil → coach_advisor désactivé (ADR 0020 Phase 8)
+	authStore        auth.UserTokenStore          // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
 }
 
 // WithAuthStore attache le MultiUserTokenStore au registry — source unique des
@@ -159,6 +160,7 @@ func NewServiceRegistry(cfg *config.AppConfig, provider auth.TokenProvider) *Ser
 		timezone:         cfg.UserTimezone,
 		homeMatchesCache: service.NewHomeMatchesCache(),
 		careerLiveCache:  service.NewCareerLiveCache(service.CareerLiveCacheConfig{}),
+		remoteStats:      service.NewCachedStatsProvider(haloProvider, 0, nil),
 	}
 }
 

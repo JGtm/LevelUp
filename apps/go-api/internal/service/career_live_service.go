@@ -99,7 +99,7 @@ type CareerLiveRepo interface {
 // d'une CareerRankRow (déjà mergée) + skill peaks. Implémenté par
 // duckdb.HomeRepo.BuildSpartanIdentityFromCareerRow.
 type CareerIdentityBuilder interface {
-	BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *duckdb.CareerRankRow) *domain.HomeSpartanIdentityRow
+	BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *duckdb.CareerRankRow, includePeaks bool) *domain.HomeSpartanIdentityRow
 }
 
 // CareerLiveService orchestre live + cache + fallback + INSERT-if-changed.
@@ -172,9 +172,17 @@ func (s *CareerLiveService) GetSpartanIdentity(ctx context.Context) (*domain.Hom
 //
 // Le reste du flow (cache + merge + DB fallback + overlay) reste identique.
 func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error) {
+	// includePeaks : les skill peaks sont lus sur la player DB du propriétaire
+	// de la page. Ils ne sont valides que si le sujet de l'identité EST ce
+	// propriétaire (dans le contexte enrichi, HaloXUID == pdb.XUID). Pour un
+	// xuid tiers (cas Explorer : joueur cible), on les omet — sinon on afficherait
+	// les peaks du propriétaire sur la carte d'un autre joueur et on paierait
+	// 2 scans match_skill_rank inutiles. Même condition que allowPersist.
+	subjectIsOwner := xuid == ctxkeys.HaloXUID(ctx)
+
 	// Étape 1-2 : filet DB systématique. serveDBFallback est tolérant à
 	// xuid="" / repo nil (retourne nil), donc on peut toujours l'appeler.
-	dbFallback := s.serveDBFallback(ctx, xuid)
+	dbFallback := s.serveDBFallback(ctx, xuid, subjectIsOwner)
 	if xuid == "" {
 		return dbFallback, nil
 	}
@@ -184,7 +192,7 @@ func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid stri
 	// on rend le résultat, mais on ne déclenche pas le kickoff background qui
 	// écrirait dans career_progression de la player DB courante (qui est
 	// celle du user, pas du target).
-	allowPersist := xuid == ctxkeys.HaloXUID(ctx)
+	allowPersist := subjectIsOwner
 
 	// Étape 3 : tentative live (peut échouer transitoirement).
 	merged, err := s.fetchAndMerge(ctx, xuid, allowPersist)
@@ -199,7 +207,7 @@ func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid stri
 	// se contente de servir ce qu'on a — pas de persist depuis ici, pas de
 	// risque d'écrire des champs carry-forward dans une nouvelle ligne.
 
-	identity := s.builder.BuildSpartanIdentityFromCareerRow(ctx, merged)
+	identity := s.builder.BuildSpartanIdentityFromCareerRow(ctx, merged, subjectIsOwner)
 
 	// Étape 4 : overlay final. Si live a produit identity == nil ou identity
 	// avec des champs assets vides, on patche depuis dbFallback. Le résultat
@@ -222,7 +230,10 @@ func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid stri
 // de tokens OAuth Halo) : on rend ce qu'on a en local et on signale au front
 // via le flag auth_available=false. Retourne nil si la DB ne porte aucune row.
 func (s *CareerLiveService) GetSpartanIdentityFromDBOnly(ctx context.Context, xuid string) *domain.HomeSpartanIdentityRow {
-	return s.serveDBFallback(ctx, xuid)
+	// includePeaks=false : ce chemin ne sert que des joueurs tiers (Explorer
+	// no-tokens). Les skill peaks de la player DB courante appartiennent au
+	// propriétaire de la page, pas à ce xuid — on ne les calcule pas.
+	return s.serveDBFallback(ctx, xuid, false)
 }
 
 // overlayIdentityFromFallback → extrait dans `career_live_merge.go`.
@@ -444,7 +455,7 @@ func computeFetchStatus(progress *syncpkg.CareerRankData, custom *syncpkg.Sparta
 // Utilisé quand le live est totalement indisponible (tokens absents, etc.)
 // pour ne jamais montrer un bloc Spartan vide à l'utilisateur si une row
 // historique existe.
-func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string) *domain.HomeSpartanIdentityRow {
+func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string, includePeaks bool) *domain.HomeSpartanIdentityRow {
 	var dbRow *duckdb.CareerRankRow
 	if xuid != "" && s.repo != nil {
 		row, err := s.repo.LoadLastCareerRank(ctx, xuid)
@@ -460,7 +471,7 @@ func (s *CareerLiveService) serveDBFallback(ctx context.Context, xuid string) *d
 			dbRow = row
 		}
 	}
-	identity := s.builder.BuildSpartanIdentityFromCareerRow(ctx, dbRow)
+	identity := s.builder.BuildSpartanIdentityFromCareerRow(ctx, dbRow, includePeaks)
 	if identity == nil {
 		careerLiveIdentityMissing.Add(1)
 		careerLiveEmptyResult.Add(1)

@@ -86,15 +86,23 @@ func (r *HomeRepo) LoadSpartanIdentity(ctx context.Context) (*domain.HomeSpartan
 }
 
 // BuildSpartanIdentityFromCareerRow assemble un HomeSpartanIdentityRow à
-// partir d'une CareerRankRow déjà mergée (live + per-field DB fallback) plus
-// les skill peaks CSR/LUSR lus depuis match_skill_rank.
+// partir d'une CareerRankRow déjà mergée (live + per-field DB fallback) plus,
+// si includePeaks, les skill peaks CSR/LUSR lus depuis match_skill_rank.
 //
 // Utilisé par CareerLiveService pour servir l'identité Spartan sans
 // dépendre de la query Q26c (qui reste exposée via LoadSpartanIdentity pour
 // les chemins de fallback / compatibilité ascendante).
 //
+// includePeaks : les skill peaks sont lus sur la player DB de CE repo
+// (`r.pdb.Player`). Ils ne sont donc valides que si le sujet de l'identité est
+// le propriétaire de cette DB. Le caller doit passer false quand il construit
+// l'identité d'un joueur tiers (cas Explorer : joueur cible recherché) — sinon
+// on afficherait les peaks du propriétaire de la page sur la carte d'un autre
+// joueur, et on paierait 2 scans `match_skill_rank` inutiles. Cf. plan
+// explorer-target-profile-auth (volet B).
+//
 // Retourne nil si tous les champs visibles sont vides (joueur jamais sync'd).
-func (r *HomeRepo) BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *CareerRankRow) *domain.HomeSpartanIdentityRow {
+func (r *HomeRepo) BuildSpartanIdentityFromCareerRow(ctx context.Context, careerRow *CareerRankRow, includePeaks bool) *domain.HomeSpartanIdentityRow {
 	if r == nil {
 		return nil
 	}
@@ -102,8 +110,10 @@ func (r *HomeRepo) BuildSpartanIdentityFromCareerRow(ctx context.Context, career
 	if careerRow != nil {
 		r.populateIdentityFromCareerRow(ctx, row, careerRow)
 	}
-	row.HighestCSR = r.loadHomeSkillPeak(ctx, "CSR")
-	row.HighestLUSR = r.loadHomeSkillPeak(ctx, "LUSR")
+	if includePeaks {
+		row.HighestCSR = r.loadHomeSkillPeak(ctx, "CSR")
+		row.HighestLUSR = r.loadHomeSkillPeak(ctx, "LUSR")
+	}
 
 	if isEmptyHomeIdentity(row) {
 		return nil
