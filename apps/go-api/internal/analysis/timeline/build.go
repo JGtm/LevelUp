@@ -53,6 +53,20 @@ func BuildTimelinesFromPlayerMatches(rows []canonical.PlayerMatchRow) map[string
 	return out
 }
 
+// BuildTimelinesFromSquadRows indexe une MatchTimeline par match_id depuis les
+// SquadMatchRow (page Escouade / TeammatesService, Q30). Le T0 est lu depuis
+// SquadMatchRow.T0Ms (propagé par Q30, §4.A-bis) ; nil → T0=0 (fallback
+// chronologie brute). Plusieurs rows peuvent partager le même match_id (une par
+// coéquipier) : elles portent le même T0, la dernière écrasant les précédentes
+// sans effet observable.
+func BuildTimelinesFromSquadRows(rows []domain.SquadMatchRow) map[string]domain.MatchTimeline {
+	out := make(map[string]domain.MatchTimeline, len(rows))
+	for _, r := range rows {
+		out[r.MatchID] = domain.NewMatchTimeline(int64(r.DurationSeconds)*1000, derefInt64(r.T0Ms))
+	}
+	return out
+}
+
 // BuildForMatchMs construit la MatchTimeline d'un match unique depuis sa durée
 // et son offset T0 (countdown pré-match) en millisecondes. Utilisé par
 // MatchViewService qui charge un seul match (t0Ms vient de MatchMetaRaw.T0Ms,

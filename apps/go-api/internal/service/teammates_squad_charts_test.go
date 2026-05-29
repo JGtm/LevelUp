@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -356,6 +357,150 @@ func TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic(t *testing.T) {
 	got := svc.buildSquadIntensityProfile(context.Background(), allSquadRows, "main", []string{"friend1"}, "all")
 	if got != nil {
 		t.Errorf("sans events : want nil, got profile avec %d options", len(got.Options))
+	}
+}
+
+// ---------- buildSquadFirstEvents T0 (teammates.17, §4.A-bis) ----------
+
+// TestBuildSquadFirstEvents_AppliesT0Shift cadenasse le fix §4.A-bis : le chart
+// premier frag / première mort doit retrancher le countdown pré-match (T0).
+// Un kill à 50s de film, T0=28s → 22s de gameplay → bin plus précoce qu'en
+// chronologie brute (50s).
+func TestBuildSquadFirstEvents_AppliesT0Shift(t *testing.T) {
+	start := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
+	mainXUID := "x_main"
+	repo := &mockSquadRepo{
+		impactRows: []domain.ImpactEventRow{
+			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 50000},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+
+	t0ms := int64(28000)
+	withT0 := []domain.SquadMatchRow{{MatchID: "m1", StartTime: start, DurationSeconds: 600, T0Ms: &t0ms}}
+	noT0 := []domain.SquadMatchRow{{MatchID: "m1", StartTime: start, DurationSeconds: 600}} // T0Ms nil
+
+	got := svc.buildSquadFirstEvents(context.Background(), withT0, "main", mainXUID, nil)
+	raw := svc.buildSquadFirstEvents(context.Background(), noT0, "main", mainXUID, nil)
+	if got == nil || raw == nil {
+		t.Fatal("résultats non nil attendus (1 kill du main)")
+	}
+
+	binIdxLabel := func(r *domain.SquadFirstEvents) (int, string) {
+		for _, row := range r.Rows {
+			if row.Player != "main" {
+				continue
+			}
+			for i, c := range row.KillCounts {
+				if c > 0 {
+					return i, r.BinLabels[i]
+				}
+			}
+		}
+		return -1, ""
+	}
+	gotIdx, gotLabel := binIdxLabel(got)
+	rawIdx, rawLabel := binIdxLabel(raw)
+	if gotIdx < 0 || rawIdx < 0 {
+		t.Fatalf("kill du main introuvable : gotIdx=%d rawIdx=%d", gotIdx, rawIdx)
+	}
+	if gotIdx >= rawIdx {
+		t.Errorf("T0 doit ramener le kill à un bin plus précoce : avec T0 idx=%d (%s), brut idx=%d (%s)",
+			gotIdx, gotLabel, rawIdx, rawLabel)
+	}
+	// Valeurs précises : 22s gameplay → bin "30s" ; 50s film → bin "1m00s".
+	if gotLabel != "30s" {
+		t.Errorf("avec T0 (22s gameplay) : label want \"30s\", got %q", gotLabel)
+	}
+	if rawLabel != "1m00s" {
+		t.Errorf("brut (50s film) : label want \"1m00s\", got %q", rawLabel)
+	}
+}
+
+// TestBuildSquadFirstEvents_SkipsPreGameplayEvents : un event situé dans le
+// countdown (TimeMS < T0) → temps corrigé négatif, doit être ignoré. Sinon il
+// polluerait le sentinel -1 de firstKillS et masquerait le vrai premier frag
+// (qui serait alors perdu → chart nil).
+func TestBuildSquadFirstEvents_SkipsPreGameplayEvents(t *testing.T) {
+	start := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
+	mainXUID := "x_main"
+	repo := &mockSquadRepo{
+		impactRows: []domain.ImpactEventRow{
+			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 10000}, // countdown → -18s
+			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 40000}, // gameplay → 12s
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+	t0ms := int64(28000)
+	rows := []domain.SquadMatchRow{{MatchID: "m1", StartTime: start, DurationSeconds: 600, T0Ms: &t0ms}}
+
+	got := svc.buildSquadFirstEvents(context.Background(), rows, "main", mainXUID, nil)
+	if got == nil {
+		t.Fatal("résultat non nil attendu : le frag à 40s (gameplay 12s) doit subsister")
+	}
+	total, firstBin := 0, -1
+	for _, row := range got.Rows {
+		if row.Player != "main" {
+			continue
+		}
+		for i, c := range row.KillCounts {
+			total += c
+			if c > 0 && firstBin == -1 {
+				firstBin = i
+			}
+		}
+	}
+	if total != 1 {
+		t.Errorf("first_kill count want 1 (event countdown ignoré), got %d", total)
+	}
+	if firstBin != 0 || got.BinLabels[0] != "15s" {
+		t.Errorf("first kill à 12s → bin0 \"15s\", got bin=%d labels=%v", firstBin, got.BinLabels)
+	}
+}
+
+// TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown (extension §4.A-bis,
+// teammates.13) : le profil d'intensité doit retrancher le T0 et EXCLURE les
+// events du countdown (TimeMS<0 après correction). Un kill countdown + un kill
+// gameplay sur le même match → 1 seul bucket non nul (le gameplay), pas 2.
+func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
+	base := time.Date(2026, 4, 1, 10, 0, 0, 0, time.UTC)
+	mainXUID := "x_main"
+	repo := &mockSquadRepo{
+		impactRows: []domain.ImpactEventRow{
+			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 10000},  // countdown → -18s → exclu
+			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 300000}, // gameplay → 272s
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+	t0ms := int64(28000)
+	// >= intensityMinMatches (3) matchs ; events seulement sur m1.
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: base, DurationSeconds: 600, T0Ms: &t0ms},
+		{MatchID: "m2", StartTime: base.Add(time.Hour), DurationSeconds: 600, T0Ms: &t0ms},
+		{MatchID: "m3", StartTime: base.Add(2 * time.Hour), DurationSeconds: 600, T0Ms: &t0ms},
+	}
+	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", nil, "Tous")
+	if got == nil {
+		t.Fatal("profil non nil attendu (kill gameplay présent sur m1)")
+	}
+	allRows := got.Rows["all"]
+	var m1 *domain.SquadIntensityMatchRow
+	for i := range allRows {
+		if allRows[i].MatchID == "m1" {
+			m1 = &allRows[i]
+		}
+	}
+	if m1 == nil {
+		t.Fatal("ligne m1 introuvable dans le toggle \"all\"")
+	}
+	nonZero := 0
+	for _, p := range m1.Phases {
+		if p > 0 {
+			nonZero++
+		}
+	}
+	if nonZero != 1 {
+		t.Errorf("m1 : 1 seul bucket non nul attendu (kill countdown exclu), got %d (phases=%v)", nonZero, m1.Phases)
 	}
 }
 

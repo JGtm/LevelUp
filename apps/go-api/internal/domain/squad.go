@@ -27,24 +27,27 @@ type TopTeammateRow struct {
 
 // SquadMatchRow est une ligne brute chargée depuis Q30 (matchs communs avec coéquipier).
 type SquadMatchRow struct {
-	MatchID          string
-	StartTime        time.Time
-	MapName          string
-	MapUI            string
-	PairName         string
-	PlaylistName     string
-	IsFirefight      bool
-	IsRanked         bool
-	Outcome          int
-	Kills            int
-	Deaths           int
-	Assists          int
-	KDA              *float64
-	Accuracy         *float64
-	TimePlayedSecs   int
-	DurationSeconds  int
+	MatchID         string
+	StartTime       time.Time
+	MapName         string
+	MapUI           string
+	PairName        string
+	PlaylistName    string
+	IsFirefight     bool
+	IsRanked        bool
+	Outcome         int
+	Kills           int
+	Deaths          int
+	Assists         int
+	KDA             *float64
+	Accuracy        *float64
+	TimePlayedSecs  int
+	DurationSeconds int
 	// GameplayDurationSeconds : durée réelle de gameplay (countdown retranché).
 	GameplayDurationSeconds int
+	// T0Ms : offset du countdown pré-match en ms (real_start_time − start_time_utc).
+	// nil si real_start_time absent → T0=0 (chronologie brute). Cf. Match Timeline T0.
+	T0Ms             *int64
 	TeamMMR          float64
 	SessionID        *int
 	SessionLabel     *string
