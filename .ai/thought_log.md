@@ -1,3 +1,23 @@
+## [2026-05-29] refactor(web): migration types — FINDING bloquant : le contrat OpenAPI est sous-spécifié (shim de masse abandonné)
+
+**Statut** : Expérience de calibrage menée + revertée. Conclusion qui REDÉFINIT le chantier. Batch 1 (7 shims) conservé.
+
+**Expérience** : shim mécanique des **89 interfaces matchées** restantes (`export interface X{…}` → `components['schemas']['X']`, script jetable `_shim.mjs` avec backup), puis `tsc -b` comme oracle.
+
+**Résultat** : **453 erreurs tsc** sur ~40 fichiers. Histogramme : **304× TS2339 "Property does not exist"** (75%) + 45× TS2353 (known properties) → même cause. Exemples : `match_count_filtered`, `started_at_utc`, `ended_at_utc`, `period_presets`, + les 8 champs de BootstrapResponse.
+
+**Conclusion (importante)** : ce n'est PAS une dérive marginale ni un quirk d'openapi-typescript. **Le contrat `openapi.yaml` est largement INCOMPLET** vs les réponses réelles du backend Go — de nombreux schémas omettent des champs que le front utilise. Le `types.ts` manuel est en réalité **plus complet/exact que le contrat**. La migration n'est donc PAS un shim mécanique : elle est **g-atée sur la réconciliation du contrat** (compléter openapi.yaml schéma par schéma). Bucket B = la règle, pas l'exception.
+
+**Décision** : shim de masse **reverté** (`git checkout types.ts` → état batch 1), temps nettoyés, `tsc` revert vert. On NE force PAS la migration.
+
+**Plan révisé pour le chantier (multi-sessions, prioritaire = contrat)** :
+1. Le vrai travail = **compléter `openapi.yaml`** schéma par schéma pour matcher les réponses réelles (référence fiable : `types.ts` actuel + handlers Go). Par aire fonctionnelle (sessions/filtres, career, match-view, explorer, media…).
+2. Après chaque schéma complété : `make gen` (Go) + `npm run generate-types` (front) → puis shim du/des type(s) concerné(s) → `tsc -b` vert → commit.
+3. Bénéfice double : contrat enfin fiable (utile au Go aussi) + suppression progressive du `types.ts` manuel.
+4. ⚠️ Ne PAS re-tenter un shim de masse : 453 erreurs = ~40 fichiers cassés. Granularité = par schéma réconcilié.
+
+**Prochaine session** : commencer la réconciliation contrat sur 1 aire (p.ex. sessions/filtres — gros bucket TS2339), valider la boucle complète sur ce périmètre.
+
 ## [2026-05-29] refactor(web): migration types.ts → generated.ts — Phase A (inventaire + batch 1 shim)
 
 **Statut** : Phase A livrée (branche `refactor/arch-port-abstractions`). Migration = chantier multi-sessions ; ce commit = fondation + calibrage.
