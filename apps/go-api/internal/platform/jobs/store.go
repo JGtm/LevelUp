@@ -37,7 +37,15 @@ func NewStore(path string) *Store {
 	return s
 }
 
-// Create crée un nouveau job de type donné, le persiste et le retourne.
+// Create crée un nouveau job de type donné, le persiste et retourne une COPIE.
+//
+// La copie (et non le pointeur vivant stocké dans la map) est cruciale : les
+// callers lancent typiquement `go runX(job.JobID, ...)` qui mute le job via
+// SetStatus/Update sous lock, PUIS lisent `job.Status`/`job.JobID` hors lock
+// pour la réponse HTTP. Renvoyer le pointeur vivant créait une data race entre
+// cette lecture et la mutation concurrente (cf. -race openspartan_import).
+// Cohérent avec Get/FindActiveJob qui renvoient aussi des copies. Le JobID
+// (immuable) reste la clé pour toute mutation ultérieure via le store.
 func (s *Store) Create(jobType domain.JobType, playerSlug string) *domain.AsyncJobStatus {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -56,7 +64,8 @@ func (s *Store) Create(jobType domain.JobType, playerSlug string) *domain.AsyncJ
 	}
 	s.jobs[id] = job
 	s.saveLocked()
-	return job
+	cp := *job
+	return &cp
 }
 
 // Get retourne un job par son ID. Retourne nil si inconnu ou expiré.
