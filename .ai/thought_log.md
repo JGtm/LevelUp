@@ -1,3 +1,14 @@
+## [2026-05-29] feat(web,sessions): barres FDA par partie/minute + delta de rang (KPI)
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend **1572 tests** verts.
+
+3 ajouts à la page session :
+- **Frags / Morts / Assists par partie** (point 1) : nouveau composant `SessionFdaBars` mode `game` — 3 barres = moyennes par match, colorées `outcome-win`/`outcome-loss`/`outcome-draw`. (Moyennes plutôt que par-match groupé : le timeline FDA couvre déjà le par-match — interprétation signalée à l'utilisateur.)
+- **Stats par minute — Frags / Morts / Assists** (point 3) : même `SessionFdaBars` mode `minute` — taux /min (total / minutes jouées via `duration_seconds`). Barres verticales simples (1 joueur) plutôt que le layout symétrique multi-joueurs de l'Escouade — signalé, ajustable.
+- **Delta de rang LUSR/CSR** (point 2) : KPI conditionnel dans la bande « Session active » (`SessionSummaryCard`) — « Δ CSR » (entier) ou « Δ LUSR » (2 décimales) selon `skill_rating_type`, coloré par signe (`divergent-pos`/`neg`). Alimenté par `skill_rating_delta`/`skill_rating_type` de l'entry (jamais les deux types à la fois). Helpers `formatRankDelta`/`rankDeltaToken` ajoutés à `_shared`.
+
+Couleurs 100 % tokens (`resolveToken` pour le canvas ECharts), 0 hex. Tests : `buildSessionFdaBarsOption` + `formatRankDelta`/`rankDeltaToken`.
+
 ## [2026-05-29] feat(web,sessions): graphe FDA (axe X par match) + Score de performance (barres par tier + moyenne)
 
 **Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend **1566 tests** verts.
@@ -7,6 +18,24 @@
 **Point 2 — Perf** : titre « Score performance par match » → **« Score de performance »**. Réécrit en graphe custom (`ChartCard` + `buildSessionPerfOption` exportée) : **BARRES par match colorées par tier** (perf-tier-1..5 via `resolveToken` ; tier = `match.perf_tier` du backend, fallback `perfTierFromScore`), **markLine de moyenne dans la couleur de grading de la moyenne** (distincte des barres, dit le tier moyen), **étiquette « Moyenne {val} » voyante à droite** (position end, gras, halo CHART_BG). Même axe X « #N\nCarte ».
 
 **Couleurs** : 100 % tokens (`resolveToken` pour le canvas ECharts), 0 hex / 0 classe Tailwind couleur. **Tests** : `buildSessionPerfOption` testée (barres + markLine moyenne + axe catégorie). Helper `sessionMatchAxisLabel` couvert indirectement.
+
+## [2026-05-29] fix(tests+seed): tests catalogue déterministes + schéma SeedCareerRanks aligné
+
+**Statut** : Complété. Branche `chore/query-devtools-flag`. Commit non effectué (attente autorisation). Fichiers : `internal/platform/duckdb/csr_pipeline_e2e_integration_test.go`, `internal/platform/duckdb/catalog_repo_test.go`, `internal/ops/seed.go`, `internal/ops/seed_cgo_test.go`.
+
+**Contexte** : suite au fix des jauges Carrière (entrée suivante), 2 points à traiter : (a) l'échec de test pré-existant, (b) la dette schéma `SeedCareerRanks`.
+
+**(a) Tests catalogue déterministes** : 3 tests échouaient (`TestE2EPipeline_CareerCSRs_MergeCatalogPlusSnapshots`, `TestCatalogRepo_PlaylistsByTitle_FullCatalog`, `TestCatalogRepo_CountCatalogEntries`) car la migration `seed_ranked_playlists_catalog` pré-remplit `playlists_catalog` (16 playlists, 4 actives ranked HI), alors que ces tests attendaient un catalogue contrôlé. Vérifié identique sur HEAD propre → pré-existant, sans lien avec le fix carrière. Fix : `DELETE FROM playlists_catalog` après la migration, avant le seed local (test CSR + helper partagé `setupCatalogRepoDB`). Les tests valident désormais merge/comptage sur leur seul jeu seedé.
+
+**(b) Dette schéma SeedCareerRanks** : `ops/seed.go::SeedCareerRanks` créait `career_ranks` avec un schéma incompatible avec les lecteurs (`title_fr`, et pas de `tier_type`/`large_icon_path`/`adornment_icon_path`). Or `EnrichFromMetadata` + `LoadCareerRankImageURLs` + `populate-career-rank-images` lisent ces colonnes → un environnement neuf seedé via ce chemin planterait l'enrichissement carrière (Binder Error → jauges à 0, le bug qu'on vient de corriger). Constat : aucun outil Go ne crée le schéma riche de la prod ; le JSON legacy ne porte que 8 champs. Fix : CREATE TABLE aligné prod (rank_id, title_en, subtitle_en, tier, tier_type, grade, xp_required, icon_path, large_icon_path, adornment_icon_path) + INSERT à colonnes explicites (robuste à l'ordre, compatible table prod existante) + struct lisant aussi tier_type/large/adornment si présents (sinon vides — colonnes déclarées = plus de crash). Les champs gauge-critiques (xp_required, grade, title_en) restent toujours peuplés.
+
+**Tests** : nouveau `TestSeedCareerRanks_SchemaCompatibleWithEnrichment` (verrouille le contrat — rejoue les requêtes exactes d'EnrichFromMetadata + SUM xp_required + LoadCareerRankImageURLs sur la table seedée). Suite intégration `duckdb` 100% verte (exit 0, 0 FAIL). `go test ./internal/ops/` vert. `go build ./...` + `go vet` propres.
+
+**Caveat data (hors scope)** : le JSON `career_ranks_metadata.json` legacy ne fournit pas tier_type/large_icon_path/adornment_icon_path — un re-seed via SeedCareerRanks laisserait ces colonnes vides (images de rang absentes), mais l'enrichissement gauge marche (xp_required/grade présents). Compléter le JSON (fetch GameCMS) = sujet séparé.
+
+**Prochaine étape** : commit (ce lot + le fix carrière, après autorisation).
+
+---
 
 ## [2026-05-29] fix(carrière): jauges "Classements" à 0 (progression rang / Héros / XP prochain rang)
 

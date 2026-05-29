@@ -120,6 +120,8 @@ export const sessionManifest = {
   "session.detail.category_firefight": { fr: "Firefight", en: "Firefight" },
   "session.detail.category_ranked": { fr: "Classé", en: "Ranked" },
   "session.detail.chart_empty": { fr: "Aucune donnée à représenter.", en: "No data to display." },
+  "session.detail.chart_fda_per_game_title": { fr: "Frags / Morts / Assists par partie", en: "Kills / Deaths / Assists per game" },
+  "session.detail.chart_fda_per_minute_title": { fr: "Stats par minute — Frags / Morts / Assists", en: "Per-minute stats — Kills / Deaths / Assists" },
   "session.detail.chart_kda_title": { fr: "Évolution FDA", en: "K / D / A evolution" },
   "session.detail.chart_kills_donut_title": { fr: "Répartition K / D / A", en: "K / D / A breakdown" },
   "session.detail.chart_outcomes_title": { fr: "Séquence des résultats", en: "Outcome sequence" },
