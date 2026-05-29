@@ -259,7 +259,7 @@ en = "No comparative metric was computed for this session pair."
 
 # Charts session-detail (séries de stats par match)
 [session.detail.chart_kda_title]
-fr = "Évolution K / D / A"
+fr = "Évolution FDA"
 en = "K / D / A evolution"
 
 [session.detail.chart_outcomes_title]
@@ -271,16 +271,16 @@ fr = "Répartition K / D / A"
 en = "K / D / A breakdown"
 
 [session.detail.chart_perf_title]
-fr = "Score performance par match"
-en = "Performance score per match"
+fr = "Score de performance"
+en = "Performance score"
 
 [session.detail.chart_perf_series]
 fr = "Score performance"
 en = "Performance score"
 
 [session.detail.chart_perf_mean]
-fr = "Moyenne session"
-en = "Session mean"
+fr = "Moyenne"
+en = "Average"
 
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."

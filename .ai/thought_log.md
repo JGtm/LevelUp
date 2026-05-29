@@ -1,3 +1,41 @@
+## [2026-05-29] feat(web,sessions): graphe FDA (axe X par match) + Score de performance (barres par tier + moyenne)
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend **1566 tests** verts.
+
+**Point 1 — FDA** : titre « Évolution K / D / A » → **« Évolution FDA »** (FR). Axe X passé de `time` (ticks datetime auto, illisibles) à **`category` avec 1 étiquette par match « #N\nCarte »** (façon page Escouade), intervalle clairsemé >30 matchs. Wrapper `TimeseriesLineChart` enrichi de 2 props optionnelles `xAxisLabelRotate`/`xAxisLabelInterval` (non-breaking, réutilisable). Helper partagé `sessionMatchAxisLabel` dans `_shared`.
+
+**Point 2 — Perf** : titre « Score performance par match » → **« Score de performance »**. Réécrit en graphe custom (`ChartCard` + `buildSessionPerfOption` exportée) : **BARRES par match colorées par tier** (perf-tier-1..5 via `resolveToken` ; tier = `match.perf_tier` du backend, fallback `perfTierFromScore`), **markLine de moyenne dans la couleur de grading de la moyenne** (distincte des barres, dit le tier moyen), **étiquette « Moyenne {val} » voyante à droite** (position end, gras, halo CHART_BG). Même axe X « #N\nCarte ».
+
+**Couleurs** : 100 % tokens (`resolveToken` pour le canvas ECharts), 0 hex / 0 classe Tailwind couleur. **Tests** : `buildSessionPerfOption` testée (barres + markLine moyenne + axe catégorie). Helper `sessionMatchAxisLabel` couvert indirectement.
+
+## [2026-05-29] fix(carrière): jauges "Classements" à 0 (progression rang / Héros / XP prochain rang)
+
+**Statut** : Complété. Branche `chore/query-devtools-flag`. Commit non effectué (attente autorisation). Fichiers : `internal/platform/duckdb/queries_career.go`, `internal/platform/duckdb/career_repo.go`, `internal/platform/duckdb/player_repos_test.go`.
+
+**Symptôme** : page Carrière, section Classements — jauges "Progression vers le prochain rang" et "Progression vers le rang Héros" toujours à 0, "XP prochain rang" à 0. Le label du rang, lui, s'affichait correctement.
+
+**Cause racine** (confirmée sur les 4 player DBs réelles + metadata) :
+- `Q6CareerLatestRank` lisait la dernière ligne `career_progression` via un `ORDER BY recorded_at DESC LIMIT 1` naïf.
+- Or le write-path live (`persistPartial` → `PartialFromLive`, cron Spartan 8h + kickoff home/carrière) insère un snapshot **partiel** : rank/current_xp écrits, mais `xp_total` **toujours NULL** (jamais renvoyé brut par l'API live — c'est un dérivé metadata) et `xp_for_next_rank` NULL/0 (`PartialFromLive` ne les écrit que si `> 0`). La dernière ligne est donc quasi toujours ce partiel → `xp_total=0`/`xp_for_next_rank=0` → les 3 valeurs à 0. Le rang restait correct car rank+current_xp sont présents.
+- Données : sur les 4 joueurs, 271–355 lignes sur ~340–440 ont `xp_total` NULL ; la dernière ligne a toujours `xp_total=NULL`.
+- Même classe de bug que celui déjà corrigé sur Q7 (Historique XP) via un `WHERE xp_total > 0` ; mais Q6 (les jauges) n'avait jamais été traité. Le flux home (`qLoadLastCareerRank` + `EnrichFromMetadata`) était, lui, déjà correct — **divergence page vs home**.
+
+**Décision technique** : faire converger Q6 sur le pattern du flux home.
+1. `Q6CareerLatestRank` réécrite en `ARG_MAX(col, recorded_at)` par colonne (dernière valeur non-vide indépendante), + `MAX(recorded_at)` (NULL ⟺ table vide → `sql.ErrNoRows`, préserve le contrat).
+2. `CareerRepo.GetLatestRank` appelle ensuite `NewCareerLiveRepo(r.pdb).EnrichFromMetadata` (best-effort) pour **recalculer** `xp_for_next_rank` (= `career_ranks.xp_required`) et `xp_total` (= `SUM(xp_required WHERE rank_id < rank) + current_xp`) depuis la source de vérité. ARG_MAX seul ne suffisait pas : `xp_for_next_rank` vaut 0 même en ARG_MAX (DEFAULT 0 réintroduit par la migration rebuild + jamais écrit par le live).
+- Réutilisation stricte des helpers déjà testés (DRY : pas de 3e copie de la dérivation XP). Les 2 chemins (DataAdapter HI + repo direct) convergent sur `GetLatestRank` → un seul point de fix. **100% backend**, front inchangé.
+
+**Résultats** :
+- Tests : `CareerRepo` (tag integration) + service `Career` + adapter `halo_infinite` verts. Nouveau test de non-régression `TestCareerRepo_GetLatestRank_RecoversXPFromPartialRow` (rang frais + XP récupérées malgré partial NULL récent). `go vet` propre.
+- Vérif live (serveur :8000, HTTP 200) : Madina r201 → progress_pct **20.44%**, hero **27.88%**, xp_for_next **42500** ; Chocoboflor r147 → **54.73%** / **10.81%** / **15000**. (Étaient tous 0.)
+- Échec **pré-existant** constaté (vérifié identique sur HEAD propre) : `TestE2EPipeline_CareerCSRs_MergeCatalogPlusSnapshots` (want 3 playlists, got 7) — chemin CSR, sans rapport avec ce fix.
+
+**Note / dette repérée** : `ops/seed.go::SeedCareerRanks` crée un schéma `career_ranks` plus pauvre (`tier`, `icon_path`, pas de `tier_type`/`adornment_icon_path`) que le schéma réel de la prod metadata (qui a `tier_type`, `grade`, `xp_required`, `adornment_icon_path` — `EnrichFromMetadata` y réussit). Si un environnement neuf est seedé via `SeedCareerRanks`, l'enrichissement carrière (home ET page) casserait. Hors scope ici.
+
+**Prochaine étape** : commit (mes 3 fichiers uniquement, après autorisation).
+
+---
+
 ## [2026-05-29] chore(api): réconciliation OpenAPI/types.gen.go — endpoint career/csrs + saison
 
 **Statut** : Complété. Branche `chore/query-devtools-flag`. Commit non effectué (attente autorisation).
@@ -51096,3 +51134,17 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 
 **Conclusion** : code LUSR v2 (Sprints 1-3 + 2.A) complet, testé, loggé. Reste opérationnel/décisionnel côté utilisateur (cf. checklist roadmap).
 
+
+## [2026-05-29] fix(squad): compteur "N sessions sélectionnées" toujours +1 (zombies de session) — Complété
+
+**Statut** : Complété · Branche `fix/squad-session-zombie-count`
+
+**Symptôme** : Page Escouade, le rail affiche toujours au minimum "2 sessions sélectionnées" alors qu'une seule est cochée ; après "Tout désélectionner" il reste "1 session sélectionnée".
+
+**Cause racine** : `buildSessionLabel` (internal/analysis/sessions.go:310) embarque un suffixe " (N)" = match-count figé au sync. Le front persiste le label COMPLET dans localStorage puis `picked_sessions`. Quand un sync change le compte de la session, le suffixe dérive ("(13)"→"(15)") : le label stocké devient un zombie — compté par le rail (`picked_sessions.length`, PeriodSessionRail.tsx:75) mais sans case à cocher correspondante (dropdown indécochable) et filtré à 0 match côté backend (`filterSynthesisBySession` matche le label complet). Le "Tout désélectionner" du dropdown ne retire que les sessions visibles → le zombie persiste.
+
+**Décision technique** : Réconciliation anti-zombie côté front. Helper pur `reconcileSquadSessionLabels(picked, sessions)` (squadPending.ts) : matche chaque label pické sur sa clé sans suffixe, remappe vers la forme courante, droppe zombies + doublons. Branché via un `useEffect([squadSessions])` dans SquadLayout. Pas de boucle refetch : `session_labels.squad` est extrait de `allMatches` AVANT le filtre par session (teammates_service.go:143), donc indépendant de la sélection. Corrige aussi le bug latent "session pickée filtrée à 0 match après sync".
+
+**Résultats** : typecheck (tsc -b) OK, eslint OK. Tests : squadPending.test.ts 15/15 (dont 9 nouveaux couvrant dérive suffixe, drop zombie, dédup, ordre, no-op). Suite squad + SessionMultiSelect 242/242.
+
+**Prochaine étape** : revue/validation visuelle utilisateur sur la page Escouade. Pas encore commité (en attente autorisation).

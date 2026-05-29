@@ -78,3 +78,31 @@ export function outcomeIntToKey(outcome: number | null): 'win' | 'loss' | 'tie' 
   if (outcome === 4) return 'dnf'
   return null
 }
+
+/** Tronque un nom (carte/mode) pour une étiquette d'axe compacte. */
+function truncateAxisName(s: string, max = 10): string {
+  return s.length <= max ? s : s.slice(0, max - 1) + '…'
+}
+
+/**
+ * Étiquette d'axe X chronologique par match, façon page Escouade : "#N\nCarte"
+ * (numéro de match 1-based + nom de carte tronqué, rendu sur 2 lignes par ECharts).
+ * Fallback sur le mode (pair_name) si la carte manque, "—" si rien.
+ */
+export function sessionMatchAxisLabel(
+  index: number,
+  mapName?: string | null,
+  pairName?: string | null,
+): string {
+  const name = mapName?.trim() || pairName?.trim() || '—'
+  return `#${index + 1}\n${truncateAxisName(name)}`
+}
+
+/** Tier de performance (1=meilleur … 5=pire) depuis un score. Seuils alignés sur analysis.PerfTier (Go). */
+export function perfTierFromScore(score: number): 1 | 2 | 3 | 4 | 5 {
+  if (score >= 80) return 1
+  if (score >= 65) return 2
+  if (score >= 50) return 3
+  if (score >= 35) return 4
+  return 5
+}
