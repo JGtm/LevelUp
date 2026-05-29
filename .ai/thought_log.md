@@ -49839,3 +49839,19 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 État DB : `real_start_time` porte maintenant le vrai début gameplay (UTC) pour 1712 matchs. Phase 3 (activation runtime) peut lire `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time_utc)` comme T0Ms.
 
 **Reste** : wiring ComputeT0 au sync post-sync (écriture via persist, respecter pattern ART) + Phase 3 (remplacer `phase1T0Ms()`) + recalcul LUSR + Phase 4.
+
+---
+
+## [2026-05-29] Wiring ComputeT0 au sync — EXÉCUTÉ
+
+**Statut** : Complété.
+
+**Décision** : point d'insertion ART-safe = `transforms.go::ExtractRegistry` (qui a déjà accès à `matchJSON["Players"]`). Remplacé l'ancien calcul `real_start_time = start + (duration − playable_duration)` (cassé pour Ranked Arena où playable==duration → T0=0 à tort) par `RealStartTime = startTime + ComputeT0(...)`. Valeur injectée dans le `MatchRegistryRow` AVANT le Submit du batch → pas d'UPDATE post-coup, pattern ART respecté.
+
+- Helper `computeMatchT0(matchJSON, startUTC)` : extrait les ParticipationInfo (first_joined, present_at_beginning) + xuid depuis le JSON (réutilise extractXUID/parseISO/jsonBoolPtr), exclut les bots (xuid non-numérique via `isNumericXUID`), délègue à `timeline.ComputeT0`.
+- Tests : `TestComputeMatchT0` (bot + latecomer exclus, T0≈28s) + `TestComputeMatchT0_NoParticipation` (no_data). Assertion `TestExtractRegistry_Valid` adaptée (RealStartTime nil sans ParticipationInfo — nouveau comportement).
+- Suite `internal/sync` + `internal/analysis/timeline` vertes. Pas de cycle d'import (sync → timeline → domain/canonical).
+
+**Effet** : les nouveaux matchs syncés auront `real_start_time` = début gameplay réel (T0 from first_joined). t0_quality reste NULL au sync (diagnostic seul ; RealStartTime est la valeur load-bearing). Les matchs sans ParticipationInfo exploitable → RealStartTime nil → fallback runtime T0=0.
+
+**Reste** : Phase 3 (activation runtime : remplacer `phase1T0Ms()` par lecture `epoch(real_start_time AT TIME ZONE 'UTC') − epoch(start_time_utc)`) + recalcul LUSR (propager last_leave corrigé) + Phase 4 (time_played + AvgLife).

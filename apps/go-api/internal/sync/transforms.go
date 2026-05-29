@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"time"
 
+	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
 )
@@ -113,13 +114,15 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 		row.EndTime = &t
 	}
 
-	// real_start_time
-	if row.DurationSeconds != nil && row.PlayableDurationSeconds != nil {
-		countdown := *row.DurationSeconds - *row.PlayableDurationSeconds
-		if countdown >= 0 {
-			rst := startTime.Add(time.Duration(countdown) * time.Second)
-			row.RealStartTime = &rst
-		}
+	// real_start_time = début réel du gameplay = start_time + T0 (countdown
+	// pré-match), calculé depuis les first_joined_time des joueurs présents au
+	// début (analysis/timeline.ComputeT0). Remplace l'ancien calcul via
+	// playable_duration (non fiable Ranked Arena où playable==duration → T0=0
+	// à tort). T0 non exploitable → RealStartTime nil (fallback runtime T0=0).
+	// ART-safe : valeur injectée dans le row AVANT persistence, pas d'UPDATE.
+	if t0ms, q := computeMatchT0(matchJSON, startTime); q.Computed() {
+		rst := startTime.Add(time.Duration(t0ms) * time.Millisecond)
+		row.RealStartTime = &rst
 	}
 
 	// Team scores (depuis Teams[].Stats.CoreStats.Score)
@@ -134,6 +137,53 @@ func ExtractRegistry(matchJSON map[string]any, syncBy string) (*MatchRegistryRow
 	row.Team1PSScore = ps1
 
 	return row, nil
+}
+
+// computeMatchT0 calcule le T0 (countdown pré-match, ms) d'un match depuis les
+// first_joined_time des joueurs présents au début, via timeline.ComputeT0.
+// Réutilise l'extraction xuid/participation du même JSON que ExtractParticipants.
+func computeMatchT0(matchJSON map[string]any, startUTC time.Time) (int64, timeline.T0Quality) {
+	players, _ := matchJSON["Players"].([]any)
+	inputs := make([]timeline.ParticipationT0Input, 0, len(players))
+	for _, p := range players {
+		player, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		pinfo, ok := player["ParticipationInfo"].(map[string]any)
+		if !ok {
+			continue
+		}
+		fjt, err := parseISO(asString(pinfo["FirstJoinedTime"]))
+		if err != nil {
+			continue
+		}
+		present := false
+		if b := jsonBoolPtr(pinfo, "PresentAtBeginning"); b != nil {
+			present = *b
+		}
+		xuid := extractXUID(asString(player[jsonKeyPlayerID]))
+		inputs = append(inputs, timeline.ParticipationT0Input{
+			FirstJoinedTime:    fjt,
+			PresentAtBeginning: present,
+			IsBot:              !isNumericXUID(xuid),
+		})
+	}
+	return timeline.ComputeT0(inputs, startUTC)
+}
+
+// isNumericXUID retourne true si l'xuid est un identifiant joueur numérique
+// (bots Halo : xuid non-numérique ou vide).
+func isNumericXUID(xuid string) bool {
+	if xuid == "" {
+		return false
+	}
+	for _, c := range xuid {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 // extractTeamPSScores somme PersonalScore (CoreStats) par team_id sur tous
