@@ -34,6 +34,27 @@ func TestStore_Create(t *testing.T) {
 	}
 }
 
+// TestStore_Create_ReturnsCopy verrouille le fix data-race : Create doit
+// renvoyer une COPIE, pas le pointeur vivant. Une mutation ultérieure via le
+// store (SetStatus) ne doit donc PAS être visible sur le job retourné — sinon
+// un caller qui lit job.Status hors lock court une data race avec la goroutine
+// de fond qui le mute (cf. -race openspartan_import).
+func TestStore_Create_ReturnsCopy(t *testing.T) {
+	store := newTestStore(t)
+	job := store.Create(domain.JobTypeInitialSync, "player-1")
+
+	step := "running"
+	store.SetStatus(job.JobID, domain.JobStatusRunning, &step)
+
+	if job.Status != domain.JobStatusQueued {
+		t.Errorf("le job retourné par Create doit rester une copie figée à 'queued', got %s", job.Status)
+	}
+	// L'état réel (vivant) est bien muté, lisible via Get.
+	if updated := store.Get(job.JobID); updated == nil || updated.Status != domain.JobStatusRunning {
+		t.Fatalf("l'état vivant via Get doit refléter 'running', got %+v", updated)
+	}
+}
+
 func TestStore_Get_Found(t *testing.T) {
 	store := newTestStore(t)
 	job := store.Create(domain.JobTypeInitialSync, "player-1")
