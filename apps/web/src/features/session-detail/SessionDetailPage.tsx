@@ -32,7 +32,7 @@ import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionFdaBars } from './SessionFdaBars'
 import { SessionFdaRadar } from './SessionFdaRadar'
 import { SessionOcdrScatter } from './SessionOcdrScatter'
-import { SessionEngagementOptions } from './SessionEngagementOptions'
+import { SessionEngagementChart } from './SessionEngagementChart'
 import { SessionCompareMetrics } from './SessionCompareMetrics'
 import { SessionCompareKillsDonut } from '../session-compare/SessionCompareKillsDonut'
 import { SessionCompareOutcomeTape } from '../session-compare/SessionCompareOutcomeTape'
@@ -231,7 +231,11 @@ export function SessionDetailPage() {
 
             <SessionOcdrScatter title={t('session.compare.ocdr_title')} matches={data.matches} />
 
-            <SessionEngagementOptions entry={data.current_session} />
+            <SessionEngagementChart
+              title={t('session.detail.chart_engagement_title')}
+              matches={data.matches}
+              entry={data.current_session}
+            />
 
             <Card>
               <CardHeader>

@@ -1,3 +1,14 @@
+## [2026-05-29] feat(web,sessions): engagement — option retenue (barres/match + moyenne + axe explicite)
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite **1586 tests** verts.
+
+Suite au choix utilisateur sur les 3 options d'engagement : **garder l'option "barres" mais par MATCH** (axe X = "#N + carte" comme « Score de performance ») **+ markLine de moyenne**.
+- `SessionEngagementOptions` (les 3 variantes) **supprimé** → remplacé par `SessionEngagementChart` : barres `engagement_score` par match, colorées par signe (`divergent-pos`/`neg`), axe X `sessionMatchAxisLabel` (#N + carte, zippé chronologiquement avec `match_series`), markLine de moyenne.
+- **Question utilisateur « 1.5 / 3 sur l'axe Y = quoi ? »** → `engagement_score` est un **résidu de rythme** = (rythme d'événements du joueur − rythme **attendu**), en **événements/minute** (cf. `analysis/temporal/engagement_curve.go` : pace_joueur − coef×pace_denominateur). + = sur-engagement vs attendu. Axe Y désormais nommé « évén./min vs attendu » pour la lisibilité.
+- i18n : +`chart_engagement_title` +`engagement_axis` ; retrait des 3 `engagement_opt_*`. Test `buildSessionEngagementOption`.
+
+**Reste — lot BACKEND (greenlit "tout, localisation incluse")** : P1 (agréger max spree + total tirs tête + total frags parfaits → radar), P2 delta rang par match, P2 localisation FR (modes/cartes/playlists — data-flow du service session).
+
 ## [2026-05-29] feat(web,sessions): radar FDA + nuage OC/DR + 3 options engagement (lot front)
 
 **Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend **1588 tests** verts. Lot FRONT-only ; le lot BACKEND (P1 radar stats + P2 delta/localisation) reste à faire.
