@@ -213,7 +213,10 @@ describe("SessionDetailPage", () => {
       expect(
         screen.getByRole("button", { name: /Fermer le panneau de comparaison/i }),
       ).toBeInTheDocument();
-      expect(screen.getAllByText(/Session comparée/i).length).toBeGreaterThan(0);
+      // Titre du drawer = "Comparaison · {label}" + pills FR de la session comparée
+      // (catégorie "Ranked" → "Classé") + KPI plat "Score perf.".
+      expect(screen.getByText(/Comparaison ·/i)).toBeInTheDocument();
+      expect(screen.getAllByText("Classé").length).toBeGreaterThan(0);
       expect(screen.getAllByText("Score perf.").length).toBeGreaterThan(0);
     });
   });

@@ -117,6 +117,18 @@
 
 ---
 
+## [2026-05-29] feat(web,sessions): L3 sticky + pills paramètres colorées + résumé en KPI plat
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend complète **1564 tests** verts.
+
+**Fait (retours utilisateur sur le header L3)** :
+- **L3 sticky** : l'en-tête de session se colle sous la NavL2 (`sticky top-0 z-20 -mx-6 -mt-6 bg-background border-b` ; le `<main>` d'AppShell est le conteneur de scroll) → ne disparaît plus au scroll. Pattern repris de SynthesisPage/SquadLayout.
+- **Pills paramètres** (`SessionParamPills`, partagé L3 + header drawer compare) : `[N matchs] [catégorie FR] [durée]`, pills plates colorées par token (catégorie par type via `chart-series-*`, matchs/durée en `info`). Catégorie localisée FR via nouvelles clés i18n (Ranked→Classé, Arena→Arène, Firefight, BTB→Grande équipe). Objectif : comprendre la rationale de suggestion (catégorie + nb matchs + proximité temporelle) en comparant les pills des 2 sessions.
+- **Résumé « Session active » → bande KPI plate** (look `KpiGrid` page Solo) : `SessionSummaryCard` réécrit — drop Card/titre/tone + label/catégorie/nb-matchs (déplacés en pills → **dédup** demandée). Garde W/L · Win% · KDA · KDR · K/match · Perf, valeurs colorées par token (KDA/KDR via kdScale, Perf via perf-tier). Corrige au passage les `rounded-2xl` → flat (esthétique préférée, cf. [[feedback_modern_dataviz]]).
+- `Badge` retiré de la page (remplacé par les pills).
+
+**Tests** : `SessionParamPills.test` (pills FR + durée + null) ; test compare adapté (titre drawer « Comparaison · » + pills FR, le titre de carte « Session comparée » ayant disparu). Couleurs : 0 hex / 0 classe Tailwind couleur (tokens uniquement, skill color-tokens).
+
 ## [2026-05-29] chore(web,sessions): cleanup i18n — retrait de 10 clés session mortes
 
 **Statut** : Complété. Regen + typecheck (0) + 18 tests session-detail verts.

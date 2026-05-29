@@ -14,7 +14,6 @@
 import { useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
@@ -24,6 +23,7 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionSummaryCard } from './SessionSummaryCard'
+import { SessionParamPills } from './SessionParamPills'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionKDATimeline } from './SessionKDATimeline'
 import { SessionOutcomeTape } from './SessionOutcomeTape'
@@ -124,8 +124,9 @@ export function SessionDetailPage() {
       <div className={`min-w-0 space-y-6 p-6 ${drawerOpen ? 'xl:border-r' : ''}`}>
         {hasSessions ? (
           <>
-            {/* En-tete session : stepper de session active + entree comparaison */}
-            <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+            {/* En-tete session "L3" : sticky sous la NavL2 (le <main> scrolle), bleed
+                horizontal via -mx-6 pour s'aligner sur les bords de la colonne. */}
+            <div className="sticky top-0 z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-background px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -140,11 +141,9 @@ export function SessionDetailPage() {
                   <p className="text-3xs font-semibold uppercase tracking-label-md text-muted-foreground">
                     {t('session.detail.header_session')}
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h1 className="truncate text-lg font-semibold text-foreground">{selectedSessionLabel}</h1>
-                    {data.current_session?.dominant_category && (
-                      <Badge variant="secondary">{data.current_session.dominant_category}</Badge>
-                    )}
+                    <SessionParamPills entry={data.current_session} />
                   </div>
                 </div>
                 <button
@@ -180,11 +179,7 @@ export function SessionDetailPage() {
               )}
             </div>
 
-            <SessionSummaryCard
-              title={t('session.detail.session_active')}
-              entry={data.current_session}
-              tone="primary"
-            />
+            <SessionSummaryCard entry={data.current_session} />
 
             <Card>
               <CardHeader>
@@ -311,6 +306,7 @@ export function SessionDetailPage() {
                     </svg>
                   </button>
                 </div>
+                <SessionParamPills entry={data.compare_session} />
                 <select
                   value={selectedCompareSessionLabel}
                   onChange={(event) => setCompareSessionLabel(event.target.value)}
@@ -331,11 +327,7 @@ export function SessionDetailPage() {
               {/* Contenu session comparée */}
               {data.compare_session ? (
                 <>
-                  <SessionSummaryCard
-                    title={t('session.detail.session_compared')}
-                    entry={data.compare_session}
-                    tone="compare"
-                  />
+                  <SessionSummaryCard entry={data.compare_session} />
 
                   <SessionCompareMetrics metrics={data.compare_metrics} />
 
