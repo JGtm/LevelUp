@@ -89,9 +89,15 @@ func (r *PlayerMatchesRepo) Load(
 	if err != nil {
 		return nil, fmt.Errorf("PlayerMatchesRepo.Load: %w", err)
 	}
+	// Étape 3b : season_id + measurement_matches_remaining depuis match_csrs
+	// (shared DB) — match_skill_rank ne porte pas ces colonnes.
+	csrMeta, err := r.loadMatchCSRMetaForMatches(ctx, matchIDs)
+	if err != nil {
+		return nil, fmt.Errorf("PlayerMatchesRepo.Load: %w", err)
+	}
 
 	// Étape 4 : merge + filtres player + tri PME + LIMIT.
-	out := r.mergePlayerMatchRows(sharedResults, enrichments, skillRanks, filters)
+	out := r.mergePlayerMatchRows(sharedResults, enrichments, skillRanks, csrMeta, filters)
 	return out, nil
 }
 
@@ -368,8 +374,7 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 			s   playerMatchSkillRankRow
 		)
 		if err := rows.Scan(&mid, &s.ratingType, &s.ratingValue, &s.tier,
-			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup,
-			&s.seasonID, &s.measurementRemaining); err != nil {
+			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup); err != nil {
 			return nil, fmt.Errorf("skill_rank scan: %w", err)
 		}
 		out[mid] = s
@@ -377,13 +382,73 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 	return out, rows.Err()
 }
 
-// mergePlayerMatchRows assemble les rows finaux depuis les 3 sources :
-// shared + enrichments + skill_ranks. Applique le filtre HadBotTeammate (player)
+// matchCSRMeta porte season_id + measurement_matches_remaining issus de
+// match_csrs (shared DB), clé (match_id, xuid). Ces champs sont CSR-spécifiques
+// (NULL pour les matchs social/LUSR sans row match_csrs) et alimentent le
+// canonical.SkillSnapshot (graphes progression CSR/LUSR).
+type matchCSRMeta struct {
+	seasonID             sql.NullString
+	measurementRemaining sql.NullInt64
+}
+
+// playerMatchesCSRMetaTpl : SQL pour l'étape 3b du split. Lit la dernière row
+// match_csrs par match pour le joueur courant (append-only → QUALIFY latest).
+// Source unique de vérité de season_id / measurement_matches_remaining ; ces
+// colonnes n'existent pas sur match_skill_rank (cf. ADR refactor ART Phase 2).
+const playerMatchesCSRMetaTpl = `
+SELECT
+    match_id,
+    season_id,
+    measurement_matches_remaining
+FROM match_csrs
+WHERE match_id IN (%s) AND xuid = ?
+QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id ORDER BY written_at DESC, id DESC) = 1`
+
+// loadMatchCSRMetaForMatches récupère season_id + measurement_matches_remaining
+// depuis match_csrs (shared DB) pour la liste de match_ids du joueur courant
+// (étape 3b du split). Retourne une map indexée par match_id ; les matchs sans
+// CSR (social/LUSR) sont simplement absents de la map.
+func (r *PlayerMatchesRepo) loadMatchCSRMetaForMatches(ctx context.Context, matchIDs []string) (map[string]matchCSRMeta, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+	query := fmt.Sprintf(playerMatchesCSRMetaTpl, Placeholders(len(matchIDs)))
+	args := append(ToAnySlice(matchIDs), r.pdb.XUID)
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("match_csrs meta query: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string]matchCSRMeta, len(matchIDs))
+	for rows.Next() {
+		var (
+			mid string
+			m   matchCSRMeta
+		)
+		if err := rows.Scan(&mid, &m.seasonID, &m.measurementRemaining); err != nil {
+			return nil, fmt.Errorf("match_csrs meta scan: %w", err)
+		}
+		out[mid] = m
+	}
+	return out, rows.Err()
+}
+
+// mergePlayerMatchRows assemble les rows finaux depuis les 4 sources :
+// shared + enrichments + skill_ranks + csr_meta. Applique le filtre HadBotTeammate (player)
 // post-merge, le re-tri éventuel par performance_score, et le LIMIT.
 func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 	shared []playerMatchScanResult,
 	enrichments map[string]MatchEnrichment,
 	skillRanks map[string]playerMatchSkillRankRow,
+	csrMeta map[string]matchCSRMeta,
 	filters port.PlayerMatchFilters,
 ) []canonical.PlayerMatchRow {
 	// Hydrate les cols player dans chaque playerMatchScanResult.
@@ -405,8 +470,12 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].skillSubTier = s.subTier
 			shared[i].skillDelta = s.delta
 			shared[i].skillPlaylistGroup = s.playlistGroup
-			shared[i].skillSeasonID = s.seasonID
-			shared[i].skillMeasurementRemaining = s.measurementRemaining
+		}
+		// season_id + measurement_matches_remaining vivent dans match_csrs
+		// (shared DB), pas dans match_skill_rank — source unique de vérité.
+		if m, ok := csrMeta[shared[i].matchID]; ok {
+			shared[i].skillSeasonID = m.seasonID
+			shared[i].skillMeasurementRemaining = m.measurementRemaining
 		}
 	}
 
@@ -477,15 +546,13 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 // étape 3. (playerMatchEnrichmentRow + playerMatchesEnrichmentTpl retirés au
 // commit 9d.4 — remplacés par MatchEnrichment + LoadPlayerMatchEnrichments).
 type playerMatchSkillRankRow struct {
-	ratingType           sql.NullString
-	ratingValue          sql.NullFloat64
-	tier                 sql.NullString
-	tierFR               sql.NullString
-	subTier              sql.NullInt64
-	delta                sql.NullFloat64
-	playlistGroup        sql.NullString
-	seasonID             sql.NullString
-	measurementRemaining sql.NullInt64
+	ratingType    sql.NullString
+	ratingValue   sql.NullFloat64
+	tier          sql.NullString
+	tierFR        sql.NullString
+	subTier       sql.NullInt64
+	delta         sql.NullFloat64
+	playlistGroup sql.NullString
 }
 
 // playerMatchesSkillRankTpl : SQL pour l'étape 3 du split (match_skill_rank
@@ -499,9 +566,7 @@ SELECT
     tier_fr,
     sub_tier,
     rating_delta,
-    playlist_group,
-    season_id,
-    measurement_matches_remaining
+    playlist_group
 FROM match_skill_rank
 WHERE match_id IN (%s)`
 

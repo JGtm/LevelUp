@@ -58,8 +58,8 @@ func (r *CSRCoverageRepo) GetCoverage(ctx context.Context, playerSlug, xuid stri
 	if row := r.pdb.ReadDB().QueryRow(ctx, `
 		SELECT
 			COUNT(*),
-			SUM(CASE WHEN tier IS NOT NULL AND tier <> '' AND tier <> 'Placement' AND COALESCE(measurement_matches_remaining,0)=0 THEN 1 ELSE 0 END),
-			SUM(CASE WHEN tier = 'Placement' OR COALESCE(measurement_matches_remaining,0) > 0 THEN 1 ELSE 0 END)
+			SUM(CASE WHEN tier IS NOT NULL AND tier <> '' AND tier <> 'Placement' THEN 1 ELSE 0 END),
+			SUM(CASE WHEN tier = 'Placement' THEN 1 ELSE 0 END)
 		FROM match_skill_rank
 		WHERE rating_type = 'CSR'
 	`); row != nil {
