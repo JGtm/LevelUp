@@ -1,3 +1,15 @@
+## [2026-05-29] fix(tooling): whitelist generated.ts dans lint-no-hardcoded-fields (débloque le push)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué).
+
+**Contexte** : push bloqué par le hook pre-push. Diagnostic : sur les 5 commandes pre-push (lint-no-hardcoded-fields, -colors, -cross-feature, knip-ratchet, govulncheck), seul **lint-no-hardcoded-fields échouait (exit 1)** — 3 violations dans `apps/web/src/lib/api/generated.ts` (`rating_type: "CSR" | "LUSR" | "none"`, etc.).
+
+**Cause** : la régénération `generated.ts` (Axe 4) a fait entrer les littéraux d'enum du contrat OpenAPI dans un fichier scanné par le ratchet. Son jumeau `types.ts` était déjà whitelisté (ligne 82), pas `generated.ts`.
+
+**Fix** : ajout de `/\/lib\/api\/generated\.ts$/` à `WHITELIST_PATTERNS` (même justification que `types.ts` : fichier de types généré, pas du code UI à passer par `useFieldLabel`). → linter EXIT 0.
+
+**Note env** : `govulncheck` plante dans le sandbox (`GOMODCACHE/GOPATH not set`) — artefact de mon environnement, pas un blocage côté utilisateur. Les autres ratchets (colors/cross-feature/knip) étaient déjà verts.
+
 ## [2026-05-29] fix(api): Axe 4 — réparer le pipeline de génération de types OpenAPI (refs cassées)
 
 **Statut** : Fondation livrée (branche `refactor/arch-port-abstractions` ; commit délégué). Migration des consommateurs = travail incrémental documenté ci-dessous.

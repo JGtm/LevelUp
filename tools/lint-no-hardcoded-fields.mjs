@@ -80,6 +80,7 @@ const WHITELIST_PATTERNS = [
   /\/lib\/i18n\/fieldMappings\.test\.ts$/, // le test du hook
   /\/test\/handlers\.ts$/,                  // fixtures MSW (mocks API, pas un libellé UI)
   /\/lib\/api\/types\.ts$/,                 // types TS purs (commentaires explicatifs)
+  /\/lib\/api\/generated\.ts$/,             // types generes par openapi-typescript (enums du contrat OpenAPI)
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
   /\/lib\/prestige\.ts$/,                   // dict TIER_LABELS_FR — fallback canonique
   /\/features\/palmares\/rarity\.ts$/,      // dict rarity Halo (asset Halo natif)
