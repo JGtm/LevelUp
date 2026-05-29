@@ -53,10 +53,10 @@ const HISTORY_DATE_OPTS: Intl.DateTimeFormatOptions = {
 }
 
 /** Bannière d'équipe affichée en 1ère ligne du thead (variant ally/enemy).
- *  Reproduit le pattern visuel de MatchScoreboard.tsx (gradient horizontal
- *  color-mix sur token team-ally / team-enemy, configurable par les réglages
- *  d'accessibilité du joueur). Utilisé en mode Joueur pour distinguer les
- *  tableaux "matchs où le cible était allié" vs "ennemi". */
+ *  Couleur pleine (flat) color-mix sur token team-ally / team-enemy,
+ *  configurable par les réglages d'accessibilité du joueur. Utilisé en mode
+ *  Joueur pour distinguer les tableaux "matchs où la cible était alliée" vs
+ *  "ennemie". */
 export interface TeamBanner {
   variant: 'ally' | 'enemy'
   label: string
@@ -534,15 +534,14 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const pageCount = table.getPageCount()
   const showPagination = (alwaysShowPagination && rows.length > 0) || rows.length > PAGE_SIZE
 
-  // Bannière d'équipe (variant ally/enemy) : pattern aligné sur
-  // features/match-view/MatchScoreboard.tsx — gradient horizontal color-mix
-  // sur token team-ally/team-enemy, configurable via réglages accessibilité.
+  // Bannière d'équipe (variant ally/enemy) : couleur pleine (flat) sur token
+  // team-ally/team-enemy, configurable via réglages accessibilité.
   const bannerColCount = table.getAllLeafColumns().length
   const bannerStyle = teamBanner
     ? (() => {
         const teamColor = tokenCssVar(teamBanner.variant === 'ally' ? 'team-ally' : 'team-enemy')
         return {
-          background: `linear-gradient(90deg, color-mix(in oklab, ${teamColor} 35%, transparent), transparent 88%)`,
+          background: `color-mix(in oklab, ${teamColor} 35%, transparent)`,
           borderBottom: `2px solid color-mix(in oklab, ${teamColor} 55%, transparent)`,
           color: `color-mix(in oklab, ${teamColor} 80%, var(--foreground))`,
         }

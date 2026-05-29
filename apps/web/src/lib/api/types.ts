@@ -1265,6 +1265,14 @@ export interface ExplorerTargetSampleStats {
   headshot_rate?: number | null
   offensive_conversion?: number | null
   defensive_resistance?: number | null
+  // Cadence par minute (frags/morts/assists ÷ minutes jouées). null si durée nulle.
+  kills_per_min?: number | null
+  deaths_per_min?: number | null
+  assists_per_min?: number | null
+  // Score Halo moyen par match (AVG personal_score). null si sample vide.
+  avg_personal_score?: number | null
+  // Frags parfaits (médaille Perfect) cumulés sur le sample.
+  perfect_kills: number
 }
 
 export interface ExplorerMatchesQueryResponse {
@@ -3058,6 +3066,8 @@ export interface SessionCompareEntry {
   /** MMR moyen de la session. */
   avg_team_mmr?: number | null
   avg_enemy_mmr?: number | null
+  /** Durée de vie moyenne sur la session (secondes). */
+  avg_life_seconds?: number | null
   /** Profil de participation 6 axes (0..100). */
   participation?: SessionParticipationAxis[]
   /** Historique des matchs de la session (chronologique). */
