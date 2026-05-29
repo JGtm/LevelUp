@@ -1,3 +1,26 @@
+## [2026-05-29] refactor(arch): Axe 3 — interface UserTokenStore (découpler la couche API du store concret)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 3e axe du plan `.ai/PLAN_SYNC_ENGINE_PORT_ABSTRACTION.md`. `*auth.MultiUserTokenStore` (concret) était injecté dans `ServiceRegistry` et `XboxOAuthHandler` → impossible de tester ces consommateurs sans répertoire de tokens sur disque (le test e2e existant crée un vrai store sur tempdir).
+
+**Piège de nommage attrapé (vérif code)** : le plan disait « créer `auth.TokenStore` ». Or `TokenStore` est **déjà un type concret** dans le package auth (`token_store.go`, le store mono-user legacy `data/auth/tokens.json`), distinct de `MultiUserTokenStore`. Nommer l'interface `TokenStore` = redéclaration → erreur de compile. Interface renommée **`UserTokenStore`** (nom vérifié libre) dans un nouveau fichier `user_token_store.go`.
+
+**Vérifs préalables** : méthodes réellement appelées via les champs injectés = `Load` (registry) + `UpdateOAuthRefreshToken` (registry + handler). `LoadByGamertag`/`Upsert` ne sont PAS appelées via les champs injectés (seulement via le type concret au composition root / CLI). Interface réduite à ces 2 (interface segregation).
+
+**Décisions techniques** :
+- **`auth.UserTokenStore`** (2 méthodes : `Load`, `UpdateOAuthRefreshToken`) + assertion compile-time `var _ UserTokenStore = (*MultiUserTokenStore)(nil)`.
+- Champs + withers de `ServiceRegistry` et `XboxOAuthHandler` retypés `*MultiUserTokenStore` → `UserTokenStore`. Le composition root (`server.go`) passe toujours le concret (satisfait l'interface, `NewMultiUserTokenStore` ne renvoie jamais nil → pas de piège typed-nil).
+- **Test mock** `registry_auth_mock_test.go` : `tryRefreshFromAuthStore` testé avec un `mockUserTokenStore` + `fakeTokenProvider` (TokenProvider était déjà une interface) → prouve que la rotation du RT est persistée, **sans DuckDB ni disque**. 2 cas : rotation persistée / RT inchangé = pas d'écriture.
+
+**Résidu assumé (documenté, hors scope)** : `handlers/admin_auto_sync.go` instancie un `MultiUserTokenStore` en LOCAL dans une closure de probe diagnostic (pas un champ injecté). Le convertir imposerait de threader un champ via ce handler — disproportionné pour un endpoint de diagnostic. Laissé concret ; à reprendre si besoin. Les helpers CLI intra-package `auth/cli_refresh.go` gardent aussi le concret (légitime, ADR 0023).
+
+**Résultats observés** : `go build` ✅, `go vet` ✅, nouveaux tests mock ✅, suites existantes vertes (`internal/platform/auth/` + `internal/api/handlers/` : XboxOAuth/e2e/cli_refresh inchangés). Diff registry.go / auth_xbox_oauth.go = 2 lignes chacun (champ + wither), zéro drift parasite.
+
+**Non vérifié** : pas de flow SSO live. Comportement garanti par les suites e2e existantes + le concret inchangé.
+
+**Conclusion / prochaine étape** : Axe 3 livré (couche API auth mockable). Suite : Axe 5 (erreurs HTTP), Axe 6 (flags morts + deadline Prestige), Axe 4 (types OpenAPI front).
+
 ## [2026-05-29] refactor(arch): Axe 2 — découpler la logique LUSR v2 de `*duckdb.SkillV2Repo` (interfaces port)
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
