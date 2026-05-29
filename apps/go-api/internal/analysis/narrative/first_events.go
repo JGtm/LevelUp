@@ -87,7 +87,17 @@ type firstEventsAcc struct {
 
 // updateFirstEvents met a jour les firstKill / firstDeath en fonction de
 // l'event courant.
+//
+// Les events dont le TimeMS est negatif sont ignores : apres correction T0
+// (timeline.CorrectEvents), un TimeMS < 0 designe un event survenu pendant le
+// countdown pre-gameplay. Le "premier frag / premiere mort" est celui du
+// GAMEPLAY, pas du countdown. Sans ce garde, le minimum par match capturerait
+// ces events pre-T0 et ferait s'effondrer la distribution vers ~0. Memes regle
+// et raison que le builder Escouade (teammates_squad_charts_impact_events.go).
 func updateFirstEvents(a *firstEventsAcc, ev canonical.HighlightEvent, playerXUID string) {
+	if ev.TimeMS < 0 {
+		return
+	}
 	switch ev.EventType {
 	case string(canonical.EventKill), string(canonical.EventFirstKill):
 		if ev.KillerXUID != nil && *ev.KillerXUID == playerXUID {

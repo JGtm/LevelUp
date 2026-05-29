@@ -169,3 +169,47 @@ func TestComputeFirstEventsPerMatch_IgnoresEmptyMatchID(t *testing.T) {
 		t.Errorf("empty matchID should be skipped, got %+v", got)
 	}
 }
+
+// TestComputeFirstEventsPerMatch_SkipsPreT0Events : apres correction T0, un
+// event au TimeMS negatif (countdown pre-gameplay) ne doit jamais etre retenu
+// comme premier frag/mort. Le minimum doit porter sur les events de gameplay.
+func TestComputeFirstEventsPerMatch_SkipsPreT0Events(t *testing.T) {
+	t.Parallel()
+	p1 := "p1"
+	other := "other"
+	events := []canonical.HighlightEvent{
+		ev("m1", "kill", &p1, &other, -3000),  // pre-T0 (countdown) — ignore
+		ev("m1", "kill", &p1, &other, 8000),   // premier frag gameplay
+		ev("m1", "death", &other, &p1, -1500), // pre-T0 — ignore
+		ev("m1", "death", &other, &p1, 12000), // premiere mort gameplay
+	}
+	got := ComputeFirstEventsPerMatch(events, p1, nil)
+	if len(got) != 1 {
+		t.Fatalf("want 1 row, got %d", len(got))
+	}
+	if got[0].FirstKillMS == nil || *got[0].FirstKillMS != 8000 {
+		t.Errorf("firstKill should skip pre-T0 event, got %v", got[0].FirstKillMS)
+	}
+	if got[0].FirstDeathMS == nil || *got[0].FirstDeathMS != 12000 {
+		t.Errorf("firstDeath should skip pre-T0 event, got %v", got[0].FirstDeathMS)
+	}
+}
+
+// TestComputeFirstEventsPerMatch_AllPreT0 : si tous les events du joueur sont
+// pre-T0 (negatifs), aucun premier frag/mort n'est retenu (nil/nil).
+func TestComputeFirstEventsPerMatch_AllPreT0(t *testing.T) {
+	t.Parallel()
+	p1 := "p1"
+	other := "other"
+	events := []canonical.HighlightEvent{
+		ev("m1", "kill", &p1, &other, -2000),
+		ev("m1", "death", &other, &p1, -500),
+	}
+	got := ComputeFirstEventsPerMatch(events, p1, []string{"m1"})
+	if len(got) != 1 {
+		t.Fatalf("want 1 row (placeholder), got %d", len(got))
+	}
+	if got[0].FirstKillMS != nil || got[0].FirstDeathMS != nil {
+		t.Errorf("all pre-T0 events should yield nil/nil, got %+v", got[0])
+	}
+}
