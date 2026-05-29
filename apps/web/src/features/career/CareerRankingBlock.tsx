@@ -5,6 +5,7 @@
  * Colonne gauche : liste par playlist ranked (badge + nom + tier + valeur).
  * Colonne droite : dernier checkpoint LUSR par playlist_group.
  */
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 
 const SUB_TIER_ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI']
@@ -73,9 +74,13 @@ function deriveLatestLUSRByGroup(
 export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = (key: keyof typeof careerManifest) => careerManifest[key][locale]
-  const { data: csrData } = useCareerCSRs(playerSlug)
+  // Saison CSR sélectionnée (undefined → saison courante côté backend).
+  const [season, setSeason] = useState<string | undefined>(undefined)
+  const { data: csrData } = useCareerCSRs(playerSlug, season)
 
   const playlists = csrData?.playlists ?? []
+  const availableSeasons = csrData?.available_seasons ?? []
+  const selectedSeason = season ?? csrData?.season_id ?? ''
   const lusrByGroup = lusrData ? deriveLatestLUSRByGroup(lusrData.checkpoints) : new Map<string, LusrCheckpoint>()
 
   return (
@@ -86,11 +91,27 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
       </div>
       <CardContent className="flex flex-1 items-center p-3">
         <div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2">
-          {/* Colonne gauche — CSR */}
+          {/* Colonne gauche — CSR (par saison) */}
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('career.ranking.csr_section')}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('career.ranking.csr_section')}
+              </p>
+              {availableSeasons.length > 1 && (
+                <select
+                  aria-label={t('career.ranking.season_label')}
+                  value={selectedSeason}
+                  onChange={(e) => setSeason(e.target.value)}
+                  className="rounded border border-border bg-transparent px-1.5 py-0.5 text-xs text-muted-foreground"
+                >
+                  {availableSeasons.map((s) => (
+                    <option key={s.season_id} value={s.season_id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             {playlists.length === 0 ? (
               <EmptyStateNotice
                 title={t('career.ranking.csr_no_data_title')}
@@ -122,12 +143,17 @@ export function CareerRankingBlock({ playerSlug, lusrData }: Props) {
             )}
           </div>
 
-          {/* Colonne droite — LUSR */}
+          {/* Colonne droite — LUSR (cumulatif, hors saison) */}
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {t('career.ranking.lusr_section')}{' '}
-              <InfoTooltip content={t('career.ranking.lusr_tooltip')} />
-            </p>
+            <div className="mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('career.ranking.lusr_section')}{' '}
+                <InfoTooltip content={t('career.ranking.lusr_tooltip')} />
+              </p>
+              <p className="text-[10px] normal-case tracking-normal text-muted-foreground/70">
+                {t('career.ranking.lusr_cumulative')}
+              </p>
+            </div>
             <ul className="space-y-2">
               {LUSR_KNOWN_GROUPS.map((group) => {
                 const cp = lusrByGroup.get(group)

@@ -1600,7 +1600,7 @@ func TestCareerRepo_GetEncounters_Empty(t *testing.T) {
 func TestCareerRepo_GetCSRSnapshots_Empty(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerRepo(pdb)
-	out, err := repo.GetCSRSnapshots(context.Background())
+	out, err := repo.GetCSRSnapshots(context.Background(), "")
 	if err != nil {
 		t.Fatalf("GetCSRSnapshots empty: %v", err)
 	}
@@ -1628,7 +1628,7 @@ func TestCareerRepo_GetCSRSnapshots_WithData(t *testing.T) {
 	}
 
 	repo := NewCareerRepo(pdb)
-	out, err := repo.GetCSRSnapshots(ctx)
+	out, err := repo.GetCSRSnapshots(ctx, "")
 	if err != nil {
 		t.Fatalf("GetCSRSnapshots: %v", err)
 	}

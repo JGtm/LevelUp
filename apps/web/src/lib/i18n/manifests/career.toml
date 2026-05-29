@@ -389,8 +389,16 @@ fr = "LUSR"
 en = "LUSR"
 
 [career.ranking.lusr_tooltip]
-fr = "Le LUSR (LevelUp Skill Rating) est calculé localement depuis vos résultats récents. Indépendant du CSR officiel."
-en = "LUSR (LevelUp Skill Rating) is calculated locally from your recent results. Independent from the official CSR."
+fr = "Le LUSR (LevelUp Skill Rating) est calculé localement depuis vos résultats récents. Indépendant du CSR officiel et de la saison."
+en = "LUSR (LevelUp Skill Rating) is calculated locally from your recent results. Independent from the official CSR and from the season."
+
+[career.ranking.lusr_cumulative]
+fr = "Cumulatif · hors saison"
+en = "Cumulative · season-independent"
+
+[career.ranking.season_label]
+fr = "Saison"
+en = "Season"
 
 [career.ranking.csr_no_data_title]
 fr = "Pas de données CSR"

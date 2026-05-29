@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
@@ -155,19 +156,33 @@ func (s *CareerService) WithCSRSeasonID(id string) *CareerService {
 	return s
 }
 
-// GetCareerCSRs retourne les classements CSR du joueur par playlist.
-// Retourne une réponse vide (pas d'erreur) si aucun snapshot disponible.
-func (s *CareerService) GetCareerCSRs(ctx context.Context) (domain.CareerCSRResponse, error) {
-	playlists, err := s.repo.GetCSRSnapshots(ctx)
+// GetCareerCSRs retourne les classements CSR du joueur par playlist pour la
+// saison demandée (seasonID vide → saison courante). Inclut la liste des saisons
+// proposables (menu déroulant). Réponse vide (pas d'erreur) si aucun snapshot.
+func (s *CareerService) GetCareerCSRs(ctx context.Context, seasonID string) (domain.CareerCSRResponse, error) {
+	playlists, err := s.repo.GetCSRSnapshots(ctx, seasonID)
 	if err != nil {
 		return domain.CareerCSRResponse{}, fmt.Errorf("GetCareerCSRs: %w", err)
 	}
 	if playlists == nil {
 		playlists = []domain.CareerPlaylistCSR{}
 	}
+	seasons, err := s.repo.AvailableCSRSeasons(ctx)
+	if err != nil {
+		return domain.CareerCSRResponse{}, fmt.Errorf("GetCareerCSRs seasons: %w", err)
+	}
+	if seasons == nil {
+		seasons = []domain.CSRSeasonOption{}
+	}
+	// SeasonID effectif = demandé si fourni, sinon la saison courante configurée.
+	effective := strings.TrimSpace(seasonID)
+	if effective == "" {
+		effective = s.csrSeasonID
+	}
 	return domain.CareerCSRResponse{
-		Playlists: playlists,
-		SeasonID:  s.csrSeasonID,
+		Playlists:        playlists,
+		SeasonID:         effective,
+		AvailableSeasons: seasons,
 	}, nil
 }
 

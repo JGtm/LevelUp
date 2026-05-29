@@ -231,7 +231,9 @@ func (h *CareerHandler) GetCareerCSRs(w http.ResponseWriter, r *http.Request) {
 		writeError(r.Context(), w, http.StatusNotFound, "player_not_found", err.Error())
 		return
 	}
-	resp, err := svc.GetCareerCSRs(r.Context())
+	// ?season= optionnel : saison CSR à afficher (vide → saison courante).
+	season := strings.TrimSpace(r.URL.Query().Get("season"))
+	resp, err := svc.GetCareerCSRs(r.Context(), season)
 	if err != nil {
 		writeError(r.Context(), w, http.StatusInternalServerError, "csrs_error", err.Error())
 		return

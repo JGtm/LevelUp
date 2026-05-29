@@ -52,7 +52,7 @@ func (m *mockCareerService) GetRivals(_ context.Context) (domain.CareerRivalsRes
 	return domain.CareerRivalsResponse{}, nil
 }
 
-func (m *mockCareerService) GetCareerCSRs(_ context.Context) (domain.CareerCSRResponse, error) {
+func (m *mockCareerService) GetCareerCSRs(_ context.Context, _ string) (domain.CareerCSRResponse, error) {
 	return domain.CareerCSRResponse{}, nil
 }
 
