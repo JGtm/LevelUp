@@ -25,19 +25,20 @@ function fdaSeries(frags: number, deaths: number, assists: number) {
 }
 
 describe('buildSessionFdaBarsOption', () => {
-  it('produit 3 barres FDA arrondies aux décimales demandées (mode partie)', () => {
+  it('produit 3 barres FDA, Morts en NÉGATIF (vers le bas, façon Escouade)', () => {
     const opt = buildSessionFdaBarsOption(fdaSeries(12.34, 5.67, 3.21), { decimals: 1 }) as unknown as OptShape
     const bar = opt.series![0]
     expect(bar.type).toBe('bar')
-    expect(bar.data.map((d) => d.value)).toEqual([12.3, 5.7, 3.2])
+    // Frags/Assists positifs (haut), Morts négatives (bas) depuis l'axe zéro.
+    expect(bar.data.map((d) => d.value)).toEqual([12.3, -5.7, 3.2])
     expect(bar.data.every((d) => 'color' in d.itemStyle)).toBe(true)
     expect(opt.xAxis!.type).toBe('category')
     expect(opt.xAxis!.data).toEqual(['Frags', 'Morts', 'Assists'])
   })
 
-  it('arrondit à 2 décimales en mode minute', () => {
+  it('arrondit à 2 décimales en mode minute (Morts négatives)', () => {
     const opt = buildSessionFdaBarsOption(fdaSeries(0.853, 0.41, 0.2), { decimals: 2 }) as unknown as OptShape
-    expect(opt.series![0].data.map((d) => d.value)).toEqual([0.85, 0.41, 0.2])
+    expect(opt.series![0].data.map((d) => d.value)).toEqual([0.85, -0.41, 0.2])
   })
 
   it('retourne une option vide sans points', () => {

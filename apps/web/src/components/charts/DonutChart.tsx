@@ -41,6 +41,10 @@ export interface DonutChartProps {
   outerRadius?: string
   /** Si true, affiche les pourcentages dans les labels (default true). */
   showPercent?: boolean
+  /** Valeur affichée au centre du donut (gros texte) — ex "62 %". */
+  centerValue?: string
+  /** Libellé affiché au centre, sous la valeur (petit texte) — ex "Victoires". */
+  centerLabel?: string
 }
 
 export function DonutChart({
@@ -54,11 +58,13 @@ export function DonutChart({
   innerRadius,
   outerRadius,
   showPercent,
+  centerValue,
+  centerLabel,
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
-      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent }),
-    [sliceColors, innerRadius, outerRadius, showPercent],
+      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, centerValue, centerLabel }),
+    [sliceColors, innerRadius, outerRadius, showPercent, centerValue, centerLabel],
   )
 
   return (
@@ -79,6 +85,8 @@ interface BuildOpts {
   innerRadius?: string
   outerRadius?: string
   showPercent?: boolean
+  centerValue?: string
+  centerLabel?: string
 }
 
 /**
@@ -94,6 +102,8 @@ export function buildDonutOption(
     innerRadius = '50%',
     outerRadius = '75%',
     showPercent = true,
+    centerValue,
+    centerLabel,
   } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
@@ -118,8 +128,27 @@ export function buildDonutOption(
   const legendNames = dps.map((p) => p.name)
   const tc = getEChartsThemeColors()
 
+  // Titre central optionnel (gros chiffre + libellé) rendu dans le trou du donut.
+  const centerTitle =
+    centerValue != null
+      ? {
+          title: {
+            text: centerValue,
+            subtext: centerLabel ?? '',
+            left: 'center' as const,
+            top: 'center' as const,
+            textAlign: 'center' as const,
+            textVerticalAlign: 'middle' as const,
+            textStyle: { color: tc.text, fontSize: 22, fontWeight: 'bold' as const },
+            subtextStyle: { color: tc.axisLabel, fontSize: 11 },
+            itemGap: 2,
+          },
+        }
+      : {}
+
   return {
     backgroundColor: CHART_BG,
+    ...centerTitle,
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',

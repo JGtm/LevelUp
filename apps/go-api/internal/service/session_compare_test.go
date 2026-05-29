@@ -277,6 +277,23 @@ func TestBuildCompareEntry_FragAggregates(t *testing.T) {
 	}
 }
 
+// TestBuildCompareEntry_AvgLifeSeconds couvre l'agrégat durée de vie moyenne
+// (moyenne des AvgLifeSeconds par match) projeté pour la KPI "Durée de vie".
+func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
+	l1, l2 := 30.0, 50.0
+	rows := []legacymatch.StatsMatchRow{
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), AvgLifeSeconds: &l1},
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), AvgLifeSeconds: &l2},
+	}
+	entry := buildCompareEntry(rows, "S1")
+	if entry == nil || entry.AvgLifeSeconds == nil {
+		t.Fatal("expected non-nil AvgLifeSeconds")
+	}
+	if *entry.AvgLifeSeconds != 40 { // (30 + 50) / 2
+		t.Fatalf("AvgLifeSeconds: want 40, got %v", *entry.AvgLifeSeconds)
+	}
+}
+
 // TestBuildCompareEntry_FragAggregates_AllNil : aucun match n'a de stats de frags
 // → agrégats nil (le radar dégrade en série vide côté front), pas de zéro trompeur.
 func TestBuildCompareEntry_FragAggregates_AllNil(t *testing.T) {

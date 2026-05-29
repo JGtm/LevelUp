@@ -62,6 +62,8 @@ type SessionCompareEntry struct {
 	// MMR moyen sur la session.
 	AvgTeamMMR  *float64 `json:"avg_team_mmr,omitempty"`
 	AvgEnemyMMR *float64 `json:"avg_enemy_mmr,omitempty"`
+	// Durée de vie moyenne sur la session (secondes) — pour la KPI "Durée de vie".
+	AvgLifeSeconds *float64 `json:"avg_life_seconds,omitempty"`
 	// Profil de participation 6 axes (Combat/Survival/Support/Score/Objective/Impact), normalisé 0..100.
 	Participation []SessionParticipationAxis `json:"participation"`
 	// Historique des matchs de la session (ordre chronologique).
