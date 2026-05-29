@@ -68,7 +68,7 @@ func cleanAssetLabel(value string) string {
 	if v == "" {
 		return ""
 	}
-	if homeUUIDRe.MatchString(v) {
+	if IsRawAssetUUID(v) {
 		return ""
 	}
 	return v

@@ -75,6 +75,14 @@ var homeOutcomeTones = map[int]string{
 
 var homeUUIDRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
+// IsRawAssetUUID indique si s est un UUID v4 brut (asset id non traduit par la
+// metadata), donc à masquer côté UI. Source unique de la détection, partagée
+// par cleanAssetLabel (projection home) et la résolution du mode Escouade
+// (teammates_service_assets.go) — évite qu'un pair_name non résolu fuie à l'UI.
+func IsRawAssetUUID(s string) bool {
+	return homeUUIDRe.MatchString(strings.TrimSpace(s))
+}
+
 // labelFR retourne fr si non vide, sinon en.
 func labelFR(fr, en string) string {
 	if fr != "" {
