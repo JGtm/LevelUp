@@ -145,8 +145,12 @@ func TestExtractRegistry_Valid(t *testing.T) {
 	if row.EndTime == nil {
 		t.Error("EndTime should not be nil")
 	}
-	if row.RealStartTime == nil {
-		t.Error("RealStartTime should not be nil for match with countdown")
+	// real_start_time vient désormais de ComputeT0 (first_joined_time des joueurs
+	// présents au début), plus de playable_duration. Le fixture minimal n'a pas
+	// de ParticipationInfo → T0 no_data → RealStartTime nil. Le calcul T0 lui-même
+	// est couvert par compute_t0_test.go ; le wiring par TestComputeMatchT0.
+	if row.RealStartTime != nil {
+		t.Errorf("RealStartTime should be nil without ParticipationInfo (T0 derives from first_joined), got %v", row.RealStartTime)
 	}
 	if row.Team0Score == nil || *row.Team0Score != 50 {
 		t.Errorf("Team0Score = %v", row.Team0Score)
