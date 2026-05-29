@@ -77,6 +77,22 @@ en = "No session available"
 fr = "Aucune session n'a pu être reconstruite avec les filtres actuels."
 en = "No session could be reconstructed with the current filters."
 
+[session.detail.header_session]
+fr = "Session"
+en = "Session"
+
+[session.detail.header_compare]
+fr = "Comparer"
+en = "Compare"
+
+[session.detail.header_compare_aria]
+fr = "Comparer à une autre session"
+en = "Compare to another session"
+
+[session.detail.header_compare_hint]
+fr = "vs {label}"
+en = "vs {label}"
+
 [session.detail.suggested_compare_button]
 fr = "Comparer à la session proche"
 en = "Compare to nearby session"

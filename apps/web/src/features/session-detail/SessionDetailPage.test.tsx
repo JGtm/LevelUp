@@ -136,15 +136,14 @@ describe("SessionDetailPage", () => {
     renderWithProviders(<SessionDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Suggestion similaire")).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /Comparer à la session proche/i }),
+        screen.getByRole("button", { name: /Comparer/i }),
       ).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByText("même catégorie ranked · écart de 1 match(s)"),
-    ).toBeInTheDocument();
+    // Suggestion desormais affichee en hint inline "vs {label} - {reason}"
+    // (cartes "Selection" et "Suggestion similaire" supprimees).
+    expect(screen.getByText(/même catégorie ranked/)).toBeInTheDocument();
     expect(screen.getByText("Détail des matchs")).toBeInTheDocument();
     expect(screen.getByText("Oddball")).toBeInTheDocument();
     // outcomeLabel(2) → "win" en l'absence de fieldMappings backend mocké
@@ -196,19 +195,17 @@ describe("SessionDetailPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Comparer à la session proche/i }),
+        screen.getByRole("button", { name: /Comparer/i }),
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /Comparer à la session proche/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /Comparer/i }));
 
     await waitFor(() => {
-      // Drawer ouvert : bouton bascule sur "Fermer la comparaison" + summary
-      // compare visible dans le drawer (libellés `session.detail.drawer_*`).
+      // Drawer ouvert : la fermeture se fait via le bouton X (aria
+      // "Fermer le panneau de comparaison") + summary compare visible.
       expect(
-        screen.getByRole("button", { name: /Fermer la comparaison/i }),
+        screen.getByRole("button", { name: /Fermer le panneau de comparaison/i }),
       ).toBeInTheDocument();
       expect(screen.getAllByText(/Session comparée/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText("Score perf.").length).toBeGreaterThan(0);

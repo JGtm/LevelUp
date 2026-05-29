@@ -1,3 +1,37 @@
+## [2026-05-29] feat(web,sessions): Phase 1 refonte UX session-detail — dissoudre la sélection
+
+**Statut** : Complété (branche `chore/query-devtools-flag` — la branche a bougé sous mes pieds pendant le travail, l'utilisateur a confirmé que c'est lui et de continuer ici ; l'anim commit 5881bfcc7 en est la tête, donc Phase 1 propre au-dessus. Commits réguliers autorisés ; ne stager QUE mes fichiers, jamais le WIP Go de l'utilisateur). typecheck + eslint + suite session-detail (15 tests) verts.
+
+**Fait (Option A — dissoudre)** :
+- Supprimé : carte « Sélection » (2 selects + toggle), carte « Suggestion similaire », bouton « Comparer à la session proche ». Variable `suggestionAvailable` retirée.
+- Ajouté : en-tête sobre = stepper session active (◀▶ via `previous/next_session_label`) + label + badge catégorie ; 1 bouton « Comparer » (cible = suggérée par défaut) + hint inline « vs {label} · {reason} » (si ≥2 sessions et compare fermé).
+- Drawer : nav prev/next + « utiliser suggestion » remplacés par un `<select>` (smart + sessions dispo hors active). Fermeture via le X (`drawer_close_aria`).
+- i18n : +4 clés (`header_session`, `header_compare`, `header_compare_aria`, `header_compare_hint`) ; regen `build_i18n_manifests.mjs`. 6 clés devenues inutilisées laissées en place (selection_card, suggestion_title, suggested_compare_button, drawer_open, drawer_close, drawer_use_suggested) — cleanup mineur différé.
+- Tests adaptés (clic « Comparer », fermeture via X, suggestion en hint).
+
+**Reste** : Phase 2 (résumé enrichi Win%/KDR/Kills-match + graphes single SkillProgression/OCDR/Engagement) ; Phase 3 (row enrichie backend via builder Explorer + duplication tableau Explorer).
+
+## [2026-05-29] design(web,sessions): refonte UX page Session Detail — décisions
+
+**Statut** : Design (dialogue utilisateur). AUCUNE implémentation. Branche `fix/session-compare-drawer-animation` (anim livrée). Implémentation à démarrer sur branche dédiée.
+
+**Constats validés (code à l'appui)** :
+- Doublon de boutons : « Comparer à la session proche » (`suggested_compare_button`) et « Comparer côte à côte » (`drawer_open`) ouvrent tous deux la compare contre la session suggérée (smart selection backend, faute de `compare_session_label`). Suggestion affichée à 3 endroits, session choisie à 4 (rail L2, 2 selects locaux, nav drawer).
+- Carte « Sélection » : selects en `useState` local, déconnectés du store. Le L2 (`PeriodSessionRail` + `SessionMultiSelect`, `soloFilterStore`) a déjà un sélecteur de session → redondance réelle (le store filtre les matchs → change `available_sessions`).
+- Tableau détail = `SessionMatchesTable` (HTML maison, 8 col). Explorer = `ExplorerMatchesTable` (TanStack, 21 col, couplé `useSoloFilterStore`/i18n/nav explorer). 7 tableaux de matchs dupliqués, aucun partagé. `SessionDetailMatchRow` (13 champs) ⊄ `ExplorerMatchRow` (21).
+
+**Décisions utilisateur** :
+- Sélection : **OPTION A — dissoudre** la carte « Sélection » + la carte « Suggestion ». En-tête sobre (label + ◀▶), 1 bouton « Comparer ▾ » (cible suggérée par défaut + dropdown override), choix compare DANS le drawer.
+- Résumé principal **enrichi** : ajouter Win% (`win_rate`), KDR (`kd_ratio`), Kills/match (`kills_per_match`) — déjà calculés comme `value_a` des `compare_metrics`. Vocabulaire métriques unifié single/compare.
+- Tableau **compare** (panneaux 50 %) : set réduit **7 col** = Issue · Mode · K/D/A · KDA · Perf · Rating(CSR/LUSR) · ΔMMR. Reco : les 2 panneaux utilisent ce set en compare (comparaison normalisée).
+- Tableau **single** (full width) : set complet ~10-11 col (Open·Heure·Mode·Map·Issue·K/D/A·KDA·Accuracy·Perf+tier·Rating·ΔMMR) — à CONFIRMER (Accuracy/Playlist/Durée).
+
+**Implication backend (linchpin)** : Rating/ΔMMR/perf_tier/Map exigent que `/pages/sessions/detail` renvoie une row enrichie. → adopter une **row canonique de match partagée** (Explorer + Sessions côté Go) ET extraire un **`MatchesTable` générique** côté front (presets colonnes single/compare). Backend renvoie aussi les métriques de la session active hors compare (phase 2).
+
+**Plan phasé** : (1) front : dissoudre sélection + 1 bouton Comparer ; (2) résumé enrichi (back métriques single + front) ; (3) tableau générique + alignement row backend (single complet + compare réduit 7 col).
+
+**Prochaine étape** : confirmer colonnes single + greenlight implémentation + branche dédiée.
+
 ## [2026-05-29] fix(web,sessions): animation du drawer compare (glisse + pousse) qui ne jouait pas
 
 **Statut** : Complété (branche `feat/match-timeline-t0`). NON commité (en attente d'autorisation). typecheck + eslint clean ; suite web complète (162 fichiers / 1549 tests) verte.
