@@ -267,6 +267,12 @@ func TestE2EPipeline_HomeRecentPlaylists_MixedStates(t *testing.T) {
 
 func TestE2EPipeline_CareerCSRs_MergeCatalogPlusSnapshots(t *testing.T) {
 	env := setupPipelineEnv(t)
+	// La migration seed_ranked_playlists_catalog pré-remplit playlists_catalog
+	// avec les playlists ranked réelles HI (4 actives). On repart d'un catalogue
+	// vide pour valider le merge sur un jeu contrôlé de 3 playlists fictives.
+	if _, err := env.metadataDB.SQLDb().Exec(`DELETE FROM playlists_catalog`); err != nil {
+		t.Fatalf("reset playlists_catalog: %v", err)
+	}
 	// Catalogue : 3 playlists ranked actives
 	seedCatalogPlaylist(t, env, "pl-arena", "Ranked Arena", true)
 	seedCatalogPlaylist(t, env, "pl-slayer", "Ranked Slayer", true)

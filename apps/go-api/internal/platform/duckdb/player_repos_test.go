@@ -1475,6 +1475,45 @@ func TestCareerRepo_GetLatestRank_Empty(t *testing.T) {
 	}
 }
 
+// TestCareerRepo_GetLatestRank_RecoversXPFromPartialRow : un snapshot live
+// "customization-only" plus récent (rank/current_xp frais, xp_for_next_rank /
+// xp_total NULL) ne doit PAS faire tomber les jauges à 0. Le rang vient de la
+// ligne fraîche, mais les XP sont récupérées (ARG_MAX) sur la dernière ligne
+// non-NULL. Régression : l'ancien Q6 (ORDER BY recorded_at DESC LIMIT 1)
+// renvoyait xp_total=NULL → jauge Héros + progression + "XP prochain rang" à 0.
+func TestCareerRepo_GetLatestRank_RecoversXPFromPartialRow(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// Ligne partielle plus récente que le seed (rank 25, xp_for_next=10000,
+	// xp_total=50000, recorded 2025-01-10) : XP laissées à NULL.
+	if _, err := pdb.Player.Exec(ctx, `
+		INSERT INTO career_progression
+			(rank, current_xp, recorded_at, xp_for_next_rank, xp_total, is_max_rank)
+		VALUES (?, ?, ?, NULL, NULL, FALSE)`,
+		26, 6400, "2025-02-01 12:00:00+00"); err != nil {
+		t.Fatalf("INSERT partial row: %v", err)
+	}
+
+	rank, err := NewCareerRepo(pdb).GetLatestRank(ctx)
+	if err != nil {
+		t.Fatalf("GetLatestRank: %v", err)
+	}
+	if rank.RankNumber != 26 {
+		t.Errorf("RankNumber = %d, want 26 (ligne fraîche)", rank.RankNumber)
+	}
+	if rank.CurrentXP != 6400 {
+		t.Errorf("CurrentXP = %d, want 6400 (ligne fraîche)", rank.CurrentXP)
+	}
+	// Invariant clé : XP non-nulles et > 0 (récupérées d'une ligne antérieure),
+	// jamais NULL/0 comme le faisait l'ancienne Q6 sur la ligne partielle.
+	if rank.XPTotal == nil || *rank.XPTotal <= 0 {
+		t.Errorf("XPTotal = %v, want > 0 (récupéré via ARG_MAX, pas NULL)", rank.XPTotal)
+	}
+	if rank.XPForNextRank == nil || *rank.XPForNextRank <= 0 {
+		t.Errorf("XPForNextRank = %v, want > 0 (récupéré via ARG_MAX)", rank.XPForNextRank)
+	}
+}
+
 func TestCareerRepo_GetXPHistory_WithData(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	repo := NewCareerRepo(pdb)
