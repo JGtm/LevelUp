@@ -1,3 +1,44 @@
+## [2026-05-29] refactor(arch): Axe 1 — découpler patterns.go de DuckDB (handler → port.PatternsRepository)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 1er axe implémenté du plan `.ai/PLAN_SYNC_ENGINE_PORT_ABSTRACTION.md` (réduire le couplage DuckDB pour portabilité de stack). Axe choisi = le plus lourd. **Garde-fou méthodo** : la v1 du plan avait été écrite depuis des résumés d'exploration, pas le code réel — d'où une conclusion fausse sur cet axe (« déplacer 2 helpers suffit à retirer l'import duckdb »). Vérif dans le code : `patterns.go` prenait `*duckdb.PlayerDB` comme **type de paramètre** dans 5 fonctions + faisait du SQL brut (`pdb.Player.Query`) dans la couche handler. Le vrai couplage n'était donc pas les helpers mais l'accès données dans le handler.
+
+**Décisions techniques majeures** :
+- **Interface `port.PatternsRepository`** (`internal/port/patterns.go`) : 1 méthode `LoadRows(ctx, limit) ([]patterns.MatchRow, error)`. Layering validé avant écriture : `internal/port` importe déjà `analysis/temporal`/`domain`, et `platform/duckdb` importe déjà `internal/analysis` dans ~16 repos → aucune violation de couches à faire dépendre le repo de `analysis`/`patterns`.
+- **`duckdb.PatternsRepo`** (`internal/platform/duckdb/patterns_repo.go`) : déplacement **verbatim** des 3 loaders SQL (shared via SharedReader + 2 player), des 3 types intermédiaires (renommés `patternSharedRow`/`patternEnrichmentRow`/`patternSkillRankRow` pour éviter toute collision — vérifiée nulle), du merge et des deltas. Le timeout 30s (ex-`patternTimeout` du handler) descend dans le repo (`patternsLoadTimeout`). `Placeholders`/`ToAnySlice` restent légitimement dans `platform/duckdb` (utilisés ici en intra-package) — leur déplacement aurait été du churn cosmétique sans gain, donc écarté.
+- **Handler `patterns.go`** : ne dépend plus que de `PatternsRepoResolver = func(ctx, slug) (port.PatternsRepository, error)`. Imports `database/sql`, `fmt`, `sort`, `platform/duckdb`, `analysis` **supprimés** du handler. (Note : le *package* handlers garde un import duckdb via `ProgressionResolver` dans `progression.go` — hors scope, c'est un type partagé par ~5 handlers.)
+- **Câblage `server.go`** : le `ProgressionResolver` (→ `*PlayerDB`) est adapté en `patternsRepoResolve` qui retourne `duckdb.NewPatternsRepo(pdb)`. Composition root reste le seul point qui connaît le concret.
+
+**Tests d'abord (caractérisation)** : `patterns_repo_test.go` verrouille la logique pure (seule partie avec branches) : merge (KDA `(k+a/2)/max(1,d)`, HSRate, routage `rating_type`→DeltaLUSR/CSRValue, mapping enrichissements) + deltas. **Un test a attrapé une vraie subtilité** : sur 1 seul row, `computePatternSkillDeltas` retourne tôt (`len<2`) → la valeur brute du merge reste (n'est PAS remise à nil). Mon assertion initiale (nil) était fausse, le code a raison — assertion corrigée pour verrouiller le comportement réel. Les loaders SQL (scans straight, déplacés verbatim) ne sont pas testés DB-backed : la neutralité repose sur le déplacement verbatim + le typage compilé. Documenté comme tel.
+
+**Résultats observés** : `go build` ✅ (port + duckdb + api), `go vet` ✅, tests verts : `internal/port` ✅, `internal/api/handlers` ✅ (10s), nouveaux tests repo ✅ + anciens `shared_query_helpers_test.go` toujours ✅. Aucune référence pendante aux symboles retirés du handler (grep `internal/api` = 0).
+
+**Non vérifié** : pas de hit HTTP live sur `/patterns` (nécessiterait Go API + DB peuplée). Loaders SQL non couverts par test DB-backed (déplacement verbatim).
+
+**Conclusion / prochaine étape** : Axe 1 livré, but de découplage atteint (handler sans SQL ni `*duckdb.*`). Suite du plan : Axe 2 (logique LUSR v2 → interfaces, Option A faible churn), puis 3 (TokenStore), 5 (erreurs HTTP), 6 (flags morts + deadline Prestige). Commits à faire par l'utilisateur.
+
+## [2026-05-29] feat(nav): Phase 2 unification mémoire de navigation — propagation complétée (SessionDetail cliquable + nettoyage)
+
+**Statut** : Complété (branche `feat/nav-context-unification`, suite de la Phase 1 ; commits délégués à l'utilisateur, pre-hook KO)
+
+**Contexte** : Phase 2 du plan `nav-context-unification` (priorité 2 — compléter la propagation `match-nav`). 3 cibles identifiées par l'exploration : (a) SessionDetailPage avec un tableau de matchs non cliquable = trou le plus visible ; (b) `'citation'` déclaré dans `MatchNavSource` mais jamais câblé ; (c) uniformiser `contextDescriptor`.
+
+**Décisions techniques majeures** :
+- **SessionMatchesTable rendu cliquable** : ajout d'une colonne "ouvrir" (bouton icône, pattern repris d'ExplorerMatchesTable pour l'a11y — `<button>` + aria-label, pas de `<tr>` cliquable). Clic → `useNavigateToMatch` avec `source: 'session'`, `matchIds` = tous les matchs de la session (prev/next reste dans la session), `contextDescriptor: { kind: 'session', startTimeUtc }` et `filterSpec: { session_id }`.
+  - **`startTimeUtc`** = match le plus ancien de la session (`reduce` min sur `start_time` ISO UTC, tri lexical = chrono). Hooks `useMemo`/`useCallback` placés AVANT l'early-return `matches.length === 0` (règles des hooks).
+  - **`session_id` = `match.session_label`** : confirmé cohérent avec le contrat existant via lecture de `filterContextToMatchFilterSpec` (`fromFilterContext.ts:60-64`, `sessions.picked → session_id` utilise déjà le label). Donc durabilité F5/partage acquise sans deviner le contrat backend.
+  - **prop `playerSlug`** ajoutée (1 seul caller : SessionDetailPage, mis à jour).
+- **i18n** : 1 clé ajoutée proprement via le TOML source (`session.detail.col_open` = Ouvrir/Open) + régénération `node apps/web/scripts/build_i18n_manifests.mjs` (session : 177→178 clés). Pas d'édition directe du généré, pas de couplage cross-feature.
+- **`'citation'` retiré de `MatchNavSource`** : confirmé mort (`grep "source: 'citation'"` → 0 occurrence ; la route/feature citations existe mais n'utilise pas match-nav). Aucun test ne le référence.
+- **Uniformisation `contextDescriptor` = déjà acquise au niveau producteur** : `grep filtersLabel` montre qu'AUCUN consumer `useNavigateToMatch` ne passe plus `filtersLabel` (seulement docs + tests + la couche de lecture compat dans MatchHeader/i18n/useMatchNeighborsResolved). Tous les producteurs (Explorer, Squad, Home, Media, Career, Synthesis) émettent un `ContextDescriptor` typé. **Décision** : le champ legacy `filtersLabel` est conservé comme shim de compat (hors scope « compléter la propagation » ; son retrait = churn de tests + couche de lecture, à planifier en cleanup dédié).
+
+**Résultats observés** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ · **171 tests passent** (session-detail + match-nav + match-view, dont SessionDetailPage.test inchangé — mocks router compatibles).
+
+**Non vérifié** : pas de click-through navigateur live. Le câblage suit le pattern éprouvé d'ExplorerMatchesTable et la résolution de voisins est couverte par les tests `useMatchNeighborsResolved`.
+
+**Conclusion / prochaine étape** : Phase 2 livrée (trou SessionDetail comblé, `MatchNavSource` nettoyé, constat d'uniformisation documenté). Reste plan : Phase 3 (fiabiliser match-nav — TTL sessionStorage, multi-filtres `MatchFilterSpec`, observabilité du fallback silencieux) ; Phase 4 (généraliser `usePageScope` + adaptateur `scope→MatchNavContext`, préserver le « sticky jusqu'à nouvelle session » Solo/Squad). Cleanup optionnel : retrait du shim `filtersLabel`.
+
 ## [2026-05-29] feat(nav): Phase 1 unification mémoire de navigation — scope Explorer durable (URL + miroir localStorage)
 
 **Statut** : Complété (branche `feat/nav-context-unification`, créée depuis `feat/match-timeline-t0` à la demande utilisateur)

@@ -815,7 +815,16 @@ func NewRouter(
 
 			// Pattern Engine v3 (PLAN_PATTERN_ENGINE.md phases 1-3).
 			// GET /api/v1/players/{player_slug}/patterns?n=50
-			patternsH := handlers.NewPatternsHandler(progressionResolve, defaultProgressionTitleSlug())
+			// Le handler dépend de port.PatternsRepository : on adapte le
+			// ProgressionResolver (→ PlayerDB) en résolveur de repo DuckDB.
+			patternsRepoResolve := func(ctx context.Context, slug string) (port.PatternsRepository, error) {
+				pdb, err := progressionResolve(ctx, slug)
+				if err != nil {
+					return nil, err
+				}
+				return platform_duckdb.NewPatternsRepo(pdb), nil
+			}
+			patternsH := handlers.NewPatternsHandler(patternsRepoResolve, defaultProgressionTitleSlug())
 			patternsH.Mount(r)
 
 			// ImprovementCampaign V1 — endpoints start/active/pause/close/abandon.
