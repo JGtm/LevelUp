@@ -3038,6 +3038,10 @@ export interface SessionCompareEntry {
   win_rate: number
   kdr: number
   kills_per_match: number
+  // Stats agrégées pour le radar (P1).
+  max_killing_spree?: number | null
+  total_headshot_kills?: number | null
+  total_perfect_kills?: number | null
   with_friends: boolean
   dominant_category: string | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 3
@@ -3114,6 +3118,9 @@ export interface SessionDetailMatchRow {
   perf_tier?: number
   skill_rating_type?: string
   skill_rating_value?: number | null
+  skill_rating_delta?: number | null
+  /** Mode normalisé + traduit (comme l'Explorer). */
+  mode_ui?: string
 }
 
 export interface SessionCompareSuggestion {

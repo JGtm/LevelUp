@@ -302,6 +302,38 @@ en = "Engagement per match"
 fr = "évén./min vs attendu"
 en = "events/min vs expected"
 
+[session.detail.col_rating_delta]
+fr = "Δ rang"
+en = "Rank Δ"
+
+[session.detail.ocdr_axis_oc]
+fr = "OC"
+en = "OC"
+
+[session.detail.ocdr_axis_dr]
+fr = "DR"
+en = "DR"
+
+[session.detail.chart_frags_radar_title]
+fr = "Stats de frags"
+en = "Frag stats"
+
+[session.detail.chart_frags_radar_series]
+fr = "Session"
+en = "Session"
+
+[session.detail.radar_spree]
+fr = "Folie meurtrière (max)"
+en = "Killing spree (max)"
+
+[session.detail.radar_headshots]
+fr = "Tirs à la tête"
+en = "Headshots"
+
+[session.detail.radar_perfect]
+fr = "Frags parfaits"
+en = "Perfect kills"
+
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."
 en = "No data to display."

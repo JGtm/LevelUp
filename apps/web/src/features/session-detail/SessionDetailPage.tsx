@@ -31,6 +31,7 @@ import { SessionKillsDonut } from './SessionKillsDonut'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionFdaBars } from './SessionFdaBars'
 import { SessionFdaRadar } from './SessionFdaRadar'
+import { SessionFragsRadar } from './SessionFragsRadar'
 import { SessionOcdrScatter } from './SessionOcdrScatter'
 import { SessionEngagementChart } from './SessionEngagementChart'
 import { SessionCompareMetrics } from './SessionCompareMetrics'
@@ -201,12 +202,17 @@ export function SessionDetailPage() {
 
             <div className="grid gap-6 xl:grid-cols-2">
               <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={data.matches} />
-              <SessionFdaBars
-                title={t('session.detail.chart_fda_per_minute_title')}
-                matches={data.matches}
-                mode="minute"
+              <SessionFragsRadar
+                title={t('session.detail.chart_frags_radar_title')}
+                entry={data.current_session}
               />
             </div>
+
+            <SessionFdaBars
+              title={t('session.detail.chart_fda_per_minute_title')}
+              matches={data.matches}
+              mode="minute"
+            />
 
             <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={data.matches} />
 
