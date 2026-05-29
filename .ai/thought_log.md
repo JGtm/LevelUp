@@ -1,3 +1,19 @@
+## [2026-05-29] feat(sessions): lot BACKEND P1 (radar frags) + P2 (Δ rang/match + localisation FR)
+
+**Statut** : Complété (branche `fix/solo-first-events-squad-mode`). Go : `go build ./internal/...` = 0, `go vet` (service/analysis/domain/legacymatch) = 0, `go test ./internal/service/... ./internal/analysis/...` verts. Front : typecheck 0, eslint 0 (warning TanStack `useReactTable` préexistant), suite frontend complète **170 fichiers / 1591 tests** verts. Commit en attente d'autorisation.
+
+Clôture du lot backend greenlit « tout, localisation incluse ». Les 3 chantiers livrés :
+
+- **P1 — radar de frags (agrégats session)** : 3 nouveaux champs `*int` sur `domain.SessionCompareEntry` — `MaxKillingSpree` (MAX sur la session), `TotalHeadshotKills` / `TotalPerfectKills` (SOMME). Agrégés dans `buildCompareEntry` (boucle unique sur les matchs). Front : `SessionFragsRadar` (réutilise `SessionStatsRadar`, paliers fixes 15/50/20 + valeur brute au survol), câblé dans la grille FDA 2-col ; les barres FDA/minute passent pleine largeur dessous. Série vide si aucun match n'a de stat de frags (pas de zéro trompeur). Tests : `TestBuildCompareEntry_FragAggregates` (max/sum) + `_AllNil`.
+
+- **P2 — Δ rang par match** : `canonical.SkillSnapshot.Delta` → `StatsMatchRow.SkillRatingDelta` (projeté dans `StatsMatchRowFromCanonical`) → `SessionDetailMatchRow.SkillRatingDelta` → colonne « Δ rang » du tableau (presets full + compact). Format CSR entier / LUSR 2 décimales, couleur `mmrDeltaScale` (signé). Test : assertion ajoutée à `TestBuildSessionDetailRows_EnrichedFields`.
+
+- **P2 — localisation FR (modes / cartes / playlists)** : **l'hypothèse de la passe précédente était fausse** — le chemin canonical des sessions passe bien par `PlayerMatchesRepository` (cf. `session_page_service.go:61`, `session_compare_service.go:74` → `StatsMatchRowsFromCanonical`), qui charge déjà `Labels["fr"]` (asset_translations + mode_name_tr) comme l'Explorer. Seuls manquaient : (1) le convertisseur ne projetait pas `Playlist.Labels["fr"]` → ajout `PlaylistNameFR` ; (2) aucune normalisation de mode → ajout `ModeUI = ResolveModeUI(pairName, pairNameFR)` (strip « on map » + extraction sous-mode + FR) projeté dans `SessionDetailMatchRow.ModeUI`. Front : colonne Mode lit `mode_ui || pair_name`. Cartes/playlists : préférence FR déjà câblée. Test : assertion `ModeUI`/`SkillRatingDelta` dans `TestBuildSessionDetailRows_EnrichedFields`.
+
+**i18n** : nettoyage des dernières strings UI codées en dur — axes `OC`/`DR` du nuage (`SessionOcdrScatter`) passés en clés `ocdr_axis_oc`/`ocdr_axis_dr` ; nouvelles clés `col_rating_delta` (« Δ rang »), `chart_frags_radar_title/series`, `radar_spree/headshots/perfect`. `session.toml` régénéré (198 clés). Principe respecté : strings UI dans les manifests TOML, localisation assets/modes côté backend.
+
+**Note dette** : la « dette mineure » signalée (branches `single-mode` de `SessionCompareOCDR`/`SessionCompareEngagement`) **n'en est pas une** — `SessionComparePage` rend son corps dès qu'une seule session existe (`session_a || session_b`, l.293), donc le rendu `sessionB == null` reste atteignable. Conservé.
+
 ## [2026-05-29] feat(web,sessions): engagement — bande de référence ±5 (Option A)
 
 **Statut** : Complété. typecheck + eslint (0) + test engagement vert.

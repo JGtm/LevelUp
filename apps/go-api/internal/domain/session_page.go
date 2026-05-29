@@ -56,6 +56,9 @@ type SessionDetailMatchRow struct {
 	PerfTier         int      `json:"perf_tier,omitempty"`
 	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
 	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
+	SkillRatingDelta *float64 `json:"skill_rating_delta,omitempty"` // gain/perte de rating du match
+	// ModeUI : libellé de mode normalisé + traduit (comme l'Explorer), via analysis.ResolveModeUI.
+	ModeUI string `json:"mode_ui,omitempty"`
 }
 
 // SessionCompareSuggestion décrit la session proposée pour une comparaison rapide.
