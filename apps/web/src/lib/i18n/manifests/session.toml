@@ -294,17 +294,13 @@ en = "Per-minute stats — Kills / Deaths / Assists"
 fr = "Moyenne / partie"
 en = "Avg / game"
 
-[session.detail.engagement_opt_diverging]
-fr = "Barre divergente (moyenne)"
-en = "Diverging bar (mean)"
+[session.detail.chart_engagement_title]
+fr = "Engagement par match"
+en = "Engagement per match"
 
-[session.detail.engagement_opt_histogram]
-fr = "Distribution"
-en = "Distribution"
-
-[session.detail.engagement_opt_progression]
-fr = "Progression + moyenne"
-en = "Trend + mean"
+[session.detail.engagement_axis]
+fr = "évén./min vs attendu"
+en = "events/min vs expected"
 
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."
