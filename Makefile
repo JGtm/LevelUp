@@ -83,8 +83,9 @@ GO_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 LEVELUP_DATA_ROOT ?=
 VITE_API_PROXY_TARGET ?= http://127.0.0.1:$(API_PORT)
 GO_LDFLAGS := -ldflags "-X main.version=$(GO_VERSION)"
-# air hot-reload — cygpath convertit le chemin Windows en chemin POSIX (MSYS2/Git Bash)
-AIR := $(shell cygpath -u "$$(go env GOPATH)")/bin/air
+# air hot-reload — which air donne le chemin complet depuis le PATH (plus robuste
+# que go env GOPATH qui retourne vide quand USERPROFILE n'est pas transmis au shell make)
+AIR := $(or $(shell which air 2>/dev/null),$(shell cygpath -u "$$(go env GOPATH)")/bin/air)
 
 ifeq ($(OS),Windows_NT)
 GO_API_CLEANUP_CMD := cmd //C "taskkill /F /IM server.exe /T >NUL 2>&1 || exit /B 0"

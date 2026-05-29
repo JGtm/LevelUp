@@ -1,6 +1,6 @@
-﻿— Tâches et TODO centralisés
+— Tâches et TODO centralisés
 
-> Mis à jour le 2026-05-05.
+> Mis à jour le 2026-05-29. Fusion de : `backlog`, `BACKLOG.md`, `BACKLOG_COACH_PRESTIGE.md`.
 
 ---
 
@@ -9,6 +9,101 @@
 ---
 
 ## 📋 Backlog
+
+---
+
+### [frontend/types] Migration `types.ts` → `generated.ts` + réconciliation du contrat OpenAPI
+
+**Noté le** : 2026-05-29 | **Priorité** : 🟡 Moyenne — non bloquant (`types.ts` manuel fonctionne) mais dette + contrat OpenAPI non fiable.
+
+**Plan complet** : [.ai/PLAN_WEB_API_TYPES_MIGRATION.md](.ai/PLAN_WEB_API_TYPES_MIGRATION.md)
+
+**Contexte court** : fondation posée (pipeline `generate-types` réparé, types Go régénérés, inventaire fait, 7 types « bootstrap » migrés en shim de ré-export). Le calibrage a révélé le **vrai blocage** : `openapi.yaml` est largement **sous-spécifié** vs les réponses backend réelles (shim de masse → 453 erreurs `tsc`, dont 304 « property does not exist »). Le `types.ts` manuel est plus complet que le contrat.
+
+**Donc** : le chantier n'est pas un shim mécanique mais une **réconciliation du contrat aire par aire** (compléter `openapi.yaml` → régénérer Go+front → shimer → `tsc` oracle → commit). ⛔ Ne pas re-tenter un shim global.
+
+**Buckets** : 97 matchés (à réconcilier), 217 frontend-only (→ futur `viewModels.ts`), 15 schémas sans type. 1er cas bucket B : `BootstrapResponse` (8 champs manquants au schéma).
+
+**Quand traiter** : session(s) dédiée(s). Commencer par l'aire sessions/filtres (gros bucket).
+
+---
+
+### [POST-V7] Main Merge (blocking)
+
+- [ ] Créer PR: `fix/theme-consistency-tokens` → `main`
+- [ ] Attendre approval + CI validation
+- [ ] Merger PR vers main
+
+---
+
+### [POST-V7] Main Merge (Phase 4 Collect→Persist) — ajouté 2026-05-24
+
+**Branche source** : `refactor/collect-persist` (7 commits Phase 4 + 4 commits cycles précédents)
+
+**Commits inclus** (du plus ancien au plus récent) :
+- `03322560` fix(auth) : E.v1 legacy store fix
+- `0e4b368f` feat(persist,p4.2) : PostSyncLUSRPersister
+- `14dfd135` feat(persist,sync,p4.4) : batch INSERT-only post-sync (5 sites)
+- `4ef122b7` feat(migration,p4.5) : RebuildMatchSkillRankART + smoke validé
+- `f243b235` chore(p4.6,cleanup) : supprime singleflight/CHECKPOINT/auto-heal
+- `82d0aa1a` feat(p4.7,closure) : BatchQueue wiring + janitor + flip defaults
+- `463418af` chore(p4.8,cleanup) : revert acad4603 UPDATE-then-INSERT
+- `08582b89` chore(p4.7,hygiene) : PathResolver pour data/wal + data/sync_cache
+- `d3825c2f` chore(p4.9,tests) : flip async ON + fix 9 pre-existing test failures
+- `4508df92` feat(auth,p-Ev2) : Pool.AddOrUpdateSource + periodic re-scan
+- `157d80a8` feat(auth,p-2.5b) : RefreshLoop.WithMultiUserMirror
+
+**Pré-requis merge** :
+- [ ] CI green sur `refactor/collect-persist` (go test ./... full suite)
+- [ ] Squad review du runbook `.ai/RUNBOOK_PHASE4_DEPLOY.md` (procédure deploy)
+- [ ] User a-t-il déjà migré sa DB locale ? Si non : suivre runbook AVANT merge
+
+**Procédure** :
+- [ ] Créer PR: `refactor/collect-persist` → `main`
+- [ ] Body PR : référencer ADR 0019, `.ai/RUNBOOK_PHASE4_DEPLOY.md`, et thought_log entries Phase 4.4→4.9
+- [ ] Attendre approval + CI validation
+- [ ] Merger PR vers main (squash NON recommandé — chaque commit Phase 4.x est une étape logique distincte avec entrée thought_log)
+
+**Post-merge** :
+- [ ] Tag release : `v8.0.0-phase4` (breaking si user a une DB legacy non rebuilt)
+- [ ] CHANGELOG.md : section Phase 4 (incident ART résolu, runbook deploy, breaking)
+- [ ] Annoncer dans channel ops : pré-requis `force_rebuild_art --all true` AVANT 1er boot sur prod
+
+**Items reportés (post merge OK)** :
+- [ ] Documenter le default async ON dans le README utilisateur
+- [ ] Si CI metrics observent latence WAL : tuning du janitor (24h → 12h ?)
+
+---
+
+### [POST-V7] Post-Merge Validation
+
+- [ ] Vérifier baseline tests verts post-merge
+- [ ] Vérifier coverage >= 76%
+- [ ] Vérifier no new warnings (golangci-lint)
+
+---
+
+### [POST-V7] Optional Cleanup
+
+- [ ] Supprimer branche `refactor/leased-writer-enforcement` (si besoin)
+- [ ] Supprimer branche `fix/theme-consistency-tokens` (si besoin)
+
+---
+
+### [POST-V7] Optional Observability
+
+- [ ] Setup monitoring: `dblease_acquire_total{kind=player|shared_matches,status=success|timeout}`
+- [ ] Setup alerting si timeouts excessifs
+- [ ] Documenter les seuils d'alerte
+
+---
+
+### [POST-V7] Optional Documentation
+
+- [ ] Créer `docs/adr/0013-leased-writer-enforcement.md`
+  - Contexte: P1 Prestige during sync
+  - Décision: DLeasedWriter type + dblease package
+  - Conséquences: Unified observability, deadlock resolution
 
 ---
 
@@ -273,6 +368,25 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 
 ---
 
+### [V8/Compare] CSR + CSR ATH (re-implémentation)
+
+**Noté le** : 2026-05-10 | **Priorité** : 🔵 V8 — reportée
+
+**Contexte** : retiré de la page Face-à-face le 2026-05-10 (commit `revert(compare): supprime CSR + CSR ATH`).
+
+**Pourquoi retiré** : appel live à `skill.svc.halowaypoint.com/hi/playlist/{id}/csrs` ne fonctionne pas pour les joueurs autres que celui logué (l'endpoint Waypoint scope la lecture du CSR au token courant). SpartanRecord contourne ça via un cron Firebase + un autocode privé qui pré-cache via un compte de service ; on n'a pas l'équivalent.
+
+**Stratégie v8** : reproduire le modèle SpartanRecord côté Go.
+- Cron background (1×/jour) qui appelle Waypoint pour la liste fermée des gamertags trackés (pool joueurs LevelUp).
+- Écriture dans `stats.duckdb` table `match_skill_rank` avec `rating_type='CSR'` (la colonne existe déjà, juste personne ne la remplit côté sync).
+- À l'affichage de Compare : lecture DuckDB locale (< 50ms, jamais d'appel live).
+- Restaurer les champs `CSRCurrent`, `CSRBest` côté domaine + sous-requêtes dans `compare_repo.go::GetPlayerATH/GetPlayerATHFor` + métriques `csr_current`/`csr_best` dans `compare_service.go::buildMetrics`.
+- Côté frontend : restaurer `csr_current`/`csr_best` dans `i18n.ts` et `ComparePage.tsx::CATEGORY_KEYS.bilan`.
+
+**À investiguer** : l'endpoint Waypoint accepte-t-il une lecture en service-account (compte 343i partner) ou faut-il rester sur le scope user ? Si scope user uniquement → cron tourne avec les tokens du joueur logué pour récupérer les CSR de ses coéquipiers.
+
+---
+
 ### [Multi-titre] Couche canonique `weapon_family` cross-titres
 
 **Noté le** : 2026-04-26 | **Priorité** : Basse — bloqué par arrivée d'un second titre réel
@@ -419,10 +533,162 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 
 ---
 
+## 🎮 Backlog — Coach proactif × Prestige (post-V2)
+
+Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
+
+Ce backlog liste les extensions volontairement reportées **après** la livraison V2 du pont coach → Prestige. Chaque entrée doit faire l'objet d'une décision produit séparée avant ouverture d'une nouvelle branche.
+
+### [coach/prestige] V3 — Squad coach
+
+**Idée** : étendre le pont aux escouades. Quand le coach détecte un pattern collectif (composition d'équipe orientée combat / objectif / support), il propose un `SquadChallenge` ou un pool d'arcs calibrés sur la composition.
+
+**Pré-requis** :
+- Profil agrégé d'escouade (moyenne LUSR sur les axes par membre).
+- Signal coach niveau escouade (à concevoir — `coach.GenerateInput` est aujourd'hui per-user).
+- Extension de `prestige.RefreshSquadPool` pour accepter un filtre coach.
+
+**Effort estimé** : lourd. Touche `coach`, `coach_advisor`, `prestige`, front-end squad UI.
+
+---
+
+### [coach/prestige] V3 — Coach négatif soft
+
+**Idée** : autoriser le coach à signaler des **tendances dégradées** (LOWESS négative soutenue, baseline en chute) **sans culpabilisation**. Reformulation positive : "tu as l'opportunité de stabiliser X" plutôt que "tu régresses sur X".
+
+**Pré-requis** :
+- Décision produit explicite (ADR 0014 §6.1 cadre aujourd'hui le coach comme strictement positif — il faut un amendement ou une option par joueur).
+- Tone guidelines pour i18n (FR + EN) qui maintiennent le cadre positif.
+- A/B test ou opt-in séparé pour éviter d'imposer ce mode à tous les joueurs qui ont activé le coach proactif standard.
+
+**Effort estimé** : moyen côté code, lourd côté produit/UX.
+
+---
+
+### [coach/prestige] V2.1 — Plumbing `Source` → `prestige_telemetry.source`
+
+**Idée** : ajouter une colonne `source` dans la table `prestige_telemetry` et propager `CreateChallengeRequest.Source` jusqu'à `EmitCreated` (puis aux EmitTransition pour suivre le devenir des challenges coach).
+
+**Bloqueur actuel** : la table `prestige_telemetry` est écrite mais jamais lue. Aucun script, aucun handler, aucun dashboard ne l'interroge. Le commentaire dans `types.go` mentionnant `analyze_prestige_tuning.py` réfère à un script qui n'existe pas — c'était une intention V1, jamais matérialisée.
+
+**Pré-requis avant d'implémenter** :
+- Construire d'abord un consommateur : soit un endpoint `GET /diag/prestige/telemetry` qui agrège (taux acceptance par source, complétion par source), soit un analyseur CLI Go (`cmd/prestige_tuning_analyze`) lisant directement la DB.
+- **PAS DE PYTHON** : analyseur en Go ou DuckDB CLI direct (`duckdb stats.duckdb -c 'SELECT ...'`).
+- Définir les métriques cibles : ratio accept/reject par source, taux completion coach vs user vs pilot_mode, distribution de strength des proposals acceptées.
+
+**Sans consommateur** : ajouter la colonne maintenant = écriture pour personne, dette de schéma qui grossit. Reporter jusqu'à ce qu'un besoin analytics concret émerge.
+
+**Effort estimé** : rapide (ALTER TABLE + 2 lignes Go) — mais l'analyseur côté consommation est moyen (1 commit endpoint diag ou CLI).
+
+---
+
+### [coach/prestige] V2.1 — Job GC `coach_advisor_template_gc`
+
+**Idée** : job nocturne qui supprime les templates `source='coach_synthesized'` avec `usage_count=0` et `updated_at > 90 j`.
+
+**Pré-requis** :
+- Mesure post-livraison V2 du volume de templates synthétisés.
+- Si volume reste < 200 templates synthétisés total, ne rien faire.
+
+**Effort estimé** : rapide (1 commit avec scheduler).
+
+---
+
+### [coach/prestige] V2.1 — Compteurs expvar
+
+**Idée** : ajouter des compteurs `coach_proposals_generated_total{kind,origin}`, `coach_proposals_accepted_total{kind,origin}`, `coach_proposals_completed_total` pour mesurer l'efficacité du coach proactif vs user / pilot_mode.
+
+**Pré-requis** :
+- Conformité ADR 0009 (expvar stdlib).
+- Décision sur les labels (kind, origin, signal_kind ?) pour ne pas exploser la cardinalité.
+
+**Effort estimé** : rapide.
+
+---
+
+### [coach/prestige] V3 — Apprentissage automatique de `synthesis_grammar.toml`
+
+**Idée** : analyser `prestige_telemetry` pour ajuster la grammaire de synthèse. Si les templates synthétisés sur metric=X ont taux de complétion < 30 % sur 50 acceptations, retirer X de la grammaire ou réduire ses windows autorisés.
+
+**Pré-requis** :
+- Job analytics qui lit `prestige_telemetry` + `coach_proposal`.
+- Mécanisme de PR automatique sur `synthesis_grammar.toml` (ou ajustement runtime via override en DB metadata).
+- Validation manuelle obligatoire avant application.
+
+**Effort estimé** : lourd. Demande infra analytics.
+
+---
+
+### [coach/prestige] V3 — Cross-titre arcs
+
+**Idée** : permettre un arc qui couvre deux titres (ex. progression accuracy partagée Halo Infinite + futur titre Halo MCC ou cross-game). Aujourd'hui chaque `Arc` est lié à un `title_slug` unique.
+
+**Pré-requis** :
+- Décision produit (les joueurs ont-ils ce besoin ?).
+- Refonte mineure `Arc.TitleSlug` → `Arc.TitleSlugs []string` ou table `arc_titles` séparée.
+- Adapter les répartitions PP par titre (un challenge cross-titre crédite-t-il les PP sur chaque titre ?).
+
+**Effort estimé** : moyen côté backend, lourd côté UX.
+
+---
+
+### [coach/prestige] V3 — Coach narrative tone
+
+**Idée** : choix par joueur du "ton" du coach (technique / motivant / humour / neutre) influençant les `labelFR` / `labelEN` synthétisés et les réasons.
+
+**Pré-requis** :
+- Banque de templates i18n × 4 tons par signal kind.
+- Setting joueur `coach_tone` (extension de `user_preferences`).
+
+**Effort estimé** : moyen (surtout côté contenu i18n).
+
+---
+
+### [coach/prestige] V3 — Notifications push externes
+
+**Idée** : émission externe (push mobile, email, Discord) des proposals coach les plus fortes. Aujourd'hui les notifications restent in-app (`player_notifications` UI uniquement).
+
+**Pré-requis** :
+- Décision produit (sécurité / vie privée).
+- Infra push mobile (non disponible aujourd'hui).
+- Préférences fines par catégorie de notif.
+
+**Effort estimé** : lourd.
+
+---
+
+**Ordre de priorisation suggéré (coach/prestige V3)** :
+
+1. V2.1 — Compteurs expvar (mesure → décision)
+2. V2.1 — Job GC (si volume justifie)
+3. V3 — Squad coach (le plus aligné avec les fondations Prestige squad existantes)
+4. V3 — Coach négatif soft (demande arbitrage produit explicite)
+5. Le reste — décisions au cas par cas
+
+---
+
+## 📊 Statistiques — Leased-Writer-Enforcement (PR 4-6 + PR 7)
+
+| Métrique | Valeur |
+|----------|--------|
+| Commits leased-writer-enforcement | 8 |
+| Commits PR 7 migration | 1 |
+| Nouveaux tests intégration | 26 |
+| Sites migrés (PR 7) | 17 |
+| Lignes ajoutées | ~3100 |
+| Baseline tests (preserved) | 1662 |
+| Branches affectées | 2 (refactor/leased-writer-enforcement, fix/theme-consistency-tokens) |
+
+---
+
 ## ✅ Récemment complété (référence)
 
 | Date | Item |
 |------|------|
+| 2026-05 | **[Go/PR 7] Sync Engine Migration to dblease** — 17 sites `AcquireLeaseCtx` → `AcquireWriterCtx` migrés (engine.go ×10, backfill_weapons.go ×1, citations_backfill.go ×2, friends_recompute.go ×2, session_recalc.go ×2). Deprecation comment sur legacy facade. |
+| 2026-05 | **[Go/PR 4-6] Leased-Writer-Enforcement Foundation** — type `LeasedWriter` + interfaces `DBExecutor`/`DBWriter`, expvar metrics `dblease_acquire_total{kind,status}`, 26 tests intégration (burst, coordination, atomicity), corrections fixtures (global schema), CI workflow updates (go-lease-enforcement, go-baseline-tests jobs), preservation 1662 tests baseline. |
+| 2026-05-24 | **[auth/unification] E.v2 — Pool.AddOrUpdateSource + periodic re-scan** (commit `4508df92`) : hot-add ou refresh d'un slot, goroutine main.go 15min tick, 5 tests TDD GREEN. |
+| 2026-05-24 | **[auth/unification] PR 2.5b phase 1 — RefreshLoop.WithMultiUserMirror** (commit `157d80a8`) : mirror write legacy → multi-user, 3 tests TDD GREEN. |
 | 2026-04-28 | **[Multi-titre] Migration `static/` vers arborescence title-scopée** — Plan finition multi-titres Phase 6 livré (branche `feat/multi-title-static-fs-rescope`, 6 commits). Couche 2 `internal/assets/static/` (35 tests) + couche 3 `TitleAssetURLAdapter` HI + ST_B stub + bascule des 5 callers Go (A1–A5, C1, F) + frontend `apps/web/src/lib/staticAssets.ts` (D1–D2) + big bang atomique (328 fichiers `git mv` + 180 rows UPDATE DB + flag flip + fixtures D3+D4) + cleanup Phase 6.6 (suppression flag + script jetable + dead branches). H5G/HI renames vers slugs canoniques longs. |
 | 2026-04-10 | **Score de forme individuel + escouade** : `compute_form_score_history()` (Polars rolling avg_14 - avg_90), `load_full_performance_history()` (DB query), `plot_form_score_history()` (Plotly multi-lignes + fill). Intégré en tête de l'onglet Résumé (Timeseries) et avant "Taux de victoires vs historique" (Teammates). st.metric + graphe historique avec points session surlignés. |
 | 2026-04-06 | **Discord i18n — assets résolus par ID dans l'embed** : `fetch_last_match_info()` remonte `map_id`/`playlist_id`/`pair_id`/`game_variant_id` + libellés EN bruts ; `src/utils/_discord_embed.py` résout désormais les traductions via `asset_translations` selon `discord_lang`, avec fallback unique vers l'anglais en BDD. Les colonnes `*_fr` de `v_match_full` ne sont plus utilisées dans ce flux. Tests ciblés : 138 passés (`test_discord_notifier.py`, `test_translations.py`, `test_delta_sync.py`). |
@@ -471,19 +737,19 @@ Commentaire explicite : "Migration du watcher : différée à PR 2.5b".
 | 2026-03-15 | Migration last_match : requêtes directes → DuckDBRepository (`load_player_match_enrichment`, `is_abandoned_match`) — 12 tests |
 | 2026-03-15 | Fixes Phase 1 v6 : `player_provisioning.py` bare connect, `cache_filters.py` `_get_connection()` privé, `multiplayer.py` dead code — 6 tests |
 | 2026-03-15 | Couche résolution gamertag→XUID : `lookup_xuid_for_gamertag()` dans `src/utils/xuid.py` + `GamertagResolverMixin` — 9 fichiers migrés, 11 tests |
-| 2026-03-15 | v5.8 Wave 5 : nettoyage i18n playlists/modes obsolètes → `metadata.duckdb` |
-| 2026-03-15 | v5.8 Wave 4 : suppression `highlight_events.gamertag` + helper `resolve_medal_name` |
-| 2026-03-15 | v5.8 Wave 3 : nettoyage wrappers XUID + dead code outcomes → `Outcome` enum |
-| 2026-03-15 | v5.8 Wave 2 : migration consommateurs directs (gamertags, KV pairs, assets) |
-| 2026-03-15 | v5.8 Wave 1 : vues SQL `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full` + `GamertagResolverMixin` |
-| 2026-03-15 | Fix weapon-parser : corrélation globale — taux `fire_event` 15% → 95% |
-| 2026-03-15 | Navigation last_match : boutons ◀/▶ entre matchs filtrés |
+| 2026-03-15 | **v5.8 Wave 5** : nettoyage i18n playlists/modes obsolètes → `metadata.duckdb` |
+| 2026-03-15 | **v5.8 Wave 4** : suppression `highlight_events.gamertag` + helper `resolve_medal_name` |
+| 2026-03-15 | **v5.8 Wave 3** : nettoyage wrappers XUID + dead code outcomes → `Outcome` enum |
+| 2026-03-15 | **v5.8 Wave 2** : migration consommateurs directs (gamertags, KV pairs, assets) |
+| 2026-03-15 | **v5.8 Wave 1** : vues SQL `v_gamertag_lookup`, `v_match_full`, `v_killer_victim_full` + `GamertagResolverMixin` |
+| 2026-03-15 | **Fix weapon-parser** : corrélation globale — taux `fire_event` 15% → 95% |
+| 2026-03-15 | **Navigation last_match** : boutons ◀/▶ entre matchs filtrés |
 | 2026-03-13 | Couverture tests `migrations.py` (lacunes v5.5–v5.7) |
 | 2026-03-13 | Conflit `shared_matches.duckdb` — sync depuis UI Streamlit |
-| 2026-03-13 | [UI] Heatmap performance par joueur × carte — Page Teammates |
-| 2026-03-13 | [UI] Performance par carte vs historique — vues escouade et joueur |
-| 2026-03-08 | Bug #0 : match invisible post-sync — suppression `_filters_loaded_*` dans `_clear_app_caches()` |
-| 2026-03-08 | Perf UI — vues matérialisées lazy, pagination SQL, projections fines, `@fragment_if_available` |
+| 2026-03-13 | **[UI] Heatmap performance par joueur × carte** — Page Teammates |
+| 2026-03-13 | **[UI] Performance par carte vs historique** — vues escouade et joueur |
+| 2026-03-08 | **Bug #0 : match invisible post-sync** — suppression `_filters_loaded_*` dans `_clear_app_caches()` |
+| 2026-03-08 | **Perf UI** — vues matérialisées lazy, pagination SQL, projections fines, `@fragment_if_available` |
 | 2026-03-28 | [v6.2] Badges Remontada / Débandade / Contre-Remontada — `DominanceFlag` 3-5, `comeback_analysis.py`, `comeback_backfill.py`, `--comeback-badges` CLI |
 | 2026-03-28 | [v6.2] Unification vue coéquipier unique → vue escouade — `f2_xuid` optionnel, suppression `render_single_teammate_view` |
 | 2026-03-28 | [v6.2] Graphe combiné Frags↑/Morts↓ — `plot_trio_kills_deaths()`, axe Y symétrique, `safe_chart_render()` |

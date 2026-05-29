@@ -1,5 +1,5 @@
 // cmd_ops.go — sous-commandes d'opérations / diagnostic :
-// healthcheck, diagnose, check-env, compare-db, gate-check, surface-status.
+// healthcheck, diagnose, check-env, compare-db, gate-check.
 package main
 
 import (
@@ -133,52 +133,5 @@ func runGateCheck(cfg *config.AppConfig, args []string) error {
 	if !report.AllPassed {
 		return fmt.Errorf("gate phase 4 non validée")
 	}
-	return nil
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// surface-status
-// ─────────────────────────────────────────────────────────────────────────────
-
-func runSurfaceStatus(cfg *config.AppConfig, args []string) error {
-	fs := flag.NewFlagSet("surface-status", flag.ExitOnError)
-	asJSON := fs.Bool("json", false, "Sortie JSON")
-	if err := fs.Parse(args); err != nil {
-		return err
-	}
-
-	ff := &cfg.FeatureFlags
-
-	type surfaceEntry struct {
-		Surface string `json:"surface"`
-		Backend string `json:"backend"`
-	}
-
-	entries := make([]surfaceEntry, 0, len(config.AllSurfaces))
-	for _, s := range config.AllSurfaces {
-		entries = append(entries, surfaceEntry{
-			Surface: string(s),
-			Backend: string(ff.BackendFor(s)),
-		})
-	}
-
-	if *asJSON {
-		return json.NewEncoder(os.Stdout).Encode(entries)
-	}
-
-	allGo := ff.AllOnGo()
-	status := "✅ Migration complète"
-	if !allGo {
-		status = "⚠️  Bascule partielle — certaines surfaces sur Python"
-	}
-	fmt.Printf("LevelUp — Statut des surfaces\n%s\n\n", status)
-	for _, e := range entries {
-		indicator := "✅"
-		if e.Backend == "python" {
-			indicator = "⚠️ "
-		}
-		fmt.Printf("  %s %-14s → %s\n", indicator, e.Surface, e.Backend)
-	}
-	fmt.Printf("\nVar env de rollback : LEVELUP_FF_<SURFACE>=python\n")
 	return nil
 }

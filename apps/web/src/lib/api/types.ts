@@ -1,69 +1,40 @@
 /**
- * Types TypeScript alignés sur les schémas Pydantic du backend.
- * Générés manuellement pour Slice 0a — seront remplacés par openapi-typescript
- * dès que le pipeline `make generate-types` est opérationnel.
+ * Types de l'API LevelUp.
+ *
+ * Migration en cours (chantier types.ts → generated.ts) : les types qui ont un
+ * schéma OpenAPI équivalent sont ré-exportés depuis `./generated` (source de
+ * vérité = apps/go-api/api/openapi.yaml, régénéré via `npm run generate-types`).
+ * Les types frontend-only (view models, sans schéma OpenAPI) restent définis ici.
  */
+import type { components } from './generated'
 
 // ---------------------------------------------------------------------------
 // Communs
 // ---------------------------------------------------------------------------
 
-export interface PlayerSummary {
-  player_slug: string
-  gamertag: string
-  xuid: string
-  waypoint_player: string
-  is_demo: boolean
-  /** Sprint 44 : titre associé (ex: "halo_infinite"). */
-  title_slug?: string
-}
+// Batch 1 (chantier migration) — ré-exports depuis le contrat OpenAPI.
+export type PlayerSummary = components['schemas']['PlayerSummary']
 
-export interface CapabilityMap {
-  can_read_local_data: boolean
-  can_run_sync: boolean
-  can_use_live_halo: boolean
-  can_manage_settings: boolean
-  can_reset_media_index: boolean
-  can_view_media: boolean
-  can_self_provision: boolean
-  can_start_initial_sync: boolean
-  can_manage_instance: boolean
-}
+export type CapabilityMap = components['schemas']['CapabilityMap']
 
 // ---------------------------------------------------------------------------
 // Bootstrap
 // ---------------------------------------------------------------------------
 
-export interface FeatureFlags {
-  v7_enabled: boolean
-  media_enabled: boolean
-  demo_mode: boolean
-  discord_configured: boolean
-  tailscale_enabled: boolean
-}
+export type FeatureFlags = components['schemas']['FeatureFlags']
 
-export interface SettingsExcerpt {
-  lang: string
-  user_timezone: string
-  show_records: boolean
-  normalize_mode_labels: boolean
-}
+export type SettingsExcerpt = components['schemas']['SettingsExcerpt']
 
-export interface HaloIdentitySummary {
-  gamertag: string
-  xuid: string
-}
+export type HaloIdentitySummary = components['schemas']['HaloIdentitySummary']
 
-/** Sprint 44 : résumé d'un titre supporté pour le frontend. */
-export interface TitleSummary {
-  slug: string
-  name: string
-  icon_url?: string
-  status: 'active' | 'coming_soon' | 'archived'
-  capabilities: string[]
-  is_default: boolean
-}
+export type TitleSummary = components['schemas']['TitleSummary']
 
+// TODO(migration bucket B) : le schéma OpenAPI BootstrapResponse est INCOMPLET
+// vs la réponse réelle du backend Go — il manque auth_mode, first_launch,
+// current_username, current_title_slug, available_titles, registration_mode,
+// is_admin, oauth_code_flow_enabled (+ le schéma a current_player?/privacy? en
+// trop/optionnels). À réconcilier en complétant openapi.yaml puis régénérer,
+// après quoi ce type pourra être shimé. Reste manuel d'ici là.
 export interface BootstrapResponse {
   setup_required: boolean
   auth_state: 'missing' | 'partial' | 'ready'
@@ -97,10 +68,7 @@ export interface BootstrapResponse {
   oauth_code_flow_enabled?: boolean
 }
 
-export interface PlayersListResponse {
-  items: PlayerSummary[]
-  default_player_slug: string | null
-}
+export type PlayersListResponse = components['schemas']['PlayersListResponse']
 
 export interface SessionContextRequest {
   player_slug?: string | null

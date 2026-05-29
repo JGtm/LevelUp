@@ -159,6 +159,10 @@ fr = "Score perf."
 en = "Perf. score"
 
 # Colonnes table matchs
+[session.detail.col_open]
+fr = "Ouvrir"
+en = "Open"
+
 [session.detail.col_time]
 fr = "Heure"
 en = "Time"

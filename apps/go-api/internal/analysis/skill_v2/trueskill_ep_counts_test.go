@@ -41,8 +41,8 @@ func TestPhase3c_CountsDiscriminateTeammates(t *testing.T) {
 	// Avec counts : A0 a beaucoup de kills, peu de deaths ; A1 inverse.
 	counts := &CountInputs{
 		TeamA: []PlayerCounts{
-			{Kills: pf64(20), Deaths: pf64(4)},   // A0 carry
-			{Kills: pf64(4), Deaths: pf64(20)},   // A1 passif
+			{Kills: pf64(20), Deaths: pf64(4)}, // A0 carry
+			{Kills: pf64(4), Deaths: pf64(20)}, // A1 passif
 		},
 		TeamB: []PlayerCounts{
 			{Kills: pf64(8), Deaths: pf64(12)},
@@ -165,7 +165,7 @@ func TestPhase3c_PartialCounts_OnlyTrackedPlayers(t *testing.T) {
 	counts := &CountInputs{
 		TeamA: []PlayerCounts{
 			{Kills: pf64(25), Deaths: pf64(5)}, // A0 carry connu
-			{}, {}, {}, // A1-3 pas de signal individuel
+			{}, {}, {},                         // A1-3 pas de signal individuel
 		},
 		TeamB: []PlayerCounts{
 			{Kills: pf64(8), Deaths: pf64(15)},

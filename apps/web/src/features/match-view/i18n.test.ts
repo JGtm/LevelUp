@@ -15,17 +15,23 @@ describe('buildContextLabel', () => {
 
   it('playlist seule', () => {
     expect(
-      buildContextLabel({ playlist_name: 'Classée Arena' }, 'fr'),
+      buildContextLabel({ playlist_names: ['Classée Arena'] }, 'fr'),
     ).toBe('Classée Arena')
   })
 
   it('playlist + mode', () => {
     expect(
       buildContextLabel(
-        { playlist_name: 'Classée Arena', mode_category: 'Ranked' },
+        { playlist_names: ['Classée Arena'], mode_categories: ['Ranked'] },
         'fr',
       ),
     ).toBe('Classée Arena · Ranked')
+  })
+
+  it('multi-playlists : jointes par virgule dans le label (Phase 3)', () => {
+    expect(
+      buildContextLabel({ playlist_names: ['Classée Arena', 'Grande bataille'] }, 'fr'),
+    ).toBe('Classée Arena, Grande bataille')
   })
 
   it('outcome FR vs EN', () => {
@@ -59,8 +65,8 @@ describe('buildContextLabel', () => {
 
   it('combinaison complète FR', () => {
     const spec: MatchFilterSpec = {
-      playlist_name: 'Classée',
-      mode_category: 'BTB',
+      playlist_names: ['Classée'],
+      mode_categories: ['BTB'],
       outcome: 'loss',
       date_from: '2026-04-01T00:00:00Z',
     }

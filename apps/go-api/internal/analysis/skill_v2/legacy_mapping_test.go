@@ -7,9 +7,9 @@ import (
 
 func TestLegacyTierRange_AllTiers(t *testing.T) {
 	cases := []struct {
-		name     string
-		wantMin  float64
-		wantMax  float64
+		name    string
+		wantMin float64
+		wantMax float64
 	}{
 		{"Bronze", 1000, 1200},
 		{"Silver", 1200, 1400},
@@ -34,12 +34,12 @@ func TestMapMuToLegacyRating_ReferencePlayers(t *testing.T) {
 		wantTier   string
 		wantApprox float64 // tolérance ±10 sur le rating
 	}{
-		{"Madina BTB Diamant II", 26.17, "Diamond", 1833},        // 1800 + 1/6*200
-		{"Madina Slayer Diamant II", 26.12, "Diamond", 1833},     // 26.12 dans Diamant sub 2 → 1833
-		{"Madina Objectif Platine VI", 25.75, "Platinum", 1767},  // 1600 + 5/6*200 ≈ 1767
-		{"Chocoboflor Or IV", 23.81, "Gold", 1500},          // 1400 + 3/6*200 = 1500
-		{"JGtm Or IV", 23.52, "Gold", 1500},                 // idem
-		{"XxDaemon Bronze VI", 20.38, "Bronze", 1167},       // 1000 + 5/6*200 ≈ 1167
+		{"Madina BTB Diamant II", 26.17, "Diamond", 1833},       // 1800 + 1/6*200
+		{"Madina Slayer Diamant II", 26.12, "Diamond", 1833},    // 26.12 dans Diamant sub 2 → 1833
+		{"Madina Objectif Platine VI", 25.75, "Platinum", 1767}, // 1600 + 5/6*200 ≈ 1767
+		{"Chocoboflor Or IV", 23.81, "Gold", 1500},              // 1400 + 3/6*200 = 1500
+		{"JGtm Or IV", 23.52, "Gold", 1500},                     // idem
+		{"XxDaemon Bronze VI", 20.38, "Bronze", 1167},           // 1000 + 5/6*200 ≈ 1167
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

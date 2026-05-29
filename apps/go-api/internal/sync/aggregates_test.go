@@ -51,31 +51,6 @@ func openMemForAggregates(t *testing.T) *sql.DB {
 	return db
 }
 
-// openMemForShared ouvre une DuckDB in-memory avec le schéma minimal shared.
-func openMemForShared(t *testing.T) *sql.DB {
-	t.Helper()
-	db, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatalf("openMemForShared: %v", err)
-	}
-	t.Cleanup(func() { db.Close() })
-
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS xuid_aliases (xuid VARCHAR, gamertag VARCHAR, last_seen TIMESTAMP)`)
-	if err != nil {
-		t.Fatalf("CREATE xuid_aliases: %v", err)
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS match_participants (xuid VARCHAR, gamertag VARCHAR, match_id VARCHAR)`)
-	if err != nil {
-		t.Fatalf("CREATE match_participants: %v", err)
-	}
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS match_registry (match_id VARCHAR, playlist_id VARCHAR)`)
-	if err != nil {
-		t.Fatalf("CREATE match_registry: %v", err)
-	}
-
-	return db
-}
-
 // TestRefreshAggregates_OnEmptyDB vérifie que refreshAggregates tourne sans erreur
 // même sur une DB avec des tables vides.
 func TestRefreshAggregates_OnEmptyDB(t *testing.T) {
@@ -134,15 +109,4 @@ func TestRefreshAggregates_Idempotent(t *testing.T) {
 	if cnt != 1 {
 		t.Errorf("idempotence: attendu 1 ligne, obtenu %d après 3 passes", cnt)
 	}
-}
-
-// TestRefreshSharedViews_OnEmptyDB vérifie que refreshSharedViews tourne sans erreur.
-func TestRefreshSharedViews_OnEmptyDB(t *testing.T) {
-	db := openMemForShared(t)
-
-	count, err := refreshSharedViews(t.Context(), db)
-	if err != nil {
-		t.Fatalf("refreshSharedViews: %v", err)
-	}
-	t.Logf("refreshSharedViews: %d vue(s) recréée(s)", count)
 }

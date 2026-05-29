@@ -124,25 +124,25 @@ type StatsMatchRow struct {
 	PerfectKills        *int
 	// SkillRatingValue : rating CSR ou LUSR du match (depuis match_skill_rank).
 	// Nil si le titre/match n'a pas de skill snapshot.
-	SkillRatingValue         *float64
-	SkillRatingType          string   // "csr" | "lusr" | ""
-	SkillPlaylistGroup       *string  // groupe normalisé (ex: "ranked-arena")
-	SkillSeasonID            *string  // saison Halo (ex: "Elan") — rupture de courbe si changement
-	SkillMeasurementRemaining *int    // matchs de placement restants (>0 = placement)
-	EngagementScoreBrut      *float64 // résidu brut engagement, nil si non calculé
+	SkillRatingValue          *float64
+	SkillRatingType           string   // "csr" | "lusr" | ""
+	SkillPlaylistGroup        *string  // groupe normalisé (ex: "ranked-arena")
+	SkillSeasonID             *string  // saison Halo (ex: "Elan") — rupture de courbe si changement
+	SkillMeasurementRemaining *int     // matchs de placement restants (>0 = placement)
+	EngagementScoreBrut       *float64 // résidu brut engagement, nil si non calculé
 }
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.
 type SynthesisMatchRow struct {
-	MatchID          string
-	StartTime        time.Time
-	Outcome          int
-	Kills            int
-	Deaths           int
-	KDA              *float64
-	IsWithFriends    bool
-	Accuracy         *float64
-	TimePlayedSecs   *int
+	MatchID        string
+	StartTime      time.Time
+	Outcome        int
+	Kills          int
+	Deaths         int
+	KDA            *float64
+	IsWithFriends  bool
+	Accuracy       *float64
+	TimePlayedSecs *int
 	// AvgLifeSeconds : durée de vie moyenne (valeur API match_participants),
 	// PAS un dérivé de time_played/n. Nil si non chargée. Cf. squad_breakdown.go.
 	AvgLifeSeconds   *float64

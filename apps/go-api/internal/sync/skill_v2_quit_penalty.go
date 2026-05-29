@@ -8,6 +8,11 @@ package sync
 // l'ordering produit "1er quitter = delta plein, suivants = 50%".
 
 import (
+	"context"
+	"database/sql"
+	"log/slog"
+	"time"
+
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 )
 
@@ -142,7 +147,8 @@ func scaledQuitDelta(xuid, primaryXUID string, baseDelta float64) float64 {
 	return baseDelta * QuitSecondaryFactor
 }
 
-// quitDeltaForTeam : pénalité quit selon outcome final de l'équipe.
+// quitDeltaForTeam : pénalité quit selon outcome final de l'équipe (fallback
+// Sprint 2.A quand la timeline des frags est indisponible).
 //
 //	TeamLoss → "related" : équipe perdait probablement déjà → δ modéré
 //	TeamWin / TeamDraw → "unrelated" : équipe non perdante → δ fort
@@ -151,6 +157,123 @@ func quitDeltaForTeam(o skillv2.TeamResult) float64 {
 		return skillv2.DefaultQuitDeltaRelated
 	}
 	return skillv2.DefaultQuitDeltaUnrelated
+}
+
+// quitDeltaForContext : pénalité quit selon la situation AU MOMENT du quit
+// (Sprint 2.A). Seul "perdait" est related (modéré) ; menait/égalité = abandon
+// d'une situation non-perdante → fort.
+func quitDeltaForContext(ctx skillv2.QuitContext) float64 {
+	if ctx == skillv2.QuitWhileTrailing {
+		return skillv2.DefaultQuitDeltaRelated
+	}
+	return skillv2.DefaultQuitDeltaUnrelated
+}
+
+// quitTimeline porte la timeline des frags d'un match (attribués par side :
+// teamA=0, teamB=1) et le repère temporel servant à situer le moment du quit.
+// available=false → buildCountInputs retombe sur l'outcome final.
+type quitTimeline struct {
+	frags        []skillv2.TeamFrag
+	filmStartUTC time.Time
+	available    bool
+}
+
+// quitOffsetMs convertit le timestamp ABSOLU de départ d'un joueur en
+// millisecondes dans le repère des frags (killer_victim_pairs.time_ms).
+//
+// ⚠️ HOOK ADAPTER MULTI-TITRE — T0 du match ⚠️
+// Le vrai T0 = match_registry.real_start_time (début réel après countdown,
+// disponible dans ~99% des cas) et doit être obtenu via un ADAPTER
+// titre-spécifique. CE N'EST PAS FAIT ICI : on utilise filmStartUTC (début du
+// film = start_time_utc) comme repère, ce qui est correct pour Halo Infinite car
+// killer_victim_pairs.time_ms est relatif au début du film. POUR BRANCHER LE T0
+// RÉEL (ou pour un autre titre), c'est ICI que l'adapter doit remplacer
+// filmStartUTC par le real_start_time résolu. Ne pas exploiter durée/début de
+// match ailleurs sans passer par ce point. Cf. roadmap Sprint 2.A.
+func quitOffsetMs(leaveTime, filmStartUTC time.Time) int64 {
+	return leaveTime.Sub(filmStartUTC).Milliseconds()
+}
+
+// hasAnyQuitter retourne true si au moins un joueur a quitté (évite de charger
+// la timeline des frags pour rien sur les matchs sans quitter).
+func hasAnyQuitter(teamA, teamB []rosterMember) bool {
+	for _, m := range teamA {
+		if isQuitter(m) {
+			return true
+		}
+	}
+	for _, m := range teamB {
+		if isQuitter(m) {
+			return true
+		}
+	}
+	return false
+}
+
+// loadQuitTimeline charge la timeline des frags (killer_victim_pairs) du match et
+// attribue chaque frag à un side (teamA=0, teamB=1). available=false si erreur
+// ou aucun frag exploitable → fallback outcome final.
+func loadQuitTimeline(ctx context.Context, sharedDB *sql.DB, matchID string,
+	filmStartUTC time.Time, teamA, teamB []rosterMember) quitTimeline {
+	side := make(map[string]int, len(teamA)+len(teamB))
+	for _, m := range teamA {
+		side[m.xuid] = 0
+	}
+	for _, m := range teamB {
+		side[m.xuid] = 1
+	}
+	rows, err := sharedDB.QueryContext(ctx, `
+		SELECT killer_xuid, time_ms FROM killer_victim_pairs
+		WHERE match_id = ? AND time_ms IS NOT NULL AND killer_xuid IS NOT NULL
+		ORDER BY time_ms ASC`, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "LUSR v2 quit-context: chargement frags échoué — fallback outcome",
+			"match_id", matchID, "err", err)
+		return quitTimeline{available: false}
+	}
+	defer rows.Close() //nolint:errcheck
+
+	var frags []skillv2.TeamFrag
+	for rows.Next() {
+		var killer string
+		var t int64
+		if err := rows.Scan(&killer, &t); err != nil {
+			continue
+		}
+		s, ok := side[killer]
+		if !ok {
+			continue // frag par un xuid hors des 2 équipes (rare)
+		}
+		frags = append(frags, skillv2.TeamFrag{TimeMs: t, TeamID: s})
+	}
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "LUSR v2 quit-context: itération frags échouée — fallback outcome",
+			"match_id", matchID, "err", err)
+		return quitTimeline{available: false}
+	}
+	if len(frags) == 0 {
+		slog.DebugContext(ctx, "LUSR v2 quit-context: aucun frag — fallback outcome",
+			"match_id", matchID)
+		return quitTimeline{available: false}
+	}
+	slog.DebugContext(ctx, "LUSR v2 quit-context: timeline frags chargée",
+		"match_id", matchID, "frags", len(frags))
+	return quitTimeline{frags: frags, filmStartUTC: filmStartUTC, available: true}
+}
+
+// quitBaseDelta retourne le delta de base d'un quitter : depuis le CONTEXTE
+// (score au moment du quit, Sprint 2.A) si la timeline est dispo et que le joueur
+// a un timestamp de départ ; sinon depuis l'outcome FINAL de son équipe.
+func quitBaseDelta(ctx context.Context, m rosterMember, teamOutcome skillv2.TeamResult, side int, qt quitTimeline) float64 {
+	if qt.available && m.lastLeaveTime.Valid {
+		quitMs := quitOffsetMs(m.lastLeaveTime.Time, qt.filmStartUTC)
+		qc := skillv2.InferQuitContext(qt.frags, quitMs, side)
+		delta := quitDeltaForContext(qc)
+		slog.DebugContext(ctx, "LUSR v2 quit-context appliqué",
+			"xuid", m.xuid, "context", qc.String(), "quit_ms", quitMs, "delta", delta)
+		return delta
+	}
+	return quitDeltaForTeam(teamOutcome)
 }
 
 // invertOutcome retourne l'outcome de l'équipe adverse.
@@ -171,26 +294,12 @@ func invertOutcome(o skillv2.TeamResult) skillv2.TeamResult {
 // Si AUCUN joueur n'a kills/deaths NI quit, retourne nil (le code en aval
 // traitera comme TS classique sans observations).
 //
-// outcomeA est l'outcome de la team A (depuis le owner) — utilisé pour
-// distinguer related quit (team perdait → δ petit) d'unrelated quit (team
-// gagnait/égalisait → δ grand). Sans timeline du score AU moment du quit,
-// on approxime par le final outcome.
-// playerTeamWeight calcule le poids TS2 wᵢ = time_played_i / match_length pour
-// le sum-factor team_perf (cf. ep/sum_factor.go). Retourne 0 (→ wᵢ=1 côté EP,
-// participation pleine) si la durée gameplay ou le time_played est inconnu. Le
-// clamp [0,1] + plancher est appliqué côté EP (resolveTeamWeight).
-func playerTeamWeight(m rosterMember, gameplayDurMs int64) float64 {
-	if gameplayDurMs <= 0 || !m.timePlayedSecs.Valid || m.timePlayedSecs.Float64 <= 0 {
-		return 0
-	}
-	w := (m.timePlayedSecs.Float64 * 1000) / float64(gameplayDurMs)
-	if w > 1 {
-		w = 1
-	}
-	return w
-}
-
-func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, gameplayDurMs int64) *skillv2.CountInputs {
+// outcomeA est l'outcome de la team A (depuis le owner). Sprint 2.A : si `qt`
+// est disponible, la magnitude du quit penalty dépend de la situation AU MOMENT
+// du quit (équipe perdait → modéré ; menait/égalité → fort) ; sinon fallback sur
+// l'outcome final via quitDeltaForTeam. gameplayDurMs alimente le poids TS2
+// wᵢ = time_played / match_length (sum-factor team_perf) via playerTeamWeight.
+func buildCountInputs(ctx context.Context, teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, qt quitTimeline, gameplayDurMs int64) *skillv2.CountInputs {
 	hasAny := false
 	for _, m := range teamA {
 		if m.kills != nil || m.deaths != nil || isQuitter(m) {
@@ -209,15 +318,15 @@ func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, 
 	if !hasAny {
 		return nil
 	}
-	deltaA := quitDeltaForTeam(outcomeA)
-	deltaB := quitDeltaForTeam(invertOutcome(outcomeA))
+	outcomeB := invertOutcome(outcomeA)
 	primaryXUID := identifyPrimaryQuitter(teamA, teamB)
 	pa := make([]skillv2.PlayerCounts, len(teamA))
 	for i, m := range teamA {
 		pa[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths, Weight: playerTeamWeight(m, gameplayDurMs)}
 		if isQuitter(m) {
 			pa[i].Quit = true
-			pa[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, deltaA)
+			base := quitBaseDelta(ctx, m, outcomeA, 0, qt) // teamA = side 0
+			pa[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, base)
 		}
 	}
 	pb := make([]skillv2.PlayerCounts, len(teamB))
@@ -225,8 +334,24 @@ func buildCountInputs(teamA, teamB []rosterMember, outcomeA skillv2.TeamResult, 
 		pb[i] = skillv2.PlayerCounts{Kills: m.kills, Deaths: m.deaths, Weight: playerTeamWeight(m, gameplayDurMs)}
 		if isQuitter(m) {
 			pb[i].Quit = true
-			pb[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, deltaB)
+			base := quitBaseDelta(ctx, m, outcomeB, 1, qt) // teamB = side 1
+			pb[i].QuitPenaltyDelta = scaledQuitDelta(m.xuid, primaryXUID, base)
 		}
 	}
 	return &skillv2.CountInputs{TeamA: pa, TeamB: pb}
+}
+
+// playerTeamWeight calcule le poids TS2 wᵢ = time_played_i / match_length pour
+// le sum-factor team_perf (cf. ep/sum_factor.go). Retourne 0 (→ wᵢ=1 côté EP,
+// participation pleine) si la durée gameplay ou le time_played est inconnu. Le
+// clamp [0,1] + plancher est appliqué côté EP (resolveTeamWeight).
+func playerTeamWeight(m rosterMember, gameplayDurMs int64) float64 {
+	if gameplayDurMs <= 0 || !m.timePlayedSecs.Valid || m.timePlayedSecs.Float64 <= 0 {
+		return 0
+	}
+	w := (m.timePlayedSecs.Float64 * 1000) / float64(gameplayDurMs)
+	if w > 1 {
+		w = 1
+	}
+	return w
 }

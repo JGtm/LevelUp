@@ -37,9 +37,9 @@ func ensureGamertagForSelf(participants []ParticipantRow, selfXUID, selfGamertag
 // significatif". Les bots `present_at_beginning = TRUE` sont toujours
 // comptés intégralement (déséquilibre dès le début).
 const (
-	botPresenceMinSeconds   = 30
-	botPresenceMinRatio     = 0.15
-	botLateJoinIgnoreRatio  = 0.30
+	botPresenceMinSeconds  = 30
+	botPresenceMinRatio    = 0.15
+	botLateJoinIgnoreRatio = 0.30
 )
 
 // computeAndPersistHadBotTeammate calcule had_bot_teammate selon un seuil

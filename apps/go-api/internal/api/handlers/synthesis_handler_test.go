@@ -248,4 +248,3 @@ func TestSynthesisHandler_OverviewInResponse(t *testing.T) {
 		t.Errorf("overview.total_matches = %d, want 5", overview.TotalMatches)
 	}
 }
-

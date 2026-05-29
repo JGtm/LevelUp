@@ -96,6 +96,9 @@ func testTokens(gamertag string) *domain.HaloTokens {
 
 // TestPooledHaloClientGetMatchHistory teste GetMatchHistory avec PolicyAnyPublic.
 func TestPooledHaloClientGetMatchHistory(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skip: fait de vrais appels réseau avec backoff (>120s en -short)")
+	}
 	mp := &mockPool{
 		tokens: map[string]*domain.HaloTokens{
 			"Alice": testTokens("Alice"),

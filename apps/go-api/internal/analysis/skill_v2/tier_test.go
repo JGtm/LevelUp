@@ -53,10 +53,10 @@ func TestInferTier_Boundaries(t *testing.T) {
 		mu       float64
 		wantTier string
 	}{
-		{-100, "Bronze"},   // très bas → Bronze
+		{-100, "Bronze"}, // très bas → Bronze
 		{0, "Bronze"},
-		{20.99, "Bronze"},  // juste sous Silver
-		{21.0, "Silver"},   // borne inclusive
+		{20.99, "Bronze"}, // juste sous Silver
+		{21.0, "Silver"},  // borne inclusive
 		{21.99, "Silver"},
 		{22.0, "Gold"},
 		{24.99, "Gold"},
@@ -65,7 +65,7 @@ func TestInferTier_Boundaries(t *testing.T) {
 		{25.8, "Diamond"},
 		{26.99, "Diamond"},
 		{27.0, "Onyx"},
-		{100.0, "Onyx"},    // très haut → Onyx
+		{100.0, "Onyx"}, // très haut → Onyx
 	}
 	for _, c := range cases {
 		tier, _ := InferTier(c.mu, bs)
@@ -134,13 +134,13 @@ func TestFormatTierLabel(t *testing.T) {
 		{20.0, "Bronze VI"}, // (20-0)/3.5+1 = 5.71+1 → clamp 6
 		{22.0, "Or I"},      // borne inclusive
 		{22.5, "Or II"},
-		{23.52, "Or IV"},    // JGtm
+		{23.52, "Or IV"}, // JGtm
 		{24.99, "Or VI"},
 		{25.0, "Platine I"},
-		{25.8, "Diamant I"}, // borne Diamant
-		{26.0, "Diamant I"}, // (26-25.8)/0.2 → 0.999... int=0 +1 → 1 (float precision)
+		{25.8, "Diamant I"},   // borne Diamant
+		{26.0, "Diamant I"},   // (26-25.8)/0.2 → 0.999... int=0 +1 → 1 (float precision)
 		{26.17, "Diamant II"}, // Madina BTB → (26.17-25.8)/0.2 = 1.85 → 2
-		{26.5, "Diamant IV"}, // (26.5-25.8)/0.2 = 3.5 → 4
+		{26.5, "Diamant IV"},  // (26.5-25.8)/0.2 = 3.5 → 4
 		{27.0, "Onyx"},
 		{45.0, "Onyx"},
 	}

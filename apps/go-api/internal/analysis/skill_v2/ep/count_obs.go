@@ -30,8 +30,8 @@ const (
 
 // CountObservation représente une observation kill_i ou death_i pour un joueur.
 type CountObservation struct {
-	PlayerIndex int     // index dans TeamA ou TeamB (selon Side)
-	Side        Side    // équipe d'appartenance du joueur (A ou B)
+	PlayerIndex int  // index dans TeamA ou TeamB (selon Side)
+	Side        Side // équipe d'appartenance du joueur (A ou B)
 	Type        CountType
 	Value       float64 // valeur observée (typiquement entier ≥ 0)
 }

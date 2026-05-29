@@ -29,10 +29,10 @@ type XboxOAuthHandler struct {
 	sessionStore *session.Store
 	provider     auth_platform.TokenProvider
 	demoMode     bool
-	redirectURI  string                             // URI publique de callback (config)
-	linkStrategy auth_platform.LinkStrategy         // post-flow : login user
-	postLoginURL string                             // où rediriger après succès (typiquement "/")
-	authStore    *auth_platform.MultiUserTokenStore // ADR 0023 : persister le RT post-SSO
+	redirectURI  string                       // URI publique de callback (config)
+	linkStrategy auth_platform.LinkStrategy   // post-flow : login user
+	postLoginURL string                       // où rediriger après succès (typiquement "/")
+	authStore    auth_platform.UserTokenStore // ADR 0023 : persister le RT post-SSO
 }
 
 // NewXboxOAuthHandler crée un XboxOAuthHandler.
@@ -63,7 +63,7 @@ func (h *XboxOAuthHandler) WithLinkStrategy(s auth_platform.LinkStrategy) *XboxO
 // dans le store — indispensable pour que le serveur puisse rafraîchir les
 // tokens du joueur après la première authentification SSO sans re-prompter.
 // Nil → mode legacy (pas de persistance, le RT est perdu après la requête).
-func (h *XboxOAuthHandler) WithAuthStore(s *auth_platform.MultiUserTokenStore) *XboxOAuthHandler {
+func (h *XboxOAuthHandler) WithAuthStore(s auth_platform.UserTokenStore) *XboxOAuthHandler {
 	h.authStore = s
 	return h
 }

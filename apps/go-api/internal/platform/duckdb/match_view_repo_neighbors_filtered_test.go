@@ -171,7 +171,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterPlaylist(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
 	repo := NewMatchViewRepo(pdb, pTestXUID)
 
-	spec := &domain.MatchFilterSpec{PlaylistName: strPtr("Ranked Slayer")}
+	spec := &domain.MatchFilterSpec{PlaylistNames: []string{"Ranked Slayer"}}
 
 	// n6 est au milieu de la sous-liste DESC [n8, n6, n4, n1] → idx 1
 	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n6", spec)
@@ -181,13 +181,32 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterPlaylist(t *testing.T) {
 	assertNeighbors(t, got, strPtr("n4"), strPtr("n8"), 1, 4)
 }
 
+// TestMatchViewRepo_GetMatchNeighborsFiltered_MultiPlaylist (Phase 3)
+// "Ranked Slayer" ∪ "Big Team Battle" → 6 matchs : n8, n7, n6, n4, n3, n1
+// (n5=Fiesta et n2=Firefight Solo exclus). Valide la clause IN (?, ?).
+func TestMatchViewRepo_GetMatchNeighborsFiltered_MultiPlaylist(t *testing.T) {
+	pdb := newTestPlayerDBForNeighborsScenario(t)
+	repo := NewMatchViewRepo(pdb, pTestXUID)
+
+	spec := &domain.MatchFilterSpec{
+		PlaylistNames: []string{"Ranked Slayer", "Big Team Battle"},
+	}
+
+	// Sous-liste DESC [n8, n7, n6, n4, n3, n1] : n6 idx=2 → prev=n4, next=n7
+	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n6", spec)
+	if err != nil {
+		t.Fatalf("filter multi-playlist: %v", err)
+	}
+	assertNeighbors(t, got, strPtr("n4"), strPtr("n7"), 2, 6)
+}
+
 // TestMatchViewRepo_GetMatchNeighborsFiltered_FilterModeCategory_BTB
 // "BTB" → préfixe BTB:* → 2 matchs : n7 (BTB:CTF), n3 (BTB:Strongholds).
 func TestMatchViewRepo_GetMatchNeighborsFiltered_FilterModeCategory_BTB(t *testing.T) {
 	pdb := newTestPlayerDBForNeighborsScenario(t)
 	repo := NewMatchViewRepo(pdb, pTestXUID)
 
-	spec := &domain.MatchFilterSpec{ModeCategory: strPtr("BTB")}
+	spec := &domain.MatchFilterSpec{ModeCategories: []string{"BTB"}}
 
 	// n7 en tête (DESC) → next=nil, prev=n3
 	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n7", spec)
@@ -248,8 +267,8 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_Combined(t *testing.T) {
 	repo := NewMatchViewRepo(pdb, pTestXUID)
 
 	spec := &domain.MatchFilterSpec{
-		PlaylistName: strPtr("Ranked Slayer"),
-		Outcome:      strPtr("win"),
+		PlaylistNames: []string{"Ranked Slayer"},
+		Outcome:       strPtr("win"),
 	}
 
 	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n8", spec)
@@ -267,7 +286,7 @@ func TestMatchViewRepo_GetMatchNeighborsFiltered_MatchOutOfScope(t *testing.T) {
 	repo := NewMatchViewRepo(pdb, pTestXUID)
 
 	// n2 est PvE Firefight ; on filtre par BTB → n2 n'y est pas
-	spec := &domain.MatchFilterSpec{ModeCategory: strPtr("BTB")}
+	spec := &domain.MatchFilterSpec{ModeCategories: []string{"BTB"}}
 	got, err := repo.GetMatchNeighborsFiltered(context.Background(), pTestXUID, "n2", spec)
 	if err != nil {
 		t.Fatalf("out of scope: %v", err)

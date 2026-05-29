@@ -11,7 +11,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { MultiSelectFilter, type MultiSelectOption } from './MultiSelectFilter'
 import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { SaisonPill } from '@/components/shell/FilterOmnibar'
-import type { ContextDescriptor } from '@/lib/match-nav/navContext'
+import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import type { ExplorerMatchesQueryResponse } from '@/lib/api/types'
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import type { SeasonEntry } from '@/lib/i18n/fieldMappings'
@@ -78,6 +78,9 @@ export interface ExplorerMatchesModeProps {
     refetch: () => void
   }
   matchesContextDescriptor: ContextDescriptor | undefined
+  /** filterSpec dérivé des filtres Explorer locaux (Phase 4) — propagé à la
+   *  nav contextuelle prev/next via ExplorerMatchesTable.filterSpecOverride. */
+  matchesFilterSpec?: MatchFilterSpec
 }
 
 export function ExplorerMatchesMode(props: ExplorerMatchesModeProps) {
@@ -91,6 +94,7 @@ export function ExplorerMatchesMode(props: ExplorerMatchesModeProps) {
         onSortKeyChange={props.onSortKeyChange}
         matchesQuery={props.matchesQuery}
         matchesContextDescriptor={props.matchesContextDescriptor}
+        matchesFilterSpec={props.matchesFilterSpec}
       />
     </div>
   )
@@ -280,6 +284,7 @@ interface ResultsBlockProps {
   onSortKeyChange: (v: string) => void
   matchesQuery: ExplorerMatchesModeProps['matchesQuery']
   matchesContextDescriptor: ContextDescriptor | undefined
+  matchesFilterSpec?: MatchFilterSpec
 }
 
 function ExplorerMatchesResultsBlock({
@@ -289,6 +294,7 @@ function ExplorerMatchesResultsBlock({
   onSortKeyChange,
   matchesQuery,
   matchesContextDescriptor,
+  matchesFilterSpec,
 }: ResultsBlockProps) {
   if (matchesQuery.isLoading) {
     return (
@@ -369,6 +375,7 @@ function ExplorerMatchesResultsBlock({
         rows={matchesQuery.data.table.items}
         playerSlug={playerSlug}
         contextDescriptor={matchesContextDescriptor}
+        filterSpecOverride={matchesFilterSpec}
       />
     </div>
   )

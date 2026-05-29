@@ -9,8 +9,9 @@
 // l'option --reset qui truncate player_skill_state_v2 avant le run.
 //
 // Usage :
-//   go run -tags cgo ./cmd/lusr_v2_replay --reset
-//   go run -tags cgo ./cmd/lusr_v2_replay --reset Madina97294 JGtm
+//
+//	go run -tags cgo ./cmd/lusr_v2_replay --reset
+//	go run -tags cgo ./cmd/lusr_v2_replay --reset Madina97294 JGtm
 //
 // Sortie : rapport markdown sur stdout (pipe possible dans .ai/).
 package main

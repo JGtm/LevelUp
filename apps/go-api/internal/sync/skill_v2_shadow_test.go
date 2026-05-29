@@ -72,6 +72,45 @@ func TestIsLUSRV2Canonical(t *testing.T) {
 	}
 }
 
+// TestDefaultOnFlags vérifie que squad offset et cross-mode coupling sont ON par
+// défaut (décision produit 2026-05-28) : actifs sauf si explicitement "0"/"false"/"no".
+func TestDefaultOnFlags(t *testing.T) {
+	cases := []struct {
+		envVal string
+		want   bool
+	}{
+		{"", true}, // défaut = ON
+		{"1", true},
+		{"true", true},
+		{"yes", true},
+		{"random", true}, // seul "0"/"false"/"no" désactive
+		{"0", false},
+		{"false", false},
+		{"no", false},
+		{"  0  ", false}, // trim
+		{"FALSE", false}, // case-insensitive
+	}
+	for _, fn := range []struct {
+		name string
+		env  string
+		f    func() bool
+	}{
+		{"SquadOffset", lusrSquadOffsetEnvFlag, IsLUSRV2SquadOffsetEnabled},
+		{"ModeCoupling", lusrModeCouplingEnvFlag, IsLUSRV2ModeCouplingEnabled},
+	} {
+		original := os.Getenv(fn.env)
+		t.Run(fn.name, func(t *testing.T) {
+			t.Cleanup(func() { _ = os.Setenv(fn.env, original) })
+			for _, c := range cases {
+				_ = os.Setenv(fn.env, c.envVal)
+				if got := fn.f(); got != c.want {
+					t.Errorf("%s avec env=%q = %v, want %v", fn.name, c.envVal, got, c.want)
+				}
+			}
+		})
+	}
+}
+
 func TestIsTeamImbalanceTooHigh(t *testing.T) {
 	// Critère : |nA - nB| > 1 → trop déséquilibré → skip.
 	cases := []struct {
@@ -286,6 +325,13 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			time_played_seconds DOUBLE,
 			PRIMARY KEY (match_id, xuid)
 		);
+		CREATE TABLE killer_victim_pairs (
+			match_id VARCHAR,
+			killer_xuid VARCHAR,
+			victim_xuid VARCHAR,
+			kill_count INTEGER DEFAULT 1,
+			time_ms INTEGER
+		);
 		CREATE SEQUENCE player_skill_state_v2_seq START 1;
 		CREATE TABLE player_skill_state_v2 (
 			id              BIGINT DEFAULT nextval('player_skill_state_v2_seq') PRIMARY KEY,
@@ -306,6 +352,43 @@ func openShadowTestDB(t *testing.T) *sql.DB {
 			FROM player_skill_state_v2
 			GROUP BY xuid, playlist_group
 		) m ON s.xuid = m.xuid AND s.playlist_group = m.playlist_group AND s.written_at = m.max_written_at;
+		CREATE SEQUENCE lusr_hyperparams_v2_seq START 1;
+		CREATE TABLE lusr_hyperparams_v2 (
+			id              BIGINT DEFAULT nextval('lusr_hyperparams_v2_seq') PRIMARY KEY,
+			playlist_group  VARCHAR NOT NULL,
+			name            VARCHAR NOT NULL,
+			value           DOUBLE  NOT NULL,
+			source          VARCHAR NOT NULL,
+			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE VIEW lusr_hyperparams_v2_latest AS
+		SELECT h.*
+		FROM lusr_hyperparams_v2 h
+		JOIN (
+			SELECT playlist_group, name, MAX(written_at) AS max_written_at
+			FROM lusr_hyperparams_v2
+			GROUP BY playlist_group, name
+		) m ON h.playlist_group = m.playlist_group AND h.name = m.name AND h.written_at = m.max_written_at;
+		CREATE SEQUENCE player_squad_offset_seq START 1;
+		CREATE TABLE player_squad_offset (
+			id              BIGINT DEFAULT nextval('player_squad_offset_seq') PRIMARY KEY,
+			xuid            VARCHAR NOT NULL,
+			partner_xuid    VARCHAR NOT NULL,
+			playlist_group  VARCHAR NOT NULL,
+			offset_value    DOUBLE  NOT NULL,
+			match_count     INTEGER NOT NULL DEFAULT 0,
+			source          VARCHAR NOT NULL,
+			written_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE VIEW player_squad_offset_latest AS
+		SELECT o.*
+		FROM player_squad_offset o
+		JOIN (
+			SELECT xuid, partner_xuid, playlist_group, MAX(written_at) AS max_written_at
+			FROM player_squad_offset
+			GROUP BY xuid, partner_xuid, playlist_group
+		) m ON o.xuid = m.xuid AND o.partner_xuid = m.partner_xuid
+		     AND o.playlist_group = m.playlist_group AND o.written_at = m.max_written_at;
 	`
 	if _, err := db.Exec(ddl); err != nil {
 		t.Fatalf("DDL: %v", err)
@@ -569,6 +652,7 @@ func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
 			tier_label      VARCHAR,
 			rating_delta    FLOAT,
 			playlist_group  VARCHAR,
+			expected_win_prob FLOAT,
 			start_time      TIMESTAMP,
 			written_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -755,9 +839,10 @@ func TestRunLUSRV2Shadow_Phase4_CrossModeLeak(t *testing.T) {
 	}
 }
 
-// TestRunLUSRV2Shadow_Phase4_OffByDefault vérifie que sans le flag,
-// les autres modes ne sont PAS modifiés.
-func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
+// TestRunLUSRV2Shadow_Phase4_ExplicitlyOff vérifie qu'avec le flag explicitement
+// désactivé ("0"), les autres modes ne sont PAS modifiés. (Le cross-mode leak est
+// désormais ON par défaut — décision produit 2026-05-28.)
+func TestRunLUSRV2Shadow_Phase4_ExplicitlyOff(t *testing.T) {
 	origEnabled := os.Getenv(lusrV2EnvFlag)
 	origCoupling := os.Getenv(lusrModeCouplingEnvFlag)
 	t.Cleanup(func() {
@@ -765,7 +850,7 @@ func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
 		_ = os.Setenv(lusrModeCouplingEnvFlag, origCoupling)
 	})
 	_ = os.Setenv(lusrV2EnvFlag, "1")
-	_ = os.Setenv(lusrModeCouplingEnvFlag, "") // explicitement off
+	_ = os.Setenv(lusrModeCouplingEnvFlag, "0") // explicitement désactivé
 
 	db := openShadowTestDB(t)
 	repo := duckdb.NewSkillV2Repo(db)
@@ -813,5 +898,334 @@ func TestRunLUSRV2Shadow_Phase4_OffByDefault(t *testing.T) {
 	}
 	if btb.Mu != 24.0 {
 		t.Errorf("btb μ = %v, want 24.0 (flag off, no leak)", btb.Mu)
+	}
+}
+
+// seedCanonical2v2 insère un match social 2v2 (owner+teammate vs opp1+opp2)
+// dans le sharedDB de test. Utilisé par les tests Sprint 1.A.
+func seedCanonical2v2(t *testing.T, sharedDB *sql.DB, matchID string, start time.Time) {
+	t.Helper()
+	if _, err := sharedDB.Exec(`INSERT INTO match_registry
+		(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+		VALUES (?, ?, ?, 'Slayer', FALSE, FALSE, 600)`, matchID, start, start); err != nil {
+		t.Fatalf("insert match_registry: %v", err)
+	}
+	for _, q := range []struct {
+		xuid          string
+		team, outcome int
+		kills, deaths int
+	}{
+		{"owner", 0, 2, 18, 6}, {"teammate", 0, 2, 12, 9},
+		{"opp1", 1, 3, 7, 14}, {"opp2", 1, 3, 8, 14},
+	} {
+		if _, err := sharedDB.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, kills, deaths) VALUES (?, ?, ?, ?, ?, ?)`,
+			matchID, q.xuid, q.team, q.outcome, q.kills, q.deaths); err != nil {
+			t.Fatalf("insert participant: %v", err)
+		}
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb (Sprint 1.A) : la row
+// canonical LUSR doit porter un expected_win_prob dans [0,1].
+func TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	seedCanonical2v2(t, sharedDB, "m_winprob", time.Date(2025, 3, 1, 14, 0, 0, 0, time.UTC))
+
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	var winProb sql.NullFloat64
+	if err := playerDB.QueryRow(`SELECT expected_win_prob FROM match_skill_rank
+		WHERE match_id = ? AND rating_type = 'LUSR'`, "m_winprob").Scan(&winProb); err != nil {
+		t.Fatalf("read expected_win_prob: %v", err)
+	}
+	if !winProb.Valid {
+		t.Fatal("expected_win_prob NULL, attendu une valeur")
+	}
+	if winProb.Float64 < 0 || winProb.Float64 > 1 {
+		t.Errorf("expected_win_prob = %v hors [0,1]", winProb.Float64)
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_FirstMatchFallback (Sprint 1.A) : si aucun
+// joueur n'a d'historique, tous sont seedés au prior (μ=25) → équipes
+// équilibrées → proba ≈ 0.5, et aucune panic (fallback priors testé).
+func TestRunLUSRV2Shadow_Canonical_FirstMatchFallback(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	seedCanonical2v2(t, sharedDB, "m_firstmatch", time.Date(2025, 3, 2, 14, 0, 0, 0, time.UTC))
+
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	var winProb sql.NullFloat64
+	if err := playerDB.QueryRow(`SELECT expected_win_prob FROM match_skill_rank
+		WHERE match_id = ? AND rating_type = 'LUSR'`, "m_firstmatch").Scan(&winProb); err != nil {
+		t.Fatalf("read expected_win_prob: %v", err)
+	}
+	if !winProb.Valid {
+		t.Fatal("expected_win_prob NULL, attendu une valeur")
+	}
+	// Équipes entièrement seedées au prior → match équilibré → proche de 0.5.
+	if d := winProb.Float64 - 0.5; d > 0.2 || d < -0.2 {
+		t.Errorf("first-match balanced : expected_win_prob = %v, attendu ≈ 0.5 (±0.2)", winProb.Float64)
+	}
+}
+
+// TestRunLUSRV2Shadow_UsesEmpiricalDrawProb (Sprint 1.B) prouve que la draw
+// probability empirique seedée dans lusr_hyperparams_v2 est réellement lue par
+// le runner. Sur un match nul 2v2 parfaitement symétrique SANS counts (pure
+// TrueSkill), μ reste à 25 par symétrie mais σ dépend de la marge de draw ε,
+// donc de DrawProbability. Un draw "moins surprenant" (proba haute) réduit moins
+// σ → σ plus grand. On compare deux runs identiques : seul l'hyperparam diffère.
+func TestRunLUSRV2Shadow_UsesEmpiricalDrawProb(t *testing.T) {
+	original := os.Getenv(lusrV2EnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, original) })
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+
+	runDrawMatch := func(seedHighDrawProb bool) (mu, sigma float64) {
+		db := openShadowTestDB(t)
+		if seedHighDrawProb {
+			if _, err := db.Exec(`INSERT INTO lusr_hyperparams_v2
+				(playlist_group, name, value, source)
+				VALUES ('arena_slayer', 'draw_probability_empirical', 0.5, 'test')`); err != nil {
+				t.Fatalf("seed hyperparam: %v", err)
+			}
+		}
+		start := time.Date(2025, 4, 1, 12, 0, 0, 0, time.UTC)
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+			VALUES ('m_draw', ?, ?, 'Slayer', FALSE, FALSE, 600)`, start, start); err != nil {
+			t.Fatalf("insert match_registry: %v", err)
+		}
+		// Match nul (outcome=1 partout), SANS kills/deaths → counts nil → pure TS.
+		for _, q := range []struct {
+			xuid string
+			team int
+		}{{"owner", 0}, {"teammate", 0}, {"opp1", 1}, {"opp2", 1}} {
+			if _, err := db.Exec(`INSERT INTO match_participants
+				(match_id, xuid, team_id, outcome) VALUES ('m_draw', ?, ?, 1)`,
+				q.xuid, q.team); err != nil {
+				t.Fatalf("insert participant: %v", err)
+			}
+		}
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+			t.Fatalf("RunLUSRV2Shadow: %v", err)
+		}
+		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
+		if err != nil || st == nil {
+			t.Fatalf("LoadState owner: %v", err)
+		}
+		return st.Mu, st.Sigma
+	}
+
+	_, sigmaDefault := runDrawMatch(false)
+	_, sigmaSeeded := runDrawMatch(true)
+
+	if sigmaSeeded <= sigmaDefault {
+		t.Errorf("draw_probability empirique haute → draw moins surprenant → σ doit rester PLUS grand : seeded σ=%v doit > default σ=%v",
+			sigmaSeeded, sigmaDefault)
+	}
+}
+
+// TestRunLUSRV2Shadow_AppliesSquadOffset (Sprint 1.C) prouve la correction
+// d'escouade : avec un offset de synergie positif owner↔teammate, quand le
+// squad GAGNE, le μ individuel du owner monte MOINS que sans offset (la victoire
+// est en partie attribuée à la synergie, pas au skill individuel → anti-inflation).
+// Gated : flag LEVELUP_LUSR_V2_SQUAD_OFFSET=1.
+func TestRunLUSRV2Shadow_AppliesSquadOffset(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origSquad := os.Getenv(lusrSquadOffsetEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrSquadOffsetEnvFlag, origSquad)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrSquadOffsetEnvFlag, "1")
+
+	// runWin joue un match 2v2 où owner+teammate GAGNENT (sans counts) et
+	// retourne le μ posterior du owner. Si withOffset, seede +1.5 owner↔teammate.
+	runWin := func(withOffset bool) float64 {
+		db := openShadowTestDB(t)
+		if withOffset {
+			for _, p := range [][2]string{{"owner", "teammate"}, {"teammate", "owner"}} {
+				if _, err := db.Exec(`INSERT INTO player_squad_offset
+					(xuid, partner_xuid, playlist_group, offset_value, match_count, source)
+					VALUES (?, ?, 'arena_slayer', 1.5, 20, 'test')`, p[0], p[1]); err != nil {
+					t.Fatalf("seed squad offset: %v", err)
+				}
+			}
+		}
+		start := time.Date(2025, 5, 1, 12, 0, 0, 0, time.UTC)
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+			VALUES ('m_squad', ?, ?, 'Slayer', FALSE, FALSE, 600)`, start, start); err != nil {
+			t.Fatalf("insert match_registry: %v", err)
+		}
+		// owner+teammate gagnent (outcome 2), opp1+opp2 perdent (3). Pas de counts.
+		for _, q := range []struct {
+			xuid          string
+			team, outcome int
+		}{{"owner", 0, 2}, {"teammate", 0, 2}, {"opp1", 1, 3}, {"opp2", 1, 3}} {
+			if _, err := db.Exec(`INSERT INTO match_participants
+				(match_id, xuid, team_id, outcome) VALUES ('m_squad', ?, ?, ?)`,
+				q.xuid, q.team, q.outcome); err != nil {
+				t.Fatalf("insert participant: %v", err)
+			}
+		}
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+			t.Fatalf("RunLUSRV2Shadow: %v", err)
+		}
+		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
+		if err != nil || st == nil {
+			t.Fatalf("LoadState owner: %v", err)
+		}
+		return st.Mu
+	}
+
+	muNoOffset := runWin(false)
+	muWithOffset := runWin(true)
+
+	// Les deux montent (victoire) au-dessus du prior 25.
+	if muNoOffset <= 25.0 {
+		t.Fatalf("victoire sans offset : μ owner = %v, attendu > 25", muNoOffset)
+	}
+	// Anti-inflation : avec offset positif, μ individuel monte MOINS.
+	if !(muWithOffset < muNoOffset) {
+		t.Errorf("offset squad +1.5 → μ owner doit monter MOINS : withOffset=%v doit < noOffset=%v",
+			muWithOffset, muNoOffset)
+	}
+}
+
+// TestRunLUSRV2Shadow_Canonical_RatingDelta (Sprint 3.B) : sur 2 matchs
+// successifs du même groupe, la 1re row LUSR a rating_delta NULL (pas de
+// précédent) et la 2e a un rating_delta non-nul (= rating - rating précédent).
+func TestRunLUSRV2Shadow_Canonical_RatingDelta(t *testing.T) {
+	origEnabled := os.Getenv(lusrV2EnvFlag)
+	origCanonical := os.Getenv(lusrCanonicalEnvFlag)
+	t.Cleanup(func() {
+		_ = os.Setenv(lusrV2EnvFlag, origEnabled)
+		_ = os.Setenv(lusrCanonicalEnvFlag, origCanonical)
+	})
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+	_ = os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2")
+
+	sharedDB := openShadowTestDB(t)
+	playerDB := openCanonicalPlayerTestDB(t)
+	// 2 matchs successifs (m1 puis m2), même groupe arena_slayer.
+	seedCanonical2v2(t, sharedDB, "m1", time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC))
+	seedCanonical2v2(t, sharedDB, "m2", time.Date(2025, 6, 1, 13, 0, 0, 0, time.UTC))
+
+	if _, err := RunLUSRV2Shadow(context.Background(), playerDB, sharedDB, "owner"); err != nil {
+		t.Fatalf("RunLUSRV2Shadow: %v", err)
+	}
+
+	readDelta := func(matchID string) sql.NullFloat64 {
+		var d sql.NullFloat64
+		if err := playerDB.QueryRow(`SELECT rating_delta FROM match_skill_rank
+			WHERE match_id = ? AND rating_type = 'LUSR'`, matchID).Scan(&d); err != nil {
+			t.Fatalf("read rating_delta %s: %v", matchID, err)
+		}
+		return d
+	}
+	if d1 := readDelta("m1"); d1.Valid {
+		t.Errorf("m1 (1er match) : rating_delta = %v, attendu NULL (pas de précédent)", d1.Float64)
+	}
+	if d2 := readDelta("m2"); !d2.Valid {
+		t.Error("m2 (2e match) : rating_delta NULL, attendu une valeur (= rating - précédent)")
+	}
+}
+
+// TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit (Sprint 2.A) : un joueur qui
+// quitte alors que son équipe MENAIT (mais perd le match) doit subir la pénalité
+// FORTE (unrelated) — pas la pénalité modérée du fallback outcome-final (perte).
+// On compare avec timeline de frags (menait au quit) vs sans timeline (fallback).
+func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
+	orig := os.Getenv(lusrV2EnvFlag)
+	t.Cleanup(func() { _ = os.Setenv(lusrV2EnvFlag, orig) })
+	_ = os.Setenv(lusrV2EnvFlag, "1")
+
+	start := time.Date(2025, 7, 1, 12, 0, 0, 0, time.UTC)
+	quitTime := start.Add(60 * time.Second) // owner part à 60s
+
+	runQuit := func(withTimeline bool) float64 {
+		db := openShadowTestDB(t)
+		if _, err := db.Exec(`INSERT INTO match_registry
+			(match_id, start_time, start_time_utc, pair_name, is_ranked, is_firefight, duration_seconds)
+			VALUES ('m_quit', ?, ?, 'Slayer', FALSE, FALSE, 600)`, start, start); err != nil {
+			t.Fatalf("insert match_registry: %v", err)
+		}
+		// owner (team0) quitte ; team0 PERD (outcome 3) vs team1 (2). Pas de counts.
+		if _, err := db.Exec(`INSERT INTO match_participants
+			(match_id, xuid, team_id, outcome, left_in_progress, last_leave_time)
+			VALUES ('m_quit', 'owner', 0, 3, TRUE, ?)`, quitTime); err != nil {
+			t.Fatalf("insert owner: %v", err)
+		}
+		for _, q := range []struct {
+			xuid          string
+			team, outcome int
+		}{{"teammate", 0, 3}, {"opp1", 1, 2}, {"opp2", 1, 2}} {
+			if _, err := db.Exec(`INSERT INTO match_participants
+				(match_id, xuid, team_id, outcome) VALUES ('m_quit', ?, ?, ?)`,
+				q.xuid, q.team, q.outcome); err != nil {
+				t.Fatalf("insert participant: %v", err)
+			}
+		}
+		if withTimeline {
+			// Au moment du quit (60000ms) team0 mène 3-1.
+			for _, f := range []struct {
+				killer string
+				tms    int
+			}{{"owner", 10000}, {"teammate", 20000}, {"owner", 30000}, {"opp1", 15000}} {
+				if _, err := db.Exec(`INSERT INTO killer_victim_pairs
+					(match_id, killer_xuid, victim_xuid, kill_count, time_ms)
+					VALUES ('m_quit', ?, 'victim', 1, ?)`, f.killer, f.tms); err != nil {
+					t.Fatalf("insert frag: %v", err)
+				}
+			}
+		}
+		if _, err := RunLUSRV2Shadow(context.Background(), nil, db, "owner"); err != nil {
+			t.Fatalf("RunLUSRV2Shadow: %v", err)
+		}
+		st, err := duckdb.NewSkillV2Repo(db).LoadState(context.Background(), "owner", "arena_slayer")
+		if err != nil || st == nil {
+			t.Fatalf("LoadState owner: %v", err)
+		}
+		return st.Mu
+	}
+
+	muWithTimeline := runQuit(true) // menait au quit → unrelated (2.5)
+	muFallback := runQuit(false)    // pas de timeline → fallback outcome (Loss → related 1.0)
+
+	if !(muWithTimeline < muFallback) {
+		t.Errorf("menait au quit → pénalité forte → μ plus bas : withTimeline=%v doit < fallback=%v",
+			muWithTimeline, muFallback)
+	}
+	// Écart attendu = DefaultQuitDeltaUnrelated - DefaultQuitDeltaRelated = 2.5 - 1.0 = 1.5
+	// (appliqué post-EP, EP identique entre les 2 runs).
+	if diff := muFallback - muWithTimeline; diff < 1.49 || diff > 1.51 {
+		t.Errorf("écart de pénalité attendu ≈ 1.5, got %v", diff)
 	}
 }

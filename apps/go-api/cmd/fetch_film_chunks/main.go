@@ -38,8 +38,8 @@ const (
 
 // cachedManifest reflète le format JSON des manifests Python hérités.
 type cachedManifest struct {
-	BlobPrefix string         `json:"blob_prefix"`
-	Chunks     []cachedChunk  `json:"chunks"`
+	BlobPrefix string        `json:"blob_prefix"`
+	Chunks     []cachedChunk `json:"chunks"`
 }
 
 type cachedChunk struct {
@@ -52,10 +52,10 @@ type cachedChunk struct {
 
 // downloadTask représente un chunk à télécharger.
 type downloadTask struct {
-	shortID          string
-	chunkIndex       int
-	url              string
-	destPath         string
+	shortID    string
+	chunkIndex int
+	url        string
+	destPath   string
 }
 
 func main() {

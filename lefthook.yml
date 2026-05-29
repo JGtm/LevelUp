@@ -1,0 +1,74 @@
+# lefthook.yml — LevelUp
+# Remplace .pre-commit-config.yaml (zéro Python requis, binaire Go)
+#
+# Installation  : lefthook install
+# Run manuel    : lefthook run pre-commit
+# Run pre-push  : lefthook run pre-push
+#
+# IMPORTANT : lefthook mange les quotes/parenthèses des commandes inline
+# (il enveloppe `run` dans sh -c en quotes simples). Toute logique non triviale
+# (pipes, $(), &&, quotes) vit donc dans un script dédié sous
+# scripts/git-hooks/lefthook/ appelé via `bash <script>`. Les `run` ne
+# contiennent que des tokens simples + le template {staged_files}.
+#
+# GRANULARITÉ DES STAGES :
+#   - pre-commit = checks RAPIDES et LOCAUX (fichiers stagés uniquement) :
+#     gofmt sur les fichiers stagés, marqueurs de conflit. Ne doit JAMAIS
+#     bloquer un commit sur de la dette située ailleurs dans l'arbre.
+#   - pre-push = checks COÛTEUX / SCAN D'ARBRE COMPLET : linters ratchet JS
+#     (cross-feature, hardcoded-fields/colors), golangci-lint (module entier),
+#     tests Go, govulncheck, deploy dry-run. C'est ici que la dette globale
+#     est gatée, avant que le code ne parte sur le remote / en CI.
+
+pre-commit:
+  parallel: true
+  commands:
+
+    # gofmt — scoped aux fichiers Go stagés (rapide, local)
+    gofmt:
+      glob: "apps/go-api/**/*.go"
+      run: bash scripts/git-hooks/lefthook/gofmt.sh {staged_files}
+
+    # go vet — informatif, non bloquant (|| true dans le script)
+    go-vet:
+      glob: "apps/go-api/**/*.go"
+      run: bash scripts/git-hooks/lefthook/go-vet.sh
+
+    # Marqueurs de conflit dans le diff stagé (rapide, local)
+    check-merge-conflict:
+      run: bash scripts/git-hooks/lefthook/check-merge-conflict.sh
+
+pre-push:
+  parallel: false
+  commands:
+
+    # ── Linters ratchet JS — scan d'arbre COMPLET (pas par fichier) ────────────
+
+    lint-no-hardcoded-fields:
+      glob: "apps/web/src/**/*.{ts,tsx}"
+      run: node tools/lint-no-hardcoded-fields.mjs
+
+    lint-no-hardcoded-colors:
+      glob: "apps/web/src/**/*.{ts,tsx,js,jsx}"
+      run: node tools/lint-no-hardcoded-colors.mjs
+
+    lint-cross-feature-imports:
+      glob: "apps/web/src/**/*.{ts,tsx}"
+      run: node tools/lint-cross-feature-imports.mjs
+
+    # Ratchet code mort frontend (knip) — fige unused files/exports/types,
+    # bloque toute régression. Plafonds dans tools/knip-ratchet.mjs.
+    knip-ratchet:
+      glob: "apps/web/src/**/*.{ts,tsx}"
+      run: node tools/knip-ratchet.mjs
+
+    # ── Go — lint module entier + tests + vulns ────────────────────────────────
+
+    # golangci-lint: retiré du pre-push (139 issues pré-existantes, couvert par CI)
+    # go-test-short: retiré du pre-push (trop lent, couvert par CI)
+
+    govulncheck:
+      glob: "apps/go-api/**/*.go"
+      run: bash scripts/git-hooks/lefthook/govulncheck.sh
+
+    # deploy-dry-run: script scripts/test_deploy_dry_run.sh non encore créé

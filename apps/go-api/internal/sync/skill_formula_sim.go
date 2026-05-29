@@ -57,30 +57,6 @@ type FormulaSimReport struct {
 
 // ── Variantes prédéfinies ─────────────────────────────────────────────────────
 
-// simWeightsPisteC réduit DvE (0.24→0.12) et augmente KvE (0.27→0.36).
-var simWeightsPisteC = map[string]float64{
-	MetricKeyKillsVsExpected:  0.36,
-	MetricKeyDeathsVsExpected: 0.12,
-	MetricKeyWinFactor:        0.05,
-	MetricKeyDamageEfficiency: 0.10,
-	MetricKeyAccuracyDelta:    0.10,
-	MetricKeyMedalExploit:     0.04,
-	MetricKeyOffensiveConv:    0.16,
-	MetricKeyDefensiveResist:  0.06,
-}
-
-// simWeightsNoDvE supprime DvE et redistribue son poids (0.24) vers KvE et soutien.
-var simWeightsNoDvE = map[string]float64{
-	MetricKeyKillsVsExpected:  0.40,
-	MetricKeyDeathsVsExpected: 0.00,
-	MetricKeyWinFactor:        0.10,
-	MetricKeyDamageEfficiency: 0.14,
-	MetricKeyAccuracyDelta:    0.10,
-	MetricKeyMedalExploit:     0.06,
-	MetricKeyOffensiveConv:    0.14,
-	MetricKeyDefensiveResist:  0.06,
-}
-
 // simWeightsCsrAligned : inspiré du CSR Halo — morts non pénalisantes (DvE réduit),
 // damage dealing primordial (DmgEff ×2), kills conservés.
 var simWeightsCsrAligned = map[string]float64{

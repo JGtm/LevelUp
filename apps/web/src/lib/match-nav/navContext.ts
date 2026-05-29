@@ -29,8 +29,10 @@
 export type MatchFilterOutcome = 'win' | 'loss' | 'draw' | 'dnf'
 
 export interface MatchFilterSpec {
-  playlist_name?: string
-  mode_category?: string
+  /** Playlists (multi, Phase 3). Sérialisées en `?playlist=A,B`. */
+  playlist_names?: string[]
+  /** Catégories de mode (multi, Phase 3). Sérialisées en `?mode=X,Y`. */
+  mode_categories?: string[]
   date_from?: string // ISO 8601 RFC3339 ("2026-04-01T00:00:00Z")
   date_to?: string
   session_id?: string
@@ -43,8 +45,8 @@ export interface MatchFilterSpec {
  * Sérialise un MatchFilterSpec en query string (sans le `?` initial).
  *
  * Mapping vers les noms de query params attendus par le handler Go :
- *   playlist_name    → playlist
- *   mode_category    → mode
+ *   playlist_names   → playlist (valeurs jointes par virgule)
+ *   mode_categories  → mode     (valeurs jointes par virgule)
  *   date_from        → from
  *   date_to          → to
  *   session_id       → session
@@ -56,8 +58,8 @@ export interface MatchFilterSpec {
 export function filterSpecToQueryString(spec: MatchFilterSpec | null | undefined): string {
   if (!spec) return ''
   const params = new URLSearchParams()
-  if (spec.playlist_name) params.set('playlist', spec.playlist_name)
-  if (spec.mode_category) params.set('mode', spec.mode_category)
+  if (spec.playlist_names?.length) params.set('playlist', spec.playlist_names.join(','))
+  if (spec.mode_categories?.length) params.set('mode', spec.mode_categories.join(','))
   if (spec.date_from) params.set('from', spec.date_from)
   if (spec.date_to) params.set('to', spec.date_to)
   if (spec.session_id) params.set('session', spec.session_id)
@@ -84,9 +86,15 @@ export function parseFilterSpecFromSearch(
 
   const spec: MatchFilterSpec = {}
   const playlist = get('playlist')
-  if (playlist) spec.playlist_name = playlist
+  if (playlist) {
+    const names = playlist.split(',').map((s) => s.trim()).filter(Boolean)
+    if (names.length) spec.playlist_names = names
+  }
   const mode = get('mode')
-  if (mode) spec.mode_category = mode
+  if (mode) {
+    const cats = mode.split(',').map((s) => s.trim()).filter(Boolean)
+    if (cats.length) spec.mode_categories = cats
+  }
   const from = get('from')
   if (from) spec.date_from = from
   const to = get('to')
@@ -105,8 +113,8 @@ export function parseFilterSpecFromSearch(
   }
 
   if (
-    !spec.playlist_name &&
-    !spec.mode_category &&
+    !spec.playlist_names?.length &&
+    !spec.mode_categories?.length &&
     !spec.date_from &&
     !spec.date_to &&
     !spec.session_id &&
@@ -123,7 +131,6 @@ export type MatchNavSource =
   | 'home_favorites'
   | 'history'
   | 'session'
-  | 'citation'
   | 'media'
   | 'explorer'
 
@@ -177,8 +184,14 @@ export interface MatchNavContext {
 }
 
 const STORAGE_PREFIX = 'levelup:matchNav:'
-/** TTL : 1h. Au-delà, on retombe sur le fallback Q25 global. */
-const TTL_MS = 60 * 60 * 1000
+/**
+ * TTL : 24h (Phase 3). Le sessionStorage est de toute façon purgé à la
+ * fermeture de l'onglet ; un TTL court (1h auparavant) coupait inutilement le
+ * contexte sur un onglet match laissé ouvert longtemps. La durabilité « dure »
+ * (F5, lien partagé, nouvel onglet) est portée par les query params d'URL —
+ * le sessionStorage n'est qu'une optimisation. Au-delà du TTL : fallback Q25.
+ */
+const TTL_MS = 24 * 60 * 60 * 1000
 
 interface PersistedContext {
   ctx: MatchNavContext

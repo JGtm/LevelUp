@@ -49,7 +49,7 @@ type SessionCompareEntry struct {
 	MatchSeries []SessionMatchPoint `json:"match_series"`
 	// Skill rating (LUSR ou CSR) — dernier match de la session.
 	LastSkillRating  *float64 `json:"last_skill_rating,omitempty"`
-	SkillRatingType  string   `json:"skill_rating_type,omitempty"` // "csr" | "lusr" | ""
+	SkillRatingType  string   `json:"skill_rating_type,omitempty"`  // "csr" | "lusr" | ""
 	SkillRatingDelta *float64 `json:"skill_rating_delta,omitempty"` // last − first
 	// MMR moyen sur la session.
 	AvgTeamMMR  *float64 `json:"avg_team_mmr,omitempty"`
@@ -87,13 +87,13 @@ type SessionMatchPoint struct {
 
 // SessionCompareMapRow est une ligne du tableau par carte.
 type SessionCompareMapRow struct {
-	MapName   string `json:"map_name"`
-	AMatches  int    `json:"a_matches"`
-	AWins     int    `json:"a_wins"`
-	ALosses   int    `json:"a_losses"`
-	BMatches  int    `json:"b_matches"`
-	BWins     int    `json:"b_wins"`
-	BLosses   int    `json:"b_losses"`
+	MapName  string `json:"map_name"`
+	AMatches int    `json:"a_matches"`
+	AWins    int    `json:"a_wins"`
+	ALosses  int    `json:"a_losses"`
+	BMatches int    `json:"b_matches"`
+	BWins    int    `json:"b_wins"`
+	BLosses  int    `json:"b_losses"`
 }
 
 // SessionCompareModeRow est une ligne du tableau par mode.
@@ -107,10 +107,10 @@ type SessionCompareModeRow struct {
 
 // SessionCompareResponse est la réponse de POST /pages/session-compare.
 type SessionCompareResponse struct {
-	SessionA          *SessionCompareEntry       `json:"session_a"`
-	SessionB          *SessionCompareEntry       `json:"session_b"`
-	AvailableSessions []string                   `json:"available_sessions"`
-	Metrics           []SessionCompareMetricRow  `json:"metrics"`
-	MapsTable         []SessionCompareMapRow     `json:"maps_table"`
-	ModesTable        []SessionCompareModeRow    `json:"modes_table"`
+	SessionA          *SessionCompareEntry      `json:"session_a"`
+	SessionB          *SessionCompareEntry      `json:"session_b"`
+	AvailableSessions []string                  `json:"available_sessions"`
+	Metrics           []SessionCompareMetricRow `json:"metrics"`
+	MapsTable         []SessionCompareMapRow    `json:"maps_table"`
+	ModesTable        []SessionCompareModeRow   `json:"modes_table"`
 }

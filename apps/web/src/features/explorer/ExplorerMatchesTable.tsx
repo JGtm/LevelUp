@@ -37,7 +37,7 @@ import { getOutcomeColor } from '@/lib/outcome-color'
 import { formatDate, formatDurationMMSS } from '@/lib/formatters'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
-import type { ContextDescriptor } from '@/lib/match-nav/navContext'
+import type { ContextDescriptor, MatchFilterSpec } from '@/lib/match-nav/navContext'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -70,6 +70,12 @@ interface Props {
    *  le label compact "Matchs <ctx> X/Y" affiché dans la nav bar de la page
    *  match-view. Si undefined, pas de label spécifique (fallback Q25 global). */
   contextDescriptor?: ContextDescriptor
+  /** filterSpec explicite à propager dans le matchNavContext (Phase 4). Quand
+   *  fourni, prime sur la dérivation depuis le soloFilterStore — permet à
+   *  l'Explorer de piloter la nav contextuelle depuis SES filtres locaux (et
+   *  non le store global, vide en contexte Explorer). Les tables mode Joueur
+   *  ne le passent pas → fallback soloFilterStore inchangé. */
+  filterSpecOverride?: MatchFilterSpec
   /** Forcer l'affichage du bloc pagination même si rows.length ≤ PAGE_SIZE.
    *  Utile en mode Joueur (tableaux ally/enemy) pour rendre la pagination
    *  toujours visible indépendamment du volume de données. */
@@ -160,7 +166,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, alwaysShowPagination, defaultPageSize }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -182,15 +188,18 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   // les `allMatchIds` initiaux (pré-filtre) → nav contextuelle hors scope.
   const goToMatch = useCallback(
     (matchId: string) => {
-      const filterSpec = filterContextToMatchFilterSpec(filterContext)
+      // Phase 4 : filterSpecOverride (filtres Explorer locaux) prime sur la
+      // dérivation soloFilterStore (vide en contexte Explorer).
+      const filterSpec =
+        filterSpecOverride ?? filterContextToMatchFilterSpec(filterContext) ?? undefined
       navigateToMatch(matchId, {
         source: 'explorer',
         matchIds: allMatchIds,
-        filterSpec: filterSpec ?? undefined,
+        filterSpec,
         contextDescriptor,
       })
     },
-    [navigateToMatch, allMatchIds, filterContext, contextDescriptor],
+    [navigateToMatch, allMatchIds, filterContext, contextDescriptor, filterSpecOverride],
   )
 
   // Labels outcome (pas de Badge, juste texte coloré comme Squad)

@@ -1,3 +1,466 @@
+## [2026-05-29] refactor(web): migration types — FINDING bloquant : le contrat OpenAPI est sous-spécifié (shim de masse abandonné)
+
+**Statut** : Expérience de calibrage menée + revertée. Conclusion qui REDÉFINIT le chantier. Batch 1 (7 shims) conservé.
+
+**Expérience** : shim mécanique des **89 interfaces matchées** restantes (`export interface X{…}` → `components['schemas']['X']`, script jetable `_shim.mjs` avec backup), puis `tsc -b` comme oracle.
+
+**Résultat** : **453 erreurs tsc** sur ~40 fichiers. Histogramme : **304× TS2339 "Property does not exist"** (75%) + 45× TS2353 (known properties) → même cause. Exemples : `match_count_filtered`, `started_at_utc`, `ended_at_utc`, `period_presets`, + les 8 champs de BootstrapResponse.
+
+**Conclusion (importante)** : ce n'est PAS une dérive marginale ni un quirk d'openapi-typescript. **Le contrat `openapi.yaml` est largement INCOMPLET** vs les réponses réelles du backend Go — de nombreux schémas omettent des champs que le front utilise. Le `types.ts` manuel est en réalité **plus complet/exact que le contrat**. La migration n'est donc PAS un shim mécanique : elle est **g-atée sur la réconciliation du contrat** (compléter openapi.yaml schéma par schéma). Bucket B = la règle, pas l'exception.
+
+**Décision** : shim de masse **reverté** (`git checkout types.ts` → état batch 1), temps nettoyés, `tsc` revert vert. On NE force PAS la migration.
+
+**Plan révisé pour le chantier (multi-sessions, prioritaire = contrat)** :
+1. Le vrai travail = **compléter `openapi.yaml`** schéma par schéma pour matcher les réponses réelles (référence fiable : `types.ts` actuel + handlers Go). Par aire fonctionnelle (sessions/filtres, career, match-view, explorer, media…).
+2. Après chaque schéma complété : `make gen` (Go) + `npm run generate-types` (front) → puis shim du/des type(s) concerné(s) → `tsc -b` vert → commit.
+3. Bénéfice double : contrat enfin fiable (utile au Go aussi) + suppression progressive du `types.ts` manuel.
+4. ⚠️ Ne PAS re-tenter un shim de masse : 453 erreurs = ~40 fichiers cassés. Granularité = par schéma réconcilié.
+
+**Prochaine session** : commencer la réconciliation contrat sur 1 aire (p.ex. sessions/filtres — gros bucket TS2339), valider la boucle complète sur ce périmètre.
+
+## [2026-05-29] refactor(web): migration types.ts → generated.ts — Phase A (inventaire + batch 1 shim)
+
+**Statut** : Phase A livrée (branche `refactor/arch-port-abstractions`). Migration = chantier multi-sessions ; ce commit = fondation + calibrage.
+
+**Inventaire** (script jetable `_inv.mjs`, supprimé après) croisant les noms `types.ts` ↔ `components.schemas` de `generated.ts` :
+- 314 types manuels / 112 schémas OpenAPI.
+- **97 MATCHÉS** → candidats shim.
+- **217 FRONTEND-ONLY** (view models, sans schéma) → restent manuels.
+- 15 schémas sans type manuel (info).
+
+**Stratégie validée** : shim de ré-export (`export type X = components['schemas']['X']`) dans `types.ts` → **aucun des 269 consommateurs n'est touché**, et **`tsc -b` sert d'oracle de compatibilité** (un shim incompatible fait rougir les usages). Header de `types.ts` mis à jour + `import type { components } from './generated'`.
+
+**Batch 1 (8 types bootstrap)** : 7 shimés proprement (PlayerSummary, CapabilityMap, FeatureFlags, SettingsExcerpt, HaloIdentitySummary, TitleSummary, PlayersListResponse). **1 divergent → BootstrapResponse** : tsc a révélé que le **schéma OpenAPI BootstrapResponse est INCOMPLET** vs la réponse réelle du backend Go — manquent `auth_mode, first_launch, current_username, current_title_slug, available_titles, registration_mode, is_admin, oauth_code_flow_enabled` (+ `current_player?`/`privacy?` divergents). → gardé manuel avec TODO(bucket B) ; à réconcilier en complétant `openapi.yaml`.
+
+**Finding** : la migration sert aussi de **détecteur de dérive du contrat** — le schéma le plus fondamental (bootstrap) sous-spécifie la réponse réelle. Bucket B = « compléter openapi.yaml » est un sous-chantier à part entière.
+
+**Résultats observés** : `tsc -b` EXIT 0 (après revert du divergent) ; 38 tests web verts (explorer + api). Type-only (ré-exports erased au runtime) → vitest non impacté par construction.
+
+**Prochaines étapes** : batcher les ~90 matchés restants (par groupe thématique, tsc entre chaque) ; tenir une liste bucket B (schémas openapi.yaml à compléter) ; Phase D = déplacer les 217 frontend-only dans un `viewModels.ts` + ratchet anti-doublon. Multi-sessions.
+
+## [2026-05-29] chore(api): régénérer types.gen.go (Go) + épingler oapi-codegen dans le Makefile
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué). Chantier incrémental 2/2 du suivi Axe 4.
+
+**Contexte** : régénérer les types Go depuis le contrat (réparé à l'Axe 4) + rendre `make gen` reproductible (était bloqué : oapi-codegen non installé / absent du PATH).
+
+**Vérifs préalables** : marqueur de version en tête de `types.gen.go` = **oapi-codegen v2.6.0** → j'ai régénéré avec EXACTEMENT cette version (diff minimal lié au générateur, le reste = dérive accumulée du contrat). Config `api/oapi-codegen-types.yaml` = models-only, output `internal/api/gen/types.gen.go`.
+
+**Décisions** :
+- Régénération via `go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0` → **go.mod/go.sum intacts** (pas d'install, pas de dépendance ajoutée).
+- **Épinglage reproductible** : `OAPI_CODEGEN` dans le Makefile passe de `oapi-codegen` (PATH, fragile) à `go run …@v2.6.0`. Zéro pollution go.mod, version figée, aucune install manuelle requise (résout le blocage d'origine). Commentaire : garder la version alignée avec le marqueur de `types.gen.go`.
+- Choix conscient de NE PAS utiliser la directive `tool` go.mod 1.24 : aurait ajouté oapi-codegen + ~7 deps indirectes (decimal128, oasdiff/yaml3, swag, easyjson…) à go.mod. Le `go run @version` épinglé est plus léger pour ce besoin.
+
+**Résultats observés** : régénération EXIT 0 ; diff types.gen.go +798/-87 (`types.gen.go` était lui aussi périmé, comme `generated.ts`) ; `go build ./internal/...` ✅ ; `go test ./contracttest/` ✅ + `internal/api -run Contract` ✅. Diff idempotent (re-run = stable).
+
+**Notes** :
+- Warning pré-existant : openapi.yaml est en 3.1.x, pas encore pleinement supporté par oapi-codegen (déjà le cas avant ; build+contrats verts).
+- `make gen` échoue dans MON sandbox (`make` n'hérite pas de GOPATH/GOMODCACHE — même artefact que govulncheck) mais la commande sous-jacente `go run …` marche (prouvé en direct). Côté utilisateur, `make gen` hérite de l'env → OK.
+
+**Conclusion** : chantier « régénération Go » bouclé. Reste le gros morceau : migration front `types.ts → generated.ts` (314 types manuels / 112 schémas → ~200 frontend-only ; stratégie shim + tsc-oracle, multi-sessions).
+
+## [2026-05-29] fix(tooling): whitelist generated.ts dans lint-no-hardcoded-fields (débloque le push)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué).
+
+**Contexte** : push bloqué par le hook pre-push. Diagnostic : sur les 5 commandes pre-push (lint-no-hardcoded-fields, -colors, -cross-feature, knip-ratchet, govulncheck), seul **lint-no-hardcoded-fields échouait (exit 1)** — 3 violations dans `apps/web/src/lib/api/generated.ts` (`rating_type: "CSR" | "LUSR" | "none"`, etc.).
+
+**Cause** : la régénération `generated.ts` (Axe 4) a fait entrer les littéraux d'enum du contrat OpenAPI dans un fichier scanné par le ratchet. Son jumeau `types.ts` était déjà whitelisté (ligne 82), pas `generated.ts`.
+
+**Fix** : ajout de `/\/lib\/api\/generated\.ts$/` à `WHITELIST_PATTERNS` (même justification que `types.ts` : fichier de types généré, pas du code UI à passer par `useFieldLabel`). → linter EXIT 0.
+
+**Note env** : `govulncheck` plante dans le sandbox (`GOMODCACHE/GOPATH not set`) — artefact de mon environnement, pas un blocage côté utilisateur. Les autres ratchets (colors/cross-feature/knip) étaient déjà verts.
+
+## [2026-05-29] fix(api): Axe 4 — réparer le pipeline de génération de types OpenAPI (refs cassées)
+
+**Statut** : Fondation livrée (branche `refactor/arch-port-abstractions` ; commit délégué). Migration des consommateurs = travail incrémental documenté ci-dessous.
+
+**Contexte** : Axe 4 du plan (types OpenAPI front). Vérif code AVANT impl (le plan le marquait non vérifié) → réalité différente du plan :
+- Le pipeline est DÉJÀ câblé : script `generate-types` (openapi-typescript 7.13 → `generated.ts`), dep installée, `openapi.yaml` (4852 l.) source de vérité.
+- MAIS `npm run generate-types` **échouait** : 2 `$ref` cassés dans `openapi.yaml` →
+  1. `SessionContextResponse.available_titles.items` → `#/components/schemas/TitleSummary` (schéma **jamais défini**).
+  2. `/auth/login` 401 → `#/components/responses/Unauthorized` (réponse **jamais définie**).
+- Conséquence : `generated.ts` (3219 l.) **gravement périmé** (personne ne pouvait le régénérer), et **0 fichier** ne l'importe ; **269 fichiers** importent le `types.ts` manuel (3453 l.).
+
+**Décision** : le vrai blocage d'Axe 4 n'est pas la migration mais le **contrat cassé**. Fix ciblé :
+- Ajout du schéma `TitleSummary` dans `components/schemas` (forme calquée sur le `types.ts` front : slug/name/icon_url?/status enum/capabilities[]/is_default).
+- Ajout de la réponse `Unauthorized` dans `components/responses` (calquée sur `BadRequest`, code `auth_required`).
+
+**Résultats observés** : `npm run generate-types` ✅ (`openapi.yaml → generated.ts [123ms]`, 0 erreur). `generated.ts` régénéré (énorme diff 5546+/2165− = à quel point il était périmé). `tsc -b` front ✅ EXIT 0 (régénéré valide, 0 importeur donc 0 casse). `go test ./contracttest/` ✅ (YAML toujours valide pour le Go). `go.mod`/`go.sum` intacts.
+
+**Reste (incrémental, NON fait — honnête)** :
+1. **Migration 269 fichiers** `types.ts` → `generated.ts` : styles d'export INCOMPATIBLES (`PlayerSummary` nommé vs `components['schemas']['PlayerSummary']` imbriqué). Stratégie recommandée = shim de ré-export (`export type X = components['schemas']['X']`) feature-par-feature + test de compat par groupe, pour ne pas toucher 269 imports d'un coup. C'est un chantier multi-jours, pas une session.
+2. **Régénérer les types Go** (`make gen`) : impossible ici (oapi-codegen non installé, absent de go.mod). Non bloquant (rien ne référence `TitleSummary` côté Go encore ; contract test vert). À faire quand le binaire est dispo.
+
+**Conclusion** : la FONDATION d'Axe 4 est réparée — le pipeline de génération refonctionne et `generated.ts` est à jour avec le contrat. La migration des consommateurs reste un chantier incrémental à planifier (sa propre branche).
+
+## [2026-05-29] test(patterns): QA finale — test DB-backed PatternsRepo + vérif globale du chantier découplage
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : vérification finale des 5 axes livrés (build/tests/couverture/logging) à la demande utilisateur.
+
+**Vérification globale** :
+- `go build ./internal/...` ✅ (tout compile ensemble, CGO/DuckDB inclus).
+- Tests verts sur les 7 packages touchés : port, platform/duckdb, sync, api, api/handlers, platform/auth, config. Couverture package : config 80%, auth 70%, handlers 57%, sync 44%, api 26%, duckdb 18%, port 22% (les interfaces n'ont pas de statements exécutables).
+- **Logging** : routage automatique par package (`internal/observability/logging/module.go`) → `logs/{module}.log`. Mes chemins modifiés routent correctement (handlers→handlers, sync→sync, auth→auth). L'Axe 5 a *amélioré* la couverture log : `writeError` logge le 503/500 que `http.Error` n'écrivait pas.
+
+**Comblement du seul vrai trou de couverture** : les 3 loaders SQL de `PatternsRepo` (loadShared/loadEnrichments/loadSkillRanks) + l'orchestration `LoadRows` n'étaient pas testés (seule la logique pure merge/deltas l'était). Ajout `patterns_repo_db_test.go` (untagged, package duckdb) : 2 DuckDB `:memory:` (player + shared), test bout-en-bout (3 loaders + merge + deltas) + cas joueur vide. Couverture `patterns_repo.go` désormais : merge/deltas 100%, loaders 85-91%, LoadRows 84% (restes = branches d'erreur DB).
+- Pattern réutilisé : `&DB{sqlDB:…, path:":memory:"}` (in-package) + `SharedReadDB()` retombe sur `LegacySharedReader(pdb.Shared)` quand `SharedReader` nil.
+
+**Résultats observés** : suite duckdb complète verte (25s) avec le nouveau fichier.
+
+**Conclusion** : chantier découplage DuckDB (Axes 1-3, 5, 6) complet, vérifié, testé, loggé. Seul Axe 4 (types OpenAPI front) reste — hors couplage DuckDB, à scoper séparément.
+
+## [2026-05-29] chore(config): Axe 6 — suppression scaffolding surface flags Go/Python + garde-fou deadline Prestige
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : Axe 6 du plan. Deux items indépendants.
+
+**Décision produit clarifiée par l'utilisateur** : « pas de Python depuis ~2000 commits, on est en Go ». Donc le scaffolding de bascule par-surface Go/Python (`FeatureFlags`/`Surface`/`Backend`/`BackendFor`/`AllSurfaces` dans `config/feature_flags.go`) est **définitivement mort** : il n'y a plus de backend Python vers lequel basculer. La migration n'est pas dormante, elle est terminée. → Suppression (pas documentation).
+> NB : le CLAUDE.md du repo décrit encore une stack Python (pytest/polars/Streamlit) — c'est legacy/obsolète vs la réalité Go actuelle.
+
+**Vérif blast radius (avant suppression)** : seuls consommateurs réels = `config.go` (champ `FeatureFlags` + `LoadFeatureFlags`), `cmd/levelup/cmd_ops.go` (`runSurfaceStatus`) + `main.go` (dispatch/help), et 2 fichiers de test. Zéro routing métier. `internal/api/server.go` n'en dépend pas (faux positif du grep large sur `.Career`).
+
+**Piège évité** : il existe un AUTRE type `FeatureFlags` **légitime** et sans rapport — `domain.FeatureFlags` (bootstrap API : V7Enabled, MediaEnabled, DemoMode, DiscordConfigured…), construit par `buildFeatureFlags` depuis `cfg.DemoMode`/settings, **PAS** depuis le champ `config.FeatureFlags` supprimé. Vérifié : `buildFeatureFlags` ne lit pas le champ retiré → suppression sans impact. NE PAS confondre/toucher `domain.FeatureFlags`.
+
+**Suppressions** :
+- `internal/config/feature_flags.go` + `feature_flags_test.go` (rm).
+- `config.go` : champ `FeatureFlags` de `AppConfig` + ligne `cfg.FeatureFlags = LoadFeatureFlags(...)`.
+- `cmd/levelup` : `runSurfaceStatus` + dispatch `surface-status` + ligne d'aide + commentaires.
+- `pure_funcs_test.go` : 6 tests surface (applyFlagsMap/surfaceFields).
+- Comportement retiré : parsing `LEVELUP_FF_*` et clé `feature_flags` d'app_settings.json (ne switchaient que vers un backend Python inexistant) + commande `surface-status`.
+
+**Garde-fou Prestige** : `internal/config/prestige_expiry_test.go` — échoue au CI à partir du 2026-10-01 (ADR 0005, fin Q3 2026) pour forcer la décision « activer en prod ou supprimer le module Prestige » plutôt que laisser un guard éternel.
+
+**Résultats observés** : `go build` ✅ (config, cmd/levelup, service, domain, api), `go test ./internal/config/` ✅, garde-fou Prestige ✅. Zéro référence pendante aux symboles surface supprimés (seuls subsistent les `domain.FeatureFlags`/gen, légitimes).
+
+**Conclusion / prochaine étape** : Axe 6 livré. Reste Axe 4 (types OpenAPI front) — à vérifier dans le code avant impl.
+
+## [2026-05-29] fix(api): Axe 5 — cohérence du shape d'erreur HTTP (settings_backup)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 4e axe livré (Axe 5 du plan). Le helper standard `writeError` produit `{code, message, retryable}` + log serveur. L'exploration avait listé 4 cibles ; la vérif code en a invalidé 3.
+
+**Vérif code (l'exploration sur-signalait)** :
+- `settings_backup.go` `PostBackupRun` : **vraie** déviation → 503 via `http.Error` (text/plain) + 500 via `{"error": ...}`. CORRIGÉ.
+- `health_home.go` (l.66) : **PAS un bug** — c'est `/healthz/home`, endpoint de diagnostic dont le 503 renvoie volontairement `{ok, player, error, checks, empty_sections}` (même forme que son chemin succès). Le passer en `{code,message,retryable}` casserait le contrat health. Laissé tel quel.
+- middlewares `require_auth` (`writeAuthRequired`) : **PAS un bug** — émet déjà `{code,message,retryable}` via constantes, WriteHeader unique correct. Laissé tel quel.
+- `chi.Recoverer` (panic → text/plain 500) : inconsistance mineure réelle, mais corriger = wrapper le recoverer global dans la stack middleware (plus large/risqué). **Différé** (noté ici), hors scope du nettoyage localisé.
+
+**Décisions** : `PostBackupRun` → `writeError(r.Context(), w, 503, "backup_scheduler_unavailable", …)` (code aligné sur la convention `*_unavailable` existante) et `writeError(…, 500, "backup_run_failed", …)`. Test existant `TestPostBackupRun_NilScheduler` (package `handlers_test`) **renforcé** pour asserter Content-Type JSON + présence `code/message/retryable` + `code == backup_scheduler_unavailable`.
+
+**Résultats observés** : `go build` ✅, tests backup verts (status + Skipped + nouveau shape). Pas de drift parasite dans les 2 fichiers touchés.
+
+**Conclusion / prochaine étape** : Axe 5 livré (réduit à la seule vraie déviation). Suite : Axe 6 (flags morts + deadline Prestige), Axe 4 (types OpenAPI front). Follow-up optionnel : JSON sur panic recovery.
+
+## [2026-05-29] refactor(arch): Axe 3 — interface UserTokenStore (découpler la couche API du store concret)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 3e axe du plan `.ai/PLAN_SYNC_ENGINE_PORT_ABSTRACTION.md`. `*auth.MultiUserTokenStore` (concret) était injecté dans `ServiceRegistry` et `XboxOAuthHandler` → impossible de tester ces consommateurs sans répertoire de tokens sur disque (le test e2e existant crée un vrai store sur tempdir).
+
+**Piège de nommage attrapé (vérif code)** : le plan disait « créer `auth.TokenStore` ». Or `TokenStore` est **déjà un type concret** dans le package auth (`token_store.go`, le store mono-user legacy `data/auth/tokens.json`), distinct de `MultiUserTokenStore`. Nommer l'interface `TokenStore` = redéclaration → erreur de compile. Interface renommée **`UserTokenStore`** (nom vérifié libre) dans un nouveau fichier `user_token_store.go`.
+
+**Vérifs préalables** : méthodes réellement appelées via les champs injectés = `Load` (registry) + `UpdateOAuthRefreshToken` (registry + handler). `LoadByGamertag`/`Upsert` ne sont PAS appelées via les champs injectés (seulement via le type concret au composition root / CLI). Interface réduite à ces 2 (interface segregation).
+
+**Décisions techniques** :
+- **`auth.UserTokenStore`** (2 méthodes : `Load`, `UpdateOAuthRefreshToken`) + assertion compile-time `var _ UserTokenStore = (*MultiUserTokenStore)(nil)`.
+- Champs + withers de `ServiceRegistry` et `XboxOAuthHandler` retypés `*MultiUserTokenStore` → `UserTokenStore`. Le composition root (`server.go`) passe toujours le concret (satisfait l'interface, `NewMultiUserTokenStore` ne renvoie jamais nil → pas de piège typed-nil).
+- **Test mock** `registry_auth_mock_test.go` : `tryRefreshFromAuthStore` testé avec un `mockUserTokenStore` + `fakeTokenProvider` (TokenProvider était déjà une interface) → prouve que la rotation du RT est persistée, **sans DuckDB ni disque**. 2 cas : rotation persistée / RT inchangé = pas d'écriture.
+
+**Résidu assumé (documenté, hors scope)** : `handlers/admin_auto_sync.go` instancie un `MultiUserTokenStore` en LOCAL dans une closure de probe diagnostic (pas un champ injecté). Le convertir imposerait de threader un champ via ce handler — disproportionné pour un endpoint de diagnostic. Laissé concret ; à reprendre si besoin. Les helpers CLI intra-package `auth/cli_refresh.go` gardent aussi le concret (légitime, ADR 0023).
+
+**Résultats observés** : `go build` ✅, `go vet` ✅, nouveaux tests mock ✅, suites existantes vertes (`internal/platform/auth/` + `internal/api/handlers/` : XboxOAuth/e2e/cli_refresh inchangés). Diff registry.go / auth_xbox_oauth.go = 2 lignes chacun (champ + wither), zéro drift parasite.
+
+**Non vérifié** : pas de flow SSO live. Comportement garanti par les suites e2e existantes + le concret inchangé.
+
+**Conclusion / prochaine étape** : Axe 3 livré (couche API auth mockable). Suite : Axe 5 (erreurs HTTP), Axe 6 (flags morts + deadline Prestige), Axe 4 (types OpenAPI front).
+
+## [2026-05-29] refactor(arch): Axe 2 — découpler la logique LUSR v2 de `*duckdb.SkillV2Repo` (interfaces port)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 2e axe du plan `.ai/PLAN_SYNC_ENGINE_PORT_ABSTRACTION.md`. La v1 du plan inventait des `SyncEngine.WithSkillV2Repo` — **faux** (vérifié) : `RunLUSRV2Shadow` est une fonction autonome qui instancie le repo en interne (`duckdb.NewSkillV2Repo`) et le thread via la struct `shadowRunContext`. Option A retenue (découplage interne, zéro changement de call-site) sur Option B (injection depuis les 2 appelants + 15 tests).
+
+**Vérifs préalables (pas de devinette)** :
+- Méthodes réellement appelées par le runtime sync : `LoadState`, `LoadAllStates`, `UpsertState`, `LoadHyperparams` (4/6 — `LoadStateHistory`/`UpsertHyperparam` sont CLI-only). Interface réduite à ces 4. Squad : seul `LoadSquadOffsets` est lu en sync.
+- `internal/sync` importe déjà `internal/port` → pas de nouvelle direction de dépendance.
+
+**Décisions techniques majeures** :
+- **`port.SkillV2Repository` (4 méthodes) + `port.SquadOffsetRepository` (1 méthode)** dans `internal/port/skill_v2.go`. Le repo concret les satisfait sans modification (typage structurel).
+- **Retypage de `*duckdb.*Repo` → interfaces** dans `shadowRunContext` (2 champs) + 4 signatures : `applyMatchToSkillV2`, `loadStatesOrSeed`, `persistTeamSkillV2`, `propagateCrossModeLeak`, `computeTeamSquadOffsets`. Résultat : **`skill_v2_helpers.go`, `skill_v2_cross_mode.go`, `skill_v2_squad.go` perdent totalement l'import `duckdb`** ; seul `skill_v2_shadow.go` le garde, pour les 2 instanciations (couplage résiduel d'instanciation = exactement la promesse Option A).
+- **Piège typed-nil évité** : `var squadRepo port.SquadOffsetRepository` déclaré en type interface (pas `*duckdb.SquadOffsetRepo`), pour qu'un flag squad OFF laisse une interface VRAIMENT nil — sinon `computeTeamSquadOffsets`'s garde `repo == nil` recevrait un typed-nil (interface non-nil) et paniquerait sur `LoadSquadOffsets`. Commenté dans le code.
+
+**Tests** : la suite existante `skill_v2_shadow_test.go` (~15 cas, DuckDB réel) = filet de neutralité → **toute verte** après refacto (flag off, flow 2v2, watermark, canonical, squad offset, cross-mode…). Ajout `skill_v2_port_mock_test.go` qui **démontre le gain** : `loadStatesOrSeed` (connu→verbatim, inconnu→seed priors) et `computeTeamSquadOffsets` (repo nil→zéros) testés avec un mock en mémoire, **sans DuckDB**.
+
+**Résultats observés** : `go build` ✅, `go vet` ✅, `go test ./internal/sync/` ✅ (129s, suite complète) + `./internal/port/` ✅. Import `duckdb` confirmé absent des 3 fichiers helper, présent dans shadow.go uniquement.
+
+**Note commit** : `skill_v2_shadow.go` portait déjà une modif non-commitée pré-existante (suppression de la struct morte `shadowParticipant`, 0 référence — vérifié). Elle est incluse dans le commit Axe 2 car triviale et correcte. `aggregates.go`/`enrichments.go` (drift pré-existant non lié) NON inclus.
+
+**Non vérifié** : pas de run sync live. Comportement garanti par la suite DuckDB existante (verte) + déplacement sans changement de logique (seuls les types de paramètres changent).
+
+**Conclusion / prochaine étape** : Axe 2 livré, logique LUSR v2 stack-agnostique et mockable. Suite : Axe 3 (TokenStore), 5 (erreurs HTTP), 6 (flags morts + deadline Prestige), 4 (types OpenAPI front).
+
+## [2026-05-29] refactor(arch): Axe 1 — découpler patterns.go de DuckDB (handler → port.PatternsRepository)
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : 1er axe implémenté du plan `.ai/PLAN_SYNC_ENGINE_PORT_ABSTRACTION.md` (réduire le couplage DuckDB pour portabilité de stack). Axe choisi = le plus lourd. **Garde-fou méthodo** : la v1 du plan avait été écrite depuis des résumés d'exploration, pas le code réel — d'où une conclusion fausse sur cet axe (« déplacer 2 helpers suffit à retirer l'import duckdb »). Vérif dans le code : `patterns.go` prenait `*duckdb.PlayerDB` comme **type de paramètre** dans 5 fonctions + faisait du SQL brut (`pdb.Player.Query`) dans la couche handler. Le vrai couplage n'était donc pas les helpers mais l'accès données dans le handler.
+
+**Décisions techniques majeures** :
+- **Interface `port.PatternsRepository`** (`internal/port/patterns.go`) : 1 méthode `LoadRows(ctx, limit) ([]patterns.MatchRow, error)`. Layering validé avant écriture : `internal/port` importe déjà `analysis/temporal`/`domain`, et `platform/duckdb` importe déjà `internal/analysis` dans ~16 repos → aucune violation de couches à faire dépendre le repo de `analysis`/`patterns`.
+- **`duckdb.PatternsRepo`** (`internal/platform/duckdb/patterns_repo.go`) : déplacement **verbatim** des 3 loaders SQL (shared via SharedReader + 2 player), des 3 types intermédiaires (renommés `patternSharedRow`/`patternEnrichmentRow`/`patternSkillRankRow` pour éviter toute collision — vérifiée nulle), du merge et des deltas. Le timeout 30s (ex-`patternTimeout` du handler) descend dans le repo (`patternsLoadTimeout`). `Placeholders`/`ToAnySlice` restent légitimement dans `platform/duckdb` (utilisés ici en intra-package) — leur déplacement aurait été du churn cosmétique sans gain, donc écarté.
+- **Handler `patterns.go`** : ne dépend plus que de `PatternsRepoResolver = func(ctx, slug) (port.PatternsRepository, error)`. Imports `database/sql`, `fmt`, `sort`, `platform/duckdb`, `analysis` **supprimés** du handler. (Note : le *package* handlers garde un import duckdb via `ProgressionResolver` dans `progression.go` — hors scope, c'est un type partagé par ~5 handlers.)
+- **Câblage `server.go`** : le `ProgressionResolver` (→ `*PlayerDB`) est adapté en `patternsRepoResolve` qui retourne `duckdb.NewPatternsRepo(pdb)`. Composition root reste le seul point qui connaît le concret.
+
+**Tests d'abord (caractérisation)** : `patterns_repo_test.go` verrouille la logique pure (seule partie avec branches) : merge (KDA `(k+a/2)/max(1,d)`, HSRate, routage `rating_type`→DeltaLUSR/CSRValue, mapping enrichissements) + deltas. **Un test a attrapé une vraie subtilité** : sur 1 seul row, `computePatternSkillDeltas` retourne tôt (`len<2`) → la valeur brute du merge reste (n'est PAS remise à nil). Mon assertion initiale (nil) était fausse, le code a raison — assertion corrigée pour verrouiller le comportement réel. Les loaders SQL (scans straight, déplacés verbatim) ne sont pas testés DB-backed : la neutralité repose sur le déplacement verbatim + le typage compilé. Documenté comme tel.
+
+**Résultats observés** : `go build` ✅ (port + duckdb + api), `go vet` ✅, tests verts : `internal/port` ✅, `internal/api/handlers` ✅ (10s), nouveaux tests repo ✅ + anciens `shared_query_helpers_test.go` toujours ✅. Aucune référence pendante aux symboles retirés du handler (grep `internal/api` = 0).
+
+**Non vérifié** : pas de hit HTTP live sur `/patterns` (nécessiterait Go API + DB peuplée). Loaders SQL non couverts par test DB-backed (déplacement verbatim).
+
+**Conclusion / prochaine étape** : Axe 1 livré, but de découplage atteint (handler sans SQL ni `*duckdb.*`). Suite du plan : Axe 2 (logique LUSR v2 → interfaces, Option A faible churn), puis 3 (TokenStore), 5 (erreurs HTTP), 6 (flags morts + deadline Prestige). Commits à faire par l'utilisateur.
+
+## [2026-05-29] feat(nav): Phase 4 (incrément contenu) — connexion des filtres Explorer à la nav contextuelle
+
+**Statut** : Complété (branche `feat/nav-context-unification` ; commits délégués). Incrément ciblé de la Phase 4, PAS le refactor complet (voir § Reporté).
+
+**Contexte** : gap concret différé en Phase 3 — ExplorerMatchesTable dérivait son `filterSpec` du `soloFilterStore` (vide en contexte Explorer, qui part de `DEFAULT_FILTER_CONTEXT`), donc ouvrir un match depuis Explorer perdait le scope filtré pour la nav prev/next (chronologie globale). Maintenant que le backend Q25 supporte le multi-playlist/mode (Phase 3), on pilote le filterSpec depuis les filtres locaux d'Explorer.
+
+**Décisions techniques** :
+- **`explorerScopeToFilterSpec(scope)`** (explorerScope.ts) : adaptateur scope→MatchFilterSpec — préfiguration de l'adaptateur générique `scope→MatchNavContext` de la Phase 4 complète. Mapping : playlists→playlist_names (exact), modeNames→mode_categories (cohérent avec le `contextDescriptor` qui traite déjà modeNames comme catégorie ; non-résolu = ignoré gracieusement backend), dates→date_from/to (bornes inclusives T00:00:00Z/T23:59:59Z), outcome→label **seulement si exactement 1** (MatchFilterSpec.outcome mono-valeur). Vide → undefined (URL non polluée).
+- **`filterSpecOverride?` sur ExplorerMatchesTable** : quand fourni, prime sur la dérivation soloFilterStore. Threadé ExplorerPage→ExplorerMatchesMode→ResultsBlock→table. Les tables mode Joueur (ally/enemy) ne le passent pas → fallback inchangé. La nav in-liste reste portée par `matchIds` (exact) ; le filterSpec est la couche durabilité F5/lien partagé.
+
+**Résultats** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ · tests explorer+match-nav (86) ✅ dont 6 nouveaux sur `explorerScopeToFilterSpec`.
+
+**Reporté (pending go-ahead explicite)** — le **gros refactor Phase 4** : généraliser `usePageScope` à History/Session/Squad/Home + retirer le localStorage manuel de SquadLayout + converger Solo/Squad vers le primitif commun. Raison du report : ce refactor touche `createFilterStore`/SquadLayout qui portent la sémantique « sticky jusqu'à nouvelle session » (`autoSnapToLatestSession`) — mémoire qui **fonctionne déjà bien** et que l'utilisateur valorise — pour un gain purement architectural NON lié aux 3 douleurs initiales (toutes adressées Phases 1-3). À mener comme chantier délibéré avec tests de non-régression dédiés sur l'auto-snap.
+
+**Conclusion** : les 3 douleurs initiales sont couvertes (Phase 1 retour Explorer, Phase 2 propagation SessionDetail, Phase 3 robustesse + multi-filtres) ; cet incrément ferme le dernier gap concret (Explorer multi-filtres → nav). Reste optionnel/délibéré : convergence des stores (ci-dessus), filtre session côté Q25, retrait du shim `filtersLabel`.
+
+## [2026-05-29] feat(nav): Phase 3 unification mémoire de navigation — fiabilisation match-nav (multi-filtres backend + TTL + observabilité)
+
+**Statut** : Complété (branche `feat/nav-context-unification` ; commits délégués à l'utilisateur, pre-hook KO). Phase 3 **complète incl. backend** choisie par l'utilisateur.
+
+**Contexte** : Phase 3 du plan `nav-context-unification` (priorité 3 — fiabiliser match-nav). 3 axes : (a) multi-playlist/mode (avant : `MatchFilterSpec` ne portait qu'1 playlist/mode, le multi-select tombait en nav globale) ; (b) TTL sessionStorage trop court (1h) ; (c) fallback silencieux non observable.
+
+**Décisions techniques majeures** :
+- **Backend multi-valeurs (migration propre vers slices, pas de double représentation)** :
+  - `domain.MatchFilterSpec` : `PlaylistName *string`→`PlaylistNames []string`, `ModeCategory *string`→`ModeCategories []string` (+ `IsEmpty`). `applied_filters` echo PAS dans openapi → pas de churn gen/contrat ; le front ne consomme pas `applied_filters` (vérifié `useMatchNeighborsResolved.ts`).
+  - `analysis.BuildNeighborsWhereClause` : playlists → `mr.playlist_name IN (?, ?, …)` ; modes → union des préfixes de chaque catégorie en un seul OR. Helper `nonEmpty()` filtre les valeurs vides (pas de placeholder fantôme). Catégorie qui ne résout vers aucun préfixe → sautée ; si AUCUNE ne résout → `ignored`.
+  - `handlers.parseNeighborsFilterSpec` : `playlist`/`mode` parsés en CSV (`parseCsvFilterParam`), chaque valeur validée individuellement par la regex whitelist (invalides ignorées + warn). Compat mono-valeur préservée (1 valeur → slice de 1).
+- **Blast radius cartographié avant édition** : `PlaylistName`/`ModeCategory` sont des noms de champs très communs (match rows, mapper…) — édition chirurgicale des seuls usages `MatchFilterSpec` (domain, analysis, handler, 4 tests). Shim `firstOrNil([]string) *string` dans le test handler pour garder les assertions mono-valeur historiques intactes.
+- **Front TS aligné** : `MatchFilterSpec` (navContext.ts) → `playlist_names`/`mode_categories` arrays ; `filterSpecToQueryString` joint par virgule, `parseFilterSpecFromSearch` split ; `buildContextLabel` (match-view/i18n) join `', '` ; `fromFilterContext` mappe désormais TOUTES les playlists/modes (avant : seulement si exactement 1 — « scope trop large » devenu obsolète). **Bénéfice immédiat Squad** (son `squadFilterStore.cascade` a le bon vocabulaire et passe par `filterContextToMatchFilterSpec`).
+- **Explorer → filterSpec DIFFÉRÉ en Phase 4** : ExplorerMatchesTable dérive son filterSpec du `soloFilterStore` (quirk pré-existant, pas des filtres locaux Explorer) ; de plus les `modeNames` d'Explorer ne sont pas des *catégories* (vocab ≠ `mode_category`) et l'`outcomeFilter` est multi (vs single). Connexion fine = ressort de l'adaptateur `scope→MatchNavContext` (Phase 4), pas du demi-câblage ici.
+- **TTL sessionStorage 1h → 24h** : le sessionStorage meurt avec l'onglet ; un TTL court coupait le contexte sur un onglet match laissé ouvert. La durabilité « dure » est portée par l'URL.
+- **Observabilité** : `console.warn` (dev-only, `import.meta.env.DEV`) quand un `matchId` est absent de la liste du contexte → fallback API (cas anormal, avant totalement silencieux). Pas de couplage `lib/`→`features/` (pas d'import du logger filters).
+
+**Résultats observés** :
+- **Go** : `go test` (analysis/handlers/service/domain, cgo-free) ✅ ; `go test -tags=integration ./internal/platform/duckdb/` ✅ (nouveau cas `MultiPlaylist` validé contre DuckDB) ; `go build ./...` ✅. Nouveaux tests purs : multi-playlist `IN (?, ?)`, multi-mode (6 args, 1 OR), skip-empty, partial-resolve.
+- **TS** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ · **suite complète 1543 passed / 14 skipped, 0 échec** (correction d'1 test TTL écrit pour 1h). Nouveaux tests : sérialisation/parse multi-valeurs, `buildContextLabel` multi, `fromFilterContext` multi.
+
+**Correction Phase 2** : l'entrée Phase 2 affirmait à tort que `filterSpec.session_id` apportait la durabilité F5/partage. L'exploration Phase 3 a montré que **Q25 ignore `session_id`** — entrée corrigée en conséquence.
+
+**Non vérifié** : pas de click-through navigateur live ni run du serveur Go complet (build/vet/tests OK).
+
+**Conclusion / prochaine étape** : Phase 3 livrée — multi-filtres end-to-end (backend + contrat TS + producteur Squad), TTL 24h, fallback observable. Reste : Phase 4 (généraliser `usePageScope`, adaptateur `scope→MatchNavContext` qui connectera enfin Explorer proprement + préservera le « sticky jusqu'à nouvelle session » Solo/Squad) ; chantiers à part notés : filtre session côté Q25 (join player DB), retrait du shim `filtersLabel`.
+
+## [2026-05-29] feat(nav): Phase 2 unification mémoire de navigation — propagation complétée (SessionDetail cliquable + nettoyage)
+
+**Statut** : Complété (branche `feat/nav-context-unification`, suite de la Phase 1 ; commits délégués à l'utilisateur, pre-hook KO)
+
+**Contexte** : Phase 2 du plan `nav-context-unification` (priorité 2 — compléter la propagation `match-nav`). 3 cibles identifiées par l'exploration : (a) SessionDetailPage avec un tableau de matchs non cliquable = trou le plus visible ; (b) `'citation'` déclaré dans `MatchNavSource` mais jamais câblé ; (c) uniformiser `contextDescriptor`.
+
+**Décisions techniques majeures** :
+- **SessionMatchesTable rendu cliquable** : ajout d'une colonne "ouvrir" (bouton icône, pattern repris d'ExplorerMatchesTable pour l'a11y — `<button>` + aria-label, pas de `<tr>` cliquable). Clic → `useNavigateToMatch` avec `source: 'session'`, `matchIds` = tous les matchs de la session (prev/next reste dans la session), `contextDescriptor: { kind: 'session', startTimeUtc }` et `filterSpec: { session_id }`.
+  - **`startTimeUtc`** = match le plus ancien de la session (`reduce` min sur `start_time` ISO UTC, tri lexical = chrono). Hooks `useMemo`/`useCallback` placés AVANT l'early-return `matches.length === 0` (règles des hooks).
+  - **`session_id` = `match.session_label`** : cohérent avec le contrat existant (`fromFilterContext.ts`, `sessions.picked → session_id` utilise déjà le label). ⚠️ **Correction apportée en Phase 3** : l'exploration backend a révélé que **Q25 IGNORE `session_id`** (`analysis/match_filter.go` — les sessions vivent dans `player.player_match_enrichment`, non jointe par Q25 qui tourne sur SharedReader). Le `session_id` posé dans l'URL est donc parsé mais sans effet sur les voisins : la nav in-session repose sur `matchIds` (router state + sessionStorage, TTL relevé à 24h en Phase 3) ; sur F5 < TTL c'est couvert, mais sur lien partagé / nouvel onglet on retombe sur Q25 global. L'affirmation initiale « durabilité F5/partage acquise » était donc inexacte. Implémenter le filtre session côté Q25 (join player DB) reste un chantier à part.
+  - **prop `playerSlug`** ajoutée (1 seul caller : SessionDetailPage, mis à jour).
+- **i18n** : 1 clé ajoutée proprement via le TOML source (`session.detail.col_open` = Ouvrir/Open) + régénération `node apps/web/scripts/build_i18n_manifests.mjs` (session : 177→178 clés). Pas d'édition directe du généré, pas de couplage cross-feature.
+- **`'citation'` retiré de `MatchNavSource`** : confirmé mort (`grep "source: 'citation'"` → 0 occurrence ; la route/feature citations existe mais n'utilise pas match-nav). Aucun test ne le référence.
+- **Uniformisation `contextDescriptor` = déjà acquise au niveau producteur** : `grep filtersLabel` montre qu'AUCUN consumer `useNavigateToMatch` ne passe plus `filtersLabel` (seulement docs + tests + la couche de lecture compat dans MatchHeader/i18n/useMatchNeighborsResolved). Tous les producteurs (Explorer, Squad, Home, Media, Career, Synthesis) émettent un `ContextDescriptor` typé. **Décision** : le champ legacy `filtersLabel` est conservé comme shim de compat (hors scope « compléter la propagation » ; son retrait = churn de tests + couche de lecture, à planifier en cleanup dédié).
+
+**Résultats observés** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ · **171 tests passent** (session-detail + match-nav + match-view, dont SessionDetailPage.test inchangé — mocks router compatibles).
+
+**Non vérifié** : pas de click-through navigateur live. Le câblage suit le pattern éprouvé d'ExplorerMatchesTable et la résolution de voisins est couverte par les tests `useMatchNeighborsResolved`.
+
+**Conclusion / prochaine étape** : Phase 2 livrée (trou SessionDetail comblé, `MatchNavSource` nettoyé, constat d'uniformisation documenté). Reste plan : Phase 3 (fiabiliser match-nav — TTL sessionStorage, multi-filtres `MatchFilterSpec`, observabilité du fallback silencieux) ; Phase 4 (généraliser `usePageScope` + adaptateur `scope→MatchNavContext`, préserver le « sticky jusqu'à nouvelle session » Solo/Squad). Cleanup optionnel : retrait du shim `filtersLabel`.
+
+## [2026-05-29] feat(nav): Phase 1 unification mémoire de navigation — scope Explorer durable (URL + miroir localStorage)
+
+**Statut** : Complété (branche `feat/nav-context-unification`, créée depuis `feat/match-timeline-t0` à la demande utilisateur)
+
+**Contexte** : la « mémoire du contexte » ressentie comme incomplète/fragile par l'utilisateur est en réalité **3 mécanismes disjoints** : (1) `match-nav` (propagation avant, sessionStorage TTL 1h) ; (2) stores de filtres Solo/Squad (Zustand persist + auto-snap `lastKnownLatestSessionId` à la fin d'un sync = « sticky jusqu'à nouvelle session ») ; (3) **Explorer = aucune persistance** (filtres en `useState` local, seuls `mode`/`target` dans l'URL). D'où la douleur n°3 : ouvrir un match → retour → recherche perdue. Plan `nav-context-unification`, priorité 1 (restauration au retour), approche hybride store+URL validée.
+
+**Décisions techniques majeures** :
+- **Insight de levier** : pour le bouton retour, mettre les filtres dans l'URL suffit — `history.back()` restaure l'URL précédente avec ses query params. Le localStorage n'est qu'un **miroir cold-start** (rouvrir l'app à froid sur Explorer). URL = source de vérité, store/localStorage = secondaire.
+- **Nouveau primitif générique `apps/web/src/lib/page-scope/`** (réutilisable Phase 4) : `serialize.ts` (helpers purs Set↔csv) + `usePageScope.ts` (hook hybride). Le hook manipule 2 représentations via `encode`/`decode` : App (riche, Set<string>) ↔ Url (plate, chaînes). Mutations via `navigate({ replace: true })` (pas push → pas de pollution d'historique). Cold-start : effet de montage qui réhydrate depuis localStorage **uniquement si l'URL ne porte aucun scope** (sinon l'URL gagne). `reset()` purge le miroir pour ne pas ressusciter des filtres effacés.
+- **`createFilterStore` PAS réutilisable pour Explorer** : sa forme est figée sur `FilterContextInput` (période/sessions/cascade) ; les filtres Explorer ont une forme différente (tiers, playlists, dates, recherche). D'où le primitif générique séparé plutôt qu'un détournement.
+- **`features/explorer/explorerScope.ts`** : contrat de la page — `ExplorerScope` (App) ↔ `EncodedExplorerScope` (Url, clés courtes `start/end/scope/mid/exp/pl/maps/modes/perf/skill/outcome/sort`) + `explorerSearchSchema` Zod pour `validateSearch`. Valeurs vides → param omis (URL propre) ; tri par défaut omis.
+- **ExplorerPage rebranché** : 13 `useState` locaux → `usePageScope`. Toute la logique dérivée préservée (rankedContext, reset auto skillTiers sous garde anti-boucle, matchesContextDescriptor, saisons). `mode`/`target` laissés inchangés (déjà dans l'URL) ; ils composent avec le scope via l'updater fonctionnel `search: (prev) => ({...prev, ...})`.
+- **Limite assumée csv** : séparateur `,` sur vocabulaires Halo contrôlés (playlists/maps/modes/tiers sans virgule). Documenté dans `serialize.ts`.
+
+**Résultats observés** : `tsc -b` ✅ · ESLint ✅ · `vite build` ✅ (route tree régénéré, chunk `explorerScope` bundlé) · **96 tests passent** dont 29 nouveaux (sérialisation round-trip, encode/decode défauts, Zod parse valide/invalide, hook : decode/setScope-merge/reset/cold-start restore+skip). Le test existant `ExplorerPage.test.tsx` passe sans modif (mocks `useSearch/useNavigate` compatibles).
+
+**Non vérifié** : pas de click-through navigateur live (nécessiterait Go API + browser MCP). Le fix est structurellement garanti par TanStack Router + historique navigateur, et la logique encode/decode/hook est couverte unitairement.
+
+**Conclusion / prochaine étape** : Phase 1 livrée (douleur n°3 résolue pour Explorer). Suite du plan : Phase 2 (compléter la propagation — SessionDetail cliquable, retrait du `'citation'` mort, uniformiser `contextDescriptor`), Phase 3 (fiabiliser match-nav — TTL, multi-filtres, observabilité), Phase 4 (généraliser `usePageScope` + adaptateur `scope→MatchNavContext`, en préservant le « sticky jusqu'à nouvelle session » de Solo/Squad via crochet auto-snap optionnel).
+
+## [2026-05-29] chore: Cleanup knip phase 2 — charts leftovers + quick wins + dette lint
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
+
+**Contexte** : suite du cleanup knip (P0-P3 déjà livré). Traitement en autonomie des items « reste hors scope + charts isolés », même méthode (vérifier le câblage des pages avant suppression).
+
+**Décisions techniques majeures** :
+- **6 charts leftovers supprimés** après lecture de la page parente — remplaçant actif identifié pour chacun : `StreakBadge`→`StreakDashboard`, `CareerLusrCards`→`CareerRankingBlock`/`CareerChartsSection`, `HomeOutcomeBar`→`OutcomeSequenceTape`, `WinRateVsHistoryChart`→`WinRateVsHistoryBulletChart`, `TimeseriesCorrelationScatter`+`TimeseriesOutcomesOverTime`→retirés au rework timeseries (zéro import). `git log` confirme : tous issus d'anciens commits de feature, orphelinisés par refontes — pas du WIP.
+- **P4** : `MatchNavigation` (alias rétrocompat de `MatchNavigationBar`, migration terminée) supprimé. `formatKDA` GARDÉ — alias domaine de `formatRatio`, utilisé par `PalmaresRelationsPage` + testé (le flag knip « duplicate » est informatif, pas un bug).
+- **react-query-devtools** : câblé en dev-only dans `providers` (`import.meta.env.DEV && <ReactQueryDevtools/>`) plutôt que supprimé — transforme la dep « inutilisée » en outil, tree-shaké en prod.
+- **Dette lint pré-existante résolue** :
+  - cross-feature 11→0 : 8 paires durables (pattern agrégateur, cohérent avec le précédent de l'allowlist) légitimées dans `ALLOWED_CROSS_IMPORTS`.
+  - faux positif CSR/LUSR : `lint-no-hardcoded-fields.mjs` étendu pour skip les opérations de collection (`.has`/`.includes`/`.get('X')`), comme il skippait déjà `=== 'X'`. Fix général, pas un whitelist de fichier.
+- **knip config** minimisée (entries auto-détectées par plugins, ignores redondants retirés).
+- **Ratchet code mort** : `tools/knip-ratchet.mjs` posé (plafonds files=29 / exports=87 / types=83, échec si dépassé, branché en pre-push). Même esprit que les ratchets cross-feature/couleurs existants. Vérifié : passe à l'état courant, bloque une régression simulée.
+- **14 hooks `queries.ts` orphelins investigués 1-par-1** : 12 GARDÉS (WIP/phasé/intentionnel — PlayerProfile ADR 0015, Prestige ADR 0005, setup en cours de réécriture, prefetch/logout/cache-invalidation non câblés) ; **2 superseded retirés** : `useBattlePass`→`useSeasonPassPreview`, `useMatchNeighbors`→`useMatchNeighborsResolved` (+ import de type orphelin + mock obsolète `MatchHeader.test.tsx` nettoyés). Reste 87 exports / 83 types en backlog, désormais sous ratchet.
+
+**Résultats observés** : `tsc -b` ✓, `vite build` ✓, 3 linters custom ✓ (cross-feature 0, fields 0, colors 0), knip deps clean (react-query-devtools résolu).
+
+**Conclusion** : tous les items actionnables sûrs livrés + ratchet en place pour empêcher toute régression. Reste = 87 exports / 83 types (backlog itératif, gelé sous ratchet) + décision utilisateur sur les orphelins gardés (squad/v2, SynthesisCombatProfileSection, ChallengesCarousel, prefetch, feature-flags, App.tsx, i18n générés).
+
+## [2026-05-29] feat: Onboarding premier lancement — boot mkdir + extraction prebuilt + état halo_linked_no_profile
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`, à la demande de l'utilisateur sur la branche courante)
+
+**Contexte** : exécution de `.ai/PLAN_ONBOARDING_WIZARD.md`. L'exploration a invalidé 2 des 4 points du plan :
+- **#1 chemins périmés** : le plan visait `data/warehouse/` + `pr.PlayerBaseDir()` (inexistant). Le code utilise le schéma multi-titre `data/titles/{slug}/warehouse/` via `PathResolver.WarehouseDir(slug)`.
+- **#2/#4 écran "Azure manquant" abandonnés** : prémisse fausse. `cfg.AzureClientID` n'existe pas ; le code auth a un client public intégré (`auth.LevelUpClientID = e1cb35ab-…`) + provider SISU natif → le Device Code Flow marche **sans** config Azure. Un écran de blocage aurait pénalisé inutilement un clone frais. Confirmé avec l'utilisateur (choix "Non, sauter").
+
+**Décisions techniques majeures** :
+- **#1 `ensureWarehouseDir(pr, slug)`** (`cmd/server/main.go`) appelé avant `runMigrations`. Seul le dossier warehouse est nécessaire : `OpenReadWrite` crée le fichier `.duckdb` mais pas le dossier parent (preuve : `initGlobalXuidAliasesSchema` MkdirAll explicitement avant). Les autres dossiers runtime (players, sessions, cache, WAL, watcher_tokens) sont déjà auto-créés par leurs consommateurs (`profile_service`, `session.NewStore`, `jobs.Store`, `persist.BatchQueue`, `MultiUserTokenStore`) — pas besoin de les recréer au boot.
+- **#3 `resolveSetupState` renvoie enfin `halo_linked_no_profile`** : le bug réel. Le Device Code Flow finit en `authorized` (pas `provisioned`, cf. `auth.go:137-144` qui pose `sess.LinkedHaloIdentity` sans auto-provisionner). Avant le fix, session liée + 0 joueur → `no_halo_link` → le wizard rebouclait sur StepDeviceCode au lieu d'afficher StepPlayer. Signature passée à `(ctx, sess, players)` ; retour `halo_linked_no_profile` si `ResolveLinkedIdentity(sess) != nil`. Le contrat était déjà câblé partout ailleurs (frontend `SetupPage`/`appShellStore`/`types.ts`, `openapi.yaml`, `api/gen/types.gen.go`, SPEC_V7_BOOTSTRAP_CONTRACT) — seul le backend ne l'émettait jamais.
+
+**Tests de simulation (mock du flow sans login Microsoft SSO)** :
+- `cmd/server/boot_dirs_test.go::TestEnsureWarehouseDir_FreshCloneBoots` (tag `//go:build cgo`) — 2 sous-cas sur `t.TempDir()` (clone frais) :
+  - `missing_warehouse_dir_fails` : sans le dossier, `runMigrations` retourne une erreur → **prouve empiriquement que `OpenReadWrite` ne crée pas le dossier parent** (le fix est nécessaire, pas un no-op).
+  - `ensure_then_migrate_ok` : après `ensureWarehouseDir`, les 43 migrations shared + metadata + 13 social s'appliquent et les `.duckdb` sont créés.
+- `internal/service/bootstrap_service_test.go::TestBuild_HaloLinkedNoProfile` — teste `Build()` complet (pas juste `resolveSetupState`) avec une session post-SSO mockée (identité liée, 0 joueur) → `setup_state=halo_linked_no_profile`, `setup_required=true`, identité propagée.
+
+**Résultats observés** :
+- `go build` + `go vet ./cmd/server/ ./internal/service/` ✅ (exit 0).
+- `go test ./cmd/server/ ./internal/service/` ✅ — packages complets, aucune régression (les tests legacy `migrateLegacyAuthTokensAtBoot` passent toujours).
+- Observation clone frais (non bloquant, **pré-existant, hors scope**) : le backfill `shared_seed_tier_boundaries_v2` log un WARN `Table lusr_hyperparams_v2 does not exist` — le seed LUSR v2 ne s'applique pas sur un clone vierge (quirk d'ordre de migration). Le cycle migration se termine quand même (`applied=43/43`), boot OK.
+
+**Itération 2 (2026-05-29) — extraction prebuilt + cadrage LUSR v2** :
+- **Constat `metadata-prebuilt.zip`** : il est tracké git (3,4 MB, contient un `metadata.duckdb` de 42 MB) mais **rien ne le décompressait** (ni Go, ni Makefile, ni script, ni doc) — orphelin. Sur clone frais, les référentiels non seedés par migration (career_ranks, playlists, citations) restaient vides jusqu'au 1er fetch live.
+- **Fix `extractPrebuiltMetadataIfAbsent`** (`cmd/server/prebuilt_metadata.go`) appelé après `ensureWarehouseDir`, avant `runMigrations` : si `metadata.duckdb` absent + zip présent → `archive/zip` extrait l'entrée vers la base (write-to-temp + rename atomique). **No-op si la base existe déjà** (jamais écrasée — exigence utilisateur) ou si le zip est absent. Non-fatal (Warn) : extraction ratée ⇒ migrations créent une base vide, boot OK. Les migrations tournent ensuite sur la base extraite (idempotent, applique tout schéma > 2026-05-20).
+- Test `cmd/server/prebuilt_metadata_test.go` : 3 cas (absent→extrait / existant→non écrasé / zip absent→no-op) avec faux zip généré en test.
+- **LUSR v2 — différé post-prod (décision utilisateur)** : LUSR v2 pas en prod aujourd'hui → ni le fix d'ordre du seed statique, ni la ré-estimation empirique post-sync ne sont implémentés maintenant. Les deux sont documentés comme tâches post-prod dans `.ai/LUSR_V2_ROADMAP_SPRINTS.md` (section "Reste à faire / différé"). Distinction clé clarifiée avec l'utilisateur : le seed `shared_seed_tier_boundaries_v2` est **statique** (doit tourner immédiatement, pas gated sur des matchs ; le WARN = bug d'ordre alphabétique de fichiers) ; seule la **ré-estimation empirique** (`ttt_tau_empirical`…, via `cmd/lusr_v2_ttt_batch`) est data-dépendante.
+
+**Résultats itération 2** : `go build` + `go vet ./cmd/server/` ✅ ; `go test ./cmd/server/` package complet ✅ (extraction 3/3 + boot clone-frais 2/2 + legacy auth tokens, aucune régression).
+
+**Conclusion** : clone frais validé par simulation (boot sans crash + référentiels prebuilt extraits + onboarding post-SSO routé vers création de profil). Le seul reste = test manuel e2e avec vrai SSO Microsoft (non automatisable). LUSR v2 cadré en post-prod dans son roadmap.
+
+## [2026-05-29] chore: Cleanup knip P0-P3 (vérif routing avant suppression)
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
+
+**Contexte** : suite à l'audit `.ai/AUDIT_KNIP_2026-05-28.md`, traiter P0→P3 en autonomie. Consigne forte de l'utilisateur : **vérifier le câblage des pages avant tout nettoyage** ; garder `session-compare` (travail en cours).
+
+**Décisions techniques majeures** :
+- **Méthode** : pour chaque orphelin knip, cartographier le routing TanStack (`src/routes/`) + nav (`shellNavigation.ts`) et confirmer l'existence (ou non) d'un remplaçant actif AVANT suppression. knip seul ne suffit pas — l'utilisateur a raison de demander vérif (cf. session-compare = WIP, pas mort).
+- **P0** : `zod` figé `^4.4.3` (runtime déjà en 4.3.6 hoisté ; v4 alignée, pas v3 malgré TanStack Router interne en v3).
+- **P3** : `types.ts` (OpenAPI) ignoré dans knip + faux positifs deps (`tailwindcss`, `@tailwindcss/typography` via `@plugin` CSS, `@iarna/toml`). Les 90 unused exports = backlog itératif (hors scope).
+- **Suppressions (5, confirmées mortes avec remplaçant)** : `CareerCitationsTab` (→ `CitationsPage`), `AppShellHeader`+`PlayerScopeNav` (→ `NavL1`), `KPIBar` (→ `NavL2`), `careerPageStore` (orphelin). `CareerHubPage` documente explicitement « citations ont leur page dédiée » → validation de l'intuition utilisateur.
+- **Gardés (WIP/intention)** : session-compare (demande explicite), squad/v2 pages (v1 active ; mais `squad/v2/types.ts`+`SquadEngagementView` vivants → pas de `rm` dossier), SynthesisCombatProfileSection (PLAN), ChallengesCarousel, prefetch.ts, feature-flags.ts, App.tsx (« conserve pour reference »), i18n générés, charts isolés sans remplaçant identifié.
+- **Hors scope** : `@tanstack/react-query-devtools` (vraie dep inutilisée = P5), doublons P4.
+
+**Résultats observés** :
+- `tsc -b` ✅ + `vite build` ✅ (1.22s) — zéro régression après suppression.
+- knip : unlisted deps 5→0, unused devDeps 2→0, unused deps 2→1, unused files 40→35.
+- Migration toolchain : lefthook mange les quotes inline → logique des hooks déportée en `scripts/git-hooks/lefthook/*.sh` (corrigé pendant ce travail).
+
+**Conclusion** : cleanup conservateur livré. Prochaine étape possible : décider du sort de squad/v2 + charts isolés (confirmer leftover vs recâblage), puis attaquer les 90 unused exports en itératif.
+
+## [2026-05-28] toolchain: Installation top 3 outils + migration pre-commit → lefthook
+
+**Statut** : Complété
+
+**Décisions techniques majeures** :
+- **lefthook** (binaire Go, zéro Python) remplace `pre-commit` comme hook runner — le projet ayant migré full Go, Python n'est plus requis. Les hooks `language: system` du `.pre-commit-config.yaml` sont repris à l'identique dans `lefthook.yml`. `.pre-commit-config.yaml` conservé pour référence / CI éventuel.
+- **golangci-lint** installé via `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest` (script curl échoué sur vérif checksum réseau). `.golangci.yml` v2 déjà présent dans `apps/go-api/`.
+- **govulncheck** installé via `go install golang.org/x/vuln/cmd/govulncheck@latest` — ajouté en hook `pre-push`.
+- **knip** + **rollup-plugin-visualizer** installés dans `apps/web/` (devDependencies). `knip.config.ts` créé avec entrées TanStack Router + fichiers générés ignorés. `vite.config.ts` migré vers forme fonction `({ mode }) =>` pour activer le visualizer via `ANALYZE=true vite build`.
+- `lefthook install` → hooks `pre-commit` + `pre-push` actifs dans `.git/hooks/` (était vide avant).
+
+**Résultats observés** :
+- `lefthook install` : `sync hooks: ✔️ (pre-commit, pre-push)`
+- `.git/hooks/pre-commit` + `pre-push` + `prepare-commit-msg` créés
+- Tous les binaires Go installés dans `C:/Users/GuillaumeSITBON/go/bin/` (air, gopls, lefthook, govulncheck, golangci-lint)
+
+**Conclusion** : les hooks se déclenchent maintenant à chaque commit (gofmt, go-vet, golangci-lint, lint TS × 3, check-merge-conflict) et avant push (go test -short, govulncheck, deploy-dry-run). Prochaine étape : lancer `npm run knip` une première fois pour établir la baseline du code mort TS.
+
+## [2026-05-28] plan: Onboarding Wizard — premier lancement sans données
+
+**Statut** : Planifié (`.ai/PLAN_ONBOARDING_WIZARD.md`)
+
+**Décisions techniques majeures** :
+- **Crash réel** : `data/warehouse/` manquant (pas `app_settings.json` qui gère ses defaults). Fix : `os.MkdirAll` avant `OpenReadWrite` au boot.
+- **Backend 90% fait** : `GET /bootstrap` (setup_state), `POST /setup/players`, `POST /sync/initial`. Manque wizard frontend + `ensureWarehouseDirs()` au boot.
+- **XUID** : obtenu automatiquement depuis le SSO Xbox (`DisplayClaims.xui[0].xid`) — zéro saisie manuelle.
+- **`.env.local`** : prérequis ops non générables via UI → écran dédié dans le wizard.
+
+**Conclusion** : démarrer par Phase 0 (fix crash boot, ~2h) puis wizard frontend sur `feat/onboarding-wizard`.
+
+## [2026-05-28] feat(lusr_v2): Sprint 3.A TTT wiring complet
+
+**Statut** : Complété
+
+**Contexte** : Sprint 3.A livré initialement en prototype pur (`skill_v2/ttt.go`, EstimateTTT validé sur données synthétiques). L'utilisateur demande le wiring complet : charger les séries μ des joueurs trackés, appeler EstimateTTT, et écrire les paramètres EM en base.
+
+**Décisions techniques majeures** :
+- **LoadStateHistory** (SkillV2Repo) : lecture de la table brute `player_skill_state_v2` (pas la vue `_latest`) pour obtenir l'historique chronologique complet d'un joueur/groupe (written_at ASC). Un seul round-trip dans `loadAllHistories` pour le batch.
+- **ttt_tau_empirical** (hyperparam) : le TTT EM ré-estime q (ProcessVar = τ²) par joueur. Agrégation par groupe = mean(q_joueurs). τ_groupe = √(mean_q) écrit dans `lusr_hyperparams_v2`. Relié au runtime via `LoadPriorsFromHyperparams` → override `Priors.Tau` (guard > 0).
+- **Scope** : `player_skill_state_v2` contient TOUS les joueurs ayant une history (pas seulement les trackés). Le batch filtre les paires avec < 2 points (TTT nécessite ≥ 2 obs). En pratique, les joueurs trackés ont le plus de matchs → les meilleurs τ estimés.
+- **--write-smoothed** : option de réécriture du μ lissé terminal (SmoothedMean[last]) comme nouveau snapshot dans `player_skill_state_v2`. written_at = NOW() → `_latest` sélectionne automatiquement. Conservatif : 1 seul row par joueur/groupe (pas réécriture historique complète). À activer APRÈS bascule stable.
+- **Ordre dry-run** : le bloc `--smooth` s'exécute AVANT le `return dryRun` → `--dry-run --smooth` montre le rapport TTT sans écrire.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/...` PASS (2 nouveaux tests : TauOverride, TauInvalidIgnored + 2 cas AppliedHyperparamCount)
+- `go vet ./internal/analysis/skill_v2/... ./internal/domain/...` clean (CGO non dispo localement, vet CGO différé CI)
+- ttt_smooth.go : 195L < 200L, toutes fonctions ≤ 80L
+
+**Fichiers créés/modifiés** :
+- `internal/platform/duckdb/skill_v2_repo.go` : + `LoadStateHistory`
+- `internal/analysis/skill_v2/hyperparams_load.go` : + `hyperparamTTTTau`, override Tau, `AppliedHyperparamCount` mis à jour
+- `internal/analysis/skill_v2/hyperparams_load_test.go` : + 2 tests Tau + 2 cas AppliedHyperparamCount
+- `cmd/lusr_v2_ttt_batch/ttt_smooth.go` : nouveau (TTT wiring : loadAllHistories, runTTTSmoothing, buildGroupResults, printTTTSmoothReport)
+- `cmd/lusr_v2_ttt_batch/main.go` : + flags `--smooth` / `--write-smoothed`
+
+**Prochaine étape** : en prod, lancer `cmd/lusr_v2_ttt_batch --smooth [--dry-run]` pour voir les τ estimés par groupe, puis sans `--dry-run` pour écrire. Après ≥ 7j stables, envisager `--write-smoothed` pour corriger les μ courants.
+
+---
+
+## [2026-05-28] chore: Installation environnement de dev (nouveau PC Windows)
+
+**Statut** : Complété
+
+**Décisions techniques majeures** :
+- **GCC** : GCC 16.1.0 (ucrt64 MSYS2) est incompatible avec les libs DuckDB 1.5.3 précompilées (`__emutls_v._ZSt11__once_call` manquant). Fix : remplacement de `libstdc++.a` par la version GCC 14.2.0 extraite de l'archive MSYS2 (`/c/msys64/ucrt64/lib/libstdc++_gcc16_backup.a` conservé). La lib GCC 14 fournit les symboles emutls requis par DuckDB.
+- **make** : non installé sur ce PC. Installé via `pacman -S make` dans MSYS2. Ajouté `C:\msys64\usr\bin` au PATH utilisateur.
+- **Node.js** : installé via `winget install OpenJS.NodeJS.LTS` (v24.16.0). Présent dans machine PATH avec trailing backslash.
+- **Go** : installé via `winget install GoLang.Go` (v1.26.3). Dans machine PATH.
+- **air** : installé via `go install github.com/air-verse/air@latest`. Dans `C:\Users\GuillaumeSITBON\go\bin` (user PATH).
+- **Playwright** : browsers installés via `npx playwright install` (Chromium v1217 uniquement, conforme au `playwright.config.ts`).
+
+**Résultats observés** :
+- Tests Go (CGO=0, domain/analysis/contracttest) : 11 packages PASS
+- Tests web (Vitest) : 159 fichiers, 1510 tests PASS, 14 skipped
+- `make go-api-build` (CGO=1 + DuckDB) : OK depuis PowerShell et Git Bash (nouveau terminal)
+
+**Conclusion** : Ouvrir un **nouveau terminal Git Bash** pour hériter du PATH mis à jour. `make dev` devrait fonctionner.
+
 ## [2026-05-27] feat(lusr_v2): Phase 3e+→5 5-candidats autonomes (Strategie C + sentinelle + quit penalty + mode correlation + TTT batch)
 
 **Statut** : Complété (changements en working copy, non commités)
@@ -50140,3 +50603,226 @@ Couvertures : timeline 97.7%, narrative 94%, skill_v2 85.8%, domain 84.6%, canon
 **Vérif** : Madina arena_slayer `_latest LUSR` = 2000 (Diamond/Onyx) ✓ (était 1513 Gold). Choco/JGtm Gold conformes. Build + tests migration/sync verts.
 
 **Note** : XxDaemonGamerxX a 0 match v2 écrit (matchs non LUSR-éligibles/2-team) → garde ses valeurs v1 ; sujet distinct.
+## [2026-05-28] feat(lusr-v2): Sprint 1.A — Probabilité de victoire prédite — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. `.ai/LUSR_V2_ROADMAP_SPRINTS.md` Sprint 1.A + `.ai/LUSR_V2_WIN_PROBABILITY.md`
+
+**Contexte** : 1er des 3 sprints du Sprint 1 LUSR v2 (quick win UX). Exposer pour chaque match, dans `match_skill_rank.expected_win_prob`, la proba qu'avait l'équipe du joueur de gagner AVANT le match — calculée depuis les ratings v2 pré-match. Aucune nouvelle math : c'est la quantité que le modèle utilise déjà en interne pour doser l'amplitude d'un update.
+
+**Décisions techniques** :
+1. **Fonction pure `PredictTwoTeamWinProb(teamA, teamB, p) (probA, probDraw, probB)`** dans `internal/analysis/skill_v2/predict.go`. Modèle : d = perfA - perfB ~ N(Σμ_A - Σμ_B, c²) ; A gagne si d > ε, draw si |d| < ε. probA = Φ(δ-e), probB = Φ(-δ-e), probDraw = 1 - probA - probB (somme exacte à 1).
+2. **Refacto DRY** : `PredictWinProbability` + `PredictDrawProbability` (existantes dans trueskill.go) migrées dans predict.go et partagent un helper privé `matchSpread` qui calcule δ et e une fois (évite la triple copie du calcul de c² — règle CLAUDE.md ≤2 copies).
+3. **Write-off du loader DB `LoadPreMatchStates` (étape 1.A.3 du doc abandonnée)** : les états pré-match sont déjà chargés en mémoire dans `applyMatchToSkillV2` (`teamAStates`/`teamBStates`) AVANT l'update EP. La proba est calculée à partir de ces gaussiennes. Un re-query DB tel que prévu aurait lu `player_skill_state_v2_latest` APRÈS `persistTeamSkillV2` → état POST-match, donc une proba fausse. Et c'était une requête redondante. Le endpoint HTTP à la volée mentionné par le doc relève du Sprint 2 (YAGNI ici).
+4. **Plomberie** : `applyMatchToSkillV2` retourne désormais `(ownerNew, expectedWinProb *float64, err)`. teamA est toujours l'équipe du owner (invariant `buildTwoTeamRosters`), donc probA est la proba du owner. `processOneShadowMatch` passe la valeur à `writeCanonicalLUSRRow` (nouveau param), qui la pose sur les 2 rows (LUSR + LUSR_V2) via le champ `LUSRRatingInsert.ExpectedWinProb`.
+5. **Migration** `player_add_expected_win_prob` (additive, `addColumnIfMissing`, FLOAT) — pas de réécriture de table, 0 risque ART. Colonne préservée par le CTAS de la migration append-only quel que soit l'ordre.
+6. **expvar** `levelup.lusr_v2.predictions_total` — incrémenté à chaque match traité par le shadow runner.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/persist/... ./internal/migration/... ./internal/sync/...` → PASS (sync 134s, cgo+DuckDB)
+- `go vet ./...` clean sur tout le module
+- Tests pure : balanced → probA=probB, favori net (μ30 vs μ20, σ=1) → probA>0.9, forte incertitude (σ=8) → tirée vers 0.5, DrawProbability↑ → probDraw↑
+- Tests E2E : `TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb` (proba ∈ [0,1] sur la row LUSR), `TestRunLUSRV2Shadow_Canonical_FirstMatchFallback` (4 joueurs neufs seedés au prior → ≈ 0.5, pas de panic)
+- 3 DDL de test mises à jour avec la colonne (`openCanonicalPlayerTestDB`, `openAppendOnlyLUSRTestDB`)
+
+**Reste pour la DoD (validation prod)** : vérifier sur ≥1 match prod post-bascule que `expected_win_prob` est plausible (≈ 0.5 ± 0.3 pour la majorité). Non exécutable hors prod — comme les phases auth précédentes.
+
+**Prochaine étape** : Sprint 1.B — brancher les hyperparams ré-estimés (`LoadPriorsFromHyperparams`) dans le shadow runner.
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.B — brancher les hyperparams ré-estimés — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 1.B
+
+**Contexte** : Le CLI `cmd/lusr_v2_ttt_batch` écrit déjà en base (`lusr_hyperparams_v2`) les stats empiriques par groupe de modes — `draw_probability_empirical`, `kill_mean_empirical`, `kill_std_empirical`, `death_mean_empirical`, `death_std_empirical`, `match_count_analyzed`. Mais le shadow runner utilisait toujours `DefaultPriors()` + `DefaultCountHyperparams()` hardcodés → la ré-estimation était une **écriture morte**. Ce sprint connecte les deux.
+
+**Décisions techniques** :
+1. **`internal/analysis/skill_v2/hyperparams_load.go` (pur)** :
+   - `LoadPriorsFromHyperparams(params, defaultP) Priors` : override `DrawProbability` depuis `draw_probability_empirical` (guard [0,1[). Mu0/Sigma0/Beta/Tau non écrits par le batch → restent defaults.
+   - `LoadCountHyperparamsFromDB(params, mu0) map[CountType]CountHyperparams` : recalibre le `Bias` kill/death.
+   - Ré-export d'alias `CountType` / `CountHyperparams` + consts `CountKill`/`CountDeath` pour que `internal/sync` ne dépende pas du sous-package `ep`.
+   - `DefaultCountHyperparamsMap()` + `AppliedHyperparamCount()`.
+2. **CORRECTION du plan (étape 1.B.2)** : le doc prescrivait « bias = kill_mean_empirical » en direct. C'est **dimensionnellement faux** pour le modèle `expected_count = bias + w_p·perf + w_o·avg_opp` (ep/count_obs.go) : poser bias=mean donnerait expected ≈ 2× la moyenne à skill moyen. Formule correcte appliquée : `bias = mean − (w_p + w_o)·μ0`. Elle se réduit EXACTEMENT aux défauts (kill bias 0, death bias 25) quand la moyenne empirique vaut ~12.5 — garde-fou anti-dérive vérifié en test.
+3. **Threading sans casser de signature** : ajout d'un champ optionnel `Hyperparams map[CountType]CountHyperparams` sur `CountInputs` (nil → defaults ep). `UpdateTwoTeamWithCountsEP` le pose sur `input.CountHyperparams`. Seul appelant prod = `applyMatchToSkillV2`, donc 0 régression sur les tests EP existants.
+4. **Wiring shadow runner** : `resolveGroupParams(ctx, c, group)` résout Priors + CountHyperparams effectifs PAR GROUPE (override empirique via `repo.LoadHyperparams`), **mémoïsé** dans `shadowRunContext.priorsCache`/`countHypCache` (1 requête par groupe par run). `c.priors` reste les defaults (base). `applyMatchToSkillV2` prend désormais `countHyp` en param et le pose sur `counts.Hyperparams`. Log `slog.DebugContext "hyperparams ré-estimés appliqués"` avec count d'overrides + draw_probability. **Best-effort** : `LoadHyperparams` en échec → fallback defaults + warn (run continue).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 137s)
+- `go vet` + gofmt clean
+- Tests unitaires : map vide → defaults intacts ; seul draw_prob → seul DrawProbability change ; draw_prob invalide ignoré ; bias recalibré (12.5 → defaults, 20/8 → 7.5/20.5) ; poids/variance inchangés
+- E2E `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` : match nul 2v2 symétrique sans counts (pure TS), draw_probability_empirical=0.5 seedé vs default → σ owner PLUS grand avec la proba haute (draw moins surprenant → moins de réduction de variance). Prouve que la valeur empirique est réellement lue.
+- DDL test `openShadowTestDB` étendu avec `lusr_hyperparams_v2` (+ vue _latest).
+
+**Note** : `kill_std_empirical`/`death_std_empirical`/`match_count_analyzed` restent non câblés (le doc ne demandait que draw prob + means). La variance d'observation (`ObservationVar`) pourra être recalibrée depuis les std en Sprint 3.A (TTT batch propre).
+
+**Reste pour la DoD (validation prod)** : run manuel `LEVELUP_LUSR_V2_ENABLED=1 ./server` après un passage TTT batch → vérifier le log "hyperparams ré-estimés appliqués" avec overrides > 0. Non exécutable hors prod.
+
+**Prochaine étape** : Sprint 1.C — détection escouades + correction skill (squad offset).
+
+## [2026-05-28] feat(lusr-v2): Sprint 1.C — détection escouades + correction skill — Complété (gated OFF)
+
+**Statut** : Complété, **gated OFF par défaut** · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 1.C
+
+**Contexte** : Le modèle traite N joueurs d'une même équipe comme N indépendants. Un squad coordonné gagne plus que la somme de ses parties → le μ des joueurs qui jouent souvent ensemble est SUR-estimé (les victoires de squad sont attribuées au skill individuel). C'est l'angle mort le plus impactant (les 4 trackés jouent souvent ensemble). Correction : offset de synergie par paire, appliqué au μ effectif avant l'EP.
+
+**Décision majeure — gating OFF par défaut (`LEVELUP_LUSR_V2_SQUAD_OFFSET=1`)** : la feature touche le cœur du calcul EP et son algo d'estimation est sous-spécifié + validable seulement en prod. Comme le cross-mode coupling, tout est gated → flag off ⇒ `squadRepo` nil ⇒ offsets nuls ⇒ comportement strictement identique (no-op exact, vérifié). Zéro risque prod tant que non activé+validé.
+
+**Architecture** :
+1. **Algo pur** `skill_v2/squad.go` : `ComputeSquadOffset([]SquadCoMatch, gain) float64` = `mean(Won − SoloWinProb) × gain`, clampé ±`SquadOffsetCap`(=2.0). + `ApplySquadOffset`, `ClampSquadOffset`.
+2. **Application σ-préservante** : μ_effectif = μ_individuel + Σ(offsets partenaires présents) AVANT l'EP ; posterior individuel = posterior_effectif − offset (l'offset est constant pour le match, seul le delta EP s'applique au skill individuel). Maths : prior_eff = μ+off, EP donne μ'_eff, individuel = μ'_eff − off = μ + Δ_EP. σ jamais modifié.
+3. **Effet anti-inflation** (test E2E vérifié) : sur une VICTOIRE, l'équipe boostée (μ effectif ↑) rend la victoire moins surprenante → μ individuel monte MOINS. C'est exactement la correction voulue (moins d'inflation pour les multi-stack).
+4. **Table** `player_squad_offset` (append-only + vue `_latest`, migration `shared_create_player_squad_offset`, TargetShared). **Repo** `duckdb.SquadOffsetRepo` (LoadSquadOffsets avec cache run-scoped + UpsertSquadOffset INSERT pur).
+5. **CLI** `cmd/lusr_v2_squad_estimate` : scanne les matchs 2-équipes sociaux d'une fenêtre (--weeks=4), accumule par paire (≥ --min-matches=10) les (Won, SoloWinProb), calcule l'offset (--gain=6.0), écrit dans les 2 sens (synergie symétrique). `--dry-run` pour rapport seul.
+6. **Wiring** : `applyMatchToSkillV2` prend `squadRepo` ; calcule offsets par équipe (`computeTeamSquadOffsets`), gaussiennes effectives, predict (1.A) + EP (1.B) sur l'effectif, strip avant persist. La proba 1.A reflète désormais la synergie (effectif).
+
+**MVP first-pass assumé (à raffiner en Sprint 3.A / TTT proper)** : le CLI estime `SoloWinProb` depuis les ratings solo COURANTS (proxy du pré-match). Biais : les ratings courants incluent déjà ces matchs → SoloWinProb sur-estimé → offset SOUS-estimé. **Biais conservateur (sous-correction) donc sûr** ; ré-exécuter périodiquement raffine. La calibration (gain, N, M) et l'activation prod restent à valider (dry-run replay sur les 4 trackés).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/platform/duckdb/... ./internal/migration/... ./internal/sync/` PASS (duckdb 34s, sync 137s)
+- `go vet ./...` clean ; gofmt clean ; `go build ./...` OK (CLI inclus)
+- Tests unitaires squad : 0 match → 0 ; sur-perf systématique → offset attendu ; clamp ±2.0 ; sous-perf → −2.0
+- Tests E2E : `TestRunLUSRV2Shadow_AppliesSquadOffset` (flag on, offset +1.5, victoire → μ owner monte MOINS qu'sans offset) ; flag off (pas de rows) reste no-op exact
+
+**Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_squad_estimate --dry-run` sur prod → offsets ∈ [-2,+2] cohérents pour les 4 trackés ; dry-run replay avec flag on → pas de drift > 1.5 pt sur les solo. Non exécutable hors prod.
+
+**Note hygiène** : le hint Phase 5.B imprimé par `cmd/lusr_v2_ttt_batch` (`skillv2HyperparamUsageHint`) est désormais obsolète (le wiring est fait en Sprint 1.B) — à nettoyer dans une passe ultérieure.
+
+**Prochaine étape** : Sprint 1 terminé (1.A + 1.B + 1.C). Suite possible : Sprint Final (bascule canonical prod) après validation prod des flags squad/coupling, ou Sprints 2.x/3.x au fil de l'eau.
+
+## [2026-05-28] LUSR v2 Sprint 2.A — Timeline du score au moment du quit — ABANDONNÉ (donnée API absente)
+
+**Statut** : Abandonné avec justification (issue prévue par le plan, étape 2.A.1) · Branche `feat/lusr-v2-phase0-metrics`
+
+**Contexte** : 2.A voulait classer un quit "related" (équipe perdait au moment du quit → δ modéré) vs "unrelated" (équipe gagnait → δ fort) sur le score AU MOMENT du quit plutôt que sur l'outcome FINAL. Prérequis explicite (2.A.1) : l'API doit fournir un historique/timeline du score.
+
+**Investigation (2.A.1)** :
+- `internal/openspartan/models.go` : `CoreStats` ne contient que des agrégats FIN-DE-MATCH — `Score`, `PersonalScore`, `RoundsWon/Lost/Tied`. Aucun champ horodaté de score.
+- `highlight_events` (table shared) : colonnes `time_ms`, `event_type`, `xuid`, `type_hint`, `raw_json`. Ce sont des HIGHLIGHTS (kills/médailles notables) — un sous-ensemble curé, PAS un flux de scoring complet avec valeur de points + attribution d'équipe. Inexploitable pour reconstruire un score d'équipe courant (incomplet ; et en modes objectifs CTF/Oddball/Zones, kills ≠ score).
+- Aucune table `match_progression` / `score_timeline` ; les occurrences grep de "TeamScore/score_history" pointaient vers des scores finaux (scoreboard) ou des métriques calculées (form_score), pas une timeline.
+
+**Décision** : abandon conforme à la DoD ("sprint marqué abandonné avec justification si donnée API absente"). Reconstruire le score-au-quit depuis `highlight_events` serait un heuristique bruité (highlights incomplets, modes non-slayer) qui risquerait de MAL classer des quits et donc de mal pénaliser des ratings — coût > bénéfice. L'heuristique actuelle (outcome final dans `quitDeltaForTeam`) reste en place.
+
+**Réouverture possible** si une nouvelle source apparaît : endpoint API film/round-by-round, ou parsing du film (`.ai/V7` mentionne du film weapon extraction expérimental) qui exposerait des events de scoring horodatés et complets.
+
+**Prochaine étape** : Sprint 2.B — matrice de corrélation entre modes.
+
+## [2026-05-28] feat(lusr-v2): Sprint 2.B — matrice de corrélation entre modes — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 2.B
+
+**Contexte** : Le leak cross-mode (Phase 4) utilisait un scalaire unique `DefaultModeCouplingWeight=0.3` pour TOUS les couples de modes. Or slayer↔objectif (gunplay proche) sont plus corrélés que slayer↔chaos. On remplace par une matrice `coupling[source][target]` calibrée empiriquement.
+
+**Décisions techniques** :
+1. **Algo pur** `skill_v2/mode_correlation_matrix.go` : `EstimateCouplingMatrix(map[xuid][]GroupState) map[string]map[string]float64` = corrélation de Pearson des μ entre modes sur les joueurs ayant joué les deux, clampée `[0, Phase4ModeCouplingMaxWeight=0.4]`. Symétrique. Corrélation négative → 0 (le leak additif ne modélise pas l'anti-corrélation). < `minPlayersForCoupling`(3) échantillons ou variance nulle → pas d'entrée.
+2. **Storage** : rows `mode_coupling_<source>_<target>` dans `lusr_hyperparams_v2` (playlist_group = source), via `UpsertHyperparam`. Helpers purs `ModeCouplingHyperparamName` + `CouplingWeightFor(hyperparams, source, target, fallback)`.
+3. **Runtime** : `propagateCrossModeLeak` charge `LoadHyperparams(source)` et utilise `CouplingWeightFor(...)` par target, **fallback `DefaultModeCouplingWeight` si pas d'entrée** (ou si LoadHyperparams échoue → warn). Le clamp 0.4 reste garanti par `ApplyCrossModeLeak`.
+4. **CLI** `lusr_v2_ttt_batch` étendu : `loadPlayerStatesByXUID` + `EstimateCouplingMatrix` + `writeModeCoupling` (2 sens, symétrique) + rapport. (`cmd/lusr_v2_ttt_batch/mode_coupling.go`)
+
+**Doublement gated / faible risque** : (a) le leak n'est appliqué que si `LEVELUP_LUSR_V2_MODE_COUPLING=1` (off par défaut) ; (b) tant que le batch n'a pas écrit la matrice, `CouplingWeightFor` retombe sur le scalaire 0.3 → comportement Phase 4 inchangé. La régression `TestRunLUSRV2Shadow_Phase4_CrossModeLeak` (qui attend 0.3) passe toujours.
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 137s) ; `go vet` + gofmt clean ; build OK
+- Tests matrice : corrélés parfaits → 0.4 partout ; décorrélés (vecteurs orthogonaux) → 0 ; anti-corrélation → 0 ; < 3 joueurs → pas d'entrée ; CouplingWeightFor fallback
+
+**Reste pour la DoD (prod uniquement)** : run `cmd/lusr_v2_ttt_batch` sur prod → matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos). Avec seulement ~4 trackés, beaucoup de paires seront sous le seuil (fallback scalaire) — la matrice gagne en densité avec la base de joueurs.
+
+**Prochaine étape** : Sprint 3.A — recalibration TTT complète (forward+backward + EM).
+
+## [2026-05-28] feat(lusr-v2): Sprint 3.A — prototype TTT (Kalman + RTS + EM) — Complété (prototype, non câblé prod)
+
+**Statut** : Complété en tant que **prototype pur testé** · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 3.A (priorité Basse, nice-to-have)
+
+**Contexte** : Le batch actuel ne fait qu'une agrégation forward (moyennes empiriques). La vraie inférence Through-Time (TS2 §10) lisse l'historique complet d'un joueur (forward + backward) et ré-estime les paramètres de dynamique/bruit en utilisant TOUTE l'information (passé + futur).
+
+**Scope assumé (prototype, pas le TTT couplé complet)** : le sprint est explicitement "étude + prototype" (3.A.1 étudier le paper, 3.A.2 "Prototype passe backward", 3.A.5 "converger sur dataset synthétique"). J'ai livré le **bloc de base** : un lisseur état-espace linéaire-gaussien 1D + EM, pur et testé. Le **couplage inter-joueurs complet** du factor graph TS2 §10 (où la variance d'observation d'un joueur dépend des time-series de ses adversaires) reste une étape ultérieure — c'est la partie 1-2j+ risquée. La comparaison prod (3.A.6) est de toute façon différée.
+
+**Implémentation** `skill_v2/ttt.go` (pur) :
+- Modèle : `s_t = s_{t-1} + w_t` (w~N(0,q), random walk du skill) ; `z_t = s_t + v_t` (v~N(0,r), mesure issue du match). Les z_t sont fournis par le caller (μ post-match) — découple le lisseur du couplage.
+- `kalmanForward` (filtre 1D + log-vraisemblance marginale) → `rtsBackward` (lisseur RTS + covariance lag-one) → `EstimateTTT` (boucle EM ré-estimant q=τ² et r, plancher `minTTTVariance`, m0/p0 fixes).
+
+**Résultats observés** :
+- `go test ./internal/analysis/skill_v2/...` PASS ; `go vet` + gofmt clean
+- `TestEstimateTTT_ConvergesUnder10Iterations` : sur random walk synthétique (q*=0.4, r*=4, T=300), EM converge en < 10 itérations (tol 2e-2 sur |Δq|+|Δr| ≈ 0.5% de r), q/r récupérés dans un facteur 3 du vrai
+- `TestEstimateTTT_LogLikelihoodNonDecreasing` : la log-vraisemblance marginale croît à chaque itération (propriété EM)
+- `TestTTT_SmootherBeatsFilter` : RMSE lisseur ≤ RMSE filtre vs états vrais (le lisseur exploite le futur)
+- Edge cases (0 / 1 observation) gérés
+
+**Non câblé prod (volontaire)** : le module n'est PAS branché dans `cmd/lusr_v2_ttt_batch` ni dans le replay. Le brancher exigerait un modèle d'observation par match (z_t, couplage opposants) = le factor graph couplé, hors scope de ce prototype. C'est une API de bibliothèque validée, prête pour le TTT couplé ultérieur (ce n'est pas du code mort : exporté + testé, point d'entrée du futur batch TTT).
+
+**Reste pour un TTT "complet"** (follow-up, non Sprint 1-3) : factor graph multi-joueurs couplé + modèle d'observation par match + écriture de τ/β ré-estimés par groupe dans lusr_hyperparams_v2 + comparaison prod (3.A.6).
+
+**Prochaine étape** : Sprint 3.B — delta de rating dans l'historique.
+
+## [2026-05-28] feat(lusr-v2): Sprint 3.B — delta de rating dans l'historique — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics` · réf. roadmap Sprint 3.B (confort UX, ~2h)
+
+**Contexte** : `match_skill_rank.rating_delta` était toujours nil en écriture canonical. Pour afficher "vous avez gagné +12 LUSR ce match", il faut le delta vs le rating précédent.
+
+**Décisions techniques** :
+- `writeCanonicalLUSRRow` calcule `rating_delta = rating - rating_précédent` AVANT l'insertion (la row courante n'existe pas encore → la query renvoie bien le match précédent). nil au premier match.
+- Helper `loadPreviousLUSRRating(ctx, playerDB, group)` : `SELECT rating_value FROM match_skill_rank WHERE rating_type='LUSR' AND playlist_group=? ... ORDER BY written_at DESC, id DESC LIMIT 1`. Le shadow runner traitant les matchs en ordre chronologique, le rating le plus récemment écrit EST celui du match précédent. Best-effort : ErrNoRows → nil (premier match) ; autre erreur → nil + warn (delta absent, pas de blocage).
+- Le delta est posé sur les 2 rows (LUSR + LUSR_V2) via baseRow (même rating_value).
+
+**Résultats observés** :
+- `go test ./internal/sync/` PASS ; `go vet` + gofmt clean
+- E2E `TestRunLUSRV2Shadow_Canonical_RatingDelta` : 2 matchs successifs même groupe → m1 rating_delta NULL (pas de précédent), m2 rating_delta non-nul
+
+**Reste pour la DoD (prod)** : vérifier après quelques matchs réels que `rating_delta` est populé. Non exécutable hors prod.
+
+**Prochaine étape** : hygiène — nettoyer le hint Phase 5.B obsolète + header TODO de `cmd/lusr_v2_ttt_batch`.
+
+## [2026-05-28] chore(lusr-v2): nettoyage hint Phase 5.B obsolète (ttt_batch) — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+Le CLI `cmd/lusr_v2_ttt_batch` imprimait un "RAPPEL Phase 5.B — wiring shadow runner" et son header listait un "TODO Phase 5.B" — devenus FAUX depuis que le Sprint 1.B a câblé la relecture des hyperparams (`resolveGroupParams`). Anti-pattern "rappel obsolète".
+
+- Suppression de `skillv2HyperparamUsageHint()` + son appel dans `main()`.
+- Header réécrit : indique que les hyperparams sont relus au runtime (1.B) + matrice cross-mode (2.B) + pointe le prototype TTT (3.A, `ttt.go`, non branché).
+- `skillv2`/`os`/`fmt` toujours utilisés ailleurs → aucun import orphelin. Build + vet clean.
+
+**Conclusion** : enchaînement 2.A→2.B→3.A→3.B + hygiène terminé. 2.A abandonné (donnée absente), 3.A livré en prototype. Reste : bascule prod (Sprint Final) + follow-ups prod-only (activation flags squad/coupling, TTT couplé).
+
+## [2026-05-28] feat(lusr-v2): 2.A RÉOUVERT + implémenté + activation par défaut squad/cross-mode + décisions — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+**Déclencheur** : retours utilisateur. Corrections majeures de mes conclusions précédentes.
+
+**1. 2.A réouvert et implémenté (j'avais abandonné à tort)** : l'utilisateur a signalé que la donnée EXISTE — c'est le graphe "tug of war" de match-view (`killer_victim_pairs` : killer_xuid + time_ms relatif film, `analysis.ComputeTugOfWar`). Fiable 100% modes non-objectifs, signal suffisant sur objectifs. Implémenté :
+- `skill_v2/quit_context.go` (pur) : `InferQuitContext(frags, quitMs, quitterTeamID)` → Leading/Tied/Trailing (compte frags cumulés ≤ quitMs). + tests.
+- `skill_v2_quit_penalty.go` : `quitDeltaForContext` (trailing→related 1.0 ; leading/tied→unrelated 2.5) ; `buildCountInputs` prend `quitTimeline` et applique le contexte PAR quitter (fallback `quitDeltaForTeam` outcome-final si timeline absente) ; `loadQuitTimeline` (charge killer_victim_pairs, attribue par side) ; `hasAnyQuitter` (évite la requête si pas de quitter).
+- **HOOK ADAPTER T0** : `quitOffsetMs(leaveTime, filmStartUTC)` convertit le timestamp absolu de départ en ms repère-frags. Gros commentaire : le vrai T0 = `real_start_time` via adapter titre-spécifique, NON implémenté (on utilise start_time_utc, correct pour Halo) — c'est le point d'insertion pour le collègue.
+- Wiring : `processOneShadowMatch` charge la timeline (si quitter) → `applyMatchToSkillV2` (param `qt`) → `buildCountInputs`.
+- E2E `TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit` : quit en menant mais défaite → pénalité 2.5 vs fallback 1.0 (écart exact 1.5).
+
+**2. Squad (1.C) + cross-mode (2.B) activés PAR DÉFAUT** (décision produit) : `IsLUSRV2SquadOffsetEnabled` et `IsLUSRV2ModeCouplingEnabled` retournent true sauf "0"/"false"/"no". NB : squad sans effet tant que les offsets ne sont pas peuplés par le CLI (no-op). Cross-mode utilise le scalaire 0.3 tant que la matrice n'est pas calculée. Test `Phase4_OffByDefault` reconverti en `Phase4_ExplicitlyOff` (flag="0").
+
+**3. 3.A** : décisions notées dans le roadmap — scope = joueurs avec BDD (tous, un par un) ; réponse fiabilité (limiter aux actifs = perte négligeable car lissage par-joueur indépendant) ; approche wiring (série des μ post-match comme observations, réécriture historique à trancher) = follow-up.
+
+**4. 1.A & 3.B** : notes "AFFICHAGE À DÉCIDER" ajoutées (les données sont en base, rien ne les affiche — l'utilisateur décide où/comment).
+
+**5. Checklist utilisateur** ajoutée en tête de `LUSR_V2_ROADMAP_SPRINTS.md` : à faire serveur (lancer ttt_batch + squad_estimate + replay + bascule Final), à décider (affichages, confirmer défauts ON, 3.A), à faire collègue (adapter T0), différé.
+
+**Résultats** : `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS (sync 133s) ; `go vet` + gofmt clean ; build OK.
+
+**Prochaine étape** : la bascule prod (Sprint Final) est entre les mains de l'utilisateur (étapes serveur). Côté code, tout Sprint 1-3 est livré.
+
+## [2026-05-28] chore(lusr-v2): vérification finale — logging + couverture tests — Complété
+
+**Statut** : Complété · Branche `feat/lusr-v2-phase0-metrics`
+
+Vérification finale demandée par l'utilisateur (complétude + logging + tests).
+
+**Build/vet/tests** : `go build ./...` + `go vet ./...` = OK. `go test` PASS sur skill_v2, sync, persist, migration, duckdb.
+
+**Couverture** : `internal/analysis/skill_v2` (cœur logique pur LUSR v2) = **89,5%**. Par fonction : predict/hyperparams/squad/mode_correlation_matrix/ttt/quit_context quasi tous 100% (quelques branches dégénérées défensives à 75-93%). sync 43,7%, persist 32,6%, migration 24,7%, duckdb 18,3% (gros packages largement legacy ; les ajouts LUSR v2 y sont couverts par E2E).
+
+**Améliorations apportées** :
+- Logging quit-context (2.A) renforcé : `rows.Err()` loggé séparément, debug "timeline chargée"/"aucun frag", debug "quit-context appliqué" par quitter (context leading/tied/trailing + delta) → utile pour valider 2.A en prod. `QuitContext.String()` ajouté (+ test).
+- `ctx` propagé à `buildCountInputs`/`quitBaseDelta` pour permettre ces logs.
+- Tests ajoutés : `TestDefaultOnFlags` (squad + cross-mode ON par défaut, off sur "0"/"false"/"no"), `TestQuitContext_String`.
+
+**Inventaire logging LUSR v2** (couche sync) : INFO aux bornes de run (shadow/sentinel terminé), WARN sur tous les chemins d'erreur/fallback (LoadState, apply, write canonical, LoadHyperparams ×2, LoadSquadOffsets, frags quit ×2, rating précédent, cross-mode leak, playerDB nil), DEBUG sur chaque décision par-match (hyperparams/squad/quit-context/cross-mode appliqués). 5 compteurs expvar `levelup.lusr_v2.*`.
+
+**Conclusion** : code LUSR v2 (Sprints 1-3 + 2.A) complet, testé, loggé. Reste opérationnel/décisionnel côté utilisateur (cf. checklist roadmap).
+

@@ -2430,6 +2430,16 @@ components:
             code: bad_request
             message: "Paramètre invalide."
             retryable: false
+    Unauthorized:
+      description: Authentification requise
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiErrorSchema"
+          example:
+            code: auth_required
+            message: "Authentification requise."
+            retryable: false
     NotFound:
       description: Ressource introuvable
       content:
@@ -2879,6 +2889,26 @@ components:
         hints_visible:
           type: boolean
           nullable: true
+
+    TitleSummary:
+      type: object
+      required: [slug, name, status, capabilities, is_default]
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        icon_url:
+          type: string
+        status:
+          type: string
+          enum: [active, coming_soon, archived]
+        capabilities:
+          type: array
+          items:
+            type: string
+        is_default:
+          type: boolean
 
     SessionContextResponse:
       type: object
