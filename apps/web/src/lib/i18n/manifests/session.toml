@@ -93,14 +93,6 @@ en = "Compare to another session"
 fr = "vs {label}"
 en = "vs {label}"
 
-[session.detail.suggested_compare_button]
-fr = "Comparer à la session proche"
-en = "Compare to nearby session"
-
-[session.detail.selection_card]
-fr = "Sélection"
-en = "Selection"
-
 [session.detail.session_active]
 fr = "Session active"
 en = "Active session"
@@ -113,29 +105,9 @@ en = "Compared session"
 fr = "Sélection intelligente"
 en = "Smart selection"
 
-[session.detail.compare_show]
-fr = "Activer comparaison"
-en = "Enable comparison"
-
-[session.detail.compare_hide]
-fr = "Masquer comparaison"
-en = "Hide comparison"
-
-[session.detail.suggestion_title]
-fr = "Suggestion similaire"
-en = "Similar suggestion"
-
-[session.detail.compare_view_title]
-fr = "Lecture comparative"
-en = "Comparative view"
-
 [session.detail.no_compare_title]
 fr = "Aucune session de comparaison"
 en = "No comparison session"
-
-[session.detail.no_compare_description]
-fr = "Sélectionne une session de référence ou réactive la suggestion automatique."
-en = "Select a reference session or re-enable the automatic suggestion."
 
 [session.detail.matches_card]
 fr = "Détail des matchs"
@@ -294,14 +266,6 @@ fr = "Aucune donnée à représenter."
 en = "No data to display."
 
 # Drawer compare (Phase 3)
-[session.detail.drawer_open]
-fr = "Comparer côte à côte"
-en = "Compare side-by-side"
-
-[session.detail.drawer_close]
-fr = "Fermer la comparaison"
-en = "Close comparison"
-
 [session.detail.drawer_close_aria]
 fr = "Fermer le panneau de comparaison"
 en = "Close comparison panel"
@@ -317,10 +281,6 @@ en = "Previous session"
 [session.detail.drawer_next_session]
 fr = "Session suivante"
 en = "Next session"
-
-[session.detail.drawer_use_suggested]
-fr = "Utiliser la suggestion similaire"
-en = "Use similar suggestion"
 
 [session.detail.drawer_no_compare]
 fr = "Aucune session à comparer pour le moment."
