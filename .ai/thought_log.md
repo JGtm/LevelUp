@@ -1,3 +1,35 @@
+## [2026-05-29] feat(web,sessions): radar FDA + nuage OC/DR + 3 options engagement (lot front)
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend **1588 tests** verts. Lot FRONT-only ; le lot BACKEND (P1 radar stats + P2 delta/localisation) reste à faire.
+
+3 features sur les 5 demandées (front-only d'abord — P1/P2 nécessitent du backend) :
+- **P3 — FDA en radar** : `SessionFdaRadar` (radar 3 axes Frags/Morts/Assists, MOYENNES par partie) remplace les barres par-partie. Composant réutilisable `SessionStatsRadar` (RadarChart normalise 0..100 → normalisation contre paliers de référence fixes + valeur BRUTE au survol). Caps indicatifs (frags 25 / morts 15 / assists 12).
+- **P4 — OC/DR en nuage** : `SessionOcdrScatter` (ScatterChart) — 1 point/match (x=OC, y=DR), coloré par issue (`outcome-win`/`loss`/…). Remplace la table/donut OC-DR en vue single.
+- **P5 — Engagement, 3 options à choisir** : `SessionEngagementOptions` rend côte à côte (1) barre divergente de la moyenne signée, (2) histogramme de distribution des résidus, (3) courbe par match + markLine moyenne. L'utilisateur gardera celle qu'il préfère.
+
+Couleurs 100 % tokens. Tests : `binValues` + `buildEngagementLineOption`.
+
+**Reste (lot BACKEND, prochaine passe)** :
+- **P1** : agréger `max(killing_spree)` + `sum(headshot_kills)` + `sum(perfect_kills)` sur `SessionCompareEntry` (les champs sont sur StatsMatchRow) → puis radar 3 axes (réutilise `SessionStatsRadar`).
+- **P2 delta rang par match** : porter `canonical.SkillSnapshot.Delta` → `StatsMatchRow.SkillRatingDelta` → `SessionDetailMatchRow` → colonne « Δ rang » du tableau compare (petit).
+- **P2 localisation FR** (modes/cartes/playlists) : **plus profond** — le chemin canonical des sessions ne charge PAS les traductions (mode_name_tr / asset_translations), contrairement à `match_history`/Explorer. Nécessite un changement de data-flow (charger/appliquer les traductions dans le service session). À traiter à part.
+
+**Dette mineure** : les branches `single-mode` (sessionB==null) de `SessionCompareOCDR`/`SessionCompareEngagement` ne sont plus appelées (l'OCDR/engagement single passe par les nouveaux composants) → à nettoyer.
+
+## [2026-05-29] fix(solo,escouade): premier frag/mort (T0) + colonne Mode = UUID
+
+**Statut** : Complété (branche `fix/solo-first-events-squad-mode`, créée depuis `chore/query-devtools-flag`). Commit non effectué (attente autorisation). Go : `go test`/`go vet` verts sur service+duckdb+analysis+domain (dont intégration CGO `LoadSquadMatches` + FR translations) ; front : vitest `SquadMatchHistoryTable` 9/9, eslint 0 sur fichiers touchés.
+
+Deux régressions d'affichage, corrigées en **alignant les chemins fautifs sur les patterns canoniques déjà en place** (source unique de vérité), pas par rustine locale.
+
+**Problème 1 — Solo « Temps du premier frag / première mort » (chart timeseries.11) vide.** Le câblage T0 était bon (`timeseries_service.go` lit `Summary.T0Ms` → `timeline.CorrectEvents`), mais la fonction d'agrégation partagée `narrative.updateFirstEvents` prend le **minimum** des `TimeMS` par match et ne filtrait pas les events négatifs. Après l'activation du vrai T0 (Phase 3), les events de countdown (TimeMS < 0 après correction) étaient sélectionnés → premier frag/mort effondré vers ~0. Décision : poser le garde `TimeMS < 0` dans `updateFirstEvents` (un premier frag = premier du *gameplay*, pas du countdown) — exactement la règle déjà appliquée côté Escouade (`teammates_squad_charts_impact_events.go`). PAS dans `CorrectEvents` (docstring « au caller de filtrer »). Golden test inchangé (fixtures déjà positives). Tests ajoutés : skip pré-T0 + tout-négatif → nil.
+
+**Problème 2 — Escouade, colonne « Mode » = UUID brut.** Quand la metadata Halo n'a pas de traduction de paire, la sync stocke l'UUID comme nom (`enrich_registry.go`). Le chemin Escouade (Q30 `COALESCE(pair_name_fr, pair_name)` → `modeLabel`/`NormalizeModeLabel`) ne faisait PAS la cascade canonique de résolution par UUID (`asset_translations[pair_id]` + `mode_name_tr` + `analysis.ResolvePairNameFR`) utilisée par home/historique/filtres. Correctif : (1) `Q30SquadMatchesSharedQuery` expose désormais le `pair_name` EN brut + `pair_name_fr` + `pair_id` (au lieu d'un COALESCE FR-first qui masquait l'EN exploitable) ; `SquadMatchRow` gagne `PairNameFR`/`PairID` ; scan mis à jour. (2) `enrichSquadMatchAssets` résout le mode via `ResolvePairNameFR` (asset pair + `loadSquadModeFR` qui dérive les EN du pair_name brut ET des noms d'asset, miroir de `applyMatchHistoryFRTranslations`). (3) Garde final `analysis.IsRawAssetUUID` (exporté, factorisé depuis `cleanAssetLabel`) dans `squadModeUI` → un UUID résiduel (trou metadata) devient vide, jamais affiché. (4) Front `SquadMatchHistoryTable` lit `mode_ui` (fallback `pair_name`), comme `SquadSynergyHistoryTable`. `collectModeENs`/`modeLabel` supprimés (morts). Tests : résolution UUID→nom, garde UUID résiduel, fallback EN normalisé + fixture front `mode_ui`.
+
+**Caveat data (hors scope)** : si `asset_translations`/`mode_name_tr` n'ont pas l'entrée du `pair_id`, le mode dégrade en vide (front « - ») au lieu de l'UUID — le nom complet nécessite de re-peupler la metadata. Idem dette `first_joined_time` TZ qui peut sur-estimer T0 (le garde skip<0 rend l'affichage correct quoi qu'il arrive).
+
+**Prochaine étape** : revue + commit après autorisation ; vérif runtime (chrome-devtools) Solo + Escouade.
+
 ## [2026-05-29] feat(web,sessions): barres FDA par partie/minute + delta de rang (KPI)
 
 **Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite frontend **1572 tests** verts.
@@ -51177,3 +51209,43 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 **Résultats** : typecheck (tsc -b) OK, eslint OK. Tests : squadPending.test.ts 15/15 (dont 9 nouveaux couvrant dérive suffixe, drop zombie, dédup, ordre, no-op). Suite squad + SessionMultiSelect 242/242.
 
 **Prochaine étape** : revue/validation visuelle utilisateur sur la page Escouade. Pas encore commité (en attente autorisation).
+
+
+## [2026-05-29] fix(charts): échelle Y + axe X du graphe « Classement » (Escouade + solo) — Complété
+
+**Statut** : Complété · Branche `fix/classement-chart-scale-xaxis`
+
+**Symptôme** : Graphe « Classement » (`TimeseriesSkillProgression` — page Escouade en haut + page solo onglet Progression) : (1) axe Y écrasé, petites variances de CSR/LUSR illisibles ; (2) axe X en `time` (dates), seul graphe par-match divergent des autres (qui utilisent `#N\nMap` + regroupement des étiquettes).
+
+**Cause racine (axe Y)** : `buildOption` posait `yAxis.min = tierMin` sans `max`. Pour CSR < 1200, `LUSR_TIERS.findLast` renvoie undefined → min=0. Et le `markArea` Onyx (yAxis 9999) tirait l'échelle vers le haut faute de `max` explicite → toutes les variations écrasées en bas.
+
+**Décision technique** :
+- Axe Y « cadré sur le palier » : helper pur `frameToTier(dataMin, dataMax)` → min = plancher du palier LUSR contenant dataMin, max = plafond du palier contenant dataMax ; fallback arrondi au pas de 100 hors plage (CSR bas, palier Onyx ouvert jamais plafonné à 9999) ; garde-fou anti-dégénérescence + clamp ≥ 0. Pose min ET max explicites (révèle la variance + neutralise l'expansion par markArea). markArea clippé à [min, max] → label de palier reste visible même zoomé.
+- Axe X catégoriel aligné sur les autres graphes de la page : réutilise `buildMatchCategories(rows)` (`#N\nMap`, déjà utilisé par les charts solo `TimeseriesFormCharts`) + `tickInterval(n)-1` (_utils) pour le regroupement quand le panel est large. Domaine = index de match (position dans `rows`). Refonte `buildProgressionSeries` : valeurs indexées par position (tableau length N, null hors matchs notés), placements en scatter `[idx, midpoint]`, ruptures de saison en markLine `xAxis: categories[idx]`.
+- `adaptSquadPerfToMatchRows` (SquadContributionsPage) propage `map_name` (sinon labels `#N` sans carte côté Escouade).
+- Portée : composant partagé uniquement (Escouade + solo). Le graphe « Rang & MMR équipe » du squad n'est PAS modifié (choix utilisateur).
+
+**Résultats** : typecheck (tsc -b) OK ; eslint 0 erreur (1 warning react-refresh cohérent avec `TimeseriesKdaBars.tsx` — composant + builder exportés du même .tsx) ; `TimeseriesSkillProgression.test.ts` 11/11 (frameToTier : 1 palier / 2 paliers / CSR bas / données plates / Onyx / clamp 0 ; buildProgressionSeries : mapping index, séparation CSR/LUSR, rupture saison, placements). Suite complète 1583/1583 pass, 0 régression chez les consommateurs.
+
+**Prochaine étape** : validation visuelle utilisateur (Escouade + solo Progression : labels `#N\nMap` regroupés, axe Y zoomé sur le palier, ruptures de saison + diamants de placement bien positionnés). Pas encore commité (en attente autorisation).
+
+
+## [2026-05-29] fix(charts): échelle Y du graphe « Évolution LUSR / CSR » (Carrière) + extraction helper partagé — Complété
+
+**Statut** : Complété · Branche `fix/classement-chart-scale-xaxis`
+
+**Demande** : Corriger l'axe Y de « Évolution LUSR / CSR » (`CareerLusrEvolutionChart`, page Carrière) en s'inspirant du graphe « Classement » : éviter les chutes à 0 et un zoom trop éloigné.
+
+**Cause racine** : identique au Classement avant fix — `buildLusrEvolutionOption` posait `yAxis.min = tierMin` (`LUSR_TIERS.findLast` → 0 pour CSR < 1200) sans `max`, et le markArea Onyx (yAxis 9999) tirait l'échelle vers le haut.
+
+**Décision technique** :
+- Centralisation DRY : `frameToTier` + `buildLusrTierMarkArea` (clippé) extraits dans `@/lib/charts/skillTierBands.ts` (à côté de `matchLabels.ts`), consommés par le chart Classement (timeseries) ET Évolution LUSR/CSR (career) — évite une 2e copie et une dépendance career→timeseries.
+- Career : `frameToTier(dataMin, dataMax)` → min+max bornés sur le(s) palier(s) ; markArea clippé. Axe X (time + dataZoom 12 mois) inchangé (hors demande).
+- Timeseries : bascule sur les imports partagés (retrait des copies locales `frameToTier`/`buildTierMarkArea`).
+- Tests `frameToTier` déplacés vers `skillTierBands.test.ts` (6 cas) ; `TimeseriesSkillProgression.test.ts` conserve les tests `buildProgressionSeries`.
+
+**Résultats** : typecheck OK ; eslint 0 erreur (`skillTierBands.*` + `lusrEvolution.tsx` sans warning ; 1 warning react-refresh résiduel sur `TimeseriesSkillProgression.tsx` — export builder, cohérent avec `TimeseriesKdaBars.tsx`) ; suite 168 fichiers / 1583 tests pass, 0 régression.
+
+**Note** : duplication pré-existante hors scope — `buildLusrSeries` existe en double (local dans `lusrEvolution.tsx` + exporté/testé dans `lusrSeries.ts`) ; le chart utilise la copie locale. Non touché.
+
+**Prochaine étape** : validation visuelle utilisateur (page Carrière : axe Y cadré sur le palier, plus de chute à 0). Pas encore commité (en attente autorisation, avec le fix Classement sur la même branche).
