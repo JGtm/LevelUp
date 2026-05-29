@@ -287,33 +287,6 @@ JOIN match_registry r ON r.match_id = p.match_id
 WHERE p.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
-// Q33b : Synthèse — matchs du joueur pour le calcul top_weeks, KPIs et bipolaire.
-// Sprint 43 : enrichi avec accuracy, time_played_seconds, performance_score.
-// Sprint N  : ajout session_label pour les filtres de session teammates.
-// Sprint N+1 : ajout is_ranked, is_firefight, playlist_name pour le câblage cascade.
-// Paramètre : ?1 = xuid du joueur.
-const Q33bSynthesisMatches = `
-SELECT
-    r.match_id,
-    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
-    p.outcome,
-    p.kills,
-    p.deaths,
-    p.kda,
-    COALESCE(pme.is_with_friends, FALSE)  AS is_with_friends,
-    p.accuracy,
-    p.time_played_seconds,
-    pme.performance_score,
-    pme.session_label,
-    COALESCE(r.is_ranked, FALSE)          AS is_ranked,
-    COALESCE(r.is_firefight, FALSE)       AS is_firefight,
-    COALESCE(r.playlist_name, '')         AS playlist_name
-FROM shared.match_participants p
-JOIN shared.match_registry r ON r.match_id = p.match_id
-LEFT JOIN player_match_enrichment pme ON r.match_id = pme.match_id
-WHERE p.xuid = ?
-ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
-
 // Q42MapStatsForSquadSharedTpl : (ADR 0016) — partie shared du
 // split LoadMapStatsForSquad. Au lieu d'agréger par map_id côté SQL
 // (incluant AVG(perf_avg) qui dépend de pme — table player), on retourne

@@ -49960,3 +49960,26 @@ Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout d
 **Note sémantique** : time_played_seconds = désormais temps de gameplay réel (countdown exclu). Impacte KPM et dérivés — comportement voulu (Phase 4).
 
 **Reste** : recalcul LUSR (§4.B, prod-sensitive, non abordé ce tour).
+
+---
+
+## [2026-05-29] Suites Phase 3/4 — points 1 (recalcul LUSR), 2 (audit time_played), 3 (cleanup)
+
+**Statut** : Complété.
+
+### Point 3 — cleanup code mort
+`Q33bSynthesisMatches` (queries_squad.go) supprimée : constante déclarée jamais utilisée hors déclaration (seule `Q33bSynthesisSharedQuery` est appelée par LoadSynthesisMatches). Build + tests duckdb/analysis verts.
+
+### Point 1 — recalcul LUSR v2 sur données corrigées (§4.B)
+**Investigation** : le shadow LUSR v2 est (a) incrémental par watermark (last_match_at) → un match traité n'est jamais reprocessé, (b) consomme last_leave_time (TZ-corrigé) + time_played_seconds (backfillé Phase 4). État existant : 9781 lignes player_skill_state_v2_latest (jusqu'au 2026-05-26), calculé sur données stale. **v2 N'EST PAS canonical** par défaut (LEVELUP_LUSR_CANONICAL non défini) → n'écrit pas match_skill_rank → **non lu par l'UI** (shadow/validation Phase 1d).
+**Action** : `cmd/lusr_v2_replay --reset` (DELETE player_skill_state_v2 + replay full history, playerDB=nil → garanti shadow-only). Backup restic `5318b296` préalable. Replay des 4 joueurs trackés.
+**Validation** : tiers cohérents avec les cibles (reference_lusr_target_levels) : Madina Diamant II/Platine VI (cible fin Platine/début Diamant), Chocoboflor + JGtm Or III/IV (cible milieu/bas Or), XxDaemonGamerxX Bronze VI (cible Bronze). Ordonnancement correct → corrections time_played/last_leave n'ont pas dégradé le modèle.
+
+### Point 2 — audit consommateurs time_played_seconds
+Backfill Phase 4 a réduit time_played du countdown (~T0) + corrigé latecomers. Audit des consommateurs :
+- KPM/DPM (kpi_stats, squad_breakdown, timeseries front) : per-min ↑ léger = plus correct (gameplay réel).
+- Total playtime (home/synthesis) : ↓ léger, OK.
+- Match card `duration_secs` (vient de DurationSecs=TimePlayedSecs, home_recent) : affiche ~T0 de moins. Visible mais cohérent — c'est le temps de jeu, PAS match_registry.duration (intact).
+- "life" dérivé front (time_played/(deaths+1), TimeseriesFormCharts) : ↓ léger, métrique distincte.
+- LUSR v2 : time_played sert UNIQUEMENT de fallback d'ordering des quitters (last_leave primaire) ; buildCountInputs ne passe PAS time_played comme poids EP. Shift uniforme → ordre préservé → aucun impact (le commentaire w_i=time_played/match_length dans sum_factor.go est théorique, non câblé).
+**Conclusion** : aucune casse, aucune double-comptabilisation. Changement sémantique cohérent (temps de gameplay réel partout). Pas d'action corrective requise.
