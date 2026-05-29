@@ -11,7 +11,7 @@ import type { SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-import { outcomeIntToKey } from './_shared'
+import { outcomeIntToKey, useSessionT } from './_shared'
 
 const OUTCOME_TOKEN: Record<string, SemanticToken> = {
   win: 'outcome-win',
@@ -29,6 +29,7 @@ interface Props {
 }
 
 export function SessionOcdrScatter({ title, matches, height = 280 }: Props) {
+  const t = useSessionT()
   const { data: fieldMappings } = useFieldMappings()
 
   const { series, tokens } = useMemo(() => {
@@ -54,8 +55,8 @@ export function SessionOcdrScatter({ title, matches, height = 280 }: Props) {
       title={title}
       series={series}
       height={height}
-      xAxisLabel="OC"
-      yAxisLabel="DR"
+      xAxisLabel={t('session.detail.ocdr_axis_oc')}
+      yAxisLabel={t('session.detail.ocdr_axis_dr')}
       symbolSize={9}
       seriesColorTokens={tokens}
       seriesNameResolver={(s) => (s.meta?.gamertag as string | undefined) ?? s.key}

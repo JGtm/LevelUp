@@ -41,9 +41,9 @@ interface Props {
 // Presets de colonnes (ids résolus depuis columnsById).
 const FULL_COLS = [
   'open', 'time', 'mode', 'map', 'playlist', 'outcome',
-  'kda', 'kdaRatio', 'accuracy', 'duration', 'perf', 'rating', 'deltaMmr',
+  'kda', 'kdaRatio', 'accuracy', 'duration', 'perf', 'rating', 'ratingDelta', 'deltaMmr',
 ] as const
-const COMPACT_COLS = ['outcome', 'mode', 'kda', 'kdaRatio', 'perf', 'rating', 'deltaMmr'] as const
+const COMPACT_COLS = ['outcome', 'mode', 'kda', 'kdaRatio', 'perf', 'rating', 'ratingDelta', 'deltaMmr'] as const
 
 const TRUNCATE_MAX = 14
 function truncate(s: string | null | undefined): string {
@@ -130,10 +130,12 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full' }: P
         ),
       },
       mode: {
-        accessorKey: 'pair_name',
+        id: 'mode',
         header: t('session.detail.col_mode'),
         cell: (ctx) => {
-          const v = ctx.getValue<string>()
+          const r = ctx.row.original
+          // mode_ui = normalisé + traduit côté backend (comme l'Explorer) ; fallback brut.
+          const v = r.mode_ui || r.pair_name
           return (
             <span title={v} className="font-medium">
               {truncate(v)}
@@ -249,6 +251,23 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full' }: P
         accessorKey: 'delta_mmr',
         header: t('session.detail.col_delta_mmr'),
         cell: (ctx) => fmtDeltaMmr(ctx.getValue<number | null | undefined>()),
+      },
+      ratingDelta: {
+        id: 'ratingDelta',
+        header: t('session.detail.col_rating_delta'),
+        cell: (ctx) => {
+          const r = ctx.row.original
+          const v = r.skill_rating_delta
+          if (v == null) return '—'
+          // CSR = entier, LUSR = 2 décimales (cf. type du rating).
+          const isLusr = (r.skill_rating_type ?? '').toLowerCase() === 'lusr'
+          const txt = `${v >= 0 ? '+' : ''}${isLusr ? v.toFixed(2) : Math.round(v)}`
+          return (
+            <span className="font-mono tabular-nums" style={{ color: tokenCssVar(mmrDeltaScale(v)) }}>
+              {txt}
+            </span>
+          )
+        },
       },
     }),
     [t, goToMatch, outcomeLabel],
