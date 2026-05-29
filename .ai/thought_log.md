@@ -1,3 +1,9 @@
+## [2026-05-29] feat(web,sessions): engagement — bande de référence ±5 (Option A)
+
+**Statut** : Complété. typecheck + eslint (0) + test engagement vert.
+
+Discussion : l'utilisateur notait à juste titre que le résidu = rythme_joueur − rythme_attendu (2 composantes). Vérif code : seul le RÉSIDU est persisté par match (`canonical.PlayerMatchEnrichment.EngagementScoreBrut`) ; les 2 rythmes ne vivent que dans la courbe d'engagement d'un match isolé (`domain/engagement_score.go`), non agrégés/stockés par match → décomposer = changement de data-flow lourd (Option B, écartée). **Option A retenue** : garder les barres de résidu + une **markArea bande ±5** (zone « normale », cf. `classifyActivity` Go : >5 très actif, <−5 en retrait) pour rendre l'échelle lisible. Couleur `divergent-neutral` opacity 0.12. Assertion markArea ajoutée au test.
+
 ## [2026-05-29] feat(web,sessions): engagement — option retenue (barres/match + moyenne + axe explicite)
 
 **Statut** : Complété (branche `chore/query-devtools-flag`). typecheck + eslint (0) + suite **1586 tests** verts.

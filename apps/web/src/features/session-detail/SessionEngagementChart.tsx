@@ -18,6 +18,11 @@ import { sessionMatchAxisLabel, useSessionT } from './_shared'
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+// Bande "normale" d'engagement : |résidu| ≤ 5 évén./min. Aligné sur classifyActivity
+// (Go) : > 5 = très actif, < −5 = en retrait. Affichée en markArea pour rendre l'échelle
+// lisible (on voit si chaque match est dans la norme / au-dessus / en retrait).
+const ENGAGEMENT_NORMAL_BAND = 5
+
 interface EngagementPoint {
   label: string
   value: number
@@ -70,6 +75,11 @@ export function buildSessionEngagementOption(
           itemStyle: { color: resolveToken(p.value >= 0 ? 'divergent-pos' : 'divergent-neg') },
         })),
         barMaxWidth: 28,
+        markArea: {
+          silent: true,
+          itemStyle: { color: resolveToken('divergent-neutral'), opacity: 0.12 },
+          data: [[{ yAxis: -ENGAGEMENT_NORMAL_BAND }, { yAxis: ENGAGEMENT_NORMAL_BAND }]],
+        },
         markLine: {
           silent: true,
           symbol: 'none',
