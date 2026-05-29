@@ -1,3 +1,24 @@
+## [2026-05-29] fix(web,sessions): animation du drawer compare (glisse + pousse) qui ne jouait pas
+
+**Statut** : Complété (branche `feat/match-timeline-t0`). NON commité (en attente d'autorisation). typecheck + eslint clean ; suite web complète (162 fichiers / 1549 tests) verte.
+
+**Symptôme** : page Session Detail, le bouton « Comparer à la session proche » ouvrait la colonne compare mais sans animation — pas de glissement ni de poussée de la vue principale vers la gauche.
+
+**Causes (2)** :
+1. CSS : la colonne compare n'était pas un drawer animé mais un rendu conditionnel `{drawerOpen && ...}` en flex, sans aucune transition → apparition instantanée. `flex`/`flex-direction` ne sont de toute façon pas des propriétés animables.
+2. Query (`queries.ts`) : `enableCompare` est dans la `queryKey` sans `keepPreviousData`. Au toggle, `data` → `undefined`, `isLoading` → true, et le garde `if (isLoading)` de la page remplaçait TOUT par un spinner plein écran puis reconstruisait le layout → même avec une transition CSS, le démontage/remontage l'aurait tuée.
+
+**Fix** :
+- `placeholderData: keepPreviousData` (queries.ts) : garde le layout monté pendant le fetch compare (plus de spinner plein écran au toggle).
+- Layout converti en grille animée (`SessionDetailPage.tsx`) : conteneur `xl:grid` toujours monté, `grid-template-columns` passe de `minmax(0,1fr) minmax(0,0fr)` à `… minmax(0,1fr)` via `transition-[grid-template-columns] duration-300 ease-out`. La 2e piste grandit 0→50 % (glisse) et pousse la principale 100→50 %. Track `overflow-hidden` (clip pendant 0fr) + contenu en fondu `opacity`. Spinner local (`isCompareLoading`) pendant l'arrivée des données compare.
+- Charts : `echarts-for-react` (via ChartCard) bind un `size-sensor` sur l'élément → resize ECharts auto pendant la transition, aucun déclencheur manuel requis.
+
+**Test** : en gardant le layout monté, le flux compare laisse ECharts (lazy) atteindre le paint canvas → exception jsdom non rattrapable (`getContext('2d')` = null, « Cannot set properties of null (setting 'dpr') »). Neutralisé via `vi.mock('echarts-for-react')` dans `SessionDetailPage.test.tsx` (le test ne vérifie que du texte : résumés, métriques, boutons). Vérifié : suite passait sur HEAD, échouait avec ma modif, repasse avec le mock. 15/15 verts.
+
+**Restes / pistes** : animation de FERMETURE moins léchée (contenu démonté au début du collapse) — acceptable, le besoin portait sur l'ouverture. Pas de variante `motion-reduce` (parité avec les drawers Asset/Feedback existants). Double bordure `xl:border-r`/`xl:border-l` pré-existante conservée.
+
+**Prochaine étape** : autorisation de commit (règle ask-before-commit) ; ce fix sessions est indépendant de `feat/match-timeline-t0` → arbitrer s'il part sur une branche dédiée.
+
 ## [2026-05-29] fix(make-dev,home): make dev débloqué (binaire tronqué + node_modules) + home 500 (season_id lu sur la mauvaise table)
 
 **Statut** : Complété (branche `feat/match-timeline-t0`). NON commité (en attente d'autorisation). make dev tourne ; home vérifiée 200 + rendu Chrome complet.

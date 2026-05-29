@@ -7,6 +7,17 @@ import { server } from "@/test/setup";
 
 import { SessionDetailPage } from "./SessionDetailPage";
 
+// ECharts (renderer canvas) ne peut pas peindre dans jsdom : il leve une
+// exception async non rattrapable des qu'il atteint un getContext('2d') (null).
+// Les autres tests y echappent par hasard (le chunk echarts lazy-loade par
+// ChartCard n'a pas le temps de peindre), mais le flux compare ouvre le drawer
+// puis attend un 2e fetch, laissant ECharts peindre. On neutralise donc le
+// wrapper : ce fichier ne verifie que du texte (resumes, metriques, boutons),
+// jamais le contenu d'un graphe.
+vi.mock("echarts-for-react", () => ({
+  default: () => null,
+}));
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@tanstack/react-router")>();

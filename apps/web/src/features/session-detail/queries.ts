@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
 import type { SessionPageRequest, SessionPageResponse } from '@/lib/api/types'
@@ -27,5 +27,10 @@ export function useSessionDetailPage(
       ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
+    // Garde les donnees de la requete precedente pendant le fetch de la nouvelle
+    // cle (toggle/changement compare) : sans ca, data passe a undefined et le
+    // garde `if (isLoading)` de la page remplace tout par un spinner plein ecran,
+    // ce qui demonte/remonte le layout et empeche l'animation du drawer compare.
+    placeholderData: keepPreviousData,
   })
 }
