@@ -4,6 +4,7 @@ import {
   DEFAULT_SORT_KEY,
   decodeExplorerScope,
   encodeExplorerScope,
+  explorerScopeToFilterSpec,
   explorerSearchSchema,
   type ExplorerScope,
 } from './explorerScope'
@@ -69,6 +70,58 @@ describe('decodeExplorerScope', () => {
   it('ignore un squadScope invalide', () => {
     expect(decodeExplorerScope({ scope: 'bogus' as never }).squadScope).toBe('')
     expect(decodeExplorerScope({ scope: 'solo' }).squadScope).toBe('solo')
+  })
+})
+
+describe('explorerScopeToFilterSpec (Phase 4)', () => {
+  const base = decodeExplorerScope({}) // tous filtres vides + défauts
+
+  it('scope vide → undefined (pas de filterSpec, fallback Q25 global)', () => {
+    expect(explorerScopeToFilterSpec(base)).toBeUndefined()
+  })
+
+  it('playlists multi → playlist_names', () => {
+    expect(
+      explorerScopeToFilterSpec({ ...base, playlists: new Set(['Ranked Arena', 'BTB']) }),
+    ).toEqual({ playlist_names: ['Ranked Arena', 'BTB'] })
+  })
+
+  it('modeNames → mode_categories', () => {
+    expect(explorerScopeToFilterSpec({ ...base, modeNames: new Set(['Fiesta']) })).toEqual({
+      mode_categories: ['Fiesta'],
+    })
+  })
+
+  it('dates → date_from/date_to (bornes inclusives)', () => {
+    expect(
+      explorerScopeToFilterSpec({ ...base, startDate: '2026-04-01', endDate: '2026-05-01' }),
+    ).toEqual({
+      date_from: '2026-04-01T00:00:00Z',
+      date_to: '2026-05-01T23:59:59Z',
+    })
+  })
+
+  it('outcome unique (code → label) ; multi-outcome ignoré', () => {
+    expect(explorerScopeToFilterSpec({ ...base, outcomeFilter: new Set(['2']) })).toEqual({
+      outcome: 'win',
+    })
+    // 2 outcomes sélectionnés → pas de filtre outcome (mono-valeur côté spec)
+    expect(explorerScopeToFilterSpec({ ...base, outcomeFilter: new Set(['2', '3']) })).toBeUndefined()
+  })
+
+  it('combinaison playlists + dates + outcome', () => {
+    expect(
+      explorerScopeToFilterSpec({
+        ...base,
+        playlists: new Set(['Ranked Arena']),
+        startDate: '2026-04-01',
+        outcomeFilter: new Set(['3']),
+      }),
+    ).toEqual({
+      playlist_names: ['Ranked Arena'],
+      date_from: '2026-04-01T00:00:00Z',
+      outcome: 'loss',
+    })
   })
 })
 

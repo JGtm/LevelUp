@@ -18,6 +18,7 @@
 import { z } from 'zod'
 
 import { csvToSet, setToCsv } from '@/lib/page-scope/serialize'
+import type { MatchFilterOutcome, MatchFilterSpec } from '@/lib/match-nav/navContext'
 
 export type SquadScope = '' | 'solo' | 'squad'
 
@@ -132,3 +133,57 @@ export const explorerSearchSchema = z.object({
   outcome: z.string().optional(),
   sort: z.string().optional(),
 })
+
+/** Code outcome (DuckDB) → label canonique MatchFilterSpec. */
+const OUTCOME_CODE_TO_LABEL: Record<string, MatchFilterOutcome> = {
+  '2': 'win',
+  '3': 'loss',
+  '1': 'draw',
+  '4': 'dnf',
+}
+
+/**
+ * Construit un `MatchFilterSpec` (nav match-view) depuis le scope Explorer —
+ * Phase 4 (connexion des filtres Explorer à la navigation contextuelle).
+ *
+ * Avant : ExplorerMatchesTable dérivait son filterSpec du `soloFilterStore`
+ * (vide en contexte Explorer) → la nav prev/next tombait en chronologie globale
+ * dès qu'on ouvrait un match depuis Explorer. Désormais le scope local pilote
+ * directement le filterSpec (multi-playlist/mode supportés par le backend Q25
+ * depuis la Phase 3).
+ *
+ * Mapping :
+ *   - playlists    → playlist_names (égalité exacte, IN (...) backend)
+ *   - modeNames    → mode_categories (cohérent avec le contextDescriptor qui
+ *     traite déjà modeNames comme catégorie ; catégorie non résolue = ignorée
+ *     côté backend, dégradation gracieuse)
+ *   - dates        → date_from/date_to (T00:00:00Z / T23:59:59Z inclusif)
+ *   - outcome      → seulement si exactement 1 sélectionné (MatchFilterSpec.outcome
+ *     est mono-valeur ; multi-outcome → on n'applique pas le filtre)
+ *
+ * Note : la nav in-liste reste portée par `matchIds` (exact) ; ce filterSpec
+ * est la couche de durabilité F5/lien partagé. Retourne `undefined` si aucun
+ * axe mappable (URL non polluée, fallback Q25 global).
+ */
+export function explorerScopeToFilterSpec(s: ExplorerScope): MatchFilterSpec | undefined {
+  const spec: MatchFilterSpec = {}
+  if (s.playlists.size > 0) spec.playlist_names = [...s.playlists]
+  if (s.modeNames.size > 0) spec.mode_categories = [...s.modeNames]
+  if (s.startDate) spec.date_from = `${s.startDate}T00:00:00Z`
+  if (s.endDate) spec.date_to = `${s.endDate}T23:59:59Z`
+  if (s.outcomeFilter.size === 1) {
+    const [code] = [...s.outcomeFilter]
+    const label = code ? OUTCOME_CODE_TO_LABEL[code] : undefined
+    if (label) spec.outcome = label
+  }
+  if (
+    !spec.playlist_names &&
+    !spec.mode_categories &&
+    !spec.date_from &&
+    !spec.date_to &&
+    !spec.outcome
+  ) {
+    return undefined
+  }
+  return spec
+}
