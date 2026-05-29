@@ -152,6 +152,13 @@ function findViolations(filePath, labels) {
             `[=!]==?\\s*['"\`]${escapeRegex(label)}['"\`]`,
           )
           if (enumComparePattern.test(codeOnly)) continue
+          // Skip si le littéral est l'argument d'une opération de collection
+          // sur une valeur d'enum (ex: `types.has('CSR')`, `set.includes('LUSR')`,
+          // `map.get('CSR')`). C'est une valeur de donnée, pas un libellé d'affichage.
+          const collectionMembershipPattern = new RegExp(
+            `\\.(has|includes|get)\\(\\s*['"\`]${escapeRegex(label)}['"\`]`,
+          )
+          if (collectionMembershipPattern.test(codeOnly)) continue
           violations.push({ line: i + 1, label, snippet: line.trim().slice(0, 120) })
         }
       }
