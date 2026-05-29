@@ -25,6 +25,7 @@ func fixturePairForSynthesis() (legacymatch.SynthesisMatchRow, canonical.PlayerM
 	accuracy := 0.42
 	perfScore := 75.5
 	timePlayed := 600
+	avgLife := 42.5
 	sessionLabel := "session-1"
 
 	domainRow := legacymatch.SynthesisMatchRow{
@@ -37,6 +38,7 @@ func fixturePairForSynthesis() (legacymatch.SynthesisMatchRow, canonical.PlayerM
 		IsWithFriends:    true,
 		Accuracy:         &accuracy,
 		TimePlayedSecs:   &timePlayed,
+		AvgLifeSeconds:   &avgLife,
 		PerformanceScore: &perfScore,
 		SessionLabel:     &sessionLabel,
 		IsRanked:         true,
@@ -56,12 +58,13 @@ func fixturePairForSynthesis() (legacymatch.SynthesisMatchRow, canonical.PlayerM
 			Playlist:     &canonical.AssetReference{DefaultLabel: "Ranked Arena"},
 		},
 		Self: canonical.MatchParticipant{
-			Kills:      &kills,
-			Deaths:     &deaths,
-			KDA:        &kda,
-			Accuracy:   &accuracy,
-			TimePlayed: &timePlayed,
-			Outcome:    canonical.OutcomeWin,
+			Kills:          &kills,
+			Deaths:         &deaths,
+			KDA:            &kda,
+			Accuracy:       &accuracy,
+			TimePlayed:     &timePlayed,
+			AvgLifeSeconds: &avgLife,
+			Outcome:        canonical.OutcomeWin,
 		},
 		Enrichment: canonical.PlayerMatchEnrichment{
 			IsWithFriends:    true,

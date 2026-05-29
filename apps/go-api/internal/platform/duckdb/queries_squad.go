@@ -263,7 +263,7 @@ GROUP BY 1, 2
 ORDER BY match_count DESC`
 
 // Q33bSynthesisSharedQuery : (ADR 0016) — partie shared du split
-// LoadSynthesisMatches. 11 cols shared depuis match_participants + match_registry.
+// LoadSynthesisMatches. 12 cols shared depuis match_participants + match_registry.
 // Les 3 cols player (is_with_friends, performance_score, session_label) sont
 // hydratées en étape 2.
 //
@@ -278,6 +278,7 @@ SELECT
     p.kda,
     p.accuracy,
     p.time_played_seconds,
+    p.avg_life_seconds,
     COALESCE(r.is_ranked, FALSE)          AS is_ranked,
     COALESCE(r.is_firefight, FALSE)       AS is_firefight,
     COALESCE(r.playlist_name, '')         AS playlist_name

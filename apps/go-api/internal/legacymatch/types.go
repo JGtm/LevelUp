@@ -143,6 +143,9 @@ type SynthesisMatchRow struct {
 	IsWithFriends    bool
 	Accuracy         *float64
 	TimePlayedSecs   *int
+	// AvgLifeSeconds : durée de vie moyenne (valeur API match_participants),
+	// PAS un dérivé de time_played/n. Nil si non chargée. Cf. squad_breakdown.go.
+	AvgLifeSeconds   *float64
 	PerformanceScore *float64
 	SessionLabel     *string
 	IsRanked         bool

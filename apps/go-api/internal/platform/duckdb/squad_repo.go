@@ -474,6 +474,7 @@ func (r *SquadRepo) LoadSynthesisMatches(ctx context.Context, xuid string) ([]le
 			&row.KDA,
 			&row.Accuracy,
 			&row.TimePlayedSecs,
+			&row.AvgLifeSeconds,
 			&row.IsRanked,
 			&row.IsFirefight,
 			&row.PlaylistName,
