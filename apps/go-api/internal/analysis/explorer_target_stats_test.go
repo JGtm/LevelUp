@@ -24,8 +24,9 @@ func TestBuildSampleStats_StandardCase(t *testing.T) {
 		DamageDealt: 12000, DamageTaken: 8000,
 		HeadshotKills: 25, MeleeKills: 5,
 		PowerWeaponKills: 15, GrenadeKills: 10,
+		TimePlayedSeconds: 600, PersonalScore: 15000,
 	}
-	medals := &domain.MedalCountsAggregate{Total: 142, Unique: 12}
+	medals := &domain.MedalCountsAggregate{Total: 142, Unique: 12, PerfectKills: 8}
 
 	got := BuildSampleStats(agg, medals, 10)
 	if got == nil {
@@ -66,6 +67,38 @@ func TestBuildSampleStats_StandardCase(t *testing.T) {
 	}
 	if got.DefensiveResistance == nil || *got.DefensiveResistance <= 0 {
 		t.Errorf("DefensiveResistance attendue > 0, got %v", got.DefensiveResistance)
+	}
+	// Cadence par minute : 600s = 10 min → Kills/min = 100/10 = 10, etc.
+	if got.KillsPerMin == nil || *got.KillsPerMin != 10.0 {
+		t.Errorf("KillsPerMin = %v, want 10", got.KillsPerMin)
+	}
+	if got.DeathsPerMin == nil || *got.DeathsPerMin != 5.0 {
+		t.Errorf("DeathsPerMin = %v, want 5", got.DeathsPerMin)
+	}
+	if got.AssistsPerMin == nil || *got.AssistsPerMin != 3.0 {
+		t.Errorf("AssistsPerMin = %v, want 3", got.AssistsPerMin)
+	}
+	// AvgPersonalScore = 15000 / 10 = 1500
+	if got.AvgPersonalScore == nil || *got.AvgPersonalScore != 1500.0 {
+		t.Errorf("AvgPersonalScore = %v, want 1500", got.AvgPersonalScore)
+	}
+	if got.PerfectKills != 8 {
+		t.Errorf("PerfectKills = %d, want 8", got.PerfectKills)
+	}
+}
+
+func TestBuildSampleStats_TimePlayedZero(t *testing.T) {
+	agg := &domain.ParticipantStatsAggregate{
+		Kills: 10, Deaths: 5, Assists: 3,
+		TimePlayedSeconds: 0,
+	}
+	got := BuildSampleStats(agg, nil, 2)
+	if got == nil {
+		t.Fatal("BuildSampleStats attendu non-nil")
+	}
+	if got.KillsPerMin != nil || got.DeathsPerMin != nil || got.AssistsPerMin != nil {
+		t.Errorf("cadence par minute attendue nil quand TimePlayedSeconds=0 ; got %v/%v/%v",
+			got.KillsPerMin, got.DeathsPerMin, got.AssistsPerMin)
 	}
 }
 
