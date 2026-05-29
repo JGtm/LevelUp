@@ -50108,3 +50108,18 @@ Après le branchement de la pondération TS2, re-exécution de `cmd/lusr_v2_cano
 **Note (dette légère)** : match_skill_rank a accumulé les lignes des 2 runs de backfill (pre + post pondération) — LUSR_V2 rows doublées (Madina 1448). La vue _latest prend la plus récente (written_at) → correct, mais lignes superseded présentes. Cleanup optionnel : `DELETE FROM match_skill_rank WHERE id NOT IN (SELECT id FROM match_skill_rank_latest)` (ou garder, append-only par design).
 
 **CLI committée** : `cmd/lusr_v2_canonical_backfill` (dry-run par défaut + --commit, --data-root).
+
+---
+
+## [2026-05-29] Vérification finale (couverture tests + logging)
+
+**Statut** : Complété.
+
+**Tests** : ajout de couverture directe sur le nouveau code mesuré per-package :
+- `canonical.MatchSummary.GameplayDurationSeconds` → test unitaire (5 cas) → 100% (était 0%, testé seulement via service).
+- `ep.resolveTeamWeight` → test unitaire (plancher/clamp/défaut/hors-borne/nil) → 100% (était exercé via skill_v2 mais non instrumenté côté ep).
+Couvertures : timeline 97.7%, narrative 94%, skill_v2 85.8%, domain 84.6%, canonical (fonctions nouvelles 100%).
+
+**Logging** : audit OK — aucun fmt.Println/log.Printf dans le code non-CLI ; fonctions pures (poids TS2, timeline) ne loggent pas (arch-rules) ; le shadow (orchestration) warn sur tous les échecs + Info completion + LogLUSRModeAtBoot (boot mode + misconfig) → logs/sync.log. Ajout observabilité TS2 : `with_gameplay_duration` dans le log final du shadow (nb de matchs où la pondération temps-joué est alimentée).
+
+**Global** : go build + vet propres, `go test ./...` vert, frontend typecheck vert. Tree propre (hors .ai/HANDOFF non suivi).
