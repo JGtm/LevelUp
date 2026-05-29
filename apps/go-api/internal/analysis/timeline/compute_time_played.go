@@ -1,6 +1,10 @@
 package timeline
 
-import "time"
+import (
+	"time"
+
+	"levelup/go-api/internal/domain"
+)
 
 // TimePlayedQuality qualifie la fiabilité du time_played recalculé pour un
 // (match, joueur). Permet de tracer les cas dégradés lors du backfill.
@@ -74,4 +78,15 @@ func ComputeTimePlayed(in TimePlayedInput, gameplayStart, gameplayEnd time.Time)
 		return 0, TimePlayedClampedZero
 	}
 	return secs, TimePlayedOK
+}
+
+// ComputeTimePlayedFor est la variante branchée sur l'abstraction
+// domain.MatchTimeline : la fenêtre de gameplay [GameplayStartUTC, GameplayEndUTC]
+// est dérivée du timeline (source unique du vrai début/fin). Retourne NoData si
+// l'horloge absolue n'est pas renseignée (HasClock() faux).
+func ComputeTimePlayedFor(in TimePlayedInput, tl domain.MatchTimeline) (int64, TimePlayedQuality) {
+	if !tl.HasClock() {
+		return 0, TimePlayedNoData
+	}
+	return ComputeTimePlayed(in, tl.GameplayStartUTC(), tl.GameplayEndUTC())
 }

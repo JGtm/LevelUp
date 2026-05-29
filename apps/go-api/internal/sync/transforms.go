@@ -172,33 +172,31 @@ func computeMatchT0(matchJSON map[string]any, startUTC time.Time) (int64, timeli
 	return timeline.ComputeT0(inputs, startUTC)
 }
 
-// computeMatchWindow résout la fenêtre de gameplay d'un match depuis son JSON :
+// computeMatchWindow résout l'horloge de gameplay d'un match depuis son JSON
+// sous forme de domain.MatchTimeline (source unique du vrai début/fin/durée :
+// GameplayStartUTC / GameplayEndUTC / GameplayDurationSeconds).
 //
-//	gameplayStart = start_time + T0 (countdown retranché ; start_time si T0 non calculable)
-//	gameplayEnd   = start_time + duration
-//
-// Sert au recompute time_played_seconds par joueur (cf. ComputeTimePlayed).
+// Sert au recompute time_played_seconds par joueur (cf. ComputeTimePlayedFor).
 // ok=false si StartTime/Duration manquants → l'appelant conserve la valeur API.
-func computeMatchWindow(matchJSON map[string]any) (gameplayStart, gameplayEnd time.Time, ok bool) {
+func computeMatchWindow(matchJSON map[string]any) (domain.MatchTimeline, bool) {
 	matchInfo, isMap := matchJSON["MatchInfo"].(map[string]any)
 	if !isMap {
-		return time.Time{}, time.Time{}, false
+		return domain.MatchTimeline{}, false
 	}
 	startTime, err := parseISO(asString(matchInfo["StartTime"]))
 	if err != nil {
-		return time.Time{}, time.Time{}, false
+		return domain.MatchTimeline{}, false
 	}
 	dur := parsePTDuration(asString(matchInfo["Duration"]))
 	if dur == nil || *dur <= 0 {
-		return time.Time{}, time.Time{}, false
+		return domain.MatchTimeline{}, false
 	}
 	startUTC := startTime.UTC()
-	gameplayStart = startUTC
-	if t0ms, q := computeMatchT0(matchJSON, startUTC); q.Computed() {
-		gameplayStart = startUTC.Add(time.Duration(t0ms) * time.Millisecond)
+	var t0ms int64
+	if v, q := computeMatchT0(matchJSON, startUTC); q.Computed() {
+		t0ms = v
 	}
-	gameplayEnd = startUTC.Add(time.Duration(*dur) * time.Second)
-	return gameplayStart, gameplayEnd, true
+	return domain.NewMatchTimelineAt(startUTC, int64(*dur)*1000, t0ms), true
 }
 
 // isNumericXUID retourne true si l'xuid est un identifiant joueur numérique
@@ -273,9 +271,9 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 	var rows []ParticipantRow //nolint:prealloc
 	seen := map[string]bool{}
 
-	// Fenêtre de gameplay (countdown retranché) pour recomputer time_played par
+	// Horloge de gameplay (countdown retranché) pour recomputer time_played par
 	// joueur. winOK=false (StartTime/Duration manquants) → on garde la valeur API.
-	gameplayStart, gameplayEnd, winOK := computeMatchWindow(matchJSON)
+	matchTL, winOK := computeMatchWindow(matchJSON)
 
 	for _, p := range players {
 		player, ok := p.(map[string]any)
@@ -384,9 +382,9 @@ func ExtractParticipants(matchJSON map[string]any) []ParticipantRow {
 		// surévalue les latecomers (cf. Phase 4). Override seulement si la fenêtre
 		// est connue et le calcul exploitable (qualité ok) ; sinon valeur API.
 		if winOK && row.FirstJoinedTime != nil {
-			if secs, q := timeline.ComputeTimePlayed(
+			if secs, q := timeline.ComputeTimePlayedFor(
 				timeline.TimePlayedInput{FirstJoinedTime: row.FirstJoinedTime.UTC(), LastLeaveTime: row.LastLeaveTime},
-				gameplayStart, gameplayEnd,
+				matchTL,
 			); q == timeline.TimePlayedOK {
 				v := int(secs)
 				row.TimePlayedSeconds = &v

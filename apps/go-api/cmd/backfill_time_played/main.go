@@ -29,15 +29,10 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/timeline"
+	"levelup/go-api/internal/domain"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
-
-type matchWindow struct {
-	gameplayStart time.Time // real_start_time UTC, ou start_utc si NULL
-	gameplayEnd   time.Time // start_utc + duration_seconds
-	durationSec   int64     // playable = (gameplayEnd − gameplayStart)
-}
 
 type partRow struct {
 	matchID            string
@@ -94,20 +89,20 @@ func main() {
 	results := make([]computedRow, 0, len(parts))
 	dist := map[timeline.TimePlayedQuality]int{}
 	for _, p := range parts {
-		w, ok := windows[p.matchID]
+		tl, ok := windows[p.matchID]
 		if !ok {
 			continue
 		}
-		secs, q := timeline.ComputeTimePlayed(
+		secs, q := timeline.ComputeTimePlayedFor(
 			timeline.TimePlayedInput{FirstJoinedTime: p.firstJoined, LastLeaveTime: p.lastLeave},
-			w.gameplayStart, w.gameplayEnd,
+			tl,
 		)
 		dist[q]++
 		results = append(results, computedRow{
 			matchID: p.matchID, xuid: p.xuid, secs: secs, quality: q,
 			apiValue: p.apiTimePlayed,
 			fullGame: p.presentAtBeginning && p.presentAtComplete,
-			winSec:   w.durationSec,
+			winSec:   tl.GameplayDurationSeconds(),
 		})
 	}
 
@@ -122,10 +117,10 @@ func main() {
 	fmt.Printf("\n[COMMIT] %d lignes time_played_seconds mises à jour (qualité ok).\n", written)
 }
 
-// loadMatchWindows charge la fenêtre de gameplay de chaque match.
-// gameplayStart = real_start_time (UTC) si présent (= début gameplay réel,
-// countdown retranché), sinon start_utc. gameplayEnd = start_utc + duration.
-func loadMatchWindows(db *sql.DB) (map[string]matchWindow, error) {
+// loadMatchWindows charge l'horloge de gameplay de chaque match sous forme de
+// domain.MatchTimeline (StartUTC = start_utc, T0 = real_start_time − start_utc).
+// GameplayStartUTC/EndUTC/DurationSeconds en dérivent (source unique).
+func loadMatchWindows(db *sql.DB) (map[string]domain.MatchTimeline, error) {
 	rows, err := db.Query(`
 		SELECT
 			match_id,
@@ -137,7 +132,7 @@ func loadMatchWindows(db *sql.DB) (map[string]matchWindow, error) {
 		return nil, err
 	}
 	defer rows.Close()
-	out := make(map[string]matchWindow)
+	out := make(map[string]domain.MatchTimeline)
 	for rows.Next() {
 		var id string
 		var startUTC time.Time
@@ -147,16 +142,11 @@ func loadMatchWindows(db *sql.DB) (map[string]matchWindow, error) {
 			return nil, err
 		}
 		startUTC = startUTC.UTC()
-		gameplayStart := startUTC
+		var t0ms int64
 		if realStart.Valid {
-			gameplayStart = realStart.Time.UTC()
+			t0ms = realStart.Time.UTC().Sub(startUTC).Milliseconds()
 		}
-		gameplayEnd := startUTC.Add(time.Duration(dur) * time.Second)
-		out[id] = matchWindow{
-			gameplayStart: gameplayStart,
-			gameplayEnd:   gameplayEnd,
-			durationSec:   int64(gameplayEnd.Sub(gameplayStart).Seconds()),
-		}
+		out[id] = domain.NewMatchTimelineAt(startUTC, dur*1000, t0ms)
 	}
 	return out, rows.Err()
 }
