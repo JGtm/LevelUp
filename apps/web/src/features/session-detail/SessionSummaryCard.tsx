@@ -55,7 +55,10 @@ export function SessionSummaryCard({ title, entry, tone }: Props) {
       <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SessionStat label={t('session.detail.stat_matches')} value={entry.total_matches.toString()} />
         <SessionStat label={t('session.detail.stat_wins_losses')} value={`${entry.wins} / ${entry.losses}`} />
+        <SessionStat label={t('session.detail.stat_win_rate')} value={`${formatNumber(entry.win_rate, 0)} %`} />
         <SessionStat label={labelOf('kda')} value={formatNumber(entry.kda, 2)} />
+        <SessionStat label={t('session.detail.stat_kdr')} value={formatNumber(entry.kdr, 2)} />
+        <SessionStat label={t('session.detail.stat_kills_per_match')} value={formatNumber(entry.kills_per_match, 1)} />
         <SessionStat label={t('session.detail.stat_perf_score')} value={formatNumber(entry.performance_score, 1)} />
       </CardContent>
     </Card>

@@ -3024,6 +3024,10 @@ export interface SessionCompareEntry {
   losses: number
   kda: number | null
   performance_score: number | null
+  // Métriques dérivées (mêmes helpers backend que compare_metrics).
+  win_rate: number
+  kdr: number
+  kills_per_match: number
   with_friends: boolean
   dominant_category: string | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 3

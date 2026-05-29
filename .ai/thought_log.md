@@ -1,3 +1,64 @@
+## [2026-05-29] fix(squad,t0): TeammatesService câblé T0 (§4.A-bis) — premier frag / matrice impact
+
+**Statut** : Complété (code + tests + validation données réelles). Branche `chore/query-devtools-flag` (WIP Go parallèle présent — ranked playlists + sync/career ; ne stager QUE mes fichiers T0). Commit non effectué (en attente autorisation).
+
+**Contexte** : HANDOFF_MATCH_TIMELINE_T0 §4.A-bis. TeammatesService était le 4ᵉ consommateur d'events highlight manqué par l'audit Phase 3 : les graphes Escouade affichaient les `time_ms` depuis le début du film (countdown ~28s inclus) au lieu du référentiel gameplay. Confirmé par l'utilisateur sur le match Fortress.
+
+**Cause** : `domain.ImpactEventRow` (Q32) ≠ `canonical.HighlightEvent` → `timeline.CorrectEvents` ne s'appliquait pas ; et `SquadMatchRow` (Q30) ne portait ni `real_start_time` ni `T0Ms`.
+
+**Fix (option (a) du HANDOFF : propager T0 via Q30)** :
+1. `domain.SquadMatchRow.T0Ms *int64` (nil = T0 inconnu).
+2. `Q30SquadMatchesSharedQuery` : colonne `t0_ms` (CASE `epoch_ms(real_start_time)-epoch_ms(start_time_utc)`, formule canonique identique à `player_matches_repo`), + scan `&row.T0Ms` dans `loadSquadMatchesShared`.
+3. `timeline.BuildTimelinesFromSquadRows([]SquadMatchRow)` + `timeline.CorrectImpactEvents([]ImpactEventRow, timelines)` — miroirs des helpers Phase 3, point unique de correction.
+4. `buildSquadFirstEvents` (.17, CRITIQUE car dépend des valeurs absolues) : correction + skip des events `TimeMS<0` (countdown) qui collisionneraient avec le sentinel `-1` de firstKillS/firstDeathS.
+5. `buildSquadImpactMatrix` (.07) via `loadImpactEventsByMatch(…, timelines)` : badges invariants par T0 (vérifié en lisant `ComputeMatchImpactFull` : min/max/ordre relatif + différences kamikaze `dT-kT`, aucun seuil absolu ; `SquadImpactCell` n'expose aucun TimeMS) → no-op observable, corrigé pour cohérence/robustesse.
+
+**Validation données réelles** (programme jetable, shared_matches_v2.duckdb) : 1724/1724 matchs avec t0_ms (100%), **médiane 27.6s** (≈ 28s attendu), 0 négatif, 1 outlier max=14400s (data-quality préexistant, hors scope ; `BuildTimelinesFromSquadRows` ne clampe que les négatifs, comme `BuildTimelinesFromPlayerMatches`).
+
+**Tests** : 4 ajoutés (timeline : `CorrectImpactEvents` ×2 + `BuildTimelinesFromSquadRows` ; service : `buildSquadFirstEvents` décalage de bin + skip countdown). `go build ./...`, `go test ./internal/service ./internal/analysis/...` verts. Build CGO via `C:\msys64\ucrt64\bin\gcc.exe` (CGO_ENABLED=1) dans ce sandbox.
+
+**Gap signalé (NON corrigé — hors §4.A-bis)** : `buildSquadIntensityProfile` (teammates.13, fichier `..._intensity_perminute.go`) lit aussi `e.TimeMS` brut pour bucketer, avec un dénominateur auto-référencé (`maxTimeByMatch`). Même classe de bug, distorsion mineure du 1ᵉʳ bucket. Le helper canonique `timeline.GameplayDurationsMS` existe déjà comme dénominateur prévu. À trancher avec l'utilisateur.
+
+**Échec test préexistant (NON lié)** : `TestNoUnauthorizedSharedSocialMention` échoue sur `internal/api/gen/types.gen.go` (fichier généré mentionnant `shared_social` hors whitelist) — issu de la régénération OpenAPI du travail parallèle, pas du fix T0.
+
+**Prochaine étape** : validation UI 3 graphes (utilisateur) ; décision sur le gap .13 ; câblage `wᵢ=time_played` (cf. [[project_lusr_v2_timeplayed_weighting]]) hors scope.
+
+## [2026-05-29] fix(carrière): playlists classées — allowlist autoritative (is_ranked), fin du bug récurrent
+
+**Statut** : Complété (code + tests). Branche `chore/query-devtools-flag` (WIP Go de l'utilisateur présent — ne stager QUE mes fichiers, cf. ci-dessous). Commit non effectué (en attente autorisation utilisateur).
+
+**Symptôme** : section "Classements" (page Carrière, colonne CSR) n'affichait que 2 playlists (Ranked Arena + Ranked Slayer) au lieu de toutes les classées actives. Plainte utilisateur récurrente : les playlists classées finissent marquées `is_ranked=false`.
+
+**Cause racine** : `playlists_catalog` n'avait AUCUNE source de vérité indépendante de l'historique. Peuplé depuis match_registry (classif douteuse → ranked rétrogradé en 'social') + `seedPlaylistsCatalog` en `ON CONFLICT DO NOTHING` (incapable de corriger une ligne déjà false). La requête carrière ne survivait que via un hack `STRPOS(name,'ranked')` → exactement 2 playlists. Les classées jamais jouées (Duo classé, etc.) n'entraient jamais.
+
+**Décision technique** (validée utilisateur : s'appuyer sur SpartanRecord/Grunt, jamais dériver des parties) :
+1. Référence autoritative leaf `internal/games/halo_infinite/rankedplaylists` (16 playlists classées, asset_id stables inter-saisons, flag `Active`). Données issues de la métadonnée curée HaloDotAPI (`/metadata/multiplayer/playlists`, champ ranked) — proxy public SpartanRecord. Source de vérité unique de `is_ranked`.
+2. Migration metadata `seed_ranked_playlists_catalog` : UPSERT **DO UPDATE** force is_ranked=TRUE/experience='ranked'/is_active=<ref> + seed FR (asset_translations). Corrige les lignes false existantes.
+3. Tous les chemins d'écriture consultent `rankedplaylists.IsRanked()` : `seedPlaylistsCatalog` DO NOTHING→DO UPDATE, `catalog_fetcher_service.upsertPlaylist`, `populate-playlists-catalog` (match_registry). Une playlist classée connue ne peut plus repasser false.
+4. `QPlaylistsCatalogRanked` : hack STRPOS supprimé → lecture `is_ranked=TRUE` fiable.
+5. CSR sync (mécanisme Grunt) : ajout `HaloAPIClient.GetPlaylistCsr` (`/hi/playlist/{id}/csrs?season=`) + interface HaloClient + 6 implémenteurs/mocks. `syncPlayerCSRs` complète le player-level par un fetch par-playlist des classées actives (`augmentWithActiveRankedCSRs`) → couvre toutes les classées de la saison (Non classé si jamais jouée).
+6. `Q26csrSnapshots` scopé sur la saison courante (garde-fou : pas de filtre si season vide) → anti-doublon multi-saisons.
+
+**Résultats** : la colonne CSR affiche désormais les 4 playlists classées actives (Ranked Arena, Ranked Slayer, Ranked Doubles, RANKED LEGACY), toutes "Non classé" + `unranked_0` cette saison (personne n'a joué classé — correct). Aucun changement front (catalogue-first gérait déjà l'affichage). Tests : `rankedplaylists` (3), migration seed (3, integration), `augmentWithActiveRankedCSRs` (1), `parsePlaylistCSR` (3). `go build ./...`, `go vet ./...`, suites sync/migration/service/duckdb vertes.
+
+**Hors scope / pré-existant** : échec `TestNoUnauthorizedSharedSocialMention` (duckdb) sur `internal/api/gen/types.gen.go` — committé, non modifié par moi, indépendant de ce fix.
+
+**Fichiers à stager (mes fichiers uniquement)** : `internal/games/halo_infinite/rankedplaylists/*`, `internal/migration/steps_metadata_seed_ranked_playlists*.go`, `internal/platform/duckdb/{career_repo_csr,queries_career}.go`, `internal/service/catalog_fetcher_service.go`, `internal/sync/{career,halo_skill,halo_client,fetch_cache,pooled_client}.go` + mocks tests sync + `cmd/populate-playlists-catalog/main.go`. NE PAS stager le WIP timeline/squad/web de l'utilisateur.
+
+**Prochaine étape** : autorisation commit utilisateur ; refresh procédure si 343 tourne les hoppers (re-fetch métadonnée). Cf. ADR éventuel + memory `reference-ranked-playlists-source`.
+
+---
+
+## [2026-05-29] feat(web+go,sessions): Phase 2a/2b refonte session-detail — métriques single (Win%/KDR/Kills-match)
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). Go build + `go test ./internal/service -run Session|Compare` verts ; front typecheck + eslint + 15 tests verts. Reste Phase 2c (graphes single).
+
+**Fait** :
+- Go : +3 champs `WinRate`/`KDR`/`KillsPerMatch` sur `domain.SessionCompareEntry`, peuplés dans `buildCompareEntry` (session_compare_service.go) via les helpers purs existants (`winRate`/`avgKD`/`killsPerGame`). `current_session` ET `compare_session` passent par `buildCompareEntry` → les 2 résumés en bénéficient. Valeurs garanties identiques à `compare_metrics`.
+- Front : +3 champs au type `SessionCompareEntry` (types.ts) ; `SessionSummaryCard` affiche 7 stats (Matchs, W/L, Win%, KDA, KDR, Kills/match, Perf). +3 clés i18n `stat_win_rate`/`stat_kdr`/`stat_kills_per_match` (regen). Fixtures de test enrichies.
+
+**Garde-fou** : ne stager QUE mes fichiers (WIP Go utilisateur présent dans d'autres fichiers du package `service`).
+
 ## [2026-05-29] feat(web,sessions): Phase 1 refonte UX session-detail — dissoudre la sélection
 
 **Statut** : Complété (branche `chore/query-devtools-flag` — la branche a bougé sous mes pieds pendant le travail, l'utilisateur a confirmé que c'est lui et de continuer ici ; l'anim commit 5881bfcc7 en est la tête, donc Phase 1 propre au-dessus. Commits réguliers autorisés ; ne stager QUE mes fichiers, jamais le WIP Go de l'utilisateur). typecheck + eslint + suite session-detail (15 tests) verts.
