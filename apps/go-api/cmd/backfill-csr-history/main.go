@@ -43,7 +43,7 @@ func main() {
 	gamertag := flag.String("gamertag", "", "gamertag (logs uniquement)")
 	titleID := flag.String("title", "halo_infinite", "title_id pour csr_season_calendars")
 	season := flag.String("season", "", "limiter à une seule saison CSR (ex: CsrSeason12-1) ; vide = toutes les saisons")
-	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_AZURE_CLIENT_ID, SPNKR_OAUTH_REFRESH_TOKEN_*)")
+	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_AZURE_CLIENT_ID requis par MSALProvider)")
 	rateLimit := flag.Int("rate-limit", 60, "requêtes max/minute vers l'API skill")
 	dryRun := flag.Bool("dry-run", false, "liste les saisons ciblées sans appeler l'API ni écrire")
 	flag.Parse()

@@ -1,3 +1,23 @@
+## [2026-05-29] chore(api): réconciliation OpenAPI/types.gen.go — endpoint career/csrs + saison
+
+**Statut** : Complété. Branche `chore/query-devtools-flag`. Commit non effectué (attente autorisation).
+
+**But** : aligner le contrat (`api/openapi.yaml`) + types générés (`internal/api/gen/types.gen.go`) sur le menu déroulant saison livré.
+
+**Décisions techniques** :
+- `openapi.yaml`, endpoint `getCareerCSRs` : ajout du paramètre query `season` (optionnel, vide → courante) + champ `available_seasons` (array de `CSRSeasonOption`) dans la réponse 200 (+ ajouté à `required`). Description mise à jour (mention LUSR hors saison).
+- Nouveau schéma `components/schemas/CSRSeasonOption` (`season_id`, `label`, `is_current?`) — aligné sur `domain.CSRSeasonOption` + `types.ts`.
+- Réconciliation d'une dérive préexistante : `CareerCSRRank.placement_total` manquait au contrat → ajouté (+ marqué `required`, donc généré en `int` non-pointeur, conforme au domaine).
+- Régénération via `make gen` (oapi-codegen v2.6.0). Diff types.gen.go propre : +24 lignes (struct `CSRSeasonOption` + champ `PlacementTotal`), zéro churn.
+- Guard `TestNoUnauthorizedSharedSocialMention` (préexistant, échouait sur types.gen.go) : `internal/api/gen/types.gen.go` ajouté à `sharedSocialFilesWhitelist` — la chaîne 'shared_social' y est une **description OpenAPI générée** (champ `player_records_count`), pas un accès DB. Résolution sanctionnée par le message du test lui-même.
+- Sentinel `TestSentinel_NoNewEnvVarReaders` : le CLI backfill matchait le pattern `SPNKR_OAUTH_REFRESH_TOKEN_` via une **chaîne dans l'aide d'un flag** (copie inexacte). Retirée — le CLI est ADR-0023 compliant (MultiUserTokenStore + legacy sync_meta, jamais l'env RT).
+
+**Résultats** : `go build ./...`, `go vet ./...` verts. **`go test ./...` 100% vert** (plus aucun échec — les 2 sentinelles passent désormais). Front inchangé (consomme `types.ts` déjà aligné).
+
+**Prochaine étape** : commit (mes fichiers uniquement).
+
+---
+
 ## [2026-05-29] feat(carrière): CLI backfill-csr-history — peuple les saisons CSR passées
 
 **Statut** : Complété. Branche `chore/query-devtools-flag`, commit `e757f31c8`.

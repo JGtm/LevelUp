@@ -630,6 +630,20 @@ type CSRCoverage struct {
 	Xuid      string               `json:"xuid"`
 }
 
+// CSRSeasonOption Saison CSR sélectionnable dans le menu déroulant "Classements" (page
+// Carrière, colonne CSR). Une saison apparaît si le joueur y a des données
+// classées (snapshot CSR), plus la saison courante.
+type CSRSeasonOption struct {
+	// IsCurrent Saison active du jour (optionnel)
+	IsCurrent *bool `json:"is_current,omitempty"`
+
+	// Label Libellé court (ex. "Saison 13")
+	Label string `json:"label"`
+
+	// SeasonId Identifiant saison CSR (ex. "CsrSeason13-1")
+	SeasonId string `json:"season_id"`
+}
+
 // CSRSnapshotsCoverage Résumé player_csr_snapshots pour un joueur.
 type CSRSnapshotsCoverage struct {
 	Total                  int `json:"total"`
@@ -657,6 +671,10 @@ type CareerCSRRank struct {
 
 	// MeasurementMatchesRemaining Nombre de matchs restants avant placement final
 	MeasurementMatchesRemaining int `json:"measurement_matches_remaining"`
+
+	// PlacementTotal Seuil placement de la saison du snapshot (5 depuis S3, 10 historique).
+	// Toujours présent depuis Phase 6 du pipeline CSR.
+	PlacementTotal int `json:"placement_total"`
 
 	// SubTier Sous-tier 1..6 (0 pour Onyx)
 	SubTier int `json:"sub_tier"`
@@ -1688,6 +1706,12 @@ type PostEngagementTimeseriesJSONBody struct {
 type SetMatchExclusionJSONBody struct {
 	// Excluded true = ignorer ce match, false = réactiver
 	Excluded bool `json:"excluded"`
+}
+
+// GetCareerCSRsParams defines parameters for GetCareerCSRs.
+type GetCareerCSRsParams struct {
+	// Season Saison CSR à afficher (ex. "CsrSeason13-1"). Vide → saison courante.
+	Season *string `form:"season,omitempty" json:"season,omitempty"`
 }
 
 // GetCareerHighlightMatchesParams defines parameters for GetCareerHighlightMatches.
