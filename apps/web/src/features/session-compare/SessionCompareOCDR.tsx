@@ -45,6 +45,31 @@ export function SessionCompareOCDR({ sessionA, sessionB, labels }: SessionCompar
     )
   }
 
+  // Mode single (sessionB absent) : pas de colonne B ni de comparaison, juste les
+  // valeurs OC/DR de la session active + la barre de rendement.
+  if (sessionB == null) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-muted-foreground">OC</span>
+            <span className="font-medium tabular-nums text-foreground">{fmt(sessionA?.avg_oc)}</span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-muted-foreground">DR</span>
+            <span className="font-medium tabular-nums text-foreground">{fmt(sessionA?.avg_dr)}</span>
+          </div>
+        </div>
+        {(sessionA?.avg_oc != null || sessionA?.avg_dr != null) && (
+          <CombatYieldBar
+            offensiveConversion={sessionA?.avg_oc ?? null}
+            defensiveResistance={sessionA?.avg_dr ?? null}
+          />
+        )}
+      </div>
+    )
+  }
+
   const ocColors = winnerClass(sessionA?.avg_oc, sessionB?.avg_oc, true)
   const drColors = winnerClass(sessionA?.avg_dr, sessionB?.avg_dr, true)
 

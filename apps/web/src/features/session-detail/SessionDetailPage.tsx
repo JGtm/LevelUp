@@ -202,6 +202,59 @@ export function SessionDetailPage() {
 
             <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={data.matches} />
 
+            {/* Graphes remontes du drawer compare en vue single (sessionB=null). */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">{t('session.compare.skill_progression_title')}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SessionCompareSkillProgression
+                  sessionA={data.current_session}
+                  sessionB={null}
+                  labels={{
+                    title: '',
+                    sessionA: selectedSessionLabel,
+                    sessionB: '',
+                    empty: t('session.compare.skill_progression_empty'),
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">{t('session.compare.ocdr_title')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SessionCompareOCDR
+                    sessionA={data.current_session}
+                    sessionB={null}
+                    labels={{ title: t('session.compare.ocdr_title'), empty: t('session.compare.ocdr_empty') }}
+                  />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">{t('session.compare.engagement_title')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SessionCompareEngagement
+                    sessionA={data.current_session}
+                    sessionB={null}
+                    labels={{
+                      title: '',
+                      progressionTitle: '',
+                      sessionA: selectedSessionLabel,
+                      sessionB: '',
+                      empty: t('session.compare.engagement_empty'),
+                    }}
+                    height={220}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">{t('session.detail.matches_card')}</CardTitle>
