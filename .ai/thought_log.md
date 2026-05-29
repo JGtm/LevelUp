@@ -1,3 +1,24 @@
+## [2026-05-29] chore(api): régénérer types.gen.go (Go) + épingler oapi-codegen dans le Makefile
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué). Chantier incrémental 2/2 du suivi Axe 4.
+
+**Contexte** : régénérer les types Go depuis le contrat (réparé à l'Axe 4) + rendre `make gen` reproductible (était bloqué : oapi-codegen non installé / absent du PATH).
+
+**Vérifs préalables** : marqueur de version en tête de `types.gen.go` = **oapi-codegen v2.6.0** → j'ai régénéré avec EXACTEMENT cette version (diff minimal lié au générateur, le reste = dérive accumulée du contrat). Config `api/oapi-codegen-types.yaml` = models-only, output `internal/api/gen/types.gen.go`.
+
+**Décisions** :
+- Régénération via `go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0` → **go.mod/go.sum intacts** (pas d'install, pas de dépendance ajoutée).
+- **Épinglage reproductible** : `OAPI_CODEGEN` dans le Makefile passe de `oapi-codegen` (PATH, fragile) à `go run …@v2.6.0`. Zéro pollution go.mod, version figée, aucune install manuelle requise (résout le blocage d'origine). Commentaire : garder la version alignée avec le marqueur de `types.gen.go`.
+- Choix conscient de NE PAS utiliser la directive `tool` go.mod 1.24 : aurait ajouté oapi-codegen + ~7 deps indirectes (decimal128, oasdiff/yaml3, swag, easyjson…) à go.mod. Le `go run @version` épinglé est plus léger pour ce besoin.
+
+**Résultats observés** : régénération EXIT 0 ; diff types.gen.go +798/-87 (`types.gen.go` était lui aussi périmé, comme `generated.ts`) ; `go build ./internal/...` ✅ ; `go test ./contracttest/` ✅ + `internal/api -run Contract` ✅. Diff idempotent (re-run = stable).
+
+**Notes** :
+- Warning pré-existant : openapi.yaml est en 3.1.x, pas encore pleinement supporté par oapi-codegen (déjà le cas avant ; build+contrats verts).
+- `make gen` échoue dans MON sandbox (`make` n'hérite pas de GOPATH/GOMODCACHE — même artefact que govulncheck) mais la commande sous-jacente `go run …` marche (prouvé en direct). Côté utilisateur, `make gen` hérite de l'env → OK.
+
+**Conclusion** : chantier « régénération Go » bouclé. Reste le gros morceau : migration front `types.ts → generated.ts` (314 types manuels / 112 schémas → ~200 frontend-only ; stratégie shim + tsc-oracle, multi-sessions).
+
 ## [2026-05-29] fix(tooling): whitelist generated.ts dans lint-no-hardcoded-fields (débloque le push)
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué).

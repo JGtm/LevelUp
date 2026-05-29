@@ -21,7 +21,11 @@ CGO_ENV := PATH="/c/msys64/ucrt64/bin:$(PATH)" CC=$(CC) CGO_ENABLED=1
 # Paramètres serveur locaux (override via env)
 REPO_ROOT   ?= $(shell cd ../.. && pwd)
 API_PORT    ?= 8000
-OAPI_CODEGEN := oapi-codegen
+# Version épinglée via `go run …@version` : pas d'install manuelle requise
+# (résout le blocage "oapi-codegen not on PATH"), reproductible, zéro dépendance
+# ajoutée à go.mod. Doit rester alignée avec le marqueur de version en tête de
+# internal/api/gen/types.gen.go.
+OAPI_CODEGEN := go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.6.0
 
 build:
 	$(CGO_ENV) go build -o bin/server.exe ./cmd/server/
