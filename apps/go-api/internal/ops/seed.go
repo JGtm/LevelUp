@@ -93,15 +93,23 @@ const (
 // ─────────────────────────────────────────────────────────────────────────────
 
 // careerRankJSON représente une entrée dans career_ranks_metadata.json.
+//
+// tier_type / large_icon_path / adornment_icon_path peuvent être absents des
+// JSON legacy (champs facultatifs) → insérés vides. Le schéma career_ranks doit
+// néanmoins les déclarer : c'est le contrat lu par EnrichFromMetadata (tier_type,
+// adornment_icon_path) et LoadCareerRankImageURLs (large_icon_path). Sans ces
+// colonnes, l'enrichissement carrière (page + home) plante en Binder Error.
 type careerRankJSON struct {
-	RankID     int    `json:"rank_id"`
-	TitleEN    string `json:"title_en"`
-	TitleFR    string `json:"title_fr"`
-	Subtitle   string `json:"subtitle"`
-	Tier       string `json:"tier"`
-	Grade      int    `json:"grade"`
-	XPRequired int64  `json:"xp_required"`
-	IconPath   string `json:"icon_path"`
+	RankID        int    `json:"rank_id"`
+	TitleEN       string `json:"title_en"`
+	Subtitle      string `json:"subtitle"`
+	Tier          string `json:"tier"`
+	TierType      string `json:"tier_type"`
+	Grade         int    `json:"grade"`
+	XPRequired    int64  `json:"xp_required"`
+	IconPath      string `json:"icon_path"`
+	LargeIconPath string `json:"large_icon_path"`
+	AdornmentPath string `json:"adornment_icon_path"`
 }
 
 // SeedCareerRanks peuple la table career_ranks depuis le JSON source.
@@ -123,19 +131,27 @@ func SeedCareerRanks(ctx context.Context, opts SeedOptions) (SeedResult, error) 
 	}
 	defer db.Close()
 
+	// Schéma aligné sur la prod metadata.duckdb (contrat lu par EnrichFromMetadata,
+	// LoadCareerRankImageURLs, populate-career-rank-images). INSERT à colonnes
+	// explicites : robuste à l'ordre + compatible avec une table existante.
 	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS career_ranks (
 		rank_id INTEGER PRIMARY KEY,
-		title_en VARCHAR, title_fr VARCHAR,
-		subtitle VARCHAR, tier VARCHAR, grade INTEGER,
-		xp_required BIGINT, icon_path VARCHAR
+		title_en VARCHAR, subtitle_en VARCHAR,
+		tier VARCHAR, tier_type VARCHAR, grade INTEGER,
+		xp_required INTEGER, icon_path VARCHAR,
+		large_icon_path VARCHAR, adornment_icon_path VARCHAR
 	)`); err != nil {
 		return SeedResult{Component: componentCareerRanks}, err
 	}
 
 	inserted, skipped := 0, 0
 	for _, r := range ranks {
-		res, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO career_ranks VALUES (?,?,?,?,?,?,?,?)`,
-			r.RankID, r.TitleEN, r.TitleFR, r.Subtitle, r.Tier, r.Grade, r.XPRequired, r.IconPath)
+		res, err := db.ExecContext(ctx, `INSERT OR IGNORE INTO career_ranks
+			(rank_id, title_en, subtitle_en, tier, tier_type, grade,
+			 xp_required, icon_path, large_icon_path, adornment_icon_path)
+			VALUES (?,?,?,?,?,?,?,?,?,?)`,
+			r.RankID, r.TitleEN, r.Subtitle, r.Tier, r.TierType, r.Grade,
+			r.XPRequired, r.IconPath, r.LargeIconPath, r.AdornmentPath)
 		if err != nil {
 			return SeedResult{Component: componentCareerRanks}, fmt.Errorf("insert rank %d: %w", r.RankID, err)
 		}

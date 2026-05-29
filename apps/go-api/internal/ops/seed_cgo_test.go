@@ -134,6 +134,86 @@ func TestSeedCareerRanks_InvalidJSON(t *testing.T) {
 	}
 }
 
+// TestSeedCareerRanks_SchemaCompatibleWithEnrichment garantit que le schéma
+// produit par SeedCareerRanks honore le contrat lu par EnrichFromMetadata
+// (title_en, tier_type, grade, xp_required, adornment_icon_path) et
+// LoadCareerRankImageURLs (large_icon_path). Régression : un schéma amputé de
+// ces colonnes plante l'enrichissement carrière (Binder Error) → jauges
+// "progression rang / Héros" + "XP prochain rang" à 0. Cf. fix carrière 2026-05-29.
+func TestSeedCareerRanks_SchemaCompatibleWithEnrichment(t *testing.T) {
+	dir := t.TempDir()
+	dbPath := openTempDB(t)
+
+	cacheDir := filepath.Join(dir, "cache")
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	// rank 1 : JSON legacy minimal (sans tier_type/large/adornment) → colonnes vides.
+	// rank 2 : JSON complet → colonnes peuplées.
+	ranks := []map[string]any{
+		{"rank_id": 1, "title_en": "Recruit", "tier": "Bronze", "grade": 1, "xp_required": 1000, "icon_path": "i/1.png"},
+		{"rank_id": 2, "title_en": "Corporal", "subtitle": "Platinum", "tier": "Platinum",
+			"tier_type": "Platinum", "grade": 2, "xp_required": 15000,
+			"icon_path": "i/2.png", "large_icon_path": "l/2.png", "adornment_icon_path": "a/2.png"},
+	}
+	data, _ := json.Marshal(ranks)
+	if err := os.WriteFile(filepath.Join(cacheDir, "career_ranks_metadata.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SeedCareerRanks(context.Background(), SeedOptions{MetaDBPath: dbPath, DataDir: dir}); err != nil {
+		t.Fatalf("SeedCareerRanks: %v", err)
+	}
+
+	db, err := sql.Open("duckdb", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	// Requête EXACTE d'EnrichFromMetadata (career_live_repo.go) — doit binder.
+	var (
+		titleEN    string
+		tierType   sql.NullString
+		grade      sql.NullInt64
+		xpRequired int
+		adornment  sql.NullString
+	)
+	if err := db.QueryRow(`SELECT title_en, tier_type, grade, xp_required, adornment_icon_path
+		FROM career_ranks WHERE rank_id = ?`, 2).
+		Scan(&titleEN, &tierType, &grade, &xpRequired, &adornment); err != nil {
+		t.Fatalf("requête EnrichFromMetadata incompatible avec le schéma seedé: %v", err)
+	}
+	if titleEN != "Corporal" || xpRequired != 15000 {
+		t.Errorf("title_en=%q xp_required=%d, want Corporal/15000", titleEN, xpRequired)
+	}
+	if !tierType.Valid || tierType.String != "Platinum" {
+		t.Errorf("tier_type=%v, want Platinum (peuplé depuis le JSON)", tierType)
+	}
+	if !adornment.Valid || adornment.String != "a/2.png" {
+		t.Errorf("adornment_icon_path=%v, want a/2.png", adornment)
+	}
+
+	// xp_total = SUM(xp_required WHERE rank_id < ?) + current_xp (cf. EnrichFromMetadata).
+	var completed int
+	if err := db.QueryRow(`SELECT COALESCE(SUM(xp_required),0) FROM career_ranks WHERE rank_id < ?`, 2).
+		Scan(&completed); err != nil {
+		t.Fatalf("requête SUM xp_required: %v", err)
+	}
+	if completed != 1000 {
+		t.Errorf("SUM(xp_required < 2) = %d, want 1000", completed)
+	}
+
+	// Requête LoadCareerRankImageURLs (large_icon_path) — doit binder + retourner l/2.png.
+	var img sql.NullString
+	if err := db.QueryRow(`SELECT COALESCE(NULLIF(TRIM(large_icon_path),''), NULLIF(TRIM(icon_path),''))
+		FROM career_ranks WHERE rank_id = ?`, 2).Scan(&img); err != nil {
+		t.Fatalf("requête LoadCareerRankImageURLs incompatible: %v", err)
+	}
+	if !img.Valid || img.String != "l/2.png" {
+		t.Errorf("image_path=%v, want l/2.png", img)
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SeedCitationMappings
 // ─────────────────────────────────────────────────────────────────────────────
