@@ -50094,3 +50094,17 @@ Point indiqué par un collègue (commentaire `ep/sum_factor.go:10`) : le sum-fac
 **Re-validation (replay --reset)** : ordre/tiers conformes aux cibles — Madina Diamant II/III, Choco+JGtm Or, Daemon Bronze. Effet modéré (full-match → w≈1).
 
 **Reste (différé, "ensuite")** : re-exécuter le backfill canonical (`cmd/lusr_v2_canonical_backfill`) pour propager les nouveaux ratings v2 dans match_skill_rank (l'actuel porte encore les valeurs pré-pondération). Possible recalibration μ→legacy si on veut la granularité v2 visible sur l'échelle UI.
+
+---
+
+## [2026-05-29] Re-backfill canonical LUSR v2 (avec pondération temps-joué)
+
+**Statut** : Complété (le "backfill différé").
+
+Après le branchement de la pondération TS2, re-exécution de `cmd/lusr_v2_canonical_backfill --commit` pour propager les nouveaux ratings v2 pondérés dans match_skill_rank. Backup préalable des player DBs : `data/backups/lusr_canonical_pre_reweight_2026-05-29/`.
+
+**Résultat** : 901 matchs écrits (Madina 730, JGtm 165, Choco 6, Daemon 0). Vue _latest LUSR peuplée (390/727 matchs). Legacy inchangé à l'affichage (Madina 1513.5 / JGtm 1590.1 Gold — compression μ→legacy ; la pondération a bougé μ légèrement, ex Madina slayer 26.10→26.17, mais le mapping arrondit au même rating legacy).
+
+**Note (dette légère)** : match_skill_rank a accumulé les lignes des 2 runs de backfill (pre + post pondération) — LUSR_V2 rows doublées (Madina 1448). La vue _latest prend la plus récente (written_at) → correct, mais lignes superseded présentes. Cleanup optionnel : `DELETE FROM match_skill_rank WHERE id NOT IN (SELECT id FROM match_skill_rank_latest)` (ou garder, append-only par design).
+
+**CLI committée** : `cmd/lusr_v2_canonical_backfill` (dry-run par défaut + --commit, --data-root).
