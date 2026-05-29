@@ -463,3 +463,25 @@ Objectif : distinguer le vrai code mort du WIP. Verdict :
 | Unlisted / unused deps | **0 / 0** |
 | Unused files | **29** (gardés volontairement) |
 | Unused exports / types | **87 / 83** (gelés sous ratchet) |
+
+---
+
+## ✅ RÉSOLUTION phase 2ter — 2026-05-29 (investigation des ~73 fonctions/valeurs non-queries)
+
+Passage au crible 1-par-1 des exports restants (fonctions/valeurs hors hooks `queries.ts` déjà traités). Méthode : occurrence intra-fichier (occ) + commit d'origine + lecture ciblée.
+
+**Verdict : 0 suppression sûre à haute valeur.** Contrairement aux hooks (2 superseded retirés), ce lot est entièrement de la surface intentionnelle ou du WIP — aucun « random dead code ».
+
+| Catégorie | Exemples | Décision |
+|---|---|---|
+| **Sur-exports** (occ ≥ 2, utilisés dans leur propre fichier) | `MatchVsStatCard` (via `MatchSummaryCardsSection`), `formatRank`, `useAddFriend`, `watcherKeys`, normalizers i18n | garder (retirer `export` = churn zéro-valeur, comme les types) |
+| **Barrels vivants** | `prestige/hooks.ts` (Ascension importe `useChallenges`/`useArcs`/`useMyPrestige`), `FilterOmnibar` | garder (supprimer casserait des imports) |
+| **API publique / barrels** | `lib/accessibility/index.ts`, `scales/index.ts`, `formatters/index.ts`, drawers | garder |
+| **Testé** | `formatPercentValue` (couvert par `percent.test.ts`) | garder |
+| **Primitive UI** | `CardFooter` (set Card/Header/Content/Footer) | garder |
+| **WIP partiellement câblé** | `MatchStatCards` C3/C4/C5 (C7 `MatchSummaryCardsSection` vivant), `fieldMappings` hooks (multi-titre Phase D), hooks `accessibility` | garder |
+| **Compat / helper marginal** | `OUTCOME_COLORS`, `getPerfColorLevel`, `formatScore` | garder (valeur infime, fichiers vivants) |
+
+**Near-miss notable** : `prestige/hooks.ts` ressemblait au « barrel legacy supprimable » — mais `grep` a montré que `AscensionRealisationsTab`/`AscensionProfileTab` en importent `useChallenges`/`useArcs`/`useMyPrestige`. knip ne flaggait que le **sous-ensemble** non importé de ses re-exports. Le supprimer aurait cassé Ascension → illustration concrète de pourquoi `grep` avant suppression est obligatoire.
+
+**Conséquence** : le ratchet (87 / 83) est la bonne réponse — il fige cette surface intentionnelle et bloque toute *nouvelle* régression, sans churn risqué sur du code vivant/WIP.
