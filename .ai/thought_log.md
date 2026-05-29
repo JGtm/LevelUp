@@ -1,3 +1,24 @@
+## [2026-05-29] chore: Cleanup knip P0-P3 (vérif routing avant suppression)
+
+**Statut** : Complété (branche `chore/knip-cleanup-p0-p3`)
+
+**Contexte** : suite à l'audit `.ai/AUDIT_KNIP_2026-05-28.md`, traiter P0→P3 en autonomie. Consigne forte de l'utilisateur : **vérifier le câblage des pages avant tout nettoyage** ; garder `session-compare` (travail en cours).
+
+**Décisions techniques majeures** :
+- **Méthode** : pour chaque orphelin knip, cartographier le routing TanStack (`src/routes/`) + nav (`shellNavigation.ts`) et confirmer l'existence (ou non) d'un remplaçant actif AVANT suppression. knip seul ne suffit pas — l'utilisateur a raison de demander vérif (cf. session-compare = WIP, pas mort).
+- **P0** : `zod` figé `^4.4.3` (runtime déjà en 4.3.6 hoisté ; v4 alignée, pas v3 malgré TanStack Router interne en v3).
+- **P3** : `types.ts` (OpenAPI) ignoré dans knip + faux positifs deps (`tailwindcss`, `@tailwindcss/typography` via `@plugin` CSS, `@iarna/toml`). Les 90 unused exports = backlog itératif (hors scope).
+- **Suppressions (5, confirmées mortes avec remplaçant)** : `CareerCitationsTab` (→ `CitationsPage`), `AppShellHeader`+`PlayerScopeNav` (→ `NavL1`), `KPIBar` (→ `NavL2`), `careerPageStore` (orphelin). `CareerHubPage` documente explicitement « citations ont leur page dédiée » → validation de l'intuition utilisateur.
+- **Gardés (WIP/intention)** : session-compare (demande explicite), squad/v2 pages (v1 active ; mais `squad/v2/types.ts`+`SquadEngagementView` vivants → pas de `rm` dossier), SynthesisCombatProfileSection (PLAN), ChallengesCarousel, prefetch.ts, feature-flags.ts, App.tsx (« conserve pour reference »), i18n générés, charts isolés sans remplaçant identifié.
+- **Hors scope** : `@tanstack/react-query-devtools` (vraie dep inutilisée = P5), doublons P4.
+
+**Résultats observés** :
+- `tsc -b` ✅ + `vite build` ✅ (1.22s) — zéro régression après suppression.
+- knip : unlisted deps 5→0, unused devDeps 2→0, unused deps 2→1, unused files 40→35.
+- Migration toolchain : lefthook mange les quotes inline → logique des hooks déportée en `scripts/git-hooks/lefthook/*.sh` (corrigé pendant ce travail).
+
+**Conclusion** : cleanup conservateur livré. Prochaine étape possible : décider du sort de squad/v2 + charts isolés (confirmer leftover vs recâblage), puis attaquer les 90 unused exports en itératif.
+
 ## [2026-05-28] toolchain: Installation top 3 outils + migration pre-commit → lefthook
 
 **Statut** : Complété
