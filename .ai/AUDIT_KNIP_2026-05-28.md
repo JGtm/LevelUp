@@ -380,3 +380,50 @@ export default config
 | Unused devDeps | 2 | **0** |
 | Unused deps | 2 | **1** (react-query-devtools, P5) |
 | Unused files | 40 | **35** (= set « gardé » ci-dessus) |
+
+---
+
+## ✅ RÉSOLUTION phase 2 — 2026-05-29 (charts isolés + quick wins + dette lint)
+
+> Traitement des items « reste hors scope + charts isolés ». Même méthode : vérif page parente avant suppression. `tsc -b` ✓ + `vite build` ✓ + 3 linters custom ✓.
+
+### Charts isolés — 6 supprimés (leftovers confirmés, remplaçant actif vérifié)
+
+| Chart supprimé | Remplaçant actif |
+|---|---|
+| `ascension/StreakBadge` | `StreakDashboard` (AscensionRealisationsTab) |
+| `career/CareerLusrCards` | `CareerRankingBlock` + `CareerChartsSection` |
+| `home/HomeOutcomeBar` | `OutcomeSequenceTape` (HomePage) |
+| `squad/WinRateVsHistoryChart` | `WinRateVsHistoryBulletChart` (SquadSynergiesPage) |
+| `timeseries/TimeseriesCorrelationScatter` | retiré au rework timeseries (zéro import) |
+| `timeseries/TimeseriesOutcomesOverTime` | idem |
+
+`git log` confirme : tous issus d'anciens commits de feature, orphelinisés par refontes — aucun n'est du WIP récent.
+
+### Quick wins
+
+- **P4 doublons** : `MatchNavigation` (alias rétrocompat, migration vers `MatchNavigationBar` terminée) supprimé. `formatKDA` **gardé** — alias domaine de `formatRatio` réellement utilisé (`PalmaresRelationsPage` + tests) ; le flag knip « duplicate » est informatif.
+- **react-query-devtools** : **câblé** en dev-only dans `app/providers` plutôt que supprimé (dep « inutilisée » → outil dev utile, tree-shaké en prod). Résout le dernier *unused dependency*.
+
+### Dette lint pré-existante — résolue
+
+- **cross-feature 11 → 0** : 8 paires durables (pattern agrégateur, cohérent avec le précédent de l'allowlist) ajoutées à `ALLOWED_CROSS_IMPORTS` (`auth/onboarding=>setup`, `home=>ascension`, `explorer=>home`, `squad=>timeseries`, `synthesis=>filters/explorer`, `timeseries=>career`).
+- **faux positif CSR/LUSR** : `lint-no-hardcoded-fields.mjs` étendu pour skip les opérations de collection (`.has`/`.includes`/`.get('X')`), comme il skippait déjà `=== 'X'`. Fix général.
+
+### knip config
+
+Minimisée : entries auto-détectées par les plugins knip (Vite/Playwright/ESLint), ignores redondants (`routeTree.gen.ts`, `jsdom`, `globals`) retirés. Reste : `ignore` [generated.ts, types.ts] + `ignoreDependencies` [tailwindcss, @tailwindcss/typography, @iarna/toml].
+
+### Délibérément NON traité (backlog itératif)
+
+- **89 unused exports + 83 unused exported types** : dispersés dans des fichiers **vivants** (hooks `queries.ts`, normalizers i18n, sous-composants `MatchStatCards`…). Suppression non automatisable sans risque : (1) édite des fichiers vivants, (2) beaucoup peuvent être du WIP construit en avance (hooks queries). À traiter par **lots vérifiés** (ex. « hooks queries orphelins » en un lot, en confirmant chacun). knip reste advisory (hors gate pre-push).
+- Orphelins gardés (cf. phase 1 + WIP utilisateur) : squad/v2 pages, SynthesisCombatProfileSection, ChallengesCarousel, prefetch, feature-flags, App.tsx, i18n générés, session-compare.
+
+### Baseline knip final
+
+| Catégorie | Après phase 2 |
+|---|---|
+| Unlisted deps | **0** |
+| Unused deps | **0** (react-query-devtools câblé) |
+| Unused files | **29** (orphelins gardés volontairement) |
+| Unused exports / types | 89 / 83 (backlog itératif) |
