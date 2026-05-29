@@ -23,6 +23,10 @@ func setupCatalogRepoDB(t *testing.T) *sql.DB {
 	if err := migration.RunForDB(db, migration.TargetMetadata); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	// La migration seed_ranked_playlists_catalog pré-remplit playlists_catalog
+	// avec les playlists ranked réelles HI. On repart d'un catalogue vide pour
+	// que les comptages des tests portent uniquement sur le jeu seedé ci-dessous.
+	db.Exec(`DELETE FROM playlists_catalog`)
 	// Seed.
 	db.Exec(`INSERT INTO playlists_catalog (title_slug, playlist_asset_id, name_canonical, experience, is_ranked, is_active)
 	         VALUES ('halo_infinite', 'pl-1', 'Quick Play', 'social', FALSE, TRUE)`)

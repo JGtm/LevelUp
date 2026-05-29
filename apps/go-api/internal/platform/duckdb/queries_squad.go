@@ -83,7 +83,7 @@ SELECT
     COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.map_name, '')                                     AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
-    COALESCE(r.pair_name_fr, r.pair_name, '')                    AS pair_name,
+    COALESCE(r.pair_name, '')                                    AS pair_name,
     COALESCE(r.playlist_name_fr, r.playlist_name, '')            AS playlist_name,
     COALESCE(r.is_firefight, FALSE)                              AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                                 AS is_ranked,
@@ -142,7 +142,7 @@ SELECT
     COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.map_name, '')                                     AS map_name,
     COALESCE(r.map_name_fr, r.map_name, '')                      AS map_ui,
-    COALESCE(r.pair_name_fr, r.pair_name, '')                    AS pair_name,
+    COALESCE(r.pair_name, '')                                    AS pair_name,
     COALESCE(r.playlist_name_fr, r.playlist_name, '')            AS playlist_name,
     COALESCE(r.is_firefight, FALSE)                              AS is_firefight,
     COALESCE(r.is_ranked, FALSE)                                 AS is_ranked,
@@ -181,7 +181,12 @@ SELECT
     CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
     CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
     COALESCE(r.map_id, '')                                               AS map_id,
-    COALESCE(r.playlist_id, '')                                          AS playlist_id
+    COALESCE(r.playlist_id, '')                                          AS playlist_id,
+    -- pair_name_fr brut + pair_id : alimentent la cascade canonique de
+    -- résolution du mode FR (asset_translations[pair] + mode_name_tr), comme
+    -- l'historique des matchs. Sans eux, un pair_name=UUID fuirait à l'UI.
+    COALESCE(r.pair_name_fr, '')                                         AS pair_name_fr,
+    COALESCE(r.pair_id, '')                                              AS pair_id
 FROM match_participants p1
 JOIN v_match_full r ON r.match_id = p1.match_id
 JOIN match_participants p2

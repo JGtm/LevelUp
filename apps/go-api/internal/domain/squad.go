@@ -27,11 +27,19 @@ type TopTeammateRow struct {
 
 // SquadMatchRow est une ligne brute chargée depuis Q30 (matchs communs avec coéquipier).
 type SquadMatchRow struct {
-	MatchID         string
-	StartTime       time.Time
-	MapName         string
-	MapUI           string
-	PairName        string
+	MatchID   string
+	StartTime time.Time
+	MapName   string
+	MapUI     string
+	// PairName : libellé EN brut du mode depuis match_registry (peut être un
+	// UUID si la metadata n'a pas de traduction — résolu via la cascade
+	// canonique analysis.ResolvePairNameFR, cf. buildSquadMatchHistory).
+	PairName string
+	// PairNameFR : pair_name_fr depuis match_registry (NULL/'' fréquent → la
+	// cascade FR le re-résout via asset_translations[pair_id] + mode_name_tr).
+	PairNameFR string
+	// PairID : UUID de la paire mode/map (clé de résolution asset_translations).
+	PairID          string
 	PlaylistName    string
 	IsFirefight     bool
 	IsRanked        bool
