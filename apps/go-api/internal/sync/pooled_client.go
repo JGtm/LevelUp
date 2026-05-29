@@ -216,5 +216,21 @@ func (pc *PooledHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID st
 	return result, err
 }
 
+// GetPlaylistCsr implémente HaloClient.GetPlaylistCsr() avec PolicyAnyPublic.
+// Endpoint public (service token) — pas besoin du token pinned joueur.
+func (pc *PooledHaloClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid, seasonID string) (*PlayerPlaylistCSR, error) {
+	lease, err := pc.p.Acquire(ctx, pool.PolicyAnyPublic, "")
+	if err != nil {
+		slog.DebugContext(ctx, "pooled: GetPlaylistCsr skipped (token unavailable)", "xuid", xuid, "err", err)
+		return nil, nil
+	}
+	defer lease.Release()
+
+	client := pc.newAPIClient(lease)
+	result, err := client.GetPlaylistCsr(ctx, playlistID, xuid, seasonID)
+	pc.notifyPoolOnHTTPError(err)
+	return result, err
+}
+
 // Vérifier que PooledHaloClient implémente l'interface HaloClient.
 var _ HaloClient = (*PooledHaloClient)(nil)

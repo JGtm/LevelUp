@@ -15,6 +15,7 @@ import (
 	"time"
 	"unicode"
 
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -199,10 +200,18 @@ func syncPlayerCSRs(
 	if strings.TrimSpace(seasonID) == "" {
 		return nil, nil
 	}
+	// 1. Player-level : playlists classées ENGAGÉES (comportement historique).
 	csrs, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
 	if err != nil {
-		return nil, fmt.Errorf("syncPlayerCSRs fetch: %w", err)
+		// Best-effort : on bascule sur le fetch par-playlist (mécanisme Grunt) qui
+		// couvre de toute façon les playlists classées actives.
+		slog.WarnContext(ctx, "syncPlayerCSRs: GetPlayerCSRs échoué, fallback per-playlist", "err", err)
+		csrs = nil
 	}
+	// 2. Compléter avec les playlists classées ACTIVES manquantes via l'endpoint
+	//    par-playlist (/hi/playlist/{id}/csrs) — garantit la couverture de toutes
+	//    les playlists classées de la saison sans dériver de l'historique.
+	csrs = augmentWithActiveRankedCSRs(ctx, client, xuid, seasonID, csrs)
 	if len(csrs) == 0 {
 		return nil, nil
 	}
@@ -210,6 +219,45 @@ func syncPlayerCSRs(
 		return nil, err
 	}
 	return csrs, nil
+}
+
+// augmentWithActiveRankedCSRs ajoute à csrs les playlists classées ACTIVES
+// (référence rankedplaylists) absentes du player-level, en interrogeant
+// l'endpoint par-playlist (Grunt Skill.GetPlaylistCsr). Nom/queue/input viennent
+// de la référence. Best-effort par playlist : une erreur n'interrompt pas.
+//
+// Les playlists pour lesquelles l'API ne renvoie aucune entrée (jamais jouées)
+// sont volontairement ignorées : la lecture catalogue-first (GetCSRSnapshots)
+// synthétise alors une ligne "Non classé" cohérente avec le seuil de la saison.
+func augmentWithActiveRankedCSRs(
+	ctx context.Context,
+	client HaloClient,
+	xuid, seasonID string,
+	csrs []PlayerPlaylistCSR,
+) []PlayerPlaylistCSR {
+	seen := make(map[string]struct{}, len(csrs))
+	for _, c := range csrs {
+		seen[strings.ToLower(strings.TrimSpace(c.PlaylistID))] = struct{}{}
+	}
+	for _, pl := range rankedplaylists.Active() {
+		if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
+			continue
+		}
+		res, err := client.GetPlaylistCsr(ctx, pl.AssetID, xuid, seasonID)
+		if err != nil {
+			slog.WarnContext(ctx, "augmentWithActiveRankedCSRs: GetPlaylistCsr échoué",
+				"playlist", pl.AssetID, "err", err)
+			continue
+		}
+		if res == nil {
+			continue // pas d'entrée → catalogue-first affichera "Non classé"
+		}
+		res.PlaylistName = pl.NameEN
+		res.Queue = pl.Queue
+		res.Input = pl.Input
+		csrs = append(csrs, *res)
+	}
+	return csrs
 }
 
 // seedPlaylistsCatalog insère les playlists ranked découvertes via l'API CSR
@@ -227,12 +275,20 @@ func seedPlaylistsCatalog(ctx context.Context, metaDB *sql.DB, csrs []PlayerPlay
 		if name == "" || isUUIDLike(name) {
 			name = id
 		}
+		// DO UPDATE (et non DO NOTHING) : ces playlists viennent de l'API CSR
+		// Waypoint, elles sont donc classées par définition. Forcer is_ranked=TRUE
+		// + experience='ranked' corrige toute ligne précédemment marquée FALSE
+		// (bug récurrent). is_active/name ne sont pas écrasés ici — la référence
+		// rankedplaylists (seed migration) en est la source de vérité.
 		res, err := metaDB.ExecContext(ctx, `
 			INSERT INTO playlists_catalog
 			  (title_slug, playlist_asset_id, current_version_id, name_canonical,
 			   experience, is_ranked, is_active, first_seen_at, last_seen_at)
 			VALUES (?, ?, '', ?, 'ranked', TRUE, TRUE, ?, ?)
-			ON CONFLICT (title_slug, playlist_asset_id) DO NOTHING`,
+			ON CONFLICT (title_slug, playlist_asset_id) DO UPDATE SET
+			  experience = 'ranked',
+			  is_ranked  = TRUE,
+			  last_seen_at = excluded.last_seen_at`,
 			titleSlug, id, name, now, now,
 		)
 		if err != nil {

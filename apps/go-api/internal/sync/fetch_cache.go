@@ -81,6 +81,10 @@ func (c *cachedHaloClient) GetPlayerCSRs(ctx context.Context, xuid, seasonID str
 	return c.inner.GetPlayerCSRs(ctx, xuid, seasonID)
 }
 
+func (c *cachedHaloClient) GetPlaylistCsr(ctx context.Context, playlistID, xuid, seasonID string) (*PlayerPlaylistCSR, error) {
+	return c.inner.GetPlaylistCsr(ctx, playlistID, xuid, seasonID)
+}
+
 // ─── Cachés ───────────────────────────────────────────────────────────────
 
 // GetMatchStats : check cache → si miss, call API + write cache.
