@@ -68,9 +68,7 @@ pre-push:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/golangci-lint.sh
 
-    go-test-short:
-      glob: "apps/go-api/**/*.go"
-      run: bash scripts/git-hooks/lefthook/go-test-short.sh
+    # go-test-short: retiré du pre-push (trop lent, couvert par CI)
 
     govulncheck:
       glob: "apps/go-api/**/*.go"
