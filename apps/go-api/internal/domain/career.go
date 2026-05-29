@@ -163,10 +163,23 @@ type CareerPlaylistCSR struct {
 	AllTime      CareerCSRRank `json:"all_time"`
 }
 
+// CSRSeasonOption décrit une saison CSR sélectionnable dans le menu déroulant
+// "Classements" (page Carrière). Une saison apparaît si le joueur y a des
+// données classées (snapshot CSR), plus la saison courante.
+type CSRSeasonOption struct {
+	SeasonID  string `json:"season_id"`            // ex: "CsrSeason13-1"
+	Label     string `json:"label"`               // ex: "Saison 13" (FR)
+	IsCurrent bool   `json:"is_current,omitempty"` // saison active du jour
+}
+
 // CareerCSRResponse est la réponse de GET /pages/career/csrs.
+// SeasonID = saison effectivement retournée (sélectionnée ou courante par défaut).
+// AvailableSeasons = saisons proposables dans le menu (CSR uniquement ; LUSR est
+// cumulatif, hors saison).
 type CareerCSRResponse struct {
-	Playlists []CareerPlaylistCSR `json:"playlists"`
-	SeasonID  string              `json:"season_id"`
+	Playlists        []CareerPlaylistCSR `json:"playlists"`
+	SeasonID         string              `json:"season_id"`
+	AvailableSeasons []CSRSeasonOption   `json:"available_seasons"`
 }
 
 // TopMatchDTO représente un match dans le top/pire performance.

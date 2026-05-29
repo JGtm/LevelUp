@@ -287,7 +287,7 @@ func TestDTOs_NoNilSlicesOnEmptyInput(t *testing.T) {
 
 	t.Run("CareerService.GetCareerCSRs", func(t *testing.T) {
 		svc := NewCareerService(&mockCareerRepo{})
-		resp, err := svc.GetCareerCSRs(context.Background())
+		resp, err := svc.GetCareerCSRs(context.Background(), "")
 		if err != nil {
 			t.Fatalf("error: %v", err)
 		}

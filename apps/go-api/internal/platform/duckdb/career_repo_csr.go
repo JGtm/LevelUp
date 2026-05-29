@@ -23,11 +23,17 @@ import (
 // liste. Dégradation : si le catalogue est vide/indisponible → snapshots seuls.
 //
 // Retourne slice vide (pas d'erreur) si ni snapshots ni catalogue ne sont disponibles.
-func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlaylistCSR, error) {
+func (r *CareerRepo) GetCSRSnapshots(ctx context.Context, seasonID string) ([]domain.CareerPlaylistCSR, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	snapshots, err := r.loadCSRSnapshotRows(ctx)
+	// seasonID vide → saison courante configurée.
+	effectiveSeason := strings.TrimSpace(seasonID)
+	if effectiveSeason == "" {
+		effectiveSeason = r.currentCSRSID
+	}
+
+	snapshots, err := r.loadCSRSnapshotRows(ctx, effectiveSeason)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +60,7 @@ func (r *CareerRepo) GetCSRSnapshots(ctx context.Context) ([]domain.CareerPlayli
 		if snap, ok := snapshotIdx[c.playlistID]; ok {
 			out = append(out, snap)
 		} else {
-			threshold := r.csrThreshold(r.currentCSRSID)
+			threshold := r.csrThreshold(effectiveSeason)
 			out = append(out, newPlacementPlaylistCSR(c.playlistID, c.name, threshold))
 		}
 	}
@@ -106,8 +112,8 @@ func (r *CareerRepo) enrichCSRPlaylistNames(ctx context.Context, playlists []dom
 
 // loadCSRSnapshotRows lit player_csr_snapshots (logique historique). Retourne
 // nil sans erreur si la table n'existe pas (joueur jamais syncé pour CSR).
-func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context) ([]domain.CareerPlaylistCSR, error) {
-	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrSnapshots)
+func (r *CareerRepo) loadCSRSnapshotRows(ctx context.Context, seasonID string) ([]domain.CareerPlaylistCSR, error) {
+	rows, err := r.pdb.ReadDB().Query(ctx, Q26csrSnapshots, seasonID, seasonID)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil

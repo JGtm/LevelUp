@@ -276,7 +276,7 @@ func TestE2EPipeline_CareerCSRs_MergeCatalogPlusSnapshots(t *testing.T) {
 	seedCSRSnapshot(t, env, "pl-slayer", "Ranked Slayer", "CsrSeason13-1", 0, "", 0, 2, 0)
 	// pl-doubles : pas joué → doit ressortir comme placement synthétique 0/5
 
-	playlists, err := env.careerRepo.GetCSRSnapshots(context.Background())
+	playlists, err := env.careerRepo.GetCSRSnapshots(context.Background(), "")
 	if err != nil {
 		t.Fatalf("GetCSRSnapshots: %v", err)
 	}

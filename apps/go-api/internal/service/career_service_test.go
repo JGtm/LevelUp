@@ -67,7 +67,10 @@ func (m *mockCareerRepo) GetTopEncountersGlobal(_ context.Context, exclude []str
 func (m *mockCareerRepo) GetRivals(_ context.Context) ([]domain.CareerRivalRawRow, []domain.CareerRivalRawRow, error) {
 	return m.rivalsNemeses, m.rivalsVictims, m.rivalsErr
 }
-func (m *mockCareerRepo) GetCSRSnapshots(_ context.Context) ([]domain.CareerPlaylistCSR, error) {
+func (m *mockCareerRepo) GetCSRSnapshots(_ context.Context, _ string) ([]domain.CareerPlaylistCSR, error) {
+	return nil, nil
+}
+func (m *mockCareerRepo) AvailableCSRSeasons(_ context.Context) ([]domain.CSRSeasonOption, error) {
 	return nil, nil
 }
 func (m *mockCareerRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {

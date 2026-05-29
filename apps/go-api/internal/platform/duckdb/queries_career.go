@@ -542,7 +542,11 @@ WHERE mp.match_id IN (
 )
 ORDER BY mp.match_id, mp.xuid`
 
-// Q26csrSnapshots : récupère tous les snapshots CSR du joueur.
+// Q26csrSnapshots : récupère les snapshots CSR du joueur pour la saison courante.
+// Le filtre season_id évite qu'un snapshot d'une saison passée (même playlist)
+// supplante la valeur courante dans l'index par playlist_id. Garde-fou : si le
+// paramètre saison est vide (config absente), aucun filtre n'est appliqué —
+// comportement historique préservé.
 // Triés par alltime_value DESC pour avoir les meilleures playlists en premier.
 const Q26csrSnapshots = `
 SELECT
@@ -562,6 +566,7 @@ SELECT
     COALESCE(alltime_tier, ''),
     COALESCE(alltime_sub_tier, 0)
 FROM player_csr_snapshots_latest
+WHERE (? = '' OR season_id = ?)
 ORDER BY alltime_value DESC, current_value DESC`
 
 // QPlaylistsCatalogRanked : liste les playlists ranked actives du catalogue
@@ -569,14 +574,17 @@ ORDER BY alltime_value DESC, current_value DESC`
 // afficher toutes les playlists classées du joueur, y compris celles sans
 // snapshot dans player_csr_snapshots (placement à 0 match joué).
 //
-// Double signal : is_ranked=TRUE (catalog bien renseigné) OU nom contenant
-// "ranked" (fallback quand le catalog a is_ranked=FALSE par erreur d'ingest).
+// is_ranked est désormais fiable : le seed migration "seed_ranked_playlists_catalog"
+// le force depuis la référence rankedplaylists (source de vérité), et tous les
+// chemins d'écriture s'y conforment. Le hack historique STRPOS(name,'ranked') —
+// qui ne rattrapait que les playlists dont le nom contenait littéralement
+// "ranked" — est supprimé.
 const QPlaylistsCatalogRanked = `
 SELECT playlist_asset_id, COALESCE(name_canonical, '')
 FROM playlists_catalog
 WHERE title_slug = ?
   AND is_active = TRUE
-  AND (is_ranked = TRUE OR STRPOS(LOWER(COALESCE(name_canonical, '')), 'ranked') > 0)
+  AND is_ranked = TRUE
 ORDER BY name_canonical`
 
 // Q26csrAlltimePeak : récupère le meilleur CSR alltime toutes playlists confondues.

@@ -102,10 +102,13 @@ export function useCareerRivals(playerSlug: string) {
   })
 }
 
-export function useCareerCSRs(playerSlug: string) {
+export function useCareerCSRs(playerSlug: string, season?: string) {
   return useQuery({
-    queryKey: queryKeys.careerCSRs(playerSlug),
-    queryFn: () => api.get<CareerCSRResponse>(`/players/${playerSlug}/pages/career/csrs`),
+    queryKey: queryKeys.careerCSRs(playerSlug, season),
+    queryFn: () =>
+      api.get<CareerCSRResponse>(
+        `/players/${playerSlug}/pages/career/csrs${season ? `?season=${encodeURIComponent(season)}` : ''}`,
+      ),
     enabled: !!playerSlug,
     staleTime: 10 * 60 * 1000,
   })

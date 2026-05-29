@@ -905,9 +905,19 @@ export interface CareerPlaylistCSR {
   all_time: CareerCSRRank
 }
 
+/** Saison CSR sélectionnable dans le menu "Classements" (page Carrière).
+ *  Une saison apparaît si le joueur y a des données classées + la saison courante. */
+export interface CSRSeasonOption {
+  season_id: string
+  label: string
+  is_current?: boolean
+}
+
 export interface CareerCSRResponse {
   playlists: CareerPlaylistCSR[]
   season_id: string
+  /** Saisons proposables dans le menu déroulant (CSR uniquement ; LUSR est cumulatif). */
+  available_seasons: CSRSeasonOption[]
 }
 
 // ---------------------------------------------------------------------------
