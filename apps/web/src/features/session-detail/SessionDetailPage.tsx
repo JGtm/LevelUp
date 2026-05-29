@@ -30,6 +30,9 @@ import { SessionOutcomeTape } from './SessionOutcomeTape'
 import { SessionKillsDonut } from './SessionKillsDonut'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionFdaBars } from './SessionFdaBars'
+import { SessionFdaRadar } from './SessionFdaRadar'
+import { SessionOcdrScatter } from './SessionOcdrScatter'
+import { SessionEngagementOptions } from './SessionEngagementOptions'
 import { SessionCompareMetrics } from './SessionCompareMetrics'
 import { SessionCompareKillsDonut } from '../session-compare/SessionCompareKillsDonut'
 import { SessionCompareOutcomeTape } from '../session-compare/SessionCompareOutcomeTape'
@@ -197,11 +200,7 @@ export function SessionDetailPage() {
             </div>
 
             <div className="grid gap-6 xl:grid-cols-2">
-              <SessionFdaBars
-                title={t('session.detail.chart_fda_per_game_title')}
-                matches={data.matches}
-                mode="game"
-              />
+              <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={data.matches} />
               <SessionFdaBars
                 title={t('session.detail.chart_fda_per_minute_title')}
                 matches={data.matches}
@@ -230,39 +229,9 @@ export function SessionDetailPage() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-6 xl:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{t('session.compare.ocdr_title')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SessionCompareOCDR
-                    sessionA={data.current_session}
-                    sessionB={null}
-                    labels={{ title: t('session.compare.ocdr_title'), empty: t('session.compare.ocdr_empty') }}
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">{t('session.compare.engagement_title')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SessionCompareEngagement
-                    sessionA={data.current_session}
-                    sessionB={null}
-                    labels={{
-                      title: '',
-                      progressionTitle: '',
-                      sessionA: selectedSessionLabel,
-                      sessionB: '',
-                      empty: t('session.compare.engagement_empty'),
-                    }}
-                    height={220}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            <SessionOcdrScatter title={t('session.compare.ocdr_title')} matches={data.matches} />
+
+            <SessionEngagementOptions entry={data.current_session} />
 
             <Card>
               <CardHeader>
