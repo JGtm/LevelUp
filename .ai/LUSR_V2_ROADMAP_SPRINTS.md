@@ -79,6 +79,35 @@ Pour basculer en prod cette semaine (Sprint Final), dans l'ordre :
   win-prob plausible) — se font après la bascule en observant les vraies données.
 - Nettoyage code v1 (`batchComputeLUSR`) — étape F.9, après ≥7j stables.
 
+#### 🆕 Découvert pendant l'onboarding clone-frais (2026-05-29, post-prod)
+
+> Surfacé en simulant un clone frais (`cmd/server/boot_dirs_test.go`). Non bloquant
+> tant que LUSR v2 n'est pas en prod. À traiter quand on bascule.
+
+- [ ] **Fix ordre migration `shared_seed_tier_boundaries_v2`** — sur DB vierge, le seed
+  (statique : Bronze..Onyx hardcodés) s'exécute AVANT `shared_create_skill_v2_tables`
+  car l'ordre = ordre alphabétique des fichiers et `..._seed_tier_boundaries_v2.go`
+  ("seed") trie avant `..._skill_v2.go` ("skill"). Résultat : WARN
+  `Table lusr_hyperparams_v2 does not exist` et seuils tier **non seedés** au boot.
+  Ce seed **doit tourner immédiatement** (pas gated sur des matchs) — sinon l'affichage
+  des tiers est cassé dès le 1er match. Fix recommandé : co-localiser le seed dans le
+  `ApplyBackfill` de `shared_create_skill_v2_tables` (table + seed atomiques), ou renommer
+  le fichier seed pour qu'il trie après `..._skill_v2.go`. Garde-rail : ajouter un cas au
+  test de boot clone-frais vérifiant que `lusr_hyperparams_v2` contient les 6×4 seuils
+  après migrations.
+
+- [ ] **Ré-estimation empirique auto en post-sync** (≠ du seed statique ci-dessus) — les
+  hyperparams *empiriques* (`ttt_tau_empirical`, `kill_mean_empirical`,
+  `death_mean_empirical`, `draw_probability_empirical`), aujourd'hui calculés à la main via
+  `cmd/lusr_v2_ttt_batch`, devraient se relancer automatiquement une fois un corpus de
+  matchs suffisant atteint. Le runtime retombe proprement sur les défauts quand ils sont
+  absents (`skill_v2/hyperparams_load.go`) → non bloquant. Pistes : extraire la logique
+  de `cmd/lusr_v2_ttt_batch` vers `internal/` (un cmd n'est pas importable), brancher dans
+  le `PostSyncRunner` (cf. `internal/api/post_sync_*.go`), déclencher au franchissement
+  d'un seuil de matchs. ⚠️ Seuil : "10 matchs" (idée initiale) est **trop bas** pour une
+  estimation bayésienne stable — viser plutôt quelques centaines, et décider une fois
+  (au franchissement) vs périodique (ex. tous les N matchs).
+
 ---
 
 ## Sprint 1.A — Probabilité de victoire prédite
