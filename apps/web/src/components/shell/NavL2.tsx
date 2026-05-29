@@ -17,6 +17,7 @@ import { PeriodSessionRail } from './PeriodSessionRail'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
+import { isCommunityPath } from './shellNavigation'
 
 // ─── Sous-onglets de la section Carrière ──────────────────────────────────────
 
@@ -26,9 +27,18 @@ const CAREER_TABS = [
   { label: 'Pass saisonnier', path: '/players/$playerSlug/career/season-pass' },
 ] as const
 
+// Communauté : aligné sur le dropdown L1 (NavL1 section 'community'). Face-à-face
+// pointe vers /compare (hors /palmares), d'où des chemins absolus par onglet.
+const COMMUNITY_TABS = [
+  { label: 'Classements', path: '/players/$playerSlug/palmares' },
+  { label: 'Relations', path: '/players/$playerSlug/palmares/relations' },
+  { label: 'Face-à-face', path: '/players/$playerSlug/compare' },
+  { label: 'Leaderboard PP', path: '/players/$playerSlug/palmares/prestige' },
+] as const
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type ActiveSection = 'stats' | 'squad' | 'career' | null
+type ActiveSection = 'stats' | 'squad' | 'career' | 'community' | null
 
 // Routes _personal : PersonalStatsLayout gère sa propre barre de filtres.
 const PERSONAL_STATS_RE = /\/players\/[^/]+\/stats\/(summary|maps-modes|distributions|progression|advanced)/
@@ -38,7 +48,52 @@ function detectSection(pathname: string): ActiveSection {
   if (/\/players\/[^/]+\/stats\//.test(pathname)) return 'stats'
   if (/\/players\/[^/]+\/squad/.test(pathname)) return 'squad'
   if (/\/players\/[^/]+\/(career|citations)/.test(pathname)) return 'career'
+  if (isCommunityPath(pathname)) return 'community'
   return null
+}
+
+// ─── Barre d'onglets réutilisable (sticky, soulignée) ─────────────────────────
+
+function NavTabBar({
+  tabs,
+  pathname,
+  resolvePath,
+  ariaLabel,
+}: {
+  tabs: readonly { readonly label: string; readonly path: string }[]
+  pathname: string
+  resolvePath: (tpl: string) => string
+  ariaLabel: string
+}) {
+  return (
+    <div
+      className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
+      role="navigation"
+      aria-label={ariaLabel}
+    >
+      <div className="flex items-center gap-0 px-4">
+        {tabs.map((tab) => {
+          const resolved = resolvePath(tab.path)
+          const isActive = pathname === resolved
+          return (
+            <Link
+              key={tab.label}
+              to={resolved}
+              className={[
+                'border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+              ].join(' ')}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────
@@ -60,36 +115,26 @@ export function NavL2() {
     return tpl.replace('$playerSlug', playerSlug)
   }
 
-  // Carrière : barre d'onglets uniquement, pas de filtres analytiques.
+  // Carrière & Communauté : barre d'onglets uniquement, pas de filtres analytiques.
   if (section === 'career') {
     return (
-      <div
-        className="sticky top-0 z-30 shrink-0 border-b border-border bg-background"
-        role="navigation"
-        aria-label={t('common.shell.nav_career_aria')}
-      >
-        <div className="flex items-center gap-0 px-4">
-          {CAREER_TABS.map((tab) => {
-            const resolved = resolvePath(tab.path)
-            const isActive = pathname === resolved
-            return (
-              <Link
-                key={tab.label}
-                to={resolved}
-                className={[
-                  'border-b-2 px-4 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                ].join(' ')}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {tab.label}
-              </Link>
-            )
-          })}
-        </div>
-      </div>
+      <NavTabBar
+        tabs={CAREER_TABS}
+        pathname={pathname}
+        resolvePath={resolvePath}
+        ariaLabel={t('common.shell.nav_career_aria')}
+      />
+    )
+  }
+
+  if (section === 'community') {
+    return (
+      <NavTabBar
+        tabs={COMMUNITY_TABS}
+        pathname={pathname}
+        resolvePath={resolvePath}
+        ariaLabel={t('common.shell.nav_community_aria')}
+      />
     )
   }
 

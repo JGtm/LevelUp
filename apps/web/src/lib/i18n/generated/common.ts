@@ -210,6 +210,7 @@ export const commonManifest = {
   "common.shell.logo_aria": { fr: "LevelUp — retour à l'accueil", en: "LevelUp — back to home" },
   "common.shell.nav_analytics_aria": { fr: "Navigation analytique", en: "Analytics navigation" },
   "common.shell.nav_career_aria": { fr: "Navigation carrière", en: "Career navigation" },
+  "common.shell.nav_community_aria": { fr: "Navigation communauté", en: "Community navigation" },
   "common.shell.nav_main_aria": { fr: "Navigation principale", en: "Main navigation" },
   "common.shell.nav_player_aria": { fr: "Navigation joueur", en: "Player navigation" },
   "common.shell.player_change_aria": { fr: "Changer de titre", en: "Change title" },

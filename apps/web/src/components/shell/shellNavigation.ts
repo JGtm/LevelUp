@@ -69,6 +69,21 @@ export const GLOBAL_SHELL_LINKS: ShellUtilityLink[] = [
   { to: '/changelog', label: 'Changelog' },
 ]
 
+/**
+ * Section Communauté : pages /palmares (sauf l'ancien /palmares/season-pass, passé
+ * sous Carrière) + la route /compare (Face-à-face), qui n'est pas sous /palmares.
+ *
+ * Source unique partagée par NavL1 (surlignage du bouton) et NavL2 (affichage des
+ * sous-onglets) pour garder les deux navs synchronisées.
+ */
+export function isCommunityPath(pathname: string): boolean {
+  const palmares =
+    /\/players\/[^/]+\/palmares(?:\/|$)/.test(pathname) &&
+    !/\/palmares\/season-pass/.test(pathname)
+  const compare = /\/players\/[^/]+\/compare/.test(pathname)
+  return palmares || compare
+}
+
 export function buildPlayerDestination(
   pathname: string,
   currentPlayerSlug: string | null | undefined,
