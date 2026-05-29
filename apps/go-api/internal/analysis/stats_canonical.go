@@ -98,6 +98,9 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 	}
 	if r.Summary.Playlist != nil {
 		out.PlaylistName = r.Summary.Playlist.DefaultLabel
+		if fr, ok := r.Summary.Playlist.Labels["fr"]; ok && fr != "" {
+			out.PlaylistNameFR = fr
+		}
 	}
 	if r.Summary.Map != nil {
 		out.MapName = r.Summary.Map.DefaultLabel
@@ -119,6 +122,7 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		out.SkillPlaylistGroup = r.Enrichment.SkillSnapshot.PlaylistGroup
 		out.SkillSeasonID = r.Enrichment.SkillSnapshot.SeasonID
 		out.SkillMeasurementRemaining = r.Enrichment.SkillSnapshot.MeasurementRemaining
+		out.SkillRatingDelta = r.Enrichment.SkillSnapshot.Delta
 	}
 	out.IsWithFriends = r.Enrichment.IsWithFriends
 	out.EngagementScoreBrut = r.Enrichment.EngagementScoreBrut

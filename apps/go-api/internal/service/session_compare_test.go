@@ -253,10 +253,50 @@ func TestBuildCompareEntry_DerivedMetrics(t *testing.T) {
 	}
 }
 
+// TestBuildCompareEntry_FragAggregates couvre les agrégats P1 du radar de frags :
+// Folie meurtrière = MAX sur la session, Tirs à la tête / Frags parfaits = SOMME.
+func TestBuildCompareEntry_FragAggregates(t *testing.T) {
+	spree := func(v int) *int { return &v }
+	rows := []legacymatch.StatsMatchRow{
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(5), HeadshotKills: spree(2), PerfectKills: spree(0)},
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(9), HeadshotKills: spree(4), PerfectKills: spree(1)},
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(3), HeadshotKills: spree(1), PerfectKills: spree(2)},
+	}
+	entry := buildCompareEntry(rows, "S1")
+	if entry == nil {
+		t.Fatal("expected non-nil entry")
+	}
+	if entry.MaxKillingSpree == nil || *entry.MaxKillingSpree != 9 {
+		t.Fatalf("MaxKillingSpree: want max 9, got %v", entry.MaxKillingSpree)
+	}
+	if entry.TotalHeadshotKills == nil || *entry.TotalHeadshotKills != 7 { // 2+4+1
+		t.Fatalf("TotalHeadshotKills: want sum 7, got %v", entry.TotalHeadshotKills)
+	}
+	if entry.TotalPerfectKills == nil || *entry.TotalPerfectKills != 3 { // 0+1+2
+		t.Fatalf("TotalPerfectKills: want sum 3, got %v", entry.TotalPerfectKills)
+	}
+}
+
+// TestBuildCompareEntry_FragAggregates_AllNil : aucun match n'a de stats de frags
+// → agrégats nil (le radar dégrade en série vide côté front), pas de zéro trompeur.
+func TestBuildCompareEntry_FragAggregates_AllNil(t *testing.T) {
+	entry := buildCompareEntry([]legacymatch.StatsMatchRow{
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), Kills: 5, Deaths: 3},
+	}, "S1")
+	if entry == nil {
+		t.Fatal("expected non-nil entry")
+	}
+	if entry.MaxKillingSpree != nil || entry.TotalHeadshotKills != nil || entry.TotalPerfectKills != nil {
+		t.Fatalf("expected nil frag aggregates, got spree=%v hs=%v pk=%v",
+			entry.MaxKillingSpree, entry.TotalHeadshotKills, entry.TotalPerfectKills)
+	}
+}
+
 // TestBuildSessionDetailRows_EnrichedFields couvre les colonnes enrichies (Phase 3)
-// projetées depuis StatsMatchRow : map FR-préférée, ΔMMR, perf_tier, durée, rating.
+// projetées depuis StatsMatchRow : map FR-préférée, ΔMMR, perf_tier, durée, rating,
+// + (lot P2) ModeUI localisé/normalisé et Δ rang par match.
 func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
-	team, enemy, perf, rating := 1500.0, 1400.0, 72.0, 1450.0
+	team, enemy, perf, rating, ratingDelta := 1500.0, 1400.0, 72.0, 1450.0, 12.5
 	dur := 540
 	row := legacymatch.StatsMatchRow{
 		MatchID:           "m1",
@@ -265,12 +305,14 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 		Deaths:            5,
 		MapName:           "Live Fire",
 		MapNameFR:         "Tir réel",
+		PairName:          "Arena:Slayer on Live Fire",
 		TeamMMR:           &team,
 		EnemyMMR:          &enemy,
 		PerfScoreComputed: &perf,
 		TimePlayedSeconds: &dur,
 		SkillRatingValue:  &rating,
 		SkillRatingType:   "csr",
+		SkillRatingDelta:  &ratingDelta,
 	}
 	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil)
 	if len(out) != 1 {
@@ -279,6 +321,13 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 	r := out[0]
 	if r.MapName != "Tir réel" {
 		t.Fatalf("MapName: want FR-preferred 'Tir réel', got %q", r.MapName)
+	}
+	wantMode := derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
+	if wantMode == "" || r.ModeUI != wantMode {
+		t.Fatalf("ModeUI: want %q (via ResolveModeUI), got %q", wantMode, r.ModeUI)
+	}
+	if r.SkillRatingDelta == nil || *r.SkillRatingDelta != 12.5 {
+		t.Fatalf("SkillRatingDelta: want 12.5, got %v", r.SkillRatingDelta)
 	}
 	if r.DeltaMMR == nil || *r.DeltaMMR != 100 { // 1500 - 1400
 		t.Fatalf("DeltaMMR: want 100, got %v", r.DeltaMMR)

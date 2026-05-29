@@ -204,6 +204,10 @@ func buildSessionDetailRows(
 		if row.MapNameFR != "" {
 			mapName = row.MapNameFR
 		}
+		playlist := row.PlaylistName
+		if row.PlaylistNameFR != "" {
+			playlist = row.PlaylistNameFR
+		}
 		var deltaMMR *float64
 		if row.TeamMMR != nil && row.EnemyMMR != nil {
 			d := *row.TeamMMR - *row.EnemyMMR
@@ -213,11 +217,12 @@ func buildSessionDetailRows(
 		if row.PerfScoreComputed != nil {
 			perfTier = int(analysis.PerfTier(*row.PerfScoreComputed))
 		}
+		modeUI := derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
 		out = append(out, domain.SessionDetailMatchRow{
 			MatchID:          row.MatchID,
 			StartTime:        row.StartTime,
 			Outcome:          row.Outcome,
-			PlaylistName:     row.PlaylistName,
+			PlaylistName:     playlist,
 			PairName:         row.PairName,
 			IsRanked:         row.IsRanked,
 			Kills:            row.Kills,
@@ -239,6 +244,8 @@ func buildSessionDetailRows(
 			PerfTier:         perfTier,
 			SkillRatingType:  row.SkillRatingType,
 			SkillRatingValue: row.SkillRatingValue,
+			SkillRatingDelta: row.SkillRatingDelta,
+			ModeUI:           modeUI,
 		})
 	}
 	return out

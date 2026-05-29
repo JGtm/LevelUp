@@ -108,6 +108,7 @@ type StatsMatchRow struct {
 	IsFirefight         bool
 	IsWithFriends       bool
 	PlaylistName        string
+	PlaylistNameFR      string
 	PairName            string
 	PairNameFR          string
 	MapName             string
@@ -129,6 +130,7 @@ type StatsMatchRow struct {
 	SkillPlaylistGroup        *string  // groupe normalisé (ex: "ranked-arena")
 	SkillSeasonID             *string  // saison Halo (ex: "Elan") — rupture de courbe si changement
 	SkillMeasurementRemaining *int     // matchs de placement restants (>0 = placement)
+	SkillRatingDelta          *float64 // gain/perte de rating du match (depuis SkillSnapshot.Delta)
 	EngagementScoreBrut       *float64 // résidu brut engagement, nil si non calculé
 }
 

@@ -253,32 +253,58 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 	matchRows := buildSessionDetailRows(matches, dominantCat)
 	best, worst := bestWorstMatchCompare(matches, dominantCat)
 
+	// Agrégats radar : max(killing_spree), somme(headshot_kills), somme(perfect_kills).
+	var maxKS, totalHS, totalPK *int
+	for _, m := range matches {
+		if m.MaxKillingSpree != nil && (maxKS == nil || *m.MaxKillingSpree > *maxKS) {
+			v := *m.MaxKillingSpree
+			maxKS = &v
+		}
+		if m.HeadshotKills != nil {
+			v := *m.HeadshotKills
+			if totalHS != nil {
+				v += *totalHS
+			}
+			totalHS = &v
+		}
+		if m.PerfectKills != nil {
+			v := *m.PerfectKills
+			if totalPK != nil {
+				v += *totalPK
+			}
+			totalPK = &v
+		}
+	}
+
 	return &domain.SessionCompareEntry{
-		SessionLabel:     label,
-		StartTime:        &start,
-		EndTime:          &end,
-		TotalMatches:     len(matches),
-		Wins:             wins,
-		Losses:           losses,
-		KDA:              kda,
-		PerformanceScore: averagePerformanceScore(matches),
-		WinRate:          winRate(matches),
-		KDR:              avgKD(matches),
-		KillsPerMatch:    killsPerGame(matches),
-		DominantCategory: dominantCat,
-		AvgOC:            avgOC,
-		AvgDR:            avgDR,
-		AvgResidualBrut:  avgResidualBrut,
-		MatchSeries:      buildCompareMatchSeries(matches),
-		LastSkillRating:  lastRating,
-		SkillRatingType:  ratingType,
-		SkillRatingDelta: ratingDelta,
-		AvgTeamMMR:       avgTeamMMR,
-		AvgEnemyMMR:      avgEnemyMMR,
-		Participation:    participation,
-		Matches:          matchRows,
-		BestMatch:        best,
-		WorstMatch:       worst,
+		SessionLabel:       label,
+		StartTime:          &start,
+		EndTime:            &end,
+		TotalMatches:       len(matches),
+		Wins:               wins,
+		Losses:             losses,
+		KDA:                kda,
+		PerformanceScore:   averagePerformanceScore(matches),
+		WinRate:            winRate(matches),
+		KDR:                avgKD(matches),
+		KillsPerMatch:      killsPerGame(matches),
+		MaxKillingSpree:    maxKS,
+		TotalHeadshotKills: totalHS,
+		TotalPerfectKills:  totalPK,
+		DominantCategory:   dominantCat,
+		AvgOC:              avgOC,
+		AvgDR:              avgDR,
+		AvgResidualBrut:    avgResidualBrut,
+		MatchSeries:        buildCompareMatchSeries(matches),
+		LastSkillRating:    lastRating,
+		SkillRatingType:    ratingType,
+		SkillRatingDelta:   ratingDelta,
+		AvgTeamMMR:         avgTeamMMR,
+		AvgEnemyMMR:        avgEnemyMMR,
+		Participation:      participation,
+		Matches:            matchRows,
+		BestMatch:          best,
+		WorstMatch:         worst,
 	}
 }
 
