@@ -20,6 +20,7 @@ import (
 func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows []domain.SquadMatchRow) {
 	mapIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.MapID })
 	playlistIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PlaylistID })
+	pairIDs := collectUniqueIDs(rows, func(r domain.SquadMatchRow) string { return r.PairID })
 
 	mapFR, err := repo.LoadAssetTranslationsFR(ctx, "map", mapIDs)
 	if err != nil {
@@ -29,6 +30,14 @@ func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows
 	if err != nil {
 		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR playlist failed", "err", err)
 	}
+	pairAssetFR, err := repo.LoadAssetTranslationsFR(ctx, "pair", pairIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates: LoadAssetTranslationsFR pair failed", "err", err)
+	}
+	// mode_name_tr (FR) des modes EN normalisés — dérivés du pair_name brut ET
+	// des noms d'asset résolus, pour couvrir le cas pair_name=UUID. Même cascade
+	// canonique que match_history (applyMatchHistoryFRTranslations).
+	modeFR := loadSquadModeFR(ctx, repo, rows, pairAssetFR)
 
 	for i := range rows {
 		if fr := strings.TrimSpace(mapFR[rows[i].MapID]); fr != "" {
@@ -37,7 +46,47 @@ func enrichSquadMatchAssets(ctx context.Context, repo port.SquadRepository, rows
 		if fr := strings.TrimSpace(playlistFR[rows[i].PlaylistID]); fr != "" {
 			rows[i].PlaylistName = fr
 		}
+		// Résolution canonique du libellé FR du mode (source unique partagée avec
+		// home / historique / filtres). Gère pair_name brut, vide ou UUID.
+		rows[i].PairNameFR = analysis.ResolvePairNameFR(
+			rows[i].PairName, rows[i].PairNameFR, pairAssetFR[rows[i].PairID], modeFR)
 	}
+}
+
+// loadSquadModeFR charge mode_name_tr (FR) pour les modes EN normalisés issus
+// des pair_name bruts ET des noms d'asset résolus (pair_id). Miroir de
+// match_history : nécessaire car un pair_name brut peut être un UUID, auquel cas
+// le nom EN exploitable vient de asset_translations[pair_id].
+func loadSquadModeFR(
+	ctx context.Context,
+	repo port.SquadRepository,
+	rows []domain.SquadMatchRow,
+	pairAssetFR map[string]string,
+) map[string]string {
+	seen := make(map[string]struct{}, 16)
+	modeENs := make([]string, 0, 16)
+	add := func(raw string) {
+		if en := analysis.NormalizeModeLabel(raw); en != "" {
+			if _, ok := seen[en]; !ok {
+				seen[en] = struct{}{}
+				modeENs = append(modeENs, en)
+			}
+		}
+	}
+	for _, r := range rows {
+		add(r.PairName)
+		if r.PairID != "" {
+			add(pairAssetFR[r.PairID])
+		}
+	}
+	if len(modeENs) == 0 {
+		return nil
+	}
+	modeFR, err := repo.LoadModeTranslationsFR(ctx, modeENs)
+	if err != nil {
+		slog.WarnContext(ctx, "teammates: LoadModeTranslationsFR failed", "err", err)
+	}
+	return modeFR
 }
 
 func collectUniqueIDs(rows []domain.SquadMatchRow, idOf func(domain.SquadMatchRow) string) []string {
@@ -56,13 +105,21 @@ func collectUniqueIDs(rows []domain.SquadMatchRow, idOf func(domain.SquadMatchRo
 	return result
 }
 
-// modeLabel retourne le label FR du mode si disponible dans modeFR, sinon le label EN normalisé.
-func modeLabel(pairName, mapUI string, modeFR map[string]string) string {
-	en := analysis.NormalizeModeLabel(pairName, mapUI)
-	if fr, ok := modeFR[en]; ok && fr != "" {
-		return fr
+// squadModeUI calcule le libellé de mode affiché dans la table Escouade.
+// Normalise la meilleure source déjà résolue (PairNameFR via la cascade
+// canonique, sinon EN brut), puis masque un éventuel UUID résiduel (trou de
+// metadata) pour ne JAMAIS afficher d'UUID — même garde que cleanAssetLabel
+// côté home. Retourne "" si rien d'exploitable (le front affiche alors "-").
+func squadModeUI(m domain.SquadMatchRow) string {
+	src := m.PairNameFR
+	if strings.TrimSpace(src) == "" {
+		src = m.PairName
 	}
-	return en
+	ui := analysis.NormalizeModeLabel(src, m.MapUI)
+	if analysis.IsRawAssetUUID(ui) {
+		return ""
+	}
+	return ui
 }
 
 // computeMapBreakdown agrège les stats par carte depuis les matchs escouade.
@@ -117,24 +174,6 @@ func computeMapBreakdown(matches []domain.SquadMatchRow) []domain.MapBreakdownRo
 	return result
 }
 
-// collectModeENs retourne les noms de modes EN normalisés uniques depuis les matchs squad.
-// Utilisé pour le batch-lookup mode_name_tr FR.
-func collectModeENs(matches []domain.SquadMatchRow) []string {
-	seen := make(map[string]struct{}, 16)
-	result := make([]string, 0, 16)
-	for _, m := range matches {
-		en := analysis.NormalizeModeLabel(m.PairName, m.MapUI)
-		if en == "" {
-			continue
-		}
-		if _, ok := seen[en]; !ok {
-			seen[en] = struct{}{}
-			result = append(result, en)
-		}
-	}
-	return result
-}
-
 // buildSquadMatchHistory construit la table historique pour teammates.11 :
 // une ligne par match unique, triée par StartTime DESC. Pas de cap serveur —
 // la pagination (20/page) est gérée côté client (TanStack Table).
@@ -142,7 +181,7 @@ func collectModeENs(matches []domain.SquadMatchRow) []string {
 // mapWR : (wins, total) par MapID sur l'historique complet du joueur
 // principal — sert à injecter le taux historique par carte. Si nil ou clé
 // absente, WinRateHist reste nil (la cellule front affiche "—").
-func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]string, mapWR map[string][2]int) []domain.SquadMatchHistoryRow {
+func buildSquadMatchHistory(matches []domain.SquadMatchRow, mapWR map[string][2]int) []domain.SquadMatchHistoryRow {
 	seen := make(map[string]struct{}, len(matches))
 	rows := make([]domain.SquadMatchHistoryRow, 0, len(matches))
 	for _, m := range matches {
@@ -178,28 +217,31 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]st
 				}
 			}
 		}
+		modeUI := squadModeUI(m)
 		rows = append(rows, domain.SquadMatchHistoryRow{
-			MatchID:          m.MatchID,
-			StartTime:        m.StartTime.Format("2006-01-02T15:04:05Z"),
-			MapUI:            m.MapUI,
-			PlaylistName:     m.PlaylistName,
-			PairName:         m.PairName,
-			ModeUI:           modeLabel(m.PairName, m.MapUI, modeFR),
-			Outcome:          m.Outcome,
-			Kills:            m.Kills,
-			Deaths:           m.Deaths,
-			Assists:          m.Assists,
-			Accuracy:         m.Accuracy,
-			PerformanceScore: m.PerformanceScore,
-			TeamMMRAvg:       m.TeamMMR,
-			EnemyMMRAvg:      m.EnemyMMR,
-			DeltaMMR:         deltaMMR,
-			ScoreLabel:       scoreLabel,
-			DurationSeconds:  m.DurationSeconds,
+			MatchID:      m.MatchID,
+			StartTime:    m.StartTime.Format("2006-01-02T15:04:05Z"),
+			MapUI:        m.MapUI,
+			PlaylistName: m.PlaylistName,
+			// PairName (json pair_name) = même libellé résolu que ModeUI : sert de
+			// fallback front et ne doit donc jamais être un UUID.
+			PairName:                modeUI,
+			ModeUI:                  modeUI,
+			Outcome:                 m.Outcome,
+			Kills:                   m.Kills,
+			Deaths:                  m.Deaths,
+			Assists:                 m.Assists,
+			Accuracy:                m.Accuracy,
+			PerformanceScore:        m.PerformanceScore,
+			TeamMMRAvg:              m.TeamMMR,
+			EnemyMMRAvg:             m.EnemyMMR,
+			DeltaMMR:                deltaMMR,
+			ScoreLabel:              scoreLabel,
+			DurationSeconds:         m.DurationSeconds,
 			GameplayDurationSeconds: m.GameplayDurationSeconds,
-			WinRateHist:      winRate,
-			WinRateHistTotal: winRateTotal,
-			SessionLabel:     m.SessionLabel,
+			WinRateHist:             winRate,
+			WinRateHistTotal:        winRateTotal,
+			SessionLabel:            m.SessionLabel,
 		})
 	}
 	slices.SortFunc(rows, func(a, b domain.SquadMatchHistoryRow) int {

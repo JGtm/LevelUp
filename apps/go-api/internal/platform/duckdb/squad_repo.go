@@ -250,6 +250,8 @@ func (r *SquadRepo) loadSquadMatchesShared(ctx context.Context, playerXUID, team
 			&row.EnemyTeamScore,
 			&row.MapID,
 			&row.PlaylistID,
+			&row.PairNameFR,
+			&row.PairID,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)
 		}

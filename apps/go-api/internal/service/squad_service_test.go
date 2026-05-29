@@ -32,6 +32,11 @@ type mockSquadRepo struct {
 	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
 	lookupAliases map[string]string
 	lookupErr     error
+	// assetFR : traductions FR par type d'asset ("map"|"playlist"|"pair") →
+	// (asset_id → libellé FR). nil → comportement historique (aucune trad).
+	assetFR map[string]map[string]string
+	// modeFR : mode_name_tr FR (mode EN normalisé → FR). nil → aucune trad.
+	modeFR map[string]string
 }
 
 func (m *mockSquadRepo) LoadTopTeammates(_ context.Context, _ string) ([]domain.TopTeammateRow, error) {
@@ -61,11 +66,14 @@ func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ 
 func (m *mockSquadRepo) LoadSynthesisHeatmap(_ context.Context, _ string) ([]domain.SynthesisHeatmapRow, error) {
 	return m.heatmapRows, m.heatmapErr
 }
-func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, _ string, _ []string) (map[string]string, error) {
-	return nil, nil
+func (m *mockSquadRepo) LoadAssetTranslationsFR(_ context.Context, assetType string, _ []string) (map[string]string, error) {
+	if m.assetFR == nil {
+		return nil, nil
+	}
+	return m.assetFR[assetType], nil
 }
 func (m *mockSquadRepo) LoadModeTranslationsFR(_ context.Context, _ []string) (map[string]string, error) {
-	return nil, nil
+	return m.modeFR, nil
 }
 func (m *mockSquadRepo) LoadMapStatsForSquad(_ context.Context, _ string, _ []string) (map[string]domain.MapSquadStats, error) {
 	return nil, nil

@@ -205,11 +205,9 @@ func (s *TeammatesService) GetPage(
 	var firstEvents *domain.SquadFirstEvents
 	var medalDigest []domain.MedalDigestEntry
 	if len(allSquadRows) > 0 {
+		// Résout map/playlist/mode FR sur les rows (mode via la cascade
+		// canonique asset_translations + mode_name_tr, cf. enrichSquadMatchAssets).
 		enrichSquadMatchAssets(ctx, s.repo, allSquadRows)
-		modeFR, err := s.repo.LoadModeTranslationsFR(ctx, collectModeENs(allSquadRows))
-		if err != nil {
-			slog.WarnContext(ctx, "teammates: LoadModeTranslationsFR failed", "err", err)
-		}
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
 
@@ -228,7 +226,7 @@ func (s *TeammatesService) GetPage(
 			slog.WarnContext(ctx, "teammates: LoadMapStatsForSquad failed", "err", err)
 		}
 		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
-		matchHistory = buildSquadMatchHistory(allSquadRows, modeFR, squadStatsToWinTotal(squadStats))
+		matchHistory = buildSquadMatchHistory(allSquadRows, squadStatsToWinTotal(squadStats))
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, sessionMatchIDs)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags)
