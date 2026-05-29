@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/halo"
@@ -416,6 +417,11 @@ func populateCatalogFromMatchRegistry(ctx context.Context, metadataDB, sharedDB 
 		if err := rows.Scan(&id, &versionID, &name, &isRanked, &firstSeen, &lastSeen); err != nil {
 			rows.Close()
 			return r, fmt.Errorf("scan playlist: %w", err)
+		}
+		// Conformité allowlist : ne jamais rétrograder une playlist classée connue
+		// (la classif depuis match_registry est peu fiable — source du bug récurrent).
+		if rankedplaylists.IsRanked(id) {
+			isRanked = true
 		}
 		experience := classifyExperienceFromName(name, isRanked)
 		_, err := metadataDB.ExecContext(ctx, `

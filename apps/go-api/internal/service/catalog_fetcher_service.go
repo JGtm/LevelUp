@@ -18,6 +18,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 )
 
 // CatalogFetcherService draine la queue catalog_fetch_queue.
@@ -150,6 +151,15 @@ func (s *CatalogFetcherService) processEntry(ctx context.Context, adapter games.
 
 func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug string, pl canonical.CanonicalPlaylist) error {
 	now := time.Now().UTC()
+	// Conformité allowlist : la référence rankedplaylists est la source de vérité
+	// de is_ranked. Si DiscoveryUGC classe à tort une playlist classée en 'social'
+	// (bug récurrent), on rétablit ici plutôt que de propager une valeur fausse.
+	isRanked := pl.IsRanked
+	experience := string(pl.Experience)
+	if rankedplaylists.IsRanked(pl.AssetID) {
+		isRanked = true
+		experience = "ranked"
+	}
 	_, err := s.metadataDB.ExecContext(ctx, `
 		INSERT INTO playlists_catalog
 		  (title_slug, playlist_asset_id, current_version_id, name_canonical, experience, is_ranked, is_active, first_seen_at, last_seen_at, last_fetched_at)
@@ -162,7 +172,7 @@ func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug st
 		  last_seen_at       = excluded.last_seen_at,
 		  last_fetched_at    = excluded.last_fetched_at
 		`,
-		titleSlug, pl.AssetID, pl.VersionID, pl.NameCanonical, string(pl.Experience), pl.IsRanked, now, now, now,
+		titleSlug, pl.AssetID, pl.VersionID, pl.NameCanonical, experience, isRanked, now, now, now,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert playlist: %w", err)
