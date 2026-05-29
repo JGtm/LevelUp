@@ -1,3 +1,52 @@
+## [2026-05-30] feat(explorer): profil de combat cible — donut connecteurs, terminologie FR, KPI cadence/score/frags parfaits
+
+**Statut** : Complété (branche `fix/solo-first-events-squad-mode`, en parallèle du WIP session-detail d'un autre agent — fichiers explorer disjoints, sur consigne explicite de ne pas créer de branche). Go : build module=0, `go test analysis+service -run Explorer|SampleStats` vert (BuildSampleStats enrichi de 2 cas). Front : `tsc -b`=0, eslint 0 sur mes fichiers, vitest `ExplorerTargetProfileCard` 5/5. Commit en attente d'autorisation.
+
+**Demande** : retravail de l'encart « Sur N matchs joués ensemble » (`ExplorerTargetSampleStats`) — donut frags avec connecteurs (valeur+%), termino FR (Frags/FDA/Tirs à la tête/F-D), rendement combat chiffré, suppression card Médailles, légende sur l'OutcomeBar du bas (qui n'en avait aucune), + nouvelles KPI.
+
+**Décision** : tout calculable depuis `shared.match_participants` déjà agrégé, zéro nouvelle source. Repo : `GetParticipantStatsForMatches` somme en plus `time_played_seconds` + `personal_score` ; `GetMedalCountsForMatches` ajoute les frags parfaits (médaille Perfect `medal_name_id=1512363953`, même sous-requête que Q30/Q12). `BuildSampleStats` dérive cadence/minute (helper `setPerMinuteCadence`, KPI identique à teammates.14, nil si durée cumulée=0), score moyen (AVG personal_score), passe perfect_kills. **Per-minute = KPI dérivé, pas de colonne stockée** (confirmé via `canonical/fields.go` groupe "derived" + absence en migration/openspartan) — réutilise la dérivation existante, pas de recalcul ad-hoc.
+
+**Front** : `ExplorerTargetSampleStats` redécoupé en sous-composants (<80L) — donut SVG à lignes de rappel (labels répartis gauche/droite, légende du bas supprimée), `YieldColumn` (OC%/DR% + dmg/frag toujours visibles, pas seulement au survol), `KpiTiles` (FDA/F-D/Précision/Tirs tête/Taux victoire/Score moyen/Frags parfaits), `CadenceStrips` (par match + par minute), `OutcomeLegend` (V/N/D + comptes + taux). i18n explorer : 5 libellés FR modifiés + 14 clés ajoutées, 2 clés Médailles supprimées. **Watcher i18n actif** : régénère les `.ts` à chaque modif `.toml` (a resynchronisé `session.ts` du WIP voisin entre 2 typechecks).
+
+**Conclusion / prochaine étape** : vérif visuelle dans l'app indispensable (rendu des connecteurs sur petit donut, lisibilité, cadence par-minute non vide sur joueurs récents). Le SQL repo (sommes + médaille Perfect) n'est couvert que par compilation → à valider sur données réelles.
+
+## [2026-05-30] refactor(web,nav): Communauté — sous-nav L2 en onglets (suppression PalmaresShell)
+
+**Statut** : Complété (branche `fix/explorer-target-profile-auth`, sur autorisation explicite de travailler sur la branche en cours malgré le WIP auth/explorer non lié — mes 8 fichiers sont disjoints du WIP). Front : `tsc -b` = 0, eslint sur `components/shell` + `features/palmares` = 0 erreur (1 warning react-refresh préexistant dans `BattlePassRewardCarousel.tsx`, hors périmètre), vitest `palmares` 3 verts (dont `PalmaresRelationsPage` sans le shell). Commit laissé à l'utilisateur.
+
+**Problème** : la section Communauté affichait DEUX navigations concurrentes — le dropdown L1 (split button, 4 entrées correctes : Classements / Relations / Face-à-face / Leaderboard PP) ET un menu L2 en pilules (`PalmaresShell`), vestige d'avant la refonte « Phase 4 Prestige ». Le shell était cassé : lien Face-à-face vers `/palmares/compare` (route inexistante ; la vraie est `/compare`), d'où un Face-à-face « non câblé » à l'écran ; absence de Leaderboard PP ; présent sur 2 pages /4 seulement ; style pilules incohérent avec les onglets plats de Carrière.
+
+**Décision** : supprimer `PalmaresShell` et porter la sous-nav Communauté dans `NavL2` sur le pattern exact de Carrière (onglets plats soulignés, sticky). `NavL2` étant rendu dans le layout `$playerSlug.tsx`, la barre apparaît désormais sur les 4 pages, y compris `/compare`. Helper `isCommunityPath()` extrait dans `shellNavigation.ts` et partagé par NavL1 (`matchPathname`) et NavL2 (`detectSection`) → source unique, plus de divergence L1/L2. Barre factorée en composant local `NavTabBar` (réutilisé par Carrière + Communauté) pour ne pas dupliquer le bloc JSX. État actif par égalité exacte `pathname === resolved` (fonctionne pour `/compare` hors `/palmares`).
+
+**Nettoyage** : `PalmaresShell.tsx` supprimé ; `PalmaresLeaderboardPage` / `PalmaresRelationsPage` recâblées avec le wrapper `flex flex-col gap-6 p-6` du shell (zéro régression de padding). Dead code i18n retiré : type `PalmaresTab` + champ `tabs` de `PalmaresText` + clés `[palmares.tabs.*]` du manifest. Nouvelle clé `common.shell.nav_community_aria`. Manifests régénérés (common 219, palmares 74).
+
+**Conclusion / prochaine étape** : reste la vérif manuelle dans l'app (les 4 pages affichent la barre, onglet actif correct, surlignage L1 suivi, plus aucune pilule). Non lancée pour ne pas entrer en conflit avec le dev server du WIP en cours.
+
+## [2026-05-30] feat(sessions): refonte page session-detail (11 items UX + côte-à-côte drawer)
+
+**Statut** : Complété (branche `fix/solo-first-events-squad-mode`). Go : build=0, vet=0, `go test service` vert (dont `TestBuildCompareEntry_AvgLifeSeconds`). Front : typecheck 0 sur mes fichiers, eslint 0, vitest session-detail **39 verts**, suite complète **1595 verts** (4 échecs hors périmètre : 3× WIP explorer `perfect_kills`, 1× test date-sensible soloFilterStore). Commit en attente d'autorisation.
+
+Gros lot UX sur la page session, structuré autour d'un principe clarifié par l'utilisateur : **la comparaison se fait côte à côte via le drawer** (session A à gauche, B à droite), PAS en superposant deux séries sur un même graphe.
+
+**Décision structurante** : extraction de `SessionChartStack` (pile de graphes d'UNE session), rendue à l'identique en vue principale (2-col) et dans le drawer (`dense`, 1-col) → main et drawer restent synchronisés. Le profil de participation s'affiche en **miroir** (axe à droite/couleur A en single, axe à gauche/couleur B en drawer) → effet papillon symétrique, échelle fixe 0..100.
+
+Items livrés :
+1. **Donut d'issues** (`SessionOutcomeDonut`) avec taux de victoire au centre → remplace `SessionOutcomeTape` (supprimé, orphelin). `DonutChart` étendu d'un label central (`centerValue`/`centerLabel`).
+2. **KPI summary** : retrait KDR / Taux de victoire / Victoires-Défaites (redondants avec donut + tableau) ; ajout Rendement/Résistance via `OffDefComposite` (même composite que la home) + Durée de vie (`formatDurationMMSS`, comme "Mes stats sur cette session").
+3. **Stats par minute** rebâti au visuel Escouade : Morts en négatif (vers le bas), axe zéro accentué, labels en valeur absolue.
+4. **Header L3 sticky** corrigé : la NavL2 (sticky top-0) et le header L3 (sticky top-0) se chevauchaient → le L3 disparaissait dessous. Fix : mesure de la hauteur réelle de la NavL2 (`previousElementSibling` du root dans PlayerLayout) via ResizeObserver → `top` dynamique.
+5. **Challenge MMR** (`SessionMmrDumbbell`) : dumbbell par match (équipe ● ━━ ◆ adverse), scatter ×2 + série custom pour les liaisons.
+6. **Net score cumulé** (`SessionNetScoreArea`) : aire cumulée (Frags − Morts), remplissage divergent via visualMap (vert > 0 / rouge ≤ 0).
+7. **Breakdown modes** (`SessionModeBreakdown`) : bâtons verticaux, agrégation front par `mode_ui`.
+8. **Profil participation** (`SessionParticipationBars`) : barres horizontales miroir, réutilise les 6 axes `participation` déjà sur l'entry (zéro backend).
+9. **Tableau Détail des matchs** sorti du `<Card>` (titre + tableau nu).
+10. **Engagement** aligné sur "Score de performance" : retrait de la bande markArea ±5 + du nom d'axe Y vertical (unité déplacée dans le tooltip).
+11. **Progression LUSR / CSR** supprimée (vue single + drawer ; `SessionCompareSkillProgression` reste utilisé par `SessionComparePage`).
+
+**Backend** : seul `avg_life_seconds` manquait → ajouté de `canonical.Self.AvgLifeSeconds` → `StatsMatchRow` → projeté → agrégé (moyenne) dans `buildCompareEntry` → `SessionCompareEntry.avg_life_seconds`. Tout le reste (OC/DR, MMR moyens, participation, MMR par match, kills/deaths) était déjà jusqu'au front.
+
+**Note commit** : `apps/web/src/lib/api/types.ts` contient MA modif (`avg_life_seconds`) ET du WIP explorer non commité de l'utilisateur (`perfect_kills`) → stager uniquement mon hunk.
+
 ## [2026-05-29] feat(sessions): lot BACKEND P1 (radar frags) + P2 (Δ rang/match + localisation FR)
 
 **Statut** : Complété (branche `fix/solo-first-events-squad-mode`). Go : `go build ./internal/...` = 0, `go vet` (service/analysis/domain/legacymatch) = 0, `go test ./internal/service/... ./internal/analysis/...` verts. Front : typecheck 0, eslint 0 (warning TanStack `useReactTable` préexistant), suite frontend complète **170 fichiers / 1591 tests** verts. Commit en attente d'autorisation.
@@ -51299,3 +51348,31 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 **Résultats** : typecheck (tsc -b) OK ; eslint 0 erreur (mes 4 fichiers sans warning) ; vitest 26/26 (5 nouveaux `off-def-composite` + 8 `SessionBriefing` sans régression + témoin `combat-yield-bar`). NB : la suite vitest échoue en sandbox (workers non spawnables → « Failed to find the runner ») — l'exécuter hors sandbox.
 
 **Prochaine étape** : validation visuelle utilisateur (home : tuile Rend/Résist. inchangée ; Solo + Escouade : card composite span-2 dans « Mes stats sur cette session »). Pas encore commité (en attente autorisation).
+
+
+## [2026-05-30] fix(explorer): profil/carrière live cible cassé + lent — câblage auth + suppression skill-peaks + budget/cache — Complété
+
+**Statut** : Complété · Branche `fix/explorer-target-profile-auth`
+
+**Demande** : Sur Explorer (mode Joueur), l'encart « Profil joueur cible » affiche après ~10 s « Connecte un compte Halo… » alors que l'utilisateur a 4 tokens Halo fonctionnels dans le store. Deux symptômes : ça ne fonctionne pas + c'est trop lent. Référence SpartanRecord (projet parent) demandée pour comprendre la vitesse.
+
+**Cause racine** :
+- *Fonctionnel* : `ExplorerCtx` était la seule factory à profil-cible à NE PAS enrichir son contexte avec les tokens du store (`enrichWithHaloTokens`), contrairement à `HomeCtxWithAuth` et `Compare`. Le handler passait `r.Context()` brut → `ctxkeys.HaloTokens(ctx)==nil` → `hasAuth=false` → fetchs live court-circuités → `career_stats=nil` → message.
+- *Lenteur* : `GetSpartanIdentityFromDBOnly`/`GetSpartanIdentityFor` calculaient 2× `loadHomeSkillPeak` (full-scan `match_skill_rank` + shared DB) — coûteux ET sur la player DB du PROPRIÉTAIRE (peaks faux pour la cible). Fetchs live non bornés (`g.Wait()` sur HTTP 15 s).
+
+**Analyse SpartanRecord** : vitesse = cache-first Firebase + auth mutualisée (1 token HaloDotAPI) + endpoint service-record agrégé par gamertag. LevelUp utilise DÉJÀ un endpoint agrégé équivalent (`/hi/players/{gamertag}/career-stats`) ; lui manquaient le câblage auth + le cache-first. Pas besoin d'adopter HaloDotAPI (incohérent avec ADR 0023).
+
+**Décision technique** (3 volets, 100 % backend) :
+- **A — auth** : `ExplorerCtx` → `ExplorerCtxWithAuth` (5-tuple avec ctx enrichi, mirror Compare) ; nouveau type `ExplorerAuthFactory` ; handler `QueryPlayer` passe le ctx enrichi à `GetCommonMatches` ; wiring `server.go` + tests.
+- **B — skill-peaks** : `BuildSpartanIdentityFromCareerRow(ctx, row, includePeaks bool)`. `includePeaks := xuid == ctxkeys.HaloXUID(ctx)` (dans le ctx enrichi = sujet est bien le propriétaire de la DB). DB-only Explorer → toujours false. Corrige le bug peaks-du-mauvais-joueur ET supprime 2 scans inutiles. Home inchangée (xuid==owner → true).
+- **C — latence** : (C.1) budget `explorerTargetLiveBudget=3s` via `context.WithTimeout` sur les goroutines live de `buildTargetProfile` (sample stats locales NON bornées) ; (C.2) `CachedStatsProvider` (TTL 5 min + singleflight, modèle `CareerLiveCache`) décorant `FetchRemoteStats`, singleton sur `ServiceRegistry`, injecté dans Explorer → réouverture d'une même cible instantanée.
+
+**Observabilité** : logs auto-routés vers `logs/service.log` (module détecté par package). Ajout compteurs expvar `remote_stats.{cache_hit,cache_miss,fetch_error}` + debug hit/miss, warn `explorer_target_live_budget_exceeded` (distingue Halo-lent de vraie erreur), enrichi `explorer_common_matches` (auth_available, career_served).
+
+**Refactor qualité** : `buildTargetProfile` 125 → 51 lignes (extraction `fetchTargetIdentity`/`fetchTargetCareer`/`fetchTargetPrivacy`/`computeTargetSampleStats`, chacune <30 lignes). Fichiers <500 lignes.
+
+**Résultats** : `go build ./...` OK (CGO ucrt64) ; `go vet ./...` clean ; **suite complète `go test ./...` verte** (tous packages). `-race` clean sur `internal/service` (mes ajouts concurrents : singleflight cache + errgroup+budget). Nouveaux tests : `remote_stats_cache_test.go` (miss/hit, casse, TTL, erreur non cachée, singleflight) + régression `TestCareerLive_IncludePeaks_OnlyForOwner` (3 sous-cas). Frontend inchangé (la carte gère déjà `career_stats != null` + peaks nil → auto-collapse).
+
+**Fix data-race (bonus, demandé après coup)** : `-race` révélait une race préexistante — `jobs.Store.Create` retournait le pointeur VIVANT de la map ; les handlers (openspartan_import, backfill, sync, settings, setup) lisaient `job.Status`/`job.JobID` hors lock pour la réponse HTTP pendant que la goroutine de fond le mutait via `SetStatus` sous lock. Fix : `Create` renvoie une COPIE (cohérent avec `Get`/`FindActiveJob`) — le `JobID` immuable reste la clé pour les mutations ultérieures. Régression `TestStore_Create_ReturnsCopy`. **`go test -race ./...` désormais 100 % clean sur tout le projet.**
+
+**Prochaine étape** : validation utilisateur (Explorer cible : carrière live affichée, plus de message, réponse rapide à froid puis instantanée à chaud). Pas encore commité (en attente autorisation).
