@@ -37,7 +37,7 @@ import { SquadContext } from './SquadContext'
 import { getSquadTeammateColors } from './colors'
 import type { LabelValue, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
-import { deriveSquadPending } from './squadPending'
+import { deriveSquadPending, reconcileSquadSessionLabels } from './squadPending'
 
 import {
   FiltresPill,
@@ -288,6 +288,26 @@ export function SquadLayout() {
   // Sessions escouade (stables : LoadSynthesisMatches charge TOUT l'historique,
   // indépendamment de la période filtrée).
   const squadSessions = data?.session_labels?.squad ?? []
+
+  // Réconciliation anti-zombie des sessions pickées.
+  // Les labels backend embarquent un suffixe " (N)" = match-count figé au sync
+  // (cf. buildSessionLabel côté Go). Quand ce compte change (nouveau sync) ou
+  // que la session sort de la liste, le label persisté en localStorage devient
+  // un zombie : compté par le rail ("N sessions sélectionnées") mais sans case
+  // à cocher correspondante (donc indécochable via le dropdown), et filtré à 0
+  // match côté backend. On remappe chaque label pické vers sa forme courante
+  // (même session = même préfixe une fois le suffixe retiré) et on droppe les
+  // zombies introuvables. squadSessions est indépendant de la sélection
+  // (extractSynthesisSessionLabels sur allMatches), donc pas de boucle refetch.
+  useEffect(() => {
+    if (squadSessions.length === 0 || pickedSquadSessionLabels.length === 0) return
+    const reconciled = reconcileSquadSessionLabels(pickedSquadSessionLabels, squadSessions)
+    const unchanged =
+      reconciled.length === pickedSquadSessionLabels.length &&
+      reconciled.every((l, i) => l === pickedSquadSessionLabels[i])
+    if (!unchanged) applySessionLabels(reconciled)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [squadSessions])
 
   // ── Routes actives ───────────────────────────────────────────────────────
   const synergiesRoute = '/players/$playerSlug/squad/synergies' as const
