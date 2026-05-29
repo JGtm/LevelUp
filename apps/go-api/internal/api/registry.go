@@ -73,14 +73,14 @@ type ServiceRegistry struct {
 	rankImageURLs    map[int]*string           // nil → CareerService.rank_image_url et next_rank_image_url restent absents
 	prestigeBundle   *PrestigeBundle           // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
 	advisorBundle    *CoachAdvisorBundle       // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore        *auth.MultiUserTokenStore // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	authStore        auth.UserTokenStore       // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
 }
 
 // WithAuthStore attache le MultiUserTokenStore au registry — source unique des
 // tokens auth (RT + MSAL cache) post-ADR 0023. `refreshTokensFromDB` lit le store
 // AVANT de tomber sur les fallbacks legacy (sync_meta DuckDB, env var). Nil
 // possible pour les tests qui veulent l'ancien comportement legacy-only.
-func (r *ServiceRegistry) WithAuthStore(store *auth.MultiUserTokenStore) *ServiceRegistry {
+func (r *ServiceRegistry) WithAuthStore(store auth.UserTokenStore) *ServiceRegistry {
 	r.authStore = store
 	return r
 }
