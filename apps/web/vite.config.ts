@@ -2,17 +2,20 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 
 const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? 'http://127.0.0.1:8000'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     // Plugin TanStack Router — génère les types de routes depuis src/routes/
     TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     react(),
     tailwindcss(),
+    // Analyse du bundle : ANALYZE=true vite build → ouvre dist/stats.html
+    ...(mode === 'analyze' ? [visualizer({ open: true, filename: 'dist/stats.html', gzipSize: true, brotliSize: true })] : []),
   ],
   resolve: {
     alias: {
@@ -52,4 +55,4 @@ export default defineConfig({
       ],
     },
   },
-})
+}))

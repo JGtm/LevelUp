@@ -16,15 +16,19 @@
 //   - death_std              = écart-type deaths
 //   - match_count            = #matchs analysés
 //
-// **Limites** :
-//   - Le shadow runner actuel utilise les Priors hardcodés. Pour que la
-//     re-estimation soit effective, il faudra wirer la lecture depuis
-//     lusr_hyperparams_v2_latest (TODO Phase 5.B — cf. handoff doc).
-//   - Pas de TTT smoothing — les σ_skill sont laissés au runner.
+// Les hyperparams empiriques sont relus au runtime par le shadow runner depuis
+// lusr_hyperparams_v2_latest (Sprint 1.B : resolveGroupParams →
+// LoadPriorsFromHyperparams / LoadCountHyperparamsFromDB). En plus des stats de
+// base, ce batch calcule la matrice de couplage cross-mode (Sprint 2.B).
+//
+// **Limites** : pas de TTT smoothing forward+backward complet ici — le prototype
+// de lisseur EM vit dans internal/analysis/skill_v2/ttt.go (Sprint 3.A), pas
+// encore branché sur ce batch (couplage inter-joueurs = follow-up).
 //
 // Usage :
-//   go run -tags cgo ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run]
-//   --dry-run : affiche le rapport sans écrire en DB
+//
+//	go run -tags cgo ./apps/go-api/cmd/lusr_v2_ttt_batch [--dry-run]
+//	--dry-run : affiche le rapport sans écrire en DB
 //
 // Idempotent : ré-exécuter le même jour réécrit la même source ; chaque rerun
 // crée une nouvelle row append-only mais la vue _latest dédoublonne.
@@ -53,14 +57,14 @@ import (
 const sharedDBPath = "data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 
 type groupStats struct {
-	matchCount    int
-	drawCount     int
-	killSum       float64
-	killSqSum     float64
-	killN         int
-	deathSum      float64
-	deathSqSum    float64
-	deathN        int
+	matchCount int
+	drawCount  int
+	killSum    float64
+	killSqSum  float64
+	killN      int
+	deathSum   float64
+	deathSqSum float64
+	deathN     int
 }
 
 func (g *groupStats) drawProb() float64 {
@@ -97,6 +101,8 @@ func (g *groupStats) deathStats() (mean, std float64) {
 func main() {
 	dbPath := flag.String("db", sharedDBPath, "chemin vers shared_matches_v2.duckdb")
 	dryRun := flag.Bool("dry-run", false, "n'écrit pas en DB, affiche le rapport seulement")
+	smooth := flag.Bool("smooth", false, "TTT smoothing 3.A : estime τ par joueur/groupe et écrit ttt_tau_empirical")
+	writeSmoothed := flag.Bool("write-smoothed", false, "avec --smooth : écrit le μ lissé terminal dans player_skill_state_v2")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -115,9 +121,24 @@ func main() {
 		slog.Error("computeStats", "err", err)
 		os.Exit(1)
 	}
+	// Sprint 2.B : matrice de couplage cross-mode (corrélation des μ entre modes).
+	states, err := loadPlayerStatesByXUID(ctx, db)
+	if err != nil {
+		slog.Error("loadPlayerStatesByXUID", "err", err)
+		os.Exit(1)
+	}
+	matrix := skillv2.EstimateCouplingMatrix(states)
 
 	source := fmt.Sprintf("batch_%s", time.Now().Format("2006_01_02"))
 	printReport(stats, source)
+	printModeCouplingReport(matrix)
+
+	if *smooth {
+		if err := runTTTSmoothing(ctx, db, *dryRun, *writeSmoothed); err != nil {
+			slog.Error("runTTTSmoothing", "err", err)
+			os.Exit(1)
+		}
+	}
 
 	if *dryRun {
 		slog.Info("dry-run : aucune écriture DB")
@@ -128,8 +149,11 @@ func main() {
 		slog.Error("writeHyperparams", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("Phase 5 TTT batch terminé", "source", source, "groups", len(stats))
-	skillv2HyperparamUsageHint()
+	if err := writeModeCoupling(ctx, repo, matrix, source); err != nil {
+		slog.Error("writeModeCoupling", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("Phase 5 TTT batch terminé", "source", source, "groups", len(stats), "coupling_pairs", len(matrix))
 }
 
 // computeStats scanne match_registry × match_participants et agrège les
@@ -267,22 +291,4 @@ func writeHyperparams(ctx context.Context, repo *duckdb.SkillV2Repo,
 		}
 	}
 	return nil
-}
-
-// skillv2HyperparamUsageHint imprime le rappel sur le wiring restant côté
-// shadow runner (Phase 5.B — cf. handoff doc).
-func skillv2HyperparamUsageHint() {
-	fmt.Fprint(os.Stderr, `
-========================================================================
-RAPPEL Phase 5.B — wiring shadow runner :
-  Les hyperparams empiriques sont écrits, mais le shadow runner utilise
-  encore skillv2.DefaultPriors() hardcodé. Pour que la re-estimation soit
-  EFFECTIVE, modifier RunLUSRV2Shadow() pour :
-    1. Charger lusr_hyperparams_v2_latest par playlist_group
-    2. Override Priors.DrawProbability avec draw_probability_empirical
-    3. Override CountHyperparams Bias avec kill_mean/death_mean empiriques
-  Cf. .ai/LUSR_V2_HANDOFF.md section "Phase 5.B - Wiring restant".
-========================================================================
-`)
-	_ = skillv2.DefaultPriors() // import sanity
 }

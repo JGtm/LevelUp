@@ -40,12 +40,12 @@ func IsLUSRV2Enabled() bool {
 
 // shadowMatch est une vue dégroupée de match_participants utilisée par le runner.
 type shadowMatch struct {
-	matchID       string
-	startTime     time.Time
-	pairName      string
-	ownerOutcome  int
-	ownerTeamID   int
-	ownerHasTeam  bool
+	matchID      string
+	startTime    time.Time
+	pairName     string
+	ownerOutcome int
+	ownerTeamID  int
+	ownerHasTeam bool
 }
 
 // shadowParticipant : un participant brut, pour construire les rosters par équipe.
@@ -87,6 +87,12 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 	}
 
 	repo := duckdb.NewSkillV2Repo(sharedDB)
+	// Sprint 1.C : repo squad seulement si le flag est actif (OFF par défaut →
+	// nil → aucun offset appliqué, comportement strictement inchangé).
+	var squadRepo *duckdb.SquadOffsetRepo
+	if IsLUSRV2SquadOffsetEnabled() {
+		squadRepo = duckdb.NewSquadOffsetRepo(sharedDB)
+	}
 	priors := skillv2.DefaultPriors()
 	tierBoundaries := skillv2.DefaultTierBoundaries() // Phase 5 batch écrira override
 
@@ -100,12 +106,15 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 
 	ctxRun := shadowRunContext{
 		repo:           repo,
+		squadRepo:      squadRepo,
 		playerDB:       playerDB,
 		sharedDB:       sharedDB,
 		priors:         priors,
 		tierBoundaries: tierBoundaries,
 		xuid:           xuid,
 		canonical:      canonical,
+		priorsCache:    make(map[string]skillv2.Priors),
+		countHypCache:  make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
 	}
 	var s shadowRunStats
 	for _, m := range matches {
@@ -124,14 +133,22 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 
 // shadowRunContext regroupe les dépendances stables d'une exécution shadow,
 // passées à `processOneShadowMatch` au lieu d'avoir 7 paramètres en cascade.
+//
+// `priors` reste les DEFAULTS ; les priors/count-hyperparams effectifs sont
+// résolus PAR GROUPE via resolveGroupParams (override empirique du batch
+// lusr_v2_ttt_batch) et mémoïsés dans priorsCache / countHypCache. Les maps
+// sont des références — le cache survit aux copies par valeur du contexte.
 type shadowRunContext struct {
 	repo           *duckdb.SkillV2Repo
+	squadRepo      *duckdb.SquadOffsetRepo // nil si LEVELUP_LUSR_V2_SQUAD_OFFSET off
 	playerDB       *sql.DB
 	sharedDB       *sql.DB
 	priors         skillv2.Priors
 	tierBoundaries []skillv2.TierBoundary
 	xuid           string
 	canonical      bool
+	priorsCache    map[string]skillv2.Priors
+	countHypCache  map[string]map[skillv2.CountType]skillv2.CountHyperparams
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.
@@ -185,7 +202,14 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 		s.skippedNonTwoTeam++
 		return
 	}
-	ownerNew, err := applyMatchToSkillV2(ctx, c.repo, c.priors, m.matchID, group,
+	groupPriors, groupCountHyp := resolveGroupParams(ctx, c, group)
+	// Sprint 2.A : contexte du quit (score au moment du quit). Chargé seulement
+	// s'il y a un quitter ; sinon timeline vide → fallback outcome final.
+	qt := quitTimeline{available: false}
+	if hasAnyQuitter(teamA, teamB) {
+		qt = loadQuitTimeline(ctx, c.sharedDB, m.matchID, m.startTime, teamA, teamB)
+	}
+	ownerNew, expectedWinProb, err := applyMatchToSkillV2(ctx, c.repo, c.squadRepo, groupPriors, groupCountHyp, qt, m.matchID, group,
 		m.startTime, teamA, teamB, outcomeA, c.xuid)
 	if err != nil {
 		slog.WarnContext(ctx, "LUSR v2 shadow: apply échoué",
@@ -199,11 +223,41 @@ func processOneShadowMatch(ctx context.Context, c shadowRunContext, m shadowMatc
 	// (rating_type='LUSR' slot historique). Best-effort — un échec d'écriture
 	// ne re-process pas le match (watermark a déjà avancé via persistTeamSkillV2).
 	if c.canonical && ownerNew != nil {
-		if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *ownerNew, c.tierBoundaries); err != nil {
+		if err := writeCanonicalLUSRRow(ctx, c.playerDB, m.matchID, *ownerNew, expectedWinProb, c.tierBoundaries); err != nil {
 			slog.WarnContext(ctx, "LUSR v2 canonical: write match_skill_rank échoué",
 				"match_id", m.matchID, "group", group, "err", err)
 		}
 	}
+}
+
+// resolveGroupParams retourne les Priors et CountHyperparams effectifs pour un
+// groupe de modes : les défauts surchargés par les hyperparams empiriques
+// ré-estimés par cmd/lusr_v2_ttt_batch (table lusr_hyperparams_v2). Mémoïsé par
+// groupe — 1 seul LoadHyperparams par groupe et par run.
+//
+// Best-effort : si LoadHyperparams échoue (table absente sur une DB non migrée,
+// etc.), on retombe sur les défauts + warn, et le run continue.
+func resolveGroupParams(ctx context.Context, c shadowRunContext, group string) (skillv2.Priors, map[skillv2.CountType]skillv2.CountHyperparams) {
+	if p, ok := c.priorsCache[group]; ok {
+		return p, c.countHypCache[group]
+	}
+	priors := c.priors
+	countHyp := skillv2.DefaultCountHyperparamsMap()
+	hp, err := c.repo.LoadHyperparams(ctx, group)
+	switch {
+	case err != nil:
+		slog.WarnContext(ctx, "LUSR v2: LoadHyperparams échoué — fallback defaults",
+			"group", group, "err", err)
+	case len(hp) > 0:
+		priors = skillv2.LoadPriorsFromHyperparams(hp, c.priors)
+		countHyp = skillv2.LoadCountHyperparamsFromDB(hp, c.priors.Mu0)
+		slog.DebugContext(ctx, "LUSR v2: hyperparams ré-estimés appliqués",
+			"group", group, "overrides", skillv2.AppliedHyperparamCount(hp),
+			"draw_probability", priors.DrawProbability)
+	}
+	c.priorsCache[group] = priors
+	c.countHypCache[group] = countHyp
+	return priors, countHyp
 }
 
 // isTeamImbalanceTooHigh retourne true si la différence absolue des tailles
@@ -362,7 +416,7 @@ func buildTwoTeamRosters(ctx context.Context, sharedDB *sql.DB, matchID string, 
 
 // outcomeToTeamResult convertit l'outcome Halo (codes match_participants.outcome)
 // en TeamResult skill_v2. Codes Halo (cf. internal/games/halo_infinite) :
-//   1 = Tie, 2 = Win, 3 = Loss, 4 = Did Not Finish.
+// 1 = Tie, 2 = Win, 3 = Loss, 4 = Did Not Finish.
 // DNF → skipped (le quit penalty proper sera la Phase 3 TS2 §9).
 func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 	switch o {
@@ -394,38 +448,65 @@ func outcomeToTeamResult(o int) (skillv2.TeamResult, bool) {
 func applyMatchToSkillV2(
 	ctx context.Context,
 	repo *duckdb.SkillV2Repo,
+	squadRepo *duckdb.SquadOffsetRepo,
 	priors skillv2.Priors,
+	countHyp map[skillv2.CountType]skillv2.CountHyperparams,
+	qt quitTimeline,
 	matchID, playlistGroup string,
 	startTime time.Time,
 	teamA, teamB []rosterMember,
 	outcomeA skillv2.TeamResult,
 	ownerXUID string,
-) (ownerNew *domain.SkillV2State, err error) {
+) (ownerNew *domain.SkillV2State, expectedWinProb *float64, err error) {
 	teamAXUIDs := extractXUIDs(teamA)
 	teamBXUIDs := extractXUIDs(teamB)
 
 	teamAStates, err := loadStatesOrSeed(ctx, repo, teamAXUIDs, playlistGroup, priors)
 	if err != nil {
-		return nil, fmt.Errorf("loadStates teamA: %w", err)
+		return nil, nil, fmt.Errorf("loadStates teamA: %w", err)
 	}
 	teamBStates, err := loadStatesOrSeed(ctx, repo, teamBXUIDs, playlistGroup, priors)
 	if err != nil {
-		return nil, fmt.Errorf("loadStates teamB: %w", err)
+		return nil, nil, fmt.Errorf("loadStates teamB: %w", err)
 	}
-	counts := buildCountInputs(teamA, teamB, outcomeA)
-	newA, newB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
-		TeamA:   shadowStatesToGaussians(teamAStates),
-		TeamB:   shadowStatesToGaussians(teamBStates),
+
+	// Sprint 1.C : gaussiennes EFFECTIVES (μ + offset squad). squadRepo nil (flag
+	// off) → offsets nuls → effA/effB == gaussiennes individuelles (no-op exact).
+	offsetsA := computeTeamSquadOffsets(ctx, squadRepo, teamAStates, playlistGroup)
+	offsetsB := computeTeamSquadOffsets(ctx, squadRepo, teamBStates, playlistGroup)
+	effA := applyOffsetsToGaussians(shadowStatesToGaussians(teamAStates), offsetsA)
+	effB := applyOffsetsToGaussians(shadowStatesToGaussians(teamBStates), offsetsB)
+
+	// Sprint 1.A : proba de victoire pré-match de l'équipe du owner (teamA, par
+	// construction de buildTwoTeamRosters). Sur les gaussiennes EFFECTIVES — la
+	// synergie squad rend une victoire réellement plus probable. Calculée AVANT
+	// l'update sur les états pré-match en mémoire (un re-query lirait le
+	// posterior post-persist, donc faux).
+	probOwner, _, _ := skillv2.PredictTwoTeamWinProb(effA, effB, priors)
+	predictionsTotal.Add(1)
+	expectedWinProb = &probOwner
+
+	counts := buildCountInputs(ctx, teamA, teamB, outcomeA, qt)
+	if counts != nil {
+		counts.Hyperparams = countHyp
+	}
+	newEffA, newEffB, err := skillv2.UpdateTwoTeamWithCountsEP(skillv2.TwoTeamMatch{
+		TeamA:   effA,
+		TeamB:   effB,
 		ResultA: outcomeA,
 	}, counts, priors)
 	if err != nil {
-		return nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
+		return nil, nil, fmt.Errorf("UpdateTwoTeamWithCountsEP: %w", err)
 	}
+	// Retire l'offset (constant) du posterior : seul le delta de l'EP s'applique
+	// au μ INDIVIDUEL persisté. No-op quand offsets nuls.
+	newA := stripOffsetsFromGaussians(newEffA, offsetsA)
+	newB := stripOffsetsFromGaussians(newEffB, offsetsB)
 	if err := persistTeamSkillV2(ctx, repo, teamAStates, newA, matchID, startTime); err != nil {
-		return nil, fmt.Errorf("persistTeam A: %w", err)
+		return nil, nil, fmt.Errorf("persistTeam A: %w", err)
 	}
 	if err := persistTeamSkillV2(ctx, repo, teamBStates, newB, matchID, startTime); err != nil {
-		return nil, fmt.Errorf("persistTeam B: %w", err)
+		return nil, nil, fmt.Errorf("persistTeam B: %w", err)
 	}
 	ownerNew = findOwnerPosterior(ownerXUID, teamAStates, newA, teamBStates, newB, matchID, playlistGroup, startTime)
 
@@ -441,7 +522,7 @@ func applyMatchToSkillV2(
 			}
 		}
 	}
-	return ownerNew, nil
+	return ownerNew, expectedWinProb, nil
 }
 
 // findOwnerPosterior cherche le owner dans les rosters et reconstruit son

@@ -16,9 +16,11 @@ import (
 
 // États possibles renvoyés par resolveSetupState et ResolveAuthState.
 const (
-	bootstrapSetupReady              = "ready"
-	bootstrapSetupProfileReadyNoSync = "profile_ready_no_sync"
-	bootstrapAuthMissing             = "missing"
+	bootstrapSetupReady               = "ready"
+	bootstrapSetupProfileReadyNoSync  = "profile_ready_no_sync"
+	bootstrapSetupNoHaloLink          = "no_halo_link"
+	bootstrapSetupHaloLinkedNoProfile = "halo_linked_no_profile"
+	bootstrapAuthMissing              = "missing"
 )
 
 // BootstrapService construit le BootstrapResponse pour l'endpoint /api/v1/bootstrap.
@@ -81,7 +83,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 	settingsExcerpt := buildSettingsExcerpt(s.cfg, appSettings)
 	flags := buildFeatureFlags(s.cfg, appSettings)
 
-	setupState := s.resolveSetupState(ctx, players)
+	setupState := s.resolveSetupState(ctx, sess, players)
 
 	var currentPlayer *domain.PlayerSummary
 	if len(players) > 0 {
@@ -241,9 +243,16 @@ func buildFeatureFlags(cfg *config.AppConfig, settings map[string]interface{}) d
 	}
 }
 
-func (s *BootstrapService) resolveSetupState(ctx context.Context, players []domain.PlayerSummary) string {
+func (s *BootstrapService) resolveSetupState(ctx context.Context, sess *domain.SessionData, players []domain.PlayerSummary) string {
 	if len(players) == 0 {
-		return "no_halo_link"
+		// SSO terminé (identité Halo liée en session) mais aucun profil local créé :
+		// router vers StepPlayer (confirmation/création de profil) au lieu de
+		// reboucler sur StepDeviceCode. Le Device Code Flow finit en "authorized"
+		// sans auto-provisionner — le profil est créé à l'étape suivante.
+		if ResolveLinkedIdentity(sess) != nil {
+			return bootstrapSetupHaloLinkedNoProfile
+		}
+		return bootstrapSetupNoHaloLink
 	}
 	// Vérifier si des matchs existent dans la shared DB.
 	if s.bootRepo == nil {

@@ -209,7 +209,3 @@ export function MatchNavigationBar({ playerSlug, matchId, locale }: MatchNavigat
     </div>
   )
 }
-
-// Alias rétrocompat pour l'ancien composant ◀ X/Y ▶ (utilisé jusqu'à la
-// migration complète vers MatchNavigationBar).
-export const MatchNavigation = MatchNavigationBar

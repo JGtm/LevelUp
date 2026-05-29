@@ -110,23 +110,34 @@ Au 2026-05-27 22:55, toutes les suites ci-dessus passent.
 
 ---
 
-## Phase 5.B — Wiring restant côté shadow runner
+## Phase 5.B — Wiring hyperparams ré-estimés — ✅ LIVRÉ (Sprint 1.B, 2026-05-28)
 
-Le `cmd/lusr_v2_ttt_batch` écrit les hyperparams empiriques dans `lusr_hyperparams_v2`, mais `RunLUSRV2Shadow` utilise toujours `skillv2.DefaultPriors()` hardcodé. Pour que la re-estimation soit EFFECTIVE :
+`resolveGroupParams` dans `skill_v2_shadow.go` charge `lusr_hyperparams_v2_latest` par groupe (mémoïsé) et override :
+1. `Priors.DrawProbability` ← `draw_probability_empirical` (via `skillv2.LoadPriorsFromHyperparams`).
+2. `CountHyperparams.Bias` kill/death ← `kill_mean_empirical` / `death_mean_empirical` (via `skillv2.LoadCountHyperparamsFromDB`).
+   - **Correction du plan** : la formule n'est PAS `bias = mean` (faux pour `expected = bias + w_p·perf + w_o·avg_opp`) mais `bias = mean − (w_p + w_o)·μ0`, qui se réduit aux défauts pour mean ~12.5.
 
-1. Charger `lusr_hyperparams_v2_latest` au début de `RunLUSRV2Shadow` (par playlist_group).
-2. Override `Priors.DrawProbability` avec `draw_probability_empirical`.
-3. Override `CountHyperparams.Bias` (kill/death) avec `kill_mean_empirical` / `death_mean_empirical`.
-4. Tester qu'un Mu0 ré-estimé proche de la moyenne kills donne un `expected_count_death` réaliste (cf. trace Phase 3c initiale qui avait montré le bug "expected_death < 0").
+Best-effort (échec LoadHyperparams → fallback defaults + warn). Log `slog.DebugContext "hyperparams ré-estimés appliqués"`. `kill_std`/`death_std`/`match_count_analyzed` restent non câblés (variance d'obs à recalibrer en TTT proper).
 
-Pas urgent — les defaults Phase 3e v2 sont raisonnables. À ouvrir quand la prochaine session veut affiner.
+---
+
+## Phase 2 — Squad offset — ✅ LIVRÉ gated OFF (Sprint 1.C, 2026-05-28)
+
+Corrige la sur-estimation des joueurs qui jouent souvent en escouade (le modèle attribuait les victoires de squad au skill individuel).
+
+- **Table** `player_squad_offset` (append-only + vue `_latest`) : offset de synergie par paire (xuid, partner_xuid) × playlist_group, en unités μ, borné ±2.0.
+- **Estimation hors-ligne** : `cmd/lusr_v2_squad_estimate` — pour chaque paire ≥ N matchs ensemble (fenêtre M semaines), offset = `mean(Won − SoloWinProb) × gain`, clampé. **MVP first-pass** : SoloWinProb proxy = ratings solo COURANTS (biais conservateur = sous-correction). À raffiner en TTT proper.
+- **Application runtime** (`skill_v2_squad.go`, gated `LEVELUP_LUSR_V2_SQUAD_OFFSET=1`) : μ effectif = μ + Σ(offsets partenaires présents) AVANT l'EP, retiré du posterior APRÈS (σ inchangé). Flag OFF → repo nil → no-op exact.
+- **Anti-inflation vérifié** (test E2E) : squad qui gagne avec offset +1.5 → μ individuel monte MOINS que sans offset.
+
+⚠️ La calibration (`gain`, seuil N, fenêtre M) et l'activation du flag en prod restent à valider (dry-run replay sur les 4 trackés).
 
 ---
 
 ## Phase 6 candidates (non implémentées)
 
 - **TTT proper (forward + backward smoothing)** : pour les hyperparams sigma_skill / sigma_perf / sigma_dynamic. Le batch actuel ne fait QU'une passe forward agrégée. La version complète demande un solveur EM sur factor graph sériel — non trivial, ~1-2 jours.
-- **Quit penalty avec timeline du score** : remplacer l'heuristique outcome-final par un check du score au moment du quit. Nécessite parser les `highlight_events` ou `match_progression` (à vérifier la source de vérité dans `internal/openspartan/`).
+- **Quit penalty avec timeline du score** : ✅ LIVRÉ (Sprint 2.A, 2026-05-28). Via `killer_victim_pairs` (timeline des frags, même base que le graphe tug-of-war). `skill_v2/quit_context.go` + `quitDeltaForContext` dans `skill_v2_quit_penalty.go`. ⚠️ Hook adapter T0 (`real_start_time`) marqué en commentaire dans `quitOffsetMs` — à brancher par le collègue pour le multi-titre (Halo OK via start_time_utc).
 - **Mode correlation à coefficients ré-estimés par paire de modes** : remplacer le scalaire `DefaultModeCouplingWeight=0.3` par une matrice 4×4 `w_d[i][j]` calibrée empiriquement (corrélation observée entre μ_groupes pour les players multi-modes). Reste capé à 0.4.
 - **UX delta dans match_skill_rank.rating_delta** : actuellement nul en canonical (cf. `writeCanonicalLUSRRow`). Pour le calculer il faudrait fetch le previous rating_value sur le même playlist_group.
 - **Migration backfill `lusr_v2_replay` avec canonical=ON** : aujourd'hui le replay tourne en mode shadow uniquement. Pour repeupler historiquement les `rating_type='LUSR_V2'` rows, ajouter un flag `--canonical` au replay et lui passer un playerDB.
@@ -159,7 +170,8 @@ Chaque commit doit avoir une entrée correspondante dans `.ai/thought_log.md` (r
    - La sentinelle ne lève aucune inconsistance.
    - Les expvar `levelup.lusr_v2.canonical_writes_total` montent.
 5. **Étape 5** : prod. Garder `batchComputeLUSR` court-circuité.
-6. **Étape 6 (optionnel)** : activer `LEVELUP_LUSR_V2_MODE_COUPLING=1` pour la Phase 4. Plus risqué — observer 1 semaine en staging avant prod.
+6. **Étape 6 — cross-mode (2026-05-28 : ON par défaut)** : `LEVELUP_LUSR_V2_MODE_COUPLING` est désormais actif sans flag. Lancer `cmd/lusr_v2_ttt_batch` pour calculer la matrice (sinon scalaire 0.3). Pour désactiver : `=0`. Observer en staging.
+7. **Étape 7 — squad (2026-05-28 : ON par défaut, Sprint 1.C)** : `LEVELUP_LUSR_V2_SQUAD_OFFSET` actif sans flag, MAIS sans effet tant que `cmd/lusr_v2_squad_estimate` n'a pas peuplé d'offsets. Faire `--dry-run` → vérifier offsets ∈ [-2,+2] des 4 trackés → run sans `--dry-run`. Pour désactiver : `=0`.
 
 ---
 
