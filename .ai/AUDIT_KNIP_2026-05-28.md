@@ -331,3 +331,52 @@ const config: KnipConfig = {
 
 export default config
 ```
+
+---
+
+## ✅ RÉSOLUTION — 2026-05-29 (branche `chore/knip-cleanup-p0-p3`)
+
+> Vérification systématique du routing/nav **avant** toute suppression (consigne : vérifier les pages, ne pas nettoyer aveuglément). `tsc -b` ✅ + `vite build` ✅ après cleanup.
+
+### Fait
+
+- **P0** ✅ `zod` ajouté (`^4.4.3`) — résout les 5 imports *unlisted*. Version 4.x alignée sur le runtime déjà en place.
+- **P3** ✅ `knip.config.ts` : `src/lib/api/types.ts` ignoré (types OpenAPI partiellement consommés) + faux positifs deps neutralisés : `tailwindcss` (plugin Vite), `@tailwindcss/typography` (via `@plugin` dans `globals.css`), `@iarna/toml` (tools/ racine).
+- **P1/P2** ✅ 5 fichiers **confirmés morts** supprimés — remplaçant actif identifié pour chacun :
+
+| Supprimé | Remplaçant actif (vérifié) |
+|---|---|
+| `features/career/CareerCitationsTab.tsx` | `features/citations/CitationsPage` (route `/citations` ; `CareerHubPage` documente « les citations ont leur propre page dédiée ») |
+| `components/shell/AppShellHeader.tsx` | `NavL1` (AppShell n'importe que NavL1) |
+| `components/shell/KPIBar.tsx` | `NavL2` (layout `$playerSlug.tsx`) |
+| `components/shell/PlayerScopeNav.tsx` | sélecteur joueur intégré à NavL1 |
+| `stores/careerPageStore.ts` | store orphelin, zéro référence |
+
+### Gardé délibérément (WIP / intention explicite — NE PAS supprimer sans accord)
+
+| Élément | Raison |
+|---|---|
+| `features/session-compare/*` (17 fichiers) | **Travail en cours utilisateur** (confirmé 2026-05-29, source d'inspiration). Fonctionnellement superseded par `session-detail/SessionDetailPage` (route active `stats/sessions`) mais **conservé sur demande**. |
+| `features/squad/v2/{SquadV2Page,SquadV2RouteHost,queries.ts,components/SquadCombatProfileRow}` | v2 non câblée (routes actives = v1 `SquadSynergiesPage`/`SquadContributionsPage`). ⚠️ `squad/v2/types.ts` + `SquadEngagementView` RESTENT vivants (importés par `SessionBriefing` + `engagement`) → ne jamais `rm -rf` le dossier entier. |
+| `features/synthesis/SynthesisCombatProfileSection.tsx` | WIP `PLAN_COMBAT_PROFILE_WIRING` Phase 1 |
+| `features/prestige/components/ChallengesCarousel.tsx` | feature prestige référencée par commentaire dans `HomePrestigeSection` |
+| `lib/query/prefetch.ts` (`useNavPrefetch`) | feature prefetch-au-survol construite mais jamais câblée dans NavL1 |
+| `lib/feature-flags.ts` (`REJEU_2D_ENABLED`) | flag pour projet replay 2D externe planifié (stub `replay.tsx`) |
+| `src/App.tsx` | annotation explicite « conserve pour reference » (boilerplate Vite) |
+| `lib/i18n/generated/{coaching_tips,engagement}.ts` | artefacts générés depuis TOML → traiter via le générateur, pas à la main |
+| Charts isolés : `StreakBadge`, `CareerLusrCards`, `HomeOutcomeBar`, `WinRateVsHistoryChart`, `TimeseriesCorrelationScatter`, `TimeseriesOutcomesOverTime` | zéro réf mais **pas de remplaçant identifié** → possibles leftovers de redesign OU composants à recâbler. À confirmer au cas par cas. |
+
+### Reste (hors scope P0-P3 → backlog)
+
+- **90 unused exports** (hooks queries, consts i18n, re-exports de barrels) dans des fichiers vivants → nettoyage itératif fichier-par-fichier.
+- **`@tanstack/react-query-devtools`** : vraie dépendance inutilisée (zéro import) → suppression = **P5 (dépendances)**, hors scope.
+- **Doublons P4** (`MatchHeader.tsx`, `formatters/number.ts`) → non traités.
+
+### Nouveau baseline knip
+
+| Catégorie | Avant | Après |
+|---|---|---|
+| Unlisted deps (zod) | 5 | **0** |
+| Unused devDeps | 2 | **0** |
+| Unused deps | 2 | **1** (react-query-devtools, P5) |
+| Unused files | 40 | **35** (= set « gardé » ci-dessus) |
