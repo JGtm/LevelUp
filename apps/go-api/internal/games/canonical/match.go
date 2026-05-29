@@ -34,6 +34,15 @@ type MatchSummary struct {
 	// avec ParticipantsXUIDs en plus ; ici on garde une version sans les
 	// participants. Nil si non chargé / non team-based.
 	Teams []TeamSnapshot
+
+	// T0Ms est l'offset en millisecondes du countdown pré-match (Match Timeline
+	// T0, Phase 3) : durée entre le start_time officiel du match et le début
+	// réel du gameplay. Dérivé en SQL de
+	// `epoch_ms(real_start_time AT TIME ZONE 'UTC') − epoch_ms(start_time_utc)`.
+	// Nil si real_start_time absent (T0 non calculable) → les builders timeline
+	// retombent sur T0=0 (chronologie brute, comportement pré-Phase 3).
+	// Champ additif (politique d'évolution canonical, cf. ADR 0005).
+	T0Ms *int64
 }
 
 // MatchDetail est l'objet canonique central d'un match côté services.

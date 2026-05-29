@@ -429,6 +429,62 @@ func TestPlayerMatchesRepo_Load_InvalidFiltersRejected(t *testing.T) {
 	}
 }
 
+// TestPlayerMatchesRepo_Load_T0MsComputed vérifie le calcul de l'offset T0
+// (Match Timeline T0, Phase 3) : un match avec real_start_time renseigné expose
+// T0Ms = epoch_ms(real_start_time UTC) − epoch_ms(start_time_utc) ; un match
+// sans real_start_time expose T0Ms nil (fallback runtime T0=0).
+func TestPlayerMatchesRepo_Load_T0MsComputed(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	resetPlayerMatchesTables(t, pdb)
+	ctx := context.Background()
+
+	// m_t0 : countdown de 28s entre start_time officiel et début gameplay.
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry
+		(match_id, start_time, start_time_utc, real_start_time, map_name, pair_name,
+		 playlist_name, duration_seconds)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"m_t0", "2026-01-01T00:00:00Z", "2026-01-01T00:00:00+00",
+		"2026-01-01T00:00:28", "Bazaar", "Slayer", "Quick Play", 600)
+	// m_no_t0 : real_start_time absent → T0Ms doit rester nil.
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry
+		(match_id, start_time, start_time_utc, map_name, pair_name, playlist_name, duration_seconds)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		"m_no_t0", "2026-01-02T00:00:00Z", "2026-01-02T00:00:00+00",
+		"Bazaar", "Slayer", "Quick Play", 600)
+
+	for _, mid := range []string{"m_t0", "m_no_t0"} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants
+			(match_id, xuid, gamertag, outcome, team_id) VALUES (?, ?, ?, ?, ?)`,
+			mid, pTestXUID, pTestGamertag, 2, 0)
+		if _, err := pdb.Player.Exec(ctx, `INSERT INTO player_match_enrichment
+			(match_id) VALUES (?)`, mid); err != nil {
+			t.Fatalf("insert pme %s: %v", mid, err)
+		}
+	}
+
+	repo := NewPlayerMatchesRepo(pdb)
+	rows, err := repo.Load(ctx, port.PlayerMatchFilters{})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	byID := make(map[string]canonical.MatchSummary, len(rows))
+	for _, r := range rows {
+		byID[r.Summary.MatchID] = r.Summary
+	}
+
+	t0 := byID["m_t0"]
+	if t0.T0Ms == nil {
+		t.Fatalf("m_t0: T0Ms should be non-nil (real_start_time set)")
+	}
+	if *t0.T0Ms != 28000 {
+		t.Errorf("m_t0: T0Ms want 28000ms, got %d", *t0.T0Ms)
+	}
+	if got := byID["m_no_t0"]; got.T0Ms != nil {
+		t.Errorf("m_no_t0: T0Ms want nil (no real_start_time), got %d", *got.T0Ms)
+	}
+}
+
 // TestPlayerMatchesRepo_Load_PairModeHydrated vérifie que PairMode est peuplé
 // depuis pair_name (EN) et pair_name_fr (COALESCE), aligné avec filtersResolve.
 func TestPlayerMatchesRepo_Load_PairModeHydrated(t *testing.T) {
