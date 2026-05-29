@@ -52,7 +52,7 @@ func buildMatchHeader(
 
 	applyMatchHeaderMetaLabels(&h, meta)
 	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
-	h.PlayableDurationSeconds = meta.PlayableDurationSeconds
+	h.PlayableDurationSeconds = headerGameplayDurationSeconds(meta)
 	h.IsRanked = meta.IsRanked
 	if meta.MapAssetID != nil {
 		h.WaypointURL = fmt.Sprintf("https://www.halowaypoint.com/halo-infinite/matches/%s", matchID)
@@ -62,6 +62,23 @@ func buildMatchHeader(
 	applyMatchHeaderEnrichment(&h, stats, enrich)
 
 	return h
+}
+
+// headerGameplayDurationSeconds retourne la VRAIE durée de gameplay du match
+// (countdown retranché) : duration_seconds − T0/1000 quand disponible, source la
+// plus fiable. Fallback sur playable_duration_seconds (API) si duration absente.
+func headerGameplayDurationSeconds(meta *domain.MatchMetaRaw) *int64 {
+	if meta.DurationSeconds == nil {
+		return meta.PlayableDurationSeconds
+	}
+	gp := int64(*meta.DurationSeconds)
+	if meta.T0Ms != nil {
+		gp -= *meta.T0Ms / 1000
+	}
+	if gp < 0 {
+		gp = 0
+	}
+	return &gp
 }
 
 // applyMatchHeaderMetaLabels renseigne StartTime, MapUI, MapID, ModeUI, PlaylistLabel.

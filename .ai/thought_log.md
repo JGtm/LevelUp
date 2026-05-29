@@ -50023,3 +50023,35 @@ Backfill Phase 4 a réduit time_played du countdown (~T0) + corrigé latecomers.
 - `go vet ./...` propre, `go build ./...` vert.
 - Couverture : internal/analysis/timeline **98.7%** (ComputeTimePlayed/For, Build* à 100%), internal/domain 84.6%.
 - Suite complète `go test ./...` : verte (cf. run).
+
+---
+
+## [2026-05-29] (c) Durée gameplay canonique pour builders intensité/cadence
+
+**Statut** : Complété.
+
+Les builders `narrative.ComputeMatchIntensityProfiles` et `ComputeCadenceProfiles` inféraient la fin de match depuis le dernier event (maxTime) → bins fragiles si events clairsemés (signalé par l'audit). Ajout d'un paramètre `gameplayDurationsMS map[string]int64` (nil-safe → fallback maxTime) : dénominateur = vraie durée gameplay (countdown retranché) quand fournie.
+
+**Threading** (helper `timeline.GameplayDurationsMS(map[string]MatchTimeline)`) :
+- MatchView : `buildCombatTabFull` passe `durationMS` (playable) → `BuildMatchCadenceChart(FromCanonical)`.
+- Squad : `squad_service_v2_compose` dérive depuis `sharedMatchTimelines(sharedMatches)` → `BuildCadenceChart` + `BuildIntensityHeatmap`.
+- Timeseries : `buildIntensityRows` reçoit `GameplayDurationsMS(timelines)` (mêmes timelines que CorrectEvents).
+
+**Golden régénéré** : `max_time_ms` = vraie durée gameplay (Fortress 419082ms ≈ 419s) au lieu du dernier event. Buckets inchangés sur les fixtures denses (gain réel sur events incomplets). first_kill/death inchangés (dépendent du T0, pas du dénominateur).
+
+**Tests** : signatures adaptées (narrative + service), build + vet verts, narrative/timeline/service verts.
+
+---
+
+## [2026-05-29] (a) Durée gameplay homogène dans les tables/header (countdown retranché)
+
+**Statut** : Complété (incrémental, petit à petit).
+
+Audit (a) : seules 2 surfaces affichaient la durée BRUTE du film (countdown inclus) — les autres (match history, home cards) utilisent déjà time_played (gameplay).
+
+- **Source unique** : `canonical.MatchSummary.GameplayDurationSeconds()` = DurationSeconds − T0Ms/1000 (clamp ≥0, fallback durée brute si T0 nil).
+- **(a1) Squad V2 history** : HistoryTableRow +`gameplay_duration_seconds` (depuis la méthode canonical) ; front HistoryTable.tsx préfère gameplay (fallback duration_seconds).
+- **(a2) Squad synergy** : colonne SQL `gameplay_duration_seconds` (GREATEST(0, duration − T0) via real_start_time) ajoutée à Q30SquadMatchesSharedQuery + scan + SquadMatchRow + SquadMatchHistoryRow ; front SquadSynergyHistoryTable préfère gameplay. Scan integration vert.
+- **(a3) Match-view header** : `headerGameplayDurationSeconds(meta)` = duration − T0 (plus fiable que playable_duration_seconds API qui == duration sur certains Ranked). Pas de changement frontend (même champ).
+
+**Tests** : build + vet Go verts, service + integration squad verts, frontend typecheck vert.

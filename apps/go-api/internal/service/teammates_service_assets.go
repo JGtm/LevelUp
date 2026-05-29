@@ -196,6 +196,7 @@ func buildSquadMatchHistory(matches []domain.SquadMatchRow, modeFR map[string]st
 			DeltaMMR:         deltaMMR,
 			ScoreLabel:       scoreLabel,
 			DurationSeconds:  m.DurationSeconds,
+			GameplayDurationSeconds: m.GameplayDurationSeconds,
 			WinRateHist:      winRate,
 			WinRateHistTotal: winRateTotal,
 			SessionLabel:     m.SessionLabel,

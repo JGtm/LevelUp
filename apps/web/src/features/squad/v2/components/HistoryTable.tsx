@@ -106,7 +106,7 @@ export function HistoryTable({ rows, squadOrder, locale, labels, playerSlug }: H
               <td className="px-3 py-2">{formatDate(row.started_at_utc, locale, HISTORY_DATE_OPTS)}</td>
               <td className="px-3 py-2">{row.mode_label ?? '-'}</td>
               <td className="px-3 py-2">{row.map_label ?? '-'}</td>
-              <td className="px-3 py-2 text-center">{formatDurationMMSS(row.duration_seconds)}</td>
+              <td className="px-3 py-2 text-center">{formatDurationMMSS(row.gameplay_duration_seconds ?? row.duration_seconds)}</td>
               <td
                 className="px-3 py-2 text-center font-medium"
                 style={{ color: outcomeColorVar(row.main_outcome) }}
