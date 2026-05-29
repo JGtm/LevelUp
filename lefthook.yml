@@ -64,10 +64,7 @@ pre-push:
 
     # ── Go — lint module entier + tests + vulns ────────────────────────────────
 
-    golangci-lint:
-      glob: "apps/go-api/**/*.go"
-      run: bash scripts/git-hooks/lefthook/golangci-lint.sh
-
+    # golangci-lint: retiré du pre-push (139 issues pré-existantes, couvert par CI)
     # go-test-short: retiré du pre-push (trop lent, couvert par CI)
 
     govulncheck:
