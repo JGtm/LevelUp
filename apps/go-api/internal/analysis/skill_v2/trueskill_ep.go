@@ -25,6 +25,13 @@ type PlayerCounts struct {
 	// Si Quit=false, QuitPenaltyDelta est ignoré.
 	Quit             bool
 	QuitPenaltyDelta float64
+
+	// Weight est le poids du joueur dans la somme team_perf = Σ wᵢ·perfᵢ
+	// (TS2 : wᵢ = time_played_i / match_length, cf. ep/sum_factor.go). Permet de
+	// down-weighter quitters/latecomers proportionnellement à leur temps de jeu
+	// RÉEL (countdown retranché, via MatchTimeline.GameplayDuration). 0 (ou non
+	// renseigné) → 1.0 (TS classique, participation pleine).
+	Weight float64
 }
 
 // CountInputs structure les counts par équipe pour rester aligné avec
@@ -137,6 +144,8 @@ func UpdateTwoTeamWithCountsEP(m TwoTeamMatch, counts *CountInputs, p Priors) (t
 	}
 	if counts != nil {
 		input.Counts = flattenCountInputs(counts)
+		input.WeightsA = extractTeamWeights(counts.TeamA)
+		input.WeightsB = extractTeamWeights(counts.TeamB)
 	}
 
 	postA, postB, err := ep.UpdateMatch2Team(input, ep.DefaultMatch2TeamConfig())
@@ -150,6 +159,24 @@ func UpdateTwoTeamWithCountsEP(m TwoTeamMatch, counts *CountInputs, p Priors) (t
 		applyQuitPenaltyPost(finalB, counts.TeamB)
 	}
 	return finalA, finalB, nil
+}
+
+// extractTeamWeights projette les poids team-sum (PlayerCounts.Weight) en
+// []float64 aligné sur l'équipe. Retourne nil si aucun poids non nul (→ l'EP
+// retombe sur wᵢ=1 partout, TS classique).
+func extractTeamWeights(pcs []PlayerCounts) []float64 {
+	any := false
+	out := make([]float64, len(pcs))
+	for i, pc := range pcs {
+		out[i] = pc.Weight
+		if pc.Weight > 0 {
+			any = true
+		}
+	}
+	if !any {
+		return nil
+	}
+	return out
 }
 
 // applyQuitPenaltyPost applique le quit penalty en POST-EP : pour chaque
