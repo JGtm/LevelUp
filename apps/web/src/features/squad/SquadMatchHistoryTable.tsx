@@ -106,9 +106,9 @@ export function SquadMatchHistoryTable({ rows, playerSlug }: SquadMatchHistoryTa
         cell: (ctx) => labelOfPlaylist(ctx.getValue<string | undefined>()),
       },
       {
-        accessorKey: 'pair_name',
+        accessorKey: 'mode_ui',
         header: labels.mode,
-        cell: (ctx) => ctx.getValue<string | undefined>() ?? '-',
+        cell: (ctx) => ctx.getValue<string | undefined>() || ctx.row.original.pair_name || '-',
       },
       {
         accessorKey: 'outcome',

@@ -30,6 +30,7 @@ function row(idx: number, overrides: Partial<SquadMatchHistoryRow> = {}): SquadM
     map_ui: 'Aquarius',
     playlist_name: 'Ranked Arena',
     pair_name: 'Slayer',
+    mode_ui: 'Assassin',
     outcome: 2,
     kills: 18,
     deaths: 7,
@@ -102,6 +103,16 @@ describe('SquadMatchHistoryTable', () => {
     expect(within(table).getByText('45.0%')).toBeInTheDocument()
     expect(within(table).getByText('72.3')).toBeInTheDocument()
     expect(within(table).getByText('1530')).toBeInTheDocument()
+    // Colonne Mode : affiche mode_ui (résolu), pas pair_name brut.
+    expect(within(table).getByText('Assassin')).toBeInTheDocument()
+  })
+
+  it('colonne Mode : fallback sur pair_name si mode_ui absent', () => {
+    renderWithProviders(
+      <SquadMatchHistoryTable rows={[row(1, { mode_ui: undefined })]} playerSlug="me" />,
+    )
+    const table = screen.getByTestId('squad-match-history-table')
+    expect(within(table).getByText('Slayer')).toBeInTheDocument()
   })
 
   it('outcome=3 (loss) affiche libellé Défaite', () => {
