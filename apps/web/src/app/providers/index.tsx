@@ -20,8 +20,12 @@ export function AppProviders() {
       <ThemeProvider>
         <RouterProvider router={router} />
       </ThemeProvider>
-      {/* Devtools React Query — dev uniquement (tree-shaké en prod via DEV) */}
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      {/* Devtools React Query — dev uniquement (tree-shaké en prod via DEV),
+          OFF par défaut, activable à la demande via VITE_SHOW_QUERY_DEVTOOLS=true */}
+      {import.meta.env.DEV &&
+        import.meta.env.VITE_SHOW_QUERY_DEVTOOLS === 'true' && (
+          <ReactQueryDevtools initialIsOpen={false} />
+        )}
     </QueryClientProvider>
   )
 }
