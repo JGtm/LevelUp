@@ -247,14 +247,14 @@ func loadMatchDurations(db *sql.DB, matchIDs []string) map[string]int {
 // ── Replay & math ──────────────────────────────────────────────────────────
 
 type localState struct {
-	mu                  float64
-	sigma               float64
-	matchCount          int // dans la même chaine
-	lastMatchTime       *time.Time
-	accuracyHistory     []float64
-	damageEffHistory    []float64
-	offConvHistory      []float64
-	defResHistory       []float64
+	mu               float64
+	sigma            float64
+	matchCount       int // dans la même chaine
+	lastMatchTime    *time.Time
+	accuracyHistory  []float64
+	damageEffHistory []float64
+	offConvHistory   []float64
+	defResHistory    []float64
 }
 
 func newState() *localState { return &localState{mu: lusync.InitialMU, sigma: lusync.InitialSigma} }

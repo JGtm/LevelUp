@@ -205,7 +205,7 @@ export function SessionDetailPage() {
                 <CardTitle className="text-base">{t('session.detail.matches_card')}</CardTitle>
               </CardHeader>
               <CardContent>
-                <SessionMatchesTable matches={data.matches} />
+                <SessionMatchesTable matches={data.matches} playerSlug={playerSlug} />
               </CardContent>
             </Card>
           </>

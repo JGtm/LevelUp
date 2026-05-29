@@ -28,7 +28,7 @@ func TestApplyCrossModeLeak_NegativeDelta(t *testing.T) {
 func TestApplyCrossModeLeak_ClampsAtMax(t *testing.T) {
 	// Tentative d'utiliser w_d = 0.8 → DOIT être clampé à 0.4.
 	got := ApplyCrossModeLeak(24.0, 25.0, 30.0, 0.8) // delta +5
-	want := 24.0 + 0.4*5.0                            // clampé à 0.4 → +2.0
+	want := 24.0 + 0.4*5.0                           // clampé à 0.4 → +2.0
 	if math.Abs(got-want) > 1e-9 {
 		t.Errorf("ApplyCrossModeLeak (over-cap) = %v, want %v (clamped)", got, want)
 	}

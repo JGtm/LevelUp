@@ -124,12 +124,12 @@ type StatsMatchRow struct {
 	PerfectKills        *int
 	// SkillRatingValue : rating CSR ou LUSR du match (depuis match_skill_rank).
 	// Nil si le titre/match n'a pas de skill snapshot.
-	SkillRatingValue         *float64
-	SkillRatingType          string   // "csr" | "lusr" | ""
-	SkillPlaylistGroup       *string  // groupe normalisé (ex: "ranked-arena")
-	SkillSeasonID            *string  // saison Halo (ex: "Elan") — rupture de courbe si changement
-	SkillMeasurementRemaining *int    // matchs de placement restants (>0 = placement)
-	EngagementScoreBrut      *float64 // résidu brut engagement, nil si non calculé
+	SkillRatingValue          *float64
+	SkillRatingType           string   // "csr" | "lusr" | ""
+	SkillPlaylistGroup        *string  // groupe normalisé (ex: "ranked-arena")
+	SkillSeasonID             *string  // saison Halo (ex: "Elan") — rupture de courbe si changement
+	SkillMeasurementRemaining *int     // matchs de placement restants (>0 = placement)
+	EngagementScoreBrut       *float64 // résidu brut engagement, nil si non calculé
 }
 
 // SynthesisMatchRow est une ligne brute chargée depuis Q33b.

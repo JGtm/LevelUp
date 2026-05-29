@@ -523,18 +523,6 @@ func getEnvOrDefault(key, def string) string {
 	return def
 }
 
-func getEnvDuration(key string, def time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	d, err := time.ParseDuration(v)
-	if err != nil {
-		return def
-	}
-	return d
-}
-
 func getEnvInt(key string, def int) int {
 	v := os.Getenv(key)
 	if v == "" {

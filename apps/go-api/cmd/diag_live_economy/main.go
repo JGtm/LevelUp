@@ -11,9 +11,10 @@
 //	diag_live_economy <gamertag>
 //
 // Sortie : 3 lignes
-//   [auth]          OK / FAIL (XSTS + Spartan token len)
-//   [career]        OK rank=N xp=N / NIL / FAIL
-//   [customization] OK / NIL / FAIL (NIL = joueur sans Spartan customizé)
+//
+//	[auth]          OK / FAIL (XSTS + Spartan token len)
+//	[career]        OK rank=N xp=N / NIL / FAIL
+//	[customization] OK / NIL / FAIL (NIL = joueur sans Spartan customizé)
 package main
 
 import (

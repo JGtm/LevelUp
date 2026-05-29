@@ -24,8 +24,8 @@ func parseExpr(t *testing.T, src string) ast.Expr {
 
 func TestSocialReceiverLabel(t *testing.T) {
 	cases := []struct {
-		name     string
-		expr     string
+		name         string
+		expr         string
 		wantNonEmpty bool
 		wantContains string
 	}{

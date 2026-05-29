@@ -406,8 +406,8 @@ func TestBuildCombatPatternAlerts_NilMedians_NoAlerts(t *testing.T) {
 func TestBuildCombatPatternAlerts_Actif_LowOC_HighResidual(t *testing.T) {
 	cm := &CombatMedians{
 		MedianOC:    combatOCP80Threshold * 0.50, // < 70% P80 → fragile OC
-		MedianDR:    combatDRP80Threshold,         // bon DR → pas de fragile
-		AvgResidual: 10.0,                         // > +5 → actif
+		MedianDR:    combatDRP80Threshold,        // bon DR → pas de fragile
+		AvgResidual: 10.0,                        // > +5 → actif
 		HasResidual: true,
 	}
 	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})
@@ -447,9 +447,9 @@ func TestBuildCombatPatternAlerts_Fragile_LowDR(t *testing.T) {
 
 func TestBuildCombatPatternAlerts_NoAlert_AllGood(t *testing.T) {
 	cm := &CombatMedians{
-		MedianOC:    combatOCP80Threshold,         // bon OC
-		MedianDR:    combatDRP80Threshold,         // bon DR
-		AvgResidual: 0.0,                          // modéré (>= -5, pas > +5)
+		MedianOC:    combatOCP80Threshold, // bon OC
+		MedianDR:    combatDRP80Threshold, // bon DR
+		AvgResidual: 0.0,                  // modéré (>= -5, pas > +5)
 		HasResidual: true,
 	}
 	alerts := buildCombatPatternAlerts(GenerateInput{CombatMedians: cm})

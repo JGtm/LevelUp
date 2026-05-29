@@ -82,8 +82,8 @@ func TestDetectEngagementDrop_BothMetricsLow(t *testing.T) {
 	for i := range lowRows {
 		lowRows[i] = MatchRow{
 			Outcome:      3,
-			EngageScore:  ptr64(5.0),  // très bas
-			ResidualBrut: ptr64(0.5),  // très bas
+			EngageScore:  ptr64(5.0), // très bas
+			ResidualBrut: ptr64(0.5), // très bas
 		}
 	}
 	// Les rows récents en premier

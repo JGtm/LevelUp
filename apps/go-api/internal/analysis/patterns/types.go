@@ -11,30 +11,30 @@ import "time"
 // MatchRow est la ligne d'entrée pour l'analyse de patterns.
 // Toutes les métriques sont déjà calculées avant d'arriver ici.
 type MatchRow struct {
-	MatchID      string
-	PlayedAt     time.Time
-	Mode         string   // normalisé
-	MapID        string
-	Outcome      int      // 2=WIN, 3=LOSS, 1=DRAW, 4=DNF
-	IsRanked     bool
-	DurationSec  int
-	SessionID    string
-	KDA          float64
-	Kills        int
-	Deaths       int
-	Assists      int
-	Accuracy     float64
-	OC           float64  // offensive_conversion
-	DR           float64  // defensive_resistance
-	HSRate       float64  // headshot_kills / kills
-	FirstKills   int
-	MMRDelta     float64
-	PerfScore    *float64
-	EngageScore  *float64
-	ResidualBrut *float64
-	DeltaLUSR    *float64
-	DeltaCSR     *float64
-	CSRValue     *float64
+	MatchID       string
+	PlayedAt      time.Time
+	Mode          string // normalisé
+	MapID         string
+	Outcome       int // 2=WIN, 3=LOSS, 1=DRAW, 4=DNF
+	IsRanked      bool
+	DurationSec   int
+	SessionID     string
+	KDA           float64
+	Kills         int
+	Deaths        int
+	Assists       int
+	Accuracy      float64
+	OC            float64 // offensive_conversion
+	DR            float64 // defensive_resistance
+	HSRate        float64 // headshot_kills / kills
+	FirstKills    int
+	MMRDelta      float64
+	PerfScore     *float64
+	EngageScore   *float64
+	ResidualBrut  *float64
+	DeltaLUSR     *float64
+	DeltaCSR      *float64
+	CSRValue      *float64
 	IsWithFriends bool
 }
 
@@ -55,10 +55,10 @@ type PatternConfig struct {
 	EngageDropWindow        int // 10 — fenêtre de matchs récents analysés
 	EngageDropHighThreshold int // 10 — seuil dropCount pour SeverityHigh
 	// PerfCeiling
-	PerfCeilingMinRows        int     // 20 — minimum de rows avec PerfScore
-	PerfCeilingWindow         int     // 30 — fenêtre d'analyse LOWESS
-	PerfCeilingTopN           int     // 10 — nombre de scores top pour meanTop
-	PerfCeilingLowessAlpha    float64 // 0.4
+	PerfCeilingMinRows         int     // 20 — minimum de rows avec PerfScore
+	PerfCeilingWindow          int     // 30 — fenêtre d'analyse LOWESS
+	PerfCeilingTopN            int     // 10 — nombre de scores top pour meanTop
+	PerfCeilingLowessAlpha     float64 // 0.4
 	PerfCeilingFlatSlopeThresh float64 // 2.0 — pente LOWESS considérée plate
 }
 

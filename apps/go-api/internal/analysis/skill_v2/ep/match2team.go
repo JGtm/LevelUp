@@ -108,12 +108,12 @@ func UpdateMatch2Team(m Match2TeamInput, cfg Match2TeamConfig) (teamA, teamB []G
 		teamA: teamAIn, teamB: teamBIn,
 		skillA: skillA, skillB: skillB,
 		perfA: perfA, perfB: perfB,
-		teamPerfA: NewVariable("team_perf_A"),
-		teamPerfB: NewVariable("team_perf_B"),
-		diff:      diff,
-		betaVar:   m.Beta * m.Beta,
-		result:    m.ResultA,
-		swapped:   swapped,
+		teamPerfA:  NewVariable("team_perf_A"),
+		teamPerfB:  NewVariable("team_perf_B"),
+		diff:       diff,
+		betaVar:    m.Beta * m.Beta,
+		result:     m.ResultA,
+		swapped:    swapped,
 		drawMargin: m.DrawMargin,
 	})
 

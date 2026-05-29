@@ -80,10 +80,10 @@ type GenerateInput struct {
 // CombatMedians regroupe les médianes OC/DR et le résidu d'engagement moyen
 // calculés sur la fenêtre post-sync (120 jours).
 type CombatMedians struct {
-	MedianOC       float64 // médiane offensive_conversion sur la fenêtre
-	MedianDR       float64 // médiane defensive_resistance sur la fenêtre
-	AvgResidual    float64 // moyenne du résidu d'engagement brut (peut être 0 si absent)
-	HasResidual    bool    // true si au moins 10 matchs avec engagement_score_brut
+	MedianOC    float64 // médiane offensive_conversion sur la fenêtre
+	MedianDR    float64 // médiane defensive_resistance sur la fenêtre
+	AvgResidual float64 // moyenne du résidu d'engagement brut (peut être 0 si absent)
+	HasResidual bool    // true si au moins 10 matchs avec engagement_score_brut
 }
 
 // Generator orchestre la production d'alertes coach.
@@ -369,7 +369,7 @@ func buildCombatPatternAlerts(input GenerateInput) []Alert {
 			Type:     AlertTypeCombatPatternActif,
 			Severity: notifications.SeverityInfo,
 			Params: map[string]any{
-				"median_oc":   m.MedianOC,
+				"median_oc":    m.MedianOC,
 				"avg_residual": m.AvgResidual,
 			},
 			DedupKey: "combat_actif",
