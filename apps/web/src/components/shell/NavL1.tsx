@@ -11,7 +11,7 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { useRef, useEffect, useState, type ReactNode } from 'react'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { ThemeToggle } from './ThemeToggle'
-import { buildPlayerDestination } from './shellNavigation'
+import { buildPlayerDestination, isCommunityPath } from './shellNavigation'
 import { HelpSplitButton } from './HelpSplitButton'
 import { useSettings } from '@/features/settings/queries'
 import { NotificationsBell } from '@/features/notifications/NotificationsBell'
@@ -120,9 +120,7 @@ const L1_SECTIONS: L1Section[] = [
     key: 'community',
     label: 'Communauté',
     defaultPath: '/players/$playerSlug/palmares',
-    matchPathname: (p) =>
-      (/\/players\/[^/]+\/palmares(?:\/|$)/.test(p) && !/\/palmares\/season-pass/.test(p)) ||
-      /\/players\/[^/]+\/compare/.test(p),
+    matchPathname: isCommunityPath,
     tabs: [
       { key: 'leaderboard', label: 'Classements', path: '/players/$playerSlug/palmares' },
       { key: 'relations', label: 'Relations', path: '/players/$playerSlug/palmares/relations' },

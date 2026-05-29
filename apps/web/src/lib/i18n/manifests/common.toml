@@ -121,6 +121,10 @@ en = "Career navigation"
 fr = "Navigation analytique"
 en = "Analytics navigation"
 
+[common.shell.nav_community_aria]
+fr = "Navigation communauté"
+en = "Community navigation"
+
 [common.shell.nav_player_aria]
 fr = "Navigation joueur"
 en = "Player navigation"
