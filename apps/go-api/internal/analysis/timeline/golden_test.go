@@ -44,10 +44,10 @@ type fixtureFile struct {
 }
 
 type matchGoldenOutput struct {
-	MatchID    string                      `json:"match_id"`
-	T0Ms       int64                       `json:"t0_ms"`
-	FirstKill  *int64                      `json:"first_kill_ms"`
-	FirstDeath *int64                      `json:"first_death_ms"`
+	MatchID    string                       `json:"match_id"`
+	T0Ms       int64                        `json:"t0_ms"`
+	FirstKill  *int64                       `json:"first_kill_ms"`
+	FirstDeath *int64                       `json:"first_death_ms"`
 	Intensity  []narrative.IntensityProfile `json:"intensity_profiles"`
 }
 

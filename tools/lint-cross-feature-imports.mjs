@@ -114,6 +114,23 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'match-view=>squad',
   'match-view=>media',
   'match-view=>settings',
+  // Flow onboarding : auth (XboxLoginPage) + onboarding (OpenSpartanImportCard)
+  // partagent les primitives setup (déclaration joueur, jobs de sync initial).
+  'auth=>setup',
+  'onboarding=>setup',
+  // Home dashboard agrège aussi le widget Ascension (HomeAscensionWidget).
+  'home=>ascension',
+  // Explorer réutilise la bannière d'identité joueur de Home
+  // (ExplorerTargetIdentityBanner).
+  'explorer=>home',
+  // SquadContributionsPage réutilise un chart Timeseries (réciproque durable
+  // de timeseries=>squad déjà déclaré).
+  'squad=>timeseries',
+  // Synthesis agrège filters + explorer (vue consolidée transverse).
+  'synthesis=>filters',
+  'synthesis=>explorer',
+  // TimeseriesSkillProgression réutilise le contexte rating Carrière (LUSR/CSR).
+  'timeseries=>career',
 ])
 
 // Fichiers shell autorisés à importer @/features/ (orchestration globale).

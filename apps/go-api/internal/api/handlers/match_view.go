@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -40,21 +41,12 @@ func parseNeighborsFilterSpec(r *http.Request) *domain.MatchFilterSpec {
 	spec := &domain.MatchFilterSpec{}
 	ctx := r.Context()
 
-	if v := strings.TrimSpace(q.Get("playlist")); v != "" {
-		if playlistOrSessionPattern.MatchString(v) {
-			spec.PlaylistName = &v
-		} else {
-			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
-				"param", "playlist", "value", v)
-		}
+	// playlist / mode : multi-valeurs séparées par virgule (Phase 3).
+	if vals := parseCsvFilterParam(ctx, q.Get("playlist"), "playlist"); len(vals) > 0 {
+		spec.PlaylistNames = vals
 	}
-	if v := strings.TrimSpace(q.Get("mode")); v != "" {
-		if playlistOrSessionPattern.MatchString(v) {
-			spec.ModeCategory = &v
-		} else {
-			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
-				"param", "mode", "value", v)
-		}
+	if vals := parseCsvFilterParam(ctx, q.Get("mode"), "mode"); len(vals) > 0 {
+		spec.ModeCategories = vals
 	}
 	if v := strings.TrimSpace(q.Get("session")); v != "" {
 		if playlistOrSessionPattern.MatchString(v) {
@@ -100,6 +92,34 @@ func parseNeighborsFilterSpec(r *http.Request) *domain.MatchFilterSpec {
 		return nil
 	}
 	return spec
+}
+
+// parseCsvFilterParam : découpe une valeur de query param en valeurs multiples
+// (séparateur virgule), trim + valide chacune via la whitelist. Les valeurs
+// invalides sont ignorées individuellement (log warn). Retourne nil si aucune
+// valeur valide — préserve le comportement mono-valeur (1 valeur → slice de 1).
+func parseCsvFilterParam(ctx context.Context, raw, param string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		v := strings.TrimSpace(p)
+		if v == "" {
+			continue
+		}
+		if playlistOrSessionPattern.MatchString(v) {
+			out = append(out, v)
+		} else {
+			slog.WarnContext(ctx, "neighbors: invalid filter param ignored",
+				"param", param, "value", v)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // MatchViewHandler gère GET /players/{player_slug}/matches/{match_id}.

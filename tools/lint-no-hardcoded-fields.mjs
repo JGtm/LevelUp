@@ -80,6 +80,7 @@ const WHITELIST_PATTERNS = [
   /\/lib\/i18n\/fieldMappings\.test\.ts$/, // le test du hook
   /\/test\/handlers\.ts$/,                  // fixtures MSW (mocks API, pas un libellé UI)
   /\/lib\/api\/types\.ts$/,                 // types TS purs (commentaires explicatifs)
+  /\/lib\/api\/generated\.ts$/,             // types generes par openapi-typescript (enums du contrat OpenAPI)
   /\/features\/compare\/i18n\.ts$/,         // dict FR/EN local de compare
   /\/lib\/prestige\.ts$/,                   // dict TIER_LABELS_FR — fallback canonique
   /\/features\/palmares\/rarity\.ts$/,      // dict rarity Halo (asset Halo natif)
@@ -152,6 +153,13 @@ function findViolations(filePath, labels) {
             `[=!]==?\\s*['"\`]${escapeRegex(label)}['"\`]`,
           )
           if (enumComparePattern.test(codeOnly)) continue
+          // Skip si le littéral est l'argument d'une opération de collection
+          // sur une valeur d'enum (ex: `types.has('CSR')`, `set.includes('LUSR')`,
+          // `map.get('CSR')`). C'est une valeur de donnée, pas un libellé d'affichage.
+          const collectionMembershipPattern = new RegExp(
+            `\\.(has|includes|get)\\(\\s*['"\`]${escapeRegex(label)}['"\`]`,
+          )
+          if (collectionMembershipPattern.test(codeOnly)) continue
           violations.push({ line: i + 1, label, snippet: line.trim().slice(0, 120) })
         }
       }

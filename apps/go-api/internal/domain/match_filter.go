@@ -13,13 +13,18 @@ import "time"
 
 // MatchFilterSpec : filtres canoniques utilisables par /neighbors et autres
 // endpoints de listing partagés. Tous champs optionnels.
+//
+// Phase 3 (nav-context-unification) : PlaylistNames / ModeCategories sont des
+// slices (multi-sélection). Une seule valeur = slice à 1 élément ; plusieurs =
+// union (playlist IN (...), modes = OR des préfixes de chaque catégorie). Côté
+// query params, valeurs jointes par virgule (?playlist=A,B&mode=X,Y).
 type MatchFilterSpec struct {
-	PlaylistName *string    `json:"playlist_name,omitempty"`
-	ModeCategory *string    `json:"mode_category,omitempty"`
-	DateFrom     *time.Time `json:"date_from,omitempty"`
-	DateTo       *time.Time `json:"date_to,omitempty"`
-	SessionID    *string    `json:"session_id,omitempty"`
-	Outcome      *string    `json:"outcome,omitempty"` // "win" | "loss" | "draw" | "dnf"
+	PlaylistNames  []string   `json:"playlist_names,omitempty"`
+	ModeCategories []string   `json:"mode_categories,omitempty"`
+	DateFrom       *time.Time `json:"date_from,omitempty"`
+	DateTo         *time.Time `json:"date_to,omitempty"`
+	SessionID      *string    `json:"session_id,omitempty"`
+	Outcome        *string    `json:"outcome,omitempty"` // "win" | "loss" | "draw" | "dnf"
 	// WithPlayerXuid : restreint aux matchs où ce XUID était présent dans
 	// match_participants (Phase 2c — contexte "Matchs avec X" depuis Squad).
 	// Format : entier décimal (XUID Halo). Validation regex côté handler.
@@ -33,8 +38,8 @@ func (s *MatchFilterSpec) IsEmpty() bool {
 	if s == nil {
 		return true
 	}
-	return s.PlaylistName == nil &&
-		s.ModeCategory == nil &&
+	return len(s.PlaylistNames) == 0 &&
+		len(s.ModeCategories) == 0 &&
 		s.DateFrom == nil &&
 		s.DateTo == nil &&
 		s.SessionID == nil &&

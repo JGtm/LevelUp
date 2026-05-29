@@ -58,10 +58,10 @@ func DefaultPriors() Priors {
 	mu0 := 25.0
 	sigma0 := 25.0 / 3.0
 	return Priors{
-		Mu0:           mu0,
-		Sigma0:        sigma0,
-		Beta:          sigma0 / 2.0,
-		Tau:           sigma0 / 100.0,
+		Mu0:             mu0,
+		Sigma0:          sigma0,
+		Beta:            sigma0 / 2.0,
+		Tau:             sigma0 / 100.0,
 		DrawProbability: 0.10, // 10 % — à recalibrer par mode si nécessaire
 	}
 }

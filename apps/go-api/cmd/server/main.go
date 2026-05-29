@@ -302,6 +302,19 @@ func main() {
 	slog.Debug("ouverture DuckDB", "shared", sharedPath, "metadata", metaPath, "shared_social", sharedSocialPath)
 
 	// --- 3a. Migrations (read-write, avant l'ouverture des connexions runtime) ---
+	// Sur un clone frais, le dossier warehouse n'existe pas encore : sans lui,
+	// runMigrations puis l'ouverture du provider shared échouent et le serveur
+	// fait os.Exit(1) avant même d'afficher /setup.
+	if err := ensureWarehouseDir(pr, titleSlug); err != nil {
+		slog.Error("création warehouse dir échouée", "err", err)
+		os.Exit(1)
+	}
+	// Clone frais : extraire la base metadata pré-construite (référentiels prêts)
+	// si metadata.duckdb n'existe pas encore. Non-fatal — sinon les migrations
+	// créeront une base vide à repeupler via fetch live.
+	if err := extractPrebuiltMetadataIfAbsent(pr, titleSlug); err != nil {
+		slog.Warn("prebuilt metadata: extraction échouée (non-fatal)", "err", err)
+	}
 	titleConfigDir := filepath.Join(cfg.RepoRoot, "config", "titles", titleSlug)
 	if err := runMigrations(metaPath, sharedPath, sharedSocialPath, pr.SharedPVEDBPath(titleSlug), titleConfigDir); err != nil {
 		slog.Debug("migrations ignorées (DB verrouillée), démarrage sans migration")
@@ -1015,6 +1028,25 @@ func main() {
 }
 
 func strPtr(s string) *string { return &s }
+
+// ensureWarehouseDir crée le répertoire warehouse du titre s'il n'existe pas.
+//
+// metadata/shared/shared_pve/shared_social vivent tous dans ce dossier.
+// runMigrations les ouvre via OpenReadWrite, qui crée le FICHIER .duckdb mais
+// PAS le dossier parent (cf. initGlobalXuidAliasesSchema qui MkdirAll
+// explicitement avant OpenReadWrite). Sur un clone frais le dossier est absent :
+// les migrations échouent puis l'ouverture du provider shared fait os.Exit(1).
+//
+// Les autres dossiers runtime (players, sessions, cache, WAL, watcher_tokens)
+// sont créés à la demande par leurs consommateurs respectifs (profile_service,
+// session.NewStore, jobs.Store, persist.BatchQueue, MultiUserTokenStore).
+func ensureWarehouseDir(pr *title.PathResolver, titleSlug string) error {
+	dir := pr.WarehouseDir(titleSlug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("ensureWarehouseDir %s: %w", dir, err)
+	}
+	return nil
+}
 
 // runMigrations applique les migrations DuckDB dans l'ordre :
 // metadata → shared → shared_pve → shared_social.

@@ -71,26 +71,35 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes Mo
 	args := make([]any, 0, 12)
 	var ignored []string
 
-	if spec.PlaylistName != nil && *spec.PlaylistName != "" {
-		clauses = append(clauses, "mr.playlist_name = ?")
-		args = append(args, *spec.PlaylistName)
+	// Playlists (multi) : mr.playlist_name IN (?, ?, ...). Valeurs vides ignorées.
+	if names := nonEmpty(spec.PlaylistNames); len(names) > 0 {
+		placeholders := make([]string, len(names))
+		for i, name := range names {
+			placeholders[i] = "?"
+			args = append(args, name)
+		}
+		clauses = append(clauses, "mr.playlist_name IN ("+strings.Join(placeholders, ", ")+")")
 	}
 
-	if spec.ModeCategory != nil && *spec.ModeCategory != "" {
-		// categoryPrefixes (injecté) résout vers les préfixes pair_name
-		// title-specific. Liste vide ou nil → on ignore le filtre.
-		// Note multi-titres : pour un titre futur sans la notion ModeCategory,
-		// l'adapter retournera également une liste vide → dégradation gracieuse.
-		var prefixes []string
-		if categoryPrefixes != nil {
-			prefixes = categoryPrefixes(*spec.ModeCategory)
-		}
-		if len(prefixes) > 0 {
-			modeClauses := make([]string, 0, len(prefixes)*2)
+	// Catégories de mode (multi) : union des préfixes pair_name de chaque
+	// catégorie, le tout en un seul OR. categoryPrefixes (injecté) résout vers
+	// les préfixes title-specific ; une catégorie qui ne résout vers aucun
+	// préfixe est sautée. Si AUCUNE catégorie ne résout → filtre ignoré.
+	// Note multi-titres : pour un titre futur sans la notion ModeCategory,
+	// l'adapter retourne des listes vides → dégradation gracieuse.
+	if cats := nonEmpty(spec.ModeCategories); len(cats) > 0 {
+		modeClauses := make([]string, 0, len(cats)*4)
+		for _, cat := range cats {
+			var prefixes []string
+			if categoryPrefixes != nil {
+				prefixes = categoryPrefixes(cat)
+			}
 			for _, p := range prefixes {
 				modeClauses = append(modeClauses, "mr.pair_name = ?", "mr.pair_name LIKE ?")
 				args = append(args, p, p+":%")
 			}
+		}
+		if len(modeClauses) > 0 {
 			clauses = append(clauses, "("+strings.Join(modeClauses, " OR ")+")")
 		} else {
 			ignored = append(ignored, "mode_category")
@@ -156,6 +165,22 @@ func BuildNeighborsWhereClause(spec *domain.MatchFilterSpec, categoryPrefixes Mo
 	res.Args = args
 	res.IgnoredFilters = ignored
 	return res
+}
+
+// nonEmpty retourne les valeurs non vides (après TrimSpace) du slice.
+// Défensif : le handler valide déjà chaque valeur, mais une slice contenant
+// des chaînes vides ne doit pas produire un placeholder fantôme dans le IN (...).
+func nonEmpty(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		if s := strings.TrimSpace(v); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // validOutcome retourne true si la valeur est dans la whitelist.

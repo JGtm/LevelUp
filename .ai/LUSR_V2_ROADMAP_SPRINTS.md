@@ -40,6 +40,85 @@ Création de sous-branches optionnelle si plusieurs sprints en parallèle.
 
 ---
 
+## ✅ CHECKLIST UTILISATEUR (état au 2026-05-28)
+
+> **État code** : Sprints 1.A, 1.B, 1.C, 2.A, 2.B, 3.A (wiring complet), 3.B = **livrés,
+> testés, committés** sur `feat/lusr-v2-phase0-metrics` (10 commits). Build + `go vet`
+> + tests verts. Rien n'est poussé ni en prod. Ce qui suit est ce qu'il TE reste.
+
+### 🔧 À FAIRE par toi — sur le serveur (je ne peux pas le faire d'ici)
+
+Pour basculer en prod cette semaine (Sprint Final), dans l'ordre :
+
+1. **Peupler les hyperparams + la matrice cross-mode** : lancer `cmd/lusr_v2_ttt_batch`
+   (sans `--dry-run`). Sans ça, le cross-mode utilise le scalaire 0.3 par défaut.
+2. **(Optionnel mais recommandé) Activer la correction d'escouade** : lancer
+   `cmd/lusr_v2_squad_estimate --dry-run` → vérifier les offsets ∈ [-2,+2] cohérents
+   pour tes 4 trackés → si OK, relancer **sans** `--dry-run`. (Le flag est déjà ON par
+   défaut, mais sans ce passage la correction ne fait rien.)
+3. **Backfill historique** : relancer `cmd/lusr_v2_replay` (rattrape l'historique v2).
+4. **Bascule** : suivre la checklist du **Sprint Final** ci-dessous (F.1→F.10) — staging
+   d'abord (`LEVELUP_LUSR_CANONICAL=LUSR_V2`), 3-5 syncs, vérifs logs/sentinelle/UI,
+   puis prod + surveillance 24h.
+
+### 🤔 À DÉCIDER par toi
+
+- **Affichage 1.A** (`expected_win_prob`, "X% de chance de gagner") : OÙ et COMMENT
+  l'afficher ? (rien ne l'affiche aujourd'hui — juste en base). Cf. section 1.A.
+- **Affichage 3.B** (`rating_delta`, "+12 LUSR ce match") : OÙ et COMMENT ? (idem). Cf. 3.B.
+- **Squad + cross-mode ON par défaut** : ✅ **confirmé (2026-05-28)**. Les deux flags
+  sont ON. Calibration à valider sur tes vraies données après la bascule (offsets squad
+  via `--dry-run` d'abord, matrice cross-mode via `--smooth --dry-run`). Pour désactiver :
+  `LEVELUP_LUSR_V2_SQUAD_OFFSET=0` ou `LEVELUP_LUSR_V2_MODE_COUPLING=0`.
+- **3.A (TTT)** : ✅ **wiring complet livré (2026-05-28)**. Pour valider sur tes données :
+  `go run -tags cgo ./apps/go-api/cmd/lusr_v2_ttt_batch --smooth --dry-run` → rapport τ estimés.
+  Sans `--dry-run` pour écrire. `--write-smoothed` en option après bascule stable.
+
+### 👤 À FAIRE par ton collègue (dev)
+
+- **Adapter T0 (multi-titre)** : brancher `match_registry.real_start_time` au hook
+  marqué en commentaire dans `quitOffsetMs` (`internal/sync/skill_v2_quit_penalty.go`).
+  Aujourd'hui on utilise `start_time_utc` (début film) — correct pour Halo, à
+  généraliser pour les autres titres.
+
+### ⏭️ Reste à faire / différé (non bloquant pour la bascule)
+
+- Wiring complet du TTT couplé (3.A) — follow-up dédié.
+- Validations prod des features (offsets squad cohérents, matrice 4×4, deltas peuplés,
+  win-prob plausible) — se font après la bascule en observant les vraies données.
+- Nettoyage code v1 (`batchComputeLUSR`) — étape F.9, après ≥7j stables.
+
+#### 🆕 Découvert pendant l'onboarding clone-frais (2026-05-29, post-prod)
+
+> Surfacé en simulant un clone frais (`cmd/server/boot_dirs_test.go`). Non bloquant
+> tant que LUSR v2 n'est pas en prod. À traiter quand on bascule.
+
+- [ ] **Fix ordre migration `shared_seed_tier_boundaries_v2`** — sur DB vierge, le seed
+  (statique : Bronze..Onyx hardcodés) s'exécute AVANT `shared_create_skill_v2_tables`
+  car l'ordre = ordre alphabétique des fichiers et `..._seed_tier_boundaries_v2.go`
+  ("seed") trie avant `..._skill_v2.go` ("skill"). Résultat : WARN
+  `Table lusr_hyperparams_v2 does not exist` et seuils tier **non seedés** au boot.
+  Ce seed **doit tourner immédiatement** (pas gated sur des matchs) — sinon l'affichage
+  des tiers est cassé dès le 1er match. Fix recommandé : co-localiser le seed dans le
+  `ApplyBackfill` de `shared_create_skill_v2_tables` (table + seed atomiques), ou renommer
+  le fichier seed pour qu'il trie après `..._skill_v2.go`. Garde-rail : ajouter un cas au
+  test de boot clone-frais vérifiant que `lusr_hyperparams_v2` contient les 6×4 seuils
+  après migrations.
+
+- [ ] **Ré-estimation empirique auto en post-sync** (≠ du seed statique ci-dessus) — les
+  hyperparams *empiriques* (`ttt_tau_empirical`, `kill_mean_empirical`,
+  `death_mean_empirical`, `draw_probability_empirical`), aujourd'hui calculés à la main via
+  `cmd/lusr_v2_ttt_batch`, devraient se relancer automatiquement une fois un corpus de
+  matchs suffisant atteint. Le runtime retombe proprement sur les défauts quand ils sont
+  absents (`skill_v2/hyperparams_load.go`) → non bloquant. Pistes : extraire la logique
+  de `cmd/lusr_v2_ttt_batch` vers `internal/` (un cmd n'est pas importable), brancher dans
+  le `PostSyncRunner` (cf. `internal/api/post_sync_*.go`), déclencher au franchissement
+  d'un seuil de matchs. ⚠️ Seuil : "10 matchs" (idée initiale) est **trop bas** pour une
+  estimation bayésienne stable — viser plutôt quelques centaines, et décider une fois
+  (au franchissement) vs périodique (ex. tous les N matchs).
+
+---
+
 ## Sprint 1.A — Probabilité de victoire prédite
 
 > Référence détaillée : `.ai/LUSR_V2_WIN_PROBABILITY.md`
@@ -50,6 +129,12 @@ que le match commence. Permet de filtrer les défaites entre "matchs perdables"
 et "matchs vraiment au-dessus", et de mettre en valeur les belles perfs sur
 matchs donnés perdants.
 
+> 📊 **AFFICHAGE À DÉCIDER (utilisateur)** : la donnée `expected_win_prob` est
+> calculée et stockée par match, mais **rien ne l'affiche encore**. À toi de
+> décider OÙ (page match-view ? historique ? badge ?) et COMMENT (ex. "Match
+> attendu" / "Upset" / "Belle perf sur match perdable"). Tant que ce n'est pas
+> décidé, c'est juste une colonne en base, invisible côté UI.
+
 ### Architecture prévue
 - `internal/analysis/skill_v2/predict.go` — fonction pure `PredictTwoTeamWinProb(teamA, teamB []Gaussian, p Priors) (probA, probDraw, probB float64)`
 - `internal/sync/skill_v2_predict_loader.go` — `LoadPreMatchStates(ctx, sharedDB, matchID) (teamA, teamB []Gaussian, error)`
@@ -58,44 +143,26 @@ matchs donnés perdants.
 
 ### Étapes
 
-- [ ] **1.A.1** — Créer `internal/analysis/skill_v2/predict.go` avec :
-  - `PredictTwoTeamWinProb(teamA, teamB []Gaussian, p Priors) (probA, probDraw, probB float64)`
-  - Utilise la formule TrueSkill standard avec draw margin
-  - 0 accès DB, 0 dépendance externe
-- [ ] **1.A.2** — Créer `internal/analysis/skill_v2/predict_test.go` avec :
-  - Cas équilibré (teams identiques) → probA ≈ probB ≈ 50%
-  - Cas asymétrique fort (team A μ=30 vs team B μ=20) → probA > 90%
-  - Cas avec gros σ (incertitude haute) → probabilités tirées vers 50% même si μ différent
-  - Cas avec draw_probability > 0 → probDraw > 0
-- [ ] **1.A.3** — Créer `internal/sync/skill_v2_predict_loader.go` avec :
-  - `LoadPreMatchStates(ctx, repo *duckdb.SkillV2Repo, matchID string, startTime time.Time, group string) (teamA, teamB []Gaussian, error)`
-  - Pour chaque participant : trouve la row `player_skill_state_v2` la plus récente avec `last_match_at < startTime`
-  - Fallback `priors.NewPlayerState()` si jamais joué
-  - `slog.DebugContext` pour signaler les fallbacks
-- [ ] **1.A.4** — Migration `steps_player_add_expected_win_prob.go` :
-  - `ALTER TABLE match_skill_rank ADD COLUMN IF NOT EXISTS expected_win_prob FLOAT`
-- [ ] **1.A.5** — Étendre `domain.LUSRRatingInsert` (`internal/persist/lusr_append_only_persister.go`) :
-  - Ajout champ `ExpectedWinProb *float64`
-  - INSERT statement updated (10→11 placeholders)
-- [ ] **1.A.6** — Wire dans `writeCanonicalLUSRRow` (`internal/sync/skill_v2_canonical.go`) :
-  - Avant l'écriture, charger les pré-match states + calculer la prob
-  - Stocker dans les 2 rows (LUSR + LUSR_V2)
-- [ ] **1.A.7** — Tests E2E :
-  - `TestPredictWinProb_StoresInCanonicalRow` — match 2v2, vérifier que la row LUSR contient un `expected_win_prob` dans [0,1]
-  - `TestPredictWinProb_FallbackForFirstMatch` — joueur sans historique → utilise priors initiaux
-- [ ] **1.A.8** — Métrique expvar : `levelup.lusr_v2.predictions_total` (compteur)
-- [ ] **1.A.9** — Mise à jour `.ai/thought_log.md` (entrée datée)
+- [x] **1.A.1** — Créé `internal/analysis/skill_v2/predict.go` : `PredictTwoTeamWinProb(teamA, teamB, p) (probA, probDraw, probB)`, draw margin, 0 accès DB. Helper privé `matchSpread` partagé avec `PredictWinProbability`/`PredictDrawProbability` (migrées depuis trueskill.go, refacto DRY).
+- [x] **1.A.2** — `predict_test.go` : équilibré (probA=probB), favori net μ30 vs μ20 → probA>0.9, σ haut → tiré vers 0.5, draw_probability↑ → probDraw↑, équipe vide → neutre, cohérence avec les helpers legacy.
+- [~] **1.A.3** — **ABANDONNÉ (write-off)** : `LoadPreMatchStates` non créé. Les états pré-match sont déjà en mémoire dans `applyMatchToSkillV2` (teamAStates/teamBStates) AVANT l'update ; un re-query lirait l'état POST-persist (faux) + requête redondante. Cf. thought_log 2026-05-28.
+- [x] **1.A.4** — Migration `steps_player_add_expected_win_prob.go` (additive `addColumnIfMissing`, FLOAT).
+- [x] **1.A.5** — `LUSRRatingInsert.ExpectedWinProb *float64` + INSERT (10→11 placeholders).
+- [x] **1.A.6** — Wire : `applyMatchToSkillV2` calcule la prob (in-memory) et la retourne ; `processOneShadowMatch` → `writeCanonicalLUSRRow` (nouveau param) → pose sur les 2 rows LUSR + LUSR_V2.
+- [x] **1.A.7** — Tests E2E : `TestRunLUSRV2Shadow_Canonical_StoresExpectedWinProb` (∈ [0,1]), `TestRunLUSRV2Shadow_Canonical_FirstMatchFallback` (joueurs neufs → ≈ 0.5, pas de panic).
+- [x] **1.A.8** — expvar `levelup.lusr_v2.predictions_total`.
+- [x] **1.A.9** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 1.A
 
-- [ ] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/persist/` PASS
-- [ ] `go vet ./...` clean
-- [ ] Au moins 1 match prod vérifié : la row `match_skill_rank` post-bascule contient un `expected_win_prob` plausible (proche de 0.5 ± 0.3 pour la plupart des matchs)
-- [ ] Pas de panic en cas de match avec joueur jamais vu (fallback testé)
-- [ ] Entrée `.ai/thought_log.md` ajoutée
-- [ ] Commit unique sur la branche, autorisé par l'utilisateur
+- [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/persist/` PASS (+ migration)
+- [x] `go vet ./...` clean
+- [ ] Au moins 1 match prod vérifié : la row `match_skill_rank` post-bascule contient un `expected_win_prob` plausible (proche de 0.5 ± 0.3 pour la plupart des matchs) — **différé : non exécutable hors prod**
+- [x] Pas de panic en cas de match avec joueur jamais vu (fallback testé)
+- [x] Entrée `.ai/thought_log.md` ajoutée
+- [x] Commit unique sur la branche, autorisé par l'utilisateur
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 
@@ -114,34 +181,22 @@ re-estimation = écriture morte. Cette tâche connecte les deux.
 
 ### Étapes
 
-- [ ] **1.B.1** — Créer `internal/analysis/skill_v2/hyperparams_load.go` avec :
-  - `LoadPriorsFromHyperparams(params map[string]float64, defaultP Priors) Priors`
-  - Override `DrawProbability` si `draw_probability_empirical` présent
-  - Reste passé tel quel (les autres sont CountHyperparams)
-  - Logique pure, testable
-- [ ] **1.B.2** — Créer `LoadCountHyperparamsFromDB(params map[string]float64, defaults map[CountType]CountHyperparams) map[CountType]CountHyperparams`
-  - Override `Bias` pour kill / death depuis `kill_mean_empirical` / `death_mean_empirical`
-- [ ] **1.B.3** — Tests unitaires :
-  - Map vide → defaults retournés intacts
-  - Map avec uniquement draw_prob → seul DrawProbability change
-  - Map complète → tous les overrides appliqués
-- [ ] **1.B.4** — Modifier `processOneShadowMatch` (skill_v2_shadow.go) :
-  - Avant `applyMatchToSkillV2`, charger les hyperparams pour `group`
-  - Passer les Priors override à l'appel
-  - `slog.DebugContext` "hyperparams ré-estimés appliqués" avec compte de overrides
-- [ ] **1.B.5** — Refactor `applyMatchToSkillV2` pour accepter `Priors` au lieu de `priors skillv2.Priors` du shadowRunContext (qui restent les defaults)
-- [ ] **1.B.6** — Test E2E :
-  - `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` — seed une row hyperparam avec `draw_probability_empirical=0.5` (artificiellement haut), vérifier qu'un draw est moins surprenant pour le modèle
-- [ ] **1.B.7** — Mise à jour `.ai/thought_log.md`
+- [x] **1.B.1** — `internal/analysis/skill_v2/hyperparams_load.go` : `LoadPriorsFromHyperparams(params, defaultP)` override DrawProbability depuis `draw_probability_empirical` (guard [0,1[). + alias `CountType`/`CountHyperparams`, `DefaultCountHyperparamsMap`, `AppliedHyperparamCount`. Pur.
+- [x] **1.B.2** — `LoadCountHyperparamsFromDB(params, mu0)`. **CORRECTION du plan** : le doc prescrivait `bias = kill_mean_empirical` — dimensionnellement faux pour `expected = bias + w_p·perf + w_o·avg_opp`. Formule correcte : `bias = mean − (w_p + w_o)·μ0` (réduit aux défauts pour mean ~12.5).
+- [x] **1.B.3** — Tests unitaires : map vide → defaults ; draw_prob seul → seul DrawProbability change ; draw_prob invalide ignoré ; bias recalibré (12.5→defaults, 20/8→7.5/20.5).
+- [x] **1.B.4** — `resolveGroupParams` (mémoïsé par groupe) charge les hyperparams via `repo.LoadHyperparams`, override Priors + CountHyperparams, log `slog.DebugContext "hyperparams ré-estimés appliqués"` (overrides + draw_probability). Best-effort (échec → fallback defaults + warn).
+- [x] **1.B.5** — `applyMatchToSkillV2` prend `priors` (groupPriors résolu, pas c.priors) + nouveau param `countHyp` posé sur `counts.Hyperparams`. Threading via champ optionnel `CountInputs.Hyperparams` (nil → defaults) → 0 régression EP.
+- [x] **1.B.6** — E2E `TestRunLUSRV2Shadow_UsesEmpiricalDrawProb` : match nul 2v2 symétrique sans counts, draw_prob=0.5 seedé vs default → σ owner plus grand (draw moins surprenant). DDL test étendu (lusr_hyperparams_v2).
+- [x] **1.B.7** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 1.B
 
-- [ ] `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS
-- [ ] Run manuel : `LEVELUP_LUSR_V2_ENABLED=1 ./server` → vérifier dans `logs/sync.log` qu'on voit le log "hyperparams ré-estimés appliqués" avec un count > 0 pour chaque groupe (après que TTT batch ait écrit)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/` PASS
+- [ ] Run manuel : `LEVELUP_LUSR_V2_ENABLED=1 ./server` → log "hyperparams ré-estimés appliqués" count > 0 — **différé : non exécutable hors prod (requiert un passage TTT batch préalable)**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 
@@ -162,45 +217,27 @@ ensemble).
 
 ### Étapes
 
-- [ ] **1.C.1** — Décider de la définition opérationnelle de "squad" :
-  - Pair de XUIDs ayant joué ensemble ≥ N matchs dans les M dernières semaines ?
-  - N=10, M=4 semaines → à valider sur prod : compter combien de paires éligibles pour les 4 joueurs trackés
-- [ ] **1.C.2** — Migration `steps_shared_create_squad_offset.go` :
-  - Table `player_squad_offset` append-only (PK technique `id`, clé logique `(xuid, partner_xuid, playlist_group, written_at)`)
-  - Vue `player_squad_offset_latest`
-- [ ] **1.C.3** — Repo `internal/platform/duckdb/squad_offset_repo.go` :
-  - `LoadSquadOffsets(ctx, xuid, group) (map[string]float64, error)` — par partner_xuid
-  - `UpsertSquadOffset(ctx, offset domain.SquadOffset) error`
-- [ ] **1.C.4** — Algorithme pur `internal/analysis/skill_v2/squad.go` :
-  - `ComputeSquadOffset(matchHistory []SquadMatch) float64`
-  - Approche : moyenne de (perf_real - perf_predicted_solo) sur les matchs où la paire a joué ensemble
-  - Borné à [-2.0, +2.0] (sécurité — éviter offsets délirants sur petit échantillon)
-- [ ] **1.C.5** — CLI `cmd/lusr_v2_squad_estimate/` :
-  - Scan match history, identifie paires éligibles, calcule l'offset, écrit en DB
-  - Idempotent (UPSERT append-only)
-- [ ] **1.C.6** — Application de l'offset dans `processOneShadowMatch` :
-  - Avant `applyMatchToSkillV2`, charger les offsets pour chaque partenaire présent dans le match
-  - Réduire le μ "effectif" de chaque joueur : `mu_effectif = mu_individuel + Σ(offset[partner] pour chaque partenaire présent)`
-  - L'EP update bouge `mu_individuel`, pas `mu_effectif` (l'offset est constant pour ce match)
-- [ ] **1.C.7** — Tests unitaires (`squad_test.go`) :
-  - 0 historique → offset = 0
-  - 10 matchs avec gain systématique +1.5 par-rapport-au-solo → offset proche de 1.5
-  - 5 matchs avec gain +5 → offset clampé à 2.0
-- [ ] **1.C.8** — Tests E2E :
-  - `TestRunLUSRV2Shadow_AppliesSquadOffset` — 2 paires (haut squad, faible solo) jouant ensemble → leurs μ individuels baissent moins que si pas d'offset
-- [ ] **1.C.9** — `slog.DebugContext` "squad offset appliqué" avec xuid, partner, value
-- [ ] **1.C.10** — Mise à jour handoff doc (`LUSR_V2_HANDOFF.md`) section "Phase 2 (squad offset)"
-- [ ] **1.C.11** — Mise à jour `.ai/thought_log.md`
+- [x] **1.C.1** — Définition opérationnelle : paire de XUIDs sur la même équipe ≥ N matchs (défaut 10) dans les M semaines (défaut 4), par playlist_group. Paramétrable via flags CLI.
+- [x] **1.C.2** — Migration `steps_shared_create_squad_offset.go` : `player_squad_offset` append-only (PK `id`) + vue `_latest`. TargetShared.
+- [x] **1.C.3** — Repo `duckdb.SquadOffsetRepo` : `LoadSquadOffsets(xuid, group)` (cache run-scoped) + `UpsertSquadOffset(domain.SquadOffset)` (INSERT pur).
+- [x] **1.C.4** — Algo pur `skill_v2/squad.go` : `ComputeSquadOffset([]SquadCoMatch, gain)` = `mean(Won − SoloWinProb) × gain`, clampé ±`SquadOffsetCap`(2.0). + `ApplySquadOffset`/`ClampSquadOffset`.
+- [x] **1.C.5** — CLI `cmd/lusr_v2_squad_estimate` : scan fenêtre, paires éligibles, offset, écriture 2 sens (symétrique), `--dry-run`/`--weeks`/`--min-matches`/`--gain`. **MVP first-pass** : SoloWinProb = proxy ratings solo courants (biais conservateur, à raffiner Sprint 3.A).
+- [x] **1.C.6** — Application dans `applyMatchToSkillV2` (gated `LEVELUP_LUSR_V2_SQUAD_OFFSET=1`) : μ effectif = μ + Σ(offsets partenaires présents) avant EP, retiré du posterior après. σ inchangé. Flag off → no-op exact.
+- [x] **1.C.7** — Tests unitaires squad : 0 historique → 0 ; sur-perf → offset attendu ; clamp ±2.0 ; sous-perf → −2.0.
+- [x] **1.C.8** — E2E `TestRunLUSRV2Shadow_AppliesSquadOffset` : offset +1.5, victoire squad → μ owner monte MOINS qu'sans offset (anti-inflation).
+- [x] **1.C.9** — `slog.DebugContext "LUSR v2 squad offset appliqué"` (xuid, group, offset, partners_present).
+- [x] **1.C.10** — Handoff doc : section "Phase 2 — Squad offset" ajoutée + Phase 5.B marquée livrée + étape 7 activation prod.
+- [x] **1.C.11** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 1.C
 
-- [ ] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/platform/duckdb/` PASS
-- [ ] CLI `lusr_v2_squad_estimate` tourne sur prod, produit des offsets dans [-2, +2] pour les 4 joueurs trackés (cohérents avec l'intuition : Madina/Choco/JGtm trio sûrement positif)
-- [ ] Dry-run replay du LUSR v2 avec offsets actifs → comparer μ avant/après pour les 4 trackés : pas de drift > 1.5 point pour les solo, possible drift > 0.5 pour les multi-stack
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] `go test ./internal/analysis/skill_v2/... ./internal/sync/ ./internal/platform/duckdb/` PASS (+ migration), `go vet ./...` clean
+- [ ] CLI `lusr_v2_squad_estimate` tourne sur prod, offsets ∈ [-2,+2] pour les 4 trackés — **différé : prod uniquement**
+- [ ] Dry-run replay avec offsets actifs, pas de drift > 1.5 pt sur les solo — **différé : prod uniquement**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28. **MAJ 2026-05-28 : flag `LEVELUP_LUSR_V2_SQUAD_OFFSET` désormais ON par défaut** (décision produit). NB : aucun effet tant que `cmd/lusr_v2_squad_estimate` n'a pas peuplé d'offsets (LoadSquadOffsets vide → no-op). Donc l'activation réelle = lancer le CLI.
 
 ---
 
@@ -256,7 +293,21 @@ quand on aura vu plusieurs matchs en prod.
 
 ---
 
-## Sprint 2.A — Timeline du score au moment du quit
+## Sprint 2.A — Timeline du score au moment du quit — ✅ LIVRÉ (2026-05-28)
+
+> **Réouvert après correction utilisateur** : la donnée EST disponible via la
+> timeline des frags (`killer_victim_pairs`, comme le graphe "tug of war" de la
+> page match-view). Fiable à 100% sur modes non-objectifs (frags = score), signal
+> suffisant sur modes à objectifs. On compte les frags cumulés par équipe et on
+> regarde qui mène au moment du quit. Fallback sur l'outcome final si la timeline
+> est absente (vieux matchs).
+>
+> ⚠️ **HOOK ADAPTER T0 (pour le collègue)** : le vrai T0 = `match_registry.real_start_time`
+> (début réel après countdown, ~99% des cas) doit être obtenu via un **adapter
+> titre-spécifique**. **NON implémenté ici** — on utilise `start_time_utc` (début
+> film) comme repère, ce qui est correct pour Halo. Le point d'insertion est
+> **marqué en commentaire** dans `quitOffsetMs` (`internal/sync/skill_v2_quit_penalty.go`) :
+> c'est là que l'adapter `real_start_time` doit brancher.
 
 ### Objectif
 Aujourd'hui on classe le quit "related" (équipe perdait) vs "unrelated"
@@ -267,21 +318,20 @@ juste.
 
 ### Étapes
 
-- [ ] **2.A.1** — Investiguer la source de vérité : grep `highlight_events`, `match_progression`, `events`, `score_timeline` dans `internal/openspartan/models.go`
-  - Si la donnée existe : continuer
-  - Si elle n'existe pas : abandonner ce sprint avec note dans handoff
-- [ ] **2.A.2** — Si disponible : nouvelle fonction `inferQuitContextFromTimeline(events, leaveTime, ownerTeam) (related bool, scoreDiff int)`
-- [ ] **2.A.3** — Modifier `quitDeltaForTeam(o)` en `quitDeltaForContext(scoreContext)` qui prend le contexte au moment du quit
-- [ ] **2.A.4** — Tests unitaires sur 3 cas : équipe gagnait, équipe perdait, équipe à égalité
-- [ ] **2.A.5** — Mise à jour `.ai/thought_log.md` + handoff
+- [x] **2.A.1** — Source de vérité : `killer_victim_pairs` (killer_xuid + time_ms relatif film), même base que le graphe tug-of-war (`analysis.ComputeTugOfWar`).
+- [x] **2.A.2** — `skill_v2/quit_context.go` (pur) : `InferQuitContext(frags []TeamFrag, quitMs, quitterTeamID) QuitContext` (Leading/Tied/Trailing) en comptant les frags cumulés ≤ quitMs.
+- [x] **2.A.3** — `quitDeltaForContext(ctx)` (trailing→related modéré ; leading/tied→unrelated fort). `buildCountInputs` prend `quitTimeline` et applique le contexte par quitter (fallback `quitDeltaForTeam` si timeline absente). Loader `loadQuitTimeline` + `quitOffsetMs` (**hook adapter T0 commenté**).
+- [x] **2.A.4** — Tests unitaires `quit_context_test.go` : menait / perdait / égalité / ne compte que ≤ quit / 0-0 / perspective équipe adverse.
+- [x] **2.A.5** — E2E `TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit` (quit en menant mais défaite → pénalité forte 2.5 vs fallback 1.0, écart 1.5). + thought_log + handoff.
 
 ### Definition of Done — Sprint 2.A
 
-- [ ] Tests PASS (ou sprint marqué abandonné avec justification si donnée API absente)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS (skill_v2 + sync), `go vet` clean
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
+- [ ] **À FAIRE (collègue)** : brancher l'adapter `real_start_time` au hook marqué dans `quitOffsetMs` pour le multi-titre
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28 (hook T0 adapter à compléter par le collègue)
 
 ---
 
@@ -295,27 +345,21 @@ plus corrélés que slayer↔chaos (chaos = mayhem). Une matrice
 
 ### Étapes
 
-- [ ] **2.B.1** — Algorithme pur `internal/analysis/skill_v2/mode_correlation_matrix.go` :
-  - `EstimateCouplingMatrix(playerStates map[xuid][]GroupState) map[string]map[string]float64`
-  - Pour chaque paire (mode A, mode B), corrélation de Pearson entre μ_A et μ_B sur l'ensemble des joueurs ayant joué les 2
-  - Cap à 0.4 (règle métier)
-- [ ] **2.B.2** — Stockage : étendre `lusr_hyperparams_v2` avec rows
-  `mode_coupling_<source>_<target>` (source datée "batch_YYYY_MM_DD")
-- [ ] **2.B.3** — Modifier `propagateCrossModeLeak` pour utiliser la matrice
-  au lieu du scalaire
-- [ ] **2.B.4** — Étendre le CLI `lusr_v2_ttt_batch` pour calculer + écrire
-  la matrice
-- [ ] **2.B.5** — Tests unitaires : 3 modes parfaitement corrélés → matrice = 0.4 partout, 3 modes décorrélés → matrice = 0
-- [ ] **2.B.6** — Mise à jour `.ai/thought_log.md`
+- [x] **2.B.1** — `skill_v2/mode_correlation_matrix.go` : `EstimateCouplingMatrix` = Pearson des μ entre modes (joueurs ayant les 2), clampé [0, 0.4]. Symétrique ; négatif → 0 ; < 3 joueurs → pas d'entrée.
+- [x] **2.B.2** — Stockage rows `mode_coupling_<source>_<target>` dans `lusr_hyperparams_v2` (playlist_group=source). Helpers `ModeCouplingHyperparamName` + `CouplingWeightFor`.
+- [x] **2.B.3** — `propagateCrossModeLeak` charge `LoadHyperparams(source)` + `CouplingWeightFor(...)` par target, fallback `DefaultModeCouplingWeight` si pas d'entrée (comportement Phase 4 inchangé tant que matrice absente).
+- [x] **2.B.4** — CLI `lusr_v2_ttt_batch` étendu (`mode_coupling.go`) : `loadPlayerStatesByXUID` + `EstimateCouplingMatrix` + `writeModeCoupling` (2 sens) + rapport.
+- [x] **2.B.5** — Tests unitaires : corrélés parfaits → 0.4 ; décorrélés (orthogonaux) → 0 ; anti-corrélation → 0 ; sous-seuil → pas d'entrée ; CouplingWeightFor fallback.
+- [x] **2.B.6** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 2.B
 
-- [ ] Tests PASS
-- [ ] Batch tourne sur prod, matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS (skill_v2 + sync), `go vet` clean
+- [ ] Batch tourne sur prod, matrice 4×4 cohérente (slayer↔objectif > slayer↔chaos) — **différé : prod (avec ~4 trackés, beaucoup de paires sous le seuil → fallback scalaire)**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28. **MAJ 2026-05-28 : le leak cross-mode (`LEVELUP_LUSR_V2_MODE_COUPLING`) est désormais ON par défaut** (décision produit). Tant que la matrice n'est pas calculée par le batch, le leak utilise le scalaire 0.3 (comportement Phase 4 historique).
 
 ---
 
@@ -391,26 +435,42 @@ long-terme.
 
 ### Étapes
 
-- [ ] **3.A.1** — Étudier le paper TS2 §10 (Minka et al. 2018), section
-  "Batch through-time inference"
-- [ ] **3.A.2** — Prototype passe backward : à partir de l'état final de chaque
-  joueur, propage l'information vers les états passés
-- [ ] **3.A.3** — EM loop : forward → backward → re-estimate hyperparams →
-  forward... jusqu'à convergence
-- [ ] **3.A.4** — Métrique de convergence : delta entre 2 EM iterations
-- [ ] **3.A.5** — Tests : converger en < 10 itérations sur un dataset synthétique
-- [ ] **3.A.6** — Comparer ratings avant/après sur prod : doit donner mêmes
-  tiers, μ légèrement raffinés
-- [ ] **3.A.7** — Mise à jour `.ai/thought_log.md`
+> **Livré en tant que PROTOTYPE pur** (`skill_v2/ttt.go`). Le couplage inter-joueurs
+> complet (factor graph TS2 §10) + le câblage prod restent un follow-up (la partie
+> 1-2j+ risquée ; comparaison prod 3.A.6 de toute façon différée). Cf. thought_log 2026-05-28.
+>
+> **Décisions utilisateur 2026-05-28** :
+> - **Scope** : lisser uniquement le(s) joueur(s) ayant une BDD dans l'app (joueurs
+>   actifs/trackés). S'il y a plusieurs joueurs avec BDD, on les fait tous (un par un).
+> - **Fiabilité si limité aux actifs ?** Réponse : perte **négligeable**. Le lissage
+>   travaille sur l'historique de CHAQUE joueur indépendamment ; les trackés ont le
+>   plus de matchs = la meilleure matière. La seule chose perdue vs "lisser tout le
+>   monde" est le partage d'info entre joueurs qui se sont affrontés (gain marginal
+>   pour une poignée de joueurs, et c'est ça la grosse version coûteuse).
+> - **Approche wiring restante (follow-up)** : pour chaque joueur tracké, construire
+>   la série de ses μ post-match (depuis `player_skill_state_v2`) comme observations
+>   `z_t`, appeler `EstimateTTT`, et décider où écrire les μ raffinés (réécriture
+>   historique = à trancher ; risqué avant/juste après la bascule prod). **À planifier
+>   séparément.**
+
+- [x] **3.A.1** — Étude TS2 §10 : modèle état-espace linéaire-gaussien (random walk + observation), inférence forward (Kalman) + backward (RTS) + EM.
+- [x] **3.A.2** — Passe backward : `rtsBackward` (lisseur RTS + covariance lag-one) propage l'info des états futurs vers les passés.
+- [x] **3.A.3** — EM loop : `EstimateTTT` (kalmanForward → rtsBackward → ré-estime q=τ² et r) jusqu'à convergence.
+- [x] **3.A.4** — Convergence sur `|Δq| + |Δr| < Tol`.
+- [x] **3.A.5** — Tests synthétiques : convergence < 10 itérations ; log-vraisemblance croissante (propriété EM) ; lisseur ≤ filtre (RMSE) ; edge cases 0/1 obs.
+- [x] **3.A.5b** — **Wiring complet (2026-05-28)** : `LoadStateHistory` (SkillV2Repo) + `runTTTSmoothing` (charge séries μ, appelle EstimateTTT, agrège q/r par groupe, écrit `ttt_tau_empirical` dans `lusr_hyperparams_v2`) + `LoadPriorsFromHyperparams` override Tau. Flags CLI : `--smooth` (τ-hyperparams) et `--write-smoothed` (μ lissé terminal → nouveau snapshot). Tests Tau : `TestLoadPriorsFromHyperparams_TauOverride` + `_TauInvalidIgnored` + 2 cas `AppliedHyperparamCount`.
+- [ ] **3.A.6** — Comparaison ratings prod avant/après — **différé : valider τ estimé sur données réelles**
+- [x] **3.A.7** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 3.A
 
-- [ ] Tests PASS, convergence atteinte
-- [ ] Replay sur prod n'introduit pas de changement abrupt de tier sur les 4 trackés (Madina reste Diamant, etc.)
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS, convergence atteinte (prototype pur)
+- [x] Wiring câblé : `--smooth` écrit `ttt_tau_empirical` par groupe ; `--write-smoothed` écrit μ lissé terminal ; `LoadPriorsFromHyperparams` override Tau au runtime
+- [ ] Replay sur prod sans changement abrupt de tier — **différé : valider τ sur données réelles**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28 (wiring complet livré ; validation prod = follow-up)
 
 ---
 
@@ -421,23 +481,25 @@ Aujourd'hui quand on écrit une ligne `match_skill_rank`, le champ
 `rating_delta` est nul. Pour afficher au joueur "vous avez gagné +12 LUSR
 ce match", il faudrait fetcher le rating précédent. Petit confort UX.
 
+> 📊 **AFFICHAGE À DÉCIDER (utilisateur)** : `rating_delta` est désormais peuplé
+> en base, mais **rien ne l'affiche encore**. À toi de décider OÙ (ligne
+> d'historique de match ? page match-view ?) et COMMENT (ex. "+12 LUSR" en vert /
+> "−8 LUSR" en rouge). Tant que ce n'est pas décidé, c'est juste une colonne en base.
+
 ### Étapes
 
-- [ ] **3.B.1** — Modifier `writeCanonicalLUSRRow` :
-  - Charger le rating LUSR le plus récent avant ce match (via `match_skill_rank_latest`)
-  - Calculer `rating_delta = new_rating - previous_rating`
-  - Si pas de précédent : delta = nil (premier match)
-- [ ] **3.B.2** — Test E2E : 2 matchs successifs pour un joueur → 2ème row a `rating_delta != nil`
-- [ ] **3.B.3** — Mise à jour `.ai/thought_log.md`
+- [x] **3.B.1** — `writeCanonicalLUSRRow` : helper `loadPreviousLUSRRating` (rating LUSR le plus récemment écrit du groupe, ordre written_at DESC, id DESC), `rating_delta = rating - précédent`, nil au premier match. Best-effort (erreur → nil + warn).
+- [x] **3.B.2** — E2E `TestRunLUSRV2Shadow_Canonical_RatingDelta` : 2 matchs successifs → m1 delta NULL, m2 delta non-nul.
+- [x] **3.B.3** — Entrée `.ai/thought_log.md` 2026-05-28.
 
 ### Definition of Done — Sprint 3.B
 
-- [ ] Tests PASS
-- [ ] Vérifier en prod après quelques matchs que `rating_delta` est populé
-- [ ] Entrée `.ai/thought_log.md`
-- [ ] Commit autorisé
+- [x] Tests PASS (sync), `go vet` + gofmt clean
+- [ ] Vérifier en prod après quelques matchs que `rating_delta` est populé — **différé : prod**
+- [x] Entrée `.ai/thought_log.md`
+- [x] Commit autorisé
 
-**Date complétion** : _______________
+**Date complétion** : 2026-05-28
 
 ---
 

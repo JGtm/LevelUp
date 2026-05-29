@@ -111,6 +111,23 @@ func TestPostBackupRun_NilScheduler(t *testing.T) {
 	if w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("expected 503, got %d: %s", w.Code, w.Body.String())
 	}
+	// Axe 5 : le 503 doit suivre le shape d'erreur standard {code, message,
+	// retryable} en JSON (avant : http.Error → text/plain).
+	if ct := w.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("Content-Type = %q, want application/json", ct)
+	}
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("body non JSON: %v", err)
+	}
+	for _, k := range []string{"code", "message", "retryable"} {
+		if _, ok := body[k]; !ok {
+			t.Errorf("clé %q absente du shape standard: %v", k, body)
+		}
+	}
+	if body["code"] != "backup_scheduler_unavailable" {
+		t.Errorf("code = %v, want backup_scheduler_unavailable", body["code"])
+	}
 }
 
 func TestPostBackupRun_Skipped(t *testing.T) {

@@ -2,10 +2,10 @@
 // (`WAL Replay fails when attach alias changes`).
 //
 // Reproduit la séquence :
-//   1. CREATE TABLE + INSERT bulk dans une DB DuckDB
-//   2. exit avant CHECKPOINT (simule un kill brutal)
-//   3. reopen → DuckDB tente le replay du WAL → INTERNAL Error:
-//      "Failure while replaying WAL file ... Calling DatabaseManager::GetDefaultDatabase"
+//  1. CREATE TABLE + INSERT bulk dans une DB DuckDB
+//  2. exit avant CHECKPOINT (simule un kill brutal)
+//  3. reopen → DuckDB tente le replay du WAL → INTERNAL Error:
+//     "Failure while replaying WAL file ... Calling DatabaseManager::GetDefaultDatabase"
 //
 // Ce fichier sert d'artefact à attacher à un bug report upstream.
 //

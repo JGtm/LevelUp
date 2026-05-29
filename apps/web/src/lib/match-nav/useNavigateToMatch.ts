@@ -12,7 +12,7 @@
  *     source: 'history',
  *     matchIds: rowsOnPage.map(r => r.match_id),
  *     filtersLabel: t.activeFiltersSummary,
- *     filterSpec: { playlist_name: 'Ranked Arena', date_from: '...' },
+ *     filterSpec: { playlist_names: ['Ranked Arena'], date_from: '...' },
  *   })
  *
  * Sans `ctx`, comportement identique à un `navigate({ to, params })` simple.

@@ -99,10 +99,10 @@ func main() {
 	client := gosync.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, *rps)
 
 	var (
-		updated  int
-		skipped  int
-		apiGone  int
-		apiErr   int
+		updated int
+		skipped int
+		apiGone int
+		apiErr  int
 	)
 	start := time.Now()
 

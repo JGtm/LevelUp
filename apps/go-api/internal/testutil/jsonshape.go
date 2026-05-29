@@ -40,7 +40,7 @@ func RequireNoNilSlicesWithoutOmitempty(t TestingT, v any) {
 func walkForNilSlices(t TestingT, v reflect.Value, path string) {
 	t.Helper()
 	// Déréférencer pointeurs / interfaces.
-	for v.IsValid() && (v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface) {
+	for v.IsValid() && (v.Kind() == reflect.Pointer || v.Kind() == reflect.Interface) {
 		if v.IsNil() {
 			return
 		}

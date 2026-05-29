@@ -304,9 +304,8 @@ func TestMatchViewService_GetMatchNeighborsFiltered_PropagateSpec(t *testing.T) 
 	repo := &mockNeighborsRepo{}
 	svc := NewMatchViewService(repo, "xuid-me")
 
-	pl := "Ranked Arena"
 	out := "win"
-	spec := &domain.MatchFilterSpec{PlaylistName: &pl, Outcome: &out}
+	spec := &domain.MatchFilterSpec{PlaylistNames: []string{"Ranked Arena"}, Outcome: &out}
 	resp, err := svc.GetMatchNeighborsFiltered(context.Background(), "m1", spec)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -317,11 +316,12 @@ func TestMatchViewService_GetMatchNeighborsFiltered_PropagateSpec(t *testing.T) 
 	if repo.receivedMatch != "m1" {
 		t.Errorf("match = %q, want m1", repo.receivedMatch)
 	}
-	if repo.receivedSpec == nil || repo.receivedSpec.PlaylistName == nil || *repo.receivedSpec.PlaylistName != "Ranked Arena" {
+	if repo.receivedSpec == nil || len(repo.receivedSpec.PlaylistNames) != 1 ||
+		repo.receivedSpec.PlaylistNames[0] != "Ranked Arena" {
 		t.Errorf("spec not propagated correctly : %+v", repo.receivedSpec)
 	}
 	// AppliedFilters echo doit être présent quand spec non vide
-	if resp.AppliedFilters == nil || resp.AppliedFilters.PlaylistName == nil {
+	if resp.AppliedFilters == nil || len(resp.AppliedFilters.PlaylistNames) == 0 {
 		t.Errorf("AppliedFilters echo missing : %+v", resp.AppliedFilters)
 	}
 	if resp.CurrentIndex != 1 || resp.TotalMatches != 3 {

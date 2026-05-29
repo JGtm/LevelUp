@@ -76,11 +76,11 @@ func NewFakeServer(t *testing.T, fx testfixtures.JGtmFullMatch) *FakeServer {
 	mux.HandleFunc("/hi/matches/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.HasSuffix(r.URL.Path, "/stats") {
-			w.Write(fx.MatchStatsRaw)
+			_, _ = w.Write(fx.MatchStatsRaw)
 			return
 		}
 		if strings.Contains(r.URL.Path, "/skill") {
-			w.Write(fx.SkillRaw)
+			_, _ = w.Write(fx.SkillRaw)
 			return
 		}
 		http.NotFound(w, r)
@@ -90,7 +90,7 @@ func NewFakeServer(t *testing.T, fx testfixtures.JGtmFullMatch) *FakeServer {
 	mux.HandleFunc("/hi/players/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if strings.Contains(r.URL.Path, "/matches") {
-			w.Write(fx.MatchHistoryRaw)
+			_, _ = w.Write(fx.MatchHistoryRaw)
 			return
 		}
 		http.NotFound(w, r)

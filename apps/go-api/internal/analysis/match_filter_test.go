@@ -45,20 +45,53 @@ func TestBuildNeighborsWhereClause_Empty(t *testing.T) {
 
 func TestBuildNeighborsWhereClause_Playlist(t *testing.T) {
 	t.Parallel()
-	pl := "Ranked Arena"
-	got := BuildNeighborsWhereClause(&domain.MatchFilterSpec{PlaylistName: &pl}, fakeCategoryPrefixes)
-	if !strings.Contains(got.SQL, "mr.playlist_name = ?") {
-		t.Errorf("SQL missing playlist clause: %q", got.SQL)
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{PlaylistNames: []string{"Ranked Arena"}},
+		fakeCategoryPrefixes,
+	)
+	if !strings.Contains(got.SQL, "mr.playlist_name IN (?)") {
+		t.Errorf("SQL missing playlist IN clause: %q", got.SQL)
 	}
 	if len(got.Args) != 1 || got.Args[0] != "Ranked Arena" {
 		t.Errorf("Args want [Ranked Arena], got %v", got.Args)
 	}
 }
 
+func TestBuildNeighborsWhereClause_MultiPlaylist(t *testing.T) {
+	t.Parallel()
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{PlaylistNames: []string{"Ranked Arena", "Big Team Battle"}},
+		fakeCategoryPrefixes,
+	)
+	if !strings.Contains(got.SQL, "mr.playlist_name IN (?, ?)") {
+		t.Errorf("SQL want 2-placeholder IN, got %q", got.SQL)
+	}
+	if len(got.Args) != 2 || got.Args[0] != "Ranked Arena" || got.Args[1] != "Big Team Battle" {
+		t.Errorf("Args want [Ranked Arena, Big Team Battle], got %v", got.Args)
+	}
+}
+
+func TestBuildNeighborsWhereClause_Playlist_SkipsEmpty(t *testing.T) {
+	t.Parallel()
+	// Slice avec valeurs vides → filtrées ; pas de placeholder fantôme.
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{PlaylistNames: []string{"", "  ", "Fiesta"}},
+		fakeCategoryPrefixes,
+	)
+	if !strings.Contains(got.SQL, "mr.playlist_name IN (?)") {
+		t.Errorf("SQL want single placeholder (empties filtered), got %q", got.SQL)
+	}
+	if len(got.Args) != 1 || got.Args[0] != "Fiesta" {
+		t.Errorf("Args want [Fiesta], got %v", got.Args)
+	}
+}
+
 func TestBuildNeighborsWhereClause_ModeCategory_BTB(t *testing.T) {
 	t.Parallel()
-	cat := "BTB"
-	got := BuildNeighborsWhereClause(&domain.MatchFilterSpec{ModeCategory: &cat}, fakeCategoryPrefixes)
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{ModeCategories: []string{"BTB"}},
+		fakeCategoryPrefixes,
+	)
 	// Doit générer 2 préfixes × 2 clauses chacune = 4 clauses OR
 	if !strings.Contains(got.SQL, "mr.pair_name = ?") {
 		t.Errorf("SQL missing pair_name equality: %q", got.SQL)
@@ -78,10 +111,47 @@ func TestBuildNeighborsWhereClause_ModeCategory_BTB(t *testing.T) {
 	}
 }
 
+func TestBuildNeighborsWhereClause_MultiModeCategory(t *testing.T) {
+	t.Parallel()
+	// BTB (2 préfixes) + Ranked (1 préfixe) = 3 préfixes × 2 patterns = 6 args,
+	// le tout dans un seul OR.
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{ModeCategories: []string{"BTB", "Ranked"}},
+		fakeCategoryPrefixes,
+	)
+	if strings.Count(got.SQL, " OR ") != 5 {
+		t.Errorf("SQL want 5 OR tokens (6 clauses), got %d in %q", strings.Count(got.SQL, " OR "), got.SQL)
+	}
+	if len(got.Args) != 6 {
+		t.Errorf("Args want 6 (3 prefixes × 2 patterns), got %d : %v", len(got.Args), got.Args)
+	}
+	if len(got.IgnoredFilters) != 0 {
+		t.Errorf("aucune catégorie ignorée attendue, got %v", got.IgnoredFilters)
+	}
+}
+
+func TestBuildNeighborsWhereClause_MultiModeCategory_PartialResolve(t *testing.T) {
+	t.Parallel()
+	// BTB résout, "InventedCategory" non → on garde BTB, pas d'ignored
+	// (au moins une catégorie a matché).
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{ModeCategories: []string{"BTB", "InventedCategory"}},
+		fakeCategoryPrefixes,
+	)
+	if len(got.Args) != 4 {
+		t.Errorf("Args want 4 (BTB seul résout), got %d : %v", len(got.Args), got.Args)
+	}
+	if len(got.IgnoredFilters) != 0 {
+		t.Errorf("partial resolve : pas d'ignored (BTB a matché), got %v", got.IgnoredFilters)
+	}
+}
+
 func TestBuildNeighborsWhereClause_ModeCategory_Unknown(t *testing.T) {
 	t.Parallel()
-	cat := "InventedCategory"
-	got := BuildNeighborsWhereClause(&domain.MatchFilterSpec{ModeCategory: &cat}, fakeCategoryPrefixes)
+	got := BuildNeighborsWhereClause(
+		&domain.MatchFilterSpec{ModeCategories: []string{"InventedCategory"}},
+		fakeCategoryPrefixes,
+	)
 	if got.SQL != "" {
 		t.Errorf("catégorie inconnue : SQL doit être vide, got %q", got.SQL)
 	}
@@ -92,8 +162,7 @@ func TestBuildNeighborsWhereClause_ModeCategory_Unknown(t *testing.T) {
 
 func TestBuildNeighborsWhereClause_ModeCategory_NilResolver(t *testing.T) {
 	t.Parallel()
-	cat := "BTB"
-	got := BuildNeighborsWhereClause(&domain.MatchFilterSpec{ModeCategory: &cat}, nil)
+	got := BuildNeighborsWhereClause(&domain.MatchFilterSpec{ModeCategories: []string{"BTB"}}, nil)
 	if got.SQL != "" {
 		t.Errorf("resolver nil : SQL doit être vide, got %q", got.SQL)
 	}
@@ -206,15 +275,13 @@ func TestBuildNeighborsWhereClause_WithPlayerXuid(t *testing.T) {
 
 func TestBuildNeighborsWhereClause_Combined(t *testing.T) {
 	t.Parallel()
-	pl := "Ranked Arena"
-	cat := "Ranked"
 	from := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	outcome := "win"
 	got := BuildNeighborsWhereClause(&domain.MatchFilterSpec{
-		PlaylistName: &pl,
-		ModeCategory: &cat,
-		DateFrom:     &from,
-		Outcome:      &outcome,
+		PlaylistNames:  []string{"Ranked Arena"},
+		ModeCategories: []string{"Ranked"},
+		DateFrom:       &from,
+		Outcome:        &outcome,
 	}, fakeCategoryPrefixes)
 
 	if !strings.HasPrefix(got.SQL, " AND ") {

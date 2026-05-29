@@ -460,8 +460,8 @@ export function buildContextLabel(
   if (!spec) return ''
   const t = MATCH_VIEW_TEXT[locale]
   const parts: string[] = []
-  if (spec.playlist_name) parts.push(spec.playlist_name)
-  if (spec.mode_category) parts.push(spec.mode_category)
+  if (spec.playlist_names?.length) parts.push(spec.playlist_names.join(', '))
+  if (spec.mode_categories?.length) parts.push(spec.mode_categories.join(', '))
   if (spec.outcome) {
     const map: Record<string, string> = {
       win: t.outcomeWin,

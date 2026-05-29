@@ -2,16 +2,14 @@
  * fromFilterContext — convertit le `FilterContextInput` du globalFilterStore
  * en `MatchFilterSpec` consommable par /neighbors (Phase 2c).
  *
- * Mapping minimaliste :
- *   - cascade.playlists[0] → playlist_name (si exactement 1 playlist sélectionnée)
- *   - cascade.modes[0]     → mode_category (idem, 1 seule catégorie)
- *   - period.start_date    → date_from (concat avec T00:00:00Z)
- *   - period.end_date      → date_to   (concat avec T23:59:59Z)
+ * Mapping :
+ *   - cascade.playlists → playlist_names (multi, Phase 3 — IN (...) côté backend)
+ *   - cascade.modes     → mode_categories (multi, Phase 3 — OR des préfixes)
+ *   - period.start_date → date_from (concat avec T00:00:00Z)
+ *   - period.end_date   → date_to   (concat avec T23:59:59Z)
  *   - sessions.picked_session_label → session_id (si présent)
  *
  * Cas non gérés (volontaire) :
- *   - Multi-sélection (>1 playlist ou >1 mode) : pas de filtre côté URL
- *     (l'utilisateur a un scope trop large pour bénéficier de la nav contextuelle).
  *   - cascade.experience_types et cascade.maps : pas mappables vers MatchFilterSpec.
  *   - outcome : pas dans filterContext global, c'est un filtre spécifique
  *     match-history/explorer (à brancher au cas par cas).
@@ -37,16 +35,16 @@ export function filterContextToMatchFilterSpec(
 
   const spec: MatchFilterSpec = {}
 
-  // Playlist : seulement si exactement 1 sélectionnée (sinon scope trop large)
-  const playlists = ctx.cascade?.playlists ?? []
-  if (playlists.length === 1 && playlists[0]) {
-    spec.playlist_name = playlists[0]
+  // Playlists (multi) : toutes les playlists sélectionnées (Phase 3).
+  const playlists = (ctx.cascade?.playlists ?? []).filter(Boolean)
+  if (playlists.length > 0) {
+    spec.playlist_names = playlists
   }
 
-  // Mode : idem
-  const modes = ctx.cascade?.modes ?? []
-  if (modes.length === 1 && modes[0]) {
-    spec.mode_category = modes[0]
+  // Catégories de mode (multi) : idem.
+  const modes = (ctx.cascade?.modes ?? []).filter(Boolean)
+  if (modes.length > 0) {
+    spec.mode_categories = modes
   }
 
   // Period dates : on suppose YYYY-MM-DD côté store, on rajoute T00:00:00Z / T23:59:59Z
@@ -69,8 +67,8 @@ export function filterContextToMatchFilterSpec(
   }
 
   if (
-    !spec.playlist_name &&
-    !spec.mode_category &&
+    !spec.playlist_names?.length &&
+    !spec.mode_categories?.length &&
     !spec.date_from &&
     !spec.date_to &&
     !spec.session_id &&

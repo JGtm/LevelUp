@@ -88,16 +88,30 @@ func TestGetStringSetting_WrongType(t *testing.T) {
 
 func TestResolveSetupState_NoPlayers(t *testing.T) {
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
-	got := svc.resolveSetupState(context.Background(), nil)
+	got := svc.resolveSetupState(context.Background(), nil, nil)
 	if got != "no_halo_link" {
 		t.Errorf("expected no_halo_link, got %s", got)
+	}
+}
+
+func TestResolveSetupState_HaloLinkedNoProfile(t *testing.T) {
+	// SSO terminé (identité liée en session) mais aucun profil local : doit
+	// router vers StepPlayer, pas reboucler sur le Device Code Flow.
+	sess := &domain.SessionData{
+		AuthReady:          true,
+		LinkedHaloIdentity: &domain.HaloIdentity{Gamertag: "GT", XUID: "123"},
+	}
+	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
+	got := svc.resolveSetupState(context.Background(), sess, nil)
+	if got != "halo_linked_no_profile" {
+		t.Errorf("expected halo_linked_no_profile, got %s", got)
 	}
 }
 
 func TestResolveSetupState_WithPlayers(t *testing.T) {
 	players := []domain.PlayerSummary{{Gamertag: "GT"}}
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 0})
-	got := svc.resolveSetupState(context.Background(), players)
+	got := svc.resolveSetupState(context.Background(), nil, players)
 	if got != "profile_ready_no_sync" {
 		t.Errorf("expected profile_ready_no_sync, got %s", got)
 	}
@@ -106,9 +120,40 @@ func TestResolveSetupState_WithPlayers(t *testing.T) {
 func TestResolveSetupState_WithMatchesReady(t *testing.T) {
 	players := []domain.PlayerSummary{{Gamertag: "GT"}}
 	svc := NewBootstrapService(&config.AppConfig{}, &mockBootRepo{matchCount: 42})
-	got := svc.resolveSetupState(context.Background(), players)
+	got := svc.resolveSetupState(context.Background(), nil, players)
 	if got != "ready" {
 		t.Errorf("expected ready, got %s", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Build — wiring complet post-SSO (simulation onboarding sans login Microsoft)
+// ---------------------------------------------------------------------------
+
+func TestBuild_HaloLinkedNoProfile(t *testing.T) {
+	// État post-SSO : le Device Code Flow a posé une identité Halo en session
+	// (sess.LinkedHaloIdentity) mais aucun profil local n'est encore créé.
+	// Build() doit router vers StepPlayer via setup_state=halo_linked_no_profile
+	// au lieu de reboucler sur StepDeviceCode (no_halo_link).
+	cfg := &config.AppConfig{} // 0 joueur : DBProfilesPath vide → LoadPlayers = []
+	svc := NewBootstrapService(cfg, &mockBootRepo{matchCount: 0})
+	sess := &domain.SessionData{
+		AuthReady:          true,
+		LinkedHaloIdentity: &domain.HaloIdentity{Gamertag: "GT", XUID: "123"},
+	}
+
+	resp, err := svc.Build(context.Background(), sess)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	if resp.SetupState != "halo_linked_no_profile" {
+		t.Errorf("SetupState = %q, want halo_linked_no_profile", resp.SetupState)
+	}
+	if !resp.SetupRequired {
+		t.Error("SetupRequired devrait être true (0 joueur)")
+	}
+	if resp.LinkedHaloIdentity == nil || resp.LinkedHaloIdentity.Gamertag != "GT" {
+		t.Error("LinkedHaloIdentity devrait être propagé dans la réponse bootstrap")
 	}
 }
 

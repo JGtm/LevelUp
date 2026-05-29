@@ -18,9 +18,10 @@
 //  6. Vérification post : COUNT(*) par table == baseline pré-rebuild.
 //
 // Usage :
-//   go run ./apps/go-api/cmd/rebuild_shared_social \
-//        --db <shared_social.duckdb path> \
-//        [--dry-run]
+//
+//	go run ./apps/go-api/cmd/rebuild_shared_social \
+//	     --db <shared_social.duckdb path> \
+//	     [--dry-run]
 //
 // Toutes les écritures sont guarded par confirmation explicite côté shell.
 // Idempotent : si on relance après succès, --dry-run montre que la baseline

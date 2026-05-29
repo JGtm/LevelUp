@@ -460,61 +460,6 @@ func loadExistingEngagementScores(ctx context.Context, playerDB *sql.DB) map[str
 	return out
 }
 
-// persistEngagementScore UPSERT le score + paces dans player_match_enrichment.
-//
-// Si les colonnes engagement_pace_* sont absentes (migration recompute coefs
-// non appliquee), retombe sur la version 5-col (sans paces) pour rester
-// compatible avec les bases anterieures.
-func persistEngagementScore(
-	ctx context.Context,
-	playerDB *sql.DB,
-	matchID, modeCategory string,
-	result domain.EngagementScoreResult,
-	now time.Time,
-) error {
-	var scoreArg any
-	if result.EngagementScore != nil {
-		scoreArg = *result.EngagementScore
-	}
-	if pacesColumnsAvailable(ctx, playerDB) {
-		_, err := playerDB.ExecContext(ctx, `
-			INSERT INTO player_match_enrichment (
-				match_id, engagement_score, engagement_score_brut,
-				engagement_score_confidence, mode_category,
-				engagement_pace_player, engagement_pace_team, engagement_pace_lobby,
-				engagement_player_activity, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT (match_id) DO UPDATE SET
-				engagement_score = EXCLUDED.engagement_score,
-				engagement_score_brut = EXCLUDED.engagement_score_brut,
-				engagement_score_confidence = EXCLUDED.engagement_score_confidence,
-				mode_category = EXCLUDED.mode_category,
-				engagement_pace_player = EXCLUDED.engagement_pace_player,
-				engagement_pace_team = EXCLUDED.engagement_pace_team,
-				engagement_pace_lobby = EXCLUDED.engagement_pace_lobby,
-				engagement_player_activity = EXCLUDED.engagement_player_activity,
-				updated_at = EXCLUDED.updated_at
-		`, matchID, scoreArg, result.ResidualBrut, result.Confidence, modeCategory,
-			result.MeanPaceJoueur, result.MeanPaceTeam, result.MeanPaceLobby,
-			result.PlayerActivity, now)
-		return err
-	}
-	// Fallback : pre-migration recompute coefs (5 colonnes).
-	_, err := playerDB.ExecContext(ctx, `
-		INSERT INTO player_match_enrichment (
-			match_id, engagement_score, engagement_score_brut,
-			engagement_score_confidence, mode_category, updated_at
-		) VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (match_id) DO UPDATE SET
-			engagement_score = EXCLUDED.engagement_score,
-			engagement_score_brut = EXCLUDED.engagement_score_brut,
-			engagement_score_confidence = EXCLUDED.engagement_score_confidence,
-			mode_category = EXCLUDED.mode_category,
-			updated_at = EXCLUDED.updated_at
-	`, matchID, scoreArg, result.ResidualBrut, result.Confidence, modeCategory, now)
-	return err
-}
-
 // pacesColumnsAvailable verifie la presence de la colonne engagement_pace_team
 // (et donc du jeu complet de 4 colonnes paces ajoutees ensemble par migration).
 func pacesColumnsAvailable(ctx context.Context, playerDB *sql.DB) bool {

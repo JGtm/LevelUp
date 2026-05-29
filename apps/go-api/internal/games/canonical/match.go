@@ -204,17 +204,17 @@ type PlayerMatchEnrichment struct {
 // Tous les champs sont optionnels (pointeurs) — un titre sans système de
 // tiers (ex: Halo MCC 1-50) peut ne renseigner que `RatingValue`.
 type SkillSnapshot struct {
-	RatingType     RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
-	RatingValue    *float64   // valeur brute du rating (CSR points, LUSR mu)
-	TierCode       *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
-	TierCodeFR     *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
-	SubTier        *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
-	Delta          *float64   // points gagnés/perdus ce match (positif/négatif)
-	PlaylistGroup        *string // groupe normalisé (ex: "ranked-arena")
-	SeasonID             *string // saison Halo associée au rating (ex: "Elan")
-	MeasurementRemaining *int    // matchs de placement restants (>0 = phase placement)
-	KillsExpected        *float64 // depuis MatchSkillSnapshot — utilisé par Stats
-	DeathsExpected       *float64 // idem
+	RatingType           RatingType // "csr" | "lusr" (enum existant canonical/enums.go)
+	RatingValue          *float64   // valeur brute du rating (CSR points, LUSR mu)
+	TierCode             *string    // code stable cross-titre (ex: "diamond", "onyx") — EN
+	TierCodeFR           *string    // libellé localisé FR (ex: "Or", "Platine") depuis match_skill_rank.tier_fr
+	SubTier              *int       // 1..6 ou nil pour Onyx (max tier sans sub-tier)
+	Delta                *float64   // points gagnés/perdus ce match (positif/négatif)
+	PlaylistGroup        *string    // groupe normalisé (ex: "ranked-arena")
+	SeasonID             *string    // saison Halo associée au rating (ex: "Elan")
+	MeasurementRemaining *int       // matchs de placement restants (>0 = phase placement)
+	KillsExpected        *float64   // depuis MatchSkillSnapshot — utilisé par Stats
+	DeathsExpected       *float64   // idem
 }
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.

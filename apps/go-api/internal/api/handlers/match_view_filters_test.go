@@ -40,14 +40,24 @@ func mustParse(t *testing.T, qs string) (out struct {
 		out.isEmpty = true
 		return
 	}
-	out.playlist = spec.PlaylistName
-	out.mode = spec.ModeCategory
+	// Phase 3 : PlaylistNames/ModeCategories sont des slices. Les tests
+	// mono-valeur historiques comparent via *string → on expose le 1er élément.
+	out.playlist = firstOrNil(spec.PlaylistNames)
+	out.mode = firstOrNil(spec.ModeCategories)
 	out.session = spec.SessionID
 	out.outcome = spec.Outcome
 	out.withPlayer = spec.WithPlayerXuid
 	out.from = spec.DateFrom
 	out.to = spec.DateTo
 	return
+}
+
+// firstOrNil retourne un pointeur vers le 1er élément, ou nil si slice vide.
+func firstOrNil(s []string) *string {
+	if len(s) == 0 {
+		return nil
+	}
+	return &s[0]
 }
 
 // parseRawValue : helper qui construit un request avec une **valeur brute**
@@ -66,7 +76,7 @@ func parseRawValue(t *testing.T, key, value string) (out struct {
 		out.isEmpty = true
 		return
 	}
-	out.playlist = spec.PlaylistName
+	out.playlist = firstOrNil(spec.PlaylistNames)
 	return
 }
 
@@ -104,6 +114,34 @@ func TestParseNeighborsFilterSpec_AllValid(t *testing.T) {
 	}
 	if r.to == nil || r.to.Year() != 2026 || r.to.Month() != time.May {
 		t.Errorf("to mal parsé : %v", r.to)
+	}
+}
+
+func TestParseNeighborsFilterSpec_MultiValue(t *testing.T) {
+	// playlist + mode multi-valeurs (séparateur virgule) → slices.
+	req := buildReq("playlist=Ranked Arena,Big Team Battle&mode=BTB,Fiesta")
+	spec := parseNeighborsFilterSpec(req)
+	if spec == nil {
+		t.Fatalf("spec non vide attendu")
+	}
+	if len(spec.PlaylistNames) != 2 ||
+		spec.PlaylistNames[0] != "Ranked Arena" || spec.PlaylistNames[1] != "Big Team Battle" {
+		t.Errorf("PlaylistNames = %v, want [Ranked Arena, Big Team Battle]", spec.PlaylistNames)
+	}
+	if len(spec.ModeCategories) != 2 || spec.ModeCategories[0] != "BTB" || spec.ModeCategories[1] != "Fiesta" {
+		t.Errorf("ModeCategories = %v, want [BTB, Fiesta]", spec.ModeCategories)
+	}
+}
+
+func TestParseNeighborsFilterSpec_MultiValue_SkipsInvalid(t *testing.T) {
+	// "Ranked Arena" valide + "<bad>" invalide → seule la valide est conservée.
+	req := buildReq("playlist=Ranked Arena,<bad>")
+	spec := parseNeighborsFilterSpec(req)
+	if spec == nil {
+		t.Fatalf("spec non vide attendu (1 playlist valide)")
+	}
+	if len(spec.PlaylistNames) != 1 || spec.PlaylistNames[0] != "Ranked Arena" {
+		t.Errorf("PlaylistNames = %v, want [Ranked Arena] (invalide filtrée)", spec.PlaylistNames)
 	}
 }
 

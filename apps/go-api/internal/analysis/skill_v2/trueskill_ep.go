@@ -39,6 +39,11 @@ type PlayerCounts struct {
 type CountInputs struct {
 	TeamA []PlayerCounts // len doit matcher m.TeamA
 	TeamB []PlayerCounts // len doit matcher m.TeamB
+
+	// Hyperparams (Sprint 1.B) override les CountHyperparams du modèle
+	// d'observation kills/deaths. nil → defaults ep (DefaultCountHyperparams).
+	// Renseigné par LoadCountHyperparamsFromDB depuis les moyennes empiriques.
+	Hyperparams map[CountType]CountHyperparams
 }
 
 // DefaultQuitDeltaRelated : pénalité quit "related" (team perdait au moment
@@ -146,6 +151,8 @@ func UpdateTwoTeamWithCountsEP(m TwoTeamMatch, counts *CountInputs, p Priors) (t
 		input.Counts = flattenCountInputs(counts)
 		input.WeightsA = extractTeamWeights(counts.TeamA)
 		input.WeightsB = extractTeamWeights(counts.TeamB)
+		// nil Hyperparams → ep retombe sur DefaultCountHyperparams (backward compat).
+		input.CountHyperparams = counts.Hyperparams
 	}
 
 	postA, postB, err := ep.UpdateMatch2Team(input, ep.DefaultMatch2TeamConfig())

@@ -36,11 +36,11 @@ import (
 )
 
 const (
-	fixtureDir    = "testdata/wal_orphan_fixture"
-	fixtureDBGz   = "shared_social.duckdb.gz"
-	fixtureWAL    = "shared_social.duckdb.wal"
-	fixtureSize   = 11284480 // taille de la DB décompressée (sanity check)
-	walSizeBytes  = 2509     // taille du WAL orphelin réel
+	fixtureDir   = "testdata/wal_orphan_fixture"
+	fixtureDBGz  = "shared_social.duckdb.gz"
+	fixtureWAL   = "shared_social.duckdb.wal"
+	fixtureSize  = 11284480 // taille de la DB décompressée (sanity check)
+	walSizeBytes = 2509     // taille du WAL orphelin réel
 )
 
 // decompressFixture copie + décompresse la DB fixture dans dstPath. Retourne
@@ -113,8 +113,8 @@ func TestWALOrphanRepro_BugDuckDB7659(t *testing.T) {
 		defer db.Close()
 	}
 	if err == nil {
-		t.Fatalf("ATTENDU : erreur 'Failure while replaying WAL file' (bug DuckDB #7659)\n"+
-			"OBSERVÉ : open RW a réussi sur la fixture corrompue.\n"+
+		t.Fatalf("ATTENDU : erreur 'Failure while replaying WAL file' (bug DuckDB #7659)\n" +
+			"OBSERVÉ : open RW a réussi sur la fixture corrompue.\n" +
 			"Si ce test PASS, c'est que DuckDB upstream a fixé le bug — re-évaluer le code recovery.")
 	}
 	if !strings.Contains(err.Error(), errWALReplayMarker) {

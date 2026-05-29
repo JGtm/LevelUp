@@ -376,32 +376,6 @@ func (s *CareerLiveService) kickoffBackgroundRefresh(xuid string, tokens *domain
 // fetchProgressCached, fetchCustomizationCached, makeFetcher → extraits dans
 // `career_live_fetcher.go` (refactor V2 dette technique 2026-05-26).
 
-// persistIfChanged écrit le snapshot dans career_progression si différent
-// de la dernière row. Best-effort — erreur loguée mais non propagée.
-//
-// Deprecated: utilise persistPartial pour les nouveaux chemins (V2 PLAN §5).
-// Conservé pour compat avec les appels legacy non encore migrés.
-func (s *CareerLiveService) persistIfChanged(ctx context.Context, xuid string, row *duckdb.CareerRankRow) {
-	if s.repo == nil || row == nil {
-		return
-	}
-	inserted, err := s.repo.InsertCareerProgressionIfChanged(ctx, xuid, row)
-	if err != nil {
-		slog.WarnContext(ctx, careerLiveLogModule+": persist failed",
-			"xuid", xuid, "err", err)
-		return
-	}
-	if inserted {
-		careerLiveInsertChanged.Add(1)
-		slog.InfoContext(ctx, careerLiveLogModule+": new snapshot inserted",
-			"xuid", xuid,
-			"rank", row.Rank,
-			"current_xp", row.CurrentXP)
-	} else {
-		careerLiveInsertSkipped.Add(1)
-	}
-}
-
 // persistPartial écrit dans career_progression UNIQUEMENT les champs
 // effectivement rendus non-vides par l'API live (PartialFromLive). Les
 // colonnes omises restent NULL dans la nouvelle ligne — la lecture via

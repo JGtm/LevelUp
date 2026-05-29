@@ -93,7 +93,8 @@ describe('useMatchNeighborsResolved', () => {
     expect(result.current.contextLabel).toBeUndefined()
   })
 
-  it('matchId hors liste : ignore le ctx et tape l\'API', async () => {
+  it('matchId hors liste : ignore le ctx, warn dev + tape l\'API', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     stateCtxRef.current = histCtx
     const { result } = renderHook(() => useMatchNeighborsResolved('me', 'inconnu'), {
       wrapper,
@@ -101,6 +102,9 @@ describe('useMatchNeighborsResolved', () => {
 
     // Le matchId 'inconnu' n'est pas dans matchIds → fallback API
     expect(result.current.source).toBe('api')
+    // Observabilité (Phase 3) : le fallback est signalé en dev (avant : silencieux).
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('absent du contexte'))
+    warnSpy.mockRestore()
   })
 
   it('expose contextDescriptor depuis le contexte router-state', () => {

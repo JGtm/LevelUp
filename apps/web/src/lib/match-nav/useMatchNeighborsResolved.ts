@@ -3,7 +3,7 @@
  *
  * Ordre :
  *   1. Router state (instantané, scope onglet courant)
- *   2. sessionStorage (survit F5 / nav arrière, TTL 1h)
+ *   2. sessionStorage (survit F5 / nav arrière, TTL 24h — Phase 3)
  *   3. URL query params (survit Ctrl+Click / lien partagé) — Phase 2b
  *   4. Fallback API Q25 (chronologie globale du joueur)
  *
@@ -137,7 +137,15 @@ export function useMatchNeighborsResolved(
         navContext: localCtx,
       }
     }
-    // matchId hors liste → fallback API silencieux.
+    // matchId hors liste du contexte → fallback API. Observabilité (Phase 3) :
+    // ce cas est anormal (le contexte devrait contenir le match courant) et
+    // était auparavant totalement silencieux. On le signale en dev pour le
+    // diagnostic, sans bloquer (le fallback API reste correct).
+    if (import.meta.env.DEV) {
+      console.warn(
+        `[match-nav] matchId "${matchId}" absent du contexte (${localCtx.matchIds.length} matchs, source=${localCtx.source}) → fallback API Q25`,
+      )
+    }
   }
 
   return {
