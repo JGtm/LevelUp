@@ -39,6 +39,8 @@ export interface BriefingTexts {
     rankDeltaLUSR: string
     rendement: string
     resistance: string
+    /** Libellé combiné de la card composite Rendement/Résistance (aligné sur la home). */
+    offDef: string
     refBaseline: string
   }
   /** Format pluriel pour les libellés outcomes — utilisé dans la Results bar */
@@ -74,6 +76,7 @@ const FR: BriefingTexts = {
     rankDeltaLUSR: 'Delta LUSR',
     rendement: 'Rendement',
     resistance: 'Résistance',
+    offDef: 'Rendement / Résist.',
     refBaseline: 'réf. 100%',
   },
   // FR : ajout "s" si count > 1, sauf "Abandon" qui prend aussi "s".
@@ -110,6 +113,7 @@ const EN: BriefingTexts = {
     rankDeltaLUSR: 'LUSR change',
     rendement: 'Rendement',
     resistance: 'Resistance',
+    offDef: 'Off. / Def.',
     refBaseline: 'ref. 100%',
   },
   // EN : pluralisation par "s" couvre nos labels outcomes (Win → Wins, Loss → Losses

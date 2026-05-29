@@ -1,13 +1,21 @@
 /**
  * KpiGrid — bande KPI du SessionBriefing.
  *
- * Mode SOLO (par défaut) : 7 cards permanentes (Matchs+durée moy / Durée
- * totale / Frags / Morts / Assists / Précision / Vie) + 1 conditionnelle
- * (Delta rang) → 7 ou 8 colonnes.
+ * Cards permanentes : Frags / Morts / Assists / Précision / Vie (5). "Matchs
+ * joués" et "Durée totale" sont rendues dans SquadVerdict (toujours monté) ;
+ * le seul caller passe donc omitSummaryCards=true → baseCols=5. La branche
+ * omitSummaryCards=false (baseCols=7, Matchs+Durée inclus) reste supportée
+ * mais n'est plus empruntée.
  *
- * Mode SQUAD (omitSummaryCards=true) : "Matchs joués" et "Durée totale"
- * sont déplacées dans SquadVerdict (à droite de la Results bar). La grille
- * descend à 5 cards permanentes + 1 conditionnelle → 5 ou 6 colonnes.
+ * Cards conditionnelles :
+ *  - Rendement/Résistance (avg_offensive_conversion / avg_defensive_resistance) :
+ *    fusionnées en UNE card composite (barre + 2 valeurs colorées) sur 2 colonnes,
+ *    alignée sur le format de la home (cf. OffDefComposite). Si une seule des deux
+ *    métriques est présente, fallback sur une KpiCell classique (span-1).
+ *  - Delta rang : couleur ABSOLUE par SIGNE (divergent-pos/neg/neutral). Kind
+ *    détermine le label (Delta CSR / Delta LUSR) et la précision (CSR=int,
+ *    LUSR=2 décimales). Pas de glyphe trend (la couleur + le signe explicite
+ *    sur la valeur suffisent).
  *
  * "Matchs joués" affiche le count + la durée moyenne par match en inline-sub
  * (ex: "12  8min07/match"). Cette présentation est répliquée dans
@@ -16,11 +24,6 @@
  * Trends ▲/▼ vs teamAvgKpis (mode squad uniquement) sur les 5 cards
  * évaluatives historiques (frags, morts, assists, précision, vie). Morts =
  * lower_is_better. Si teamAvgKpis est null (mode solo) → trends 'none'.
- *
- * Delta rang : couleur ABSOLUE par SIGNE (divergent-pos/neg/neutral). Kind
- * détermine le label (Delta CSR / Delta LUSR) et la précision (CSR=int,
- * LUSR=2 décimales). Pas de glyphe trend (la couleur + le signe explicite
- * sur la valeur suffisent).
  */
 import type { CSSProperties } from 'react'
 
@@ -30,6 +33,7 @@ import { formatDurationDhm, formatMinSec, formatMmss } from './format'
 import type { BriefingTexts } from './i18n'
 import { computeTrend, trendSymbol, type TrendState } from './trends'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { OffDefComposite } from '@/components/ui/off-def-composite'
 
 interface KpiGridProps {
   kpis: KPIStats
@@ -135,8 +139,14 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
   const hasDelta = kpis.rank_delta != null
   const hasOC = kpis.avg_offensive_conversion != null
   const hasDR = kpis.avg_defensive_resistance != null
+  // OC + DR fusionnés en UNE card composite (barre + 2 valeurs) sur 2 colonnes,
+  // alignée sur le format de la home. Cas dégénéré (une seule des 2 métriques) :
+  // fallback sur une KpiCell classique span-1, pour éviter d'afficher un côté faux.
+  const hasComposite = hasOC && hasDR
+  const hasSingleYield = hasOC !== hasDR
   const baseCols = omitSummaryCards ? 5 : 7
-  const colCount = baseCols + (hasDelta ? 1 : 0) + (hasOC ? 1 : 0) + (hasDR ? 1 : 0)
+  const colCount =
+    baseCols + (hasDelta ? 1 : 0) + (hasComposite ? 2 : 0) + (hasSingleYield ? 1 : 0)
   // Tailwind ne purge pas les `grid-cols-N` dynamiques → utiliser inline
   // grid-template-columns pour un colCount calculé.
   const gridStyle: CSSProperties = {
@@ -201,14 +211,31 @@ export function KpiGrid({ kpis, teamAvgKpis, texts, title, hint, omitSummaryCard
           value={formatMmss(kpis.avg_life_seconds)}
           trend={trendLife}
         />
-        {hasOC && (
+        {hasComposite && (
+          <div
+            className="rounded border border-border bg-card px-3 py-2"
+            style={{ gridColumn: 'span 2' }}
+          >
+            <p className="text-3xs uppercase tracking-wide text-muted-foreground">
+              {texts.grid.offDef}
+            </p>
+            <div className="mt-1">
+              <OffDefComposite
+                offensiveConversion={kpis.avg_offensive_conversion}
+                defensiveResistance={kpis.avg_defensive_resistance}
+                align="start"
+              />
+            </div>
+          </div>
+        )}
+        {hasSingleYield && hasOC && (
           <KpiCell
             label={texts.grid.rendement}
             value={`${((kpis.avg_offensive_conversion ?? 0) * 100).toFixed(0)}%`}
             sub={texts.grid.refBaseline}
           />
         )}
-        {hasDR && (
+        {hasSingleYield && hasDR && (
           <KpiCell
             label={texts.grid.resistance}
             value={`${(((kpis.avg_defensive_resistance ?? 1) - 1) * 100).toFixed(0)}%`}
