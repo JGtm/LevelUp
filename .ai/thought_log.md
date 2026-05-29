@@ -13,15 +13,19 @@
 4. `buildSquadFirstEvents` (.17, CRITIQUE car dépend des valeurs absolues) : correction + skip des events `TimeMS<0` (countdown) qui collisionneraient avec le sentinel `-1` de firstKillS/firstDeathS.
 5. `buildSquadImpactMatrix` (.07) via `loadImpactEventsByMatch(…, timelines)` : badges invariants par T0 (vérifié en lisant `ComputeMatchImpactFull` : min/max/ordre relatif + différences kamikaze `dT-kT`, aucun seuil absolu ; `SquadImpactCell` n'expose aucun TimeMS) → no-op observable, corrigé pour cohérence/robustesse.
 
-**Validation données réelles** (programme jetable, shared_matches_v2.duckdb) : 1724/1724 matchs avec t0_ms (100%), **médiane 27.6s** (≈ 28s attendu), 0 négatif, 1 outlier max=14400s (data-quality préexistant, hors scope ; `BuildTimelinesFromSquadRows` ne clampe que les négatifs, comme `BuildTimelinesFromPlayerMatches`).
+**Revue adverse (workflow 3 lentilles : correctness / complétude / sql-scan)** : a confirmé l'alignement scan 26/26 (T0Ms pos.18), le NULL-handling, la formule byte-identique à player_matches_repo, et l'invariance des badges (vérif indépendante). A surfacé 2 consommateurs d'events bruts supplémentaires → **scope étendu sur décision utilisateur** :
+6. `buildSquadIntensityProfile` (teammates.13) : `CorrectImpactEvents` + filtre `TimeMS<0` (calcul durée ET bucketing). Le garde `duration<=0` existant gère l'outlier 14400s.
+7. `squad_service.go` (page Squad V1, `ComputeImpactSummary`) : correction appliquée — no-op observable (`SquadImpact` n'expose que des compteurs ; faux positif « blocker » de la revue rectifié) mais cohérence de pipeline.
 
-**Tests** : 4 ajoutés (timeline : `CorrectImpactEvents` ×2 + `BuildTimelinesFromSquadRows` ; service : `buildSquadFirstEvents` décalage de bin + skip countdown). `go build ./...`, `go test ./internal/service ./internal/analysis/...` verts. Build CGO via `C:\msys64\ucrt64\bin\gcc.exe` (CGO_ENABLED=1) dans ce sandbox.
+**Validation données réelles** (programme jetable, shared_matches_v2.duckdb) : 1724/1724 matchs avec t0_ms (100%), **médiane 27.6s** (≈ 28s attendu), 0 négatif, 1 outlier max=14400s (data-quality préexistant, hors scope ; `BuildTimelinesFromSquadRows` ne clampe que les négatifs, comme `BuildTimelinesFromPlayerMatches` ; les builders skippent les TimeMS<0 et gardent `duration<=0`).
 
-**Gap signalé (NON corrigé — hors §4.A-bis)** : `buildSquadIntensityProfile` (teammates.13, fichier `..._intensity_perminute.go`) lit aussi `e.TimeMS` brut pour bucketer, avec un dénominateur auto-référencé (`maxTimeByMatch`). Même classe de bug, distorsion mineure du 1ᵉʳ bucket. Le helper canonique `timeline.GameplayDurationsMS` existe déjà comme dénominateur prévu. À trancher avec l'utilisateur.
+**Tests** : 5 ajoutés (timeline : `CorrectImpactEvents` ×2 + `BuildTimelinesFromSquadRows` ; service : `buildSquadFirstEvents` décalage de bin + skip countdown, `buildSquadIntensityProfile` skip countdown). `go build ./...`, `go test ./internal/service ./internal/analysis/...` verts. Build CGO via `C:\msys64\ucrt64\bin\gcc.exe` (CGO_ENABLED=1) dans ce sandbox.
+
+**Reste-à-faire signalé (hors scope)** : suppression du legacy `Q30SquadMatches` (dead code préexistant, 0 caller) ; linter `no_raw_time_ms` (Phase 5) qui aurait attrapé .13/.17/squad-V1.
 
 **Échec test préexistant (NON lié)** : `TestNoUnauthorizedSharedSocialMention` échoue sur `internal/api/gen/types.gen.go` (fichier généré mentionnant `shared_social` hors whitelist) — issu de la régénération OpenAPI du travail parallèle, pas du fix T0.
 
-**Prochaine étape** : validation UI 3 graphes (utilisateur) ; décision sur le gap .13 ; câblage `wᵢ=time_played` (cf. [[project_lusr_v2_timeplayed_weighting]]) hors scope.
+**Prochaine étape** : validation UI (utilisateur) — teammates.17 (premier frag), .13 (intensité), .07 (matrice) ; câblage `wᵢ=time_played` (cf. [[project_lusr_v2_timeplayed_weighting]]) hors scope.
 
 ## [2026-05-29] fix(carrière): playlists classées — allowlist autoritative (is_ranked), fin du bug récurrent
 
@@ -48,6 +52,18 @@
 **Prochaine étape** : autorisation commit utilisateur ; refresh procédure si 343 tourne les hoppers (re-fetch métadonnée). Cf. ADR éventuel + memory `reference-ranked-playlists-source`.
 
 ---
+
+## [2026-05-29] feat(web,sessions): Phase 2c refonte session-detail — graphes du drawer remontés en vue single
+
+**Statut** : Complété (branche `chore/query-devtools-flag`). Front typecheck + eslint + 15 tests verts.
+
+**Fait** : ajout dans la colonne principale (vue session unique) de 3 graphes qui n'existaient que dans le drawer compare : Skill progression (CSR/LUSR), OCDR, Engagement.
+- Réutilisation des composants `SessionCompare*` avec `sessionB={null}` (pas de duplication).
+- `SessionCompareSkillProgression` : OK tel quel (sessionB=null → 1 série, légende A seule).
+- `SessionCompareOCDR` + `SessionCompareEngagement` : ajout d'un **mode single** (`sessionB == null`) qui masque le cadrage A-vs-B. OCDR → valeurs OC/DR + CombatYieldBar de la session ; Engagement → seulement la courbe de progression par match.
+- Labels via les clés i18n `session.compare.*` existantes (aucune nouvelle clé).
+
+**Reste** : Phase 3 (tableau riche : lignes enrichies backend via MatchHistoryRepository + duplication du tableau Explorer).
 
 ## [2026-05-29] feat(web+go,sessions): Phase 2a/2b refonte session-detail — métriques single (Win%/KDR/Kills-match)
 

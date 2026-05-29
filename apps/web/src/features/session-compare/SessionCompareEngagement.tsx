@@ -84,6 +84,30 @@ export function SessionCompareEngagement({
 
   const hasProgression = series.length > 0
 
+  // Mode single (sessionB absent) : la moyenne A-vs-B n'a pas de sens ; on n'affiche
+  // que la progression d'engagement par match.
+  if (sessionB == null) {
+    if (!hasProgression) {
+      return (
+        <p className="text-sm text-muted-foreground italic text-center py-4">{labels.empty}</p>
+      )
+    }
+    return (
+      <TimeseriesLineChart
+        title=""
+        series={series}
+        emptyMessage={labels.empty}
+        height={height}
+        xAxisType="category"
+        outcomeMarkers={false}
+        smooth
+        showSymbol
+        seriesColorResolver={seriesColorResolver}
+        seriesNameResolver={seriesNameResolver}
+      />
+    )
+  }
+
   if (!hasAvgData && !hasProgression) {
     return (
       <p className="text-sm text-muted-foreground italic text-center py-4">{labels.empty}</p>
