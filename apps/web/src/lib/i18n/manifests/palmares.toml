@@ -13,24 +13,6 @@
 fr = "fr-FR"
 en = "en-GB"
 
-# ─── Tabs (4 onglets) ──────────────────────────────────────────────────────
-
-[palmares.tabs.leaderboard]
-fr = "Classements"
-en = "Leaderboard"
-
-[palmares.tabs.relations]
-fr = "Relations"
-en = "Relations"
-
-[palmares.tabs.compare]
-fr = "Face-à-face"
-en = "Head-to-head"
-
-[palmares.tabs.season_pass]
-fr = "Pass saisonnier"
-en = "Season Pass"
-
 # ─── Page header ───────────────────────────────────────────────────────────
 
 [palmares.page.title]
