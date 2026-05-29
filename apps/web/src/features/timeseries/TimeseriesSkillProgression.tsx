@@ -2,10 +2,16 @@
  * TimeseriesSkillProgression — graphe de progression CSR (classé) ou LUSR (non classé)
  * par match, avec ruptures de saison et signalement des phases de placement.
  *
- * Consomme `TimeseriesMatchRow[]` filtrés par la page parente.
+ * Consomme `TimeseriesMatchRow[]` filtrés par la page parente (en ordre de match).
  * Une série par (skill_playlist_group, skill_rating_type).
- * Rupture de courbe quand skill_season_id change entre deux matchs consécutifs.
+ * Rupture de courbe quand skill_season_id change entre deux matchs notés consécutifs.
  * Matchs de placement (skill_measurement_remaining > 0) = symboles séparés sans ligne.
+ *
+ * Axe X : catégoriel `#N\nMap` (index de match) aligné sur les autres graphes
+ * par-match de la page (cf. buildMatchCategories), avec regroupement des
+ * étiquettes via tickInterval() quand le panel devient large.
+ * Axe Y : cadré sur la/les bande(s) de palier contenant les données (frameToTier)
+ * pour rendre lisibles les petites variances de classement.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -14,27 +20,30 @@ import {
   getAxisBase,
   getTooltipBase,
   getLegendBase,
+  tickInterval,
   CHART_BG,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { LUSR_TIERS } from '@/lib/skillTiers'
+import { frameToTier, buildLusrTierMarkArea } from '@/lib/charts/skillTierBands'
 import { timeseriesManifest } from '@/lib/i18n/generated/timeseries'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { LUSR_GROUP_TOKENS, lusrChainLabel } from '@/features/career/lusr-chains'
+import { buildMatchCategories } from './matchLabels'
 import type { TimeseriesMatchRow } from '@/lib/api/types'
 
 // ── Types internes ──────────────────────────────────────────────────────────
-
-type DataPoint = [string, number | null]
 
 interface ProgressionSeries {
   key: string
   label: string
   group: string
   ratingType: string
-  points: DataPoint[]         // progression principale (nulls aux ruptures de saison)
-  placementPoints: DataPoint[] // matchs de placement
-  seasonBreaks: string[]       // dates des ruptures (ISO)
+  /** Valeurs de classement indexées par position de match (null hors matchs notés). */
+  values: (number | null)[]
+  /** Points de placement : [indexMatch, y]. */
+  placementPoints: Array<[number, number]>
+  /** Index de match où débute une nouvelle saison (rupture de courbe). */
+  seasonBreaks: number[]
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -59,63 +68,56 @@ function buildTitle(series: ProgressionSeries[], locale: ManifestLocale): string
 // ── Construction des séries ──────────────────────────────────────────────────
 
 function buildProgressionSeries(rows: TimeseriesMatchRow[], locale: ManifestLocale): ProgressionSeries[] {
-  // 1. Filtrer les rows avec une valeur skill, trier chronologiquement.
-  const withSkill = rows
-    .filter(r => r.skill_rating_value != null)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
+  const n = rows.length
 
-  // 2. Regrouper par clé (ratingType:playlistGroup).
-  const byKey = new Map<string, TimeseriesMatchRow[]>()
-  for (const r of withSkill) {
+  // Regrouper les matchs notés par clé (ratingType:playlistGroup), en conservant
+  // leur index de position (= index de catégorie X, aligné sur buildMatchCategories).
+  const byKey = new Map<string, Array<{ row: TimeseriesMatchRow; idx: number }>>()
+  rows.forEach((r, idx) => {
+    if (r.skill_rating_value == null) return
     const k = groupKey(r)
     if (!byKey.has(k)) byKey.set(k, [])
-    byKey.get(k)!.push(r)
-  }
+    byKey.get(k)!.push({ row: r, idx })
+  })
 
   const result: ProgressionSeries[] = []
 
-  for (const [, groupRows] of byKey) {
-    const first = groupRows[0]
+  for (const [, entries] of byKey) {
+    const first = entries[0].row
     const ratingType = first.skill_rating_type ?? ''
     const group = first.skill_playlist_group ?? ''
     const label = `${lusrChainLabel(group, locale)} (${ratingType.toUpperCase()})`
 
     // Midpoint y pour les diamants de placement : milieu de la plage des valeurs réelles.
     // Pour CSR, la valeur stockée pendant les placements est 0.0 — afficher à 0 serait trompeur.
-    const realValues = groupRows
-      .filter(r => (r.skill_measurement_remaining ?? 0) === 0 && r.skill_rating_value != null)
-      .map(r => r.skill_rating_value as number)
+    const realValues = entries
+      .filter(e => (e.row.skill_measurement_remaining ?? 0) === 0 && e.row.skill_rating_value != null)
+      .map(e => e.row.skill_rating_value as number)
     const placementY = realValues.length > 0
       ? (Math.min(...realValues) + Math.max(...realValues)) / 2
       : null
 
-    const points: DataPoint[] = []
-    const placementPoints: DataPoint[] = []
-    const seasonBreaks: string[] = []
+    const values = new Array<number | null>(n).fill(null)
+    const placementPoints: Array<[number, number]> = []
+    const seasonBreaks: number[] = []
+    let prevSeasonId: string | null | undefined
 
-    for (let i = 0; i < groupRows.length; i++) {
-      const row = groupRows[i]
-      const date = row.start_time
+    for (const { row, idx } of entries) {
       const isPlacement = (row.skill_measurement_remaining ?? 0) > 0
 
       if (isPlacement) {
         // Placements : y = milieu de la plage des valeurs réelles (pas 0.0 du CSR en DB).
-        if (placementY !== null) placementPoints.push([date, placementY])
-        points.push([date, null])
-        continue
+        if (placementY !== null) placementPoints.push([idx, placementY])
+        continue // values[idx] reste null → coupure de ligne
       }
 
-      // Rupture de saison : season_id différent du match précédent non-placement.
-      if (i > 0) {
-        const prev = groupRows.slice(0, i).findLast(r => (r.skill_measurement_remaining ?? 0) === 0)
-        if (prev && prev.skill_season_id && row.skill_season_id
-            && prev.skill_season_id !== row.skill_season_id) {
-          points.push([date, null])  // gap visuel
-          seasonBreaks.push(date)
-        }
+      // Rupture de saison : season_id différent du précédent match noté.
+      if (prevSeasonId != null && row.skill_season_id && prevSeasonId !== row.skill_season_id) {
+        seasonBreaks.push(idx)
       }
 
-      points.push([date, row.skill_rating_value!])
+      values[idx] = row.skill_rating_value!
+      prevSeasonId = row.skill_season_id ?? prevSeasonId
     }
 
     result.push({
@@ -123,7 +125,7 @@ function buildProgressionSeries(rows: TimeseriesMatchRow[], locale: ManifestLoca
       label,
       group,
       ratingType,
-      points,
+      values,
       placementPoints,
       seasonBreaks,
     })
@@ -132,32 +134,25 @@ function buildProgressionSeries(rows: TimeseriesMatchRow[], locale: ManifestLoca
   return result
 }
 
+// Réexport pour tests unitaires de la transformation pure.
+export { buildProgressionSeries }
+
 // ── Option ECharts ────────────────────────────────────────────────────────────
 
-function buildTierMarkArea(locale: ManifestLocale) {
-  return {
-    silent: true,
-    label: { show: true, position: 'insideTopLeft' as const, fontSize: 10, opacity: 0.6 },
-    data: LUSR_TIERS.map(tier => [
-      {
-        yAxis: tier.min,
-        name: locale === 'fr' ? tier.fr : tier.en,
-        itemStyle: { color: resolveToken(tier.token) + '30' },
-        label: { color: resolveToken(tier.token) },
-      },
-      { yAxis: tier.max },
-    ]),
-  }
-}
-
-function buildOption(series: ProgressionSeries[], locale: ManifestLocale): EChartsCoreOption {
+function buildOption(
+  series: ProgressionSeries[],
+  rows: TimeseriesMatchRow[],
+  locale: ManifestLocale,
+): EChartsCoreOption {
   const tc = getEChartsThemeColors()
   const axisBase = getAxisBase(tc)
-  const intlLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+  const categories = buildMatchCategories(rows)
+  const n = categories.length
 
-  const allRatings = series.flatMap(s => s.points.flatMap(p => p[1] != null ? [p[1] as number] : []))
+  const allRatings = series.flatMap(s => s.values.filter((v): v is number => v != null))
   const dataMin = allRatings.length > 0 ? Math.min(...allRatings) : 0
-  const tierMin = LUSR_TIERS.findLast(t => t.min <= dataMin)?.min ?? 0
+  const dataMax = allRatings.length > 0 ? Math.max(...allRatings) : 0
+  const { min: yMin, max: yMax } = frameToTier(dataMin, dataMax)
 
   // Série fantôme pour les bandes de tier (reste visible quand les séries réelles sont masquées).
   const ghostSeries = {
@@ -166,7 +161,7 @@ function buildOption(series: ProgressionSeries[], locale: ManifestLocale): EChar
     data: [],
     silent: true,
     legendHoverLink: false,
-    markArea: buildTierMarkArea(locale),
+    markArea: buildLusrTierMarkArea(locale, yMin, yMax),
   }
 
   const echartsSeriesList: object[] = [ghostSeries]
@@ -177,11 +172,11 @@ function buildOption(series: ProgressionSeries[], locale: ManifestLocale): EChar
     const isCSR = s.ratingType.toUpperCase() === 'CSR'
     const seasonBreakLabel = timeseriesManifest['timeseries.skill_progression.season_break'][locale]
 
-    // Courbe principale (avec gaps aux ruptures de saison).
+    // Courbe principale (gaps aux matchs non notés + ruptures de saison via markLine).
     echartsSeriesList.push({
       type: 'line',
       name: s.label,
-      data: s.points,
+      data: s.values,
       connectNulls: false,
       itemStyle: { color },
       lineStyle: { color, width: 2, type: isCSR ? ('dashed' as const) : ('solid' as const) },
@@ -194,7 +189,7 @@ function buildOption(series: ProgressionSeries[], locale: ManifestLocale): EChar
         symbol: 'none',
         lineStyle: { type: 'dotted' as const, color: tc.axisLine, width: 1 },
         label: { formatter: seasonBreakLabel, color: tc.axisLabel, fontSize: 10 },
-        data: s.seasonBreaks.map(date => ({ xAxis: date })),
+        data: s.seasonBreaks.map(idx => ({ xAxis: categories[idx] })),
       } : undefined,
     })
     legendData.push(s.label)
@@ -205,7 +200,7 @@ function buildOption(series: ProgressionSeries[], locale: ManifestLocale): EChar
       echartsSeriesList.push({
         type: 'scatter',
         name: placementLabel,
-        data: s.placementPoints,
+        data: s.placementPoints.map(([idx, y]) => [categories[idx], y]),
         itemStyle: { color, opacity: 0.5 },
         symbol: 'diamond',
         symbolSize: 8,
@@ -216,22 +211,23 @@ function buildOption(series: ProgressionSeries[], locale: ManifestLocale): EChar
 
   return {
     backgroundColor: CHART_BG,
-    grid: { left: 50, right: 20, top: 30, bottom: 60, containLabel: false },
+    grid: { left: 12, right: 20, top: 30, bottom: 40, containLabel: true },
     tooltip: { trigger: 'axis', ...getTooltipBase(tc) },
-    legend: { ...getLegendBase(tc), bottom: 5, data: legendData },
+    legend: { ...getLegendBase(tc), data: legendData, type: 'scroll' },
     xAxis: {
-      type: 'time',
       ...axisBase,
+      type: 'category',
+      data: categories,
       axisLabel: {
         ...axisBase.axisLabel,
-        formatter: (value: number) =>
-          new Intl.DateTimeFormat(intlLocale, { month: 'short', day: 'numeric' }).format(new Date(value)),
+        interval: tickInterval(n) - 1,
       },
     },
     yAxis: {
       type: 'value',
       name: timeseriesManifest['timeseries.skill_progression.axis_y'][locale],
-      min: tierMin,
+      min: yMin,
+      max: yMax,
       ...axisBase,
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
@@ -256,20 +252,18 @@ export function TimeseriesSkillProgression({ rows, locale, height = 280 }: Times
 
   // Adaptateur ChartCard : séries passées = uniquement pour le guard "empty".
   // buildOption reçoit les ProgressionSeries directement via closure.
-  const chartSeriesForCard: ChartSeries<DataPoint>[] = series.flatMap(s => [
-    {
-      key: s.key,
-      meta: { label: s.label },
-      datapoints: s.points.filter((p): p is [string, number] => p[1] != null),
-    },
-  ])
+  const chartSeriesForCard: ChartSeries<number>[] = series.map(s => ({
+    key: s.key,
+    meta: { label: s.label },
+    datapoints: s.values.filter((v): v is number => v != null),
+  }))
 
   return (
-    <ChartCard<DataPoint>
+    <ChartCard<number>
       title={title}
       series={chartSeriesForCard}
       height={height}
-      buildOption={(_) => buildOption(series, locale)}
+      buildOption={() => buildOption(series, rows, locale)}
     />
   )
 }

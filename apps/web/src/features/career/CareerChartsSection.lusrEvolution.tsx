@@ -15,7 +15,7 @@ import {
   CHART_BG,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { LUSR_TIERS } from '@/lib/skillTiers'
+import { frameToTier, buildLusrTierMarkArea } from '@/lib/charts/skillTierBands'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { LUSR_GROUP_TOKENS, lusrChainLabel } from './lusr-chains'
@@ -60,7 +60,10 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
 
   const allRatings = series.flatMap(s => s.datapoints.map(p => p[1]))
   const dataMin = allRatings.length > 0 ? Math.min(...allRatings) : 0
-  const tierMin = LUSR_TIERS.findLast(t => t.min <= dataMin)?.min ?? 0
+  const dataMax = allRatings.length > 0 ? Math.max(...allRatings) : 0
+  // Axe Y cadré sur la/les bande(s) de palier (évite l'axe qui repart de 0 pour
+  // du CSR < 1200 et l'expansion par la bande Onyx 9999). Cf. graphe « Classement ».
+  const { min: yMin, max: yMax } = frameToTier(dataMin, dataMax)
 
   // Fenêtre par défaut = 12 derniers mois depuis le point le plus récent.
   // Si l'historique est plus court, on affiche tout (dataZoom laisse dérouler vers le passé).
@@ -87,7 +90,7 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
     data: [],
     silent: true,
     legendHoverLink: false,
-    markArea: buildLusrTierMarkArea(locale),
+    markArea: buildLusrTierMarkArea(locale, yMin, yMax),
   }
 
   const echartsSeriesList = [
@@ -129,7 +132,8 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
     yAxis: {
       type: 'value',
       name: careerManifest['career.charts.lusr_rating_axis_y'][locale],
-      min: tierMin,
+      min: yMin,
+      max: yMax,
       ...axisBase,
       nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
     },
@@ -144,22 +148,6 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
       }],
     } : {}),
     series: echartsSeriesList,
-  }
-}
-
-function buildLusrTierMarkArea(locale: ManifestLocale) {
-  return {
-    silent: true,
-    label: { show: true, position: 'insideTopLeft' as const, fontSize: 10, opacity: 0.6 },
-    data: LUSR_TIERS.map(tier => [
-      {
-        yAxis: tier.min,
-        name: locale === 'fr' ? tier.fr : tier.en,
-        itemStyle: { color: resolveToken(tier.token) + '30' },
-        label: { color: resolveToken(tier.token) },
-      },
-      { yAxis: tier.max },
-    ]),
   }
 }
 

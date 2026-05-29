@@ -33,6 +33,7 @@ function adaptSquadPerfToMatchRows(pts: SquadPerformanceSeriesPoint[]): Timeseri
     match_id: p.match_id,
     index: i,
     start_time: p.start_time,
+    map_name: p.map_name ?? null,
     kills: p.kills,
     deaths: p.deaths,
     assists: p.assists,
