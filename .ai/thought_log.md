@@ -49805,3 +49805,23 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **⚠️ DETTE PRIORITAIRE avant mise en prod** (cf. mémoire projet [data-quality-first-joined-tz]).
 
 **Prochaine étape** : passe data-quality dédiée (cf. ci-dessus). Phase 3 (activation T0 runtime) dépend de cette passe.
+
+---
+
+## [2026-05-29] Re-normalisation TZ first_joined_time / last_leave_time — EXÉCUTÉE
+
+**Statut** : Complété (correction données en base).
+
+**Règle validée (preuve interne, 0 dépendance API)** : sur les 964 matchs décalés, l'offset est TOUJOURS Europe/Paris exact (464 CET +1h, 500 CEST +2h, 0 exception). Déductible par match : `offset_local = epoch(start_time AT TIME ZONE 'UTC') − epoch(start_time_utc)`. Après `first_joined −= offset_local`, 952/964 (98.8%) retombent T0∈[0,120s].
+
+**Exécution** :
+1. Backup restic préalable (snapshot `5da3eb3a...`, repo local `data/backups/restic-repo`, inclut shared_matches_v2).
+2. `cmd/backfill_first_joined_tz --commit` : **19 114 lignes corrigées sur 964 matchs** (first_joined ET last_leave −= offset_local, tous participants des matchs détectés décalés via MIN first_joined present_at_beginning − start_utc > 120s). Idempotent. Les 760 matchs OK non touchés.
+
+**Vérification post-commit** (re-dry-run backfill_t0) : couverture T0 exploitable **760 → 1712 / 1724 (99.3%)**, médiane 27s. 12 résiduels rejetés (1 negative + 11 suspicious_high = vrais latecomers/bruit). Preuve que la correction a fonctionné.
+
+**Effet de bord positif** : le quit-ordering LUSR v2 (`skill_v2_shadow.go`, lit `last_leave_time`) bénéficie de la correction. ⚠️ Si des ratings LUSR ont été calculés sur l'ancien ordre (faux) des quitters, prévoir un **recalcul LUSR** pour propager la correction.
+
+**Reste** : (a) appliquer migration `t0_quality` + `backfill_t0 --commit` (récupère 1712 T0) ; (b) mod-heure ComputeT0 (désormais défensif/optionnel, 99.3% passent déjà) ; (c) wiring ComputeT0 sync post-sync ; (d) Phase 3 activation runtime.
+
+**Prochaine étape** : backfill_t0 --commit (après migration t0_quality appliquée) + wiring sync, puis Phase 3.
