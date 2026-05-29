@@ -1,3 +1,29 @@
+## [2026-05-29] chore(config): Axe 6 — suppression scaffolding surface flags Go/Python + garde-fou deadline Prestige
+
+**Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
+
+**Contexte** : Axe 6 du plan. Deux items indépendants.
+
+**Décision produit clarifiée par l'utilisateur** : « pas de Python depuis ~2000 commits, on est en Go ». Donc le scaffolding de bascule par-surface Go/Python (`FeatureFlags`/`Surface`/`Backend`/`BackendFor`/`AllSurfaces` dans `config/feature_flags.go`) est **définitivement mort** : il n'y a plus de backend Python vers lequel basculer. La migration n'est pas dormante, elle est terminée. → Suppression (pas documentation).
+> NB : le CLAUDE.md du repo décrit encore une stack Python (pytest/polars/Streamlit) — c'est legacy/obsolète vs la réalité Go actuelle.
+
+**Vérif blast radius (avant suppression)** : seuls consommateurs réels = `config.go` (champ `FeatureFlags` + `LoadFeatureFlags`), `cmd/levelup/cmd_ops.go` (`runSurfaceStatus`) + `main.go` (dispatch/help), et 2 fichiers de test. Zéro routing métier. `internal/api/server.go` n'en dépend pas (faux positif du grep large sur `.Career`).
+
+**Piège évité** : il existe un AUTRE type `FeatureFlags` **légitime** et sans rapport — `domain.FeatureFlags` (bootstrap API : V7Enabled, MediaEnabled, DemoMode, DiscordConfigured…), construit par `buildFeatureFlags` depuis `cfg.DemoMode`/settings, **PAS** depuis le champ `config.FeatureFlags` supprimé. Vérifié : `buildFeatureFlags` ne lit pas le champ retiré → suppression sans impact. NE PAS confondre/toucher `domain.FeatureFlags`.
+
+**Suppressions** :
+- `internal/config/feature_flags.go` + `feature_flags_test.go` (rm).
+- `config.go` : champ `FeatureFlags` de `AppConfig` + ligne `cfg.FeatureFlags = LoadFeatureFlags(...)`.
+- `cmd/levelup` : `runSurfaceStatus` + dispatch `surface-status` + ligne d'aide + commentaires.
+- `pure_funcs_test.go` : 6 tests surface (applyFlagsMap/surfaceFields).
+- Comportement retiré : parsing `LEVELUP_FF_*` et clé `feature_flags` d'app_settings.json (ne switchaient que vers un backend Python inexistant) + commande `surface-status`.
+
+**Garde-fou Prestige** : `internal/config/prestige_expiry_test.go` — échoue au CI à partir du 2026-10-01 (ADR 0005, fin Q3 2026) pour forcer la décision « activer en prod ou supprimer le module Prestige » plutôt que laisser un guard éternel.
+
+**Résultats observés** : `go build` ✅ (config, cmd/levelup, service, domain, api), `go test ./internal/config/` ✅, garde-fou Prestige ✅. Zéro référence pendante aux symboles surface supprimés (seuls subsistent les `domain.FeatureFlags`/gen, légitimes).
+
+**Conclusion / prochaine étape** : Axe 6 livré. Reste Axe 4 (types OpenAPI front) — à vérifier dans le code avant impl.
+
 ## [2026-05-29] fix(api): Axe 5 — cohérence du shape d'erreur HTTP (settings_backup)
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
