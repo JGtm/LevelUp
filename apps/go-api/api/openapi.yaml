@@ -447,13 +447,24 @@ paths:
       operationId: getCareerCSRs
       summary: "Classements CSR par playlist (snapshots current / season / all-time)"
       description: |
-        Retourne pour chaque playlist ranked jouée par le joueur les snapshots
-        CSR `current`, `season` (saison configurée), `all_time`, agrégés depuis
-        `player_csr_snapshots` (Q26). Si la table est absente, dégradation
-        silencieuse (200 avec liste vide). Le `season_id` correspond à la saison
-        active configurée via `CareerService.WithCSRSeasonID`.
+        Retourne pour chaque playlist ranked les snapshots CSR `current`,
+        `season`, `all_time`, agrégés depuis `player_csr_snapshots` (Q26) pour la
+        saison demandée. Si la table est absente, dégradation silencieuse (200
+        avec liste vide).
+
+        Le paramètre `season` sélectionne la saison CSR à afficher (vide → saison
+        courante configurée). `available_seasons` liste les saisons proposables
+        dans le menu déroulant (saisons ayant des données classées pour le joueur
+        + saison courante). LUSR n'est pas concerné (cumulatif, hors saison).
       parameters:
         - $ref: "#/components/parameters/PlayerSlug"
+        - name: season
+          in: query
+          required: false
+          schema:
+            type: string
+          description: |
+            Saison CSR à afficher (ex. "CsrSeason13-1"). Vide → saison courante.
       responses:
         "200":
           description: Classements CSR par playlist
@@ -461,10 +472,16 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [playlists, season_id]
+                required: [playlists, season_id, available_seasons]
                 properties:
                   season_id:
                     type: string
+                    description: Saison effectivement retournée (sélectionnée ou courante)
+                  available_seasons:
+                    type: array
+                    description: Saisons proposables dans le menu déroulant (CSR uniquement)
+                    items:
+                      $ref: "#/components/schemas/CSRSeasonOption"
                   playlists:
                     type: array
                     items:
@@ -2546,7 +2563,7 @@ components:
     # --- Career CSR ---
     CareerCSRRank:
       type: object
-      required: [value, tier, sub_tier, measurement_matches_remaining]
+      required: [value, tier, sub_tier, measurement_matches_remaining, placement_total]
       properties:
         value:
           type: number
@@ -2564,6 +2581,29 @@ components:
           type: string
           nullable: true
           description: URL de l'image du badge (optionnel)
+        placement_total:
+          type: integer
+          description: |
+            Seuil placement de la saison du snapshot (5 depuis S3, 10 historique).
+            Toujours présent depuis Phase 6 du pipeline CSR.
+
+    CSRSeasonOption:
+      type: object
+      required: [season_id, label]
+      description: |
+        Saison CSR sélectionnable dans le menu déroulant "Classements" (page
+        Carrière, colonne CSR). Une saison apparaît si le joueur y a des données
+        classées (snapshot CSR), plus la saison courante.
+      properties:
+        season_id:
+          type: string
+          description: Identifiant saison CSR (ex. "CsrSeason13-1")
+        label:
+          type: string
+          description: Libellé court (ex. "Saison 13")
+        is_current:
+          type: boolean
+          description: Saison active du jour (optionnel)
 
     # --- Erreurs ---
     FieldErrorSchema:
