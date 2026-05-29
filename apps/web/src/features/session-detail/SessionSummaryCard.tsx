@@ -15,7 +15,7 @@ import { kdScale } from '@/lib/accessibility/scales'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-import { formatNumber, useSessionT } from './_shared'
+import { formatNumber, formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
 
 interface Props {
   entry: SessionCompareEntry | null
@@ -58,6 +58,13 @@ export function SessionSummaryCard({ entry }: Props) {
         value={formatNumber(entry.performance_score, 1)}
         token={perfTierToken(entry.performance_score)}
       />
+      {entry.skill_rating_delta != null && entry.skill_rating_type ? (
+        <KpiStat
+          label={`Δ ${entry.skill_rating_type.toUpperCase()}`}
+          value={formatRankDelta(entry.skill_rating_delta, entry.skill_rating_type)}
+          token={rankDeltaToken(entry.skill_rating_delta)}
+        />
+      ) : null}
     </div>
   )
 }

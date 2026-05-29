@@ -13,6 +13,7 @@ import type React from 'react'
 
 import { outcomeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import { type SemanticToken } from '@/lib/accessibility'
 import { formatNumberFixed } from '@/lib/formatters'
 import { formatMessage } from '@/lib/i18n/format'
 import { sessionManifest, type SessionManifestKey } from '@/lib/i18n/generated/session'
@@ -105,4 +106,23 @@ export function perfTierFromScore(score: number): 1 | 2 | 3 | 4 | 5 {
   if (score >= 50) return 3
   if (score >= 35) return 4
   return 5
+}
+
+/**
+ * Formate un delta de rang signé. CSR = entier ("+45" / "-12"), LUSR = 2 décimales
+ * ("+1.23"). Aligné sur le helper de KpiGrid (page Stats Solo).
+ */
+export function formatRankDelta(delta: number, type: string): string {
+  const isCsr = type.toLowerCase() === 'csr'
+  if (delta === 0) return isCsr ? '±0' : '±0.00'
+  const abs = Math.abs(delta)
+  const formatted = isCsr ? String(Math.round(abs)) : abs.toFixed(2)
+  return delta > 0 ? `+${formatted}` : `-${formatted}`
+}
+
+/** Token de couleur d'un delta de rang : positif=vert, négatif=rouge, nul=neutre. */
+export function rankDeltaToken(delta: number): SemanticToken {
+  if (delta > 0) return 'divergent-pos'
+  if (delta < 0) return 'divergent-neg'
+  return 'divergent-neutral'
 }

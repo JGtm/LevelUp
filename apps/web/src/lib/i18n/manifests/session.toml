@@ -282,6 +282,14 @@ en = "Performance score"
 fr = "Moyenne"
 en = "Average"
 
+[session.detail.chart_fda_per_game_title]
+fr = "Frags / Morts / Assists par partie"
+en = "Kills / Deaths / Assists per game"
+
+[session.detail.chart_fda_per_minute_title]
+fr = "Stats par minute — Frags / Morts / Assists"
+en = "Per-minute stats — Kills / Deaths / Assists"
+
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."
 en = "No data to display."

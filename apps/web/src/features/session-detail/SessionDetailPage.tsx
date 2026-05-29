@@ -29,6 +29,7 @@ import { SessionKDATimeline } from './SessionKDATimeline'
 import { SessionOutcomeTape } from './SessionOutcomeTape'
 import { SessionKillsDonut } from './SessionKillsDonut'
 import { SessionPerfTrend } from './SessionPerfTrend'
+import { SessionFdaBars } from './SessionFdaBars'
 import { SessionCompareMetrics } from './SessionCompareMetrics'
 import { SessionCompareKillsDonut } from '../session-compare/SessionCompareKillsDonut'
 import { SessionCompareOutcomeTape } from '../session-compare/SessionCompareOutcomeTape'
@@ -193,6 +194,19 @@ export function SessionDetailPage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <SessionKDATimeline title={t('session.detail.chart_kda_title')} matches={data.matches} />
               <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={data.matches} />
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <SessionFdaBars
+                title={t('session.detail.chart_fda_per_game_title')}
+                matches={data.matches}
+                mode="game"
+              />
+              <SessionFdaBars
+                title={t('session.detail.chart_fda_per_minute_title')}
+                matches={data.matches}
+                mode="minute"
+              />
             </div>
 
             <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={data.matches} />
