@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/api/v1/health": {
+    "/health": {
         parameters: {
             query?: never;
             header?: never;
@@ -13,9 +13,10 @@ export interface paths {
         };
         /**
          * Health check
-         * @description Vérifie l'état de l'API et ses dépendances critiques.
+         * @description Vérifie l'état du service et de ses dépendances critiques
+         *     (metadata.duckdb, shared_matches_v2.duckdb, db_profiles.json).
          */
-        get: operations["health_api_v1_health_get"];
+        get: operations["getHealth"];
         put?: never;
         post?: never;
         delete?: never;
@@ -24,7 +25,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bootstrap": {
+    "/bootstrap": {
         parameters: {
             query?: never;
             header?: never;
@@ -33,15 +34,19 @@ export interface paths {
         };
         /**
          * Bootstrap du shell React
-         * @description Point d'entrée unique du shell React.
-         *
-         *     Retourne l'état complet de l'application :
+         * @description Point d'entrée unique du shell React. Retourne l'état complet de l'application :
          *     configuration du setup, état auth, joueur courant, capacités, feature flags.
          *
          *     Le frontend appelle cet endpoint au démarrage et après chaque action
          *     susceptible de changer l'état global (auth, changement de joueur, etc.).
+         *
+         *     **Invariants :**
+         *     - `auth_state` ∈ {missing, partial, ready}
+         *     - `setup_state` ∈ {no_halo_link, halo_linked_no_profile, profile_ready_no_sync, ready}
+         *     - `available_players` ne doit jamais être null si la liste est connue
+         *     - `current_player` peut être null
          */
-        get: operations["bootstrap_api_v1_bootstrap_get"];
+        get: operations["getBootstrap"];
         put?: never;
         post?: never;
         delete?: never;
@@ -50,7 +55,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players": {
+    "/players": {
         parameters: {
             query?: never;
             header?: never;
@@ -59,11 +64,10 @@ export interface paths {
         };
         /**
          * Liste des joueurs disponibles
-         * @description Retourne la liste de tous les joueurs configurés.
-         *
+         * @description Retourne la liste de tous les joueurs configurés dans db_profiles.json.
          *     En DEMO_MODE, retourne le joueur de démo pointant sur les fixtures.
          */
-        get: operations["players_list_api_v1_players_get"];
+        get: operations["getPlayers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -72,7 +76,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/session/context": {
+    "/session/context": {
         parameters: {
             query?: never;
             header?: never;
@@ -84,18 +88,21 @@ export interface paths {
         /**
          * Mise à jour du contexte de session
          * @description Met à jour le joueur courant, la locale ou les hints dans la session web.
+         *     N'expose jamais le contenu complet de session.
          *
-         *     N'expose jamais le contenu de session — retourne uniquement le contexte
-         *     nécessaire au shell React (joueur courant, locale, capacités).
+         *     **Invariants :**
+         *     - `locale` ∈ {fr, en} si fourni
+         *     - `player_slug` doit référencer un slug existant
+         *     - Retourne 404 si le slug est inconnu
          */
-        post: operations["update_session_context_api_v1_session_context_post"];
+        post: operations["updateSessionContext"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/filters/resolve": {
+    "/players/{player_slug}/filters/resolve": {
         parameters: {
             query?: never;
             header?: never;
@@ -106,19 +113,22 @@ export interface paths {
         put?: never;
         /**
          * Résoudre le contexte de filtres
-         * @description Normalise ``FilterContextInput``, calcule les options disponibles (playlists/modes/cartes/sessions) et retourne le contexte résolu. Remplace les shadow keys Streamlit et ``GAP_MINUTES_FIXED``.
+         * @description Normalise FilterContextInput, calcule les options disponibles
+         *     (playlists/modes/cartes/sessions) et retourne le contexte résolu.
+         *
+         *     **Invariants :**
+         *     - `filter_mode` ∈ {period, sessions}
+         *     - `effective` est le FilterContextInput normalisé, pas un echo brut
+         *     - Les listes vides dans cascade = « tout coché » (pas de filtre restrictif)
          */
-        post: operations["filters_resolve_api_v1_players__player_slug__filters_resolve_post"];
+        post: operations["resolveFilters"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    // @deprecated sprint 29 — GET /setup/status est un artefact mort (absent FastAPI + Go).
-    // Conserver la définition pour éviter de casser la compilation ; sera supprimé lors
-    // de la prochaine régénération au Sprint 32.
-    "/api/v1/setup/status": {
+    "/players/{player_slug}/pages/career": {
         parameters: {
             query?: never;
             header?: never;
@@ -126,13 +136,16 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Setup Status
-         * @description Retourne l'état courant de la configuration de l'application.
+         * Page Carrière complète
+         * @description Retourne la page Carrière complète pour un joueur :
+         *     rang, XP, projections, graphes, historique, rating LUSR, top matchs, encounters.
          *
-         *     La clé ``next_blocking_step`` pilote la navigation du wizard côté React.
-         *     En DEMO_MODE, retourne toujours ``next_blocking_step="done"``.
+         *     **Invariants :**
+         *     - `charts` peut contenir des valeurs null ciblées
+         *     - `summary` et `lusr` restent optionnels si la donnée manque
+         *     - Le contrat est page-oriented, pas une projection brute du canonique Halo
          */
-        get: operations["get_setup_status_api_v1_setup_status_get"];
+        get: operations["getCareerPage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -141,7 +154,206 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/device-flow/start": {
+    "/players/{player_slug}/pages/career/top-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Top matchs du joueur
+         * @description Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
+         */
+        get: operations["getCareerTopMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/career/encounters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Encounters du joueur
+         * @description Retourne les adversaires et coéquipiers fréquents.
+         */
+        get: operations["getCareerEncounters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/career/highlight-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Matchs marquants — 15 best + 15 worst (format Explorer)
+         * @description Retourne les 15 meilleurs et 15 pires matchs du joueur au format
+         *     ExplorerMatchesRow (mêmes colonnes que la page Explorer). Tri par
+         *     priorité dominance puis performance_score (DESC pour best, ASC pour worst).
+         *     Filtres d'éligibilité : performance_score NOT NULL, time_played≥180s,
+         *     is_firefight=FALSE. Asymétrie WIN/LOSS sur had_bot_teammate : les WIN
+         *     avec bot coéquipier sont conservés (perf personnelle méritoire malgré
+         *     le handicap), les LOSS avec bot coéquipier sont exclus (responsabilité
+         *     du joueur non isolable d'un déséquilibre 4v3).
+         *
+         *     Query params optionnels filtrent côté SQL :
+         *       - `experience` : "all" / "ranked" / "unranked"
+         *       - `season_ids` : CSV des saisons (ex. "season6,season7")
+         *
+         *     La réponse inclut les cascade counts (`available_experience`,
+         *     `available_seasons`) qui respectent l'autre filtre actif (cascade-aware).
+         */
+        get: operations["getCareerHighlightMatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/career/top-encounters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Joueurs les plus croisés (hors amis)
+         * @description Retourne les 10 joueurs les plus fréquemment croisés au niveau
+         *     carrière, hors amis configurés (`FriendGamertags` settings résolus
+         *     en XUIDs via `v_gamertag_lookup`). Format MatchEncounterRow (mêmes
+         *     8 colonnes que Match View > "Historique de rencontre"). Inclut les
+         *     badges narratifs ally_plus / tough_enemy / ordinal.
+         */
+        get: operations["getCareerTopEncounters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/career/rivals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Top némésis + Top souffre-douleur
+         * @description Retourne le top 10 némésis (joueurs qui ont le plus tué le joueur
+         *     principal, tri par deaths DESC) et le top 10 souffre-douleur (joueurs
+         *     que le principal a le plus tué, tri par frags DESC). Source :
+         *     `shared.killer_victim_pairs`. Pas de seuil minimum d'interactions.
+         *     Bots exclus. Le ratio frags/deaths est calculé côté backend
+         *     (avec garde div-par-zéro : 0 morts → ratio = float64(frags)).
+         */
+        get: operations["getCareerRivals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/career/csrs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Classements CSR par playlist (snapshots current / season / all-time)
+         * @description Retourne pour chaque playlist ranked jouée par le joueur les snapshots
+         *     CSR `current`, `season` (saison configurée), `all_time`, agrégés depuis
+         *     `player_csr_snapshots` (Q26). Si la table est absente, dégradation
+         *     silencieuse (200 avec liste vide). Le `season_id` correspond à la saison
+         *     active configurée via `CareerService.WithCSRSeasonID`.
+         */
+        get: operations["getCareerCSRs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pattern Engine v3 — contextes, comportements, leviers calibrés
+         * @description Retourne le rapport Pattern Engine (PLAN_PATTERN_ENGINE_V3) pour le
+         *     joueur : patterns contextuels (by mode/map/squad), patterns comportementaux
+         *     (tilt/fatigue/engagement/plateau/plafond), et leviers calibrés p60
+         *     (top 3 axes d'amélioration). Analyse sur les `n` derniers matchs.
+         */
+        get: operations["getPlayerPatterns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/achievements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Page Achievements Xbox du joueur
+         * @description Retourne la liste fusionnée des achievements Xbox (référentiel bilingue
+         *     EN/FR) avec la progression du joueur. Triés : unlocked en premier
+         *     (UnlockedAt DESC), puis locked par gamerscore DESC.
+         *
+         *     Données peuplées par le sync engine post-sync ou par la CLI
+         *     `levelup sync-achievements`. Si la table est vide (backfill jamais lancé),
+         *     renvoie une réponse `{summary: zeros, achievements: []}`.
+         *
+         *     Capability requise : `achievements` — middleware retourne 405 si le
+         *     titre courant ne supporte pas cette feature.
+         */
+        get: operations["getAchievementsPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/match-history/query": {
         parameters: {
             query?: never;
             header?: never;
@@ -151,311 +363,35 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Start Device Flow
-         * @description Initie un Device Code Flow Microsoft pour l'authentification Halo.
-         *
-         *     Non disponible en DEMO_MODE.
-         *     Retourne immédiatement avec ``user_code`` et ``verification_uri`` à afficher.
-         */
-        post: operations["start_device_flow_api_v1_auth_device_flow_start_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/device-flow/{attempt_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Device Flow Status
-         * @description Retourne le statut d'un Device Code Flow en cours.
-         *
-         *     Polling attendu toutes les ``poll_interval_seconds`` secondes (5s par défaut).
-         *     Retourne 404 si l'attempt est inconnu ou a expiré.
-         *
-         *     Quand ``status == "provisioned"``, met à jour ``session.auth_ready = True``
-         *     pour que le prochain appel à ``GET /bootstrap`` retourne ``auth_state="ready"``.
-         */
-        get: operations["get_device_flow_status_api_v1_auth_device_flow__attempt_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/setup/players": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Player Profile
-         * @description Crée un profil joueur dans db_profiles.json.
-         *
-         *     Validations :
-         *     - gamertag requis, 1-50 caractères, alphanum+tirets+espaces
-         *     - Si xuid fourni, il est enregistré directement (évite une résolution API)
-         *     - Retourne 403 si can_self_provision=false dans app_settings.json
-         *
-         *     Retourne 201 avec le PlayerSummary créé.
-         */
-        post: operations["create_player_profile_api_v1_setup_players_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/setup/smoke-test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Start Smoke Test
-         * @description Lance le smoke test post-installation en tant que job asynchrone.
-         *
-         *     Retourne immédiatement un ``AsyncJobStatus`` en statut ``queued``.
-         *     Utiliser ``GET /jobs/{job_id}`` pour suivre la progression.
-         */
-        post: operations["start_smoke_test_api_v1_setup_smoke_test_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/sync/initial": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Start Initial Sync
-         * @description Lance la synchronisation initiale des données Halo pour un joueur.
-         *
-         *     Crée un job asynchrone ``initial_sync`` et retourne immédiatement.
-         *     Utiliser ``GET /api/v1/jobs/{job_id}`` pour suivre la progression.
-         *
-         *     Guard : retourne 403 si ``can_start_initial_sync=false`` dans app_settings.json.
-         */
-        post: operations["start_initial_sync_api_v1_sync_initial_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Settings Endpoint
-         * @description Retourne les paramètres utilisateur persistés.
-         *
-         *     En DEMO_MODE, retourne les valeurs par défaut (sans accéder au disque local).
-         */
-        get: operations["get_settings_endpoint_api_v1_settings_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Patch Settings
-         * @description Met à jour partiellement les paramètres utilisateur.
-         *
-         *     Seuls les champs présents dans le corps sont mis à jour.
-         *     Retourne les paramètres complets après persistance.
-         *     Non disponible en DEMO_MODE.
-         */
-        patch: operations["patch_settings_api_v1_settings_patch"];
-        trace?: never;
-    };
-    "/api/v1/settings/media/reset-index": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reset Media Index
-         * @description Réinitialise l'index des médias (opération destructive).
-         *
-         *     ``confirm_destructive`` doit être True pour autoriser l'opération.
-         *     Si ``reindex_after_reset=True``, une réindexation est déclenchée après le reset.
-         *     Retourne un job asynchrone à suivre via ``GET /jobs/{job_id}``.
-         */
-        post: operations["reset_media_index_api_v1_settings_media_reset_index_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Status
-         * @description Retourne le statut courant d'un job asynchrone.
-         *
-         *     Retourne 404 si le ``job_id`` est inconnu ou si le job a dépassé
-         *     la fenêtre de rétention (1 heure après complétion).
-         */
-        get: operations["get_job_status_api_v1_jobs__job_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/players/{player_slug}/pages/career": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Career Page
-         * @description Retourne la page Carrière complète pour un joueur.
-         */
-        get: operations["get_career_page_api_v1_players__player_slug__pages_career_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/players/{player_slug}/pages/career/top-matches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Career Top Matches
-         * @description Retourne les top matches (meilleurs + pires) du joueur.
-         */
-        get: operations["get_career_top_matches_api_v1_players__player_slug__pages_career_top_matches_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/players/{player_slug}/pages/career/encounters": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Career Encounters
-         * @description Retourne les encounters (adversaires et coéquipiers fréquents) du joueur.
-         */
-        get: operations["get_career_encounters_api_v1_players__player_slug__pages_career_encounters_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/players/{player_slug}/pages/match-history/query": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Query Match History
+         * Requête paginée de l'historique des parties
          * @description Retourne la page paginée de l'historique des parties pour un joueur.
-         */
-        post: operations["query_match_history_api_v1_players__player_slug__pages_match_history_query_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/players/{player_slug}/pages/match-history/export": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Export Match History
-         * @description Génère un jeton d'export CSV pour l'historique filtré des parties.
-         */
-        post: operations["export_match_history_api_v1_players__player_slug__pages_match_history_export_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/directory/gamertags/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search Gamertags
-         * @description Recherche floue de gamertags dans la base partagée.
          *
-         *     Accessible sans joueur courant (endpoint global).
+         *     **Invariants :**
+         *     - `table` est une PaginatedResponse avec `items` et `pagination`
+         *     - `export_hint` est optionnel
+         *     - `match_url` est porté par chaque ligne, pas reconstruit côté frontend
          */
-        get: operations["search_gamertags_api_v1_directory_gamertags_search_get"];
+        post: operations["queryMatchHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/match-history/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export CSV de l'historique
+         * @description Génère un jeton d'export CSV pour l'historique filtré des parties.
+         *     Sprint 49 : aligné sur GET (chi) — l'export utilise les filtres de session,
+         *     pas un body POST.
+         */
+        get: operations["exportMatchHistory"];
         put?: never;
         post?: never;
         delete?: never;
@@ -464,7 +400,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/pages/explorer/matches-query": {
+    "/directory/gamertags/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recherche floue de gamertags
+         * @description Recherche floue de gamertags dans la base partagée.
+         *     Accessible sans joueur courant (endpoint global).
+         *
+         *     **Invariants :**
+         *     - Une recherche sans résultat renvoie 200 avec items = []
+         *     - q minimum 2 caractères pour retourner des résultats
+         */
+        get: operations["searchGamertags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/explorer/matches-query": {
         parameters: {
             query?: never;
             header?: never;
@@ -474,17 +435,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Query Explorer Matches
+         * Requête paginée des matchs Explorer
          * @description Retourne la liste paginée et filtrée des matchs pour la vue Explorer.
          */
-        post: operations["query_explorer_matches_api_v1_players__player_slug__pages_explorer_matches_query_post"];
+        post: operations["queryExplorerMatches"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/pages/explorer/player-query": {
+    "/players/{player_slug}/pages/explorer/player-query": {
         parameters: {
             query?: never;
             header?: never;
@@ -494,17 +455,17 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Query Explorer Player
+         * Profil d'encounter avec un joueur cible
          * @description Retourne le profil d'encounter et les matchs communs avec un joueur cible.
          */
-        post: operations["query_explorer_player_api_v1_players__player_slug__pages_explorer_player_query_post"];
+        post: operations["queryExplorerPlayer"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/pages/home": {
+    "/players/{player_slug}/matches/{match_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -512,10 +473,15 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Home Page
-         * @description Retourne la page d'accueil Mission Control pour un joueur.
+         * Détail complet d'un match
+         * @description Retourne le détail complet d'un match (header + rank + 5 onglets).
+         *
+         *     **Invariants :**
+         *     - La vue match est un contrat par onglets/blocs métier, pas un dump du MatchDetail canonique
+         *     - Un match introuvable renvoie 404 avec code = match_not_found
+         *     - Les blocs partiels sont autorisés si le contrat principal est servable
          */
-        get: operations["get_home_page_api_v1_players__player_slug__pages_home_get"];
+        get: operations["getMatchView"];
         put?: never;
         post?: never;
         delete?: never;
@@ -524,47 +490,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/battlepass": {
+    "/players/{player_slug}/matches/{match_id}/exclusion": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Battlepass
-         * @description Retourne les informations Battle Pass (best-effort, nécessite une session Halo active).
-         */
-        get: operations["get_battlepass_api_v1_players__player_slug__battlepass_get"];
+        get?: never;
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/players/{player_slug}/challenges": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
         /**
-         * Get Challenges
-         * @description Retourne les défis actifs (best-effort, nécessite une session Halo active).
+         * Marquer ou démarquer un match comme non pertinent
+         * @description Positionne is_excluded pour un match donné dans player_match_enrichment.
+         *     Un match exclu est ignoré partout dans l'app (stats, graphes, historique, export).
          */
-        get: operations["get_challenges_api_v1_players__player_slug__challenges_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
+        patch: operations["setMatchExclusion"];
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/pages/teammates": {
+    "/auth/device-flow/start": {
         parameters: {
             query?: never;
             header?: never;
@@ -574,17 +521,52 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Get Teammates Page
-         * @description Retourne la page Coéquipiers avec statistiques comparatives pour un joueur.
+         * Initier un Device Code Flow Microsoft
+         * @description Lance un Device Code Flow pour l'authentification Halo (MSAL).
+         *     Non disponible en DEMO_MODE.
          */
-        post: operations["get_teammates_page_api_v1_players__player_slug__pages_teammates_post"];
+        post: operations["postAuthDeviceFlowStart"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/pages/synthesis": {
+    "/auth/device-flow/{attempt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut d'un Device Code Flow en cours */
+        get: operations["getAuthDeviceFlowStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup/players": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Créer un profil joueur */
+        post: operations["postSetupPlayers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup/smoke-test": {
         parameters: {
             query?: never;
             header?: never;
@@ -594,17 +576,445 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Get Synthesis Page
-         * @description Retourne la page Synthèse solo vs escouade pour un joueur.
+         * Lancer un smoke test (Go-only — à valider Sprint 31)
+         * @description Endpoint Go uniquement — absent de FastAPI.
+         *     Vérifie la configuration de bout en bout (connexion DB + API Halo).
+         *     Son maintien versus intégration dans `/sync/initial` sera décidé au Sprint 31.
          */
-        post: operations["get_synthesis_page_api_v1_players__player_slug__pages_synthesis_post"];
+        post: operations["postSetupSmokeTest"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/players/{player_slug}/pages/media": {
+    "/sync/initial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lancer la synchronisation initiale */
+        post: operations["postSyncInitial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lire la configuration */
+        get: operations["getSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mettre à jour la configuration */
+        patch: operations["patchSettings"];
+        trace?: never;
+    };
+    "/settings/media/reset-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Réinitialiser l'index médias */
+        post: operations["postSettingsMediaResetIndex"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut d'un job long */
+        get: operations["getJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Page Accueil */
+        get: operations["getHomePage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/battlepass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Battle Pass courant */
+        get: operations["getBattlePass"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/challenges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Challenges actifs */
+        get: operations["getChallenges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sessions (Go-only — à réconcilier avec /pages/timeseries FastAPI au Sprint 32) */
+        get: operations["getSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/sessions/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Détail d'une session avec suggestion de comparaison */
+        post: operations["postSessionDetailPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/stats/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Séries temporelles (legacy — voir aussi POST /pages/timeseries) */
+        post: operations["postStatsQuery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/timeseries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Séries temporelles (filtres en body) */
+        post: operations["postTimeseriesPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/squad": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Escouade (GET legacy — voir aussi POST /pages/teammates) */
+        get: operations["getSquadPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/teammates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Analyse coéquipiers (filtres en body) */
+        post: operations["postTeammatesPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/synthesis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Synthèse globale (filtres en body) */
+        post: operations["postSynthesisPage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/citations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Citations (filtres en body) */
+        post: operations["postCitations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/commendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Commendations et médailles par catégorie */
+        post: operations["postCommendations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Galerie médias (filtres en body) */
+        post: operations["postMediaLibrary"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Like / unlike d'un média */
+        patch: operations["patchMediaLike"];
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Comparaison joueur vs joueur (12 KPIs) */
+        post: operations["postComparePage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/leaderboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Résumé CSR local du joueur courant */
+        get: operations["getLeaderboardPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/session-compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Comparaison de sessions A/B */
+        post: operations["postSessionCompare"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/last-match/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Résoudre le dernier match */
+        post: operations["postLastMatchResolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/changelog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Changelog Markdown du projet */
+        get: operations["getChangelog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liveness probe (process vivant, pas d'I/O DB) */
+        get: operations["getHealthz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/readyz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Readiness probe (DuckDB + filesystem + capability registry) */
+        get: operations["getReadyz"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/healthz/home": {
         parameters: {
             query?: never;
             header?: never;
@@ -612,10 +1022,1328 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Media Page
-         * @description Retourne la médiathèque paginée pour un joueur.
+         * Smoke endpoint contenu home (banner, peaks CSR/LUSR, playlists, arme favorite)
+         * @description Sonde le contenu de la home page Mission Control pour un joueur donné.
+         *     Inspecte les 5 sections critiques et liste celles qui sont vides
+         *     sans raison (= régression silencieuse). Pensé pour CI post-backfill
+         *     et alerte développeur.
+         *
+         *     Paramètre `player` obligatoire — pas d'auto-pick.
          */
-        get: operations["get_media_page_api_v1_players__player_slug__pages_media_get"];
+        get: operations["getHealthzHome"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/help/release-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notes de release dérivées du git log */
+        get: operations["getReleaseNotes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authentification email + password */
+        post: operations["postAuthLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invalide la session courante */
+        post: operations["postAuthLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Création de compte (mode invite-only ou public selon registration_mode) */
+        post: operations["postAuthRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste des invitations admin (auth admin requis) */
+        get: operations["listAdminInvites"];
+        put?: never;
+        /** Crée une invitation */
+        post: operations["createAdminInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/invites/{invite_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Révoque une invitation */
+        delete: operations["deleteAdminInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste des utilisateurs (auth admin requis) */
+        get: operations["listAdminUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime un compte utilisateur */
+        delete: operations["deleteAdminUser"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{user_id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reset password d'un utilisateur */
+        patch: operations["patchAdminUserPassword"];
+        trace?: never;
+    };
+    "/admin/users/{user_id}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Modifie le rôle d'un utilisateur (admin/user) */
+        patch: operations["patchAdminUserRole"];
+        trace?: never;
+    };
+    "/assets/battlepass/{title_id}/{filename}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sert une image de battlepass (cache long terme) */
+        get: operations["getBattlepassAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/challenge-badge/{title_id}/{filename}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sert une image de badge de défi */
+        get: operations["getChallengeBadgeAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{title_id}/maps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les maps du catalogue avec leurs traductions */
+        get: operations["listMapsMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{title_id}/weapons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liste les armes du catalogue avec leurs traductions */
+        get: operations["listWeaponsMetadata"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/maps/{title_id}/{map_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sert l'image d'une carte */
+        get: operations["getMapAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/medals/{title_id}/{medal_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sert l'image d'une médaille */
+        get: operations["getMedalAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/spartan/{title_id}/{xuid}/{path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sert un asset Spartan (emblem, backdrop, etc.) */
+        get: operations["getSpartanAsset"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/titles/{title_slug}/field-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Field mappings TOML pour un titre (cf. fields.toml) */
+        get: operations["getTitleFieldMappings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/engagement_profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Profil engagement long-terme du joueur */
+        get: operations["getEngagementProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/engagement/timeseries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Série temporelle de l'engagement filtrée (Mock 11)
+         * @description Retourne les N derniers matchs PvP du scope avec leurs paces. Body aligné sur POST /pages/timeseries : `filters` honore period / cascade / sessions / match_context. `limit` optionnel (défaut 50, max 500). Un body vide équivaut à `{}` (compat smoke).
+         */
+        post: operations["postEngagementTimeseries"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/engagement/recompute_coefficients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Force le recalcul des coefficients d'engagement (admin)
+         * @description Recalcule les coefficients perso (coef_team_share / coef_lobby_share) pour toutes les catégories de mode supportées, depuis les paces persistées dans player_match_enrichment. Idempotent.
+         */
+        post: operations["postRecomputeEngagementCoefficients"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/engagement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        /** Score d'engagement + courbe pour un match (P3.2) */
+        get: operations["getMatchEngagement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/neighbors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        /** Match précédent / suivant pour navigation */
+        get: operations["getMatchNeighbors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/matches/{match_id}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Toggle le statut favori d'un match */
+        patch: operations["patchMatchFavorite"];
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/squad/v2": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Page Squad V2 (multi-coéquipiers, fondations Phase 0) */
+        get: operations["getSquadV2Page"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/squad/v2/engagement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Engagement squad pour la session courante */
+        get: operations["getSquadEngagementSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/pages/palmares/season-pass": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Page Season Pass (palmarès) */
+        get: operations["getSeasonPassPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/media/feed-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Version du feed médias (pour invalidation cache front) */
+        get: operations["getMediaFeedVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/authors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Liste des auteurs de médias visibles pour ce joueur */
+        get: operations["getMediaAuthors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/files/{filepath}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                filepath: string;
+            };
+            cookie?: never;
+        };
+        /** Sert un fichier média (image/vidéo) */
+        get: operations["serveMediaFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/match-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Candidats de match pour associer un média */
+        get: operations["getMediaMatchCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload d'un média (image/vidéo) */
+        post: operations["postUploadMedia"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/media/associate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Associe un média à un match */
+        post: operations["postMediaAssociate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Liste des notifications du joueur */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/{notification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Supprime une notification */
+        delete: operations["deleteNotification"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/{notification_id}/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Repasse une notification en non-lue */
+        patch: operations["patchNotificationUnread"];
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Préférences notifications du joueur */
+        get: operations["getNotificationPreferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Met à jour les préférences */
+        patch: operations["patchNotificationPreferences"];
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Compteur de notifications non lues */
+        get: operations["getNotificationUnreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/mark-all-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marque toutes les notifications comme lues */
+        post: operations["postMarkAllRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/mark-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marque une liste de notifications comme lues */
+        post: operations["postMarkRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/notifications/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Émet une notification de test (debug) */
+        post: operations["postNotificationTest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/streaks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Liste des streaks du joueur (active + historique) */
+        get: operations["listProgressionStreaks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/records": {
+        parameters: {
+            query?: {
+                /** @description Limite l'historique des PB battus (défaut 50, max 200) */
+                history_limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** PB courants + timeline des records battus */
+        get: operations["listProgressionRecords"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Catalogue de milestones + statut Earned par milestone */
+        get: operations["listProgressionMilestones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/profile": {
+        parameters: {
+            query?: {
+                /** @description Fenêtre d'analyse en jours (clampé 7..120) */
+                window_days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Profil joueur complet (radar 6 axes, style FK/FD, tier LUSR + 8 composantes, leviers, suggestions) */
+        get: operations["getPlayerProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Démarrer une campagne d'amélioration sur un axe (snapshot des 100 derniers matchs) */
+        post: operations["startCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Campagne active du joueur (null si aucune) */
+        get: operations["getActiveCampaign"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                /** @description ID de la campagne */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** Détail d'une campagne + défis liés */
+        get: operations["getCampaignByID"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mettre une campagne active en pause */
+        post: operations["pauseCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reprendre une campagne en pause */
+        post: operations["resumeCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Clôturer une campagne (status=completed) */
+        post: operations["closeCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/campaigns/{id}/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Abandonner une campagne (status=abandoned, sans pénalité) */
+        post: operations["abandonCampaign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/coach/proposals": {
+        parameters: {
+            query?: {
+                /** @description Filtre par status (vide = toutes les proposals) */
+                status?: "pending" | "accepted" | "dismissed" | "superseded" | "obsoleted" | "stale";
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        /** Liste des proposals coach (challenges/arcs Prestige calibrés sur signaux récents) */
+        get: operations["listCoachProposals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/coach/proposals/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Matérialise une proposal coach via prestige.CreateChallenge ou CreateArc (Source="coach") */
+        post: operations["acceptCoachProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/coach/proposals/{id}/dismiss": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Marque une proposal comme dismissed (idempotent — no-op si déjà résolue) */
+        post: operations["dismissCoachProposal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watcher/auth/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "xbox" | "steam";
+            };
+            cookie?: never;
+        };
+        /** Callback OAuth watcher (Xbox / Steam) */
+        get: operations["getWatcherAuthCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watcher/auth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Démarre le flow d'auth watcher */
+        post: operations["postWatcherAuthStart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watcher/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut watcher (provider, token expiry, last_seen) */
+        get: operations["getWatcherStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watcher/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mise à jour des abonnements watcher */
+        patch: operations["patchWatcherSubscriptions"];
+        trace?: never;
+    };
+    "/settings/media/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lance un scan du dossier médias */
+        post: operations["postSettingsMediaScan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/sessions/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recalcule les sessions à partir de la base actuelle */
+        post: operations["postSettingsSessionsRecalculate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/backup/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Statut du scheduler de sauvegarde */
+        get: operations["getBackupStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/settings/backup/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Déclenche un cycle de sauvegarde immédiat */
+        post: operations["postBackupRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/players/{player_slug}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync delta par joueur */
+        post: operations["postPlayerSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sync/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync delta global (tous les joueurs configurés) */
+        post: operations["postSyncAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/backfill/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lance un backfill (job long) */
+        post: operations["postBackfillStart"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/_diag/csr-coverage/{player_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diag couverture CSR pour un joueur
+         * @description Phase 9 du plan pipeline CSR. Permet de vérifier en 1 ligne si le
+         *     pipeline CSR a bien capturé les données (snapshots Waypoint + MSR
+         *     matured/placement) ou s'il faut lancer un backfill.
+         */
+        get: operations["getDiagCSRCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/_diag/progression/{player_slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Diag pipeline progression V2 (Ascension)
+         * @description Phase 4 plan stabilisation 2026-05-22. Compte les rows dans les
+         *     tables V2 (streak, player_records, record_history, milestone_earned,
+         *     milestone_catalog) pour vérifier que EvaluateProgressionAfterSync
+         *     tourne bien sur l'auto-sync. Si tous les counts joueur sont à 0
+         *     après plusieurs cycles auto-sync (15 min × N), le pipeline V2
+         *     n'est pas câblé correctement.
+         */
+        get: operations["getDiagProgression"];
         put?: never;
         post?: never;
         delete?: never;
@@ -628,1672 +2356,1200 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * ApiErrorSchema
-         * @description Enveloppe d'erreur normalisée retournée par tous les endpoints.
-         */
-        ApiErrorSchema: {
-            /** Code */
-            code: string;
-            /** Message */
-            message: string;
+        IntegrityCheckResult: {
+            /** @description Vrai si PRAGMA integrity_check a retourné "ok" */
+            ok?: boolean;
+            /** @description Premier message d'erreur (absent si ok ou pragma non supporté) */
+            detail?: string;
             /**
-             * Retryable
-             * @default false
+             * Format: date-time
+             * @description Horodatage UTC de la vérification
              */
+            checked_at?: string;
+        };
+        BackupStatusResponse: {
+            /** @description Backup activé dans app_settings.json */
+            enabled: boolean;
+            /** @description Binaire restic trouvé dans le PATH */
+            available: boolean;
+            /**
+             * Format: date-time
+             * @description Date du dernier backup réussi (absente si jamais sauvegardé)
+             */
+            last_backup_at?: string;
+            /** @description ID du dernier snapshot restic */
+            last_snapshot_id?: string;
+            /** @description Clés des bases exportées lors du dernier cycle */
+            last_exported?: string[];
+            /** @description Durée du dernier cycle en millisecondes */
+            last_duration_ms?: number;
+            /** @description Résultats PRAGMA integrity_check par base (clé = DB key, présent après le premier cycle) */
+            integrity_checks?: {
+                [key: string]: components["schemas"]["IntegrityCheckResult"];
+            };
+            config?: {
+                /** @description Intervalle entre cycles (ex. "6h0m0s") */
+                interval?: string;
+                keep_daily?: number;
+                keep_weekly?: number;
+                keep_monthly?: number;
+            };
+        };
+        BackupRunResult: {
+            /** @description ID du snapshot créé (vide si skipped) */
+            snapshot_id?: string;
+            /** @description Vrai si aucune DB n'a changé depuis le dernier backup */
+            skipped: boolean;
+            /** @description Clés des bases exportées */
+            exported?: string[];
+            /** @description Durée du cycle en millisecondes */
+            duration_ms?: number;
+        };
+        CareerCSRRank: {
+            /** @description CSR numérique (peut être négatif en mesure) */
+            value: number;
+            /** @description Tier Halo (Bronze / Silver / ... / Onyx) */
+            tier: string;
+            /** @description Sous-tier 1..6 (0 pour Onyx) */
+            sub_tier: number;
+            /** @description Nombre de matchs restants avant placement final */
+            measurement_matches_remaining: number;
+            /** @description URL de l'image du badge (optionnel) */
+            badge_image_url?: string | null;
+        };
+        FieldErrorSchema: {
+            field: string;
+            message: string;
+            code?: string | null;
+        };
+        ApiErrorSchema: {
+            /**
+             * @description Code d'erreur stable (snake_case)
+             * @example player_not_found
+             */
+            code: string;
+            /** @description Message humain localisé */
+            message: string;
+            /** @default false */
             retryable: boolean;
-            /** Details */
-            details?: {
-                [key: string]: unknown;
-            } | unknown[] | null;
-            /** Field Errors */
+            details?: (Record<string, never> | unknown[]) | null;
             field_errors?: components["schemas"]["FieldErrorSchema"][] | null;
         };
-        /**
-         * AsyncJobStatus
-         * @description Statut d'un job long (smoke test, sync, backfill, reindex…).
-         */
-        AsyncJobStatus: {
-            /** Job Id */
-            job_id: string;
-            /** Job Type */
-            job_type: string;
-            /** Status */
-            status: string;
-            /** Progress Pct */
-            progress_pct?: number | null;
-            /** Current Step */
-            current_step?: string | null;
-            /** Started At */
-            started_at?: string | null;
-            /** Finished At */
-            finished_at?: string | null;
-            /** Result */
-            result?: {
-                [key: string]: unknown;
-            } | null;
-            error?: components["schemas"]["ApiErrorSchema"] | null;
-            /** Phase Key */
-            phase_key?: string | null;
-            /** Phase Label */
-            phase_label?: string | null;
-            /** Matches Done */
-            matches_done?: number | null;
-            /** Matches Total */
-            matches_total?: number | null;
-            /** Subtasks Done */
-            subtasks_done?: number | null;
-            /** Subtasks Total */
-            subtasks_total?: number | null;
-            /** Eta Seconds */
-            eta_seconds?: number | null;
-            /** Warnings */
+        HealthResponse: {
+            /** @enum {string} */
+            status: "ok" | "degraded" | "down";
+            /** @description Nombre de matchs dans shared_matches_v2 */
+            match_count: number;
+            /** @description Version DuckDB embarquée */
+            db_version: string;
+            /** @description Résultats individuels par dépendance */
+            checks?: {
+                [key: string]: string;
+            };
+        };
+        PlayerSummary: {
+            /** @example Chocoboflor */
+            player_slug: string;
+            /** @example Chocoboflor */
+            gamertag: string;
+            /** @example 2535412781684883 */
+            xuid: string;
+            waypoint_player: string;
+            /** @default false */
+            is_demo: boolean;
+        };
+        CapabilityMap: {
+            can_read_local_data: boolean;
+            can_run_sync: boolean;
+            can_use_live_halo: boolean;
+            can_manage_settings: boolean;
+            can_reset_media_index: boolean;
+            can_view_media: boolean;
+            /** @default false */
+            can_self_provision: boolean;
+            /** @default false */
+            can_start_initial_sync: boolean;
+            /** @default false */
+            can_manage_instance: boolean;
+        };
+        LabelValue: {
+            label: string;
+            value: string;
+            disabled?: boolean | null;
+            count?: number | null;
+        };
+        SortSpec: {
+            field: string;
+            /**
+             * @default desc
+             * @enum {string}
+             */
+            direction: "asc" | "desc";
+        };
+        PaginationRequest: {
+            /** @default 1 */
+            page: number;
+            /** @default 50 */
+            page_size: number;
+        };
+        PaginationMeta: {
+            total: number;
+            page: number;
+            page_size: number;
+            has_next: boolean;
+            has_prev: boolean;
+        };
+        FreshnessInfo: {
+            /**
+             * @default cached
+             * @enum {string}
+             */
+            source: "live" | "cached" | "mixed";
+            /**
+             * @default unknown
+             * @enum {string}
+             */
+            sync_status: "fresh" | "stale" | "unknown";
             warnings?: string[];
         };
-        /**
-         * AvailableOptions
-         * @description Options disponibles pour les filtres cascade, après application du mode/expérience.
-         */
-        AvailableOptions: {
-            /** Experience Types */
-            experience_types?: components["schemas"]["LabelValue"][];
-            /** Playlists */
-            playlists?: components["schemas"]["LabelValue"][];
-            /** Modes */
-            modes?: components["schemas"]["LabelValue"][];
-            /** Maps */
-            maps?: components["schemas"]["LabelValue"][];
-        };
-        /**
-         * BattlePassResponse
-         * @description Informations Battle Pass live depuis l'API Halo.
-         */
-        BattlePassResponse: {
+        PlotlyFigurePayload: {
+            /** @description fig.to_plotly_json() — data + layout + frames */
+            figure: Record<string, never>;
             /**
-             * Available
-             * @default false
+             * @default clean
+             * @enum {string}
              */
-            available: boolean;
-            /** Rank */
-            rank?: number | null;
-            /** Reward Track */
-            reward_track?: string | null;
-            /** Progress */
-            progress?: number | null;
-            /** Error Hint */
-            error_hint?: string | null;
+            config_key: "clean" | "static";
+            revision_key?: string | null;
         };
-        /**
-         * BootstrapResponse
-         * @description Réponse de `GET /api/v1/bootstrap` — point d'entrée du shell React.
-         *
-         *     Contient tout ce dont le shell a besoin pour s'initialiser :
-         *     état du setup, auth, joueur courant, capacités, drapeaux de fonctionnalités.
-         */
+        FeatureFlags: {
+            /** @default true */
+            v7_enabled: boolean;
+            /** @default true */
+            media_enabled: boolean;
+            /** @default false */
+            demo_mode: boolean;
+            /** @default false */
+            discord_configured: boolean;
+            /** @default false */
+            tailscale_enabled: boolean;
+        };
+        SettingsExcerpt: {
+            /** @default fr */
+            lang: string;
+            /** @default Europe/Paris */
+            user_timezone: string;
+            /** @default true */
+            show_records: boolean;
+            /** @default true */
+            normalize_mode_labels: boolean;
+        };
+        HaloIdentitySummary: {
+            gamertag: string;
+            xuid: string;
+        };
         BootstrapResponse: {
-            /** Setup Required */
             setup_required: boolean;
-            /** Auth State */
-            auth_state: string;
-            /** Setup State */
-            setup_state: string;
+            /** @enum {string} */
+            auth_state: "missing" | "partial" | "ready";
+            /** @enum {string} */
+            setup_state: "no_halo_link" | "halo_linked_no_profile" | "profile_ready_no_sync" | "ready";
             current_player?: components["schemas"]["PlayerSummary"] | null;
-            /** Available Players */
             available_players: components["schemas"]["PlayerSummary"][];
-            /**
-             * Locale
-             * @default fr
-             */
+            /** @default fr */
             locale: string;
-            /**
-             * Hints Visible Default
-             * @default true
-             */
+            /** @default true */
             hints_visible_default: boolean;
             feature_flags: components["schemas"]["FeatureFlags"];
             capabilities: components["schemas"]["CapabilityMap"];
             settings_excerpt: components["schemas"]["SettingsExcerpt"];
+            linked_halo_identity?: components["schemas"]["HaloIdentitySummary"] | null;
+            active_sync_job_id?: string | null;
+            /** @description Sprint 54-B : informations de confidentialité des matchs du joueur actif. */
+            privacy?: components["schemas"]["MatchPrivacyInfo"] | null;
         };
-        /**
-         * CapabilityMap
-         * @description Capacités actives selon la configuration du serveur.
-         */
-        CapabilityMap: {
-            /** Can Read Local Data */
-            can_read_local_data: boolean;
-            /** Can Run Sync */
-            can_run_sync: boolean;
-            /** Can Use Live Halo */
-            can_use_live_halo: boolean;
-            /** Can Manage Settings */
-            can_manage_settings: boolean;
-            /** Can Reset Media Index */
-            can_reset_media_index: boolean;
-            /** Can View Media */
-            can_view_media: boolean;
+        PlayersListResponse: {
+            items: components["schemas"]["PlayerSummary"][];
+            default_player_slug?: string | null;
+        };
+        SessionContextRequest: {
+            player_slug?: string | null;
+            title_slug?: string | null;
+            /** @enum {string|null} */
+            locale?: "fr" | "en" | null;
+            hints_visible?: boolean | null;
+        };
+        TitleSummary: {
+            slug: string;
+            name: string;
+            icon_url?: string;
+            /** @enum {string} */
+            status: "active" | "coming_soon" | "archived";
+            capabilities: string[];
+            is_default: boolean;
+        };
+        SessionContextResponse: {
+            current_player_slug?: string | null;
+            /** @default halo_infinite */
+            current_title_slug: string;
+            available_titles: components["schemas"]["TitleSummary"][];
+            /** @default fr */
+            locale: string;
+            /** @default true */
+            hints_visible: boolean;
+            /** @default false */
+            auth_ready: boolean;
+        };
+        PeriodInput: {
+            /** Format: date */
+            start_date?: string | null;
+            /** Format: date */
+            end_date?: string | null;
+        };
+        SessionsInput: {
+            picked_session_label?: string | null;
+            picked_solo_session_label?: string | null;
+            picked_squad_session_label?: string | null;
+            picked_sessions?: string[];
             /**
-             * Can Self Provision
-             * @default false
+             * @description Invariant: toujours 120 dans le code actuel.
+             * @default 120
              */
-            can_self_provision: boolean;
-            /**
-             * Can Start Initial Sync
-             * @default false
-             */
-            can_start_initial_sync: boolean;
-            /**
-             * Can Manage Instance
-             * @default false
-             */
-            can_manage_instance: boolean;
+            gap_minutes: number;
         };
-        /**
-         * CareerEncounter
-         * @description Résumé des rencontres avec un adversaire.
-         */
-        CareerEncounter: {
-            /** Encounter Key */
-            encounter_key: string;
-            /** Opponent Gamertag */
-            opponent_gamertag: string;
-            /** Count Matches */
-            count_matches: number;
-            /** Wins */
-            wins: number;
-            /** Losses */
-            losses: number;
-            /** Last Seen At */
-            last_seen_at: string | null;
-        };
-        /**
-         * CareerEncountersResponse
-         * @description Réponse pour l'endpoint encounters.
-         */
-        CareerEncountersResponse: {
-            /** Items */
-            items: components["schemas"]["CareerEncounter"][];
-        };
-        /**
-         * CareerHistoryPoint
-         * @description Point d'historique XP.
-         */
-        CareerHistoryPoint: {
-            /**
-             * Recorded At
-             * Format: date-time
-             */
-            recorded_at: string;
-            /** Rank */
-            rank: number;
-            /** Xp Total */
-            xp_total: number;
-        };
-        /**
-         * CareerLusrCheckpoint
-         * @description Point de checkpoint LUSR/CSR.
-         */
-        CareerLusrCheckpoint: {
-            /**
-             * Recorded At
-             * Format: date-time
-             */
-            recorded_at: string;
-            /** Rating Value */
-            rating_value: number;
-            /** Playlist Group */
-            playlist_group: string;
-        };
-        /**
-         * CareerLusrSection
-         * @description Section LUSR (rating compétitif).
-         */
-        CareerLusrSection: {
-            /** Current Rating */
-            current_rating: number | null;
-            /** Current Tier Label */
-            current_tier_label: string | null;
-            /** Current Playlist Group */
-            current_playlist_group: string | null;
-            /** Trend Label */
-            trend_label: string | null;
-            /** Checkpoints */
-            checkpoints: components["schemas"]["CareerLusrCheckpoint"][];
-        };
-        /**
-         * CareerPageResponse
-         * @description Réponse complète pour la page Carrière.
-         */
-        CareerPageResponse: {
-            summary: components["schemas"]["CareerSummary"] | null;
-            hero_progress: components["schemas"]["HeroProgress"] | null;
-            projections: components["schemas"]["CareerProjections"] | null;
-            /** Xp History */
-            xp_history: components["schemas"]["CareerHistoryPoint"][];
-            lusr: components["schemas"]["CareerLusrSection"] | null;
-            /** Top Matches Preview */
-            top_matches_preview: components["schemas"]["CareerTopMatch"][];
-            /** Encounters Preview */
-            encounters_preview: components["schemas"]["CareerEncounter"][];
-        };
-        /**
-         * CareerProjections
-         * @description Projections de progression XP.
-         */
-        CareerProjections: {
-            /** Xp Per Day Active */
-            xp_per_day_active: number;
-            /** Xp Per Day Fallback */
-            xp_per_day_fallback: number;
-            /** Estimated Hero Date */
-            estimated_hero_date: string | null;
-            /** Estimated Rank Cap Date */
-            estimated_rank_cap_date: string | null;
-        };
-        /**
-         * CareerSummary
-         * @description Résumé du rang carrière actuel.
-         */
-        CareerSummary: {
-            /** Rank Number */
-            rank_number: number;
-            /** Rank Label */
-            rank_label: string;
-            /** Rank Name Raw */
-            rank_name_raw: string;
-            /** Rank Tier */
-            rank_tier: string;
-            /** Current Xp */
-            current_xp: number;
-            /** Xp For Next Rank */
-            xp_for_next_rank: number;
-            /** Xp Total */
-            xp_total: number;
-            /** Progress Pct */
-            progress_pct: number;
-            /** Is Max Rank */
-            is_max_rank: boolean;
-            /** Recorded At */
-            recorded_at: string | null;
-        };
-        /**
-         * CareerTopMatch
-         * @description Informations d'un top match (meilleur ou pire).
-         */
-        CareerTopMatch: {
-            /** Match Id */
-            match_id: string;
-            /** Start Time */
-            start_time: string | null;
-            /** Map Ui */
-            map_ui: string | null;
-            /** Mode Ui */
-            mode_ui: string | null;
-            /** Playlist Label */
-            playlist_label: string | null;
-            /** Performance Score */
-            performance_score: number | null;
-            /** Badge Type */
-            badge_type: string | null;
-            /** Score Label */
-            score_label: string | null;
-            /** Outcome Label */
-            outcome_label: string | null;
-        };
-        /**
-         * CareerTopMatchesResponse
-         * @description Réponse pour l'endpoint top matches.
-         */
-        CareerTopMatchesResponse: {
-            /** Items */
-            items: components["schemas"]["CareerTopMatch"][];
-        };
-        /**
-         * CascadeInput
-         * @description Filtres cascade Expérience → Playlist → Mode → Carte.
-         *
-         *     Listes vides = « tout coché » (pas de filtre restrictif).
-         */
+        /** @description Listes vides = « tout coché » (pas de filtre restrictif) */
         CascadeInput: {
-            /** Experience Types */
             experience_types?: string[];
-            /** Playlists */
             playlists?: string[];
-            /** Modes */
             modes?: string[];
-            /** Maps */
             maps?: string[];
         };
-        /**
-         * ChallengesResponse
-         * @description Résumé des défis actifs récupérés depuis l'API Halo.
-         */
-        ChallengesResponse: {
-            /**
-             * Available
-             * @default false
-             */
-            available: boolean;
-            /** Total */
-            total?: number | null;
-            /** Completed */
-            completed?: number | null;
-            /** Xp Available */
-            xp_available?: number | null;
-            /** Next Expiry */
-            next_expiry?: string | null;
-            /** Error Hint */
-            error_hint?: string | null;
-        };
-        /**
-         * ComparisonMetricItem
-         * @description Une métrique comparée Solo vs Escouade.
-         */
-        ComparisonMetricItem: {
-            /** Label */
-            label: string;
-            /** Solo Value */
-            solo_value: number;
-            /** Squad Value */
-            squad_value: number;
-            /** Solo Text */
-            solo_text: string;
-            /** Squad Text */
-            squad_text: string;
-        };
-        /**
-         * CreatePlayerProfileRequest
-         * @description Corps de POST /setup/players.
-         */
-        CreatePlayerProfileRequest: {
-            /** Gamertag */
-            gamertag: string;
-            /** Xuid */
-            xuid?: string | null;
-            /**
-             * Profile Mode
-             * @default xbox
-             */
-            profile_mode: string;
-        };
-        /**
-         * CreatePlayerProfileResponse
-         * @description Réponse à POST /setup/players.
-         */
-        CreatePlayerProfileResponse: {
-            player: components["schemas"]["PlayerSummary"];
-            /** Db Created */
-            db_created: boolean;
-            /** Warnings */
-            warnings?: string[];
-        };
-        /**
-         * DeviceFlowStartResponse
-         * @description Réponse à POST /auth/device-flow/start.
-         */
-        DeviceFlowStartResponse: {
-            /** Attempt Id */
-            attempt_id: string;
-            /** User Code */
-            user_code: string;
-            /** Verification Uri */
-            verification_uri: string;
-            /** Verification Uri Complete */
-            verification_uri_complete?: string | null;
-            /** Expires In Seconds */
-            expires_in_seconds: number;
-            /**
-             * Poll Interval Seconds
-             * @default 5
-             */
-            poll_interval_seconds: number;
-        };
-        /**
-         * DeviceFlowStatusResponse
-         * @description Réponse à GET /auth/device-flow/{attempt_id}.
-         */
-        DeviceFlowStatusResponse: {
-            /** Attempt Id */
-            attempt_id: string;
-            /** Status */
-            status: string;
-            /** Gamertag */
-            gamertag?: string | null;
-            /** Xuid */
-            xuid?: string | null;
-            error?: components["schemas"]["ApiErrorSchema"] | null;
-        };
-        /**
-         * ExplorerEncounterRow
-         * @description Résumé d'un encounter avec un joueur (alliés ou adversaires).
-         */
-        ExplorerEncounterRow: {
-            /** Gamertag */
-            gamertag: string;
-            /** Xuid */
-            xuid?: string | null;
-            /** Count Matches */
-            count_matches: number;
-            /** Wins */
-            wins: number;
-            /** Losses */
-            losses: number;
-            /** Last Seen At */
-            last_seen_at?: string | null;
-            /** Same Team */
-            same_team?: boolean | null;
-        };
-        /**
-         * ExplorerMatchFilters
-         * @description Filtres locaux de la vue Explorer (non liés aux filtres globaux).
-         */
-        ExplorerMatchFilters: {
-            /** Selected Date */
-            selected_date?: string | null;
-            /**
-             * Squad Scope
-             * @default all
-             */
-            squad_scope: string;
-            /** Experience Type */
-            experience_type?: string | null;
-            /** Playlist */
-            playlist?: string | null;
-            /** Mode */
-            mode?: string | null;
-            /** Map */
-            map?: string | null;
-            /** Selected Match Id */
-            selected_match_id?: string | null;
-        };
-        /**
-         * ExplorerMatchRow
-         * @description Une ligne dans le tableau de résultats de l'Explorer.
-         */
-        ExplorerMatchRow: {
-            /** Match Id */
-            match_id: string;
-            /**
-             * Start Time
-             * Format: date-time
-             */
-            start_time: string;
-            /** Start Time Label */
-            start_time_label: string;
-            /** Map Ui */
-            map_ui: string;
-            /** Mode Ui */
-            mode_ui: string;
-            /** Playlist Label */
-            playlist_label: string;
-            /** Outcome Label */
-            outcome_label: string;
-            /** Score Label */
-            score_label: string;
-            /**
-             * Is With Friends
-             * @default false
-             */
-            is_with_friends: boolean;
-            /**
-             * Experience Type Label
-             * @default Non classé
-             */
-            experience_type_label: string;
-        };
-        /**
-         * ExplorerMatchesQueryRequest
-         * @description Corps de requête pour POST explorer/matches-query.
-         */
-        ExplorerMatchesQueryRequest: {
-            filters?: components["schemas"]["FilterContextInput"];
-            match_filters?: components["schemas"]["ExplorerMatchFilters"];
-            pagination?: components["schemas"]["PaginationRequest"];
-        };
-        /**
-         * ExplorerMatchesQueryResponse
-         * @description Réponse de l'endpoint explorer/matches-query.
-         */
-        ExplorerMatchesQueryResponse: {
-            summary: components["schemas"]["ExplorerMatchesQuerySummary"];
-            table: components["schemas"]["PaginatedResponse_ExplorerMatchRow_"];
-        };
-        /**
-         * ExplorerMatchesQuerySummary
-         * @description Compteurs de la requête matches.
-         */
-        ExplorerMatchesQuerySummary: {
-            /** Total Matches */
-            total_matches: number;
-            /** Selected Match Id */
-            selected_match_id?: string | null;
-        };
-        /**
-         * ExplorerPlayerQueryRequest
-         * @description Corps de requête pour POST explorer/player-query.
-         */
-        ExplorerPlayerQueryRequest: {
-            /** Target Gamertag */
-            target_gamertag: string;
-            filters?: components["schemas"]["FilterContextInput"] | null;
-        };
-        /**
-         * ExplorerPlayerQueryResponse
-         * @description Réponse de l'endpoint explorer/player-query.
-         */
-        ExplorerPlayerQueryResponse: {
-            target: components["schemas"]["ExplorerPlayerTarget"];
-            summary: components["schemas"]["ExplorerPlayerSummary"];
-            /** Allies Table */
-            allies_table: components["schemas"]["ExplorerEncounterRow"][];
-            /** Enemies Table */
-            enemies_table: components["schemas"]["ExplorerEncounterRow"][];
-            /** Common Matches */
-            common_matches: components["schemas"]["ExplorerMatchRow"][];
-        };
-        /**
-         * ExplorerPlayerSummary
-         * @description Bilan global de l'encounter avec le joueur cible.
-         */
-        ExplorerPlayerSummary: {
-            /** Matches Together */
-            matches_together: number;
-            /** Wins Together */
-            wins_together: number;
-            /** Losses Together */
-            losses_together: number;
-            /** Last Seen At */
-            last_seen_at?: string | null;
-        };
-        /**
-         * ExplorerPlayerTarget
-         * @description Identité du joueur cible de la recherche.
-         */
-        ExplorerPlayerTarget: {
-            /** Gamertag */
-            gamertag: string;
-            /** Xuid */
-            xuid?: string | null;
-        };
-        /**
-         * ExportHint
-         * @description Informations pour déclencher un export côté client.
-         */
-        ExportHint: {
-            /** File Name */
-            file_name: string;
-            /** Estimated Rows */
-            estimated_rows: number;
-            /** Token */
-            token?: string | null;
-        };
-        /**
-         * FeatureFlags
-         * @description Flags de fonctionnalités actifs sur ce déploiement.
-         */
-        FeatureFlags: {
-            /**
-             * V7 Enabled
-             * @default true
-             */
-            v7_enabled: boolean;
-            /**
-             * Media Enabled
-             * @default true
-             */
-            media_enabled: boolean;
-            /**
-             * Demo Mode
-             * @default false
-             */
-            demo_mode: boolean;
-            /**
-             * Discord Configured
-             * @default false
-             */
-            discord_configured: boolean;
-            /**
-             * Tailscale Enabled
-             * @default false
-             */
-            tailscale_enabled: boolean;
-        };
-        /**
-         * FieldErrorSchema
-         * @description Erreur de validation sur un champ spécifique.
-         */
-        FieldErrorSchema: {
-            /** Field */
-            field: string;
-            /** Message */
-            message: string;
-            /** Code */
-            code?: string | null;
-        };
-        /**
-         * FileTokenResponse
-         * @description Jeton renvoyé après la génération d'un fichier d'export.
-         */
-        FileTokenResponse: {
-            /** File Token */
-            file_token: string;
-            /** File Name */
-            file_name: string;
-            /** Content Type */
-            content_type: string;
-            /** Download Path */
-            download_path: string;
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /** Estimated Rows */
-            estimated_rows?: number | null;
-        };
-        /**
-         * FilterContextInput
-         * @description Contexte de filtres complet envoyé par le frontend.
-         *
-         *     Exemple minimal (plage de dates, pas de cascade) :
-         *     ```json
-         *     {
-         *         "filter_mode": "period",
-         *         "period": {"start_date": null, "end_date": null},
-         *         "cascade": {}
-         *     }
-         *     ```
-         */
         FilterContextInput: {
             /**
-             * Filter Mode
              * @default period
+             * @enum {string}
              */
-            filter_mode: string;
+            filter_mode: "period" | "sessions";
             period?: components["schemas"]["PeriodInput"];
             sessions?: components["schemas"]["SessionsInput"];
             cascade?: components["schemas"]["CascadeInput"];
         };
-        /**
-         * FilterContextResolved
-         * @description Réponse complète du endpoint ``POST /filters/resolve``.
-         *
-         *     ``effective`` est le ``FilterContextInput`` normalisé (dates defaults,
-         *     nouvelles options auto-cochées en mode exclude, etc.).
-         */
+        AvailableOptions: {
+            experience_types?: components["schemas"]["LabelValue"][];
+            playlists?: components["schemas"]["LabelValue"][];
+            modes?: components["schemas"]["LabelValue"][];
+            maps?: components["schemas"]["LabelValue"][];
+        };
+        SessionOption: {
+            label: string;
+            session_id: string;
+            match_count: number;
+            is_squad: boolean;
+        };
+        SessionOptions: {
+            all_sessions?: components["schemas"]["SessionOption"][];
+            solo_labels?: string[];
+            squad_labels?: string[];
+        };
+        FilterCounts: {
+            total_matches_before_filters: number;
+            total_matches_after_filters: number;
+        };
         FilterContextResolved: {
             effective: components["schemas"]["FilterContextInput"];
             available_options: components["schemas"]["AvailableOptions"];
             session_options: components["schemas"]["SessionOptions"];
             counts: components["schemas"]["FilterCounts"];
         };
-        /**
-         * FilterCounts
-         * @description Compteurs avant/après application des filtres.
-         */
-        FilterCounts: {
-            /** Total Matches Before Filters */
-            total_matches_before_filters: number;
-            /** Total Matches After Filters */
-            total_matches_after_filters: number;
+        CareerSummary: {
+            rank_number: number;
+            rank_label: string;
+            rank_name_raw: string;
+            rank_tier: string;
+            current_xp: number;
+            xp_for_next_rank: number;
+            xp_total: number;
+            /** Format: float */
+            progress_pct: number;
+            is_max_rank: boolean;
+            /** Format: date-time */
+            recorded_at?: string | null;
         };
-        /**
-         * FreshnessInfo
-         * @description Indicateur de fraîcheur des données retournées.
-         */
-        FreshnessInfo: {
-            /**
-             * Source
-             * @default cached
-             */
-            source: string;
-            /**
-             * Sync Status
-             * @default unknown
-             */
-            sync_status: string;
-            /** Warnings */
-            warnings?: string[];
-        };
-        /**
-         * GamertagSearchResponse
-         * @description Réponse de la recherche de gamertags.
-         */
-        GamertagSearchResponse: {
-            /** Query */
-            query: string;
-            /** Items */
-            items: components["schemas"]["GamertagSuggestion"][];
-        };
-        /**
-         * GamertagSuggestion
-         * @description Une suggestion de gamertag dans les résultats de recherche.
-         */
-        GamertagSuggestion: {
-            /** Gamertag */
-            gamertag: string;
-            /** Xuid */
-            xuid?: string | null;
-            /**
-             * Score
-             * @default 1
-             */
-            score: number;
-            /**
-             * Exact Match
-             * @default false
-             */
-            exact_match: boolean;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /**
-         * HealthResponse
-         * @description Réponse de health check.
-         */
-        HealthResponse: {
-            /** Status */
-            status: string;
-            /** Version */
-            version: string;
-            /** Uptime Seconds */
-            uptime_seconds: number;
-            /** Checks */
-            checks: {
-                [key: string]: string;
-            };
-        };
-        /**
-         * HeroKPIs
-         * @description KPIs globaux affichés dans le hero card.
-         */
-        HeroKPIs: {
-            /**
-             * Win Rate
-             * @default 0
-             */
-            win_rate: number;
-            /** Global Ratio */
-            global_ratio?: number | null;
-            /** Avg Accuracy */
-            avg_accuracy?: number | null;
-            /**
-             * Total Matches
-             * @default 0
-             */
-            total_matches: number;
-            /**
-             * Wins
-             * @default 0
-             */
-            wins: number;
-            /**
-             * Losses
-             * @default 0
-             */
-            losses: number;
-        };
-        /**
-         * HeroProgress
-         * @description Progression globale vers le rang Héros (rang 272).
-         */
         HeroProgress: {
-            /** Xp Total Required */
             xp_total_required: number;
-            /** Xp Remaining */
             xp_remaining: number;
-            /** Percentage */
+            /** Format: float */
             percentage: number;
-            /** Current Rank */
             current_rank: number;
         };
-        /**
-         * HeroTrend
-         * @description Variation par fenêtre glissante (5 derniers vs 5 précédents).
-         */
-        HeroTrend: {
-            /** Ratio Delta */
-            ratio_delta?: number | null;
-            /** Accuracy Delta */
-            accuracy_delta?: number | null;
-            /** Win Rate Delta */
-            win_rate_delta?: number | null;
+        CareerProjections: {
+            /** Format: float */
+            xp_per_day_active: number;
+            /** Format: float */
+            xp_per_day_fallback: number;
+            /** Format: date */
+            estimated_hero_date?: string | null;
+            /** Format: date */
+            estimated_rank_cap_date?: string | null;
         };
-        /**
-         * HighlightItem
-         * @description Fait saillant synthétique pour la zone signaux.
-         */
-        HighlightItem: {
-            /** Title */
-            title: string;
-            /** Value */
-            value: string;
-            /** Detail */
-            detail: string;
+        CareerHistoryPoint: {
+            /** Format: date-time */
+            recorded_at: string;
+            rank: number;
+            xp_total: number;
         };
-        /**
-         * HomeHeroCard
-         * @description Carte briefing principal de l'accueil.
-         */
-        HomeHeroCard: {
-            /** Player Name */
-            player_name: string;
-            kpis: components["schemas"]["HeroKPIs"];
-            trend?: components["schemas"]["HeroTrend"] | null;
+        CareerLusrCheckpoint: {
+            /** Format: date-time */
+            recorded_at: string;
+            /** Format: float */
+            rating_value: number;
+            playlist_group: string;
         };
-        /**
-         * HomePageResponse
-         * @description Réponse agrégée de la page d'accueil Mission Control.
-         */
-        HomePageResponse: {
-            hero: components["schemas"]["HomeHeroCard"];
-            /** Highlights */
-            highlights: components["schemas"]["HighlightItem"][];
-            /** Recent Matches */
-            recent_matches: components["schemas"]["RecentMatchItem"][];
-            /** Recent Media */
-            recent_media: components["schemas"]["RecentMediaItem"][];
-            solo_session?: components["schemas"]["SessionSummaryItem"] | null;
-            squad_session?: components["schemas"]["SessionSummaryItem"] | null;
+        CareerLusrSection: {
+            /** Format: float */
+            current_rating?: number | null;
+            current_tier_label?: string | null;
+            current_playlist_group?: string | null;
+            trend_label?: string | null;
+            checkpoints: components["schemas"]["CareerLusrCheckpoint"][];
         };
-        /**
-         * InitialSyncStartRequest
-         * @description Corps de la requête ``POST /api/v1/sync/initial``.
-         */
-        InitialSyncStartRequest: {
-            /** Player Slug */
-            player_slug: string;
-            /**
-             * Max Matches
-             * @default 200
-             */
-            max_matches: number;
-        };
-        /**
-         * LabelValue
-         * @description Option affichable dans un multi-select.
-         */
-        LabelValue: {
-            /** Label */
-            label: string;
-            /** Value */
-            value: string;
-        };
-        /**
-         * MatchHistoryExportRequest
-         * @description Corps de requête pour POST match-history/export.
-         */
-        MatchHistoryExportRequest: {
-            filters?: components["schemas"]["FilterContextInput"];
-            /** Sort */
-            sort?: components["schemas"]["SortSpec"][] | null;
-            /** Columns */
-            columns?: string[] | null;
-            /**
-             * Format
-             * @default csv
-             */
-            format: string;
-        };
-        /**
-         * MatchHistoryPageResponse
-         * @description Réponse complète de l'endpoint match-history/query.
-         */
-        MatchHistoryPageResponse: {
-            summary: components["schemas"]["MatchHistoryQuerySummary"];
-            table: components["schemas"]["PaginatedResponse_MatchHistoryRow_"];
-            /** Available Sort Fields */
-            available_sort_fields?: string[];
-            export_hint?: components["schemas"]["ExportHint"] | null;
-        };
-        /**
-         * MatchHistoryQueryRequest
-         * @description Corps de requête pour POST match-history/query.
-         */
-        MatchHistoryQueryRequest: {
-            filters?: components["schemas"]["FilterContextInput"];
-            pagination?: components["schemas"]["PaginationRequest"];
-            /** Columns */
-            columns?: string[] | null;
-            /**
-             * Include Export Hint
-             * @default false
-             */
-            include_export_hint: boolean;
-        };
-        /**
-         * MatchHistoryQuerySummary
-         * @description Compteurs affichés en tête du tableau historique.
-         */
-        MatchHistoryQuerySummary: {
-            /** Total Matches Scoped */
-            total_matches_scoped: number;
-            /** Total Matches Unfiltered */
-            total_matches_unfiltered: number;
-            /** Period Label */
-            period_label?: string | null;
-            /** Active Filter Mode */
-            active_filter_mode: string;
-        };
-        /**
-         * MatchHistoryRow
-         * @description Une ligne dans le tableau de l'historique des parties.
-         */
-        MatchHistoryRow: {
-            /** Match Id */
+        CareerTopMatch: {
+            /** Format: uuid */
             match_id: string;
+            /** Format: date-time */
+            start_time?: string | null;
+            map_ui?: string | null;
+            mode_ui?: string | null;
+            playlist_label?: string | null;
+            /** Format: float */
+            performance_score?: number | null;
+            badge_type?: string | null;
+            score_label?: string | null;
+            outcome_label?: string | null;
+            kills?: number | null;
+            deaths?: number | null;
+            assists?: number | null;
+            /** Format: float */
+            kd_ratio?: number | null;
+            /** @enum {string|null} */
+            variant?: "best" | "worst" | null;
+        };
+        CareerEncounter: {
+            encounter_key: string;
+            opponent_gamertag: string;
+            count_matches: number;
+            wins: number;
+            losses: number;
+            /** Format: date-time */
+            last_seen_at?: string | null;
+        };
+        CareerPageResponse: {
+            summary?: components["schemas"]["CareerSummary"] | null;
+            hero_progress?: components["schemas"]["HeroProgress"] | null;
+            projections?: components["schemas"]["CareerProjections"] | null;
+            xp_history: components["schemas"]["CareerHistoryPoint"][];
+            lusr?: components["schemas"]["CareerLusrSection"] | null;
+            top_matches_preview: components["schemas"]["CareerTopMatch"][];
+            encounters_preview: components["schemas"]["CareerEncounter"][];
+        };
+        CareerTopMatchesResponse: {
+            items: components["schemas"]["CareerTopMatch"][];
+        };
+        CareerEncountersResponse: {
+            items: components["schemas"]["CareerEncounter"][];
+        };
+        AchievementsSummary: {
+            /** @description Nombre total d'achievements définis pour le titre. */
+            total_count: number;
+            /** @description Nombre d'achievements débloqués par le joueur. */
+            unlocked_count: number;
+            /** @description Gamerscore total possible (somme de tous les achievements). */
+            total_gamerscore: number;
+            /** @description Gamerscore acquis par le joueur (somme des unlocked). */
+            earned_gamerscore: number;
             /**
-             * Start Time
-             * Format: date-time
+             * Format: double
+             * @description Pourcentage 0..100 arrondi à 0.1.
              */
+            completion_pct: number;
+        };
+        AchievementEntry: {
+            achievement_id: string;
+            name_en: string;
+            name_fr: string;
+            description_en: string;
+            description_fr: string;
+            /** @description Description visible quand verrouillé (peut être absente). */
+            locked_desc_en?: string;
+            locked_desc_fr?: string;
+            gamerscore: number;
+            /** @description URL CDN Xbox de l'icône d'achievement (peut être absente). */
+            image_url?: string;
+            is_secret: boolean;
+            /** @description ex: Common, Rare (peut être absent). */
+            rarity_category?: string;
+            /**
+             * Format: double
+             * @description Pourcentage de joueurs ayant débloqué (peut être absent).
+             */
+            rarity_percent?: number;
+            unlocked: boolean;
+            /**
+             * Format: date-time
+             * @description ISO 8601 — présent uniquement si unlocked=true.
+             */
+            unlocked_at?: string;
+            /** @description Progression actuelle (présent uniquement si la définition expose un compteur). */
+            current_progress?: number;
+            /** @description Cible de progression. */
+            target_progress?: number;
+        };
+        AchievementsPageResponse: {
+            summary: components["schemas"]["AchievementsSummary"];
+            achievements: components["schemas"]["AchievementEntry"][];
+        };
+        MatchHistoryRow: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: date-time */
             start_time: string;
-            /** Start Time Label */
             start_time_label: string;
-            /** Outcome Code */
             outcome_code?: number | null;
-            /** Outcome Label */
             outcome_label: string;
-            /** Score Label */
             score_label: string;
-            /** Map Ui */
             map_ui: string;
-            /** Mode Ui */
             mode_ui: string;
-            /** Playlist Label */
             playlist_label: string;
-            /** Team Mmr */
+            /** Format: float */
             team_mmr?: number | null;
-            /** Enemy Mmr */
+            /** Format: float */
             enemy_mmr?: number | null;
-            /** Delta Mmr */
+            /** Format: float */
             delta_mmr?: number | null;
-            /** Win Rate Hist */
+            /** Format: float */
             win_rate_hist?: number | null;
-            /** Win Rate Hist Total */
             win_rate_hist_total?: number | null;
-            /** Performance Score Relative */
             performance_score_relative?: number | null;
-            /** Average Life Mmss */
             average_life_mmss: string;
-            /** Match Url */
             match_url: string;
         };
-        /**
-         * MediaItemRow
-         * @description Un média indexé (capture ou vidéo).
-         */
-        MediaItemRow: {
-            /** Basename */
-            basename: string;
-            /** File Path */
-            file_path: string;
-            /**
-             * Kind
-             * @default screenshot
-             */
-            kind: string;
-            /** Thumbnail Path */
-            thumbnail_path?: string | null;
-            /** Match Id */
-            match_id?: string | null;
-            /** Capture End Utc */
-            capture_end_utc?: string | null;
-            /** Match Start Time */
-            match_start_time?: string | null;
-            /**
-             * Section
-             * @default mine
-             */
-            section: string;
-            /** Owner Gamertag */
-            owner_gamertag?: string | null;
-            /** Map Name */
-            map_name?: string | null;
+        MatchHistoryQuerySummary: {
+            total_matches_scoped: number;
+            total_matches_unfiltered: number;
+            period_label?: string | null;
+            active_filter_mode: string;
         };
-        /**
-         * MediaPageResponse
-         * @description Réponse de la page Médias.
-         */
-        MediaPageResponse: {
-            items: components["schemas"]["PaginatedResponse_MediaItemRow_"];
-            /**
-             * Total Mine
-             * @default 0
-             */
-            total_mine: number;
-            /**
-             * Total Teammates
-             * @default 0
-             */
-            total_teammates: number;
-            /**
-             * Total Unassigned
-             * @default 0
-             */
-            total_unassigned: number;
+        ExportHint: {
+            file_name: string;
+            estimated_rows: number;
+            token?: string | null;
         };
-        /**
-         * MediaResetRequest
-         * @description Corps de POST /settings/media/reset-index.
-         */
-        MediaResetRequest: {
-            /** Confirm Destructive */
-            confirm_destructive: boolean;
-            /**
-             * Reindex After Reset
-             * @default false
-             */
-            reindex_after_reset: boolean;
-        };
-        /** PaginatedResponse[ExplorerMatchRow] */
-        PaginatedResponse_ExplorerMatchRow_: {
-            /** Items */
-            items: components["schemas"]["ExplorerMatchRow"][];
-            pagination: components["schemas"]["PaginationMeta"];
-            freshness?: components["schemas"]["FreshnessInfo"] | null;
-        };
-        /** PaginatedResponse[MatchHistoryRow] */
-        PaginatedResponse_MatchHistoryRow_: {
-            /** Items */
+        PaginatedMatchHistoryResponse: {
             items: components["schemas"]["MatchHistoryRow"][];
             pagination: components["schemas"]["PaginationMeta"];
             freshness?: components["schemas"]["FreshnessInfo"] | null;
         };
-        /** PaginatedResponse[MediaItemRow] */
-        PaginatedResponse_MediaItemRow_: {
-            /** Items */
-            items: components["schemas"]["MediaItemRow"][];
-            pagination: components["schemas"]["PaginationMeta"];
-            freshness?: components["schemas"]["FreshnessInfo"] | null;
+        MatchHistoryPageResponse: {
+            summary: components["schemas"]["MatchHistoryQuerySummary"];
+            table: components["schemas"]["PaginatedMatchHistoryResponse"];
+            available_sort_fields: string[];
+            export_hint?: components["schemas"]["ExportHint"] | null;
+            /** @description Sprint 54-B : avertissement si les matchs du joueur sont privés. */
+            privacy_warning?: components["schemas"]["MatchPrivacyWarning"] | null;
         };
-        /**
-         * PaginationMeta
-         * @description Informations de pagination retournées avec les listes.
-         */
-        PaginationMeta: {
-            /** Total */
-            total: number;
-            /** Page */
-            page: number;
-            /** Page Size */
-            page_size: number;
-            /** Has Next */
-            has_next: boolean;
-            /** Has Prev */
-            has_prev: boolean;
+        MatchHistoryQueryRequest: {
+            filters?: components["schemas"]["FilterContextInput"];
+            pagination?: components["schemas"]["PaginationRequest"];
+            columns?: string[] | null;
+            /** @default false */
+            include_export_hint: boolean;
         };
-        /**
-         * PaginationRequest
-         * @description Paramètres de pagination envoyés par le client.
-         */
-        PaginationRequest: {
+        MatchHistoryExportRequest: {
+            filters?: components["schemas"]["FilterContextInput"];
+            sort?: components["schemas"]["SortSpec"][] | null;
+            columns?: string[] | null;
+            /** @default csv */
+            format: string;
+        };
+        FileTokenResponse: {
+            file_token: string;
+            file_name: string;
+            content_type: string;
+            download_path: string;
+            /** Format: date-time */
+            expires_at: string;
+            estimated_rows?: number | null;
+        };
+        GamertagSuggestion: {
+            gamertag: string;
+            xuid?: string | null;
             /**
-             * Page
+             * Format: float
              * @default 1
              */
-            page: number;
+            score: number;
+            /** @default false */
+            exact_match: boolean;
+        };
+        GamertagSearchResponse: {
+            query: string;
+            items: components["schemas"]["GamertagSuggestion"][];
+        };
+        ExplorerMatchRow: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: date-time */
+            start_time: string;
+            start_time_label: string;
+            map_ui: string;
+            mode_ui: string;
+            playlist_label: string;
+            outcome_label: string;
+            score_label: string;
+            /** @default false */
+            is_with_friends: boolean;
+            /** @default Non classé */
+            experience_type_label: string;
+            /** @default 0 */
+            kills: number;
+            /** @default 0 */
+            deaths: number;
             /**
-             * Page Size
-             * @default 50
+             * Format: float
+             * @default 0
              */
-            page_size: number;
-        };
-        /**
-         * PeriodInput
-         * @description Plage de dates (filtre mode Période).
-         */
-        PeriodInput: {
-            /** Start Date */
-            start_date?: string | null;
-            /** End Date */
-            end_date?: string | null;
-        };
-        /**
-         * PlayerSummary
-         * @description Résumé d'un profil joueur utilisé dans bootstrap, players, etc.
-         */
-        PlayerSummary: {
-            /** Player Slug */
-            player_slug: string;
-            /** Gamertag */
-            gamertag: string;
-            /** Xuid */
-            xuid: string;
-            /** Waypoint Player */
-            waypoint_player: string;
+            kda: number;
             /**
-             * Is Demo
+             * @description Un coéquipier était un bot. Exposé uniquement sur les best_matches de la page carrière (les LOSS avec bot sont exclus côté backend pour isoler la responsabilité du joueur).
              * @default false
              */
-            is_demo: boolean;
+            had_bot_teammate: boolean;
         };
-        /**
-         * PlayersListResponse
-         * @description Réponse de `GET /api/v1/players`.
-         */
-        PlayersListResponse: {
-            /** Items */
-            items: components["schemas"]["PlayerSummary"][];
-            /** Default Player Slug */
-            default_player_slug?: string | null;
-        };
-        /**
-         * PlotlyFigurePayload
-         * @description Payload JSON d'un graphe Plotly (data + layout).
-         */
-        PlotlyFigurePayload: {
-            /** Data */
-            data: {
-                [key: string]: unknown;
-            }[];
-            /** Layout */
-            layout: {
-                [key: string]: unknown;
-            };
-        };
-        /**
-         * RecentMatchItem
-         * @description Un match récent affiché dans la timeline.
-         */
-        RecentMatchItem: {
-            /** Match Id */
-            match_id: string;
-            /** Title */
-            title: string;
-            /** Detail */
-            detail: string;
-            /** Started At */
-            started_at?: string | null;
-            /** Outcome Label */
-            outcome_label: string;
-            /** Outcome Tone */
-            outcome_tone: string;
-        };
-        /**
-         * RecentMediaItem
-         * @description Entrée compacte d'un média récent.
-         */
-        RecentMediaItem: {
-            /** Basename */
-            basename: string;
-            /** Match Id */
-            match_id?: string | null;
-            /** Match Start Time */
-            match_start_time?: string | null;
-        };
-        /**
-         * SessionContextRequest
-         * @description Corps de `POST /api/v1/session/context` pour mettre à jour le joueur courant.
-         */
-        SessionContextRequest: {
-            /** Player Slug */
-            player_slug?: string | null;
-            /** Locale */
-            locale?: string | null;
-            /** Hints Visible */
-            hints_visible?: boolean | null;
-        };
-        /**
-         * SessionContextResponse
-         * @description Réponse de `POST /api/v1/session/context`.
-         */
-        SessionContextResponse: {
-            current_player?: components["schemas"]["PlayerSummary"] | null;
-            /**
-             * Locale
-             * @default fr
-             */
-            locale: string;
-            /**
-             * Hints Visible
-             * @default true
-             */
-            hints_visible: boolean;
-            capabilities: components["schemas"]["CapabilityMap"];
-        };
-        /**
-         * SessionOption
-         * @description Session disponible avec sa classification solo/squad.
-         */
-        SessionOption: {
-            /** Label */
-            label: string;
-            /** Session Id */
-            session_id: string;
-            /** Match Count */
-            match_count: number;
-            /** Is Squad */
-            is_squad: boolean;
-        };
-        /**
-         * SessionOptions
-         * @description Sessions disponibles par catégorie.
-         */
-        SessionOptions: {
-            /** All Sessions */
-            all_sessions?: components["schemas"]["SessionOption"][];
-            /** Solo Labels */
-            solo_labels?: string[];
-            /** Squad Labels */
-            squad_labels?: string[];
-        };
-        /**
-         * SessionSummaryItem
-         * @description Résumé d'une session (solo ou escouade) affiché dans l'accueil.
-         */
-        SessionSummaryItem: {
-            /** Session Label */
-            session_label: string;
-            /** Match Count */
-            match_count: number;
-            /** Win Rate */
-            win_rate: number;
-            /** Global Ratio */
-            global_ratio?: number | null;
-            /** Started At */
-            started_at?: string | null;
-        };
-        /**
-         * SessionsInput
-         * @description Sélecteurs de sessions (filtre mode Sessions).
-         */
-        SessionsInput: {
-            /** Picked Session Label */
-            picked_session_label?: string | null;
-            /** Picked Solo Session Label */
-            picked_solo_session_label?: string | null;
-            /** Picked Squad Session Label */
-            picked_squad_session_label?: string | null;
-            /** Picked Sessions */
-            picked_sessions?: string[];
-            /**
-             * Gap Minutes
-             * @description Invariant: toujours 120 dans le code actuel.
-             * @default 120
-             */
-            gap_minutes: number;
-        };
-        /**
-         * SettingsExcerpt
-         * @description Extrait des préférences utilisateur nécessaires au bootstrap du shell.
-         */
-        SettingsExcerpt: {
-            /**
-             * Lang
-             * @default fr
-             */
-            lang: string;
-            /**
-             * User Timezone
-             * @default Europe/Paris
-             */
-            user_timezone: string;
-            /**
-             * Show Records
-             * @default true
-             */
-            show_records: boolean;
-            /**
-             * Normalize Mode Labels
-             * @default true
-             */
-            normalize_mode_labels: boolean;
-        };
-        /**
-         * SettingsResponse
-         * @description Lecture des paramètres utilisateur persistés (GET /settings).
-         */
-        SettingsResponse: {
-            /** Lang */
-            lang: string;
-            /** Discord Lang */
-            discord_lang: string;
-            /** User Timezone */
-            user_timezone: string;
-            /** Normalize Mode Labels */
-            normalize_mode_labels: boolean;
-            /** Show Records */
-            show_records: boolean;
-            /** Refresh Clears Caches */
-            refresh_clears_caches: boolean;
-            /** Career Top Exclude Btb */
-            career_top_exclude_btb: boolean;
-            /** Media Captures Base Dir */
-            media_captures_base_dir: string;
-            /** Media Tolerance Minutes */
-            media_tolerance_minutes: number;
-            /** Media Watcher Enabled */
-            media_watcher_enabled: boolean;
-            /** Media Watcher Debounce Seconds */
-            media_watcher_debounce_seconds: number;
-            /** Discord Notifications Enabled */
-            discord_notifications_enabled: boolean;
-            /** Discord Webhook Url Present */
-            discord_webhook_url_present: boolean;
-            /** Discord Notify Sync */
-            discord_notify_sync: boolean;
-            /** Discord Notify Backfill */
-            discord_notify_backfill: boolean;
-            /** Discord Notify New Version */
-            discord_notify_new_version: boolean;
-            /** Discord Notify New Media */
-            discord_notify_new_media: boolean;
-            /** Spnkr Refresh With Backfill */
-            spnkr_refresh_with_backfill: boolean;
-            /** Spnkr Refresh Backfill Medals */
-            spnkr_refresh_backfill_medals: boolean;
-            /** Spnkr Refresh Backfill Skill */
-            spnkr_refresh_backfill_skill: boolean;
-            /** Spnkr Refresh Backfill Aliases */
-            spnkr_refresh_backfill_aliases: boolean;
-            /** Spnkr Refresh Backfill Personal Scores */
-            spnkr_refresh_backfill_personal_scores: boolean;
-            /** Spnkr Refresh Backfill Performance Scores */
-            spnkr_refresh_backfill_performance_scores: boolean;
-            /** Spnkr Refresh Backfill Lusr */
-            spnkr_refresh_backfill_lusr: boolean;
-            /** Spnkr Refresh Backfill Events */
-            spnkr_refresh_backfill_events: boolean;
-            /** Spnkr Refresh Backfill Weapons */
-            spnkr_refresh_backfill_weapons: boolean;
-        };
-        /**
-         * SetupAuthInfo
-         * @description État de l'authentification Halo.
-         */
-        SetupAuthInfo: {
-            /** Has Client Id */
-            has_client_id: boolean;
-            /** Has Refresh Token */
-            has_refresh_token: boolean;
-            /** Has Msal Cache */
-            has_msal_cache: boolean;
-            /** Preferred Method */
-            preferred_method: string;
-        };
-        /**
-         * SetupPlayerInfo
-         * @description État des profils joueurs configurés.
-         */
-        SetupPlayerInfo: {
-            /** Has Any Profile */
-            has_any_profile: boolean;
-            /** Default Player Slug */
-            default_player_slug?: string | null;
-        };
-        /**
-         * SetupStatusResponse
-         * @description Réponse de GET /setup/status — machine d'état setup.
-         * @deprecated sprint 29 — endpoint absent de FastAPI et Go. À supprimer au Sprint 32.
-         */
-        SetupStatusResponse: {
-            /** Needs Setup */
-            needs_setup: boolean;
-            auth: components["schemas"]["SetupAuthInfo"];
-            player: components["schemas"]["SetupPlayerInfo"];
-            /** Next Blocking Step */
-            next_blocking_step: string;
-        };
-        /**
-         * SmokeTestStartRequest
-         * @description Corps de POST /setup/smoke-test.
-         */
-        SmokeTestStartRequest: {
-            /** Player Slug */
-            player_slug: string;
-            /**
-             * Max Matches
-             * @default 20
-             */
-            max_matches: number;
-            /**
-             * Run Backfill
-             * @default true
-             */
-            run_backfill: boolean;
-        };
-        /**
-         * SortSpec
-         * @description Spécification de tri pour les listes paginées.
-         */
-        SortSpec: {
-            /** Field */
-            field: string;
-            /**
-             * Direction
-             * @default desc
-             */
-            direction: string;
-        };
-        /**
-         * SynthesisKPIs
-         * @description KPIs d'un groupe (solo ou escouade) pour la comparaison Synthèse.
-         */
-        SynthesisKPIs: {
-            /**
-             * Match Count
-             * @default 0
-             */
-            match_count: number;
-            /**
-             * Wins
-             * @default 0
-             */
+        ExplorerEncounterRow: {
+            gamertag: string;
+            xuid?: string | null;
+            count_matches: number;
             wins: number;
-            /** Kd Ratio */
-            kd_ratio?: number | null;
-            /**
-             * Win Rate
-             * @default 0
-             */
-            win_rate: number;
-            /** Accuracy */
-            accuracy?: number | null;
-            /** Kills Per Min */
-            kills_per_min?: number | null;
-            /** Avg Life Seconds */
-            avg_life_seconds?: number | null;
-            /** Performance Score */
-            performance_score?: number | null;
+            losses: number;
+            /** Format: date-time */
+            last_seen_at?: string | null;
+            same_team?: boolean | null;
         };
-        /**
-         * SynthesisPageResponse
-         * @description Réponse de la page Synthèse.
-         */
-        SynthesisPageResponse: {
-            /** Period */
-            period: string;
-            /** Total Matches */
+        ExplorerMatchesQuerySummary: {
             total_matches: number;
-            solo_kpis: components["schemas"]["SynthesisKPIs"];
-            squad_kpis: components["schemas"]["SynthesisKPIs"];
-            /** Comparison Metrics */
-            comparison_metrics: components["schemas"]["ComparisonMetricItem"][];
+            selected_match_id?: string | null;
         };
-        /**
-         * SynthesisQueryRequest
-         * @description Corps de la requête pour la page Synthèse.
-         */
-        SynthesisQueryRequest: {
+        ExplorerPlayerTarget: {
+            gamertag: string;
+            xuid?: string | null;
+        };
+        ExplorerPlayerSummary: {
+            matches_together: number;
+            wins_together: number;
+            losses_together: number;
+            /** Format: date-time */
+            last_seen_at?: string | null;
+        };
+        ExplorerMatchFilters: {
+            /** Format: date */
+            selected_date?: string | null;
             /**
-             * Period
              * @default all
+             * @enum {string}
              */
-            period: string;
+            squad_scope: "all" | "solo" | "squad";
+            experience_type?: string | null;
+            playlist?: string | null;
+            mode?: string | null;
+            map?: string | null;
+            selected_match_id?: string | null;
+        };
+        ExplorerMatchesQueryRequest: {
+            filters?: components["schemas"]["FilterContextInput"];
+            match_filters?: components["schemas"]["ExplorerMatchFilters"];
+            pagination?: components["schemas"]["PaginationRequest"];
+        };
+        PaginatedExplorerMatchesResponse: {
+            items: components["schemas"]["ExplorerMatchRow"][];
+            pagination: components["schemas"]["PaginationMeta"];
+        };
+        ExplorerMatchesQueryResponse: {
+            summary: components["schemas"]["ExplorerMatchesQuerySummary"];
+            table: components["schemas"]["PaginatedExplorerMatchesResponse"];
+        };
+        ExplorerPlayerQueryRequest: {
+            target_gamertag: string;
             filters?: components["schemas"]["FilterContextInput"] | null;
         };
-        /**
-         * TeammateKPIs
-         * @description KPIs agrégés pour un groupe de matchs (avec/sans coéquipier).
-         */
-        TeammateKPIs: {
-            /**
-             * Match Count
-             * @default 0
-             */
-            match_count: number;
-            /**
-             * Wins
-             * @default 0
-             */
-            wins: number;
-            /** Kd Ratio */
-            kd_ratio?: number | null;
-            /**
-             * Win Rate
-             * @default 0
-             */
-            win_rate: number;
-            /** Accuracy */
-            accuracy?: number | null;
-            /** Kills Per Game */
-            kills_per_game?: number | null;
-            /** Assists Per Game */
-            assists_per_game?: number | null;
+        ExplorerPlayerQueryResponse: {
+            target: components["schemas"]["ExplorerPlayerTarget"];
+            summary: components["schemas"]["ExplorerPlayerSummary"];
+            allies_table: components["schemas"]["ExplorerEncounterRow"][];
+            enemies_table: components["schemas"]["ExplorerEncounterRow"][];
+            common_matches: components["schemas"]["ExplorerMatchRow"][];
         };
-        /**
-         * TeammateOption
-         * @description Un coéquipier fréquent sélectionnable dans l'interface.
-         */
-        TeammateOption: {
-            /** Gamertag */
+        MatchViewHeader: {
+            /** Format: uuid */
+            match_id: string;
+            /** Format: date-time */
+            start_time?: string | null;
+            /** @default  */
+            start_time_label: string;
+            outcome_code?: number | null;
+            /** @default - */
+            outcome_label: string;
+            /** @default #94a3b8 */
+            outcome_color: string;
+            /** @default  */
+            score_label: string;
+            /** @default false */
+            dominance_flag: boolean;
+            /** @default false */
+            had_bot_teammate: boolean;
+            /** @default  */
+            map_ui: string;
+            map_id?: string | null;
+            /** @default  */
+            mode_ui: string;
+            /** @default  */
+            playlist_label: string;
+            /** @default - */
+            performance_display: string;
+            performance_color?: string | null;
+        };
+        MatchViewRank: {
+            /**
+             * @default none
+             * @enum {string}
+             */
+            rating_type: "CSR" | "LUSR" | "none";
+            tier_label?: string | null;
+            /** Format: float */
+            numeric_value?: number | null;
+            /** Format: float */
+            delta_value?: number | null;
+            icon_url?: string | null;
+        };
+        MatchMedal: {
+            medal_name_id: number;
+            name: string;
+            count: number;
+            description?: string | null;
+        };
+        MatchCitation: {
+            key: string;
+            label: string;
+            color?: string | null;
+            /** Format: float */
+            value?: number | null;
+        };
+        MatchSummaryKpis: {
+            kills?: number | null;
+            deaths?: number | null;
+            assists?: number | null;
+            /** Format: float */
+            kda?: number | null;
+            /** Format: float */
+            damage_dealt?: number | null;
+            average_life?: string | null;
+        };
+        MatchPersonalResult: {
+            /** @default - */
+            outcome_label: string;
+            /** @default #94a3b8 */
+            outcome_color: string;
+            score?: number | null;
+            rank_in_team?: number | null;
+        };
+        MatchExpectedStats: {
+            /** @default false */
+            has_expected_data: boolean;
+            /** Format: float */
+            expected_kills?: number | null;
+            /** Format: float */
+            expected_deaths?: number | null;
+        };
+        MatchSummaryTab: {
+            kpis: components["schemas"]["MatchSummaryKpis"];
+            personal_result: components["schemas"]["MatchPersonalResult"];
+            medals: components["schemas"]["MatchMedal"][];
+            citations: components["schemas"]["MatchCitation"][];
+            expected_stats?: components["schemas"]["MatchExpectedStats"];
+        };
+        MatchWeaponKill: {
+            weapon_id: number;
+            weapon_label: string;
+            effective_weapon_id?: number | null;
+            kill_count: number;
+        };
+        MatchHighlightEvent: {
+            event_time_ms?: number | null;
+            event_type: string;
+            actor_xuid?: string | null;
+            target_xuid?: string | null;
+            weapon_id?: number | null;
+        };
+        MatchCombatTab: {
+            weapon_kills: components["schemas"]["MatchWeaponKill"][];
+            highlight_events: components["schemas"]["MatchHighlightEvent"][];
+            charts: components["schemas"]["PlotlyFigurePayload"][];
+        };
+        MatchRosterRow: {
+            xuid: string;
             gamertag: string;
-            /** Xuid */
-            xuid?: string | null;
-            /** Encounter Count */
-            encounter_count: number;
-            /** Last Seen At */
+            team_side?: string | null;
+            /** @default false */
+            is_me: boolean;
+            /** @default false */
+            is_bot: boolean;
+            kills?: number | null;
+            deaths?: number | null;
+            assists?: number | null;
+            /** Format: float */
+            kda?: number | null;
+            /** Format: float */
+            damage_dealt?: number | null;
+            /** Format: float */
+            damage_taken?: number | null;
+        };
+        MatchScoreboardRow: {
+            xuid: string;
+            gamertag: string;
+            team_side?: string | null;
+            /** @default false */
+            is_me: boolean;
+            rank?: number | null;
+            kills?: number | null;
+            deaths?: number | null;
+            assists?: number | null;
+            betrayals?: number | null;
+            suicides?: number | null;
+            shots_fired?: number | null;
+            shots_hit?: number | null;
+            /** Format: float */
+            shots_accuracy?: number | null;
+            /** Format: float */
+            damage_dealt?: number | null;
+            /** Format: float */
+            damage_taken?: number | null;
+            /** Format: float */
+            damage_efficiency?: number | null;
+            average_life?: string | null;
+            objectives_stolen?: number | null;
+            headshot_kills?: number | null;
+            max_killing_spree?: number | null;
+            perfect_kills?: number | null;
+            power_weapon_kills?: number | null;
+            melee_kills?: number | null;
+            /** @default - */
+            outcome_label: string;
+        };
+        MatchNemesisRow: {
+            xuid: string;
+            gamertag: string;
+            killed_me: number;
+            i_killed: number;
+        };
+        MatchEncounterRow: {
+            xuid: string;
+            gamertag: string;
+            count_together: number;
+            is_ally: boolean;
+            ally_count?: number | null;
+            enemy_count?: number | null;
+            /** Format: double */
+            winrate_as_ally?: number | null;
+            /** Format: double */
+            winrate_vs_enemy?: number | null;
+            kills_dealt?: number | null;
+            deaths_suffered?: number | null;
+            /** Format: date-time */
             last_seen_at?: string | null;
         };
-        /**
-         * TeammateRow
-         * @description Ligne de résultat pour un coéquipier : stats avec vs sans.
-         */
-        TeammateRow: {
-            /** Gamertag */
-            gamertag: string;
-            /** Xuid */
+        MatchTeamTab: {
+            roster: components["schemas"]["MatchRosterRow"][];
+            scoreboard: components["schemas"]["MatchScoreboardRow"][];
+            nemesis: components["schemas"]["MatchNemesisRow"][];
+            encounters: components["schemas"]["MatchEncounterRow"][];
+        };
+        AssociatedMediaItem: {
+            file_id: string;
+            file_name: string;
+            file_path: string;
+            thumbnail_url?: string | null;
+            /** Format: float */
+            duration_seconds?: number | null;
+            /** Format: date-time */
+            capture_time?: string | null;
+            /** @default false */
+            liked: boolean;
+        };
+        MediaPageRequest: {
+            /** @default 1 */
+            page: number;
+            /** @default 24 */
+            page_size: number;
+            pagination?: components["schemas"]["PaginationRequest"];
+            kind?: string | null;
+            kind_filter?: string | null;
+            section_filter?: string | null;
+            map_filter?: string | null;
+            mode_filter?: string | null;
+            group_by?: string | null;
+            sort?: string | null;
+        };
+        MediaItemRow: {
+            basename: string;
+            file_path: string;
+            kind: string;
+            thumbnail_path?: string | null;
+            match_id?: string | null;
+            /** Format: date-time */
+            capture_end_utc?: string | null;
+            /** Format: date-time */
+            match_start_time?: string | null;
+            section: string;
+            owner_gamertag?: string | null;
+            map_name?: string | null;
+            /** @default false */
+            liked: boolean;
+            like_count: number;
+        };
+        MediaItemsPage: {
+            items: components["schemas"]["MediaItemRow"][];
+            pagination: components["schemas"]["PaginationMeta"];
+            freshness?: components["schemas"]["FreshnessInfo"];
+        };
+        MediaPageResponse: {
+            items: components["schemas"]["MediaItemsPage"];
+            total_mine: number;
+            total_teammates: number;
+            total_unassigned: number;
+        };
+        MediaLikeRequest: {
+            file_path: string;
+            liked: boolean;
+        };
+        MediaLikeResponse: {
+            file_path: string;
+            liked: boolean;
+            like_count: number;
+        };
+        MatchMediaTab: {
+            media_items: components["schemas"]["AssociatedMediaItem"][];
+        };
+        MatchCitationsTab: {
+            commendations: components["schemas"]["MatchCitation"][];
+            medals: components["schemas"]["MatchMedal"][];
+        };
+        MatchViewResponse: {
+            header: components["schemas"]["MatchViewHeader"];
+            rank: components["schemas"]["MatchViewRank"];
+            summary_tab: components["schemas"]["MatchSummaryTab"];
+            combat_tab: components["schemas"]["MatchCombatTab"];
+            team_tab: components["schemas"]["MatchTeamTab"];
+            media_tab: components["schemas"]["MatchMediaTab"];
+            citations_tab: components["schemas"]["MatchCitationsTab"];
+            /** @description Sprint 54-B : avertissement si les matchs du joueur sont privés. */
+            privacy_warning?: components["schemas"]["MatchPrivacyWarning"] | null;
+        };
+        /** @description Réponse de POST /auth/device-flow/start */
+        DeviceFlowStartResponse: {
+            attempt_id: string;
+            /** @description Code à afficher à l'utilisateur */
+            user_code: string;
+            /** Format: uri */
+            verification_uri: string;
+            /** Format: uri */
+            verification_uri_complete?: string | null;
+            /** @description Durée de validité en secondes */
+            expires_in: number;
+            /** @default 5 */
+            poll_interval_seconds: number;
+        };
+        /** @description Réponse de GET /auth/device-flow/{attempt_id} */
+        DeviceFlowStatusResponse: {
+            attempt_id: string;
+            /** @enum {string} */
+            status: "pending" | "authorized" | "provisioned" | "failed" | "expired";
+            gamertag?: string | null;
             xuid?: string | null;
-            /** Encounter Count */
-            encounter_count: number;
-            /** Last Seen At */
-            last_seen_at?: string | null;
-            with_kpis: components["schemas"]["TeammateKPIs"];
-            without_kpis?: components["schemas"]["TeammateKPIs"] | null;
+            error?: components["schemas"]["ApiErrorSchema"];
+        };
+        /** @description Statut d'un job asynchrone long */
+        AsyncJobStatus: {
+            job_id: string;
+            job_type: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "succeeded" | "failed" | "interrupted" | "cancelled";
+            progress_pct?: number | null;
+            current_step?: string | null;
+            /** Format: date-time */
+            started_at?: string | null;
+            /** Format: date-time */
+            finished_at?: string | null;
+            result?: {
+                [key: string]: unknown;
+            } | null;
+            error?: string | null;
+        };
+        /** @description Configuration de l'application (GET/PATCH /settings) */
+        SettingsResponse: {
+            /** @enum {string} */
+            lang: "fr" | "en";
+            /** @enum {string} */
+            discord_lang?: "fr" | "en";
+            user_timezone: string;
+            normalize_mode_labels?: boolean;
+            show_records?: boolean;
+            refresh_clears_caches?: boolean;
+            career_top_exclude_btb?: boolean;
+            media_captures_base_dir?: string;
+            media_tolerance_minutes?: number;
+            media_watcher_enabled?: boolean;
+            media_watcher_debounce_seconds?: number;
+            discord_notifications_enabled?: boolean;
+            discord_webhook_url_present?: boolean;
+            discord_notify_sync?: boolean;
+            discord_notify_backfill?: boolean;
+            discord_notify_new_version?: boolean;
+            discord_notify_new_media?: boolean;
+            spnkr_auto_sync_enabled?: boolean;
+            spnkr_auto_sync_interval_hours?: number;
+            spnkr_auto_sync_interval_minutes?: number;
+            watcher_presence_enabled?: boolean;
+            watcher_subscribed_players?: string[];
+            spnkr_refresh_with_backfill?: boolean;
+            spnkr_refresh_backfill_medals?: boolean;
+            spnkr_refresh_backfill_skill?: boolean;
+            spnkr_refresh_backfill_aliases?: boolean;
+            spnkr_refresh_backfill_personal_scores?: boolean;
+            spnkr_refresh_backfill_performance_scores?: boolean;
+            spnkr_refresh_backfill_lusr?: boolean;
+            spnkr_refresh_backfill_events?: boolean;
+            spnkr_refresh_backfill_weapons?: boolean;
+            friend_gamertags?: string[];
+            /** @description Affichage du système Objectifs/Prestige (section Accueil + nav L1). */
+            show_progression?: boolean;
+        };
+        /** @description Réponse de POST /setup/players */
+        CreatePlayerProfileResponse: {
+            player: components["schemas"]["PlayerSummary"];
+            db_created: boolean;
+            warnings: string[];
+        };
+        /** @description Informations de confidentialité des matchs d'un joueur Halo. */
+        MatchPrivacyInfo: {
+            is_private?: boolean;
+            is_partial?: boolean;
+            /** @description Message explicatif pour l'utilisateur. */
+            hint?: string;
+        };
+        /** @description Avertissement affiché dans l'UI quand le compte est privé. */
+        MatchPrivacyWarning: {
+            /** @enum {string} */
+            level: "none" | "partial" | "full";
+            message: string;
+        };
+        /** @description Stats normalisées d'un joueur pour la comparaison. */
+        NormalizedPlayerStats: {
+            gamertag?: string;
+            total_matches?: number;
+            win_rate?: number;
+            kd_ratio?: number;
+            avg_kills?: number;
+            avg_deaths?: number;
+            avg_assists?: number;
+            avg_score?: number;
+            avg_accuracy?: number;
+            avg_damage_dealt?: number;
+            avg_damage_taken?: number;
+            avg_medals?: number;
+            avg_time_played_sec?: number;
+            is_local?: boolean;
+        };
+        CompareMetricRow: {
+            label: string;
+            key?: string;
+            value_a: number;
+            value_b: number;
+            /** @enum {string} */
+            winner: "a" | "b" | "tie";
+            format?: string;
+        };
+        CompareRequest: {
+            target_gamertag: string;
+            /** @default hi */
+            title_slug: string;
+        };
+        CompareResponse: {
+            player_a: components["schemas"]["NormalizedPlayerStats"];
+            player_b: components["schemas"]["NormalizedPlayerStats"];
+            metrics: components["schemas"]["CompareMetricRow"][];
+            /** @description Message d'erreur si le joueur B n'a pas pu être résolu. */
+            error_b?: string | null;
+        };
+        LeaderboardEntry: {
+            rank: number;
+            title_slug?: string;
+            gamertag: string;
+            csr_value: number;
+            tier: string;
+            sub_tier: number;
+            is_local: boolean;
+            xuid?: string | null;
+        };
+        LeaderboardResponse: {
+            entries: components["schemas"]["LeaderboardEntry"][];
+            season_id: string | null;
+            playlist_id: string | null;
+            title_slug: string;
+            total: number;
+        };
+        /** @description Saison Halo active résolue depuis metadata.duckdb. */
+        CurrentSeasonResult: {
+            season_id?: string;
+            name?: string;
+            /** Format: date-time */
+            starts_at?: string | null;
+            /** Format: date-time */
+            ends_at?: string | null;
+            synthetic?: components["schemas"]["SeasonSynthetic"] | null;
+        };
+        /** @description Saison de substitution quand metadata.duckdb n'est pas disponible. */
+        SeasonSynthetic: {
+            season_id: string;
+            name: string;
+            is_fallback: boolean;
         };
         /**
-         * TeammatesPageResponse
-         * @description Réponse de la page Escouade.
+         * @description Couverture CSR pour un joueur — Phase 9 plan pipeline CSR.
+         *     Permet de vérifier que les snapshots Waypoint + les rows
+         *     match_skill_rank rating_type='CSR' sont complets, ou si un
+         *     backfill est nécessaire.
          */
-        TeammatesPageResponse: {
-            /** Options */
-            options: components["schemas"]["TeammateOption"][];
-            /** Teammates */
-            teammates: components["schemas"]["TeammateRow"][];
-            /**
-             * Total Matches
-             * @default 0
-             */
-            total_matches: number;
+        CSRCoverage: {
+            player_slug: string;
+            xuid: string;
+            snapshots: components["schemas"]["CSRSnapshotsCoverage"];
+            match_skill_rank_csr: components["schemas"]["MSRCSRCoverage"];
+            needs_backfill: boolean;
+        };
+        /** @description Résumé player_csr_snapshots pour un joueur. */
+        CSRSnapshotsCoverage: {
+            total: number;
+            with_alltime_value: number;
+            with_placement_remaining: number;
+        };
+        /** @description Résumé match_skill_rank rating_type='CSR'. */
+        MSRCSRCoverage: {
+            total: number;
+            matured: number;
+            placement: number;
+            ranked_matches_in_registry: number;
+            /** @description Matchs ranked sans row CSR — devrait être 0 après backfill. */
+            coverage_gap: number;
         };
         /**
-         * TeammatesQueryRequest
-         * @description Corps de la requête pour la page Escouade.
+         * @description État des tables progression V2 (Ascension) pour un joueur — Phase 4
+         *     plan stabilisation 2026-05-22. Counts sur streak/player_records/
+         *     record_history/milestone_earned/milestone_catalog. Si tous les counts
+         *     joueur sont à 0 après plusieurs cycles auto-sync (15 min × N), le
+         *     pipeline V2 n'est pas câblé.
          */
-        TeammatesQueryRequest: {
-            /**
-             * Selected Gamertags
-             * @default []
-             */
-            selected_gamertags: string[];
-            filters?: components["schemas"]["FilterContextInput"] | null;
-        };
-        /**
-         * UpdateSettingsRequest
-         * @description Mise à jour partielle des paramètres (PATCH /settings).
-         *
-         *     Tous les champs sont optionnels — seuls les champs fournis sont mis à jour.
-         *     ``discord_webhook_url`` peut être mis à jour mais ne sera jamais renvoyé.
-         */
-        UpdateSettingsRequest: {
-            /** Lang */
-            lang?: string | null;
-            /** Discord Lang */
-            discord_lang?: string | null;
-            /** User Timezone */
-            user_timezone?: string | null;
-            /** Normalize Mode Labels */
-            normalize_mode_labels?: boolean | null;
-            /** Show Records */
-            show_records?: boolean | null;
-            /** Refresh Clears Caches */
-            refresh_clears_caches?: boolean | null;
-            /** Career Top Exclude Btb */
-            career_top_exclude_btb?: boolean | null;
-            /** Media Captures Base Dir */
-            media_captures_base_dir?: string | null;
-            /** Media Tolerance Minutes */
-            media_tolerance_minutes?: number | null;
-            /** Media Watcher Enabled */
-            media_watcher_enabled?: boolean | null;
-            /** Media Watcher Debounce Seconds */
-            media_watcher_debounce_seconds?: number | null;
-            /** Discord Notifications Enabled */
-            discord_notifications_enabled?: boolean | null;
-            /** Discord Webhook Url */
-            discord_webhook_url?: string | null;
-            /** Discord Notify Sync */
-            discord_notify_sync?: boolean | null;
-            /** Discord Notify Backfill */
-            discord_notify_backfill?: boolean | null;
-            /** Discord Notify New Version */
-            discord_notify_new_version?: boolean | null;
-            /** Discord Notify New Media */
-            discord_notify_new_media?: boolean | null;
-            /** Spnkr Refresh With Backfill */
-            spnkr_refresh_with_backfill?: boolean | null;
-            /** Spnkr Refresh Backfill Medals */
-            spnkr_refresh_backfill_medals?: boolean | null;
-            /** Spnkr Refresh Backfill Skill */
-            spnkr_refresh_backfill_skill?: boolean | null;
-            /** Spnkr Refresh Backfill Aliases */
-            spnkr_refresh_backfill_aliases?: boolean | null;
-            /** Spnkr Refresh Backfill Personal Scores */
-            spnkr_refresh_backfill_personal_scores?: boolean | null;
-            /** Spnkr Refresh Backfill Performance Scores */
-            spnkr_refresh_backfill_performance_scores?: boolean | null;
-            /** Spnkr Refresh Backfill Lusr */
-            spnkr_refresh_backfill_lusr?: boolean | null;
-            /** Spnkr Refresh Backfill Events */
-            spnkr_refresh_backfill_events?: boolean | null;
-            /** Spnkr Refresh Backfill Weapons */
-            spnkr_refresh_backfill_weapons?: boolean | null;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
+        ProgressionDiag: {
+            player_slug: string;
+            /** @description Rows dans la table streak (player DB). */
+            streak_count: number;
+            /** @description PB du joueur dans shared_social.player_records. */
+            player_records_count: number;
+            /** @description Historique de records dans la player DB. */
+            record_history_count: number;
+            /** @description Milestones débloqués par le joueur. */
+            milestone_earned_count: number;
+            /** @description Catalogue référentiel des milestones (metadata.duckdb). */
+            milestone_catalog_count: number;
+            /** @description Timestamp du dernier post-sync delta (sync_meta). */
+            pipeline_wired_at?: string;
         };
     };
-    responses: never;
-    parameters: never;
+    responses: {
+        /** @description Requête invalide */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "bad_request",
+                 *       "message": "Paramètre invalide.",
+                 *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiErrorSchema"];
+            };
+        };
+        /** @description Authentification requise */
+        Unauthorized: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "auth_required",
+                 *       "message": "Authentification requise.",
+                 *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiErrorSchema"];
+            };
+        };
+        /** @description Ressource introuvable */
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "player_not_found",
+                 *       "message": "Joueur introuvable.",
+                 *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiErrorSchema"];
+            };
+        };
+        /** @description Erreur interne */
+        InternalError: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "internal_error",
+                 *       "message": "Erreur interne du serveur.",
+                 *       "retryable": true
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiErrorSchema"];
+            };
+        };
+    };
+    parameters: {
+        /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+        PlayerSlug: string;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_api_v1_health_get: {
+    getHealth: {
         parameters: {
             query?: never;
             header?: never;
@@ -2302,7 +3558,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Service opérationnel ou dégradé */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2313,18 +3569,16 @@ export interface operations {
             };
         };
     };
-    bootstrap_api_v1_bootstrap_get: {
+    getBootstrap: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                levelup_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Bootstrap complet */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2333,29 +3587,19 @@ export interface operations {
                     "application/json": components["schemas"]["BootstrapResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            500: components["responses"]["InternalError"];
         };
     };
-    players_list_api_v1_players_get: {
+    getPlayers: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                levelup_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Liste des joueurs */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2364,25 +3608,15 @@ export interface operations {
                     "application/json": components["schemas"]["PlayersListResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            500: components["responses"]["InternalError"];
         };
     };
-    update_session_context_api_v1_session_context_post: {
+    updateSessionContext: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
-            cookie?: {
-                levelup_session?: string | null;
-            };
+            cookie?: never;
         };
         requestBody: {
             content: {
@@ -2390,7 +3624,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Contexte de session mis à jour */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2399,24 +3633,18 @@ export interface operations {
                     "application/json": components["schemas"]["SessionContextResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    filters_resolve_api_v1_players__player_slug__filters_resolve_post: {
+    resolveFilters: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
@@ -2426,7 +3654,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Contexte de filtres résolu */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2435,320 +3663,24 @@ export interface operations {
                     "application/json": components["schemas"]["FilterContextResolved"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    // @deprecated sprint 29 — operation liée à l'artefact mort /setup/status. À supprimer au Sprint 32.
-    get_setup_status_api_v1_setup_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SetupStatusResponse"];
-                };
-            };
-        };
-    };
-    start_device_flow_api_v1_auth_device_flow_start_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceFlowStartResponse"];
-                };
-            };
-        };
-    };
-    get_device_flow_status_api_v1_auth_device_flow__attempt_id__get: {
+    getCareerPage: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                attempt_id: string;
-            };
-            cookie?: {
-                levelup_session?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeviceFlowStatusResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_player_profile_api_v1_setup_players_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreatePlayerProfileRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CreatePlayerProfileResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    start_smoke_test_api_v1_setup_smoke_test_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SmokeTestStartRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AsyncJobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    start_initial_sync_api_v1_sync_initial_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["InitialSyncStartRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AsyncJobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_settings_endpoint_api_v1_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingsResponse"];
-                };
-            };
-        };
-    };
-    patch_settings_api_v1_settings_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateSettingsRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SettingsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    reset_media_index_api_v1_settings_media_reset_index_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MediaResetRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AsyncJobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_status_api_v1_jobs__job_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AsyncJobStatus"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_career_page_api_v1_players__player_slug__pages_career_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur */
-                player_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
+            /** @description Page Carrière */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2757,30 +3689,23 @@ export interface operations {
                     "application/json": components["schemas"]["CareerPageResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    get_career_top_matches_api_v1_players__player_slug__pages_career_top_matches_get: {
+    getCareerTopMatches: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Top matchs */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2789,30 +3714,23 @@ export interface operations {
                     "application/json": components["schemas"]["CareerTopMatchesResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    get_career_encounters_api_v1_players__player_slug__pages_career_encounters_get: {
+    getCareerEncounters: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Encounters */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2821,24 +3739,235 @@ export interface operations {
                     "application/json": components["schemas"]["CareerEncountersResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getCareerHighlightMatches: {
+        parameters: {
+            query?: {
+                experience?: "all" | "ranked" | "unranked";
+                /** @description CSV des IDs de saison à filtrer (ex. "season6,season7") */
+                season_ids?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Highlight matches */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": {
+                        best_matches: {
+                            [key: string]: unknown;
+                        }[];
+                        worst_matches: {
+                            [key: string]: unknown;
+                        }[];
+                        available_experience: {
+                            /** @enum {string} */
+                            value: "all" | "ranked" | "unranked";
+                            count: number;
+                        }[];
+                        available_seasons: {
+                            value: string;
+                            count: number;
+                        }[];
+                    };
                 };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+            /** @description MatchHistoryService factory indisponible (cas test) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
-    query_match_history_api_v1_players__player_slug__pages_match_history_query_post: {
+    getCareerTopEncounters: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Top encounters */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            [key: string]: unknown;
+                        }[];
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getCareerRivals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rivals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        nemeses: {
+                            gamertag: string;
+                            frags: number;
+                            deaths: number;
+                            ratio: number;
+                            match_count: number;
+                        }[];
+                        victims: {
+                            gamertag: string;
+                            frags: number;
+                            deaths: number;
+                            ratio: number;
+                            match_count: number;
+                        }[];
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getCareerCSRs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Classements CSR par playlist */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        season_id: string;
+                        playlists: {
+                            playlist_id: string;
+                            playlist_name: string;
+                            queue: string;
+                            input: string;
+                            current: components["schemas"]["CareerCSRRank"];
+                            season: components["schemas"]["CareerCSRRank"];
+                            all_time: components["schemas"]["CareerCSRRank"];
+                        }[];
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getPlayerPatterns: {
+        parameters: {
+            query?: {
+                /** @description Nombre de matchs récents à analyser (10 ≤ n ≤ 200, défaut 50). */
+                n?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rapport patterns du joueur (peut être vide si aucun match) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Taille effective de la fenêtre analysée */
+                        window_size: number;
+                        context_patterns: Record<string, never>[];
+                        behavior_patterns: Record<string, never>[];
+                        levers: Record<string, never>[];
+                        /** Format: date-time */
+                        computed_at: string;
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getAchievementsPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page Achievements */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AchievementsPageResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    queryMatchHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
@@ -2848,7 +3977,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Historique paginé */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2857,34 +3986,24 @@ export interface operations {
                     "application/json": components["schemas"]["MatchHistoryPageResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    export_match_history_api_v1_players__player_slug__pages_match_history_export_post: {
+    exportMatchHistory: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MatchHistoryExportRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Jeton d'export */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2893,18 +4012,12 @@ export interface operations {
                     "application/json": components["schemas"]["FileTokenResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    search_gamertags_api_v1_directory_gamertags_search_get: {
+    searchGamertags: {
         parameters: {
             query?: {
                 /** @description Requête de recherche (min. 2 caractères) */
@@ -2918,7 +4031,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Suggestions de gamertags */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2927,24 +4040,16 @@ export interface operations {
                     "application/json": components["schemas"]["GamertagSearchResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            500: components["responses"]["InternalError"];
         };
     };
-    query_explorer_matches_api_v1_players__player_slug__pages_explorer_matches_query_post: {
+    queryExplorerMatches: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
@@ -2954,7 +4059,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Matchs Explorer */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2963,24 +4068,18 @@ export interface operations {
                     "application/json": components["schemas"]["ExplorerMatchesQueryResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    query_explorer_player_api_v1_players__player_slug__pages_explorer_player_query_post: {
+    queryExplorerPlayer: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
             };
             cookie?: never;
         };
@@ -2990,7 +4089,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Profil encounter */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2999,204 +4098,589 @@ export interface operations {
                     "application/json": components["schemas"]["ExplorerPlayerQueryResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    get_home_page_api_v1_players__player_slug__pages_home_get: {
+    getMatchView: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                /** @description UUID du match Halo Infinite */
+                match_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Détail du match */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HomePageResponse"];
+                    "application/json": components["schemas"]["MatchViewResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
         };
     };
-    get_battlepass_api_v1_players__player_slug__battlepass_get: {
+    setMatchExclusion: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BattlePassResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_challenges_api_v1_players__player_slug__challenges_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur */
-                player_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ChallengesResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_teammates_page_api_v1_players__player_slug__pages_teammates_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                /** @description UUID du match Halo Infinite */
+                match_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TeammatesQueryRequest"];
+                "application/json": {
+                    /** @description true = ignorer ce match, false = réactiver */
+                    excluded: boolean;
+                };
             };
         };
         responses: {
-            /** @description Successful Response */
+            /** @description Exclusion mise à jour avec succès */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postAuthDeviceFlowStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Flow initié (user_code + verification_uri) */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TeammatesPageResponse"];
+                    "application/json": components["schemas"]["DeviceFlowStartResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+            422: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
         };
     };
-    get_synthesis_page_api_v1_players__player_slug__pages_synthesis_post: {
+    getAuthDeviceFlowStatus: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Slug du joueur */
-                player_slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SynthesisQueryRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SynthesisPageResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_media_page_api_v1_players__player_slug__pages_media_get: {
-        parameters: {
-            query?: {
-                sort?: string;
-                kind_filter?: string | null;
-                section_filter?: string | null;
-                page?: number;
-                page_size?: number;
-            };
-            header?: never;
-            path: {
-                /** @description Slug du joueur */
-                player_slug: string;
+                attempt_id: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
+            /** @description Statut du flow (pending / authorized / provisioned / failed / expired) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceFlowStatusResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postSetupPlayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Profil créé */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatePlayerProfileResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postSetupSmokeTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Smoke test démarré */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postSyncInitial: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync démarrée */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            /** @description Une sync est déjà en cours */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorSchema"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Configuration actuelle */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    patchSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Configuration mise à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SettingsResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postSettingsMediaResetIndex: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reset démarré */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statut du job */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsyncJobStatus"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getHomePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Page accueil (hero card, timeline, médias récents) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+            500: components["responses"]["InternalError"];
+        };
+    };
+    getBattlePass: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Battle Pass (auth_required si non connecté) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getChallenges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Challenges (auth_required si non connecté) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des sessions avec stats agrégées */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postSessionDetailPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Détail de session avec suggestion similaire et comparaison intégrée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postStatsQuery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Données séries temporelles (win/loss, précision, forme, objectif) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    postTimeseriesPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Données séries temporelles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    getSquadPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Analyse escouade / coéquipiers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postTeammatesPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Analyse coéquipiers avec statistiques */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postSynthesisPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Synthèse globale (heatmap, top semaines, comparaison KPIs) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postCitations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Citations calculées (Triple Kill, Clutch, etc.) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postCommendations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Commendations et médailles par catégorie */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postMediaLibrary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MediaPageRequest"];
+            };
+        };
+        responses: {
+            /** @description Galerie médias paginée */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3205,15 +4689,1912 @@ export interface operations {
                     "application/json": components["schemas"]["MediaPageResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
+            404: components["responses"]["NotFound"];
+        };
+    };
+    patchMediaLike: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaLikeRequest"];
+            };
+        };
+        responses: {
+            /** @description État liked persisté côté backend */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["MediaLikeResponse"];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postComparePage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompareRequest"];
+            };
+        };
+        responses: {
+            /** @description Résultat de comparaison avec 12 KPIs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompareResponse"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getLeaderboardPage: {
+        parameters: {
+            query?: {
+                /** @description Filtrer par saison */
+                season?: string;
+                /** @description Filtrer par playlist */
+                playlist?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Classement des joueurs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeaderboardResponse"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postSessionCompare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Comparaison sessions A/B */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postLastMatchResolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dernier match résolu */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getChangelog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Contenu du changelog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Contenu Markdown du changelog */
+                        content?: string;
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getHealthz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getReadyz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prêt à servir le trafic */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Pas prêt (un check externe échoue) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getHealthzHome: {
+        parameters: {
+            query: {
+                /** @description player_slug (cf. /bootstrap.player_slug) */
+                player: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Toutes les sections critiques sont peuplées */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Param 'player' manquant */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description player_slug inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /**
+             * @description Au moins une section est vide sans raison. Body :
+             *     `{ok: false, player, checks: {section: 'ok'|'missing (raison)'},
+             *     empty_sections: ['banner', 'highest_csr', ...]}`
+             */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getReleaseNotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des release notes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postAuthLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session créée (cookie set) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    postAuthLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logged out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postAuthRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Compte créé */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    listAdminInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des invitations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createAdminInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation créée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteAdminInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invite_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invitation supprimée */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAdminUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des utilisateurs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteAdminUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Utilisateur supprimé */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patchAdminUserPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Mot de passe réinitialisé */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patchAdminUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rôle mis à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBattlepassAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                filename: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getChallengeBadgeAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                filename: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMapsMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des maps */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Asset metadata DB indisponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listWeaponsMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Liste des armes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Asset metadata DB indisponible */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMapAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                map_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMedalAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                medal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSpartanAsset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                title_id: string;
+                xuid: string;
+                path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTitleFieldMappings: {
+        parameters: {
+            query?: {
+                locale?: "fr" | "en";
+            };
+            header?: never;
+            path: {
+                title_slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Field mappings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getEngagementProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Engagement profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postEngagementTimeseries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    filters?: Record<string, never>;
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /**
+             * @description EngagementTimeseriesResponse — granularity adaptative selon densité
+             *     filtrée : match (≤ limit) → session → week → month. Au-delà de
+             *     workCap=200 matchs filtrés, le binning ne couvre que les N plus
+             *     récents et `truncated_to_recent` est positionné.
+             */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        granularity: "match" | "session" | "week" | "month";
+                        points: Record<string, never>[];
+                        total_matches: number;
+                        truncated_to_recent?: number | null;
+                    };
+                };
+            };
+            /** @description invalid_json ou invalid_filters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    postRecomputeEngagementCoefficients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rapport de recompute */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["NotFound"];
+            /** @description Engagement persistence unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMatchEngagement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Engagement match */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMatchNeighbors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Match neighbors */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patchMatchFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                match_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statut mis à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSquadV2Page: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Squad V2 page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSquadEngagementSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Squad engagement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getSeasonPassPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Season pass page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMediaFeedVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Feed version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMediaAuthors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authors list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    serveMediaFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                filepath: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Binary content */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getMediaMatchCandidates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Match candidates */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postUploadMedia: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Media uploadé */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postMediaAssociate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Association créée */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notifications */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteNotification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notification supprimée */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patchNotificationUnread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                notification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notification mise à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Préférences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patchNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Préférences mises à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getNotificationUnreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Count */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postMarkAllRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postMarkRead: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postNotificationTest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notification émise */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProgressionStreaks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Streaks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProgressionRecords: {
+        parameters: {
+            query?: {
+                /** @description Limite l'historique des PB battus (défaut 50, max 200) */
+                history_limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Records */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listProgressionMilestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Milestones */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getPlayerProfile: {
+        parameters: {
+            query?: {
+                /** @description Fenêtre d'analyse en jours (clampé 7..120) */
+                window_days?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PlayerProfile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Joueur inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    startCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne créée */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Axe invalide */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Une campagne est déjà active */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getActiveCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne ou null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getCampaignByID: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                /** @description ID de la campagne */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne inconnue */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    pauseCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne mise en pause */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne inconnue */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Transition d'état invalide */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    resumeCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne reprise */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne inconnue */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Transition d'état invalide */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    closeCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne clôturée */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne inconnue */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne déjà terminée */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    abandonCampaign: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Campagne abandonnée */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne inconnue */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Campagne déjà terminée */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listCoachProposals: {
+        parameters: {
+            query?: {
+                /** @description Filtre par status (vide = toutes les proposals) */
+                status?: "pending" | "accepted" | "dismissed" | "superseded" | "obsoleted" | "stale";
+            };
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Proposals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Joueur inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coach advisor non configuré ou indisponible pour ce joueur */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    acceptCoachProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted — challenge_id ou arc_id + challenge_ids dans la réponse */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description id manquant */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proposal ou joueur inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Proposal n'est plus pending (déjà accepted/dismissed/superseded/obsoleted) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coach advisor non configuré */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    dismissCoachProposal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dismissed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description id manquant */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Joueur inconnu */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coach advisor non configuré */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getWatcherAuthCallback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider: "xbox" | "steam";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Callback OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postWatcherAuthStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description URL de redirection OAuth */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getWatcherStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Watcher status */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    patchWatcherSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Subscriptions mises à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postSettingsMediaScan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Scan démarré */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postSettingsSessionsRecalculate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Recalcul démarré */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBackupStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Statut courant (enabled, last backup, DBs exportées, config) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupStatusResponse"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+        };
+    };
+    postBackupRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Résultat du cycle (snapshot_id, bases exportées, durée) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupRunResult"];
+                };
+            };
+            500: components["responses"]["InternalError"];
+            /** @description Scheduler non initialisé (backup désactivé) */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postPlayerSync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync démarré */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postSyncAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sync global démarré */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    postBackfillStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job créé, voir GET /jobs/{job_id} */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getDiagCSRCoverage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Couverture CSR */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CSRCoverage"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getDiagProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Slug du joueur (dérivé du gamertag, ex. "Chocoboflor") */
+                player_slug: components["parameters"]["PlayerSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État pipeline progression V2 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressionDiag"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
 }

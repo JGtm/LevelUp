@@ -1,3 +1,26 @@
+## [2026-05-29] fix(api): Axe 4 — réparer le pipeline de génération de types OpenAPI (refs cassées)
+
+**Statut** : Fondation livrée (branche `refactor/arch-port-abstractions` ; commit délégué). Migration des consommateurs = travail incrémental documenté ci-dessous.
+
+**Contexte** : Axe 4 du plan (types OpenAPI front). Vérif code AVANT impl (le plan le marquait non vérifié) → réalité différente du plan :
+- Le pipeline est DÉJÀ câblé : script `generate-types` (openapi-typescript 7.13 → `generated.ts`), dep installée, `openapi.yaml` (4852 l.) source de vérité.
+- MAIS `npm run generate-types` **échouait** : 2 `$ref` cassés dans `openapi.yaml` →
+  1. `SessionContextResponse.available_titles.items` → `#/components/schemas/TitleSummary` (schéma **jamais défini**).
+  2. `/auth/login` 401 → `#/components/responses/Unauthorized` (réponse **jamais définie**).
+- Conséquence : `generated.ts` (3219 l.) **gravement périmé** (personne ne pouvait le régénérer), et **0 fichier** ne l'importe ; **269 fichiers** importent le `types.ts` manuel (3453 l.).
+
+**Décision** : le vrai blocage d'Axe 4 n'est pas la migration mais le **contrat cassé**. Fix ciblé :
+- Ajout du schéma `TitleSummary` dans `components/schemas` (forme calquée sur le `types.ts` front : slug/name/icon_url?/status enum/capabilities[]/is_default).
+- Ajout de la réponse `Unauthorized` dans `components/responses` (calquée sur `BadRequest`, code `auth_required`).
+
+**Résultats observés** : `npm run generate-types` ✅ (`openapi.yaml → generated.ts [123ms]`, 0 erreur). `generated.ts` régénéré (énorme diff 5546+/2165− = à quel point il était périmé). `tsc -b` front ✅ EXIT 0 (régénéré valide, 0 importeur donc 0 casse). `go test ./contracttest/` ✅ (YAML toujours valide pour le Go). `go.mod`/`go.sum` intacts.
+
+**Reste (incrémental, NON fait — honnête)** :
+1. **Migration 269 fichiers** `types.ts` → `generated.ts` : styles d'export INCOMPATIBLES (`PlayerSummary` nommé vs `components['schemas']['PlayerSummary']` imbriqué). Stratégie recommandée = shim de ré-export (`export type X = components['schemas']['X']`) feature-par-feature + test de compat par groupe, pour ne pas toucher 269 imports d'un coup. C'est un chantier multi-jours, pas une session.
+2. **Régénérer les types Go** (`make gen`) : impossible ici (oapi-codegen non installé, absent de go.mod). Non bloquant (rien ne référence `TitleSummary` côté Go encore ; contract test vert). À faire quand le binaire est dispo.
+
+**Conclusion** : la FONDATION d'Axe 4 est réparée — le pipeline de génération refonctionne et `generated.ts` est à jour avec le contrat. La migration des consommateurs reste un chantier incrémental à planifier (sa propre branche).
+
 ## [2026-05-29] test(patterns): QA finale — test DB-backed PatternsRepo + vérif globale du chantier découplage
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué à l'utilisateur)
