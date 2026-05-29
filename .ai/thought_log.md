@@ -1,3 +1,23 @@
+## [2026-05-29] refactor(web): migration types.ts → generated.ts — Phase A (inventaire + batch 1 shim)
+
+**Statut** : Phase A livrée (branche `refactor/arch-port-abstractions`). Migration = chantier multi-sessions ; ce commit = fondation + calibrage.
+
+**Inventaire** (script jetable `_inv.mjs`, supprimé après) croisant les noms `types.ts` ↔ `components.schemas` de `generated.ts` :
+- 314 types manuels / 112 schémas OpenAPI.
+- **97 MATCHÉS** → candidats shim.
+- **217 FRONTEND-ONLY** (view models, sans schéma) → restent manuels.
+- 15 schémas sans type manuel (info).
+
+**Stratégie validée** : shim de ré-export (`export type X = components['schemas']['X']`) dans `types.ts` → **aucun des 269 consommateurs n'est touché**, et **`tsc -b` sert d'oracle de compatibilité** (un shim incompatible fait rougir les usages). Header de `types.ts` mis à jour + `import type { components } from './generated'`.
+
+**Batch 1 (8 types bootstrap)** : 7 shimés proprement (PlayerSummary, CapabilityMap, FeatureFlags, SettingsExcerpt, HaloIdentitySummary, TitleSummary, PlayersListResponse). **1 divergent → BootstrapResponse** : tsc a révélé que le **schéma OpenAPI BootstrapResponse est INCOMPLET** vs la réponse réelle du backend Go — manquent `auth_mode, first_launch, current_username, current_title_slug, available_titles, registration_mode, is_admin, oauth_code_flow_enabled` (+ `current_player?`/`privacy?` divergents). → gardé manuel avec TODO(bucket B) ; à réconcilier en complétant `openapi.yaml`.
+
+**Finding** : la migration sert aussi de **détecteur de dérive du contrat** — le schéma le plus fondamental (bootstrap) sous-spécifie la réponse réelle. Bucket B = « compléter openapi.yaml » est un sous-chantier à part entière.
+
+**Résultats observés** : `tsc -b` EXIT 0 (après revert du divergent) ; 38 tests web verts (explorer + api). Type-only (ré-exports erased au runtime) → vitest non impacté par construction.
+
+**Prochaines étapes** : batcher les ~90 matchés restants (par groupe thématique, tsc entre chaque) ; tenir une liste bucket B (schémas openapi.yaml à compléter) ; Phase D = déplacer les 217 frontend-only dans un `viewModels.ts` + ratchet anti-doublon. Multi-sessions.
+
 ## [2026-05-29] chore(api): régénérer types.gen.go (Go) + épingler oapi-codegen dans le Makefile
 
 **Statut** : Complété (branche `refactor/arch-port-abstractions` ; commit délégué). Chantier incrémental 2/2 du suivi Axe 4.
