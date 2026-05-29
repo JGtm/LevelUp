@@ -49855,3 +49855,23 @@ Quand Guillaume relance le sprint title-agnostic, démarrer par Phase 0 (4 ADRs 
 **Effet** : les nouveaux matchs syncés auront `real_start_time` = début gameplay réel (T0 from first_joined). t0_quality reste NULL au sync (diagnostic seul ; RealStartTime est la valeur load-bearing). Les matchs sans ParticipationInfo exploitable → RealStartTime nil → fallback runtime T0=0.
 
 **Reste** : Phase 3 (activation runtime : remplacer `phase1T0Ms()` par lecture `epoch(real_start_time AT TIME ZONE 'UTC') − epoch(start_time_utc)`) + recalcul LUSR (propager last_leave corrigé) + Phase 4 (time_played + AvgLife).
+
+---
+
+## [2026-05-29] Phase 4 partielle — fix aberration AvgLifeSeconds (squad_breakdown.go)
+
+**Statut** : Complété (bug code pur).
+
+L'aberration : `kpis.AvgLifeSeconds = sumTimePlayed/nTime` (= temps moyen joué par match, PAS la moyenne de vie API) dans 2 fonctions.
+
+- **Site 2** `ComputeSynthesisKPIsFromCanonical` (rows canoniques) : fix correct — accumulateur dédié `sumLife/nLife` depuis `r.Self.AvgLifeSeconds` (valeur API). `sumTimePlayed` réservé au KPM.
+- **Site 1** `ComputeSynthesisKPIs` (legacy `SynthesisMatchRow`) : le type ne porte PAS `avg_life_seconds` → impossible d'y mettre la vraie valeur. Choix : laisser `AvgLifeSeconds` nil (honnête) au lieu d'une valeur fausse. TODO documenté : charger `avg_life_seconds` dans SynthesisMatchRow (Q33b) pour l'exposer.
+
+Tests analysis verts. **Découverte** : le site legacy nécessiterait un ajout de champ + repo (hors scope budget de cette session).
+
+**NON FAITS ce tour (budget session épuisé, à reprendre)** :
+- **Phase 3 activation T0** : s'avère plus qu'un flip de `phase1T0Ms()` — il faut PROPAGER `real_start_time` jusqu'aux `canonical.PlayerMatchRow` (Summary n'a pas le champ) + repos qui les chargent, pour que Timeseries/Squad puissent l'utiliser. MatchView (MatchRegistryRow/meta) plus direct. Multi-fichiers + golden à régénérer + idéalement validation UI.
+- **Recalcul LUSR** : prod-sensitive, nécessite d'investiguer le mécanisme de recalcul. À ne pas improviser.
+- **time_played_seconds** : recalcul + backfill DB (checkpoint).
+
+**Prochaine étape** : Phase 3 (avec propagation real_start_time → canonical) sur contexte frais.

@@ -377,9 +377,11 @@ func ComputeSynthesisKPIs(rows []legacymatch.SynthesisMatchRow, isSquad bool) do
 		v := math.Round(sumPerf / float64(nPerf))
 		kpis.PerformanceScore = &v
 	}
+	// AvgLifeSeconds laissé nil : SynthesisMatchRow (legacy) ne porte pas la valeur
+	// API. L'ancien code y mettait sumTimePlayed/n (= temps moyen joué, FAUX). La
+	// version canonique ComputeSynthesisKPIsFromCanonical expose la vraie moyenne.
+	// TODO: charger avg_life_seconds dans SynthesisMatchRow (Q33b) pour l'exposer ici.
 	if nTime > 0 {
-		avgLife := math.Round(sumTimePlayed/float64(nTime)*10) / 10
-		kpis.AvgLifeSeconds = &avgLife
 		totalMinutes := sumTimePlayed / 60.0
 		if totalMinutes > 0 {
 			kpm := math.Round(sumKills/totalMinutes*100) / 100
@@ -481,8 +483,8 @@ func (a *extKPIAcc) applyTo(kpis *domain.SynthesisKPIs, nMatches int, sumTimeSec
 
 func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad bool) domain.SynthesisKPIs {
 	var kpis domain.SynthesisKPIs
-	var totalWL, wins, nKDA, nAcc, nPerf, nTime int
-	var sumKDA, sumAcc, sumPerf, sumKills, sumTimePlayed float64
+	var totalWL, wins, nKDA, nAcc, nPerf, nTime, nLife int
+	var sumKDA, sumAcc, sumPerf, sumKills, sumTimePlayed, sumLife float64
 	var ext extKPIAcc
 
 	for _, r := range rows {
@@ -515,6 +517,10 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 			sumTimePlayed += float64(*r.Self.TimePlayed)
 			nTime++
 		}
+		if r.Self.AvgLifeSeconds != nil {
+			sumLife += *r.Self.AvgLifeSeconds
+			nLife++
+		}
 		ext.add(r)
 	}
 
@@ -539,9 +545,12 @@ func ComputeSynthesisKPIsFromCanonical(rows []canonical.PlayerMatchRow, isSquad 
 		v := math.Round(sumPerf / float64(nPerf))
 		kpis.PerformanceScore = &v
 	}
-	if nTime > 0 {
-		avgLife := math.Round(sumTimePlayed/float64(nTime)*10) / 10
+	// AvgLifeSeconds = moyenne de la valeur API par match (NON sumTimePlayed/n).
+	if nLife > 0 {
+		avgLife := math.Round(sumLife/float64(nLife)*10) / 10
 		kpis.AvgLifeSeconds = &avgLife
+	}
+	if nTime > 0 {
 		if tot := sumTimePlayed / 60.0; tot > 0 {
 			kpm := math.Round(sumKills/tot*100) / 100
 			kpis.KillsPerMin = &kpm
