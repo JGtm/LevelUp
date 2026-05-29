@@ -11,7 +11,6 @@ import { formatMessage } from '@/lib/i18n/format'
 import { palmaresManifest, type PalmaresManifestKey } from '@/lib/i18n/generated/palmares'
 
 export type PalmaresLocale = 'fr' | 'en'
-export type PalmaresTab = 'leaderboard' | 'relations' | 'season-pass' | 'compare'
 
 export interface PalmaresText {
   intlLocale: string
@@ -19,7 +18,6 @@ export interface PalmaresText {
     title: string
     subtitle: string
   }
-  tabs: Record<PalmaresTab, string>
   relations: {
     retry: string
     unavailableTitle: string
@@ -116,12 +114,6 @@ export function getPalmaresText(locale?: string | null): PalmaresText {
     page: {
       title: t(loc, 'palmares.page.title'),
       subtitle: t(loc, 'palmares.page.subtitle'),
-    },
-    tabs: {
-      leaderboard: t(loc, 'palmares.tabs.leaderboard'),
-      relations: t(loc, 'palmares.tabs.relations'),
-      'season-pass': t(loc, 'palmares.tabs.season_pass'),
-      compare: t(loc, 'palmares.tabs.compare'),
     },
     relations: {
       retry: t(loc, 'palmares.errors.retry'),

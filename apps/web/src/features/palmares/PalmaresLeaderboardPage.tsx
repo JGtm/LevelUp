@@ -2,14 +2,12 @@ import { useParams } from '@tanstack/react-router'
 
 import { LeaderboardBlock } from '@/features/leaderboard/LeaderboardBlock'
 
-import { PalmaresShell } from './PalmaresShell'
-
 export function PalmaresLeaderboardPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
 
   return (
-    <PalmaresShell playerSlug={playerSlug} activeTab="leaderboard">
+    <div className="flex flex-col gap-6 p-6">
       <LeaderboardBlock playerSlug={playerSlug} />
-    </PalmaresShell>
+    </div>
   )
 }

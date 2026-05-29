@@ -11,7 +11,6 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { formatPercent, formatKDA, formatDate } from '@/lib/formatters'
 
 import { getPalmaresText, normalizePalmaresLocale } from './i18n'
-import { PalmaresShell } from './PalmaresShell'
 import { useRelationsPage } from './queries'
 
 type RelationVariant = 'allies' | 'synergy' | 'nemesis' | 'victim' | 'circle'
@@ -143,24 +142,24 @@ export function PalmaresRelationsPage() {
 
   if (isLoading) {
     return (
-      <PalmaresShell playerSlug={playerSlug} activeTab="relations">
+      <div className="flex flex-col gap-6 p-6">
         <div className="flex items-center justify-center py-24">
           <Spinner size="lg" />
         </div>
-      </PalmaresShell>
+      </div>
     )
   }
 
   if (isError || !data) {
     return (
-      <PalmaresShell playerSlug={playerSlug} activeTab="relations">
+      <div className="flex flex-col gap-6 p-6">
         <EmptyStateCard
           title={text.relations.unavailableTitle}
           description={error?.message ?? text.relations.unavailableDescription}
           actionLabel={text.relations.retry}
           onAction={() => refetch()}
         />
-      </PalmaresShell>
+      </div>
     )
   }
 
@@ -172,7 +171,7 @@ export function PalmaresRelationsPage() {
     data.closed_circle.length
 
   return (
-    <PalmaresShell playerSlug={playerSlug} activeTab="relations">
+    <div className="flex flex-col gap-6 p-6">
       <div className="grid gap-4 xl:grid-cols-4" data-testid="palmares-relations-overview">
         <OverviewCard
           label={text.relations.overview.distinctPlayers}
@@ -255,6 +254,6 @@ export function PalmaresRelationsPage() {
           </div>
         </div>
       )}
-    </PalmaresShell>
+    </div>
   )
 }

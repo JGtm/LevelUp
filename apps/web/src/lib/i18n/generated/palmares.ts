@@ -76,10 +76,6 @@ export const palmaresManifest = {
   "palmares.season_pass.unavailable_title": { fr: "Pass saisonnier indisponible", en: "Season pass unavailable" },
   "palmares.season_pass.upcoming": { fr: "À venir", en: "Upcoming" },
   "palmares.season_pass.xp_available": { fr: "XP disponible", en: "XP available" },
-  "palmares.tabs.compare": { fr: "Face-à-face", en: "Head-to-head" },
-  "palmares.tabs.leaderboard": { fr: "Classements", en: "Leaderboard" },
-  "palmares.tabs.relations": { fr: "Relations", en: "Relations" },
-  "palmares.tabs.season_pass": { fr: "Pass saisonnier", en: "Season Pass" },
 } as const
 
 export type PalmaresManifestKey = keyof typeof palmaresManifest
