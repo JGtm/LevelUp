@@ -147,6 +147,21 @@ type ExplorerTargetSampleStats struct {
 	HeadshotRate        *float64 `json:"headshot_rate,omitempty"`        // headshots/kills
 	OffensiveConversion *float64 `json:"offensive_conversion,omitempty"` // cf. combat_yield.go
 	DefensiveResistance *float64 `json:"defensive_resistance,omitempty"` // cf. combat_yield.go
+
+	// Cadence par minute — KPI dérivés (kills/deaths/assists ÷ minutes jouées),
+	// même définition que la page Coéquipiers/Squad (teammates.14). Nil si la
+	// durée jouée cumulée est nulle.
+	KillsPerMin   *float64 `json:"kills_per_min,omitempty"`
+	DeathsPerMin  *float64 `json:"deaths_per_min,omitempty"`
+	AssistsPerMin *float64 `json:"assists_per_min,omitempty"`
+
+	// AvgPersonalScore : score Halo moyen par match (AVG(personal_score), la
+	// colonne "Score" du scoreboard). Nil si sample vide.
+	AvgPersonalScore *float64 `json:"avg_personal_score,omitempty"`
+
+	// PerfectKills : total de "frags parfaits" sur le sample (médaille Perfect,
+	// medal_name_id=1512363953 dans shared.medals_earned).
+	PerfectKills int `json:"perfect_kills"`
 }
 
 // ParticipantStatsAggregate : agrégat brut renvoyé par le repo DuckDB pour le
@@ -167,6 +182,11 @@ type ParticipantStatsAggregate struct {
 	MeleeKills       int
 	PowerWeaponKills int
 	GrenadeKills     int
+	// TimePlayedSeconds : somme du temps joué (s) sur le sample — alimente la
+	// cadence par minute. Colonne match_participants.time_played_seconds.
+	TimePlayedSeconds int
+	// PersonalScore : somme du score Halo (personal_score) sur le sample.
+	PersonalScore int
 }
 
 // MedalCountsAggregate : agrégat brut médailles pour un joueur sur un sample
@@ -174,6 +194,9 @@ type ParticipantStatsAggregate struct {
 type MedalCountsAggregate struct {
 	Total  int
 	Unique int
+	// PerfectKills : occurrences de la médaille "Perfect" (medal_name_id
+	// 1512363953) — exposé en "frags parfaits".
+	PerfectKills int
 }
 
 // KillerVictimAggregate : kills croisés agrégés entre deux joueurs.

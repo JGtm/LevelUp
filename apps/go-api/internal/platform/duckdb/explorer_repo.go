@@ -110,7 +110,9 @@ func (r *ExplorerRepo) GetParticipantStatsForMatches(
 			COALESCE(SUM(headshot_kills), 0)      AS headshot_kills,
 			COALESCE(SUM(melee_kills), 0)         AS melee_kills,
 			COALESCE(SUM(power_weapon_kills), 0)  AS power_weapon_kills,
-			COALESCE(SUM(grenade_kills), 0)       AS grenade_kills
+			COALESCE(SUM(grenade_kills), 0)       AS grenade_kills,
+			COALESCE(SUM(time_played_seconds), 0) AS time_played_seconds,
+			COALESCE(SUM(personal_score), 0)      AS personal_score
 		FROM match_participants
 		WHERE xuid = ? AND match_id IN (%s)
 	`, placeholders)
@@ -136,6 +138,7 @@ func (r *ExplorerRepo) GetParticipantStatsForMatches(
 		&agg.DamageDealt, &agg.DamageTaken,
 		&agg.HeadshotKills, &agg.MeleeKills,
 		&agg.PowerWeaponKills, &agg.GrenadeKills,
+		&agg.TimePlayedSeconds, &agg.PersonalScore,
 	)
 	if err == sql.ErrNoRows {
 		// Aucune ligne : le joueur n'a aucun participants row sur ces matchs.
@@ -163,7 +166,10 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 	q := fmt.Sprintf(`
 		SELECT
 			COALESCE(SUM(count), 0)                  AS total,
-			COALESCE(COUNT(DISTINCT medal_name_id), 0) AS unique_count
+			COALESCE(COUNT(DISTINCT medal_name_id), 0) AS unique_count,
+			-- Frags parfaits = médaille "Perfect" (medal_name_id 1512363953),
+			-- même approche que Q12MatchScoreboard / Q30 (queries_squad.go).
+			COALESCE(SUM(CASE WHEN medal_name_id = 1512363953 THEN count ELSE 0 END), 0) AS perfect_kills
 		FROM medals_earned
 		WHERE xuid = ? AND match_id IN (%s)
 	`, placeholders)
@@ -182,7 +188,7 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 
 	row := db.QueryRowContext(ctx, q, args...)
 	var agg domain.MedalCountsAggregate
-	if err := row.Scan(&agg.Total, &agg.Unique); err != nil {
+	if err := row.Scan(&agg.Total, &agg.Unique, &agg.PerfectKills); err != nil {
 		if err == sql.ErrNoRows {
 			return &domain.MedalCountsAggregate{}, nil
 		}

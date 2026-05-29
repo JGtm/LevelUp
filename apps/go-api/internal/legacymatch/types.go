@@ -99,6 +99,7 @@ type StatsMatchRow struct {
 	DamageDealt         *float64
 	DamageTaken         *float64
 	TimePlayedSeconds   *int
+	AvgLifeSeconds      *float64
 	TeamMMR             *float64
 	EnemyMMR            *float64
 	KillsExpected       *float64

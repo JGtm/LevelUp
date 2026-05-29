@@ -48,6 +48,7 @@ func BuildSampleStats(
 	if medals != nil {
 		stats.TotalMedals = medals.Total
 		stats.UniqueMedals = medals.Unique
+		stats.PerfectKills = medals.PerfectKills
 	}
 
 	// KDA = (kills + assists/3) / deaths.
@@ -90,5 +91,30 @@ func BuildSampleStats(
 		stats.DefensiveResistance = &dr
 	}
 
+	// Cadence par minute (même KPI dérivé que la page Coéquipiers, teammates.14).
+	setPerMinuteCadence(stats, agg)
+
+	// Score Halo moyen par match (AVG(personal_score)).
+	if sampleSize > 0 {
+		avg := float64(agg.PersonalScore) / float64(sampleSize)
+		stats.AvgPersonalScore = &avg
+	}
+
 	return stats
+}
+
+// setPerMinuteCadence dérive frags/morts/assists par minute depuis le temps
+// joué cumulé (time_played_seconds). Laisse les pointeurs nil si la durée
+// cumulée est nulle (dégradation gracieuse, comme la page Coéquipiers).
+func setPerMinuteCadence(stats *domain.ExplorerTargetSampleStats, agg *domain.ParticipantStatsAggregate) {
+	if agg.TimePlayedSeconds <= 0 {
+		return
+	}
+	minutes := float64(agg.TimePlayedSeconds) / 60.0
+	kpm := float64(agg.Kills) / minutes
+	dpm := float64(agg.Deaths) / minutes
+	apm := float64(agg.Assists) / minutes
+	stats.KillsPerMin = &kpm
+	stats.DeathsPerMin = &dpm
+	stats.AssistsPerMin = &apm
 }

@@ -50,6 +50,7 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		SessionID:         r.Enrichment.SessionID,
 		SessionLabel:      r.Enrichment.SessionLabel,
 		TimePlayedSeconds: r.Self.TimePlayed,
+		AvgLifeSeconds:    r.Self.AvgLifeSeconds,
 		TeamMMR:           r.Enrichment.TeamMMR,
 		EnemyMMR:          r.Enrichment.EnemyMMR,
 		PersonalScore:     r.Self.PersonalScore,
