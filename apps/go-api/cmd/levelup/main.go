@@ -14,7 +14,6 @@
 //	levelup notify-sync    --gamertag X --op sync_delta --duration 120s [--matches N]
 //	levelup compare-db     --go-db PATH --python-db PATH [--json]
 //	levelup gate-check     [--gamertag X] [--json]
-//	levelup surface-status [--json]
 //	levelup sync-delta     (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
 //	levelup sync-full      (--gamertag X | --all) [--max-matches N] [--match-type T] [--rps N]
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
@@ -24,7 +23,7 @@
 //
 // Implementation des sous-commandes :
 //   - cmd_data.go    - backup, restore, archive, index-media, seed
-//   - cmd_ops.go     - healthcheck, diagnose, check-env, compare-db, gate-check, surface-status
+//   - cmd_ops.go     - healthcheck, diagnose, check-env, compare-db, gate-check
 //   - cmd_sync.go    - sync-delta, sync-full
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
@@ -80,8 +79,6 @@ func main() {
 		exitErr = runCompareDB(cfg, args)
 	case "gate-check":
 		exitErr = runGateCheck(cfg, args)
-	case "surface-status":
-		exitErr = runSurfaceStatus(cfg, args)
 	case "sync-delta":
 		exitErr = runSyncDelta(cfg, args)
 	case "sync-full":
@@ -138,7 +135,6 @@ Commandes:
   notify-sync     Envoyer une notification Discord de fin de sync (test/debug)
   compare-db      Comparer la parite Go vs Python (DB joueur)
   gate-check      Verifier la checklist Gate Phase 4
-  surface-status  Afficher le backend actif par surface (feature flags)
   sync-delta      Lancer une sync delta pour un joueur ou pour tous les joueurs configures
   sync-full       Parcourir les N derniers matchs API et insérer les manquants (comble les trous)
   sync-achievements Lancer le backfill des achievements Xbox (admin one-shot, --dry-run dispo)

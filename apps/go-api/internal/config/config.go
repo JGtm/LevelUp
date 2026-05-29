@@ -32,7 +32,6 @@ type AppConfig struct {
 	CORSOrigins     []string
 	Lang            string
 	AppVersion      string
-	FeatureFlags    FeatureFlags
 	// SharedProvider (commit 8g, retypé 8i) — injecté au boot par main.go en
 	// mode B-swap (LEVELUP_USE_SHARED_PROVIDER=1). Passé aux PlayerPoolConfig
 	// (satisfait duckdb.SharedReader structurellement) et au SyncEngine
@@ -250,7 +249,6 @@ func Load() (*AppConfig, error) {
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
 	}
 	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
-	cfg.FeatureFlags = LoadFeatureFlags(appSettingsPath)
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
