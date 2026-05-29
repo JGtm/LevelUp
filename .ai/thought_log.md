@@ -1,3 +1,33 @@
+## [2026-05-28] toolchain: Installation top 3 outils + migration pre-commit → lefthook
+
+**Statut** : Complété
+
+**Décisions techniques majeures** :
+- **lefthook** (binaire Go, zéro Python) remplace `pre-commit` comme hook runner — le projet ayant migré full Go, Python n'est plus requis. Les hooks `language: system` du `.pre-commit-config.yaml` sont repris à l'identique dans `lefthook.yml`. `.pre-commit-config.yaml` conservé pour référence / CI éventuel.
+- **golangci-lint** installé via `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest` (script curl échoué sur vérif checksum réseau). `.golangci.yml` v2 déjà présent dans `apps/go-api/`.
+- **govulncheck** installé via `go install golang.org/x/vuln/cmd/govulncheck@latest` — ajouté en hook `pre-push`.
+- **knip** + **rollup-plugin-visualizer** installés dans `apps/web/` (devDependencies). `knip.config.ts` créé avec entrées TanStack Router + fichiers générés ignorés. `vite.config.ts` migré vers forme fonction `({ mode }) =>` pour activer le visualizer via `ANALYZE=true vite build`.
+- `lefthook install` → hooks `pre-commit` + `pre-push` actifs dans `.git/hooks/` (était vide avant).
+
+**Résultats observés** :
+- `lefthook install` : `sync hooks: ✔️ (pre-commit, pre-push)`
+- `.git/hooks/pre-commit` + `pre-push` + `prepare-commit-msg` créés
+- Tous les binaires Go installés dans `C:/Users/GuillaumeSITBON/go/bin/` (air, gopls, lefthook, govulncheck, golangci-lint)
+
+**Conclusion** : les hooks se déclenchent maintenant à chaque commit (gofmt, go-vet, golangci-lint, lint TS × 3, check-merge-conflict) et avant push (go test -short, govulncheck, deploy-dry-run). Prochaine étape : lancer `npm run knip` une première fois pour établir la baseline du code mort TS.
+
+## [2026-05-28] plan: Onboarding Wizard — premier lancement sans données
+
+**Statut** : Planifié (`.ai/PLAN_ONBOARDING_WIZARD.md`)
+
+**Décisions techniques majeures** :
+- **Crash réel** : `data/warehouse/` manquant (pas `app_settings.json` qui gère ses defaults). Fix : `os.MkdirAll` avant `OpenReadWrite` au boot.
+- **Backend 90% fait** : `GET /bootstrap` (setup_state), `POST /setup/players`, `POST /sync/initial`. Manque wizard frontend + `ensureWarehouseDirs()` au boot.
+- **XUID** : obtenu automatiquement depuis le SSO Xbox (`DisplayClaims.xui[0].xid`) — zéro saisie manuelle.
+- **`.env.local`** : prérequis ops non générables via UI → écran dédié dans le wizard.
+
+**Conclusion** : démarrer par Phase 0 (fix crash boot, ~2h) puis wizard frontend sur `feat/onboarding-wizard`.
+
 ## [2026-05-28] feat(lusr_v2): Sprint 3.A TTT wiring complet
 
 **Statut** : Complété
