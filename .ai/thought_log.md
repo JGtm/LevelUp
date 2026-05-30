@@ -1,3 +1,48 @@
+## [2026-05-30] fix(session-detail): 8 ajustements charts + réparation "Net score" vide + mode FR (fallback GameVariant)
+
+**Statut** : Complété
+
+**Demande** : 8 ajustements sur la page session-detail : (1) "Net score cumulé" n'affiche rien → réparer + le mettre à gauche de "Stats par minute" ; (2) "Modes joués" en EN alors que locale FR ; (3) axe X "Répartition des placements" au même format que "Net score" ; (4) renommer "Profil de participation (6 axes)" → "Profil de participation" ; (5) "Challenge MMR" doit utiliser les couleurs d'équipe du joueur (comme la match-view) ; (6) "moy." au lieu de "Moyenne" (OC/DR, perf, engagement) ; (7) renommer "Rendement offensif · Résistance défensive" → "Rendement · Résistance" et "Engagement par match" → "Engagement".
+
+**Décisions / root causes** :
+1. **Net score vide (root cause)** : `SessionNetScoreArea` passait des données 1D (`data: [cumul]`) avec `visualMap.dimension: 1`. Sur un axe catégoriel, des scalaires → dimension 1 hors-portée → mapping couleur échoue silencieusement → la courbe (sans couleur propre, héritée du visualMap) devient INVISIBLE. Fix : données 2D `[index, cumul]` (dim 1 non ambiguë) + couleur de repli explicite sur `lineStyle`/`areaStyle`. Chart livré dans un commit sans test → jamais validé visuellement. Test `SessionNetScoreArea.test.tsx` ajouté.
+2. **Layout** : `SessionChartStack` — netScore + fdaBars en grid 2 colonnes (netScore à gauche), participation pleine largeur.
+3. **Placement axe X** : aligné sur netScore (même logique d'intervalle, préfixe `#N`). NB : placement = axe de RANG (pas de 2ᵉ ligne carte, contrairement à netScore indexé par match).
+4. **Renommages i18n** (session.toml + regen) : participation_title, ocdr_title ("Rendement · Résistance"), chart_engagement_title ("Engagement"), chart_perf_mean ("moy."/"avg." — partagé par OC/DR + perf + engagement).
+5. **MMR couleurs d'équipe** : `SessionMmrDumbbell` → `resolveToken('team-ally')`/`resolveToken('team-enemy')` (mêmes tokens que MatchScoreboard, overridables via accessibilité) au lieu de `info`/`divergent-neg` en dur.
+6. **Mode FR (#2) — ground-truth** (outil jetable `cmd/qtmp`, supprimé après) :
+   - `match_registry.pair_name_fr` = NULL partout ; `asset_translations[pair]` renvoie l'EN pour TOUTES les langues (non localisé Microsoft) → FR uniquement via `mode_name_tr` (31 entrées : Slayer→Assassin, Team Slayer→Assassin en équipe, CTF, Oddball, Strongholds→Bases…).
+   - Cascade existante (`ResolvePairNameFR` priority-2 = `mode_name_tr[NormalizeModeLabel(pairAsset)]`) résout les modes COUVERTS — vérifié identique à Home/Explorer + test `buildSessionDetailRows`.
+   - **Trou** : mode absent de `mode_name_tr` → Home retombe sur `game_variant` (localisé : "Assassin en équipe : Arène") mais `ResolveModeUI` session non.
+   - **Fix** : peupler `GameVariantName/FR` dans `StatsMatchRowsFromCanonical` (+2 champs `legacymatch.StatsMatchRow`) + repli dans `buildSessionDetailRows` si `PairNameFR == ""` et GameVariant FR réellement localisé (≠ EN). `NormalizeModeLabel` gère le format FR `" : "` espacé du variant → partie avant = mode. Guard : ne touche jamais une résolution FR déjà correcte. Aligné sur le converter Home.
+
+**Résultats** : Go `build`/`vet` OK, `go test ./internal/service ./internal/analysis` vert (tests mode FR/EN/fallback ajoutés). Front : `tsc -b` 0, `eslint` 0, `vitest` session-detail + RadarChart **59/59**, manifests i18n régénérés.
+
+**Conclusion / next** : netScore réparé (cause = 1D + visualMap), couleurs/labels/layout livrés. Mode FR : chaîne pair (mode_name_tr) → repli GameVariant FR → EN. **À valider visuellement** : session avec un mode hors des 31 entrées mode_name_tr → doit s'afficher FR via le variant. Mode encore EN ⇒ ni mode_name_tr ni game_variant n'ont de FR (data gap à backfiller dans mode_name_tr).
+
+## [2026-05-30] fix(session+radar): "Stats de frags" en moyennes PAR MATCH (aligné Escouade) + tooltip valeur brute
+
+**Statut** : Complété
+
+**Demande** : le radar "Stats de frags" (page session-detail) affichait des valeurs invraisemblables (folie meurtrière 90, tirs à la tête 75, frags parfaits 80). Consigne utilisateur : arrêter d'invoquer firefight/ranked, regarder comment la page **Escouade** récupère ces stats et proposer une solution robuste.
+
+**Root cause** (3 causes cumulées, données brutes correctes) :
+1. **Agrégation non conforme.** `buildCompareEntry` (session_compare_service.go) calculait `max_killing_spree` = MAX de session et `total_headshot_kills`/`total_perfect_kills` = SOMMES de session → grossissent avec la longueur de session, dominés par un match outlier. L'Escouade (référence prouvée) utilise des **moyennes PAR MATCH** via `extKPIAcc.applyTo` (analysis/squad_breakdown.go:457-471) : `sum/n`.
+2. **Cap dynamique cassé.** `SessionFragsRadar.tsx` faisait `cap = niceUpper(raw)` qui se cale juste au-dessus de la valeur → `raw/cap` toujours ∈ (0.75, 1.0] → chaque axe ressortait à 75-100 %, radar toujours "plein".
+3. **Tooltip trompeur.** `RadarChart.tsx` affichait la valeur NORMALISÉE 0..100 et ignorait `meta.raw_by_axis` → l'utilisateur lisait "90" comme un compteur.
+
+Le hack `if m.IsFirefight { continue }` ajouté au tour précédent était un mauvais correctif (pas de firefight ; les filtres de la page scopent déjà) → retiré.
+
+**Décisions** :
+1. **Backend** — `domain/session_compare.go` : 3 champs `*int` (max/totaux) → `*float64` moyennes par match (`AvgMaxKillingSpree`/`HeadshotsPerMatch`/`PerfectKillsPerMatch`, mêmes noms que `domain/squad.go`). `buildCompareEntry` : agrégats `sum/n` avec garde `nSpree>0` (mirror documenté d'`extKPIAcc.applyTo`, pas de réutilisation directe car StatsMatchRow ≠ canonical). Hack firefight supprimé.
+2. **Frontend** — types.ts renommés ; `SessionFragsRadar` : **caps FIXES** "excellent par match" (folie 10 / tirs-tête 12 / œil-de-lynx 5), `niceUpper`/`FLOOR` supprimés. `RadarChart` : prop optionnelle `rawInTooltip` (défaut false = comportement participation inchangé) → tooltip lit `meta.raw_by_axis` (1 décimale) via lookup nom-de-série→raw ; tiret si clé d'axe absente, fallback % si `raw_by_axis` totalement absent. `SessionStatsRadar` propage la prop.
+3. **i18n** — relabels "(moy.)" / "/ match" (FR+EN), manifests régénérés.
+4. **Tests** — Go : retiré `_FirefightExcluded`, adapté `_FragAggregates` (spree {6,9,3}→6.0 ; HS {2,4,1}→2.33 ; PK {0,1,2}→1.0) + `_AllNil`. Front : nouveau `RadarChart.test.tsx` (fonction pure `buildRadarOption`, pas de montage canvas — cf. mémoire jsdom) couvrant raw/normalized/tiret/fallback.
+
+**Résultats** : `go build ./internal/...` = 0, `go vet` clean, `go test ./internal/service/` vert (6.1s) ; `tsc -b` 0 erreur ; vitest session-detail + RadarChart 54/54 ; eslint 0.
+
+**Conclusion / next** : agrégation + échelle + tooltip désormais cohérents avec l'Escouade. **Validation données restante** : recharger la session du 24/05 et survoler le radar — les 3 valeurs doivent être des moyennes plausibles (folie ~5-8, tirs-tête ~5-10, œil-de-lynx ~1-4). Si une valeur reste > cap après le fix (ex folie > 10/match), c'est une donnée brute réelle à investiguer via le scoreboard match-view, mais l'agrégation/affichage sont corrects.
+
 ## [2026-05-30] fix(test+schema): fixtures sync alignées sur le contrat persister (ParticipationInfo + expected_win_prob) — 16 tests verts
 
 **Statut** : Complété
@@ -51583,3 +51628,96 @@ Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mock
 **Hors scope (tracé, non corrigé)** : `sync_meta` ON CONFLICT (rotation oauth, `auth/pool/resolver.go`) échoue encore en Binder Error sur la DB de Choco — preuve a contrario que le pattern SELECT-then-UPDATE est robuste là où l'ON CONFLICT casse. À migrer dans une PR ART dédiée. Les seeders metadata (`seedPlaylistsCatalog`, `achievements upsert`) restent aussi à traiter (source d'invalidation metadata).
 
 **État final** : symptôme utilisateur (page Réalisations vide) résolu de bout en bout. Pas encore commité (en attente autorisation). Branche `fix/explorer-target-profile-auth`.
+
+
+## [2026-05-30] feat(explorer): profil cible enrichi « service record » (time-played, top médailles, CSR, career rank) — Complété (subset) + différés
+
+**Statut** : Complété (cœur livré + vérifié runtime) · Branche `fix/explorer-target-profile-auth`
+
+**Demande** : enrichir l'encart Profil cible à la SpartanRecord, y compris pour les adversaires : appearance (emblem/adornment/nameplate) sans token privé, CSR saison, KPI time-played, graphe matchs-par-saison, top 5 médailles (image/titre/desc, expander 20), career rank (composant Home). HaloDotAPI étant mort, référence = wrapper Grunt local.
+
+**Modèle d'auth (cross-réf Grunt)** : pour un xuid arbitraire — servicerecord (Spartan seul), CSR `/csrs?Season` (service token), appearance/career-rank économie (Spartan + 343-clearance). Pas de nameplate/bannière séparé dans l'API officielle (HaloDotAPI la dérivait) → fallback.
+
+**Décision technique** :
+- **B1 servicerecord enrichi** : `compare_provider.FetchServiceRecord` parse `TimePlayed` (ISO-8601→s, `parseISO8601DurationSeconds`) + `CoreStats.Medals[]`. Nouveau `domain.RemoteServiceRecord` ; `FetchRemoteStats` devient wrapper (Compare inchangé) ; `CachedStatsProvider` cache le record complet (1 appel).
+- **B2 top médailles** : `buildTargetTopMedals` mappe `RemoteMedalCount`→`MedalDigestItem` (label/desc via `MedalDefinitionsRepo`, image `/static/medals/{slug}/{id}.png`, tri count desc, cap 20). Locale via `ctxkeys.Locale`.
+- **B3 identité** : local-first (DB cible si suivie) puis live `GetSpartanIdentityFor` (xuid arbitraire) ; fallback bannière→backdrop (`applyBannerFallback`).
+- **B4 CSR** : `GetPlayerCSRs(xuid, saison courante)` (service token) → `domain.CareerPlaylistCSR` (closure registry + mapping sync→domain).
+- **B6 orchestration** : `buildTargetProfile` parallèle borné (`explorerTargetLiveBudget`) ; deps via `ExplorerTargetProfileDeps` ; nouveaux champs domaine `TopMedals/SeasonCSRs/MatchesPerSeason` ; wiring `ExplorerCtxWithAuth`.
+- **Frontend** : `ExplorerTargetMedals` (top 5 + expander 20, image/titre/desc/count), `ExplorerTargetSeasonCSR` (liste compacte), KPI time-played (carte) ; career rank rendu par le banner existant ; types TS + i18n (manifest+généré).
+
+**Vérifié runtime (serveur frais, curl)** : pour ADVERSAIRE (Nilton410, non local) ET local (Chocoboflor) → `career_stats` (6907/460 matchs), `time_played_seconds` (1014h/67h), `top_medals` enrichies (ex. « Double frag ×13118 », image, desc FR) ✅. Identité : local OK (emblem/rang) ; adversaire = nil (l'identité live économie ne renvoie rien pour un xuid tiers dans le client actuel — limite documentée, gamertag affiché). CSR : ne renvoie que les playlists ranked ENGAGÉES de la saison courante (vide pour ces joueurs en CsrSeason13-1).
+
+**Tests** : `parseISO8601DurationSeconds` (8 cas), `buildTargetTopMedals` (tri/cap/nil), `CachedStatsProvider` (FetchServiceRecord), tests service Explorer mis à jour (deps struct + FetchServiceRecord). Front : card vitest 5/5. `go build/vet ./...` (mes packages) + `-race` service clean ; typecheck + eslint 0 erreur.
+
+**DIFFÉRÉ (tracé)** :
+- **Matchs par saison** : nécessite servicerecord par-saison (N appels + nouvelle méthode `FetchServiceRecord(season)`) + catalogue saisons. Champ domaine `matches_per_season` prêt (vide). À implémenter en Phase 2.
+- **CSR parité page Carrière** : afficher aussi les playlists ranked ACTIVES non jouées (placement) via `augmentWithActiveRankedCSRs` (catalogue + appels par-playlist).
+- **Identité adversaire** : si souhaité, investiguer pourquoi l'économie/career-progress ne renvoie pas pour un xuid tiers (clearance, scope) — sinon rester local-only.
+- **Badge CSR** : `BadgeImageURL` non résolu côté Explorer (helper duckdb non exporté) — le front affiche tier+rating.
+
+**Note infra** : Air ne reconstruisait plus (builds en échec/watcher stale) ; j'ai arrêté air+ancien serveur et lancé un binaire frais (`apps/go-api/tmp/server_new.exe`) pour la vérif runtime. Relancer `air` pour reprendre le dev loop normal.
+
+**Revue adversariale (Workflow 21 agents, 18 findings → 9 confirmés, 0 blocker/régression)** : corrigés —
+(1) test Go manquant chemin erreur `LookupByIDs` → `TestBuildTargetTopMedals_LookupError` ;
+(2) tests front absents → `ExplorerTargetMedals.test.tsx`, `ExplorerTargetSeasonCSR.test.tsx` + cas carte enrichi (12 tests verts) ;
+(3) contrat interface `ExplorerTargetCSRProvider` documenté (nil,nil sans tokens) ;
+(4) commentaire `sub_tier` corrigé (1-based, pas 0-indexé) ;
+(5) Compare câblé sur `r.remoteStats` (CachedStatsProvider) au lieu de `haloProvider` → bénéficie du cache TTL 5 min comme Explorer.
+Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR différé documenté.
+
+**Prochaine étape** : validation visuelle utilisateur ; commit (toutes branches sur `fix/explorer-target-profile-auth`).
+
+---
+
+## [2026-05-30] Consolidation append-only des écritures progression (records + streak) — Phases A & B
+
+**Statut** : Complété côté code+tests des packages concernés ; validation api/live différée (WIP explorer concurrent, cf. plus bas). Branche `fix/explorer-target-profile-auth`.
+
+**Contexte** : suite du fix progression (timeout shared reader + ON CONFLICT streak/milestone). L'utilisateur a relevé qu'un mécanisme robuste append-only existait déjà pour shared_social (`SharedSocialPersister` → `player_records_history` + vue `player_records_latest`), mais que le chemin progression records ne l'utilisait pas (PersonalRecordsRepo faisait `INSERT ON CONFLICT` sur la table legacy `player_records`). Décision : aligner records sur l'append-only existant (Phase A) ET migrer streak en append-only (Phase B). Investigation parallèle (workflow 5 agents) puis revue adversariale (workflow 5 dimensions) — 0 blocker, majors corrigés.
+
+**Phase A (records)** :
+- Écriture : `PersonalRecordsRepo.Upsert` route via `pdb.SocialPersister.AppendPlayerRecord` (INSERT pur `player_records_history`) ; fallback test = INSERT pur `_history` (jamais le legacy).
+- Lecture : `Get`/`ListByXUID` lisent `player_records_latest` ; idem `loadPlayerRecord` (post_sync_deltas, corrige un split-brain best_kda latent) et le `COUNT` du diag.
+- `previous_value`/`previous_achieved_at` : nouvelle migration `player_records_history_previous_cols_v1` (ajout colonnes + recrée la vue avec tie-break `id DESC`). `AppendPlayerRecord` étendu (2 params nilables) + `PlayerRecordAppend` + `persistPlayerRecords`. GAP one-shot ACCEPTÉ : les PB pré-existants ont previous_*=NULL jusqu'au prochain PB (auto-correctif ; pas de réconciliation pour éviter un UPDATE risqué en migration).
+
+**Phase B (streak)** :
+- Migration `create_streak_history_append_only` : table `streak_history` (PK technique `tech_id` + colonne métier `id` + `written_at`) + vue `streak_latest` (DISTINCT ON `id`, ORDER BY `written_at DESC, tech_id DESC`). Backfill one-shot depuis `streak` (défensif : tourne avant `create_progression_player_schema`).
+- `StreaksRepo.Upsert` = INSERT pur `streak_history` (plus d'UPDATE/SELECT-EXISTS) ; `GetActive`/`List` lisent `streak_latest`. `milestone_earned` déjà insert-only (rien à faire) ; `record_history` déjà append-only.
+
+**Garde-rails** : `streak`+`streak_history`+`milestone_earned` ajoutés à `tablesProtegees` (no_art_patterns). `player_records`/`player_records_history` NON protégées (co-résidence avec le fallback legacy ON CONFLICT → faux positif file-level). Limite regex documentée (forme `ON CONFLICT (cols)` non matchée par scan file-level ; AST requis — best-effort). Whitelist sentinelle shared_social enrichie de la nouvelle migration.
+
+**Revue adversariale — corrections appliquées** : (1) fallback `upsertPlayerRecord` migré legacy→`player_records_history` (élimine split-brain + dernier ON CONFLICT du chemin) ; (2) gap previous_* documenté ; (3) commentaire garde-rail rendu honnête + regex laissée en l'état (renforcement surfacait des faux positifs file-level sur match_skill_rank/player_csr_snapshots — vrais append-only + ON CONFLICT co-résident sur AUTRES tables) ; (4) tests ajoutés : migration streak (create/backfill/idempotence/tie-break), supersession active→broken (`GetActive` nil), chemin nominal persister (binding 9 colonnes previous_*).
+
+**Résultats** : tests verts sur tous les packages touchés — `migration` (cgo+integration), `persist` (cgo), `platform/duckdb` (integration full, 95s), `sync` (full). gofmt clean. `go build ./...` BLOQUÉ par un état intermédiaire cassé de `internal/service/explorer_service.go` (WIP explorer édité en parallèle, mtime > mes edits ; `s.localIdentity/remoteStats/titleSlug` non définis) — sans rapport avec mes changements (je n'ai pas touché `service`). Les packages de test `api`/`handlers` ne compilent donc pas (import transitif de `service`).
+
+**Prochaine étape** : dès qu'`explorer_service.go` recompile → suite `api`/`handlers` complète + re-validation live (`POST /_admin/progression/backfill/{slug}` + diag : confirmer streak/records/milestones peuplés via les vues `_latest`). Pas encore commité (en attente autorisation).
+
+### Suite — validation live A/B OK + fix ART metadata (milestone_catalog) + dédup frise
+
+**Validation live A/B** : explorer recompilé → `go build ./...` + suites `api`/`handlers` vertes. Backfill live 3 joueurs → `player_records` 0→15 (Phase A confirmée via `_history`/`_latest`), `streak=1` (Phase B), idempotent. ZÉRO erreur ART sur les tables progression.
+
+**Fix ART metadata (milestone_catalog=0)** : cause = 3 ON CONFLICT non migrés invalidant `metadata.duckdb` — `seedPlaylistsCatalog` (career.go, `playlists_catalog`) + 2× `achievements.go` (`xbox_achievement_definitions`, `player_achievements`). Migrés en UPDATE-then-INSERT-si-0-ligne (ART-safe, colonnes UPDATE non-clé, concurrence sérialisée par lease `KindMetadata` — `achievements_race_test.go` inchangé). `sync` full integration (81s) vert.
+
+**Dédup frise** : `record_history` doublé (15→30) pour les 3 joueurs = artefact one-shot de transition (PB dans le legacy mais pas `_history` au 1er backfill post-migration → re-détectés « nouveaux »). Migration `dedup_record_history_v1` (TargetPlayer) : rebuild CTAS conditionnel (no-op si zéro doublon ; pas de DELETE qui rejouerait l'ART), garde l'id min par clé logique. 3 tests verts.
+
+**État** : `go build ./...` OK ; verts : `migration`/`persist`/`duckdb`/`sync` (full integration) + `api`/`handlers` ; gofmt clean.
+
+**Validation live metadata+dédup EN ATTENTE** : serveur tourne un binaire antérieur (`milestone_catalog` encore 0, `record_history` encore 30). Nécessite **rebuild + restart** (clear invalidation metadata en mémoire + run migration dédup au boot). Attendu post-restart : `milestone_catalog=14`, `record_history`≈15. Pas encore commité.
+
+
+## [2026-05-30] feat(explorer): différés #1 (matchs par saison) + #2 (CSR parité + badge) — Complété + vérifié runtime
+
+**Statut** : Complété · Branche `fix/explorer-target-profile-auth`
+
+**#1 Matchs par saison** : le servicerecord par-saison officiel exige un chemin CMS (`Seasons/SeasonN.json`) absent du repo (fragile à énumérer). Choix robuste : **bucketing local** des start_times du joueur (shared.match_participants) dans les plages de saison (`SeasonsCatalog`, dates Start/End). Joueur local = historique complet ; adversaire = matchs observés (communs). Nouveau repo `GetMatchStartTimesForXUID` (timezone canonique COALESCE start_time_utc), helper pur `buildMatchesPerSeason`, dep `Seasons` injectée depuis `SeasonsCatalog`. Front : `ExplorerTargetSeasonMatches` (barres flat horizontales, token chart-series-1). **Runtime** : Chocoboflor 5 saisons (S3:1,S5:9,S6:1,S12:63,S13:4) ; Nilton410 S13:22 (commun).
+
+**#2 CSR parité + badge** : le provider CSR (registry) complète `GetPlayerCSRs` (engagées) via `rankedplaylists.Active()` + `GetPlaylistCsr` (playlists ranked actives manquantes), comme `sync.augmentWithActiveRankedCSRs`. Badge image résolu via `halo_infinite.NewAssetURLAdapter().CSRRankImageURL/Onyx` (mappé sur `CareerCSRRank.BadgeImageURL`). Front `ExplorerTargetSeasonCSR` affiche le badge. **Runtime** : Chocoboflor/Nilton410 → 4 playlists ranked actives (état placement value=-1, 5 matchs restants → « — »).
+
+**Tests** : `buildMatchesPerSeason` (bucketing/empty), `ExplorerTargetSeasonMatches.test` + `ExplorerTargetSeasonCSR.test` — front 47/47 (9 fichiers explorer). `go build ./...` OK, vet OK ; `halo`/`api`/`handlers`/`duckdb`/`port` verts ; typecheck + eslint 0 erreur. i18n régénéré via `build_i18n_manifests.mjs`.
+
+**Bloqueurs hors périmètre** : le package test `service` ne compile pas (travail concurrent en cours sur `session_compare_test.go` — champs `MaxKillingSpree`/`TotalHeadshotKills`/`TotalPerfectKills` retirés du domaine) → mes tests service (`explorer_target_medals_test`, `explorer_target_seasons_test`, `explorer_service_test`) ne tournent pas tant que ce n'est pas recompilé ; logique validée en runtime. Air ne reconstruit plus → binaire frais lancé manuellement (`tmp/server_new.exe`).
+
+**Reste #3** (identité adversaire) : à investiguer ultérieurement.
+
+**Prochaine étape** : validation visuelle utilisateur ; commit.
