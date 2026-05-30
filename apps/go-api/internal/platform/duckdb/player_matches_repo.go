@@ -315,6 +315,101 @@ WHERE p.xuid = ?`
 
 // loadSharedRows exécute l'étape 1 du split (query shared) et retourne les
 // playerMatchScanResult partiellement remplis (cols shared seulement).
+// LobbySizesAtCompletion compte, par match_id, les participants présents à la fin
+// (present_at_completion = TRUE, bots inclus) sur la DB partagée. Sert à dimensionner
+// l'axe du breakdown de placements : taille de lobby résistante au churn (départs/arrivées),
+// contrairement à un COUNT(DISTINCT) brut sur match_participants. Best-effort : un match
+// sans flag present_at_completion peuplé (data legacy) ressort à 0 et est ignoré côté front.
+func (r *PlayerMatchesRepo) LobbySizesAtCompletion(ctx context.Context, matchIDs []string) (map[string]int, error) {
+	out := make(map[string]int, len(matchIDs))
+	if len(matchIDs) == 0 {
+		return out, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(matchIDs)), ",")
+	q := fmt.Sprintf(`
+		SELECT match_id, COUNT(*) AS n
+		FROM match_participants
+		WHERE present_at_completion AND match_id IN (%s)
+		GROUP BY match_id`, placeholders)
+	args := make([]any, len(matchIDs))
+	for i, id := range matchIDs {
+		args[i] = id
+	}
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("lobby sizes shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("lobby sizes query: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var n int
+		if err := rows.Scan(&id, &n); err != nil {
+			return nil, fmt.Errorf("lobby sizes scan: %w", err)
+		}
+		out[id] = n
+	}
+	return out, rows.Err()
+}
+
+// ObjectiveScores retourne, par match_id, la somme des scores PSA de catégorie
+// "objective" du joueur (table personal_score_awards, DB player). Alimente l'axe
+// Objective (+ le résiduel de l'axe Score) du profil de participation de la session.
+// Dégradation silencieuse : table absente / joueur sans PSA → map vide.
+func (r *PlayerMatchesRepo) ObjectiveScores(ctx context.Context, matchIDs []string) (map[string]int, error) {
+	out := make(map[string]int, len(matchIDs))
+	if len(matchIDs) == 0 || r.pdb == nil || r.pdb.XUID == "" {
+		return out, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	var tableCount int
+	if err := r.pdb.ReadDB().QueryRow(ctx, `
+		SELECT COUNT(*) FROM information_schema.tables
+		WHERE table_name = 'personal_score_awards'
+	`).Scan(&tableCount); err != nil || tableCount == 0 {
+		return out, nil
+	}
+
+	ph := Placeholders(len(matchIDs))
+	args := make([]any, 0, 1+len(matchIDs))
+	args = append(args, r.pdb.XUID)
+	for _, id := range matchIDs {
+		args = append(args, id)
+	}
+	q := `SELECT match_id, COALESCE(SUM(award_score), 0)::INTEGER AS total
+	      FROM personal_score_awards
+	      WHERE award_category = 'objective'
+	        AND xuid = ?
+	        AND match_id IN (` + ph + `)
+	      GROUP BY match_id`
+
+	rows, err := r.pdb.ReadDB().Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("objective scores query: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var total int
+		if err := rows.Scan(&id, &total); err != nil {
+			return nil, fmt.Errorf("objective scores scan: %w", err)
+		}
+		out[id] = total
+	}
+	return out, rows.Err()
+}
+
 func (r *PlayerMatchesRepo) loadSharedRows(ctx context.Context, filters port.PlayerMatchFilters) ([]playerMatchScanResult, error) {
 	q, args, _, err := r.buildSharedQuery(filters)
 	if err != nil {
