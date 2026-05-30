@@ -302,71 +302,71 @@ const FR_TEXT: HelpText = {
           {
             term: 'Série (Streak)',
             definition:
-              "Suite de jours ou de sessions consécutifs satisfaisant une condition (jouer chaque jour, atteindre un seuil de performance, etc.). Tant que la série est active, un multiplicateur de Points de Prestige s'applique aux objectifs complétés. Une interruption casse la série (statut « broken »), sauf si un bouclier (shield) protège l'écart.\n\nQuatre types : jeu quotidien, performance quotidienne, jeu hebdomadaire, KDA seuil hebdomadaire.",
+              "Suite de jours ou de sessions consécutifs satisfaisant une condition (jouer chaque jour, atteindre un seuil de performance, etc.). Tant que la série est active, un multiplicateur de Points de Prestige s'applique aux objectifs complétés. Une interruption casse la série (statut « interrompue »), sauf si un bouclier protège l'écart.\n\nQuatre types : jeu quotidien, performance quotidienne, jeu hebdomadaire, KDA seuil hebdomadaire.",
             example:
               "Vous jouez 7 jours d'affilée → série « daily_play » à 7. Multiplicateur PP passé de ×1.0 à ×1.3. Vous sautez un jour sans utiliser un bouclier → la série casse et redémarre à 0.",
           },
           {
             term: 'Record personnel (Personal Best)',
             definition:
-              "Meilleure valeur jamais atteinte sur une métrique donnée, dans une fenêtre temporelle (30 jours, 90 jours, ou tout-temps). Mis à jour automatiquement à chaque partie : si vous battez votre PB, l'ancien record est archivé dans l'historique.",
+              "Meilleure valeur jamais atteinte sur une métrique donnée, dans une fenêtre temporelle (30 jours, 90 jours, ou tout-temps). Mis à jour automatiquement à chaque partie : si vous battez votre record, l'ancien est archivé dans l'historique.",
             example:
-              "Votre PB « kills par partie » sur 30 jours était 22. Vous faites 25 → nouveau PB 25, l'ancien (22) glisse dans l'historique avec la date.",
+              "Votre record « frags par partie » sur 30 jours était 22. Vous faites 25 → nouveau record à 25, l'ancien (22) glisse dans l'historique avec la date.",
           },
           {
             term: 'Palier (Milestone)',
             definition:
-              "Seuil d'accomplissement franchi automatiquement et conservé à vie (ex : 1 000 kills cumulés, 100 victoires, 50 médailles Killing Spree). Contrairement aux objectifs, vous n'avez rien à activer — le palier s'auto-attribue dès que la condition est remplie.",
+              "Seuil d'accomplissement franchi automatiquement et conservé à vie (ex : 1 000 frags cumulés, 100 victoires, 50 médailles Killing Spree). Contrairement aux objectifs, vous n'avez rien à activer — le palier s'auto-attribue dès que la condition est remplie.",
             example:
-              "Vous accumulez votre 10 000ᵉ kill toutes parties confondues → le palier « Vétéran 10K » est marqué obtenu, avec la date et le match déclencheur.",
+              "Vous atteignez vos 10 000 frags au total → le palier « Vétéran 10K » est marqué obtenu, avec la date et le match déclencheur.",
           },
           {
             term: 'Arc de progression',
             definition:
-              "Séquence cohérente d'objectifs liés thématiquement, conçue pour guider une amélioration ciblée sur plusieurs semaines. Un arc enchaîne typiquement 3 à 8 étapes (challenges) de difficulté croissante.",
+              "Séquence cohérente d'objectifs liés thématiquement, conçue pour guider une amélioration ciblée sur plusieurs semaines. Un arc enchaîne typiquement 3 à 8 étapes (défis) de difficulté croissante.",
             example:
               "L'arc « Précision » peut enchaîner : (1) précision ≥ 45 % sur 10 parties, (2) précision ≥ 50 % sur 20 parties, (3) maintenir ≥ 50 % pendant 30 jours.",
           },
           {
-            term: 'Carte de moment (MomentCard)',
+            term: 'Carte de réalisation',
             definition:
-              "Carte rétrospective d'un objectif complété, archivée dans l'onglet Réalisations. Contient le nom de l'objectif, la valeur atteinte, le nombre de parties, la date et le tier obtenu. C'est la trace visuelle d'un accomplissement passé.",
+              "Carte rétrospective d'un objectif complété, archivée dans l'onglet Réalisations. Contient le nom de l'objectif, la valeur atteinte, le nombre de parties, la date et le rang obtenu. C'est la trace visuelle d'un accomplissement passé.",
           },
           {
-            term: 'Pattern contextuel',
+            term: 'Motif contextuel',
             definition:
-              "Signal récurrent détecté par le Pattern Engine selon le contexte de jeu (mode, carte, ou composition d'escouade). Met en évidence un sur- ou sous-rendement systématique dans certaines configurations.",
+              "Signal récurrent détecté par le moteur d'analyse selon le contexte de jeu (mode, carte, ou composition d'escouade). Met en évidence un sur- ou sous-rendement systématique dans certaines configurations.",
             example:
-              "« Sur BTB en solo, ton win rate est de 62 % ; en escouade complète, il chute à 41 %. » → pattern contextuel `by_squad` avec signal `weakness`.",
+              "« Sur BTB en solo, ton taux de victoire est de 62 % ; en escouade complète, il chute à 41 %. » → motif contextuel `by_squad` avec signal `weakness`.",
           },
           {
-            term: 'Pattern comportemental',
+            term: 'Motif comportemental',
             definition:
-              "Signal détecté sur ton comportement de jeu : tilt (perf dégradée après défaites), fatigue de session (chute après N parties), baisse d'engagement, plateau de précision, plafond de performance. Sert d'alerte proactive du coach.",
+              "Signal détecté sur ton comportement de jeu : déstabilisation (perf dégradée après défaites), fatigue de session (chute après N parties), baisse d'engagement, plateau de précision, plafond de performance. Sert d'alerte proactive du coach.",
             example:
-              "Après 3 défaites consécutives, ta précision moyenne chute de 8 points → pattern `tilt` avec sévérité `medium`.",
+              "Après 3 défaites consécutives, ta précision moyenne chute de 8 points → motif `tilt` avec sévérité `medium`.",
           },
           {
             term: 'Levier calibré',
             definition:
-              "Action priorisée par le Pattern Engine, avec un axe ciblé, une valeur actuelle, une valeur cible, un horizon temporel et un impact estimé sur le LUSR. Distinct du « Leverage LUSR » : ici c'est une recommandation d'action concrète, pas une composante mathématique.",
+              "Action priorisée par le moteur d'analyse, avec un axe ciblé, une valeur actuelle, une valeur cible, un horizon temporel et un impact estimé sur le LUSR. Distinct du « Levier LUSR » : ici c'est une recommandation d'action concrète, pas une composante mathématique.",
           },
           {
-            term: 'Leverage LUSR',
+            term: 'Levier LUSR',
             definition:
-              "Composante LUSR identifiée comme ayant la plus grande marge de progression personnelle (écart entre votre moyenne actuelle et votre top 20 % ou la cible du palier supérieur). Travailler ce levier maximise l'impact sur votre LUSR global.",
+              "Composante LUSR identifiée comme ayant la plus grande marge de progression personnelle (écart entre votre moyenne actuelle et vos 20 % supérieurs ou la cible du palier suivant). Travailler ce levier maximise l'impact sur votre LUSR global.",
             example:
-              "Votre composante « précision » est à 0.42 alors que votre top 20 % personnel est à 0.58 — c'est un levier fort (+38 % de marge). Le bouton « Démarrer une campagne » lance un objectif ciblé sur cet axe.",
+              "Votre composante « précision » est à 0.42 alors que vos 20 % supérieurs personnels atteignent 0.58 — c'est un levier fort (+38 % de marge). Le bouton « Démarrer une campagne » lance un objectif ciblé sur cet axe.",
           },
           {
-            term: 'Tier d\'engagement',
+            term: 'Niveau d\'engagement',
             definition:
               "Niveau de régularité de jeu calculé sur les 30 derniers jours, à partir de la moyenne de parties par jour et de l'écart maximal entre deux sessions. Quatre paliers : low, regular, high, intense. Sert au coach pour calibrer le rythme des suggestions.",
           },
           {
             term: 'Style de jeu',
             definition:
-              "Signature comportementale dérivée du ratio FK/FD (First Kills / First Deaths). Quatre styles : `opportunistic_finisher` (finisseur opportuniste, FK élevé, FD bas), `overextended` (surextension, FK et FD élevés), `hyper_engaged` (hyper engagé, FK et FD très élevés), `passive` (FK et FD bas).",
+              "Signature comportementale dérivée du ratio FK/FD (Premiers Frags / Premières Morts). Quatre styles : `opportunistic_finisher` (finisseur opportuniste, FK élevé, FD bas), `overextended` (surextension, FK et FD élevés), `hyper_engaged` (hyper engagé, FK et FD très élevés), `passive` (FK et FD bas).",
             example:
               "FK = 18, FD = 7 sur les 50 dernières parties → ratio 2.57 → style `opportunistic_finisher`.",
           },
@@ -385,7 +385,7 @@ const FR_TEXT: HelpText = {
           {
             term: 'Coach proactif',
             definition:
-              "Composant qui propose en continu des actions, objectifs ou campagnes basés sur les patterns détectés et les leviers calibrés. Activable dans les paramètres (notifications). N'envoie pas de spam : ne surgit que sur un changement de signal significatif.",
+              "Composant qui propose en continu des actions, objectifs ou campagnes basés sur les motifs détectés et les leviers calibrés. Activable dans les paramètres (notifications). N'envoie pas de spam : ne surgit que sur un changement de signal significatif.",
           },
         ],
       },
