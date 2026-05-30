@@ -41,8 +41,27 @@ type NormalizedPlayerStats struct {
 	// Phase 3 — arme favorite (nil pour joueur B remote).
 	FavoriteWeapon *WeaponHighlight `json:"favorite_weapon,omitempty"`
 
-	CareerRank int            `json:"career_rank"`
-	Extended   map[string]any `json:"extended,omitempty"`
+	CareerRank int `json:"career_rank"`
+	// TimePlayedSeconds : temps de jeu cumulé (lifetime) issu du service record
+	// Waypoint (champ TimePlayed ISO-8601). 0 si indisponible.
+	TimePlayedSeconds int64          `json:"time_played_seconds,omitempty"`
+	Extended          map[string]any `json:"extended,omitempty"`
+}
+
+// RemoteMedalCount est une médaille agrégée (lifetime) issue du service record
+// Waypoint : identifiant + nombre d'occurrences. Enrichie ensuite en
+// MedalDigestItem (label/description/image) via les métadonnées locales.
+type RemoteMedalCount struct {
+	NameID int64 `json:"name_id"`
+	Count  int   `json:"count"`
+}
+
+// RemoteServiceRecord regroupe ce que l'endpoint service record Waypoint expose
+// en un seul appel : les stats normalisées (avec TimePlayedSeconds) et la liste
+// des médailles lifetime. Évite de re-fetcher pour les médailles / le temps joué.
+type RemoteServiceRecord struct {
+	Stats  NormalizedPlayerStats `json:"stats"`
+	Medals []RemoteMedalCount    `json:"medals,omitempty"`
 }
 
 // WeaponHighlight représente l'arme favorite d'un joueur (la plus utilisée).
