@@ -1,3 +1,340 @@
+## [2026-05-30] LUSR v2 — Sprint 1.D : wiring expected_win_prob bout-à-bout + colonne Pronostic
+
+**Statut** : Complété (Go + TS, tests verts). Dernier des 4 sprints LUSR v2 demandés (2.C/3.C/Final/1.D tous faits).
+
+**Contexte** : `rating_delta` était DÉJÀ câblé bout-à-bout (colonne « Δ rang ») d'une session
+précédente. `expected_win_prob` (proba victoire pré-match, Sprint 1.A) n'existait QUE côté écriture
+(persister/migration/schema + Stratégie C) — jamais projeté au read-path ni exposé. 1.D = compléter
+ce read-path + l'afficher.
+
+**Read-path Go (chaîne complète, 8 sites)** : `match_skill_rank_latest.expected_win_prob` →
+SELECT `playerMatchesSkillRankTpl` + scan + `playerMatchScanResult.skillExpectedWinProb` →
+`projectSkillSnapshot` → `canonical.SkillSnapshot.ExpectedWinProb` → `StatsMatchRowFromCanonical`
+(stats_canonical.go) → `legacymatch.StatsMatchRow.SkillExpectedWinProb` → `buildSessionDetailRows`
+→ `domain.SessionDetailMatchRow.SkillExpectedWinProb` (JSON `expected_win_prob`). PIÈGE évité : un
+1er jet n'avait PAS l'edit stats_canonical.go (anchor raté) → le build passait quand même (champ
+nil par défaut) mais la valeur ne circulait pas. Corrigé + re-vérifié (8 sites présents).
+
+**Frontend** : `lib/winProbCategory.ts` (helper PUR) — `categorizeWinProb(prob, won)` →
+`expected | upset | strong-perf | balanced` (marge ±0.1 autour de 0.5 ; outsider+win=upset,
+outsider+loss=strong-perf « défaite perdable », favori=expected) + `formatWinProb` (→ "73%").
+9 tests (winProbCategory.test.ts). Types TS : `ExplorerMatchRow` + `SessionDetailMatchRow` +=
+`expected_win_prob?` (1 doublon ExplorerMatchRow détecté + supprimé). `toExplorerRow` le mappe.
+Colonne « Pronostic » (col_win_prob) INJECTÉE par la vue session (extraColumns, comme Δ rang) —
+JAMAIS sur l'Explorer ; masquée en compact ; couleur par catégorie (upset=positive token interne
+au composant via WIN_PROB_TOKEN, strong-perf=info, reste muted→divergent-neutral) ; tooltip =
+libellé catégorie. i18n FR/EN (`col_win_prob` + 4 catégories + aria, 6 clés) régénérée via
+`scripts/build_i18n_manifests.mjs` (PIÈGE : le générateur n'avait pas tourné au 1er jet → clés
+absentes du .ts généré bien que tsc passât ; corrigé, 6 clés présentes).
+
+**Tests** : Go `service`+`analysis`+`duckdb` verts, `go vet` 0, gofmt clean, `go build ./...` 0.
+Front `tsc` 0, `eslint` 0 erreur (61 warnings préexistants), vitest 1.D scope (winProbCategory +
+session-detail + explorer) **116/116**.
+
+**Reste backlog LUSR v2** : cleanup code v1 `batchComputeLUSR` (différé, préserve le rollback) ;
+Phase 3e damping EP (matchs déséquilibrés). Tout le reste de la roadmap est livré.
+
+**Prochaine étape** : validation visuelle (colonne Pronostic sur une vraie session avec proba
+peuplée — la valeur n'a encore jamais transité en conditions réelles) ; commit (attente
+autorisation). Les 4 sprints (2.C, 3.C, 1.D, Final) sont faits.
+
+## [2026-05-30] LUSR v2 — Sprints 2.C (sentinelle auto) + 3.C (capability CapLUSR) + ADR consolidée
+
+**Statut** : 2.C + 3.C + Final (ADR) Complétés. 1.D fait (entrée du dessus). Cleanup v1 différé (rollback préservé).
+
+**Demande** : finir les sprints LUSR v2 restants (2.C, 3.C, 1.D, Final) après la bascule canonical déjà faite.
+
+**Sprint 2.C — sentinelle dual-row automatique**
+`RunDualRowSentinel` existait mais n'était jamais appelée en prod (CLI manuel). Branchée à
+l'étape 2.6 de `runPostSyncPipeline` (engine_postsync.go), UNIQUEMENT en mode canonical, timeout
+30s, read-only. `OnlyLUSRV2 > 0` (= match avec row audit LUSR_V2 mais sans slot LUSR = invariant
+Stratégie C cassé) → `slog.ErrorContext` auto-routé `logs/sync.log`. Échec scan → ErrorContext
+aussi. Pas de notif externe (ADR 0009). Place : juste après le shadow runner, playerDB en scope.
+
+**Sprint 3.C — capability CapLUSR (fin du slug-coupling)**
+Nouvelle capability `title.CapLUSR` déclarée par halo_infinite (`title.NewRegistry`). Helpers
+`slugHasLUSR`/`titleHasLUSR`/`skipIfNoLUSRCapability` (skill_v2_capability.go, registre local
+`title.NewRegistry()` car capabilities statiques). `RunLUSRV2Shadow` self-gate AVANT le check
+sharedDB nil ; `runPostSyncPipeline` gate tout le bloc LUSR (v1+v2+sentinelle) sur
+`slugHasLUSR(e.titleSlug)`. Audit `grep halo_infinite internal/sync/skill_v2_*.go
+internal/analysis/skill_v2/` = 0 occurrence runtime (commentaires seuls). Titre sans CapLUSR →
+no-op silencieux (DEBUG).
+
+**Pièges rencontrés (corrigés)** : (1) `title.Get` n'existe pas — `Get` est une méthode de
+`*Registry`, pas une fonction package → instancié `lusrCapRegistry = title.NewRegistry()`. (2)
+`ctxkeys.TitleSlugKey` est non exporté → tests utilisent `ctxkeys.WithTitleSlug`. (3)
+engine_postsync.go n'importait pas `time` (requis par le timeout sentinelle) → ajouté.
+
+**ADR consolidée** : `docs/adr/0024` statut → "Bascule canonical effectuée (2026-05-30)" + section
+"État as-built post-bascule" (5 points : défaut code Fix B, sentinelle 2.C, capability 3.C, readers
+→ vue _latest, réconciliation 1-run-par-joueur).
+
+**Tests** : `TestSlugHasLUSR` / `TestTitleHasLUSR` / `TestSkipIfNoLUSRCapability` /
+`TestRunLUSRV2Shadow_SkipsIfNoLUSRCapability` (skill_v2_capability_test.go). `go test
+./internal/sync/ ./internal/domain/title/` verts ; `go build ./...` + `go vet` (sync/title/duckdb/
+server) clean. NB : `internal/api/registry_pages.go` a montré une erreur de build transitoire
+(SeasonCSRPeakFunc) PUIS s'est recompilé seul → un agent concurrent édite l'arbre en parallèle sur
+cette branche (compare/seasons/session-charts).
+
+**Différés (décision utilisateur ce tour)** :
+- **1.D (wiring frontend expected_win_prob/rating_delta)** : EN ATTENTE — l'agent concurrent édite
+  les mêmes fichiers DTO/front (session_page, types.ts, ExplorerMatchesTable). À faire une fois son
+  travail commité, pour ne pas écraser ses éditions. (Tentative initiale d'ajouter expected_win_prob
+  au SELECT skill-rank annulée : la colonne n'est pas projetée dans canonical.SkillSnapshot, hors
+  périmètre read-path actuel.)
+- **Cleanup code v1 (`batchComputeLUSR`)** : NON FAIT volontairement — le supprimer retirerait le
+  rollback `LEVELUP_LUSR_CANONICAL=LUSR` le jour même de la bascule. À faire après quelques jours
+  v2 stables (roadmap F.8).
+
+**Prochaine étape** : commit (en attente autorisation). Puis 1.D quand l'arbre concurrent est stabilisé.
+
+## [2026-05-30] feat(explorer): "matchs par saison" — barres verticales toutes saisons + badge rang CSR (API officielle)
+
+**Statut** : Complété
+
+**Demande** : remplacer le graphe "matchs par saison" de l'encart Profil de Combat (barres horizontales, saison courante seule) par des barres VERTICALES, TOUTES les saisons, idéalement empilées classé/non-classé + image de rang CSR au-dessus de chaque barre (parité SpartanRecord, y compris pour un joueur inconnu).
+
+**Découvertes API (probées empiriquement via cmd/diag_appearance avec tokens réels)** :
+- **Servicerecord filtré par saison** : `GET /hi/players/{gt}/Matchmade/servicerecord?seasonId=Seasons/SeasonN.json` → 200, `MatchesCompleted` réel par saison, pour tout joueur. Le servicerecord lifetime expose `Subqueries.SeasonIds` = saisons jouées (réf Grunt/SPNKr).
+- **Split classé/non-classé NON faisable** : `?seasonId+isRanked` seul → **HTTP 400** (le filtre isRanked exige `gameVariantCategory` → N catégories × 2 appels/saison = explosion). SpartanRecord l'avait via le proxy DotAPI (`?filter=ranked`, mort). → dégradé en **total par saison** (conforme au « si on a l'info » de l'utilisateur).
+- **Badge CSR par saison passée** : le player-level `/csrs?Season=` → **404** (même en saison courante). MAIS `GetPlaylistCsr` (`/hi/playlist/{id}/csrs?players=...&season=`) → **200 + SeasonMax = pic de rang de la saison, y compris PASSÉE**. On boucle sur `rankedplaylists.Active()`, on retient le plus haut tier.
+
+**Implémentation** :
+- platform/halo : `serviceRecordResponse.Subqueries` + `RemoteServiceRecord.SeasonIDs` ; `FetchSeasonServiceRecord(gt, seasonId, isRanked)` (URL via helper pur `buildSeasonServiceRecordURL`).
+- cache : `CachedStatsProvider.FetchSeasonServiceRecord` (TTL 5 min + singleflight, clé gt|season|filtre) ; nouvelle interface `port.SeasonStatsProvider`.
+- service : `computeSeasonBreakdown` (fan-out `errgroup` cap 6 + budget `explorerTargetLiveBudget` relevé 3→8 s + résultat partiel) ; **fallback bucketing local** sans auth ; mapping saison catalogue ↔ chemin CMS par numéro (`groupMatchmadeSeasonsByNumber` / `extractSeasonNumber`).
+- registry : `SeasonSR = r.remoteStats` ; `newExplorerSeasonCSRProvider` via `GetPlaylistCsr` (PAS le player-level `/csrs?Season=` qui 404).
+- domain/types : `SeasonMatchCount{Matches, CSRTier, CSRSubTier, CSRBadgeImageURL}` (split retiré — pas de champ toujours-0).
+- frontend : `ExplorerTargetSeasonMatches` réécrit (ECharts `BarStackedChart` vertical 1 série + `markPoint` `image://` badge CSR au sommet ; builder pur `buildSeasonMatchesOption` exporté). i18n `label_matches`.
+
+**Tests** : Go — `buildSeasonServiceRecordURL` (encodage seasonId/isRanked), `extractSeasonNumber`, `groupMatchmadeSeasonsByNumber`, `computeSeasonBreakdown` (live total + CSR + fallback no-auth) ; `go test ./...` + `-race` + `go vet` verts. Front — `buildSeasonMatchesOption` (1 série + markPoint badge) + rendu (mock echarts-for-react) ; `tsc`/`eslint`/`vitest` 50/50.
+
+**Runtime (curl JGtm→Nilton410, joueur inconnu sans DB locale)** : 14 saisons (S1→S13 + Winter 22), totaux réels (S3=1053 Diamond 2, S4=577 Diamond 1, S6=195 Diamond 2, S7=9 Diamond 1, Winter 22=91), **badges CSR par saison** (rangs variant par saison = vraies données). 1,96 s, fiable (GetPlaylistCsr 200, aucun timeout — le player-level `csrs?Season=` 404 a été abandonné).
+
+**Logging** : `explorer_season_breakdown` (Info : seasons_total/seasons_played).
+
+**Optim CSR (livrée)** : ne requêter le pic CSR que sur les playlists ranked RÉELLEMENT engagées par le joueur — intersection `Subqueries.PlaylistAssetIds` (exposé via `RemoteServiceRecord.PlaylistAssetIDs`) ∩ `rankedplaylists.Active()`. Un joueur social → ∅ → **0 appel CSR** ; sinon ~1-2 playlists/saison au lieu de 4. `SeasonPeakCSR(ctx, xuid, csrSeasonID, engagedPlaylistIDs)`. ATTENTION : ne PAS gater sur la liste CSR de `Subqueries` (elle est TRONQUÉE — S3/S4 de Nilton410 ont un rang Diamond réel mais ne sont pas dans Subqueries CSR ; gater dessus perdrait ces badges). Test `TestComputeSeasonBreakdown_NoEngagedPlaylists_SkipsCSR`. Runtime re-validé : mêmes badges (S3 D2, S4 D1, S6 D2, S7 D1), 1,74 s.
+
+**Conclusion / next** : feature + optim livrées. Le split classé/non-classé n'est pas livrable sur l'API Waypoint brute (seul DotAPI l'offrait). Rien n'est commité (branche `fix/solo-first-events-squad-mode`). `cmd/diag_appearance` (untracked) a servi aux probes — à supprimer ou garder comme sonde.
+
+## [2026-05-30] fix(session-detail): radar frags = compte de session + label "Frags parfaits" ; net score rendu enfin réparé
+
+**Statut** : Complété
+
+**Demande** : (1) le radar "Stats de frags" affichait "Œil de lynx" (label halluciné — c'est une médaille, pas le compteur) et des moyennes par match, alors que l'utilisateur veut LE COMPTE de frags parfaits DE LA SESSION ; (2) "Net score cumulé" toujours vide (4e signalement) + à renommer "Net score cumulé".
+
+**Fix 1 — radar frags** : revert des moyennes par match vers AGRÉGATS DE SESSION (ce que l'utilisateur demandait depuis le début ; le "90/75/80" d'avant était un bug d'affichage du % normalisé, PAS un problème totaux-vs-moyennes — j'avais sur-corrigé).
+- Backend `SessionCompareEntry` : `Avg*/⁠*PerMatch *float64` → `MaxKillingSpree` (MAX) / `TotalHeadshotKills` (TOTAL) / `TotalPerfectKills` (TOTAL) `*int`. `buildCompareEntry` calcule max + sommes.
+- Front `SessionFragsRadar` : lit ces agrégats ; tooltip `rawInTooltip` affiche les comptes bruts ; caps fixes pour la FORME (12/40/12). Labels : "Folie meurtrière (max)", "Tirs à la tête", **"Frags parfaits"** (plus de "Œil de lynx").
+
+**Fix 2 — net score vide (vraie cause cette fois)** : `SessionNetScoreArea` s'appuyait sur un `visualMap` pour colorer la courbe SANS couleur propre sur la série → toute défaillance du mapping = courbe invisible. Mes "corrections" précédentes (couleur de repli, puis données 2D `[i,cumul]`) ont brouillé le problème : les paires 2D sur un axe **catégoriel** cassent en plus le placement. **Vrai fix** : la courbe la plus simple possible — données **1D** (scalaires, ECharts aligne par index), couleur de ligne/aire **explicite** (`chart-series-1`), **plus de visualMap**, garde-fou NaN sur `kills/deaths`. Séparation +/- via la markLine à 0. Renommé "Net score cumulé".
+
+**Tests** : Go `FragAggregates` (max 9 / total HS 7 / total PK 3). Front : `SessionNetScoreArea.test` (1D scalaires + pas de visualMap + couleur), `SessionNewCharts.test` idem. i18n régénéré. `go build`/`vet`/`test` verts ; `tsc` 0, `eslint` 0, `vitest` **110/110**.
+
+**Conclusion / next** : radar = compte de session avec labels corrects ; net score rend une courbe bleue (token `chart-series-1` vérifié = #93C5FD). Leçon : j'ai théorisé 3× sur le visualMap au lieu de revenir au chart le plus simple — fait maintenant.
+
+## [2026-05-30] feat(session-detail): placement "X/Y" dans la colonne Rang (cohérent avec l'Explorer)
+
+**Statut** : Complété
+
+**Demande** : suite du palier — afficher aussi "X/Y" (matchs de placement) dans la colonne Rang du tableau session, comme l'Explorer.
+
+**Décision / implémentation** (réutilise la logique de l'app, pas de duplication) :
+- `SessionPageService` : champ `csrThreshold CSRThresholdResolver` + `WithCSRThresholds(...)` ; câblé dans `registry_pages.go` via `NewCSRThresholdsRepo(pdb.Metadata).Get` (même source que l'Explorer/match-history, fallback seuil 5).
+- `computeSessionPlacements(ctx, rows)` : convertit TOUS les matchs canonical en `[]domain.MatchHistoryRawRow` puis appelle **directement** `applyMatchPlacements` (même package `service`) — garantit la cohérence avec l'Explorer. Le label CSR "Placement (N restants)" est synthétisé depuis `SkillMeasurementRemaining` ; LUSR dérivé des 10 plus vieux par chaîne (`applyLUSRPlacements`, besoin de tous les matchs → calcul fait sur `rows` complet avant filtrage session). Retourne `map[matchID]{done,total}`.
+- `applyPlacementsToRows(rows, placements)` : post-traitement séparé qui renseigne `PlacementDone/Total` → `buildSessionDetailRows` garde sa signature (zéro impact sur les 14 appelants existants). Appliqué à `resp.Matches` ET `resp.CompareMatches`.
+- `domain.SessionDetailMatchRow` += `PlacementDone/PlacementTotal`. Front : `types.ts` += `placement_done/total` ; `toExplorerRow` les mappe. La cellule Rang d'`ExplorerMatchesTable` affiche déjà "X/Y" quand les deux sont présents (prime sur le palier) → zéro changement de composant.
+
+**Tests** : Go `TestComputeSessionPlacements_CSR` (remaining=2, seuil 5 → 3/5 ; établi → pas de placement ; `applyPlacementsToRows` renseigne les rows). Front : `toExplorerRow` mappe placement ; render → colonne Rang "3/5" (palier masqué). `go build`/`vet`/`test` verts ; `tsc` 0, `eslint` 0, `vitest` **107/107**.
+
+**Conclusion / next** : la colonne Rang du tableau session est désormais 100% cohérente avec l'Explorer — palier établi ("Or III") OU placement ("X/Y"), même source (`match_skill_rank` via canonical) et même logique (`applyMatchPlacements`). RAS en suspens.
+
+## [2026-05-30] fix(explorer/session): fin du masquage LUSR_V2 dans la table matchs + v2 canonical par défaut (code)
+
+**Statut** : Complété (code + tests + data-op réconciliation FAITE 2026-05-30 16:30).
+
+**Symptôme** : sur la table matchs (Explorer / Session-detail), la colonne « Note » affichait
+tantôt `LUSR`, tantôt `LUSR_V2` pour des matchs comparables → lu comme « il reste du LUSR v1 ».
+
+**Root cause (confirmée par lecture code + diag READ-ONLY)** : ce n'est PAS du v1 résiduel à
+l'affichage. `match_skill_rank` est append-only et porte 2 rows/match v2 (Stratégie C, ADR 0024) :
+`LUSR` (slot UI) + `LUSR_V2` (audit). Le fix du masquage Phase 2.E
+(`player_msr_view_lusr_over_v2`, priorité CSR>LUSR>LUSR_V2) ne couvrait QUE la vue
+`match_skill_rank_latest`. Or DEUX readers lisaient la TABLE BRUTE sans filtre `rating_type` ni
+ordre déterministe :
+- `playerMatchesSkillRankTpl` (player_matches_repo.go) — table Explorer/Session ; `out[mid]=sr`
+  (map last-write-wins) → row arbitraire, parfois `LUSR_V2`, parfois une row LUSR périmée.
+- `Q22aMatchSkillRankPlayer` (queries_match.go) — carte rang du match unique ; `LIMIT 1` sans
+  ORDER BY, même non-déterminisme.
+Les readers career/aggregates filtrent `rating_type='CSR'|'LUSR'` → immunisés.
+
+**Fix A (read path)** : les 2 readers lisent désormais `match_skill_rank_latest` (1 row/match,
+priorité déjà encodée). Corrige le label ET les valeurs périmées.
+
+**Fix B (write path pérenne)** : `sync.DefaultLUSRModeIfUnset(ctx)` (skill_v2_canonical.go),
+appelée au boot serveur (cmd/server) AVANT `LogLUSRModeAtBoot`. Pose `LEVELUP_LUSR_V2_ENABLED=1`
++ `LEVELUP_LUSR_CANONICAL=LUSR_V2` si ABSENTS (os.LookupEnv → respecte un opt-out explicite
+`=LUSR`). v2 canonical devient le défaut *dans le code* (survit à un reset .air.toml/.env.local)
+sans toucher `IsLUSRV2Enabled/Canonical` (défaut off conservé → tests + CLI déterministes).
+
+**Diag** : `cmd/diag_lusr_slots` (READ_ONLY, serveur arrêté) — ANOMALIE A (LUSR_V2 sans slot LUSR)
++ ANOMALIE B (LUSR sans audit LUSR_V2 = v1 résiduel par match).
+
+**Résultats observés** : build ./... OK, vet OK, tests sync + duckdb + service verts. Diag sur
+snapshot Chocoboflor (seul copiable, serveur tenant le lock RW) : 468 matchs LUSR, 6 matchs
+LUSR_V2 → **462 matchs LUSR sans audit v2 (anomalie B)**, max written_at=2026-05-27 : le backfill
+canonical annoncé 2026-05-29 n'a PAS couvert l'historique de ces DBs live. Anomalie A = 0 → après
+Fix A, aucune note `LUSR_V2` ne fuit.
+
+**Fix C (data-op) — FAIT 2026-05-30 16:30** : serveur tué pour libérer le lock RW.
+PIÈGE découvert : `lusr_v2_canonical_backfill --commit` avec les 4 GT EN ARGUMENTS d'un seul run
+ne réconcilie QUE le 1er (Madina). Le shadow avance le watermark `player_skill_state_v2` de TOUS
+les participants d'un match (coéquipiers inclus), donc Choco/JGtm passés ensuite ressortaient
+`skipped_already_seen=459/592` et n'écrivaient quasi rien (6/205). FIX OPÉRATIONNEL : relancer le
+cmd **une fois par joueur** (chaque invocation TRUNCATE `player_skill_state_v2` puis reprocesse le
+owner complet). Résultat 4 runs séparés : Madina 730, Choco 337, JGtm 623, Daemon 22 matchs écrits
+canonical.
+
+**État final vérifié (`cmd/diag_lusr_slots`)** : anomalie A = **0 partout** (plus aucun label
+LUSR_V2 ne peut fuir → demande utilisateur résolue). Anomalie B (v1 résiduel) = 390/131/271/10
+(Madina/Choco/JGtm/Daemon) — ATTENDU, PAS un bug : ce nombre ≈ les matchs v2-INÉLIGIBLES
+(`skipped_imbalance` BTB |nA-nB|>1 + `skipped_non_two_team` FFA/3+ équipes ; cf.
+isTeamImbalanceTooHigh, ADR 0024 limites Phase 3d). v2 n'a pas d'opinion sur ces matchs → ils
+gardent légitimement leur valeur v1 (slot LUSR correct, jamais label LUSR_V2). Ex Madina : 1120
+candidats − 730 traités = 390. Vue `match_skill_rank_latest` re-confirmée correcte (def
+`PARTITION BY match_id`, `rows == distinct_match`). Serveur rebuild (`tmp/server.exe` Fix A+B) +
+relancé : HEALTH 200, `logs/sync.log` = `LUSR mode: v2 CANONICAL ... enabled=true canonical=true`.
+
+**Limite connue laissée ouverte** : matchs BTB déséquilibrés / FFA jamais notés v2 tant que Phase
+3e (damping EP / facteur tronqué) n'élargit pas la tolérance — hors périmètre. Label affiché reste
+`LUSR` (jamais `LUSR_V2`) → invisible pour l'utilisateur.
+
+**Reste** : commit (en attente autorisation utilisateur — branche `fix/explorer-target-profile-auth`).
+`cmd/diag_lusr_slots` (sonde réutilisable) conservé ; `cmd/diag_lusr_view` (jetable) supprimé.
+
+## [2026-05-30] fix(session-detail): colonne « Rang » affiche le PALIER (« Or III ») et non la valeur brute
+
+**Statut** : Complété
+
+**Demande** : sur la page session, la colonne « Rang » du tableau affichait un nombre (la valeur CSR brute, ex. « 1450 ») au lieu du palier comme l'Explorer (« Or III », « Diamant V »).
+
+**Root cause** : `toExplorerRow` (SessionMatchesTable) plaçait délibérément la VALEUR du rating dans `skill_tier_label`, car `SessionDetailMatchRow` ne portait pas le libellé de palier. L'Explorer, lui, affiche le palier formaté. La donnée existe pourtant : le loader session (`player_matches_repo`) peuple bien `SkillSnapshot.TierCode/TierCodeFR/SubTier` depuis `match_skill_rank`, mais la conversion canonical→StatsMatchRow ne les copiait pas.
+
+**Implémentation** (backend + front, propagation du palier de bout en bout) :
+- `legacymatch.StatsMatchRow` : +`SkillTierCode`/`SkillTierCodeFR`/`SkillSubTier`. `analysis/stats_canonical.go` les copie depuis `SkillSnapshot`.
+- `analysis` : nouveau helper EXPOSÉ `BuildSkillTierLabel(tierCode, tierCodeFR, subTier, frPreferred) *string` qui réutilise `buildCanonicalSkillBadge` (même formule que la home/Explorer) avec choix FR/EN ; nil si pas de tier (placement/non-rankée).
+- `domain.SessionDetailMatchRow` : +`SkillTierLabel *string json:"skill_tier_label"`. `buildSessionDetailRows` le construit (locale-aware via `frPreferred`).
+- Front : `types.ts` +`skill_tier_label?`. `toExplorerRow` mappe `skill_tier_label = m.skill_tier_label` (le palier) et SUPPRIME l'ancien calcul de la valeur numérique → la colonne « Rang » affiche « Or III » comme l'Explorer ; « - » si non rankée/placement (même comportement).
+
+**Note placement** : « X/Y » (matchs de placement) n'est pas reconstruit ici (logique seuils CSR/LUSR non portée) → un match en placement affiche « - » au lieu de « 3/10 ». Hors scope de la demande (le palier établi est le sujet) ; à ajouter séparément si besoin.
+
+**Tests** : Go `TestBuildSessionDetailRows_SkillTierLabel` (FR « Or III » / EN « Gold III » / non-rankée nil). Front : `toExplorerRow` → palier passthrough, render compact « Or III » visible. `go build`/`vet`/`test` (service+analysis) verts ; `tsc` 0, `eslint` 0, `vitest` session-detail + explorer **105/105**.
+
+**Conclusion / next** : le tableau session affiche désormais le palier comme l'Explorer (source unique `match_skill_rank` via canonical, helper partagé). Reste optionnel : afficher « X/Y » en placement.
+
+## [2026-05-30] feat(session-detail): colonne « Δ rang » dans le tableau session, JAMAIS sur l'Explorer
+
+**Statut** : Complété
+
+**Demande** : ajouter la colonne « Δ rang » (gain/perte de rating du match) au tableau de la page session, sans qu'elle apparaisse sur le tableau de la page Explorer. « Fais ça proprement ».
+
+**Décision / implémentation** (front-only, additif) :
+- **Point d'injection générique** sur `ExplorerMatchesTable` : prop `extraColumns?: ColumnDef<ExplorerMatchRow>[]` + `extraColumnsAfterId?: string`. Les colonnes injectées sont splicées après la colonne d'id donné (via un 2e `useMemo` ; `columns === baseColumns` quand rien n'est passé). La page Explorer ne passe RIEN → jamais de Δ rang chez elle (garantie structurelle, pas un masquage).
+- **Porteur de données** : `ExplorerMatchRow.skill_rating_delta?` (optionnel, commenté « pour colonne injectée », laissé `undefined` côté Explorer). `toExplorerRow` (session) le mappe depuis `m.skill_rating_delta`.
+- **Colonne définie côté session** (`SessionMatchesTable`) : id `delta_rating`, header i18n `session.detail.col_rating_delta` (« Δ rang » / « Δ rank »), cellule via `formatRankDelta` (CSR entier signé / LUSR 2 déc.) + couleur `rankDeltaToken` (divergente). Injectée après `skill_tier_label` (Rang), dans les DEUX variants (full + compact), comme l'ancien preset. Header mémoïsé via une string stable (label) pour ne pas recréer la colonne à chaque render.
+- En compact, `delta_rating` n'est pas dans `COMPACT_HIDDEN_COLUMNS` → visible. Ordre compact : … Perf · Rang · Δ rang · ΔMMR.
+
+**Tests** : `SessionMatchesTable.test` — `skill_rating_delta` au fixture, Δ rang (« +25 ») présent en compact ET full, mapping `toExplorerRow`. `ExplorerMatchesTable.test` — nouveau test : sans `extraColumns`, aucune colonne « Δ rang »/« Δ rank ». `tsc` 0, `eslint` 0, `vitest` session-detail + explorer **105/105**.
+
+**Conclusion / next** : Δ rang livré dans le tableau session (réutilise toujours `ExplorerMatchesTable`, même style), absent de l'Explorer par construction. Le point d'injection `extraColumns` est réutilisable pour d'autres colonnes spécifiques à un consommateur.
+
+## [2026-05-30] ui(ascension): ticker tips — source JEU (coachingTipsManifest) + format « Catégorie : conseil » sur 2 lignes
+
+**Statut** : Complété
+
+**Demande** : dans Ascension, les tips doivent (1) s'afficher sur 2 lignes pour ne pas être tronqués, (2) toujours au format « Catégorie : conseil » SANS saut de ligne entre la catégorie et le conseil, (3) être des conseils de JEU (axés gameplay), pas des tips sur l'app. Le ticker mélangeait des concepts app (glossaire). Alternative tolérée : à défaut de tout-jeu, rendre les tips de jeu plus fréquents.
+
+**Décision** : choix de l'option forte (100 % jeu, pas un mix pondéré).
+
+- **Source** basculée du glossaire help (concepts app : Série, Palier, Levier LUSR…) vers `coachingTipsManifest` (catégories Combat / Impact / Objectif / Score / Support / Survie). `buildAscensionTips` parse les clés `coaching_tips.<cat>.<type>.<n>` (regex excluant `.title` / `.related_signals`), mappe `term = titre de catégorie`, `shortDef = conseil`, shuffle + borne à `MAX_TIPS=14` (catalogue ~70). Plus aucun `href` (les conseils ne pointent pas vers le glossaire). Les définitions de concepts restent dans `/help?tab=glossary`, simplement plus mélangées au ticker. Supprime l'import cross-feature vers `features/help`.
+- **Rendu** `TipPill` : flex-col (terme gras ligne 1 / déf ligne 2) → flux inline unique « `Catégorie :` (gras) + conseil (muted) » borné par `line-clamp-2`. Suppression de la troncature JS (`SHORT_DEF_MAX_LEN=180`) : texte complet dans le DOM (a11y / lecteurs d'écran), clamp visuel 2 lignes en CSS. Hauteur réservée `min-h-[3.25rem]` → `min-h-[2.75rem]` (2 lignes au lieu de 3, pas de décalage au fondu).
+- **i18n** `tipsTickerAriaLabel` FR/EN : « concepts utiles dans cette section » → « Astuces de jeu pour progresser » / « Gameplay tips to improve » (fichier TS inline, pas de manifeste TOML à régénérer).
+
+**Résultats** : `tsc -b` = 0, eslint 0 sur les 4 fichiers, vitest `src/features/ascension` 53/53 (dont `tips.test.ts` réécrit : catégories FR/EN, exclusion méta-clés, ids uniques, whitespace normalisé) + `tips-ticker` 5/5 inchangés (markup interne modifié, contrat href/span/aria/cycle préservé).
+
+**Prochaine étape** : vérif visuelle dev server (rendu 2 lignes, « Catégorie : conseil » lisible, pas de décalage UI au cross-fade) ; commit sur approbation.
+
+## [2026-05-30] feat(explorer): appearance + identité d'un joueur INCONNU via API officielle (vue publique)
+
+**Statut** : Complété
+
+**Demande** : enrichir l'encart « Profil joueur cible » de l'Explorer à la SpartanRecord, y compris pour des adversaires NON suivis (pas de DB locale). Contrainte explicite de l'utilisateur : « pense bien multi-titres, abstraction et respect de l'architecture en place ». Notre solution, pas de dépendance dotapi.gg (morte).
+
+**Investigation (#3)** : outil jetable `cmd/diag_appearance` avec les vrais tokens JGtm contre Nilton410 (xuid tiers) :
+- `/customization/appearance` → HTTP 403 (player-gated).
+- `/customization?view=public` → HTTP 200 : bloc `Appearance` complet (ServiceTag "MELG", Emblem.EmblemPath, BackdropImagePath) pour n'importe quel xuid.
+- `/careerranks/careerRank1?players=xuid(N)` + servicerecord → 200 (service-token, tout xuid).
+Conclusion : l'API officielle sert l'appearance d'un inconnu via la vue publique avec NOS tokens. Aucun service tiers requis.
+
+**Root cause du blocage** : `CareerLiveService.GetSpartanIdentityFor` (hot-path Home, stale-while-revalidate) ne fait AUCUN fetch HTTP synchrone, et le kickoff background (qui seul appelle l'API) est volontairement skippé pour un xuid tiers (`persist_disabled_third_party_xuid`, pour ne pas écrire dans la career_progression du user connecté). Donc pour un adversaire : cache froid + pas de fetch → identité nil. Le fallback view=public seul était nécessaire mais pas suffisant.
+
+**Décision / implémentation (3 changements, respect strict des couches)** :
+1. `sync/halo_client_career.go` (couche platform Halo) — `GetSpartanCustomization` : sur `!ok` (403) de `/customization/appearance`, fallback `GET /customization?view=public`, parsé par le MÊME `parseCustomizationAppearance` (la vue publique a le même bloc `Appearance.*`). Endpoint Halo isolé dans le client Halo → couche title-agnostic intacte.
+2. `service/career_live_target.go` (NOUVEAU) — `FetchLiveIdentity(ctx, xuid)` : fetch live SYNCHRONE et borné (réutilise `fetchProgressCached`/`fetchCustomizationCached` = cache mémoire only, JAMAIS `persistPartial`), `mergeCareerRow` + builder + overlay DB. Pendant délibéré de `GetSpartanIdentityFor` pour le deep-fetch Explorer d'une cible unique, sans persistance player DB. `GetSpartanIdentityFor` (Home) inchangé.
+3. `service/explorer_service.go` — port `ExplorerTargetIdentityProvider` : `GetSpartanIdentityFor` → `FetchLiveIdentity` (interface segregation : l'Explorer ne déclare que ce qu'il utilise). `*CareerLiveService` (concret) implémente les deux. Câblage `registry_pages.go` inchangé (type concret injecté).
+
+**Abstraction / multi-titres** : aucun `slug == "halo_infinite"`, aucun `filepath.Join("data")` ; URLs d'assets via l'adapter existant (`buildHomeIdentityAssetURL` + titleSlug). Dégradation gracieuse : un titre sans career/customization → fetchers nil → identité = fallback DB ou nil, jamais de panic.
+
+**Tests** (5 nouveaux) : `TestGetSpartanCustomization_PublicViewFallback` (httptest : 403 sur /appearance → 200 sur ?view=public → SpartanID/Emblem/Backdrop résolus). `TestCareerLive_FetchLiveIdentity_ThirdPartyAppearance` (tiers sans DB, custom-only → identité non-nil, RankNumber=0, fetch synchrone appelé, 0 persistance) + `_NoAuth` (sans tokens → DB fallback, 0 fetch). Câblage service : `TestExplorerService_TargetProfile_OpponentLiveIdentity` (LocalIdentity nil → fallback `FetchLiveIdentity` + bannière→backdrop) + `_LiveIdentityError` (échec live → identité nil, sample préservé). Suite complète `go test ./...` verte (80 pkg, 0 FAIL), `-race` (sync/service/api) clean, `go vet ./...` clean.
+
+**Logging** : niveau fichier par défaut = INFO (`LEVELUP_LOGS_FILE_LEVEL`), donc les events clés de #3 remontés Debug→Info pour être observables dans `logs/` : `spartan_id: customization via vue publique (joueur tiers)` (sync, +bytes) et `FetchLiveIdentity résolu`/`sans résultat` (service, +has_rank/has_emblem/has_backdrop/has_service_tag). Vérifié au runtime : ligne INFO `FetchLiveIdentity résolu` présente dans `logs/service.log` après curl Nilton410.
+
+**Runtime (serveur :8000, curl JGtm→Nilton410, Origin localhost:5173)** : HTTP 200, `target_profile.identity` = SpartanID "MELG" + emblem + backdrop + banner + career rank 272 « Hero Gold » (careerranks non gated → bonus pour l'inconnu) ; `top_medals` (Double frag ×13118 image/label/desc), `season_csrs`, `matches_per_season` (S13:22), `time_played_seconds`. Carte complète pour un joueur sans DB locale. HighestCSR/LUSR nuls (peaks du propriétaire, omis pour un tiers — voulu).
+
+**Conclusion / next** : encart Explorer pleinement fonctionnel pour les inconnus via API officielle. Frontend inchangé (l'identité transite par le rendu existant `HomeSpartanIdentityRow`). `cmd/diag_appearance` est jetable — à supprimer avant merge si on ne veut pas le garder comme sonde de diag. Rien n'est commité (branche `fix/solo-first-events-squad-mode`).
+
+## [2026-05-30] fix(session-detail): restaurer le set de colonnes réduit du tableau en mode comparaison (drawer 50%)
+
+**Statut** : Complété
+
+**Demande** : quand le drawer de comparaison est déplié (panneaux 50%), le tableau des matchs doit ne garder que les colonnes essentielles (Issue · Mode · K/D/A · KDA · Perf · Rating · ΔMMR), comme avant. Le composant et le style ne changent pas.
+
+**Contexte** : la réduction de colonnes existait dans l'ancien `SessionMatchesTable` (preset `FULL_COLS`/`COMPACT_COLS`, commit `ce2e358bd`) mais a été perdue quand `d0e0227cb` a refait la table pour réutiliser `ExplorerMatchesTable`. La prop `variant="compact"` survivait mais ne pilotait QUE la pagination (10 lignes), pas les colonnes.
+
+**Décision / implémentation** (front-only, additif) :
+- `ExplorerMatchesTable` : nouvelle prop optionnelle `columnVisibility?: Record<string, boolean>` câblée sur `state.columnVisibility` de TanStack (clé = id colonne = accessorKey, ou `'open'`). Défaut `{}` = tout visible → AUCUN impact sur la page Explorer. Pilotée par le parent (pas de toggle interne → pas de `onColumnVisibilityChange`). `bannerColCount` passé à `getVisibleLeafColumns()` (colSpan correct si colonnes masquées).
+- `SessionMatchesTable` : constante `COMPACT_HIDDEN_COLUMNS` (12 colonnes masquées) passée quand `variant === 'compact'`. Colonnes GARDÉES (9) : `outcome_code` (Issue), `mode_ui` (Mode), `kills`/`deaths`/`assists` (K/D/A), `kda` (KDA), `perf_score` (Perf), `skill_tier_label` (rating courant), `delta_mmr` (ΔMMR). Masquées : open, start_time, map_ui, playlist_label, is_with_friends, dominance_flag, score_label, duration_seconds, delta_perf, rating_type, team_mmr, enemy_mmr.
+- `SessionDetailPage` : aucun changement — il passait déjà `variant={drawerOpen ? 'compact' : 'full'}` (table principale) et `variant="compact"` (table comparée).
+
+**Écarts assumés vs les "8" historiques** : K/D/A = 3 colonnes dans ce tableau (modèle Explorer, non fusionnables sans changer le composant) → 9 colonnes visibles pour 8 concepts. « Δ rang » (ratingDelta) n'a PAS de colonne dans `ExplorerMatchesTable` et n'est pas mappé par `toExplorerRow` → non affichable sans ajouter une colonne (interdit : « le composant ne change pas »). Le rating courant reste visible via `skill_tier_label` (valeur CSR/LUSR placée là par l'adapter).
+
+**Résultats** : `tsc` 0 erreur, `eslint` 0, `vitest` session-detail + explorer **104/104** (dont nouveaux tests compact : colonnes masquées vs gardées + contrôle full). Aucun changement backend.
+
+**Conclusion / next** : la vue comparaison retrouve son tableau condensé. Si l'utilisateur veut afficher « Δ rang » dans cette vue, il faudra ajouter une colonne `skill_rating_delta` à `ExplorerMatchesTable` (+ mapping `toExplorerRow`) — décision séparée car ça touche le composant partagé.
+
+## [2026-05-30] fix(session-detail): bouton Comparer toujours disponible — découpler le vivier de comparaison du filtre L2
+
+**Statut** : Complété
+
+**Demande** : le bouton « Comparer » disparaît quand l'utilisateur resserre le filtre L2 pour afficher une seule session en vue unique.
+
+**Root cause** : `available_sessions` (qui pilote la visibilité du bouton via `>= 2` côté front + le dropdown + la suggestion) était calculé sur le périmètre filtré resserré (`filterStatsMatchRows(rows, req.Filters)`). Quand l'utilisateur filtre pour isoler UNE session, ce périmètre ne contient qu'une session → bouton masqué. Confondait deux périmètres distincts : le filtre pour VOIR une session vs le vivier de sessions COMPARABLES (qui devrait être plus large). Ground-truth (DB demo, outil jetable) : 10 matchs, `session_id`/`session_label` NULL → 1 seule session → reproduisait le masquage.
+
+**Décision** (option validée avec l'utilisateur — « découpler le vivier ») : le vivier de comparaison conserve les filtres de CATÉGORIE (cascade maps/modes/playlists + match_context solo/squad) mais neutralise ce qui ISOLE une session (Period + Sessions).
+
+**Implémentation** (backend-only — `session_page_service.go`) :
+- Helper `comparePoolFilters(f)` : copie des filtres avec `Period` et `Sessions` vidés (Cascade + MatchContext conservés). `applyPeriodFilter` avec période vide = no-op, donc le vivier = sessions de même catégorie sur tout l'historique.
+- `compareScope = filterStatsMatchRows(rows, comparePoolFilters(req.Filters))` + `compareLabels = extractSessionLabels(compareScope)`.
+- `AvailableSessions = compareLabels` (au lieu du `labels` resserré) → le bouton + le dropdown du front s'appuient automatiquement dessus (AUCUN changement front nécessaire ; le dropdown exclut déjà la session courante).
+- Suggestion : `buildSessionCompareSuggestion(compareLabels, currentLabel, compareScope)`.
+- `compareMatches = filterBySession(compareScope, compareLabel)` (sinon une session hors filtre resserré aurait 0 match).
+- La VUE principale (session courante, `Matches`, prev/next) reste sur le périmètre resserré (`labels`/`filtered`) : le filtre L2 sert toujours à choisir/voir la session ; seul le vivier compare est élargi.
+- Log : `view_sessions` (resserré) + `compare_pool_sessions` (élargi).
+
+**Tests** : `TestSessionPageService_ComparePoolIgnoresPeriodNarrowing` (période → 1 session vue, 3 sessions vivier). `AppliesPeriodFilter` reframe : la période resserre la vue (`Matches==1`) sans réduire le vivier (`AvailableSessions==3`). Suite `internal/service` verte ; `SessionDetailPage.test.tsx` (mock) toujours vert.
+
+**Conclusion / next** : bouton Comparer toujours pertinent dès qu'il existe ≥2 sessions de même catégorie, indépendamment du resserrement L2. Choix explicite NON retenu : prev/next restent sur le périmètre resserré (re-filtrer pour naviguer entre sessions) — à rouvrir si l'utilisateur veut naviguer dans le vivier élargi.
+
 ## [2026-05-30] fix(session-detail): 8 ajustements charts + réparation "Net score" vide + mode FR (fallback GameVariant)
 
 **Statut** : Complété
@@ -51721,3 +52058,38 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 **Reste #3** (identité adversaire) : à investiguer ultérieurement.
 
 **Prochaine étape** : validation visuelle utilisateur ; commit.
+
+
+## [2026-05-30] investigation #3 — identité d'un joueur inconnu (adversaire) — Concluante (décision en attente)
+
+**Mécanisme RÉEL de SpartanRecord (vérifié runtime)** : proxy Vercel `sr-nextjs.vercel.app/api/halodotapi?path=/games/halo-infinite/appearance/players/{gt}/spartan-id` → relaie vers **`grunt.api.dotapi.gg`** (service HÉBERGÉ HaloDotAPI/DotGG, token côté serveur). Images `cms-images?hash=` PUBLIQUES (200 sans token) ; endpoint données token-gated (401 direct).
+
+**Piège de nommage — deux « Grunt » distincts** :
+- `../grunt` (dossier parent, dend/Den.Dev.Grunt .NET) = wrapper de l'API Halo OFFICIELLE (`*.svc.halowaypoint.com`) ; lib/doc de référence ; bornée par les permissions officielles → appearance d'un inconnu NON accessible (notre nil).
+- `grunt.api.dotapi.gg` = service HÉBERGÉ tiers (HaloDotAPI/DotGG) avec SON token ; sert les données des inconnus. Même nom, chose différente.
+
+**Conclusion initiale (révisée ci-dessous)** : on pensait dotapi.gg+token nécessaire. FAUX.
+
+**RÉVISION — diagnostic `cmd/diag_appearance` (tokens JGtm réels → appearance de Nilton410 inconnu)** :
+- `/customization/appearance` (player-gated, utilisé par notre `GetSpartanCustomization`) → **HTTP 403** pour un inconnu → explique notre nil.
+- **`/customization?view=public` → HTTP 200** : renvoie le bloc Appearance d'un inconnu (`ServiceTag:"MELG"`, `Emblem.EmblemPath`, `BackdropImagePath`) — IDENTIQUE à ce que dotapi.gg sert, mais via l'**API officielle + nos propres tokens**. Zéro dépendance externe.
+- LevelUp avait abandonné `view=public` le 2026-05-14 (timeout temporaire) → revenu (200). Bonus : le servicerecord renvoie `Subqueries.SeasonIds` (vraie liste des saisons jouées, utile pour #1 lifetime un jour).
+
+**NOTRE SOLUTION (implémentable sans dépendance)** : ajouter un fallback `/customization?view=public` dans `GetSpartanCustomization` (ou une méthode dédiée) quand `/appearance` renvoie 403 → parse le bloc Appearance → identité (emblem/backdrop/service-tag) pour un adversaire. Câbler comme fallback dans `fetchTargetIdentity` (Explorer). Career RANK d'un inconnu reste probablement player-gated (à confirmer) mais l'appearance suffit pour l'identité visuelle demandée.
+
+**Statut** : investigation concluante, solution propre identifiée — implémentation à valider/lancer.
+
+
+## [2026-05-30] fix(auth): WriteOAuthRefreshToken ON CONFLICT → Binder Error sur sync_meta legacy (Chocoboflor) — Complété
+
+**Statut** : Complété · Branche `fix/explorer-target-profile-auth`
+
+**Symptôme (logs prod)** : à chaque rotation RT Microsoft de Chocoboflor, `[ERROR] duckdb exec failed op=OpenReadWriteShared` + `[WARN] pool/resolver: persistance RT rotaté échouée err="Binder Error: The specified columns as conflict target are not referenced by a UNIQUE/PRIMARY KEY CONSTRAINT"` + `[WARN] backup export échoué err="database is closed"`.
+
+**Cause racine (vérifiée par inspection DB)** : le `sync_meta` de Chocoboflor n'avait AUCUNE contrainte (legacy créé par l'ancien sync Python, colonne `updated_at` en plus), alors que Madina97294 a `PRIMARY KEY`+`NOT NULL`. L'ancien `WriteOAuthRefreshToken` (queries_auth.go) faisait `INSERT ... ON CONFLICT(key) DO UPDATE` → DuckDB rejette le conflict target car `key` n'est pas UNIQUE/PK. Le double-write DuckDB est un chemin de compat (ADR 0023) ; la source unique (MultiUserTokenStore) écrite en premier réussissait → auth NON cassée, mais logs bruités + ligne DuckDB legacy figée + échec backup collatéral (ref-count du handle caché fermé par le `defer db.Close()` de onRotated).
+
+**Décision technique** : pattern SELECT-then-UPDATE-or-INSERT (cf. CLAUDE.md règle écritures legacy auth) au lieu d'ON CONFLICT → robuste quel que soit le schéma, protège les 4 joueurs + toute future DB legacy. + repair one-off du schéma de Chocoboflor (recréation `sync_meta` avec PK via swap transactionnel, DuckDB ne supportant pas `ALTER ADD PRIMARY KEY`).
+
+**Résultats** : code fix dans `queries_auth.go` + test de non-régression `queries_auth_test.go` (cas `avec_pk` ET `legacy_sans_pk` reproduisant le bug, + INSERT/UPDATE/no-doublon/token-vide) → PASS (`-tags=integration`). `go vet` OK. Repair appliqué : Chocoboflor `sync_meta` a désormais `PRIMARY KEY`+`NOT NULL`, 12 lignes préservées (dont `oauth_refresh_token`). Outils d'inspection/migration jetables supprimés.
+
+**Prochaine étape** : commit (en attente autorisation utilisateur). Note : Phase 5 du refactor ADR 0023 supprimera entièrement ce double-write DuckDB.
