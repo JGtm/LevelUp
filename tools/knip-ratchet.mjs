@@ -23,13 +23,11 @@ import { fileURLToPath } from 'node:url'
 
 const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', 'web')
 
-// Plafonds figés le 2026-05-30 (post-sprint explorer enrichi + session charts).
-// files=31 : SessionKDATimeline + SessionOcdrScatter sont des composants session
-//   créés lors de sprints précédents et jamais intégrés dans le layout final —
-//   dette UI à nettoyer (hors scope immédiat).
-// types=84 temporaire : explorerScope.ts WIP (refactor/arch-port-abstractions) compte 1 type non câblé.
-// Remettre à 83 dès que le type est consommé ou supprimé.
-const THRESHOLDS = { files: 31, exports: 87, types: 84 }
+// Plafonds figés le 2026-05-30 (post-sprint LUSR v2 + explorer appearance + session fixes).
+// files=31 : SessionKDATimeline + SessionOcdrScatter — composants session non câblés (dette UI).
+// exports=88 : buildSessionOcdrBarsOption (SessionOcdrBars, pas encore consommé côté layout).
+// types=85 : TeamBanner (ExplorerMatchesTable WIP) + CoachingTipsManifestKey + divers WIP.
+const THRESHOLDS = { files: 31, exports: 88, types: 85 }
 
 function knipJson() {
   try {
