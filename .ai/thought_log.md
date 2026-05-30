@@ -1,3 +1,81 @@
+## [2026-05-30] fix(data): régression labels GUID/EN + gamertags→XUID — root cause = metadata.duckdb FATAL invalidated (instances serveur multiples)
+
+**Statut** : En cours (réparation data primaire faite + vérifiée ; durcissement code à faire)
+
+**Symptômes** : Page Explorer (+ autres tables) — cartes/modes/playlists en anglais ou GUID brut (ex. `78da545f-…`) ; match-view affiche les XUID au lieu des gamertags. Tout sur les matchs synchronisés ~24→26/05.
+
+**Investigation** :
+- `match_registry.map_name == map_id` (GUID), `*_name_fr` NULL pour tous les matchs depuis le 24/05 (diag_recent_match_sync).
+- FAUSSE PISTE initiale : « asset_translations manque le nouveau contenu ». RÉFUTÉ — `asset_translations` contient bien fr-FR (Solitude/Partie rapide…) depuis le 30/03. Les assets sont des cartes connues.
+- Logs serveur : `metadata.duckdb op=OpenReadWriteShared FATAL Error: database has been invalidated because of a previous fatal error. The database must be restarted`.
+- **Root cause réel** : plusieurs instances serveur concurrentes (zombies de sessions agent précédentes : 2× server.exe + air orphelin) lockaient metadata.duckdb + global xbox_aliases.duckdb → le serveur servant/syncant avait un handle metadata FATAL/nil → `EnrichRegistryFromMetadata` (sync) ET `applyMatchHistoryFRTranslations`/`ResolveAssetNamesBulk` (read) no-op silencieux → GUID partout ; alias non écrits → XUID bruts.
+- Bug gamertag vue `v_gamertag_lookup` recréée en post-sync (RO auto-attach) DÉJÀ corrigé par `e1cee770e` (vues au boot), présent sur la branche.
+
+**Décisions / actions** :
+1. Kill de toutes les instances air/server.exe (dont zombies) → DBs déverrouillées.
+2. `backfill_registry_names` → 132 rows réparées (maps 46/46, pairs 76/82, variants 8/8, playlists 2/6). Résidu : 6 pairs + 4 playlists réellement absents d'asset_translations (vrai nouveau contenu → populate-assets).
+3. Restart d'UNE instance air propre → handle metadata frais (sort de l'état FATAL).
+4. **Vérifié live** : POST explorer/matches-query JGtm → map_ui=Solitude, mode_ui=Bases, playlist_label=Partie rapide (résolution FR OK).
+
+**Reste (durcissement durable)** :
+- Gamertags : 55 xuid orphelins (diag_orphan_xuids), surtout strangers 1-match (coéquipiers/adv. de Nilton410). Récupération cross-match via `repair_data_consistency` (offline) ; les vrais strangers nécessitent un re-parse du film (gamertag dans le film, écrit seulement si globalDB≠nil). BUG : `engine_postsync.go:209 healEventsForRecentMatches(ctx, sharedDB, nil, …)` passe globalDB=nil → le heal ne ré-alias jamais.
+- Hardening anti-récurrence : auto-recover metadata sur « invalidated » (cf. pattern QueryRecovered player DB) + garde mono-instance (PID lock) pour empêcher les serveurs concurrents.
+- Optionnel : cascade FR sur tables read brutes (squad Q30/Q31/Q33, career Q9).
+
+**Conclusion** : régression visible (labels + XUID systémiques) résolue par élimination des instances concurrentes + backfill noms. Prochaine étape : durcissement code + repair gamertags orphelins.
+
+## [2026-05-30] ui(ascension): tips — layout 2 lignes + audit complet franglais définitions
+
+**Statut** : Complété
+
+**Demande** : (1) afficher les tips sur 2 lignes avec espace réservé pour éviter les décalages d'UI ; (2) corriger le franglais dans les définitions — seul "Frags" (≠ Kills) est acceptable.
+
+**Décisions** : Layout `TipPill` redessiné en flex-col (ligne 1 = icône + terme gras, ligne 2 = définition muted). Section avec `min-h-[3.25rem]` = espace stable pour 1 ligne terme + ~2 lignes définition (180 chars @ text-xs sur ~900px). 10 corrections de définitions FR : "broken" → "interrompue", "(shield)" supprimé, "PB"/"kills" → "record"/"frags", "(challenges)" → "(défis)", "tier" → "rang", "win rate" → "taux de victoire", "tilt" → "déstabilisation", "top 20 %" → "20 % supérieurs" (×2), "First Kills/Deaths" → "Premiers Frags/Morts", "patterns détectés" → "motifs détectés".
+
+**Résultats** : vitest 12/12.
+
+**Prochaine étape** : commit sur approbation.
+
+## [2026-05-30] fix(web,synthesis): KPI « Meilleures stats » en ligne sous le profil de combat + fix précision ×100
+
+**Statut** : Complété (branche `fix/explorer-target-profile-auth`, sur autorisation de travailler sur la branche en cours ; fichiers synthesis disjoints du WIP auth/explorer). Front : `tsc -b` = 0, eslint 0 erreur (warnings préexistants « Profil de combat » hardcodé hors périmètre), vitest `src/features/synthesis` 16 passés / 14 skip (dette documentée). Commit laissé à l'utilisateur.
+
+**Problèmes** : (1) bug d'affichage — la carte « Top Précision » calculait `best_accuracy_ref.value * 100` alors que cette valeur = colonne brute `match_participants.accuracy`, déjà en pourcentage (0..100) → précision ~100× trop grande ; (2) les 6 cartes « Top » (FDA/Perf/Précision/Dégâts/Tirs tête/Score perso) étaient enfouies dans la colonne gauche étroite (`w-[21rem]`, grille 2 col) de la Vue d'ensemble.
+
+**Décision** : déplacer les 8 `AccentCard` « records » (Meilleur match · frags, Folie meurtrière max, FDA, Performance, Précision, Dégâts, Tirs à la tête, Score perso) juste sous `CombatProfileInlineRow` (tout en haut de `SynthesisOverviewSection`), en une rangée (`grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8`), sous un titre de section « Meilleures stats » (nouvelle clé i18n `synthesis.section.top_stats`). Les 6 cartes ref-based perdent le préfixe « Top » (porté par le titre) → « FDA », « Précision », etc. ; Meilleur match · frags raccourci en `${labelOf('kills')} (max)`. La carte Folie meurtrière dépend de `detailedStats` → gardée par `detailedStats != null` (la section reste hors du bloc detailedStats car les 6 autres ne dépendent que de `overview.best_*_ref`). L'ancienne grille 2-col (best_kills + killing_spree) de la colonne gauche est supprimée ; la carte Victoires consécutives (win_streak) y reste. Fix unité : suppression du `* 100` sur la précision.
+
+**Unité accuracy — preuve** : la colonne brute `p.accuracy` est lue telle quelle (`player_matches_repo.go:281/752` → canonical `Self.Accuracy` → `best_accuracy_ref.value`). La MÊME colonne est rendue SANS ×100 par le scoreboard (`MatchScoreboard.tsx:54`) et la table des matchs de session (`_shared.ts` `formatPercent`) → colonne en 0..100. Explorer/Squad recalculent depuis `shots_hit/shots_fired` (vrai ratio 0..1), d'où leur ×100 — chemin de code distinct.
+
+**Résultats** : typecheck/lint/vitest verts ; manifeste i18n régénéré (synthesis 50 clés).
+
+**Note (hors périmètre)** : `session_compare_service.go:362` et plusieurs domaines documentent l'accuracy en 0..1 et multiplient par 100 ; selon la source réelle de `legacymatch.StatsMatchRow.Accuracy`, `session_compare` pourrait présenter le même bug — à auditer séparément.
+
+**Prochaine étape** : vérif visuelle dans l'app (rangée sous le profil de combat, précision réaliste ~46.9 %, largeur OK) ; commit sur approbation.
+
+## [2026-05-30] ui(ascension): tips — suppresssion bloc, termes FR, troncature
+
+**Statut** : Complété
+
+**Problèmes** : (1) outer `<section>` avec `border/bg/rounded` → bloc visuel inutile autour d'une seule ligne ; (2) 5 termes FR franglais/anglais ; (3) `SHORT_DEF_MAX_LEN=110` + `max-w-[28rem] truncate` → troncatures agressives.
+
+**Décisions** : Suppression de tout le chrome visuel de la section (border, bg-card, rounded, px/py réduit) — les tips flottent désormais directement sur la page. Redesign `TipPill` : plus de `rounded-full/border/bg-background/whitespace-nowrap/max-w`, simple ligne flex `text-xs` avec tiret cadratin. Termes FR corrigés : 'Pattern contextuel' → 'Motif contextuel', 'Pattern comportemental' → 'Motif comportemental', 'Leverage LUSR' → 'Levier LUSR', "Tier d'engagement" → "Niveau d'engagement", 'Carte de moment (MomentCard)' → 'Carte de réalisation'. Références internes mises à jour (exemples + définition 'Levier calibré'). `SHORT_DEF_MAX_LEN` 110 → 180. Test de borne mis à jour (111 → 181).
+
+**Résultats** : vitest 12/12.
+
+**Prochaine étape** : commit sur approbation.
+
+## [2026-05-30] ui(ascension): tips — fondu enchaîné à la place du défilement horizontal
+
+**Statut** : Complété
+
+**Demande** : remplacer le ticker horizontal de la page Ascension par un fade-out/fade-in qui affiche un tip à la fois, à un rythme confortable pour la lecture.
+
+**Décision** : refonte complète de `TipsTicker` — suppression des keyframes de scroll, du doublement des tips et de la CSS variable `--ticker-duration`. Nouveau mécanisme : `useState(currentIndex)` + `useState(visible)` + `setInterval` (cycle = `displaySeconds + 2 × transitionSeconds`) avec un `setTimeout` interne pour le cross-fade. `useReducedMotion` hook (matchMedia, SSR-safe) — fallback liste statique scrollable. `TipPill` simplifié (plus de prop `ariaHidden`). Props : `displaySeconds=6`, `transitionSeconds=0.5` (7s/tip). Valeurs par défaut choisies pour une lecture confortable. Interface inchangée côté consommateur (`AscensionLayout` ne passe ni `durationSeconds` ni les nouvelles props). Tests : 5/5 (rendu vide, pill unique, span sans href, aria-label, cycle avec fake timers).
+
+**Résultats** : vitest tips-ticker 5/5, aucune régression de typage.
+
+**Prochaine étape** : commit sur approbation.
+
 ## [2026-05-30] feat(explorer): profil de combat cible — donut connecteurs, terminologie FR, KPI cadence/score/frags parfaits
 
 **Statut** : Complété (branche `fix/solo-first-events-squad-mode`, en parallèle du WIP session-detail d'un autre agent — fichiers explorer disjoints, sur consigne explicite de ne pas créer de branche). Go : build module=0, `go test analysis+service -run Explorer|SampleStats` vert (BuildSampleStats enrichi de 2 cas). Front : `tsc -b`=0, eslint 0 sur mes fichiers, vitest `ExplorerTargetProfileCard` 5/5. Commit en attente d'autorisation.
@@ -51375,4 +51453,48 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 
 **Fix data-race (bonus, demandé après coup)** : `-race` révélait une race préexistante — `jobs.Store.Create` retournait le pointeur VIVANT de la map ; les handlers (openspartan_import, backfill, sync, settings, setup) lisaient `job.Status`/`job.JobID` hors lock pour la réponse HTTP pendant que la goroutine de fond le mutait via `SetStatus` sous lock. Fix : `Create` renvoie une COPIE (cohérent avec `Get`/`FindActiveJob`) — le `JobID` immuable reste la clé pour les mutations ultérieures. Régression `TestStore_Create_ReturnsCopy`. **`go test -race ./...` désormais 100 % clean sur tout le projet.**
 
+**Vérif runtime + 2 vrais bugs trouvés (le câblage auth seul ne suffisait pas)** : test contre le serveur live (curl endpoint, logs `apps/go-api/logs/service.log`). `auth_available=true` confirmé (Volet A OK), MAIS `career_stats` toujours nil → log `explorer_target_career_failed` : `GET /hi/players/{gamertag}/career-stats → HTTP 404` pour TOUS les joueurs (Chocoboflor inclus).
+- **Bug 1 — endpoint career inexistant** : `/hi/players/{X}/career-stats` n'existe pas dans l'API Halo. Cross-réf Grunt (`Stats_GetPlayerServiceRecord`) → le bon endpoint est `/hi/players/{player}/Matchmade/servicerecord` (schéma : Wins/Losses/MatchesCompleted au top-level, reste sous `CoreStats`). Bug PRÉEXISTANT dans `compare_provider.go` (Sprint 54) que le câblage Explorer a exposé — touchait aussi Compare. Fix : nouveau chemin + `serviceRecordResponse` remappé. Confirmé live : Chocoboflor 460 matchs, Nilton410 6907 matchs, `career_stats` présent.
+- **Bug 2 — barre privacy vide** : `PrivacyBanner` (partial) utilisait `text-warning-foreground` (~noir, pour fond plein) sur `bg-warning/10` (tint) en thème sombre → texte invisible. Fix : `text-warning` (couleur forte), aligné sur le variant `full`/`text-destructive`.
+
+Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mockés. Le logging structuré ajouté a permis le diagnostic immédiat (404 explicite dans service.log).
+
 **Prochaine étape** : validation utilisateur (Explorer cible : carrière live affichée, plus de message, réponse rapide à froid puis instantanée à chaud). Pas encore commité (en attente autorisation).
+
+---
+
+## [2026-05-30] Barre de progression Prestige (moi + escouade) sur /ascension/realisations
+
+**Statut** : Complété (en attente validation + autorisation commit).
+
+**Contexte / décision produit** : un *leaderboard PP* global est une feature à effet de réseau (les Prestige Points sont propriétaires, n'existent que pour les joueurs trackés). Décision : pas d'hébergement public à ce stade → pas de leaderboard, mais un simple **bloc de comparaison** moi + amis de l'escouade. Le `LeaderboardPPPage` stubbé (Phase 5) reste volontairement non câblé.
+
+**Décision technique** :
+- Nouveau composant `apps/web/src/features/ascension/PrestigeSquadProgress.tsx` ; remplace l'ancien `PrestigeBadge` (texte seul) dans `AscensionRealisationsTab`.
+- **Squad** = `useSettings().friend_gamertags` (défini dans Settings → SyncTab). Résolution gamertag → `player_slug` via `availablePlayers` (roster du store). Amis non trackés (absents de la roster ⇒ pas de `UserPrestige`) omis silencieusement.
+- Fetch parallèle moi + N amis via `useQueries` (pas de hooks en boucle), puis tri par `total_pp` desc. Bloc masqué si aucune donnée (PRESTIGE_ENABLED=false ou squad vide).
+- **Rendu repris à l'identique** de la barre Prestige/rang-carrière de la home (`CompositeProgressBar` + grille `[valeur courante | barre | cible]`). Conventions confirmées via `HomePrestigeSection` : `progress_ratio` 0..1, `next_threshold_pp <= 0` ⇒ niveau max. Légende couleurs inchangée (`tokenCssVar` info/success), zéro hex (conforme color-tokens).
+- Multi-titres : `currentTitleSlug` du store, pas de `'halo_infinite'` en dur.
+
+**Résultats** : `tsc --noEmit` OK ; `eslint` clean (warning exhaustive-deps corrigé) ; `vitest run src/features/ascension` → 52/52 verts ; aucun test ne référençait `PrestigeBadge`.
+
+**Prochaine étape** : validation visuelle utilisateur (3 barres triées, moi mis en avant). Test unitaire du composant à ajouter si souhaité. Pas encore commité (en attente autorisation).
+
+---
+
+## [2026-05-30] Fix progression V2 vide — auto-contention shared reader + backfill in-process
+
+**Statut** : Complété (en attente validation + autorisation commit). Branche `fix/explorer-target-profile-auth`.
+
+**Symptôme** : page `/ascension/realisations` affiche « Aucune streak / Pas encore de record » malgré une BDD pleine. Diag `/_diag/progression/{slug}` = `streak=0, records=0, milestone_earned=0` pour les 3 joueurs (catalog=14). Les milestones étant des agrégats lifetime, leur 0 prouve que les détecteurs n'écrivaient jamais.
+
+**Cause racine (confirmée par logs)** : le hook post-sync `EvaluateProgressionAfterSync` échouait systématiquement à l'étape 1 `loadProgressionMatches` avec `shared reader: context deadline exceeded` (41 occ. le 23/05, etc. ; 0 éval réussie sur tout l'historique). Mécanisme : dans le chemin batch, `engine.run` ré-acquiert le **shared writer RW** pour le post-sync ([engine.go:504](../apps/go-api/internal/sync/engine.go#L504), `defer postRls()` libéré au `return`), PUIS appelait le finalizer progression **avant** ce release. Le finalizer lit shared via `SharedReadDB().Get` qui attend le retour RO que le **même run** empêche (sharedprovider B-swap, ADR 0016) → deadline garanti → `return res, nil` (dégradation) → aucune persistance. Auto-contention, pas simple contention multi-joueurs.
+
+**Fix (2 couches + seed)** :
+1. **Cœur** ([engine.go](../apps/go-api/internal/sync/engine.go)) : le finalizer est désormais invoqué via un `defer` enregistré AVANT les leases writer → s'exécute en dernier (LIFO), donc APRÈS tous les `release()` writer, shared repassée en RO. Détaché du ctx parent (`context.WithoutCancel`). Armé sur succès uniquement (`finalizerArmed`).
+2. **Défense** ([post_sync_progression_queries.go](../apps/go-api/internal/api/post_sync_progression_queries.go)) : `acquireProgressionSharedRead` — acquisition shared résiliente (détache le ctx + retry/backoff jusqu'à un budget généreux, vars tunables). Appliqué aux 3 loaders (matches/stats/comeback). Budgets passés de 5-15s rigides à 45-60s avec retry.
+3. **Backfill in-process** : `POST /_admin/progression/backfill/{slug}` ([handlers/progression_backfill.go](../apps/go-api/internal/api/handlers/progression_backfill.go) + adapter [progression_backfill_provider.go](../apps/go-api/internal/api/progression_backfill_provider.go)). Rejoue `EvaluateProgressionAfterSync` sans coach/notif (CoachGenerator+Emitter nil → seuls les détecteurs persistent), idempotent, et renvoie le diag post-exécution. Endpoint (pas CLI) pour éviter le conflit de lease cross-process avec le serveur. Documenté dans openapi.yaml (contract test plafond 0).
+
+**Résultats** : `go build ./...` OK (CGO ucrt64), `go vet` clean, gofmt clean. Tests : nouveaux `post_sync_progression_retry_test.go` (retry succès/budget/détachement ctx) + `handlers/progression_backfill_test.go` (200/404/500/slug). Suites complètes vertes : `internal/sync` (12.4s), `internal/api/handlers` (5.3s), `internal/api` (7.5s, dont TestContract*).
+
+**Prochaine étape** : redémarrer le serveur (Air) pour charger le binaire, puis soit attendre un sync (finalizer corrigé peuple les tables), soit `curl -X POST /_admin/progression/backfill/{slug}` pour seeder immédiatement. Re-vérifier le diag. Pas encore commité (en attente autorisation).
