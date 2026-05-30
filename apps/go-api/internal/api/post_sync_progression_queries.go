@@ -25,6 +25,62 @@ import (
 // « au moins 1 match du jour a accuracy >= 0.50 ».
 const AccuracyThresholdForDays = 0.50
 
+// Budgets de la lecture progression. Déclarés en var (pas const) pour être
+// raccourcis dans les tests d'unité du retry (cf. post_sync_progression_retry_test.go).
+var (
+	// progressionLoadBudget borne la lecture complète des matchs de progression
+	// (acquisition shared + queries). Généreux car le pipeline tourne hors du
+	// chemin user-facing (post-sync / backfill), jamais sur une requête HTTP.
+	progressionLoadBudget = 60 * time.Second
+
+	// progressionSharedReadBudget borne l'acquisition résiliente d'une connexion
+	// lecture shared (toutes tentatives confondues).
+	progressionSharedReadBudget = 45 * time.Second
+
+	// progressionSharedReadAttempt borne UNE tentative Get (le provider peut
+	// attendre un retour RO le temps d'un swap ; au-delà on réessaie).
+	progressionSharedReadAttempt = 10 * time.Second
+
+	// progressionSharedReadBackoff sépare deux tentatives Get.
+	progressionSharedReadBackoff = 500 * time.Millisecond
+)
+
+// acquireProgressionSharedRead acquiert une connexion lecture shared, résiliente
+// à la fenêtre de swap RO↔RW d'un sync concurrent (ADR 0016) : pendant qu'un
+// sync tient le writer RW, un Get lecteur attend le retour RO. Plutôt que de
+// renoncer au premier dépassement, on réessaie avec backoff jusqu'à
+// progressionSharedReadBudget.
+//
+// Le ctx est détaché du parent (context.WithoutCancel) : le post-sync est un
+// traitement best-effort en arrière-plan qui ne doit pas être tué si le run de
+// sync appelant se termine et annule son ctx juste après.
+//
+// Le caller DOIT appeler la fonction release retournée (typiquement via defer).
+// Si err != nil, release est nil.
+func acquireProgressionSharedRead(parent context.Context, reader duckdb.SharedReader) (*sql.DB, func(), error) {
+	overall, cancelOverall := context.WithTimeout(context.WithoutCancel(parent), progressionSharedReadBudget)
+	var lastErr error
+	for attempt := 1; ; attempt++ {
+		attemptCtx, cancelAttempt := context.WithTimeout(overall, progressionSharedReadAttempt)
+		db, release, err := reader.Get(attemptCtx)
+		if err == nil {
+			return db, func() {
+				release()
+				cancelAttempt()
+				cancelOverall()
+			}, nil
+		}
+		cancelAttempt()
+		lastErr = err
+		select {
+		case <-overall.Done():
+			cancelOverall()
+			return nil, nil, fmt.Errorf("shared reader unavailable after %d attempt(s): %w", attempt, lastErr)
+		case <-time.After(progressionSharedReadBackoff):
+		}
+	}
+}
+
 // loadProgressionMatches lit les matchs récents avec les métriques nécessaires
 // aux détecteurs streaks (KDA pour les types perf-based) et records.
 //
@@ -52,7 +108,9 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 		return nil, nil, fmt.Errorf("loadProgressionMatches: player DB not attached")
 	}
 	since := now.AddDate(0, 0, -lookbackDays)
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	// Détaché du parent + budget généreux : la résilience à la fenêtre de swap
+	// RO↔RW est gérée par acquireProgressionSharedRead ci-dessous.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), progressionLoadBudget)
 	defer cancel()
 
 	loaded, matchIDs, err := loadProgressionSharedMatches(ctx, pdb, since)
@@ -71,9 +129,9 @@ func loadProgressionMatches(ctx context.Context, pdb *duckdb.PlayerDB, lookbackD
 
 // loadProgressionSharedMatches charge participants + registry depuis shared via SharedReader.
 func loadProgressionSharedMatches(ctx context.Context, pdb *duckdb.PlayerDB, since time.Time) ([]progressionMatchRow, []string, error) {
-	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := acquireProgressionSharedRead(ctx, pdb.SharedReadDB())
 	if err != nil {
-		return nil, nil, fmt.Errorf("loadProgressionMatches: shared reader: %w", err)
+		return nil, nil, fmt.Errorf("loadProgressionMatches: %w", err)
 	}
 	defer release()
 
@@ -220,12 +278,12 @@ func loadPlayerStats(ctx context.Context, pdb *duckdb.PlayerDB) (milestones.Play
 	if pdb == nil || pdb.Player == nil {
 		return out, fmt.Errorf("loadPlayerStats: player DB not attached")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), progressionLoadBudget)
 	defer cancel()
 
-	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := acquireProgressionSharedRead(ctx, pdb.SharedReadDB())
 	if err != nil {
-		return out, fmt.Errorf("loadPlayerStats: shared reader: %w", err)
+		return out, fmt.Errorf("loadPlayerStats: %w", err)
 	}
 	defer release()
 
@@ -310,11 +368,11 @@ func loadComebackContext(ctx context.Context, pdb *duckdb.PlayerDB, now time.Tim
 	if pdb == nil || pdb.Player == nil {
 		return out, fmt.Errorf("loadComebackContext: player DB not attached")
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), progressionLoadBudget)
 	defer cancel()
-	sharedDB, release, err := pdb.SharedReadDB().Get(ctx)
+	sharedDB, release, err := acquireProgressionSharedRead(ctx, pdb.SharedReadDB())
 	if err != nil {
-		return out, fmt.Errorf("loadComebackContext: shared reader: %w", err)
+		return out, fmt.Errorf("loadComebackContext: %w", err)
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, `

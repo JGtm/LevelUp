@@ -2416,6 +2416,29 @@ paths:
                 $ref: "#/components/schemas/ProgressionDiag"
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /_admin/progression/backfill/{player_slug}:
+    post:
+      tags: [diagnostics]
+      operationId: backfillProgression
+      summary: "Backfill progression V2 (Ascension) pour un joueur"
+      description: |
+        Fix 2026-05-30. Force une évaluation progression V2 in-process
+        (détecteurs streaks/records/milestones, idempotents) pour un joueur
+        dont l'historique existe déjà mais dont le pipeline post-sync n'avait
+        jamais abouti (incident timeout shared reader pendant la fenêtre de
+        swap RO↔RW). N'émet pas de notifications coach. Renvoie le diag
+        (counts) post-exécution pour vérifier que les tables se peuplent.
+      parameters:
+        - $ref: "#/components/parameters/PlayerSlug"
+      responses:
+        "200":
+          description: "Diag pipeline progression V2 après backfill"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressionDiag"
+        "404": { $ref: "#/components/responses/NotFound" }
+
 # ---------------------------------------------------------------------------
 # Components
 # ---------------------------------------------------------------------------
