@@ -129,6 +129,12 @@ CREATE TABLE match_participants (
     deaths_expected     DOUBLE,
     team_mmr            DOUBLE,
     enemy_mmr           DOUBLE,
+    present_at_beginning  BOOLEAN,
+    present_at_completion BOOLEAN,
+    joined_in_progress    BOOLEAN,
+    left_in_progress      BOOLEAN,
+    first_joined_time     TIMESTAMPTZ,
+    last_leave_time       TIMESTAMPTZ,
     PRIMARY KEY (match_id, xuid)
 );
 
@@ -233,6 +239,7 @@ CREATE TABLE match_skill_rank (
     tier_label       VARCHAR,
     rating_delta     DOUBLE,
     playlist_group   VARCHAR,
+    expected_win_prob FLOAT,
     start_time       TIMESTAMP,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP

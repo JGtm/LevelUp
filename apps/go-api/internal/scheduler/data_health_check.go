@@ -194,9 +194,13 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 
 	// Log structuré uniquement — pas d'émission de notif (cf. décision
 	// 2026-05-20 dans le commentaire de tête du package).
+	// orphan_xuids est TOUJOURS loggé (même cycle propre) : c'est le signal
+	// data-quality derrière les gamertags masqués "Joueur ####" (fix XUID
+	// 2026-05-30). Reste informatif — hors WarningsTotal par décision.
 	if res.WarningsTotal == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
+			"orphan_xuids", res.OrphanXUIDs,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	} else {

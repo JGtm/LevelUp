@@ -62,6 +62,25 @@ func seedRawUUIDMapName(t *testing.T, sharedPath string) {
 	}
 }
 
+// seedOrphanParticipant injecte un participant dont le xuid n'a AUCUN alias
+// résolu → compté comme orphelin par data_health (et masqué "Joueur ####" à
+// l'affichage, cf. fix XUID 2026-05-30). xuid réaliste (16 chiffres, non-bot).
+func seedOrphanParticipant(t *testing.T, sharedPath string) {
+	t.Helper()
+	db, err := duckdb.OpenReadWrite(sharedPath)
+	if err != nil {
+		t.Fatalf("open shared rw: %v", err)
+	}
+	defer db.Close()
+	_, err = db.Exec(context.Background(), `
+		INSERT INTO match_participants (match_id, xuid, gamertag, team_id, outcome)
+		VALUES ('match-orphan', '2533274800099999', NULL, 0, 2)
+	`)
+	if err != nil {
+		t.Fatalf("seed orphan participant: %v", err)
+	}
+}
+
 // ─── 1. RunOnce sur DB vierge : compteurs à 0 ──────────────────────────────
 
 func TestHealthScheduler_E2E_NoWarnings(t *testing.T) {
@@ -105,5 +124,29 @@ func TestHealthScheduler_E2E_WithAnomaly_DetectsAndLogs(t *testing.T) {
 	if res2.WarningsTotal != res.WarningsTotal {
 		t.Errorf("cycle 2 WarningsTotal: attendu %d, obtenu %d",
 			res.WarningsTotal, res2.WarningsTotal)
+	}
+}
+
+// ─── 3. xuids orphelins : comptés + loggés, mais hors WarningsTotal ─────────
+
+func TestHealthScheduler_E2E_OrphanXUIDs_Counted(t *testing.T) {
+	repoRoot := healthE2ESetup(t)
+	sharedPath := filepath.Join(repoRoot, "data", "titles", "halo_infinite",
+		"warehouse", "shared_matches_v2.duckdb")
+	seedOrphanParticipant(t, sharedPath)
+
+	sched := scheduler.NewDataHealthScheduler(repoRoot)
+	res := sched.RunOnce(context.Background())
+	if res == nil {
+		t.Fatal("RunOnce a retourné nil")
+	}
+	// Le xuid sans alias doit être compté (signal derrière le masquage "Joueur ####").
+	if res.OrphanXUIDs < 1 {
+		t.Errorf("OrphanXUIDs: attendu >= 1 (xuid sans alias), obtenu %d", res.OrphanXUIDs)
+	}
+	// orphan_xuids reste informatif : ne doit PAS gonfler WarningsTotal.
+	if res.WarningsTotal != 0 {
+		t.Errorf("WarningsTotal: orphan ne doit pas compter comme warning, obtenu %d",
+			res.WarningsTotal)
 	}
 }

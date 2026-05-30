@@ -86,6 +86,12 @@ func openParticipantsDBForProperty(t *testing.T) *sql.DB {
 			grenade_kills SMALLINT DEFAULT 0,
 			melee_kills SMALLINT DEFAULT 0,
 			power_weapon_kills SMALLINT DEFAULT 0,
+			present_at_beginning BOOLEAN,
+			present_at_completion BOOLEAN,
+			joined_in_progress BOOLEAN,
+			left_in_progress BOOLEAN,
+			first_joined_time TIMESTAMPTZ,
+			last_leave_time TIMESTAMPTZ,
 			created_at TIMESTAMP,
 			PRIMARY KEY (match_id, xuid)
 		);

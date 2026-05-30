@@ -75,6 +75,12 @@ func setupParticipantsTable(t *testing.T) *sql.DB {
 		grenade_kills       INTEGER,
 		melee_kills         INTEGER,
 		power_weapon_kills  INTEGER,
+		present_at_beginning  BOOLEAN,
+		present_at_completion BOOLEAN,
+		joined_in_progress    BOOLEAN,
+		left_in_progress      BOOLEAN,
+		first_joined_time     TIMESTAMPTZ,
+		last_leave_time       TIMESTAMPTZ,
 		created_at          TIMESTAMP,
 		PRIMARY KEY (match_id, xuid)
 	)`); err != nil {

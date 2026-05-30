@@ -37,6 +37,12 @@ var tablesProtegees = []string{
 	"match_csrs",
 	"player_csr_snapshots",
 	"pve_match_stats",
+	// Progression V2 (fix 2026-05-30) : StreaksRepo.Upsert et
+	// MilestoneEarnedRepo.Append migrés ON CONFLICT → SELECT-then-UPDATE/INSERT.
+	// Protégées ici pour interdire toute réintroduction d'un ON CONFLICT
+	// (qui ressuscite le bug ART surfacé en exécutant enfin le pipeline).
+	"streak",
+	"milestone_earned",
 }
 
 // allowlistArtPatterns : sites de prod où un pattern à risque reste
