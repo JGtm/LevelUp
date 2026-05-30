@@ -89,8 +89,10 @@ func TestSessionPageService_GetPage_ManualCompareLabelWins(t *testing.T) {
 func TestSessionPageService_GetPage_AppliesPeriodFilter(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
 	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
-	start := time.Date(2026, 4, 21, 17, 0, 0, 0, time.UTC)
-	end := time.Date(2026, 4, 21, 21, 0, 0, 0, time.UTC)
+	// Période resserrée sur 19h40→20h00 : seul m6 (19h50) de la session 19h30 est
+	// retenu pour la VUE (m5 à 19h30 est exclu).
+	start := time.Date(2026, 4, 21, 19, 40, 0, 0, time.UTC)
+	end := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
 
 	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{
 		Filters: domain.FilterContextInput{
@@ -104,11 +106,18 @@ func TestSessionPageService_GetPage_AppliesPeriodFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(resp.AvailableSessions) != 2 {
-		t.Fatalf("expected 2 filtered sessions, got %d (%v)", len(resp.AvailableSessions), resp.AvailableSessions)
-	}
+	// La période s'applique bien à la VUE : la session courante est 19h30 mais ne
+	// retient qu'un seul match (m6), m5 étant hors période.
 	if resp.CurrentSession == nil || resp.CurrentSession.SessionLabel != "2026-04-21 19h30" {
 		t.Fatalf("unexpected filtered current session: %#v", resp.CurrentSession)
+	}
+	if len(resp.Matches) != 1 {
+		t.Fatalf("expected 1 match in view after period filter, got %d", len(resp.Matches))
+	}
+	// Mais le VIVIER de comparaison reste élargi : les 3 sessions (période ignorée),
+	// sinon le bouton Comparer disparaîtrait dès qu'on resserre la période.
+	if len(resp.AvailableSessions) != 3 {
+		t.Fatalf("expected 3 sessions in compare pool (period ignored), got %d (%v)", len(resp.AvailableSessions), resp.AvailableSessions)
 	}
 }
 
@@ -437,6 +446,109 @@ func TestNeighboringSessionLabels(t *testing.T) {
 			t.Fatalf("expected (nil,nil) for unknown, got (%v,%v)", prev, next)
 		}
 	})
+}
+
+// TestSessionPageService_ComparePoolIgnoresPeriodNarrowing : quand le filtre de
+// période resserre la VUE sur une seule session, le VIVIER de comparaison reste
+// élargi (toutes les sessions de la catégorie) → le bouton Comparer reste pertinent.
+// Régression du bug "le bouton Comparer disparaît quand on filtre sur une session".
+func TestSessionPageService_ComparePoolIgnoresPeriodNarrowing(t *testing.T) {
+	now := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
+	repo := &mockSessionPageStatsRepo{
+		matches: []legacymatch.StatsMatchRow{
+			makeSessionPageMatch("m1", now.Add(-6*time.Hour), "2026-04-21 14h", false, "Quick Play", "Slayer", 10, 8, 2, 74, 54),
+			makeSessionPageMatch("m2", now.Add(-5*time.Hour), "2026-04-21 14h", false, "Quick Play", "Slayer", 12, 7, 3, 76, 58),
+			makeSessionPageMatch("m3", now.Add(-2*time.Hour), "2026-04-21 18h", false, "Quick Play", "Slayer", 14, 9, 4, 68, 61),
+			makeSessionPageMatch("m4", now.Add(-90*time.Minute), "2026-04-21 18h", false, "Quick Play", "Slayer", 16, 10, 5, 71, 64),
+			makeSessionPageMatch("m5", now.Add(-30*time.Minute), "2026-04-21 19h30", false, "Quick Play", "Slayer", 11, 6, 4, 62, 67),
+			makeSessionPageMatch("m6", now.Add(-10*time.Minute), "2026-04-21 19h30", false, "Quick Play", "Slayer", 13, 5, 6, 64, 70),
+		},
+	}
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
+
+	// Période resserrée sur la dernière session uniquement (19h00 → 20h00).
+	start := now.Add(-time.Hour)
+	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{
+		Filters: domain.FilterContextInput{
+			FilterMode: "period",
+			Period:     domain.PeriodInput{StartDate: &start, EndDate: &now},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// La VUE ne ressort qu'une session (effet du filtre période).
+	if resp.CurrentSession == nil || resp.CurrentSession.SessionLabel != "2026-04-21 19h30" {
+		t.Fatalf("current session = %#v, want 19h30", resp.CurrentSession)
+	}
+	// Le VIVIER de comparaison reste élargi : les 3 sessions (période ignorée) →
+	// available_sessions.length >= 2 côté front → bouton Comparer visible.
+	if len(resp.AvailableSessions) != 3 {
+		t.Fatalf("available_sessions (vivier compare) = %d, want 3 (période ignorée)", len(resp.AvailableSessions))
+	}
+	// Une suggestion existe (sessions antérieures dans le vivier élargi).
+	if resp.SuggestedCompare == nil {
+		t.Fatal("expected a compare suggestion from the broadened pool")
+	}
+}
+
+// TestComputeSessionPlacements_CSR vérifie le placement X/Y CSR (réutilise
+// applyMatchPlacements via la conversion) : remaining=2, seuil défaut 5 → 3/5.
+func TestComputeSessionPlacements_CSR(t *testing.T) {
+	svc := &SessionPageService{} // csrThreshold nil → seuil défaut 5
+	start := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
+	rem := 2
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "m1", StartTime: start, SkillRatingType: "csr", SkillMeasurementRemaining: &rem},
+		{MatchID: "m2", StartTime: start, SkillRatingType: "csr"}, // établi (pas de remaining) → pas de placement
+	}
+	pl := svc.computeSessionPlacements(context.Background(), rows)
+	if p, ok := pl["m1"]; !ok || p.done != 3 || p.total != 5 {
+		t.Fatalf("m1 placement = %+v (ok=%v), want {done:3 total:5}", pl["m1"], ok)
+	}
+	if _, ok := pl["m2"]; ok {
+		t.Fatal("m2 ne doit pas être en placement (pas de remaining)")
+	}
+
+	// applyPlacementsToRows renseigne les rows correspondantes.
+	detail := []domain.SessionDetailMatchRow{{MatchID: "m1"}, {MatchID: "m2"}}
+	applyPlacementsToRows(detail, pl)
+	if detail[0].PlacementDone == nil || *detail[0].PlacementDone != 3 || detail[0].PlacementTotal == nil || *detail[0].PlacementTotal != 5 {
+		t.Fatalf("m1 row placement non appliqué: done=%v total=%v", detail[0].PlacementDone, detail[0].PlacementTotal)
+	}
+	if detail[1].PlacementDone != nil {
+		t.Fatal("m2 row ne doit pas avoir de placement")
+	}
+}
+
+// TestBuildSessionDetailRows_SkillTierLabel vérifie que la colonne "Rang" reçoit le
+// LIBELLÉ du palier ("Or III" / "Gold III"), comme l'Explorer, et non la valeur brute.
+func TestBuildSessionDetailRows_SkillTierLabel(t *testing.T) {
+	start := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
+	label := "S"
+	win := analysis.OutcomeWin
+	gold, goldFR, sub := "gold", "Or", 3
+	deref := func(rs []domain.SessionDetailMatchRow) string {
+		if len(rs) == 1 && rs[0].SkillTierLabel != nil {
+			return *rs[0].SkillTierLabel
+		}
+		return "<nil>"
+	}
+	ranked := []legacymatch.StatsMatchRow{{
+		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 1, Deaths: 1, SessionLabel: &label,
+		SkillRatingType: "csr", SkillTierCode: &gold, SkillTierCodeFR: &goldFR, SkillSubTier: &sub,
+	}}
+	if got := deref(buildSessionDetailRows(ranked, nil, "fr")); got != "Or III" {
+		t.Fatalf("FR SkillTierLabel = %q, want %q", got, "Or III")
+	}
+	if got := deref(buildSessionDetailRows(ranked, nil, "en")); got != "Gold III" {
+		t.Fatalf("EN SkillTierLabel = %q, want %q", got, "Gold III")
+	}
+	// Non rankée (pas de tier) → nil (le front affiche "-").
+	noTier := []legacymatch.StatsMatchRow{{MatchID: "m2", StartTime: start, Outcome: &win, SessionLabel: &label}}
+	if got := deref(buildSessionDetailRows(noTier, nil, "fr")); got != "<nil>" {
+		t.Fatalf("no-tier SkillTierLabel = %q, want <nil>", got)
+	}
 }
 
 // TestBuildSessionDetailRows_ModeUILocale verrouille la résolution locale-aware du

@@ -37,18 +37,17 @@ describe('buildSessionParticipationBarsOption — miroir gauche/droite', () => {
 })
 
 describe('buildSessionNetScoreOption', () => {
-  it('courbe en aire + visualMap divergent (pos/neg)', () => {
+  it('courbe en aire 1D + couleur explicite (rendu garanti, pas de visualMap)', () => {
     const opt = buildSessionNetScoreOption(
       [{ key: 'n', datapoints: [{ label: '#1', cumulative: 3 }, { label: '#2', cumulative: -2 }] }],
       { seriesLabel: 'Net' },
     ) as any
     expect(opt.series[0].type).toBe('line')
     expect(opt.series[0].areaStyle).toBeDefined()
-    // Données 2D [index, cumul] (et non scalaires) — sinon visualMap.dimension:1
-    // est hors-portée et la courbe devient invisible.
-    expect(opt.series[0].data).toEqual([[0, 3], [1, -2]])
-    expect(opt.series[0].lineStyle).toHaveProperty('color') // couleur de repli posée
-    expect(opt.visualMap.pieces).toHaveLength(2)
+    // Données 1D (scalaires) : ECharts aligne par index sur l'axe catégoriel.
+    expect(opt.series[0].data).toEqual([3, -2])
+    expect(opt.series[0].lineStyle).toHaveProperty('color') // couleur explicite (visibilité)
+    expect(opt.visualMap).toBeUndefined() // plus de visualMap (source des rendus vides)
     expect(opt.xAxis.boundaryGap).toBe(false)
   })
 

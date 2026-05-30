@@ -259,12 +259,40 @@ fr = "matchs"
 en = "matches"
 
 [session.detail.chart_net_score_title]
-fr = "Net score cumulé (Frags − Morts)"
-en = "Cumulative net score (Kills − Deaths)"
+fr = "Net score cumulé"
+en = "Cumulative net score"
 
 [session.detail.net_score_series]
 fr = "Net cumulé"
 en = "Cumulative net"
+
+[session.detail.col_rating_delta]
+fr = "Δ rang"
+en = "Δ rank"
+
+[session.detail.col_win_prob]
+fr = "Pronostic"
+en = "Win odds"
+
+[session.detail.win_prob_expected]
+fr = "Match attendu"
+en = "Expected match"
+
+[session.detail.win_prob_upset]
+fr = "Surprise"
+en = "Upset"
+
+[session.detail.win_prob_strong_perf]
+fr = "Belle performance"
+en = "Strong performance"
+
+[session.detail.win_prob_balanced]
+fr = "Match équilibré"
+en = "Balanced match"
+
+[session.detail.win_prob_aria]
+fr = "Probabilité de victoire"
+en = "Win probability"
 
 [session.detail.chart_mmr_title]
 fr = "Challenge MMR"
@@ -303,16 +331,16 @@ fr = "Session"
 en = "Session"
 
 [session.detail.radar_spree]
-fr = "Folie meurtrière (moy.)"
-en = "Avg killing spree"
+fr = "Folie meurtrière (max)"
+en = "Killing spree (max)"
 
 [session.detail.radar_headshots]
-fr = "Tirs à la tête / match"
-en = "Headshots / match"
+fr = "Tirs à la tête"
+en = "Headshots"
 
 [session.detail.radar_perfect]
-fr = "Œil de lynx / match"
-en = "Eagle Eye / match"
+fr = "Frags parfaits"
+en = "Perfect kills"
 
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."

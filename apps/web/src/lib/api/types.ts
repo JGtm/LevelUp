@@ -1070,6 +1070,13 @@ export interface ExplorerMatchRow {
   skill_tier_label?: string | null
   /** "CSR" (classé officiel) ou "LUSR" (interne LevelUp). Nil si pas de skill rank (PvE, Custom). */
   rating_type?: string | null
+  /** Gain/perte de rating du match. NON rendu par les colonnes propres d'ExplorerMatchesTable :
+   *  porteur de données pour une colonne « Δ rang » INJECTÉE par un consommateur
+   *  (vue session via extraColumns). Reste undefined côté page Explorer. */
+  skill_rating_delta?: number | null
+  /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Porteur de données
+   *  pour une colonne « Pronostic » INJECTÉE par la vue session. Undefined côté Explorer. */
+  expected_win_prob?: number | null
   /** Progression placement (X). Si défini avec placement_total, l'UI affiche "X/Y" dans la cellule Rang à la place du skill_tier_label. */
   placement_done?: number | null
   /** Seuil placement (Y). CSR : 5 ou 10 selon saison. LUSR : 10. */
@@ -1241,11 +1248,17 @@ export interface ExplorerTargetProfile {
   auth_available: boolean
 }
 
-/** Nombre de matchs matchmade joués par le joueur cible sur une saison. */
+/** Nombre de matchs matchmade joués par le joueur cible sur une saison.
+ *  `matches` = total de la saison (mode live = service record filtré par saison ;
+ *  mode dégradé sans auth = bucketing local). Le pic de rang CSR de la saison est
+ *  exposé (tier + image du badge) quand disponible — rendu au-dessus de la barre. */
 export interface SeasonMatchCount {
   season_id: string
   season_name: string
   matches: number
+  csr_tier?: string
+  csr_sub_tier?: number
+  csr_badge_image_url?: string | null
 }
 
 /** Stats agrégées du joueur cible sur l'échantillon des matchs en commun.
@@ -3060,10 +3073,10 @@ export interface SessionCompareEntry {
   win_rate: number
   kdr: number
   kills_per_match: number
-  // Stats du radar de frags — MOYENNES PAR MATCH (aligné Escouade extKPIAcc.applyTo).
-  avg_max_killing_spree?: number | null
-  headshots_per_match?: number | null
-  perfect_kills_per_match?: number | null
+  // Stats du radar de frags — AGRÉGATS DE SESSION : max spree atteint + totaux session.
+  max_killing_spree?: number | null
+  total_headshot_kills?: number | null
+  total_perfect_kills?: number | null
   with_friends: boolean
   dominant_category: string | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 3
@@ -3150,6 +3163,15 @@ export interface SessionDetailMatchRow {
   skill_rating_type?: string
   skill_rating_value?: number | null
   skill_rating_delta?: number | null
+  /** Proba de victoire pré-match de l'équipe (LUSR v2, 0..1). Absente pré-v2 / non-LUSR. */
+  expected_win_prob?: number | null
+  /** Libellé du palier ("Or III", "Diamant V"…), construit côté backend comme l'Explorer.
+   *  La colonne "Rang" affiche ça (pas la valeur brute). Nil si non rankée / placement. */
+  skill_tier_label?: string | null
+  /** Progression de placement (X/Y). Si présents, la colonne "Rang" affiche "X/Y"
+   *  à la place du palier (comme l'Explorer). */
+  placement_done?: number | null
+  placement_total?: number | null
   /** Mode normalisé + traduit (comme l'Explorer). */
   mode_ui?: string
 }

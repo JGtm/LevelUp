@@ -279,72 +279,73 @@ func buildCompareEntryWithObjectives(
 	matchRows := buildSessionDetailRows(matches, dominantCat, "fr")
 	best, worst := bestWorstMatchCompare(matches, dominantCat)
 
-	// Radar de frags : MOYENNES PAR MATCH (même calcul que squad_breakdown.extKPIAcc.applyTo,
-	// la référence prouvée de la page Escouade) — bornées et comparables, contrairement aux
-	// totaux/max de session qui grossissent avec la longueur et sont dominés par les outliers.
-	var sumHS, sumPK, sumSpree float64
-	var nHS, nPK, nSpree int
+	// Radar de frags : AGRÉGATS DE SESSION (= "le compte de la session", demande user) :
+	//   - Folie meurtrière : MAX killing spree atteint sur la session.
+	//   - Tirs à la tête / Frags parfaits : TOTAUX de la session.
+	// nil si aucun match n'a la stat → radar dégradé en série vide côté front (pas de 0
+	// trompeur). Le tooltip affiche la valeur brute ; le radar normalise contre des caps fixes.
+	var totalHS, totalPK, maxSpree int
+	var hasHS, hasPK, hasSpree bool
 	for _, m := range matches {
 		if m.HeadshotKills != nil {
-			sumHS += float64(*m.HeadshotKills)
-			nHS++
+			totalHS += *m.HeadshotKills
+			hasHS = true
 		}
 		if m.PerfectKills != nil {
-			sumPK += float64(*m.PerfectKills)
-			nPK++
+			totalPK += *m.PerfectKills
+			hasPK = true
 		}
 		if m.MaxKillingSpree != nil {
-			sumSpree += float64(*m.MaxKillingSpree)
-			nSpree++
+			if *m.MaxKillingSpree > maxSpree {
+				maxSpree = *m.MaxKillingSpree
+			}
+			hasSpree = true
 		}
 	}
-	// Moyenne PAR MATCH (÷ nb de matchs de la session). nil si aucun match n'a la
-	// stat → radar dégradé en série vide côté front (pas de 0 trompeur).
-	n := float64(len(matches))
-	var avgHS, avgPK, avgSpree *float64
-	if nHS > 0 {
-		v := math.Round(sumHS/n*100) / 100
-		avgHS = &v
+	var spreePtr, hsPtr, pkPtr *int
+	if hasSpree {
+		v := maxSpree
+		spreePtr = &v
 	}
-	if nPK > 0 {
-		v := math.Round(sumPK/n*100) / 100
-		avgPK = &v
+	if hasHS {
+		v := totalHS
+		hsPtr = &v
 	}
-	if nSpree > 0 {
-		v := math.Round(sumSpree/float64(nSpree)*100) / 100
-		avgSpree = &v
+	if hasPK {
+		v := totalPK
+		pkPtr = &v
 	}
 
 	return &domain.SessionCompareEntry{
-		SessionLabel:         label,
-		StartTime:            &start,
-		EndTime:              &end,
-		TotalMatches:         len(matches),
-		Wins:                 wins,
-		Losses:               losses,
-		KDA:                  kda,
-		PerformanceScore:     averagePerformanceScore(matches),
-		WinRate:              winRate(matches),
-		KDR:                  avgKD(matches),
-		KillsPerMatch:        killsPerGame(matches),
-		AvgMaxKillingSpree:   avgSpree,
-		HeadshotsPerMatch:    avgHS,
-		PerfectKillsPerMatch: avgPK,
-		DominantCategory:     dominantCat,
-		AvgOC:                avgOC,
-		AvgDR:                avgDR,
-		AvgResidualBrut:      avgResidualBrut,
-		MatchSeries:          buildCompareMatchSeries(matches),
-		LastSkillRating:      lastRating,
-		SkillRatingType:      ratingType,
-		SkillRatingDelta:     ratingDelta,
-		AvgTeamMMR:           avgTeamMMR,
-		AvgEnemyMMR:          avgEnemyMMR,
-		AvgLifeSeconds:       avgLife,
-		Participation:        participation,
-		Matches:              matchRows,
-		BestMatch:            best,
-		WorstMatch:           worst,
+		SessionLabel:       label,
+		StartTime:          &start,
+		EndTime:            &end,
+		TotalMatches:       len(matches),
+		Wins:               wins,
+		Losses:             losses,
+		KDA:                kda,
+		PerformanceScore:   averagePerformanceScore(matches),
+		WinRate:            winRate(matches),
+		KDR:                avgKD(matches),
+		KillsPerMatch:      killsPerGame(matches),
+		MaxKillingSpree:    spreePtr,
+		TotalHeadshotKills: hsPtr,
+		TotalPerfectKills:  pkPtr,
+		DominantCategory:   dominantCat,
+		AvgOC:              avgOC,
+		AvgDR:              avgDR,
+		AvgResidualBrut:    avgResidualBrut,
+		MatchSeries:        buildCompareMatchSeries(matches),
+		LastSkillRating:    lastRating,
+		SkillRatingType:    ratingType,
+		SkillRatingDelta:   ratingDelta,
+		AvgTeamMMR:         avgTeamMMR,
+		AvgEnemyMMR:        avgEnemyMMR,
+		AvgLifeSeconds:     avgLife,
+		Participation:      participation,
+		Matches:            matchRows,
+		BestMatch:          best,
+		WorstMatch:         worst,
 	}
 }
 

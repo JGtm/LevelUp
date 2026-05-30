@@ -67,6 +67,18 @@ type SessionDetailMatchRow struct {
 	SkillRatingType  string   `json:"skill_rating_type,omitempty"`
 	SkillRatingValue *float64 `json:"skill_rating_value,omitempty"`
 	SkillRatingDelta *float64 `json:"skill_rating_delta,omitempty"` // gain/perte de rating du match
+	// SkillExpectedWinProb : proba de victoire pré-match de l'équipe du joueur
+	// (LUSR v2, ∈ [0,1]). nil pour les matchs pré-v2 / non-LUSR. Le front la
+	// catégorise (attendu / surprise / belle perf) via categorizeWinProb.
+	SkillExpectedWinProb *float64 `json:"expected_win_prob,omitempty"`
+	// SkillTierLabel : libellé du palier ranked/LUSR (ex. "Or III", "Diamant V"),
+	// construit comme l'Explorer (analysis.BuildSkillTierLabel). Nil si non rankée /
+	// placement. La colonne "Rang" du tableau affiche ça (pas la valeur brute).
+	SkillTierLabel *string `json:"skill_tier_label,omitempty"`
+	// PlacementDone/PlacementTotal : progression de placement (X/Y). Si présents,
+	// la colonne "Rang" affiche "X/Y" à la place du palier (comme l'Explorer).
+	PlacementDone  *int `json:"placement_done,omitempty"`
+	PlacementTotal *int `json:"placement_total,omitempty"`
 	// ModeUI : libellé de mode normalisé + traduit (comme l'Explorer), via analysis.ResolveModeUI.
 	ModeUI string `json:"mode_ui,omitempty"`
 }

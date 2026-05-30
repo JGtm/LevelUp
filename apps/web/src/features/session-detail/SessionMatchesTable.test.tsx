@@ -40,6 +40,8 @@ function makeRow(): SessionDetailMatchRow {
     perf_tier: 2,
     skill_rating_type: 'csr',
     skill_rating_value: 1450,
+    skill_rating_delta: 25,
+    skill_tier_label: 'Or III',
   }
 }
 
@@ -56,18 +58,25 @@ describe('toExplorerRow — adapter session → Explorer', () => {
     expect(r.kda).toBe(2.6)
     expect(r.team_mmr).toBe(1500)
     expect(r.delta_mmr).toBe(100)
-    // Valeur de rating CSR (entier) placée dans la colonne Rang.
+    // Colonne Rang = libellé du PALIER (comme l'Explorer), pas la valeur brute.
     expect(r.rating_type).toBe('CSR')
-    expect(r.skill_tier_label).toBe('1450')
+    expect(r.skill_tier_label).toBe('Or III')
+    expect(r.skill_rating_delta).toBe(25) // porteur pour la colonne Δ rang injectée
   })
 
-  it('LUSR → 2 décimales ; outcome null → DNF(4) ; solo', () => {
-    const row = { ...makeRow(), skill_rating_type: 'lusr', skill_rating_value: 1.234, outcome: null }
+  it('palier passthrough ; outcome null → DNF(4) ; solo', () => {
+    const row = { ...makeRow(), skill_rating_type: 'lusr', skill_tier_label: 'Diamant V', outcome: null }
     const r = toExplorerRow(row, false)
     expect(r.rating_type).toBe('LUSR')
-    expect(r.skill_tier_label).toBe('1.23')
+    expect(r.skill_tier_label).toBe('Diamant V') // libellé fourni par le backend, tel quel
     expect(r.outcome_code).toBe(4)
     expect(r.is_with_friends).toBe(false) // solo
+  })
+
+  it('placement (placement_done/total) mappé', () => {
+    const r = toExplorerRow({ ...makeRow(), placement_done: 3, placement_total: 5 }, false)
+    expect(r.placement_done).toBe(3)
+    expect(r.placement_total).toBe(5)
   })
 })
 
@@ -89,5 +98,39 @@ describe('SessionMatchesTable — rendu (réutilise ExplorerMatchesTable)', () =
   it('liste vide → pas de tableau (état vide Explorer)', () => {
     renderWithProviders(<SessionMatchesTable matches={[]} playerSlug="me" />)
     expect(screen.queryByTestId('explorer-matches-table')).not.toBeInTheDocument()
+  })
+
+  it('variant="compact" (drawer 50%) → set de colonnes réduit', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="me" variant="compact" withFriends />,
+    )
+    expect(screen.getByTestId('explorer-matches-table')).toBeInTheDocument()
+    // Colonnes GARDÉES : Mode + Rang (palier) + Δ rang (injectée) restent visibles.
+    expect(screen.getByText('Oddball')).toBeInTheDocument() // mode_ui
+    expect(screen.getByText('Or III')).toBeInTheDocument() // skill_tier_label = palier (comme l'Explorer)
+    expect(screen.getByText('+25')).toBeInTheDocument() // Δ rang injecté (CSR entier signé)
+    // Colonnes MASQUÉES en compact : Solo/Escouade, carte, playlist.
+    expect(screen.queryByText('Escouade')).not.toBeInTheDocument() // is_with_friends masqué
+    expect(screen.queryByText('Tir réel')).not.toBeInTheDocument() // map_ui masqué
+    expect(screen.queryByText('Ranked Arena')).not.toBeInTheDocument() // playlist_label masqué
+  })
+
+  it('variant="full" → toutes les colonnes (carte + playlist visibles)', () => {
+    renderWithProviders(
+      <SessionMatchesTable matches={[makeRow()]} playerSlug="me" variant="full" withFriends />,
+    )
+    // Contrôle : en full, les colonnes masquées en compact sont bien présentes.
+    expect(screen.getByText('Tir réel')).toBeInTheDocument()
+    expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
+    expect(screen.getByText('Escouade')).toBeInTheDocument()
+    // Δ rang injecté : présent aussi en vue session pleine (comme l'ancien preset).
+    expect(screen.getByText('+25')).toBeInTheDocument()
+  })
+
+  it('match en placement → colonne Rang affiche "X/Y" (prime sur le palier)', () => {
+    const row = { ...makeRow(), placement_done: 3, placement_total: 5 }
+    renderWithProviders(<SessionMatchesTable matches={[row]} playerSlug="me" variant="full" />)
+    expect(screen.getByText('3/5')).toBeInTheDocument()
+    expect(screen.queryByText('Or III')).not.toBeInTheDocument() // placement prime sur le palier
   })
 })

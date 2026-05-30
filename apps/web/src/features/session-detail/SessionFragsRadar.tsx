@@ -1,16 +1,15 @@
 /**
- * SessionFragsRadar — radar 3 axes, MOYENNES PAR MATCH (aligné page Escouade) :
- *   - Folie meurtrière (moy.) : moyenne des MaxKillingSpree par match de la session.
- *   - Tirs à la tête / match : moyenne des headshot_kills par match.
- *   - Œil de lynx / match : moyenne des perfect_kills (medal Eagle Eye) par match.
+ * SessionFragsRadar — radar 3 axes, AGRÉGATS DE SESSION (le "compte" de la session) :
+ *   - Folie meurtrière (max) : plus longue série de frags atteinte sur la session.
+ *   - Tirs à la tête : TOTAL des frags à la tête de la session.
+ *   - Frags parfaits : TOTAL des frags parfaits (PerfectKills) de la session.
  *
- * Agrégats fournis par le backend (SessionCompareEntry.avg_* / *_per_match),
- * calculés comme `extKPIAcc.applyTo` (analysis/squad_breakdown.go) = sum/n.
+ * Valeurs brutes fournies par le backend (SessionCompareEntry.max_killing_spree /
+ * total_headshot_kills / total_perfect_kills). Le tooltip affiche ces comptes bruts
+ * (rawInTooltip) ; le radar normalise seulement la FORME contre des paliers fixes.
  *
- * Paliers de référence FIXES (un "excellent par match", esprit des seuils Escouade).
- * Volontairement PAS de cap dynamique : un cap qui se cale sur la valeur observée
- * sature toujours l'axe à 75-100 % et détruit toute lecture comparative.
- * Caps calibrables ci-dessous si le ressenti terrain évolue.
+ * Paliers FIXES (niveau "excellente session") — surtout pas de cap dynamique qui se
+ * calerait sur la valeur et saturerait toujours l'axe.
  */
 import { useMemo } from 'react'
 
@@ -19,8 +18,8 @@ import type { SessionCompareEntry } from '@/lib/api/types'
 import { SessionStatsRadar, type StatRadarAxis } from './SessionStatsRadar'
 import { useSessionT } from './_shared'
 
-/** Paliers fixes "excellent par match" — un bon match top-frag tutoie ces valeurs. */
-const CAP = { spree: 10, headshots: 12, perfect: 5 }
+/** Paliers fixes "excellente session" pour la FORME du radar (le tooltip montre le compte brut). */
+const CAP = { spree: 12, headshots: 40, perfect: 12 }
 
 interface Props {
   title: string
@@ -33,9 +32,9 @@ export function SessionFragsRadar({ title, entry, height }: Props) {
 
   const axes = useMemo<StatRadarAxis[]>(() => {
     if (!entry) return []
-    const spree = entry.avg_max_killing_spree
-    const headshots = entry.headshots_per_match
-    const perfect = entry.perfect_kills_per_match
+    const spree = entry.max_killing_spree
+    const headshots = entry.total_headshot_kills
+    const perfect = entry.total_perfect_kills
     if (spree == null && headshots == null && perfect == null) return []
 
     return [
