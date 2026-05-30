@@ -12,6 +12,10 @@
 fr = "Vue d'ensemble"
 en = "Overview"
 
+[synthesis.section.top_stats]
+fr = "Meilleures stats"
+en = "Best stats"
+
 [synthesis.section.highlights]
 fr = "Meilleurs matchs"
 en = "Best matches"
@@ -176,30 +180,33 @@ en = "Killing spree (max)"
 fr = "Précision brute"
 en = "Raw accuracy"
 
-# Top match records (2026-05-27) — cartes cliquables ouvrant le match record
+# Top match records (2026-05-27) — cartes cliquables ouvrant le match record.
+# Labels raccourcis (2026-05-30) : le préfixe « Top » est désormais porté par le
+# titre de section synthesis.section.top_stats (« Meilleures stats »), donc retiré
+# des cartes pour qu'elles tiennent en largeur sur une seule ligne.
 [synthesis.kpi.top_kda]
-fr = "Top FDA"
-en = "Top KDA"
+fr = "FDA"
+en = "KDA"
 
 [synthesis.kpi.top_perf]
-fr = "Top Performance"
-en = "Top Performance"
+fr = "Performance"
+en = "Performance"
 
 [synthesis.kpi.top_accuracy]
-fr = "Top Précision"
-en = "Top accuracy"
+fr = "Précision"
+en = "Accuracy"
 
 [synthesis.kpi.top_damage]
-fr = "Top dégâts"
-en = "Top damage"
+fr = "Dégâts"
+en = "Damage"
 
 [synthesis.kpi.top_headshots]
-fr = "Top tirs à la tête"
-en = "Top headshots"
+fr = "Tirs à la tête"
+en = "Headshots"
 
 [synthesis.kpi.top_personal_score]
-fr = "Top score perso"
-en = "Top personal score"
+fr = "Score perso"
+en = "Personal score"
 
 [synthesis.kpi.open_match]
 fr = "Ouvrir le match"

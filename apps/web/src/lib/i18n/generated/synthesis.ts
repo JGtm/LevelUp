@@ -27,12 +27,12 @@ export const synthesisManifest = {
   "synthesis.kpi.killing_spree_max": { fr: "Folie meurtrière (max)", en: "Killing spree (max)" },
   "synthesis.kpi.open_match": { fr: "Ouvrir le match", en: "Open match" },
   "synthesis.kpi.raw_accuracy": { fr: "Précision brute", en: "Raw accuracy" },
-  "synthesis.kpi.top_accuracy": { fr: "Top Précision", en: "Top accuracy" },
-  "synthesis.kpi.top_damage": { fr: "Top dégâts", en: "Top damage" },
-  "synthesis.kpi.top_headshots": { fr: "Top tirs à la tête", en: "Top headshots" },
-  "synthesis.kpi.top_kda": { fr: "Top FDA", en: "Top KDA" },
-  "synthesis.kpi.top_perf": { fr: "Top Performance", en: "Top Performance" },
-  "synthesis.kpi.top_personal_score": { fr: "Top score perso", en: "Top personal score" },
+  "synthesis.kpi.top_accuracy": { fr: "Précision", en: "Accuracy" },
+  "synthesis.kpi.top_damage": { fr: "Dégâts", en: "Damage" },
+  "synthesis.kpi.top_headshots": { fr: "Tirs à la tête", en: "Headshots" },
+  "synthesis.kpi.top_kda": { fr: "FDA", en: "KDA" },
+  "synthesis.kpi.top_perf": { fr: "Performance", en: "Performance" },
+  "synthesis.kpi.top_personal_score": { fr: "Score perso", en: "Personal score" },
   "synthesis.kpi.vehicles_destroyed": { fr: "Véhicules détruits", en: "Vehicles destroyed" },
   "synthesis.kpi.win_streak_max": { fr: "Victoires consécutives (max)", en: "Win streak (max)" },
   "synthesis.overview.losses": { fr: "Défaites", en: "Losses" },
@@ -51,6 +51,7 @@ export const synthesisManifest = {
   "synthesis.section.highlights": { fr: "Meilleurs matchs", en: "Best matches" },
   "synthesis.section.overview": { fr: "Vue d'ensemble", en: "Overview" },
   "synthesis.section.relations": { fr: "Relations", en: "Relations" },
+  "synthesis.section.top_stats": { fr: "Meilleures stats", en: "Best stats" },
 } as const
 
 export type SynthesisManifestKey = keyof typeof synthesisManifest

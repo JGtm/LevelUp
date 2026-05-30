@@ -198,6 +198,89 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
           <CombatProfileInlineRow combatProfile={combatProfile} />
         )}
 
+        {/* Meilleures stats — top records cliquables, en ligne juste sous le profil de
+            combat (déplacés de la colonne gauche, 2026-05-30). La colonne accuracy est
+            déjà en 0..100 (cf. scoreboard / table de session) → pas de ×100 ici. */}
+        {(overview.best_kills_match != null || detailedStats != null || overview.best_kda_ref || overview.best_perf_ref || overview.best_accuracy_ref || overview.best_damage_ref || overview.best_headshots_ref || overview.best_personal_score_ref) && (
+          <div className="mb-4">
+            <p className="mb-2 text-sm font-medium">{t('synthesis.section.top_stats')}</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
+              {overview.best_kills_match != null && (
+                <AccentCard
+                  label={`${labelOf('kills')} (max)`}
+                  value={String(overview.best_kills_match)}
+                  accent="outcome-win"
+                  onOpenMatch={handlerFor(overview.best_kills_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {detailedStats != null && (
+                <AccentCard
+                  label={t('synthesis.kpi.killing_spree_max')}
+                  value={detailedStats.max_killing_spree.toLocaleString('fr-FR')}
+                  accent="outcome-win"
+                  onOpenMatch={handlerFor(overview.best_killing_spree_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {overview.best_kda_ref && (
+                <AccentCard
+                  label={t('synthesis.kpi.top_kda')}
+                  value={overview.best_kda_ref.value.toFixed(2)}
+                  accent="perf-tier-3"
+                  onOpenMatch={handlerFor(overview.best_kda_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {overview.best_perf_ref && (
+                <AccentCard
+                  label={t('synthesis.kpi.top_perf')}
+                  value={Math.round(overview.best_perf_ref.value).toLocaleString('fr-FR')}
+                  accent="perf-tier-3"
+                  onOpenMatch={handlerFor(overview.best_perf_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {overview.best_accuracy_ref && (
+                <AccentCard
+                  label={t('synthesis.kpi.top_accuracy')}
+                  value={`${overview.best_accuracy_ref.value.toFixed(1)}%`}
+                  accent="info"
+                  onOpenMatch={handlerFor(overview.best_accuracy_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {overview.best_damage_ref && (
+                <AccentCard
+                  label={t('synthesis.kpi.top_damage')}
+                  value={Math.round(overview.best_damage_ref.value).toLocaleString('fr-FR')}
+                  accent="outcome-win"
+                  onOpenMatch={handlerFor(overview.best_damage_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {overview.best_headshots_ref && (
+                <AccentCard
+                  label={t('synthesis.kpi.top_headshots')}
+                  value={Math.round(overview.best_headshots_ref.value).toLocaleString('fr-FR')}
+                  accent="perf-tier-2"
+                  onOpenMatch={handlerFor(overview.best_headshots_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+              {overview.best_personal_score_ref && (
+                <AccentCard
+                  label={t('synthesis.kpi.top_personal_score')}
+                  value={Math.round(overview.best_personal_score_ref.value).toLocaleString('fr-FR')}
+                  accent="chart-series-4"
+                  onOpenMatch={handlerFor(overview.best_personal_score_ref)}
+                  openMatchLabel={openMatchLabel}
+                />
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Statistiques détaillées intégrées */}
         {detailedStats && (
           <div className="space-y-5">
@@ -273,86 +356,6 @@ function SynthesisOverviewSection({ overview, detailedStats, topWeaponKills, com
                 <div className="flex flex-col justify-between gap-4 w-[21rem] shrink-0">
                   {(overview.longest_win_streak ?? 0) > 1 && (
                     <AccentCard label={t('synthesis.kpi.win_streak_max')} value={String(overview.longest_win_streak)} accent="outcome-win" />
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                    {overview.best_kills_match != null && (
-                      <AccentCard
-                        label={`Meilleur match · ${labelOf('kills').toLowerCase()}`}
-                        value={String(overview.best_kills_match)}
-                        accent="outcome-win"
-                        onOpenMatch={handlerFor(overview.best_kills_ref)}
-                        openMatchLabel={openMatchLabel}
-                      />
-                    )}
-                    <AccentCard
-                      label={t('synthesis.kpi.killing_spree_max')}
-                      value={detailedStats.max_killing_spree.toLocaleString('fr-FR')}
-                      accent="outcome-win"
-                      onOpenMatch={handlerFor(overview.best_killing_spree_ref)}
-                      openMatchLabel={openMatchLabel}
-                    />
-                  </div>
-
-                  {/* Top records cliquables (2026-05-27) : FDA, Performance, Précision, Dégâts,
-                      Tirs à la tête, Score perso. Chaque carte n'est rendue que si le ref
-                      backend est présent (au moins 1 match avec une valeur exploitable). */}
-                  {(overview.best_kda_ref || overview.best_perf_ref || overview.best_accuracy_ref || overview.best_damage_ref || overview.best_headshots_ref || overview.best_personal_score_ref) && (
-                    <div className="grid grid-cols-2 gap-2">
-                      {overview.best_kda_ref && (
-                        <AccentCard
-                          label={t('synthesis.kpi.top_kda')}
-                          value={overview.best_kda_ref.value.toFixed(2)}
-                          accent="perf-tier-3"
-                          onOpenMatch={handlerFor(overview.best_kda_ref)}
-                          openMatchLabel={openMatchLabel}
-                        />
-                      )}
-                      {overview.best_perf_ref && (
-                        <AccentCard
-                          label={t('synthesis.kpi.top_perf')}
-                          value={Math.round(overview.best_perf_ref.value).toLocaleString('fr-FR')}
-                          accent="perf-tier-3"
-                          onOpenMatch={handlerFor(overview.best_perf_ref)}
-                          openMatchLabel={openMatchLabel}
-                        />
-                      )}
-                      {overview.best_accuracy_ref && (
-                        <AccentCard
-                          label={t('synthesis.kpi.top_accuracy')}
-                          value={`${(overview.best_accuracy_ref.value * 100).toFixed(1)}%`}
-                          accent="info"
-                          onOpenMatch={handlerFor(overview.best_accuracy_ref)}
-                          openMatchLabel={openMatchLabel}
-                        />
-                      )}
-                      {overview.best_damage_ref && (
-                        <AccentCard
-                          label={t('synthesis.kpi.top_damage')}
-                          value={Math.round(overview.best_damage_ref.value).toLocaleString('fr-FR')}
-                          accent="outcome-win"
-                          onOpenMatch={handlerFor(overview.best_damage_ref)}
-                          openMatchLabel={openMatchLabel}
-                        />
-                      )}
-                      {overview.best_headshots_ref && (
-                        <AccentCard
-                          label={t('synthesis.kpi.top_headshots')}
-                          value={Math.round(overview.best_headshots_ref.value).toLocaleString('fr-FR')}
-                          accent="perf-tier-2"
-                          onOpenMatch={handlerFor(overview.best_headshots_ref)}
-                          openMatchLabel={openMatchLabel}
-                        />
-                      )}
-                      {overview.best_personal_score_ref && (
-                        <AccentCard
-                          label={t('synthesis.kpi.top_personal_score')}
-                          value={Math.round(overview.best_personal_score_ref.value).toLocaleString('fr-FR')}
-                          accent="chart-series-4"
-                          onOpenMatch={handlerFor(overview.best_personal_score_ref)}
-                          openMatchLabel={openMatchLabel}
-                        />
-                      )}
-                    </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-2">
