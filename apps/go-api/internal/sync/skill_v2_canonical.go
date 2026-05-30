@@ -42,6 +42,35 @@ func IsLUSRV2Canonical() bool {
 	return v == "LUSR_V2"
 }
 
+// DefaultLUSRModeIfUnset pose les valeurs par défaut LUSR v2 canonical (ADR 0024)
+// quand les flags d'environnement sont ABSENTS du process. Rend la bascule v2
+// permanente côté serveur : elle survit à un reset de .air.toml / .env.local,
+// sans dépendre d'une variable à ne pas oublier.
+//
+// Invariant : à appeler UNIQUEMENT au boot serveur (cmd/server), AVANT toute
+// lecture des flags par la pipeline. Les tests et les CLI ne passent pas par là
+// et restent déterministes (défaut v1, opt-in explicite) — c'est voulu.
+//
+// os.LookupEnv (et non Getenv) : un flag explicitement posé, MÊME à "" ou à une
+// valeur d'opt-out (LEVELUP_LUSR_CANONICAL=LUSR pour revenir en v1), n'est jamais
+// écrasé. Seul l'absence totale déclenche le défaut.
+func DefaultLUSRModeIfUnset(ctx context.Context) {
+	if _, set := os.LookupEnv(lusrV2EnvFlag); !set {
+		if err := os.Setenv(lusrV2EnvFlag, "1"); err != nil {
+			slog.WarnContext(ctx, "LUSR boot: défaut LEVELUP_LUSR_V2_ENABLED échoué", "err", err)
+		} else {
+			slog.InfoContext(ctx, "LUSR boot: LEVELUP_LUSR_V2_ENABLED absent → défaut 1 (v2 actif)")
+		}
+	}
+	if _, set := os.LookupEnv(lusrCanonicalEnvFlag); !set {
+		if err := os.Setenv(lusrCanonicalEnvFlag, "LUSR_V2"); err != nil {
+			slog.WarnContext(ctx, "LUSR boot: défaut LEVELUP_LUSR_CANONICAL échoué", "err", err)
+		} else {
+			slog.InfoContext(ctx, "LUSR boot: LEVELUP_LUSR_CANONICAL absent → défaut LUSR_V2 (v2 canonical). Opt-out: =LUSR")
+		}
+	}
+}
+
 // LogLUSRModeAtBoot émet au démarrage un log du mode LUSR actif (routé vers
 // logs/sync.log via la détection de module par package). Confirme la config au
 // boot et ALERTE sur la misconfig dangereuse `canonical sans enabled` (v1 serait

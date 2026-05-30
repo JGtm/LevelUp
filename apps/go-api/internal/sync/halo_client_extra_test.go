@@ -597,6 +597,79 @@ func TestGetCareerRank_EmptyXUID(t *testing.T) {
 	}
 }
 
+// TestGetSpartanCustomization_PublicViewFallback vérifie le fallback ajouté pour
+// les joueurs TIERS (cas Explorer) : `/customization/appearance` est player-gated
+// (403 pour un xuid non propriétaire) ; on retombe alors sur la vue publique
+// `/customization?view=public`, qui expose le même bloc Appearance pour n'importe
+// quel joueur, parsée par le même parseCustomizationAppearance.
+func TestGetSpartanCustomization_PublicViewFallback(t *testing.T) {
+	var appearanceCalls, publicCalls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, "/customization/appearance"):
+			appearanceCalls++
+			w.WriteHeader(http.StatusForbidden) // player-gated pour un xuid tiers
+		case strings.HasSuffix(r.URL.Path, "/customization") && r.URL.Query().Get("view") == "public":
+			publicCalls++
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"Appearance": map[string]any{
+					"ServiceTag":        "MELG",
+					"BackdropImagePath": "Inventory/Spartan/BackdropImages/pub-backdrop.json",
+					"Emblem": map[string]any{
+						"EmblemPath":      "Inventory/Spartan/Emblems/pub-emblem.json",
+						"ConfigurationId": 511768825,
+					},
+				},
+			})
+		case strings.Contains(r.URL.Path, "/hi/progression/file/Inventory/Spartan/BackdropImages/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CommonData": map[string]any{"DisplayPath": map[string]any{
+					"Media": map[string]any{"MediaUrl": map[string]any{"Path": "progression/Backdrops/pub-backdrop.png"}}}},
+			})
+		case strings.Contains(r.URL.Path, "/hi/progression/file/Inventory/Spartan/Emblems/"):
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"CommonData": map[string]any{"DisplayPath": map[string]any{
+					"Media": map[string]any{"MediaUrl": map[string]any{"Path": "progression/Emblems/pub-emblem.png"}}}},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	c := &HaloAPIClient{
+		http:           srv.Client(),
+		spartanToken:   "s",
+		clearanceToken: "c",
+		economyBaseURL: srv.URL,
+		gameCMSBaseURL: srv.URL,
+		limiter:        fastLimiter(),
+	}
+
+	data, err := c.GetSpartanCustomization(context.Background(), "2535427927026623")
+	if err != nil {
+		t.Fatalf("GetSpartanCustomization: %v", err)
+	}
+	if data == nil {
+		t.Fatal("customisation attendue non-nil via la vue publique")
+	}
+	if appearanceCalls == 0 {
+		t.Error("/customization/appearance jamais tenté")
+	}
+	if publicCalls == 0 {
+		t.Error("fallback /customization?view=public jamais déclenché")
+	}
+	if data.SpartanID != "MELG" {
+		t.Errorf("SpartanID = %q, attendu MELG", data.SpartanID)
+	}
+	if data.EmblemImageURL == "" {
+		t.Error("EmblemImageURL attendu non-vide (résolu via la vue publique)")
+	}
+	if data.BackdropImageURL == "" {
+		t.Error("BackdropImageURL attendu non-vide (résolu via la vue publique)")
+	}
+}
+
 func TestGetCareerRank_UsesCareerAndCustomizationEndpoints(t *testing.T) {
 	var careerCalls, customizationCalls, progressionCalls int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

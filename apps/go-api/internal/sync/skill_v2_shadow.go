@@ -78,6 +78,11 @@ func RunLUSRV2Shadow(ctx context.Context, playerDB, sharedDB *sql.DB, xuid strin
 	if !IsLUSRV2Enabled() {
 		return 0, nil
 	}
+	// Sprint 3.C : gate capability (pas de couplage slug). Titre sans CapLUSR →
+	// no-op silencieux. CLI (context.Background) → "halo_infinite" → CapLUSR OK.
+	if skipIfNoLUSRCapability(ctx, "RunLUSRV2Shadow") {
+		return 0, nil
+	}
 	if sharedDB == nil {
 		return 0, fmt.Errorf("RunLUSRV2Shadow: sharedDB nil")
 	}

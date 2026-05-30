@@ -25,6 +25,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
@@ -352,10 +353,20 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
+	// Sprint 3.C : tout le bloc LUSR (v1 + v2 + sentinelle) est gardé par la
+	// capability title.CapLUSR — pas de couplage slug. Titre sans CapLUSR → on
+	// saute proprement (aucun rating calculé pour ce titre). On gate sur
+	// e.titleSlug (autoritatif côté engine) plutôt que sur le ctx.
+	lusrEnabled := slugHasLUSR(e.titleSlug)
+	if !lusrEnabled {
+		slog.DebugContext(ctx, "post-sync: LUSR skippé — capability absente",
+			"gamertag", e.gamertag, "title_slug", e.titleSlug)
+	}
+
 	// 2. LUSR v1 (TrueSkill 2 closed-form, formule composite).
 	// SKIPPÉ si LEVELUP_LUSR_CANONICAL=LUSR_V2 — alors v2 est canonical et
 	// écrit directement dans rating_type='LUSR' via Stratégie C.
-	if !IsLUSRV2Canonical() {
+	if lusrEnabled && !IsLUSRV2Canonical() {
 		slog.DebugContext(ctx, "post-sync: calcul LUSR v1", "gamertag", e.gamertag)
 		medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
 		if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
@@ -365,7 +376,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 			r.LUSRUpdated = n
 			slog.DebugContext(ctx, "post-sync: LUSR v1 mis à jour", "gamertag", e.gamertag, "count", n)
 		}
-	} else {
+	} else if lusrEnabled {
 		slog.DebugContext(ctx, "post-sync: LUSR v1 skippé (canonical=LUSR_V2)", "gamertag", e.gamertag)
 	}
 
@@ -374,14 +385,37 @@ func (e *SyncEngine) runPostSyncPipeline(
 	//
 	// Si LEVELUP_LUSR_CANONICAL=LUSR_V2, écrit AUSSI dans match_skill_rank
 	// (rating_type='LUSR' slot historique) via Stratégie C — l'UI voit alors
-	// le v2 sans modif des readers. Cf. ADR 0024.
-	if IsLUSRV2Enabled() {
+	// le v2 sans modif des readers. Cf. ADR 0024. RunLUSRV2Shadow self-gate la
+	// capability ; le garde ici évite juste l'appel inutile.
+	if lusrEnabled && IsLUSRV2Enabled() {
 		if n, err := RunLUSRV2Shadow(ctx, playerDB, sharedDB, e.xuid); err != nil {
 			slog.WarnContext(ctx, "post-sync: LUSR v2 shadow échoué",
 				"gamertag", e.gamertag, "err", err)
 		} else if n > 0 {
 			slog.InfoContext(ctx, "post-sync: LUSR v2 shadow OK",
 				"gamertag", e.gamertag, "processed", n, "canonical", IsLUSRV2Canonical())
+		}
+	}
+
+	// 2.6 Sentinelle dual-row (Sprint 2.C) — SEULEMENT en mode canonical (sinon la
+	// table dual-row LUSR_V2 n'est pas censée exister). Détecte l'invariant
+	// Stratégie C cassé (match avec LUSR_V2 sans LUSR). Read-only, idempotente,
+	// timeout 30s pour ne jamais bloquer le post-sync. Toute incohérence →
+	// slog.ErrorContext (auto-routé logs/sync.log) ; pas de notif externe.
+	if lusrEnabled && IsLUSRV2Canonical() && playerDB != nil {
+		sentCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		report, serr := RunDualRowSentinel(sentCtx, playerDB)
+		cancel()
+		switch {
+		case serr != nil:
+			slog.ErrorContext(ctx, "post-sync: sentinelle dual-row échouée",
+				"err", serr, "gamertag", e.gamertag)
+		case report.OnlyLUSRV2 > 0:
+			slog.ErrorContext(ctx, "post-sync: sentinelle dual-row a détecté des incohérences",
+				"gamertag", e.gamertag,
+				"only_lusr_v2", report.OnlyLUSRV2,
+				"sample", report.SampleInconsistent,
+			)
 		}
 	}
 

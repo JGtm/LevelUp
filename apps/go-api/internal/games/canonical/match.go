@@ -215,6 +215,10 @@ type SkillSnapshot struct {
 	MeasurementRemaining *int       // matchs de placement restants (>0 = phase placement)
 	KillsExpected        *float64   // depuis MatchSkillSnapshot — utilisé par Stats
 	DeathsExpected       *float64   // idem
+	// ExpectedWinProb : proba de victoire pré-match de l'équipe du joueur (LUSR v2
+	// Sprint 1.A), ∈ [0,1]. nil pour les matchs pré-v2 / non-LUSR. Lue depuis
+	// match_skill_rank.expected_win_prob (Stratégie C la pose sur les rows LUSR).
+	ExpectedWinProb *float64
 }
 
 // ImpactBadge est un badge d'impact calculé sur les événements d'un match.
