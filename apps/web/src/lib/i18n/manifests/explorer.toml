@@ -576,6 +576,30 @@ en = "Spartan identity not available"
 fr = "Emblème et rang carrière indisponibles pour ce joueur — ses stats sont affichées ci-dessous."
 en = "Emblem and career rank unavailable for this player — their stats are shown below."
 
+[explorer.target_profile.top_medals_title]
+fr = "Médailles favorites"
+en = "Top medals"
+
+[explorer.target_profile.medals_show_more]
+fr = "Voir plus ({count})"
+en = "Show more ({count})"
+
+[explorer.target_profile.medals_show_less]
+fr = "Voir moins"
+en = "Show less"
+
+[explorer.target_profile.time_played_label]
+fr = "Temps de jeu"
+en = "Time played"
+
+[explorer.target_profile.season_csr_title]
+fr = "Classements CSR (saison)"
+en = "CSR rankings (season)"
+
+[explorer.target_profile.matches_per_season_title]
+fr = "Matchs par saison"
+en = "Matches per season"
+
 [explorer.target_profile.label_matches]
 fr = "Parties"
 en = "Matches"

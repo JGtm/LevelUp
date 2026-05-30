@@ -109,6 +109,48 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.queryByTestId('explorer-target-no-auth-hint')).not.toBeInTheDocument()
   })
 
+  it('rend les sections enrichies (time-played, top médailles, CSR saison)', () => {
+    const profile: ExplorerTargetProfile = {
+      identity: IDENTITY_FULL,
+      career_stats: { ...CAREER_FULL, time_played_seconds: 90000 }, // 25h = 1j 1h
+      sample_stats: SAMPLE_FULL,
+      top_medals: [
+        {
+          medal_id: 622331684,
+          label: 'Double frag',
+          description: 'Tuez 2 ennemis.',
+          image_url: '/static/medals/halo_infinite/622331684.png',
+          total_count: 13118,
+          match_count: 0,
+        },
+      ],
+      season_csrs: [
+        {
+          playlist_id: 'p1',
+          playlist_name: 'Ranked Arena',
+          queue: '',
+          input: '',
+          current: { value: 1523, tier: 'Diamond', sub_tier: 3, measurement_matches_remaining: 0, placement_total: 0 },
+          season: { value: 0, tier: '', sub_tier: 0, measurement_matches_remaining: 0, placement_total: 0 },
+          all_time: { value: 0, tier: '', sub_tier: 0, measurement_matches_remaining: 0, placement_total: 0 },
+        },
+      ],
+      auth_available: true,
+    }
+    renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="TargetPlayer" />)
+
+    // Time played : KPI rendu (90000s = 1j 1h)
+    expect(screen.getByTestId('explorer-target-time-played')).toBeInTheDocument()
+    expect(screen.getByText('1j 1h')).toBeInTheDocument()
+    // Top médailles : section + médaille
+    expect(screen.getByTestId('explorer-target-medals')).toBeInTheDocument()
+    expect(screen.getByText('Double frag')).toBeInTheDocument()
+    // CSR saison : section + playlist + tier
+    expect(screen.getByTestId('explorer-target-season-csr')).toBeInTheDocument()
+    expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
+    expect(screen.getByText('Diamond 3')).toBeInTheDocument()
+  })
+
   it('ne rend jamais de bannière privacy (supprimée de l\'Explorer)', () => {
     // Même si l'API renvoyait une privacy (legacy), la carte ne la rend plus.
     const profile: ExplorerTargetProfile = {

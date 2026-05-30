@@ -15,7 +15,23 @@ const (
 	haloXUIDKey   contextKey = "halo_xuid"
 	requestIDKey  contextKey = "request_id"
 	eventIDKey    contextKey = "event_id"
+	localeKey     contextKey = "locale"
 )
+
+// WithLocale place la locale UI ("fr"/"en") dans le contexte. Utilisée par les
+// services qui localisent des libellés (médailles, etc.) sans avoir à threader
+// la locale dans chaque signature.
+func WithLocale(ctx context.Context, locale string) context.Context {
+	return context.WithValue(ctx, localeKey, locale)
+}
+
+// Locale extrait la locale depuis le contexte. Retourne "fr" si absente.
+func Locale(ctx context.Context) string {
+	if v, ok := ctx.Value(localeKey).(string); ok && v != "" {
+		return v
+	}
+	return "fr"
+}
 
 // WithTitleSlug place le slug du titre dans le contexte.
 func WithTitleSlug(ctx context.Context, slug string) context.Context {

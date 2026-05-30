@@ -11,9 +11,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	halo_games "levelup/go-api/internal/games/halo_infinite"
+	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -248,16 +252,125 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
-	// localIdentity : identité résolue 100% local (DB de la cible si suivie).
-	// r.remoteStats : stats carrière remote (servicerecord) décorées d'un cache
-	// TTL 5 min + singleflight → réouvrir la même cible est instantané.
-	svc = svc.WithTargetProfileProviders(
-		r.newExplorerLocalIdentityResolver(pdb.TitleSlug),
-		r.remoteStats,
-		pdb.TitleSlug,
-	)
+	// Encart "Profil joueur cible" :
+	//   - LocalIdentity : identité depuis la DB locale de la cible (si suivie)
+	//   - LiveIdentity  : career rank/emblem/backdrop live pour un xuid arbitraire
+	//   - RemoteStats   : service record (stats + temps de jeu + médailles), caché
+	//   - MedalDefs     : labels/descriptions médailles (top médailles)
+	//   - CSR           : classements CSR saison courante (live, tout xuid)
+	homeRepo := r.newHomeRepo(pdb)
+	csrSeasonID := ""
+	if r.cfg != nil {
+		csrSeasonID = r.cfg.CurrentCSRSeasonID
+	}
+	var seasons []service.SeasonCatalogEntry
+	if r.seasonsCatalog != nil {
+		seasons = r.seasonsCatalog.Load(ctx, pdb.TitleSlug)
+	}
+	svc = svc.WithTargetProfileProviders(service.ExplorerTargetProfileDeps{
+		LocalIdentity:   r.newExplorerLocalIdentityResolver(pdb.TitleSlug),
+		LiveIdentity:    r.newCareerLiveService(pdb, homeRepo),
+		RemoteStats:     r.remoteStats,
+		MedalDefs:       duckdb.NewMedalDefinitionsRepo(pdb),
+		CSR:             r.newExplorerCSRProvider(),
+		CurrentSeasonID: csrSeasonID,
+		Seasons:         seasons,
+		TitleSlug:       pdb.TitleSlug,
+	})
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
+}
+
+// newExplorerCSRProvider construit le provider CSR de l'encart cible : instancie
+// un client Halo depuis les tokens du contexte (Spartan + clearance) et appelle
+// l'endpoint skill CSR (service token, fonctionne pour tout xuid), puis mappe
+// vers le type domain. nil tokens → nil (pas d'erreur).
+func (r *ServiceRegistry) newExplorerCSRProvider() service.ExplorerTargetCSRProvider {
+	return service.CSRProviderFunc(func(ctx context.Context, xuid, seasonID string) ([]domain.CareerPlaylistCSR, error) {
+		tokens := ctxkeys.HaloTokens(ctx)
+		if tokens == nil || tokens.SpartanToken == "" {
+			return nil, nil
+		}
+		client := sync_pkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, 10)
+		// 1. Playlists ranked ENGAGÉES de la saison (endpoint player-level).
+		raw, err := client.GetPlayerCSRs(ctx, xuid, seasonID)
+		if err != nil {
+			return nil, err
+		}
+		// 2. Compléter avec les playlists ranked ACTIVES manquantes (endpoint
+		//    par-playlist) — parité avec la page Carrière. Même mécanisme que
+		//    sync.augmentWithActiveRankedCSRs.
+		seen := make(map[string]struct{}, len(raw))
+		for i := range raw {
+			seen[strings.ToLower(strings.TrimSpace(raw[i].PlaylistID))] = struct{}{}
+		}
+		for _, pl := range rankedplaylists.Active() {
+			if _, ok := seen[strings.ToLower(pl.AssetID)]; ok {
+				continue
+			}
+			res, perr := client.GetPlaylistCsr(ctx, pl.AssetID, xuid, seasonID)
+			if perr != nil {
+				slog.WarnContext(ctx, "explorer_target_csr_augment_failed", "playlist", pl.AssetID, "err", perr)
+				continue
+			}
+			if res == nil {
+				continue
+			}
+			res.PlaylistName = pl.NameFR
+			res.Queue = pl.Queue
+			res.Input = pl.Input
+			raw = append(raw, *res)
+		}
+		return mapSyncCSRsToDomain(raw), nil
+	})
+}
+
+// mapSyncCSRsToDomain projette les CSR du client sync vers le type domain
+// (CareerPlaylistCSR), avec résolution du badge image via l'AssetURLAdapter.
+func mapSyncCSRsToDomain(in []sync_pkg.PlayerPlaylistCSR) []domain.CareerPlaylistCSR {
+	adapter := halo_games.NewAssetURLAdapter()
+	out := make([]domain.CareerPlaylistCSR, 0, len(in))
+	for i := range in {
+		c := &in[i]
+		out = append(out, domain.CareerPlaylistCSR{
+			PlaylistID:   c.PlaylistID,
+			PlaylistName: c.PlaylistName,
+			Queue:        c.Queue,
+			Input:        c.Input,
+			Current:      mapSyncCSRSnapshot(adapter, c.Current),
+			Season:       mapSyncCSRSnapshot(adapter, c.Season),
+			AllTime:      mapSyncCSRSnapshot(adapter, c.AllTime),
+		})
+	}
+	return out
+}
+
+func mapSyncCSRSnapshot(adapter *halo_games.AssetURLAdapter, s sync_pkg.CSRRankSnapshot) domain.CareerCSRRank {
+	out := domain.CareerCSRRank{
+		Value:                       s.Value,
+		Tier:                        s.Tier,
+		SubTier:                     s.SubTier,
+		MeasurementMatchesRemaining: s.MeasurementMatchesRemaining,
+	}
+	if url := csrBadgeURL(adapter, s.Tier, s.SubTier); url != "" {
+		out.BadgeImageURL = &url
+	}
+	return out
+}
+
+// csrBadgeURL résout l'URL du badge CSR (/static/ranks/...) via l'AssetURLAdapter
+// halo_infinite. "" si le tier est vide (non classé) ou hors plage.
+func csrBadgeURL(adapter *halo_games.AssetURLAdapter, tier string, subTier int) string {
+	if strings.TrimSpace(tier) == "" {
+		return ""
+	}
+	if strings.EqualFold(tier, "Onyx") {
+		return adapter.CSRRankImageURLOnyx()
+	}
+	if subTier < 1 || subTier > 6 {
+		return ""
+	}
+	return adapter.CSRRankImageURL(tier, subTier)
 }
 
 // newExplorerLocalIdentityResolver construit le résolveur d'identité local de
@@ -459,9 +572,12 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 	if err != nil {
 		return nil, ctx, "", "", err
 	}
+	// r.remoteStats (CachedStatsProvider) plutôt que haloProvider direct : Compare
+	// bénéficie du même cache TTL 5 min + singleflight que l'Explorer (dédup +
+	// latence réduite sur les cibles consultées en parallèle).
 	svc := service.NewCompareService(
 		duckdb.NewCompareRepo(pdb),
-		haloProvider,
+		r.remoteStats,
 		pdb.XUID,
 		pdb.TitleSlug,
 	)

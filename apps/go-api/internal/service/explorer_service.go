@@ -52,6 +52,31 @@ func (f LocalIdentityResolverFunc) LocalSpartanIdentity(ctx context.Context, tar
 	return f(ctx, targetGamertag)
 }
 
+// ExplorerTargetIdentityProvider fetch l'identité Spartan live d'un xuid
+// arbitraire (career rank + emblem + backdrop). Implémenté par *CareerLiveService
+// (GetSpartanIdentityFor). Sert de secours quand la cible n'est pas un joueur
+// suivi localement.
+type ExplorerTargetIdentityProvider interface {
+	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
+}
+
+// ExplorerTargetCSRProvider fetch les CSR par playlist (saison) d'un xuid
+// arbitraire. Implémenté par une closure câblée dans le registry (sync client
+// GetPlayerCSRs + mapping → domain.CareerPlaylistCSR). Contrat : retourne
+// (nil, nil) si les tokens auth sont absents/insuffisants (dégradation
+// gracieuse, pas d'erreur).
+type ExplorerTargetCSRProvider interface {
+	SeasonCSRs(ctx context.Context, xuid, seasonID string) ([]domain.CareerPlaylistCSR, error)
+}
+
+// CSRProviderFunc adapte une closure en ExplorerTargetCSRProvider.
+type CSRProviderFunc func(ctx context.Context, xuid, seasonID string) ([]domain.CareerPlaylistCSR, error)
+
+// SeasonCSRs implémente ExplorerTargetCSRProvider.
+func (f CSRProviderFunc) SeasonCSRs(ctx context.Context, xuid, seasonID string) ([]domain.CareerPlaylistCSR, error) {
+	return f(ctx, xuid, seasonID)
+}
+
 // ExplorerService orchestre les requêtes de l'Explorer.
 type ExplorerService struct {
 	repo port.ExplorerRepository
@@ -63,15 +88,33 @@ type ExplorerService struct {
 	// Explorer (joueur commun + plage temporelle).
 	dataAdapter games.TitleDataAdapter
 
-	// Dépendances optionnelles pour l'encart "Profil joueur cible" :
-	//   - localIdentity : identité Spartan local-only (nil si cible non suivie)
-	//   - remoteStats   : stats carrière agrégées (servicerecord live, caché)
-	// Quand une dépendance est nil, la sous-section correspondante reste nil.
-	// Le sample_stats (calcul local) reste toujours produit. Aucune privacy
-	// n'est fetchée pour l'Explorer (bruit sans valeur — décision produit).
-	localIdentity ExplorerLocalIdentityResolver
-	remoteStats   port.PlayerStatsProvider
-	titleSlug     string
+	// Dépendances optionnelles pour l'encart "Profil joueur cible" (cf.
+	// TargetProfileDeps). Une dépendance nil laisse la sous-section à nil ;
+	// sample_stats (local) reste toujours produit. Aucune privacy n'est fetchée.
+	deps ExplorerTargetProfileDeps
+}
+
+// ExplorerTargetProfileDeps regroupe les dépendances de l'encart "Profil joueur
+// cible". Tout est optionnel (nil → sous-section masquée).
+type ExplorerTargetProfileDeps struct {
+	// LocalIdentity : identité Spartan lue depuis la DB locale de la cible (si
+	// joueur suivi). Source prioritaire.
+	LocalIdentity ExplorerLocalIdentityResolver
+	// LiveIdentity : identité Spartan live (career rank/emblem/backdrop) pour un
+	// xuid arbitraire — secours quand la cible n'est pas locale.
+	LiveIdentity ExplorerTargetIdentityProvider
+	// RemoteStats : service record agrégé (stats + temps de jeu + médailles).
+	RemoteStats port.ServiceRecordProvider
+	// MedalDefs : métadonnées médailles (label/description) pour le top médailles.
+	MedalDefs port.MedalDefinitionsRepository
+	// CSR : classements CSR saison courante de la cible (live).
+	CSR ExplorerTargetCSRProvider
+	// CurrentSeasonID : saison CSR courante (pour le fetch CSR).
+	CurrentSeasonID string
+	// Seasons : calendrier des saisons (plages temporelles) pour le bucketing
+	// "matchs par saison" — résolu côté registry depuis SeasonsCatalog.
+	Seasons   []SeasonCatalogEntry
+	TitleSlug string
 }
 
 // NewExplorerService crée un ExplorerService.
@@ -88,17 +131,9 @@ func (s *ExplorerService) WithDataAdapter(a games.TitleDataAdapter) *ExplorerSer
 }
 
 // WithTargetProfileProviders injecte les dépendances de l'encart "Profil joueur
-// cible" : le résolveur d'identité locale + le provider de stats carrière remote.
-// Retourne le service pour chainer. Les deux sont optionnels — un nil laisse la
-// sous-section correspondante à nil.
-func (s *ExplorerService) WithTargetProfileProviders(
-	localIdentity ExplorerLocalIdentityResolver,
-	remote port.PlayerStatsProvider,
-	titleSlug string,
-) *ExplorerService {
-	s.localIdentity = localIdentity
-	s.remoteStats = remote
-	s.titleSlug = titleSlug
+// cible". Retourne le service pour chainer.
+func (s *ExplorerService) WithTargetProfileProviders(deps ExplorerTargetProfileDeps) *ExplorerService {
+	s.deps = deps
 	return s
 }
 
@@ -200,16 +235,17 @@ func (s *ExplorerService) GetCommonMatches(
 	}, nil
 }
 
-// buildTargetProfile orchestre les 3 sources de l'encart "Profil joueur cible" :
-//   - identité Spartan : LOCAL-only (DB du joueur cible s'il est suivi, nil sinon)
-//   - carrière agrégée : fetch live servicerecord (seul appel réseau, borné +
-//     caché) — fonctionne pour tout joueur, gated sur la présence de tokens
-//   - sample stats     : agrégat local sur les matchs communs
+// buildTargetProfile orchestre les sources de l'encart "Profil joueur cible" :
+//   - identité Spartan : DB locale (si joueur suivi) sinon live (xuid arbitraire,
+//     career rank/emblem/backdrop) — bannière fallback sur le backdrop
+//   - carrière + médailles : service record live (stats + temps de jeu + top
+//     médailles lifetime) — un seul appel, borné + caché
+//   - CSR saison : classements ranked live de la saison courante (tout xuid)
+//   - sample stats : agrégat local sur les matchs communs
 //
-// Aucune privacy n'est fetchée (bruit sans valeur). Tout est best-effort : une
-// source qui échoue/rend nil ne bloque pas les autres (le front masque les
-// sections nil). AuthAvailable reflète la présence de tokens (la carrière en
-// dépend) et pilote le hint front.
+// Aucune privacy n'est fetchée. Tout est best-effort : une source qui échoue
+// rend nil sans bloquer les autres. Les fetchs live sont bornés par
+// explorerTargetLiveBudget ; les sources locales (sample) ne le sont pas.
 func (s *ExplorerService) buildTargetProfile(
 	ctx context.Context,
 	targetXUID, targetGamertag string,
@@ -219,75 +255,142 @@ func (s *ExplorerService) buildTargetProfile(
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
 	var (
-		identity    *domain.HomeSpartanIdentityRow
-		careerStats *domain.NormalizedPlayerStats
-		sampleStats *domain.ExplorerTargetSampleStats
+		identity     *domain.HomeSpartanIdentityRow
+		careerStats  *domain.NormalizedPlayerStats
+		topMedals    []domain.MedalDigestItem
+		seasonCSRs   []domain.CareerPlaylistCSR
+		matchsPerSea []domain.SeasonMatchCount
+		sampleStats  *domain.ExplorerTargetSampleStats
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
-	// Budget de latence sur le SEUL fetch live (carrière). Identité et sample
-	// sont 100% locaux → sur gctx, NON bornés par ce budget.
+	// Budget de latence sur les fetchs live (identité live / carrière / CSR).
+	// Les calculs locaux (sample, matchs par saison) restent sur gctx, NON bornés.
 	liveCtx, cancelLive := context.WithTimeout(gctx, explorerTargetLiveBudget)
 	defer cancelLive()
 
-	g.Go(func() error { identity = s.fetchTargetIdentity(gctx, targetGamertag); return nil })
-	g.Go(func() error { careerStats = s.fetchTargetCareer(liveCtx, targetGamertag, hasAuth); return nil })
+	g.Go(func() error {
+		identity = s.fetchTargetIdentity(liveCtx, targetXUID, targetGamertag, hasAuth)
+		return nil
+	})
+	g.Go(func() error {
+		careerStats, topMedals = s.fetchTargetServiceRecord(liveCtx, targetGamertag, hasAuth)
+		return nil
+	})
+	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
+	g.Go(func() error { matchsPerSea = s.computeMatchesPerSeason(gctx, targetXUID); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
 
 	_ = g.Wait()
 
-	// Observabilité : si le budget carrière a expiré, on a servi une réponse
-	// dégradée (carrière nil). On le trace pour distinguer "Halo lent →
-	// dégradation gracieuse" d'une vraie erreur.
 	if hasAuth && careerStats == nil && liveCtx.Err() == context.DeadlineExceeded {
 		slog.WarnContext(ctx, "explorer_target_live_budget_exceeded",
-			"gamertag", targetGamertag,
-			"budget", explorerTargetLiveBudget.String())
+			"gamertag", targetGamertag, "budget", explorerTargetLiveBudget.String())
 	}
 
 	return &domain.ExplorerTargetProfile{
-		Identity:      identity,
-		CareerStats:   careerStats,
-		SampleStats:   sampleStats,
-		AuthAvailable: hasAuth,
+		Identity:         identity,
+		CareerStats:      careerStats,
+		TopMedals:        topMedals,
+		SeasonCSRs:       seasonCSRs,
+		MatchesPerSeason: matchsPerSea,
+		SampleStats:      sampleStats,
+		AuthAvailable:    hasAuth,
 	}
 }
 
-// fetchTargetIdentity résout l'identité Spartan du target STRICTEMENT en local :
-// si la cible est un joueur suivi, son identité (rang/emblem/peaks) est lue
-// depuis SA propre DB ; sinon nil (un adversaire n'a pas d'identité publiée).
-// Aucun fetch live.
-func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetGamertag string) *domain.HomeSpartanIdentityRow {
-	if s.localIdentity == nil {
+// computeMatchesPerSeason agrège les matchs du target par saison (calcul local
+// DuckDB, indépendant des tokens) : start_times depuis shared.match_participants
+// rangés dans les plages de saison. nil si pas de saisons câblées / pas de matchs.
+func (s *ExplorerService) computeMatchesPerSeason(ctx context.Context, targetXUID string) []domain.SeasonMatchCount {
+	if len(s.deps.Seasons) == 0 {
 		return nil
 	}
-	id := s.localIdentity.LocalSpartanIdentity(ctx, targetGamertag)
+	starts, err := s.repo.GetMatchStartTimesForXUID(ctx, targetXUID)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_matches_per_season_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	return buildMatchesPerSeason(starts, s.deps.Seasons)
+}
+
+// fetchTargetIdentity résout l'identité Spartan du target : DB locale d'abord
+// (si joueur suivi), sinon live pour un xuid arbitraire (career rank/emblem/
+// backdrop). Applique le fallback bannière → backdrop. Retourne nil si rien.
+func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetXUID, targetGamertag string, hasAuth bool) *domain.HomeSpartanIdentityRow {
+	if s.deps.LocalIdentity != nil {
+		if id := s.deps.LocalIdentity.LocalSpartanIdentity(ctx, targetGamertag); id != nil {
+			applyBannerFallback(id)
+			return id
+		}
+	}
+	if hasAuth && s.deps.LiveIdentity != nil && targetXUID != "" {
+		id, err := s.deps.LiveIdentity.GetSpartanIdentityFor(ctx, targetXUID)
+		if err != nil {
+			slog.WarnContext(ctx, "explorer_target_identity_live_failed", "xuid", targetXUID, "err", err)
+			return nil
+		}
+		if id != nil {
+			applyBannerFallback(id)
+			return id
+		}
+	}
+	slog.DebugContext(ctx, "explorer_target_identity_unavailable", "gamertag", targetGamertag)
+	return nil
+}
+
+// applyBannerFallback : si la bannière (nameplate background) est absente — cas
+// fréquent pour une cible non locale, l'API officielle n'expose pas de
+// nameplate dédié — on retombe sur le backdrop du joueur (présent dans
+// l'appearance). Mutation en place, best-effort.
+func applyBannerFallback(id *domain.HomeSpartanIdentityRow) {
 	if id == nil {
-		// Cas normal pour un adversaire (non suivi localement) : pas d'identité.
-		// Tracé en debug pour distinguer "non suivi" d'une vraie absence de data.
-		slog.DebugContext(ctx, "explorer_target_identity_not_local", "gamertag", targetGamertag)
+		return
 	}
-	return id
+	if (id.BannerImageURL == nil || *id.BannerImageURL == "") &&
+		id.BackdropImageURL != nil && *id.BackdropImageURL != "" {
+		id.BannerImageURL = id.BackdropImageURL
+	}
 }
 
-// fetchTargetCareer fetch les stats carrière remote du target (servicerecord via
-// le provider décoré d'un cache). Skip silencieusement sans auth ; nil en cas
-// d'erreur.
-func (s *ExplorerService) fetchTargetCareer(ctx context.Context, targetGamertag string, hasAuth bool) *domain.NormalizedPlayerStats {
-	if s.remoteStats == nil {
-		return nil
+// fetchTargetServiceRecord fetch le service record live (stats + temps de jeu +
+// médailles lifetime) et en dérive les stats carrière + le top médailles. Skip
+// sans auth ; (nil, nil) en cas d'erreur.
+func (s *ExplorerService) fetchTargetServiceRecord(ctx context.Context, targetGamertag string, hasAuth bool) (*domain.NormalizedPlayerStats, []domain.MedalDigestItem) {
+	if s.deps.RemoteStats == nil {
+		return nil, nil
 	}
 	if !hasAuth {
 		slog.DebugContext(ctx, "explorer_target_career_skipped",
 			"gamertag", targetGamertag, "reason", "no_auth_tokens")
-		return nil
+		return nil, nil
 	}
-	stats, err := s.remoteStats.FetchRemoteStats(ctx, targetGamertag, s.titleSlug)
+	rec, err := s.deps.RemoteStats.FetchServiceRecord(ctx, targetGamertag, s.deps.TitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_career_failed", "gamertag", targetGamertag, "err", err)
+		return nil, nil
+	}
+	if rec == nil {
+		return nil, nil
+	}
+	stats := rec.Stats
+	medals := buildTargetTopMedals(ctx, s.deps.MedalDefs, rec.Medals, s.deps.TitleSlug, ctxkeys.Locale(ctx))
+	return &stats, medals
+}
+
+// fetchTargetCSR fetch les classements CSR de la saison courante de la cible
+// (endpoint skill public — tout xuid). Skip sans auth / sans provider / sans
+// saison. nil en cas d'erreur (logguée).
+func (s *ExplorerService) fetchTargetCSR(ctx context.Context, targetXUID string, hasAuth bool) []domain.CareerPlaylistCSR {
+	if s.deps.CSR == nil || !hasAuth || targetXUID == "" || s.deps.CurrentSeasonID == "" {
 		return nil
 	}
-	return stats
+	csrs, err := s.deps.CSR.SeasonCSRs(ctx, targetXUID, s.deps.CurrentSeasonID)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_csr_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	return csrs
 }
 
 // computeTargetSampleStats agrège les stats du target sur les matchs communs

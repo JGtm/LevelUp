@@ -136,6 +136,16 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 			out.PairNameFR = fr
 		}
 	}
+	// GameVariant : source de repli pour le mode FR. Contrairement aux paires
+	// (asset_translations[pair] = EN pour toutes les langues), les game_variant SONT
+	// localisés ("Assassin en équipe : Arène"). buildSessionDetailRows s'en sert quand
+	// la cascade pair n'a pas produit de FR — aligné sur le converter Home.
+	if r.Summary.GameVariant != nil {
+		out.GameVariantName = r.Summary.GameVariant.DefaultLabel
+		if fr, ok := r.Summary.GameVariant.Labels["fr"]; ok && fr != "" {
+			out.GameVariantNameFR = fr
+		}
+	}
 	if r.Enrichment.SkillSnapshot != nil {
 		out.KillsExpected = r.Enrichment.SkillSnapshot.KillsExpected
 		out.DeathsExpected = r.Enrichment.SkillSnapshot.DeathsExpected

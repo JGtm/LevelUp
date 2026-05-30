@@ -102,11 +102,31 @@ type ExplorerPlayerQueryResponse struct {
 // venir de la DB locale, career_stats et privacy sont nil). Sert au front à
 // afficher un hint "Connexion Halo requise" sur les sections masquées.
 type ExplorerTargetProfile struct {
-	Identity       *HomeSpartanIdentityRow    `json:"identity,omitempty"`
-	CareerStats    *NormalizedPlayerStats     `json:"career_stats,omitempty"`
-	SampleStats    *ExplorerTargetSampleStats `json:"sample_stats,omitempty"`
-	PrivacyWarning *MatchPrivacyWarning       `json:"privacy_warning,omitempty"`
-	AuthAvailable  bool                       `json:"auth_available"`
+	Identity    *HomeSpartanIdentityRow    `json:"identity,omitempty"`
+	CareerStats *NormalizedPlayerStats     `json:"career_stats,omitempty"`
+	SampleStats *ExplorerTargetSampleStats `json:"sample_stats,omitempty"`
+	// TopMedals : médailles lifetime du joueur cible (top, triées par count
+	// décroissant, cap 20) issues du service record Waypoint + métadonnées
+	// locales (label/description/image). Le front affiche un top 5 + expander.
+	TopMedals []MedalDigestItem `json:"top_medals,omitempty"`
+	// SeasonCSRs : classements CSR par playlist ranked de la saison courante du
+	// joueur cible (live, endpoint skill public — fonctionne pour tout xuid).
+	SeasonCSRs []CareerPlaylistCSR `json:"season_csrs,omitempty"`
+	// MatchesPerSeason : nombre de matchs matchmade par saison (service record
+	// par saison). Vide si non calculé/indisponible.
+	MatchesPerSeason []SeasonMatchCount `json:"matches_per_season,omitempty"`
+	// PrivacyWarning : conservé (toujours nil — la privacy n'est plus fetchée
+	// pour l'Explorer ; champ gardé pour compat de schéma).
+	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
+	AuthAvailable  bool                 `json:"auth_available"`
+}
+
+// SeasonMatchCount : nombre de matchs matchmade joués sur une saison donnée par
+// le joueur cible (alimente le graphe "matchs par saison").
+type SeasonMatchCount struct {
+	SeasonID   string `json:"season_id"`
+	SeasonName string `json:"season_name"`
+	Matches    int    `json:"matches"`
 }
 
 // ExplorerTargetSampleStats : stats agrégées du joueur cible calculées sur

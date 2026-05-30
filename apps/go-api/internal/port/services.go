@@ -243,6 +243,13 @@ type PlayerStatsProvider interface {
 	FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error)
 }
 
+// ServiceRecordProvider fournit le service record complet d'un joueur distant
+// (stats + temps de jeu + médailles lifetime) en un seul appel Waypoint.
+// Implémenté par platform/halo.HaloProvider et décoré par service.CachedStatsProvider.
+type ServiceRecordProvider interface {
+	FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error)
+}
+
 // PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.
 // Implémenté par platform/halo.HaloProvider.
 type PrivacyProvider interface {

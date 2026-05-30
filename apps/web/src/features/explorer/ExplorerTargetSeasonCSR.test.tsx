@@ -1,0 +1,44 @@
+/**
+ * Tests ExplorerTargetSeasonCSR — liste CSR compacte (playlist + tier + rating).
+ */
+import { describe, expect, it } from 'vitest'
+import { screen } from '@testing-library/react'
+
+import { renderWithProviders } from '@/test/render-utils'
+import type { CareerPlaylistCSR } from '@/lib/api/types'
+
+import { ExplorerTargetSeasonCSR } from './ExplorerTargetSeasonCSR'
+
+function csr(over: Partial<CareerPlaylistCSR> & { playlist_id: string }): CareerPlaylistCSR {
+  const empty = { value: 0, tier: '', sub_tier: 0, measurement_matches_remaining: 0, placement_total: 0 }
+  return {
+    playlist_id: over.playlist_id,
+    playlist_name: over.playlist_name ?? '',
+    queue: '',
+    input: '',
+    current: { ...empty, ...(over.current ?? {}) },
+    season: { ...empty },
+    all_time: { ...empty },
+  }
+}
+
+describe('ExplorerTargetSeasonCSR', () => {
+  it('rend nom de playlist + tier + rating', () => {
+    const csrs = [
+      csr({ playlist_id: 'p1', playlist_name: 'Ranked Arena', current: { value: 1523, tier: 'Diamond', sub_tier: 3, measurement_matches_remaining: 0, placement_total: 0 } }),
+      csr({ playlist_id: 'p2', playlist_name: 'Ranked Slayer', current: { value: 1810, tier: 'Onyx', sub_tier: 0, measurement_matches_remaining: 0, placement_total: 0 } }),
+    ]
+    renderWithProviders(<ExplorerTargetSeasonCSR csrs={csrs} title="CSR" />)
+    expect(screen.getByText('Ranked Arena')).toBeInTheDocument()
+    expect(screen.getByText('Diamond 3')).toBeInTheDocument()
+    expect(screen.getByText('1523')).toBeInTheDocument()
+    // Onyx sans sub-tier
+    expect(screen.getByText('Onyx')).toBeInTheDocument()
+    expect(screen.getByText('1810')).toBeInTheDocument()
+  })
+
+  it('ne rend rien si liste vide', () => {
+    const { container } = renderWithProviders(<ExplorerTargetSeasonCSR csrs={[]} title="CSR" />)
+    expect(container.querySelector('[data-testid="explorer-target-season-csr"]')).toBeNull()
+  })
+})
