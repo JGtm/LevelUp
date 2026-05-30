@@ -127,7 +127,9 @@ export const queryKeys = {
     sessionLabel: string,
     compareSessionLabel: string,
     enableCompare: boolean,
-  ) => ['session-detail', playerSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare] as const,
+    locale: string,
+  ) =>
+    ['session-detail', playerSlug, filterHash, sessionLabel, compareSessionLabel, enableCompare, locale] as const,
 
   // Compare joueur vs joueur (Sprint 54-C)
   comparePlayer: (playerSlug: string, targetGamertag: string) =>

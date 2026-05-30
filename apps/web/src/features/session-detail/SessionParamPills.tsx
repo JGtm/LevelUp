@@ -70,6 +70,11 @@ export function SessionParamPills({ entry }: { entry: SessionCompareEntry | null
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
+      {/* Identité solo/escouade de la session (uniforme sur tous ses matchs). */}
+      <Pill
+        label={entry.with_friends ? t('session.detail.pill_squad') : t('session.detail.pill_solo')}
+        token={entry.with_friends ? 'team-ally' : 'chart-series-6'}
+      />
       <Pill label={t('session.detail.pill_matches', { count: String(entry.total_matches) })} token="info" />
       {cat && <Pill label={catKey ? t(catKey) : cat} token={CATEGORY_TOKEN[cat] ?? 'info'} />}
       {duration && <Pill label={duration} token="info" />}

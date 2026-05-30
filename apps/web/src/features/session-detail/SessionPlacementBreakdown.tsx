@@ -17,6 +17,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { useSessionT } from './_shared'
+import { log } from './_logger'
 
 interface PlacementPoint {
   placement: number
@@ -81,8 +82,9 @@ export function buildSessionPlacementOption(
   }
 }
 
-/** Valeur la plus fréquente d'une liste (tie-break : la plus grande). */
-function modalValue(values: number[]): number | null {
+/** Valeur la plus fréquente d'une liste (tie-break : la plus grande). Exporté pour test. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function modalValue(values: number[]): number | null {
   if (values.length === 0) return null
   const counts = new Map<number, number>()
   for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1)
@@ -126,6 +128,20 @@ export function SessionPlacementBreakdown({ title, matches, height = 260 }: Prop
       },
     ]
   }, [matches])
+
+  // Observabilité : distingue "aucun placement" (rang non peuplé) de "axe = max
+  // observé" (taille de lobby present_at_completion indisponible → fallback).
+  const sLabel = matches[0]?.session_label ?? ''
+  const hasPlacement = matches.some((m) => m.placement != null && m.placement > 0)
+  const hasLobby = matches.some((m) => m.lobby_size != null && m.lobby_size > 0)
+  if (matches.length > 0 && !hasPlacement) {
+    log.warn(`placement_missing:${sLabel}`, 'Breakdown placements vide : aucun rang (placement) sur la session')
+  } else if (hasPlacement && !hasLobby) {
+    log.warn(
+      `lobby_size_fallback:${sLabel}`,
+      'Breakdown placements : taille de lobby (present_at_completion) indisponible → axe = max(rang observé)',
+    )
+  }
 
   return (
     <ChartCard

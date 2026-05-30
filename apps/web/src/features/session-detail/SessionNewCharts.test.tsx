@@ -11,7 +11,7 @@ import { buildSessionNetScoreOption } from './SessionNetScoreArea'
 import { buildSessionMmrDumbbellOption } from './SessionMmrDumbbell'
 import { buildSessionModeBreakdownOption } from './SessionModeBreakdown'
 import { buildSessionDamageOption } from './SessionDamageComposite'
-import { buildSessionPlacementOption } from './SessionPlacementBreakdown'
+import { buildSessionPlacementOption, modalValue } from './SessionPlacementBreakdown'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -81,6 +81,18 @@ describe('buildSessionModeBreakdownOption', () => {
     expect(opt.series[0].data.map((d: { value: number }) => d.value)).toEqual([5, 2])
     expect(opt.xAxis.data).toEqual(['Slayer', 'CTF'])
     expect(opt.yAxis.minInterval).toBe(1)
+  })
+})
+
+describe('modalValue — taille de lobby modale (résistant au churn)', () => {
+  it('retourne la valeur la plus fréquente', () => {
+    expect(modalValue([4, 4, 8, 4])).toBe(4)
+  })
+  it('tie-break sur la plus grande valeur', () => {
+    expect(modalValue([4, 8, 4, 8])).toBe(8)
+  })
+  it('liste vide → null', () => {
+    expect(modalValue([])).toBeNull()
   })
 })
 

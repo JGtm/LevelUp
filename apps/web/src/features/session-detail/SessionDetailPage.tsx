@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
@@ -44,6 +45,9 @@ export function SessionDetailPage() {
 
   const filterContext = useSoloFilterStore((s) => s.filterContext)
   const filterContextHash = useSoloFilterStore((s) => s.filterContextHash)
+  // Locale envoyée au backend pour la résolution FR/EN des cartes/modes/playlists
+  // (aligné Home/Explorer) ; incluse dans la queryKey → refetch au changement de locale.
+  const locale = useAppShellStore((s) => s.locale)
 
   const { data, isLoading, isError, isFetching, refetch } = useSessionDetailPage(
     playerSlug,
@@ -52,11 +56,13 @@ export function SessionDetailPage() {
       session_label: sessionLabel || undefined,
       compare_session_label: compareSessionLabel || undefined,
       enable_compare: enableCompare,
+      locale,
     },
     filterContextHash,
     sessionLabel,
     compareSessionLabel,
     enableCompare,
+    locale,
   )
 
   // En-tête L3 sticky : il doit se coller SOUS la NavL2 (elle-même sticky top-0 dans
@@ -213,6 +219,7 @@ export function SessionDetailPage() {
                 matches={data.matches}
                 playerSlug={playerSlug}
                 variant={drawerOpen ? 'compact' : 'full'}
+                withFriends={data.current_session?.with_friends ?? false}
               />
             </div>
           </>
@@ -299,6 +306,7 @@ export function SessionDetailPage() {
                       matches={data.compare_matches ?? []}
                       playerSlug={playerSlug}
                       variant="compact"
+                      withFriends={data.compare_session?.with_friends ?? false}
                     />
                   </div>
                 </>

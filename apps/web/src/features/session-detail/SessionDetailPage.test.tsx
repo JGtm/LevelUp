@@ -149,10 +149,9 @@ describe("SessionDetailPage", () => {
     expect(screen.getByText(/même catégorie ranked/)).toBeInTheDocument();
     expect(screen.getByText("Détail des matchs")).toBeInTheDocument();
     expect(screen.getByText("Oddball")).toBeInTheDocument();
-    // outcomeLabel(2) → "win" en l'absence de fieldMappings backend mocké
-    // (post-84ae65ca : libellé via useFieldMappings/outcomes.toml, fallback
-    // sur la clé brute si l'endpoint n'est pas appelé en test).
-    expect(screen.getByText("win")).toBeInTheDocument();
+    // Le tableau réutilise désormais ExplorerMatchesTable → l'issue est rendue via
+    // le manifest explorer (bundlé) : outcome 2 → "Victoire" (FR), pas la clé brute.
+    expect(screen.getByText("Victoire")).toBeInTheDocument();
   });
 
   it("active la comparaison suggérée et affiche la lecture comparative", async () => {

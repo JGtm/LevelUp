@@ -368,7 +368,7 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 		DamageTaken:       &dt,
 		Rank:              &rk,
 	}
-	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil)
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr")
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}
@@ -409,11 +409,47 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 	}
 }
 
+// TestBuildSessionDetailRows_Locale couvre la résolution FR/EN des libellés
+// cartes/modes/playlists selon la locale (aligné Home/Explorer).
+func TestBuildSessionDetailRows_Locale(t *testing.T) {
+	row := legacymatch.StatsMatchRow{
+		MatchID:        "m1",
+		StartTime:      time.Now(),
+		MapName:        "Live Fire",
+		MapNameFR:      "Tir réel",
+		PlaylistName:   "Ranked Arena",
+		PlaylistNameFR: "Arène classée",
+		PairName:       "Arena:Slayer on Live Fire",
+		PairNameFR:     "Arène:Massacre sur Tir réel",
+	}
+	en := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "en")[0]
+	if en.MapName != "Live Fire" {
+		t.Fatalf("EN MapName: want 'Live Fire', got %q", en.MapName)
+	}
+	if en.PlaylistName != "Ranked Arena" {
+		t.Fatalf("EN PlaylistName: want 'Ranked Arena', got %q", en.PlaylistName)
+	}
+	if want := derefString(analysis.ResolveModeUI(&row.PairName, nil)); en.ModeUI != want {
+		t.Fatalf("EN ModeUI: want %q (EN normalisé), got %q", want, en.ModeUI)
+	}
+
+	fr := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr")[0]
+	if fr.MapName != "Tir réel" {
+		t.Fatalf("FR MapName: want 'Tir réel', got %q", fr.MapName)
+	}
+	if fr.PlaylistName != "Arène classée" {
+		t.Fatalf("FR PlaylistName: want 'Arène classée', got %q", fr.PlaylistName)
+	}
+	if want := derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR)); fr.ModeUI != want {
+		t.Fatalf("FR ModeUI: want %q, got %q", want, fr.ModeUI)
+	}
+}
+
 // TestBuildSessionDetailRows_NilEnrichment vérifie la dégradation gracieuse :
 // pas de MMR/perf/rating → champs nil/zéro, pas de panic.
 func TestBuildSessionDetailRows_NilEnrichment(t *testing.T) {
 	row := legacymatch.StatsMatchRow{MatchID: "m1", StartTime: time.Now(), Kills: 3, Deaths: 2}
-	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil)
+	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil, "fr")
 	if len(out) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(out))
 	}
