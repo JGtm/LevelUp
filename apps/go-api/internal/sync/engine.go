@@ -194,12 +194,34 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// Phase 4 plan stabilisation 2026-05-22 : capture du snapshot before-sync
 	// pour la couche post-sync (delta notifications + pipeline progression V2).
 	// Le runner est nil si non injecté (legacy / tests) — feature off.
-	// Le finalizer sera invoqué en succès uniquement (chemin terminal de run,
-	// ligne ~435 `return result, nil`) — sur erreur, le finalizer n'est jamais
-	// appelé pour éviter d'émettre des deltas sur snapshot post-sync incohérent.
 	var postSyncFinalizer port.PostSyncFinalizer
 	if e.postSyncRunner != nil && e.postSyncSlug != "" {
 		postSyncFinalizer = e.postSyncRunner.BeforeSync(ctx, e.postSyncSlug)
+	}
+
+	// Le finalizer est invoqué en succès uniquement (finalizerArmed positionné
+	// juste avant le `return result, nil` terminal) — sur erreur il ne tourne
+	// pas, pour ne pas émettre de deltas sur un snapshot post-sync incohérent.
+	//
+	// CRITIQUE (fix auto-contention shared, ADR 0016) : le finalizer lit la
+	// shared DB (pipeline progression V2 → loadProgressionMatches). Si on
+	// l'appelle alors que CE sync tient encore le shared writer RW (le
+	// `defer releaseShared()` / `defer postRls()` ne tournent qu'au retour),
+	// le `SharedReadDB().Get` attend un retour RO que le même run empêche →
+	// `context deadline exceeded` systématique → progression jamais persistée.
+	//
+	// On enregistre donc le finalizer en `defer` AVANT les leases writer :
+	// grâce au LIFO, il s'exécute APRÈS tous les release() de writer, shared
+	// repassée en RO. Le ctx est détaché (WithoutCancel) pour survivre à une
+	// annulation du parent juste après le retour de run().
+	var finalizerArmed bool
+	if postSyncFinalizer != nil {
+		defer func() {
+			if !finalizerArmed {
+				return
+			}
+			postSyncFinalizer(context.WithoutCancel(ctx))
+		}()
 	}
 
 	// â”€â”€â”€ Write leases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -589,12 +611,12 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		"status", result.Status(),
 	)
 
-	// Phase 4 plan stabilisation 2026-05-22 : invoque le finalizer post-sync
-	// (notifications delta + pipeline progression V2) capturé en début de run.
-	// Best-effort : toute erreur dans le finalizer reste contenue côté runner.
-	if postSyncFinalizer != nil {
-		postSyncFinalizer(ctx)
-	}
+	// Phase 4 plan stabilisation 2026-05-22 : le finalizer post-sync
+	// (notifications delta + pipeline progression V2) est invoqué via le defer
+	// armé en début de run — APRÈS la libération du shared writer RW (sinon la
+	// lecture shared de la progression s'auto-bloque en attente du retour RO,
+	// cf. ADR 0016). Ici on se contente d'armer le flag sur le chemin de succès.
+	finalizerArmed = true
 	return result, nil
 }
 
