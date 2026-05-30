@@ -19,7 +19,7 @@ package duckdb
 const Q29TopTeammatesSharedTpl = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, p2.xuid)              AS gamertag,
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(DISTINCT p1.match_id)                  AS games_together,
     SUM(CASE WHEN p1.outcome = 2 THEN 1 ELSE 0 END) AS wins_together,
     ROUND(
@@ -51,7 +51,7 @@ LIMIT 50`
 const Q29TopTeammates = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, p2.xuid)                              AS gamertag,
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4)))     AS gamertag,
     COUNT(DISTINCT p1.match_id)                                  AS games_together,
     SUM(CASE WHEN p1.outcome = 2 THEN 1 ELSE 0 END)             AS wins_together,
     ROUND(
@@ -234,7 +234,9 @@ const Q32SquadImpactEventsTemplate = `
 SELECT
     he.match_id,
     he.xuid,
-    COALESCE(vg.gamertag, he.xuid)   AS gamertag,
+    -- he.xuid (highlight_events) peut être orphelin de la vue → fallback masqué
+    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(he.xuid, 4)))   AS gamertag,
     he.event_type,
     COALESCE(he.time_ms, 0)           AS time_ms
 FROM highlight_events he
@@ -254,7 +256,7 @@ const Q32bMainTeamParticipantsTemplate = `
 SELECT
     p.match_id,
     p.xuid,
-    COALESCE(vg.gamertag, p.xuid)        AS gamertag,
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
     COALESCE(p.kills, 0)                 AS kills,
     COALESCE(p.deaths, 0)                AS deaths,
     COALESCE(p.assists, 0)               AS assists,

@@ -1,20 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildMatchPlayerColors, buildXUIDToGamertagMap, unknownPlayerLabel } from './colors'
+import { buildMatchPlayerColors, buildXUIDToGamertagMap } from './colors'
 import type {
   MatchKillerVictimPair,
   MatchRosterRow,
   MatchScoreboardRow,
 } from '@/lib/api/types'
-
-describe('unknownPlayerLabel', () => {
-  it('utilise les 4 derniers chars', () => {
-    expect(unknownPlayerLabel('1234567890aaaa')).toBe('Joueur aaaa') // pragma: allowlist secret
-  })
-  it('retombe sur le xuid si trop court', () => {
-    expect(unknownPlayerLabel('xy')).toBe('Joueur xy')
-  })
-})
 
 describe('buildXUIDToGamertagMap', () => {
   const scoreboard: MatchScoreboardRow[] = [

@@ -5,14 +5,15 @@ package duckdb
 // Paramètre : ? = xuid du joueur.
 //
 // Résolveur canonique : v_gamertag_lookup gère bots + cascade
-// xuid_aliases / match_participants / fallback xuid raw. Caller fait juste
-// `COALESCE(vg.gamertag, p2.xuid)` pour couvrir les xuids orphelins (jamais en DB).
+// xuid_aliases / match_participants. Fallback masqué "Joueur ####" (jamais de
+// xuid brut, miroir de analysis.MaskedXuidLabelSQL) pour les xuids orphelins
+// (absents de la vue) — garantit aussi gamertag NON NULL pour le scan Go.
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q10Encounters = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, p2.xuid) AS gamertag,
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(*) AS match_count,
     SUM(CASE WHEN p2.team_id = p1.team_id THEN 1 ELSE 0 END) AS as_teammate,
     SUM(CASE WHEN p2.team_id != p1.team_id THEN 1 ELSE 0 END) AS as_enemy,
@@ -50,9 +51,10 @@ top_weapons AS (
 SELECT
     p.xuid,
     -- Résolveur canonique : v_gamertag_lookup gère bots ('bid(N.0)' → '343 Bot N')
-    -- + cascade xuid_aliases / match_participants. Caller fait juste fallback
-    -- xuid raw pour les xuids orphelins. Plus de CASE WHEN bot ad-hoc ici.
-    COALESCE(vg.gamertag, p.xuid) AS gamertag,
+    -- + cascade xuid_aliases / match_participants. Fallback masqué "Joueur ####"
+    -- (jamais de xuid brut, miroir analysis.MaskedXuidLabelSQL) pour les orphelins
+    -- + garantit gamertag NON NULL pour le scan. Plus de CASE WHEN bot ad-hoc ici.
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
     (p.xuid LIKE 'bid(%') AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
@@ -430,7 +432,7 @@ LIMIT 1`
 const Q23MatchEncounters = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, p.xuid) AS gamertag,
+           COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
            FALSE AS is_bot
     FROM match_participants p
     LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
@@ -477,7 +479,7 @@ ORDER BY count_together DESC`
 const Q23bMatchEncounterStats = `
 WITH this_match AS (
     SELECT p.xuid, p.team_id,
-           COALESCE(vg.gamertag, p.gamertag, p.xuid) AS gamertag
+           COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag
     FROM match_participants p
     LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
     WHERE p.match_id = ?

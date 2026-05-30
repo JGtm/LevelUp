@@ -393,7 +393,9 @@ kv_stats AS (
 )
 SELECT
     es.xuid,
-    COALESCE(vg.gamertag, es.xuid) AS gamertag,
+    -- es.xuid (encounter_stats) peut être orphelin de la vue → fallback masqué
+    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
     es.count_together,
     es.ally_count,
     es.enemy_count,
@@ -440,7 +442,9 @@ WITH pairs AS (
 )
 SELECT
     p.opp_xuid AS xuid,
-    COALESCE(vg.gamertag, p.opp_xuid) AS gamertag,
+    -- opp_xuid (killer_victim_pairs) peut être orphelin de la vue → fallback masqué
+    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
+    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.opp_xuid, 4))) AS gamertag,
     p.frags,
     p.deaths,
     p.match_count

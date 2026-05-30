@@ -396,19 +396,20 @@ func (r *MediaRepo) loadMatchLobbies(ctx context.Context, matchIDs []string) map
 		args = append(args, id)
 	}
 	// Résolveur canonique : v_gamertag_lookup gère bots + cascade
-	// xuid_aliases / match_participants. shared.xuid_aliases couvre les
-	// participants jamais croisés directement par le joueur courant.
+	// xuid_aliases / match_participants. Fallback masqué "Joueur ####" (jamais de
+	// xuid brut, miroir analysis.MaskedXuidLabelSQL) pour les orphelins + garantit
+	// gamertag NON NULL pour le scan. Le JOIN xuid_aliases est devenu redondant
+	// (la vue intègre déjà xuid_aliases) → supprimé.
 	// is_bot : aligné sur Q12 (queries_match.go) — pour badge "Bot" dans le picker.
 	// query shared-only via SharedReader (root-level naming).
 	q := `
 		SELECT mp.match_id,
-			COALESCE(vg.gamertag, va.gamertag, mp.xuid) AS gamertag,
+			COALESCE(vg.gamertag, ('Joueur ' || RIGHT(mp.xuid, 4))) AS gamertag,
 			mp.team_id,
 			(mp.xuid = ?) AS is_self,
 			(mp.xuid LIKE 'bid(%') AS is_bot
 		FROM match_participants mp
 		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
-		LEFT JOIN xuid_aliases va ON va.xuid = mp.xuid
 		WHERE mp.match_id IN (` + joinStrings(placeholders) + `)
 		ORDER BY mp.match_id, mp.team_id, mp.gamertag
 	`

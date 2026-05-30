@@ -172,12 +172,6 @@ export function buildMatchPlayerColors(
   return { tokenByXUID, hexByXUID, tokenByGamertag, hexByGamertag }
 }
 
-/** Label lisible pour un xuid absent du scoreboard (fallback FragDiff). */
-export function unknownPlayerLabel(xuid: string): string {
-  const tail = xuid.slice(-4) || xuid
-  return `Joueur ${tail}`
-}
-
 /**
  * Construit la table `xuid → gamertag` la plus complète possible pour le
  * match courant en cumulant TOUTES les sources serveur ayant déjà résolu
