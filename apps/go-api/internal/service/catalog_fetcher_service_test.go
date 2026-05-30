@@ -129,9 +129,11 @@ func TestCatalogFetcherService_Drain_PlaylistAndPair(t *testing.T) {
 
 	// Playlist + pair upserted.
 	var n int
-	db.QueryRow(`SELECT COUNT(*) FROM playlists_catalog WHERE title_slug = 'halo_infinite'`).Scan(&n)
+	// Filtre sur l'asset_id spécifique du test (pas COUNT(*) global : la migration
+	// seed_ranked_playlists_catalog pré-peuple 16 playlists classées connues).
+	db.QueryRow(`SELECT COUNT(*) FROM playlists_catalog WHERE title_slug = 'halo_infinite' AND playlist_asset_id = 'pl-1'`).Scan(&n)
 	if n != 1 {
-		t.Errorf("playlists_catalog count = %d, want 1", n)
+		t.Errorf("playlists_catalog count for pl-1 = %d, want 1", n)
 	}
 	db.QueryRow(`SELECT COUNT(*) FROM map_mode_pair_definitions WHERE title_slug = 'halo_infinite'`).Scan(&n)
 	if n != 1 {
