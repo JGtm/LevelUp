@@ -1,11 +1,11 @@
 /**
- * Tests unitaires — TipsTicker.
+ * Tests unitaires — TipsTicker (fondu enchaîné).
  *
- * Vérifie : rendu vide, duplication des tips pour la boucle, attributs href,
- * aria-hidden sur les copies, paramétrage de la durée via CSS variable.
+ * Vérifie : rendu vide, pill unique visible, href, span sans lien, aria-label.
+ * Le cycle (setInterval + setTimeout) est testé via fake timers.
  */
-import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { act, render } from '@testing-library/react'
 import { TipsTicker, type Tip } from './tips-ticker'
 
 const SAMPLE_TIPS: Tip[] = [
@@ -13,36 +13,20 @@ const SAMPLE_TIPS: Tip[] = [
   { id: 't2', term: 'Record', shortDef: 'Meilleur perso', href: '/help#record' },
 ]
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 describe('TipsTicker', () => {
   it('renders nothing when no tips', () => {
     const { container } = render(<TipsTicker tips={[]} />)
     expect(container.firstChild).toBeNull()
   })
 
-  it('duplicates tips for seamless looping', () => {
+  it('renders exactly one tip pill initially', () => {
     const { container } = render(<TipsTicker tips={SAMPLE_TIPS} />)
-    // 2 tips × 2 copies = 4 pills
-    const pills = container.querySelectorAll('a, span[aria-hidden]')
-    const linkCount = container.querySelectorAll('a').length
-    expect(linkCount).toBe(4)
-    expect(pills.length).toBeGreaterThanOrEqual(4)
-  })
-
-  it('flags duplicated tips as aria-hidden for screen readers', () => {
-    const { container } = render(<TipsTicker tips={SAMPLE_TIPS} />)
-    const links = Array.from(container.querySelectorAll('a'))
-    // first 2 must be visible to AT, last 2 must be aria-hidden
-    expect(links[0].getAttribute('aria-hidden')).toBeNull()
-    expect(links[1].getAttribute('aria-hidden')).toBeNull()
-    expect(links[2].getAttribute('aria-hidden')).toBe('true')
-    expect(links[3].getAttribute('aria-hidden')).toBe('true')
-  })
-
-  it('sets href on each tip link', () => {
-    const { container } = render(<TipsTicker tips={SAMPLE_TIPS} />)
-    const links = container.querySelectorAll('a')
-    expect(links[0].getAttribute('href')).toBe('/help#streak')
-    expect(links[1].getAttribute('href')).toBe('/help#record')
+    expect(container.querySelectorAll('a').length).toBe(1)
+    expect(container.querySelector('a')?.getAttribute('href')).toBe('/help#streak')
   })
 
   it('renders as span (not link) when href is missing', () => {
@@ -52,19 +36,26 @@ describe('TipsTicker', () => {
     expect(container.querySelectorAll('span').length).toBeGreaterThan(0)
   })
 
-  it('exposes durationSeconds as CSS variable on the track', () => {
-    const { container } = render(<TipsTicker tips={SAMPLE_TIPS} durationSeconds={30} />)
-    // Find the inner flex track (sibling of <style>)
-    const track = container.querySelector('[style*="--ticker-duration"]') as HTMLElement | null
-    expect(track).not.toBeNull()
-    expect(track?.style.getPropertyValue('--ticker-duration')).toBe('30s')
-  })
-
   it('applies aria-label on the region wrapper', () => {
     const { container } = render(
       <TipsTicker tips={SAMPLE_TIPS} ariaLabel="Tips Ascension" />,
     )
     const region = container.querySelector('[role="region"]')
     expect(region?.getAttribute('aria-label')).toBe('Tips Ascension')
+  })
+
+  it('advances to the next tip after one full cycle', async () => {
+    vi.useFakeTimers()
+    const { container } = render(
+      <TipsTicker tips={SAMPLE_TIPS} displaySeconds={6} transitionSeconds={0.5} />,
+    )
+    expect(container.querySelector('a')?.getAttribute('href')).toBe('/help#streak')
+
+    // cycleMs = (6 + 0.5*2) * 1000 = 7000ms → setInterval fires → setVisible(false)
+    await act(async () => { vi.advanceTimersByTime(7000) })
+    // transitionSeconds*1000 = 500ms → setTimeout fires → index++ + setVisible(true)
+    await act(async () => { vi.advanceTimersByTime(500) })
+
+    expect(container.querySelector('a')?.getAttribute('href')).toBe('/help#record')
   })
 })

@@ -16,7 +16,7 @@ import { buildGlossaryEntryAnchor } from '@/features/help/GlossaryTab'
 // (le titre de section FR et EN sont identiques par choix éditorial).
 const ASCENSION_SECTION_TITLE = 'Ascension & Progression'
 
-const SHORT_DEF_MAX_LEN = 110
+const SHORT_DEF_MAX_LEN = 180
 
 export function buildAscensionTips(locale: HelpLocale): Tip[] {
   const sections = getHelpText(locale).glossary.sections

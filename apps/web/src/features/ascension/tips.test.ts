@@ -25,7 +25,7 @@ describe('buildAscensionTips', () => {
   it('shortDef collapses newlines and is bounded', () => {
     const tips = buildAscensionTips('fr')
     for (const tip of tips) {
-      expect(tip.shortDef.length).toBeLessThanOrEqual(111) // 110 + ellipsis
+      expect(tip.shortDef.length).toBeLessThanOrEqual(181) // 180 + ellipsis
       expect(tip.shortDef).not.toMatch(/\n/)
     }
   })

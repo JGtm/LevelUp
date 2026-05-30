@@ -1,14 +1,13 @@
 /**
- * TipsTicker — bandeau horizontal défilant de tips contextuels.
+ * TipsTicker — affiche un tip à la fois avec un fondu enchaîné.
  *
- * Affiche une suite de petites pills cliquables qui défilent automatiquement
- * de droite à gauche (style ticker). Pause au hover/focus. Respecte
- * `prefers-reduced-motion` (rendu statique en grille scrollable).
+ * Cycle : fade-in → lecture → fade-out → tip suivant.
+ * Respecte `prefers-reduced-motion` (liste statique scrollable).
  *
  * Usage typique : indices visuels sur une page complexe, pointant vers le
  * glossaire (`/help?tab=glossary#glossary-entry-<slug>`).
  */
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 export interface Tip {
   id: string
@@ -19,63 +18,88 @@ export interface Tip {
 
 interface TipsTickerProps {
   tips: Tip[]
-  /** Durée d'un cycle complet en secondes. Défaut : 60s. */
-  durationSeconds?: number
-  /** Pause l'animation au hover ou focus. Défaut : true. */
-  pauseOnHover?: boolean
-  /** Label aria pour la région du ticker. */
+  /** Durée d'affichage de chaque tip en secondes. Défaut : 6s. */
+  displaySeconds?: number
+  /** Durée du fondu enchaîné en secondes. Défaut : 0.5s. */
+  transitionSeconds?: number
+  /** Label aria pour la région. */
   ariaLabel?: string
-  /** Pictogramme optionnel affiché en tête de chaque pill. */
+  /** Pictogramme optionnel affiché en tête de la pill. */
   leadingIcon?: ReactNode
 }
 
-const KEYFRAMES = `
-@keyframes tips-ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+function useReducedMotion(): boolean {
+  const query = '(prefers-reduced-motion: reduce)'
+  const getMatch = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia(query).matches
+  const [reduced, setReduced] = useState(getMatch)
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
+    const mq = window.matchMedia(query)
+    const handler = (e: MediaQueryListEvent) => setReduced(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return reduced
 }
-`
 
 export function TipsTicker({
   tips,
-  durationSeconds = 60,
-  pauseOnHover = true,
+  displaySeconds = 6,
+  transitionSeconds = 0.5,
   ariaLabel,
   leadingIcon,
 }: TipsTickerProps) {
-  const doubled = useMemo(() => [...tips, ...tips], [tips])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [visible, setVisible] = useState(true)
+  const reducedMotion = useReducedMotion()
+
+  useEffect(() => {
+    if (reducedMotion || tips.length <= 1) return
+
+    const cycleMs = (displaySeconds + transitionSeconds * 2) * 1000
+    const timer = setInterval(() => {
+      setVisible(false)
+      setTimeout(() => {
+        setCurrentIndex((i) => (i + 1) % tips.length)
+        setVisible(true)
+      }, transitionSeconds * 1000)
+    }, cycleMs)
+
+    return () => clearInterval(timer)
+  }, [tips.length, displaySeconds, transitionSeconds, reducedMotion])
 
   if (tips.length === 0) return null
 
-  const trackClasses = [
-    'flex w-max items-stretch gap-2 py-1.5 px-2',
-    'motion-safe:[animation:tips-ticker-scroll_var(--ticker-duration)_linear_infinite]',
-    pauseOnHover ? 'motion-safe:group-hover:[animation-play-state:paused]' : '',
-    pauseOnHover ? 'motion-safe:group-focus-within:[animation-play-state:paused]' : '',
-    'motion-reduce:flex-wrap motion-reduce:w-full motion-reduce:overflow-x-auto',
-  ]
-    .filter(Boolean)
-    .join(' ')
+  if (reducedMotion) {
+    return (
+      <section
+        role="region"
+        aria-label={ariaLabel}
+        className="flex w-full flex-col gap-0.5 py-1"
+      >
+        {tips.map((tip) => (
+          <TipPill key={tip.id} tip={tip} leadingIcon={leadingIcon} />
+        ))}
+      </section>
+    )
+  }
 
   return (
     <section
       role="region"
       aria-label={ariaLabel}
-      className="group relative w-full overflow-hidden rounded-md border border-border bg-card/50"
+      className="relative w-full min-h-[3.25rem]"
     >
-      <style>{KEYFRAMES}</style>
       <div
-        className={trackClasses}
-        style={{ ['--ticker-duration' as never]: `${durationSeconds}s` }}
+        style={{
+          opacity: visible ? 1 : 0,
+          transition: `opacity ${transitionSeconds}s ease`,
+        }}
       >
-        {doubled.map((tip, idx) => (
-          <TipPill
-            key={`${tip.id}-${idx}`}
-            tip={tip}
-            leadingIcon={leadingIcon}
-            ariaHidden={idx >= tips.length}
-          />
-        ))}
+        <TipPill tip={tips[currentIndex % tips.length]} leadingIcon={leadingIcon} />
       </div>
     </section>
   )
@@ -84,47 +108,32 @@ export function TipsTicker({
 interface TipPillProps {
   tip: Tip
   leadingIcon?: ReactNode
-  /** True pour les copies dupliquées (animation seamless) — masqué des lecteurs d'écran. */
-  ariaHidden: boolean
 }
 
-function TipPill({ tip, leadingIcon, ariaHidden }: TipPillProps) {
-  const content = (
-    <>
-      {leadingIcon && (
-        <span className="shrink-0 text-muted-foreground" aria-hidden="true">
-          {leadingIcon}
-        </span>
-      )}
-      <span className="shrink-0 text-xs font-semibold">{tip.term}</span>
-      <span className="hidden text-xs text-muted-foreground sm:inline">·</span>
-      <span className="hidden max-w-[28rem] truncate text-xs text-muted-foreground sm:inline">
-        {tip.shortDef}
+function TipPill({ tip, leadingIcon }: TipPillProps) {
+  const inner = (
+    <span className="flex flex-col gap-0.5 text-xs">
+      <span className="flex items-center gap-1.5 font-semibold">
+        {leadingIcon && (
+          <span className="shrink-0 text-muted-foreground" aria-hidden="true">
+            {leadingIcon}
+          </span>
+        )}
+        {tip.term}
       </span>
-    </>
+      <span className="text-muted-foreground">{tip.shortDef}</span>
+    </span>
   )
-
-  const pillClasses =
-    'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-background px-3 py-1 transition-colors hover:border-foreground/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
   if (tip.href) {
     return (
       <a
         href={tip.href}
-        className={pillClasses}
-        aria-hidden={ariaHidden || undefined}
-        tabIndex={ariaHidden ? -1 : 0}
+        className="block hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 rounded-sm"
       >
-        {content}
+        {inner}
       </a>
     )
   }
-  return (
-    <span
-      className={pillClasses}
-      aria-hidden={ariaHidden || undefined}
-    >
-      {content}
-    </span>
-  )
+  return <>{inner}</>
 }
