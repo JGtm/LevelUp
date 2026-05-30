@@ -24,6 +24,9 @@ type SessionPageService struct {
 	playerMatchesRepo port.PlayerMatchesRepository
 	titleSlug         string
 	gamertag          string
+	// csrThreshold (optionnel) : résolveur season_id → seuil placement CSR (5 ou 10).
+	// Sans lui, applyMatchPlacements retombe sur le défaut (5). Cf. match_history_placement.go.
+	csrThreshold CSRThresholdResolver
 }
 
 // NewSessionPageService crÃ©e un SessionPageService.
@@ -36,6 +39,13 @@ func (s *SessionPageService) WithPlayerMatchesRepo(repo port.PlayerMatchesReposi
 	s.playerMatchesRepo = repo
 	s.titleSlug = titleSlug
 	s.gamertag = gamertag
+	return s
+}
+
+// WithCSRThresholds injecte le résolveur de seuil placement CSR (cf. l'Explorer /
+// match-history). Permet à la colonne "Rang" d'afficher "X/Y" en phase de placement.
+func (s *SessionPageService) WithCSRThresholds(resolver CSRThresholdResolver) *SessionPageService {
+	s.csrThreshold = resolver
 	return s
 }
 
@@ -59,6 +69,9 @@ func (s *SessionPageService) GetPage(
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage: %w", err)
 	}
 	rows := analysis.StatsMatchRowsFromCanonical(canonicalRows)
+	// Placement X/Y : calculé sur TOUS les matchs (le LUSR a besoin de l'ordre global
+	// par chaîne) ; appliqué ensuite par match dans buildSessionDetailRows.
+	placements := s.computeSessionPlacements(ctx, rows)
 
 	filtered := filterStatsMatchRows(rows, req.Filters)
 	labels := extractSessionLabels(filtered)
@@ -88,15 +101,22 @@ func (s *SessionPageService) GetPage(
 		}, nil
 	}
 
-	suggestion, candidateCount := buildSessionCompareSuggestion(labels, currentLabel, filtered)
+	// Vivier de comparaison ÉLARGI : sessions de même catégorie, hors isolation
+	// période/session (cf. comparePoolFilters). Le bouton Comparer, le dropdown et
+	// la suggestion s'appuient dessus → ils restent disponibles même quand le filtre
+	// L2 a été resserré sur UNE seule session pour la vue principale.
+	compareScope := filterStatsMatchRows(rows, comparePoolFilters(req.Filters))
+	compareLabels := extractSessionLabels(compareScope)
+	suggestion, candidateCount := buildSessionCompareSuggestion(compareLabels, currentLabel, compareScope)
 	compareLabel := resolveRequestedCompareLabel(req, suggestion)
 	compareEnabled := req.EnableCompare && compareLabel != "" && compareLabel != currentLabel
 
+	// Navigation prev/next : reste sur le périmètre resserré (la vue principale).
 	prevLabel, nextLabel := neighboringSessionLabels(labels, currentLabel)
 
 	resp := domain.SessionPageResponse{
 		CurrentSession:       currentEntry,
-		AvailableSessions:    labels,
+		AvailableSessions:    compareLabels,
 		Matches:              buildSessionDetailRows(currentMatches, currentEntry.DominantCategory, req.Locale),
 		SuggestedCompare:     suggestion,
 		CompareEnabled:       compareEnabled,
@@ -107,7 +127,10 @@ func (s *SessionPageService) GetPage(
 	}
 
 	if compareEnabled {
-		compareMatches := filterBySession(filtered, compareLabel)
+		// Matchs de la session comparée : depuis le vivier élargi, pour qu'une session
+		// hors du filtre resserré ait bien ses matchs (sinon filterBySession sur le
+		// périmètre resserré renverrait vide).
+		compareMatches := filterBySession(compareScope, compareLabel)
 		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveScores(ctx, compareMatches))
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
@@ -121,13 +144,19 @@ func (s *SessionPageService) GetPage(
 		}
 	}
 
+	// Placement X/Y dans la colonne Rang (matchs de placement) — appliqué aux deux
+	// tableaux (session + comparée), comme l'Explorer.
+	applyPlacementsToRows(resp.Matches, placements)
+	applyPlacementsToRows(resp.CompareMatches, placements)
+
 	// Taille de lobby (joueurs présents à la fin, bots inclus) pour le breakdown
 	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
 	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,
-		"available_sessions", len(labels),
+		"view_sessions", len(labels),
+		"compare_pool_sessions", len(compareLabels),
 		"current_match_count", len(currentMatches),
 		"suggestion", suggestionLabel(suggestion),
 		"suggestion_candidates", candidateCount,
@@ -219,6 +248,19 @@ type sessionCandidate struct {
 	Index    int
 }
 
+// comparePoolFilters dérive le périmètre du VIVIER de comparaison à partir des
+// filtres de la page. On conserve les filtres de CATÉGORIE (cascade maps/modes/
+// playlists + match_context solo/squad) mais on neutralise ce qui ISOLE une session
+// (période + sélection de session). Sans ça, resserrer le filtre L2 pour afficher
+// UNE session vide le vivier → le bouton Comparer disparaît alors que d'autres
+// sessions comparables existent. La session affichée provient toujours du filtre
+// resserré ; seul le vivier (dropdown + suggestion + visibilité bouton) est élargi.
+func comparePoolFilters(f domain.FilterContextInput) domain.FilterContextInput {
+	f.Period = domain.PeriodInput{}
+	f.Sessions = domain.SessionsFilter{}
+	return f
+}
+
 func buildSessionCompareSuggestion(
 	labels []string,
 	currentLabel string,
@@ -268,6 +310,65 @@ func buildSessionCompareSuggestion(
 	}, candidateCount
 }
 
+// sessionPlacement : progression placement X/Y d'un match.
+type sessionPlacement struct{ done, total int }
+
+// computeSessionPlacements calcule le placement X/Y par match en RÉUTILISANT la
+// logique de l'Explorer (applyMatchPlacements) — cohérence garantie avec l'app. On
+// convertit tous les matchs en MatchHistoryRawRow : le label CSR "Placement (N
+// restants)" est synthétisé depuis MeasurementRemaining ; LUSR dérivé des 10 plus
+// vieux par chaîne. `rows` DOIT contenir TOUS les matchs (pas que la session) pour
+// que le calcul LUSR (chronologique global par chaîne) soit correct.
+func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows []legacymatch.StatsMatchRow) map[string]sessionPlacement {
+	if len(rows) == 0 {
+		return nil
+	}
+	raw := make([]domain.MatchHistoryRawRow, len(rows))
+	for i := range rows {
+		src := &rows[i]
+		st := src.StartTime
+		mr := domain.MatchHistoryRawRow{MatchID: src.MatchID, StartTime: &st, SeasonID: src.SkillSeasonID}
+		if src.PairName != "" {
+			pn := src.PairName
+			mr.PairName = &pn
+		}
+		if src.SkillRatingType != "" {
+			rt := strings.ToUpper(src.SkillRatingType) // "csr"/"lusr" → "CSR"/"LUSR"
+			mr.SkillRatingType = &rt
+			// CSR en placement : applyCSRPlacements parse "Placement (N restants)" ;
+			// on le synthétise depuis MeasurementRemaining (la valeur N).
+			if rt == "CSR" && src.SkillMeasurementRemaining != nil && *src.SkillMeasurementRemaining > 0 {
+				lbl := fmt.Sprintf("Placement (%d restants)", *src.SkillMeasurementRemaining)
+				mr.SkillTierLabel = &lbl
+			}
+		}
+		raw[i] = mr
+	}
+	applyMatchPlacements(ctx, raw, s.csrThreshold)
+	out := make(map[string]sessionPlacement, 8)
+	for i := range raw {
+		if raw[i].PlacementDone != nil && raw[i].PlacementTotal != nil {
+			out[raw[i].MatchID] = sessionPlacement{done: *raw[i].PlacementDone, total: *raw[i].PlacementTotal}
+		}
+	}
+	return out
+}
+
+// applyPlacementsToRows renseigne PlacementDone/Total sur les lignes dont le match
+// est en phase de placement (map calculée par computeSessionPlacements). Étape
+// séparée de la construction des lignes → buildSessionDetailRows garde sa signature.
+func applyPlacementsToRows(rows []domain.SessionDetailMatchRow, placements map[string]sessionPlacement) {
+	if len(placements) == 0 {
+		return
+	}
+	for i := range rows {
+		if p, ok := placements[rows[i].MatchID]; ok {
+			d, tot := p.done, p.total
+			rows[i].PlacementDone, rows[i].PlacementTotal = &d, &tot
+		}
+	}
+}
+
 func buildSessionDetailRows(
 	rows []legacymatch.StatsMatchRow,
 	dominantCategory *string,
@@ -314,37 +415,42 @@ func buildSessionDetailRows(
 		} else {
 			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, nil))
 		}
+		// Libellé du palier ("Or III", "Diamant V"…) construit comme l'Explorer —
+		// la colonne "Rang" affiche le palier, pas la valeur brute. Nil si non rankée.
+		skillTierLabel := analysis.BuildSkillTierLabel(row.SkillTierCode, row.SkillTierCodeFR, row.SkillSubTier, frPreferred)
 		out = append(out, domain.SessionDetailMatchRow{
-			MatchID:          row.MatchID,
-			StartTime:        row.StartTime,
-			Outcome:          row.Outcome,
-			PlaylistName:     playlist,
-			PairName:         row.PairName,
-			IsRanked:         row.IsRanked,
-			Kills:            row.Kills,
-			Deaths:           row.Deaths,
-			Assists:          row.Assists,
-			KDA:              effectiveKDA(row),
-			Accuracy:         row.Accuracy,
-			PersonalScore:    row.PersonalScore,
-			PerformanceScore: row.PerfScoreComputed,
-			SessionLabel:     row.SessionLabel,
-			DominantCategory: dominantCategory,
-			OffensiveConv:    row.OffensiveConversion,
-			DefensiveResist:  row.DefensiveResistance,
-			DamageDealt:      row.DamageDealt,
-			DamageTaken:      row.DamageTaken,
-			Placement:        row.Rank,
-			MapName:          mapName,
-			DurationSeconds:  row.TimePlayedSeconds,
-			TeamMMR:          row.TeamMMR,
-			EnemyMMR:         row.EnemyMMR,
-			DeltaMMR:         deltaMMR,
-			PerfTier:         perfTier,
-			SkillRatingType:  row.SkillRatingType,
-			SkillRatingValue: row.SkillRatingValue,
-			SkillRatingDelta: row.SkillRatingDelta,
-			ModeUI:           modeUI,
+			MatchID:              row.MatchID,
+			StartTime:            row.StartTime,
+			Outcome:              row.Outcome,
+			PlaylistName:         playlist,
+			PairName:             row.PairName,
+			IsRanked:             row.IsRanked,
+			Kills:                row.Kills,
+			Deaths:               row.Deaths,
+			Assists:              row.Assists,
+			KDA:                  effectiveKDA(row),
+			Accuracy:             row.Accuracy,
+			PersonalScore:        row.PersonalScore,
+			PerformanceScore:     row.PerfScoreComputed,
+			SessionLabel:         row.SessionLabel,
+			DominantCategory:     dominantCategory,
+			OffensiveConv:        row.OffensiveConversion,
+			DefensiveResist:      row.DefensiveResistance,
+			DamageDealt:          row.DamageDealt,
+			DamageTaken:          row.DamageTaken,
+			Placement:            row.Rank,
+			MapName:              mapName,
+			DurationSeconds:      row.TimePlayedSeconds,
+			TeamMMR:              row.TeamMMR,
+			EnemyMMR:             row.EnemyMMR,
+			DeltaMMR:             deltaMMR,
+			PerfTier:             perfTier,
+			SkillRatingType:      row.SkillRatingType,
+			SkillRatingValue:     row.SkillRatingValue,
+			SkillRatingDelta:     row.SkillRatingDelta,
+			SkillExpectedWinProb: row.SkillExpectedWinProb,
+			SkillTierLabel:       skillTierLabel,
+			ModeUI:               modeUI,
 		})
 	}
 	return out

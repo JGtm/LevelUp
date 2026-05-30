@@ -1,16 +1,15 @@
 /**
  * SessionNetScoreArea — évolution du NET SCORE CUMULÉ (Frags − Morts) match après match.
  *
- * Courbe en aire, base 0, remplissage divergent (vert au-dessus de 0 = solde positif,
- * rouge en dessous = solde négatif) via visualMap. Axe X = "#N + carte" comme les autres
- * graphes chronologiques. Une instance par session (vue single + drawer côte-à-côte).
+ * Courbe en aire simple : axe X catégoriel "#N + carte", axe Y = solde cumulé, ligne de
+ * référence à 0. Une instance par session (vue single + drawer côte-à-côte).
  *
- * IMPORTANT : les données de la série sont des PAIRES [index, cumul] (2D), pas des
- * scalaires. Avec des scalaires sur un axe catégoriel, `visualMap.dimension: 1` pointe
- * une dimension hors-portée → le mapping de couleur échoue silencieusement → la ligne
- * (qui n'a pas de couleur propre, elle vient du visualMap) devient INVISIBLE. Les paires
- * lèvent l'ambiguïté (dim 0 = x, dim 1 = cumul). Une couleur de repli explicite garantit
- * en plus la visibilité même si le visualMap venait à ne pas s'appliquer.
+ * IMPLÉMENTATION VOLONTAIREMENT MINIMALE (le chart restait vide via des montages
+ * antérieurs) : données 1D (un scalaire par catégorie, ECharts aligne par index) +
+ * couleur de ligne/aire EXPLICITE. PAS de visualMap : il colorait la courbe par le
+ * signe du cumul mais, sans couleur propre sur la série, la moindre défaillance du
+ * mapping rendait la courbe invisible. La séparation positif/négatif reste lisible via
+ * la markLine à 0.
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -37,8 +36,7 @@ export function buildSessionNetScoreOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const posColor = resolveToken('divergent-pos')
-  const negColor = resolveToken('divergent-neg')
+  const lineColor = resolveToken('chart-series-1')
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
 
   return {
@@ -47,26 +45,13 @@ export function buildSessionNetScoreOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
-      formatter: (params: Array<{ name: string; value: number[]; marker: string }>) => {
+      formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
         if (!Array.isArray(params) || params.length === 0) return ''
         const p = params[0]
-        // value est désormais une paire [index, cumul] → on lit le cumul (dim 1).
-        const v = Array.isArray(p.value) ? p.value[1] : Number(p.value)
+        const v = Number(p.value)
         const vStr = v >= 0 ? `+${v}` : `${v}`
         return `${p.name.replace('\n', ' · ')}<br/>${p.marker} ${opts.seriesLabel}: <b>${vStr}</b>`
       },
-    },
-    // Colore la courbe + l'aire selon le signe du cumul (vert > 0, rouge ≤ 0).
-    // dimension: 1 = le cumul (dim 0 = l'index x), non ambigu grâce aux paires.
-    visualMap: {
-      show: false,
-      type: 'piecewise',
-      seriesIndex: 0,
-      dimension: 1,
-      pieces: [
-        { gt: 0, color: posColor },
-        { lte: 0, color: negColor },
-      ],
     },
     xAxis: {
       ...axis,
@@ -80,12 +65,12 @@ export function buildSessionNetScoreOption(
       {
         name: opts.seriesLabel,
         type: 'line',
-        // Paires [index, cumul] : dim 1 explicite pour le visualMap (cf. en-tête).
-        data: points.map((p, i) => [i, p.cumulative]),
+        // Données 1D : un scalaire par catégorie (ECharts aligne par index). Couleur
+        // de ligne + aire EXPLICITE pour garantir la visibilité.
+        data: points.map((p) => p.cumulative),
         symbol: 'none',
-        // Couleur de repli : si le visualMap ne s'applique pas, la ligne reste visible.
-        lineStyle: { width: 2, color: posColor },
-        areaStyle: { origin: 'auto', opacity: 0.25, color: posColor },
+        lineStyle: { width: 2, color: lineColor },
+        areaStyle: { color: lineColor, opacity: 0.18 },
         // Ligne de référence à 0 (séparation solde positif / négatif).
         markLine: {
           silent: true,
@@ -113,7 +98,8 @@ export function SessionNetScoreArea({ title, matches, height = 280 }: Props) {
     if (sorted.length === 0) return []
     let running = 0
     const datapoints = sorted.map((m, i) => {
-      running += m.kills - m.deaths
+      // Garde-fou : un kills/deaths manquant ne doit pas propager un NaN dans le cumul.
+      running += (m.kills ?? 0) - (m.deaths ?? 0)
       return { label: sessionMatchAxisLabel(i, m.map_name, m.pair_name), cumulative: running }
     })
     return [{ key: 'net', datapoints }]

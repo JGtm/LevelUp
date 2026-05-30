@@ -8,12 +8,45 @@
  * `contextDescriptor` + `filterSpecOverride` exposés par ExplorerMatchesTable.
  *
  * variant="compact" (drawer compare, 50%) → pagination compacte (10 lignes +
- * "Voir tout") ; les colonnes restent celles de l'Explorer (scroll horizontal).
+ * "Voir tout") ET set de colonnes RÉDUIT (COMPACT_HIDDEN_COLUMNS) pour une
+ * comparaison côte-à-côte lisible dans les panneaux étroits : on ne garde que
+ * Issue · Mode · K · D · A · KDA · Perf · Rang(=rating) · Δ rang · ΔMMR. Même
+ * composant et même style — colonnes masquées via `columnVisibility`.
+ *
+ * Colonne « Δ rang » : INJECTÉE par cette vue (extraColumns) car ExplorerMatchesTable
+ * n'en a pas — elle ne doit PAS apparaître sur la page Explorer.
  */
 import { useMemo } from 'react'
+import { type ColumnDef } from '@tanstack/react-table'
 
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
 import type { ExplorerMatchRow, SessionDetailMatchRow } from '@/lib/api/types'
+import { tokenCssVar } from '@/lib/accessibility'
+
+import { formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
+
+/**
+ * Colonnes masquées en mode comparaison (drawer 50%). Clés = ids de colonnes
+ * ExplorerMatchesTable (accessorKey, ou 'open'). On retire le contextuel/large
+ * (ouvrir, date, carte, playlist, solo/escouade, dominance, score, durée, ΔPerf,
+ * type de rating, MMR équipe/adverse) pour ne garder que l'essentiel comparable.
+ * Δ rang (ratingDelta) n'existe pas comme colonne Explorer → non affichable sans
+ * modifier le composant ; le rang/rating courant reste visible (skill_tier_label).
+ */
+const COMPACT_HIDDEN_COLUMNS: Record<string, boolean> = {
+  open: false,
+  start_time: false,
+  map_ui: false,
+  playlist_label: false,
+  is_with_friends: false,
+  dominance_flag: false,
+  score_label: false,
+  duration_seconds: false,
+  delta_perf: false,
+  rating_type: false,
+  team_mmr: false,
+  enemy_mmr: false,
+}
 
 interface Props {
   matches: SessionDetailMatchRow[]
@@ -31,14 +64,6 @@ interface Props {
 // eslint-disable-next-line react-refresh/only-export-components
 export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): ExplorerMatchRow {
   const ratingType = m.skill_rating_type ? m.skill_rating_type.toUpperCase() : null
-  // L'Explorer affiche le rang (skill_tier_label) + le type (rating_type) ; on place
-  // la VALEUR de rating de la session dans la colonne Rang (CSR entier / LUSR 2 déc.).
-  const ratingValueLabel =
-    m.skill_rating_value != null
-      ? ratingType === 'LUSR'
-        ? m.skill_rating_value.toFixed(2)
-        : String(Math.round(m.skill_rating_value))
-      : null
   return {
     match_id: m.match_id,
     start_time: m.start_time,
@@ -59,9 +84,15 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
     perf_tier: m.perf_tier,
     delta_perf: null,
     rating_type: ratingType,
-    skill_tier_label: ratingValueLabel,
-    placement_done: null,
-    placement_total: null,
+    // Colonne "Rang" = libellé du palier ("Or III"…) comme l'Explorer, fourni par le
+    // backend (analysis.BuildSkillTierLabel). Plus la valeur brute.
+    skill_tier_label: m.skill_tier_label ?? null,
+    skill_rating_delta: m.skill_rating_delta ?? null,
+    expected_win_prob: m.expected_win_prob ?? null,
+    // Placement X/Y (phase de placement) : l'Explorer l'affiche dans la colonne Rang
+    // à la place du palier quand les deux sont présents.
+    placement_done: m.placement_done ?? null,
+    placement_total: m.placement_total ?? null,
     team_mmr: m.team_mmr ?? null,
     enemy_mmr: m.enemy_mmr ?? null,
     delta_mmr: m.delta_mmr ?? null,
@@ -71,7 +102,31 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
 }
 
 export function SessionMatchesTable({ matches, playerSlug, variant = 'full', withFriends = false }: Props) {
+  const t = useSessionT()
   const rows = useMemo(() => matches.map((m) => toExplorerRow(m, withFriends)), [matches, withFriends])
+
+  // Colonne « Δ rang » (gain/perte de rating du match) INJECTÉE après la colonne
+  // Rang — spécifique à la vue session, jamais exposée sur la page Explorer.
+  // CSR : entier signé ; LUSR : 2 décimales ; couleur divergente (cf. _shared).
+  const deltaRatingLabel = t('session.detail.col_rating_delta')
+  const extraColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
+    () => [
+      {
+        id: 'delta_rating',
+        header: deltaRatingLabel,
+        cell: (ctx) => {
+          const d = ctx.row.original.skill_rating_delta
+          if (d == null) return '-'
+          return (
+            <span className="font-mono tabular-nums" style={{ color: tokenCssVar(rankDeltaToken(d)) }}>
+              {formatRankDelta(d, ctx.row.original.rating_type ?? '')}
+            </span>
+          )
+        },
+      },
+    ],
+    [deltaRatingLabel],
+  )
 
   // Début de session = match le plus ancien (start_time ISO UTC → tri lexical = chrono).
   const sessionStartUtc = useMemo(
@@ -90,6 +145,9 @@ export function SessionMatchesTable({ matches, playerSlug, variant = 'full', wit
       contextDescriptor={{ kind: 'session', startTimeUtc: sessionStartUtc }}
       filterSpecOverride={sessionId ? { session_id: sessionId } : undefined}
       defaultPageSize={variant === 'compact' ? 10 : undefined}
+      columnVisibility={variant === 'compact' ? COMPACT_HIDDEN_COLUMNS : undefined}
+      extraColumns={extraColumns}
+      extraColumnsAfterId="skill_tier_label"
     />
   )
 }

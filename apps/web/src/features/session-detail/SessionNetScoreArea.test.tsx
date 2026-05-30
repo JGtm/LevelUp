@@ -1,9 +1,9 @@
 /**
  * Tests buildSessionNetScoreOption — fonction pure (pas de montage ECharts/canvas).
  *
- * Régression ciblée : la série DOIT exposer des paires [index, cumul] (2D) et non des
- * scalaires, sinon `visualMap.dimension: 1` pointe hors-portée et la courbe devient
- * invisible (le bug "Net score n'affiche rien"). On vérifie aussi la couleur de repli.
+ * Régression du bug "Net score n'affiche rien" : la série DOIT exposer des SCALAIRES
+ * (données 1D, ECharts aligne par index sur l'axe catégoriel) + une couleur de ligne
+ * EXPLICITE (pas de visualMap dont la défaillance rendait la courbe invisible).
  */
 import { describe, expect, it } from 'vitest'
 
@@ -28,8 +28,8 @@ const SERIES: ChartSeries<NetPoint>[] = [
 ]
 
 type OptShape = {
-  series: Array<{ data: unknown[]; lineStyle?: { color?: string }; areaStyle?: { color?: string } }>
-  visualMap: { dimension: number; pieces: unknown[] }
+  series: Array<{ data: unknown[]; type: string; lineStyle?: { color?: string }; areaStyle?: { color?: string } }>
+  visualMap?: unknown
   xAxis: { data: string[] }
 }
 
@@ -40,26 +40,17 @@ describe('buildSessionNetScoreOption', () => {
     expect((opt as unknown as { series?: unknown }).series).toBeUndefined()
   })
 
-  it('expose des paires [index, cumul] (2D) — pas des scalaires', () => {
+  it('expose des SCALAIRES (données 1D) — pas de paires', () => {
     const opt = buildSessionNetScoreOption(SERIES, { seriesLabel: 'Net cumulé' }) as unknown as OptShape
-    const data = opt.series[0].data
-    expect(data).toHaveLength(3)
-    // Chaque point est une paire [i, cumul].
-    expect(data[0]).toEqual([0, 5])
-    expect(data[1]).toEqual([1, 2])
-    expect(data[2]).toEqual([2, -3])
+    // 1D : un scalaire par catégorie (ECharts aligne par index).
+    expect(opt.series[0].data).toEqual([5, 2, -3])
+    expect(opt.series[0].type).toBe('line')
   })
 
-  it('visualMap colore selon le cumul (dimension 1)', () => {
+  it('pas de visualMap (source des rendus vides) ; couleur de ligne + aire explicite', () => {
     const opt = buildSessionNetScoreOption(SERIES, { seriesLabel: 'Net' }) as unknown as OptShape
-    expect(opt.visualMap.dimension).toBe(1)
-    expect(opt.visualMap.pieces).toHaveLength(2)
-  })
-
-  it('couleur de repli explicite sur la ligne + l’aire (visibilité garantie)', () => {
-    const opt = buildSessionNetScoreOption(SERIES, { seriesLabel: 'Net' }) as unknown as OptShape
-    // La clé `color` est posée (valeur résolue via token en prod ; vide en jsdom sans
-    // palette). On vérifie la présence structurelle de la couleur de repli, pas sa valeur.
+    expect(opt.visualMap).toBeUndefined()
+    // La clé `color` est posée (valeur résolue via token en prod ; vide en jsdom).
     expect(opt.series[0].lineStyle).toHaveProperty('color')
     expect(opt.series[0].areaStyle).toHaveProperty('color')
   })
