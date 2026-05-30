@@ -691,17 +691,21 @@ func upsertWaypointAsset(
 	titleID, assetID, assetType, contentHash, rawJSON string,
 	fetchedAt time.Time,
 ) error {
-	_, err := db.Exec(ctx, `
-		INSERT INTO waypoint_assets_raw
+	// SELECT-then-write anti-ART (cf. (*DB).UpsertNoConflict) : pas d'ON CONFLICT
+	// DO UPDATE sur metadata.duckdb, qui FATAL-invalide le handle partagé.
+	// version_id = contentHash ici (clé naturelle de la version).
+	err := db.UpsertNoConflict(ctx,
+		`SELECT 1 FROM waypoint_assets_raw WHERE title_id = ? AND asset_id = ? AND version_id = ?`,
+		[]any{titleID, assetID, contentHash},
+		`UPDATE waypoint_assets_raw SET raw_json = ?, fetched_at = ?, content_hash = ?
+		 WHERE title_id = ? AND asset_id = ? AND version_id = ?`,
+		[]any{rawJSON, fetchedAt, contentHash, titleID, assetID, contentHash},
+		`INSERT INTO waypoint_assets_raw
 			(title_id, asset_id, asset_type, version_id,
 			 name, description, raw_json, fetched_at, content_hash)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, asset_id, version_id) DO UPDATE SET
-			raw_json     = excluded.raw_json,
-			fetched_at   = excluded.fetched_at,
-			content_hash = excluded.content_hash`,
-		titleID, assetID, assetType, contentHash,
-		"", "", rawJSON, fetchedAt, contentHash,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{titleID, assetID, assetType, contentHash,
+			"", "", rawJSON, fetchedAt, contentHash},
 	)
 	if err != nil {
 		return fmt.Errorf("upsertWaypointAsset %s: %w", assetID, err)

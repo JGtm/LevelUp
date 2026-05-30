@@ -104,18 +104,22 @@ func (s *DuckDBIndexStore) PersistIndex(ctx context.Context, ref Ref, e IndexEnt
 		rawJSON = string(e.RawJSON)
 	}
 
-	_, err = db.Exec(ctx, `
-		INSERT INTO asset_index
+	// SELECT-then-write anti-ART (cf. (*duckdb.DB).UpsertNoConflict) : pas
+	// d'ON CONFLICT DO UPDATE sur metadata.duckdb, qui FATAL-invalide le handle
+	// partagé. Écritures sérialisées par le WriteQueue (1 goroutine) → pas de
+	// course SELECT→INSERT.
+	err = db.UpsertNoConflict(ctx,
+		`SELECT 1 FROM asset_index WHERE kind = ? AND title_id = ? AND id = ? AND variant = ? AND lang = ?`,
+		[]any{string(ref.Kind), ref.TitleID, ref.ID, ref.Variant, ref.Lang},
+		`UPDATE asset_index SET url = ?, local_path = ?, content_hash = ?, fetched_at = ?, raw_json = ?
+		 WHERE kind = ? AND title_id = ? AND id = ? AND variant = ? AND lang = ?`,
+		[]any{e.URL, e.LocalPath, e.ContentHash, e.FetchedAt, rawJSON,
+			string(ref.Kind), ref.TitleID, ref.ID, ref.Variant, ref.Lang},
+		`INSERT INTO asset_index
 			(kind, title_id, id, variant, lang, url, local_path, content_hash, fetched_at, raw_json)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (kind, title_id, id, variant, lang) DO UPDATE SET
-			url          = excluded.url,
-			local_path   = excluded.local_path,
-			content_hash = excluded.content_hash,
-			fetched_at   = excluded.fetched_at,
-			raw_json     = excluded.raw_json`,
-		string(ref.Kind), ref.TitleID, ref.ID, ref.Variant, ref.Lang,
-		e.URL, e.LocalPath, e.ContentHash, e.FetchedAt, rawJSON,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{string(ref.Kind), ref.TitleID, ref.ID, ref.Variant, ref.Lang,
+			e.URL, e.LocalPath, e.ContentHash, e.FetchedAt, rawJSON},
 	)
 	if err != nil {
 		return fmt.Errorf("duckdb index: persist: %w", err)

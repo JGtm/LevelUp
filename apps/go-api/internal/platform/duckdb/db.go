@@ -364,6 +364,46 @@ func (db *DB) WithReopenOnInvalidated(fn func() error) error {
 	return retryErr
 }
 
+// UpsertNoConflict réalise un SELECT d'existence puis UPDATE ou INSERT, le tout
+// sous WithReopenOnInvalidated.
+//
+// C'est le pattern anti-ART canonique pour les tables à clé naturelle sur une DB
+// partagée process-level (metadata.duckdb : asset_index, waypoint_assets_raw,
+// playlists_catalog…). Il combine les DEUX couches déjà en place dans le projet :
+//
+//  1. Éviter le déclencheur : pas de `INSERT ... ON CONFLICT DO UPDATE`, qui sur
+//     DuckDB s'implémente en DELETE+INSERT et déclenche « Failed to delete all
+//     rows from index » → FATAL-invalidation du handle pour tout le process
+//     (cf. ADR 0019, art_upsert_patterns_test, thought_log 2026-05-30).
+//  2. Auto-réparation : WithReopenOnInvalidated ré-ouvre + retry si le handle a
+//     été invalidé par un autre writer.
+//
+// existsQuery doit retourner 0 ou 1 ligne (typiquement `SELECT 1 FROM t WHERE
+// <pk...>`). Les écritures concurrentes sur la MÊME clé doivent être sérialisées
+// par le caller (WriteQueue, write lease…) : ce helper ne protège pas la course
+// SELECT→INSERT entre goroutines.
+func (db *DB) UpsertNoConflict(
+	ctx context.Context,
+	existsQuery string, existsArgs []any,
+	updateQuery string, updateArgs []any,
+	insertQuery string, insertArgs []any,
+) error {
+	return db.WithReopenOnInvalidated(func() error {
+		var dummy int
+		err := db.sqlDB.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
+		switch {
+		case err == nil:
+			_, execErr := db.sqlDB.ExecContext(ctx, updateQuery, updateArgs...)
+			return execErr
+		case errors.Is(err, sql.ErrNoRows):
+			_, execErr := db.sqlDB.ExecContext(ctx, insertQuery, insertArgs...)
+			return execErr
+		default:
+			return err
+		}
+	})
+}
+
 // openSQLDBFor construit un *sql.DB depuis un DSN + timezone, avec ping.
 // Extrait de openCachedDB pour réutilisation par Reopen.
 func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
