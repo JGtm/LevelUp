@@ -1,6 +1,6 @@
 // Package service — remote_stats_cache.go : décorateur de cache TTL +
-// singleflight autour d'un port.PlayerStatsProvider (stats carrière remote
-// Waypoint /career-stats).
+// singleflight autour d'un port.PlayerStatsProvider (service record agrégé
+// Waypoint, /hi/players/{player}/Matchmade/servicerecord).
 //
 // Pourquoi : l'encart "Profil joueur cible" de l'Explorer (et Compare) fetche
 // les stats carrière d'un joueur via Waypoint à CHAQUE chargement. C'est un
