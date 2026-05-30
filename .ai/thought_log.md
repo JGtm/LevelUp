@@ -1,3 +1,28 @@
+## [2026-05-30] Fix UI Picker de réassociation + Page Médias (6 bugs — diag live puis fixes)
+
+**Statut** : Complété côté code (Go + TS ; build ./... 0, go vet 0, tests duckdb/migration verts, tsc 0, vitest verts). Redéploiement DB (vue bots + seeds traduction) en attente d'un boot write du serveur.
+
+**Demande** : corriger 6 défauts — picker de réassociation (aucune miniature, mode/playlist EN, bots « Joueur N.0) » au lieu de « 343 XXX ») + page Médias (vignettes avec GUID de map, badge « clip » à retirer). Diagnostic vérifié en live (chrome-devtools, Madina97294) AVANT le plan ; solution pérenne + garde-rails testés exigés.
+
+**4 causes DISTINCTES (PAS un seul enrichment sync)** :
+1. Bots : vue `v_gamertag_lookup` en base = version simplifiée pré-fix (`WHERE gamertag IS NOT NULL`, sans BotSQLCase → exclut les bots). Confirmé via `cmd/diag_bot_resolution` (def réelle + section 4 « résolution bots » vide). Code schema.go déjà corrigé le matin (509021622) mais serveur en read-only → vue jamais recréée. Migrations `repair_..._2026_05_16` déjà `done` → ajout `repair_v_gamertag_lookup_bots_2026_05_30` (applyResolutionViews, CREATE OR REPLACE idempotent).
+2/3. Mode (« Team Slayer ») + playlist (« Quick Play ») EN : les traductions FR existent dans les seeds (`applyModeNameTr`, `playlistFRSeeds`) mais migration de seed `done` AVANT l'ajout des lignes → base live incomplète. Fix pérenne : `ReconcileMetadataSeeds` (nouveau) appelé au boot après RunForDB(TargetMetadata) dans cmd/server/main.go — rejoue les seeds idempotents (CREATE TABLE IF NOT EXISTS + INSERT OR IGNORE + UPDATE garde-fou) à chaque démarrage → tout futur ajout converge sans nouvelle migration.
+4. Map = GUID (match 4cb4a8d0, Cliffhanger / 5324364b) : match synchronisé avec stats mais SANS résolution des noms d'assets (map/mode/playlist en asset_ids bruts dans match_registry) ; maps_catalog connaît pourtant le nom. = enrichment incomplet au sync (le SEUL bug réellement lié au sync ; mécanisme exact non creusé — mode UGC 95ca323c probable). map_id est REMPLI partout (diag : 1726/1726) → hypothèse « map_id vide » INVALIDÉE.
+5. Miniatures picker : cascade image dépendait de `asset_translations` EN (vide) sans le fallback `map_name` brut qu'a la page match (applyMatchHeaderMapImage).
+
+**Fixes code** :
+- A1+A2 (`media_repo_filters.go`, `media_repo_translations.go`) : nouveau `loadMapCatalogNames` (maps_catalog name_canonical + asset_translations FR, même cascade que ListMapsByTitle), réutilisé pour (a) nom de map du picker (FR>EN, jamais le GUID) + fallback image via name_canonical → assetURL.MapImageURL ; (b) enrichissement galerie média. Garde `looksLikeAssetID` + `mediaMapAssetID` (résout aussi map_name-as-asset-id pour matchs non enrichis). Supprime `loadMediaMapFRTranslations`. slog.WarnContext sur image manquante.
+- C1 : suppression `<Badge>{item.kind}</Badge>` + import (MediaViewer.tsx). Vérifié live (badge disparu après hot-reload).
+- C2 : garde front `looksLikeAssetId` (nouveau `lib/halo/assetId.ts` centralisé) + fallback i18n `thumbnail.unknownMap` (« Carte inconnue ») via `resolvedMapName`.
+
+**Tests** : `media_repo_map_catalog_test.go` (résolution catalogue FR/EN, garde GUID, looksLikeAssetID), `reconcile_metadata_seeds_test.go` (convergence + idempotence), `ResolvesBotNames` (existant) confirme repair_2026_05_30, front `assetId.test.ts`.
+
+**Outil** : `cmd/diag_media_assets` (lecture seule : maps_catalog, mode_name_tr, asset_translations, match_registry) — créé pour le diag, gardé.
+
+**Découverte env** : 2 serveurs Go concurrents (server_sb + server.exe/Air) → shared en read-only, écritures shared échouent (cf. mémoire metadata_fatal_invalidated_multi_server). C'est pourquoi la vue/les seeds ne se redéploient pas tout seuls.
+
+**Prochaine étape** : redéploiement (tuer les doublons + UN boot write) pour activer les fixes backend en live, puis re-vérif devtools (map_image_url non-null, mode/playlist FR, bots « 343 … »). Commit en attente d'autorisation. Branche : fix/explorer-target-profile-auth (choix user).
+
 ## [2026-05-30] LUSR v2 — Sprint 1.D : wiring expected_win_prob bout-à-bout + colonne Pronostic
 
 **Statut** : Complété (Go + TS, tests verts). Dernier des 4 sprints LUSR v2 demandés (2.C/3.C/Final/1.D tous faits).
@@ -52093,3 +52118,22 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 **Résultats** : code fix dans `queries_auth.go` + test de non-régression `queries_auth_test.go` (cas `avec_pk` ET `legacy_sans_pk` reproduisant le bug, + INSERT/UPDATE/no-doublon/token-vide) → PASS (`-tags=integration`). `go vet` OK. Repair appliqué : Chocoboflor `sync_meta` a désormais `PRIMARY KEY`+`NOT NULL`, 12 lignes préservées (dont `oauth_refresh_token`). Outils d'inspection/migration jetables supprimés.
 
 **Prochaine étape** : commit (en attente autorisation utilisateur). Note : Phase 5 du refactor ADR 0023 supprimera entièrement ce double-write DuckDB.
+
+
+## [2026-05-30] fix(metadata): modes/playlists en anglais (FATAL ART invalidation) — Complété
+
+**Statut** : Complété · Branche `fix/metadata-art-catalog-upsert-invalidation`
+
+**Symptôme** : sur Synthesis (et Escouade, Home…) les filtres modes/playlists s'affichaient en anglais (`Slayer`, `CTF`, `Big Team Battle`, `Quick Play`) + GUID bruts, au lieu du FR. Vérifié via DevTools : `/filters/resolve` ET les breakdowns canonical renvoyaient l'EN à l'identique → problème global, pas un bug des filtres ni du front.
+
+**Cause racine (vérifiée `apps/go-api/logs/duckdb.log`)** : le handle partagé `metadata.duckdb` était **FATAL-invalidated** par le bug ART DuckDB « Failed to delete all rows from index. Only deleted 0 out of N rows. ». Une fois invalidé, TOUTE lecture metadata (`mode_name_tr`, `asset_translations`, `map_images_registry`, `weapon_labels`…) échoue silencieusement (best-effort) → fallback EN/GUID partout, **jusqu'au redémarrage** (le cache `OpenReadWriteShared` ne détecte pas l'invalidation : un `*sql.DB` invalidé pingue OK). Déclencheurs : plusieurs writers metadata faisaient `INSERT ... ON CONFLICT DO UPDATE` (= DELETE+INSERT sur index ART) — les plus actifs : `asset_index` (store_duckdb, 48 erreurs), `waypoint_assets_raw` (×2), `playlists_catalog` (catalog_fetcher + seed). Ces chemins **bypassaient** la discipline anti-ART déjà en place pour les autres BDD.
+
+**Décision technique (réutilise les mécanismes existants, sans réinventer)** :
+- Nouveau helper canonique `(*duckdb.DB).UpsertNoConflict(...)` = SELECT-then-UPDATE-or-INSERT **sous** `WithReopenOnInvalidated` → combine les 2 couches déjà présentes (éviter le trigger + auto-réparation). Même esprit que le fix `WriteOAuthRefreshToken` de la veille.
+- Migration de TOUS les writers metadata `ON CONFLICT DO UPDATE` du hot-path vers ce pattern : `asset_index`, `waypoint_assets_raw` (asset_cache_repo + persist_sink), `playlists_catalog`/`maps_catalog`/`game_variants_catalog`/`map_mode_pair_definitions`/`pair_mode_label_translations` (catalog_fetcher), `season_calendars`/`csr_season_calendars`/`waypoint_resource_snapshots` (metadata_repo).
+- Lectures de traduction metadata routées via `QueryRecovered` (6 sites : mode_name_tr, asset_translations, map_images) → l'UI se ré-auto-répare au prochain request après toute invalidation, fini le « anglais jusqu'au restart ».
+- Garde-fou `no_art_patterns_test.go` durci : motif `ON CONFLICT (cols) DO UPDATE` (l'ancien `[^)]*` était aveugle à la forme parenthésée), tables metadata ajoutées à la liste protégée, retrait des commentaires avant scan + exclusion `cmd/`/`scripts/` (one-shot), allowlist du FP file-level `skill_rating_loaders.go`.
+
+**Résultats** : build CGO OK, `go vet` OK, garde-fou vert, tests `catalog_fetcher` + `assets` + `duckdb` (metadata/asset_cache) PASS. Redémarrage propre (orphelin `server_sb.exe` tué — air ne le nettoyait pas car nommé `_sb`, pas `server.exe`) → boot sans « metadata verrouillée » → `/filters/resolve` renvoie le FR (`Assassin`, `Capture du drapeau`, `Grand combat en équipe`, `Partie rapide`, `Roi de la colline`…).
+
+**Prochaine étape** : commit (en attente autorisation utilisateur). Dette résiduelle distincte : ~6 GUID bruts (modes/playlists dont `pair_name`/`playlist_name` non résolu dans `match_registry`) → `backfill_registry_names`. À surveiller aussi : `art_guard` signale au boot une corruption ART sur `shared.match_participants` (DB shared, hors scope de ce fix).
