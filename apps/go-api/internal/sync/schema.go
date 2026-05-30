@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"levelup/go-api/internal/analysis"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 )
 
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     tier_label        VARCHAR,
     rating_delta      FLOAT,
     playlist_group    VARCHAR,
+    expected_win_prob FLOAT,
     start_time        TIMESTAMP,
     written_at        TIMESTAMP NOT NULL DEFAULT now(),
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -223,6 +225,8 @@ CREATE TABLE IF NOT EXISTS match_participants (
     present_at_completion BOOLEAN,
     joined_in_progress    BOOLEAN,
     left_in_progress      BOOLEAN,
+    first_joined_time     TIMESTAMPTZ,
+    last_leave_time       TIMESTAMPTZ,
     created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (match_id, xuid)
 );
@@ -303,6 +307,15 @@ func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
 	if err := execScript(ctx, db, sharedSchemaSQL); err != nil {
 		return err
 	}
+	// v_gamertag_lookup : SOURCE UNIQUE DE VÉRITÉ (analysis.GamertagLookupViewSQL).
+	// AVANT le fix 2026-05-30 ce boot recréait une version simplifiée (filtre
+	// `WHERE gamertag IS NOT NULL`, pas de CASE bot, fallback xuid brut) qui
+	// écrasait à chaque boot la version robuste posée par les migrations →
+	// xuids bruts réapparaissaient à l'affichage. Désormais boot et migrations
+	// partagent le même DDL.
+	if err := execScript(ctx, db, analysis.GamertagLookupViewSQL()+";"); err != nil {
+		return err
+	}
 	return execScript(ctx, db, sharedViewsSQL)
 }
 
@@ -310,19 +323,9 @@ func EnsureSharedSchema(ctx context.Context, db *sql.DB) error {
 // Stable jusqu'à la prochaine évolution de query (recompilées au boot).
 // AVANT le fix 2026-05-27 ces VIEW étaient recreées par refreshSharedViews
 // dans le post-sync ; voir godoc EnsureSharedSchema pour le contexte.
+// v_gamertag_lookup est posée séparément (cf. EnsureSharedSchema) car son DDL
+// est généré par analysis.GamertagLookupViewSQL (source unique).
 const sharedViewsSQL = `
-CREATE OR REPLACE VIEW v_gamertag_lookup AS
-SELECT
-    COALESCE(xa.xuid, mp.xuid) AS xuid,
-    COALESCE(xa.gamertag, mp.gamertag) AS gamertag,
-    xa.last_seen
-FROM xuid_aliases xa
-FULL OUTER JOIN (
-    SELECT DISTINCT xuid, gamertag
-    FROM match_participants
-    WHERE gamertag IS NOT NULL
-) mp ON xa.xuid = mp.xuid;
-
 CREATE OR REPLACE VIEW v_match_full AS
 SELECT mr.* FROM match_registry mr;
 `

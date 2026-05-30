@@ -125,3 +125,55 @@ func BotSQLCase(xuidExpr string) string {
 	fmt.Fprintf(&sb, "\n\t\t\t\t\tELSE %s\n\t\t\t\tEND", xuidExpr)
 	return sb.String()
 }
+
+// MaskedXuidLabelSQL génère une expression SQL produisant un libellé masqué
+// "Joueur ####" (4 derniers caractères du xuid) — JAMAIS le xuid brut.
+// Sert de fallback final quand aucun gamertag n'est résolvable, afin que les
+// colonnes d'affichage n'exposent jamais un identifiant au format xuid.
+// Cohérent avec maskedPlayerLabel()/unknownPlayerLabel() côté frontend
+// (apps/web/src/lib/players/displayName.ts). xuidExpr est l'expression SQL
+// du xuid (ex: "p.xuid", "COALESCE(xa.xuid, mp.xuid)").
+func MaskedXuidLabelSQL(xuidExpr string) string {
+	return fmt.Sprintf("('Joueur ' || right(CAST(%s AS VARCHAR), 4))", xuidExpr)
+}
+
+// GamertagLookupViewSQL retourne le DDL `CREATE OR REPLACE VIEW v_gamertag_lookup`,
+// SOURCE UNIQUE DE VÉRITÉ du résolveur xuid → gamertag display.
+//
+// Auparavant ce DDL était dupliqué (sync/schema.go en version simplifiée +
+// migration/steps_shared.go en version robuste + ops/seed_demo.go), et la
+// version simplifiée — recréée à chaque boot — gagnait, réintroduisant des
+// xuids bruts à l'affichage. Cette fonction unifie la définition robuste.
+//
+// Comportement (gamertag JAMAIS NULL, JAMAIS au format xuid brut) :
+//  1. xuid bot Halo connu → nom officiel (ex: "343 Meowlnir") via BotSQLCase.
+//  2. sinon xuid_aliases.gamertag si non vide.
+//  3. sinon match_participants.gamertag (MAX si plusieurs) si non vide.
+//  4. sinon libellé masqué "Joueur ####" via MaskedXuidLabelSQL.
+//
+// Colonnes exposées : (xuid, gamertag). On ne projette PAS xa.last_seen : aucun
+// caller ne le consomme et toutes les tables xuid_aliases ne le possèdent pas
+// (ex. seed démo) → garder la vue agnostique de cette colonne optionnelle.
+func GamertagLookupViewSQL() string {
+	xuidExpr := "COALESCE(xa.xuid, mp.xuid)"
+	return fmt.Sprintf(`CREATE OR REPLACE VIEW v_gamertag_lookup AS
+SELECT
+	%s AS xuid,
+	CASE
+		WHEN %s LIKE 'bid(%%' THEN %s
+		WHEN xa.gamertag IS NOT NULL AND xa.gamertag != '' THEN xa.gamertag
+		WHEN mp.gamertag IS NOT NULL AND mp.gamertag != '' THEN mp.gamertag
+		ELSE %s
+	END AS gamertag
+FROM xuid_aliases xa
+FULL OUTER JOIN (
+	SELECT xuid, MAX(gamertag) AS gamertag
+	FROM match_participants
+	GROUP BY xuid
+) mp ON xa.xuid = mp.xuid`,
+		xuidExpr,
+		xuidExpr,
+		BotSQLCase(xuidExpr),
+		MaskedXuidLabelSQL(xuidExpr),
+	)
+}
