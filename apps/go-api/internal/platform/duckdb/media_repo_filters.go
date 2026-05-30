@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -303,53 +304,55 @@ func (r *MediaRepo) LoadMatchCandidatesForMedia(ctx context.Context, filePath st
 		}
 	}
 
-	// Résolution MapImageURL : cascade alignée sur HomeRepo (cf. doc MediaRepo).
-	//   1. map_images_registry (lookup par map_id stable, peuplé par
-	//      cmd/migrate-static-maps).
-	//   2. AssetURLAdapter + nom EN depuis asset_translations (uniquement si
-	//      l'adapter est câblé via WithAssetURL côté registry.go). Évite la
-	//      dépendance manuelle à la CLI quand un fichier static existe pour un
-	//      map_id absent du registry.
+	// Résolution map (nom + image) via maps_catalog (name_canonical TOUJOURS peuplé)
+	// + asset_translations FR — même source fiable que la page match / ListMapsByTitle.
+	// Corrige (a) le nom de map affiché en GUID brut quand match_registry n'est pas
+	// enrichi, (b) l'absence de miniature : map_images_registry souvent vide ET le nom
+	// EN d'asset_translations absent → on bascule sur le name_canonical du catalogue
+	// pour le fallback AssetURLAdapter (câblé via WithAssetURL, registry_media.go).
 	if len(mapIDSet) > 0 {
 		ids := make([]string, 0, len(mapIDSet))
 		for id := range mapIDSet {
 			ids = append(ids, id)
 		}
 		urls := r.loadMapImageURLsByID(ctx, ids)
-		missingIDs := make([]string, 0)
+		catNames := r.loadMapCatalogNames(ctx, ids)
+		missing := 0
 		for i := range resp.Candidates {
 			mid := mapIDByMatch[resp.Candidates[i].MatchID]
 			if mid == "" {
 				continue
 			}
+			cat := catNames[mid]
+			// Nom affiché : FR préféré, sinon name_canonical EN ; jamais l'UUID brut.
+			switch {
+			case cat.fr != "":
+				fr := cat.fr
+				resp.Candidates[i].MapName = &fr
+			case cat.en != "":
+				en := cat.en
+				resp.Candidates[i].MapName = &en
+			case resp.Candidates[i].MapName != nil && looksLikeAssetID(*resp.Candidates[i].MapName):
+				resp.Candidates[i].MapName = nil
+			}
+			// Image : map_images_registry d'abord, sinon adapter sur le name_canonical EN.
 			if u, ok := urls[mid]; ok && u != "" {
 				localCopy := u
 				resp.Candidates[i].MapImageURL = &localCopy
 				continue
 			}
-			missingIDs = append(missingIDs, mid)
-		}
-		if len(missingIDs) > 0 && r.assetURL != nil && r.pdb != nil && r.pdb.Metadata != nil {
-			enNames, _ := NewMetadataRepoFromDB(r.pdb.Metadata).ResolveAssetNamesBulk(
-				ctx, "map", missingIDs, PreferredLangsForLocale("en"),
-			)
-			for i := range resp.Candidates {
-				if resp.Candidates[i].MapImageURL != nil {
-					continue
-				}
-				mid := mapIDByMatch[resp.Candidates[i].MatchID]
-				if mid == "" {
-					continue
-				}
-				enName := strings.TrimSpace(enNames[mid])
-				if enName == "" {
-					continue
-				}
-				if u := r.assetURL.MapImageURL(enName); u != "" {
+			if r.assetURL != nil && cat.en != "" {
+				if u := r.assetURL.MapImageURL(cat.en); u != "" {
 					localCopy := u
 					resp.Candidates[i].MapImageURL = &localCopy
+					continue
 				}
 			}
+			missing++
+		}
+		if missing > 0 {
+			slog.WarnContext(ctx, "media_picker: miniature map non résolue pour certains candidats",
+				"missing", missing, "total", len(resp.Candidates))
 		}
 	}
 

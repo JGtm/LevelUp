@@ -177,7 +177,9 @@ func loadModeNamesFRForKeys(ctx context.Context, meta *DB, enKeys []string) map[
 	}
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := meta.Query(ctx2, q, args...)
+	// QueryRecovered : auto-réparation si le handle metadata a été FATAL-invalidated
+	// (bug ART). Sinon la traduction FR des modes retombe en EN jusqu'au restart.
+	rows, err := meta.QueryRecovered(ctx2, q, args...)
 	if err != nil {
 		if !isTableNotFoundErr(err) {
 			slog.WarnContext(ctx, "fr_translations: loadModeNamesFRForKeys failed", "err", err)
@@ -213,7 +215,8 @@ func loadPairAssetNamesFR(ctx context.Context, meta *DB, pairIDs []string) map[s
 	}
 	ctx2, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	rows, err := meta.Query(ctx2, q, args...)
+	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
+	rows, err := meta.QueryRecovered(ctx2, q, args...)
 	if err != nil {
 		if !isTableNotFoundErr(err) {
 			slog.WarnContext(ctx, "fr_translations: loadPairAssetNamesFR failed", "err", err)

@@ -23,6 +23,7 @@ export interface MediaText {
   navContextLabel: string
   thumbnail: {
     noMatchAssociated: string
+    unknownMap: string
   }
   groupSection: {
     sessionOfPrefix: string
@@ -99,6 +100,7 @@ export function getMediaText(locale?: string | null): MediaText {
     navContextLabel: t(loc, 'media.nav_context_label'),
     thumbnail: {
       noMatchAssociated: t(loc, 'media.thumbnail.no_match_associated'),
+      unknownMap: t(loc, 'media.group.unknown_map'),
     },
     groupSection: {
       sessionOfPrefix: t(loc, 'media.group.session_of_prefix'),

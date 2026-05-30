@@ -1,5 +1,5 @@
 // Package duckdb - media_repo_translations.go : enrichMediaMapTranslations +
-// loadMediaMapFRTranslations + translateMap/ModeFilterOptions +
+// loadMapCatalogNames + translateMap/ModeFilterOptions +
 // loadAssetTranslationNames + loadMapImageURLsByID +
 // loadModeNameTranslations. Decoupe de media_repo.go (god-file split,
 // refactor 2026-05-27).
@@ -7,6 +7,7 @@ package duckdb
 
 import (
 	"context"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -14,6 +15,18 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite"
 )
+
+// assetIDLikeRe matche un UUID brut (asset_id Halo). Sert de garde anti-GUID :
+// un match non enrichi stocke l'asset_id de map dans match_registry.map_name au
+// lieu du nom résolu — il ne doit JAMAIS s'afficher tel quel. Miroir local de
+// halo_infinite/adapter_asset_urls.go:uuidRe (générique, gardé local pour éviter
+// un couplage title-specific au package duckdb).
+var assetIDLikeRe = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// looksLikeAssetID indique si s a la forme d'un asset_id brut (UUID).
+func looksLikeAssetID(s string) bool {
+	return assetIDLikeRe.MatchString(strings.TrimSpace(s))
+}
 
 func (r *MediaRepo) enrichMediaMapTranslations(ctx context.Context, rows []domain.MediaFileRow) {
 	if r.pdb.Metadata == nil || len(rows) == 0 {
@@ -25,27 +38,55 @@ func (r *MediaRepo) enrichMediaMapTranslations(ctx context.Context, rows []domai
 		return
 	}
 
-	translations := r.loadMediaMapFRTranslations(ctx, ids)
-	if len(translations) == 0 {
-		return
-	}
+	// Résolution via maps_catalog (name_canonical TOUJOURS peuplé) + asset_translations
+	// FR, même cascade que ListMapsByTitle. Corrige le bug "map = GUID" : un match non
+	// enrichi stocke l'asset_id de map dans match_registry.map_name ; on le résout par
+	// map_asset_id et on n'affiche jamais l'UUID brut.
+	names := r.loadMapCatalogNames(ctx, ids)
 
 	for i := range rows {
-		if rows[i].MapID == nil {
-			continue
+		id := mediaMapAssetID(&rows[i])
+		if id != "" {
+			if n, ok := names[id]; ok {
+				if n.fr != "" {
+					fr := n.fr
+					rows[i].MapName = &fr
+					continue
+				}
+				if n.en != "" {
+					en := n.en
+					rows[i].MapName = &en
+					continue
+				}
+			}
 		}
-		if nameFR, ok := translations[*rows[i].MapID]; ok && nameFR != "" {
-			rows[i].MapName = &nameFR
+		// Map absente du catalogue : ne jamais laisser un asset_id brut à l'écran.
+		if rows[i].MapName != nil && looksLikeAssetID(*rows[i].MapName) {
+			rows[i].MapName = nil
 		}
 	}
 }
 
-// collectMediaMapIDs extrait les map_id distincts non-vides depuis les rows.
+// mediaMapAssetID retourne l'asset_id de map à résoudre pour une row : MapID s'il
+// est présent, sinon MapName quand il a la forme d'un asset_id brut (match non
+// enrichi → match_registry a stocké l'UUID dans map_name).
+func mediaMapAssetID(row *domain.MediaFileRow) string {
+	if row.MapID != nil && strings.TrimSpace(*row.MapID) != "" {
+		return strings.TrimSpace(*row.MapID)
+	}
+	if row.MapName != nil && looksLikeAssetID(*row.MapName) {
+		return strings.TrimSpace(*row.MapName)
+	}
+	return ""
+}
+
+// collectMediaMapIDs extrait les map_asset_id distincts à résoudre (MapID, ou
+// MapName-as-asset-id pour les matchs non enrichis).
 func collectMediaMapIDs(rows []domain.MediaFileRow) []string {
 	seen := make(map[string]struct{})
-	for _, row := range rows {
-		if row.MapID != nil && *row.MapID != "" {
-			seen[*row.MapID] = struct{}{}
+	for i := range rows {
+		if id := mediaMapAssetID(&rows[i]); id != "" {
+			seen[id] = struct{}{}
 		}
 	}
 	out := make([]string, 0, len(seen))
@@ -55,40 +96,61 @@ func collectMediaMapIDs(rows []domain.MediaFileRow) []string {
 	return out
 }
 
-// loadMediaMapFRTranslations charge asset_translations (fr-FR > fr) pour les map_id donnés.
-func (r *MediaRepo) loadMediaMapFRTranslations(ctx context.Context, ids []string) map[string]string {
-	placeholders := make([]string, 0, len(ids))
+// mapCatalogName regroupe le nom canonique EN (maps_catalog.name_canonical) et la
+// traduction FR (asset_translations) d'un map_asset_id.
+type mapCatalogName struct {
+	en string
+	fr string
+}
+
+// loadMapCatalogNames résout map_asset_id → (name_canonical EN, name FR) via
+// maps_catalog (source TOUJOURS peuplée via populate-playlists-catalog) enrichi de
+// la traduction FR asset_translations. Garantit un nom lisible même quand
+// asset_translations est vide — même cascade que ListMapsByTitle. Réutilisé par
+// le picker (fallback image map) et l'enrichissement de la galerie média.
+func (r *MediaRepo) loadMapCatalogNames(ctx context.Context, ids []string) map[string]mapCatalogName {
+	out := make(map[string]mapCatalogName)
+	if r.pdb == nil || r.pdb.Metadata == nil || len(ids) == 0 {
+		return out
+	}
+	placeholders := make([]string, len(ids))
 	args := make([]any, 0, len(ids)+1)
-	args = append(args, "map")
-	for _, id := range ids {
-		placeholders = append(placeholders, "?")
+	args = append(args, mediaStaticTitleSlug)
+	for i, id := range ids {
+		placeholders[i] = "?"
 		args = append(args, id)
 	}
-
-	q := `SELECT asset_id, name
-FROM asset_translations
-WHERE asset_type = ?
-  AND lang IN ('fr-FR', 'fr')
-  AND asset_id IN (` + joinStrings(placeholders) + `)
-ORDER BY lang DESC`
-
-	dbRows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	q := `SELECT m.map_asset_id,
+       COALESCE(m.name_canonical, '') AS name_en,
+       COALESCE(fr.name, '')          AS name_fr
+FROM maps_catalog m
+LEFT JOIN asset_translations fr
+  ON fr.asset_id = m.map_asset_id
+ AND fr.asset_type = 'map'
+ AND fr.lang IN ('fr-FR', 'fr')
+WHERE m.title_slug = ?
+  AND m.map_asset_id IN (` + joinStrings(placeholders) + `)
+ORDER BY m.map_asset_id, CASE WHEN fr.lang = 'fr-FR' THEN 0 ELSE 1 END`
+	rows, err := r.pdb.Metadata.Query(ctx, q, args...)
 	if err != nil {
-		return nil
+		return out
 	}
-	defer dbRows.Close()
-
-	translations := make(map[string]string)
-	for dbRows.Next() {
-		var assetID, name string
-		if err := dbRows.Scan(&assetID, &name); err != nil {
+	defer rows.Close()
+	for rows.Next() {
+		var id, en, fr string
+		if err := rows.Scan(&id, &en, &fr); err != nil {
 			continue
 		}
-		if _, ok := translations[assetID]; !ok {
-			translations[assetID] = name
+		cur := out[id]
+		if en != "" {
+			cur.en = en
 		}
+		if fr != "" && cur.fr == "" { // 1re ligne = fr-FR (cf. ORDER BY)
+			cur.fr = fr
+		}
+		out[id] = cur
 	}
-	return translations
+	return out
 }
 
 // mediaFilterOptionPair regroupe l'id source (map_id ou pair_name brut) et le

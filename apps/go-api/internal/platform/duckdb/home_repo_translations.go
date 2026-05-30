@@ -128,7 +128,8 @@ func (r *HomeRepo) loadHomeMapImageURLs(ctx context.Context, mapIDs []string) (m
 	for _, id := range mapIDs {
 		args = append(args, id)
 	}
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
+	rows, err := r.pdb.Metadata.QueryRecovered(ctx, query, args...)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil
@@ -234,7 +235,8 @@ func (r *HomeRepo) loadHomeModeNameTranslations(ctx context.Context, modeENNames
 		args[i] = name
 	}
 
-	rows, err := r.pdb.Metadata.Query(ctx, query, args...)
+	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
+	rows, err := r.pdb.Metadata.QueryRecovered(ctx, query, args...)
 	if err != nil {
 		if isTableNotFoundErr(err) {
 			return nil, nil
