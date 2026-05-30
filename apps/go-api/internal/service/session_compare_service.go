@@ -176,7 +176,20 @@ func filterBySession(matches []legacymatch.StatsMatchRow, label string) []legacy
 // Entry builder
 // ---------------------------------------------------------------------------
 
+// buildCompareEntry : variante sans scores PSA (axe Objective à 0). Conservée pour
+// les callers sans accès au loader PSA (SessionCompare, tests).
 func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domain.SessionCompareEntry {
+	return buildCompareEntryWithObjectives(matches, label, nil)
+}
+
+// buildCompareEntryWithObjectives construit l'entry en alimentant les axes Objective
+// et Score (résiduel) du profil de participation avec les scores PSA "objective"
+// (match_id → score) ; objScores nil → dégradation gracieuse (Objective=0).
+func buildCompareEntryWithObjectives(
+	matches []legacymatch.StatsMatchRow,
+	label string,
+	objScores map[string]int,
+) *domain.SessionCompareEntry {
 	if len(matches) == 0 || label == "" {
 		return nil
 	}
@@ -260,7 +273,7 @@ func buildCompareEntry(matches []legacymatch.StatsMatchRow, label string) *domai
 	dominantCat := dominantSessionCategoryPtr(matches)
 	lastRating, ratingType, ratingDelta := lastSkillRating(matches)
 	avgTeamMMR, avgEnemyMMR := avgMMR(matches)
-	participation := buildSessionParticipationProfile(matches)
+	participation := buildSessionParticipationProfile(matches, objScores)
 	matchRows := buildSessionDetailRows(matches, dominantCat)
 	best, worst := bestWorstMatchCompare(matches, dominantCat)
 

@@ -18,6 +18,7 @@ import { SessionOutcomeDonut } from './SessionOutcomeDonut'
 import { SessionKDATimeline } from './SessionKDATimeline'
 import { SessionKillsDonut } from './SessionKillsDonut'
 import { SessionModeBreakdown } from './SessionModeBreakdown'
+import { SessionPlacementBreakdown } from './SessionPlacementBreakdown'
 import { SessionFdaRadar } from './SessionFdaRadar'
 import { SessionFragsRadar } from './SessionFragsRadar'
 import { SessionFdaBars } from './SessionFdaBars'
@@ -26,6 +27,7 @@ import { SessionNetScoreArea } from './SessionNetScoreArea'
 import { SessionMmrDumbbell } from './SessionMmrDumbbell'
 import { SessionPerfTrend } from './SessionPerfTrend'
 import { SessionEngagementChart } from './SessionEngagementChart'
+import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrScatter } from './SessionOcdrScatter'
 
 interface Props {
@@ -53,6 +55,9 @@ export function SessionChartStack({
   const modeBreakdown = (
     <SessionModeBreakdown title={t('session.detail.chart_mode_breakdown_title')} matches={matches} />
   )
+  const placementBreakdown = (
+    <SessionPlacementBreakdown title={t('session.detail.chart_placement_title')} matches={matches} />
+  )
   const fdaRadar = <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={matches} />
   const fragsRadar = <SessionFragsRadar title={t('session.detail.chart_frags_radar_title')} entry={entry} />
   const fdaBars = (
@@ -77,6 +82,7 @@ export function SessionChartStack({
     />
   )
   const ocdr = <SessionOcdrScatter title={t('session.compare.ocdr_title')} matches={matches} />
+  const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
 
   if (dense) {
     return (
@@ -85,6 +91,7 @@ export function SessionChartStack({
         {kdaTimeline}
         {killsDonut}
         {modeBreakdown}
+        {placementBreakdown}
         {fdaRadar}
         {fragsRadar}
         {fdaBars}
@@ -93,6 +100,7 @@ export function SessionChartStack({
         {mmr}
         {perf}
         {engagement}
+        {damage}
         {ocdr}
       </>
     )
@@ -100,13 +108,14 @@ export function SessionChartStack({
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        {outcomeDonut}
-        {kdaTimeline}
-      </div>
       <div className="grid gap-6 xl:grid-cols-2">
+        {outcomeDonut}
         {killsDonut}
+      </div>
+      {kdaTimeline}
+      <div className="grid gap-6 xl:grid-cols-2">
         {modeBreakdown}
+        {placementBreakdown}
       </div>
       <div className="grid gap-6 xl:grid-cols-2">
         {fdaRadar}
@@ -118,6 +127,7 @@ export function SessionChartStack({
       {mmr}
       {perf}
       {engagement}
+      {damage}
       {ocdr}
     </>
   )

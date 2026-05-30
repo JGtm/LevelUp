@@ -69,16 +69,23 @@ func avgMMR(matches []legacymatch.StatsMatchRow) (*float64, *float64) {
 }
 
 // buildSessionParticipationProfile calcule les 6 axes de participation (0..100)
-// depuis des StatsMatchRow. Objective reste à 0 (pas de PSA dans StatsMatchRow).
-// Formules alignées sur le radar escouade (teammates_squad_charts_synergy.go).
-func buildSessionParticipationProfile(matches []legacymatch.StatsMatchRow) []domain.SessionParticipationAxis {
+// depuis des StatsMatchRow. `objScores` (match_id → score PSA "objective") est
+// optionnel : nil → axe Objective à 0 (dégradation gracieuse). Formules alignées
+// sur le radar escouade (teammates_squad_charts_synergy.go) :
+//   - Objective : somme des scores PSA "objective" du joueur sur la session.
+//   - Score     : résiduel PersonalScore après kills×100 + assists×50 + objectif
+//     (= medals/streaks). Avant : MedalExploitScore (toujours nil) → axe à 0.
+func buildSessionParticipationProfile(
+	matches []legacymatch.StatsMatchRow,
+	objScores map[string]int,
+) []domain.SessionParticipationAxis {
 	n := len(matches)
 	if n == 0 {
 		return []domain.SessionParticipationAxis{}
 	}
 	rawByAxis := map[narrative.ParticipationAxis]float64{}
 	var totalKills, totalAssists, totalDeaths int
-	var totalDD, totalDT float64
+	var totalDD, totalDT, totalPS, objTotal float64
 	for _, m := range matches {
 		hs := 0
 		if m.HeadshotKills != nil {
@@ -94,9 +101,6 @@ func buildSessionParticipationProfile(matches []legacymatch.StatsMatchRow) []dom
 		}
 		rawByAxis[narrative.AxisCombat] += (float64(m.Kills) + 0.5*float64(hs) + 0.5*float64(pk)) * (1.0 + acc*0.4)
 		rawByAxis[narrative.AxisSupport] += float64(m.Assists) * 50.0
-		if m.MedalExploitScore != nil {
-			rawByAxis[narrative.AxisScore] += *m.MedalExploitScore
-		}
 		totalKills += m.Kills
 		totalAssists += m.Assists
 		totalDeaths += m.Deaths
@@ -106,9 +110,22 @@ func buildSessionParticipationProfile(matches []legacymatch.StatsMatchRow) []dom
 		if m.DamageTaken != nil {
 			totalDT += *m.DamageTaken
 		}
+		if m.PersonalScore != nil {
+			totalPS += float64(*m.PersonalScore)
+		}
+		if objScores != nil {
+			objTotal += float64(objScores[m.MatchID])
+		}
 	}
 	rawByAxis[narrative.AxisImpact] = synergyOffensiveConversion(totalKills, totalAssists, totalDD)
 	rawByAxis[narrative.AxisSurvival] = synergyDefensiveResistance(totalDT, totalDeaths)
+	rawByAxis[narrative.AxisObjective] = objTotal
+	// Score = résiduel PS après kills×100 + assists×50 + objectif (medals/streaks).
+	residual := totalPS - float64(totalKills)*100.0 - float64(totalAssists)*50.0 - objTotal
+	if residual < 0 {
+		residual = 0
+	}
+	rawByAxis[narrative.AxisScore] = residual
 	thresholds := narrative.ParticipationThresholds{
 		Combat:    25.0 * float64(n),
 		Survival:  analysis.DefensiveResistanceP80 * 1.25,

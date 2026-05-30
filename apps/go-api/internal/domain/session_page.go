@@ -47,6 +47,13 @@ type SessionDetailMatchRow struct {
 	DominantCategory *string      `json:"dominant_category,omitempty"`
 	OffensiveConv    *float64     `json:"offensive_conversion,omitempty"`
 	DefensiveResist  *float64     `json:"defensive_resistance,omitempty"`
+	// Dégâts infligés / subis du match (pour la barre composite par match).
+	DamageDealt *float64 `json:"damage_dealt,omitempty"`
+	DamageTaken *float64 `json:"damage_taken,omitempty"`
+	// Placement du joueur (rang API, = "Rang" du scoreboard) + taille du lobby à la
+	// fin (participants present_at_completion, bots inclus) — pour le breakdown des placements.
+	Placement *int `json:"placement,omitempty"`
+	LobbySize *int `json:"lobby_size,omitempty"`
 	// Champs enrichis pour le tableau détail (Phase 3), projetés depuis StatsMatchRow.
 	MapName          string   `json:"map_name,omitempty"`
 	DurationSeconds  *int     `json:"duration_seconds,omitempty"`

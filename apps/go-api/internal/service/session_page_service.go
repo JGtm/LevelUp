@@ -74,7 +74,7 @@ func (s *SessionPageService) GetPage(
 
 	currentLabel := lastOrNil(labels, req.SessionLabel)
 	currentMatches := filterBySession(filtered, currentLabel)
-	currentEntry := buildCompareEntry(currentMatches, currentLabel)
+	currentEntry := buildCompareEntryWithObjectives(currentMatches, currentLabel, s.objectiveScores(ctx, currentMatches))
 	if currentEntry == nil {
 		slog.WarnContext(ctx, "session page: current session not found after filtering",
 			"requested_session", derefString(req.SessionLabel),
@@ -108,7 +108,7 @@ func (s *SessionPageService) GetPage(
 
 	if compareEnabled {
 		compareMatches := filterBySession(filtered, compareLabel)
-		resp.CompareSession = buildCompareEntry(compareMatches, compareLabel)
+		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveScores(ctx, compareMatches))
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
 			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory)
@@ -120,6 +120,10 @@ func (s *SessionPageService) GetPage(
 			)
 		}
 	}
+
+	// Taille de lobby (joueurs présents à la fin, bots inclus) pour le breakdown
+	// des placements — best-effort, dégrade gracieusement si le repo ne le fournit pas.
+	s.attachLobbySizes(ctx, resp.Matches, resp.CompareMatches)
 
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,
@@ -135,6 +139,76 @@ func (s *SessionPageService) GetPage(
 	)
 
 	return resp, nil
+}
+
+// lobbySizeProvider est une capability OPTIONNELLE du repo de matchs : compte les
+// participants présents à la fin (present_at_completion) par match. Seul l'adapter
+// DuckDB réel l'implémente ; les mocks de test ne l'implémentent pas → l'axe du
+// breakdown de placements dégrade alors sur max(placement observé) côté front.
+type lobbySizeProvider interface {
+	LobbySizesAtCompletion(ctx context.Context, slug string, matchIDs []string) (map[string]int, error)
+}
+
+// objectiveScoreProvider est une capability OPTIONNELLE : somme des scores PSA
+// "objective" par match (table personal_score_awards). Alimente les axes
+// Objective/Score du profil de participation. Seul l'adapter DuckDB réel
+// l'implémente ; sans elle (mocks) les axes dégradent à 0 / résiduel sans objectif.
+type objectiveScoreProvider interface {
+	ObjectiveScores(ctx context.Context, slug string, matchIDs []string) (map[string]int, error)
+}
+
+// objectiveScores récupère les scores PSA "objective" des matchs fournis via le
+// provider optionnel. nil si le repo ne fournit pas la capability ou en cas d'erreur.
+func (s *SessionPageService) objectiveScores(ctx context.Context, matches []legacymatch.StatsMatchRow) map[string]int {
+	provider, ok := s.playerMatchesRepo.(objectiveScoreProvider)
+	if !ok || len(matches) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(matches))
+	for i := range matches {
+		ids = append(ids, matches[i].MatchID)
+	}
+	scores, err := provider.ObjectiveScores(ctx, s.titleSlug, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: objective scores unavailable", "err", err)
+		return nil
+	}
+	return scores
+}
+
+// attachLobbySizes renseigne LobbySize sur chaque row à partir du provider optionnel.
+// Best-effort : no-op si le repo ne fournit pas la capability ou si la requête échoue.
+func (s *SessionPageService) attachLobbySizes(ctx context.Context, rowSets ...[]domain.SessionDetailMatchRow) {
+	provider, ok := s.playerMatchesRepo.(lobbySizeProvider)
+	if !ok {
+		return
+	}
+	idSet := make(map[string]struct{})
+	for _, rows := range rowSets {
+		for i := range rows {
+			idSet[rows[i].MatchID] = struct{}{}
+		}
+	}
+	if len(idSet) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+	sizes, err := provider.LobbySizesAtCompletion(ctx, s.titleSlug, ids)
+	if err != nil {
+		slog.WarnContext(ctx, "session page: lobby sizes unavailable", "err", err)
+		return
+	}
+	for _, rows := range rowSets {
+		for i := range rows {
+			if n, ok := sizes[rows[i].MatchID]; ok && n > 0 {
+				v := n
+				rows[i].LobbySize = &v
+			}
+		}
+	}
 }
 
 type sessionCandidate struct {
@@ -236,6 +310,9 @@ func buildSessionDetailRows(
 			DominantCategory: dominantCategory,
 			OffensiveConv:    row.OffensiveConversion,
 			DefensiveResist:  row.DefensiveResistance,
+			DamageDealt:      row.DamageDealt,
+			DamageTaken:      row.DamageTaken,
+			Placement:        row.Rank,
 			MapName:          mapName,
 			DurationSeconds:  row.TimePlayedSeconds,
 			TeamMMR:          row.TeamMMR,

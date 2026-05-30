@@ -330,6 +330,14 @@ en = "Your team"
 fr = "Adverse"
 en = "Enemy"
 
+[session.detail.chart_damage_title]
+fr = "Dégâts infligés / subis par match"
+en = "Damage dealt / taken per match"
+
+[session.detail.chart_placement_title]
+fr = "Répartition des placements"
+en = "Placement breakdown"
+
 [session.detail.col_rating_delta]
 fr = "Δ rang"
 en = "Rank Δ"

@@ -294,6 +294,38 @@ func TestBuildCompareEntry_AvgLifeSeconds(t *testing.T) {
 	}
 }
 
+// TestBuildSessionParticipationProfile_ObjectiveAndScore couvre les axes Objective
+// (somme PSA) et Score (résiduel PersonalScore) du profil de participation : avant,
+// Objective restait à 0 et Score à 0 (MedalExploitScore nil).
+func TestBuildSessionParticipationProfile_ObjectiveAndScore(t *testing.T) {
+	dd, dt := 3000.0, 2000.0
+	ps := 2000
+	rows := []legacymatch.StatsMatchRow{
+		{MatchID: "m1", Kills: 10, Assists: 4, Deaths: 5, PersonalScore: &ps, DamageDealt: &dd, DamageTaken: &dt},
+	}
+	axisVal := func(axes []domain.SessionParticipationAxis, name string) float64 {
+		for _, a := range axes {
+			if a.Name == name {
+				return a.Value
+			}
+		}
+		return -1
+	}
+	// Sans scores PSA → Objective à 0 (dégradation gracieuse).
+	without := buildSessionParticipationProfile(rows, nil)
+	if v := axisVal(without, "objective"); v != 0 {
+		t.Fatalf("Objective sans PSA: want 0, got %v", v)
+	}
+	// Avec PSA → Objective > 0 et Score (résiduel 2000−1000−200−500 = 300) > 0.
+	with := buildSessionParticipationProfile(rows, map[string]int{"m1": 500})
+	if v := axisVal(with, "objective"); v <= 0 {
+		t.Fatalf("Objective avec PSA: want > 0, got %v", v)
+	}
+	if v := axisVal(with, "score"); v <= 0 {
+		t.Fatalf("Score résiduel: want > 0, got %v", v)
+	}
+}
+
 // TestBuildCompareEntry_FragAggregates_AllNil : aucun match n'a de stats de frags
 // → agrégats nil (le radar dégrade en série vide côté front), pas de zéro trompeur.
 func TestBuildCompareEntry_FragAggregates_AllNil(t *testing.T) {
@@ -315,6 +347,8 @@ func TestBuildCompareEntry_FragAggregates_AllNil(t *testing.T) {
 func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 	team, enemy, perf, rating, ratingDelta := 1500.0, 1400.0, 72.0, 1450.0, 12.5
 	dur := 540
+	dd, dt := 3000.0, 1500.0
+	rk := 3
 	row := legacymatch.StatsMatchRow{
 		MatchID:           "m1",
 		StartTime:         time.Now(),
@@ -330,6 +364,9 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 		SkillRatingValue:  &rating,
 		SkillRatingType:   "csr",
 		SkillRatingDelta:  &ratingDelta,
+		DamageDealt:       &dd,
+		DamageTaken:       &dt,
+		Rank:              &rk,
 	}
 	out := buildSessionDetailRows([]legacymatch.StatsMatchRow{row}, nil)
 	if len(out) != 1 {
@@ -360,6 +397,15 @@ func TestBuildSessionDetailRows_EnrichedFields(t *testing.T) {
 	}
 	if r.SkillRatingType != "csr" {
 		t.Fatalf("SkillRatingType: want csr, got %q", r.SkillRatingType)
+	}
+	if r.DamageDealt == nil || *r.DamageDealt != 3000 {
+		t.Fatalf("DamageDealt: want 3000, got %v", r.DamageDealt)
+	}
+	if r.DamageTaken == nil || *r.DamageTaken != 1500 {
+		t.Fatalf("DamageTaken: want 1500, got %v", r.DamageTaken)
+	}
+	if r.Placement == nil || *r.Placement != 3 { // projeté depuis StatsMatchRow.Rank
+		t.Fatalf("Placement: want 3, got %v", r.Placement)
 	}
 }
 
