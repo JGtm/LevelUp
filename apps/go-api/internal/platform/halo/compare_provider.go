@@ -44,9 +44,9 @@ type serviceRecordResponse struct {
 	// pour re-filtrer le service record. SeasonIds liste les saisons réellement
 	// jouées par le joueur (cf. Grunt SubqueryContainer / SPNKr ServiceRecordSubqueries).
 	Subqueries struct {
-		SeasonIds        []string `json:"SeasonIds"`
+		SeasonIDs        []string `json:"SeasonIds"`
 		IsRanked         []bool   `json:"IsRanked"`
-		PlaylistAssetIds []string `json:"PlaylistAssetIds"`
+		PlaylistAssetIDs []string `json:"PlaylistAssetIds"`
 	} `json:"Subqueries"`
 }
 
@@ -125,8 +125,8 @@ func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSl
 	return &domain.RemoteServiceRecord{
 		Stats:            stats,
 		Medals:           medals,
-		SeasonIDs:        resp.Subqueries.SeasonIds,
-		PlaylistAssetIDs: resp.Subqueries.PlaylistAssetIds,
+		SeasonIDs:        resp.Subqueries.SeasonIDs,
+		PlaylistAssetIDs: resp.Subqueries.PlaylistAssetIDs,
 	}, nil
 }
 
@@ -147,7 +147,7 @@ func (p *HaloProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, s
 		return 0, fmt.Errorf("FetchSeasonServiceRecord: seasonID vide")
 	}
 
-	rawURL := buildSeasonServiceRecordURL(defaultStatsHost, gamertag, seasonID, isRanked)
+	rawURL := buildSeasonServiceRecordURL(gamertag, seasonID, isRanked)
 	body, err := p.doGet(ctx, rawURL, tokens)
 	if err != nil {
 		return 0, fmt.Errorf("FetchSeasonServiceRecord(%s, %s): %w", gamertag, seasonID, err)
@@ -164,13 +164,13 @@ func (p *HaloProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, s
 // saison (et optionnellement par isRanked). Helper pur (testable sans réseau) :
 // le seasonID contient des slashes ("Seasons/Season7.json") → encodés en query
 // par url.Values. Casing seasonId/isRanked aligné sur le wrapper Grunt.
-func buildSeasonServiceRecordURL(host, gamertag, seasonID string, isRanked *bool) string {
+func buildSeasonServiceRecordURL(gamertag, seasonID string, isRanked *bool) string {
 	q := url.Values{}
 	q.Set("seasonId", seasonID)
 	if isRanked != nil {
 		q.Set("isRanked", strconv.FormatBool(*isRanked))
 	}
-	return fmt.Sprintf("%s/hi/players/%s/Matchmade/servicerecord?%s", host, gamertag, q.Encode())
+	return fmt.Sprintf("%s/hi/players/%s/Matchmade/servicerecord?%s", defaultStatsHost, gamertag, q.Encode())
 }
 
 // iso8601DurationRe capture les composantes jours/heures/minutes/secondes d'une

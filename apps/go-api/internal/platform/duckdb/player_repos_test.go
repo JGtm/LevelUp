@@ -238,7 +238,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen
 			match_id VARCHAR PRIMARY KEY, rating_type VARCHAR, rating_value DOUBLE,
 			rating_deviation DOUBLE, tier VARCHAR, tier_fr VARCHAR, sub_tier SMALLINT,
 			tier_label VARCHAR, rating_delta DOUBLE, playlist_group VARCHAR,
+			expected_win_prob DOUBLE,
 			start_time TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ)`,
+		// Vue latest (miroir de schema.go) : player_matches_repo.go la requête.
+		`CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
 		// match_csrs (shared, append-only) : CSR par match/participant — source
 		// unique de season_id + measurement_matches_remaining (cf.
 		// loadMatchCSRMetaForMatches). Ces colonnes ne sont PAS sur

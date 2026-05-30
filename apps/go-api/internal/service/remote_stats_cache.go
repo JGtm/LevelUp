@@ -187,7 +187,7 @@ func (c *CachedStatsProvider) FetchSeasonServiceRecord(ctx context.Context, game
 	rk := "all"
 	if isRanked != nil {
 		if *isRanked {
-			rk = "ranked"
+			rk = scopeRanked
 		} else {
 			rk = "social"
 		}
