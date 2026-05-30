@@ -269,6 +269,11 @@ type ExplorerRepository interface {
 	// et le nombre de types distincts gagnés par le joueur (xuid) sur la
 	// liste de matchs fournie. Lecture sur shared.medals_earned.
 	GetMedalCountsForMatches(ctx context.Context, xuid string, matchIDs []string) (*domain.MedalCountsAggregate, error)
+
+	// GetMatchStartTimesForXUID retourne les start_time (UTC) de tous les matchs
+	// du joueur dans shared.match_participants. Local = historique complet ;
+	// adversaire = matchs observés. Sert au bucketing "matchs par saison".
+	GetMatchStartTimesForXUID(ctx context.Context, xuid string) ([]time.Time, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -443,6 +448,9 @@ func (n *noopExplorerRepo) GetParticipantStatsForMatches(_ context.Context, _ st
 	return nil, nil
 }
 func (n *noopExplorerRepo) GetMedalCountsForMatches(_ context.Context, _ string, _ []string) (*domain.MedalCountsAggregate, error) {
+	return nil, nil
+}
+func (n *noopExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string) ([]time.Time, error) {
 	return nil, nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"levelup/go-api/internal/domain"
 )
@@ -195,6 +196,43 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 		return nil, fmt.Errorf("ExplorerRepo.GetMedalCountsForMatches: scan: %w", err)
 	}
 	return &agg, nil
+}
+
+// GetMatchStartTimesForXUID retourne les start_time (UTC) de tous les matchs du
+// joueur dans shared.match_participants (join match_registry). Pattern timezone
+// canonique COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC'). Sert au
+// bucketing "matchs par saison" côté service.
+func (r *ExplorerRepo) GetMatchStartTimesForXUID(ctx context.Context, xuid string) ([]time.Time, error) {
+	if strings.TrimSpace(xuid) == "" {
+		return nil, nil
+	}
+	const q = `
+		SELECT COALESCE(reg.start_time_utc, reg.start_time AT TIME ZONE 'UTC') AS start_time
+		FROM match_participants p
+		JOIN match_registry reg ON reg.match_id = p.match_id
+		WHERE p.xuid = ?`
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetMatchStartTimesForXUID: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, q, xuid)
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetMatchStartTimesForXUID: query: %w", err)
+	}
+	defer rows.Close()
+
+	var out []time.Time
+	for rows.Next() {
+		var ts time.Time
+		if err := rows.Scan(&ts); err != nil {
+			return nil, fmt.Errorf("ExplorerRepo.GetMatchStartTimesForXUID: scan: %w", err)
+		}
+		out = append(out, ts)
+	}
+	return out, rows.Err()
 }
 
 // ResolveXUIDByGamertag résout un gamertag en xuid via shared.v_gamertag_lookup (ILIKE).

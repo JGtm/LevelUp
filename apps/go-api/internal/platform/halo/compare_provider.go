@@ -11,18 +11,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"strconv"
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 )
 
 // serviceRecordResponse est la réponse de l'endpoint service record Waypoint.
-// Schéma : Wins/Losses/MatchesCompleted au top-level, le reste sous CoreStats
-// (cf. Grunt Stats_GetPlayerServiceRecord).
+// Schéma : Wins/Losses/MatchesCompleted + TimePlayed (ISO-8601) au top-level,
+// CoreStats (+ Medals) en sous-objet (cf. Grunt Stats_GetPlayerServiceRecord).
 type serviceRecordResponse struct {
-	MatchesCompleted int `json:"MatchesCompleted"`
-	Wins             int `json:"Wins"`
-	Losses           int `json:"Losses"`
+	MatchesCompleted int    `json:"MatchesCompleted"`
+	Wins             int    `json:"Wins"`
+	Losses           int    `json:"Losses"`
+	TimePlayed       string `json:"TimePlayed"` // ex: "P1DT7H50M24.6360455S"
 	CoreStats        struct {
 		Kills       int     `json:"Kills"`
 		Deaths      int     `json:"Deaths"`
@@ -31,17 +34,34 @@ type serviceRecordResponse struct {
 		ShotsHit    float64 `json:"ShotsHit"`
 		DamageDealt float64 `json:"DamageDealt"`
 		DamageTaken float64 `json:"DamageTaken"`
+		Medals      []struct {
+			NameID int64 `json:"NameId"`
+			Count  int   `json:"Count"`
+		} `json:"Medals"`
 	} `json:"CoreStats"`
 }
 
-// FetchRemoteStats retourne les stats normalisées d'un joueur Waypoint depuis
-// son service record matchmade. Les tokens sont lus depuis le contexte via
-// ctxkeys. Retourne une erreur si le joueur est introuvable ou si l'auth est
-// absente.
+// FetchRemoteStats retourne les stats normalisées d'un joueur Waypoint (sans
+// les médailles). Conservé pour Compare ; délègue à FetchServiceRecord.
 func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error) {
+	rec, err := p.FetchServiceRecord(ctx, gamertag, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	if rec == nil {
+		return nil, nil
+	}
+	s := rec.Stats
+	return &s, nil
+}
+
+// FetchServiceRecord fetch le service record matchmade (lifetime) d'un joueur et
+// retourne stats normalisées (incl. TimePlayedSeconds) + médailles agrégées.
+// Un seul appel réseau. Les tokens sont lus depuis le contexte via ctxkeys.
+func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error) {
 	tokens := ctxkeys.HaloTokens(ctx)
 	if tokens == nil {
-		return nil, fmt.Errorf("FetchRemoteStats: tokens absents du contexte")
+		return nil, fmt.Errorf("FetchServiceRecord: tokens absents du contexte")
 	}
 
 	// /hi/players/{gamertag}/Matchmade/servicerecord — LifecycleMode "Matchmade"
@@ -53,19 +73,20 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 	)
 	body, err := p.doGet(ctx, url, tokens)
 	if err != nil {
-		return nil, fmt.Errorf("FetchRemoteStats(%s): %w", gamertag, err)
+		return nil, fmt.Errorf("FetchServiceRecord(%s): %w", gamertag, err)
 	}
 
 	var resp serviceRecordResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, fmt.Errorf("FetchRemoteStats(%s) parse: %w", gamertag, err)
+		return nil, fmt.Errorf("FetchServiceRecord(%s) parse: %w", gamertag, err)
 	}
 
 	cs := resp.CoreStats
 	stats := domain.NormalizedPlayerStats{
-		TitleSlug: titleSlug,
-		Gamertag:  gamertag,
-		Matches:   resp.MatchesCompleted,
+		TitleSlug:         titleSlug,
+		Gamertag:          gamertag,
+		Matches:           resp.MatchesCompleted,
+		TimePlayedSeconds: parseISO8601DurationSeconds(resp.TimePlayed),
 	}
 	if resp.MatchesCompleted > 0 {
 		n := float64(resp.MatchesCompleted)
@@ -83,5 +104,53 @@ func (p *HaloProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug
 			stats.Accuracy = cs.ShotsHit / cs.ShotsFired
 		}
 	}
-	return &stats, nil
+
+	medals := make([]domain.RemoteMedalCount, 0, len(cs.Medals))
+	for _, m := range cs.Medals {
+		if m.NameID == 0 || m.Count <= 0 {
+			continue
+		}
+		medals = append(medals, domain.RemoteMedalCount{NameID: m.NameID, Count: m.Count})
+	}
+
+	return &domain.RemoteServiceRecord{Stats: stats, Medals: medals}, nil
+}
+
+// iso8601DurationRe capture les composantes jours/heures/minutes/secondes d'une
+// durée ISO-8601 du type "P1DT7H50M24.6360455S" (semaines/mois/années ignorées,
+// non émises par Waypoint pour un temps de jeu).
+var iso8601DurationRe = regexp.MustCompile(`^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:([\d.]+)S)?)?$`)
+
+// parseISO8601DurationSeconds convertit une durée ISO-8601 en secondes (tronquées).
+// Retourne 0 si la chaîne est vide ou non parsable (dégradation gracieuse).
+func parseISO8601DurationSeconds(s string) int64 {
+	if s == "" {
+		return 0
+	}
+	m := iso8601DurationRe.FindStringSubmatch(s)
+	if m == nil {
+		return 0
+	}
+	var total float64
+	if m[1] != "" { // jours
+		if v, err := strconv.ParseFloat(m[1], 64); err == nil {
+			total += v * 86400
+		}
+	}
+	if m[2] != "" { // heures
+		if v, err := strconv.ParseFloat(m[2], 64); err == nil {
+			total += v * 3600
+		}
+	}
+	if m[3] != "" { // minutes
+		if v, err := strconv.ParseFloat(m[3], 64); err == nil {
+			total += v * 60
+		}
+	}
+	if m[4] != "" { // secondes (peut être fractionnaire)
+		if v, err := strconv.ParseFloat(m[4], 64); err == nil {
+			total += v
+		}
+	}
+	return int64(total)
 }

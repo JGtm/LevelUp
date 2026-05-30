@@ -25,6 +25,8 @@ type mockExplorerRepo struct {
 	participantsErr error
 	medals          *domain.MedalCountsAggregate
 	medalsErr       error
+	startTimes      []time.Time
+	startTimesErr   error
 }
 
 func (m *mockExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
@@ -41,6 +43,9 @@ func (m *mockExplorerRepo) GetParticipantStatsForMatches(_ context.Context, _ st
 }
 func (m *mockExplorerRepo) GetMedalCountsForMatches(_ context.Context, _ string, _ []string) (*domain.MedalCountsAggregate, error) {
 	return m.medals, m.medalsErr
+}
+func (m *mockExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string) ([]time.Time, error) {
+	return m.startTimes, m.startTimesErr
 }
 
 // --- tests ---
@@ -274,13 +279,20 @@ func (m *mockLocalIdentityResolver) LocalSpartanIdentity(_ context.Context, _ st
 
 type mockRemoteStatsProvider struct {
 	stats  *domain.NormalizedPlayerStats
+	medals []domain.RemoteMedalCount
 	err    error
 	called bool
 }
 
-func (m *mockRemoteStatsProvider) FetchRemoteStats(_ context.Context, _, _ string) (*domain.NormalizedPlayerStats, error) {
+func (m *mockRemoteStatsProvider) FetchServiceRecord(_ context.Context, _, _ string) (*domain.RemoteServiceRecord, error) {
 	m.called = true
-	return m.stats, m.err
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.stats == nil {
+		return nil, nil
+	}
+	return &domain.RemoteServiceRecord{Stats: *m.stats, Medals: m.medals}, nil
 }
 
 // ctxAuth construit un ctx avec ou sans tokens Halo.
@@ -321,7 +333,7 @@ func TestExplorerService_TargetProfile_LocalTargetAllSources(t *testing.T) {
 	}
 
 	svc := NewExplorerService(repo, "my-xuid").
-		WithTargetProfileProviders(idRes, remoteProv, "halo_infinite")
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, RemoteStats: remoteProv, TitleSlug: "halo_infinite"})
 
 	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "TargetPlayer", 1)
 	if err != nil {
@@ -375,7 +387,7 @@ func TestExplorerService_TargetProfile_NoTokens(t *testing.T) {
 	}
 
 	svc := NewExplorerService(repo, "my-xuid").
-		WithTargetProfileProviders(idRes, remoteProv, "halo_infinite")
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, RemoteStats: remoteProv, TitleSlug: "halo_infinite"})
 
 	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
 	if err != nil {
@@ -420,7 +432,7 @@ func TestExplorerService_TargetProfile_CareerFetchError(t *testing.T) {
 	}
 
 	svc := NewExplorerService(repo, "my-xuid").
-		WithTargetProfileProviders(idRes, remoteProv, "halo_infinite")
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, RemoteStats: remoteProv, TitleSlug: "halo_infinite"})
 
 	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "SomePlayer", 1)
 	if err != nil {

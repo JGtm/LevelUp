@@ -44,19 +44,22 @@ var (
 )
 
 type remoteStatsEntry struct {
-	stats     *domain.NormalizedPlayerStats
+	record    *domain.RemoteServiceRecord
 	fetchedAt time.Time
 }
 
-// CachedStatsProvider décore un port.PlayerStatsProvider d'un cache TTL
+// CachedStatsProvider décore un port.ServiceRecordProvider d'un cache TTL
 // process-level + singleflight. Thread-safe. Instancié une fois (singleton) et
-// partagé entre toutes les requêtes (Explorer, Compare).
+// partagé entre toutes les requêtes (Explorer, Compare). Implémente
+// port.PlayerStatsProvider (FetchRemoteStats, pour Compare) ET
+// port.ServiceRecordProvider (FetchServiceRecord, pour Explorer : stats +
+// médailles + temps de jeu).
 //
 // Pas de borne sur le nombre d'entrées : nombre modéré de cibles consultées
 // simultanément (cf. même hypothèse que CareerLiveCache). Ajouter une LRU si
 // le besoin se présente.
 type CachedStatsProvider struct {
-	inner port.PlayerStatsProvider
+	inner port.ServiceRecordProvider
 	ttl   time.Duration
 	now   func() time.Time
 
@@ -68,7 +71,7 @@ type CachedStatsProvider struct {
 
 // NewCachedStatsProvider enveloppe inner. ttl<=0 → DefaultRemoteStatsTTL.
 // now nil → time.Now (injectable pour les tests TTL déterministes).
-func NewCachedStatsProvider(inner port.PlayerStatsProvider, ttl time.Duration, now func() time.Time) *CachedStatsProvider {
+func NewCachedStatsProvider(inner port.ServiceRecordProvider, ttl time.Duration, now func() time.Time) *CachedStatsProvider {
 	if ttl <= 0 {
 		ttl = DefaultRemoteStatsTTL
 	}
@@ -83,9 +86,9 @@ func NewCachedStatsProvider(inner port.PlayerStatsProvider, ttl time.Duration, n
 	}
 }
 
-// FetchRemoteStats sert depuis le cache si l'entrée est fraîche, sinon délègue
+// FetchServiceRecord sert depuis le cache si l'entrée est fraîche, sinon délègue
 // à inner (dédupliqué par singleflight) et mémorise le résultat.
-func (c *CachedStatsProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error) {
+func (c *CachedStatsProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error) {
 	key := titleSlug + "|" + strings.ToLower(strings.TrimSpace(gamertag))
 
 	if cached := c.get(key); cached != nil {
@@ -105,13 +108,13 @@ func (c *CachedStatsProvider) FetchRemoteStats(ctx context.Context, gamertag, ti
 		remoteStatsCacheMiss.Add(1)
 		slog.DebugContext(ctx, remoteStatsLogModule+": cache miss → fetch live",
 			"gamertag", gamertag, "titleSlug", titleSlug)
-		stats, fErr := c.inner.FetchRemoteStats(ctx, gamertag, titleSlug)
+		rec, fErr := c.inner.FetchServiceRecord(ctx, gamertag, titleSlug)
 		if fErr != nil {
 			remoteStatsFetchError.Add(1)
 			return nil, fErr
 		}
-		c.put(key, stats)
-		return stats, nil
+		c.put(key, rec)
+		return rec, nil
 	})
 	if err != nil {
 		return nil, err
@@ -119,24 +122,38 @@ func (c *CachedStatsProvider) FetchRemoteStats(ctx context.Context, gamertag, ti
 	if v == nil {
 		return nil, nil
 	}
-	return v.(*domain.NormalizedPlayerStats), nil
+	return v.(*domain.RemoteServiceRecord), nil
 }
 
-func (c *CachedStatsProvider) get(key string) *domain.NormalizedPlayerStats {
+// FetchRemoteStats projette le service record caché sur les stats normalisées
+// (sans médailles). Conservé pour Compare (port.PlayerStatsProvider).
+func (c *CachedStatsProvider) FetchRemoteStats(ctx context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error) {
+	rec, err := c.FetchServiceRecord(ctx, gamertag, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	if rec == nil {
+		return nil, nil
+	}
+	s := rec.Stats
+	return &s, nil
+}
+
+func (c *CachedStatsProvider) get(key string) *domain.RemoteServiceRecord {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	entry, ok := c.entries[key]
 	if !ok || c.now().Sub(entry.fetchedAt) > c.ttl {
 		return nil
 	}
-	return entry.stats
+	return entry.record
 }
 
-func (c *CachedStatsProvider) put(key string, stats *domain.NormalizedPlayerStats) {
-	if stats == nil {
+func (c *CachedStatsProvider) put(key string, rec *domain.RemoteServiceRecord) {
+	if rec == nil {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.entries[key] = remoteStatsEntry{stats: stats, fetchedAt: c.now()}
+	c.entries[key] = remoteStatsEntry{record: rec, fetchedAt: c.now()}
 }

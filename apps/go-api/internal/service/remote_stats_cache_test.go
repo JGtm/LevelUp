@@ -19,7 +19,7 @@ type fakeStatsProvider struct {
 	matches int
 }
 
-func (f *fakeStatsProvider) FetchRemoteStats(_ context.Context, gamertag, titleSlug string) (*domain.NormalizedPlayerStats, error) {
+func (f *fakeStatsProvider) FetchServiceRecord(_ context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error) {
 	f.calls.Add(1)
 	if f.delay > 0 {
 		time.Sleep(f.delay)
@@ -27,7 +27,9 @@ func (f *fakeStatsProvider) FetchRemoteStats(_ context.Context, gamertag, titleS
 	if f.err != nil {
 		return nil, f.err
 	}
-	return &domain.NormalizedPlayerStats{Gamertag: gamertag, TitleSlug: titleSlug, Matches: f.matches}, nil
+	return &domain.RemoteServiceRecord{
+		Stats: domain.NormalizedPlayerStats{Gamertag: gamertag, TitleSlug: titleSlug, Matches: f.matches},
+	}, nil
 }
 
 func TestCachedStatsProvider_MissThenHit(t *testing.T) {
