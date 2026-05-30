@@ -16,6 +16,7 @@ import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel, useSessionT } from './_shared'
+import { log } from './_logger'
 
 interface MmrPoint {
   label: string
@@ -152,6 +153,15 @@ export function SessionMmrDumbbell({ title, matches, height }: Props) {
   // Hauteur adaptée au nombre de matchs (lignes), bornée pour rester lisible.
   const rows = series[0]?.datapoints.length ?? 0
   const computedHeight = height ?? Math.min(560, Math.max(220, rows * 30 + 60))
+
+  // Observabilité : dumbbell vide alors qu'il y a des matchs = pas de MMR (social ?).
+  if (matches.length > 0 && rows === 0) {
+    log.warn(
+      `mmr_missing:${matches[0]?.session_label ?? ''}`,
+      'Dumbbell MMR vide : aucun match de la session n\'a de MMR équipe/adverse (session social ?)',
+      { matches: matches.length },
+    )
+  }
 
   return (
     <ChartCard

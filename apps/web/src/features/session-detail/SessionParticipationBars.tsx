@@ -17,6 +17,7 @@ import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import type { SessionCompareEntry } from '@/lib/api/types'
 
 import { useSessionT } from './_shared'
+import { log } from './_logger'
 
 interface ParticipationBar {
   label: string
@@ -123,6 +124,14 @@ export function SessionParticipationBars({
       },
     ]
   }, [entry, t])
+
+  // Observabilité : profil de participation absent de l'entry (non calculé backend).
+  if (entry && !entry.participation?.length) {
+    log.warn(
+      `participation_empty:${entry.session_label ?? ''}`,
+      'Profil de participation vide : aucun axe dans entry.participation (backend)',
+    )
+  }
 
   return (
     <ChartCard

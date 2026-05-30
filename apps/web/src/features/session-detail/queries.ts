@@ -11,6 +11,7 @@ export function useSessionDetailPage(
   sessionLabel: string,
   compareSessionLabel: string,
   enableCompare: boolean,
+  locale: string,
 ) {
   return useQuery({
     queryKey: queryKeys.sessionDetail(
@@ -19,6 +20,7 @@ export function useSessionDetailPage(
       sessionLabel,
       compareSessionLabel,
       enableCompare,
+      locale,
     ),
     queryFn: () =>
       api.post<SessionPageResponse>(

@@ -98,6 +98,14 @@ en = "vs {label}"
 fr = "{count} matchs"
 en = "{count} matches"
 
+[session.detail.pill_solo]
+fr = "Solo"
+en = "Solo"
+
+[session.detail.pill_squad]
+fr = "Escouade"
+en = "Squad"
+
 [session.detail.category_ranked]
 fr = "Classé"
 en = "Ranked"
@@ -134,14 +142,6 @@ en = "No comparison session"
 fr = "Détail des matchs"
 en = "Match details"
 
-[session.detail.matches_empty_title]
-fr = "Aucun match dans cette session"
-en = "No match in this session"
-
-[session.detail.matches_empty_description]
-fr = "La session sélectionnée ne contient aucun match exploitable avec les filtres actuels."
-en = "Selected session contains no exploitable match with the current filters."
-
 [session.detail.summary_unavailable_title]
 fr = "Session indisponible"
 en = "Session unavailable"
@@ -174,59 +174,6 @@ en = "Avg. life"
 [session.detail.stat_off_def]
 fr = "Rendement / Résistance"
 en = "Yield / Resistance"
-
-# Colonnes table matchs
-[session.detail.col_open]
-fr = "Ouvrir"
-en = "Open"
-
-[session.detail.col_time]
-fr = "Heure"
-en = "Time"
-
-[session.detail.col_mode]
-fr = "Mode"
-en = "Mode"
-
-[session.detail.col_playlist]
-fr = "Playlist"
-en = "Playlist"
-
-[session.detail.col_kda]
-fr = "K / D / A"
-en = "K / D / A"
-
-[session.detail.col_accuracy]
-fr = "Précision"
-en = "Accuracy"
-
-[session.detail.col_perf_score]
-fr = "Score perf."
-en = "Perf. score"
-
-[session.detail.col_outcome]
-fr = "Résultat"
-en = "Outcome"
-
-[session.detail.col_map]
-fr = "Carte"
-en = "Map"
-
-[session.detail.col_kda_ratio]
-fr = "KDA"
-en = "KDA"
-
-[session.detail.col_duration]
-fr = "Durée"
-en = "Duration"
-
-[session.detail.col_rating]
-fr = "Rating"
-en = "Rating"
-
-[session.detail.col_delta_mmr]
-fr = "ΔMMR"
-en = "ΔMMR"
 
 # Compare metrics table
 [session.detail.compare_col_metric]
@@ -337,10 +284,6 @@ en = "Damage dealt / taken per match"
 [session.detail.chart_placement_title]
 fr = "Répartition des placements"
 en = "Placement breakdown"
-
-[session.detail.col_rating_delta]
-fr = "Δ rang"
-en = "Rank Δ"
 
 [session.detail.ocdr_axis_oc]
 fr = "OC"

@@ -20,6 +20,7 @@
 import { useMemo, useState } from 'react'
 
 import type { KPIStats } from '@/lib/api/types'
+import { displayPlayerName } from '@/lib/players/displayName'
 import type { PlayerScoreCard, SquadScoreCard } from '@/features/squad/v2/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -90,7 +91,10 @@ export function SessionBriefing({ kpis, squad }: SessionBriefingProps) {
 
   // Gamertag affiché dans le titre de la grille (drilled).
   const drilledGamertag = isDrilledIn
-    ? squad?.players?.find((p) => p.xuid === viewedXuid)?.gamertag ?? viewedXuid
+    ? displayPlayerName(
+        squad?.players?.find((p) => p.xuid === viewedXuid)?.gamertag,
+        viewedXuid,
+      )
     : ''
 
   // Quand drillé, on n'affiche pas de titre redondant : la verdict band

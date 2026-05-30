@@ -20,6 +20,7 @@ import type { SessionCompareEntry } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
 import { formatNumber, formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
+import { log } from './_logger'
 
 interface Props {
   entry: SessionCompareEntry | null
@@ -47,6 +48,13 @@ export function SessionSummaryCard({ entry }: Props) {
   }
 
   const hasOffDef = entry.avg_oc != null || entry.avg_dr != null
+  // Observabilité : KPI Rendement/Résistance à "—" = OC/DR absents (pas de dégâts).
+  if (!hasOffDef) {
+    log.warn(
+      `offdef_missing:${entry.session_label ?? ''}`,
+      'KPI Rendement/Résistance vide : avg_oc/avg_dr absents (aucun match avec dégâts ?)',
+    )
+  }
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">

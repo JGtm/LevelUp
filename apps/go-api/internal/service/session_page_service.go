@@ -97,7 +97,7 @@ func (s *SessionPageService) GetPage(
 	resp := domain.SessionPageResponse{
 		CurrentSession:       currentEntry,
 		AvailableSessions:    labels,
-		Matches:              buildSessionDetailRows(currentMatches, currentEntry.DominantCategory),
+		Matches:              buildSessionDetailRows(currentMatches, currentEntry.DominantCategory, req.Locale),
 		SuggestedCompare:     suggestion,
 		CompareEnabled:       compareEnabled,
 		CompareMatches:       []domain.SessionDetailMatchRow{},
@@ -111,7 +111,7 @@ func (s *SessionPageService) GetPage(
 		resp.CompareSession = buildCompareEntryWithObjectives(compareMatches, compareLabel, s.objectiveScores(ctx, compareMatches))
 		if resp.CompareSession != nil {
 			resp.CompareMetrics = buildCompareMetrics(currentMatches, compareMatches)
-			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory)
+			resp.CompareMatches = buildSessionDetailRows(compareMatches, resp.CompareSession.DominantCategory, req.Locale)
 		} else {
 			resp.CompareEnabled = false
 			slog.WarnContext(ctx, "session page: compare session missing after filtering",
@@ -271,15 +271,20 @@ func buildSessionCompareSuggestion(
 func buildSessionDetailRows(
 	rows []legacymatch.StatsMatchRow,
 	dominantCategory *string,
+	locale string,
 ) []domain.SessionDetailMatchRow {
+	// Locale-aware (aligné Home/Explorer) : FR par défaut, EN si locale == "en".
+	// Sans ça les cartes/modes/playlists restaient figés (FR si trad présente,
+	// sinon EN) quelle que soit la locale sélectionnée par l'utilisateur.
+	frPreferred := locale != "en"
 	out := make([]domain.SessionDetailMatchRow, 0, len(rows))
 	for _, row := range rows {
 		mapName := row.MapName
-		if row.MapNameFR != "" {
+		if frPreferred && row.MapNameFR != "" {
 			mapName = row.MapNameFR
 		}
 		playlist := row.PlaylistName
-		if row.PlaylistNameFR != "" {
+		if frPreferred && row.PlaylistNameFR != "" {
 			playlist = row.PlaylistNameFR
 		}
 		var deltaMMR *float64
@@ -291,7 +296,14 @@ func buildSessionDetailRows(
 		if row.PerfScoreComputed != nil {
 			perfTier = int(analysis.PerfTier(*row.PerfScoreComputed))
 		}
-		modeUI := derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
+		// Mode : ResolveModeUI prend la trad FR si fournie ; en EN on passe nil
+		// pour rester sur le sous-mode normalisé EN.
+		var modeUI string
+		if frPreferred {
+			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
+		} else {
+			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, nil))
+		}
 		out = append(out, domain.SessionDetailMatchRow{
 			MatchID:          row.MatchID,
 			StartTime:        row.StartTime,

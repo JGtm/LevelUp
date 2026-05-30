@@ -12,6 +12,9 @@ type SessionPageRequest struct {
 	SessionLabel        *string            `json:"session_label,omitempty"`
 	CompareSessionLabel *string            `json:"compare_session_label,omitempty"`
 	EnableCompare       bool               `json:"enable_compare,omitempty"`
+	// Locale ("fr" | "en") pour la résolution des libellés cartes/modes/playlists
+	// (aligné Home/Explorer). Vide → FR par défaut.
+	Locale string `json:"locale,omitempty"`
 }
 
 // Validate valide les paramètres de SessionPageRequest.

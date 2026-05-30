@@ -274,7 +274,9 @@ func buildCompareEntryWithObjectives(
 	lastRating, ratingType, ratingDelta := lastSkillRating(matches)
 	avgTeamMMR, avgEnemyMMR := avgMMR(matches)
 	participation := buildSessionParticipationProfile(matches, objScores)
-	matchRows := buildSessionDetailRows(matches, dominantCat)
+	// entry.Matches en FR par défaut (le tableau visible passe par resp.Matches,
+	// déjà locale-aware via GetPage).
+	matchRows := buildSessionDetailRows(matches, dominantCat, "fr")
 	best, worst := bestWorstMatchCompare(matches, dominantCat)
 
 	// Agrégats radar : max(killing_spree), somme(headshot_kills), somme(perfect_kills).

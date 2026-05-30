@@ -3151,6 +3151,8 @@ export interface SessionPageRequest {
   session_label?: string | null
   compare_session_label?: string | null
   enable_compare?: boolean
+  /** Locale ("fr" | "en") pour la résolution FR/EN des cartes/modes/playlists. */
+  locale?: string
 }
 
 export interface SessionPageResponse {

@@ -16,6 +16,7 @@ import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
 import { sessionMatchAxisLabel } from './_shared'
+import { log } from './_logger'
 
 interface DamagePoint {
   label: string
@@ -133,6 +134,16 @@ export function SessionDamageComposite({ title, matches, height }: Props) {
 
   const rows = series[0]?.datapoints.length ?? 0
   const computedHeight = height ?? Math.min(560, Math.max(220, rows * 30 + 60))
+
+  // Observabilité : barre dégâts vide alors qu'il y a des matchs = pas de données
+  // de dégâts (vieux matchs). Même cause que le nuage OC/DR vide.
+  if (matches.length > 0 && rows === 0) {
+    log.warn(
+      `damage_missing:${matches[0]?.session_label ?? ''}`,
+      'Barre dégâts vide : aucun match de la session n\'a de dégâts infligés/subis (vieux matchs ?)',
+      { matches: matches.length },
+    )
+  }
 
   return (
     <ChartCard
