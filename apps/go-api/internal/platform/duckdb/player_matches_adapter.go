@@ -10,6 +10,7 @@ package duckdb
 
 import (
 	"context"
+	"log/slog"
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -38,7 +39,38 @@ func (a *PlayerMatchesAdapter) LoadPlayerMatches(
 	_ string,
 	filters port.PlayerMatchFilters,
 ) ([]canonical.PlayerMatchRow, error) {
-	return a.repo.Load(ctx, filters)
+	rows, err := a.repo.Load(ctx, filters)
+	if err != nil {
+		return nil, err
+	}
+	// Enrichissement FR/EN des labels (maps, modes, playlists) depuis
+	// metadata.asset_translations + mode_name_tr. Les colonnes r.*_name_fr de
+	// match_registry sont souvent NULL → sans cet enrichissement, les pages
+	// canonical (Stats, Session, SessionCompare, etc.) affichent les libellés en
+	// EN. Le Home/Synthesis l'appellent déjà via leurs propres repos ; on le
+	// centralise ici pour tous les consommateurs du port. Best-effort : on
+	// n'échoue pas le chargement si l'enrichissement échoue (DB metadata absente…).
+	if err := NewHomeRepo(a.repo.pdb).EnrichCanonicalAssetTranslations(ctx, rows); err != nil {
+		slog.WarnContext(ctx, "PlayerMatchesAdapter: FR asset enrichment failed", "err", err)
+	}
+	return rows, nil
+}
+
+// LobbySizesAtCompletion délègue à PlayerMatchesRepo (capability optionnelle
+// consommée par SessionPageService pour le breakdown de placements). Le slug est
+// ignoré (déjà capturé au constructeur).
+func (a *PlayerMatchesAdapter) LobbySizesAtCompletion(
+	ctx context.Context,
+	_ string,
+	matchIDs []string,
+) (map[string]int, error) {
+	return a.repo.LobbySizesAtCompletion(ctx, matchIDs)
+}
+
+// ObjectiveScores délègue à PlayerMatchesRepo (capability optionnelle consommée
+// par SessionPageService pour les axes Objective/Score du profil de participation).
+func (a *PlayerMatchesAdapter) ObjectiveScores(ctx context.Context, _ string, matchIDs []string) (map[string]int, error) {
+	return a.repo.ObjectiveScores(ctx, matchIDs)
 }
 
 // InvalidatePlayer est un no-op pour cette implémentation per-player. Le cache

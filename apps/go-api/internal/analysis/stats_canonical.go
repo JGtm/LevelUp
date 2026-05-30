@@ -77,6 +77,27 @@ func StatsMatchRowFromCanonical(r canonical.PlayerMatchRow) legacymatch.StatsMat
 		v := float64(*r.Self.DamageTaken)
 		out.DamageTaken = &v
 	}
+	// OC/DR : dérivés LevelUp (rendement offensif / résistance défensive) calculés
+	// depuis dégâts + K/D/A via ComputeCombatYield. Sans ça avg_oc/avg_dr (KPI
+	// Rendement/Résistance) et le nuage OC/DR de la page session restaient vides.
+	if out.DamageDealt != nil || out.DamageTaken != nil {
+		dd, dt := 0.0, 0.0
+		if out.DamageDealt != nil {
+			dd = *out.DamageDealt
+		}
+		if out.DamageTaken != nil {
+			dt = *out.DamageTaken
+		}
+		cy := ComputeCombatYield(out.Kills, out.Assists, dd, dt, out.Deaths)
+		if cy.OffensiveConversion > 0 {
+			v := cy.OffensiveConversion
+			out.OffensiveConversion = &v
+		}
+		if cy.DefensiveResistance > 0 {
+			v := cy.DefensiveResistance
+			out.DefensiveResistance = &v
+		}
+	}
 	switch r.Self.Outcome {
 	case canonical.OutcomeWin:
 		o := domain.OutcomeWin
