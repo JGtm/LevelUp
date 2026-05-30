@@ -95,6 +95,53 @@ func TestStreaksRepo_GetActive_ExcludesBroken(t *testing.T) {
 	}
 }
 
+// TestStreaksRepo_GetActive_BrokenSupersedesActive : valide la sémantique de
+// supersession append-only (fix 2026-05-30). Une version 'broken' insérée après
+// une version 'active' du MÊME id devient la version courante dans streak_latest,
+// donc GetActive (filtre status != broken) renvoie nil — alors que List la voit
+// toujours (en broken).
+func TestStreaksRepo_GetActive_BrokenSupersedesActive(t *testing.T) {
+	repo := newStreaksRepoForTest(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	s := streaks.Streak{
+		ID: "s_super", UserID: "user_42", TitleSlug: "halo_infinite",
+		Type: streaks.StreakTypeDailyPlay, StartedAt: now.AddDate(0, 0, -2),
+		CurrentLength: 4, BestLength: 4,
+		ShieldsAvailable: streaks.MaxShieldsPerMonth, Status: streaks.StreakStatusActive,
+	}
+	if err := repo.Upsert(ctx, s); err != nil {
+		t.Fatalf("Upsert active: %v", err)
+	}
+	if got, err := repo.GetActive(ctx, s.UserID, s.TitleSlug, s.Type); err != nil || got == nil {
+		t.Fatalf("sanity GetActive(active): got=%v err=%v", got, err)
+	}
+
+	// Nouvelle version (même id) en broken → supersede l'active.
+	s.Status = streaks.StreakStatusBroken
+	bAt := now
+	s.BrokenAt = &bAt
+	if err := repo.Upsert(ctx, s); err != nil {
+		t.Fatalf("Upsert broken: %v", err)
+	}
+
+	got, err := repo.GetActive(ctx, s.UserID, s.TitleSlug, s.Type)
+	if err != nil {
+		t.Fatalf("GetActive(after broken): %v", err)
+	}
+	if got != nil {
+		t.Errorf("attendu nil (broken supersede active), got %+v", got)
+	}
+	list, err := repo.List(ctx, s.UserID, s.TitleSlug)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(list) != 1 || list[0].Status != streaks.StreakStatusBroken {
+		t.Errorf("List: attendu 1 streak broken, got len=%d %+v", len(list), list)
+	}
+}
+
 func TestStreaksRepo_UpsertOverwrites(t *testing.T) {
 	repo := newStreaksRepoForTest(t)
 	ctx := context.Background()

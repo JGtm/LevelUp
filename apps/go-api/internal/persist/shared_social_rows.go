@@ -104,6 +104,11 @@ type PlayerRecordAppend struct {
 	Period          string  // "30d" | "90d" | "all_time" (défaut "all_time")
 	Value           float64 // valeur du record
 	AchievedAt      *time.Time
-	AchievedMatchID *string   // UUID du match où le record a été atteint
-	WrittenAt       time.Time // horodatage de l'écriture (utilisé pour vue _latest)
+	AchievedMatchID *string // UUID du match où le record a été atteint
+	// PreviousValue / PreviousAchievedAt : PB précédent (exposé par l'API
+	// /records). Dénormalisés dans chaque row d'historique pour préserver le
+	// comportement de l'ancien UPSERT. Nil si premier PB.
+	PreviousValue      *float64
+	PreviousAchievedAt *time.Time
+	WrittenAt          time.Time // horodatage de l'écriture (utilisé pour vue _latest)
 }

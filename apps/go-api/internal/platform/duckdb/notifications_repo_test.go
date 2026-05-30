@@ -324,9 +324,12 @@ func TestNotificationsRepo_CapAndSweep(t *testing.T) {
 
 // ─── player_records (table d'records pour personal_record) ───────────────
 
-// TestPlayerRecords_UpsertAndLoad : valide qu'on peut écrire/lire un record via
-// le shared_social.duckdb avec scoping xuid. Réutilise newNotifTestDB qui crée
-// la table avec PK (xuid, metric).
+// TestPlayerRecords_UpsertAndLoad : valide l'invariant DB générique de scoping
+// xuid sur la table legacy player_records (écriture/lecture directes en SQL).
+// NB (fix 2026-05-30) : ce test ne couvre PAS le chemin record de production —
+// celui-ci écrit désormais player_records_history et lit player_records_latest
+// (cf. PersonalRecordsRepo + loadPlayerRecord). Il ne valide qu'un invariant de
+// scoping sur la table de base, conservée pour rétrocompat.
 func TestPlayerRecords_UpsertAndLoad(t *testing.T) {
 	dbPath := newNotifTestDB(t)
 	pdb := openNotifPlayerDB(t, dbPath)

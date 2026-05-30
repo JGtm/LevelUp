@@ -280,25 +280,36 @@ func seedPlaylistsCatalog(ctx context.Context, metaDB *sql.DB, csrs []PlayerPlay
 		// + experience='ranked' corrige toute ligne précédemment marquée FALSE
 		// (bug récurrent). is_active/name ne sont pas écrasés ici — la référence
 		// rankedplaylists (seed migration) en est la source de vérité.
+		// Pattern ART-safe UPDATE-then-INSERT (CLAUDE.md) : pas d'ON CONFLICT —
+		// celui-ci déclenche le bug ART DuckDB "Failed to delete all rows from
+		// index" qui invalide toute la metadata.duckdb (cascade : milestone_catalog
+		// devient illisible, fix 2026-05-30). UPDATE = colonnes non-clé ; INSERT si
+		// absente. is_active/name_canonical non écrasés (réf rankedplaylists).
 		res, err := metaDB.ExecContext(ctx, `
-			INSERT INTO playlists_catalog
-			  (title_slug, playlist_asset_id, current_version_id, name_canonical,
-			   experience, is_ranked, is_active, first_seen_at, last_seen_at)
-			VALUES (?, ?, '', ?, 'ranked', TRUE, TRUE, ?, ?)
-			ON CONFLICT (title_slug, playlist_asset_id) DO UPDATE SET
-			  experience = 'ranked',
-			  is_ranked  = TRUE,
-			  last_seen_at = excluded.last_seen_at`,
-			titleSlug, id, name, now, now,
+			UPDATE playlists_catalog
+			SET experience = 'ranked', is_ranked = TRUE, last_seen_at = ?
+			WHERE title_slug = ? AND playlist_asset_id = ?`,
+			now, titleSlug, id,
 		)
 		if err != nil {
-			slog.WarnContext(ctx, "seedPlaylistsCatalog: insert échoué",
+			slog.WarnContext(ctx, "seedPlaylistsCatalog: update échoué",
 				"playlist_id", id, "titleSlug", titleSlug, "err", err)
 			continue
 		}
-		if n, _ := res.RowsAffected(); n > 0 {
-			seeded++
+		if n, _ := res.RowsAffected(); n == 0 {
+			if _, err := metaDB.ExecContext(ctx, `
+				INSERT INTO playlists_catalog
+				  (title_slug, playlist_asset_id, current_version_id, name_canonical,
+				   experience, is_ranked, is_active, first_seen_at, last_seen_at)
+				VALUES (?, ?, '', ?, 'ranked', TRUE, TRUE, ?, ?)`,
+				titleSlug, id, name, now, now,
+			); err != nil {
+				slog.WarnContext(ctx, "seedPlaylistsCatalog: insert échoué",
+					"playlist_id", id, "titleSlug", titleSlug, "err", err)
+				continue
+			}
 		}
+		seeded++
 	}
 	if seeded > 0 {
 		slog.InfoContext(ctx, "sync: playlists catalog enrichi depuis CSR", "new", seeded, "titleSlug", titleSlug)

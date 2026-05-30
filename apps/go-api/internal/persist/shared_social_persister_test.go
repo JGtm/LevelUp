@@ -111,6 +111,68 @@ func setupSocialDB(t *testing.T) (string, *sql.DB) {
 	return path, db
 }
 
+// TestSharedSocialPersister_PlayerRecordsHistory_NominalPath valide le chemin
+// NOMINAL append-only (player_records_history) — distinct du fallback legacy
+// couvert par setupSocialDB. Vérifie le binding des 9 colonnes incluant
+// previous_value/previous_achieved_at ajoutées au fix 2026-05-30, relues via la
+// vue player_records_latest.
+func TestSharedSocialPersister_PlayerRecordsHistory_NominalPath(t *testing.T) {
+	_, db := setupSocialDB(t)
+	for _, ddl := range []string{
+		`CREATE SEQUENCE IF NOT EXISTS player_records_history_id_seq START 1`,
+		`CREATE TABLE player_records_history (
+			id BIGINT PRIMARY KEY DEFAULT nextval('player_records_history_id_seq'),
+			xuid VARCHAR NOT NULL, metric VARCHAR NOT NULL,
+			period VARCHAR NOT NULL DEFAULT 'all_time', value DOUBLE NOT NULL,
+			achieved_at TIMESTAMP, achieved_match_id VARCHAR,
+			previous_value DOUBLE, previous_achieved_at TIMESTAMP,
+			written_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
+		`CREATE OR REPLACE VIEW player_records_latest AS
+			SELECT DISTINCT ON (xuid, metric, period)
+				id, xuid, metric, period, value, achieved_at, achieved_match_id,
+				previous_value, previous_achieved_at, written_at
+			FROM player_records_history
+			ORDER BY xuid, metric, period, written_at DESC, id DESC`,
+	} {
+		if _, err := db.Exec(ddl); err != nil {
+			t.Fatalf("setup _history: %v", err)
+		}
+	}
+
+	p := NewSharedSocialPersister(db)
+	ctx := context.Background()
+	achieved := time.Now().UTC().Add(-time.Hour)
+	prevAt := time.Now().UTC().Add(-48 * time.Hour)
+	prev := 3.0
+	mid := "match-x"
+	if err := p.AppendPlayerRecord(ctx, "xuid-1", "kda_best", "all_time", 4.5, &achieved, &mid, &prev, &prevAt); err != nil {
+		t.Fatalf("AppendPlayerRecord: %v", err)
+	}
+
+	var value, pv sql.NullFloat64
+	var pat sql.NullTime
+	var matchID sql.NullString
+	if err := db.QueryRow(`
+		SELECT value, previous_value, previous_achieved_at, achieved_match_id
+		FROM player_records_latest WHERE xuid = 'xuid-1' AND metric = 'kda_best' AND period = 'all_time'
+	`).Scan(&value, &pv, &pat, &matchID); err != nil {
+		t.Fatalf("read latest: %v", err)
+	}
+	if value.Float64 != 4.5 {
+		t.Errorf("value=%v want 4.5", value.Float64)
+	}
+	if !pv.Valid || pv.Float64 != 3.0 {
+		t.Errorf("previous_value=%v want 3.0", pv)
+	}
+	if !pat.Valid {
+		t.Error("previous_achieved_at should be set")
+	}
+	if matchID.String != "match-x" {
+		t.Errorf("achieved_match_id=%v want match-x", matchID.String)
+	}
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // IsEmpty + nil + no-op
 // ─────────────────────────────────────────────────────────────────────────────
