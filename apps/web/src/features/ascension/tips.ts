@@ -1,44 +1,53 @@
-// cross-feature-allow: la feature ascension expose des tips qui pointent vers
-// les ancres du glossaire help (source unique des définitions).
 /**
- * buildAscensionTips — Source des tips pour le bandeau TipsTicker.
+ * buildAscensionTips — Source des tips de JEU pour le bandeau TipsTicker.
  *
- * Filtre le glossaire help pour récupérer les concepts pertinents à la
- * section Ascension, les convertit en `Tip[]` avec ancre stable vers
- * `/help?tab=glossary#glossary-entry-<slug>`. L'ordre est shuffleé à chaque
- * appel pour varier l'expérience entre les pages.
+ * Les tips sont des conseils de jeu (« comment mieux jouer »), PAS des
+ * définitions de l'app : ils proviennent du manifeste `coachingTipsManifest`
+ * (catégories Combat / Impact / Objectif / Score / Support / Survie). Chaque
+ * tip est rendu sous la forme « Catégorie : conseil » par le TipsTicker.
+ *
+ * Les définitions de concepts de l'app (Série, Palier, Levier LUSR…) restent
+ * accessibles via le glossaire `/help?tab=glossary` — elles ne sont plus
+ * mélangées au ticker, qui est désormais 100 % axé jeu.
+ *
+ * L'ordre est shuffleé à chaque appel et borné à `MAX_TIPS` pour varier
+ * l'expérience entre les pages sans saturer le cycle du ticker.
  */
 import type { Tip } from '@/components/ui/tips-ticker'
-import { getHelpText, type HelpLocale, type GlossaryEntry } from '@/features/help/i18n'
-import { buildGlossaryEntryAnchor } from '@/features/help/GlossaryTab'
+import { coachingTipsManifest } from '@/lib/i18n/generated/coaching_tips'
 
-// Identifiant du bloc à filtrer : ce string n'est PAS un label métier
-// (le titre de section FR et EN sont identiques par choix éditorial).
-const ASCENSION_SECTION_TITLE = 'Ascension & Progression'
+type TipLocale = 'fr' | 'en'
 
-const SHORT_DEF_MAX_LEN = 180
+const TIPS_MANIFEST = coachingTipsManifest as Record<string, { fr: string; en: string }>
 
-export function buildAscensionTips(locale: HelpLocale): Tip[] {
-  const sections = getHelpText(locale).glossary.sections
-  const ascensionSection = sections.find((s) => s.title === ASCENSION_SECTION_TITLE)
-  if (!ascensionSection) return []
-  const tips: Tip[] = ascensionSection.entries.map(entryToTip)
-  return shuffleArray(tips)
-}
+// Clés qui sont de vrais conseils affichables : on exclut `.title` et
+// `.related_signals` (méta-données de catégorie, pas des tips).
+const TIP_KEY_RE =
+  /^coaching_tips\.([a-z]+)\.(ingame|routine|settings|strategic|tactical)\.\d+$/
 
-function entryToTip(entry: GlossaryEntry): Tip {
-  return {
-    id: entry.term,
-    term: entry.term,
-    shortDef: truncateOneLine(entry.definition, SHORT_DEF_MAX_LEN),
-    href: `/help?tab=glossary#${buildGlossaryEntryAnchor(entry.term)}`,
+// Borne le nombre de tips renvoyés par appel (~70 au catalogue) : limite la
+// longueur du cycle du ticker et de la liste statique en reduced-motion.
+const MAX_TIPS = 14
+
+export function buildAscensionTips(locale: TipLocale): Tip[] {
+  const lang: TipLocale = locale === 'en' ? 'en' : 'fr'
+  const tips: Tip[] = []
+  for (const [key, value] of Object.entries(TIPS_MANIFEST)) {
+    const match = key.match(TIP_KEY_RE)
+    if (!match) continue
+    const category = match[1]
+    const titleEntry = TIPS_MANIFEST[`coaching_tips.${category}.title`]
+    tips.push({
+      id: key,
+      term: titleEntry ? titleEntry[lang] : category,
+      shortDef: normalizeWhitespace(value[lang]),
+    })
   }
+  return shuffleArray(tips).slice(0, MAX_TIPS)
 }
 
-function truncateOneLine(text: string, maxLen: number): string {
-  const oneLine = text.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim()
-  if (oneLine.length <= maxLen) return oneLine
-  return oneLine.slice(0, maxLen).trimEnd() + '…'
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
 }
 
 function shuffleArray<T>(arr: T[]): T[] {

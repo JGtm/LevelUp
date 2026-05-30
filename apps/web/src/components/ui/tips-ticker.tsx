@@ -91,7 +91,7 @@ export function TipsTicker({
     <section
       role="region"
       aria-label={ariaLabel}
-      className="relative w-full min-h-[3.25rem]"
+      className="relative w-full min-h-[2.75rem]"
     >
       <div
         style={{
@@ -111,17 +111,19 @@ interface TipPillProps {
 }
 
 function TipPill({ tip, leadingIcon }: TipPillProps) {
+  // Format « Catégorie : conseil » sur un seul flux inline (pas de saut de
+  // ligne entre la catégorie et le conseil), borné à 2 lignes par line-clamp.
   const inner = (
-    <span className="flex flex-col gap-0.5 text-xs">
-      <span className="flex items-center gap-1.5 font-semibold">
-        {leadingIcon && (
-          <span className="shrink-0 text-muted-foreground" aria-hidden="true">
-            {leadingIcon}
-          </span>
-        )}
-        {tip.term}
+    <span className="flex items-start gap-1.5 text-xs leading-snug">
+      {leadingIcon && (
+        <span className="mt-px shrink-0 text-muted-foreground" aria-hidden="true">
+          {leadingIcon}
+        </span>
+      )}
+      <span className="line-clamp-2">
+        <span className="font-semibold text-foreground">{tip.term} : </span>
+        <span className="text-muted-foreground">{tip.shortDef}</span>
       </span>
-      <span className="text-muted-foreground">{tip.shortDef}</span>
     </span>
   )
 

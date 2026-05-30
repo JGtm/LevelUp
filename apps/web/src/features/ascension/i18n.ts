@@ -148,7 +148,7 @@ const FR: AscensionText = {
   tabsAriaLabel: 'Sections Ascension',
   tabProfile: 'Profil & objectifs',
   tabRealisations: 'Réalisations',
-  tipsTickerAriaLabel: 'Astuces — concepts utiles dans cette section',
+  tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   prestigeLayerTitle: 'Prestige — Objectifs et arcs',
   prestigeLayerDescription:
     'Système autonome pour te fixer des objectifs personnels et suivre ta progression. Tu peux l\'utiliser seul, sans coaching.',
@@ -311,7 +311,7 @@ const EN: AscensionText = {
   tabsAriaLabel: 'Ascension sections',
   tabProfile: 'Profile & objectives',
   tabRealisations: 'Achievements',
-  tipsTickerAriaLabel: 'Tips — useful concepts in this section',
+  tipsTickerAriaLabel: 'Gameplay tips to improve',
   prestigeLayerTitle: 'Prestige — Objectives and arcs',
   prestigeLayerDescription:
     'Autonomous system to set personal objectives and track progression. Usable on its own, no coaching required.',
