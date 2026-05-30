@@ -1,6 +1,35 @@
 package halo
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
+
+func TestBuildSeasonServiceRecordURL(t *testing.T) {
+	const host = "https://halostats.svc.halowaypoint.com"
+	tru, fls := true, false
+
+	// Sans filtre ranked : seasonId encodé (slashes → %2F), pas de isRanked.
+	u := buildSeasonServiceRecordURL(host, "JGtm", "Seasons/Season7.json", nil)
+	if !strings.HasPrefix(u, host+"/hi/players/JGtm/Matchmade/servicerecord?") {
+		t.Fatalf("préfixe inattendu: %s", u)
+	}
+	if !strings.Contains(u, "seasonId=Seasons%2FSeason7.json") {
+		t.Errorf("seasonId mal encodé: %s", u)
+	}
+	if strings.Contains(u, "isRanked") {
+		t.Errorf("isRanked ne doit pas apparaître quand nil: %s", u)
+	}
+
+	// Filtre classé.
+	if u := buildSeasonServiceRecordURL(host, "JGtm", "Seasons/Season7.json", &tru); !strings.Contains(u, "isRanked=true") {
+		t.Errorf("isRanked=true attendu: %s", u)
+	}
+	// Filtre non-classé.
+	if u := buildSeasonServiceRecordURL(host, "JGtm", "Seasons/Season7.json", &fls); !strings.Contains(u, "isRanked=false") {
+		t.Errorf("isRanked=false attendu: %s", u)
+	}
+}
 
 func TestParseISO8601DurationSeconds(t *testing.T) {
 	cases := []struct {

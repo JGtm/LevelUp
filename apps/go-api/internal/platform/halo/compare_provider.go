@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 
@@ -39,6 +40,14 @@ type serviceRecordResponse struct {
 			Count  int   `json:"Count"`
 		} `json:"Medals"`
 	} `json:"CoreStats"`
+	// Subqueries (service record lifetime uniquement) : dimensions disponibles
+	// pour re-filtrer le service record. SeasonIds liste les saisons réellement
+	// jouées par le joueur (cf. Grunt SubqueryContainer / SPNKr ServiceRecordSubqueries).
+	Subqueries struct {
+		SeasonIds        []string `json:"SeasonIds"`
+		IsRanked         []bool   `json:"IsRanked"`
+		PlaylistAssetIds []string `json:"PlaylistAssetIds"`
+	} `json:"Subqueries"`
 }
 
 // FetchRemoteStats retourne les stats normalisées d'un joueur Waypoint (sans
@@ -113,7 +122,55 @@ func (p *HaloProvider) FetchServiceRecord(ctx context.Context, gamertag, titleSl
 		medals = append(medals, domain.RemoteMedalCount{NameID: m.NameID, Count: m.Count})
 	}
 
-	return &domain.RemoteServiceRecord{Stats: stats, Medals: medals}, nil
+	return &domain.RemoteServiceRecord{
+		Stats:            stats,
+		Medals:           medals,
+		SeasonIDs:        resp.Subqueries.SeasonIds,
+		PlaylistAssetIDs: resp.Subqueries.PlaylistAssetIds,
+	}, nil
+}
+
+// FetchSeasonServiceRecord retourne le nombre de matchs matchmade complétés par
+// un joueur sur UNE saison donnée, optionnellement filtré classé/non-classé.
+//
+// Endpoint officiel (parité Grunt GetPlayerServiceRecordByXuid / SPNKr
+// get_service_record) : /hi/players/{gamertag}/Matchmade/servicerecord avec les
+// query params seasonId (chemin CMS, ex. "Seasons/Season7.json") et, si fourni,
+// isRanked. Fonctionne pour un xuid/gamertag arbitraire. isRanked=nil → total
+// de la saison (pas de filtre). Retourne (0, nil) si la saison n'a pas de donnée.
+func (p *HaloProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error) {
+	tokens := ctxkeys.HaloTokens(ctx)
+	if tokens == nil {
+		return 0, fmt.Errorf("FetchSeasonServiceRecord: tokens absents du contexte")
+	}
+	if seasonID == "" {
+		return 0, fmt.Errorf("FetchSeasonServiceRecord: seasonID vide")
+	}
+
+	rawURL := buildSeasonServiceRecordURL(defaultStatsHost, gamertag, seasonID, isRanked)
+	body, err := p.doGet(ctx, rawURL, tokens)
+	if err != nil {
+		return 0, fmt.Errorf("FetchSeasonServiceRecord(%s, %s): %w", gamertag, seasonID, err)
+	}
+
+	var resp serviceRecordResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return 0, fmt.Errorf("FetchSeasonServiceRecord(%s, %s) parse: %w", gamertag, seasonID, err)
+	}
+	return resp.MatchesCompleted, nil
+}
+
+// buildSeasonServiceRecordURL construit l'URL du service record filtré par
+// saison (et optionnellement par isRanked). Helper pur (testable sans réseau) :
+// le seasonID contient des slashes ("Seasons/Season7.json") → encodés en query
+// par url.Values. Casing seasonId/isRanked aligné sur le wrapper Grunt.
+func buildSeasonServiceRecordURL(host, gamertag, seasonID string, isRanked *bool) string {
+	q := url.Values{}
+	q.Set("seasonId", seasonID)
+	if isRanked != nil {
+		q.Set("isRanked", strconv.FormatBool(*isRanked))
+	}
+	return fmt.Sprintf("%s/hi/players/%s/Matchmade/servicerecord?%s", host, gamertag, q.Encode())
 }
 
 // iso8601DurationRe capture les composantes jours/heures/minutes/secondes d'une

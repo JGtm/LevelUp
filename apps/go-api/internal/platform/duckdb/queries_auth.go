@@ -1,24 +1,45 @@
 // Package duckdb — queries_auth.go : lecture/écriture du cache auth depuis sync_meta.
 package duckdb
 
-import "context"
+import (
+	"context"
+	"database/sql"
+	"errors"
+)
 
 // WriteOAuthRefreshToken persiste le refresh_token OAuth v2 dans sync_meta
-// (UPSERT sur key='oauth_refresh_token'). À appeler après chaque OAuth refresh
-// réussi pour rotater le token (Microsoft tourne le refresh_token à chaque
-// usage : sans persistance, le tick suivant utilise un RT révoqué et échoue).
+// (clé 'oauth_refresh_token'). À appeler après chaque OAuth refresh réussi pour
+// rotater le token (Microsoft tourne le refresh_token à chaque usage : sans
+// persistance, le tick suivant utilise un RT révoqué et échoue).
 //
-// Le db doit être ouvert en mode read-write (sinon l'INSERT échoue).
+// Pattern SELECT-then-UPDATE-or-INSERT (pas d'ON CONFLICT) : certaines player DB
+// legacy créées par l'ancien sync Python ont un sync_meta SANS contrainte
+// PRIMARY KEY/UNIQUE sur `key`, ce qui faisait échouer `ON CONFLICT(key)` avec
+// « The specified columns as conflict target are not referenced by a
+// UNIQUE/PRIMARY KEY CONSTRAINT » (cf. CLAUDE.md, règle écritures legacy auth).
+// Ce write DuckDB est un double-write de compat (ADR 0023) : la source unique
+// reste le MultiUserTokenStore, écrit en premier par le callback onRotated.
+//
+// Le db doit être ouvert en mode read-write.
 func WriteOAuthRefreshToken(ctx context.Context, db *DB, token string) error {
 	if token == "" {
 		return nil
 	}
-	_, err := db.Exec(ctx,
-		`INSERT INTO sync_meta(key, value) VALUES ('oauth_refresh_token', ?)
-		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
-		token,
-	)
-	return err
+	var existing string
+	err := db.QueryRow(ctx,
+		"SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'").Scan(&existing)
+	switch {
+	case err == nil:
+		_, err = db.Exec(ctx,
+			"UPDATE sync_meta SET value = ? WHERE key = 'oauth_refresh_token'", token)
+		return err
+	case errors.Is(err, sql.ErrNoRows):
+		_, err = db.Exec(ctx,
+			"INSERT INTO sync_meta(key, value) VALUES ('oauth_refresh_token', ?)", token)
+		return err
+	default:
+		return err
+	}
 }
 
 // ReadMSALCacheJSON lit le cache MSAL sérialisé depuis sync_meta du joueur.

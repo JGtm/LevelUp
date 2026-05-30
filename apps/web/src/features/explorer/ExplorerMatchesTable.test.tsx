@@ -108,4 +108,11 @@ describe('ExplorerMatchesTable — defaultPageSize + expander', () => {
     const tbody = screen.getByTestId('explorer-matches-table').querySelector('tbody')
     expect(tbody?.querySelectorAll('tr').length).toBe(8)
   })
+
+  it('sans extraColumns → aucune colonne « Δ rang » (réservée à la vue session)', () => {
+    renderWithProviders(<ExplorerMatchesTable rows={makeRows(2)} playerSlug="me" />)
+    expect(screen.getByTestId('explorer-matches-table')).toBeInTheDocument()
+    expect(screen.queryByText('Δ rang')).not.toBeInTheDocument()
+    expect(screen.queryByText('Δ rank')).not.toBeInTheDocument()
+  })
 })

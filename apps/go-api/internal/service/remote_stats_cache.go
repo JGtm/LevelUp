@@ -48,6 +48,14 @@ type remoteStatsEntry struct {
 	fetchedAt time.Time
 }
 
+// seasonStatsEntry : cache d'un compte de matchs par (gamertag, saison, filtre
+// ranked). Une saison passée ne bouge jamais ; la saison courante bouge entre
+// deux matchs → même TTL court que les stats carrière (acceptable).
+type seasonStatsEntry struct {
+	matches   int
+	fetchedAt time.Time
+}
+
 // CachedStatsProvider décore un port.ServiceRecordProvider d'un cache TTL
 // process-level + singleflight. Thread-safe. Instancié une fois (singleton) et
 // partagé entre toutes les requêtes (Explorer, Compare). Implémente
@@ -59,12 +67,14 @@ type remoteStatsEntry struct {
 // simultanément (cf. même hypothèse que CareerLiveCache). Ajouter une LRU si
 // le besoin se présente.
 type CachedStatsProvider struct {
-	inner port.ServiceRecordProvider
-	ttl   time.Duration
-	now   func() time.Time
+	inner       port.ServiceRecordProvider
+	seasonInner port.SeasonStatsProvider // non-nil si inner implémente aussi le fetch par saison
+	ttl         time.Duration
+	now         func() time.Time
 
-	mu      sync.RWMutex
-	entries map[string]remoteStatsEntry
+	mu            sync.RWMutex
+	entries       map[string]remoteStatsEntry
+	seasonEntries map[string]seasonStatsEntry
 
 	sf singleflight.Group
 }
@@ -78,12 +88,20 @@ func NewCachedStatsProvider(inner port.ServiceRecordProvider, ttl time.Duration,
 	if now == nil {
 		now = time.Now
 	}
-	return &CachedStatsProvider{
-		inner:   inner,
-		ttl:     ttl,
-		now:     now,
-		entries: make(map[string]remoteStatsEntry),
+	c := &CachedStatsProvider{
+		inner:         inner,
+		ttl:           ttl,
+		now:           now,
+		entries:       make(map[string]remoteStatsEntry),
+		seasonEntries: make(map[string]seasonStatsEntry),
 	}
+	// inner implémente-t-il aussi le fetch par saison ? (HaloProvider oui ;
+	// un mock minimal peut ne pas l'implémenter → FetchSeasonServiceRecord
+	// retournera alors (0, nil), dégradation gracieuse.)
+	if ss, ok := inner.(port.SeasonStatsProvider); ok {
+		c.seasonInner = ss
+	}
+	return c
 }
 
 // FetchServiceRecord sert depuis le cache si l'entrée est fraîche, sinon délègue
@@ -156,4 +174,62 @@ func (c *CachedStatsProvider) put(key string, rec *domain.RemoteServiceRecord) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.entries[key] = remoteStatsEntry{record: rec, fetchedAt: c.now()}
+}
+
+// FetchSeasonServiceRecord sert depuis le cache si frais, sinon délègue à inner
+// (dédupliqué par singleflight) et mémorise. Clé = (gamertag | seasonID | filtre
+// ranked). Implémente port.SeasonStatsProvider. (0, nil) si inner ne supporte
+// pas le fetch par saison (dégradation gracieuse).
+func (c *CachedStatsProvider) FetchSeasonServiceRecord(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error) {
+	if c.seasonInner == nil {
+		return 0, nil
+	}
+	rk := "all"
+	if isRanked != nil {
+		if *isRanked {
+			rk = "ranked"
+		} else {
+			rk = "social"
+		}
+	}
+	key := "season|" + strings.ToLower(strings.TrimSpace(gamertag)) + "|" + seasonID + "|" + rk
+
+	if v, ok := c.getSeason(key); ok {
+		remoteStatsCacheHit.Add(1)
+		return v, nil
+	}
+	v, err, _ := c.sf.Do(key, func() (any, error) {
+		if cached, ok := c.getSeason(key); ok {
+			remoteStatsCacheHit.Add(1)
+			return cached, nil
+		}
+		remoteStatsCacheMiss.Add(1)
+		n, fErr := c.seasonInner.FetchSeasonServiceRecord(ctx, gamertag, seasonID, isRanked)
+		if fErr != nil {
+			remoteStatsFetchError.Add(1)
+			return 0, fErr
+		}
+		c.putSeason(key, n)
+		return n, nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return v.(int), nil
+}
+
+func (c *CachedStatsProvider) getSeason(key string) (int, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	e, ok := c.seasonEntries[key]
+	if !ok || c.now().Sub(e.fetchedAt) > c.ttl {
+		return 0, false
+	}
+	return e.matches, true
+}
+
+func (c *CachedStatsProvider) putSeason(key string, n int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.seasonEntries[key] = seasonStatsEntry{matches: n, fetchedAt: c.now()}
 }

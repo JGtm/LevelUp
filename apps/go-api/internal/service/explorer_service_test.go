@@ -295,6 +295,20 @@ func (m *mockRemoteStatsProvider) FetchServiceRecord(_ context.Context, _, _ str
 	return &domain.RemoteServiceRecord{Stats: *m.stats, Medals: m.medals}, nil
 }
 
+// mockLiveIdentity simule le fetch live d'identité (FetchLiveIdentity) d'un xuid
+// tiers — cas Explorer d'une cible NON suivie localement (appearance via la vue
+// publique). `called` vérifie que le fallback live a bien été emprunté.
+type mockLiveIdentity struct {
+	identity *domain.HomeSpartanIdentityRow
+	err      error
+	called   bool
+}
+
+func (m *mockLiveIdentity) FetchLiveIdentity(_ context.Context, _ string) (*domain.HomeSpartanIdentityRow, error) {
+	m.called = true
+	return m.identity, m.err
+}
+
 // ctxAuth construit un ctx avec ou sans tokens Halo.
 func ctxAuth(hasAuth bool, userXUID string) context.Context {
 	ctx := context.Background()
@@ -484,5 +498,90 @@ func TestExplorerService_TargetProfile_NoProviders(t *testing.T) {
 	}
 	if tp.SampleStats == nil || tp.SampleStats.Kills != 7 {
 		t.Errorf("SampleStats attendues kills=7 sans providers, got %+v", tp.SampleStats)
+	}
+}
+
+// TestExplorerService_TargetProfile_OpponentLiveIdentity couvre le chemin #3 :
+// cible NON suivie localement (LocalIdentity → nil) → fallback live
+// FetchLiveIdentity (appearance servie via la vue publique). Vérifie l'ordre
+// (local tenté d'abord), le passage en live, et le fallback bannière → backdrop
+// (la vue publique n'expose pas de nameplate dédié).
+func TestExplorerService_TargetProfile_OpponentLiveIdentity(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "opp-xuid", matches: matches}
+
+	local := &mockLocalIdentityResolver{identity: nil} // cible non suivie localement
+	sid := "MELG"
+	backdrop := "/api/v1/assets/spartan/backdrop/halo_infinite/x.png"
+	live := &mockLiveIdentity{
+		identity: &domain.HomeSpartanIdentityRow{SpartanID: &sid, BackdropImageURL: &backdrop},
+	}
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			LocalIdentity: local, LiveIdentity: live, TitleSlug: "halo_infinite",
+		})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil || tp.Identity == nil {
+		t.Fatalf("identité live attendue pour un adversaire, got %+v", tp)
+	}
+	if !local.called {
+		t.Error("LocalSpartanIdentity devait être tenté en premier")
+	}
+	if !live.called {
+		t.Error("FetchLiveIdentity devait être appelé (cible non locale)")
+	}
+	if tp.Identity.SpartanID == nil || *tp.Identity.SpartanID != "MELG" {
+		t.Errorf("SpartanID live attendu MELG, got %+v", tp.Identity.SpartanID)
+	}
+	if tp.Identity.BannerImageURL == nil || *tp.Identity.BannerImageURL != backdrop {
+		t.Errorf("BannerImageURL doit retomber sur le backdrop (vue publique sans nameplate), got %+v",
+			tp.Identity.BannerImageURL)
+	}
+}
+
+// TestExplorerService_TargetProfile_LiveIdentityError : si le fetch live échoue,
+// l'identité reste nil (best-effort) sans casser le reste du profil cible.
+func TestExplorerService_TargetProfile_LiveIdentityError(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{
+		xuid:         "opp-xuid",
+		matches:      matches,
+		participants: &domain.ParticipantStatsAggregate{Kills: 3, Deaths: 1},
+	}
+	local := &mockLocalIdentityResolver{identity: nil}
+	live := &mockLiveIdentity{err: errors.New("halo down")}
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			LocalIdentity: local, LiveIdentity: live, TitleSlug: "halo_infinite",
+		})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches ne doit pas échouer sur erreur live: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil {
+		t.Fatal("TargetProfile attendu non-nil malgré l'échec live")
+	}
+	if tp.Identity != nil {
+		t.Errorf("Identity attendue nil sur échec live, got %+v", tp.Identity)
+	}
+	if tp.SampleStats == nil || tp.SampleStats.Kills != 3 {
+		t.Errorf("SampleStats doivent rester calculées malgré l'échec live, got %+v", tp.SampleStats)
 	}
 }

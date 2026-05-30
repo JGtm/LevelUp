@@ -84,6 +84,18 @@ interface Props {
    *  PAGE_SIZE, un bouton "Voir tout" est affiché pour passer au mode plein
    *  (PAGE_SIZE). Mode Joueur Explorer utilise 10 pour réduire la densité. */
   defaultPageSize?: number
+  /** Visibilité des colonnes (état TanStack). Clé = id de colonne (accessorKey,
+   *  ou 'open' pour la 1re colonne), valeur `false` = masquée. Permet à un
+   *  consommateur (ex. vue comparaison session en panneaux 50%) de réduire le set
+   *  de colonnes SANS dupliquer le tableau ni changer le style. Défaut : toutes
+   *  visibles (aucun impact sur la page Explorer). */
+  columnVisibility?: Record<string, boolean>
+  /** Colonnes SUPPLÉMENTAIRES injectées par le consommateur, insérées juste après
+   *  la colonne d'id `extraColumnsAfterId` (ou en fin si absent/non trouvé). Permet
+   *  à la vue session d'ajouter une colonne « Δ rang » SANS l'exposer sur la page
+   *  Explorer (qui ne passe pas cette prop). Défaut : aucune. */
+  extraColumns?: ColumnDef<ExplorerMatchRow>[]
+  extraColumnsAfterId?: string
 }
 
 function fmtMmr(v: number | null | undefined): string {
@@ -166,7 +178,7 @@ function truncateName(s: string | null | undefined): string {
   return s.slice(0, NAME_TRUNCATE_MAX - 1) + '...'
 }
 
-export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize }: Props) {
+export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDescriptor, filterSpecOverride, alwaysShowPagination, defaultPageSize, columnVisibility, extraColumns, extraColumnsAfterId }: Props) {
   const locale = useAppShellStore((s) => s.locale)
   const t = (key: ExplorerManifestKey, values?: Record<string, string | number>) =>
     formatMessage(explorerManifest, key, locale, values)
@@ -210,7 +222,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     dnf: t('explorer.matches.outcome_dnf'),
   }
 
-  const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
+  const baseColumns = useMemo<ColumnDef<ExplorerMatchRow>[]>(
     () => [
       {
         id: 'open',
@@ -498,6 +510,19 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
     [intlLocale, mapAssets, playlistAssets, locale, goToMatch],
   )
 
+  // Insère les colonnes injectées par le consommateur après `extraColumnsAfterId`
+  // (ou en fin). L'Explorer ne passe rien → `columns === baseColumns`.
+  const columns = useMemo<ColumnDef<ExplorerMatchRow>[]>(() => {
+    if (!extraColumns?.length) return baseColumns
+    const colId = (c: ColumnDef<ExplorerMatchRow>) =>
+      (c as { id?: string }).id ?? (c as { accessorKey?: string }).accessorKey
+    const idx = extraColumnsAfterId
+      ? baseColumns.findIndex((c) => colId(c) === extraColumnsAfterId)
+      : -1
+    if (idx === -1) return [...baseColumns, ...extraColumns]
+    return [...baseColumns.slice(0, idx + 1), ...extraColumns, ...baseColumns.slice(idx + 1)]
+  }, [baseColumns, extraColumns, extraColumnsAfterId])
+
   // defaultPageSize=10 (mode Joueur Explorer) → l'utilisateur démarre à 10
   // lignes avec un bouton "Voir tout" qui passe au mode 20 (PAGE_SIZE plein).
   // Sans defaultPageSize → comportement legacy (PAGE_SIZE=20 d'emblée).
@@ -516,7 +541,9 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
   const table = useReactTable<ExplorerMatchRow>({
     data: rows,
     columns,
-    state: { pagination },
+    // columnVisibility piloté par le parent (prop) : pas de toggle interne donc pas
+    // de onColumnVisibilityChange. Défaut {} = toutes visibles.
+    state: { pagination, columnVisibility: columnVisibility ?? {} },
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -536,7 +563,7 @@ export function ExplorerMatchesTable({ rows, playerSlug, teamBanner, contextDesc
 
   // Bannière d'équipe (variant ally/enemy) : couleur pleine (flat) sur token
   // team-ally/team-enemy, configurable via réglages accessibilité.
-  const bannerColCount = table.getAllLeafColumns().length
+  const bannerColCount = table.getVisibleLeafColumns().length
   const bannerStyle = teamBanner
     ? (() => {
         const teamColor = tokenCssVar(teamBanner.variant === 'ally' ? 'team-ally' : 'team-enemy')
