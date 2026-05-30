@@ -1,9 +1,9 @@
 /**
- * Tests ExplorerTargetProfileCard — couverture des 4 états :
- *  - tout dispo (identity + career + sample + privacy=none)
- *  - profil privé (privacy=full → bannière, career absent)
+ * Tests ExplorerTargetProfileCard (logique local-first, sans privacy) :
+ *  - tout dispo (identity + career + sample)
  *  - no-tokens (auth_available=false → hint affiché, career masquée)
  *  - sample vide (sample_size=0 → section sample masquée)
+ *  - identity=null → placeholder gamertag
  */
 import { describe, expect, it } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -109,7 +109,8 @@ describe('ExplorerTargetProfileCard', () => {
     expect(screen.queryByTestId('explorer-target-no-auth-hint')).not.toBeInTheDocument()
   })
 
-  it('affiche le PrivacyBanner pour un profil privé', () => {
+  it('ne rend jamais de bannière privacy (supprimée de l\'Explorer)', () => {
+    // Même si l'API renvoyait une privacy (legacy), la carte ne la rend plus.
     const profile: ExplorerTargetProfile = {
       identity: IDENTITY_FULL,
       career_stats: null,
@@ -119,10 +120,8 @@ describe('ExplorerTargetProfileCard', () => {
     }
     renderWithProviders(<ExplorerTargetProfileCard profile={profile} gamertag="PrivatePlayer" />)
 
-    expect(screen.getByRole('alert')).toBeInTheDocument()
-    expect(screen.getByText('Profil privé.')).toBeInTheDocument()
-    // Career absent → pas de section
-    expect(screen.queryByText(/Carrière complète/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('Profil privé.')).not.toBeInTheDocument()
     // Identité reste affichée
     expect(screen.getByText('PrivatePlayer')).toBeInTheDocument()
   })
@@ -173,7 +172,7 @@ describe('ExplorerTargetProfileCard', () => {
 
     // Gamertag reste affiché
     expect(screen.getByText('UnknownPlayer')).toBeInTheDocument()
-    // Message "Identité Spartan indisponible"
-    expect(screen.getByText(/Identité Spartan indisponible/i)).toBeInTheDocument()
+    // Message identité non disponible (reformulé, non alarmant)
+    expect(screen.getByText(/Identité Spartan non disponible/i)).toBeInTheDocument()
   })
 })

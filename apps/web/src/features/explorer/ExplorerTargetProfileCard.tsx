@@ -2,18 +2,18 @@
  * ExplorerTargetProfileCard — encart "Profil joueur cible" en haut des
  * résultats Explorer mode Joueur.
  *
- * Compose 4 sous-blocs :
- *  - ExplorerTargetIdentityBanner (bandeau hero)
- *  - PrivacyBanner conditionnel (si privacy_warning != none)
+ * Logique local-first : l'identité vient de la DB locale de la cible si elle est
+ * un joueur suivi (sinon gamertag seul) ; la carrière agrégée est le seul fetch
+ * live. Aucune privacy (supprimée — bruit sans valeur). Sous-blocs :
+ *  - ExplorerTargetIdentityBanner (bandeau hero ; gamertag seul si non suivi)
  *  - ExplorerTargetCareerStats (si career_stats dispo)
  *  - ExplorerTargetSampleStats (si sample_stats dispo et sample_size > 0)
  *
  * Cas no-tokens (auth_available=false) :
- *  - Identity peut venir de la DB locale ou placeholder
+ *  - Identity locale toujours résolue (indépendante des tokens)
  *  - CareerStats masquée + hint "Connexion Halo requise"
- *  - SampleStats reste affiché (calcul local indépendant des tokens)
+ *  - SampleStats reste affiché (calcul local)
  */
-import { PrivacyBanner } from '@/components/ui/privacy-banner'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
@@ -35,8 +35,6 @@ export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetP
   const identity = profile.identity ?? null
   const careerStats = profile.career_stats ?? null
   const sampleStats = profile.sample_stats ?? null
-  const privacyWarning = profile.privacy_warning ?? null
-  const showPrivacyBanner = privacyWarning != null && privacyWarning.level !== 'none'
   const showNoAuthHint = !profile.auth_available && careerStats == null
   const showSample = sampleStats != null && sampleStats.sample_size > 0
 
@@ -48,8 +46,6 @@ export function ExplorerTargetProfileCard({ profile, gamertag }: ExplorerTargetP
         identityUnavailableLabel={t('explorer.target_profile.identity_unknown_title')}
         identityUnavailableDescription={t('explorer.target_profile.identity_unknown_description')}
       />
-
-      {showPrivacyBanner && <PrivacyBanner warning={privacyWarning} />}
 
       {careerStats != null && <ExplorerTargetCareerStats careerStats={careerStats} />}
 

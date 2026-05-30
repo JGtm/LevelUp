@@ -22,26 +22,34 @@ import (
 // outcomeWin est le code de victoire (Halo Infinite outcome = 2).
 const outcomeWin = 2
 
-// explorerTargetLiveBudget plafonne la durée des fetchs live de l'encart
-// "Profil joueur cible" (identité live, stats carrière remote, privacy). Au-delà,
-// le contexte est annulé : les sous-sections non prêtes restent nil et la réponse
-// part avec ce qui est disponible (identité DB + sample stats locales). Même
-// philosophie que CareerLiveBudget côté home — la page ne doit jamais bloquer
-// 10s+ sur un fetch Halo lent. Un peu plus généreux car la carrière est le contenu
-// principal de cet encart. Le calcul local (sample stats) n'est PAS borné par ce
-// budget. Cf. plan explorer-target-profile-auth (volet C).
+// explorerTargetLiveBudget plafonne la durée du SEUL fetch live de l'encart
+// "Profil joueur cible" : les stats carrière remote (servicerecord). Au-delà,
+// le contexte est annulé : la carrière reste nil et la réponse part avec ce qui
+// est disponible (identité locale + sample stats locales). Même philosophie que
+// CareerLiveBudget côté home — la page ne doit jamais bloquer 10s+ sur un fetch
+// Halo lent. L'identité (local-only) et le sample (calcul local) ne sont PAS
+// bornés par ce budget.
 const explorerTargetLiveBudget = 3 * time.Second
 
-// ExplorerTargetIdentityProvider abstrait le fetch de l'identité Spartan d'un
-// xuid arbitraire (live cache+merge ou DB-only). Implémenté en production par
-// *CareerLiveService — voir career_live_service.go.
+// ExplorerLocalIdentityResolver résout l'identité Spartan d'une cible STRICTEMENT
+// depuis les données locales : si la cible est un joueur suivi (db_profiles), on
+// lit son identité depuis SA propre player DB ; sinon nil. Aucun fetch live Halo
+// (l'identité d'un adversaire n'est de toute façon jamais publiée).
 //
 // Interface locale (et non port.go) car le contrat est spécifique au flow
-// Explorer (xuid tiers, no-tokens fallback) et n'a pas vocation à être
-// implémenté ailleurs que par CareerLiveService.
-type ExplorerTargetIdentityProvider interface {
-	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
-	GetSpartanIdentityFromDBOnly(ctx context.Context, xuid string) *domain.HomeSpartanIdentityRow
+// Explorer. Implémentée en production par une closure câblée dans le registry
+// (resolveByGT + HomeRepo.LoadSpartanIdentity).
+type ExplorerLocalIdentityResolver interface {
+	LocalSpartanIdentity(ctx context.Context, targetGamertag string) *domain.HomeSpartanIdentityRow
+}
+
+// LocalIdentityResolverFunc adapte une closure en ExplorerLocalIdentityResolver
+// (le registry câble la résolution resolveByGT + HomeRepo.LoadSpartanIdentity).
+type LocalIdentityResolverFunc func(ctx context.Context, targetGamertag string) *domain.HomeSpartanIdentityRow
+
+// LocalSpartanIdentity implémente ExplorerLocalIdentityResolver.
+func (f LocalIdentityResolverFunc) LocalSpartanIdentity(ctx context.Context, targetGamertag string) *domain.HomeSpartanIdentityRow {
+	return f(ctx, targetGamertag)
 }
 
 // ExplorerService orchestre les requêtes de l'Explorer.
@@ -55,14 +63,15 @@ type ExplorerService struct {
 	// Explorer (joueur commun + plage temporelle).
 	dataAdapter games.TitleDataAdapter
 
-	// Providers optionnels pour l'encart "Profil joueur cible". Quand l'un
-	// d'eux est nil, la goroutine correspondante est skip et le champ
-	// correspondant de ExplorerTargetProfile reste nil. Le sample_stats
-	// (calcul local) reste toujours produit même sans providers.
-	identityProvider ExplorerTargetIdentityProvider
-	remoteStats      port.PlayerStatsProvider
-	privacyProvider  port.PrivacyProvider
-	titleSlug        string
+	// Dépendances optionnelles pour l'encart "Profil joueur cible" :
+	//   - localIdentity : identité Spartan local-only (nil si cible non suivie)
+	//   - remoteStats   : stats carrière agrégées (servicerecord live, caché)
+	// Quand une dépendance est nil, la sous-section correspondante reste nil.
+	// Le sample_stats (calcul local) reste toujours produit. Aucune privacy
+	// n'est fetchée pour l'Explorer (bruit sans valeur — décision produit).
+	localIdentity ExplorerLocalIdentityResolver
+	remoteStats   port.PlayerStatsProvider
+	titleSlug     string
 }
 
 // NewExplorerService crée un ExplorerService.
@@ -78,19 +87,17 @@ func (s *ExplorerService) WithDataAdapter(a games.TitleDataAdapter) *ExplorerSer
 	return s
 }
 
-// WithTargetProfileProviders injecte les providers nécessaires à l'encart
-// "Profil joueur cible" (identité Spartan live + stats carrière remote +
-// privacy). Retourne le service pour chainer. Tous les providers sont
-// optionnels — un nil skip la sous-section correspondante.
+// WithTargetProfileProviders injecte les dépendances de l'encart "Profil joueur
+// cible" : le résolveur d'identité locale + le provider de stats carrière remote.
+// Retourne le service pour chainer. Les deux sont optionnels — un nil laisse la
+// sous-section correspondante à nil.
 func (s *ExplorerService) WithTargetProfileProviders(
-	identity ExplorerTargetIdentityProvider,
+	localIdentity ExplorerLocalIdentityResolver,
 	remote port.PlayerStatsProvider,
-	privacy port.PrivacyProvider,
 	titleSlug string,
 ) *ExplorerService {
-	s.identityProvider = identity
+	s.localIdentity = localIdentity
 	s.remoteStats = remote
-	s.privacyProvider = privacy
 	s.titleSlug = titleSlug
 	return s
 }
@@ -193,17 +200,16 @@ func (s *ExplorerService) GetCommonMatches(
 	}, nil
 }
 
-// buildTargetProfile orchestre les 4 sources de l'encart "Profil joueur cible".
+// buildTargetProfile orchestre les 3 sources de l'encart "Profil joueur cible" :
+//   - identité Spartan : LOCAL-only (DB du joueur cible s'il est suivi, nil sinon)
+//   - carrière agrégée : fetch live servicerecord (seul appel réseau, borné +
+//     caché) — fonctionne pour tout joueur, gated sur la présence de tokens
+//   - sample stats     : agrégat local sur les matchs communs
 //
-// Détection précoce du cas no-tokens (user connecté sans OAuth Halo) : on
-// court-circuite les 3 goroutines live (identity remote, career_stats, privacy)
-// et on bascule l'identité sur DB locale. Le sample_stats reste calculé depuis
-// DuckDB indépendamment des tokens.
-//
-// Tous les fetchs sont best-effort : une goroutine qui retourne nil ne
-// bloque pas les autres. Le frontend rend les sections disponibles, masque
-// celles à nil, et affiche un hint "Connexion Halo requise" si
-// AuthAvailable=false.
+// Aucune privacy n'est fetchée (bruit sans valeur). Tout est best-effort : une
+// source qui échoue/rend nil ne bloque pas les autres (le front masque les
+// sections nil). AuthAvailable reflète la présence de tokens (la carrière en
+// dépend) et pilote le hint front.
 func (s *ExplorerService) buildTargetProfile(
 	ctx context.Context,
 	targetXUID, targetGamertag string,
@@ -215,66 +221,58 @@ func (s *ExplorerService) buildTargetProfile(
 	var (
 		identity    *domain.HomeSpartanIdentityRow
 		careerStats *domain.NormalizedPlayerStats
-		privacy     *domain.MatchPrivacyWarning
 		sampleStats *domain.ExplorerTargetSampleStats
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
-	// Budget de latence sur les fetchs live (identité/carrière/privacy). Le
-	// calcul local (sample stats) reste sur gctx, NON borné par ce budget.
+	// Budget de latence sur le SEUL fetch live (carrière). Identité et sample
+	// sont 100% locaux → sur gctx, NON bornés par ce budget.
 	liveCtx, cancelLive := context.WithTimeout(gctx, explorerTargetLiveBudget)
 	defer cancelLive()
 
-	// 4 sources best-effort en parallèle : une source qui échoue/skip rend nil
-	// sans bloquer les autres (le front masque les sections nil).
-	g.Go(func() error { identity = s.fetchTargetIdentity(liveCtx, targetXUID, hasAuth); return nil })
+	g.Go(func() error { identity = s.fetchTargetIdentity(gctx, targetGamertag); return nil })
 	g.Go(func() error { careerStats = s.fetchTargetCareer(liveCtx, targetGamertag, hasAuth); return nil })
-	g.Go(func() error { privacy = s.fetchTargetPrivacy(liveCtx, targetXUID, hasAuth); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
 
 	_ = g.Wait()
 
-	// Observabilité : si le budget live a expiré, on a servi une réponse
-	// dégradée (sous-sections live potentiellement nil). On le trace pour
-	// distinguer "Halo lent → dégradation gracieuse" d'une vraie erreur.
-	if hasAuth && liveCtx.Err() == context.DeadlineExceeded {
+	// Observabilité : si le budget carrière a expiré, on a servi une réponse
+	// dégradée (carrière nil). On le trace pour distinguer "Halo lent →
+	// dégradation gracieuse" d'une vraie erreur.
+	if hasAuth && careerStats == nil && liveCtx.Err() == context.DeadlineExceeded {
 		slog.WarnContext(ctx, "explorer_target_live_budget_exceeded",
-			"xuid", targetXUID,
-			"budget", explorerTargetLiveBudget.String(),
-			"career_served", careerStats != nil,
-			"identity_served", identity != nil)
+			"gamertag", targetGamertag,
+			"budget", explorerTargetLiveBudget.String())
 	}
 
-	// On émet toujours un TargetProfile (même si toutes les sous-sections
-	// sont nil) parce que AuthAvailable porte une info utile au front.
 	return &domain.ExplorerTargetProfile{
-		Identity:       identity,
-		CareerStats:    careerStats,
-		SampleStats:    sampleStats,
-		PrivacyWarning: privacy,
-		AuthAvailable:  hasAuth,
+		Identity:      identity,
+		CareerStats:   careerStats,
+		SampleStats:   sampleStats,
+		AuthAvailable: hasAuth,
 	}
 }
 
-// fetchTargetIdentity charge l'identité Spartan du target : live si auth dispo,
-// DB locale sinon. Retourne nil si pas de provider ou en cas d'erreur (logguée).
-func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetXUID string, hasAuth bool) *domain.HomeSpartanIdentityRow {
-	if s.identityProvider == nil {
+// fetchTargetIdentity résout l'identité Spartan du target STRICTEMENT en local :
+// si la cible est un joueur suivi, son identité (rang/emblem/peaks) est lue
+// depuis SA propre DB ; sinon nil (un adversaire n'a pas d'identité publiée).
+// Aucun fetch live.
+func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetGamertag string) *domain.HomeSpartanIdentityRow {
+	if s.localIdentity == nil {
 		return nil
 	}
-	if !hasAuth {
-		return s.identityProvider.GetSpartanIdentityFromDBOnly(ctx, targetXUID)
-	}
-	id, err := s.identityProvider.GetSpartanIdentityFor(ctx, targetXUID)
-	if err != nil {
-		slog.WarnContext(ctx, "explorer_target_identity_failed", "xuid", targetXUID, "err", err)
-		return nil
+	id := s.localIdentity.LocalSpartanIdentity(ctx, targetGamertag)
+	if id == nil {
+		// Cas normal pour un adversaire (non suivi localement) : pas d'identité.
+		// Tracé en debug pour distinguer "non suivi" d'une vraie absence de data.
+		slog.DebugContext(ctx, "explorer_target_identity_not_local", "gamertag", targetGamertag)
 	}
 	return id
 }
 
-// fetchTargetCareer fetch les stats carrière remote du target (via le provider
-// décoré d'un cache). Skip silencieusement sans auth ; nil en cas d'erreur.
+// fetchTargetCareer fetch les stats carrière remote du target (servicerecord via
+// le provider décoré d'un cache). Skip silencieusement sans auth ; nil en cas
+// d'erreur.
 func (s *ExplorerService) fetchTargetCareer(ctx context.Context, targetGamertag string, hasAuth bool) *domain.NormalizedPlayerStats {
 	if s.remoteStats == nil {
 		return nil
@@ -290,23 +288,6 @@ func (s *ExplorerService) fetchTargetCareer(ctx context.Context, targetGamertag 
 		return nil
 	}
 	return stats
-}
-
-// fetchTargetPrivacy interroge la privacy du target. Skip sans auth ; nil en
-// cas d'erreur (logguée).
-func (s *ExplorerService) fetchTargetPrivacy(ctx context.Context, targetXUID string, hasAuth bool) *domain.MatchPrivacyWarning {
-	if s.privacyProvider == nil || !hasAuth {
-		return nil
-	}
-	info, err := s.privacyProvider.GetMatchPrivacy(ctx, targetXUID)
-	if err != nil {
-		slog.WarnContext(ctx, "explorer_target_privacy_failed", "xuid", targetXUID, "err", err)
-		return nil
-	}
-	if info == nil {
-		return nil
-	}
-	return domain.NewPrivacyWarning(*info)
 }
 
 // computeTargetSampleStats agrège les stats du target sur les matchs communs

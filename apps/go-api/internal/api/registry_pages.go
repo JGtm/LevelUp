@@ -13,6 +13,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -233,11 +234,11 @@ func (r *ServiceRegistry) CitationsCtx(ctx context.Context, slug string) (port.C
 // ExplorerCtxWithAuth retourne un ExplorerService + contexte enrichi avec les
 // HaloTokens du propriétaire de la page (résolus depuis le store, ADR 0023).
 //
-// L'encart "Profil joueur cible" (identité live + carrière + privacy) exige des
-// tokens dans le contexte (auth_available). Sans cet enrichissement, le service
-// court-circuite tous les fetchs live et le front affiche le hint "Connexion
-// Halo requise" — même quand le joueur a des tokens fonctionnels dans le store.
-// Même pattern que HomeCtxWithAuth et Compare.
+// L'encart "Profil joueur cible" est local-first : identité lue depuis la DB
+// locale de la cible (si joueur suivi), sample stats calculés localement. Seule
+// la carrière agrégée (servicerecord) est un fetch live → nécessite des tokens
+// dans le contexte (d'où enrichWithHaloTokens, même pattern que HomeCtxWithAuth
+// et Compare). Aucune privacy n'est fetchée (bruit sans valeur).
 func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) (port.ExplorerService, context.Context, string, string, error) {
 	pdb, err := r.resolve(ctx, slug)
 	if err != nil {
@@ -247,21 +248,40 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
-	// Wire les providers nécessaires à l'encart "Profil joueur cible" :
-	// identité Spartan live + stats carrière remote + privacy. Réutilise les
-	// mêmes briques que la home (CareerLive) et Compare (haloProvider).
-	homeRepo := r.newHomeRepo(pdb)
-	// r.remoteStats : provider de stats carrière remote décoré d'un cache TTL
-	// (5 min) + singleflight → réouvrir la même cible est instantané (volet C.2).
-	// La privacy reste sur haloProvider direct (pas de cache).
+	// localIdentity : identité résolue 100% local (DB de la cible si suivie).
+	// r.remoteStats : stats carrière remote (servicerecord) décorées d'un cache
+	// TTL 5 min + singleflight → réouvrir la même cible est instantané.
 	svc = svc.WithTargetProfileProviders(
-		r.newCareerLiveService(pdb, homeRepo),
+		r.newExplorerLocalIdentityResolver(pdb.TitleSlug),
 		r.remoteStats,
-		haloProvider,
 		pdb.TitleSlug,
 	)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
+}
+
+// newExplorerLocalIdentityResolver construit le résolveur d'identité local de
+// l'encart Explorer : si le gamertag cible correspond à un joueur suivi
+// (db_profiles), on ouvre SA player DB et on lit son identité Spartan
+// (rang/emblem/skill peaks). Sinon nil (un adversaire n'a pas d'identité
+// publiée — aucun fetch live). resolveByGT est pool-cached.
+func (r *ServiceRegistry) newExplorerLocalIdentityResolver(titleSlug string) service.ExplorerLocalIdentityResolver {
+	return service.LocalIdentityResolverFunc(func(ctx context.Context, targetGamertag string) *domain.HomeSpartanIdentityRow {
+		if r.resolveByGT == nil || targetGamertag == "" {
+			return nil
+		}
+		tpdb, err := r.resolveByGT(ctx, titleSlug, targetGamertag)
+		if err != nil || tpdb == nil {
+			return nil // cible non suivie localement → pas d'identité
+		}
+		row, lerr := r.newHomeRepo(tpdb).LoadSpartanIdentity(ctx)
+		if lerr != nil {
+			slog.WarnContext(ctx, "explorer_local_identity_failed",
+				"gamertag", targetGamertag, "err", lerr)
+			return nil
+		}
+		return row
+	})
 }
 
 // HomeCtx retourne un HomeService + identifiants joueur.
