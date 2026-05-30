@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
+import { Tooltip } from '@/components/ui/tooltip'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
@@ -162,9 +163,6 @@ export function SessionDetailPage() {
                   <ChevronIcon direction="left" />
                 </button>
                 <div className="min-w-0">
-                  <p className="text-3xs font-semibold uppercase tracking-label-md text-muted-foreground">
-                    {t('session.detail.header_session')}
-                  </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="truncate text-lg font-semibold text-foreground">{selectedSessionLabel}</h1>
                     <SessionParamPills entry={data.current_session} />
@@ -182,7 +180,23 @@ export function SessionDetailPage() {
               </div>
 
               {!drawerOpen && data.available_sessions.length >= 2 && (
-                <div className="flex flex-col items-start gap-1 sm:items-end">
+                <Tooltip
+                  content={
+                    <div className="space-y-2">
+                      <p className="font-semibold">{t('session.detail.compare_tooltip_title')}</p>
+                      <p className="text-muted-foreground">{t('session.detail.compare_tooltip_desc')}</p>
+                      {data.suggested_compare && (
+                        <div className="border-t border-border pt-2">
+                          <p>
+                            <span className="text-muted-foreground">{t('session.detail.compare_tooltip_suggested')} : </span>
+                            <span className="font-medium">{data.suggested_compare.session_label}</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  }
+                  className="max-w-xs"
+                >
                   <Button
                     onClick={() => {
                       setCompareSessionLabel(data.suggested_compare?.session_label ?? '')
@@ -192,14 +206,7 @@ export function SessionDetailPage() {
                   >
                     {t('session.detail.header_compare')}
                   </Button>
-                  {data.suggested_compare && (
-                    <p className="text-xs text-muted-foreground">
-                      {t('session.detail.header_compare_hint', { label: data.suggested_compare.session_label })}
-                      {' · '}
-                      {data.suggested_compare.reason}
-                    </p>
-                  )}
-                </div>
+                </Tooltip>
               )}
             </div>
 

@@ -1227,11 +1227,25 @@ export interface ExplorerTargetProfile {
   /** Stats agrégées du target sur les matchs joués en commun avec le user.
    *  Toujours calculable depuis DuckDB, null seulement si common_matches=0. */
   sample_stats?: ExplorerTargetSampleStats | null
-  /** Avertissement privacy (none / partial / full). null en mode no-tokens. */
+  /** Top médailles lifetime (triées par count, cap 20) — service record Waypoint
+   *  + métadonnées locales. Le front affiche un top 5 + expander. */
+  top_medals?: MedalDigestItem[] | null
+  /** Classements CSR par playlist ranked engagée de la saison courante (live). */
+  season_csrs?: CareerPlaylistCSR[] | null
+  /** Nombre de matchs matchmade par saison (graphe). */
+  matches_per_season?: SeasonMatchCount[] | null
+  /** Avertissement privacy — conservé pour compat, toujours null (privacy non fetchée). */
   privacy_warning?: MatchPrivacyWarning | null
   /** true si le user connecté a des tokens OAuth Halo. Sert à rendre le hint
    *  "Connexion Halo requise" sur les sections en mode dégradé. */
   auth_available: boolean
+}
+
+/** Nombre de matchs matchmade joués par le joueur cible sur une saison. */
+export interface SeasonMatchCount {
+  season_id: string
+  season_name: string
+  matches: number
 }
 
 /** Stats agrégées du joueur cible sur l'échantillon des matchs en commun.
@@ -3046,10 +3060,10 @@ export interface SessionCompareEntry {
   win_rate: number
   kdr: number
   kills_per_match: number
-  // Stats agrégées pour le radar (P1).
-  max_killing_spree?: number | null
-  total_headshot_kills?: number | null
-  total_perfect_kills?: number | null
+  // Stats du radar de frags — MOYENNES PAR MATCH (aligné Escouade extKPIAcc.applyTo).
+  avg_max_killing_spree?: number | null
+  headshots_per_match?: number | null
+  perfect_kills_per_match?: number | null
   with_friends: boolean
   dominant_category: string | null
   // PLAN_COMBAT_PROFILE_WIRING Phase 3
@@ -3201,6 +3215,8 @@ export interface NormalizedPlayerStats {
   perf_ath: number
   lusr_ath: number
   career_rank: number
+  /** Temps de jeu cumulé lifetime (s) depuis le service record Waypoint. */
+  time_played_seconds?: number
   // Phase 3 — arme favorite (null pour joueur B remote)
   favorite_weapon?: WeaponHighlight | null
   extended?: Record<string, unknown>

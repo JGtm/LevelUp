@@ -44,7 +44,10 @@ describe('buildSessionNetScoreOption', () => {
     ) as any
     expect(opt.series[0].type).toBe('line')
     expect(opt.series[0].areaStyle).toBeDefined()
-    expect(opt.series[0].data).toEqual([3, -2])
+    // Données 2D [index, cumul] (et non scalaires) — sinon visualMap.dimension:1
+    // est hors-portée et la courbe devient invisible.
+    expect(opt.series[0].data).toEqual([[0, 3], [1, -2]])
+    expect(opt.series[0].lineStyle).toHaveProperty('color') // couleur de repli posée
     expect(opt.visualMap.pieces).toHaveLength(2)
     expect(opt.xAxis.boundaryGap).toBe(false)
   })
@@ -142,17 +145,21 @@ describe('buildSessionPlacementOption', () => {
 })
 
 describe('buildDonutOption — label central', () => {
-  it('ajoute un titre centré (valeur + libellé) quand centerValue est fourni', () => {
+  it('ajoute un graphic centré (valeur + libellé) quand centerValue est fourni', () => {
     const opt = buildDonutOption(
       [{ key: 'o', datapoints: [{ name: 'Victoires', value: 6 }, { name: 'Défaites', value: 4 }] }],
       { centerValue: '60 %', centerLabel: 'Victoires' },
     ) as any
-    expect(opt.title.text).toBe('60 %')
-    expect(opt.title.subtext).toBe('Victoires')
-    expect(opt.title.left).toBe('center')
+    // Nouveau mécanisme : graphic (center fiable) plutôt que title (décalé par la légende).
+    expect(opt.graphic.type).toBe('group')
+    expect(opt.graphic.left).toBe('center')
+    expect(opt.graphic.children[0].style.text).toBe('60 %')
+    expect(opt.graphic.children[1].style.text).toBe('Victoires')
+    // Légende désactivée quand centerValue présent.
+    expect(opt.legend.show).toBe(false)
   })
 
-  it('pas de titre central sans centerValue', () => {
+  it('pas de graphic central sans centerValue', () => {
     const opt = buildDonutOption(
       [{ key: 'o', datapoints: [{ name: 'A', value: 1 }] }],
       {},

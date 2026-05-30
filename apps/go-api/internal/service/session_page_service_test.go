@@ -438,3 +438,58 @@ func TestNeighboringSessionLabels(t *testing.T) {
 		}
 	})
 }
+
+// TestBuildSessionDetailRows_ModeUILocale verrouille la résolution locale-aware du
+// libellé de mode (mode_ui) consommé par le tableau ET le graphe "Modes joués".
+// Même contrat que Home/Explorer : FR si une traduction FR existe (PairNameFR,
+// alimenté en amont par l'enrichissement canonical mode_name_tr), sinon sous-mode
+// normalisé EN. Le 3e cas documente le repli quand mode_name_tr ne couvre pas le mode.
+func TestBuildSessionDetailRows_ModeUILocale(t *testing.T) {
+	start := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
+	label := "2026-04-21 20h"
+	win := analysis.OutcomeWin
+	modeUIOf := func(rows []domain.SessionDetailMatchRow) string {
+		if len(rows) != 1 {
+			t.Fatalf("expected 1 row, got %d", len(rows))
+		}
+		return rows[0].ModeUI
+	}
+
+	withFR := []legacymatch.StatsMatchRow{{
+		MatchID: "m1", StartTime: start, Outcome: &win, Kills: 10, Deaths: 8,
+		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "Slayer en équipe", SessionLabel: &label,
+	}}
+	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "fr")); got != "Slayer en équipe" {
+		t.Fatalf("FR ModeUI = %q, want %q", got, "Slayer en équipe")
+	}
+	if got := modeUIOf(buildSessionDetailRows(withFR, nil, "en")); got != "Team Slayer" {
+		t.Fatalf("EN ModeUI = %q, want %q (trad FR ignorée en EN)", got, "Team Slayer")
+	}
+
+	// PairNameFR vide + aucun GameVariant FR (mode_name_tr sans entrée) → repli EN.
+	noFR := []legacymatch.StatsMatchRow{{
+		MatchID: "m2", StartTime: start, Outcome: &win, Kills: 5, Deaths: 5,
+		PairName: "Arena:Team Slayer on Live Fire", PairNameFR: "", SessionLabel: &label,
+	}}
+	if got := modeUIOf(buildSessionDetailRows(noFR, nil, "fr")); got != "Team Slayer" {
+		t.Fatalf("FR sans variant : ModeUI = %q, want %q", got, "Team Slayer")
+	}
+
+	// PairNameFR vide MAIS GameVariant FR localisé ("Assassin en équipe : Arène",
+	// format réel asset_translations[game_variant]) → repli sur le variant FR.
+	// asset_translations[pair] n'étant pas localisé, c'est le SEUL chemin FR pour
+	// les modes absents de mode_name_tr (aligné Home).
+	variantFR := []legacymatch.StatsMatchRow{{
+		MatchID: "m3", StartTime: start, Outcome: &win, Kills: 7, Deaths: 4,
+		PairName: "Arena:Team Slayer on Catalyst - Forge", PairNameFR: "",
+		GameVariantName: "Team Slayer:Arena", GameVariantNameFR: "Assassin en équipe : Arène",
+		SessionLabel: &label,
+	}}
+	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "fr")); got != "Assassin en équipe" {
+		t.Fatalf("FR repli GameVariant : ModeUI = %q, want %q", got, "Assassin en équipe")
+	}
+	// En EN, le repli FR ne s'applique jamais → sous-mode normalisé EN du pair.
+	if got := modeUIOf(buildSessionDetailRows(variantFR, nil, "en")); got != "Team Slayer" {
+		t.Fatalf("EN avec variant FR : ModeUI = %q, want %q", got, "Team Slayer")
+	}
+}

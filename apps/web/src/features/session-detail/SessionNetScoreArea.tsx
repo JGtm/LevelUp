@@ -4,6 +4,13 @@
  * Courbe en aire, base 0, remplissage divergent (vert au-dessus de 0 = solde positif,
  * rouge en dessous = solde négatif) via visualMap. Axe X = "#N + carte" comme les autres
  * graphes chronologiques. Une instance par session (vue single + drawer côte-à-côte).
+ *
+ * IMPORTANT : les données de la série sont des PAIRES [index, cumul] (2D), pas des
+ * scalaires. Avec des scalaires sur un axe catégoriel, `visualMap.dimension: 1` pointe
+ * une dimension hors-portée → le mapping de couleur échoue silencieusement → la ligne
+ * (qui n'a pas de couleur propre, elle vient du visualMap) devient INVISIBLE. Les paires
+ * lèvent l'ambiguïté (dim 0 = x, dim 1 = cumul). Une couleur de repli explicite garantit
+ * en plus la visibilité même si le visualMap venait à ne pas s'appliquer.
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -40,15 +47,17 @@ export function buildSessionNetScoreOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
-      formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
+      formatter: (params: Array<{ name: string; value: number[]; marker: string }>) => {
         if (!Array.isArray(params) || params.length === 0) return ''
         const p = params[0]
-        const v = p.value
+        // value est désormais une paire [index, cumul] → on lit le cumul (dim 1).
+        const v = Array.isArray(p.value) ? p.value[1] : Number(p.value)
         const vStr = v >= 0 ? `+${v}` : `${v}`
         return `${p.name.replace('\n', ' · ')}<br/>${p.marker} ${opts.seriesLabel}: <b>${vStr}</b>`
       },
     },
     // Colore la courbe + l'aire selon le signe du cumul (vert > 0, rouge ≤ 0).
+    // dimension: 1 = le cumul (dim 0 = l'index x), non ambigu grâce aux paires.
     visualMap: {
       show: false,
       type: 'piecewise',
@@ -71,10 +80,12 @@ export function buildSessionNetScoreOption(
       {
         name: opts.seriesLabel,
         type: 'line',
-        data: points.map((p) => p.cumulative),
+        // Paires [index, cumul] : dim 1 explicite pour le visualMap (cf. en-tête).
+        data: points.map((p, i) => [i, p.cumulative]),
         symbol: 'none',
-        lineStyle: { width: 2 },
-        areaStyle: { origin: 'auto', opacity: 0.25 },
+        // Couleur de repli : si le visualMap ne s'applique pas, la ligne reste visible.
+        lineStyle: { width: 2, color: posColor },
+        areaStyle: { origin: 'auto', opacity: 0.25, color: posColor },
         // Ligne de référence à 0 (séparation solde positif / négatif).
         markLine: {
           silent: true,

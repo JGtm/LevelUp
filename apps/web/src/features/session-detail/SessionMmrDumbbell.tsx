@@ -39,8 +39,11 @@ export function buildSessionMmrDumbbellOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const teamColor = resolveToken('info')
-  const enemyColor = resolveToken('divergent-neg')
+  // Couleurs d'équipe choisies par le joueur (mêmes tokens que la match-view Details,
+  // overridables via les réglages d'accessibilité) : team-ally = mon équipe, team-enemy
+  // = adverse. Cf. MatchScoreboard (tokenCssVar('team-ally'/'team-enemy')).
+  const teamColor = resolveToken('team-ally')
+  const enemyColor = resolveToken('team-enemy')
   const linkColor = resolveToken('divergent-neutral')
 
   const labels = points.map((p) => p.label)

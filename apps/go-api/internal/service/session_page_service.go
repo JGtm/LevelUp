@@ -301,6 +301,16 @@ func buildSessionDetailRows(
 		var modeUI string
 		if frPreferred {
 			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, &row.PairNameFR))
+			// Repli GameVariant (localisé FR) quand la cascade pair n'a pas trouvé de FR
+			// (pair_name_fr NULL + asset_translations[pair] non localisé). Même repli que
+			// le converter Home. Ne se déclenche que si le GameVariant FR est réellement
+			// localisé (≠ EN) → n'écrase jamais une résolution FR déjà correcte.
+			if row.PairNameFR == "" && row.GameVariantNameFR != "" &&
+				!strings.EqualFold(row.GameVariantNameFR, row.GameVariantName) {
+				if fr := derefString(analysis.ResolveModeUI(&row.GameVariantName, &row.GameVariantNameFR)); fr != "" {
+					modeUI = fr
+				}
+			}
 		} else {
 			modeUI = derefString(analysis.ResolveModeUI(&row.PairName, nil))
 		}
