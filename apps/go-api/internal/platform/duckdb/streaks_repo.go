@@ -1,8 +1,11 @@
 // Package duckdb — streaks_repo.go : persistance DuckDB des streaks (V2 Ascension).
 //
-// Implémente streaks.Repo. Stockage : `streak` table dans stats.duckdb (par joueur).
+// Implémente streaks.Repo. Stockage append-only (fix 2026-05-30, Phase B) :
+// écriture INSERT pur dans `streak_history`, lecture via la vue `streak_latest`
+// (dernière version par id métier), dans stats.duckdb (par joueur). Plus aucun
+// UPDATE/ON CONFLICT → zéro pression sur l'index ART DuckDB.
 //
-// Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §7.1.
+// Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §7.1 + ADR 0019 (pattern append-only).
 package duckdb
 
 import (
@@ -27,11 +30,12 @@ func NewStreaksRepo(db *DB) *StreaksRepo {
 // Compile-time assertion.
 var _ streaks.Repo = (*StreaksRepo)(nil)
 
+// Lecture via la vue append-only streak_latest (dernière version par id métier).
 const streaksSelectColumns = `
 SELECT id, user_id, title_slug, type, started_at,
        current_length, best_length, last_increment_at, threshold,
        shields_used, shields_available, status, broken_at
-FROM streak`
+FROM streak_latest`
 
 // GetActive retourne la streak active (status != broken) pour (user, title, type),
 // ou nil si aucune. Si plusieurs lignes correspondent (cas pathologique), la plus
@@ -54,14 +58,11 @@ func (r *StreaksRepo) GetActive(ctx context.Context, userID, titleSlug string, s
 	return &s, nil
 }
 
-// Upsert crée ou met à jour une streak (clé = id).
-//
-// Pattern ART-safe SELECT-then-UPDATE-or-INSERT (CLAUDE.md) : pas d'ON CONFLICT.
-// L'ON CONFLICT déclenche le chemin "delete from index" de DuckDB (bug ART
-// "Failed to delete all rows from index") et, sur une DB dont l'index a été
-// invalidé par un crash ART antérieur, échoue en Binder Error
-// ("conflict target not referenced by UNIQUE/PK constraint or INDEX").
-// Fréquence basse (post-sync par joueur) → le SELECT préalable est sans coût notable.
+// Upsert enregistre l'état courant d'une streak (clé logique = id) en
+// append-only : INSERT pur d'une nouvelle version dans streak_history. La vue
+// streak_latest expose la version la plus récente par id. Le nom "Upsert" est
+// conservé pour l'interface streaks.Repo, mais il n'y a plus ni UPDATE ni
+// ON CONFLICT → aucune pression sur l'index ART DuckDB.
 func (r *StreaksRepo) Upsert(ctx context.Context, s streaks.Streak) error {
 	if s.ID == "" {
 		return fmt.Errorf("StreaksRepo.Upsert: empty ID")
@@ -69,42 +70,18 @@ func (r *StreaksRepo) Upsert(ctx context.Context, s streaks.Streak) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var exists bool
-	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM streak WHERE id = ?)`, s.ID).Scan(&exists); err != nil {
-		return fmt.Errorf("StreaksRepo.Upsert exists: %w", err)
-	}
-	if exists {
-		_, err := r.db.Exec(ctx, `
-			UPDATE streak SET
-				current_length    = ?,
-				best_length       = ?,
-				last_increment_at = ?,
-				threshold         = ?,
-				shields_used      = ?,
-				shields_available = ?,
-				status            = ?,
-				broken_at         = ?
-			WHERE id = ?`,
-			s.CurrentLength, s.BestLength, nullableTime(s.LastIncrementAt), nullableFloat(s.Threshold),
-			s.ShieldsUsed, s.ShieldsAvailable, string(s.Status), nullableTime(s.BrokenAt), s.ID,
-		)
-		if err != nil {
-			return fmt.Errorf("StreaksRepo.Upsert update: %w", err)
-		}
-		return nil
-	}
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO streak (
+		INSERT INTO streak_history (
 			id, user_id, title_slug, type, started_at,
 			current_length, best_length, last_increment_at, threshold,
-			shields_used, shields_available, status, broken_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			shields_used, shields_available, status, broken_at, written_at
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)`,
 		s.ID, s.UserID, s.TitleSlug, string(s.Type), s.StartedAt,
 		s.CurrentLength, s.BestLength, nullableTime(s.LastIncrementAt), nullableFloat(s.Threshold),
 		s.ShieldsUsed, s.ShieldsAvailable, string(s.Status), nullableTime(s.BrokenAt),
 	)
 	if err != nil {
-		return fmt.Errorf("StreaksRepo.Upsert insert: %w", err)
+		return fmt.Errorf("StreaksRepo.Upsert: %w", err)
 	}
 	return nil
 }

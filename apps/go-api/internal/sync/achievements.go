@@ -169,35 +169,35 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	const q = `
+	// Pattern ART-safe UPDATE-then-INSERT (CLAUDE.md) : PAS d'ON CONFLICT —
+	// celui-ci déclenche le bug ART DuckDB "Failed to delete all rows from index"
+	// qui INVALIDE toute la metadata.duckdb (cascade : milestone_catalog devient
+	// illisible). Colonnes UPDATE = non-clé. La concurrence est sérialisée par le
+	// lease KindMetadata (cf. achievements_race_test.go) → pas de TOCTOU.
+	const updQ = `
+		UPDATE xbox_achievement_definitions SET
+			name_en = ?, name_fr = ?, description_en = ?, description_fr = ?,
+			locked_desc_en = ?, locked_desc_fr = ?, gamerscore = ?, image_url = ?,
+			is_secret = ?, rarity_category = ?, rarity_percent = ?, title_id = ?,
+			xbox_title_id = ?, service_config_id = ?, fetched_at = CURRENT_TIMESTAMP
+		WHERE achievement_id = ?`
+	const insQ = `
 		INSERT INTO xbox_achievement_definitions
 			(achievement_id, name_en, name_fr, description_en, description_fr,
 			 locked_desc_en, locked_desc_fr, gamerscore, image_url, is_secret,
 			 rarity_category, rarity_percent, title_id, xbox_title_id, service_config_id, fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT (achievement_id) DO UPDATE SET
-			name_en           = excluded.name_en,
-			name_fr           = excluded.name_fr,
-			description_en    = excluded.description_en,
-			description_fr    = excluded.description_fr,
-			locked_desc_en    = excluded.locked_desc_en,
-			locked_desc_fr    = excluded.locked_desc_fr,
-			gamerscore        = excluded.gamerscore,
-			image_url         = excluded.image_url,
-			is_secret         = excluded.is_secret,  -- pragma: allowlist secret
-			rarity_category   = excluded.rarity_category,
-			rarity_percent    = excluded.rarity_percent,
-			title_id          = excluded.title_id,
-			xbox_title_id     = excluded.xbox_title_id,
-			service_config_id = excluded.service_config_id,
-			fetched_at        = excluded.fetched_at
-	`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
-	stmt, err := tx.PrepareContext(ctx, q)
+	updStmt, err := tx.PrepareContext(ctx, updQ)
 	if err != nil {
-		return fmt.Errorf("prepare upsert definitions: %w", err)
+		return fmt.Errorf("prepare update definitions: %w", err)
 	}
-	defer stmt.Close() //nolint:errcheck
+	defer updStmt.Close() //nolint:errcheck
+	insStmt, err := tx.PrepareContext(ctx, insQ)
+	if err != nil {
+		return fmt.Errorf("prepare insert definitions: %w", err)
+	}
+	defer insStmt.Close() //nolint:errcheck
 
 	for _, a := range achievements {
 		var rarityPercent *float64
@@ -205,14 +205,25 @@ func upsertAchievementDefinitions(ctx context.Context, db *sql.DB, achievements 
 			v := a.RarityPercent
 			rarityPercent = &v
 		}
-		if _, err := stmt.ExecContext(ctx,
-			a.AchievementID, a.NameEN, a.NameFR,
-			a.DescriptionEN, a.DescriptionFR,
-			a.LockedDescEN, a.LockedDescFR,
-			a.Gamerscore, a.ImageURL, a.IsSecret,
-			a.RarityCategory, rarityPercent, titleID, a.XboxTitleID, a.ServiceConfigID,
-		); err != nil {
-			return fmt.Errorf("upsert definition %s: %w", a.AchievementID, err)
+		res, err := updStmt.ExecContext(ctx,
+			a.NameEN, a.NameFR, a.DescriptionEN, a.DescriptionFR,
+			a.LockedDescEN, a.LockedDescFR, a.Gamerscore, a.ImageURL,
+			a.IsSecret, a.RarityCategory, rarityPercent, titleID,
+			a.XboxTitleID, a.ServiceConfigID, a.AchievementID,
+		)
+		if err != nil {
+			return fmt.Errorf("update definition %s: %w", a.AchievementID, err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			if _, err := insStmt.ExecContext(ctx,
+				a.AchievementID, a.NameEN, a.NameFR,
+				a.DescriptionEN, a.DescriptionFR,
+				a.LockedDescEN, a.LockedDescFR,
+				a.Gamerscore, a.ImageURL, a.IsSecret,
+				a.RarityCategory, rarityPercent, titleID, a.XboxTitleID, a.ServiceConfigID,
+			); err != nil {
+				return fmt.Errorf("insert definition %s: %w", a.AchievementID, err)
+			}
 		}
 	}
 
@@ -231,23 +242,29 @@ func upsertPlayerAchievements(ctx context.Context, db *sql.DB, achievements []Pl
 	}
 	defer tx.Rollback() //nolint:errcheck
 
-	const q = `
+	// Pattern ART-safe UPDATE-then-INSERT (cf. upsertAchievementDefinitions) :
+	// pas d'ON CONFLICT (bug ART → invalidation metadata.duckdb). Sérialisé par
+	// le lease KindMetadata.
+	const updQ = `
+		UPDATE player_achievements SET
+			unlocked = ?, unlocked_at = ?, current_progress = ?, target_progress = ?,
+			fetched_at = CURRENT_TIMESTAMP
+		WHERE achievement_id = ?`
+	const insQ = `
 		INSERT INTO player_achievements
 			(achievement_id, unlocked, unlocked_at, current_progress, target_progress, fetched_at)
-		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT (achievement_id) DO UPDATE SET
-			unlocked         = excluded.unlocked,
-			unlocked_at      = excluded.unlocked_at,
-			current_progress = excluded.current_progress,
-			target_progress  = excluded.target_progress,
-			fetched_at       = excluded.fetched_at
-	`
+		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
 
-	stmt, err := tx.PrepareContext(ctx, q)
+	updStmt, err := tx.PrepareContext(ctx, updQ)
 	if err != nil {
-		return fmt.Errorf("prepare upsert player achievements: %w", err)
+		return fmt.Errorf("prepare update player achievements: %w", err)
 	}
-	defer stmt.Close() //nolint:errcheck
+	defer updStmt.Close() //nolint:errcheck
+	insStmt, err := tx.PrepareContext(ctx, insQ)
+	if err != nil {
+		return fmt.Errorf("prepare insert player achievements: %w", err)
+	}
+	defer insStmt.Close() //nolint:errcheck
 
 	for _, a := range achievements {
 		var unlockedAt *time.Time
@@ -260,11 +277,18 @@ func upsertPlayerAchievements(ctx context.Context, db *sql.DB, achievements []Pl
 			currentProgress = &a.CurrentProgress
 			targetProgress = &a.TargetProgress
 		}
-		if _, err := stmt.ExecContext(ctx,
-			a.AchievementID, a.Unlocked, unlockedAt,
-			currentProgress, targetProgress,
-		); err != nil {
-			return fmt.Errorf("upsert player achievement %s: %w", a.AchievementID, err)
+		res, err := updStmt.ExecContext(ctx,
+			a.Unlocked, unlockedAt, currentProgress, targetProgress, a.AchievementID,
+		)
+		if err != nil {
+			return fmt.Errorf("update player achievement %s: %w", a.AchievementID, err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			if _, err := insStmt.ExecContext(ctx,
+				a.AchievementID, a.Unlocked, unlockedAt, currentProgress, targetProgress,
+			); err != nil {
+				return fmt.Errorf("insert player achievement %s: %w", a.AchievementID, err)
+			}
 		}
 	}
 

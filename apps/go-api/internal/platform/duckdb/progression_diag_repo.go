@@ -3,8 +3,8 @@
 //
 // Phase 4 plan stabilisation 2026-05-22. Lecture pure (counts), pas de write.
 // Source de vérité par table :
-//   - streak                 : player DB (stats.duckdb)
-//   - player_records         : shared_social.duckdb (PB cross-joueurs)
+//   - streak_latest          : player DB (vue append-only des streaks)
+//   - player_records_latest  : shared_social.duckdb (vue append-only des PB)
 //   - record_history         : player DB
 //   - milestone_earned       : player DB
 //   - milestone_catalog      : metadata.duckdb (référentiel)
@@ -38,14 +38,17 @@ func (r *ProgressionDiagRepo) GetProgressionDiag(ctx context.Context, slug strin
 	out := &domain.ProgressionDiag{PlayerSlug: slug}
 
 	// Counts player DB — best-effort, table peut être absente sur DB legacy.
-	out.StreakCount = countTableBestEffort(ctx, r.pdb.ReadDB(), "streak")
+	// streak_latest = vue append-only (streak n'est plus écrite par le repo).
+	out.StreakCount = countTableBestEffort(ctx, r.pdb.ReadDB(), "streak_latest")
 	out.RecordHistoryCount = countTableBestEffort(ctx, r.pdb.ReadDB(), "record_history")
 	out.MilestoneEarnedCount = countTableBestEffort(ctx, r.pdb.ReadDB(), "milestone_earned")
 
-	// Count player_records dans shared_social — filtré par xuid pour scoping joueur.
+	// Count PB courants via la vue append-only player_records_latest (et non
+	// la table legacy player_records, qui n'est plus écrite par la progression).
+	// Filtré par xuid pour scoping joueur.
 	if r.pdb.SharedSocial != nil {
 		_ = r.pdb.SharedSocial.QueryRow(ctx,
-			`SELECT COUNT(*) FROM player_records WHERE xuid = ?`, r.pdb.XUID).Scan(&out.PlayerRecordsCount)
+			`SELECT COUNT(*) FROM player_records_latest WHERE xuid = ?`, r.pdb.XUID).Scan(&out.PlayerRecordsCount)
 	}
 
 	// Count milestone_catalog dans metadata (référentiel cross-joueurs).

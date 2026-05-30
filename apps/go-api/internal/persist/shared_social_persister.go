@@ -191,7 +191,7 @@ func (p *SharedSocialPersister) RemoveLike(ctx context.Context, mediaPath, liker
 // AppendPlayerRecord implémente duckdb.SocialPersister.AppendPlayerRecord.
 // Pattern append-only : INSERT pur dans player_records_history (jamais
 // UPDATE), évite la pression sur l'index ART DuckDB.
-func (p *SharedSocialPersister) AppendPlayerRecord(ctx context.Context, xuid, metric, period string, value float64, achievedAt *time.Time, achievedMatchID *string) error {
+func (p *SharedSocialPersister) AppendPlayerRecord(ctx context.Context, xuid, metric, period string, value float64, achievedAt *time.Time, achievedMatchID *string, previousValue *float64, previousAchievedAt *time.Time) error {
 	if period == "" {
 		period = "all_time"
 	}
@@ -200,13 +200,15 @@ func (p *SharedSocialPersister) AppendPlayerRecord(ctx context.Context, xuid, me
 		Source:  "post_sync_records",
 		PlayerRecordsAppend: []PlayerRecordAppend{
 			{
-				XUID:            xuid,
-				Metric:          metric,
-				Period:          period,
-				Value:           value,
-				AchievedAt:      achievedAt,
-				AchievedMatchID: achievedMatchID,
-				WrittenAt:       time.Now().UTC(),
+				XUID:               xuid,
+				Metric:             metric,
+				Period:             period,
+				Value:              value,
+				AchievedAt:         achievedAt,
+				AchievedMatchID:    achievedMatchID,
+				PreviousValue:      previousValue,
+				PreviousAchievedAt: previousAchievedAt,
+				WrittenAt:          time.Now().UTC(),
 			},
 		},
 	})
@@ -653,8 +655,8 @@ func (p *SharedSocialPersister) persistPlayerRecords(ctx context.Context, tx *sq
 	// l'INSERT sur player_records_history d'abord, fallback sur player_records.
 	// Phase 2 supprimera ce fallback quand la migration sera obligatoire.
 	stmt, err := tx.PrepareContext(ctx, `
-		INSERT INTO player_records_history (xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO player_records_history (xuid, metric, period, value, achieved_at, achieved_match_id, previous_value, previous_achieved_at, written_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		// Fallback legacy : la table _history n'existe pas encore (migration
@@ -672,7 +674,7 @@ func (p *SharedSocialPersister) persistPlayerRecords(ctx context.Context, tx *sq
 		if writtenAt.IsZero() {
 			writtenAt = time.Now().UTC()
 		}
-		if _, err := stmt.ExecContext(ctx, r.XUID, r.Metric, period, r.Value, r.AchievedAt, r.AchievedMatchID, writtenAt); err != nil {
+		if _, err := stmt.ExecContext(ctx, r.XUID, r.Metric, period, r.Value, r.AchievedAt, r.AchievedMatchID, r.PreviousValue, r.PreviousAchievedAt, writtenAt); err != nil {
 			return fmt.Errorf("player_record_append xuid=%s metric=%s: %w", r.XUID, r.Metric, err)
 		}
 	}

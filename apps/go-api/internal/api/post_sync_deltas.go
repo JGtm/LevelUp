@@ -664,8 +664,12 @@ func loadPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string) 
 	}
 	var v sql.NullFloat64
 	var matchID sql.NullString
+	// Lit la vue append-only player_records_latest (et non plus la table legacy
+	// player_records) : les écritures passent désormais par AppendPlayerRecord
+	// → player_records_history. period='all_time' = la clé écrite par
+	// upsertPlayerRecord (corrige le split-brain lecture/écriture historique).
 	err := pdb.SharedSocial.QueryRow(ctx,
-		`SELECT value, achieved_match_id FROM player_records WHERE xuid = ? AND metric = ?`,
+		`SELECT value, achieved_match_id FROM player_records_latest WHERE xuid = ? AND metric = ? AND period = 'all_time'`,
 		pdb.XUID, metric,
 	).Scan(&v, &matchID)
 	switch {
@@ -700,7 +704,7 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 		}
 		now := time.Now().UTC()
 		return pdb.SocialPersister.AppendPlayerRecord(ctx,
-			pdb.XUID, metric, "all_time", value, &now, matchIDPtr)
+			pdb.XUID, metric, "all_time", value, &now, matchIDPtr, nil, nil)
 	}
 
 	// ADR 0021 Gap 1 : en prod (RequireSocialPersister=true set par main.go),
@@ -710,17 +714,15 @@ func upsertPlayerRecord(ctx context.Context, pdb *duckdb.PlayerDB, metric string
 		return duckdb.ErrSocialPersisterNotWired
 	}
 
-	// Fallback legacy (tests uniquement — RequireSocialPersister=false par défaut).
-	// ADR 0021 Phase 3.2 : CHECKPOINT immédiat après l'UPSERT pour éviter
-	// d'accumuler du WAL non-checkpointed même en mode test.
+	// Fallback (tests uniquement — RequireSocialPersister=false par défaut).
+	// Append-only dans player_records_history, COHÉRENT avec loadPlayerRecord qui
+	// lit player_records_latest : plus d'ON CONFLICT sur la table legacy (qui
+	// aurait été invisible pour le lecteur → split-brain). CHECKPOINT immédiat
+	// pour ne pas accumuler de WAL non-checkpointed même en mode test.
 	if _, err := pdb.SharedSocial.Exec(ctx, `
-		INSERT INTO player_records (xuid, metric, value, achieved_at, achieved_match_id, updated_at)
-		VALUES (?, ?, ?, NOW(), ?, NOW())
-		ON CONFLICT (xuid, metric) DO UPDATE SET
-			value             = EXCLUDED.value,
-			achieved_at       = EXCLUDED.achieved_at,
-			achieved_match_id = EXCLUDED.achieved_match_id,
-			updated_at        = NOW()
+		INSERT INTO player_records_history
+			(xuid, metric, period, value, achieved_at, achieved_match_id, written_at)
+		VALUES (?, ?, 'all_time', ?, NOW(), ?, NOW())
 	`, pdb.XUID, metric, value, nullableMatchID(matchID)); err != nil {
 		return err
 	}

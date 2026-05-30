@@ -1,10 +1,14 @@
 // Package duckdb — records_repo.go : persistance des PB (V2 Ascension).
 //
-// PersonalRecordsRepo  → table `player_records` dans `shared_social.duckdb`.
+// PersonalRecordsRepo écrit en append-only dans `player_records_history` et lit
+// la vue `player_records_latest` (shared_social.duckdb). Fix 2026-05-30 :
+// migré de l'ancien INSERT ... ON CONFLICT DO UPDATE sur la table legacy
+// `player_records` (anti-pattern ART : pressionnait l'index DuckDB, crashait
+// en "Failed to delete all rows from index"). Les écritures passent par
+// SocialPersister.AppendPlayerRecord (CHECKPOINT garanti) ; fallback INSERT pur
+// _history (tests sans persister wired). Plus aucune écriture sur player_records.
 //
-//	(xuid en PK avec metric + period — cf. migration extend_player_records_with_window)
-//
-// Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §7.2.
+// Cf. PLAN_PROGRESSION_TRACKING_ASCENSION.md §7.2 + ADR 0019/0020/0021.
 package duckdb
 
 import (
@@ -30,10 +34,12 @@ func NewPersonalRecordsRepo(pdb *PlayerDB) *PersonalRecordsRepo {
 // Compile-time assertion.
 var _ records.PBRepo = (*PersonalRecordsRepo)(nil)
 
+// Lecture via la vue append-only player_records_latest (dernier PB par
+// xuid/metric/period). written_at tient lieu d'updated_at pour le scan.
 const personalRecordsSelectColumns = `
 SELECT xuid, metric, period, value, achieved_at, achieved_match_id,
-       previous_value, previous_achieved_at, updated_at
-FROM player_records`
+       previous_value, previous_achieved_at, written_at
+FROM player_records_latest`
 
 var errNoSocialPB = fmt.Errorf("PersonalRecordsRepo: shared_social DB not attached")
 
@@ -65,43 +71,59 @@ func (r *PersonalRecordsRepo) Get(ctx context.Context, xuid, metric string, peri
 	return &pr, nil
 }
 
-// Upsert insère ou met à jour un PB (clé : xuid + metric + period).
+// Upsert enregistre un nouveau PB (clé logique : xuid + metric + period) en
+// append-only dans player_records_history. Le nom "Upsert" est conservé pour
+// l'interface records.PBRepo, mais c'est désormais un INSERT pur (la vue
+// player_records_latest dé-doublonne par written_at DESC).
 //
-// L'écriture passe par OpenReadWrite pour respecter le contrat partagé du
-// shared_social.duckdb (la base est attachée en lecture seule depuis le
-// PlayerDB ; les écritures ouvrent leur propre connexion read-write).
+// Chemin nominal (prod) : SocialPersister.AppendPlayerRecord (TX + CHECKPOINT
+// garanti). Fallback (tests, persister non wired) : INSERT pur dans _history
+// via une connexion RW dédiée — toujours append-only, jamais d'ON CONFLICT,
+// jamais d'écriture sur la table legacy player_records.
 func (r *PersonalRecordsRepo) Upsert(ctx context.Context, pr records.PersonalRecord) error {
-	if r.sharedSocialPath() == "" {
+	if r.pdb == nil || r.pdb.SharedSocial == nil {
 		return errNoSocialPB
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	period := string(pr.Period)
+	if period == "" {
+		period = "all_time"
+	}
+	var matchIDPtr *string
+	if pr.AchievedMatchID != "" {
+		matchIDPtr = &pr.AchievedMatchID
+	}
+
+	// Chemin nominal : persister append-only + CHECKPOINT.
+	if r.pdb.SocialPersister != nil {
+		return r.pdb.SocialPersister.AppendPlayerRecord(ctx,
+			pr.XUID, pr.Metric, period, pr.Value,
+			pr.AchievedAt, matchIDPtr, pr.PreviousValue, pr.PreviousAchievedAt)
+	}
+	// ADR 0021 Gap 1 : en prod (RequireSocialPersister=true) on refuse le path
+	// legacy silencieux — un persister nil est un bug de wiring boot.
+	if RequireSocialPersister {
+		return ErrSocialPersisterNotWired
+	}
+
+	// Fallback tests : INSERT pur dans _history (append-only, ART-safe).
 	rwDB, err := OpenReadWrite(r.sharedSocialPath())
 	if err != nil {
 		return fmt.Errorf("PersonalRecordsRepo.Upsert: open rw: %w", err)
 	}
 	defer rwDB.Close()
-
-	_, err = rwDB.Exec(ctx, `
-		INSERT INTO player_records (
+	if _, err := rwDB.Exec(ctx, `
+		INSERT INTO player_records_history (
 			xuid, metric, period, value, achieved_at, achieved_match_id,
-			previous_value, previous_achieved_at, updated_at
-		) VALUES (?,?,?,?,?,?,?,?,?)
-		ON CONFLICT (xuid, metric, period) DO UPDATE SET
-			value                = excluded.value,
-			achieved_at          = excluded.achieved_at,
-			achieved_match_id    = excluded.achieved_match_id,
-			previous_value       = excluded.previous_value,
-			previous_achieved_at = excluded.previous_achieved_at,
-			updated_at           = excluded.updated_at
+			previous_value, previous_achieved_at, written_at
+		) VALUES (?,?,?,?,?,?,?,?, CURRENT_TIMESTAMP)
 	`,
-		pr.XUID, pr.Metric, string(pr.Period), pr.Value,
+		pr.XUID, pr.Metric, period, pr.Value,
 		nullableTime(pr.AchievedAt), nullableStr(pr.AchievedMatchID),
 		nullableFloat(pr.PreviousValue), nullableTime(pr.PreviousAchievedAt),
-		pr.UpdatedAt,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("PersonalRecordsRepo.Upsert: %w", err)
 	}
 	return nil

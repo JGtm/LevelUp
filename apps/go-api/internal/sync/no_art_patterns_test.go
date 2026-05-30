@@ -24,6 +24,16 @@ import (
 // patternsAtRisk : motifs SQL connus comme déclencheurs du bug ART.
 // Toute occurrence dans le hot path (non-test, non-migration) est suspect.
 var patternsAtRisk = []*regexp.Regexp{
+	// LIMITATION CONNUE (revue 2026-05-30) : `[^)]*` s'arrête au premier `)`, donc
+	// la forme `ON CONFLICT (cols) DO UPDATE` n'est PAS matchée — seules la forme
+	// nue `ON CONFLICT DO UPDATE` et `INSERT OR REPLACE` le sont. Renforcer la
+	// regex pour couvrir `(cols)` est tentant MAIS le scan est file-level : un
+	// fichier qui écrit une table protégée en append-only ET contient par ailleurs
+	// un ON CONFLICT légitime sur une AUTRE table (ex: skill_rating_loaders.go →
+	// match_skill_rank append-only + lusr_component_history ON CONFLICT ; career.go
+	// → player_csr_snapshots append-only + playlists_catalog ON CONFLICT) produirait
+	// des faux positifs. Une détection fiable demanderait une analyse statement-level
+	// (AST). En l'état : garde-rail best-effort, à compléter par la revue de code.
 	regexp.MustCompile(`(?i)\bON\s+CONFLICT\b[^)]*\bDO\s+UPDATE\b`),
 	regexp.MustCompile(`(?i)\bINSERT\s+OR\s+REPLACE\b`),
 }
@@ -37,11 +47,18 @@ var tablesProtegees = []string{
 	"match_csrs",
 	"player_csr_snapshots",
 	"pve_match_stats",
-	// Progression V2 (fix 2026-05-30) : StreaksRepo.Upsert et
-	// MilestoneEarnedRepo.Append migrés ON CONFLICT → SELECT-then-UPDATE/INSERT.
-	// Protégées ici pour interdire toute réintroduction d'un ON CONFLICT
-	// (qui ressuscite le bug ART surfacé en exécutant enfin le pipeline).
+	// Progression V2 (fix 2026-05-30) : on protège les tables CIBLES dont les
+	// écritures ont été migrées hors ON CONFLICT :
+	//  - milestone_earned : SELECT-then-INSERT (insert-only).
+	//  - streak / streak_history : append-only (INSERT pur + vue streak_latest).
+	// NB : la table legacy `player_records` n'est PAS protégée — un ON CONFLICT y
+	// subsiste VOLONTAIREMENT dans 2 fallbacks de transition non-prod
+	// (persistPlayerRecordsLegacy + l'ancien fallback test). Idem on ne protège pas
+	// `player_records_history` ici car elle co-réside dans shared_social_persister.go
+	// avec ce fallback legacy (le scan est file-level → faux positif). Le chemin
+	// progression records écrit bien en append-only via AppendPlayerRecord.
 	"streak",
+	"streak_history",
 	"milestone_earned",
 }
 

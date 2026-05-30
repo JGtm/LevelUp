@@ -69,9 +69,9 @@ type SocialPersister interface {
 	SetMediaLiked(ctx context.Context, filePath string, liked bool) (bool, error)
 
 	// AppendPlayerRecord : INSERT pur dans player_records_history (pattern
-	// append-only, anti-bug ART). achievedAt et achievedMatchID peuvent être
-	// nil. period = "all_time" si vide.
-	AppendPlayerRecord(ctx context.Context, xuid, metric, period string, value float64, achievedAt *time.Time, achievedMatchID *string) error
+	// append-only, anti-bug ART). achievedAt, achievedMatchID, previousValue et
+	// previousAchievedAt peuvent être nil. period = "all_time" si vide.
+	AppendPlayerRecord(ctx context.Context, xuid, metric, period string, value float64, achievedAt *time.Time, achievedMatchID *string, previousValue *float64, previousAchievedAt *time.Time) error
 
 	// CreateNotification : INSERT dans player_notifications. Le paramètre
 	// est typé en `any` pour éviter le cycle d'import — l'impl attend une
