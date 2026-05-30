@@ -100,6 +100,8 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			present_at_completion BOOLEAN,
 			joined_in_progress BOOLEAN,
 			left_in_progress BOOLEAN,
+			first_joined_time TIMESTAMPTZ,
+			last_leave_time TIMESTAMPTZ,
 			created_at TIMESTAMP,
 			PRIMARY KEY (match_id, xuid)
 		)`,

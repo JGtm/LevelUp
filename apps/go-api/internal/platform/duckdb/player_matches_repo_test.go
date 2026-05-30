@@ -121,6 +121,87 @@ func seedPlayerMatchesFixtures(t *testing.T, pdb *PlayerDB) {
 	}
 }
 
+// TestPlayerMatchesRepo_LobbySizesAtCompletion : compte des participants présents
+// à la fin (present_at_completion=TRUE, bots inclus), résistant au churn.
+func TestPlayerMatchesRepo_LobbySizesAtCompletion(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	resetPlayerMatchesTables(t, pdb)
+	ctx := context.Background()
+	// Le schéma de test de match_participants est minimal ; la colonne existe en
+	// prod (schema.go) mais pas ici → on l'ajoute pour rendre le test self-contained.
+	execOnSharedDBs(t, pdb, ctx,
+		`ALTER TABLE shared.match_participants ADD COLUMN IF NOT EXISTS present_at_completion BOOLEAN`)
+
+	insP := func(matchID, xuid string, present bool) {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants
+			(match_id, xuid, gamertag, team_id, present_at_completion)
+			VALUES (?, ?, ?, ?, ?)`, matchID, xuid, xuid, 0, present)
+	}
+	// lobby1 : 3 présents à la fin (dont 1 bot) + 1 quitter (exclu).
+	insP("lobby1", pTestXUID, true)
+	insP("lobby1", "p2", true)
+	insP("lobby1", "bid(0123456789)", true) // bot → compté (bots inclus)
+	insP("lobby1", "quitter", false)        // parti avant la fin → exclu
+	// lobby2 : 2 présents.
+	insP("lobby2", pTestXUID, true)
+	insP("lobby2", "p3", true)
+
+	repo := NewPlayerMatchesRepo(pdb)
+	sizes, err := repo.LobbySizesAtCompletion(ctx, []string{"lobby1", "lobby2"})
+	if err != nil {
+		t.Fatalf("LobbySizesAtCompletion: %v", err)
+	}
+	if sizes["lobby1"] != 3 {
+		t.Fatalf("lobby1: want 3 (présents à la fin, bots inclus), got %d", sizes["lobby1"])
+	}
+	if sizes["lobby2"] != 2 {
+		t.Fatalf("lobby2: want 2, got %d", sizes["lobby2"])
+	}
+	// matchIDs vide → map vide, pas d'erreur.
+	empty, err := repo.LobbySizesAtCompletion(ctx, nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty input: want {}, got %v (err=%v)", empty, err)
+	}
+}
+
+// TestPlayerMatchesRepo_ObjectiveScores : somme des scores PSA "objective" par match
+// (alimente les axes Objective/Score du profil de participation).
+func TestPlayerMatchesRepo_ObjectiveScores(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	// Table PSA optionnelle : créée ici pour rendre le test self-contained.
+	if _, err := pdb.Player.Exec(ctx, `CREATE TABLE IF NOT EXISTS personal_score_awards
+		(match_id VARCHAR, xuid VARCHAR, award_category VARCHAR, award_score INTEGER)`); err != nil {
+		t.Fatalf("create personal_score_awards: %v", err)
+	}
+	if _, err := pdb.Player.Exec(ctx, "DELETE FROM personal_score_awards"); err != nil {
+		t.Fatalf("reset psa: %v", err)
+	}
+	ins := func(matchID, cat string, score int) {
+		if _, err := pdb.Player.Exec(ctx, `INSERT INTO personal_score_awards
+			(match_id, xuid, award_category, award_score) VALUES (?, ?, ?, ?)`,
+			matchID, pTestXUID, cat, score); err != nil {
+			t.Fatalf("insert psa: %v", err)
+		}
+	}
+	ins("o1", "objective", 200)
+	ins("o1", "objective", 100) // somme objective o1 = 300
+	ins("o1", "combat", 999)    // catégorie != objective → exclu
+	ins("o2", "objective", 50)
+
+	repo := NewPlayerMatchesRepo(pdb)
+	scores, err := repo.ObjectiveScores(ctx, []string{"o1", "o2"})
+	if err != nil {
+		t.Fatalf("ObjectiveScores: %v", err)
+	}
+	if scores["o1"] != 300 {
+		t.Fatalf("o1: want 300 (somme objective), got %d", scores["o1"])
+	}
+	if scores["o2"] != 50 {
+		t.Fatalf("o2: want 50, got %d", scores["o2"])
+	}
+}
+
 func TestPlayerMatchesRepo_Load_NoFilter(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedPlayerMatchesFixtures(t, pdb)
