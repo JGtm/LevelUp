@@ -10,6 +10,8 @@ import { buildSessionParticipationBarsOption } from './SessionParticipationBars'
 import { buildSessionNetScoreOption } from './SessionNetScoreArea'
 import { buildSessionMmrDumbbellOption } from './SessionMmrDumbbell'
 import { buildSessionModeBreakdownOption } from './SessionModeBreakdown'
+import { buildSessionDamageOption } from './SessionDamageComposite'
+import { buildSessionPlacementOption } from './SessionPlacementBreakdown'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -78,6 +80,51 @@ describe('buildSessionModeBreakdownOption', () => {
     expect(opt.series[0].type).toBe('bar')
     expect(opt.series[0].data.map((d: { value: number }) => d.value)).toEqual([5, 2])
     expect(opt.xAxis.data).toEqual(['Slayer', 'CTF'])
+    expect(opt.yAxis.minInterval).toBe(1)
+  })
+})
+
+describe('buildSessionDamageOption', () => {
+  it('2 barres empilées (infligés/subis) horizontales par match', () => {
+    const opt = buildSessionDamageOption(
+      [{ key: 'd', datapoints: [{ label: '#1', dealt: 3000, taken: 1500 }] }],
+      { dealtLabel: 'Infligés', takenLabel: 'Subis' },
+    ) as any
+    expect(opt.series).toHaveLength(2)
+    expect(opt.series[0].stack).toBe('dmg')
+    expect(opt.series[1].stack).toBe('dmg')
+    expect(opt.series[0].data).toEqual([3000])
+    expect(opt.series[1].data).toEqual([1500])
+    expect(opt.yAxis.type).toBe('category')
+    expect(opt.xAxis.type).toBe('value')
+    expect(opt.legend.data).toEqual(['Infligés', 'Subis'])
+  })
+
+  it('option vide sans points', () => {
+    const opt = buildSessionDamageOption([], { dealtLabel: 'A', takenLabel: 'B' }) as any
+    expect(opt.series).toBeUndefined()
+  })
+})
+
+describe('buildSessionPlacementOption', () => {
+  it('barres verticales par placement (#1..#N) + comptes', () => {
+    const opt = buildSessionPlacementOption(
+      [
+        {
+          key: 'p',
+          datapoints: [
+            { placement: 1, count: 3 },
+            { placement: 2, count: 1 },
+            { placement: 3, count: 0 },
+            { placement: 4, count: 2 },
+          ],
+        },
+      ],
+      { countLabel: 'matchs' },
+    ) as any
+    expect(opt.series[0].type).toBe('bar')
+    expect(opt.xAxis.data).toEqual(['#1', '#2', '#3', '#4'])
+    expect(opt.series[0].data.map((d: { value: number }) => d.value)).toEqual([3, 1, 0, 2])
     expect(opt.yAxis.minInterval).toBe(1)
   })
 })

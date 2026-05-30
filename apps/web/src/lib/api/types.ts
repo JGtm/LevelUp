@@ -3119,6 +3119,13 @@ export interface SessionDetailMatchRow {
   dominant_category: string | null
   offensive_conversion: number | null
   defensive_resistance: number | null
+  // Dégâts infligés / subis du match (barre composite par match).
+  damage_dealt?: number | null
+  damage_taken?: number | null
+  // Placement (rang API = "Rang" du scoreboard) + taille du lobby à la fin
+  // (present_at_completion, bots inclus) — pour le breakdown des placements.
+  placement?: number | null
+  lobby_size?: number | null
   // Champs enrichis (Phase 3) pour le tableau détail.
   map_name?: string
   duration_seconds?: number | null
