@@ -389,7 +389,8 @@ func (r *FiltersRepo) loadAssetFRTranslations(
 		args = append(args, id)
 	}
 
-	trRows, err := r.pdb.Metadata.Query(ctx, q, args...)
+	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
+	trRows, err := r.pdb.Metadata.QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil
 	}

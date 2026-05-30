@@ -55,20 +55,23 @@ func (r *MetadataRepo) GetAssetByID(ctx context.Context, titleID, assetID string
 }
 
 // UpsertAsset insère ou met à jour un asset dans waypoint_assets_raw.
+//
+// SELECT-then-write anti-ART (cf. (*DB).UpsertNoConflict) : pas d'ON CONFLICT
+// DO UPDATE sur metadata.duckdb, qui FATAL-invalide le handle partagé.
 func (r *MetadataRepo) UpsertAsset(ctx context.Context, e AssetEntry) error {
-	_, err := r.meta.Exec(ctx, `
-		INSERT INTO waypoint_assets_raw
+	err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM waypoint_assets_raw WHERE title_id = ? AND asset_id = ? AND version_id = ?`,
+		[]any{e.TitleID, e.AssetID, e.VersionID},
+		`UPDATE waypoint_assets_raw SET
+			asset_type = ?, name = ?, description = ?, raw_json = ?, fetched_at = ?, content_hash = ?
+		 WHERE title_id = ? AND asset_id = ? AND version_id = ?`,
+		[]any{e.AssetType, e.Name, e.Description, e.RawJSON, e.FetchedAt, e.ContentHash,
+			e.TitleID, e.AssetID, e.VersionID},
+		`INSERT INTO waypoint_assets_raw
 			(title_id, asset_id, asset_type, version_id, name, description, raw_json, fetched_at, content_hash)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, asset_id, version_id) DO UPDATE SET
-			asset_type   = excluded.asset_type,
-			name         = excluded.name,
-			description  = excluded.description,
-			raw_json     = excluded.raw_json,
-			fetched_at   = excluded.fetched_at,
-			content_hash = excluded.content_hash`,
-		e.TitleID, e.AssetID, e.AssetType, e.VersionID,
-		e.Name, e.Description, e.RawJSON, e.FetchedAt, e.ContentHash)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{e.TitleID, e.AssetID, e.AssetType, e.VersionID,
+			e.Name, e.Description, e.RawJSON, e.FetchedAt, e.ContentHash})
 	if err != nil {
 		return fmt.Errorf("UpsertAsset %s: %w", e.AssetID, err)
 	}

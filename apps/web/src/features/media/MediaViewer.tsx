@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
 import { GifHoverThumbnail } from '@/components/ui/gif-hover-thumbnail'
 import { CoverFlowModal } from './CoverFlowModal'
 import { getMediaText } from './i18n'
 import { getMediaModalsText } from './i18n-modals'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
+import { looksLikeAssetId } from '@/lib/halo/assetId'
 import type { MediaItemRow } from '@/lib/api/types'
 
 // Tokens identiques à SQUAD_TEAMMATE_COLOR_TOKENS — cohérence visuelle inter-pages.
@@ -208,6 +208,9 @@ export function MediaThumbnailCard({
   const modals = getMediaModalsText(locale)
   const dateStr = formatMediaDate(item.capture_end_utc ?? item.match_start_time)
   const hasMatch = Boolean(item.match_id)
+  // Garde anti-GUID (défense en profondeur) : un asset_id de map non résolu ne
+  // doit jamais s'afficher ; le backend renvoie normalement le nom ou null.
+  const resolvedMapName = item.map_name && !looksLikeAssetId(item.map_name) ? item.map_name : null
   const isCurrentMatch = hasMatch && currentMatchId === item.match_id
   const showViewMatchLink = hasMatch && !isCurrentMatch && Boolean(playerSlug)
   // owner_gamertag peut être absent si player_slug est NULL en DB (migration sans backfill).
@@ -320,11 +323,8 @@ export function MediaThumbnailCard({
 
       <div className="flex flex-col gap-1 p-2">
         <div className="flex items-center gap-1 min-w-0">
-          <Badge variant={item.kind === 'clip' ? 'default' : 'secondary'} className="text-xs shrink-0">
-            {item.kind}
-          </Badge>
-          {item.map_name ? (
-            <span className="truncate text-xs text-muted-foreground min-w-0">{truncateMapName(item.map_name)}</span>
+          {resolvedMapName ? (
+            <span className="truncate text-xs text-muted-foreground min-w-0">{truncateMapName(resolvedMapName)}</span>
           ) : showAssociateLink && onAssociate ? (
             <button
               type="button"
@@ -337,9 +337,11 @@ export function MediaThumbnailCard({
             >
               + {modals.coverFlow.associateButton}
             </button>
-          ) : !hasMatch ? (
+          ) : hasMatch ? (
+            <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.unknownMap}</span>
+          ) : (
             <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.noMatchAssociated}</span>
-          ) : null}
+          )}
           {showViewMatchLink && playerSlug && item.match_id && (
             onOpenMatch ? (
               <button

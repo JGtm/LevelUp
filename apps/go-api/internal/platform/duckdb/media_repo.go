@@ -14,7 +14,7 @@
 //     SetMediaLikeAtomic + ToggleSharedLike +
 //     GetMediaLikers + queryConfig + joinStrings
 //   - media_repo_translations.go : enrichMediaMapTranslations +
-//     loadMediaMapFRTranslations +
+//     loadMapCatalogNames +
 //     translateMap/ModeFilterOptions +
 //     loadAssetTranslationNames +
 //     loadMapImageURLsByID +
