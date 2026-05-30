@@ -284,7 +284,12 @@ func (r *MetadataRepo) loadAssetTranslationsPerLang(
 	for _, id := range assetIDs {
 		args = append(args, id)
 	}
-	rows, err := r.meta.Query(ctx, fmt.Sprintf(`
+	// QueryRecovered : si le handle metadata partagé a été FATAL-invalidated par
+	// le bug ART (cf. catalog_fetcher upsertRowNoConflict + ADR 0019), la lecture
+	// se ré-ouvre et retry au lieu de retomber silencieusement en EN jusqu'au
+	// redémarrage. Le reopen est in-place dans le cache → bénéficie à tous les
+	// consommateurs du même *DB metadata.
+	rows, err := r.meta.QueryRecovered(ctx, fmt.Sprintf(`
 		SELECT asset_id, lang, name
 		FROM asset_translations
 		WHERE asset_type = ?

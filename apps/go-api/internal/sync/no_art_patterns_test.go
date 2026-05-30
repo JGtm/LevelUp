@@ -35,6 +35,11 @@ var patternsAtRisk = []*regexp.Regexp{
 	// des faux positifs. Une détection fiable demanderait une analyse statement-level
 	// (AST). En l'état : garde-rail best-effort, à compléter par la revue de code.
 	regexp.MustCompile(`(?i)\bON\s+CONFLICT\b[^)]*\bDO\s+UPDATE\b`),
+	// Forme parenthésée `ON CONFLICT (cols) DO UPDATE` — non couverte par le motif
+	// nu ci-dessus (son `[^)]*` s'arrête au premier `)`). C'est précisément la forme
+	// utilisée par les writers metadata catalogue/cache (catalog_fetcher, asset_index,
+	// waypoint_assets_raw) qui ont FATAL-invalidé metadata.duckdb (thought_log 2026-05-30).
+	regexp.MustCompile(`(?i)\bON\s+CONFLICT\s*\([^)]*\)\s*DO\s+UPDATE\b`),
 	regexp.MustCompile(`(?i)\bINSERT\s+OR\s+REPLACE\b`),
 }
 
@@ -60,6 +65,20 @@ var tablesProtegees = []string{
 	"streak",
 	"streak_history",
 	"milestone_earned",
+	// metadata.duckdb (fix 2026-05-30) : writers catalogue/cache migrés hors
+	// ON CONFLICT DO UPDATE vers SELECT-then-write ((*duckdb.DB).UpsertNoConflict).
+	// Un ON CONFLICT DO UPDATE sur ces tables FATAL-invalide le handle metadata
+	// partagé → modes/playlists en anglais sur toute l'app (incident page Synthesis).
+	"playlists_catalog",
+	"maps_catalog",
+	"game_variants_catalog",
+	"map_mode_pair_definitions",
+	"pair_mode_label_translations",
+	"asset_index",
+	"waypoint_assets_raw",
+	"season_calendars",
+	"csr_season_calendars",
+	"waypoint_resource_snapshots",
 }
 
 // allowlistArtPatterns : sites de prod où un pattern à risque reste
@@ -74,6 +93,13 @@ var allowlistArtPatterns = map[string]string{
 	// Documentation interne du package persist : mentionne les patterns
 	// à risque par nature (c'est sa raison d'être).
 	"internal/persist/doc.go": "Documentation : mentionne explicitement les patterns à risque dans son rôle d'expliquer le refactor anti-ART",
+	// Faux positif file-level (cf. LIMITATION sur patternsAtRisk) : ce fichier
+	// écrit match_skill_rank (protégé) en append-only PUR, mais contient aussi un
+	// ON CONFLICT (match_id, component_name) DO UPDATE sur lusr_component_history
+	// (table NON protégée, basse fréquence player DB). Le scan file-level ne sait
+	// pas distinguer les deux statements. Le ON CONFLICT vise lusr_component_history,
+	// pas match_skill_rank.
+	"internal/sync/skill_rating_loaders.go": "ON CONFLICT sur lusr_component_history (non protégée) ; match_skill_rank y est écrit en append-only pur — FP file-level",
 }
 
 // TestNoARTPatternsOnProtectedTables — guard-rail principal.
@@ -105,13 +131,18 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			// Exclure les fichiers de test, migrations (one-shot boot),
-			// seeds, et le présent guard-rail.
+			// Exclure les fichiers de test, migrations (one-shot boot), seeds,
+			// outils CLI/scripts one-shot (cmd/, scripts/ — exécutés hors serveur,
+			// mono-processus, même statut que migration/ops), et le présent guard-rail.
 			if strings.HasSuffix(path, "_test.go") ||
 				strings.Contains(path, "/migration/") ||
 				strings.Contains(path, "\\migration\\") ||
 				strings.Contains(path, "/ops/") ||
-				strings.Contains(path, "\\ops\\") {
+				strings.Contains(path, "\\ops\\") ||
+				strings.Contains(path, "/cmd/") ||
+				strings.Contains(path, "\\cmd\\") ||
+				strings.Contains(path, "/scripts/") ||
+				strings.Contains(path, "\\scripts\\") {
 				return nil
 			}
 
@@ -119,7 +150,10 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			if readErr != nil {
 				return nil // skip silently
 			}
-			text := string(content)
+			// Retire les commentaires Go avant matching : un commentaire qui mentionne
+			// le pattern à risque (ex. « évite ON CONFLICT DO UPDATE ») n'est pas une
+			// écriture réelle et ne doit pas déclencher le garde-fou.
+			text := stripGoComments(string(content))
 			if !tableRegex.MatchString(text) {
 				return nil
 			}
@@ -177,6 +211,24 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 				fileRel, reason)
 		}
 	}
+}
+
+// reBlockComment / reLineComment : pour retirer les commentaires Go avant le
+// scan des patterns à risque (un commentaire explicatif n'est pas une écriture).
+var (
+	reBlockComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
+	reLineComment  = regexp.MustCompile(`//[^\n]*`)
+)
+
+// stripGoComments retire les commentaires bloc et ligne. Approximation suffisante
+// pour le garde-fou : un `//` à l'intérieur d'une string literal (ex. URL) peut
+// être tronqué, mais les patterns SQL recherchés (ON CONFLICT…, INSERT OR REPLACE)
+// vivent dans des raw strings multi-lignes dont la ligne pertinente ne contient
+// pas de `//`.
+func stripGoComments(src string) string {
+	src = reBlockComment.ReplaceAllString(src, "")
+	src = reLineComment.ReplaceAllString(src, "")
+	return src
 }
 
 // findRepoRoot retourne la racine de `apps/go-api/` (depuis laquelle les

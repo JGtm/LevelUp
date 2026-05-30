@@ -660,6 +660,20 @@ func init() {
 		ApplySchema: applyResolutionViews,
 	})
 
+	// 2026-05-30 : re-déploiement forcé de v_gamertag_lookup. Sur les bases où la
+	// vue a été RE-ÉCRASÉE par la version simplifiée (sync/schema.go pré-fix
+	// 2026-05-30 posait, à chaque boot, une vue `WHERE gamertag IS NOT NULL` sans
+	// BotSQLCase qui excluait les bots → "Joueur N.0)" dans scoreboard + picker),
+	// les migrations repair antérieures sont "done" mais la vue effective reste
+	// cassée. Le fix schema.go bloque désormais la régression ; cette migration
+	// converge l'état existant. CREATE OR REPLACE → idempotent.
+	Register(Migration{
+		Name:        "repair_v_gamertag_lookup_bots_2026_05_30",
+		TargetDB:    TargetShared,
+		Description: "v_gamertag_lookup : re-deploy (vue ré-écrasée par version simplifiée pré-fix schema.go)",
+		ApplySchema: applyResolutionViews,
+	})
+
 }
 
 // dropAssistsExpectedShared supprime les colonnes assists_expected / assists_stddev

@@ -1086,6 +1086,13 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		metaDB.Close()
 		return fmt.Errorf("metadata migrations: %w", err)
 	}
+	// Réconciliation idempotente des seeds de traduction (mode_name_tr + playlists
+	// FR) : converge les bases dont la migration de seed est "done" mais incomplète
+	// (sous-modes / "Quick Play" restés en anglais). Cf. ReconcileMetadataSeeds.
+	if err := migration.ReconcileMetadataSeeds(metaDB.SQLDb()); err != nil {
+		metaDB.Close()
+		return fmt.Errorf("metadata seed reconcile: %w", err)
+	}
 	metaDB.Close()
 
 	// 2. shared_matches_v2.duckdb

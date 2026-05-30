@@ -149,6 +149,35 @@ func (s *CatalogFetcherService) processEntry(ctx context.Context, adapter games.
 	return fmt.Errorf("asset_type inconnu: %q", assetType)
 }
 
+// upsertRowNoConflict fait un SELECT d'existence puis UPDATE ou INSERT.
+//
+// Évite délibérément `INSERT ... ON CONFLICT DO UPDATE` : sur metadata.duckdb
+// ce pattern déclenche le bug ART DuckDB « Failed to delete all rows from index.
+// Only deleted 0 out of 1 rows. » qui FATAL-invalide la connexion partagée pour
+// TOUT le process — toutes les lectures metadata suivantes (mode_name_tr,
+// asset_translations, map_images_registry, weapon_labels…) échouent alors
+// silencieusement et l'UI retombe en anglais brut jusqu'au redémarrage.
+// Cf. ADR 0019 + thought_log 2026-05-30 (incident filtres EN page Synthesis).
+func (s *CatalogFetcherService) upsertRowNoConflict(
+	ctx context.Context,
+	existsQuery string, existsArgs []any,
+	updateQuery string, updateArgs []any,
+	insertQuery string, insertArgs []any,
+) error {
+	var dummy int
+	err := s.metadataDB.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
+	switch {
+	case err == nil:
+		_, execErr := s.metadataDB.ExecContext(ctx, updateQuery, updateArgs...)
+		return execErr
+	case errors.Is(err, sql.ErrNoRows):
+		_, execErr := s.metadataDB.ExecContext(ctx, insertQuery, insertArgs...)
+		return execErr
+	default:
+		return err
+	}
+}
+
 func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug string, pl canonical.CanonicalPlaylist) error {
 	now := time.Now().UTC()
 	// Conformité allowlist : la référence rankedplaylists est la source de vérité
@@ -160,19 +189,18 @@ func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug st
 		isRanked = true
 		experience = "ranked"
 	}
-	_, err := s.metadataDB.ExecContext(ctx, `
-		INSERT INTO playlists_catalog
-		  (title_slug, playlist_asset_id, current_version_id, name_canonical, experience, is_ranked, is_active, first_seen_at, last_seen_at, last_fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?)
-		ON CONFLICT (title_slug, playlist_asset_id) DO UPDATE SET
-		  current_version_id = excluded.current_version_id,
-		  name_canonical     = excluded.name_canonical,
-		  experience         = excluded.experience,
-		  is_ranked          = excluded.is_ranked,
-		  last_seen_at       = excluded.last_seen_at,
-		  last_fetched_at    = excluded.last_fetched_at
-		`,
-		titleSlug, pl.AssetID, pl.VersionID, pl.NameCanonical, experience, isRanked, now, now, now,
+	err := s.upsertRowNoConflict(ctx,
+		`SELECT 1 FROM playlists_catalog WHERE title_slug = ? AND playlist_asset_id = ?`,
+		[]any{titleSlug, pl.AssetID},
+		`UPDATE playlists_catalog SET
+		   current_version_id = ?, name_canonical = ?, experience = ?,
+		   is_ranked = ?, last_seen_at = ?, last_fetched_at = ?
+		 WHERE title_slug = ? AND playlist_asset_id = ?`,
+		[]any{pl.VersionID, pl.NameCanonical, experience, isRanked, now, now, titleSlug, pl.AssetID},
+		`INSERT INTO playlists_catalog
+		   (title_slug, playlist_asset_id, current_version_id, name_canonical, experience, is_ranked, is_active, first_seen_at, last_seen_at, last_fetched_at)
+		 VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?)`,
+		[]any{titleSlug, pl.AssetID, pl.VersionID, pl.NameCanonical, experience, isRanked, now, now, now},
 	)
 	if err != nil {
 		return fmt.Errorf("upsert playlist: %w", err)
@@ -194,30 +222,32 @@ func (s *CatalogFetcherService) upsertPlaylist(ctx context.Context, titleSlug st
 
 func (s *CatalogFetcherService) upsertPair(ctx context.Context, titleSlug string, p canonical.CanonicalPair) error {
 	now := time.Now().UTC()
-	_, err := s.metadataDB.ExecContext(ctx, `
-		INSERT INTO map_mode_pair_definitions
-		  (title_slug, pair_asset_id, current_version_id, name_canonical, map_asset_id, game_variant_asset_id, mode_category, last_fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_slug, pair_asset_id) DO UPDATE SET
-		  current_version_id    = excluded.current_version_id,
-		  name_canonical        = excluded.name_canonical,
-		  map_asset_id          = excluded.map_asset_id,
-		  game_variant_asset_id = excluded.game_variant_asset_id,
-		  mode_category         = excluded.mode_category,
-		  last_fetched_at       = excluded.last_fetched_at
-		`,
-		titleSlug, p.AssetID, p.VersionID, p.NameCanonical, p.MapAssetID, p.GameVariantAssetID, p.ModeCategory, now,
+	err := s.upsertRowNoConflict(ctx,
+		`SELECT 1 FROM map_mode_pair_definitions WHERE title_slug = ? AND pair_asset_id = ?`,
+		[]any{titleSlug, p.AssetID},
+		`UPDATE map_mode_pair_definitions SET
+		   current_version_id = ?, name_canonical = ?, map_asset_id = ?,
+		   game_variant_asset_id = ?, mode_category = ?, last_fetched_at = ?
+		 WHERE title_slug = ? AND pair_asset_id = ?`,
+		[]any{p.VersionID, p.NameCanonical, p.MapAssetID, p.GameVariantAssetID, p.ModeCategory, now, titleSlug, p.AssetID},
+		`INSERT INTO map_mode_pair_definitions
+		   (title_slug, pair_asset_id, current_version_id, name_canonical, map_asset_id, game_variant_asset_id, mode_category, last_fetched_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{titleSlug, p.AssetID, p.VersionID, p.NameCanonical, p.MapAssetID, p.GameVariantAssetID, p.ModeCategory, now},
 	)
 	if err != nil {
 		return fmt.Errorf("upsert pair: %w", err)
 	}
-	// Upsert les labels normalisés multi-langues.
+	// Upsert les labels normalisés multi-langues (SELECT-then-write, cf. upsertRowNoConflict).
 	for lang, label := range p.ModeLabels {
-		_, _ = s.metadataDB.ExecContext(ctx, `
-			INSERT INTO pair_mode_label_translations (title_slug, pair_asset_id, lang, label)
-			VALUES (?, ?, ?, ?)
-			ON CONFLICT (title_slug, pair_asset_id, lang) DO UPDATE SET label = excluded.label
-		`, titleSlug, p.AssetID, lang, label)
+		_ = s.upsertRowNoConflict(ctx,
+			`SELECT 1 FROM pair_mode_label_translations WHERE title_slug = ? AND pair_asset_id = ? AND lang = ?`,
+			[]any{titleSlug, p.AssetID, lang},
+			`UPDATE pair_mode_label_translations SET label = ? WHERE title_slug = ? AND pair_asset_id = ? AND lang = ?`,
+			[]any{label, titleSlug, p.AssetID, lang},
+			`INSERT INTO pair_mode_label_translations (title_slug, pair_asset_id, lang, label) VALUES (?, ?, ?, ?)`,
+			[]any{titleSlug, p.AssetID, lang, label},
+		)
 	}
 	// Re-enqueue map et game_variant si inconnus.
 	if p.MapAssetID != "" {
@@ -237,16 +267,16 @@ func (s *CatalogFetcherService) upsertPair(ctx context.Context, titleSlug string
 
 func (s *CatalogFetcherService) upsertMap(ctx context.Context, titleSlug string, m canonical.CanonicalMap) error {
 	now := time.Now().UTC()
-	_, err := s.metadataDB.ExecContext(ctx, `
-		INSERT INTO maps_catalog (title_slug, map_asset_id, current_version_id, name_canonical, image_url, last_fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_slug, map_asset_id) DO UPDATE SET
-		  current_version_id = excluded.current_version_id,
-		  name_canonical     = excluded.name_canonical,
-		  image_url          = excluded.image_url,
-		  last_fetched_at    = excluded.last_fetched_at
-		`,
-		titleSlug, m.AssetID, m.VersionID, m.NameCanonical, m.ImageURL, now,
+	err := s.upsertRowNoConflict(ctx,
+		`SELECT 1 FROM maps_catalog WHERE title_slug = ? AND map_asset_id = ?`,
+		[]any{titleSlug, m.AssetID},
+		`UPDATE maps_catalog SET
+		   current_version_id = ?, name_canonical = ?, image_url = ?, last_fetched_at = ?
+		 WHERE title_slug = ? AND map_asset_id = ?`,
+		[]any{m.VersionID, m.NameCanonical, m.ImageURL, now, titleSlug, m.AssetID},
+		`INSERT INTO maps_catalog (title_slug, map_asset_id, current_version_id, name_canonical, image_url, last_fetched_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[]any{titleSlug, m.AssetID, m.VersionID, m.NameCanonical, m.ImageURL, now},
 	)
 	if err != nil {
 		return fmt.Errorf("upsert map: %w", err)
@@ -256,17 +286,17 @@ func (s *CatalogFetcherService) upsertMap(ctx context.Context, titleSlug string,
 
 func (s *CatalogFetcherService) upsertGameVariant(ctx context.Context, titleSlug string, gv canonical.CanonicalGameVariant) error {
 	now := time.Now().UTC()
-	_, err := s.metadataDB.ExecContext(ctx, `
-		INSERT INTO game_variants_catalog (title_slug, game_variant_asset_id, current_version_id, name_canonical, mode_canonical, game_variant_category, last_fetched_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_slug, game_variant_asset_id) DO UPDATE SET
-		  current_version_id    = excluded.current_version_id,
-		  name_canonical        = excluded.name_canonical,
-		  mode_canonical        = excluded.mode_canonical,
-		  game_variant_category = excluded.game_variant_category,
-		  last_fetched_at       = excluded.last_fetched_at
-		`,
-		titleSlug, gv.AssetID, gv.VersionID, gv.NameCanonical, string(gv.ModeCanonical), gv.GameVariantCategory, now,
+	err := s.upsertRowNoConflict(ctx,
+		`SELECT 1 FROM game_variants_catalog WHERE title_slug = ? AND game_variant_asset_id = ?`,
+		[]any{titleSlug, gv.AssetID},
+		`UPDATE game_variants_catalog SET
+		   current_version_id = ?, name_canonical = ?, mode_canonical = ?,
+		   game_variant_category = ?, last_fetched_at = ?
+		 WHERE title_slug = ? AND game_variant_asset_id = ?`,
+		[]any{gv.VersionID, gv.NameCanonical, string(gv.ModeCanonical), gv.GameVariantCategory, now, titleSlug, gv.AssetID},
+		`INSERT INTO game_variants_catalog (title_slug, game_variant_asset_id, current_version_id, name_canonical, mode_canonical, game_variant_category, last_fetched_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		[]any{titleSlug, gv.AssetID, gv.VersionID, gv.NameCanonical, string(gv.ModeCanonical), gv.GameVariantCategory, now},
 	)
 	if err != nil {
 		return fmt.Errorf("upsert game variant: %w", err)

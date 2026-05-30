@@ -194,22 +194,25 @@ func (r *MetadataRepo) UpsertSeason(ctx context.Context, s domain.SeasonCalendar
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	const q = `
-		INSERT INTO season_calendars
-		  (title_id, season_id, version, name, start_date, end_date, fetched_at, content_hash, etag, source_url)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, season_id) DO UPDATE SET
-		  version=excluded.version, name=excluded.name, start_date=excluded.start_date,
-		  end_date=excluded.end_date, fetched_at=excluded.fetched_at,
-		  content_hash=excluded.content_hash, etag=excluded.etag, source_url=excluded.source_url`
-
 	var endDate interface{}
 	if s.EndDate != nil {
 		endDate = *s.EndDate
 	}
-	_, err := r.meta.Exec(ctx, q,
-		s.TitleID, s.SeasonID, s.Version, s.Name, s.StartDate, endDate,
-		s.FetchedAt, s.ContentHash, s.ETag, s.SourceURL,
+	// SELECT-then-write anti-ART (cf. (*DB).UpsertNoConflict) sur metadata.duckdb.
+	err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM season_calendars WHERE title_id = ? AND season_id = ?`,
+		[]any{s.TitleID, s.SeasonID},
+		`UPDATE season_calendars SET
+		   version=?, name=?, start_date=?, end_date=?, fetched_at=?,
+		   content_hash=?, etag=?, source_url=?
+		 WHERE title_id = ? AND season_id = ?`,
+		[]any{s.Version, s.Name, s.StartDate, endDate, s.FetchedAt,
+			s.ContentHash, s.ETag, s.SourceURL, s.TitleID, s.SeasonID},
+		`INSERT INTO season_calendars
+		   (title_id, season_id, version, name, start_date, end_date, fetched_at, content_hash, etag, source_url)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{s.TitleID, s.SeasonID, s.Version, s.Name, s.StartDate, endDate,
+			s.FetchedAt, s.ContentHash, s.ETag, s.SourceURL},
 	)
 	if err != nil {
 		return fmt.Errorf("MetadataRepo.UpsertSeason: %w", err)
@@ -222,22 +225,25 @@ func (r *MetadataRepo) UpsertCSRSeason(ctx context.Context, s domain.CSRSeasonCa
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	const q = `
-		INSERT INTO csr_season_calendars
-		  (title_id, season_id, version, name, start_date, end_date, fetched_at, content_hash, etag, source_url)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, season_id) DO UPDATE SET
-		  version=excluded.version, name=excluded.name, start_date=excluded.start_date,
-		  end_date=excluded.end_date, fetched_at=excluded.fetched_at,
-		  content_hash=excluded.content_hash, etag=excluded.etag, source_url=excluded.source_url`
-
 	var endDate interface{}
 	if s.EndDate != nil {
 		endDate = *s.EndDate
 	}
-	_, err := r.meta.Exec(ctx, q,
-		s.TitleID, s.SeasonID, s.Version, s.Name, s.StartDate, endDate,
-		s.FetchedAt, s.ContentHash, s.ETag, s.SourceURL,
+	// SELECT-then-write anti-ART (cf. (*DB).UpsertNoConflict) sur metadata.duckdb.
+	err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM csr_season_calendars WHERE title_id = ? AND season_id = ?`,
+		[]any{s.TitleID, s.SeasonID},
+		`UPDATE csr_season_calendars SET
+		   version=?, name=?, start_date=?, end_date=?, fetched_at=?,
+		   content_hash=?, etag=?, source_url=?
+		 WHERE title_id = ? AND season_id = ?`,
+		[]any{s.Version, s.Name, s.StartDate, endDate, s.FetchedAt,
+			s.ContentHash, s.ETag, s.SourceURL, s.TitleID, s.SeasonID},
+		`INSERT INTO csr_season_calendars
+		   (title_id, season_id, version, name, start_date, end_date, fetched_at, content_hash, etag, source_url)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{s.TitleID, s.SeasonID, s.Version, s.Name, s.StartDate, endDate,
+			s.FetchedAt, s.ContentHash, s.ETag, s.SourceURL},
 	)
 	if err != nil {
 		return fmt.Errorf("MetadataRepo.UpsertCSRSeason: %w", err)
@@ -250,17 +256,20 @@ func (r *MetadataRepo) UpsertSnapshot(ctx context.Context, snap domain.WaypointR
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	const q = `
-		INSERT INTO waypoint_resource_snapshots
-		  (title_id, resource_key, version, fetched_at, content_hash, etag, source_url, payload)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT (title_id, resource_key, version) DO UPDATE SET
-		  fetched_at=excluded.fetched_at, content_hash=excluded.content_hash,
-		  etag=excluded.etag, source_url=excluded.source_url, payload=excluded.payload`
-
-	_, err := r.meta.Exec(ctx, q,
-		snap.TitleID, snap.ResourceKey, snap.Version,
-		snap.FetchedAt, snap.ContentHash, snap.ETag, snap.SourceURL, snap.Payload,
+	// SELECT-then-write anti-ART (cf. (*DB).UpsertNoConflict) sur metadata.duckdb.
+	err := r.meta.UpsertNoConflict(ctx,
+		`SELECT 1 FROM waypoint_resource_snapshots WHERE title_id = ? AND resource_key = ? AND version = ?`,
+		[]any{snap.TitleID, snap.ResourceKey, snap.Version},
+		`UPDATE waypoint_resource_snapshots SET
+		   fetched_at=?, content_hash=?, etag=?, source_url=?, payload=?
+		 WHERE title_id = ? AND resource_key = ? AND version = ?`,
+		[]any{snap.FetchedAt, snap.ContentHash, snap.ETag, snap.SourceURL, snap.Payload,
+			snap.TitleID, snap.ResourceKey, snap.Version},
+		`INSERT INTO waypoint_resource_snapshots
+		   (title_id, resource_key, version, fetched_at, content_hash, etag, source_url, payload)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		[]any{snap.TitleID, snap.ResourceKey, snap.Version,
+			snap.FetchedAt, snap.ContentHash, snap.ETag, snap.SourceURL, snap.Payload},
 	)
 	if err != nil {
 		return fmt.Errorf("MetadataRepo.UpsertSnapshot: %w", err)
