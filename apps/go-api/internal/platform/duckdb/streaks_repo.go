@@ -54,35 +54,57 @@ func (r *StreaksRepo) GetActive(ctx context.Context, userID, titleSlug string, s
 	return &s, nil
 }
 
-// Upsert crée ou met à jour une streak. INSERT ... ON CONFLICT (id) DO UPDATE.
+// Upsert crée ou met à jour une streak (clé = id).
+//
+// Pattern ART-safe SELECT-then-UPDATE-or-INSERT (CLAUDE.md) : pas d'ON CONFLICT.
+// L'ON CONFLICT déclenche le chemin "delete from index" de DuckDB (bug ART
+// "Failed to delete all rows from index") et, sur une DB dont l'index a été
+// invalidé par un crash ART antérieur, échoue en Binder Error
+// ("conflict target not referenced by UNIQUE/PK constraint or INDEX").
+// Fréquence basse (post-sync par joueur) → le SELECT préalable est sans coût notable.
 func (r *StreaksRepo) Upsert(ctx context.Context, s streaks.Streak) error {
 	if s.ID == "" {
 		return fmt.Errorf("StreaksRepo.Upsert: empty ID")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
+	var exists bool
+	if err := r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM streak WHERE id = ?)`, s.ID).Scan(&exists); err != nil {
+		return fmt.Errorf("StreaksRepo.Upsert exists: %w", err)
+	}
+	if exists {
+		_, err := r.db.Exec(ctx, `
+			UPDATE streak SET
+				current_length    = ?,
+				best_length       = ?,
+				last_increment_at = ?,
+				threshold         = ?,
+				shields_used      = ?,
+				shields_available = ?,
+				status            = ?,
+				broken_at         = ?
+			WHERE id = ?`,
+			s.CurrentLength, s.BestLength, nullableTime(s.LastIncrementAt), nullableFloat(s.Threshold),
+			s.ShieldsUsed, s.ShieldsAvailable, string(s.Status), nullableTime(s.BrokenAt), s.ID,
+		)
+		if err != nil {
+			return fmt.Errorf("StreaksRepo.Upsert update: %w", err)
+		}
+		return nil
+	}
 	_, err := r.db.Exec(ctx, `
 		INSERT INTO streak (
 			id, user_id, title_slug, type, started_at,
 			current_length, best_length, last_increment_at, threshold,
 			shields_used, shields_available, status, broken_at
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-		ON CONFLICT (id) DO UPDATE SET
-			current_length    = excluded.current_length,
-			best_length       = excluded.best_length,
-			last_increment_at = excluded.last_increment_at,
-			threshold         = excluded.threshold,
-			shields_used      = excluded.shields_used,
-			shields_available = excluded.shields_available,
-			status            = excluded.status,
-			broken_at         = excluded.broken_at
-	`,
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		s.ID, s.UserID, s.TitleSlug, string(s.Type), s.StartedAt,
 		s.CurrentLength, s.BestLength, nullableTime(s.LastIncrementAt), nullableFloat(s.Threshold),
 		s.ShieldsUsed, s.ShieldsAvailable, string(s.Status), nullableTime(s.BrokenAt),
 	)
 	if err != nil {
-		return fmt.Errorf("StreaksRepo.Upsert: %w", err)
+		return fmt.Errorf("StreaksRepo.Upsert insert: %w", err)
 	}
 	return nil
 }

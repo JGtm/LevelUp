@@ -24,6 +24,7 @@ import { useCallback } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
+import { displayPlayerName } from '@/lib/players/displayName'
 import type {
   MatchHighlightEvent,
   MatchScoreboardRow,
@@ -106,7 +107,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
       const xuidMeta = new Map<string, { gamertag: string; ally: boolean }>()
       for (const r of sb) {
         const ally = r.is_me || (allyTeam != null && r.team_side === allyTeam)
-        xuidMeta.set(r.xuid, { gamertag: r.gamertag || r.xuid, ally })
+        xuidMeta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
       }
 
       const colorTeam   = resolveToken('team-ally')
@@ -227,11 +228,11 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
       // est centrée sur l'entier, span ±0.5)
       const allyScatter = allyKills.map((k) => ({
         value: [k.binIdx - 0.5 + k.fracInBin, allyLaneY],
-        _tip: `${xuidMeta.get(k.xuid)?.gamertag ?? k.xuid} — ${formatMmSs(k.tMs / 1000)}`,
+        _tip: `${displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} — ${formatMmSs(k.tMs / 1000)}`,
       }))
       const enemyScatter = enemyKills.map((k) => ({
         value: [k.binIdx - 0.5 + k.fracInBin, 0],
-        _tip: `${xuidMeta.get(k.xuid)?.gamertag ?? k.xuid} — ${formatMmSs(k.tMs / 1000)}`,
+        _tip: `${displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} — ${formatMmSs(k.tMs / 1000)}`,
       }))
 
       const allyLane  = bins.map((_, i) => [i, allyLaneY])
@@ -252,7 +253,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, t }: Prop
         for (const k of w.waveKills) byPlayer.set(k.xuid, (byPlayer.get(k.xuid) ?? 0) + 1)
         const contrib = [...byPlayer.entries()]
           .sort((a, b) => b[1] - a[1])
-          .map(([xuid, n]) => `${xuidMeta.get(xuid)?.gamertag ?? xuid} — ${n} kill${n > 1 ? 's' : ''}`)
+          .map(([xuid, n]) => `${displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid)} — ${n} kill${n > 1 ? 's' : ''}`)
           .join('<br/>')
         return `<b>Vague ${side} ×${w.count}</b> — ${formatMmSs(w.tStartMs / 1000)} → ${formatMmSs(w.tEndMs / 1000)}<br/>${contrib}`
       }

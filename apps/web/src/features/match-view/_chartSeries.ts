@@ -17,7 +17,7 @@ import type {
   MatchKillerVictimPair,
   MatchScoreboardRow,
 } from '@/lib/api/types'
-import { unknownPlayerLabel } from './colors'
+import { displayPlayerName } from '@/lib/players/displayName'
 
 /** Format seconds → "MmSSs" (ex 75 → "1m15s"). */
 export function formatBinSeconds(seconds: number): string {
@@ -73,10 +73,10 @@ export function antagonistStackedSeries(
       const components: Record<string, number> = {}
       for (const p of pairs) {
         if (p.killer_xuid !== killerXUID) continue
-        const key = p.victim_gamertag || p.victim_xuid
+        const key = displayPlayerName(p.victim_gamertag, p.victim_xuid)
         components[key] = (components[key] ?? 0) + p.kill_count
       }
-      return { category: gamertag || killerXUID, components }
+      return { category: displayPlayerName(gamertag, killerXUID), components }
     },
   )
 
@@ -105,9 +105,10 @@ export interface FragDiffPoint extends ChartPoint2D {
  * porte son `colorToken` sémantique (allié vs ennemi) ; sinon le wrapper
  * cycle sur la palette par défaut.
  *
- * `xuidToGamertag` est la table de résolution (cf. `buildXUIDToGamertagMap`)
- * — fallback `Joueur XXXX` (4 derniers chars) uniquement si le xuid n'a
- * été résolu par AUCUNE source serveur.
+ * `xuidToGamertag` est la table de résolution (cf. `buildXUIDToGamertagMap`).
+ * Le rendu passe par `displayPlayerName` (lib/players) → fallback masqué
+ * `Joueur ####` (4 derniers chars) si le xuid n'a été résolu par AUCUNE source
+ * serveur. Jamais de xuid brut affiché.
  */
 export function allPlayersFragDiffSeries(
   events: MatchHighlightEvent[],
@@ -149,7 +150,7 @@ export function allPlayersFragDiffSeries(
 
   return xuids.map((xu) => {
     const points = playerSeries.get(xu) ?? []
-    const gamertag = xuidToGamertag.get(xu) ?? unknownPlayerLabel(xu)
+    const gamertag = displayPlayerName(xuidToGamertag.get(xu), xu)
     return {
       key: `match_view.combat.frag_diff.${xu}`,
       colorToken: colorByXUID?.get(xu),

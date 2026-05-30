@@ -22,6 +22,7 @@ import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { CHART_BG, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { MatchHighlightEvent, MatchImpactBadge, MatchScoreboardRow } from '@/lib/api/types'
+import { displayPlayerName } from '@/lib/players/displayName'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -88,7 +89,7 @@ export function MatchKDCumulChart({ events, badges, scoreboard, meXUID, t }: Pro
       const xuidMeta = new Map<string, { gamertag: string; ally: boolean }>()
       for (const r of sb) {
         const ally = r.is_me || (allyTeam != null && r.team_side === allyTeam)
-        xuidMeta.set(r.xuid, { gamertag: r.gamertag || r.xuid, ally })
+        xuidMeta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
       }
 
       // ---- Cumulatifs par équipe via highlight_events (event_type=kill) ----

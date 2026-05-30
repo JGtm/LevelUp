@@ -16,6 +16,7 @@ import type { ChartPointStacked } from '@/components/charts/BarStackedChart'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import { RadarChart, type RadarSeriesPayload } from '@/components/charts/RadarChart'
 import { tokenCssVar } from '@/lib/accessibility'
+import { displayPlayerName } from '@/lib/players/displayName'
 
 import type {
   MatchViewCadence,
@@ -196,7 +197,7 @@ function ImpactRolesList({
       <h3 className="text-sm font-medium">{title}</h3>
       <div className="flex flex-wrap gap-2" data-testid="match-narrative-impact-roles">
         {roles.map((role, idx) => {
-          const gt = gamertagByXUID?.[role.xuid] ?? role.xuid
+          const gt = displayPlayerName(gamertagByXUID?.[role.xuid], role.xuid)
           return (
             <div
               key={`${role.xuid}-${role.role_key}-${idx}`}

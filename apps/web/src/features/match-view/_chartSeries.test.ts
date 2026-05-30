@@ -45,13 +45,13 @@ describe('antagonistStackedSeries', () => {
     expect(dps[1].category).toBe('Bob')
     expect(dps[1].components).toEqual({ Alice: 2 })
   })
-  it('utilise xuid si gamertag manque', () => {
+  it('utilise un libellé masqué (jamais le xuid brut) si gamertag manque', () => {
     const pairs: MatchKillerVictimPair[] = [
       { killer_xuid: 'X1', killer_gamertag: '', victim_xuid: 'X2', victim_gamertag: '', kill_count: 1 },
     ]
     const series = antagonistStackedSeries(pairs)
-    expect(series[0].datapoints[0].category).toBe('X1')
-    expect(series[0].datapoints[0].components).toEqual({ X2: 1 })
+    expect(series[0].datapoints[0].category).toBe('Joueur X1')
+    expect(series[0].datapoints[0].components).toEqual({ 'Joueur X2': 1 })
   })
 })
 

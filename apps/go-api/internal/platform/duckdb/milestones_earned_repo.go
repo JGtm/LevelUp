@@ -47,8 +47,13 @@ func (r *MilestoneEarnedRepo) IsEarned(ctx context.Context, userID, titleSlug, m
 	return true, nil
 }
 
-// Append insère un débloquage. INSERT ON CONFLICT DO NOTHING pour idempotence
-// (un milestone déjà débloqué reste avec son earned_at original).
+// Append insère un débloquage (idempotent : earned_at original conservé).
+//
+// Pattern ART-safe SELECT-then-INSERT (CLAUDE.md) : un milestone se débloque une
+// seule fois → "insert if not exists". Évite l'ON CONFLICT, qui déclenche le
+// chemin "delete from index" de DuckDB (bug ART "Failed to delete all rows from
+// index") et échoue en Binder Error si l'index a été invalidé par un crash ART
+// antérieur. Fréquence basse (post-sync par joueur).
 func (r *MilestoneEarnedRepo) Append(ctx context.Context, e milestones.Earned) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -56,14 +61,21 @@ func (r *MilestoneEarnedRepo) Append(ctx context.Context, e milestones.Earned) e
 	if earnedAt.IsZero() {
 		earnedAt = time.Now().UTC()
 	}
-	_, err := r.db.Exec(ctx, `
+	var exists bool
+	if err := r.db.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM milestone_earned
+			WHERE user_id = ? AND title_slug = ? AND milestone_id = ?
+		)`, e.UserID, e.TitleSlug, e.MilestoneID).Scan(&exists); err != nil {
+		return fmt.Errorf("MilestoneEarnedRepo.Append exists: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := r.db.Exec(ctx, `
 		INSERT INTO milestone_earned (user_id, title_slug, milestone_id, earned_at)
 		VALUES (?, ?, ?, ?)
-		ON CONFLICT (user_id, title_slug, milestone_id) DO NOTHING
-	`,
-		e.UserID, e.TitleSlug, e.MilestoneID, earnedAt,
-	)
-	if err != nil {
+	`, e.UserID, e.TitleSlug, e.MilestoneID, earnedAt); err != nil {
 		return fmt.Errorf("MilestoneEarnedRepo.Append: %w", err)
 	}
 	return nil

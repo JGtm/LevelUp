@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { tokenCssVar } from '@/lib/accessibility'
 import { dropShadowForDifficulty } from '@/lib/medalDifficulty'
+import { displayPlayerName } from '@/lib/players/displayName'
 import type {
   MatchCitationSnippet,
   MatchKillerVictimPair,
@@ -237,8 +238,8 @@ interface AntagonistResult { nemesisName: string; nemesisCount: number; bullyNam
 function computeAntagonists(xuid: string, pairs: MatchKillerVictimPair[]): AntagonistResult {
   let nemesisName = '', nemesisCount = 0, bullyName = '', bullyCount = 0
   for (const p of pairs) {
-    if (p.victim_xuid === xuid && p.kill_count > nemesisCount) { nemesisCount = p.kill_count; nemesisName = p.killer_gamertag || p.killer_xuid }
-    if (p.killer_xuid === xuid && p.kill_count > bullyCount) { bullyCount = p.kill_count; bullyName = p.victim_gamertag || p.victim_xuid }
+    if (p.victim_xuid === xuid && p.kill_count > nemesisCount) { nemesisCount = p.kill_count; nemesisName = displayPlayerName(p.killer_gamertag, p.killer_xuid) }
+    if (p.killer_xuid === xuid && p.kill_count > bullyCount) { bullyCount = p.kill_count; bullyName = displayPlayerName(p.victim_gamertag, p.victim_xuid) }
   }
   return { nemesisName, nemesisCount, bullyName, bullyCount }
 }
