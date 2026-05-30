@@ -1,6 +1,6 @@
 # ADR 0024 — LUSR v2 : TrueSkill 2 avec observations kills/deaths (Halo Infinite)
 
-**Statut** : Accepté (2026-05-27) — Phases 0, 1a-d, 3a-d livrées. Phase 2 (squadOffset) et 3e (calibration tier) en backlog.
+**Statut** : Accepté (2026-05-27) — Phases 0, 1a-d, 2 (squadOffset), 3a-d livrées. **Bascule canonical effectuée en prod (2026-05-30)** : v2 est le writer du rating affiché (Stratégie C), sentinelle auto + capability `CapLUSR` en place. Phase 3e (damping EP matchs déséquilibrés) reste en backlog ; calibration tier validée empiriquement (pas de recalibration nécessaire). Cleanup du code v1 (`batchComputeLUSR`) volontairement différé tant que v2 n'a pas plusieurs jours stables (le rollback `LEVELUP_LUSR_CANONICAL=LUSR` reste donc possible).
 
 **Branche source** : `feat/lusr-v2-phase0-metrics`
 
@@ -158,6 +158,24 @@ Quand le LUSR v2 sera validé pour bascule (Phase 3e + calibration + monitoring 
 5. **Rollback** : `LEVELUP_LUSR_CANONICAL=LUSR` + cmd `lusr_v1_recompute_all` qui repasse `BatchComputeLUSR` sur l'historique pour écraser les rows v2-en-déguisement. Append-only → last-writer-wins via la vue `_latest`.
 
 Cleanup final (optionnel) : `DELETE FROM match_skill_rank WHERE rating_type='LUSR_V2'` post-bascule.
+
+---
+
+## État as-built post-bascule (2026-05-30)
+
+La bascule décrite ci-dessus est **effectuée**. Différences vs le plan initial :
+
+1. **Défaut code, pas seulement env (Fix B 2026-05-30)** : `sync.DefaultLUSRModeIfUnset` (appelée au boot dans `cmd/server`) pose `LEVELUP_LUSR_V2_ENABLED=1` + `LEVELUP_LUSR_CANONICAL=LUSR_V2` si les flags sont absents du process. v2 canonical survit donc à un reset `.air.toml`/`.env.local`. Rollback explicite préservé : `LEVELUP_LUSR_CANONICAL=LUSR`.
+
+2. **Sentinelle dual-row automatique (Sprint 2.C)** : `RunDualRowSentinel` est appelée à l'étape 2.6 de `runPostSyncPipeline` (engine_postsync.go), uniquement en mode canonical, avec timeout 30s, read-only. Toute incohérence (`OnlyLUSRV2 > 0` = match avec row audit mais sans slot LUSR) émet un `slog.ErrorContext` auto-routé vers `logs/sync.log`. Pas de notif externe (cohérent ADR 0009). Remplace l'appel CLI manuel qui n'était jamais déclenché en prod.
+
+3. **Capability `CapLUSR` (Sprint 3.C)** : le LUSR (v1 + v2 + sentinelle) est gardé par `title.CapLUSR` (déclaré par halo_infinite dans `title.NewRegistry`), plus aucun couplage `slug == "halo_infinite"`. Helpers `slugHasLUSR` / `titleHasLUSR` / `skipIfNoLUSRCapability` (skill_v2_capability.go). `RunLUSRV2Shadow` self-gate ; `runPostSyncPipeline` gate sur `e.titleSlug`. Un titre futur sans CapLUSR → LUSR no-op silencieux pour ce titre.
+
+4. **Readers UI → vue `_latest`** : `playerMatchesSkillRankTpl` (table Explorer/Session) et `Q22aMatchSkillRankPlayer` (carte rang) lisent `match_skill_rank_latest` (et non la table brute) — sinon la row audit `LUSR_V2` ou une row LUSR périmée fuite à l'affichage de façon non-déterministe.
+
+5. **Réconciliation historique** : `cmd/lusr_v2_canonical_backfill --commit` lancé **une fois par joueur** (le shadow avance le watermark des coéquipiers → un run multi-joueurs ne traite que le 1er). Résiduel v1 attendu = matchs v2-inéligibles (BTB déséquilibrés `|nA-nB|>1` + FFA, cf. `isTeamImbalanceTooHigh`) ; ils gardent leur slot LUSR v1 (label jamais `LUSR_V2`).
+
+**Reste backlog** (non bloquant) : Sprint 1.D (wiring frontend `expected_win_prob`/`rating_delta`, calculés+stockés mais non affichés) ; cleanup code v1 `batchComputeLUSR` (différé pour préserver le rollback) ; Phase 3e damping EP (couvrirait les matchs déséquilibrés).
 
 ---
 

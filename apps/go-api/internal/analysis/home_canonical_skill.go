@@ -53,6 +53,23 @@ const (
 
 var csrSubTierRoman = [7]string{"", "I", "II", "III", "IV", "V", "VI"}
 
+// BuildSkillTierLabel construit le libellé localisé du palier (ex. "Or III",
+// "Diamant V", "Onyx") à partir des codes de tier d'un SkillSnapshot. frPreferred
+// → nom FR (tierCodeFR si présent), sinon EN (tierCode). Retourne nil si pas de
+// tier exploitable (placement / non-rankée). Même formule que la home — exposé
+// pour que la page session affiche le palier comme l'Explorer (et non la valeur brute).
+func BuildSkillTierLabel(tierCode, tierCodeFR *string, subTier *int, frPreferred bool) *string {
+	if tierCode == nil || *tierCode == "" {
+		return nil
+	}
+	tierDisplay := *tierCode
+	if frPreferred && tierCodeFR != nil && *tierCodeFR != "" {
+		tierDisplay = *tierCodeFR
+	}
+	label, _ := buildCanonicalSkillBadge(tierDisplay, *tierCode, subTier)
+	return label
+}
+
 func buildCanonicalSkillBadge(tierDisplay, tierCodeEN string, subTier *int) (*string, *string) {
 	tierEN := strings.ToLower(strings.TrimSpace(tierCodeEN))
 	if tierEN == "" {

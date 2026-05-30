@@ -826,6 +826,10 @@ func main() {
 		}
 	}
 
+	// v2 canonical = défaut serveur (ADR 0024) si les flags sont absents du
+	// process — survit à un reset .air.toml/.env.local. Opt-out explicite :
+	// LEVELUP_LUSR_CANONICAL=LUSR. AVANT LogLUSRModeAtBoot (log = état effectif).
+	syncpkg.DefaultLUSRModeIfUnset(context.Background())
 	// Confirme au boot le mode LUSR actif (v1 / v2 shadow / v2 canonical) dans
 	// logs/sync.log + alerte sur la misconfig canonical-sans-enabled.
 	syncpkg.LogLUSRModeAtBoot(context.Background())

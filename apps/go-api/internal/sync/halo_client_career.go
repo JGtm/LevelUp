@@ -42,13 +42,20 @@ func (c *HaloAPIClient) GetCareerProgress(ctx context.Context, xuid string) (*Ca
 // Retourne (nil, nil) si le token est absent/insuffisant (401/403) ou si la
 // réponse est vide.
 //
-// 2026-05-14 — endpoint mis à jour vers `/customization/appearance` (l'ancien
-// `/customization?view=public` timeout depuis quelques jours, probablement
-// déprécié). Source : projet Grunt API (github.com/dend/grunt —
-// EconomyModule.PlayerAppearanceCustomization). La réponse est de la forme
+// 2026-05-30 — fallback `/customization?view=public` ajouté pour les joueurs
+// TIERS (cas Explorer : adversaire non suivi). `/customization/appearance` est
+// player-gated → 403 pour un xuid non propriétaire ; la vue publique expose le
+// MÊME bloc Appearance pour n'importe quel joueur (vérifié empiriquement avec nos
+// tokens : 403 vs 200). Ce n'était donc pas une dépréciation mais le gating
+// par défaut de l'endpoint /appearance. Les deux réponses se décodent via le
+// même parseCustomizationAppearance.
+//
+// 2026-05-14 — endpoint primaire `/customization/appearance` (le `view=public`
+// timeoutait alors comme appel primaire ; on le réserve désormais au fallback
+// tiers). Source : projet Grunt API (github.com/dend/grunt —
+// EconomyModule.PlayerAppearanceCustomization). Réponse de la forme
 // {Status, Appearance:{ServiceTag, BackdropImagePath, Emblem:{EmblemPath},
-// PlayerTitlePath, ...}} — exactement ce que parseCustomizationAppearance
-// sait déjà décoder.
+// PlayerTitlePath, ...}}.
 //
 // 2026-05-08 — pattern Grunt strict : pas d'invention d'URL en cas d'échec
 // resolve (ex-fallbackCustomization* retiraient la résolution canonique au
@@ -68,7 +75,26 @@ func (c *HaloAPIClient) GetSpartanCustomization(ctx context.Context, xuid string
 		return nil, fmt.Errorf("GetSpartanCustomization: %w", err)
 	}
 	if !ok {
-		return nil, nil
+		// `/customization/appearance` est player-gated → 403 pour un joueur TIERS
+		// (cas Explorer : adversaire non suivi). Fallback sur la vue publique
+		// `/customization?view=public`, qui expose le MÊME bloc Appearance
+		// (ServiceTag/Emblem/BackdropImagePath) pour n'importe quel joueur.
+		// Décodée par le même parseCustomizationAppearance (navigation Appearance.*).
+		publicURL := fmt.Sprintf(
+			"%s/hi/players/xuid(%s)/customization?view=public",
+			c.economyHost(),
+			url.PathEscape(xuid),
+		)
+		pubBody, pubOK, pubErr := c.doPlayerGatedGet(ctx, publicURL)
+		if pubErr != nil {
+			return nil, fmt.Errorf("GetSpartanCustomization (public view): %w", pubErr)
+		}
+		if !pubOK {
+			return nil, nil
+		}
+		slog.InfoContext(ctx, "spartan_id: customization via vue publique (joueur tiers)",
+			"xuid", xuid, "bytes", len(pubBody))
+		customizationBody = pubBody
 	}
 	appearance, err := parseCustomizationAppearance(customizationBody)
 	if err != nil {
