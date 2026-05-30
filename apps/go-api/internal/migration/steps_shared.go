@@ -869,35 +869,10 @@ func applyResolutionViews(db *sql.DB) error {
 	// Conséquence : les callers peuvent simplifier `COALESCE(vg.gamertag, ...)` en
 	// `vg.gamertag` direct (le LEFT JOIN couvre quand même le cas où xuid n'est
 	// dans aucune source de la vue, mais c'est rare — typiquement un xuid orphelin).
-	xuidExpr := "COALESCE(xa.xuid, mp.xuid)"
-	// Le CASE bot est généré depuis analysis.botNames — même source que BotDisplayName.
-	// Pour un xuid inconnu (bot futur), BotSQLCase retourne le xuid brut.
-	viewSQL := fmt.Sprintf(`
-		CREATE OR REPLACE VIEW v_gamertag_lookup AS
-		SELECT
-			%s AS xuid,
-			CASE
-				WHEN %s LIKE 'bid(%%'
-					THEN %s
-				WHEN xa.gamertag IS NOT NULL AND xa.gamertag != ''
-					THEN xa.gamertag
-				WHEN mp.gamertag IS NOT NULL AND mp.gamertag != ''
-					THEN mp.gamertag
-				ELSE %s
-			END AS gamertag
-		FROM xuid_aliases xa
-		FULL OUTER JOIN (
-			SELECT xuid, MAX(gamertag) AS gamertag
-			FROM match_participants
-			GROUP BY xuid
-		) mp ON xa.xuid = mp.xuid
-	`,
-		xuidExpr,
-		xuidExpr,
-		analysis.BotSQLCase(xuidExpr),
-		xuidExpr,
-	)
-	if _, err := db.ExecContext(bootCtx(), viewSQL); err != nil {
+	//
+	// DDL généré par analysis.GamertagLookupViewSQL — SOURCE UNIQUE partagée avec
+	// le boot (sync.EnsureSharedSchema) pour éliminer toute divergence.
+	if _, err := db.ExecContext(bootCtx(), analysis.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("create v_gamertag_lookup: %w", err)
 	}
 

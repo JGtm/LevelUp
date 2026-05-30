@@ -34,6 +34,8 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/analysis"
+
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
@@ -516,22 +518,9 @@ func anonymizeXUIDInTables(
 // recreateSharedViews recrée v_gamertag_lookup, v_match_full, v_weapon_kills
 // requis par les pages analytics. Tolère l'absence de tables sources.
 func recreateSharedViews(ctx context.Context, db *sql.DB) error {
-	// v_gamertag_lookup : FULL OUTER JOIN xuid_aliases + match_participants.
-	// Format simplifié (sans CASE bot — la démo n'a pas besoin de noms bots officiels).
-	if _, err := db.ExecContext(ctx, `
-		CREATE OR REPLACE VIEW v_gamertag_lookup AS
-		SELECT
-			COALESCE(xa.xuid, mp.xuid) AS xuid,
-			CASE
-				WHEN xa.gamertag IS NOT NULL AND xa.gamertag != '' THEN xa.gamertag
-				WHEN mp.gamertag IS NOT NULL AND mp.gamertag != '' THEN mp.gamertag
-				ELSE COALESCE(xa.xuid, mp.xuid)
-			END AS gamertag
-		FROM xuid_aliases xa
-		FULL OUTER JOIN (
-			SELECT xuid, MAX(gamertag) AS gamertag
-			FROM match_participants GROUP BY xuid
-		) mp ON xa.xuid = mp.xuid`); err != nil {
+	// v_gamertag_lookup : DDL partagé via analysis.GamertagLookupViewSQL
+	// (SOURCE UNIQUE — même résolveur que le boot et les migrations).
+	if _, err := db.ExecContext(ctx, analysis.GamertagLookupViewSQL()); err != nil {
 		return fmt.Errorf("v_gamertag_lookup: %w", err)
 	}
 	if _, err := db.ExecContext(ctx, `
