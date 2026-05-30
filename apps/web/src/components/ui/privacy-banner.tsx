@@ -18,7 +18,11 @@ interface PrivacyBannerProps {
 
 const LEVEL_STYLES: Record<string, { container: string; icon: string }> = {
   partial: {
-    container: 'bg-warning/10 border border-warning text-warning-foreground',
+    // text-warning (couleur forte) et NON text-warning-foreground : ce dernier
+    // (~noir, pensé pour un fond bg-warning plein) est illisible sur le tint
+    // bg-warning/10 en thème sombre → texte invisible. Aligné sur le variant
+    // `full` qui utilise text-destructive sur bg-destructive/10.
+    container: 'bg-warning/10 border border-warning text-warning',
     icon: '⚠️',
   },
   full: {
