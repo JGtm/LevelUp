@@ -6,12 +6,12 @@ import (
 )
 
 func TestBuildSeasonServiceRecordURL(t *testing.T) {
-	const host = "https://halostats.svc.halowaypoint.com"
 	tru, fls := true, false
+	const expectedPrefix = defaultStatsHost + "/hi/players/JGtm/Matchmade/servicerecord?"
 
 	// Sans filtre ranked : seasonId encodé (slashes → %2F), pas de isRanked.
-	u := buildSeasonServiceRecordURL(host, "JGtm", "Seasons/Season7.json", nil)
-	if !strings.HasPrefix(u, host+"/hi/players/JGtm/Matchmade/servicerecord?") {
+	u := buildSeasonServiceRecordURL("JGtm", "Seasons/Season7.json", nil)
+	if !strings.HasPrefix(u, expectedPrefix) {
 		t.Fatalf("préfixe inattendu: %s", u)
 	}
 	if !strings.Contains(u, "seasonId=Seasons%2FSeason7.json") {
@@ -22,11 +22,11 @@ func TestBuildSeasonServiceRecordURL(t *testing.T) {
 	}
 
 	// Filtre classé.
-	if u := buildSeasonServiceRecordURL(host, "JGtm", "Seasons/Season7.json", &tru); !strings.Contains(u, "isRanked=true") {
+	if u := buildSeasonServiceRecordURL("JGtm", "Seasons/Season7.json", &tru); !strings.Contains(u, "isRanked=true") {
 		t.Errorf("isRanked=true attendu: %s", u)
 	}
 	// Filtre non-classé.
-	if u := buildSeasonServiceRecordURL(host, "JGtm", "Seasons/Season7.json", &fls); !strings.Contains(u, "isRanked=false") {
+	if u := buildSeasonServiceRecordURL("JGtm", "Seasons/Season7.json", &fls); !strings.Contains(u, "isRanked=false") {
 		t.Errorf("isRanked=false attendu: %s", u)
 	}
 }
