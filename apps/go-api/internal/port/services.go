@@ -250,6 +250,14 @@ type ServiceRecordProvider interface {
 	FetchServiceRecord(ctx context.Context, gamertag, titleSlug string) (*domain.RemoteServiceRecord, error)
 }
 
+// SeasonStatsProvider fournit le nombre de matchs matchmade complétés par un
+// joueur sur UNE saison donnée (service record Waypoint filtré par seasonId,
+// optionnellement par isRanked). isRanked=nil → total de la saison. Implémenté
+// par platform/halo.HaloProvider et décoré (cache) par service.CachedStatsProvider.
+type SeasonStatsProvider interface {
+	FetchSeasonServiceRecord(ctx context.Context, gamertag, seasonID string, isRanked *bool) (int, error)
+}
+
 // PrivacyProvider interroge la privacy d'un compte Halo via Waypoint.
 // Implémenté par platform/halo.HaloProvider.
 type PrivacyProvider interface {

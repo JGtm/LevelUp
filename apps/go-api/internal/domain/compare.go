@@ -62,6 +62,16 @@ type RemoteMedalCount struct {
 type RemoteServiceRecord struct {
 	Stats  NormalizedPlayerStats `json:"stats"`
 	Medals []RemoteMedalCount    `json:"medals,omitempty"`
+	// SeasonIDs : chemins CMS des saisons effectivement jouées par le joueur,
+	// issus du bloc Subqueries.SeasonIds du service record lifetime (ex.
+	// "Seasons/Season7.json", "Csr/Seasons/CsrSeason9-1.json"). Permet de boucler
+	// sur les saisons réelles d'un joueur arbitraire (cf. season breakdown Explorer).
+	SeasonIDs []string `json:"season_ids,omitempty"`
+	// PlaylistAssetIDs : asset IDs des playlists effectivement engagées par le
+	// joueur (Subqueries.PlaylistAssetIds). Intersecté avec les playlists ranked
+	// pour ne requêter le CSR par saison que sur les playlists réellement jouées
+	// (0 appel pour un joueur social — cf. season breakdown Explorer).
+	PlaylistAssetIDs []string `json:"playlist_asset_ids,omitempty"`
 }
 
 // WeaponHighlight représente l'arme favorite d'un joueur (la plus utilisée).

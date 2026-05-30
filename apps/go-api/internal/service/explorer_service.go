@@ -29,7 +29,12 @@ const outcomeWin = 2
 // CareerLiveBudget côté home — la page ne doit jamais bloquer 10s+ sur un fetch
 // Halo lent. L'identité (local-only) et le sample (calcul local) ne sont PAS
 // bornés par ce budget.
-const explorerTargetLiveBudget = 3 * time.Second
+//
+// Relevé à 8s (depuis 3s) car l'encart inclut désormais le breakdown par saison
+// (parité SpartanRecord) : ~2-3 appels live par saison jouée (service record
+// classé/non-classé + pic CSR), bornés en concurrence + cachés. Reste < 10s ;
+// résultat partiel si dépassement (best-effort). Lookup délibéré d'un joueur.
+const explorerTargetLiveBudget = 8 * time.Second
 
 // ExplorerLocalIdentityResolver résout l'identité Spartan d'une cible STRICTEMENT
 // depuis les données locales : si la cible est un joueur suivi (db_profiles), on
@@ -52,12 +57,12 @@ func (f LocalIdentityResolverFunc) LocalSpartanIdentity(ctx context.Context, tar
 	return f(ctx, targetGamertag)
 }
 
-// ExplorerTargetIdentityProvider fetch l'identité Spartan live d'un xuid
-// arbitraire (career rank + emblem + backdrop). Implémenté par *CareerLiveService
-// (GetSpartanIdentityFor). Sert de secours quand la cible n'est pas un joueur
-// suivi localement.
+// ExplorerTargetIdentityProvider résout l'identité Spartan d'un xuid arbitraire
+// (career rank + emblem + backdrop + service-tag) par un fetch live SYNCHRONE
+// sans persistance, implémenté par *CareerLiveService (FetchLiveIdentity). Sert
+// l'identité même pour une cible non suivie (appearance via la vue publique).
 type ExplorerTargetIdentityProvider interface {
-	GetSpartanIdentityFor(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
+	FetchLiveIdentity(ctx context.Context, xuid string) (*domain.HomeSpartanIdentityRow, error)
 }
 
 // ExplorerTargetCSRProvider fetch les CSR par playlist (saison) d'un xuid
@@ -75,6 +80,32 @@ type CSRProviderFunc func(ctx context.Context, xuid, seasonID string) ([]domain.
 // SeasonCSRs implémente ExplorerTargetCSRProvider.
 func (f CSRProviderFunc) SeasonCSRs(ctx context.Context, xuid, seasonID string) ([]domain.CareerPlaylistCSR, error) {
 	return f(ctx, xuid, seasonID)
+}
+
+// SeasonCSRPeak : pic de rang CSR d'un joueur sur UNE saison passée (plus haut
+// tier parmi les playlists ranked engagées) + URL du badge dérivée (tier/subTier).
+type SeasonCSRPeak struct {
+	Tier     string
+	SubTier  int
+	BadgeURL *string
+}
+
+// ExplorerSeasonCSRProvider retourne le pic de rang CSR d'un xuid sur une saison
+// PASSÉE donnée (csrSeasonID, format "CsrSeasonN-1"), en n'interrogeant QUE les
+// playlists ranked que le joueur a réellement engagées (engagedPlaylistIDs =
+// Subqueries.PlaylistAssetIds, intersecté côté impl avec les playlists ranked).
+// Évite ~4 appels futiles/saison pour un joueur peu/non classé. (nil, nil) si
+// aucune donnée CSR / engagedPlaylistIDs vide (dégradation gracieuse).
+type ExplorerSeasonCSRProvider interface {
+	SeasonPeakCSR(ctx context.Context, xuid, csrSeasonID string, engagedPlaylistIDs []string) (*SeasonCSRPeak, error)
+}
+
+// SeasonCSRPeakFunc adapte une closure en ExplorerSeasonCSRProvider.
+type SeasonCSRPeakFunc func(ctx context.Context, xuid, csrSeasonID string, engagedPlaylistIDs []string) (*SeasonCSRPeak, error)
+
+// SeasonPeakCSR implémente ExplorerSeasonCSRProvider.
+func (f SeasonCSRPeakFunc) SeasonPeakCSR(ctx context.Context, xuid, csrSeasonID string, engagedPlaylistIDs []string) (*SeasonCSRPeak, error) {
+	return f(ctx, xuid, csrSeasonID, engagedPlaylistIDs)
 }
 
 // ExplorerService orchestre les requêtes de l'Explorer.
@@ -113,7 +144,13 @@ type ExplorerTargetProfileDeps struct {
 	CurrentSeasonID string
 	// Seasons : calendrier des saisons (plages temporelles) pour le bucketing
 	// "matchs par saison" — résolu côté registry depuis SeasonsCatalog.
-	Seasons   []SeasonCatalogEntry
+	Seasons []SeasonCatalogEntry
+	// SeasonSR : service record FILTRÉ par saison (matchs classés/non-classés par
+	// saison) pour le breakdown live. nil → fallback bucketing local.
+	SeasonSR port.SeasonStatsProvider
+	// SeasonCSR : pic de rang CSR par saison passée (badge au-dessus des barres).
+	// nil → pas de badge.
+	SeasonCSR ExplorerSeasonCSRProvider
 	TitleSlug string
 }
 
@@ -274,11 +311,15 @@ func (s *ExplorerService) buildTargetProfile(
 		return nil
 	})
 	g.Go(func() error {
-		careerStats, topMedals = s.fetchTargetServiceRecord(liveCtx, targetGamertag, hasAuth)
+		// Service record lifetime → carrière + top médailles + saisons jouées
+		// (Subqueries.SeasonIds) + playlists engagées (PlaylistAssetIds), puis
+		// breakdown par saison (séquentiel car dépendant). Un seul appel lifetime.
+		var seasonIDs, engagedPlaylists []string
+		careerStats, topMedals, seasonIDs, engagedPlaylists = s.fetchTargetServiceRecord(liveCtx, targetGamertag, hasAuth)
+		matchsPerSea = s.computeSeasonBreakdown(liveCtx, targetXUID, targetGamertag, hasAuth, seasonIDs, engagedPlaylists)
 		return nil
 	})
 	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
-	g.Go(func() error { matchsPerSea = s.computeMatchesPerSeason(gctx, targetXUID); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
 
 	_ = g.Wait()
@@ -325,7 +366,7 @@ func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetXUID, t
 		}
 	}
 	if hasAuth && s.deps.LiveIdentity != nil && targetXUID != "" {
-		id, err := s.deps.LiveIdentity.GetSpartanIdentityFor(ctx, targetXUID)
+		id, err := s.deps.LiveIdentity.FetchLiveIdentity(ctx, targetXUID)
 		if err != nil {
 			slog.WarnContext(ctx, "explorer_target_identity_live_failed", "xuid", targetXUID, "err", err)
 			return nil
@@ -354,28 +395,29 @@ func applyBannerFallback(id *domain.HomeSpartanIdentityRow) {
 }
 
 // fetchTargetServiceRecord fetch le service record live (stats + temps de jeu +
-// médailles lifetime) et en dérive les stats carrière + le top médailles. Skip
-// sans auth ; (nil, nil) en cas d'erreur.
-func (s *ExplorerService) fetchTargetServiceRecord(ctx context.Context, targetGamertag string, hasAuth bool) (*domain.NormalizedPlayerStats, []domain.MedalDigestItem) {
+// médailles lifetime) et en dérive les stats carrière + le top médailles + la
+// liste des saisons jouées (Subqueries.SeasonIds, pour le breakdown par saison).
+// Skip sans auth ; (nil, nil, nil) en cas d'erreur.
+func (s *ExplorerService) fetchTargetServiceRecord(ctx context.Context, targetGamertag string, hasAuth bool) (*domain.NormalizedPlayerStats, []domain.MedalDigestItem, []string, []string) {
 	if s.deps.RemoteStats == nil {
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 	if !hasAuth {
 		slog.DebugContext(ctx, "explorer_target_career_skipped",
 			"gamertag", targetGamertag, "reason", "no_auth_tokens")
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 	rec, err := s.deps.RemoteStats.FetchServiceRecord(ctx, targetGamertag, s.deps.TitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "explorer_target_career_failed", "gamertag", targetGamertag, "err", err)
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 	if rec == nil {
-		return nil, nil
+		return nil, nil, nil, nil
 	}
 	stats := rec.Stats
 	medals := buildTargetTopMedals(ctx, s.deps.MedalDefs, rec.Medals, s.deps.TitleSlug, ctxkeys.Locale(ctx))
-	return &stats, medals
+	return &stats, medals, rec.SeasonIDs, rec.PlaylistAssetIDs
 }
 
 // fetchTargetCSR fetch les classements CSR de la saison courante de la cible

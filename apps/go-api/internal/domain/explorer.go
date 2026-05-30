@@ -122,11 +122,23 @@ type ExplorerTargetProfile struct {
 }
 
 // SeasonMatchCount : nombre de matchs matchmade joués sur une saison donnée par
-// le joueur cible (alimente le graphe "matchs par saison").
+// le joueur cible (alimente le graphe "matchs par saison"). En mode live, Matches
+// est le total de la saison (service record filtré par seasonId) et le pic de
+// rang CSR de la saison est exposé (tier + image du badge, rendu au-dessus de la
+// barre). En mode dégradé (bucketing local sans auth), seul Matches est rempli.
+//
+// Le split classé/non-classé n'est pas exposé : l'API Waypoint rejette
+// `seasonId + isRanked` seul (cf. fetchSeasonRow).
 type SeasonMatchCount struct {
 	SeasonID   string `json:"season_id"`
 	SeasonName string `json:"season_name"`
 	Matches    int    `json:"matches"`
+	// CSRTier / CSRSubTier / CSRBadgeImageURL : pic de rang CSR du joueur sur la
+	// saison (plus haut tier parmi les playlists ranked engagées). Vide si aucune
+	// donnée CSR pour la saison.
+	CSRTier          string  `json:"csr_tier,omitempty"`
+	CSRSubTier       int     `json:"csr_sub_tier,omitempty"`
+	CSRBadgeImageURL *string `json:"csr_badge_image_url,omitempty"`
 }
 
 // ExplorerTargetSampleStats : stats agrégées du joueur cible calculées sur

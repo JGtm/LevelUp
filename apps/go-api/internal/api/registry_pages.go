@@ -186,6 +186,11 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	}
 	svc := service.NewSessionPageService(duckdb.NewStatsRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag)
+	if pdb.Metadata != nil {
+		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),
+		// même source que l'Explorer/match-history. Fallback 5 si absent.
+		svc = svc.WithCSRThresholds(duckdb.NewCSRThresholdsRepo(pdb.Metadata).Get)
+	}
 	return svc, nil
 }
 
@@ -275,6 +280,8 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 		CSR:             r.newExplorerCSRProvider(),
 		CurrentSeasonID: csrSeasonID,
 		Seasons:         seasons,
+		SeasonSR:        r.remoteStats, // *CachedStatsProvider implémente port.SeasonStatsProvider
+		SeasonCSR:       r.newExplorerSeasonCSRProvider(),
 		TitleSlug:       pdb.TitleSlug,
 	})
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
@@ -322,6 +329,59 @@ func (r *ServiceRegistry) newExplorerCSRProvider() service.ExplorerTargetCSRProv
 			raw = append(raw, *res)
 		}
 		return mapSyncCSRsToDomain(raw), nil
+	})
+}
+
+// newExplorerSeasonCSRProvider construit le provider de PIC CSR PAR SAISON PASSÉE
+// (badge au-dessus des barres "matchs par saison").
+//
+// IMPORTANT : le endpoint player-level /hi/players/.../csrs?Season= renvoie 404
+// (vérifié empiriquement, y compris pour la saison courante). Le CSR par saison
+// — y compris PASSÉE — n'est servi de façon fiable que par GetPlaylistCsr
+// (/hi/playlist/{id}/csrs?players=...&season=, HTTP 200 + SeasonMax = pic de la
+// saison). On interroge donc chaque playlist ranked active et on retient le plus
+// haut tier. (nil, nil) sans tokens / si aucune donnée CSR pour la saison.
+func (r *ServiceRegistry) newExplorerSeasonCSRProvider() service.ExplorerSeasonCSRProvider {
+	return service.SeasonCSRPeakFunc(func(ctx context.Context, xuid, csrSeasonID string, engagedPlaylistIDs []string) (*service.SeasonCSRPeak, error) {
+		tokens := ctxkeys.HaloTokens(ctx)
+		if tokens == nil || tokens.SpartanToken == "" || len(engagedPlaylistIDs) == 0 {
+			return nil, nil
+		}
+		// Optim : ne requêter que les playlists ranked actives RÉELLEMENT engagées
+		// par le joueur (intersection avec Subqueries.PlaylistAssetIds). Un joueur
+		// social → engaged ∩ ranked = ∅ → 0 appel CSR.
+		engaged := make(map[string]struct{}, len(engagedPlaylistIDs))
+		for _, id := range engagedPlaylistIDs {
+			engaged[strings.ToLower(strings.TrimSpace(id))] = struct{}{}
+		}
+		client := sync_pkg.NewHaloAPIClient(tokens.SpartanToken, tokens.ClearanceToken, 10)
+
+		var best *sync_pkg.CSRRankSnapshot
+		for _, pl := range rankedplaylists.Active() {
+			if _, ok := engaged[strings.ToLower(strings.TrimSpace(pl.AssetID))]; !ok {
+				continue // playlist ranked jamais jouée par ce joueur → skip
+			}
+			res, err := client.GetPlaylistCsr(ctx, pl.AssetID, xuid, csrSeasonID)
+			if err != nil || res == nil {
+				continue // playlist absente cette saison-là / erreur → on ignore
+			}
+			s := res.Season // SeasonMax = pic de rang de la saison demandée
+			if strings.TrimSpace(s.Tier) == "" {
+				continue
+			}
+			if best == nil || s.Value > best.Value {
+				snap := s
+				best = &snap
+			}
+		}
+		if best == nil {
+			return nil, nil
+		}
+		peak := &service.SeasonCSRPeak{Tier: best.Tier, SubTier: best.SubTier}
+		if url := csrBadgeURL(halo_games.NewAssetURLAdapter(), best.Tier, best.SubTier); url != "" {
+			peak.BadgeURL = &url
+		}
+		return peak, nil
 	})
 }
 

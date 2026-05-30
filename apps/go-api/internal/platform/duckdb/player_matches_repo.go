@@ -469,7 +469,7 @@ func (r *PlayerMatchesRepo) loadSkillRanksForMatches(ctx context.Context, matchI
 			s   playerMatchSkillRankRow
 		)
 		if err := rows.Scan(&mid, &s.ratingType, &s.ratingValue, &s.tier,
-			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup); err != nil {
+			&s.tierFR, &s.subTier, &s.delta, &s.playlistGroup, &s.expectedWinProb); err != nil {
 			return nil, fmt.Errorf("skill_rank scan: %w", err)
 		}
 		out[mid] = s
@@ -565,6 +565,7 @@ func (r *PlayerMatchesRepo) mergePlayerMatchRows(
 			shared[i].skillSubTier = s.subTier
 			shared[i].skillDelta = s.delta
 			shared[i].skillPlaylistGroup = s.playlistGroup
+			shared[i].skillExpectedWinProb = s.expectedWinProb
 		}
 		// season_id + measurement_matches_remaining vivent dans match_csrs
 		// (shared DB), pas dans match_skill_rank — source unique de vérité.
@@ -641,13 +642,14 @@ func scanSharedPlayerMatchRow(rows *sql.Rows) (playerMatchScanResult, error) {
 // étape 3. (playerMatchEnrichmentRow + playerMatchesEnrichmentTpl retirés au
 // commit 9d.4 — remplacés par MatchEnrichment + LoadPlayerMatchEnrichments).
 type playerMatchSkillRankRow struct {
-	ratingType    sql.NullString
-	ratingValue   sql.NullFloat64
-	tier          sql.NullString
-	tierFR        sql.NullString
-	subTier       sql.NullInt64
-	delta         sql.NullFloat64
-	playlistGroup sql.NullString
+	ratingType      sql.NullString
+	ratingValue     sql.NullFloat64
+	tier            sql.NullString
+	tierFR          sql.NullString
+	subTier         sql.NullInt64
+	delta           sql.NullFloat64
+	playlistGroup   sql.NullString
+	expectedWinProb sql.NullFloat64
 }
 
 // playerMatchesSkillRankTpl : SQL pour l'étape 3 du split (match_skill_rank
@@ -661,8 +663,9 @@ SELECT
     tier_fr,
     sub_tier,
     rating_delta,
-    playlist_group
-FROM match_skill_rank
+    playlist_group,
+    expected_win_prob
+FROM match_skill_rank_latest
 WHERE match_id IN (%s)`
 
 // sortByPerformanceScore trie les rows par performanceScore (sql.NullFloat64).
@@ -717,6 +720,7 @@ type playerMatchScanResult struct {
 	skillSubTier                                sql.NullInt64
 	skillDelta                                  sql.NullFloat64
 	skillPlaylistGroup                          sql.NullString
+	skillExpectedWinProb                        sql.NullFloat64
 	skillSeasonID                               sql.NullString
 	skillMeasurementRemaining                   sql.NullInt64
 	maxKillingSpree, personalScore, rankInMatch sql.NullInt64
@@ -770,11 +774,12 @@ func projectSkillSnapshot(s playerMatchScanResult) *canonical.SkillSnapshot {
 		return nil
 	}
 	snap := canonical.SkillSnapshot{
-		RatingType:    canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
-		RatingValue:   nullFloatPtr(s.skillRatingValue),
-		Delta:         nullFloatPtr(s.skillDelta),
-		PlaylistGroup: nullStringPtr(s.skillPlaylistGroup),
-		SeasonID:      nullStringPtr(s.skillSeasonID),
+		RatingType:      canonical.RatingType(strings.ToLower(s.skillRatingType.String)),
+		RatingValue:     nullFloatPtr(s.skillRatingValue),
+		Delta:           nullFloatPtr(s.skillDelta),
+		PlaylistGroup:   nullStringPtr(s.skillPlaylistGroup),
+		SeasonID:        nullStringPtr(s.skillSeasonID),
+		ExpectedWinProb: nullFloatPtr(s.skillExpectedWinProb),
 	}
 	if s.skillMeasurementRemaining.Valid {
 		mr := int(s.skillMeasurementRemaining.Int64)

@@ -408,7 +408,7 @@ SELECT
     msr.playlist_group,
     msr.tier,
     msr.sub_tier
-FROM match_skill_rank msr
+FROM match_skill_rank_latest msr
 WHERE msr.match_id = ?
 LIMIT 1`
 

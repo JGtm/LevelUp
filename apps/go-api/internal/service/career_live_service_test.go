@@ -860,6 +860,86 @@ func TestCareerLive_GetSpartanIdentityFor_ThirdPartyXUID(t *testing.T) {
 	})
 }
 
+// TestCareerLive_FetchLiveIdentity_ThirdPartyAppearance vérifie le chemin Explorer :
+// pour un xuid TIERS sans ligne DB locale, FetchLiveIdentity fait un fetch live
+// SYNCHRONE et construit l'identité depuis la customisation seule (career rank
+// player-gated → progress nil ; appearance servie via la vue publique). Aucune
+// persistance ne doit être déclenchée.
+func TestCareerLive_FetchLiveIdentity_ThirdPartyAppearance(t *testing.T) {
+	const targetXUID = "2535427927026623"
+
+	fetcher := &mockCareerFetcher{
+		progress: nil, // adversaire : /careerranks player-gated
+		custom: &syncpkg.SpartanCustomizationData{
+			SpartanID:        "MELG",
+			EmblemImageURL:   "Inventory/Spartan/Emblems/104-001.json",
+			BackdropImageURL: "Inventory/Spartan/BackdropImages/103-000.json",
+		},
+	}
+	repo := &mockCareerLiveRepo{last: nil} // cible non suivie localement
+	builder := &realBuilderForOverlay{}
+	factory := func(_ context.Context) CareerFetcher { return fetcher }
+	cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+	svc := NewCareerLiveService(repo, builder, factory, cache)
+
+	ctx := ctxkeys.WithHaloAuth(context.Background(),
+		&domain.HaloTokens{SpartanToken: "spartan-tok"}, "1111222233334444")
+
+	got, err := svc.FetchLiveIdentity(ctx, targetXUID)
+	if err != nil {
+		t.Fatalf("FetchLiveIdentity: %v", err)
+	}
+	if got == nil {
+		t.Fatal("identité attendue non-nil (customisation live disponible)")
+	}
+	if got.SpartanID == nil || *got.SpartanID != "MELG" {
+		t.Errorf("SpartanID = %v, attendu MELG", got.SpartanID)
+	}
+	if got.EmblemImageURL == nil {
+		t.Error("EmblemImageURL attendu non-nil")
+	}
+	if got.BackdropImageURL == nil {
+		t.Error("BackdropImageURL attendu non-nil")
+	}
+	if got.RankNumber != 0 {
+		t.Errorf("RankNumber = %d, attendu 0 (career rank gated pour un adversaire)", got.RankNumber)
+	}
+	if fetcher.customCalls == 0 {
+		t.Error("GetSpartanCustomization jamais appelé — fetch synchrone attendu")
+	}
+	// Garde-fou : aucune écriture player DB pour un xuid tiers.
+	if len(repo.insertedPartials) > 0 || len(repo.inserted) > 0 {
+		t.Errorf("persistance déclenchée (%d partials, %d full) — interdit pour xuid tiers",
+			len(repo.insertedPartials), len(repo.inserted))
+	}
+}
+
+// TestCareerLive_FetchLiveIdentity_NoAuth vérifie qu'en l'absence de tokens, on
+// ne tente aucun fetch live et on sert l'identité DB locale si elle existe.
+func TestCareerLive_FetchLiveIdentity_NoAuth(t *testing.T) {
+	const targetXUID = "9999888877776666"
+	dbRow := &duckdb.CareerRankRow{Rank: 25, CurrentXP: 300, SpartanID: "SR-DB"}
+
+	fetcher := &mockCareerFetcher{custom: &syncpkg.SpartanCustomizationData{SpartanID: "SHOULD-NOT-FETCH"}}
+	repo := &mockCareerLiveRepo{last: dbRow}
+	builder := &realBuilderForOverlay{}
+	factory := func(_ context.Context) CareerFetcher { return fetcher }
+	cache := NewCareerLiveCache(CareerLiveCacheConfig{})
+	svc := NewCareerLiveService(repo, builder, factory, cache)
+
+	got, err := svc.FetchLiveIdentity(context.Background(), targetXUID) // pas de ctx auth
+	if err != nil {
+		t.Fatalf("FetchLiveIdentity: %v", err)
+	}
+	if got == nil || got.SpartanID == nil || *got.SpartanID != "SR-DB" {
+		t.Fatalf("identité DB attendue (SR-DB), got=%v", got)
+	}
+	if fetcher.customCalls != 0 || fetcher.progCalls != 0 {
+		t.Errorf("fetch live déclenché sans auth (custom=%d prog=%d) — interdit",
+			fetcher.customCalls, fetcher.progCalls)
+	}
+}
+
 // bgSignalingFetcher étend mockCareerFetcher avec un canal qui signale chaque
 // appel — utilisé pour détecter si kickoffBackgroundRefresh a tourné.
 type bgSignalingFetcher struct {
