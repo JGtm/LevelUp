@@ -223,19 +223,6 @@ func (s *CareerLiveService) GetSpartanIdentityFor(ctx context.Context, xuid stri
 	return identity, nil
 }
 
-// GetSpartanIdentityFromDBOnly charge l'identité Spartan d'un xuid tiers
-// strictement depuis la player DB locale, sans aucun appel live Halo.
-//
-// Utilisé dans le path no-tokens d'Explorer (cas où le user connecté n'a pas
-// de tokens OAuth Halo) : on rend ce qu'on a en local et on signale au front
-// via le flag auth_available=false. Retourne nil si la DB ne porte aucune row.
-func (s *CareerLiveService) GetSpartanIdentityFromDBOnly(ctx context.Context, xuid string) *domain.HomeSpartanIdentityRow {
-	// includePeaks=false : ce chemin ne sert que des joueurs tiers (Explorer
-	// no-tokens). Les skill peaks de la player DB courante appartiennent au
-	// propriétaire de la page, pas à ce xuid — on ne les calcule pas.
-	return s.serveDBFallback(ctx, xuid, false)
-}
-
 // overlayIdentityFromFallback → extrait dans `career_live_merge.go`.
 
 // fetchAndMerge construit la CareerRankRow servie à la home selon le pattern

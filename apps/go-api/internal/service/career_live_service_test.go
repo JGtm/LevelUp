@@ -176,14 +176,6 @@ func TestCareerLive_IncludePeaks_OnlyForOwner(t *testing.T) {
 			t.Fatal("attendu includePeaks=false pour un joueur tiers")
 		}
 	})
-
-	t.Run("DBOnly (Explorer no-auth) → peaks exclus", func(t *testing.T) {
-		svc, builder := newWithRow()
-		_ = svc.GetSpartanIdentityFromDBOnly(ctxWithTokens(t, false), otherXUID)
-		if builder.receivedIncludePeaks {
-			t.Fatal("attendu includePeaks=false en DB-only")
-		}
-	})
 }
 
 // --- helpers ---
@@ -864,48 +856,6 @@ func TestCareerLive_GetSpartanIdentityFor_ThirdPartyXUID(t *testing.T) {
 			// OK : kickoff déclenché.
 		case <-time.After(500 * time.Millisecond):
 			t.Errorf("kickoffBackgroundRefresh non déclenché pour le user connecté — régression")
-		}
-	})
-}
-
-// TestCareerLive_GetSpartanIdentityFromDBOnly couvre le path no-tokens d'Explorer :
-// la méthode ne doit JAMAIS appeler le fetcher live, même avec auth en ctx.
-// Sert à rendre l'identité d'un target quand le user connecté n'a pas d'OAuth.
-func TestCareerLive_GetSpartanIdentityFromDBOnly(t *testing.T) {
-	dbRow := &duckdb.CareerRankRow{Rank: 30, CurrentXP: 500, SpartanID: "SR-DB"}
-
-	t.Run("DB non vide : retourne l'identité, fetcher jamais appelé", func(t *testing.T) {
-		fetcher := &mockCareerFetcher{
-			progress: &syncpkg.CareerRankData{CurrentRank: 99, CurrentXP: 9999},
-		}
-		repo := &mockCareerLiveRepo{last: dbRow}
-		builder := &mockIdentityBuilder{}
-		// Auth présente — même dans ce cas, FromDBOnly ne doit pas toucher au live.
-		svc := newService(t, fetcher, repo, builder)
-
-		got := svc.GetSpartanIdentityFromDBOnly(ctxWithTokens(t, true), "any-xuid")
-		if got == nil || got.RankNumber != 30 {
-			t.Errorf("attendu DB rank=30, obtenu %+v", got)
-		}
-		if fetcher.progCalls != 0 || fetcher.customCalls != 0 {
-			t.Errorf("fetcher invoqué : progress=%d custom=%d — FromDBOnly doit être read-only DB",
-				fetcher.progCalls, fetcher.customCalls)
-		}
-	})
-
-	t.Run("DB vide : retourne nil sans appeler le live", func(t *testing.T) {
-		fetcher := &mockCareerFetcher{}
-		repo := &mockCareerLiveRepo{last: nil}
-		builder := &mockIdentityBuilder{}
-		svc := newService(t, fetcher, repo, builder)
-
-		got := svc.GetSpartanIdentityFromDBOnly(ctxWithTokens(t, true), "any-xuid")
-		if got != nil {
-			t.Errorf("attendu nil quand DB vide, obtenu %+v", got)
-		}
-		if fetcher.progCalls != 0 || fetcher.customCalls != 0 {
-			t.Errorf("fetcher invoqué malgré DB vide : progress=%d custom=%d",
-				fetcher.progCalls, fetcher.customCalls)
 		}
 	})
 }

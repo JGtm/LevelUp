@@ -569,12 +569,12 @@ fr = "Connecte un compte Halo pour voir la carrière complète et le profil live
 en = "Connect a Halo account to see this player's full career and live profile."
 
 [explorer.target_profile.identity_unknown_title]
-fr = "Identité Spartan indisponible"
-en = "Spartan identity unavailable"
+fr = "Identité Spartan non disponible"
+en = "Spartan identity not available"
 
 [explorer.target_profile.identity_unknown_description]
-fr = "Aucune donnée d'identité publiée pour ce joueur."
-en = "No identity data published for this player."
+fr = "Emblème et rang carrière indisponibles pour ce joueur — ses stats sont affichées ci-dessous."
+en = "Emblem and career rank unavailable for this player — their stats are shown below."
 
 [explorer.target_profile.label_matches]
 fr = "Parties"
