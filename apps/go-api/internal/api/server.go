@@ -401,6 +401,14 @@ func NewRouter(
 		r.With(middleware.NoStore).Get("/_diag/progression/{player_slug}",
 			handlers.NewDiagProgressionHandler(reg.ProgressionDiagProvider).GetDiag)
 
+		// Fix 2026-05-30 : backfill progression V2 in-process. Force une
+		// évaluation idempotente (streaks/records/milestones) pour un joueur
+		// dont l'historique existe mais dont le pipeline post-sync n'avait
+		// jamais abouti (incident timeout shared reader). Renvoie le diag
+		// post-exécution.
+		r.With(middleware.NoStore).Post("/_admin/progression/backfill/{player_slug}",
+			handlers.NewProgressionBackfillHandler(reg.ProgressionBackfillProvider).RunBackfill)
+
 		// Phase A multi-titres : exposition des field mappings TOML.
 		// Derrière MULTI_TITLE_API_ENABLED.
 		//
