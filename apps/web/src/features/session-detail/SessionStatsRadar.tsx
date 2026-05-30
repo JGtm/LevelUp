@@ -21,9 +21,11 @@ interface Props {
   axes: StatRadarAxis[]
   seriesName: string
   height?: number
+  /** Tooltip = valeur brute par axe (raw) plutôt que le % normalisé. */
+  rawInTooltip?: boolean
 }
 
-export function SessionStatsRadar({ title, axes, seriesName, height = 280 }: Props) {
+export function SessionStatsRadar({ title, axes, seriesName, height = 280, rawInTooltip }: Props) {
   const series: RadarSeriesPayload[] =
     axes.length === 0
       ? []
@@ -48,6 +50,7 @@ export function SessionStatsRadar({ title, axes, seriesName, height = 280 }: Pro
       axisLabels={axisLabels}
       height={height}
       seriesNameResolver={() => seriesName}
+      rawInTooltip={rawInTooltip}
     />
   )
 }

@@ -44,6 +44,13 @@ export interface RadarChartProps {
   seriesNameResolver?: (s: RadarSeriesPayload) => string
   /** Map axis key → label affiché (i18n du caller). Si absent, utilise axis brut. */
   axisLabels?: Record<string, string>
+  /**
+   * Si true, le tooltip affiche la valeur BRUTE (`meta.raw_by_axis`, 1 décimale)
+   * au lieu du pourcentage normalisé 0..100. Utile quand chaque axe a un cap de
+   * référence (radar de frags par match) : l'utilisateur veut lire "2.4 frags"
+   * et non "48 %". Défaut false → comportement historique (radar participation).
+   */
+  rawInTooltip?: boolean
 }
 
 export function RadarChart({
@@ -55,14 +62,15 @@ export function RadarChart({
   height,
   seriesNameResolver,
   axisLabels,
+  rawInTooltip,
 }: RadarChartProps) {
   // Le ChartCard est typé sur ChartSeries<T> mais on passe RadarSeriesPayload.
   // Ce wrapper est volontairement non-strict (cast au call site) pour
   // garder le ChartCard minimal — le radar a une structure trop spécifique.
   const buildOption = useCallback(
     (s: RadarSeriesPayload[]) =>
-      buildRadarOption(s, { seriesNameResolver, axisLabels }),
-    [seriesNameResolver, axisLabels],
+      buildRadarOption(s, { seriesNameResolver, axisLabels, rawInTooltip }),
+    [seriesNameResolver, axisLabels, rawInTooltip],
   )
 
   return (
@@ -81,6 +89,7 @@ export function RadarChart({
 interface BuildOpts {
   seriesNameResolver?: (s: RadarSeriesPayload) => string
   axisLabels?: Record<string, string>
+  rawInTooltip?: boolean
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -88,15 +97,18 @@ export function buildRadarOption(
   series: RadarSeriesPayload[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { seriesNameResolver, axisLabels } = opts
+  const { seriesNameResolver, axisLabels, rawInTooltip } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
 
   const tc = getEChartsThemeColors()
 
-  // Axes : du premier joueur (tous alignés côté backend).
+  // Axes : du premier joueur (tous alignés côté backend). On conserve la clé
+  // d'axe (`key`) en plus du libellé pour retrouver la valeur brute par axe.
+  const axisKeys = series[0].axes.map((a) => a.axis)
   const axes = series[0].axes.map((a) => ({
+    key: a.axis,
     name: axisLabels?.[a.axis] ?? a.axis,
     max: 100,
   }))
@@ -113,14 +125,24 @@ export function buildRadarOption(
     }
   })
 
+  // Lookup nom de série → valeurs brutes par clé d'axe (pour rawInTooltip).
+  const rawByName = new Map(
+    series.map((s, idx) => [data[idx].name, s.meta?.raw_by_axis]),
+  )
+
   return {
     backgroundColor: CHART_BG,
     tooltip: {
       ...getTooltipBase(tc),
       formatter: (params: { name: string; value: number[] }) => {
-        const lines = axes.map(
-          (a, i) => `${a.name}: <b>${params.value[i].toFixed(0)}</b>`,
-        )
+        const raw = rawInTooltip ? rawByName.get(params.name) : undefined
+        const lines = axes.map((a, i) => {
+          if (raw) {
+            const v = raw[axisKeys[i]]
+            return `${a.name}: <b>${v != null ? v.toFixed(1) : '—'}</b>`
+          }
+          return `${a.name}: <b>${params.value[i].toFixed(0)}</b>`
+        })
         return `<b>${params.name}</b><br/>${lines.join('<br/>')}`
       },
     },

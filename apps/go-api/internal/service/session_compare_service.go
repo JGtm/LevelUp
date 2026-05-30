@@ -279,59 +279,72 @@ func buildCompareEntryWithObjectives(
 	matchRows := buildSessionDetailRows(matches, dominantCat, "fr")
 	best, worst := bestWorstMatchCompare(matches, dominantCat)
 
-	// Agrégats radar : max(killing_spree), somme(headshot_kills), somme(perfect_kills).
-	var maxKS, totalHS, totalPK *int
+	// Radar de frags : MOYENNES PAR MATCH (même calcul que squad_breakdown.extKPIAcc.applyTo,
+	// la référence prouvée de la page Escouade) — bornées et comparables, contrairement aux
+	// totaux/max de session qui grossissent avec la longueur et sont dominés par les outliers.
+	var sumHS, sumPK, sumSpree float64
+	var nHS, nPK, nSpree int
 	for _, m := range matches {
-		if m.MaxKillingSpree != nil && (maxKS == nil || *m.MaxKillingSpree > *maxKS) {
-			v := *m.MaxKillingSpree
-			maxKS = &v
-		}
 		if m.HeadshotKills != nil {
-			v := *m.HeadshotKills
-			if totalHS != nil {
-				v += *totalHS
-			}
-			totalHS = &v
+			sumHS += float64(*m.HeadshotKills)
+			nHS++
 		}
 		if m.PerfectKills != nil {
-			v := *m.PerfectKills
-			if totalPK != nil {
-				v += *totalPK
-			}
-			totalPK = &v
+			sumPK += float64(*m.PerfectKills)
+			nPK++
 		}
+		if m.MaxKillingSpree != nil {
+			sumSpree += float64(*m.MaxKillingSpree)
+			nSpree++
+		}
+	}
+	// Moyenne PAR MATCH (÷ nb de matchs de la session). nil si aucun match n'a la
+	// stat → radar dégradé en série vide côté front (pas de 0 trompeur).
+	n := float64(len(matches))
+	var avgHS, avgPK, avgSpree *float64
+	if nHS > 0 {
+		v := math.Round(sumHS/n*100) / 100
+		avgHS = &v
+	}
+	if nPK > 0 {
+		v := math.Round(sumPK/n*100) / 100
+		avgPK = &v
+	}
+	if nSpree > 0 {
+		v := math.Round(sumSpree/float64(nSpree)*100) / 100
+		avgSpree = &v
 	}
 
 	return &domain.SessionCompareEntry{
-		SessionLabel:       label,
-		StartTime:          &start,
-		EndTime:            &end,
-		TotalMatches:       len(matches),
-		Wins:               wins,
-		Losses:             losses,
-		KDA:                kda,
-		PerformanceScore:   averagePerformanceScore(matches),
-		WinRate:            winRate(matches),
-		KDR:                avgKD(matches),
-		KillsPerMatch:      killsPerGame(matches),
-		MaxKillingSpree:    maxKS,
-		TotalHeadshotKills: totalHS,
-		TotalPerfectKills:  totalPK,
-		DominantCategory:   dominantCat,
-		AvgOC:              avgOC,
-		AvgDR:              avgDR,
-		AvgResidualBrut:    avgResidualBrut,
-		MatchSeries:        buildCompareMatchSeries(matches),
-		LastSkillRating:    lastRating,
-		SkillRatingType:    ratingType,
-		SkillRatingDelta:   ratingDelta,
-		AvgTeamMMR:         avgTeamMMR,
-		AvgEnemyMMR:        avgEnemyMMR,
-		AvgLifeSeconds:     avgLife,
-		Participation:      participation,
-		Matches:            matchRows,
-		BestMatch:          best,
-		WorstMatch:         worst,
+		SessionLabel:         label,
+		StartTime:            &start,
+		EndTime:              &end,
+		TotalMatches:         len(matches),
+		Wins:                 wins,
+		Losses:               losses,
+		KDA:                  kda,
+		PerformanceScore:     averagePerformanceScore(matches),
+		WinRate:              winRate(matches),
+		KDR:                  avgKD(matches),
+		KillsPerMatch:        killsPerGame(matches),
+		AvgMaxKillingSpree:   avgSpree,
+		HeadshotsPerMatch:    avgHS,
+		PerfectKillsPerMatch: avgPK,
+		DominantCategory:     dominantCat,
+		AvgOC:                avgOC,
+		AvgDR:                avgDR,
+		AvgResidualBrut:      avgResidualBrut,
+		MatchSeries:          buildCompareMatchSeries(matches),
+		LastSkillRating:      lastRating,
+		SkillRatingType:      ratingType,
+		SkillRatingDelta:     ratingDelta,
+		AvgTeamMMR:           avgTeamMMR,
+		AvgEnemyMMR:          avgEnemyMMR,
+		AvgLifeSeconds:       avgLife,
+		Participation:        participation,
+		Matches:              matchRows,
+		BestMatch:            best,
+		WorstMatch:           worst,
 	}
 }
 

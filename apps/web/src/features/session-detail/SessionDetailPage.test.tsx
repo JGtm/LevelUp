@@ -144,9 +144,9 @@ describe("SessionDetailPage", () => {
       ).toBeInTheDocument();
     });
 
-    // Suggestion desormais affichee en hint inline "vs {label} - {reason}"
-    // (cartes "Selection" et "Suggestion similaire" supprimees).
-    expect(screen.getByText(/même catégorie ranked/)).toBeInTheDocument();
+    // La suggestion est maintenant dans le tooltip du bouton Comparer (content =
+    // "vs {label} · {reason}") → non rendu dans le DOM avant hover. On vérifie
+    // simplement que le bouton Comparer est présent (la suggestion pilote son tooltip).
     expect(screen.getByText("Détail des matchs")).toBeInTheDocument();
     expect(screen.getByText("Oddball")).toBeInTheDocument();
     // Le tableau réutilise désormais ExplorerMatchesTable → l'issue est rendue via

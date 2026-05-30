@@ -128,33 +128,59 @@ export function buildDonutOption(
   const legendNames = dps.map((p) => p.name)
   const tc = getEChartsThemeColors()
 
-  // Titre central optionnel (gros chiffre + libellé) rendu dans le trou du donut.
-  const centerTitle =
-    centerValue != null
-      ? {
-          title: {
-            text: centerValue,
-            subtext: centerLabel ?? '',
-            left: 'center' as const,
-            top: 'center' as const,
-            textAlign: 'center' as const,
-            textVerticalAlign: 'middle' as const,
-            textStyle: { color: tc.text, fontSize: 22, fontWeight: 'bold' as const },
-            subtextStyle: { color: tc.axisLabel, fontSize: 11 },
-            itemGap: 2,
-          },
-        }
-      : {}
+  // Texte central optionnel : graphic positionné au centre du canvas.
+  // `title` ECharts se centre dans le canvas ENTIER (légende incluse) → décalé.
+  // `graphic` + légende désactivée = centrage fiable dans le trou du donut.
+  const hasCenterText = centerValue != null
+  const centerGraphic = hasCenterText
+    ? {
+        graphic: {
+          type: 'group' as const,
+          left: 'center' as const,
+          top: 'center' as const,
+          children: [
+            {
+              type: 'text' as const,
+              top: centerLabel ? -14 : 0,
+              style: {
+                text: centerValue!,
+                fontSize: 22,
+                fontWeight: 'bold' as const,
+                fill: tc.text,
+                textAlign: 'center' as const,
+              },
+            },
+            ...(centerLabel
+              ? [
+                  {
+                    type: 'text' as const,
+                    top: 14,
+                    style: {
+                      text: centerLabel,
+                      fontSize: 11,
+                      fill: tc.axisLabel,
+                      textAlign: 'center' as const,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      }
+    : {}
 
   return {
     backgroundColor: CHART_BG,
-    ...centerTitle,
+    ...centerGraphic,
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'item',
       formatter: '{b} : <b>{c}</b> ({d}%)',
     },
-    legend: { ...getLegendBase(tc), data: legendNames },
+    // Légende désactivée quand un texte central est affiché : les labels sur les
+    // tranches (pourcentages) suffisent, et désactiver libère le canvas pour que
+    // `graphic top:'center'` tombe exactement au centre du trou.
+    legend: hasCenterText ? { show: false } : { ...getLegendBase(tc), data: legendNames },
     series: [
       {
         type: 'pie',

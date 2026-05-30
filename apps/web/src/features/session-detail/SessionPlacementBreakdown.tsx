@@ -44,6 +44,9 @@ export function buildSessionPlacementOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const n = points.length
+  // Même logique d'intervalle que SessionNetScoreArea (axe X "#N") : tout afficher
+  // sous 30 graduations, espacer au-delà. Garde les deux axes "#N" cohérents.
+  const interval = n > 30 ? Math.floor(n / 12) : 0
 
   return {
     backgroundColor: CHART_BG,
@@ -63,7 +66,7 @@ export function buildSessionPlacementOption(
       ...axis,
       type: 'category',
       data: points.map((p) => `#${p.placement}`),
-      axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval: 0 },
+      axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
     yAxis: { ...axis, type: 'value', minInterval: 1 },
     series: [

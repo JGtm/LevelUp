@@ -87,31 +87,35 @@ type HomeSessionRow struct {
 // StatsMatchRow est le type de transfert entre platform/duckdb et les services de stats.
 // Contient toutes les métriques nécessaires au calcul du performance score (Q23).
 type StatsMatchRow struct {
-	MatchID             string
-	StartTime           time.Time
-	Outcome             *int
-	Kills               int
-	Deaths              int
-	Assists             int
-	KDA                 *float64
-	Accuracy            *float64
-	PersonalScore       *int
-	DamageDealt         *float64
-	DamageTaken         *float64
-	TimePlayedSeconds   *int
-	AvgLifeSeconds      *float64
-	TeamMMR             *float64
-	EnemyMMR            *float64
-	KillsExpected       *float64
-	DeathsExpected      *float64
-	Rank                *int
-	IsRanked            bool
-	IsFirefight         bool
-	IsWithFriends       bool
-	PlaylistName        string
-	PlaylistNameFR      string
-	PairName            string
-	PairNameFR          string
+	MatchID           string
+	StartTime         time.Time
+	Outcome           *int
+	Kills             int
+	Deaths            int
+	Assists           int
+	KDA               *float64
+	Accuracy          *float64
+	PersonalScore     *int
+	DamageDealt       *float64
+	DamageTaken       *float64
+	TimePlayedSeconds *int
+	AvgLifeSeconds    *float64
+	TeamMMR           *float64
+	EnemyMMR          *float64
+	KillsExpected     *float64
+	DeathsExpected    *float64
+	Rank              *int
+	IsRanked          bool
+	IsFirefight       bool
+	IsWithFriends     bool
+	PlaylistName      string
+	PlaylistNameFR    string
+	PairName          string
+	PairNameFR        string
+	// GameVariant : source de repli pour le mode FR (les game_variant sont localisés,
+	// contrairement à asset_translations[pair]). Cf. buildSessionDetailRows.
+	GameVariantName     string
+	GameVariantNameFR   string
 	MapName             string
 	MapNameFR           string
 	TeamID              *int

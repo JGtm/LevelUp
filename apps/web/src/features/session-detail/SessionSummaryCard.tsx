@@ -57,7 +57,7 @@ export function SessionSummaryCard({ entry }: Props) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+    <div className="flex gap-2 overflow-x-auto pb-0.5">
       <KpiStat
         label={labelOf('kda')}
         value={formatNumber(entry.kda, 2)}
@@ -73,8 +73,8 @@ export function SessionSummaryCard({ entry }: Props) {
         value={formatNumber(entry.performance_score, 1)}
         token={perfTierToken(entry.performance_score)}
       />
-      {/* Rendement / Résistance : composite identique à la home (OffDefComposite). */}
-      <div className="col-span-2 rounded border border-border bg-card px-3 py-2">
+      {/* Rendement / Résistance : tile plus large (barre composite). */}
+      <div className="flex-[2] min-w-[11rem] rounded border border-border bg-card px-3 py-2">
         <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
           {t('session.detail.stat_off_def')}
         </p>
@@ -99,7 +99,7 @@ export function SessionSummaryCard({ entry }: Props) {
 
 function KpiStat({ label, value, token }: { label: string; value: string; token?: SemanticToken }) {
   return (
-    <div className="rounded border border-border bg-card px-3 py-2">
+    <div className="flex-1 min-w-[5rem] rounded border border-border bg-card px-3 py-2">
       <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-0.5 text-lg font-bold text-foreground" style={token ? { color: tokenCssVar(token) } : undefined}>
         {value}

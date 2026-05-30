@@ -41,12 +41,14 @@ type SessionCompareEntry struct {
 	WinRate       float64 `json:"win_rate"`        // 0..100 (convention winRate())
 	KDR           float64 `json:"kdr"`             // total_kills / total_deaths
 	KillsPerMatch float64 `json:"kills_per_match"` // total_kills / total_matches
-	// Stats agrégées sur la session pour le radar : spree max, total tirs tête, total frags parfaits.
-	MaxKillingSpree    *int    `json:"max_killing_spree,omitempty"`
-	TotalHeadshotKills *int    `json:"total_headshot_kills,omitempty"`
-	TotalPerfectKills  *int    `json:"total_perfect_kills,omitempty"`
-	WithFriends        bool    `json:"with_friends"`
-	DominantCategory   *string `json:"dominant_category"`
+	// Stats du radar de frags — MOYENNES PAR MATCH (aligné Escouade extKPIAcc.applyTo) :
+	// nil si aucune valeur. Avant : max/totaux de session → dominés par les outliers
+	// et la longueur de session.
+	AvgMaxKillingSpree   *float64 `json:"avg_max_killing_spree,omitempty"`
+	HeadshotsPerMatch    *float64 `json:"headshots_per_match,omitempty"`
+	PerfectKillsPerMatch *float64 `json:"perfect_kills_per_match,omitempty"`
+	WithFriends          bool     `json:"with_friends"`
+	DominantCategory     *string  `json:"dominant_category"`
 	// OC/DR moyens sur la session — nil si aucun match avec données dégâts.
 	// Ref : PLAN_COMBAT_PROFILE_WIRING.md Phase 3.
 	AvgOC *float64 `json:"avg_oc,omitempty"`

@@ -77,10 +77,6 @@ en = "No session available"
 fr = "Aucune session n'a pu être reconstruite avec les filtres actuels."
 en = "No session could be reconstructed with the current filters."
 
-[session.detail.header_session]
-fr = "Session"
-en = "Session"
-
 [session.detail.header_compare]
 fr = "Comparer"
 en = "Compare"
@@ -89,9 +85,18 @@ en = "Compare"
 fr = "Comparer à une autre session"
 en = "Compare to another session"
 
-[session.detail.header_compare_hint]
-fr = "vs {label}"
-en = "vs {label}"
+[session.detail.compare_tooltip_title]
+fr = "Comparaison côte à côte"
+en = "Side-by-side comparison"
+
+[session.detail.compare_tooltip_desc]
+fr = "Affiche une deuxième session à droite — mêmes graphes, même tableaux — pour comparer vos performances pour une session similaire sans changer de page."
+en = "Shows a second session on the right — same charts, same tables — to compare your performance from a similar session without switching pages."
+
+[session.detail.compare_tooltip_suggested]
+fr = "Session suggérée"
+en = "Suggested session"
+
 
 # Pills de paramètres de session (L3 + drawer compare)
 [session.detail.pill_matches]
@@ -164,8 +169,8 @@ fr = "Score perf."
 en = "Perf. score"
 
 [session.detail.stat_kills_per_match]
-fr = "Kills / match"
-en = "Kills / match"
+fr = "Frags / match"
+en = "Frags / match"
 
 [session.detail.stat_avg_life]
 fr = "Durée de vie"
@@ -201,21 +206,17 @@ fr = "Aucune métrique comparative n'a été calculée pour cette paire de sessi
 en = "No comparative metric was computed for this session pair."
 
 # Charts session-detail (séries de stats par match)
-[session.detail.chart_kda_title]
-fr = "Évolution FDA"
-en = "K / D / A evolution"
-
 [session.detail.chart_outcomes_title]
-fr = "Issues de la session"
-en = "Session outcomes"
+fr = "Résultats de la session"
+en = "Session results"
 
 [session.detail.donut_winrate_center]
 fr = "Victoires"
 en = "Win rate"
 
 [session.detail.chart_kills_donut_title]
-fr = "Répartition K / D / A"
-en = "K / D / A breakdown"
+fr = "Répartition F / D / A"
+en = "F / D / A breakdown"
 
 [session.detail.chart_perf_title]
 fr = "Score de performance"
@@ -226,8 +227,8 @@ fr = "Score performance"
 en = "Performance score"
 
 [session.detail.chart_perf_mean]
-fr = "Moyenne"
-en = "Average"
+fr = "moy."
+en = "avg."
 
 [session.detail.chart_fda_per_game_title]
 fr = "Frags / Morts / Assists par partie"
@@ -242,8 +243,8 @@ fr = "Moyenne / partie"
 en = "Avg / game"
 
 [session.detail.chart_engagement_title]
-fr = "Engagement par match"
-en = "Engagement per match"
+fr = "Engagement"
+en = "Engagement"
 
 [session.detail.engagement_axis]
 fr = "évén./min vs attendu"
@@ -266,8 +267,8 @@ fr = "Net cumulé"
 en = "Cumulative net"
 
 [session.detail.chart_mmr_title]
-fr = "Challenge MMR (équipe vs adverse)"
-en = "MMR challenge (team vs enemy)"
+fr = "Challenge MMR"
+en = "MMR challenge"
 
 [session.detail.mmr_team]
 fr = "Votre équipe"
@@ -302,16 +303,16 @@ fr = "Session"
 en = "Session"
 
 [session.detail.radar_spree]
-fr = "Folie meurtrière (max)"
-en = "Killing spree (max)"
+fr = "Folie meurtrière (moy.)"
+en = "Avg killing spree"
 
 [session.detail.radar_headshots]
-fr = "Tirs à la tête"
-en = "Headshots"
+fr = "Tirs à la tête / match"
+en = "Headshots / match"
 
 [session.detail.radar_perfect]
-fr = "Frags parfaits"
-en = "Perfect kills"
+fr = "Œil de lynx / match"
+en = "Eagle Eye / match"
 
 [session.detail.chart_empty]
 fr = "Aucune donnée à représenter."
@@ -652,8 +653,8 @@ en = "MMR not available for these sessions."
 # --- Chart 13 : Profil de participation ---
 
 [session.compare.participation_title]
-fr = "Profil de participation (6 axes)"
-en = "Participation profile (6 axes)"
+fr = "Profil de participation"
+en = "Participation profile"
 
 [session.compare.participation_combat]
 fr = "Combat"
@@ -788,8 +789,8 @@ en = "No rating data available (unranked session?)."
 # ─── OC / DR (Rendement offensif / Résistance défensive) ────────────────────
 
 [session.compare.ocdr_title]
-fr = "Rendement offensif · Résistance défensive"
-en = "Offensive Yield · Defensive Resistance"
+fr = "Rendement · Résistance"
+en = "Yield · Resistance"
 
 [session.compare.ocdr_empty]
 fr = "Aucune donnée de dégâts disponible."

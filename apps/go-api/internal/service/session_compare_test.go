@@ -253,12 +253,12 @@ func TestBuildCompareEntry_DerivedMetrics(t *testing.T) {
 	}
 }
 
-// TestBuildCompareEntry_FragAggregates couvre les agrégats P1 du radar de frags :
-// Folie meurtrière = MAX sur la session, Tirs à la tête / Frags parfaits = SOMME.
+// TestBuildCompareEntry_FragAggregates couvre les agrégats du radar de frags en
+// MOYENNES PAR MATCH (aligné Escouade) : spree = moy. des max, HS/PK = moy. par match.
 func TestBuildCompareEntry_FragAggregates(t *testing.T) {
 	spree := func(v int) *int { return &v }
 	rows := []legacymatch.StatsMatchRow{
-		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(5), HeadshotKills: spree(2), PerfectKills: spree(0)},
+		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(6), HeadshotKills: spree(2), PerfectKills: spree(0)},
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(9), HeadshotKills: spree(4), PerfectKills: spree(1)},
 		{SessionLabel: ptr("S1"), StartTime: time.Now(), MaxKillingSpree: spree(3), HeadshotKills: spree(1), PerfectKills: spree(2)},
 	}
@@ -266,14 +266,14 @@ func TestBuildCompareEntry_FragAggregates(t *testing.T) {
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
-	if entry.MaxKillingSpree == nil || *entry.MaxKillingSpree != 9 {
-		t.Fatalf("MaxKillingSpree: want max 9, got %v", entry.MaxKillingSpree)
+	if entry.AvgMaxKillingSpree == nil || *entry.AvgMaxKillingSpree != 6 { // (6+9+3)/3
+		t.Fatalf("AvgMaxKillingSpree: want 6 (moy. des max), got %v", entry.AvgMaxKillingSpree)
 	}
-	if entry.TotalHeadshotKills == nil || *entry.TotalHeadshotKills != 7 { // 2+4+1
-		t.Fatalf("TotalHeadshotKills: want sum 7, got %v", entry.TotalHeadshotKills)
+	if entry.HeadshotsPerMatch == nil || *entry.HeadshotsPerMatch != 2.33 { // (2+4+1)/3 = 2.333…
+		t.Fatalf("HeadshotsPerMatch: want 2.33, got %v", entry.HeadshotsPerMatch)
 	}
-	if entry.TotalPerfectKills == nil || *entry.TotalPerfectKills != 3 { // 0+1+2
-		t.Fatalf("TotalPerfectKills: want sum 3, got %v", entry.TotalPerfectKills)
+	if entry.PerfectKillsPerMatch == nil || *entry.PerfectKillsPerMatch != 1 { // (0+1+2)/3
+		t.Fatalf("PerfectKillsPerMatch: want 1, got %v", entry.PerfectKillsPerMatch)
 	}
 }
 
@@ -335,9 +335,9 @@ func TestBuildCompareEntry_FragAggregates_AllNil(t *testing.T) {
 	if entry == nil {
 		t.Fatal("expected non-nil entry")
 	}
-	if entry.MaxKillingSpree != nil || entry.TotalHeadshotKills != nil || entry.TotalPerfectKills != nil {
+	if entry.AvgMaxKillingSpree != nil || entry.HeadshotsPerMatch != nil || entry.PerfectKillsPerMatch != nil {
 		t.Fatalf("expected nil frag aggregates, got spree=%v hs=%v pk=%v",
-			entry.MaxKillingSpree, entry.TotalHeadshotKills, entry.TotalPerfectKills)
+			entry.AvgMaxKillingSpree, entry.HeadshotsPerMatch, entry.PerfectKillsPerMatch)
 	}
 }
 
