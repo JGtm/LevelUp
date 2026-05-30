@@ -1,3 +1,47 @@
+## [2026-05-30] fix(test+schema): fixtures sync alignées sur le contrat persister (ParticipationInfo + expected_win_prob) — 16 tests verts
+
+**Statut** : Complété
+
+**Demande** : régler les échecs pré-existants du package `internal/sync` (16 tests) signalés lors du fix XUID ci-dessous.
+
+**Root cause** : drift schéma entre le persister (commité) et les schémas/fixtures de test. Les commits LUSR-v2 récents (`0e8e2552b` FirstJoinedTime/LastLeaveTime, `8580ccde1` ParticipationInfo, `player_add_expected_win_prob`) ont ajouté des colonnes que `SharedPersister`/`AppendOnlyLUSRPersister` écrivent désormais, mais :
+- `sync/schema.go` base (`sharedSchemaSQL` via EnsureSharedSchema) avait les 4 booleans mais PAS `first_joined_time`/`last_leave_time` ; `match_skill_rank` sans `expected_win_prob`. (En prod ces colonnes sont posées par migration ALTER ; mais les tests EnsureSharedSchema-only ne lancent pas les migrations.)
+- `testutil/fixture.go` : idem (4 booleans, pas les 2 timestamps).
+- Fixtures hand-rolled (`concurrent_*`, `sync_pipeline_fixture`, `openLUSRDB`, `recompute_*`) : DDL `match_participants` / `match_skill_rank` figés avant ces colonnes.
+Vérifié (test diag jetable) : `RunForDB(TargetShared)` produit bien les 39 colonnes → les migrations sont OK, le problème était purement schémas base + fixtures.
+
+**Décisions** :
+1. Base `schema.go` : `match_participants` += `first_joined_time`/`last_leave_time TIMESTAMPTZ` ; `match_skill_rank` += `expected_win_prob FLOAT`. Aligne le fresh-boot EnsureSchema sur le contrat persister (les ALTER migrations restent idempotentes via IF NOT EXISTS / addColumnIfMissing).
+2. `testutil/fixture.go` += les 2 timestamps.
+3. Fixtures hand-rolled : `match_participants` += 6 colonnes ParticipationInfo (concurrent_multiplayer/property/stress, sync_pipeline) ; `match_skill_rank` += `expected_win_prob` (openLUSRDB partagé art_rebuild_e2e+skill_rating_loaders, recompute, sync_pipeline).
+Aucune modif de migration ni de code prod (les colonnes étaient déjà gérées par migration ; seuls base-schema + fixtures de test étaient en retard).
+
+**Résultats** : `internal/sync` vert (66s) ; les 16 tests confirmés PASS (pas de skip) ; build `./...` + go vet OK. duckdb/migration/ops re-vérifiés (inchangés par l'ajout additif de colonnes).
+
+**Conclusion / next** : échecs pré-existants résorbés. NB durci au passage : `sharedSchemaSQL` est maintenant cohérent avec le persister (réduit le risque qu'un futur test/boot EnsureSchema-only retombe sur le même drift). Le couple "persister écrit colonne X / migration ALTER X / base schema X" reste à garder synchronisé manuellement (pas de garde-rail automatique).
+
+## [2026-05-30] fix(go+web): XUID jamais affichés — source unique v_gamertag_lookup + masque "Joueur ####" + chokepoint front displayPlayerName
+
+**Statut** : Complété (durcissement code complémentaire à la réparation data ci-dessous)
+
+**Demande** : XUID encore visibles dans la match view ; exiger un gamertag partout, jamais le format XUID, via une abstraction unique.
+
+**Root cause** :
+- Backend : DEUX définitions divergentes de `v_gamertag_lookup`. La robuste (CASE bot + chaînes vides + `MAX(gamertag)` sans filtre + fallback) vivait dans `migration/steps_shared.go` ; la simplifiée (`WHERE gamertag IS NOT NULL` qui élimine des lignes valides, COALESCE→xuid brut) dans `sync/schema.go` était recréée à CHAQUE boot (`CREATE OR REPLACE`) → gagnait → xuids bruts réapparaissaient. Complément du fix `e1cee770e` (vues au boot) noté dans l'entrée data ci-dessous.
+- Frontend : fallbacks `gamertag || xuid` / `?? xuid` éparpillés (PlayerDetailPanel némésis/souffre-douleur, antagoniste, tug-of-war, KD-cumul, narrative, SessionBriefing) sans helper central.
+
+**Décisions** :
+1. Source unique Go `analysis.GamertagLookupViewSQL()` + `analysis.MaskedXuidLabelSQL()` (fallback `'Joueur ' || RIGHT(xuid,4)`), réutilisée par `sync/schema.go` (boot), `migration/steps_shared.go`, `ops/seed_demo.go`. Vue exposant (xuid, gamertag) — `last_seen` retiré (aucun consommateur, absent du seed démo).
+2. Résiduels `COALESCE(vg.gamertag, X.xuid)` (~11 sites queries_match/squad/career + media) → `COALESCE(vg.gamertag, ('Joueur '||RIGHT(X.xuid,4)))` : non NULL pour le scan Go ET jamais de xuid brut. Q21 (events) reste `vg.gamertag` nullable (masqué côté front). Join `xuid_aliases` redondant supprimé dans media_repo_filters.
+3. Frontend : chokepoint unique `lib/players/displayName.ts` (`displayPlayerName` / `isXuidLike` / `maskedPlayerLabel`) ; `unknownPlayerLabel` migré ici. Tous les sites de rendu routés via `displayPlayerName(gamertag, xuid)`. `isXuidLike` vise `xuid(...)` + numérique ≥15 chiffres, PAS les bots `bid(`.
+4. Garde-rail : `sync/gamertag_lookup_view_test.go` (la vue n'émet jamais un xuid brut) + `lib/players/displayName.test.ts` (invariant).
+
+**Résultats** : Go build `./...` OK ; tests `duckdb` (146s) + `migration` (26s) + `ops` OK ; vitest 156/156 (match-view + SessionBriefing + displayName) ; tsc + eslint clean. NB : échecs PRÉ-EXISTANTS dans `internal/sync` (E2E/stress/persist) = drift de colonnes `present_at_beginning`/`expected_win_prob` (commits LUSR-v2 récents `0e8e2552b`/`8580ccde1`), sans rapport avec ce fix.
+
+**Conclusion / next** : déploiement transparent (vue recréée au boot, masque calculé au query-time → aucun backfill). Reste indépendant : repair des 55 xuid orphelins (re-parse film) noté dans l'entrée data ci-dessous.
+
+**Observabilité (ajout vérif finale)** : `scheduler/data_health_check.go` logge désormais `orphan_xuids` à CHAQUE cycle (avant : seulement si d'autres warnings) → le nombre de joueurs masqués "Joueur ####" est visible dans `logs/health.log` même quand tout le reste est propre (reste informatif, hors WarningsTotal). Test `TestHealthScheduler_E2E_OrphanXUIDs_Counted` ajouté (path orphan-count jusque-là non couvert).
+
 ## [2026-05-30] fix(data): régression labels GUID/EN + gamertags→XUID — root cause = metadata.duckdb FATAL invalidated (instances serveur multiples)
 
 **Statut** : En cours (réparation data primaire faite + vérifiée ; durcissement code à faire)
@@ -51459,6 +51503,30 @@ Vérification finale demandée par l'utilisateur (complétude + logging + tests)
 
 Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mockés. Le logging structuré ajouté a permis le diagnostic immédiat (404 explicite dans service.log).
 
+
+## [2026-05-30] refactor(explorer): profil cible local-first (identité locale, drop privacy, carrière conservée) — Complété
+
+**Statut** : Complété · Branche `fix/explorer-target-profile-auth`
+
+**Demande** : Inverser la logique de l'encart "Profil joueur cible". L'identité Spartan n'est de toute façon jamais dispo pour un non-local ; pour un local on a déjà tout en base → ne pas fetcher l'identité en live, supprimer le fetch privacy (bruit). Décisions : GARDER la carrière live (servicerecord, marche pour tous), identité d'une cible LOCALE lue depuis SA propre base.
+
+**Décision technique** :
+- **Identité local-first** : nouvelle interface `ExplorerLocalIdentityResolver` (+ adapter `LocalIdentityResolverFunc`) remplace `ExplorerTargetIdentityProvider` (CareerLiveService). Câblage `ExplorerCtxWithAuth` → `newExplorerLocalIdentityResolver` : `resolveByGT(titleSlug, gamertag)` (db_profiles, pool-cached) → si joueur suivi, `newHomeRepo(targetPdb).LoadSpartanIdentity` lit son identité (rang/emblem/peaks) depuis SA base ; sinon nil. Zéro fetch live identité. `fetchTargetIdentity` ne branche plus sur hasAuth.
+- **Privacy supprimée** : goroutine + `fetchTargetPrivacy` + champ `privacyProvider` retirés ; `WithTargetProfileProviders` resignée `(localIdentity, remote, titleSlug)`. `PrivacyWarning` toujours nil → bannière jamais rendue. `PrivacyProvider` conservé pour les autres pages.
+- **Carrière conservée** : `fetchTargetCareer` inchangé (servicerecord + cache, gated hasAuth). `enrichWithHaloTokens` conservé.
+- **Budget latence** : ne borne plus que la carrière (identité + sample = local, sur gctx). Identité/sample non bornées.
+- **Nettoyage** : `CareerLiveService.GetSpartanIdentityFromDBOnly` (mort) supprimé + tests associés. `r.newCareerLiveService` retiré du wiring Explorer (toujours utilisé par Home/Career).
+
+**Résultats** : `go build ./...` OK, `go vet` clean, tests `service`+`api`+`handlers` verts, `-race` clean, typecheck front OK. Tests TargetProfile réécrits (résolveur local, plus de privacy). **Validé en runtime** (curl serveur live) : cible LOCALE Chocoboflor → identity complète (SpartanID "OKLM", emblem/banner lus de SA base) + career + sample, **pas** de privacy ; cible NON-locale Nilton410 → pas d'identity (gamertag seul) + career (servicerecord) + sample, **pas** de privacy. Front : libellé identité-nulle reformulé (informatif, non alarmant) + fix `text-warning` du PrivacyBanner conservé.
+
+**Prochaine étape** : validation visuelle utilisateur. Pas encore commité (en attente autorisation).
+
+**Passe de vérification finale (logging + tests + go/no-go)** :
+- Logging : ajout debug `explorer_target_identity_not_local` (observabilité cible non suivie, → service.log) ; warn `explorer_local_identity_failed` (erreur lecture DB cible, côté registry) conservé. Aucun fetch/log privacy.
+- Code mort : retrait de la branche `PrivacyBanner` de `ExplorerTargetProfileCard` (jamais déclenchée — privacy supprimée) + import. Test card adapté (le cas « profil privé » devient « ne rend jamais de bannière privacy »).
+- i18n : libellé identité-nulle reformulé (« Identité Spartan non disponible » + « Emblème et rang carrière indisponibles… stats affichées ci-dessous ») dans manifest + généré ; test placeholder mis à jour.
+- Résultats : `go build ./...` OK, `go vet ./...` clean, `go test ./...` tout vert, `-race` clean (service+api), aucun print interdit. Front : `tsc -b` OK, `eslint` 0 erreur, `vitest` 27/27 (ExplorerTargetProfileCard + Home). Fichiers <500 L, fonctions ≤80 L. Runtime reconfirmé (Chocoboflor identity locale ; Nilton410 career-only ; zéro privacy partout).
+
 **Prochaine étape** : validation utilisateur (Explorer cible : carrière live affichée, plus de message, réponse rapide à froid puis instantanée à chaud). Pas encore commité (en attente autorisation).
 
 ---
@@ -51498,3 +51566,20 @@ Leçon : valider en runtime (curl + logs), pas seulement en tests unitaires mock
 **Résultats** : `go build ./...` OK (CGO ucrt64), `go vet` clean, gofmt clean. Tests : nouveaux `post_sync_progression_retry_test.go` (retry succès/budget/détachement ctx) + `handlers/progression_backfill_test.go` (200/404/500/slug). Suites complètes vertes : `internal/sync` (12.4s), `internal/api/handlers` (5.3s), `internal/api` (7.5s, dont TestContract*).
 
 **Prochaine étape** : redémarrer le serveur (Air) pour charger le binaire, puis soit attendre un sync (finalizer corrigé peuple les tables), soit `curl -X POST /_admin/progression/backfill/{slug}` pour seeder immédiatement. Re-vérifier le diag. Pas encore commité (en attente autorisation).
+
+### Suite — validation réelle + fix ART écritures progression (même jour)
+
+**Validation du fix lecture** : backfill in-process déclenché sur les 3 joueurs. JGtm/Madina immédiatement complets (streak + 15 records + 10-13 milestones), alors qu'avant tout restait à 0. Le fix timeout/finalizer est donc confirmé.
+
+**Bug ART surfacé** : l'exécution réelle (enfin atteinte) a révélé un bug pré-existant — `StreaksRepo.Upsert` et `MilestoneEarnedRepo.Append` utilisaient `ON CONFLICT`, qui déclenche le chemin "delete from index" de DuckDB → crash `Failed to delete all rows from index` → DB invalidée → `Binder Error` en cascade (Choco bloqué à streak=0/milestone=0, milestone_catalog oscillant 0↔14, `http=000` transitoire). Sites déjà flaggés HAUT risque dans `audit_art_writes.md`.
+
+**Fix (scope validé utilisateur : streaks + milestone_earned uniquement)** :
+- `StreaksRepo.Upsert` (clé `id`) → `SELECT EXISTS` puis UPDATE-by-id ou INSERT. Plus d'ON CONFLICT.
+- `MilestoneEarnedRepo.Append` (earn-once) → `SELECT EXISTS` puis INSERT si absent.
+- `streak` + `milestone_earned` ajoutées à `tablesProtegees` (`no_art_patterns_test.go`) → verrou anti-régression contre toute réintroduction d'ON CONFLICT.
+
+**Résultats** : `go build ./...` + `go vet` + gofmt clean. Guard-rail ART vert (aucun autre site ON CONFLICT sur ces tables). Tests intégration repos verts (`-tags integration` : 5 streaks + 3 milestone_earned, dont UpsertOverwrites et Append_Idempotent). **Re-validation réelle après rebuild Air + pool frais** : les 3 joueurs complets — Chocoboflor passé de 0/0 à streak=1, records=15, milestone_earned=6. Plus aucune erreur ART sur le chemin progression.
+
+**Hors scope (tracé, non corrigé)** : `sync_meta` ON CONFLICT (rotation oauth, `auth/pool/resolver.go`) échoue encore en Binder Error sur la DB de Choco — preuve a contrario que le pattern SELECT-then-UPDATE est robuste là où l'ON CONFLICT casse. À migrer dans une PR ART dédiée. Les seeders metadata (`seedPlaylistsCatalog`, `achievements upsert`) restent aussi à traiter (source d'invalidation metadata).
+
+**État final** : symptôme utilisateur (page Réalisations vide) résolu de bout en bout. Pas encore commité (en attente autorisation). Branche `fix/explorer-target-profile-auth`.
