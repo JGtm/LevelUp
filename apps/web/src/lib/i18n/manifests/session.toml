@@ -180,6 +180,11 @@ en = "Avg. life"
 fr = "Rendement / Résistance"
 en = "Yield / Resistance"
 
+# Variante courte affichée en mode compact (colonne divisée, drawer compare ouvert).
+[session.detail.stat_off_def_short]
+fr = "Rend. / Résist."
+en = "Yield / Res."
+
 # Compare metrics table
 [session.detail.compare_col_metric]
 fr = "Métrique"
@@ -351,9 +356,12 @@ en = "No data to display."
 fr = "Fermer le panneau de comparaison"
 en = "Close comparison panel"
 
-[session.detail.drawer_title]
-fr = "Comparaison · {label}"
-en = "Comparison · {label}"
+# Label du header L3 drawer. Le libellé de session est porté par le sélecteur déroulant
+# à côté (plus besoin d'interpoler {label} dans le titre, d'où la suppression de l'ancien
+# `drawer_title` = "Comparaison · {label}").
+[session.detail.compare_label]
+fr = "Comparaison"
+en = "Comparison"
 
 [session.detail.drawer_prev_session]
 fr = "Session précédente"

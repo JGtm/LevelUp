@@ -51,6 +51,12 @@ export interface RadarChartProps {
    * et non "48 %". Défaut false → comportement historique (radar participation).
    */
   rawInTooltip?: boolean
+  /**
+   * Si true, affiche la VALEUR de chaque axe directement sur le radar (sous le libellé
+   * d'axe), en plus du tooltip — pour les radars de session (FDA / Frags) où lire au
+   * survol n'est pas pratique. Utilise `meta.raw_by_axis` (radar mono-série).
+   */
+  showValues?: boolean
 }
 
 export function RadarChart({
@@ -63,14 +69,15 @@ export function RadarChart({
   seriesNameResolver,
   axisLabels,
   rawInTooltip,
+  showValues,
 }: RadarChartProps) {
   // Le ChartCard est typé sur ChartSeries<T> mais on passe RadarSeriesPayload.
   // Ce wrapper est volontairement non-strict (cast au call site) pour
   // garder le ChartCard minimal — le radar a une structure trop spécifique.
   const buildOption = useCallback(
     (s: RadarSeriesPayload[]) =>
-      buildRadarOption(s, { seriesNameResolver, axisLabels, rawInTooltip }),
-    [seriesNameResolver, axisLabels, rawInTooltip],
+      buildRadarOption(s, { seriesNameResolver, axisLabels, rawInTooltip, showValues }),
+    [seriesNameResolver, axisLabels, rawInTooltip, showValues],
   )
 
   return (
@@ -90,14 +97,18 @@ interface BuildOpts {
   seriesNameResolver?: (s: RadarSeriesPayload) => string
   axisLabels?: Record<string, string>
   rawInTooltip?: boolean
+  showValues?: boolean
 }
+
+/** Valeur d'axe affichée sur le radar : entier tel quel, sinon 1 décimale. */
+const fmtRadarValue = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildRadarOption(
   series: RadarSeriesPayload[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { seriesNameResolver, axisLabels, rawInTooltip } = opts
+  const { seriesNameResolver, axisLabels, rawInTooltip, showValues } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -163,6 +174,28 @@ export function buildRadarOption(
       {
         type: 'radar',
         data,
+        // Valeurs affichées AUX POINTES (vertices), en clair (≈ blanc sur thème sombre) avec
+        // un léger contour pour rester lisible sur l'aire colorée. Valeur BRUTE par axe via
+        // meta.raw_by_axis (radar mono-série de session) ; dimensionIndex = index de l'axe.
+        ...(showValues
+          ? {
+              label: {
+                show: true,
+                color: tc.text,
+                fontSize: 10,
+                fontWeight: 'bold' as const,
+                textBorderColor: tc.tooltipBg,
+                textBorderWidth: 2,
+                formatter: (p: { name?: string; dimensionIndex?: number }) => {
+                  const di = p.dimensionIndex
+                  if (di == null) return ''
+                  const raw = p.name != null ? rawByName.get(p.name) : undefined
+                  const v = raw?.[axisKeys[di]]
+                  return v != null ? fmtRadarValue(v) : ''
+                },
+              },
+            }
+          : {}),
       },
     ],
   }

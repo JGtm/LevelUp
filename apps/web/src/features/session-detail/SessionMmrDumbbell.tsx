@@ -133,7 +133,7 @@ interface Props {
   height?: number
 }
 
-export function SessionMmrDumbbell({ title, matches, height }: Props) {
+export function SessionMmrDumbbell({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
 
   const series = useMemo<ChartSeries<MmrPoint>[]>(() => {
@@ -153,9 +153,10 @@ export function SessionMmrDumbbell({ title, matches, height }: Props) {
     ]
   }, [matches])
 
-  // Hauteur adaptée au nombre de matchs (lignes), bornée pour rester lisible.
+  // Hauteur FIXE (plus de rows*30+60) : une hauteur dynamique désalignerait les cartes
+  // A vs B (nombres de matchs différents) et le graphe OC/DR apparié en grille. Aligné
+  // sur les autres graphes de la pile (280). Sessions chargées → barres comprimées (ok).
   const rows = series[0]?.datapoints.length ?? 0
-  const computedHeight = height ?? Math.min(560, Math.max(220, rows * 30 + 60))
 
   // Observabilité : dumbbell vide alors qu'il y a des matchs = pas de MMR (social ?).
   if (matches.length > 0 && rows === 0) {
@@ -170,7 +171,7 @@ export function SessionMmrDumbbell({ title, matches, height }: Props) {
     <ChartCard
       title={title}
       series={series}
-      height={computedHeight}
+      height={height}
       buildOption={(s) =>
         buildSessionMmrDumbbellOption(s, {
           teamLabel: t('session.detail.mmr_team'),

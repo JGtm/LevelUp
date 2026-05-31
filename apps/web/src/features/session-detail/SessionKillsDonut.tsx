@@ -16,9 +16,11 @@ interface Props {
   title: string
   matches: SessionDetailMatchRow[]
   height?: number
+  /** Colonne divisée (drawer) : % dans le donut, pas d'étiquette externe. */
+  compact?: boolean
 }
 
-export function SessionKillsDonut({ title, matches, height = 260 }: Props) {
+export function SessionKillsDonut({ title, matches, height = 260, compact }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const fields = fieldMappings?.fields
 
@@ -63,6 +65,6 @@ export function SessionKillsDonut({ title, matches, height = 260 }: Props) {
   if (total === 0) return null
 
   return (
-    <DonutChart title={title} series={series} sliceColors={sliceColors} height={height} />
+    <DonutChart title={title} series={series} sliceColors={sliceColors} height={height} compact={compact} />
   )
 }

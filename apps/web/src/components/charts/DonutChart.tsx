@@ -41,6 +41,11 @@ export interface DonutChartProps {
   outerRadius?: string
   /** Si true, affiche les pourcentages dans les labels (default true). */
   showPercent?: boolean
+  /**
+   * Mode compact (colonne divisée / drawer) : pourcentages DANS le donut, aucune étiquette
+   * externe ni connecteur (les connecteurs débordent et se font clipper en colonne étroite).
+   */
+  compact?: boolean
   /** Valeur affichée au centre du donut (gros texte) — ex "62 %". */
   centerValue?: string
   /** Libellé affiché au centre, sous la valeur (petit texte) — ex "Victoires". */
@@ -58,13 +63,14 @@ export function DonutChart({
   innerRadius,
   outerRadius,
   showPercent,
+  compact,
   centerValue,
   centerLabel,
 }: DonutChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointDonut>[]) =>
-      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, centerValue, centerLabel }),
-    [sliceColors, innerRadius, outerRadius, showPercent, centerValue, centerLabel],
+      buildDonutOption(s, { sliceColors, innerRadius, outerRadius, showPercent, compact, centerValue, centerLabel }),
+    [sliceColors, innerRadius, outerRadius, showPercent, compact, centerValue, centerLabel],
   )
 
   return (
@@ -85,6 +91,7 @@ interface BuildOpts {
   innerRadius?: string
   outerRadius?: string
   showPercent?: boolean
+  compact?: boolean
   centerValue?: string
   centerLabel?: string
 }
@@ -102,6 +109,7 @@ export function buildDonutOption(
     innerRadius = '50%',
     outerRadius = '75%',
     showPercent = true,
+    compact = false,
     centerValue,
     centerLabel,
   } = opts
@@ -186,13 +194,12 @@ export function buildDonutOption(
         type: 'pie',
         radius: [innerRadius, outerRadius],
         avoidLabelOverlap: true,
-        label: {
-          show: showPercent,
-          color: tc.text,
-          fontSize: 11,
-          formatter: showPercent ? '{b}\n{d}%' : '{b}',
-        },
-        labelLine: { length: 8, length2: 6 },
+        // Compact : % DANS le donut, pas d'étiquette externe ni de connecteur (sinon ils
+        // débordent et se font clipper en colonne étroite). Sinon : étiquette externe.
+        label: compact
+          ? { show: true, position: 'inside', color: tc.text, fontSize: 11, formatter: '{d}%' }
+          : { show: showPercent, color: tc.text, fontSize: 11, formatter: showPercent ? '{b}\n{d}%' : '{b}' },
+        labelLine: compact ? { show: false } : { length: 8, length2: 6 },
         data,
       },
     ],

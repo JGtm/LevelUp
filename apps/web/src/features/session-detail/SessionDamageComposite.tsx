@@ -2,9 +2,8 @@
  * SessionDamageComposite — barre composite Dégâts infligés / subis, une par match.
  *
  * Barres horizontales empilées (Y = matchs #N + carte, ordre chronologique) : segment
- * "infligés" (divergent-pos) + segment "subis" (divergent-neutral). La longueur totale =
- * implication aux dégâts du match, le partage = ratio infligés/subis. Mêmes couleurs que
- * le composite Rendement/Résistance (OffDefComposite).
+ * "infligés" (divergent-pos, positif) + segment "subis" (divergent-neg, négatif). La
+ * longueur totale = implication aux dégâts du match, le partage = ratio infligés/subis.
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
@@ -42,7 +41,9 @@ export function buildSessionDamageOption(
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
   const dealtColor = resolveToken('divergent-pos')
-  const takenColor = resolveToken('divergent-neutral')
+  // Dégâts subis = couleur "négative" (rouge divergent-neg) pour lire d'un coup d'œil ce
+  // qu'on encaisse, vs les dégâts infligés en positif (vert divergent-pos).
+  const takenColor = resolveToken('divergent-neg')
   const labels = points.map((p) => p.label)
 
   const segLabel = {
@@ -111,7 +112,7 @@ interface Props {
   height?: number
 }
 
-export function SessionDamageComposite({ title, matches, height }: Props) {
+export function SessionDamageComposite({ title, matches, height = 280 }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const fields = fieldMappings?.fields
 
@@ -132,8 +133,8 @@ export function SessionDamageComposite({ title, matches, height }: Props) {
     ]
   }, [matches])
 
+  // Hauteur FIXE (plus de rows*30+60) : aligne les cartes A vs B et la pile, comme MMR.
   const rows = series[0]?.datapoints.length ?? 0
-  const computedHeight = height ?? Math.min(560, Math.max(220, rows * 30 + 60))
 
   // Observabilité : barre dégâts vide alors qu'il y a des matchs = pas de données
   // de dégâts (vieux matchs). Même cause que le nuage OC/DR vide.
@@ -149,7 +150,7 @@ export function SessionDamageComposite({ title, matches, height }: Props) {
     <ChartCard
       title={title}
       series={series}
-      height={computedHeight}
+      height={height}
       buildOption={(s) =>
         buildSessionDamageOption(s, {
           dealtLabel: fields?.damage_dealt?.label ?? 'damage_dealt',
