@@ -1,3 +1,27 @@
+## [2026-05-31] Explorer — Profil de combat : graphes (BACKEND livré, frontend handoff)
+
+**Statut** : Backend **complété + committé + poussé** (`d9afff3a`), build + tests Go verts. Frontend (5 graphes) **NON fait ici** → handoff `.ai/HANDOFF_EXPLORER_COMBAT_CHARTS_FRONTEND.md` (committé `70cd1218`). Plan source récupéré du commit `8bf0d2a6` et committé (`0b90c602`) : `.ai/PLAN_explorer_combat_profile_charts.md`. Branche `fix/explorer-combat-profile-identity` synchronisée avec origin.
+
+**Demande** : implémenter `.ai/PLAN_explorer_combat_profile_charts.md` = section graphes sur les 20 derniers matchs PvP du joueur cible (Explorer mode Joueur). 5 graphes : G1 FDA+frags/morts/assists, G2 dégâts empilés, G3 score+placement (axe inversé), G4 folie max+frags parfaits, G5 donut modes.
+
+**Backend livré (commit d9afff3a, 7 fichiers)** :
+- `domain/explorer.go` : type `ExplorerTargetRecentMatch` + champ `CombatProfile` dans `ExplorerTargetProfile`.
+- `port/repository.go` : `GetTargetRecentMatches(ctx, xuid, limit)` dans `ExplorerRepository` (+ noop).
+- `platform/duckdb/queries_match.go` : `Q19cTargetRecentMatches`.
+- `platform/duckdb/explorer_repo.go` : `GetTargetRecentMatches` + `scanTargetRecentMatch`.
+- `service/explorer_service.go` : `computeTargetCombatProfile` (goroutine errgroup gctx, best-effort) → `CombatProfile`, `explorerCombatProfileLimit=20`.
+- Tests : `explorer_repo_recent_test.go` (intégration :memory:) + `explorer_service_test.go` (`TestExplorerService_TargetProfile_CombatProfile`).
+
+**Déviation assumée vs plan (documentée dans le commit)** : le plan prévoyait un filtre PvP en Go via `analysis.InferModeCategoryFromPairName` + buffer `LIMIT 60`. Cette fonction **n'existe pas** dans le repo (le plan demandait justement de « localiser la fonction exacte avant d'implémenter »). À la place : filtre PvP **EN SQL** via `match_registry.is_firefight` (`COALESCE(is_firefight,FALSE)=FALSE`, pattern déjà utilisé par engagement_score_repo + career highlights). Plus simple, plus fiable, pas de buffer. `LIMIT 20` direct. `perfect_kills` via LEFT JOIN `medals_earned` (1512363953). `rank` NULL (DNF) → `*int` nil ; damage DOUBLE → int.
+
+**Résultats observés (backend)** : `gofmt` propre ; `go build ./...` exit 0 ; `go test -tags=integration ./internal/platform/duckdb -run TestExplorerRepo_GetTargetRecentMatches` 2 verts (ordre DESC, exclusion Firefight, LIMIT, perfect LEFT JOIN COALESCE 0, rank nil DNF, gardes xuid vide/limit<=0/inconnu) ; `go test ./internal/service` vert (CombatProfile peuplé / nil best-effort). Push origin OK (hooks pre-push verts).
+
+**Frontend NON fait — raison (honnêteté)** : l'environnement de cette session est dégradé — lectures de fichiers intermittentes (Read renvoie vide/tronqué), tooling front inutilisable (node_modules incomplet → `tsc`/`vitest`/regen i18n cassés). Écrire ~8 fichiers TSX (builders dual-axe + 5 charts + conteneur) contre des APIs de composants que je ne peux pas lire de façon fiable, sans compiler ni tester, produirait du code probablement cassé. Décision utilisateur (AskUserQuestion) : **hand-off sur machine de dev**. Cohérent avec « report outcomes faithfully » : on ne pousse pas de frontend non vérifiable.
+
+**Leçon de session (process)** : trop d'appels parallèles dans un env glitchy → cascades d'annulations + edits ratés silencieux (dont CETTE entrée thought_log, écrite seulement au 2e passage). Passer en appels séquentiels et re-vérifier l'état réel (git show HEAD, grep disque) après chaque étape sensible.
+
+**Prochaine étape** : implémenter le frontend sur la machine de dev en suivant `.ai/HANDOFF_EXPLORER_COMBAT_CHARTS_FRONTEND.md` (le DTO `combat_profile` est déjà servi par l'API).
+
 ## [2026-05-31] Explorer — Profil de combat : DTO identité + fallback médailles + adornment
 
 **Statut** : Code complété **Phases 1, 2, 3.5 ET 3.6**, tests automatisés **VERTS**. Go : `gofmt -w` + `go build ./...` (CGO) + `go test` service & duckdb-integration OK. Front : vitest 9/9 + eslint 0 sur fichiers touchés. typecheck `tsc -b` échoue uniquement sur `CoverFlowModal.tsx` (`hls.js` déclaré dans package.json mais `node_modules` pas installé dans cet env → `npm install` résout ; **hors scope**, aucune erreur sur mes fichiers). Arbre de travail = uniquement mon diff (vérifié). Reste : validation LIVE (Zscaler peut bloquer). Phase 3.6 = option « pool local de bannières » (choix utilisateur). Branche : `fix/explorer-combat-profile-identity`. Commit en attente d'autorisation. Handoff : `.ai/HANDOFF_EXPLORER_COMBAT_PROFILE.md`.
