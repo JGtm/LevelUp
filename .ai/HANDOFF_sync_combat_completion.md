@@ -4,7 +4,44 @@
 > Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
-## 🔧 PHASE 1b EN COURS — router la complétion via persist (reprise post-compactage ICI)
+## ✅ PHASE 1b SLICE 1 LIVRÉE (2026-06-01, non commité) — lire en premier
+- **Créé** `internal/persist/events_completion_persister.go` : `EventsCompletionPersister` avec
+  `Persist(ctx, EventsCompletionInput) (eventsInserted int, err error)` (1 TX : INSERT highlight_events
+  INSERT-only + DELETE/INSERT killer_victim_pairs par-kill + UPDATE match_registry bits/events_loaded)
+  ET `MarkNoFilmDefinitive(ctx, matchID, eventsBit)` (UPDATE registry no-film). Types `HLEventCompletion`
+  + `KVPairCompletion`. ART-safety : highlight_events INSERT-only (ART-indexée), kv DELETE+INSERT (sans index).
+- **Recâblé** `engine_highlight_events.go` : `ProcessHighlightEvents` + `insertHighlightEventsFromData`
+  passent par le helper `persistCombatCompletion(ctx, sharedDB, matchID, events)` → le persister. Branche
+  no-film → `MarkNoFilmDefinitive`. Plus aucun `db.Exec` shared dans le chemin de complétion.
+- **Test** `internal/persist/events_completion_persister_test.go` (5 tests, opener dédié schéma kv par-kill).
+- **Vérifs** : build+vet clean ; persist+sync verts (cgo ET cgo+integration). NON commité.
+- **Conséquence** : `InsertHighlightEvents`, `InsertKillerVictimPairsFromEvents`, `MarkEventsLoaded`,
+  `MarkKillerVictimLoaded` (writes.go) ne sont plus appelées qu'en tests (writes_test.go) → à SUPPRIMER
+  avec leurs tests dans le commit garde-fou (item 8), en même temps que le test interdisant db.Exec shared
+  hors persist (allowlist pour slice-2 skill/weapon encore legacy).
+## ✅ PHASE 1b SLICE 2 LIVRÉE (2026-06-01, non commité)
+- **Créé** `internal/persist/skill_completion_persister.go` : `SkillCompletionPersister.Persist` (UPDATE
+  match_participants colonnes skill + UPDATE match_registry skill_loaded/MBitSkill en 1 TX). Types
+  `ParticipantSkillUpdate` + `SkillCompletionInput`.
+- **Recâblé** `internal/sync/skill_heal_apply.go::applySkillToParticipants` → délègue au persister (plus
+  de tx.ExecContext direct). Imports nettoyés (fmt/slog retirés, persist/strconv ajoutés).
+- **Test** `internal/persist/skill_completion_persister_test.go` (2 tests). Build+vet clean, persist+sync verts.
+- **Phase 1b TERMINÉE** : events + killer_victim + skill de complétion passent tous par persist.
+
+## ✅ ÉTAT après Phase 1b (récap pour item 8 = garde-fou + cleanup)
+Écritures shared encore en `db.Exec`/`tx.Exec` direct DANS internal/sync (à traiter item 8) :
+1. `writes.go` : `InsertHighlightEvents`, `InsertKillerVictimPairsFromEvents`, `MarkEventsLoaded`,
+   `MarkKillerVictimLoaded` — désormais appelées UNIQUEMENT par writes_test.go → SUPPRIMER (fonctions +
+   tests). Le comportement est couvert par events_completion_persister_test.go.
+2. `backfill_weapons.go` : `InsertWeaponKills` (weapon_kills heal) — pas encore migré. Auditer + router
+   via un persister weapon (slice 3 optionnelle) OU allowlister explicitement.
+3. `writes.go` : `InsertParticipants` (utilisé par le chemin primaire legacy insertFetchedMatch ?) — à
+   vérifier ; si primaire legacy, allowlister (le primaire batch passe déjà par SharedPersister).
+Garde-fou : test scannant internal/sync/** interdisant Exec/Prepare INSERT|UPDATE|DELETE sur tables
+shared hors persist, avec allowlist explicite (2 + 3 ci-dessus) documentée, vide à terme. Modèle :
+internal/sync/no_art_patterns_test.go.
+
+## 🔧 PHASE 1b — design d'origine (slice 1 = FAIT ci-dessus, garder pour slice 2/contexte)
 
 **Objectif** : la complétion events/killer_victim (et skill) ne doit plus écrire en `db.Exec` direct
 dans le package `sync` ; tout passe par le package `persist`, en UNE transaction atomique, sur le writer

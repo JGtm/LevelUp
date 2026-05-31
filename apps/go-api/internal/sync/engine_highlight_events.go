@@ -27,6 +27,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/persist"
 )
 
 // filmRetryWindow : fenêtre pendant laquelle un film absent (404) est considéré
@@ -100,12 +101,7 @@ func insertHighlightEventsFromData(
 	}
 	observability.IncCounter("highlight_events_parse_total_ok")
 
-	n, err := InsertHighlightEvents(ctx, sharedDB, matchID, events)
-	if err != nil {
-		return fmt.Errorf("InsertHighlightEvents: %w", err)
-	}
-
-	// Upsert XUID aliases from events.
+	// Upsert XUID aliases from events (DB globale, hors TX shared).
 	if globalDB != nil {
 		for _, ev := range events {
 			if ev.XUID != 0 && ev.Gamertag != "" {
@@ -114,23 +110,19 @@ func insertHighlightEventsFromData(
 		}
 	}
 
-	if n > 0 {
-		result.EventsInserted += n
-		_ = MarkEventsLoaded(ctx, sharedDB, matchID)
-	}
-
-	// Fix Phase 1bis (mai 2026) : ne marquer MBitKillerVictim que si l'insert
-	// a réellement réussi. Avant, l'insert + le mark étaient appelés
-	// inconditionnellement avec `_ =` qui swallowait l'erreur — bit menteur
-	// dormant, masqué tant que les events n'arrivaient pas (parser cassé).
-	if pairsErr := InsertKillerVictimPairsFromEvents(ctx, sharedDB, matchID, events); pairsErr != nil {
-		slog.WarnContext(ctx, "InsertKillerVictimPairs échoué", "match_id", matchID, "err", pairsErr)
+	// Complétion combat atomique via persist (events + killer_victim + bits) sur
+	// le writer RW shared — voir persistCombatCompletion. Remplace les écritures
+	// db.Exec directes legacy (règle absolue : zéro écriture shared hors persist).
+	n, err := persistCombatCompletion(ctx, sharedDB, matchID, events)
+	if err != nil {
 		if result != nil {
 			result.Warnings = append(result.Warnings,
-				fmt.Sprintf("killer_victim_pairs %s: %v", matchID, pairsErr))
+				fmt.Sprintf("combat_completion %s: %v", matchID, err))
 		}
-	} else {
-		_ = MarkKillerVictimLoaded(ctx, sharedDB, matchID)
+		return fmt.Errorf("persistCombatCompletion: %w", err)
+	}
+	if n > 0 && result != nil {
+		result.EventsInserted += n
 	}
 
 	return nil
@@ -164,8 +156,9 @@ func ProcessHighlightEvents(
 			"definitive", definitive,
 		)
 		if definitive {
-			if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
-				slog.DebugContext(ctx, "MarkEventsLoaded échoué (no-film)",
+			if markErr := persist.NewEventsCompletionPersister(sharedDB).
+				MarkNoFilmDefinitive(ctx, matchID, MBitEvents); markErr != nil {
+				slog.DebugContext(ctx, "MarkNoFilmDefinitive échoué (no-film)",
 					"match_id", matchID, "err", markErr)
 			}
 		}
@@ -195,13 +188,9 @@ func ProcessHighlightEvents(
 	}
 	observability.IncCounter("highlight_events_parse_total_ok")
 
-	n, err := InsertHighlightEvents(ctx, sharedDB, matchID, events)
-	if err != nil {
-		return fmt.Errorf("InsertHighlightEvents: %w", err)
-	}
-
 	// Upsert les gamertags extraits depuis le film (source la plus fiable).
-	// P5.3 : ecriture dans la DB globale xbox_aliases.
+	// P5.3 : ecriture dans la DB globale xbox_aliases. DB séparée du shared →
+	// reste hors de la TX de complétion (best-effort, inchangé).
 	aliasCount := 0
 	if globalDB != nil {
 		for _, ev := range events {
@@ -213,21 +202,16 @@ func ProcessHighlightEvents(
 		}
 	}
 
-	if n > 0 {
-		result.EventsInserted += n
-		if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
-			slog.WarnContext(ctx, "MarkEventsLoaded échoué", "match_id", matchID, "err", markErr)
-		}
+	// Complétion combat via le persister orchestré (1 TX, writer RW). Remplace
+	// les écritures db.Exec directes legacy (InsertHighlightEvents +
+	// InsertKillerVictimPairsFromEvents + MarkEventsLoaded/MarkKillerVictimLoaded)
+	// — règle absolue : zéro écriture shared hors package persist.
+	n, err := persistCombatCompletion(ctx, sharedDB, matchID, events)
+	if err != nil {
+		return fmt.Errorf("persistCombatCompletion: %w", err)
 	}
-
-	pairsErr := InsertKillerVictimPairsFromEvents(ctx, sharedDB, matchID, events)
-	if pairsErr != nil {
-		slog.WarnContext(ctx, "InsertKillerVictimPairs échoué", "match_id", matchID, "err", pairsErr)
-		// Non-bloquant : on continue.
-	} else {
-		if markErr := MarkKillerVictimLoaded(ctx, sharedDB, matchID); markErr != nil {
-			slog.WarnContext(ctx, "MarkKillerVictimLoaded échoué", "match_id", matchID, "err", markErr)
-		}
+	if n > 0 && result != nil {
+		result.EventsInserted += n
 	}
 
 	slog.DebugContext(ctx, "processHighlightEvents: terminé",
@@ -236,7 +220,60 @@ func ProcessHighlightEvents(
 		"events_parsed", len(events),
 		"events_inserted", n,
 		"aliases_upserted", aliasCount,
-		"killer_victim_err", pairsErr,
 	)
 	return nil
+}
+
+// persistCombatCompletion construit les rows de complétion (highlight_events +
+// killer_victim_pairs par-kill) depuis les events parsés et les écrit en UNE
+// transaction atomique via persist.EventsCompletionPersister (writer RW shared).
+// Retourne le nombre d'events insérés. Centralise la construction pour que les
+// deux callers (ProcessHighlightEvents et insertHighlightEventsFromData) partagent
+// exactement le même mapping.
+func persistCombatCompletion(ctx context.Context, sharedDB *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+	hlRows := make([]persist.HLEventCompletion, 0, len(events))
+	for _, ev := range events {
+		hlRows = append(hlRows, persist.HLEventCompletion{
+			XUID:      strconv.FormatUint(ev.XUID, 10),
+			EventType: ev.EventType,
+			TimeMS:    ev.TimeMS,
+			TypeHint:  ev.TypeHint,
+		})
+	}
+
+	// Paires killer→victim (forme par-kill, gamertags + time_ms) — même calcul
+	// que la fonction legacy InsertKillerVictimPairsFromEvents (tolérance 5 ms).
+	raw := make([]analysis.RawEvent, 0, len(events))
+	for _, ev := range events {
+		if ev.EventType != analysis.EventTypeKill && ev.EventType != analysis.EventTypeDeath {
+			continue
+		}
+		raw = append(raw, analysis.RawEvent{
+			EventType: ev.EventType,
+			XUID:      strconv.FormatUint(ev.XUID, 10),
+			Gamertag:  ev.Gamertag,
+			TimeMS:    int64(ev.TimeMS),
+		})
+	}
+	const toleranceMS = int64(5)
+	pairs := analysis.ComputeKillerVictimPairs(raw, toleranceMS)
+	kvRows := make([]persist.KVPairCompletion, 0, len(pairs))
+	for _, p := range pairs {
+		kvRows = append(kvRows, persist.KVPairCompletion{
+			KillerXUID:     p.KillerXUID,
+			KillerGamertag: p.KillerGT,
+			VictimXUID:     p.VictimXUID,
+			VictimGamertag: p.VictimGT,
+			TimeMS:         p.TimeMS,
+		})
+	}
+
+	return persist.NewEventsCompletionPersister(sharedDB).Persist(ctx, persist.EventsCompletionInput{
+		MatchID:         matchID,
+		Events:          hlRows,
+		Pairs:           kvRows,
+		MarkKV:          true,
+		EventsBit:       MBitEvents,
+		KillerVictimBit: MBitKillerVictim,
+	})
 }
