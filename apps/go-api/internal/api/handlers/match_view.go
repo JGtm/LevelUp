@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 )
 
@@ -124,12 +125,24 @@ func parseCsvFilterParam(ctx context.Context, raw, param string) []string {
 
 // MatchViewHandler gère GET /players/{player_slug}/matches/{match_id}.
 type MatchViewHandler struct {
-	newSvc ServiceFactory[port.MatchViewService]
+	newSvc        ServiceFactory[port.MatchViewService]
+	settingsStore *settings.Store
+	repoRoot      string
 }
 
 // NewMatchViewHandler crée un MatchViewHandler.
 func NewMatchViewHandler(newSvc ServiceFactory[port.MatchViewService]) *MatchViewHandler {
 	return &MatchViewHandler{newSvc: newSvc}
+}
+
+// WithMediaURLs câble la transformation des chemins média de l'onglet médias
+// (file_path + thumbnail_url) en URLs servables /api/v1/.../media/files/...,
+// réutilisant la logique de la galerie (cf. mediaStoredPathToURL dans media.go).
+// Sans cet appel, les chemins restent bruts (chemin de test).
+func (h *MatchViewHandler) WithMediaURLs(store *settings.Store, repoRoot string) *MatchViewHandler {
+	h.settingsStore = store
+	h.repoRoot = repoRoot
+	return h
 }
 
 // GetMatchView retourne la vue détaillée d'un match pour un joueur.
@@ -162,7 +175,29 @@ func (h *MatchViewHandler) GetMatchView(w http.ResponseWriter, r *http.Request) 
 		writeError(r.Context(), w, http.StatusInternalServerError, "match_view_error", err.Error())
 		return
 	}
+	// Onglet médias : réécrire les chemins bruts en URLs servables (même
+	// transformation que la galerie /pages/media). Sans ça les vignettes webp
+	// et le média dans le lecteur tombent en 404 (chemins relatifs bruts).
+	h.transformMatchMediaURLs(slug, resp.MediaTab.MediaItems)
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// transformMatchMediaURLs réécrit file_path + thumbnail_url de chaque média en
+// URLs servables /api/v1/.../media/files/..., comme transformMediaURLs côté
+// galerie. No-op si la slice est vide. La slice est partagée avec resp, donc la
+// mutation en place est visible à la sérialisation JSON.
+func (h *MatchViewHandler) transformMatchMediaURLs(slug string, items []domain.MatchAssociatedMedia) {
+	if len(items) == 0 {
+		return
+	}
+	capturesBase := mediaCapturesBase(h.settingsStore)
+	for i := range items {
+		items[i].FilePath = mediaStoredPathToURL(slug, items[i].FilePath, capturesBase, h.repoRoot)
+		if items[i].ThumbnailURL != nil {
+			u := mediaStoredPathToURL(slug, *items[i].ThumbnailURL, capturesBase, h.repoRoot)
+			items[i].ThumbnailURL = &u
+		}
+	}
 }
 
 // GetMatchNeighbors retourne les matchs adjacents pour la navigation prev/next.

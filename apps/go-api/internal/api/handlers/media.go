@@ -603,6 +603,14 @@ func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
 }
 
 // filePathToURL transforme un chemin stocké en DB en URL servable via l'API.
+// Wrapper de méthode autour de mediaStoredPathToURL (cf. ci-dessous) liant repoRoot.
+func (h *MediaHandler) filePathToURL(slug, storedPath, capturesBase string) string {
+	return mediaStoredPathToURL(slug, storedPath, capturesBase, h.repoRoot)
+}
+
+// mediaStoredPathToURL transforme un chemin média stocké en URL servable via
+// l'API. Fonction de package réutilisée par MediaHandler (galerie) et
+// MatchViewHandler (onglet médias) — source unique de la transformation.
 //
 // Path stocké post-migration : déjà relatif au format {owner_slug}/{rel}.
 // On le réécrit directement en URL sans aucune résolution disk.
@@ -611,7 +619,7 @@ func GetMediaFeedVersion(w http.ResponseWriter, _ *http.Request) {
 // tente 3 préfixes (capturesBase+slug, capturesBase brut, repoRoot interne)
 // pour relativiser et fallback à absPath si rien ne matche. Cette branche
 // disparaîtra une fois le script de migration DB exécuté.
-func (h *MediaHandler) filePathToURL(slug, storedPath, capturesBase string) string {
+func mediaStoredPathToURL(slug, storedPath, capturesBase, repoRoot string) string {
 	if storedPath == "" {
 		return storedPath
 	}
@@ -636,8 +644,8 @@ func (h *MediaHandler) filePathToURL(slug, storedPath, capturesBase string) stri
 		}
 	}
 
-	if h.repoRoot != "" {
-		pr := titlePkg.NewPathResolver(h.repoRoot)
+	if repoRoot != "" {
+		pr := titlePkg.NewPathResolver(repoRoot)
 		internalCapturesDir := pr.PlayerCapturesDir(titlePkg.DefaultSlug, slug)
 		internalPlayerDir := filepath.Dir(internalCapturesDir)
 		if rel, ok := relIfWithin(internalPlayerDir, clean); ok {
@@ -645,7 +653,7 @@ func (h *MediaHandler) filePathToURL(slug, storedPath, capturesBase string) stri
 		}
 	}
 
-	slog.Warn("filePathToURL: aucun mapping trouvé (path legacy absolu hors layout)",
+	slog.Warn("mediaStoredPathToURL: aucun mapping trouvé (path legacy absolu hors layout)",
 		"slug", slug, "abs_path", storedPath, "captures_base", capturesBase)
 	return storedPath
 }
@@ -721,12 +729,7 @@ func (h *MediaHandler) resolveLikerGamertag(ctx context.Context, slug string) st
 
 // transformMediaURLs transforme les chemins absolus des items en URLs servables.
 func (h *MediaHandler) transformMediaURLs(slug string, items []domain.MediaItem) {
-	capturesBase := ""
-	if h.settingsStore != nil {
-		if cfg, err := h.settingsStore.Load(); err == nil && cfg.MediaCapturesBaseDir != "" {
-			capturesBase = filepath.Clean(cfg.MediaCapturesBaseDir)
-		}
-	}
+	capturesBase := mediaCapturesBase(h.settingsStore)
 	for i := range items {
 		items[i].FilePath = h.filePathToURL(slug, items[i].FilePath, capturesBase)
 		if items[i].ThumbnailPath != nil {
@@ -734,6 +737,20 @@ func (h *MediaHandler) transformMediaURLs(slug string, items []domain.MediaItem)
 			items[i].ThumbnailPath = &u
 		}
 	}
+}
+
+// mediaCapturesBase lit media_captures_base_dir depuis le settings store.
+// Retourne "" si le store est nil ou la valeur absente — la transformation
+// d'URL retombe alors sur le mode relatif (post-migration), suffisant en prod.
+// Partagée par MediaHandler (galerie) et MatchViewHandler (onglet médias).
+func mediaCapturesBase(store *settings.Store) string {
+	if store == nil {
+		return ""
+	}
+	if cfg, err := store.Load(); err == nil && cfg.MediaCapturesBaseDir != "" {
+		return filepath.Clean(cfg.MediaCapturesBaseDir)
+	}
+	return ""
 }
 
 // ServeMediaFile sert un fichier depuis le répertoire captures.

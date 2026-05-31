@@ -3,7 +3,7 @@ import type { AssociatedMediaItem, MediaItemRow } from '@/lib/api/types'
 import { MediaThumbnailCard, MediaLightbox } from '@/features/media/MediaViewer'
 import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
-import { useToggleMediaLike } from '@/features/media/queries'
+import { useToggleMediaLike, normalizeMediaKind } from '@/features/media/queries'
 import type { MatchViewLocale } from './i18n'
 import { MATCH_VIEW_TEXT } from './i18n'
 
@@ -32,7 +32,14 @@ function toMediaItemRow(item: AssociatedMediaItem, matchId: string): MediaItemRo
   return {
     basename: item.file_name,
     file_path: item.file_path,
-    kind: item.duration_seconds !== null ? 'clip' : 'screenshot',
+    // kind authoritatif depuis l'API (mf.kind 'video'/'image'), normalisé en
+    // 'clip'/'screenshot' comme la galerie. Repli sur duration_seconds pour les
+    // réponses sans kind (cache navigateur d'avant ce fix).
+    kind: item.kind
+      ? normalizeMediaKind(item.kind)
+      : item.duration_seconds !== null
+        ? 'clip'
+        : 'screenshot',
     thumbnail_path: item.thumbnail_url,
     match_id: matchId,
     capture_end_utc: item.capture_time,

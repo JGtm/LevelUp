@@ -322,6 +322,10 @@ export function MediaThumbnailCard({
       </div>
 
       <div className="flex flex-col gap-1 p-2">
+        {/* Libellé map : nom si connu ; sinon associer (sans match) ; sinon
+            "Carte inconnue" UNIQUEMENT pour un autre match (galerie). Sur la
+            page du match courant (isCurrentMatch), la map est déjà dans
+            l'en-tête → on n'affiche rien plutôt qu'un "Carte inconnue" trompeur. */}
         <div className="flex items-center gap-1 min-w-0">
           {resolvedMapName ? (
             <span className="truncate text-xs text-muted-foreground min-w-0">{truncateMapName(resolvedMapName)}</span>
@@ -337,11 +341,11 @@ export function MediaThumbnailCard({
             >
               + {modals.coverFlow.associateButton}
             </button>
-          ) : hasMatch ? (
-            <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.unknownMap}</span>
-          ) : (
+          ) : !hasMatch ? (
             <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.noMatchAssociated}</span>
-          )}
+          ) : !isCurrentMatch ? (
+            <span className="truncate text-xs text-muted-foreground/50 min-w-0 italic">{text.thumbnail.unknownMap}</span>
+          ) : null}
           {showViewMatchLink && playerSlug && item.match_id && (
             onOpenMatch ? (
               <button

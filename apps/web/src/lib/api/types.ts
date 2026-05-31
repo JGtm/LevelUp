@@ -2714,6 +2714,8 @@ export interface AssociatedMediaItem {
   file_id: string
   file_name: string
   file_path: string
+  /** Type brut DB ('video' | 'image'), normalisé front via normalizeMediaKind. */
+  kind: string
   thumbnail_url: string | null
   duration_seconds: number | null
   capture_time: string | null

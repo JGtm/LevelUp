@@ -137,3 +137,65 @@ func TestMatchViewHandler_ServiceError(t *testing.T) {
 		t.Fatalf("expected 500, got %d", w.Code)
 	}
 }
+
+// TestMatchViewHandler_MediaURLsTransformed vérifie que l'onglet médias réécrit
+// les chemins bruts (file_path + thumbnail_url) en URLs servables /api/v1/...,
+// et que le kind est bien transmis. Régression : sans transformation, le front
+// reçoit un chemin relatif → vignette webp et média dans le lecteur en 404.
+// L'owner du chemin (JGtm) reste préfixe ; le slug d'URL ne sert qu'au scope.
+func TestMatchViewHandler_MediaURLsTransformed(t *testing.T) {
+	thumb := "JGtm/thumbs/clip.webp"
+	expected := domain.MatchViewResponse{
+		Header: domain.MatchViewHeader{MatchID: "m-media"},
+		MediaTab: domain.MatchMediaTab{
+			MediaItems: []domain.MatchAssociatedMedia{{
+				FileID:       "1",
+				FileName:     "clip.mp4",
+				FilePath:     "JGtm/clip.mp4",
+				Kind:         "video",
+				ThumbnailURL: &thumb,
+			}},
+		},
+	}
+	factory := func(_ context.Context, slug string) (port.MatchViewService, error) {
+		if slug != testPlayerSlug {
+			return nil, errors.New("player_not_found")
+		}
+		return &mockMatchViewService{resp: expected}, nil
+	}
+
+	r := chi.NewRouter()
+	// WithMediaURLs(nil, "") : pas de settings store en test ; les chemins relatifs
+	// (post-migration) se transforment sans capturesBase/repoRoot.
+	h := handlers.NewMatchViewHandler(factory).WithMediaURLs(nil, "")
+	r.Route("/players/{player_slug}", func(r chi.Router) {
+		r.Get("/matches/{match_id}", h.GetMatchView)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/m-media", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp domain.MatchViewResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp.MediaTab.MediaItems) != 1 {
+		t.Fatalf("media_items = %d, want 1", len(resp.MediaTab.MediaItems))
+	}
+	got := resp.MediaTab.MediaItems[0]
+	const wantFile = "/api/v1/players/test-player/media/files/JGtm/clip.mp4"
+	if got.FilePath != wantFile {
+		t.Errorf("file_path = %q, want %q", got.FilePath, wantFile)
+	}
+	const wantThumb = "/api/v1/players/test-player/media/files/JGtm/thumbs/clip.webp"
+	if got.ThumbnailURL == nil || *got.ThumbnailURL != wantThumb {
+		t.Errorf("thumbnail_url = %v, want %q", got.ThumbnailURL, wantThumb)
+	}
+	if got.Kind != "video" {
+		t.Errorf("kind = %q, want 'video'", got.Kind)
+	}
+}

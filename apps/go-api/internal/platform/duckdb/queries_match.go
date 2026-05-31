@@ -564,6 +564,7 @@ SELECT
     mf.id               AS file_id,
     mf.file_name,
     mf.file_path,
+    mf.kind,
     mf.thumbnail_path,
     mf.capture_end_utc,
     COALESCE(mf.liked, FALSE) AS liked

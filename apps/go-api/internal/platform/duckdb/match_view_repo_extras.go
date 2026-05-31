@@ -201,6 +201,7 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 			&m.FileID,
 			&m.FileName,
 			&m.FilePath,
+			&m.Kind,
 			&m.ThumbnailPath,
 			&captureTime,
 			&m.Liked,
