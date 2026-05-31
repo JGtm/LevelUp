@@ -23,7 +23,11 @@ writer provider + fail-fast si RO) retenue pour le fix structurel (à venir).
 1. Rebuild ART shared via `force_rebuild_art` (26068 lignes, 0 perte) — remédiation du résidu corrompu.
 2. Honnêteté des compteurs `events_heal.go` : un échec réel (write RO / réseau / parse) est désormais
    compté `failed` (+ WARN agrégé), plus jamais noyé dans `no_film`. Idem `healWeaponKills`. Garde-fou :
-   `events_heal_honesty_test.go` (2 tests, verts).
+   `events_heal_honesty_test.go` (2 tests, verts). Commit `7c584c158`.
+3. Fail-fast shared-RO : `shared_rw_guard.go` (`assertSharedWritable` via `duckdb_databases().readonly`,
+   robuste au basename — inspecte toute base hors `system`/`temp`). Câblé en tête des deux heals : si
+   shared est read-only, erreur nommée `ErrSharedReadOnly` immédiate au lieu de N écritures silencieuses.
+   Tests : `shared_rw_guard_test.go` (4 tests dont l'intégration heal RO → fail-fast). Verts.
 
 **Résultats observés** : `go test -tags cgo ./internal/sync/` vert (30s) ; `go vet` clean. Les 2 matchs du
 30/05 restent vides (film probablement expiré pendant les 31h RO — data-loss à confirmer en remédiation).
