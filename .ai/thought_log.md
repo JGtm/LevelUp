@@ -52607,3 +52607,36 @@ Note environnement : forte instabilite des sorties d'outils pendant la session
 (rendus vides/differes) ; chaque resultat a fini par remonter, tout est confirme vert.
 
 Prochaine etape : Phase 4 (citations recompute force apres backfill events).
+
+## [2026-06-01] Fix sync combat completion — Phase 4 : recompute citations apres arrivee events
+
+Statut : Complete (verte).
+
+Cause : writeCitations (citations.go) pose un sentinel "_processed" des que 0 delta,
+y compris quand le 0 vient de l'ABSENCE d'events (film retarde, pas encore charge).
+Le match entre alors dans match_citations → selectMatchesForCitations(force=false)
+(LEFT JOIN match_citations IS NULL) ne le re-selectionne JAMAIS, meme apres l'arrivee
+des events → citations vides en permanence (composante de la cause racine onglet
+Details, cote downstream de Phase 1b).
+
+Fix (citations.go) : nouvelle helper isEventsLoaded(ctx, sharedDB, matchID) lisant
+match_registry.events_loaded (best-effort → true si erreur/inconnu/nil, comportement
+legacy). Dans BackfillMatchCitations, apres deleteCitationForMatch, si len(deltas)==0
+ET !isEventsLoaded → skip (pas de sentinel) → le match reste candidat. Sinon
+writeCitations comme avant. Self-healing : deleteCitationForMatch tourne deja avant
+writeCitations, donc un match anciennement mal-sentinelle (0 delta pose alors que les
+events manquaient) est re-selectionne au prochain passage des qu'il repasse dans le
+pool, son sentinel supprime, et recalcule une fois events_loaded=TRUE. L'events heal
+tourne AVANT runPostSyncCitations dans le meme post-sync (engine_postsync.go) → des
+qu'un film arrive, events charges puis citations recalculees dans la foulee.
+
+events_loaded est le bon signal : fiabilise en Phase 1b/2bis (TRUE si events presents
+OU no-film definitif ; reste FALSE si film simplement retarde). Donc un vrai match
+sans citation (events presents, 0 citation legitime) recoit bien son sentinel et ne
+boucle pas.
+
+Resultats : nouveau test citations_phase4_test.go (TestIsEventsLoaded : TRUE/FALSE/NULL/
+inconnu/nil) PASS ; suite ./internal/sync/ verte (ok 15.4s) ; vet clean. Pas de DELETE
+ni d'ecriture shared ajoutee (citations vivent en player DB, lecture seule sur shared).
+
+Prochaine etape : Phase 5 (resolution noms metadata map_name/pair_name GUID).
