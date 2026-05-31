@@ -191,6 +191,9 @@ To do.txt
 To do.txt
 *.backup
 *.duckdb.bak
+# Backups DuckDB suffixés (ex: *.duckdb.bak-pre-mp-rebuild-20260530) — le pattern
+# *.duckdb.bak ci-dessus ne matche pas le suffixe. Évite de committer des dumps DB.
+*.duckdb.bak-*
 # Outils IA locaux (non trackés)
 .claude/
 
