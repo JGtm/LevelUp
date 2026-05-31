@@ -414,11 +414,12 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 // détection (probe) est synchrone et rapide ; le transcoding tourne en goroutine
 // détachée pour ne pas bloquer la réponse upload.
 func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.UploadRequest, videoPaths []string) {
+	log := slog.With("module", "media") // logs/media.log
 	store := ops.MediaPathStore{CapturesBase: req.CapturesBase}
 	for _, dest := range videoPaths {
 		needed, err := ops.DetectHLSNeeded(ctx, dest)
 		if err != nil {
-			slog.WarnContext(ctx, "hls: détection échouée", "file", dest, "err", err)
+			log.WarnContext(ctx, "hls: détection échouée", "file", dest, "err", err)
 			continue
 		}
 		if !needed {
@@ -430,11 +431,11 @@ func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.Uplo
 		}
 		outDir, hlsRel := ops.HLSPathsFor(req.CapturesDir, req.CapturesBase, req.Gamertag, dest)
 		if err := ops.MarkTranscodeStatus(ctx, req.SharedSocialDBPath, fileRel, ops.TranscodeProcessing); err != nil {
-			slog.WarnContext(ctx, "hls: mark processing échoué", "file", fileRel, "err", err)
+			log.WarnContext(ctx, "hls: mark processing échoué", "file", fileRel, "err", err)
 			continue
 		}
 		job := s.jobStore.Create(domain.JobTypeTranscodeMedia, req.Gamertag)
-		slog.InfoContext(ctx, "hls: transcoding lancé",
+		log.InfoContext(ctx, "hls: transcoding lancé",
 			"job", job.JobID, "file", fileRel, "out_dir", outDir)
 		go s.runTranscodeJob(ops.HLSTranscodeParams{
 			SourceAbs: dest,
@@ -450,10 +451,13 @@ func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.Uplo
 // survit à la requête HTTP), met à jour le job, et notifie la galerie au succès.
 func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
 	ctx := context.Background()
+	log := slog.With("module", "media") // logs/media.log
 	step := "transcoding"
 	s.jobStore.SetStatus(jobID, domain.JobStatusRunning, &step)
 
 	if err := ops.RunHLSTranscode(ctx, p); err != nil {
+		log.ErrorContext(ctx, "hls: job de transcoding échoué",
+			"job", jobID, "file", p.FileRel, "err", err)
 		s.jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
 			j.Status = domain.JobStatusFailed
 			now := time.Now().UTC()
@@ -464,6 +468,7 @@ func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
 	}
 
 	s.jobStore.SetStatus(jobID, domain.JobStatusSucceeded, nil)
+	log.InfoContext(ctx, "hls: job de transcoding terminé", "job", jobID, "file", p.HLSRel)
 	if s.feedBump != nil {
 		s.feedBump()
 	}

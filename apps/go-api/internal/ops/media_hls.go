@@ -28,6 +28,10 @@ const (
 	TranscodeFailed     = "failed"
 )
 
+// logModuleMedia route les logs de transcoding vers logs/media.log. Sans cet
+// attribut, le package ops tomberait dans logs/general.log (détection par PC).
+const logModuleMedia = "media"
+
 // HLSTranscodeParams décrit un travail de transcoding autonome (exécutable hors
 // requête HTTP, dans une goroutine worker).
 type HLSTranscodeParams struct {
@@ -119,27 +123,28 @@ func finalizeMediaHLS(ctx context.Context, dbPath, fileRel, hlsRel string) error
 //   - finalize DB échoue → source conservé, status reste 'processing' (repris
 //     ultérieurement par le backfill).
 func RunHLSTranscode(ctx context.Context, p HLSTranscodeParams) error {
+	log := slog.With("module", logModuleMedia)
 	res, err := mediapkg.BuildHLS(ctx, p.SourceAbs, p.OutDir, mediapkg.HLSOptions{})
 	if err != nil {
-		slog.ErrorContext(ctx, "RunHLSTranscode: BuildHLS échoué — média laissé en remux legacy",
+		log.ErrorContext(ctx, "RunHLSTranscode: BuildHLS échoué — média laissé en remux legacy",
 			"source", p.SourceAbs, "err", err)
 		if markErr := MarkTranscodeStatus(ctx, p.DBPath, p.FileRel, TranscodeFailed); markErr != nil {
-			slog.ErrorContext(ctx, "RunHLSTranscode: mark failed échoué", "err", markErr)
+			log.ErrorContext(ctx, "RunHLSTranscode: mark failed échoué", "err", markErr)
 		}
 		return err
 	}
 
 	if err := finalizeMediaHLS(ctx, p.DBPath, p.FileRel, p.HLSRel); err != nil {
-		slog.ErrorContext(ctx, "RunHLSTranscode: finalize DB échoué — source conservé",
+		log.ErrorContext(ctx, "RunHLSTranscode: finalize DB échoué — source conservé",
 			"source", p.SourceAbs, "err", err)
 		return err
 	}
 
 	if err := os.Remove(p.SourceAbs); err != nil {
-		slog.WarnContext(ctx, "RunHLSTranscode: suppression source échouée (non bloquant)",
+		log.WarnContext(ctx, "RunHLSTranscode: suppression source échouée (non bloquant)",
 			"source", p.SourceAbs, "err", err)
 	}
-	slog.InfoContext(ctx, "RunHLSTranscode: terminé",
+	log.InfoContext(ctx, "RunHLSTranscode: terminé",
 		"source", p.SourceAbs, "hls", p.HLSRel,
 		"audio_tracks", res.AudioTracks, "segments", res.Segments)
 	return nil
