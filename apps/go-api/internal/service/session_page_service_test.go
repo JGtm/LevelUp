@@ -234,6 +234,62 @@ func TestBuildSessionCompareSuggestion_CategoryRankedReason(t *testing.T) {
 	}
 }
 
+func TestKeepMultiMatchSessionLabels(t *testing.T) {
+	mk := func(id, label string) legacymatch.StatsMatchRow {
+		l := label
+		return legacymatch.StatsMatchRow{MatchID: id, SessionLabel: &l}
+	}
+	rows := []legacymatch.StatsMatchRow{
+		mk("m1", "S-multi"), mk("m2", "S-multi"), // 2 matchs → gardé
+		mk("m3", "S-single"), // 1 match → exclu
+		{MatchID: "m4"},      // label nil → ignoré
+	}
+	got := keepMultiMatchSessionLabels([]string{"S-multi", "S-single"}, rows)
+	if len(got) != 1 || got[0] != "S-multi" {
+		t.Fatalf("expected [S-multi], got %v", got)
+	}
+}
+
+// TestSessionPageService_GetPage_DropsSingleMatchSessionFromList : une session d'un seul
+// match n'apparaît pas dans available_sessions ni dans la navigation, mais reste
+// accessible en deep-link (req.SessionLabel).
+func TestSessionPageService_GetPage_DropsSingleMatchSessionFromList(t *testing.T) {
+	now := time.Date(2026, 4, 21, 20, 0, 0, 0, time.UTC)
+	// 2 sessions de 2 matchs + 1 session "orpheline" d'un seul match (la plus récente).
+	dataset := append(makeSessionPageDataset(),
+		makeSessionPageMatch("m7", now.Add(-2*time.Minute), "2026-04-21 19h58", true, "Ranked Arena", "Oddball", 9, 9, 1, 60, 60),
+	)
+	repo := &mockSessionPageStatsRepo{matches: dataset}
+	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
+
+	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, lbl := range resp.AvailableSessions {
+		if lbl == "2026-04-21 19h58" {
+			t.Fatalf("single-match session should not be listed, got %v", resp.AvailableSessions)
+		}
+	}
+	// Le landing par défaut saute la session d'un match → 19h30 (la plus récente ≥2 matchs).
+	if resp.CurrentSession == nil || resp.CurrentSession.SessionLabel != "2026-04-21 19h30" {
+		t.Fatalf("expected landing on 19h30, got %#v", resp.CurrentSession)
+	}
+
+	// Deep-link vers la session d'un seul match : toujours résoluble.
+	single := "2026-04-21 19h58"
+	resp, err = svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &single})
+	if err != nil {
+		t.Fatalf("unexpected error (deep-link): %v", err)
+	}
+	if resp.CurrentSession == nil || resp.CurrentSession.SessionLabel != single {
+		t.Fatalf("deep-link to single-match session should resolve, got %#v", resp.CurrentSession)
+	}
+	if len(resp.Matches) != 1 {
+		t.Fatalf("expected 1 match for single-match session, got %d", len(resp.Matches))
+	}
+}
+
 type mockSessionPageStatsRepo struct {
 	matches []legacymatch.StatsMatchRow
 	err     error

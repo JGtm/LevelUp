@@ -74,7 +74,11 @@ func (s *SessionPageService) GetPage(
 	placements := s.computeSessionPlacements(ctx, rows)
 
 	filtered := filterStatsMatchRows(rows, req.Filters)
-	labels := extractSessionLabels(filtered)
+	// Sessions d'un seul match exclues de la liste/navigation (cf. minListedSessionMatches).
+	// Comptage sur `rows` (historique complet) = taille BRUTE de la session : une session de
+	// 2 matchs resserrée à 1 par le filtre période reste listée. Un deep-link vers une session
+	// d'un seul match reste résoluble via req.SessionLabel (lastOrNil court-circuite la liste).
+	labels := keepMultiMatchSessionLabels(extractSessionLabels(filtered), rows)
 	if len(labels) == 0 {
 		slog.InfoContext(ctx, "session page: no sessions after filtering")
 		return domain.SessionPageResponse{
@@ -106,7 +110,7 @@ func (s *SessionPageService) GetPage(
 	// la suggestion s'appuient dessus → ils restent disponibles même quand le filtre
 	// L2 a été resserré sur UNE seule session pour la vue principale.
 	compareScope := filterStatsMatchRows(rows, comparePoolFilters(req.Filters))
-	compareLabels := extractSessionLabels(compareScope)
+	compareLabels := keepMultiMatchSessionLabels(extractSessionLabels(compareScope), rows)
 	suggestion, candidateCount := buildSessionCompareSuggestion(compareLabels, currentLabel, compareScope)
 	compareLabel := resolveRequestedCompareLabel(req, suggestion)
 	compareEnabled := req.EnableCompare && compareLabel != "" && compareLabel != currentLabel
