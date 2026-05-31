@@ -1,0 +1,81 @@
+/**
+ * Tests ExplorerTargetIdentityBanner — rendu emblème / bannière / adornment
+ * (parité visuelle Home) + cas dégradé identity=null.
+ */
+import { describe, expect, it } from 'vitest'
+import { screen } from '@testing-library/react'
+
+import { renderWithProviders } from '@/test/render-utils'
+import type { HomeSpartanIdentity } from '@/lib/api/types'
+
+import { ExplorerTargetIdentityBanner } from './ExplorerTargetIdentityBanner'
+
+const IDENTITY_FULL: HomeSpartanIdentity = {
+  banner_image_url: '/api/v1/assets/spartan/banner/halo_infinite/x.png',
+  emblem_image_url: '/api/v1/assets/spartan/emblem/halo_infinite/x.png',
+  spartan_id: 'ABCD',
+  career_rank: {
+    rank_number: 76,
+    rank_title: 'Hero',
+    current_xp: 47820,
+    xp_for_next_rank: 50000,
+    progress_pct: 95,
+    is_max_rank: false,
+    adornment_image_url: '/api/v1/assets/spartan/adornment/halo_infinite/x.png',
+  },
+  highest_csr: null,
+  highest_lusr: null,
+}
+
+function render(identity: HomeSpartanIdentity | null) {
+  return renderWithProviders(
+    <ExplorerTargetIdentityBanner
+      identity={identity}
+      gamertag="TargetPlayer"
+      identityUnavailableLabel="Identité Spartan non disponible"
+      identityUnavailableDescription="Connexion Halo requise."
+    />,
+  )
+}
+
+describe('ExplorerTargetIdentityBanner', () => {
+  it('rend emblème, bannière, rang et adornment quand tout est fourni', () => {
+    render(IDENTITY_FULL)
+
+    expect(screen.getByTestId('explorer-target-emblem')).toHaveAttribute(
+      'src',
+      IDENTITY_FULL.emblem_image_url,
+    )
+    expect(screen.getByTestId('explorer-target-banner-image')).toHaveAttribute(
+      'src',
+      IDENTITY_FULL.banner_image_url,
+    )
+    expect(screen.getByTestId('explorer-target-adornment-image')).toHaveAttribute(
+      'src',
+      IDENTITY_FULL.career_rank?.adornment_image_url,
+    )
+    expect(screen.getByText('Hero')).toBeInTheDocument()
+    expect(screen.getByText('TargetPlayer')).toBeInTheDocument()
+  })
+
+  it("n'affiche pas l'adornment quand career_rank n'en porte pas", () => {
+    render({
+      ...IDENTITY_FULL,
+      career_rank: { ...IDENTITY_FULL.career_rank!, adornment_image_url: null },
+    })
+
+    expect(screen.queryByTestId('explorer-target-adornment-image')).toBeNull()
+    // Le reste reste rendu.
+    expect(screen.getByTestId('explorer-target-emblem')).toBeInTheDocument()
+    expect(screen.getByText('Hero')).toBeInTheDocument()
+  })
+
+  it('rend le placeholder (gamertag + label) quand identity=null', () => {
+    render(null)
+
+    expect(screen.getByText('TargetPlayer')).toBeInTheDocument()
+    expect(screen.getByText('Identité Spartan non disponible')).toBeInTheDocument()
+    expect(screen.queryByTestId('explorer-target-adornment-image')).toBeNull()
+    expect(screen.queryByTestId('explorer-target-emblem')).toBeNull()
+  })
+})

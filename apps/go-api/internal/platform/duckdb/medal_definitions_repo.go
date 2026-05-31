@@ -101,5 +101,19 @@ func (r *MedalDefinitionsRepo) LookupByIDs(
 	if err := rows.Err(); err != nil {
 		return result, fmt.Errorf("MedalDefinitionsRepo.LookupByIDs: rows: %w", err)
 	}
+
+	// Fallback citation_mappings pour les IDs absents de medal_definitions OU
+	// sans libellé exploitable (parité avec la vue Match — corrige Explorer
+	// top_medals + Squad qui affichaient des libellés vides). Source unique :
+	// medal_citation_fallback.go.
+	missing := make([]int64, 0)
+	for _, id := range ids {
+		if row, ok := result[id]; !ok || row.Label == "" {
+			missing = append(missing, id)
+		}
+	}
+	for id, label := range lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing) {
+		result[id] = port.MedalDefinitionRow{MedalID: id, Label: label, Difficulty: "Normal"}
+	}
 	return result, nil
 }
