@@ -13,6 +13,7 @@
 import type { SemanticToken } from '@/lib/accessibility'
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
+import type { CompareScale } from './_compareScale'
 import { useSessionT } from './_shared'
 import { SessionOutcomeDonut } from './SessionOutcomeDonut'
 import { SessionKillsDonut } from './SessionKillsDonut'
@@ -37,6 +38,8 @@ interface Props {
   dense?: boolean
   participationSide?: 'left' | 'right'
   participationColor?: SemanticToken
+  /** Bornes d'axe partagées A/B (mode comparaison) — fige les échelles pour comparabilité. */
+  scale?: CompareScale
 }
 
 export function SessionChartStack({
@@ -46,6 +49,7 @@ export function SessionChartStack({
   dense = false,
   participationSide = 'right',
   participationColor = 'compare-a',
+  scale,
 }: Props) {
   const t = useSessionT()
 
@@ -56,15 +60,29 @@ export function SessionChartStack({
     <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={matches} compact={compact} />
   )
   const modeBreakdown = (
-    <SessionModeBreakdown title={t('session.detail.chart_mode_breakdown_title')} matches={matches} />
+    <SessionModeBreakdown
+      title={t('session.detail.chart_mode_breakdown_title')}
+      matches={matches}
+      yMax={scale?.modeMaxCount}
+    />
   )
   const placementBreakdown = (
-    <SessionPlacementBreakdown title={t('session.detail.chart_placement_title')} matches={matches} />
+    <SessionPlacementBreakdown
+      title={t('session.detail.chart_placement_title')}
+      matches={matches}
+      yMax={scale?.placementMaxCount}
+      axisMaxOverride={scale?.placementAxisMax}
+    />
   )
   const fdaRadar = <SessionFdaRadar title={t('session.detail.chart_fda_per_game_title')} matches={matches} />
   const fragsRadar = <SessionFragsRadar title={t('session.detail.chart_frags_radar_title')} entry={entry} />
   const fdaBars = (
-    <SessionFdaBars title={t('session.detail.chart_fda_per_minute_title')} matches={matches} mode="minute" />
+    <SessionFdaBars
+      title={t('session.detail.chart_fda_per_minute_title')}
+      matches={matches}
+      mode="minute"
+      yDomain={scale?.fdaMinute}
+    />
   )
   const participation = (
     <SessionParticipationBars
@@ -74,7 +92,13 @@ export function SessionChartStack({
       colorToken={participationColor}
     />
   )
-  const netScore = <SessionNetScoreArea title={t('session.detail.chart_net_score_title')} matches={matches} />
+  const netScore = (
+    <SessionNetScoreArea
+      title={t('session.detail.chart_net_score_title')}
+      matches={matches}
+      yDomain={scale?.netScore}
+    />
+  )
   const mmr = <SessionMmrDumbbell title={t('session.detail.chart_mmr_title')} matches={matches} />
   const perf = <SessionPerfTrend title={t('session.detail.chart_perf_title')} matches={matches} />
   const engagement = (
@@ -82,6 +106,7 @@ export function SessionChartStack({
       title={t('session.detail.chart_engagement_title')}
       matches={matches}
       entry={entry}
+      yDomain={scale?.engagement}
     />
   )
   const ocdr = <SessionOcdrBars title={t('session.compare.ocdr_title')} matches={matches} />

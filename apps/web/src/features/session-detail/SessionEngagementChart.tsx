@@ -28,12 +28,14 @@ interface Props {
   matches: SessionDetailMatchRow[]
   entry: SessionCompareEntry | null
   height?: number
+  /** Domaine Y [min, max] partagé A/B en mode comparaison (sinon auto-scale). */
+  yDomain?: [number, number]
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionEngagementOption(
   series: ChartSeries<EngagementPoint>[],
-  opts: { meanLabel: string; axisName: string },
+  opts: { meanLabel: string; axisName: string; yDomain?: [number, number] },
 ): EChartsCoreOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
@@ -65,7 +67,8 @@ export function buildSessionEngagementOption(
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    yAxis: { ...axis, type: 'value' },
+    // Domaine Y figé en mode comparaison (échelle partagée A/B) ; sinon auto-scale.
+    yAxis: { ...axis, type: 'value', ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}) },
     series: [
       {
         type: 'bar',
@@ -94,7 +97,7 @@ export function buildSessionEngagementOption(
   }
 }
 
-export function SessionEngagementChart({ title, matches, entry, height = 260 }: Props) {
+export function SessionEngagementChart({ title, matches, entry, height = 260, yDomain }: Props) {
   const t = useSessionT()
 
   const series = useMemo<ChartSeries<EngagementPoint>[]>(() => {
@@ -123,6 +126,7 @@ export function SessionEngagementChart({ title, matches, entry, height = 260 }: 
         buildSessionEngagementOption(s, {
           meanLabel: t('session.detail.chart_perf_mean'),
           axisName: t('session.detail.engagement_axis'),
+          yDomain,
         })
       }
     />

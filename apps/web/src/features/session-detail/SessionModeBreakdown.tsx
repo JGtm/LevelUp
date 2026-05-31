@@ -21,7 +21,7 @@ interface ModePoint {
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionModeBreakdownOption(
   series: ChartSeries<ModePoint>[],
-  opts: { countLabel: string },
+  opts: { countLabel: string; yMax?: number },
 ): EChartsCoreOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
@@ -51,7 +51,8 @@ export function buildSessionModeBreakdownOption(
       data: points.map((p) => p.mode),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval: 0, rotate },
     },
-    yAxis: { ...axis, type: 'value', minInterval: 1 },
+    // max figé en mode comparaison (compte partagé A/B) → hauteurs de barres comparables.
+    yAxis: { ...axis, type: 'value', minInterval: 1, ...(opts.yMax != null ? { max: opts.yMax } : {}) },
     series: [
       {
         type: 'bar',
@@ -67,9 +68,11 @@ interface Props {
   title: string
   matches: SessionDetailMatchRow[]
   height?: number
+  /** Max du compte (axe Y) partagé A/B en mode comparaison (sinon auto-scale). */
+  yMax?: number
 }
 
-export function SessionModeBreakdown({ title, matches, height = 260 }: Props) {
+export function SessionModeBreakdown({ title, matches, height = 260, yMax }: Props) {
   const t = useSessionT()
 
   const series = useMemo<ChartSeries<ModePoint>[]>(() => {
@@ -90,7 +93,7 @@ export function SessionModeBreakdown({ title, matches, height = 260 }: Props) {
       title={title}
       series={series}
       height={height}
-      buildOption={(s) => buildSessionModeBreakdownOption(s, { countLabel: t('session.detail.mode_breakdown_count') })}
+      buildOption={(s) => buildSessionModeBreakdownOption(s, { countLabel: t('session.detail.mode_breakdown_count'), yMax })}
     />
   )
 }

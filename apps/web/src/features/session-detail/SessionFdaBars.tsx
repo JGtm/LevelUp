@@ -23,6 +23,8 @@ interface Props {
   matches: SessionDetailMatchRow[]
   mode: 'game' | 'minute'
   height?: number
+  /** Domaine Y [min, max] partagé A/B en mode comparaison (sinon auto-scale). */
+  yDomain?: [number, number]
 }
 
 interface FdaPoint {
@@ -40,7 +42,7 @@ const STAT_TOKEN: Record<FdaPoint['key'], SemanticToken> = {
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionFdaBarsOption(
   series: ChartSeries<FdaPoint>[],
-  opts: { decimals: number },
+  opts: { decimals: number; yDomain?: [number, number] },
 ): EChartsCoreOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
@@ -82,6 +84,8 @@ export function buildSessionFdaBarsOption(
     yAxis: {
       ...axis,
       type: 'value',
+      // Domaine figé en mode comparaison (échelle partagée A/B) ; sinon auto-scale.
+      ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), formatter: (v: number) => abs(v) },
     },
     series: [
@@ -100,7 +104,7 @@ export function buildSessionFdaBarsOption(
   }
 }
 
-export function SessionFdaBars({ title, matches, mode, height = 260 }: Props) {
+export function SessionFdaBars({ title, matches, mode, height = 260, yDomain }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const fields = fieldMappings?.fields
 
@@ -137,7 +141,7 @@ export function SessionFdaBars({ title, matches, mode, height = 260 }: Props) {
       title={title}
       series={series}
       height={height}
-      buildOption={(s) => buildSessionFdaBarsOption(s, { decimals: mode === 'minute' ? 2 : 1 })}
+      buildOption={(s) => buildSessionFdaBarsOption(s, { decimals: mode === 'minute' ? 2 : 1, yDomain })}
     />
   )
 }

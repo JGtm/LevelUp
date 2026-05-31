@@ -16,7 +16,7 @@
  * Le profil de participation s'affiche en miroir (axe à droite à gauche / à gauche à
  * droite) pour un effet papillon symétrique.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearch } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,7 @@ import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
+import { computeCompareScale, type CompareScale } from './_compareScale'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -80,6 +81,19 @@ export function SessionDetailPage() {
     ro.observe(nav)
     return () => ro.disconnect()
   }, [data])
+
+  // Échelle PARTAGÉE A/B (mode comparaison) : bornes communes calculées une fois depuis les
+  // deux sessions, passées aux DEUX colonnes → graphes directement comparables. Drawer fermé
+  // (ou compare pas encore chargé) → undefined = auto-scale comme avant.
+  const compareScale = useMemo<CompareScale | undefined>(() => {
+    if (!enableCompare || !data?.compare_session) return undefined
+    return computeCompareScale(
+      data.matches,
+      data.current_session,
+      data.compare_matches ?? [],
+      data.compare_session,
+    )
+  }, [enableCompare, data])
 
   if (isLoading) {
     return (
@@ -217,6 +231,7 @@ export function SessionDetailPage() {
               matches={data.matches}
               playerSlug={playerSlug}
               compact={drawerOpen}
+              scale={compareScale}
             />
           </>
         ) : (
@@ -305,6 +320,7 @@ export function SessionDetailPage() {
                   playerSlug={playerSlug}
                   compact
                   participationSide="left"
+                  scale={compareScale}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">

@@ -36,7 +36,7 @@ function placementToken(index: number, total: number): SemanticToken {
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionPlacementOption(
   series: ChartSeries<PlacementPoint>[],
-  opts: { countLabel: string },
+  opts: { countLabel: string; yMax?: number },
 ): EChartsCoreOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
@@ -68,7 +68,8 @@ export function buildSessionPlacementOption(
       data: points.map((p) => `#${p.placement}`),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    yAxis: { ...axis, type: 'value', minInterval: 1 },
+    // max figé en mode comparaison (compte partagé A/B) → hauteurs de barres comparables.
+    yAxis: { ...axis, type: 'value', minInterval: 1, ...(opts.yMax != null ? { max: opts.yMax } : {}) },
     series: [
       {
         type: 'bar',
@@ -106,9 +107,13 @@ interface Props {
   title: string
   matches: SessionDetailMatchRow[]
   height?: number
+  /** Max du compte (axe Y) partagé A/B en mode comparaison (sinon auto-scale). */
+  yMax?: number
+  /** Nb de placements (axe X #1..N) imposé pour aligner A/B (sinon calcul local). */
+  axisMaxOverride?: number
 }
 
-export function SessionPlacementBreakdown({ title, matches, height = 260 }: Props) {
+export function SessionPlacementBreakdown({ title, matches, height = 260, yMax, axisMaxOverride }: Props) {
   const t = useSessionT()
 
   const series = useMemo<ChartSeries<PlacementPoint>[]>(() => {
@@ -117,8 +122,9 @@ export function SessionPlacementBreakdown({ title, matches, height = 260 }: Prop
     const lobbySizes = matches.map((m) => m.lobby_size).filter((n): n is number => n != null && n > 0)
     const modalLobby = modalValue(lobbySizes) ?? 0
     const maxObserved = Math.max(...placements)
-    // Axe = taille de lobby modale, mais jamais en-deçà du pire placement réellement atteint.
-    const axisMax = Math.max(modalLobby, maxObserved)
+    // Axe = override partagé A/B (comparaison) sinon taille de lobby modale, jamais en-deçà
+    // du pire placement réellement atteint.
+    const axisMax = axisMaxOverride ?? Math.max(modalLobby, maxObserved)
     if (axisMax <= 0) return []
     const counts = new Array<number>(axisMax).fill(0)
     for (const p of placements) {
@@ -130,7 +136,7 @@ export function SessionPlacementBreakdown({ title, matches, height = 260 }: Prop
         datapoints: counts.map((count, i) => ({ placement: i + 1, count })),
       },
     ]
-  }, [matches])
+  }, [matches, axisMaxOverride])
 
   // Observabilité : distingue "aucun placement" (rang non peuplé) de "axe = max
   // observé" (taille de lobby present_at_completion indisponible → fallback).
@@ -151,7 +157,7 @@ export function SessionPlacementBreakdown({ title, matches, height = 260 }: Prop
       title={title}
       series={series}
       height={height}
-      buildOption={(s) => buildSessionPlacementOption(s, { countLabel: t('session.detail.mode_breakdown_count') })}
+      buildOption={(s) => buildSessionPlacementOption(s, { countLabel: t('session.detail.mode_breakdown_count'), yMax })}
     />
   )
 }
