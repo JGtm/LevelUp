@@ -26,9 +26,11 @@ func TestBuildSessionLabelsList_Empty(t *testing.T) {
 }
 
 func TestBuildSessionLabelsList_SkipsEmptyLabel(t *testing.T) {
+	// S1 a 2 matchs (≥ minListedSessionMatches) ; le label vide est ignoré.
 	inputs := []SessionLabelInput{
 		{Label: "", StartTime: time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC), IsWithFriends: false},
 		{Label: "S1", StartTime: time.Date(2026, 4, 28, 11, 0, 0, 0, time.UTC), IsWithFriends: false},
+		{Label: "S1", StartTime: time.Date(2026, 4, 28, 12, 0, 0, 0, time.UTC), IsWithFriends: false},
 	}
 	got := BuildSessionLabelsList(inputs)
 	if len(got.Solo) != 1 {
@@ -42,9 +44,12 @@ func TestBuildSessionLabelsList_SkipsEmptyLabel(t *testing.T) {
 func TestBuildSessionLabelsList_SplitSoloSquad(t *testing.T) {
 	t1 := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
 	t2 := t1.Add(2 * time.Hour)
+	// 2 matchs par session (sinon filtrées par minListedSessionMatches).
 	inputs := []SessionLabelInput{
 		{Label: "Solo-A", StartTime: t1, IsWithFriends: false},
+		{Label: "Solo-A", StartTime: t1.Add(30 * time.Minute), IsWithFriends: false},
 		{Label: "Squad-B", StartTime: t2, IsWithFriends: true},
+		{Label: "Squad-B", StartTime: t2.Add(30 * time.Minute), IsWithFriends: true},
 	}
 	got := BuildSessionLabelsList(inputs)
 	if len(got.Solo) != 1 || got.Solo[0].Label != "Solo-A" {
@@ -52,6 +57,23 @@ func TestBuildSessionLabelsList_SplitSoloSquad(t *testing.T) {
 	}
 	if len(got.Squad) != 1 || got.Squad[0].Label != "Squad-B" {
 		t.Errorf("Squad: expected [Squad-B], got %+v", got.Squad)
+	}
+}
+
+func TestBuildSessionLabelsList_DropsSingleMatch(t *testing.T) {
+	t1 := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
+	inputs := []SessionLabelInput{
+		{Label: "Solo-1", StartTime: t1, IsWithFriends: false}, // 1 match → exclu
+		{Label: "Solo-2", StartTime: t1.Add(3 * time.Hour), IsWithFriends: false},
+		{Label: "Solo-2", StartTime: t1.Add(4 * time.Hour), IsWithFriends: false}, // 2 matchs → gardé
+		{Label: "Squad-1", StartTime: t1.Add(6 * time.Hour), IsWithFriends: true}, // 1 match → exclu
+	}
+	got := BuildSessionLabelsList(inputs)
+	if len(got.Solo) != 1 || got.Solo[0].Label != "Solo-2" {
+		t.Errorf("Solo: expected [Solo-2] only, got %+v", got.Solo)
+	}
+	if len(got.Squad) != 0 {
+		t.Errorf("Squad: single-match session should be dropped, got %+v", got.Squad)
 	}
 }
 
@@ -82,10 +104,14 @@ func TestBuildSessionLabelsList_SortedDESC(t *testing.T) {
 	t1 := time.Date(2026, 4, 26, 10, 0, 0, 0, time.UTC)
 	t2 := time.Date(2026, 4, 27, 10, 0, 0, 0, time.UTC)
 	t3 := time.Date(2026, 4, 28, 10, 0, 0, 0, time.UTC)
+	// 2 matchs par session (StartedAt = min reste t1/t2/t3) pour passer le seuil.
 	inputs := []SessionLabelInput{
 		{Label: "S-Old", StartTime: t1, IsWithFriends: false},
+		{Label: "S-Old", StartTime: t1.Add(time.Hour), IsWithFriends: false},
 		{Label: "S-Newest", StartTime: t3, IsWithFriends: false},
+		{Label: "S-Newest", StartTime: t3.Add(time.Hour), IsWithFriends: false},
 		{Label: "S-Mid", StartTime: t2, IsWithFriends: false},
+		{Label: "S-Mid", StartTime: t2.Add(time.Hour), IsWithFriends: false},
 	}
 	got := BuildSessionLabelsList(inputs)
 	if len(got.Solo) != 3 {

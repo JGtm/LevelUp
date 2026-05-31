@@ -139,6 +139,30 @@ func extractSessionLabels(matches []legacymatch.StatsMatchRow) []string {
 	return labels
 }
 
+// keepMultiMatchSessionLabels ne conserve que les labels dont la session compte au
+// moins minListedSessionMatches matchs dans `rows`. `rows` doit être l'historique
+// COMPLET (pas la vue filtrée) pour que le comptage reflète la taille BRUTE de la
+// session : une session de 2 matchs resserrée à 1 par un filtre période reste listée.
+// Filtrage d'affichage : la page Sessions (dropdown compare + nav prev/next) ne liste
+// pas les sessions d'un seul match. L'ordre d'entrée des labels est préservé. Un
+// deep-link vers une session d'un seul match reste résoluble en amont (req.SessionLabel
+// court-circuite la liste).
+func keepMultiMatchSessionLabels(labels []string, rows []legacymatch.StatsMatchRow) []string {
+	counts := make(map[string]int, len(labels))
+	for i := range rows {
+		if rows[i].SessionLabel != nil {
+			counts[*rows[i].SessionLabel]++
+		}
+	}
+	out := make([]string, 0, len(labels))
+	for _, lbl := range labels {
+		if counts[lbl] >= minListedSessionMatches {
+			out = append(out, lbl)
+		}
+	}
+	return out
+}
+
 func lastOrNil(labels []string, override *string) string {
 	if override != nil && *override != "" {
 		return *override

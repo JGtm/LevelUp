@@ -338,8 +338,9 @@ func TestBuildSessionOptions_MatchCountFiltered(t *testing.T) {
 		// Session A : 2 matchs, dont 1 Slayer/Streets et 1 CTF/Bazaar.
 		{MatchID: "m1", SessionLabel: &lblA, SessionID: &sidA, PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer"), MapName: strPtr("Streets")},
 		{MatchID: "m2", SessionLabel: &lblA, SessionID: &sidA, PairName: strPtr("CTF"), PairNameFR: strPtr("CTF"), MapName: strPtr("Bazaar")},
-		// Session B : 1 match Slayer/Streets.
+		// Session B : 2 matchs Slayer/Streets (≥ minListedSessionMatches pour être listée).
 		{MatchID: "m3", SessionLabel: &lblB, SessionID: &sidB, PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer"), MapName: strPtr("Streets")},
+		{MatchID: "m4", SessionLabel: &lblB, SessionID: &sidB, PairName: strPtr("Slayer"), PairNameFR: strPtr("Slayer"), MapName: strPtr("Streets")},
 	}
 
 	// Sans cascade : MatchCountFiltered == MatchCount.
@@ -353,7 +354,7 @@ func TestBuildSessionOptions_MatchCountFiltered(t *testing.T) {
 		}
 	}
 
-	// Avec cascade Modes=[Slayer] : Session A perd le CTF (filtered=1), Session B garde son match (filtered=1).
+	// Avec cascade Modes=[Slayer] : Session A perd le CTF (filtered=1), Session B garde ses 2 matchs (filtered=2).
 	got = buildSessionOptions(rows, domain.CascadeFilter{Modes: []string{"Slayer"}})
 	for _, s := range got.AllSessions {
 		switch s.Label {
@@ -362,8 +363,8 @@ func TestBuildSessionOptions_MatchCountFiltered(t *testing.T) {
 				t.Errorf("Session A: want MatchCount=2, MatchCountFiltered=1, got %+v", s)
 			}
 		case lblB:
-			if s.MatchCount != 1 || s.MatchCountFiltered != 1 {
-				t.Errorf("Session B: want MatchCount=1, MatchCountFiltered=1, got %+v", s)
+			if s.MatchCount != 2 || s.MatchCountFiltered != 2 {
+				t.Errorf("Session B: want MatchCount=2, MatchCountFiltered=2, got %+v", s)
 			}
 		}
 	}

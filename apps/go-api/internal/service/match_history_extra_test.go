@@ -180,10 +180,12 @@ func TestBuildSessionOptions_Empty(t *testing.T) {
 func TestBuildSessionOptions_MixedSoloSquad(t *testing.T) {
 	lbl1, lbl2 := "Session A", "Session B"
 	sid1, sid2 := "s1", "s2"
+	// 2 matchs par session (sinon filtrées par minListedSessionMatches).
 	rows := []domain.FilterMatchRow{
 		{MatchID: "m1", SessionLabel: &lbl1, SessionID: &sid1, IsWithFriends: false},
 		{MatchID: "m2", SessionLabel: &lbl1, SessionID: &sid1, IsWithFriends: false},
 		{MatchID: "m3", SessionLabel: &lbl2, SessionID: &sid2, IsWithFriends: true},
+		{MatchID: "m4", SessionLabel: &lbl2, SessionID: &sid2, IsWithFriends: true},
 	}
 	got := buildSessionOptions(rows, domain.CascadeFilter{})
 	if len(got.AllSessions) != 2 {
@@ -191,5 +193,22 @@ func TestBuildSessionOptions_MixedSoloSquad(t *testing.T) {
 	}
 	if len(got.SoloLabels) != 1 || len(got.SquadLabels) != 1 {
 		t.Errorf("solo=%d squad=%d", len(got.SoloLabels), len(got.SquadLabels))
+	}
+}
+
+func TestBuildSessionOptions_DropsSingleMatch(t *testing.T) {
+	lblKeep, lblDrop := "Session Keep", "Session Drop"
+	sidKeep, sidDrop := "sk", "sd"
+	rows := []domain.FilterMatchRow{
+		{MatchID: "m1", SessionLabel: &lblKeep, SessionID: &sidKeep, IsWithFriends: false},
+		{MatchID: "m2", SessionLabel: &lblKeep, SessionID: &sidKeep, IsWithFriends: false},
+		{MatchID: "m3", SessionLabel: &lblDrop, SessionID: &sidDrop, IsWithFriends: true}, // 1 match → exclu
+	}
+	got := buildSessionOptions(rows, domain.CascadeFilter{})
+	if len(got.AllSessions) != 1 || got.AllSessions[0].Label != lblKeep {
+		t.Fatalf("expected only %q listed, got %+v", lblKeep, got.AllSessions)
+	}
+	if len(got.SquadLabels) != 0 {
+		t.Errorf("single-match squad session should be dropped, got SquadLabels=%v", got.SquadLabels)
 	}
 }

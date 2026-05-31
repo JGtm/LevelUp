@@ -106,6 +106,11 @@ func buildSessionOptions(rows []domain.FilterMatchRow, cascade domain.CascadeFil
 	squadLabels := make([]string, 0)
 	for _, lbl := range labels {
 		e := agg[lbl]
+		// Masquer les sessions d'un seul match : non listées dans la SessionPill
+		// (Solo) ni la carte des counts Escouade. Cf. minListedSessionMatches.
+		if e.count < minListedSessionMatches {
+			continue
+		}
 		sid := sessionID[lbl]
 		if sid == "" {
 			sid = lbl
