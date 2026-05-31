@@ -4,7 +4,18 @@
 > Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
-## ✅ INCRÉMENT 3 (non commité) — pas de marquage prématuré events_loaded
+## ÉTAT COMMITS (branche fix/sync-combat-completion-persist)
+- `7c584c158` honnêteté compteurs heal (failed≠no_film) + tests.
+- `1672f34b2` fail-fast shared-RO (assertSharedWritable) + tests.
+- `67742cd14` no-film match récent → pas de marquage events_loaded (anti-perte film retardé) + tests.
+- `7d4d9af9b` fix test golden no-film (start_time ancien) — RÉPARE une régression que `67742cd14` avait
+  commitée ROUGE (CWD shell perdu pendant la vérif → test non relancé avant commit). LEÇON : toujours
+  `cd apps/go-api` explicite avant `go test` (le shell perd son CWD après corruption), et relire le
+  résultat AVANT de committer.
+- Suite `./internal/sync/` verte en `-tags cgo` ET `-tags "cgo integration"` (14-15s).
+- Working tree restant = uniquement fichiers utilisateur (PLAN_explorer untracked, PLAN_MEDIA_HLS rename).
+
+## ✅ INCRÉMENT 3 — pas de marquage prématuré events_loaded (commits 67742cd14 + 7d4d9af9b)
 - `engine_highlight_events.go` : sur film 404 (`!found`), `ProcessHighlightEvents` ne marque
   `events_loaded=TRUE` que si `isNoFilmDefinitive` → match plus vieux que `filmRetryWindow` (48h, const)
   OU `start_time` NULL (legacy). Match récent + 404 → reste FALSE → réessayé (anti-perte d'un film retardé).
