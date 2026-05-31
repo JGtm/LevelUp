@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -360,8 +362,8 @@ func TestExplorerService_TargetProfile_LocalTargetAllSources(t *testing.T) {
 	if !tp.AuthAvailable {
 		t.Error("AuthAvailable doit être true avec tokens")
 	}
-	if tp.Identity == nil || tp.Identity.RankNumber != 76 {
-		t.Errorf("Identity attendue rank=76, got %+v", tp.Identity)
+	if tp.Identity == nil || tp.Identity.CareerRank == nil || tp.Identity.CareerRank.RankNumber != 76 {
+		t.Errorf("Identity attendue career_rank.rank_number=76, got %+v", tp.Identity)
 	}
 	if !idRes.called {
 		t.Error("LocalSpartanIdentity devait être appelé")
@@ -415,8 +417,8 @@ func TestExplorerService_TargetProfile_NoTokens(t *testing.T) {
 		t.Error("AuthAvailable doit être false sans tokens")
 	}
 	// Identité local-first : résolue même sans tokens.
-	if !idRes.called || tp.Identity == nil || tp.Identity.RankNumber != 12 {
-		t.Errorf("Identity locale attendue rank=12 même sans tokens, got %+v", tp.Identity)
+	if !idRes.called || tp.Identity == nil || tp.Identity.CareerRank == nil || tp.Identity.CareerRank.RankNumber != 12 {
+		t.Errorf("Identity locale attendue career_rank.rank_number=12 même sans tokens, got %+v", tp.Identity)
 	}
 	if remoteProv.called {
 		t.Error("FetchRemoteStats (carrière live) NE doit PAS être appelé sans tokens")
@@ -456,7 +458,7 @@ func TestExplorerService_TargetProfile_CareerFetchError(t *testing.T) {
 	if tp == nil {
 		t.Fatal("TargetProfile attendu non-nil")
 	}
-	if tp.Identity == nil || tp.Identity.RankNumber != 50 {
+	if tp.Identity == nil || tp.Identity.CareerRank == nil || tp.Identity.CareerRank.RankNumber != 50 {
 		t.Errorf("Identity locale doit rester affichée, got %+v", tp.Identity)
 	}
 	if tp.CareerStats != nil {
@@ -583,5 +585,140 @@ func TestExplorerService_TargetProfile_LiveIdentityError(t *testing.T) {
 	}
 	if tp.SampleStats == nil || tp.SampleStats.Kills != 3 {
 		t.Errorf("SampleStats doivent rester calculées malgré l'échec live, got %+v", tp.SampleStats)
+	}
+}
+
+// TestExplorerService_TargetProfile_IdentitySerializesAsDTO est le test de
+// non-régression du bug central : l'identité cible DOIT sérialiser en DTO
+// snake_case avec career_rank imbriqué (comme la Home) — et NON en struct brute
+// PascalCase (HomeSpartanIdentityRow à champs de rang plats) que le front,
+// lisant identity.banner_image_url / career_rank.rank_title, ne voyait jamais.
+// Couvre aussi le cas dégradé Ranks==nil (titre via RankName) et la propagation
+// de l'adornment dans le DTO (parité visuelle Phase 3).
+func TestExplorerService_TargetProfile_IdentitySerializesAsDTO(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "target-xuid", matches: matches}
+	banner := "/api/v1/assets/spartan/banner/halo_infinite/x.png"
+	emblem := "/api/v1/assets/spartan/emblem/halo_infinite/x.png"
+	adornment := "/api/v1/assets/spartan/adornment/halo_infinite/x.png"
+	rankName := "Hero"
+	idRes := &mockLocalIdentityResolver{
+		identity: &domain.HomeSpartanIdentityRow{
+			RankNumber:        76,
+			RankName:          &rankName, // Ranks==nil → ce libellé player-DB doit servir
+			CurrentXP:         47820,
+			XPForNextRank:     50000,
+			BannerImageURL:    &banner,
+			EmblemImageURL:    &emblem,
+			AdornmentImageURL: &adornment,
+		},
+	}
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{LocalIdentity: idRes, TitleSlug: "halo_infinite"})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil || tp.Identity == nil {
+		t.Fatalf("identité attendue non-nil, got %+v", tp)
+	}
+	// career_rank imbriqué (DTO) — plus de champ de rang plat.
+	if tp.Identity.CareerRank == nil {
+		t.Fatal("career_rank attendu non-nil (DTO imbriqué)")
+	}
+	if tp.Identity.CareerRank.RankNumber != 76 {
+		t.Errorf("career_rank.rank_number = %d, want 76", tp.Identity.CareerRank.RankNumber)
+	}
+	// Ranks==nil → titre via RankName (fallback player DB).
+	if tp.Identity.CareerRank.RankTitle != rankName {
+		t.Errorf("rank_title = %q, want %q (fallback RankName quand Ranks nil)",
+			tp.Identity.CareerRank.RankTitle, rankName)
+	}
+	// adornment propagé dans le DTO (Phase 3 parité visuelle Home/Explorer).
+	if tp.Identity.CareerRank.AdornmentImageURL == nil ||
+		*tp.Identity.CareerRank.AdornmentImageURL != adornment {
+		t.Errorf("career_rank.adornment_image_url manquant, got %+v", tp.Identity.CareerRank.AdornmentImageURL)
+	}
+
+	// Sérialisation JSON : snake_case + career_rank imbriqué, jamais PascalCase.
+	rawJSON, err := json.Marshal(tp.Identity)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	js := string(rawJSON)
+	for _, want := range []string{
+		`"banner_image_url"`, `"emblem_image_url"`, `"career_rank"`,
+		`"rank_title"`, `"adornment_image_url"`,
+	} {
+		if !strings.Contains(js, want) {
+			t.Errorf("JSON identité doit contenir %s — got %s", want, js)
+		}
+	}
+	for _, bad := range []string{`"RankNumber"`, `"BannerImageURL"`, `"EmblemImageURL"`} {
+		if strings.Contains(js, bad) {
+			t.Errorf("JSON identité ne doit PAS contenir la clé PascalCase brute %s (régression) — got %s", bad, js)
+		}
+	}
+}
+
+// TestExplorerService_TargetProfile_DeterministicBannerFallback couvre la
+// Phase 3.6 : une cible non-locale dont l'identité live n'a NI bannière NI
+// backdrop reçoit une nameplate de repli piochée dans le pool local, de façon
+// déterministe par xuid (même joueur → même bannière).
+func TestExplorerService_TargetProfile_DeterministicBannerFallback(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "opp-xuid", matches: matches}
+	local := &mockLocalIdentityResolver{identity: nil} // cible non suivie
+	sid := "ZZZ"
+	// Identité live SANS banner ni backdrop (rank pour que le DTO soit non-nil).
+	live := &mockLiveIdentity{identity: &domain.HomeSpartanIdentityRow{RankNumber: 5, SpartanID: &sid}}
+	pool := []string{"/b/0.png", "/b/1.png", "/b/2.png"}
+	poolCalls := 0
+
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{
+			LocalIdentity: local, LiveIdentity: live, TitleSlug: "halo_infinite",
+			LocalBannerPool: func(_ context.Context) []string { poolCalls++; return pool },
+		})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil || tp.Identity == nil || tp.Identity.BannerImageURL == nil {
+		t.Fatalf("bannière de repli attendue, got %+v", tp)
+	}
+	want := pickDeterministicBanner("opp-xuid", pool)
+	if want == "" {
+		t.Fatal("pickDeterministicBanner ne doit pas renvoyer vide pour un pool non vide")
+	}
+	if *tp.Identity.BannerImageURL != want {
+		t.Errorf("bannière = %q, want %q (déterministe par xuid)", *tp.Identity.BannerImageURL, want)
+	}
+	if poolCalls != 1 {
+		t.Errorf("LocalBannerPool doit être appelé exactement 1 fois (lazy), got %d", poolCalls)
+	}
+}
+
+// TestPickDeterministicBanner vérifie le déterminisme et la borne du pool vide.
+func TestPickDeterministicBanner(t *testing.T) {
+	pool := []string{"a", "b", "c", "d"}
+	first := pickDeterministicBanner("xuid-42", pool)
+	if first != pickDeterministicBanner("xuid-42", pool) {
+		t.Error("pickDeterministicBanner doit être stable pour un même xuid")
+	}
+	if pickDeterministicBanner("xuid-42", nil) != "" {
+		t.Error("pool vide doit renvoyer la chaîne vide")
 	}
 }
