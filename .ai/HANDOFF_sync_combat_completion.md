@@ -8,14 +8,14 @@
 - `7c584c158` honnêteté compteurs heal (failed≠no_film) + tests.
 - `1672f34b2` fail-fast shared-RO (assertSharedWritable) + tests.
 - `67742cd14` no-film match récent → pas de marquage events_loaded (anti-perte film retardé) + tests.
-- `7d4d9af9b` fix test golden no-film (start_time ancien) — RÉPARE une régression que `67742cd14` avait
+- `7e9ce46dc` fix test golden no-film (start_time ancien) — RÉPARE une régression que `67742cd14` avait
   commitée ROUGE (CWD shell perdu pendant la vérif → test non relancé avant commit). LEÇON : toujours
   `cd apps/go-api` explicite avant `go test` (le shell perd son CWD après corruption), et relire le
   résultat AVANT de committer.
 - Suite `./internal/sync/` verte en `-tags cgo` ET `-tags "cgo integration"` (14-15s).
 - Working tree restant = uniquement fichiers utilisateur (PLAN_explorer untracked, PLAN_MEDIA_HLS rename).
 
-## ✅ INCRÉMENT 3 — pas de marquage prématuré events_loaded (commits 67742cd14 + 7d4d9af9b)
+## ✅ INCRÉMENT 3 — pas de marquage prématuré events_loaded (commits 67742cd14 + 7e9ce46dc)
 - `engine_highlight_events.go` : sur film 404 (`!found`), `ProcessHighlightEvents` ne marque
   `events_loaded=TRUE` que si `isNoFilmDefinitive` → match plus vieux que `filmRetryWindow` (48h, const)
   OU `start_time` NULL (legacy). Match récent + 404 → reste FALSE → réessayé (anti-perte d'un film retardé).
