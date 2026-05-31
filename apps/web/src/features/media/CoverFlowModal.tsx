@@ -9,6 +9,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Hls from 'hls.js'
 import type { MediaItemRow } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { MediaLikeButton } from './MediaViewer'
@@ -85,18 +86,87 @@ interface ClipPlayerProps {
   onEnded: (() => void) | undefined
 }
 
+/** Une source est HLS si son chemin (hors query string) se termine par .m3u8. */
+function isHlsSource(path: string): boolean {
+  return path.split('?')[0].toLowerCase().endsWith('.m3u8')
+}
+
 /**
- * Wrapper <video> qui gère les erreurs de chargement (MIME non supporté,
- * fichier inaccessible, codec absent). Affiche un message clair plutôt
- * qu'un cadre noir vide.
+ * Wrapper <video> qui lit :
+ *   - les flux HLS (.m3u8) via hls.js (ou le lecteur natif Safari/iOS), avec
+ *     sélecteur de piste audio quand le master expose plusieurs pistes ;
+ *   - les fichiers web-natifs (mp4/webm/mov) en lecture directe.
+ * Affiche un message clair en cas d'erreur plutôt qu'un cadre noir vide.
  */
 function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }: ClipPlayerProps) {
   const [error, setError] = useState<string | null>(null)
   const [lastFilePath, setLastFilePath] = useState(filePath)
+  const videoElRef = useRef<HTMLVideoElement | null>(null)
+  const hlsRef = useRef<Hls | null>(null)
+  const [audioTracks, setAudioTracks] = useState<{ id: number; name: string }[]>([])
+  const [activeAudio, setActiveAudio] = useState(-1)
 
   if (filePath !== lastFilePath) {
     setLastFilePath(filePath)
     setError(null)
+  }
+
+  const isHls = isHlsSource(filePath)
+
+  // Callback ref : alimente la ref locale (pour attacher hls.js) ET le callback
+  // parent (qui pilote play/pause/mute via sa Map de refs).
+  const setRefs = useCallback(
+    (el: HTMLVideoElement | null) => {
+      videoElRef.current = el
+      videoRef(el)
+    },
+    [videoRef],
+  )
+
+  // Attache hls.js pour les sources .m3u8 (sauf Safari/iOS qui lisent HLS nativement).
+  useEffect(() => {
+    if (!isHls) return
+    const video = videoElRef.current
+    if (!video) return
+
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = filePath
+      return
+    }
+    if (!Hls.isSupported()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- erreur d'init d'un système externe (hls.js indisponible)
+      setError('Lecture HLS non supportée par ce navigateur')
+      return
+    }
+
+    const hls = new Hls({ enableWorker: true })
+    hlsRef.current = hls
+    hls.loadSource(filePath)
+    hls.attachMedia(video)
+    // Les pistes audio alternées sont peuplées via AUDIO_TRACKS_UPDATED (à
+    // MANIFEST_PARSED, hls.audioTracks est encore vide — confirmé en navigateur).
+    hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_evt, data) => {
+      setAudioTracks(
+        data.audioTracks.map((t, i) => ({ id: i, name: t.name || t.lang || `Audio ${i + 1}` })),
+      )
+      setActiveAudio(hls.audioTrack)
+    })
+    hls.on(Hls.Events.ERROR, (_evt, data) => {
+      if (data.fatal) setError('Erreur de lecture du flux HLS')
+    })
+    return () => {
+      hls.destroy()
+      hlsRef.current = null
+      setAudioTracks([])
+      setActiveAudio(-1)
+    }
+  }, [filePath, isHls])
+
+  function selectAudioTrack(id: number) {
+    if (hlsRef.current) {
+      hlsRef.current.audioTrack = id
+      setActiveAudio(id)
+    }
   }
 
   if (error) {
@@ -114,24 +184,49 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded }:
   }
 
   return (
-    <video
-      ref={videoRef}
-      src={filePath}
-      controls={isCenter}
-      muted={!isCenter}
-      preload={Math.abs(relPos) <= 1 ? 'auto' : 'metadata'}
-      onEnded={onEnded}
-      onError={(e) => {
-        const code = e.currentTarget.error?.code
-        const msg =
-          code === 4 ? 'Format vidéo non supporté par le navigateur'
-          : code === 3 ? 'Erreur de décodage de la vidéo'
-          : code === 2 ? 'Erreur réseau lors du chargement'
-          : 'Vidéo inaccessible'
-        setError(msg)
-      }}
-      className="h-full w-full bg-card"
-    />
+    <div className="relative h-full w-full">
+      <video
+        ref={setRefs}
+        src={isHls ? undefined : filePath}
+        controls={isCenter}
+        muted={!isCenter}
+        preload={Math.abs(relPos) <= 1 ? 'auto' : 'metadata'}
+        onEnded={onEnded}
+        onError={(e) => {
+          if (isHls) return // les erreurs HLS passent par Hls.Events.ERROR
+          const code = e.currentTarget.error?.code
+          const msg =
+            code === 4 ? 'Format vidéo non supporté par le navigateur'
+            : code === 3 ? 'Erreur de décodage de la vidéo'
+            : code === 2 ? 'Erreur réseau lors du chargement'
+            : 'Vidéo inaccessible'
+          setError(msg)
+        }}
+        className="h-full w-full bg-card"
+      />
+      {isCenter && audioTracks.length > 1 && (
+        <div className="absolute bottom-16 right-3 z-10 flex items-center gap-1 rounded-md border border-border bg-card/90 p-1 backdrop-blur-sm">
+          <svg className="ml-1 h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10v4m4-7v10m4-13v16m4-11v6m4-8v10" />
+          </svg>
+          {audioTracks.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                selectAudioTrack(t.id)
+              }}
+              className={`rounded px-2 py-0.5 text-xs transition-colors ${
+                activeAudio === t.id ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
