@@ -86,6 +86,11 @@ func healEventsForRecentMatches(
 	// Phase 3.6 : healParallelismNetworkOnly=24 — writes append-only sur
 	// highlight_events, throttle réel par rate limiter HTTP du pool.
 	var mu sync.Mutex
+	// failed : échecs RÉELS d'écriture/fetch (shared en read-only, réseau,
+	// parse zlib). Historiquement comptés en no_film → mensonge qui a masqué
+	// 31h de panne (shared RO) en mai 2026, cf.
+	// .ai/HANDOFF_sync_combat_completion.md. Désormais agrégés en WARN distinct.
+	var failed int
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(healParallelismNetworkOnly)
 	for _, matchID := range matchIDs {
@@ -121,6 +126,13 @@ func healEventsForRecentMatches(
 			switch {
 			case eventsInserted:
 				healed++
+			case procErr != nil:
+				// Échec réel (write shared RO, réseau, parse) — surtout PAS
+				// compté en no_film. C'est cette confusion qui a rendu le bug
+				// shared-RO invisible pendant 31h (no_film=2 affiché alors que
+				// l'INSERT échouait). Déjà loggé par match ci-dessus ; agrégé
+				// en WARN après Wait().
+				failed++
 			case hasAnomaly:
 				// parse_anomaly déjà loggé en WARN par ProcessHighlightEvents.
 			default:
@@ -131,6 +143,14 @@ func healEventsForRecentMatches(
 		})
 	}
 	_ = eg.Wait()
+	if failed > 0 {
+		// Visibilité ops : un échec d'écriture shared (read-only, lock) doit être
+		// bruyant, jamais noyé dans no_film. Cf. règle "complétion = fonction
+		// cœur, pas un best-effort silencieux".
+		slog.WarnContext(ctx, "healEvents: écritures shared échouées (NON comptées en no_film)",
+			"failed", failed, "healed", healed, "no_film", noFilm,
+			"hint", "shared en read-only / lock ? cf. .ai/HANDOFF_sync_combat_completion.md")
+	}
 	return healed, noFilm, nil
 }
 
@@ -189,6 +209,11 @@ func healWeaponKillsForRecentMatches(
 	// Phase 3.6 : healParallelismNetworkOnly=24 — writes append-only sur
 	// weapon_kills, throttle réel par rate limiter HTTP du pool.
 	var mu sync.Mutex
+	// failed : échecs réels (write shared RO, réseau). Avant, un bfErr était
+	// loggé puis le match disparaissait des compteurs (ni healed ni no_film) —
+	// invisible en agrégat. Désormais compté + agrégé en WARN. Même rationale
+	// que healEvents (cf. .ai/HANDOFF_sync_combat_completion.md).
+	var failed int
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(healParallelismNetworkOnly)
 	for _, matchID := range matchIDs {
@@ -200,6 +225,9 @@ func healWeaponKillsForRecentMatches(
 			found, bfErr := BackfillWeaponKillsForMatch(egCtx, client, sharedDB, matchID, xuid)
 			if bfErr != nil {
 				slog.WarnContext(egCtx, "healWeaponKills: échec match", "match_id", matchID, "err", bfErr)
+				mu.Lock()
+				failed++
+				mu.Unlock()
 				return nil
 			}
 			mu.Lock()
@@ -213,5 +241,10 @@ func healWeaponKillsForRecentMatches(
 		})
 	}
 	_ = eg.Wait()
+	if failed > 0 {
+		slog.WarnContext(ctx, "healWeaponKills: écritures shared échouées (NON comptées en no_film)",
+			"failed", failed, "healed", healed, "no_film", noFilm,
+			"hint", "shared en read-only / lock ? cf. .ai/HANDOFF_sync_combat_completion.md")
+	}
 	return healed, noFilm, nil
 }
