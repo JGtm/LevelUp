@@ -93,6 +93,22 @@ func BackfillMatchCitations(
 			continue
 		}
 
+		// Phase 4 (fix recompute citations) : NE PAS poser le sentinel "_processed"
+		// si 0 delta provient d'events pas encore chargés (film retardé). Sinon le
+		// match entre dans match_citations et sort définitivement de
+		// selectMatchesForCitations(force=false) (LEFT JOIN IS NULL) → jamais
+		// recalculé quand les events arrivent → citations vides en permanence
+		// (cause racine onglet Détails). On laisse le match candidat : le events
+		// heal (post-sync, avant citations) charge les events, et le prochain cycle
+		// citations recalcule. events_loaded distingue "vraiment 0 citation"
+		// (events présents) de "0 par manque d'events" (film pas encore là).
+		if len(deltas) == 0 && !isEventsLoaded(ctx, sharedDB, matchID) {
+			slog.DebugContext(ctx, "citations: 0 delta + events non chargés → skip sentinel (match reste candidat)",
+				"match_id", matchID)
+			skipped++
+			continue
+		}
+
 		if err := writeCitations(ctx, playerDB, matchID, deltas); err != nil {
 			slog.Warn("BackfillMatchCitations: write", "match_id", matchID, "err", err)
 			skipped++
@@ -404,10 +420,31 @@ ORDER BY time_ms ASC`
 	return result, rows.Err()
 }
 
+// isEventsLoaded retourne true si highlight_events sont définitivement traités
+// pour ce match (match_registry.events_loaded). Best-effort : toute erreur de
+// lecture (table absente en tests minimaux, match inconnu) → true pour préserver
+// le comportement legacy (poser le sentinel). Sert à décider, en Phase 4, si un
+// match à 0 citation peut recevoir le sentinel "_processed" (events présents) ou
+// doit rester candidat (events pas encore chargés — film retardé).
+func isEventsLoaded(ctx context.Context, sharedDB *sql.DB, matchID string) bool {
+	if sharedDB == nil {
+		return true
+	}
+	var loaded sql.NullBool
+	err := sharedDB.QueryRowContext(ctx,
+		`SELECT events_loaded FROM match_registry WHERE match_id = ?`, matchID).Scan(&loaded)
+	if err != nil {
+		return true // best-effort : ne pas bloquer le pipeline
+	}
+	return loaded.Valid && loaded.Bool
+}
+
 // writeCitations écrit les deltas dans match_citations (idempotent).
 // Quand deltas est vide (match sans citation active), une row sentinel
 // "_processed" est insérée : cela sort le match du pool de
 // selectMatchesForCitations et évite de le retraiter à chaque sync.
+// NB Phase 4 : ce sentinel n'est posé (cas 0 delta) que si les events sont
+// chargés — décision prise par le caller BackfillMatchCitations via isEventsLoaded.
 func writeCitations(ctx context.Context, db *sql.DB, matchID string, deltas []domain.CitationMatchDelta) error {
 	const q = `
 INSERT INTO match_citations (match_id, citation_name_norm, value)
