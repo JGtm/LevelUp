@@ -481,6 +481,7 @@ type MatchAssociatedMedia struct {
 	FileID          string  `json:"file_id"`
 	FileName        string  `json:"file_name"`
 	FilePath        string  `json:"file_path"`
+	Kind            string  `json:"kind"`
 	ThumbnailURL    *string `json:"thumbnail_url,omitempty"`
 	DurationSeconds *int    `json:"duration_seconds,omitempty"`
 	CaptureTime     *string `json:"capture_time,omitempty"`
@@ -749,6 +750,7 @@ type MediaAssocRaw struct {
 	FileID        string
 	FileName      string
 	FilePath      string
+	Kind          string
 	ThumbnailPath *string
 	CaptureTime   *string
 	Liked         bool

@@ -346,6 +346,7 @@ func buildMediaTab(media []domain.MediaAssocRaw) domain.MatchMediaTab {
 			FileID:       m.FileID,
 			FileName:     m.FileName,
 			FilePath:     m.FilePath,
+			Kind:         m.Kind,
 			ThumbnailURL: m.ThumbnailPath,
 			CaptureTime:  m.CaptureTime,
 			Liked:        m.Liked,

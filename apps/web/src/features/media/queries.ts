@@ -61,7 +61,7 @@ function isLegacyMediaPageResponse(response: MediaPageApiResponse): response is 
   return Array.isArray(response.items)
 }
 
-function normalizeMediaKind(kind?: string | null) {
+export function normalizeMediaKind(kind?: string | null) {
   if (kind === 'video') {
     return 'clip'
   }

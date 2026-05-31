@@ -1,3 +1,50 @@
+## [2026-05-31] Transcoding HLS multipiste à l'ingestion média (6 phases)
+
+**Statut** : Complété (backend + serving + front + CLI). POC navigateur Opus GO. Branche : feat/media-hls-transcoding. Commits b3c16c8b5, 233b58ee0, 20f41cf62, 20266047d + raffinement logging.
+
+**Demande** : le lecteur média gère mal les MKV multipistes (game + micro) selon le navigateur ; ajouter HLS pour lecture cross-navigateur + sélection de piste audio.
+
+**Décision technique** :
+- Génération HLS-fMP4 à l'upload (remplace le remux WebM live pour ces clips) : pistes audio sélectionnables (EXT-X-MEDIA), seek. Opus COPIÉ tel quel (zéro réencode, cible Chrome/Firefox/Edge ; Safari hors périmètre car ne lit pas l'Opus en HLS). Réencode réservé aux codecs incompatibles (VP9→H.264, audio exotique→AAC).
+- Async via JobStore existant : UploadMedia détecte (NeedsHLS) + marque transcode_status='processing' + lance worker détaché (RunHLSTranscode : BuildHLS → bascule DB file_path/hls_path → master.m3u8 → suppression du MKV source). Dégradation gracieuse (remux WebM legacy si échec ou jobStore absent).
+- Couches : internal/media/hls.go (pur planHLS + BuildHLS), ops/media_hls.go (façade DB + worker autonome), service (orchestration), handlers (Content-Types), front CoverFlowModal (hls.js + sélecteur piste via AUDIO_TRACKS_UPDATED).
+- Schéma : colonnes dédiées hls_path + transcode_status (PAS status='active' du rail home). walkMediaDir exclut hls/ (anti faux-média init.mp4). Logs routés vers logs/media.log (module=media ; ops tomberait sinon dans general.log).
+
+**Bugs révélés par les POC** :
+1. ffmpeg réécrit NAME du master en audio_1/2 → post-traitement depuis les titres de piste source.
+2. Chemins backslash Windows → init segments écrits dans le CWD au lieu de outDir → filepath.ToSlash.
+3. Pistes audio peuplées via AUDIO_TRACKS_UPDATED, pas MANIFEST_PARSED (sinon sélecteur vide).
+
+**Résultats** : POC navigateur Chrome — Opus lu sans réencode (MediaSource.isTypeSupported('audio/mp4; codecs="opus"') === true), 2 pistes, bascule OK. Tests Go (media/ops/service/handlers/domain + CLI) + front (77 tests média) verts. Galerie rafraîchie via feed-version au passage en HLS.
+
+**Prochaine étape** : validation live (upload vrai MKV) ; backfill historique via cmd/backfill-media-hls ; décision finale sur le retrait du remux WebM legacy (gardé en fallback).
+
+## [2026-05-31] Page Match view — vignettes webp + média lecteur (onglet Médias)
+
+**Statut** : Complété côté code (Go : handlers/service/domain/duckdb tests verts + build OK + intégration Q24 verte ; front : tsc 0, eslint 0, vitest media+match-view 182 verts). À valider en live. Commit en attente d'autorisation. Branche : feat/media-hls-transcoding.
+
+**Demande** : sur la page Match view, section Médias, la vignette webp d'un clip ne s'affiche pas ; vérifier aussi que le média est bien retrouvé par le lecteur. Consigne user : réutiliser le pattern déjà validé sur la Home (« médias récents »), ne pas réinventer.
+
+**Cause racine (2 bugs)** :
+1. URLs non transformées : `buildMediaTab` (service) renvoyait `file_path`/`thumbnail_url` BRUTS (ex. `JGtm/thumbs/x.webp`) ; le handler match-view ne faisait pas la transformation que la galerie applique via `MediaHandler.transformMediaURLs`→`filePathToURL`. Navigateur → chemin relatif → 404 (vignette + média lecteur).
+2. `kind` absent : Q24 ne sélectionnait pas `mf.kind` ; le front dérivait `kind` de `duration_seconds` (toujours null ici) → tout classé `screenshot` → un clip (mp4) s'ouvrait en `<img>` cassé dans le lecteur (`CoverFlowModal` : `kind==='clip' ? <video> : <img>`).
+
+**Décision technique (réutilisation du pattern validé galerie/home)** :
+- Le rail Home « médias récents » marche car il appelle l'endpoint galerie `/pages/media` (URLs transformées + `kind` renvoyé, normalisé front via `normalizeMediaKind`). `/pages/media` ne filtre pas par `match_id` → on garde l'endpoint match-view (Q24 dédié) et on réutilise ses 2 mécanismes.
+- Fix #1 (URL) : extraction des helpers de package `mediaStoredPathToURL(slug, stored, capturesBase, repoRoot)` + `mediaCapturesBase(store)` dans `media.go` (source unique ; `MediaHandler.filePathToURL`/`transformMediaURLs` délèguent, zéro régression galerie). `MatchViewHandler.WithMediaURLs(settingsStore, cfg.RepoRoot)` + transformation de `resp.MediaTab.MediaItems` (file_path + thumbnail_url) dans `GetMatchView`. Slug d'URL = scope ; owner implicite dans le préfixe du chemin (contrat `ServeMediaFile`).
+- Fix #2 (kind) : `mf.kind` ajouté à Q24 + `Kind` dans `MediaAssocRaw`/`MatchAssociatedMedia` (json `kind`, requis) + Scan + `buildMediaTab`. Front : `kind` dans `AssociatedMediaItem`, `normalizeMediaKind` exporté et réutilisé dans `toMediaItemRow` (repli `duration_seconds` pour le cache navigateur d'avant-fix). Contrat aligné : openapi.yaml + generated.ts.
+- Non touché : champ `recent_media` de l'API home (vestigial, le front passe par `/pages/media`).
+
+**Résultats observés** : `go test ./internal/api/handlers/... ./internal/service/... ./internal/domain/... ./internal/platform/duckdb/...` verts (+ nouveau `TestMatchViewHandler_MediaURLsTransformed` : file_path/thumbnail_url → `/api/v1/...` + kind) ; `go test -tags=integration -run TestMatchViewRepo_GetMatchMedia` vert (Q24 + mf.kind) ; `tsc -b` 0 ; eslint 0 ; vitest 182 verts.
+
+**Fichiers** : `internal/api/handlers/{media.go, match_view.go, match_view_test.go}`, `internal/api/server.go`, `internal/platform/duckdb/{queries_match.go, match_view_repo_extras.go}`, `internal/domain/match_view.go`, `internal/service/match_view_builders_team.go`, `apps/go-api/api/openapi.yaml`, `apps/web/src/features/match-view/MatchMediaTab.tsx`, `apps/web/src/features/media/queries.ts`, `apps/web/src/lib/api/{types.ts, generated.ts}`.
+
+**Prochaine étape** : validation live (DevTools Network : `GET /api/v1/players/{slug}/media/files/{owner}/thumbs/*.webp` → 200 image/webp ; lecteur : clip lu en `<video>`). Si `thumbnail_path` NULL en base (webp jamais générées) → `cmd/regen-thumbnails` (étape data séparée). Commit en attente d'autorisation.
+
+**Vérif live faite (serveur :8000 recompilé par air)** : `GET /players/JGtm/matches/4cb4a8d0-…` → `media_tab.media_items` avec `file_path`/`thumbnail_url` en `/api/v1/...` + `kind:"video"` ; `GET` de la vignette webp → 200 `image/webp` 863 Ko. Galerie `/pages/media` toujours OK (refactor sans régression). `thumbnail_path` peuplé → pas de regen nécessaire.
+
+**Suivi UI « Carte inconnue »** : sur la page match, la carte média affichait « Carte inconnue » (fallback `text.thumbnail.unknownMap`) car le média (Q24, pas de jointure `match_registry`) n'a pas de `map_name`, et `isCurrentMatch` désactive le bouton associer. Choix user : masquer (la map est déjà dans l'en-tête). Fix ciblé `MediaViewer.tsx` (`MediaThumbnailCard`) : la branche `unknownMap` ne s'affiche plus que pour un AUTRE match (`!isCurrentMatch`) → `null` sur la page du match courant ; galerie inchangée. Le lecteur (`CoverFlowModal.formatHeading`) gérait déjà `null` via `.filter(Boolean)`. +2 tests (`MediaViewer.test.tsx`) : page-match sans fallback / galerie avec fallback. tsc 0, eslint 0, vitest 184 verts.
+
 ## [2026-05-31] Page Escouade — fenêtre adaptative sessions + suppr. Classement + légende méta First Events
 
 **Statut** : Complété côté code (Go analysis 5 tests verts + service build OK ; tsc 0, eslint 0 sur les fichiers touchés ; SquadContributionsPage.test 4 verts). À valider en live. Commit en attente d'autorisation. Branche : feat/media-hls-transcoding.

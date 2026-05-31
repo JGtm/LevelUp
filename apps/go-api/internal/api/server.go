@@ -672,7 +672,10 @@ func NewRouter(
 			})
 
 			// Sprint 8 : Match View + Explorer
-			mv := handlers.NewMatchViewHandler(reg.MatchView)
+			// WithMediaURLs : transforme les chemins média de l'onglet médias en
+			// URLs servables, comme la galerie (settingsStore + repoRoot déjà en portée).
+			mv := handlers.NewMatchViewHandler(reg.MatchView).
+				WithMediaURLs(settingsStore, cfg.RepoRoot)
 			r.Get("/matches/{match_id}", mv.GetMatchView)
 			r.Get("/matches/{match_id}/neighbors", mv.GetMatchNeighbors)
 

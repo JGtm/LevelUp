@@ -4303,13 +4303,15 @@ components:
 
     AssociatedMediaItem:
       type: object
-      required: [file_id, file_name, file_path]
+      required: [file_id, file_name, file_path, kind]
       properties:
         file_id:
           type: string
         file_name:
           type: string
         file_path:
+          type: string
+        kind:
           type: string
         thumbnail_url:
           type: string

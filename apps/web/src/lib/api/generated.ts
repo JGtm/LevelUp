@@ -3176,6 +3176,7 @@ export interface components {
             file_id: string;
             file_name: string;
             file_path: string;
+            kind: string;
             thumbnail_url?: string | null;
             /** Format: float */
             duration_seconds?: number | null;

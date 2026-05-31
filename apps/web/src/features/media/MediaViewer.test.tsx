@@ -158,6 +158,35 @@ describe('MediaThumbnailCard — affichage map / fallback match', () => {
     expect(screen.queryByText(/Pas de match associé/)).not.toBeInTheDocument()
     expect(screen.queryByText(/No associated match/)).not.toBeInTheDocument()
   })
+
+  it('n\'affiche pas "Carte inconnue" sur la page du match courant (currentMatchId === match_id, map null)', () => {
+    // Régression : sur la page d'un match, ses propres médias (map_name absent
+    // car Q24 ne joint pas match_registry) ne doivent PAS afficher "Carte
+    // inconnue" — la map est déjà dans l'en-tête du match.
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ map_name: null, match_id: 'match-42' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        currentMatchId="match-42"
+      />,
+    )
+    expect(screen.queryByText(/Carte inconnue/)).not.toBeInTheDocument()
+  })
+
+  it('affiche "Carte inconnue" dans la galerie (média d\'un autre match, map null)', () => {
+    // Comportement galerie conservé : hors de la page du match (currentMatchId
+    // différent), une map non résolue affiche bien le fallback.
+    renderWithProviders(
+      <MediaThumbnailCard
+        item={makeItem({ map_name: null, match_id: 'match-42' })}
+        onToggleLike={vi.fn()}
+        onOpen={vi.fn()}
+        currentMatchId="other-match"
+      />,
+    )
+    expect(screen.getByText(/Carte inconnue/)).toBeInTheDocument()
+  })
 })
 
 describe('MediaThumbnailCard — icône "ouvrir le match"', () => {
