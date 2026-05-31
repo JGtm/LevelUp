@@ -18,13 +18,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
-var players = []string{"Madina97294", "Chocoboflor", "JGtm"}
+var players = []string{"Madina97294", "Chocoboflor", "JGtm", "XxDaemonGamerxX"}
 
 func main() {
 	root := flag.String("root", "../..", "racine du repo")
@@ -43,19 +44,34 @@ func main() {
 		groups := loadDisplayedByGroup(ctx, db, bnd)
 		db.Close()
 		var total, abruptAll, abruptPost, worstPost int
-		for _, gd := range groups {
+		gnames := make([]string, 0, len(groups))
+		for g := range groups {
+			gnames = append(gnames, g)
+		}
+		sort.Strings(gnames)
+		fmt.Printf("\n## %s\n", gt)
+		fmt.Println("- rang final par groupe (lissé, sur le dernier match) :")
+		for _, g := range gnames {
+			gd := groups[g]
 			total += len(gd.ords)
-			aAll, _, _ := countDrops(gd.ords, bnd, 1)                               // tout
-			aPost, _, wPost := countDrops(gd.ords, bnd, skillv2.PlacementMatches+1) // post-placement
+			aAll, _, _ := countDrops(gd.ords, bnd, 1)
+			aPost, _, wPost := countDrops(gd.ords, bnd, skillv2.PlacementMatches+1)
 			abruptAll += aAll
 			abruptPost += aPost
 			if wPost < worstPost {
 				worstPost = wPost
 			}
+			final := ""
+			if len(gd.labels) > 0 {
+				final = gd.labels[len(gd.labels)-1]
+			}
+			placement := ""
+			if len(gd.ords) < skillv2.PlacementMatches {
+				placement = fmt.Sprintf(" [EN PLACEMENT, %d restants]", skillv2.PlacementMatches-len(gd.ords))
+			}
+			fmt.Printf("    %-16s %-14s (%d matchs)%s\n", g, final, len(gd.ords), placement)
 		}
-		fmt.Printf("\n## %s — %d matchs v2 / %d groupes\n", gt, total, len(groups))
-		fmt.Printf("- chutes brutales −≥2 sp/match, TOUT (placement inclus) : %d\n", abruptAll)
-		fmt.Printf("- chutes brutales −≥2 sp/match, POST-placement (rang établi) : **%d** — pire %d sp\n", abruptPost, -worstPost)
+		fmt.Printf("- volatilité : chutes −≥2sp TOUT=%d, POST-placement=**%d** (pire %d sp)\n", abruptAll, abruptPost, -worstPost)
 	}
 }
 
