@@ -27,7 +27,12 @@ writer provider + fail-fast si RO) retenue pour le fix structurel (à venir).
 3. Fail-fast shared-RO : `shared_rw_guard.go` (`assertSharedWritable` via `duckdb_databases().readonly`,
    robuste au basename — inspecte toute base hors `system`/`temp`). Câblé en tête des deux heals : si
    shared est read-only, erreur nommée `ErrSharedReadOnly` immédiate au lieu de N écritures silencieuses.
-   Tests : `shared_rw_guard_test.go` (4 tests dont l'intégration heal RO → fail-fast). Verts.
+   Tests : `shared_rw_guard_test.go` (4 tests dont l'intégration heal RO → fail-fast). Verts. Commit `1672f34b2`.
+4. Pas de marquage prématuré `events_loaded` sur film 404 : `ProcessHighlightEvents` ne marque définitif
+   que si le match est plus vieux que `filmRetryWindow` (48h) OU si `start_time` est inconnu (NULL →
+   comportement legacy préservé). Un match récent avec 404 reste `events_loaded=FALSE` → réessayé (un film
+   simplement retardé n'est plus perdu définitivement). Tests : `film_retry_policy_test.go` (3 cas :
+   récent→non marqué, ancien→marqué, NULL→marqué). Golden/bitmask no-film restent verts (start_time NULL).
 
 **Résultats observés** : `go test -tags cgo ./internal/sync/` vert (30s) ; `go vet` clean. Les 2 matchs du
 30/05 restent vides (film probablement expiré pendant les 31h RO — data-loss à confirmer en remédiation).

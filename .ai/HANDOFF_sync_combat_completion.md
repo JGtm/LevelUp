@@ -4,7 +4,17 @@
 > Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
-## ✅ INCRÉMENT 2 (non commité) — fail-fast shared-RO
+## ✅ INCRÉMENT 3 (non commité) — pas de marquage prématuré events_loaded
+- `engine_highlight_events.go` : sur film 404 (`!found`), `ProcessHighlightEvents` ne marque
+  `events_loaded=TRUE` que si `isNoFilmDefinitive` → match plus vieux que `filmRetryWindow` (48h, const)
+  OU `start_time` NULL (legacy). Match récent + 404 → reste FALSE → réessayé (anti-perte d'un film retardé).
+- Tests `film_retry_policy_test.go` (3) : récent→non marqué / ancien→marqué / NULL→marqué. + golden &
+  bitmask no-film restent verts (insèrent start_time NULL → marqués). Suite ./internal/sync/ verte
+  (-tags cgo ET -tags "cgo integration"), go vet clean. **NON commité.**
+- Fichiers : `engine_highlight_events.go` (+const +helper +branche), `film_retry_policy_test.go` (nouveau),
+  thought_log.md (point 4), ce HANDOFF.
+
+## ✅ INCRÉMENT 2 — fail-fast shared-RO — commit `1672f34b2`
 - **Nouveau** `internal/sync/shared_rw_guard.go` : `assertSharedWritable(ctx, db)` →
   `SELECT bool_or(readonly) FROM duckdb_databases() WHERE database_name NOT IN ('system','temp')`.
   Robuste au basename (ne filtre PAS sur "shared_matches_v2"). Retourne `ErrSharedReadOnly` si RO,

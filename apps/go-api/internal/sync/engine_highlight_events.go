@@ -22,11 +22,41 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
 )
+
+// filmRetryWindow : fenêtre pendant laquelle un film absent (404) est considéré
+// comme « peut-être pas encore propagé côté Halo » et donc retenté au lieu
+// d'être marqué définitivement absent. Au-delà, le film est jugé perdu (Halo ne
+// conserve pas tous les films) et events_loaded passe à TRUE pour sortir du
+// retry set. Tunable : 48h couvre largement la latence de propagation observée
+// tout en bornant les retries. Cf. .ai/HANDOFF_sync_combat_completion.md
+// (incident : un film simplement retardé était marqué définitif → perte).
+const filmRetryWindow = 48 * time.Hour
+
+// isNoFilmDefinitive décide, sur film absent (404), si on marque
+// events_loaded=TRUE (définitif, sort du retry set) ou si on laisse FALSE
+// (réessai au prochain cycle). Définitif si le match est plus vieux que
+// filmRetryWindow OU si start_time est inconnu (NULL) — dans ce dernier cas on
+// ne peut pas distinguer un retard d'une absence, on garde le comportement
+// legacy (marquer). Best-effort : toute erreur de lecture → définitif pour ne
+// jamais bloquer le pipeline.
+func isNoFilmDefinitive(ctx context.Context, db *sql.DB, matchID string) bool {
+	if db == nil {
+		return true
+	}
+	var startTime sql.NullTime
+	err := db.QueryRowContext(ctx,
+		`SELECT start_time FROM match_registry WHERE match_id = ?`, matchID).Scan(&startTime)
+	if err != nil || !startTime.Valid {
+		return true // âge inconnu → comportement legacy (définitif)
+	}
+	return time.Since(startTime.Time) > filmRetryWindow
+}
 
 // insertHighlightEventsFromData parse et insère les highlight events à partir de données déjà fetchées.
 // Helper utilisé par insertFetchedMatch pour injection de dépendance.
@@ -123,14 +153,21 @@ func ProcessHighlightEvents(
 		return fmt.Errorf("GetHighlightEventsChunk: %w", err)
 	}
 	if !found || len(data) == 0 {
+		// Décision de marquage sur film absent (404) : définitif (match ancien
+		// ou âge inconnu) → MarkEventsLoaded (sort du retry set) ; récent → on
+		// laisse events_loaded=FALSE pour réessayer (le film n'est peut-être pas
+		// encore propagé — éviter la perte définitive d'un film simplement
+		// retardé, cf. .ai/HANDOFF_sync_combat_completion.md).
+		definitive := isNoFilmDefinitive(ctx, sharedDB, matchID)
 		slog.DebugContext(ctx, "processHighlightEvents: film absent ou chunk vide",
 			"match_id", matchID, "found", found, "data_len", len(data),
+			"definitive", definitive,
 		)
-		// Marquer events_loaded=TRUE pour ne pas retenter à chaque sync : le
-		// film 404 est définitif (Halo ne sauve pas le film de tous les matchs).
-		if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
-			slog.DebugContext(ctx, "MarkEventsLoaded échoué (no-film)",
-				"match_id", matchID, "err", markErr)
+		if definitive {
+			if markErr := MarkEventsLoaded(ctx, sharedDB, matchID); markErr != nil {
+				slog.DebugContext(ctx, "MarkEventsLoaded échoué (no-film)",
+					"match_id", matchID, "err", markErr)
+			}
 		}
 		return nil
 	}
