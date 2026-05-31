@@ -122,10 +122,11 @@ func TestFormatTierLabel(t *testing.T) {
 	// Convention Halo CSR : sub I (1) = bas du tier, sub VI (6) = haut.
 	// Donc μ proche du seuil supérieur du tier produit un sub élevé.
 	//
-	// Grille v2 :
-	// Bronze [0, 21[, width = 3.5 par sous-tier
-	// Or [22, 25[, width = 0.5 par sous-tier
-	// Diamant [25.8, 27[, width = 0.2 par sous-tier
+	// Grille v2 (sous-paliers uniformisés [2026-05-31]) :
+	// Bronze [0, 21[ × 6 = 3.5 μ/sous-tier
+	// Or [22, 25[ × 6 = 0.5 μ/sous-tier
+	// Platine [25, 25.8[ × 2 = 0.4 μ/sous-tier
+	// Diamant [25.8, 27[ × 3 = 0.4 μ/sous-tier
 	cases := []struct {
 		mu   float64
 		want string
@@ -136,11 +137,12 @@ func TestFormatTierLabel(t *testing.T) {
 		{22.5, "Or II"},
 		{23.52, "Or IV"}, // JGtm
 		{24.99, "Or VI"},
-		{25.0, "Platine I"},
-		{25.8, "Diamant I"},   // borne Diamant
-		{26.0, "Diamant I"},   // (26-25.8)/0.2 → 0.999... int=0 +1 → 1 (float precision)
-		{26.17, "Diamant II"}, // Madina BTB → (26.17-25.8)/0.2 = 1.85 → 2
-		{26.5, "Diamant IV"},  // (26.5-25.8)/0.2 = 3.5 → 4
+		{25.0, "Platine I"},  // Platine 2 sous-paliers (width 0.4)
+		{25.5, "Platine II"}, // (25.5-25)/0.4 = 1.25 → 2
+		{25.8, "Diamant I"},  // borne Diamant (3 sous-paliers, width 0.4)
+		{26.0, "Diamant I"},  // (26-25.8)/0.4 = 0.5 → 1
+		{26.17, "Diamant I"}, // Madina BTB → (26.17-25.8)/0.4 = 0.925 → 1
+		{26.5, "Diamant II"}, // (26.5-25.8)/0.4 = 1.75 → 2
 		{27.0, "Onyx"},
 		{45.0, "Onyx"},
 	}
