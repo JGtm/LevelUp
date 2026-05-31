@@ -30,17 +30,22 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	}
 	t.Cleanup(func() { _ = playerSQL.Close() })
 
+	// Schéma fidèle au vrai match_registry prod (cf. migration/steps_shared.go) :
+	// start_time + start_time_utc (TIMESTAMPTZ), pair_name/pair_name_fr (mode),
+	// duration_seconds. Le repo lit played_at via COALESCE(start_time_utc,
+	// start_time AT TIME ZONE 'UTC') et le mode via COALESCE(pair_name_fr, pair_name).
 	mustExec(t, sharedSQL, `CREATE TABLE match_registry (
-		match_id VARCHAR, played_at TIMESTAMP, game_variant_category VARCHAR,
-		map_id VARCHAR, duration_secs INTEGER)`)
+		match_id VARCHAR, start_time TIMESTAMP, start_time_utc TIMESTAMPTZ,
+		pair_name VARCHAR, pair_name_fr VARCHAR,
+		map_id VARCHAR, duration_seconds INTEGER)`)
 	mustExec(t, sharedSQL, `CREATE TABLE match_participants (
 		match_id VARCHAR, xuid VARCHAR, outcome INTEGER, kills INTEGER,
 		deaths INTEGER, assists INTEGER, accuracy DOUBLE, damage_dealt DOUBLE,
 		damage_taken DOUBLE, headshot_kills INTEGER, team_mmr DOUBLE)`)
 	// m1 = plus récent, non ranked (team_mmr NULL) ; m2 = plus ancien, ranked.
 	mustExec(t, sharedSQL, `INSERT INTO match_registry VALUES
-		('m1', TIMESTAMP '2026-01-02 12:00:00', 'Slayer', 'map1', 600),
-		('m2', TIMESTAMP '2026-01-01 12:00:00', 'Oddball', 'map2', 500)`)
+		('m1', TIMESTAMP '2026-01-02 12:00:00', TIMESTAMPTZ '2026-01-02 12:00:00+00', 'Slayer', NULL, 'map1', 600),
+		('m2', TIMESTAMP '2026-01-01 12:00:00', TIMESTAMPTZ '2026-01-01 12:00:00+00', 'Oddball', NULL, 'map2', 500)`)
 	mustExec(t, sharedSQL, `INSERT INTO match_participants VALUES
 		('m1', 'p1', 2, 10, 5, 4, 0.55, 2000, 1500, 3, NULL),
 		('m2', 'p1', 3, 8, 4, 2, 0.40, 1200, 1300, 1, 1500)`)

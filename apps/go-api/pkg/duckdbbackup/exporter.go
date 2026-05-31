@@ -98,17 +98,34 @@ func ExportTarget(ctx context.Context, t Target, outputDir string, compressionLe
 	slog.DebugContext(ctx, "backup: export démarré", "key", t.Key, "tables", len(tables))
 	start := time.Now()
 	ts := start.UTC().Format("20060102_150405")
+	exported := 0
+	var failed []string
 	for _, table := range tables {
 		outPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.parquet", table, ts))
 		if err := exportTable(ctx, db, table, outPath, compressionLevel); err != nil {
-			return 0, fmt.Errorf("export %s.%s: %w", t.Key, table, err)
+			// Échec d'une table : on WARN et on continue. Un objet résiduel ou
+			// corrompu (ex: vue legacy, table d'un catalogue attaché qui a
+			// échappé au filtre listTables) ne doit jamais faire perdre tout le
+			// backup du target — un backup partiel vaut mieux qu'aucun backup.
+			slog.WarnContext(ctx, "backup: export table échoué (ignoré)",
+				"key", t.Key, "table", table, "err", err)
+			failed = append(failed, table)
+			continue
 		}
+		exported++
 	}
 	slog.InfoContext(ctx, "backup: export terminé",
 		"key", t.Key,
-		"tables", len(tables),
+		"tables_ok", exported,
+		"tables_failed", len(failed),
 		"duration", time.Since(start).Round(time.Millisecond))
-	return len(tables), nil
+	// On ne remonte une erreur dure que si AUCUNE table n'a pu être exportée
+	// (signal d'un problème global : conn morte, dossier non writable...).
+	if exported == 0 && len(failed) > 0 {
+		return 0, fmt.Errorf("export %s: aucune des %d tables exportée (ex: %s)",
+			t.Key, len(failed), failed[0])
+	}
+	return exported, nil
 }
 
 // openTarget retourne une connexion sur t et la fonction de libération
@@ -134,9 +151,16 @@ func openTarget(ctx context.Context, t Target) (*sql.DB, func(), error) {
 }
 
 func listTables(ctx context.Context, db *sql.DB) ([]string, error) {
+	// Scope au SEUL catalogue courant + schéma main : information_schema.tables
+	// remonte aussi les tables des catalogues ATTACHés (global xbox_aliases,
+	// shared...) quand la conn est celle du pool. Sans ce filtre, on listait par
+	// ex. `xuid_aliases` (global) puis `COPY "xuid_aliases"` échouait car non
+	// résolvable dans le catalogue player ("Table does not exist").
 	rows, err := db.QueryContext(ctx, `
 		SELECT table_name FROM information_schema.tables
 		WHERE table_type = 'BASE TABLE'
+		  AND table_catalog = current_database()
+		  AND table_schema = 'main'
 		ORDER BY table_name
 	`)
 	if err != nil {

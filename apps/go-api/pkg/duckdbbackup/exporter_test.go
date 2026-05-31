@@ -210,3 +210,51 @@ func TestManifest_SetIntegrityResult(t *testing.T) {
 		t.Errorf("player: expected OK=false detail='corrupted page 1', got %+v", got)
 	}
 }
+
+// TestListTables_ScopesToCurrentCatalog vérifie que listTables ne remonte QUE
+// les tables du catalogue courant (schéma main), et ignore les tables des
+// catalogues ATTACHés. Régression du bug backup `xuid_aliases` (2026-05-31) :
+// la conn pool du serveur a global/shared attachés ; sans le filtre
+// table_catalog = current_database(), listTables remontait `xuid_aliases` du
+// catalogue global puis `COPY "xuid_aliases"` échouait ("Table does not exist")
+// et faisait perdre tout le backup du joueur.
+func TestListTables_ScopesToCurrentCatalog(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+
+	stmts := []string{
+		`CREATE TABLE player_match_enrichment (match_id VARCHAR)`,
+		`CREATE TABLE media_files (file_path VARCHAR)`,
+		// Catalogue attaché simulant `global` (xbox_aliases) avec une table
+		// homonyme d'une legacy player (xuid_aliases) — exactement ce qui
+		// polluait la liste en prod.
+		`ATTACH ':memory:' AS other`,
+		`CREATE TABLE other.xuid_aliases (xuid VARCHAR)`,
+		`CREATE TABLE other.match_registry (match_id VARCHAR)`,
+	}
+	for _, s := range stmts {
+		if _, err := db.ExecContext(ctx, s); err != nil {
+			t.Fatalf("exec %q: %v", s, err)
+		}
+	}
+
+	tables, err := listTables(ctx, db)
+	if err != nil {
+		t.Fatalf("listTables: %v", err)
+	}
+
+	got := map[string]bool{}
+	for _, name := range tables {
+		got[name] = true
+	}
+	if !got["player_match_enrichment"] || !got["media_files"] {
+		t.Errorf("tables du catalogue courant manquantes: %v", tables)
+	}
+	if got["xuid_aliases"] || got["match_registry"] {
+		t.Errorf("tables d'un catalogue attaché listées à tort: %v", tables)
+	}
+}

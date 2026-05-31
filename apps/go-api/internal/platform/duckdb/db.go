@@ -282,6 +282,22 @@ func IsInvalidatedError(err error) bool {
 		strings.Contains(s, "database is closed")
 }
 
+// IsFileLockError détecte l'erreur DuckDB d'ouverture d'un fichier déjà
+// verrouillé en écriture par un AUTRE process (mono-writer). Distinct de
+// IsInvalidatedError (corruption/handle périmée) : ici la DB est saine, c'est
+// une contention inter-process (CLI backfill concurrent, 2e instance serveur,
+// hot-reload Air pas encore libéré). Permet aux callers d'émettre un message
+// actionnable au lieu d'un "open rw" opaque (cf. spartan_cron Madina 2026-05-31).
+func IsFileLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	return strings.Contains(s, "Could not set lock on file") ||
+		strings.Contains(s, "Conflicting lock is held") ||
+		strings.Contains(s, "different configuration")
+}
+
 // Reopen ferme la connexion actuelle et en ouvre une nouvelle avec les
 // mêmes paramètres (DSN, max conns, timezone). Permet de récupérer d'une
 // invalidation fatale sans redémarrer le serveur.

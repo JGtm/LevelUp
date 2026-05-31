@@ -1,9 +1,11 @@
 // Package duckdb — highlight_events_repo.go : implementation DuckDB du loader
 // unifie des events filmes (port.HighlightEventsRepository).
 //
-// Per-PlayerDB : un HighlightEventsRepo est lie a un PlayerDB precis (le shared
-// DB est attache via Player). Comme highlight_events est dans le schema shared,
-// le repo lit via la connection player de pdb.
+// Per-PlayerDB : un HighlightEventsRepo est lie a un PlayerDB precis. La lecture
+// passe par SharedReadDB().Get() qui retourne (ADR 0016) une connexion DIRECTE
+// a shared_matches_v2.duckdb — les tables sont a la racine du catalogue, sans
+// alias `shared`. Les queries referencent donc highlight_events / match_registry
+// en bare (PAS `shared.*`, qui ne resout que sur la topologie de test legacy).
 //
 // Capability gating : laisse au service appelant pour cette implementation.
 // Le repo execute la requete telle quelle ; si le titre n'a pas la capability
@@ -157,8 +159,8 @@ SELECT
     he.event_type,
     COALESCE(he.time_ms, 0) AS time_ms,
     he.xuid
-FROM shared.highlight_events he
-LEFT JOIN shared.match_registry r ON r.match_id = he.match_id`
+FROM highlight_events he
+LEFT JOIN match_registry r ON r.match_id = he.match_id`
 
 // highlightEventsOrderBy traduit l'OrderBy filtre en expression SQL safe
 // (whitelist fermee). Vide -> ordre par defaut (match_id ASC, time_ms ASC).
