@@ -4,7 +4,20 @@
 > Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
-## ✅ LIVRÉ session 2026-05-31 (Phase 2 partielle) — LIRE EN PREMIER
+## ✅ COMMIT FAIT — commit `8331df30d` (branche fix/sync-combat-completion-persist)
+- Contenu : events_heal.go (honnêteté failed≠no_film) + events_heal_honesty_test.go + thought_log.md
+  + HANDOFF + AUDIT (force-add car gitignore `*_RO_*.md` l'excluait). 607 insertions, 5 fichiers.
+  Pre-commit hooks (gofmt/vet/merge-check) verts. **Non poussé.**
+- GOTCHA résolu : un 1er commit avait par erreur aspiré `.ai/PLAN_explorer_combat_profile_charts.md`
+  (fichier STAGÉ par l'utilisateur, pas le mien) → soft-reset + recommit par pathspec → corrigé.
+  L'utilisateur travaille en parallèle dans le repo (V7/ untracked, PLAN_explorer lui appartient) :
+  NE committer QUE mes fichiers explicitement, jamais `git commit -a`.
+- **PROCHAIN PAS (reprendre ici)** : item plan #5 (test Go déterministe mécanisme RO) PUIS #6 (Phase 1 :
+  router events/killer_victim/skill via persist sur writer provider + fail-fast si RO, Option A direct).
+  Phase 1 = gros refactor multi-fichiers du cœur sync → démarrer sur contexte frais, vertical slice
+  (events d'abord) + test, pas les 3 writers d'un coup.
+
+## ✅ LIVRÉ session 2026-05-31 (Phase 2 partielle)
 - **Honnêteté des compteurs heal** faite dans `internal/sync/events_heal.go` :
   - `healEventsForRecentMatches` : nouveau compteur `failed` ; un `procErr != nil` (write RO / réseau /
     parse) est compté `failed`, PLUS jamais `no_film`. WARN agrégé si `failed>0`.
