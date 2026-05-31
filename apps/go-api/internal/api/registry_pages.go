@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/domain"
 	halo_games "levelup/go-api/internal/games/halo_infinite"
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -272,6 +273,12 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 	if r.seasonsCatalog != nil {
 		seasons = r.seasonsCatalog.Load(ctx, pdb.TitleSlug)
 	}
+	// Catalogue des rangs de carrière (même source que HomeService) pour
+	// localiser RankTitle/NextRankTitle du DTO d'identité cible. nil-safe.
+	var ranks *mappings.RankCatalog
+	if sem := r.semanticFor(pdb.TitleSlug); sem != nil {
+		ranks = sem.Ranks()
+	}
 	svc = svc.WithTargetProfileProviders(service.ExplorerTargetProfileDeps{
 		LocalIdentity:   r.newExplorerLocalIdentityResolver(pdb.TitleSlug),
 		LiveIdentity:    r.newCareerLiveService(pdb, homeRepo),
@@ -282,6 +289,8 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 		Seasons:         seasons,
 		SeasonSR:        r.remoteStats, // *CachedStatsProvider implémente port.SeasonStatsProvider
 		SeasonCSR:       r.newExplorerSeasonCSRProvider(),
+		Ranks:           ranks,
+		LocalBannerPool: r.newExplorerLocalBannerPool(pdb.TitleSlug),
 		TitleSlug:       pdb.TitleSlug,
 	})
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
@@ -455,6 +464,47 @@ func (r *ServiceRegistry) newExplorerLocalIdentityResolver(titleSlug string) ser
 		}
 		return row
 	})
+}
+
+// newExplorerLocalBannerPool construit le résolveur PARESSEUX du pool de
+// bannières locales (Phase 3.6) : la liste dédupliquée et à ordre stable des
+// banner_image_url des joueurs suivis (db_profiles). Appelé uniquement quand une
+// cible non-locale n'a ni bannière ni backdrop → on lui attribue une nameplate
+// de repli déterministe par xuid. resolveByGT est pool-cached ;
+// LoadSpartanIdentity lit la player DB (même chemin que l'identité locale).
+func (r *ServiceRegistry) newExplorerLocalBannerPool(titleSlug string) func(ctx context.Context) []string {
+	return func(ctx context.Context) []string {
+		if r.cfg == nil || r.resolveByGT == nil {
+			return nil
+		}
+		players, err := r.cfg.LoadPlayers(titleSlug)
+		if err != nil {
+			slog.WarnContext(ctx, "explorer_banner_pool_load_players_failed", "err", err)
+			return nil
+		}
+		seen := make(map[string]struct{}, len(players))
+		out := make([]string, 0, len(players))
+		for _, p := range players {
+			if p.Gamertag == "" {
+				continue
+			}
+			tpdb, gerr := r.resolveByGT(ctx, titleSlug, p.Gamertag)
+			if gerr != nil || tpdb == nil {
+				continue
+			}
+			row, lerr := r.newHomeRepo(tpdb).LoadSpartanIdentity(ctx)
+			if lerr != nil || row == nil || row.BannerImageURL == nil || *row.BannerImageURL == "" {
+				continue
+			}
+			if _, ok := seen[*row.BannerImageURL]; ok {
+				continue
+			}
+			seen[*row.BannerImageURL] = struct{}{}
+			out = append(out, *row.BannerImageURL)
+		}
+		slog.DebugContext(ctx, "explorer_banner_pool_built", "title_slug", titleSlug, "size", len(out))
+		return out
+	}
 }
 
 // HomeCtx retourne un HomeService + identifiants joueur.

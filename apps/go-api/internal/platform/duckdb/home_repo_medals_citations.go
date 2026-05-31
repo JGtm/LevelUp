@@ -206,6 +206,19 @@ func resolveMedalLabels(ctx context.Context, db *DB, medalIDs []int64) map[int64
 			result[id] = medalLabel{label: name, description: desc, difficulty: diff}
 		}
 	}
+
+	// Fallback citation_mappings pour les IDs absents de medal_definitions
+	// (corrige la tuile de match Home qui affichait des libellés vides). Source
+	// unique partagée avec la vue Match et l'Explorer : medal_citation_fallback.go.
+	missing := make([]int64, 0)
+	for _, id := range medalIDs {
+		if _, ok := result[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	for id, label := range lookupMedalCitationLabels(ctx, db, missing) {
+		result[id] = medalLabel{label: label, difficulty: "Normal"}
+	}
 	return result
 }
 

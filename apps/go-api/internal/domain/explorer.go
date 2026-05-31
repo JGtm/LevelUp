@@ -102,7 +102,11 @@ type ExplorerPlayerQueryResponse struct {
 // venir de la DB locale, career_stats et privacy sont nil). Sert au front à
 // afficher un hint "Connexion Halo requise" sur les sections masquées.
 type ExplorerTargetProfile struct {
-	Identity    *HomeSpartanIdentityRow    `json:"identity,omitempty"`
+	// Identity est sérialisé en DTO snake_case (career_rank imbriqué) comme la
+	// Home — PAS la struct brute HomeSpartanIdentityRow (clés PascalCase, champs
+	// de rang plats) qui divergeait du contrat front. Construit via
+	// analysis.BuildSpartanIdentity dans le service.
+	Identity    *HomeSpartanIdentity       `json:"identity,omitempty"`
 	CareerStats *NormalizedPlayerStats     `json:"career_stats,omitempty"`
 	SampleStats *ExplorerTargetSampleStats `json:"sample_stats,omitempty"`
 	// TopMedals : médailles lifetime du joueur cible (top, triées par count
