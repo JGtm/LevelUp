@@ -79,6 +79,18 @@ func healEventsForRecentMatches(
 		return 0, 0, nil
 	}
 
+	// Fail-fast (fix 2026-05-31) : si shared est read-only, NE PAS boucler sur N
+	// matchs en tentant N écritures vouées à l'échec (et comptées `failed`).
+	// Détecter une fois, remonter une erreur nommée VISIBLE. C'est l'absence de
+	// ce garde-fou qui a transformé un incident shared-RO en 31h de panne
+	// silencieuse (cf. .ai/HANDOFF_sync_combat_completion.md).
+	if rwErr := assertSharedWritable(ctx, sharedDB); rwErr != nil {
+		slog.ErrorContext(ctx, "healEvents: shared non-writable — complétion combat SKIPPÉE (fail-fast)",
+			"err", rwErr, "pending", len(matchIDs),
+			"hint", "corruption ART / FATAL invalidated ? cf .ai/HANDOFF_sync_combat_completion.md")
+		return 0, 0, fmt.Errorf("healEvents: %w", rwErr)
+	}
+
 	// Parallélisation 2026-05-22 : les film downloads sont des opérations
 	// long-tail (CDN + zlib decompress) qui se prêtent bien au parallélisme.
 	// DuckDB sérialise les writes côté DB donc pas de risque de corruption,
@@ -202,6 +214,15 @@ func healWeaponKillsForRecentMatches(
 	}
 	if len(matchIDs) == 0 {
 		return 0, 0, nil
+	}
+
+	// Fail-fast (fix 2026-05-31) : voir healEventsForRecentMatches. Shared RO →
+	// erreur nommée immédiate plutôt que N échecs d'écriture silencieux.
+	if rwErr := assertSharedWritable(ctx, sharedDB); rwErr != nil {
+		slog.ErrorContext(ctx, "healWeaponKills: shared non-writable — complétion SKIPPÉE (fail-fast)",
+			"err", rwErr, "pending", len(matchIDs),
+			"hint", "corruption ART / FATAL invalidated ? cf .ai/HANDOFF_sync_combat_completion.md")
+		return 0, 0, fmt.Errorf("healWeaponKills: %w", rwErr)
 	}
 
 	// Parallélisation idem healEvents : downloads CDN + parse parallèles, mu

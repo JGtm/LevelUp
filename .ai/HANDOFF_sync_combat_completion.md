@@ -4,14 +4,37 @@
 > Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
-## ✅ COMMIT FAIT — commit `8331df30d` (branche fix/sync-combat-completion-persist)
+## ✅ INCRÉMENT 2 (non commité) — fail-fast shared-RO
+- **Nouveau** `internal/sync/shared_rw_guard.go` : `assertSharedWritable(ctx, db)` →
+  `SELECT bool_or(readonly) FROM duckdb_databases() WHERE database_name NOT IN ('system','temp')`.
+  Robuste au basename (ne filtre PAS sur "shared_matches_v2"). Retourne `ErrSharedReadOnly` si RO,
+  nil si writable OU si le probe échoue (best-effort, ne bloque pas les tests minimaux).
+- **Câblé** en tête de `healEventsForRecentMatches` ET `healWeaponKillsForRecentMatches` (après le
+  `len(matchIDs)==0` check, avant la boucle d'écriture) : shared RO → `slog.ErrorContext` + retour
+  `fmt.Errorf("healX: %w", ErrSharedReadOnly)`. Plus de N écritures vouées à l'échec.
+- **Tests** `internal/sync/shared_rw_guard_test.go` (4) : RW ok, RO détecté, nil ok, heal RO → fail-fast.
+  Probe runtime confirmé : handle `?access_mode=read_only` → `duckdb_databases().readonly=true`.
+- **Vérifs** : `go vet ./internal/sync/` clean ; `go test -tags cgo ./internal/sync/` vert (14s, 6 tests
+  ajoutés au total verts). **PAS commité — demander autorisation.**
+- Fichiers modifiés depuis commit `7c584c158` : `events_heal.go` (+wiring fail-fast), nouveaux
+  `shared_rw_guard.go` + `shared_rw_guard_test.go`, `thought_log.md` (point 3), ce HANDOFF.
+- **NOTE périmètre** : ceci est le volet "fail-fast" de Phase 1. Le volet "router la complétion via
+  persist sur le writer provider" (Option A) reste à faire — c'est le gros refactor multi-fichiers.
+  Le fail-fast garantit déjà "jamais silencieux" ; le routage persist garantira "toujours sur writer RW".
+
+## ✅ COMMIT FAIT — commit `7d8a09a39` (branche fix/sync-combat-completion-persist)
 - Contenu : events_heal.go (honnêteté failed≠no_film) + events_heal_honesty_test.go + thought_log.md
-  + HANDOFF + AUDIT (force-add car gitignore `*_RO_*.md` l'excluait). 607 insertions, 5 fichiers.
+  + HANDOFF + AUDIT (force-add car gitignore `*_RO_*.md` l'excluait). 5 fichiers, 532 insertions.
   Pre-commit hooks (gofmt/vet/merge-check) verts. **Non poussé.**
-- GOTCHA résolu : un 1er commit avait par erreur aspiré `.ai/PLAN_explorer_combat_profile_charts.md`
-  (fichier STAGÉ par l'utilisateur, pas le mien) → soft-reset + recommit par pathspec → corrigé.
-  L'utilisateur travaille en parallèle dans le repo (V7/ untracked, PLAN_explorer lui appartient) :
-  NE committer QUE mes fichiers explicitement, jamais `git commit -a`.
+- GOTCHA résolu : un 1er commit (8bf0d2a62, abandonné) avait par erreur aspiré
+  `.ai/PLAN_explorer_combat_profile_charts.md` (fichier STAGÉ par l'utilisateur). Corrigé via
+  `git reset --mixed 29fb9637b` + restage explicite de mes 5 fichiers + recommit → `7d8a09a39`.
+  EFFET DE BORD à signaler : le reset --mixed a DÉSTAGÉ `PLAN_explorer_combat_profile_charts.md`
+  (contenu intact sur disque, redevenu untracked) — l'utilisateur doit `git add` pour le re-stager.
+- L'utilisateur travaille en parallèle dans le repo (V7/ untracked, PLAN_explorer + rename
+  PLAN_MEDIA_HLS lui appartiennent) : NE committer QUE mes fichiers explicitement, jamais `git commit -a`.
+- ⚠️ `.git/config.lock` intermittent pendant la session (process concurrent) → git échouait par
+  moments ; retry suffit, ne pas supprimer le lock à la légère.
 - **PROCHAIN PAS (reprendre ici)** : item plan #5 (test Go déterministe mécanisme RO) PUIS #6 (Phase 1 :
   router events/killer_victim/skill via persist sur writer provider + fail-fast si RO, Option A direct).
   Phase 1 = gros refactor multi-fichiers du cœur sync → démarrer sur contexte frais, vertical slice
