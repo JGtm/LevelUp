@@ -10,7 +10,9 @@
  *       • Premier frag → bars POSITIVES, couleur joueur.
  *       • Première mort → bars NÉGATIVES, couleur joueur opacity 0.45.
  *   - Séparateurs verticaux pointillés entre chaque bin (markLine sur la 1ère série).
- *   - Pas de légende — la pill+combobox de la page identifie chaque joueur.
+ *   - Légende méta cliquable rendue côté React (cf. SquadFirstEventsChart) : on
+ *     reçoit ici les ensembles `hiddenPlayers` / `hiddenTypes` et on vide les
+ *     données des séries masquées (axes et séparateurs restent stables).
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import {
@@ -30,6 +32,10 @@ export interface SquadFirstEventsOpts {
   deathLabel: string
   /** i18n suffix tooltip ex: "matchs". */
   matchesSuffix: string
+  /** Joueurs masqués via la légende (toutes leurs séries sont vidées). */
+  hiddenPlayers?: Set<string>
+  /** Types d'événement masqués via la légende ('frag' et/ou 'death'). */
+  hiddenTypes?: Set<'frag' | 'death'>
 }
 
 export function buildSquadFirstEventsOption(
@@ -45,12 +51,17 @@ export function buildSquadFirstEventsOption(
 
   const xLabels = data.bin_labels
   const series: Array<Record<string, unknown>> = []
+  const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
+  const hiddenTypes = opts.hiddenTypes ?? new Set<'frag' | 'death'>()
+  const empty = xLabels.map(() => 0)
 
   for (let pi = 0; pi < data.rows.length; pi += 1) {
     const row = data.rows[pi]
     const color = opts.colorByPlayer[row.player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
     const negColor = hexComplement(color) // hue +180° — même convention que butterfly et stats/min
     const isFirst = pi === 0
+    const fragHidden = hiddenPlayers.has(row.player) || hiddenTypes.has('frag')
+    const deathHidden = hiddenPlayers.has(row.player) || hiddenTypes.has('death')
 
     // Frags positifs.
     series.push({
@@ -59,7 +70,7 @@ export function buildSquadFirstEventsOption(
       stack: `frag-${row.player}`,
       barMaxWidth: 16,
       itemStyle: { color },
-      data: row.kill_counts,
+      data: fragHidden ? empty : row.kill_counts,
       // markLine sur la 1ère série uniquement → séparateurs verticaux entre les bins.
       ...(isFirst
         ? {
@@ -81,7 +92,7 @@ export function buildSquadFirstEventsOption(
       stack: `death-${row.player}`,
       barMaxWidth: 16,
       itemStyle: { color: negColor },
-      data: row.death_counts.map((v) => (v === 0 ? 0 : -v)),
+      data: deathHidden ? empty : row.death_counts.map((v) => (v === 0 ? 0 : -v)),
     })
   }
 
