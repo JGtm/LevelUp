@@ -217,7 +217,12 @@ func TestGoldenFixture_NoFilm_CascadeRespected(t *testing.T) {
 	const matchID = "golden-match-nofilm"
 
 	db := openGoldenShared(t)
-	if _, err := db.Exec(`INSERT INTO match_registry (match_id) VALUES (?)`, matchID); err != nil {
+	// start_time ancien (> filmRetryWindow) : no-film DÉFINITIF → events_loaded
+	// doit être marqué. Depuis le fix "film retardé" (2026-05-31), un no-film
+	// sur un match RÉCENT reste FALSE (retry) ; ce test cible le cas définitif.
+	if _, err := db.Exec(
+		`INSERT INTO match_registry (match_id, start_time) VALUES (?, TIMESTAMP '2020-01-01 00:00:00')`,
+		matchID); err != nil {
 		t.Fatal(err)
 	}
 
