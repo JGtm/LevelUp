@@ -75,7 +75,9 @@ export function buildSessionPerfOption(series: ChartSeries<PerfPoint>[], opts: P
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    yAxis: { ...axis, type: 'value' },
+    // Échelle FIXE 0..100 : le score de perf est sur 100 → max toujours affiché, et A vs B
+    // restent directement comparables (mêmes bornes des deux côtés).
+    yAxis: { ...axis, type: 'value', min: 0, max: 100 },
     series: [
       {
         name: opts.scoreLabel,
