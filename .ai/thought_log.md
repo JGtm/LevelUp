@@ -52640,3 +52640,35 @@ inconnu/nil) PASS ; suite ./internal/sync/ verte (ok 15.4s) ; vet clean. Pas de 
 ni d'ecriture shared ajoutee (citations vivent en player DB, lecture seule sur shared).
 
 Prochaine etape : Phase 5 (resolution noms metadata map_name/pair_name GUID).
+
+## [2026-06-01] Fix sync combat completion — Phase 5 : registry names heal post-sync
+
+Statut : Complete (verte).
+
+Constat : la resolution des noms d'assets (map_name/pair_name/playlist_name/
+game_variant_name) est DEJA cablee au chemin primaire via EnrichRegistryFromMetadata
+(engine_process_match.go:58, avant l'INSERT registry). Donc les nouveaux matchs sont
+OK des que metadata.duckdb est saine. Les 2 matchs du 30/05 ont des GUID bruts parce
+que pendant l'incident ART, metadata etait FATAL-invalidated → e.metaDB == nil au
+moment de l'INSERT → EnrichRegistryFromMetadata no-op → GUID ecrit.
+
+Trou : BackfillRegistryNames (UPDATE in-place idempotent, name==id → nom canonique
+en-US depuis asset_translations) existait mais n'etait appele QUE par le CLI
+cmd/backfill_registry_names. Aucun heal automatique ne re-resolvait l'historique GUID.
+
+Fix : nouveau e.runPostSyncRegistryNames(ctx, sharedDB) (citations_backfill.go),
+cable dans runPostSyncPipeline (engine_postsync.go, etape 1.58, juste avant les
+citations). Reutilise la connexion metadata deja ouverte (e.metaDB sinon
+LookupCachedDB) exactement comme runPostSyncCitations. Best-effort (metadata absente
+→ 0,nil), idempotent (BackfillRegistryNames n'UPDATE que name==id), log si fixed>0.
+→ une fois metadata reparee, l'historique GUID se nettoie tout seul au prochain sync.
+
+ART-safety : UPDATE de colonnes non-PK (map_name etc.) sur match_registry, pattern
+deja utilise partout (MarkEventsLoaded/MarkSkillLoaded). Hors scope du garde-fou
+combat (highlight_events/killer_victim only). Pas de DELETE.
+
+Resultats : build+vet clean ; suite ./internal/sync/ verte (ok 15.5s ; tests existants
+BackfillRegistryNames_* couvrent la logique). Le wrapper post-sync est un thin
+best-effort sans nouvelle logique SQL.
+
+Prochaine etape : Phase 6 (statut sync visible — bandeau front is_partial/events_empty).
