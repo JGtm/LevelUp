@@ -235,6 +235,10 @@ func NewRouter(
 	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	reg.WithAuthStore(authStore)
 
+	// Transcoding média HLS asynchrone : le registry partage le jobStore process-wide
+	// (cf. service.WithMediaTranscoding, injecté dans MediaUpload).
+	reg.WithJobStore(jobStore)
+
 	var gamertagSvc port.GamertagSearchService
 	// Sprint B1 commit 11a : route via cfg.SharedProvider (sharedprovider.Provider)
 	// au lieu d'un OpenReadOnly direct. Élimine le dernier handle RO non-coordonné

@@ -5,6 +5,7 @@ package api
 import (
 	"context"
 
+	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/port"
@@ -52,8 +53,13 @@ func (r *ServiceRegistry) MediaUpload(ctx context.Context, slug string) (
 	if a := r.assetURLFor(pdb.TitleSlug); a != nil {
 		repo = repo.WithAssetURL(a)
 	}
-	svc := service.NewMediaService(repo, r.timezone,
-		service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb)))
+	mediaOpts := []service.MediaOption{service.WithMediaWriterAcquirer(mediaWriterAcquirerFor(pdb))}
+	if r.jobStore != nil {
+		// Transcoding HLS async à l'upload : feed-bump rafraîchit la galerie
+		// quand un clip 'processing' devient 'ready'.
+		mediaOpts = append(mediaOpts, service.WithMediaTranscoding(r.jobStore, handlers.BumpMediaFeedVersion))
+	}
+	svc := service.NewMediaService(repo, r.timezone, mediaOpts...)
 	sharedSocialPath := ""
 	if pdb.SharedSocial != nil {
 		sharedSocialPath = pdb.SharedSocial.Path()

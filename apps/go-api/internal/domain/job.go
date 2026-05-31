@@ -26,6 +26,7 @@ const (
 	JobTypeBackfill          JobType = "backfill"
 	JobTypeReindexMedia      JobType = "reindex_media"
 	JobTypeScanMedia         JobType = "scan_media"
+	JobTypeTranscodeMedia    JobType = "transcode_media"
 	JobTypeSessionsRecalc    JobType = "sessions_recalculate"
 	JobTypeOpenSpartanImport JobType = "openspartan_import"
 	JobTypeOther             JobType = "other"
