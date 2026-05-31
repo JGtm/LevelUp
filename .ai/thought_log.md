@@ -1,3 +1,36 @@
+## [2026-05-31] Page sessions — échelles A/B partagées (5 graphes) en mode comparaison
+
+**Statut** : Complété côté code (typecheck 0, lint 0, 60 tests session-detail verts dont `_compareScale`). À valider en live. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : rendre directement comparables A (colonne principale) et B (drawer) sur « Répartition des placements », « Stats par minute — FDA », « Net score cumulé », « Engagement », « Modes joués » — en synchronisant leurs échelles à l'ouverture du drawer / changement de session B. (Validé : les 5.)
+
+**Décision technique** :
+- Nouveau module `_compareScale.ts` : `computeCompareScale(aMatches, aEntry, bMatches, bEntry)` calcule les bornes communes (net score domaine [min,max], FDA/min domaine, engagement domaine, placements maxCount + axisMax, modes maxCount) en RÉPLIQUANT (version minimale, commentaires `cf. <Composant>`) les dérivations des 5 graphes. O(nb matchs) → trivial, aucun coût perceptible.
+- Calculé UNE fois au niveau page (`useMemo`, placé avant les early-returns pour la règle des hooks ; actif si `enableCompare && compare_session`), passé en prop `scale` aux DEUX colonnes via `SessionColumnBody` → `SessionChartStack` → chaque graphe.
+- Chaque graphe accepte une borne optionnelle (`yDomain` pour net score / FDA / engagement ; `yMax` pour modes ; `yMax` + `axisMaxOverride` pour placements) et fige son axe quand fournie ; sinon auto-scale (drawer fermé = rendu historique inchangé).
+- **Bémol assumé** (annoncé au user) : modes & placements partagent l'échelle des COMPTES (Y), + axe X commun pour les placements (rangs ordinaux #1..N, donc alignables) ; pour les modes, les catégories X restent propres à chaque session (modes joués différents, non-alignables). Net score / FDA / engagement = axe Y entièrement partagé.
+- Net score : le dégradé reste ancré à 0 (calculé depuis la boîte de l'AIRE, indépendant de l'axe) → figer le domaine Y ne casse pas la bascule de couleur.
+
+**Résultats observés** : `tsc -b` 0 ; eslint 0 sur les 10 fichiers ; 60 tests verts (dont `_compareScale.test` : combinaison A+B + cas vide).
+
+**Fichiers** : `_compareScale.ts` (+ `.test.ts`), `SessionNetScoreArea.tsx`, `SessionEngagementChart.tsx`, `SessionFdaBars.tsx`, `SessionModeBreakdown.tsx`, `SessionPlacementBreakdown.tsx`, `SessionChartStack.tsx`, `SessionColumnBody.tsx`, `SessionDetailPage.tsx`.
+
+**Prochaine étape** : validation live (drawer ouvert → changer la session B → vérifier que les 5 axes s'alignent A/B). **Dette** : les bornes de `_compareScale` répliquent les dérivations des graphes (2 copies, cross-référencées par commentaire) — à factoriser si un graphe évolue. Commit en attente d'autorisation.
+
+## [2026-05-31] Page sessions — "Score de performance" : échelle Y fixe 0..100
+
+**Statut** : Complété côté code (typecheck 0, lint 0, test SessionPerfTrend vert). Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : le graphe « Score de performance » doit toujours afficher le max 100 sur l'échelle.
+
+**Décision technique** : `SessionPerfTrend` — yAxis passé en `min:0, max:100` (au lieu de auto-scale). Le score de perf étant sur 100, le max est toujours visible ET les deux colonnes A/B partagent les mêmes bornes (barres directement comparables). Test étendu (`SessionPerfTrend.test.tsx`) : assertion `yAxis.min===0 && yAxis.max===100`.
+
+**Résultats observés** : `tsc -b` 0 ; eslint 0 ; 2 tests SessionPerfTrend verts.
+
+**Fichiers** : `apps/web/src/features/session-detail/SessionPerfTrend.tsx` (+ `.test.tsx`).
+
+**Prochaine étape** : validation live. Commit en attente d'autorisation.
+
 ## [2026-05-31] Page sessions — fix net score "n'affiche rien" (régression visualMap) + valeurs radar aux pointes
 
 **Statut** : Complété côté code (typecheck 0, 145 tests verts, eslint 0). À valider en live. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
@@ -52350,3 +52383,17 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 - **Vérification END-TO-END** (cmd/diag_lusr_displayed, lit match_skill_rank réel, par groupe) : chutes brutales −≥2 sous-paliers POST-placement = **0 pour les 3 joueurs** (pire −1 sp). Les quelques résidus (Madina 4, JGtm 5) sont confinés à la phase de placement (par design). Choco 0 partout.
 
 **Conclusion / prochaine étape** : volatilité d'affichage résolue (0 chute brutale sur rang établi). NEW matchs en live passent automatiquement par la nouvelle logique (canonical défaut LUSR_V2). Reste optionnel : (a) μ−k·σ léger non implémenté (jugé risqué/baisse niveau) ; badge UI "placement" (front) non câblé ; anomalie btb Madina Δμ=2.13 (dépriorisée par l'utilisateur). Outils diag : cmd/diag_lusr_volatility (simulation) + cmd/diag_lusr_displayed (vérif end-to-end).
+
+---
+
+## [2026-05-31] LUSR v2 — suivi : placement déjà en place + décision asymétrie
+
+**Statut** : Complété (décisions, aucun code à changer).
+
+**Constats** :
+- **Placement #5 déjà implémenté** sur la carte de rang principale (home skill peak) : `home_repo_skill_peak.go:assemblePeak` gère le seuil interne LUSR=10/groupe → badge unranked + `MeasurementMatchesRemaining`. DTO + front (`HomeSkillPeakCard`/`resolveSkillPeakState`) génériques CSR+LUSR. Seul trou : `buildPlaylistRankItem` (tuiles playlists récentes) ne fait le placement que pour `isRanked` (CSR), pas LUSR — mais code en refacto (péremption 2026-06-22) + point jugé mineur par l'utilisateur (joueur < 11 matchs non classés uniquement). Non touché.
+- **Pics vers le haut mesurés** (cmd/diag_lusr_displayed, post-placement, 4 joueurs, ~1000+ matchs) : CHUTES −≥2sp=0 partout ; PICS +≥2sp = **1 seul** (Madina +2sp). σ convergé (~0.67) → Δμ/match ~0.03-0.08 μ → montée dépasse quasi jamais 1 sous-palier.
+
+**Décision** : garder l'**hystérésis ASYMÉTRIQUE** (montée immédiate, descente ≤1 sp/match). Caper les montées ne changerait qu'1 transition sur 4 joueurs → pas justifié vs la perte de récompense immédiate. Standard CSR (monte vite, descend lentement). Si un pic gênant apparaît en prod, la symétrie est 1 ligne dans `SmoothDisplayedOrdinal`.
+
+**Rangs finaux 4 joueurs** (groupe principal) : Madina Diamant II, JGtm Or VI, Choco Or III, XxDaemon Bronze VI. Cohérents cibles validation.

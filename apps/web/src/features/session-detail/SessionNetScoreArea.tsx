@@ -44,7 +44,7 @@ interface NetPoint {
 // eslint-disable-next-line react-refresh/only-export-components
 export function buildSessionNetScoreOption(
   series: ChartSeries<NetPoint>[],
-  opts: { seriesLabel: string },
+  opts: { seriesLabel: string; yDomain?: [number, number] },
 ): EChartsCoreOption {
   const points = series[0]?.datapoints ?? []
   if (points.length === 0) return { backgroundColor: CHART_BG }
@@ -111,7 +111,9 @@ export function buildSessionNetScoreOption(
       data: points.map((p) => p.label),
       axisLabel: { ...(axis.axisLabel as Record<string, unknown>), interval },
     },
-    yAxis: { ...axis, type: 'value' },
+    // Domaine Y figé en mode comparaison (échelle partagée A/B) ; sinon auto-scale. Le
+    // dégradé reste ancré à 0 (calculé depuis la boîte de l'aire, indépendant de l'axe).
+    yAxis: { ...axis, type: 'value', ...(opts.yDomain ? { min: opts.yDomain[0], max: opts.yDomain[1] } : {}) },
     series: [
       {
         name: opts.seriesLabel,
@@ -144,9 +146,11 @@ interface Props {
   title: string
   matches: SessionDetailMatchRow[]
   height?: number
+  /** Domaine Y [min, max] partagé A/B en mode comparaison (sinon auto-scale). */
+  yDomain?: [number, number]
 }
 
-export function SessionNetScoreArea({ title, matches, height = 280 }: Props) {
+export function SessionNetScoreArea({ title, matches, height = 280, yDomain }: Props) {
   const t = useSessionT()
   const { data: fieldMappings } = useFieldMappings()
 
@@ -175,7 +179,7 @@ export function SessionNetScoreArea({ title, matches, height = 280 }: Props) {
       title={title}
       series={series}
       height={height}
-      buildOption={(s) => buildSessionNetScoreOption(s, { seriesLabel: t('session.detail.net_score_series') })}
+      buildOption={(s) => buildSessionNetScoreOption(s, { seriesLabel: t('session.detail.net_score_series'), yDomain })}
     />
   )
 }

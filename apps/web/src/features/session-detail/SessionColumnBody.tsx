@@ -11,6 +11,7 @@
  */
 import type { SessionCompareEntry, SessionDetailMatchRow } from '@/lib/api/types'
 
+import type { CompareScale } from './_compareScale'
 import { SessionChartStack } from './SessionChartStack'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionSummaryCard } from './SessionSummaryCard'
@@ -24,6 +25,8 @@ interface Props {
   compact: boolean
   /** Côté de l'axe du profil de participation : 'right' (colonne principale) / 'left' (drawer). */
   participationSide?: 'left' | 'right'
+  /** Bornes d'axe partagées A/B (mode comparaison) — fige les échelles pour comparabilité. */
+  scale?: CompareScale
 }
 
 export function SessionColumnBody({
@@ -32,6 +35,7 @@ export function SessionColumnBody({
   playerSlug,
   compact,
   participationSide = 'right',
+  scale,
 }: Props) {
   const t = useSessionT()
 
@@ -45,6 +49,7 @@ export function SessionColumnBody({
         compact={compact}
         participationSide={participationSide}
         participationColor="compare-a"
+        scale={scale}
       />
 
       {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
