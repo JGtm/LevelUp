@@ -126,61 +126,6 @@ func TestInsertHighlightEvents_IdempotentOnDuplicate(t *testing.T) {
 
 // ─── InsertKillerVictimPairsFromEvents ────────────────────────────────────────
 
-func TestInsertKillerVictimPairsFromEvents_Empty(t *testing.T) {
-	db := openEventsDB(t)
-	err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", nil)
-	if err != nil {
-		t.Fatalf("unexpected error for nil events: %v", err)
-	}
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM killer_victim_pairs").Scan(&count)
-	if count != 0 {
-		t.Errorf("expected 0 pairs, got %d", count)
-	}
-}
-
-func TestInsertKillerVictimPairsFromEvents_WithKillAndDeath(t *testing.T) {
-	db := openEventsDB(t)
-	// Un kill de PlayerA au ms=5000, une death de PlayerB au ms=5003 (dans la tolérance).
-	events := []analysis.HighlightEvent{
-		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "kill", TimeMS: 5000},
-		{XUID: 2_500_000_000_000_002, Gamertag: "PlayerB", EventType: "death", TimeMS: 5003},
-	}
-	err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", events)
-	if err != nil {
-		t.Fatalf("InsertKillerVictimPairsFromEvents: %v", err)
-	}
-
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM killer_victim_pairs WHERE match_id = 'm1'").Scan(&count)
-	if count != 1 {
-		t.Errorf("expected 1 pair, got %d", count)
-	}
-
-	var killerXUID, victimXUID string
-	db.QueryRow("SELECT killer_xuid, victim_xuid FROM killer_victim_pairs WHERE match_id = 'm1'").
-		Scan(&killerXUID, &victimXUID)
-	if killerXUID == "" || victimXUID == "" {
-		t.Errorf("expected killer/victim XUIDs, got killer=%q victim=%q", killerXUID, victimXUID)
-	}
-}
-
-func TestInsertKillerVictimPairsFromEvents_OnlyMedals_NoPairs(t *testing.T) {
-	db := openEventsDB(t)
-	events := []analysis.HighlightEvent{
-		{XUID: 2_500_000_000_000_001, Gamertag: "PlayerA", EventType: "medal", TimeMS: 5000, IsMedal: true},
-	}
-	err := InsertKillerVictimPairsFromEvents(t.Context(), db, "m1", events)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM killer_victim_pairs").Scan(&count)
-	if count != 0 {
-		t.Errorf("expected 0 pairs for medals-only events, got %d", count)
-	}
-}
-
 // ─── MarkEventsLoaded ────────────────────────────────────────────────────────
 
 func TestMarkEventsLoaded_SetsFlag(t *testing.T) {
@@ -201,20 +146,5 @@ func TestMarkEventsLoaded_SetsFlag(t *testing.T) {
 	}
 	if bits&MBitEvents == 0 {
 		t.Errorf("expected MBitEvents bit set in backfill_completed, got %d", bits)
-	}
-}
-
-func TestMarkKillerVictimLoaded_SetsBit(t *testing.T) {
-	db := openEventsDB(t)
-	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
-
-	if err := MarkKillerVictimLoaded(t.Context(), db, "m1"); err != nil {
-		t.Fatalf("MarkKillerVictimLoaded: %v", err)
-	}
-
-	var bits int
-	db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id = 'm1'").Scan(&bits)
-	if bits&MBitKillerVictim == 0 {
-		t.Errorf("expected MBitKillerVictim bit set, got %d", bits)
 	}
 }

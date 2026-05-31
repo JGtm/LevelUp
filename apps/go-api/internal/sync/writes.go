@@ -430,63 +430,6 @@ func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, even
 	return inserted, nil
 }
 
-// InsertKillerVictimPairsFromEvents calcule et insère les paires killer→victim
-// depuis les highlight events d'un match.
-//
-// Le schéma `killer_victim_pairs` stocke **un row par kill event** (pas par
-// paire agrégée), avec colonnes (match_id, killer_xuid, killer_gamertag,
-// victim_xuid, victim_gamertag, kill_count DEFAULT 1, time_ms, is_validated,
-// created_at). Les analytics font `SUM(kill_count)` pour totaliser. La table
-// n'a pas de PRIMARY KEY (un même couple (killer, victim) peut s'entretuer
-// plusieurs fois dans un match) — donc `INSERT OR IGNORE` est rejeté par
-// DuckDB. À la place, idempotence via DELETE + INSERT pour ce match.
-func InsertKillerVictimPairsFromEvents(
-	ctx context.Context,
-	db *sql.DB,
-	matchID string,
-	events []analysis.HighlightEvent,
-) error {
-	raw := make([]analysis.RawEvent, 0, len(events))
-	for _, ev := range events {
-		if ev.EventType != analysis.EventTypeKill && ev.EventType != analysis.EventTypeDeath {
-			continue
-		}
-		raw = append(raw, analysis.RawEvent{
-			EventType: ev.EventType,
-			XUID:      strconv.FormatUint(ev.XUID, 10),
-			Gamertag:  ev.Gamertag,
-			TimeMS:    int64(ev.TimeMS),
-		})
-	}
-
-	const toleranceMS = int64(5)
-	pairs := analysis.ComputeKillerVictimPairs(raw, toleranceMS)
-	if len(pairs) == 0 {
-		return nil
-	}
-
-	if _, err := db.ExecContext(ctx, `DELETE FROM killer_victim_pairs WHERE match_id = ?`, matchID); err != nil {
-		return fmt.Errorf("InsertKillerVictimPairs delete(%s): %w", matchID, err)
-	}
-
-	stmt, err := db.PrepareContext(ctx, `
-		INSERT INTO killer_victim_pairs
-			(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, time_ms, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`)
-	if err != nil {
-		return fmt.Errorf("InsertKillerVictimPairs prepare(%s): %w", matchID, err)
-	}
-	defer stmt.Close()
-
-	now := time.Now().UTC()
-	for _, p := range pairs {
-		if _, execErr := stmt.ExecContext(ctx, matchID, p.KillerXUID, p.KillerGT, p.VictimXUID, p.VictimGT, p.TimeMS, now); execErr != nil {
-			return fmt.Errorf("InsertKillerVictimPairs exec(%s): %w", matchID, execErr)
-		}
-	}
-	return nil
-}
-
 // MarkEventsLoaded positionne le bit MBitEvents dans backfill_completed
 // et passe events_loaded = TRUE (source de vérité pour le backfill).
 func MarkEventsLoaded(ctx context.Context, db *sql.DB, matchID string) error {
@@ -497,18 +440,6 @@ func MarkEventsLoaded(ctx context.Context, db *sql.DB, matchID string) error {
 		WHERE match_id = ?`, MBitEvents, matchID)
 	if err != nil {
 		return fmt.Errorf("MarkEventsLoaded(%s): %w", matchID, err)
-	}
-	return nil
-}
-
-// MarkKillerVictimLoaded positionne le bit MBitKillerVictim dans match_registry.backfill_completed.
-func MarkKillerVictimLoaded(ctx context.Context, db *sql.DB, matchID string) error {
-	_, err := db.ExecContext(ctx, `
-		UPDATE match_registry
-		SET backfill_completed = COALESCE(backfill_completed, 0) | ?
-		WHERE match_id = ?`, MBitKillerVictim, matchID)
-	if err != nil {
-		return fmt.Errorf("MarkKillerVictimLoaded(%s): %w", matchID, err)
 	}
 	return nil
 }
