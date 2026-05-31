@@ -1,3 +1,23 @@
+## [2026-05-31] Page Escouade — fenêtre adaptative sessions + suppr. Classement + légende méta First Events
+
+**Statut** : Complété côté code (Go analysis 5 tests verts + service build OK ; tsc 0, eslint 0 sur les fichiers touchés ; SquadContributionsPage.test 4 verts). À valider en live. Commit en attente d'autorisation. Branche : feat/media-hls-transcoding.
+
+**Demande** (3 points page Escouade) :
+1. « Performance d'escouade par session » (Synergies) : garder N sessions / X jours selon le rythme du joueur.
+2. Supprimer le graphe « Classement » de la page Contributions.
+3. « Premier frag / première mort » (Contributions) : légende cliquable pour masquer joueurs / frags / morts.
+
+**Décision technique** :
+- **(1) Fenêtre adaptative hybride** (stratégie choisie par l'user parmi 4 options) : nouvelle fonction pure `analysis.SquadSessionWindowKeep(firstSeenUnixAsc, cfg)` → `horizon_jours = clamp(TargetSessions × écart_médian_jours, MinDays, MaxDays)`, puis on garde les sessions ≥ cutoff, borné `[MinSessions, MaxSessions]`. Defaults : target 12, min 6, max 20 sessions, 14..120 j. Appliquée dans `buildSquadSessionTimeline` après le tri chrono (slice de queue). Placé en `analysis/` (pur, testable sans CGO) plutôt que dans `service/`. La fenêtre ne s'active qu'au-delà de 6 sessions → tests builder existants (≤2 sessions) inchangés.
+- **(2)** Retrait de `<TimeseriesSkillProgression>` en tête de `SquadContributionsPage` + suppression du code mort associé (`adaptSquadPerfToMatchRows`, `mainPlayerSkillRows`, imports `TimeseriesMatchRow`/`SquadPerformanceSeriesPoint`). Le composant TimeseriesSkillProgression reste utilisé ailleurs (Carrière/Timeseries) — non supprimé.
+- **(3) Légende méta custom React** (stratégie choisie par l'user vs légende native ECharts) : rendue dans le slot `children` de ChartCard. 2 items type (frags/morts → masquent ce type pour tous) + 1 item par joueur (masque ses 2 séries). État `hiddenPlayers`/`hiddenTypes` (Set) passé au builder via opts ; les séries masquées reçoivent `data: [0,...]` (axes + séparateurs markLine stables). Couleurs joueur via `style={{backgroundColor: colorByPlayer[p]}}` (valeur runtime data-driven, pas de hex littéral → règle color-tokens respectée).
+
+**Résultats observés** : `go test ./internal/analysis -run TestSquadSessionWindowKeep` 5 verts ; `go build ./internal/service` OK ; `tsc -b` 0 ; eslint 0 ; vitest SquadContributionsPage 4 verts.
+
+**Fichiers** : `internal/analysis/squad_session_window.go` (+ `_test.go`), `internal/service/teammates_squad_charts_sessions_maps.go`, `apps/web/src/features/squad/{SquadContributionsPage.tsx, SquadFirstEventsChart.tsx, charts/squadFirstEventsChart.ts}`.
+
+**Prochaine étape** : validation live (page Synergies : timeline limité ; Contributions : pas de Classement, légende First Events cliquable). Commit en attente d'autorisation.
+
 ## [2026-05-31] Page sessions — échelles A/B partagées (5 graphes) en mode comparaison
 
 **Statut** : Complété côté code (typecheck 0, lint 0, 60 tests session-detail verts dont `_compareScale`). À valider en live. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.

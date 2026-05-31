@@ -93,8 +93,23 @@ func buildSquadSessionTimeline(matches []domain.SquadMatchRow) []domain.SquadSes
 		sortables = append(sortables, sortable{p, buckets[p.SessionLabel].firstSeenStartTimeUnix})
 	}
 	sort.Slice(sortables, func(i, j int) bool { return sortables[i].first < sortables[j].first })
-	out := make([]domain.SquadSessionPoint, len(sortables))
+
+	// Fenêtre adaptative au rythme du joueur : on ne garde que les sessions les
+	// plus récentes, l'horizon (en jours) étant dimensionné par l'écart médian
+	// entre sessions (cf. analysis.SquadSessionWindowKeep).
+	times := make([]int64, len(sortables))
 	for i, s := range sortables {
+		times[i] = s.first
+	}
+	keep := analysis.SquadSessionWindowKeep(times, analysis.DefaultSquadSessionWindow())
+	start := len(sortables) - keep
+	if start < 0 {
+		start = 0
+	}
+	windowed := sortables[start:]
+
+	out := make([]domain.SquadSessionPoint, len(windowed))
+	for i, s := range windowed {
 		out[i] = s.point
 	}
 	return out
