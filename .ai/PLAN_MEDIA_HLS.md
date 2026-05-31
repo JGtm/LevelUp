@@ -1,7 +1,7 @@
 # PLAN — Transcoding HLS multipiste à l'ingestion média
 
 > Branche : `feat/media-hls-transcoding` (créée depuis `fix/metadata-art-catalog-upsert-invalidation`)
-> Statut : Phase 0 (POC) complétée — implémentation en cours
+> Statut : Phases 1-6 livrées (POC navigateur Opus GO). Backend + serving + front + CLI complets.
 
 ## 1. Contexte & objectif
 
@@ -185,3 +185,26 @@ mono-piste web-natifs restent servis en direct (inchangé).
 - Multi-titres : arbre HLS sous `capturesDir` résolu par `PathResolver` ; capability `CapMedia` déjà gardée.
 - Logging `slog.*Context`. Pas de `fmt.Println`.
 - `thought_log.md` : entrée obligatoire avant chaque commit.
+
+## 10. Prérequis & exploitation
+
+### ffmpeg / ffprobe
+Requis dans le PATH (transcoding HLS + miniatures). Vérifiés par `RunHealthcheck`
+(checks `ffmpeg`/`ffprobe`). Leur absence n'empêche pas le serveur de démarrer
+mais désactive le transcoding (les MKV restent servis en remux WebM live). Build
+minimal suffisant (muxer `hls` + fMP4) ; le réencodage fallback (VP9 → H.264,
+audio exotique → AAC) exige libx264/aac.
+
+### Backfill de l'historique
+`cmd/backfill-media-hls` convertit les vidéos existantes (MKV/AVI ou multipistes)
+sans `hls_path` et reprend les `processing` orphelins. À lancer **serveur arrêté** :
+
+    go run ./cmd/backfill-media-hls --db <shared_social.duckdb> --captures-base <dir> [--slug X] [--limit N] [--dry-run]
+
+`--dry-run` liste les clips qui seraient transcodés sans rien écrire.
+
+### Validation navigateur (POC, go/no-go Opus = GO)
+Chrome lit l'Opus-in-fMP4 via hls.js **sans réencodage** : `currentTime` complet,
+2 pistes Game/Mic listées (via `AUDIO_TRACKS_UPDATED`), bascule fonctionnelle, et
+`MediaSource.isTypeSupported('audio/mp4; codecs="opus"') === true`. Safari/iOS hors
+périmètre (ne lisent pas l'Opus en HLS).

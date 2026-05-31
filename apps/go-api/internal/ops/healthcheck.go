@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -105,6 +106,12 @@ func RunHealthcheck(ctx context.Context, opts HealthcheckOptions) HealthReport {
 		}
 	}
 
+	// 8. Outillage média : ffmpeg/ffprobe (transcoding HLS + miniatures).
+	// Leur absence n'empêche pas le serveur de tourner mais désactive le
+	// transcoding des MKV multipistes (rendu visible ici plutôt qu'en échec
+	// silencieux au premier upload).
+	checks = append(checks, checkBinary("ffmpeg"), checkBinary("ffprobe"))
+
 	ok := true
 	for _, c := range checks {
 		if !c.OK {
@@ -154,6 +161,16 @@ func checkFileExists(name, path string) HealthCheck {
 		return HealthCheck{Name: name, OK: false, Message: fmt.Sprintf("introuvable: %s", path)}
 	}
 	return HealthCheck{Name: name, OK: true, Message: "présent"}
+}
+
+// checkBinary vérifie qu'un exécutable est présent dans le PATH. ffmpeg/ffprobe
+// sont requis pour le transcoding média HLS et la génération des miniatures.
+func checkBinary(name string) HealthCheck {
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return HealthCheck{Name: name, OK: false, Message: "introuvable dans le PATH — transcoding média désactivé"}
+	}
+	return HealthCheck{Name: name, OK: true, Message: path}
 }
 
 // checkDuckDB vérifie qu'une DB DuckDB s'ouvre et répond à COUNT(*).
