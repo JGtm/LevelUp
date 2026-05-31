@@ -29,6 +29,7 @@
     "@tanstack/react-table": "^8.21.3",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.6",
+    "hls.js": "^1.6.16",
     "intl-messageformat": "^10.7.18",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
