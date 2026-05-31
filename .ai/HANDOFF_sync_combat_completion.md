@@ -4,6 +4,84 @@
 > Plan complet approuvé : `C:\Users\Guillaume\.claude\plans\les-matchs-d-hier-a-whimsical-lark.md`
 > Audit cause racine : `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`
 
+## 🔧 PHASE 1b EN COURS — router la complétion via persist (reprise post-compactage ICI)
+
+**Objectif** : la complétion events/killer_victim (et skill) ne doit plus écrire en `db.Exec` direct
+dans le package `sync` ; tout passe par le package `persist`, en UNE transaction atomique, sur le writer
+RW (le `sharedDB` reçu par le post-sync EST déjà le writer provider RW — cf. correction §CORRECTION).
+
+**Slice 1 (events + killer_victim) — design validé par lecture code :**
+- Cible à remplacer : `ProcessHighlightEvents` (engine_highlight_events.go) fait aujourd'hui 3 écritures
+  séparées NON atomiques : `InsertHighlightEvents` (INSERT OR IGNORE), `InsertKillerVictimPairsFromEvents`
+  (DELETE+INSERT), `MarkEventsLoaded`/`MarkKillerVictimLoaded` (UPDATE match_registry bits). Partial-write
+  possible + db.Exec direct = exactement ce que le cadrage interdit.
+- `SharedPersister.Persist` INUTILISABLE ici : no-op si `batch.Shared.Match==nil` (shared_persister.go:67)
+  + idempotence-skip si match_registry existe. La complétion écrit events-only sur un match déjà inséré.
+- DTO réutilisables : `persist.HighlightEventInsert{MatchID,EventType,TimeMS,XUID,DetailsJSON}` (DetailsJSON
+  = colonne type_hint) et `persist.KillerVictimInsert{MatchID,KillerXUID,VictimXUID,Count}` (rows.go:49/58).
+  Helpers tx EXISTANTS (unexported, shared_persister.go:293 persistHighlightEvents = INSERT OR IGNORE ;
+  :273 persistKillerVictim = INSERT pur). ⚠️ kv en complétion doit rester DELETE-then-INSERT (idempotent
+  sur re-run) → le nouveau persister fait son propre DELETE WHERE match_id puis INSERT (ne PAS réutiliser
+  persistKillerVictim nu qui n'a pas le DELETE).
+- **À CRÉER** : `internal/persist/events_completion_persister.go` :
+  `type EventsCompletionPersister struct { db txBeginner }` (txBeginner = interface BeginTx, déjà dans
+  shared_persister.go:34). Méthode `Persist(ctx, in EventsCompletionInput) error` en 1 TX :
+  (1) INSERT OR IGNORE highlight_events (si len>0) ; (2) DELETE killer_victim_pairs WHERE match_id +
+  INSERT kv ; (3) UPDATE match_registry SET events_loaded=TRUE, backfill_completed |= MBitEvents (si events
+  insérés) ; (4) backfill_completed |= MBitKillerVictim (si kv ok). Bits : valeurs dans
+  internal/sync/backfill_flags.go (MBitEvents, MBitKillerVictim) — les passer en params (le package persist
+  ne doit pas importer sync : passer les int64 depuis le caller).
+- **Câblage** : dans `engine_highlight_events.go::ProcessHighlightEvents`, après parse, construire les
+  `[]HighlightEventInsert` + calculer les pairs (réutiliser `analysis.ComputeKillerVictimPairs` comme le
+  fait `InsertKillerVictimPairsFromEvents`), puis `persist.NewEventsCompletionPersister(sharedDB).Persist(...)`.
+  Garder l'upsert xuid_aliases vers globalDB (DB séparée, hors TX shared — best-effort inchangé).
+  Conserver le marquage events_loaded SOUS la politique film-retardé (isNoFilmDefinitive) déjà en place.
+- **Tests** : nouveau `events_completion_persister_test.go` (persist) : insert events+kv atomique,
+  idempotence re-run (kv pas dupliqués), bits marqués. + golden/bitmask/film_retry restent verts (ils
+  passent par ProcessHighlightEvents → couvrent le câblage).
+- **Garde-fou** (item suivant) : test scannant `internal/sync/**` pour interdire `db.Exec`/`Prepare` direct
+  d'INSERT/UPDATE/DELETE sur tables shared hors persist (modèle no_art_patterns_test.go). Allowlist pour
+  les sites legacy pas encore migrés (writes.go primaire) avec TODO, vide à terme.
+- ⚠️ **GOTCHA SCHÉMA killer_victim_pairs (critique, découvert 2026-05-31)** : DEUX schémas divergents !
+  - Legacy completion (`InsertKillerVictimPairsFromEvents`, writes.go:472) écrit **par-kill** :
+    `(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, time_ms, created_at)`,
+    kill_count laissé à DEFAULT 1. C'est CE schéma que lit le match-view (tug-of-war, KD timeline →
+    time_ms requis, antagonistes → gamertags).
+  - persist.`persistKillerVictim` (shared_persister.go:273) écrit **agrégé** :
+    `(match_id, killer_xuid, victim_xuid, kill_count, created_at)` — PAS de gamertags, PAS de time_ms.
+    → LOSSY. NE PAS le réutiliser pour la complétion (régresserait les graphes).
+  - Table réelle (schema.go) : match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag,
+    kill_count DEFAULT 1, time_ms, is_validated DEFAULT FALSE, created_at.
+  - DÉCISION : `EventsCompletionPersister` écrit le schéma LEGACY par-kill (avec gamertags + time_ms).
+    Input dédié `KVPairCompletion{KillerXUID,KillerGamertag,VictimXUID,VictimGamertag,TimeMS}` (NE PAS
+    réutiliser persist.KillerVictimInsert qui est la forme agrégée lossy). Le caller construit ces rows
+    depuis `analysis.ComputeKillerVictimPairs` (retourne .KillerXUID/.KillerGT/.VictimXUID/.VictimGT/.TimeMS,
+    tolérance 5ms) — exactement comme le legacy.
+  - MBit values (à passer en params depuis sync, persist n'importe pas sync) : MBitEvents=1<<16 (65536),
+    MBitKillerVictim=1<<19 (524288).
+- **Construction `[]HighlightEventInsert` (mirror EXACT du primaire collect.go:97-107)** :
+  `persist.HighlightEventInsert{MatchID: matchID, XUID: &xuidStr (strconv.FormatUint(ev.XUID,10)),
+  EventType: ev.EventType, TimeMS: ev.TimeMS, DetailsJSON: nil}`. NB : le primaire met `DetailsJSON: nil`
+  (type_hint NULL) — le legacy completion écrivait ev.TypeHint mais la plupart des matchs existants ont
+  type_hint NULL (écrits via primaire). Mirror primaire = `nil` (le DTO ne peut pas porter un int de toute
+  façon). EventsInserted = somme des RowsAffected>0 (INSERT OR IGNORE) pour décider du marquage events_loaded.
+- **Construction Pairs** : `raw := []analysis.RawEvent` filtré sur EventType kill/death (XUID=FormatUint,
+  Gamertag, TimeMS=int64(ev.TimeMS)) ; `pairs := analysis.ComputeKillerVictimPairs(raw, 5)` ;
+  map → `KVPairCompletion{p.KillerXUID, p.KillerGT, p.VictimXUID, p.VictimGT, p.TimeMS}`.
+- **API persister cible** : `NewEventsCompletionPersister(db txBeginner)` ;
+  `Persist(ctx, EventsCompletionInput) (eventsInserted int, err error)` en 1 TX :
+  (1) INSERT OR IGNORE highlight_events ; (2) si len(Pairs)>0 : DELETE kv WHERE match_id + INSERT par-kill
+  (match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, time_ms, created_at) ;
+  (3) UPDATE match_registry une seule fois : `backfill_completed |= mask`, `events_loaded = events_loaded OR ?`
+  où mask = (EventsBit si eventsInserted>0) | (KillerVictimBit si MarkKV). Input porte EventsBit/KillerVictimBit
+  (int64, passés par le caller sync) + MarkKV bool. events_loaded passe TRUE seulement si eventsInserted>0.
+- **Slice 2 (skill heal)** : `healSkill`→`InsertParticipants` (db.Exec) idem → persister participants
+  completion. Plus petit, faire après slice 1 validée.
+- **NE PAS** toucher au chemin PRIMAIRE batch (collect.go→SharedPersister) qui marche déjà.
+- Vérif obligatoire AVANT commit : `cd apps/go-api` (le shell perd son CWD!) puis
+  `CGO_ENABLED=1 PATH=/c/msys64/ucrt64/bin:$PATH go test -tags cgo ./internal/sync/ ./internal/persist/ -count=1`
+  + `go vet`. Relire le EXIT/tail AVANT de committer (cf. leçon test rouge 67742cd14).
+
 ## ÉTAT COMMITS (branche fix/sync-combat-completion-persist)
 - `7c584c158` honnêteté compteurs heal (failed≠no_film) + tests.
 - `1672f34b2` fail-fast shared-RO (assertSharedWritable) + tests.
