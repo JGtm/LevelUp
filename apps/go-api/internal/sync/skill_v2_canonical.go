@@ -113,10 +113,22 @@ func writeCanonicalLUSRRow(ctx context.Context, playerDB *sql.DB, matchID string
 	if playerDB == nil {
 		return fmt.Errorf("writeCanonicalLUSRRow: playerDB nil")
 	}
-	rating := skillv2.MapMuToLegacyRating(state.Mu, boundaries)
 	deviation := skillv2.MapSigmaToLegacyDeviation(state.Sigma)
-	tier, sub := skillv2.InferTier(state.Mu, boundaries)
-	label := skillv2.FormatTierLabel(state.Mu, boundaries)
+
+	// Palier CIBLE (μ brut) puis lissage d'affichage : montée immédiate, descente
+	// ≤1 sous-palier/match (hystérésis / demotion protection), désactivé pendant
+	// la phase de placement. μ interne reste honnête ; seul l'AFFICHÉ est lissé.
+	// Cf. skill_v2/display_smoothing.go + étude .ai/thought_log.md [2026-05-31].
+	tgtTier, tgtSub := skillv2.InferTier(state.Mu, boundaries)
+	targetOrd := skillv2.TierOrdinal(boundaries, tgtTier.Name, tgtSub)
+	prevOrd := loadPreviousDisplayedOrdinal(ctx, playerDB, state.PlaylistGroup, boundaries)
+	dispOrd := skillv2.SmoothDisplayedOrdinal(prevOrd, targetOrd, state.Experience)
+	tier, sub := skillv2.TierSubFromOrdinal(boundaries, dispOrd)
+
+	// rating_value reflète le palier AFFICHÉ (lissé), pas μ brut — sinon le
+	// libellé et la valeur divergeraient quand l'hystérésis bride la descente.
+	rating := skillv2.MapTierSubToLegacyRating(tier, sub)
+	label := skillv2.FormatTierSubLabel(tier, sub)
 
 	tierName := tier.Name
 	tierFR := tier.NameFR
@@ -187,4 +199,35 @@ func loadPreviousLUSRRating(ctx context.Context, playerDB *sql.DB, playlistGroup
 		return nil
 	}
 	return &v.Float64
+}
+
+// loadPreviousDisplayedOrdinal retourne l'ordinal de palier AFFICHÉ au match
+// précédent du groupe (slot rating_type='LUSR'), pour alimenter l'hystérésis de
+// descente. Retourne -1 si aucun précédent ou en cas d'erreur (→ pas de lissage,
+// on affiche la cible). Lit le tier/sub_tier lissés du match précédent, donc
+// l'hystérésis se chaîne correctement de match en match.
+func loadPreviousDisplayedOrdinal(ctx context.Context, playerDB *sql.DB, playlistGroup string, boundaries []skillv2.TierBoundary) int {
+	if playerDB == nil {
+		return -1
+	}
+	var tierName sql.NullString
+	var subTier sql.NullInt64
+	err := playerDB.QueryRowContext(ctx, `
+		SELECT tier, sub_tier FROM match_skill_rank
+		WHERE rating_type = 'LUSR' AND playlist_group = ? AND tier IS NOT NULL
+		ORDER BY written_at DESC, id DESC
+		LIMIT 1`, playlistGroup).Scan(&tierName, &subTier)
+	if err == sql.ErrNoRows || !tierName.Valid {
+		return -1
+	}
+	if err != nil {
+		slog.WarnContext(ctx, "LUSR v2: lecture palier précédent échouée — hystérésis désactivée ce match",
+			"group", playlistGroup, "err", err)
+		return -1
+	}
+	sub := 0
+	if subTier.Valid {
+		sub = int(subTier.Int64)
+	}
+	return skillv2.TierOrdinal(boundaries, tierName.String, sub)
 }

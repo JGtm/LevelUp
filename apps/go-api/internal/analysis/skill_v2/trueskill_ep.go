@@ -56,6 +56,15 @@ const DefaultQuitDeltaRelated = 1.0
 // Calibré pour ≈ β en unités v2.
 const DefaultQuitDeltaUnrelated = 2.5
 
+// QuitPenaltyMuCap borne l'impact d'un quit sur μ (étude volatilité
+// .ai/thought_log.md [2026-05-31]). Sur la grille tier, une pénalité brute de
+// −2.5 μ représente plusieurs sous-paliers d'un seul coup (jusqu'à ~6 sur le
+// Platine étroit). On plafonne à 1.5 μ : la distinction related (1.0) / unrelated
+// (capé 1.5) reste, mais le pire cas ne peut plus éjecter un joueur d'un tier
+// complet en un match. L'hystérésis d'affichage (display_smoothing.go) lisse en
+// plus la descente résiduelle à 1 sous-palier/match.
+const QuitPenaltyMuCap = 1.5
+
 // UpdateTwoTeamEP : équivalent EP de UpdateTwoTeam.
 //
 // Garantit numériquement le même résultat (au tolérance EP près, typiquement
@@ -210,6 +219,9 @@ func applyQuitPenaltyPost(team []Gaussian, counts []PlayerCounts) {
 		d := pc.QuitPenaltyDelta
 		if d <= 0 {
 			d = DefaultQuitDeltaRelated
+		}
+		if d > QuitPenaltyMuCap {
+			d = QuitPenaltyMuCap
 		}
 		team[i].Mu -= d
 	}

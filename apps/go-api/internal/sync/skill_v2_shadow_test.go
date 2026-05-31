@@ -1216,16 +1216,16 @@ func TestRunLUSRV2Shadow_QuitContext_LeadingAtQuit(t *testing.T) {
 		return st.Mu
 	}
 
-	muWithTimeline := runQuit(true) // menait au quit → unrelated (2.5)
+	muWithTimeline := runQuit(true) // menait au quit → unrelated (2.5, capé à QuitPenaltyMuCap=1.5)
 	muFallback := runQuit(false)    // pas de timeline → fallback outcome (Loss → related 1.0)
 
 	if !(muWithTimeline < muFallback) {
 		t.Errorf("menait au quit → pénalité forte → μ plus bas : withTimeline=%v doit < fallback=%v",
 			muWithTimeline, muFallback)
 	}
-	// Écart attendu = DefaultQuitDeltaUnrelated - DefaultQuitDeltaRelated = 2.5 - 1.0 = 1.5
-	// (appliqué post-EP, EP identique entre les 2 runs).
-	if diff := muFallback - muWithTimeline; diff < 1.49 || diff > 1.51 {
-		t.Errorf("écart de pénalité attendu ≈ 1.5, got %v", diff)
+	// Écart attendu = min(DefaultQuitDeltaUnrelated, QuitPenaltyMuCap) - DefaultQuitDeltaRelated
+	// = 1.5 - 1.0 = 0.5 depuis le cap quit [2026-05-31] (appliqué post-EP, EP identique).
+	if diff := muFallback - muWithTimeline; diff < 0.49 || diff > 0.51 {
+		t.Errorf("écart de pénalité attendu ≈ 0.5 (cap unrelated 1.5 − related 1.0), got %v", diff)
 	}
 }

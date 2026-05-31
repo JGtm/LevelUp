@@ -34,9 +34,12 @@ func TestMapMuToLegacyRating_ReferencePlayers(t *testing.T) {
 		wantTier   string
 		wantApprox float64 // tolérance ±10 sur le rating
 	}{
-		{"Madina BTB Diamant II", 26.17, "Diamond", 1833},       // 1800 + 1/6*200
-		{"Madina Slayer Diamant II", 26.12, "Diamond", 1833},    // 26.12 dans Diamant sub 2 → 1833
-		{"Madina Objectif Platine VI", 25.75, "Platinum", 1767}, // 1600 + 5/6*200 ≈ 1767
+		// Diamant 3 sous-paliers (band 66.7), Platine 2 (band 100) — cf. grille
+		// uniformisée [2026-05-31]. Les tiers restent identiques (calibration
+		// préservée), seules les valeurs sous-palier changent.
+		{"Madina BTB Diamant I", 26.17, "Diamond", 1800},        // sub 1 → 1800
+		{"Madina Slayer Diamant I", 26.12, "Diamond", 1800},     // sub 1 → 1800
+		{"Madina Objectif Platine II", 25.75, "Platinum", 1700}, // 1600 + 1*100 = 1700
 		{"Chocoboflor Or IV", 23.81, "Gold", 1500},              // 1400 + 3/6*200 = 1500
 		{"JGtm Or IV", 23.52, "Gold", 1500},                     // idem
 		{"XxDaemon Bronze VI", 20.38, "Bronze", 1167},           // 1000 + 5/6*200 ≈ 1167

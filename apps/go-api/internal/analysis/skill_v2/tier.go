@@ -31,10 +31,6 @@ package skill_v2
 // lusr_hyperparams_v2 avec un source = "batch_YYYY_MM". TierBoundariesFromHyperparams
 // fera le merge defaults ↔ overrides.
 
-import (
-	"fmt"
-)
-
 // TierBoundary décrit un palier de la grille tier.
 type TierBoundary struct {
 	Name     string  // identifiant canonique EN (Bronze, Silver, Gold, ...)
@@ -50,12 +46,27 @@ type TierBoundary struct {
 // Bornes strictement ordonnées par MinMu croissant. Grille ouverte :
 // Bronze couvre [-∞, MinMu_Silver) ; Onyx couvre [MinMu_Onyx, +∞).
 func DefaultTierBoundaries() []TierBoundary {
+	// SubTiers calibrés (étude volatilité .ai/thought_log.md [2026-05-31]) pour
+	// UNIFORMISER la largeur d'un sous-palier (~0.33–0.5 μ) SANS toucher les
+	// bornes (la calibration tier↔CSR validée — Madina Diamant, etc. — est
+	// préservée). Les tiers étroits (Argent 1.0 μ, Platine 0.8 μ, Diamant 1.2 μ)
+	// avaient des sous-paliers ridiculement fins (0.13–0.2 μ) qu'un seul match
+	// traversait en rafale ; on réduit leur nombre de sous-paliers pour élargir
+	// chaque bande et limiter le lag sous l'hystérésis d'affichage.
+	//
+	//	Tier     bornes        sous-paliers   largeur sous-palier
+	//	Bronze   [0, 21[       6              3.500 μ
+	//	Argent   [21, 22[      3              0.333 μ
+	//	Or       [22, 25[      6              0.500 μ
+	//	Platine  [25, 25.8[    2              0.400 μ
+	//	Diamant  [25.8, 27[    3              0.400 μ
+	//	Onyx     [27, ∞[       1              ouvert
 	return []TierBoundary{
 		{Name: "Bronze", NameFR: "Bronze", MinMu: 0, SubTiers: 6},
-		{Name: "Silver", NameFR: "Argent", MinMu: 21.0, SubTiers: 6},
+		{Name: "Silver", NameFR: "Argent", MinMu: 21.0, SubTiers: 3},
 		{Name: "Gold", NameFR: "Or", MinMu: 22.0, SubTiers: 6},
-		{Name: "Platinum", NameFR: "Platine", MinMu: 25.0, SubTiers: 6},
-		{Name: "Diamond", NameFR: "Diamant", MinMu: 25.8, SubTiers: 6},
+		{Name: "Platinum", NameFR: "Platine", MinMu: 25.0, SubTiers: 2},
+		{Name: "Diamond", NameFR: "Diamant", MinMu: 25.8, SubTiers: 3},
 		{Name: "Onyx", NameFR: "Onyx", MinMu: 27.0, SubTiers: 1},
 	}
 }
@@ -131,20 +142,10 @@ func InferTier(mu float64, boundaries []TierBoundary) (TierBoundary, int) {
 }
 
 // FormatTierLabel retourne le label FR complet (ex: "Or III") pour un μ.
+// Délègue à FormatTierSubLabel (display_smoothing.go) après résolution du tier.
 func FormatTierLabel(mu float64, boundaries []TierBoundary) string {
 	tier, sub := InferTier(mu, boundaries)
-	if tier.Name == "" {
-		return "Non classé"
-	}
-	if sub == 0 {
-		return tier.NameFR
-	}
-	roman := map[int]string{1: "I", 2: "II", 3: "III", 4: "IV", 5: "V", 6: "VI"}
-	r, ok := roman[sub]
-	if !ok {
-		return tier.NameFR
-	}
-	return fmt.Sprintf("%s %s", tier.NameFR, r)
+	return FormatTierSubLabel(tier, sub)
 }
 
 // lowercase : version ASCII rapide (pas d'unicode dans nos noms canoniques).
