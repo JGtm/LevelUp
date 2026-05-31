@@ -14,6 +14,7 @@ interface PerfOptShape {
     markLine: { data: Array<{ yAxis: number }>; label: { formatter: string } }
   }>
   xAxis?: { type: string; data: unknown[] }
+  yAxis?: { min?: number; max?: number }
 }
 
 function makeSeries(points: Array<{ score: number; tier: number }>) {
@@ -48,6 +49,9 @@ describe('buildSessionPerfOption', () => {
     // Axe X catégoriel, 1 étiquette par match.
     expect(opt.xAxis!.type).toBe('category')
     expect(opt.xAxis!.data).toHaveLength(3)
+    // Échelle Y FIXE 0..100 (le max 100 doit toujours être affiché).
+    expect(opt.yAxis!.min).toBe(0)
+    expect(opt.yAxis!.max).toBe(100)
   })
 
   it('option vide (pas de série) si aucun point', () => {
