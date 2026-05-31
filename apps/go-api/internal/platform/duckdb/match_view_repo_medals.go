@@ -108,27 +108,16 @@ func (r *MatchViewRepo) lookupMedalMeta(ctx context.Context, medalIDs []int64) m
 			result[id] = medalMeta{label: label, description: desc, difficulty: diff}
 		}
 	}
-	// Fallback citation_mappings pour les IDs absents de medal_definitions.
+	// Fallback citation_mappings pour les IDs absents de medal_definitions
+	// (source unique partagée, cf. medal_citation_fallback.go).
 	missing := make([]int64, 0)
 	for _, id := range medalIDs {
 		if _, ok := result[id]; !ok {
 			missing = append(missing, id)
 		}
 	}
-	if len(missing) > 0 {
-		fb := lookupLabelsByID(
-			ctx,
-			r.pdb.Metadata,
-			`SELECT medal_id, citation_name_display
-			 FROM citation_mappings
-			 WHERE medal_id IN (%s)
-			   AND citation_name_display IS NOT NULL
-			   AND citation_name_display <> ''`,
-			missing,
-		)
-		for id, label := range fb {
-			result[id] = medalMeta{label: label, difficulty: "Normal"}
-		}
+	for id, label := range lookupMedalCitationLabels(ctx, r.pdb.Metadata, missing) {
+		result[id] = medalMeta{label: label, difficulty: "Normal"}
 	}
 	return result
 }

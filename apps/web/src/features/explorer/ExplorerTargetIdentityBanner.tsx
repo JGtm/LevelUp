@@ -42,6 +42,7 @@ export function ExplorerTargetIdentityBanner({
   const emblemUrl = identity?.emblem_image_url ?? null
   const spartanID = identity?.spartan_id ?? null
   const careerRank = identity?.career_rank ?? null
+  const careerAdornmentUrl = careerRank?.adornment_image_url ?? null
   const highestCSR = identity?.highest_csr ?? null
   const highestLUSR = identity?.highest_lusr ?? null
   const hasSkillPeaks = highestCSR != null || highestLUSR != null
@@ -98,9 +99,30 @@ export function ExplorerTargetIdentityBanner({
           />
         )}
 
-        <div className="relative flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center">
+        <div
+          className={`relative flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center ${
+            careerAdornmentUrl ? 'pr-24 sm:pr-28' : ''
+          }`}
+        >
+          {/* Adornment carrière (parité Home) : couche décorative à droite,
+              derrière l'identité (z-[1] vs z-[2]), bornée à la zone hero pour ne
+              pas chevaucher la barre XP. Le drop-shadow rgba(...) est une couleur
+              structurelle (tolérée, règle 20 CLAUDE.md) — recopié du banner Home. */}
+          {careerAdornmentUrl && (
+            <div className="pointer-events-none absolute bottom-0 right-2 top-0 z-[1] flex items-start">
+              <img
+                data-testid="explorer-target-adornment-image"
+                src={careerAdornmentUrl}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-auto object-contain object-top drop-shadow-[0_14px_20px_rgba(8,15,28,0.48)]"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          )}
           {/* Emblem */}
-          <div className="flex-shrink-0">
+          <div className="relative z-[2] flex-shrink-0">
             {emblemUrl ? (
               <img
                 data-testid="explorer-target-emblem"
@@ -122,7 +144,7 @@ export function ExplorerTargetIdentityBanner({
           </div>
 
           {/* Identité */}
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="relative z-[2] flex min-w-0 flex-1 flex-col gap-1">
             <h2 className="truncate text-2xl font-bold text-foreground sm:text-3xl">
               {gamertag}
             </h2>

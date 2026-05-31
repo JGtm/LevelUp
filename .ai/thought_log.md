@@ -43,6 +43,67 @@ forcé, résolution metadata, statut front.
 
 ---
 
+## [2026-05-31] Explorer — Profil de combat : graphes (BACKEND livré, frontend handoff)
+
+**Statut** : Backend **complété + committé + poussé** (`d9afff3a`), build + tests Go verts. Frontend (5 graphes) **NON fait ici** → handoff `.ai/HANDOFF_EXPLORER_COMBAT_CHARTS_FRONTEND.md` (committé `70cd1218`). Plan source récupéré du commit `8bf0d2a6` et committé (`0b90c602`) : `.ai/PLAN_explorer_combat_profile_charts.md`. Branche `fix/explorer-combat-profile-identity` synchronisée avec origin.
+
+**Demande** : implémenter `.ai/PLAN_explorer_combat_profile_charts.md` = section graphes sur les 20 derniers matchs PvP du joueur cible (Explorer mode Joueur). 5 graphes : G1 FDA+frags/morts/assists, G2 dégâts empilés, G3 score+placement (axe inversé), G4 folie max+frags parfaits, G5 donut modes.
+
+**Backend livré (commit d9afff3a, 7 fichiers)** :
+- `domain/explorer.go` : type `ExplorerTargetRecentMatch` + champ `CombatProfile` dans `ExplorerTargetProfile`.
+- `port/repository.go` : `GetTargetRecentMatches(ctx, xuid, limit)` dans `ExplorerRepository` (+ noop).
+- `platform/duckdb/queries_match.go` : `Q19cTargetRecentMatches`.
+- `platform/duckdb/explorer_repo.go` : `GetTargetRecentMatches` + `scanTargetRecentMatch`.
+- `service/explorer_service.go` : `computeTargetCombatProfile` (goroutine errgroup gctx, best-effort) → `CombatProfile`, `explorerCombatProfileLimit=20`.
+- Tests : `explorer_repo_recent_test.go` (intégration :memory:) + `explorer_service_test.go` (`TestExplorerService_TargetProfile_CombatProfile`).
+
+**Déviation assumée vs plan (documentée dans le commit)** : le plan prévoyait un filtre PvP en Go via `analysis.InferModeCategoryFromPairName` + buffer `LIMIT 60`. Cette fonction **n'existe pas** dans le repo (le plan demandait justement de « localiser la fonction exacte avant d'implémenter »). À la place : filtre PvP **EN SQL** via `match_registry.is_firefight` (`COALESCE(is_firefight,FALSE)=FALSE`, pattern déjà utilisé par engagement_score_repo + career highlights). Plus simple, plus fiable, pas de buffer. `LIMIT 20` direct. `perfect_kills` via LEFT JOIN `medals_earned` (1512363953). `rank` NULL (DNF) → `*int` nil ; damage DOUBLE → int.
+
+**Résultats observés (backend)** : `gofmt` propre ; `go build ./...` exit 0 ; `go test -tags=integration ./internal/platform/duckdb -run TestExplorerRepo_GetTargetRecentMatches` 2 verts (ordre DESC, exclusion Firefight, LIMIT, perfect LEFT JOIN COALESCE 0, rank nil DNF, gardes xuid vide/limit<=0/inconnu) ; `go test ./internal/service` vert (CombatProfile peuplé / nil best-effort). Push origin OK (hooks pre-push verts).
+
+**Frontend NON fait — raison (honnêteté)** : l'environnement de cette session est dégradé — lectures de fichiers intermittentes (Read renvoie vide/tronqué), tooling front inutilisable (node_modules incomplet → `tsc`/`vitest`/regen i18n cassés). Écrire ~8 fichiers TSX (builders dual-axe + 5 charts + conteneur) contre des APIs de composants que je ne peux pas lire de façon fiable, sans compiler ni tester, produirait du code probablement cassé. Décision utilisateur (AskUserQuestion) : **hand-off sur machine de dev**. Cohérent avec « report outcomes faithfully » : on ne pousse pas de frontend non vérifiable.
+
+**Leçon de session (process)** : trop d'appels parallèles dans un env glitchy → cascades d'annulations + edits ratés silencieux (dont CETTE entrée thought_log, écrite seulement au 2e passage). Passer en appels séquentiels et re-vérifier l'état réel (git show HEAD, grep disque) après chaque étape sensible.
+
+**Prochaine étape** : implémenter le frontend sur la machine de dev en suivant `.ai/HANDOFF_EXPLORER_COMBAT_CHARTS_FRONTEND.md` (le DTO `combat_profile` est déjà servi par l'API).
+
+## [2026-05-31] Explorer — Profil de combat : DTO identité + fallback médailles + adornment
+
+**Statut** : Code complété **Phases 1, 2, 3.5 ET 3.6**, tests automatisés **VERTS**. Go : `gofmt -w` + `go build ./...` (CGO) + `go test` service & duckdb-integration OK. Front : vitest 9/9 + eslint 0 sur fichiers touchés. typecheck `tsc -b` échoue uniquement sur `CoverFlowModal.tsx` (`hls.js` déclaré dans package.json mais `node_modules` pas installé dans cet env → `npm install` résout ; **hors scope**, aucune erreur sur mes fichiers). Arbre de travail = uniquement mon diff (vérifié). Reste : validation LIVE (Zscaler peut bloquer). Phase 3.6 = option « pool local de bannières » (choix utilisateur). Branche : `fix/explorer-combat-profile-identity`. Commit en attente d'autorisation. Handoff : `.ai/HANDOFF_EXPLORER_COMBAT_PROFILE.md`.
+
+**Demande** : implémenter `.ai/PLAN_EXPLORER_COMBAT_PROFILE.md` — l'encart « profil de combat » Explorer n'affiche jamais emblème/nameplate/bannière/adornment, et les médailles n'affichent qu'un ID.
+
+**Cause racine (rappel plan)** :
+1. `ExplorerTargetProfile.Identity` typé `*HomeSpartanIdentityRow` (struct brute SANS tags JSON → clés PascalCase, champs de rang plats), alors que le front lit du snake_case + `career_rank` imbriqué (type TS `HomeSpartanIdentity`). Bug invisible en curl, fatal au front : tous les champs `undefined`. La Home marchait car elle convertit via `analysis.BuildSpartanIdentity`.
+2. Fallback `citation_mappings` présent seulement dans le résolveur match-view ; absent de `MedalDefinitionsRepo.LookupByIDs` (Explorer/Squad) et `resolveMedalLabels` (tuile Home) → libellés vides.
+3. Banner Explorer (compact) ne rendait pas l'adornment (vs Home).
+
+**Décision technique** :
+- **Phase 1 (cœur du fix)** : `domain.ExplorerTargetProfile.Identity` → `*HomeSpartanIdentity` (DTO). Dans `explorer_service.go`, `fetchTargetIdentity` renommé `fetchTargetIdentityRaw` (produit la brute + applyBannerFallback) ; conversion via `analysis.BuildSpartanIdentity(raw, ctxkeys.Locale(ctx), s.deps.Ranks)` après le `g.Wait()`. Nouveau champ `Ranks *mappings.RankCatalog` dans `ExplorerTargetProfileDeps`, câblé dans `registry_pages.go` depuis `r.semanticFor(pdb.TitleSlug).Ranks()` (même source que HomeService, nil-safe). Aucun changement de type front (TS déclarait déjà `HomeSpartanIdentity`).
+- **Phase 2 (DRY)** : helper unique `lookupMedalCitationLabels` + const `medalCitationFallbackQuery` dans le nouveau `medal_citation_fallback.go` (package duckdb). Les 3 résolveurs l'utilisent (match-view refactoré pour éliminer la requête inline → 1 seule copie, règle DRY ≤2 respectée). `medal_definitions_repo` et `home_repo_medals_citations` gagnent le fallback manquant. Détection « missing » : ID absent OU libellé vide (parité match-view).
+- **Phase 3.5 (parité visuelle)** : `ExplorerTargetIdentityBanner.tsx` rend l'adornment depuis `career_rank.adornment_image_url`, en miroir Home, mais scopé à la zone hero (absolute bottom-0/top-0 de la div hero, pas du card entier) pour ne PAS chevaucher la barre XP qui — contrairement à la Home — vit dans le même conteneur ; adornment en `z-[1]` derrière emblème/identité (`z-[2]`) + padding droit réservé. Drop-shadow rgba structurel toléré (règle 20).
+- **Phase 3.6 (repli bannière, option C choisie par l'user)** : si une cible non-locale n'a ni bannière ni backdrop, `applyBannerFallbacks` (service) pioche une nameplate **déterministe par xuid** (`pickDeterministicBanner`, hash FNV-32a % len) dans le pool dédupliqué des `banner_image_url` des joueurs suivis. Pool résolu **paresseusement** (`LocalBannerPool` dep, câblé par `newExplorerLocalBannerPool` dans le registry via `cfg.LoadPlayers` → `resolveByGT` pool-cached → `HomeRepo.LoadSpartanIdentity`) — gathered seulement dans ce cas rare. Limite assumée : nameplate « empruntée » à un autre joueur ; vide si aucune bannière locale.
+
+**Logging (couverture ajoutée)** : `lookupMedalCitationLabels` émet un DEBUG `medal_citation_fallback` (requested vs resolved) → routé vers `logs/duckdb.log` par le MultiModuleHandler (détection PC d'appel). C'est le diagnostic clé du symptôme « médailles en ID nu » (lookupLabelsByID dégrade silencieusement). `newExplorerLocalBannerPool` émet `explorer_banner_pool_built` (size) → `logs/http.log`. Chemin identité : WARN `explorer_target_identity_live_failed` / `_live_budget_exceeded` (existants) + DEBUG `explorer_target_banner_pool_fallback` (3.6).
+
+**Tests ajoutés (exécutés, verts)** :
+- `explorer_service_test.go` : 3 assertions `.RankNumber` → `.CareerRank.RankNumber` ; `TestExplorerService_TargetProfile_IdentitySerializesAsDTO` (le test qui aurait attrapé le bug : JSON snake_case + `career_rank` + adornment, jamais de PascalCase ; couvre `Ranks==nil` → titre via `RankName`) ; `_DeterministicBannerFallback` + `TestPickDeterministicBanner` (Phase 3.6).
+- `medal_citation_fallback_test.go` (nouveau, `//go:build integration`) : helper partagé (+ contrat nil-safe) + les 3 résolveurs (`resolveMedalLabels` Home, `lookupMedalMeta` Match, déléguant au helper).
+- `medal_definitions_repo_test.go` (nouveau, `//go:build integration`) : dataset hétérogène (ID dans medal_definitions, ID seulement dans citation_mappings, ID à libellé vide rattrapé par le fallback) — Explorer/Squad.
+- `ExplorerTargetIdentityBanner.test.tsx` (nouveau) : rendu emblème/bannière/rang/adornment + dégradé `identity=null` + absence d'adornment.
+
+**Résultats observés (tout VERT)** : `gofmt -l` propre ; `go vet` (service/duckdb/api/domain) exit 0 ; `go build ./...` (CGO) exit 0 ; `go test ./internal/service` → `ok` ; `go test -tags=integration ./internal/platform/duckdb` suite COMPLÈTE → `ok` (hors 1 FAIL pré-existant, cf. ci-dessous) ; médailles/citations re-jouées `-count=2..3` stables ; `go test ./internal/api/...` → `ok`. Front : `vitest` banner+profile **9/9** (EXIT 0), `eslint` 0 sur fichiers touchés. typecheck `tsc -b` : seules erreurs sur `CoverFlowModal.tsx` (`hls.js` déclaré dans package.json mais `node_modules` pas installé dans cet env → `npm install` résout ; hors scope, 0 erreur sur mes fichiers).
+
+**Vérif finale — 2 erreurs de MA part, corrigées (honnêteté)** :
+1. **Faux diagnostic « bug curseur »** : 2 tests rouges au départ → j'ai d'abord cru à un curseur SQL gardé ouvert. FAUX. La vraie cause était mon **seed de test FR-first** : j'avais inventé `name_fr='Tueur de joie'` (libellé bidon) alors que le test assertait `'Killjoy'`. Corrigé en seedant `name_en='Killjoy'` seul. Les `_ = rows.Close()` ajoutés à tort ont été **retirés** ; les 3 résolveurs sont revenus au `defer rows.Close()` standard. Plus aucune trace « curseur » ni « Tueur de joie » (grep global = 0).
+2. **Working tree corrompu par un `git stash pop` imprudent** : pour prouver que le FAIL ci-dessous était pré-existant, j'ai stashé un arbre non commité → conflit sur fichiers untracked (2 fichiers tronqués + `.orig`). **Réparé** (fichiers réécrits, `.orig` supprimé). Leçon : ne pas stash-pop un arbre untracked non commité.
+
+**FAIL pré-existant (PAS cette tâche)** : `TestNoUnauthorizedSharedSocialMention` échoue sur la branche de base nue (prouvé par stash → run → même FAIL), pointant `cmd/backfill-media-hls/main.go` + `internal/ops/media_hls.go` (chantier HLS, commits `3abd4537`/`20266047`). À corriger séparément : ajouter ces 2 fichiers à `sharedSocialFilesWhitelist` (`no_attach_on_social_test.go`).
+
+**Joueur inconnu (ex. Nilton410) — répondu** : le flux de récupération live (Spartan ID + cosmétiques d'un xuid tiers via `/customization?view=public`) a DÉJÀ été validé en runtime le 2026-05-30 (curl JGtm→Nilton410 : SpartanID "MELG" + emblem/backdrop/banner + career rank 272 « Hero Gold »). Ma PR Phase 1 ne change QUE la sérialisation (DTO snake_case) de cette donnée, pas la récupération. ⚠️ Lever un malentendu : Nilton410 reçoit SA VRAIE bannière (vue publique), PAS une aléatoire ; le pool déterministe (3.6) n'est qu'un filet ultime si banner ET backdrop sont vides (rare). Re-validation live NON rejouable dans cet env (db_profiles/tokens absents) → checklist prête dans le handoff pour la machine de dev de l'utilisateur.
+
+**Prochaine étape** : (1) validation live endpoint Explorer + visuel sur la machine de dev (checklist handoff) ; (2) commit (en attente d'autorisation). Détail dans `.ai/HANDOFF_EXPLORER_COMBAT_PROFILE.md`.
+
 ## [2026-05-31] Transcoding HLS multipiste à l'ingestion média (6 phases)
 
 **Statut** : Complété (backend + serving + front + CLI). POC navigateur Opus GO. Branche : feat/media-hls-transcoding. Commits b3c16c8b5, 233b58ee0, 20f41cf62, 20266047d + raffinement logging.

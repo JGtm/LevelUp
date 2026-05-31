@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -151,7 +153,18 @@ type ExplorerTargetProfileDeps struct {
 	// SeasonCSR : pic de rang CSR par saison passée (badge au-dessus des barres).
 	// nil → pas de badge.
 	SeasonCSR ExplorerSeasonCSRProvider
-	TitleSlug string
+	// Ranks : catalogue des rangs de carrière du titre (issu du SemanticAdapter)
+	// pour localiser RankTitle/NextRankTitle dans le DTO d'identité. nil → titres
+	// résolus via le fallback RankName (player DB) puis "Rang N" (cf.
+	// analysis.BuildSpartanIdentity, nil-safe).
+	Ranks *mappings.RankCatalog
+	// LocalBannerPool : pool de bannières (nameplates) connues localement —
+	// banner_image_url des joueurs suivis. Résolu PARESSEUSEMENT : appelé
+	// uniquement quand la cible n'a ni bannière ni backdrop (cas non-local sans
+	// customisation publique résolue). Sert à donner une nameplate de repli
+	// déterministe par xuid. nil → pas de repli aléatoire (on garde le vide).
+	LocalBannerPool func(ctx context.Context) []string
+	TitleSlug       string
 }
 
 // NewExplorerService crée un ExplorerService.
@@ -292,12 +305,13 @@ func (s *ExplorerService) buildTargetProfile(
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
 	var (
-		identity     *domain.HomeSpartanIdentityRow
-		careerStats  *domain.NormalizedPlayerStats
-		topMedals    []domain.MedalDigestItem
-		seasonCSRs   []domain.CareerPlaylistCSR
-		matchsPerSea []domain.SeasonMatchCount
-		sampleStats  *domain.ExplorerTargetSampleStats
+		identityRaw   *domain.HomeSpartanIdentityRow
+		careerStats   *domain.NormalizedPlayerStats
+		topMedals     []domain.MedalDigestItem
+		seasonCSRs    []domain.CareerPlaylistCSR
+		matchsPerSea  []domain.SeasonMatchCount
+		sampleStats   *domain.ExplorerTargetSampleStats
+		combatProfile []domain.ExplorerTargetRecentMatch
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -307,7 +321,7 @@ func (s *ExplorerService) buildTargetProfile(
 	defer cancelLive()
 
 	g.Go(func() error {
-		identity = s.fetchTargetIdentity(liveCtx, targetXUID, targetGamertag, hasAuth)
+		identityRaw = s.fetchTargetIdentityRaw(liveCtx, targetXUID, targetGamertag, hasAuth)
 		return nil
 	})
 	g.Go(func() error {
@@ -321,6 +335,9 @@ func (s *ExplorerService) buildTargetProfile(
 	})
 	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
+	// Profil de combat : N derniers matchs PvP de la cible (calcul local DuckDB,
+	// indépendant des tokens → gctx, non borné par le budget live).
+	g.Go(func() error { combatProfile = s.computeTargetCombatProfile(gctx, targetXUID); return nil })
 
 	_ = g.Wait()
 
@@ -329,6 +346,12 @@ func (s *ExplorerService) buildTargetProfile(
 			"gamertag", targetGamertag, "budget", explorerTargetLiveBudget.String())
 	}
 
+	// Sérialise l'identité en DTO snake_case (career_rank imbriqué + adornment)
+	// comme la Home, au lieu de la struct brute PascalCase. C'est le cœur du fix :
+	// le front lit identity.banner_image_url / career_rank.rank_title. nil-safe
+	// (Ranks peut être nil → fallback RankName ; identityRaw nil → DTO nil).
+	identity := analysis.BuildSpartanIdentity(identityRaw, ctxkeys.Locale(ctx), s.deps.Ranks)
+
 	return &domain.ExplorerTargetProfile{
 		Identity:         identity,
 		CareerStats:      careerStats,
@@ -336,8 +359,26 @@ func (s *ExplorerService) buildTargetProfile(
 		SeasonCSRs:       seasonCSRs,
 		MatchesPerSeason: matchsPerSea,
 		SampleStats:      sampleStats,
+		CombatProfile:    combatProfile,
 		AuthAvailable:    hasAuth,
 	}
+}
+
+// explorerCombatProfileLimit : nombre de matchs PvP récents de la cible exposés
+// dans les graphes "profil de combat" (décision plan). Filtre PvP fait en SQL.
+const explorerCombatProfileLimit = 20
+
+// computeTargetCombatProfile charge les N derniers matchs PvP de la cible
+// (calcul local DuckDB, best-effort comme computeTargetSampleStats). nil en cas
+// d'erreur (logguée) ou de cible sans match PvP — la section graphes est alors
+// masquée côté front.
+func (s *ExplorerService) computeTargetCombatProfile(ctx context.Context, targetXUID string) []domain.ExplorerTargetRecentMatch {
+	rows, err := s.repo.GetTargetRecentMatches(ctx, targetXUID, explorerCombatProfileLimit)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_combat_profile_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	return rows
 }
 
 // computeMatchesPerSeason agrège les matchs du target par saison (calcul local
@@ -355,13 +396,15 @@ func (s *ExplorerService) computeMatchesPerSeason(ctx context.Context, targetXUI
 	return buildMatchesPerSeason(starts, s.deps.Seasons)
 }
 
-// fetchTargetIdentity résout l'identité Spartan du target : DB locale d'abord
-// (si joueur suivi), sinon live pour un xuid arbitraire (career rank/emblem/
-// backdrop). Applique le fallback bannière → backdrop. Retourne nil si rien.
-func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetXUID, targetGamertag string, hasAuth bool) *domain.HomeSpartanIdentityRow {
+// fetchTargetIdentityRaw résout l'identité Spartan BRUTE du target : DB locale
+// d'abord (si joueur suivi), sinon live pour un xuid arbitraire (career rank/
+// emblem/backdrop). Applique le fallback bannière → backdrop. Retourne nil si
+// rien. La conversion vers le DTO snake_case (BuildSpartanIdentity) est faite
+// par l'appelant buildTargetProfile.
+func (s *ExplorerService) fetchTargetIdentityRaw(ctx context.Context, targetXUID, targetGamertag string, hasAuth bool) *domain.HomeSpartanIdentityRow {
 	if s.deps.LocalIdentity != nil {
 		if id := s.deps.LocalIdentity.LocalSpartanIdentity(ctx, targetGamertag); id != nil {
-			applyBannerFallback(id)
+			s.applyBannerFallbacks(ctx, id, targetXUID)
 			return id
 		}
 	}
@@ -372,12 +415,45 @@ func (s *ExplorerService) fetchTargetIdentity(ctx context.Context, targetXUID, t
 			return nil
 		}
 		if id != nil {
-			applyBannerFallback(id)
+			s.applyBannerFallbacks(ctx, id, targetXUID)
 			return id
 		}
 	}
 	slog.DebugContext(ctx, "explorer_target_identity_unavailable", "gamertag", targetGamertag)
 	return nil
+}
+
+// applyBannerFallbacks applique, dans l'ordre : (1) bannière → backdrop, puis
+// (2) si la bannière est toujours vide, une nameplate de repli DÉTERMINISTE par
+// xuid piochée dans le pool local (bannières des joueurs suivis). Le pool est
+// résolu paresseusement (LocalBannerPool n'est appelé que dans ce cas rare).
+// Mutation en place, best-effort.
+func (s *ExplorerService) applyBannerFallbacks(ctx context.Context, id *domain.HomeSpartanIdentityRow, targetXUID string) {
+	applyBannerFallback(id)
+	if id == nil || hasBanner(id) || s.deps.LocalBannerPool == nil || targetXUID == "" {
+		return
+	}
+	if b := pickDeterministicBanner(targetXUID, s.deps.LocalBannerPool(ctx)); b != "" {
+		id.BannerImageURL = &b
+		slog.DebugContext(ctx, "explorer_target_banner_pool_fallback", "xuid", targetXUID)
+	}
+}
+
+// hasBanner indique si l'identité porte déjà une bannière non vide.
+func hasBanner(id *domain.HomeSpartanIdentityRow) bool {
+	return id.BannerImageURL != nil && *id.BannerImageURL != ""
+}
+
+// pickDeterministicBanner choisit une bannière du pool de façon stable par xuid
+// (hash FNV-32a → index) — un même joueur retombe toujours sur la même nameplate
+// (pas de random non-déterministe). "" si le pool est vide.
+func pickDeterministicBanner(xuid string, pool []string) string {
+	if len(pool) == 0 {
+		return ""
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(xuid))
+	return pool[int(h.Sum32())%len(pool)]
 }
 
 // applyBannerFallback : si la bannière (nameplate background) est absente — cas
