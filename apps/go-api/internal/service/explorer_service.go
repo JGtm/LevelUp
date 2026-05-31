@@ -305,12 +305,13 @@ func (s *ExplorerService) buildTargetProfile(
 	hasAuth := tokens != nil && tokens.SpartanToken != ""
 
 	var (
-		identityRaw  *domain.HomeSpartanIdentityRow
-		careerStats  *domain.NormalizedPlayerStats
-		topMedals    []domain.MedalDigestItem
-		seasonCSRs   []domain.CareerPlaylistCSR
-		matchsPerSea []domain.SeasonMatchCount
-		sampleStats  *domain.ExplorerTargetSampleStats
+		identityRaw   *domain.HomeSpartanIdentityRow
+		careerStats   *domain.NormalizedPlayerStats
+		topMedals     []domain.MedalDigestItem
+		seasonCSRs    []domain.CareerPlaylistCSR
+		matchsPerSea  []domain.SeasonMatchCount
+		sampleStats   *domain.ExplorerTargetSampleStats
+		combatProfile []domain.ExplorerTargetRecentMatch
 	)
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -334,6 +335,9 @@ func (s *ExplorerService) buildTargetProfile(
 	})
 	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
+	// Profil de combat : N derniers matchs PvP de la cible (calcul local DuckDB,
+	// indépendant des tokens → gctx, non borné par le budget live).
+	g.Go(func() error { combatProfile = s.computeTargetCombatProfile(gctx, targetXUID); return nil })
 
 	_ = g.Wait()
 
@@ -355,8 +359,26 @@ func (s *ExplorerService) buildTargetProfile(
 		SeasonCSRs:       seasonCSRs,
 		MatchesPerSeason: matchsPerSea,
 		SampleStats:      sampleStats,
+		CombatProfile:    combatProfile,
 		AuthAvailable:    hasAuth,
 	}
+}
+
+// explorerCombatProfileLimit : nombre de matchs PvP récents de la cible exposés
+// dans les graphes "profil de combat" (décision plan). Filtre PvP fait en SQL.
+const explorerCombatProfileLimit = 20
+
+// computeTargetCombatProfile charge les N derniers matchs PvP de la cible
+// (calcul local DuckDB, best-effort comme computeTargetSampleStats). nil en cas
+// d'erreur (logguée) ou de cible sans match PvP — la section graphes est alors
+// masquée côté front.
+func (s *ExplorerService) computeTargetCombatProfile(ctx context.Context, targetXUID string) []domain.ExplorerTargetRecentMatch {
+	rows, err := s.repo.GetTargetRecentMatches(ctx, targetXUID, explorerCombatProfileLimit)
+	if err != nil {
+		slog.WarnContext(ctx, "explorer_target_combat_profile_failed", "xuid", targetXUID, "err", err)
+		return nil
+	}
+	return rows
 }
 
 // computeMatchesPerSeason agrège les matchs du target par saison (calcul local

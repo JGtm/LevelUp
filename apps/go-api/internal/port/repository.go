@@ -274,6 +274,12 @@ type ExplorerRepository interface {
 	// du joueur dans shared.match_participants. Local = historique complet ;
 	// adversaire = matchs observés. Sert au bucketing "matchs par saison".
 	GetMatchStartTimesForXUID(ctx context.Context, xuid string) ([]time.Time, error)
+
+	// GetTargetRecentMatches retourne les `limit` derniers matchs PvP (firefight
+	// exclu) du joueur, du plus récent au plus ancien, pour les graphes "profil
+	// de combat" de l'Explorer. Lecture shared.match_participants + match_registry
+	// + medals_earned (perfect kills). Retourne nil si xuid vide ou limit <= 0.
+	GetTargetRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error)
 }
 
 // GamertagRepository fournit la recherche de gamertags.
@@ -451,6 +457,9 @@ func (n *noopExplorerRepo) GetMedalCountsForMatches(_ context.Context, _ string,
 	return nil, nil
 }
 func (n *noopExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string) ([]time.Time, error) {
+	return nil, nil
+}
+func (n *noopExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
 	return nil, nil
 }
 

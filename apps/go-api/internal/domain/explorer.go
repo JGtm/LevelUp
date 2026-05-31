@@ -119,10 +119,45 @@ type ExplorerTargetProfile struct {
 	// MatchesPerSeason : nombre de matchs matchmade par saison (service record
 	// par saison). Vide si non calculé/indisponible.
 	MatchesPerSeason []SeasonMatchCount `json:"matches_per_season,omitempty"`
+	// CombatProfile : les N derniers matchs PvP du joueur cible lui-même (ses
+	// propres parties, pas les matchs en commun), pour les graphes "profil de
+	// combat" de l'Explorer. Calculé localement depuis shared.match_participants
+	// (aucune ingestion). Vide si cible sans matchs PvP. Cf.
+	// PLAN_explorer_combat_profile_charts.md.
+	CombatProfile []ExplorerTargetRecentMatch `json:"combat_profile,omitempty"`
 	// PrivacyWarning : conservé (toujours nil — la privacy n'est plus fetchée
 	// pour l'Explorer ; champ gardé pour compat de schéma).
 	PrivacyWarning *MatchPrivacyWarning `json:"privacy_warning,omitempty"`
 	AuthAvailable  bool                 `json:"auth_available"`
+}
+
+// ExplorerTargetRecentMatch est un match PvP récent du joueur cible, projeté
+// pour les graphes "profil de combat" de l'Explorer (FDA, dégâts, score +
+// placement, folie/frags parfaits, donut modes). Une ligne = un match.
+//
+// Source : shared.match_participants (+ match_registry pour map/mode/date) et
+// shared.medals_earned (perfect kills). La résolution outcome→couleur/label se
+// fait au front (cohérent avec TimeseriesKdaBars qui mappe l'outcome int).
+type ExplorerTargetRecentMatch struct {
+	MatchID   string    `json:"match_id"`
+	StartTime time.Time `json:"start_time"`
+	MapUI     string    `json:"map_ui"`
+	ModeUI    string    `json:"mode_ui"`
+	// Outcome : 1=tie, 2=win, 3=loss, 4=DNF (convention produit).
+	Outcome int `json:"outcome"`
+	// Rank : placement du joueur (1-based). nil si DNF/non classé — le front
+	// laisse alors un trou dans la courbe (ne pas tracer 0, qui fausserait
+	// l'axe inversé du graphe score+placement).
+	Rank            *int    `json:"rank,omitempty"`
+	Kills           int     `json:"kills"`
+	Deaths          int     `json:"deaths"`
+	Assists         int     `json:"assists"`
+	KDA             float64 `json:"kda"`   // ratio FDA pré-calculé (match_participants.kda)
+	Score           int     `json:"score"` // match_participants.personal_score
+	DamageDealt     int     `json:"damage_dealt"`
+	DamageTaken     int     `json:"damage_taken"`
+	MaxKillingSpree int     `json:"max_killing_spree"`
+	PerfectKills    int     `json:"perfect_kills"`
 }
 
 // SeasonMatchCount : nombre de matchs matchmade joués sur une saison donnée par
