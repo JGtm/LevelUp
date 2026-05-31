@@ -52570,3 +52570,40 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 **Décision** : garder l'**hystérésis ASYMÉTRIQUE** (montée immédiate, descente ≤1 sp/match). Caper les montées ne changerait qu'1 transition sur 4 joueurs → pas justifié vs la perte de récompense immédiate. Standard CSR (monte vite, descend lentement). Si un pic gênant apparaît en prod, la symétrie est 1 ligne dans `SmoothDisplayedOrdinal`.
 
 **Rangs finaux 4 joueurs** (groupe principal) : Madina Diamant II, JGtm Or VI, Choco Or III, XxDaemon Bronze VI. Cohérents cibles validation.
+
+## [2026-06-01] Fix sync combat completion — Phase 3 : bitmasks batch path + log SkillError
+
+Statut : Complete (verte, non commitee — demander autorisation).
+
+Probleme : le chemin batch (submitMatchAsBatch / buildBatchFromFetchedMatch) ne
+posait AUCUN bit de completude (backfill_completed) ni events_loaded, et ne
+loguait pas fm.SkillError — contrairement au legacy insertFetchedMatch
+(MarkParticipantsDone / MarkSkillLoaded). Resultat : backfill_completed non
+fiable sur les matchs syncs en mode batch (LEVELUP_PERSIST_BATCH=1) → le backfill
+CLI / les heals re-traitent indefiniment.
+
+Decision (approche orchestree INSERT-only, conforme au doc
+domain.MatchRegistryRow.BackfillCompleted "valeur calculee AVANT le Submit") :
+- collect.go (buildBatchFromFetchedMatchCtx) : pose les bits de completude au
+  COLLECT. skillOK = (SkillError == nil && au moins un team_mmr). Bits registry
+  agreges en fin de fonction sur la row reelle du batch construit :
+  backfillFlagParticipants (si participants), backfillFlagSkill (si skillOK),
+  MBitEvents (si highlight_events ajoutes), MBitKillerVictim (si paires ajoutees).
+  BackfillCompleted est *int64 → gestion pointeur (deref/realloc). Les PBit skill
+  (skillBitsCombined) sont poses sur les participants avec team_mmr (BackfillBits
+  est *int → gestion pointeur).
+- engine_batch_path.go (submitMatchAsBatch) : log fm.SkillError en warning
+  (parite legacy) ; les colonnes skill restent NULL et le skill heal les complete.
+- Pas de modification du domain ni de l'INSERT persistMatchRegistry. events_loaded
+  (booleen, pas de champ domain) volontairement NON pose ici : la valeur
+  backfill_completed |= MBitEvents sert de signal canonical pour le backfill CLI ;
+  le events heal (WHERE events_loaded=FALSE) se corrige tout seul au 1er cycle via
+  EventsCompletionPersister (Phase 1b) — cout = 1 download film redondant unique,
+  non bloquant. (Ajout d'un champ EventsLoaded au domain + INSERT = lot ulterieur.)
+
+Resultats : build OK ; nouveaux tests collect_phase3_test.go (2) PASS ; suite
+./internal/sync/ verte (ok 15.7s) ; ./internal/persist/ verte (ok 9.0s) ; vet clean.
+Note environnement : forte instabilite des sorties d'outils pendant la session
+(rendus vides/differes) ; chaque resultat a fini par remonter, tout est confirme vert.
+
+Prochaine etape : Phase 4 (citations recompute force apres backfill events).
