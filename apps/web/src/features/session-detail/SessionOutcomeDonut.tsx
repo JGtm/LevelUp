@@ -29,9 +29,11 @@ interface Props {
   title: string
   matches: SessionDetailMatchRow[]
   height?: number
+  /** Colonne divisée (drawer) : % dans le donut, pas d'étiquette externe. */
+  compact?: boolean
 }
 
-export function SessionOutcomeDonut({ title, matches, height = 260 }: Props) {
+export function SessionOutcomeDonut({ title, matches, height = 260, compact }: Props) {
   const t = useSessionT()
   const { data: fieldMappings } = useFieldMappings()
 
@@ -66,6 +68,7 @@ export function SessionOutcomeDonut({ title, matches, height = 260 }: Props) {
       series={series}
       sliceColors={sliceColors}
       height={height}
+      compact={compact}
       centerValue={`${winRate} %`}
       centerLabel={t('session.detail.donut_winrate_center')}
     />

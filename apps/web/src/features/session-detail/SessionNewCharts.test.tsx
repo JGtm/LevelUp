@@ -7,7 +7,6 @@ import { describe, expect, it } from 'vitest'
 import { buildDonutOption } from '@/components/charts/DonutChart'
 
 import { buildSessionParticipationBarsOption } from './SessionParticipationBars'
-import { buildSessionNetScoreOption } from './SessionNetScoreArea'
 import { buildSessionMmrDumbbellOption } from './SessionMmrDumbbell'
 import { buildSessionModeBreakdownOption } from './SessionModeBreakdown'
 import { buildSessionDamageOption } from './SessionDamageComposite'
@@ -36,26 +35,8 @@ describe('buildSessionParticipationBarsOption — miroir gauche/droite', () => {
   })
 })
 
-describe('buildSessionNetScoreOption', () => {
-  it('courbe en aire 1D + couleur explicite (rendu garanti, pas de visualMap)', () => {
-    const opt = buildSessionNetScoreOption(
-      [{ key: 'n', datapoints: [{ label: '#1', cumulative: 3 }, { label: '#2', cumulative: -2 }] }],
-      { seriesLabel: 'Net' },
-    ) as any
-    expect(opt.series[0].type).toBe('line')
-    expect(opt.series[0].areaStyle).toBeDefined()
-    // Données 1D (scalaires) : ECharts aligne par index sur l'axe catégoriel.
-    expect(opt.series[0].data).toEqual([3, -2])
-    expect(opt.series[0].lineStyle).toHaveProperty('color') // couleur explicite (visibilité)
-    expect(opt.visualMap).toBeUndefined() // plus de visualMap (source des rendus vides)
-    expect(opt.xAxis.boundaryGap).toBe(false)
-  })
-
-  it('option vide sans points', () => {
-    const opt = buildSessionNetScoreOption([], { seriesLabel: 'Net' }) as any
-    expect(opt.series).toBeUndefined()
-  })
-})
+// NB : buildSessionNetScoreOption a son test dédié (SessionNetScoreArea.test.tsx) —
+// source unique pour ce builder (aire/courbe divergentes + points outcome).
 
 describe('buildSessionMmrDumbbellOption', () => {
   it('1 série custom (liaisons) + 2 scatter (équipe/adverse) + légende', () => {

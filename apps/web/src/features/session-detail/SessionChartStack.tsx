@@ -32,6 +32,8 @@ import { SessionOcdrBars } from './SessionOcdrBars'
 interface Props {
   entry: SessionCompareEntry | null
   matches: SessionDetailMatchRow[]
+  /** Colonne divisée (vue compacte / drawer) : donuts en % interne (pas d'étiquette externe). */
+  compact?: boolean
   dense?: boolean
   participationSide?: 'left' | 'right'
   participationColor?: SemanticToken
@@ -40,6 +42,7 @@ interface Props {
 export function SessionChartStack({
   entry,
   matches,
+  compact = false,
   dense = false,
   participationSide = 'right',
   participationColor = 'compare-a',
@@ -47,9 +50,11 @@ export function SessionChartStack({
   const t = useSessionT()
 
   const outcomeDonut = (
-    <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} />
+    <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} compact={compact} />
   )
-  const killsDonut = <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={matches} />
+  const killsDonut = (
+    <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={matches} compact={compact} />
+  )
   const modeBreakdown = (
     <SessionModeBreakdown title={t('session.detail.chart_mode_breakdown_title')} matches={matches} />
   )

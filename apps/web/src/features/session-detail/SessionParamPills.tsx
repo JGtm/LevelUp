@@ -69,7 +69,9 @@ export function SessionParamPills({ entry }: { entry: SessionCompareEntry | null
   const duration = sessionDurationLabel(entry.start_time, entry.end_time)
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    // xl:flex-nowrap : en vue côte-à-côte (headers L3 à hauteur fixe) les pills tiennent
+    // sur une seule ligne ; en dessous de xl elles wrappent (mobile).
+    <div className="flex flex-wrap items-center gap-1.5 xl:flex-nowrap">
       {/* Identité solo/escouade de la session (uniforme sur tous ses matchs). */}
       <Pill
         label={entry.with_friends ? t('session.detail.pill_squad') : t('session.detail.pill_solo')}

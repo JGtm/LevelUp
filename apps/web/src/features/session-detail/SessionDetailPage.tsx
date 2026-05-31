@@ -29,11 +29,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 
 import { useSessionDetailPage } from './queries'
 import { useSessionT } from './_shared'
-import { SessionSummaryCard } from './SessionSummaryCard'
 import { SessionParamPills } from './SessionParamPills'
-import { SessionMatchesTable } from './SessionMatchesTable'
-import { SessionChartStack } from './SessionChartStack'
-import { SessionCompareMetrics } from './SessionCompareMetrics'
+import { SessionColumnBody } from './SessionColumnBody'
 
 export function SessionDetailPage() {
   const { playerSlug } = useParams({ strict: false }) as { playerSlug: string }
@@ -147,9 +144,11 @@ export function SessionDetailPage() {
         {hasSessions ? (
           <>
             {/* En-tete session "L3" : sticky sous la NavL2 (top = hauteur NavL2 mesurée),
-                bleed horizontal via -mx-6 pour s'aligner sur les bords de la colonne. */}
+                bleed horizontal via -mx-6 pour s'aligner sur les bords de la colonne.
+                xl:h-14 → hauteur fixe en vue côte-à-côte, identique au L3 drawer, pour
+                que les deux headers (et le contenu sous eux) s'alignent pile. */}
             <div
-              className="sticky z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-background px-6 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className="sticky z-20 -mx-6 -mt-6 flex flex-col gap-3 border-b border-border bg-background px-6 py-3 sm:flex-row sm:items-center sm:justify-between xl:h-14 xl:overflow-x-clip"
               style={{ top: navHeight }}
             >
               <div className="flex items-center gap-3">
@@ -163,8 +162,8 @@ export function SessionDetailPage() {
                   <ChevronIcon direction="left" />
                 </button>
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="truncate text-lg font-semibold text-foreground">{selectedSessionLabel}</h1>
+                  <div className="flex flex-wrap items-center gap-2 xl:flex-nowrap">
+                    <h1 className="min-w-0 truncate text-lg font-semibold text-foreground">{selectedSessionLabel}</h1>
                     <SessionParamPills entry={data.current_session} />
                   </div>
                 </div>
@@ -210,25 +209,15 @@ export function SessionDetailPage() {
               )}
             </div>
 
-            <SessionSummaryCard entry={data.current_session} />
-
-            <SessionChartStack
+            {/* Corps de colonne (tout ce qui est sous le L3). Le DRAWER monte le MÊME
+                composant en `compact` → "ce qui est sous le L3" est strictement identique
+                des deux côtés (seules les données diffèrent). */}
+            <SessionColumnBody
               entry={data.current_session}
               matches={data.matches}
-              participationSide="right"
-              participationColor="compare-a"
+              playerSlug={playerSlug}
+              compact={drawerOpen}
             />
-
-            {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
-            <div className="space-y-3">
-              <h2 className="text-base font-semibold text-foreground">{t('session.detail.matches_card')}</h2>
-              <SessionMatchesTable
-                matches={data.matches}
-                playerSlug={playerSlug}
-                variant={drawerOpen ? 'compact' : 'full'}
-                withFriends={data.current_session?.with_friends ?? false}
-              />
-            </div>
           </>
         ) : (
           <EmptyStateCard
@@ -238,47 +227,46 @@ export function SessionDetailPage() {
         )}
       </div>
 
-      {/* Colonne compare — 2e piste de la grille. `overflow-hidden` masque le
-          contenu tant que la piste est a 0fr ; il se revele au fur et a mesure
-          qu'elle grandit (effet glisse + pousse). Sur mobile (< xl) elle se
-          place sous la colonne principale. */}
+      {/* Colonne compare — 2e piste de la grille. Le contenu est masque tant que la piste
+          est a 0fr puis se revele a mesure qu'elle grandit (effet glisse + pousse). On clippe
+          le debordement HORIZONTAL via `overflow-x: clip` et NON `overflow-hidden` : `hidden`
+          etablirait un conteneur de scroll qui CASSERAIT le `position: sticky` du header L3
+          drawer (il se collerait a cette piste au lieu du `<main>`). `clip` clippe le meme
+          debordement (pas de scrollbar horizontale pendant l'animation) SANS creer de conteneur
+          de scroll, et laisse overflow-y visible pour que le sticky resolve bien sur `<main>`.
+          Sur mobile (< xl) la colonne se place sous la colonne principale. */}
       <div
-        className={`overflow-hidden ${drawerOpen ? '' : 'hidden xl:block'}`}
+        className={`overflow-x-clip ${drawerOpen ? '' : 'hidden xl:block'}`}
         aria-hidden={!drawerOpen}
       >
         <div
-          className={`flex flex-col space-y-4 border-t p-4 transition-opacity duration-300 xl:border-l xl:border-t-0 ${
+          className={`flex flex-col space-y-6 border-t p-6 transition-opacity duration-300 xl:border-l xl:border-t-0 ${
             drawerOpen ? 'opacity-100' : 'opacity-0'
           }`}
         >
           {(drawerOpen || data.compare_session) && (
             <>
-              {/* En-tête navigation */}
-              <div className="flex flex-col gap-2 border-b pb-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    {data.compare_session
-                      ? t('session.detail.drawer_title', { label: data.compare_session.session_label })
-                      : t('session.detail.session_compared')}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => setEnableCompare(false)}
-                    aria-label={t('session.detail.drawer_close_aria')}
-                    className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </button>
-                </div>
-                <SessionParamPills entry={data.compare_session} />
+              {/* En-tête L3 du drawer — équivalent du L3 page : une seule ligne
+                  "Comparaison · [sélecteur de session] [pills]" + fermeture. STICKY au
+                  même `top: navHeight` que le L3 principal (→ alignés côte-à-côte, figés
+                  au scroll) et de hauteur fixe h-14 identique. bleed -mx-6 -mt-6 vers les
+                  bords de la colonne (p-6 aligné sur la colonne principale). Le sticky ne
+                  tient QUE parce que la piste parente clippe via `overflow-x: clip`. */}
+              <div
+                className="sticky z-20 -mx-6 -mt-6 flex h-14 items-center gap-2 border-b border-border bg-background px-6"
+                style={{ top: navHeight }}
+              >
+                <h2 className="whitespace-nowrap text-sm font-semibold text-foreground">
+                  {t('session.detail.compare_label')}
+                </h2>
+                <span aria-hidden="true" className="text-muted-foreground">
+                  ·
+                </span>
                 <select
                   value={selectedCompareSessionLabel}
                   onChange={(event) => setCompareSessionLabel(event.target.value)}
                   aria-label={t('session.detail.session_compared')}
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  className="min-w-0 max-w-[14rem] shrink rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground"
                 >
                   <option value="">{t('session.detail.smart_selection')}</option>
                   {data.available_sessions
@@ -289,34 +277,35 @@ export function SessionDetailPage() {
                       </option>
                     ))}
                 </select>
+                {/* Pills de la session comparée — clippées si la place manque (la ligne
+                    reste à hauteur fixe, pas de wrap). */}
+                <div className="min-w-0 overflow-hidden">
+                  <SessionParamPills entry={data.compare_session} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEnableCompare(false)}
+                  aria-label={t('session.detail.drawer_close_aria')}
+                  className="ml-auto shrink-0 rounded p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </div>
 
-              {/* Contenu session comparée — même pile de graphes que la vue principale
-                  (côte à côte), profil de participation en miroir (axe à gauche). */}
+              {/* Corps de la session comparée = clone EXACT du corps de la colonne
+                  principale en mode compact (même composant SessionColumnBody) — rien de
+                  spécifique au drawer (ni métriques A/B, ni dense, ni miroir). */}
               {data.compare_session ? (
-                <>
-                  <SessionSummaryCard entry={data.compare_session} />
-
-                  <SessionCompareMetrics metrics={data.compare_metrics} />
-
-                  <SessionChartStack
-                    entry={data.compare_session}
-                    matches={data.compare_matches ?? []}
-                    dense
-                    participationSide="left"
-                    participationColor="compare-b"
-                  />
-
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-foreground">{t('session.detail.matches_card')}</h3>
-                    <SessionMatchesTable
-                      matches={data.compare_matches ?? []}
-                      playerSlug={playerSlug}
-                      variant="compact"
-                      withFriends={data.compare_session?.with_friends ?? false}
-                    />
-                  </div>
-                </>
+                <SessionColumnBody
+                  entry={data.compare_session}
+                  matches={data.compare_matches ?? []}
+                  playerSlug={playerSlug}
+                  compact
+                  participationSide="left"
+                />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Spinner size="md" label={t('session.detail.loading')} />

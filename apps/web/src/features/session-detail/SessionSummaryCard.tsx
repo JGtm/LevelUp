@@ -24,6 +24,8 @@ import { log } from './_logger'
 
 interface Props {
   entry: SessionCompareEntry | null
+  /** Colonne divisée (drawer compare ouvert) : libellés longs abrégés pour tenir sur une ligne. */
+  compact?: boolean
 }
 
 // Seuils perf-tier (alignés sur analysis.PerfTier côté Go).
@@ -33,7 +35,7 @@ function perfTierToken(score: number | null): SemanticToken | undefined {
   return `perf-tier-${tier}` as SemanticToken
 }
 
-export function SessionSummaryCard({ entry }: Props) {
+export function SessionSummaryCard({ entry, compact = false }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const labelOf = (key: string): string => fieldMappings?.fields[key]?.label ?? key
   const t = useSessionT()
@@ -57,7 +59,10 @@ export function SessionSummaryCard({ entry }: Props) {
   }
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-0.5">
+    // gap serré : la bande doit tenir sur une ligne même en colonne divisée (drawer
+    // compare ouvert). overflow-x-auto reste un filet pour les cas extrêmes (6 tuiles
+    // sur très petit écran).
+    <div className="flex gap-1.5 overflow-x-auto pb-0.5">
       <KpiStat
         label={labelOf('kda')}
         value={formatNumber(entry.kda, 2)}
@@ -73,10 +78,11 @@ export function SessionSummaryCard({ entry }: Props) {
         value={formatNumber(entry.performance_score, 1)}
         token={perfTierToken(entry.performance_score)}
       />
-      {/* Rendement / Résistance : tile plus large (barre composite). */}
-      <div className="flex-[2] min-w-[11rem] rounded border border-border bg-card px-3 py-2">
+      {/* Rendement / Résistance : tile plus large (barre composite). min-w réduit à 9.5rem
+          (l'OffDefComposite n'a besoin que de ~72px) → la bande tient en colonne divisée. */}
+      <div className="flex-[2] min-w-[9.5rem] rounded border border-border bg-card px-3 py-2">
         <p className="text-3xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t('session.detail.stat_off_def')}
+          {t(compact ? 'session.detail.stat_off_def_short' : 'session.detail.stat_off_def')}
         </p>
         <div className="mt-1.5">
           {hasOffDef ? (

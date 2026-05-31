@@ -51,6 +51,7 @@ export function SessionStatsRadar({ title, axes, seriesName, height = 280, rawIn
       height={height}
       seriesNameResolver={() => seriesName}
       rawInTooltip={rawInTooltip}
+      showValues
     />
   )
 }

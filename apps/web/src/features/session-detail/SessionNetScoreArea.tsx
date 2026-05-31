@@ -1,29 +1,44 @@
 /**
  * SessionNetScoreArea — évolution du NET SCORE CUMULÉ (Frags − Morts) match après match.
  *
- * Courbe en aire simple : axe X catégoriel "#N + carte", axe Y = solde cumulé, ligne de
- * référence à 0. Une instance par session (vue single + drawer côte-à-côte).
+ * Aire + courbe DIVERGENTES : colorées par le SIGNE du solde cumulé via un DÉGRADÉ vert
+ * (`divergent-pos`) au-dessus de 0 / rouge (`divergent-neg`) en dessous, à bascule EXACTE
+ * sur la ligne 0. L'aire est ancrée à 0 (`areaStyle.origin`) ; la markLine matérialise le 0.
  *
- * IMPLÉMENTATION VOLONTAIREMENT MINIMALE (le chart restait vide via des montages
- * antérieurs) : données 1D (un scalaire par catégorie, ECharts aligne par index) +
- * couleur de ligne/aire EXPLICITE. PAS de visualMap : il colorait la courbe par le
- * signe du cumul mais, sans couleur propre sur la série, la moindre défaillance du
- * mapping rendait la courbe invisible. La séparation positif/négatif reste lisible via
- * la markLine à 0.
+ * PAS de visualMap : il rendait historiquement la courbe invisible (et une série scatter sur
+ * axe catégoriel ne rendait pas non plus → graphe vide). À la place, le dégradé est calculé
+ * depuis la boîte englobante de l'aire ancrée à 0 (cf. `zeroRatio`) → 100 % robuste au rendu.
+ *
+ * Chaque match porte un POINT (le SYMBOLE de la ligne) coloré par son OUTCOME
+ * (`outcome-win/loss/draw/dnf`) via `itemStyle` par point → l'issue se lit match par match,
+ * indépendamment du signe du cumul. Une seule série (ligne + symboles), aucun scatter séparé.
  */
 import { useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import { CHART_BG, getAxisBase, getEChartsThemeColors, getTooltipBase } from '@/components/charts/_utils'
+import {
+  CHART_BG,
+  getAxisBase,
+  getEChartsThemeColors,
+  getTooltipBase,
+  outcomeColor,
+} from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
+import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-import { sessionMatchAxisLabel, useSessionT } from './_shared'
+import { outcomeIntToKey, sessionMatchAxisLabel, useSessionT } from './_shared'
+
+type OutcomeKey = 'win' | 'loss' | 'tie' | 'dnf'
 
 interface NetPoint {
   label: string
   cumulative: number
+  /** Clé outcome canonique ou null — pilote la couleur du point. */
+  outcomeKey: OutcomeKey | null
+  /** Libellé outcome localisé (field mappings backend) pour le tooltip. */
+  outcomeLabel: string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -36,8 +51,39 @@ export function buildSessionNetScoreOption(
 
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const lineColor = resolveToken('chart-series-1')
+  const posColor = resolveToken('divergent-pos')
+  const negColor = resolveToken('divergent-neg')
   const interval = points.length > 30 ? Math.floor(points.length / 12) : 0
+
+  // Dégradé DIVERGENT vert/rouge à bascule EXACTE sur 0, SANS visualMap. L'aire étant ancrée
+  // à 0 (areaStyle.origin), sa boîte englobante en Y vaut [min(données,0), max(données,0)] :
+  // 0 y tombe à la fraction `zeroRatio` depuis le haut. Le MÊME dégradé colore ligne ET aire.
+  const values = points.map((p) => p.cumulative)
+  const top = Math.max(...values, 0)
+  const bot = Math.min(...values, 0)
+  const span = top - bot
+  const zeroRatio = span > 0 ? Math.min(1, Math.max(0, top / span)) : 1
+  const divergentColor = {
+    type: 'linear' as const,
+    x: 0,
+    y: 0,
+    x2: 0,
+    y2: 1,
+    colorStops: [
+      { offset: 0, color: posColor },
+      { offset: zeroRatio, color: posColor },
+      { offset: zeroRatio, color: negColor },
+      { offset: 1, color: negColor },
+    ],
+  }
+
+  // Un point par match : `value` = solde cumulé (scalaire, aligné par index sur l'axe
+  // catégoriel) ; `itemStyle.color` = OUTCOME → le SYMBOLE révèle l'issue, indépendamment
+  // du signe. Pas de série scatter séparée (qui ne rendait pas sur l'axe catégoriel).
+  const data = points.map((p) => ({
+    value: p.cumulative,
+    itemStyle: { color: outcomeColor(p.outcomeKey ?? undefined) },
+  }))
 
   return {
     backgroundColor: CHART_BG,
@@ -45,12 +91,17 @@ export function buildSessionNetScoreOption(
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
-      formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
+      formatter: (params: Array<{ dataIndex?: number }>) => {
         if (!Array.isArray(params) || params.length === 0) return ''
-        const p = params[0]
-        const v = Number(p.value)
-        const vStr = v >= 0 ? `+${v}` : `${v}`
-        return `${p.name.replace('\n', ' · ')}<br/>${p.marker} ${opts.seriesLabel}: <b>${vStr}</b>`
+        const idx = params[0]?.dataIndex ?? 0
+        const p = points[idx]
+        if (!p) return ''
+        const vStr = p.cumulative >= 0 ? `+${p.cumulative}` : `${p.cumulative}`
+        const swatch = `<span style="display:inline-block;width:9px;height:9px;border-radius:9px;background:${outcomeColor(
+          p.outcomeKey ?? undefined,
+        )};margin-right:5px;vertical-align:middle"></span>`
+        const outcomeRow = p.outcomeLabel ? `<br/>${swatch}${p.outcomeLabel}` : ''
+        return `${p.label.replace('\n', ' · ')}<br/>${opts.seriesLabel}: <b>${vStr}</b>${outcomeRow}`
       },
     },
     xAxis: {
@@ -65,12 +116,17 @@ export function buildSessionNetScoreOption(
       {
         name: opts.seriesLabel,
         type: 'line',
-        // Données 1D : un scalaire par catégorie (ECharts aligne par index). Couleur
-        // de ligne + aire EXPLICITE pour garantir la visibilité.
-        data: points.map((p) => p.cumulative),
-        symbol: 'none',
-        lineStyle: { width: 2, color: lineColor },
-        areaStyle: { color: lineColor, opacity: 0.18 },
+        data,
+        symbol: 'circle',
+        symbolSize: 7,
+        showSymbol: true,
+        // Ligne colorée par le SIGNE (dégradé divergent, bascule pile sur 0).
+        lineStyle: { width: 2, color: divergentColor },
+        // Aire ancrée à 0 + même dégradé → vert au-dessus, rouge en dessous.
+        areaStyle: { color: divergentColor, opacity: 0.18, origin: 0 },
+        // Anneau (couleur de surface) pour détacher le point outcome de l'aire colorée.
+        itemStyle: { borderColor: tc.tooltipBg, borderWidth: 1.5 },
+        emphasis: { scale: 1.6 },
         // Ligne de référence à 0 (séparation solde positif / négatif).
         markLine: {
           silent: true,
@@ -92,18 +148,27 @@ interface Props {
 
 export function SessionNetScoreArea({ title, matches, height = 280 }: Props) {
   const t = useSessionT()
+  const { data: fieldMappings } = useFieldMappings()
 
   const series = useMemo<ChartSeries<NetPoint>[]>(() => {
     const sorted = [...matches].sort((a, b) => a.start_time.localeCompare(b.start_time))
     if (sorted.length === 0) return []
+    const outcomeLabel = (key: OutcomeKey | null): string =>
+      key ? (fieldMappings?.outcomes?.[key]?.label ?? key) : ''
     let running = 0
     const datapoints = sorted.map((m, i) => {
       // Garde-fou : un kills/deaths manquant ne doit pas propager un NaN dans le cumul.
       running += (m.kills ?? 0) - (m.deaths ?? 0)
-      return { label: sessionMatchAxisLabel(i, m.map_name, m.pair_name), cumulative: running }
+      const outcomeKey = outcomeIntToKey(m.outcome)
+      return {
+        label: sessionMatchAxisLabel(i, m.map_name, m.pair_name),
+        cumulative: running,
+        outcomeKey,
+        outcomeLabel: outcomeLabel(outcomeKey),
+      }
     })
     return [{ key: 'net', datapoints }]
-  }, [matches])
+  }, [matches, fieldMappings])
 
   return (
     <ChartCard

@@ -1,3 +1,135 @@
+## [2026-05-31] Page sessions — fix net score "n'affiche rien" (régression visualMap) + valeurs radar aux pointes
+
+**Statut** : Complété côté code (typecheck 0, 145 tests verts, eslint 0). À valider en live. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : (1) « Net score cumulé » n'affiche plus rien ; (2) valeurs des radars en blanc AUX POINTES (vertices) plutôt que sous le libellé d'axe.
+
+**Décision technique** :
+- **Net score (régression)** : cause = le `visualMap` (que j'avais réintroduit lors du 1er sprint net score) rendait la courbe invisible — exactement le bug historique documenté — ET la série `scatter` `[i, value]` sur axe catégoriel ne rendait pas les points → graphe vide. **RECONSTRUIT sans visualMap ni scatter** : dégradé linéaire vert (`divergent-pos`) / rouge (`divergent-neg`) à bascule EXACTE sur 0, calculé depuis la boîte englobante de l'aire ancrée à 0 (`zeroRatio = top/(top−bot)` avec top=max(données,0), bot=min(données,0)) → appliqué à `lineStyle` ET `areaStyle`. Les points outcome sont portés par les SYMBOLES de la ligne (`itemStyle.color` par point), plus de scatter séparé. Une seule série, rendu 100 % vanilla (gradient + origin, primitives ECharts standard). Test réécrit : plus de visualMap, 1 série, data = scalaire + itemStyle, dégradé `colorStops`, `origin:0`.
+- **Radar (item 5 affiné)** : remplacé l'augmentation du libellé d'axe (`"Frags\n12.3"`) par des LABELS aux VERTICES via la série radar (`label.show` + `formatter` par `dimensionIndex` → valeur brute `meta.raw_by_axis`), en `tc.text` (≈ blanc sur thème sombre) + `textBorder` pour la lisibilité sur l'aire colorée. Tooltip inchangé (consomme toujours `axes[].name` propre).
+
+**Résultats observés** : `tsc -b` 0 ; 145 tests verts (session-detail + components/charts) ; eslint 0.
+
+**Fichiers** : `SessionNetScoreArea.tsx` (+ `.test.tsx` réécrit), `components/charts/RadarChart.tsx`.
+
+**Prochaine étape / à valider en live** : (a) le net score réaffiche bien la courbe divergente + points outcome (régression corrigée) ; (b) valeurs radar visibles aux pointes en blanc — NB : le label radar par vertex dépend de `dimensionIndex` (fourni par ECharts pour le radar) ; si non rendu, fallback = repasser sous le libellé d'axe. **Leçon** : ne PLUS réintroduire de `visualMap` sur le net score (3e confirmation du bug "courbe invisible"). Commit en attente.
+
+## [2026-05-31] Page sessions — 6 finitions graphes (vue compacte + drawer)
+
+**Statut** : Complété côté code (typecheck 0, 145 tests verts session-detail + components/charts, eslint 0). Validé en live par l'utilisateur. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : 6 finitions sur les graphes des deux colonnes (vue compacte principale + drawer, qui partagent `SessionColumnBody`) :
+1. « Rendement / Résistance » varie en hauteur selon le nb de matchs → désaligne A vs B.
+2. Idem « Challenge MMR ».
+3. Axe Y du « Profil de participation » du drawer à gauche.
+4. Connecteurs des donuts « Répartition F / D / A » et « Résultats de la session » clippés en compact → n'afficher que les % à l'intérieur.
+5. Afficher les valeurs des radars « Frags / Morts / Assists par partie » et « Stats de frags » (au lieu du tooltip seul).
+6. Couleur « négative » pour les dégâts subis (« Dégâts infligés / subis par match »).
+
+**Décision technique** :
+- **1+2 (hauteur)** : cause = `SessionMmrDumbbell` et `SessionDamageComposite` calculaient une hauteur dynamique `rows*30+60` → cartes A/B de hauteurs différentes + étirement de la grille (le graphe OC/DR `SessionOcdrBars`, déjà fixe à 280, « paraissait » varier car apparié à MMR en `xl:grid-cols-2`). Passés en hauteur **FIXE 280** (alignée sur les autres graphes). Fixer MMR aligne la paire MMR/OCDR. Tradeoff assumé (demandé) : sessions très chargées → barres comprimées, alignement priorisé.
+- **3 (participation)** : nouveau prop `participationSide` sur `SessionColumnBody` (déjà supporté par `SessionParticipationBars.axisSide`) ; le drawer passe `"left"`, la colonne principale `"right"` (défaut). Miroir d'orientation, couleur `compare-a` inchangée des deux côtés.
+- **4 (donuts)** : mode `compact` sur `DonutChart` (threadé `SessionColumnBody` → `SessionChartStack` → `SessionOutcome/KillsDonut` → `DonutChart`) : `label.position:'inside'` + `formatter:'{d}%'` + `labelLine` masquée. Plus de connecteur externe qui débordait/clippait en colonne étroite. Légende inchangée (le kills donut garde ses noms en bas).
+- **5 (radars)** : nouveau prop `showValues` sur `RadarChart` → les `indicator` du radar sont augmentés de la valeur brute (`meta.raw_by_axis`) sous le libellé d'axe (`"Frags\n12.3"`). Gardés SÉPARÉS de `axes` pour ne PAS polluer le tooltip. `SessionStatsRadar` l'active toujours → FDA + Frags. `RadarChart` est partagé avec Squad : `showValues` optionnel non passé là-bas → inchangé.
+- **6 (dégâts)** : segment « subis » en `divergent-neg` (rouge négatif) au lieu de `divergent-neutral`.
+
+**Résultats observés** : `tsc -b` 0 ; 145 tests verts (22 fichiers : session-detail + components/charts) ; eslint 0 sur les 10 fichiers. Aucune string i18n nouvelle (réutilisation). Tokens couleur uniquement (pas de hex).
+
+**Fichiers** : `SessionMmrDumbbell.tsx`, `SessionDamageComposite.tsx`, `SessionStatsRadar.tsx`, `SessionOutcomeDonut.tsx`, `SessionKillsDonut.tsx`, `SessionChartStack.tsx`, `SessionColumnBody.tsx`, `SessionDetailPage.tsx`, `components/charts/RadarChart.tsx`, `components/charts/DonutChart.tsx`.
+
+**Prochaine étape / à valider en live** : (a) rendu du `\n` dans les libellés d'axe radar (sinon basculer en « libellé (valeur) » sur une ligne) ; (b) lisibilité des % internes des donuts en colonne étroite ; (c) compression des barres MMR/Damage sur sessions très chargées. **Dette notée** : le prop `dense` de `SessionChartStack` n'a plus aucun caller (les 2 colonnes passent par `SessionColumnBody`, non-dense) → branche morte à retirer dans un prochain passage. Commit en attente.
+
+## [2026-05-31] Ne plus lister les sessions d'un seul match (pages Sessions, Solo, Escouade)
+
+**Statut** : Complété (go build OK, go test ./... vert, go vet clean). Aucun changement frontend. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : dans les pages Sessions, Solo et Escouade, ne plus lister les sessions composées d'un seul match.
+
+**Décisions (validées avec l'utilisateur)** :
+- Base du seuil = **taille brute** de la session (nombre de matchs total dans l'historique), pas le comptage post-cascade. Une session de 2 matchs resserrée à 1 par un filtre période reste listée.
+- **Règle fixe** (pas de toggle utilisateur) → backend uniquement, zéro plumbing setting/i18n.
+- Filtrage d'**affichage** seul : n'affecte ni le découpage en sessions (`analysis.ComputeSessions`) ni l'agrégation des stats. L'accès **deep-link** (`?session=<label>`) à une session d'un match reste résoluble (`req.SessionLabel` court-circuite la liste).
+
+**Décision technique** : constante partagée `minListedSessionMatches = 2` (dans `session_labels.go`) appliquée aux **3 chokepoints** Go d'où les 3 pages tirent leurs listes :
+1. `buildSessionOptions` (`filters_options.go`) → skip `e.count < 2`. Couvre la `SessionPill` (Solo) et la carte des counts Escouade. Les rows y sont post-match_context (pas filtrées période) → `e.count` est déjà la taille brute.
+2. `BuildSessionLabelsList` (`session_labels.go`) → comptage par label (champ `count` sur `bounds`), skip `< 2` dans `toSlice`. Couvre la prop `sessions` du `SessionMultiSelect` Escouade (et la liste solo). Inputs = historique complet (LoadSynthesisMatches) → brut.
+3. `session_page_service.GetPage` → nouveau helper `keepMultiMatchSessionLabels(labels, rows)` appliqué à `labels` (vue) et `compareLabels` (vivier). **Comptage sur `rows` complet** (pas `filtered`/`compareScope`) pour rester en taille brute — sinon une session resserrée à 1 match par le filtre période disparaîtrait à tort (régression couverte par `TestSessionPageService_GetPage_AppliesPeriodFilter`).
+
+**Frontend** : inchangé. Les listes (`SessionOption[]`, `SessionLabelEntry[]`, `available_sessions`) arrivent déjà filtrées ; les gardes existantes (`match_count_filtered > 0`, `c === 0`) restent en place, inoffensives.
+
+**Résultats observés** : `go build ./...` OK ; `go test ./...` tout vert ; `go vet ./internal/service/...` clean. Fixtures à 1 match/session ajustées à ≥2 (`session_labels_test.go`, `filters_counts_test.go`, `match_history_extra_test.go`). Tests neufs : `TestBuildSessionLabelsList_DropsSingleMatch`, `TestBuildSessionOptions_DropsSingleMatch`, `TestKeepMultiMatchSessionLabels`, `TestSessionPageService_GetPage_DropsSingleMatchSessionFromList` (incl. assertion deep-link).
+
+**Fichiers** : `filters_options.go`, `session_labels.go`, `session_compare_service.go` (helper), `session_page_service.go` + tests associés.
+
+**Prochaine étape** : validation live (joueur avec sessions d'1 match) ; commit en attente d'autorisation.
+
+## [2026-05-31] Page sessions — drawer = clone exact du corps compact de la colonne principale (SessionColumnBody partagé)
+
+**Statut** : Complété côté code (typecheck 0, 58 tests session-detail verts, eslint 0). Validé en live par l'utilisateur au fil de l'eau. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : le drawer doit reprendre EXACTEMENT la vue compacte de la colonne principale ; garder les L3 (principale large + principale compacte + drawer) ; ce qui est sous le L3 doit être identique des deux côtés ; ne RIEN garder du contenu actuel propre au drawer sous son L3 ; ne pas toucher la colonne principale. (Clarifié via questions : "on ne touche pas à la principale, le drawer applique la vue compacte" ; métriques A/B → retirer.)
+
+**Décision technique** :
+- Extraction du corps de colonne (bande KPI `SessionSummaryCard` + `SessionChartStack` + tableau "Détail des matchs") dans un composant partagé `SessionColumnBody` (prop `compact`). Monté à l'identique par la colonne principale (`compact={drawerOpen}`) ET par le drawer (`compact`) → garantit PAR CONSTRUCTION que "sous le L3" est le même rendu. La colonne principale produit un JSX strictement identique à avant (aucun changement de comportement → conforme à "on ne touche pas à la principale").
+- Drawer : suppression de tout le contenu spécifique — `SessionCompareMetrics` (table des deltas A vs B), flag `dense`, miroir participation (`compare-b` / axe gauche). Le drawer reprend les mêmes params que la principale (participation `right`/`compare-a`, non-dense). `SessionCompareMetrics.tsx` supprimé (devenu orphelin → règle dead-code ; `data.compare_metrics` n'est plus consommé côté front, payload backend inchangé et inoffensif).
+- Alignement du chrome de la colonne drawer sur la principale pour l'identité pixel en côte-à-côte : `p-4`→`p-6`, `space-y-4`→`space-y-6`, et bleed du L3 drawer `-mx-4/-mt-4/px-4`→`-mx-6/-mt-6/px-6`. Le header L3 du drawer (sélecteur "Comparaison ·") est conservé (les L3 restent distincts par design ; seul leur padding est aligné).
+
+**Résultats observés** : `tsc -b` 0 ; eslint 0 ; 58 tests session-detail verts (dont le flux compare de `SessionDetailPage.test` — l'assertion "Score perf." est désormais satisfaite par la tuile perf de la `SummaryCard`, plus par la table de métriques supprimée). `SessionDetailPage.tsx` rétréci (corps factorisé).
+
+**Fichiers** : `SessionColumnBody.tsx` (nouveau), `SessionDetailPage.tsx` (imports + 2 points de montage + chrome drawer), `SessionCompareMetrics.tsx` (supprimé).
+
+**Prochaine étape** : validation live (en cours côté utilisateur). Note : la colonne principale en demi-largeur conserve `SessionChartStack` non-dense (grille 2-col au breakpoint viewport xl) — comportement existant jugé "déjà valide", que le drawer réplique fidèlement. Commit en attente d'autorisation.
+
+## [2026-05-31] Page sessions — bande KPI (SessionSummaryCard) : ~15px de scroll horizontal en colonne divisée
+
+**Statut** : Complété côté code (typecheck 0, 58 tests session-detail verts, eslint 0). Vérif visuelle pixel restante. Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : drawer ouvert → la bande KPI sous le L3 (colonne principale divisée par 2) déborde d'environ 15px et affiche une petite scrollbar horizontale ; optimiser.
+
+**Décision technique** : cause = `SessionSummaryCard` est un flex `overflow-x-auto` dont la somme des min-widths des tuiles (`min-w-[5rem]` ×4-5 + `min-w-[11rem]` pour Rendement/Résistance + `gap-2`) dépasse la largeur de la demi-colonne d'un cheveu → la scrollbar (~15px de haut) apparaît. Compaction ciblée plutôt que micro-tuning fragile : `gap-2`→`gap-1.5` et la tuile OffDef `min-w-[11rem]`→`min-w-[9.5rem]` (l'`OffDefComposite` interne ne réclame que ~72px). Empreinte minimale réduite d'environ 34px (> 15px), indépendamment du nombre de tuiles (5 ou 6). Tuiles KPI inchangées (éviter le wrap des libellés sur 2 lignes). `overflow-x-auto` conservé comme filet pour les cas extrêmes (6 tuiles sur très petit écran). En pleine largeur (drawer fermé) le rendu est quasi inchangé (les tuiles grandissent via flex-1/flex-[2], seul le gap se resserre).
+
+**Résultats observés** : `tsc -b` 0 ; 58 tests session-detail verts ; eslint 0.
+
+**Fichiers** : `apps/web/src/features/session-detail/SessionSummaryCard.tsx`.
+
+**Prochaine étape** : confirmer visuellement la disparition de la scrollbar drawer ouvert (5 et 6 tuiles). Si 6 tuiles débordent encore sur certains viewports, basculer en `flex-wrap` (2 lignes) plutôt que scroll. Commit en attente d'autorisation.
+
+**MAJ (même session)** : (1) l'utilisateur valide le rendu en live → les retouches visuelles de la session (net score divergent, L3 drawer sticky/aligné, bande KPI) sont OK de son côté. (2) Abréviation du libellé le plus long en mode compact : nouveau prop `compact?: boolean` sur `SessionSummaryCard` → libellé OffDef = `stat_off_def_short` ("Rend. / Résist." / "Yield / Res.") au lieu de `stat_off_def` ("Rendement / Résistance") quand la colonne est divisée. Passé `compact={drawerOpen}` (colonne principale) et `compact` (drawer, toujours étroit). Nouvelle clé i18n + régénération. Réduit encore la pression de largeur sur la tuile la plus large. Fichiers ajoutés : `SessionDetailPage.tsx`, `i18n/manifests/session.toml` (+ generated). Typecheck 0 / 58 tests verts / eslint 0.
+
+## [2026-05-31] Page sessions — header L3 drawer mono-ligne "Comparaison · sélecteur" + sticky + hauteurs L3 alignées
+
+**Statut** : Complété côté code (typecheck 0, 58 tests session-detail verts, eslint 0). Vérif visuelle layout/sticky restante (jsdom ne calcule pas le layout). Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation.
+
+**Demande** : drawer L3 = UNE ligne "Comparaison · [liste déroulante de sessions] + pills" (équivalent du L3 page) ; figer (sticky) le L3 drawer comme le L3 page pour qu'il ne bouge pas au scroll ; possiblement fixer une hauteur identique sur les deux L3.
+
+**Décision technique** :
+- Header drawer restructuré (avant : `h2 "Comparaison · {label}"` + pills + `<select>` pleine largeur, empilés sur 3 lignes) en UNE ligne sticky : `h2 "Comparaison"` · `<select>` compact (session) · pills · bouton fermer (`ml-auto`). Nouvelle clé i18n `session.detail.compare_label` ; ancien `drawer_title` supprimé (devenu orphelin → règle dead-code).
+- Sticky drawer au même `top: navHeight` que le L3 page → les deux headers s'alignent côte-à-côte et restent figés. **BLOQUEUR résolu** : la piste compare était en `overflow-hidden`, qui établit un conteneur de scroll et CASSE `position: sticky` (le header se collerait à la piste, pas au `<main>`). Remplacé par `overflow-x: clip` (Tailwind `overflow-x-clip`) : clippe le débordement horizontal de l'animation de glissement SANS créer de conteneur de scroll (overflow-y reste visible) → le sticky se résout bien sur `<main>`. `clip-path: inset(0)` écarté : il ne clippe que le paint, le layout overflow déclencherait une scrollbar horizontale transitoire pendant l'animation.
+- Hauteur fixe `xl:h-14` sur les DEUX L3 (contexte côte-à-côte xl) + `xl:flex-nowrap` sur `SessionParamPills` et le groupe titre du L3 page (mono-ligne en xl, wrap conservé < xl pour mobile). Clip de sécurité horizontal : `xl:overflow-x-clip` (L3 page, n'écrête pas les tooltips verticaux) / `overflow-hidden` sur le conteneur de pills (drawer).
+
+**Résultats observés** : `tsc -b` 0 ; 58 tests session-detail verts (`SessionDetailPage.test` maj : titre drawer = heading "Comparaison") ; eslint 0 sur les fichiers modifiés ; i18n régénéré (`build_i18n_manifests.mjs`, 201 clés session).
+
+**Fichiers** : `SessionDetailPage.tsx`, `SessionParamPills.tsx`, `SessionDetailPage.test.tsx`, `i18n/manifests/session.toml` (+ `generated/session.ts` régénéré).
+
+**Prochaine étape** : vérif visuelle navigateur — (1) le L3 drawer reste figé au scroll, (2) les deux L3 alignés (même hauteur en vue côte-à-côte), (3) la ligne "Comparaison · select · pills · ×" tient sans débordement à la largeur demi-colonne xl (pills clippées sinon). Commit en attente d'autorisation utilisateur.
+
+## [2026-05-31] Page sessions — "Net score cumulé" : aire/courbe divergentes par signe + point outcome par match
+
+**Statut** : Complété côté code (typecheck 0, 18 tests session-detail verts, eslint 0). Vérif visuelle du rendu canvas restante (à confirmer dans l'app). Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation (reste sur la branche courante).
+
+**Demande** : sur `SessionNetScoreArea`, (1) colorer l'aire ET la courbe selon le SIGNE du solde cumulé (positif/négatif), (2) poser un point coloré par match révélant l'outcome.
+
+**Décision technique** :
+- Couleur par signe via `visualMap` piecewise (seuil 0 → `divergent-pos` / `divergent-neg`), ciblé `seriesIndex: 0`. Aire ancrée à 0 via `areaStyle.origin: 0` (remplissage vers le haut si +, vers le bas si −). Données 1D scalaires conservées → dimension visualMap par défaut = valeur.
+- Réintroduction ASSUMÉE du visualMap (l'implémentation précédente l'avait banni après le bug "courbe invisible") MAIS avec FILET DE SÉCURITÉ : la série garde une couleur de ligne/aire EXPLICITE (signe du solde final). Si le mapping visualMap échoue, la courbe reste visible → le mode de panne "invisible" est désormais structurellement empêché. Le test de régression enforce maintenant visualMap présent ET `lineStyle/areaStyle.color` présent.
+- Points outcome : 2e série `scatter` (un point par match en `[i, cumulative]`), `itemStyle.color = outcomeColor(outcomeIntToKey(outcome))`, anneau en couleur de surface (`tc.tooltipBg`) pour détacher le point de l'aire colorée. Série distincte → épargnée par le visualMap (seriesIndex 0). Tooltip enrichi du libellé outcome via `useFieldMappings().outcomes[key].label` (même source i18n que le donut).
+
+**Résultats observés** : `tsc -b` OK ; `SessionNetScoreArea.test.tsx` (6) + `SessionNewCharts.test.tsx` verts (18 total) ; eslint clean sur les 3 fichiers. Duplication supprimée : le bloc `buildSessionNetScoreOption` qui vivait AUSSI dans `SessionNewCharts.test.tsx` (cause d'une double-maintenance + erreur TS lors de ce changement) est retiré ; `SessionNetScoreArea.test.tsx` devient la source unique (assertion `boundaryGap` rapatriée).
+
+**Fichiers** : `apps/web/src/features/session-detail/SessionNetScoreArea.tsx` (+ `.test.tsx` réécrit), `SessionNewCharts.test.tsx` (bloc net-score retiré).
+
+**Prochaine étape** : vérif visuelle dans l'app (rendu divergent + lisibilité des points outcome sur l'aire colorée) ; ajuster au besoin opacité aire (0.18) / taille points (7) / contraste anneau. Commit en attente d'autorisation utilisateur.
+
 ## [2026-05-31] Diagnostic + fix des erreurs `make restart` (4 bugs : patterns SQL, prefixe shared., backup, lock player DB)
 
 **Statut** : Complété côté code (build ./... 0, go vet -tags=integration 0, suite integration duckdb COMPLETE verte 71s, duckdbbackup vert). Commit en attente d'autorisation. Branche : fix/metadata-art-catalog-upsert-invalidation (choix user — reste sur la branche courante malgre sujet different).
@@ -52199,3 +52331,22 @@ Findings positifs : nil-safety carte OK, tokens couleur OK, BadgeImageURL CSR di
 - Verdict options : (b) hystérésis descente ≤1sp/match = élimine 100% des chutes abruptes, lag 0-1sp → FIX PRIMAIRE. (a) μ−k·σ baisse le niveau, player-dependent, k≈1 max. (c) grille à uniformiser/élargir (Platine 0.133μ vs Or 0.5μ). (d) cap quit (−2.5μ = 18.7sp sur Platine Madina). (e) placement ~12 matchs (σ<1.0 après ~31).
 
 **Conclusion / prochaine étape** : recommandation priorisée = backfill commit → (b) → (c) → (d) → (e) → (a) léger. À investiguer : le match btb Madina Δμ=2.13 (anomalie EP grandes équipes). Implémentation des protections en attente d'arbitrage utilisateur. `cmd/diag_lusr_volatility` non commité (diagnostic jetable, à committer ou supprimer selon décision).
+
+---
+
+## [2026-05-31] Implémentation protections anti-volatilité LUSR v2 (b/c/d/e) + backfill commit
+
+**Statut** : Complété (livré sur branche feat/lusr-v2-volatility-protections, non poussé).
+
+**Décisions techniques** :
+- **(b) Hystérésis d'affichage** (`skill_v2/display_smoothing.go`, pur) : le palier AFFICHÉ monte immédiatement mais ne descend que d'1 sous-palier/match (demotion protection façon CSR). μ interne jamais bridé. Helpers `TierOrdinal`/`TierSubFromOrdinal` (round-trip), `SmoothDisplayedOrdinal`, `FormatTierSubLabel`, `MapTierSubToLegacyRating`. Câblé dans `writeCanonicalLUSRRow` (skill_v2_canonical.go) + `loadPreviousDisplayedOrdinal` (lit le palier lissé du match précédent → chaînage). rating_value reflète désormais le palier AFFICHÉ (lissé), pas μ brut.
+- **(c) Grille uniformisée SANS toucher les bornes** (tier.go) : réduit les SubTiers des tiers étroits (Argent 6→3, Platine 6→2, Diamant 6→3) → largeur sous-palier ~0.33-0.5 μ partout (vs 0.13-0.2 avant). Calibration tier↔CSR validée préservée (Madina μ26.17 reste Diamond). Front-safe (lookup romain ≤6). FormatTierLabel délègue à FormatTierSubLabel.
+- **(d) Cap quit penalty** (trueskill_ep.go) : `QuitPenaltyMuCap=1.5` clampe applyQuitPenaltyPost (unrelated 2.5→1.5, related 1.0 inchangé). −2.5 μ valait jusqu'à ~6 sous-paliers d'un coup.
+- **(e) Placement** : `PlacementMatches=10` — les 10 premiers matchs/groupe ne sont PAS lissés (σ élevé, convergence légitime). Modul l'hystérésis via state.Experience.
+- **Backfill --commit** : 3 passes isolées par joueur (`lusr_v2_canonical_backfill --commit <GT>`) → chaque match_skill_rank joueur réécrit avec la nouvelle logique (Madina 730, Choco 337, JGtm 623). État partagé renormalisé ensuite (dry-run). Serveurs tués/relancés pour le lock.
+
+**Résultats** :
+- Tests : `go test ./...` exit 0 (77 packages OK), `go vet` clean, gofmt clean. Nouveaux tests : display_smoothing_test.go (round-trip ordinal, hystérésis, placement, no-prev), trueskill_ep_quitcap_test.go. Tests existants mis à jour (tier/legacy_mapping pour les nouveaux SubTiers ; shadow quit gap 1.5→0.5).
+- **Vérification END-TO-END** (cmd/diag_lusr_displayed, lit match_skill_rank réel, par groupe) : chutes brutales −≥2 sous-paliers POST-placement = **0 pour les 3 joueurs** (pire −1 sp). Les quelques résidus (Madina 4, JGtm 5) sont confinés à la phase de placement (par design). Choco 0 partout.
+
+**Conclusion / prochaine étape** : volatilité d'affichage résolue (0 chute brutale sur rang établi). NEW matchs en live passent automatiquement par la nouvelle logique (canonical défaut LUSR_V2). Reste optionnel : (a) μ−k·σ léger non implémenté (jugé risqué/baisse niveau) ; badge UI "placement" (front) non câblé ; anomalie btb Madina Δμ=2.13 (dépriorisée par l'utilisateur). Outils diag : cmd/diag_lusr_volatility (simulation) + cmd/diag_lusr_displayed (vérif end-to-end).
