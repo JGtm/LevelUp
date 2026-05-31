@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/duckdb"
 )
 
 // SpartanIdentityFetcher abstrait CareerLiveService pour le mocking.
@@ -120,19 +121,36 @@ func (c *SpartanCustomizationCron) RunOnce(ctx context.Context) {
 	}
 
 	var ok, skipped, failed int
+	var lockedDBs []string
 	for _, p := range players {
-		switch c.refreshOne(ctx, p) {
+		outcome, err := c.refreshOne(ctx, p)
+		switch outcome {
 		case refreshOK:
 			ok++
 		case refreshSkipped:
 			skipped++
 		case refreshFailed:
 			failed++
+			if duckdb.IsFileLockError(err) {
+				lockedDBs = append(lockedDBs, p.Gamertag)
+			}
 		}
+	}
+	// Diagnostic agrégé "fail-fast" : si une ou plusieurs player DB sont
+	// verrouillées par un autre process (CLI backfill, 2e instance serveur,
+	// hot-reload Air pas encore libéré), on émet UNE ligne ERROR claire et
+	// actionnable plutôt que N WARN éparpillés qui noient la cause racine.
+	// Pas d'abort du process : les locks au boot sont souvent transitoires
+	// (cf. db.go IsFileLockError + commentaire Air post-SIGKILL).
+	if len(lockedDBs) > 0 {
+		slog.ErrorContext(ctx, "spartan_cron: player DB(s) verrouillée(s) par un autre process — "+
+			"un writer concurrent (CLI backfill / 2e instance serveur / Air pas encore libéré) tient le fichier RW ; "+
+			"ces joueurs restent dégradés jusqu'à sa fermeture (DuckDB est mono-writer par fichier)",
+			"locked_players", lockedDBs, "count", len(lockedDBs))
 	}
 	slog.InfoContext(ctx, "spartan_cron: cycle done",
 		"players", len(players),
-		"ok", ok, "skipped", skipped, "failed", failed,
+		"ok", ok, "skipped", skipped, "failed", failed, "locked", len(lockedDBs),
 		"duration", time.Since(start))
 }
 
@@ -146,17 +164,17 @@ const (
 
 // refreshOne refresh la customisation d'UN joueur en appelant le service
 // live avec ses tokens dans le ctx. Best-effort, ne bloque pas le cycle.
-func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.PlayerSummary) refreshOutcome {
+func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.PlayerSummary) (refreshOutcome, error) {
 	if c.pool == nil {
-		return refreshSkipped
+		return refreshSkipped, nil
 	}
 	if p.XUID == "" || p.Gamertag == "" {
-		return refreshSkipped
+		return refreshSkipped, nil
 	}
 	if !c.pool.HasPlayer(p.Gamertag) {
 		slog.DebugContext(ctx, "spartan_cron: skip (not in pool)",
 			"gamertag", p.Gamertag)
-		return refreshSkipped
+		return refreshSkipped, nil
 	}
 
 	// Acquire un lease pinned sur ce joueur (customisation = endpoint privacy-gated).
@@ -164,7 +182,7 @@ func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.Play
 	if err != nil || lease == nil {
 		slog.WarnContext(ctx, "spartan_cron: pool acquire failed",
 			"gamertag", p.Gamertag, "err", err)
-		return refreshFailed
+		return refreshFailed, err
 	}
 	defer lease.Release()
 
@@ -176,14 +194,21 @@ func (c *SpartanCustomizationCron) refreshOne(ctx context.Context, p domain.Play
 
 	svc, err := c.svcProvider(playerCtx, p.PlayerSlug)
 	if err != nil {
-		slog.WarnContext(ctx, "spartan_cron: svcProvider failed",
-			"gamertag", p.Gamertag, "slug", p.PlayerSlug, "err", err)
-		return refreshFailed
+		// Lock concurrent sur la player DB : pas de WARN par-joueur (la cause
+		// racine est loggée une seule fois, agrégée, en fin de cycle par RunOnce).
+		if duckdb.IsFileLockError(err) {
+			slog.DebugContext(ctx, "spartan_cron: svcProvider failed (player DB lock — agrégé en fin de cycle)",
+				"gamertag", p.Gamertag, "err", err)
+		} else {
+			slog.WarnContext(ctx, "spartan_cron: svcProvider failed",
+				"gamertag", p.Gamertag, "slug", p.PlayerSlug, "err", err)
+		}
+		return refreshFailed, err
 	}
 	if _, err := svc.GetSpartanIdentity(playerCtx); err != nil {
 		slog.WarnContext(ctx, "spartan_cron: GetSpartanIdentity failed",
 			"gamertag", p.Gamertag, "err", err)
-		return refreshFailed
+		return refreshFailed, err
 	}
-	return refreshOK
+	return refreshOK, nil
 }

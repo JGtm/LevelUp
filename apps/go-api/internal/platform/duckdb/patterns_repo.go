@@ -115,21 +115,25 @@ func (r *PatternsRepo) loadShared(ctx context.Context, limit int) ([]patternShar
 	}
 	defer release()
 
+	// played_at : pattern timezone canonique du projet — start_time_utc est
+	// TIMESTAMPTZ UTC garanti, fallback sur start_time AT TIME ZONE 'UTC' pour
+	// les matchs sans start_time_utc (cf. media_repo, ADR add_start_time_utc).
+	// mode_raw : sous-mode (pair_name), normalisé en Go via NormalizeModeLabel.
 	const q = `
 SELECT
     r.match_id,
-    r.played_at,
-    r.game_variant_category,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS played_at,
+    COALESCE(NULLIF(r.pair_name_fr, ''), r.pair_name, '') AS mode_raw,
     r.map_id,
     p.outcome,
-    r.duration_secs,
+    r.duration_seconds,
     p.kills, p.deaths, p.assists, p.accuracy,
     p.damage_dealt, p.damage_taken, p.headshot_kills,
     p.team_mmr IS NOT NULL AS is_ranked
 FROM match_participants p
 JOIN match_registry r USING (match_id)
 WHERE p.xuid = ?
-ORDER BY r.played_at DESC
+ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC
 LIMIT ?`
 
 	sqlRows, err := db.QueryContext(ctx, q, r.pdb.XUID, limit)
@@ -275,7 +279,7 @@ func mergePatternRows(shared []patternSharedRow, enrichMap map[string]patternEnr
 		row := patterns.MatchRow{
 			MatchID:     s.MatchID,
 			PlayedAt:    s.PlayedAt,
-			Mode:        s.Mode,
+			Mode:        analysis.NormalizeModeLabel(s.Mode),
 			MapID:       s.MapID,
 			Outcome:     s.Outcome,
 			IsRanked:    s.IsRanked,

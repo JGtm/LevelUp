@@ -386,6 +386,14 @@ func ensurePlayerDBMigrations(path string) error {
 
 	rwDB, err := OpenReadWrite(path)
 	if err != nil {
+		if IsFileLockError(err) {
+			// Cause opérationnelle, pas une corruption : un AUTRE process tient
+			// déjà ce fichier en écriture (CLI backfill, 2e instance serveur,
+			// hot-reload Air pas encore libéré). DuckDB est mono-writer par
+			// fichier. Message actionnable plutôt qu'un "open rw" opaque.
+			return fmt.Errorf("open rw: player DB %q verrouillée par un autre process "+
+				"(CLI backfill / 2e instance serveur encore ouverte ?) — fermer le writer concurrent puis relancer: %w", path, err)
+		}
 		return fmt.Errorf("open rw: %w", err)
 	}
 	defer rwDB.Close()

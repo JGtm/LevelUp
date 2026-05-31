@@ -1,6 +1,11 @@
-//go:build integration
-
 // Test anti-régression Phase 3 plan stabilisation 2026-05-22 :
+//
+// VOLONTAIREMENT PAS `//go:build integration` (retiré 2026-05-31) : ces deux
+// tests sont du scan AST/statique PUR (aucune connexion DuckDB, aucune fixture,
+// aucun CGO requis). Ils doivent tourner dans le gate par défaut `go test ./...`
+// — sinon ils ne protègent rien. C'est précisément leur absence du gate par
+// défaut qui a laissé shipper les bugs shared.highlight_events / shared.medals_earned
+// (cf. thought_log 2026-05-31). Tout le reste du package est integration-tagged.
 //
 // **Test 1 — TestSharedReader_AllHomeRepoCallsRouted**
 //
@@ -35,8 +40,15 @@ import (
 )
 
 // queryConstRe : matche `const Q<Name> = ` suivi d'une backtick-string
-// (peut être multi-line).
+// (peut être multi-line). Utilisé par Test 1 (routing) qui ne cible que les
+// const conventionnellement préfixées Q*.
 var queryConstRe = regexp.MustCompile(`(?s)const\s+(Q\w+)\s*=\s*` + "`" + `([^` + "`" + `]+)` + "`")
+
+// sqlConstRe : matche TOUTE const = backtick-string, quel que soit son nom
+// (pas seulement Q*). Utilisé par Test 2 pour indexer aussi les const SQL non
+// préfixées Q comme `highlightEventsBaseSelect` — angle mort historique qui a
+// laissé passer le bug shared.highlight_events (cf. thought_log 2026-05-31).
+var sqlConstRe = regexp.MustCompile(`(?s)const\s+(\w+)\s*=\s*` + "`" + `([^` + "`" + `]+)` + "`")
 
 // readDBCallRe : matche `<receiver>.pdb.ReadDB().Query(...)` ou
 // `<receiver>.pdb.ReadDB().QueryRow(...)`. Le contenu après "Query(" jusqu'à
@@ -158,8 +170,16 @@ func TestSharedReader_NoSharedPrefixViaSharedReader(t *testing.T) {
 		t.Fatalf("list files: %v", err)
 	}
 
-	// 1. Indexer toutes les const Q* du package : nom → SQL.
+	// 1. Indexer TOUTES les const = backtick-string du package : nom → SQL.
+	//    (broadened : sqlConstRe, pas queryConstRe — sinon les const SQL non
+	//    préfixées Q comme highlightEventsBaseSelect échappent à l'analyse.)
 	allConsts := map[string]string{}
+	fset := token.NewFileSet()
+	var fileASTs []*ast.File
+	// funcsByName : index package-wide nom_fonction → FuncDecl, pour suivre les
+	// helpers (ex: buildHighlightEventsQuery) appelés depuis la fonction qui
+	// fait SharedReadDB().Get() mais où le SQL `shared.` est réellement écrit.
+	funcsByName := map[string]*ast.FuncDecl{}
 	for _, path := range files {
 		if strings.HasSuffix(path, "_test.go") {
 			continue
@@ -168,23 +188,58 @@ func TestSharedReader_NoSharedPrefixViaSharedReader(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)
 		}
-		for _, m := range queryConstRe.FindAllStringSubmatch(string(raw), -1) {
+		for _, m := range sqlConstRe.FindAllStringSubmatch(string(raw), -1) {
 			allConsts[m[1]] = m[2]
-		}
-	}
-
-	var violations []string
-	fset := token.NewFileSet()
-
-	for _, path := range files {
-		if strings.HasSuffix(path, "_test.go") {
-			continue
 		}
 		fileAST, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 		if err != nil {
 			t.Fatalf("parse %s: %v", path, err)
 		}
+		fileASTs = append(fileASTs, fileAST)
+		for _, decl := range fileAST.Decls {
+			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
+				funcsByName[fn.Name.Name] = fn
+			}
+		}
+	}
 
+	var violations []string
+
+	// scanBody inspecte un corps de fonction : flag les BasicLit string et les
+	// ident → const dont le SQL contient `shared.X`. `origin` identifie d'où
+	// vient le SQL (fonction directe ou helper) pour le message d'erreur.
+	scanBody := func(body ast.Node, path, fnName, origin string) {
+		ast.Inspect(body, func(inner ast.Node) bool {
+			switch x := inner.(type) {
+			case *ast.BasicLit:
+				if x.Kind == token.STRING && containsSharedRef(x.Value) {
+					line := fset.Position(x.Pos()).Line
+					snippet := strings.TrimSpace(stripQuotes(x.Value))
+					if len(snippet) > 80 {
+						snippet = snippet[:80] + "..."
+					}
+					violations = append(violations, formatSharedReaderViolation(
+						path, line, fnName, origin+"inline SQL", snippet))
+				}
+			case *ast.Ident:
+				sql, found := allConsts[x.Name]
+				if !found || !containsSharedRef(sql) {
+					return true
+				}
+				line := fset.Position(x.Pos()).Line
+				snippet := strings.TrimSpace(sql)
+				if len(snippet) > 80 {
+					snippet = snippet[:80] + "..."
+				}
+				violations = append(violations, formatSharedReaderViolation(
+					path, line, fnName, origin+x.Name, snippet))
+			}
+			return true
+		})
+	}
+
+	for _, fileAST := range fileASTs {
+		path := fset.Position(fileAST.Pos()).Filename
 		ast.Inspect(fileAST, func(n ast.Node) bool {
 			fn, ok := n.(*ast.FuncDecl)
 			if !ok || fn.Body == nil {
@@ -195,36 +250,17 @@ func TestSharedReader_NoSharedPrefixViaSharedReader(t *testing.T) {
 			}
 			fnName := fn.Name.Name
 
-			// Pour chaque BasicLit string et chaque ident référençant une const
-			// dans le corps de fn, vérifier si le SQL contient `shared.X`.
-			ast.Inspect(fn.Body, func(inner ast.Node) bool {
-				switch x := inner.(type) {
-				case *ast.BasicLit:
-					if x.Kind == token.STRING && containsSharedRef(x.Value) {
-						line := fset.Position(x.Pos()).Line
-						snippet := stripQuotes(x.Value)
-						snippet = strings.TrimSpace(snippet)
-						if len(snippet) > 80 {
-							snippet = snippet[:80] + "..."
-						}
-						violations = append(violations, formatSharedReaderViolation(
-							path, line, fnName, "inline SQL", snippet))
-					}
-				case *ast.Ident:
-					sql, found := allConsts[x.Name]
-					if !found || !containsSharedRef(sql) {
-						return true
-					}
-					line := fset.Position(x.Pos()).Line
-					snippet := strings.TrimSpace(sql)
-					if len(snippet) > 80 {
-						snippet = snippet[:80] + "..."
-					}
-					violations = append(violations, formatSharedReaderViolation(
-						path, line, fnName, x.Name, snippet))
+			// a. Corps direct de la fonction qui fait SharedReadDB().Get().
+			scanBody(fn.Body, path, fnName, "")
+
+			// b. Helpers appelés depuis cette fonction (1 niveau de profondeur) :
+			//    le SQL `shared.` est souvent écrit dans un build*Query() séparé,
+			//    pas inline dans la fonction qui ouvre la conn.
+			for callee := range collectCalleeNames(fn.Body) {
+				if h, ok := funcsByName[callee]; ok && h != fn {
+					scanBody(h.Body, path, fnName, "via "+callee+"() → ")
 				}
-				return true
-			})
+			}
 			return true
 		})
 	}
@@ -275,6 +311,24 @@ func funcCallsSharedReaderGet(fn *ast.FuncDecl) bool {
 		return false
 	})
 	return found
+}
+
+// collectCalleeNames retourne l'ensemble des noms de fonctions appelées
+// directement (forme `foo(...)`) dans un corps. Sert à suivre les helpers
+// build*Query() depuis la fonction qui ouvre la conn SharedReader.
+func collectCalleeNames(body ast.Node) map[string]struct{} {
+	out := map[string]struct{}{}
+	ast.Inspect(body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if id, ok := call.Fun.(*ast.Ident); ok {
+			out[id.Name] = struct{}{}
+		}
+		return true
+	})
+	return out
 }
 
 // stripQuotes retire les guillemets/backticks autour d'un BasicLit STRING.

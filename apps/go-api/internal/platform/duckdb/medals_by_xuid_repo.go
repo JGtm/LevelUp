@@ -1,13 +1,18 @@
 // Package duckdb — medals_by_xuid_repo.go : implementation DuckDB du loader
 // medals par (xuid, match_id) (port.MedalsByXUIDRepository).
 //
-// Source : shared.medals_earned. La colonne stockee est medal_name_id (BIGINT
+// Source : table medals_earned du catalogue shared_matches_v2. La lecture passe
+// par SharedReadDB().Get() qui retourne (ADR 0016) une connexion DIRECTE — les
+// tables sont a la racine, sans alias `shared`. La query reference donc
+// medals_earned en bare (PAS `shared.medals_earned`, qui ne resout que sur la
+// topologie de test legacy et renvoyait silencieusement ErrCapabilityNotSupported
+// en prod via isTableNotFoundErr). La colonne stockee est medal_name_id (BIGINT
 // dans le schema actuel — cf. internal/migration/steps_shared.go), exposee
 // au port comme MedalID pour rester aligne avec le contract.
 //
-// Capability gating : si shared.medals_earned est absente, DuckDB remonte une
-// erreur "Table with name ... does not exist" — interceptee via
-// isTableNotFoundErr et convertie en games.ErrCapabilityNotSupported. Plus
+// Capability gating : si medals_earned est absente (titre sans cette capability),
+// DuckDB remonte une erreur "Table with name ... does not exist" — interceptee
+// via isTableNotFoundErr et convertie en games.ErrCapabilityNotSupported. Plus
 // pérenne qu'une introspection information_schema (les CATALOG/SCHEMA varient
 // entre prod RO direct, sharedprovider, et tests in-memory).
 //
@@ -115,7 +120,7 @@ SELECT
     me.match_id,
     me.medal_name_id::BIGINT AS medal_id,
     me.count
-FROM shared.medals_earned me
+FROM medals_earned me
 WHERE me.match_id IN (`)
 	sb.WriteString(matchPH)
 	sb.WriteString(`)
