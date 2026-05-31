@@ -873,6 +873,14 @@ func setMediaContentType(w http.ResponseWriter, ext string) {
 		w.Header().Set("Content-Type", "image/webp")
 	case ".gif":
 		w.Header().Set("Content-Type", "image/gif")
+	case ".m3u8":
+		// Playlist HLS (master + sous-playlists). hls.js et Safari natif s'appuient
+		// sur ce type pour démarrer la lecture adaptative.
+		w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+	case ".m4s":
+		w.Header().Set("Content-Type", "video/mp4") // segment fMP4 (CMAF)
+	case ".ts":
+		w.Header().Set("Content-Type", "video/mp2t") // segment MPEG-TS (legacy HLS)
 	}
 }
 
