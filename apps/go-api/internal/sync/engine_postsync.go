@@ -319,6 +319,20 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
+	// 1.58 Registry names heal (Phase 5) — re-résout map_name/pair_name/
+	// playlist_name/game_variant_name restés égaux à leur UUID. Cas typique :
+	// matchs synchronisés pendant que metadata.duckdb était FATAL-invalidated
+	// (incident ART) → e.metaDB nil au moment de l'INSERT → EnrichRegistryFrom-
+	// Metadata no-op → GUID brut écrit. Une fois metadata réparée, ce heal
+	// nettoie l'historique sans intervention CLI manuelle. Idempotent (UPDATE
+	// only where name==id) + best-effort (metadata absente → skip).
+	if n, err := e.runPostSyncRegistryNames(ctx, sharedDB); err != nil {
+		slog.WarnContext(ctx, "post-sync: registry names heal échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "registry names", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: registry names résolus", "gamertag", e.gamertag, "fixed", n)
+	}
+
 	// 1.6 Citations — pipeline primaire, pas un heal. Traite tous les matchs
 	// absents de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed"
 	// (fix citations.go) empêche les matchs à 0 delta d'être re-traités.
