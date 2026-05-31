@@ -235,6 +235,64 @@ func (r *ExplorerRepo) GetMatchStartTimesForXUID(ctx context.Context, xuid strin
 	return out, rows.Err()
 }
 
+// GetTargetRecentMatches retourne les `limit` derniers matchs PvP (firefight
+// exclu via is_firefight) du joueur, pour les graphes "profil de combat"
+// (Q19cTargetRecentMatches). Lecture SharedReader (ADR 0016, shared-only).
+func (r *ExplorerRepo) GetTargetRecentMatches(
+	ctx context.Context, xuid string, limit int,
+) ([]domain.ExplorerTargetRecentMatch, error) {
+	if strings.TrimSpace(xuid) == "" || limit <= 0 {
+		return nil, nil
+	}
+
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetTargetRecentMatches: shared reader: %w", err)
+	}
+	defer release()
+
+	rows, err := db.QueryContext(ctx, Q19cTargetRecentMatches, xuid, xuid, limit)
+	if err != nil {
+		return nil, fmt.Errorf("ExplorerRepo.GetTargetRecentMatches: query: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.ExplorerTargetRecentMatch
+	for rows.Next() {
+		m, scanErr := scanTargetRecentMatch(rows)
+		if scanErr != nil {
+			return nil, fmt.Errorf("ExplorerRepo.GetTargetRecentMatches: scan: %w", scanErr)
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
+}
+
+// scanTargetRecentMatch projette une ligne de Q19cTargetRecentMatches vers le
+// DTO domain. rank est NULL pour les DNF/non classés (→ *int nil) ; damage_* est
+// stocké en DOUBLE et arrondi à l'entier (les graphes n'affichent pas de décimale).
+func scanTargetRecentMatch(rows *sql.Rows) (domain.ExplorerTargetRecentMatch, error) {
+	var m domain.ExplorerTargetRecentMatch
+	var rank sql.NullInt64
+	var damageDealt, damageTaken float64
+	if err := rows.Scan(
+		&m.MatchID, &m.StartTime, &m.MapUI, &m.ModeUI,
+		&m.Outcome, &rank,
+		&m.Kills, &m.Deaths, &m.Assists, &m.KDA,
+		&m.Score, &damageDealt, &damageTaken,
+		&m.MaxKillingSpree, &m.PerfectKills,
+	); err != nil {
+		return m, err
+	}
+	if rank.Valid {
+		v := int(rank.Int64)
+		m.Rank = &v
+	}
+	m.DamageDealt = int(damageDealt)
+	m.DamageTaken = int(damageTaken)
+	return m, nil
+}
+
 // ResolveXUIDByGamertag résout un gamertag en xuid via shared.v_gamertag_lookup (ILIKE).
 //
 // Source : la vue v_gamertag_lookup (cascade xuid_aliases ∪ match_participants

@@ -29,6 +29,8 @@ type mockExplorerRepo struct {
 	medalsErr       error
 	startTimes      []time.Time
 	startTimesErr   error
+	recentMatches   []domain.ExplorerTargetRecentMatch
+	recentErr       error
 }
 
 func (m *mockExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
@@ -48,6 +50,9 @@ func (m *mockExplorerRepo) GetMedalCountsForMatches(_ context.Context, _ string,
 }
 func (m *mockExplorerRepo) GetMatchStartTimesForXUID(_ context.Context, _ string) ([]time.Time, error) {
 	return m.startTimes, m.startTimesErr
+}
+func (m *mockExplorerRepo) GetTargetRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
+	return m.recentMatches, m.recentErr
 }
 
 // --- tests ---
@@ -586,6 +591,53 @@ func TestExplorerService_TargetProfile_LiveIdentityError(t *testing.T) {
 	if tp.SampleStats == nil || tp.SampleStats.Kills != 3 {
 		t.Errorf("SampleStats doivent rester calculées malgré l'échec live, got %+v", tp.SampleStats)
 	}
+}
+
+// TestExplorerService_TargetProfile_CombatProfile vérifie que le profil de
+// combat (N derniers matchs PvP de la cible) est peuplé quand le repo en
+// fournit, et nil (best-effort) quand le repo échoue.
+func TestExplorerService_TargetProfile_CombatProfile(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	rank := 1
+	recent := []domain.ExplorerTargetRecentMatch{
+		{MatchID: "r1", StartTime: now, MapUI: "Aquarius", ModeUI: "Slayer", Outcome: 2, Rank: &rank, Kills: 20, Deaths: 8, Assists: 5, KDA: 2.5, Score: 1800, DamageDealt: 4500, DamageTaken: 3000, MaxKillingSpree: 7, PerfectKills: 2},
+		{MatchID: "r2", StartTime: now, MapUI: "Recharge", ModeUI: "Oddball", Outcome: 3, Kills: 10, Deaths: 12},
+	}
+
+	t.Run("peuplé quand le repo fournit", func(t *testing.T) {
+		repo := &mockExplorerRepo{xuid: "target-xuid", matches: matches, recentMatches: recent}
+		svc := NewExplorerService(repo, "my-xuid")
+		resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+		if err != nil {
+			t.Fatalf("GetCommonMatches: %v", err)
+		}
+		tp := resp.TargetProfile
+		if tp == nil || len(tp.CombatProfile) != 2 {
+			t.Fatalf("CombatProfile attendu 2 matchs, got %+v", tp)
+		}
+		if tp.CombatProfile[0].MatchID != "r1" || tp.CombatProfile[0].PerfectKills != 2 {
+			t.Errorf("CombatProfile[0] = %+v, want r1 perfect=2", tp.CombatProfile[0])
+		}
+		if tp.CombatProfile[0].Rank == nil || *tp.CombatProfile[0].Rank != 1 {
+			t.Errorf("CombatProfile[0].Rank = %v, want 1", tp.CombatProfile[0].Rank)
+		}
+	})
+
+	t.Run("nil quand le repo échoue (best-effort)", func(t *testing.T) {
+		repo := &mockExplorerRepo{xuid: "target-xuid", matches: matches, recentErr: errors.New("db down")}
+		svc := NewExplorerService(repo, "my-xuid")
+		resp, err := svc.GetCommonMatches(ctxAuth(false, "my-xuid"), "TargetPlayer", 1)
+		if err != nil {
+			t.Fatalf("GetCommonMatches ne doit pas échouer sur erreur combat profile: %v", err)
+		}
+		if resp.TargetProfile == nil || resp.TargetProfile.CombatProfile != nil {
+			t.Errorf("CombatProfile attendu nil sur erreur repo, got %+v", resp.TargetProfile.CombatProfile)
+		}
+	})
 }
 
 // TestExplorerService_TargetProfile_IdentitySerializesAsDTO est le test de

@@ -284,6 +284,45 @@ JOIN match_participants p1 ON r.match_id = p1.match_id AND p1.xuid = ?
 JOIN match_participants p2 ON r.match_id = p2.match_id AND p2.xuid = ?
 ORDER BY COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') DESC`
 
+// Q19cTargetRecentMatches : les `limit` derniers matchs PvP (firefight exclu)
+// du joueur cible, pour les graphes "profil de combat" (Explorer mode Joueur).
+// Filtre PvP en SQL via match_registry.is_firefight (même pattern que
+// engagement_score_repo / career highlights — plus fiable qu'un filtre Go sur
+// le pair_name). perfect_kills agrégé par match via LEFT JOIN sur medals_earned
+// (1512363953 = médaille "Perfect", même littéral que queries_squad.go /
+// compare_repo.go). Exécutée sur SharedReader (shared.* sans préfixe).
+// Params (ordre) : ? = xuid (perfect CTE), ? = xuid (participants), ? = limit.
+const Q19cTargetRecentMatches = `
+WITH perfect AS (
+    SELECT match_id, COALESCE(SUM(count), 0) AS perfect_kills
+    FROM medals_earned
+    WHERE xuid = ? AND medal_name_id = 1512363953
+    GROUP BY match_id
+)
+SELECT
+    mp.match_id,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
+    COALESCE(r.map_name, '')          AS map_ui,
+    COALESCE(r.pair_name, '')         AS mode_ui,
+    COALESCE(mp.outcome, 0)           AS outcome,
+    mp.rank                           AS rank,
+    COALESCE(mp.kills, 0)             AS kills,
+    COALESCE(mp.deaths, 0)            AS deaths,
+    COALESCE(mp.assists, 0)           AS assists,
+    COALESCE(mp.kda, 0.0)             AS kda,
+    COALESCE(mp.personal_score, 0)    AS score,
+    COALESCE(mp.damage_dealt, 0.0)    AS damage_dealt,
+    COALESCE(mp.damage_taken, 0.0)    AS damage_taken,
+    COALESCE(mp.max_killing_spree, 0) AS max_killing_spree,
+    COALESCE(p.perfect_kills, 0)      AS perfect_kills
+FROM match_participants mp
+JOIN match_registry r ON r.match_id = mp.match_id
+LEFT JOIN perfect p ON p.match_id = mp.match_id
+WHERE mp.xuid = ?
+  AND COALESCE(r.is_firefight, FALSE) = FALSE
+ORDER BY start_time DESC
+LIMIT ?`
+
 // Q19b : Kills croisés agrégés entre deux joueurs sur l'ensemble de leurs matchs communs.
 // Paramètres : ?1 = xuid joueur principal, ?2 = xuid autre joueur (répétés 2 fois chacun).
 // Retourne 2 colonnes : kills_dealt, deaths_suffered.
