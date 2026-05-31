@@ -43,7 +43,8 @@ func main() {
 		}
 		groups := loadDisplayedByGroup(ctx, db, bnd)
 		db.Close()
-		var total, abruptAll, abruptPost, worstPost int
+		var total int
+		var down, up moveStats // agrégats POST-placement (rang établi)
 		gnames := make([]string, 0, len(groups))
 		for g := range groups {
 			gnames = append(gnames, g)
@@ -54,12 +55,15 @@ func main() {
 		for _, g := range gnames {
 			gd := groups[g]
 			total += len(gd.ords)
-			aAll, _, _ := countDrops(gd.ords, bnd, 1)
-			aPost, _, wPost := countDrops(gd.ords, bnd, skillv2.PlacementMatches+1)
-			abruptAll += aAll
-			abruptPost += aPost
-			if wPost < worstPost {
-				worstPost = wPost
+			s := countMoves(gd.ords, bnd, skillv2.PlacementMatches+1)
+			down.downAbrupt += s.downAbrupt
+			up.upAbrupt += s.upAbrupt
+			up.tierUpBig += s.tierUpBig
+			if s.downWorst < down.downWorst {
+				down.downWorst = s.downWorst
+			}
+			if s.upBest > up.upBest {
+				up.upBest = s.upBest
 			}
 			final := ""
 			if len(gd.labels) > 0 {
@@ -71,7 +75,8 @@ func main() {
 			}
 			fmt.Printf("    %-16s %-14s (%d matchs)%s\n", g, final, len(gd.ords), placement)
 		}
-		fmt.Printf("- volatilité : chutes −≥2sp TOUT=%d, POST-placement=**%d** (pire %d sp)\n", abruptAll, abruptPost, -worstPost)
+		fmt.Printf("- POST-placement, en 1 match : CHUTES −≥2sp=%d (pire %d sp) | PICS +≥2sp=%d (plus gros bond +%d sp, dont franchissant un palier d'un coup=%d)\n",
+			down.downAbrupt, -down.downWorst, up.upAbrupt, up.upBest, up.tierUpBig)
 	}
 }
 
@@ -121,26 +126,47 @@ func loadDisplayedByGroup(ctx context.Context, db *sql.DB, bnd []skillv2.TierBou
 	return out
 }
 
-// countDrops compte les chutes à partir de l'index `from` (1-based sur les
-// transitions) pour pouvoir ignorer la phase de placement.
-func countDrops(ords []int, bnd []skillv2.TierBoundary, from int) (abrupt, tierDrops, worst int) {
+// moveStats agrège les mouvements de rang par match, dans les deux sens.
+type moveStats struct {
+	downAbrupt int // matchs avec −≥2 sous-paliers en 1 match
+	downWorst  int // pire chute (négatif)
+	upAbrupt   int // matchs avec +≥2 sous-paliers en 1 match
+	upBest     int // plus gros bond (positif)
+	tierUpBig  int // matchs franchissant ≥1 palier complet vers le HAUT en 1 match (bond ≥2 sp)
+	tierDown   int // franchissements de palier vers le bas (doux, pas-à-pas)
+}
+
+// countMoves compte les mouvements à partir de l'index `from` (pour ignorer le
+// placement). Mesure montées ET descentes.
+func countMoves(ords []int, bnd []skillv2.TierBoundary, from int) moveStats {
 	bases := tierBases(bnd)
 	if from < 1 {
 		from = 1
 	}
+	var s moveStats
 	for i := from; i < len(ords); i++ {
 		d := ords[i] - ords[i-1]
+		ti, tp := tierOf(ords[i], bases), tierOf(ords[i-1], bases)
 		if d <= -2 {
-			abrupt++
+			s.downAbrupt++
 		}
-		if d < worst {
-			worst = d
+		if d >= 2 {
+			s.upAbrupt++
 		}
-		if tierOf(ords[i], bases) < tierOf(ords[i-1], bases) {
-			tierDrops++
+		if d < s.downWorst {
+			s.downWorst = d
+		}
+		if d > s.upBest {
+			s.upBest = d
+		}
+		if ti < tp {
+			s.tierDown++
+		}
+		if ti > tp && d >= 2 {
+			s.tierUpBig++ // saut d'au moins un palier en un seul match
 		}
 	}
-	return
+	return s
 }
 
 func tierBases(bnd []skillv2.TierBoundary) []int {
