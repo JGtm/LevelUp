@@ -67,6 +67,25 @@ func buildBatchFromFetchedMatchCtx(
 
 	builder := persist.NewBatchBuilder(titleSlug, gamertag, xuid, "sync_delta")
 	builder.SetMatch(fm.Registry)
+
+	// Phase 3 : poser les PBit skill sur les participants AVANT AddParticipants
+	// (INSERT-only, parité legacy MarkSkillLoaded). skillOK = l'API skill a
+	// renvoyé des données (pas d'erreur + ≥1 team_mmr). Les bits registry sont
+	// agrégés en fin de fonction (cf. doc domain.MatchRegistryRow.BackfillCompleted
+	// : la valeur doit être calculée AVANT le Submit, mode INSERT-only).
+	skillOK := fm.SkillError == nil && hasAnyTeamMMR(fm.Participants)
+	if skillOK {
+		for i := range fm.Participants {
+			if fm.Participants[i].TeamMMR != nil {
+				bits := skillBitsCombined
+				if fm.Participants[i].BackfillBits != nil {
+					bits |= *fm.Participants[i].BackfillBits
+				}
+				fm.Participants[i].BackfillBits = &bits
+			}
+		}
+	}
+
 	if len(fm.Participants) > 0 {
 		builder.AddParticipants(fm.Participants)
 	}
@@ -214,6 +233,30 @@ func buildBatchFromFetchedMatchCtx(
 			return len(batch.PVE.Stats)
 		}(),
 	)
+	// Phase 3 : agréger les bits de complétude sur la registry row (INSERT-only,
+	// cf. doc BackfillCompleted). On lit l'état RÉEL du batch construit
+	// (events/killer_victim effectivement ajoutés). Parité legacy
+	// insertFetchedMatch (MarkParticipantsDone / MarkSkillLoaded + events/kv) →
+	// backfill_completed fiable sur le chemin batch, sans UPDATE post-persist.
+	if m := batch.Shared.Match; m != nil {
+		var bits int64
+		if m.BackfillCompleted != nil {
+			bits = *m.BackfillCompleted
+		}
+		if len(batch.Shared.Participants) > 0 {
+			bits |= backfillFlagParticipants
+		}
+		if skillOK {
+			bits |= backfillFlagSkill
+		}
+		if len(batch.Shared.HighlightEvents) > 0 {
+			bits |= MBitEvents
+		}
+		if len(batch.Shared.KillerVictim) > 0 {
+			bits |= MBitKillerVictim
+		}
+		m.BackfillCompleted = &bits
+	}
 	return batch, parseErr
 }
 

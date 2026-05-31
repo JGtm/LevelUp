@@ -87,6 +87,14 @@ func (e *SyncEngine) submitMatchAsBatch(
 	// ici on garantit que le path SYNC sans queue est aussi protege).
 	persist.SanitizeBatch(batch)
 
+	// Phase 3 — parité legacy insertFetchedMatch : une erreur skill (GetMatchSkill
+	// KO) devient un warning. Les colonnes skill restent NULL et le skill heal les
+	// complétera ; les bits skill ne sont pas posés au collect dans ce cas
+	// (buildBatchFromFetchedMatch : skillOK == false).
+	if fm.SkillError != nil {
+		result.AddWarning(fmt.Sprintf("skill %s: %v", fm.MatchID, fm.SkillError))
+	}
+
 	// Phase 5 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : pre-check idempotence
 	// match_registry. Le SharedPersister no-op silently si le match_id
 	// existe deja (cf. shared_persister.go:78), mais le compteur en aval
