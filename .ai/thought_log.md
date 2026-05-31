@@ -1,3 +1,39 @@
+## [2026-05-31] Sync — graphes onglet Détails + citations vides (diagnostic + honnêteté heal)
+
+**Statut** : En cours (Phase 0 + Phase 2 partielle) — branche `fix/sync-combat-completion-persist`.
+
+**Problème** : matchs du 2026-05-30, onglet Détails du match view → tableaux OK mais tous les graphiques
+de combat vides + citations non calculées. `diag_recent_match_sync` :
+`highlight_events=0, killer_victim_pairs=0, weapon_kills=0, events_loaded=false, backfill_completed=0`.
+
+**Cause racine (prouvée par instrumentation runtime `duckdb_databases()`)** : la connexion
+`shared_matches_v2` utilisée par la complétion post-sync (`events_heal`→`InsertHighlightEvents`,
+`healSkill`→`InsertParticipants`, LUSR v2) est **read-only** au moment de l'INSERT
+(`shared_matches_v2(ro=true)`), conséquence d'une corruption ART sur `match_participants` → cascade FATAL
+`database invalidated`. Ces écritures de complétion **contournent l'orchestrateur collect/persist**
+(`db.Exec` direct sur un handle non garanti RW) et **avalent l'échec en le comptant `no_film`** → 31h de
+panne silencieuse. Citations vides car dépendent de `highlight_events`. Détail complet :
+`.ai/HANDOFF_sync_combat_completion.md` + `.ai/AUDIT_SYNC_COMBAT_RO_2026-05-31.md`.
+
+**Décision technique** : règle ferme — toute écriture shared doit passer par persist sur le writer RW
+coordonné ; complétion = fonction cœur tracée, jamais un best-effort silencieux. Option A (router via
+writer provider + fail-fast si RO) retenue pour le fix structurel (à venir).
+
+**Livré cette session** :
+1. Rebuild ART shared via `force_rebuild_art` (26068 lignes, 0 perte) — remédiation du résidu corrompu.
+2. Honnêteté des compteurs `events_heal.go` : un échec réel (write RO / réseau / parse) est désormais
+   compté `failed` (+ WARN agrégé), plus jamais noyé dans `no_film`. Idem `healWeaponKills`. Garde-fou :
+   `events_heal_honesty_test.go` (2 tests, verts).
+
+**Résultats observés** : `go test -tags cgo ./internal/sync/` vert (30s) ; `go vet` clean. Les 2 matchs du
+30/05 restent vides (film probablement expiré pendant les 31h RO — data-loss à confirmer en remédiation).
+
+**Prochaine étape** : test Go déterministe du mécanisme RO, puis migration de la complétion vers persist +
+fail-fast (Phase 1), pas-de-marquage-prématuré events_loaded, bitmasks batch path, recompute citations
+forcé, résolution metadata, statut front.
+
+---
+
 ## [2026-05-31] Transcoding HLS multipiste à l'ingestion média (6 phases)
 
 **Statut** : Complété (backend + serving + front + CLI). POC navigateur Opus GO. Branche : feat/media-hls-transcoding. Commits b3c16c8b5, 233b58ee0, 20f41cf62, 20266047d + raffinement logging.
