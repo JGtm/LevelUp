@@ -47,6 +47,19 @@ func RequiresRemux(ext string) bool {
 	return remuxRequiredVideoExts[strings.ToLower(ext)]
 }
 
+// IsVideoExt retourne true si l'extension est un container vidéo reconnu
+// (subset vidéo de VideoExtensions). Sert à pré-filtrer les candidats au
+// transcoding HLS sans probe ffprobe (les images retournent false).
+func IsVideoExt(ext string) bool {
+	ext = strings.ToLower(ext)
+	for _, v := range VideoExtensions {
+		if v == ext {
+			return true
+		}
+	}
+	return false
+}
+
 // StemAndExt sépare un chemin en (stem, ext). `ext` inclut le point et est
 // en lowercase. `stem` est le basename sans extension.
 //

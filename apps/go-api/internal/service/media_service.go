@@ -14,9 +14,11 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/domain"
+	mediapkg "levelup/go-api/internal/media"
 	"levelup/go-api/internal/ops"
 	"levelup/go-api/internal/platform/dblease"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/jobs"
 	"levelup/go-api/internal/port"
 )
 
@@ -37,6 +39,8 @@ type MediaService struct {
 	repo          port.MediaRepository
 	timezone      string                                // IANA assaini à la construction (ex: "Europe/Paris")
 	acquireWriter func() (*dblease.LeasedWriter, error) // optionnel
+	jobStore      *jobs.Store                           // optionnel : si nil, pas de transcoding HLS
+	feedBump      func()                                // optionnel : notifie la galerie (BumpMediaFeedVersion)
 }
 
 // MediaOption configure un MediaService à la construction.
@@ -51,6 +55,17 @@ type MediaOption func(*MediaService)
 // séparés). Garantit la non-régression pour les tests existants.
 func WithMediaWriterAcquirer(f func() (*dblease.LeasedWriter, error)) MediaOption {
 	return func(s *MediaService) { s.acquireWriter = f }
+}
+
+// WithMediaTranscoding active le transcoding HLS asynchrone à l'upload. jobStore
+// porte le cycle de vie des jobs (persistant, repris au boot) ; feedBump notifie
+// la galerie quand un clip devient lisible. Si non configuré, les vidéos
+// multipistes/MKV restent servies via le remux WebM live (dégradation gracieuse).
+func WithMediaTranscoding(jobStore *jobs.Store, feedBump func()) MediaOption {
+	return func(s *MediaService) {
+		s.jobStore = jobStore
+		s.feedBump = feedBump
+	}
 }
 
 // NewMediaService crée un MediaService avec le repository et la timezone injectés.
@@ -319,6 +334,7 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		return nil, fmt.Errorf("créer captures dir %q: %w", req.CapturesDir, err)
 	}
 
+	var savedVideos []string // chemins abs des vidéos sauvées (candidats transcoding HLS)
 	for _, f := range req.Files {
 		dest := safeDestPath(req.CapturesDir, f.OriginalName)
 		if err := os.WriteFile(dest, f.Data, 0o644); err != nil {
@@ -330,6 +346,9 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		result.Saved++
 		slog.DebugContext(ctx, "upload: fichier sauvegardé",
 			"file", f.OriginalName, "dest", dest)
+		if mediapkg.IsVideoExt(filepath.Ext(dest)) {
+			savedVideos = append(savedVideos, dest)
+		}
 	}
 
 	if result.Saved == 0 {
@@ -374,6 +393,12 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 	result.Thumbnails = idxResult.Thumbnails
 	result.Errors = append(result.Errors, idxResult.Errors...)
 
+	// Transcoding HLS asynchrone des vidéos éligibles. Les thumbnails ont déjà
+	// été générés par IndexMedia (donc disponibles même pendant le 'processing').
+	if s.jobStore != nil {
+		s.launchHLSTranscoding(ctx, req, savedVideos)
+	}
+
 	slog.InfoContext(ctx, "upload: terminé",
 		"saved", result.Saved,
 		"new_indexed", result.NewIndexed,
@@ -382,6 +407,66 @@ func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest
 		"errors", len(result.Errors),
 	)
 	return result, nil
+}
+
+// launchHLSTranscoding détecte les vidéos éligibles au HLS (MKV/AVI ou
+// multipiste), les marque 'processing' et lance un worker async par clip. La
+// détection (probe) est synchrone et rapide ; le transcoding tourne en goroutine
+// détachée pour ne pas bloquer la réponse upload.
+func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.UploadRequest, videoPaths []string) {
+	store := ops.MediaPathStore{CapturesBase: req.CapturesBase}
+	for _, dest := range videoPaths {
+		needed, err := ops.DetectHLSNeeded(ctx, dest)
+		if err != nil {
+			slog.WarnContext(ctx, "hls: détection échouée", "file", dest, "err", err)
+			continue
+		}
+		if !needed {
+			continue
+		}
+		fileRel := store.ToRel(dest, req.Gamertag)
+		if fileRel == "" {
+			fileRel = dest
+		}
+		outDir, hlsRel := ops.HLSPathsFor(req.CapturesDir, req.CapturesBase, req.Gamertag, dest)
+		if err := ops.MarkTranscodeStatus(ctx, req.SharedSocialDBPath, fileRel, ops.TranscodeProcessing); err != nil {
+			slog.WarnContext(ctx, "hls: mark processing échoué", "file", fileRel, "err", err)
+			continue
+		}
+		job := s.jobStore.Create(domain.JobTypeTranscodeMedia, req.Gamertag)
+		slog.InfoContext(ctx, "hls: transcoding lancé",
+			"job", job.JobID, "file", fileRel, "out_dir", outDir)
+		go s.runTranscodeJob(ops.HLSTranscodeParams{
+			SourceAbs: dest,
+			OutDir:    outDir,
+			DBPath:    req.SharedSocialDBPath,
+			FileRel:   fileRel,
+			HLSRel:    hlsRel,
+		}, job.JobID)
+	}
+}
+
+// runTranscodeJob exécute le transcoding en arrière-plan (context.Background :
+// survit à la requête HTTP), met à jour le job, et notifie la galerie au succès.
+func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
+	ctx := context.Background()
+	step := "transcoding"
+	s.jobStore.SetStatus(jobID, domain.JobStatusRunning, &step)
+
+	if err := ops.RunHLSTranscode(ctx, p); err != nil {
+		s.jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+			j.Status = domain.JobStatusFailed
+			now := time.Now().UTC()
+			j.FinishedAt = &now
+			j.Error = &domain.JobErrorDetail{Code: "transcode_failed", Message: err.Error()}
+		})
+		return
+	}
+
+	s.jobStore.SetStatus(jobID, domain.JobStatusSucceeded, nil)
+	if s.feedBump != nil {
+		s.feedBump()
+	}
 }
 
 // ReassociateMedia recrée toutes les associations médias↔matchs depuis zéro.

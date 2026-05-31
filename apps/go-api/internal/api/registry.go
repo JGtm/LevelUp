@@ -43,6 +43,7 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/halo"
+	jobs_platform "levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
@@ -75,6 +76,15 @@ type ServiceRegistry struct {
 	prestigeBundle   *PrestigeBundle              // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
 	advisorBundle    *CoachAdvisorBundle          // nil → coach_advisor désactivé (ADR 0020 Phase 8)
 	authStore        auth.UserTokenStore          // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	jobStore         *jobs_platform.Store         // nil → transcoding HLS désactivé (médias servis via remux WebM live)
+}
+
+// WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
+// asynchrones (transcoding média HLS). Nil possible : la feature dégrade alors
+// vers le remux WebM live (cf. service.WithMediaTranscoding).
+func (r *ServiceRegistry) WithJobStore(store *jobs_platform.Store) *ServiceRegistry {
+	r.jobStore = store
+	return r
 }
 
 // WithAuthStore attache le MultiUserTokenStore au registry — source unique des

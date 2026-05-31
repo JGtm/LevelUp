@@ -632,6 +632,12 @@ func ensureMediaTables(ctx context.Context, db *sql.DB) error {
 		{"discord_notified", "BOOLEAN DEFAULT FALSE"},
 		{"file_stem", colTypeVarchar},
 		{"file_ext", colTypeVarchar},
+		// HLS (transcoding à l'ingestion) : hls_path = pointeur {slug}/hls/{stem}/master.m3u8
+		// (NULL = média servi en direct, non transcodé) ; transcode_status =
+		// processing|ready|failed (NULL = pas de transcodage). Colonnes dédiées :
+		// ne PAS réutiliser `status` (sémantique 'active' déjà filtrée par le rail home).
+		{"hls_path", colTypeVarchar},
+		{"transcode_status", colTypeVarchar},
 	} {
 		if _, err := db.ExecContext(ctx, "ALTER TABLE media_files ADD COLUMN IF NOT EXISTS "+col.name+" "+col.typ); err != nil {
 			return fmt.Errorf("ensureMediaTables: ajout colonne %s: %w", col.name, err)
@@ -704,9 +710,12 @@ func walkMediaDir(dir string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		// Ignorer le répertoire thumbs/ (miniatures générées)
+		// Ignorer thumbs/ (miniatures) et hls/ (arbres HLS-fMP4 générés :
+		// init.mp4, segments .m4s, playlists .m3u8). Sans le skip de hls/, le
+		// fichier init.mp4 serait indexé comme un faux média (cf. PLAN_MEDIA_HLS
+		// piège n°1).
 		if info.IsDir() {
-			if info.Name() == "thumbs" {
+			if info.Name() == "thumbs" || info.Name() == "hls" {
 				return filepath.SkipDir
 			}
 			return nil
