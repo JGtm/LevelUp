@@ -18,7 +18,7 @@
 LOAD_DOTENV := if [ -f .env.local ]; then set -a; . ./.env.local; set +a; fi; \
                if [ -f .env ]; then set -a; . ./.env; set +a; fi
 
-.PHONY: help web dev test-web test-e2e test-e2e-ui check-types \
+.PHONY: help web dev stop restart test-web test-e2e test-e2e-ui check-types \
         generate-types install-web \
         go-api-build go-api-test go-api-dev _go-api-run \
         go-api-test-shared-social-gate install-git-hooks \
@@ -89,8 +89,13 @@ AIR := $(or $(shell which air 2>/dev/null),$(shell cygpath -u "$$(go env GOPATH)
 
 ifeq ($(OS),Windows_NT)
 GO_API_CLEANUP_CMD := cmd //C "taskkill /F /IM server.exe /T >NUL 2>&1 || exit /B 0"
+# Arret ROBUSTE des serveurs dev : on tue par PORT (API + Vite 5173), insensible au
+# nom du binaire (server.exe, server_redeploy.exe, enfant de air, etc.) + air par nom.
+# Single-quotes obligatoires : empechent sh d'expanser $_ avant PowerShell.
+STOP_SERVERS_CMD := powershell -NoProfile -Command '@($(API_PORT),5173) | ForEach-Object { Get-NetTCPConnection -LocalPort $$_ -State Listen -ErrorAction SilentlyContinue } | ForEach-Object { Stop-Process -Id $$_.OwningProcess -Force -ErrorAction SilentlyContinue }; Stop-Process -Name air,server,server_redeploy -Force -ErrorAction SilentlyContinue; exit 0'
 else
 GO_API_CLEANUP_CMD := true
+STOP_SERVERS_CMD := bash -c 'for p in $(API_PORT) 5173; do pid=$$(lsof -ti tcp:$$p 2>/dev/null); [ -n "$$pid" ] && kill -9 $$pid 2>/dev/null; done; pkill -f bin/air 2>/dev/null; true'
 endif
 
 ## Go API: compile le binaire server (Linux — requiert CGo/DuckDB)
@@ -142,6 +147,18 @@ dev:
 		$(AIR) -c .air.toml || true) & PID_API=$$!; \
 	(cd apps/web && VITE_API_PROXY_TARGET="$(VITE_API_PROXY_TARGET)" npm run dev) & PID_WEB=$$!; \
 	wait
+
+## Arrete les serveurs dev (API + front Vite). Kill par port, donc insensible au
+## nom du binaire (server.exe / server_redeploy.exe / air).
+stop:
+	@echo "  [..] Arret des serveurs dev (API:$(API_PORT) + Web:5173)..."
+	-@$(STOP_SERVERS_CMD)
+	@echo "  [OK] Serveurs arretes."
+
+## Redemarre tout : arret propre (stop) puis demarrage (dev, foreground — Ctrl+C arrete).
+## stop + dev en PREREQUIS (executes dans l'ordre, sans -j) : evite un appel recursif
+## $(MAKE) dont le chemin GnuWin32 "C:/Program Files (x86)/..." casse sh (parentheses).
+restart: stop dev
 
 ## Go API: lance les tests (sans CGo — domain/analysis/contract)
 go-api-test:
