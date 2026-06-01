@@ -1,3 +1,36 @@
+## [2026-06-01] Revues social/metadata + per-player hors-match → corrections P1/P2/P3
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : 2 revues multi-agents ciblées (social+metadata, puis per-player hors-match) pour couvrir les
+4 BDD à profondeur égale. Les deux convergent sur UN pattern : des writers contournent la couche
+d'orchestration (lease/persister/CHECKPOINT), sûrs seulement par un effet de bord implicite (connexion
+unique partagée MaxOpenConns, ou scheduler CHECKPOINT 5min), avec doc prétendant une garantie non appliquée.
+
+**Corrections livrées** :
+- **P1 (META-1, le vrai gap de concurrence)** : `seedCatalogFromCSRs` écrivait `playlists_catalog` sur le
+  fichier metadata PARTAGÉ sans lease, concurremment entre joueurs (Coordinator parallel>1, errgroup
+  post-sync) → classe d'incident "Conflict on update!". Fix : `dblease.AcquireWriterCtx(KindMetadata)`, miroir
+  exact de `runAchievementsSync` (ordre lock KindPlayer→KindMetadata cohérent). (commit f0a0eb04e)
+- **P2 (writers HTTP player sans lease)** : `MatchExclusionRepo.SetExclusion`, `PrivacyStateRepo.UpsertPrivacyState`,
+  `EngagementScoreRepo.SaveEngagementCoefficient` faisaient ON CONFLICT DO UPDATE sans lease KindPlayer
+  (sûrs seulement par MaxOpenConns(1)). Fix : `AcquirePlayerWriterTimeout(PlayerLeaseTimeout)` (réentrance
+  vérifiée : aucun caller leasé) + mapping ErrDBLocked→503 dans les handlers exclusion/engagement. (f50f57534)
+- **P3 (doc-rot + recovery)** : META-4 — `CatalogRepo` tenait un *sql.DB nu → pas de recovery FATAL ; passé
+  au wrapper *DB + `QueryRecovered` sur les 5 lectures. SS-02/SS-3 — 3 commentaires "plus aucune écriture
+  hors persist / sentinel Phase 6" faux corrigés (seul l'ATTACH est gardé ; notifs+Prestige écrivent en
+  direct) + commentaire main.go MaxOpenConns(1)→4. (e530c3bcb)
+
+**Faux positifs écartés par la vérification adversariale** : hook prestige sans lease (stub no-op jamais
+invoqué), LazyPrestige.EvaluateForUser sans lease (pas de caller prod), squad challenge lease partiel.
+
+**Reporté (low, non bloquant)** : prestige hors-persist sans CHECKPOINT (SS-01, dette préventive avant
+activation ADR 0005), notifications mutations sans CHECKPOINT (SS-04), dédup UPSERT engagement_coefficients
+(D1-1), garde single-instance metadata (META-5), code mort medal_image_cache (META-8).
+
+**Résultats observés** : build ./internal/... + vet clean ; post-sync E2E (couvre le lease seedCatalog) +
+catalog/exclusion/privacy/engagement (intégration) + persist queue -race + handlers : tous verts.
+
 ## [2026-06-01] Sync/persist — Refactors reportés (D5-5, D7-6, D1-2, D6-2, D7-3) livrés sous filet
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
@@ -53417,3 +53450,44 @@ Suite (meme jour) — decodeur melee VALIDE (correction marqueur) :
   {0,1,3,4} = 4 joueurs successifs. pi canonique film (= fire-event b5>>4) ; pi<->xuid
   deja resolu en prod via PLAYER_METADATA (confirme utilisateur ; methode dend = byte
   avant 1ere occurrence du XUID, incremente par joueur) -> pas un blocage.
+
+Suite (meme jour) — evenements de mode a objectifs (exploration pure, sans source) :
+- type_hint=10 = evenements mode-specifiques. Confirme sur films objectifs telecharges :
+  CTF:Arena (53ce4390)=34 events th=10 ; Strongholds:Arena (7344d24f)=71 events th=10.
+  Chaque event = xuid acteur + time_ms precis. b59=2 constant ; b36 = slot joueur 0-3
+  CONSTANT par xuid (pas la zone) ; b37/b38 = flag binaire (00 vs 01) = sous-type.
+- Acquis : timeline d'objectifs horodatee + joueur. Dans le noir : semantique exacte
+  (zone A/B/C, grab/capture/return) — l'API n'a que score/personal_score. Pistes :
+  clusters temporels th=10 = bascule de zone ; score continu (Strongholds 2/3 vs 3/3)
+  dans la replication (game-engine score / statborg). Mode filmx.exe evdump <th>. Doc
+  section M. Modes objectifs avec film cache : 7 Strongholds + 5 CTF (+ Total Control,
+  Oddball, KOTH, Stockpile en DB). Note weapon-swap (acurtis) : events rack/pickup
+  portent les weapon ids -> tracer l'arme TENUE en continu ; vein notee, non implementee.
+
+Suite (meme jour) — weapon swaps : decodage dedie BLOQUE. acurtis n'a publie que des
+dumps bruts (pas de spec marqueur/offset comme grenade/melee/aim). Le motif c4 c0 10 de
+ses exemples n'est PAS un marqueur dans nos chunks (0 byte-aligne, 1 au bit pres =
+coincidence). RE from-scratch de l'event swap (~230o, 2 weapon ids shiftes) non couvert.
+ALTERNATIVE livree : held-weapon par joueur via fire events (deja extraits) + Formula A
+(ScanFormulaA existant) + SwapPIs (BuildWeaponTimelines existant). Demontre : agregation
+fire events par pi -> sequence d'armes sur le match (000d5950 Super Fiesta : variete
+correcte par joueur). Doc section N. Mode filmx.exe <chunk> fire (affiche pi+weapon).
+En attente : timings CTF/Strongholds de l'utilisateur (53ce4390 Behemoth / 7344d24f
+Vagabond) pour verrouiller la semantique des events objectif th=10.
+
+Suite (meme jour) — ground-truth utilisateur recu, events objectif th=10 VALIDES :
+- b37/b38 = team_id (CONFIRME vs roster DB : team0 Guisy97/CnR/TAURUS/Oilycrusader,
+  team1 JGtm/TheRaeSide/Atrezik/Glad). Mon hypothese "grab/secure" precedente ETAIT
+  FAUSSE, corrigee par le ground-truth.
+- b[0:32] = gamertag de l'acteur (UTF-16). b36 = slot joueur. prefixe marqueur = 0x2d
+  constant. AUCUN champ ne distingue l'action (grab/return/capture CTF) ni la zone
+  (A/B/C Strongholds) -> l'action/zone n'est PAS dans l'event highlight ; necessite la
+  machine d'etat drapeau/zone (replication). Heuristique : captures = clusters simultanes.
+- CTF 53ce4390 : timings colle (1:15 return Oily, 2:11 grab TheRae, 2:13/3:04 grab Oily,
+  5:20 return CnR+TAURUS, captures Guisy/TheRae). Strongholds 7344d24f : th=10 = captures
+  de zone, JGtm capture 0:52 + 3:16 portent son xuid 2533274823110022.
+- Score continu Strongholds : ancres ground-truth (alliee JGtm) 54@3:16, 120@4:55,
+  124@5:59, 167@7:48 (~1pt/s a 2 zones). Compteur brut schema-bloque (replication).
+  Reconstruction par taux x timeline-zones bloquee (zone A/B/C pas dans l'event).
+- Acquis net : timeline d'objectifs (qui + equipe + quand) solide ; sous-type action,
+  zone, et score live = mur du schema (replication). Doc section M maj. Mode evdump <th>.
