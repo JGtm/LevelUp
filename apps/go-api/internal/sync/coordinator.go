@@ -5,6 +5,24 @@
 //   - Garantit au plus N syncs simultanés via sémaphore
 //   - Empêche les syncs concurrents sur le même joueur (inFlight map)
 //   - Appelle le SyncEngine pour chaque joueur+matchIDs
+//
+// COORDINATION CROSS-SOURCE (revue 2026-06-01, AS-1/D3-02/COORD-4) — IMPORTANT :
+// ce Coordinator ne dédoublonne QUE les syncs déclenchés par le WATCHER (sa map
+// inFlight n'est alimentée que par Submit, appelé depuis le watcher daemon). Les
+// autres sources ont leur propre contrôle :
+//   - auto-sync scheduler : errgroup borné (1 goroutine/joueur) ET il CÈDE au
+//     watcher via l'ActivityChecker (skip si la FSM du joueur != Idle).
+//   - sync HTTP manuel : jobStore (1 job actif/joueur) + lease (timeout 30 min).
+//
+// Le rempart cross-source qui GARANTIT l'absence de corruption est le lease
+// dblease KindPlayer (1 writer par fichier player DB), pris en tête de chaque
+// RunDelta : deux syncs concurrents du même joueur (peu importe la source) se
+// sérialisent au niveau fichier (le 2e bloque jusqu'au Release). La dédup par
+// source évite le double-travail dans le cas courant ; le seul résidu est une
+// fenêtre TOCTOU étroite (le joueur passe in-game PENDANT un RunDelta scheduler
+// déjà lancé) → 2 RunDelta sérialisés = double fetch API, accepté (pas de
+// corruption). Une unification (router TOUTES les sources via ce Coordinator)
+// supprimerait ce double-travail mais n'est pas nécessaire à la correction.
 package sync
 
 import (

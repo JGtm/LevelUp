@@ -16,6 +16,13 @@ type MatchRequest struct {
 	MatchIDs []string
 }
 
+// maxSeenEntries borne le cache de déduplication `seen` (W7, revue 2026-06-01).
+// Sans borne, il accumule 1 entrée par (gamertag, match_id) jamais purgée →
+// fuite mémoire lente. Au-delà, on reset : un éventuel re-traitement est
+// inoffensif (dédup Coordinator par gamertag + idempotence du persister via le
+// pré-check match_registry EXISTS).
+const maxSeenEntries = 10000
+
 // MatchQueue est une file d'attente de matchs avec déduplication.
 type MatchQueue struct {
 	ch      chan MatchRequest
@@ -44,6 +51,10 @@ func (q *MatchQueue) Enqueue(req MatchRequest) {
 			q.seen[key] = true
 			newIDs = append(newIDs, id)
 		}
+	}
+	if len(q.seen) > maxSeenEntries {
+		slog.Debug("match_queue: cache seen réinitialisé (borne atteinte)", "size", len(q.seen))
+		q.seen = make(map[string]bool)
 	}
 	q.seenMu.Unlock()
 
