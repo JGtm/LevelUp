@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // PrivacyStateRepo persiste/charge l'état de privacy depuis stats.duckdb.
@@ -28,6 +29,16 @@ func NewPrivacyStateRepo(pdb *PlayerDB) *PrivacyStateRepo {
 func (r *PrivacyStateRepo) UpsertPrivacyState(ctx context.Context, state domain.PlayerPrivacyState) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+
+	// P2 (revue 2026-06-01) : sérialise l'UPSERT ON CONFLICT (xuid) DO UPDATE avec
+	// le post-sync / CLI qui écrivent la même player DB (cf. SetExclusion). Le lease
+	// KindPlayer remplace l'effet de bord fragile MaxOpenConns(1). Best-effort caller
+	// (bootstrap) : ErrDBLocked est simplement remonté (ignoré côté bootstrap).
+	w, err := r.pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("PrivacyStateRepo.UpsertPrivacyState: lease: %w", err)
+	}
+	defer w.Release()
 
 	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
 	if err != nil {

@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -60,6 +61,11 @@ func (h *MatchExclusionHandler) SetExclusion(w http.ResponseWriter, r *http.Requ
 		case errors.Is(err, domain.ErrRankedMatchNotExcludable):
 			writeError(r.Context(), w, http.StatusUnprocessableEntity, "ranked_not_excludable",
 				"Les matchs classés ne peuvent pas être exclus")
+			return
+		case errors.Is(err, dblease.ErrDBLocked):
+			w.Header().Set("Retry-After", "5")
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
+				"database is currently busy, please retry")
 			return
 		}
 		slog.WarnContext(r.Context(), "match exclusion: db error",
