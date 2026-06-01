@@ -52819,3 +52819,124 @@ le wiring sharedDB du post-sync engine.go:520-560). Nouveau lot, plus profond.
 
 Remediation des 2 matchs (6c01f693, 5324364b) : toujours BLOQUEE par RC-A. Film
 probablement expire (>48h). Server laisse tournant.
+
+================================================================================
+[2026-06-01] Controle d'acces multi-utilisateur : ownership joueur + participation
+Statut : Complete (backend + frontend + tests verts ; non commite, attente autorisation)
+Branche : fix/sync-combat-completion-persist (a la demande de l'utilisateur, sans
+nouvelle branche). ADR 0024 + plan .ai/PLAN_ACCESS_CONTROL_PLAYER_OWNERSHIP.md.
+
+Probleme : multi-user strict non applique. (A) Changer le slug dans l'URL donnait
+acces aux donnees d'un autre joueur (bootstrap renvoyait TOUS les profils ; resolve
+ouvrait n'importe quel slug ; RequireAuth ne verifie que "connecte"). (B) Un match
+non-participe affichait une page mal renseignee (stats perso vides + scoreboard
+d'autrui) ; une session inexistante retombait en page vide 200 trompeuse.
+
+Decision technique :
+- Ownership = correspondance user.xuid == profile.xuid (pont deja present :
+  userstore User{Role,XUID} + db_profiles.json xuid). PAS de nouveau champ owner.
+  Package pur internal/authz (Enforced/CanAccessPlayer/CurrentUser, 0 I/O).
+- Couche A (proprietaire) : UN SEUL chokepoint = middleware RequirePlayerOwnership
+  monte sur le groupe /players/{player_slug} (a cote de RequireCapability). Mappe
+  slug->xuid via cfg.LoadPlayers (sans ouvrir de DuckDB), 403 player_forbidden si
+  non possede. Choix : 403 (pas 404) pour slug etranger ; slug inconnu = laisse
+  passer -> handler 404 ; session absente = laisse passer (background). + filtrage
+  available_players dans bootstrap_service.Build (menu L1) ; setupRequired/
+  setupState restent sur la liste complete (etat instance). admin voit tout ;
+  demo/auth=none ouverts ; user non lie ne possede rien.
+- Couche B (participation) : MatchViewService.assertParticipation (capability
+  optionnelle participantChecker -> IsParticipant EXISTS Q17b) AVANT les ~20 loads
+  paralleles ; non-participant -> APIError match_not_participant (404), best-effort
+  sur erreur DB. SessionPageService : suppression du fallback silencieux ;
+  session_label demande absent de extractSessionLabels(filtered) (mono-match
+  incluses, ne casse pas les deep-links) -> session_not_found (404).
+- Frontend : composant reutilisable PageUnavailable (Accueil + Mes matchs, pas de
+  redirect auto, choix utilisateur) ; helper apiErrorCode (arret du matching
+  message.includes('404')) ; MatchViewPage + SessionDetailPage branchent sur le
+  code ; i18n session via manifest TOML (FR+EN), match-view inline (convention du
+  fichier).
+
+Resultats : go build ./... OK ; go vet OK ; tests verts authz / api / api/middleware
+(RequirePlayerOwnership: owner 200, etranger 403, admin 200, non lie 403, slug
+inconnu/pass-through) / api/handlers / service (NotParticipant, best-effort,
+filterOwnedPlayers x4, session_not_found). 1 test legacy mis a jour
+(UnknownCurrentSessionReturnsEmptyState -> ...ReturnsNotFound : il encodait
+l'ancien comportement indesirable). Frontend : tsc -b OK, eslint OK, vitest 5/5
+(PageUnavailable + apiErrorCode). -race OK sur authz + middleware.
+
+Limites / suites : GET /api/v1/players (liste secondaire) non filtre par ownership
+(enumeration gamertags possible) ; Squad V2 resolveByGT (coequipiers) non garde
+(donnee de match partagee, page du requerant deja autorisee) ; alts multiples par
+user (User.XUIDs []string) differes. Documentes dans l'ADR 0024.
+Prochaine etape : autorisation utilisateur pour commit.
+
+[2026-06-01] Verification finale ownership/participation (addendum)
+- Logging : package middleware non mappe -> logs tombaient dans general.log. Ajout
+  "middleware" -> ModuleHTTP dans observability/logging/module.go (le refus 403 va
+  desormais dans logs/http.log ; benefice aussi a RequireAuth/RequireAdmin).
+  Verifie : service->logs/service.log, handlers->logs/handlers.log (mapping teste).
+  Log Debug ajoute dans bootstrap.Build quand l'ownership filtre des joueurs.
+- Tests ajoutes : module_routing_test (mapping logging), handler 404
+  match_not_participant + session_not_found, bootstrap Build integration (filtrage
+  bout-en-bout via db_profiles.json temp), middleware vrai-routeur chi (prouve que
+  chi.URLParam resout player_slug dans le middleware du groupe -> 403 reel).
+- Couverture : authz 100%, middleware RequirePlayerOwnership 100% (fonctions),
+  handlers/service nouveaux chemins couverts. gofmt + go vet propres. Frontend
+  tsc + eslint + vitest (5/5) verts.
+- PRE-EXISTANT NON LIE : go test ./internal/platform/duckdb/ echoue sur
+  TestNoUnauthorizedSharedSocialMention a cause de cmd/backfill-media-hls/main.go
+  + internal/ops/media_hls.go (commit media HLS 3abd45374, anterieur, hors de mes
+  fichiers). A whitelister par le proprietaire de la feature media HLS. Mes
+  packages sont tous verts.
+
+## [2026-06-01] RC-A investigation — provider sain en isolation, handle RO en prod NON localise
+
+Statut : Investigation approfondie, cause racine BORNEE mais pas localisee a la ligne.
+Aucun fix code (instrumentation ajoutee puis RETIREE, tree propre). Server tournant.
+
+CE QUI EST PROUVE :
+1. Provider sain en isolation : go test integration sharedprovider (Swap/RO/Subscribe/
+   Coordination) = VERT. swapToRW→OpenReadWrite→w.DB() retourne un handle RW correct.
+2. provider.log : 196 entrees AcquireWriter/swap JUSQU'AU 2026-05-30 13:46:18 (dernier =
+   "swap RW->RO termine" propre), PUIS PLUS RIEN. Les 2 matchs casses sont a 13:38/13:22,
+   minutes avant ce dernier swap. Apres 13:46:18 le provider n'est JAMAIS rappele.
+3. Aux boots d'aujourd'hui : "shared_matches_v2: mode sharedprovider (B-swap actif)" →
+   provider initialise, e.sharedProvider non-nil, cfg.SharedProvider cable (main.go:391,
+   pointeur, visible scheduler). LEVELUP_USE_SHARED_PROVIDER non force a 0.
+4. MAIS 0 "provider: AcquireWriter" en prod aujourd'hui (provider.log mtime fige 30/05).
+   Instrumentation ajoutee DANS AcquireSharedWriterStandalone (branche provider ET legacy)
+   : compilee dans le binaire (verifie grep binaire), MAIS 0 log apres cycle declenche →
+   acquireSharedWriter N'EST JAMAIS APPELE dans le cycle live.
+5. Repro deterministe (cmd jetable) : un handle RO cache survivant fait ECHOUER
+   OpenReadWrite ("different configuration"), PAS un downgrade silencieux RO. Et
+   OpenReadWriteShared puis OpenReadWrite (meme cle rw:) = cache hit RW, INSERT OK.
+   Donc le RO prod ne vient PAS d'une collision de cache rw:/ro: ni d'un RO survivant
+   via OpenReadWrite.
+
+CONTRADICTION CENTRALE (non resolue) :
+Le post-sync echoue RO (events/skill/weapon/registry-names heal, fail-fast Phase 1a
+honnete) ET on voit "post-sync: pipeline demarre" pour les 4 joueurs CHAQUE cycle. Or
+le sharedDB du heal devrait venir de acquireSharedWriter (engine.go:251 primaire, ou
+535 re-acquire post-drain batch) → qui devrait logger "provider: AcquireWriter" et
+declencher mon instrument. NI l'un NI l'autre ne se produit. => le sharedDB RO du heal
+NE VIENT PAS de acquireSharedWriter. Il vient d'un AUTRE chemin non cartographie
+(suspect : le pool SharedReader RO injecte, ou une instance engine via coordinator.go:86
+"go c.run", ou un chemin demo/HTTP). Le scheduler batch-async (BuildEngine + batchQueue)
+que j'ai lu en detail n'est PAS le chemin live qui echoue — preuve : aucun de ses logs
+attendus (provider AcquireWriter, instrument) n'apparait.
+
+PROCHAINE ETAPE (nouveau lot, ~multi-heures) :
+- Tracer QUELLE instance SyncEngine execute le post-sync live + d'OU vient son sharedDB.
+  Candidats : coordinator.go (go c.run), pool.go SharedReader (RO par nature), un
+  PostSyncRunner/hook, le worker batch CombinedPersister (main.go:567 — lui PASSE par
+  AcquireSharedWriterStandalone mais pour les WRITES batch, pas le heal).
+- Hypothese forte : le heal recoit le pool.SharedReader (RO) au lieu du writer provider.
+  Verifier le wiring sharedDB dans runConditionalPostSync cote coordinator/HTTP vs
+  scheduler. Le fix sera de router le heal sur le writer provider (comme les writes).
+- Instrumentation live NON fiable ici (instruments compiles mais non declenches = mauvais
+  chemin instrumente). Privilegier un test Go deterministe reproduisant le wiring prod
+  exact (engine + pool SharedReader + provider) qui asserte que le heal ecrit RW.
+
+CE QUI MARCHE DEJA (Phases 1-5) : fail-fast honnete (plus de 31h silencieux), heal
+cable correctement, healerait des que le bon handle RW arrive. RC-E (metadata) corrige
+et commite (853abaa6a). Les 2 matchs 30/05 restent vides (film expire >48h).
