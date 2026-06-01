@@ -35,6 +35,11 @@ type Coordinator struct {
 	inFlightMu  sync.Mutex
 	inFlight    map[string]bool // gamertag → en cours
 	onComplete  func(gamertag string, err error)
+	// wg track les goroutines run() en vol. Le caller (watcher daemon) appelle
+	// Wait() au shutdown — APRÈS avoir annulé le ctx des syncs — pour ne pas
+	// rendre la main tant qu'un RunSync écrit encore une DB (sinon write-after
+	// duckdb.CloseAll → handle orphelin / WAL #7659, cf. revue COORD-1 2026-06-01).
+	wg sync.WaitGroup
 }
 
 // NewCoordinator crée un coordinateur avec limite de syncs parallèles.
@@ -83,12 +88,21 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 		"match_count", len(req.MatchIDs),
 		"event", evID,
 	)
+	c.wg.Add(1)
 	go c.run(ctx, req)
 	return true
 }
 
+// Wait bloque jusqu'à ce que tous les syncs en vol (goroutines run) soient
+// terminés. À appeler par le daemon au shutdown APRÈS l'annulation du ctx (qui
+// fait abandonner les RunSync en cours), de préférence sous un timeout dur.
+func (c *Coordinator) Wait() {
+	c.wg.Wait()
+}
+
 // run exécute le sync avec sémaphore.
 func (c *Coordinator) run(ctx context.Context, req CoordinatorRequest) {
+	defer c.wg.Done()
 	// Acquérir le sémaphore
 	select {
 	case c.sem <- struct{}{}:

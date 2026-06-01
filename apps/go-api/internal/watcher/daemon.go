@@ -25,11 +25,13 @@ import (
 )
 
 // stopWaitTimeout est le délai max pendant lequel Stop() attend que les
-// goroutines internes (connectAndSubscribe, consumeQueue) retournent après
-// l'annulation du ctx. Au-delà, on rend la main pour ne jamais bloquer le
-// shutdown global — les goroutines qui ignoreraient le ctx seront tuées par
-// l'OS lors de l'os.Exit().
-const stopWaitTimeout = 3 * time.Second
+// goroutines internes (consumeQueue, REST pollers) ET les syncs Coordinator en
+// vol retournent après l'annulation du ctx. Les RunDelta en cours doivent voir
+// ctx.Done(), abandonner et libérer le lease KindPlayer — ce qui prend plus que
+// les pollers, d'où 8s (revue COORD-1 2026-06-01 : avant, Stop() n'attendait pas
+// du tout les syncs → write-after duckdb.CloseAll possible). Au-delà, on rend la
+// main pour ne jamais bloquer le shutdown global (budget total 15s côté main.go).
+const stopWaitTimeout = 8 * time.Second
 
 // DaemonController est l'interface exposée à l'API HTTP pour contrôler le daemon.
 // Implémenté par *Daemon. Nil autorisé dans les handlers (watcher désactivé).
@@ -102,6 +104,10 @@ type Daemon struct {
 
 	playersMu sync.RWMutex
 	players   map[string]*PlayerWatcher // gamertag → watcher
+	// playerCancels : CancelFunc du REST poller par joueur (W2). Sans elle, un
+	// joueur retiré via UpdateSubscriptions laissait tourner sa goroutine REST
+	// poller (annulable seulement globalement via d.cancel) → fuite + poll fantôme.
+	playerCancels map[string]context.CancelFunc
 
 	running bool
 	cancel  context.CancelFunc
@@ -122,11 +128,12 @@ func NewDaemon(cfg DaemonConfig, titleReg *title.Registry, syncRunner syncpkg.Sy
 	}
 
 	return &Daemon{
-		cfg:         cfg,
-		titleReg:    titleReg,
-		coordinator: syncpkg.NewCoordinator(syncRunner, maxParallel),
-		queue:       NewMatchQueue(100),
-		players:     make(map[string]*PlayerWatcher),
+		cfg:           cfg,
+		titleReg:      titleReg,
+		coordinator:   syncpkg.NewCoordinator(syncRunner, maxParallel),
+		queue:         NewMatchQueue(100),
+		players:       make(map[string]*PlayerWatcher),
+		playerCancels: make(map[string]context.CancelFunc),
 	}
 }
 
@@ -170,10 +177,14 @@ func (d *Daemon) Stop() {
 		d.cancel()
 	}
 
-	// Attendre les goroutines internes avec un timeout dur.
+	// Attendre les goroutines internes ET les syncs Coordinator en vol, avec un
+	// timeout dur. d.cancel() ci-dessus a annulé le ctx → les RunDelta en cours
+	// abandonnent et libèrent le lease, puis leur goroutine run() décrémente le
+	// wg du Coordinator (COORD-1).
 	done := make(chan struct{})
 	go func() {
 		d.wg.Wait()
+		d.coordinator.Wait()
 		close(done)
 	}()
 	select {
@@ -228,10 +239,18 @@ func (d *Daemon) UpdateSubscriptions(gamertags []string) {
 		wanted[gt] = struct{}{}
 	}
 
-	// Arrêter les joueurs non voulus
+	// Arrêter les joueurs non voulus (W2 : stopper réellement leurs goroutines,
+	// pas juste les retirer de la map).
 	for gt := range d.players {
 		if _, ok := wanted[gt]; !ok {
 			slog.Info("watcher_daemon: UpdateSubscriptions: joueur retiré", "gamertag", gt)
+			if cancel := d.playerCancels[gt]; cancel != nil {
+				cancel() // stoppe le REST poller du joueur
+				delete(d.playerCancels, gt)
+			}
+			if pw := d.players[gt]; pw != nil {
+				pw.stopPoller() // stoppe le MatchPoller (+ live_refresh lié à pollerCtx)
+			}
 			delete(d.players, gt)
 		}
 	}
@@ -277,6 +296,16 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 		pw = pw.WithLiveRefresh(d.cfg.LiveRefreshFactory(p.Gamertag, p.XUID))
 	}
 	d.players[p.Gamertag] = pw
+
+	// W2 : ctx annulable PAR JOUEUR pour le REST poller (dérivé de rootCtx → le
+	// cancel global le coupe aussi, mais on peut désormais le couper seul à la
+	// suppression). Créé sous le lock, stocké, puis le spawn se fait hors lock.
+	var pollerCtx context.Context
+	if d.trackerRestClient != nil && d.rootCtx != nil {
+		var pollerCancel context.CancelFunc
+		pollerCtx, pollerCancel = context.WithCancel(d.rootCtx)
+		d.playerCancels[p.Gamertag] = pollerCancel
+	}
 	d.playersMu.Unlock()
 
 	slog.InfoContext(ctx, "watcher_daemon: joueur ajouté dynamiquement",
@@ -285,13 +314,13 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	// Spawn REST poller pour ce joueur (utilise le client tracker partagé).
 	// Skip si le daemon n'a pas encore été démarré (rootCtx nil) — le poller
 	// sera créé par initPlayers au prochain Start si le joueur est encore là.
-	if d.trackerRestClient != nil && d.rootCtx != nil {
-		handler := d.makePresenceHandler(d.rootCtx, pw)
+	if pollerCtx != nil {
+		handler := d.makePresenceHandler(pollerCtx, pw)
 		poller := NewRESTPoller(p.XUID, p.Gamertag, d.trackerRestClient, handler)
 		d.wg.Add(1)
 		go func() {
 			defer d.wg.Done()
-			poller.Run(d.rootCtx)
+			poller.Run(pollerCtx)
 		}()
 	}
 	return nil
@@ -329,12 +358,15 @@ func (d *Daemon) initPlayers(ctx context.Context, playerList []domain.PlayerSumm
 		// pollers dispatch vers le même PlayerWatcher dont les transitions
 		// FSM sont idempotentes.
 		if d.trackerRestClient != nil {
-			handler := d.makePresenceHandler(ctx, pw)
+			// W2 : ctx annulable par joueur (cf. AddPlayer).
+			pollerCtx, pollerCancel := context.WithCancel(d.rootCtx)
+			d.playerCancels[p.Gamertag] = pollerCancel
+			handler := d.makePresenceHandler(pollerCtx, pw)
 			poller := NewRESTPoller(p.XUID, p.Gamertag, d.trackerRestClient, handler)
 			d.wg.Add(1)
 			go func() {
 				defer d.wg.Done()
-				poller.Run(d.rootCtx)
+				poller.Run(pollerCtx)
 			}()
 		}
 	}
