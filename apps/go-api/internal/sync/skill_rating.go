@@ -430,7 +430,28 @@ func batchComputeLUSR(ctx context.Context, playerDB, sharedDB *sql.DB, xuid stri
 	}
 
 	// 7. Écrire les résultats.
-	return upsertLUSRRatings(ctx, playerDB, results, existingCSR, existingLUSRForUpsert, seedRatings)
+	n, err := upsertLUSRRatings(ctx, playerDB, results, existingCSR, existingLUSRForUpsert, seedRatings)
+	if err != nil {
+		return n, err
+	}
+
+	// 8. Compaction (force uniquement). Le mode force ré-INSÈRE une version
+	//    append-only de TOUS les matchs à chaque appel ; sans compaction
+	//    match_skill_rank croît sans borne (toggle exclusion répété, rebuilds ART
+	//    successifs). On collapse l'historique à la version la plus récente par
+	//    (match_id, rating_type). Non bloquant : la lecture (vue latest) reste
+	//    correcte même si la compaction échoue. Le mode incrémental n'en a pas
+	//    besoin (1 version ajoutée par nouveau match).
+	if force {
+		if deleted, cErr := compactMatchSkillRankSuperseded(ctx, playerDB); cErr != nil {
+			slog.WarnContext(ctx, "batchComputeLUSR: compaction match_skill_rank échouée (non bloquant)",
+				"xuid", xuid, "err", cErr)
+		} else if deleted > 0 {
+			slog.DebugContext(ctx, "batchComputeLUSR: compaction match_skill_rank",
+				"xuid", xuid, "rows_purged", deleted)
+		}
+	}
+	return n, nil
 }
 
 // ── Dry-run LUSR (preview, sans écriture) ──────────────────────────────────
