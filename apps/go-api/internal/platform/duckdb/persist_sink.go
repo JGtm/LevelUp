@@ -527,6 +527,17 @@ func (s *PersistSink) PersistChallenges(rawBody []byte) {
 	}()
 }
 
+// PersistChallengesSync persiste les défis de manière SYNCHRONE (variante de
+// PersistChallenges fire-and-forget). Utilisée par le live_refresh pour que
+// l'écriture s'exécute dans la goroutine du ticker — liée à son ctx — au lieu
+// d'un goroutine détaché en context.Background() (lifecycle, W6 revue 2026-06-01).
+func (s *PersistSink) PersistChallengesSync(ctx context.Context, rawBody []byte) error {
+	if len(rawBody) == 0 {
+		return nil
+	}
+	return s.writeChallenges(ctx, rawBody)
+}
+
 // deckChallengeRaw est le struct de parsing best-effort d'un challenge depuis /decks.
 // Les champs sont lenients : si un champ est absent, il reste à zéro/vide.
 type deckChallengeRaw struct {

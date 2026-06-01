@@ -164,12 +164,22 @@ func (r *PlayerLiveRefresher) refresh(ctx context.Context) {
 
 	bpResp, bpRaw := r.provider.GetBattlePassWithRaw(ctx)
 	if bpResp.Available && bpResp.RewardTrack != nil && len(bpRaw) > 0 {
-		r.sink.PersistBattlePass(*bpResp.RewardTrack, bpRaw)
+		// W6 : variantes SYNC — l'écriture s'exécute DANS la goroutine du ticker
+		// (liée à ctx, annulée à OnPresenceInactive / shutdown) au lieu d'un
+		// goroutine détaché en context.Background() qui pouvait écrire après
+		// duckdb.CloseAll().
+		if err := r.sink.PersistBattlePassSync(ctx, *bpResp.RewardTrack, bpRaw); err != nil {
+			slog.WarnContext(ctx, "live_refresh: battlepass persist échoué",
+				"gamertag", r.gamertag, "err", err)
+		}
 	}
 
 	cResp, cRaw := r.provider.GetChallengesWithRaw(ctx)
 	if cResp.Available && len(cRaw) > 0 {
-		r.sink.PersistChallenges(cRaw)
+		if err := r.sink.PersistChallengesSync(ctx, cRaw); err != nil {
+			slog.WarnContext(ctx, "live_refresh: challenges persist échoué",
+				"gamertag", r.gamertag, "err", err)
+		}
 	}
 
 	slog.InfoContext(ctx, "live_refresh: données rafraîchies",
