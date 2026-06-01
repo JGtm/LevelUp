@@ -700,6 +700,21 @@ func (e *SyncEngine) seedCatalogFromCSRs(ctx context.Context, csrs []PlayerPlayl
 	if e.metadataDBPath == "" || len(csrs) == 0 {
 		return
 	}
+	// META-1 (revue 2026-06-01) : sérialisation applicative via le lease KindMetadata,
+	// EXACTEMENT comme runAchievementsSync. metadata.duckdb est un fichier PARTAGÉ écrit
+	// concurremment par le post-sync de N joueurs (Coordinator parallel_slots>1). Sans
+	// ce lease, deux seeds concurrents font un UPDATE-then-INSERT sur la même row
+	// playlists_catalog → "TransactionContext Error: Conflict on update!" (même classe
+	// d'incident que xbox_achievement_definitions). Ordre de lock cohérent avec
+	// runAchievementsSync : KindPlayer (déjà tenu par le run) puis KindMetadata.
+	metadataLease, err := dblease.AcquireWriterCtx(ctx, nil, e.metadataDBPath, dblease.KindMetadata)
+	if err != nil {
+		slog.WarnContext(ctx, "post-sync: catalog seed — acquisition lease metadata échouée",
+			"gamertag", e.gamertag, "err", err)
+		return
+	}
+	defer metadataLease.Release()
+
 	mh, err := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: catalog seed désactivé (metadata inaccessible)",
