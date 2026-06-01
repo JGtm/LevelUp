@@ -62,7 +62,7 @@ func TestBatchQueue_ConcurrentSubmitClose_NoPanic(t *testing.T) {
 	drained := make(chan struct{})
 	go func() {
 		defer close(drained)
-		for range q.Channel(TargetShared) {
+		for range q.Channel() {
 		}
 	}()
 
@@ -176,7 +176,7 @@ func TestBatchQueue_RecoverPending_RepushesExistingWAL(t *testing.T) {
 	seen := map[string]bool{}
 	for i := 0; i < 2; i++ {
 		select {
-		case batch := <-q.Channel(TargetShared):
+		case batch := <-q.Channel():
 			seen[batch.BatchID] = true
 		case <-ctx.Done():
 			t.Fatalf("timeout en lisant le channel (vu %d/2)", len(seen))
@@ -276,7 +276,7 @@ func TestBatchQueue_Submit_BlocksWhenChannelFull(t *testing.T) {
 	}
 
 	// Drain pour débloquer le Submit en attente
-	<-q.Channel(TargetShared)
+	<-q.Channel()
 	<-done // Le Submit en attente termine maintenant
 }
 
@@ -318,7 +318,7 @@ func TestBatchQueue_RecoverPending_Idempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Lire le batch
-	<-q.Channel(TargetShared)
+	<-q.Channel()
 
 	// 2e appel — ne doit pas re-push (le WAL n'a pas été ACKé, donc il
 	// devrait être re-pushed... mais c'est une politique à définir).
@@ -329,7 +329,7 @@ func TestBatchQueue_RecoverPending_Idempotent(t *testing.T) {
 	}
 	// Devrait y avoir à nouveau le batch dans le channel (WAL toujours là)
 	select {
-	case b := <-q.Channel(TargetShared):
+	case b := <-q.Channel():
 		if b.BatchID != "idem001" {
 			t.Errorf("2e recovery a renvoyé batch_id=%q", b.BatchID)
 		}

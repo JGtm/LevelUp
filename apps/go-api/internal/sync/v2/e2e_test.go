@@ -81,7 +81,7 @@ func setupE2EEnv(t *testing.T, gamertags []string) *e2eEnv {
 	ackerDone := make(chan struct{})
 	go func() {
 		defer close(ackerDone)
-		ch := q.Channel(persist.TargetShared)
+		ch := q.Channel()
 		for {
 			select {
 			case <-ackerCtx.Done():

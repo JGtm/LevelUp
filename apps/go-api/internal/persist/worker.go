@@ -6,9 +6,10 @@
 //	Submit ─► WAL (durable) ─► chan *MatchBatch ─► Worker.Run() ──► Persister.Persist()
 //	                                                          └─► ACK = delete WAL
 //
-// Un Worker == 1 goroutine. Un Worker == 1 DBTarget. Pour scaler, instancier
-// N workers sur la même target (mais shared.duckdb ayant un lease exclusif,
-// 1 seul worker actif à la fois sur cette target).
+// Un Worker == 1 goroutine consommant le channel UNIQUE de la queue. En prod il
+// y a UN seul worker, dont le persister (CombinedPersister) écrit shared ET player
+// par batch — il n'y a PAS de routage par DBTarget (le batch porte tous ses
+// sous-batches). Le champ `target` est un simple label d'observabilité (logs).
 
 package persist
 
@@ -48,8 +49,9 @@ type Worker struct {
 //
 //   - name      : identifiant logique pour les logs (ex. "shared", "player").
 //   - queue     : queue d'où lire les batches.
-//   - target    : DBTarget filtrée par ce worker (cf. queue.Channel(target)).
-//   - persister : composant qui écrit dans la DB cible.
+//   - target    : label d'observabilité (logs/métriques) — le worker NE filtre
+//     PAS par target (channel unique partagé, cf. queue.Channel).
+//   - persister : composant qui écrit dans la/les DB cible(s).
 func NewWorker(name string, queue *BatchQueue, target DBTarget, persister BatchPersister) *Worker {
 	return &Worker{
 		name:      name,
@@ -69,7 +71,7 @@ func NewWorker(name string, queue *BatchQueue, target DBTarget, persister BatchP
 // retry au prochain boot via queue.RecoverPending(). Le worker continue
 // à traiter les batches suivants (pas de blocage sur 1 batch problématique).
 func (w *Worker) Run(ctx context.Context) error {
-	ch := w.queue.Channel(w.target)
+	ch := w.queue.Channel()
 	slog.InfoContext(ctx, "persist worker started",
 		"name", w.name, "target", string(w.target))
 
