@@ -28,8 +28,9 @@ import (
 
 // upsertLUSRRatingsBatch est la variante INSERT-only de upsertLUSRRatings.
 // Sémantique identique : skip CSR, skip LUSR existant, calcul delta clipped,
-// tier resolution. Différence : batch en RAM puis 1 DELETE+INSERT TX au lieu
-// de N UPDATE-then-INSERT.
+// tier resolution. Différence : batch en RAM puis INSERT pur append-only via
+// AppendOnlyLUSRPersister (pas de DELETE, pas de ON CONFLICT) au lieu de N
+// UPDATE-then-INSERT — la version courante est lue via la vue match_skill_rank_latest.
 //
 // Le breakdown LUSR (lusr_component_history) reste écrit row-by-row via
 // writeLUSRComponentHistory (best-effort, pas critique côté ART).

@@ -26,8 +26,12 @@ import (
 )
 
 // weaponBackfillParallelism plafonne les matchs traités en parallèle par
-// processWeaponKillsInline (network-only, weapon_kills append-only ART-safe,
-// throttle réel par le rate limiter HTTP). 24 = valeur Phase 3.6. Ex-
+// processWeaponKillsInline. Le parallélisme est NETWORK-ONLY (download film +
+// corrélation en mémoire, throttle réel par le rate limiter HTTP). Les écritures
+// weapon_kills (DELETE-then-INSERT par match_id) sont sérialisées par le lease
+// shared + MaxOpenConns(1) → pas de concurrence sur l'index ART malgré le DELETE.
+// NB : weapon_kills n'est PAS append-only (pas de id/written_at/_latest) — la
+// sûreté vient de la sérialisation, pas du schéma. 24 = valeur Phase 3.6. Ex-
 // healParallelismNetworkOnly, relocalisé ici à la décommission des heals (2026-06-01).
 const weaponBackfillParallelism = 24
 
@@ -240,9 +244,10 @@ func BackfillWeaponKillsForMatchAll(
 // (404/410) sont silencieux (matchs trop anciens).
 //
 // Parallélisé via errgroup.SetLimit(weaponBackfillParallelism=24) — plan
-// Phase 3.0 (gain ~150-200s/cycle Madina) puis Phase 3.6 bump 8→24
-// (network-only, writes weapon_kills append-only sans conflit ART, throttle
-// réel par rate limiter HTTP du pool de tokens). Cf.
+// Phase 3.0 (gain ~150-200s/cycle Madina) puis Phase 3.6 bump 8→24. Le
+// parallélisme est network-only ; les writes weapon_kills (DELETE-then-INSERT)
+// sont sérialisés par le lease shared + MaxOpenConns(1), donc sans conflit ART
+// malgré le DELETE sur table indexée (weapon_kills n'est PAS append-only). Cf.
 // .ai/PLAN_SYNC_CONCURRENCY_STABILIZATION.md §3.0+§3.6 + handoff §3 priorité 1.
 //
 // Contrat de sortie (lock par TDD avant impl) :

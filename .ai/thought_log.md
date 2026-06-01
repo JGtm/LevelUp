@@ -12,14 +12,16 @@
 - Doc-rot (commit séparé) : commentaires faux corrigés — weapon_kills « append-only ART-safe » →
   « DELETE+INSERT sérialisé par lease+MaxOpenConns(1) » (D4-1) ; shared_social « MaxOpenConns(1) » →
   réellement 4, vraie raison du skip CHECKPOINT documentée (D5-2) ; refs obsolètes sql_builder.go /
-  « DELETE+INSERT » LUSR (D2-8) ; mojibake UTF-8 engine.go (D7-6).
+  « DELETE+INSERT » LUSR → INSERT pur append-only (D2-8).
 
 **Résultats observés** : build + vet clean. Tests Skill/LUSR/EnrichmentRows verts.
 
 **Reporté (dette assumée, non bloquant)** : god function `runPostSyncPipeline` (D7-3, refactor risqué
 hors scope d'une passe cleanup) ; routage DBTarget mort de la queue (D1-2, API morte mais inerte) ;
 croissance non bornée match_skill_rank en force=true (D6-2, hygiène espace) ; code mort daté pool.go
-(D5-5, péremption 2026-06-22 — à traiter avant échéance).
+(D5-5, péremption 2026-06-22 — à traiter avant échéance) ; mojibake UTF-8 engine.go (D7-6 — un fix
+nécessite un round-trip cp1252 sur tout le fichier, risque non justifié pour une correction cosmétique
+dans une passe cleanup ; à traiter via un outil d'encodage dédié).
 
 ## [2026-06-01] Revue sync/persist — P2 : race Submit/Close + garde-rail ART élargi
 

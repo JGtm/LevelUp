@@ -17,11 +17,11 @@ import "time"
 // 1 seul INSERT batch avec tous les champs.
 //
 // Champs pointers : un champ nil signifie "ne pas écrire cette colonne".
-// Le `buildEnrichmentInsertSQL` (sql_builder.go) construit l'INSERT
-// dynamiquement en fonction des champs non-nil.
+// L'INSERT dynamique est construit en fonction des champs non-nil par
+// `player_persister.go::enrichmentFields()` (il n'existe pas de sql_builder.go).
 //
 // **Extensibilité** : ajouter un enrichment = ajouter un champ pointer +
-// 1 branche dans `buildEnrichmentInsertSQL`. Cf. `doc.go`.
+// 1 entrée dans `enrichmentFields()`. Cf. `doc.go`.
 type EnrichmentRow struct {
 	// PK
 	MatchID string `json:"match_id"`

@@ -15,8 +15,11 @@
 // SharedSocialPersister qui garantit :
 //   - INSERT-only sur tables critiques (pas de UPSERT/UPDATE concurrent →
 //     pas de pression sur l'index ART DuckDB)
-//   - CHECKPOINT après chaque batch → WAL toujours vidé sur disque
-//   - Transaction atomique (BEGIN → INSERTs → CHECKPOINT → COMMIT)
+//   - Transaction atomique par batch (BEGIN → INSERTs → COMMIT)
+//   - Flush WAL borné : les écritures critiques (likes / favoris / associations
+//     média) appellent CommitWithCheckpoint pour un flush immédiat ; le Persist()
+//     générique s'appuie sur le CHECKPOINT scheduler 5 min (main.go) + le
+//     CHECKPOINT synchrone au shutdown pour vider le WAL (cf. bug #7659).
 //
 // Plus aucun db.ExecContext direct sur shared_social hors internal/persist/
 // (sentinel parse-AST en Phase 6 enforce cette règle).
@@ -439,10 +442,13 @@ func (p *SharedSocialPersister) Persist(ctx context.Context, batch *SharedSocial
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("shared_social: commit: %w", err)
 	}
-	// Pas de CHECKPOINT ici : la connexion est configurée MaxOpenConns(1),
-	// un CHECKPOINT async prendrait la seule connexion et bloquerait le
-	// prochain BeginTx (likes, favoris) en cascade. Le CHECKPOINT synchrone
-	// au shutdown (main.go) vide le WAL avant qu'Air relance le process.
+	// Pas de CHECKPOINT ici : la connexion shared_social est ouverte
+	// MaxOpenConns(4) (OpenReadWriteShared) — le motif historique « un CHECKPOINT
+	// prendrait la seule connexion » est donc faux. Le flush WAL est couvert par
+	// le CHECKPOINT scheduler périodique (5 min, main.go) + le CHECKPOINT synchrone
+	// au shutdown (workers arrêtés). Fenêtre d'exposition WAL bornée à 5 min,
+	// intentionnelle ; les écritures critiques (likes/favoris/associations média)
+	// utilisent CommitWithCheckpoint pour un flush immédiat.
 
 	slog.InfoContext(ctx, "shared_social: batch persisted",
 		"batch_id", batch.BatchID,
