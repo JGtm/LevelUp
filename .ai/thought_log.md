@@ -52776,3 +52776,46 @@ INSTANTANEMENT des que shared est vraiment RW. Mais le blocage actuel est RC-E
 non corrige. Les 2 matchs du 30/05 restent vides + data-loss film probable (>48h
 bientot). Prochaine etape = decider du fix seedPlaylistsCatalog ART-safe avec
 l'utilisateur (nouveau lot).
+
+## [2026-06-01] Fix RC-E (metadata playlists_catalog ART self-corruption) + isolation RC-A
+
+Statut : RC-E CORRIGE (vert, applique live). RC-A ISOLE comme bug structurel
+independant (non corrige — nouvelle investigation requise).
+
+FIX RC-E livre :
+- Cause : playlists_catalog avait 2 index ART secondaires (idx_..._active,
+  idx_..._experience) sur les colonnes is_active/experience. seedPlaylistsCatalog
+  (career.go:289) UPDATE ces colonnes chaque cycle → UPDATE sur colonne ART-indexee
+  → "Failed to delete all rows from index" → metadata FATAL-invalidated chaque cycle.
+- Migration steps_metadata_drop_playlists_catalog_indexes.go (DROP INDEX IF EXISTS
+  les 2 index). steps_metadata_catalog.go : retrait des CREATE INDEX (DB neuves).
+  Garde-fou playlists_catalog_no_index_test.go (echoue si un index idx_* reapparait).
+  A 34 lignes, un scan est instantane — les index n'apportaient rien.
+- Applique live : rebuild playlists_catalog (34 rows, 0 index secondaire) + RunForDB
+  metadata. SMOKE UPDATE sur l'asset edfef3ac (celui qui FATAL-ait) = OK.
+- Verifie en prod : apres restart, 0 metadata FATAL, seedPlaylistsCatalog =
+  INFO "playlists catalog enrichi" new=4 (succes). RC-E ELIMINE.
+- Tests : suite ./internal/migration/ verte. xbox_achievement_definitions n'a
+  qu'une PK (pas d'index secondaire) → achievements etait un VICTIME de cascade,
+  pas un trigger independant. cmd/repair-metadata reste casse (DDL stale, non
+  utilise) — challenge_template restaure manuellement (27 rows, 22 cols).
+
+ISOLATION RC-A (decouverte majeure, repond a H1/H2 du HANDOFF) :
+Apres fix RC-E, metadata 100% saine (0 FATAL, seed OK), MAIS shared_matches_v2 est
+TOUJOURS servi read-only au post-sync (238 echecs RO sur un cycle frais 08:32:11,
+events/skill/weapon/registry-names heal tous bloques, fail-fast Phase 1a honnete).
+=> H1 (cascade metadata FATAL → shared RO) est REFUTE : shared RO persiste avec
+metadata saine. RC-A est un DEFAUT STRUCTUREL INDEPENDANT du SharedDBProvider :
+AcquireWriter→swapToRW→OpenReadWrite ne livre PAS un handle RW au post-sync.
+Probablement H2 (collision/gestion cache cle "rw:"+path vs "ro:"+path dans
+platform/duckdb/db.go openCachedDB, ou le writer provider non propage au sharedDB
+passe a runPostSyncPipeline). C'est la VRAIE cause racine restante du bug combat.
+
+Les Phases 1-5 rendent le systeme honnete (fail-fast, plus de 31h silencieux) et
+healeraient instantanement les 2 matchs des que shared est vraiment RW — mais ne
+corrigent PAS pourquoi le provider rend RO. Prochaine etape = investiguer
+SharedDBProvider/dblease/cache (lecture provider_writer.go + db.go openCachedDB +
+le wiring sharedDB du post-sync engine.go:520-560). Nouveau lot, plus profond.
+
+Remediation des 2 matchs (6c01f693, 5324364b) : toujours BLOQUEE par RC-A. Film
+probablement expire (>48h). Server laisse tournant.
