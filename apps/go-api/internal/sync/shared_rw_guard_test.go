@@ -77,19 +77,3 @@ func TestAssertSharedWritable_NilDB_OK(t *testing.T) {
 		t.Errorf("assertSharedWritable(nil): %v, want nil", err)
 	}
 }
-
-// TestHealEvents_ReadOnlyShared_FailsFast : intégration — sur un shared RO, le
-// heal ne doit PAS boucler ni compter no_film, mais remonter ErrSharedReadOnly.
-func TestHealEvents_ReadOnlyShared_FailsFast(t *testing.T) {
-	db := newGuardTestDB(t, true)
-	// client jamais appelé : le fail-fast court-circuite avant tout fetch.
-	client := &mockHaloClient{}
-
-	healed, noFilm, err := healEventsForRecentMatches(context.Background(), db, nil, client, 10)
-	if !errors.Is(err, ErrSharedReadOnly) {
-		t.Fatalf("err=%v, want ErrSharedReadOnly (fail-fast)", err)
-	}
-	if healed != 0 || noFilm != 0 {
-		t.Errorf("healed=%d noFilm=%d, want 0/0 — aucune tentative ne doit être comptée", healed, noFilm)
-	}
-}

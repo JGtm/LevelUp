@@ -4,21 +4,17 @@
 // `Mark*Loaded` ne sont pas positionnés quand l'opération sous-jacente a
 // échoué / produit une anomalie.
 //
-//   - healEventsForRecentMatches ne doit pas marquer events_loaded sur un
-//     parse_anomaly (chunk présent mais 0 events extraits — format API évolué).
 //   - MarkSkillLoaded ne marque que les participants dont team_mmr est non-NULL.
+//   - MarkParticipantsDone positionne le bit participants.
 //
 // NB : les tests historiques sur la complétion killer_victim (échec d'insert →
 // bit non marqué) ont migré vers internal/persist/events_completion_persister_test.go
-// — la complétion combat est désormais atomique via persist.EventsCompletionPersister
-// (les fonctions sync legacy InsertKillerVictimPairsFromEvents / MarkKillerVictimLoaded
-// ont été supprimées).
+// — la complétion combat est désormais atomique via persist.EventsCompletionPersister.
+// Les tests d'honnêteté des heals events (parse_anomaly / no_film) ont été retirés
+// avec la décommission des heals (2026-06-01).
 package sync
 
 import (
-	"bytes"
-	"compress/zlib"
-	"context"
 	"database/sql"
 	"testing"
 
@@ -79,51 +75,6 @@ func openHonestyShared(t *testing.T) *sql.DB {
 		t.Fatal(err)
 	}
 	return db
-}
-
-// ─── heal does NOT mark on parse_anomaly ────────────────────────────────────
-
-func TestHealEventsForRecentMatches_DoesNotMarkOnParseAnomaly(t *testing.T) {
-	db := openHonestyShared(t)
-	if _, err := db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m-anomaly')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO match_participants (match_id, xuid) VALUES ('m-anomaly', 'xuid001')`); err != nil {
-		t.Fatal(err)
-	}
-
-	// Mock client qui renvoie un chunk zlib non-vide mais qui décompresse en
-	// zéros (= 0 events parsés = parse_anomaly).
-	var benign bytes.Buffer
-	w := zlib.NewWriter(&benign)
-	_, _ = w.Write(make([]byte, 200))
-	_ = w.Close()
-
-	mock := &mockHaloClient{
-		highlightChunkData:    benign.Bytes(),
-		highlightChunkVersion: 41,
-		highlightChunkFound:   true,
-	}
-
-	healed, noFilm, err := healEventsForRecentMatches(context.Background(), db, nil, mock, 10)
-	if err != nil {
-		t.Fatalf("healEventsForRecentMatches: %v", err)
-	}
-	if healed != 0 {
-		t.Errorf("healed = %d, want 0 sur parse_anomaly", healed)
-	}
-	if noFilm != 0 {
-		t.Errorf("noFilm = %d, want 0 (anomaly ne doit pas être compté comme no_film)", noFilm)
-	}
-
-	// L'invariant clé : events_loaded doit RESTER FALSE après un anomaly.
-	var loaded bool
-	if err := db.QueryRow(`SELECT events_loaded FROM match_registry WHERE match_id = 'm-anomaly'`).Scan(&loaded); err != nil {
-		t.Fatal(err)
-	}
-	if loaded {
-		t.Error("events_loaded est TRUE après parse_anomaly — bit menteur réintroduit")
-	}
 }
 
 // ─── Phase 2 PLAN_BITMASKS_AUDIT_FIX — MarkSkillLoaded / MarkParticipantsDone ─
@@ -203,42 +154,5 @@ func TestMarkParticipantsDone_SetsBit(t *testing.T) {
 	_ = db.QueryRow(`SELECT backfill_completed FROM match_registry WHERE match_id = 'm-parts'`).Scan(&bf)
 	if bf&backfillFlagParticipants == 0 {
 		t.Errorf("BackfillFlags[participants] non positionné (bf=%d)", bf)
-	}
-}
-
-// ─── heal honesty : no-film définitif (match ancien) → events_loaded marqué ──
-
-func TestHealEventsForRecentMatches_DoesMarkOnNoFilm(t *testing.T) {
-	db := openHonestyShared(t)
-	// start_time ancien (> filmRetryWindow) : le film est jugé définitivement
-	// absent → events_loaded marqué (sort du retry set). Cf. isNoFilmDefinitive
-	// + politique film-retardé (golden_test applique le même start_time ancien).
-	if _, err := db.Exec(`INSERT INTO match_registry (match_id, start_time) VALUES ('m-nofilm', TIMESTAMP '2020-01-01 00:00:00')`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.Exec(`INSERT INTO match_participants (match_id, xuid) VALUES ('m-nofilm', 'xuid001')`); err != nil {
-		t.Fatal(err)
-	}
-
-	mock := &mockHaloClient{
-		highlightChunkFound: false, // film absent
-	}
-
-	healed, noFilm, err := healEventsForRecentMatches(context.Background(), db, nil, mock, 10)
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if healed != 0 {
-		t.Errorf("healed = %d, want 0", healed)
-	}
-	if noFilm != 1 {
-		t.Errorf("noFilm = %d, want 1", noFilm)
-	}
-
-	// no_film définitif → ProcessHighlightEvents marque events_loaded en interne.
-	var loaded bool
-	_ = db.QueryRow(`SELECT events_loaded FROM match_registry WHERE match_id = 'm-nofilm'`).Scan(&loaded)
-	if !loaded {
-		t.Error("events_loaded devrait être TRUE après no_film définitif")
 	}
 }

@@ -123,6 +123,7 @@ var packageToModuleMap = map[string]string{
 	"migration":      ModuleMigration,
 	"persist":        ModulePersist,
 	"api":            ModuleHTTP,
+	"middleware":     ModuleHTTP, // auth/ownership/CSRF/rate-limit → logs/http.log
 	"watcher":        ModuleAuth, // tokens watcher fait partie de l'auth flow
 	"rta":            ModuleAuth,
 	"duckdbbackup":   ModuleBackup,  // pkg/duckdbbackup → logs/backup.log

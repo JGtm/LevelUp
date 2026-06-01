@@ -25,6 +25,12 @@ import (
 	"levelup/go-api/internal/analysis"
 )
 
+// weaponBackfillParallelism plafonne les matchs traités en parallèle par
+// processWeaponKillsInline (network-only, weapon_kills append-only ART-safe,
+// throttle réel par le rate limiter HTTP). 24 = valeur Phase 3.6. Ex-
+// healParallelismNetworkOnly, relocalisé ici à la décommission des heals (2026-06-01).
+const weaponBackfillParallelism = 24
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Pipeline principal
 // ─────────────────────────────────────────────────────────────────────────────
@@ -233,7 +239,7 @@ func BackfillWeaponKillsForMatchAll(
 // lease est déjà détenu. Coût : 1 download film par match. Films absents
 // (404/410) sont silencieux (matchs trop anciens).
 //
-// Parallélisé via errgroup.SetLimit(healParallelismNetworkOnly=24) — plan
+// Parallélisé via errgroup.SetLimit(weaponBackfillParallelism=24) — plan
 // Phase 3.0 (gain ~150-200s/cycle Madina) puis Phase 3.6 bump 8→24
 // (network-only, writes weapon_kills append-only sans conflit ART, throttle
 // réel par rate limiter HTTP du pool de tokens). Cf.
@@ -259,7 +265,7 @@ func processWeaponKillsInline(
 	}
 	var mu sync.Mutex
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(healParallelismNetworkOnly)
+	eg.SetLimit(weaponBackfillParallelism)
 	for _, matchID := range matchIDs {
 		matchID := matchID // capture pour closure
 		eg.Go(func() error {

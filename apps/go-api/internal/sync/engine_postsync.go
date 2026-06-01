@@ -71,20 +71,14 @@ func (e *SyncEngine) runConditionalPostSync(
 		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, insertedIDs)
 	}
 
-	// Pas de nouveaux matchs : on tente d'abord un heal skill — si ça remplit
-	// des champs (team_mmr, kills_expected), il faut quand même lancer le
-	// pipeline post-sync complet pour recalculer perf/engagement/LUSR
-	// qui dépendent de ces champs.
-	healed, healErr := healSkillForMissingMatches(ctx, sharedDB, client, e.xuid, 200)
-	if healErr != nil {
-		slog.WarnContext(ctx, "sync: skill heal échoué (no-insert path)", "gamertag", e.gamertag, "err", healErr)
-	}
-	// Détecter aussi les matchs avec scores manquants (engagement/perf NULL).
-	// Si présents, on lance le PostSync complet pour les combler.
+	// Pas de nouveaux matchs : heal skill décommissionné (2026-06-01, cf.
+	// runPostSyncPipeline). On se contente de détecter les matchs avec scores
+	// manquants (engagement/perf NULL) pour relancer le recalcul post-sync —
+	// pur calcul dérivé, aucune écriture API/shared concurrente.
 	needsScoreRefresh, _ := hasMatchesNeedingScoreRefresh(ctx, playerDB, sharedDB, e.xuid)
-	if healed > 0 || needsScoreRefresh {
-		slog.InfoContext(ctx, "sync: aucun match inséré — heal/scores → lancement post-sync complet",
-			"gamertag", e.gamertag, "matches_healed", healed, "needs_score_refresh", needsScoreRefresh)
+	if needsScoreRefresh {
+		slog.InfoContext(ctx, "sync: aucun match inséré — scores manquants → lancement post-sync complet",
+			"gamertag", e.gamertag, "needs_score_refresh", needsScoreRefresh)
 		return e.runPostSyncPipeline(ctx, playerDB, sharedDB, client, nil)
 	}
 	slog.DebugContext(ctx, "sync: aucun match inséré — refresh CSR + achievements seul (carrière live découplé)", "gamertag", e.gamertag)
@@ -149,12 +143,23 @@ func (e *SyncEngine) runPostSyncPipeline(
 	}()
 
 	// Sprint B1 commit 18 : event_id pour tracer le pipeline post-sync à
-	// travers ses 14+ étapes (stats heal, skill heal, events heal, weapons,
-	// bot teammate, sessions, perf scores, engagement, LUSR, citations, CSR,
-	// friends, aggregates). Tous les sous-logs hériteront automatiquement.
+	// travers ses étapes (bot teammate, sessions, perf scores, engagement,
+	// LUSR, citations, CSR, friends, dominance, aggregates). Tous les sous-logs
+	// hériteront automatiquement.
 	ctx, evID := logging.WithEvent(ctx, "sync.postSync:"+e.gamertag)
 	slog.InfoContext(ctx, "post-sync: pipeline démarré",
 		"gamertag", e.gamertag, "matches_inserted", len(insertedIDs), "event", evID)
+
+	// Fail-fast RC-A (defense-in-depth) : le post-sync écrit encore shared
+	// (LUSR match_skill_rank, dominance match_registry). Si le handle reçu est
+	// attaché en read-only (régression du bug RC-A 2026-06-01), on le détecte
+	// immédiatement et on logue au lieu de laisser chaque étape échouer en
+	// silence. Best-effort : nil/erreur de sonde n'interrompt pas le pipeline.
+	if err := assertSharedWritable(ctx, sharedDB); err != nil {
+		slog.ErrorContext(ctx, "post-sync: shared attaché en read-only (RC-A) — écritures shared vont échouer",
+			"gamertag", e.gamertag, "err", err)
+		trackFatalErr(&r, "shared read-only", err)
+	}
 
 	// -2 Ensure player_match_enrichment rows exist for all matches where the
 	// player has a row in shared.match_participants (incident 2026-05-27).
@@ -178,55 +183,19 @@ func (e *SyncEngine) runPostSyncPipeline(
 			"gamertag", e.gamertag, "rows_created", n)
 	}
 
-	// -1.5 Stats re-extraction heal — comble max_killing_spree, grenade/melee/
-	// power_weapon kills, time_played_seconds, avg_life_seconds, gamertag,
-	// team_X_ps_score pour les matchs synchronisés avec un ancien binaire.
-	// Détection via max_killing_spree IS NULL. Limit 10 pour amortir.
-	if n, err := healStatsForRecentMatches(ctx, sharedDB, client, e.xuid, e.gamertag, 10); err != nil {
-		slog.WarnContext(ctx, "post-sync: stats heal échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "stats heal", err)
-	} else if n > 0 {
-		slog.InfoContext(ctx, "post-sync: stats self-heal", "gamertag", e.gamertag, "matches_healed", n)
-	}
-
-	// -1. Skill self-heal — comble team_mmr/enemy_mmr/kills_expected/deaths_expected
-	// pour les matchs synchronisés AVANT que GetMatchSkill ne soit câblé dans
-	// processMatch (ou avec un échec transitoire). Idempotent : 0 appel API
-	// si tout est déjà rempli. Doit tourner avant performance/LUSR qui
-	// dépendent de team_mmr et kills_expected.
-	if n, err := healSkillForMissingMatches(ctx, sharedDB, client, e.xuid, 200); err != nil {
-		slog.WarnContext(ctx, "post-sync: skill heal échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "skill heal", err)
-	} else if n > 0 {
-		slog.InfoContext(ctx, "post-sync: skill self-heal", "gamertag", e.gamertag, "matches_healed", n)
-	}
-
-	// -0.5 Highlight events / killer_victim heal pour les matchs récents où
-	// events_loaded=FALSE (matchs syncés avant que processHighlightEvents ne
-	// soit câblé). Best-effort : films absents → 404 silencieux. globalDB nil
-	// est OK : xuid_aliases déjà résolu pour ces matchs.
-	// Limit 20 pour amortir : processHighlightEvents marque events_loaded=TRUE
-	// même sur 404, donc converge en quelques syncs.
-	if h, nf, err := healEventsForRecentMatches(ctx, sharedDB, nil, client, 20); err != nil {
-		slog.WarnContext(ctx, "post-sync: events heal échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "events heal", err)
-	} else if h > 0 || nf > 0 {
-		slog.InfoContext(ctx, "post-sync: events self-heal",
-			"gamertag", e.gamertag, "healed", h, "no_film", nf)
-	}
-
-	// -0.4 Weapon kills heal pour les matchs récents où le pipeline n'a jamais
-	// tourné (bit MBitWeaponKills absent dans match_registry). Dépend des
-	// highlight_events ci-dessus (kills attribution lit highlight_events).
-	// Limit 10 : weapon kills marque le bit MBitWeaponKills aussi sur no-film,
-	// donc converge en quelques syncs.
-	if h, nf, err := healWeaponKillsForRecentMatches(ctx, sharedDB, client, e.xuid, 10); err != nil {
-		slog.WarnContext(ctx, "post-sync: weapon heal échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "weapon heal", err)
-	} else if h > 0 || nf > 0 {
-		slog.InfoContext(ctx, "post-sync: weapon self-heal",
-			"gamertag", e.gamertag, "healed", h, "no_film", nf)
-	}
+	// HEALS DÉCOMMISSIONNÉS (2026-06-01) — stats / skill / events / weapon.
+	//
+	// Le film highlights est disponible immédiatement ~99% du temps : le sync
+	// PRIMAIRE (engine_fetch.go) récupère et persiste skill (GetMatchSkill +
+	// MergeSkillIntoParticipants), participants (ExtractParticipants) et events
+	// (GetHighlightEventsChunk → insertHighlightEventsFromData) au 1er passage,
+	// via le writer RW orchestré (persist.BatchBuilder → *Persister). Les heals
+	// post-sync ne faisaient que dupliquer ce chemin sur une fenêtre non
+	// maîtrisée — et `healSkillForMissingMatches` réécrivait match_participants
+	// en `ON CONFLICT DO UPDATE`, ce qui corrompait l'ART (incident 2026-06-01).
+	// Décision produit : aucun heal automatique. Le 1% résiduel (film absent au
+	// 1er sync) se récupère via backfill CLI explicite et contrôlé.
+	// Cf. ADR 0019 + thought_log 2026-06-01.
 
 	// -0.3 had_bot_teammate — dérivé des participants (cheap SQL, pas d'API).
 	// Idempotent : skip les rows déjà à TRUE.
@@ -319,19 +288,11 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
-	// 1.58 Registry names heal (Phase 5) — re-résout map_name/pair_name/
-	// playlist_name/game_variant_name restés égaux à leur UUID. Cas typique :
-	// matchs synchronisés pendant que metadata.duckdb était FATAL-invalidated
-	// (incident ART) → e.metaDB nil au moment de l'INSERT → EnrichRegistryFrom-
-	// Metadata no-op → GUID brut écrit. Une fois metadata réparée, ce heal
-	// nettoie l'historique sans intervention CLI manuelle. Idempotent (UPDATE
-	// only where name==id) + best-effort (metadata absente → skip).
-	if n, err := e.runPostSyncRegistryNames(ctx, sharedDB); err != nil {
-		slog.WarnContext(ctx, "post-sync: registry names heal échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "registry names", err)
-	} else if n > 0 {
-		slog.InfoContext(ctx, "post-sync: registry names résolus", "gamertag", e.gamertag, "fixed", n)
-	}
+	// Registry names heal DÉCOMMISSIONNÉ (2026-06-01) — map_name/pair_name/
+	// playlist_name/game_variant_name sont résolus au sync PRIMAIRE via
+	// EnrichRegistryFromMetadata (metadata saine). Le nettoyage one-shot des
+	// GUID hérités d'un incident ART metadata se fait via `cmd/backfill_registry_names`
+	// (CLI explicite), pas un heal post-sync automatique.
 
 	// 1.6 Citations — pipeline primaire, pas un heal. Traite tous les matchs
 	// absents de match_citations (LEFT JOIN IS NULL). Le sentinel "_processed"
