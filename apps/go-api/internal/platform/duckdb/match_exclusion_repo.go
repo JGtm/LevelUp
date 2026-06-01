@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // MatchExclusionRepo implémente port.MatchExclusionRepository.
@@ -27,6 +28,17 @@ func NewMatchExclusionRepo(pdb *PlayerDB) *MatchExclusionRepo {
 func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, excluded bool) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+
+	// P2 (revue 2026-06-01) : sérialise avec le post-sync / CLI / autres handlers
+	// qui écrivent la MÊME player DB. Sans ce lease, l'UPSERT ON CONFLICT (match_id)
+	// DO UPDATE n'était sûr que par l'effet de bord MaxOpenConns(1) du cache de
+	// connexion — fragile. Le lease KindPlayer (mutex par-path) rend la sérialisation
+	// explicite ; ErrDBLocked remonte et est mappé en 503 par le handler.
+	w, err := r.pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("MatchExclusionRepo.SetExclusion: lease: %w", err)
+	}
+	defer w.Release()
 
 	rwDB, err := OpenReadWrite(r.pdb.Player.Path())
 	if err != nil {

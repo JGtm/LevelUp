@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 )
 
@@ -221,6 +222,18 @@ func (r *EngagementScoreRepo) SaveEngagementCoefficient(
 		return port.ErrEngagementUnavailable
 	}
 
+	// P2 (revue 2026-06-01) : sérialise ce chemin HTTP admin avec le post-sync
+	// (qui recompute les mêmes coefs via saveCoefficient SOUS le lease KindPlayer)
+	// et les CLI. Sans ce lease, l'UPSERT ON CONFLICT (xuid, mode_category) DO UPDATE
+	// n'était sûr que par l'effet de bord MaxOpenConns(1) du cache de connexion.
+	// Unique caller = RecomputeCoefficients (admin), jamais un contexte déjà leasé →
+	// pas de réentrance. ErrDBLocked → 503 côté handler.
+	w, err := r.pdb.AcquirePlayerWriterTimeout(dblease.PlayerLeaseTimeout)
+	if err != nil {
+		return fmt.Errorf("EngagementScoreRepo.SaveEngagementCoefficient: lease: %w", err)
+	}
+	defer w.Release()
+
 	// DuckDB supporte INSERT OR REPLACE via "ON CONFLICT DO UPDATE".
 	const q = `
 		INSERT INTO engagement_coefficients (
@@ -238,7 +251,7 @@ func (r *EngagementScoreRepo) SaveEngagementCoefficient(
 		updated = time.Now().UTC()
 	}
 
-	_, err := r.pdb.Player.Exec(ctx, q,
+	_, err = r.pdb.Player.Exec(ctx, q,
 		coef.XUID,
 		coef.ModeCategory,
 		coef.CoefTeamShare,

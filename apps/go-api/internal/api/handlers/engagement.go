@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 )
@@ -236,6 +237,10 @@ func (h *EngagementHandler) PostRecomputeCoefficients(w http.ResponseWriter, r *
 		case errors.Is(err, port.ErrEngagementUnavailable):
 			writeError(r.Context(), w, http.StatusServiceUnavailable, "engagement_unavailable",
 				"migration EngagementScore non appliquee")
+		case errors.Is(err, dblease.ErrDBLocked):
+			w.Header().Set("Retry-After", "5")
+			writeError(r.Context(), w, http.StatusServiceUnavailable, "db_busy",
+				"database is currently busy, please retry")
 		default:
 			writeError(r.Context(), w, http.StatusInternalServerError, "engagement_error", err.Error())
 		}
