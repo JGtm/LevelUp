@@ -215,23 +215,22 @@ func TestMatchPoller_DetectsNewMatches(t *testing.T) {
 	}
 
 	var detected []string
-	poller := NewMatchPoller("xuid1", "player1", fetcher, func(matchIDs []string) {
+	poller := NewMatchPoller("xuid1", "player1", fetcher, func(matchIDs []string) bool {
 		detected = append(detected, matchIDs...)
+		return true
 	})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Poll 1 — tout est nouveau au premier poll
-	poller.poll(ctx)
-	if len(detected) != 3 {
-		t.Fatalf("poll 1: detected %d, want 3", len(detected))
+	// Poll 1 (seedOnly) — baseline établi sans signaler (AS-4).
+	poller.poll(ctx, true)
+	if len(detected) != 0 {
+		t.Fatalf("seed poll: detected %d, want 0 (baseline seedé, pas de signal)", len(detected))
 	}
 
-	detected = nil
-
-	// Poll 2 — seul m4 est nouveau
-	poller.poll(ctx)
+	// Poll 2 — seul m4 est nouveau.
+	poller.poll(ctx, false)
 	if len(detected) != 1 || detected[0] != "m4" {
 		t.Errorf("poll 2: detected = %v, want [m4]", detected)
 	}
@@ -245,12 +244,14 @@ func TestMatchPoller_SeedKnownIDs(t *testing.T) {
 	}
 
 	var detected []string
-	poller := NewMatchPoller("x", "p", fetcher, func(ids []string) {
+	poller := NewMatchPoller("x", "p", fetcher, func(ids []string) bool {
 		detected = append(detected, ids...)
+		return true
 	})
 	poller.SeedKnownIDs([]string{"m1", "m2"})
 
-	poller.poll(context.Background())
+	// m1,m2 pré-seedés → un poll normal ne signale que m3.
+	poller.poll(context.Background(), false)
 	if len(detected) != 1 || detected[0] != "m3" {
 		t.Errorf("detected = %v, want [m3]", detected)
 	}
@@ -265,15 +266,45 @@ func TestMatchPoller_NoNewMatches(t *testing.T) {
 	}
 
 	callCount := 0
-	poller := NewMatchPoller("x", "p", fetcher, func(_ []string) {
+	poller := NewMatchPoller("x", "p", fetcher, func(_ []string) bool {
 		callCount++
+		return true
 	})
 
 	ctx := context.Background()
-	poller.poll(ctx) // poll 1
-	poller.poll(ctx) // poll 2 — no new matches
-	if callCount != 1 {
-		t.Errorf("callback called %d times, want 1 (only first poll)", callCount)
+	poller.poll(ctx, true)  // seed baseline (m1,m2) — pas de callback
+	poller.poll(ctx, false) // m1,m2 déjà connus → rien de nouveau
+	if callCount != 0 {
+		t.Errorf("callback called %d times, want 0 (baseline seedé + rien de nouveau)", callCount)
+	}
+}
+
+// W4 (revue 2026-06-01) : un match détecté pendant un état busy (callback → false)
+// n'est PAS marqué connu et est re-signalé au poll suivant une fois accepté.
+func TestMatchPoller_NotAccepted_ReSignaled(t *testing.T) {
+	fetcher := &mockFetcher{
+		results: [][]string{
+			{"m1"},       // seed baseline
+			{"m1", "m2"}, // m2 détecté — refusé (busy)
+			{"m1", "m2"}, // m2 toujours là — re-signalé
+		},
+	}
+	calls := 0
+	accept := false
+	poller := NewMatchPoller("x", "p", fetcher, func(ids []string) bool {
+		calls++
+		return accept
+	})
+	ctx := context.Background()
+	poller.poll(ctx, true)  // seed m1
+	poller.poll(ctx, false) // m2 détecté, refusé → calls=1, m2 NON marqué connu
+	if calls != 1 {
+		t.Fatalf("calls après refus = %d, want 1", calls)
+	}
+	accept = true
+	poller.poll(ctx, false) // m2 re-signalé (jamais marqué connu) → accepté → calls=2
+	if calls != 2 {
+		t.Errorf("calls après acceptation = %d, want 2 (m2 re-signalé)", calls)
 	}
 }
 
