@@ -223,6 +223,7 @@ func containsATTACHKeyword(litValue string) bool {
 // Ordre alphabétique. Chemins relatifs à apps/go-api/ (avec / unix-style).
 var sharedSocialFilesWhitelist = map[string]string{
 	"cmd/analyze_media_tz/main.go":                                       "outil one-shot diag timezone media",
+	"cmd/backfill-media-hls/main.go":                                     "outil one-shot backfill HLS média : UPDATE media_files (commentaires + flag --db référencent le chemin shared_social.duckdb, serveur arrêté)",
 	"cmd/cleanup_media_index/main.go":                                    "outil one-shot cleanup index media",
 	"cmd/diag_match_id_tables/main.go":                                   "outil one-shot diag match_id",
 	"cmd/migrate-media-paths/main.go":                                    "outil one-shot migration paths media",
@@ -266,6 +267,7 @@ var sharedSocialFilesWhitelist = map[string]string{
 	"internal/ops/backup_service.go":                                     "backup/restore ops",
 	"internal/ops/media.go":                                              "IndexMedia + CHECKPOINT (Phase 3.2)",
 	"internal/ops/media_associate.go":                                    "association média-match sans ATTACH (ADR 0021)",
+	"internal/ops/media_hls.go":                                          "transcoding HLS média : commentaire sur DBPath = shared_social.duckdb (cible UPDATE media_files)",
 	"internal/persist/shared_social_persister.go":                        "SocialPersister canonique (CHECKPOINT garanti)",
 	"internal/persist/shared_social_rows.go":                             "types batch SocialPersister",
 	"internal/platform/dblease/kind.go":                                  "type Kind=SharedSocial pour lease tracking",

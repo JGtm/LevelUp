@@ -124,6 +124,31 @@ func TestMatchViewHandler_LocalisationFR_ChampsJSON(t *testing.T) {
 	}
 }
 
+// ADR 0024 Couche B : un match non-participé (APIError match_not_participant)
+// est mappé en 404 avec le code distinct, pas en 500.
+func TestMatchViewHandler_NotParticipant_404(t *testing.T) {
+	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
+		return &mockMatchViewService{
+			err: &domain.APIError{Code: "match_not_participant", Message: "non participant"},
+		}, nil
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/players/test-player/matches/xyz", nil)
+	w := httptest.NewRecorder()
+	newMatchViewRouter(factory).ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if body["code"] != "match_not_participant" {
+		t.Errorf("code = %v, want match_not_participant", body["code"])
+	}
+}
+
 func TestMatchViewHandler_ServiceError(t *testing.T) {
 	factory := func(_ context.Context, _ string) (port.MatchViewService, error) {
 		return &mockMatchViewService{err: errors.New("db error")}, nil

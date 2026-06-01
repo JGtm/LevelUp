@@ -17,13 +17,15 @@
  * droite) pour un effet papillon symétrique.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useSearch } from '@tanstack/react-router'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { Tooltip } from '@/components/ui/tooltip'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyStateCard, EmptyStateNotice } from '@/components/ui/empty-state'
+import { PageUnavailable } from '@/components/ui/page-unavailable'
 import { Spinner } from '@/components/ui/spinner'
+import { apiErrorCode } from '@/lib/api/client'
 import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -48,7 +50,8 @@ export function SessionDetailPage() {
   // (aligné Home/Explorer) ; incluse dans la queryKey → refetch au changement de locale.
   const locale = useAppShellStore((s) => s.locale)
 
-  const { data, isLoading, isError, isFetching, refetch } = useSessionDetailPage(
+  const navigate = useNavigate()
+  const { data, isLoading, isError, error, isFetching, refetch } = useSessionDetailPage(
     playerSlug,
     {
       filters: filterContext,
@@ -104,6 +107,35 @@ export function SessionDetailPage() {
   }
 
   if (isError) {
+    // ADR 0024 Couche B : session demandée inexistante (404 session_not_found) ou
+    // accès refusé (403 player_forbidden) → page "Indisponible" claire avec
+    // navigation, au lieu du message d'erreur générique / d'une page vide.
+    const code = apiErrorCode(error)
+    if (code === 'session_not_found' || code === 'player_forbidden') {
+      return (
+        <PageUnavailable
+          title={t('session.detail.unavailable_title')}
+          description={t('session.detail.unavailable_not_found')}
+          actions={[
+            {
+              label: t('session.detail.action_home'),
+              variant: 'default',
+              onClick: () => {
+                navigate({ to: '/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
+              },
+            },
+            {
+              label: t('session.detail.action_matches'),
+              onClick: () => {
+                navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(
+                  () => {},
+                )
+              },
+            },
+          ]}
+        />
+      )
+    }
     return (
       <div className="p-6">
         <Card>

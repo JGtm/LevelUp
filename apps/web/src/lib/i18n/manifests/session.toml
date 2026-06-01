@@ -853,3 +853,21 @@ en = "Score"
 [session.compare.engagement_empty]
 fr = "Données d'engagement indisponibles."
 en = "Engagement data unavailable."
+
+# ─── Indisponibilité / accès (ADR 0024) ──────────────────────────────────────
+
+[session.detail.unavailable_title]
+fr = "Session indisponible"
+en = "Session unavailable"
+
+[session.detail.unavailable_not_found]
+fr = "Cette session n'existe pas ou ne fait pas partie de tes parties."
+en = "This session doesn't exist or isn't part of your matches."
+
+[session.detail.action_home]
+fr = "Accueil"
+en = "Home"
+
+[session.detail.action_matches]
+fr = "Mes matchs"
+en = "My matches"

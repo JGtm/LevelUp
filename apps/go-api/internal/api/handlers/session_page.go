@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -55,6 +56,14 @@ func (h *SessionPageHandler) GetPage(w http.ResponseWriter, r *http.Request) {
 
 	page, err := svc.GetPage(r.Context(), req)
 	if err != nil {
+		var apiErr *domain.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == "session_not_found" {
+			// Couche B (ADR 0024) : session demandée inexistante dans le périmètre.
+			slog.InfoContext(r.Context(), "session page: session introuvable",
+				"player_slug", slug, "session_label", derefReqString(req.SessionLabel))
+			writeError(r.Context(), w, http.StatusNotFound, "session_not_found", apiErr.Message)
+			return
+		}
 		slog.ErrorContext(r.Context(), "session page: erreur service", "player_slug", slug, "err", err)
 		writeError(r.Context(), w, http.StatusInternalServerError, "session_page_error", err.Error())
 		return

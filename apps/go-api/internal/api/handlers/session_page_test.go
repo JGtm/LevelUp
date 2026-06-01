@@ -106,6 +106,36 @@ func TestSessionPageHandler_ServiceError(t *testing.T) {
 	}
 }
 
+// ADR 0024 Couche B : une session demandée inexistante (APIError
+// session_not_found) est mappée en 404 avec le code distinct, pas en 500.
+func TestSessionPageHandler_SessionNotFound_404(t *testing.T) {
+	mock := &mockSessionPageService{
+		err: &domain.APIError{Code: "session_not_found", Message: "session introuvable"},
+	}
+	factory := func(_ context.Context, _ string) (port.SessionPageService, error) {
+		return mock, nil
+	}
+	r := newSessionPageRouter(factory)
+	body, _ := json.Marshal(domain.SessionPageRequest{SessionLabel: strptrSess("S-MISSING")})
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/sessions/detail", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d: %s", w.Code, w.Body.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp["code"] != "session_not_found" {
+		t.Errorf("code = %v, want session_not_found", resp["code"])
+	}
+}
+
+func strptrSess(s string) *string { return &s }
+
 func TestSessionPageHandler_InvalidBody(t *testing.T) {
 	mock := &mockSessionPageService{}
 	factory := func(_ context.Context, _ string) (port.SessionPageService, error) {

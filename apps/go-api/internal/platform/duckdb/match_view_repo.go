@@ -213,6 +213,26 @@ func (r *MatchViewRepo) GetPlayerMatchStats(ctx context.Context, xuid, matchID s
 	return &s, nil
 }
 
+// IsParticipant indique si le joueur (xuid) figure dans match_participants pour
+// ce match. Sert au gating "match non-participé" (ADR 0024, Couche B). EXISTS
+// léger — ne scanne pas les 31 colonnes de Q17. Exécutée sur SharedReader.
+func (r *MatchViewRepo) IsParticipant(ctx context.Context, xuid, matchID string) (bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer release()
+
+	var exists bool
+	if err := sharedDB.QueryRowContext(ctx, Q17bIsParticipant, matchID, xuid).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 // GetMatchEnrichment retourne l'enrichissement pour ce match (Q18).
 func (r *MatchViewRepo) GetMatchEnrichment(ctx context.Context, matchID string) (*domain.MatchEnrichmentRaw, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)

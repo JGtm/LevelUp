@@ -28,6 +28,10 @@ type mockMatchViewRepo struct {
 	weaponErr error
 	kvPairs   []domain.KVPairRaw
 	kvErr     error
+	// notParticipant : si true, IsParticipant renvoie false (gating ADR 0024).
+	// Défaut false → "a participé" → comportement inchangé pour les tests existants.
+	notParticipant bool
+	participantErr error
 }
 
 func (m *mockMatchViewRepo) GetMatchMeta(_ context.Context, _ string) (*domain.MatchMetaRaw, error) {
@@ -35,6 +39,9 @@ func (m *mockMatchViewRepo) GetMatchMeta(_ context.Context, _ string) (*domain.M
 }
 func (m *mockMatchViewRepo) GetPlayerMatchStats(_ context.Context, _, _ string) (*domain.PlayerMatchStatsRaw, error) {
 	return m.stats, m.statsErr
+}
+func (m *mockMatchViewRepo) IsParticipant(_ context.Context, _, _ string) (bool, error) {
+	return !m.notParticipant, m.participantErr
 }
 func (m *mockMatchViewRepo) GetMatchEnrichment(_ context.Context, _ string) (*domain.MatchEnrichmentRaw, error) {
 	return m.enrich, m.enrichErr
@@ -233,6 +240,41 @@ func TestMatchViewService_GetMatchView_MetaError(t *testing.T) {
 	_, err := svc.GetMatchView(context.Background(), "m1")
 	if err == nil {
 		t.Error("expected error when meta fails")
+	}
+}
+
+// ADR 0024 Couche B : un joueur non-participant reçoit match_not_participant,
+// même si le match existe (meta OK) — fail-fast avant les chargements parallèles.
+func TestMatchViewService_GetMatchView_NotParticipant(t *testing.T) {
+	now := time.Now()
+	repo := &mockMatchViewRepo{
+		meta:           &domain.MatchMetaRaw{MatchID: "m1", StartTime: &now},
+		notParticipant: true,
+	}
+	svc := NewMatchViewService(repo, "xuid-absent")
+
+	_, err := svc.GetMatchView(context.Background(), "m1")
+	if err == nil {
+		t.Fatal("attendu une erreur match_not_participant, obtenu nil")
+	}
+	var apiErr *domain.APIError
+	if !errors.As(err, &apiErr) || apiErr.Code != "match_not_participant" {
+		t.Fatalf("attendu APIError match_not_participant, obtenu %v", err)
+	}
+}
+
+// Une erreur DB sur la vérification de participation ne bloque pas (best-effort).
+func TestMatchViewService_GetMatchView_ParticipationErrorIsBestEffort(t *testing.T) {
+	now := time.Now()
+	mapN := aquariusMap
+	repo := &mockMatchViewRepo{
+		meta:           &domain.MatchMetaRaw{MatchID: "m1", StartTime: &now, MapName: &mapN},
+		participantErr: errors.New("db down"),
+	}
+	svc := NewMatchViewService(repo, "xuid1")
+
+	if _, err := svc.GetMatchView(context.Background(), "m1"); err != nil {
+		t.Fatalf("erreur de participation devrait être best-effort, obtenu %v", err)
 	}
 }
 
