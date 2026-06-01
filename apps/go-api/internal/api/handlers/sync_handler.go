@@ -10,10 +10,12 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"levelup/go-api/internal/api/middleware"
 	"levelup/go-api/internal/config"
@@ -21,11 +23,28 @@ import (
 	"levelup/go-api/internal/notifications"
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
+	"levelup/go-api/internal/platform/dblease"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
 )
+
+// syncJobTimeout borne la durée d'un job de sync HTTP (D3-04, revue 2026-06-01).
+// Sans borne, le bgCtx context.Background() faisait attendre le lease KindPlayer
+// indéfiniment si un autre writer (auto-sync, watcher) le tenait. 30 min couvre
+// largement un sync initial volumineux + post-sync.
+const syncJobTimeout = 30 * time.Minute
+
+// syncErrorMessage (D3-05) produit un message de job lisible — distingue la
+// contention de lease (un autre sync du même joueur est en cours, réessayable)
+// d'un échec réel.
+func syncErrorMessage(err error) string {
+	if errors.Is(err, dblease.ErrDBLocked) {
+		return "db_busy: un autre sync de ce joueur est en cours (réessayer) — " + err.Error()
+	}
+	return err.Error()
+}
 
 // NotificationsEmitterFactory construit un emitter de notifications pour un slug
 // joueur donné. Optionnel : si le SyncHandler n'a pas reçu de factory, aucun
@@ -274,7 +293,8 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 	jobSnapshot := *job
 
 	go func() {
-		bgCtx := context.Background()
+		bgCtx, cancel := context.WithTimeout(context.Background(), syncJobTimeout)
+		defer cancel()
 		var after func(ctx context.Context)
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, req.PlayerSlug)
@@ -285,7 +305,7 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 
 		result, err := engine.RunDelta(bgCtx, opts)
 		if err != nil {
-			errMsg := err.Error()
+			errMsg := syncErrorMessage(err)
 			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
 			h.emitSyncError(bgCtx, req.PlayerSlug, job.JobID, errMsg)
 			return
@@ -357,7 +377,8 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 	jobSnapshot2 := *job
 
 	go func() {
-		bgCtx := context.Background()
+		bgCtx, cancel := context.WithTimeout(context.Background(), syncJobTimeout)
+		defer cancel()
 		var after func(ctx context.Context)
 		if h.postSync != nil {
 			after = h.postSync(bgCtx, playerSlug)
@@ -367,7 +388,7 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 
 		result, err := engine.RunDelta(bgCtx, opts)
 		if err != nil {
-			errMsg := err.Error()
+			errMsg := syncErrorMessage(err)
 			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &errMsg)
 			h.emitSyncError(bgCtx, playerSlug, job.JobID, errMsg)
 			return
@@ -428,7 +449,11 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 
 			engine := h.newEngineFor(p.Gamertag, p.XUID, tokens)
 			opts := domain.DefaultSyncOptions()
-			if _, err := engine.RunDelta(context.Background(), opts); err != nil {
+			// D3-04 : timeout par joueur (borne l'attente du lease KindPlayer).
+			pCtx, cancel := context.WithTimeout(context.Background(), syncJobTimeout)
+			_, perr := engine.RunDelta(pCtx, opts)
+			cancel()
+			if perr != nil {
 				failed++
 			} else {
 				succeeded++
