@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/assets"
 	"levelup/go-api/internal/assets/static"
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
@@ -46,6 +47,24 @@ import (
 	"levelup/go-api/internal/watcher"
 	"levelup/go-api/pkg/duckdbbackup"
 )
+
+// playerOwnershipXUIDResolver mappe un slug joueur vers le xuid de son profil
+// pour le titre courant (lu depuis le contexte), via db_profiles.json sans
+// ouvrir de DuckDB. Alimente middleware.RequirePlayerOwnership (ADR 0024).
+func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDResolver {
+	return func(ctx context.Context, slug string) (string, bool) {
+		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+		if err != nil {
+			return "", false
+		}
+		for i := range players {
+			if players[i].PlayerSlug == slug {
+				return players[i].XUID, true
+			}
+		}
+		return "", false
+	}
+}
 
 // NewRouter construit le routeur chi avec tous les endpoints.
 // Construction par injection de dépendances — pas d'état global.
@@ -645,6 +664,12 @@ func NewRouter(
 
 		// Endpoints P1 : pages par joueur (Sprint 37 — DI via ServiceRegistry)
 		r.Route("/players/{player_slug}", func(r chi.Router) {
+			// Couche A (ADR 0024) : garde de propriété joueur. Chokepoint unique —
+			// 403 player_forbidden si l'utilisateur courant ne possède pas le slug.
+			// Transparent en mode demo / auth non activée. Toute route player-scoped
+			// DOIT rester montée sous ce groupe pour être protégée.
+			r.Use(middleware.RequirePlayerOwnership(cfg.DemoMode, cfg.AuthMode, playerOwnershipXUIDResolver(cfg), users))
+
 			filters := handlers.NewFiltersHandler(reg.Filters)
 			r.Post("/filters/resolve", filters.Resolve)
 

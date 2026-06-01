@@ -480,10 +480,12 @@ func main() {
 	bootSvc := service.NewBootstrapService(cfg, bootRepo).
 		WithPrivacyProvider(halo.DefaultHaloProvider)
 
-	// Auth locale : injecter le check "first launch" si mode password.
+	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0024,
+	// modes password + xbox) et check "first launch" (mode password).
+	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	us := userstore.NewStore(usersPath)
+	bootSvc = bootSvc.WithUserLookup(us)
 	if cfg.AuthMode == "password" {
-		usersPath := filepath.Join(cfg.AuthDir, "users.json")
-		us := userstore.NewStore(usersPath)
 		bootSvc = bootSvc.WithUserStoreEmpty(us.IsEmpty)
 	}
 
