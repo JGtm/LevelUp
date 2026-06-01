@@ -1,3 +1,32 @@
+## [2026-06-01] Sync/persist — Figer le comportement correct par des tests cadrés
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : après les fixes P1-P3, verrouiller le « bon fonctionnement » de l'orchestration
+lecture/écriture par des tests de non-régression bien cadrés (demande utilisateur), AVANT d'attaquer
+les refactors reportés (le filet de sécurité protège les refactors).
+
+**Décision technique (3 tests, haute valeur / faible bruit)** :
+- **Guard d'architecture** `TestSharedMatchTablesWrittenViaPersistOrAllowlist` (shared_write_guard_test.go) :
+  fige l'invariant d'orchestration — les tables match-of-record (match_registry, match_participants,
+  medals_earned, weapon_kills) ne sont écrites QUE depuis `internal/persist` ou une courte allowlist
+  legacy sanctionnée (writes.go + bitmasks engagement/pve/events_replay/backfill_registry_names pour
+  registry). Tout NOUVEAU writer direct hors périmètre fait échouer le test. Inventaire des writers
+  fait par grep ; allowlist exhaustive et minimale. Généralise combat_write_guard aux tables stat.
+- **E2E golden-path** `TestSharedPersister_GoldenBatchPath_CompleteAndIdempotent` : un batch combat
+  complet → SharedPersister → readback asserte la forme par-kill (gamertags + time_ms NON NULL) +
+  events_loaded=TRUE ; re-Persist = idempotent (counts inchangés). Pin D3-1 + D3-2 + INSERT-only.
+- **WAL round-trip** `TestMatchBatch_RoundTrip_KillerVictimPerKillFields` : les champs per-kill
+  (KillerGamertag/VictimGamertag/TimeMS) + highlight_events survivent à la sérialisation WAL JSON
+  (durabilité de la donnée combat à travers crash+recovery).
+
+**Résultats observés** : 3 tests verts. Avec les guards existants (no_art_patterns, combat_write_guard,
+TestNoBulkMultiRowUpdateOnCriticalTables, Submit/Close -race), l'orchestration sync/persist est
+désormais figée : écritures via persist, INSERT-only, idempotence, forme combat par-kill, durabilité WAL.
+
+**Prochaine étape** : refactors reportés (D5-5 code mort pool.go, D7-6 mojibake engine.go, D1-2 routage
+DBTarget mort, D6-2 rétention match_skill_rank, D7-3 god function runPostSyncPipeline) — sous filet.
+
 ## [2026-06-01] Revue sync/persist — P3 : dette (correctness + doc-rot)
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
@@ -53295,3 +53324,31 @@ Conclusion / prochaine etape : 4 quick-wins offline possibles sans .module —
 kill-feed film-natif (pret a coder), grenades par type (scanner tous chunks type-2),
 vecteur de visee (octets post-weapon des fire events deja parses), cible/victime
 dans le fire event. Outil filmx.exe conserve sous tmp_film_explore/ (hors build app).
+
+Suite (meme jour) — pistes B (medailles) puis A (cible fire event) + apport acurtis :
+- Correction utilisateur : le kill-feed AFFICHE (tueur-arme-victime) est une feature
+  tardive reconstruite cote client ; le type-3 ne stocke AUCUNE arme (suffixe 42c9679f
+  = 0 au bit pres, region etendue par event = state bit-packe). L'arme vient de la
+  replication (fire events / melee / grenade), pas du type-3.
+- B (LIVRE, valide e2e) : chaque event is_medal du type-3 = (xuid, time_ms, code film
+  b[59] 1 octet). b[59] != name_id API (ni name_id&255). Bijection b[59]->name_id
+  resolue par alignement multiset par joueur vs medals_earned (croise via cmd/tmpdbq
+  RO + medal_definitions). Weapon-specific : 108=Snipe & 114=No Scope -> S7 Sniper
+  (Player4 medailles {108x2,114x1} <-> weapon_kills S7 Sniper x4 : confirme). Apport
+  film vs API = le time_ms par medaille -> ancrer une medaille weapon-specific sur un
+  kill precis pour confirmer/corriger l'arme.
+- A (dur, OPEN) : cible/victime dans le fire event non craquee. Bute sur le chaos
+  player_index (kill sniper Player4@310141 : weapon_kills pi=1, ordre participants
+  pi=4, fire events sniper chunk_16 pi=6 = 3 numerotations). Statut coherent avec la
+  communaute.
+- C (LIVRE) : acurtis a publie l'algo aim vector (cubemap _FACE_SIZE=0xAAA8000, 30
+  bits). Porte en Go, self-test EXACT (decode((0x6240e840e0>>5)&0x3FFFFFFF)=
+  (0.3556,0.9346,0.0)). Applique a nos fire events (40 bits apres weapon, >>5
+  &0x3FFFFFFF) -> vecteurs unitaires propres et coherents (z=0 suppose, +-45deg
+  coutures). LevelUp ne le capture pas. Permet crosscheck geometrique kill.
+- Melee (acurtis) : l'event melee (marker 0xd340) porte directement weapon id +
+  animation type (nibble 5/d par arme) -> identifie l'arme du kill melee.
+- Doc maj : RESEARCH_THEATER_RE.md sections H/I/J/K + synthese. Outils : filmx.exe
+  (+modes medals/aim) + apps/go-api/cmd/tmpdbq (SQL DuckDB RO, build ignore).
+  Prochaine etape possible : cabler l'aim vector dans weapon_scanner.go (petit ajout)
+  ou completer la bijection b[59] cross-match.
