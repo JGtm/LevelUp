@@ -197,78 +197,10 @@ func (e *SyncEngine) runPostSyncPipeline(
 	// 1er sync) se récupère via backfill CLI explicite et contrôlé.
 	// Cf. ADR 0019 + thought_log 2026-06-01.
 
-	// -0.3 had_bot_teammate — dérivé des participants (cheap SQL, pas d'API).
-	// Idempotent : skip les rows déjà à TRUE.
-	if n, err := computeAndPersistHadBotTeammate(ctx, playerDB, sharedDB, e.xuid); err != nil {
-		slog.WarnContext(ctx, "post-sync: had_bot_teammate échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "had_bot_teammate", err)
-	} else if n > 0 {
-		slog.InfoContext(ctx, "post-sync: had_bot_teammate", "gamertag", e.gamertag, "rows_updated", n)
-	}
-
-	// 0. Session assignments — auto-recalc session_id pour les nouveaux matchs.
-	// Best-effort : un échec ne bloque pas le pipeline. Les amis sont
-	// résolus depuis le friendsLoader (settings.FriendGamertags). Sans loader
-	// (legacy), on retombe en TeamChangeMode=teammates.
-	{
-		var friends []string
-		if e.friendsLoader != nil {
-			if fs, ferr := e.friendsLoader(); ferr == nil {
-				friends = fs
-			}
-		}
-		opts := analysis.DefaultSessionOptions()
-		if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, e.xuid, opts, friends); err != nil {
-			slog.WarnContext(ctx, "post-sync: sessions échoué", "gamertag", e.gamertag, "err", err)
-			trackFatalErr(&r, "sessions", err)
-		} else if n > 0 {
-			r.SessionsAssigned = n
-			slog.DebugContext(ctx, "post-sync: sessions recalculées", "gamertag", e.gamertag, "count", n)
-		}
-	}
-
-	// 1. Performance scores
-	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
-	if n, err := batchComputePerformanceScores(ctx, playerDB, sharedDB, e.xuid, nil, false); err != nil {
-		slog.WarnContext(ctx, "post-sync: perf scores échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "perf scores", err)
-	} else {
-		r.PerfScoresComputed = n
-		slog.DebugContext(ctx, "post-sync: perf scores calculés", "gamertag", e.gamertag, "count", n)
-	}
-
-	// 1.5 Engagement scores (Phase 3 plan engagement) — best-effort,
-	// skip silencieux si migration Phase 2 non appliquee.
-	slog.DebugContext(ctx, "post-sync: calcul engagement scores", "gamertag", e.gamertag)
-	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
-		slog.WarnContext(ctx, "post-sync: engagement scores échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "engagement scores", err)
-	} else if n > 0 {
-		r.EngagementScoresComputed = n
-		slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
-	}
-
-	// 1.5.b Recompute des engagement coefficients depuis la mediane glissante
-	// des paces persistees ci-dessus. Sans ce recompute, coef_team_share reste
-	// a 1.0 (cold-start) → pace_attendu = pace_team → courbes superposees a
-	// l'ecran (cf. .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4).
-	if n, err := batchRecomputeCoefficients(ctx, playerDB, e.xuid); err != nil {
-		slog.WarnContext(ctx, "post-sync: engagement coefs échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "engagement coefs", err)
-	} else if n > 0 {
-		r.EngagementCoefsUpdated = n
-		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
-	}
-
-	// 1.52 Assists model — OLS per-mode, skip silencieux si migration absente.
-	// force=false : ne recalcule que si player_assists_model est vide (cold-start).
-	// Un nouveau sync peut amener des données → on recalcule si table vide.
-	if n, err := batchComputePlayerAssistsModel(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
-		slog.WarnContext(ctx, "post-sync: assists model échoué", "gamertag", e.gamertag, "err", err)
-		trackFatalErr(&r, "assists model", err)
-	} else if n > 0 {
-		slog.InfoContext(ctx, "post-sync: assists model calculé", "gamertag", e.gamertag, "n_modes", n)
-	}
+	// -0.3 had_bot, 0 sessions, 1 perf, 1.5 engagement, 1.5.b coefs, 1.52 assists —
+	// bloc de scoring enrichment (player DB), extrait pour réduire la taille de
+	// runPostSyncPipeline (cf. revue D7-3).
+	e.runScoringSteps(ctx, playerDB, sharedDB, &r)
 
 	// 1.55 Weapon kills — pipeline film pour les matchs nouvellement insérés.
 	// Best-effort : films absents (404/410) sont normaux pour les vieux matchs
@@ -328,10 +260,199 @@ func (e *SyncEngine) runPostSyncPipeline(
 		}
 	}
 
-	// Sprint 3.C : tout le bloc LUSR (v1 + v2 + sentinelle) est gardé par la
-	// capability title.CapLUSR — pas de couplage slug. Titre sans CapLUSR → on
-	// saute proprement (aucun rating calculé pour ce titre). On gate sur
-	// e.titleSlug (autoritatif côté engine) plutôt que sur le ctx.
+	// 2 / 2.5 / 2.6 — bloc LUSR (v1 + v2 shadow + sentinelle dual-row), extrait
+	// pour réduire la taille de runPostSyncPipeline (cf. revue D7-3). Self-gate
+	// sur la capability title.CapLUSR.
+	e.runSkillRatingSteps(ctx, playerDB, sharedDB, &r)
+
+	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
+	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
+	// (throttle 5 min / 6 h + fallback DB per-field), appelé depuis HomeService
+	// à chaque chargement de /pages/home. Voir .ai/thought_log.md.
+	// domain.PostSyncResult.CareerSynced reste dans le struct (compat e2e tests)
+	// mais n'est plus jamais positionné à true ici.
+
+	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide).
+	// Maintenu dans le post-sync : le CSR ne bouge que sur fin de match ranked,
+	// donc le déclencheur "nouveau match" reste pertinent.
+	// Les CSRs sont capturés pour alimenter playlists_catalog en parallèle
+	// à l'étape 4 (errgroup) — transparent, 0 latence supplémentaire.
+	var pendingCSRs []PlayerPlaylistCSR
+	if csrs, csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
+		trackFatalErr(&r, "CSR snapshots", csrErr)
+	} else {
+		pendingCSRs = csrs
+	}
+
+	// 3.5 Friends recompute is_with_friends (best-effort).
+	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
+	// refreshAggregates=false, le refresh natif de l'engine couvre les UPDATEs.
+	// Skip silencieux si pas de loader (legacy) ou liste vide.
+	if e.friendsLoader != nil {
+		if friends, ferr := e.friendsLoader(); ferr != nil {
+			slog.WarnContext(ctx, "post-sync: friends loader échoué", "gamertag", e.gamertag, "err", ferr)
+			trackFatalErr(&r, "friends loader", ferr)
+		} else if len(friends) > 0 {
+			slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
+			fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
+			if err != nil {
+				slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
+				trackFatalErr(&r, "friends recompute", err)
+			} else if fres.MatchesPromoted > 0 {
+				r.MatchesPromotedFriends = fres.MatchesPromoted
+				slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
+					"gamertag", e.gamertag,
+					"promoted", fres.MatchesPromoted,
+				)
+			}
+		}
+	}
+
+	// 4. Aggregates (vues matérialisées player) + catalog seeding, en parallèle
+	// via errgroup — extrait pour réduire runPostSyncPipeline (cf. revue D7-3).
+	e.runAggregatesRefresh(ctx, playerDB, pendingCSRs, &r)
+
+	// 4.5 Media scan post-sync — indexe les captures présentes dans le dossier
+	// du joueur et les associe aux matchs fraîchement insérés (best-effort).
+	// ForceRescan=false : seuls les nouveaux fichiers sont traités → coût nul
+	// si aucune nouvelle capture depuis la dernière sync.
+	if e.mediaHook != nil {
+		slog.DebugContext(ctx, "post-sync: scan médias", "gamertag", e.gamertag)
+		e.mediaHook(ctx)
+	}
+
+	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
+	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
+
+	return r
+}
+
+// runAggregatesRefresh rafraîchit les vues matérialisées player (refreshAggregates)
+// et seede le catalog depuis les CSR en attente, en parallèle via errgroup (DBs
+// différentes → pas de conflit ni de race ; ViewsRefreshed est atomic). Best-effort :
+// les erreurs sont capturées par goroutine puis agrégées post-Wait via trackFatalErr.
+func (e *SyncEngine) runAggregatesRefresh(ctx context.Context, playerDB *sql.DB, pendingCSRs []PlayerPlaylistCSR, r *domain.PostSyncResult) {
+	slog.DebugContext(ctx, "post-sync: refresh aggregates+views (parallel)", "gamertag", e.gamertag)
+	var viewsRefreshed atomic.Int32
+	// Capture des erreurs en variables locales (une par goroutine) pour les
+	// agréger post-Wait sans race.
+	var aggregatesErr, sharedViewsErr error
+	egRefresh := &errgroup.Group{}
+	egRefresh.Go(func() error {
+		n, err := refreshAggregates(ctx, playerDB)
+		if err != nil {
+			slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
+			aggregatesErr = err
+			return nil //nolint:nilerr // best-effort, ne propage pas (cohérent avec ancien comportement)
+		}
+		viewsRefreshed.Add(int32(n))
+		return nil
+	})
+	// Fix bug 2026-05-27 : refreshSharedViews retiré du post-sync runtime. Les vues
+	// shared (v_gamertag_lookup, v_match_full) sont créées au boot via
+	// EnsureSharedSchema(). En runtime, le sharedDB writer peut avoir un ATTACH RO
+	// implicite (auto-attach DuckDB) qui ferait échouer le CREATE OR REPLACE VIEW.
+	// Les VIEW survivent au close/reopen — inutile de les recréer après chaque sync.
+	_ = sharedViewsErr // conservé pour minimiser le diff downstream
+	// Catalog seeding en parallèle des aggregates — transparent, DB différente.
+	if len(pendingCSRs) > 0 {
+		csrsToSeed := pendingCSRs
+		egRefresh.Go(func() error {
+			e.seedCatalogFromCSRs(ctx, csrsToSeed)
+			return nil
+		})
+	}
+	_ = egRefresh.Wait()
+	trackFatalErr(r, "aggregates", aggregatesErr)
+	trackFatalErr(r, "shared views", sharedViewsErr)
+	r.ViewsRefreshed = int(viewsRefreshed.Load())
+}
+
+// runScoringSteps exécute le bloc de scoring enrichment du post-sync sur la
+// player DB : had_bot_teammate, sessions, performance scores, engagement scores,
+// engagement coefficients, assists model. Best-effort : chaque sous-étape logue
+// + trackFatalErr sur erreur sans interrompre le reste (toutes idempotentes).
+func (e *SyncEngine) runScoringSteps(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult) {
+	// -0.3 had_bot_teammate — dérivé des participants (cheap SQL, pas d'API).
+	// Idempotent : skip les rows déjà à TRUE.
+	if n, err := computeAndPersistHadBotTeammate(ctx, playerDB, sharedDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "post-sync: had_bot_teammate échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "had_bot_teammate", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: had_bot_teammate", "gamertag", e.gamertag, "rows_updated", n)
+	}
+
+	// 0. Session assignments — auto-recalc session_id pour les nouveaux matchs.
+	// Best-effort : un échec ne bloque pas le pipeline. Les amis sont
+	// résolus depuis le friendsLoader (settings.FriendGamertags). Sans loader
+	// (legacy), on retombe en TeamChangeMode=teammates.
+	{
+		var friends []string
+		if e.friendsLoader != nil {
+			if fs, ferr := e.friendsLoader(); ferr == nil {
+				friends = fs
+			}
+		}
+		opts := analysis.DefaultSessionOptions()
+		if n, err := recalculateSessionsInline(ctx, playerDB, sharedDB, e.xuid, opts, friends); err != nil {
+			slog.WarnContext(ctx, "post-sync: sessions échoué", "gamertag", e.gamertag, "err", err)
+			trackFatalErr(r, "sessions", err)
+		} else if n > 0 {
+			r.SessionsAssigned = n
+			slog.DebugContext(ctx, "post-sync: sessions recalculées", "gamertag", e.gamertag, "count", n)
+		}
+	}
+
+	// 1. Performance scores
+	slog.DebugContext(ctx, "post-sync: calcul perf scores", "gamertag", e.gamertag)
+	if n, err := batchComputePerformanceScores(ctx, playerDB, sharedDB, e.xuid, nil, false); err != nil {
+		slog.WarnContext(ctx, "post-sync: perf scores échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "perf scores", err)
+	} else {
+		r.PerfScoresComputed = n
+		slog.DebugContext(ctx, "post-sync: perf scores calculés", "gamertag", e.gamertag, "count", n)
+	}
+
+	// 1.5 Engagement scores (Phase 3 plan engagement) — best-effort,
+	// skip silencieux si migration Phase 2 non appliquee.
+	slog.DebugContext(ctx, "post-sync: calcul engagement scores", "gamertag", e.gamertag)
+	if n, err := batchComputeEngagementScores(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
+		slog.WarnContext(ctx, "post-sync: engagement scores échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "engagement scores", err)
+	} else if n > 0 {
+		r.EngagementScoresComputed = n
+		slog.DebugContext(ctx, "post-sync: engagement scores calculés", "gamertag", e.gamertag, "count", n)
+	}
+
+	// 1.5.b Recompute des engagement coefficients depuis la mediane glissante
+	// des paces persistees ci-dessus. Sans ce recompute, coef_team_share reste
+	// a 1.0 (cold-start) → pace_attendu = pace_team → courbes superposees a
+	// l'ecran (cf. .ai/V7/PLAN_ENGAGEMENT_IMPLEMENTATION.md §4.4).
+	if n, err := batchRecomputeCoefficients(ctx, playerDB, e.xuid); err != nil {
+		slog.WarnContext(ctx, "post-sync: engagement coefs échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "engagement coefs", err)
+	} else if n > 0 {
+		r.EngagementCoefsUpdated = n
+		slog.DebugContext(ctx, "post-sync: engagement coefs mis à jour", "gamertag", e.gamertag, "count", n)
+	}
+
+	// 1.52 Assists model — OLS per-mode, skip silencieux si migration absente.
+	// force=false : ne recalcule que si player_assists_model est vide (cold-start).
+	// Un nouveau sync peut amener des données → on recalcule si table vide.
+	if n, err := batchComputePlayerAssistsModel(ctx, playerDB, sharedDB, e.xuid, false); err != nil {
+		slog.WarnContext(ctx, "post-sync: assists model échoué", "gamertag", e.gamertag, "err", err)
+		trackFatalErr(r, "assists model", err)
+	} else if n > 0 {
+		slog.InfoContext(ctx, "post-sync: assists model calculé", "gamertag", e.gamertag, "n_modes", n)
+	}
+}
+
+// runSkillRatingSteps exécute le bloc LUSR du post-sync : v1 (TrueSkill 2),
+// v2 shadow, et la sentinelle dual-row. Tout est gardé par la capability
+// title.CapLUSR (gate sur e.titleSlug, autoritatif côté engine) — un titre sans
+// CapLUSR saute proprement. Best-effort : chaque sous-étape logue + trackFatalErr
+// sur erreur sans interrompre le reste (idempotent).
+func (e *SyncEngine) runSkillRatingSteps(ctx context.Context, playerDB, sharedDB *sql.DB, r *domain.PostSyncResult) {
 	lusrEnabled := slugHasLUSR(e.titleSlug)
 	if !lusrEnabled {
 		slog.DebugContext(ctx, "post-sync: LUSR skippé — capability absente",
@@ -346,7 +467,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 		medalMap := e.loadMedalExploitMapBestEffort(ctx, sharedDB)
 		if n, err := batchComputeLUSR(ctx, playerDB, sharedDB, e.xuid, medalMap, false); err != nil {
 			slog.WarnContext(ctx, "post-sync: LUSR v1 échoué", "gamertag", e.gamertag, "err", err)
-			trackFatalErr(&r, "LUSR", err)
+			trackFatalErr(r, "LUSR", err)
 		} else {
 			r.LUSRUpdated = n
 			slog.DebugContext(ctx, "post-sync: LUSR v1 mis à jour", "gamertag", e.gamertag, "count", n)
@@ -393,109 +514,6 @@ func (e *SyncEngine) runPostSyncPipeline(
 			)
 		}
 	}
-
-	// 3. Career rank — DÉCOUPLÉ du post-sync depuis 2026-05-14.
-	// Le flow XP + Spartan ID est désormais géré par service.CareerLiveService
-	// (throttle 5 min / 6 h + fallback DB per-field), appelé depuis HomeService
-	// à chaque chargement de /pages/home. Voir .ai/thought_log.md.
-	// domain.PostSyncResult.CareerSynced reste dans le struct (compat e2e tests)
-	// mais n'est plus jamais positionné à true ici.
-
-	// 3.1 CSR snapshots (best-effort, skip silencieux si csrSeasonID vide).
-	// Maintenu dans le post-sync : le CSR ne bouge que sur fin de match ranked,
-	// donc le déclencheur "nouveau match" reste pertinent.
-	// Les CSRs sont capturés pour alimenter playlists_catalog en parallèle
-	// à l'étape 4 (errgroup) — transparent, 0 latence supplémentaire.
-	var pendingCSRs []PlayerPlaylistCSR
-	if csrs, csrErr := e.runCSRSnapshotSync(ctx, playerDB, client); csrErr != nil {
-		trackFatalErr(&r, "CSR snapshots", csrErr)
-	} else {
-		pendingCSRs = csrs
-	}
-
-	// 3.5 Friends recompute is_with_friends (best-effort).
-	// Avant l'étape 4 (aggregates) pour éviter un double-refresh : on passe
-	// refreshAggregates=false, le refresh natif de l'engine couvre les UPDATEs.
-	// Skip silencieux si pas de loader (legacy) ou liste vide.
-	if e.friendsLoader != nil {
-		if friends, ferr := e.friendsLoader(); ferr != nil {
-			slog.WarnContext(ctx, "post-sync: friends loader échoué", "gamertag", e.gamertag, "err", ferr)
-			trackFatalErr(&r, "friends loader", ferr)
-		} else if len(friends) > 0 {
-			slog.DebugContext(ctx, "post-sync: friends recompute", "gamertag", e.gamertag, "friends_count", len(friends))
-			fres, err := RecomputeIsWithFriendsCore(ctx, playerDB, sharedDB, e.xuid, friends, false)
-			if err != nil {
-				slog.WarnContext(ctx, "post-sync: friends recompute échoué", "gamertag", e.gamertag, "err", err)
-				trackFatalErr(&r, "friends recompute", err)
-			} else if fres.MatchesPromoted > 0 {
-				r.MatchesPromotedFriends = fres.MatchesPromoted
-				slog.InfoContext(ctx, "post-sync: matchs reclasses comme escouade-amis",
-					"gamertag", e.gamertag,
-					"promoted", fres.MatchesPromoted,
-				)
-			}
-		}
-	}
-
-	// 4. Aggregates (materialized views) — Phase 4.5 plan stabilisation
-	// 2026-05-22 : refreshAggregates (player DB) et refreshSharedViews
-	// (shared DB) tournent en parallèle via errgroup. DBs différentes →
-	// pas de risque de conflit ni de race. Gain marginal 500ms-2s/cycle
-	// (les 2 refresh sont des CREATE OR REPLACE VIEW idempotents). Le
-	// compteur ViewsRefreshed est atomic pour éviter une race sur l'ajout
-	// concurrent.
-	slog.DebugContext(ctx, "post-sync: refresh aggregates+views (parallel)", "gamertag", e.gamertag)
-	var viewsRefreshed atomic.Int32
-	// Capture des erreurs en variables locales (une par goroutine) pour les
-	// agréger post-Wait sans race. trackFatalErr() est appelé après le join.
-	var aggregatesErr, sharedViewsErr error
-	egRefresh := &errgroup.Group{}
-	egRefresh.Go(func() error {
-		n, err := refreshAggregates(ctx, playerDB)
-		if err != nil {
-			slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
-			aggregatesErr = err
-			return nil //nolint:nilerr // best-effort, ne propage pas (cohérent avec ancien comportement)
-		}
-		viewsRefreshed.Add(int32(n))
-		return nil
-	})
-	// Fix bug 2026-05-27 : refreshSharedViews retiré du post-sync runtime.
-	// Les vues shared (v_gamertag_lookup, v_match_full) sont désormais créées
-	// au boot via EnsureSharedSchema(). En runtime, le sharedDB writer peut
-	// avoir un ATTACH RO implicite (auto-attach DuckDB) qui fait échouer le
-	// CREATE OR REPLACE VIEW avec "Cannot execute statement of type CREATE
-	// on database shared_matches_v2 which is attached in read-only mode!"
-	// (logs/sync.log 23:57:51 et+). Les VIEW sont stockées dans la DB et
-	// survivent au close/reopen — pas besoin de les recréer après chaque sync.
-	_ = sharedViewsErr // conservé pour minimiser le diff downstream
-	// (champ ViewsRefreshed continue de refléter les vues player rebuilt).
-	// Catalog seeding en parallèle des aggregates — transparent, DB différente.
-	if len(pendingCSRs) > 0 {
-		csrsToSeed := pendingCSRs
-		egRefresh.Go(func() error {
-			e.seedCatalogFromCSRs(ctx, csrsToSeed)
-			return nil
-		})
-	}
-	_ = egRefresh.Wait()
-	trackFatalErr(&r, "aggregates", aggregatesErr)
-	trackFatalErr(&r, "shared views", sharedViewsErr)
-	r.ViewsRefreshed = int(viewsRefreshed.Load())
-
-	// 4.5 Media scan post-sync — indexe les captures présentes dans le dossier
-	// du joueur et les associe aux matchs fraîchement insérés (best-effort).
-	// ForceRescan=false : seuls les nouveaux fichiers sont traités → coût nul
-	// si aucune nouvelle capture depuis la dernière sync.
-	if e.mediaHook != nil {
-		slog.DebugContext(ctx, "post-sync: scan médias", "gamertag", e.gamertag)
-		e.mediaHook(ctx)
-	}
-
-	// 5. Achievements Xbox (fire-and-forget, non bloquant en cas d'erreur token)
-	r.AchievementsSynced = e.runAchievementsSync(ctx, playerDB)
-
-	return r
 }
 
 // runCSRSnapshotSync récupère les classements CSR du joueur pour la saison courante
