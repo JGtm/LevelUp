@@ -52940,3 +52940,56 @@ PROCHAINE ETAPE (nouveau lot, ~multi-heures) :
 CE QUI MARCHE DEJA (Phases 1-5) : fail-fast honnete (plus de 31h silencieux), heal
 cable correctement, healerait des que le bon handle RW arrive. RC-E (metadata) corrige
 et commite (853abaa6a). Les 2 matchs 30/05 restent vides (film expire >48h).
+
+[2026-06-01] Fix echec preexistant TestNoUnauthorizedSharedSocialMention
+A la demande utilisateur : whitelist des 2 fichiers media HLS (cmd/backfill-media-hls/
+main.go + internal/ops/media_hls.go) dans sharedSocialFilesWhitelist
+(no_attach_on_social_test.go). Les mentions "shared_social" y sont des commentaires
++ description de flag --db (chemin de la DB cible UPDATE media_files), pas des sites
+d'ecriture caches — cas legitime prevu par la whitelist (meme categorie que les
+autres outils media). Verifie : go test ./... backend = 0 echec ; frontend vitest
+186 fichiers / 1674 tests verts. Suite complete verte de bout en bout.
+
+## [2026-06-01] RC-A RESOLU — heal post-sync V2 recevait un handle shared READ-ONLY
+
+Statut : CORRIGE, verifie LIVE, 2 matchs du 30/05 REMEDIES.
+
+Cause racine (localisee via instrument fiable dans runPostSyncPipeline) :
+le PostSyncRunner V2 (internal/sync/v2/post_sync_runner.go) recevait son sharedDB
+via une closure getSharedDB = LookupCachedDB(sharedPath).SQLDb() (cmd/server/
+sync_v2_wiring.go:83). LookupCachedDB renvoie le handle cache, qui en mode B-swap
+est le handle RO du pool (provider en StateRO la plupart du temps). Donc le heal
+events/skill/weapon/registry recevait shared_matches_v2(ro=true) → TOUTES les
+ecritures combat echouaient "attached in read-only mode". C'EST le vrai RC-A,
+independant du provider (qui est sain) : le heal n'appelait simplement jamais
+AcquireWriter, il prenait le handle RO cache.
+
+C'est la MEME classe de bug que le fix player DB RO->RW du 2026-05-25 (comment
+sync_v2_wiring.go:103-109 : RO opener -> "Cannot execute UPDATE on read-only" ->
+ecritures post-sync silencieusement perdues). Ils avaient corrige le player DB
+mais PAS le shared DB. Une DB a cote.
+
+Fix :
+- post_sync_runner.go : remplace `getSharedDB func() *sql.DB` (RO, sans release)
+  par `acquireSharedW SharedDBAcquirer` = func(ctx)(*sql.DB,func(),error) (RW +
+  release). RunPostSync acquiert le writer, defer release.
+- sync_v2_wiring.go : injecte acquireSharedRW = AcquireSharedWriterStandalone(ctx,
+  deps.Cfg.SharedProvider, sharedPath) — route via Provider.AcquireWriter (B-swap)
+  ou OpenSharedDB legacy. getSharedDB (RO) reste pour KnownLoader (lectures pures).
+
+Verifie LIVE apres restart + cycle :
+- 0 "read-only mode" (etait 238/cycle).
+- post-sync: events self-heal healed=2 ; skill self-heal healed=36 ; weapon
+  self-heal healed=3 ; registry names resolus fixed=6 (Phase 5 marche enfin).
+- diag_recent_match_sync : les 2 matchs 30/05 = COMPLETS :
+  13:38 he=232 wk=12 kv=94 Live Fire/Super Fiesta bf=2686976
+  13:22 he=227 wk=17 kv=95 Cliffhanger/Super Fiesta bf=2686976
+  (films conserves cote Halo plusieurs mois, confirme par l'utilisateur — donc
+  filmRetryWindow=48h de Phase 2bis est trop court, A AUGMENTER, lot ulterieur).
+
+Tous les fixes Phases 1-5 fonctionnent maintenant qu'ils recoivent un handle RW.
+Tests : ./internal/sync/v2/ + ./internal/sync/ verts ; go build ./... OK.
+
+RESTE (lots ulterieurs) : (1) augmenter filmRetryWindow (films gardes des mois,
+pas 48h) ; (2) test Go deterministe anti-regression RC-A (heal doit recevoir RW) ;
+(3) cache local film_chunks a verifier ; (4) Phase 8 verif globale + front.

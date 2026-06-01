@@ -135,14 +135,27 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		persister = syncv2.NewCycleBatchPersister(deps.TitleSlug, deps.BatchQueue, 0)
 	}
 
+	// RC-A fix (2026-06-01) : le PostSyncRunner doit acquérir le shared en
+	// READ-WRITE (writer provider), pas le handle RO caché via getSharedDB. Les
+	// heals events/skill/weapon/registry post-sync écrivent dans shared ; avec le
+	// handle RO, toutes ces écritures échouaient "attached in read-only mode"
+	// (silencieusement avant le fail-fast Phase 1a). Même classe de bug que le fix
+	// player DB RO→RW du 2026-05-25, jamais corrigé côté shared.
+	//
+	// AcquireSharedWriterStandalone route via deps.Cfg.SharedProvider.AcquireWriter
+	// (B-swap) ou OpenSharedDB legacy. Le release rend le writer (RW→RO).
+	acquireSharedRW := func(ctx context.Context) (*sql.DB, func(), error) {
+		return syncpkg.AcquireSharedWriterStandalone(ctx, deps.Cfg.SharedProvider, sharedPath)
+	}
+
 	// PostSyncRunner : réel ou dry-run no-op logger.
-	// CRITIQUE : utilise playerDBOpenerRW (pas RO) — les heals UPDATE/INSERT.
+	// CRITIQUE : playerDBOpenerRW (pas RO) + acquireSharedRW (pas getSharedDB RO).
 	var postSyncRunner syncv2.PostSyncRunner
 	if dryRun {
 		postSyncRunner = &dryRunPostSyncRunner{}
 	} else {
 		engineFactory := buildSyncEngineFactoryParityComplete(deps)
-		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, getSharedDB, clientFactory)
+		postSyncRunner = syncv2.NewPostSyncRunner(engineFactory, playerDBOpenerRW, acquireSharedRW, clientFactory)
 	}
 
 	return syncv2.NewCycleOrchestrator(
