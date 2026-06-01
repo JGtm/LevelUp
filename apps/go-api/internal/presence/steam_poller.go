@@ -29,6 +29,11 @@ type SteamActiveCallback func(gameID, gameName string)
 type SteamInactiveCallback func()
 
 // SteamPoller poll l'API Steam pour détecter l'activité d'un joueur.
+//
+// NB (W8, revue 2026-06-01) : implémenté + testé (presence_test.go) mais PAS
+// câblé dans le watcher daemon — fallback présence Steam planifié, non activé.
+// À brancher dans daemon.initPlayers/AddPlayer (cf. DaemonConfig.SteamAPIKey)
+// le jour où le fallback Steam sera nécessaire, ou supprimer si abandonné.
 type SteamPoller struct {
 	steamID    string
 	apiKey     string
