@@ -40,7 +40,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 )
 
 // ensurePlayerEnrichmentRows crée une row `player_match_enrichment(match_id)`
@@ -136,7 +135,13 @@ func ensurePlayerEnrichmentRows(
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	const insertSQL = `INSERT INTO player_match_enrichment (match_id) VALUES (?)`
+	// INSERT OR IGNORE : idempotent si la row existe déjà. Aligné sur les sites
+	// frères (comeback_postsync_persist, fanout_repo). NB : un `continue` sur
+	// erreur serait inopérant ici — un statement en erreur invalide la TX DuckDB
+	// (les Exec suivants + le Commit échoueraient) ; OR IGNORE évite justement le
+	// seul cas "normal" (PK déjà présente), donc toute erreur restante est réelle
+	// → on abort la TX.
+	const insertSQL = `INSERT OR IGNORE INTO player_match_enrichment (match_id) VALUES (?)`
 	stmt, err := tx.PrepareContext(ctx, insertSQL)
 	if err != nil {
 		return 0, fmt.Errorf("ensurePlayerEnrichmentRows: Prepare: %w", err)
@@ -145,12 +150,7 @@ func ensurePlayerEnrichmentRows(
 
 	for _, id := range missing {
 		if _, err := stmt.ExecContext(ctx, id); err != nil {
-			// On continue en cas d'erreur ponctuelle (race avec un autre writer)
-			// — Si l'INSERT échoue pour cause de PK conflict, c'est qu'un autre
-			// path a créé la row entre temps. Log et continue.
-			slog.WarnContext(ctx, "ensurePlayerEnrichmentRows: INSERT row failed",
-				"match_id", id, "err", err)
-			continue
+			return 0, fmt.Errorf("ensurePlayerEnrichmentRows: INSERT %s: %w", id, err)
 		}
 	}
 

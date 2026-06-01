@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 )
 
 // ── PlayerState — état TrueSkill 2 entre deux matchs ────────────────────────
@@ -200,13 +201,13 @@ func computeCompositeScoreWithBreakdown(
 	if row.Outcome != nil {
 		var winScore float64
 		switch *row.Outcome {
-		case 2:
+		case domain.OutcomeWin:
 			winScore = 1.0
-		case 1:
+		case domain.OutcomeDraw:
 			winScore = 0.5
-		case 3:
+		case domain.OutcomeLoss:
 			winScore = 0.0
-		case 4:
+		case domain.OutcomeDNF:
 			winScore = 0.15
 		default:
 			winScore = 0.5

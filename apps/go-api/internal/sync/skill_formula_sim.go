@@ -11,6 +11,7 @@ import (
 	"math"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 )
 
 // ── Types publics ─────────────────────────────────────────────────────────────
@@ -231,13 +232,13 @@ func simAddSupportComponents(
 	if row.Outcome != nil {
 		var s float64
 		switch *row.Outcome {
-		case 2:
+		case domain.OutcomeWin:
 			s = 1.0
-		case 1:
+		case domain.OutcomeDraw:
 			s = 0.5
-		case 3:
+		case domain.OutcomeLoss:
 			s = 0.0
-		case 4:
+		case domain.OutcomeDNF:
 			s = 0.15
 		default:
 			s = 0.5
