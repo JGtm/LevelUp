@@ -88,6 +88,61 @@ func init() {
 		},
 	})
 
+	// ===== Player DB : reparation PK manquante sur engagement_coefficients =====
+	// Bug (2026-06-01) : la migration create_engagement_coefficients_table utilise
+	// CREATE TABLE IF NOT EXISTS avec PRIMARY KEY (xuid, mode_category). Sur les DB
+	// joueur ou la table avait ete creee AVANT l'ajout de la PK, IF NOT EXISTS saute
+	// la recreation -> la PK n'est jamais appliquee. Le UPSERT saveCoefficient
+	// (ON CONFLICT (xuid, mode_category)) echoue alors a CHAQUE post-sync :
+	//   "Binder Error: conflict target ... not referenced by a UNIQUE/PRIMARY KEY".
+	// Fix : si la PK manque, on reconstruit la table avec la PK en preservant les
+	// donnees (dedup defensif par (xuid, mode_category), garde la ligne la plus
+	// recente). Idempotent : no-op si la PK est deja presente.
+	Register(Migration{
+		Name:        "repair_engagement_coefficients_primary_key",
+		TargetDB:    TargetPlayer,
+		Description: "Reconstruit engagement_coefficients avec PRIMARY KEY (xuid, mode_category) quand elle manque (CREATE TABLE IF NOT EXISTS historique)",
+		ApplySchema: func(db *sql.DB) error {
+			exists, err := tableExists(db, "engagement_coefficients")
+			if err != nil {
+				return fmt.Errorf("repair eng coefs PK: check table: %w", err)
+			}
+			if !exists {
+				return nil
+			}
+			hasPK, err := hasPrimaryKey(db, "engagement_coefficients")
+			if err != nil {
+				return fmt.Errorf("repair eng coefs PK: check PK: %w", err)
+			}
+			if hasPK {
+				return nil
+			}
+			return execScript(db, `
+				CREATE TABLE engagement_coefficients__pkfix (
+					xuid             VARCHAR NOT NULL,
+					mode_category    VARCHAR NOT NULL,
+					coef_team_share  DOUBLE NOT NULL,
+					coef_lobby_share DOUBLE NOT NULL,
+					n_matches        INTEGER NOT NULL,
+					last_updated     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					PRIMARY KEY (xuid, mode_category)
+				);
+				INSERT INTO engagement_coefficients__pkfix
+					SELECT xuid, mode_category, coef_team_share, coef_lobby_share, n_matches, last_updated
+					FROM (
+						SELECT *, ROW_NUMBER() OVER (
+							PARTITION BY xuid, mode_category ORDER BY last_updated DESC
+						) AS rn
+						FROM engagement_coefficients
+					) WHERE rn = 1;
+				DROP TABLE engagement_coefficients;
+				ALTER TABLE engagement_coefficients__pkfix RENAME TO engagement_coefficients;
+				CREATE INDEX IF NOT EXISTS idx_engagement_coefficients_xuid
+					ON engagement_coefficients(xuid);
+			`)
+		},
+	})
+
 	// ===== Player DB : colonnes paces engagement (Phase recompute coefs) =====
 	// Sert au calcul de coef_team_share / coef_lobby_share via la mediane
 	// glissante des ratios pace_joueur/pace_team. Persister les paces evite
