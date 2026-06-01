@@ -23,8 +23,12 @@ type MatchFetcher interface {
 	FetchRecentMatchIDs(ctx context.Context, xuid string, count int) ([]string, error)
 }
 
-// MatchCallback est appelé quand de nouveaux matchs sont détectés.
-type MatchCallback func(matchIDs []string)
+// MatchCallback est appelé quand de nouveaux matchs sont détectés. Retourne true
+// si les matchs ont été ACCEPTÉS (état Watching → sync lancé) ; false s'ils ont
+// été ignorés (état busy Syncing/Cooling). Le poller ne marque connus QUE les
+// matchs acceptés → les matchs détectés pendant un sync sont re-signalés au
+// prochain poll au lieu d'être perdus (W4, revue 2026-06-01).
+type MatchCallback func(matchIDs []string) bool
 
 // MatchPoller poll l'API pour détecter les nouveaux matchs d'un joueur.
 type MatchPoller struct {
@@ -71,8 +75,10 @@ func (p *MatchPoller) Run(ctx context.Context) {
 		"interval", p.interval,
 	)
 
-	// Poll immédiat pour récupérer l'état initial
-	p.poll(ctx)
+	// Poll immédiat = baseline seul (AS-4) : marque l'historique existant comme
+	// connu SANS déclencher de sync. Sinon, chaque entrée en Watching re-syncait
+	// les 25 derniers matchs déjà en DB (faux "nouveaux matchs").
+	p.poll(ctx, true)
 
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
@@ -83,13 +89,16 @@ func (p *MatchPoller) Run(ctx context.Context) {
 			slog.InfoContext(ctx, "match_poller: arrêté", "gamertag", p.gamertag)
 			return
 		case <-ticker.C:
-			p.poll(ctx)
+			p.poll(ctx, false)
 		}
 	}
 }
 
 // poll effectue un appel à l'API et détecte les nouveaux matchs.
-func (p *MatchPoller) poll(ctx context.Context) {
+//
+// seedOnly=true : 1er poll — marque les matchs détectés comme connus SANS les
+// signaler (établit le baseline pré-Watching, AS-4).
+func (p *MatchPoller) poll(ctx context.Context, seedOnly bool) {
 	recentIDs, err := p.fetcher.FetchRecentMatchIDs(ctx, p.xuid, 25)
 	if err != nil {
 		slog.WarnContext(ctx, "match_poller: erreur fetch",
@@ -103,18 +112,40 @@ func (p *MatchPoller) poll(ctx context.Context) {
 	for _, id := range recentIDs {
 		if !p.knownIDs[id] {
 			newIDs = append(newIDs, id)
-			p.knownIDs[id] = true
 		}
 	}
+	if len(newIDs) == 0 {
+		return
+	}
 
-	if len(newIDs) > 0 {
-		slog.InfoContext(ctx, "match_poller: nouveaux matchs détectés",
-			"gamertag", p.gamertag,
-			"count", len(newIDs),
-			"ids", fmt.Sprintf("%v", newIDs),
-		)
-		if p.onNewMatches != nil {
-			p.onNewMatches(newIDs)
+	if seedOnly {
+		for _, id := range newIDs {
+			p.knownIDs[id] = true
 		}
+		slog.InfoContext(ctx, "match_poller: baseline seedé",
+			"gamertag", p.gamertag, "count", len(newIDs))
+		return
+	}
+
+	slog.InfoContext(ctx, "match_poller: nouveaux matchs détectés",
+		"gamertag", p.gamertag,
+		"count", len(newIDs),
+		"ids", fmt.Sprintf("%v", newIDs),
+	)
+
+	// W4 : ne marquer connus QUE si acceptés. Si onNewMatches retourne false
+	// (état busy), les IDs restent inconnus → re-signalés au prochain poll une
+	// fois revenu en Watching → aucun match détecté pendant un sync n'est perdu.
+	accepted := true
+	if p.onNewMatches != nil {
+		accepted = p.onNewMatches(newIDs)
+	}
+	if accepted {
+		for _, id := range newIDs {
+			p.knownIDs[id] = true
+		}
+	} else {
+		slog.DebugContext(ctx, "match_poller: matchs non acceptés (busy), re-signal au prochain poll",
+			"gamertag", p.gamertag, "count", len(newIDs))
 	}
 }

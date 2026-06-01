@@ -293,10 +293,13 @@ func (pw *PlayerWatcher) finalizeExit(ctx context.Context) {
 	}
 }
 
-// OnNewMatches est le callback appelé par le MatchPoller quand de nouveaux matchs sont trouvés.
-func (pw *PlayerWatcher) OnNewMatches(ctx context.Context, matchIDs []string) {
+// OnNewMatches est le callback appelé par le MatchPoller quand de nouveaux matchs
+// sont trouvés. Retourne true si les matchs sont ACCEPTÉS (état Watching → sync
+// lancé), false sinon (état busy / transition KO) — le poller s'en sert pour ne
+// PAS marquer ces matchs connus et les re-signaler au prochain poll (W4).
+func (pw *PlayerWatcher) OnNewMatches(ctx context.Context, matchIDs []string) bool {
 	if len(matchIDs) == 0 {
-		return
+		return false
 	}
 
 	state := pw.fsm.State()
@@ -306,17 +309,18 @@ func (pw *PlayerWatcher) OnNewMatches(ctx context.Context, matchIDs []string) {
 			"state", state.String(),
 			"count", len(matchIDs),
 		)
-		return
+		return false
 	}
 
 	if err := pw.fsm.GoSyncing(); err != nil {
 		slog.WarnContext(ctx, "player_watcher: erreur transition →Syncing",
 			"gamertag", pw.gamertag, "err", err)
-		return
+		return false
 	}
 
 	// Lancer le sync en goroutine pour ne pas bloquer le poller
 	go pw.runSync(ctx, matchIDs)
+	return true
 }
 
 // OnSyncComplete est appelé quand le sync est terminé.
@@ -417,8 +421,8 @@ func (pw *PlayerWatcher) startPoller(ctx context.Context) {
 	pollerCtx, cancel := context.WithCancel(ctx)
 	pw.pollerCancel = cancel
 
-	poller := NewMatchPoller(pw.xuid, pw.gamertag, pw.fetcher, func(matchIDs []string) {
-		pw.OnNewMatches(pollerCtx, matchIDs)
+	poller := NewMatchPoller(pw.xuid, pw.gamertag, pw.fetcher, func(matchIDs []string) bool {
+		return pw.OnNewMatches(pollerCtx, matchIDs)
 	})
 
 	go poller.Run(pollerCtx)
