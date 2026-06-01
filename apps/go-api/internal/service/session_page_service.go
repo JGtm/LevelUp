@@ -14,6 +14,10 @@ import (
 	"levelup/go-api/internal/port"
 )
 
+// errCodeSessionNotFound est le code machine renvoyé quand une session
+// explicitement demandée est introuvable (ADR 0024, Couche B).
+const errCodeSessionNotFound = "session_not_found"
+
 // SessionPageService construit la page de dÃ©tail d'une session.
 type SessionPageService struct {
 	statsRepo port.StatsRepository
@@ -82,7 +86,7 @@ func (s *SessionPageService) GetPage(
 	if lbl := derefString(req.SessionLabel); lbl != "" && indexOfSessionLabel(allLabels, lbl) == -1 {
 		slog.InfoContext(ctx, "session page: session demandée introuvable", "requested_session", lbl)
 		return domain.SessionPageResponse{}, &domain.APIError{
-			Code:    "session_not_found",
+			Code:    errCodeSessionNotFound,
 			Message: "session introuvable : " + lbl,
 		}
 	}
