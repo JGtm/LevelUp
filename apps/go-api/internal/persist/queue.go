@@ -43,11 +43,10 @@ type BatchQueueConfig struct {
 type BatchQueue struct {
 	walDir string
 
-	// channels : 1 par DBTarget. Tous les batches qui touchent une DB
-	// donnée passent par le même channel (sérialisation côté worker).
-	// Pour simplifier Phase 1 : 1 SEUL channel partagé. Les workers liront
-	// tous depuis le même et chacun filtrera selon sa DBTarget.
-	// → décision révisable si bottleneck observé.
+	// chMain : channel UNIQUE partagé. Un seul worker le consomme et persiste
+	// shared+player via CombinedPersister — il n'y a PAS de routage par DBTarget
+	// (un MatchBatch porte simultanément ses sous-batches shared/player/pve/
+	// metadata, cf. batch.go). Buffer = ChanBufSize (backpressure si plein).
 	chMain chan *MatchBatch
 
 	closed   bool
@@ -146,15 +145,15 @@ func (q *BatchQueue) Submit(batch *MatchBatch) error {
 	return nil
 }
 
-// Channel retourne le channel pour une DBTarget donnée. Phase 1 retourne
-// le même channel pour toutes les targets (worker filtre côté lecture).
-// Phase 2 pourra introduire 1 channel par target si besoin.
-func (q *BatchQueue) Channel(target DBTarget) <-chan *MatchBatch {
-	// Phase 1 : channel unique partagé.
-	// Les workers (1 par target) liront tous depuis ce channel et filtreront
-	// via switch sur batch DBTarget si nécessaire. À refactorer en Phase 2
-	// si bottleneck observé.
-	_ = target
+// Channel retourne le channel de batches à consommer par le worker.
+//
+// Conception ACTUELLE : un SEUL channel partagé, consommé par un SEUL worker qui
+// persiste shared ET player via CombinedPersister. Il n'y a PAS de routage par
+// DBTarget — un MatchBatch n'appartient pas à une seule target (il porte ses
+// sous-batches shared/player/pve/metadata, cf. batch.go). Si un jour le volume
+// justifie plusieurs workers, introduire ICI 1 channel par target + un filtrage
+// explicite côté worker (et un garde-rail empêchant 2 workers sur le même channel).
+func (q *BatchQueue) Channel() <-chan *MatchBatch {
 	return q.chMain
 }
 

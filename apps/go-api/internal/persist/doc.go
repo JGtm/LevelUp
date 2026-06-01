@@ -22,8 +22,8 @@
 //	                ▼
 //	┌────  BatchQueue  ────────────────────────────────────┐
 //	│  - WAL JSON sur disque AVANT push channel             │
-//	│  - 1 channel par DB target (shared, player, pve)      │
-//	│  - 1 worker goroutine par channel                     │
+//	│  - 1 channel UNIQUE partagé (pas de routage DBTarget) │
+//	│  - 1 worker + CombinedPersister (shared+player/batch) │
 //	│  - Recovery au boot : relit WAL et re-pousse         │
 //	└───────────────┬───────────────────────────────────────┘
 //	                ▼
