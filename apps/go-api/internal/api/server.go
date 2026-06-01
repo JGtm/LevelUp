@@ -606,8 +606,19 @@ func NewRouter(
 		syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 		// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
 		syncH = syncH.WithPostSyncDeltaHook(buildPostSyncDeltaHook(reg))
-		r.Post("/sync/initial", syncH.StartInitialSync)
-		r.Post("/sync/all", syncH.StartSyncAll)
+		// D3-01 (revue 2026-06-01) : /sync/initial et /sync/all sont des opérations
+		// admin/setup (sync d'un joueur arbitraire lu dans le body / de TOUS les
+		// joueurs). Auparavant montées sous /api/v1 SANS auth → contournaient
+		// l'ownership (ADR 0024) : n'importe qui pouvait déclencher le sync de
+		// n'importe quel joueur. Protégées par RequireAuth + RequireAdmin comme le
+		// groupe /admin. En mode demo/single-user les middlewares no-opent (onboarding
+		// préservé) ; en multi-user, seul un admin peut déclencher.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RequireAuth(cfg.DemoMode, cfg.AuthMode))
+			r.Use(middleware.RequireAdmin(cfg.DemoMode, cfg.AuthMode))
+			r.Post("/sync/initial", syncH.StartInitialSync)
+			r.Post("/sync/all", syncH.StartSyncAll)
+		})
 		// Sprint 51-B3 : Pipeline backfill (weapon kills + détection des autres types)
 		r.Post("/backfill/start", handlers.NewBackfillHandler(cfg, jobStore).StartBackfill)
 
