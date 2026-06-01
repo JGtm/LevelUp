@@ -7,7 +7,6 @@ package duckdb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 
@@ -19,14 +18,19 @@ import (
 // sharedDB *sql.DB remplacé par SharedReader pour
 // permettre la coordination avec le SharedDBProvider (cycle RO↔RW).
 type CatalogRepo struct {
-	metadataDB   *sql.DB
+	// metadataDB est le wrapper *DB (et NON un *sql.DB nu) pour permettre la
+	// recovery FATAL via QueryRecovered : sur invalidation du handle metadata
+	// (incident ON CONFLICT), Reopen() swap le sqlDB interne et les lectures
+	// catalogue se reconnectent au lieu de casser jusqu'au restart (revue
+	// 2026-06-01 META-4).
+	metadataDB   *DB
 	sharedReader SharedReader // pour le JOIN quand onlyPlayed = true ; peut être nil
 }
 
-// NewCatalogRepo construit le repo avec metadataDB et un SharedReader optionnel.
-// sharedReader peut être nil si on ne supporte pas onlyPlayed (le catalogue
-// complet reste accessible).
-func NewCatalogRepo(metadataDB *sql.DB, sharedReader SharedReader) *CatalogRepo {
+// NewCatalogRepo construit le repo avec metadataDB (wrapper *DB) et un SharedReader
+// optionnel. sharedReader peut être nil si on ne supporte pas onlyPlayed (le
+// catalogue complet reste accessible).
+func NewCatalogRepo(metadataDB *DB, sharedReader SharedReader) *CatalogRepo {
 	return &CatalogRepo{metadataDB: metadataDB, sharedReader: sharedReader}
 }
 
@@ -39,7 +43,7 @@ func (r *CatalogRepo) PlaylistsByTitle(ctx context.Context, titleSlug, xuid stri
 		return r.playlistsPlayedByXUID(ctx, titleSlug, xuid)
 	}
 
-	rows, err := r.metadataDB.QueryContext(ctx, `
+	rows, err := r.metadataDB.QueryRecovered(ctx, `
 		SELECT title_slug, playlist_asset_id, COALESCE(current_version_id, ''),
 		       COALESCE(name_canonical, ''), COALESCE(experience, ''), COALESCE(is_ranked, FALSE)
 		FROM playlists_catalog
@@ -124,7 +128,7 @@ func (r *CatalogRepo) playlistsPlayedByXUID(ctx context.Context, titleSlug, xuid
 	args := make([]any, 0, 1+len(ids))
 	args = append(args, titleSlug)
 	args = append(args, ToAnySlice(ids)...)
-	rows, err := r.metadataDB.QueryContext(ctx, q, args...)
+	rows, err := r.metadataDB.QueryRecovered(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query metadata playlists_catalog: %w", err)
 	}
@@ -146,7 +150,7 @@ func (r *CatalogRepo) PairsByPlaylist(ctx context.Context, titleSlug, playlistAs
 	if r.metadataDB == nil {
 		return nil, fmt.Errorf("CatalogRepo: metadataDB nil")
 	}
-	rows, err := r.metadataDB.QueryContext(ctx, `
+	rows, err := r.metadataDB.QueryRecovered(ctx, `
 		SELECT mmp.title_slug, mmp.pair_asset_id, COALESCE(mmp.name_canonical, ''),
 		       COALESCE(mmp.map_asset_id, ''), COALESCE(mmp.game_variant_asset_id, ''),
 		       COALESCE(mmp.mode_category, ''), COALESCE(ppl.weight, 0.0)
@@ -182,7 +186,7 @@ func (r *CatalogRepo) MapsByTitle(ctx context.Context, titleSlug, xuid string, o
 	// Variante onlyPlayed = JOIN match_registry sur map_id, similaire à playlistsPlayedByXUID.
 	// Pour ce sprint, version simple : retourne le catalogue complet ; le filtre onlyPlayed
 	// peut être ajouté en Phase I quand FiltersService consommera ce repo.
-	rows, err := r.metadataDB.QueryContext(ctx, `
+	rows, err := r.metadataDB.QueryRecovered(ctx, `
 		SELECT title_slug, map_asset_id, COALESCE(name_canonical, ''), COALESCE(image_url, '')
 		FROM maps_catalog
 		WHERE title_slug = ?
@@ -209,13 +213,21 @@ func (r *CatalogRepo) CountCatalogEntries(ctx context.Context, titleSlug string)
 	if r.metadataDB == nil {
 		return 0, nil
 	}
-	var n int
-	err := r.metadataDB.QueryRowContext(ctx,
+	// QueryRecovered (et non QueryRowContext) pour bénéficier de la recovery FATAL ;
+	// pas de QueryRowRecovered → scan manuel de la première row.
+	rows, err := r.metadataDB.QueryRecovered(ctx,
 		`SELECT COUNT(*) FROM playlists_catalog WHERE title_slug = ? AND is_active = TRUE`,
 		titleSlug,
-	).Scan(&n)
+	)
 	if err != nil {
 		return 0, fmt.Errorf("count: %w", err)
 	}
-	return n, nil
+	defer rows.Close()
+	var n int
+	if rows.Next() {
+		if err := rows.Scan(&n); err != nil {
+			return 0, fmt.Errorf("count scan: %w", err)
+		}
+	}
+	return n, rows.Err()
 }

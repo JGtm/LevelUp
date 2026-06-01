@@ -626,14 +626,18 @@ func main() {
 	// CHECKPOINT périodique shared_social — vide le WAL toutes les 5 min sans
 	// bloquer les writes per-opération.
 	//
-	// Pourquoi pas dans Persist() ? Avec MaxOpenConns(1), un CHECKPOINT après
-	// chaque commit monopolisait la seule connexion 100–500 ms et bloquait le
-	// prochain BeginTx (cascade deadlock sur likes/favoris).
+	// Pourquoi pas un CHECKPOINT systématique dans Persist() ? La connexion
+	// shared_social est ouverte MaxOpenConns(4) (OpenReadWriteShared) — donc PAS
+	// "une seule connexion" (revue 2026-06-01 SS-3 : l'ancien commentaire
+	// MaxOpenConns(1) était faux). Le choix est de borner la fenêtre WAL à 5 min
+	// via ce scheduler + le CHECKPOINT shutdown, plutôt que de checkpointer après
+	// chaque commit (coût 100–500 ms par write user-facing). Les écritures
+	// critiques (likes/favoris/associations média) peuvent flush immédiat via
+	// CommitWithCheckpoint.
 	//
-	// Pourquoi ça marche ici ? MaxOpenConns(1) sérialise automatiquement via
-	// database/sql : si Persist() tient la connexion, CHECKPOINT attend ; si
-	// CHECKPOINT tourne (≤ 500 ms), Persist() attend. Au pire 1 write retardé
-	// de 500 ms toutes les 5 min — largement acceptable.
+	// Sérialisation : le commit-lock single-writer de DuckDB + le lease
+	// KindSharedSocial sérialisent déjà les écritures ; ce tick réutilise le même
+	// handle caché (LookupCachedDB) sans contention notable.
 	//
 	// LookupCachedDB : pas d'ouverture propre — on réutilise la connexion du
 	// pool process-wide (même *sql.DB que SharedSocialPersister). Si le premier

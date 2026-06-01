@@ -21,8 +21,13 @@
 //     générique s'appuie sur le CHECKPOINT scheduler 5 min (main.go) + le
 //     CHECKPOINT synchrone au shutdown pour vider le WAL (cf. bug #7659).
 //
-// Plus aucun db.ExecContext direct sur shared_social hors internal/persist/
-// (sentinel parse-AST en Phase 6 enforce cette règle).
+// Le SharedSocialPersister est le chemin NOMINAL des écritures shared_social,
+// mais PAS l'unique (revue 2026-06-01 SS-02 — l'ancienne mention « plus aucun
+// db.ExecContext hors persist, sentinel parse-AST Phase 6 » était fausse). Les
+// mutations NotificationsRepo (MarkRead/Delete/CapAndSweep/UpsertPreferences) et
+// le sous-système Prestige écrivent encore en direct (OpenReadWrite/ExecRecovered),
+// sérialisés par le lease KindSharedSocial. La seule sentinelle AST existante
+// (no_attach_on_social_test.go) interdit l'ATTACH, PAS les écritures directes.
 //
 // **Modes d'usage** :
 //
