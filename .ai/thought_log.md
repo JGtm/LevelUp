@@ -53042,3 +53042,70 @@ Couverture tests par fix : EventsCompletionPersister (5 tests) ; collect Phase 3
 bits (2) ; isEventsLoaded Phase 4 (1) ; combat write guard (1) ; RC-E no-index guard
 (1) ; RC-A acquire RW + skip (2) ; filmRetryWindow defaut+override (2) ; honnetete
 heal + film retry policy (existants verts).
+
+## [2026-06-01] Decommission totale des heals post-sync + reparation corruptions ART
+
+Statut : Complete (verte, hors verif sync live bloquee par reseau Halo).
+
+Contexte : la verif finale (entree precedente) a declenche un cycle de sync qui a
+revele une NOUVELLE corruption ART sur shared.match_participants : healSkillFor-
+MissingMatches -> InsertParticipants en `ON CONFLICT (match_id,xuid) DO UPDATE`
+sur une table a 5 index ART secondaires. Le fix RC-A (post-sync recoit enfin un
+writer RW) avait debloque ce heal sur 36 matchs de backlog -> 131 "Failed to delete
+all rows from index" + FATAL invalidation a 14:56:52. Code pre-existant (commit
+4f13dcf0d), pas un de mes heals (les miens, events via EventsCompletionPersister,
+sont append-only ART-safe).
+
+Decision utilisateur (ferme) : le film highlights est disponible immediatement ~99%
+du temps -> aucun heal n'est justifie. "Absolument tous les heals doivent etre
+desactives et decommisionnes. Et faut reparer les corruptions." Le collegue avait
+introduit les heals ; l'utilisateur prefere un sync/post-sync solide et controle.
+
+Analyse cle : le sync PRIMAIRE (engine_fetch.go) couvre deja tout ce que faisaient
+les heals -- GetMatchSkill + MergeSkillIntoParticipants (skill), ExtractParticipants
+(participants), GetHighlightEventsChunk + insertHighlightEventsFromData (events),
+le tout via le writer RW orchestre (persist.BatchBuilder). Les heals ne faisaient
+que dupliquer ce chemin sur une fenetre de backlog non maitrisee, en re-UPDATE-ant
+des rows existantes (= le declencheur ART). Decommissionner = zero perte de fonction
+pour les nouveaux matchs. Le 1% residuel (film absent au 1er sync) se recupere via
+backfill CLI explicite.
+
+Reparation : force_rebuild_art sur shared_matches_v2.duckdb -> 26068 rows avant =
+26068 apres, 0 perte, 217ms. Integrite shared + metadata reconfirmee (inspect_bp
+ouvre les 2 sans erreur). 
+
+Decommission (engine_postsync.go) :
+- Retires : healStatsForRecentMatches (-1.5), healSkillForMissingMatches (-1 +
+  no-insert path), healEventsForRecentMatches (-0.5), healWeaponKillsForRecentMatches
+  (-0.4), runPostSyncRegistryNames (1.58, mon Phase 5).
+- Conserves (NE SONT PAS des heals) : ensurePlayerEnrichmentRows (structurel),
+  computeAndPersistHadBotTeammate (derive SQL), processWeaponKillsInline sur
+  insertedIDs (completion primaire bornee aux matchs du cycle, append-only ART-safe),
+  citations/perf/LUSR/dominance/sessions/aggregates (calculs derives).
+- Code mort supprime : stats_heal.go, skill_heal.go, events_heal.go,
+  events_heal_honesty_test.go ; MarkEventsLoaded (writes.go) ; const
+  healParallelismNetworkOnly relocalisee en weaponBackfillParallelism dans
+  backfill_weapons.go (utilisee par la completion weapon primaire + CLI backfill).
+- Tests heal-specifiques retires (bitmask_honesty_test : 2 funcs ; shared_rw_guard_test :
+  1 func ; highlight_events_test : TestMarkEventsLoaded). Tests des Mark*/guards
+  conserves (encore utilises par le chemin primaire).
+- Defense-in-depth RC-A : assertSharedWritable cable en fail-fast au debut de
+  runPostSyncPipeline (le post-sync ecrit encore shared via LUSR/dominance ; si le
+  handle repasse RO, on logue ERROR au lieu d'echouer en silence). La fonction et
+  ses 3 tests restent ainsi vivants avec un vrai caller.
+
+Verification : go build ./... OK ; go vet ./internal/sync/... OK ; gofmt clean ;
+go test -tags "cgo integration" sync + persist + service + scheduler + v2 +
+cmd/server = tous verts. Live (serveur relance 15:25) : 0 ART, 0 "read-only mode",
+0 self-heal aujourd'hui dans logs/. Le cycle sync live n'a pas pu completer le
+post-sync (Halo API injoignable : oauth_refresh + skill.svc en echec reseau --
+environnemental, pas lie au code) ; chemin pipeline couvert par les tests integ.
+
+Finding hors-scope signale a l'utilisateur : "engagement coefs: save failed --
+Binder Error (ON CONFLICT target pas UNIQUE/PK)" present des le boot (15:35), classe
+documentee reference_legacy_player_db_no_constraints, pre-existant et non lie a
+cette tache.
+
+Prochaine etape : commit (apres autorisation utilisateur) des fichiers Go modifies
+uniquement ; relancer une verif sync live quand l'API Halo / les tokens OAuth seront
+de nouveau joignables pour observer un post-sync complet sans heal.
