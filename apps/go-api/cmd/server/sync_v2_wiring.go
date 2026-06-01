@@ -87,16 +87,16 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 		return nil
 	}
 
-	// Adapter KnownLoader : ouvre la stats.duckdb du joueur en RO
-	// (Phase 1 = lecture pure des match_ids connus).
+	// Adapter KnownLoader : lit les match_ids connus dans la stats.duckdb du
+	// joueur (Phase 1 = lecture pure). OpenReadForQuery réutilise le handle déjà
+	// en cache (RW ou RO) s'il existe — la lecture marche sur un handle RW.
+	// Forcer OpenReadOnly échouait par intermittence quand un autre subsystem
+	// (pool / career live / backup cron) tenait déjà la DB joueur en RW dans le
+	// même process (DuckDB refuse RO+RW concurrents) → discovery "failed" sans
+	// nouveau match inséré (incident 2026-06-01, même classe que RC-A / ADR-0016).
 	playerDBOpenerRO := func(_ context.Context, gamertag string) (*sql.DB, func(), error) {
 		path := deps.PathResolver.PlayerDBPath(deps.TitleSlug, gamertag)
-		db, err := duckdbpkg.OpenReadOnly(path)
-		if err != nil {
-			return nil, nil, err
-		}
-		// OpenReadOnly est cached process-wide ; Close() décrémente refCount.
-		return db.SQLDb(), func() { _ = db.Close() }, nil
+		return duckdbpkg.OpenReadForQuery(path)
 	}
 	knownLoader := syncv2.NewKnownLoader(playerDBOpenerRO, getSharedDB)
 
