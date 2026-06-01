@@ -1,3 +1,33 @@
+## [2026-06-01] Sync/persist — Refactors reportés (D5-5, D7-6, D1-2, D6-2, D7-3) livrés sous filet
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : après avoir figé l'orchestration par des tests (entrée précédente), exécution des 5 items
+reportés de la revue, chacun protégé par le filet de tests + suites existantes.
+
+**Décisions techniques** :
+- **D5-5** : suppression de openSharedSocialDB + attachGlobalXuidAliasesIfConfigured (//nolint:unused,
+  zéro caller). resetGlobalAttachState CONSERVÉ (le finding le croyait mort — il est utilisé par
+  attach_global_test.go).
+- **D7-6** : mojibake engine.go corrigé par replace ciblé des séquences cp1252 (le fichier a un
+  encodage MIXTE — un → U+2192 correct coexiste avec du mojibake — donc un round-trip global aurait
+  corrompu les bons chars). 112 lignes de texte (commentaires + messages de log), zéro logique.
+- **D1-2** : Channel(target) avait un paramètre mort (`_ = target`) → signature simplifiée en Channel() ;
+  doc trompeuse (doc.go diagramme + worker.go "1 worker == 1 DBTarget") alignée sur la réalité (1 channel
+  unique + CombinedPersister). Worker.target conservé (label d'observabilité réel).
+- **D6-2** : compactMatchSkillRankSuperseded — après un recompute force, collapse l'historique append-only
+  à MAX(id) par (match_id, rating_type). Sûr ART (player DB mono-writer, PK id BIGINT). Borne la croissance
+  non bornée. Test dédié (collapse + vue _latest préservée + idempotent).
+- **D7-3** : runPostSyncPipeline 380→208 lignes via 3 extract-method cohésifs (runScoringSteps,
+  runSkillRatingSteps, runAggregatesRefresh). Pur déplacement de code, ordre/logique identiques.
+  Approche extract-method (pas table-driven) car étapes hétérogènes. Suite E2E post-sync verte (baseline).
+
+**Résultats observés** : build ./internal/... + vet clean ; persist intégration + queue/worker -race verts ;
+guards (orchestration/ART/combat/bulk-UPDATE) verts ; compaction + post-sync E2E verts.
+
+**Prochaine étape** : revue ciblée social + metadata (orchestration lecture/écriture, sync+async) — la revue
+initiale a couvert shared+player en profondeur mais social/metadata seulement de biais (ART + connexions).
+
 ## [2026-06-01] Sync/persist — Figer le comportement correct par des tests cadrés
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
@@ -53352,3 +53382,38 @@ Suite (meme jour) — pistes B (medailles) puis A (cible fire event) + apport ac
   (+modes medals/aim) + apps/go-api/cmd/tmpdbq (SQL DuckDB RO, build ignore).
   Prochaine etape possible : cabler l'aim vector dans weapon_scanner.go (petit ajout)
   ou completer la bijection b[59] cross-match.
+
+Suite (meme jour) — structure de paquets 16 octets (acurtis) + semantique kill-feed :
+- Vérif morts-sans-tueur (000d5950) : 93/93 deaths (th=20) ont un tueur credite (th=50
+  autre joueur a +-150ms), 0 mort non creditee. Le surplus th=50 (112 vs 93) = pur
+  sur-comptage (credits redondants/assists), PAS des morts sans tueur.
+- Comparaison film vs API par joueur : deaths(th=20) du film == match_participants.deaths
+  EXACT pour les 8 joueurs (total 93 = score) ; kills(th=50) sur-comptent (101 dedup vs
+  93). => signal mort autoritatif ; ancrer kill-feed sur th=20 + last-damage. Le feed
+  (feature tardive) = rendu UI du meme credit last-damage qui pilote le score (explique
+  les morts environnementales creditees a X : 1 th=20 victime + 1 th=50 dernier
+  attaquant, lus par score ET feed).
+- Structure paquet 16 octets VALIDEE (acurtis <HBBIQ> type/b2/b3/size/us). Parse parfait
+  chunk_02 (739972/739972, fin CHUNK_END). 1199 FRAME = ~60fps avec timestamp us precis
+  (remplace l'estimation frame-marker). PLAYER_METADATA (type 8, 25124o) localise =
+  roster joueurs (gamertags+xuids) = cle piste A (layout pi<->xuid a finir de RE).
+  BOT_METADATA, REPLICATION_DATA_START (343KB), TYPE_2 (143KB).
+- Doc maj RESEARCH_THEATER_RE.md sections E (verif par-joueur) + L (paquets 16o + frames
+  + PLAYER_METADATA + morts-sans-tueur). filmx.exe modes ajoutes : thtally, pkt, pmeta.
+  Note acurtis basse prio : suffixe 42c9679f droppable (32 bits hauts suffisent).
+
+Suite (meme jour) — decodeur melee VALIDE (correction marqueur) :
+- Le marqueur melee n'est PAS 0b10100110010 (introuvable). Vrai ancrage = prefixe 101
+  (3 bits) + byte anchor in {0x34,0x35}. Self-test exemple acurtis : anchor=0x34,
+  type@+76=0x42, weapon@+88=f408190f42c9679f (Mk51 Sidekick) = MATCH exact. Offsets par
+  type 0x42:88 / 0x47:86 / 0x60:101|103. La VALIDATION du weapon id aux offsets est le
+  filtre anti-faux-positif cle (sans elle ~98% bruit, d'ou l'echec de la v naive §D).
+- Valide sur 000d5950 : 56 swings melee weapon-valides (API = 4 melee KILLS) ; variantes
+  decodees (Rushdown Hammer, Diminisher of Hope, Sentinel Beam whip). Le film capture
+  TOUS les swings, pas que les kills (idem grenades 70 throws vs 2 kills). player_index
+  @anchor+20 a calibrer ; weapon id solide. Doc : section K-bis (supersede §D).
+- Calibration player_index melee : pi = byte@anchor+20 (low 5 bits, 0-31) ; PAS les 5
+  bits hauts (toujours 0) ni >>4. Coherence : Rushdown Hammer (pickup) vu avec pi
+  {0,1,3,4} = 4 joueurs successifs. pi canonique film (= fire-event b5>>4) ; pi<->xuid
+  deja resolu en prod via PLAYER_METADATA (confirme utilisateur ; methode dend = byte
+  avant 1ere occurrence du XUID, incremente par joueur) -> pas un blocage.
