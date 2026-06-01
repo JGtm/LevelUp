@@ -1,3 +1,40 @@
+## [2026-06-01] Revue sync/persist — P1 : parité combat-completion sur le chemin batch (sans heals)
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : revue de code multi-agents du système sync + enrichments + orchestration lecture/écriture DB.
+Verdict : orchestration globalement saine (INSERT-only par défaut, WAL durable, swap RO/RW thread-safe,
+zéro fuite de connexion). Le point P1 : la décommission des heals (commit précédent de cette branche) a
+exposé une régression de parité sur le chemin batch (= prod par défaut, `LEVELUP_PERSIST_BATCH != "0"`).
+
+**Décision technique** :
+- **D3-1** : `killer_victim_pairs` était écrit en forme dégradée par le batch (`kill_count` seul,
+  `killer_gamertag`/`victim_gamertag`/`time_ms` NULL) alors que le match-view les lit (Q20KVPairs →
+  tug-of-war, KD timeline, antagonistes). Fix : `persist.KillerVictimInsert` enrichi des 3 colonnes,
+  rempli dans `collect.go` depuis `analysis.KVPair` (KillerGT/VictimGT/TimeMS déjà calculés), écrit
+  par `persistKillerVictim`. Forme par-kill identique à la complétion legacy (EventsCompletionPersister).
+- **D3-2** : le batch posait `MBitEvents` mais laissait `events_loaded=FALSE` → matchs éternellement
+  re-candidats au backfill events (or heals décommissionnés = jamais réconciliés). Fix : `events_loaded`
+  ajouté à l'INSERT de `persistMatchRegistry`, **dérivé de la présence réelle** de highlight_events dans
+  le batch (`len(s.HighlightEvents) > 0`) — même sémantique que le legacy `markCompletionRegistry`
+  (`events_loaded = events_inserted>0`). Posé à l'INSERT, mode INSERT-only, **aucun heal post-coup**.
+- Choix : enrichir le batch (1 TX INSERT-only) plutôt que router via EventsCompletionPersister, pour
+  préserver l'atomicité single-TX du chemin batch (le match est NEW → INSERT pur, ART-safe).
+
+**Résultats observés** : `go build` + `go vet` clean. 12/12 `TestSharedPersister_*` verts (dont 2 nouveaux :
+`KillerVictim_PerKillFormPersisted`, `EventsLoaded_DerivedFromHighlightEvents`). Suite persist intégration
+verte (10.9s). Guards verts : `TestNoDirectCombatWritesOutsidePersist` (les writes combat passent bien par
+le package persist), `TestNoARTPatternsOnProtectedTables` (pas de régression ART).
+
+**Résiduel** : D2-3 (highlight_events `INSERT OR IGNORE` inopérant en prod, pas de contrainte unique) ne
+concerne que le chemin replay/force_events (outil de recovery type heal), pas le chemin primaire — sur le
+primaire, le gate `match_registry EXISTS` empêche tout double-insert. Hors scope P1 (pas une régression du
+chemin par défaut ; une migration UNIQUE sur highlight_events prod serait risquée sur d'éventuels doublons).
+
+**Prochaine étape** : P2 (race Submit/Close au shutdown + extension du garde-rail no_art_patterns aux
+tables de matchs critiques), puis P3 (dette : commentaires faux append-only/MaxOpenConns(1), god functions,
+magic ints Outcome, mojibake engine.go, code mort daté pool.go).
+
 ## [2026-06-01] Explorer — Profil de combat : FRONTEND des 5 graphes (complétion plan)
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.

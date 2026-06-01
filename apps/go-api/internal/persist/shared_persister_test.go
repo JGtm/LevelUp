@@ -474,3 +474,90 @@ func TestSharedPersister_MatchCSRs_DefaultRatingTypeCSR(t *testing.T) {
 		t.Errorf("rating_type = %q, want CSR (default)", rt)
 	}
 }
+
+// ─── Test 11 : KillerVictim forme par-kill (gamertags + time_ms) ────────────
+//
+// Régression D3-1 : le chemin batch (prod par défaut) écrivait la forme dégradée
+// (kill_count seul), laissant killer_gamertag/victim_gamertag/time_ms NULL — or
+// le match-view (Q20KVPairs) les lit. On vérifie que la forme par-kill complète
+// est persistée, à parité avec la complétion legacy.
+func TestSharedPersister_KillerVictim_PerKillFormPersisted(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	batch := helperBuildSampleBatch("m_kv_001", "1111", "Alice")
+	batch.Shared.KillerVictim = []KillerVictimInsert{
+		{
+			MatchID:    "m_kv_001",
+			KillerXUID: "1111", KillerGamertag: "Alice",
+			VictimXUID: "9876543210", VictimGamertag: "FriendA",
+			Count: 1, TimeMS: 42000,
+		},
+	}
+
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	var killerGT, victimGT sql.NullString
+	var timeMS, killCount sql.NullInt64
+	err := db.QueryRow(`
+		SELECT killer_gamertag, victim_gamertag, time_ms, kill_count
+		FROM killer_victim_pairs WHERE match_id = ?`, "m_kv_001",
+	).Scan(&killerGT, &victimGT, &timeMS, &killCount)
+	if err != nil {
+		t.Fatalf("query killer_victim_pairs: %v", err)
+	}
+	if !killerGT.Valid || killerGT.String != "Alice" {
+		t.Errorf("killer_gamertag = %+v, want Alice", killerGT)
+	}
+	if !victimGT.Valid || victimGT.String != "FriendA" {
+		t.Errorf("victim_gamertag = %+v, want FriendA", victimGT)
+	}
+	if !timeMS.Valid || timeMS.Int64 != 42000 {
+		t.Errorf("time_ms = %+v, want 42000", timeMS)
+	}
+	if !killCount.Valid || killCount.Int64 != 1 {
+		t.Errorf("kill_count = %+v, want 1", killCount)
+	}
+}
+
+// ─── Test 12 : events_loaded dérivé de la présence de highlight_events ──────
+//
+// Régression D3-2 : le chemin batch posait MBitEvents mais laissait
+// events_loaded=FALSE → matchs éternellement re-candidats au backfill events
+// (heals décommissionnés). On vérifie que events_loaded passe TRUE à l'INSERT
+// quand le batch porte des highlight_events, et reste FALSE sinon.
+func TestSharedPersister_EventsLoaded_DerivedFromHighlightEvents(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+
+	// helperBuildSampleBatch ajoute 1 highlight event → events_loaded == TRUE.
+	withEvents := helperBuildSampleBatch("m_evl_001", "1111", "Alice")
+	if err := p.Persist(context.Background(), withEvents); err != nil {
+		t.Fatalf("Persist (avec events): %v", err)
+	}
+	var evl bool
+	if err := db.QueryRow(`SELECT events_loaded FROM match_registry WHERE match_id = ?`,
+		"m_evl_001").Scan(&evl); err != nil {
+		t.Fatalf("query events_loaded: %v", err)
+	}
+	if !evl {
+		t.Error("events_loaded doit être TRUE quand le batch porte des highlight_events")
+	}
+
+	// Batch SANS highlight_events → events_loaded reste FALSE (film pas prêt).
+	noEvents := helperBuildSampleBatch("m_evl_002", "1111", "Alice")
+	noEvents.Shared.HighlightEvents = nil
+	if err := p.Persist(context.Background(), noEvents); err != nil {
+		t.Fatalf("Persist (sans events): %v", err)
+	}
+	var evl2 bool
+	if err := db.QueryRow(`SELECT events_loaded FROM match_registry WHERE match_id = ?`,
+		"m_evl_002").Scan(&evl2); err != nil {
+		t.Fatalf("query events_loaded 2: %v", err)
+	}
+	if evl2 {
+		t.Error("events_loaded doit rester FALSE sans highlight_events")
+	}
+}
