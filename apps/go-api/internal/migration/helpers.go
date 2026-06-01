@@ -55,6 +55,23 @@ func tableExists(db *sql.DB, table string) (bool, error) {
 	return count > 0, nil
 }
 
+// hasPrimaryKey indique si une table porte une contrainte PRIMARY KEY.
+// Utilise duckdb_constraints() (catalogue DuckDB). Sert aux migrations
+// correctives sur des tables creees historiquement via CREATE TABLE IF NOT
+// EXISTS avant l'ajout d'une PK (la PK n'est alors jamais appliquee).
+func hasPrimaryKey(db *sql.DB, table string) (bool, error) {
+	var count int
+	err := db.QueryRowContext(
+		bootCtx(),
+		"SELECT COUNT(*) FROM duckdb_constraints() WHERE table_name = ? AND constraint_type = 'PRIMARY KEY'",
+		table,
+	).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // addColumnIfMissing ajoute une colonne si elle n'existe pas.
 func addColumnIfMissing(db *sql.DB, table, column, colType string) error {
 	exists, err := columnExists(db, table, column)
