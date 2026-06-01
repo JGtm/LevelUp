@@ -336,51 +336,6 @@ func openPlayerDB(ctx context.Context, cfg PlayerPoolConfig) (*PlayerDB, error) 
 	}, nil
 }
 
-// openSharedSocialDB ouvre la DB SharedSocial (optionnelle). Retourne nil en
-// cas d'échec (non bloquant : absence normale au boot, fichier créé en sync).
-//
-//nolint:unused // WIP refacto Phase 3 stabilisation pool — péremption 2026-06-22 (à câbler dans openPlayerDB ou supprimer).
-func openSharedSocialDB(ctx context.Context, cfg PlayerPoolConfig) *DB {
-	if cfg.SharedSocialDBPath == "" {
-		return nil
-	}
-	socialDB, err := OpenReadWrite(cfg.SharedSocialDBPath, cfg.UserTimezone)
-	if err != nil {
-		// Non bloquant : la DB sera créée lors de la prochaine migration.
-		slog.WarnContext(ctx, "pool: ouverture SharedSocial échouée (dégradation: socialDB=nil)",
-			"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", err)
-		return nil
-	}
-	if mErr := migration.RunForDB(socialDB.SQLDb(), migration.TargetSharedSocial); mErr != nil {
-		slog.ErrorContext(ctx, "pool: migrations SharedSocial échouées",
-			"path", cfg.SharedSocialDBPath, "gamertag", cfg.Gamertag, "err", mErr)
-	}
-	return socialDB
-}
-
-// attachGlobalXuidAliasesIfConfigured attache la DB globale xbox_aliases sur
-// les conn player + social. Non-bloquant : silencieux si la DB n'existe pas
-// (tolérance prévue côté query — retombe sur NULL).
-//
-// P5.3 : mapping xuid→gamertag global Microsoft pour les JOIN global.xuid_aliases.
-//
-//nolint:unused // WIP refacto Phase 3 stabilisation pool — péremption 2026-06-22 (à câbler dans openPlayerDB ou supprimer).
-func attachGlobalXuidAliasesIfConfigured(
-	ctx context.Context, playerDB, socialDB *DB, cfg PlayerPoolConfig,
-) {
-	if cfg.GlobalXuidAliasesDBPath == "" {
-		return
-	}
-	if err := attachGlobalXuidAliases(ctx, playerDB, cfg.GlobalXuidAliasesDBPath); err != nil {
-		slog.WarnContext(ctx, "pool: ATTACH global xbox_aliases échoué (player conn)",
-			"path", cfg.GlobalXuidAliasesDBPath, "gamertag", cfg.Gamertag, "err", err)
-	}
-	// ATTACH sur socialDB volontairement supprimé — cf. commentaire sur le site
-	// d'appel principal (openPlayerDB) : ATTACH sur shared_social RW contamine
-	// le WAL avec une entrée non-rejouable (bug DuckDB #7659).
-	_ = socialDB
-}
-
 func ensurePlayerDBMigrations(path string) error {
 	_ = migration.All()
 
