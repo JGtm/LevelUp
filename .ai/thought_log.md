@@ -52993,3 +52993,23 @@ Tests : ./internal/sync/v2/ + ./internal/sync/ verts ; go build ./... OK.
 RESTE (lots ulterieurs) : (1) augmenter filmRetryWindow (films gardes des mois,
 pas 48h) ; (2) test Go deterministe anti-regression RC-A (heal doit recevoir RW) ;
 (3) cache local film_chunks a verifier ; (4) Phase 8 verif globale + front.
+
+## [2026-06-01] filmRetryWindow 48h → 30 jours (films Halo conserves plusieurs mois)
+
+Statut : Complete (verte).
+
+L'utilisateur confirme que les films Halo Waypoint sont conserves PLUSIEURS MOIS,
+pas quelques heures. L'ancien filmRetryWindow=48h reposait sur une premisse fausse
+("Halo ne conserve pas tous les films"). Risque reel : une panne PROLONGEE d'ecriture
+combat (cf. RC-A/RC-E : shared read-only >24h) marquait definitivement absents
+(events_loaded=TRUE) des films ENCORE disponibles → perte permanente du match dans
+le retry set. C'est exactement ce qui aurait condamne les 2 matchs du 30/05 si la
+panne avait dure >48h.
+
+Fix (engine_highlight_events.go) : defaultFilmRetryWindow = 30*24h. filmRetryWindow()
+devient une fonction lisant LEVELUP_FILM_RETRY_WINDOW_HOURS (entier heures > 0)
+pour override (rallonger apres panne longue connue, ou raccourcir en test). 30j
+couvre toute panne realiste tout en finissant par sortir les vrais films expires.
+
+Tests : film_retry_policy_test.go — "old match" passe a 40j (>30j) ; 2 nouveaux
+tests (defaut 30j, override env valide/invalide/0). Suite ./internal/sync/ verte.

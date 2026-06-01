@@ -78,11 +78,13 @@ func TestNoFilm_RecentMatch_NotMarked(t *testing.T) {
 	}
 }
 
-// TestNoFilm_OldMatch_Marked : un 404 sur un match ancien (> filmRetryWindow) est
-// définitif → events_loaded=TRUE pour sortir du retry set.
+// TestNoFilm_OldMatch_Marked : un 404 sur un match ancien (> filmRetryWindow,
+// défaut 30 jours) est définitif → events_loaded=TRUE pour sortir du retry set.
 func TestNoFilm_OldMatch_Marked(t *testing.T) {
 	const matchID = "m-old"
-	db := newFilmRetrySharedDB(t, matchID, time.Now().Add(-5*24*time.Hour))
+	// 40 jours : au-delà du défaut 30 jours (films conservés ~plusieurs mois ;
+	// au-delà on suppose le film réellement expiré). Cf. defaultFilmRetryWindow.
+	db := newFilmRetrySharedDB(t, matchID, time.Now().Add(-40*24*time.Hour))
 	mock := &mockHaloClient{highlightChunkFound: false}
 
 	if err := ProcessHighlightEvents(context.Background(), mock, db, nil, matchID, &domain.SyncResult{}); err != nil {
@@ -106,5 +108,31 @@ func TestNoFilm_UnknownStartTime_Marked(t *testing.T) {
 	}
 	if !eventsLoaded(t, db, matchID) {
 		t.Error("start_time NULL + 404 : events_loaded devrait être TRUE (legacy/définitif)")
+	}
+}
+
+// TestFilmRetryWindow_DefaultIsThirtyDays : le défaut couvre largement toute
+// panne d'écriture combat réaliste (films Halo conservés plusieurs mois).
+func TestFilmRetryWindow_DefaultIsThirtyDays(t *testing.T) {
+	t.Setenv("LEVELUP_FILM_RETRY_WINDOW_HOURS", "")
+	if got := filmRetryWindow(); got != 30*24*time.Hour {
+		t.Errorf("filmRetryWindow défaut = %v, want 720h (30j)", got)
+	}
+}
+
+// TestFilmRetryWindow_EnvOverride : override par LEVELUP_FILM_RETRY_WINDOW_HOURS
+// (entier d'heures valide) ; valeur invalide → défaut.
+func TestFilmRetryWindow_EnvOverride(t *testing.T) {
+	t.Setenv("LEVELUP_FILM_RETRY_WINDOW_HOURS", "72")
+	if got := filmRetryWindow(); got != 72*time.Hour {
+		t.Errorf("override 72 = %v, want 72h", got)
+	}
+	t.Setenv("LEVELUP_FILM_RETRY_WINDOW_HOURS", "0") // <= 0 ignoré
+	if got := filmRetryWindow(); got != 30*24*time.Hour {
+		t.Errorf("override 0 → défaut attendu, got %v", got)
+	}
+	t.Setenv("LEVELUP_FILM_RETRY_WINDOW_HOURS", "abc") // invalide → défaut
+	if got := filmRetryWindow(); got != 30*24*time.Hour {
+		t.Errorf("override invalide → défaut attendu, got %v", got)
 	}
 }

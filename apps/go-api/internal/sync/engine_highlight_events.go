@@ -21,6 +21,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"time"
 
@@ -30,14 +31,32 @@ import (
 	"levelup/go-api/internal/persist"
 )
 
-// filmRetryWindow : fenêtre pendant laquelle un film absent (404) est considéré
-// comme « peut-être pas encore propagé côté Halo » et donc retenté au lieu
-// d'être marqué définitivement absent. Au-delà, le film est jugé perdu (Halo ne
-// conserve pas tous les films) et events_loaded passe à TRUE pour sortir du
-// retry set. Tunable : 48h couvre largement la latence de propagation observée
-// tout en bornant les retries. Cf. .ai/HANDOFF_sync_combat_completion.md
-// (incident : un film simplement retardé était marqué définitif → perte).
-const filmRetryWindow = 48 * time.Hour
+// defaultFilmRetryWindow : fenêtre pendant laquelle un film absent (404) est
+// retenté au lieu d'être marqué définitivement absent (events_loaded=TRUE sort
+// le match du retry set). Au-delà, on suppose le film réellement indisponible.
+//
+// 30 jours (révisé 2026-06-01) : les films Halo sont conservés PLUSIEURS MOIS
+// côté Waypoint (confirmé en prod), pas quelques heures comme le supposait
+// l'ancienne valeur (48h). Le vrai danger n'est pas la latence de propagation
+// (minutes) mais une PANNE PROLONGÉE d'écriture combat (cf. incidents RC-A/RC-E :
+// shared servi read-only pendant >24h). Avec 48h, une telle panne marquait
+// définitivement absents des films encore disponibles → perte permanente du
+// match dans le retry set. 30 jours couvre toute panne réaliste tout en finissant
+// par sortir les vrais films expirés. Cf. .ai/HANDOFF_sync_combat_completion.md.
+const defaultFilmRetryWindow = 30 * 24 * time.Hour
+
+// filmRetryWindow retourne la fenêtre effective. Override via
+// LEVELUP_FILM_RETRY_WINDOW_HOURS (entier d'heures, > 0) — utile pour rallonger
+// après une panne longue connue, ou raccourcir en test. Valeur invalide / absente
+// → defaultFilmRetryWindow.
+func filmRetryWindow() time.Duration {
+	if v := os.Getenv("LEVELUP_FILM_RETRY_WINDOW_HOURS"); v != "" {
+		if h, err := strconv.Atoi(v); err == nil && h > 0 {
+			return time.Duration(h) * time.Hour
+		}
+	}
+	return defaultFilmRetryWindow
+}
 
 // isNoFilmDefinitive décide, sur film absent (404), si on marque
 // events_loaded=TRUE (définitif, sort du retry set) ou si on laisse FALSE
@@ -56,7 +75,7 @@ func isNoFilmDefinitive(ctx context.Context, db *sql.DB, matchID string) bool {
 	if err != nil || !startTime.Valid {
 		return true // âge inconnu → comportement legacy (définitif)
 	}
-	return time.Since(startTime.Time) > filmRetryWindow
+	return time.Since(startTime.Time) > filmRetryWindow()
 }
 
 // insertHighlightEventsFromData parse et insère les highlight events à partir de données déjà fetchées.
