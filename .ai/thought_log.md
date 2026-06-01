@@ -1,3 +1,47 @@
+## [2026-06-01] Explorer — Profil de combat : FRONTEND des 5 graphes (complétion plan)
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : vérification de complétude des deux plans du profil de combat Explorer.
+`PLAN_EXPLORER_COMBAT_PROFILE.md` (identité DTO snake_case + fallback citations médailles +
+adornment + bannière déterministe) était livré et vert. `PLAN_explorer_combat_profile_charts.md` :
+le backend était livré (domain `ExplorerTargetRecentMatch` + `CombatProfile`, port
+`GetTargetRecentMatches`, repo `Q19cTargetRecentMatches` avec filtre PvP via `is_firefight` +
+perfect_kills medal 1512363953, service `computeTargetCombatProfile`), MAIS tout le frontend des
+5 graphes manquait (handoff laissé « à faire sur la machine de dev », jamais fait).
+
+**Décision technique (frontend livré)** :
+- 2 builders purs testables `buildCombatFdaOption` (G1, 3 barres groupées + ligne FDA sur axe Y
+  secondaire) et `buildCombatScoreOption` (G3, axe placement inversé `min=1`, `rank` null → point
+  `null` + `connectNulls:false`) dans `combatChartOptions.ts`, modelés sur `buildKdaBarsOption`
+  (pattern recopié et non importé pour respecter lint-cross-feature-imports).
+- G2 (dégâts empilés) via `BarStackedChart`, G4 (folie/parfaits groupées) via `BarGroupedChart`
+  — shape réelle `ChartSeries<ChartPointStacked>` `{category, components}` + `componentColors`
+  (pas `{name,colorToken,values}`, erreur d'API corrigée). G5 (donut modes) via `DonutChart`
+  (`ChartSeries<ChartPointDonut>` + `series`, pas `slices`). Couleurs uniquement par tokens
+  (divergent-pos/neg, perf-tier-1/2, chart-series-1/3/4, outcome-loss).
+- `types.ts` : `ExplorerTargetRecentMatch` + `combat_profile` sur `ExplorerTargetProfile` (miroir
+  DTO Go). 20 clés i18n `explorer.combat.*` (fr accentué + en) dans `explorer.toml` + régénéré.
+  Insertion conditionnelle dans `ExplorerPage.playerMode.tsx` (entre carte profil et briefing).
+- Conteneur `ExplorerCombatProfile.tsx` (`if (!matches?.length) return null`, tri chrono croissant,
+  group-by mode pour le donut) + wrappers `CombatFdaChart.tsx` / `CombatScorePlacementChart.tsx`.
+
+**Résultats observés** : `tsc -b` 0 erreur ; eslint 0 erreur / 0 warning sur les 8 fichiers ;
+vitest explorer 12 fichiers / 59 tests verts (test builders + test conteneur avec echarts mocké,
+incl. group-by modes du donut) ; i18n régénéré (1599 clés, 0 doublon). Backend Go re-vérifié :
+`go build ./...` exit 0, `go vet` clean, tests service + duckdb (intégration) + api Explorer/médailles verts.
+
+**Leçons** : (1) le « build cassé `row.EventsLoaded undefined` » initialement observé était un artefact
+de cache Go corrompu par des builds concurrents — `go clean -cache && go build ./...` = exit 0, pas
+de vraie régression, rien à corriger. (2) Environnement de session instable (cwd du shell dérivant
+entre repo-root et apps/web, sorties d'outils tronquées/corrompues) → fiabiliser via `npm --prefix`,
+sous-shells `cd` absolus, et vérification systématique par fichiers relus.
+
+**Prochaine étape** : validation visuelle live (Explorer → mode Joueur → joueur connu → 5 graphes,
+exclusion PvE, état vide si aucun match PvP) ; commit (en attente d'autorisation explicite).
+
+---
+
 ## [2026-05-31] Sync — graphes onglet Détails + citations vides (diagnostic + honnêteté heal)
 
 **Statut** : En cours (Phase 0 + Phase 2 partielle) — branche `fix/sync-combat-completion-persist`.

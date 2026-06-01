@@ -13,6 +13,7 @@ import { ExplorerMatchesTable } from './ExplorerMatchesTable'
 import { ExplorerEncounterBriefing } from './ExplorerEncounterBriefing'
 import { ExplorerActivityHeatmapChart } from './ExplorerActivityHeatmapChart'
 import { ExplorerTargetProfileCard } from './ExplorerTargetProfileCard'
+import { ExplorerCombatProfile } from './ExplorerCombatProfile'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
 import { tokenVar } from '@/lib/accessibility'
 import type { SemanticToken } from '@/lib/accessibility/semantic-tokens'
@@ -153,6 +154,17 @@ export function ExplorerPlayerMode({
               gamertag={playerQuery.data.target_gamertag || targetGamertag}
             />
           )}
+
+          {/* Profil de combat — 5 graphes sur les derniers matchs PvP de la
+              cible (FDA, dégâts, score+placement, folie/parfaits, donut modes).
+              Masqué si la cible n'a aucun match PvP. */}
+          {playerQuery.data.target_profile?.combat_profile?.length ? (
+            <ExplorerCombatProfile
+              matches={playerQuery.data.target_profile.combat_profile}
+              locale={locale}
+              t={t}
+            />
+          ) : null}
 
           {playerQuery.data.encounter_stats ? (
             <ExplorerEncounterBriefing

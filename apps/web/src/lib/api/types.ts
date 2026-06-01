@@ -1243,9 +1243,37 @@ export interface ExplorerTargetProfile {
   matches_per_season?: SeasonMatchCount[] | null
   /** Avertissement privacy — conservé pour compat, toujours null (privacy non fetchée). */
   privacy_warning?: MatchPrivacyWarning | null
+  /** Les N derniers matchs PvP du joueur cible lui-même (Firefight exclu), pour
+   *  les graphes "profil de combat". Vide/absent si aucun match PvP → section masquée.
+   *  Miroir Go domain.ExplorerTargetRecentMatch. Cf. PLAN_explorer_combat_profile_charts.md. */
+  combat_profile?: ExplorerTargetRecentMatch[] | null
   /** true si le user connecté a des tokens OAuth Halo. Sert à rendre le hint
    *  "Connexion Halo requise" sur les sections en mode dégradé. */
   auth_available: boolean
+}
+
+/** ExplorerTargetRecentMatch — un match PvP récent du joueur cible, projeté pour
+ *  les graphes profil de combat. Miroir exact du DTO Go (JSON snake_case).
+ *  `rank` est null si DNF/non classé (trou dans la courbe placement — ne pas tracer 0). */
+export interface ExplorerTargetRecentMatch {
+  match_id: string
+  start_time: string
+  map_ui: string
+  mode_ui: string
+  /** 1=tie, 2=win, 3=loss, 4=DNF (convention produit). */
+  outcome: number
+  rank?: number | null
+  kills: number
+  deaths: number
+  assists: number
+  /** Ratio FDA pré-calculé (match_participants.kda). */
+  kda: number
+  /** personal_score (colonne "Score" du scoreboard). */
+  score: number
+  damage_dealt: number
+  damage_taken: number
+  max_killing_spree: number
+  perfect_kills: number
 }
 
 /** Nombre de matchs matchmade joués par le joueur cible sur une saison.
