@@ -522,6 +522,95 @@ func TestSharedPersister_KillerVictim_PerKillFormPersisted(t *testing.T) {
 	}
 }
 
+// ─── Test golden : chemin batch complet + INSERT-only + idempotence ────────
+//
+// FIGE le chemin batch (prod par défaut) de bout en bout : un batch combat
+// complet est persisté avec la forme par-kill (gamertags + time_ms) ET
+// events_loaded=TRUE, puis un re-Persist du MÊME match est idempotent (aucun
+// doublon, aucune mutation — INSERT-only gardé par le pré-check match_registry).
+// Couvre les régressions D3-1 (KV dégradé) + D3-2 (events_loaded) + l'invariant
+// INSERT-only/idempotence en un seul test caractérisant le comportement correct.
+func TestSharedPersister_GoldenBatchPath_CompleteAndIdempotent(t *testing.T) {
+	db := openSharedTestDB(t)
+	p := NewSharedPersister(db)
+	strPtr := func(s string) *string { return &s }
+
+	batch := helperBuildSampleBatch("m_golden", "1111", "Alice")
+	// Forme combat par-kill complète (2 kills) + highlight_events correspondants.
+	batch.Shared.KillerVictim = []KillerVictimInsert{
+		{MatchID: "m_golden", KillerXUID: "1111", KillerGamertag: "Alice",
+			VictimXUID: "9876543210", VictimGamertag: "FriendA", Count: 1, TimeMS: 12000},
+		{MatchID: "m_golden", KillerXUID: "1111", KillerGamertag: "Alice",
+			VictimXUID: "9876543210", VictimGamertag: "FriendA", Count: 1, TimeMS: 34000},
+	}
+	batch.Shared.HighlightEvents = []HighlightEventInsert{
+		{MatchID: "m_golden", XUID: strPtr("1111"), EventType: "Kill", TimeMS: 12000},
+		{MatchID: "m_golden", XUID: strPtr("1111"), EventType: "Kill", TimeMS: 34000},
+	}
+
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("Persist: %v", err)
+	}
+
+	// (1) Forme combat par-kill : 2 rows, gamertags + time_ms NON NULL partout.
+	rows, err := db.Query(`
+		SELECT killer_gamertag, victim_gamertag, time_ms
+		FROM killer_victim_pairs WHERE match_id = ? ORDER BY time_ms`, "m_golden")
+	if err != nil {
+		t.Fatalf("query KV: %v", err)
+	}
+	defer rows.Close()
+	var gotTimes []int64
+	for rows.Next() {
+		var kgt, vgt sql.NullString
+		var tms sql.NullInt64
+		if err := rows.Scan(&kgt, &vgt, &tms); err != nil {
+			t.Fatalf("scan KV: %v", err)
+		}
+		if !kgt.Valid || kgt.String == "" || !vgt.Valid || vgt.String == "" {
+			t.Errorf("forme dégradée : gamertag NULL/vide (killer=%v victim=%v)", kgt, vgt)
+		}
+		if !tms.Valid {
+			t.Errorf("forme dégradée : time_ms NULL")
+		} else {
+			gotTimes = append(gotTimes, tms.Int64)
+		}
+	}
+	if len(gotTimes) != 2 || gotTimes[0] != 12000 || gotTimes[1] != 34000 {
+		t.Errorf("time_ms par-kill = %v, want [12000 34000]", gotTimes)
+	}
+
+	// (2) events_loaded = TRUE.
+	var evl bool
+	if err := db.QueryRow(`SELECT events_loaded FROM match_registry WHERE match_id = ?`,
+		"m_golden").Scan(&evl); err != nil {
+		t.Fatalf("query events_loaded: %v", err)
+	}
+	if !evl {
+		t.Error("events_loaded doit être TRUE (batch avec highlight_events)")
+	}
+
+	// (3) Re-Persist du même match = idempotent (no-op via pré-check registry) :
+	//     aucun doublon, aucune mutation.
+	if err := p.Persist(context.Background(), batch); err != nil {
+		t.Fatalf("re-Persist (idempotent attendu): %v", err)
+	}
+	for _, c := range []struct {
+		table string
+		want  int
+	}{
+		{"match_registry", 1},
+		{"match_participants", 2},
+		{"medals_earned", 2},
+		{"killer_victim_pairs", 2},
+		{"highlight_events", 2},
+	} {
+		if got := countRows(t, db, c.table, "match_id = ?", "m_golden"); got != c.want {
+			t.Errorf("idempotence cassée — %s = %d rows après re-Persist, want %d", c.table, got, c.want)
+		}
+	}
+}
+
 // ─── Test 12 : events_loaded dérivé de la présence de highlight_events ──────
 //
 // Régression D3-2 : le chemin batch posait MBitEvents mais laissait

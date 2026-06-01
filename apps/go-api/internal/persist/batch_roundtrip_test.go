@@ -224,6 +224,53 @@ func TestMatchBatch_Marshal_NormalFloatsPreserved(t *testing.T) {
 	}
 }
 
+// TestMatchBatch_RoundTrip_KillerVictimPerKillFields : FIGE la durabilité des
+// champs per-kill killer_victim (gamertags + time_ms) + highlight_events à travers
+// la sérialisation WAL JSON. Régression D3-1 : le chemin batch avait perdu ces
+// champs ; on garantit ici qu'ils survivent à la couche de transport WAL (un
+// crash mid-persist + recovery ne doit pas dégrader la forme combat par-kill).
+func TestMatchBatch_RoundTrip_KillerVictimPerKillFields(t *testing.T) {
+	batch := makeMinimalBatch()
+	batch.Shared.KillerVictim = []KillerVictimInsert{
+		{
+			MatchID:    batch.Shared.Match.MatchID,
+			KillerXUID: "111", KillerGamertag: "Alice",
+			VictimXUID: "222", VictimGamertag: "Bob",
+			Count: 1, TimeMS: 42000,
+		},
+	}
+	xuid := "111"
+	batch.Shared.HighlightEvents = []HighlightEventInsert{
+		{MatchID: batch.Shared.Match.MatchID, XUID: &xuid, EventType: "Kill", TimeMS: 42000},
+	}
+
+	raw, err := json.Marshal(batch)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var back MatchBatch
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if len(back.Shared.KillerVictim) != 1 {
+		t.Fatalf("KillerVictim perdu round-trip: got %d, want 1", len(back.Shared.KillerVictim))
+	}
+	kv := back.Shared.KillerVictim[0]
+	if kv.KillerGamertag != "Alice" {
+		t.Errorf("KillerGamertag = %q, want Alice (perdu round-trip)", kv.KillerGamertag)
+	}
+	if kv.VictimGamertag != "Bob" {
+		t.Errorf("VictimGamertag = %q, want Bob (perdu round-trip)", kv.VictimGamertag)
+	}
+	if kv.TimeMS != 42000 {
+		t.Errorf("TimeMS = %d, want 42000 (perdu round-trip)", kv.TimeMS)
+	}
+	if len(back.Shared.HighlightEvents) != 1 {
+		t.Errorf("HighlightEvents perdu round-trip: got %d, want 1", len(back.Shared.HighlightEvents))
+	}
+}
+
 // TestMatchBatch_Targets_AllConstants : sanity check sur les constantes
 // DBTarget (pas de regression silencieuse si quelqu'un renomme).
 func TestMatchBatch_Targets_AllConstants(t *testing.T) {
