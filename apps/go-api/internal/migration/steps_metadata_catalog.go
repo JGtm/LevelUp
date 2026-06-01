@@ -29,10 +29,13 @@ func init() {
 					last_fetched_at     TIMESTAMP,
 					PRIMARY KEY (title_slug, playlist_asset_id)
 				);
-				CREATE INDEX IF NOT EXISTS idx_playlists_catalog_active ON playlists_catalog(title_slug, is_active);
-				CREATE INDEX IF NOT EXISTS idx_playlists_catalog_experience ON playlists_catalog(title_slug, experience);
 
-				-- 2. Référentiel des maps (séparé pour ne pas dupliquer name/image)
+				-- 2. Référentiel des maps. NB (fix RC-E 2026-06-01) : aucun index
+				-- secondaire sur playlists_catalog ci-dessus. seedPlaylistsCatalog UPDATE
+				-- ses colonnes experience/is_active a chaque cycle, et un UPDATE sur une
+				-- colonne ART-indexee corrompt l index DuckDB puis FATAL-invalide
+				-- metadata.duckdb (cascade shared RO). A 34 lignes un scan est instantane.
+				-- Cf. steps_metadata_drop_playlists_catalog_indexes.go (drop sur DB existantes).
 				CREATE TABLE IF NOT EXISTS maps_catalog (
 					title_slug          VARCHAR NOT NULL,
 					map_asset_id        VARCHAR NOT NULL,
