@@ -1,3 +1,31 @@
+## [2026-06-01] Revue sync/persist — P2 : race Submit/Close + garde-rail ART élargi
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Décision technique** :
+- **D1-1 (race Submit/Close)** : Submit relâchait le RLock avant `chMain <- batch` ; Close pouvait
+  close(chMain) dans cette fenêtre → panic "send on closed channel" au shutdown (straggler sync après
+  le Wait scheduler 3s de main.go). Fix : `sendWG sync.WaitGroup` track les Submit en vol (Add(1) sous
+  closedMu, mutuellement exclusif avec le Lock de Close) ; Close pose closed=true, relâche, `sendWG.Wait()`
+  PUIS close(chMain). Test `TestBatchQueue_ConcurrentSubmitClose_NoPanic` (256 Submit ‖ Close) vert sous
+  -race x3. (commit séparé 438641f1b)
+- **D4-2 / D6-1 (garde-rail)** : le scan no_art_patterns ne matchait que ON CONFLICT/INSERT OR REPLACE
+  et omettait les tables match-of-record → fausse assurance. Ajouts : (1) header corrigé (décrit
+  précisément la portée : DELETE/UPDATE nus PAS couverts, tables match-of-record protégées AUTREMENT —
+  INSERT-only par construction + combat_write_guard + tripwire) ; (2) `TestNoBulkMultiRowUpdateOnCriticalTables`
+  interdit la forme bulk `UPDATE … FROM (VALUES …)` (le VRAI déclencheur ART, actuellement absent) sur 9
+  tables critiques dont player_match_enrichment. Le row-by-row sérialisé reste autorisé.
+- Bonus doc-rot (D6-1/D6-4) : commentaires faux de comeback_postsync_persist.go corrigés
+  ("1 single UPDATE multi-row" → N UPDATE row-by-row dans 1 TX ; mention de l'env var supprimée retirée) —
+  ils incitaient à la régression bulk que le nouveau tripwire interdit.
+
+**Résultats observés** : build + vet clean. Guards verts : NoBulkMultiRowUpdateOnCriticalTables (nouveau),
+NoARTPatternsOnProtectedTables, AllowlistJustifiesEverything, NoDirectCombatWritesOutsidePersist.
+
+**Prochaine étape** : P3 (dette : commentaires faux append-only weapon_kills / MaxOpenConns(1) shared_social,
+god function runPostSyncPipeline, magic ints Outcome, mojibake engine.go, code mort daté pool.go, routage
+DBTarget mort de la queue).
+
 ## [2026-06-01] Revue sync/persist — P1 : parité combat-completion sur le chemin batch (sans heals)
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
@@ -53197,3 +53225,48 @@ cmd/repair-metadata casse etait hors-sujet ici, ecartee.
 Prochaine etape : commit (apres autorisation) groupant heals-decommission +
 engagement PK + observabilite + discovery RO/RW (fichiers Go a moi uniquement,
 jamais le travail web/authz/ownership/server parallele de l'utilisateur).
+
+---
+
+## [2026-06-01] Exploration RE des chunks film (data/cache/film_chunks) — info non identifiee
+
+**Statut : Complete (exploration + validation corpus). Aucune modif code applicatif.**
+
+Demande : explorer les chunks film pour trouver de l'info qu'on ne sait pas encore
+extraire ; valider grenades/melee ; detecter assists/kill-feed via paires de XUID ;
+identifier l'arme du kill. Docs de reference fournies par l'utilisateur :
+RESEARCH_THEATER_RE.md, AUDIT_WEAPONS_2026-04-25.md,
+PLAYER_INDEX_FIRE-EVENTS_RESOLUTION.md, GRENADE_MELEE_DETECTION.md + issue #5
+dend/acurtis166 (sauvegarde locale HTML).
+
+Methode : outil Go throwaway tmp_film_explore/filmx.exe (stdlib only, pas de CGO ;
+modes header/allstr/gren/melee/xuids/he/kf/fire). Match pilote 000d5950 puis
+workflow de validation sur 12 matchs (download type-3 frais via blob CDN pre-signe
+sans auth + scans + baselines adverses aleatoires). 15 agents, ~610k tokens.
+
+Decisions / resultats :
+1. HEADER (type 1) = registre ECS ~200+ composants (slots 260o : `01 00 00 00` +
+   nom 256o). Table des matieres de tout l'etat replique (positions, vitality,
+   shield, weapon-ammo, grenade-counts, ability-energy, statborg per-round, vehicle,
+   objectives...). Parse par AUCUN code LevelUp. Bloque sur le schema des valeurs.
+2. Marqueur 0x4c0c00 = marqueur object/equipment-id GENERAL (pas grenade-specifique :
+   les hits hors-allowlist decodent en object-ids stables recurrents cross-match).
+   Sous-ensemble grenade {Frag/Plasma/Shock/Spike} = signal reel (off-by-one control
+   = 0, enrichi 20-70x). 28 lancers valides / 12 matchs, Spike jamais vu. HAUTE
+   confiance par-hit, BASSE completude (1 chunk scanne).
+3. Melee 0b10100110010 : NON fiable (1.69 % valide, pi>15 fuit dans le "valide").
+4. Kill-feed : jointure temporelle th50(kill)/th20(death) au time_ms identique =
+   ROBUSTE (1517/1533 = 99 %, dt~0, baseline ~6 %, Z~148 sigma). PAS de paire XUID
+   adjacente (1 XUID marque par event = acteur). kills>deaths +20 % (th50 sur-compte).
+5. Assists : aucun event dedie (confirme dend).
+6. Arme du kill : ABSENTE du type-3 (suffixe 42c9679f = 0). Vit dans les fire events
+   type-2 (pipeline weapon_kills existant). NON capture : vecteur de visee
+   (octaedrique) + cible/victime "likely encoded" apres le weapon id (piste ouverte).
+
+Livrables : section "Exploration locale + validation corpus 2026-06-01" ajoutee a
+.ai/RESEARCH_THEATER_RE.md ; memoire reference_film_chunks_structure.
+
+Conclusion / prochaine etape : 4 quick-wins offline possibles sans .module —
+kill-feed film-natif (pret a coder), grenades par type (scanner tous chunks type-2),
+vecteur de visee (octets post-weapon des fire events deja parses), cible/victime
+dans le fire event. Outil filmx.exe conserve sous tmp_film_explore/ (hors build app).
