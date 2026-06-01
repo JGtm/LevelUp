@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"time"
 
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
@@ -30,6 +31,7 @@ type BootstrapService struct {
 	privacyProvider  port.PrivacyProvider        // optionnel — nil = pas de check privacy
 	privacyStateRepo port.PrivacyStateRepository // optionnel — nil = pas de fallback persisté
 	userStoreEmpty   func() (bool, error)        // optionnel — nil = first_launch toujours false
+	userLookup       authz.UserLookup            // optionnel — nil = pas de filtrage ownership (ADR 0024)
 }
 
 // NewBootstrapService crée un BootstrapService.
@@ -56,6 +58,13 @@ func (s *BootstrapService) WithUserStoreEmpty(fn func() (bool, error)) *Bootstra
 	return s
 }
 
+// WithUserLookup injecte le user store pour le filtrage ownership des joueurs
+// (ADR 0024). Sans lui, available_players n'est pas filtré (mono-utilisateur).
+func (s *BootstrapService) WithUserLookup(lookup authz.UserLookup) *BootstrapService {
+	s.userLookup = lookup
+	return s
+}
+
 // Build construit la réponse bootstrap complète.
 // sess peut être nil si la session n'est pas encore initialisée.
 func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) (*domain.BootstrapResponse, error) {
@@ -78,6 +87,8 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		appSettings = map[string]interface{}{}
 	}
 
+	// setupRequired / setupState reflètent l'état de l'INSTANCE (joueurs configurés),
+	// pas la propriété : on les calcule sur la liste complète.
 	setupRequired := !s.cfg.DemoMode && len(players) == 0
 	capabilities := buildCapabilities(s.cfg, appSettings)
 	settingsExcerpt := buildSettingsExcerpt(s.cfg, appSettings)
@@ -85,19 +96,27 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 
 	setupState := s.resolveSetupState(ctx, sess, players)
 
+	// Couche A (ADR 0024) : available_players et le joueur courant sont restreints
+	// aux profils possédés par l'utilisateur (le menu L1 ne liste que ses joueurs).
+	ownedPlayers := s.filterOwnedPlayers(sess, players)
+	if len(ownedPlayers) != len(players) {
+		slog.DebugContext(ctx, "bootstrap: available_players filtré par ownership",
+			"owned", len(ownedPlayers), "total", len(players), "username", resolveUsername(sess))
+	}
+
 	var currentPlayer *domain.PlayerSummary
-	if len(players) > 0 {
-		// Respecter le choix de joueur stocké en session, sinon fallback players[0].
+	if len(ownedPlayers) > 0 {
+		// Respecter le choix de joueur stocké en session, sinon fallback ownedPlayers[0].
 		idx := 0
 		if sess != nil && sess.CurrentPlayerSlug != nil {
-			for i, p := range players {
+			for i, p := range ownedPlayers {
 				if p.PlayerSlug == *sess.CurrentPlayerSlug {
 					idx = i
 					break
 				}
 			}
 		}
-		p := players[idx]
+		p := ownedPlayers[idx]
 		currentPlayer = &p
 	}
 
@@ -137,7 +156,7 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		SetupState:           setupState,
 		LinkedHaloIdentity:   ResolveLinkedIdentity(sess),
 		CurrentPlayer:        currentPlayer,
-		AvailablePlayers:     players,
+		AvailablePlayers:     ownedPlayers,
 		CurrentTitleSlug:     currentTitleSlug,
 		AvailableTitles:      BuildAvailableTitles(),
 		Locale:               settingsExcerpt.Lang,
@@ -153,6 +172,24 @@ func (s *BootstrapService) Build(ctx context.Context, sess *domain.SessionData) 
 		FirstLaunch:          s.isFirstLaunch(),
 		OAuthCodeFlowEnabled: s.cfg.AuthMode == "xbox" && s.cfg.OAuthRedirectURI != "",
 	}, nil
+}
+
+// filterOwnedPlayers restreint la liste aux profils possédés par l'utilisateur
+// courant (ADR 0024). Retourne la liste intacte si l'enforcement est désactivé
+// (mode demo / auth non activée) ou si le user store n'est pas câblé. Un admin
+// voit tout ; un utilisateur standard uniquement les profils de son xuid.
+func (s *BootstrapService) filterOwnedPlayers(sess *domain.SessionData, players []domain.PlayerSummary) []domain.PlayerSummary {
+	if !authz.Enforced(s.cfg.DemoMode, s.cfg.AuthMode) || s.userLookup == nil {
+		return players
+	}
+	user := authz.CurrentUser(sess, s.userLookup)
+	out := make([]domain.PlayerSummary, 0, len(players))
+	for _, p := range players {
+		if authz.CanAccessPlayer(true, user, p.XUID) {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // fetchPrivacyNonBlocking fetche la privacy avec un timeout court (2 s).
