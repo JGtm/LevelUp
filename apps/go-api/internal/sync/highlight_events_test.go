@@ -124,27 +124,6 @@ func TestInsertHighlightEvents_IdempotentOnDuplicate(t *testing.T) {
 	}
 }
 
-// ─── InsertKillerVictimPairsFromEvents ────────────────────────────────────────
-
-// ─── MarkEventsLoaded ────────────────────────────────────────────────────────
-
-func TestMarkEventsLoaded_SetsFlag(t *testing.T) {
-	db := openEventsDB(t)
-	db.Exec(`INSERT INTO match_registry (match_id) VALUES ('m1')`)
-
-	if err := MarkEventsLoaded(t.Context(), db, "m1"); err != nil {
-		t.Fatalf("MarkEventsLoaded: %v", err)
-	}
-
-	var loaded bool
-	var bits int
-	db.QueryRow("SELECT events_loaded, backfill_completed FROM match_registry WHERE match_id = 'm1'").
-		Scan(&loaded, &bits)
-
-	if !loaded {
-		t.Error("expected events_loaded = TRUE")
-	}
-	if bits&MBitEvents == 0 {
-		t.Errorf("expected MBitEvents bit set in backfill_completed, got %d", bits)
-	}
-}
+// NB : MarkEventsLoaded a été supprimée à la décommission des heals (2026-06-01).
+// Le marquage events_loaded + MBitEvents est désormais fait atomiquement par
+// persist.EventsCompletionPersister (cf. events_completion_persister_test.go).

@@ -324,28 +324,6 @@ WHERE value > 0`)
 	return result, rows.Err()
 }
 
-// runPostSyncRegistryNames résout les noms d'assets (map/pair/playlist/variant)
-// restés égaux à leur UUID dans match_registry, via metadata.asset_translations.
-// Réutilise la connexion metadata déjà ouverte (cache process / e.metaDB), comme
-// runPostSyncCitations. Best-effort : metadata indisponible → (0, nil). Idempotent
-// (BackfillRegistryNames n'UPDATE que les rows name==id). Retourne le nb de fixes.
-func (e *SyncEngine) runPostSyncRegistryNames(ctx context.Context, sharedDB *sql.DB) (int, error) {
-	var metaDB *sql.DB
-	if e.metaDB != nil {
-		metaDB = e.metaDB
-	} else if cached, ok := duckdbpkg.LookupCachedDB(e.metadataDBPath); ok {
-		metaDB = cached.SQLDb()
-	} else {
-		slog.DebugContext(ctx, "registry names post-sync: metadata DB non disponible — skip", "player", e.gamertag)
-		return 0, nil
-	}
-	stats, err := BackfillRegistryNames(ctx, sharedDB, metaDB)
-	if err != nil {
-		return 0, err
-	}
-	return stats.Total(), nil
-}
-
 // runPostSyncCitations branche les citations dans le pipeline post-sync.
 // Réutilise les DBs déjà ouvertes par runPostSyncPipeline (player + shared)
 // au lieu d'acquérir de nouveaux leases. Best-effort : retourne (0, nil) si

@@ -119,7 +119,7 @@ func seedBenchMatchesInRegistry(b *testing.B, db *sql.DB, n int, prefix string) 
 
 // BenchmarkProcessWeaponKillsInline_16Matches : 16 matchs × 100ms latence
 // simulée. Baseline séquentielle = 1.6s ; parallèle
-// (healParallelismNetworkOnly=24 post-3.6) = ~100ms + overhead. Documente
+// (weaponBackfillParallelism=24 post-3.6) = ~100ms + overhead. Documente
 // le gain Phase 3.0 + 3.6 dans le repo.
 func BenchmarkProcessWeaponKillsInline_16Matches(b *testing.B) {
 	db := openWeaponDBForBench(b)

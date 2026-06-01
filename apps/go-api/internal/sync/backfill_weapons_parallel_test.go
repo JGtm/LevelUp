@@ -121,11 +121,11 @@ func TestProcessWeaponKillsInline_Concurrent_NoRace(t *testing.T) {
 
 // TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential :
 // 16 matchs × 100ms latence simulée. La version SÉQUENTIELLE prend ~1.6s.
-// La version PARALLÈLE (healParallelismNetworkOnly=24 post-phase 3.6) doit
+// La version PARALLÈLE (weaponBackfillParallelism=24 post-phase 3.6) doit
 // prendre ~100ms + overhead (1 vague, tous matchs fit dans 24 slots).
 //
 // **Test perf qui ÉCHOUE sur le code séquentiel actuel** et passe après
-// errgroup.SetLimit(healParallelismNetworkOnly).
+// errgroup.SetLimit(weaponBackfillParallelism).
 func TestProcessWeaponKillsInline_LatencyParallelFasterThanSequential(t *testing.T) {
 	db := openWeaponDB(t)
 	matchIDs := seedMatchesInRegistry(t, db, 16, "perf")
@@ -181,7 +181,7 @@ func TestProcessWeaponKillsInline_Idempotent(t *testing.T) {
 // TestProcessWeaponKillsInline_CancelMidRun : ctx.Cancel à mi-parcours doit
 // retourner ctx.Err() sans crasher. Les matchs déjà traités restent committés.
 //
-// 100 matchs × 50ms : même avec healParallelismNetworkOnly=24 (phase 3.6),
+// 100 matchs × 50ms : même avec weaponBackfillParallelism=24 (phase 3.6),
 // au moins 4 vagues = 200ms minimum → cancel à 75ms catche mid-run.
 func TestProcessWeaponKillsInline_CancelMidRun(t *testing.T) {
 	db := openWeaponDB(t)

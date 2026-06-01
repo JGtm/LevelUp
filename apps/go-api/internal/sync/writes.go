@@ -430,20 +430,6 @@ func InsertHighlightEvents(ctx context.Context, db *sql.DB, matchID string, even
 	return inserted, nil
 }
 
-// MarkEventsLoaded positionne le bit MBitEvents dans backfill_completed
-// et passe events_loaded = TRUE (source de vérité pour le backfill).
-func MarkEventsLoaded(ctx context.Context, db *sql.DB, matchID string) error {
-	_, err := db.ExecContext(ctx, `
-		UPDATE match_registry
-		SET backfill_completed = COALESCE(backfill_completed, 0) | ?,
-		    events_loaded = TRUE
-		WHERE match_id = ?`, MBitEvents, matchID)
-	if err != nil {
-		return fmt.Errorf("MarkEventsLoaded(%s): %w", matchID, err)
-	}
-	return nil
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
 // Phase 2 du plan PLAN_BITMASKS_AUDIT_FIX (mai 2026) — Mark* manquantes pour
 // que les filtres detection backfill (skill/participants/PVE) reflètent l'état
