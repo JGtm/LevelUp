@@ -53109,3 +53109,54 @@ cette tache.
 Prochaine etape : commit (apres autorisation utilisateur) des fichiers Go modifies
 uniquement ; relancer une verif sync live quand l'API Halo / les tokens OAuth seront
 de nouveau joignables pour observer un post-sync complet sans heal.
+
+## [2026-06-01] Validation live sync — fix engagement PK + observabilite + discovery RO/RW
+
+Statut : Complete (sync live 4/4, verte).
+
+Suite de la verif finale : en re-declenchant le sync live, decouverte que le
+post-sync ne se terminait pour AUCUN joueur. Diagnostic initial errone ("API
+injoignable") corrige : l'API Halo repond, c'etait un blip reseau transitoire.
+Vraie cause en 2 couches, les deux reparees :
+
+COUCHE 1 — Bug PK engagement_coefficients (DB Chocoboflor).
+saveCoefficient fait INSERT ... ON CONFLICT (xuid, mode_category) DO UPDATE, mais
+la table existait SANS la PRIMARY KEY sur cette DB : la migration
+create_engagement_coefficients_table definit bien la PK mais via CREATE TABLE IF
+NOT EXISTS -> sur une DB ou la table preexistait, IF NOT EXISTS saute la
+recreation, la PK n'est jamais appliquee. DuckDB refuse alors le ON CONFLICT
+("Binder Error: conflict target not referenced by a UNIQUE/PRIMARY KEY"). Echec a
+CHAQUE post-sync, depuis >=2026-05-31. Verifie sur les 4 DB : seule Chocoboflor
+sans PK (les 3 autres l'ont). Fix : migration corrective
+repair_engagement_coefficients_primary_key (TargetPlayer) qui reconstruit la table
+avec la PK quand elle manque (dedup defensif ROW_NUMBER par (xuid, mode_category),
+garde la plus recente), idempotente (no-op si PK presente). Helper hasPrimaryKey
+(duckdb_constraints). 3 tests (legacy sans PK -> repare + UPSERT debloque ;
+idempotent sur DB saine ; dedup doublons). Resultat live : synced 0->1.
+
+COUCHE 2 — Discovery RO/RW conflict sur les DB joueur.
+Une fois la couche 1 reparee, 3/4 joueurs restaient "failed" SANS aucune trace
+log (FirstError avale dans un snapshot diag players:[]). 1er livrable : combler ce
+trou d'observabilite — cycle.go logue desormais chaque joueur failed avec sa
+raison (slog.Warn "sync.v2: joueur en echec", event sync.v2.cycle.player_failed).
+Ca a immediatement revele la cause : phase discovery (known_loader.LoadKnown)
+ouvrait la DB joueur en OpenReadOnly, qui echoue par intermittence quand un autre
+subsystem (pool / career live / backup cron) tient deja le fichier en RW dans le
+meme process (DuckDB refuse RO+RW concurrents) -> meme classe que RC-A / ADR-0016.
+Fix : nouveau helper duckdb.OpenReadForQuery(path) qui reutilise le handle en
+cache (LookupCachedDB, RW ou RO ; la lecture SELECT marche sur RW) et ne tombe sur
+OpenReadOnly qu'en cold ; release no-op si emprunte au cache. Cable dans
+sync_v2_wiring.go (playerDBOpenerRO). 2 tests (reuse handle RW cache + cold RO).
+
+Verification live (serveur relance) : 3 cycles consecutifs synced=4 / failed=0 /
+0 ERROR / 0 player_failed ; 0 ART, 0 read-only, 0 self-heal aujourd'hui. Le sync
+live complet (fetch + post-sync) est desormais fonctionnel et stable pour les 4
+joueurs — ce qui boucle la validation live restee ouverte.
+
+Correction de cap honnete : 2 affirmations precedentes etaient fausses et corrigees
+(API "injoignable" ; engagement Binder "hors-scope"). Le mention du CLI
+cmd/repair-metadata casse etait hors-sujet ici, ecartee.
+
+Prochaine etape : commit (apres autorisation) groupant heals-decommission +
+engagement PK + observabilite + discovery RO/RW (fichiers Go a moi uniquement,
+jamais le travail web/authz/ownership/server parallele de l'utilisateur).

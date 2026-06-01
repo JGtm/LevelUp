@@ -95,6 +95,29 @@ func LookupCachedDB(path string) (*DB, bool) {
 	return nil, false
 }
 
+// OpenReadForQuery retourne un handle utilisable en LECTURE, en réutilisant le
+// handle déjà en cache (RW ou RO) s'il existe — une lecture (SELECT) marche sur
+// un handle RW. Évite l'échec "Can't open ... with a different configuration"
+// quand un autre subsystem (pool, career live, backup cron) tient déjà le fichier
+// en RW dans le même process : forcer un OpenReadOnly dans ce cas échoue (DuckDB
+// refuse RO+RW concurrents sur un même fichier). Incident 2026-06-01 : la phase
+// discovery du sync V2 (load known) échouait ainsi par intermittence sur les DB
+// joueur (même classe que RC-A / ADR-0016).
+//
+// Le release retourné ne ferme le handle QUE s'il a été ouvert ici. Un handle
+// emprunté au cache n'est pas fermé (sa durée de vie appartient à son
+// propriétaire), conformément au contrat de LookupCachedDB.
+func OpenReadForQuery(path string, timezone ...string) (*sql.DB, func(), error) {
+	if cached, ok := LookupCachedDB(path); ok {
+		return cached.SQLDb(), func() {}, nil
+	}
+	db, err := OpenReadOnly(path, timezone...)
+	if err != nil {
+		return nil, nil, err
+	}
+	return db.SQLDb(), func() { _ = db.Close() }, nil
+}
+
 // sanitizeTimezone valide un nom de timezone IANA pour éviter les injections SQL.
 // Retourne "" si la valeur contient des caractères non autorisés.
 func sanitizeTimezone(tz string) string {

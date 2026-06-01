@@ -253,6 +253,22 @@ func (o *CycleOrchestratorImpl) Run(
 	res.Duration = time.Since(start)
 	observability.RecordDurationMS("sync_v2_cycle_duration_ms", res.Duration.Milliseconds())
 	observability.IncCounter("sync_v2_cycle_success")
+
+	// Observabilité : remonter explicitement la raison (FirstError) de chaque
+	// joueur en échec. Sans ça, le détail par-joueur était silencieusement avalé
+	// dans le snapshot diag (players:[]) et un échec récurrent restait invisible
+	// dans les logs (incident 2026-06-01 : 3 joueurs "failed" sans aucune trace).
+	for slug, out := range res.PerPlayer {
+		if out.Status == "failed" {
+			slog.WarnContext(ctx, "sync.v2: joueur en échec",
+				"event", "sync.v2.cycle.player_failed",
+				"player", slug,
+				"gamertag", out.Gamertag,
+				"reason", out.FirstError,
+			)
+		}
+	}
+
 	slog.InfoContext(ctx, "sync.v2: cycle terminé",
 		"event", "sync.v2.cycle.done",
 		"duration_ms", res.Duration.Milliseconds(),
