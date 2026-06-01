@@ -1,3 +1,26 @@
+## [2026-06-01] Revue sync/persist — P3 : dette (correctness + doc-rot)
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Décision technique** :
+- **D6-3** : `ensurePlayerEnrichmentRows` faisait un `INSERT` nu dans 1 TX avec un `continue` sur erreur
+  inopérant (un statement en erreur invalide la TX DuckDB → 0 row au lieu du skip annoncé). Passé en
+  `INSERT OR IGNORE` (aligné sur comeback_postsync_persist / fanout_repo) ; toute erreur restante abort
+  la TX. Import slog retiré (devenu inutilisé).
+- **D7-1** : magic ints Outcome (`case 2/1/3/4`) remplacés par `domain.OutcomeWin/Draw/Loss/DNF` dans
+  skill_rating.go ET skill_formula_sim.go (valeurs identiques → comportement inchangé, tests skill verts).
+- Doc-rot (commit séparé) : commentaires faux corrigés — weapon_kills « append-only ART-safe » →
+  « DELETE+INSERT sérialisé par lease+MaxOpenConns(1) » (D4-1) ; shared_social « MaxOpenConns(1) » →
+  réellement 4, vraie raison du skip CHECKPOINT documentée (D5-2) ; refs obsolètes sql_builder.go /
+  « DELETE+INSERT » LUSR (D2-8) ; mojibake UTF-8 engine.go (D7-6).
+
+**Résultats observés** : build + vet clean. Tests Skill/LUSR/EnrichmentRows verts.
+
+**Reporté (dette assumée, non bloquant)** : god function `runPostSyncPipeline` (D7-3, refactor risqué
+hors scope d'une passe cleanup) ; routage DBTarget mort de la queue (D1-2, API morte mais inerte) ;
+croissance non bornée match_skill_rank en force=true (D6-2, hygiène espace) ; code mort daté pool.go
+(D5-5, péremption 2026-06-22 — à traiter avant échéance).
+
 ## [2026-06-01] Revue sync/persist — P2 : race Submit/Close + garde-rail ART élargi
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
