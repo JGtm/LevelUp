@@ -137,7 +137,11 @@ func (r *RefreshLoop) check(ctx context.Context) {
 
 // refreshOAuth utilise le refresh_token pour obtenir un nouvel access_token.
 func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) error {
-	accessToken, err := ExchangeRefreshToken(ctx, tokens.RefreshToken)
+	// D3-03 (revue 2026-06-01) : variante AVEC rotation. Microsoft tourne le
+	// refresh_token à CHAQUE usage ; l'ancienne ExchangeRefreshToken (sans rotation)
+	// jetait le RT rotaté → l'ancien RT stocké finissait par devenir invalide
+	// (classe incident invalid_grant, ADR 0023). On propage le RT rotaté au store.
+	accessToken, rotatedRT, err := ExchangeRefreshTokenWithRotation(ctx, tokens.RefreshToken)
 	if err != nil {
 		return err
 	}
@@ -145,7 +149,9 @@ func (r *RefreshLoop) refreshOAuth(ctx context.Context, tokens *StoredTokens) er
 		slog.WarnContext(ctx, "refresh_loop: refresh_token révoqué ou expiré")
 		return nil
 	}
-	if err := r.store.UpdateOAuth(accessToken, "", oauthDefaultTTL); err != nil {
+	// rotatedRT == "" → UpdateOAuth préserve l'ancien RT (pas de rotation côté MS) ;
+	// rotatedRT != "" → on stocke le nouveau RT (sinon il serait perdu).
+	if err := r.store.UpdateOAuth(accessToken, rotatedRT, oauthDefaultTTL); err != nil {
 		return err
 	}
 	slog.InfoContext(ctx, "refresh_loop: access_token renouvelé")
