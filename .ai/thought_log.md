@@ -1,3 +1,86 @@
+## [2026-06-01] Revue des déclencheurs de sync (auto/watcher/manuel/cron) → corrections A-E
+
+**Statut** : Complété — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : revue multi-agents (4 dim, 21 agents) des mécanismes qui déclenchent un sync : auto-sync
+scheduler, watcher de présence, manuel HTTP, crons/boot, coordination. Thème dominant : pas de point de
+coordination cross-source unique ; la sérialisation cross-source repose sur le lease dblease KindPlayer
+(pas de corruption) + dédup par source. Plus une vraie faille d'autorisation et un cluster lifecycle.
+
+**Corrections livrées (sequentielles, commits intermittents)** :
+- **A (D3-01, authz, ea9550738)** : /sync/initial + /sync/all montées hors auth → contournaient l'ownership
+  (ADR 0024). Wrappées sous RequireAuth+RequireAdmin (no-op en demo, admin-only en multi-user).
+- **B (08cd1c950, ffa6400fc)** : D3-04 timeout 30 min sur les jobs sync HTTP (lease non borné→borné) ;
+  D3-05 message db_busy distinct ; D3-03 refresh_token rotation (ExchangeRefreshTokenWithRotation,
+  ADR 0023) ; AS-4 baseline seed du MatchPoller (plus de sync superflu à chaque Watching) ; W4 match
+  détecté pendant un sync re-signalé au lieu d'être perdu (MatchCallback retourne accepted bool).
+- **C (lifecycle, ade3b55da)** : COORD-1 — Coordinator.wg + daemon.Stop() attend les syncs en vol (timeout
+  8s) ; W2 — UpdateSubscriptions stoppe le REST poller (ctx par joueur) + stopPoller ; W6 — live_refresh
+  persiste en SYNC dans la goroutine du ticker (lié au pollerCtx) au lieu de goroutines détachées
+  Background → plus d'écriture après duckdb.CloseAll (classe #7659).
+- **D+E (20cbb683c)** : W7 — MatchQueue.seen borné (10000) ; coordination cross-source documentée dans
+  coordinator.go (lease = rempart, dédup par source, double-fetch TOCTOU accepté) ; W8 — SteamPoller annoté
+  "implémenté+testé mais non câblé" (fallback planifié, lève la confusion code-mort).
+
+**Low/info documentés comme acceptés (pas de fix forcé)** :
+- AS-6 / COORD-5 (spartan cron + écritures live pendant un sync) : DÉJÀ géré gracieusement — IsFileLockError
+  capturé + DEBUG agrégé, skip + retry au cycle suivant (mieux que bloquer sur un lease multi-minutes).
+- D3-06 (StartSyncAll pas de garde concurrente) : borné par authz admin + lease per-joueur.
+- AS-5 (goroutines fond sur Background) : fuite au process-exit uniquement ; le CHECKPOINT est gardé par
+  LookupCachedDB (skip si cache vidé post-CloseAll).
+- COORD-6 (PostSyncRunner V2 non câblé sur sync HTTP) : le post-sync principal (perf/LUSR) tourne dans
+  RunDelta ; seul le bridge progression V2 manque, rattrapé au prochain sync auto/watcher. Gap feature low.
+- AS-7 / D3-07 (re-scan / toggle à chaud) : info, comportement actuel acceptable.
+
+**Faux positif écarté** : AS-3 (timeout shutdown scheduler 3s) réfuté.
+
+**Résultats observés** : build ./internal/... + vet clean ; api/handlers, watcher, presence, sync,
+coordinator verts (watcher/sync/presence sous -race). +2 tests (W4 re-signal, seed/detect réécrits).
+
+## [2026-06-01] Recherche — quel ComponentObject ECS porte le score d'équipe Strongholds (54→120→124→167)
+
+**Statut** : Complété (recherche, aucune modif code) — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : déterminer lequel des composants du registre ECS du film (header type-1) porte le score
+TEAM objectif Strongholds (compteur continu d'une équipe). Sources : den.dev blog + dend/blog-comments
+issue #5 (124 commentaires, lus en entier via gh api), acurtis166/SPNKr module film, RESEARCH_THEATER_RE.md.
+
+**Décision technique / findings** :
+- **"statborg" = sous-système STATS de l'ECS** (stat + "borg"/agrégateur). Ses composants stockent des
+  valeurs de stat **par entité**, pas l'état de match autoritatif.
+- **Le compte 28× est le discriminant clé** : `statborg-current-round-value-stat-component` (28×) et
+  `statborg-finalized-rounds-values-stat-component` (28×) sont alloués **par joueur/par-slot-de-stat**
+  (28 ≈ pool de slots joueurs/stats), PAS par équipe (2×) ni global (1×). Un score d'équipe serait un
+  composant à cardinalité 1-2, pas 28. → statborg = mauvais candidat pour le TEAM score.
+- **`game-engine-current-state-component`** (machine d'état global match/round, cardinalité ~1) est le
+  candidat #1 pour une tally d'objectif d'équipe autoritaire ; `game-engine-alliance` (état par alliance/
+  équipe) #2. **MAIS aucun n'a de schéma de valeur décodé** par la communauté (bloqué sur la "Rosetta
+  Stone" = schémas .module/tag via runtime-tagviewer).
+- **Modèle de score Strongholds** confirmé (Halo support/Halopedia) : +1 pt/s à 2 zones, +2 pt/s à 3 zones,
+  course à 250. Cohérent avec la ground-truth locale (54@3:16→120@4:55→124@5:59→167@7:48 ≈ 1 pt/s 2 zones).
+  → c'est un **accumulateur engine-side incrémenté par tick**, pas une stat joueur agrégée.
+- **Vérif négative décisive** : "statborg"/"round-value"/"score component" = **0 occurrence** dans les 124
+  commentaires de l'issue #5 ; aucun code GitHub n'indexe `statborg-current-round-value-stat-component`.
+  Ces noms ne viennent QUE du registre header (notre dump + "1033 ComponentObjects" dend/aapokaapo).
+  La communauté n'a JAMAIS décodé ces composants (en est aux fire/melee/grenade/aim/positions).
+
+**Classement candidats (plus→moins probable pour le TEAM objective score)** :
+1. `game-engine-current-state-component` — état match/round global autoritatif (cardinalité 1)
+2. `game-engine-alliance` — état par équipe/alliance (le score peut y vivre par-team)
+3. `statborg-current-round-value-stat-component` (28×) — improbable (per-player), mais pourrait porter une
+   stat d'objectif PAR JOUEUR (ObjectivesCompleted/Objective Time) que l'UI **somme** par équipe
+4. `managed-objective-*` (système objectifs/zones) — état des zones (qui contrôle), pas le compteur de points
+5. `statborg-finalized-rounds-values-stat-component` (28×) — valeurs de FIN de round (snapshot), pas le live
+6. `statborg-round-outcomes-component` / `game-engine-current-round`/`round-timer`/`shared-team-lives` — hors sujet
+
+**Conclusion / prochaine étape** : le TEAM score Strongholds n'est PAS dans statborg (per-player) ; il vit
+très probablement dans `game-engine-current-state-component` (ou `game-engine-alliance`) — un accumulateur
+incrémenté par tick — mais reste **schéma-bloqué** (cf. RESEARCH_THEATER_RE.md §M/§M-bis : différentielle
+multi-agent négative, faux positif `00 0a 00 00…` réfuté). Débloquer = obtenir le schéma property-id/
+bit-width du GameMode Strongholds via runtime-tagviewer ou les .module (Reclaimer/infinite-rs), PAS du film seul.
+
+---
+
 ## [2026-06-01] Revues social/metadata + per-player hors-match → corrections P1/P2/P3
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
@@ -53491,3 +53574,19 @@ Suite (meme jour) — ground-truth utilisateur recu, events objectif th=10 VALID
   Reconstruction par taux x timeline-zones bloquee (zone A/B/C pas dans l'event).
 - Acquis net : timeline d'objectifs (qui + equipe + quand) solide ; sous-type action,
   zone, et score live = mur du schema (replication). Doc section M maj. Mode evdump <th>.
+
+Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLOQUE (verifie).
+- Workflow 4 agents (marqueur score, paire adjacente, pic frame, compteur monotone) +
+  mes passes (paire byte, keyframe byte/bit monotone). TOUS negatifs, haute confiance.
+- PIEGE attrape par la verif adverse : Theory 1 a trouve une fenetre ou u16BE matchait
+  les 4 ancres (0036=54,0078=120,007c=124,00a7=167) = match 4/4 tentant. MAIS le test
+  inverse (histogramme des valeurs apres le marqueur) l'a refute : marqueur present
+  1027-1155x/chunk, score ne domine jamais (plat) = framing generique par-entite. Sans
+  multi-agent ce FP serait passe pour la solution. Lecon : test inverse obligatoire
+  (un vrai marqueur de score doit faire DOMINER le score dans l'histogramme conditionnel).
+- Mon pic-de-frame-a-la-capture aussi dementi (frame capture = 1.05x moyenne, pas un pic).
+- Cause racine : payload bit-packe (entropie 4.49, 48.8% zeros) ; scores = petits octets
+  presents 700-1150x/chunk par hasard -> FP rate ~1. Ni alignement, ni narrowing, ni
+  nb d'ancres n'isole une valeur si commune. Verdict : score/zone live = OFF-FILM
+  (schema property-layout) requis. Outils ajoutes : valsearch/pairsearch/bitval/extract/
+  monobits/frames. Doc section M-bis.
