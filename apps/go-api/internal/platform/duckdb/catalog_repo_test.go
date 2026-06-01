@@ -13,7 +13,7 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
-func setupCatalogRepoDB(t *testing.T) *sql.DB {
+func setupCatalogRepoDB(t *testing.T) *DB {
 	t.Helper()
 	db, err := sql.Open("duckdb", ":memory:")
 	if err != nil {
@@ -46,7 +46,9 @@ func setupCatalogRepoDB(t *testing.T) *sql.DB {
 	         VALUES ('halo_infinite', 'pa-1', 'Arena:Slayer on Bazaar', 'm-1', 'gv-1', 'Assassin')`)
 	db.Exec(`INSERT INTO playlist_pair_links (title_slug, playlist_asset_id, pair_asset_id, weight)
 	         VALUES ('halo_infinite', 'pl-1', 'pa-1', 1.0)`)
-	return db
+	// Wrap en *DB (sqlDB seul suffit : QueryRecovered délègue au sqlDB sur le
+	// happy path ; pas de FATAL invalidation déclenchée en test :memory:).
+	return &DB{sqlDB: db}
 }
 
 func TestCatalogRepo_PlaylistsByTitle_FullCatalog(t *testing.T) {
@@ -189,7 +191,7 @@ func TestCatalogRepo_playlistsPlayedByXUID(t *testing.T) {
 	}
 
 	// Construction du repo avec SharedReader legacy autour de pdb.Shared.
-	repo := NewCatalogRepo(pdb.Metadata.SQLDb(), LegacySharedReader(pdb.Shared))
+	repo := NewCatalogRepo(pdb.Metadata, LegacySharedReader(pdb.Shared))
 
 	pls, err := repo.PlaylistsByTitle(ctx, "halo_infinite", pTestXUID, true)
 	if err != nil {

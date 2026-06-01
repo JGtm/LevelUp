@@ -62,11 +62,13 @@ type PlayerDB struct {
 	SharedSocial *DB // shared_social.duckdb (médias, likes, favoris de matchs)
 	Metadata     *DB // metadata.duckdb (RO)
 
-	// SocialPersister est l'unique point d'écriture sur SharedSocial via le
-	// pattern Collect→Persist (ADR 0020). Garantit CHECKPOINT après chaque
-	// batch → WAL toujours vidé → bug DuckDB #7659 impossible. Tous les
-	// repos qui écrivent sur shared_social DOIVENT passer par ce Persister
-	// (sentinel parse-AST Phase 6 enforce). Nil si SharedSocial est nil.
+	// SocialPersister est le chemin NOMINAL d'écriture sur SharedSocial via le
+	// pattern Collect→Persist (ADR 0020). Le Persist() générique ne CHECKPOINT pas
+	// systématiquement : le flush WAL est borné par le scheduler 5 min + le
+	// CHECKPOINT shutdown (cf. #7659). NB (revue 2026-06-01 SS-02) : ce n'est PAS
+	// l'unique chemin — les mutations notifications et Prestige écrivent encore en
+	// direct, et il n'y a pas de sentinel AST sur les écritures (seulement l'ATTACH
+	// est gardé). Nil si SharedSocial est nil.
 	//
 	// L'interface est définie ici (pas dans internal/persist) pour éviter
 	// un cycle d'import : internal/persist importe déjà internal/platform/duckdb

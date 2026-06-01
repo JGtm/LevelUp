@@ -12,10 +12,12 @@
 //
 //	pdb.SocialPersister = persist.NewSharedSocialPersister(pdb.SharedSocial.SQLDb())
 //
-// Les repos qui écrivent sur shared_social DOIVENT passer par cette
-// interface. Si nil (initialisation pas faite ou SharedSocial nil), le repo
-// peut retomber sur l'ancien chemin db.Exec — mais cette dégradation sera
-// supprimée en Phase 6 (sentinel parse-AST).
+// Les repos qui écrivent sur shared_social DEVRAIENT passer par cette interface
+// (chemin nominal). Si nil (init pas faite ou SharedSocial nil), le repo retombe
+// sur l'ancien chemin db.Exec. NB (revue 2026-06-01 SS-02) : il n'existe PAS de
+// sentinel AST interdisant ces écritures directes — seul l'ATTACH est gardé
+// (no_attach_on_social_test.go). Les mutations notifications et Prestige restent
+// hors persist aujourd'hui.
 
 package duckdb
 
