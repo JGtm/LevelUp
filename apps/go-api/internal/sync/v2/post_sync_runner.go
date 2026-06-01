@@ -28,35 +28,49 @@ import (
 // engine minimaliste (gamertag + xuid seulement).
 type SyncEngineFactory func(ctx context.Context, p PlayerProfile) (*syncpkg.SyncEngine, error)
 
+// SharedDBAcquirer acquiert un *sql.DB shared en READ-WRITE pour la durée du
+// post-sync (heals events/skill/weapon/registry écrivent dans shared). En mode
+// B-swap, route via Provider.AcquireWriter ; en legacy, OpenSharedDB. Le release
+// ferme/rend le writer (RW→RO) et DOIT être appelé après le post-sync.
+//
+// Distinct du `getSharedDB func() *sql.DB` (RO) utilisé par KnownLoader pour des
+// lectures : ce dernier renvoie le handle RO caché et n'a pas de release. Les
+// confondre était la cause racine RC-A (heal recevait un handle RO → toutes les
+// écritures combat échouaient "attached in read-only mode", silencieusement avant
+// le fail-fast Phase 1a). Même classe de bug que le fix player DB RO→RW du
+// 2026-05-25 (cf. sync_v2_wiring.go), mais côté shared, jamais corrigé jusqu'ici.
+type SharedDBAcquirer func(ctx context.Context) (db *sql.DB, release func(), err error)
+
 // postSyncRunnerV2 implémente PostSyncRunner via le wrapper V1.
 type postSyncRunnerV2 struct {
-	engineFactory SyncEngineFactory
-	openPlayerDB  PlayerDBOpener
-	getSharedDB   func() *sql.DB // retourne la connexion shared courante à l'appel
-	clientFactory HaloClientFactory
+	engineFactory  SyncEngineFactory
+	openPlayerDB   PlayerDBOpener
+	acquireSharedW SharedDBAcquirer // RW writer pour les heals (cf. SharedDBAcquirer)
+	clientFactory  HaloClientFactory
 }
 
 // NewPostSyncRunner construit un PostSyncRunner V2.
 //
 // Paramètres :
-//   - engineFactory : construit un SyncEngine V1 configuré pour un joueur.
-//   - openPlayerDB  : ouvre stats.duckdb du joueur en read-write (heals écrivent dedans).
-//   - getSharedDB   : retourne la connexion shared courante (fraîche après chaque swap
-//     provider RO→RW→RO). Doit appeler LookupCachedDB au moment de l'appel, pas au boot.
-//   - clientFactory : construit un HaloClient pinné sur le joueur (pour les heals API).
+//   - engineFactory  : construit un SyncEngine V1 configuré pour un joueur.
+//   - openPlayerDB   : ouvre stats.duckdb du joueur en read-write (heals écrivent dedans).
+//   - acquireSharedW : acquiert le shared en READ-WRITE (writer provider + release).
+//     Les heals post-sync écrivent dans shared ; un handle RO ferait échouer toutes
+//     leurs écritures (RC-A). Le release est appelé en fin de post-sync.
+//   - clientFactory  : construit un HaloClient pinné sur le joueur (pour les heals API).
 //
 // insertedIDs est passé per-call par l'orchestrator (cf. cycle.go Phase 6).
 func NewPostSyncRunner(
 	engineFactory SyncEngineFactory,
 	openPlayerDB PlayerDBOpener,
-	getSharedDB func() *sql.DB,
+	acquireSharedW SharedDBAcquirer,
 	clientFactory HaloClientFactory,
 ) *postSyncRunnerV2 {
 	return &postSyncRunnerV2{
-		engineFactory: engineFactory,
-		openPlayerDB:  openPlayerDB,
-		getSharedDB:   getSharedDB,
-		clientFactory: clientFactory,
+		engineFactory:  engineFactory,
+		openPlayerDB:   openPlayerDB,
+		acquireSharedW: acquireSharedW,
+		clientFactory:  clientFactory,
 	}
 }
 
@@ -74,12 +88,24 @@ func (r *postSyncRunnerV2) RunPostSync(ctx context.Context, p PlayerProfile, ins
 	}
 	defer releasePlayer()
 
-	sharedDB := r.getSharedDB()
+	// RC-A fix : acquérir le shared en READ-WRITE (writer provider), pas le handle
+	// RO caché. Les heals events/skill/weapon/registry écrivent dans shared ; un
+	// handle RO faisait échouer toutes ces écritures "attached in read-only mode".
+	sharedDB, releaseShared, err := r.acquireSharedW(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "sync.v2 post-sync: acquisition shared RW échouée — skip",
+			"event", "sync.v2.postsync.shared_acquire_failed", "player", p.PlayerSlug, "err", err)
+		return PlayerPostSyncResult{PlayerSlug: p.PlayerSlug}, nil
+	}
 	if sharedDB == nil {
+		if releaseShared != nil {
+			releaseShared()
+		}
 		slog.WarnContext(ctx, "sync.v2 post-sync: shared DB indisponible — skip",
 			"event", "sync.v2.postsync.shared_unavailable", "player", p.PlayerSlug)
 		return PlayerPostSyncResult{PlayerSlug: p.PlayerSlug}, nil
 	}
+	defer releaseShared()
 
 	var client syncpkg.HaloClient
 	if r.clientFactory != nil {
