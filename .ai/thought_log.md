@@ -52716,3 +52716,63 @@ BackfillRegistryNames_* couvrent la logique). Le wrapper post-sync est un thin
 best-effort sans nouvelle logique SQL.
 
 Prochaine etape : Phase 6 (statut sync visible — bandeau front is_partial/events_empty).
+
+## [2026-06-01] Phase 7 remediation — ROOT CAUSE RC-E isole (metadata self-corruption regeneree chaque cycle)
+
+Statut : Diagnostic DEFINITIF. Remediation des 2 matchs BLOQUEE par RC-E actif. Aucun
+fix code commite (scope nouveau a valider). Server laisse tournant (etat fonctionnel,
+errors cycliques pre-existantes).
+
+Matchs cibles (30/05) : 6c01f693-c968-4a71-b157-efc35ffcf71f (13:38) et
+5324364b-39a8-4f93-96a6-b80a1f18ce8a-pair... (13:22). Etat : he=0 wk=0 kv=0 bf=0,
+noms=GUID. Tous les matchs <= 26/05 sont COMPLETS.
+
+CHAINE CAUSALE COMPLETE (prouvee live ce jour) :
+1. metadata.duckdb : table playlists_catalog a 2 index ART secondaires
+   (idx_playlists_catalog_active, idx_..._experience). seedPlaylistsCatalog
+   (career.go:289) fait un UPDATE sur cette table CHAQUE cycle. UPDATE sur table
+   ART-indexee → "Failed to delete all rows from index. Only deleted 0 out of N" →
+   corruption ART → metadata FATAL "database has been invalidated".
+2. → la metadata FATAL-invalidated cascade : le SharedDBProvider sert shared en
+   READ-ONLY au post-sync (RC-A, lien H1 du HANDOFF CONFIRME).
+3. → events heal / skill heal / registry-names heal / Phase 5 echouent tous RO.
+   Mais GRACE A Phase 1a : fail-fast honnete (events_heal.go:88 "shared non-writable
+   completion combat SKIPPE"), plus de panne silencieuse. Phase 5 registry-names
+   tourne et cible bien les GUID des 2 matchs (preuve : 5324364b/6c01f693/daeeeb17/
+   95ca323c dans les logs BackfillRegistryNames) — juste bloque par le RO.
+
+PREUVES D'ISOLATION (ce qui a ete elimine) :
+- Multi-instance : NON (1 seule server.exe PID 34524 confirme).
+- ART shared : rebuild OK (force_rebuild_art, 26068 rows, 0 perte) — shared est
+  writable en soi.
+- metadata FATAL apres MES repairs (challenge_template restore + playlists_catalog
+  rebuild, smoke UPDATE OK) : 0 FATAL pendant ~30s... PUIS REGENERE a 08:17:30 par
+  le 1er seedPlaylistsCatalog UPDATE. → la corruption se REGENERE chaque cycle.
+  Mon rebuild standalone est un one-shot annule par le sync suivant.
+
+DEGAT QUE J'AI CAUSE PUIS REPARE : le CLI cmd/repair-metadata est CASSE (bug propre :
+"challenge_template: 18 columns but 22 values" — DDL stale 18 cols vs table reelle
+22 cols). Il a vide challenge_template (backup 27 rows dans _repair_tmp puis crash
+avant reinsert). RESTAURE : DROP table vide + RENAME _repair_tmp → challenge_template
+(27 rows, schema 22 cols intact). Ne JAMAIS utiliser repair-metadata tant que son
+DDL n'est pas corrige.
+
+VRAI FIX REQUIS (scope NOUVEAU, non commite — a valider avec utilisateur) :
+rendre seedPlaylistsCatalog + runAchievementsSync ART-safe sur metadata. Options :
+ (a) supprimer les 2 index ART secondaires de playlists_catalog (lecture par
+     title_slug+is_active/experience reste rapide a 34 rows ; les index ne servent
+     a rien a cette volumetrie et sont la SEULE source de corruption).
+ (b) pattern SELECT-then-INSERT-or-skip sans UPDATE (career.go fait deja UPDATE-then
+     -INSERT mais c'est l'UPDATE qui corrompt l'index).
+ Idem auditer achievements upsert definitions (meme FATAL).
+Cf. CLAUDE.md regle "metadata.duckdb writers catalogue/cache migres hors ON CONFLICT"
++ no_art_patterns_test.go tablesProtegees inclut deja playlists_catalog → un UPDATE
+direct dessus DEVRAIT etre flague (a verifier pourquoi le garde-fou ne l'a pas pris).
+
+CONCLUSION : les 5 fixes combat (Phases 1-5) sont CORRECTS et rendent le systeme
+honnete (fail-fast, plus de 31h silencieux). Ils healeraient les 2 matchs
+INSTANTANEMENT des que shared est vraiment RW. Mais le blocage actuel est RC-E
+(metadata self-corruption playlists_catalog) — upstream, hors scope du lot combat,
+non corrige. Les 2 matchs du 30/05 restent vides + data-loss film probable (>48h
+bientot). Prochaine etape = decider du fix seedPlaylistsCatalog ART-safe avec
+l'utilisateur (nouveau lot).
