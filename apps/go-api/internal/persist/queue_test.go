@@ -18,9 +18,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -39,6 +41,68 @@ func helperNewBatch(t *testing.T, batchID, gamertag string) *MatchBatch {
 	out := b.Build()
 	out.BatchID = batchID // override pour test reproductible
 	return out
+}
+
+// ─── Régression D1-1 : Submit concurrent à Close ne panique jamais ─────────
+//
+// Avant le fix, Submit relâchait le RLock AVANT le send `q.chMain <- batch` ;
+// Close pouvait close(chMain) dans cette fenêtre → panic "send on closed
+// channel" (atteignable au shutdown si un cycle de sync straggler Submit après
+// le Wait scheduler borné à 3s). Le fix (sendWG attendu par Close avant close)
+// garantit qu'aucun send ne touche un channel fermé. Lancer sous -race.
+func TestBatchQueue_ConcurrentSubmitClose_NoPanic(t *testing.T) {
+	dir := t.TempDir()
+	q, err := NewBatchQueue(BatchQueueConfig{WALDir: dir, ChanBufSize: 16})
+	if err != nil {
+		t.Fatalf("NewBatchQueue: %v", err)
+	}
+
+	// Drain continu pour que les Submit ne bloquent pas indéfiniment sur un
+	// channel plein ; s'arrête quand Close ferme chMain (range termine).
+	drained := make(chan struct{})
+	go func() {
+		defer close(drained)
+		for range q.Channel(TargetShared) {
+		}
+	}()
+
+	// Pré-construire les batches hors goroutines (helperNewBatch touche t).
+	const n = 256
+	batches := make([]*MatchBatch, n)
+	for i := range batches {
+		batches[i] = helperNewBatch(t, fmt.Sprintf("race_%03d", i), "Alice")
+	}
+
+	var wg sync.WaitGroup
+	unexpected := make(chan error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(b *MatchBatch) {
+			defer wg.Done()
+			// Seul ErrQueueClosed est toléré ; une panic ferait planter le test.
+			if err := q.Submit(b); err != nil && !errors.Is(err, ErrQueueClosed) {
+				unexpected <- err
+			}
+		}(batches[i])
+	}
+
+	// Fermer pendant que les Submit sont en vol — c'est la fenêtre de course.
+	time.Sleep(500 * time.Microsecond)
+	if err := q.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	wg.Wait()
+	<-drained
+	close(unexpected)
+	for e := range unexpected {
+		t.Errorf("Submit a retourné une erreur inattendue : %v", e)
+	}
+
+	// Close idempotent.
+	if err := q.Close(); err != nil {
+		t.Errorf("2e Close doit être no-op, got %v", err)
+	}
 }
 
 // ─── Test 1 : Submit écrit le WAL avant de pousser ────────────────────────

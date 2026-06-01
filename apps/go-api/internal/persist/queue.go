@@ -53,6 +53,16 @@ type BatchQueue struct {
 	closed   bool
 	closedMu sync.RWMutex
 
+	// sendWG track les Submit "en vol" (qui ont passé le check closed mais
+	// n'ont pas encore fini leur send sur chMain). Close attend sendWG AVANT
+	// close(chMain) → un send ne peut JAMAIS toucher un channel déjà fermé
+	// (sinon : panic "send on closed channel" au shutdown si un cycle de sync
+	// straggler Submit pendant Close, cf. main.go Wait scheduler borné à 3s).
+	// Add(1) est fait SOUS closedMu (mutuellement exclusif avec le Lock de
+	// Close) : tout Submit est soit enregistré avant que Close lise closed=true,
+	// soit voit closed=true et retourne sans send.
+	sendWG sync.WaitGroup
+
 	// Phase 6 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : compteurs pour le
 	// circuit-breaker sur Drain. Le worker appelle RecordPersistResult()
 	// apres chaque batch — la queue track les echecs consecutifs pour fail
@@ -101,6 +111,10 @@ func (q *BatchQueue) Submit(batch *MatchBatch) error {
 		q.closedMu.RUnlock()
 		return ErrQueueClosed
 	}
+	// S'enregistrer comme sender en vol AVANT de relâcher le lock — Close
+	// (Lock exclusif) ne pourra close(chMain) qu'après sendWG.Wait().
+	q.sendWG.Add(1)
+	defer q.sendWG.Done()
 	q.closedMu.RUnlock()
 
 	// Phase 4 du PLAN_FIX_SYNC_RELIABILITY_2026-05-24 : sanitize defensif
@@ -312,13 +326,21 @@ func (q *BatchQueue) Drain(ctx context.Context) error {
 
 // Close termine la queue : Submit ultérieurs retourneront ErrQueueClosed.
 // Les batches déjà dans le channel restent lisibles par les workers.
+//
+// Ordre critique anti-panic : on pose closed=true (sous Lock), on relâche, on
+// attend que tous les Submit en vol aient fini leur send (sendWG.Wait), PUIS
+// on close(chMain). Tout Submit acquérant le RLock après ce point voit
+// closed=true et retourne sans send → aucun send sur channel fermé possible.
 func (q *BatchQueue) Close() error {
 	q.closedMu.Lock()
-	defer q.closedMu.Unlock()
 	if q.closed {
+		q.closedMu.Unlock()
 		return nil
 	}
 	q.closed = true
+	q.closedMu.Unlock()
+
+	q.sendWG.Wait() // attendre les Submit en vol (leur send sur chMain est terminé)
 	close(q.chMain)
 	return nil
 }
