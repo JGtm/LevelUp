@@ -23,11 +23,12 @@ import { fileURLToPath } from 'node:url'
 
 const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'apps', 'web')
 
-// Plafonds figés le 2026-05-30 (post-sprint LUSR v2 + explorer appearance + session fixes).
+// Plafonds figés le 2026-06-01 (post-sprint ownership ADR 0024 + heals décommissionnés).
 // files=31 : SessionKDATimeline + SessionOcdrScatter — composants session non câblés (dette UI).
 // exports=88 : buildSessionOcdrBarsOption (SessionOcdrBars, pas encore consommé côté layout).
-// types=85 : TeamBanner (ExplorerMatchesTable WIP) + CoachingTipsManifestKey + divers WIP.
-const THRESHOLDS = { files: 31, exports: 88, types: 85 }
+// types=86 : PageUnavailableAction (page-unavailable.tsx, ADR 0024 — pas encore consommé
+//   par les callers extérieurs ; TeamBanner + CoachingTipsManifestKey + divers WIP).
+const THRESHOLDS = { files: 31, exports: 88, types: 86 }
 
 function knipJson() {
   try {
