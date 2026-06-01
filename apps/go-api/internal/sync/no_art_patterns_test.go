@@ -2,14 +2,29 @@
 // ART (cf. .ai/PLAN_LUSR_ART_HOME_CRASH.md).
 //
 // **Guard-rail anti-régression** : ce test scanne les fichiers Go du
-// projet pour détecter l'apparition de nouveaux patterns SQL à risque
-// ART (DELETE FROM, ON CONFLICT DO UPDATE, INSERT OR REPLACE) sur les
-// tables connues comme déjà migrées en append-only. Si une nouvelle
-// occurrence apparaît hors allowlist, le test fail — sauf si l'auteur
-// l'ajoute explicitement à l'allowlist (avec justification).
+// projet pour détecter l'apparition de patterns SQL à risque ART
+// (ON CONFLICT DO UPDATE, INSERT OR REPLACE) sur les tables migrées en
+// append-only (tablesProtegees). Si une nouvelle occurrence apparaît hors
+// allowlist, le test fail — sauf si l'auteur l'ajoute explicitement à
+// l'allowlist (avec justification).
 //
-// Ce test tourne en CI normale (pas de build tag) car il est rapide et
-// déterministe (juste un grep sur les fichiers source).
+// **Portée — ce que ce scan NE couvre PAS** (pour ne pas donner de fausse
+// assurance, cf. revue D4-2) :
+//   - `DELETE FROM` et `UPDATE … SET` nus ne sont PAS dans patternsAtRisk
+//     (trop de faux positifs file-level sur les UPDATE bitmask sérialisés
+//     légitimes). La forme bulk `UPDATE … FROM (VALUES …)` — le vrai
+//     déclencheur ART qui touche N entrées d'index en 1 statement — est,
+//     elle, gardée par TestNoBulkMultiRowUpdateOnCriticalTables (ci-dessous).
+//   - Les tables de "match-of-record" (match_registry, match_participants,
+//     medals_earned, killer_victim_pairs, weapon_kills, player_match_enrichment)
+//     ne sont PAS dans tablesProtegees : elles ne sont pas append-only et leurs
+//     UPDATE bitmask / row-by-row sérialisés par dblease sont sûrs. Elles sont
+//     protégées AUTREMENT : INSERT-only par construction via le package persist
+//     (chemin batch par défaut) + combat_write_guard_test.go (killer_victim +
+//     highlight_events) + le tripwire bulk-UPDATE ci-dessous.
+//
+// Ces tests tournent en CI normale (pas de build tag) : rapides et
+// déterministes (grep sur les fichiers source).
 
 package sync
 
@@ -210,6 +225,88 @@ func TestAllowlistJustifiesEverything(t *testing.T) {
 			t.Logf("allowlist : %q n'a plus de pattern à risque → retirer l'entrée (raison historique: %q)",
 				fileRel, reason)
 		}
+	}
+}
+
+// criticalMatchTables : tables de "match-of-record" + enrichment qui ne sont PAS
+// append-only (donc absentes de tablesProtegees) mais dont la forme bulk
+// `UPDATE … FROM (VALUES …)` multi-row est le déclencheur ART direct (1 statement
+// touchant N entrées de l'index → "Failed to delete all rows from index").
+// Le row-by-row UPDATE sérialisé reste autorisé (cf. PostSyncEnrichmentPersister).
+var criticalMatchTables = []string{
+	"match_registry",
+	"match_participants",
+	"medals_earned",
+	"killer_victim_pairs",
+	"weapon_kills",
+	"player_match_enrichment",
+	"match_skill_rank",
+	"match_csrs",
+	"player_csr_snapshots",
+}
+
+// reBulkUpdateFromValues détecte `UPDATE <table> … FROM (VALUES …)` (bulk
+// multi-row). Le `.{0,400}?` borne la fenêtre au statement courant pour éviter
+// les faux positifs cross-statement (un UPDATE row-by-row et un SELECT FROM
+// (VALUES) sans rapport dans le même fichier ne doivent pas matcher).
+func reBulkUpdateFromValues(table string) *regexp.Regexp {
+	return regexp.MustCompile(`(?is)\bUPDATE\s+` + regexp.QuoteMeta(table) + `\b.{0,400}?\bFROM\s*\(\s*VALUES\b`)
+}
+
+// TestNoBulkMultiRowUpdateOnCriticalTables — garde-fou complémentaire à
+// TestNoARTPatternsOnProtectedTables. Les tables match-of-record ne sont pas
+// dans tablesProtegees (leurs UPDATE bitmask/row-by-row sérialisés sont sûrs),
+// mais la forme bulk `UPDATE … FROM (VALUES …)` multi-row — le vrai déclencheur
+// ART — y est INTERDITE. Ce test fail si elle réapparaît sur une table critique.
+// Périmètre identique au scan principal (hors _test/migration/ops/cmd/scripts).
+func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+
+	var violations []string
+	for _, table := range criticalMatchTables {
+		re := reBulkUpdateFromValues(table)
+		err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if info.IsDir() {
+				name := info.Name()
+				if name == "vendor" || name == ".git" || name == "node_modules" ||
+					name == "data" || name == "logs" || name == "dist" {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !strings.HasSuffix(path, ".go") {
+				return nil
+			}
+			if strings.HasSuffix(path, "_test.go") ||
+				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
+				strings.Contains(path, "/ops/") || strings.Contains(path, "\\ops\\") ||
+				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
+				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+				return nil
+			}
+			content, readErr := os.ReadFile(path)
+			if readErr != nil {
+				return nil
+			}
+			text := stripGoComments(string(content))
+			if re.MatchString(text) {
+				rel, _ := filepath.Rel(repoRoot, path)
+				violations = append(violations, "table="+table+" file="+filepath.ToSlash(rel))
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk: %v", err)
+		}
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("ART bulk UPDATE multi-row détecté sur table(s) critique(s) — "+
+			"utiliser N UPDATE row-by-row (PostSyncEnrichmentPersister) ou INSERT-only (persist) :\n  - %s",
+			strings.Join(violations, "\n  - "))
 	}
 }
 

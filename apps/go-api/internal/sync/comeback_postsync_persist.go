@@ -1,11 +1,15 @@
 // Package sync — comeback_postsync_persist.go : Phase 4.4 du refactor
-// Collect→Persist — chemin batch pour BackfillDominanceFlags.
+// Collect→Persist — chemin batch pour BackfillDominanceFlags. C'est désormais
+// l'unique chemin (l'ancien flag LEVELUP_POSTSYNC_INSERT_ONLY a été supprimé
+// en Phase 3, cf. comeback.go).
 //
-// **Activation** : env var LEVELUP_POSTSYNC_INSERT_ONLY=1.
-//
-// Pattern : accumule les (match_id, dominance_flag) calculés en RAM puis
-// 1 single UPDATE multi-row via PostSyncEnrichmentPersister.BatchUpdateColumn
-// au lieu de N UPDATE row-by-row.
+// Pattern : accumule les (match_id, dominance_flag) calculés en RAM puis les
+// écrit via PostSyncEnrichmentPersister.BatchUpdateColumn — N UPDATE
+// row-by-row dans 1 transaction. PAS un UPDATE multi-row : la forme bulk
+// `UPDATE … FROM (VALUES …)` est précisément le déclencheur ART proscrit
+// (1 statement touchant N entrées de l'index). La sûreté vient du row-by-row
+// (1 entrée ART/statement) + single-writer (dblease KindPlayer), pas d'un
+// hypothétique "single UPDATE".
 
 package sync
 
@@ -18,7 +22,8 @@ import (
 )
 
 // backfillDominanceFlagsBatch est la variante batch de BackfillDominanceFlags.
-// Sémantique identique mais 1 single UPDATE par cycle au lieu de N.
+// Sémantique identique ; les writes sont regroupés dans 1 transaction via
+// BatchUpdateColumn (N UPDATE row-by-row), au lieu de N transactions séparées.
 //
 // La compute (computeMatchDominanceFlag) reste row-by-row car elle lit
 // shared.match_participants + medals + events — beaucoup d'IO read difficile
