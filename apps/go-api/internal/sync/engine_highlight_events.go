@@ -227,6 +227,12 @@ func ProcessHighlightEvents(
 	// — règle absolue : zéro écriture shared hors package persist.
 	n, err := persistCombatCompletion(ctx, sharedDB, matchID, events)
 	if err != nil {
+		// Log explicite : une écriture combat échouée (ex. shared read-only) ne
+		// doit JAMAIS être silencieuse — c'est précisément la classe d'incident
+		// (RC-A/RC-E) que ce module rend désormais visible. Le caller (events_heal)
+		// la compte aussi en `failed`.
+		slog.ErrorContext(ctx, "processHighlightEvents: persistCombatCompletion échoué",
+			"match_id", matchID, "events_parsed", len(events), "err", err)
 		return fmt.Errorf("persistCombatCompletion: %w", err)
 	}
 	if n > 0 && result != nil {

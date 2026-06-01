@@ -53013,3 +53013,32 @@ couvre toute panne realiste tout en finissant par sortir les vrais films expires
 
 Tests : film_retry_policy_test.go — "old match" passe a 40j (>30j) ; 2 nouveaux
 tests (defaut 30j, override env valide/invalide/0). Suite ./internal/sync/ verte.
+
+## [2026-06-01] Verification finale livraison — logging + qualite
+
+Statut : Complete (verte).
+
+Passe delivery-checklist sur tout le travail de session (Phases 1-5 + RC-E + RC-A +
+filmRetryWindow) :
+- go test -tags cgo ./... = 79 ok / 0 FAIL. go vet ./... clean. gofmt -l clean.
+- go test -race sur internal/sync, sync/v2, persist, migration = 0 data race.
+- Logging dedie verifie EMPIRIQUEMENT dans logs/ : events self-heal x97 + registry
+  names resolus x471 dans logs/sync.log ; drop-index migration x1 dans
+  logs/migration.log. Routage auto par module (package source). Aucun fmt.Println /
+  log.Printf introduit.
+- Amelioration logging : ProcessHighlightEvents logue desormais explicitement
+  (slog.ErrorContext) un echec persistCombatCompletion — la classe d'incident
+  (shared RO) ne doit jamais etre silencieuse. Le persister (couche basse) retourne
+  les erreurs wrappees (11x fmt.Errorf "persist:"), le caller sync logue (bon layering).
+- Qualite : extraction applyCompletionBitsToBatch (collect.go) — sort la logique de
+  bits Phase 3 de buildBatchFromFetchedMatchCtx (202->180 lignes, SRP). Pas de code
+  mort (guard TestNoDirectCombatWritesOutsidePersist vert ; legacy InsertHighlightEvents/
+  MarkEventsLoaded ont des callers reels openspartan/engagement/events_heal).
+- Front : AUCUN fichier apps/web touche par moi (changes web = travail parallele
+  utilisateur). Changes Go 100% internes (sync/persist/migration), zero handler/API/
+  type modifie → contrat front inchange.
+
+Couverture tests par fix : EventsCompletionPersister (5 tests) ; collect Phase 3
+bits (2) ; isEventsLoaded Phase 4 (1) ; combat write guard (1) ; RC-E no-index guard
+(1) ; RC-A acquire RW + skip (2) ; filmRetryWindow defaut+override (2) ; honnetete
+heal + film retry policy (existants verts).
