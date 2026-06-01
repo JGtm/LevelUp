@@ -209,6 +209,13 @@ SELECT
 FROM match_participants p
 WHERE p.match_id = ? AND p.xuid = ?`
 
+// Q17bIsParticipant : EXISTS léger pour le gating "match non-participé" (ADR 0024,
+// Couche B). Exécutée sur SharedReader. Index (match_id, xuid) → coût négligeable.
+const Q17bIsParticipant = `
+SELECT EXISTS(
+    SELECT 1 FROM match_participants WHERE match_id = ? AND xuid = ?
+)`
+
 // Q29 : Historique récent (50 matchs) pour moyennes K/D/A + spree/headshots/perfect.
 // Paramètres : ?1 = xuid (recent CTE), ?2 = xuid (perfect CTE).
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.

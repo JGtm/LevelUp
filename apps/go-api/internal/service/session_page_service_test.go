@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -150,23 +151,21 @@ func TestSessionPageService_GetPage_NoSessionsAfterFiltering(t *testing.T) {
 	}
 }
 
-func TestSessionPageService_GetPage_UnknownCurrentSessionReturnsEmptyState(t *testing.T) {
+// ADR 0024 Couche B : une session demandée explicitement mais introuvable
+// renvoie désormais session_not_found (404) au lieu d'une page vide 200
+// trompeuse (ancien comportement de fallback silencieux).
+func TestSessionPageService_GetPage_UnknownRequestedSessionReturnsNotFound(t *testing.T) {
 	repo := &mockSessionPageStatsRepo{matches: makeSessionPageDataset()}
 	svc := NewSessionPageService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, repo.err), "halo_infinite", "Test")
 	unknown := "2026-04-21 23h"
 
-	resp, err := svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &unknown})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, err := svc.GetPage(context.Background(), domain.SessionPageRequest{SessionLabel: &unknown})
+	if err == nil {
+		t.Fatal("attendu session_not_found, obtenu nil")
 	}
-	if resp.CurrentSession != nil {
-		t.Fatalf("expected no current session, got %#v", resp.CurrentSession)
-	}
-	if len(resp.AvailableSessions) != 3 {
-		t.Fatalf("expected available sessions to stay listed, got %v", resp.AvailableSessions)
-	}
-	if len(resp.Matches) != 0 {
-		t.Fatalf("expected no detailed matches, got %d", len(resp.Matches))
+	var apiErr *domain.APIError
+	if !errors.As(err, &apiErr) || apiErr.Code != "session_not_found" {
+		t.Fatalf("attendu APIError session_not_found, obtenu %v", err)
 	}
 }
 

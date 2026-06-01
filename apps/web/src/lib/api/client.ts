@@ -38,6 +38,19 @@ export function apiErrorMessage(err: unknown): string | undefined {
   return undefined
 }
 
+/**
+ * Extrait le code machine d'une `ApiError` (ex: "match_not_participant",
+ * "player_forbidden", "session_not_found"). Permet aux pages de distinguer les
+ * cas d'accès (ADR 0024) sans matcher fragilement sur le message HTTP.
+ */
+export function apiErrorCode(err: unknown): string | undefined {
+  if (err && typeof err === 'object' && 'code' in err) {
+    const c = (err as { code?: unknown }).code
+    if (typeof c === 'string' && c.length > 0) return c
+  }
+  return undefined
+}
+
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1'
 
 /** Base URL pour navigation plein-page (OAuth redirects). Exposée pour XboxLoginPage. */

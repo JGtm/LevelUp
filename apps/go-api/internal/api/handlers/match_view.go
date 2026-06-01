@@ -164,6 +164,11 @@ func (h *MatchViewHandler) GetMatchView(w http.ResponseWriter, r *http.Request) 
 	resp, err := svc.GetMatchView(r.Context(), matchID)
 	if err != nil {
 		var apiErr *domain.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == "match_not_participant" {
+			// Couche B (ADR 0024) : match existant mais joueur non-participant.
+			writeError(r.Context(), w, http.StatusNotFound, "match_not_participant", apiErr.Message)
+			return
+		}
 		if errors.As(err, &apiErr) && apiErr.Code == "not_found" {
 			writeError(r.Context(), w, http.StatusNotFound, "match_not_found", apiErr.Message)
 			return

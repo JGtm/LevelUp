@@ -240,12 +240,52 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 		return domain.MatchViewResponse{}, fmt.Errorf("MatchViewService: meta: %w", err)
 	}
 
+	// Couche B (ADR 0024) : fail-fast si le joueur courant n'a pas participé à ce
+	// match — avant les ~20 chargements parallèles. Évite la page "mal renseignée"
+	// (stats perso vides + scoreboard d'autrui). Best-effort : une erreur DB ne
+	// bloque pas (on ne veut pas masquer un match légitime sur incident transitoire).
+	if err := s.assertParticipation(ctx, matchID); err != nil {
+		return domain.MatchViewResponse{}, err
+	}
+
 	data, err := s.loadMatchViewDataParallel(ctx, matchID)
 	if err != nil {
 		return domain.MatchViewResponse{}, err
 	}
 
 	return s.buildMatchViewFromData(ctx, matchID, meta, data), nil
+}
+
+// participantChecker est une capability OPTIONNELLE du repo : vérifie l'existence
+// du joueur dans match_participants. Seul l'adapter DuckDB réel l'implémente ; les
+// mocks de test ne l'implémentent pas → le gating est alors gracieusement ignoré.
+type participantChecker interface {
+	IsParticipant(ctx context.Context, xuid, matchID string) (bool, error)
+}
+
+// assertParticipation renvoie domain.APIError{Code:"match_not_participant"} si le
+// joueur courant n'a pas participé au match. No-op si le repo ne fournit pas la
+// capability, si le xuid est inconnu, ou en cas d'erreur DB (best-effort).
+func (s *MatchViewService) assertParticipation(ctx context.Context, matchID string) error {
+	pc, ok := s.repo.(participantChecker)
+	if !ok || s.xuid == "" {
+		return nil
+	}
+	participated, err := pc.IsParticipant(ctx, s.xuid, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: vérification participation échouée",
+			"match_id", matchID, "err", err)
+		return nil
+	}
+	if !participated {
+		slog.InfoContext(ctx, "match_view: accès match non-participé refusé",
+			"match_id", matchID, "xuid", s.xuid)
+		return &domain.APIError{
+			Code:    "match_not_participant",
+			Message: "vous n'avez pas participé à ce match",
+		}
+	}
+	return nil
 }
 
 // GetMatchNeighbors retourne les matchs adjacents pour la navigation prev/next.

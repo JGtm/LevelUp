@@ -74,11 +74,24 @@ func (s *SessionPageService) GetPage(
 	placements := s.computeSessionPlacements(ctx, rows)
 
 	filtered := filterStatsMatchRows(rows, req.Filters)
+
+	// Deep-link (ADR 0024, Couche B) : une session explicitement demandée doit
+	// exister dans le périmètre filtré (TOUTES sessions, mono-match incluses) —
+	// sinon 404 explicite au lieu d'une page vide 200 trompeuse.
+	allLabels := extractSessionLabels(filtered)
+	if lbl := derefString(req.SessionLabel); lbl != "" && indexOfSessionLabel(allLabels, lbl) == -1 {
+		slog.InfoContext(ctx, "session page: session demandée introuvable", "requested_session", lbl)
+		return domain.SessionPageResponse{}, &domain.APIError{
+			Code:    "session_not_found",
+			Message: "session introuvable : " + lbl,
+		}
+	}
+
 	// Sessions d'un seul match exclues de la liste/navigation (cf. minListedSessionMatches).
 	// Comptage sur `rows` (historique complet) = taille BRUTE de la session : une session de
 	// 2 matchs resserrée à 1 par le filtre période reste listée. Un deep-link vers une session
 	// d'un seul match reste résoluble via req.SessionLabel (lastOrNil court-circuite la liste).
-	labels := keepMultiMatchSessionLabels(extractSessionLabels(filtered), rows)
+	labels := keepMultiMatchSessionLabels(allLabels, rows)
 	if len(labels) == 0 {
 		slog.InfoContext(ctx, "session page: no sessions after filtering")
 		return domain.SessionPageResponse{

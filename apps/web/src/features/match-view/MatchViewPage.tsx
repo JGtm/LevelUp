@@ -24,6 +24,8 @@ import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT, type MatchViewText } from './i18n'
 import type { MatchWeaponKill, MatchScoreboardRow } from '@/lib/api/types'
 import { PrivacyBanner } from '@/components/ui/privacy-banner'
+import { PageUnavailable } from '@/components/ui/page-unavailable'
+import { apiErrorCode } from '@/lib/api/client'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 /**
@@ -97,7 +99,48 @@ export function MatchViewPage() {
 
   if (isPending) return null
 
+  const isEN = locale === 'en'
+  const goHome = () => {
+    navigate({ to: '/players/$playerSlug/home', params: { playerSlug } }).catch(() => {})
+  }
+  const goMatches = () => {
+    navigate({ to: '/players/$playerSlug/explorer', params: { playerSlug } }).catch(() => {})
+  }
+
   if (isError || !data) {
+    // ADR 0024 Couche B : match existant mais joueur non-participant (404
+    // match_not_participant) ou accès refusé (403 player_forbidden) → page
+    // "Indisponible" claire avec navigation, plutôt qu'une page mal renseignée.
+    const code = apiErrorCode(error)
+    if (code === 'match_not_participant') {
+      return (
+        <PageUnavailable
+          title={isEN ? 'Match unavailable' : 'Match indisponible'}
+          description={
+            isEN
+              ? "You didn't take part in this match, so it can't be shown here."
+              : "Tu n'as pas participé à ce match, il ne peut donc pas être affiché ici."
+          }
+          actions={[
+            { label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' },
+            { label: isEN ? 'My matches' : 'Mes matchs', onClick: goMatches },
+          ]}
+        />
+      )
+    }
+    if (code === 'player_forbidden') {
+      return (
+        <PageUnavailable
+          title={isEN ? 'Access denied' : 'Accès non autorisé'}
+          description={
+            isEN
+              ? 'This player is not associated with your account.'
+              : "Ce joueur n'est pas associé à ton compte."
+          }
+          actions={[{ label: isEN ? 'Home' : 'Accueil', onClick: goHome, variant: 'default' }]}
+        />
+      )
+    }
     // 404 strict ou erreur réseau. On garde la barre de navigation pour
     // permettre à l'utilisateur de continuer à naviguer entre les matchs.
     return (
