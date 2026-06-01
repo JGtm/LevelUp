@@ -89,7 +89,12 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 		return nil
 	}
 
-	if err := persistMatchRegistry(ctx, tx, s.Match); err != nil {
+	// events_loaded est dérivé de la présence RÉELLE de highlight_events dans le
+	// batch (pas d'un flag précalculé qui pourrait dériver) — même sémantique que
+	// la complétion legacy markCompletionRegistry (events_loaded = events_inserted>0).
+	// Posé à l'INSERT (mode INSERT-only, pas de heal post-coup) : un match
+	// synchronisé avec film n'est plus jamais re-flaggé candidat backfill events.
+	if err := persistMatchRegistry(ctx, tx, s.Match, len(s.HighlightEvents) > 0); err != nil {
 		return err
 	}
 	if err := persistParticipants(ctx, tx, s.Participants); err != nil {
@@ -122,7 +127,7 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 
 // ─── Helpers INSERT par table ──────────────────────────────────────────────
 
-func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegistryRow) error {
+func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegistryRow, eventsLoaded bool) error {
 	now := time.Now().UTC()
 	startUTC := row.StartTime.UTC()
 	var endUTC any
@@ -141,7 +146,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			duration_seconds, playable_duration_seconds,
 			real_start_time, team_0_score, team_1_score,
 			team_0_ps_score, team_1_ps_score,
-			match_intensity, backfill_completed,
+			match_intensity, backfill_completed, events_loaded,
 			first_sync_by, first_sync_at, last_updated_at,
 			created_at, updated_at
 		) VALUES (
@@ -154,7 +159,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			?, ?,
 			?, ?, ?,
 			?, ?,
-			?, ?,
+			?, ?, ?,
 			?, ?, ?,
 			?, ?
 		)`,
@@ -167,7 +172,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 		row.DurationSeconds, row.PlayableDurationSeconds,
 		row.RealStartTime, row.Team0Score, row.Team1Score,
 		row.Team0PSScore, row.Team1PSScore,
-		row.MatchIntensity, row.BackfillCompleted,
+		row.MatchIntensity, row.BackfillCompleted, eventsLoaded,
 		row.FirstSyncBy, now, now,
 		now, now,
 	)
@@ -276,11 +281,15 @@ func persistKillerVictim(ctx context.Context, tx *sql.Tx, rows []KillerVictimIns
 	}
 	now := time.Now().UTC()
 	for _, p := range rows {
+		// Forme par-kill complète : killer_gamertag / victim_gamertag / time_ms
+		// sont lus par le match-view (Q20KVPairs — tug-of-war, KD timeline,
+		// antagonistes). Parité avec la complétion legacy EventsCompletionPersister.
+		// INSERT pur (table sans index/PK, cf. steps_shared.go) — ART-safe.
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO killer_victim_pairs
-				(match_id, killer_xuid, victim_xuid, kill_count, created_at)
-			VALUES (?, ?, ?, ?, ?)`,
-			p.MatchID, p.KillerXUID, p.VictimXUID, p.Count, now,
+				(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag, kill_count, time_ms, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+			p.MatchID, p.KillerXUID, p.KillerGamertag, p.VictimXUID, p.VictimGamertag, p.Count, p.TimeMS, now,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT killer_victim_pairs %s/%s→%s: %w",

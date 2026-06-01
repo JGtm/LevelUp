@@ -80,13 +80,23 @@ type WeaponKillInsert struct {
 	PlayerIndex     *int    `json:"player_index,omitempty"`
 }
 
-// KillerVictimInsert — row pour shared.killer_victim_pairs.
+// KillerVictimInsert — row pour shared.killer_victim_pairs (forme **par-kill**,
+// 1 row par kill event — cf. analysis.ComputeKillerVictimPairs).
+//
+// KillerGamertag / VictimGamertag / TimeMS sont REQUIS par le match-view
+// (tug-of-war, KD timeline, antagonistes — cf. queries_match.go Q20KVPairs qui
+// lit ces colonnes). Les laisser vides produit la forme dégradée (kill_count
+// seul) qui casse ces vues. Même schéma cible que la complétion legacy
+// (EventsCompletionPersister.KVPairCompletion).
 type KillerVictimInsert struct {
-	MatchID    string  `json:"match_id"`
-	KillerXUID string  `json:"killer_xuid"`
-	VictimXUID string  `json:"victim_xuid"`
-	Count      int     `json:"count"`
-	WeaponID   *uint64 `json:"weapon_id,omitempty"`
+	MatchID        string  `json:"match_id"`
+	KillerXUID     string  `json:"killer_xuid"`
+	KillerGamertag string  `json:"killer_gamertag,omitempty"`
+	VictimXUID     string  `json:"victim_xuid"`
+	VictimGamertag string  `json:"victim_gamertag,omitempty"`
+	Count          int     `json:"count"`
+	TimeMS         int64   `json:"time_ms,omitempty"`
+	WeaponID       *uint64 `json:"weapon_id,omitempty"`
 }
 
 // XUIDAliasInsert — row pour shared.xuid_aliases.

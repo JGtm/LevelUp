@@ -152,10 +152,13 @@ func buildBatchFromFetchedMatchCtx(
 				kvInserts := make([]persist.KillerVictimInsert, 0, len(pairs))
 				for _, p := range pairs {
 					kvInserts = append(kvInserts, persist.KillerVictimInsert{
-						MatchID:    fm.MatchID,
-						KillerXUID: p.KillerXUID,
-						VictimXUID: p.VictimXUID,
-						Count:      1, // 1 row par kill event (agg via SUM kill_count)
+						MatchID:        fm.MatchID,
+						KillerXUID:     p.KillerXUID,
+						KillerGamertag: p.KillerGT,
+						VictimXUID:     p.VictimXUID,
+						VictimGamertag: p.VictimGT,
+						Count:          1, // 1 row par kill event (agg via SUM kill_count)
+						TimeMS:         p.TimeMS,
 					})
 				}
 				builder.AddKillerVictim(kvInserts)
