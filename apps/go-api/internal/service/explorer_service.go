@@ -378,6 +378,8 @@ func (s *ExplorerService) computeTargetCombatProfile(ctx context.Context, target
 		slog.WarnContext(ctx, "explorer_target_combat_profile_failed", "xuid", targetXUID, "err", err)
 		return nil
 	}
+	slog.DebugContext(ctx, "explorer_target_combat_profile",
+		"xuid", targetXUID, "matches", len(rows), "limit", explorerCombatProfileLimit)
 	return rows
 }
 
