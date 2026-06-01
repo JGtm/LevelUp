@@ -233,31 +233,39 @@ func buildBatchFromFetchedMatchCtx(
 			return len(batch.PVE.Stats)
 		}(),
 	)
-	// Phase 3 : agréger les bits de complétude sur la registry row (INSERT-only,
-	// cf. doc BackfillCompleted). On lit l'état RÉEL du batch construit
-	// (events/killer_victim effectivement ajoutés). Parité legacy
-	// insertFetchedMatch (MarkParticipantsDone / MarkSkillLoaded + events/kv) →
-	// backfill_completed fiable sur le chemin batch, sans UPDATE post-persist.
-	if m := batch.Shared.Match; m != nil {
-		var bits int64
-		if m.BackfillCompleted != nil {
-			bits = *m.BackfillCompleted
-		}
-		if len(batch.Shared.Participants) > 0 {
-			bits |= backfillFlagParticipants
-		}
-		if skillOK {
-			bits |= backfillFlagSkill
-		}
-		if len(batch.Shared.HighlightEvents) > 0 {
-			bits |= MBitEvents
-		}
-		if len(batch.Shared.KillerVictim) > 0 {
-			bits |= MBitKillerVictim
-		}
-		m.BackfillCompleted = &bits
-	}
+	applyCompletionBitsToBatch(batch, skillOK)
 	return batch, parseErr
+}
+
+// applyCompletionBitsToBatch agrège les bits de complétude sur la registry row du
+// batch (Phase 3, INSERT-only — cf. doc domain.MatchRegistryRow.BackfillCompleted :
+// valeur calculée AVANT le Submit). Lit l'état RÉEL du batch construit
+// (highlight_events / killer_victim effectivement ajoutés) → backfill_completed
+// fiable sur le chemin batch, sans UPDATE post-persist. Parité legacy
+// insertFetchedMatch (MarkParticipantsDone / MarkSkillLoaded + events/kv).
+// skillOK = l'API skill a renvoyé des données (cf. buildBatchFromFetchedMatch).
+func applyCompletionBitsToBatch(batch *persist.MatchBatch, skillOK bool) {
+	m := batch.Shared.Match
+	if m == nil {
+		return
+	}
+	var bits int64
+	if m.BackfillCompleted != nil {
+		bits = *m.BackfillCompleted
+	}
+	if len(batch.Shared.Participants) > 0 {
+		bits |= backfillFlagParticipants
+	}
+	if skillOK {
+		bits |= backfillFlagSkill
+	}
+	if len(batch.Shared.HighlightEvents) > 0 {
+		bits |= MBitEvents
+	}
+	if len(batch.Shared.KillerVictim) > 0 {
+		bits |= MBitKillerVictim
+	}
+	m.BackfillCompleted = &bits
 }
 
 // sharedCSRRowToMatchCSRInsert convertit SharedMatchCSRRow (sync) →
