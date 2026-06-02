@@ -481,6 +481,10 @@ func NewRouter(
 			}
 			r.Get("/titles/{slug}/field-mappings", fieldMappingsHandler.ServeHTTP)
 
+			// Phase 1.7a — capabilities produit déclarées par le titre (TOML).
+			capabilitiesHandler := handlers.NewCapabilitiesHandler(fieldMappingsRegistry, slog.Default())
+			r.Get("/titles/{slug}/capabilities", capabilitiesHandler.ServeHTTP)
+
 			// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
 			// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
 			// (prestige presets, rank catalog) sur le même fichier DuckDB.
@@ -499,6 +503,7 @@ func NewRouter(
 				"slugs", fieldMappingsRegistry.Slugs(),
 				"endpoints", []string{
 					"/api/v1/titles/{slug}/field-mappings",
+					"/api/v1/titles/{slug}/capabilities",
 					"/api/v1/titles/{slug}/catalog/playlists",
 					"/api/v1/titles/{slug}/catalog/pairs",
 					"/api/v1/titles/{slug}/catalog/maps",
