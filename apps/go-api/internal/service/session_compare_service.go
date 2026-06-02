@@ -290,6 +290,7 @@ func buildCompareEntryWithObjectives(
 		v := math.Round(lifeSum/float64(lifeCount)*10) / 10
 		avgLife = &v
 	}
+	avgAccuracy := averageAccuracy(matches)
 
 	start := minTime.Format(time.RFC3339)
 	end := maxTime.Format(time.RFC3339)
@@ -366,6 +367,7 @@ func buildCompareEntryWithObjectives(
 		AvgTeamMMR:         avgTeamMMR,
 		AvgEnemyMMR:        avgEnemyMMR,
 		AvgLifeSeconds:     avgLife,
+		AvgAccuracy:        avgAccuracy,
 		Participation:      participation,
 		Matches:            matchRows,
 		BestMatch:          best,

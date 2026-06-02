@@ -12,15 +12,19 @@ import type { SemanticToken } from '@/lib/accessibility'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 import type { SessionDetailMatchRow } from '@/lib/api/types'
 
+import { formatNumber } from './_shared'
+
 interface Props {
   title: string
   matches: SessionDetailMatchRow[]
+  /** KDA agrégé de la session, affiché au centre du donut (ex-card F/D/A). nil → pas de centre. */
+  kda?: number | null
   height?: number
   /** Colonne divisée (drawer) : % dans le donut, pas d'étiquette externe. */
   compact?: boolean
 }
 
-export function SessionKillsDonut({ title, matches, height = 260, compact }: Props) {
+export function SessionKillsDonut({ title, matches, kda, height = 260, compact }: Props) {
   const { data: fieldMappings } = useFieldMappings()
   const fields = fieldMappings?.fields
 
@@ -29,6 +33,7 @@ export function SessionKillsDonut({ title, matches, height = 260, compact }: Pro
       kills: fields?.kills?.label ?? 'kills',
       deaths: fields?.deaths?.label ?? 'deaths',
       assists: fields?.assists?.label ?? 'assists',
+      kda: fields?.kda?.label ?? 'KDA',
     }),
     [fields],
   )
@@ -65,6 +70,14 @@ export function SessionKillsDonut({ title, matches, height = 260, compact }: Pro
   if (total === 0) return null
 
   return (
-    <DonutChart title={title} series={series} sliceColors={sliceColors} height={height} compact={compact} />
+    <DonutChart
+      title={title}
+      series={series}
+      sliceColors={sliceColors}
+      height={height}
+      compact={compact}
+      centerValue={kda != null ? formatNumber(kda, 2) : undefined}
+      centerLabel={kda != null ? labels.kda : undefined}
+    />
   )
 }

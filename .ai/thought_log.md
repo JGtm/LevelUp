@@ -1,3 +1,29 @@
+## [2026-06-02] Session — KDA au centre du donut F/D/A + précision moyenne dans la card (point 5) — Complété
+
+**Statut** : Complété (commit 2/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
+
+**Contexte** : la valeur F/D/A (KDA) vivait dans une card de `SessionSummaryCard` ; le donut « F/D/A »
+(`SessionKillsDonut`) n'avait pas de label central. Demande : déplacer le KDA au centre du donut et
+afficher la précision moyenne de la session à la place dans la card.
+
+**Décision technique principale** :
+- Back : ajout `SessionCompareEntry.AvgAccuracy *float64` (0..1, ADR 0006), peuplé dans `buildCompareEntry`
+  via le helper existant `averageAccuracy` (déjà utilisé pour la métrique de comparaison). Couvre les deux
+  endpoints (session-compare ET session detail) qui passent par `buildCompareEntryWithObjectives`.
+- Front : `SessionKillsDonut` reçoit `kda` et le passe en `centerValue`/`centerLabel` du `DonutChart`
+  (même pattern que `SessionOutcomeDonut`/winrate). `SessionChartStack` câble `kda={entry?.kda}`.
+  `SessionSummaryCard` : tuile KDA remplacée par la précision (`labelOf('accuracy')` = FR « Précision »,
+  `formatPercent(avg_accuracy*100)`). `kdScale` devenu inutilisé, retiré.
+- Aucune nouvelle string i18n : réutilisation du field mapping `accuracy` (FR/EN déjà présents).
+
+**Résultats observés** : `go test ./internal/service ./internal/domain` OK, `go vet` clean ;
+`tsc -b` OK ; vitest session-detail 60/60 ; eslint clean. Test backend ajouté
+(`TestBuildCompareEntry_AvgAccuracy` : moyenne des matchs avec précision + nil sans données).
+
+**Conclusion / prochaine étape** : commit 3/6 — alignement OC/DR du Face à face sur la KPI bar (point 2).
+
+---
+
 ## [2026-06-02] Profil de combat — bannière de repli pour cible non-locale sans identité (point 4) — Complété
 
 **Statut** : Complété (commit 1/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`, branche `feat/skill-progression-magnitude-scale`).

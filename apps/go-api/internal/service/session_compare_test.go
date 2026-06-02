@@ -113,6 +113,29 @@ func TestBuildCompareEntry_WithMatches(t *testing.T) {
 	}
 }
 
+func TestBuildCompareEntry_AvgAccuracy(t *testing.T) {
+	acc := func(v float64) *float64 { return &v }
+	m1 := makeMatch("S1", 15, 5, nil)
+	m1.Accuracy = acc(0.50)
+	m2 := makeMatch("S1", 10, 8, nil)
+	m2.Accuracy = acc(0.60)
+	m3 := makeMatch("S1", 20, 3, nil) // pas de précision → ignoré dans la moyenne
+
+	entry := buildCompareEntry([]legacymatch.StatsMatchRow{m1, m2, m3}, "S1")
+	if entry == nil || entry.AvgAccuracy == nil {
+		t.Fatalf("AvgAccuracy attendu non-nil, got %+v", entry)
+	}
+	if *entry.AvgAccuracy != 0.55 { // (0.50 + 0.60) / 2, arrondi 3 décimales
+		t.Errorf("AvgAccuracy = %v, want 0.55 (moyenne des matchs avec précision)", *entry.AvgAccuracy)
+	}
+
+	// Aucune précision → nil (pas de KPI à afficher).
+	noAcc := buildCompareEntry([]legacymatch.StatsMatchRow{makeMatch("S1", 10, 5, nil)}, "S1")
+	if noAcc.AvgAccuracy != nil {
+		t.Errorf("AvgAccuracy attendu nil sans données précision, got %v", *noAcc.AvgAccuracy)
+	}
+}
+
 func TestWinRate(t *testing.T) {
 	win := analysis.OutcomeWin
 	loss := analysis.OutcomeLoss

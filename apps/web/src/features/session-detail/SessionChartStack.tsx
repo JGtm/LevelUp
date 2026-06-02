@@ -57,7 +57,12 @@ export function SessionChartStack({
     <SessionOutcomeDonut title={t('session.detail.chart_outcomes_title')} matches={matches} compact={compact} />
   )
   const killsDonut = (
-    <SessionKillsDonut title={t('session.detail.chart_kills_donut_title')} matches={matches} compact={compact} />
+    <SessionKillsDonut
+      title={t('session.detail.chart_kills_donut_title')}
+      matches={matches}
+      kda={entry?.kda ?? null}
+      compact={compact}
+    />
   )
   const modeBreakdown = (
     <SessionModeBreakdown
