@@ -691,7 +691,7 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		r.remoteStats,
 		pdb.XUID,
 		pdb.TitleSlug,
-	)
+	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb)))
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }

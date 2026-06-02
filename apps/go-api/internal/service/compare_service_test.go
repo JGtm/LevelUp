@@ -173,6 +173,72 @@ func TestBuildMetrics_AvailabilityRemoteB(t *testing.T) {
 	}
 }
 
+// TestMetricAvailability_CareerRankLiveNonLocal : le rang carrière est disponible
+// dès value>0, y compris pour un non-local (rang récupéré en live), tandis que les
+// autres métriques ATH restent local-only.
+func TestMetricAvailability_CareerRankLiveNonLocal(t *testing.T) {
+	if !metricAvailability(compareMetricCareerRank, 152, false, false) {
+		t.Error("career_rank value>0 doit être disponible même pour un non-local (live)")
+	}
+	if metricAvailability(compareMetricCareerRank, 0, true, false) {
+		t.Error("career_rank value 0 ne doit pas être disponible (ATH non calculé)")
+	}
+	if metricAvailability(compareMetricPerfATH, 98, false, false) {
+		t.Error("perf_ath non-local ne doit pas être disponible (local-only)")
+	}
+}
+
+// TestBuildMetrics_CareerRankLiveRemoteB : un joueur B non-local dont le rang a été
+// récupéré en live (CareerRank>0) expose la ligne career_rank côté B.
+func TestBuildMetrics_CareerRankLiveRemoteB(t *testing.T) {
+	a := domain.NormalizedPlayerStats{IsLocal: true, Matches: 100, CareerRank: 200, KillsPerGame: 10, DeathsPerGame: 8}
+	b := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, CareerRank: 152, KillsPerGame: 9, DeathsPerGame: 9}
+
+	rows := buildMetrics(a, b)
+	var cr *domain.CompareMetricRow
+	for i := range rows {
+		if rows[i].Metric == compareMetricCareerRank {
+			cr = &rows[i]
+		}
+	}
+	if cr == nil {
+		t.Fatal("ligne career_rank absente")
+	}
+	if !cr.ValueBAvailable {
+		t.Error("career_rank de B (live, >0) doit être disponible")
+	}
+	if !cr.ValueAAvailable {
+		t.Error("career_rank de A (ATH local) doit être disponible")
+	}
+}
+
+// TestFillRemoteCareerRankLive couvre le helper qui complète le rang carrière d'un
+// B non-local via le fetch live identity.
+func TestFillRemoteCareerRankLive(t *testing.T) {
+	svc := (&CompareService{}).WithLiveIdentity(&mockLiveIdentity{identity: &domain.HomeSpartanIdentityRow{RankNumber: 152}})
+	remote := &domain.NormalizedPlayerStats{}
+	svc.fillRemoteCareerRankLive(context.Background(), remote, "xuid-b")
+	if remote.CareerRank != 152 {
+		t.Errorf("CareerRank = %d, want 152 (live)", remote.CareerRank)
+	}
+
+	// Rang déjà présent (ex. local) → non écrasé, pas de fetch.
+	id := &mockLiveIdentity{identity: &domain.HomeSpartanIdentityRow{RankNumber: 1}}
+	svc2 := (&CompareService{}).WithLiveIdentity(id)
+	remote2 := &domain.NormalizedPlayerStats{CareerRank: 99}
+	svc2.fillRemoteCareerRankLive(context.Background(), remote2, "xuid-b")
+	if remote2.CareerRank != 99 || id.called {
+		t.Errorf("rang existant ne doit pas être écrasé/refetché (rank=%d, called=%v)", remote2.CareerRank, id.called)
+	}
+
+	// Pas de provider → no-op.
+	r3 := &domain.NormalizedPlayerStats{}
+	(&CompareService{}).fillRemoteCareerRankLive(context.Background(), r3, "x")
+	if r3.CareerRank != 0 {
+		t.Errorf("sans provider, rien ne doit être écrit, got %d", r3.CareerRank)
+	}
+}
+
 // TestBuildMetrics_OCDRAlignedWithCombatYield vérifie que rendement/résistance du
 // Face à face utilisent exactement les formules OC/DR canoniques (parité KPI bar
 // home) et le bon sens de vainqueur (plus haut = mieux).

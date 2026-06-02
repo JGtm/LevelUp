@@ -23,15 +23,25 @@ import (
 
 // CompareService orchestre la comparaison joueur A vs joueur B.
 type CompareService struct {
-	repo      port.CompareRepository
-	provider  port.PlayerStatsProvider
-	xuidA     string
-	titleSlug string
+	repo         port.CompareRepository
+	provider     port.PlayerStatsProvider
+	liveIdentity ExplorerTargetIdentityProvider // optionnel : rang carrière live d'un B non-local
+	xuidA        string
+	titleSlug    string
 }
 
 // NewCompareService crée un CompareService.
 func NewCompareService(repo port.CompareRepository, provider port.PlayerStatsProvider, xuidA, titleSlug string) *CompareService {
 	return &CompareService{repo: repo, provider: provider, xuidA: xuidA, titleSlug: titleSlug}
+}
+
+// WithLiveIdentity injecte le provider d'identité live (career rank/emblem/...)
+// — même provider que l'Explorer — pour récupérer le rang carrière d'un joueur B
+// NON-local (le service record Waypoint ne le fournit pas). nil → rang carrière
+// reste "N/A" pour les non-locaux (comportement historique).
+func (s *CompareService) WithLiveIdentity(p ExplorerTargetIdentityProvider) *CompareService {
+	s.liveIdentity = p
+	return s
 }
 
 // GetPage construit la réponse de comparaison en chargeant les stats en parallèle.
@@ -132,8 +142,28 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 	}
 	if xuidB != "" {
 		s.enrichRemotePlayerBWithCrossSample(ctx, remote, xuidB, targetGamertag)
+		s.fillRemoteCareerRankLive(ctx, remote, xuidB)
 	}
 	return remote, xuidB, nil
+}
+
+// fillRemoteCareerRankLive complète le rang carrière d'un joueur B non-local via
+// le fetch live identity (même source que le profil de combat Explorer) — le
+// service record Waypoint ne fournit pas le rang carrière. xuidB doit être résolu.
+// Best-effort : skip si pas de provider, pas de xuid, ou rang déjà présent.
+func (s *CompareService) fillRemoteCareerRankLive(ctx context.Context, remote *domain.NormalizedPlayerStats, xuidB string) {
+	if s.liveIdentity == nil || xuidB == "" || remote.CareerRank > 0 {
+		return
+	}
+	id, err := s.liveIdentity.FetchLiveIdentity(ctx, xuidB)
+	if err != nil {
+		logBestEffortErr(ctx, "CompareService: rang carrière live joueur B non disponible", err, "xuid", xuidB)
+		return
+	}
+	if id != nil && id.RankNumber > 0 {
+		remote.CareerRank = id.RankNumber
+		slog.DebugContext(ctx, "CompareService: rang carrière live joueur B", "xuid", xuidB, "rank", id.RankNumber)
+	}
 }
 
 // enrichLocalPlayerB enrichit un joueur B local avec FavoriteWeapon + ATH propre.
@@ -242,24 +272,31 @@ var localOnlyMetrics = map[string]bool{
 	compareMetricHeadshotKillsPerGame: true,
 }
 
-// Métriques issues de stats.duckdb (ATH + rang carrière). Indisponibles si le
-// joueur n'est pas local, ET considérées non renseignées si la valeur est 0
-// (cas d'un joueur local dont l'ATH n'a pas encore été calculé).
+// Métriques issues de stats.duckdb (records ATH). Indisponibles si le joueur
+// n'est pas local, ET considérées non renseignées si la valeur est 0 (cas d'un
+// joueur local dont l'ATH n'a pas encore été calculé). Le rang carrière en est
+// EXCLU : il a une source live (FetchLiveIdentity) pour un B non-local, donc il
+// est traité à part dans metricAvailability (cf. compareMetricCareerRank).
 var athMetrics = map[string]bool{
-	compareMetricPerfATH:    true,
-	compareMetricLusrATH:    true,
-	compareMetricCareerRank: true,
+	compareMetricPerfATH: true,
+	compareMetricLusrATH: true,
 }
 
 // metricAvailability détermine si la valeur d'une métrique est exploitable pour un joueur.
 //
-//   - athMetrics (perf_ath/lusr_ath/career_rank) : exigent IsLocal=true ET valeur>0.
+//   - career_rank : disponible dès que valeur>0 (ATH local côté A OU rang récupéré
+//     en live côté B non-local via FetchLiveIdentity).
+//   - athMetrics (perf_ath/lusr_ath) : exigent IsLocal=true ET valeur>0.
 //     L'échantillon croisé ne donne pas l'ATH (stats de carrière globales).
 //   - localOnlyMetrics (spree/life/perfect/headshots) : IsLocal OU IsLocalSample
 //     (le service alimente IsLocalSample pour un joueur B remote ayant un échantillon
 //     de matchs croisés avec A — métriques alors calculées sur cet échantillon).
 //   - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
 func metricAvailability(key string, value float64, isLocal, isLocalSample bool) bool {
+	if key == compareMetricCareerRank {
+		// Disponible dès qu'un rang est connu : ATH local (A) OU fetch live (B non-local).
+		return value > 0
+	}
 	if athMetrics[key] {
 		return isLocal && value > 0
 	}
