@@ -66,6 +66,7 @@ type ServiceRegistry struct {
 	timezone         string                       // IANA (ex: "Europe/Paris"), propagé aux services médias
 	notifiers        sync.Map                     // xuid → port.SessionNotifier (HomeService par joueur)
 	titleResolver    games.Resolver               // nil → services tournent sans semantic adapter (libellés via fallbacks)
+	hiCapabilities   games.CapabilityMap          // capabilities.toml HI chargées au boot (Phase 1.7a) ; nil → adapter player-scoped retombe sur son fallback
 	homeMatchesCache *service.HomeMatchesCache    // cache TTL process-level matches+sessions
 	careerLiveCache  *service.CareerLiveCache     // cache TTL process-level XP (5 min) + customisation (6 h)
 	remoteStats      *service.CachedStatsProvider // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
@@ -213,6 +214,15 @@ func (r *ServiceRegistry) WithTitleResolver(resolver games.Resolver) *ServiceReg
 	return r
 }
 
+// WithCapabilities attache la CapabilityMap HI chargée depuis capabilities.toml
+// (Phase 1.7a). Injectée dans les DataAdapter player-scoped construits à la
+// volée (dataAdapterForPDB / careerDataAdapterForPDB) pour qu'ils consomment le
+// TOML plutôt que leur fallback codé.
+func (r *ServiceRegistry) WithCapabilities(caps games.CapabilityMap) *ServiceRegistry {
+	r.hiCapabilities = caps
+	return r
+}
+
 // WithSettingsStore attache un settings.Store au registry. Les services qui
 // dépendent de app_settings.json (TeammatesService.friendGamertags pour le
 // filtre amis-only du dropdown) le récupèrent via r.settingsStore.
@@ -318,7 +328,11 @@ func (r *ServiceRegistry) dataAdapterForPDB(pdb *duckdb.PlayerDB) games.TitleDat
 	if pdb == nil || pdb.TitleSlug != title.DefaultSlug {
 		return nil
 	}
-	return halo_games.NewDataAdapter(duckdb.NewCareerRepo(pdb), slog.Default())
+	a := halo_games.NewDataAdapter(duckdb.NewCareerRepo(pdb), slog.Default())
+	if r.hiCapabilities != nil {
+		a = a.WithCapabilities(r.hiCapabilities)
+	}
+	return a
 }
 
 // GetSessionNotifier retourne le SessionNotifier enregistré pour le xuid donné.

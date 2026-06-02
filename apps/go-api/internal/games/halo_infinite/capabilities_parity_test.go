@@ -11,8 +11,8 @@ import (
 	"levelup/go-api/internal/games/mappings"
 )
 
-// careerStub : CareerSource non-nil pour que capCareer → CapSupported (le TOML
-// déclare career.progression=supported, intention max du titre).
+// careerStub : CareerSource non-nil → career.progression non rétrogradée →
+// CapSupported (le TOML déclare career.progression=supported, intention max).
 type careerStub struct{}
 
 func (careerStub) GetLatestRank(context.Context) (*domain.CareerRankData, error) { return nil, nil }

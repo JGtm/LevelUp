@@ -197,7 +197,11 @@ func (r *ServiceRegistry) TitleDataAdapter(ctx context.Context, slug string) (ga
 			games.ErrTitleNotResolved, pdb.TitleSlug)
 	}
 	careerRepo := duckdb.NewCareerRepo(pdb)
-	return halo_games.NewDataAdapter(careerRepo, slog.Default()), nil
+	a := halo_games.NewDataAdapter(careerRepo, slog.Default())
+	if r.hiCapabilities != nil {
+		a = a.WithCapabilities(r.hiCapabilities)
+	}
+	return a, nil
 }
 
 // CareerLiveCtx retourne un CareerLiveService configuré pour le joueur slug.
