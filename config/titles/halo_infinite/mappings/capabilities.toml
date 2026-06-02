@@ -1,0 +1,35 @@
+# config/titles/halo_infinite/mappings/capabilities.toml
+#
+# Source de vérité des capabilities produit d'un titre (Phase 1.7a).
+# Lue au boot par internal/games/mappings/loader_capabilities.go et exposée via
+# le Registry (GetCapabilities). Remplace la CapabilityMap codée en dur dans
+# internal/games/halo_infinite/adapter_data.go (objectif : 0 hardcode, un 2e
+# titre déclare ses capabilities ici sans toucher au Go).
+#
+# Clés = CapabilityKey canoniques (internal/games/adapter.go). Les points dans
+# les clés imposent de les QUOTER (sinon TOML crée des tables imbriquées).
+# Valeurs admises : "supported" | "degraded" | "not_exposed"
+#   - supported   : exposée pleinement
+#   - degraded    : exposée mais partielle/best-effort
+#   - not_exposed : non exposée par ce titre (caller dégrade, cf. plan §5.7)
+#
+# Note : career.progression est déclarée "supported" (intention du titre) ; le
+# runtime peut la rétrograder à not_exposed si aucune source carrière n'est
+# câblée (cf. adapter_data.go capCareer).
+#
+# Toute modification breaking incrémente schema_version.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[capabilities]
+"match.history"          = "supported"
+"match.detail.core"      = "supported"
+"match.skill.snapshot"   = "degraded"
+"career.progression"     = "supported"
+"pve.firefight_stats"    = "supported"
+"analytics.timeseries"   = "not_exposed"
+"match.scoreboard.extra" = "not_exposed"
+"citations.engine"       = "not_exposed"
+"engagement.score"       = "supported"
