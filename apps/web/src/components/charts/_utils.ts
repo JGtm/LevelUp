@@ -24,6 +24,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken, type SemanticToken } from '@/lib/accessibility'
 import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/themeColors'
+import { formatNumberFixed } from '@/lib/formatters'
 
 export const CHART_BG = 'transparent'
 
@@ -130,18 +131,17 @@ export function tickInterval(n: number): number {
 
 /**
  * Format date FR court (DD/MM) pour les axes timeseries.
+ * Source unique : `lib/formatters/date.ts` (réexport, plus de duplication).
  */
-export function formatDateShort(d: Date | string | number): string {
-  const date = d instanceof Date ? d : new Date(d)
-  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
-}
+export { formatDateShort } from '@/lib/formatters'
 
 /**
- * Format chiffre arrondi (1 décimale par défaut) pour tooltips.
+ * Format chiffre arrondi (1 décimale par défaut) pour tooltips/axes.
+ * Délègue à `formatNumberFixed` (lib/formatters) en conservant le fallback
+ * historique "-" des axes ECharts (le barrel renvoie "—").
  */
 export function formatNumber(v: number, decimals = 1): string {
-  if (!Number.isFinite(v)) return '-'
-  return v.toFixed(decimals)
+  return formatNumberFixed(v, decimals, '-')
 }
 
 /** Re-export pour les builders qui veulent récupérer le helper themeColors. */
