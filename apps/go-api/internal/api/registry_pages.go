@@ -692,6 +692,11 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		pdb.XUID,
 		pdb.TitleSlug,
 	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb)))
+	csrSeasonID := ""
+	if r.cfg != nil {
+		csrSeasonID = r.cfg.CurrentCSRSeasonID
+	}
+	svc = svc.WithCSR(r.newExplorerCSRProvider(), csrSeasonID)
 	enriched := r.enrichWithHaloTokens(ctx, pdb)
 	return svc, enriched, pdb.XUID, pdb.Gamertag, nil
 }
