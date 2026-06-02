@@ -1,3 +1,35 @@
+## [2026-06-02] Face à face — rang carrière live pour un joueur B non-local (point 1) — Complété
+
+**Statut** : Complété (commit 6/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
+
+**Contexte** : le rang carrière s'affichait "N/A" pour un joueur B non-local dans le Face à face, alors que
+le profil de combat (Explorer) le récupère en live. Cause : `loadPlayerB` fetchait B via le service record
+Waypoint (sans career rank) et `metricAvailability` exigeait `isLocal` pour career_rank.
+
+**Décision technique principale** :
+- `CompareService.WithLiveIdentity(ExplorerTargetIdentityProvider)` — même provider que l'Explorer
+  (`newCareerLiveService`), injecté dans le registry.
+- `fillRemoteCareerRankLive` : pour un B non-local au xuid résolu, fetch live identity et
+  `remote.CareerRank = id.RankNumber` (best-effort, skip si rang déjà présent / pas de provider).
+- `metricAvailability` : `career_rank` sorti de `athMetrics` (local-only) et traité à part — disponible dès
+  `value>0` (ATH local côté A OU live côté B non-local). perf_ath/lusr_ath restent local-only.
+- Limite : ne couvre que les non-locaux dont le xuid est résolvable (ont déjà figuré dans un match commun) ;
+  un joueur jamais croisé reste sans xuid → career rank N/A (dégradation gracieuse).
+
+**Résultats observés** : `go build ./internal/api` (CGO) OK, `go test ./internal/service` OK (4.5s), `go vet`
++ gofmt clean. Tests : metricAvailability (career_rank live non-local / perf_ath local-only), buildMetrics
+(B non-local rank>0 exposé), fillRemoteCareerRankLive (set / non-écrasement / no-op sans provider).
+
+**Re-scope assumé** : le reste du point 3 côté Face à face (CSR classé + top médailles + échantillon des 20
+matchs live remplaçant le cross-sample) ajoute de la surface FRONTEND (sections/lignes) + une extension de
+projection (AvgLifeSecs/PerfectKills/HeadshotKills absents d'ExplorerTargetRecentMatch). Proposé en commit 7
+séparé, à valider par l'utilisateur. Réserve commit 4 (HTTP live non exercé sans tokens) toujours ouverte.
+
+**Conclusion / prochaine étape** : 6 commits du plan livrés (points 1, 2, 4, 5 + point 3 Explorer + provider
+live). Optionnel : commit 7 = CSR + médailles + sample live dans le Face à face.
+
+---
+
 ## [2026-06-02] Profil de combat — graphes alimentés en live pour les cibles non-locales (point 3b, Explorer) — Complété
 
 **Statut** : Complété (commit 5/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
