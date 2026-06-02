@@ -48,7 +48,7 @@ func setupCatalogRepoDB(t *testing.T) *DB {
 	         VALUES ('halo_infinite', 'pl-1', 'pa-1', 1.0)`)
 	// Wrap en *DB (sqlDB seul suffit : QueryRecovered délègue au sqlDB sur le
 	// happy path ; pas de FATAL invalidation déclenchée en test :memory:).
-	return &DB{sqlDB: db}
+	return newTestDB(db, "")
 }
 
 func TestCatalogRepo_PlaylistsByTitle_FullCatalog(t *testing.T) {

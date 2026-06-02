@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 )
@@ -28,10 +29,14 @@ import (
 // reconstruire la connexion avec exactement la même configuration suite à
 // une invalidation fatale (cf. bug DuckDB ART/NULL, 2026-05-14).
 type DB struct {
-	sqlDB    *sql.DB
+	// sqlDB et closed sont accédés en lecture SANS verrou (Query/Exec/SQLDb…) et
+	// remplacés in-place sous openDBsMu (Reopen/openCachedDB sur ping-fail). On les
+	// rend atomiques pour éliminer la data race lecteur/swap (revue P0 2026-06-02) :
+	// un lecteur voit toujours soit l'ancien soit le nouveau handle publié.
+	sqlDB    atomic.Pointer[sql.DB]
 	path     string
 	cacheKey string
-	closed   bool
+	closed   atomic.Bool
 	// Paramètres d'ouverture conservés pour Reopen().
 	dsn          string
 	maxOpenConns int
@@ -39,6 +44,9 @@ type DB struct {
 	timezone     string
 	op           string
 }
+
+// loadSQL retourne le *sql.DB courant de façon lock-free (atomic.Load).
+func (db *DB) loadSQL() *sql.DB { return db.sqlDB.Load() }
 
 type cachedDB struct {
 	db       *DB
@@ -86,10 +94,10 @@ func DumpCachedLeaks() map[string]int {
 func LookupCachedDB(path string) (*DB, bool) {
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
-	if cached, ok := openDBs["rw:"+path]; ok && cached.db != nil && !cached.db.closed {
+	if cached, ok := openDBs["rw:"+path]; ok && cached.db != nil && !cached.db.closed.Load() {
 		return cached.db, true
 	}
-	if cached, ok := openDBs["ro:"+path]; ok && cached.db != nil && !cached.db.closed {
+	if cached, ok := openDBs["ro:"+path]; ok && cached.db != nil && !cached.db.closed.Load() {
 		return cached.db, true
 	}
 	return nil, false
@@ -199,7 +207,7 @@ func openCachedDB(
 	defer openDBsMu.Unlock()
 
 	if cached, ok := openDBs[key]; ok {
-		if err := cached.db.sqlDB.PingContext(context.Background()); err == nil {
+		if err := cached.db.loadSQL().PingContext(context.Background()); err == nil {
 			cached.refCount++
 			return cached.db, nil
 		}
@@ -221,7 +229,7 @@ func openCachedDB(
 		if err != nil {
 			// Reopen impossible (fichier inaccessible, lock, etc.) — fallback :
 			// délai standard, Close + delete + signal au caller.
-			_ = oldDB.sqlDB.Close()
+			_ = oldDB.loadSQL().Close()
 			delete(openDBs, key)
 			slog.ErrorContext(context.Background(),
 				"duckdb: cache ping fail + reopen échoué — handle perdue, caller doit retry",
@@ -229,10 +237,10 @@ func openCachedDB(
 			return nil, err
 		}
 		applyConnLimits(newSQLDB, oldDB.maxOpenConns, oldDB.maxIdleConns)
-		// Fermer l'ancien sqlDB en best-effort puis swap.
-		_ = oldDB.sqlDB.Close()
-		oldDB.sqlDB = newSQLDB
-		oldDB.closed = false
+		// Fermer l'ancien sqlDB en best-effort puis swap atomique.
+		_ = oldDB.loadSQL().Close()
+		oldDB.sqlDB.Store(newSQLDB)
+		oldDB.closed.Store(false)
 		cached.refCount++
 		return oldDB, nil
 	}
@@ -256,7 +264,6 @@ func openCachedDB(
 	applyConnLimits(sqlDB, maxOpenConns, maxIdleConns)
 
 	db := &DB{
-		sqlDB:        sqlDB,
 		path:         path,
 		cacheKey:     key,
 		dsn:          dsn,
@@ -265,6 +272,7 @@ func openCachedDB(
 		timezone:     timezone,
 		op:           op,
 	}
+	db.sqlDB.Store(sqlDB)
 	openDBs[key] = &cachedDB{db: db, refCount: 1}
 	return db, nil
 }
@@ -351,11 +359,11 @@ func (db *DB) Reopen() error {
 	applyConnLimits(newSQLDB, db.maxOpenConns, db.maxIdleConns)
 
 	// Ferme l'ancien sqlDB en best-effort (déjà invalidé côté DuckDB).
-	if db.sqlDB != nil {
-		_ = db.sqlDB.Close()
+	if old := db.loadSQL(); old != nil {
+		_ = old.Close()
 	}
-	db.sqlDB = newSQLDB
-	db.closed = false
+	db.sqlDB.Store(newSQLDB)
+	db.closed.Store(false)
 
 	// Restaure l'entrée cache pointant sur cette même *DB (refCount préservé
 	// si déjà présent, sinon refCount=1).
@@ -429,13 +437,13 @@ func (db *DB) UpsertNoConflict(
 ) error {
 	return db.WithReopenOnInvalidated(func() error {
 		var dummy int
-		err := db.sqlDB.QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
+		err := db.loadSQL().QueryRowContext(ctx, existsQuery, existsArgs...).Scan(&dummy)
 		switch {
 		case err == nil:
-			_, execErr := db.sqlDB.ExecContext(ctx, updateQuery, updateArgs...)
+			_, execErr := db.loadSQL().ExecContext(ctx, updateQuery, updateArgs...)
 			return execErr
 		case errors.Is(err, sql.ErrNoRows):
-			_, execErr := db.sqlDB.ExecContext(ctx, insertQuery, insertArgs...)
+			_, execErr := db.loadSQL().ExecContext(ctx, insertQuery, insertArgs...)
 			return execErr
 		default:
 			return err
@@ -486,14 +494,14 @@ func applyConnLimits(sqlDB *sql.DB, maxOpenConns, maxIdleConns int) {
 
 // Close ferme la connexion DuckDB. À appeler au shutdown.
 func (db *DB) Close() error {
-	if db == nil || db.sqlDB == nil {
+	if db == nil || db.loadSQL() == nil {
 		return nil
 	}
 
 	openDBsMu.Lock()
 	defer openDBsMu.Unlock()
 
-	if db.closed {
+	if db.closed.Load() {
 		return nil
 	}
 	if db.cacheKey != "" {
@@ -505,20 +513,20 @@ func (db *DB) Close() error {
 			delete(openDBs, db.cacheKey)
 		}
 	}
-	db.closed = true
-	return db.sqlDB.Close()
+	db.closed.Store(true)
+	return db.loadSQL().Close()
 }
 
 // QueryRow exécute une requête qui retourne exactement une ligne.
 // L'erreur réelle de la requête est différée jusqu'à Scan ; on ne peut donc pas
 // la logger ici. Les call sites critiques doivent capturer err sur Scan eux-mêmes.
 func (db *DB) QueryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	return db.sqlDB.QueryRowContext(ctx, query, args...)
+	return db.loadSQL().QueryRowContext(ctx, query, args...)
 }
 
 // Query exécute une requête qui retourne plusieurs lignes.
 func (db *DB) Query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	rows, err := db.sqlDB.QueryContext(ctx, query, args...)
+	rows, err := db.loadSQL().QueryContext(ctx, query, args...)
 	if err != nil {
 		logDBError(ctx, "duckdb: query failed", db, query, err)
 	}
@@ -527,7 +535,7 @@ func (db *DB) Query(ctx context.Context, query string, args ...interface{}) (*sq
 
 // Exec exécute une instruction sans valeur de retour.
 func (db *DB) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	res, err := db.sqlDB.ExecContext(ctx, query, args...)
+	res, err := db.loadSQL().ExecContext(ctx, query, args...)
 	if err != nil {
 		logDBError(ctx, "duckdb: exec failed", db, query, err)
 	}
@@ -544,7 +552,7 @@ func (db *DB) ExecRecovered(ctx context.Context, query string, args ...interface
 	var res sql.Result
 	err := db.WithReopenOnInvalidated(func() error {
 		var execErr error
-		res, execErr = db.sqlDB.ExecContext(ctx, query, args...)
+		res, execErr = db.loadSQL().ExecContext(ctx, query, args...)
 		return execErr
 	})
 	if err != nil {
@@ -563,7 +571,7 @@ func (db *DB) QueryRecovered(ctx context.Context, query string, args ...interfac
 	var rows *sql.Rows
 	err := db.WithReopenOnInvalidated(func() error {
 		var qerr error
-		rows, qerr = db.sqlDB.QueryContext(ctx, query, args...)
+		rows, qerr = db.loadSQL().QueryContext(ctx, query, args...)
 		return qerr
 	})
 	if err != nil {
@@ -610,7 +618,7 @@ func queryExcerpt(q string) string {
 }
 
 // SQLDb retourne le *sql.DB sous-jacent (pour interop avec d'autres packages).
-func (db *DB) SQLDb() *sql.DB { return db.sqlDB }
+func (db *DB) SQLDb() *sql.DB { return db.loadSQL() }
 
 // Path retourne le chemin de la base.
 func (db *DB) Path() string { return db.path }

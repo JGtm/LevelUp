@@ -28,7 +28,7 @@ func setupMetadataWithMapCatalog(t *testing.T) *DB {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { sqlDB.Close() })
-	db := &DB{sqlDB: sqlDB, path: ":memory:"}
+	db := newTestDB(sqlDB, ":memory:")
 	ctx := context.Background()
 	for _, q := range []string{
 		`CREATE TABLE maps_catalog (title_slug VARCHAR, map_asset_id VARCHAR, name_canonical VARCHAR, image_url VARCHAR)`,
