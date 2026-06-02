@@ -86,6 +86,12 @@ func AcquireLeaseCtx(ctx context.Context, path string) (func(), error) {
 	defer ticker.Stop()
 
 	for {
+		// Court-circuit si le ctx est DÉJÀ annulé, AVANT TryLock : cohérent avec
+		// AcquireWriterCtx (writer.go) — ne pas accorder un lease libre sur un ctx
+		// mort (write-after-CloseAll au shutdown). Defense-in-depth (revue 2026-06-02).
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("write lease annulée (contexte fermé) pour %s: %w", path, err)
+		}
 		if mu.TryLock() {
 			return func() { mu.Unlock() }, nil
 		}

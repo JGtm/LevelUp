@@ -168,6 +168,18 @@ func AcquireWriterCtx(ctx context.Context, db *sql.DB, path string, kind Kind) (
 	start := time.Now()
 
 	for {
+		// Court-circuit si le ctx est DÉJÀ annulé, AVANT TryLock : sinon un lease
+		// libre serait accordé sur un ctx mort (ex. RunDelta HTTP repris après
+		// cancelScheduler au shutdown) → écriture après duckdb.CloseAll (#7659).
+		// Défense en profondeur : le caller ne devrait plus tenter d'écrire, mais
+		// on refuse le lease par sûreté (revue adversariale 2026-06-02).
+		if err := ctx.Err(); err != nil {
+			recordTimeout(kind)
+			slog.WarnContext(ctx, "dblease ctx déjà annulé — lease refusé avant acquisition",
+				"kind", string(kind), "path", path, "err", err)
+			return nil, fmt.Errorf("dblease: %s lease cancelled on %s: %w",
+				kind, path, errors.Join(ErrDBLocked, err))
+		}
 		if mu.TryLock() {
 			waitMs := time.Since(start).Milliseconds()
 			recordAcquire(kind, waitMs)

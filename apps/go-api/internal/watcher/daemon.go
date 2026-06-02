@@ -142,6 +142,17 @@ func NewDaemon(cfg DaemonConfig, titleReg *title.Registry, syncRunner syncpkg.Sy
 	}
 }
 
+// SyncGate expose le Coordinator comme point de déduplication cross-source des
+// syncs (interface syncpkg.SyncGate). main.go l'injecte dans l'auto-sync
+// scheduler et le handler HTTP pour qu'ils cèdent à un sync déjà en vol (peu
+// importe la source). Retourne l'INTERFACE (pas *Coordinator) ; comme le getter
+// est appelé sur le type concret *Daemon (jamais sur l'interface DaemonController),
+// pas de risque de nil-interface panic quand le watcher est désactivé (dans ce
+// cas main.go ne dispose pas de *Daemon et câble un NopSyncGate).
+func (d *Daemon) SyncGate() syncpkg.SyncGate {
+	return d.coordinator
+}
+
 // Start démarre le daemon. Non bloquant — lance des goroutines internes.
 func (d *Daemon) Start(ctx context.Context, authHeader string, playerList []domain.PlayerSummary) {
 	ctx, d.cancel = context.WithCancel(ctx)
