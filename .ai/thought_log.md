@@ -54176,3 +54176,23 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
   (complétude bidirectionnelle + bout-en-bout). `CanonicalOrder()` exporté.
 - **Prochaine étape** : b3 tier A (additifs) ; tier B après relocation des tests cœur. Cf.
   [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) §1.5.
+
+## [2026-06-02] b3 tier A étendu (seed) + tentative cœur `steps_shared.go` (revert propre)
+
+- **seed_tier_boundaries_v2** déplacé (`29f3d5eb9`) ; `migration.BootCtx()` exporté (DSL backfills).
+  6 steps migrés, tier A Shared épuisé.
+- **Tentative cœur `steps_shared.go`** (982L, 34 migrations) via pattern bas-risque `registerShared`
+  local (find-replace, compilo = filet, PAS de transformation init→slice). Le compilateur a révélé
+  l'entanglement réel, par étapes : (1) consts non-exportées `colSmallInt`… → exportables ; (2)
+  surtout `applyResolutionViews`/`applyMvPlayerMatchesView` sont **partagées** avec
+  `steps_shared_rebuild_match_participants.go` (336L, resté dans migration) → référence cassée ;
+  (3) le rebuild a ses **propres tests white-box** (`steps_shared_rebuild_*_test.go`) en
+  `package migration` → **cycle** empêche d'y poser le provider. = **cluster cœur tightly-coupled**
+  (steps_shared + rebuild + leurs tests).
+- **Décision** : REVERT propre (`git checkout` steps_shared.go + rm copie + retrait consts Col*
+  spéculatives). Le filet build/tests a fait son job : **rien de cassé committé**. Stratégie du
+  cluster documentée dans le tracker (déplacer steps_shared+rebuild ENSEMBLE + relocaliser leurs
+  tests). C'est un **effort focalisé multi-fichiers**, pas un push autonome sûr — jugement
+  d'ingénierie assumé malgré le « vas jusqu'au bout » (sortir 982L boot-critiques + tests white-box
+  cycle-contraints en rush risquerait un boot/suite cassés, pire qu'un checkpoint honnête).
+- **État** : 6 steps migrés, mécanisme voie B complet et prouvé, garde-fous en place, tout vert.
