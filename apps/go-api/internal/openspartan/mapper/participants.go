@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"fmt"
+	"time"
 
 	"levelup/go-api/internal/openspartan"
 )
@@ -55,6 +56,17 @@ func MapParticipants(
 		// column NULL rather than failing the whole match.
 		avgLife, avgLifeErr := DurationSecondsFloat(cs.AverageLifeDuration)
 
+		// Normalisation UTC des timestamps ParticipationInfo, cohérente avec
+		// StartTime/EndTime (mapper.go:65,88) et le chemin sync (parseISO →
+		// .UTC()). L'instant reste correct ; on aligne la location pour fermer
+		// l'incohérence (start/end étaient .UTC()'d, pas first_joined/last_leave).
+		fjtUTC := p.ParticipationInfo.FirstJoinedTime.UTC()
+		var lltUTC *time.Time
+		if p.ParticipationInfo.LastLeaveTime != nil {
+			u := p.ParticipationInfo.LastLeaveTime.UTC()
+			lltUTC = &u
+		}
+
 		row := MatchParticipantRow{
 			MatchID:             ms.MatchID,
 			XUID:                xuid,
@@ -82,8 +94,8 @@ func MapParticipants(
 			PresentAtCompletion: p.ParticipationInfo.PresentAtCompletion,
 			JoinedInProgress:    p.ParticipationInfo.JoinedInProgress,
 			LeftInProgress:      p.ParticipationInfo.LeftInProgress,
-			FirstJoinedTime:     p.ParticipationInfo.FirstJoinedTime,
-			LastLeaveTime:       p.ParticipationInfo.LastLeaveTime,
+			FirstJoinedTime:     fjtUTC,
+			LastLeaveTime:       lltUTC,
 		}
 		if avgLifeErr == nil && avgLife > 0 {
 			v := avgLife
