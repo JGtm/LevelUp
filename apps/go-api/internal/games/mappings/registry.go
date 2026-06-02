@@ -16,18 +16,20 @@ import (
 // GetOutcomes(slug) → OutcomeMappingSet.
 // Une erreur de chargement pour un titre n'invalide pas les autres.
 type Registry struct {
-	mu       sync.RWMutex
-	fields   map[string]*FieldMappingSet
-	assets   map[string]*AssetMappingSet
-	outcomes map[string]*OutcomeMappingSet
+	mu           sync.RWMutex
+	fields       map[string]*FieldMappingSet
+	assets       map[string]*AssetMappingSet
+	outcomes     map[string]*OutcomeMappingSet
+	capabilities map[string]*CapabilityMappingSet
 }
 
 // NewRegistry crée un registre vide.
 func NewRegistry() *Registry {
 	return &Registry{
-		fields:   make(map[string]*FieldMappingSet),
-		assets:   make(map[string]*AssetMappingSet),
-		outcomes: make(map[string]*OutcomeMappingSet),
+		fields:       make(map[string]*FieldMappingSet),
+		assets:       make(map[string]*AssetMappingSet),
+		outcomes:     make(map[string]*OutcomeMappingSet),
+		capabilities: make(map[string]*CapabilityMappingSet),
 	}
 }
 
@@ -97,6 +99,23 @@ func (r *Registry) LoadFromConfigDir(repoRoot string, slugs []string, logger *sl
 				"schema_version", oset.SchemaVersion(),
 			)
 		}
+
+		// capabilities.toml — optionnel (Phase 1.7a)
+		capsPath := filepath.Join(mappingsDir, "capabilities.toml")
+		if cset, loadErr := loadCapabilitiesIfExists(capsPath); loadErr != nil {
+			logger.Error("mappings_validation_failed", "title_slug", slug, "path", capsPath, "err", loadErr.Error())
+			errs = append(errs, fmt.Errorf("load capabilities %s: %w", slug, loadErr))
+		} else if cset != nil {
+			r.mu.Lock()
+			r.capabilities[slug] = cset
+			r.mu.Unlock()
+			logger.Info("mappings_loaded",
+				"title_slug", slug,
+				"kind", "capabilities",
+				"capabilities_count", len(cset.Keys()),
+				"schema_version", cset.SchemaVersion(),
+			)
+		}
 	}
 	return errs
 }
@@ -113,6 +132,13 @@ func loadOutcomesIfExists(path string) (*OutcomeMappingSet, error) {
 		return nil, nil
 	}
 	return LoadOutcomesFromFile(path)
+}
+
+func loadCapabilitiesIfExists(path string) (*CapabilityMappingSet, error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	return LoadCapabilitiesFromFile(path)
 }
 
 // Get retourne le FieldMappingSet d'un titre s'il a été chargé.
@@ -136,6 +162,14 @@ func (r *Registry) GetOutcomes(slug string) (*OutcomeMappingSet, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	v, ok := r.outcomes[slug]
+	return v, ok
+}
+
+// GetCapabilities retourne le CapabilityMappingSet d'un titre s'il existe (Phase 1.7a).
+func (r *Registry) GetCapabilities(slug string) (*CapabilityMappingSet, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	v, ok := r.capabilities[slug]
 	return v, ok
 }
 
