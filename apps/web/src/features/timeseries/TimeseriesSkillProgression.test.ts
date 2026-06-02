@@ -2,7 +2,7 @@
  * Tests — TimeseriesSkillProgression.buildProgressionSeries : mapping des valeurs
  * par index de match, ruptures de saison, isolation des placements.
  * (Aucun rendu ECharts — on teste la fonction pure, pas le canvas. Le cadrage Y
- * frameToTier est testé dans @/lib/charts/skillTierBands.test.ts.)
+ * frameToData est testé dans @/lib/charts/skillTierBands.test.ts.)
  */
 import { describe, it, expect } from 'vitest'
 import { buildProgressionSeries } from './TimeseriesSkillProgression'
