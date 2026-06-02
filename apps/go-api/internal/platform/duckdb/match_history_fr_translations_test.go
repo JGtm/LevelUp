@@ -25,7 +25,7 @@ func setupMetadataWithModeTranslations(t *testing.T) *DB {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { sqlDB.Close() })
-	db := &DB{sqlDB: sqlDB, path: ":memory:"}
+	db := newTestDB(sqlDB, ":memory:")
 
 	ctx := context.Background()
 	for _, q := range []string{

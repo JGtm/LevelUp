@@ -29,7 +29,7 @@ func openMemDB(t *testing.T) *DB {
 		t.Fatalf("openMemDB: %v", err)
 	}
 	t.Cleanup(func() { sqlDB.Close() })
-	return &DB{sqlDB: sqlDB, path: ":memory:"}
+	return newTestDB(sqlDB, ":memory:")
 }
 
 // seedShared crée et peuple le schéma shared minimal pour les tests.

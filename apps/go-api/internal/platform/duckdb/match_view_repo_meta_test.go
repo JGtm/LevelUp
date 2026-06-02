@@ -33,8 +33,8 @@ func newMetaResolveTestPDB(t *testing.T) *PlayerDB {
 		t.Fatalf("open meta: %v", err)
 	}
 	t.Cleanup(func() { metaSQL.Close() })
-	player := &DB{sqlDB: playerSQL, path: ":memory:"}
-	meta := &DB{sqlDB: metaSQL, path: ":memory:"}
+	player := newTestDB(playerSQL, ":memory:")
+	meta := newTestDB(metaSQL, ":memory:")
 
 	ctx := context.Background()
 	for _, q := range []string{

@@ -17,7 +17,7 @@ func openAssetMemDB(t *testing.T) *DB {
 		t.Fatalf("openAssetMemDB: %v", err)
 	}
 	t.Cleanup(func() { sqlDB.Close() })
-	return &DB{sqlDB: sqlDB, path: ":memory:"}
+	return newTestDB(sqlDB, ":memory:")
 }
 
 func TestListMapsByTitle_All(t *testing.T) {

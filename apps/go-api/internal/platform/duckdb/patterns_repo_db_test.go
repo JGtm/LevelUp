@@ -64,8 +64,8 @@ func newPatternsTestPDB(t *testing.T) *PlayerDB {
 	_ = ctx
 
 	return &PlayerDB{
-		Player: &DB{sqlDB: playerSQL, path: ":memory:"},
-		Shared: &DB{sqlDB: sharedSQL, path: ":memory:"},
+		Player: newTestDB(playerSQL, ":memory:"),
+		Shared: newTestDB(sharedSQL, ":memory:"),
 		XUID:   "p1",
 	}
 }
