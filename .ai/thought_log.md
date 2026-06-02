@@ -49,6 +49,33 @@ l'utilisateur démêle les branches parallèles. Amélioration future signalée 
 
 **Conclusion / prochaine étape** : vérification visuelle in-app non faite (offerte). Couplage manuel grille Go↔front à surveiller (commentaire ⚠️ posé). Commit en attente d'autorisation.
 
+## [2026-06-02] RE film Theater : positions joueurs + immobilité + spawn DÉCODÉS ; scores 3 modes
+
+**Statut** : Complété (exploration RE, hors code prod, câblage différé v2). Doc `.ai/RESEARCH_THEATER_RE.md` §M-ter + §N.
+
+**Contexte** : suite du crack du score (§M-ter). Leads utilisateur successifs : (1) score Slayer par les frags →
+TYPE_2 ; (2) Strongholds « 2 zones = +1/s » ; (3) CTF ancre 1-1@10:55 ; (4) spawn par immobilité (mort figé 8-9s
+puis téléport). Workflows multi-agents séquencés.
+
+**Résultats** :
+- **Scores** : Slayer SOLVED (TYPE_2 byte ~813/823, scan par match) ; Strongholds SOLVED (byte 842 varint
+  à continuation ×4.099, reconstruit ±1 sur 4 ancres, palier reproduit) — le lead zones a donné la *forme* à
+  chercher ; CTF partiel (compteurs de captures dérivants/trop rares — workflow multi-matchs en cours).
+- **Carte entité→joueur** : SOLVED via le couple event (team,b36), 205 events sans conflit ; cross-confirmé
+  fire-pi=2=…0022 (p=0.006, corrélation gaps-tir↔morts).
+- **Immobilité** : CONFIRMÉE (absence rejetée) 3 fois — non-rétrécissement du snapshot, records joueurs ~8
+  constants découplés d'aliveCount, et **figé-puis-téléport observé** (joueur …0022 : burst mort @62932.9ms →
+  figé 63-72s → burst respawn @72058.2ms, ±2-3ms des events).
+- **Positions** : records joueurs trouvés (délimiteur « comb » P24, float32-LE à combStartBit−273 en full-state) ;
+  validés par les clusters de spawn 4+4 à kf02.
+
+**Décision technique** : aligner sur le début de payload du paquet ; le score/état vit en varint/bit-packé à
+offset dérivant ancré sur marqueur local (pas d'offset hardcodé). Bug d'outillage corrigé (bannière filmx→stderr).
+
+**Reste** : identité par-joueur cross-keyframe (handle 24-bit non cracké) + quantification per-FRAME (mur du
+schéma) pour tracks denses/heatmaps. Prochaine étape : workflow CTF multi-matchs (en cours), puis éventuel crack
+handle+quantification.
+
 ## [2026-06-02] RE film Theater : score DÉBLOQUÉ dans TYPE_2 (Slayer), byte-aligné
 
 **Statut** : Complété (Slayer) — généralisation modes objectif + kill-feed en cours (workflow 4 agents).
@@ -53846,3 +53873,26 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
   session-detail 89 verts, hors sandbox).
 - Reste P1/P2 : H-D4 (migration des ~140 ternaires inline locale==='en' vers manifests +
   règle ESLint) — lot séparé non fait. NARRATIVE_LABELS MatchCard. CSP HTTP (dette P2).
+
+[2026-06-02] Remédiation revue de code — passe autonome — Complété (lot livrable) / différés documentés
+- Tâche : traiter en autonomie les recommandations de la revue (.ai/CODE_REVIEW_2026-06-02.md),
+  "sans rien laisser de côté sauf impératif/erreur/obsolescence".
+- 10 commits cette passe (29a9bfbd5 → d762443ac), tous build+vet+test verts (CGO) :
+  quick wins backend (dead code, magic outcome, emojis, backup level) ; TZ canonique
+  player_matches + consts SQL mortes + damage round ; fuite err.Error() 5xx au point unique
+  (writeError/httpError) ; races watcher (MatchQueue seen, Daemon atomic.Bool + double-Start,
+  FSM StateEnteredAt) ; doc déploiement (env vars prod + isolation volumes) ; frontend
+  (console.log, composants morts, themeColors data-theme) ; data_health via PathResolver.
+- Décisions notables : 
+  * findings écartés comme ERREUR/OBSOLÈTE — Q30/Q42 "shared. mortes" sont vivantes (ATTACH
+    valide squad) ; seed_demo_media doit RESTER en layout legacy (le conteneur démo le monte ainsi).
+  * différés ZONE CONCURRENTE — internal/sync + scheduler/auto_sync sont édités par un agent
+    parallèle (feature GateSnapshot) ; tout ce qui les touche (Retry-After, MatchesInserted,
+    contract_test, persist_sink goroutines, aggregates) est différé pour éviter le conflit.
+  * différés REFACTOR LOURD — découpe god-files, décomposition SynthesisPage/SessionCompare,
+    consolidation 115 CLIs, H-D4 (140 ternaires), centralisation query keys : à faire en lots
+    dédiés (risque de régression en autonomie non supervisée).
+  * différés DESIGN — TitleDataAdapter dormant, ownership 404, TZ globale, pool LRU : décision équipe.
+- Ledger complet (traité / différé-avec-raison / écarté) : .ai/CODE_REVIEW_REMEDIATION_2026-06-02.md.
+- Prochaine étape : reprendre les différés "zone concurrente" une fois l'agent parallèle terminé,
+  puis planifier les refactors lourds en lots séparés.
