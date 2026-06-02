@@ -97,7 +97,7 @@ func (p *StateProvider) GetStatus() WatcherStatus {
 			Gamertag:      pw.gamertag,
 			XUID:          pw.xuid,
 			State:         fsm.State().String(),
-			StateSince:    fsm.stateEnteredAt.Format(time.RFC3339),
+			StateSince:    fsm.StateEnteredAt().Format(time.RFC3339),
 			StateDuration: fsm.StateDuration().Truncate(time.Second).String(),
 		}
 

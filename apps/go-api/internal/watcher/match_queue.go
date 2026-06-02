@@ -41,20 +41,16 @@ func NewMatchQueue(maxSize int) *MatchQueue {
 }
 
 // Enqueue ajoute une requête à la file après déduplication des match_ids.
-// Les match_ids déjà vus sont filtrés.
+// Les match_ids déjà vus sont filtrés. Un match_id n'est marqué `seen` qu'APRÈS
+// un enqueue réussi : si la file est pleine (drop), le prochain poll doit pouvoir
+// re-tenter ces matchs au lieu de les perdre définitivement (revue 2026-06-02).
 func (q *MatchQueue) Enqueue(req MatchRequest) {
 	q.seenMu.Lock()
 	var newIDs []string
 	for _, id := range req.MatchIDs {
-		key := req.Gamertag + ":" + id
-		if !q.seen[key] {
-			q.seen[key] = true
+		if !q.seen[req.Gamertag+":"+id] {
 			newIDs = append(newIDs, id)
 		}
-	}
-	if len(q.seen) > maxSeenEntries {
-		slog.Debug("match_queue: cache seen réinitialisé (borne atteinte)", "size", len(q.seen))
-		q.seen = make(map[string]bool)
 	}
 	q.seenMu.Unlock()
 
@@ -74,15 +70,33 @@ func (q *MatchQueue) Enqueue(req MatchRequest) {
 
 	select {
 	case q.ch <- filtered:
+		// Enqueue réussi → on mémorise pour ne pas réenfiler ces matchs. Une rare
+		// course (deux Enqueue concurrents passant le pré-check) est inoffensive :
+		// le Coordinator dédup par gamertag + le persister est idempotent.
+		q.markSeen(req.Gamertag, newIDs)
 		slog.Info("match_queue: requête ajoutée",
 			"gamertag", req.Gamertag,
 			"match_count", len(newIDs),
 		)
 	default:
-		slog.Warn("match_queue: file pleine, requête ignorée",
+		// File pleine : on NE marque PAS seen → re-tenté au prochain poll.
+		slog.Error("match_queue: file pleine, matchs non enfilés (re-tentés au prochain poll)",
 			"gamertag", req.Gamertag,
 			"match_count", len(newIDs),
 		)
+	}
+}
+
+// markSeen mémorise les match_ids effectivement enfilés, avec borne anti-fuite.
+func (q *MatchQueue) markSeen(gamertag string, ids []string) {
+	q.seenMu.Lock()
+	defer q.seenMu.Unlock()
+	for _, id := range ids {
+		q.seen[gamertag+":"+id] = true
+	}
+	if len(q.seen) > maxSeenEntries {
+		slog.Debug("match_queue: cache seen réinitialisé (borne atteinte)", "size", len(q.seen))
+		q.seen = make(map[string]bool)
 	}
 }
 

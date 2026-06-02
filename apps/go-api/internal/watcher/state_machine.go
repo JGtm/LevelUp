@@ -94,6 +94,15 @@ func (f *FSM) StateDuration() time.Duration {
 	return time.Since(f.stateEnteredAt)
 }
 
+// StateEnteredAt retourne l'instant d'entrée dans l'état courant (lecture
+// synchronisée — ne jamais lire f.stateEnteredAt directement depuis l'extérieur,
+// data race avec les transitions FSM ; revue 2026-06-02).
+func (f *FSM) StateEnteredAt() time.Time {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return f.stateEnteredAt
+}
+
 // CooldownRemaining retourne le temps restant de cooldown (0 si pas en cooling).
 func (f *FSM) CooldownRemaining() time.Duration {
 	f.mu.RLock()
