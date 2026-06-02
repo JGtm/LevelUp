@@ -1,0 +1,167 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"levelup/go-api/internal/domain"
+	mediapkg "levelup/go-api/internal/media"
+	"levelup/go-api/internal/ops"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"time"
+)
+
+func (s *MediaService) UploadMedia(ctx context.Context, req domain.UploadRequest) (*domain.UploadResult, error) {
+	result := &domain.UploadResult{}
+
+	if len(req.Files) == 0 {
+		return result, nil
+	}
+
+	if err := os.MkdirAll(req.CapturesDir, 0o755); err != nil {
+		return nil, fmt.Errorf("créer captures dir %q: %w", req.CapturesDir, err)
+	}
+
+	var savedVideos []string // chemins abs des vidéos sauvées (candidats transcoding HLS)
+	for _, f := range req.Files {
+		dest := safeDestPath(req.CapturesDir, f.OriginalName)
+		if err := os.WriteFile(dest, f.Data, 0o644); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", f.OriginalName, err))
+			slog.WarnContext(ctx, "upload: écriture fichier échouée",
+				"file", f.OriginalName, "err", err)
+			continue
+		}
+		result.Saved++
+		slog.DebugContext(ctx, "upload: fichier sauvegardé",
+			"file", f.OriginalName, "dest", dest)
+		if mediapkg.IsVideoExt(filepath.Ext(dest)) {
+			savedVideos = append(savedVideos, dest)
+		}
+	}
+
+	if result.Saved == 0 {
+		slog.WarnContext(ctx, "upload: aucun fichier sauvegardé", "attempted", len(req.Files))
+		return result, nil
+	}
+
+	tol := req.Tolerance
+	if tol <= 0 {
+		tol = 2
+	}
+
+	// Construction de la map basename → unix ts client (pour le filename parser)
+	captureTimes := make(map[string]*int64, len(req.Files))
+	for _, f := range req.Files {
+		if f.CaptureTimeUnix != nil {
+			captureTimeUnix := f.CaptureTimeUnix
+			captureTimes[f.OriginalName] = captureTimeUnix
+		}
+	}
+
+	slog.InfoContext(ctx, "upload: démarrage indexation",
+		"captures_dir", req.CapturesDir, "buffer_min", tol, "timezone", s.timezone)
+
+	idxResult, err := ops.IndexMedia(ctx, ops.MediaIndexOptions{
+		PlayerDBPath:        req.DBPath,
+		SharedSocialDBPath:  req.SharedSocialDBPath,
+		SharedMatchesDBPath: req.SharedMatchesDBPath,
+		CapturesDir:         req.CapturesDir,
+		CapturesBase:        req.CapturesBase,
+		Gamertag:            req.Gamertag,
+		BufferMin:           tol,
+		Timezone:            s.timezone,
+		CaptureTimes:        captureTimes,
+	})
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("indexation: %v", err))
+		slog.ErrorContext(ctx, "upload: indexation échouée", "err", err)
+	}
+	result.NewIndexed = idxResult.NewFiles
+	result.Associated = idxResult.Associated
+	result.Thumbnails = idxResult.Thumbnails
+	result.Errors = append(result.Errors, idxResult.Errors...)
+
+	// Transcoding HLS asynchrone des vidéos éligibles. Les thumbnails ont déjà
+	// été générés par IndexMedia (donc disponibles même pendant le 'processing').
+	if s.jobStore != nil {
+		s.launchHLSTranscoding(ctx, req, savedVideos)
+	}
+
+	slog.InfoContext(ctx, "upload: terminé",
+		"saved", result.Saved,
+		"new_indexed", result.NewIndexed,
+		"associated", result.Associated,
+		"thumbnails", result.Thumbnails,
+		"errors", len(result.Errors),
+	)
+	return result, nil
+}
+
+// launchHLSTranscoding détecte les vidéos éligibles au HLS (MKV/AVI ou
+// multipiste), les marque 'processing' et lance un worker async par clip. La
+// détection (probe) est synchrone et rapide ; le transcoding tourne en goroutine
+// détachée pour ne pas bloquer la réponse upload.
+func (s *MediaService) launchHLSTranscoding(ctx context.Context, req domain.UploadRequest, videoPaths []string) {
+	log := slog.With("module", "media") // logs/media.log
+	store := ops.MediaPathStore{CapturesBase: req.CapturesBase}
+	for _, dest := range videoPaths {
+		needed, err := ops.DetectHLSNeeded(ctx, dest)
+		if err != nil {
+			log.WarnContext(ctx, "hls: détection échouée", "file", dest, "err", err)
+			continue
+		}
+		if !needed {
+			continue
+		}
+		fileRel := store.ToRel(dest, req.Gamertag)
+		if fileRel == "" {
+			fileRel = dest
+		}
+		outDir, hlsRel := ops.HLSPathsFor(req.CapturesDir, req.CapturesBase, req.Gamertag, dest)
+		if err := ops.MarkTranscodeStatus(ctx, req.SharedSocialDBPath, fileRel, ops.TranscodeProcessing); err != nil {
+			log.WarnContext(ctx, "hls: mark processing échoué", "file", fileRel, "err", err)
+			continue
+		}
+		job := s.jobStore.Create(domain.JobTypeTranscodeMedia, req.Gamertag)
+		log.InfoContext(ctx, "hls: transcoding lancé",
+			"job", job.JobID, "file", fileRel, "out_dir", outDir)
+		go s.runTranscodeJob(ops.HLSTranscodeParams{
+			SourceAbs: dest,
+			OutDir:    outDir,
+			DBPath:    req.SharedSocialDBPath,
+			FileRel:   fileRel,
+			HLSRel:    hlsRel,
+		}, job.JobID)
+	}
+}
+
+// runTranscodeJob exécute le transcoding en arrière-plan (context.Background :
+// survit à la requête HTTP), met à jour le job, et notifie la galerie au succès.
+func (s *MediaService) runTranscodeJob(p ops.HLSTranscodeParams, jobID string) {
+	ctx := context.Background()
+	log := slog.With("module", "media") // logs/media.log
+	step := "transcoding"
+	s.jobStore.SetStatus(jobID, domain.JobStatusRunning, &step)
+
+	if err := ops.RunHLSTranscode(ctx, p); err != nil {
+		log.ErrorContext(ctx, "hls: job de transcoding échoué",
+			"job", jobID, "file", p.FileRel, "err", err)
+		s.jobStore.Update(jobID, func(j *domain.AsyncJobStatus) {
+			j.Status = domain.JobStatusFailed
+			now := time.Now().UTC()
+			j.FinishedAt = &now
+			j.Error = &domain.JobErrorDetail{Code: "transcode_failed", Message: err.Error()}
+		})
+		return
+	}
+
+	s.jobStore.SetStatus(jobID, domain.JobStatusSucceeded, nil)
+	log.InfoContext(ctx, "hls: job de transcoding terminé", "job", jobID, "file", p.HLSRel)
+	if s.feedBump != nil {
+		s.feedBump()
+	}
+}
+
+// ReassociateMedia recrée toutes les associations médias↔matchs depuis zéro.
+// Avant de supprimer, crée un snapshot horodaté (backup) dans la même DB.
