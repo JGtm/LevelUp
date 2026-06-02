@@ -23,6 +23,9 @@ export const profileKeys = {
     ['playerProfile', 'campaign', 'active', playerSlug] as const,
   campaign: (playerSlug: string, id: string) =>
     ['playerProfile', 'campaign', playerSlug, id] as const,
+  /** Préfixe broad — invalide tous les `campaign(playerSlug, *)`. */
+  campaignAll: (playerSlug: string) =>
+    ['playerProfile', 'campaign', playerSlug] as const,
 }
 
 // ─── Queries ───────────────────────────────────────────────────────────────
@@ -54,7 +57,7 @@ export function useCampaignMutations(playerSlug: string | undefined) {
   const slug = playerSlug ?? ''
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: profileKeys.activeCampaign(slug) })
-    qc.invalidateQueries({ queryKey: ['playerProfile', 'campaign', slug] })
+    qc.invalidateQueries({ queryKey: profileKeys.campaignAll(slug) })
   }
   return {
     start: useMutation({

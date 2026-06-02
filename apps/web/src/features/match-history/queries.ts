@@ -44,7 +44,7 @@ export function useSetMatchExclusion(playerSlug: string) {
         { excluded },
       ),
     onSuccess: (_, { matchId }) => {
-      void queryClient.invalidateQueries({ queryKey: ['match-history', playerSlug] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.matchHistoryAll(playerSlug) })
       void queryClient.invalidateQueries({
         queryKey: queryKeys.matchView(playerSlug, matchId),
       })
@@ -66,7 +66,7 @@ export function useSetMatchFavorite(playerSlug: string) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.home(playerSlug) })
-      void queryClient.invalidateQueries({ queryKey: ['match-history', playerSlug] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.matchHistoryAll(playerSlug) })
     },
   })
 }

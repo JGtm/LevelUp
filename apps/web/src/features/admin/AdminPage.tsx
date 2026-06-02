@@ -15,6 +15,7 @@ import {
   useAdminInvites,
   useGenerateInvite,
   useRevokeInvite,
+  adminKeys,
 } from '@/features/auth/queries'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
@@ -63,7 +64,7 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
   function handleDelete(username: string) {
     if (!confirm(`Supprimer l'utilisateur "${username}" ?`)) return
     deleteUser.mutate(username, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.users }),
     })
   }
 
@@ -71,7 +72,7 @@ function UsersSection({ currentUsername }: { currentUsername: string | null | un
     const newRole = currentRole === 'admin' ? 'user' : 'admin'
     changeRole.mutate(
       { username, role: newRole as 'admin' | 'user' },
-      { onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'users'] }) },
+      { onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.users }) },
     )
   }
 
@@ -173,13 +174,13 @@ function InvitesSection() {
 
   function handleGenerate() {
     generateInvite.mutate(7, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'invites'] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.invites }),
     })
   }
 
   function handleRevoke(code: string) {
     revokeInvite.mutate(code, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'invites'] }),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: adminKeys.invites }),
     })
   }
 

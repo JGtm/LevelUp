@@ -18,6 +18,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useSettings, useUpdateSettings } from '@/features/settings/queries'
+import { queryKeys } from '@/lib/query/keys'
 import { Card, CardContent } from '@/components/ui/card'
 
 // ─── Texte i18n ──────────────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ export function useAddFriend(locale: string = 'fr') {
         await update.mutateAsync({ friend_gamertags: next })
         toast.success(t.successToast(trimmed))
         // Invalide tout ce qui dépend de friend_gamertags : Squad, settings.
-        qc.invalidateQueries({ queryKey: ['teammates'] })
+        qc.invalidateQueries({ queryKey: queryKeys.teammatesAll })
         return { ok: true }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)

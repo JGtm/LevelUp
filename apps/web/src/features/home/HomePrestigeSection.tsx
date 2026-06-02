@@ -21,6 +21,7 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { ArcSummary } from '@/features/prestige/components/ArcSummary'
 import { ObjectiveRow } from '@/features/prestige/components/ObjectiveRow'
 import { useMyPrestige } from '@/features/prestige/hooks/usePrestige'
+import { challengeKeys } from '@/features/prestige/hooks/useChallenges'
 import { useArcs } from '@/features/prestige/hooks/useArcs'
 import { prestigeApi, type Challenge } from '@/lib/prestige'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
@@ -72,7 +73,7 @@ export function HomePrestigeSection({ playerSlug, titleSlug, locale }: HomePrest
   const prestige = useMyPrestige(playerSlug, titleSlug)
   const arcsQ = useArcs(playerSlug, titleSlug)
   const challengesQ = useQuery({
-    queryKey: ['prestige', 'challenges', playerSlug, titleSlug],
+    queryKey: challengeKeys.list(playerSlug, titleSlug),
     queryFn: () => prestigeApi.listActiveChallenges(playerSlug, titleSlug),
     retry: false,
     staleTime: 30_000,

@@ -100,7 +100,7 @@ export function useSendTestNotification({ playerSlug }: MutationCtx) {
       api.post<void>(`/players/${playerSlug}/notifications/test`),
     onSettled: () => {
       // Invalide la liste pour que la notif test apparaisse dans le dropdown.
-      qc.invalidateQueries({ queryKey: ['notifications', playerSlug] })
+      qc.invalidateQueries({ queryKey: queryKeys.notificationsAll(playerSlug) })
     },
   })
 }
@@ -122,7 +122,7 @@ function patchListsForRead(
   const now = new Date().toISOString()
   // Match toutes les query keys ['notifications', playerSlug, ...]
   const matches = qc.getQueriesData<{ items: Notification[] }>({
-    queryKey: ['notifications', playerSlug],
+    queryKey: queryKeys.notificationsAll(playerSlug),
   })
   const snapshot: CacheSnapshot = { lists: [] }
   for (const [key, data] of matches) {
@@ -158,5 +158,5 @@ function restore(qc: ReturnType<typeof useQueryClient>, snap: CacheSnapshot | un
 }
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>, playerSlug: string) {
-  qc.invalidateQueries({ queryKey: ['notifications', playerSlug] })
+  qc.invalidateQueries({ queryKey: queryKeys.notificationsAll(playerSlug) })
 }
