@@ -53896,3 +53896,24 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
 - Ledger complet (traité / différé-avec-raison / écarté) : .ai/CODE_REVIEW_REMEDIATION_2026-06-02.md.
 - Prochaine étape : reprendre les différés "zone concurrente" une fois l'agent parallèle terminé,
   puis planifier les refactors lourds en lots séparés.
+
+[2026-06-02] Lot A — correction/robustesse backend (revue de code) — Complété
+- Items débloqués (ex-zone concurrente, parallèle = recherche seule). Investigation
+  multi-agents (7 specs vérifiées) puis implémentation + build/test/commit incrémentaux.
+- A1 (693fb1041): réconciliation post-Drain — en async, InsertedMatchIDs/MatchesInserted
+  reconciliés vs match_registry si Drain échoue (plus de post-sync ~285s sur matchs fantômes).
+- A2 (693fb1041): refreshAggregates -> (created, failed, errors.Join) + warn agrégé corrélé.
+- A4 (693fb1041): persistPlayerRecordsLegacy détection one-shot (sync.Once) + WARN explicite.
+- A5 (693fb1041): GetChallenges synchrone (PersistChallengesSync) + suppr 2 méthodes async
+  fire-and-forget Background() (write-after-CloseAll).
+- A7 (693fb1041): auto_sync précondition os.Stat via slug du profil (garde seulement).
+- A3 (d53480fdc): HTTPError.RetryAfter + parseRetryAfter ; Pool.OnHTTPError(int, Duration)
+  honore Retry-After + backoff exponentiel borné + metrics expvar levelup.auth_pool.*.
+- A6 (3331f1f3c): anti-régression URL xuid(NNN) ACTIVE (TestContract_..._V1 via RunDelta +
+  capture mock) ; combat_write_guard sans tag cgo. CrossPlayerDedup différé (confidence moy).
+- Vérifs: go build ./... + go vet ./internal/... verts ; go test sync/persist/scheduler/pool/
+  duckdb verts ; go test -race sur watcher + contract verts.
+- Décision: CrossPlayerDedup V1 non implémenté (dépend du couplage xuid<->PlayerId du JSON
+  mock — risque de faux négatif ; à faire avec un statsBody explicite).
+- Prochaine étape: vérification adversariale des diffs (en cours), puis lots B (refactors
+  lourds) / C (décisions design) à planifier.
