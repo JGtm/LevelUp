@@ -1,3 +1,80 @@
+## [2026-06-02] Observabilité du gate de dédup cross-source + vérification finale — Complété (non commité)
+
+**Statut** : Complété, NON commité (branche déplacée vers feat/skill-progression-magnitude-scale +
+workstreams parallèles dans le working tree → commit reporté à la demande de l'utilisateur).
+
+**Contexte** : suite de l'unification du gate cross-source (commit 7d624b6cf). Ajout de l'observabilité du
+gate pour détecter un claim fuité (release jamais appelé → joueur jamais re-synchronisé, pire qu'un
+double-fetch silencieux).
+
+**Décision technique** :
+- coordinator.go : maps inFlight/gateClaims passent de bool à time.Time (âge du claim). Compteurs expvar via
+  internal/observability (namespace "levelup", /debug/vars, ADR 0009, cardinalité bornée à 3 clés FIXES) :
+  sync_gate_claims_granted_total, sync_gate_claims_coalesced_total (= double-fetches évités), jauge
+  sync_gate_inflight (valeur figée = fuite). GateSnapshot() : compteurs + claims en vol avec âge + flag stale
+  (seuil 45 min > syncJobTimeout 30 min pour éviter les faux positifs).
+- auto_sync.go : SchedulerSnapshot.Gate exposé sur /_diag/auto-sync/snapshot ; warnStaleGateClaims dans
+  RunOnce (heartbeat de détection de fuite, WARN par claim stale).
+- Logging : routage AUTO par package (internal/sync→logs/sync.log, scheduler→logs/scheduler.log,
+  handlers→logs/handlers.log, dblease→logs/duckdb.log) — aucun module= explicite requis. Log DEBUG par joueur
+  coalescé ajouté dans StartSyncAll. Zéro fmt.Println/log.Printf.
+
+**Vérification finale (delivery-checklist)** :
+- build ./... + vet ./... : verts. Couverture gate (coordinator.go) ~100% par fonction.
+- Gap de test comblé : la défense-in-depth dblease (ctx.Err() avant TryLock, refus d'un lease LIBRE sur ctx
+  annulé) n'était couverte par AUCUN test (les tests existants tenaient le lease). Ajout de
+  TestAcquireLeaseCtx_FreeLeaseCancelledCtx + TestAcquireWriterCtx_FreeLeaseCancelledCtx.
+- Revue adversariale du diff obs (workflow) : 0 finding, safe-to-commit.
+- Suites -race vertes (sync, scheduler, watcher, api, dblease ; handlers vert en mode CI). Seul échec -race :
+  TestStartImport_HappyPath (flake pré-existant OpenSpartan SQLite, cleanup TempDir Windows, reproduit seul,
+  INDÉPENDANT de ce chantier).
+
+**Prochaine étape** : 5+ fichiers obs/verif prêts dans le working tree (coordinator.go, auto_sync.go,
+sync_handler.go, gate_test.go, auto_sync_gate_test.go, dblease/{lease,writer}_test.go) ; commit en attente que
+l'utilisateur démêle les branches parallèles. Amélioration future signalée : aucune (couverture jugée bonne).
+
+## [2026-06-02] Progression LUSR/CSR — axe Y calé sur la magnitude + bandes de sous-palier
+
+**Statut** : Complété (non commité — en attente d'autorisation) — branche `feat/skill-progression-magnitude-scale` (depuis `harden/p0-deploy-readiness`).
+
+**Contexte** : le graphe « Progression LUSR » est quasi-plat sur une session courte (5 matchs solo). Cause = par design : LUSR v2 est un μ bayésien convergé (σ~0.67) → updates minuscules, et la valeur affichée (`match_skill_rank_latest.rating_value`) est **quantifiée par sous-palier** via `MapTierSubToLegacyRating` + hystérésis. L'ancien `frameToTier` cadrait sur le **tier entier** (200 pts) → mouvement invisible. Demande utilisateur : garder la valeur LUSR (pas de μ exposé), caler l'échelle sur la magnitude de session + bandes de sous-palier, ne pas casser le CSR.
+
+**Décision technique** :
+- `frameToTier` → **`frameToData(dataMin, dataMax, grid)`** : cadre sur les sous-paliers contenant les données + 1 sous-palier de marge + plancher `MIN_BANDS=3` (révèle le mouvement sans amplifier le bruit de quantification). Palier ouvert Onyx arrondi au STEP (jamais 9999).
+- **Deux grilles** (`apps/web/src/lib/skillTiers.ts`) : `LUSR_TIER_GRID` (legacy 1000-2000, sous-tiers **Go-alignés** Argent 3 / Or 6 / Platine 2 / Diamant 3 — couplage manuel avec `skill_v2/tier.go`) et `CSR_TIER_GRID` (échelle **Halo brute** : 300 pts/tier, 6 sous-rangs de 50, Onyx ouvert). `gridForRatingTypes()` choisit selon les `rating_type` (CSR si tous CSR, sinon LUSR ; mixte → LUSR, non-régression).
+- **`buildSkillTierMarkArea`** : 1 bande/sous-palier en **shading neutre alterné** (`themeColors.splitAreaA/B`) + label roman « Or III » (LUSR) / arabe « Diamond 3 » (CSR). **Zéro nouveau token couleur** (les 5 `perf-tier` sont des tiers de perf, pas des rangs ; le label porte l'identité).
+- Câblé dans les 2 seuls consommateurs : `TimeseriesSkillProgression.tsx` (par-match) + `CareerChartsSection.lusrEvolution.tsx` (carrière).
+
+**Résultats** : typecheck clean (`tsc -b`), lint **0 erreur**, vitest **16/16** (`skillTierBands.test.ts` réécrit 11 + `TimeseriesSkillProgression.test.ts` 5 inchangés). Corrige un mislabel CSR latent : avant, le CSR (échelle brute) passait derrière des bandes LUSR (Diamant 1440 affiché « Or ») ; désormais grille CSR dédiée.
+
+**Conclusion / prochaine étape** : vérification visuelle in-app non faite (offerte). Couplage manuel grille Go↔front à surveiller (commentaire ⚠️ posé). Commit en attente d'autorisation.
+
+## [2026-06-02] RE film Theater : score DÉBLOQUÉ dans TYPE_2 (Slayer), byte-aligné
+
+**Statut** : Complété (Slayer) — généralisation modes objectif + kill-feed en cours (workflow 4 agents).
+Exploration RE pure, hors code prod (câblage scanner différé v2). Doc : `.ai/RESEARCH_THEATER_RE.md` §M-ter.
+
+**Contexte** : §M-bis (2026-06-01) avait conclu le score d'équipe "BLOQUÉ" après recherche exhaustive dans
+`REPLICATION_DATA_START` (bit-packé, champs qui dérivent) et les deltas per-frame. Le paquet **TYPE_2**
+n'avait jamais été fouillé avec des ancres propres.
+
+**Décision technique / méthode** : idée utilisateur = attaquer par un match **Slayer** (score = kills, donc
++1 à chaque mort à des timestamps connus). Ground-truth exact dérivé des morts (th=20, 93 events, 2-équipes →
+`score_team0 = morts_team1`) = 26 ancres discrètes. Nouvel outil `tmp_film_explore/scorefind/` (modes `exact`
+et `mono`+ancres) : recherche colonne-par-colonne (byte u8/u16 + bit 6-12 BE/LE) sur les keyframes TYPE_2 de
+chaque chunk, alignés sur le **début du payload du paquet** (pas le début du chunk, dont le préambule dérive).
+
+**Résultats (Slayer 000d5950)** : TYPE_2 payload **byte 832 = team0_score × 4** (26/26 exact, `score = b>>2`) ;
+**byte 842 = team1_score** (25/26, un ±1 de jitter de frontière). `SUM` ne matche rien → deux compteurs par
+équipe. Le score vit dans un bloc game-state à taille fixe dans les ~1500 premiers octets de TYPE_2, le reste
+étant l'état entités variable. `scorefind` re-validé 26/26 = instrument fiable.
+
+**Conclusion / prochaine étape** : offset 832/842 est *Slayer-spécifique* ; modes objectif placent le score
+ailleurs. Workflow `wf_a4589b52-eb5` (4 agents) en cours : Strongholds 7344d24f (score continu, ancres
+54/120/124/167), 2 Slayer de confirmation (l'offset est-il structurel ?), CTF 53ce4390, et la chasse au
+**kill-feed/arme dans TYPE_2** (intuition utilisateur : le feed HUD montre l'arme → plausiblement stocké près
+du score, ce qu'on ne trouvait pas dans le type-3). Synthèse + mémoire de référence après retour des agents.
+
 ## [2026-06-02] Unification de la déduplication cross-source des syncs (gate 2-maps asymétrique)
 
 **Statut** : Complété (non commité — en attente d'autorisation) — branche `fix/sync-combat-completion-persist`.
@@ -53670,3 +53747,61 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
   player->weapon) n'est pas encode comme un site 42c9679f marque dans ces chunks ; il faut
   la spec acurtis du record swap byte-aligne (offsets/framing exacts) pour le localiser.
   needs_acurtis_spec pour le marqueur dedie.
+
+[2026-06-02] Revue de code complete (Go API + web) — Complété
+- Tache : revue de code complete demandee (decouplage/abstraction, qualite, respect
+  des regles d'archi, SRP, maintenabilite, efficacite, readiness deploiement mondial).
+- Methode : workflow multi-agents (17 relecteurs specialises ancres sur le code reel
+  via Read/Grep, schema de findings structures) puis verification adversariale (un
+  sceptique relit le code cite) sur tous les findings critical/high pour ecarter les
+  faux positifs. 60 agents, 131 findings, 32 confirmes en relecture, 2 refutes/retrogrades.
+- Resultat : 1 critical, 13 high, 50 medium, 49 low. Rapport complet ecrit dans
+  .ai/CODE_REVIEW_2026-06-02.md (severites ajustees apres verification).
+- Decision technique : 3 axes de risque dominants pour un deploiement mondial multi-user.
+  (1) Securite "fail-open" : aucun garde-fou au boot (SessionSecret=CHANGE_ME, AuthMode=none,
+      CORS=localhost par defaut, non surcharges par docker-compose/.env.local.example) +
+      faille RealIP global non borne -> bypass LoopbackOnly sur /_diag/auto-sync (CRITIQUE).
+  (2) Surete des donnees sur chemins de maintenance : rebuild match_participants non
+      transactionnel (DROP+RENAME), restore no-op silencieux "Success", legacy ART-unsafe
+      reactivable par LEVELUP_PERSIST_BATCH=0.
+  (3) Hypotheses single-tenant : multi-titres reel seulement au bord HTTP (couche data
+      cablee halo_infinite), pool handles DuckDB non borne, TZ globale unique.
+- Points forts confirmes : discipline slog, chemin anti-ART (INSERT-only/dblease/WAL),
+  authz isole+teste, MultiUserTokenStore, shutdown ordonne, analysis/ pur+bien teste,
+  facade generated.ts, tokens couleur appliques, requetes SQL parametrees.
+- Prochaine etape : appliquer P0 (garde-fou boot prod + fix RealIP + suppr token_*.txt +
+  transactionnaliser rebuild/restore) sur une branche dediee avant toute exposition publique.
+  Aucun code modifie dans cette tache (revue seule).
+
+[2026-06-02] P0 hardening (revue de code) — branche harden/p0-deploy-readiness — Complété (mes fichiers) / BLOQUÉ build module (conflit concurrent)
+- Branche dédiée créée depuis fix/sync-combat-completion-persist.
+- 5 correctifs P0 livrés (tous build+vet+test verts en isolation) :
+  1. Garde-fou boot prod : config.Validate()/SecurityWarnings()/IsProduction() +
+     champs Environment (LEVELUP_ENV) et TrustProxyHeaders ; fail-fast au boot
+     cmd/server si LEVELUP_ENV=production avec SessionSecret défaut / AuthMode=none /
+     CORS=localhost ; warnings sinon. Tests config/prod_guard_test.go.
+  2. Fix C1 (faille RealIP/LoopbackOnly) : RealIP chi désormais conditionnel à
+     LEVELUP_TRUST_PROXY_HEADERS ; nouveau middleware PreserveRemoteAddr capture le
+     vrai peer TCP avant réécriture ; LoopbackOnly lit ce peer (non spoofable).
+     Tests loopback_preserve_test.go (anti-spoofing).
+  3. token_Madina97294.txt : déjà absent du disque ; RT présent dans le store
+     canonique (oauth_refresh_token, xuid 2533274858283686) ; gitignored, jamais
+     committé. Rien à supprimer ; rotation Azure = action externe utilisateur.
+  4. Rebuild match_participants transactionnel (swapMatchParticipantsTx) + garde
+     anti-perte (rebuilt==before) + recoverOrphanMatchParticipants (répare un
+     __rebuilt orphelin d'un crash mid-swap antérieur). Tests migration verts.
+  5. Restore : suppression du no-op silencieux (INSERT dans table migrée préserve
+     la PK ; refus si table non vide sans --replace ; DELETE+INSERT si --replace) +
+     transaction englobante + échappement apostrophes du chemin parquet. Tests
+     restore_noop_test.go (intégration) verts.
+- BLOCAGE EXTERNE : coordinator.go ET auto_sync.go (internal/sync + internal/scheduler)
+  sont modifiés dans le working tree par un processus CONCURRENT (feature GateSnapshot /
+  observabilité du gate, absente du HEAD). mtimes 09:48 et 09:51 (réécriture active
+  pendant ma session ; mon git restore de coordinator.go a été écrasé en quelques
+  secondes par le writer concurrent). Cette feature ne compile pas → cmd/server (qui
+  lie tout) ne builde pas. HORS de mon périmètre P0 et fichiers disjoints des miens.
+  Conformément à CLAUDE.md règle #4 (conflit multi-agents), je n'y touche plus.
+  Patch d'observation sauvegardé : tmp/coordinator_gate_snapshot_WIP_2026-06-02.patch.
+- Prochaine étape : décision utilisateur — (a) identifier/arrêter le processus
+  concurrent, ou (b) m'autoriser à finir la feature GateSnapshot, avant de pouvoir
+  builder le binaire complet et committer le P0. Aucun commit fait (autorisation requise).
