@@ -53917,3 +53917,54 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
   mock — risque de faux négatif ; à faire avec un statsBody explicite).
 - Prochaine étape: vérification adversariale des diffs (en cours), puis lots B (refactors
   lourds) / C (décisions design) à planifier.
+
+---
+
+## [2026-06-02] RE Theater — CTF Arena-to-3 FlagCaptures (53ce4390, 64e8adfa) — Complété
+
+Statut : Complété (recherche exploratoire ; aucun code applicatif modifié).
+
+Décision technique : le bloc de stats per-joueur n'est PAS matérialisé (confirmé par l'agent
+Locate). Les captures CTF Arena (jeu à 3) ne sont pas non plus matérialisées de façon uniforme.
+Méthode retenue : compteurs de capture bit-packés dans le snapshot TYPE_2, ancrés sur le token
+invariant 0x7B6 (12 bits MSB-first, bit-scan content), lecture de champs N-bit monotones
+(+1/capture, sans scaling) dans anchor_bit+[0,400).
+
+Résultats observés :
+- 64e8adfa (DB team0=2, team1=3) : CRACKÉ. Deux compteurs uniques ancrés sur 0x7B6 (bit 6783) :
+  rel=161 final=3 (team1) et rel=273 final=2 (team0) — finissent EXACTEMENT aux finals DB.
+  Captures team1 ~520/700/820s, team0 ~780/800s. Pas de flux d'events (chunk type-9 absent).
+- 53ce4390 (DB team0=1, team1=2) : NON matérialisé dans TYPE_2. Aucun compteur final=2 ne passe
+  0->1 au chunk couvrant la capture connue (t=655000ms, TheRaeSide team1 -> 1-1 ; usable-idx 31/32).
+  La capture connue est confirmée par l'event th=10 t=656558 + un burst de frame 1081B @656561.
+  Les events th=10 = interactions drapeau (grab/return/capture) SANS sous-type lisible (re-confirmé
+  par analyse colonne des blocs 60o). 53ce a le flux d'events mais 64e8 ne l'a pas.
+- Validation méthode (3 matchs indépendants) : 0f9550e5 (DB 5-0) -> rel=29 final=5 ; dcf44b35
+  (DB 5-4) -> rel=131 final=5 + rel=29 final=4. Tous reproduisent les finals DB.
+
+Conclusion / prochaine étape : pour les captures par équipe, scanner TYPE_2 sur le token 0x7B6 +
+colonnes monotones +1 (outil tmp_film_explore/capbits) ; robuste quand matérialisé (Neutral à 5 et
+certains Arena à 3 comme 64e8adfa). Sinon (53ce4390) tomber sur le flux d'events th=10 (timeline
+d'interactions drapeau) + DB pour le final. Outils throwaway : tmp_film_explore/{capbits,evstat,
+evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-ter).
+
+[2026-06-02] Lot B (refactors structurels) — découpe god-files, passe 1 — En cours
+- Analyse multi-agents (8 plans de découpe) puis implémentation des découpes PROPRES
+  (blocs contigus) par chirurgie de plages de lignes (verbatim, zéro transcription) +
+  build/vet/test + commit par fichier.
+- Livré (4 god-files < 500L) :
+  * domain/match_view.go 782->488 + match_view_raw.go 298 (types *Raw).  (51ae37cf7)
+  * service/home_service.go 617->383 + _battlepass 140 + _enrichment 120.  (16816efb2)
+  * ops/media.go 952->491 + _thumbnails 238 + _store 185 + _filename 79.  (2c0de6a05)
+  * api/post_sync_deltas.go 783->415 + _snapshot 263 + _records 101 + _helpers 42. (d14431266)
+- Méthode : sed extract des blocs contigus -> nouveaux fichiers (même package), suppression
+  de l'original, build signale les imports inutilisés -> retrait. Zéro changement d'API/comportement.
+- Décision : les god-files à symboles ENTRELACÉS (player_matches_repo, handlers/media,
+  squad_service_v2, steps_shared [ordre init()], ops/seed [data], engine*, etc.) nécessitent
+  une extraction fonction-par-fonction plus tedious -> passe dédiée ultérieure. La chirurgie de
+  plages ne marche proprement que sur des blocs contigus.
+- Différés du lot B (raisons) : dédup median (2 packages + diff de comportement vide) ;
+  pureté analysis slog (tradeoff observabilité) ; frontend (SynthesisPage/SessionCompare),
+  CLI consolidation, H-D4 i18n, query keys = lots lourds dédiés.
+- Prochaine étape : continuer les découpes entrelacées (fonction-par-fonction) + dédups front
+  + query keys, en sous-lots committés.
