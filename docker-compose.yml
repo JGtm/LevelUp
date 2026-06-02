@@ -20,7 +20,13 @@ services:
     env_file:
       - .env.local
     volumes:
-      # Données v4 (DuckDB/Parquet) en lecture/écriture
+      # Données v4 (DuckDB/Parquet) en lecture/écriture.
+      # ATTENTION multi-instances : ne JAMAIS partager ce volume entre deux
+      # instances serveur écrivant simultanément — les sous-dossiers data/cache,
+      # data/sessions et data/auth sont par-instance (locks DuckDB mono-writer,
+      # sessions/tokens). Pour une 2e instance, isoler un répertoire dédié
+      # (ex. ./data-prod2:/app/data). Le service de démo ci-dessous est déjà isolé
+      # (sous-arborescences ./data/demo/* montées en lecture seule).
       - ./data:/app/data
       # Configuration persistante (bind mounts)
       # IMPORTANT: ces fichiers doivent exister côté hôte AVANT le premier up.
