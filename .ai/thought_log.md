@@ -1,3 +1,29 @@
+## [2026-06-02] RE film Strongholds — owner par zone via objet-zone (position fixe + champ owner) — Complété (exploration, DEAD-END)
+
+**Statut** : Complété (exploration RE sous `tmp_film_explore/`, aucun code applicatif touché). Voir `.ai/RESEARCH_THEATER_RE.md` §R.
+
+**Contexte** : dernière avenue accessible pour décoder « qui tient quelle base à T » (Strongholds 7344d24f). Hypothèse
+sound de l'utilisateur : une zone est un OBJET à position FIXE portant un champ OWNER qui change aux captures. Test
+décisif = Zone B GT (team0 c6-15 → team1 c16-24 → team0 c25-31 = `IIIII00000000001111111110000000`).
+
+**Décision technique principale** :
+- Scan bit-level (positions NON byte-alignées) → ~5-9 objets à position CONSTANTE inter-chunks (31/31). Position-like :
+  `(2.330,-13.756,-3.002)`, `(2.877,39.164,-4.605)`, `(-48.021,-2.865,-3.002)`, `(2.268,-48.021,-2.865)` ; reste =
+  constantes structurelles. Chaque triplet = record d'objet discret (vraies positions statiques, candidats zones).
+- Champ owner co-localisé : **NON** — octets autour = bit-identiques sur 31 chunks (= manifeste statique weapon-spawn).
+  Scan ancré ±4000 bits, ≤2 bruit : 0 hit Zone-B. Owner plain dans en-tête game-state à offset fixe [835,2500] : 0 hit
+  (`gtclean`). Le seul « match » (byte 1449) est dans la soupe de compteurs qui DÉRIVE = faux positif (classe bit-compteur).
+
+**Résultats observés** : DEAD-END. L'owner par-zone n'est ni co-localisé à une position constante, ni un champ 3-phases
+à offset fixe. Il vit derrière le schéma de record d'entité bit-packé / composant controlling-team par-FRAME (offsets
+dérivants) = mur off-film (.module/runtime-tagviewer), même que §M-bis/§N/§P.
+
+**Conclusion / prochaine étape** : `objective_id` (zone→équipe à T) reste NULL offline. Le score continu reste OK
+(byte842 varint×4.099, §M-ter). Avenues in-film épuisées. Outils throwaway ajoutés : zonepos, zonebit, zonefld,
+zoneanch(2), gtscan(2), gtclean, gtcol, zonerec, floatarr, tripcount, scorechk, hdrdump (sous `tmp_film_explore/`).
+
+---
+
 ## [2026-06-02] RE film CTF — validation détecteur capture-burst + attribution équipe (3 matchs) — Complété (exploration, non commité)
 
 **Statut** : Complété (travail d'exploration RE sous `tmp_film_explore/`, aucun code applicatif touché).
@@ -54132,3 +54158,21 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
   DDL) devient sûr. Commit `407a41c54`.
 - **Prochaine étape** : 1.5.1 (déplacer les DDL par titre, ordre garanti par canonicalOrder +
   golden) — checkpoint user posé (le deal était : valider le filet avant de bouger un fichier).
+
+## [2026-06-02] Phase 1.5.1 voie B — mécanisme complet + b3 (pilote + batch Shared) — En cours
+
+- **Voie B (validée user)** : steps title-owned fournis au runner via provider, pas init()/blank-import
+  (rejeté pour silent-miss). helpers DDL exportés (`519f2e7c4`) ; `RunSteps` primitive, `RunForDB`
+  délègue (`a40f28c53`) ; `SetTitleStepsProvider`/`combineSteps`, `RunForDB` combine global+title
+  dédup par Name, ordre `canonicalOrder` ; package `halo_infinite/migrations` ; wiring boot serveur
+  (`ad44a5ede`). No-op prouvé, 14 appelants inchangés.
+- **b3** : pilote `add_pve_schema` (`cd80688b9`, bout-en-bout : table créée via provider) + batch
+  Shared 4 steps additifs (`d1b76b7d1`, CLIs diag_bot/apply_shared câblés). 5 steps migrés.
+- **Constat 2 tiers pour la suite** : (A) ADDITIFS (ADD COLUMN/index/table secondaire) = faciles,
+  aucun test ne les asserte. (B) CŒUR (match_registry, vues) = `migration_test.go` les asserte via
+  RunForDB mais ne peut PAS poser le provider Halo (**cycle migration ↔ halo/migrations**) → il faut
+  **relocaliser ces tests cœur vers halo_infinite/migrations** avant de bouger les steps cœur.
+- **Garde-fous** : `order_test.go` (no-op + complétude globale) + `halo/migrations/order_audit_test.go`
+  (complétude bidirectionnelle + bout-en-bout). `CanonicalOrder()` exporté.
+- **Prochaine étape** : b3 tier A (additifs) ; tier B après relocation des tests cœur. Cf.
+  [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) §1.5.
