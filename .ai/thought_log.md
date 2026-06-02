@@ -54253,3 +54253,32 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Prochaine étape (linéaire)** : Phase 1.7b — feature-matrix 3 états + cascade
   (`internal/domain/feature/`, `port.FeatureChecker`, handler `/title/feature_matrix`). Cf.
   [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) §1.7b.
+
+## [2026-06-02] Phase 1.7b — Feature-matrix 3 états + cascade · Complété
+
+- **Tâche** : dériver par cascade une matrice de features produit (3 états) depuis les capabilities
+  (1.7a). Avancée linéaire après 1.7a.
+- **Décisions techniques** :
+  - **Types résultat** `internal/domain/feature/` (sous-pkg pur : `Key`/`Status`/`Matrix`, 0 import
+    games/DB/HTTP) ; **cascade** dans `internal/games/feature.go` (là où vivent les capabilities,
+    `games→domain` dép normale). `featureDefinitions` (primary + enhancements) partagé entre titres.
+  - **`port.FeatureChecker` + service écartés (YAGNI)** : c'est une dérivation pure stateless
+    (caps→cascade), rien à mocker. Handler chi mince réutilise `CapabilitiesRegistry` +
+    `ComputeFeatureMatrix`. Déviation assumée vs master (qui prévoyait port + loader `[feature]`),
+    documentée dans le tracker. Pas de loader `[feature]` : les définitions produit sont en Go,
+    partagées ; la variation par titre vient de SA `capabilities.toml` (plus simple, pas de drift).
+  - **Règle de cascade** : primaire absente/not_exposed → unavailable ; primaire degraded →
+    degraded ; primaire supported + un enrichissement non-supported → degraded ; sinon available.
+    Dégradation gracieuse : un 2e titre sans une capability → feature unavailable (pas de panic).
+  - **Endpoint** `GET /api/v1/titles/{slug}/feature-matrix` (gated `MULTI_TITLE_API_ENABLED`),
+    ETag/Cache-Control/schema_version cohérents avec capabilities + field-mappings.
+- **Qualité (ultracode)** : **revue adversariale 5 lentilles** (workflow `wgki7z18p` : layering,
+  multi-titres, correction-cascade, couverture-tests, intégration). Verdict : **0 blocker, 3 major +
+  5 minor, tous traités** — gaps de tests handler (304/slug-vide/caps-invalides) + assertions
+  headers + test enrichissement-degraded + `schema_version` (cohérence) + commentaire clarifié.
+  Layering/multi-titres/cascade jugés sains par les lentilles dédiées.
+- **Résultats** : build vert (api + games + domain + cmd/server), `go vet` clean. Tests : cascade
+  (6 cas) + handler httptest (5 cas). 
+- **Prochaine étape (linéaire)** : la fenêtre minimale 0→3a — reste **Phase 2** (services
+  canonical, ~70%) puis **Phase 3a** (cleanup DTO, ~50%). 1.7a+1.7b closent le bloc capabilities/
+  feature-matrix. Cf. [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md).

@@ -485,6 +485,10 @@ func NewRouter(
 			capabilitiesHandler := handlers.NewCapabilitiesHandler(fieldMappingsRegistry, slog.Default())
 			r.Get("/titles/{slug}/capabilities", capabilitiesHandler.ServeHTTP)
 
+			// Phase 1.7b — matrice de features (cascade capabilities → 3 états).
+			featureMatrixHandler := handlers.NewFeatureMatrixHandler(fieldMappingsRegistry, slog.Default())
+			r.Get("/titles/{slug}/feature-matrix", featureMatrixHandler.ServeHTTP)
+
 			// Phase H.bis — catalogue Playlists/Pairs/Maps (title-aware).
 			// OpenReadWriteShared pour compatibilité avec les connexions RW existantes
 			// (prestige presets, rank catalog) sur le même fichier DuckDB.
@@ -504,6 +508,7 @@ func NewRouter(
 				"endpoints", []string{
 					"/api/v1/titles/{slug}/field-mappings",
 					"/api/v1/titles/{slug}/capabilities",
+					"/api/v1/titles/{slug}/feature-matrix",
 					"/api/v1/titles/{slug}/catalog/playlists",
 					"/api/v1/titles/{slug}/catalog/pairs",
 					"/api/v1/titles/{slug}/catalog/maps",
