@@ -119,6 +119,15 @@ func applyRebuildMatchParticipants(db *sql.DB) error {
 // pendant l'exécution. Au boot, le serveur n'a pas encore démarré son
 // scheduler de sync donc c'est trivialement safe.
 func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
+	// Récupération d'un __rebuilt orphelin : table principale absente +
+	// match_participants__rebuilt présent = crash au milieu d'un swap NON
+	// transactionnel (versions antérieures à la revue P0 2026-06-02). On promeut
+	// le rebuilt avant toute autre logique — sinon la table partagée de tous les
+	// joueurs resterait définitivement absente, sans réparation automatique.
+	if err := recoverOrphanMatchParticipants(ctx, db); err != nil {
+		return err
+	}
+
 	hasTable, err := tableExists(db, "match_participants")
 	if err != nil {
 		return fmt.Errorf("rebuild_mp_runtime: check table: %w", err)
@@ -146,22 +155,15 @@ func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("rebuild_mp_runtime: count before: %w", err)
 	}
 
-	// Swap CTAS. Le SELECT * (sans WHERE) force un table-scan complet qui
-	// court-circuite l'index ART corrompu et lit les pages physiques. La
-	// nouvelle table reçoit un ART vierge construit sur des données complètes.
-	stmts := []string{
-		`DROP TABLE IF EXISTS match_participants__rebuilt`,
-		fmt.Sprintf(`CREATE TABLE match_participants__rebuilt AS SELECT %s FROM match_participants`, colList),
-		// DROP TABLE supprime aussi les vues dépendantes (cascade interne DuckDB).
-		`DROP TABLE match_participants`,
-		`ALTER TABLE match_participants__rebuilt RENAME TO match_participants`,
-		`ALTER TABLE match_participants ADD PRIMARY KEY (match_id, xuid)`,
-	}
-	for _, sqlStmt := range stmts {
-		if _, err := db.ExecContext(ctx, sqlStmt); err != nil {
-			return fmt.Errorf("rebuild_mp_runtime: swap step (%s): %w",
-				firstWords(sqlStmt, 3), err)
-		}
+	// Swap CTAS atomique en transaction. Le SELECT * (sans WHERE) force un
+	// table-scan complet qui court-circuite l'index ART corrompu ; la nouvelle
+	// table reçoit un ART vierge sur des données complètes. La transaction garantit
+	// qu'un crash entre le DROP et le RENAME ne peut PAS laisser match_participants
+	// (table partagée de tous les joueurs) absente — rollback intégral. Un garde
+	// anti-perte vérifie en outre que le rebuild a bien toutes les rows avant de
+	// détruire l'original. Cf. cmd/rebuild_mp (même pattern, validé) + revue P0 2026-06-02.
+	if err := swapMatchParticipantsTx(ctx, db, colList, before); err != nil {
+		return err
 	}
 
 	// Recrée vues + indexes.
@@ -189,6 +191,85 @@ func RebuildMatchParticipantsART(ctx context.Context, db *sql.DB) error {
 		"rows_after_rebuild", after,
 		"columns_preserved", len(cols),
 	)
+	return nil
+}
+
+// recoverOrphanMatchParticipants répare l'état laissé par un crash au milieu d'un
+// swap non transactionnel : table principale absente + match_participants__rebuilt
+// présent. Promeut le __rebuilt en table principale. No-op si la table principale
+// existe ou si aucun __rebuilt orphelin n'est présent. La PK et les vues/indexes
+// sont (re)posées par le rebuild normal qui suit.
+func recoverOrphanMatchParticipants(ctx context.Context, db *sql.DB) error {
+	hasMain, err := tableExists(db, "match_participants")
+	if err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: check main table: %w", err)
+	}
+	if hasMain {
+		return nil
+	}
+	hasRebuilt, err := tableExists(db, "match_participants__rebuilt")
+	if err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: check __rebuilt table: %w", err)
+	}
+	if !hasRebuilt {
+		return nil
+	}
+	slog.WarnContext(ctx, "rebuild_match_participants_runtime: __rebuilt orphelin détecté (crash mid-swap antérieur) — récupération",
+		"action", "RENAME match_participants__rebuilt -> match_participants")
+	if _, err := db.ExecContext(ctx,
+		`ALTER TABLE match_participants__rebuilt RENAME TO match_participants`); err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: recover orphan __rebuilt: %w", err)
+	}
+	return nil
+}
+
+// swapMatchParticipantsTx effectue le swap CTAS dans une transaction unique.
+// Garde anti-perte : refuse de détruire l'original si le rebuild n'a pas
+// exactement le même nombre de rows que l'original (le SELECT * sans WHERE doit
+// faire un table-scan complet). Un échec ou un crash provoque un rollback intégral
+// — match_participants reste intacte.
+func swapMatchParticipantsTx(ctx context.Context, db *sql.DB, colList string, before int) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: begin swap tx: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if _, err := tx.ExecContext(ctx, `DROP TABLE IF EXISTS match_participants__rebuilt`); err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: drop stale __rebuilt: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, fmt.Sprintf(
+		`CREATE TABLE match_participants__rebuilt AS SELECT %s FROM match_participants`, colList)); err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: create __rebuilt: %w", err)
+	}
+	var rebuilt int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM match_participants__rebuilt`).Scan(&rebuilt); err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: count __rebuilt: %w", err)
+	}
+	if rebuilt != before {
+		return fmt.Errorf("rebuild_mp_runtime: swap abandonné, rebuilt=%d != before=%d (rollback, aucune perte de rows)", rebuilt, before)
+	}
+	// DROP TABLE supprime aussi les vues dépendantes (cascade interne DuckDB) ;
+	// elles sont recréées hors transaction par l'appelant.
+	for _, sqlStmt := range []string{
+		`DROP TABLE match_participants`,
+		`ALTER TABLE match_participants__rebuilt RENAME TO match_participants`,
+		`ALTER TABLE match_participants ADD PRIMARY KEY (match_id, xuid)`,
+	} {
+		if _, err := tx.ExecContext(ctx, sqlStmt); err != nil {
+			return fmt.Errorf("rebuild_mp_runtime: swap step (%s): %w", firstWords(sqlStmt, 3), err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("rebuild_mp_runtime: commit swap: %w", err)
+	}
+	committed = true
 	return nil
 }
 
