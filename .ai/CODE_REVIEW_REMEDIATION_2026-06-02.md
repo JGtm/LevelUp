@@ -91,4 +91,41 @@ Items initialement différés « zone concurrente » (`internal/sync`/`scheduler
 **Reste différé du lot A** : `CrossPlayerDedup_V1` (confidence moyenne — dépend du couplage xuid↔PlayerId du mock, à faire avec un `statsBody` explicite).
 
 ---
-*Build complet `go build ./...` + `go vet ./internal/...` verts ; `tsc -b` vert. Lot A : `go test -race` verts (watcher, contract, reconcile). Commits : passe initiale 29a9bfbd5 → d762443ac (11) ; lot A 693fb1041 → e98b4ae21 (4).*
+
+## 6. Lot B — découpe des god-files (>500L) + dédups frontend
+
+### a) Dédups frontend + centralisation query keys
+| Réf | Item | Commit |
+|---|---|---|
+| B-dedup | `outcomeKey` canonique (`lib/outcome-color.ts`) — 3 consommateurs `'draw'` dédupliqués (variante `'tie'` laissée : key-set différent) | `3a0880777` |
+| B-dedup | `formatDateShort`/`formatNumber` (`components/charts/_utils.ts`) → réexport + délégation `lib/formatters` (fallback `'-'` préservé) | `9f1ac133a` |
+| B-keys | Query keys à risque de drift centralisés en factories (prestige `challengeKeys.list`/`prestigeKeys.meAll` ; `adminKeys` ; `profileKeys.campaignAll` ; helpers `*All` sur le factory central pour notifications/coach/match-history/teammates). Clés feature-privées mono-site laissées (0 drift) | `24a27a0c6` |
+
+### b) Découpe god-files Go (extraction de blocs contigus, **0 changement fonctionnel**, `goimports` + build/vet/gofmt/test verts par fichier)
+| Fichier | Avant→Après | Fichiers créés | Commit |
+|---|---|---|---|
+| `api/handlers/media.go` | 914→409 | `media_serve` + `media_paths` + `media_upload` | `c74516142` |
+| `platform/duckdb/player_matches_repo.go` | 1024→325 | `_projection` + `_scan` + `_loaders` | `e8b485871` |
+| `service/squad_service_v2.go` | 1006→480 | `_aggregates` + `_intersect` | `c379c5806` |
+| `ops/seed.go` | 910→350 | `seed_citation_data` (data table, exemptée 80L) | `a1f36f978` |
+| `analysis/squad_breakdown.go` | 903→412 | `_canonical` + `_heatmaps` | `a1f36f978` |
+| `platform/duckdb/media_repo_q37_pipeline.go` | 829→233 | `_enrich` + `_transform` | `847ea3002` |
+| `platform/duckdb/squad_repo.go` | 762→358 | `_synthesis` + `_mapstats` | `847ea3002` |
+| `platform/duckdb/queries_match.go` | 677→447 | `queries_match_detail` | `d60b086ba` |
+| `platform/duckdb/queries_home_citations.go` | 676→455 | `queries_citations` | `d60b086ba` |
+| `platform/duckdb/queries_career.go` | 618→343 | `queries_career_encounters` | `d60b086ba` |
+| `config/config.go` | 671→405 | `config_players` + `config_settings` | `d60b086ba` |
+| `platform/lab/provider.go` | 760→324 | `_assets_medals` + `_contracts` | `dc77552d5` |
+| `service/media_service.go` | 688→407 | `_upload` + `_build` | `dc77552d5` |
+| `service/explorer_service.go` | 670→370 | `_target` + `_convert` | `dc77552d5` |
+
+→ **Tous les fichiers >700L non-sensibles sont désormais <500L.** `seed_citation_data.go` (565L) reste >500 : c'est un littéral de données pur (`[]CitationMapping{...}`), exemption « data table » documentée en tête de fichier.
+
+### c) God-files restants — différés avec raison (ne pas découper en run autonome non supervisé)
+- **Zone sync/scheduler (ART + concurrence)** : `sync/engine.go` (776), `skill_rating.go` (773), `engine_postsync.go` (773), `performance.go` (672), `skill_v2_shadow.go` (597), `citations.go` (548), `backfill.go` (524), `backfill_weapons.go` (504), `skill_formula_sim.go` (508), `scheduler/auto_sync.go` (877), `persist/shared_social_persister.go` (765), `persist_sink.go` (695), `watcher/daemon.go` (555). Risque ART/race — relecture requise.
+- **Zone migration (ordre d'`init()`)** : `migration/steps_shared.go` (982), `steps_metadata.go` (640), `steps_player.go` (571). Réordonner les `init()` de migration = risque de corruption — split à faire avec garde-rail explicite sur l'ordre.
+- **DI/wiring** : `api/server.go` (977), `api/registry_pages.go` (725) — assemblage de dépendances ; découpe par domaine possible mais peu de gain de lisibilité, à cadrer.
+- **Cohérents 500-700L** : `duckdb/db.go` (624), `progression/profile/service.go` (605), `service/session_page_service.go` (604), `prestige/service.go` (567), `api/post_sync_progression.go` (567), `analysis/match_impact.go` (551), `analysis/skill_rating.go` (531), `duckdb/filters_repo.go` (544), `engagement_score_repo.go` (532), `home_repo_skill_peak.go` (501), `handlers/{sync_handler,backfill,prestige}.go`, `halo/provider.go` (545), `ops/{seed_demo,seed_demo_media}.go`. À découper au cas par cas si une responsabilité distincte émerge (pas de découpe mécanique d'un fichier cohérent juste pour le compteur).
+
+---
+*Build complet `go build ./...` + `go vet ./internal/...` verts ; `tsc -b` vert. Lot A : `go test -race` verts (watcher, contract, reconcile). Lot B : build/vet/gofmt/test par package verts à chaque commit. Commits : passe initiale 29a9bfbd5 → d762443ac (11) ; lot A 693fb1041 → e98b4ae21 (4) ; lot B 3a0880777 → dc77552d5.*
