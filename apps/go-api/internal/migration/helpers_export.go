@@ -1,6 +1,14 @@
 package migration
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+)
+
+// BootCtx retourne le contexte racine non-cancellable utilisé par les migrations
+// DDL boot-time (cf. doc de bootCtx). Exposé pour les backfills title-owned qui
+// font db.ExecContext.
+func BootCtx() context.Context { return bootCtx() }
 
 // helpers_export.go — API publique des helpers DDL idempotents (Phase 1.5
 // title-agnostic, ADR 0025). Ces wrappers exposent les helpers internes pour

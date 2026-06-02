@@ -119,6 +119,44 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// Déplacé depuis internal/migration/steps_shared_seed_tier_boundaries_v2.go.
+		{
+			Name:        "shared_seed_tier_boundaries_v2",
+			TargetDB:    migration.TargetShared,
+			Description: "LUSR v2 Phase 3e v2 — seed des tier_boundary_* (Bronze..Onyx) dans lusr_hyperparams_v2",
+			ApplySchema: func(db *sql.DB) error {
+				return nil // table déjà créée par shared_create_skill_v2_tables (reste dans le registre global)
+			},
+			ApplyBackfill: func(db *sql.DB) error {
+				boundaries := []struct {
+					name  string
+					value float64
+				}{
+					{"tier_boundary_bronze", 0.0},
+					{"tier_boundary_silver", 21.0},
+					{"tier_boundary_gold", 22.0},
+					{"tier_boundary_platinum", 25.0},
+					{"tier_boundary_diamond", 25.8},
+					{"tier_boundary_onyx", 27.0},
+				}
+				groups := []string{"arena_slayer", "arena_objectif", "btb", "chaos"}
+				for _, g := range groups {
+					for _, b := range boundaries {
+						if _, err := db.ExecContext(migration.BootCtx(), `
+							INSERT INTO lusr_hyperparams_v2 (playlist_group, name, value, source)
+							SELECT ?, ?, ?, 'phase_3e_v2_default'
+							WHERE NOT EXISTS (
+								SELECT 1 FROM lusr_hyperparams_v2
+								WHERE playlist_group = ? AND name = ?
+							)`,
+							g, b.name, b.value, g, b.name); err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			},
+		},
 	}
 }
 
