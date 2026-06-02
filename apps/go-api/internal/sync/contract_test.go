@@ -118,7 +118,7 @@ func TestContract_PlayerEnrichmentMatchesParticipation(t *testing.T) {
 //
 // TODO(D6) : activer pour V1 et V2.
 func TestContract_NoDuplicateRows(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("V1 actif : TestContract_NoDuplicateRows_V1 (package sync, dataset PVP+PVE) ; scaffold V2 en attente")
 }
 
 // TestContract_CrossPlayerDedupOneAPICallPerMatch est l'invariant central
@@ -132,7 +132,7 @@ func TestContract_NoDuplicateRows(t *testing.T) {
 // TODO(D6) : activer pour V2 ; en V1 ce test sert de baseline (XFAIL
 // documenté avant la bascule prod).
 func TestContract_CrossPlayerDedupOneAPICallPerMatch(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("V1 actif : TestContract_CrossPlayerDedup_V1 (package sync, via loadKnownMatchIDs/shared.match_participants) ; scaffold V2 en attente")
 }
 
 // TestContract_PartialFailureIsolation vérifie qu'un échec sur un joueur
@@ -141,7 +141,7 @@ func TestContract_CrossPlayerDedupOneAPICallPerMatch(t *testing.T) {
 //
 // TODO(D6) : activer pour V1 et V2.
 func TestContract_PartialFailureIsolation(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("V1 actif : TestContract_PartialFailureIsolation_V1 (package sync) ; scaffold V2 en attente")
 }
 
 // TestContract_CycleIdempotent vérifie que rejouer le même cycle V2
@@ -150,7 +150,7 @@ func TestContract_PartialFailureIsolation(t *testing.T) {
 //
 // TODO(D6) : activer pour V1 et V2.
 func TestContract_CycleIdempotent(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("V1 actif : TestContract_CycleIdempotent_V1 (package sync) ; scaffold V2 en attente")
 }
 
 // ──────────────────────────────────────────────────────────────────────
