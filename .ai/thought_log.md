@@ -1,3 +1,33 @@
+## [2026-06-02] Provider live read-only des 20 derniers matchs + cache TTL 20 min (point 3a) — Complété
+
+**Statut** : Complété (commit 4/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`). Câblage en 5/6.
+
+**Contexte** : les graphes profil de combat (CombatFdaChart/CombatScorePlacementChart) et l'échantillon
+non-local du Face à face doivent s'appuyer sur les 20 derniers matchs RÉELS du joueur, fetchés en live
+SANS persistance (cache mémoire temporaire), au lieu de la lecture locale DuckDB (vide pour un non-local
+sans matchs communs).
+
+**Décision technique principale** :
+- Port `RecentMatchesProvider.FetchRecentMatches(ctx, xuid, limit)` (internal/port).
+- `sync.RecentMatchesFetcher` : réutilise `GetMatchHistory` (format **xuid(NNN)** impératif) + `GetMatchStats`
+  + `ExtractParticipants` (projection partagée avec le sync). HORS pipeline persist (zéro écriture DB). Client
+  HaloAPIClient éphémère construit par requête depuis les tokens du contexte ; `WithHTTPClient` pour tests.
+  Projection pure `buildRecentMatchesFromStats` (tri chronologique ASC ; map_ui/mode_ui/perfect_kills vides,
+  non requis par les 2 graphes).
+- `service.CachedRecentMatchesProvider` : cache process-level TTL **20 min** (`DefaultRecentMatchesTTL`) +
+  singleflight + expvar (modèle remote_stats_cache). Clé (xuid|limit). Résultat vide NON caché.
+
+**Résultats observés** : `go build` + `go vet` OK (sync/service/port) ; tests : projection
+(`TestBuildRecentMatchesFromStats` valeurs + ordre + cible absente), no-auth, cache (hit/miss/TTL/clé +
+empty-not-cached). **Limite assumée** : le chemin HTTP live de bout en bout (GetMatchHistory + N×GetMatchStats)
+n'est PAS exercé ici (pas de tokens) — seules la projection et le cache sont couverts ; à valider en réel
+au câblage (commit 5) avec un compte authentifié, cf. caveat xuid(NNN).
+
+**Conclusion / prochaine étape** : commit 5/6 — câbler ce provider dans Explorer (graphes non-local) +
+Face à face (échantillon + CSR + médailles).
+
+---
+
 ## [2026-06-02] Face à face — alignement Rendement/Résistance sur la KPI bar (OC/DR) (point 2) — Complété
 
 **Statut** : Complété (commit 3/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
