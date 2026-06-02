@@ -71,4 +71,24 @@
 - Déjà traités en P1 : en-têtes HTTP, healthcheck port, titres engagement par défaut, alerte CORS (couverte par `config.Validate`).
 
 ---
-*Build complet `go build ./...` + `go vet ./internal/...` verts ; `tsc -b` vert. 10 commits cette passe (29a9bfbd5 → d762443ac).*
+
+## 5. Lot A — correction/robustesse backend (passe dédiée, débloquée)
+
+Items initialement différés « zone concurrente » (`internal/sync`/`scheduler`), traités une fois le travail parallèle confirmé comme recherche seule. Investigation multi-agents (7 specs vérifiées) → implémentation → **vérification adversariale** (7 sceptiques, 0 bug bloquant, 3 nits low corrigés).
+
+| Réf | Item | Commit |
+|---|---|---|
+| A1 | Réconciliation post-Drain : `InsertedMatchIDs`/`MatchesInserted` reconciliés vs `match_registry` si Drain échoue (plus de post-sync ~285s sur matchs fantômes) | `693fb1041` + `e98b4ae21` |
+| A2 | `refreshAggregates` → `(created, failed, errors.Join)` + warn agrégé corrélé | `693fb1041` |
+| A3 | **Retry-After** (429/503) honoré + backoff exponentiel borné + métriques expvar `levelup.auth_pool.*` | `d53480fdc` + `e98b4ae21` |
+| A4 | `persistPlayerRecordsLegacy` : détection one-shot (`sync.Once`, ctx découplé) + WARN `legacy_player_records_upsert_used` | `693fb1041` + `e98b4ae21` |
+| A5 | `GetChallenges` synchrone + suppression des 2 méthodes async `Background()` (write-after-CloseAll) | `693fb1041` |
+| A6 | **Anti-régression URL `xuid(NNN)` ACTIVE** (`TestContract_…_V1` via `RunDelta` + capture mock) + combat guard dégardé | `3331f1f3c` |
+| A7 | `auto_sync` précondition `os.Stat` via slug du profil (garde seulement) | `693fb1041` |
+
+**Correctifs post-vérification** (`e98b4ae21`) : A1 bénéfice-du-doute sur erreur de requête (+ 4 tests) ; A3 métriques comptées seulement si (ré)appliqué + `last_cooldown_seconds` sur extension ; A4 sonde sur `context.Background()`.
+
+**Reste différé du lot A** : `CrossPlayerDedup_V1` (confidence moyenne — dépend du couplage xuid↔PlayerId du mock, à faire avec un `statsBody` explicite).
+
+---
+*Build complet `go build ./...` + `go vet ./internal/...` verts ; `tsc -b` vert. Lot A : `go test -race` verts (watcher, contract, reconcile). Commits : passe initiale 29a9bfbd5 → d762443ac (11) ; lot A 693fb1041 → e98b4ae21 (4).*
