@@ -106,7 +106,7 @@ func getApplied(ctx context.Context, db *sql.DB) (map[string]migrationState, err
 // Le db fourni doit être ouvert en lecture/écriture. Pour target=shared, la DB
 // metadata doit être ATTACHée en amont si des vues y font référence.
 func RunForDB(db *sql.DB, target TargetDB) error {
-	return RunSteps(db, target, ForTarget(target))
+	return RunSteps(db, target, stepsForTarget(target))
 }
 
 // RunSteps applique un ensemble EXPLICITE de migrations pour une target —
