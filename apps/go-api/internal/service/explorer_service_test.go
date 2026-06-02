@@ -763,6 +763,75 @@ func TestExplorerService_TargetProfile_DeterministicBannerFallback(t *testing.T)
 	}
 }
 
+// mockRecentMatches implémente port.RecentMatchesProvider pour les tests du repli
+// live des graphes profil de combat.
+type mockRecentMatches struct {
+	rows  []domain.ExplorerTargetRecentMatch
+	err   error
+	calls int
+}
+
+func (m *mockRecentMatches) FetchRecentMatches(_ context.Context, _ string, _ int) ([]domain.ExplorerTargetRecentMatch, error) {
+	m.calls++
+	return m.rows, m.err
+}
+
+// TestExplorerService_CombatProfile_LiveFallbackWhenLocalEmpty : une cible
+// non-locale (aucun match local) reçoit ses graphes profil de combat depuis le
+// fetch live read-only.
+func TestExplorerService_CombatProfile_LiveFallbackWhenLocalEmpty(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	repo := &mockExplorerRepo{xuid: "opp-xuid", matches: matches} // recentMatches nil → local vide
+	live := &mockRecentMatches{rows: []domain.ExplorerTargetRecentMatch{
+		{MatchID: "r1", Kills: 20, Deaths: 5}, {MatchID: "r2", Kills: 8, Deaths: 9},
+	}}
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{RecentMatches: live, TitleSlug: "halo_infinite"})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Opponent", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil || len(tp.CombatProfile) != 2 {
+		t.Fatalf("CombatProfile attendu 2 (repli live), got %+v", tp)
+	}
+	if live.calls != 1 {
+		t.Errorf("RecentMatches doit être appelé 1× (local vide), got %d", live.calls)
+	}
+}
+
+// TestExplorerService_CombatProfile_LocalPreferred : si le local fournit des
+// matchs (joueur suivi), le live n'est PAS appelé (économie d'appels Halo).
+func TestExplorerService_CombatProfile_LocalPreferred(t *testing.T) {
+	now := time.Now()
+	tid := 0
+	matches := []domain.CommonMatchRaw{
+		{MatchID: "m1", StartTime: now, Player1TeamID: &tid, Player2TeamID: &tid, Player1Outcome: 2},
+	}
+	recent := []domain.ExplorerTargetRecentMatch{{MatchID: "loc1", Kills: 5}}
+	repo := &mockExplorerRepo{xuid: "tgt", matches: matches, recentMatches: recent}
+	live := &mockRecentMatches{rows: []domain.ExplorerTargetRecentMatch{{MatchID: "r1"}}}
+	svc := NewExplorerService(repo, "my-xuid").
+		WithTargetProfileProviders(ExplorerTargetProfileDeps{RecentMatches: live, TitleSlug: "halo_infinite"})
+
+	resp, err := svc.GetCommonMatches(ctxAuth(true, "my-xuid"), "Target", 1)
+	if err != nil {
+		t.Fatalf("GetCommonMatches: %v", err)
+	}
+	tp := resp.TargetProfile
+	if tp == nil || len(tp.CombatProfile) != 1 || tp.CombatProfile[0].MatchID != "loc1" {
+		t.Fatalf("CombatProfile doit venir du local, got %+v", tp)
+	}
+	if live.calls != 0 {
+		t.Errorf("live ne doit PAS être appelé quand le local fournit des rows, got %d", live.calls)
+	}
+}
+
 // TestExplorerService_TargetProfile_BannerFallback_NoIdentity couvre le fix du
 // point 4 : une cible NON-LOCALE sans identité exploitable (pas d'auth → aucun
 // fetch live possible) reçoit malgré tout une nameplate de repli du pool, au

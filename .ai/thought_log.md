@@ -1,3 +1,31 @@
+## [2026-06-02] Profil de combat — graphes alimentés en live pour les cibles non-locales (point 3b, Explorer) — Complété
+
+**Statut** : Complété (commit 5/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
+
+**Re-découpage assumé** : le plan prévoyait commit 5 = graphes Explorer + Face à face. Pour garder des
+commits self-contained, j'ai scindé sur la frontière Explorer / Compare : commit 5 = Explorer (ce commit) ;
+commit 6 = Compare (career rank live + CSR + médailles + sample, points 1 et 3-face-à-face).
+
+**Contexte** : les graphes profil de combat (CombatFdaChart/CombatScorePlacementChart) d'une cible NON
+suivie étaient vides (source = lecture locale DuckDB, aucun match en base pour un non-local).
+
+**Décision technique principale** :
+- Singleton `r.recentMatches = CachedRecentMatchesProvider(sync.RecentMatchesFetcher(0))` dans le registry
+  (import aliasé `sync_pkg`, le nom `sync` étant pris par la stdlib). Injecté dans `ExplorerTargetProfileDeps`.
+- `computeTargetCombatProfile` : **local d'abord** (gratuit) ; **repli live read-only borné** (liveCtx,
+  cache TTL 20 min) seulement si le local est vide ET auth dispo → satisfait "live pour les non-locaux
+  seulement" (un joueur suivi a des rows locales, ne déclenche jamais le live).
+- `buildTargetProfile` : passe liveCtx + hasAuth à la goroutine combat profile.
+
+**Résultats observés** : `go build ./internal/api` (CGO/DuckDB) OK ; `go test ./internal/service` OK (5.5s),
+`go vet` clean. Tests ajoutés : repli live quand local vide (live appelé 1×) + local prioritaire (live
+appelé 0×). Réserve commit 4 (HTTP live non exercé sans tokens) toujours valable — à valider en réel.
+
+**Conclusion / prochaine étape** : commit 6/6 — câblage Compare : career rank live (point 1) + CSR + top
+médailles + échantillon live (point 3 côté Face à face).
+
+---
+
 ## [2026-06-02] Provider live read-only des 20 derniers matchs + cache TTL 20 min (point 3a) — Complété
 
 **Statut** : Complété (commit 4/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`). Câblage en 5/6.

@@ -290,6 +290,7 @@ func (r *ServiceRegistry) ExplorerCtxWithAuth(ctx context.Context, slug string) 
 		SeasonSR:        r.remoteStats, // *CachedStatsProvider implémente port.SeasonStatsProvider
 		SeasonCSR:       r.newExplorerSeasonCSRProvider(),
 		Ranks:           ranks,
+		RecentMatches:   r.recentMatches,
 		LocalBannerPool: r.newExplorerLocalBannerPool(pdb.TitleSlug),
 		TitleSlug:       pdb.TitleSlug,
 	})

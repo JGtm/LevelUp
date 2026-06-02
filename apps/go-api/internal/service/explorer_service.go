@@ -154,6 +154,12 @@ type ExplorerTargetProfileDeps struct {
 	// résolus via le fallback RankName (player DB) puis "Rang N" (cf.
 	// analysis.BuildSpartanIdentity, nil-safe).
 	Ranks *mappings.RankCatalog
+	// RecentMatches : fetch live read-only des N derniers matchs d'une cible NON
+	// suivie (cache TTL 20 min, aucune persistance). Utilisé en repli quand la
+	// lecture locale des matchs récents est vide (cible non-locale) pour peupler
+	// les graphes profil de combat. nil → pas de repli live (graphes vides pour
+	// les non-locaux, comportement historique).
+	RecentMatches port.RecentMatchesProvider
 	// LocalBannerPool : pool de bannières (nameplates) connues localement —
 	// banner_image_url des joueurs suivis. Résolu PARESSEUSEMENT : appelé
 	// uniquement quand la cible n'a ni bannière ni backdrop (cas non-local sans
@@ -331,9 +337,13 @@ func (s *ExplorerService) buildTargetProfile(
 	})
 	g.Go(func() error { seasonCSRs = s.fetchTargetCSR(liveCtx, targetXUID, hasAuth); return nil })
 	g.Go(func() error { sampleStats = s.computeTargetSampleStats(gctx, targetXUID, rawMatches); return nil })
-	// Profil de combat : N derniers matchs PvP de la cible (calcul local DuckDB,
-	// indépendant des tokens → gctx, non borné par le budget live).
-	g.Go(func() error { combatProfile = s.computeTargetCombatProfile(gctx, targetXUID); return nil })
+	// Profil de combat : N derniers matchs PvP de la cible. Local DuckDB d'abord
+	// (gctx, non borné) ; repli live read-only borné par liveCtx pour une cible
+	// non-locale sans matchs en base.
+	g.Go(func() error {
+		combatProfile = s.computeTargetCombatProfile(gctx, liveCtx, targetXUID, hasAuth)
+		return nil
+	})
 
 	_ = g.Wait()
 
