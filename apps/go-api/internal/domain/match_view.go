@@ -780,31 +780,3 @@ type ExpectedStatsRaw struct {
 	DeathsStddev    *float64
 	AssistsExpected *float64
 }
-
-// MatchViewRawRow : DEPRECATED — conservé le temps de migrer les appelants.
-// Préférer MatchMetaRaw + PlayerMatchStatsRaw.
-type MatchViewRawRow = struct {
-	MatchID           string
-	StartTime         *time.Time
-	DurationSeconds   *float64
-	MapName           *string
-	PairName          *string
-	PlaylistName      *string
-	IsFirefight       bool
-	IsRanked          bool
-	OutcomeCode       int
-	TeamID            *int
-	RankInTeam        *int
-	Kills             int
-	Deaths            int
-	Assists           int
-	KDA               *float64
-	Accuracy          *float64
-	PersonalScore     *float64
-	AvgLifeSeconds    *float64
-	TimePlayedSeconds *float64
-	ShotsFired        *int
-	ShotsHit          *int
-	DamageDealt       *float64
-	DamageTaken       *float64
-}

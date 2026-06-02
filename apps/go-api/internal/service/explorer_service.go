@@ -21,9 +21,6 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// outcomeWin est le code de victoire (Halo Infinite outcome = 2).
-const outcomeWin = 2
-
 // explorerTargetLiveBudget plafonne la durée du SEUL fetch live de l'encart
 // "Profil joueur cible" : les stats carrière remote (servicerecord). Au-delà,
 // le contexte est annulé : la carrière reste nil et la réponse part avec ce qui
@@ -614,12 +611,12 @@ func buildEncounterStats(xuid, gamertag string, raw []domain.CommonMatchRaw, kv 
 			*r.Player1TeamID == *r.Player2TeamID
 		if wereTeammates {
 			allyTotal++
-			if r.Player1Outcome == outcomeWin {
+			if r.Player1Outcome == domain.OutcomeWin {
 				allyWins++
 			}
 		} else {
 			enemyTotal++
-			if r.Player1Outcome == outcomeWin {
+			if r.Player1Outcome == domain.OutcomeWin {
 				enemyWins++
 			}
 		}
@@ -646,7 +643,7 @@ func buildEncounterStats(xuid, gamertag string, raw []domain.CommonMatchRaw, kv 
 func countWinsLosses(raw []domain.CommonMatchRaw) (wins, losses int) {
 	for i := range raw {
 		switch raw[i].Player1Outcome {
-		case outcomeWin:
+		case domain.OutcomeWin:
 			wins++
 		default:
 			losses++
