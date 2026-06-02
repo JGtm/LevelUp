@@ -10,8 +10,9 @@
  * Axe X : catégoriel `#N\nMap` (index de match) aligné sur les autres graphes
  * par-match de la page (cf. buildMatchCategories), avec regroupement des
  * étiquettes via tickInterval() quand le panel devient large.
- * Axe Y : cadré sur la/les bande(s) de palier contenant les données (frameToTier)
- * pour rendre lisibles les petites variances de classement.
+ * Axe Y : cadré sur la magnitude de session (sous-paliers contenant les données,
+ * via frameToData) avec bandes de sous-palier, pour rendre lisible le mouvement
+ * par-match sur les sessions courtes.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
@@ -24,7 +25,8 @@ import {
   CHART_BG,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { frameToTier, buildLusrTierMarkArea } from '@/lib/charts/skillTierBands'
+import { frameToData, buildSkillTierMarkArea } from '@/lib/charts/skillTierBands'
+import { gridForRatingTypes } from '@/lib/skillTiers'
 import { timeseriesManifest } from '@/lib/i18n/generated/timeseries'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { LUSR_GROUP_TOKENS, lusrChainLabel } from '@/features/career/lusr-chains'
@@ -152,16 +154,17 @@ function buildOption(
   const allRatings = series.flatMap(s => s.values.filter((v): v is number => v != null))
   const dataMin = allRatings.length > 0 ? Math.min(...allRatings) : 0
   const dataMax = allRatings.length > 0 ? Math.max(...allRatings) : 0
-  const { min: yMin, max: yMax } = frameToTier(dataMin, dataMax)
+  const grid = gridForRatingTypes(series.map(s => s.ratingType))
+  const { min: yMin, max: yMax } = frameToData(dataMin, dataMax, grid)
 
-  // Série fantôme pour les bandes de tier (reste visible quand les séries réelles sont masquées).
+  // Série fantôme pour les bandes de sous-palier (reste visible quand les séries réelles sont masquées).
   const ghostSeries = {
     type: 'line',
     name: '__skill_tiers__',
     data: [],
     silent: true,
     legendHoverLink: false,
-    markArea: buildLusrTierMarkArea(locale, yMin, yMax),
+    markArea: buildSkillTierMarkArea(locale, yMin, yMax, grid, tc),
   }
 
   const echartsSeriesList: object[] = [ghostSeries]

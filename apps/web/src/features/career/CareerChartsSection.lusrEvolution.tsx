@@ -15,7 +15,8 @@ import {
   CHART_BG,
 } from '@/components/charts/_utils'
 import { resolveToken } from '@/lib/accessibility'
-import { frameToTier, buildLusrTierMarkArea } from '@/lib/charts/skillTierBands'
+import { frameToData, buildSkillTierMarkArea } from '@/lib/charts/skillTierBands'
+import { gridForRatingTypes } from '@/lib/skillTiers'
 import { careerManifest } from '@/lib/i18n/generated/career'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import { LUSR_GROUP_TOKENS, lusrChainLabel } from './lusr-chains'
@@ -61,9 +62,10 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
   const allRatings = series.flatMap(s => s.datapoints.map(p => p[1]))
   const dataMin = allRatings.length > 0 ? Math.min(...allRatings) : 0
   const dataMax = allRatings.length > 0 ? Math.max(...allRatings) : 0
-  // Axe Y cadré sur la/les bande(s) de palier (évite l'axe qui repart de 0 pour
-  // du CSR < 1200 et l'expansion par la bande Onyx 9999). Cf. graphe « Classement ».
-  const { min: yMin, max: yMax } = frameToTier(dataMin, dataMax)
+  // Axe Y cadré sur la magnitude (sous-paliers contenant les données + marge),
+  // grille selon le type de rating. Cf. graphe « Classement ».
+  const grid = gridForRatingTypes(series.map(s => (s.meta as { ratingType?: string } | undefined)?.ratingType))
+  const { min: yMin, max: yMax } = frameToData(dataMin, dataMax, grid)
 
   // Fenêtre par défaut = 12 derniers mois depuis le point le plus récent.
   // Si l'historique est plus court, on affiche tout (dataZoom laisse dérouler vers le passé).
@@ -82,7 +84,7 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
     s => (s.meta as { label: string } | undefined)?.label ?? s.key,
   )
 
-  // Les bandes de tier sont attachées à une série fantôme (pas de données, pas de légende).
+  // Les bandes de sous-palier sont attachées à une série fantôme (pas de données, pas de légende).
   // Sans ghost, les markArea disparaissent quand la série porteuse est masquée.
   const ghostSeries = {
     type: 'line',
@@ -90,7 +92,7 @@ function buildLusrEvolutionOption(series: ChartSeries<[string, number]>[], local
     data: [],
     silent: true,
     legendHoverLink: false,
-    markArea: buildLusrTierMarkArea(locale, yMin, yMax),
+    markArea: buildSkillTierMarkArea(locale, yMin, yMax, grid, tc),
   }
 
   const echartsSeriesList = [

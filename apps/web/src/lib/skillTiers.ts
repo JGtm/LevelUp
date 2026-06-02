@@ -19,20 +19,68 @@ export const SKILL_TIER_VALUES = [
 
 export type SkillTierValue = typeof SKILL_TIER_VALUES[number]
 
-// Paliers LUSR — valeurs synchronisées avec skill_config.go (SkillTiers).
-// Labels FR = FormatTierLabel() côté Go ; labels EN = valeur brute API Halo.
-// Ce fichier est whitelisté dans lint-no-hardcoded-fields : ces strings sont
-// des identifiants de rang Halo Infinite, pas des libellés d'affichage génériques.
-export const LUSR_TIERS: Array<{
+// ── Grilles de paliers de skill (LUSR / CSR) pour les bandes de classement ──
+// Ce fichier est whitelisté dans lint-no-hardcoded-fields : les noms de tier
+// sont des identifiants de rang Halo Infinite, pas des libellés génériques.
+
+/**
+ * Une bande de palier sur l'axe rating_value. `min`/`max` sont sur l'échelle de
+ * la métrique. `subTiers` = nombre de sous-paliers de largeur égale (1 = pas de
+ * sous-palier, ex. Onyx ouvert).
+ */
+export interface SkillTier {
   min: number
   max: number
-  token: 'perf-tier-1' | 'perf-tier-2' | 'perf-tier-3' | 'perf-tier-4' | 'perf-tier-5'
   fr: string
   en: string
-}> = [
-  { min: 1200, max: 1400, token: 'perf-tier-1', fr: 'Argent',  en: 'Silver'   },
-  { min: 1400, max: 1600, token: 'perf-tier-2', fr: 'Or',      en: 'Gold'     },
-  { min: 1600, max: 1800, token: 'perf-tier-3', fr: 'Platine', en: 'Platinum' },
-  { min: 1800, max: 2000, token: 'perf-tier-4', fr: 'Diamant', en: 'Diamond'  },
-  { min: 2000, max: 9999, token: 'perf-tier-5', fr: 'Onyx',    en: 'Onyx'     },
-]
+  subTiers: number
+}
+
+export interface SkillTierGrid {
+  tiers: SkillTier[]
+  /** Numérotation des sous-paliers : 'roman' (LUSR, façon Go FormatTierSubLabel)
+   *  ou 'arabic' (CSR, façon Halo « Diamond 3 »). */
+  subTierStyle: 'roman' | 'arabic'
+}
+
+/**
+ * Grille LUSR — échelle legacy 1000-2000. Bornes ET nombres de sous-paliers
+ * synchronisés avec Go skill_v2/tier.go (DefaultTierBoundaries) + legacy_mapping.go
+ * (LegacyTierRange = 200 pts/tier ; largeur sous-palier = 200 / subTiers).
+ * ⚠️ Couplage manuel : si la grille Go change, mettre à jour ici.
+ */
+export const LUSR_TIER_GRID: SkillTierGrid = {
+  subTierStyle: 'roman',
+  tiers: [
+    { min: 1000, max: 1200, fr: 'Bronze',  en: 'Bronze',   subTiers: 6 },
+    { min: 1200, max: 1400, fr: 'Argent',  en: 'Silver',   subTiers: 3 },
+    { min: 1400, max: 1600, fr: 'Or',      en: 'Gold',     subTiers: 6 },
+    { min: 1600, max: 1800, fr: 'Platine', en: 'Platinum', subTiers: 2 },
+    { min: 1800, max: 2000, fr: 'Diamant', en: 'Diamond',  subTiers: 3 },
+    { min: 2000, max: 9999, fr: 'Onyx',    en: 'Onyx',     subTiers: 1 },
+  ],
+}
+
+/**
+ * Grille CSR — échelle Halo Infinite brute (competitive). Chaque tier
+ * Bronze..Diamant = 300 pts / 6 sous-rangs de 50 ; Onyx ouvert (1500+),
+ * numéroté sans sous-rangs.
+ */
+export const CSR_TIER_GRID: SkillTierGrid = {
+  subTierStyle: 'arabic',
+  tiers: [
+    { min: 0,    max: 300,  fr: 'Bronze',  en: 'Bronze',   subTiers: 6 },
+    { min: 300,  max: 600,  fr: 'Argent',  en: 'Silver',   subTiers: 6 },
+    { min: 600,  max: 900,  fr: 'Or',      en: 'Gold',     subTiers: 6 },
+    { min: 900,  max: 1200, fr: 'Platine', en: 'Platinum', subTiers: 6 },
+    { min: 1200, max: 1500, fr: 'Diamant', en: 'Diamond',  subTiers: 6 },
+    { min: 1500, max: 9999, fr: 'Onyx',    en: 'Onyx',     subTiers: 1 },
+  ],
+}
+
+/** Grille à utiliser selon les types de rating présents : CSR si tous les
+ *  types sont 'CSR', sinon LUSR (défaut, et cas mixte legacy-scale). */
+export function gridForRatingTypes(ratingTypes: Array<string | null | undefined>): SkillTierGrid {
+  const upper = ratingTypes.map(t => (t ?? '').toUpperCase()).filter(Boolean)
+  return upper.length > 0 && upper.every(t => t === 'CSR') ? CSR_TIER_GRID : LUSR_TIER_GRID
+}
