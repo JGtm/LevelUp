@@ -122,6 +122,11 @@ func RunForDB(db *sql.DB, target TargetDB) error {
 	}
 
 	migrations := ForTarget(target)
+	// Ordre d'exécution EXPLICITE (Phase 1.5.0) : indépendant de l'ordre des
+	// init()/fichiers. Voir order.go. No-op tant que canonicalOrder reflète
+	// l'ordre d'enregistrement ; devient le garde-fou quand les steps_*.go
+	// seront déplacés par titre.
+	sortByCanonicalOrder(migrations)
 	appliedCount := 0
 	for _, m := range migrations {
 		state, exists := applied[m.Name]
