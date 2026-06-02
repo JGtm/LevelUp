@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
@@ -1158,6 +1159,11 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		configTitlesRoot := filepath.Dir(prestigeConfigDir)
 		migration.RegisterMilestonesSeedMigration(configTitlesRoot)
 	}
+
+	// Phase 1.5.1 B (ADR 0025) : enregistre les migrations title-owned (Halo
+	// Infinite) auprès du runner, avant tout RunForDB. Vide tant qu'aucun step
+	// n'a été déplacé hors du package migration (no-op) ; se remplit en b3.
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 
 	// 1. metadata.duckdb
 	metaDB, err := duckdb.OpenReadWrite(metaPath)
