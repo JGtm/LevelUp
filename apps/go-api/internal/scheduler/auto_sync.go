@@ -112,6 +112,9 @@ type SchedulerSnapshot struct {
 	IntervalMinutes int                   `json:"interval_minutes"`
 	PoolSize        int                   `json:"pool_size"`
 	Players         []PlayerOutcomeDetail `json:"players"`
+	// Gate : état du gate de déduplication cross-source (claims en vol + âge +
+	// compteurs). Vide si watcher désactivé (NopSyncGate).
+	Gate sync.GateSnapshotData `json:"gate"`
 }
 
 // AutoSyncScheduler orchestre la sync delta périodique de tous les joueurs.
@@ -383,6 +386,9 @@ func (s *AutoSyncScheduler) Snapshot() SchedulerSnapshot {
 		PoolSize:        poolSize,
 		Players:         players,
 	}
+	if s.SyncGate != nil {
+		snap.Gate = s.SyncGate.GateSnapshot()
+	}
 	if s.lastCycleResult != nil {
 		copyRes := *s.lastCycleResult
 		snap.LastCycleResult = &copyRes
@@ -493,6 +499,12 @@ func (s *AutoSyncScheduler) RunOnce(ctx context.Context) *RunOnceResult {
 		return res
 	}
 	res.Total = len(players)
+
+	// Détection de claim fuité : le cycle auto-sync sert de heartbeat. Un claim
+	// du gate tenu anormalement longtemps signale un release jamais appelé (le
+	// joueur ne serait plus jamais synchronisé). Cf. jauge expvar sync_gate_inflight
+	// pour le signal temps-réel.
+	s.warnStaleGateClaims(ctx)
 
 	// ADR 0020 dispatch : si V2 est activé via env var ET orchestrator
 	// non-nil, déléguer au pipeline V2. Fallback silencieux à V1 si
@@ -731,6 +743,21 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	}
 	outcome = outcomeOK
 	return outcome
+}
+
+// warnStaleGateClaims émet un WARN par claim du gate anormalement ancien
+// (potentiellement fuité : release jamais appelé → joueur jamais re-synchronisé).
+// No-op si aucun gate (NopSyncGate renvoie un cliché vide).
+func (s *AutoSyncScheduler) warnStaleGateClaims(ctx context.Context) {
+	if s.SyncGate == nil {
+		return
+	}
+	for _, cl := range s.SyncGate.GateSnapshot().Claims {
+		if cl.Stale {
+			slog.WarnContext(ctx, "sync_gate: claim potentiellement fuité (tenu anormalement longtemps)",
+				"gamertag", cl.Gamertag, "source", cl.Source, "age_ms", cl.AgeMs)
+		}
+	}
 }
 
 // checkSyncPreconditions vérifie les 4 préconditions de sync (pool initialisé,

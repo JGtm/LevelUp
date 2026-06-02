@@ -40,9 +40,24 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"time"
 
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/logging"
 )
+
+// Clés expvar du gate (namespace "levelup" sur /debug/vars, cardinalité bornée
+// — clés fixes, jamais par gamertag, cf. ADR 0009).
+const (
+	metricGateGranted   = "sync_gate_claims_granted_total"   // claims auto/HTTP accordés
+	metricGateCoalesced = "sync_gate_claims_coalesced_total" // claims auto/HTTP cédés (double-fetch évité)
+	metricGateInflight  = "sync_gate_inflight"               // jauge claims gate en cours (une valeur figée = fuite)
+)
+
+// staleClaimThreshold : au-delà, un claim est considéré potentiellement FUITÉ
+// (release jamais appelé → joueur jamais re-synchronisé). Choisi > syncJobTimeout
+// HTTP (30 min) pour ne pas alerter sur un sync initial volumineux légitime.
+const staleClaimThreshold = 45 * time.Minute
 
 // SyncRunner exécute le sync pour un joueur avec les match_ids donnés.
 type SyncRunner interface {
@@ -73,6 +88,29 @@ type SyncGate interface {
 	// À appeler AVANT WaitInFlight pour qu'aucun nouveau claim ne puisse survenir
 	// concurremment au drain (évite une data race / un retour prématuré de Wait).
 	BeginShutdown()
+	// GateSnapshot retourne un cliché d'observabilité (compteurs + claims en vol
+	// avec leur âge) pour le diagnostic (/_diag/auto-sync/snapshot) et la détection
+	// de claim fuité.
+	GateSnapshot() GateSnapshotData
+}
+
+// GateClaimInfo décrit un claim en vol (diag). Source : "watcher" (Submit) ou
+// "gate" (TryClaim auto/HTTP).
+type GateClaimInfo struct {
+	Gamertag string `json:"gamertag"`
+	Source   string `json:"source"`
+	AgeMs    int64  `json:"age_ms"`
+	Stale    bool   `json:"stale"` // âge >= staleClaimThreshold → potentiellement fuité
+}
+
+// GateSnapshotData est un cliché de l'état du gate de déduplication cross-source.
+type GateSnapshotData struct {
+	InflightWatcher int             `json:"inflight_watcher"`
+	InflightGate    int             `json:"inflight_gate"`
+	GrantedTotal    int64           `json:"granted_total"`
+	CoalescedTotal  int64           `json:"coalesced_total"`
+	StaleCount      int             `json:"stale_count"`
+	Claims          []GateClaimInfo `json:"claims,omitempty"`
 }
 
 // NopSyncGate est un SyncGate no-op : TryClaim réussit toujours (aucune dédup
@@ -92,6 +130,9 @@ func (NopSyncGate) WaitInFlight() {}
 // BeginShutdown est un no-op (aucun claim à figer).
 func (NopSyncGate) BeginShutdown() {}
 
+// GateSnapshot retourne un cliché vide (aucun claim suivi).
+func (NopSyncGate) GateSnapshot() GateSnapshotData { return GateSnapshotData{} }
+
 // Garde-fou compile-time : les deux types satisfont l'interface.
 var (
 	_ SyncGate = (*Coordinator)(nil)
@@ -110,10 +151,10 @@ type Coordinator struct {
 	runner      SyncRunner
 	maxParallel int
 	sem         chan struct{}
-	inFlightMu  sync.Mutex      // protège inFlight, gateClaims ET closing
-	inFlight    map[string]bool // claims WATCHER (Submit/run) — clé normalisée
-	gateClaims  map[string]bool // claims AUTO/HTTP (TryClaim) — clé normalisée
-	closing     bool            // levé par BeginShutdown : TryClaim refuse tout claim
+	inFlightMu  sync.Mutex           // protège inFlight, gateClaims ET closing
+	inFlight    map[string]time.Time // claims WATCHER (Submit/run) — clé normalisée → début du claim
+	gateClaims  map[string]time.Time // claims AUTO/HTTP (TryClaim) — clé normalisée → début du claim
+	closing     bool                 // levé par BeginShutdown : TryClaim refuse tout claim
 	onComplete  func(gamertag string, err error)
 	// wg track les goroutines run() en vol. Le caller (watcher daemon) appelle
 	// Wait() au shutdown — APRÈS avoir annulé le ctx des syncs — pour ne pas
@@ -136,8 +177,8 @@ func NewCoordinator(runner SyncRunner, maxParallel int) *Coordinator {
 		runner:      runner,
 		maxParallel: maxParallel,
 		sem:         make(chan struct{}, maxParallel),
-		inFlight:    make(map[string]bool),
-		gateClaims:  make(map[string]bool),
+		inFlight:    make(map[string]time.Time),
+		gateClaims:  make(map[string]time.Time),
 	}
 }
 
@@ -162,7 +203,7 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 	// lease KindPlayer sérialise au besoin (le match frais est écrit dans le cycle).
 	key := normGT(req.Gamertag)
 	c.inFlightMu.Lock()
-	if c.inFlight[key] {
+	if _, busy := c.inFlight[key]; busy {
 		c.inFlightMu.Unlock()
 		slog.InfoContext(ctx, "coordinator: sync watcher déjà en cours, requête ignorée (dedup)",
 			"gamertag", req.Gamertag,
@@ -171,7 +212,7 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 		)
 		return false
 	}
-	c.inFlight[key] = true
+	c.inFlight[key] = time.Now()
 	c.inFlightMu.Unlock()
 
 	slog.InfoContext(ctx, "coordinator: requête acceptée",
@@ -191,18 +232,30 @@ func (c *Coordinator) Submit(ctx context.Context, req CoordinatorRequest) bool {
 func (c *Coordinator) TryClaim(gamertag string) (func(), bool) {
 	key := normGT(gamertag)
 	c.inFlightMu.Lock()
-	if c.closing || c.inFlight[key] || c.gateClaims[key] {
+	if c.closing {
 		c.inFlightMu.Unlock()
+		return nil, false // refus de shutdown : ne compte pas comme coalesced
+	}
+	_, w := c.inFlight[key]
+	_, g := c.gateClaims[key]
+	if w || g {
+		c.inFlightMu.Unlock()
+		// Cédé : un sync du joueur est déjà en vol (watcher ou auto/HTTP). C'est
+		// LA métrique de valeur — chaque coalesced = un double-fetch API évité.
+		observability.IncCounter(metricGateCoalesced)
 		return nil, false
 	}
-	c.gateClaims[key] = true
+	c.gateClaims[key] = time.Now()
 	c.gateWG.Add(1) // sous inFlightMu + !closing → jamais concurrent à gateWG.Wait
 	c.inFlightMu.Unlock()
+	observability.IncCounter(metricGateGranted)
+	observability.AddInt(metricGateInflight, 1)
 	return sync.OnceFunc(func() {
 		c.inFlightMu.Lock()
 		delete(c.gateClaims, key)
 		c.inFlightMu.Unlock()
 		c.gateWG.Done()
+		observability.AddInt(metricGateInflight, -1)
 	}), true
 }
 
@@ -288,7 +341,40 @@ func (c *Coordinator) IsInFlight(gamertag string) bool {
 	key := normGT(gamertag)
 	c.inFlightMu.Lock()
 	defer c.inFlightMu.Unlock()
-	return c.inFlight[key] || c.gateClaims[key]
+	_, w := c.inFlight[key]
+	_, g := c.gateClaims[key]
+	return w || g
+}
+
+// GateSnapshot — cf. SyncGate. Cliché d'observabilité : compteurs cumulés (lus
+// depuis expvar) + claims en vol avec leur âge et un flag stale (potentiellement
+// fuité). Sans effet de bord ; verrou bref sur inFlightMu.
+func (c *Coordinator) GateSnapshot() GateSnapshotData {
+	now := time.Now()
+	snap := GateSnapshotData{
+		GrantedTotal:   observability.LoadCounter(metricGateGranted),
+		CoalescedTotal: observability.LoadCounter(metricGateCoalesced),
+	}
+	c.inFlightMu.Lock()
+	snap.InflightWatcher = len(c.inFlight)
+	snap.InflightGate = len(c.gateClaims)
+	snap.Claims = make([]GateClaimInfo, 0, len(c.inFlight)+len(c.gateClaims))
+	collect := func(m map[string]time.Time, source string) {
+		for gt, started := range m {
+			age := now.Sub(started)
+			stale := age >= staleClaimThreshold
+			if stale {
+				snap.StaleCount++
+			}
+			snap.Claims = append(snap.Claims, GateClaimInfo{
+				Gamertag: gt, Source: source, AgeMs: age.Milliseconds(), Stale: stale,
+			})
+		}
+	}
+	collect(c.inFlight, "watcher")
+	collect(c.gateClaims, "gate")
+	c.inFlightMu.Unlock()
+	return snap
 }
 
 // InFlightCount retourne le nombre de syncs en cours (watcher + auto/HTTP).

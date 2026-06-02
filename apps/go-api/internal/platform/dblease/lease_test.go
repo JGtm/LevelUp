@@ -3,6 +3,7 @@ package dblease
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"sync"
 	"testing"
@@ -153,6 +154,27 @@ func TestAcquireLeaseCtx_CancelledContext(t *testing.T) {
 	_, err2 := AcquireLeaseCtx(ctx, path)
 	if err2 == nil {
 		t.Fatal("expected error for already-cancelled context")
+	}
+}
+
+// TestAcquireLeaseCtx_FreeLeaseCancelledCtx : sur un lease LIBRE mais un ctx déjà
+// annulé, on REFUSE le lease (ctx.Err() avant TryLock, défense-in-depth 2026-06-02)
+// au lieu de l'accorder — évite une écriture après shutdown/CloseAll (#7659).
+func TestAcquireLeaseCtx_FreeLeaseCancelledCtx(t *testing.T) {
+	path := t.TempDir() + "/freecancel.duckdb" // lease JAMAIS pris (libre)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // déjà annulé
+
+	rel, err := AcquireLeaseCtx(ctx, path)
+	if err == nil {
+		if rel != nil {
+			rel()
+		}
+		t.Fatal("un lease libre ne doit PAS être accordé sur un ctx déjà annulé")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err devrait wrapper context.Canceled, got %v", err)
 	}
 }
 
