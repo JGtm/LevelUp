@@ -53805,3 +53805,23 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
 - Prochaine étape : décision utilisateur — (a) identifier/arrêter le processus
   concurrent, ou (b) m'autoriser à finir la feature GateSnapshot, avant de pouvoir
   builder le binaire complet et committer le P0. Aucun commit fait (autorisation requise).
+
+[2026-06-02] P1 hardening (lot isolé #8 + #10) — branche feat/skill-progression-magnitude-scale — Complété
+- Suite de la revue de code. Lot P1 choisi ISOLÉ de internal/sync / internal/scheduler
+  (où un agent concurrent travaille sur GateSnapshot) pour éviter tout conflit.
+- #8 En-têtes de sécurité HTTP : nouveau middleware SecurityHeaders(hsts) dans
+  internal/api/middleware/security_headers.go (X-Content-Type-Options=nosniff,
+  X-Frame-Options=DENY, Referrer-Policy=strict-origin-when-cross-origin,
+  Cross-Origin-Opener-Policy=same-origin ; HSTS uniquement si isProduction).
+  Câblé dans server.go juste après RealIP. CSP volontairement OMISE (casserait le
+  SPA/ECharts sans stratégie de nonces — dette P2 documentée). Test security_headers_test.go.
+- #10 Healthcheck conteneur : main.go lisait LEVELUP_API_PORT_OR_DEFAULT (variable
+  fantôme jamais bindée) → ne marchait que sur 8000 par accident. Corrigé pour lire
+  LEVELUP_API_PORT (la var réellement utilisée par config.Load), défaut 8000, fallback
+  8000 seulement si port custom échoue. .env.local.example aligné (LEVELUP_API_PORT).
+- Résultats : go build ./... OK (CGO), go vet OK, tests middleware + api (routeur
+  complet) verts. Aucun fmt.Println introduit.
+- Prochaine étape : reste P1 (en attente, à faire hors fenêtre de l'agent concurrent) —
+  H-C1 atomic.Pointer[sql.DB] (platform/duckdb/db.go), legacy ART warn (internal/sync,
+  conflit), i18n front (MatchCard/engagement manifests, ChartCard useColorPaletteVersion).
+  Aucun commit fait pour ce lot P1 (autorisation requise).

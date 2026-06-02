@@ -94,9 +94,15 @@ func main() {
 			}
 			return hcClient.Do(req) //nolint:bodyclose // body fermé par le caller via defer resp.Body.Close()
 		}
-		port := os.Getenv("LEVELUP_API_PORT_OR_DEFAULT")
+		// Lit la MÊME variable que le serveur bind (config.Load: LEVELUP_API_PORT),
+		// pas un nom fantôme — sinon le healthcheck ne suit pas le port configuré et
+		// ne marche que sur 8000 par accident (revue P0 2026-06-02).
+		port := os.Getenv("LEVELUP_API_PORT")
+		if port == "" {
+			port = "8000"
+		}
 		resp, err := hcDo("http://127.0.0.1:" + port + "/health") //nolint:bodyclose // body fermé via defer resp.Body.Close()
-		if err != nil {
+		if err != nil && port != "8000" {
 			// Fallback sur le port par défaut 8000
 			resp, err = hcDo("http://127.0.0.1:8000/health") //nolint:bodyclose // body fermé via defer resp.Body.Close()
 		}

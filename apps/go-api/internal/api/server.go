@@ -123,6 +123,8 @@ func NewRouter(
 	if cfg.TrustProxyHeaders {
 		r.Use(chimiddleware.RealIP)
 	}
+	// En-têtes de sécurité HTTP sur toutes les réponses (HSTS seulement en prod/TLS).
+	r.Use(middleware.SecurityHeaders(isProduction))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
 	r.Use(middleware.CSRF(cfg.CORSOrigins))
