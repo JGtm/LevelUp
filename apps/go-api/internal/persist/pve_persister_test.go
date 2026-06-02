@@ -11,6 +11,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
@@ -27,6 +28,8 @@ func openPVETestDB(t *testing.T) *sql.DB {
 		t.Fatalf("open duckdb: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	// add_pve_schema est désormais title-owned (Phase 1.5.1 B) : poser le provider.
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	if err := migration.RunForDB(db, migration.TargetSharedPvE); err != nil {
 		t.Fatalf("migrate pve: %v", err)
 	}

@@ -17,15 +17,17 @@ func TestCanonicalOrderCompleteness(t *testing.T) {
 			t.Errorf("migration %q absente de canonicalOrder (order.go) — l'ajouter à la bonne position", m.Name)
 		}
 	}
+	// Pas de doublon dans canonicalOrder.
+	// NB : le check inverse « canonicalOrder ⊆ steps enregistrés » (entrée morte)
+	// est désormais dans halo_infinite/migrations/order_audit_test.go, car les
+	// steps title-owned sont dans canonicalOrder mais PAS dans le registre global
+	// All() (Phase 1.5.1 B). Ce test ne voit que le registre global.
 	seen := make(map[string]bool, len(canonicalOrder))
 	for _, n := range canonicalOrder {
 		if seen[n] {
 			t.Errorf("doublon dans canonicalOrder: %q", n)
 		}
 		seen[n] = true
-		if !registered[n] {
-			t.Errorf("canonicalOrder référence %q qui n'est plus enregistrée (entrée morte)", n)
-		}
 	}
 }
 
