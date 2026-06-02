@@ -54062,3 +54062,30 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Prochaine étape** : finir H-D4 par feature (ascension via dict i18n.ts ; match-view via
   TOML en isolant les non-cibles) + règle ESLint ciblée ; puis engine.go/server.go en passe
   supervisée si souhaité.
+
+## [2026-06-02] Intégration plans title-agnostic + web-api-types → tracker fenêtre minimale — Complété
+
+- **Statut** : Complété (artefact de suivi livré) — exécution non démarrée (planif d'abord, voulu par Guillaume).
+- **Contexte** : 2 plans préexistants à incorporer — `PLAN_TITLE_AGNOSTIC_REFACTORING.md` (v2.5,
+  62-82 j) et `PLAN_WEB_API_TYPES_MIGRATION.md`. Décisions cadrantes : voie A (2e titre réel),
+  fenêtre **minimale viable 0→3a**, OpenAPI **absorbé dans Phase 3b (Huma)** (pas de réconciliation
+  manuelle).
+- **Méthode** : 2 workflows — (1) cartographie surface canonique (stubs/services/gaps), (2) audit
+  par phase 0→3a dans le code réel (6 agents Explore, statut done/partial/todo + evidence).
+- **Livrable** : [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) — dashboard
+  + tables par phase, traçable (✅/🟡/⬜ + evidence + next action).
+- **3 réconciliations majeures vs master (2026-05-18 → code 2026-06-02)** :
+  1. **ADR renumérotés** : 0014-0017 du master sont **pris** → 0024-0027.
+  2. **Phase 2 — FieldKey-map (`MatchFieldRepository`, D1/D2) SUPERSÉDÉ** : le code a convergé vers
+     des repos canonical-typés (`PlayerMatchesRepository.LoadPlayerMatches → canonical.PlayerMatchRow`,
+     « P4.3 »), déjà consommé par 5 services, **aucun n'importe `platform/duckdb` pour la data**
+     (sauf `home_service` pour `PersistSink`). But de découplage ~70% atteint sans le FieldKey-map.
+     → Reco : acter canonical-typé, retirer FieldKey-map du scope.
+  3. **`fields.toml` sémantique ≠ physique** : item « mapping physique » caduc si (2) acté.
+- **État synthétique** : P0 ~15%, P1 ~60% (fields.toml + loader OK ; constants.toml + magic medal
+  `1512363953` dans 7 fichiers TODO), P1.5 ~5% (53 `steps_*.go` Halo dans migration ; recoupe le
+  `steps_shared.go` 982L déféré), P1.6 0%, P1.7a ~30%, P1.7b 0%, P2 ~70%, P3a ~50% (`match_view.go`
+  propre+487L ; `*Raw` à sortir de domain ; nullabilité partielle).
+- **Prochaine étape** : décision user sur la réconciliation Phase 2 (superséder le FieldKey-map ?),
+  puis démarrage exécution = Phase 0 (ADR 0024-0027 + branche + CLAUDE.md) → finir Phase 1
+  (constants.toml) → cadrer Phase 1.5 (gros, ordre init() migration, supervisé).
