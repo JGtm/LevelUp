@@ -54089,3 +54089,23 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Prochaine étape** : décision user sur la réconciliation Phase 2 (superséder le FieldKey-map ?),
   puis démarrage exécution = Phase 0 (ADR 0024-0027 + branche + CLAUDE.md) → finir Phase 1
   (constants.toml) → cadrer Phase 1.5 (gros, ordre init() migration, supervisé).
+
+## [2026-06-02] Title-agnostic — démarrage exécution Phase 0 + Phase 1 (périmètre propre) — Complété
+
+- **Décisions user** : (1) superséder le FieldKey-map (canonical-typé = cible Phase 2) ; (2) démarrer Phase 0 + finir Phase 1.
+- **Branche** : PAS créée — recherche parallèle de Guillaume en cours sur la branche active
+  (untracked `tmp_*`, PLAN_WEAPON_ATTRIBUTION_V3) → **CLAUDE.md règle 4** (ne pas changer de
+  branche si autre travail en cours). Resté sur `feat/skill-progression-magnitude-scale`, commits
+  sur chemins spécifiques uniquement (jamais les fichiers user).
+- **Phase 0 (cœur)** : ADR **0025** créé (`0014-0017` du master pris, et `0024` pris 2× →
+  0025-0028). Acte D-MV1 (fenêtre 0→3a), D-MV2 (Phase 2 canonical-typé, FieldKey-map abandonné),
+  D-MV3 (WEB_API_TYPES absorbé Phase 3b/Huma), D-MV4 (renumérotation). Référencé dans CLAUDE.md.
+  Reste Phase 0 : branche, lints CI, datasets, parity job (additifs, non bloquants).
+- **Phase 1 (périmètre propre)** : `config/titles/halo_infinite/constants.toml` créé (source
+  title-agnostic du magic medal `1512363953`). **Finding** : sortir ce littéral des **SQL const
+  strings** (7 fichiers) = rendre la couche requêtes title-aware → **reclassé Phase 2**, pas un
+  finish Phase 1 propre. `killer_victim_pairs` acté sans FieldKey (donnée de relation).
+  `fields.toml` + loader + couverture FieldKey = déjà ✅. → Phase 1 ~80%, reste couplé Phase 2.
+- **Commits** : `2b9d9aaae` (ADR 0025 + tracker + CLAUDE.md), `cf149f72f` (constants.toml + tracker).
+- **Prochaine étape** : Phase 1.5 (DDL par-titre, gros, prérequis 2e titre, ordre init() migration
+  → supervisé) OU compléter Phase 0 setup (lints/datasets) OU revenir au backfill (serveur à arrêter).
