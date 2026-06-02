@@ -27,7 +27,7 @@
 | 1 | FieldKey + `fields.toml` (+ constants.toml) | 🟡 | 80 | non — reste = SQL de-magic, **reclassé Phase 2** |
 | 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 58 | **oui** (2e titre) — mécanisme B complet + **6 steps migrés** (PvE + 5 Shared additifs/backfill) ; **tier A Shared épuisé**, reste = tier B (cœur + relocation tests) |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
-| 1.7a | `capabilities.toml` + loader + endpoint | 🟡 | 30 | non |
+| 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
 | 1.7b | Feature-matrix 3 états + cascade | ⬜ | 0 | non |
 | 2 | Services title-agnostic (canonical-typé) | 🟡 | 70 | non |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
@@ -76,13 +76,13 @@
 |---|:-:|---|
 | Clé pool `(titleSlug, gamertag)` | ✅ | `CredentialSource.TitleSlug` (stampé par `discovery.go` depuis `d.titleSlug`) → `poolImpl.titleSlug` (source unique, dérivé des sources) → `slotsByKey map[string]int` clé `gtKey(titleSlug,gamertag)` (NUL-séparé). Signatures publiques `Acquire/HasPlayer/MarkUnhealthy` **inchangées** (le pool compose la clé en interne) → zéro ripple sur les 11 callers. **Garde anti-cross-title** dans `AddOrUpdateSource` (refuse une source d'un autre titre). Tests : `pool_title_key_test.go` (3 cas : title-scoped lookup, cross-title rejeté, same-title OK). `titleSlug` vide (legacy/tests) dégrade vers clé gamertag-only = comportement historique. |
 
-## Phase 1.7a — capabilities.toml (binaire) · 🟡 (~30%)
+## Phase 1.7a — capabilities.toml · ✅ (100%)
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| `capabilities.toml` par titre + loader | 🟡 | `CapabilityMap` existe **en code** (`games/adapter.go:36-70`) ; **0 `.toml`**, 0 loader ; extraire vers TOML |
-| Adapters consomment le loader (0 hardcode) | ⬜ | `halo_infinite/adapter_data.go:61-80` hardcode `Capabilities()` |
-| Endpoint `GET /title/capabilities` | ⬜ | seul `/titles/{slug}/field-mappings` existe |
+| `capabilities.toml` par titre + loader | ✅ | `config/titles/halo_infinite/mappings/capabilities.toml` (9 caps, clés quotées) + `mappings.CapabilityMappingSet` + `LoadCapabilities*` (valide statuts, title-agnostic sur clés) + `Registry.GetCapabilities` (chargement optionnel dans `LoadFromConfigDir`). `games.CapabilityMapFromMappings` (vocabulaire clés). Commit `56dc835b7`. |
+| Adapters consomment le loader (0 hardcode) | ✅ | `adapter_data.go` : `WithCapabilities(caps)` + `Capabilities()` prefer-TOML, fallback codé = **filet sécurité boot** (parité TOML⟷fallback testée → pas de drift). Câblé aux 3 sites (`server.go` boot + `ServiceRegistry.dataAdapterForPDB`/career via `WithCapabilities`). `capCareer` supprimé (downgrade runtime inline). Commit `2ea1bcd13`. |
+| Endpoint `GET /title/capabilities` | ✅ | `handlers.CapabilitiesHandler` → `GET /api/v1/titles/{slug}/capabilities` (gated `MULTI_TITLE_API_ENABLED`), sert les statuts statiques du titre + ETag/Cache-Control. Tests httptest (success/404/304). |
 
 ## Phase 1.7b — Feature-matrix 3 états + cascade · ⬜
 

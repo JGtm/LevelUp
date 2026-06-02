@@ -54221,3 +54221,35 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Prochaine étape (linéaire)** : Phase 1.7a — `capabilities.toml` + loader + endpoint (extraire
   la `CapabilityMap` codée en dur de `halo_infinite/adapter_data.go` vers TOML). Cf.
   [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) §1.7a.
+
+## [2026-06-02] Phase 1.7a — capabilities.toml + loader + adapter + endpoint · Complété
+
+- **Tâche** : externaliser les capabilities produit d'un titre (codées en dur dans
+  `halo_infinite/adapter_data.go`) vers un TOML versionné, pour qu'un 2e titre les déclare en
+  config. Avancée linéaire après 1.6.
+- **Décisions techniques** :
+  - **Contrainte de cycle** : `mappings` est importé PAR `games` → le loader (dans `mappings`)
+    ne peut pas retourner `games.CapabilityMap`. Solution : `mappings.CapabilityMappingSet`
+    (string-keyed, title-agnostic, valide seulement les STATUTS) + `games.CapabilityMapFromMappings`
+    (valide les CLÉS — `games` possède le vocabulaire produit).
+  - **TOML clés quotées** : `"match.history"` etc. — sinon les points créent des tables imbriquées.
+  - **0 hardcode sûr** : l'adapter consomme la map TOML via `WithCapabilities` (chemin nominal) ;
+    le fallback codé est conservé comme **filet de sécurité boot** (TOML absent/corrompu →
+    dégradation gracieuse plutôt que tout not_exposed). Ce n'est pas du « dead code museum » : un
+    **test de parité TOML⟷fallback** interdit tout drift, et rend la source TOML faisant foi sans
+    risque. Câblé aux 3 sites de construction d'adapter (boot global + 2 player-scoped via
+    `ServiceRegistry.WithCapabilities`).
+  - **career.progression** : déclarée `supported` dans le TOML (intention max du titre) ; le
+    runtime la rétrograde à `not_exposed` si aucune `CareerSource` n'est câblée — sans jamais
+    forcer au-dessus de l'intention déclarée (`capCareer` supprimé, logique inline dans
+    `Capabilities()`).
+  - **Endpoint** title-level : `GET /api/v1/titles/{slug}/capabilities` sert les statuts STATIQUES
+    du titre (« que supporte ce titre »), distinct de ce qu'expose une instance d'adapter au
+    runtime (override career). Gated `MULTI_TITLE_API_ENABLED`.
+- **Résultats** : build vert (api + games + cmd/server), `go vet` clean. Tests : loader (valide/
+  invalide/réel TOML), conversion `games` (clé inconnue/statut invalide/nil), parité TOML⟷hardcoded,
+  injection prime sur fallback + downgrade career, handler httptest (success/404/304). 3 commits :
+  `56dc835b7` (fondation), `2ea1bcd13` (adapter consomme), + endpoint (ce commit).
+- **Prochaine étape (linéaire)** : Phase 1.7b — feature-matrix 3 états + cascade
+  (`internal/domain/feature/`, `port.FeatureChecker`, handler `/title/feature_matrix`). Cf.
+  [.ai/PLAN_TITLE_AGNOSTIC_TRACKER.md](PLAN_TITLE_AGNOSTIC_TRACKER.md) §1.7b.
