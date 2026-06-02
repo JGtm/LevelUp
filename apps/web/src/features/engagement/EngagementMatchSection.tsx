@@ -12,6 +12,9 @@ import { useMemo } from 'react'
 import { EngagementCurve, type EngagementPoint } from '@/components/charts/EngagementCurve'
 import { useMatchEngagement } from '@/features/engagement/queries'
 import type { EngagementPointAPI, EngagementScoreResultAPI } from '@/lib/api/types'
+import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
+import { engagementManifest } from '@/lib/i18n/generated/engagement'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 export interface EngagementMatchSectionProps {
   playerSlug: string
@@ -40,6 +43,7 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
     emptyBehavior = 'hide',
     emptyMessage,
   } = props
+  const locale = useAppShellStore((s) => s.locale)
   const query = useMatchEngagement(playerSlug, matchId)
 
   const points: EngagementPoint[] = useMemo(
@@ -61,12 +65,12 @@ export function EngagementMatchSection(props: EngagementMatchSectionProps) {
 
   return (
     <EngagementCurve
-      title={title ?? 'Engagement'}
+      title={title ?? formatMessage(engagementManifest, 'engagement.match_view.section_title', locale)}
       subtitle={
         subtitle ??
         (isEmpty || query.isError
-          ? (emptyMessage ?? "Données d'engagement indisponibles pour ce match")
-          : buildSubtitle(query.data))
+          ? (emptyMessage ?? formatMessage(engagementManifest, 'engagement.error.unavailable', locale))
+          : buildSubtitle(query.data, locale))
       }
       points={points}
       granularity={granularity}
@@ -111,14 +115,21 @@ function fmtMillisToTimeStamp(ms: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-function buildSubtitle(data: EngagementScoreResultAPI | undefined): string | undefined {
+function buildSubtitle(
+  data: EngagementScoreResultAPI | undefined,
+  locale: ManifestLocale,
+): string | undefined {
   if (!data) return undefined
   if (data.confidence === 'insufficient_history') {
-    return 'Historique insuffisant — minimum 10 matchs requis'
+    return formatMessage(engagementManifest, 'engagement.narrative.insufficient', locale)
   }
   if (data.engagement_score == null) return undefined
-  const p = Math.round(data.engagement_score)
-  if (p > 60) return `Au-dessus de votre habitude (P${p})`
-  if (p < 40) return `Sous votre habitude (P${p})`
-  return `Engagement normal (P${p})`
+  const percentile = Math.round(data.engagement_score)
+  if (percentile > 60) {
+    return formatMessage(engagementManifest, 'engagement.narrative.above', locale, { percentile })
+  }
+  if (percentile < 40) {
+    return formatMessage(engagementManifest, 'engagement.narrative.below', locale, { percentile })
+  }
+  return formatMessage(engagementManifest, 'engagement.narrative.normal', locale, { percentile })
 }

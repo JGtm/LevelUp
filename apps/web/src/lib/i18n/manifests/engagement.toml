@@ -102,6 +102,32 @@ en = "Team engagement"
 fr = "Lobby, attendu, equipe observee — clic chip pour overlay un joueur"
 en = "Lobby, expected, observed team — click chip to overlay a player"
 
+# ─── Timeseries intensity tab (sous-titre / granularite) ────────────────────
+
+[engagement.granularity.match]
+fr = "Par match"
+en = "Per match"
+
+[engagement.granularity.session]
+fr = "Groupe par session"
+en = "Grouped by session"
+
+[engagement.granularity.week]
+fr = "Groupe par semaine"
+en = "Grouped by week"
+
+[engagement.granularity.month]
+fr = "Groupe par mois"
+en = "Grouped by month"
+
+[engagement.timeseries.subtitle_truncated]
+fr = " — base sur les {recent} matchs les plus recents sur {total}"
+en = " — based on the {recent} most recent matches out of {total}"
+
+[engagement.timeseries.subtitle_count]
+fr = " — {total, plural, one {# match} other {# matchs}}"
+en = " — {total, plural, one {# match} other {# matches}}"
+
 # ─── Engagement Coefficients (profil) ───────────────────────────────────────
 
 [engagement.coef.team_share_label]

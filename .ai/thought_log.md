@@ -53825,3 +53825,24 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
   H-C1 atomic.Pointer[sql.DB] (platform/duckdb/db.go), legacy ART warn (internal/sync,
   conflit), i18n front (MatchCard/engagement manifests, ChartCard useColorPaletteVersion).
   Aucun commit fait pour ce lot P1 (autorisation requise).
+
+[2026-06-02] P1 i18n frontend + accessibilité charts (H-D1/H-D2/H-D3) — branche feat/skill-progression-magnitude-scale — Complété
+- H-D2 (accessibilité) : ChartCard rebuild l'option ECharts au changement de PALETTE
+  d'accessibilité (Okabe-Ito/Cividis/Tol-Bright), pas seulement au toggle thème. Ajout de
+  useColorPaletteVersion() dans les deps du useMemo. Sans ça, les charts gardaient les
+  couleurs périmées (daltonisme) jusqu'au remount.
+- H-D3 : EngagementMatchSection + EngagementTimeseriesSection câblées sur le manifest
+  engagement (formatMessage + locale via useAppShellStore) au lieu de chaînes FR en dur.
+  Clés narrative/error déjà présentes ; ajout des clés granularity.* + timeseries.subtitle_*
+  (FR+EN, pluriel ICU) dans engagement.toml + régénération.
+- H-D1 : MatchCard — 19 libellés FR en dur routés via t()/commonManifest (le helper t
+  existait déjà). Ajout de 19 clés common.match_card.* (FR+EN) dans common.toml + régénération.
+  Reste en suivi : NARRATIVE_LABELS dans match-card-presentation.ts (badges narratifs) non
+  encore i18n — getMatchNarrativeBadgeMeta appelé sans locale.
+- Manifests régénérés via node scripts/build_i18n_manifests.mjs (déterministe : seuls
+  common.ts + engagement.ts changent). 1630 clés totales.
+- Vérifs : npm run typecheck OK, eslint OK (0 erreur ; 1 warning pré-existant pointsAPI non
+  introduit par moi), vitest OK (match-card/ChartCard/EngagementCurve 23 + home/synthesis/
+  session-detail 89 verts, hors sandbox).
+- Reste P1/P2 : H-D4 (migration des ~140 ternaires inline locale==='en' vers manifests +
+  règle ESLint) — lot séparé non fait. NARRATIVE_LABELS MatchCard. CSP HTTP (dette P2).

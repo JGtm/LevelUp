@@ -19,6 +19,7 @@ import { Suspense, lazy, useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { Spinner } from '@/components/ui/spinner'
+import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
 
 // echarts-for-react lazy : evite de payer le cout du bundle echarts (~600KB)
@@ -92,10 +93,15 @@ export function ChartCard<T = unknown>({
   // dans les deps du useMemo pour forcer le rebuild de l'option et donc le
   // re-render canvas avec les couleurs du nouveau thème.
   const themeVersion = useThemeVersion()
+  // La palette d'accessibilité (Okabe-Ito, Cividis, Tol-Bright…) est appliquée via
+  // :root style SANS toggler data-theme : on observe aussi son changement pour
+  // rebuild l'option ECharts, sinon les couleurs hex « bakées » par buildOption
+  // (resolveToken) resteraient périmées jusqu'au prochain remount (revue P1 2026-06-02).
+  const paletteVersion = useColorPaletteVersion()
   const option = useMemo(
     () => (isEmpty || loading || error ? null : buildOption(series)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isEmpty, loading, error, buildOption, series, themeVersion],
+    [isEmpty, loading, error, buildOption, series, themeVersion, paletteVersion],
   )
 
   // En mode fluid : la carte est h-full (CSS Grid stretch la pousse à la
