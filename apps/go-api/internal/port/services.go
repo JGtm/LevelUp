@@ -263,3 +263,14 @@ type SeasonStatsProvider interface {
 type PrivacyProvider interface {
 	GetMatchPrivacy(ctx context.Context, xuid string) (*domain.MatchPrivacyInfo, error)
 }
+
+// RecentMatchesProvider fournit les `limit` derniers matchs PvP d'un joueur
+// (xuid) fetchés en LIVE depuis l'API Halo, SANS aucune persistance (lecture
+// seule, mis en cache mémoire à TTL court). Sert à alimenter les graphes "profil
+// de combat" d'une cible NON suivie (dont les matchs ne sont pas en base) et
+// l'échantillon récent du Face à face. Les tokens sont lus dans le contexte.
+// Implémenté par sync.RecentMatchesFetcher, décoré par
+// service.CachedRecentMatchesProvider (cache TTL). (nil, nil) sans auth.
+type RecentMatchesProvider interface {
+	FetchRecentMatches(ctx context.Context, xuid string, limit int) ([]domain.ExplorerTargetRecentMatch, error)
+}
