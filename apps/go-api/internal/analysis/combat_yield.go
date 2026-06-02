@@ -28,13 +28,20 @@ const (
 // Cas limites : retourne 0 si les dénominateurs sont nuls ou négatifs.
 // Le coefficient 1/3 pour les assists est la convention officielle Halo Infinite.
 func ComputeCombatYield(kills, assists int, damageDlt, damageTkn float64, deaths int) CombatYield {
+	return ComputeCombatYieldFloat(float64(kills), float64(assists), damageDlt, damageTkn, float64(deaths))
+}
+
+// ComputeCombatYieldFloat est la variante en flottants des mêmes formules, pour
+// des entrées déjà agrégées (ex. moyennes par partie d'un service record / des
+// stats normalisées). Mêmes garde-fous : dénominateurs nuls/négatifs → 0.
+func ComputeCombatYieldFloat(kills, assists, damageDlt, damageTkn, deaths float64) CombatYield {
 	var cy CombatYield
 	if damageDlt > 0 {
-		cy.OffensiveConversion = 225.0 * (float64(kills) + float64(assists)/3.0) / damageDlt
-		cy.OffensiveFinishing = 225.0 * float64(kills) / damageDlt
+		cy.OffensiveConversion = 225.0 * (kills + assists/3.0) / damageDlt
+		cy.OffensiveFinishing = 225.0 * kills / damageDlt
 	}
 	if damageTkn > 0 && deaths > 0 {
-		cy.DefensiveResistance = damageTkn / (225.0 * float64(deaths))
+		cy.DefensiveResistance = damageTkn / (225.0 * deaths)
 	}
 	return cy
 }
