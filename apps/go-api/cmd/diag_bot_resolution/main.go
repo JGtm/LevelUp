@@ -14,10 +14,13 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 )
 
 func main() {
+	// Phase 1.5.1 B : steps Halo title-owned fournis au runner via le provider.
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	path := "../../data/titles/halo_infinite/warehouse/shared_matches_v2.duckdb"
 	repair := false
 	for _, a := range os.Args[1:] {

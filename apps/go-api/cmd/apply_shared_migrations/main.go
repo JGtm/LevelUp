@@ -18,11 +18,14 @@ import (
 	"os"
 	"path/filepath"
 
+	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	ddb "levelup/go-api/internal/platform/duckdb"
 )
 
 func main() {
+	// Phase 1.5.1 B : steps Halo title-owned fournis au runner via le provider.
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	sharedPath := flag.String("shared", "", "Path vers shared_matches_v2.duckdb (obligatoire si pas de --shared-only-skip)")
 	playersDir := flag.String("players", "", "Optionnel : dossier data/titles/<title>/players/ pour appliquer aussi TargetPlayer sur chaque stats.duckdb")
 	flag.Parse()
