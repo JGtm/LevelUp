@@ -721,8 +721,13 @@ func (p *SharedSocialPersister) persistPlayerRecords(ctx context.Context, tx *sq
 // renvoie false (→ chemin legacy, conservateur).
 func (p *SharedSocialPersister) playerRecordsHistoryExists(ctx context.Context) bool {
 	p.recordsDetectOnce.Do(func() {
+		// Sonde DÉCOUPLÉE du ctx appelant (Background + timeout court) : une
+		// annulation/timeout de l'écriture en cours ne doit pas figer
+		// définitivement (sync.Once) la détection sur "legacy". Read-only.
+		probeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		var n int
-		err := p.db.QueryRowContext(ctx,
+		err := p.db.QueryRowContext(probeCtx,
 			"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='main' AND table_name='player_records_history'",
 		).Scan(&n)
 		if err != nil {

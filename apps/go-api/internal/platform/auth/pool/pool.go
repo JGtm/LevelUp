@@ -382,18 +382,22 @@ func (p *poolImpl) OnHTTPError(statusCode int, retryAfter time.Duration) {
 	newUntil := time.Now().Add(dur)
 
 	// Déjà en cooldown : n'écraser QUE si le nouveau délai est plus tardif (un
-	// Retry-After plus long ne doit pas être ignoré).
+	// Retry-After plus long ne doit pas être ignoré). Les métriques ne sont
+	// comptées que si le cooldown est RÉELLEMENT (ré)appliqué — un 429 ignoré
+	// pendant un cooldown plus long ne doit pas incrémenter cooldowns_total ni
+	// retry_after_honored_total.
 	if p.coolingDown && time.Now().Before(p.cooldownUntil) {
 		if newUntil.After(p.cooldownUntil) {
 			p.cooldownUntil = newUntil
 			cooldownExtendedTotal.Add(1)
+			recordCooldownMetrics(statusCode, honored)
+			lastCooldownSeconds.Set(int64(dur.Seconds()))
 			slog.WarnContext(context.Background(), "pool: cooldown prolongé",
 				"status", statusCode, "cooldown_s", dur.Seconds(), "retry_after_honored", honored)
 		} else {
-			slog.DebugContext(context.Background(), "pool: OnHTTPError appelé pendant cooldown",
+			slog.DebugContext(context.Background(), "pool: OnHTTPError ignoré pendant cooldown plus long",
 				"status", statusCode)
 		}
-		recordCooldownMetrics(statusCode, honored)
 		return
 	}
 

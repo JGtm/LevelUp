@@ -564,27 +564,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// le post-sync (notamment processWeaponKillsInline, ~285s/cycle de re-download
 	// film) sur des matchs fantômes. Lecture seule (anti-ART). Les WAL non-ACKés
 	// restent sur disque et seront rejoués au prochain boot (RecoverPending).
-	if e.batchQueue != nil && drainErr != nil && sharedDB != nil && len(result.InsertedMatchIDs) > 0 {
-		confirmed := make([]string, 0, len(result.InsertedMatchIDs))
-		for _, mid := range result.InsertedMatchIDs {
-			var exists bool
-			if qErr := sharedDB.QueryRowContext(ctx,
-				`SELECT EXISTS(SELECT 1 FROM match_registry WHERE match_id = ?)`, mid,
-			).Scan(&exists); qErr == nil && exists {
-				confirmed = append(confirmed, mid)
-			}
-		}
-		if dropped := len(result.InsertedMatchIDs) - len(confirmed); dropped > 0 {
-			slog.WarnContext(ctx, "sync: drain incomplet — matchs non confirmés retirés du post-sync",
-				"gamertag", e.gamertag, "dropped", dropped,
-				"confirmed", len(confirmed), "err", drainErr)
-			result.InsertedMatchIDs = confirmed
-			result.MatchesInserted -= dropped
-			if result.MatchesInserted < 0 {
-				result.MatchesInserted = 0
-			}
-			result.MatchesSkipped += dropped
-		}
+	if e.batchQueue != nil && drainErr != nil {
+		reconcileInsertedAgainstRegistry(ctx, sharedDB, &result, e.gamertag)
 	}
 
 	// ─── Pipeline post-sync ─────────────────────────────────────────────────────
@@ -669,6 +650,44 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 // engine_highlight_events.go (refactor 2026-05-21). Parse + insert events
 // (path standalone via ProcessHighlightEvents pour outils de replay ; path
 // in-line via insertHighlightEventsFromData depuis insertFetchedMatch).
+
+// reconcileInsertedAgainstRegistry retire de result.InsertedMatchIDs (et décrémente
+// MatchesInserted, incrémente MatchesSkipped) les match_id comptés au Submit mais
+// ABSENTS de match_registry — cas du mode async où le Drain a échoué et où certains
+// batches n'ont pas été persistés. Lecture seule (anti-ART). No-op si sharedDB nil
+// ou liste vide.
+//
+// Bénéfice du doute (aligné sur le pre-check Submit, engine_batch_path.go) : une
+// erreur de requête n'est PAS une preuve d'absence → le match est CONSERVÉ. On ne
+// retire que les fantômes confirmés absents (qErr == nil && !exists), pour ne pas
+// priver à tort un match réellement persisté de son post-sync (films/scores) à
+// cause d'une erreur transitoire DuckDB.
+func reconcileInsertedAgainstRegistry(ctx context.Context, sharedDB *sql.DB, result *domain.SyncResult, gamertag string) {
+	if sharedDB == nil || len(result.InsertedMatchIDs) == 0 {
+		return
+	}
+	confirmed := make([]string, 0, len(result.InsertedMatchIDs))
+	for _, mid := range result.InsertedMatchIDs {
+		var exists bool
+		qErr := sharedDB.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM match_registry WHERE match_id = ?)`, mid).Scan(&exists)
+		if qErr != nil || exists {
+			confirmed = append(confirmed, mid)
+		}
+	}
+	dropped := len(result.InsertedMatchIDs) - len(confirmed)
+	if dropped == 0 {
+		return
+	}
+	slog.WarnContext(ctx, "sync: drain incomplet — matchs non confirmés retirés du post-sync",
+		"gamertag", gamertag, "dropped", dropped, "confirmed", len(confirmed))
+	result.InsertedMatchIDs = confirmed
+	result.MatchesInserted -= dropped
+	if result.MatchesInserted < 0 {
+		result.MatchesInserted = 0
+	}
+	result.MatchesSkipped += dropped
+}
 
 // loadKnownMatchIDs retourne l'ensemble des match_ids déjà présents dans
 // player_match_enrichment (player DB).
