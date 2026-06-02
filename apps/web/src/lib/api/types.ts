@@ -3125,6 +3125,8 @@ export interface SessionCompareEntry {
   avg_enemy_mmr?: number | null
   /** Durée de vie moyenne sur la session (secondes). */
   avg_life_seconds?: number | null
+  /** Précision moyenne de la session (0..1) — multipliée par 100 à l'affichage. */
+  avg_accuracy?: number | null
   /** Profil de participation 6 axes (0..100). */
   participation?: SessionParticipationAxis[]
   /** Historique des matchs de la session (chronologique). */

@@ -14,12 +14,11 @@
 import { OffDefComposite } from '@/components/ui/off-def-composite'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import { kdScale } from '@/lib/accessibility/scales'
 import { formatDurationMMSS } from '@/lib/formatters'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useFieldMappings } from '@/lib/i18n/fieldMappings'
 
-import { formatNumber, formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
+import { formatNumber, formatPercent, formatRankDelta, rankDeltaToken, useSessionT } from './_shared'
 import { log } from './_logger'
 
 interface Props {
@@ -63,10 +62,10 @@ export function SessionSummaryCard({ entry, compact = false }: Props) {
     // compare ouvert). overflow-x-auto reste un filet pour les cas extrêmes (6 tuiles
     // sur très petit écran).
     <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+      {/* Précision moyenne de la session (le KDA est désormais au centre du donut F/D/A). */}
       <KpiStat
-        label={labelOf('kda')}
-        value={formatNumber(entry.kda, 2)}
-        token={entry.kda != null ? kdScale(entry.kda) : undefined}
+        label={labelOf('accuracy')}
+        value={entry.avg_accuracy != null ? formatPercent(entry.avg_accuracy * 100) : '—'}
       />
       <KpiStat label={t('session.detail.stat_kills_per_match')} value={formatNumber(entry.kills_per_match, 1)} />
       <KpiStat
