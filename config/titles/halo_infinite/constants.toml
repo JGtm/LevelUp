@@ -1,0 +1,29 @@
+# config/titles/halo_infinite/constants.toml
+#
+# Constantes Halo-specific qui FUITENT aujourd'hui en littéraux dans le code
+# cross-titre (SQL inline, Go const locaux). Source de vérité title-agnostic :
+# un 2e titre déclare SES propres valeurs ici, sans toucher au code partagé.
+#
+# Consommation : prévue quand la couche de requêtes devient title-aware
+# (Phase 2 du PLAN_TITLE_AGNOSTIC, cf. ADR 0025). En attendant, ce fichier est
+# la référence documentaire unique — tout littéral `1512363953` / préfixe de
+# mode dans le code doit pointer ici en commentaire.
+
+[meta]
+title_slug = "halo_infinite"
+schema_version = 1
+
+# ─── Médailles référencées par ID dans les requêtes ─────────────────────────
+# medal_name_id (filmshell UBIGINT) des médailles dont l'agrégation est codée
+# en dur côté queries (perfect_kills). Sites actuels (à migrer en Phase 2) :
+#   platform/duckdb/{queries_match,queries_squad,queries_home_citations,
+#                    compare_repo,explorer_repo,player_matches_repo}.go
+#   service/match_view_builders_summary.go (const Go local)
+[medals]
+perfect_kill = 1512363953  # médaille "Perfect" → exposée en "frags parfaits"
+
+# ─── Préfixes de mode (normalisation pair_name) ─────────────────────────────
+# Réservé : les préfixes Assassin/Fiesta/BTB/Firefight/Ranked sont aujourd'hui
+# dans internal/games/halo_infinite/mode_category.go (constantes PerfChain*).
+# À externaliser ici lors de la Phase 1.5/2 (non bloquant pour le 2e titre tant
+# que mode_category.go reste dans le package halo_infinite).
