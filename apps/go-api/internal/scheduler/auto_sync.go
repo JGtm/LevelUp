@@ -781,10 +781,20 @@ func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain
 		)
 		return "watcher actif (Watching/Syncing/Cooling) — tick cédé", false
 	}
-	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(titlePkg.DefaultSlug, p.Gamertag)
+	// Slug porté par le profil (db_profiles.json title-scoped). Fallback DefaultSlug
+	// pour les profils flat (implicitement halo_infinite), où LoadPlayers met déjà
+	// DefaultSlug, et par sécurité si TitleSlug est vide.
+	// NB : ne corrige QUE la précondition os.Stat. Le moteur (NewSyncEngine) écrit
+	// encore dans les DB DefaultSlug — le support multi-titre complet de l'auto-sync
+	// (threader le slug jusqu'à l'écriture) reste une dette dédiée.
+	slug := p.TitleSlug
+	if slug == "" {
+		slug = titlePkg.DefaultSlug
+	}
+	dbPath := titlePkg.NewPathResolver(s.cfg.RepoRoot).PlayerDBPath(slug, p.Gamertag)
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		slog.InfoContext(ctx, "auto_sync: DB joueur absente, joueur ignoré",
-			"gamertag", p.Gamertag, "db_path", dbPath,
+			"gamertag", p.Gamertag, "title_slug", slug, "db_path", dbPath,
 			"hint", "lancer la sync initiale via POST /sync/initial pour créer la DB",
 		)
 		return "DB joueur absente — sync initiale jamais effectuée", false

@@ -135,9 +135,9 @@ func RecomputeIsWithFriendsCore(
 	res.MatchesPromoted = rowsAffected
 
 	if rowsAffected > 0 && refreshAggregates {
-		if _, err := RefreshAggregates(ctx, playerDB); err != nil {
+		if _, failed, err := RefreshAggregates(ctx, playerDB); err != nil {
 			slog.WarnContext(ctx, "friends recompute: refresh aggregates failed",
-				"player_xuid", playerXUID, "err", err)
+				"player_xuid", playerXUID, "views_failed", failed, "err", err)
 		} else {
 			res.AggregatesRefreshed = true
 		}

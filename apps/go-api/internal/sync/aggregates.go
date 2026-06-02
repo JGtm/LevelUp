@@ -8,6 +8,7 @@ package sync
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 )
@@ -47,23 +48,27 @@ var playerMaterializedViews = []MaterializedView{
 }
 
 // refreshAggregates recrée les vues matérialisées dans la player DB.
-// Retourne le nombre de vues créées.
-func refreshAggregates(ctx context.Context, playerDB *sql.DB) (int, error) { //nolint:unparam // error toujours nil, conservé pour évolution
-	count := 0
+// Best-effort : tente toutes les vues même si l'une échoue. Retourne
+// (created, failed, err) où err = errors.Join des échecs par-vue (nil si aucun
+// échec) — permet au caller de loguer un warn agrégé corrélé au lieu de perdre
+// les warns par-vue.
+func refreshAggregates(ctx context.Context, playerDB *sql.DB) (created, failed int, err error) {
+	var viewErrs []error
 	for _, mv := range playerMaterializedViews {
-		if err := recreateMaterializedView(ctx, playerDB, mv); err != nil {
-			slog.Warn("aggregates: échec vue matérialisée", "view", mv.Name, "err", err)
+		if verr := recreateMaterializedView(ctx, playerDB, mv); verr != nil {
+			slog.WarnContext(ctx, "aggregates: échec vue matérialisée", "view", mv.Name, "err", verr)
+			viewErrs = append(viewErrs, fmt.Errorf("%s: %w", mv.Name, verr))
 			continue
 		}
-		count++
+		created++
 	}
-	return count, nil
+	return created, len(viewErrs), errors.Join(viewErrs...)
 }
 
 // RefreshAggregates est l'export public de refreshAggregates pour les
 // callers hors-package qui doivent rebuild mv_player_matches après un UPDATE
 // direct (cf. friends_recompute.go §4 plan Squad/Sessions).
-func RefreshAggregates(ctx context.Context, playerDB *sql.DB) (int, error) {
+func RefreshAggregates(ctx context.Context, playerDB *sql.DB) (created, failed int, err error) {
 	return refreshAggregates(ctx, playerDB)
 }
 
