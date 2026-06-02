@@ -1,3 +1,48 @@
+## [2026-06-02] Unification de la déduplication cross-source des syncs (gate 2-maps asymétrique)
+
+**Statut** : Complété (non commité — en attente d'autorisation) — branche `fix/sync-combat-completion-persist`.
+
+**Contexte** : 3 sources de sync (auto-sync scheduler, watcher de présence, HTTP manuel) sans point de
+coordination commun. Seul le lease dblease KindPlayer empêchait la corruption ; un recouvrement cross-source
+sur le même joueur entraînait un double `RunDelta` (double fetch API + recompute). But : déduplication
+cross-source, sans dégrader la priorité de fraîcheur du watcher.
+
+**Processus (multi-agents)** :
+1. Panel de design 3-lentilles (câblage / concurrence / comportement) → spec.
+2. Implémentation initiale (gate unifié à 1 map partagée).
+3. **Revue adversariale** (4 lentilles × vérification de chaque finding) → 6 findings confirmés, dont
+   **2 majeurs réels** : (a) data race `WaitGroup.Add` vs `Wait` au shutdown (panic + write-after-CloseAll) ;
+   (b) régression de priorité watcher (le watcher cédait à auto/HTTP). `safeToCommit=false`.
+4. **Refonte** suite à la revue + re-vérification ciblée → `safeToCommit=true`.
+
+**Décision technique finale — gate à DEUX maps avec priorité ASYMÉTRIQUE** (`internal/sync/coordinator.go`) :
+- `inFlight` (WATCHER, via `Submit`) : ne dédoublonne QUE contre un autre sync watcher → le watcher n'est
+  JAMAIS bloqué par auto/HTTP (priorité fraîcheur préservée ; le lease sérialise le recouvrement).
+- `gateClaims` + `gateWG` + flag `closing` (AUTO/HTTP, via `TryClaim` de l'interface `SyncGate`) : `TryClaim`
+  cède si le joueur est en vol côté watcher OU auto/HTTP → auto/HTTP cèdent au watcher ET entre eux.
+- `closing` (posé par `BeginShutdown()` sous `inFlightMu`, AVANT `WaitInFlight()`) ferme la data race : plus
+  aucun `gateWG.Add` après le début du drain. `WaitInFlight()` attend les claims auto/HTTP avant `CloseAll`.
+- Câblage : `daemon.SyncGate()` → `autoScheduler.SyncGate` (injecté dans main.go si watcher actif) →
+  `NewRouter` → `SyncHandler.WithSyncGate`. Watcher off → `NopSyncGate` (legacy exact).
+
+**Correctifs de la revue** :
+- Handler HTTP : claim SYNCHRONE (`TryClaim` avant la goroutine ; `!ok` → 409 sans job ; `release` via defer)
+  pour `StartInitialSync`/`StartDeltaSync` (supprime la claim-race + le faux statut Failed) ; `StartSyncAll`
+  claim par joueur + `break` sur `serverCtx.Err()` ; résumé enrichi `coalesced=N`.
+- Shutdown (main.go) : `bgCtx` HTTP dérivés de `schedulerCtx` (annulable) uniquement si watcher actif ;
+  `BeginShutdown()` puis `WaitInFlight()` (timeout 5s) AVANT `BatchQueue.Drain`/`CloseAll`.
+- Defense-in-depth : `dblease.AcquireWriterCtx` ET `AcquireLeaseCtx` testent `ctx.Err()` AVANT `TryLock`
+  (refus d'un lease sur ctx déjà annulé → pas d'écriture après `CloseAll`).
+
+**Résultats** : `go build ./...` + `go vet` propres ; `go test -race` vert sur sync, scheduler, watcher, api,
+api/handlers (CI mode), dblease. Tests ajoutés : asymétrie watcher/TryClaim, `BeginShutdown`, drain sans race
+(`WaitInFlight` vs claim tardif sous -race), stampede 3 sources → 1 RunDelta, gate scheduler/HTTP.
+**Flake pré-existant isolé** : `TestStartImport_HappyPath` (OpenSpartan SQLite, cleanup TempDir Windows sous
+-race) — confirmé indépendant de ce chantier (reproduit seul via `-run Import -count=6`).
+
+**Prochaine étape** : commit (en attente d'autorisation), puis envisager l'observabilité du gate (expvar
+`inflight_claims`) signalée comme amélioration non bloquante par la revue.
+
 ## [2026-06-01] Revue des déclencheurs de sync (auto/watcher/manuel/cron) → corrections A-E
 
 **Statut** : Complété — branche `fix/sync-combat-completion-persist`.
@@ -53590,3 +53635,38 @@ Suite (meme jour) — differentielle multi-agent pour le score Strongholds : BLO
   nb d'ancres n'isole une valeur si commune. Verdict : score/zone live = OFF-FILM
   (schema property-layout) requis. Outils ajoutes : valsearch/pairsearch/bitval/extract/
   monobits/frames. Doc section M-bis.
+
+[2026-06-02] RE weapon PICKUP/DROP/SWAP dans les chunks TYPE_2 (film 000d5950) — Complété (negatif sur marqueur dedie)
+- Outils ajoutes a tmp_film_explore/main.go : modes wfull (toutes occurrences suffixe
+  42c9679f avec id 64b BE + classification fire/non-fire), wprefix (tally du prefixe N-bit
+  avant l'id, fire en controle), wctx (dump large bit-aligne autour de chaque site non-fire),
+  wclass (classification SNAPSHOT_A / LOADOUT / CAND_4C0C / OTHER).
+- Constat : sur 81 sites 42c9679f (chunk_02), 15 = fire, 66 = non-fire. Les 66 se repartissent
+  en 3 familles de FRAMING DE REPLICATION/SNAPSHOT, aucune n'etant un evenement pickup/drop
+  discret attribue a un joueur :
+  (1) LOADOUT/weapon-entity snapshot : prefixe ...30 04/30 08 ... tail f9 20 / 30 00 00 eb.
+      Liste des armes au sol re-snapshotee periodiquement (367k-370k + sites isoles plus tard).
+  (2) FormulaA snapshot (DEJA CONNU) : marqueur 20 00 02 puis 03 44 0c 8X juste avant l'id.
+      ~40 sites/chunk, counter 13 71 NN incrementiel = stream par-frame.
+  (3) CAND_4C0C : variante ...4c 0c 0X avant l'id, post-id 00 02 ... Repliquee en TRIPLETS
+      a ~47 octets d'espacement, MEME id, payload identique sauf un counter (40 1X Xb) =>
+      snapshot per-frame du meme objet, PAS un one-shot. Soeur de 44 0c (famille FormulaA).
+- Validation adverse (les 4 checks demandes) :
+  * weapons du match : la famille LOADOUT contient bien le set reel (Hydra/Shock/M41/Heatwave/
+    Mangler/Ravager/MA40/Disruptor/Skewer/Cindershot/Bulldog/Needler/Sniper/Sidekick/BR75/
+    Plasma/PulseCarbine/Sentinel...) — coherent. Les ids CAND_4C0C/Formula sont des handles
+    d'objet inconnus (suffixe 42c9679f = tag de type d'objet generique Forge, pas weapon-only).
+  * rarete : non concluant comme preuve de pickup — CAND_4C0C se repete en triplets periodiques
+    (donc snapshot), tandis que les vrais one-shots seraient rares ET lies a un xuid.
+  * lien joueur : ABSENT. Aucun xuid joueur reel (range 2e15-3e15, ceux de pmeta) a proximite
+    des sites d'arme ; le stream replication n'expose que des handles (0x8000...). marked-xuid=1
+    sur tout le chunk. => les ids d'arme TYPE_2 sont des noeuds d'un graphe de replication
+    d'entites, pas des transitions held-weapon attribuees a un joueur.
+  * ground-truth acurtis : Bandit Evo (6acdc44d) absent (autre match, attendu). La framing de
+    swap acurtis ...42 c9 67 9f 11 e0 n'apparait que 0-1x/chunk et tombe dans le bloc loadout
+    (11 = nibble haut du counter de snapshot), donc coincidence, pas le marqueur de swap.
+- Verdict : seuls les snapshots Formula-A (deja connus) + snapshots loadout/entity sont
+  recuperables. AUCUN marqueur pickup/drop dedie isole. Le pickup/drop/swap (transition
+  player->weapon) n'est pas encode comme un site 42c9679f marque dans ces chunks ; il faut
+  la spec acurtis du record swap byte-aligne (offsets/framing exacts) pour le localiser.
+  needs_acurtis_spec pour le marqueur dedie.

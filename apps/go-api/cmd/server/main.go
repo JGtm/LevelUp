@@ -735,6 +735,12 @@ func main() {
 	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher, autoSyncPool, autoScheduler)
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
+		// Dédup cross-source (unification 2026-06-02) : le Coordinator du watcher
+		// devient le point de dédup partagé. L'auto-sync l'interroge avant chaque
+		// RunDelta (cf. syncPlayer) et NewRouter le propage au handler HTTP via
+		// autoScheduler.Gate(). Si le watcher est désactivé, SyncGate reste le
+		// NopSyncGate par défaut → comportement legacy (lease seul rempart).
+		autoScheduler.SyncGate = watcherDaemon.SyncGate()
 	}
 
 	// schedulerWG track la goroutine du scheduler pour que le shutdown attende
@@ -782,8 +788,17 @@ func main() {
 
 	// Routeur HTTP — le daemon peut être nil si le watcher est désactivé.
 	// reg est assigné ici : la closure notifierGetter y accède de manière lazy (joueur actif après démarrage).
+	//
+	// routerCtx : on ne dérive les bgCtx des syncs HTTP de schedulerCtx (annulable
+	// au shutdown) QUE si un vrai gate est branché (watcher actif) — alors le drain
+	// gate.WaitInFlight() au shutdown les attend. Watcher off → context.Background()
+	// (comportement legacy exact : NopSyncGate ne tracke rien, pas de WaitInFlight).
+	routerCtx := context.Background()
+	if watcherDaemon != nil {
+		routerCtx = schedulerCtx
+	}
 	var router http.Handler
-	router, reg = api.NewRouter(cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched)
+	router, reg = api.NewRouter(routerCtx, cfg, bootRepo, bootSvc, watcherCtrl, tokenProvider, autoScheduler, backupSched)
 
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
 	// l'auto-sync scheduler. Avant ce fix, l'auto-sync court-circuitait
@@ -956,6 +971,34 @@ func main() {
 		slog.Debug("scheduler terminé")
 	case <-time.After(3 * time.Second):
 		slog.Warn("scheduler: timeout sur Wait — RunOnce probablement en cours")
+	}
+
+	// Dédup cross-source (unification 2026-06-02) : attendre que les syncs HTTP
+	// gate-claimés finissent avant duckdb.CloseAll(). cancelScheduler() ci-dessus
+	// a annulé schedulerCtx, dont les bgCtx HTTP dérivent → les RunDelta en cours
+	// abandonnent, libèrent le lease + le claim, puis gateWG se vide. Sans cette
+	// attente, un sync HTTP détaché pourrait écrire une player DB après CloseAll
+	// (handle orphelin / WAL #7659). Les claims watcher ont déjà été drainés par
+	// watcherDaemon.Stop(), les claims auto par schedulerWG.Wait() ci-dessus.
+	//
+	// BeginShutdown() AVANT WaitInFlight() : fige le gate pour qu'aucun TryClaim
+	// (donc gateWG.Add) ne puisse survenir concurremment au drain — sinon data race
+	// WaitGroup + retour prématuré de Wait. Un sync HTTP arrivé après ce point est
+	// refusé (409) sans poser de claim.
+	if watcherDaemon != nil {
+		gate := autoScheduler.Gate()
+		gate.BeginShutdown()
+		gateDone := make(chan struct{})
+		go func() {
+			gate.WaitInFlight()
+			close(gateDone)
+		}()
+		select {
+		case <-gateDone:
+			slog.Debug("gate: tous les claims cross-source libérés")
+		case <-time.After(5 * time.Second):
+			slog.Warn("gate: timeout WaitInFlight — un sync HTTP est peut-être encore en vol")
+		}
 	}
 
 	// Phase 4.7 closure : drain + close BatchQueue avant CloseAll DuckDB.

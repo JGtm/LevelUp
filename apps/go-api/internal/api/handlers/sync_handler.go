@@ -65,6 +65,17 @@ type SyncHandler struct {
 	provider      auth_platform.TokenProvider
 	notifierFor   NotificationsEmitterFactory // optionnel
 	postSync      PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
+	// syncGate déduplique les syncs cross-source (cf. go_sync.SyncGate). Un sync
+	// HTTP cède si le joueur est déjà en vol (watcher ou auto-sync) : pré-check
+	// IsInFlight → 409 à la requête, et TryClaim dans la goroutine pour la garantie
+	// race-safe. Par défaut NopSyncGate ; main.go injecte le Coordinator partagé.
+	syncGate go_sync.SyncGate
+	// serverCtx est le ctx de vie du serveur (annulé au shutdown). Les goroutines
+	// de sync HTTP en dérivent leur bgCtx au lieu de context.Background() : à
+	// l'arrêt, le RunDelta en cours est annulé, libère le lease + le claim, et
+	// WaitInFlight() peut rendre la main avant duckdb.CloseAll() (sinon write-after
+	// -close #7659). Par défaut context.Background() (comportement legacy).
+	serverCtx context.Context
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -79,7 +90,29 @@ func NewSyncHandler(
 		settingsStore: settingsStore,
 		jobStore:      jobStore,
 		provider:      provider,
+		syncGate:      go_sync.NopSyncGate{}, // défaut no-op (pas de dédup tant que non injecté)
+		serverCtx:     context.Background(),  // défaut : pas d'annulation au shutdown
 	}
+}
+
+// WithSyncGate branche le gate de déduplication cross-source (le Coordinator
+// partagé du watcher). À appeler depuis server.go quand le watcher est actif.
+// Sans appel : NopSyncGate (le lease reste le seul rempart cross-source).
+func (h *SyncHandler) WithSyncGate(g go_sync.SyncGate) *SyncHandler {
+	if g != nil {
+		h.syncGate = g
+	}
+	return h
+}
+
+// WithServerContext branche le ctx de vie du serveur (annulé au shutdown) dont
+// les syncs HTTP dérivent leur bgCtx. Permet d'annuler proprement les RunDelta en
+// cours à l'arrêt. Sans appel : context.Background() (legacy).
+func (h *SyncHandler) WithServerContext(ctx context.Context) *SyncHandler {
+	if ctx != nil {
+		h.serverCtx = ctx
+	}
+	return h
 }
 
 // WithNotificationsEmitterFactory branche la factory d'émetteurs de notifications.
@@ -288,12 +321,26 @@ func (h *SyncHandler) StartInitialSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Dédup cross-source : claim SYNCHRONE avant de créer le job. Si un sync de ce
+	// joueur est déjà en vol (watcher ou auto-sync), 409 sans créer de job —
+	// cohérent avec le 409 FindActiveInitialSync (même-source). Le claim étant posé
+	// AVANT le retour du handler, son gateWG.Add a un happens-before avec le retour
+	// → il est garanti vu par WaitInFlight au shutdown (pas de goroutine détachée
+	// qui claim tardivement). release est passé à la goroutine (defer release()).
+	release, claimed := h.syncGate.TryClaim(gamertag)
+	if !claimed {
+		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
+			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
+		return
+	}
+
 	job := h.jobStore.Create(domain.JobTypeInitialSync, req.PlayerSlug)
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot := *job
 
 	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), syncJobTimeout)
+		defer release()
+		bgCtx, cancel := context.WithTimeout(h.serverCtx, syncJobTimeout)
 		defer cancel()
 		var after func(ctx context.Context)
 		if h.postSync != nil {
@@ -372,12 +419,21 @@ func (h *SyncHandler) StartDeltaSync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Dédup cross-source (cf. StartInitialSync) : claim SYNCHRONE, 409 si déjà en vol.
+	release, claimed := h.syncGate.TryClaim(gamertag)
+	if !claimed {
+		writeError(r.Context(), w, http.StatusConflict, "sync_already_active",
+			"Une synchronisation de ce joueur est déjà en cours (watcher ou auto-sync).")
+		return
+	}
+
 	job := h.jobStore.Create(domain.JobTypeInitialSync, playerSlug)
 	// Snapshot avant le go func() : la goroutine modifie in-place le job dans le store.
 	jobSnapshot2 := *job
 
 	go func() {
-		bgCtx, cancel := context.WithTimeout(context.Background(), syncJobTimeout)
+		defer release()
+		bgCtx, cancel := context.WithTimeout(h.serverCtx, syncJobTimeout)
 		defer cancel()
 		var after func(ctx context.Context)
 		if h.postSync != nil {
@@ -438,8 +494,16 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		total := len(players)
-		var succeeded, failed int
+		var succeeded, failed, coalesced int
 		for i, p := range players {
+			// Shutdown : schedulerCtx annulé (cancelScheduler) → cesser de lancer de
+			// nouveaux RunDelta. Le claim étant posé/relâché par joueur, gateWG
+			// retombe à 0 entre joueurs ; sans ce break, WaitInFlight pourrait rendre
+			// la main puis CloseAll pendant qu'on démarre le joueur suivant
+			// (write-after-close). closing + ce break ferment la fenêtre.
+			if h.serverCtx.Err() != nil {
+				break
+			}
 			step := fmt.Sprintf("%s (%d/%d)", p.Gamertag, i+1, total)
 			h.jobStore.Update(job.JobID, func(j *domain.AsyncJobStatus) {
 				j.CurrentStep = &step
@@ -447,20 +511,32 @@ func (h *SyncHandler) StartSyncAll(w http.ResponseWriter, r *http.Request) {
 				j.ProgressPct = &pct
 			})
 
-			engine := h.newEngineFor(p.Gamertag, p.XUID, tokens)
-			opts := domain.DefaultSyncOptions()
-			// D3-04 : timeout par joueur (borne l'attente du lease KindPlayer).
-			pCtx, cancel := context.WithTimeout(context.Background(), syncJobTimeout)
-			_, perr := engine.RunDelta(pCtx, opts)
-			cancel()
-			if perr != nil {
-				failed++
-			} else {
-				succeeded++
-			}
+			// Dédup cross-source par joueur : si déjà en vol (watcher/auto), on
+			// saute ce joueur (il est synchronisé par l'autre source) sans le
+			// compter en échec. IIFE + defer release() → libération garantie même
+			// sur panic de RunDelta.
+			func() {
+				release, claimed := h.syncGate.TryClaim(p.Gamertag)
+				if !claimed {
+					coalesced++
+					return
+				}
+				defer release()
+				engine := h.newEngineFor(p.Gamertag, p.XUID, tokens)
+				opts := domain.DefaultSyncOptions()
+				// D3-04 : timeout par joueur (borne l'attente du lease KindPlayer).
+				pCtx, cancel := context.WithTimeout(h.serverCtx, syncJobTimeout)
+				_, perr := engine.RunDelta(pCtx, opts)
+				cancel()
+				if perr != nil {
+					failed++
+				} else {
+					succeeded++
+				}
+			}()
 		}
 
-		summary := fmt.Sprintf("players=%d succeeded=%d failed=%d", total, succeeded, failed)
+		summary := fmt.Sprintf("players=%d succeeded=%d failed=%d coalesced=%d", total, succeeded, failed, coalesced)
 		if failed > 0 {
 			h.jobStore.SetStatus(job.JobID, domain.JobStatusFailed, &summary)
 		} else {

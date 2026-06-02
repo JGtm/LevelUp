@@ -77,6 +77,7 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 //
 //nolint:gocyclo // Routeur central : mount de ~80 endpoints avec feature flags
 func NewRouter(
+	serverCtx context.Context,
 	cfg *config.AppConfig,
 	bootRepo port.BootstrapRepository,
 	bootSvc *service.BootstrapService,
@@ -606,6 +607,16 @@ func NewRouter(
 		syncH = syncH.WithNotificationsEmitterFactory(reg.NotificationsEmitter)
 		// Branche le hook delta-detection post-sync (season_pass_level / objective_completed / challenge_completed).
 		syncH = syncH.WithPostSyncDeltaHook(buildPostSyncDeltaHook(reg))
+		// Dédup cross-source (unification 2026-06-02) : le gate provient du
+		// Coordinator partagé du watcher, exposé via le scheduler (main.go a injecté
+		// autoScheduler.SyncGate). Si le watcher est désactivé, Gate() renvoie le
+		// NopSyncGate par défaut → comportement legacy (lease seul rempart).
+		if autoSyncScheduler != nil {
+			syncH = syncH.WithSyncGate(autoSyncScheduler.Gate())
+		}
+		// serverCtx (annulé au shutdown) : les syncs HTTP en dérivent leur bgCtx
+		// pour être annulés proprement à l'arrêt (avant duckdb.CloseAll).
+		syncH = syncH.WithServerContext(serverCtx)
 		// D3-01 (revue 2026-06-01) : /sync/initial et /sync/all sont des opérations
 		// admin/setup (sync d'un joueur arbitraire lu dans le body / de TOUS les
 		// joueurs). Auparavant montées sous /api/v1 SANS auth → contournaient

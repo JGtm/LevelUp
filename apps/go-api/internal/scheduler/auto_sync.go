@@ -138,6 +138,14 @@ type AutoSyncScheduler struct {
 	// Doit être défini avant d'appeler Run.
 	ActivityChecker PlayerActivityChecker
 
+	// SyncGate déduplique les syncs cross-source (cf. sync.SyncGate). Avant chaque
+	// RunDelta, syncPlayer demande un claim ; si le joueur est déjà en vol (watcher
+	// ou HTTP), le tick est cédé (outcomeSkipped, re-tenté au prochain cycle). Par
+	// défaut NopSyncGate (aucune dédup) ; main.go injecte le Coordinator partagé du
+	// watcher quand celui-ci est actif. Complémentaire de l'ActivityChecker (qui
+	// cède dès l'état Watching) : le gate couvre le résidu TOCTOU + le sync HTTP.
+	SyncGate sync.SyncGate
+
 	// RunnerFactory permet d'injecter une fabrique de DeltaRunner alternative
 	// (pour les tests). Si nil, defaultRunnerFactory est utilisé : il crée un
 	// *sync.SyncEngine configuré avec un PooledHaloClient pinné.
@@ -192,9 +200,18 @@ func New(
 		provider:       provider,
 		pool:           tokenPool,
 		playerOutcomes: make(map[string]PlayerOutcomeDetail),
+		// Défaut no-op : pas de dédup cross-source tant que main.go n'injecte pas
+		// le Coordinator partagé du watcher. Évite un nil-check à chaque appel.
+		SyncGate: sync.NopSyncGate{},
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	return s
+}
+
+// Gate retourne le SyncGate du scheduler (pour câblage par main.go vers le
+// handler HTTP). Jamais nil : NopSyncGate par défaut.
+func (s *AutoSyncScheduler) Gate() sync.SyncGate {
+	return s.SyncGate
 }
 
 // BuildEngine construit un *sync.SyncEngine fully-configured pour un
@@ -616,6 +633,24 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 		detail.Reason = skipReason
 		outcome = outcomeSkipped
 		return outcome
+	}
+
+	// Gate cross-source : céder si un sync du même joueur est déjà en vol (watcher
+	// ou HTTP). Posé APRÈS checkSyncPreconditions (skip économe sans claim) et
+	// AVANT le RunDelta ; `defer release()` est la 1re ligne post-claim → couvre
+	// tous les retours faillibles (runner nil, RunDelta err, succès). Un skip ne
+	// marque JAMAIS le joueur à jour → re-tenté au prochain tick quand le claim se
+	// libère. Complète l'ActivityChecker (déjà appliqué) pour le résidu TOCTOU.
+	if s.SyncGate != nil {
+		release, ok := s.SyncGate.TryClaim(p.Gamertag)
+		if !ok {
+			slog.InfoContext(ctx, "auto_sync: sync déjà en vol (autre source) — tick différé",
+				"gamertag", p.Gamertag)
+			detail.Reason = "différé: sync en cours via autre source (watcher/HTTP)"
+			outcome = outcomeSkipped
+			return outcome
+		}
+		defer release()
 	}
 
 	// ──────────────────────────────────────────────────────────────────────
