@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"math"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/port"
@@ -270,10 +271,13 @@ func metricAvailability(key string, value float64, isLocal, isLocalSample bool) 
 
 // buildMetrics construit les CompareMetricRows à partir des deux stats normalisées.
 func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
-	// Rendement = dégâts / frag / 225 — moins = plus efficace.
-	rendementA, rendementB := computeRendement(a), computeRendement(b)
-	// Résistance = dégâts subis / mort / 225 — plus = plus résistant.
-	resistanceA, resistanceB := computeResistance(a), computeResistance(b)
+	// Rendement (OC) / Résistance (DR) : MÊMES formules que la KPI bar home
+	// (analysis.ComputeCombatYield) pour que le Face à face affiche les mêmes
+	// chiffres. OC = 225*(kills+assists/3)/dégâts (plus haut = mieux) ;
+	// DR = dégâts_subis/(225*morts), baseline 1.0 (plus haut = mieux).
+	cyA, cyB := combatYieldOf(a), combatYieldOf(b)
+	rendementA, rendementB := cyA.OffensiveConversion, cyB.OffensiveConversion
+	resistanceA, resistanceB := cyA.DefensiveResistance, cyB.DefensiveResistance
 
 	type metricDef struct {
 		key          string
@@ -292,7 +296,7 @@ func buildMetrics(a, b domain.NormalizedPlayerStats) []domain.CompareMetricRow {
 		{"assists_per_game", "Assistances / partie", a.AssistsPerGame, b.AssistsPerGame, false},
 		{compareMetricAccuracy, "Précision", a.Accuracy, b.Accuracy, false},
 		{"damage_per_game", "Dégâts / partie", a.DamagePerGame, b.DamagePerGame, false},
-		{"rendement", "Rendement", rendementA, rendementB, true},
+		{"rendement", "Rendement", rendementA, rendementB, false},
 		{"damage_taken_per_game", "Dégâts subis / partie", a.DamageTakenPerGame, b.DamageTakenPerGame, true},
 		{"resistance", "Résistance", resistanceA, resistanceB, false},
 		{compareMetricPerfectKillsPerGame, "Tirs parfaits / partie", a.PerfectKillsPerGame, b.PerfectKillsPerGame, false},
@@ -367,16 +371,11 @@ func computeWinner(va, vb float64, lessIsBetter bool) string {
 	return "b"
 }
 
-func computeRendement(s domain.NormalizedPlayerStats) float64 {
-	if s.KillsPerGame <= 0 {
-		return 0
-	}
-	return s.DamagePerGame / s.KillsPerGame / 225.0
-}
-
-func computeResistance(s domain.NormalizedPlayerStats) float64 {
-	if s.DeathsPerGame <= 0 {
-		return 0
-	}
-	return s.DamageTakenPerGame / s.DeathsPerGame / 225.0
+// combatYieldOf calcule l'OC/DR d'un joueur depuis ses moyennes par partie, via
+// la formule canonique partagée avec la home (analysis.ComputeCombatYieldFloat).
+// Les moyennes par partie suffisent : le facteur 1/matches se simplifie.
+func combatYieldOf(s domain.NormalizedPlayerStats) analysis.CombatYield {
+	return analysis.ComputeCombatYieldFloat(
+		s.KillsPerGame, s.AssistsPerGame, s.DamagePerGame, s.DamageTakenPerGame, s.DeathsPerGame,
+	)
 }

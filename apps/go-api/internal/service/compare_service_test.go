@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 )
 
@@ -169,6 +170,58 @@ func TestBuildMetrics_AvailabilityRemoteB(t *testing.T) {
 		if !row.ValueAAvailable {
 			t.Errorf("metric %q : ValueAAvailable=false alors que A est local et renseigné", c.metric)
 		}
+	}
+}
+
+// TestBuildMetrics_OCDRAlignedWithCombatYield vérifie que rendement/résistance du
+// Face à face utilisent exactement les formules OC/DR canoniques (parité KPI bar
+// home) et le bon sens de vainqueur (plus haut = mieux).
+func TestBuildMetrics_OCDRAlignedWithCombatYield(t *testing.T) {
+	a := domain.NormalizedPlayerStats{
+		IsLocal: true, Matches: 100,
+		KillsPerGame: 12, AssistsPerGame: 3, DeathsPerGame: 6,
+		DamagePerGame: 2400, DamageTakenPerGame: 2100,
+	}
+	b := domain.NormalizedPlayerStats{
+		IsLocal: true, Matches: 80,
+		KillsPerGame: 8, AssistsPerGame: 2, DeathsPerGame: 9,
+		DamagePerGame: 2600, DamageTakenPerGame: 1800,
+	}
+
+	rows := buildMetrics(a, b)
+	byKey := make(map[string]domain.CompareMetricRow, len(rows))
+	for _, r := range rows {
+		byKey[r.Metric] = r
+	}
+
+	wantA := analysis.ComputeCombatYieldFloat(12, 3, 2400, 2100, 6)
+	wantB := analysis.ComputeCombatYieldFloat(8, 2, 2600, 1800, 9)
+
+	rend, ok := byKey["rendement"]
+	if !ok {
+		t.Fatal("métrique rendement absente")
+	}
+	if rend.ValueA != wantA.OffensiveConversion || rend.ValueB != wantB.OffensiveConversion {
+		t.Errorf("rendement = (%v,%v), want OC canonique (%v,%v)",
+			rend.ValueA, rend.ValueB, wantA.OffensiveConversion, wantB.OffensiveConversion)
+	}
+	if rend.LessIsBetter {
+		t.Error("rendement (OC) doit être plus-haut-=-mieux (LessIsBetter=false)")
+	}
+	if wantA.OffensiveConversion > wantB.OffensiveConversion && rend.Winner != "a" {
+		t.Errorf("rendement winner = %q, want a (OC A > OC B)", rend.Winner)
+	}
+
+	res, ok := byKey["resistance"]
+	if !ok {
+		t.Fatal("métrique resistance absente")
+	}
+	if res.ValueA != wantA.DefensiveResistance || res.ValueB != wantB.DefensiveResistance {
+		t.Errorf("resistance = (%v,%v), want DR canonique (%v,%v)",
+			res.ValueA, res.ValueB, wantA.DefensiveResistance, wantB.DefensiveResistance)
+	}
+	if res.LessIsBetter {
+		t.Error("resistance (DR) doit être plus-haut-=-mieux (LessIsBetter=false)")
 	}
 }
 

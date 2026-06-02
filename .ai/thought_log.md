@@ -1,3 +1,29 @@
+## [2026-06-02] Face à face — alignement Rendement/Résistance sur la KPI bar (OC/DR) (point 2) — Complété
+
+**Statut** : Complété (commit 3/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
+
+**Contexte** : le Face à face affichait un "rendement" = dégâts/kill/225 (sémantique INVERSÉE, plus bas =
+mieux) et un format ×100 à 1 décimale — divergent de la KPI bar home (OC = 225*(kills+assists/3)/dégâts,
+plus haut = mieux ; DR = dégâts_subis/(225*morts) affiché (DR-1)*100). Demande : aligner métrique ET format.
+
+**Décision technique principale** :
+- analysis : ajout `ComputeCombatYieldFloat` (variante flottante des formules OC/DR), `ComputeCombatYield`
+  (int) délègue désormais — formule single-source, plus de magic number 225 dupliqué.
+- compare_service : `computeRendement`/`computeResistance` (formules ad hoc) remplacés par `combatYieldOf`
+  qui appelle `ComputeCombatYieldFloat` sur les moyennes par partie. `rendement` passe `LessIsBetter=false`
+  (OC plus haut = mieux). `resistance` reste `false` (DR baseline 1.0, plus haut = mieux).
+- Front `ComparePage.formatMetricValue` : rendement → `(v*100)` entier % ; resistance → `((v-1)*100)`
+  entier % (parité OffDefComposite). win_rate/accuracy inchangés. Le delta n'étant jamais affiché et la
+  barre utilisant rawA/rawB, aucun autre ajustement.
+
+**Résultats observés** : `go test ./internal/analysis ./internal/service` OK, `go vet` clean ; `tsc -b` OK ;
+vitest compare 13/13 ; eslint clean. Test ajouté `TestBuildMetrics_OCDRAlignedWithCombatYield` (valeurs ==
+OC/DR canoniques + sens vainqueur).
+
+**Conclusion / prochaine étape** : commit 4/6 — provider live read-only 20 derniers matchs + cache TTL.
+
+---
+
 ## [2026-06-02] Session — KDA au centre du donut F/D/A + précision moyenne dans la card (point 5) — Complété
 
 **Statut** : Complété (commit 2/6 du plan `.ai/PLAN_COMPARE_COMBATPROFILE_SESSION.md`).
