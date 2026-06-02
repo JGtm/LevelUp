@@ -16,6 +16,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -135,11 +136,18 @@ func (r *PlayerMatchesRepo) buildSharedQuery(f port.PlayerMatchFilters) (string,
 	return sb.String(), args, hints, nil
 }
 
+// startTimeCanonicalSQL est l'expression canonique du timestamp de début de match
+// (pattern TZ projet : préférer start_time_utc, sinon interpréter start_time naïf
+// comme UTC). Utilisée pour la projection, le filtre Period et l'ORDER BY afin
+// d'éviter le décalage de fuseau (cf. reference_timezone_canonical_pattern, aligné
+// sur Q26HomeMatchesSharedPart).
+const startTimeCanonicalSQL = `COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC')`
+
 // appendPlayerMatchScalarFilters ajoute les filtres scalaires (Period, IsFirefight,
 // IsRanked, MinTimePlayedSeconds, BTBExcluded).
 func appendPlayerMatchScalarFilters(sb *strings.Builder, args *[]any, f port.PlayerMatchFilters) {
 	if since := periodSince(f.Period); since != nil {
-		sb.WriteString(" AND r.start_time >= ?")
+		sb.WriteString(" AND " + startTimeCanonicalSQL + " >= ?")
 		*args = append(*args, *since)
 	}
 	if f.IsFirefight != nil {
@@ -219,16 +227,16 @@ type sharedQueryHints struct {
 func classifyOrderBy(s string) (sharedQueryHints, string, error) {
 	switch strings.TrimSpace(s) {
 	case "", "start_time DESC":
-		return sharedQueryHints{canPushLimit: true}, "r.start_time DESC", nil
+		return sharedQueryHints{canPushLimit: true}, startTimeCanonicalSQL + " DESC", nil
 	case "start_time ASC":
-		return sharedQueryHints{canPushLimit: true}, "r.start_time ASC", nil
+		return sharedQueryHints{canPushLimit: true}, startTimeCanonicalSQL + " ASC", nil
 	case "performance_score DESC":
 		// Tri post-merge. SQL garde un ordre stable mais non significatif.
 		return sharedQueryHints{canPushLimit: false, postMergeSort: "performance_score DESC"},
-			"r.start_time DESC", nil
+			startTimeCanonicalSQL + " DESC", nil
 	case "performance_score ASC":
 		return sharedQueryHints{canPushLimit: false, postMergeSort: "performance_score ASC"},
-			"r.start_time DESC", nil
+			startTimeCanonicalSQL + " DESC", nil
 	}
 	return sharedQueryHints{}, "", fmt.Errorf("%w: %q", ErrUnknownOrderBy, s)
 }
@@ -251,7 +259,7 @@ func classifyOrderBy(s string) (sharedQueryHints, string, error) {
 const playerMatchesSharedBaseSelect = `
 SELECT
     p.match_id,
-    r.start_time,
+    COALESCE(r.start_time_utc, r.start_time AT TIME ZONE 'UTC') AS start_time,
     COALESCE(r.duration_seconds, 0)                   AS duration_seconds,
     COALESCE(r.map_id, '')                            AS map_id,
     COALESCE(r.map_name, '')                          AS map_name,
@@ -801,14 +809,16 @@ func projectSkillSnapshot(s playerMatchScanResult) *canonical.SkillSnapshot {
 }
 
 // projectDamageStats convertit damage_dealt / damage_taken (DOUBLE en DB) en *int.
+// Arrondi (math.Round) plutôt que troncature pour ne pas biaiser systématiquement
+// les dégâts vers le bas (impacte le combat yield dérivé).
 func projectDamageStats(s playerMatchScanResult) (*int, *int) {
 	var dmgDealt, dmgTaken *int
 	if s.damageDealt.Valid {
-		v := int(s.damageDealt.Float64)
+		v := int(math.Round(s.damageDealt.Float64))
 		dmgDealt = &v
 	}
 	if s.damageTaken.Valid {
-		v := int(s.damageTaken.Float64)
+		v := int(math.Round(s.damageTaken.Float64))
 		dmgTaken = &v
 	}
 	return dmgDealt, dmgTaken
