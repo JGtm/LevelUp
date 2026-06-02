@@ -15,7 +15,6 @@ import type { OutcomeLabels } from './TimeseriesPage.summary'
 
 export interface TimeseriesDistributionsTabProps {
   distributions_tab: TimeseriesDistributionsTab
-  locale: 'fr' | 'en'
   t: (key: TimeseriesManifestKey) => string
   fieldMappings: FieldMappingsResponse | undefined
   outcomeLabels: OutcomeLabels
@@ -23,7 +22,6 @@ export interface TimeseriesDistributionsTabProps {
 
 export function TimeseriesDistributionsTabView({
   distributions_tab,
-  locale,
   t,
   fieldMappings,
   outcomeLabels,
@@ -31,7 +29,7 @@ export function TimeseriesDistributionsTabView({
   return (
     <div className="space-y-8">
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {locale === 'en' ? 'Distributions' : 'Distributions'}
+        {t('timeseries.tabs.distributions')}
       </h3>
       {/* 6 histogrammes en grille 3×2, chacun avec médiane verticale.
           Performance utilise un coloring par tier (perf-tier-1..5). */}
@@ -42,7 +40,7 @@ export function TimeseriesDistributionsTabView({
             title:
               fieldMappings?.fields['accuracy']?.label ?? 'Précision',
             colorToken: 'chart-series-2' as const,
-            xAxisLabel: locale === 'en' ? 'Accuracy (%)' : 'Précision (%)',
+            xAxisLabel: t('timeseries.distributions.accuracy_axis_x'),
             colorTokenByBucket: undefined,
           },
           {
@@ -55,9 +53,9 @@ export function TimeseriesDistributionsTabView({
           },
           {
             buckets: distributions_tab.life_buckets ?? [],
-            title: locale === 'en' ? 'Average life (s)' : 'Durée de vie moyenne (s)',
+            title: t('timeseries.distributions.life_title'),
             colorToken: 'chart-series-3' as const,
-            xAxisLabel: locale === 'en' ? 'Seconds' : 'Secondes',
+            xAxisLabel: t('timeseries.distributions.seconds'),
             colorTokenByBucket: undefined,
           },
           {
@@ -72,7 +70,7 @@ export function TimeseriesDistributionsTabView({
             buckets: distributions_tab.perf_score_buckets ?? [],
             title:
               fieldMappings?.fields['performance_score']?.label ??
-              (locale === 'en' ? 'Performance' : 'Performance'),
+              t('timeseries.summary.perf_label'),
             colorToken: 'perf-tier-3' as const,
             xAxisLabel: fieldMappings?.fields['performance_score']?.label ?? 'Score de performance',
             // Grading color : perf-tier-1..5 selon le bucket midpoint sur [0,100].
@@ -88,10 +86,9 @@ export function TimeseriesDistributionsTabView({
           {
             buckets: distributions_tab.max_killing_spree_buckets ?? [],
             title:
-              locale === 'en' ? 'Killing spree (max)' : 'Folie meurtrière (max)',
+              t('timeseries.progression.spree_label'),
             colorToken: 'chart-series-6' as const,
-            xAxisLabel:
-              locale === 'en' ? 'Killing spree' : 'Folie meurtrière',
+            xAxisLabel: t('timeseries.distributions.spree_axis'),
             colorTokenByBucket: undefined,
           },
         ]).map((cfg, i) => (
@@ -101,7 +98,7 @@ export function TimeseriesDistributionsTabView({
                 buckets={cfg.buckets}
                 colorToken={cfg.colorToken}
                 xAxisLabel={cfg.xAxisLabel}
-                medianLabel={locale === 'en' ? 'Median' : 'Médiane'}
+                medianLabel={t('timeseries.summary.median')}
                 colorTokenByBucket={cfg.colorTokenByBucket}
               />
             ) : (
@@ -115,7 +112,7 @@ export function TimeseriesDistributionsTabView({
       </div>
 
       <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {locale === 'en' ? 'Correlations' : 'Corrélations'}
+        {t('timeseries.distributions.correlations_title')}
       </h3>
       {/* 4 scatters en grille 2×2 + MMR seul en bas (pleine largeur). */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -123,30 +120,30 @@ export function TimeseriesDistributionsTabView({
           {
             metricXKey: 'lifespan',
             metricYKey: 'kills',
-            title: locale === 'en' ? 'Life vs Kills' : 'Vie vs Frags',
-            xLabel: locale === 'en' ? 'Life (s)' : 'Vie (s)',
+            title: t('timeseries.distributions.life_vs_kills'),
+            xLabel: t('timeseries.distributions.life_axis'),
             yLabel:
               fieldMappings?.fields['kills']?.label ?? 'Frags',
           },
           {
             metricXKey: 'accuracy',
             metricYKey: 'kda',
-            title: locale === 'en' ? 'Accuracy vs KDA' : 'Précision vs FDA',
+            title: t('timeseries.distributions.accuracy_vs_kda'),
             xLabel: `${fieldMappings?.fields['accuracy']?.label ?? 'Précision'} (%)`,
             yLabel: fieldMappings?.fields['kda']?.label ?? 'FDA',
           },
           {
             metricXKey: 'lifespan',
             metricYKey: 'deaths',
-            title: locale === 'en' ? 'Life vs Deaths' : 'Vie vs Morts',
-            xLabel: locale === 'en' ? 'Life (s)' : 'Vie (s)',
+            title: t('timeseries.distributions.life_vs_deaths'),
+            xLabel: t('timeseries.distributions.life_axis'),
             yLabel:
               fieldMappings?.fields['deaths']?.label ?? 'Morts',
           },
           {
             metricXKey: 'kills',
             metricYKey: 'deaths',
-            title: locale === 'en' ? 'Kills vs Deaths' : 'Frags vs Morts',
+            title: t('timeseries.distributions.kills_vs_deaths'),
             xLabel:
               fieldMappings?.fields['kills']?.label ?? 'Frags',
             yLabel:
@@ -161,7 +158,7 @@ export function TimeseriesDistributionsTabView({
               xAxisLabel={cfg.xLabel}
               yAxisLabel={cfg.yLabel}
               outcomeLabels={outcomeLabels}
-              trendLabel={locale === 'en' ? 'Trend' : 'Tendance'}
+              trendLabel={t('timeseries.summary.trend')}
               emptyTitle={t('timeseries.empty.page_title')}
               emptyDescription={t('timeseries.empty.no_data_description')}
               height={240}
@@ -172,11 +169,7 @@ export function TimeseriesDistributionsTabView({
 
       {/* MMR équipe / adverse — seul sur sa propre ligne. */}
       <ChartFrame
-        title={
-          locale === 'en'
-            ? 'Team MMR vs Enemy MMR'
-            : 'MMR équipe vs MMR adverse'
-        }
+        title={t('timeseries.distributions.mmr_title')}
       >
         <TimeseriesScatterWithTrend
           points={distributions_tab.correlation_points ?? []}
@@ -185,7 +178,7 @@ export function TimeseriesDistributionsTabView({
           xAxisLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
           yAxisLabel={fieldMappings?.fields['enemy_mmr']?.label ?? 'MMR adverse'}
           outcomeLabels={outcomeLabels}
-          trendLabel={locale === 'en' ? 'Trend' : 'Tendance'}
+          trendLabel={t('timeseries.summary.trend')}
           emptyTitle={t('timeseries.empty.page_title')}
           emptyDescription={t('timeseries.empty.no_data_description')}
           height={320}

@@ -44,7 +44,6 @@ export interface OutcomeLabels {
 
 export interface TimeseriesSummaryTabProps {
   data: TimeseriesPageResponse
-  locale: 'fr' | 'en'
   t: (key: TimeseriesManifestKey) => string
   fieldMappings: FieldMappingsResponse | undefined
   outcomeLabels: OutcomeLabels
@@ -53,7 +52,6 @@ export interface TimeseriesSummaryTabProps {
 
 export function TimeseriesSummaryTab({
   data,
-  locale,
   t,
   fieldMappings,
   outcomeLabels,
@@ -65,7 +63,7 @@ export function TimeseriesSummaryTab({
       {(data.match_rows ?? []).length > 0 && (
         <div data-testid="timeseries-outcome-sequence">
           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {locale === 'en' ? 'Outcome sequence' : 'Séquence des résultats'}
+            {t('timeseries.summary.outcome_sequence')}
           </p>
           <OutcomeSequenceTape
             matches={(data.match_rows ?? []).map<OutcomePoint>((r) => ({
@@ -86,30 +84,28 @@ export function TimeseriesSummaryTab({
       {/* Évolution Frags / Morts (gauche) | Assistances (droite) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChartFrame
-          title={
-            locale === 'en' ? 'Kills / Deaths timeline' : 'Évolution Frags / Morts'
-          }
+          title={t('timeseries.summary.kd_timeline_title')}
         >
           <TimeseriesKdaTrend
             rows={data.match_rows ?? []}
             labels={{
               kills: fieldMappings?.fields['kills']?.label ?? 'Frags',
               deaths: fieldMappings?.fields['deaths']?.label ?? 'Morts',
-              yAxis: locale === 'en' ? 'Kills / Deaths' : 'Frags / Morts',
+              yAxis: t('timeseries.summary.kd_yaxis'),
             }}
           />
         </ChartFrame>
 
-        <ChartFrame title={locale === 'en' ? 'KDA distribution' : 'Distribution FDA'}>
+        <ChartFrame title={t('timeseries.summary.kda_distribution_title')}>
           <TimeseriesKdaDensity
             buckets={data.distributions_tab.kda_buckets ?? []}
             rows={data.match_rows ?? []}
             labels={{
-              density: locale === 'en' ? 'Density' : 'Densité',
+              density: t('timeseries.summary.density'),
               rug: fieldMappings?.fields['kda']?.label ?? 'FDA',
               xAxis: fieldMappings?.fields['kda']?.label ?? 'FDA',
-              mean: locale === 'en' ? 'Mean' : 'Moyenne',
-              median: locale === 'en' ? 'Median' : 'Médiane',
+              mean: t('timeseries.summary.mean'),
+              median: t('timeseries.summary.median'),
             }}
           />
         </ChartFrame>
@@ -120,7 +116,7 @@ export function TimeseriesSummaryTab({
         <ChartFrame title={fieldMappings?.fields['avg_life_seconds']?.label ?? 'Durée de vie moyenne'}>
           <TimeseriesAvgLifeTrend
             rows={data.match_rows ?? []}
-            lifeLabel={locale === 'en' ? 'Average life (s)' : 'Durée de vie (s)'}
+            lifeLabel={t('timeseries.summary.avg_life_axis')}
           />
         </ChartFrame>
 
@@ -131,7 +127,7 @@ export function TimeseriesSummaryTab({
               fieldMappings?.fields['assists']?.label ??
               'Assistances'
             }
-            smoothingLabel={locale === 'en' ? 'Trend' : 'Tendance'}
+            smoothingLabel={t('timeseries.summary.trend')}
           />
         </ChartFrame>
       </div>
@@ -139,7 +135,7 @@ export function TimeseriesSummaryTab({
       {/* Outils de destruction (gauche) | Résultats par période (droite) */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <ChartFrame
-          title={locale === 'en' ? 'Tools of destruction' : 'Outils de destruction'}
+          title={t('timeseries.summary.top_weapons_title')}
         >
           {(data.top_weapons ?? []).length > 0 ? (
             <TimeseriesTopWeapons
@@ -162,7 +158,7 @@ export function TimeseriesSummaryTab({
             <TimeseriesKdaValueTrend
               rows={data.match_rows ?? []}
               fdaLabel={fieldMappings?.fields['kda']?.label ?? 'FDA'}
-              smoothingLabel={locale === 'en' ? 'Trend' : 'Tendance'}
+              smoothingLabel={t('timeseries.summary.trend')}
             />
           ) : (
             <EmptyStateNotice
@@ -179,14 +175,9 @@ export function TimeseriesSummaryTab({
         <ChartFrame
           title={(() => {
             const g = data.solo_session_perf?.granularity ?? 'session'
-            if (locale === 'en') {
-              if (g === 'week') return 'Solo performance per week'
-              if (g === 'month') return 'Solo performance per month'
-              return 'Solo performance per session'
-            }
-            if (g === 'week') return 'Performance solo par semaine'
-            if (g === 'month') return 'Performance solo par mois'
-            return 'Performance solo par session'
+            if (g === 'week') return t('timeseries.summary.solo_perf_week')
+            if (g === 'month') return t('timeseries.summary.solo_perf_month')
+            return t('timeseries.summary.solo_perf_session')
           })()}
         >
           <TimeseriesSessionPerformance
@@ -194,11 +185,11 @@ export function TimeseriesSummaryTab({
             granularity={data.solo_session_perf.granularity}
             perfLabel={
               fieldMappings?.fields['performance_score']?.label ??
-              (locale === 'en' ? 'Performance' : 'Performance')
+              t('timeseries.summary.perf_label')
             }
             winRateLabel={
               fieldMappings?.fields['win_rate']?.label ??
-              (locale === 'en' ? 'Win rate' : 'Win rate')
+              t('timeseries.summary.win_rate_label')
             }
             mmrLabel={fieldMappings?.fields['team_mmr']?.label ?? 'MMR équipe'}
           />
@@ -210,17 +201,13 @@ export function TimeseriesSummaryTab({
       {(data.map_breakdown ?? []).length > 0 && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <WinRateVsHistoryBulletChart
-            title={
-              locale === 'en'
-                ? 'Win rate — Session vs History'
-                : 'Taux de victoire — Session vs Historique'
-            }
+            title={t('timeseries.summary.winrate_vs_history_title')}
             rows={data.map_breakdown ?? []}
             mapLabelOf={mapLabelOf}
-            sessionLabel={locale === 'en' ? 'Session' : 'Session'}
-            historyLabel={locale === 'en' ? 'History' : 'Historique'}
-            parityLabel={locale === 'en' ? 'Parity' : 'Parité'}
-            zeroWinrateLabel={locale === 'en' ? '0 % win rate' : '0 % de victoires'}
+            sessionLabel={t('timeseries.summary.session_label')}
+            historyLabel={t('timeseries.summary.history_label')}
+            parityLabel={t('timeseries.summary.parity_label')}
+            zeroWinrateLabel={t('timeseries.summary.zero_winrate_label')}
           />
           {(data.map_breakdown ?? []).some(
             (r) =>
@@ -228,15 +215,11 @@ export function TimeseriesSummaryTab({
               r.historical_performance_avg !== undefined,
           ) && (
             <MapPerfVsHistoryChart
-              title={
-                locale === 'en'
-                  ? 'Performance per map — Session vs History'
-                  : 'Performance par carte — Session vs Historique'
-              }
+              title={t('timeseries.summary.mapperf_vs_history_title')}
               rows={data.map_breakdown ?? []}
               mapLabelOf={mapLabelOf}
-              sessionLabel={locale === 'en' ? 'Session' : 'Session'}
-              historyLabel={locale === 'en' ? 'History' : 'Historique'}
+              sessionLabel={t('timeseries.summary.session_label')}
+              historyLabel={t('timeseries.summary.history_label')}
             />
           )}
         </div>

@@ -52,19 +52,15 @@ export function TimeseriesProgressionTab({
       {/* timeseries.11 — Premier événement (gauche) | timeseries.14 — Par minute (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartFrame
-          title={
-            locale === 'en'
-              ? 'First kill / first death timing'
-              : 'Temps du premier frag / première mort'
-          }
+          title={t('timeseries.progression.first_event_title')}
         >
           {data.first_events && data.first_events.buckets.length > 0 ? (
             <TimeseriesFirstEventDistribution
               data={data.first_events}
-              killsLabel={locale === 'en' ? '1st kill' : '1er frag'}
-              deathsLabel={locale === 'en' ? '1st death' : '1ère mort'}
-              meanLabel={locale === 'en' ? 'Avg' : 'Moy.'}
-              xAxisLabel={locale === 'en' ? 'Time (m s)' : 'Temps (m s)'}
+              killsLabel={t('timeseries.progression.first_kill')}
+              deathsLabel={t('timeseries.progression.first_death')}
+              meanLabel={t('timeseries.progression.avg')}
+              xAxisLabel={t('timeseries.progression.time_axis')}
             />
           ) : (
             <EmptyStateNotice
@@ -75,41 +71,37 @@ export function TimeseriesProgressionTab({
         </ChartFrame>
 
         <ChartFrame
-          title={locale === 'en' ? 'Stats per minute' : 'Stats par minute'}
+          title={t('timeseries.progression.per_minute_title')}
         >
           <TimeseriesPerMinuteTrend
             rows={data.match_rows ?? []}
             killsLabel={fieldMappings?.fields['kills_per_minute']?.label ?? 'Frags / min'}
             deathsLabel={fieldMappings?.fields['deaths_per_minute']?.label ?? 'Morts / min'}
             assistsLabel={fieldMappings?.fields['assists_per_minute']?.label ?? 'Assistances / min'}
-            perMinuteSuffix={locale === 'en' ? ' /min' : ' /min'}
+            perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
           />
         </ChartFrame>
       </div>
 
       {/* timeseries.12 (gauche) | timeseries.16 (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartFrame title={locale === 'en' ? 'Performance' : 'Performance'}>
+        <ChartFrame title={t('timeseries.summary.perf_label')}>
           <TimeseriesPerformanceTrend
             rows={data.match_rows ?? []}
-            smoothingLabel={locale === 'en' ? 'Trend' : 'Tendance'}
+            smoothingLabel={t('timeseries.summary.trend')}
           />
         </ChartFrame>
 
         <ChartFrame
-          title={
-            locale === 'en'
-              ? 'Killing spree / Headshots / Perfect kills'
-              : 'Folie meurtrière / Tirs à la tête / Frags parfaits'
-          }
+          title={t('timeseries.progression.spree_headshots_title')}
         >
           <TimeseriesSpreeHeadshots
             rows={data.match_rows ?? []}
-            spreeLabel={locale === 'en' ? 'Killing spree (max)' : 'Folie meurtrière (max)'}
+            spreeLabel={t('timeseries.progression.spree_label')}
             headshotsLabel={fieldMappings?.fields['headshot_kills']?.label ?? 'Tirs à la tête'}
             perfectLabel={
               fieldMappings?.fields['perfect_kills']?.label ??
-              (locale === 'en' ? 'Perfect kills' : 'Kills parfaits')
+              t('timeseries.progression.perfect_kills')
             }
           />
         </ChartFrame>
@@ -121,27 +113,27 @@ export function TimeseriesProgressionTab({
       {/* timeseries.19 (gauche) | Skill rank + Performance (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartFrame
-          title={locale === 'en' ? 'Rank and personal score' : 'Rang et score personnel'}
+          title={t('timeseries.progression.rank_score_title')}
         >
           <TimeseriesRankScore
             rows={data.match_rows ?? []}
             scoreLabel={fieldMappings?.fields['personal_score']?.label ?? 'Score personnel'}
             rankLabel={
               fieldMappings?.fields['rank']?.label ??
-              (locale === 'en' ? 'Rank' : 'Rang')
+              t('timeseries.progression.rank')
             }
           />
         </ChartFrame>
 
         <ChartFrame
-          title={locale === 'en' ? 'Rank and performance' : 'Rang et performance'}
+          title={t('timeseries.progression.rank_perf_title')}
         >
           <TimeseriesSkillRankPerformance
             rows={data.match_rows ?? []}
-            ratingLabel={locale === 'en' ? 'Rank' : 'Rang'}
+            ratingLabel={t('timeseries.progression.rank')}
             perfLabel={
               fieldMappings?.fields['performance_score']?.label ??
-              (locale === 'en' ? 'Performance' : 'Performance')
+              t('timeseries.summary.perf_label')
             }
           />
         </ChartFrame>
@@ -149,13 +141,13 @@ export function TimeseriesProgressionTab({
 
       {/* Rendement & Résistance — pleine largeur. */}
       <ChartFrame
-        title={locale === 'en' ? 'Output & resistance' : 'Rendement & Résistance'}
+        title={t('timeseries.progression.efficiency_title')}
       >
         <TimeseriesEfficiency
           rows={data.match_rows ?? []}
           rendementLabel={fieldMappings?.fields['offensive_conversion']?.label ?? 'Rendement'}
           resistanceLabel={fieldMappings?.fields['defensive_resistance']?.label ?? 'Résistance'}
-          refLabel={locale === 'en' ? 'Ref. 100%' : 'Réf. 100%'}
+          refLabel={t('timeseries.progression.ref_100')}
         />
       </ChartFrame>
 
@@ -172,15 +164,11 @@ export function TimeseriesProgressionTab({
       {/* Intensité — frags par phase de match (pleine largeur). */}
       {(data.intensity_rows ?? []).length > 0 && (
         <ChartFrame
-          title={
-            locale === 'en'
-              ? 'Intensity'
-              : 'Intensité'
-          }
+          title={t('timeseries.progression.intensity_title')}
         >
           <TimeseriesIntensityHeatmap
             rows={data.intensity_rows ?? []}
-            zLabel={locale === 'en' ? 'kills' : 'frags'}
+            zLabel={t('timeseries.progression.intensity_z')}
             height={Math.max(200, Math.min(640, (data.intensity_rows ?? []).length * 18 + 80))}
           />
         </ChartFrame>
@@ -191,7 +179,7 @@ export function TimeseriesProgressionTab({
           charts ci-dessus). */}
       {explorerMatchRows && explorerMatchRows.length > 0 && (
         <ChartFrame
-          title={locale === 'en' ? 'Match history' : 'Historique des matchs'}
+          title={t('timeseries.progression.match_history_title')}
         >
           <ExplorerMatchesTable
             rows={explorerMatchRows}
