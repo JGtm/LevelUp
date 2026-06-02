@@ -92,12 +92,31 @@ func RestorePlayer(ctx context.Context, opts RestoreOptions) (RestoreResult, err
 	}
 	defer db.Close()
 
+	// Restauration transactionnelle : un échec sur une table (parquet illisible,
+	// table déjà non vide sans --replace) rollback l'ensemble — jamais de DB à
+	// moitié restaurée (revue P0 2026-06-02).
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return RestoreResult{}, fmt.Errorf("ouverture transaction restore: %w", err)
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
 	for table, parqPath := range parquetFiles {
-		if err := restoreTable(ctx, db, table, parqPath, opts.Replace); err != nil {
-			return result, fmt.Errorf("restauration table %s: %w", table, err)
+		if err := restoreTable(ctx, tx, table, parqPath, opts.Replace); err != nil {
+			return RestoreResult{}, fmt.Errorf("restauration table %s: %w", table, err)
 		}
 		result.TablesLoaded = append(result.TablesLoaded, table)
 	}
+	if err := tx.Commit(); err != nil {
+		return RestoreResult{}, fmt.Errorf("commit restore: %w", err)
+	}
+	committed = true
+
 	sort.Strings(result.TablesLoaded)
 	result.Success = true
 	result.Message = fmt.Sprintf("%d tables restaurées depuis backup %s", len(result.TablesLoaded), ts)
@@ -158,21 +177,68 @@ func findLatestParquetFiles(backupDir string) (map[string]string, string, error)
 	return result, latestTS, nil
 }
 
+// sqlExecQuerier abstrait *sql.DB et *sql.Tx pour permettre à restoreTable de
+// s'exécuter dans une transaction.
+type sqlExecQuerier interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 // restoreTable restaure une table depuis un fichier Parquet.
-func restoreTable(ctx context.Context, db *sql.DB, table, parqPath string, replace bool) error {
-	if replace {
-		if _, err := db.ExecContext(ctx, fmt.Sprintf("DROP TABLE IF EXISTS %q", table)); err != nil {
-			return fmt.Errorf("DROP TABLE: %w", err)
+//
+// Comportement (revue P0 2026-06-02 — élimine le no-op silencieux qui retournait
+// un faux "Success" sans rien restaurer) :
+//   - table absente : CREATE TABLE AS SELECT (table neuve).
+//   - table présente : INSERT des rows, ce qui PRÉSERVE le schéma + la PRIMARY KEY
+//     posés par les migrations (un CREATE TABLE IF NOT EXISTS AS SELECT n'aurait
+//     rien écrit et aurait perdu la PK). Refuse si la table est déjà non vide sans
+//     --replace (anti-doublon) ; avec --replace, vide d'abord la table par DELETE
+//     (conserve schéma/PK) avant de réinsérer.
+func restoreTable(ctx context.Context, db sqlExecQuerier, table, parqPath string, replace bool) error {
+	// read_parquet attend un littéral chaîne : on échappe les apostrophes du
+	// chemin (un chemin contenant ' casserait la requête, voire ouvrirait une
+	// injection SQL via le nom de fichier).
+	safeParq := strings.ReplaceAll(parqPath, "'", "''")
+
+	exists, err := tableExistsInDB(ctx, db, table)
+	if err != nil {
+		return fmt.Errorf("vérification existence table: %w", err)
+	}
+	if !exists {
+		if _, err := db.ExecContext(ctx, fmt.Sprintf(
+			`CREATE TABLE %q AS SELECT * FROM read_parquet('%s')`, table, safeParq)); err != nil {
+			return fmt.Errorf("CREATE TABLE AS SELECT: %w", err)
+		}
+		return nil
+	}
+
+	var existing int
+	if err := db.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*) FROM %q`, table)).Scan(&existing); err != nil {
+		return fmt.Errorf("comptage rows existantes: %w", err)
+	}
+	switch {
+	case existing > 0 && !replace:
+		return fmt.Errorf("table %q non vide (%d rows) et --replace absent : restauration refusée pour éviter un doublon (relancer avec --replace)", table, existing)
+	case existing > 0 && replace:
+		if _, err := db.ExecContext(ctx, fmt.Sprintf(`DELETE FROM %q`, table)); err != nil {
+			return fmt.Errorf("vidage table avant restore: %w", err)
 		}
 	}
-	q := fmt.Sprintf(
-		`CREATE TABLE IF NOT EXISTS %q AS SELECT * FROM read_parquet('%s')`,
-		table, parqPath,
-	)
-	if _, err := db.ExecContext(ctx, q); err != nil {
-		return err
+	if _, err := db.ExecContext(ctx, fmt.Sprintf(
+		`INSERT INTO %q SELECT * FROM read_parquet('%s')`, table, safeParq)); err != nil {
+		return fmt.Errorf("INSERT depuis parquet: %w", err)
 	}
 	return nil
+}
+
+// tableExistsInDB indique si une table existe dans la DB DuckDB courante.
+func tableExistsInDB(ctx context.Context, db sqlExecQuerier, table string) (bool, error) {
+	var n int
+	if err := db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = ?`, table).Scan(&n); err != nil {
+		return false, err
+	}
+	return n > 0, nil
 }
 
 // FindAvailableBackups liste les timestamps de backup disponibles dans un répertoire.
