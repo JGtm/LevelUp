@@ -54109,3 +54109,26 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
 - **Commits** : `2b9d9aaae` (ADR 0025 + tracker + CLAUDE.md), `cf149f72f` (constants.toml + tracker).
 - **Prochaine étape** : Phase 1.5 (DDL par-titre, gros, prérequis 2e titre, ordre init() migration
   → supervisé) OU compléter Phase 0 setup (lints/datasets) OU revenir au backfill (serveur à arrêter).
+
+## [2026-06-02] Diagnostic first_joined + Phase 0 lint + Phase 1.5.0 ordre migration — Complété
+
+- **Backfill first_joined** : `--commit` lancé (serveur arrêté) → 225 lignes / 11 matchs corrigés,
+  re-vérif 0 décalé (P2-16 clos). Mémoire data-quality MAJ : 11 résiduels post-29/05, à re-checker.
+- **Diagnostic first_joined wiring** (question user) : sync live SAIN (`parseISO` force `.UTC()`,
+  `ComputeT0` branché `transforms.go:172`) → nouveaux matchs non décalés. Les 11 = legacy
+  (ancien chemin supprimé, manqués par le backfill du 29/05). Une vraie incohérence trouvée et
+  fermée : le mapper OpenSpartan `.UTC()`-isait start/end mais pas first_joined/last_leave
+  (`participants.go:85` ; instant préservé donc pas la cause, mais durci, commit `b07ea17d8`).
+- **Feedback user IMPORTANT** : ne pas le faire arbitrer entre phases ; driver linéairement,
+  décider à sa place, n'escalader que les vrais blocages. Mémoire [[feedback_drive_linear_dont_offload_decisions]].
+- **Phase 0 (setup)** : lint `no_slug_comparison` (cœur title-agnostic) livré en ratchet
+  (`internal/archlint/`, 2 hard-gates allowlistés, sanity vérifié, commit `801d7444f`). État code
+  déjà propre (0 gating dans service/). Reste Phase 0 (datasets/parity/chi-lint) = **prématuré**
+  (leurs phases) → documenté, pas de scaffold vide.
+- **Phase 1.5.0 — ordre migration EXPLICITE** (le garde-fou avant tout déplacement, validé avec
+  user) : `migration/order.go` (`canonicalOrder` 142 noms, généré depuis l'ordre courant) +
+  `RunForDB` trie dessus + `order_test.go` (complétude + no-op prouvé). Sanity : permuter 2 entrées
+  fait bien échouer le test. **Déplacer/renommer un steps_*.go ne réordonne plus** → 1.5.1 (move
+  DDL) devient sûr. Commit `407a41c54`.
+- **Prochaine étape** : 1.5.1 (déplacer les DDL par titre, ordre garanti par canonicalOrder +
+  golden) — checkpoint user posé (le deal était : valider le filet avant de bouger un fichier).
