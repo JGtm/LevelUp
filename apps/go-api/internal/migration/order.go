@@ -165,6 +165,15 @@ var canonicalIndex = func() map[string]int {
 	return m
 }()
 
+// CanonicalOrder retourne une copie de l'ordre d'exécution canonique (noms).
+// Exposé pour l'audit de complétude inter-packages : les steps title-owned
+// (internal/games/{slug}/migrations) sont dans canonicalOrder mais PAS dans le
+// registre global All() — l'audit bidirectionnel (global + title) vit donc dans
+// le package du titre (halo_infinite/migrations/order_audit_test.go).
+func CanonicalOrder() []string {
+	return append([]string(nil), canonicalOrder...)
+}
+
 // canonicalRank retourne la position de `name` dans canonicalOrder, ou la fin
 // (len) si absent — résilience runtime ; order_test.go garantit l'absence
 // d'inconnu en CI.
