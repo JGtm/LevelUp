@@ -54034,3 +54034,31 @@ evwide2,frbig}. Câblage scanner différé v2 (cf. RESEARCH_THEATER_RE.md §M-te
   [.ai/CODE_REVIEW_REMEDIATION_2026-06-02.md](CODE_REVIEW_REMEDIATION_2026-06-02.md) §6.
 - **Prochaine étape** : décision utilisateur sur (a) splits zones sensibles (supervisés),
   (b) frontend lourd + H-D4 i18n + CLI, ou (c) poursuite des splits 500-700L cohérents.
+
+## [2026-06-02] H-D4 i18n (pilote) + splits zones sensibles (validés user) — Complété (sous-lot)
+
+- **Statut** : Complété pour le pilote i18n Timeseries + 4 splits zones sensibles.
+- **Choix user** : H-D4 i18n + zones sensibles sync/migration (les 2 retenues).
+- **i18n Timeseries** (`3386513d2`) : 62 ternaires `locale === 'en'` inline (3 onglets) →
+  manifest TOML `timeseries` via `t('timeseries.*')`. Pipeline confirmé :
+  TOML (`manifests/timeseries.toml`) → `node scripts/build_i18n_manifests.mjs` →
+  `generated/timeseries.ts` ; `formatMessage<M>(m, key: keyof M & string, locale)` ⇒
+  toute clé inexistante = **erreur tsc** (migration sûre). 48 clés ajoutées + réutilisation.
+  `locale` retiré de summary/distributions (devenu inutile) ; gardé dans progression
+  (passé à `TimeseriesSkillProgression`).
+- **Découverte i18n** : 2 conventions coexistent (TOML manifest vs dict `i18n.ts` hand-written
+  selon feature) ; et tous les `locale === 'en'` ne sont PAS des cibles (normalisation locale,
+  Intl `'en-US'`, sélection de fonction, flags). ⇒ règle ESLint doit cibler les ternaires
+  string-littéral JSX, pas tout `locale === 'en'`. Reste ~74 occ. / ~38 fichiers à migrer
+  par feature (cf. ledger §6d).
+- **Splits zones sensibles** (extraction blocs contigus + `goimports`, vérif `go test -race`) :
+  skill_rating 773→341 (`d4bcd4b0e`), engine_postsync 773→368 (`aaec5f99a`),
+  shared_social_persister 765→408 + performance 672→447 (`2aaee5ef1`).
+- **Différés avec raison** : `engine.go` (run() ~500L = refactor comportemental, pas un
+  déplacement) ; `server.go` (NewRouter géante) ; `steps_shared/metadata/player` (manifestes
+  de migration — ordre `Register` = ordre d'exécution au boot, cf. registry.go:38 ; split =
+  risque de régression d'ordre en prod). Cf. ledger §6c.
+- **Build/vet `./internal/...` verts ; tsc + lint + vitest (timeseries 37) verts.**
+- **Prochaine étape** : finir H-D4 par feature (ascension via dict i18n.ts ; match-view via
+  TOML en isolant les non-cibles) + règle ESLint ciblée ; puis engine.go/server.go en passe
+  supervisée si souhaité.
