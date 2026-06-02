@@ -203,10 +203,18 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 // L'objectif est qu'aucune erreur renvoyée au client n'échappe à un trace serveur.
 // Le ctx fait remonter event_id / request_id auto-injectés par ContextHandler.
 func writeError(ctx context.Context, w http.ResponseWriter, status int, code, message string) {
+	// Le détail (souvent err.Error()) est toujours logué côté serveur, corrélable
+	// via event_id/request_id. Mais sur une 5xx on ne l'expose JAMAIS au client :
+	// message générique stable, le `code` (non sensible) porte la sémantique
+	// (revue 2026-06-02 — fuite d'info interne sur les réponses 500).
 	logErrorResponse(ctx, status, code, message, nil)
+	clientMessage := message
+	if status >= 500 {
+		clientMessage = "internal error"
+	}
 	writeJSON(w, status, map[string]interface{}{
 		"code":      code,
-		"message":   message,
+		"message":   clientMessage,
 		"retryable": status >= 500,
 	})
 }
@@ -219,7 +227,12 @@ func writeError(ctx context.Context, w http.ResponseWriter, status int, code, me
 // standardisé.
 func httpError(ctx context.Context, w http.ResponseWriter, message string, status int) {
 	logErrorResponse(ctx, status, "", message, nil)
-	http.Error(w, message, status)
+	clientMessage := message
+	if status >= 500 {
+		// Idem writeError : pas de détail interne au client sur une 5xx.
+		clientMessage = "internal error"
+	}
+	http.Error(w, clientMessage, status)
 }
 
 // logErrorResponse centralise la décision de niveau de log selon le statut HTTP.
