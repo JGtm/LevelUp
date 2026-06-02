@@ -57,6 +57,68 @@ func Steps() []migration.Migration {
 				`)
 			},
 		},
+		// Déplacés depuis internal/migration/steps_shared_*.go (b3 batch Shared).
+		{
+			Name:        "shared_add_t0_quality",
+			TargetDB:    migration.TargetShared,
+			Description: "Colonne t0_quality sur match_registry + repurpose real_start_time en début gameplay UTC (Match Timeline T0 Phase 2)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE match_registry ADD COLUMN IF NOT EXISTS t0_quality VARCHAR;
+				`)
+			},
+		},
+		{
+			Name:        "shared_add_participation_info_booleans",
+			TargetDB:    migration.TargetShared,
+			Description: "ParticipationInfo booleans sur match_participants pour LUSR v2 §9 quit penalty",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS present_at_beginning BOOLEAN;
+					ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS present_at_completion BOOLEAN;
+					ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS joined_in_progress BOOLEAN;
+					ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS left_in_progress BOOLEAN;
+				`)
+			},
+		},
+		{
+			Name:        "shared_add_participation_timestamps",
+			TargetDB:    migration.TargetShared,
+			Description: "ParticipationInfo timestamps (FirstJoinedTime, LastLeaveTime) sur match_participants pour LUSR v2 quit ordering",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS first_joined_time TIMESTAMPTZ;
+					ALTER TABLE match_participants ADD COLUMN IF NOT EXISTS last_leave_time TIMESTAMPTZ;
+				`)
+			},
+		},
+		{
+			Name:        "add_shared_match_csrs",
+			TargetDB:    migration.TargetShared,
+			Description: "Table shared.match_csrs : CSR par-match par-joueur (capture all participants)",
+			ApplySchema: func(db *sql.DB) error {
+				return migration.ExecScript(db, `
+					CREATE TABLE IF NOT EXISTS match_csrs (
+						match_id                     VARCHAR NOT NULL,
+						xuid                         VARCHAR NOT NULL,
+						rating_type                  VARCHAR NOT NULL DEFAULT 'CSR',
+						rating_value                 FLOAT,
+						tier                         VARCHAR,
+						sub_tier                     SMALLINT DEFAULT 0,
+						tier_label                   VARCHAR,
+						rating_delta                 FLOAT,
+						measurement_matches_remaining INTEGER DEFAULT 0,
+						season_id                    VARCHAR,
+						created_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						updated_at                   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+						PRIMARY KEY (match_id, xuid)
+					);
+					CREATE INDEX IF NOT EXISTS idx_match_csrs_xuid    ON match_csrs(xuid);
+					CREATE INDEX IF NOT EXISTS idx_match_csrs_season  ON match_csrs(season_id);
+					CREATE INDEX IF NOT EXISTS idx_match_csrs_match   ON match_csrs(match_id);
+				`)
+			},
+		},
 	}
 }
 
