@@ -28,7 +28,7 @@
 | 1.5 | DDL par titre (sortir `migration/steps_*`) | 🟡 | 58 | **oui** (2e titre) — mécanisme B complet + **6 steps migrés** (PvE + 5 Shared additifs/backfill) ; **tier A Shared épuisé**, reste = tier B (cœur + relocation tests) |
 | 1.6 | Pool tokens clé `(titleSlug,gamertag)` | ✅ | 100 | **oui** (2e titre) — livré : clé composite + garde anti-cross-title |
 | 1.7a | `capabilities.toml` + loader + endpoint | ✅ | 100 | non — TOML + loader + adapter consomme + endpoint, livré |
-| 1.7b | Feature-matrix 3 états + cascade | ⬜ | 0 | non |
+| 1.7b | Feature-matrix 3 états + cascade | ✅ | 100 | non — cascade pure + endpoint, livré (revue adversariale 5 lentilles) |
 | 2 | Services title-agnostic (canonical-typé) | 🟡 | 70 | non |
 | 3a | Cleanup DTO (`*Raw` hors domain, nullable) | 🟡 | 50 | non |
 | 1.8 | Outillage diag Lab | ⬜ | 0 | **différé** (hors fenêtre) |
@@ -84,13 +84,14 @@
 | Adapters consomment le loader (0 hardcode) | ✅ | `adapter_data.go` : `WithCapabilities(caps)` + `Capabilities()` prefer-TOML, fallback codé = **filet sécurité boot** (parité TOML⟷fallback testée → pas de drift). Câblé aux 3 sites (`server.go` boot + `ServiceRegistry.dataAdapterForPDB`/career via `WithCapabilities`). `capCareer` supprimé (downgrade runtime inline). Commit `2ea1bcd13`. |
 | Endpoint `GET /title/capabilities` | ✅ | `handlers.CapabilitiesHandler` → `GET /api/v1/titles/{slug}/capabilities` (gated `MULTI_TITLE_API_ENABLED`), sert les statuts statiques du titre + ETag/Cache-Control. Tests httptest (success/404/304). |
 
-## Phase 1.7b — Feature-matrix 3 états + cascade · ⬜
+## Phase 1.7b — Feature-matrix 3 états + cascade · ✅ (100%)
 
 | Item | Statut | Evidence / next action |
 |---|:-:|---|
-| `internal/domain/feature/` (FeatureKey/Status/Matrix) | ⬜ | inexistant (seuls `domain/chart`, `domain/title`) |
-| `port.FeatureChecker` | ⬜ | inexistant |
-| Loader `[data]`+`[feature]` + handler `/title/feature_matrix` | ⬜ | inexistant |
+| `internal/domain/feature/` (Key/Status/Matrix) | ✅ | `domain/feature/feature.go` : `Key` + 8 consts, `Status` (available/degraded/unavailable) + `Available()`, `Matrix` + `Get()`. **Pur** (0 import games/DB/HTTP). |
+| `port.FeatureChecker` | ⛔→**écarté (YAGNI)** | Dérivation *pure stateless* (caps→cascade) : pas d'état à mocker. Cascade = `games.ComputeFeatureMatrix(caps) → feature.Matrix` (`games/feature.go`, `featureDefinitions` partagé entre titres, primary+enhancements). Handler chi mince réutilise `CapabilitiesRegistry`. Port ajoutable si consommateur stateful émerge. |
+| Loader + handler `/title/feature_matrix` | ✅ | Pas de loader `[feature]` séparé (définitions produit en Go, partagées ; la variation par titre vient de SA `capabilities.toml` 1.7a — plus simple, pas de drift). Handler `GET /api/v1/titles/{slug}/feature-matrix` (gated `MULTI_TITLE_API_ENABLED`, ETag/Cache-Control/schema_version cohérents avec frères). |
+| Qualité | ✅ | **Revue adversariale 5 lentilles** (workflow `wgki7z18p` : layering/multi-titres/cascade/tests/intégration — 0 blocker, 3 major + 5 minor **tous traités**). Tests : cascade (tous états + cap absente = dégradation gracieuse + enrichissement degraded), handler httptest (success+headers/404/304/slug-vide/caps-invalides). |
 
 ## Phase 2 — Services title-agnostic · 🟡 (~70%) — **mécanisme canonical-typé (FieldKey-map supersédé)**
 
