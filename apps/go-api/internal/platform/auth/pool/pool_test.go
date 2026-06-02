@@ -414,7 +414,7 @@ func TestPoolOnHTTPError_429(t *testing.T) {
 	lease1.Release()
 
 	// Déclencher le cooldown global avec un 429.
-	pool.OnHTTPError(429)
+	pool.OnHTTPError(429, 0)
 
 	// Immédiatement après, tous les tokens doivent être malsains.
 	_, err = pool.Acquire(ctx, PolicyAnyPublic, "")
@@ -441,7 +441,7 @@ func TestPoolOnHTTPError_503(t *testing.T) {
 	ctx := context.Background()
 
 	// Déclencher le cooldown.
-	pool.OnHTTPError(503)
+	pool.OnHTTPError(503, 0)
 
 	// Vérifier que les acquisitions échouent.
 	_, err = pool.Acquire(ctx, PolicyAnyPublic, "")
@@ -475,7 +475,7 @@ func TestPoolOnHTTPError_OtherStatusCode(t *testing.T) {
 	ctx := context.Background()
 
 	// Appeler OnHTTPError avec un code qui n'est pas 429/503.
-	pool.OnHTTPError(500)
+	pool.OnHTTPError(500, 0)
 
 	// Les acquisitions doivent continuer normalement (pas de cooldown).
 	lease, err := pool.Acquire(ctx, PolicyAnyPublic, "")

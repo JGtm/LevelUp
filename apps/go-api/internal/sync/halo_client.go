@@ -58,6 +58,10 @@ type HTTPError struct {
 	StatusCode int
 	URL        string
 	Err        error
+	// RetryAfter est la durée demandée par le header HTTP Retry-After (429/503),
+	// déjà parsée et bornée. 0 = header absent/non parsable → le pool applique sa
+	// politique de cooldown par défaut (globalCooldown + backoff exponentiel).
+	RetryAfter time.Duration
 }
 
 func (e *HTTPError) Error() string {
