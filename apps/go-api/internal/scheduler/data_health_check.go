@@ -117,8 +117,12 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	start := time.Now()
 	res := &DataHealthCheckResult{}
 
-	titleDir := filepath.Join(s.repoRoot, "data", "titles", titlePkg.DefaultSlug)
-	sharedPath := filepath.Join(titleDir, "warehouse", "shared_matches_v2.duckdb")
+	// Chemins via PathResolver (jamais de filepath.Join("data","titles",...) en
+	// dur — règle multi-titres). Reste mono-titre (DefaultSlug) ; l'itération sur
+	// registry.All() est différée (changerait la structure du résultat).
+	pr := titlePkg.NewPathResolver(s.repoRoot)
+	slug := titlePkg.DefaultSlug
+	sharedPath := pr.SharedDBPath(slug)
 
 	if _, err := os.Stat(sharedPath); err != nil {
 		slog.DebugContext(ctx, "data_health: shared DB absente — skip", "err", err)
@@ -163,7 +167,7 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	`).Scan(&res.OrphanXUIDs)
 
 	// 4. Banner garbage URLs (toutes les player DBs)
-	playersDir := filepath.Join(titleDir, "players")
+	playersDir := filepath.Join(pr.TitleDataDir(slug), "players")
 	if entries, err := os.ReadDir(playersDir); err == nil {
 		for _, e := range entries {
 			if !e.IsDir() {
