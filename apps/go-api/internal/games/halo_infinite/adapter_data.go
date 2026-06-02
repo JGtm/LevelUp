@@ -37,7 +37,10 @@ type CareerSource interface {
 // les absences explicites côté caller (cf. plan §5.7).
 type DataAdapter struct {
 	career CareerSource
-	logger *slog.Logger
+	// staticCaps : CapabilityMap chargée depuis capabilities.toml (Phase 1.7a),
+	// injectée via WithCapabilities. nil → fallbackCapabilities (sécurité boot).
+	staticCaps games.CapabilityMap
+	logger     *slog.Logger
 }
 
 // NewDataAdapter construit un data adapter HI.
@@ -51,32 +54,55 @@ func NewDataAdapter(career CareerSource, logger *slog.Logger) *DataAdapter {
 	return &DataAdapter{career: career, logger: logger}
 }
 
+// WithCapabilities injecte la CapabilityMap statique chargée depuis
+// capabilities.toml (via mappings.Registry → games.CapabilityMapFromMappings).
+// C'est le chemin nominal (Phase 1.7a) : la map TOML remplace le fallback codé.
+func (a *DataAdapter) WithCapabilities(caps games.CapabilityMap) *DataAdapter {
+	a.staticCaps = caps
+	return a
+}
+
 // TitleSlug retourne le slug HI canonique.
 func (a *DataAdapter) TitleSlug() string { return titlePkg.DefaultSlug }
 
 // Capabilities décrit l'état des capabilities HI exposées par cet adapter.
 //
-// La map est dérivée de HALO_INFINITE_CAPABILITY_MAP.md. Un appel à une
-// capability "not_exposed" retourne ErrCapabilityNotSupported.
+// Source nominale (Phase 1.7a) : la map injectée depuis capabilities.toml via
+// WithCapabilities. À défaut (TOML non chargé), fallbackCapabilities sert de
+// filet de sécurité boot. Dans les deux cas, career.progression est rétrogradée
+// à not_exposed au runtime si aucune source carrière n'est câblée (on ne force
+// jamais au-dessus de l'intention déclarée).
 func (a *DataAdapter) Capabilities() games.CapabilityMap {
+	base := a.staticCaps
+	if base == nil {
+		base = fallbackCapabilities()
+	}
+	out := make(games.CapabilityMap, len(base))
+	for k, v := range base {
+		out[k] = v
+	}
+	if a.career == nil && out[games.CapCareerProgression] != games.CapNotExposed {
+		out[games.CapCareerProgression] = games.CapNotExposed
+	}
+	return out
+}
+
+// fallbackCapabilities est la CapabilityMap par défaut, utilisée UNIQUEMENT si
+// capabilities.toml n'a pas pu être chargé/injecté (sécurité boot). Le chemin
+// nominal passe par WithCapabilities (TOML). La parité fallback ⟷ TOML est
+// garantie par capabilities_parity_test.go (toute divergence casse le test).
+func fallbackCapabilities() games.CapabilityMap {
 	return games.CapabilityMap{
 		games.CapMatchHistory:       games.CapSupported,
 		games.CapMatchDetailCore:    games.CapSupported,
 		games.CapMatchSkillSnapshot: games.CapDegraded,
-		games.CapCareerProgression:  capCareer(a.career),
+		games.CapCareerProgression:  games.CapSupported,
 		games.CapPveFirefight:       games.CapSupported,
-		games.CapTimeseries:         games.CapNotExposed, // sortira en Phase C
-		games.CapScoreboardExtra:    games.CapNotExposed, // Phase B+
-		games.CapCitationsEngine:    games.CapNotExposed, // Phase F
-		games.CapEngagement:         games.CapSupported,  // Phase recompute coefs (long-term)
+		games.CapTimeseries:         games.CapNotExposed,
+		games.CapScoreboardExtra:    games.CapNotExposed,
+		games.CapCitationsEngine:    games.CapNotExposed,
+		games.CapEngagement:         games.CapSupported,
 	}
-}
-
-func capCareer(c CareerSource) games.CapabilityStatus {
-	if c == nil {
-		return games.CapNotExposed
-	}
-	return games.CapSupported
 }
 
 // LoadMatchSummaries n'est pas câblée en Phase B. Elle remontera en Phase C.

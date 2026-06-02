@@ -201,11 +201,26 @@ func NewRouter(
 			)
 		}
 	}
+	// Phase 1.7a : capabilities chargées depuis capabilities.toml (source nominale,
+	// remplace la map codée en dur de l'adapter). nil si TOML absent → l'adapter
+	// retombe sur son fallback (parité garantie par capabilities_parity_test.go).
+	var hiCaps games.CapabilityMap
+	if cset, ok := fieldMappingsRegistry.GetCapabilities(titlePkg.DefaultSlug); ok {
+		if caps, err := games.CapabilityMapFromMappings(cset); err == nil {
+			hiCaps = caps
+		} else {
+			slog.Warn("capabilities_convert_failed", "title_slug", titlePkg.DefaultSlug, "err", err.Error())
+		}
+	}
+
 	// Phase C : DataAdapter HI registré sans CareerSource player-scoped au boot.
 	// La capability career.progression sera "not_exposed" pour ce DataAdapter
 	// global ; les futurs handlers player-scoped instancieront leur propre
 	// DataAdapter avec le CareerRepo du joueur courant via un MiddleWare DI.
 	hiData := halo_games.NewDataAdapter(nil, slog.Default())
+	if hiCaps != nil {
+		hiData = hiData.WithCapabilities(hiCaps)
+	}
 	titleResolver.RegisterData(hiData)
 	// Plan multi-titres §8.1 : event adapter_loaded au boot du data adapter.
 	slog.Info("adapter_loaded",
@@ -237,6 +252,7 @@ func NewRouter(
 	// SemanticAdapter (libellés rangs etc.) selon le titre courant.
 	reg := NewServiceRegistry(cfg, tokenProvider).
 		WithTitleResolver(titleResolver).
+		WithCapabilities(hiCaps).
 		WithSettingsStore(settingsStore).
 		WithRankCatalog(hiRanks).
 		WithRankImageURLs(hiRankImageURLs)
