@@ -281,6 +281,18 @@ func main() {
 			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
 	}
 
+	// Foot-gun ART (revue P1 2026-06-02) : LEVELUP_PERSIST_BATCH=0 désactive le
+	// chemin d'écriture batch INSERT-only et réactive le chemin legacy
+	// (ON CONFLICT DO UPDATE sur les tables shared match_registry/match_participants)
+	// qui peut rouvrir le bug ART DuckDB ("Failed to delete all rows from index")
+	// sous concurrence multi-user. Le défaut (batch ON) est sûr ; on alerte
+	// bruyamment si l'opérateur a explicitement désactivé le batch — ce fallback
+	// de rollback ne doit jamais rester posé en prod/multi-user.
+	if os.Getenv("LEVELUP_PERSIST_BATCH") == "0" {
+		slog.Warn("LEVELUP_PERSIST_BATCH=0 : chemin d'écriture legacy ART-unsafe activé (UPSERT concurrent sur tables shared) — risque de corruption d'index DuckDB en multi-user",
+			"recommendation", "retirer LEVELUP_PERSIST_BATCH (ou le mettre à 1) hors situation de rollback ponctuel")
+	}
+
 	// --- 3. Connexions DuckDB ---
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	titleSlug := title.DefaultSlug
