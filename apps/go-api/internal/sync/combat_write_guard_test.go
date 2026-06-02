@@ -1,5 +1,3 @@
-//go:build cgo
-
 // Package sync — combat_write_guard_test.go : garde-fou anti-régression.
 //
 // Interdit toute écriture SQL directe (INSERT/DELETE/UPDATE) sur les tables

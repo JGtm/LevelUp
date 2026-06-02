@@ -161,10 +161,11 @@ func TestContract_CycleIdempotent(t *testing.T) {
 // mai 2026 (14 jours de sync à inserted=0). L'URL /matches doit utiliser
 // xuid(NNN), pas le gamertag brut.
 //
-// TODO(D6) : activer pour V1 et V2. Vérifier dans la fake server que les
-// requêtes reçues respectent le format.
+// L'invariant V1 est désormais ACTIF : voir TestContract_HaloAPIURLFormatXUID_V1
+// (package sync, via RunDelta + capture de l'arg GetMatchHistory). Ce scaffold
+// black-box (fake server) reste skippé en attendant la suite V2.
 func TestContract_HaloAPIURLFormatXUID(t *testing.T) {
-	t.Skip("contract suite scaffold — activée en D6 du plan ADR 0020")
+	t.Skip("V1 actif : TestContract_HaloAPIURLFormatXUID_V1 (package sync) ; scaffold V2 en attente")
 }
 
 // TestContract_MetadataDSNAlignment est l'anti-régression du bug citations
