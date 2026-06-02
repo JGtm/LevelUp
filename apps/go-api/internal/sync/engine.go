@@ -481,6 +481,10 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// soumis pendant cette boucle aient été persistés par les workers
 	// AVANT le post-sync compute. Sinon, runConditionalPostSync lirait
 	// des données qui ne sont pas encore en DB.
+	// drainErr est déclaré au scope run() : il est relu plus bas par la
+	// réconciliation post-Drain (le bloc `if e.batchQueue != nil` se ferme AVANT
+	// le pipeline post-sync, donc un `:=` interne ne serait pas visible).
+	var drainErr error
 	if e.batchQueue != nil {
 		// Libérer les write leases AVANT Drain — le Worker (CombinedPersister)
 		// doit acquérir ces mêmes leases pour persister. Sans release ici,
@@ -498,7 +502,8 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 		sharedDB = nil // invalide après release
 
 		drainCtx, drainCancel := context.WithTimeout(ctx, 60*time.Second)
-		if drainErr := e.batchQueue.Drain(drainCtx); drainErr != nil {
+		drainErr = e.batchQueue.Drain(drainCtx)
+		if drainErr != nil {
 			slog.WarnContext(ctx, "sync: batch queue drain incomplet",
 				"gamertag", e.gamertag, "err", drainErr)
 			result.AddWarning(fmt.Sprintf("queue.Drain: %v", drainErr))
@@ -549,6 +554,36 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 						"gamertag", e.gamertag, "err", wpErr)
 				}
 			}
+		}
+	}
+
+	// Réconciliation post-Drain : en mode async, MatchesInserted/InsertedMatchIDs
+	// ont été peuplés au Submit (durabilité WAL), PAS à l'ACK (persistance DB).
+	// Si le Drain a échoué (timeout/circuit-breaker), certains matchs comptés ne
+	// sont PAS dans match_registry. On relit la vérité terrain pour ne pas lancer
+	// le post-sync (notamment processWeaponKillsInline, ~285s/cycle de re-download
+	// film) sur des matchs fantômes. Lecture seule (anti-ART). Les WAL non-ACKés
+	// restent sur disque et seront rejoués au prochain boot (RecoverPending).
+	if e.batchQueue != nil && drainErr != nil && sharedDB != nil && len(result.InsertedMatchIDs) > 0 {
+		confirmed := make([]string, 0, len(result.InsertedMatchIDs))
+		for _, mid := range result.InsertedMatchIDs {
+			var exists bool
+			if qErr := sharedDB.QueryRowContext(ctx,
+				`SELECT EXISTS(SELECT 1 FROM match_registry WHERE match_id = ?)`, mid,
+			).Scan(&exists); qErr == nil && exists {
+				confirmed = append(confirmed, mid)
+			}
+		}
+		if dropped := len(result.InsertedMatchIDs) - len(confirmed); dropped > 0 {
+			slog.WarnContext(ctx, "sync: drain incomplet — matchs non confirmés retirés du post-sync",
+				"gamertag", e.gamertag, "dropped", dropped,
+				"confirmed", len(confirmed), "err", drainErr)
+			result.InsertedMatchIDs = confirmed
+			result.MatchesInserted -= dropped
+			if result.MatchesInserted < 0 {
+				result.MatchesInserted = 0
+			}
+			result.MatchesSkipped += dropped
 		}
 	}
 

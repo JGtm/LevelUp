@@ -339,13 +339,14 @@ func (e *SyncEngine) runAggregatesRefresh(ctx context.Context, playerDB *sql.DB,
 	var aggregatesErr, sharedViewsErr error
 	egRefresh := &errgroup.Group{}
 	egRefresh.Go(func() error {
-		n, err := refreshAggregates(ctx, playerDB)
+		created, failed, err := refreshAggregates(ctx, playerDB)
+		viewsRefreshed.Add(int32(created))
 		if err != nil {
-			slog.WarnContext(ctx, "post-sync: aggregates échoué", "gamertag", e.gamertag, "err", err)
+			slog.WarnContext(ctx, "post-sync: aggregates partiellement échoué",
+				"gamertag", e.gamertag, "views_created", created, "views_failed", failed, "err", err)
 			aggregatesErr = err
 			return nil //nolint:nilerr // best-effort, ne propage pas (cohérent avec ancien comportement)
 		}
-		viewsRefreshed.Add(int32(n))
 		return nil
 	})
 	// Fix bug 2026-05-27 : refreshSharedViews retiré du post-sync runtime. Les vues

@@ -565,7 +565,13 @@ func (s *HomeService) GetChallenges(ctx context.Context) domain.ChallengesRespon
 	if resp.Available {
 		slog.DebugContext(ctx, "home: Challenges obtenus depuis API live")
 		if s.sink != nil {
-			s.sink.PersistChallenges(raw)
+			// W6 (lifecycle) : écriture SYNCHRONE sur le ctx HTTP — comme
+			// GetBattlePass — pour qu'elle se termine avant que srv.Shutdown ne
+			// rende la main (donc avant duckdb.CloseAll()). Plus de goroutine
+			// détachée en context.Background() (handle orphelin / WAL au shutdown).
+			if err := s.sink.PersistChallengesSync(ctx, raw); err != nil {
+				slog.WarnContext(ctx, "home: Challenges persist failed", "err", err)
+			}
 		}
 		if resp.SnapshotAt == nil {
 			now := time.Now().UTC().Format(time.RFC3339)

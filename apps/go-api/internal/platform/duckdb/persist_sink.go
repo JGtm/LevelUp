@@ -51,27 +51,11 @@ func persistHash(data []byte) string {
 // Battle Pass
 // ---------------------------------------------------------------------------
 
-// PersistBattlePass lance une goroutine fire-and-forget pour sauvegarder les
-// données BP dans waypoint_assets_raw (archivage) et battlepass_snapshots
-// (par joueur). Les définitions de tracks sont la responsabilité du HaloProvider
-// via fetchRewardTrackDefinition (battlepass_details.go).
-func (s *PersistSink) PersistBattlePass(trackPath string, rawBody []byte) {
-	if s.MetaPath == "" || trackPath == "" || len(rawBody) == 0 {
-		return
-	}
-	go func() {
-		ctx := context.Background()
-		if err := s.writeBattlePass(ctx, trackPath, rawBody); err != nil {
-			slog.Warn("persist_sink: battlepass write failed",
-				"xuid", s.XUID, "track", trackPath, "err", err)
-		}
-	}()
-}
-
-// PersistBattlePassSync persiste les données BP de manière synchrone.
-// Contrairement à PersistBattlePass (fire-and-forget), cette variante bloque
-// jusqu'à la fin des écritures, garantissant que les snapshots sont en DB
-// avant la prochaine lecture (ex: Season Pass page).
+// PersistBattlePassSync persiste les données BP de manière synchrone : archivage
+// dans waypoint_assets_raw (metadata) + battlepass_snapshots (par joueur), via
+// fetchRewardTrackDefinition (battlepass_details.go). Bloque jusqu'à la fin des
+// écritures sur le ctx appelant, garantissant que les snapshots sont en DB avant
+// la prochaine lecture et avant le shutdown (W6 — plus de goroutine détachée).
 func (s *PersistSink) PersistBattlePassSync(ctx context.Context, trackPath string, rawBody []byte) error {
 	if s.MetaPath == "" || trackPath == "" || len(rawBody) == 0 {
 		return nil
@@ -512,25 +496,11 @@ func (s *PersistSink) upsertItemTranslations(
 // Challenges
 // ---------------------------------------------------------------------------
 
-// PersistChallenges lance une goroutine fire-and-forget pour sauvegarder les
-// défis dans waypoint_assets_raw (metadata) et challenge_snapshots (player).
-func (s *PersistSink) PersistChallenges(rawBody []byte) {
-	if len(rawBody) == 0 {
-		return
-	}
-	go func() {
-		ctx := context.Background()
-		if err := s.writeChallenges(ctx, rawBody); err != nil {
-			slog.Warn("persist_sink: challenges write failed",
-				"xuid", s.XUID, "err", err)
-		}
-	}()
-}
-
-// PersistChallengesSync persiste les défis de manière SYNCHRONE (variante de
-// PersistChallenges fire-and-forget). Utilisée par le live_refresh pour que
-// l'écriture s'exécute dans la goroutine du ticker — liée à son ctx — au lieu
-// d'un goroutine détaché en context.Background() (lifecycle, W6 revue 2026-06-01).
+// PersistChallengesSync persiste les défis de manière SYNCHRONE dans
+// waypoint_assets_raw (metadata) et challenge_snapshots (player). L'écriture est
+// liée au ctx appelant (HTTP / ticker live_refresh) au lieu d'une goroutine
+// détachée en context.Background() — garantit qu'elle se termine avant le
+// shutdown (lifecycle, W6 revue 2026-06-01).
 func (s *PersistSink) PersistChallengesSync(ctx context.Context, rawBody []byte) error {
 	if len(rawBody) == 0 {
 		return nil

@@ -55,6 +55,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -125,6 +126,14 @@ type SharedSocialPersister struct {
 	// db est la connexion *sql.DB shared_social du pool process-wide.
 	// Le persister NE possède PAS cette connexion (c'est le pool qui Close).
 	db *sql.DB
+
+	// Détection one-shot de la table append-only player_records_history (migration
+	// Phase 2). recordsHistoryExists n'est valide qu'après recordsDetectOnce.
+	recordsDetectOnce    sync.Once
+	recordsHistoryExists bool
+	// legacyRecordsWarnOnce : un seul WARN 'legacy_player_records_upsert_used' par
+	// instance (le chemin legacy peut être emprunté à chaque batch).
+	legacyRecordsWarnOnce sync.Once
 }
 
 // NewSharedSocialPersister construit un persister sur la connexion fournie.
@@ -662,17 +671,30 @@ func (p *SharedSocialPersister) persistPlayerRecords(ctx context.Context, tx *sq
 	// Si la migration Phase 2 n'est pas encore appliquée, on tombe sur
 	// player_records (table d'origine) — comportement legacy compatible.
 	//
-	// La détection de la table cible est faite par convention : on tente
-	// l'INSERT sur player_records_history d'abord, fallback sur player_records.
-	// Phase 2 supprimera ce fallback quand la migration sera obligatoire.
+	// Détection one-shot (memoïsée) de player_records_history via information_schema,
+	// au lieu d'un échec de Prepare silencieux à chaque batch. Rend le fallback
+	// legacy explicite (WARN-once). Phase 2 supprimera ce fallback.
+	if !p.playerRecordsHistoryExists(ctx) {
+		p.legacyRecordsWarnOnce.Do(func() {
+			slog.WarnContext(ctx, "legacy_player_records_upsert_used",
+				"reason", "player_records_history absent (migration Phase 2 non appliquée)",
+				"fallback", "player_records ON CONFLICT DO UPDATE")
+		})
+		return p.persistPlayerRecordsLegacy(ctx, tx, rows)
+	}
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO player_records_history (xuid, metric, period, value, achieved_at, achieved_match_id, previous_value, previous_achieved_at, written_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
-		// Fallback legacy : la table _history n'existe pas encore (migration
-		// Phase 2 pas appliquée). On utilise l'ancien chemin UPSERT, qui sera
-		// déprécié après Phase 2.
+		// Filet secondaire : la sonde a dit « présente » mais le Prepare échoue
+		// (schéma incohérent / table droppée entre-temps). On retombe sur le
+		// chemin legacy + WARN une fois, sans perdre l'écriture.
+		p.legacyRecordsWarnOnce.Do(func() {
+			slog.WarnContext(ctx, "legacy_player_records_upsert_used",
+				"reason", "prepare player_records_history a échoué malgré détection positive",
+				"err", err)
+		})
 		return p.persistPlayerRecordsLegacy(ctx, tx, rows)
 	}
 	defer stmt.Close()
@@ -690,6 +712,27 @@ func (p *SharedSocialPersister) persistPlayerRecords(ctx context.Context, tx *sq
 		}
 	}
 	return nil
+}
+
+// playerRecordsHistoryExists détecte UNE SEULE FOIS (sync.Once) la présence de la
+// table append-only player_records_history via information_schema. La sonde tourne
+// sur p.db (HORS transaction d'écriture) : information_schema est en lecture seule
+// et une erreur de sonde ne doit jamais polluer la tx courante. En cas d'erreur,
+// renvoie false (→ chemin legacy, conservateur).
+func (p *SharedSocialPersister) playerRecordsHistoryExists(ctx context.Context) bool {
+	p.recordsDetectOnce.Do(func() {
+		var n int
+		err := p.db.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='main' AND table_name='player_records_history'",
+		).Scan(&n)
+		if err != nil {
+			slog.WarnContext(ctx, "shared_social: sonde player_records_history échouée, fallback legacy", "err", err)
+			p.recordsHistoryExists = false
+			return
+		}
+		p.recordsHistoryExists = n > 0
+	})
+	return p.recordsHistoryExists
 }
 
 // persistPlayerRecordsLegacy : chemin de compatibilité tant que la migration
