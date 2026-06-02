@@ -57,7 +57,7 @@ export function getEChartsThemeColors(): EChartsThemeColors {
     text: get('--foreground', '#f3f4f6'),
     tooltipBg: popover,
     tooltipBorder: border,
-    isDark: document.documentElement.classList.contains('dark'),
+    isDark: document.documentElement.getAttribute('data-theme') === 'dark',
   }
 }
 

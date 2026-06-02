@@ -6,9 +6,9 @@
  *   - Top    : barre composite progression PP (style rang carrière)
  *   - Bottom : grille 2 colonnes (Arc en cours | Mes objectifs)
  *
- * Remplace les 3 sections séparées (HomePrestigeBar / HomeActiveArcCard /
- * ChallengesCarousel embarqué dans une Card vide). Si toutes les sous-données
- * sont vides ou en erreur (PRESTIGE_ENABLED=false), retourne null silencieusement.
+ * Remplace les anciennes sections séparées (HomePrestigeBar / HomeActiveArcCard /
+ * carousel de challenges). Si toutes les sous-données sont vides ou en erreur
+ * (PRESTIGE_ENABLED=false), retourne null silencieusement.
  *
  * Tous les libellés FR/EN passent par homeManifest (clés home.prestige.*).
  */
